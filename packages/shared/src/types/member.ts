@@ -166,6 +166,8 @@ export interface ReachTask {
   matched: number;
   /** 发出多少人 */
   sent: number;
+  /** 其中推送到手机的人数 */
+  pushed: number;
   /** 跳过多少人 */
   skipped: number;
   /** 跳过的原因分布 */
@@ -229,6 +231,8 @@ export interface ReachPlan {
   matched: number;
   /** 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 */
   reachable: number;
+  /** 能收到的人里，还会收到手机推送的（有推送设备）。其余只进小程序的消息列表 */
+  pushable: number;
   /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */
   skips: Array<{ reason: string; count: number }>;
 }
@@ -237,6 +241,8 @@ export interface ReachResult {
   taskNo: string;
   /** 实际发出多少条 */
   sent: number;
+  /** 其中推送到手机的人数；其余只进了小程序的消息列表 */
+  pushed: number;
   /** 跳过多少人 */
   skipped: number;
   /** 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 */

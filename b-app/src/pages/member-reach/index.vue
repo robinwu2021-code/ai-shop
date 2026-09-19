@@ -162,7 +162,9 @@ onShow(() => {
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}
         </text>
       </view>
-      <text v-if="!plan.reachable" class="sh-muted sh-hint">{{ $t("reach.noneHint") }}</text>
+      <!-- 买家多在小程序、没有推送设备：说清楚有几个会亮屏，其余在小程序消息列表里 -->
+      <text v-if="plan.reachable" class="sh-muted sh-hint">{{ $t("reach.pushSplit", { m: plan.pushable }) }}</text>
+      <text v-else class="sh-muted sh-hint">{{ $t("reach.noneHint") }}</text>
     </view>
 
     <!-- ④ 内容 -->
@@ -181,6 +183,7 @@ onShow(() => {
     <!-- 结果：与发券结果页同一形状，商家看两处学一次 -->
     <view v-if="result" class="sh-card sh-mt-sm done">
       <text class="txt-strong">{{ $t("reach.doneTitle", { n: result.sent }) }}</text>
+      <text class="sh-muted sh-hint">{{ $t("reach.doneSplit", { m: result.pushed }) }}</text>
       <view v-if="result.skips.length" class="reasons sh-wrap">
         <text v-for="s in result.skips" :key="s.reason" class="txt-caption reason">
           {{ $t(`reach.reason.${s.reason}`, { n: s.count }) }}

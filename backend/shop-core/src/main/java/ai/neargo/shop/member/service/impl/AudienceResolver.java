@@ -46,11 +46,6 @@ public class AudienceResolver {
     static final String SKIP_OPT_OUT = "OPT_OUT";
     static final String SKIP_NO_ACCOUNT = "NO_ACCOUNT";
     static final String SKIP_TOO_SOON = "TOO_SOON";
-    /**
-     * 收不到推送：他没有登记过任何推送设备。买家多在微信小程序里，而会员消息目前只走 App 推送。
-     * <b>只在发消息时判</b>（{@code scene != null}）—— 发券是放进券包、活动是算价，都不经推送。
-     */
-    static final String SKIP_NO_CHANNEL = "NO_CHANNEL";
 
     private static final long DAY = 86_400_000L;
     /** 批量取会员行的粒度。IN 列表太长 MySQL 会走全表 */
@@ -73,14 +68,11 @@ public class AudienceResolver {
     private final MemberMapper memberMapper;
     private final ReachLogMapper reachMapper;
     private final PersonPort personPort;
-    private final ai.neargo.shop.spi.notify.UserPushPort pushPort;
     private final SettingPort settingPort;
 
     public AudienceResolver(MemberService memberService, MemberSegmentService segmentService,
                             MemberMapper memberMapper, ReachLogMapper reachMapper,
-                            PersonPort personPort, SettingPort settingPort,
-                            ai.neargo.shop.spi.notify.UserPushPort pushPort) {
-        this.pushPort = pushPort;
+                            PersonPort personPort, SettingPort settingPort) {
         this.memberService = memberService;
         this.segmentService = segmentService;
         this.memberMapper = memberMapper;
@@ -128,16 +120,6 @@ public class AudienceResolver {
                     continue;
                 }
                 reachable.add(new Audience(m.getMemberNo(), userNo));
-            }
-        }
-        if (scene != null && !reachable.isEmpty()) {
-            // 其余条件都过了、但没有设备的人：推了也收不到，记成跳过，不算「能发」
-            java.util.Set<String> withDevice = pushPort.withDevice(
-                    reachable.stream().map(Audience::userNo).distinct().toList());
-            int before = reachable.size();
-            reachable.removeIf(a -> !withDevice.contains(a.userNo()));
-            if (reachable.size() < before) {
-                skipped.merge(SKIP_NO_CHANNEL, before - reachable.size(), Integer::sum);
             }
         }
         List<Skip> skips = skipped.entrySet().stream()

@@ -59,6 +59,7 @@ class ReachEffectFlowTest {
     @Autowired private PersonPort personPort;
     @Autowired private ReachAttribution attribution;
     @Autowired private ai.neargo.shop.message.notify.PushTokenBinder tokenBinder;
+    @Autowired private ai.neargo.shop.spi.notify.UserInboxPort inboxPort;
     @Autowired private ObjectMapper json;
 
     private static int seq = 9500;
@@ -161,7 +162,7 @@ class ReachEffectFlowTest {
             }
         };
         MemberReachService svc = new MemberReachServiceImpl(reachMapper, taskMapper, memberMapper, resolver,
-                capture, personPort, attribution, json);
+                capture, personPort, attribution, json, inboxPort);
         String taskNo = svc.send(e, ALL, "全部会员", MbrReachLog.SCENE_NOTICE, "中秋新米到了", "来", "OP").taskNo();
         String reachNo = reachNoOf(taskNo, b.memberNo());
 

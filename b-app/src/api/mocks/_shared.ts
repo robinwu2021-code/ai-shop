@@ -588,7 +588,7 @@ export function reachTaskView(t: MockReachTask, withMembers: boolean) {
   return {
     taskNo: t.taskNo, scene: t.scene, title: t.title, body: t.body, audienceDesc: t.audienceDesc,
     sentAt: t.sentAt, statsUntil: t.sentAt + REACH_WINDOW, settled: Date.now() > t.sentAt + REACH_WINDOW,
-    matched: t.matched, sent: t.rows.length, skipped: t.matched - t.rows.length, skips: t.skips,
+    matched: t.matched, sent: t.rows.length, pushed: t.rows.filter((r) => hasDeviceMock(r.memberNo)).length, skipped: t.matched - t.rows.length, skips: t.skips,
     opened: t.rows.filter((r) => r.opened).length, ordered: ordered.length,
     orderedAmountMinor: ordered.reduce((s, r) => s + (r.orderedMinor ?? 0), 0),
     orderedMembers: withMembers ? ordered.map((r) => {
@@ -667,10 +667,7 @@ export function resolveAudienceMock(items: Array<{ type: string; value: string }
 }
 
 /**
- * 这个人为什么收不到。与后端同一顺序：线索 → 拉黑 → 退订 → 频次 → 没有推送设备
- * （mock 里人人都有账号，没有 NO_ACCOUNT）。
- * NO_CHANNEL：后端按「有没有登记推送设备」判；mock 没有设备表，按会员号末位演示一部分人只用小程序 ——
- * 一个都不演的话，试算页永远看不到这一档，而线上它恰恰是最大的一档。
+ * 这个人为什么收不到。与后端同一顺序：线索 → 拉黑 → 退订 → 频次（mock 里人人都有账号，没有 NO_ACCOUNT）。
  * @returns null = 收得到
  */
 export function skipReasonMock(m: { memberNo: string; status: string; reachOptOut?: boolean }, scene?: string) {
@@ -681,9 +678,16 @@ export function skipReasonMock(m: { memberNo: string; status: string; reachOptOu
     const minDays = scene === "WAKEUP" ? 14 : scene === "COUPON" ? 7 : 3;
     const last = (db.reachSentAt[scene] ?? {})[m.memberNo];
     if (last && Date.now() - last < minDays * 86400_000) return "TOO_SOON";
-    if (/[05]$/.test(m.memberNo)) return "NO_CHANNEL";
   }
   return null;
+}
+
+/**
+ * 有没有推送设备。后端查 notify_push_token；mock 没有设备表，按会员号末位演示一部分人只用小程序 ——
+ * 一个都不演的话，「其中 M 人会收到推送」永远等于能收到的人数，而线上它多半是 0。
+ */
+export function hasDeviceMock(memberNo: string) {
+  return !/[05]$/.test(memberNo);
 }
 
 export function mockTags() {

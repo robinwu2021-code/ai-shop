@@ -77,20 +77,24 @@ public interface MemberReachService {
     }
 
     /**
-     * @param reachable  能发的人数
+     * @param reachable  能收到的人数：消息一定进他的小程序消息列表
+     * @param pushable   其中有推送设备、还会亮屏提醒的人数
      * @param skips      被拦下的分布。<b>要能说出人话</b>：
      *                   {@code TOO_SOON} 最近发过、{@code OPT_OUT} 已退订、
-     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册、{@code BLOCKED} 被商家拉黑、
-     *                   {@code NO_CHANNEL} 没有推送设备（只用小程序）
+     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册、{@code BLOCKED} 被商家拉黑
      */
-    record ReachPlan(int matched, int reachable, List<Skip> skips) {
+    record ReachPlan(int matched, int reachable, int pushable, List<Skip> skips) {
 
         public record Skip(String reason, int count) {
         }
     }
 
-    /** @param taskNo 这一批的号。效果回看按它聚合 */
-    record ReachResult(String taskNo, int sent, int skipped, List<ReachPlan.Skip> skips) {
+    /**
+     * @param taskNo 这一批的号。效果回看按它聚合
+     * @param sent   进了买家小程序消息列表的人数
+     * @param pushed 其中推送到手机的人数
+     */
+    record ReachResult(String taskNo, int sent, int pushed, int skipped, List<ReachPlan.Skip> skips) {
     }
 
     /**
@@ -103,7 +107,7 @@ public interface MemberReachService {
      */
     record ReachTaskVO(String taskNo, String scene, String title, String body, String audienceDesc,
                        long sentAt, long statsUntil, boolean settled,
-                       int matched, int sent, int skipped, List<ReachPlan.Skip> skips,
+                       int matched, int sent, int pushed, int skipped, List<ReachPlan.Skip> skips,
                        int opened, int ordered, long orderedAmountMinor,
                        List<OrderedMember> orderedMembers, int notOpened) {
     }

@@ -117,6 +117,7 @@ onLoad((q) => {
           <view class="meter__bar sh-fill"><view class="meter__in" :style="{ width: b.w + '%' }"></view></view>
           <text class="txt-body sh-num meter__n">{{ b.n }}</text>
         </view>
+        <text class="txt-caption sh-muted blk">{{ $t("reachTask.pushedLine", { m: data.pushed }) }}</text>
         <text v-if="data.skipped" class="txt-caption sh-muted blk">
           {{ $t("reachTask.skipped", { n: data.skipped }) }}
         </text>

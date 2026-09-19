@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.member.dto.MemberVOs.MemberQuery;
 import ai.neargo.shop.member.entity.MbrReachLog;
+import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper;
 import ai.neargo.shop.member.service.MemberReachService;
 import ai.neargo.shop.member.service.MemberSegmentService;
@@ -50,6 +51,12 @@ class MemberReachFlowTest {
     @Autowired
     private ai.neargo.shop.message.notify.PushTokenBinder tokenBinder;
 
+    @Autowired
+    private ai.neargo.shop.message.MessageService messageService;
+
+    @Autowired
+    private ai.neargo.shop.message.mapper.MessageMappers.MessageMapper messageMapper;
+
     private static int seq = 9100;
 
     /** 已注册、已入会、手机上装着 App（可触达） */
@@ -92,21 +99,55 @@ class MemberReachFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 没有推送设备的人算跳过、不算发出 —— 此前零设备也回「已发出」，商家看到的成功一条都没到")
-    void noDeviceIsSkippedNotSent() {
+    @DisplayName("★★★ 没有推送设备的人照样收得到：进小程序消息列表，只是不推送（批 D）")
+    void noDeviceStillReceivesInInbox() {
         String e = "M-RCH-" + (++seq);
-        registeredMember(e, false);   // 只在小程序里的买家：没有 App，就没有推送设备
+        String miniOnly = registeredMember(e, false);   // 只在小程序里的买家：没有推送设备
         registeredMember(e, true);
         String seg = allSegment(e);
 
         var plan = reachService.plan(e, seg, MbrReachLog.SCENE_NOTICE);
         assertThat(plan.matched()).isEqualTo(2);
-        assertThat(plan.reachable()).isEqualTo(1);
-        assertThat(plan.skips()).extracting(x -> x.reason()).containsExactly("NO_CHANNEL");
+        assertThat(plan.reachable()).as("两个人都收得到").isEqualTo(2);
+        assertThat(plan.pushable()).as("其中一个会亮屏").isEqualTo(1);
+        assertThat(plan.skips()).isEmpty();
 
         var r = reachService.send(e, seg, MbrReachLog.SCENE_NOTICE, "上新了", "来看看", "OP");
-        assertThat(r.sent()).as("只算真的交给了通道的").isEqualTo(1);
-        assertThat(r.skipped()).isEqualTo(1);
+        assertThat(r.sent()).isEqualTo(2);
+        assertThat(r.pushed()).isEqualTo(1);
+
+        String reachNo = reachMapper.selectOne(Wrappers.<MbrReachLog>lambdaQuery()
+                .eq(MbrReachLog::getTaskNo, r.taskNo()).eq(MbrReachLog::getMemberNo, miniOnly)).getReachNo();
+        MsgMessage m = messageMapper.selectOne(Wrappers.<MsgMessage>lambdaQuery()
+                .eq(MsgMessage::getDedupKey, reachNo));
+        assertThat(m).as("他的消息列表里有这一条").isNotNull();
+        assertThat(m.getMsgType()).isEqualTo(MsgMessage.MARKETING);
+        assertThat(m.getLink()).isEqualTo("/pages/store/index?merchantNo=" + e + "&reach=" + reachNo);
+    }
+
+    @Test
+    @DisplayName("★★ 平台营销日上限满了的人不计入发出，也不推送 —— 那一天他已经被打扰够了")
+    void dailyMarketingCapIsRespected() {
+        String e = "M-RCH-" + (++seq);
+        String memberNo = registeredMember(e, true);
+        String userNo = "U-RCH-" + seq;
+        for (int i = 0; i < 5; i++) {
+            assertThat(messageService.inboxMarketing(userNo, "别家", "别家", null, "CAP-" + seq + "-" + i)).isTrue();
+        }
+        String seg = allSegment(e);
+
+        var r = reachService.send(e, seg, MbrReachLog.SCENE_NOTICE, "上新了", "来看看", "OP");
+        assertThat(r.sent()).isZero();
+        assertThat(r.pushed()).isZero();
+        assertThat(memberNo).isNotNull();
+    }
+
+    @Test
+    @DisplayName("★ 同一条会员消息不会进两次消息列表（dedupKey = reachNo）")
+    void inboxIsIdempotentPerReachNo() {
+        String userNo = "U-RCH-DEDUP-" + (++seq);
+        assertThat(messageService.inboxMarketing(userNo, "t", "b", null, "RC-DEDUP-" + seq)).isTrue();
+        assertThat(messageService.inboxMarketing(userNo, "t", "b", null, "RC-DEDUP-" + seq)).isFalse();
     }
 
     @Test

@@ -25,7 +25,10 @@ public class MbrReachTask extends BaseEntity {
     private String audienceJson;
     private String audienceDesc;
     private Integer matchedCount;
+    /** 进了买家小程序消息列表的人数（批 D 起；之前是推送成功数） */
     private Integer sentCount;
+    /** 其中推送到手机的人数 */
+    private Integer pushedCount;
     private Integer skippedCount;
     private String skipDetail;
     private Integer openedCount;

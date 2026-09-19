@@ -50,6 +50,7 @@ public class MemberReachServiceImpl implements MemberReachService {
     private final MemberMapper memberMapper;
     private final AudienceResolver resolver;
     private final UserPushPort pushPort;
+    private final ai.neargo.shop.spi.notify.UserInboxPort inboxPort;
     private final PersonPort personPort;
     private final ReachAttribution attribution;
     private final ObjectMapper json;
@@ -57,7 +58,9 @@ public class MemberReachServiceImpl implements MemberReachService {
     public MemberReachServiceImpl(ReachLogMapper reachMapper, ReachTaskMapper taskMapper,
                                   MemberMapper memberMapper, AudienceResolver resolver,
                                   UserPushPort pushPort, PersonPort personPort,
-                                  ReachAttribution attribution, ObjectMapper json) {
+                                  ReachAttribution attribution, ObjectMapper json,
+                                  ai.neargo.shop.spi.notify.UserInboxPort inboxPort) {
+        this.inboxPort = inboxPort;
         this.reachMapper = reachMapper;
         this.taskMapper = taskMapper;
         this.memberMapper = memberMapper;
@@ -71,7 +74,7 @@ public class MemberReachServiceImpl implements MemberReachService {
     @Override
     public ReachPlan plan(String entityNo, List<AudienceItem> audiences, String scene) {
         AudienceResolution r = sift(entityNo, audiences, scene);
-        return new ReachPlan(r.matched(), r.reachable().size(), skips(r));
+        return new ReachPlan(r.matched(), r.reachable().size(), withDevice(r).size(), skips(r));
     }
 
     @Override
@@ -85,6 +88,8 @@ public class MemberReachServiceImpl implements MemberReachService {
         String segmentNo = audiences != null && audiences.size() == 1
                 && AudienceItem.SEGMENT.equals(audiences.get(0).type()) ? audiences.get(0).value() : null;
         int sent = 0;
+        int pushed = 0;
+        java.util.Set<String> devices = withDevice(r);
 
         for (Audience t : r.reachable()) {
             /*
@@ -99,21 +104,38 @@ public class MemberReachServiceImpl implements MemberReachService {
             row.setMemberNo(t.memberNo());
             row.setSegmentNo(segmentNo);
             row.setTaskNo(taskNo);
-            row.setChannel("PUSH");
+            // 有设备的记 PUSH（站内信 + 推送），没有的记 INBOX（只进消息列表）
+            row.setChannel(devices.contains(t.userNo()) ? "PUSH" : "INBOX");
             row.setScene(scene);
             row.setSentAt(now);
             reachMapper.insert(row);
 
-            if (pushPort.pushToUser(t.userNo(), title, body,
-                    String.format(STORE_LINK, entityNo, row.getReachNo()))) {
-                sent++;
+            /*
+             * **先进消息列表，有设备再推送**。买家多在小程序、没有推送设备 ——
+             * 站内信是一定送得到的那一处；推送只是「顺便亮一下屏」。
+             * 被平台营销日上限挡下的人不计入发出，也不再推送：那一天他已经被打扰够了。
+             */
+            String link = String.format(STORE_LINK, entityNo, row.getReachNo());
+            if (!inboxPort.deliverMarketing(t.userNo(), title, body, link, row.getReachNo())) {
+                continue;
+            }
+            sent++;
+            if (devices.contains(t.userNo()) && pushPort.pushToUser(t.userNo(), title, body, link)) {
+                pushed++;
             }
         }
         int skipped = r.matched() - r.reachable().size();
-        writeTask(taskNo, entityNo, audiences, audienceDesc, scene, title, body, r, sent, skipped,
+        writeTask(taskNo, entityNo, audiences, audienceDesc, scene, title, body, r, sent, pushed, skipped,
                 now, operatorNo);
-        log.info("[触达] {} 场景 {} 计划 {} 发出 {} 跳过 {}", entityNo, scene, r.matched(), sent, skipped);
-        return new ReachResult(taskNo, sent, skipped, skips(r));
+        log.info("[触达] {} 场景 {} 计划 {} 发出 {} 推送 {} 跳过 {}", entityNo, scene, r.matched(), sent, pushed,
+                skipped);
+        return new ReachResult(taskNo, sent, pushed, skipped, skips(r));
+    }
+
+    /** 这批能收到的人里，谁有推送设备（一次查完） */
+    private java.util.Set<String> withDevice(AudienceResolution r) {
+        return r.reachable().isEmpty() ? java.util.Set.of()
+                : pushPort.withDevice(r.reachable().stream().map(Audience::userNo).distinct().toList());
     }
 
     /**
@@ -122,7 +144,7 @@ public class MemberReachServiceImpl implements MemberReachService {
      */
     private void writeTask(String taskNo, String entityNo, List<AudienceItem> audiences, String audienceDesc,
                            String scene, String title, String body, AudienceResolution r,
-                           int sent, int skipped, long now, String operatorNo) {
+                           int sent, int pushed, int skipped, long now, String operatorNo) {
         MbrReachTask t = new MbrReachTask();
         t.setTaskNo(taskNo);
         t.setEntityNo(entityNo);
@@ -134,6 +156,7 @@ public class MemberReachServiceImpl implements MemberReachService {
         t.setAudienceDesc(clip(audienceDesc == null || audienceDesc.isBlank() ? fallbackDesc(items) : audienceDesc));
         t.setMatchedCount(r.matched());
         t.setSentCount(sent);
+        t.setPushedCount(pushed);
         t.setSkippedCount(skipped);
         t.setSkipDetail(r.skips().isEmpty() ? null : r.skips().stream()
                 .map(x -> x.reason() + ":" + x.count()).collect(Collectors.joining(",")));
@@ -213,7 +236,8 @@ public class MemberReachServiceImpl implements MemberReachService {
         int opened = nz(t.getOpenedCount());
         return new ReachTaskVO(t.getTaskNo(), t.getScene(), t.getTitle(), t.getBody(), t.getAudienceDesc(),
                 t.getSentAt(), t.getStatsUntil(), System.currentTimeMillis() > t.getStatsUntil(),
-                nz(t.getMatchedCount()), sent, nz(t.getSkippedCount()), parseSkips(t.getSkipDetail()),
+                nz(t.getMatchedCount()), sent, nz(t.getPushedCount()), nz(t.getSkippedCount()),
+                parseSkips(t.getSkipDetail()),
                 opened, nz(t.getOrderedCount()),
                 t.getOrderedAmountMinor() == null ? 0 : t.getOrderedAmountMinor(),
                 ordered, notOpened);

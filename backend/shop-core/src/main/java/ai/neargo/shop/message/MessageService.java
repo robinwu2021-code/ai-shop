@@ -44,6 +44,17 @@ public interface MessageService {
      *                   无法执行「同模板最小间隔」，频控对它就是摆设
      * @return 发出去了 true；被频控或停用拦下 false（调用方据此统计触达率）
      */
+    /**
+     * 商家给自己会员的营销站内信（会员消息）。
+     *
+     * <p>遵守平台营销日上限（{@code notify.quota.dailyPerUser}）与 dedupKey 防重；
+     * <b>不套同模板最小间隔</b> —— 所有商家的会员消息不共用一个模板号，
+     * 一家店发了不该把别家挡 24 小时。商家这一侧的频次闸在会员域。
+     *
+     * @return 进了他的消息列表 true；被日上限拦下或重复 false
+     */
+    boolean inboxMarketing(String userNo, String title, String body, String link, String dedupKey);
+
     boolean pushMarketing(String userNo, String templateNo, String title, String body,
                           String link, String dedupKey);
 

@@ -19,6 +19,7 @@ import {
   mockMembers,
   mockTags,
   addMockReachTask,
+  hasDeviceMock,
   mockReachTasks,
   reachTaskView,
   requireMerchant,
@@ -518,11 +519,16 @@ export const marketingMock: Pick<MerchantApi,
     const all = reachTargets(payload);
     const skips = new Map<string, number>();
     let reachable = 0;
+    let pushable = 0;
     for (const m of all) {
       const why = skipReasonMock(m, payload.scene);
-      if (why) skips.set(why, (skips.get(why) ?? 0) + 1); else reachable++;
+      if (why) skips.set(why, (skips.get(why) ?? 0) + 1);
+      else {
+        reachable++;
+        if (hasDeviceMock(m.memberNo)) pushable++;
+      }
     }
-    return delay({ matched: all.length, reachable,
+    return delay({ matched: all.length, reachable, pushable,
       skips: [...skips].map(([reason, count]) => ({ reason, count })) });
   },
 
@@ -543,6 +549,7 @@ export const marketingMock: Pick<MerchantApi,
     return delay({
       taskNo,
       sent: plan.reachable,
+      pushed: plan.pushable,
       skipped: plan.matched - plan.reachable,
       skips: plan.skips,
     });

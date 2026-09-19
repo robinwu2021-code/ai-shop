@@ -105,6 +105,47 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
+    public boolean inboxMarketing(String userNo, String title, String body, String link, String dedupKey) {
+        if (userNo == null || userNo.isBlank()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long dayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant().toEpochMilli();
+        // 日上限与 pushMarketing 同一把尺：交易消息不占，营销类合计（不分哪家店）
+        long today = DataScopeContext.executeWithoutScope(() ->
+                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                        .eq(MsgMessage::getReceiverType, MsgMessage.RECEIVER_USER)
+                        .eq(MsgMessage::getReceiverNo, userNo)
+                        .eq(MsgMessage::getMsgType, MsgMessage.MARKETING)
+                        .ge(MsgMessage::getAt, dayStart)));
+        if (today >= notifyQuota().dailyPerUser()) {
+            log.info("[quota] 会员消息被日上限拦下 user={} today={}", userNo, today);
+            return false;
+        }
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
+                        .eq(MsgMessage::getDedupKey, dedupKey))) > 0;
+        if (exists) {
+            return false;
+        }
+        MsgMessage m = new MsgMessage();
+        m.setMessageNo(BizKey.next(BizKey.MESSAGE));
+        m.setReceiverType(MsgMessage.RECEIVER_USER);
+        m.setReceiverNo(userNo);
+        m.setMsgType(MsgMessage.MARKETING);
+        m.setTitle(title);
+        m.setBody(body);
+        m.setLink(link);
+        m.setIsRead(false);
+        m.setDedupKey(dedupKey);
+        m.setAt(now);
+        DataScopeContext.executeWithoutScope(() -> messageMapper.insert(m));
+        return true;
+    }
+
+    @Override
+    @Transactional
     public boolean pushMarketing(String userNo, String templateNo, String title, String body,
                                  String link, String dedupKey) {
         if (userNo == null || userNo.isBlank() || templateNo == null || templateNo.isBlank()) {
