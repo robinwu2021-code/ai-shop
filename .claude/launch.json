@@ -120,6 +120,18 @@
       "cwd": "b-app",
       "port": 5175,
       "autoPort": true
+    },
+    {
+      "name": "prototypes",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8790",
+        "-d",
+        "prototypes"
+      ],
+      "port": 8790
     }
   ]
 }
