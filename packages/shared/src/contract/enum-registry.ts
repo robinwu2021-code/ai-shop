@@ -168,6 +168,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "后端 /biz/goods 一直下发库列原值 AUDITING（联调实测），现已改发 PENDING；"
       + "列表筛选两个词都收，老客户端不至于筛出空列表",
     words: ["ON_SALE", "OFF_SALE"] },
+  { decl: "shared:SaleMode", dom: "core", shape: "CLASS", verdict: "OK",
+    note: "商品的销售方式（V340，TDD-商品仅活动可售）。NORMAL/ACTIVITY_ONLY 与 prd_goods.sale_mode "
+      + "及后端 PrdGoods.SALE_* 两个常量逐字一致。与 GoodsStatus 正交：那个说上架与审核，这个说能走哪条路买" },
   { decl: "shared:CampaignType", dom: "core", shape: "CLASS", verdict: "OK" },
   { decl: "shared:CampaignStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "RUNNING 与 ops-web CouponStatus/MemberCardStatus 的 ACTIVE 同为「生效中」，二选一" },
