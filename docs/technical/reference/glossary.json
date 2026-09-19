@@ -10124,6 +10124,12 @@
           "ar": "{n} قيد الإصدار"
         },
         {
+          "key": "marketing.members",
+          "zh-CN": "会员",
+          "en": "Members",
+          "ar": "الأعضاء"
+        },
+        {
           "key": "marketing.monthDiscount",
           "zh-CN": "本月让利",
           "en": "Discounts this month",
