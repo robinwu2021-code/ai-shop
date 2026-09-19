@@ -15,7 +15,7 @@ import { fromE6, openLocation } from "@shared/ports/location";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
-import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { money } from "@shared/utils/money";
@@ -316,9 +316,13 @@ function navToStore() {
 
       <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
       <view class="store sh-row">
-        <text class="store__logo">{{ data.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
+        <biz-shop-avatar :name="data.merchant.name" :logo="data.merchant.logo" :self-operated="data.merchant.selfOperated" :size="96"></biz-shop-avatar>
         <view class="sh-fill">
           <view class="store__row sh-row">
+            <!-- 自营标（电商法 §37），放店名前 -->
+            <text v-if="data.merchant.selfOperated" class="sh-chip sh-chip--primary">
+              {{ $t("merchant.selfOperated") }}
+            </text>
             <text class="txt-title">{{ data.merchant.name }}</text>
             <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
               {{ $t("merchant.verified") }}
@@ -485,15 +489,6 @@ function navToStore() {
 .store {
   gap: 20rpx;
   padding: 8rpx 0 24rpx;
-}
-.store__logo {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 32rpx;
-  background: var(--sh-surface);
-  font-size: 56rpx;
-  text-align: center;
-  line-height: 96rpx;
 }
 
 .store__row {

@@ -10,7 +10,7 @@ import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage } from "@shared/ports/share";
-import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { isoDate, money } from "@shared/utils/format";
 import type { GroupRequest, Quote } from "@shared/types";
 
@@ -160,7 +160,7 @@ onShareAppMessage(() => {
 
       <view v-for="(q, i) in request.quotes" :key="q.quoteNo" class="quote" :class="{ 'is-chosen': q.chosen }">
         <view class="quote__head sh-row">
-          <text class="quote__logo">{{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
+          <biz-shop-avatar :name="q.merchant.name" :logo="q.merchant.logo" :self-operated="q.merchant.selfOperated" :size="68"></biz-shop-avatar>
           <view class="sh-fill">
             <view class="quote__name-row sh-wrap">
               <text class="txt-strong quote__name">{{ q.merchant.name }}</text>
@@ -327,16 +327,6 @@ onShareAppMessage(() => {
 }
 .quote.is-chosen {
   background: var(--sh-primary-tint);
-}
-.quote__logo {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 24rpx;
-  background: var(--sh-surface);
-  text-align: center;
-  line-height: 68rpx;
-  font-size: 34rpx;
-  flex-shrink: 0;
 }
 
 /* 标签多的时候让它们换行，而不是把商家名挤成「邻…」——

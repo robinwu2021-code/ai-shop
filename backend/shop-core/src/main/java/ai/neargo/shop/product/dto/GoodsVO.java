@@ -155,9 +155,10 @@ public record GoodsVO(String goodsNo,
     }
 
     /** @param ratingCount 0 条 = 还没人评过，端上据此显示「暂无评价」而不是 0 颗星 */
+    /** @param selfOperated 平台自营 —— 端上据此在店名前显示「自营」（电商法 §37） */
     public record MerchantBriefVO(String merchantNo, String name, String logo,
                                   double rating, int ratingCount,
-                                  boolean verified, int breachCount) {
+                                  boolean verified, int breachCount, boolean selfOperated) {
     }
 
     /**

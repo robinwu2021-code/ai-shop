@@ -590,7 +590,8 @@ public class GroupServiceImpl implements GroupService {
                         m.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d),
                         m.map(MerchantQueryPort.MerchantBrief::ratingCount).orElse(0),
                         m.map(MerchantQueryPort.MerchantBrief::verified).orElse(false),
-                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0)),
+                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0),
+                        m.map(MerchantQueryPort.MerchantBrief::selfOperated).orElse(false)),
                 initiator == null ? null : nicknameOf(initiator),
                 initiator == null ? "" : avatarOf(initiator),
                 g.getPickupNo(), pickup.map(PickupQueryPort.PickupBrief::name).orElse(""),
@@ -948,7 +949,8 @@ public class GroupServiceImpl implements GroupService {
                         m.map(MerchantQueryPort.MerchantBrief::ratingCount).orElse(0),
                         m.map(MerchantQueryPort.MerchantBrief::verified).orElse(false),
                         // ★ 毁约次数直接公示在报价卡上（ADR-003）
-                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0)),
+                        m.map(MerchantQueryPort.MerchantBrief::breachCount).orElse(0),
+                        m.map(MerchantQueryPort.MerchantBrief::selfOperated).orElse(false)),
                 nz(q.getUnitPriceMinor()), nz(q.getMinQty()), q.getNote(),
                 nz(q.getValidUntil()),
                 q.getCreatedAt() == null ? 0L

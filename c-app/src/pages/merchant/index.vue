@@ -5,7 +5,7 @@ import { ref } from "vue";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
-import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { isoDate } from "@shared/utils/format";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
@@ -93,9 +93,13 @@ onShareAppMessage(() =>
     <!-- 商家头部 -->
     <view class="sh-card head">
       <view class="head__top sh-row">
-        <text class="head__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
+        <biz-shop-avatar :name="merchant.name" :logo="merchant.logo" :self-operated="merchant.selfOperated" :size="108"></biz-shop-avatar>
         <view class="sh-fill">
           <view class="head__title sh-row">
+            <!-- 自营标（电商法 §37），放店名前：「谁在卖」先于店名 -->
+            <text v-if="merchant.selfOperated" class="txt-caption sh-chip sh-chip--primary tiny">
+              {{ $t("merchant.selfOperated") }}
+            </text>
             <text class="txt-title">{{ merchant.name }}</text>
             <text
               v-if="merchant.verified"
@@ -243,16 +247,6 @@ onShareAppMessage(() =>
 
 .head__top {
   gap: 24rpx;
-}
-.head__logo {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 32rpx;
-  background: var(--sh-faint);
-  text-align: center;
-  line-height: 108rpx;
-  font-size: 52rpx;
-  flex-shrink: 0;
 }
 
 .head__title {

@@ -543,6 +543,19 @@ def build_web():
     return n
 
 
+def build_app_static():
+    """打进小程序包的品牌图。**`c-app/public/` 只进 H5，不进小程序包**，
+    小程序里要用的图必须落在 `c-app/src/static/` 下。
+
+    目前只有一张：**自营店的店铺头像**。自营店就是虹选自己的店，
+    头像用 C 端的品牌面（与 C 端 App 图标、网站图标同一个 HX 方章），
+    而不是 🏪 这类占位表情。144px：列表里显示 52px，三倍屏也够清楚，文件只有几 KB。
+    """
+    out = REPO / "c-app/src/static/brand"
+    render_png(app_icon_svg(APPS["c"]), 144, out / "store-self.png")
+    return 1
+
+
 def build_splash():
     """启动页。**缺了它就是冷启动白屏** —— 用户第一眼看到的东西。
 
@@ -859,6 +872,7 @@ if __name__ == "__main__":
     print(f"iOS       {build_ios()} 个产物")
     print(f"Web       {build_web()} 个产物")
     print(f"官网      {build_site()} 个产物（hxmall + hxtech 两套）")
+    print(f"小程序包内 {build_app_static()} 个产物（c-app/src/static/brand）")
     print(f"启动页    {build_splash()} 个产物")
     print(f"小程序    {build_miniprogram()} 个产物")
     print(f"商标稿    {build_trademark()} 个产物")

@@ -19,7 +19,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useUserStore } from "@/stores/user";
-import { ROUTES, MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { distance, isoDate } from "@shared/utils/format";
 import type { Merchant, VisitedMerchant } from "@shared/types";
 
@@ -157,7 +157,7 @@ onShow(load);
           class="near__i sh-row"
           @tap="open(m.merchantNo)"
         >
-          <text class="near__logo">{{ m.logo || MERCHANT_LOGO_FALLBACK }}</text>
+          <biz-shop-avatar :name="m.name" :logo="m.logo" :self-operated="m.selfOperated" :size="76"></biz-shop-avatar>
           <view class="sh-fill">
             <text class="txt-strong near__name">{{ m.name }}</text>
             <text class="txt-caption near__desc">{{ m.desc }}</text>
@@ -201,16 +201,6 @@ onShow(load);
 .near__i {
   gap: 20rpx;
   padding: 24rpx 24rpx;
-}
-.near__logo {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  font-size: 40rpx;
-  line-height: 76rpx;
-  text-align: center;
-  flex-shrink: 0;
 }
 
 .near__name {

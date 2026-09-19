@@ -882,7 +882,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
                 m.getRatingCount() == null ? 0 : m.getRatingCount(),
                 Boolean.TRUE.equals(m.getVerified()),
-                m.getBreachCount() == null ? 0 : m.getBreachCount()));
+                m.getBreachCount() == null ? 0 : m.getBreachCount(),
+                Integer.valueOf(1).equals(m.getSelfOperated())));
     }
 
     @Override
@@ -905,7 +906,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                     m.getLogo(), m.getRating() == null ? 0d : m.getRating() / (double) RATING_SCALE,
                     m.getRatingCount() == null ? 0 : m.getRatingCount(),
                     Boolean.TRUE.equals(m.getVerified()),
-                    m.getBreachCount() == null ? 0 : m.getBreachCount()));
+                    m.getBreachCount() == null ? 0 : m.getBreachCount(),
+                    Integer.valueOf(1).equals(m.getSelfOperated())));
         }
         return out;
     }

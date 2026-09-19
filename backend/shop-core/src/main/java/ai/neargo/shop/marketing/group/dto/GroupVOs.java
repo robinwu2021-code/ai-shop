@@ -144,9 +144,10 @@ public final class GroupVOs {
 
     /** 报价卡上的商家。与契约 `MerchantBrief` 同形。 */
     /** @param ratingCount 0 条 = 还没人评过，端上据此显示「暂无评价」而不是 0 颗星 */
+    /** @param selfOperated 平台自营 —— 团购卡上同样要标（电商法 §37） */
     public record MerchantBriefVO(String merchantNo, String name, String logo,
                                   double rating, int ratingCount,
-                                  boolean verified, int breachCount) {
+                                  boolean verified, int breachCount, boolean selfOperated) {
     }
 
     /**

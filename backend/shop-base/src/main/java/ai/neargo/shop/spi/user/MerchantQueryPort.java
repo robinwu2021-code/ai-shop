@@ -416,9 +416,15 @@ public interface MerchantQueryPort {
      * @param ratingCount 计入评分的评价条数。**没有它就分不清「0 分」和「还没人评过」**——
      *                    对买家这是相反的信号：0 分是被打出来的，没人评过只是新开的
      */
+    /**
+     * @param selfOperated 平台自营（{@code mch_entity.self_operated}）。**电商法 §37 要求显著标记**。
+     *                     此前这个记录里没有它，于是商品接口、团购接口一路都不带，
+     *                     端上商家条的自营标一次都没显示过。只认主体上的这一列，
+     *                     不从门店的 business_mode 推 —— 那一列管结算，这一列管对买家的法定告知
+     */
     record MerchantBrief(String merchantNo, String merchantName, boolean canSell, boolean canReceive,
                          String logo, double rating, int ratingCount,
-                         boolean verified, int breachCount) {
+                         boolean verified, int breachCount, boolean selfOperated) {
     }
 
     /**
