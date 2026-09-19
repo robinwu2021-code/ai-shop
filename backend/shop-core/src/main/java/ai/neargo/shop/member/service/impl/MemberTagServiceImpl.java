@@ -113,7 +113,16 @@ public class MemberTagServiceImpl implements MemberTagService {
         t.setName(n);
         t.setTagType(MbrTag.MCH);
         t.setStatus(MbrTag.ACTIVE);
-        tagMapper.insert(t);
+        try {
+            tagMapper.insert(t);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 两台设备几乎同时建同名标签：后到的撞唯一键，按「重名返回那一个」处理，不是 500
+            MbrTag raced = byName(entityNo, n);
+            if (raced != null) {
+                return vo(raced);
+            }
+            throw e;
+        }
         return vo(t);
     }
 

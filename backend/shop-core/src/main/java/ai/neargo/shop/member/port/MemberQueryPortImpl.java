@@ -116,7 +116,13 @@ public class MemberQueryPortImpl implements MemberQueryPort {
 
     @Override
     public AudienceResolution resolve(String entityNo, List<AudienceItem> items, String scene) {
-        return resolver.resolve(entityNo, items, scene);
+        /*
+         * 绕开数据域：调用方是发券 / 活动（商家会话，维度 SELF = 商家账号号），而 mbr_* 按 entity_no 登记 ——
+         * 不绕的话拼 1=0，「发给沉睡会员」算出 0 人、活动覆盖人数恒为 0，且不报错。
+         * entityNo 由调用方显式给出，每条查询都按它过滤。
+         */
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                resolver.resolve(entityNo, items, scene));
     }
 
     @Override
@@ -141,7 +147,9 @@ public class MemberQueryPortImpl implements MemberQueryPort {
 
     @Override
     public String segmentSnapshot(String entityNo, String segmentNo) {
-        return segmentService.snapshot(entityNo, segmentNo);
+        // 同 resolve：活动保存在商家会话里，读人群条件要绕开数据域，否则快照恒为空
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                segmentService.snapshot(entityNo, segmentNo));
     }
 
     /** 受众解析（发消息、发券、活动共用）。setter 注入，理由同 memberService */

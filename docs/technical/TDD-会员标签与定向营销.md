@@ -611,6 +611,21 @@ c-app 店铺页回写与真机推送 → 进店 → 下单的闭环**未验**（
   顺手修掉它读 ROUTES 常量表的旧路径（`constants.ts` → `constants/index.ts`，c-app 的 `ROUTES.x` 此前一条都认不出）。
 - 消融：去掉营销页这一行 → 会员一圈 6 页被第二道报红。首次上线另查出积分两页（`points` ↔ `points-records`）同形状，登记待办。
 
+### 补丁 · B 端会员接口在商家会话里读不出数据（2026-09-19 真机发现）
+
+商家反馈「新增标签错误」。线上日志：21:21:49 建「可爱」成功，21:21:56 再建同名 → `DuplicateKeyException` 500。
+根因不在判重：**商家会话的数据域是 SELF（商家账号号），`mbr_*` 只按 `entity_no` 登记 MERCHANT**，
+锚点对不上时拦截器 fail-closed 拼 `1=0` —— 写得进、读不出。新建的标签列表里看不见（商家于是再建一次），
+同名判重也查不到；添加会员写入后回读报 10404；人群列表为空；「发出去的」恒为空（真机空态当时被误读为「没发过」）。
+发券「发给沉睡会员」、活动存人群快照经 `MemberQueryPort#resolve / segmentSnapshot` 同样读不到。
+其余会员用例都直接调 Service、不带会话（数据域为空 → 放行），所以一路全绿。
+
+- `BizMemberController` 24 个接口统一 `noScope(...)` 执行（每个都按 `BizContext.requireMerchantNo()` 显式过滤）
+- `MemberQueryPortImpl#resolve / segmentSnapshot` 绕开数据域（`resolveSegment` 走 `resolve`）
+- `MemberTagServiceImpl#create` 并发同名撞唯一键时返回已有那一个
+- 新用例 `BizMemberSessionFlowTest`：入驻 → 商家 btk_ 令牌 → 走过滤器，建标签 / 同名再建 / 添加会员 / 名单 / 详情 / 人群 / 发出去的；
+  修复前 3 条全红（标签列表空、10404、人群列表空），修复后全绿
+
 ### 偏差说明（设计阶段已知，写在前面）
 
 | 与谁 | 偏差 | 处理 |

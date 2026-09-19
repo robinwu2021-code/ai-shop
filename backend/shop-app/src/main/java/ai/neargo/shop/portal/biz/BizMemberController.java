@@ -88,24 +88,30 @@ public class BizMemberController {
                                       @RequestParam(required = false) Long spentMax,
                                       @RequestParam(defaultValue = "1") long page,
                                       @RequestParam(defaultValue = "20") long size) {
-        return memberService.list(BizContext.requireMerchantNo(),
-                new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
-                        lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size));
+        return noScope(() -> {
+            return memberService.list(BizContext.requireMerchantNo(),
+                    new MemberQuery(storeNo, level, source, status, phone, split(tagNos),
+                            lastOrderBefore, lastOrderAfter, spentMin, spentMax, page, size));
+        });
     }
 
     /** 四层人数 + 可触达 + 本月新增。数字即入口，端上点一个就按那一层筛 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/members/stats")
     public MemberStatsVO stats(@RequestParam(required = false) String storeNo) {
-        return memberService.stats(BizContext.requireMerchantNo(), storeNo);
+        return noScope(() -> {
+            return memberService.stats(BizContext.requireMerchantNo(), storeNo);
+        });
     }
 
     /** 详情：各店往来 + 来源轨迹（谁发的链接、哪个员工录的）+ 标签与备注 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/members/{memberNo}")
     public MemberDetailVO detail(@PathVariable String memberNo) {
-        return memberService.detail(BizContext.requireMerchantNo(), memberNo)
-                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        return noScope(() -> {
+            return memberService.detail(BizContext.requireMerchantNo(), memberNo)
+                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        });
     }
 
     // ---------------------------------------------------------------- 录入与标签（P2）
@@ -122,13 +128,15 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/members")
     public MemberVO enroll(@jakarta.validation.Valid @RequestBody EnrollReq req) {
-        BizContext ctx = BizContext.current();
-        var m = memberService.enroll(BizContext.requireMerchantNo(), req.phone(), req.remark(),
-                req.tagNos(), req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo(),
-                SecurityUtils.currentUserNo());
-        return memberService.detail(BizContext.requireMerchantNo(), m.getMemberNo())
-                .map(d -> d.member())
-                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        return noScope(() -> {
+            BizContext ctx = BizContext.current();
+            var m = memberService.enroll(BizContext.requireMerchantNo(), req.phone(), req.remark(),
+                    req.tagNos(), req.storeNo() != null ? req.storeNo() : ctx.currentStoreNo(),
+                    SecurityUtils.currentUserNo());
+            return memberService.detail(BizContext.requireMerchantNo(), m.getMemberNo())
+                    .map(d -> d.member())
+                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        });
     }
 
     /**
@@ -141,43 +149,53 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PutMapping("/biz/members/{memberNo}")
     public MemberVO patch(@PathVariable String memberNo, @RequestBody PatchReq req) {
-        memberService.patch(BizContext.requireMerchantNo(), memberNo, req.remark(), req.status());
-        return memberService.detail(BizContext.requireMerchantNo(), memberNo)
-                .map(d -> d.member())
-                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        return noScope(() -> {
+            memberService.patch(BizContext.requireMerchantNo(), memberNo, req.remark(), req.status());
+            return memberService.detail(BizContext.requireMerchantNo(), memberNo)
+                    .map(d -> d.member())
+                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        });
     }
 
     /** 批量打标 / 去标。先筛出人，再一次性打 —— 一个一个点是这一页最没必要的重复劳动 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/members/tags")
     public void tag(@RequestBody TagReq req) {
-        tagService.tag(BizContext.requireMerchantNo(), req.memberNos(), req.add(), req.remove(),
-                SecurityUtils.currentUserNo());
+        noScope(() -> {
+            tagService.tag(BizContext.requireMerchantNo(), req.memberNos(), req.add(), req.remove(),
+                    SecurityUtils.currentUserNo());
+        });
     }
 
     /** 标签字典 + 每个标签多少人（COUNT 出来的，不存冗余列） */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-tags")
     public List<TagVO> tags() {
-        return tagService.tags(BizContext.requireMerchantNo());
+        return noScope(() -> {
+            return tagService.tags(BizContext.requireMerchantNo());
+        });
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-tags")
     public TagVO createTag(@RequestBody TagEditReq req) {
-        return tagService.create(BizContext.requireMerchantNo(), req.name(),
-                SecurityUtils.currentUserNo());
+        return noScope(() -> {
+            return tagService.create(BizContext.requireMerchantNo(), req.name(),
+                    SecurityUtils.currentUserNo());
+        });
     }
 
     /** 改名或停用。**系统标签两样都不许** —— 它的名字就是口径 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PutMapping("/biz/member-tags/{tagNo}")
     public TagVO editTag(@PathVariable String tagNo, @RequestBody TagEditReq req) {
-        String entityNo = BizContext.requireMerchantNo();
-        if (req.enabled() != null) {
-            return tagService.setEnabled(entityNo, tagNo, req.enabled());
-        }
-        return tagService.rename(entityNo, tagNo, req.name());
+        return noScope(() -> {
+            String entityNo = BizContext.requireMerchantNo();
+            if (req.enabled() != null) {
+                return tagService.setEnabled(entityNo, tagNo, req.enabled());
+            }
+            return tagService.rename(entityNo, tagNo, req.name());
+        });
     }
 
     /**
@@ -189,9 +207,11 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-tags/{tagNo}/merge")
     public MergePreviewVO mergeTag(@PathVariable String tagNo, @RequestBody MergeReq req) {
-        // 走编排层：合并的同时把引用源标签的人群条件与活动受众改指过去，否则它们从此一个人都命中不了
-        return audienceService.mergeTag(BizContext.requireMerchantNo(), tagNo, req.intoTagNo(),
-                Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+        return noScope(() -> {
+            // 走编排层：合并的同时把引用源标签的人群条件与活动受众改指过去，否则它们从此一个人都命中不了
+            return audienceService.mergeTag(BizContext.requireMerchantNo(), tagNo, req.intoTagNo(),
+                    Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+        });
     }
 
     /** @param tagNos 录入时顺手打上的标签 */
@@ -218,9 +238,11 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-reach/plan")
     public MemberReachService.ReachPlan planReach(@RequestBody ReachReq req) {
-        return req.hasAudiences()
-                ? reachService.plan(BizContext.requireMerchantNo(), req.audiences(), req.scene())
-                : reachService.plan(BizContext.requireMerchantNo(), req.segmentNo(), req.scene());
+        return noScope(() -> {
+            return req.hasAudiences()
+                    ? reachService.plan(BizContext.requireMerchantNo(), req.audiences(), req.scene())
+                    : reachService.plan(BizContext.requireMerchantNo(), req.segmentNo(), req.scene());
+        });
     }
 
     /**
@@ -230,11 +252,13 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/member-reach/send")
     public MemberReachService.ReachResult sendReach(@RequestBody ReachReq req) {
-        return req.hasAudiences()
-                ? reachService.send(BizContext.requireMerchantNo(), req.audiences(), req.audienceDesc(),
-                        req.scene(), req.title(), req.body(), SecurityUtils.currentUserNo())
-                : reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
-                        req.title(), req.body(), SecurityUtils.currentUserNo());
+        return noScope(() -> {
+            return req.hasAudiences()
+                    ? reachService.send(BizContext.requireMerchantNo(), req.audiences(), req.audienceDesc(),
+                            req.scene(), req.title(), req.body(), SecurityUtils.currentUserNo())
+                    : reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
+                            req.title(), req.body(), SecurityUtils.currentUserNo());
+        });
     }
 
     /**
@@ -243,6 +267,27 @@ public class BizMemberController {
      * @param audienceDesc 选人面板上显示的那句受众描述（「沉睡 · 爱囤货」），原样记进批次头，
      *                     「发出去的」列表直接显示 —— 标签名、分层名的译法都在端上
      */
+    /**
+     * 会员接口一律绕开数据域执行。
+     *
+     * <p>商家会话的数据域是 SELF（商家账号号），而 {@code mbr_*} 只按 {@code entity_no} 登记了 MERCHANT ——
+     * 锚点对不上时拦截器 fail-closed 拼 {@code 1=0}：<b>写得进去、读不出来</b>。线上表现是新建的标签列表里看不见、
+     * 再建同名的撞唯一键 500，添加会员写入后回读报「不存在」（2026-09-19 真机发现，BizMemberSessionFlowTest）。
+     *
+     * <p>绕开是安全的：这里每个接口都用 {@code BizContext.requireMerchantNo()} 显式按本店过滤，
+     * 数据域在这一层没有要守的东西（它守的是运营端「谁能看哪些商家」）。
+     */
+    private static <T> T noScope(java.util.function.Supplier<T> body) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(body::get);
+    }
+
+    private static void noScope(Runnable body) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            body.run();
+            return null;
+        });
+    }
+
     public record ReachReq(String segmentNo, String scene, String title, String body,
                            List<AudienceItem> audiences, String audienceDesc) {
 
@@ -256,15 +301,19 @@ public class BizMemberController {
     @GetMapping("/biz/member-reach/task")
     public List<MemberReachService.ReachTaskVO> reachTasks(@RequestParam(defaultValue = "1") long page,
                                                            @RequestParam(defaultValue = "20") long size) {
-        return reachService.tasks(BizContext.requireMerchantNo(), page, size);
+        return noScope(() -> {
+            return reachService.tasks(BizContext.requireMerchantNo(), page, size);
+        });
     }
 
     /** 一次触达的效果（原型 m20）：发出 · 来了 · 成单，下单的人，没来的人数 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-reach/task/{taskNo}")
     public MemberReachService.ReachTaskVO reachTask(@PathVariable String taskNo) {
-        return reachService.task(BizContext.requireMerchantNo(), taskNo)
-                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        return noScope(() -> {
+            return reachService.task(BizContext.requireMerchantNo(), taskNo)
+                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        });
     }
 
     // ------------------------------------------------------------------ 选人与标签（会员标签与定向营销 批 B）
@@ -276,8 +325,10 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/members/audience-preview")
     public AudiencePreviewVO previewAudience(@RequestBody AudiencePreviewReq req) {
-        return audienceService.preview(BizContext.requireMerchantNo(), req.audiences(), req.scene(),
-                Boolean.TRUE.equals(req.forActivity()));
+        return noScope(() -> {
+            return audienceService.preview(BizContext.requireMerchantNo(), req.audiences(), req.scene(),
+                    Boolean.TRUE.equals(req.forActivity()));
+        });
     }
 
     public record AudiencePreviewReq(List<AudienceItem> audiences, String scene, Boolean forActivity) {
@@ -290,9 +341,11 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/members/tags/batch")
     public BatchTagVO batchTag(@RequestBody BatchTagReq req) {
-        return audienceService.batchTag(BizContext.requireMerchantNo(), req.memberNos(), req.rule(),
-                req.scopeStoreNo(), req.tagNo(), !"REMOVE".equals(req.action()),
-                Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+        return noScope(() -> {
+            return audienceService.batchTag(BizContext.requireMerchantNo(), req.memberNos(), req.rule(),
+                    req.scopeStoreNo(), req.tagNo(), !"REMOVE".equals(req.action()),
+                    Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+        });
     }
 
     /**
@@ -308,14 +361,18 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-tags/{tagNo}/usage")
     public TagUsageVO tagUsage(@PathVariable String tagNo) {
-        return audienceService.tagUsage(BizContext.requireMerchantNo(), tagNo);
+        return noScope(() -> {
+            return audienceService.tagUsage(BizContext.requireMerchantNo(), tagNo);
+        });
     }
 
     /** 人群详情（原型 m11）：条件、此刻人数（当场算）、用在哪 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-segments/{segmentNo}")
     public SegmentDetailVO segmentDetail(@PathVariable String segmentNo) {
-        return audienceService.segmentDetail(BizContext.requireMerchantNo(), segmentNo);
+        return noScope(() -> {
+            return audienceService.segmentDetail(BizContext.requireMerchantNo(), segmentNo);
+        });
     }
 
     // ------------------------------------------------------------------ 人群（P3）
@@ -327,7 +384,9 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-settings")
     public MemberSettingVO settings() {
-        return memberService.settings(BizContext.requireMerchantNo());
+        return noScope(() -> {
+            return memberService.settings(BizContext.requireMerchantNo());
+        });
     }
 
     /**
@@ -338,14 +397,18 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PutMapping("/biz/member-settings")
     public MemberSettingVO saveSettings(@RequestBody SettingReq req) {
-        return memberService.saveSettings(BizContext.requireMerchantNo(),
-                req.memberScope(), req.autoJoinOnOrder());
+        return noScope(() -> {
+            return memberService.saveSettings(BizContext.requireMerchantNo(),
+                    req.memberScope(), req.autoJoinOnOrder());
+        });
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/member-segments")
     public List<SegmentVO> segments() {
-        return segmentService.list(BizContext.requireMerchantNo());
+        return noScope(() -> {
+            return segmentService.list(BizContext.requireMerchantNo());
+        });
     }
 
     /**
@@ -355,8 +418,10 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-segments")
     public SegmentVO saveSegment(@RequestBody SegmentReq req) {
-        return segmentService.save(BizContext.requireMerchantNo(), req.segmentNo(), req.name(),
-                req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
+        return noScope(() -> {
+            return segmentService.save(BizContext.requireMerchantNo(), req.segmentNo(), req.name(),
+                    req.scopeStoreNo(), req.rule() == null ? emptyRule() : req.rule());
+        });
     }
 
     /*
@@ -367,15 +432,19 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-segments/{segmentNo}/remove")
     public void removeSegment(@PathVariable String segmentNo) {
-        segmentService.remove(BizContext.requireMerchantNo(), segmentNo);
+        noScope(() -> {
+            segmentService.remove(BizContext.requireMerchantNo(), segmentNo);
+        });
     }
 
     /** 试算：这组条件此刻命中多少人。发券前那句「命中 N 人」就是它 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-segments/preview")
     public MemberVOs.SegmentPreviewVO previewSegment(@RequestBody SegmentReq req) {
-        return segmentService.preview(BizContext.requireMerchantNo(), req.scopeStoreNo(),
-                req.rule() == null ? emptyRule() : req.rule());
+        return noScope(() -> {
+            return segmentService.preview(BizContext.requireMerchantNo(), req.scopeStoreNo(),
+                    req.rule() == null ? emptyRule() : req.rule());
+        });
     }
 
     private static MemberQuery emptyRule() {
