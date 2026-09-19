@@ -1341,6 +1341,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     },
   },
   marketing: {
+    members: "الأعضاء",
     reachTasks: "المُرسَل",
     platform: "حملات المنصة",
     enrollable: "{n} متاحة",

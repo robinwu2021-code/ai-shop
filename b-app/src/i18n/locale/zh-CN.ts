@@ -1582,6 +1582,7 @@ export default {
     },
   },
   marketing: {
+    members: "会员",
     reachTasks: "发出去的",
     platform: "平台活动",
     enrollable: "{n} 可报名",

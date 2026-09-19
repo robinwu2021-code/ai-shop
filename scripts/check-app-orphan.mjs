@@ -16,6 +16,13 @@
 // 判据：pages.json 的每条路由，在同一个 app 的源码里必须至少有一处引用 ——
 // 直接写路径、走 nav.ts 的 ROUTES.x、或者它本身是 tabBar 页。
 //
+// **第二道（2026-09-19 补）：从入口一路点得到。** 上面那条只问「有没有别的页面提到我」，
+// 一圈页面互相链接就全部过关 —— 会员名单 / 标签详情 / 人群详情 / 给会员发消息四页
+// 正是这样：彼此互链，而工作台、我的、营销一处都不链进来，**上线两批、真机上才发现点不到**。
+// 判据：以底部 tab 页与「全局代码」（App.vue、store、shared、packages 里提到的页面 —— 登录拦截、
+// 推送点击这类不经页面的跳转）为起点，沿「页面 → 它用到的组件 → 它们链到的页面」走一遍，
+// 走不到的就是没有门。组件里的链接只在用到它的页面可达时才算数。
+//
 // 用法：
 //   node scripts/check-app-orphan.mjs           # 列出来
 //   node scripts/check-app-orphan.mjs --check   # 超过基线就非零退出
@@ -87,7 +94,10 @@ function routeAliases(app) {
   const map = new Map();
   for (const f of [
     join(ROOT, app, "src/shared/nav.ts"),
+    // 常量表 2026 年中从 constants.ts 挪成了 constants/index.ts；旧路径不在了也不报错，
+    // 于是 c-app 的 ROUTES.x 一条都认不出 —— 两处都读，谁在读谁
     join(ROOT, "packages/shared/src/utils/constants.ts"),
+    join(ROOT, "packages/shared/src/utils/constants/index.ts"),
   ]) {
     if (!existsSync(f)) continue;
     for (const m of readFileSync(f, "utf8").matchAll(/(\w+)\s*:\s*"(\/[^"]+)"/g)) {
@@ -112,6 +122,100 @@ export function orphans() {
       const byAlias = key ? new RegExp(`ROUTES\\s*\\.\\s*${key}\\b`).test(src) : false;
       if (!byPath && !byAlias) rows.push({ app, page });
     }
+  }
+  return rows;
+}
+
+/** 一段源码里提到了哪些页面（直接写路径，或走 ROUTES.x） */
+function pageRefs(text, pages, alias) {
+  const out = new Set();
+  for (const page of pages) {
+    if (text.includes(`/${page}`) || text.includes(`"${page}"`)) out.add(page);
+    const key = alias.get(page);
+    if (key && new RegExp(`ROUTES\\s*\\.\\s*${key}\\b`).test(text)) out.add(page);
+  }
+  return out;
+}
+
+function filesUnder(dir, re) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  const walk = (d) => {
+    for (const name of readdirSync(d)) {
+      if (name === "node_modules" || name === "dist" || name.startsWith(".")) continue;
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (re.test(name)) out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+/**
+ * 从入口走不到的页面。节点 = 页面（`pages/<名>/` 下所有文件算同一页）与组件；
+ * 边 = 源码里提到页面路径 / ROUTES.x，以及页面或组件里用到某个组件（`<biz-xxx`、`<app-xxx`、
+ * 按文件名 import）。起点 = tab 页 + 全局代码里提到的页面。
+ */
+export function unreachable() {
+  const rows = [];
+  for (const app of APPS) {
+    const { pages, tabs } = routesOf(app);
+    const alias = routeAliases(app);
+    // 扫描面的自检：起点或别名表读空了，整张图就是错的 —— 宁可停下，别给一个看似合理的数
+    if (!tabs.size) throw new Error(`${app}: pages.json 里读不到 tabBar，可达性无从算起`);
+    if (!alias.size) throw new Error(`${app}: 读不到 ROUTES 常量表（nav.ts / constants），ROUTES.x 会全部认不出`);
+    const srcDir = join(ROOT, app, "src");
+    const all = filesUnder(srcDir, /\.(vue|ts|js)$/);
+    const pageOf = (f) => {
+      const rel = f.slice(srcDir.length + 1);
+      const m = rel.match(/^(pages\/[^/]+)\//);
+      if (!m) return null;
+      return pages.find((p) => p.startsWith(`${m[1]}/`)) ?? null;
+    };
+    const compDir = join(srcDir, "components");
+    const comps = new Map();   // 组件名（文件名去扩展名）→ 源码
+    for (const f of all) {
+      if (f.startsWith(compDir + "/") && f.endsWith(".vue")) {
+        comps.set(f.slice(f.lastIndexOf("/") + 1, -4), readFileSync(f, "utf8"));
+      }
+    }
+    const usesComps = (text) => [...comps.keys()].filter((c) =>
+      text.includes(`<${c}`) || text.includes(`/${c}.vue`) || text.includes(`/${c}"`));
+
+    // 每个页面（含它目录下的子文件）的源码
+    const pageText = new Map(pages.map((p) => [p, ""]));
+    const globalText = [];
+    for (const f of all) {
+      const pg = pageOf(f);
+      const text = readFileSync(f, "utf8");
+      if (pg) pageText.set(pg, pageText.get(pg) + "\n" + text);
+      else if (!f.startsWith(compDir + "/")) globalText.push(text);
+    }
+    // 两端共用的外壳与常量：底部菜单、拦截器在这里（常量表本身不算「提到」—— 它只是登记）
+    for (const shared of ["packages/ui/src", "packages/shared/src"]) {
+      for (const f of filesUnder(join(ROOT, shared), /\.(vue|ts|js)$/)) {
+        if (f.endsWith("utils/constants.ts") || f.endsWith("utils/constants/index.ts")) continue;
+        globalText.push(readFileSync(f, "utf8"));
+      }
+    }
+    const globalJoined = globalText.filter((t) => !/^\s*export const ROUTES\s*=/m.test(t)).join("\n");
+
+    const seen = new Set();
+    const queue = [];
+    const visitPage = (p) => { if (!seen.has(p)) { seen.add(p); queue.push(["page", p]); } };
+    const seenComp = new Set();
+    const visitComp = (c) => { if (!seenComp.has(c)) { seenComp.add(c); queue.push(["comp", c]); } };
+    for (const t of tabs) visitPage(t);
+    for (const p of pageRefs(globalJoined, pages, alias)) visitPage(p);
+    for (const c of usesComps(globalJoined)) visitComp(c);
+    while (queue.length) {
+      const [kind, name] = queue.shift();
+      const text = kind === "page" ? pageText.get(name) ?? "" : comps.get(name) ?? "";
+      for (const p of pageRefs(text, pages, alias)) visitPage(p);
+      for (const c of usesComps(text)) visitComp(c);
+    }
+    for (const p of pages) if (!seen.has(p)) rows.push({ app, page: p });
   }
   return rows;
 }
@@ -148,5 +252,35 @@ if (check && fresh.length) {
 if (check && stale.length) {
   console.error(`\n✗ 基线里有 ${stale.length} 条已经有入口了，删掉它们。`);
   console.error("  留着的话，将来那个入口被摘掉也不会有人发现。");
+  process.exit(1);
+}
+
+// ─── 第二道：从入口一路点得到 ─────────────────────────────────────────────
+const REACH_BASELINE = join(ROOT, "known-unreachable-pages.txt");
+const orphanIds = new Set(rows.map(id));
+// 第一道已经报过的（压根没人提到）不在这里重复报
+const unreach = unreachable().filter((r) => !orphanIds.has(id(r)));
+const knownReach = existsSync(REACH_BASELINE)
+  ? new Set(readFileSync(REACH_BASELINE, "utf8").split("\n").map((l) => l.replace(/#.*/, "").trim())
+      .filter(Boolean))
+  : new Set();
+const freshReach = unreach.filter((r) => !knownReach.has(id(r)));
+const staleReach = [...knownReach].filter((k) => !unreach.some((r) => id(r) === k));
+
+console.log(`\n从入口点得到｜被提到却走不到 ${unreach.length}（已知欠账 ${knownReach.size}）`);
+for (const r of unreach) console.log(`   ${freshReach.includes(r) ? "★新增" : "     "} ${id(r)}`);
+if (staleReach.length) {
+  console.log(`\n✅ 这 ${staleReach.length} 条已经走得到了，把它们从 known-unreachable-pages.txt 删掉：`);
+  for (const k of staleReach) console.log(`      ${k}`);
+}
+if (check && freshReach.length) {
+  console.error(`\n✗ 新增了 ${freshReach.length} 个「有人链它、但从底部菜单一路点不过去」的页面。`);
+  console.error("  多半是一圈页面互相链接，而圈外没有一处链进来 —— 真机上点不到，而上面那道闸是绿的。");
+  console.error("  要么从已有入口挂一条路进来，要么登记进 known-unreachable-pages.txt 并写明为什么");
+  console.error("  （例：只从外部进 —— 分享卡片、扫码、订阅消息的落地页）。");
+  process.exit(1);
+}
+if (check && staleReach.length) {
+  console.error(`\n✗ known-unreachable-pages.txt 里有 ${staleReach.length} 条已经走得到了，删掉它们。`);
   process.exit(1);
 }

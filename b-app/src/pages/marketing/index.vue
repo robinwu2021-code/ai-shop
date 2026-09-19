@@ -92,6 +92,15 @@ onShow(async () => {
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
+      <!--
+        会员（名单 → 标签 / 人群 / 发消息）。**此前整个 App 没有一处链进会员页** ——
+        会员、标签详情、人群详情、给会员发消息四页只在彼此之间互链，上线两批、真机上才发现点不到。
+        会员是 biz:customer，营销页是 biz:campaign：没有会员权限的人不显示这一行，免得点进去是「无权访问」。
+      -->
+      <view v-if="merchant.can('biz:customer')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.customers)">
+        <text class="txt-body">{{ $t("marketing.members") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <!-- 发出去的（原型 s01 加的一行 → m19）：消息与券的效果回看 -->
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.reachTasks)">
         <text class="txt-body">{{ $t("marketing.reachTasks") }}</text>

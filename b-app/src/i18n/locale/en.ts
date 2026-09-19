@@ -1343,6 +1343,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     },
   },
   marketing: {
+    members: "Members",
     reachTasks: "Sent",
     platform: "Platform campaigns",
     enrollable: "{n} open",
