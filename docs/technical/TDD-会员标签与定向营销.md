@@ -1,6 +1,6 @@
 # TDD-会员标签与定向营销
 
-状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 已实现（待上线）
+状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 后端已上线（界面待打包）
 关联需求：[PRD-会员标签与定向营销](../requirements/PRD-会员标签与定向营销.md)（AC-1 … AC-15）
 原型：[会员标签与定向营销](https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc)（m01–m21 · c01 · o01–o02）·
 [营销 v2](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（s01 · s04–s06 · s16 · s18）
@@ -420,7 +420,7 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | 合并标签改写活动受众 | 进行中活动的受众被改 | 合并本就是「同义词归并」，受众语义不变；`mbr_tag_merge_log` 留痕，确认页列出改指数量（m09） |
 | 带域表直查读写皆哑 | 回写静默 0 行 | 全部回写在 `executeWithoutScope` 内；测试断言影响行数（仓库记忆「B端直查带域表读写皆哑」） |
 
-**遗留（本次不做，已知）**：`d90_spent_minor` 只写不读、不重算；退款不减会员单数与分层；发券不走频次闸（券不推送）。
+**遗留（本次不做，已知）**：`pmt_coupon_issue.rule_snapshot`（V231 建表时就有，注释「发放当时的人群条件快照」）**实体里没有这个字段、从没人写过** —— 批 B 另加的 `audience_json` 存的是受众项，两列并存；按人群发券时把条件快照写进它，就兑现了它原本的用途（2026-09-19 上线核对时发现）。`d90_spent_minor` 只写不读、不重算；退款不减会员单数与分层；发券不走频次闸（券不推送）。
 
 ---
 
@@ -604,4 +604,5 @@ B 端 H5 mock 实测：名单卡片标签行、「对这 2 人…」四个去处
 | 2026-09-19 | 方案确认，§8 四条按假设定案；开始批 A |
 | 2026-09-19 | 批 A 上线 `aac9cf6a`：V338 成功、索引在；任务进程已登记 `member-level-recompute`，**初始为停**（生产新任务一律等运营打开）——需运营在「定时任务」打开并手动跑一次，`member.level.last-run` 有值才算批 A 验收完 |
 | 2026-09-19 | 开始批 B |
+| 2026-09-19 | 批 B 后端随 C 端自营标识一起上线 `45d7bdfb`（部署方为「C端地址管理功能」会话；pre-push 全套绿，后端全量 2051 跑 / 0 红）。本会话复核：本分支提交均为其祖先；V339 success=1；health=200；AudienceResolver / MemberAudienceServiceImpl / AudienceRefPortImpl / MemberLevelRecomputeJob 均在运行中的 jar 里。**B 端界面随下一次打 APK 到店主手里；运营端口径卡（批 A）随下一次 ops-web 部署** |
 | 2026-09-19 | 草稿；基于代码盘点（`BizMemberController` · `MemberQueryPortImpl` · `ActivityPricingServiceImpl#audienceHits` · `PmtCouponServiceImpl#issue` · `MemberReachServiceImpl` · V224/V226/V230/V242/V243） |
