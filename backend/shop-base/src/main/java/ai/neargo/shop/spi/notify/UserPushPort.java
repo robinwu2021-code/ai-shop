@@ -18,4 +18,13 @@ public interface UserPushPort {
      * @return 是否交给通道成功。<b>不代表用户看到了</b> —— 那要看 opened_at
      */
     boolean pushToUser(String userNo, String title, String body, String link);
+
+    /**
+     * 这批买家里，谁有收得到推送的设备。
+     *
+     * <p><b>群发前的试算必须先问它</b>：买家多在微信小程序里，而这条通道只到原生 App ——
+     * 没有设备的人推了也收不到。此前试算不问、{@link #pushToUser} 在零设备时也回 true，
+     * 于是「已发出 25 条」一条都没到，而商家看到的是成功。
+     */
+    java.util.Set<String> withDevice(java.util.Collection<String> userNos);
 }

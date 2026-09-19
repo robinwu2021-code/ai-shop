@@ -58,6 +58,7 @@ class ReachEffectFlowTest {
     @Autowired private AudienceResolver resolver;
     @Autowired private PersonPort personPort;
     @Autowired private ReachAttribution attribution;
+    @Autowired private ai.neargo.shop.message.notify.PushTokenBinder tokenBinder;
     @Autowired private ObjectMapper json;
 
     private static int seq = 9500;
@@ -71,6 +72,7 @@ class ReachEffectFlowTest {
         String userNo = "U-EFF-" + seq;
         String personNo = personService.resolveOrCreateByPhone(phone).getPersonNo();
         personService.bindOnLogin(userNo, phone);
+        tokenBinder.register("USER", userNo, "APP_ANDROID", "GETUI", "cid-eff-" + seq);
         memberService.onOrderPaid("SUB-EFF-" + seq, userNo, personNo, entityNo, "ST-1",
                 5_000, System.currentTimeMillis() - 30 * DAY);
         return new Buyer(memberService.find(entityNo, personNo).orElseThrow().getMemberNo(), userNo, personNo);
@@ -147,7 +149,17 @@ class ReachEffectFlowTest {
          * 只把最末端的推送换成一个记下参数的替身 —— 验的是 send 交给通道的那一串。
          */
         List<String[]> pushed = new ArrayList<>();
-        UserPushPort capture = (userNo, title, body, link) -> pushed.add(new String[] {userNo, link});
+        UserPushPort capture = new UserPushPort() {
+            @Override
+            public boolean pushToUser(String userNo, String title, String body, String link) {
+                return pushed.add(new String[] {userNo, link});
+            }
+
+            @Override
+            public java.util.Set<String> withDevice(java.util.Collection<String> userNos) {
+                return new java.util.HashSet<>(userNos);
+            }
+        };
         MemberReachService svc = new MemberReachServiceImpl(reachMapper, taskMapper, memberMapper, resolver,
                 capture, personPort, attribution, json);
         String taskNo = svc.send(e, ALL, "全部会员", MbrReachLog.SCENE_NOTICE, "中秋新米到了", "来", "OP").taskNo();

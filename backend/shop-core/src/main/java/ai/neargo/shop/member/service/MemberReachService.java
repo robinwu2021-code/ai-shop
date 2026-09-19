@@ -80,7 +80,8 @@ public interface MemberReachService {
      * @param reachable  能发的人数
      * @param skips      被拦下的分布。<b>要能说出人话</b>：
      *                   {@code TOO_SOON} 最近发过、{@code OPT_OUT} 已退订、
-     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册、{@code BLOCKED} 被商家拉黑
+     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册、{@code BLOCKED} 被商家拉黑、
+     *                   {@code NO_CHANNEL} 没有推送设备（只用小程序）
      */
     record ReachPlan(int matched, int reachable, List<Skip> skips) {
 

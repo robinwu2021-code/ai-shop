@@ -25,9 +25,9 @@ public class UserPushPortImpl implements UserPushPort {
             return false;
         }
         try {
-            pushSender.notify(ai.neargo.shop.message.entity.MsgMessage.RECEIVER_USER,
-                    userNo, title, body, link);
-            return true;
+            // 0 台 = 没设备或全失败：算没发出。此前这里恒回 true，零设备的人也记成「已发出」
+            return pushSender.notify(ai.neargo.shop.message.entity.MsgMessage.RECEIVER_USER,
+                    userNo, title, body, link) > 0;
         } catch (RuntimeException e) {
             /*
              * **不往上抛**：推送是尽力而为的通道。一条没发出去就让整批触达回滚，
@@ -35,5 +35,10 @@ public class UserPushPortImpl implements UserPushPort {
              */
             return false;
         }
+    }
+
+    @Override
+    public java.util.Set<String> withDevice(java.util.Collection<String> userNos) {
+        return pushSender.withDevice(ai.neargo.shop.message.entity.MsgMessage.RECEIVER_USER, userNos);
     }
 }

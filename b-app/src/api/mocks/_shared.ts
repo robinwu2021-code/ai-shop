@@ -667,7 +667,10 @@ export function resolveAudienceMock(items: Array<{ type: string; value: string }
 }
 
 /**
- * 这个人为什么收不到。与后端同一顺序：线索 → 拉黑 → 退订 → 频次（mock 里人人都有账号，没有 NO_ACCOUNT）。
+ * 这个人为什么收不到。与后端同一顺序：线索 → 拉黑 → 退订 → 频次 → 没有推送设备
+ * （mock 里人人都有账号，没有 NO_ACCOUNT）。
+ * NO_CHANNEL：后端按「有没有登记推送设备」判；mock 没有设备表，按会员号末位演示一部分人只用小程序 ——
+ * 一个都不演的话，试算页永远看不到这一档，而线上它恰恰是最大的一档。
  * @returns null = 收得到
  */
 export function skipReasonMock(m: { memberNo: string; status: string; reachOptOut?: boolean }, scene?: string) {
@@ -678,6 +681,7 @@ export function skipReasonMock(m: { memberNo: string; status: string; reachOptOu
     const minDays = scene === "WAKEUP" ? 14 : scene === "COUPON" ? 7 : 3;
     const last = (db.reachSentAt[scene] ?? {})[m.memberNo];
     if (last && Date.now() - last < minDays * 86400_000) return "TOO_SOON";
+    if (/[05]$/.test(m.memberNo)) return "NO_CHANNEL";
   }
   return null;
 }

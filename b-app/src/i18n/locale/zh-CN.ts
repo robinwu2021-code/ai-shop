@@ -1968,6 +1968,7 @@ export default {
       OPT_OUT: "{n} 人已关闭消息接收",
       LEAD: "{n} 人为手工录入，本人未同意接收",
       NO_ACCOUNT: "{n} 人还没注册",
+      NO_CHANNEL: "{n} 人只用小程序，暂时收不到消息",
     },
     noneHint: "这一批一个也发不出去。换个人群，或者过几天再来",
     content: "消息内容",

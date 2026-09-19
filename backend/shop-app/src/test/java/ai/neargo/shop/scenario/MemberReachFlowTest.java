@@ -47,14 +47,24 @@ class MemberReachFlowTest {
     @Autowired
     private ReachLogMapper reachMapper;
 
+    @Autowired
+    private ai.neargo.shop.message.notify.PushTokenBinder tokenBinder;
+
     private static int seq = 9100;
 
-    /** 已注册、已入会（可触达） */
+    /** 已注册、已入会、手机上装着 App（可触达） */
     private String registeredMember(String entityNo) {
+        return registeredMember(entityNo, true);
+    }
+
+    private String registeredMember(String entityNo, boolean withDevice) {
         String phone = "1340000" + (++seq);
         String userNo = "U-RCH-" + seq;
         String personNo = personService.resolveOrCreateByPhone(phone).getPersonNo();
         personService.bindOnLogin(userNo, phone);
+        if (withDevice) {
+            tokenBinder.register("USER", userNo, "APP_ANDROID", "GETUI", "cid-rch-" + seq);
+        }
         memberService.onOrderPaid("SUB-RCH-" + seq, userNo, personNo, entityNo, "ST-1",
                 5_000, System.currentTimeMillis());
         return memberService.find(entityNo, personNo).orElseThrow().getMemberNo();
@@ -79,6 +89,24 @@ class MemberReachFlowTest {
         var plan = reachService.plan(e, seg, MbrReachLog.SCENE_WAKEUP);
         assertThat(plan.reachable()).as("14 天内不该再唤回同一个人").isZero();
         assertThat(plan.skips()).extracting(x -> x.reason()).containsExactly("TOO_SOON");
+    }
+
+    @Test
+    @DisplayName("★★★ 没有推送设备的人算跳过、不算发出 —— 此前零设备也回「已发出」，商家看到的成功一条都没到")
+    void noDeviceIsSkippedNotSent() {
+        String e = "M-RCH-" + (++seq);
+        registeredMember(e, false);   // 只在小程序里的买家：没有 App，就没有推送设备
+        registeredMember(e, true);
+        String seg = allSegment(e);
+
+        var plan = reachService.plan(e, seg, MbrReachLog.SCENE_NOTICE);
+        assertThat(plan.matched()).isEqualTo(2);
+        assertThat(plan.reachable()).isEqualTo(1);
+        assertThat(plan.skips()).extracting(x -> x.reason()).containsExactly("NO_CHANNEL");
+
+        var r = reachService.send(e, seg, MbrReachLog.SCENE_NOTICE, "上新了", "来看看", "OP");
+        assertThat(r.sent()).as("只算真的交给了通道的").isEqualTo(1);
+        assertThat(r.skipped()).isEqualTo(1);
     }
 
     @Test
