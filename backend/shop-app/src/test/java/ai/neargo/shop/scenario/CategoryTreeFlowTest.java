@@ -59,6 +59,23 @@ class CategoryTreeFlowTest {
         platformConfig.saveFeatureFlag("category.gate.enforce", on, 0, "TEST");
     }
 
+    /**
+     * 给默认店开经营类目 —— <b>在闸门关着时开</b>，开完再打开。
+     *
+     * <p>本类测的是<b>商品上架</b>那道闸（没证不能上架、授权后能上架）。闸开着时，
+     * 非自营主体连「把需要证的类目加进经营类目」这一步都会被拒（TDD-门店经营类目 §10：
+     * 免资质只看主体 self_operated），建品走不到上架那一步，上架闸就没被测到。
+     * 这里模拟的是「经营类目在开闸之前就有了」—— 线上存量门店正是这个样子。
+     */
+    private void openBeforeGate(String token, String categoryNo) throws Exception {
+        setGate(false);
+        try {
+            TestStoreCategory.open(mvc(), json, token, categoryNo);
+        } finally {
+            setGate(true);
+        }
+    }
+
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -1022,7 +1039,7 @@ class CategoryTreeFlowTest {
 
     /** 建一件商品并落到指定类目，返回 goodsNo */
     private String saveGoods(String token, String title, String categoryNo) throws Exception {
-        TestStoreCategory.open(mvc(), json, token, categoryNo);
+        openBeforeGate(token, categoryNo);
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"FRESH\","
@@ -1490,7 +1507,7 @@ class CategoryTreeFlowTest {
         String catNo = json.readTree(catB).get("data").get("categoryNo").asString();
 
         String biz = merchant("13700007890", "停用守卫店");
-        TestStoreCategory.open(mvc(), json, biz, catNo);
+        openBeforeGate(biz, catNo);
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"" + catNo + "\",\"title\":\"停用守卫测试\","
@@ -1573,7 +1590,7 @@ class CategoryTreeFlowTest {
                         .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"微微辣\"}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        TestStoreCategory.open(mvc(), json, biz, catNo2);
+        openBeforeGate(biz, catNo2);
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"" + catNo2 + "\",\"title\":\"自建守卫测试\","
@@ -1633,7 +1650,7 @@ class CategoryTreeFlowTest {
         String keepNo = newValue(ops, dimNo, "蓝盒");    // code=蓝盒
 
         String biz = merchant("13700009012", "合并守卫店");
-        TestStoreCategory.open(mvc(), json, biz, "CAT110");
+        openBeforeGate(biz, "CAT110");
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"合并守卫测试\","

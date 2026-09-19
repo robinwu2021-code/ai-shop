@@ -501,7 +501,16 @@ class Phase1MasterDataTest {
     }
 
     private String saveGoods(String token, String title, String categoryNo, String type) throws Exception {
-        TestStoreCategory.open(mvc(), json, token, categoryNo);
+        /*
+         * 经营类目在**闸门关着时**开 —— 本类测的是商品上架那道闸；闸开着时非自营主体
+         * 连加经营类目都会被拒（TDD-门店经营类目 §10），走不到上架。模拟的是开闸前就有的存量类目。
+         */
+        setGate(false);
+        try {
+            TestStoreCategory.open(mvc(), json, token, categoryNo);
+        } finally {
+            setGate(true);
+        }
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"" + type + "\","

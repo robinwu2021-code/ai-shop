@@ -32,6 +32,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
     private final MchPaymentMapper paymentMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
     /**
      * 门店额度的来源（V150 起）。
@@ -45,7 +46,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
-                                 ai.neargo.shop.merchant.service.MerchantPlanService planService) {
+                                 ai.neargo.shop.merchant.service.MerchantPlanService planService,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper) {
+        this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.paymentMapper = paymentMapper;
@@ -238,6 +241,19 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 Boolean.TRUE.equals(s.getPlanSuspended()),
                 s.getRating() == null ? 0 : s.getRating(),
                 s.getRatingCount() == null ? 0 : s.getRatingCount(),
-                s.getBusinessMode());
+                s.getBusinessMode(),
+                entitySelfOperated(s.getEntityNo()));
+    }
+
+    /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */
+    private boolean entitySelfOperated(String entityNo) {
+        if (entityNo == null || entityNo.isBlank()) {
+            return false;
+        }
+        var e = DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, entityNo)
+                        .last("limit 1")));
+        return e != null && Integer.valueOf(1).equals(e.getSelfOperated());
     }
 }

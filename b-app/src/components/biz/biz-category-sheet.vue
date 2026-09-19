@@ -36,11 +36,12 @@ const pickedNos = computed(() => new Set(picked.value.map((c) => c.categoryNo)))
 const countOf = (no: string) => picked.value.find((c) => c.categoryNo === no)?.goodsCount ?? 0;
 
 /**
- * 「需资质」只对<b>第三方门店</b>标。自营门店后端不判资质（按门店的经营模式），
- * 标了就是在制造一个不存在的障碍。老后端不发经营模式时按「不是自营」—— 宁可多提示。
+ * 「需资质」只对<b>非平台自营主体</b>标。平台自营主体后端不判资质（按主体的 self_operated），
+ * 标了就是在制造一个不存在的障碍。老后端不发这一位时按「不是自营」—— 宁可多提示。
+ * 不读 businessMode：那一列每家新店默认都是自营，包括第三方的店（TDD-门店经营类目 §10）。
  * 其余判据与改版前相同：闸门开着、或要求善意提醒时才标。
  */
-const selfOperated = computed(() => merchant.currentStore?.businessMode === "SELF_OPERATED");
+const selfOperated = computed(() => merchant.currentStore?.selfOperated === true);
 const ungranted = (c: Category) =>
   !selfOperated.value
   && (merchant.categoryGateEnforced || SHOW_CATEGORY_GATE)

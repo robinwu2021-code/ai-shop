@@ -34,13 +34,16 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
 
     /** 读门店的经营模式：自营门店加经营类目不判资质（TDD-门店经营类目） */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
 
     public StoreCategoryServiceImpl(MchStoreCategoryMapper mapper,
                                     CategoryUsagePort categoryPort,
                                     MerchantQueryPort merchantPort,
                                     ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
-                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper) {
         this.storeMapper = storeMapper;
+        this.entityMapper = entityMapper;
         this.mapper = mapper;
         this.categoryPort = categoryPort;
         this.merchantPort = merchantPort;
@@ -166,9 +169,9 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
             throw BizException.of(ErrorCode.CATEGORY_NOT_FOUND);
         }
         /*
-         * **自营门店不判资质**（TDD-门店经营类目 §2 规则 2）：平台自己是销售主体，
-         * 不向自己提交资料。按**门店**判不按商家 —— 经营模式挂在门店上，
-         * 同一主体下可以既有自营店又有第三方店，按商家判会把第三方店也放过去。
+         * **平台自营主体不判资质**（TDD-门店经营类目 规则 2，§10 修订）：平台不向自己提交资料。
+         * 判据是主体的 self_operated（V329），不是门店的 business_mode —— 后者每家新店
+         * 默认都是 SELF_OPERATED，按它判等于第三方新店全部免资质。见 isSelfOperated。
          * 上面「类目必须启用」照判：归档类目谁都不该再摆。
          */
         if (selfOperated) {
@@ -197,12 +200,26 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
         }
     }
 
+    /**
+     * 这家店所属<b>主体</b>是不是平台自营（{@code mch_entity.self_operated}，V329）。
+     *
+     * <p><b>不看门店的 business_mode</b>（TDD-门店经营类目 §10）：那一列建表默认就是
+     * SELF_OPERATED，入驻不改它 —— 按它判，每一家第三方新店都会被当成自营而免资质，
+     * 闸一打开就是整片放行，且没有任何报错。V329 的迁移注释点名说过这一条。
+     */
     private boolean isSelfOperated(String storeNo) {
         var st = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
                 Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
                         .last("limit 1")));
-        return st != null && ai.neargo.shop.merchant.entity.MchStore.SELF_OPERATED.equals(st.getBusinessMode());
+        if (st == null || st.getEntityNo() == null) {
+            return false;
+        }
+        var e = DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, st.getEntityNo())
+                        .last("limit 1")));
+        return e != null && Integer.valueOf(1).equals(e.getSelfOperated());
     }
 
     private List<MchStoreCategory> rows(String storeNo) {

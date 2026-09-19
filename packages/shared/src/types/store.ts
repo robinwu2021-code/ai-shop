@@ -108,6 +108,12 @@ export interface Store {
    * （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。
    */
   businessMode?: BusinessMode;
+  /**
+   * 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判，
+   * 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**：
+   * 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10）
+   */
+  selfOperated?: boolean;
 }
 /** 门店经营模式。与后端 MchStore.SELF_OPERATED / THIRD_PARTY、ops-web 的 BusinessMode 同一套取值 */
 export type BusinessMode = "SELF_OPERATED" | "THIRD_PARTY";

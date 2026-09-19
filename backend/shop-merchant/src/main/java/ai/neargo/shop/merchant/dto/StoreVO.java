@@ -28,5 +28,12 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                        * B 端「调整经营类目」面板据此决定标不标「需资质」—— 自营门店后端不判资质，
                        * 标了就是在说一件不存在的事（TDD-门店经营类目）
                        */
-                      String businessMode) {
+                      String businessMode,
+                      /**
+                       * 这家店所属主体是不是平台自营（{@code mch_entity.self_operated}，V329）。
+                       * 「调整经营类目」面板据此决定标不标「需资质」—— 与后端免资质同一个判据。
+                       * <b>不能用 businessMode 代替</b>：那一列每家新店默认都是 SELF_OPERATED，
+                       * 包括第三方商家的店（TDD-门店经营类目 §10）
+                       */
+                      boolean selfOperated) {
 }

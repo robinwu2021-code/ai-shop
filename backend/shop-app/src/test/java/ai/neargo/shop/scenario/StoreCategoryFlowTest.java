@@ -153,11 +153,13 @@ class StoreCategoryFlowTest {
         String token = merchant("12600141004", "货架测试·门槛");
         String storeNo = defaultStore(token);
         /*
-         * **显式设成第三方。**门店经营模式的建表默认是 SELF_OPERATED，而入驻这条路不改它 ——
-         * 不设的话这家店按自营算，资质一段直接跳过（TDD-门店经营类目 规则 2），
-         * 这条用例会在什么都没验到的情况下变红或变绿。
+         * **门店经营模式故意不动，保持建表默认的 SELF_OPERATED** —— 入驻这条路不改它，
+         * 线上每一家第三方新店都是这个样子。免资质要看主体的 self_operated（这家是 0），
+         * 按门店模式判的话这里会被放过去（TDD-门店经营类目 §10 要堵的就是这个洞）。
          */
-        thirdParty(storeNo);
+        assertThat(jdbc.queryForObject("select business_mode from mch_store where store_no=?",
+                String.class, storeNo)).isEqualTo("SELF_OPERATED");
+        assertThat(selfOperatedOf(token, storeNo)).isFalse();
 
         /*
          * **摆货架这条路此前不受任何开关控制。**「暂时别拦资质」那一轮只接了商品上架，
@@ -180,11 +182,14 @@ class StoreCategoryFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 自营门店加经营类目不判资质 —— 与上面第三方那条同一个类目、同一个开关，只差门店的经营模式")
+    @DisplayName("★★ 平台自营主体加经营类目不判资质 —— 与上面那条同一个类目、同一个开关，只差主体的 self_operated")
     void selfOperatedStoreSkipsQualification() throws Exception {
         String token = merchant("12600141008", "货架测试·自营");
         String storeNo = defaultStore(token);
-        selfOperated(storeNo);
+        markEntitySelfOperated(storeNo);
+        // 门店模式故意设成第三方：判据只看主体，门店这一列不参与
+        jdbc.update("update mch_store set business_mode='THIRD_PARTY' where store_no=?", storeNo);
+        assertThat(selfOperatedOf(token, storeNo)).isTrue();
         gate(true);
 
         // CAT110 蔬菜要 FRESH_VEG，这家一张证都没有 —— 第三方会被 70002 拒，自营直接加上
@@ -266,12 +271,22 @@ class StoreCategoryFlowTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    private void thirdParty(String storeNo) {
-        jdbc.update("update mch_store set business_mode='THIRD_PARTY' where store_no=?", storeNo);
+    /** 把这家店的主体标成平台自营（生产上只有 POST /ops/merchants/self-operated 能写这一位） */
+    private void markEntitySelfOperated(String storeNo) {
+        jdbc.update("update mch_entity set self_operated=1 where entity_no="
+                + "(select entity_no from mch_store where store_no=?)", storeNo);
     }
 
-    private void selfOperated(String storeNo) {
-        jdbc.update("update mch_store set business_mode='SELF_OPERATED' where store_no=?", storeNo);
+    /** B 端门店列表里这家店的 selfOperated —— 面板标不标「需资质」读的就是它 */
+    private boolean selfOperatedOf(String token, String storeNo) throws Exception {
+        String body = mvc().perform(get("/biz/store/list").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode s : json.readTree(body).get("data")) {
+            if (storeNo.equals(s.get("storeNo").asString())) {
+                return s.get("selfOperated").asBoolean();
+            }
+        }
+        throw new AssertionError("门店列表里没有 " + storeNo);
     }
 
     @Autowired
