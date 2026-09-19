@@ -2640,6 +2640,9 @@ components:
         sent: 
           type: "number"
           description: "发出多少人"
+        pushed: 
+          type: "number"
+          description: "其中推送到手机的人数"
         skipped: 
           type: "number"
           description: "跳过多少人"
@@ -2684,6 +2687,7 @@ components:
         - "settled"
         - "matched"
         - "sent"
+        - "pushed"
         - "skipped"
         - "skips"
         - "opened"
@@ -2740,6 +2744,9 @@ components:
         reachable: 
           type: "number"
           description: "其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了"
+        pushable: 
+          type: "number"
+          description: "能收到的人里，还会收到手机推送的（有推送设备）。其余只进小程序的消息列表"
         skips: 
           type: "array"
           items: 
@@ -2757,6 +2764,7 @@ components:
       required: 
         - "matched"
         - "reachable"
+        - "pushable"
         - "skips"
       additionalProperties: false
       description: "群发试算结果（P7）。"
@@ -2769,6 +2777,9 @@ components:
         sent: 
           type: "number"
           description: "实际发出多少条"
+        pushed: 
+          type: "number"
+          description: "其中推送到手机的人数；其余只进了小程序的消息列表"
         skipped: 
           type: "number"
           description: "跳过多少人"
@@ -2789,6 +2800,7 @@ components:
       required: 
         - "taskNo"
         - "sent"
+        - "pushed"
         - "skipped"
         - "skips"
       additionalProperties: false

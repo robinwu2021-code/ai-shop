@@ -13790,6 +13790,12 @@
           "ar": "الطلبات خلال 7 أيام تُحتسب لهذه الرسالة"
         },
         {
+          "key": "reach.doneSplit",
+          "zh-CN": "推送到手机 {m} 条，其余进了小程序的消息列表",
+          "en": "{m} pushed to phones; the rest went to the mini-program's message list",
+          "ar": "أُرسل {m} إشعارًا إلى الهواتف، والباقي في قائمة رسائل البرنامج المصغّر"
+        },
+        {
           "key": "reach.doneTitle",
           "zh-CN": "已发出 {n} 条",
           "en": "{n} sent",
@@ -13814,6 +13820,12 @@
           "ar": "لا يمكن الوصول لأحد في هذه الدفعة. جرّب مجموعة أخرى أو عد بعد أيام"
         },
         {
+          "key": "reach.pushSplit",
+          "zh-CN": "其中 {m} 人会收到手机推送，其余在小程序的消息列表里看到",
+          "en": "{m} will also get a phone notification; the rest will see it in the mini-program's message list",
+          "ar": "سيتلقى {m} منهم إشعارًا على الهاتف، والباقون سيرونها في قائمة رسائل البرنامج المصغّر"
+        },
+        {
           "key": "reach.reachable",
           "zh-CN": "能收到",
           "en": "Will receive",
@@ -13836,12 +13848,6 @@
           "zh-CN": "{n} 人还没注册",
           "en": "{n} have not registered yet",
           "ar": "{n} لم يسجلوا بعد"
-        },
-        {
-          "key": "reach.reason.NO_CHANNEL",
-          "zh-CN": "{n} 人只用小程序，暂时收不到消息",
-          "en": "{n} only use the mini-program and can't receive messages yet",
-          "ar": "{n} يستخدمون البرنامج المصغّر فقط ولا يمكنهم استلام الرسائل بعد"
         },
         {
           "key": "reach.reason.OPT_OUT",
@@ -13980,6 +13986,12 @@
           "zh-CN": "已下单 {n} 人",
           "en": "{n} ordered",
           "ar": "طلب {n}"
+        },
+        {
+          "key": "reachTask.pushedLine",
+          "zh-CN": "其中 {m} 人收到手机推送，其余进了小程序的消息列表",
+          "en": "{m} got a phone notification; the rest got it in the mini-program's message list",
+          "ar": "تلقى {m} منهم إشعارًا على الهاتف، والباقون في قائمة رسائل البرنامج المصغّر"
         },
         {
           "key": "reachTask.saveDefault",
