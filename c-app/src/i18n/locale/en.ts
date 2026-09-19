@@ -111,6 +111,8 @@ export default {
     groupNeed: "{n} more",
     buyAlone: "Buy alone {p}",
     groupStart: "Start group {p}",
+    notBuyable: "Not available",
+    whyActivityOnly: "Only sold during promotions",
     store: "Location",
     duration: "{n} min service",
     fulfillment: "Delivery",

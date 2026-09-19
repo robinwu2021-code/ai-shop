@@ -160,6 +160,7 @@ const buyable = computed(
  */
 const buyBlockedReason = computed(() => {
   if (!goods.value) return "";
+  if (activityClosed.value) return String(t("goods.whyActivityOnly"));
   if (!sku.value) return String(t("goods.whyNoSku"));
   if (soldOut.value || cutoffPassed.value) return "";
   if (!appointmentReady.value) return String(t("goods.whyNoSlot"));
@@ -231,6 +232,15 @@ const chosenText = computed(() =>
  * 当前选中的规格卖完了，他还得能进面板换一个；单规格时就是 buyable。
  */
 const barReady = computed(() => multiSku.value || buyable.value);
+
+/**
+ * 能不能走普通下单（加购 / 立即购买 / 单买）—— 仅活动可售（TDD-商品仅活动可售 §5）。
+ * **后端算、这里只读**：特价、买赠、平台活动端上并不知道，自己拼就是第二个判定入口，
+ * 迟早与下单那道闸对不上。老后端不发这个字段时按「能买」处理（undefined ≠ false）。
+ */
+const directBuyable = computed(() => goods.value?.directBuyable !== false);
+/** 仅活动、且此刻什么路都没开：普通下单不行，也没有拼团可开 */
+const activityClosed = computed(() => !directBuyable.value && !grp.value);
 
 /** 当前选中日期的可选时刻 */
 const times = computed(
@@ -978,14 +988,18 @@ onShareAppMessage(() =>
           </view>
 
           <view class="sheetbar sh-row">
+            <!-- 仅活动且只有拼团在跑：没有单买，开团独占（directBuyable 为假） -->
             <template v-if="grp">
-              <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
+              <view v-if="directBuyable" class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
                 {{ soldOut ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
               </view>
               <view class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetGroup">
                 {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
               </view>
             </template>
+            <view v-else-if="activityClosed" class="sh-btn sh-fill actionbar__buy is-disabled">
+              {{ $t("goods.notBuyable") }}
+            </view>
             <template v-else>
               <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetAdd($event)">
                 {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
@@ -1024,14 +1038,18 @@ onShareAppMessage(() =>
             </text>
           </view>
           <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
+          <!-- 仅活动可售：directBuyable 为假时没有单买 / 加购；拼团也没有就只剩一颗压暗的「暂不可购买」 -->
           <template v-if="grp">
-            <view class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
+            <view v-if="directBuyable" class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
               {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
             </view>
             <view class="txt-sub sh-btn actionbar__buy sh-fill" :class="{ 'is-disabled': !barReady }" @tap="tapGroup">
               {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
             </view>
           </template>
+          <view v-else-if="activityClosed" class="txt-sub sh-btn actionbar__buy sh-fill is-disabled">
+            {{ $t("goods.notBuyable") }}
+          </view>
           <template v-else>
             <view class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapAdd($event)">
               {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.addCart") }}

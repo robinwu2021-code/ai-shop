@@ -114,6 +114,8 @@ export default {
     groupNeed: "差 {n} 人",
     buyAlone: "单买 {p}",
     groupStart: "开团 {p}",
+    notBuyable: "暂不可购买",
+    whyActivityOnly: "该商品仅在活动期间销售",
     store: "服务门店",
     duration: "服务时长 {n} 分钟",
     fulfillment: "配送方式",

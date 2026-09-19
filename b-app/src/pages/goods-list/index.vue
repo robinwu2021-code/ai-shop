@@ -784,6 +784,18 @@ onShow(() => {
               {{ stockOf(g) === 0 ? $t("goods.statusOUT_OF_STOCK") : `${$t("goods.stock")} ${stockOf(g)}` }}
             </text>
           </view>
+          <!--
+            仅活动可售（TDD-商品仅活动可售 §5）。不另起 chip：右上那颗说的是上架与审核，
+            这里说的是「能走哪条路买」，两件事分两处。此刻没有活动在跑时整句变橙 ——
+            状态是在售，顾客却在货架上找不到它、也买不了。
+            **单独一行**：起初写在价格那一行末尾，375 宽下「未在活动中」恰好被省略号截掉，
+            而那正是这一行唯一要说的事。只有仅活动的货多这一行。
+          -->
+          <text
+            v-if="g.saleMode === 'ACTIVITY_ONLY'"
+            class="txt-caption row__mode"
+            :class="{ 'is-warning': g.activityLive === false }"
+          >{{ g.activityLive === false ? $t("goods.saleActivityOnlyIdle") : $t("goods.saleActivityOnly") }}</text>
         </view>
         <text class="sh-chip" :class="chipOf(g)">{{ $t(`goods.status${stateOf(g)}`) }}</text>
         <!-- 可点相。只在真的点得动时出现（见 onRowTap 的注释） -->
@@ -1003,6 +1015,9 @@ onShow(() => {
 }
 /* 按钮整宽一行、允许换行：四个按钮在 375 宽下正好排得下，
    五个（将来再加）就换行，而不是把上面那行挤没 */
+.row__mode {
+  display: block;
+}
 .row__btns {
   justify-content: flex-end;
   align-items: center;

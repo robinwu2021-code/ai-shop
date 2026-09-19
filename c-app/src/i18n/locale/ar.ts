@@ -111,6 +111,8 @@ export default {
     groupNeed: "يتبقى {n}",
     buyAlone: "شراء منفرد {p}",
     groupStart: "افتح مجموعة {p}",
+    notBuyable: "غير متاح حاليًا",
+    whyActivityOnly: "يُباع هذا المنتج خلال العروض فقط",
     store: "الموقع",
     duration: "مدة الخدمة {n} دقيقة",
     fulfillment: "طريقة الاستلام",

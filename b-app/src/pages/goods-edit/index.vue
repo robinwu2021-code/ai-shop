@@ -28,7 +28,7 @@ import type { GoodsGuess } from "@/api/contract";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
-import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
+import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SaleMode, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -65,6 +65,15 @@ const goodsNo = ref("");
  * <p>脱离时置空即可：提交体不带 stdNo，后端据此清掉溯源。
  */
 const stdNo = ref("");
+/**
+ * 销售方式（V340，TDD-商品仅活动可售）。**要回显**：保存是整份覆盖，
+ * 不回显的话打开编辑页再存一次，「仅活动」就被冲回了正常售卖。
+ */
+const saleMode = ref<SaleMode>("NORMAL");
+const SALE_MODES: { key: SaleMode; labelKey: string }[] = [
+  { key: "NORMAL", labelKey: "goods.saleNormal" },
+  { key: "ACTIVITY_ONLY", labelKey: "goods.saleActivityOnly" },
+];
 const stdTitle = ref("");
 const stdKeyword = ref("");
 /**
@@ -749,6 +758,8 @@ onLoad(async (q) => {
   images.value = [...(g.images ?? [])];
   // 溯源要回显：不回显的话，编辑一次就等于自动脱离了标准品（提交体不带 stdNo）
   stdNo.value = g.stdNo ?? "";
+  // 老后端不发时按正常售卖 —— 与迁移默认值同一口径
+  saleMode.value = g.saleMode ?? "NORMAL";
   // 标题在标准品那边，这里只有编号；徽标显示编号即可（要标题得再查一次，不值得）
   stdTitle.value = g.stdNo ?? "";
   /*
@@ -867,6 +878,8 @@ function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>,
   }
   // stdNo 无条件盖：草稿里不带 = 已脱离标准品（与「不改」语义相反，见契约）
   stdNo.value = d.stdNo ?? "";
+  // 销售方式是「不传 = 不改」：草稿里没有就保留线上那份，别盖成默认值
+  if (d.saleMode) saleMode.value = d.saleMode;
   stdTitle.value = d.stdNo ?? "";
   if (d.categoryNo && d.categoryNo !== categoryNo.value) {
     categoryNo.value = d.categoryNo;
@@ -971,6 +984,8 @@ async function save(thenSubmit = false) {
       params: Object.values(paramValues.value),
       // 溯源。不传 = 自建品 / 已脱离 —— 后端据此清掉 std_no
       stdNo: stdNo.value || undefined,
+      // 销售方式：始终发。页面上它总有一个值（回显过），发出去才能改回正常售卖
+      saleMode: saleMode.value,
       // 必填由 `missing` 守着（按钮点不动），这里不再兜 undefined ——
       // 兜的话，一个空类目会被静默送进后端，走「新建默认 NORMAL」那条回落
       categoryNo: categoryNo.value,
@@ -1235,6 +1250,24 @@ async function save(thenSubmit = false) {
       <text v-if="MULTI_LANG_UI && untranslated.length" class="sh-muted hint">
         {{ $t("goods.untranslated", { s: untranslated.map((k) => $t(k)).join("、") }) }}
       </text>
+      <!--
+        销售方式（TDD-商品仅活动可售）。二选一是分段不是标签（sh-seg）。
+        说明只在选「仅活动」时出现、只一句 —— 它会让这件货在没活动时从货架上消失，
+        这是商家必须事先知道的后果；正常售卖没什么要说的。
+      -->
+      <view class="field">
+        <text class="txt-strong field__label">{{ $t("goods.saleMode") }}</text>
+        <view class="sh-row segs sh-mt-xs">
+          <text
+            v-for="m in SALE_MODES"
+            :key="m.key"
+            class="sh-seg sh-seg--fill"
+            :class="{ 'sh-seg--on': saleMode === m.key }"
+            @tap="saleMode = m.key"
+          >{{ $t(m.labelKey) }}</text>
+        </view>
+        <text v-if="saleMode === 'ACTIVITY_ONLY'" class="sh-hint">{{ $t("goods.saleModeHint") }}</text>
+      </view>
       <!--
         分类**只有这一个控件**。
 

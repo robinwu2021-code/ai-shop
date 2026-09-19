@@ -989,7 +989,11 @@ onLoad((q) => {
     <sh-sheet :visible="showGoods" :title="String($t('activityEdit.goodsPick'))" @close="showGoods = false">
       <view class="sh-cells">
         <view v-for="g in goods" :key="g.goodsNo" class="sh-cell sh-row sh-row--between" @tap="toggleGoods(g.goodsNo)">
-          <text class="txt-body" :class="{ 'txt-primary': form.goodsNos.includes(g.goodsNo) }">{{ g.title }}</text>
+          <!-- 仅活动的货就是为活动准备的：在这里标出来，商家最需要一眼找到它们（TDD-商品仅活动可售 §5） -->
+          <view class="sh-row sh-fill">
+            <text class="txt-body" :class="{ 'txt-primary': form.goodsNos.includes(g.goodsNo) }">{{ g.title }}</text>
+            <text v-if="g.saleMode === 'ACTIVITY_ONLY'" class="sh-chip">{{ $t("goods.saleActivityOnly") }}</text>
+          </view>
           <sh-icon v-if="form.goodsNos.includes(g.goodsNo)" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
         </view>
       </view>
