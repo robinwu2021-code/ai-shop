@@ -181,6 +181,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与后端 PmtActivity.TRIGGER_* 同一套；CUTOFF = 社区集单（ADR-024）" },
   { decl: "shared:PlayBenefit", dom: "marketing", shape: "CLASS", verdict: "OK",
     note: "PmtActivity.BENEFIT_* 的子集：模板只用 CUT / PRICE / GIFT，COUPON 随自己组合在 P3 放开" },
+  { decl: "shared:ReachScene", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "会员触达场景（频次闸按它分档）。NOTICE/WAKEUP/COUPON 与 mbr_reach_log.scene、mbr_reach_task.scene "
+      + "及后端 MbrReachLog.SCENE_* 三个常量逐字一致；enum-fields 两条按字段对账" },
   { decl: "shared:PlayInstance", dom: "marketing", shape: "CLASS", verdict: "OK",
     note: "玩法开出的实例：GROUP 开出团（mkt_group_buy），PERIOD 开出期（pmt_period）" },
   { decl: "shared:RuleField", dom: "marketing", shape: "CLASS", verdict: "OK",

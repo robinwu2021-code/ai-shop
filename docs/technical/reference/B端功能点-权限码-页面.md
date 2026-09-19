@@ -101,8 +101,8 @@
 | 营销活动列表 | GET | `/biz/campaign` | `mCampaignList` | — |
 | 新建/编辑活动 | POST | `/biz/campaign` | `mSaveCampaign` | — |
 | 活动启停 | POST | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | — |
-| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon、coupon-issues |
-| 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons |
+| 发放记录（含跳过明细） | GET | `/biz/coupon-issues` | `mCouponIssues` | coupon、coupon-issues、reach-tasks |
+| 券列表 | GET | `/biz/coupons` | `mCoupons` | coupon-issues、coupons、reach-tasks |
 | 建券 / 改券（敞口在这一步算清） | POST | `/biz/coupons` | `mSaveCoupon` | coupon-edit |
 | 券详情 | GET | `/biz/coupons/{couponNo}` | `mCoupon` | coupon、coupon-edit、coupon-send |
 | 按人群定向发券 | POST | `/biz/coupons/{couponNo}/issue` | `mIssueCoupon` | coupon-send |
@@ -176,12 +176,12 @@
 | 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
 | 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
 | 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
-| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、member-segments |
-| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
+| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、member-segments、reach-tasks |
+| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments、reach-task |
 | 人群详情：此刻人数与用在哪 | GET | `/biz/member-segments/{segmentNo}` | `mMemberSegmentDetail` | member-segment |
 | 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segment、member-segments |
 | 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
-| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | coupon-issues、customers、member-add、member-detail、member-segment、member-segments、member-tag、member-tags |
+| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | coupon-issues、customers、member-add、member-detail、member-segment、member-segments、member-tag、member-tags、reach-tasks |
 | 新建标签 | POST | `/biz/member-tags` | `mCreateMemberTag` | member-tags |
 | 改名 / 停用 | PUT | `/biz/member-tags/{tagNo}` | `mEditMemberTag` | member-tag、member-tags |
 | 合并（confirm=false 只试算） | POST | `/biz/member-tags/{tagNo}/merge` | `mMergeMemberTag` | member-tag、member-tags |
@@ -410,6 +410,8 @@
 | `purchase-edit` | `biz:stock` | `biz:stock`、`biz:campaign` | 老板、店长、店员、理货员 | 店员（缺 biz:campaign）　理货员（缺 biz:campaign） |
 | `qualifications` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
+| `reach-task` | `biz:customer` | `biz:customer` | 老板、店长 | — |
+| `reach-tasks` | `biz:customer` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
 | `role-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `schedule` | `biz:store` | `biz:store` | 老板、店长 | — |

@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **180** 张表、**280** 条引用关系，分 **16** 个域。
+全库 **181** 张表、**282** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -26,7 +26,7 @@
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
-| 会员 | `mbr_*` | 9 | 1 |
+| 会员 | `mbr_*` | 10 | 1 |
 | 券与活动 | `pmt_*` | 12 | 3 |
 | 系统 | `sys_*` | 26 | 0 |
 
@@ -263,7 +263,7 @@
 
 **跨域引用**：`cnt_post.community_no` → `cmt_community`、`cnt_post.sku_no` → `prd_sku`、`cnt_question.sku_no` → `prd_sku`
 
-### 会员 `mbr_*`（9 张）
+### 会员 `mbr_*`（10 张）
 
 ![会员表关系](../diagrams/db-mbr.svg)
 
@@ -278,8 +278,9 @@
 | `mbr_tag_merge_log` | 标签合并留痕：合并不可逆 |
 | `mbr_segment` | 人群：发券、活动受众、触达共用同一份条件 |
 | `mbr_reach_log` | 触达记录：频次闸查它，效果也算它 |
+| `mbr_reach_task` | 触达批次：发出去的每一次 |
 
-**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member.person_no` → `usr_person`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_member_source.activity_no` → `pmt_activity`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`、`mbr_reach_log.task_no` → `notify_push_task`
+**跨域引用**：`mbr_setting.entity_no` → `mch_entity`、`mbr_member.entity_no` → `mch_entity`、`mbr_member.person_no` → `usr_person`、`mbr_member_store.entity_no` → `mch_entity`、`mbr_member_store.store_no` → `mch_store`、`mbr_member_source.entity_no` → `mch_entity`、`mbr_member_source.store_no` → `mch_store`、`mbr_member_source.activity_no` → `pmt_activity`、`mbr_tag.entity_no` → `mch_entity`、`mbr_member_tag.entity_no` → `mch_entity`、`mbr_tag_merge_log.entity_no` → `mch_entity`、`mbr_segment.entity_no` → `mch_entity`、`mbr_reach_log.entity_no` → `mch_entity`、`mbr_reach_log.task_no` → `notify_push_task`、`mbr_reach_task.task_no` → `notify_push_task`、`mbr_reach_task.entity_no` → `mch_entity`
 
 ### 券与活动 `pmt_*`（12 张）
 

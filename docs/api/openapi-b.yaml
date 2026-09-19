@@ -2150,6 +2150,12 @@ components:
         issuedAt: 
           type: "number"
           description: "发放时刻（毫秒）"
+        usedCount: 
+          type: "number"
+          description: "这一批里用过的张数。券不推送、没有「来了」，效果按已用算（原型 m19）"
+        usedAmountMinor: 
+          type: "number"
+          description: "这一批人发放后用这张券省下的钱（分）"
       required: 
         - "issueNo"
         - "couponNo"
@@ -2526,6 +2532,11 @@ components:
           items: 
             "$ref": "#/components/schemas/MemberTag"
           description: "身上的标签"
+        lastReach: 
+          anyOf: 
+            - "$ref": "#/components/schemas/MemberLastReach"
+            - type: "null"
+          description: "最近一次触达（原型 m04）。没发过为空 —— 商家打电话前能先看到上周已经发过一次唤回、而且他来了"
       required: 
         - "member"
         - "stores"
@@ -2558,6 +2569,167 @@ components:
         - "count"
       additionalProperties: false
       description: "会员标签。"
+    MemberLastReach: 
+      type: "object"
+      properties: 
+        taskNo: 
+          type: "string"
+          description: "那一次的批次号，点进去是效果页"
+        scene: 
+          "$ref": "#/components/schemas/ReachScene"
+          description: "`NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知"
+        sentAt: 
+          type: "number"
+          description: "发出时刻"
+        openedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "点推送进店的时刻。没来为空"
+        orderedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "归到这次的下单时刻。没下为空"
+      required: 
+        - "taskNo"
+        - "scene"
+        - "sentAt"
+      additionalProperties: false
+      description: "一个人身上最近的一次触达"
+    ReachScene: 
+      type: "string"
+      enum: 
+        - "NOTICE"
+        - "WAKEUP"
+        - "COUPON"
+      description: "触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。频次闸按它分档"
+    ReachTask: 
+      type: "object"
+      properties: 
+        taskNo: 
+          type: "string"
+          description: "批次号"
+        scene: 
+          "$ref": "#/components/schemas/ReachScene"
+          description: "`NOTICE` / `WAKEUP` / `COUPON`"
+        title: 
+          type: "string"
+          description: "消息标题"
+        body: 
+          type: 
+            - "string"
+            - "null"
+          description: "消息正文"
+        audienceDesc: 
+          type: "string"
+          description: "发给了谁（发送时选人面板上的那句话）"
+        sentAt: 
+          type: "number"
+          description: "发出时刻"
+        statsUntil: 
+          type: "number"
+          description: "归因窗口关闭时刻"
+        settled: 
+          type: "boolean"
+          description: "窗口已关，数字不会再变"
+        matched: 
+          type: "number"
+          description: "条件命中多少人"
+        sent: 
+          type: "number"
+          description: "发出多少人"
+        skipped: 
+          type: "number"
+          description: "跳过多少人"
+        skips: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              reason: 
+                type: "string"
+              count: 
+                type: "number"
+            required: 
+              - "reason"
+              - "count"
+            additionalProperties: false
+          description: "跳过的原因分布"
+        opened: 
+          type: "number"
+          description: "点推送进了店的人数"
+        ordered: 
+          type: "number"
+          description: "窗口内下单的人数（每人只算触达后的第一单）"
+        orderedAmountMinor: 
+          type: "number"
+          description: "这些单的实付合计（分）"
+        orderedMembers: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ReachOrderedMember"
+          description: "下单的人，最多 50 个。列表接口里为空"
+        notOpened: 
+          type: "number"
+          description: "没来的人数。「没来的存人群」存进去的就是这些人"
+      required: 
+        - "taskNo"
+        - "scene"
+        - "title"
+        - "audienceDesc"
+        - "sentAt"
+        - "statsUntil"
+        - "settled"
+        - "matched"
+        - "sent"
+        - "skipped"
+        - "skips"
+        - "opened"
+        - "ordered"
+        - "orderedAmountMinor"
+        - "orderedMembers"
+        - "notOpened"
+      additionalProperties: false
+      description: "一次触达（原型 m19 / m20）：发出 · 来了 · 成单。"
+    ReachOrderedMember: 
+      type: "object"
+      properties: 
+        memberNo: 
+          type: "string"
+          description: "会员号"
+        name: 
+          type: 
+            - "string"
+            - "null"
+          description: "商家给他记的备注名；没记为空，界面用手机尾号"
+        phoneTail: 
+          type: 
+            - "string"
+            - "null"
+          description: "手机尾号"
+        amountMinor: 
+          type: "number"
+          description: "这一单的实付（分）"
+        orderedAt: 
+          type: "number"
+          description: "下单时刻"
+      required: 
+        - "memberNo"
+        - "amountMinor"
+        - "orderedAt"
+      additionalProperties: false
+      description: "效果页上下单的一个人"
+    ReachOpened: 
+      type: "object"
+      properties: 
+        counted: 
+          type: "boolean"
+          description: "这一下有没有计入"
+      required: 
+        - "counted"
+      additionalProperties: false
+      description: "C 端点推送进店的回写结果。`counted=false` 不区分原因（对不上本人 / 过了窗口 / 已记过）"
     ReachPlan: 
       type: "object"
       properties: 
@@ -2760,6 +2932,16 @@ components:
             - "number"
             - "null"
           description: "累计消费上限（分）。空 = 不限"
+        reachTaskNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "限定某一次触达里的人（效果页「没来的存人群 / 下单的打标签」）"
+        reachOutcome: 
+          type: 
+            - "string"
+            - "null"
+          description: "与 `reachTaskNo` 配用：`ORDERED` 下了单的 / `OPENED` 来了的 / `NOT_OPENED` 没来的；空 = 那次发到的所有人"
       additionalProperties: false
       description: "人群条件。**只存号**（标签号/门店号）—— 标签改名之后条件还得成立"
     MemberSegmentPreview: 
@@ -15364,6 +15546,64 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/ReachResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/member-reach/task": 
+    get: 
+      operationId: "mReachTasks"
+      summary: "发出去的消息（批次列表）"
+      tags: 
+        - "member-reach"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ReachTask"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/member-reach/task/{taskNo}": 
+    get: 
+      operationId: "mReachTask"
+      summary: "一次触达的效果"
+      tags: 
+        - "member-reach"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ReachTask"
                 required: 
                   - "code"
                   - "msg"

@@ -31100,6 +31100,16 @@
         "zh": "榜单口径。"
       },
       {
+        "name": "ReachScene",
+        "client": "shared",
+        "values": [
+          "NOTICE",
+          "WAKEUP",
+          "COUPON"
+        ],
+        "zh": "触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。"
+      },
+      {
         "name": "ReconDiffType",
         "client": "ops-web",
         "values": [

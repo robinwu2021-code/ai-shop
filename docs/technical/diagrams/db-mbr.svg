@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="332" viewBox="0 0 680 332" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>会员 表关系</title><desc>9 张表，箭头由引用方指向被引用方。</desc>
+<title>会员 表关系</title><desc>10 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -9,7 +9,7 @@
 <path class="ar" d="M420 262 L420 116 L340 116 L340 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 262 L420 92 L532 92 L532 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 262 L580 104 L340 104 L340 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 262 L580 208 L436 208 L436 193" marker-end="url(#a)"/>
+<path class="ar" d="M580 262 L580 208 L340 208 L340 193" marker-end="url(#a)"/>
 <rect x="63" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="148" y="50" text-anchor="middle" font-size="13">mbr_setting</text>
 <text class="s" x="148" y="65" text-anchor="middle">会员经营口径：按主体还是按门…</text>
@@ -19,12 +19,15 @@
 <rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="532" y="50" text-anchor="middle" font-size="13">mbr_tag</text>
 <text class="s" x="532" y="65" text-anchor="middle">标签字典：tag_no 不可变、nam…</text>
-<rect x="159" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="166" text-anchor="middle" font-size="13">mbr_tag_merge_log</text>
-<text class="s" x="244" y="181" text-anchor="middle">标签合并留痕：合并不可逆</text>
-<rect x="351" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="166" text-anchor="middle" font-size="13">mbr_segment</text>
-<text class="s" x="436" y="181" text-anchor="middle">人群：发券、活动受众、触达共用…</text>
+<rect x="63" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="166" text-anchor="middle" font-size="13">mbr_tag_merge_log</text>
+<text class="s" x="148" y="181" text-anchor="middle">标签合并留痕：合并不可逆</text>
+<rect x="255" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="166" text-anchor="middle" font-size="13">mbr_segment</text>
+<text class="s" x="340" y="181" text-anchor="middle">人群：发券、活动受众、触达共用…</text>
+<rect x="447" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="166" text-anchor="middle" font-size="13">mbr_reach_task</text>
+<text class="s" x="532" y="181" text-anchor="middle">触达批次：发出去的每一次</text>
 <rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="282" text-anchor="middle" font-size="13">mbr_member_store</text>
 <text class="s" x="100" y="297" text-anchor="middle">会员在某家门店的往来…</text>
@@ -42,4 +45,4 @@
 <text class="l" x="380" y="112" text-anchor="middle">member_no</text>
 <text class="l" x="476" y="88" text-anchor="middle">tag_no</text>
 <text class="l" x="460" y="100" text-anchor="middle">member_no</text>
-<text class="l" x="508" y="204" text-anchor="middle">segment_no</text></svg>
+<text class="l" x="460" y="204" text-anchor="middle">segment_no</text></svg>

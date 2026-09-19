@@ -233,6 +233,7 @@ const RESPONSE_TYPES = {
   myMemberships: "MyMembership[]",
   // 这条是 **PUT**，此前抽取正则只认 GET|POST，它压根没进过 spec
   setMembershipReach: "void",
+  reachOpened: "ReachOpened",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */

@@ -507,6 +507,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "所以缺口的表现不是整页空，而是「有会员数、发送条数是 0」，看着像「这家没发过」",
   "mbr_reach_log:PICKUP":
     "同上",
+  "mbr_reach_task:COMMUNITY":
+    "触达批次头与明细同一归属（商家）。同上：配了社区域的运营打开触达健康度，触达次数与跳过率是 0",
+  "mbr_reach_task:PICKUP":
+    "同上",
 
   /*
    * ── 2026-08-30 第二批登记（结算域 3 张）带来的锚点缺口 ──

@@ -5,7 +5,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
-import type { InvoiceRequest, MyMembership, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
+import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PhoneCapable,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
@@ -181,7 +181,7 @@ export const httpApi: ShopApi = {
   myMemberships: () => call<MyMembership[]>("myMemberships"),
   setMembershipReach: (entityNo, optOut) =>
     call<void>("setMembershipReach", { entityNo }, { optOut }),
-  reachOpened: (reachNo) => call<{ counted: boolean }>("reachOpened", { reachNo }, {}),
+  reachOpened: (reachNo) => call<ReachOpened>("reachOpened", { reachNo }, {}),
   receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
 
   // ---- 拼团

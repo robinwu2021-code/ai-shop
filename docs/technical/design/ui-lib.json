@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 126,
+        "b-app": 127,
         "c-app": 41
       }
     },
@@ -4194,9 +4194,9 @@
         "sh-section",
         "biz-batch-tag-sheet"
       ],
-      "libClassHits": 33,
-      "localSelectors": 9,
-      "localCssLines": 38,
+      "libClassHits": 34,
+      "localSelectors": 10,
+      "localCssLines": 41,
       "rolled": []
     },
     {

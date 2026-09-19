@@ -253,7 +253,7 @@ public class BizMemberController {
 
     /** 「发出去的」列表（原型 m19）。只有消息；券的批次走 {@code /biz/coupon-issues} */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
-    @GetMapping("/biz/member-reach/tasks")
+    @GetMapping("/biz/member-reach/task")
     public List<MemberReachService.ReachTaskVO> reachTasks(@RequestParam(defaultValue = "1") long page,
                                                            @RequestParam(defaultValue = "20") long size) {
         return reachService.tasks(BizContext.requireMerchantNo(), page, size);
@@ -261,7 +261,7 @@ public class BizMemberController {
 
     /** 一次触达的效果（原型 m20）：发出 · 来了 · 成单，下单的人，没来的人数 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
-    @GetMapping("/biz/member-reach/tasks/{taskNo}")
+    @GetMapping("/biz/member-reach/task/{taskNo}")
     public MemberReachService.ReachTaskVO reachTask(@PathVariable String taskNo) {
         return reachService.task(BizContext.requireMerchantNo(), taskNo)
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));

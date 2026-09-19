@@ -8790,6 +8790,21 @@ components:
         optOutRate: 
           type: "number"
           description: "退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题"
+        tagCount: 
+          type: "number"
+          description: "标签**个数**。只有个数：标签名是商家的经营判断，运营这一页用不到（AC-15）"
+        segmentCount: 
+          type: "number"
+          description: "人群**个数**。同上，没有人群条件"
+        tasks: 
+          type: "number"
+          description: "近 30 天触达次数（批次数）"
+        skipped: 
+          type: "number"
+          description: "被频次闸等拦下的人次"
+        skipRate: 
+          type: "number"
+          description: "跳过率（%）= 拦下的 / 命中的。高 = 在反复给同一批人发"
       required: 
         - "entityNo"
         - "entityName"
@@ -8797,6 +8812,11 @@ components:
         - "members"
         - "optOut"
         - "optOutRate"
+        - "tagCount"
+        - "segmentCount"
+        - "tasks"
+        - "skipped"
+        - "skipRate"
       additionalProperties: false
       description: "触达健康度。"
     LevelRecomputeRun: 

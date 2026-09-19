@@ -2,6 +2,7 @@
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
   MyMembership,
+  ReachOpened,
   PlaceSearchHit,
   MyStoreCoupon,
   InvoiceRequest,
@@ -374,7 +375,7 @@ export interface ShopApi {
    * **只认本人** —— 服务端核对这条推送是不是发给当前账号的；`counted=false`
    * 不区分原因，端上也不据此提示任何东西。
    */
-  reachOpened(reachNo: string): Promise<{ counted: boolean }>;
+  reachOpened(reachNo: string): Promise<ReachOpened>;
   /** 领券。返回的是**领到手的那张**（UserCoupon），不是券模板 */
   receiveCoupon(couponNo: string): Promise<UserCoupon>;
   /** 只取当前自提点的团 —— 成团单位是自提点 */

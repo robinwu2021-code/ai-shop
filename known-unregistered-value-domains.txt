@@ -74,7 +74,6 @@ mbr_member.source
 mbr_member.status
 mbr_member_source.inviter_role
 mbr_member_source.source_type
-mbr_reach_log.scene
 mbr_setting.member_scope
 mbr_tag.status
 mbr_tag.tag_type

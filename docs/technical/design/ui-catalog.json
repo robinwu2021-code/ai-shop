@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 79,
+      "count": 81,
       "domains": [
         {
           "name": "工作台",
@@ -395,6 +395,28 @@
               "proto": "s03",
               "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
               "preview": "http://localhost:5175/#/pages/activity-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reach-tasks/index",
+              "title": "发出去的",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reach-tasks/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reach-task/index",
+              "title": "触达效果",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reach-task/index"
             },
             {
               "app": "b-app",
@@ -3241,5 +3263,5 @@
       ]
     }
   ],
-  "total": 254
+  "total": 256
 }

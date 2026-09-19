@@ -124,12 +124,14 @@ export interface MemberDetail {
   /** 最近一次触达（原型 m04）。没发过为空 —— 商家打电话前能先看到上周已经发过一次唤回、而且他来了 */
   lastReach?: MemberLastReach | null;
 }
+/** 触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。频次闸按它分档 */
+export type ReachScene = "NOTICE" | "WAKEUP" | "COUPON";
 /** 一个人身上最近的一次触达 */
 export interface MemberLastReach {
   /** 那一次的批次号，点进去是效果页 */
   taskNo: string;
   /** `NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知 */
-  scene: string;
+  scene: ReachScene;
   /** 发出时刻 */
   sentAt: number;
   /** 点推送进店的时刻。没来为空 */
@@ -147,7 +149,7 @@ export interface ReachTask {
   /** 批次号 */
   taskNo: string;
   /** `NOTICE` / `WAKEUP` / `COUPON` */
-  scene: string;
+  scene: ReachScene;
   /** 消息标题 */
   title: string;
   /** 消息正文 */
@@ -178,6 +180,11 @@ export interface ReachTask {
   orderedMembers: ReachOrderedMember[];
   /** 没来的人数。「没来的存人群」存进去的就是这些人 */
   notOpened: number;
+}
+/** C 端点推送进店的回写结果。`counted=false` 不区分原因（对不上本人 / 过了窗口 / 已记过） */
+export interface ReachOpened {
+  /** 这一下有没有计入 */
+  counted: boolean;
 }
 /** 效果页上下单的一个人 */
 export interface ReachOrderedMember {

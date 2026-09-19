@@ -865,6 +865,8 @@ _无字段_
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
 | `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
+| `usedCount` | `number` | 否 | 这一批里用过的张数。券不推送、没有「来了」，效果按已用算（原型 m19） |
+| `usedAmountMinor` | `number` | 否 | 这一批人发放后用这张券省下的钱（分） |
 
 `audiences[]` 的字段：
 
@@ -3007,6 +3009,55 @@ _无字段_
 | `count` | `number` | 是 | — |
 
 
+#### GET `/biz/member-reach/task`
+
+发出去的消息（批次列表）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ReachTask`](#reachtask)\[\]
+
+
+#### GET `/biz/member-reach/task/{taskNo}`
+
+一次触达的效果　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ReachTask`](#reachtask)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 批次号 |
+| `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
+| `title` | `string` | 是 | 消息标题 |
+| `body` | `string,null` | 否 | 消息正文 |
+| `audienceDesc` | `string` | 是 | 发给了谁（发送时选人面板上的那句话） |
+| `sentAt` | `number` | 是 | 发出时刻 |
+| `statsUntil` | `number` | 是 | 归因窗口关闭时刻 |
+| `settled` | `boolean` | 是 | 窗口已关，数字不会再变 |
+| `matched` | `number` | 是 | 条件命中多少人 |
+| `sent` | `number` | 是 | 发出多少人 |
+| `skipped` | `number` | 是 | 跳过多少人 |
+| `skips` | `object`（见下）\[\] | 是 | 跳过的原因分布 |
+| `opened` | `number` | 是 | 点推送进了店的人数 |
+| `ordered` | `number` | 是 | 窗口内下单的人数（每人只算触达后的第一单） |
+| `orderedAmountMinor` | `number` | 是 | 这些单的实付合计（分） |
+| `orderedMembers` | [`ReachOrderedMember`](#reachorderedmember)\[\] | 是 | 下单的人，最多 50 个。列表接口里为空 |
+| `notOpened` | `number` | 是 | 没来的人数。「没来的存人群」存进去的就是这些人 |
+
+`skips[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
+
+
 ### member-segments
 
 #### GET `/biz/member-segments`
@@ -3281,6 +3332,7 @@ _无字段_
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
 | `tags` | [`MemberTag`](#membertag)\[\] | 是 | 身上的标签 |
+| `lastReach` | [`MemberLastReach`](#memberlastreach) \| `null` | 否 | 最近一次触达（原型 m04）。没发过为空 —— 商家打电话前能先看到上周已经发过一次唤回、而且他来了 |
 
 
 #### PUT `/biz/members/{memberNo}`
@@ -6440,6 +6492,8 @@ _无字段_
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
 | `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
+| `usedCount` | `number` | 否 | 这一批里用过的张数。券不推送、没有「来了」，效果按已用算（原型 m19） |
+| `usedAmountMinor` | `number` | 否 | 这一批人发放后用这张券省下的钱（分） |
 
 `audiences[]` 的字段：
 
@@ -7033,6 +7087,19 @@ _无字段_
 | `stores` | [`MemberStoreStat`](#memberstorestat)\[\] | 是 | 他在各门店的往来。单店主体没有这一段 |
 | `sources` | [`MemberSourceItem`](#membersourceitem)\[\] | 是 | 来源轨迹：他是怎么来的 |
 | `tags` | [`MemberTag`](#membertag)\[\] | 是 | 身上的标签 |
+| `lastReach` | [`MemberLastReach`](#memberlastreach) \| `null` | 否 | 最近一次触达（原型 m04）。没发过为空 —— 商家打电话前能先看到上周已经发过一次唤回、而且他来了 |
+
+### MemberLastReach
+
+一个人身上最近的一次触达
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 那一次的批次号，点进去是效果页 |
+| `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知 |
+| `sentAt` | `number` | 是 | 发出时刻 |
+| `openedAt` | `number,null` | 否 | 点推送进店的时刻。没来为空 |
+| `orderedAt` | `number,null` | 否 | 归到这次的下单时刻。没下为空 |
 
 ### MemberMergePreview
 
@@ -7093,6 +7160,8 @@ _无字段_
 | `lastOrderAfter` | `number,null` | 否 | 上次下单**晚于**这个时刻。用来筛活跃客 |
 | `spentMin` | `number,null` | 否 | 累计消费下限（分）。空 = 不限 |
 | `spentMax` | `number,null` | 否 | 累计消费上限（分）。空 = 不限 |
+| `reachTaskNo` | `string,null` | 否 | 限定某一次触达里的人（效果页「没来的存人群 / 下单的打标签」） |
+| `reachOutcome` | `string,null` | 否 | 与 `reachTaskNo` 配用：`ORDERED` 下了单的 / `OPENED` 来了的 / `NOT_OPENED` 没来的；空 = 那次发到的所有人 |
 
 ### MemberSetting
 
@@ -7981,6 +8050,18 @@ _无字段_
 | `platformRate` | `number` | 是 | 平台客流费率（万分比）。平台分发带来的订单 |
 | `note` | `string` | 是 | 费率说明文案。**须写明「以下单时快照为准，调整不影响历史订单」** |
 
+### ReachOrderedMember
+
+效果页上下单的一个人
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberNo` | `string` | 是 | 会员号 |
+| `name` | `string,null` | 否 | 商家给他记的备注名；没记为空，界面用手机尾号 |
+| `phoneTail` | `string,null` | 否 | 手机尾号 |
+| `amountMinor` | `number` | 是 | 这一单的实付（分） |
+| `orderedAt` | `number` | 是 | 下单时刻 |
+
 ### ReachPlan
 
 群发试算结果（P7）。
@@ -8006,6 +8087,47 @@ _无字段_
 | `sent` | `number` | 是 | 实际发出多少条 |
 | `skipped` | `number` | 是 | 跳过多少人 |
 | `skips` | `object`（见下）\[\] | 是 | 发不出去的人按原因分类。**必须显示** —— 商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了 |
+
+`skips[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
+
+### ReachScene
+
+触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。频次闸按它分档
+
+枚举取值：
+
+- `NOTICE`
+- `WAKEUP`
+- `COUPON`
+
+### ReachTask
+
+一次触达（原型 m19 / m20）：发出 · 来了 · 成单。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `taskNo` | `string` | 是 | 批次号 |
+| `scene` | [`ReachScene`](#reachscene) | 是 | `NOTICE` / `WAKEUP` / `COUPON` |
+| `title` | `string` | 是 | 消息标题 |
+| `body` | `string,null` | 否 | 消息正文 |
+| `audienceDesc` | `string` | 是 | 发给了谁（发送时选人面板上的那句话） |
+| `sentAt` | `number` | 是 | 发出时刻 |
+| `statsUntil` | `number` | 是 | 归因窗口关闭时刻 |
+| `settled` | `boolean` | 是 | 窗口已关，数字不会再变 |
+| `matched` | `number` | 是 | 条件命中多少人 |
+| `sent` | `number` | 是 | 发出多少人 |
+| `skipped` | `number` | 是 | 跳过多少人 |
+| `skips` | `object`（见下）\[\] | 是 | 跳过的原因分布 |
+| `opened` | `number` | 是 | 点推送进了店的人数 |
+| `ordered` | `number` | 是 | 窗口内下单的人数（每人只算触达后的第一单） |
+| `orderedAmountMinor` | `number` | 是 | 这些单的实付合计（分） |
+| `orderedMembers` | [`ReachOrderedMember`](#reachorderedmember)\[\] | 是 | 下单的人，最多 50 个。列表接口里为空 |
+| `notOpened` | `number` | 是 | 没来的人数。「没来的存人群」存进去的就是这些人 |
 
 `skips[]` 的字段：
 

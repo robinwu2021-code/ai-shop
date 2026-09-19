@@ -68,6 +68,29 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "会员触达场景（明细）",
+    field: "mbr_reach_log.scene",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/member/entity/MbrReachLog.java",
+      only: ["NOTICE", "WAKEUP", "COUPON"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "ReachScene" },
+    ],
+  },
+  {
+    // 批次头与明细同一个取值域：频次闸按明细判，「发出去的」列表按批次头显示
+    concept: "会员触达场景（批次头）",
+    field: "mbr_reach_task.scene",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/member/entity/MbrReachLog.java",
+      only: ["NOTICE", "WAKEUP", "COUPON"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "ReachScene" },
+    ],
+  },
+  {
     concept: "平台活动报名单的状态",
     field: "pmt_enrollment.status",
     backend: {

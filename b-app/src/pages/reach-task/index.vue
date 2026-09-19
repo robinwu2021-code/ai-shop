@@ -99,11 +99,12 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="reachTask.title" :title-suffix="data?.title" :denied="!merchant.can('biz:customer')"
+  <sh-scaffold title-key="reachTask.title" :denied="!merchant.can('biz:customer')"
     :failed="failed" @retry="load">
     <template v-if="data">
       <view class="hero">
-        <text class="txt-display sh-num">
+        <text class="txt-strong">{{ data.title }}</text>
+        <text class="txt-display sh-num hero__big">
           {{ $t("reachTask.hero", { n: data.ordered, m: money(data.orderedAmountMinor) }) }}
         </text>
         <text class="txt-sub sh-muted hero__sub">
@@ -165,6 +166,9 @@ onLoad((q) => {
   flex-direction: column;
   align-items: center;
   padding: 16rpx 0 8rpx;
+}
+.hero__big {
+  margin-top: 8rpx;
 }
 .hero__sub {
   margin-top: 8rpx;

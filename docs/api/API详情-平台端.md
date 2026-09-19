@@ -11450,6 +11450,11 @@ KPI 卡（金额为最小货币单位整数）。
 | `members` | `number` | 是 | 覆盖多少会员 |
 | `optOut` | `number` | 是 | 其中退订多少人 |
 | `optOutRate` | `number` | 是 | 退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题 |
+| `tagCount` | `number` | 是 | 标签**个数**。只有个数：标签名是商家的经营判断，运营这一页用不到（AC-15） |
+| `segmentCount` | `number` | 是 | 人群**个数**。同上，没有人群条件 |
+| `tasks` | `number` | 是 | 近 30 天触达次数（批次数） |
+| `skipped` | `number` | 是 | 被频次闸等拦下的人次 |
+| `skipRate` | `number` | 是 | 跳过率（%）= 拦下的 / 命中的。高 = 在反复给同一批人发 |
 
 ### ReconAxisReport
 

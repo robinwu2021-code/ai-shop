@@ -250,6 +250,8 @@ const RESPONSE_TYPES = {
   mSaveStoreFulfillment: "StoreFulfillment",
   mSelfBuildPickup: "PickupCandidate",
   mSendReach: "ReachResult",
+  mReachTasks: "ReachTask[]",
+  mReachTask: "ReachTask",
   mSetActivityStatus: "StoreActivity",
   mSetCouponStatus: "MerchantCoupon",
   mSkuIdentityExport: "{ csv: string }",
