@@ -1936,7 +1936,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     segmentNamePh: "Enter a segment name",
     segmentPreview: "{n} match · {m} reachable",
     segmentSaved: "Saved as audience",
-    privacyHint: "Last four digits only. Message them through the platform",
+    privacyHint: "Phone numbers are masked. Contact members through the platform message channel.",
     level: {
       NEW: "New",
       REGULAR: "Regular",

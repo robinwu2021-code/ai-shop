@@ -1934,7 +1934,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     segmentNamePh: "أدخل اسم الشريحة",
     segmentPreview: "{n} مطابق · {m} يمكن الوصول إليهم",
     segmentSaved: "حُفظت كشريحة",
-    privacyHint: "آخر أربعة أرقام فقط. راسله عبر المنصة",
+    privacyHint: "أرقام الهواتف مخفية جزئيًا. تواصل مع الأعضاء عبر رسائل المنصة.",
     level: {
       NEW: "جديد",
       REGULAR: "متكرر",

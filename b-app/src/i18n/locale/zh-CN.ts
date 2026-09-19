@@ -2175,7 +2175,7 @@ export default {
     segmentNamePh: "请输入人群名称",
     segmentPreview: "命中 {n} 人 · 可收到 {m}",
     segmentSaved: "已存为人群",
-    privacyHint: "只显示手机号后四位。要联系他，走平台的消息通道",
+    privacyHint: "手机号已脱敏显示。如需联系会员，请通过平台消息通道。",
     level: {
       NEW: "新客",
       REGULAR: "常客",
