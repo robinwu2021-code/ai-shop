@@ -47,6 +47,32 @@ public final class MemberVOs {
                     spentMin, spentMax, page, size, null, null);
         }
 
+        /**
+         * JSON 入口。**分页缺省时按「第 1 页、不限」补上** —— 端上存人群、试算、打标只发筛选条件
+         * （{@code {tagNos:[…]}}），不带 page / size；而 Jackson 3 默认 FAIL_ON_NULL_FOR_PRIMITIVES，
+         * 两个 long 缺省就整条请求 400，界面上表现为「点了另存为人群没反应」（2026-09-19 真机发现）。
+         * 只放宽这一个类型，不改全局配置。
+         */
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public static MemberQuery fromJson(
+                @com.fasterxml.jackson.annotation.JsonProperty("storeNo") String storeNo,
+                @com.fasterxml.jackson.annotation.JsonProperty("level") String level,
+                @com.fasterxml.jackson.annotation.JsonProperty("source") String source,
+                @com.fasterxml.jackson.annotation.JsonProperty("status") String status,
+                @com.fasterxml.jackson.annotation.JsonProperty("phone") String phone,
+                @com.fasterxml.jackson.annotation.JsonProperty("tagNos") java.util.List<String> tagNos,
+                @com.fasterxml.jackson.annotation.JsonProperty("lastOrderBefore") Long lastOrderBefore,
+                @com.fasterxml.jackson.annotation.JsonProperty("lastOrderAfter") Long lastOrderAfter,
+                @com.fasterxml.jackson.annotation.JsonProperty("spentMin") Long spentMin,
+                @com.fasterxml.jackson.annotation.JsonProperty("spentMax") Long spentMax,
+                @com.fasterxml.jackson.annotation.JsonProperty("page") Long page,
+                @com.fasterxml.jackson.annotation.JsonProperty("size") Long size,
+                @com.fasterxml.jackson.annotation.JsonProperty("reachTaskNo") String reachTaskNo,
+                @com.fasterxml.jackson.annotation.JsonProperty("reachOutcome") String reachOutcome) {
+            return new MemberQuery(storeNo, level, source, status, phone, tagNos, lastOrderBefore, lastOrderAfter,
+                    spentMin, spentMax, page == null ? 1 : page, size == null ? 0 : size, reachTaskNo, reachOutcome);
+        }
+
         /** 人群条件里不带分页 —— 试算与解析都是全量 */
         public MemberQuery unpaged() {
             return new MemberQuery(storeNo, level, source, status, phone, tagNos,

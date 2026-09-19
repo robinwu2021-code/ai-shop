@@ -122,7 +122,11 @@ async function saveAsSegment(): Promise<string | null> {
   const pv = await api.mPreviewMemberSegment({
     scopeStoreNo: storeNo.value || undefined,
     rule,
-  }).catch(() => null);
+  }).catch((e: Error) => {
+    // 失败要说出来：静默返回的话商家点了「另存为人群」什么也没发生，看不出是没点上还是出错了
+    uni.showToast({ title: e.message, icon: "none" });
+    return null;
+  });
   if (!pv) return null;
   /*
    * 试算结果现在走 `hint`（说明），不必再挤进标题 ——

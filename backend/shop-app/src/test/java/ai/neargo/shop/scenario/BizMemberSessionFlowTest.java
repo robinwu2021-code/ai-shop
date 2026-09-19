@@ -113,6 +113,19 @@ class BizMemberSessionFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 端上真实请求体：人群试算与保存只带 tagNos（不带 page/size）也要收得下")
+    void segmentPreviewAcceptsClientBody() throws Exception {
+        String token = merchant();
+        String tagNo = call("POST", "/biz/member-tags", token, "{\"name\":\"熟客\"}").get("data").get("tagNo").asString();
+        // 与 b-app customers 页 saveAsSegment 发出的形状一致：rule 里只有 level / tagNos
+        String rule = "{\"tagNos\":[\"" + tagNo + "\"]}";
+        JsonNode pv = call("POST", "/biz/member-segments/preview", token, "{\"rule\":" + rule + "}");
+        assertThat(pv.get("code").asInt()).as("试算：%s", pv).isZero();
+        JsonNode saved = call("POST", "/biz/member-segments", token, "{\"name\":\"熟客人群\",\"rule\":" + rule + "}");
+        assertThat(saved.get("code").asInt()).as("保存：%s", saved).isZero();
+    }
+
+    @Test
     @DisplayName("★★ 人群存了看得见；「发出去的」列表接口在会话里也能正常返回")
     void segmentsAndReachTasksReadInSession() throws Exception {
         String token = merchant();
