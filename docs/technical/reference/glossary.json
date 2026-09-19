@@ -4844,24 +4844,6 @@
           "ar": "الجميع"
         },
         {
-          "key": "activityEdit.audienceOpt.LOYAL",
-          "zh-CN": "熟客",
-          "en": "Regulars",
-          "ar": "عملاء دائمون"
-        },
-        {
-          "key": "activityEdit.audienceOpt.NON_MEMBER",
-          "zh-CN": "非会员",
-          "en": "Non-members",
-          "ar": "غير الأعضاء"
-        },
-        {
-          "key": "activityEdit.audienceOpt.SLEEPING",
-          "zh-CN": "沉睡会员",
-          "en": "Dormant members",
-          "ar": "أعضاء خاملون"
-        },
-        {
           "key": "activityEdit.budget",
           "zh-CN": "预算（元）",
           "en": "Budget",
@@ -6854,24 +6836,6 @@
           "ar": "أقصى مصروف"
         },
         {
-          "key": "couponSend.mine",
-          "zh-CN": "我的人群",
-          "en": "My groups",
-          "ar": "فئاتي"
-        },
-        {
-          "key": "couponSend.mineEmpty",
-          "zh-CN": "暂无人群，可在会员页筛选后保存",
-          "en": "No saved groups yet. Filter and save one on the Members page",
-          "ar": "لا توجد فئات محفوظة؛ صفِّ واحفظ فئة من صفحة الأعضاء"
-        },
-        {
-          "key": "couponSend.mineN",
-          "zh-CN": "{n} 个",
-          "en": "{n}",
-          "ar": "{n}"
-        },
-        {
           "key": "couponSend.preset.ALL",
           "zh-CN": "全部会员",
           "en": "All members",
@@ -6900,12 +6864,6 @@
           "zh-CN": "能收到",
           "en": "Reachable",
           "ar": "يمكن مراسلتهم"
-        },
-        {
-          "key": "couponSend.submit",
-          "zh-CN": "发放",
-          "en": "Send",
-          "ar": "إرسال"
         },
         {
           "key": "couponSend.submitN",
@@ -13674,12 +13632,6 @@
           "zh-CN": "{n} 位邻居想要",
           "en": "{n} neighbours want this",
           "ar": "{n} من الجيران يريدون هذا"
-        },
-        {
-          "key": "reach.allMembers",
-          "zh-CN": "全部会员",
-          "en": "All members",
-          "ar": "كل الأعضاء"
         },
         {
           "key": "reach.bodyPh",
