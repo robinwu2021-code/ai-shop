@@ -172,10 +172,8 @@ public class MpStoreController {
         return storeService.reorderFrom(orderNo);
     }
 
-    @PostMapping("/mp/store/{merchantNo}/favorite")
-    public List<StoreBriefVO> toggleFavorite(@PathVariable String merchantNo) {
-        return favoriteService.toggle(merchantNo);
-    }
+    // 收藏本店挪到 MpFavoriteController 的 POST /mp/favorite/store/{merchantNo}：
+    // 这里原先回的是「收藏列表」，端上一直当布尔用（数组恒真 —— 点取消也提示已收藏）。
 
     public record EnterReq(String storeCode, String inviterNo, String channel) {
     }

@@ -114,6 +114,10 @@ function gotoAddress() {
   uni.navigateTo({ url: ROUTES.address });
 }
 
+function gotoFavorites() {
+  uni.navigateTo({ url: ROUTES.favorites });
+}
+
 function gotoGroupHost() {
   uni.navigateTo({ url: ROUTES.groupHost });
 }
@@ -259,6 +263,11 @@ onShow(() => {
       <view class="sh-cell sh-row sh-row--between" @tap="gotoOrders">
         <text class="txt-body cell__label">{{ $t("orders.title") }}</text>
         <text class="txt-caption cell__value">{{ $t("orders.entryHint") }}</text>
+      </view>
+      <!-- 我的收藏（原型 g08）：商品与店铺两栏 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoFavorites">
+        <text class="txt-body cell__label">{{ $t("favorites.title") }}</text>
+        <text class="txt-caption cell__value">{{ $t("me.favoritesHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>

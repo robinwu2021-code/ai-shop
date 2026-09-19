@@ -240,7 +240,8 @@ export interface ShopApi {
 
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;
-  goodsDetail(goodsNo: string): Promise<Goods>;
+  /** @param communityNo 收货地址推出来的社区；给了才判 `deliverable`（只有模糊定位时别传） */
+  goodsDetail(goodsNo: string, communityNo?: string): Promise<Goods>;
   /** 社区集单块（s26）：不是集单商品时为 null。匿名可看 —— 未登录的人也要看得到截单时间才会下单 */
   goodsBatch(goodsNo: string): Promise<GoodsBatch | null>;
 
@@ -449,7 +450,13 @@ export interface ShopApi {
   /** 一键再来一单：整单复制到购物车，失效品与涨价品分别回报 */
   reorderFrom(orderNo: string): Promise<ReorderResult>;
   /** 收藏/取消收藏本店 */
-  toggleFavoriteStore(merchantNo: string): Promise<boolean>;
+  toggleFavoriteStore(merchantNo: string): Promise<{ favorited: boolean }>;
+  /** 收藏 / 取消一件商品，返回操作之后的状态 */
+  toggleFavoriteGoods(goodsNo: string): Promise<{ favorited: boolean }>;
+  /** 我的收藏 · 商品：收藏时间倒序，下架的也在（onSale=false） */
+  favoriteGoods(page?: number, size?: number): Promise<PageResult<Goods>>;
+  /** 我的收藏 · 店铺：只有收藏，不混入常去店 */
+  favoriteStores(): Promise<Merchant[]>;
   /** 我的常去店（首页入口用） */
   myStores(): Promise<Merchant[]>;
 

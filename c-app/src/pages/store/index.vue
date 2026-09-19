@@ -256,7 +256,9 @@ async function toggleFav() {
     uni.navigateTo({ url: ROUTES.login });
     return;
   }
-  const on = await api.toggleFavoriteStore(merchantNo.value);
+  // 读返回的状态字段。此前旧接口回的是「收藏列表」，这里当布尔用 —— 数组恒为真，
+  // 接真后端时点取消也提示「已收藏」（2026-09-19 换到 /mp/favorite/store 时发现）
+  const { favorited: on } = await api.toggleFavoriteStore(merchantNo.value);
   if (data.value) data.value.favorited = on;
   uni.showToast({
     title: on ? t("store.faved") : t("store.unfaved"),

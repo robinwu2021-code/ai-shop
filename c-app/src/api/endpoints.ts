@@ -160,7 +160,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 商品
   goodsList: { method: "GET", path: "/mp/goods", auth: false, summary: "商品列表" },
-  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情" },
+  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情（可带 communityNo 判送达）" },
   goodsBatch: { method: "GET", path: "/mp/goods/:goodsNo/batch", auth: false, summary: "商品的社区集单信息（截单、提货、已订份数）" },
 
   // ---------------------------------------------------------------- 购物车
@@ -269,7 +269,10 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   storeByCode: { method: "GET", path: "/mp/store/by-code", auth: false, summary: "扫码进店" },
   frequentItems: { method: "GET", path: "/mp/store/:merchantNo/frequent", auth: true, summary: "常买清单" },
   reorderFrom: { method: "POST", path: "/mp/order/:orderNo/reorder", auth: true, summary: "一键再来一单" },
-  toggleFavoriteStore: { method: "POST", path: "/mp/store/:merchantNo/favorite", auth: true, summary: "收藏本店" },
+  toggleFavoriteStore: { method: "POST", path: "/mp/favorite/store/:merchantNo", auth: true, summary: "收藏 / 取消收藏店铺" },
+  toggleFavoriteGoods: { method: "POST", path: "/mp/favorite/goods/:goodsNo", auth: true, summary: "收藏 / 取消收藏商品" },
+  favoriteGoods: { method: "GET", path: "/mp/favorite/goods", auth: true, summary: "我的收藏 · 商品" },
+  favoriteStores: { method: "GET", path: "/mp/favorite/store", auth: true, summary: "我的收藏 · 店铺" },
   myStores: { method: "GET", path: "/mp/store/mine", auth: true, summary: "我的常去店" },
 
   merchantDetail: {

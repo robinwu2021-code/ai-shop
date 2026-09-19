@@ -136,7 +136,8 @@ export const httpApi: ShopApi = {
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),
-  goodsDetail: (goodsNo) => call<Goods>("goodsDetail", { goodsNo }),
+  goodsDetail: (goodsNo, communityNo) =>
+    call<Goods>("goodsDetail", { goodsNo }, communityNo ? { communityNo } : undefined),
   goodsBatch: (goodsNo) => call<GoodsBatch | null>("goodsBatch", { goodsNo }),
 
   // ---- 购物车
@@ -243,7 +244,10 @@ export const httpApi: ShopApi = {
   reorderFrom: (orderNo) =>
     http.post<ReorderResult>(buildPath(ENDPOINTS.reorderFrom.path, { orderNo }), {}),
   toggleFavoriteStore: (merchantNo) =>
-    http.post<boolean>(buildPath(ENDPOINTS.toggleFavoriteStore.path, { merchantNo }), {}),
+    http.post<{ favorited: boolean }>(buildPath(ENDPOINTS.toggleFavoriteStore.path, { merchantNo }), {}),
+  toggleFavoriteGoods: (goodsNo) => call<{ favorited: boolean }>("toggleFavoriteGoods", { goodsNo }),
+  favoriteGoods: (page = 1, size = 20) => call<PageResult<Goods>>("favoriteGoods", undefined, { page, size }),
+  favoriteStores: () => call<Merchant[]>("favoriteStores"),
   myStores: () => http.get<Merchant[]>(ENDPOINTS.myStores.path),
 
   merchantDetail: (merchantNo) => call<Merchant>("merchantDetail", { merchantNo }),

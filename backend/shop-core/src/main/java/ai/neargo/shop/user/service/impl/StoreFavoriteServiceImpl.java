@@ -59,7 +59,8 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
         String userNo = SecurityUtils.currentUserNo();
         UsrStoreFavorite existing = findFavorite(userNo, merchantNo);
         if (existing != null) {
-            favoriteMapper.deleteById(existing.getId());
+            // 真删：deleteById 走全局逻辑删除，那一行还占着唯一键，再收藏就撞
+            favoriteMapper.purge(userNo, merchantNo);
         } else {
             UsrStoreFavorite row = new UsrStoreFavorite();
             row.setUserNo(userNo);
@@ -68,6 +69,17 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
         }
         // 只返回收藏，不混入归因店：这个接口的语义是「收藏结果」，
         // 混进归因店会让「点了取消收藏，列表里还在」变成日常客诉
+        Set<String> nos = new LinkedHashSet<>();
+        favoriteMapper.selectList(Wrappers.<UsrStoreFavorite>lambdaQuery()
+                        .eq(UsrStoreFavorite::getUserNo, userNo)
+                        .orderByDesc(UsrStoreFavorite::getId))
+                .forEach(f -> nos.add(f.getEntityNo()));
+        return briefsOf(nos);
+    }
+
+    @Override
+    public List<StoreBriefVO> favorites() {
+        String userNo = SecurityUtils.currentUserNo();
         Set<String> nos = new LinkedHashSet<>();
         favoriteMapper.selectList(Wrappers.<UsrStoreFavorite>lambdaQuery()
                         .eq(UsrStoreFavorite::getUserNo, userNo)

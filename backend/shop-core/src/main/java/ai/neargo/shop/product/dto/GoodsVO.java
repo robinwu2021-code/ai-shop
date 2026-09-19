@@ -147,12 +147,24 @@ public record GoodsVO(String goodsNo,
                        * 为 false 时列表写「未在活动中」—— 「在售」却没人买得到，不写出来商家会以为出了故障。
                        * 正常售卖的货恒为 null。
                        */
-                      Boolean activityLive) {
+                      Boolean activityLive,
+                      /* 当前买家收藏了没有（TDD-C端商品收藏与送达判断）。只有买家详情页与「我的收藏」填；
+                         其余出口一律 null。未登录 = false */
+                      Boolean favorited,
+                      /* 这件商品卖不卖到端上传来的那个社区（收货地址推出来的）。
+                         判据与首页商品池同一份；没传社区号 = null（不判 —— 模糊定位只准到区，拿它判会误拦） */
+                      Boolean deliverable) {
 
     /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
     public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive);
+                saleMode, directBuyable, activityLive, favorited, deliverable);
+    }
+
+    /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
+    public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable);
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

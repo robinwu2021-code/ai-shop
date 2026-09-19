@@ -632,6 +632,8 @@ export const ROUTES = {
   merchants: "/pages/merchants/index",
   store: "/pages/store/index",
   groupHost: "/pages/group-host/index",
+  /** 我的收藏：商品 / 店铺（原型 g08） */
+  favorites: "/pages/favorites/index",
   search: "/pages/search/index",
   address: "/pages/address/index",
   /** 新建/编辑收货地址。**整页，不是弹层** —— 入口只有这一种形态 */

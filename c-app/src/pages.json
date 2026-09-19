@@ -366,6 +366,18 @@
       }
     },
     {
+      "path": "pages/favorites/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/group-host/index",
       "style": {
         "navigationBarTitleText": "我发起的团",

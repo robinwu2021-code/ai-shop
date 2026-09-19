@@ -72,6 +72,13 @@ export default {
     navigate: "Directions",
   },
   goods: {
+    /** 收藏与送达（TDD-C端商品收藏与送达判断）*/
+    favorite: "Save",
+    favorited: "Saved",
+    favDone: "Saved — find it in Me → Saved",
+    favUndone: "Removed from saved",
+    whyOutOfScope: "Your delivery address is outside the sales area ({scope})",
+    changeAddress: "Change address",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "Item",
     anchorReviews: "Reviews",
@@ -132,6 +139,17 @@ export default {
     pickTime: "Choose a time",
     slotLeft: "{n} left",
     changeRule: "Free to reschedule up to {n} hours before",
+  },
+  /** 我的收藏（原型 g08）*/
+  favorites: {
+    title: "Saved",
+    goodsTab: "Items {n}",
+    storeTab: "Shops {n}",
+    emptyGoods: "No saved items yet",
+    emptyGoodsTip: "Tap the star next to an item's name to save it",
+    emptyStores: "No saved shops yet",
+    offShelf: "Unavailable",
+    remove: "Remove",
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "Neighbour pickup",
@@ -231,6 +249,7 @@ export default {
     addressPrivacy: "Only the building shows before the group fills; the full address appears to members after payment.",
   },
   me: {
+    favoritesHint: "Items · Shops",
     appearance: "Appearance & language",
     appearanceValue: "Colour · Theme · Language",
     myPlace: "My location",

@@ -48,16 +48,19 @@ public class MpCatalogController {
     private final CategoryService categoryService;
     private final ai.neargo.shop.platform.OpsService opsService;
     private final ai.neargo.shop.platform.RegionService regionService;
+    private final ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
                                ai.neargo.shop.platform.OpsService opsService,
-                               ai.neargo.shop.platform.RegionService regionService) {
+                               ai.neargo.shop.platform.RegionService regionService,
+                               ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
         this.categoryService = categoryService;
         this.opsService = opsService;
+        this.goodsFavoriteService = goodsFavoriteService;
         this.regionService = regionService;
     }
 
@@ -211,9 +214,16 @@ public class MpCatalogController {
                 communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, Math.min(size, 50)));
     }
 
+    /**
+     * @param communityNo 收货地址推出来的社区（可选）。给了就判「卖不卖到那儿」（{@code deliverable}），
+     *                    没给就不判 —— 端上只有模糊定位时不传（TDD-C端商品收藏与送达判断 AC6）
+     */
     @GetMapping("/mp/goods/{goodsNo}")
-    public GoodsVO goodsDetail(@PathVariable String goodsNo) {
-        return goodsService.detailForBuyer(goodsNo);
+    public GoodsVO goodsDetail(@PathVariable String goodsNo,
+                               @RequestParam(required = false) String communityNo) {
+        return goodsService.detailForBuyer(goodsNo).withViewer(
+                goodsFavoriteService.isFavorited(goodsNo),
+                goodsService.deliverableTo(goodsNo, communityNo));
     }
 
     @GetMapping("/mp/category/tree")

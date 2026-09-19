@@ -19,4 +19,7 @@ public interface StoreFavoriteService {
     List<StoreBriefVO> toggle(String merchantNo);
 
     boolean isFavorited(String merchantNo);
+
+    /** 我的收藏 · 店铺：<b>只有收藏</b>，不混入归因店（那是 {@link #myStores()} 的「常去店」）。最近收藏在前 */
+    List<StoreBriefVO> favorites();
 }

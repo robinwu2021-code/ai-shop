@@ -58,6 +58,15 @@ public final class UserMappers {
     public interface AddressMapper extends BaseMapper<UsrAddress> {
     }
 
+    /**
+     * 取消收藏要<b>真删</b>：全局逻辑删除只是 {@code deleted=1}，这一行还占着唯一键
+     * {@code uk_user_entity(user_no, entity_no)} —— 同一家店取消后再收藏就撞（TDD-C端商品收藏与送达判断 §2）。
+     */
     public interface StoreFavoriteMapper extends BaseMapper<UsrStoreFavorite> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_store_favorite WHERE user_no = #{userNo} AND entity_no = #{entityNo}")
+        int purge(@org.apache.ibatis.annotations.Param("userNo") String userNo,
+                  @org.apache.ibatis.annotations.Param("entityNo") String entityNo);
     }
 }

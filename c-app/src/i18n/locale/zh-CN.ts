@@ -75,6 +75,13 @@ export default {
     navigate: "导航",
   },
   goods: {
+    /** 收藏与送达（TDD-C端商品收藏与送达判断）*/
+    favorite: "收藏",
+    favorited: "已收藏",
+    favDone: "已收藏，可在「我的 → 收藏」查看",
+    favUndone: "已取消收藏",
+    whyOutOfScope: "当前收货地址不在销售区域（{scope}）",
+    changeAddress: "换地址",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "商品",
     anchorReviews: "评价",
@@ -135,6 +142,17 @@ export default {
     pickTime: "选择时段",
     slotLeft: "余 {n}",
     changeRule: "开始前 {n} 小时可免费改期",
+  },
+  /** 我的收藏（原型 g08）*/
+  favorites: {
+    title: "我的收藏",
+    goodsTab: "商品 {n}",
+    storeTab: "店铺 {n}",
+    emptyGoods: "还没有收藏的商品",
+    emptyGoodsTip: "在商品详情点标题旁的星就能收藏",
+    emptyStores: "还没有收藏的店铺",
+    offShelf: "已下架",
+    remove: "删除",
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "邻里自提",
@@ -253,6 +271,7 @@ export default {
     addressPrivacy: "成团前只显示到楼栋，付款后才对参团邻居展示完整门牌。",
   },
   me: {
+    favoritesHint: "商品 · 店铺",
     appearance: "外观与语言",
     appearanceValue: "配色 · 明暗 · 语言",
     myPlace: "我的位置",

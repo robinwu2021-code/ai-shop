@@ -2076,7 +2076,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 null,
                 // 商家侧不标销售范围：店主知道自己的经营范围，那是他在门店设置里配的
                 null,
-                base.saleMode(), null, null);
+                base.saleMode(), null, null, null, null);
     }
 
     /**
@@ -3221,7 +3221,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 storeOnSale,
                 // 同上：销售范围是买家页的一行话，商家侧在门店设置里看
                 null,
-                base.saleMode(), null, null);
+                base.saleMode(), null, null, null, null);
     }
 
     /**

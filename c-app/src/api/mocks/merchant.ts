@@ -23,6 +23,7 @@ export const merchantMock: Pick<ShopApi,
   | "promotedMerchants"
   | "reorderFrom"
   | "toggleFavoriteStore"
+  | "favoriteStores"
   | "myStores"
   | "reviewList"
   | "toggleReviewLike"
@@ -210,7 +211,11 @@ export const merchantMock: Pick<ShopApi,
     if (i >= 0) db.favoriteStores.splice(i, 1);
     else db.favoriteStores.unshift(merchantNo);
     persist();
-    return delay(i < 0);
+    return delay({ favorited: i < 0 });
+  },
+
+  async favoriteStores() {
+    return delay(db.favoriteStores.map(toMerchant));
   },
 
   async myStores() {

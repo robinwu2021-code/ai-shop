@@ -828,6 +828,10 @@
     {
      "label": "TDD-C端商品详情页重排",
      "path": "docs/technical/TDD-C端商品详情页重排.md"
+    },
+    {
+     "label": "TDD-C端商品收藏与送达判断",
+     "path": "docs/technical/TDD-C端商品收藏与送达判断.md"
     }
    ],
    "screens": [
@@ -867,7 +871,9 @@
     },
     {
      "id": "g08",
-     "title": "我的收藏"
+     "title": "我的收藏",
+     "client": "c-app",
+     "route": "pages/favorites/index"
     },
     {
      "id": "p01",

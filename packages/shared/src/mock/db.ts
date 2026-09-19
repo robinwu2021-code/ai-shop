@@ -1996,6 +1996,8 @@ export const db = {
 
   /** 我收藏的店（C-ST-07「常去的店」） */
   favoriteStores: [] as string[],
+  /** 我收藏的商品，最近收藏在前（TDD-C端商品收藏与送达判断） */
+  favoriteGoods: [] as string[],
 
   /** 商家配的营销活动（B-11.8） */
   campaigns: [] as MarketingCampaign[],

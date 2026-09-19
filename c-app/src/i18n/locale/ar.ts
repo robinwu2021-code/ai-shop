@@ -72,6 +72,13 @@ export default {
     navigate: "الاتجاهات",
   },
   goods: {
+    /** 收藏与送达（TDD-C端商品收藏与送达判断）*/
+    favorite: "حفظ",
+    favorited: "محفوظ",
+    favDone: "تم الحفظ — تجده في حسابي ← المحفوظات",
+    favUndone: "أُزيل من المحفوظات",
+    whyOutOfScope: "عنوان التوصيل خارج منطقة البيع ({scope})",
+    changeAddress: "تغيير العنوان",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "المنتج",
     anchorReviews: "التقييمات",
@@ -132,6 +139,17 @@ export default {
     pickTime: "اختر الوقت",
     slotLeft: "متبقٍ {n}",
     changeRule: "يمكن تغيير الموعد مجانًا قبل {n} ساعات",
+  },
+  /** 我的收藏（原型 g08）*/
+  favorites: {
+    title: "المحفوظات",
+    goodsTab: "المنتجات {n}",
+    storeTab: "المتاجر {n}",
+    emptyGoods: "لا توجد منتجات محفوظة بعد",
+    emptyGoodsTip: "اضغط النجمة بجانب اسم المنتج لحفظه",
+    emptyStores: "لا توجد متاجر محفوظة بعد",
+    offShelf: "غير متاح",
+    remove: "إزالة",
   },
   fulfillment: {
     NEIGHBOR_PICKUP: "استلام من الجوار",
@@ -231,6 +249,7 @@ export default {
     addressPrivacy: "يظهر المبنى فقط قبل اكتمال العدد، ويظهر العنوان الكامل للأعضاء بعد الدفع.",
   },
   me: {
+    favoritesHint: "المنتجات · المتاجر",
     appearance: "المظهر واللغة",
     appearanceValue: "الألوان · السمة · اللغة",
     myPlace: "موقعي",

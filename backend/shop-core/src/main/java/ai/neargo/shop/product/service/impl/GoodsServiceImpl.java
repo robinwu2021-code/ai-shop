@@ -294,6 +294,17 @@ public class GoodsServiceImpl implements GoodsService {
         return v.withSaleGate(directBuyable(v), null);
     }
 
+    @Override
+    public Boolean deliverableTo(String goodsNo, String communityNo) {
+        if (communityNo == null || communityNo.isBlank()) {
+            return null;
+        }
+        return DataScopeContext.executeWithoutScope(() -> poolMapper.selectCount(
+                Wrappers.<PrdCommunityPool>lambdaQuery()
+                        .eq(PrdCommunityPool::getCommunityNo, communityNo)
+                        .eq(PrdCommunityPool::getGoodsNo, goodsNo))) > 0;
+    }
+
     /**
      * 此刻能不能走普通下单（加购 / 立即购买 / 单买）—— 买家详情页的底栏只看它。
      * 与下单那道闸（OrderServiceImpl.split）同一个判定口，缺了按「不能」处理。
@@ -471,7 +482,7 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 saleModeOf(g),
                 // directBuyable 只有详情页要（见 withSaleGate），activityLive 是 B 端列表的
-                null, null);
+                null, null, null, null);
     }
 
     /**
@@ -497,7 +508,7 @@ public class GoodsServiceImpl implements GoodsService {
                 v.onSale(), v.status(), v.titleI18n(), v.subtitleI18n(), v.stdNo(),
                 v.auditReason(), v.groupBuy(), v.params(), v.hasDraft(), v.storeOnSale(),
                 new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()),
-                v.saleMode(), v.directBuyable(), v.activityLive());
+                v.saleMode(), v.directBuyable(), v.activityLive(), null, null);
     }
 
     /**

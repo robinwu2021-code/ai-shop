@@ -126,7 +126,11 @@ class MpEndpointAuthTest {
             "POST /mp/review/{reviewNo}/like",
             "POST /mp/risk/appeal",
             "POST /mp/store/{merchantNo}/enter",
-            "POST /mp/store/{merchantNo}/favorite",
+            // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）
+            "POST /mp/favorite/goods/{goodsNo}",
+            "GET /mp/favorite/goods",
+            "GET /mp/favorite/store",
+            "POST /mp/favorite/store/{merchantNo}",
             "POST /mp/store/{merchantNo}/rebuy",
             "POST /mp/ticket",
             "POST /mp/user/address/{addressId}/archive",

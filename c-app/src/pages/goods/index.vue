@@ -147,7 +147,7 @@ const appointmentReady = computed(
   () => !needAppointment.value || (!!slotDate.value && !!slotTime.value),
 );
 const buyable = computed(
-  () => !!sku.value && !soldOut.value && !cutoffPassed.value && appointmentReady.value,
+  () => !!sku.value && !soldOut.value && !cutoffPassed.value && appointmentReady.value && !outOfScope.value,
 );
 
 /**
@@ -164,8 +164,15 @@ const buyable = computed(
  * 售罄与截单**故意返回空串**：那两件事已经说过了，
  * 同一件事说两遍会让人以为是两个问题（与结算页「一次只说一条」同源）。
  */
+/**
+ * 送不到你那儿（原型 g05）：**只在后端明确说 false 时**拦 —— null / 缺省是「没判」，不是「送不到」。
+ * 判据是收货地址推出来的社区，与首页商品池同一份（TDD-C端商品收藏与送达判断）。
+ */
+const outOfScope = computed(() => goods.value?.deliverable === false);
+
 const buyBlockedReason = computed(() => {
   if (!goods.value) return "";
+  if (outOfScope.value) return String(t("goods.whyOutOfScope", { scope: saleScopeText.value || "—" }));
   if (activityClosed.value) return String(t("goods.whyActivityOnly"));
   if (!sku.value) return String(t("goods.whyNoSku"));
   if (soldOut.value || cutoffPassed.value) return "";
@@ -238,7 +245,7 @@ const chosenText = computed(() =>
  * 底栏按钮点不点得动。多规格时**恒可点** —— 它的作用是打开面板，
  * 当前选中的规格卖完了，他还得能进面板换一个；单规格时就是 buyable。
  */
-const barReady = computed(() => multiSku.value || buyable.value);
+const barReady = computed(() => !outOfScope.value && (multiSku.value || buyable.value));
 
 /**
  * 能不能走普通下单（加购 / 立即购买 / 单买）—— 仅活动可售（TDD-商品仅活动可售 §5）。
@@ -395,7 +402,9 @@ async function load(goodsNo: string) {
   const couponsP = fetchCoupons();
   const batchP = fetchBatch(goodsNo);
   try {
-    const g = await api.goodsDetail(goodsNo);
+    // 带上收货地址推出来的社区：后端据此判「卖不卖到你那儿」（原型 g05）。
+    // 只有模糊定位时没有社区号 —— 那就不判，只准到区，拿它判会误拦
+    const g = await api.goodsDetail(goodsNo, community.community?.communityNo);
     const [grpNow, allNow, batchNow] = await Promise.all([
       within(groupP, FIRST_SCREEN_WAIT_MS),
       within(couponsP, FIRST_SCREEN_WAIT_MS),
@@ -554,6 +563,36 @@ function sheetGroup() {
 
 function gotoCart() {
   uni.switchTab({ url: ROUTES.cart });
+}
+
+/** 送不到时那一行的「换地址」：去收货地址页，换一条回来详情会按新社区重判 */
+function gotoAddress() {
+  uni.navigateTo({ url: ROUTES.address });
+}
+
+/**
+ * 收藏 / 取消（原型 g07）。没登录先静默登录（小程序里无感）；静默失败才去登录页。
+ * 状态以后端回的为准，不在端上自己取反 —— 连点两下时两次请求的先后不保证。
+ */
+const faving = ref(false);
+async function toggleFavorite() {
+  const g = goods.value;
+  if (!g || faving.value) return;
+  if (!user.isLogin) await user.silentLogin().catch(() => {});
+  if (!user.isLogin) {
+    uni.navigateTo({ url: ROUTES.login });
+    return;
+  }
+  faving.value = true;
+  try {
+    const { favorited } = await api.toggleFavoriteGoods(g.goodsNo);
+    g.favorited = favorited;
+    uni.showToast({ title: String(t(favorited ? "goods.favDone" : "goods.favUndone")), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    faving.value = false;
+  }
 }
 
 /**
@@ -771,15 +810,23 @@ onShareAppMessage(() =>
             </text>
           </view>
           <!-- 标题行：右边是分享（原型 g01）。小程序里是原生按钮盖在上面的透明层，版式交给 view -->
+          <!-- 标题与副标题同在左列，分享在右 —— 分享比标题高，副标题放在外面会被它顶下去空出一行（真机 0.1.47） -->
           <view class="titlerow sh-row">
-            <text class="txt-title sh-fill title">{{ goods.title }}</text>
+            <view class="sh-fill titlerow__main">
+              <text class="txt-title title">{{ goods.title }}</text>
+              <text v-if="goods.subtitle" class="sh-muted sub">{{ goods.subtitle }}</text>
+            </view>
+            <!-- 收藏（原型 g07）：空心 / 实心星 + 两个字，与分享并排 -->
+            <view class="titlerow__act sh-center" @tap="toggleFavorite">
+              <sh-icon :name="goods.favorited ? 'starFilled' : 'star'" :size="32" :color="goods.favorited ? 'var(--sh-primary)' : 'var(--sh-ink)'"></sh-icon>
+              <text class="txt-caption" :class="goods.favorited ? 'txt-primary' : 'sh-muted'">{{ $t(goods.favorited ? "goods.favorited" : "goods.favorite") }}</text>
+            </view>
             <view v-if="nativeShare" class="titlerow__act sh-center">
               <sh-icon name="share" :size="32" color="var(--sh-ink)"></sh-icon>
               <text class="txt-caption sh-muted">{{ $t("goods.share") }}</text>
               <button class="titlerow__share" open-type="share"></button>
             </view>
           </view>
-          <text v-if="goods.subtitle" class="sh-muted sub">{{ goods.subtitle }}</text>
 
           <view v-if="hasChips" class="chips sh-wrap">
             <!--
@@ -1017,8 +1064,10 @@ onShareAppMessage(() =>
           话要落在他视线的终点（与结算页的同名做法一致）。
           已经在别处说过的（售罄写在按钮上、截单有一枚红 chip）这里返回空串，不重复说。
         -->
-        <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
-          <text>{{ buyBlockedReason }}</text>
+        <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why sh-row">
+          <text class="sh-fill">{{ buyBlockedReason }}</text>
+          <!-- 送不到时给出路：换一条收货地址（原型 g05） -->
+          <text v-if="outOfScope" class="sh-link" @tap="gotoAddress">{{ $t("goods.changeAddress") }}</text>
         </view>
 
         <sh-sheet :visible="showCoupons" :title="String($t('goods.couponRow'))" @close="showCoupons = false">
@@ -1284,9 +1333,11 @@ onShareAppMessage(() =>
   align-items: flex-start;
   margin-top: 16rpx;
 }
+.titlerow__main {
+  min-width: 0;
+}
 .titlerow .title {
   margin-top: 0;
-  min-width: 0;
 }
 .titlerow__act {
   position: relative;

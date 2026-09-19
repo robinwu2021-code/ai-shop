@@ -23,6 +23,16 @@ public final class ProductMappers {
     public interface SpecTemplateMapper extends BaseMapper<PrdSpecTemplate> {
     }
 
+    /** 商品收藏（V343）。取消要真删，理由同 CategorySpecMapper：软删行占着唯一键，再收藏就撞 */
+    public interface GoodsFavoriteMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsFavorite> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM prd_goods_favorite WHERE user_no = #{userNo} AND goods_no = #{goodsNo}")
+        int purge(@org.apache.ibatis.annotations.Param("userNo") String userNo,
+                  @org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
+    }
+
     // ---------------------------------------------------------------- 规格库（V195）
     //
     // 四层：规格项 / 规格值 / 类目绑定 / 类目取值子集，另加两张商家覆盖表。

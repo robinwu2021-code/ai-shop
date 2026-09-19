@@ -46,6 +46,8 @@ function refreshCart() {
 export const catalogMock: Pick<ShopApi,
   "goodsList"
   | "goodsDetail"
+  | "toggleFavoriteGoods"
+  | "favoriteGoods"
   | "goodsBatch"
   | "goodsGroup"
   | "cartList"
@@ -93,7 +95,22 @@ export const catalogMock: Pick<ShopApi,
   },
 
   async goodsDetail(goodsNo) {
-    return delay(toGoods(findGoodsSeed(goodsNo)));
+    // mock 不判送达（deliverable 缺省 = 没判）；收藏读本地那份
+    return delay({ ...toGoods(findGoodsSeed(goodsNo)), favorited: db.favoriteGoods.includes(goodsNo) });
+  },
+
+  async toggleFavoriteGoods(goodsNo) {
+    findGoodsSeed(goodsNo);
+    const i = db.favoriteGoods.indexOf(goodsNo);
+    if (i >= 0) db.favoriteGoods.splice(i, 1);
+    else db.favoriteGoods.unshift(goodsNo);
+    persist();
+    return delay({ favorited: i < 0 });
+  },
+
+  async favoriteGoods(page = 1, size = 20) {
+    const list = db.favoriteGoods.map((no) => ({ ...toGoods(findGoodsSeed(no)), favorited: true }));
+    return delay(paginate(list, page, size));
   },
 
   /** 拼团块：商品上配了团购价的才有；正在拼的团取这件货还没成的团 */
