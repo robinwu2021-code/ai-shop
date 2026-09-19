@@ -11,12 +11,12 @@
 <header class="top">
   <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-19</div>
   <h1>商品详情，与拼团的完整买家流程</h1>
-  <p class="sub">两件事：① 商品详情页按常用布局重排（v2）：只回答「买不买」，送到哪、怎么送挪到下单时再定，底栏从五格减到三格；② 拼团从看到、开团 / 参团、付款、邀请、成团或退款，到在订单里跟进度，一条线画全。邻里求团（先有需求、后有商家报价）单列一节。共 19 屏。</p>
+  <p class="sub">两件事：① 商品详情页按常用布局重排（v2）：只回答「买不买」，送到哪、怎么送挪到下单时再定，底栏从五格减到三格；② 拼团从看到、开团 / 参团、付款、邀请、成团或退款，到在订单里跟进度，一条线画全。邻里求团（先有需求、后有商家报价）单列一节。共 21 屏。</p>
 </header>
 
 <section>
-  <div class="sec-head"><span class="sec-num">g00 — g06</span><h2>商品详情（v2：常用布局）</h2></div>
-  <p class="sec-note">按常见商品详情页（京东 / 淘宝 / 美团）的骨架重排：主图顶到状态栏；左上「返回 · 购物车」浮在图上，右上留给微信胶囊；「分享」在标题行右侧；「已选」「范围」两行去掉 —— 规格和件数在点底栏按钮后的面板里选，销售范围挪进参数，只有送不到时才在底栏上方说一句。底栏从 5 格减到 3 格。</p>
+  <div class="sec-head"><span class="sec-num">g00 — g08</span><h2>商品详情（v2：常用布局）</h2></div>
+  <p class="sec-note">按常见商品详情页（京东 / 淘宝 / 美团）的骨架重排：主图顶到状态栏；左上「返回 · 购物车」浮在图上，右上留给微信胶囊；「收藏」「分享」在标题行右侧；「已选」「范围」两行去掉 —— 规格和件数在点底栏按钮后的面板里选，销售范围挪进参数，只有送不到时才在底栏上方说一句。底栏从 5 格减到 3 格。</p>
   <div class="grid">
 
     <figure id="g00">
@@ -43,7 +43,7 @@
           <div class="img hero full">主图 · 1/4 · 可左右滑</div>
           <div class="pz ink">
             <div class="p"><b class="num">¥50.00</b><s class="num">¥55.00</s><span class="chip bad">省 ¥5.00</span><span class="meta num">已售 128</span></div>
-            <div class="tr"><div><div class="t">香梨 · 新疆库尔勒 · 约 10 斤</div><div class="meta">脆甜多汁 · 产地直发</div></div><span class="sh">分享</span></div>
+            <div class="tr"><div><div class="t">香梨 · 新疆库尔勒 · 约 10 斤</div><div class="meta">脆甜多汁 · 产地直发</div></div><span class="acts2"><span class="sh fav">收藏</span><span class="sh">分享</span></span></div>
           </div>
           <div class="group">
             <div class="frow"><span class="k">领券</span><span class="v go"><span class="chip bad">满 99 减 10</span></span></div>
@@ -52,7 +52,7 @@
         </div>
         <div class="foot"><span class="ic">店铺</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
       </div>
-      <figcaption class="cap"><b>g01 首屏 · 普通商品</b>图 → 价 → 名（分享在名右侧）→ 领券（有券才出）→ 谁在卖。</figcaption>
+      <figcaption class="cap"><b>g01 首屏 · 普通商品</b>图 → 价 → 名（收藏、分享在名右侧）→ 领券（有券才出）→ 谁在卖。</figcaption>
       <p class="why">购物车浮在左上、返回旁边，带件数角标：随时看得到、点得到，又不占底栏。右上是微信自己的胶囊（··· ◎），小程序里谁都不能放东西。领券一行只在有券时出现。</p>
     </figure>
 
@@ -100,7 +100,7 @@
           <div class="img hero full">主图</div>
           <div class="pz ink">
             <div class="p"><b class="num">¥5.00</b><span class="chip pri">2 人团</span><s class="num">单买 ¥50.00</s></div>
-            <div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="sh">分享</span></div>
+            <div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="acts2"><span class="sh fav on">已收藏</span><span class="sh">分享</span></span></div>
           </div>
           <div class="group">
             <div class="frow"><b>2 个团在拼</b><span class="meta">没凑齐自动退款</span></div>
@@ -118,7 +118,7 @@
         <div class="ov"><i>‹</i><i>🛒<b>3</b></i><span class="mpcap">··· ◎</span></div>
         <div class="scr">
           <div class="img hero full">主图</div>
-          <div class="pz ink"><div class="p"><b class="num">¥50.00</b></div><div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="sh">分享</span></div></div>
+          <div class="pz ink"><div class="p"><b class="num">¥50.00</b></div><div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="acts2"><span class="sh fav">收藏</span><span class="sh">分享</span></span></div></div>
         </div>
         <div class="tipbar">当前收货地址不在销售区域（仅深圳市）· 换地址 ›</div>
         <div class="foot"><span class="ic">店铺</span><div class="btn off">加入购物车</div><div class="btn off">立即购买</div></div>
@@ -132,13 +132,41 @@
         <div class="ov"><i>‹</i><span class="mpcap">··· ◎</span></div>
         <div class="scr">
           <div class="img hero full">主图</div>
-          <div class="pz ink"><div class="p"><b class="num">¥50.00</b></div><div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="sh">分享</span></div></div>
+          <div class="pz ink"><div class="p"><b class="num">¥50.00</b></div><div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="acts2"><span class="sh fav">收藏</span><span class="sh">分享</span></span></div></div>
         </div>
         <div class="fab hi btn">🛒 3</div>
         <div class="foot"><span class="ic">店铺</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
       </div>
       <figcaption class="cap"><b>g06 备选：购物车悬浮在右下</b>另一种放法：圆形悬浮钮，贴在底栏上方。</figcaption>
       <p class="why pend">待拍板：g01 放左上（推荐：和返回在一起，一眼可见，不遮内容）还是 g06 右下悬浮（离拇指近，但会压住详情长图和评价）。</p>
+    </figure>
+
+      <figure id="g07">
+      <div class="ph c">
+        <div class="ov"><i>‹</i><i>🛒<b>3</b></i><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="img hero full">主图</div>
+          <div class="pz ink"><div class="p"><b class="num">¥50.00</b><s class="num">¥55.00</s></div><div class="tr"><div class="t">香梨 · 约 10 斤</div><span class="acts2"><span class="sh fav on">已收藏</span><span class="sh">分享</span></span></div></div>
+        </div>
+        <div class="toast">已收藏，可在「我的 → 收藏」查看</div>
+        <div class="foot"><span class="ic">店铺</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>g07 点了收藏</b>星变实心、字变「已收藏」，一条轻提示告诉他去哪儿找。再点一次取消，不弹确认。</figcaption>
+      <p class="why">收藏放标题旁而不是底栏：底栏刚从五格减到三格，再塞回去就又挤了。没登录时点收藏，先走静默登录；静默失败才提示去「我的」登录。</p>
+    </figure>
+
+    <figure id="g08">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的收藏</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">商品 3</span><span>店铺 1</span></div>
+          <div class="gc"><div class="th">🍇</div><div class="bd"><span class="nm">阳光玫瑰青提</span><span class="meta"><span class="chip pri">自营</span> 虹选鲜果</span><div class="ln"><span class="pr num">¥39.90</span><span class="chip act">＋</span></div></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="warn">2 人团 ¥5.00 · 2 个团在拼</span><div class="ln"><span class="pr num">¥50.00</span><span class="chip act">＋</span></div></div></div>
+          <div class="gc dead"><div class="th">🥭</div><div class="bd"><span class="nm">贵妃芒</span><span class="meta">已下架</span><div class="ln"><span class="meta">找相似 ›</span><span class="meta">删除</span></div></div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>g08 我的收藏</b>「我的」页一个入口；商品 / 店铺两栏（店铺收藏已有后端，一并收进来）。</figcaption>
+      <p class="why">有团的商品在收藏里也标出团价；下架、售罄的压淡但不自动删 —— 他收藏它是有原因的，自动消失会让人以为数据丢了。按收藏时间倒序。</p>
     </figure>
 
   </div>
