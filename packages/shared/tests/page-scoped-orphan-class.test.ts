@@ -33,7 +33,6 @@ const KNOWN: Record<string, string[]> = {
   "b-app/src/pages/login/index.vue": ["blk"],
   "b-app/src/pages/purchase-edit/index.vue": ["pick"],
   "b-app/src/pages/stock-out/index.vue": ["hint", "pick"],
-  "b-app/src/pages/store-categories/index.vue": ["head"],
   "b-app/src/pages/store/index.vue": ["head__sub"],
   "b-app/src/pages/transfer/index.vue": ["hint", "pick"],
   "c-app/src/pages/login/index.vue": ["divider"],

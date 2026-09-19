@@ -248,7 +248,9 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker",
     // 选人面板与批量打标：外面包的是 sh-sheet，同样是浮层
-    "biz-audience-picker", "biz-batch-tag-sheet"]);
+    "biz-audience-picker", "biz-batch-tag-sheet",
+    // 调整经营类目：同上，外面包的是 sh-sheet
+    "biz-category-sheet"]);
 
   /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
    *  2026-09-06 在块间缝那段之前又插了一段（button::after 重置），

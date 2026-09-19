@@ -107,8 +107,10 @@ export interface Store {
    * 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」
    * （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。
    */
-  businessMode?: "SELF_OPERATED" | "THIRD_PARTY";
+  businessMode?: BusinessMode;
 }
+/** 门店经营模式。与后端 MchStore.SELF_OPERATED / THIRD_PARTY、ops-web 的 BusinessMode 同一套取值 */
+export type BusinessMode = "SELF_OPERATED" | "THIRD_PARTY";
 export interface StoreRole {
   /** 哪家店 */
   storeNo: string;
