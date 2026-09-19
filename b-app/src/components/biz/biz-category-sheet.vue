@@ -90,7 +90,7 @@ async function toggle(c: Category) {
 
 <template>
   <sh-sheet :visible="visible" :title="t('storeCategories.adjust')" @close="emit('close')">
-    <view v-for="top in tree" :key="top.categoryNo" class="grp">
+    <view v-for="top in tree" :key="top.categoryNo" class="sh-mt-md">
       <text class="txt-title">{{ top.name }}</text>
       <view class="opts sh-wrap">
         <sh-option
@@ -112,12 +112,6 @@ async function toggle(c: Category) {
 </template>
 
 <style scoped>
-.grp {
-  margin-top: 24rpx;
-}
-.grp + .grp {
-  margin-top: 32rpx;
-}
 .opts {
   gap: 16rpx;
   margin-top: 16rpx;

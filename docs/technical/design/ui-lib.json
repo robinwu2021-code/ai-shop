@@ -1845,7 +1845,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 11,
+        "b-app": 12,
         "c-app": 3
       }
     },
@@ -3074,7 +3074,7 @@
       "name": "biz-category-sheet",
       "file": "b-app/src/components/biz/biz-category-sheet.vue",
       "scope": "B 端",
-      "lines": 129,
+      "lines": 123,
       "props": [
         "visible: boolean",
         "storeNo: string"
@@ -3096,9 +3096,7 @@
         "rawFontSize": [],
         "spacing": [
           8,
-          16,
-          24,
-          32
+          16
         ],
         "radius": [],
         "deps": [
@@ -3107,11 +3105,9 @@
         ]
       },
       "rootClasses": [
-        "grp"
+        "sh-mt-md"
       ],
-      "rootDecl": {
-        "margin-top": "24rpx"
-      }
+      "rootDecl": {}
     },
     {
       "name": "biz-item-picker",
@@ -5219,18 +5215,10 @@
         "sh-option",
         "sh-sheet"
       ],
-      "libClassHits": 7,
-      "localSelectors": 4,
-      "localCssLines": 13,
-      "rolled": [
-        {
-          "id": "sechead",
-          "label": "分段标题（只有标题）",
-          "lib": ".txt-title + 间距档",
-          "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
-          "gap": false
-        }
-      ]
+      "libClassHits": 8,
+      "localSelectors": 2,
+      "localCssLines": 7,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5532,16 +5520,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "sechead",
-      "label": "分段标题（只有标题）",
-      "lib": ".txt-title + 间距档",
-      "gap": false,
-      "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
-      "pages": [
-        "b-app/biz-category-sheet"
       ]
     }
   ],
