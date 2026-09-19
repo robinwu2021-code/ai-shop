@@ -2397,6 +2397,11 @@ components:
         unlinkedBuyers: 
           type: "number"
           description: "未绑手机号、因此没计进会员的买家数"
+        levelComputedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "上一次按口径每日重算分层的时刻（毫秒）。从没跑过为 null。 会员页据此写「09-19 03:00 按口径重算」—— 商家看到昨天的常客今天变沉睡，知道不是数据错了"
       required: 
         - "newCount"
         - "regularCount"
@@ -2640,9 +2645,26 @@ components:
         autoJoinOnOrder: 
           type: "boolean"
           description: "支付成功自动入会。关掉之后只剩手工录入与本人主动加入"
+        sleepDays: 
+          type: "number"
+          description: "分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡"
+        loyalD90Orders: 
+          type: "number"
+          description: "近 90 天至少这么多单算熟客"
+        regularD90Orders: 
+          type: "number"
+          description: "近 90 天至少这么多单算常客；再少是新客"
+        levelComputedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "上一次按口径重算的时刻；从没跑过为 null"
       required: 
         - "memberScope"
         - "autoJoinOnOrder"
+        - "sleepDays"
+        - "loyalD90Orders"
+        - "regularD90Orders"
       additionalProperties: false
       description: "会员经营口径（P3）。"
     MemberSegment: 

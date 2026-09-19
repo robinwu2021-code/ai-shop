@@ -2,7 +2,7 @@
 //
 // 与商家侧的差别只有一条：**跨商家**。字段与脱敏口径完全一样 ——
 // 运营看得到「谁是谁家的会员」，但看不到完整手机号。
-import type { OpsEnrollment, OpsMember, OpsPerson, OpsPlatformActivity, OpsPlatformDraft, OpsPromoActivity, OpsPromoCoupon, Page, ReachStat }
+import type { MemberLevelPolicy, OpsEnrollment, OpsMember, OpsPerson, OpsPlatformActivity, OpsPlatformDraft, OpsPromoActivity, OpsPromoCoupon, Page, ReachStat }
   from "@/lib/types";
 
 export interface MemberApi {
@@ -29,6 +29,10 @@ export interface MemberApi {
 
   /** 触达量与退订率，**按退订率倒序** —— 发得多不是成绩，发到有人关掉才是问题 */
   listReachStats(days?: number): Promise<ReachStat[]>;
+  /** 会员分层口径。看要 `member:member:read` */
+  getLevelPolicy(): Promise<MemberLevelPolicy>;
+  /** 改分层口径。要 `system:param:update` —— 一改，全平台所有商家的「沉睡」人数跟着变 */
+  saveLevelPolicy(v: Pick<MemberLevelPolicy, "sleepDays" | "loyalD90Orders" | "regularD90Orders">): Promise<MemberLevelPolicy>;
 
   /** 全平台券（新模型）：归属、敞口、异常标记 */
   listOpsPromoCoupons(entityNo?: string): Promise<OpsPromoCoupon[]>;

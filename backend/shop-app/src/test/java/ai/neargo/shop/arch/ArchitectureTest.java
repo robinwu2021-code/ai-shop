@@ -551,4 +551,25 @@ class ArchitectureTest {
                         + "  · lockAtMostFor 要小于调度间隔，否则卡死时整条链停摆")
                 .isEmpty();
     }
+
+    /**
+     * 会员分层重算只算分层，<b>不触达</b>（PRD-会员标签与定向营销 AC-7）。
+     *
+     * <p>「分层变了顺手发条唤回」看起来很自然，而它意味着一次口径调整（运营把沉睡从 60 天改成 30 天）
+     * 会在凌晨给全平台几万人各推一条消息 —— 没有商家点过发送，频次闸也拦不住第一条。
+     * 先断言类存在：规则写错类名时 {@code noClasses()} 会对空集恒绿。
+     */
+    @Test
+    @DisplayName("★★ 会员分层重算不得依赖推送与触达 —— 改口径不能变成全平台群发")
+    void memberLevelServiceMustNotTouchReach() {
+        String impl = "ai.neargo.shop.member.service.impl.MemberLevelServiceImpl";
+        assertThat(classes.contain(impl)).as("类名写错会让下面的规则对空集恒绿").isTrue();
+        noClasses().that().haveFullyQualifiedName(impl)
+                .or().haveFullyQualifiedName("ai.neargo.shop.member.job.MemberLevelRecomputeJob")
+                .should().dependOnClassesThat().resideInAnyPackage("ai.neargo.shop.spi.notify..")
+                .orShould().dependOnClassesThat().haveSimpleNameStartingWith("MbrReach")
+                .orShould().dependOnClassesThat().haveSimpleNameStartingWith("MemberReach")
+                .because("分层是事实，发不发消息是商家的决定")
+                .check(classes);
+    }
 }

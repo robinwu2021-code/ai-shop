@@ -103,6 +103,16 @@ export const memberMock: MemberApi = {
   },
 
   listReachStats: () => wait(db.reachStats),
+  getLevelPolicy: () => wait({ ...db.levelPolicy }),
+  saveLevelPolicy: (v) => {
+    // 与后端 LevelPolicy#valid 同一条：常客门槛必须低于熟客，否则「常客」整片消失
+    if (v.sleepDays < 7 || v.sleepDays > 365 || v.regularD90Orders < 1
+        || v.loyalD90Orders > 99 || v.regularD90Orders >= v.loyalD90Orders) {
+      return Promise.reject(new Error("口径不自洽：沉睡 7–365 天，常客门槛须低于熟客门槛"));
+    }
+    Object.assign(db.levelPolicy, v);
+    return wait({ ...db.levelPolicy });
+  },
   listOpsPromoCoupons: (entityNo) =>
     wait(db.opsPromoCoupons.filter((c) => !entityNo || c.entityNo === entityNo)),
   listOpsPromoActivities: (entityNo) =>

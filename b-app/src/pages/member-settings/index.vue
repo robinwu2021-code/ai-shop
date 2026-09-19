@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hourMinute, monthDay } from "@shared/utils/datetime";
 // 会员经营口径（P3）。
 //
 // 这一页只有两个开关，但其中一个会**改变「新客」的含义**：
@@ -68,6 +69,10 @@ function toggleAutoJoin() {
 }
 
 onShow(load);
+
+function stamp(ts: number) {
+  return `${monthDay(ts)} ${hourMinute(ts)}`;
+}
 </script>
 
 <template>
@@ -107,6 +112,38 @@ onShow(load);
         </text>
       </view>
     </view>
+
+    <!--
+      分层口径：平台统一设定、商家只读，所以没有任何可点的东西。
+      写出来是因为商家一定会问「他明明买了很多次，为什么是沉睡」—— 答案在「先判沉睡」那一行。
+    -->
+    <view v-if="setting" class="sh-card sh-mt-sm">
+      <view class="sh-row sh-row--between">
+        <text class="field__label">{{ $t("memberSettings.levelTitle") }}</text>
+        <text v-if="setting.levelComputedAt" class="txt-caption sh-muted">
+          {{ $t("memberSettings.levelComputedAt", { t: stamp(setting.levelComputedAt) }) }}
+        </text>
+      </view>
+      <view class="sh-row sh-row--between level-row">
+        <text class="txt-body">{{ $t("members.level.SLEEPING") }}</text>
+        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleSleep", { n: setting.sleepDays }) }}</text>
+      </view>
+      <view class="sh-row sh-row--between level-row">
+        <text class="txt-body">{{ $t("members.level.LOYAL") }}</text>
+        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleLoyal", { n: setting.loyalD90Orders }) }}</text>
+      </view>
+      <view class="sh-row sh-row--between level-row">
+        <text class="txt-body">{{ $t("members.level.REGULAR") }}</text>
+        <text class="txt-body sh-muted">
+          {{ $t("memberSettings.ruleRegular", { a: setting.regularD90Orders, b: setting.loyalD90Orders - 1 }) }}
+        </text>
+      </view>
+      <view class="sh-row sh-row--between level-row">
+        <text class="txt-body">{{ $t("members.level.NEW") }}</text>
+        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleNew", { n: setting.regularD90Orders - 1 }) }}</text>
+      </view>
+      <text class="sh-hint sh-mt-sm">{{ $t("memberSettings.sleepFirst", { n: setting.sleepDays }) }}</text>
+    </view>
   </sh-scaffold>
 </template>
 
@@ -120,5 +157,8 @@ onShow(load);
 }
 .row {
   gap: 24rpx;
+}
+.level-row {
+  padding-block: 16rpx;
 }
 </style>

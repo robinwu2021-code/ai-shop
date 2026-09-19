@@ -51,7 +51,8 @@ public final class MemberVOs {
      *                       对不上时他的第一反应是数据丢了
      */
     public record MemberStatsVO(int newCount, int regularCount, int loyalCount, int sleepingCount,
-                                int reachable, int newThisMonth, int unlinkedBuyers) {
+                                int reachable, int newThisMonth, int unlinkedBuyers,
+                                Long levelComputedAt) {
     }
 
     public record MemberStoreVO(String storeNo, Integer orderCount, Long totalSpentMinor,
@@ -142,7 +143,9 @@ public final class MemberVOs {
                               int optOut, double optOutRate) {
     }
 
-    public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder) {
+    public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder,
+                                  int sleepDays, int loyalD90Orders, int regularD90Orders,
+                                  Long levelComputedAt) {
     }
 
     /**

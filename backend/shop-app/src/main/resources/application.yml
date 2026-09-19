@@ -270,6 +270,10 @@ shop:
     group-expire:
       # 一分钟一轮：团过了截止还挂着「还差 N 人」，买家会一直等
       cron: ${SHOP_JOB_GROUP_EXPIRE_CRON:15 * * * * *}
+    member-level-recompute:
+      # 每天一次：分层按「多少天没来」算，时间本身就会改变它，没有事件能触发。
+      # 放在凌晨 3 点 —— 商家早上打开会员页看到的是今天的数
+      cron: ${SHOP_JOB_MEMBER_LEVEL_RECOMPUTE_CRON:0 0 3 * * *}
     period-cutoff:
       # 一分钟一轮：集单到点截单、未达起订量的期超时自动取消并退款。
       # 截单归属看订单时间与 cutoff_at，不看这个任务跑到没有 —— 晚一分钟扫到不改变谁属于哪一期

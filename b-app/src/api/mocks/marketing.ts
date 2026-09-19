@@ -216,6 +216,7 @@ export const marketingMock: Pick<MerchantApi,
       newThisMonth: rows.filter((m) => m.joinedAt >= Date.now() - 30 * 86400_000).length,
       // 演示一个非零值：商家一定会拿订单数与会员数对，这一行就是解释差额的地方
       unlinkedBuyers: 3,
+      levelComputedAt: todayAt3(),
     });
   },
 
@@ -352,7 +353,7 @@ export const marketingMock: Pick<MerchantApi,
 
   // ---------------------------------------------------------------- 口径与人群（P3）
   async mMemberSettings() {
-    return delay({ ...db.memberSetting });
+    return delay(memberSettingView());
   },
 
   async mSaveMemberSettings(payload) {
@@ -361,7 +362,7 @@ export const marketingMock: Pick<MerchantApi,
       db.memberSetting.autoJoinOnOrder = payload.autoJoinOnOrder;
     }
     persist();
-    return delay({ ...db.memberSetting });
+    return delay(memberSettingView());
   },
 
   async mMemberSegments() {
@@ -931,3 +932,25 @@ const mockPeriods: BatchPeriod[] = [
     cutoffAt: mockAt("20:00") - 86400_000, pickupDate: mockDay(0), pickupFrom: "09:00", status: "CONFIRMED",
     qty: 112, customers: 57, amountMinor: 98_400, minQty: null, periodQuota: 300, decideDeadline: null },
 ];
+
+/** 演示「今天凌晨 3 点按口径重算过」—— 与生产任务的默认时刻一致 */
+function todayAt3(): number {
+  const d = new Date();
+  d.setHours(3, 0, 0, 0);
+  return d.getTime();
+}
+
+/**
+ * 分层口径三个字段是后加的：浏览器里存着的旧 mock 数据没有它们，直接展开会显示 NaN。
+ * 先铺平台默认口径再盖上存档 —— 真实后端每次都会返回这三个值。
+ */
+function memberSettingView() {
+  const saved = db.memberSetting;
+  return {
+    ...saved,
+    sleepDays: saved.sleepDays ?? 60,
+    loyalD90Orders: saved.loyalD90Orders ?? 6,
+    regularD90Orders: saved.regularD90Orders ?? 2,
+    levelComputedAt: todayAt3(),
+  };
+}

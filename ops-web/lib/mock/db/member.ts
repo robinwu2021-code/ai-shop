@@ -2,7 +2,7 @@
 //
 // **手机号只种后四位**：mock 里也不放完整号 —— 演示数据里出现一串真号，
 // 迟早会有人截图发出去，而那正是这一页最不该发生的事。
-import type { OpsMember, OpsPromoActivity, OpsPromoCoupon, ReachStat } from "@/lib/types";
+import type { MemberLevelPolicy, OpsMember, OpsPromoActivity, OpsPromoCoupon, ReachStat } from "@/lib/types";
 
 export const opsMembers: OpsMember[] = [
   {
@@ -26,6 +26,12 @@ export const opsMembers: OpsMember[] = [
     joinedAt: Date.now() - 3 * 86400_000,
   },
 ];
+
+/** 与后端 LevelPolicy.DEFAULT 同值；lastRun 演示「今天凌晨跑过、有人新变沉睡」 */
+export const levelPolicy: MemberLevelPolicy = {
+  sleepDays: 60, loyalD90Orders: 6, regularD90Orders: 2,
+  lastRun: { at: new Date().setHours(3, 0, 0, 0), scanned: 141, changed: 9, newlySleeping: 4, tookMs: 380 },
+};
 
 export const reachStats: ReachStat[] = [
   // 按退订率倒序 —— 发得多不是成绩，发到有人关掉才是问题

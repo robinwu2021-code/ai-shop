@@ -31,6 +31,7 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { PagedTable } from "@/components/ui/paged-table";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { LevelPolicyCard } from "./level-policy-card";
 import type { OpsMember, OpsPromoActivity, OpsPromoCoupon, ReachStat } from "@/lib/types";
 
 type Copy = (typeof MEMBERS_COPY)["zh"];
@@ -267,6 +268,8 @@ function MembersInner() {
           </CardContent>
         </Card>
       )}
+
+      {tab === "reach" && <LevelPolicyCard c={c} />}
 
       {tab === "reach" && (
         <Card>

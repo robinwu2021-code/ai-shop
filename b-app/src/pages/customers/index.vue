@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hourMinute, monthDay } from "@shared/utils/datetime";
 // 会员（P1）。**路由沿用 pages/customers** —— 它是「我的客户」那一页的升级版，
 // 换路由只会让存量深链失效，而这一页本来就从「我的」进。
 //
@@ -22,6 +23,10 @@ const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const stats = ref<MemberStats | null>(null);
+
+function stamp(ts: number) {
+  return `${monthDay(ts)} ${hourMinute(ts)}`;
+}
 const list = ref<Member[]>([]);
 const loading = ref(false);
 
@@ -226,6 +231,13 @@ onShow(() => {
 
     <text v-if="stats" class="txt-caption sh-muted sub">
       {{ $t("members.summary", { n: stats.newThisMonth, m: stats.reachable }) }}
+    </text>
+    <!--
+      分层是每天凌晨按口径重算的。把时刻写出来：昨天的常客今天变成沉睡，
+      商家第一反应是数据错了 —— 这一行是它唯一的解释。
+    -->
+    <text v-if="stats?.levelComputedAt" class="txt-caption sh-muted sub">
+      {{ $t("members.levelComputedAt", { t: stamp(stats.levelComputedAt) }) }}
     </text>
 
     <!--

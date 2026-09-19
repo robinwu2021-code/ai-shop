@@ -1106,7 +1106,11 @@ export const db = {
   } as Record<string, string[]>,
 
   /** 会员经营口径（P3）。默认按主体 —— 多数商家只有一家店，那也是对的默认 */
-  memberSetting: { memberScope: "ENTITY", autoJoinOnOrder: true },
+  memberSetting: {
+    memberScope: "ENTITY", autoJoinOnOrder: true,
+    sleepDays: 60, loyalD90Orders: 6, regularD90Orders: 2,
+    levelComputedAt: null as number | null,
+  },
 
   /**
    * 存下来的人群（P3）。**只存条件不存名单** ——

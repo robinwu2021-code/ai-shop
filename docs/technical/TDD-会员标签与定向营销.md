@@ -1,6 +1,6 @@
 # TDD-会员标签与定向营销
 
-状态：草稿（待确认 §8 四条）
+状态：已确认（2026-09-19）· 批 A 实现中
 关联需求：[PRD-会员标签与定向营销](../requirements/PRD-会员标签与定向营销.md)（AC-1 … AC-15）
 原型：[会员标签与定向营销](https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc)（m01–m21 · c01 · o01–o02）·
 [营销 v2](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（s01 · s04–s06 · s16 · s18）
@@ -150,7 +150,7 @@
 | POST | `/mp/store/{merchantNo}/enter` | 登录买家 | 改：`EnterReq` 加可选 `reachNo` | c01 |
 | GET | `/ops/members/reach-stats?days=30` | `member:member:read` | 改：VO 加四列 | o01 |
 | GET | `/ops/members/level-policy` | `member:member:read` | **新** | o02 |
-| PUT | `/ops/members/level-policy` | **`member:level:update`（新）** | **新** | o02 |
+| POST | `/ops/members/level-policy` | `system:param:update`（复用，同 `inventory.policy` / `proxy-limit`） | **新** | o02 |
 | 「现在重算」 | 复用运营端「定时任务」页的手动触发 | 现有 | — | o02 |
 
 #### 关键请求/响应
@@ -241,17 +241,15 @@ ALTER TABLE pmt_coupon_issue ADD COLUMN audience_json TEXT DEFAULT NULL;
 
 | key | 默认 | 谁读 |
 |---|---|---|
-| `member.level.sleep-days` | 60 | `LevelPolicy` |
-| `member.level.loyal-d90-orders` | 6 | `LevelPolicy` |
-| `member.level.regular-d90-orders` | 2 | `LevelPolicy` |
+| `member.level.policy` | —（JSON：sleepDays / loyalD90Orders / regularD90Orders；不存在时用 `LevelPolicy.DEFAULT` 60 / 6 / 2） | `LevelPolicy`，写法同 `inventory.policy` |
 | `member.level.last-run` | —（JSON：at / changed / newlySleeping / tookMs） | 重算任务写，m01 / m21 / o02 读 |
 | `member.reach.attribution-days` | 7 | 回写与 `stats_until` |
 | `shop.job.member-level-recompute.cron`（yml） | `0 0 3 * * *` | 任务调度，环境变量可覆盖 |
 
 #### 权限码
 
-新增 1 个运营端码 `member:level:update`（改分层阈值）。B 端不新增。
-登记五处：`Perms` 常量 · 权限种子迁移 · 运营端菜单/按钮 · `ops-role-endpoint-matrix.json` · 角色×端点矩阵文档（见仓库记忆「新增 ops 端点五处登记」）。
+**不新增**。看口径随 `member:member:read`；改口径复用 `system:param:update`（平台参数），
+与 `inventory.policy`、代客下单限额同一把钥匙。登记：`scripts/perm-endpoint-map.mjs` 一条规则 + 重生成角色×端点矩阵。
 
 #### i18n
 
@@ -357,7 +355,7 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | 修改 | `member/service/impl/MemberReachServiceImpl.java` | 写批次头；链接；`tasks` / `task` 查询 |
 | 修改 | `member/port/MemberQueryPortImpl.java` · `MemberEventPortImpl.java` | 实现新方法 |
 | 修改 | `member/dto/MemberVOs.java` | 新增/扩展 VO |
-| 修改 | `member/service/impl/OpsMemberServiceImpl.java` | reach-stats 扩列；level-policy 读写 |
+| 修改 | `member/service/impl/OpsMemberServiceImpl.java` | reach-stats 扩列（批 C） |
 | 修改 | `promotion/service/impl/ActivityPricingServiceImpl.java` | SEGMENT 快照分支 |
 | 修改 | `promotion/service/impl/ActivityServiceImpl.java` | 落快照；发布校验覆盖人数 |
 | 修改 | `promotion/service/impl/PmtCouponServiceImpl.java` | `issue` 接受受众项；VO 加已用 |
@@ -366,11 +364,11 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | 修改 | `shop-app…/portal/biz/BizMemberController.java` | 6 个新端点、2 个入参扩展 |
 | 修改 | `shop-app…/portal/biz/`（发券、活动所在 Controller） | 入参扩展 |
 | 修改 | `shop-app…/portal/mp/`（`/mp/store/{no}/enter` 所在 Controller） | `EnterReq.reachNo` |
-| 修改 | `shop-app…/portal/ops/OpsMemberController.java` | level-policy 两个端点 |
+| 新增 | `shop-app…/portal/ops/OpsMemberLevelPolicyController.java` | level-policy 两个端点（照 `OpsInventoryPolicyController`） |
 | 新增 | `shop-app…/job/MemberLevelRecomputeJob.java` | 定时任务 |
 | 修改 | `shop-app/src/main/resources/application.yml` | cron 默认值 |
 | 新增 | `shop-app/src/main/resources/db/migration/V3xx__member_audience_loop.sql` | §2.2 库表 |
-| 新增 | 权限种子 / 运营端菜单迁移（可与上面合并） | `member:level:update`、「分层口径」子菜单 |
+| — | ~~权限种子 / 运营端菜单迁移~~ | 不需要：复用现有码，面板挂在现有「触达健康度」tab |
 | 修改 | `common…/ErrorCode.java` + 三语 `messages*.properties` | 3 个码 |
 | 新增 | `b-app/src/components/biz/audience-picker.vue` | 选人面板（m12/m13），三页共用 |
 | 新增 | `b-app/src/components/biz/batch-tag-sheet.vue` | 批量打标（m06） |
@@ -461,6 +459,25 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 [实现后粘贴 git diff --stat]
 ```
 
+### 批 A 实现记录（2026-09-19）
+
+| 与设计的差异 | 原因 |
+|---|---|
+| 口径三个 key 合成一个 JSON 键 `member.level.policy` | 照 `inventory.policy` 的现成写法：一次保存、一次审计、不会出现「改了两个没改第三个」的中间态 |
+| 不新增权限码 `member:level:update`，复用 `system:param:update`；不加运营端菜单叶子 | 同类参数（库存对差轮数、代客下单限额）都用这把钥匙；新码要走权限种子、冻结码、菜单库三处登记，换来的只是一个同义的名字 |
+| 运营端 o02 不是独立 tab，而是「触达健康度」tab 顶部的一张卡 | 同上，免菜单叶子；它回答的是「商家那边的沉睡是怎么算的」，与触达同一件事的上游 |
+| B 端口径经 `GET /biz/member-settings` 带出（`MemberSettingVO` +4 字段），不另开端点 | 会员设置页本来就读它 |
+| 迁移 V338 只加索引，不落口径种子 | 默认值在 `LevelPolicy.DEFAULT`，与此前写死的 60 / 6 / 2 逐字一致，不配置时行为不变 |
+| 新表按 V332 写法不带 ENGINE/排序规则 | 生产主库已是 MySQL 9.7，`utf8mb4_uca1400_ai_ci` 在那边建不起来 |
+
+测试与消融（`MemberLevelRecomputeTest` 6 条 · `ArchitectureTest#memberLevelServiceMustNotTouchReach` · `MemberEnrollFlowTest` 9 条回归，31/31 绿）：
+
+| 消融 | 变红的 |
+|---|---|
+| 重算时 `level = m.getLevel()`（不按口径算） | `idleRegularBecomesSleepingNextDay` · `raisingSleepDaysRestoresLevel` · `d90DecaysWhenOrdersLeaveWindow` |
+| 去掉「没变就不写」 | `recomputeTwiceChangesNoRow` |
+| `MemberLevelServiceImpl` 加一个 `UserPushPort` 字段 | `memberLevelServiceMustNotTouchReach` |
+
 ### 偏差说明（设计阶段已知，写在前面）
 
 | 与谁 | 偏差 | 处理 |
@@ -486,7 +503,7 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | A2 | 迁移（仅 `idx_mbr_source_order`）+ `MemberLevelService#recompute` | A1 | AC-5 / 6 测试 + 消融 |
 | A3 | `MemberLevelRecomputeJob` + yml cron + ArchUnit 规则 | A2 | AC-7；`/internal/job/declarations` 本地可见 |
 | A4 | `MemberStatsVO.levelComputedAt`；b-app m01「今天 03:00 重算」、m21 只读口径组 | A2 | vue-tsc；i18n 闸门 |
-| A5 | 运营端 o02：`GET/PUT /ops/members/level-policy` + 新权限码五处登记 + 菜单迁移 | A2 | 权限矩阵闸门；ops-web 自查 |
+| A5 | 运营端 o02：`GET/POST /ops/members/level-policy`（复用 `system:param:update`），面板挂「触达健康度」tab | A2 | 权限矩阵闸门；ops-web tsc |
 | A6 | 上线：低峰手动触发一次，记录「新变沉睡 N 人」；次日核 `last-run` | A1–A5 | **生产验收**：两项都有值才算完 |
 
 ### 批 B · 打标签 + 选人面板 + 三处接入 · 约 8 人日
@@ -528,7 +545,7 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 
 ---
 
-## §8 待确认
+## §8 已确认（2026-09-19 用户「确认开工」，四条均按本方案的假设定案）
 
 | # | 问题 | 本方案的假设 | 卡住谁 |
 |---|---|---|---|
@@ -543,4 +560,5 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 
 | 日期 | 事件 |
 |---|---|
+| 2026-09-19 | 方案确认，§8 四条按假设定案；开始批 A |
 | 2026-09-19 | 草稿；基于代码盘点（`BizMemberController` · `MemberQueryPortImpl` · `ActivityPricingServiceImpl#audienceHits` · `PmtCouponServiceImpl#issue` · `MemberReachServiceImpl` · V224/V226/V230/V242/V243） |

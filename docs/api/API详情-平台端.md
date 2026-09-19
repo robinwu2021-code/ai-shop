@@ -4609,6 +4609,46 @@ _无字段_
 | `merges` | `string`\[\] | 是 | 合并过的人档号。合并不可逆，留痕是唯一的回溯手段 |
 
 
+#### GET `/ops/members/level-policy`
+
+会员分层口径
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MemberLevelPolicy`](#memberlevelpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sleepDays` | `number` | 是 | 超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `lastRun` | [`#/definitions/LevelRecomputeRun`](#definitionslevelrecomputerun) \| `null` | 否 | 上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0 |
+
+
+#### POST `/ops/members/level-policy`
+
+改分层口径
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MemberLevelPolicy`](#memberlevelpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sleepDays` | `number` | 是 | 超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `lastRun` | [`#/definitions/LevelRecomputeRun`](#definitionslevelrecomputerun) \| `null` | 否 | 上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0 |
+
+
 #### GET `/ops/members/reach-stats`
 
 触达量与退订率，**按退订率倒序** —— 发得多不是成绩，发到有人关掉才是问题 */
@@ -10604,6 +10644,17 @@ KPI 卡（金额为最小货币单位整数）。
 | `createdAt` | `string` | 是 | 创建时间 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+### MemberLevelPolicy
+
+会员分层口径（全平台统一，商家只读）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sleepDays` | `number` | 是 | 超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `lastRun` | [`#/definitions/LevelRecomputeRun`](#definitionslevelrecomputerun) \| `null` | 否 | 上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0 |
 
 ### MenuFunction
 

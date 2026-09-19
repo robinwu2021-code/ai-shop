@@ -66,6 +66,8 @@ public class MemberServiceImpl implements MemberService {
 
     /** 按标签筛人要读关系表。判 tagNo 存不存在是标签服务的事，这里只做交集 */
     private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
+    /** 分层口径的唯一来源：下单即时算与每日重算读同一份，见 {@code LevelPolicy} */
+    private final ai.neargo.shop.member.service.MemberLevelService levelService;
 
     public MemberServiceImpl(MemberMapper memberMapper, MemberStoreMapper storeMapper,
                              MemberSourceMapper sourceMapper, SettingMapper settingMapper,
@@ -75,8 +77,10 @@ public class MemberServiceImpl implements MemberService {
                                      memberTagMapper,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                              org.springframework.beans.factory.ObjectProvider<
-                                     ai.neargo.shop.spi.marketing.AttributionPort> attributionPort) {
+                                     ai.neargo.shop.spi.marketing.AttributionPort> attributionPort,
+                             ai.neargo.shop.member.service.MemberLevelService levelService) {
         this.attributionPort = attributionPort;
+        this.levelService = levelService;
         this.memberTagMapper = memberTagMapper;
         this.merchantPort = merchantPort;
         this.memberMapper = memberMapper;
@@ -150,7 +154,8 @@ public class MemberServiceImpl implements MemberService {
             m.setD90OrderCount(nz(m.getD90OrderCount()) + 1);
             m.setD90SpentMinor(nz(m.getD90SpentMinor()) + amountMinor);
         }
-        m.setLevel(levelOf(m.getD90OrderCount(), m.getLastOrderAt()));
+        m.setLevel(levelService.policy().levelOf(m.getD90OrderCount(), m.getLastOrderAt(),
+                System.currentTimeMillis()));
         memberMapper.updateById(m);
 
         applyStore(m, storeNo, amountMinor, paidAt, fresh);
@@ -476,7 +481,8 @@ public class MemberServiceImpl implements MemberService {
             }
         }
         // unlinkedBuyers 由应用层用订单数与会员数的差额算（会员域不认识订单表），这里给 0
-        return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0);
+        return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0,
+                levelComputedAt());
     }
 
     /** 门店口径的四个数字。可触达与本月新增仍按人算 —— 那两个与门店无关 */
@@ -513,13 +519,14 @@ public class MemberServiceImpl implements MemberService {
                 newThisMonth++;
             }
         }
-        return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0);
+        return new MemberStatsVO(neu, regular, loyal, sleeping, reachable, newThisMonth, 0,
+                levelComputedAt());
     }
 
     @Override
     public MemberSettingVO settings(String entityNo) {
         MbrSetting s = settingRow(entityNo);
-        return new MemberSettingVO(
+        return settingVO(
                 s == null || s.getMemberScope() == null ? MbrSetting.ENTITY : s.getMemberScope(),
                 s == null || s.getAutoJoinOnOrder() == null || s.getAutoJoinOnOrder() == 1);
     }
@@ -544,7 +551,7 @@ public class MemberServiceImpl implements MemberService {
             s.setAutoJoinOnOrder(autoJoinOnOrder ? 1 : 0);
         }
         settingMapper.updateById(s);
-        return new MemberSettingVO(s.getMemberScope(), nz(s.getAutoJoinOnOrder()) == 1);
+        return settingVO(s.getMemberScope(), nz(s.getAutoJoinOnOrder()) == 1);
     }
 
     private MbrSetting settingRow(String entityNo) {
@@ -645,7 +652,8 @@ public class MemberServiceImpl implements MemberService {
             s.setD90OrderCount(nz(s.getD90OrderCount()) + 1);
             s.setD90SpentMinor(nz(s.getD90SpentMinor()) + amountMinor);
         }
-        s.setLevel(levelOf(s.getD90OrderCount(), s.getLastOrderAt()));
+        s.setLevel(levelService.policy().levelOf(s.getD90OrderCount(), s.getLastOrderAt(),
+                System.currentTimeMillis()));
         storeMapper.updateById(s);
     }
 
@@ -698,21 +706,16 @@ public class MemberServiceImpl implements MemberService {
                 .eq(MbrMemberSource::getRefNo, subOrderNo));
     }
 
-    /**
-     * 分层口径。**先判沉睡再判活跃** —— 一个曾经的熟客三个月没来，
-     * 商家要看到的是「沉睡」，不是「熟客」。
-     */
-    private static String levelOf(Integer d90Orders, Long lastOrderAt) {
-        long idleDays = lastOrderAt == null ? Long.MAX_VALUE
-                : (System.currentTimeMillis() - lastOrderAt) / DAY;
-        if (lastOrderAt != null && idleDays > 60) {
-            return MbrMember.LEVEL_SLEEPING;
-        }
-        int n = nz(d90Orders);
-        if (n >= 6) {
-            return MbrMember.LEVEL_LOYAL;
-        }
-        return n >= 2 ? MbrMember.LEVEL_REGULAR : MbrMember.LEVEL_NEW;
+    /** 上一次每日重算的时刻；从没跑过为 null。会员页据此写「今天 03:00 按口径重算」 */
+    private Long levelComputedAt() {
+        var last = levelService.lastRun();
+        return last == null ? null : last.at();
+    }
+
+    private MemberSettingVO settingVO(String memberScope, boolean autoJoin) {
+        var p = levelService.policy();
+        return new MemberSettingVO(memberScope, autoJoin,
+                p.sleepDays(), p.loyalD90Orders(), p.regularD90Orders(), levelComputedAt());
     }
 
     private MemberVO vo(MbrMember m) {

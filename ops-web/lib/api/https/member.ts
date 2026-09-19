@@ -10,6 +10,8 @@ export const memberHttp: MemberApi = {
   revealMemberPhone: (personNo, reason) =>
     client.post(`/ops/persons/${personNo}/reveal-phone`, { reason }),
   listReachStats: (days) => client.get("/ops/members/reach-stats", { days }),
+  getLevelPolicy: () => client.get("/ops/members/level-policy"),
+  saveLevelPolicy: (v) => client.post("/ops/members/level-policy", v),
   listOpsPromoCoupons: (entityNo) => client.get("/ops/promotion/coupons", { entityNo }),
   listOpsPromoActivities: (entityNo) => client.get("/ops/promotion/activities", { entityNo }),
   stopOpsActivity: (activityNo, reason) =>

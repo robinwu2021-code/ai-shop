@@ -3043,6 +3043,10 @@ _无字段_
 |---|---|:---:|---|
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
+| `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
 
 
 #### PUT `/biz/member-settings`
@@ -3059,6 +3063,10 @@ _无字段_
 |---|---|:---:|---|
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
+| `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
 
 
 ### member-tags
@@ -3245,6 +3253,7 @@ _无字段_
 | `reachable` | `number` | 是 | 可触达人数（排除线索、拉黑、已退订） |
 | `newThisMonth` | `number` | 是 | 本月新增会员 |
 | `unlinkedBuyers` | `number` | 是 | 未绑手机号、因此没计进会员的买家数 |
+| `levelComputedAt` | `number,null` | 否 | 上一次按口径每日重算分层的时刻（毫秒）。从没跑过为 null。 会员页据此写「09-19 03:00 按口径重算」—— 商家看到昨天的常客今天变沉睡，知道不是数据错了 |
 
 
 #### POST `/biz/members/tags`
@@ -6906,6 +6915,10 @@ _无字段_
 |---|---|:---:|---|
 | `memberScope` | `string` | 是 | `ENTITY` 按主体（默认）/ `STORE` 按门店 |
 | `autoJoinOnOrder` | `boolean` | 是 | 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 |
+| `sleepDays` | `number` | 是 | 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 |
+| `loyalD90Orders` | `number` | 是 | 近 90 天至少这么多单算熟客 |
+| `regularD90Orders` | `number` | 是 | 近 90 天至少这么多单算常客；再少是新客 |
+| `levelComputedAt` | `number,null` | 否 | 上一次按口径重算的时刻；从没跑过为 null |
 
 ### MemberSourceItem
 
@@ -6936,6 +6949,7 @@ _无字段_
 | `reachable` | `number` | 是 | 可触达人数（排除线索、拉黑、已退订） |
 | `newThisMonth` | `number` | 是 | 本月新增会员 |
 | `unlinkedBuyers` | `number` | 是 | 未绑手机号、因此没计进会员的买家数 |
+| `levelComputedAt` | `number,null` | 否 | 上一次按口径每日重算分层的时刻（毫秒）。从没跑过为 null。 会员页据此写「09-19 03:00 按口径重算」—— 商家看到昨天的常客今天变沉睡，知道不是数据错了 |
 
 ### MemberStoreStat
 

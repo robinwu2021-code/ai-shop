@@ -8799,6 +8799,55 @@ components:
         - "optOutRate"
       additionalProperties: false
       description: "触达健康度。"
+    LevelRecomputeRun: 
+      type: "object"
+      properties: 
+        at: 
+          type: "number"
+          description: "按哪个时刻算的（毫秒）"
+        scanned: 
+          type: "number"
+          description: "扫描了多少会员"
+        changed: 
+          type: "number"
+          description: "分层或近 90 天单数变了的人数"
+        newlySleeping: 
+          type: "number"
+          description: "其中这一轮新变成沉睡的人数。第一次上线会很大 —— 那是历史欠账一次性显形，不是事故"
+        tookMs: 
+          type: "number"
+          description: "用时（毫秒）"
+      required: 
+        - "at"
+        - "scanned"
+        - "changed"
+        - "newlySleeping"
+        - "tookMs"
+      additionalProperties: false
+      description: "一次会员分层重算的结果"
+    MemberLevelPolicy: 
+      type: "object"
+      properties: 
+        sleepDays: 
+          type: "number"
+          description: "超过这么多天没下单算沉睡"
+        loyalD90Orders: 
+          type: "number"
+          description: "近 90 天至少这么多单算熟客"
+        regularD90Orders: 
+          type: "number"
+          description: "近 90 天至少这么多单算常客；再少是新客"
+        lastRun: 
+          anyOf: 
+            - "$ref": "#/definitions/LevelRecomputeRun"
+            - type: "null"
+          description: "上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0"
+      required: 
+        - "sleepDays"
+        - "loyalD90Orders"
+        - "regularD90Orders"
+      additionalProperties: false
+      description: "会员分层口径（全平台统一，商家只读）。"
     OpsPromoCoupon: 
       type: "object"
       properties: 
@@ -15785,6 +15834,63 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/members/level-policy": 
+    get: 
+      operationId: "getLevelPolicy"
+      summary: "会员分层口径"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MemberLevelPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveLevelPolicy"
+      summary: "改分层口径"
+      tags: 
+        - "member"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MemberLevelPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/promotion/coupons": 
     get: 
       operationId: "listOpsPromoCoupons"

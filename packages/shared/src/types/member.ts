@@ -70,6 +70,11 @@ export interface MemberStats {
   newThisMonth: number;
   /** 未绑手机号、因此没计进会员的买家数 */
   unlinkedBuyers: number;
+  /**
+   * 上一次按口径每日重算分层的时刻（毫秒）。从没跑过为 null。
+   * 会员页据此写「09-19 03:00 按口径重算」—— 商家看到昨天的常客今天变沉睡，知道不是数据错了
+   */
+  levelComputedAt?: number | null;
 }
 /** 他在某一家门店的往来。单店主体没有这一段 */
 export interface MemberStoreStat {
@@ -192,6 +197,14 @@ export interface MemberSetting {
   memberScope: string;
   /** 支付成功自动入会。关掉之后只剩手工录入与本人主动加入 */
   autoJoinOnOrder: boolean;
+  /** 分层口径（平台统一，商家只读）：超过这么多天没下单算沉睡 */
+  sleepDays: number;
+  /** 近 90 天至少这么多单算熟客 */
+  loyalD90Orders: number;
+  /** 近 90 天至少这么多单算常客；再少是新客 */
+  regularD90Orders: number;
+  /** 上一次按口径重算的时刻；从没跑过为 null */
+  levelComputedAt?: number | null;
 }
 /**
  * 人群：一组筛选条件，可命名保存、反复用。

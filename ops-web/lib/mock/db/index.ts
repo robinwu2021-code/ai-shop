@@ -24,5 +24,5 @@ export { msgTemplates, notifyQuota, tickets, faqs, defaultLang, inAppLogs } from
 export { materials } from "./content";
 export { appearance, markets, ruleTexts, featureFlags, industries, authCodeAdmins, serviceScopes } from "./system";
 export { mediaStoreUsage, mediaReclaimable, mediaBatches } from "./media";
-export { opsMembers, reachStats, opsPromoCoupons, opsPromoActivities } from "./member";
+export { opsMembers, reachStats, levelPolicy, opsPromoCoupons, opsPromoActivities } from "./member";
 export { sceneChannels } from "./scene-channel";

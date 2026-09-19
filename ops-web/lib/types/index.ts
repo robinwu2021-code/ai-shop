@@ -90,6 +90,37 @@ export interface ReachStat {
   optOutRate: number;
 }
 
+/** 一次会员分层重算的结果 */
+export interface LevelRecomputeRun {
+  /** 按哪个时刻算的（毫秒） */
+  at: number;
+  /** 扫描了多少会员 */
+  scanned: number;
+  /** 分层或近 90 天单数变了的人数 */
+  changed: number;
+  /** 其中这一轮新变成沉睡的人数。第一次上线会很大 —— 那是历史欠账一次性显形，不是事故 */
+  newlySleeping: number;
+  /** 用时（毫秒） */
+  tookMs: number;
+}
+
+/**
+ * 会员分层口径（全平台统一，商家只读）。
+ *
+ * @remarks 改了不会立刻重算 —— 下一轮凌晨任务生效；要马上看效果去「定时任务」手动跑
+ * `member-level-recompute`。改完就重算的话，一次手滑几秒内就改掉全平台的分层。
+ */
+export interface MemberLevelPolicy {
+  /** 超过这么多天没下单算沉睡 */
+  sleepDays: number;
+  /** 近 90 天至少这么多单算熟客 */
+  loyalD90Orders: number;
+  /** 近 90 天至少这么多单算常客；再少是新客 */
+  regularD90Orders: number;
+  /** 上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0 */
+  lastRun?: LevelRecomputeRun | null;
+}
+
 /**
  * 运营看到的一张券（新模型）。
  *

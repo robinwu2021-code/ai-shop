@@ -10334,6 +10334,18 @@
           "ar": "إعدادات الأعضاء · نطاق الحساب"
         },
         {
+          "key": "memberSettings.levelComputedAt",
+          "zh-CN": "{t} 已重算",
+          "en": "Recalculated {t}",
+          "ar": "أُعيد الحساب {t}"
+        },
+        {
+          "key": "memberSettings.levelTitle",
+          "zh-CN": "分层口径",
+          "en": "Tier rules",
+          "ar": "قواعد الفئات"
+        },
+        {
           "key": "memberSettings.off",
           "zh-CN": "已关",
           "en": "Off",
@@ -10352,10 +10364,40 @@
           "ar": "المجموعتان محسوبتان دائمًا؛ التبديل يغيّر العرض لا البيانات"
         },
         {
+          "key": "memberSettings.ruleLoyal",
+          "zh-CN": "近 90 天 ≥ {n} 单",
+          "en": "≥ {n} orders in last 90 days",
+          "ar": "≥ {n} طلبات في آخر 90 يومًا"
+        },
+        {
+          "key": "memberSettings.ruleNew",
+          "zh-CN": "近 90 天 0–{n} 单",
+          "en": "0–{n} orders in last 90 days",
+          "ar": "0–{n} طلبات في آخر 90 يومًا"
+        },
+        {
+          "key": "memberSettings.ruleRegular",
+          "zh-CN": "近 90 天 {a}–{b} 单",
+          "en": "{a}–{b} orders in last 90 days",
+          "ar": "{a}–{b} طلبات في آخر 90 يومًا"
+        },
+        {
+          "key": "memberSettings.ruleSleep",
+          "zh-CN": "超过 {n} 天没下单",
+          "en": "No order for over {n} days",
+          "ar": "بلا طلب لأكثر من {n} يومًا"
+        },
+        {
           "key": "memberSettings.scope",
           "zh-CN": "会员统计口径",
           "en": "Membership basis",
           "ar": "أساس احتساب العضوية"
+        },
+        {
+          "key": "memberSettings.sleepFirst",
+          "zh-CN": "口径由平台统一设定，每天凌晨重算。先判沉睡：下单再多，超过 {n} 天没来也算沉睡",
+          "en": "Set by the platform and recalculated every night. Dormant is checked first: however many orders, no visit for over {n} days counts as dormant",
+          "ar": "تحددها المنصة ويُعاد حسابها كل ليلة. يُفحص الخمول أولًا: مهما كثرت الطلبات، الغياب لأكثر من {n} يومًا يُعد خاملًا"
         },
         {
           "key": "memberSettings.store",
@@ -10548,6 +10590,12 @@
           "zh-CN": "沉睡",
           "en": "Sleeping",
           "ar": "خامل"
+        },
+        {
+          "key": "members.levelComputedAt",
+          "zh-CN": "{t} 按口径重算分层",
+          "en": "Tiers recalculated {t}",
+          "ar": "أُعيد حساب الفئات {t}"
         },
         {
           "key": "members.phonePartial",
@@ -32138,6 +32186,22 @@
       "type": "java.util.Map<String, String>",
       "value": "java.util.Map.of( STATUS_PLANNED, STATUS_DISPATCHED, STATUS_DISPATCHED, STATUS_ARRIVED, STATUS_ARRIVED, STATUS_SIGNED)",
       "zh": "状态机：每个状态只有一条出路。",
+      "module": "shop-core"
+    },
+    {
+      "host": "LevelPolicy",
+      "name": "KEY",
+      "type": "String",
+      "value": "\"member.level.policy\"",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "LevelPolicy",
+      "name": "DEFAULT",
+      "type": "LevelPolicy",
+      "value": "new LevelPolicy(60, 6, 2)",
+      "zh": "与此前写死在 MemberServiceImpl#levelOf 里的 60 / 6 / 2 逐字一致：不配置时行为不变",
       "module": "shop-core"
     },
     {
