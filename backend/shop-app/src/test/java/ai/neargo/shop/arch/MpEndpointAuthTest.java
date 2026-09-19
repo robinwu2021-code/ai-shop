@@ -97,6 +97,8 @@ class MpEndpointAuthTest {
             "POST /mp/after-sale/{afterSaleNo}/escalate",
             "POST /mp/after-sale/{afterSaleNo}/ship",
             "POST /mp/attribution/report",
+            // 点推送进店回写：只认本人，没登录就没有「本人」
+            "POST /mp/member-reach/{reachNo}/opened",
             "POST /mp/cart/remove",
             "POST /mp/coupon/best",
             "POST /mp/coupon/{couponNo}/receive",

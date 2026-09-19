@@ -1,6 +1,6 @@
 # TDD-会员标签与定向营销
 
-状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 后端已上线（界面待打包）
+状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 后端已上线（界面待打包）· 批 C 已实现（未上线）
 关联需求：[PRD-会员标签与定向营销](../requirements/PRD-会员标签与定向营销.md)（AC-1 … AC-15）
 原型：[会员标签与定向营销](https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc)（m01–m21 · c01 · o01–o02）·
 [营销 v2](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（s01 · s04–s06 · s16 · s18）
@@ -135,8 +135,8 @@
 | POST | `/biz/members/tags/batch` | `biz:customer` | **新** | m06 · m20 |
 | GET | `/biz/member-tags/{tagNo}/usage` | `biz:customer` | **新** | m08 · m09 |
 | GET | `/biz/member-segments/{segmentNo}` | `biz:customer` | **新**（详情 + 用在哪） | m11 |
-| GET | `/biz/member-reach/tasks` | `biz:customer` | **新** | m19 |
-| GET | `/biz/member-reach/tasks/{taskNo}` | `biz:customer` | **新** | m20 |
+| GET | `/biz/member-reach/task` | `biz:customer` | **新**（单数，见 §6 批 C） | m19 |
+| GET | `/biz/member-reach/task/{taskNo}` | `biz:customer` | **新** | m20 |
 | GET | `/biz/members` · `/biz/members/{memberNo}` · `/biz/members/stats` | `biz:customer` | 改：VO 加字段 | m01 · m04 |
 | POST | `/biz/member-reach/plan` · `/send` | 原样 | 改：`ReachReq` 加 `audiences` | m18 |
 | POST | `/biz/coupons/{couponNo}/issue`（现有发券） | 原样 | 改：加 `audiences` | m17 |
@@ -147,7 +147,7 @@
 
 | 方法 | 路径 | 权限 | 新/改 | 原型 |
 |---|---|---|---|---|
-| POST | `/mp/store/{merchantNo}/enter` | 登录买家 | 改：`EnterReq` 加可选 `reachNo` | c01 |
+| POST | `/mp/member-reach/{reachNo}/opened` | 登录买家 | **新**（原设计挂在 `enter` 上，见 §6 批 C） | c01 |
 | GET | `/ops/members/reach-stats?days=30` | `member:member:read` | 改：VO 加四列 | o01 |
 | GET | `/ops/members/level-policy` | `member:member:read` | **新** | o02 |
 | POST | `/ops/members/level-policy` | `system:param:update`（复用，同 `inventory.policy` / `proxy-limit`） | **新** | o02 |
@@ -518,6 +518,36 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 
 B 端 H5 mock 实测：名单卡片标签行、「对这 2 人…」四个去处、批量打标试算「其中 1 人已有，实际新增 1 人」与确认、
 活动选人面板实时「覆盖 2 人」与「非本店会员」互斥、标签详情。发券页、发消息页、人群详情过了 `vue-tsc`，未在浏览器里点。
+
+### 批 C 实现记录（2026-09-19，未上线）
+
+| 与设计的差异 | 原因 |
+|---|---|
+| 迁移号 V341（设计写「当时最大号 +1」，写时 V340 已被商品仅活动可售占用） | 并行会话撞号，自己让路 |
+| 进店回写走新端点 `POST /mp/member-reach/{reachNo}/opened`（设计写 `/mp/store/{no}/enter` 带 `reachNo`） | `enter` 顺带上报一次店铺渠道归因；点老店推送回来的是商家自己的会员，挂在那儿会被记成一次拉新。且 c-app 从没调过 `enter` |
+| 列表 / 详情路径为 `/biz/member-reach/task(/{taskNo})`（设计写 `tasks`） | `/biz` 单数约定（`api-path-naming` 闸门） |
+| 批次头描述 `audience_desc` 由端上选人面板那句话传入，服务端只在旧版不传时用受众项兜底拼 | 标签名、分层名、来源的译法都在端上词条里；服务端拼只能拼出代码 |
+| 效果页「未进店」人数按明细行数（`opened_at IS NULL`），不按「发出 − 进店」 | 推送失败的人也有明细行（先记后推），「未进店的存为人群」按明细筛 —— 两个数同一把尺，按钮上的人数才对得上存出来的人群 |
+| 运营端触达健康度改为**按跳过率倒序、同率按退订率**（此前只按退订率） | 原型 o01；跳过率高 = 在反复给同一批人发，是运营找商家谈话的另一半信号 |
+| 触达场景加具名类型 `ReachScene`，`mbr_reach_log.scene` 与 `mbr_reach_task.scene` 按字段对账 | 新表的场景列被取值域闸门点名；顺带把明细表那一条从「未判定」清单里判掉（清单减一行） |
+| 会员详情 `MemberDetailVO.lastReach` 只带场景与三个时刻，不带标题 | 原型 m04 那一行是「09-12 唤回 · 已下单」，点进去是效果页 |
+| 券批次「已用金额」= 这批领券人在发放之后用这张券省下的钱 | 核销记录上没有领券号；同一人从两批各领一张同样的券时两批都算，少数且两批都确实带来了这次使用 |
+
+测试：`ReachEffectFlowTest` 8 条（AC-12/13/14/15/17、推送链接、伪造 reachNo、会员详情最近触达）。
+消融五处，四处各自变红：
+
+| 消融 | 变红的 |
+|---|---|
+| 进店不核本人 | `forgedReachNoIsNotCounted` |
+| 归因取最早一次（`ORDER BY sent_at ASC`） | `orderAttributedToLatestReachOnly` |
+| 去掉窗口下界 | `orderOnDayEightNotAttributed` |
+| 人群条件不按 `reachOutcome` 筛 | `saveNotOpenedAsSegment` |
+| 进店 UPDATE 去掉 `opened_at IS NULL` | **不变红** —— 顺序执行时前面的读已挡住重复；这一条守的是两次并发进店，单线程测试够不着 |
+
+B 端 H5 mock 实测：营销首页「发出去的」→ 列表（已统计 / 统计中两档）→ 效果页（三条同尺进度、下单名单、未进店人数）→
+「未进店的存为人群」→ 人群详情命中 3 = 未进店 3、条件行显示「来自一次触达 · 未进店的人」；会员详情「最近触达 · 已下单」。
+实测时抓到并修掉一处：进度条与底部操作行同用 `.bar` 类，操作行被压成 6px、按钮被裁掉。
+c-app 店铺页回写与真机推送 → 进店 → 下单的闭环**未验**（要真机与线上推送通道）。
 
 ### 偏差说明（设计阶段已知，写在前面）
 
