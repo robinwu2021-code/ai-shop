@@ -83,10 +83,9 @@ async function load() {
     stats.value = s;
     list.value = page.records;
     total.value = page.total;
-    if (!tags.value.length) {
-      tags.value = (await api.mMemberTags().catch(() => []))
-        .filter((x) => x.status === "ACTIVE");
-    }
+    // 每次回到本页都重拉：去标签页新建 / 停用完回来，筛选区要跟上（只拉一次的话新标签在这里永远不出现）
+    tags.value = (await api.mMemberTags().catch(() => tags.value))
+      .filter((x) => x.status === "ACTIVE");
     failed.value = false;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

@@ -401,6 +401,14 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mLocationSetSource: { method: "PUT", path: "/biz/inventory/locations/:id/source", auth: true, summary: "设发货源" },
 };
 
+/**
+ * 把路径里的占位换成实参。**两种写法都认**：`:memberNo` 与 `{memberNo}`。
+ *
+ * 此前只认 `:x`，而表里 20 条写的是 `{x}`（与后端 @PathVariable 同形）—— 接真后端时字面的
+ * `{memberNo}` 原样发出去（线上日志 `/biz/activities/%7BactivityNo%7D`），会员详情、券详情、
+ * 发券、活动详情等整片打不开；mock 不走路径，演示时看不出来（2026-09-19 真机发现）。
+ */
 export function buildPath(path: string, params: Record<string, string | number>): string {
-  return path.replace(/:([a-zA-Z]+)/g, (_, k: string) => String(params[k] ?? ""));
+  const sub = (_: string, k: string) => encodeURIComponent(String(params[k] ?? ""));
+  return path.replace(/\{([a-zA-Z]+)\}/g, sub).replace(/:([a-zA-Z]+)/g, sub);
 }
