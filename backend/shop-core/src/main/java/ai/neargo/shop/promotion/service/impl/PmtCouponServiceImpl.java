@@ -540,6 +540,26 @@ public class PmtCouponServiceImpl implements CouponService {
         return sb.append(']').toString();
     }
 
+    private static final java.util.regex.Pattern AUDIENCE_ITEM = java.util.regex.Pattern.compile(
+            "\\{\"type\":\"((?:[^\"\\\\]|\\\\.)*)\",\"value\":\"((?:[^\"\\\\]|\\\\.)*)\"}");
+
+    /** {@link #audienceJson} 的反向。只认自己写出去的格式，读不出的批次按「没有受众项」 */
+    static List<MemberQueryPort.AudienceItem> parseAudience(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        List<MemberQueryPort.AudienceItem> out = new ArrayList<>();
+        java.util.regex.Matcher m = AUDIENCE_ITEM.matcher(json);
+        while (m.find()) {
+            out.add(new MemberQueryPort.AudienceItem(unesc(m.group(1)), unesc(m.group(2))));
+        }
+        return out;
+    }
+
+    private static String unesc(String v) {
+        return v.replace("\\\"", "\"").replace("\\\\", "\\");
+    }
+
     private static String esc(String v) {
         return v == null ? "" : v.replace("\\", "\\\\").replace("\"", "\\\"");
     }
@@ -556,7 +576,8 @@ public class PmtCouponServiceImpl implements CouponService {
         }
         return new CouponIssueVO(b.getIssueNo(), b.getCouponNo(), b.getSegmentNo(),
                 nz(b.getPlannedCount()), nz(b.getIssuedCount()), nz(b.getSkippedCount()),
-                reasons, nz(b.getAmountMinor()), b.getOperatorNo(), nz(b.getIssuedAt()));
+                reasons, nz(b.getAmountMinor()), b.getOperatorNo(), nz(b.getIssuedAt()),
+                parseAudience(b.getAudienceJson()));
     }
 
     private CouponVO vo(PmtCoupon c) {

@@ -71,11 +71,14 @@ public final class CouponVOs {
      * @param skipReasons 每一类跳过多少：{@code ALREADY_HAS}（已达每人上限）、
      *                    {@code UNREACHABLE}（线索会员/已退订/还没注册）、
      *                    {@code SOLD_OUT}（券发完了）
+     * @param audiences   发给了哪些受众项（按标签 / 分层 / 人群，取或）。旧批次只有 segmentNo，这里为空 ——
+     *                    此前按标签发的批次在发放记录里会显示成「全部会员」，因为那一页只认 segmentNo
      */
     public record CouponIssueVO(String issueNo, String couponNo, String segmentNo,
                                 int planned, int issued, int skipped,
                                 List<SkipReason> skipReasons, long amountMinor,
-                                String operatorNo, long issuedAt) {
+                                String operatorNo, long issuedAt,
+                                List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences) {
 
         public record SkipReason(String reason, int count) {
         }

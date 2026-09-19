@@ -363,5 +363,8 @@ class MemberAudienceFlowTest {
         assertThat(r.planned()).isEqualTo(2);
         assertThat(r.issued()).isEqualTo(1);
         assertThat(r.skipped()).isEqualTo(1);
+        assertThat(couponService.issues(e, couponNo).get(0).audiences())
+                .as("发放记录要说得出发给了谁 —— 只认 segmentNo 的话这一批会显示成「全部会员」")
+                .containsExactly(new MemberQueryPort.AudienceItem(MemberQueryPort.AudienceItem.TAG, t));
     }
 }
