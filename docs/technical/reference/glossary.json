@@ -1798,6 +1798,12 @@
           "ar": "تبقّى {n} فقط"
         },
         {
+          "key": "goods.notBuyable",
+          "zh-CN": "暂不可购买",
+          "en": "Not available",
+          "ar": "غير متاح حاليًا"
+        },
+        {
           "key": "goods.origin",
           "zh-CN": "产地直发",
           "en": "Direct from source",
@@ -1922,6 +1928,12 @@
           "zh-CN": "按实际重量结算，多退少补",
           "en": "Priced by actual weight",
           "ar": "يُحسب السعر حسب الوزن الفعلي"
+        },
+        {
+          "key": "goods.whyActivityOnly",
+          "zh-CN": "该商品仅在活动期间销售",
+          "en": "Only sold during promotions",
+          "ar": "يُباع هذا المنتج خلال العروض فقط"
         },
         {
           "key": "goods.whyNoSku",
@@ -8594,6 +8606,36 @@
           "ar": "المستخدمة مؤخراً"
         },
         {
+          "key": "goods.saleActivityOnly",
+          "zh-CN": "仅活动",
+          "en": "Promo only",
+          "ar": "للعروض فقط"
+        },
+        {
+          "key": "goods.saleActivityOnlyIdle",
+          "zh-CN": "仅活动 · 未在活动中",
+          "en": "Promo only · none running",
+          "ar": "للعروض فقط · لا عرض حاليًا"
+        },
+        {
+          "key": "goods.saleMode",
+          "zh-CN": "销售方式",
+          "en": "Sales",
+          "ar": "طريقة البيع"
+        },
+        {
+          "key": "goods.saleModeHint",
+          "zh-CN": "仅在活动进行中可购买",
+          "en": "Only purchasable while a promotion is running",
+          "ar": "يمكن شراؤه فقط أثناء سريان عرض"
+        },
+        {
+          "key": "goods.saleNormal",
+          "zh-CN": "正常售卖",
+          "en": "Regular",
+          "ar": "بيع عادي"
+        },
+        {
           "key": "goods.save",
           "zh-CN": "保存",
           "en": "Save",
@@ -10136,6 +10178,12 @@
           "ar": "{n} بانتظار التسعير"
         },
         {
+          "key": "marketing.reachTasks",
+          "zh-CN": "发出去的",
+          "en": "Sent",
+          "ar": "المُرسَل"
+        },
+        {
           "key": "marketing.running",
           "zh-CN": "{n} 进行中",
           "en": "{n} running",
@@ -10394,6 +10442,18 @@
           "ar": "انضم {s}"
         },
         {
+          "key": "memberDetail.lastReach",
+          "zh-CN": "最近触达",
+          "en": "Last message",
+          "ar": "آخر رسالة"
+        },
+        {
+          "key": "memberDetail.lastReachLine",
+          "zh-CN": "{d} {s} · {o}",
+          "en": "{d} {s} · {o}",
+          "ar": "{d} {s} · {o}"
+        },
+        {
           "key": "memberDetail.lifetime",
           "zh-CN": "累计",
           "en": "Lifetime",
@@ -10404,6 +10464,24 @@
           "zh-CN": "还没有标签，点这里打上",
           "en": "No tags yet. Tap to add",
           "ar": "لا وسوم بعد. اضغط للإضافة"
+        },
+        {
+          "key": "memberDetail.reachOutcome.NONE",
+          "zh-CN": "未进店",
+          "en": "Not yet visited",
+          "ar": "لم يزر بعد"
+        },
+        {
+          "key": "memberDetail.reachOutcome.OPENED",
+          "zh-CN": "已进店",
+          "en": "Visited",
+          "ar": "زار"
+        },
+        {
+          "key": "memberDetail.reachOutcome.ORDERED",
+          "zh-CN": "已下单",
+          "en": "Ordered",
+          "ar": "طلب"
         },
         {
           "key": "memberDetail.saveTags",
@@ -10460,6 +10538,12 @@
           "ar": "قسيمة · {name}"
         },
         {
+          "key": "memberSegment.fromReach",
+          "zh-CN": "来自一次触达",
+          "en": "From a message",
+          "ar": "من رسالة"
+        },
+        {
           "key": "memberSegment.lastAfter",
           "zh-CN": "上次下单晚于",
           "en": "Last order after",
@@ -10488,6 +10572,30 @@
           "zh-CN": "还没有活动或发券用到它",
           "en": "No promotions or coupons use it yet",
           "ar": "لا تستخدمه أي عروض أو قسائم بعد"
+        },
+        {
+          "key": "memberSegment.reachOutcome.ALL",
+          "zh-CN": "全部收到的人",
+          "en": "Everyone reached",
+          "ar": "كل من وصلته"
+        },
+        {
+          "key": "memberSegment.reachOutcome.NOT_OPENED",
+          "zh-CN": "未进店的人",
+          "en": "Didn't visit",
+          "ar": "لم يزوروا"
+        },
+        {
+          "key": "memberSegment.reachOutcome.OPENED",
+          "zh-CN": "已进店的人",
+          "en": "Visited",
+          "ar": "زاروا"
+        },
+        {
+          "key": "memberSegment.reachOutcome.ORDERED",
+          "zh-CN": "已下单的人",
+          "en": "Ordered",
+          "ar": "طلبوا"
         },
         {
           "key": "memberSegment.reachable",
@@ -13830,6 +13938,198 @@
           "zh-CN": "接收人群",
           "en": "Audience",
           "ar": "الجمهور المستهدف"
+        },
+        {
+          "key": "reach.viewEffect",
+          "zh-CN": "查看效果",
+          "en": "View results",
+          "ar": "عرض النتائج"
+        },
+        {
+          "key": "reachTask.anon",
+          "zh-CN": "未备注",
+          "en": "No note",
+          "ar": "بلا ملاحظة"
+        },
+        {
+          "key": "reachTask.counting",
+          "zh-CN": "统计中 · {d} 截止",
+          "en": "Counting · until {d}",
+          "ar": "قيد الاحتساب · حتى {d}"
+        },
+        {
+          "key": "reachTask.hero",
+          "zh-CN": "{n} 单 · {m}",
+          "en": "{n} orders · {m}",
+          "ar": "{n} طلبات · {m}"
+        },
+        {
+          "key": "reachTask.noOrdered",
+          "zh-CN": "还没有人下单",
+          "en": "No orders yet",
+          "ar": "لا طلبات بعد"
+        },
+        {
+          "key": "reachTask.notOpenedN",
+          "zh-CN": "未进店 {n} 人",
+          "en": "{n} didn't visit",
+          "ar": "لم يزر {n}"
+        },
+        {
+          "key": "reachTask.opened",
+          "zh-CN": "进店",
+          "en": "Visited",
+          "ar": "زار"
+        },
+        {
+          "key": "reachTask.ordered",
+          "zh-CN": "成单",
+          "en": "Ordered",
+          "ar": "طلب"
+        },
+        {
+          "key": "reachTask.orderedN",
+          "zh-CN": "已下单 {n} 人",
+          "en": "{n} ordered",
+          "ar": "طلب {n}"
+        },
+        {
+          "key": "reachTask.saveDefault",
+          "zh-CN": "{t} · 未进店",
+          "en": "{t} · didn't visit",
+          "ar": "{t} · لم يزوروا"
+        },
+        {
+          "key": "reachTask.saveNotOpened",
+          "zh-CN": "未进店的存为人群",
+          "en": "Save non-visitors as segment",
+          "ar": "حفظ من لم يزوروا كشريحة"
+        },
+        {
+          "key": "reachTask.saveTitle",
+          "zh-CN": "存为人群",
+          "en": "Save as segment",
+          "ar": "حفظ كشريحة"
+        },
+        {
+          "key": "reachTask.sent",
+          "zh-CN": "发出",
+          "en": "Sent",
+          "ar": "أُرسل"
+        },
+        {
+          "key": "reachTask.skipped",
+          "zh-CN": "另有 {n} 人因频次限制等原因没有发出",
+          "en": "{n} more were not sent (frequency limits, etc.)",
+          "ar": "لم يُرسل إلى {n} آخرين (حدود التكرار وغيرها)"
+        },
+        {
+          "key": "reachTask.sub",
+          "zh-CN": "{d} 发给{a}",
+          "en": "{d} to {a}",
+          "ar": "{d} إلى {a}"
+        },
+        {
+          "key": "reachTask.tagOrdered",
+          "zh-CN": "给下单的人打标签",
+          "en": "Tag those who ordered",
+          "ar": "وسم من طلبوا"
+        },
+        {
+          "key": "reachTask.tagged",
+          "zh-CN": "已打标签",
+          "en": "Tagged",
+          "ar": "تم الوسم"
+        },
+        {
+          "key": "reachTask.title",
+          "zh-CN": "触达效果",
+          "en": "Message results",
+          "ar": "نتائج الرسالة"
+        },
+        {
+          "key": "reachTasks.counting",
+          "zh-CN": "统计中",
+          "en": "Counting",
+          "ar": "قيد الاحتساب"
+        },
+        {
+          "key": "reachTasks.couponEnded",
+          "zh-CN": "已结束",
+          "en": "Ended",
+          "ar": "منتهية"
+        },
+        {
+          "key": "reachTasks.couponLine",
+          "zh-CN": "{s} 发出 · {u} 已用 · {m}",
+          "en": "{s} sent · {u} used · {m}",
+          "ar": "أُرسل {s} · استُخدم {u} · {m}"
+        },
+        {
+          "key": "reachTasks.couponLive",
+          "zh-CN": "在用",
+          "en": "Active",
+          "ar": "سارية"
+        },
+        {
+          "key": "reachTasks.couponMeta",
+          "zh-CN": "发券 · {a} · {d}",
+          "en": "Coupon · {a} · {d}",
+          "ar": "قسيمة · {a} · {d}"
+        },
+        {
+          "key": "reachTasks.empty",
+          "zh-CN": "还没有发出去的消息或券",
+          "en": "Nothing sent yet",
+          "ar": "لم يُرسل شيء بعد"
+        },
+        {
+          "key": "reachTasks.emptyTip",
+          "zh-CN": "给会员发消息或发券之后，效果会出现在这里",
+          "en": "Results show up here after you message members or send coupons",
+          "ar": "تظهر النتائج هنا بعد مراسلة الأعضاء أو إرسال القسائم"
+        },
+        {
+          "key": "reachTasks.msgLine",
+          "zh-CN": "{s} 发出 · {o} 进店 · {r} 成单",
+          "en": "{s} sent · {o} visited · {r} ordered",
+          "ar": "أُرسل {s} · زار {o} · طلب {r}"
+        },
+        {
+          "key": "reachTasks.msgMeta",
+          "zh-CN": "{s} · {a} · {d}",
+          "en": "{s} · {a} · {d}",
+          "ar": "{s} · {a} · {d}"
+        },
+        {
+          "key": "reachTasks.settled",
+          "zh-CN": "已统计",
+          "en": "Final",
+          "ar": "نهائي"
+        },
+        {
+          "key": "reachTasks.tab.ALL",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "reachTasks.tab.COUPON",
+          "zh-CN": "券",
+          "en": "Coupons",
+          "ar": "القسائم"
+        },
+        {
+          "key": "reachTasks.tab.MSG",
+          "zh-CN": "消息",
+          "en": "Messages",
+          "ar": "الرسائل"
+        },
+        {
+          "key": "reachTasks.title",
+          "zh-CN": "发出去的",
+          "en": "Sent",
+          "ar": "المُرسَل"
         },
         {
           "key": "reviews.appeal",
@@ -22159,6 +22459,13 @@
       "package": "ai.neargo.shop.member.entity"
     },
     {
+      "table": "mbr_reach_task",
+      "class": "MbrReachTask",
+      "zh": "触达批次头：发出去的每一次。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.member.entity"
+    },
+    {
       "table": "mbr_segment",
       "class": "MbrSegment",
       "zh": "人群：一组筛选条件。",
@@ -25722,6 +26029,27 @@
         "name": "CHANNEL",
         "value": "CHANNEL",
         "zh": "频道入口。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MemberQuery",
+        "name": "REACH_ORDERED",
+        "value": "ORDERED",
+        "zh": "某次触达里：下了单的",
+        "module": "shop-core"
+      },
+      {
+        "host": "MemberQuery",
+        "name": "REACH_OPENED",
+        "value": "OPENED",
+        "zh": "某次触达里：点进店了的",
+        "module": "shop-core"
+      },
+      {
+        "host": "MemberQuery",
+        "name": "REACH_NOT_OPENED",
+        "value": "NOT_OPENED",
+        "zh": "某次触达里：没来的（没点进店）",
         "module": "shop-core"
       },
       {
@@ -30692,6 +31020,8 @@
           "/pages/member-tag/index",
           "/pages/member-segment/index",
           "/pages/member-reach/index",
+          "/pages/reach-tasks/index",
+          "/pages/reach-task/index",
           "/pages/activities/index",
           "/pages/coupons/index",
           "/pages/coupon/index",
