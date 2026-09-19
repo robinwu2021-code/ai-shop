@@ -267,3 +267,24 @@ a{color:inherit}
 .foot .ic::before{content:"";width:14px;height:12px;border-radius:3px;background:var(--sh-faint)}
 /* 行内 chip 贴在标题前（「自营」） */
 .chip.pri{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+/* 沉浸式详情页（2026-09-19 v2）：主图顶到状态栏，导航透明；左上浮圆钮，右上是微信胶囊（不能占） */
+.ph .ov{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;gap:6px;z-index:2}
+.ph .ov i{width:26px;height:26px;border-radius:99px;background:rgba(0,0,0,.34);color:#fff;font-style:normal;
+  display:flex;align-items:center;justify-content:center;font-size:12px;position:relative;flex:0 0 auto}
+.ph .ov i b{position:absolute;top:-3px;right:-5px;min-width:14px;height:14px;padding:0 3px;border-radius:99px;
+  background:var(--sh-danger);color:#fff;font-size:8.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.ph .ov .mpcap{margin-left:auto;width:62px;height:24px;border-radius:99px;background:rgba(255,255,255,.72);
+  display:flex;align-items:center;justify-content:space-around;font-size:10px;color:var(--sh-ink)}
+.ph .ov.solid{position:static;background:var(--sh-card);padding:8px 10px;margin:0;flex:0 0 auto}
+.ph .ov.solid i{background:var(--sh-faint);color:var(--sh-ink)}
+.ph .ov.solid .mpcap{background:var(--sh-faint)}
+.ph .ov .anc{display:flex;gap:12px;font-size:11px;color:var(--sh-sub);margin-left:6px}
+.ph .ov .anc .on{color:var(--sh-ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--sh-primary)}
+.scr .hero.full{margin-top:-10px;height:190px}
+/* 标题行右侧的「分享」：图标 + 两个字，与标题顶对齐 */
+.pz .tr{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pz .sh{flex:0 0 auto;font-size:9.5px;color:var(--sh-sub);display:flex;flex-direction:column;align-items:center;gap:1px}
+.pz .sh::before{content:"⇪";font-size:13px;color:var(--sh-ink)}
+/* 底栏上方的一行提示（不在销售范围内时才出） */
+.tipbar{flex:0 0 auto;background:var(--sh-warning-tint);color:var(--sh-warning-text);font-size:10px;padding:5px 12px}
+.fab.hi{bottom:62px;padding-inline:12px}
