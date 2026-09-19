@@ -138,3 +138,38 @@ B 端「我的类目」页底部那份「本店货架」就是它。虹选鲜果
 1. 后端：校验替换 `ensure` + 自营跳过资质 + 错误码 + 场景测试
 2. B 端：经营类目页改版 + 建品页类目候选 + 就地添加面板
 3. 上线前：按 §6 在 App 里核对第 2 家门店
+
+---
+
+## 10 修订（2026-09-20，待确认）：「自营免资质」改按主体判
+
+### 10.1 问题
+
+规则 2 现在按**门店**的 `mch_store.business_mode = SELF_OPERATED` 跳过资质。这正是
+V329（`mch_entity.self_operated`）迁移注释里点名不能做的事：
+
+- `business_mode` 的建表默认值就是 `SELF_OPERATED`（V23），入驻流程不改它 ——
+  **每一家新店一出生都是「自营」**，包括第三方商家的店
+- 它回答的是「谁是销售主体」；代销的第三方商家在归集模式下销售主体也是平台，
+  按它豁免会把 ADR-017 §3.4 要求先核验的那一档一起放过
+
+现在资质闸（`category.gate.enforce`）关着，所以还没有实际后果；**闸一打开，
+所有没被运营改过模式的第三方门店加经营类目都不查资质**，且不会有任何报错。
+
+### 10.2 改法
+
+| 位置 | 改动 |
+|---|---|
+| `StoreCategoryServiceImpl.isSelfOperated(storeNo)` | 门店 → `entityNo` → `mch_entity.self_operated = 1` 才跳过资质；不再看 `business_mode` |
+| `StoreVO` | 加 `selfOperated`（主体级，同一判据）；`businessMode` 保留不删 —— 0.4.78 已装机，删了老包会读到 `undefined` |
+| `biz-category-sheet.vue` | 「需资质」标签改读 `currentStore.selfOperated` |
+| 场景测试 | ①门店 `SELF_OPERATED`（默认值）+ 主体非自营 + 闸开 → **要资质**（这条就是本次要堵的洞）；②主体自营 → 免资质（虹选鲜果的情形）|
+
+- 不迁移、不回填：`self_operated` 的写入口只有 `POST /ops/merchants/self-operated`，由人逐个确认（V329 的约定）
+- 线上核对：虹选鲜果主体 `M202609161449440002055` 已是 `selfOperated = true`（C 端商品详情接口回读），
+  改完后它两家门店的行为不变
+
+### 10.3 不在本次范围
+
+`business_mode` 默认 `SELF_OPERATED` 同样影响**结算口径**（V28 费率规则按它分毛利率 / 佣金率）。
+第三方门店若从没被改过模式，结算会走自营口径。这属于入驻与结算域，另立 TDD，不在经营类目里顺手改。
