@@ -13946,12 +13946,6 @@
           "ar": "عرض النتائج"
         },
         {
-          "key": "reachTask.anon",
-          "zh-CN": "未备注",
-          "en": "No note",
-          "ar": "بلا ملاحظة"
-        },
-        {
           "key": "reachTask.counting",
           "zh-CN": "统计中 · {d} 截止",
           "en": "Counting · until {d}",
