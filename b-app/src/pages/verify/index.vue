@@ -303,7 +303,7 @@ onShow(load);
         <view class="sh-cells peek__cells">
           <view class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted">{{ $t("verify.couponCustomer") }}</text>
-            <text class="txt-body sh-num">{{ $t("members.phoneTail", { n: couponView.phoneTail || "----" }) }}</text>
+            <text class="txt-body sh-num">{{ couponView.phoneMasked || $t("members.phoneTail", { n: couponView.phoneTail || "----" }) }}</text>
           </view>
           <view class="sh-cell sh-row sh-row--between">
             <text class="txt-body sh-muted">{{ $t("verify.couponValid") }}</text>

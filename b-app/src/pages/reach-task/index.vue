@@ -128,7 +128,7 @@ onLoad((q) => {
         <view v-for="m in data.orderedMembers" :key="m.memberNo" class="sh-cell sh-row sh-row--between"
           @tap="openMember(m.memberNo)">
           <text class="txt-body">
-            <text v-if="m.name">{{ m.name }} </text><text class="sh-num" :class="{ 'sh-muted': m.name }">{{ $t("members.phoneTail", { n: m.phoneTail || "----" }) }}</text>
+            <text v-if="m.name">{{ m.name }} </text><text class="sh-num" :class="{ 'sh-muted': m.name }">{{ m.phoneMasked || $t("members.phoneTail", { n: m.phoneTail || "----" }) }}</text>
           </text>
           <text class="txt-body sh-num">{{ money(m.amountMinor) }}</text>
         </view>

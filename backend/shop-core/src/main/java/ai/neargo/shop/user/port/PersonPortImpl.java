@@ -10,7 +10,7 @@ import java.util.Optional;
 /**
  * {@link PersonPort} 的实现。**只做转换，不含逻辑** —— 判断都在 {@link PersonService} 里。
  *
- * <p><b>视图里没有完整手机号</b>，它单独走 {@link PersonPort#revealPhone}：
+ * <p><b>视图里没有完整手机号</b>（只有脱敏的 138****8000），完整号单独走 {@link PersonPort#revealPhone}：
  * 号码不是「人档的一个字段」，是一次要说明理由、要留审计的**动作**。
  *
  * <p>2026-08-30 之前这条路根本不从 Port 走 —— member 域直接注入了
@@ -33,12 +33,12 @@ public class PersonPortImpl implements PersonPort {
 
     @Override
     public Optional<PersonView> findByUser(String userNo) {
-        return personService.findByUser(userNo).map(PersonPortImpl::view);
+        return personService.findByUser(userNo).map(this::view);
     }
 
     @Override
     public Optional<PersonView> find(String personNo) {
-        return personService.find(personNo).map(PersonPortImpl::view);
+        return personService.find(personNo).map(this::view);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class PersonPortImpl implements PersonPort {
         return personService.findByPhoneTail(phoneTail);
     }
 
-    private static PersonView view(UsrPerson p) {
-        return new PersonView(p.getPersonNo(), p.getPhoneTail(), p.getUserNo());
+    private PersonView view(UsrPerson p) {
+        return new PersonView(p.getPersonNo(), p.getPhoneTail(), p.getUserNo(), personService.maskedPhone(p));
     }
 }

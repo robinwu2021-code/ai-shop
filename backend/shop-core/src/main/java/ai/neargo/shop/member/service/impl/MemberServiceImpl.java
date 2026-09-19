@@ -790,8 +790,9 @@ public class MemberServiceImpl implements MemberService {
      *                而不是「他在这个主体买过几次」。这两个数在多店主体上差得很远
      */
     private MemberVO vo(MbrMember m, String storeNo) {
-        String tail = personPort.find(m.getPersonNo()).map(PersonPort.PersonView::phoneTail)
-                .orElse(null);
+        java.util.Optional<PersonPort.PersonView> person = personPort.find(m.getPersonNo());
+        String tail = person.map(PersonPort.PersonView::phoneTail).orElse(null);
+        String masked = person.map(PersonPort.PersonView::phoneMasked).orElse(null);
         String level = m.getLevel();
         Integer orders = m.getOrderCount();
         Long spent = m.getTotalSpentMinor();
@@ -810,7 +811,7 @@ public class MemberServiceImpl implements MemberService {
             }
         }
         Integer days = last == null ? null : (int) ((System.currentTimeMillis() - last) / DAY);
-        return new MemberVO(m.getMemberNo(), m.getPersonNo(), tail, m.getStatus(), m.getSource(),
+        return new MemberVO(m.getMemberNo(), m.getPersonNo(), tail, masked, m.getStatus(), m.getSource(),
                 level, m.getFirstStoreNo(), orders, spent, d90, last, days,
                 nz(m.getReachOptOut()) == 1, m.getRemark(), nz(m.getJoinedAt()), List.of());
     }

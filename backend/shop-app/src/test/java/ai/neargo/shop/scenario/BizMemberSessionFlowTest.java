@@ -110,6 +110,11 @@ class BizMemberSessionFlowTest {
 
         JsonNode detail = call("GET", "/biz/members/" + memberNo, token, null);
         assertThat(detail.get("code").asInt()).isZero();
+        assertThat(detail.get("data").get("member").get("phoneMasked").asString())
+                .as("商家看到的是头三尾四（138****8000），与 C 端同一口径")
+                .matches("^137\\*{4}\\d{4}$");
+        assertThat(list.get("data").findValuesAsString("phoneMasked")).as("名单也给脱敏号")
+                .anyMatch(s -> s.matches("^137\\*{4}\\d{4}$"));
     }
 
     @Test

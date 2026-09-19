@@ -81,11 +81,12 @@ public final class MemberVOs {
     }
 
     /**
-     * @param phoneTail 后四位。没绑手机号（不该出现在会员里）时为空
+     * @param phoneTail   后四位。没绑手机号（不该出现在会员里）时为空
+     * @param phoneMasked 展示用的脱敏号 138****8000（与 C 端同一口径）；解不开时是 ****8000
      * @param level     按主体或按门店的分层，取哪一个由主体的经营口径决定
      * @param tagNames  他身上的商家标签名（名单卡片第二行，原型 m01）。只在名单接口里填，其余为空列表
      */
-    public record MemberVO(String memberNo, String personNo, String phoneTail, String status,
+    public record MemberVO(String memberNo, String personNo, String phoneTail, String phoneMasked, String status,
                            String source, String level, String firstStoreNo,
                            Integer orderCount, Long totalSpentMinor,
                            Integer d90OrderCount, Long lastOrderAt, Integer daysSinceLast,
@@ -94,7 +95,7 @@ public final class MemberVOs {
 
         /** 换上标签名（名单页按页批量取，不逐行查） */
         public MemberVO withTags(List<String> names) {
-            return new MemberVO(memberNo, personNo, phoneTail, status, source, level, firstStoreNo,
+            return new MemberVO(memberNo, personNo, phoneTail, phoneMasked, status, source, level, firstStoreNo,
                     orderCount, totalSpentMinor, d90OrderCount, lastOrderAt, daysSinceLast,
                     reachOptOut, remark, joinedAt, names);
         }

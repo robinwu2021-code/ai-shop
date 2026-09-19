@@ -626,6 +626,18 @@ c-app 店铺页回写与真机推送 → 进店 → 下单的闭环**未验**（
 - 新用例 `BizMemberSessionFlowTest`：入驻 → 商家 btk_ 令牌 → 走过滤器，建标签 / 同名再建 / 添加会员 / 名单 / 详情 / 人群 / 发出去的；
   修复前 3 条全红（标签列表空、10404、人群列表空），修复后全绿
 
+### 补丁 · B 端手机号改为头三尾四（2026-09-20 用户决定）
+
+用户要求 B 端与 C 端同一格式 138****8000。此前 B 端只拿后四位（`usr_person.phone_tail`），
+界面显示「尾号 8000」「···8000」两种写法。用户选定：**系统保存完整号码（已有 `phone_enc`），输出给前端时脱敏成 138****8000**。
+
+- 新字段 `phoneMasked`（口径只走 `Masks.phone`）：`MemberVO`、触达效果的 `OrderedMember`、核销预览 `RedeemView`；`phoneTail` 保留（按尾号找人仍用它）
+- 在 user 域解密：`PersonService#maskedPhone` → `PersonPort.PersonView.phoneMasked`，member / promotion 域不接触密钥
+- 解不开（记录建于密钥配置之前）退化为 `****8000`，不抛错 —— 名单一行解不开不该整页 500
+- 核销预览此前 `phoneTail` 恒为 null（界面恒显示「----」），这次按券主人的人档补上
+- 完整号仍只走「查看完整号码」（`revealPhone`，要理由、记审计），这条不变；**脱敏号不记审计**
+- 测试：`BizMemberSessionFlowTest`（名单 + 详情）、`StoreCodeRedeemTest`（核销预览）断言 `^13x\*{4}\d{4}$`；把脱敏改成只留尾四，两条都红
+
 ### 偏差说明（设计阶段已知，写在前面）
 
 | 与谁 | 偏差 | 处理 |

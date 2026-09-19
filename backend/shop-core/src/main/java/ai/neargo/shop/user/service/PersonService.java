@@ -37,6 +37,15 @@ public interface PersonService {
     Optional<String> revealPhone(String personNo);
 
     /**
+     * 展示用的脱敏号（138****8000，口径见 {@link ai.neargo.shop.common.Masks#phone}）。
+     *
+     * <p>商家要能跟顾客当面核对「是不是这个号」，只有尾四位对不上号段。
+     * 解不开（记录建于密钥配置之前）时退化成 ****8000，不抛错 —— 名单上一行解不开，
+     * 不该让整页 500。
+     */
+    String maskedPhone(UsrPerson p);
+
+    /**
      * 登录成功之后把账号绑到人档上。<b>三种情况，两种一步到位</b>：
      *
      * <ul>

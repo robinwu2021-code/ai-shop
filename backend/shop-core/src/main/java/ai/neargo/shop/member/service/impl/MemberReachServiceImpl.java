@@ -215,9 +215,11 @@ public class MemberReachServiceImpl implements MemberReachService {
                 .stream().collect(Collectors.toMap(MbrMember::getMemberNo, Function.identity(), (a, b) -> a));
         List<OrderedMember> ordered = rows.stream().map(r -> {
             MbrMember m = members.get(r.getMemberNo());
-            String tail = m == null || m.getPersonNo() == null ? null
-                    : personPort.find(m.getPersonNo()).map(PersonPort.PersonView::phoneTail).orElse(null);
-            return new OrderedMember(r.getMemberNo(), m == null ? null : m.getRemark(), tail,
+            java.util.Optional<PersonPort.PersonView> person = m == null || m.getPersonNo() == null
+                    ? java.util.Optional.empty() : personPort.find(m.getPersonNo());
+            return new OrderedMember(r.getMemberNo(), m == null ? null : m.getRemark(),
+                    person.map(PersonPort.PersonView::phoneTail).orElse(null),
+                    person.map(PersonPort.PersonView::phoneMasked).orElse(null),
                     r.getOrderedAmountMinor() == null ? 0 : r.getOrderedAmountMinor(), r.getOrderedAt());
         }).toList();
         /*

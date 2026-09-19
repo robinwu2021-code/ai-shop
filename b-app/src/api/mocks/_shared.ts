@@ -508,6 +508,7 @@ export function mockMembers() {
       memberNo: `MB-MOCK-${i + 1}`,
       personNo: `PS-MOCK-${i + 1}`,
       phoneTail: String(1000 + ((name.length * 37 + i * 13) % 9000)),
+      phoneMasked: `138****${1000 + ((name.length * 37 + i * 13) % 9000)}`,
       status: "ACTIVE",
       source: v.owned > v.count / 2 ? "SHARE" : "ORDER",
       level,
@@ -593,7 +594,7 @@ export function reachTaskView(t: MockReachTask, withMembers: boolean) {
     orderedAmountMinor: ordered.reduce((s, r) => s + (r.orderedMinor ?? 0), 0),
     orderedMembers: withMembers ? ordered.map((r) => {
       const m = all.find((x) => x.memberNo === r.memberNo);
-      return { memberNo: r.memberNo, name: m?.remark ?? null, phoneTail: m?.phoneTail ?? null,
+      return { memberNo: r.memberNo, name: m?.remark ?? null, phoneTail: m?.phoneTail ?? null, phoneMasked: m?.phoneMasked ?? null,
         amountMinor: r.orderedMinor ?? 0, orderedAt: r.orderedAt ?? t.sentAt };
     }) : [],
     notOpened: t.rows.filter((r) => !r.opened).length,

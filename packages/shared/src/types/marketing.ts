@@ -602,8 +602,10 @@ export interface CouponRedeemView {
   title: string;
   /** 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 */
   benefitText: string;
-  /** 持券人手机号后四位。店员认人够用，**永远不给完整号** */
+  /** 持券人手机号后四位。**永远不给完整号** */
   phoneTail?: string | null;
+  /** 持券人的脱敏号 138****8000，店员当面核对是不是本人 */
+  phoneMasked?: string | null;
   /** 过期时刻（毫秒） */
   expireAt: number;
   /** 一张券可核几次。次卡看这个数，普通券恒为 1 */

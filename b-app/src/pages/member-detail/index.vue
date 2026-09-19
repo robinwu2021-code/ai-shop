@@ -133,7 +133,7 @@ onLoad(async (q) => {
     <template v-if="data">
       <view class="sh-card">
         <view class="sh-row row">
-          <text class="txt-title sh-num">{{ $t("members.phoneTail", { n: data.member.phoneTail || "----" }) }}</text>
+          <text class="txt-title sh-num">{{ data.member.phoneMasked || $t("members.phoneTail", { n: data.member.phoneTail || "----" }) }}</text>
           <text v-if="data.member.level" class="sh-chip"
             :class="data.member.level === 'SLEEPING' ? 'sh-chip--warning' : 'sh-chip--primary'">
             {{ $t(`members.level.${data.member.level}`) }}

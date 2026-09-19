@@ -22,8 +22,10 @@ export interface Member {
   memberNo: string;
   /** 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 */
   personNo: string;
-  /** 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 */
+  /** 手机号后四位（按尾号找人用）。**永远不会有完整号** —— 需要它的只有平台申诉处置 */
   phoneTail?: string | null;
+  /** 展示用的脱敏号 138****8000，与 C 端同一口径；解不开时是 ****8000 */
+  phoneMasked?: string | null;
   /** `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` */
   status: string;
   /** 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` */
@@ -192,10 +194,12 @@ export interface ReachOpened {
 export interface ReachOrderedMember {
   /** 会员号 */
   memberNo: string;
-  /** 商家给他记的备注名；没记为空，界面用手机尾号 */
+  /** 商家给他记的备注名；没记为空，界面用脱敏号 */
   name?: string | null;
   /** 手机尾号 */
   phoneTail?: string | null;
+  /** 展示用的脱敏号 138****8000 */
+  phoneMasked?: string | null;
   /** 这一单的实付（分） */
   amountMinor: number;
   /** 下单时刻 */

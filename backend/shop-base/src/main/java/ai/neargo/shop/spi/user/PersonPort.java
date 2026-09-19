@@ -60,6 +60,10 @@ public interface PersonPort {
      */
     java.util.Optional<String> revealPhone(String personNo);
 
-    record PersonView(String personNo, String phoneTail, String userNo) {
+    /**
+     * @param phoneTail   后四位（按尾号找人用）
+     * @param phoneMasked 展示用的脱敏号 138****8000；解不开时退化成 ****8000
+     */
+    record PersonView(String personNo, String phoneTail, String userNo, String phoneMasked) {
     }
 }

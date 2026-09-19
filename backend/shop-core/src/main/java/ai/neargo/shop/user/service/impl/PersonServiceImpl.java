@@ -130,6 +130,22 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public String maskedPhone(UsrPerson p) {
+        if (p == null) {
+            return null;
+        }
+        String raw;
+        try {
+            raw = crypto.decrypt(p.getPhoneEnc());
+        } catch (IllegalStateException e) {
+            raw = null;
+        }
+        return raw == null || raw.isBlank()
+                ? ai.neargo.shop.common.Masks.tail(p.getPhoneTail())
+                : ai.neargo.shop.common.Masks.phone(raw);
+    }
+
+    @Override
     public Optional<UsrPerson> find(String personNo) {
         if (personNo == null || personNo.isBlank()) {
             return Optional.empty();

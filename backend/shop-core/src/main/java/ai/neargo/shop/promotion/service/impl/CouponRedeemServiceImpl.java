@@ -58,8 +58,11 @@ public class CouponRedeemServiceImpl implements CouponRedeemService {
         int total = c.timesTotalOrOne();
         int used = nz(uc.getTimesUsed());
         String reason = whyNot(uc, c, System.currentTimeMillis());
-        return new RedeemView(uc.getUserCouponNo(), c.getCouponNo(), c.getTitle(),
-                benefitText(c), null, nz(uc.getExpireAt()), total, used,
+        java.util.Optional<PersonPort.PersonView> owner = personPort.findByUser(uc.getUserNo());
+        return new RedeemView(uc.getUserCouponNo(), c.getCouponNo(), c.getTitle(), benefitText(c),
+                owner.map(PersonPort.PersonView::phoneTail).orElse(null),
+                owner.map(PersonPort.PersonView::phoneMasked).orElse(null),
+                nz(uc.getExpireAt()), total, used,
                 Math.max(0, total - used), reason == null, reason);
     }
 

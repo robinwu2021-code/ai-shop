@@ -114,6 +114,8 @@ class StoreCodeRedeemTest {
         CouponRedeemService.RedeemView view = redeemService.peek(g[0], g[1]);
         assertThat(view.redeemable()).as("先看后核：扫完直接扣的话，扫错一张没有回头路").isTrue();
         assertThat(view.remaining()).isEqualTo(1);
+        assertThat(view.phoneMasked()).as("店员当面核对券主人：头三尾四，与 C 端同一口径")
+                .matches("^136\\*{4}\\d{4}$");
 
         CouponRedeemService.RedeemResult r = redeemService.redeem(g[0], g[1], "ST-9", "STAFF-1");
         assertThat(r.usedUp()).isTrue();

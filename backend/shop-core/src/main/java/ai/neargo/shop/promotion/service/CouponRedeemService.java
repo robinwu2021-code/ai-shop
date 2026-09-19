@@ -33,9 +33,10 @@ public interface CouponRedeemService {
     /**
      * @param remaining 还能核销几次（次卡）。一次性券是 1 或 0
      * @param reason    不能核销时的原因码，能核销时为空
+     * @param phoneMasked 券主人的脱敏号 138****8000，店员据此当面核对是不是本人
      */
     record RedeemView(String userCouponNo, String couponNo, String title, String benefitText,
-                      String phoneTail, long expireAt, int timesTotal, int timesUsed,
+                      String phoneTail, String phoneMasked, long expireAt, int timesTotal, int timesUsed,
                       int remaining, boolean redeemable, String reason) {
     }
 

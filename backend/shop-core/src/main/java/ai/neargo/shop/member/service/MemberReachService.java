@@ -112,7 +112,11 @@ public interface MemberReachService {
                        List<OrderedMember> orderedMembers, int notOpened) {
     }
 
-    /** @param name 商家给他记的备注名；没记为空，界面用手机尾号 */
-    record OrderedMember(String memberNo, String name, String phoneTail, long amountMinor, long orderedAt) {
+    /**
+     * @param name        商家给他记的备注名；没记为空，界面用脱敏号
+     * @param phoneMasked 展示用的脱敏号 138****8000
+     */
+    record OrderedMember(String memberNo, String name, String phoneTail, String phoneMasked,
+                         long amountMinor, long orderedAt) {
     }
 }
