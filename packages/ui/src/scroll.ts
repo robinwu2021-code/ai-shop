@@ -5,9 +5,14 @@
 // 「提交被驳回 → 滚回顶部看错误提示」这种交互会在 PC 上悄悄失灵，而手机上一切正常，
 // 属于最难被发现的那类差异。这里两边都招呼一遍。
 export function scrollToTop(duration = 200): void {
-  uni.pageScrollTo({ scrollTop: 0, duration });
+  scrollToY(0, duration);
+}
+
+/** 滚到页面上的某个位置（px）。商品详情的锚点用 —— 同一个理由，两边都招呼 */
+export function scrollToY(top: number, duration = 200): void {
+  uni.pageScrollTo({ scrollTop: top, duration });
   // #ifdef H5
   // 滚动盒是框**内层**的 .sh-scaffold（框自己不滚，见 sh-scaffold 的样式注释）
-  document.querySelector(".sh-frame > .sh-scaffold")?.scrollTo({ top: 0, behavior: "smooth" });
+  document.querySelector(".sh-frame > .sh-scaffold")?.scrollTo({ top, behavior: "smooth" });
   // #endif
 }

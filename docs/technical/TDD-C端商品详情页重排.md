@@ -65,3 +65,25 @@ paramsTitle / shop / share / cart / pickAddress，三语齐。
   生鲜的到货说明（`arrivalDesc`）随「配送」一行一起离开详情页，列表卡的截单倒计时里仍有。
   上面第 27 行与第 58 行描述的「配送卡」因此作废。守卫：`goods-detail-layout.test.ts`
   「详情页不说配送」（换回旧页面即红）。
+
+## v2：常用布局（2026-09-19，原型 g00–g08，用户：「按照原型执行」）
+
+| 原型 | 落点 | 测试 |
+|---|---|---|
+| g01 主图顶到状态栏，左上「返回 · 购物车」浮在图上 | `sh-scaffold` 加 `immersive`（不画标题栏、不留位置）；商品页 `navigationStyle: custom`；页面自己画 `.topbar`，小程序上按微信胶囊对齐（`getMenuButtonBoundingClientRect`） | `goods-detail-layout`「v2 底栏三格…购物车在左上浮层」 |
+| g01 分享在标题旁 | `.titlerow` + 透明原生按钮（沿用 0.1.42 的做法） | 同上「分享：小程序里是原生分享按钮」 |
+| g01 去掉「已选」「范围」 | 删两行；销售区域进商品参数（`goods.scopeLabel`），`hasParams` 把它算进去 | 「v2 页面上没有已选、范围两行」 |
+| g02 滑过主图后实色导航 + 锚点 | `onPageScroll` 切 `solid`；锚点现量现滚，走 `@ai-shop/ui/scroll` 的新 `scrollToY` | 「v2 评价排在参数与图文之前」+ H5 实测（点「评价」后该段上沿 = 导航下沿 44px） |
+| g02 评价在参数与图文之前 | 评价块挪到参数前，`#sec-reviews` / `#sec-detail` 作锚点 | 同上 |
+| g03 面板只放叫出它的那个动作 | `sheetMode`（add / buy / group） | 「v2 面板底部只有叫出它的那一个动作」 |
+| g04 拼团商品：大字团价 + N 人团 + 单买价 | 价格行按 `grp` 分两支 | — |
+| 底栏五格 → 三格 | 删分享、购物车两格；飞入落点改到 `.topbar__cart` | 「v2 底栏三格」 |
+
+### 偏差说明
+
+- **g05（送不到时）未在本批做**：「当前收货地址在不在销售区域」端上判不了（顶栏的模糊定位只准到区，会误拦），
+  要后端按下单地址判，属于契约改动，与收藏（g07 / g08）一起放第二批。
+- **加了一处原型里没有的**：单规格商品 v2 起不弹面板，「仅剩 N 件」原先只在面板里说 —— 单规格就永远看不到。
+  现在紧缺时在价格下的标签里也说（`lowStock` chip）。
+- 删掉三条不再使用的词条：`goods.scopeShort`（换成 `scopeLabel`）、`goods.cart`、此前的 `shipTo` 等。
+- `uni.pageScrollTo` 的 `selector + offsetTop`：H5 上 `offsetTop` 被忽略（实测该段会钻到导航底下），所以锚点仍是现量现滚。

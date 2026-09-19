@@ -35,7 +35,7 @@ vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
 vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (cb: (q: Record<string, string>) => unknown) => cb({ goodsNo: "G1" }),
   onShow: vi.fn(), onHide: vi.fn(), onUnload: vi.fn(),
-  onPullDownRefresh: vi.fn(), onReachBottom: vi.fn(), onShareAppMessage: vi.fn(),
+  onPullDownRefresh: vi.fn(), onReachBottom: vi.fn(), onShareAppMessage: vi.fn(), onPageScroll: vi.fn(),
 }));
 vi.mock("@/shared/fly", () => ({
   flyToCart: vi.fn(), tapPoint: () => ({ x: 0, y: 0 }),
@@ -97,15 +97,13 @@ describe("商品详情页重排", () => {
     expect((await render()).html()).toContain("common.sold");
   });
 
-  it("★★★ 库存 ≤ 10 在规格面板里说「仅剩 N 件」，> 10 不说 —— 平时的库存数对买家没有意义", async () => {
+  it("★★★ 库存 ≤ 10 说「仅剩 N 件」，> 10 不说 —— 平时的库存数对买家没有意义", async () => {
+    // v2：单规格不弹面板，这句在价格下的标签里说（面板里照旧也说）
     const openSheet = async (stock: number) => {
       goodsDetail.mockResolvedValue(goods({
         skus: [{ skuNo: "S1", optionValues: ["约10斤"], spec: "约10斤", price: 5000, stock }] as never,
       }));
-      const w = await render();
-      await w.findAll(".row").find((r) => r.text().includes("goods.chosen"))!.trigger("tap");
-      await w.vm.$nextTick();
-      return w.html();
+      return (await render()).html();
     };
     expect(await openSheet(3)).toContain("goods.lowStock");
     expect(await openSheet(10)).toContain("goods.lowStock");
@@ -148,8 +146,51 @@ describe("商品详情页重排", () => {
     for (const k of ["goods.shipTo", "goods.shipVia", "goods.pickAddress", "fulfillment.", "次日 16 点后可提"]) {
       expect(html, `详情页出现了配送信息 ${k}`).not.toContain(k);
     }
-    expect(html).toContain("goods.scopeShort");
+    expect(html).toContain("goods.scopeLabel");
     expect(html).toContain("深圳市");
+  });
+
+  it("★★★ v2 底栏三格：店铺 + 两颗按钮；购物车在左上浮层，分享在标题旁（原型 g01）", async () => {
+    goodsDetail.mockResolvedValue(goods());
+    const w = await render();
+    expect(w.findAll(".actionbar__icon"), "底栏图标位只剩「店铺」").toHaveLength(1);
+    expect(w.find(".actionbar__cart").exists()).toBe(false);
+    expect(w.find(".topbar .topbar__cart").exists(), "购物车挪到左上").toBe(true);
+    expect(w.findAll(".actionbar__add, .actionbar__buy").filter((b) => !b.element.closest(".sheetbar"))).toHaveLength(2);
+  });
+
+  it("★★★ v2 页面上没有「已选」「范围」两行；销售区域进商品参数（原型 g01 / g02）", async () => {
+    goodsDetail.mockResolvedValue(goods({ saleScope: { unlimited: false, areaNames: ["深圳市"], areaCount: 1 } } as Partial<Goods>));
+    const w = await render();
+    const rows = w.findAll(".row__label").map((r) => r.text());
+    expect(rows).not.toContain("goods.chosen");
+    expect(rows).not.toContain("goods.scopeShort");
+    const params = w.find("#sec-detail").element.nextElementSibling!;
+    expect(params.textContent).toContain("goods.scopeLabel");
+    expect(params.textContent).toContain("深圳市");
+  });
+
+  it("★★ v2 评价排在参数与图文之前（原型 g02）", async () => {
+    goodsDetail.mockResolvedValue(goods());
+    const html = (await render()).html();
+    expect(html.indexOf('id="sec-reviews"')).toBeGreaterThan(-1);
+    expect(html.indexOf('id="sec-reviews"')).toBeLessThan(html.indexOf('id="sec-detail"'));
+  });
+
+  it("★★ v2 面板底部只有叫出它的那一个动作（原型 g03）", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      specGroups: [{ name: "重量", options: ["约10斤", "约5斤"] }] as never,
+      skus: [
+        { skuNo: "S1", optionValues: ["约10斤"], spec: "约10斤", price: 5000, stock: 100 },
+        { skuNo: "S2", optionValues: ["约5斤"], spec: "约5斤", price: 2600, stock: 100 },
+      ] as never,
+    }));
+    const w = await render();
+    await barBtn(w, "goods.buyNow").trigger("tap");
+    await w.vm.$nextTick();
+    const sheetBtns = w.findAll(".sheetbar .sh-btn");
+    expect(sheetBtns).toHaveLength(1);
+    expect(sheetBtns[0]!.text()).toContain("goods.buyNow");
   });
 
   it("★★ 限购只在真有限购时出现 ——「限购：不限购」是一行什么都没说的话", async () => {
@@ -166,11 +207,12 @@ describe("商品详情页重排", () => {
 
   it("★★ 分享：小程序里是原生分享按钮（open-type=share），H5 不出", async () => {
     goodsDetail.mockResolvedValue(goods());
-    expect((await render()).find(".actionbar__share").exists()).toBe(false);
+    expect((await render()).find(".titlerow__share").exists()).toBe(false);
     nativeShare.yes = true;
     const w = await render();
-    expect(w.find(".actionbar__share").exists()).toBe(true);
-    expect(w.find(".actionbar__share").attributes("open-type")).toBe("share");
+    // v2：分享在标题旁，不在底栏
+    expect(w.find(".titlerow__share").exists()).toBe(true);
+    expect(w.find(".titlerow__share").attributes("open-type")).toBe("share");
   });
 
   it("★★ 商家条不传 quiet-no-rating 时照旧说「暂无评价」—— 商家列表 / 搜索页横向比较时它有意义", () => {

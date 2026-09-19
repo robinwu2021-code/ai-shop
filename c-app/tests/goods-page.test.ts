@@ -37,7 +37,7 @@ vi.mock("@dcloudio/uni-app", () => ({
   onUnload: vi.fn(),
   onPullDownRefresh: vi.fn(),
   onReachBottom: vi.fn(),
-  onShareAppMessage: vi.fn(),
+  onShareAppMessage: vi.fn(), onPageScroll: vi.fn(),
 }));
 vi.mock("@/shared/fly", () => ({
   flyToCart: vi.fn(),
@@ -62,8 +62,12 @@ function goods(over: Partial<Goods> = {}): Goods {
     limitPerUser: 0,
     onSale: true,
     fulfillments: [FULFILLMENT.PICKUP],
-    specGroups: [{ name: "规格", options: ["5kg"] }],
-    skus: [{ skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980, stock: 3 }],
+    // 两个规格（第二个卖完了）：v2 起单规格商品不弹面板，数量步进器只在多规格的面板里
+    specGroups: [{ name: "规格", options: ["5kg", "1kg"] }],
+    skus: [
+      { skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980, stock: 3 },
+      { skuNo: "S9", optionValues: ["1kg"], spec: "1kg", price: 990, stock: 0 },
+    ],
     merchant: { merchantNo: "M1", name: "老张粮油店", logo: "🏪" },
     promotions: [],
     params: [],
@@ -92,12 +96,12 @@ async function render() {
     await w.vm.$nextTick();
   }
   /*
-   * 规格与数量搬进了底部面板（2026-09-19 详情页重排）—— 像买家那样点一下「已选」把它打开，
-   * 下面的用例（数量封顶、换规格回落）才有东西可点。面板不开，步进器根本不渲染。
+   * 规格与数量在底部面板里。v2 起页面上没有「已选」那一行了 —— 像买家那样点底栏的
+   * 「加入购物车」把它打开（多规格商品点它先弹面板），下面的用例才有东西可点。
    */
-  const chosenRow = w.findAll(".row").find((r) => r.text().includes("goods.chosen"));
-  expect(chosenRow, "页面上找不到「已选」那一行 —— 规格面板打不开").toBeTruthy();
-  await chosenRow!.trigger("tap");
+  const add = w.find(".actionbar__add");
+  expect(add.exists(), "底栏找不到「加入购物车」—— 规格面板打不开").toBe(true);
+  await add.trigger("tap");
   await w.vm.$nextTick();
   return w;
 }
@@ -140,7 +144,10 @@ describe("商品详情页", () => {
 
   it("★★ 后端没给库存时不设上限 —— 缺省当 0 会让整件商品都买不了", async () => {
     goodsDetail.mockResolvedValue(
-      goods({ skus: [{ skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980 }] as never }),
+      goods({ skus: [
+        { skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980 },
+        { skuNo: "S9", optionValues: ["1kg"], spec: "1kg", price: 990, stock: 0 },
+      ] as never }),
     );
     const w = await render();
     const plus = steppers(w).at(-1)!;
@@ -187,7 +194,10 @@ describe("商品详情页", () => {
 
   it("★★ 售罄不重复说 —— 按钮文案已经写着「已售罄」了", async () => {
     goodsDetail.mockResolvedValue(
-      goods({ skus: [{ skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980, stock: 0 }] as never }),
+      goods({ skus: [
+        { skuNo: "S1", optionValues: ["5kg"], spec: "5kg", price: 2980, stock: 0 },
+        { skuNo: "S9", optionValues: ["1kg"], spec: "1kg", price: 990, stock: 0 },
+      ] as never }),
     );
     const w = await render();
     expect(w.text()).toContain("goods.soldOut");

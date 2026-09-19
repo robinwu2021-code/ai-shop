@@ -28,7 +28,7 @@ vi.mock("@dcloudio/uni-app", () => ({
   onHide: vi.fn(),
   onPullDownRefresh: vi.fn(),
   onReachBottom: vi.fn(),
-  onShareAppMessage: vi.fn(),
+  onShareAppMessage: vi.fn(), onPageScroll: vi.fn(),
 }));
 
 import OrdersPage from "@/pages/orders/index.vue";

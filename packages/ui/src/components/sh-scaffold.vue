@@ -71,9 +71,17 @@ const props = withDefaults(
      * 只是不把「还不知道」画成「确定没有」。
      */
     pending?: boolean;
+    /**
+     * 沉浸式：**不画标题栏、也不给它留位置**，内容从屏幕最顶上开始。
+     *
+     * <p>给商品详情这类「主图顶到状态栏」的页面用：返回、购物车由页面自己浮在图上画
+     * （小程序上那一页同时要在 pages.json 里设 `navigationStyle: custom`）。
+     * 默认关 —— 其余页面的标题栏一律照旧。
+     */
+    immersive?: boolean;
   }>(),
   { padded: true, titleKey: "", tab: "", denied: false, deniedText: "",
-    failed: false, failedText: "", pending: false },
+    failed: false, failedText: "", pending: false, immersive: false },
 );
 
 // 重试由调用点决定重新拉什么 —— 外壳只负责那颗按钮长什么样、摆在哪
@@ -154,7 +162,7 @@ watch(() => props.titleSuffix, applyTitle);
 <template>
   <view class="sh-root sh-frame" :class="rootClass">
     <!-- #ifdef H5 || APP-PLUS -->
-    <view class="navbar" :style="{ paddingTop: statusBar + 'px' }">
+    <view v-if="!immersive" class="navbar" :style="{ paddingTop: statusBar + 'px' }">
       <view class="sh-center navbar__bar">
         <view v-if="canBack" class="sh-center navbar__back sh-hit" @tap="goBack">
           <sh-icon name="chevronLeft" :size="34" color="var(--sh-ink)"></sh-icon>
@@ -165,7 +173,7 @@ watch(() => props.titleSuffix, applyTitle);
     <!-- #endif -->
     <view
       class="sh-scaffold"
-      :class="{ 'is-padded': padded, 'has-tabbar': !!tab }"
+      :class="{ 'is-padded': padded, 'has-tabbar': !!tab, 'is-immersive': immersive }"
       :style="{ '--sh-navbar-h': statusBar + 44 + 'px' }"
     >
       <view v-if="denied" class="sh-denied">
@@ -304,6 +312,13 @@ watch(() => props.titleSuffix, applyTitle);
   padding-top: calc(var(--sh-navbar-h) + var(--sh-pad-page, 28rpx));
 }
 /* #endif */
+/* 沉浸式：标题栏不画，它的位置也不留（写在条件编译块之后，才压得过上面那两条） */
+.sh-scaffold.is-immersive {
+  padding-top: 0;
+}
+.sh-scaffold.is-immersive.is-padded {
+  padding-top: var(--sh-pad-page, 28rpx);
+}
 /* 自定义 tabBar 是 fixed 的，内容区要留出等高的底部空间 */
 .sh-scaffold.has-tabbar {
   padding-bottom: calc(var(--sh-tabbar-h, 124rpx) + 40rpx);
