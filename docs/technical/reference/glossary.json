@@ -29892,6 +29892,15 @@
         "zh": "经营模式。"
       },
       {
+        "name": "BusinessMode",
+        "client": "shared",
+        "values": [
+          "SELF_OPERATED",
+          "THIRD_PARTY"
+        ],
+        "zh": "门店经营模式。"
+      },
+      {
         "name": "CATEGORY_TYPE",
         "client": "shared",
         "values": [

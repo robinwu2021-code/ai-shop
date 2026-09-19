@@ -4295,10 +4295,7 @@ components:
           type: "boolean"
           description: "这家店的只读**是套餐降级压下来的**，不是店主自己停的。\n\n<p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。"
         businessMode: 
-          type: "string"
-          enum: 
-            - "SELF_OPERATED"
-            - "THIRD_PARTY"
+          "$ref": "#/components/schemas/BusinessMode"
           description: "经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。"
       required: 
         - "storeNo"
@@ -4314,6 +4311,12 @@ components:
         - "ACTIVE"
         - "READONLY"
       description: "门店状态。READONLY = 已停用（不再接新单，已有单照常履约）"
+    BusinessMode: 
+      type: "string"
+      enum: 
+        - "SELF_OPERATED"
+        - "THIRD_PARTY"
+      description: "门店经营模式。与后端 MchStore.SELF_OPERATED / THIRD_PARTY、ops-web 的 BusinessMode 同一套取值"
     MerchantStaff: 
       type: "object"
       properties: 
