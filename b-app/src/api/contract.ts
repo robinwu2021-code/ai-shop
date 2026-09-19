@@ -29,6 +29,7 @@ import type {
   CurrencyCode,
   MarketId,
   GoodsStatus,
+  SaleMode,
   I18nText,
   MasterData,
   Message,
@@ -486,6 +487,11 @@ export interface GoodsDraft {
     /** 团购价（最小货币单位） */
     price?: number;
   };
+  /**
+   * 销售方式（V340）。**不传 = 不改**（新建默认正常售卖）。
+   * 在售商品改它与改价同一套：存草稿、发布后生效。
+   */
+  saleMode?: SaleMode;
 }
 
 /**

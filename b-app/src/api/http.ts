@@ -322,6 +322,7 @@ export const httpApi: MerchantApi = {
       service: payload.service,
       groupBuy: payload.groupBuy,
       fulfillments: payload.fulfillments,
+      saleMode: payload.saleMode,
     } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
     http.post<Goods>(buildPath(E.mToggleGoods.path, { goodsNo }), { onSale } satisfies ToggleGoodsReq),

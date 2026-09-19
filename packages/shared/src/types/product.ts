@@ -404,7 +404,27 @@ export interface Goods {
    * 所以 true 一定意味着「发布会改变线上」。列表页据此挂「有未发布修改」徽标。
    */
   hasDraft?: boolean;
+  /** 销售方式（V340）。两端都下发；老后端不发时按 NORMAL 理解 */
+  saleMode?: SaleMode;
+  /**
+   * **只在 C 端详情下发**：此刻能不能走普通下单（加购 / 立即购买 / 单买）。
+   * 后端算、端上不推 —— 特价、买赠、平台活动端上并不知道，自己拼就是第二个判定入口。
+   * 列表里恒空。
+   */
+  directBuyable?: boolean;
+  /**
+   * **只在 B 端列表下发**：仅活动的货此刻有没有点名它的活动在跑（含拼团）。
+   * false 时列表写「未在活动中」—— 状态在售、顾客却找不到也买不了。正常售卖的货恒空。
+   */
+  activityLive?: boolean;
 }
+
+/**
+ * 商品的销售方式（TDD-商品仅活动可售）。
+ * - `NORMAL` 正常售卖（默认）
+ * - `ACTIVITY_ONLY` 仅活动：此刻有点名它的活动在跑才能买，且只能按那个活动的路径买
+ */
+export type SaleMode = "NORMAL" | "ACTIVITY_ONLY";
 /** 规格模板归属：平台统一维护 / 商家自存 */
 export type SpecTemplateScope = "PLATFORM" | "MERCHANT";
 /** 商品在商家侧的状态。C 端只看得到 ON_SALE */

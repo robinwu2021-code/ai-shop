@@ -25,6 +25,7 @@ import type {
   OrderStatus,
   GoodsParam,
   StoreProfile,
+  SaleMode,
 } from "@shared/types";
 import type { GoodsDraft } from "./contract";
 
@@ -194,6 +195,11 @@ export interface SaveGoodsReqBody {
    * **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。
    */
   stdNo?: string;
+  /**
+   * 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 ——
+   * 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。
+   */
+  saleMode?: SaleMode;
 }
 
 export interface ToggleGoodsReq {

@@ -88,6 +88,13 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // **按已授权主键回捞**：goodsNo 来自上一步已过数据域的主查询（auditQueue 的
   // 商品列表本身接域），这里只按那个 goodsNo 点查一行布尔 —— 行级可见性
   // 由主查询决定，这一步不放大任何可见范围。与 toOpsVO 的回捞同一类。
+  // 仅活动可售（V340）：商品列表随行的「此刻有没有活动在跑」布尔。与上面 hasDraft 同一类 ——
+  // **按已授权主键回捞**：入参 goodsNo 全部来自上一步已过数据域的主查询，返回值只是这些
+  // goodsNo 的子集，带不出任何别家的行。读活动表不能按商家域限定：平台活动（P3a）的
+  // entity_no = 'PLATFORM'，限定了就看不到它，而平台活动点名的货同样算「在活动中」。
+  "SaleGatePortImpl#live":
+    "按已授权的 goodsNo 回捞「有无活动在跑」的布尔（仅活动可售）；返回值是入参子集，"
+    + "不放大可见范围。不按商家域限定，因为平台活动的 owner 是 PLATFORM",
   "MerchantGoodsServiceImpl#hasDraft":
     "按已授权 goodsNo 回捞草稿存在性布尔；行级可见性由上游主查询的数据域决定",
   // 审核员草稿审阅视图（双版本）：主查询 requireByNoInScope 已过数据域，
