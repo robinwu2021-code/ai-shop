@@ -26,6 +26,7 @@
 | `MerchantQueryPort.MerchantBrief` | 末位加 `boolean selfOperated`，`MerchantPortImpl` 的 `find` / `findAll` 从 `mch_entity.self_operated` 读 |
 | `GoodsVO.MerchantBriefVO` | 末位加 `boolean selfOperated`，`GoodsServiceImpl` 两处构造透传；找不到商家的兜底为 `false` |
 | `GroupVOs.MerchantBriefVO` | 同上，`GroupServiceImpl` 两处构造透传 |
+| `VisitedMerchantVO`（`/mp/merchant/visited`） | 末位加 `boolean selfOperated`。**第一版漏了这一份**：店铺页「我买过的」那一档在真机上把虹选鲜果显示成一个「虹」字（2026-09-19 补） |
 
 **判据只认 `mch_entity.self_operated`，不从门店的 `business_mode` 推**：那一列管的是结算（谁是销售主体），
 标识管的是对买家的法定告知。两列今天一致，但合成一个会让「改结算口径」顺带改掉对外告知，反之亦然。

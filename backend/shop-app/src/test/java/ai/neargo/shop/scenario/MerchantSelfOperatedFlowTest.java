@@ -105,6 +105,17 @@ class MerchantSelfOperatedFlowTest {
         assertThat(all.get(other).selfOperated()).isFalse();
     }
 
+    @Test
+    @DisplayName("★★★ 「我买过的」那份 VO 也带自营 —— 店铺页第一档此前把虹选鲜果显示成一个「虹」字（真机发现）")
+    void visitedMerchantCarriesSelfOperated() {
+        var self = merchantMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchant(true)));
+        var other = merchantMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, merchant(false)));
+        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(self, 2, 0L).selfOperated()).isTrue();
+        assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(other, 2, 0L).selfOperated()).isFalse();
+    }
+
     @AfterEach
     void cleanup() {
         var mine = merchantMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
