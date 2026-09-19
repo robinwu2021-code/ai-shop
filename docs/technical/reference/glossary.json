@@ -2320,10 +2320,40 @@
           "ar": "يغلق خلال {t}"
         },
         {
+          "key": "home.groupJoin",
+          "zh-CN": "去拼团",
+          "en": "Join",
+          "ar": "انضم"
+        },
+        {
+          "key": "home.groupLive",
+          "zh-CN": "{k} 个团在拼 · 最快还差 {m} 人",
+          "en": "{k} open · {m} more to go",
+          "ar": "{k} مفتوحة · يلزم {m} آخرون"
+        },
+        {
+          "key": "home.groupSolo",
+          "zh-CN": "单买 {p}",
+          "en": "Solo {p}",
+          "ar": "منفرداً {p}"
+        },
+        {
+          "key": "home.groupTag",
+          "zh-CN": "{n}人团",
+          "en": "{n}-person",
+          "ar": "مجموعة {n}"
+        },
+        {
           "key": "home.groups",
           "zh-CN": "邻里团购",
           "en": "Group buys",
           "ar": "شراء جماعي"
+        },
+        {
+          "key": "home.groupsEntry",
+          "zh-CN": "{n} 个团正在拼",
+          "en": "{n} open now",
+          "ar": "{n} مفتوحة الآن"
         },
         {
           "key": "home.groupsMore",
@@ -2710,12 +2740,6 @@
           "ar": "عرض الطلبات"
         },
         {
-          "key": "merchant.address",
-          "zh-CN": "地址",
-          "en": "Address",
-          "ar": "العنوان"
-        },
-        {
           "key": "merchant.apply",
           "zh-CN": "商家入驻",
           "en": "Sell with us",
@@ -2762,12 +2786,6 @@
           "zh-CN": "申请已提交，运营会尽快联系你",
           "en": "Application sent — we'll be in touch",
           "ar": "أُرسل الطلب؛ سنتواصل معك"
-        },
-        {
-          "key": "merchant.basis",
-          "zh-CN": "{r} 条评价 · {s} 单 · 新评价权重更高",
-          "en": "{r} reviews · {s} orders · recent weighted higher",
-          "ar": "{r} تقييمًا · {s} طلبًا · الأحدث أعلى وزنًا"
         },
         {
           "key": "merchant.category",
@@ -2824,12 +2842,6 @@
           "ar": "ساعات العمل"
         },
         {
-          "key": "merchant.joined",
-          "zh-CN": "入驻时间",
-          "en": "Joined",
-          "ar": "تاريخ الانضمام"
-        },
-        {
           "key": "merchant.microBlocked",
           "zh-CN": "该行业不支持个人经营者，请选个体户或企业",
           "en": "This industry does not allow individual sellers — pick sole trader or company",
@@ -2870,6 +2882,24 @@
           "zh-CN": "店铺名称",
           "en": "Shop name",
           "ar": "اسم المتجر"
+        },
+        {
+          "key": "merchant.statGoods",
+          "zh-CN": "在售",
+          "en": "Items",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "merchant.statRating",
+          "zh-CN": "评分",
+          "en": "Rating",
+          "ar": "التقييم"
+        },
+        {
+          "key": "merchant.statSold",
+          "zh-CN": "已售单",
+          "en": "Orders",
+          "ar": "الطلبات"
         },
         {
           "key": "merchant.subject.ENTERPRISE",
@@ -4186,22 +4216,22 @@
           "ar": "متاجر قريبة"
         },
         {
-          "key": "shops.nearbyHint",
-          "zh-CN": "能送到你自提点的",
-          "en": "They deliver to your point",
-          "ar": "توصّل إلى نقطة استلامك"
+          "key": "shops.newShop",
+          "zh-CN": "新店",
+          "en": "New",
+          "ar": "جديد"
+        },
+        {
+          "key": "shops.orders",
+          "zh-CN": "{n} 单",
+          "en": "{n} orders",
+          "ar": "{n} طلب"
         },
         {
           "key": "shops.promoted",
           "zh-CN": "平台推荐",
           "en": "Worth a try",
           "ar": "يستحق التجربة"
-        },
-        {
-          "key": "shops.promotedHint",
-          "zh-CN": "新店值得一试",
-          "en": "Newly joined nearby",
-          "ar": "متاجر جديدة قريبة"
         },
         {
           "key": "shops.title",
@@ -4214,12 +4244,6 @@
           "zh-CN": "我买过的",
           "en": "You've bought here",
           "ar": "اشتريت من هنا"
-        },
-        {
-          "key": "shops.visitedHint",
-          "zh-CN": "回购老店",
-          "en": "Order again",
-          "ar": "اطلب مجددًا"
         },
         {
           "key": "skin.amber",
