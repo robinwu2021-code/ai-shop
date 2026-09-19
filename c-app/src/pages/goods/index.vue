@@ -9,7 +9,8 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
-import { buildShareMessage } from "@shared/ports/share";
+import { useLocationStore } from "@/stores/location";
+import { buildShareMessage, canNativeShare } from "@shared/ports/share";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import {
@@ -27,6 +28,9 @@ const { t } = useI18n();
 const cart = useCartStore();
 const user = useUserStore();
 const community = useCommunityStore();
+const location = useLocationStore();
+/** 小程序才有原生分享按钮；H5 与团购页同一约定：不显示 */
+const nativeShare = canNativeShare();
 
 const goods = ref<Goods | null>(null);
 const reviews = ref<Review[]>([]);
@@ -167,11 +171,66 @@ const promo = computed(() => buyNGetM(goods.value?.promotions));
 /** 按当前购买数量算出的赠品件数 */
 const giftQty = computed(() => giftQtyFor(promo.value, qty.value));
 
-const off = computed(() => {
-  const s = sku.value;
-  if (!s?.originPrice || s.originPrice <= s.price) return 0;
-  return Math.round((1 - s.price / s.originPrice) * 100);
+
+/** 主图轮播当前是第几张（右下角「1/N」） */
+const heroAt = ref(0);
+
+/** 库存到这个数以下才告诉买家「仅剩 N 件」—— 平时的库存数对买家没有意义 */
+const LOW_STOCK_AT = 10;
+/** 0 = 不说 */
+const lowStock = computed(() => {
+  const n = sku.value?.stock ?? 0;
+  return n > 0 && n <= LOW_STOCK_AT ? n : 0;
 });
+
+/** 比划线价省了多少（最小货币单位）。0 = 没有划线价或不比它便宜，不显示 */
+const saved = computed(() => {
+  const s = sku.value;
+  return s?.originPrice && s.originPrice > s.price ? s.originPrice - s.price : 0;
+});
+
+/** 实物才有「送到哪」。服务、虚拟、卡券不出「送至」那一行 */
+const isShipped = computed(() => !isService.value && !isVirtual.value && !isCard.value);
+
+/** 配送那一行：方式，生鲜再接商家写的到货说明 */
+const shipText = computed(() => {
+  const g = goods.value;
+  if (!g?.fulfillments?.length) return "";
+  const ways = g.fulfillments.map((x) => String(t(`fulfillment.${x}`))).join(" · ");
+  return isFresh.value && g.arrivalDesc ? `${ways} · ${g.arrivalDesc}` : ways;
+});
+
+/** 价格下面那排小标签有没有内容 —— 全空时整排不渲染，不留一道空缝 */
+const hasChips = computed(() => {
+  const g = goods.value;
+  if (!g) return false;
+  return (isFresh.value && !!cutoffText.value && !cutoffPassed.value) || cutoffPassed.value
+    || (isService.value && !!g.durationMin) || isVirtual.value
+    || (isCard.value && !!(g.card?.timesTotal || g.card?.faceValueMinor))
+    || !!promo.value || (FEATURES.points && !!g.points) || g.sales > 0;
+});
+
+/** 商品参数卡有没有内容 —— 限购只在真有限购时算 */
+const hasParams = computed(() => {
+  const g = goods.value;
+  if (!g) return false;
+  return !!g.params?.length || (isFresh.value && !!g.origin && !hasOriginParam.value)
+    || (isService.value && !!g.storeName) || (isCard.value && !!g.card)
+    || !!g.limitPerUser || !!g.weighed || (isVirtual.value && !!g.virtual);
+});
+
+/** 多规格才需要先弹面板；单规格直接按 1 件执行 */
+const multiSku = computed(() => (goods.value?.skus.length ?? 0) > 1);
+const showSku = ref(false);
+/** 「已选」那一行：规格 · 件数 */
+const chosenText = computed(() =>
+  String(t("goods.chosenValue", { spec: sku.value?.spec || chosen.value.join(" "), n: qty.value })),
+);
+/**
+ * 底栏按钮点不点得动。多规格时**恒可点** —— 它的作用是打开面板，
+ * 当前选中的规格卖完了，他还得能进面板换一个；单规格时就是 buyable。
+ */
+const barReady = computed(() => multiSku.value || buyable.value);
 
 /** 当前选中日期的可选时刻 */
 const times = computed(
@@ -439,6 +498,55 @@ async function buyNow() {
   }
 }
 
+/** 「送至」那一行：去收货地址页换 */
+function gotoAddress() {
+  uni.navigateTo({ url: ROUTES.address });
+}
+
+/** 底栏「加入购物车」：多规格先弹面板，单规格直接加 */
+function tapAdd(e: unknown) {
+  if (multiSku.value) {
+    showSku.value = true;
+    return;
+  }
+  if (buyable.value) void addToCart(e);
+}
+
+/** 底栏「立即购买 / 单买」：同上 */
+function tapBuy() {
+  if (multiSku.value) {
+    showSku.value = true;
+    return;
+  }
+  if (buyable.value) void buyNow();
+}
+
+/** 底栏「开团」：同上 */
+function tapGroup() {
+  if (multiSku.value) {
+    showSku.value = true;
+    return;
+  }
+  if (buyable.value) void openGroupBuy();
+}
+
+/** 面板里的按钮：先收面板再执行，否则跳结算页时面板还盖在上一页 */
+function sheetAdd(e: unknown) {
+  if (!buyable.value) return;
+  showSku.value = false;
+  void addToCart(e);
+}
+function sheetBuy() {
+  if (!buyable.value) return;
+  showSku.value = false;
+  void buyNow();
+}
+function sheetGroup() {
+  if (!buyable.value) return;
+  showSku.value = false;
+  void openGroupBuy();
+}
+
 function gotoCart() {
   uni.switchTab({ url: ROUTES.cart });
 }
@@ -504,7 +612,17 @@ onShareAppMessage(() =>
           只有一张时不套 swiper：一个滑不动的轮播还带着一个指示点，
           看着像坏了。
         -->
-        <swiper v-if="gallery.length > 1" class="hero sh-center" :indicator-dots="true" circular>
+        <!--
+          通栏，不带边距与圆角（原型「优化后」）。折扣不再压在图上 —— 挪到价格旁边说「省多少」，
+          一个百分比贴在图上，买家要自己去和价格对上号。
+          多张时右下角是「1/N」计数而不是指示点：点在浅色图上看不见。
+        -->
+        <swiper
+          v-if="gallery.length > 1"
+          class="hero sh-center"
+          circular
+          @change="(e: { detail: { current: number } }) => (heroAt = e.detail.current)"
+        >
           <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
             <sh-cover class="hero__emoji" :src="img"></sh-cover>
           </swiper-item>
@@ -512,23 +630,25 @@ onShareAppMessage(() =>
         <view v-else class="hero sh-center">
           <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
         </view>
-        <view v-if="off" class="hero__wrap">
-          <text class="txt-caption hero__off sh-num">-{{ off }}%</text>
+        <view v-if="gallery.length > 1" class="hero__wrap">
+          <text class="txt-caption hero__count sh-num">{{ heroAt + 1 }}/{{ gallery.length }}</text>
         </view>
 
-        <!-- 标题与价格 -->
-        <view class="sh-card block">
-          <text class="txt-display title">{{ goods.title }}</text>
-          <text class="sh-muted sub">{{ goods.subtitle }}</text>
-
+        <!-- 价格 · 标题 · 卖点。价格放最上面：进来先看的就是多少钱 -->
+        <view class="sh-card block pricecard">
           <view class="price sh-row sh-row--baseline">
-            <text class="txt-hero sh-num sh-center">{{ money(sku?.price ?? goods.price) }}</text>
-            <text v-if="sku?.originPrice" class="sh-was sh-num">
+            <text class="txt-hero sh-num">{{ money(sku?.price ?? goods.price) }}</text>
+            <text v-if="sku?.originPrice && saved" class="sh-was sh-num">
               {{ money(sku.originPrice) }}
             </text>
+            <text v-if="saved" class="txt-caption sh-chip sh-chip--danger sh-num save">
+              {{ $t("goods.saveAmount", { p: money(saved) }) }}
+            </text>
           </view>
+          <text class="txt-title title">{{ goods.title }}</text>
+          <text v-if="goods.subtitle" class="sh-muted sub">{{ goods.subtitle }}</text>
 
-          <view class="chips sh-wrap">
+          <view v-if="hasChips" class="chips sh-wrap">
             <!--
               没设截单时间的生鲜不出这个标签 —— 否则就是一个空的「距截单」，后面什么都没有。
               判据与商品卡（biz-goods-card 的 showCutoff）同一条：有倒计时文字才显示。
@@ -557,70 +677,63 @@ onShareAppMessage(() =>
             <text v-if="FEATURES.points && goods.points" class="sh-chip sh-chip--primary sh-num">
               {{ $t("points.earnChip", { n: goods.points }) }}
             </text>
-            <text class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
+            <!-- 已售 0 不说：零销量是个负面信号，说出来只会劝退 -->
+            <text v-if="goods.sales > 0" class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
           </view>
         </view>
 
-        <!-- 领券（s36）：只占一行，点开是面板 -->
-        <view v-if="coupons.length" class="sh-card sh-row sh-row--between" @tap="showCoupons = true">
-          <text class="txt-sub fact__label">{{ $t("goods.couponRow") }}</text>
-          <view class="sh-row">
-            <text class="txt-sub txt-primary sh-num">{{ couponRuleText(coupons[0]!) }}</text>
+        <!--
+          **送到哪、怎么送、卖到哪** —— 买家点进来最先要确认的三件事，放首屏一张卡。
+          此前配送方式在第五张卡、销售范围塞在商家卡里，首屏一个都看不到。
+          「送至」读当前位置（与首页顶栏同一个 label），点了去收货地址页换；
+          下单用哪条地址仍在结算页定。服务 / 虚拟 / 卡券没有「送到哪」，不出那一行。
+        -->
+        <view v-if="isShipped || shipText || saleScopeText" class="sh-card block rows">
+          <view v-if="isShipped" class="sh-row sh-row--divided row" @tap="gotoAddress">
+            <text class="txt-sub sh-muted row__label">{{ $t("goods.shipTo") }}</text>
+            <sh-icon name="pin" :size="28" color="var(--sh-primary-text)"></sh-icon>
+            <text class="txt-strong sh-fill row__value">{{ location.label || $t("goods.pickAddress") }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+          <view v-if="shipText" class="sh-row sh-row--divided row">
+            <text class="txt-sub sh-muted row__label">{{ isShipped ? $t("goods.shipVia") : $t("goods.fulfillment") }}</text>
+            <text class="txt-body sh-fill row__value">{{ shipText }}</text>
+          </view>
+          <!--
+            销售范围。整行不渲染的判据是后端给的 saleScopeText，**不是 areaNames 为空**：
+            只做自提却没配范围的商家也是空的，而那个空的意思正好相反（谁也看不到），
+            在端上判必然判反一半。
+          -->
+          <view v-if="saleScopeText" class="sh-row sh-row--divided row">
+            <text class="txt-sub sh-muted row__label">{{ $t("goods.scopeShort") }}</text>
+            <text class="txt-body sh-fill row__value">{{ saleScopeText }}</text>
+          </view>
+        </view>
+
+        <!--
+          领券 + 已选。**规格、数量不再常驻页面** —— 还没决定买就先让人调数量是反的；
+          库存数也不露：对买家没有意义，只在紧缺时（≤10）在面板里说「仅剩 N 件」。
+        -->
+        <view class="sh-card block rows">
+          <!-- 领券（s36）：前两张券的规则直接摆出来，点开是面板 -->
+          <view v-if="coupons.length" class="sh-row sh-row--divided row" @tap="showCoupons = true">
+            <text class="txt-sub sh-muted row__label">{{ $t("goods.couponRow") }}</text>
+            <view class="sh-fill sh-row couponchips">
+              <text v-for="c in coupons.slice(0, 2)" :key="c.couponNo" class="txt-caption sh-chip sh-chip--danger sh-num">
+                {{ couponRuleText(c) }}
+              </text>
+            </view>
+            <text class="txt-sub is-danger">{{ $t("goods.couponClaim") }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+          <view class="sh-row sh-row--divided row" @tap="showSku = true">
+            <text class="txt-sub sh-muted row__label">{{ $t("goods.chosen") }}</text>
+            <text class="txt-body sh-fill row__value sh-num">{{ chosenText }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
 
-        <!-- 商家信息：商品与服务都要展示，点进商家详情 -->
-        <view class="sh-card block">
-          <biz-merchant-bar :merchant="goods.merchant" @tap="openMerchant"></biz-merchant-bar>
-          <!--
-            销售范围只在详情页出现，列表不标 —— 买家在列表上要的是「有什么」，
-            点进来才问「送不送到我这儿」。整行不渲染的判据是后端给的 saleScopeText，
-            **不是 areaNames 为空**：只做自提却没配范围的商家也是空的，
-            而那个空的意思正好相反（谁也看不到），在端上判必然判反一半。
-          -->
-          <view v-if="saleScopeText" class="sh-row scope">
-            <text class="txt-caption sh-muted">{{ $t("goods.saleScope") }}</text>
-            <text class="txt-caption sh-fill scope__text">{{ saleScopeText }}</text>
-          </view>
-        </view>
-
-        <!-- 规格矩阵：每个维度一行，不可组合的取值置灰 -->
-        <view class="sh-card block">
-          <view v-for="(group, gi) in goods.specGroups" :key="group.name" class="specgroup">
-            <text class="sh-muted">{{ group.name }}</text>
-            <view class="specs sh-wrap">
-              <view
-                v-for="opt in group.options"
-                :key="opt"
-                class="sh-seg"
-                :class="{
-                  'sh-seg--on': chosen[gi] === opt,
-                  'is-off': !optionState(gi, opt).inStock,
-                }"
-                @tap="choose(gi, opt)"
-              >
-                <text class="txt-bold">{{ opt }}</text>
-              </view>
-            </view>
-          </view>
-
-          <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
-          <view v-if="promo" class="sh-notice sh-notice--danger giftline">
-            <text class="txt-caption giftline__text is-danger">
-              {{ giftQty > 0
-                ? $t("promo.willGift", { n: giftQty })
-                : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
-            </text>
-          </view>
-
-          <view class="qty sh-row sh-row--between">
-            <text class="sh-muted sh-num">{{ $t("goods.stock", { n: sku?.stock ?? 0 }) }}</text>
-            <sh-stepper v-model="qty" :max="maxQty"></sh-stepper>
-          </view>
-        </view>
-
-        <!-- 预约：日期 + 时刻 -->
+        <!-- 预约：日期 + 时刻 -->        <!-- 预约：日期 + 时刻 -->
         <view v-if="needAppointment" class="sh-card block">
           <text class="sh-muted">{{ $t("goods.pickDate") }}</text>
           <scroll-view class="dates" scroll-x>
@@ -693,25 +806,18 @@ onShareAppMessage(() =>
           </view>
         </view>
 
-        <!-- 事实区 -->
+        <!-- 商家。挪到配送与规格之后：先定「买不买」，再看「谁在卖」。没人评过时不说「暂无评价」 -->
         <view class="sh-card block">
-          <view class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.fulfillment") }}</text>
-            <text class="txt-sub fact__value">
-              {{ goods.fulfillments.map((x) => $t(`fulfillment.${x}`)).join(" · ") }}
-            </text>
-          </view>
-          <view v-if="isFresh && goods.arrivalDesc" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.arrival") }}</text>
-            <text class="txt-sub fact__value">{{ goods.arrivalDesc }}</text>
-          </view>
-          <!--
-            **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些。
-            没有这一段的话，他填了买家看不见 —— 等于白填，而他不会知道。
+          <biz-merchant-bar :merchant="goods.merchant" quiet-no-rating @tap="openMerchant"></biz-merchant-bar>
+        </view>
 
-            <p>接在既有的「事实区」里而不是另起一张卡：买家心里这些和履约方式、
-            到货时间是同一类信息（「这货是什么样的」），分成两块只是把一件事拆散。
-          -->
+        <!--
+          **商品参数**（产地 / 保质期 / 材质…）。商家在建品页填的就是这些，
+          没有这一段他填了买家看不见。配送方式与到货时间已挪去首屏的配送卡。
+          限购只在**真有限购**时出现 ——「限购：不限购」是一行什么都没说的话。
+        -->
+        <view v-if="hasParams" class="sh-card block">
+          <text class="txt-title dt__h">{{ $t("goods.paramsTitle") }}</text>
           <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact sh-row sh-row--between sh-row--top">
             <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
             <text class="txt-sub fact__value">{{ p.label }}</text>
@@ -720,7 +826,6 @@ onShareAppMessage(() =>
             旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
             两处都显示的话，商家在新的参数里填了「本地」、老列里还留着
             早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
-            存量商品（只有老列、没有参数）仍旧照常显示。
           -->
           <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact sh-row sh-row--between sh-row--top">
             <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
@@ -736,11 +841,9 @@ onShareAppMessage(() =>
               {{ $t("goods.validDays", { n: goods.card.validDays }) }}
             </text>
           </view>
-          <view class="fact sh-row sh-row--between sh-row--top">
+          <view v-if="goods.limitPerUser" class="fact sh-row sh-row--between sh-row--top">
             <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
-            <text class="txt-sub fact__value">
-              {{ goods.limitPerUser ? $t("goods.limit", { n: goods.limitPerUser }) : $t("goods.noLimit") }}
-            </text>
+            <text class="txt-sub fact__value">{{ $t("goods.limit", { n: goods.limitPerUser }) }}</text>
           </view>
 
           <view v-if="goods.weighed" class="sh-notice sh-notice--warning notice">
@@ -777,7 +880,7 @@ onShareAppMessage(() =>
         <!-- 评价 -->
         <view class="sh-card block">
           <view class="rvhead">
-            <text class="txt-title">{{ $t("review.title", { n: reviews.length }) }}</text>
+            <text class="txt-title">{{ reviews.length ? $t("review.title", { n: reviews.length }) : $t("review.titleBare") }}</text>
           </view>
           <biz-review
             v-for="r in reviews"
@@ -785,8 +888,10 @@ onShareAppMessage(() =>
             :review="r"
             @like="likeReview(r)"
           ></biz-review>
-          <text v-if="!reviews.length" class="txt-caption rvempty">{{ $t("review.empty") }}</text>
-          <text v-if="!reviews.length" class="sh-hint txt-quiet">{{ $t("review.emptyTip") }}</text>
+          <!-- 空态一行：「还没有评价 · 购买后可发表评价」，不再占两行 -->
+          <text v-if="!reviews.length" class="txt-sub sh-muted">
+            {{ $t("review.empty") }} · {{ $t("review.emptyTip") }}
+          </text>
         </view>
 
         <!--
@@ -812,51 +917,126 @@ onShareAppMessage(() =>
           <view class="sh-btn coupon__done" @tap="showCoupons = false">{{ $t("goods.couponDone") }}</view>
         </sh-sheet>
 
-        <sh-actionbar pill="plain" :pad="220">
-          <view class="actionbar__icon sh-center" @tap="() => {}">
-            <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
+        <!--
+          规格面板。规格矩阵、买赠提示、数量都在这里 —— 页面上只留一行「已选」。
+          单规格商品点底栏的「加入购物车 / 立即购买」**不弹它**，直接按 1 件执行；
+          多规格才先弹，在面板里选好再按。
+        -->
+        <sh-sheet :visible="showSku" :title="String($t('goods.chosen'))" @close="showSku = false">
+          <view class="skuhead sh-row">
+            <sh-cover class="skuhead__img" :src="goods.cover"></sh-cover>
+            <view class="sh-fill skuhead__main">
+              <view class="sh-row sh-row--baseline">
+                <text class="txt-display sh-num">{{ money(sku?.price ?? goods.price) }}</text>
+                <text v-if="sku?.originPrice && saved" class="sh-was sh-num">{{ money(sku.originPrice) }}</text>
+              </view>
+              <text class="txt-sub sh-muted sh-num">{{ chosenText }}</text>
+            </view>
           </view>
 
+          <!-- 规格矩阵：每个维度一行，不可组合的取值置灰 -->
+          <view v-for="(group, gi) in goods.specGroups" :key="group.name" class="specgroup">
+            <text class="txt-strong">{{ group.name }}</text>
+            <view class="specs sh-wrap">
+              <view
+                v-for="opt in group.options"
+                :key="opt"
+                class="sh-seg"
+                :class="{
+                  'sh-seg--on': chosen[gi] === opt,
+                  'is-off': !optionState(gi, opt).inStock,
+                }"
+                @tap="choose(gi, opt)"
+              >
+                <text class="txt-bold">{{ opt }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 买赠：当前数量能拿几件赠品，实时算给用户看 -->
+          <view v-if="promo" class="sh-notice sh-notice--danger giftline">
+            <text class="txt-caption giftline__text is-danger">
+              {{ giftQty > 0
+                ? $t("promo.willGift", { n: giftQty })
+                : $t("promo.needMore", { n: promo.buyN - (qty % promo.buyN) }) }}
+            </text>
+          </view>
+
+          <view class="qty sh-row sh-row--between">
+            <view class="qty__label">
+              <text class="txt-strong">{{ $t("goods.qty") }}</text>
+              <!-- 库存只在紧缺时说：「库存 100」对买家没有意义，「仅剩 3 件」才有 -->
+              <text v-if="lowStock" class="txt-caption is-danger sh-num qty__low">
+                {{ $t("goods.lowStock", { n: lowStock }) }}
+              </text>
+            </view>
+            <sh-stepper v-model="qty" :max="maxQty"></sh-stepper>
+          </view>
+
+          <view v-if="buyBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
+            <text>{{ buyBlockedReason }}</text>
+          </view>
+
+          <view class="sheetbar sh-row">
+            <template v-if="grp">
+              <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
+                {{ soldOut ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
+              </view>
+              <view class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetGroup">
+                {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
+              </view>
+            </template>
+            <template v-else>
+              <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetAdd($event)">
+                {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
+              </view>
+              <view class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
+                {{ $t("goods.buyNow") }}
+              </view>
+            </template>
+          </view>
+        </sh-sheet>
+
+        <sh-actionbar pill="plain" :pad="220">
+          <!-- 三个图标位都带字：只有图标时「店铺」和「分享」长得太像 -->
+          <view class="actionbar__icon sh-center" @tap="openMerchant">
+            <sh-icon name="store" :size="40" color="var(--sh-sub)"></sh-icon>
+            <text class="txt-caption sh-muted">{{ $t("goods.shop") }}</text>
+          </view>
+          <!--
+            分享：小程序里是原生 `open-type="share"` 按钮，点了弹微信的转发面板，
+            内容由本页的 onShareAppMessage 给。此前这里是一个 `@tap="() => {}"` 的空按钮，
+            点了什么都不发生。H5 没有原生分享，与团购页同一约定：不显示。
+          -->
+          <button v-if="nativeShare" class="actionbar__icon actionbar__share sh-center" open-type="share">
+            <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
+            <text class="txt-caption sh-muted">{{ $t("goods.share") }}</text>
+          </button>
           <view
             class="actionbar__icon actionbar__cart sh-center"
             :class="{ 'is-bouncing': bouncing }"
             @tap="gotoCart"
           >
             <sh-icon name="cart" :size="40" color="var(--sh-sub)"></sh-icon>
+            <text class="txt-caption sh-muted">{{ $t("goods.cart") }}</text>
             <text v-if="cart.count" class="sh-badge-count actionbar__badge sh-num">
               {{ cart.count > 99 ? "99+" : cart.count }}
             </text>
           </view>
           <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
           <template v-if="grp">
-            <view
-              class="sh-btn actionbar__add"
-              :class="{ 'is-disabled': !buyable }"
-              @tap="buyable && buyNow()"
-            >
-              {{ soldOut ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
+            <view class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
+              {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
             </view>
-            <view
-              class="txt-sub sh-btn actionbar__buy sh-fill"
-              :class="{ 'is-disabled': !buyable }"
-              @tap="openGroupBuy"
-            >
+            <view class="txt-sub sh-btn actionbar__buy sh-fill" :class="{ 'is-disabled': !barReady }" @tap="tapGroup">
               {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
             </view>
           </template>
           <template v-else>
-            <view
-              class="sh-btn actionbar__add"
-              :class="{ 'is-disabled': !buyable }"
-              @tap="buyable && addToCart($event)"
-            >
-              {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
+            <view class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapAdd($event)">
+              {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.addCart") }}
             </view>
-            <view
-              class="txt-sub sh-btn actionbar__buy sh-fill"
-              :class="{ 'is-disabled': !buyable }"
-              @tap="buyable && buyNow()"
-            >
+            <view class="txt-sub sh-btn actionbar__buy sh-fill" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
               {{ $t("goods.buyNow") }}
             </view>
           </template>
@@ -868,20 +1048,9 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
-/* 销售范围那一行，跟在商家条下面。上边一条分隔线把它与商家信息分开 ——
-   不分开的话它看起来像商家资料的一部分，而它说的是这件商品 */
-.scope {
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  gap: 12rpx;
-  border-top: 2rpx solid var(--sh-line);
-}
 
-/* 地名可能很长（「粤海街道」「南山区」列六个），让它换行别把商家条挤变形 */
-.scope__text {
-  color: var(--sh-ink);
-  word-break: break-all;
-}
+
+
 
 .coupon__done {
   margin-top: 24rpx;
@@ -896,10 +1065,11 @@ onShareAppMessage(() =>
 /* 主图框。底色是**占位**（图没到、或 emoji 占位时露出来的那层），
    所以走弱色块而不是主色 tint —— 主色 tint 是「有语义」的那一档（提示条与选中态），
    拿它当占位会让一张还没加载的图看起来像在强调什么。sh-cover 的调用点一直是 faint。 */
+/* 通栏：用负边距吃掉页面边距，贴满屏宽、贴住顶栏 */
 .hero {
   position: relative;
-  height: 440rpx;
-  border-radius: 44rpx;
+  height: 560rpx;
+  margin: calc(-1 * var(--sh-pad-page, 28rpx)) calc(-1 * var(--sh-pad-page, 28rpx)) 0;
   background: var(--sh-faint);
 }
 /* 原先只有字号 —— 那是给 emoji 写的。换成真图后没有可撑的尺寸，
@@ -907,7 +1077,7 @@ onShareAppMessage(() =>
 .hero__emoji {
   width: 100%;
   height: 100%;
-  border-radius: 44rpx;
+  border-radius: 0;
   font-size: 200rpx;
   line-height: 1;
 }
@@ -917,16 +1087,7 @@ onShareAppMessage(() =>
   position: relative;
   height: 0;
 }
-.hero__off {
-  position: absolute;
-  top: -412rpx;
-  inset-inline-start: 28rpx;
-  background: var(--sh-danger);
-  /* 危险色是固定的语义红（不随皮肤变），白字压它的取舍见 base.css 的 .sh-btn--danger-solid */
-  color: #fff;
-  padding: 8rpx 20rpx;
-  border-radius: 9999px;
-}
+
 .title {
   display: block;
 }
@@ -935,7 +1096,13 @@ onShareAppMessage(() =>
   margin-top: 8rpx;
 }
 .price {
-  margin-top: 28rpx;
+  gap: 16rpx;
+}
+.save {
+  align-self: center;
+}
+.title {
+  margin-top: 16rpx;
 }
 
 .chips {
@@ -1005,13 +1172,24 @@ onShareAppMessage(() =>
 .notice {
   margin-top: 16rpx;
 }
+/* 图标位：图标在上、字在下，不再是灰底圆钮 —— 三个都是圆钮时分不清哪个是哪个 */
 .actionbar__icon {
   position: relative;
   flex: 0 0 auto;
   width: 88rpx;
   height: 88rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
+  flex-direction: column;
+  gap: 4rpx;
+}
+/* 分享是原生 <button>：去掉它自带的边框、底色、内边距与行高 */
+.actionbar__share {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.actionbar__share::after {
+  border: none;
 }
 .actionbar__cart.is-bouncing {
   animation: shCartBounce var(--sh-t-slow) var(--sh-ease-spring);
@@ -1023,8 +1201,8 @@ onShareAppMessage(() =>
 }
 .actionbar__badge {
   position: absolute;
-  top: 8rpx;
-  inset-inline-end: 8rpx;
+  top: -4rpx;
+  inset-inline-end: 4rpx;
 }
 .actionbar__add,
 .actionbar__buy {
@@ -1040,11 +1218,7 @@ onShareAppMessage(() =>
 .rvhead {
   margin-bottom: 24rpx;
 }
-.rvempty {
-  display: block;
-  text-align: center;
-  padding: 40rpx 0;
-}
+
 /* 图文详情：正文与长图 */
 .dt__h {
   display: block;
@@ -1059,5 +1233,57 @@ onShareAppMessage(() =>
   width: 100%;
   margin-top: 16rpx;
   border-radius: 16rpx;
+}
+
+/* 主图右下角的「1/N」 */
+.hero__count {
+  position: absolute;
+  top: -72rpx;
+  inset-inline-end: 28rpx;
+  padding: 4rpx 20rpx;
+  border-radius: 9999px;
+  background: var(--sh-scrim);
+  color: #fff;
+}
+/* 配送卡、领券与已选卡：一行一件事，行高够一根手指 */
+.row {
+  min-height: 56rpx;
+  gap: 16rpx;
+}
+.row__label {
+  flex-shrink: 0;
+  min-width: 72rpx;
+}
+.row__value {
+  color: var(--sh-ink);
+  min-width: 0;
+}
+.couponchips {
+  gap: 12rpx;
+  overflow: hidden;
+}
+/* 规格面板 */
+.skuhead {
+  gap: 24rpx;
+  align-items: flex-end;
+  margin-bottom: 32rpx;
+}
+.skuhead__img {
+  width: 160rpx;
+  height: 160rpx;
+}
+.skuhead__main {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.qty__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.sheetbar {
+  gap: 16rpx;
+  margin-top: 40rpx;
 }
 </style>

@@ -91,6 +91,14 @@ async function render() {
     await Promise.resolve();
     await w.vm.$nextTick();
   }
+  /*
+   * 规格与数量搬进了底部面板（2026-09-19 详情页重排）—— 像买家那样点一下「已选」把它打开，
+   * 下面的用例（数量封顶、换规格回落）才有东西可点。面板不开，步进器根本不渲染。
+   */
+  const chosenRow = w.findAll(".row").find((r) => r.text().includes("goods.chosen"));
+  expect(chosenRow, "页面上找不到「已选」那一行 —— 规格面板打不开").toBeTruthy();
+  await chosenRow!.trigger("tap");
+  await w.vm.$nextTick();
   return w;
 }
 

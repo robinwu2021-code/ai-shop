@@ -38,7 +38,7 @@ describe("商品详情的销售范围", () => {
   });
 
   it("★★ 三个词条都在", () => {
-    for (const k of ["saleScope:", "scopeUnlimited:", "scopeMore:"]) {
+    for (const k of ["scopeShort:", "scopeUnlimited:", "scopeMore:"]) {
       expect(zh, `zh-CN 缺 ${k}`).toContain(k);
     }
   });

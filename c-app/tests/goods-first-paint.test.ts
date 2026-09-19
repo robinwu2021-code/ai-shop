@@ -98,7 +98,7 @@ function frame(w: ReturnType<typeof mount>) {
   return {
     title: html.includes("香梨标题"),
     // 只看**那一行**的文字：领券弹层的 title 属性里也有这个键，按整页 HTML 搜会恒为真
-    couponRow: w.findAll(".fact__label").some((e) => e.text() === "goods.couponRow"),
+    couponRow: w.findAll(".row__label").some((e) => e.text() === "goods.couponRow"),
     groupBar: html.includes("goods.groupStart"),
   };
 }

@@ -3,7 +3,12 @@ import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 商品/服务上的商家信息条。点进商家详情。
 import type { MerchantBrief } from "@shared/types";
 
-defineProps<{ merchant: MerchantBrief; goodsCount?: number }>();
+/**
+ * @param quietNoRating 没人评过时**什么都不说**（默认会说「暂无评价」）。
+ *   商品详情页用：那里商家条挪到了下半页，一行「暂无评价」只是在说「没有」，
+ *   对新店是劝退。商家列表 / 搜索页不传，照旧显示 —— 在那里横向比较时它有意义。
+ */
+defineProps<{ merchant: MerchantBrief; goodsCount?: number; quietNoRating?: boolean }>();
 defineEmits<{ (e: "tap"): void }>();
 </script>
 
@@ -28,7 +33,7 @@ defineEmits<{ (e: "tap"): void }>();
       <!-- **没人评过 ≠ 0 分**：一家 0 分的店是被打出来的，一家没人评过的只是新开的。
            给新店挂一排空星，看着像差评店 —— 而它连被评的机会都还没有 -->
       <sh-rating v-if="merchant.ratingCount > 0" :value="merchant.rating" :size="24"></sh-rating>
-      <text v-else class="sh-muted bar__norate">{{ $t("merchant.noRating") }}</text>
+      <text v-else-if="!quietNoRating" class="sh-muted bar__norate">{{ $t("merchant.noRating") }}</text>
     </view>
     <text class="txt-caption bar__more">{{ $t("merchant.enter") }}</text>
   </view>
