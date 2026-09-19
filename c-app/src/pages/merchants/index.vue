@@ -20,7 +20,7 @@ import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
-import { distance, isoDate } from "@shared/utils/format";
+import { isoDate } from "@shared/utils/format";
 import type { Merchant, VisitedMerchant } from "@shared/types";
 
 const community = useCommunityStore();
@@ -91,82 +91,48 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="shops.title" tab="merchants">
-    <!-- 1. 我买过的：真实消费过的关系，回购主路径，放最上面 -->
+    <!--
+      三档**同一副长相**（biz-shop-row）：此前前两档是商家条 + 下面一排 chip、
+      第三档另写一份密排行 —— 同一家店换一档就换一个样子。整行可点，不再放「进店 ›」。
+    -->
+    <!-- 1. 我买过的：真实消费过的关系，回购主路径，放最上面。第二行说买过几单，比评分有用 -->
     <view v-if="visited.length" class="sh-block">
       <view class="sh-block__head">
         <text class="txt-title">{{ $t("shops.visited") }}</text>
-        <text class="sh-muted">{{ $t("shops.visitedHint") }}</text>
       </view>
-      <view
+      <biz-shop-row
         v-for="m in visited"
         :key="m.merchantNo"
-        class="card"
+        :merchant="m"
+        :meta="`${$t('visited.orders', { n: m.orderCount })} · ${$t('visited.last', { d: isoDate(m.lastOrderAt) })}`"
         @tap="open(m.merchantNo)"
-      >
-        <biz-merchant-bar
-          :merchant="m"
-          @tap="open(m.merchantNo)"
-        ></biz-merchant-bar>
-        <view class="meta sh-wrap">
-          <text class="sh-chip sh-num">{{
-            $t("visited.orders", { n: m.orderCount })
-          }}</text>
-          <text class="sh-chip sh-num">
-            {{ $t("visited.last", { d: isoDate(m.lastOrderAt) }) }}
-          </text>
-          <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
-        </view>
-      </view>
+      ></biz-shop-row>
     </view>
 
     <!-- 2. 平台推荐：运营位，给新店一个不看历史成绩的位置 -->
     <view v-if="promotedShown.length" class="sh-block">
       <view class="sh-block__head">
         <text class="txt-title">{{ $t("shops.promoted") }}</text>
-        <text class="sh-muted">{{ $t("shops.promotedHint") }}</text>
       </view>
-      <view
+      <biz-shop-row
         v-for="m in promotedShown"
         :key="m.merchantNo"
-        class="card"
+        :merchant="m"
         @tap="open(m.merchantNo)"
-      >
-        <biz-merchant-bar
-          :merchant="m"
-          @tap="open(m.merchantNo)"
-        ></biz-merchant-bar>
-        <text class="txt-caption desc">{{ m.desc }}</text>
-        <view class="meta sh-wrap">
-          <text v-if="m.serviceScope" class="sh-chip">{{
-            $t(`serviceScope.${m.serviceScope}`)
-          }}</text>
-        </view>
-      </view>
+      ></biz-shop-row>
     </view>
 
-    <!-- 3. 附近的：服务范围覆盖本社区，按距离。密排一点 —— 到这一档只需要认个脸 -->
+    <!-- 3. 附近的：服务范围覆盖本社区，按距离 -->
     <view v-if="nearbyShown.length" class="sh-block">
       <view class="sh-block__head">
         <text class="txt-title">{{ $t("shops.nearby") }}</text>
-        <text class="sh-muted">{{ $t("shops.nearbyHint") }}</text>
       </view>
-      <view class="near">
-        <view
-          v-for="m in nearbyShown"
-          :key="m.merchantNo"
-          class="near__i sh-row"
-          @tap="open(m.merchantNo)"
-        >
-          <biz-shop-avatar :name="m.name" :logo="m.logo" :self-operated="m.selfOperated" :size="76"></biz-shop-avatar>
-          <view class="sh-fill">
-            <text class="txt-strong near__name">{{ m.name }}</text>
-            <text class="txt-caption near__desc">{{ m.desc }}</text>
-          </view>
-          <text v-if="m.distance" class="txt-caption near__dist sh-num">{{
-            distance(m.distance)
-          }}</text>
-        </view>
-      </view>
+      <biz-shop-row
+        v-for="m in nearbyShown"
+        :key="m.merchantNo"
+        :merchant="m"
+        @tap="open(m.merchantNo)"
+      ></biz-shop-row>
     </view>
 
     <sh-empty
@@ -179,44 +145,3 @@ onShow(load);
     </sh-empty>
   </sh-scaffold>
 </template>
-
-<style scoped>
-/* 卡在分区白块内成行 —— 行的边界靠内边距，不再各自一张卡 */
-.card {
-  padding: 20rpx 24rpx;
-}
-.meta {
-  margin-top: 24rpx;
-}
-.desc {
-  display: block;
-  margin-top: 16rpx;
-}
-/* 附近的店：一行一家，密排 —— 这一档只是「附近还有谁」，不需要展开介绍 */
-/* 底和圆角由外层 .sh-block 给 —— 白底套白底只会多一圈看不见的边 */
-.near {
-  display: flex;
-  flex-direction: column;
-}
-.near__i {
-  gap: 20rpx;
-  padding: 24rpx 24rpx;
-}
-
-.near__name {
-  display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.near__desc {
-  display: block;
-  margin-top: 4rpx;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.near__dist {
-  flex-shrink: 0;
-}
-</style>

@@ -1,17 +1,22 @@
 <script setup lang="ts">
-// 商家详情：资质与评分 → 在售商品 → 全部评价。
+// 商家详情：头部（谁 · 范围 · 三个数）→ 在售商品（两列）/ 全部评价。
 // 一期平台方是唯一入驻方，页面照样按「多商家」写 —— 二期开放入驻只是数据变多。
-import { ref } from "vue";
+//
+// 2026-09-19 收过一轮：头部去掉了「企业商家」类型标、入驻时间、「新评价权重更高」那句依据，
+// 以及零评价时一排 5.0 的分维度分（那是默认值，不是评出来的）。
+// 留下的都回答「这家店能不能买、靠不靠谱」。
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { ROUTES } from "@shared/utils/constants";
-import { isoDate } from "@shared/utils/format";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { buildShareMessage } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
 
+const { t } = useI18n();
 const cart = useCartStore();
 const merchant = ref<Merchant | null>(null);
 const goods = ref<Goods[]>([]);
@@ -40,6 +45,33 @@ async function load(merchantNo: string) {
   }
   loaded.value = true;
 }
+
+/**
+ * 标签去掉与「自营」标重复的那条 —— 库里有店把「平台自营」也写进了标签，
+ * 于是头部同时出现「自营」chip 和「平台自营」chip。
+ */
+const tags = computed(() => {
+  const m = merchant.value;
+  if (!m) return [];
+  const self = String(t("merchant.selfOperated"));
+  return m.tags.filter((tg) => !(m.selfOperated && tg.includes(self)));
+});
+
+/**
+ * 三个数：评分 · 已售 · 营业时间（没填营业时间就换成在售件数）。
+ * **没人评过写「新店」，不写分**：后端对零评价回 5.0，那是默认值。
+ */
+const stats = computed(() => {
+  const m = merchant.value;
+  if (!m) return [];
+  return [
+    { k: t("merchant.statRating"), v: m.ratingCount > 0 ? m.rating.toFixed(1) : String(t("shops.newShop")) },
+    { k: t("merchant.statSold"), v: String(m.salesCount) },
+    m.openHours
+      ? { k: t("merchant.hours"), v: m.openHours }
+      : { k: t("merchant.statGoods"), v: String(goods.value.length) },
+  ];
+});
 
 function openGoods(g: Goods) {
   uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
@@ -90,105 +122,43 @@ onShareAppMessage(() =>
 
 <template>
   <sh-scaffold v-if="merchant">
-    <!-- 商家头部 -->
+    <!-- 商家头部：谁（头像 · 自营 · 店名 · 认证）→ 能不能卖给我（范围 + 标签）→ 三个数 -->
     <view class="sh-card head">
       <view class="head__top sh-row">
-        <biz-shop-avatar :name="merchant.name" :logo="merchant.logo" :self-operated="merchant.selfOperated" :size="108"></biz-shop-avatar>
-        <view class="sh-fill">
+        <biz-shop-avatar :name="merchant.name" :logo="merchant.logo" :self-operated="merchant.selfOperated" :size="128"></biz-shop-avatar>
+        <view class="sh-fill head__who">
           <view class="head__title sh-row">
             <!-- 自营标（电商法 §37），放店名前：「谁在卖」先于店名 -->
-            <text v-if="merchant.selfOperated" class="txt-caption sh-chip sh-chip--primary tiny">
-              {{ $t("merchant.selfOperated") }}
-            </text>
-            <text class="txt-title">{{ merchant.name }}</text>
-            <text
-              v-if="merchant.verified"
-              class="txt-caption sh-chip sh-chip--primary tiny"
-            >
-              {{ $t("merchant.verified") }}
-            </text>
+            <text v-if="merchant.selfOperated" class="sh-chip sh-chip--primary tiny">{{ $t("merchant.selfOperated") }}</text>
+            <text class="txt-title head__name">{{ merchant.name }}</text>
+            <sh-icon v-if="merchant.verified" name="verified" :size="32" color="var(--sh-primary)"></sh-icon>
           </view>
-          <text class="txt-caption sh-chip tiny">{{
-            $t(`merchant.type.${merchant.type}`)
-          }}</text>
+          <text v-if="merchant.desc" class="txt-caption txt-quiet head__desc">{{ merchant.desc }}</text>
         </view>
       </view>
-
-      <text class="txt-sub head__desc">{{ merchant.desc }}</text>
 
       <view class="tags sh-wrap">
-        <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我**，
-             和「已认证」一样属于下单前必须先看到的事实 -->
-        <text class="sh-chip sh-chip--primary">
-          {{ $t(`serviceScope.${merchant.serviceScope}`) }}
-        </text>
-        <text v-for="tg in merchant.tags" :key="tg" class="sh-chip">{{
-          tg
-        }}</text>
+        <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我** -->
+        <text class="sh-chip sh-chip--primary">{{ $t(`serviceScope.${merchant.serviceScope}`) }}</text>
+        <text v-for="tg in tags" :key="tg" class="sh-chip sh-chip--primary">{{ tg }}</text>
       </view>
 
-      <!-- 评分区：总分 + 分维度 + 依据 -->
-      <view class="score sh-row">
-        <view class="score__main">
-          <!--
-            **零评价时不给分数也不给星。** 后端对没人评过的商家回 5.0 ——
-            那是默认值，不是「大家都给了满分」。下面「基于 0 条评价」那句
-            虽然自证了，但先看到的是大大的 5.0，人不会往下读。
-          -->
-          <text v-if="merchant.ratingCount > 0" class="txt-hero score__num sh-num">{{
-            merchant.rating.toFixed(1)
-          }}</text>
-          <text v-else class="txt-hero txt-body score__num txt-quiet">{{ $t("merchant.noRating") }}</text>
-          <sh-rating
-            v-if="merchant.ratingCount > 0"
-            :value="merchant.rating"
-            :size="24"
-            :show-value="false"
-          ></sh-rating>
-          <text class="txt-caption score__basis sh-num">
-            {{
-              $t("merchant.basis", {
-                r: merchant.ratingCount,
-                s: merchant.salesCount,
-              })
-            }}
-          </text>
-        </view>
-        <view class="score__dims">
-          <view class="dim">
-            <text class="txt-body dim__v sh-num">{{
-              merchant.scores.goods.toFixed(1)
-            }}</text>
-            <text class="txt-caption dim__k">{{ $t("merchant.dim.goods") }}</text>
-          </view>
-          <view class="dim">
-            <text class="txt-body dim__v sh-num">{{
-              merchant.scores.service.toFixed(1)
-            }}</text>
-            <text class="txt-caption dim__k">{{ $t("merchant.dim.service") }}</text>
-          </view>
-          <view class="dim">
-            <text class="txt-body dim__v sh-num">{{
-              merchant.scores.speed.toFixed(1)
-            }}</text>
-            <text class="txt-caption dim__k">{{ $t("merchant.dim.speed") }}</text>
-          </view>
+      <view class="stats">
+        <view v-for="st in stats" :key="st.k" class="stat">
+          <text class="txt-title stat__v sh-num">{{ st.v }}</text>
+          <text class="txt-caption txt-quiet stat__k">{{ st.k }}</text>
         </view>
       </view>
 
-      <view class="facts">
-        <view v-if="merchant.address" class="fact sh-row sh-row--between sh-row--top">
-          <text class="txt-caption fact__k">{{ $t("merchant.address") }}</text>
-          <text class="txt-caption fact__v">{{ merchant.address }}</text>
-        </view>
-        <view v-if="merchant.openHours" class="fact sh-row sh-row--between sh-row--top">
-          <text class="txt-caption fact__k">{{ $t("merchant.hours") }}</text>
-          <text class="txt-caption fact__v sh-num">{{ merchant.openHours }}</text>
-        </view>
-        <view class="fact sh-row sh-row--between sh-row--top">
-          <text class="txt-caption fact__k">{{ $t("merchant.joined") }}</text>
-          <text class="txt-caption fact__v sh-num">{{ isoDate(merchant.joinedAt) }}</text>
-        </view>
+      <!-- 分维度分只在真有人评过时出：零评价时后端给的是一排默认 5.0 -->
+      <text v-if="merchant.ratingCount > 0" class="txt-caption txt-quiet head__dims sh-num">
+        {{ $t("merchant.dim.goods") }} {{ merchant.scores.goods.toFixed(1) }} ·
+        {{ $t("merchant.dim.service") }} {{ merchant.scores.service.toFixed(1) }} ·
+        {{ $t("merchant.dim.speed") }} {{ merchant.scores.speed.toFixed(1) }}
+      </text>
+      <view v-if="merchant.address" class="fact sh-row sh-row--top">
+        <sh-icon name="pin" :size="28" color="var(--sh-sub)"></sh-icon>
+        <text class="txt-caption txt-quiet sh-fill">{{ merchant.address }}</text>
       </view>
     </view>
 
@@ -211,15 +181,16 @@ onShareAppMessage(() =>
         ></sh-tabs>
       </view>
 
-      <template v-if="tab === 'goods'">
-        <biz-goods-card
+      <!-- 两列网格：在一家店里逛，每张卡再写一遍店名是纯重复 -->
+      <view v-if="tab === 'goods'" class="grid">
+        <biz-goods-tile
           v-for="g in goods"
           :key="g.goodsNo"
           :goods="g"
           @add="add(g, $event)"
           @tap="openGoods(g)"
-        ></biz-goods-card>
-      </template>
+        ></biz-goods-tile>
+      </view>
 
       <template v-else>
         <biz-review
@@ -244,69 +215,68 @@ onShareAppMessage(() =>
 </template>
 
 <style scoped>
-
 .head__top {
   gap: 24rpx;
 }
-
+.head__who {
+  min-width: 0;
+}
 .head__title {
   gap: 12rpx;
-  margin-bottom: 8rpx;
 }
-.tiny {
-  padding: 4rpx 16rpx;
+.head__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .head__desc {
   display: block;
-  margin-top: 24rpx;
-}
-.tags {
-  margin-top: 20rpx;
-}
-.score {
-  gap: 24rpx;
-  margin-top: 28rpx;
-  background: var(--sh-faint);
-  border-radius: 32rpx;
-  padding: 28rpx;
-}
-.score__main {
-  flex: 0 0 auto;
-}
-.score__num {
-  display: block;
-}
-.score__basis {
-  display: block;
   margin-top: 8rpx;
 }
-.score__dims {
-  flex: 1;
-  display: flex;
-  justify-content: space-around;
+.tiny {
+  flex-shrink: 0;
+  padding: 4rpx 16rpx;
 }
-.dim {
+.tags {
+  margin-top: 24rpx;
+}
+/* 三个数：一道细线隔开，等分三栏 */
+.stats {
+  display: flex;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid var(--sh-faint);
+}
+.stat {
+  flex: 1;
+  min-width: 0;
   text-align: center;
 }
-.dim__v {
+.stat__v {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.dim__k {
+.stat__k {
   display: block;
   margin-top: 4rpx;
 }
-.facts {
-  margin-top: 24rpx;
+.head__dims {
+  display: block;
+  margin-top: 16rpx;
+  text-align: center;
 }
 .fact {
-  gap: 32rpx;
-  padding: 12rpx 0;
+  gap: 8rpx;
+  margin-top: 20rpx;
 }
-.fact__k {
-  flex-shrink: 0;
-}
-.fact__v {
-  color: var(--sh-ink);
-  text-align: end;
+/* 网格在白块里：两列，块本身的左右留白给网格 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  padding: 0 24rpx;
 }
 </style>

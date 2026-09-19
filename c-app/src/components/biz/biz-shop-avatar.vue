@@ -41,7 +41,7 @@ const textStyle = computed(() => ({ fontSize: `${Math.round(props.size * 0.44)}r
 <template>
   <view class="sh-center av" :style="boxStyle">
     <image v-if="src" :src="src" mode="aspectFill" class="av__img" />
-    <text v-else class="txt-bold av__txt" :style="textStyle">{{ initial }}</text>
+    <text v-else class="txt-bold txt-primary" :style="textStyle">{{ initial }}</text>
   </view>
 </template>
 
@@ -54,8 +54,5 @@ const textStyle = computed(() => ({ fontSize: `${Math.round(props.size * 0.44)}r
 .av__img {
   width: 100%;
   height: 100%;
-}
-.av__txt {
-  color: var(--sh-primary-text);
 }
 </style>

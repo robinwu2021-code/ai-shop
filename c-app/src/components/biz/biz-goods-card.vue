@@ -6,11 +6,16 @@ import { GOODS_COVER_FALLBACK, CATEGORY_TYPE } from "@shared/utils/constants";
 import { goodsSoldOut } from "@shared/utils/goods";
 import { money } from "@shared/utils/format";
 import type { Goods } from "@shared/types";
+import type { GoodsGroupSummary } from "@/shared/home-feed";
 
-const props = defineProps<{ goods: Goods; countdownText?: string }>();
+/**
+ * `group`：这件商品上有进行中的团（首页把团并进商品卡，见 shared/home-feed.ts）。
+ * 有它时卡片换成团形态 —— 价格行给团价与单买价，「＋」换成「去拼团」。
+ */
+const props = defineProps<{ goods: Goods; countdownText?: string; group?: GoodsGroupSummary }>();
 // add 必须把原始 tap 事件透传出去 —— 「飞入购物车」动效要用它的落点坐标。
 // 不透传的话页面里的 $event 是 undefined，动效静默失效。
-defineEmits<{ (e: "add", ev: unknown): void; (e: "tap"): void }>();
+defineEmits<{ (e: "add", ev: unknown): void; (e: "tap"): void; (e: "join"): void }>();
 
 const isFresh = computed(() => props.goods.type === CATEGORY_TYPE.FRESH);
 const isService = computed(() => props.goods.type === CATEGORY_TYPE.SERVICE);
@@ -47,7 +52,10 @@ const off = computed(() => {
 
 <template>
   <view class="card" @tap="$emit('tap')">
-    <sh-cover class="sh-center card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
+    <view class="card__media">
+      <sh-cover class="sh-center card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
+      <text v-if="group" class="sh-chip sh-chip--danger card__tag">{{ $t("home.groupTag", { n: group.minCount }) }}</text>
+    </view>
 
     <view class="sh-fill card__body">
       <text class="txt-strong card__title">{{ goods.title }}</text>
@@ -61,7 +69,9 @@ const off = computed(() => {
         为什么不干脆删成三行：倒计时只有生鲜有，百货卡会矮一截，一列卡片高矮不齐、
         封面还得跟着变大小。按优先级取内容，两类商品都是四行，等高。
       -->
-      <text v-if="showCutoff" class="sh-muted card__sub is-warning card__sub--time">{{ timeText }}</text>
+      <!-- 团形态：第二行说团的进度 —— 「还差几人」是这张卡上最该被看见的一句 -->
+      <text v-if="group" class="sh-muted card__sub is-warning">{{ $t("home.groupLive", { k: group.count, m: group.need }) }}</text>
+      <text v-else-if="showCutoff" class="sh-muted card__sub is-warning card__sub--time">{{ timeText }}</text>
       <text v-else-if="isService && goods.storeName" class="sh-muted card__sub">
         {{ goods.storeName }}
       </text>
@@ -69,7 +79,14 @@ const off = computed(() => {
 
       <!-- 价格行只放价格这一件事：现价 + 划线价 + 折扣。
            时效搬到上一行之后，这里三件在英文下也放得开 -->
-      <view class="sh-row card__foot">
+      <!-- 团形态的价格行：团价 + 单买价 + 去拼团。不再放划线价与折扣 ——
+           「单买」那个价就是对照，再叠一个划线价就是三个价格 -->
+      <view v-if="group" class="sh-row card__foot">
+        <text class="txt-price price__now sh-num">{{ money(group.groupPrice) }}</text>
+        <text class="txt-caption txt-quiet price__was sh-num">{{ $t("home.groupSolo", { p: money(group.basePrice) }) }}</text>
+        <view class="sh-btn sh-btn--sm join" @tap.stop="$emit('join')">{{ $t("home.groupJoin") }}</view>
+      </view>
+      <view v-else class="sh-row card__foot">
         <text class="txt-price price__now sh-num">{{ money(goods.price) }}</text>
         <text v-if="goods.originPrice" class="sh-was price__was sh-num">
           {{ money(goods.originPrice) }}
@@ -121,6 +138,16 @@ const off = computed(() => {
   padding: 20rpx;
 }
 
+/* 封面外包一层，只为给「N人团」角标一个定位锚 */
+.card__media {
+  position: relative;
+  flex-shrink: 0;
+}
+.card__tag {
+  position: absolute;
+  top: 8rpx;
+  inset-inline-start: 8rpx;
+}
 .card__cover {
   width: 168rpx;
   height: 168rpx;
@@ -197,6 +224,11 @@ const off = computed(() => {
   color: var(--sh-primary-text);
   font-size: 32rpx;
   line-height: 1;
+}
+/* 「去拼团」与「＋」同一个位置：靠右 */
+.join {
+  flex-shrink: 0;
+  margin-inline-start: auto;
 }
 .card__merchant {
   margin-top: 8rpx;

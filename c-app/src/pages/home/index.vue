@@ -4,9 +4,12 @@
  *
  * 这里**没有品类频道** —— 底部菜单常驻一个「分类」tab，一键可达，
  * 首页再放一排同样的三个品类是纯重复。腾出的那一行改放分类页没有的入口。
- * 团购一期活动很少，撑不起首页，也不该由它定义首页心智 —— 它是活动，不是货架，
- * 入口留在「我的」。首页主体是社区商品流：先按覆盖范围滤掉送不到我这儿的商家，
- * 再按距离近的在前。附近的店排在商品流之前 —— 邻里购物里「谁在卖」常常先于「卖什么」。
+ * 首页主体是社区商品流：先按覆盖范围滤掉送不到我这儿的商家，再按距离近的在前。
+ *
+ * **一件商品只出一张卡**（2026-09-19）：团不再单独成段，而是并进它那件商品的卡里，
+ * 有团的商品置顶、最早截止在前 —— 规则在 shared/home-feed.ts。此前上半截团卡、
+ * 下半截商品卡，同一只香梨一屏里出现两次、两个价格，要用户自己对出是同一件东西。
+ * 团购只在顶上留一行入口（N 个团正在拼 · 全部 ›），给「我就是来找团的」那种人。
  */
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -21,6 +24,7 @@ import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { countdownShort, money } from "@shared/utils/format";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
+import { buildHomeFeed, joinableGroups } from "@/shared/home-feed";
 import type { Goods, GroupBuy } from "@shared/types";
 
 const { t } = useI18n();
@@ -31,7 +35,7 @@ const cart = useCartStore();
 const user = useUserStore();
 
 const goods = ref<Goods[]>([]);
-/** 本自提点进行中的团。团购是活动不是货架，所以它在商品流**之前**但只占一小段 */
+/** 本自提点还能参与的团。不单独成段 —— 并进商品卡，见 feed */
 const groups = ref<GroupBuy[]>([]);
 /** 推荐商品（运营位）。**运营意图，不是销量事实** —— 理由见 contract.promotedGoods */
 const promoted = ref<Goods[]>([]);
@@ -47,6 +51,9 @@ const promoted = ref<Goods[]>([]);
 const SHOW_PROMOTED = false;
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
+
+/** 首页商品流：团并进商品卡、有团的置顶。`now` 走秒表，截止了的团当场从卡上退掉 */
+const feed = computed(() => buildHomeFeed(goods.value, groups.value, now.value));
 
 function cutdownOf(g: Goods): string {
   if (!g.cutoffAt) return "";
@@ -117,8 +124,8 @@ async function load() {
     ]);
     goods.value = res.records;
     promoted.value = promo;
-    // 首页只放**还能参与**的团（没到截止），过期的留在团购页
-    groups.value = gs.filter((g) => g.expireAt > Date.now()).slice(0, 3);
+    // 只留**还能参与**的团（没截止、没满员）；不截断 —— 顶上那一行要数全
+    groups.value = joinableGroups(gs, Date.now());
     failed.value = false;
   } catch {
     failed.value = true;
@@ -144,8 +151,9 @@ function gotoGroups() {
   uni.navigateTo({ url: ROUTES.groups });
 }
 
-function openGroup(g: GroupBuy) {
-  uni.navigateTo({ url: `${ROUTES.group}?groupNo=${g.groupNo}` });
+/** 「去拼团」直接进最快成团的那个团 —— 再经商品详情转一道，是让他多点一次去找同一个按钮 */
+function openGroup(groupNo: string) {
+  uni.navigateTo({ url: `${ROUTES.group}?groupNo=${groupNo}` });
 }
 
 /**
@@ -317,24 +325,15 @@ onShareAppMessage(() =>
       </view>
     </view>
 
-    <!-- 团购：活动，有时效，蹭首页曝光。只放**还能参与**的，最多 3 条 ——
-         首页给它一小段就够，完整列表（含商家团/邻里求团/发起）在团购页。
-         白底页上它需要自己站住：给一层极淡填充，这是首页少数几个「真色块」之一 —— 
-         它是**限时的、要立刻决定的**，与下面可以慢慢逛的商品流不是一类。 -->
-    <view v-if="groups.length" class="sh-block">
-      <view class="sh-block__head">
-        <text class="txt-title">{{ $t("home.groups") }}</text>
-        <text class="sh-muted" @tap="gotoGroups">{{
-          $t("home.groupsMore")
-        }}</text>
-      </view>
-      <biz-group-card
-        v-for="g in groups"
-        :key="g.groupNo"
-        :group="g"
-        :now="now"
-        @tap="openGroup(g)"
-      ></biz-group-card>
+    <!--
+      团购入口：**一行**。团本身已经并进下面的商品卡（有团的置顶），
+      这里只回答「现在有几个团在拼」，给专门来找团的人一个入口。
+      此前是一段三张团卡 —— 与下面同一件商品的普通卡重复出现。
+    -->
+    <view v-if="groups.length" class="gentry sh-row" @tap="gotoGroups">
+      <text class="sh-chip sh-chip--danger">{{ $t("home.groups") }}</text>
+      <text class="txt-body sh-fill">{{ $t("home.groupsEntry", { n: groups.length }) }}</text>
+      <text class="sh-muted">{{ $t("home.groupsMore") }}</text>
     </view>
 
     <!-- 推荐商品：运营位。横滑窄卡，不与下面的主商品流抢版面 -->
@@ -386,12 +385,14 @@ onShareAppMessage(() =>
         :text="$t('home.communityFeedEmpty')"
       ></sh-empty>
       <biz-goods-card
-        v-for="g in goods"
-        :key="g.goodsNo"
-        :goods="g"
-        :countdown-text="cutdownOf(g)"
-        @add="addToCart(g, $event)"
-        @tap="openGoods(g)"
+        v-for="it in feed"
+        :key="it.goods.goodsNo"
+        :goods="it.goods"
+        :group="it.group"
+        :countdown-text="cutdownOf(it.goods)"
+        @add="addToCart(it.goods, $event)"
+        @join="it.group && openGroup(it.group.groupNo)"
+        @tap="openGoods(it.goods)"
       ></biz-goods-card>
     </view>
   </sh-scaffold>
@@ -425,6 +426,14 @@ onShareAppMessage(() =>
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 团购入口行：白块、一行，与下面的商品块之间留一道常规缝 */
+.gentry {
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+  padding: 24rpx;
+  border-radius: 32rpx;
+  background: var(--sh-surface);
 }
 /* 常买：横滑窄卡。比商品卡窄得多 —— 这里不做决策，只做「就是它，加一个」，
    标题一行 + 价格 + 加号就够，副标题、销量、商家统统是噪音 */
