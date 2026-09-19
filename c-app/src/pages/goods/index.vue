@@ -16,6 +16,7 @@ import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
+import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import {
@@ -564,23 +565,8 @@ function goBack() {
   else uni.switchTab({ url: ROUTES.home });
 }
 
-/*
- * 顶部浮层的位置。**小程序上对齐微信胶囊**（它的上沿和高度各机型不同，写死会一高一低）；
- * H5 / App 没有胶囊，按状态栏往下留一条。取不到就给一组保守值，页面照样能用。
- */
-const navBox = (() => {
-  try {
-    const sys = uni.getSystemInfoSync();
-    const sb = sys.statusBarHeight ?? 0;
-    // #ifdef MP-WEIXIN
-    const m = uni.getMenuButtonBoundingClientRect();
-    if (m && m.height) return { top: m.top, height: m.height, right: sys.windowWidth - m.left, winW: sys.windowWidth };
-    // #endif
-    return { top: sb + 6, height: 32, right: 12, winW: sys.windowWidth };
-  } catch {
-    return { top: 26, height: 32, right: 12, winW: 375 };
-  }
-})();
+/** 顶部浮层的位置：小程序上对齐微信胶囊，H5 / App 从状态栏往下（端差异在 ports/capsule） */
+const navBox = readNavBox();
 /** 浮层整条的高度（到胶囊下沿再留 6px） */
 const barH = navBox.top + navBox.height + 6;
 const topbarStyle = { height: `${barH}px` };
@@ -1432,10 +1418,6 @@ onShareAppMessage(() =>
 .row__label {
   flex-shrink: 0;
   min-width: 72rpx;
-}
-.row__value {
-  color: var(--sh-ink);
-  min-width: 0;
 }
 .couponchips {
   gap: 12rpx;
