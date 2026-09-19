@@ -1594,6 +1594,24 @@
           "ar": "أضف إلى السلة"
         },
         {
+          "key": "goods.anchorDetail",
+          "zh-CN": "详情",
+          "en": "Details",
+          "ar": "التفاصيل"
+        },
+        {
+          "key": "goods.anchorGoods",
+          "zh-CN": "商品",
+          "en": "Item",
+          "ar": "المنتج"
+        },
+        {
+          "key": "goods.anchorReviews",
+          "zh-CN": "评价",
+          "en": "Reviews",
+          "ar": "التقييمات"
+        },
+        {
           "key": "goods.batchCutoff",
           "zh-CN": "截单",
           "en": "Order by",
@@ -1652,12 +1670,6 @@
           "zh-CN": "面值 {v}",
           "en": "Value {v}",
           "ar": "القيمة {v}"
-        },
-        {
-          "key": "goods.cart",
-          "zh-CN": "购物车",
-          "en": "Cart",
-          "ar": "السلة"
         },
         {
           "key": "goods.changeRule",
@@ -1840,16 +1852,16 @@
           "ar": "وفّر {p}"
         },
         {
+          "key": "goods.scopeLabel",
+          "zh-CN": "销售区域",
+          "en": "Sold in",
+          "ar": "مناطق البيع"
+        },
+        {
           "key": "goods.scopeMore",
           "zh-CN": "{names} 等 {n} 个地区",
           "en": "{names} and {n} areas in total",
           "ar": "{names} وما مجموعه {n} منطقة"
-        },
-        {
-          "key": "goods.scopeShort",
-          "zh-CN": "范围",
-          "en": "Area",
-          "ar": "النطاق"
         },
         {
           "key": "goods.scopeUnlimited",

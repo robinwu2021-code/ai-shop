@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 451,
-        "c-app": 57
+        "c-app": 54
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 349,
-        "c-app": 59
+        "c-app": 58
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 320,
-        "c-app": 227
+        "c-app": 228
       }
     },
     {
@@ -378,7 +378,7 @@
       },
       "usage": {
         "b-app": 4,
-        "c-app": 9
+        "c-app": 10
       }
     },
     {
@@ -470,7 +470,7 @@
       },
       "usage": {
         "b-app": 38,
-        "c-app": 18
+        "c-app": 20
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 172,
-        "c-app": 59
+        "c-app": 58
       }
     },
     {
@@ -1054,7 +1054,7 @@
       },
       "usage": {
         "b-app": 318,
-        "c-app": 132
+        "c-app": 134
       }
     },
     {
@@ -1118,7 +1118,7 @@
       },
       "usage": {
         "b-app": 134,
-        "c-app": 62
+        "c-app": 64
       }
     },
     {
@@ -1136,7 +1136,7 @@
       },
       "usage": {
         "b-app": 6,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -1212,7 +1212,7 @@
       },
       "usage": {
         "b-app": 58,
-        "c-app": 29
+        "c-app": 30
       }
     },
     {
@@ -1362,7 +1362,7 @@
       },
       "usage": {
         "b-app": 26,
-        "c-app": 25
+        "c-app": 26
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 130,
-        "c-app": 62
+        "c-app": 61
       }
     },
     {
@@ -1396,7 +1396,7 @@
       },
       "usage": {
         "b-app": 16,
-        "c-app": 11
+        "c-app": 13
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 492,
-        "c-app": 158
+        "c-app": 161
       }
     },
     {
@@ -1452,7 +1452,7 @@
       },
       "usage": {
         "b-app": 36,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -1468,7 +1468,7 @@
       },
       "usage": {
         "b-app": 284,
-        "c-app": 80
+        "c-app": 81
       }
     },
     {
@@ -1484,7 +1484,7 @@
       },
       "usage": {
         "b-app": 7,
-        "c-app": 8
+        "c-app": 6
       }
     },
     {
@@ -1500,7 +1500,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 29
+        "c-app": 30
       }
     },
     {
@@ -2541,7 +2541,7 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 332,
+      "lines": 347,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
@@ -2551,7 +2551,8 @@
         "deniedText?: string",
         "failed?: boolean",
         "failedText?: string",
-        "pending?: boolean"
+        "pending?: boolean",
+        "immersive?: boolean"
       ],
       "usage": {
         "b-app": 80,
@@ -4841,9 +4842,9 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 222,
-      "localSelectors": 52,
-      "localCssLines": 208,
+      "libClassHits": 233,
+      "localSelectors": 63,
+      "localCssLines": 266,
       "rolled": []
     },
     {
