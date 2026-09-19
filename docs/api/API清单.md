@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 735 个接口**：后端已实现 663（90%）· 前端在调 664
+**合计 737 个接口**：后端已实现 665（90%）· 前端在调 666
 
 ---
 
@@ -782,7 +782,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **400** 个接口 ｜ 后端已实现 **334**（84%）｜ 前端在调 **329**
+共 **402** 个接口 ｜ 后端已实现 **336**（84%）｜ 前端在调 **331**
 
 ### aftersale（4）
 
@@ -1029,11 +1029,13 @@
 | POST | `/ops/marketing/member-cards/{cardNo}/status` | 状态推进（草稿→启用⇄暂停→停售），非法迁移抛错 | — | `MemberCard` | — | ⬜ | ✅ |
 | POST | `/ops/marketing/member-cards/{cardNo}/unarchive` | unarchiveMemberCard | — | `MemberCard` | — | ⬜ | ✅ |
 
-### member（11）
+### member（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/members` | 跨商家会员名单 | — | `OpsPerson` | — | ✅ | ✅ |
+| GET | `/ops/members/level-policy` | 会员分层口径 | — | `MemberLevelPolicy` | — | ✅ | ✅ |
+| POST | `/ops/members/level-policy` | 改分层口径 | — | `MemberLevelPolicy` | — | ✅ | ✅ |
 | GET | `/ops/members/reach-stats` | 触达量与退订率，**按退订率倒序** —— 发得多不是成绩，发到有人关掉才是问题 */ | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/persons/{personNo}` | 人档：他是哪几家店的会员 —— 这正是人档存在的理由 */ | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/persons/{personNo}/reveal-phone` | 查看完整手机号（申诉处置） | — | `object` | — | ✅ | ✅ |
