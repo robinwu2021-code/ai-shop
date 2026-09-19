@@ -10514,12 +10514,6 @@
           "ar": "شاركه موظف"
         },
         {
-          "key": "memberDetail.byStaff",
-          "zh-CN": "店员录入",
-          "en": "added by staff",
-          "ar": "أضافه موظف"
-        },
-        {
           "key": "memberDetail.d90",
           "zh-CN": "近 90 天单数",
           "en": "Orders in 90 days",

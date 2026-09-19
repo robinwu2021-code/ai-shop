@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 110,
         "c-app": 78
       }
     },
@@ -3871,10 +3871,25 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 64,
-      "localSelectors": 8,
-      "localCssLines": 28,
-      "rolled": []
+      "libClassHits": 63,
+      "localSelectors": 7,
+      "localCssLines": 29,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        },
+        {
+          "id": "rowbetween",
+          "label": "两端对齐行",
+          "lib": ".sh-row + .sh-row--between",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5538,6 +5553,26 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "b-app/member-detail"
+      ]
+    },
+    {
+      "id": "rowbetween",
+      "label": "两端对齐行",
+      "lib": ".sh-row + .sh-row--between",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+      "pages": [
+        "b-app/member-detail"
       ]
     }
   ],
