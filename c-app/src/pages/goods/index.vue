@@ -1022,10 +1022,16 @@ onShareAppMessage(() =>
             内容由本页的 onShareAppMessage 给。此前这里是一个 `@tap="() => {}"` 的空按钮，
             点了什么都不发生。H5 没有原生分享，与团购页同一约定：不显示。
           -->
-          <button v-if="nativeShare" class="actionbar__icon actionbar__share sh-center" open-type="share">
+          <!--
+            **看得见的是一个普通 view，与左右两格同一副结构；原生按钮是盖在上面的透明层。**
+            此前把图标和字直接放进 <button>：微信给 button 的默认版式（行高、盒模型）去不干净，
+            真机上「分享」两个字被挤到下面、只露半截（2026-09-19 真机截图），而模拟器看不出来。
+          -->
+          <view v-if="nativeShare" class="actionbar__icon sh-center">
             <sh-icon name="share" :size="40" color="var(--sh-sub)"></sh-icon>
             <text class="txt-caption sh-muted">{{ $t("goods.share") }}</text>
-          </button>
+            <button class="actionbar__share" open-type="share"></button>
+          </view>
           <view
             class="actionbar__icon actionbar__cart sh-center"
             :class="{ 'is-bouncing': bouncing }"
@@ -1199,12 +1205,16 @@ onShareAppMessage(() =>
   flex-direction: column;
   gap: 4rpx;
 }
-/* 分享是原生 <button>：去掉它自带的边框、底色、内边距与行高 */
+/* 分享的原生 <button> 只当点击层：铺满整格、完全透明，版式交给下面那个 view */
 .actionbar__share {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
-  background: none;
+  opacity: 0;
 }
 .actionbar__share::after {
   border: none;
