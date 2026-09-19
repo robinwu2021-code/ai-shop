@@ -33,7 +33,7 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
 
 <template>
   <!-- 横排居中挂 .sh-center（库件），不在下面再敲一遍 display/align/justify -->
-  <view class="add sh-center" :class="{ 'add--on': active, 'add--sm': small }" @tap="$emit('tap')">
+  <view class="add sh-center" :class="{ 'add--on': active, 'add--sm': small }" @tap.stop="$emit('tap')">
     <sh-icon
       :name="active ? 'close' : 'plus'"
       :size="small ? 20 : 24"

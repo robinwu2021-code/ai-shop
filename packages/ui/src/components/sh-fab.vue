@@ -19,7 +19,7 @@ defineEmits<{ (e: "tap"): void }>();
 </script>
 
 <template>
-  <view class="txt-strong fab" @tap="$emit('tap')">{{ text }}</view>
+  <view class="txt-strong fab" @tap.stop="$emit('tap')">{{ text }}</view>
 </template>
 
 <style scoped>

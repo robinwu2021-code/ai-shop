@@ -12,7 +12,7 @@ defineEmits<{ (e: "tap"): void }>();
 </script>
 
 <template>
-  <view class="sh-row bar" @tap="$emit('tap')">
+  <view class="sh-row bar" @tap.stop="$emit('tap')">
     <biz-shop-avatar
       :name="merchant.name"
       :logo="merchant.logo"

@@ -40,7 +40,7 @@ const metaText = computed(() => {
 </script>
 
 <template>
-  <view class="row sh-row" @tap="$emit('tap')">
+  <view class="row sh-row" @tap.stop="$emit('tap')">
     <biz-shop-avatar
       :name="merchant.name"
       :logo="merchant.logo"

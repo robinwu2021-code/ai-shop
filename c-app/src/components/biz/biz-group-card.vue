@@ -21,7 +21,7 @@ const off = computed(() =>
 </script>
 
 <template>
-  <view class="gcard" @tap="$emit('tap')">
+  <view class="gcard" @tap.stop="$emit('tap')">
     <view class="gcard__top">
       <sh-cover class="sh-center gcard__cover" :src="group.cover"></sh-cover>
       <view class="sh-fill gcard__main">

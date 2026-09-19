@@ -32,7 +32,7 @@ const emit = defineEmits<{ (e: "tap"): void }>();
   <view
     class="opt"
     :class="{ 'is-on': selected, 'is-off': disabled }"
-    @tap="disabled || emit('tap')"
+    @tap.stop="disabled || emit('tap')"
   >
     <slot></slot>
   </view>

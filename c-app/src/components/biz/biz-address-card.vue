@@ -42,7 +42,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <view :class="bare ? 'card card--bare' : 'sh-card card'" @tap="emit('tap')">
+  <view :class="bare ? 'card card--bare' : 'sh-card card'" @tap.stop="emit('tap')">
     <view class="card__head sh-wrap">
       <text class="txt-strong">{{ address.name }}</text>
       <text class="txt-caption sh-num">{{ address.phone }}</text>

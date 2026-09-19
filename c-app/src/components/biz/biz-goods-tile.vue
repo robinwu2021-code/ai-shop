@@ -18,7 +18,7 @@ const soldOut = computed(() => goodsSoldOut(props.goods));
 </script>
 
 <template>
-  <view class="tile" @tap="$emit('tap')">
+  <view class="tile" @tap.stop="$emit('tap')">
     <sh-cover class="sh-center tile__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
     <view class="tile__body">
       <text class="txt-strong tile__title">{{ goods.title }}</text>

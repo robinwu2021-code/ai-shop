@@ -51,7 +51,7 @@ const off = computed(() => {
 </script>
 
 <template>
-  <view class="card" @tap="$emit('tap')">
+  <view class="card" @tap.stop="$emit('tap')">
     <view class="card__media">
       <sh-cover class="sh-center card__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
       <!-- 实心底：它压在照片上。浅色半透明的那档（--danger）在真机上几乎看不见（2026-09-19 真机截图） -->
