@@ -54,17 +54,17 @@ export function LevelPolicyCard({ c }: { c: Copy }) {
             <div className="space-y-1">
               <Label htmlFor="lv-sleep">{c.lvSleep}</Label>
               <Input id="lv-sleep" type="number" className="w-24" value={form.sleepDays}
-                onChange={(e) => setForm({ ...form, sleepDays: e.target.value })} />
+                onChange={(e) => { const v = e.target.value; setForm((f) => f && { ...f, sleepDays: v }); }} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="lv-loyal">{c.lvLoyal}</Label>
               <Input id="lv-loyal" type="number" className="w-24" value={form.loyalD90Orders}
-                onChange={(e) => setForm({ ...form, loyalD90Orders: e.target.value })} />
+                onChange={(e) => { const v = e.target.value; setForm((f) => f && { ...f, loyalD90Orders: v }); }} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="lv-regular">{c.lvRegular}</Label>
               <Input id="lv-regular" type="number" className="w-24" value={form.regularD90Orders}
-                onChange={(e) => setForm({ ...form, regularD90Orders: e.target.value })} />
+                onChange={(e) => { const v = e.target.value; setForm((f) => f && { ...f, regularD90Orders: v }); }} />
             </div>
             <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>{c.lvSave}</Button>
             <Button size="sm" variant="ghost" onClick={() => setForm(null)}>{c.lvCancel}</Button>
