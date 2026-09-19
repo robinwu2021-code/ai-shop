@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 14
+        "c-app": 15
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 315,
-        "c-app": 235
+        "c-app": 236
       }
     },
     {
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 201,
+        "b-app": 202,
         "c-app": 72
       }
     },
@@ -1118,7 +1118,7 @@
       },
       "usage": {
         "b-app": 129,
-        "c-app": 63
+        "c-app": 65
       }
     },
     {
@@ -1212,7 +1212,7 @@
       },
       "usage": {
         "b-app": 56,
-        "c-app": 28
+        "c-app": 30
       }
     },
     {
@@ -1362,7 +1362,7 @@
       },
       "usage": {
         "b-app": 26,
-        "c-app": 22
+        "c-app": 23
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 124,
-        "c-app": 57
+        "c-app": 58
       }
     },
     {
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 85,
+        "b-app": 86,
         "c-app": 3
       }
     },
@@ -2137,7 +2137,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 53,
+        "b-app": 54,
         "c-app": 30,
         "lib": 1
       },
@@ -3841,12 +3841,13 @@
       "key": "b-app/member-reach",
       "file": "b-app/src/pages/member-reach/index.vue",
       "components": [
+        "sh-empty",
         "sh-icon",
         "sh-scaffold",
         "sh-stat",
         "biz-audience-picker"
       ],
-      "libClassHits": 34,
+      "libClassHits": 36,
       "localSelectors": 6,
       "localCssLines": 23,
       "rolled": []
@@ -4877,9 +4878,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 52,
-      "localSelectors": 18,
-      "localCssLines": 73,
+      "libClassHits": 55,
+      "localSelectors": 17,
+      "localCssLines": 63,
       "rolled": []
     },
     {
@@ -4892,8 +4893,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 29,
-      "localSelectors": 9,
-      "localCssLines": 44,
+      "localSelectors": 8,
+      "localCssLines": 34,
       "rolled": []
     },
     {
@@ -5010,8 +5011,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 91,
-      "localSelectors": 23,
-      "localCssLines": 111,
+      "localSelectors": 22,
+      "localCssLines": 101,
       "rolled": []
     },
     {
@@ -5069,9 +5070,9 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 45,
-      "localSelectors": 22,
-      "localCssLines": 103,
+      "libClassHits": 47,
+      "localSelectors": 21,
+      "localCssLines": 94,
       "rolled": []
     },
     {
@@ -5273,7 +5274,7 @@
       "components": [
         "sh-cover"
       ],
-      "libClassHits": 26,
+      "libClassHits": 27,
       "localSelectors": 15,
       "localCssLines": 74,
       "rolled": []
@@ -5300,8 +5301,8 @@
         "sh-rating"
       ],
       "libClassHits": 10,
-      "localSelectors": 8,
-      "localCssLines": 36,
+      "localSelectors": 7,
+      "localCssLines": 26,
       "rolled": []
     },
     {
@@ -5332,6 +5333,25 @@
     },
     {
       "app": "c-app",
+      "page": "biz-shop-avatar",
+      "key": "c-app/biz-shop-avatar",
+      "file": "c-app/src/components/biz/biz-shop-avatar.vue",
+      "components": [],
+      "libClassHits": 2,
+      "localSelectors": 3,
+      "localCssLines": 12,
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
       "page": "biz-sku-row",
       "key": "c-app/biz-sku-row",
       "file": "c-app/src/components/biz/biz-sku-row.vue",
@@ -5357,12 +5377,23 @@
       "rolled": []
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "id": "primover",
+      "label": "主色文字自写",
+      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+      "pages": [
+        "c-app/biz-shop-avatar"
+      ]
+    }
+  ],
   "counts": {
     "tokens": 16,
     "blocks": 82,
     "components": 36,
-    "pages": 131,
+    "pages": 132,
     "gapKinds": 0
   }
 }
