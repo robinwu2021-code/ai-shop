@@ -2266,7 +2266,12 @@ components:
           type: 
             - "string"
             - "null"
-          description: "持券人手机号后四位。店员认人够用，**永远不给完整号**"
+          description: "持券人手机号后四位。**永远不给完整号**"
+        phoneMasked: 
+          type: 
+            - "string"
+            - "null"
+          description: "持券人的脱敏号 138****8000，店员当面核对是不是本人"
         expireAt: 
           type: "number"
           description: "过期时刻（毫秒）"
@@ -2338,7 +2343,12 @@ components:
           type: 
             - "string"
             - "null"
-          description: "手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置"
+          description: "手机号后四位（按尾号找人用）。**永远不会有完整号** —— 需要它的只有平台申诉处置"
+        phoneMasked: 
+          type: 
+            - "string"
+            - "null"
+          description: "展示用的脱敏号 138****8000，与 C 端同一口径；解不开时是 ****8000"
         status: 
           type: "string"
           description: "`LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED`"
@@ -2711,12 +2721,17 @@ components:
           type: 
             - "string"
             - "null"
-          description: "商家给他记的备注名；没记为空，界面用手机尾号"
+          description: "商家给他记的备注名；没记为空，界面用脱敏号"
         phoneTail: 
           type: 
             - "string"
             - "null"
           description: "手机尾号"
+        phoneMasked: 
+          type: 
+            - "string"
+            - "null"
+          description: "展示用的脱敏号 138****8000"
         amountMinor: 
           type: "number"
           description: "这一单的实付（分）"

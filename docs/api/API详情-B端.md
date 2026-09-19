@@ -740,7 +740,8 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。店员认人够用，**永远不给完整号** |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**永远不给完整号** |
+| `phoneMasked` | `string,null` | 否 | 持券人的脱敏号 138****8000，店员当面核对是不是本人 |
 | `expireAt` | `number` | 是 | 过期时刻（毫秒） |
 | `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
 | `timesUsed` | `number` | 是 | 已核销次数 |
@@ -3326,7 +3327,8 @@ _无字段_
 |---|---|:---:|---|
 | `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
-| `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneTail` | `string,null` | 否 | 手机号后四位（按尾号找人用）。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneMasked` | `string,null` | 否 | 展示用的脱敏号 138****8000，与 C 端同一口径；解不开时是 ****8000 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
@@ -3375,7 +3377,8 @@ _无字段_
 |---|---|:---:|---|
 | `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
-| `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneTail` | `string,null` | 否 | 手机号后四位（按尾号找人用）。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneMasked` | `string,null` | 否 | 展示用的脱敏号 138****8000，与 C 端同一口径；解不开时是 ****8000 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
@@ -6571,7 +6574,8 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。店员认人够用，**永远不给完整号** |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**永远不给完整号** |
+| `phoneMasked` | `string,null` | 否 | 持券人的脱敏号 138****8000，店员当面核对是不是本人 |
 | `expireAt` | `number` | 是 | 过期时刻（毫秒） |
 | `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
 | `timesUsed` | `number` | 是 | 已核销次数 |
@@ -7107,7 +7111,8 @@ _无字段_
 |---|---|:---:|---|
 | `memberNo` | `string` | 是 | 会员号 |
 | `personNo` | `string` | 是 | 平台人档号。会员挂人不挂账号 —— 商家看不到，但详情页要用它取来源轨迹 |
-| `phoneTail` | `string,null` | 否 | 手机号后四位。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneTail` | `string,null` | 否 | 手机号后四位（按尾号找人用）。**永远不会有完整号** —— 需要它的只有平台申诉处置 |
+| `phoneMasked` | `string,null` | 否 | 展示用的脱敏号 138****8000，与 C 端同一口径；解不开时是 ****8000 |
 | `status` | `string` | 是 | `LEAD` 线索（商家录的、本人还没注册，不可触达）/ `ACTIVE` / `BLOCKED` |
 | `source` | `string` | 是 | 首次来源 `ORDER`/`SHARE`/`SCAN`/`MANUAL`/`FAVORITE`/`SEARCH` |
 | `level` | `string,null` | 否 | `NEW`/`REGULAR`/`LOYAL`/`SLEEPING`。按主体还是按门店算，取决于主体的经营口径 |
@@ -8100,8 +8105,9 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `memberNo` | `string` | 是 | 会员号 |
-| `name` | `string,null` | 否 | 商家给他记的备注名；没记为空，界面用手机尾号 |
+| `name` | `string,null` | 否 | 商家给他记的备注名；没记为空，界面用脱敏号 |
 | `phoneTail` | `string,null` | 否 | 手机尾号 |
+| `phoneMasked` | `string,null` | 否 | 展示用的脱敏号 138****8000 |
 | `amountMinor` | `number` | 是 | 这一单的实付（分） |
 | `orderedAt` | `number` | 是 | 下单时刻 |
 
