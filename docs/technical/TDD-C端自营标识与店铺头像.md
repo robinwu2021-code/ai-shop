@@ -15,7 +15,7 @@
 - 于是 `GoodsVO.MerchantBriefVO`（商品详情 / 列表）与 `GroupVOs.MerchantBriefVO`（团购 / 报价）也没有；
 - 端上 `merchant.selfOperated` 恒为 undefined，**商品页、首页、团购卡上的自营标一次都没显示过**。
 
-店铺列表 / 详情走的是 `MerchantVO`，那一份本来就有 `selfOperated`。
+~~店铺列表 / 详情走的是 `MerchantVO`，那一份本来就有 `selfOperated`。~~ **这句是错的**（只看了前端类型、没看接口回包）：`MerchantVO` 与 `VisitedMerchantVO` 都没有，店铺页三档与详情页一样从没显示过自营标。2026-09-19 真机验证时发现，两份一起补上。
 
 ## 2. 改动
 
@@ -26,6 +26,7 @@
 | `MerchantQueryPort.MerchantBrief` | 末位加 `boolean selfOperated`，`MerchantPortImpl` 的 `find` / `findAll` 从 `mch_entity.self_operated` 读 |
 | `GoodsVO.MerchantBriefVO` | 末位加 `boolean selfOperated`，`GoodsServiceImpl` 两处构造透传；找不到商家的兜底为 `false` |
 | `GroupVOs.MerchantBriefVO` | 同上，`GroupServiceImpl` 两处构造透传 |
+| `MerchantVO`（店铺列表 / 推荐 / 详情） | 末位加 `boolean selfOperated`，同样读 `mch_entity.self_operated`（真机发现后补） |
 | `VisitedMerchantVO`（`/mp/merchant/visited`） | 末位加 `boolean selfOperated`。**第一版漏了这一份**：店铺页「我买过的」那一档在真机上把虹选鲜果显示成一个「虹」字（2026-09-19 补） |
 
 **判据只认 `mch_entity.self_operated`，不从门店的 `business_mode` 推**：那一列管的是结算（谁是销售主体），

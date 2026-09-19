@@ -78,6 +78,8 @@ const soldOut = computed(() => goodsSoldOut(props.goods));
   border-radius: 9999px;
   background: var(--sh-primary-tint);
   flex-shrink: 0;
+  /* 靠右。只靠价格那格的 sh-fill 撑不够：真机上「＋」贴在价格后面（2026-09-19） */
+  margin-inline-start: auto;
 }
 .add__sign {
   color: var(--sh-primary-text);

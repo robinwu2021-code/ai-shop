@@ -22,7 +22,11 @@ public record MerchantVO(String merchantNo,
                          String openHours,
                          long joinedAt,
                          List<String> tags,
-                         Scores scores) {
+                         Scores scores,
+                         /* 自营（电商法 §37），读 mch_entity.self_operated —— 与商品卡上的
+                            MerchantQueryPort.MerchantBrief 同一个判据。店铺列表 / 推荐 / 详情此前都不带，
+                            真机上虹选鲜果在店铺页没有自营标、头像是一个「虹」字（2026-09-19） */
+                         boolean selfOperated) {
 
     public record Scores(double goods, double service, double speed) {
     }
@@ -38,7 +42,8 @@ public record MerchantVO(String merchantNo,
                 m.getLegalForm(), m.getDescription(), nz(m.getSalesCount()), nz(m.getRatingCount()),
                 nz(m.getGoodsCount()), address, openHours,
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(), tags,
-                new Scores(score(m.getScoreGoods()), score(m.getScoreService()), score(m.getScoreSpeed())));
+                new Scores(score(m.getScoreGoods()), score(m.getScoreService()), score(m.getScoreSpeed())),
+                Integer.valueOf(1).equals(m.getSelfOperated()));
     }
 
     /**

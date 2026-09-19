@@ -116,6 +116,16 @@ class MerchantSelfOperatedFlowTest {
         assertThat(ai.neargo.shop.merchant.dto.VisitedMerchantVO.of(other, 2, 0L).selfOperated()).isFalse();
     }
 
+    @Test
+    @DisplayName("★★★ 店铺详情 /mp/merchant/{no} 也带自营 —— 店铺页此前自营店没有标、头像是店名首字（真机发现）")
+    void merchantDetailCarriesSelfOperated() throws Exception {
+        for (boolean self : new boolean[]{true, false}) {
+            JsonNode d = json.readTree(mvc().perform(get("/mp/merchant/" + merchant(self)))
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            assertThat(d.get("selfOperated").asBoolean()).as("self=" + self).isEqualTo(self);
+        }
+    }
+
     @AfterEach
     void cleanup() {
         var mine = merchantMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()

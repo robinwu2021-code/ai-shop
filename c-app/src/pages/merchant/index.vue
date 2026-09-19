@@ -58,19 +58,20 @@ const tags = computed(() => {
 });
 
 /**
- * 三个数：评分 · 已售 · 营业时间（没填营业时间就换成在售件数）。
- * **没人评过写「新店」，不写分**：后端对零评价回 5.0，那是默认值。
+ * 头部的几个数：评分 · 已售 · 营业时间 · 在售，**有值的才出**，最多三个。
+ * - 没人评过写「新店」，不写分：后端对零评价回 5.0，那是默认值；
+ * - 已售 0 不出：零销量是劝退信号（与商品卡、详情页同一条规矩；真机上「已售单 0」很扎眼）。
  */
 const stats = computed(() => {
   const m = merchant.value;
   if (!m) return [];
-  return [
+  const all = [
     { k: t("merchant.statRating"), v: m.ratingCount > 0 ? m.rating.toFixed(1) : String(t("shops.newShop")) },
-    { k: t("merchant.statSold"), v: String(m.salesCount) },
-    m.openHours
-      ? { k: t("merchant.hours"), v: m.openHours }
-      : { k: t("merchant.statGoods"), v: String(goods.value.length) },
+    m.salesCount > 0 ? { k: t("merchant.statSold"), v: String(m.salesCount) } : null,
+    m.openHours ? { k: t("merchant.hours"), v: m.openHours } : null,
+    { k: t("merchant.statGoods"), v: String(goods.value.length) },
   ];
+  return all.filter((x): x is { k: string; v: string } => x !== null).slice(0, 3);
 });
 
 function openGoods(g: Goods) {
@@ -137,9 +138,11 @@ onShareAppMessage(() =>
         </view>
       </view>
 
-      <view class="tags sh-wrap">
+      <view v-if="merchant.serviceScope || tags.length" class="tags sh-wrap">
         <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我** -->
-        <text class="sh-chip sh-chip--primary">{{ $t(`serviceScope.${merchant.serviceScope}`) }}</text>
+        <!-- serviceScope 已废弃（ADR-013 起销售范围在商品上），接口不再给 —— 没有就不画，
+             否则真机上露出的是词条键「serviceScope.undefined」 -->
+        <text v-if="merchant.serviceScope" class="sh-chip sh-chip--primary">{{ $t(`serviceScope.${merchant.serviceScope}`) }}</text>
         <text v-for="tg in tags" :key="tg" class="sh-chip sh-chip--primary">{{ tg }}</text>
       </view>
 
