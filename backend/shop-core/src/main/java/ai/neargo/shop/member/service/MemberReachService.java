@@ -1,5 +1,7 @@
 package ai.neargo.shop.member.service;
 
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
+
 import java.util.List;
 
 /**
@@ -22,7 +24,12 @@ public interface MemberReachService {
      *
      * @param scene {@code NOTICE} / {@code WAKEUP} / {@code COUPON}
      */
-    ReachPlan plan(String entityNo, String segmentNo, String scene);
+    ReachPlan plan(String entityNo, List<AudienceItem> audiences, String scene);
+
+    /** 旧入参：一个人群号（空 = 全部会员）。旧版 App 还在这样调，保留一个版本 */
+    default ReachPlan plan(String entityNo, String segmentNo, String scene) {
+        return plan(entityNo, legacyAudience(segmentNo), scene);
+    }
 
     /**
      * 真发。<b>幂等窗口在调用方</b>：这里只负责按 {@link #plan} 的结果发，
@@ -30,14 +37,27 @@ public interface MemberReachService {
      *
      * @return 实际发出多少
      */
-    ReachResult send(String entityNo, String segmentNo, String scene, String title,
+    ReachResult send(String entityNo, List<AudienceItem> audiences, String scene, String title,
                      String body, String operatorNo);
+
+    /** 旧入参，见 {@link #plan(String, String, String)} */
+    default ReachResult send(String entityNo, String segmentNo, String scene, String title,
+                             String body, String operatorNo) {
+        return send(entityNo, legacyAudience(segmentNo), scene, title, body, operatorNo);
+    }
+
+    /** 旧的「一个人群号」换成受众项：空 = 全部会员，与此前 sift 的行为一致 */
+    static List<AudienceItem> legacyAudience(String segmentNo) {
+        return segmentNo == null || segmentNo.isBlank()
+                ? List.of(new AudienceItem(AudienceItem.ALL, "*"))
+                : List.of(new AudienceItem(AudienceItem.SEGMENT, segmentNo));
+    }
 
     /**
      * @param reachable  能发的人数
      * @param skips      被拦下的分布。<b>要能说出人话</b>：
      *                   {@code TOO_SOON} 最近发过、{@code OPT_OUT} 已退订、
-     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册
+     *                   {@code LEAD} 线索会员、{@code NO_ACCOUNT} 还没注册、{@code BLOCKED} 被商家拉黑
      */
     record ReachPlan(int matched, int reachable, List<Skip> skips) {
 

@@ -28,4 +28,6 @@ public class PmtActivityAudience extends BaseEntity {
     private String entityNo;
     private String audienceType;
     private String audienceValue;
+    /** 人群条件快照（仅 SEGMENT 行，AC-9）。为空 = 存量行，按人群号当场算 */
+    private String ruleSnapshot;
 }

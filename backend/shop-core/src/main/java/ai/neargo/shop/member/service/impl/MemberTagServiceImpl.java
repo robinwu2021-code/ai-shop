@@ -3,11 +3,14 @@ package ai.neargo.shop.member.service.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.member.dto.MemberVOs.BatchTagVO;
 import ai.neargo.shop.member.dto.MemberVOs.MergePreviewVO;
 import ai.neargo.shop.member.dto.MemberVOs.TagVO;
+import ai.neargo.shop.member.entity.MbrMember;
 import ai.neargo.shop.member.entity.MbrMemberTag;
 import ai.neargo.shop.member.entity.MbrTag;
 import ai.neargo.shop.member.entity.MbrTagMergeLog;
+import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.TagMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.TagMergeLogMapper;
@@ -37,10 +40,15 @@ public class MemberTagServiceImpl implements MemberTagService {
     private final TagMapper tagMapper;
     private final MemberTagMapper memberTagMapper;
     private final TagMergeLogMapper mergeLogMapper;
+    private final MemberMapper memberMapper;
+    /** IN 列表的分块粒度 */
+    private static final int CHUNK = 500;
     private final SettingPort settingPort;
 
     public MemberTagServiceImpl(TagMapper tagMapper, MemberTagMapper memberTagMapper,
-                                TagMergeLogMapper mergeLogMapper, SettingPort settingPort) {
+                                TagMergeLogMapper mergeLogMapper, SettingPort settingPort,
+                                MemberMapper memberMapper) {
+        this.memberMapper = memberMapper;
         this.tagMapper = tagMapper;
         this.memberTagMapper = memberTagMapper;
         this.mergeLogMapper = mergeLogMapper;
@@ -164,7 +172,7 @@ public class MemberTagServiceImpl implements MemberTagService {
         for (MbrMemberTag r : fromRows) {
             if (intoMembers.contains(r.getMemberNo())) {
                 // 两个标签都有：删掉源那一条，否则唯一键会挡住改指
-                memberTagMapper.deleteById(r.getId());
+                memberTagMapper.hardDeleteById(r.getId());
             } else {
                 r.setTagNo(intoTagNo);
                 memberTagMapper.updateById(r);
@@ -207,12 +215,14 @@ public class MemberTagServiceImpl implements MemberTagService {
             assertNotSystem(require(entityNo, tagNo));
         }
 
+        if (ownedMembers(entityNo, memberNos).size() != new java.util.HashSet<>(memberNos).size()) {
+            // 别家的会员号：写进去会在本店留下一条指向别人的关系行，而那个人本店根本看不到
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         int maxPerMember = intSetting(KEY_MAX_PER_MEMBER, DEFAULT_MAX_PER_MEMBER);
         for (String memberNo : memberNos) {
             for (String tagNo : toRemove) {
-                memberTagMapper.delete(Wrappers.<MbrMemberTag>lambdaQuery()
-                        .eq(MbrMemberTag::getMemberNo, memberNo)
-                        .eq(MbrMemberTag::getTagNo, tagNo));
+                memberTagMapper.hardDelete(memberNo, tagNo);
             }
             for (String tagNo : toAdd) {
                 boolean has = memberTagMapper.exists(Wrappers.<MbrMemberTag>lambdaQuery()
@@ -237,6 +247,81 @@ public class MemberTagServiceImpl implements MemberTagService {
                 memberTagMapper.insert(row);
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public BatchTagVO batch(String entityNo, List<String> memberNos, String tagNo, boolean add,
+                            boolean confirm, String operatorNo) {
+        MbrTag t = require(entityNo, tagNo);
+        assertNotSystem(t);
+        if (add && !MbrTag.ACTIVE.equals(t.getStatus())) {
+            // 停用或已合并的标签不许再打：打上去的人在任何筛选里都不会出现
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<String> members = ownedMembers(entityNo, memberNos == null ? List.of() : memberNos);
+        java.util.Set<String> has = new java.util.HashSet<>();
+        java.util.Map<String, Long> owned = new java.util.HashMap<>();
+        for (int i = 0; i < members.size(); i += CHUNK) {
+            List<String> part = members.subList(i, Math.min(i + CHUNK, members.size()));
+            for (MbrMemberTag r : memberTagMapper.selectList(Wrappers.<MbrMemberTag>lambdaQuery()
+                    .in(MbrMemberTag::getMemberNo, part)
+                    .eq(MbrMemberTag::getTagType, MbrTag.MCH))) {
+                owned.merge(r.getMemberNo(), 1L, Long::sum);
+                if (tagNo.equals(r.getTagNo())) {
+                    has.add(r.getMemberNo());
+                }
+            }
+        }
+        int max = intSetting(KEY_MAX_PER_MEMBER, DEFAULT_MAX_PER_MEMBER);
+        List<String> change = new java.util.ArrayList<>();
+        int full = 0;
+        for (String m : members) {
+            if (add == has.contains(m)) {
+                continue;   // 已经是目标状态：重复打标是常态（人群会重叠），不算错
+            }
+            if (add && owned.getOrDefault(m, 0L) >= max) {
+                full++;      // 满了的人跳过并计数，而不是整批失败 —— 37 人里 1 个满了不该拦住另外 36 个
+                continue;
+            }
+            change.add(m);
+        }
+        int already = members.size() - change.size() - full;
+        if (!confirm) {
+            return new BatchTagVO(members.size(), already, change.size(), full, false);
+        }
+        long now = System.currentTimeMillis();
+        for (String m : change) {
+            if (add) {
+                MbrMemberTag row = new MbrMemberTag();
+                row.setEntityNo(entityNo);
+                row.setMemberNo(m);
+                row.setTagNo(tagNo);
+                row.setTagType(MbrTag.MCH);
+                row.setTaggedBy(operatorNo);
+                row.setTaggedAt(now);
+                memberTagMapper.insert(row);
+            } else {
+                memberTagMapper.hardDelete(m, tagNo);
+            }
+        }
+        log.info("[member] 批量{}标签 {}：命中 {}，改动 {}，已是目标状态 {}，已满跳过 {}",
+                add ? "打" : "去", tagNo, members.size(), change.size(), already, full);
+        return new BatchTagVO(members.size(), already, change.size(), full, true);
+    }
+
+    /** 这些会员号里属于本店的那些（去重、保序） */
+    private List<String> ownedMembers(String entityNo, List<String> memberNos) {
+        List<String> distinct = memberNos.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        java.util.Set<String> ok = new java.util.HashSet<>();
+        for (int i = 0; i < distinct.size(); i += CHUNK) {
+            memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
+                            .eq(MbrMember::getEntityNo, entityNo)
+                            .in(MbrMember::getMemberNo, distinct.subList(i, Math.min(i + CHUNK, distinct.size())))
+                            .select(MbrMember::getMemberNo))
+                    .forEach(m -> ok.add(m.getMemberNo()));
+        }
+        return distinct.stream().filter(ok::contains).toList();
     }
 
     // ---------------------------------------------------------------- 内部

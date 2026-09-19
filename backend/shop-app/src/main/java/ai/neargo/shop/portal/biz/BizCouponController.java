@@ -8,6 +8,7 @@ import ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd;
 import ai.neargo.shop.promotion.dto.CouponVOs.CouponVO;
 import ai.neargo.shop.promotion.service.CouponRedeemService;
 import ai.neargo.shop.promotion.service.CouponService;
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,7 +80,7 @@ public class BizCouponController {
     @PostMapping("/biz/coupons/{couponNo}/issue")
     public CouponIssueVO issue(@PathVariable String couponNo, @RequestBody IssueReq req) {
         return couponService.issue(BizContext.requireMerchantNo(), couponNo, req.segmentNo(),
-                SecurityUtils.currentUserNo());
+                req.audiences(), SecurityUtils.currentUserNo());
     }
 
     /** 发放记录。留痕的消费方 —— 没有它，记了也没人看得到 */
@@ -125,6 +126,10 @@ public class BizCouponController {
     public record StatusReq(String status) {
     }
 
-    public record IssueReq(String segmentNo) {
+    /**
+     * @param segmentNo 旧入参：一个人群号或预设键（@SLEEPING …）。旧版 App 还在传
+     * @param audiences 新入参：受众项（取或）。给了就以它为准
+     */
+    public record IssueReq(String segmentNo, List<AudienceItem> audiences) {
     }
 }

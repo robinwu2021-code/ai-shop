@@ -18,6 +18,12 @@ import ai.neargo.shop.member.dto.MemberVOs.TagVO;
 import ai.neargo.shop.member.service.MemberTagService;
 import ai.neargo.shop.member.dto.MemberVOs;
 import ai.neargo.shop.member.service.MemberReachService;
+import ai.neargo.shop.member.service.MemberAudienceService;
+import ai.neargo.shop.member.dto.MemberVOs.AudiencePreviewVO;
+import ai.neargo.shop.member.dto.MemberVOs.BatchTagVO;
+import ai.neargo.shop.member.dto.MemberVOs.SegmentDetailVO;
+import ai.neargo.shop.member.dto.MemberVOs.TagUsageVO;
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
 import ai.neargo.shop.member.dto.MemberVOs.MemberSettingVO;
 import ai.neargo.shop.member.dto.MemberVOs.SegmentVO;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,12 +54,15 @@ public class BizMemberController {
 
     private final ai.neargo.shop.member.service.MemberSegmentService segmentService;
     private final MemberReachService reachService;
+    private final MemberAudienceService audienceService;
 
     public BizMemberController(MemberService memberService, MemberTagService tagService,
                                ai.neargo.shop.member.service.MemberSegmentService segmentService,
-                               MemberReachService reachService) {
+                               MemberReachService reachService,
+                               MemberAudienceService audienceService) {
         this.segmentService = segmentService;
         this.reachService = reachService;
+        this.audienceService = audienceService;
         this.memberService = memberService;
         this.tagService = tagService;
     }
@@ -180,7 +189,8 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-tags/{tagNo}/merge")
     public MergePreviewVO mergeTag(@PathVariable String tagNo, @RequestBody MergeReq req) {
-        return tagService.merge(BizContext.requireMerchantNo(), tagNo, req.intoTagNo(),
+        // 走编排层：合并的同时把引用源标签的人群条件与活动受众改指过去，否则它们从此一个人都命中不了
+        return audienceService.mergeTag(BizContext.requireMerchantNo(), tagNo, req.intoTagNo(),
                 Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
     }
 
@@ -208,7 +218,9 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @PostMapping("/biz/member-reach/plan")
     public MemberReachService.ReachPlan planReach(@RequestBody ReachReq req) {
-        return reachService.plan(BizContext.requireMerchantNo(), req.segmentNo(), req.scene());
+        return req.hasAudiences()
+                ? reachService.plan(BizContext.requireMerchantNo(), req.audiences(), req.scene())
+                : reachService.plan(BizContext.requireMerchantNo(), req.segmentNo(), req.scene());
     }
 
     /**
@@ -218,11 +230,74 @@ public class BizMemberController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/member-reach/send")
     public MemberReachService.ReachResult sendReach(@RequestBody ReachReq req) {
-        return reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
-                req.title(), req.body(), SecurityUtils.currentUserNo());
+        return req.hasAudiences()
+                ? reachService.send(BizContext.requireMerchantNo(), req.audiences(), req.scene(),
+                        req.title(), req.body(), SecurityUtils.currentUserNo())
+                : reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
+                        req.title(), req.body(), SecurityUtils.currentUserNo());
     }
 
-    public record ReachReq(String segmentNo, String scene, String title, String body) {
+    /**
+     * @param segmentNo 旧入参：一个人群号（空 = 全部会员）。旧版 App 还在传
+     * @param audiences 新入参：受众项（取或）。给了就以它为准
+     */
+    public record ReachReq(String segmentNo, String scene, String title, String body,
+                           List<AudienceItem> audiences) {
+
+        boolean hasAudiences() {
+            return audiences != null && !audiences.isEmpty();
+        }
+    }
+
+    // ------------------------------------------------------------------ 选人与标签（会员标签与定向营销 批 B）
+
+    /**
+     * 选人面板的试算（原型 m12 / m13）：命中多少、收得到多少、收不到的为什么。
+     * 活动场景只给命中数（活动不推送）；含「非本店会员」时人数为空（数不出来）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/members/audience-preview")
+    public AudiencePreviewVO previewAudience(@RequestBody AudiencePreviewReq req) {
+        return audienceService.preview(BizContext.requireMerchantNo(), req.audiences(), req.scene(),
+                Boolean.TRUE.equals(req.forActivity()));
+    }
+
+    public record AudiencePreviewReq(List<AudienceItem> audiences, String scene, Boolean forActivity) {
+    }
+
+    /**
+     * 批量打 / 去一个标签（原型 m06、m20）。{@code confirm=false} 只试算 ——
+     * 确认框上要写「其中 5 人已有，实际新增 32 人」，就是它算的。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @PostMapping("/biz/members/tags/batch")
+    public BatchTagVO batchTag(@RequestBody BatchTagReq req) {
+        return audienceService.batchTag(BizContext.requireMerchantNo(), req.memberNos(), req.rule(),
+                req.scopeStoreNo(), req.tagNo(), !"REMOVE".equals(req.action()),
+                Boolean.TRUE.equals(req.confirm()), SecurityUtils.currentUserNo());
+    }
+
+    /**
+     * @param memberNos 圈人方式一：会员号（效果页「下单的 3 人」）
+     * @param rule      圈人方式二：筛选条件（会员名单「这 37 人」），当场按条件筛
+     * @param action    ADD（默认）/ REMOVE
+     */
+    public record BatchTagReq(List<String> memberNos, MemberQuery rule, String scopeStoreNo,
+                              String tagNo, String action, Boolean confirm) {
+    }
+
+    /** 标签用在哪（原型 m08）：停用 / 合并之前先看见引用它的活动与人群 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-tags/{tagNo}/usage")
+    public TagUsageVO tagUsage(@PathVariable String tagNo) {
+        return audienceService.tagUsage(BizContext.requireMerchantNo(), tagNo);
+    }
+
+    /** 人群详情（原型 m11）：条件、此刻人数（当场算）、用在哪 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-segments/{segmentNo}")
+    public SegmentDetailVO segmentDetail(@PathVariable String segmentNo) {
+        return audienceService.segmentDetail(BizContext.requireMerchantNo(), segmentNo);
     }
 
     // ------------------------------------------------------------------ 人群（P3）

@@ -36,7 +36,14 @@ public interface CouponService {
      * <p><b>预算是硬闸门且不部分发放</b>：本批最大敞口超出剩余预算时整批拒绝 ——
      * 部分发放会留下一个谁也说不清的中间态（发到第几个人？没发的怎么办？）。
      */
-    CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo);
+    CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
+                        List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                        String operatorNo);
+
+    /** 旧入参：一个人群号或预设键（@SLEEPING …）。旧版 App 还在这样调，保留一个版本 */
+    default CouponIssueVO issue(String entityNo, String couponNo, String segmentNo, String operatorNo) {
+        return issue(entityNo, couponNo, segmentNo, null, operatorNo);
+    }
 
     List<CouponIssueVO> issues(String entityNo, String couponNo);
 

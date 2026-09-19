@@ -46,9 +46,11 @@
 /biz/inventory/transfers/{no}  transfers
 /biz/inventory/transfers/{no}/receive  transfers
 /biz/inventory/transfers/{no}/ship  transfers
+/biz/member-segments/{segmentNo}  member-segments
 /biz/member-segments/{segmentNo}/remove  member-segments
 /biz/member-tags/{tagNo}  member-tags
 /biz/member-tags/{tagNo}/merge  member-tags
+/biz/member-tags/{tagNo}/usage  member-tags
 /biz/members/{memberNo}  members
 /biz/my-spec-dims/{dimNo}/archive  my-spec-dims
 /biz/my-spec-dims/{dimNo}/rename  my-spec-dims

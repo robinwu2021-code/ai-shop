@@ -21,6 +21,61 @@ public interface MemberQueryPort {
     SegmentAudience resolveSegment(String entityNo, String segmentNo);
 
     /**
+     * 一组受众项此刻命中谁（活动 / 发券 / 发消息共用的那一块「发给谁」）。
+     *
+     * <p><b>多项之间取或</b>：「沉睡的 + 爱囤货的都给」是一次发给两拨人，重叠的只算一次。
+     * 要「既沉睡又爱囤货」，先在筛选里存成人群，再选这个人群 —— 筛选条件内部是取且。
+     *
+     * @param items 不能为空（发券 / 发消息必须说清发给谁）；含 {@link AudienceItem#NON_MEMBER} 时只能有它一项
+     * @param scene 发消息时给场景（NOTICE / WAKEUP / COUPON），频次闸按它判；发券与活动给 null
+     * @return 含 NON_MEMBER 时 {@code countable=false}：「所有不是本店会员的人」数不出来
+     */
+    AudienceResolution resolve(String entityNo, List<AudienceItem> items, String scene);
+
+    /**
+     * 这个买家是否满足一份<b>条件快照</b>（活动发布那一刻抄下来的人群条件）。
+     * 与 {@link #judge} 分开：快照是「当时的人群」，judge 里的 segmentNos 是「现在的人群」。
+     */
+    boolean matchesRule(String entityNo, String userNo, String ruleSnapshot);
+
+    /**
+     * 把人群此刻的条件抄一份，给活动存成快照（AC-9：进行中的活动按发布时的条件生效）。
+     * 人群不存在时抛 {@code MEMBER_SEGMENT_NOT_FOUND}。
+     */
+    String segmentSnapshot(String entityNo, String segmentNo);
+
+    /**
+     * 一个受众项。
+     *
+     * @param type  {@link #ALL} 全部会员 · {@link #LEVEL} 分层（NEW/REGULAR/LOYAL/SLEEPING）·
+     *              {@link #TAG} 标签号 · {@link #SEGMENT} 人群号 · {@link #SOURCE} 首次来源 ·
+     *              {@link #NON_MEMBER} 非本店会员（只在活动里）
+     * @param value 存号不存文本 —— 标签改名不该动到这里
+     */
+    record AudienceItem(String type, String value) {
+        public static final String ALL = "ALL";
+        public static final String LEVEL = "LEVEL";
+        public static final String TAG = "TAG";
+        public static final String SEGMENT = "SEGMENT";
+        public static final String SOURCE = "SOURCE";
+        public static final String NON_MEMBER = "NON_MEMBER";
+    }
+
+    /**
+     * @param matched   命中多少人（含发不出去的）；{@code countable=false} 时为 0 且不该展示
+     * @param reachable 其中能真正收到东西的
+     * @param skips     发不出去的按原因分档：LEAD 手录未认领 · BLOCKED 被商家拉黑 · OPT_OUT 关了本店消息 ·
+     *                  NO_ACCOUNT 还没注册 · TOO_SOON 频次闸内（只在给了 scene 时判）
+     */
+    record AudienceResolution(int matched, List<Audience> reachable, List<Skip> skips,
+                              boolean countable) {
+    }
+
+    /** 一档跳过原因与人数 */
+    record Skip(String reason, int count) {
+    }
+
+    /**
      * 这个买家在这家主体的会员画像 —— <b>受众判断一次取回，不要逐条问</b>。
      *
      * <p>算价是在下单路径上，每多一次跨域调用都乘以订单量。此前的教训是

@@ -288,8 +288,36 @@ public class MemberServiceImpl implements MemberService {
         long pageNo = Math.max(q.page(), 1);
         long size = q.size() <= 0 ? 20 : Math.min(q.size(), 100);
         Page<MbrMember> page = memberMapper.selectPage(Page.of(pageNo, size), w);
-        return PageData.of(page.getRecords().stream().map(m -> vo(m, q.storeNo())).toList(),
-                page.getTotal(), pageNo, size);
+        List<MemberVO> rows = withTagNames(entityNo,
+                page.getRecords().stream().map(m -> vo(m, q.storeNo())).toList());
+        return PageData.of(rows, page.getTotal(), pageNo, size);
+    }
+
+    /**
+     * 名单卡片上的标签名：一页一次查询，不逐行。只列在用的商家标签 ——
+     * 停用或已合并的名字会让商家以为那个标签还在起作用。
+     */
+    private List<MemberVO> withTagNames(String entityNo, List<MemberVO> rows) {
+        if (rows.isEmpty()) {
+            return rows;
+        }
+        java.util.Map<String, String> names = new java.util.HashMap<>();
+        tagService.tags(entityNo).stream()
+                .filter(t -> ai.neargo.shop.member.entity.MbrTag.MCH.equals(t.tagType())
+                        && ai.neargo.shop.member.entity.MbrTag.ACTIVE.equals(t.status()))
+                .forEach(t -> names.put(t.tagNo(), t.name()));
+        java.util.Map<String, List<String>> byMember = new java.util.HashMap<>();
+        memberTagMapper.selectList(Wrappers.<MbrMemberTag>lambdaQuery()
+                        .eq(MbrMemberTag::getEntityNo, entityNo)
+                        .in(MbrMemberTag::getMemberNo, rows.stream().map(MemberVO::memberNo).toList())
+                        .orderByAsc(MbrMemberTag::getTaggedAt))
+                .forEach(r -> {
+                    String n = names.get(r.getTagNo());
+                    if (n != null) {
+                        byMember.computeIfAbsent(r.getMemberNo(), k -> new java.util.ArrayList<>()).add(n);
+                    }
+                });
+        return rows.stream().map(v -> v.withTags(byMember.getOrDefault(v.memberNo(), List.of()))).toList();
     }
 
     @Override
@@ -750,7 +778,7 @@ public class MemberServiceImpl implements MemberService {
         Integer days = last == null ? null : (int) ((System.currentTimeMillis() - last) / DAY);
         return new MemberVO(m.getMemberNo(), m.getPersonNo(), tail, m.getStatus(), m.getSource(),
                 level, m.getFirstStoreNo(), orders, spent, d90, last, days,
-                nz(m.getReachOptOut()) == 1, m.getRemark(), nz(m.getJoinedAt()));
+                nz(m.getReachOptOut()) == 1, m.getRemark(), nz(m.getJoinedAt()), List.of());
     }
 
     private static int nz(Integer v) {

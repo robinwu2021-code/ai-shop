@@ -370,12 +370,23 @@ public class PmtCouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public CouponIssueVO issue(String entityNo, String couponNo, String segmentNo,
-                               String operatorNo) {
+                               List<MemberQueryPort.AudienceItem> audiences, String operatorNo) {
         PmtCoupon c = require(entityNo, couponNo);
         if (!PmtCoupon.ACTIVE.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
-        MemberQueryPort.SegmentAudience audience = memberPort.resolveSegment(entityNo, segmentNo);
+        /*
+         * 两种入参：新版给受众项（标签 / 分层 / 人群 / 来源，取或，与活动、发消息同一个解析器）；
+         * 旧版只给一个人群号或预设键。都给时以受众项为准。
+         */
+        boolean byItems = audiences != null && !audiences.isEmpty();
+        MemberQueryPort.SegmentAudience audience = byItems
+                ? toSegmentAudience(memberPort.resolve(entityNo, audiences, null))
+                : memberPort.resolveSegment(entityNo, segmentNo);
+        String batchSegmentNo = byItems
+                ? (audiences.size() == 1 && MemberQueryPort.AudienceItem.SEGMENT.equals(audiences.get(0).type())
+                        ? audiences.get(0).value() : null)
+                : segmentNo;
 
         long now = System.currentTimeMillis();
         long per = maxPerCoupon(c);
@@ -451,7 +462,8 @@ public class PmtCouponServiceImpl implements CouponService {
         batch.setCouponNo(couponNo);
         batch.setEntityNo(entityNo);
         batch.setIssueMode(PmtCoupon.ISSUE_TARGETED);
-        batch.setSegmentNo(segmentNo);
+        batch.setSegmentNo(batchSegmentNo);
+        batch.setAudienceJson(byItems ? audienceJson(audiences) : null);
         batch.setPlannedCount(audience.matched());
         batch.setIssuedCount(targets.size());
         batch.setSkippedCount(skipped);
@@ -509,6 +521,27 @@ public class PmtCouponServiceImpl implements CouponService {
             parts.add("SOLD_OUT:" + soldOut);
         }
         return String.join(",", parts);
+    }
+
+    private static MemberQueryPort.SegmentAudience toSegmentAudience(MemberQueryPort.AudienceResolution r) {
+        return new MemberQueryPort.SegmentAudience(r.matched(), r.reachable());
+    }
+
+    /** 受众项存成 JSON 数组。只有 type / value 两个标识符，手写足够，不值得为此引一个 mapper */
+    private static String audienceJson(List<MemberQueryPort.AudienceItem> items) {
+        StringBuilder sb = new StringBuilder("[");
+        for (MemberQueryPort.AudienceItem it : items) {
+            if (sb.length() > 1) {
+                sb.append(',');
+            }
+            sb.append("{\"type\":\"").append(esc(it.type()))
+                    .append("\",\"value\":\"").append(esc(it.value())).append("\"}");
+        }
+        return sb.append(']').toString();
+    }
+
+    private static String esc(String v) {
+        return v == null ? "" : v.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private CouponIssueVO issueVo(PmtCouponIssue b) {

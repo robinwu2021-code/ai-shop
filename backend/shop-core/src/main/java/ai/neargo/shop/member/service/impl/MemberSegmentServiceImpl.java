@@ -27,6 +27,9 @@ import java.util.List;
 @Service
 public class MemberSegmentServiceImpl implements MemberSegmentService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(MemberSegmentServiceImpl.class);
+
     /** 一个主体能存多少个人群。够用即可 —— 攒到几百个的时候，商家自己也认不出哪个是哪个 */
     private static final int MAX_SEGMENTS = 50;
 
@@ -171,6 +174,62 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
                 null,
                 q.tagNos() == null ? List.of() : q.tagNos(),
                 q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0);
+    }
+
+    @Override
+    public String snapshot(String entityNo, String segmentNo) {
+        MbrSegment row = row(entityNo, segmentNo);
+        if (row == null) {
+            throw BizException.of(ErrorCode.MEMBER_SEGMENT_NOT_FOUND);
+        }
+        return json.writeValueAsString(new Snapshot(row.getScopeStoreNo(), parse(row)));
+    }
+
+    @Override
+    public boolean matchesSnapshot(String entityNo, String snapshot, String memberNo) {
+        Snapshot snap;
+        try {
+            snap = json.readValue(snapshot, Snapshot.class);
+        } catch (RuntimeException e) {
+            // 与 parse 相反的取舍：这里是「给不给他打折」，读不出来按不给 —— 不会因此多减一分钱
+            log.warn("[人群] 活动快照读不出来，按不命中 entity={} member={}", entityNo, memberNo);
+            return false;
+        }
+        return memberService.match(entityNo, normalize(snap.rule(), snap.scopeStoreNo()))
+                .contains(memberNo);
+    }
+
+    @Override
+    public List<SegmentVO> usingTag(String entityNo, String tagNo) {
+        return list(entityNo).stream()
+                .filter(sg -> sg.rule() != null && sg.rule().tagNos() != null
+                        && sg.rule().tagNos().contains(tagNo))
+                .toList();
+    }
+
+    @Override
+    public int retargetTag(String entityNo, String fromTagNo, String toTagNo) {
+        int n = 0;
+        for (MbrSegment row : segmentMapper.selectList(Wrappers.<MbrSegment>lambdaQuery()
+                .eq(MbrSegment::getEntityNo, entityNo))) {
+            MemberQuery q = parse(row);
+            if (q.tagNos() == null || !q.tagNos().contains(fromTagNo)) {
+                continue;
+            }
+            List<String> tags = q.tagNos().stream()
+                    .map(t -> t.equals(fromTagNo) ? toTagNo : t).distinct().toList();
+            MemberQuery next = new MemberQuery(q.storeNo(), q.level(), q.source(), q.status(), q.phone(),
+                    tags, q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(),
+                    q.page(), q.size());
+            row.setRuleJson(json.writeValueAsString(next));
+            segmentMapper.updateById(row);
+            n++;
+        }
+        return n;
+    }
+
+    /** 活动里存的人群快照：条件 + 门店范围（两者一起才是「当时那群人」） */
+    record Snapshot(String scopeStoreNo, MemberQuery rule) {
     }
 
     private MbrSegment row(String entityNo, String segmentNo) {

@@ -309,6 +309,11 @@ class BizEndpointPermTest {
         put("/biz/member-segments", BizPerms.CUSTOMER);
         put("/biz/member-segments/{segmentNo}/remove", BizPerms.CUSTOMER);
         put("/biz/member-segments/preview", BizPerms.CUSTOMER);
+        // 会员标签与定向营销 批 B：选人试算、批量打标、标签用在哪、人群详情 —— 都是「看会员」的动作
+        put("/biz/members/audience-preview", BizPerms.CUSTOMER);
+        put("/biz/members/tags/batch", BizPerms.CUSTOMER);
+        put("/biz/member-tags/{tagNo}/usage", BizPerms.CUSTOMER);
+        put("/biz/member-segments/{segmentNo}", BizPerms.CUSTOMER);
         // 同一路径两个方法两种权限：读是 biz:customer，改是 biz:store:admin
         // （改口径会改变全主体「新客」的含义）。表里按更严的那个记
         put("/biz/member-settings", BizPerms.STORE_ADMIN);

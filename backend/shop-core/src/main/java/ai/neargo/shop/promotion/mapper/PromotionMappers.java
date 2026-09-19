@@ -36,6 +36,20 @@ public final class PromotionMappers {
     /** 受众。**一行都没有 = 对所有人生效** */
     public interface ActivityAudienceMapper
             extends BaseMapper<ai.neargo.shop.promotion.entity.PmtActivityAudience> {
+
+        /**
+         * <b>物理删这个活动的全部受众行。</b>理由与 {@link ActivityGoodsMapper#hardDeleteByActivity} 完全相同：
+         * 唯一键 {@code uk_pmt_audience(tenant_no, activity_no, audience_type, audience_value)} 不含
+         * {@code deleted}，逻辑删之后旧行仍占着那个组合 —— 编辑一个带受众的活动、受众不变，保存就撞键。
+         * 商品那张表 2026-09-18 已经改过，受众这张当时漏了（2026-09-19 写人群受众时撞见）。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM pmt_activity_audience WHERE activity_no = #{activityNo}")
+        int hardDeleteByActivity(@org.apache.ibatis.annotations.Param("activityNo") String activityNo);
+
+        /** 物理删一行（合并标签时两个标签都在受众里，删掉源那一行）。理由同上 */
+        @org.apache.ibatis.annotations.Delete("DELETE FROM pmt_activity_audience WHERE id = #{id}")
+        int hardDeleteById(@org.apache.ibatis.annotations.Param("id") Long id);
     }
 
     /** 作用范围。按 ref_no 反查就是冲突提示要的那条路 */

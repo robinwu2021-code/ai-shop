@@ -88,9 +88,10 @@ class ActivityAudienceFlowTest {
     @DisplayName("★★★ 会员专享：会员减、非会员不减")
     void memberOnlyActivity() {
         String e = "M-AUD-" + (++seq);
+        // 先有会员再建活动：受众此刻一个人都没有的活动不让发布（AC-10），而「会员专享」的前提就是有会员
+        String member = buyer(e);
         cut(e, List.of(new AudienceItem(PmtActivityAudience.LEVEL, "NEW")), null);
 
-        String member = buyer(e);
         assertThat(pricing.autoDiscount(member, basket(e, 9_000)).total())
                 .as("他是新客，命中 LEVEL=NEW").isEqualTo(500);
         assertThat(pricing.autoDiscount("U-STRANGER", basket(e, 9_000)).total())

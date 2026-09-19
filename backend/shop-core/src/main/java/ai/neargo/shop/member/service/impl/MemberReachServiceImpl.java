@@ -1,24 +1,17 @@
 package ai.neargo.shop.member.service.impl;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
-import ai.neargo.shop.member.entity.MbrMember;
 import ai.neargo.shop.member.entity.MbrReachLog;
-import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper;
 import ai.neargo.shop.member.service.MemberReachService;
-import ai.neargo.shop.member.service.MemberSegmentService;
+import ai.neargo.shop.spi.member.MemberQueryPort.Audience;
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem;
+import ai.neargo.shop.spi.member.MemberQueryPort.AudienceResolution;
 import ai.neargo.shop.spi.notify.UserPushPort;
-import ai.neargo.shop.spi.platform.SettingPort;
-import ai.neargo.shop.spi.user.PersonPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 给会员发消息。
@@ -32,56 +25,36 @@ public class MemberReachServiceImpl implements MemberReachService {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(MemberReachServiceImpl.class);
 
-    private static final long DAY = 86_400_000L;
-
-    /**
-     * 频次闸按场景分档：{@code member.reach.min-days.<scene>}。
-     *
-     * <p>公告与唤回不是一回事 —— 一周三条公告让人烦，一周唤回三次让人拉黑。
-     * 默认值也按这个分：公告 3 天、唤回 14 天、发券通知 7 天。
-     */
-    private static final String KEY_MIN_DAYS = "member.reach.min-days.";
-    private static final Map<String, Integer> DEFAULT_MIN_DAYS = Map.of(
-            MbrReachLog.SCENE_NOTICE, 3,
-            MbrReachLog.SCENE_WAKEUP, 14,
-            MbrReachLog.SCENE_COUPON, 7);
-    /** 兜底：没登记过的场景按最保守的那一档 */
-    private static final int FALLBACK_MIN_DAYS = 14;
-
-    private final MemberMapper memberMapper;
     private final ReachLogMapper reachMapper;
-    private final MemberSegmentService segmentService;
-    private final PersonPort personPort;
+    private final AudienceResolver resolver;
     private final UserPushPort pushPort;
-    private final SettingPort settingPort;
 
-    public MemberReachServiceImpl(MemberMapper memberMapper, ReachLogMapper reachMapper,
-                                  MemberSegmentService segmentService, PersonPort personPort,
-                                  UserPushPort pushPort, SettingPort settingPort) {
-        this.memberMapper = memberMapper;
+    public MemberReachServiceImpl(ReachLogMapper reachMapper, AudienceResolver resolver,
+                                  UserPushPort pushPort) {
         this.reachMapper = reachMapper;
-        this.segmentService = segmentService;
-        this.personPort = personPort;
+        this.resolver = resolver;
         this.pushPort = pushPort;
-        this.settingPort = settingPort;
     }
 
     @Override
-    public ReachPlan plan(String entityNo, String segmentNo, String scene) {
-        Sift s = sift(entityNo, segmentNo, scene);
-        return new ReachPlan(s.matched, s.targets.size(), s.skips());
+    public ReachPlan plan(String entityNo, List<AudienceItem> audiences, String scene) {
+        AudienceResolution r = sift(entityNo, audiences, scene);
+        return new ReachPlan(r.matched(), r.reachable().size(), skips(r));
     }
 
     @Override
     @Transactional
-    public ReachResult send(String entityNo, String segmentNo, String scene, String title,
+    public ReachResult send(String entityNo, List<AudienceItem> audiences, String scene, String title,
                             String body, String operatorNo) {
-        Sift s = sift(entityNo, segmentNo, scene);
+        AudienceResolution r = sift(entityNo, audiences, scene);
         String taskNo = BizKey.next(BizKey.REACH);
         long now = System.currentTimeMillis();
+        // 只有「单个人群」时才记人群号：多项受众没有一个号能代表它，记一个会让回看按人群聚合时算错
+        String segmentNo = audiences != null && audiences.size() == 1
+                && AudienceItem.SEGMENT.equals(audiences.get(0).type()) ? audiences.get(0).value() : null;
         int sent = 0;
 
-        for (Target t : s.targets) {
+        for (Audience t : r.reachable()) {
             /*
              * **先记录再推送**。反过来的话，推送成功而记录失败时，
              * 频次闸就不知道我们刚打扰过他 —— 下一次群发会立刻再发一条。
@@ -91,7 +64,7 @@ public class MemberReachServiceImpl implements MemberReachService {
             MbrReachLog row = new MbrReachLog();
             row.setReachNo(BizKey.next(BizKey.REACH));
             row.setEntityNo(entityNo);
-            row.setMemberNo(t.memberNo);
+            row.setMemberNo(t.memberNo());
             row.setSegmentNo(segmentNo);
             row.setTaskNo(taskNo);
             row.setChannel("PUSH");
@@ -99,108 +72,24 @@ public class MemberReachServiceImpl implements MemberReachService {
             row.setSentAt(now);
             reachMapper.insert(row);
 
-            if (pushPort.pushToUser(t.userNo, title, body, "/pages/index/index")) {
+            if (pushPort.pushToUser(t.userNo(), title, body, "/pages/index/index")) {
                 sent++;
             }
         }
-        log.info("[触达] {} 场景 {} 计划 {} 发出 {} 跳过 {}",
-                entityNo, scene, s.matched, sent, s.skipCount());
-        return new ReachResult(taskNo, sent, s.skipCount(), s.skips());
+        int skipped = r.matched() - r.reachable().size();
+        log.info("[触达] {} 场景 {} 计划 {} 发出 {} 跳过 {}", entityNo, scene, r.matched(), sent, skipped);
+        return new ReachResult(taskNo, sent, skipped, skips(r));
     }
 
     /**
-     * 筛人。<b>plan 与 send 共用这一处</b> ——
-     * 两处各筛一遍，商家看到的「能发 25 人」与实际发出的数量会对不上，
-     * 而他没有任何办法知道差在哪。
+     * 筛人。<b>plan 与 send 共用这一处</b>，且与发券、活动共用同一个 {@link AudienceResolver} ——
+     * 两处各筛一遍，商家看到的「能发 25 人」与实际发出的数量会对不上。
      */
-    private Sift sift(String entityNo, String segmentNo, String scene) {
-        long now = System.currentTimeMillis();
-        int minDays = minDays(scene);
-        Sift out = new Sift();
-
-        List<String> memberNos = segmentNo == null || segmentNo.isBlank()
-                ? memberMapper.selectList(Wrappers.<MbrMember>lambdaQuery()
-                        .eq(MbrMember::getEntityNo, entityNo))
-                        .stream().map(MbrMember::getMemberNo).toList()
-                : segmentService.matchAll(entityNo, segmentNo);
-        out.matched = memberNos.size();
-
-        for (String memberNo : memberNos) {
-            MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
-                    .eq(MbrMember::getMemberNo, memberNo).last("limit 1"));
-            if (m == null) {
-                continue;
-            }
-            // 线索一律不发：商家录进来的号，本人从没同意过接收任何东西
-            if (MbrMember.LEAD.equals(m.getStatus())) {
-                out.skip("LEAD");
-                continue;
-            }
-            if (m.getReachOptOut() != null && m.getReachOptOut() == 1) {
-                out.skip("OPT_OUT");
-                continue;
-            }
-            String userNo = m.getPersonNo() == null ? null
-                    : personPort.find(m.getPersonNo()).map(PersonPort.PersonView::userNo)
-                            .orElse(null);
-            if (userNo == null || userNo.isBlank()) {
-                out.skip("NO_ACCOUNT");
-                continue;
-            }
-            Long last = lastSentAt(entityNo, memberNo, scene);
-            if (last != null && now - last < minDays * DAY) {
-                out.skip("TOO_SOON");
-                continue;
-            }
-            out.targets.add(new Target(memberNo, userNo));
-        }
-        return out;
+    private AudienceResolution sift(String entityNo, List<AudienceItem> audiences, String scene) {
+        return resolver.resolve(entityNo, audiences, scene);
     }
 
-    private Long lastSentAt(String entityNo, String memberNo, String scene) {
-        MbrReachLog last = reachMapper.selectOne(Wrappers.<MbrReachLog>lambdaQuery()
-                .eq(MbrReachLog::getEntityNo, entityNo)
-                .eq(MbrReachLog::getMemberNo, memberNo)
-                .eq(MbrReachLog::getScene, scene)
-                .orderByDesc(MbrReachLog::getSentAt)
-                .last("limit 1"));
-        return last == null ? null : last.getSentAt();
-    }
-
-    /** 场景的最小间隔天数。读不出来或没配过就用最保守的那一档 */
-    private int minDays(String scene) {
-        String raw = settingPort.get(KEY_MIN_DAYS + scene,
-                String.valueOf(DEFAULT_MIN_DAYS.getOrDefault(scene, FALLBACK_MIN_DAYS)));
-        try {
-            return Integer.parseInt(raw.trim().replace("\"", ""));
-        } catch (RuntimeException e) {
-            // 配错了不该变成「不限频次」—— 那是这个功能最坏的失效方向
-            log.warn("[触达] 频次配置读不出来 scene={} raw={}，按 {} 天兜底", scene, raw,
-                    FALLBACK_MIN_DAYS);
-            return FALLBACK_MIN_DAYS;
-        }
-    }
-
-    private record Target(String memberNo, String userNo) {
-    }
-
-    /** 筛人的中间结果。跳过按原因计数 —— 只报一个总数，商家无从判断要不要改人群 */
-    private static final class Sift {
-        int matched;
-        final List<Target> targets = new ArrayList<>();
-        final Map<String, Integer> skipped = new LinkedHashMap<>();
-
-        void skip(String reason) {
-            skipped.merge(reason, 1, Integer::sum);
-        }
-
-        int skipCount() {
-            return skipped.values().stream().mapToInt(Integer::intValue).sum();
-        }
-
-        List<ReachPlan.Skip> skips() {
-            return skipped.entrySet().stream()
-                    .map(e -> new ReachPlan.Skip(e.getKey(), e.getValue())).toList();
-        }
+    private static List<ReachPlan.Skip> skips(AudienceResolution r) {
+        return r.skips().stream().map(s -> new ReachPlan.Skip(s.reason(), s.count())).toList();
     }
 }

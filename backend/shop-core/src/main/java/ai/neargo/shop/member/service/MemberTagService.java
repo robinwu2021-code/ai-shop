@@ -46,6 +46,16 @@ public interface MemberTagService {
     void tag(String entityNo, List<String> memberNos, List<String> add, List<String> remove,
              String operatorNo);
 
+    /**
+     * 批量打 / 去<b>一个</b>标签（原型 m06、m20）。一次一个：同时打三个，撤的时候就说不清哪批人是哪次打的。
+     *
+     * @param memberNos 圈好的人；不属于本店的会员号静默剔除
+     * @param confirm   false 只试算，不写 —— 确认框上的「实际新增 32 人」就是它算的
+     */
+    ai.neargo.shop.member.dto.MemberVOs.BatchTagVO batch(String entityNo, List<String> memberNos,
+                                                         String tagNo, boolean add, boolean confirm,
+                                                         String operatorNo);
+
     /** 某个会员身上的标签（详情页用） */
     List<TagVO> tagsOf(String entityNo, String memberNo);
 }

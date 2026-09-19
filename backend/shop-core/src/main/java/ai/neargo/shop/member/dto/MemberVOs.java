@@ -37,12 +37,21 @@ public final class MemberVOs {
     /**
      * @param phoneTail 后四位。没绑手机号（不该出现在会员里）时为空
      * @param level     按主体或按门店的分层，取哪一个由主体的经营口径决定
+     * @param tagNames  他身上的商家标签名（名单卡片第二行，原型 m01）。只在名单接口里填，其余为空列表
      */
     public record MemberVO(String memberNo, String personNo, String phoneTail, String status,
                            String source, String level, String firstStoreNo,
                            Integer orderCount, Long totalSpentMinor,
                            Integer d90OrderCount, Long lastOrderAt, Integer daysSinceLast,
-                           boolean reachOptOut, String remark, long joinedAt) {
+                           boolean reachOptOut, String remark, long joinedAt,
+                           List<String> tagNames) {
+
+        /** 换上标签名（名单页按页批量取，不逐行查） */
+        public MemberVO withTags(List<String> names) {
+            return new MemberVO(memberNo, personNo, phoneTail, status, source, level, firstStoreNo,
+                    orderCount, totalSpentMinor, d90OrderCount, lastOrderAt, daysSinceLast,
+                    reachOptOut, remark, joinedAt, names);
+        }
     }
 
     /**
@@ -163,5 +172,53 @@ public final class MemberVOs {
      */
     public record MergePreviewVO(int affectedMembers, int bothTagged, int referencedActivities,
                                  boolean applied) {
+    }
+
+    /**
+     * 批量打标的试算 / 结果。
+     *
+     * @param matched        圈到的人（属于本店的）
+     * @param alreadyInState 已经是目标状态的（打：本来就有；去：本来就没有）—— 不重复计
+     * @param willChange     实际会改的人数。确认框上写的就是它
+     * @param skippedFull    标签已满（每人上限）而跳过的
+     */
+    public record BatchTagVO(int matched, int alreadyInState, int willChange, int skippedFull,
+                             boolean applied) {
+    }
+
+    /**
+     * 选人面板的试算（原型 m12 / m13）。
+     *
+     * @param matched   命中多少人；含「非本店会员」时为 null（数不出来）
+     * @param reachable 其中收得到的；活动场景（forActivity）不算，为 null —— 活动不推送
+     * @param skips     收不到的按原因分档，沿用发消息的四档加 BLOCKED
+     */
+    public record AudiencePreviewVO(Integer matched, Integer reachable,
+                                    List<ai.neargo.shop.spi.member.MemberQueryPort.Skip> skips) {
+    }
+
+    /**
+     * 一个标签用在哪（原型 m08）。停用 / 合并前先让商家看见后果。
+     *
+     * @param newThisMonth 本月新打上的人数
+     * @param activities   引用它的未结束活动
+     * @param segments     条件里含它的人群
+     */
+    public record TagUsageVO(TagVO tag, int newThisMonth,
+                             List<ai.neargo.shop.spi.marketing.AudienceRefPort.AudienceRef> activities,
+                             List<SegmentVO> segments) {
+    }
+
+    /**
+     * 人群详情（原型 m11）：条件 + 此刻人数 + 用在哪。
+     *
+     * @param matched      此刻命中（当场算，不是 lastCount）
+     * @param reachable    其中收得到消息的
+     * @param activities   引用它的未结束活动。进行中的按发布那一刻的条件生效 —— 改这里的条件不影响它们
+     * @param couponIssues 按它发过的券（最近 20 批）
+     */
+    public record SegmentDetailVO(SegmentVO segment, int matched, int reachable,
+                                  List<ai.neargo.shop.spi.marketing.AudienceRefPort.AudienceRef> activities,
+                                  List<ai.neargo.shop.spi.marketing.AudienceRefPort.AudienceRef> couponIssues) {
     }
 }

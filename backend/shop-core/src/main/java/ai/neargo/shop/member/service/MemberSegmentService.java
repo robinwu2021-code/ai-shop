@@ -52,4 +52,24 @@ public interface MemberSegmentService {
     List<String> matchAll(String entityNo, String segmentNo);
 
     List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule);
+
+    /**
+     * 抄一份人群此刻的条件（含门店范围），给活动存成快照。
+     * 进行中的活动按这份快照判人 —— 商家之后改人群，不会偷偷改掉已发布活动的受众（AC-9）。
+     */
+    String snapshot(String entityNo, String segmentNo);
+
+    /** 这个会员是否满足一份快照条件。快照读不出来时按不命中，并留 WARN */
+    boolean matchesSnapshot(String entityNo, String snapshot, String memberNo);
+
+    /** 引用了这个标签的人群（条件里的 tagNos 含它） */
+    List<SegmentVO> usingTag(String entityNo, String tagNo);
+
+    /**
+     * 标签合并后把人群条件里的源标签换成目标标签（重复的去掉）。
+     * 不换的话，引用源标签的人群从合并那一刻起一个人都命中不了 —— 关系行已经全部改指到目标标签了。
+     *
+     * @return 改写了几个人群
+     */
+    int retargetTag(String entityNo, String fromTagNo, String toTagNo);
 }

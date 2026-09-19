@@ -713,6 +713,16 @@ public enum ErrorCode {
      */
     MEMBER_SEGMENT_BROKEN(70044, "err.member.segment_broken"),
 
+    /** 发券 / 发消息没说发给谁。<b>不当成「全部会员」</b> —— 那是这两个场景里最贵的一个默认值 */
+    MEMBER_AUDIENCE_REQUIRED(70065, "err.member.audience_required"),
+
+    /**
+     * 活动的受众此刻一个人都没有（AC-10）。
+     *
+     * <p>发布了也没人享受得到，而商家会以为活动在跑、只是没人来 —— 他会去调价格，而不是去改人群。
+     */
+    MEMBER_AUDIENCE_EMPTY(70066, "err.member.audience_empty"),
+
     /**
      * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。
      *

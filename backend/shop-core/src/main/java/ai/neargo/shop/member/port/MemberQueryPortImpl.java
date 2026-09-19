@@ -8,7 +8,6 @@ import ai.neargo.shop.spi.user.PersonPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -96,41 +95,60 @@ public class MemberQueryPortImpl implements MemberQueryPort {
 
     @Override
     public SegmentAudience resolveSegment(String entityNo, String segmentNo) {
-        List<String> reachableNos;
-        int matched;
-        String level = presetLevel(segmentNo);
-        if (level != null) {
-            /*
-             * 预设人群（原型 s18：全部会员 / 新客 / 熟客 / 沉睡）按分层现筛，不要求商家先存一个人群 ——
-             * 「发给沉睡会员」是最常见的一次发放，让他先去会员页存人群是多出来的一步。
-             * 与存下来的人群走同一个筛人实现（MemberService.match），不另写一份。
-             */
-            var q = new ai.neargo.shop.member.dto.MemberVOs.MemberQuery(null,
-                    PRESET_ALL.equals(level) ? null : level, null, null, null, List.of(),
-                    null, null, null, null, 1, 0);
-            reachableNos = memberService.matchReachable(entityNo, q);
-            matched = memberService.match(entityNo, q).size();
-        } else {
-            // resolve 给的已经是「可触达」的那一批（线索与退订的人不在内）
-            reachableNos = segmentService.resolve(entityNo, segmentNo);
-            matched = segmentService.matchedCount(entityNo, segmentNo);
-        }
+        /*
+         * 预设人群（@ALL / @NEW / @LOYAL …，原型 s18 的前四行）按分层现筛，不要求商家先存一个人群 ——
+         * 「发给沉睡会员」是最常见的一次发放。与存下来的人群、与新的多项受众走同一个解析器。
+         */
+        AudienceResolution r = resolve(entityNo, itemsOf(segmentNo), null);
+        return new SegmentAudience(r.matched(), r.reachable());
+    }
 
-        List<Audience> out = new ArrayList<>();
-        for (String memberNo : reachableNos) {
-            MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
-                    .eq(MbrMember::getMemberNo, memberNo).last("limit 1"));
-            if (m == null || m.getPersonNo() == null) {
-                continue;
-            }
-            String userNo = personPort.find(m.getPersonNo())
-                    .map(PersonPort.PersonView::userNo).orElse(null);
-            if (userNo == null || userNo.isBlank()) {
-                // 人档在、账号还没绑上：他收不到任何东西，算跳过而不是算发出
-                continue;
-            }
-            out.add(new Audience(memberNo, userNo));
+    /** 旧的「一个人群号 / 预设键」 → 受众项 */
+    static List<AudienceItem> itemsOf(String segmentNo) {
+        String level = presetLevel(segmentNo);
+        if (level == null) {
+            return List.of(new AudienceItem(AudienceItem.SEGMENT, segmentNo));
         }
-        return new SegmentAudience(matched, out);
+        return List.of(PRESET_ALL.equals(level)
+                ? new AudienceItem(AudienceItem.ALL, "*")
+                : new AudienceItem(AudienceItem.LEVEL, level));
+    }
+
+    @Override
+    public AudienceResolution resolve(String entityNo, List<AudienceItem> items, String scene) {
+        return resolver.resolve(entityNo, items, scene);
+    }
+
+    @Override
+    public boolean matchesRule(String entityNo, String userNo, String ruleSnapshot) {
+        if (entityNo == null || userNo == null || userNo.isBlank() || ruleSnapshot == null) {
+            return false;
+        }
+        // 与 judge 同一个理由绕开数据域：这一刻的会话是买家自己，mbr_* 按 entity_no 登记
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            String personNo = personPort.findByUser(userNo)
+                    .map(PersonPort.PersonView::personNo).orElse(null);
+            if (personNo == null) {
+                return false;
+            }
+            MbrMember m = memberMapper.selectOne(Wrappers.<MbrMember>lambdaQuery()
+                    .eq(MbrMember::getEntityNo, entityNo)
+                    .eq(MbrMember::getPersonNo, personNo).last("limit 1"));
+            return m != null && MbrMember.ACTIVE.equals(m.getStatus())
+                    && segmentService.matchesSnapshot(entityNo, ruleSnapshot, m.getMemberNo());
+        });
+    }
+
+    @Override
+    public String segmentSnapshot(String entityNo, String segmentNo) {
+        return segmentService.snapshot(entityNo, segmentNo);
+    }
+
+    /** 受众解析（发消息、发券、活动共用）。setter 注入，理由同 memberService */
+    private ai.neargo.shop.member.service.impl.AudienceResolver resolver;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setResolver(ai.neargo.shop.member.service.impl.AudienceResolver resolver) {
+        this.resolver = resolver;
     }
 }

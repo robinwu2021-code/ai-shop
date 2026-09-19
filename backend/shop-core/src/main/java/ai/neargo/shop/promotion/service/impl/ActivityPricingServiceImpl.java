@@ -604,8 +604,10 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 case PmtActivityAudience.SOURCE -> me.member()
                         && r.getAudienceValue().equals(me.source());
                 case PmtActivityAudience.TAG -> me.tagNos().contains(r.getAudienceValue());
-                case PmtActivityAudience.SEGMENT ->
-                        me.segmentNos().contains(r.getAudienceValue());
+                // 有快照按快照（发布那一刻的人群），没有的是存量行，按人群此刻的条件（AC-9）
+                case PmtActivityAudience.SEGMENT -> r.getRuleSnapshot() != null
+                        ? memberPort.matchesRule(entityNo, userNo, r.getRuleSnapshot())
+                        : me.segmentNos().contains(r.getAudienceValue());
                 default -> false;
             };
             if (hit) {

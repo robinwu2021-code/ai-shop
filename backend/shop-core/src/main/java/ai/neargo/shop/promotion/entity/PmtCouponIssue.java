@@ -22,6 +22,8 @@ public class PmtCouponIssue extends BaseEntity {
     private String entityNo;
     private String issueMode;
     private String segmentNo;
+    /** 发放那一刻的受众项（JSON 数组）。单个人群时 segmentNo 照填 */
+    private String audienceJson;
     private String activityNo;
     /** 发放当时的人群条件快照。条件后来会改，追责要看当时那一份 */
     private String ruleSnapshot;

@@ -107,13 +107,18 @@ public class ActivityServiceImpl implements ActivityService {
         }
         assertSane(a, d);
         assertNoGroupOverlap(a, d);
+        boolean started = !create && started(a);
+        if (!started) {
+            // 开始了的活动人群已锁（见上面的 lockedSignature），不必再判；没开始的每次保存都判
+            assertAudienceNotEmpty(entityNo, d.audiences());
+        }
 
         if (create) {
             activityMapper.insert(a);
         } else {
             activityMapper.updateById(a);
         }
-        saveAudiences(entityNo, a.getActivityNo(), d.audiences());
+        saveAudiences(entityNo, a.getActivityNo(), d.audiences(), started);
         saveGoods(entityNo, a.getActivityNo(), d.goodsNos());
         saveRules(a.getActivityNo(), PmtActivity.TRIGGER_COMBO.equals(a.getTriggerType()), d.rules());
         log.info("[活动] {} {} by {}", create ? "建" : "改", a.getActivityNo(), operatorNo);
@@ -494,10 +499,25 @@ public class ActivityServiceImpl implements ActivityService {
         }
     }
 
-    /** 受众整批换掉：增量在「删掉一个标签」上一定会漏 */
-    private void saveAudiences(String entityNo, String activityNo, List<AudienceItem> items) {
-        audienceMapper.delete(Wrappers.<PmtActivityAudience>lambdaQuery()
-                .eq(PmtActivityAudience::getActivityNo, activityNo));
+    /**
+     * 受众整批换掉：增量在「删掉一个标签」上一定会漏。
+     *
+     * <p><b>人群项要抄一份当时的条件</b>（AC-9）：算价按快照判，商家之后改人群不会改掉这个活动的受众。
+     * 开始了的活动<b>沿用旧快照</b> —— 它每次保存（改结束时间、加份数）也走这里，
+     * 重抄一次就等于把受众悄悄换成了人群的最新条件。存量活动没有快照的，照旧留空（按人群号当场算）。
+     */
+    private void saveAudiences(String entityNo, String activityNo, List<AudienceItem> items,
+                               boolean keepSnapshots) {
+        java.util.Map<String, String> oldSnapshots = new java.util.HashMap<>();
+        if (keepSnapshots) {
+            for (PmtActivityAudience r : audienceMapper.selectList(Wrappers.<PmtActivityAudience>lambdaQuery()
+                    .eq(PmtActivityAudience::getActivityNo, activityNo))) {
+                if (r.getRuleSnapshot() != null) {
+                    oldSnapshots.put(r.getAudienceType() + "=" + r.getAudienceValue(), r.getRuleSnapshot());
+                }
+            }
+        }
+        audienceMapper.hardDeleteByActivity(activityNo);
         if (items == null) {
             return;
         }
@@ -510,8 +530,41 @@ public class ActivityServiceImpl implements ActivityService {
             row.setEntityNo(entityNo);
             row.setAudienceType(it.type());
             row.setAudienceValue(it.value());
+            if (PmtActivityAudience.SEGMENT.equals(it.type())) {
+                row.setRuleSnapshot(keepSnapshots
+                        ? oldSnapshots.get(it.type() + "=" + it.value())
+                        : memberPort == null ? null : memberPort.segmentSnapshot(entityNo, it.value()));
+            }
             audienceMapper.insert(row);
         }
+    }
+
+    /**
+     * 受众此刻一个人都没有就不让发布（AC-10）。空受众 = 所有人、「非本店会员」数不出来 —— 这两种不判。
+     */
+    private void assertAudienceNotEmpty(String entityNo, List<AudienceItem> items) {
+        if (items == null || memberPort == null) {
+            return;
+        }
+        List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> clean = items.stream()
+                .filter(it -> it != null && !blank(it.type()) && !blank(it.value()))
+                .map(it -> new ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem(it.type(), it.value()))
+                .toList();
+        if (clean.isEmpty()) {
+            return;
+        }
+        var r = memberPort.resolve(entityNo, clean, null);
+        if (r.countable() && r.matched() == 0) {
+            throw BizException.of(ErrorCode.MEMBER_AUDIENCE_EMPTY);
+        }
+    }
+
+    /** 受众判定与人群快照要问会员域。setter 注入，理由同 ruleMapper */
+    private ai.neargo.shop.spi.member.MemberQueryPort memberPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setMemberPort(ai.neargo.shop.spi.member.MemberQueryPort memberPort) {
+        this.memberPort = memberPort;
     }
 
     private void saveGoods(String entityNo, String activityNo, List<String> goodsNos) {

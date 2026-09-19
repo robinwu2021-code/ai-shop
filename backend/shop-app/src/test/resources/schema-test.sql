@@ -3490,6 +3490,7 @@ CREATE TABLE IF NOT EXISTS pmt_coupon_issue
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    audience_json TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_issue_no UNIQUE (issue_no)
 );
@@ -3585,6 +3586,7 @@ CREATE TABLE IF NOT EXISTS pmt_activity_audience
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    rule_snapshot TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_audience UNIQUE (tenant_no, activity_no, audience_type, audience_value)
 );
