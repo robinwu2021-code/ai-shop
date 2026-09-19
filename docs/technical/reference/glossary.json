@@ -2026,10 +2026,10 @@
           "ar": "عنوان التوصيل خارج منطقة البيع ({scope})"
         },
         {
-          "key": "group.anyPickup",
-          "zh-CN": "下单时选",
-          "en": "Chosen at checkout",
-          "ar": "تُختار عند الدفع"
+          "key": "group.buyAlone",
+          "zh-CN": "单独买",
+          "en": "Buy alone",
+          "ar": "اشترِ منفرداً"
         },
         {
           "key": "group.closed",
@@ -2038,16 +2038,22 @@
           "ar": "انتهت"
         },
         {
+          "key": "group.detailLink",
+          "zh-CN": "商品详情 ›",
+          "en": "Item details ›",
+          "ar": "تفاصيل المنتج ›"
+        },
+        {
           "key": "group.done",
           "zh-CN": "已成团",
           "en": "Group complete",
           "ar": "اكتملت المجموعة"
         },
         {
-          "key": "group.goods",
-          "zh-CN": "商品",
-          "en": "Product",
-          "ar": "المنتج"
+          "key": "group.invite",
+          "zh-CN": "邀请邻居来拼",
+          "en": "Invite neighbours",
+          "ar": "ادعُ الجيران"
         },
         {
           "key": "group.join",
@@ -2092,22 +2098,40 @@
           "ar": "يتبقى {n} لإتمام المجموعة"
         },
         {
+          "key": "group.paidJoined",
+          "zh-CN": "付款成功，已参团",
+          "en": "Paid — you're in the group",
+          "ar": "تم الدفع — انضممت إلى المجموعة"
+        },
+        {
+          "key": "group.paidOpened",
+          "zh-CN": "付款成功，已开团",
+          "en": "Paid — your group is open",
+          "ar": "تم الدفع — فُتحت مجموعتك"
+        },
+        {
           "key": "group.pickup",
           "zh-CN": "自提点",
           "en": "Pickup point",
           "ar": "نقطة الاستلام"
         },
         {
-          "key": "group.price",
-          "zh-CN": "成团价",
-          "en": "Group price",
-          "ar": "سعر المجموعة"
-        },
-        {
           "key": "group.refundNote",
           "zh-CN": "没凑齐会自动退款",
           "en": "Refunded automatically if the group doesn’t fill",
           "ar": "يُسترد المبلغ تلقائيًا إن لم تكتمل المجموعة"
+        },
+        {
+          "key": "group.refunded",
+          "zh-CN": "已全额退款，原路退回",
+          "en": "Fully refunded to your original payment",
+          "ar": "استُرد المبلغ كاملاً إلى وسيلة الدفع الأصلية"
+        },
+        {
+          "key": "group.reopen",
+          "zh-CN": "再开一个团",
+          "en": "Start a new group",
+          "ar": "ابدأ مجموعة جديدة"
         },
         {
           "key": "group.share",
@@ -2126,6 +2150,12 @@
           "zh-CN": "已售罄",
           "en": "Sold out",
           "ar": "نفدت الكمية"
+        },
+        {
+          "key": "group.soloPrice",
+          "zh-CN": "单买 {p}",
+          "en": "Solo {p}",
+          "ar": "منفرداً {p}"
         },
         {
           "key": "group.status.FAILED",
@@ -2152,6 +2182,30 @@
           "ar": "قيد المراجعة"
         },
         {
+          "key": "group.stepDelivered",
+          "zh-CN": "送达",
+          "en": "Delivered",
+          "ar": "تم التوصيل"
+        },
+        {
+          "key": "group.stepFormed",
+          "zh-CN": "已成团",
+          "en": "Group formed",
+          "ar": "اكتملت المجموعة"
+        },
+        {
+          "key": "group.stepPaid",
+          "zh-CN": "已付款",
+          "en": "Paid",
+          "ar": "تم الدفع"
+        },
+        {
+          "key": "group.stepPreparing",
+          "zh-CN": "商家备货中",
+          "en": "Being prepared",
+          "ar": "قيد التجهيز"
+        },
+        {
           "key": "group.titleMerchant",
           "zh-CN": "商家团",
           "en": "Store group",
@@ -2162,6 +2216,12 @@
           "zh-CN": "{name}的团",
           "en": "{name}’s group",
           "ar": "مجموعة {name}"
+        },
+        {
+          "key": "group.viewOrder",
+          "zh-CN": "查看订单",
+          "en": "View order",
+          "ar": "عرض الطلب"
         },
         {
           "key": "group.you",
@@ -3118,6 +3178,42 @@
           "ar": "فاتح"
         },
         {
+          "key": "myGroups.empty",
+          "zh-CN": "这里还没有团",
+          "en": "No groups here yet",
+          "ar": "لا توجد مجموعات هنا بعد"
+        },
+        {
+          "key": "myGroups.entryHint",
+          "zh-CN": "拼团中 · 已成团",
+          "en": "Open · Formed",
+          "ar": "مفتوحة · مكتملة"
+        },
+        {
+          "key": "myGroups.failed",
+          "zh-CN": "没凑齐 {n}",
+          "en": "Didn't fill {n}",
+          "ar": "لم تكتمل {n}"
+        },
+        {
+          "key": "myGroups.formed",
+          "zh-CN": "已成团 {n}",
+          "en": "Formed {n}",
+          "ar": "مكتملة {n}"
+        },
+        {
+          "key": "myGroups.open",
+          "zh-CN": "拼团中 {n}",
+          "en": "Open {n}",
+          "ar": "مفتوحة {n}"
+        },
+        {
+          "key": "myGroups.title",
+          "zh-CN": "我的拼团",
+          "en": "My groups",
+          "ar": "مجموعاتي"
+        },
+        {
           "key": "myMembership.empty",
           "zh-CN": "还不是任何一家店的会员",
           "en": "Not a member of any store yet",
@@ -3254,6 +3350,18 @@
           "zh-CN": "运单号",
           "en": "Tracking no.",
           "ar": "رقم الشحنة"
+        },
+        {
+          "key": "order.groupLeft",
+          "zh-CN": "{t} 后截止 · 没凑齐自动全额退款",
+          "en": "Closes in {t} · full refund if it doesn't fill",
+          "ar": "تُغلق خلال {t} · استرداد كامل إن لم تكتمل"
+        },
+        {
+          "key": "order.groupNeed",
+          "zh-CN": "拼团中 · 还差 {n} 人",
+          "en": "Group open · {n} more to go",
+          "ar": "المجموعة مفتوحة · يلزم {n} آخرون"
         },
         {
           "key": "order.orderNo",
@@ -31184,6 +31292,7 @@
           "/pages/merchants/index",
           "/pages/store/index",
           "/pages/group-host/index",
+          "/pages/my-groups/index",
           "/pages/favorites/index",
           "/pages/search/index",
           "/pages/address/index",

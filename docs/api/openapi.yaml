@@ -1637,6 +1637,11 @@ components:
             - "string"
             - "null"
           description: "活动名（团详情「活动」那一行）。存量团为空"
+        myOrderNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "当前买家在这个团里的那一单（子单号）。没参团 / 未登录为空。 团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程）"
       required: 
         - "groupNo"
         - "status"
@@ -11057,6 +11062,36 @@ paths:
     get: 
       operationId: "myHostedGroups"
       summary: "我发起的团"
+      tags: 
+        - "group-buy"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/GroupBuy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/group-buy/mine": 
+    get: 
+      operationId: "myJoinedGroups"
+      summary: "我的拼团（参加过的团）"
       tags: 
         - "group-buy"
       security: 

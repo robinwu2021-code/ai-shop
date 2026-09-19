@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 449,
-        "c-app": 55
+        "c-app": 53
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 341,
-        "c-app": 59
+        "c-app": 60
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 323,
-        "c-app": 231
+        "c-app": 236
       }
     },
     {
@@ -438,7 +438,7 @@
       },
       "usage": {
         "b-app": 16,
-        "c-app": 12
+        "c-app": 13
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -470,7 +470,7 @@
       },
       "usage": {
         "b-app": 38,
-        "c-app": 21
+        "c-app": 25
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 126,
-        "c-app": 40
+        "c-app": 42
       }
     },
     {
@@ -558,7 +558,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 13
+        "c-app": 14
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 205,
-        "c-app": 72
+        "c-app": 75
       }
     },
     {
@@ -636,7 +636,7 @@
       },
       "usage": {
         "b-app": 154,
-        "c-app": 22
+        "c-app": 21
       }
     },
     {
@@ -660,7 +660,7 @@
       },
       "usage": {
         "b-app": 58,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -682,7 +682,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 31
+        "c-app": 33
       }
     },
     {
@@ -736,7 +736,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 0
+        "c-app": 2
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 172,
-        "c-app": 58
+        "c-app": 65
       }
     },
     {
@@ -862,7 +862,7 @@
       },
       "usage": {
         "b-app": 55,
-        "c-app": 4
+        "c-app": 6
       }
     },
     {
@@ -880,7 +880,7 @@
       },
       "usage": {
         "b-app": 30,
-        "c-app": 12
+        "c-app": 13
       }
     },
     {
@@ -1054,7 +1054,7 @@
       },
       "usage": {
         "b-app": 320,
-        "c-app": 134
+        "c-app": 139
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 129,
-        "c-app": 63
+        "c-app": 71
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 489,
-        "c-app": 164
+        "c-app": 168
       }
     },
     {
@@ -1452,7 +1452,7 @@
       },
       "usage": {
         "b-app": 36,
-        "c-app": 8
+        "c-app": 9
       }
     },
     {
@@ -2054,7 +2054,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 11,
+        "c-app": 12,
         "lib": 3
       },
       "note": "商品封面",
@@ -2138,7 +2138,7 @@
       ],
       "usage": {
         "b-app": 57,
-        "c-app": 32,
+        "c-app": 33,
         "lib": 1
       },
       "note": "空态",
@@ -2556,7 +2556,7 @@
       ],
       "usage": {
         "b-app": 80,
-        "c-app": 38,
+        "c-app": 39,
         "lib": 1
       },
       "note": "页面外壳",
@@ -2848,7 +2848,7 @@
       ],
       "usage": {
         "b-app": 16,
-        "c-app": 10,
+        "c-app": 11,
         "lib": 0
       },
       "note": "筛选条",
@@ -4871,11 +4871,12 @@
       "file": "c-app/src/pages/group/index.vue",
       "components": [
         "sh-actionbar",
+        "sh-cover",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
-      "localSelectors": 9,
-      "localCssLines": 40,
+      "libClassHits": 69,
+      "localSelectors": 16,
+      "localCssLines": 66,
       "rolled": []
     },
     {
@@ -5022,6 +5023,21 @@
     },
     {
       "app": "c-app",
+      "page": "my-groups",
+      "key": "c-app/my-groups",
+      "file": "c-app/src/pages/my-groups/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
       "page": "my-memberships",
       "key": "c-app/my-memberships",
       "file": "c-app/src/pages/my-memberships/index.vue",
@@ -5043,9 +5059,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 129,
-      "localSelectors": 30,
-      "localCssLines": 116,
+      "libClassHits": 140,
+      "localSelectors": 32,
+      "localCssLines": 125,
       "rolled": []
     },
     {
@@ -5545,7 +5561,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 37,
-    "pages": 138,
+    "pages": 139,
     "gapKinds": 2
   }
 }

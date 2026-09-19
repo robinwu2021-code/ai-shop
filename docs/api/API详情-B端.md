@@ -2128,6 +2128,7 @@ _无字段_
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
 | `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
 | `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+| `myOrderNo` | `string,null` | 否 | 当前买家在这个团里的那一单（子单号）。没参团 / 未登录为空。 团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程） |
 
 `members[]` 的字段：
 
@@ -2182,6 +2183,7 @@ _无字段_
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
 | `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
 | `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+| `myOrderNo` | `string,null` | 否 | 当前买家在这个团里的那一单（子单号）。没参团 / 未登录为空。 团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程） |
 
 `members[]` 的字段：
 
@@ -2326,6 +2328,7 @@ _无字段_
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
 | `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
 | `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+| `myOrderNo` | `string,null` | 否 | 当前买家在这个团里的那一单（子单号）。没参团 / 未登录为空。 团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程） |
 
 `members[]` 的字段：
 
@@ -6916,6 +6919,7 @@ _无字段_
 | `isOwner` | `boolean` | 否 | 我是不是这个团的发起人 —— 决定是否显示轻核销入口 |
 | `activityNo` | `string,null` | 否 | 开团时依据的拼团活动。存量团为空 |
 | `activityName` | `string,null` | 否 | 活动名（团详情「活动」那一行）。存量团为空 |
+| `myOrderNo` | `string,null` | 否 | 当前买家在这个团里的那一单（子单号）。没参团 / 未登录为空。 团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程） |
 
 `members[]` 的字段：
 
