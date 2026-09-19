@@ -130,6 +130,10 @@ const RESPONSE_TYPES = {
   storeByCode: "StoreHome",
   // boolean 没有对应 schema，用 object 兜底并在此说明，避免下次又有人以为是漏配
   toggleFavoriteStore: "object",
+  // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）。切换回 { favorited } —— 与 toggleFavoriteStore 同一形状
+  toggleFavoriteGoods: "object",
+  favoriteGoods: "PageResult<Goods>",
+  favoriteStores: "Merchant[]",
   verifyGroupPickup: "Order",
   // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
