@@ -2836,12 +2836,6 @@
           "ar": "السرعة"
         },
         {
-          "key": "merchant.enter",
-          "zh-CN": "进店 ›",
-          "en": "Visit ›",
-          "ar": "زيارة ›"
-        },
-        {
           "key": "merchant.goodsTab",
           "zh-CN": "在售商品 {n}",
           "en": "Products {n}",
@@ -2954,12 +2948,6 @@
           "zh-CN": "个人经营者",
           "en": "Individual seller",
           "ar": "بائع فرد"
-        },
-        {
-          "key": "merchant.verified",
-          "zh-CN": "已认证",
-          "en": "Verified",
-          "ar": "موثّق"
         },
         {
           "key": "message.allRead",
