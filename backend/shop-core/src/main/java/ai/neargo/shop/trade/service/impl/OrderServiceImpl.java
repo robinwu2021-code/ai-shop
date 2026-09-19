@@ -1838,8 +1838,12 @@ public class OrderServiceImpl implements OrderService {
                 .eq(OrdItem::getSubOrderNo, subOrderNo).orderByAsc(OrdItem::getId));
     }
 
-    /** 订单视角（Q6）：单商家，有履约方式、核销码与时间线。 */
+    /** 订单视角（Q6）：单商家，有履约方式、核销码与时间线；团单挂上团号 */
     private OrderVO orderView(OrdSubOrder s, OrdOrder order) {
+        return orderViewBase(s, order).withGroup(s.getGroupNo());
+    }
+
+    private OrderVO orderViewBase(OrdSubOrder s, OrdOrder order) {
         return new OrderVO(
                 /*
                  * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。

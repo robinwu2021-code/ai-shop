@@ -832,6 +832,10 @@
     {
      "label": "TDD-C端商品收藏与送达判断",
      "path": "docs/technical/TDD-C端商品收藏与送达判断.md"
+    },
+    {
+     "label": "TDD-C端拼团买家流程",
+     "path": "docs/technical/TDD-C端拼团买家流程.md"
     }
    ],
    "screens": [
@@ -929,7 +933,9 @@
     },
     {
      "id": "p12",
-     "title": "我的拼团"
+     "title": "我的拼团",
+     "client": "c-app",
+     "route": "pages/my-groups/index"
     }
    ]
   },

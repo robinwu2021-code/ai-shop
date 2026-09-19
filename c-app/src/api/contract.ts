@@ -398,6 +398,8 @@ export interface ShopApi {
   // ---- 邻里自提：发起人侧（C-FF-09/10，作用域限本团）
   /** 我发起的团 */
   myHostedGroups(): Promise<GroupBuy[]>;
+  /** 我的拼团：参加过的团（开团也算），最近在前（TDD-C端拼团买家流程 p12） */
+  myJoinedGroups(): Promise<GroupBuy[]>;
   /** 批次签收：整批到货后发起人点一次，之后个别缺损照常走售后 */
   /**
    * 批次签收：整车货到了，必须在逐单核销之前。

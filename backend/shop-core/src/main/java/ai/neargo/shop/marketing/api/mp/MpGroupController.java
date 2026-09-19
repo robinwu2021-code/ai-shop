@@ -64,6 +64,12 @@ public class MpGroupController {
                 req.neighbor() == null ? null : req.neighbor().timeSlot()));
     }
 
+    /** 我的拼团（p12）：我参加过的团，最近在前。要登录 */
+    @GetMapping("/mp/group-buy/mine")
+    public List<GroupBuyVO> myJoinedGroups() {
+        return groupService.myJoinedGroups();
+    }
+
     @GetMapping("/mp/group-buy/hosted")
     public List<GroupBuyVO> myHostedGroups() {
         return groupService.myHostedGroups();

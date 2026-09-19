@@ -230,6 +230,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 邻里求团
   myHostedGroups: { method: "GET", path: "/mp/group-buy/hosted", auth: true, summary: "我发起的团" },
+  myJoinedGroups: { method: "GET", path: "/mp/group-buy/mine", auth: true, summary: "我的拼团（参加过的团）" },
   confirmGroupBatch: { method: "POST", path: "/mp/group-buy/:groupNo/receive", auth: true, summary: "批次签收" },
   verifyGroupPickup: { method: "POST", path: "/mp/group-buy/:groupNo/verify", auth: true, summary: "发起人核销" },
   groupPickupOrders: { method: "GET", path: "/mp/group-buy/:groupNo/orders", auth: true, summary: "本团待取订单" },

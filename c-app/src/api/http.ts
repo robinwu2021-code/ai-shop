@@ -198,6 +198,7 @@ export const httpApi: ShopApi = {
 
   // ---- 邻里求团
   myHostedGroups: () => http.get<GroupBuy[]>(ENDPOINTS.myHostedGroups.path),
+  myJoinedGroups: () => http.get<GroupBuy[]>(ENDPOINTS.myJoinedGroups.path),
   confirmGroupBatch: (groupNo) =>
     http.post<GroupBuy>(buildPath(ENDPOINTS.confirmGroupBatch.path, { groupNo }), {}),
   verifyGroupPickup: (groupNo, code) =>

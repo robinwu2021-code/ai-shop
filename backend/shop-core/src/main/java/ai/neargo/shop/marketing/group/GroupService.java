@@ -37,6 +37,12 @@ public interface GroupService {
     List<GroupBuyVO> myHostedGroups();
 
     /**
+     * 我参加过的团（开团也算参加），按我参团的先后、最近在前（TDD-C端拼团买家流程 p12）。
+     * 与 {@link #myHostedGroups()} 不同：那个是邻里自提的发起人，要签收核销；这个是买家看自己的团。
+     */
+    List<GroupBuyVO> myJoinedGroups();
+
+    /**
      * <b>商家</b>开的团（B-11.9）。
      *
      * <p>与 {@link #myHostedGroups()} 是两回事：那个按发起人（C 端用户）查，

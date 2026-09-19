@@ -130,6 +130,8 @@ class MpEndpointAuthTest {
             "POST /mp/favorite/goods/{goodsNo}",
             "GET /mp/favorite/goods",
             "GET /mp/favorite/store",
+            // 我的拼团（TDD-C端拼团买家流程）
+            "GET /mp/group-buy/mine",
             "POST /mp/favorite/store/{merchantNo}",
             "POST /mp/store/{merchantNo}/rebuy",
             "POST /mp/ticket",

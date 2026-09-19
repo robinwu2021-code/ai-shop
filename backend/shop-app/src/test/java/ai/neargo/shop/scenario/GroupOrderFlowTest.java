@@ -251,6 +251,72 @@ class GroupOrderFlowTest {
     // ---------------------------------------------------------------- 夹具
 
     /** 商家开团（s34），团价与人数从活动带出来 */
+    @Test
+    @DisplayName("★★★ 我的拼团（p12）：付了款的团进我的列表、最近在前；别人的团不混进来")
+    void myJoinedGroupsListsOnlyMine() throws Exception {
+        String a = login(phone());
+        String g1 = merchantGroup();
+        pay(order(a, g1, false), "TX-M1-" + seq);
+        String g2 = (String) subOf(order(a, null, true)).get("group_no");
+        pay(jdbc.queryForObject("select order_no from ord_sub_order where group_no=? limit 1", String.class, g2),
+                "TX-M2-" + seq);
+        // 对照：另一个人开的团，**而且付了款** —— 没付款不进成员表，
+        // 那样「按人过滤」去掉了也看不出区别（第一版就是这样，消融没变红）
+        String b = login(phone());
+        String payB = order(b, null, true);
+        String gB = (String) subOf(payB).get("group_no");
+        pay(payB, "TX-MB-" + seq);
+        assertThat(joined(gB)).as("对照量先验：b 真的进了成员表").isEqualTo(1);
+
+        JsonNode mine = json.readTree(mvc().perform(get("/mp/group-buy/mine").header("Authorization", "Bearer " + a))
+                .andReturn().getResponse().getContentAsString()).get("data");
+        java.util.List<String> nos = new java.util.ArrayList<>();
+        mine.forEach(n -> nos.add(n.get("groupNo").asString()));
+        assertThat(nos).as("最近参的在前").containsExactly(g2, g1);
+        assertThat(nos).doesNotContain(gB);
+        closeOut(g1, g2, gB);
+    }
+
+    @Test
+    @DisplayName("★★ 团详情的 myOrderNo：参团的人看到自己那一单，没参团的看到空")
+    void myOrderNoOnlyForMembers() throws Exception {
+        String groupNo = merchantGroup();
+        String a = login(phone());
+        String payNo = order(a, groupNo, false);
+        pay(payNo, "TX-M3-" + seq);
+        String sub = (String) subOf(payNo).get("sub_order_no");
+
+        JsonNode mineView = json.readTree(mvc().perform(get("/mp/group-buy/" + groupNo)
+                .header("Authorization", "Bearer " + a)).andReturn().getResponse().getContentAsString()).get("data");
+        assertThat(mineView.get("myOrderNo").asString()).isEqualTo(sub);
+
+        // 订单详情带团号：支付页付完落团页、订单详情画拼团进度卡都靠它（此前 OrderVO 从没下发过）
+        JsonNode payDetail = json.readTree(mvc().perform(get("/mp/order/" + payNo)
+                .header("Authorization", "Bearer " + a)).andReturn().getResponse().getContentAsString()).get("data");
+        String viaPay = payDetail.get("groupNo").isNull() && payDetail.get("subOrders").size() > 0
+                ? payDetail.get("subOrders").get(0).get("groupNo").asString() : payDetail.get("groupNo").asString();
+        assertThat(viaPay).isEqualTo(groupNo);
+        JsonNode subDetail = json.readTree(mvc().perform(get("/mp/order/" + sub)
+                .header("Authorization", "Bearer " + a)).andReturn().getResponse().getContentAsString()).get("data");
+        assertThat(subDetail.get("groupNo").asString()).isEqualTo(groupNo);
+
+        String other = login(phone());
+        JsonNode otherView = json.readTree(mvc().perform(get("/mp/group-buy/" + groupNo)
+                .header("Authorization", "Bearer " + other)).andReturn().getResponse().getContentAsString()).get("data");
+        assertThat(otherView.get("myOrderNo").isNull()).as("没参团的人不该看到别人的单号").isTrue();
+        closeOut(groupNo);
+    }
+
+    /**
+     * 收掉本用例开的团。**不收的话会串到别的用例**：商品页的「正在拼」按差人最少排、最多列 3 个，
+     * 这里留下的「还差 1 人」会把 goodsPageGroupBlock 新开的团（差 2 人）挤出前 3 —— 单独跑绿、全量红。
+     */
+    private void closeOut(String... groupNos) {
+        for (String g : groupNos) {
+            jdbc.update("update mkt_group_buy set status='FAILED' where group_no=?", g);
+        }
+    }
+
     private String merchantGroup() {
         return groupService.createMerchantGroup(ENTITY, GOODS, activityNo, null).groupNo();
     }

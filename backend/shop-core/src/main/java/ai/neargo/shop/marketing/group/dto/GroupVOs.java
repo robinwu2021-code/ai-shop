@@ -46,7 +46,10 @@ public final class GroupVOs {
                              /** 开团时依据的拼团活动。存量团为空 */
                              String activityNo,
                              /** 活动名（团详情「活动」那一行）。存量团为空 */
-                             String activityName) {
+                             String activityName,
+                             /** 当前买家在这个团里的那一单（mkt_group_member.sub_order_no）。
+                                 没参团 / 未登录为 null。团页「查看订单」、我的拼团靠它（TDD-C端拼团买家流程） */
+                             String myOrderNo) {
     }
 
     /**

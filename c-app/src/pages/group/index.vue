@@ -7,6 +7,12 @@
  * 此前这里直接调「参团」接口插一行成员，不产生订单与付款：成团价从未被收过，
  * 到期也无钱可退，而提示还写着「先参团的邻居差价已退回」—— 那句话兑现不了，删掉了。
  * 没凑齐的团到期自动整单退款，这一条写在页面上，是买家敢付钱的前提。
+ *
+ * 2026-09-19（原型 p04–p07，TDD-C端拼团买家流程）：
+ *   - 付完团单从支付页落到这里（`?paid=1`）：说一句「付款成功，已开团 / 已参团」，主按钮只剩「邀请邻居来拼」——
+ *     团成不成取决于他转不转发，这一屏只放这一件事；
+ *   - 「商品：香梨」一行字换成商品行（图 + 名 + 团价 + 单买价），整行进商品详情；
+ *   - 已成团：一条状态轴 +「查看订单」（myOrderNo）；没凑齐：退了多少、退到哪 +「单独买 / 再开一个团」两条出路。
  */
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -27,6 +33,8 @@ const cart = useCartStore();
 const community = useCommunityStore();
 
 const group = ref<GroupBuy | null>(null);
+/** 从支付页付完款落到这里（`?paid=1`）。只影响头上那一句「付款成功」 */
+const justPaid = ref(false);
 const failed = ref(false);
 const busy = ref(false);
 const currentNo = ref("");
@@ -105,7 +113,18 @@ function openGoods() {
 
 onLoad((q) => {
   currentNo.value = (q?.groupNo as string) || "";
+  justPaid.value = q?.paid === "1";
 });
+
+const formed = computed(() => group.value?.status === "FORMED");
+const failedGroup = computed(() => group.value?.status === "FAILED");
+/** 我是开团的人：付款成功那一句说「已开团」而不是「已参团」 */
+const iOpened = computed(() => !!group.value?.isOwner);
+
+function openOrder() {
+  const no = group.value?.myOrderNo;
+  if (no) uni.navigateTo({ url: `${ROUTES.order}?orderNo=${no}` });
+}
 onShow(() => {
   void load();
 });
@@ -143,33 +162,76 @@ onShareAppMessage(() => {
         </view>
       </view>
 
-      <view class="sh-cells">
-        <view class="sh-cell sh-row sh-row--between" @tap="openGoods">
-          <text class="txt-body sh-muted">{{ $t("group.goods") }}</text>
-          <text class="txt-body">{{ group.title }}</text>
+      <!-- 付完款落到这里（p04）：付款成功那一句 -->
+      <view v-if="justPaid && group.joined" class="sh-notice sh-notice--success sh-row paid">
+        <text class="sh-fill">{{ $t(iOpened ? "group.paidOpened" : "group.paidJoined") }}</text>
+        <text class="sh-num">{{ money(group.groupPrice) }}</text>
+      </view>
+
+      <!-- 商品行（p05）：图 + 名 + 团价 + 单买价，整行进商品详情。团页不复制整份详情 -->
+      <view class="sh-card sh-row goodsrow" @tap="openGoods">
+        <sh-cover class="goodsrow__cover" :src="group.cover"></sh-cover>
+        <view class="sh-fill goodsrow__main">
+          <text class="txt-strong goodsrow__title">{{ group.title }}</text>
+          <view class="sh-row sh-row--baseline goodsrow__price">
+            <text class="txt-price sh-num">{{ money(group.groupPrice) }}</text>
+            <text class="txt-caption txt-quiet sh-num">{{ $t("group.soloPrice", { p: money(group.basePrice) }) }}</text>
+          </view>
         </view>
-        <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("group.price") }}</text>
-          <text class="txt-body sh-num">{{ money(group.groupPrice) }}</text>
-        </view>
+        <text class="txt-caption txt-quiet">{{ $t("group.detailLink") }}</text>
+      </view>
+
+      <!-- 已成团（p06）：成团之后他关心的是什么时候到 -->
+      <view v-if="formed" class="sh-card steps">
+        <text class="txt-body is-success">✓ {{ $t("group.stepPaid") }}</text>
+        <text class="txt-body is-success">✓ {{ $t("group.stepFormed") }}</text>
+        <text class="txt-body txt-primary">● {{ $t("group.stepPreparing") }}</text>
+        <text class="txt-body txt-quiet">○ {{ $t("group.stepDelivered") }}</text>
+      </view>
+
+      <!-- 没凑齐（p07）：退了多少、退到哪 —— 只对付过款的人说 -->
+      <view v-if="failedGroup && group.joined" class="sh-notice sh-notice--success sh-row paid">
+        <text class="sh-fill">{{ $t("group.refunded") }}</text>
+        <text class="sh-num">{{ money(group.groupPrice) }}</text>
+      </view>
+
+      <view v-if="group.pickupName" class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("group.pickup") }}</text>
-          <text class="txt-body">{{ group.pickupName || $t("group.anyPickup") }}</text>
+          <text class="txt-body">{{ group.pickupName }}</text>
         </view>
       </view>
 
-      <view class="sh-notice">
+      <view v-if="open" class="sh-notice">
         <text class="txt-caption">{{ $t("group.refundNote") }}</text>
       </view>
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <button v-if="nativeShare" class="sh-btn sh-btn--muted sh-fill share" open-type="share">
-            {{ $t("group.share") }}
-          </button>
-          <view class="sh-btn bar__main" :class="{ 'is-disabled': !canJoin || busy }" @tap="join">
-            {{ group.joined ? $t("group.joinedBtn") : open ? $t("group.joinAt", { p: money(group.groupPrice) }) : $t("group.closed") }}
+          <!-- 拼团中、我已在团里（p04）：只剩一件事 —— 邀请 -->
+          <template v-if="open && group.joined">
+            <button v-if="nativeShare" class="sh-btn sh-fill share" open-type="share">{{ $t("group.invite") }}</button>
+            <view v-else class="sh-btn sh-fill is-disabled">{{ $t("group.joinedBtn") }}</view>
+          </template>
+          <!-- 拼团中、我还没参（p05） -->
+          <template v-else-if="open">
+            <button v-if="nativeShare" class="sh-btn sh-btn--muted sh-fill share" open-type="share">
+              {{ $t("group.share") }}
+            </button>
+            <view class="sh-btn bar__main" :class="{ 'is-disabled': !canJoin || busy }" @tap="join">
+              {{ $t("group.joinAt", { p: money(group.groupPrice) }) }}
+            </view>
+          </template>
+          <!-- 已成团（p06） -->
+          <view v-else-if="formed && group.myOrderNo" class="sh-btn sh-btn--muted sh-fill" @tap="openOrder">
+            {{ $t("group.viewOrder") }}
           </view>
+          <!-- 没凑齐（p07）：两条出路。再开一个团 = 去商品页点「开团」 -->
+          <template v-else-if="failedGroup">
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="openGoods">{{ $t("group.buyAlone") }}</view>
+            <view class="sh-btn bar__main" @tap="openGoods">{{ $t("group.reopen") }}</view>
+          </template>
+          <view v-else class="sh-btn sh-fill is-disabled">{{ $t("group.closed") }}</view>
         </view>
       </sh-actionbar>
     </template>
@@ -216,5 +278,31 @@ onShareAppMessage(() => {
 }
 .share {
   margin: 0;
+}
+.paid {
+  gap: 16rpx;
+}
+.goodsrow {
+  gap: 20rpx;
+}
+.goodsrow__cover {
+  flex-shrink: 0;
+  width: 120rpx;
+  height: 120rpx;
+}
+.goodsrow__main {
+  min-width: 0;
+}
+.goodsrow__title {
+  display: block;
+}
+.goodsrow__price {
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
 }
 </style>

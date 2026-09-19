@@ -120,6 +120,7 @@ const RESPONSE_TYPES = {
   frequentItems: "FrequentItem[]",
   groupPickupOrders: "Order[]",
   myHostedGroups: "GroupBuy[]",
+  myJoinedGroups: "GroupBuy[]",
   myStores: "Merchant[]",
   payMethods: "PayMethodList",
   promotedGoods: "Goods[]",

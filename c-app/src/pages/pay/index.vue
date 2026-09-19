@@ -158,10 +158,21 @@ async function pay() {
 
     // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机。
     // 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
-    void requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
+    const subscribed = requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
       if (r.accepted.length) void api.subscribeReport(r.accepted, true);
       if (r.rejected.length) void api.subscribeReport(r.rejected, false);
     });
+
+    /*
+     * **团单付完直接落在自己的团页**（原型 p04）：倒计时、人头、一颗「邀请邻居来拼」。
+     * 落在订单页的话，开团的人不知道下一步该干什么 —— 而团成不成正取决于他转不转发。
+     * 先等订阅授权框走完再跳：那个框必须挂在这一次点击上，页面一换它就弹不出来。
+     */
+    const groupNo = paid.value ? groupNoOf(order.value) : "";
+    if (groupNo) {
+      await subscribed.catch(() => {});
+      uni.redirectTo({ url: `${ROUTES.group}?groupNo=${groupNo}&paid=1` });
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -189,6 +200,12 @@ async function cancel() {
     return;
   }
   uni.redirectTo({ url: `${ROUTES.orders}` });
+}
+
+/** 这笔支付里参团的那一单的团号。支付视角下团号挂在子单上 */
+function groupNoOf(o: typeof order.value): string {
+  if (!o) return "";
+  return o.groupNo || o.subOrders?.find((x) => x.groupNo)?.groupNo || "";
 }
 
 function gotoOrder() {

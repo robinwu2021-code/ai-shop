@@ -463,6 +463,24 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
+    public List<GroupBuyVO> myJoinedGroups() {
+        String userNo = SecurityUtils.currentUserNo();
+        List<String> nos = scoped(() -> memberMapper.selectList(Wrappers.<MktGroupMember>lambdaQuery()
+                        .eq(MktGroupMember::getUserNo, userNo)
+                        .orderByDesc(MktGroupMember::getId))).stream()
+                .map(MktGroupMember::getGroupNo).distinct().toList();
+        if (nos.isEmpty()) {
+            return List.of();
+        }
+        java.util.Map<String, MktGroupBuy> byNo = scoped(() -> groupBuyMapper.selectList(
+                        Wrappers.<MktGroupBuy>lambdaQuery().in(MktGroupBuy::getGroupNo, nos))).stream()
+                .collect(java.util.stream.Collectors.toMap(MktGroupBuy::getGroupNo, g -> g, (a, b) -> a));
+        // 顺序按我参团的先后（最近在前），不按 IN 查出来的顺序
+        return nos.stream().map(byNo::get).filter(java.util.Objects::nonNull)
+                .map(g -> toGroupBuyVO(g, true)).toList();
+    }
+
+    @Override
     public List<GroupBuyVO> myHostedGroups() {
         String userNo = SecurityUtils.currentUserNo();
         return scoped(() -> groupBuyMapper.selectList(Wrappers.<MktGroupBuy>lambdaQuery()
@@ -602,7 +620,17 @@ public class GroupServiceImpl implements GroupService {
                 nz(g.getEndAt()), members(g.getGroupNo()),
                 joined, owner, g.getStatus(), neighbor,
                 g.getActivityNo(),
-                groupRulePort.activityName(g.getActivityNo()).orElse(null));
+                groupRulePort.activityName(g.getActivityNo()).orElse(null),
+                me == null ? null : myOrderNo(g.getGroupNo(), me));
+    }
+
+    /** 我在这个团里的那一单。没参团为 null */
+    private String myOrderNo(String groupNo, String userNo) {
+        MktGroupMember mb = scoped(() -> memberMapper.selectOne(Wrappers.<MktGroupMember>lambdaQuery()
+                .eq(MktGroupMember::getGroupNo, groupNo)
+                .eq(MktGroupMember::getUserNo, userNo)
+                .last("limit 1")));
+        return mb == null ? null : mb.getSubOrderNo();
     }
 
     /** 「阳光里小区 3 幢 101」→「阳光里小区 3 幢（成团后显示门牌）」 */

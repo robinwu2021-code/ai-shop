@@ -101,7 +101,11 @@ public record OrderVO(String orderNo,
                       int payGroupSize,
                       // ↓ 社区集单（s37）。非集单单两者皆空
                       String arriveDate,
-                      Long cancellableUntil) {
+                      Long cancellableUntil,
+                      /** 这一单参加的团（ord_sub_order.group_no）。非团单为空。
+                          支付页付完团单落团页、订单详情画拼团进度卡都靠它（TDD-C端拼团买家流程）。
+                          端上 Order 类型早就声明了它，后端此前从没下发过 */
+                      String groupNo) {
 
     /** 不带集单字段的旧签名：存量构造处不必跟着改 */
     public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
@@ -114,7 +118,7 @@ public record OrderVO(String orderNo,
         this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
                 verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
-                reviewed, afterSale, payGroupSize, null, null);
+                reviewed, afterSale, payGroupSize, null, null, null);
     }
 
     /**
@@ -125,7 +129,7 @@ public record OrderVO(String orderNo,
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
     }
 
     /**
@@ -134,11 +138,19 @@ public record OrderVO(String orderNo,
      * <p>做成 {@code with} 而不是让 {@code orderView} 多三个参数：
      * 那个方法被列表与详情共用，多出来的三个查询会让列表变成 N+1。
      */
+    /** 挂上团号（只在 C 端订单视角上填） */
+    public OrderVO withGroup(String groupNo) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
+    }
+
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
     }
 
     /**

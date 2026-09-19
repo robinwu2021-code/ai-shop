@@ -4,16 +4,24 @@
 import { computed, ref } from "vue";
 import { codeLabelKey, statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
-import { onShow, onLoad } from "@dcloudio/uni-app";
+import { onShow, onLoad, onShareAppMessage } from "@dcloudio/uni-app";
+import { buildShareMessage, canNativeShare } from "@shared/ports/share";
 import { api } from "@/api";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
-import { datetime, money } from "@shared/utils/format";
-import type { InvoiceRequest, Order, OrderStatus } from "@shared/types";
+import { countdown, datetime, money } from "@shared/utils/format";
+import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
+/**
+ * 这一单参加的团（原型 p08）。团单在订单里多一张进度卡：还差几人、还剩多久、邀请。
+ * 此前订单详情看不出这是团单，用户只能回商品页去找那个团。取不到就不画，不拖垮订单页。
+ */
+const grp = ref<GroupBuy | null>(null);
+const nativeShare = canNativeShare();
+const grpOpen = computed(() => !!grp.value && grp.value.status === "OPEN" && grp.value.expireAt > Date.now());
 const orderNo = ref("");
 /**
  * 拉挂了。
@@ -160,6 +168,7 @@ async function load() {
     // 并行拉：开票状态与订单详情互不依赖，串行只会让页面多等一个来回
     const [o] = await Promise.all([api.orderDetail(orderNo.value), loadInvoice()]);
     order.value = o;
+    grp.value = o.groupNo ? await api.groupBuyDetail(o.groupNo).catch(() => null) : null;
   } catch (e) {
     // 留着上一次的 `order`：从售后页返回时重拉失败，把已经看到的详情
     // 清成空白只会更糟
@@ -167,6 +176,19 @@ async function load() {
     failReason.value = (e as Error).message || "";
   }
 }
+
+function openGroup() {
+  if (grp.value) uni.navigateTo({ url: `${ROUTES.group}?groupNo=${grp.value.groupNo}` });
+}
+
+// 团单页上的「邀请邻居来拼」分享的是团页，不是订单（订单只有本人看得了）
+onShareAppMessage(() => {
+  const g = grp.value;
+  return buildShareMessage({
+    title: g ? String(t("group.shareNeed", { n: g.need, title: g.title })) : "",
+    path: g ? `${ROUTES.group}?groupNo=${g.groupNo}` : ROUTES.home,
+  });
+});
 
 async function cancel() {
   const o = order.value;
@@ -284,6 +306,22 @@ onShow(load);
 
     <view v-if="batchCancellable" class="sh-notice sh-notice--warning">
       <text class="txt-caption">{{ $t("order.batchCancelBefore", { t: batchTime(order.cancellableUntil!) }) }}</text>
+    </view>
+
+    <!-- 拼团进度（原型 p08）：团单才有。整张卡进团页 -->
+    <view v-if="grp" class="sh-card block grpcard" @tap="openGroup">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">
+          {{ grpOpen ? $t("order.groupNeed", { n: grp.need }) : $t(`group.status.${grp.status}`) }}
+        </text>
+        <text class="txt-caption sh-num">{{ grp.joinedCount }} / {{ grp.minCount }}</text>
+      </view>
+      <text v-if="grpOpen" class="txt-caption txt-quiet sh-num">
+        {{ $t("order.groupLeft", { t: countdown(grp.expireAt - Date.now()) }) }}
+      </text>
+      <button v-if="grpOpen && nativeShare" class="sh-btn sh-btn--sm grpcard__invite" open-type="share" @tap.stop>
+        {{ $t("group.invite") }}
+      </button>
     </view>
 
     <!-- 状态 + 时间线 -->
@@ -457,6 +495,16 @@ onShow(load);
 </template>
 
 <style scoped>
+/* 拼团进度卡（p08）：三行竖排，邀请按钮贴左 */
+.grpcard {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.grpcard__invite {
+  align-self: flex-start;
+  margin: 8rpx 0 0;
+}
 
 .as__title {
   display: block;

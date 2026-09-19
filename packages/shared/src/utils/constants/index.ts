@@ -632,6 +632,8 @@ export const ROUTES = {
   merchants: "/pages/merchants/index",
   store: "/pages/store/index",
   groupHost: "/pages/group-host/index",
+  /** 我的拼团：拼团中 / 已成团 / 没凑齐（原型 p12） */
+  myGroups: "/pages/my-groups/index",
   /** 我的收藏：商品 / 店铺（原型 g08） */
   favorites: "/pages/favorites/index",
   search: "/pages/search/index",

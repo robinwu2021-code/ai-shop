@@ -118,8 +118,8 @@ function gotoFavorites() {
   uni.navigateTo({ url: ROUTES.favorites });
 }
 
-function gotoGroupHost() {
-  uni.navigateTo({ url: ROUTES.groupHost });
+function gotoMyGroups() {
+  uni.navigateTo({ url: ROUTES.myGroups });
 }
 
 function gotoGroups() {
@@ -294,9 +294,10 @@ onShow(() => {
 
     <!-- 邻里：团、买过的店、入驻 —— 与「人」相关的一组 -->
     <view class="sh-cells">
-      <view class="sh-cell sh-row sh-row--between" @tap="gotoGroupHost">
-        <text class="txt-body cell__label">{{ $t("groupHost.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("groupHost.entryHint") }}</text>
+      <!-- 我的拼团（p12）。「我发起的团」（邻里自提的签收核销）收进那一页的页底 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoMyGroups">
+        <text class="txt-body cell__label">{{ $t("myGroups.title") }}</text>
+        <text class="txt-caption cell__value">{{ $t("myGroups.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoGroups">
         <text class="txt-body cell__label">{{ $t("groups.title") }}</text>

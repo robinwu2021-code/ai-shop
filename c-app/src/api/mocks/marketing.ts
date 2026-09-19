@@ -24,6 +24,7 @@ export const marketingMock: Pick<ShopApi,
   | "groupBuyDetail"
   | "createGroupBuy"
   | "myHostedGroups"
+  | "myJoinedGroups"
   | "groupPickupOrders"
   | "confirmGroupBatch"
   | "verifyGroupPickup"
@@ -203,6 +204,11 @@ export const marketingMock: Pick<ShopApi,
   // ---------------------------------------------------------------- 邻里自提（发起人侧）
   async myHostedGroups() {
     return delay(db.groupSeeds.filter((g) => g.ownedByMe).map(buildGroupBuy));
+  },
+
+  /** mock 里「参加过的」= 我已在里面的团（buildGroupBuy 按种子算出 joined） */
+  async myJoinedGroups() {
+    return delay(db.groupSeeds.map(buildGroupBuy).filter((g) => g.joined));
   },
 
   async groupPickupOrders(groupNo) {
