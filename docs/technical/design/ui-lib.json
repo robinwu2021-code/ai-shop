@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 128,
+        "b-app": 127,
         "c-app": 41
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 110,
+        "b-app": 111,
         "c-app": 27
       }
     },
@@ -3090,8 +3090,8 @@
         "tiers": [
           "txt-caption",
           "txt-ink",
-          "txt-strong",
-          "txt-sub"
+          "txt-sub",
+          "txt-title"
         ],
         "rawFontSize": [],
         "spacing": [
