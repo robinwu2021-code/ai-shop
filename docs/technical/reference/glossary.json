@@ -11397,9 +11397,9 @@
         },
         {
           "key": "members.privacyHint",
-          "zh-CN": "只显示手机号后四位。要联系他，走平台的消息通道",
-          "en": "Last four digits only. Message them through the platform",
-          "ar": "آخر أربعة أرقام فقط. راسله عبر المنصة"
+          "zh-CN": "手机号已脱敏显示。如需联系会员，请通过平台消息通道。",
+          "en": "Phone numbers are masked. Contact members through the platform message channel.",
+          "ar": "أرقام الهواتف مخفية جزئيًا. تواصل مع الأعضاء عبر رسائل المنصة."
         },
         {
           "key": "members.saveSegment",
