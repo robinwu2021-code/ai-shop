@@ -30923,6 +30923,15 @@
         "zh": "商家**经营范围**。"
       },
       {
+        "name": "SaleMode",
+        "client": "shared",
+        "values": [
+          "NORMAL",
+          "ACTIVITY_ONLY"
+        ],
+        "zh": "商品的销售方式（TDD-商品仅活动可售）。"
+      },
+      {
         "name": "Scene",
         "client": "shared",
         "values": [
