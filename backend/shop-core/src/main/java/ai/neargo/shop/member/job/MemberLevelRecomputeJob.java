@@ -52,7 +52,9 @@ public class MemberLevelRecomputeJob implements JobHandler {
         return new JobDeclaration(NAME, "会员分层重算",
                 "按口径重算全部会员的分层与近 90 天单数。不跑的话不再下单的人永远不会变成「沉睡」",
                 "shop-core", "0 0 3 * * *", true,
-                60_000, 1800,
+                // 超时 25 分钟、锁最长 30 分钟：锁必须比超时长，否则调用还没结束锁就放了，
+                // 第二个实例会同时跑一遍（JobDeclaration 构造时会校验）
+                1500, 1800,
                 true,
                 false);
     }
