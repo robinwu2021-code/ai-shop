@@ -61,8 +61,7 @@ async function pickScope(v: string) {
   }
 }
 
-// 用一个可点的 chip 而不是 <switch>：这个仓库里一处原生 switch 都没有，
-// 只有它一个的话，深色皮肤与 rpx 尺寸都要单独调一遍
+// 开关用库件 sh-switch（与积分、自提点设置同一个件），整行可点
 function toggleAutoJoin() {
   if (!setting.value) return;
   void save({ autoJoinOnOrder: !setting.value.autoJoinOnOrder });
@@ -76,41 +75,38 @@ function stamp(ts: number) {
 </script>
 
 <template>
+  <!--
+    三张卡同一个结构：txt-title 标题 → 内容 → txt-caption 说明（与会员详情、积分页一致）。
+    此前三张各一种：两张用灰色小字 field__label 当标题、一张用加粗正文，开关是一个「已开」胶囊 —— 看着像三个人写的。
+  -->
   <sh-scaffold title-key="memberSettings.title" :denied="!merchant.can('biz:store:admin')"
     :failed="failed"
     @retry="load"
   >
     <view class="sh-card">
-      <text class="field__label">{{ $t("memberSettings.scope") }}</text>
+      <text class="txt-title">{{ $t("memberSettings.scope") }}</text>
 
-      <sh-option :selected="setting?.memberScope === 'ENTITY'" @tap="pickScope('ENTITY')">
-        <text class="txt-strong opt__t">{{ $t("memberSettings.entity") }}</text>
-        <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.entityHint") }}</text>
-      </sh-option>
-
-      <sh-option :selected="setting?.memberScope === 'STORE'" @tap="pickScope('STORE')">
-        <text class="txt-strong opt__t">{{ $t("memberSettings.store") }}</text>
-        <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.storeHint") }}</text>
-      </sh-option>
+      <view class="opts">
+        <sh-option :selected="setting?.memberScope === 'ENTITY'" @tap="pickScope('ENTITY')">
+          <text class="txt-strong opt__t">{{ $t("memberSettings.entity") }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.entityHint") }}</text>
+        </sh-option>
+        <sh-option :selected="setting?.memberScope === 'STORE'" @tap="pickScope('STORE')">
+          <text class="txt-strong opt__t">{{ $t("memberSettings.store") }}</text>
+          <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.storeHint") }}</text>
+        </sh-option>
+      </view>
 
       <!-- 这一句是这一页最重要的一行：不写它，没人敢动上面那两个 -->
-      <text class="sh-hint sh-mt-sm">{{ $t("memberSettings.reversible") }}</text>
+      <text class="txt-caption sh-muted note">{{ $t("memberSettings.reversible") }}</text>
     </view>
 
     <view class="sh-card sh-mt-sm">
-      <view class="sh-row sh-row--between row">
-        <view class="sh-fill">
-          <text class="txt-strong opt__t">{{ $t("memberSettings.autoJoin") }}</text>
-          <text class="txt-caption sh-muted opt__d">{{ $t("memberSettings.autoJoinHint") }}</text>
-        </view>
-        <text
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': setting?.autoJoinOnOrder !== false }"
-          @tap="toggleAutoJoin"
-        >
-          {{ setting?.autoJoinOnOrder === false ? $t("memberSettings.off") : $t("memberSettings.on") }}
-        </text>
+      <view class="sh-row sh-row--between" @tap="toggleAutoJoin">
+        <text class="txt-title">{{ $t("memberSettings.autoJoin") }}</text>
+        <sh-switch :model-value="setting?.autoJoinOnOrder !== false" :disabled="!setting"></sh-switch>
       </view>
+      <text class="txt-caption sh-muted note">{{ $t("memberSettings.autoJoinHint") }}</text>
     </view>
 
     <!--
@@ -119,30 +115,26 @@ function stamp(ts: number) {
     -->
     <view v-if="setting" class="sh-card sh-mt-sm">
       <view class="sh-row sh-row--between">
-        <text class="field__label">{{ $t("memberSettings.levelTitle") }}</text>
+        <text class="txt-title">{{ $t("memberSettings.levelTitle") }}</text>
         <text v-if="setting.levelComputedAt" class="txt-caption sh-muted">
           {{ $t("memberSettings.levelComputedAt", { t: stamp(setting.levelComputedAt) }) }}
         </text>
       </view>
-      <view class="sh-row sh-row--between level-row">
-        <text class="txt-body">{{ $t("members.level.SLEEPING") }}</text>
-        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleSleep", { n: setting.sleepDays }) }}</text>
-      </view>
-      <view class="sh-row sh-row--between level-row">
-        <text class="txt-body">{{ $t("members.level.LOYAL") }}</text>
-        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleLoyal", { n: setting.loyalD90Orders }) }}</text>
-      </view>
-      <view class="sh-row sh-row--between level-row">
-        <text class="txt-body">{{ $t("members.level.REGULAR") }}</text>
-        <text class="txt-body sh-muted">
+      <sh-kv between class="sh-mt-sm" :label="String($t('members.level.SLEEPING'))">
+        <text class="txt-sub">{{ $t("memberSettings.ruleSleep", { n: setting.sleepDays }) }}</text>
+      </sh-kv>
+      <sh-kv between :label="String($t('members.level.LOYAL'))">
+        <text class="txt-sub">{{ $t("memberSettings.ruleLoyal", { n: setting.loyalD90Orders }) }}</text>
+      </sh-kv>
+      <sh-kv between :label="String($t('members.level.REGULAR'))">
+        <text class="txt-sub">
           {{ $t("memberSettings.ruleRegular", { a: setting.regularD90Orders, b: setting.loyalD90Orders - 1 }) }}
         </text>
-      </view>
-      <view class="sh-row sh-row--between level-row">
-        <text class="txt-body">{{ $t("members.level.NEW") }}</text>
-        <text class="txt-body sh-muted">{{ $t("memberSettings.ruleNew", { n: setting.regularD90Orders - 1 }) }}</text>
-      </view>
-      <text class="sh-hint sh-mt-sm">{{ $t("memberSettings.sleepFirst", { n: setting.sleepDays }) }}</text>
+      </sh-kv>
+      <sh-kv between :label="String($t('members.level.NEW'))">
+        <text class="txt-sub">{{ $t("memberSettings.ruleNew", { n: setting.regularD90Orders - 1 }) }}</text>
+      </sh-kv>
+      <text class="txt-caption sh-muted note">{{ $t("memberSettings.sleepFirst", { n: setting.sleepDays }) }}</text>
     </view>
   </sh-scaffold>
 </template>
@@ -155,10 +147,14 @@ function stamp(ts: number) {
   display: block;
   margin-top: 8rpx;
 }
-.row {
-  gap: 24rpx;
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 16rpx;
 }
-.level-row {
-  padding-block: 16rpx;
+.note {
+  display: block;
+  margin-top: 16rpx;
 }
 </style>

@@ -133,7 +133,7 @@ onLoad(async (q) => {
     <template v-if="data">
       <view class="sh-card">
         <view class="sh-row row">
-          <text class="txt-title">···{{ data.member.phoneTail || "----" }}</text>
+          <text class="txt-title sh-num">{{ $t("members.phoneTail", { n: data.member.phoneTail || "----" }) }}</text>
           <text v-if="data.member.level" class="sh-chip"
             :class="data.member.level === 'SLEEPING' ? 'sh-chip--warning' : 'sh-chip--primary'">
             {{ $t(`members.level.${data.member.level}`) }}
@@ -203,11 +203,12 @@ onLoad(async (q) => {
             {{ monthDay(s.occurredAt) }} · {{ $t(`members.source.${s.sourceType}`) }}
           </text>
           <text class="sh-muted">
+            <!-- 不显示内部账号号（U2026…）：商家认不出是谁，而且那是内部标识 -->
             <template v-if="s.inviterUserNo">
-              {{ $t("memberDetail.byInviter", { s: s.inviterUserNo }) }}
+              {{ $t(s.inviterRole === "STAFF" ? "memberDetail.byInviterStaff" : "memberDetail.byInviterCustomer") }}
             </template>
             <template v-else-if="s.operatorNo">
-              {{ $t("memberDetail.byOperator", { s: s.operatorNo }) }}
+              {{ $t("memberDetail.byStaff") }}
             </template>
             <template v-else>{{ storeName(s.storeNo) }}</template>
           </text>

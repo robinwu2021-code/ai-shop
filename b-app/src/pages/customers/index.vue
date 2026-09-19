@@ -355,7 +355,7 @@ onShow(() => {
       <!-- row__main：下面那条 `.row__main .sh-muted { display: block }` 此前一直挂空（这一层没有这个类），三行挤成一行 -->
       <view class="sh-fill row__main">
         <view class="row__head sh-row">
-          <text class="txt-strong">···{{ m.phoneTail || "----" }}</text>
+          <text class="txt-strong sh-num">{{ $t("members.phoneTail", { n: m.phoneTail || "----" }) }}</text>
           <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
             {{ $t(`members.level.${m.level}`) }}
           </text>
