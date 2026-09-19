@@ -1196,8 +1196,8 @@
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "p02",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
               "preview": "http://localhost:5176/#/pages/groups/index"
             },
             {
@@ -1207,8 +1207,8 @@
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "p10",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
               "preview": "http://localhost:5176/#/pages/request/index"
             },
             {
@@ -1218,8 +1218,8 @@
               "domain": "团购与求团",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "p11",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
               "preview": "http://localhost:5176/#/pages/request-create/index"
             },
             {

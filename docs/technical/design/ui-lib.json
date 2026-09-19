@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 451,
-        "c-app": 59
+        "c-app": 57
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 349,
-        "c-app": 60
+        "c-app": 59
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 127,
-        "c-app": 41
+        "c-app": 40
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 107,
-        "c-app": 80
+        "c-app": 78
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 205,
-        "c-app": 73
+        "c-app": 72
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 130,
-        "c-app": 64
+        "c-app": 62
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 492,
-        "c-app": 160
+        "c-app": 158
       }
     },
     {
@@ -1484,7 +1484,7 @@
       },
       "usage": {
         "b-app": 7,
-        "c-app": 10
+        "c-app": 8
       }
     },
     {
@@ -2294,7 +2294,7 @@
       ],
       "usage": {
         "b-app": 113,
-        "c-app": 18,
+        "c-app": 16,
         "lib": 13
       },
       "note": "单色图标",
@@ -4841,7 +4841,7 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 235,
+      "libClassHits": 222,
       "localSelectors": 52,
       "localCssLines": 208,
       "rolled": []
