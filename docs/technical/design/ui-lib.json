@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 413,
+        "b-app": 442,
         "c-app": 61
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 317,
+        "b-app": 343,
         "c-app": 63
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 300,
+        "b-app": 315,
         "c-app": 235
       }
     },
@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 46,
         "c-app": 31
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 122,
+        "b-app": 124,
         "c-app": 40
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 111,
         "c-app": 27
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 200,
+        "b-app": 201,
         "c-app": 72
       }
     },
@@ -635,7 +635,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 134,
+        "b-app": 151,
         "c-app": 21
       }
     },
@@ -659,7 +659,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 46,
+        "b-app": 57,
         "c-app": 7
       }
     },
@@ -681,7 +681,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 31
       }
     },
@@ -753,7 +753,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 13,
+        "b-app": 14,
         "c-app": 10
       }
     },
@@ -785,7 +785,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 158,
+        "b-app": 169,
         "c-app": 56
       }
     },
@@ -807,7 +807,7 @@
         "padding": "14px 0"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 8,
         "c-app": 1
       }
     },
@@ -861,7 +861,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 54,
         "c-app": 4
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 114,
         "c-app": 13
       }
     },
@@ -1053,7 +1053,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 305,
+        "b-app": 313,
         "c-app": 135
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 123,
+        "b-app": 129,
         "c-app": 63
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 54,
+        "b-app": 56,
         "c-app": 28
       }
     },
@@ -1247,7 +1247,7 @@
         "color": "var(--sh-success)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 4,
         "c-app": 0
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 124,
         "c-app": 57
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 447,
+        "b-app": 481,
         "c-app": 158
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 259,
+        "b-app": 278,
         "c-app": 83
       }
     },
@@ -1637,7 +1637,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 43,
+        "b-app": 44,
         "c-app": 21
       }
     },
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 80,
+        "b-app": 85,
         "c-app": 3
       }
     },
@@ -1894,7 +1894,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 26,
+        "b-app": 28,
         "c-app": 12,
         "lib": 0
       },
@@ -2137,7 +2137,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 50,
+        "b-app": 53,
         "c-app": 30,
         "lib": 1
       },
@@ -2293,7 +2293,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 98,
+        "b-app": 110,
         "c-app": 11,
         "lib": 13
       },
@@ -2554,7 +2554,7 @@
         "pending?: boolean"
       ],
       "usage": {
-        "b-app": 76,
+        "b-app": 78,
         "c-app": 37,
         "lib": 1
       },
@@ -2640,7 +2640,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 20,
+        "b-app": 21,
         "c-app": 5,
         "lib": 1
       },
@@ -2681,7 +2681,7 @@
         "active?: string"
       ],
       "usage": {
-        "b-app": 10,
+        "b-app": 12,
         "c-app": 0,
         "lib": 0
       },
@@ -2985,6 +2985,89 @@
         "deps": []
       },
       "rootClasses": [],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-audience-picker",
+      "file": "b-app/src/components/biz/biz-audience-picker.vue",
+      "scope": "B 端",
+      "lines": 233,
+      "props": [
+        "visible: boolean",
+        "modelValue: AudienceItem[]",
+        "forActivity?: boolean",
+        "scene?: string"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "选人面板（原型 m12 / m13）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-primary",
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "sh-cells"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-batch-tag-sheet",
+      "file": "b-app/src/components/biz/biz-batch-tag-sheet.vue",
+      "scope": "B 端",
+      "lines": 139,
+      "props": [
+        "visible: boolean",
+        "memberNos?: string[]",
+        "rule?: MemberSegmentRule",
+        "scopeStoreNo?: string",
+        "count: number"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "批量打 / 去一个标签（原型 m06；名单「对这批人」与效果页「下单的人打标签」两处用）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-primary"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "sh-cells"
+      ],
       "rootDecl": {}
     },
     {
@@ -3297,9 +3380,10 @@
         "sh-icon",
         "sh-scaffold",
         "sh-sheet",
-        "sh-stat"
+        "sh-stat",
+        "biz-audience-picker"
       ],
-      "libClassHits": 453,
+      "libClassHits": 458,
       "localSelectors": 12,
       "localCssLines": 42,
       "rolled": []
@@ -3392,12 +3476,11 @@
       "file": "b-app/src/pages/coupon-send/index.vue",
       "components": [
         "sh-actionbar",
-        "sh-empty",
         "sh-icon",
         "sh-scaffold",
-        "sh-sheet"
+        "biz-audience-picker"
       ],
-      "libClassHits": 56,
+      "libClassHits": 49,
       "localSelectors": 4,
       "localCssLines": 14,
       "rolled": []
@@ -3442,9 +3525,10 @@
         "sh-empty",
         "sh-icon",
         "sh-scaffold",
-        "sh-stat"
+        "sh-stat",
+        "biz-batch-tag-sheet"
       ],
-      "libClassHits": 36,
+      "libClassHits": 42,
       "localSelectors": 6,
       "localCssLines": 20,
       "rolled": []
@@ -3740,12 +3824,15 @@
       "key": "b-app/member-detail",
       "file": "b-app/src/pages/member-detail/index.vue",
       "components": [
+        "sh-empty",
+        "sh-icon",
         "sh-kv",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-sheet"
       ],
-      "libClassHits": 30,
-      "localSelectors": 4,
-      "localCssLines": 14,
+      "libClassHits": 56,
+      "localSelectors": 8,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -3754,12 +3841,31 @@
       "key": "b-app/member-reach",
       "file": "b-app/src/pages/member-reach/index.vue",
       "components": [
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat",
+        "biz-audience-picker"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 6,
+      "localCssLines": 23,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-segment",
+      "key": "b-app/member-segment",
+      "file": "b-app/src/pages/member-segment/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 32,
-      "localSelectors": 6,
-      "localCssLines": 23,
+      "libClassHits": 34,
+      "localSelectors": 4,
+      "localCssLines": 15,
       "rolled": []
     },
     {
@@ -3788,6 +3894,23 @@
       "libClassHits": 49,
       "localSelectors": 4,
       "localCssLines": 13,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-tag",
+      "key": "b-app/member-tag",
+      "file": "b-app/src/pages/member-tag/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 2,
+      "localCssLines": 8,
       "rolled": []
     },
     {
@@ -4964,6 +5087,35 @@
     },
     {
       "app": "b-app",
+      "page": "biz-audience-picker",
+      "key": "b-app/biz-audience-picker",
+      "file": "b-app/src/components/biz/biz-audience-picker.vue",
+      "components": [
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 72,
+      "localSelectors": 5,
+      "localCssLines": 20,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-batch-tag-sheet",
+      "key": "b-app/biz-batch-tag-sheet",
+      "file": "b-app/src/components/biz/biz-batch-tag-sheet.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 30,
+      "localSelectors": 5,
+      "localCssLines": 18,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "biz-item-picker",
       "key": "b-app/biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
@@ -5209,8 +5361,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 82,
-    "components": 34,
-    "pages": 127,
+    "components": 36,
+    "pages": 131,
     "gapKinds": 0
   }
 }
