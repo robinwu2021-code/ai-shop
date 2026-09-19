@@ -2108,8 +2108,6 @@ export default {
     ruleHint: "人群保存的是筛选条件而非固定名单。符合条件的顾客每天都在变化，发券时会重新计算。",
   },
   memberSettings: {
-    on: "已开",
-    off: "已关",
     title: "会员设置",
     entry: "会员设置",
     scope: "会员统计口径",

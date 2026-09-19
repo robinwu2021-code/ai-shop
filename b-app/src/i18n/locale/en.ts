@@ -1869,8 +1869,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     ruleHint: "A segment stores conditions, not a fixed list. Who qualifies changes daily and is recalculated when vouchers are issued.",
   },
   memberSettings: {
-    on: "On",
-    off: "Off",
     title: "Member settings",
     entry: "Member settings",
     scope: "Membership basis",
