@@ -5622,6 +5622,7 @@ _无字段_
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
 #### POST `/biz/store/{storeNo}/payment`
@@ -5658,6 +5659,7 @@ _无字段_
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
 #### POST `/biz/store/{storeNo}/rename`
@@ -5697,6 +5699,7 @@ _无字段_
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
 #### POST `/biz/store/{storeNo}/status`
@@ -5733,6 +5736,7 @@ _无字段_
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
 #### POST `/biz/store/announcement`
@@ -5826,6 +5830,7 @@ _无字段_
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
 #### GET `/biz/store/list`
@@ -9026,6 +9031,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `ratingCount` | `number` | 否 | 计入门店评分的条数。**0 = 暂无评价**，不是 0 分 |
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
+| `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 ### StoreActivity
 

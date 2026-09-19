@@ -3075,7 +3075,7 @@
       "name": "biz-category-sheet",
       "file": "b-app/src/components/biz/biz-category-sheet.vue",
       "scope": "B 端",
-      "lines": 123,
+      "lines": 124,
       "props": [
         "visible: boolean",
         "storeNo: string"
