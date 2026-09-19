@@ -131,13 +131,23 @@ class MemberReachFlowTest {
         String e = "M-RCH-" + (++seq);
         String memberNo = registeredMember(e, true);
         String userNo = "U-RCH-" + seq;
-        for (int i = 0; i < 5; i++) {
-            assertThat(messageService.inboxMarketing(userNo, "别家", "别家", null, "CAP-" + seq + "-" + i)).isTrue();
+        /*
+         * 塞满到被拒为止，不写死 5：日上限是平台设置（notify.quota），别的用例会改它 ——
+         * 写死的话单独跑绿、全量红，报错还指在这一行而不是真因上。
+         */
+        int filled = 0;
+        while (filled < 50 && messageService.inboxMarketing(userNo, "别家", "别家", null, "CAP-" + seq + "-" + filled)) {
+            filled++;
         }
+        assertThat(filled).as("上限之内先塞得进去").isPositive().isLessThan(50);
         String seg = allSegment(e);
 
         var r = reachService.send(e, seg, MbrReachLog.SCENE_NOTICE, "上新了", "来看看", "OP");
-        assertThat(r.sent()).isZero();
+        String debugTo = r.sent() == 0 ? "-" : messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
+                .in(MsgMessage::getDedupKey, reachMapper.selectList(Wrappers.<MbrReachLog>lambdaQuery()
+                        .eq(MbrReachLog::getTaskNo, r.taskNo())).stream().map(MbrReachLog::getReachNo).toList()))
+                .stream().map(MsgMessage::getReceiverNo).toList().toString();
+        assertThat(r.sent()).as("先塞了 %d 条给 %s，实际发给 %s", filled, userNo, debugTo).isZero();
         assertThat(r.pushed()).isZero();
         assertThat(memberNo).isNotNull();
     }
