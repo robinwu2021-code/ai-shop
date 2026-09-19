@@ -76,3 +76,14 @@ describe("店铺详情的商品格", () => {
     expect(w.emitted("tap")).toBeUndefined();
   });
 });
+
+describe("商品详情里的商家条", () => {
+  it("★★ 认证是图标不是文字 chip，整条可点、不再写「进店 ›」", async () => {
+    const { default: Bar } = await import("@/components/biz/biz-merchant-bar.vue");
+    const w = mount(Bar, { props: { merchant: m() }, global: { stubs, mocks } });
+    expect(w.text()).not.toContain("merchant.verified");
+    expect(w.text()).not.toContain("merchant.enter");
+    expect(w.find('sh-icon-stub[name="verified"]').exists()).toBe(true);
+    expect(w.text().indexOf("merchant.selfOperated")).toBeLessThan(w.text().indexOf("虹选鲜果"));
+  });
+});

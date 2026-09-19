@@ -30,16 +30,16 @@ defineEmits<{ (e: "tap"): void }>();
           {{ $t("merchant.selfOperated") }}
         </text>
         <text class="txt-strong bar__name">{{ merchant.name }}</text>
-        <text v-if="merchant.verified" class="sh-chip sh-chip--primary bar__verified">
-          {{ $t("merchant.verified") }}
-        </text>
+        <!-- 认证用盾牌图标，与店铺列表 / 店铺详情同一种 —— 文字 chip 与前面的「自营」chip 把店名夹在中间 -->
+        <sh-icon v-if="merchant.verified" name="verified" :size="28" color="var(--sh-primary)"></sh-icon>
       </view>
       <!-- **没人评过 ≠ 0 分**：一家 0 分的店是被打出来的，一家没人评过的只是新开的。
            给新店挂一排空星，看着像差评店 —— 而它连被评的机会都还没有 -->
       <sh-rating v-if="merchant.ratingCount > 0" :value="merchant.rating" :size="24"></sh-rating>
       <text v-else-if="!quietNoRating" class="sh-muted bar__norate">{{ $t("merchant.noRating") }}</text>
     </view>
-    <text class="txt-caption bar__more">{{ $t("merchant.enter") }}</text>
+    <!-- 整条可点，行尾只留箭头（与店铺列表一致）；「进店 ›」三个字是在重复「这一条能点」 -->
+    <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
   </view>
 </template>
 
@@ -55,19 +55,12 @@ defineEmits<{ (e: "tap"): void }>();
   flex-shrink: 0;
 }
 .bar__name {
+  min-width: 0;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bar__verified {
-  flex-shrink: 0;
-  padding: 4rpx 16rpx;
-}
 .bar__norate {
-}
-.bar__more {
-  color: var(--sh-primary-text);
-  flex-shrink: 0;
 }
 </style>

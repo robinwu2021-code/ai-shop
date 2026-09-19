@@ -333,9 +333,8 @@ function navToStore() {
               {{ $t("merchant.selfOperated") }}
             </text>
             <text class="txt-title">{{ data.merchant.name }}</text>
-            <text v-if="data.merchant.verified" class="sh-chip sh-chip--primary">
-              {{ $t("merchant.verified") }}
-            </text>
+            <!-- 认证用盾牌图标，与店铺列表 / 店铺详情同一种（此前是文字 chip，店名被两颗 chip 夹在中间） -->
+            <sh-icon v-if="data.merchant.verified" name="verified" :size="32" color="var(--sh-primary)"></sh-icon>
           </view>
           <view class="addr sh-row">
             <text class="sh-muted sh-fill">
