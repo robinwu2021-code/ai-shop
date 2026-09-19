@@ -20961,6 +20961,12 @@
           "ar": "خدمة تحديد العنوان غير مفعّلة"
         },
         {
+          "key": "err.goods.activity_only",
+          "zh-CN": "该商品仅限活动购买",
+          "en": "This item is only available through a promotion",
+          "ar": "هذا المنتج متاح فقط ضمن العروض"
+        },
+        {
           "key": "err.goods.cover_required",
           "zh-CN": "提交审核前要先上传主图",
           "en": "Upload a cover image before submitting for review",
@@ -26685,6 +26691,20 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdGoods",
+        "name": "SALE_NORMAL",
+        "value": "NORMAL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "SALE_ACTIVITY_ONLY",
+        "value": "ACTIVITY_ONLY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdGoodsDraft",
         "name": "EDITING",
         "value": "EDITING",
@@ -29137,6 +29157,7 @@
           "MEMBER_SEGMENT_BROKEN",
           "MEMBER_AUDIENCE_REQUIRED",
           "MEMBER_AUDIENCE_EMPTY",
+          "GOODS_ACTIVITY_ONLY",
           "PAY_CHANNEL_UNAVAILABLE",
           "PROXY_ORDER_AMOUNT_LIMIT",
           "PROXY_ORDER_DAILY_LIMIT",

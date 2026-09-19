@@ -197,4 +197,19 @@ public class PrdGoods extends BaseEntity {
 
     /** 按端的可售覆盖（JSON），如 iOS 屏蔽某些品类。为空时走 sys_channel_category_rule。 */
     private String sellableOverride;
+
+    /**
+     * 销售方式（V340）：{@link #SALE_NORMAL} 正常售卖 / {@link #SALE_ACTIVITY_ONLY} 仅活动。
+     * <p>仅活动的货：此刻有点名它的活动在跑才能买，且只能按那个活动的路径买
+     * （判定见 {@code SaleGatePort}）。与 {@link #onSale} 正交 —— 下架优先，任何路径都不可买。
+     */
+    private String saleMode;
+
+    public static final String SALE_NORMAL = "NORMAL";
+    public static final String SALE_ACTIVITY_ONLY = "ACTIVITY_ONLY";
+
+    /** 老数据与测试替身可能没有这一列的值 —— 空按正常售卖，与迁移的默认值同一口径 */
+    public boolean activityOnly() {
+        return SALE_ACTIVITY_ONLY.equals(saleMode);
+    }
 }

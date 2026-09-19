@@ -150,7 +150,8 @@ public class BizGoodsController {
                 req.params() == null ? null : req.params().stream()
                         .map(x -> new MerchantGoodsService.GoodsParam(
                                 x.dimNo(), x.name(), x.valueNo(), x.code(), x.label()))
-                        .toList()));
+                        .toList(),
+                req.saleMode()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -641,7 +642,9 @@ public class BizGoodsController {
                                /** 详情区长图。不传 = 不改，传空数组 = 清空 */
                                List<String> detailImages,
                                /** 商品参数（产地/保质期/材质…）。不传 = 不改，传空数组 = 清空 */
-                               List<GoodsParamReq> params) {
+                               List<GoodsParamReq> params,
+                               /** 销售方式：NORMAL 正常售卖 / ACTIVITY_ONLY 仅活动。不传 = 不改 */
+                               String saleMode) {
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

@@ -365,7 +365,12 @@ public interface MerchantGoodsService {
                         * 商品参数（V250）：产地 / 保质期 / 材质这一类，<b>不分 SKU</b>。
                         * <b>不传 = 不改</b>，传空数组 = 清空 —— 与 detailImages 同一口径。
                         */
-                       List<GoodsParam> params) {
+                       List<GoodsParam> params,
+                       /**
+                        * 销售方式（V340）：NORMAL / ACTIVITY_ONLY。<b>不传 = 不改</b>（新建默认 NORMAL）。
+                        * 在售商品改它与改价同一套：存草稿、发布后生效 —— 草稿存的就是这整份指令。
+                        */
+                       String saleMode) {
     }
 
     /**

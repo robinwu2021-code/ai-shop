@@ -159,6 +159,18 @@ public class OrderServiceImpl implements OrderService {
         this.groupJoinPort = groupJoinPort;
     }
 
+    /**
+     * 仅活动商品的可买判定（TDD-商品仅活动可售）。setter 注入，理由同 {@link #periodPort}。
+     * <b>缺了按「没有活动在跑」处理</b>—— 仅活动的货普通下单一律拒。与拼团缺口同一取向：
+     * 宁可少卖，也不把它当单品卖出去。
+     */
+    private ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSaleGatePort(ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort) {
+        this.saleGatePort = saleGatePort;
+    }
+
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
@@ -1624,6 +1636,23 @@ public class OrderServiceImpl implements OrderService {
             }
             lines.add(new Line(s, item.qty()));
         }
+        /*
+         * **仅活动的货，普通下单要有活动开着这条路**（TDD-商品仅活动可售 §4.3）。
+         * 开团 / 参团不在这里判 —— 拼团规则自己会判活动在不在，这里放行。
+         * 放在 split() 里而不是 create()：预览、下单、代客下单都经过这里，
+         * 确认页就能拒，不必等到提交那一下。一单里的仅活动货一次批量问完。
+         */
+        if (!cmd.grouped()) {
+            List<String> only = lines.stream().filter(l -> l.snapshot.activityOnly())
+                    .map(l -> l.snapshot.goodsNo()).distinct().toList();
+            if (!only.isEmpty()) {
+                var open = saleGatePort == null ? java.util.Set.<String>of()
+                        : saleGatePort.live(only, System.currentTimeMillis()).direct();
+                if (!open.containsAll(only)) {
+                    throw BizException.of(ErrorCode.GOODS_ACTIVITY_ONLY);
+                }
+            }
+        }
 
         // 按商家分组 —— 保持插入序，让预览与订单详情里子单的顺序稳定
         Map<String, List<Line>> byMerchant = lines.stream().collect(Collectors.groupingBy(
@@ -1684,7 +1713,7 @@ public class OrderServiceImpl implements OrderService {
             return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
                     s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
                     q.groupPriceMinor(), s.available(), s.onSale(), s.fulfillments(),
-                    s.groupPriceMinor(), s.groupMinCount()), l.qty);
+                    s.groupPriceMinor(), s.groupMinCount(), s.saleMode()), l.qty);
         }).toList();
         List<Group> groups = split.groups.stream().map(g -> new Group(g.merchantNo, g.merchantName,
                 lines.stream().filter(l -> l.snapshot.merchantNo().equals(g.merchantNo)).toList(),

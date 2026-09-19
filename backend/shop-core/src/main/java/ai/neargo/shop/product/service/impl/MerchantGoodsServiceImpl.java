@@ -273,7 +273,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         Page<PrdGoods> p = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectPage(Page.of(page, size), w));
-        return PageData.of(toVOs(p.getRecords(), storeNo), p.getTotal(), page, size);
+        return PageData.of(withActivityLive(toVOs(p.getRecords(), storeNo)), p.getTotal(), page, size);
     }
 
     /**
@@ -365,6 +365,33 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 再加上门店库存投影 —— 一页 20 条接近 100 次往返。同一个类里的
      * {@code listForOps} 一直是批量写法。
      */
+    /**
+     * 仅活动商品的判定（TDD-商品仅活动可售 §5）。setter 注入 —— 构造函数已经很长，
+     * 且这里只是列表上的一句提示：缺了就不标，不影响任何能不能卖。
+     */
+    private ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSaleGatePort(ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort) {
+        this.saleGatePort = saleGatePort;
+    }
+
+    /**
+     * B 端列表：仅活动的货标上「此刻有没有活动在跑」。一页一次批量问完，不逐行查。
+     * <p>为 false 时列表写「未在活动中」—— 状态是在售，顾客却在货架上找不到它、也买不了，
+     * 不写出来商家会以为出了故障。正常售卖的行保持 null。
+     */
+    private List<GoodsVO> withActivityLive(List<GoodsVO> vos) {
+        List<String> only = vos.stream().filter(v -> PrdGoods.SALE_ACTIVITY_ONLY.equals(v.saleMode()))
+                .map(GoodsVO::goodsNo).toList();
+        if (only.isEmpty() || saleGatePort == null) {
+            return vos;
+        }
+        java.util.Set<String> live = saleGatePort.live(only, System.currentTimeMillis()).any();
+        return vos.stream().map(v -> PrdGoods.SALE_ACTIVITY_ONLY.equals(v.saleMode())
+                ? v.withSaleGate(null, live.contains(v.goodsNo())) : v).toList();
+    }
+
     private List<GoodsVO> toVOs(List<PrdGoods> rows) {
         return toVOs(rows, null);
     }
@@ -945,7 +972,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 std.categoryNo(),
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
-                cmd.detail(), cmd.detailImages(), cmd.params());
+                cmd.detail(), cmd.detailImages(), cmd.params(), cmd.saleMode());
     }
 
     /**
@@ -1252,6 +1279,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     private void applyOptional(PrdGoods g, SaveCommand cmd) {
+        if (cmd.saleMode() != null) {
+            // 只认两个值：拼错一个字母就是一件「既不正常卖、也不仅活动」的货，哪条闸都认不出它
+            if (!PrdGoods.SALE_NORMAL.equals(cmd.saleMode())
+                    && !PrdGoods.SALE_ACTIVITY_ONLY.equals(cmd.saleMode())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            g.setSaleMode(cmd.saleMode());
+        }
         if (cmd.limitPerUser() != null) {
             // 负数限购会让「每人限购」变成谁都买不了，而界面上看着是配着的
             g.setLimitPerUser(Math.max(cmd.limitPerUser(), 0));
@@ -2008,7 +2043,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 // 无门店上下文（ops 视角 / 单店）：storeOnSale 留空 = 未按店管理
                 null,
                 // 商家侧不标销售范围：店主知道自己的经营范围，那是他在门店设置里配的
-                null);
+                null,
+                base.saleMode(), null, null);
     }
 
     /**
@@ -3152,7 +3188,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 hasDraft(g.getGoodsNo()),
                 storeOnSale,
                 // 同上：销售范围是买家页的一行话，商家侧在门店设置里看
-                null);
+                null,
+                base.saleMode(), null, null);
     }
 
     /**

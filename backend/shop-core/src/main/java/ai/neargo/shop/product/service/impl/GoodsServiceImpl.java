@@ -124,6 +124,7 @@ public class GoodsServiceImpl implements GoodsService {
         LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
                 .eq(PrdGoods::getOnSale, true)
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
+        onShelf(null).accept(w);
 
         // 与 list() 同一条规矩：社区池之外的商品不该出现 —— 用户看到也买不到
         List<String> goodsNos = poolGoodsNos(communityNo, regionCode);
@@ -160,11 +161,13 @@ public class GoodsServiceImpl implements GoodsService {
      * 谁也不会回头去改内容位。留着它的结果是首页上一个点不开的坑。
      */
     private List<GoodsVO> byGoodsNos(List<String> goodsNos) {
+        var shelf = onShelf(null);
         List<PrdGoods> rows = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
                         .eq(PrdGoods::getOnSale, true)
                         .eq(PrdGoods::getAuditStatus, "APPROVED")
-                        .in(PrdGoods::getGoodsNo, goodsNos)));
+                        .in(PrdGoods::getGoodsNo, goodsNos)
+                        .func(shelf)));
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -178,11 +181,53 @@ public class GoodsServiceImpl implements GoodsService {
                 .toList();
     }
 
+    /**
+     * 仅活动商品的判定（TDD-商品仅活动可售 §4.4）。setter 注入：缺了按「没有活动在跑」处理 ——
+     * 仅活动的货一律不上货架，与下单那道闸同一取向。
+     */
+    private ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSaleGatePort(ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort) {
+        this.saleGatePort = saleGatePort;
+    }
+
+    /**
+     * 货架可见：<b>正常售卖</b>，或<b>仅活动且此刻有点名它的活动在跑</b>。
+     *
+     * <p>不是「仅活动永远不上货架」—— 集单没有 C 端列表页，仅活动的集单货若不上货架，
+     * 顾客没有任何地方能看到它。
+     *
+     * <p><b>先算出集合再进 SQL</b>，不是取完一页再剔：剔会让一页少于请求数，
+     * 而分页游标以为还有下一页的位置已经被占了。仅活动的在售货通常是个位数，这一趟很轻。
+     *
+     * @param merchantNo 限一家店时传，全平台（首页推荐、搜索）传 null
+     */
+    private java.util.function.Consumer<LambdaQueryWrapper<PrdGoods>> onShelf(String merchantNo) {
+        List<String> only = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
+                        Wrappers.<PrdGoods>lambdaQuery().select(PrdGoods::getGoodsNo)
+                                .eq(PrdGoods::getOnSale, true)
+                                .eq(PrdGoods::getSaleMode, PrdGoods.SALE_ACTIVITY_ONLY)
+                                .eq(merchantNo != null && !merchantNo.isBlank(), PrdGoods::getEntityNo, merchantNo)))
+                .stream().map(PrdGoods::getGoodsNo).toList();
+        java.util.Set<String> live = only.isEmpty() || saleGatePort == null ? java.util.Set.of()
+                : saleGatePort.live(only, System.currentTimeMillis()).any();
+        return x -> {
+            if (live.isEmpty()) {
+                x.eq(PrdGoods::getSaleMode, PrdGoods.SALE_NORMAL);
+            } else {
+                x.and(y -> y.eq(PrdGoods::getSaleMode, PrdGoods.SALE_NORMAL)
+                        .or().in(PrdGoods::getGoodsNo, live));
+            }
+        };
+    }
+
     @Override
     public PageData<GoodsVO> list(GoodsQuery q) {
         LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
                 .eq(PrdGoods::getOnSale, true)
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
+        onShelf(q.merchantNo()).accept(w);
 
         if (q.merchantNo() != null && !q.merchantNo().isBlank()) {
             w.eq(PrdGoods::getEntityNo, q.merchantNo());
@@ -245,7 +290,25 @@ public class GoodsServiceImpl implements GoodsService {
     @Override
     public GoodsVO detailForBuyer(String goodsNo) {
         GoodsVO v = detail(goodsNo);
-        return withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
+        v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
+        return v.withSaleGate(directBuyable(v), null);
+    }
+
+    /**
+     * 此刻能不能走普通下单（加购 / 立即购买 / 单买）—— 买家详情页的底栏只看它。
+     * 与下单那道闸（OrderServiceImpl.split）同一个判定口，缺了按「不能」处理。
+     */
+    private boolean directBuyable(GoodsVO v) {
+        if (!PrdGoods.SALE_ACTIVITY_ONLY.equals(v.saleMode())) {
+            return true;
+        }
+        return saleGatePort != null
+                && saleGatePort.live(List.of(v.goodsNo()), System.currentTimeMillis()).direct().contains(v.goodsNo());
+    }
+
+    /** 空按正常售卖 —— 与迁移的默认值同一口径；VO 上不留 null，端上就不必再判一次 */
+    private static String saleModeOf(PrdGoods g) {
+        return g.getSaleMode() == null ? PrdGoods.SALE_NORMAL : g.getSaleMode();
     }
 
     @Override
@@ -296,10 +359,12 @@ public class GoodsServiceImpl implements GoodsService {
             return List.of();
         }
         // S1 用 like；商品量上来后换 ES。返回标题而不是商品对象 —— 联想词是拿来填搜索框的
+        var shelf = onShelf(null);
         return DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
                         Wrappers.<PrdGoods>lambdaQuery()
                                 .eq(PrdGoods::getOnSale, true)
                                 .eq(PrdGoods::getAuditStatus, "APPROVED")
+                                .func(shelf)
                                 .like(PrdGoods::getTitle, keyword)
                                 .orderByDesc(PrdGoods::getSales)
                                 .last("limit 10"))).stream()
@@ -310,10 +375,12 @@ public class GoodsServiceImpl implements GoodsService {
     public List<String> hotWords() {
         // 一期用「销量前 10 的商品标题」代替真实搜索词统计：
         // 真实热搜要先有搜索日志，而现在还没有用户。等有量了换成日志聚合，接口不变
+        var shelf = onShelf(null);
         return DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
                         Wrappers.<PrdGoods>lambdaQuery()
                                 .eq(PrdGoods::getOnSale, true)
                                 .eq(PrdGoods::getAuditStatus, "APPROVED")
+                                .func(shelf)
                                 .orderByDesc(PrdGoods::getSales)
                                 .last("limit 10"))).stream()
                 .map(PrdGoods::getTitle).toList();
@@ -401,7 +468,10 @@ public class GoodsServiceImpl implements GoodsService {
                 // C 端不分门店视角：门店上下架由可售池决定，不在这条链上
                 null,
                 // 销售范围只有详情页要 —— 列表在这儿填就是 N+1，见 withSaleScope
-                null);
+                null,
+                saleModeOf(g),
+                // directBuyable 只有详情页要（见 withSaleGate），activityLive 是 B 端列表的
+                null, null);
     }
 
     /**
@@ -426,7 +496,8 @@ public class GoodsServiceImpl implements GoodsService {
                 v.weighed(), v.origin(), v.durationMin(), v.storeName(), v.limitPerUser(),
                 v.onSale(), v.status(), v.titleI18n(), v.subtitleI18n(), v.stdNo(),
                 v.auditReason(), v.groupBuy(), v.params(), v.hasDraft(), v.storeOnSale(),
-                new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()));
+                new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()),
+                v.saleMode(), v.directBuyable(), v.activityLive());
     }
 
     /**

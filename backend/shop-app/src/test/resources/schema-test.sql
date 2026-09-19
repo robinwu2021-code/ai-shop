@@ -726,6 +726,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     pay_modes VARCHAR(128) NOT NULL DEFAULT '["ONLINE"]',
     pending_on_sale TINYINT NOT NULL DEFAULT 0,
     params TEXT DEFAULT NULL,
+    sale_mode VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );

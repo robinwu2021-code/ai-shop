@@ -722,6 +722,14 @@ public enum ErrorCode {
      * <p>发布了也没人享受得到，而商家会以为活动在跑、只是没人来 —— 他会去调价格，而不是去改人群。
      */
     MEMBER_AUDIENCE_EMPTY(70066, "err.member.audience_empty"),
+    /**
+     * 这件货只在活动里卖（{@code sale_mode = ACTIVITY_ONLY}），而此刻没有能走普通下单的活动
+     * （集单 / 特价 / 买赠）—— 最常见的是只有拼团在跑、顾客点了单买，或活动已结束。
+     *
+     * <p><b>不复用 NOT_FOUND</b>：顾客看到「商品不存在」会以为链接坏了，
+     * 而这件货明明就在详情页上。说清「要走活动买」，他才知道去点开团。
+     */
+    GOODS_ACTIVITY_ONLY(70067, "err.goods.activity_only"),
 
     /**
      * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。

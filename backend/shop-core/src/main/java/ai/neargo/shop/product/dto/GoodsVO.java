@@ -129,7 +129,31 @@ public record GoodsVO(String goodsNo,
                        * 注意「不渲染」与「不限」是两件事，别在端上把空当成不限：
                        * 那个判断已经在 {@code MerchantQueryPort#saleScope} 里做完了。
                        */
-                      SaleScopeVO saleScope) {
+                      SaleScopeVO saleScope,
+                      /**
+                       * 销售方式（V340）：NORMAL 正常售卖 / ACTIVITY_ONLY 仅活动。两端都下发。
+                       * <p>B 端编辑页靠它回显 —— 不回显的话，打开编辑页再保存一次就把「仅活动」冲回了正常售卖。
+                       */
+                      String saleMode,
+                      /**
+                       * <b>只在 C 端详情下发</b>：此刻能不能走普通下单（加购 / 立即购买 / 单买）。
+                       * = 正常售卖，或仅活动且此刻有集单 / 特价 / 买赠开着。
+                       * <p>由后端算、前端不推：特价、买赠、平台活动前端并不知道，
+                       * 让它自己拼就是第二个判定入口，迟早与下单那道闸不一致。列表里恒为 null。
+                       */
+                      Boolean directBuyable,
+                      /**
+                       * <b>只在 B 端列表下发</b>：仅活动的货此刻有没有点名它的活动在跑（含拼团）。
+                       * 为 false 时列表写「未在活动中」—— 「在售」却没人买得到，不写出来商家会以为出了故障。
+                       * 正常售卖的货恒为 null。
+                       */
+                      Boolean activityLive) {
+
+    /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
+    public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive);
+    }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
     /**

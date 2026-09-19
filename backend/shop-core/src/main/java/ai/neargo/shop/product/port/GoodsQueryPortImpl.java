@@ -168,7 +168,8 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                     Math.max(available, 0),
                     Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus()),
                     readList(g.getFulfillments()),
-                    g.getGroupPriceMinor(), g.getGroupMinCount()));
+                    g.getGroupPriceMinor(), g.getGroupMinCount(),
+                    g.getSaleMode()));
         }
         return result;
     }

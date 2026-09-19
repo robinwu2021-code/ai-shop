@@ -161,6 +161,33 @@ public class StoreServiceImpl implements StoreService {
         return out;
     }
 
+    /**
+     * 仅活动商品的可买判定（TDD-商品仅活动可售 §4.3）。setter 注入，缺了按「没有活动」处理 ——
+     * 与 OrderServiceImpl / CartServiceImpl 同一口径。
+     *
+     * <p><b>这里必须自己判</b>：复购写车走的是 {@code CartWritePort}（直写表），
+     * 不经过 CartServiceImpl.add 那道闸 —— 不筛的话，仅活动的货会被悄悄塞进购物车、再显示成失效行。
+     */
+    private ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSaleGatePort(ai.neargo.shop.spi.marketing.SaleGatePort saleGatePort) {
+        this.saleGatePort = saleGatePort;
+    }
+
+    /** 这些快照里，哪些此刻不能走普通下单：仅活动、且没有集单 / 特价 / 买赠开着 */
+    private java.util.Set<String> blocked(java.util.Collection<GoodsQueryPort.SkuSnapshot> snaps) {
+        List<String> only = snaps.stream().filter(java.util.Objects::nonNull)
+                .filter(GoodsQueryPort.SkuSnapshot::activityOnly)
+                .map(GoodsQueryPort.SkuSnapshot::goodsNo).distinct().toList();
+        if (only.isEmpty()) {
+            return java.util.Set.of();
+        }
+        java.util.Set<String> open = saleGatePort == null ? java.util.Set.of()
+                : saleGatePort.live(only, System.currentTimeMillis()).direct();
+        return only.stream().filter(g -> !open.contains(g)).collect(java.util.stream.Collectors.toSet());
+    }
+
     @Override
     public List<FrequentItemVO> frequentItems(String merchantNo) {
         List<StoreHistoryPort.PurchasedSku> history =
@@ -171,11 +198,13 @@ public class StoreServiceImpl implements StoreService {
 
         Map<String, GoodsQueryPort.SkuSnapshot> now =
                 goodsPort.snapshot(history.stream().map(StoreHistoryPort.PurchasedSku::skuNo).toList());
+        java.util.Set<String> blocked = blocked(now.values());
 
         return history.stream().map(h -> {
             var snap = now.get(h.skuNo());
-            // 下架的商品仍然列出来但标 invalid：用户记得自己买过，直接消失会让他以为是系统丢了
-            boolean invalid = snap == null || !snap.onSale();
+            // 下架的商品仍然列出来但标 invalid：用户记得自己买过，直接消失会让他以为是系统丢了。
+            // 仅活动且活动没开着的，同一处理（rebuy 读的就是这个 invalid）
+            boolean invalid = snap == null || !snap.onSale() || blocked.contains(snap.goodsNo());
             return new FrequentItemVO(h.goodsNo(), h.skuNo(), h.title(),
                     snap == null ? "" : snap.cover(), h.spec(),
                     snap == null ? h.lastPrice() : snap.price(),
@@ -196,6 +225,7 @@ public class StoreServiceImpl implements StoreService {
 
         var snapshots = goodsPort.snapshot(bought.stream()
                 .map(StoreHistoryPort.PurchasedSku::skuNo).toList());
+        java.util.Set<String> blocked = blocked(snapshots.values());
 
         int added = 0;
         List<String> dropped = new ArrayList<>();
@@ -207,7 +237,8 @@ public class StoreServiceImpl implements StoreService {
              * 失效的**显式回报**，不静默丢。
              * 悄悄少加是最糟的处理：用户以为整单都买到了，到货才发现少东西。
              */
-            if (snap == null || !snap.onSale() || snap.available() <= 0) {
+            if (snap == null || !snap.onSale() || snap.available() <= 0
+                    || blocked.contains(snap.goodsNo())) {
                 dropped.add(b.title());
                 continue;
             }

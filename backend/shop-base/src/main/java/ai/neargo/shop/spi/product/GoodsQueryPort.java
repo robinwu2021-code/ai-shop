@@ -112,6 +112,13 @@ public interface GoodsQueryPort {
                        String title, String cover, String spec,
                        String categoryType, String categoryNo,
                        long price, int available, boolean onSale, List<String> fulfillments,
-                       Long groupPriceMinor, Integer groupMinCount) {
+                       Long groupPriceMinor, Integer groupMinCount,
+                       /** 销售方式（V340）。空按 NORMAL —— 与迁移默认值同一口径 */
+                       String saleMode) {
+
+        /** 仅活动：此刻有点名它的活动在跑才能买（{@code SaleGatePort}） */
+        public boolean activityOnly() {
+            return "ACTIVITY_ONLY".equals(saleMode);
+        }
     }
 }

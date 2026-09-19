@@ -1,6 +1,6 @@
 # TDD · 商品仅活动可售
 
-> 状态：**草稿 · 待确认** · 2026-09-19
+> 状态：**已确认 · 后端已实现（第 1 步）** · 2026-09-19
 > 起因：店主「商品要支持只给活动用，但是单品不销售；目前既有团购又销售单品，展示在一个 C 端页面」
 > 原型：[仅活动可售](https://claude.ai/artifact/NSX5VN9PecbYqJD22KBDmn)（C 端详情底栏四态 · 货架 · B 端编辑与列表）
 > 相关：[TDD-C端商品详情页重排](../TDD-C端商品详情页重排.md)（拼团底栏「单买 / 开团」的来处）、
@@ -86,11 +86,13 @@ ALTER TABLE prd_goods ADD COLUMN sale_mode VARCHAR(16) NOT NULL DEFAULT 'NORMAL'
 `shop-base/spi/marketing/SaleGatePort`，实现在 promotion 域：
 
 ```java
-/** 此刻这些货里，哪些开着普通下单（集单 / 特价 / 买赠进行中） */
-Set<String> directOpen(Collection<String> goodsNos, long now);
-/** 此刻这些货里，哪些有任何点名它的活动在跑（含拼团） */
-Set<String> anyLive(Collection<String> goodsNos, long now);
+Live live(Collection<String> goodsNos, long now);
+record Live(Set<String> direct, Set<String> any) {}
 ```
+
+- **一个方法返回两个集合**（实现时并成一个）：两个集合读的是同一批活动行，分开问要查两遍
+- 集单用 `PeriodPort.viewFor`（此刻真有一期可下），不看活动行本身：当天截了单、下一期未开时活动仍是 RUNNING
+- 组合活动（`COMBO`，P3b）与满减同类，按整单级处理、不算
 
 - 批量接口：列表一页几十件，逐件问会打几十条查询
 - 读 `pmt_activity` / `pmt_activity_goods` / 期表时 **`DataScopeContext.executeWithoutScope`**
@@ -103,9 +105,17 @@ Set<String> anyLive(Collection<String> goodsNos, long now);
 |---|---|
 | `GoodsQueryPort.SkuSnapshot` | 多带 `saleMode` |
 | `OrderServiceImpl.split()` L1622 之后 | `ACTIVITY_ONLY ∧ ¬grouped() ∧ goodsNo ∉ directOpen` → `GOODS_ACTIVITY_ONLY` |
-| `CartServiceImpl.add()` L62 | 同上（购物车里没有拼团） |
-| `CartServiceImpl` 列表 L56 | 仅活动且 `¬directOpen` → 失效行，与下架同一处理（活动结束时车里那件） |
-| `StoreServiceImpl` L178 / L210 | 常买、再来一单：同上判失效 |
+| `CartServiceImpl.add()` L62 | 仅活动且 **`goodsNo ∉ any`**（什么活动都没在跑）→ 拒 |
+| `CartServiceImpl` 列表 L56 | 仅活动且 `goodsNo ∉ any` → 失效行，与下架同一处理（活动全结束后车里那件） |
+| `StoreServiceImpl` L178 / L210 | 常买、再来一单：仅活动且 `∉ direct` → 失效 / 不加入（它们就是单买的路） |
+
+> ⚠️ **购物车看 `any` 不看 `direct`**（实现时发现，初稿写错了）：C 端的「开团」「立即购买」
+> **都是先加购、再带 skus 进确认页**（`goods` 页 `openGroupBuy` / `buyNow`）—— 购物车是所有下单的运输通道。
+> 初稿写的「购物车里没有拼团，同上」会让只有拼团在跑时，仅活动商品的开团在加购那一步就断掉。
+> 单买真正被拦在 `split()`。
+>
+> 复购写车走 `CartWritePort`（直写表），**不经过** `CartServiceImpl.add` —— 所以常买 / 再来一单要自己判，
+> 不然仅活动的货会被悄悄塞进购物车、再显示成失效行。
 
 - 新错误码 `GOODS_ACTIVITY_ONLY`（700xx，落地时取下一个空号）+ `err.goods.activity_only` 三语：
   「该商品仅限活动购买」。**不复用 NOT_FOUND**：顾客看到「商品不存在」会以为链接坏了
@@ -117,13 +127,13 @@ Set<String> anyLive(Collection<String> goodsNos, long now);
 5 个方法的过滤从 `on_sale = 1` 变成：
 
 ```
-on_sale = 1 AND (sale_mode = 'NORMAL' OR goods_no IN anyLive(本页候选))
+on_sale = 1 AND (sale_mode = 'NORMAL' OR goods_no IN 此刻有活动在跑的仅活动商品)
 ```
 
 - **有活动时照常上架、没活动时消失**。不是「永远不上货架」—— 集单没有列表页，
   仅活动的集单货若不上货架，顾客没有任何地方能看到它（§2 最后一条）
-- 实现上先按原条件取候选页，再用 `anyLive` 剔除；**页大小因此可能少于请求值** ——
-  补页会让分页游标变复杂，而仅活动商品在一页里通常是个位数。落地时量一次真实占比再定
+- **先算集合、再进 SQL**（实现时改的，初稿是「取完一页再剔」）：先查出在售的仅活动商品（通常个位数），
+  问一次 `live().any()`，把结果放进 `IN`。剔除法会让一页少于请求数、分页游标错位；这样分页是准的
 
 ### 4.5 详情接口
 
@@ -170,6 +180,7 @@ on_sale = 1 AND (sale_mode = 'NORMAL' OR goods_no IN anyLive(本页候选))
 | 从 NORMAL 改成 ACTIVITY_ONLY（在售） | 走草稿、发布后生效，与改价同一套 |
 | 满减 / 券 | 不改变可买性；活动单上照常叠加 |
 | 库存 | 不拆，与单卖同一份 |
+| 只有拼团在跑，顾客开团途中退出 | 货留在购物车里、显示正常；在购物车直接结算时 `split()` 拒并提示「该商品仅限活动购买」。有意接受：给购物车行加「来意」标记是更大的改动 |
 
 ## 7 验证
 
@@ -183,14 +194,16 @@ on_sale = 1 AND (sale_mode = 'NORMAL' OR goods_no IN anyLive(本页候选))
 6. NORMAL 的一切行为逐字不变（存量回归）
 7. 满减单独在跑 **不** 让仅活动商品可买
 
-**消融**：删掉 `split()` 里那一行判定，第 1、4 条必须变红，且红的是「普通下单拒」那条断言。
+**消融**：删掉 `split()` 里那一行判定，必须变红的是「普通下单拒」那几条断言。
+**实测（2026-09-19）**：7 条里恰好 2 条变红 —— `groupOnlyBlocksSingleBuy:94`（只有拼团在跑，普通下单必须拒）
+与 `endingFlipsBack:168`（活动结束后结账按下单那一刻判）；其余 5 条不受影响（它们测的是购物车与货架那几道）。
 
 ## 8 不做什么
 
 - 不做「活动期间暂停单卖」（活动级开关）
 - 不做「仅会员」（枚举留了位）
 - 不改拼团、集单自己的规则
-- 不补货架分页的缺口（见 §4.4，先量）
+- 不做购物车行的「来意」标记（见 §6 最后一行）
 
 ## 9 落地顺序
 
