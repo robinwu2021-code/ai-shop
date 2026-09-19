@@ -778,6 +778,30 @@
       }
     },
     {
+      "path": "pages/reach-tasks/index",
+      "style": {
+        "navigationBarTitleText": "发出去的",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/reach-task/index",
+      "style": {
+        "navigationBarTitleText": "触达效果",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/member-reach/index",
       "style": {
         "navigationBarTitleText": "给会员发消息",

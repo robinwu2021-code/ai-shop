@@ -17,6 +17,9 @@ import {
   mockMemberTags,
   mockMembers,
   mockTags,
+  addMockReachTask,
+  mockReachTasks,
+  reachTaskView,
   requireMerchant,
   scopedToStore,
 } from "./_shared";
@@ -49,6 +52,8 @@ export const marketingMock: Pick<MerchantApi,
   | "mPreviewMemberSegment"
   | "mPlanReach"
   | "mSendReach"
+  | "mReachTasks"
+  | "mReachTask"
   | "mActivities"
   | "mActivity"
   | "mSaveActivity"
@@ -253,6 +258,7 @@ export const marketingMock: Pick<MerchantApi,
           occurredAt: m.joinedAt,
         },
       ],
+      lastReach: lastReachOf(memberNo),
     });
   },
 
@@ -523,17 +529,32 @@ export const marketingMock: Pick<MerchantApi,
     const plan = await this.mPlanReach(payload);
     const now = Date.now();
     const gate = db.reachSentAt[payload.scene] ?? (db.reachSentAt[payload.scene] = {});
+    const sentTo: string[] = [];
     for (const m of reachTargets(payload)) {
       if (skipReasonMock(m, payload.scene)) continue;
       gate[m.memberNo] = now;      // 记下来，第二次发就会被频次闸拦住
+      sentTo.push(m.memberNo);
     }
     persist();
+    const taskNo = `RC-${now}`;
+    addMockReachTask({ taskNo, scene: payload.scene, title: payload.title, body: payload.body,
+      audienceDesc: payload.audienceDesc || "—", sentAt: now, matched: plan.matched, skips: plan.skips }, sentTo);
     return delay({
-      taskNo: `RC-${Date.now()}`,
+      taskNo,
       sent: plan.reachable,
       skipped: plan.matched - plan.reachable,
       skips: plan.skips,
     });
+  },
+
+  async mReachTasks() {
+    return delay(mockReachTasks().map((t) => reachTaskView(t, false)));
+  },
+
+  async mReachTask(taskNo) {
+    const t = mockReachTasks().find((x) => x.taskNo === taskNo);
+    if (!t) throw new ApiError(10404, "这次触达不存在");
+    return delay(reachTaskView(t, true));
   },
 
   // ---------------------------------------------------------------- 活动（P5）
@@ -970,12 +991,29 @@ export const marketingMock: Pick<MerchantApi,
   },
 
   async mCouponIssues(couponNo) {
+    // 已用：演示按发出的三成算（mock 里没有真实核销），刚发的那一批为 0
     return delay(db.couponIssues
         .filter((b) => !couponNo || b.couponNo === couponNo)
-        .map((b) => ({ ...b })));
+        .map((b) => {
+          const fresh = Date.now() - b.issuedAt < 86400_000;
+          const used = fresh ? 0 : Math.floor(b.issued * 0.3);
+          return { ...b, usedCount: used, usedAmountMinor: used * 500 };
+        }));
   },
 };
 
+
+/** 这个人身上最近的一次触达（批次按新到旧排，取第一条带他的） */
+function lastReachOf(memberNo: string) {
+  for (const t of mockReachTasks()) {
+    const r = t.rows.find((x) => x.memberNo === memberNo);
+    if (r) {
+      return { taskNo: t.taskNo, scene: t.scene, sentAt: t.sentAt,
+        openedAt: r.opened ? t.sentAt + 3600_000 : null, orderedAt: r.orderedAt };
+    }
+  }
+  return null;
+}
 
 /** mock 的日期：今天起第 n 天（本地时区），YYYY-MM-DD */
 function mockDay(n: number): string {

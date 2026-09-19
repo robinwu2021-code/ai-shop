@@ -181,6 +181,7 @@ export const httpApi: ShopApi = {
   myMemberships: () => call<MyMembership[]>("myMemberships"),
   setMembershipReach: (entityNo, optOut) =>
     call<void>("setMembershipReach", { entityNo }, { optOut }),
+  reachOpened: (reachNo) => call<{ counted: boolean }>("reachOpened", { reachNo }, {}),
   receiveCoupon: (couponNo) => call<UserCoupon>("receiveCoupon", { couponNo }),
 
   // ---- 拼团

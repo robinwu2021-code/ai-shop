@@ -9,8 +9,14 @@ import ai.neargo.shop.member.dto.MemberVOs.OpsPersonVO;
 import ai.neargo.shop.member.dto.MemberVOs.ReachStatVO;
 import ai.neargo.shop.member.entity.MbrMember;
 import ai.neargo.shop.member.entity.MbrReachLog;
+import ai.neargo.shop.member.entity.MbrReachTask;
+import ai.neargo.shop.member.entity.MbrSegment;
+import ai.neargo.shop.member.entity.MbrTag;
 import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
 import ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper;
+import ai.neargo.shop.member.mapper.MemberMappers.ReachTaskMapper;
+import ai.neargo.shop.member.mapper.MemberMappers.SegmentMapper;
+import ai.neargo.shop.member.mapper.MemberMappers.TagMapper;
 import ai.neargo.shop.member.service.OpsMemberService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -54,10 +60,17 @@ public class OpsMemberServiceImpl implements OpsMemberService {
     private final PersonPort personPort;
     private final MerchantQueryPort merchantPort;
     private final AuditLogPort auditLogPort;
+    private final ReachTaskMapper taskMapper;
+    private final TagMapper tagMapper;
+    private final SegmentMapper segmentMapper;
 
     public OpsMemberServiceImpl(MemberMapper memberMapper, ReachLogMapper reachMapper,
                                 PersonPort personPort, MerchantQueryPort merchantPort,
-                                AuditLogPort auditLogPort) {
+                                AuditLogPort auditLogPort, ReachTaskMapper taskMapper,
+                                TagMapper tagMapper, SegmentMapper segmentMapper) {
+        this.taskMapper = taskMapper;
+        this.tagMapper = tagMapper;
+        this.segmentMapper = segmentMapper;
         this.memberMapper = memberMapper;
         this.reachMapper = reachMapper;
         this.personPort = personPort;
@@ -150,19 +163,44 @@ public class OpsMemberServiceImpl implements OpsMemberService {
                 c[1]++;
             }
         }
+        // 批次头（批 C 起才有）：触达次数与跳过。之前发的没有批次头，这两列从上线那天起算
+        Map<String, int[]> tasks = new HashMap<>();
+        for (MbrReachTask t : taskMapper.selectList(Wrappers.<MbrReachTask>lambdaQuery()
+                .ge(MbrReachTask::getSentAt, since))) {
+            int[] c = tasks.computeIfAbsent(t.getEntityNo(), k -> new int[3]);
+            c[0]++;
+            c[1] += t.getSkippedCount() == null ? 0 : t.getSkippedCount();
+            c[2] += t.getMatchedCount() == null ? 0 : t.getMatchedCount();
+        }
+        // 只取个数：标签名与人群条件是商家的经营判断，运营这一页用不到（AC-15）
+        Map<String, Integer> tagCount = new HashMap<>();
+        for (MbrTag t : tagMapper.selectList(Wrappers.<MbrTag>lambdaQuery()
+                .select(MbrTag::getEntityNo).isNotNull(MbrTag::getEntityNo))) {
+            tagCount.merge(t.getEntityNo(), 1, Integer::sum);
+        }
+        Map<String, Integer> segmentCount = new HashMap<>();
+        for (MbrSegment s : segmentMapper.selectList(Wrappers.<MbrSegment>lambdaQuery()
+                .select(MbrSegment::getEntityNo))) {
+            segmentCount.merge(s.getEntityNo(), 1, Integer::sum);
+        }
         List<ReachStatVO> out = new ArrayList<>();
         for (var e : members.entrySet()) {
             int total = e.getValue()[0];
             int off = e.getValue()[1];
+            int[] t = tasks.getOrDefault(e.getKey(), new int[3]);
             out.add(new ReachStatVO(e.getKey(), entityName(e.getKey()),
                     sent.getOrDefault(e.getKey(), 0), total, off,
-                    total == 0 ? 0d : Math.round(off * 10000d / total) / 100d));
+                    total == 0 ? 0d : Math.round(off * 10000d / total) / 100d,
+                    tagCount.getOrDefault(e.getKey(), 0), segmentCount.getOrDefault(e.getKey(), 0),
+                    t[0], t[1], t[2] == 0 ? 0d : Math.round(t[1] * 10000d / t[2]) / 100d));
         }
         /*
-         * **按退订率倒序，不按发送量**：发得多不是成绩，发到有人关掉才是问题。
-         * 按发送量排的话，最需要被看见的那家店会沉在下面。
+         * **按跳过率倒序，同率再按退订率**（原型 o01）：发得多不是成绩。
+         * 跳过率高 = 在反复给同一批人发、被频次闸拦下；退订高 = 发的内容没人要。
+         * 两者都是运营该去找这家店谈的信号，按发送量排的话它们会沉在下面。
          */
-        out.sort((a, b) -> Double.compare(b.optOutRate(), a.optOutRate()));
+        out.sort((a, b) -> a.skipRate() != b.skipRate() ? Double.compare(b.skipRate(), a.skipRate())
+                : Double.compare(b.optOutRate(), a.optOutRate()));
         return out;
     }
 

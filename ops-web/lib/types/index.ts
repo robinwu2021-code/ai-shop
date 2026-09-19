@@ -88,6 +88,16 @@ export interface ReachStat {
   optOut: number;
   /** 退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题 */
   optOutRate: number;
+  /** 标签**个数**。只有个数：标签名是商家的经营判断，运营这一页用不到（AC-15） */
+  tagCount: number;
+  /** 人群**个数**。同上，没有人群条件 */
+  segmentCount: number;
+  /** 近 30 天触达次数（批次数） */
+  tasks: number;
+  /** 被频次闸等拦下的人次 */
+  skipped: number;
+  /** 跳过率（%）= 拦下的 / 命中的。高 = 在反复给同一批人发 */
+  skipRate: number;
 }
 
 /** 一次会员分层重算的结果 */

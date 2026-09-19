@@ -54,6 +54,9 @@ export const ROUTES = {
   memberTag: "/pages/member-tag/index",
   memberSegment: "/pages/member-segment/index",
   memberReach: "/pages/member-reach/index",
+  // 发出去的（m19）与一次触达的效果（m20）：入口在营销首页
+  reachTasks: "/pages/reach-tasks/index",
+  reachTask: "/pages/reach-task/index",
   activities: "/pages/activities/index",
   coupons: "/pages/coupons/index",
   // 券：详情（s15）、新建（s13/s14）、发放选人群（s18）、发放结果与记录（s16）

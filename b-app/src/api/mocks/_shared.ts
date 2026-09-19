@@ -534,6 +534,70 @@ export function allMockMembers() {
   return [...db.memberLeads, ...mockMembers()];
 }
 
+/*
+ * 触达批次（mock）。**每人一行结果**，与后端 mbr_reach_log 同形 ——
+ * 效果页「没来的存人群」存进去的条件要能在 matchSegment 里按它筛回来，
+ * 只存三个计数的话，存出来的人群会是全部会员。
+ */
+interface MockReachRow { memberNo: string; opened: boolean; orderedMinor: number | null; orderedAt: number | null }
+interface MockReachTask {
+  taskNo: string; scene: string; title: string; body: string; audienceDesc: string;
+  sentAt: number; matched: number; skips: Array<{ reason: string; count: number }>; rows: MockReachRow[];
+}
+const REACH_WINDOW = 7 * 86400_000;
+const mockReach: MockReachTask[] = [];
+
+/** 两条演示：一条已统计（有来有单）、一条统计中 —— 只给一条看不出「统计中」那一档 */
+function seedReach() {
+  if (mockReach.length) return;
+  const ms = mockMembers();
+  const day = 86400_000;
+  const mk = (taskNo: string, scene: string, title: string, desc: string, ago: number, n: number,
+    opened: number, ordered: number[]): MockReachTask => ({
+    taskNo, scene, title, body: "", audienceDesc: desc, sentAt: Date.now() - ago * day,
+    matched: n + 2, skips: [{ reason: "TOO_SOON", count: 2 }],
+    rows: ms.slice(0, n).map((m, i) => ({
+      memberNo: m.memberNo, opened: i < opened,
+      orderedMinor: i < ordered.length ? ordered[i]! : null,
+      orderedAt: i < ordered.length ? Date.now() - (ago - 1) * day : null,
+    })),
+  });
+  mockReach.push(
+    mk("RC-DEMO-2", "NOTICE", "周末到货", "全部会员", 2, Math.min(8, ms.length), 3, [3600]),
+    mk("RC-DEMO-1", "WAKEUP", "中秋新米到了", "沉睡", 9, Math.min(6, ms.length), 3, [6200, 8800]),
+  );
+}
+
+export function mockReachTasks() {
+  seedReach();
+  return mockReach;
+}
+
+/** 发一次就记一批：发出去的人每人一行，都还没来 */
+export function addMockReachTask(t: Omit<MockReachTask, "rows">, memberNos: string[]) {
+  seedReach();
+  mockReach.unshift({ ...t, rows: memberNos.map((memberNo) => ({ memberNo, opened: false, orderedMinor: null, orderedAt: null })) });
+}
+
+/** 批次 → 页面上的形状。`withMembers` 为假时不带下单名单（列表） */
+export function reachTaskView(t: MockReachTask, withMembers: boolean) {
+  const all = allMockMembers();
+  const ordered = t.rows.filter((r) => r.orderedMinor != null);
+  return {
+    taskNo: t.taskNo, scene: t.scene, title: t.title, body: t.body, audienceDesc: t.audienceDesc,
+    sentAt: t.sentAt, statsUntil: t.sentAt + REACH_WINDOW, settled: Date.now() > t.sentAt + REACH_WINDOW,
+    matched: t.matched, sent: t.rows.length, skipped: t.matched - t.rows.length, skips: t.skips,
+    opened: t.rows.filter((r) => r.opened).length, ordered: ordered.length,
+    orderedAmountMinor: ordered.reduce((s, r) => s + (r.orderedMinor ?? 0), 0),
+    orderedMembers: withMembers ? ordered.map((r) => {
+      const m = all.find((x) => x.memberNo === r.memberNo);
+      return { memberNo: r.memberNo, name: m?.remark ?? null, phoneTail: m?.phoneTail ?? null,
+        amountMinor: r.orderedMinor ?? 0, orderedAt: r.orderedAt ?? t.sentAt };
+    }) : [],
+    notOpened: t.rows.filter((r) => !r.opened).length,
+  };
+}
+
 export function mockMemberTags(): Record<string, string[]> {
   return db.memberTagRel;
 }
@@ -565,6 +629,14 @@ export function matchSegment(rule: MemberSegmentRule) {
   }
   if (rule.spentMin) out = out.filter((m) => m.totalSpentMinor >= rule.spentMin!);
   if (rule.spentMax) out = out.filter((m) => m.totalSpentMinor <= rule.spentMax!);
+  if (rule.reachTaskNo) {
+    const rows = mockReachTasks().find((t) => t.taskNo === rule.reachTaskNo)?.rows ?? [];
+    const keep = new Set(rows.filter((r) =>
+      rule.reachOutcome === "ORDERED" ? r.orderedMinor != null
+        : rule.reachOutcome === "OPENED" ? r.opened
+          : rule.reachOutcome === "NOT_OPENED" ? !r.opened : true).map((r) => r.memberNo));
+    out = out.filter((m) => keep.has(m.memberNo));
+  }
   return out;
 }
 

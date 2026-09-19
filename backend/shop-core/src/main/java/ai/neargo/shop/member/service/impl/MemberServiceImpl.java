@@ -14,6 +14,7 @@ import ai.neargo.shop.member.dto.MemberVOs.MemberStatsVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberStoreVO;
 import ai.neargo.shop.member.dto.MemberVOs.MemberVO;
 import ai.neargo.shop.member.entity.MbrMember;
+import ai.neargo.shop.member.entity.MbrReachLog;
 import ai.neargo.shop.member.entity.MbrMemberSource;
 import ai.neargo.shop.member.entity.MbrMemberStore;
 import ai.neargo.shop.member.entity.MbrMemberTag;
@@ -68,6 +69,8 @@ public class MemberServiceImpl implements MemberService {
     private final ai.neargo.shop.member.mapper.MemberMappers.MemberTagMapper memberTagMapper;
     /** 分层口径的唯一来源：下单即时算与每日重算读同一份，见 {@code LevelPolicy} */
     private final ai.neargo.shop.member.service.MemberLevelService levelService;
+    private final ReachAttribution reachAttribution;
+    private final ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper reachLogMapper;
 
     public MemberServiceImpl(MemberMapper memberMapper, MemberStoreMapper storeMapper,
                              MemberSourceMapper sourceMapper, SettingMapper settingMapper,
@@ -78,7 +81,11 @@ public class MemberServiceImpl implements MemberService {
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
                              org.springframework.beans.factory.ObjectProvider<
                                      ai.neargo.shop.spi.marketing.AttributionPort> attributionPort,
-                             ai.neargo.shop.member.service.MemberLevelService levelService) {
+                             ai.neargo.shop.member.service.MemberLevelService levelService,
+                             ReachAttribution reachAttribution,
+                             ai.neargo.shop.member.mapper.MemberMappers.ReachLogMapper reachLogMapper) {
+        this.reachAttribution = reachAttribution;
+        this.reachLogMapper = reachLogMapper;
         this.attributionPort = attributionPort;
         this.levelService = levelService;
         this.memberTagMapper = memberTagMapper;
@@ -172,6 +179,10 @@ public class MemberServiceImpl implements MemberService {
         // 下单这行的 refNo 是子订单号，幂等靠它 —— 所以它必须留着，且只有它带 refNo
         recordSource(m, MbrMember.SOURCE_ORDER, storeNo, fresh && !byScan, paidAt,
                 null, null, null, null, subOrderNo);
+        // 触达成单（AC-12/13/14）。放在幂等判重之后：支付回调重发不会把一单记两次
+        if (!fresh) {
+            reachAttribution.onOrdered(entityNo, m.getMemberNo(), subOrderNo, amountMinor, paidAt);
+        }
     }
 
     @Override
@@ -456,6 +467,22 @@ public class MemberServiceImpl implements MemberService {
         }
 
         /*
+         * 某次触达的结果（AC-17：效果页「没来的存人群 / 下单的打标签」）。
+         * 按批次号取明细行 —— 这批人是那一刻发出去的名单，不随人群后来的条件变。
+         */
+        if (q.reachTaskNo() != null && !q.reachTaskNo().isBlank()) {
+            String outcome = q.reachOutcome();
+            List<String> nos = reachLogMapper.selectList(Wrappers.<MbrReachLog>lambdaQuery()
+                            .eq(MbrReachLog::getEntityNo, entityNo)
+                            .eq(MbrReachLog::getTaskNo, q.reachTaskNo())
+                            .isNotNull(MemberQuery.REACH_ORDERED.equals(outcome), MbrReachLog::getOrderedAt)
+                            .isNotNull(MemberQuery.REACH_OPENED.equals(outcome), MbrReachLog::getOpenedAt)
+                            .isNull(MemberQuery.REACH_NOT_OPENED.equals(outcome), MbrReachLog::getOpenedAt))
+                    .stream().map(MbrReachLog::getMemberNo).distinct().toList();
+            w.in(MbrMember::getMemberNo, nos.isEmpty() ? List.of("__none__") : nos);
+        }
+
+        /*
          * 门店口径：先按门店行筛出人，再用他们的会员号收窄主表查询。
          * 门店行里没有身份字段（状态、来源、标签都在主表），所以两边各筛各的那部分。
          */
@@ -608,8 +635,15 @@ public class MemberServiceImpl implements MemberService {
                         s.getInviterUserNo(), s.getInviterRole(), s.getOperatorNo(),
                         s.getActivityNo(), nz(s.getIsFirst()) == 1, nz(s.getOccurredAt())))
                 .toList();
+        MbrReachLog last = reachLogMapper.selectOne(Wrappers.<MbrReachLog>lambdaQuery()
+                .eq(MbrReachLog::getEntityNo, entityNo)
+                .eq(MbrReachLog::getMemberNo, memberNo)
+                .orderByDesc(MbrReachLog::getSentAt)
+                .last("limit 1"));
         return Optional.of(new MemberDetailVO(vo(m), stores, sources,
-                tagService.tagsOf(entityNo, memberNo)));
+                tagService.tagsOf(entityNo, memberNo),
+                last == null ? null : new ai.neargo.shop.member.dto.MemberVOs.LastReach(last.getTaskNo(),
+                        last.getScene(), nz(last.getSentAt()), last.getOpenedAt(), last.getOrderedAt())));
     }
 
     @Override

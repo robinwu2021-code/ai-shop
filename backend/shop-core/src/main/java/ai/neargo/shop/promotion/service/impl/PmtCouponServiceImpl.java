@@ -481,12 +481,59 @@ public class PmtCouponServiceImpl implements CouponService {
 
     @Override
     public List<CouponIssueVO> issues(String entityNo, String couponNo) {
-        return issueMapper.selectList(Wrappers.<PmtCouponIssue>lambdaQuery()
+        List<CouponIssueVO> batches = issueMapper.selectList(Wrappers.<PmtCouponIssue>lambdaQuery()
                         .eq(PmtCouponIssue::getEntityNo, entityNo)
                         .eq(couponNo != null && !couponNo.isBlank(),
                                 PmtCouponIssue::getCouponNo, couponNo)
                         .orderByDesc(PmtCouponIssue::getId))
                 .stream().map(this::issueVo).toList();
+        return withUsage(entityNo, batches);
+    }
+
+    /**
+     * 每一批的「已用」（原型 m19 券那一栏）。整页一次取，不逐批查。
+     *
+     * <p>金额按「这一批领到券的人、在发放之后、用这张券」的核销额累加 ——
+     * 核销记录上没有领券号，同一个人从两批各领一张同样的券时会两批都算进去；
+     * 那是少数，且两批都确实「带来了」这次使用。
+     */
+    private List<CouponIssueVO> withUsage(String entityNo, List<CouponIssueVO> batches) {
+        if (batches.isEmpty()) {
+            return batches;
+        }
+        List<PmtUserCoupon> used = userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                .eq(PmtUserCoupon::getEntityNo, entityNo)
+                .in(PmtUserCoupon::getIssueNo, batches.stream().map(CouponIssueVO::issueNo).toList())
+                .gt(PmtUserCoupon::getTimesUsed, 0));
+        if (used.isEmpty()) {
+            return batches;
+        }
+        java.util.Map<String, java.util.Set<String>> usersByIssue = new java.util.HashMap<>();
+        for (PmtUserCoupon uc : used) {
+            usersByIssue.computeIfAbsent(uc.getIssueNo(), k -> new java.util.HashSet<>()).add(uc.getUserNo());
+        }
+        java.util.Map<String, Long> countByIssue = used.stream().collect(java.util.stream.Collectors
+                .groupingBy(PmtUserCoupon::getIssueNo, java.util.stream.Collectors.counting()));
+        List<ai.neargo.shop.promotion.entity.PmtApply> applies = applyMapper == null ? List.of()
+                : applyMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtApply>lambdaQuery()
+                        .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
+                                ai.neargo.shop.promotion.entity.PmtApply.COUPON)
+                        .eq(ai.neargo.shop.promotion.entity.PmtApply::getEntityNo, entityNo)
+                        .in(ai.neargo.shop.promotion.entity.PmtApply::getPromoNo,
+                                batches.stream().map(CouponIssueVO::couponNo).distinct().toList())
+                        .in(ai.neargo.shop.promotion.entity.PmtApply::getUserNo,
+                                used.stream().map(PmtUserCoupon::getUserNo).distinct().toList())
+                        .isNull(ai.neargo.shop.promotion.entity.PmtApply::getRevertedAt));
+        return batches.stream().map(b -> {
+            java.util.Set<String> users = usersByIssue.getOrDefault(b.issueNo(), java.util.Set.of());
+            long amount = applies.stream()
+                    .filter(a -> b.couponNo().equals(a.getPromoNo()) && users.contains(a.getUserNo())
+                            && a.getAppliedAt() != null && a.getAppliedAt() >= b.issuedAt())
+                    .mapToLong(a -> a.getAmountMinor() == null ? 0 : a.getAmountMinor()).sum();
+            return new CouponIssueVO(b.issueNo(), b.couponNo(), b.segmentNo(), b.planned(), b.issued(),
+                    b.skipped(), b.skipReasons(), b.amountMinor(), b.operatorNo(), b.issuedAt(), b.audiences(),
+                    countByIssue.getOrDefault(b.issueNo(), 0L).intValue(), amount);
+        }).toList();
     }
 
     /**
@@ -577,7 +624,7 @@ public class PmtCouponServiceImpl implements CouponService {
         return new CouponIssueVO(b.getIssueNo(), b.getCouponNo(), b.getSegmentNo(),
                 nz(b.getPlannedCount()), nz(b.getIssuedCount()), nz(b.getSkippedCount()),
                 reasons, nz(b.getAmountMinor()), b.getOperatorNo(), nz(b.getIssuedAt()),
-                parseAudience(b.getAudienceJson()));
+                parseAudience(b.getAudienceJson()), 0, 0L);
     }
 
     private CouponVO vo(PmtCoupon c) {

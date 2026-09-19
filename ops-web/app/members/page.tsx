@@ -140,8 +140,17 @@ function MembersInner() {
 
   const reachCols: Column<ReachStat>[] = [
     { header: c.colEntity, cell: (r) => r.entityName },
-    { header: c.colSent, cell: (r) => r.sent },
     { header: c.colMembers, cell: (r) => r.members },
+    // 只有个数，没有标签名与人群条件（AC-15）：运营找商家谈话用不到那些
+    { header: c.colTagCount, cell: (r) => r.tagCount },
+    { header: c.colSegmentCount, cell: (r) => r.segmentCount },
+    { header: c.colTasks, cell: (r) => r.tasks },
+    { header: c.colSent, cell: (r) => r.sent },
+    { header: c.colSkipRate,
+      // 跳过率高 = 在反复给同一批人发、被频次闸拦下
+      cell: (r) => (r.skipRate >= 30
+        ? <Badge tone="warning">{r.skipRate}%</Badge>
+        : <span>{r.skipRate}%</span>) },
     { header: c.colOptOut, cell: (r) => r.optOut },
     { header: c.colOptOutRate,
       // 退订率高的要显眼：这一列是这条线唯一的健康指标

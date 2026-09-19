@@ -19,8 +19,10 @@ import { useMerchantStore } from "@/stores/merchant";
 import type { AudienceItem, ReachPlan, ReachResult } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
 import { takePendingAudience } from "@/shared/audience";
+import { ROUTES } from "@/shared/nav";
 
 const { t } = useI18n();
+const tt = (k: string) => String(t(k));
 const merchant = useMerchantStore();
 
 const SCENES = ["NOTICE", "WAKEUP", "COUPON"] as const;
@@ -59,6 +61,11 @@ async function recount() {
   }
 }
 
+/** 发完直接去看这一次的效果（m20）：来了几个、下了几单，7 天内会一直涨 */
+function viewEffect() {
+  if (result.value) uni.navigateTo({ url: `${ROUTES.reachTask}?taskNo=${result.value.taskNo}` });
+}
+
 function pickScene(s: string) {
   scene.value = s;
   void recount();
@@ -84,6 +91,7 @@ async function send() {
       scene: scene.value,
       title: title.value.trim(),
       body: body.value.trim(),
+      audienceDesc: itemsLabel.value,
     });
     // 发完立刻重算：频次闸已经把这批人挡住了，界面上要立刻反映出来，
     // 否则他会以为「再点一次能再发一遍」
@@ -179,6 +187,7 @@ onShow(() => {
         </text>
       </view>
       <text class="sh-muted sh-hint">{{ $t("reach.doneHint") }}</text>
+      <sh-go :text="tt('reach.viewEffect')" @tap="viewEffect"></sh-go>
     </view>
 
     <biz-audience-picker

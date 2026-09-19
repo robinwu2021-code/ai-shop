@@ -86,7 +86,8 @@ public class MemberAudienceServiceImpl implements MemberAudienceService {
     private static MemberQuery normalize(MemberQuery q, String scopeStoreNo) {
         return new MemberQuery(scopeStoreNo, q.level(), q.source(), q.status(), null,
                 q.tagNos() == null ? List.of() : q.tagNos(),
-                q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0);
+                q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0,
+                q.reachTaskNo(), q.reachOutcome());
     }
 
     @Override

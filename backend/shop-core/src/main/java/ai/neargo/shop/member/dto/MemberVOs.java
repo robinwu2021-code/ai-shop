@@ -25,12 +25,32 @@ public final class MemberVOs {
     public record MemberQuery(String storeNo, String level, String source, String status,
                               String phone, java.util.List<String> tagNos,
                               Long lastOrderBefore, Long lastOrderAfter,
-                              Long spentMin, Long spentMax, long page, long size) {
+                              Long spentMin, Long spentMax, long page, long size,
+                              String reachTaskNo, String reachOutcome) {
+
+        /** 某次触达里：下了单的 */
+        public static final String REACH_ORDERED = "ORDERED";
+        /** 某次触达里：点进店了的 */
+        public static final String REACH_OPENED = "OPENED";
+        /** 某次触达里：没来的（没点进店） */
+        public static final String REACH_NOT_OPENED = "NOT_OPENED";
+
+        /**
+         * 不带触达条件的写法。<b>只用于从零新建条件</b>；
+         * 由已有条件改写（归一、换标签、去分页）必须走全参构造，否则触达那两格会被悄悄丢掉。
+         */
+        public MemberQuery(String storeNo, String level, String source, String status,
+                           String phone, java.util.List<String> tagNos,
+                           Long lastOrderBefore, Long lastOrderAfter,
+                           Long spentMin, Long spentMax, long page, long size) {
+            this(storeNo, level, source, status, phone, tagNos, lastOrderBefore, lastOrderAfter,
+                    spentMin, spentMax, page, size, null, null);
+        }
 
         /** 人群条件里不带分页 —— 试算与解析都是全量 */
         public MemberQuery unpaged() {
             return new MemberQuery(storeNo, level, source, status, phone, tagNos,
-                    lastOrderBefore, lastOrderAfter, spentMin, spentMax, 1, 0);
+                    lastOrderBefore, lastOrderAfter, spentMin, spentMax, 1, 0, reachTaskNo, reachOutcome);
         }
     }
 
@@ -73,8 +93,16 @@ public final class MemberVOs {
                                  String activityNo, boolean isFirst, long occurredAt) {
     }
 
+    /**
+     * @param lastReach 最近一次触达（原型 m04）。没发过为空。
+     *                  商家打电话前能先看到上周已经发过一次唤回、而且他来了
+     */
     public record MemberDetailVO(MemberVO member, List<MemberStoreVO> stores,
-                                 List<MemberSourceVO> sources, List<TagVO> tags) {
+                                 List<MemberSourceVO> sources, List<TagVO> tags, LastReach lastReach) {
+    }
+
+    /** 一个人身上最近的一次触达：场景、时刻、之后来没来、下没下单 */
+    public record LastReach(String taskNo, String scene, long sentAt, Long openedAt, Long orderedAt) {
     }
 
     /**
@@ -147,9 +175,14 @@ public final class MemberVOs {
      *
      * @param optOutRate 退订率。<b>这是这条线唯一的健康指标</b> ——
      *                   发得多不算成绩，发到有人关掉才是问题
+     * @param tagCount     标签<b>个数</b>、人群<b>个数</b>、触达<b>次数</b>（AC-15）。
+     *                     <b>只有计数，没有标签名与人群条件</b>：运营找商家谈话只需要知道
+     *                     「他在反复给同一批人发」，不需要知道他给谁打了什么标签
+     * @param skipRate     跳过率 = 被频次闸等拦下的 / 命中的。高＝在反复给同一批人发
      */
     public record ReachStatVO(String entityNo, String entityName, int sent, int members,
-                              int optOut, double optOutRate) {
+                              int optOut, double optOutRate,
+                              int tagCount, int segmentCount, int tasks, int skipped, double skipRate) {
     }
 
     public record MemberSettingVO(String memberScope, boolean autoJoinOnOrder,

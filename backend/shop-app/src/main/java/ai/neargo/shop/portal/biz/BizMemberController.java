@@ -231,8 +231,8 @@ public class BizMemberController {
     @PostMapping("/biz/member-reach/send")
     public MemberReachService.ReachResult sendReach(@RequestBody ReachReq req) {
         return req.hasAudiences()
-                ? reachService.send(BizContext.requireMerchantNo(), req.audiences(), req.scene(),
-                        req.title(), req.body(), SecurityUtils.currentUserNo())
+                ? reachService.send(BizContext.requireMerchantNo(), req.audiences(), req.audienceDesc(),
+                        req.scene(), req.title(), req.body(), SecurityUtils.currentUserNo())
                 : reachService.send(BizContext.requireMerchantNo(), req.segmentNo(), req.scene(),
                         req.title(), req.body(), SecurityUtils.currentUserNo());
     }
@@ -240,13 +240,31 @@ public class BizMemberController {
     /**
      * @param segmentNo 旧入参：一个人群号（空 = 全部会员）。旧版 App 还在传
      * @param audiences 新入参：受众项（取或）。给了就以它为准
+     * @param audienceDesc 选人面板上显示的那句受众描述（「沉睡 · 爱囤货」），原样记进批次头，
+     *                     「发出去的」列表直接显示 —— 标签名、分层名的译法都在端上
      */
     public record ReachReq(String segmentNo, String scene, String title, String body,
-                           List<AudienceItem> audiences) {
+                           List<AudienceItem> audiences, String audienceDesc) {
 
         boolean hasAudiences() {
             return audiences != null && !audiences.isEmpty();
         }
+    }
+
+    /** 「发出去的」列表（原型 m19）。只有消息；券的批次走 {@code /biz/coupon-issues} */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-reach/tasks")
+    public List<MemberReachService.ReachTaskVO> reachTasks(@RequestParam(defaultValue = "1") long page,
+                                                           @RequestParam(defaultValue = "20") long size) {
+        return reachService.tasks(BizContext.requireMerchantNo(), page, size);
+    }
+
+    /** 一次触达的效果（原型 m20）：发出 · 来了 · 成单，下单的人，没来的人数 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/member-reach/tasks/{taskNo}")
+    public MemberReachService.ReachTaskVO reachTask(@PathVariable String taskNo) {
+        return reachService.task(BizContext.requireMerchantNo(), taskNo)
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
 
     // ------------------------------------------------------------------ 选人与标签（会员标签与定向营销 批 B）

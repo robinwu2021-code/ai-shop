@@ -335,6 +335,10 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          */
         registry.register("mbr_reach_log", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+        // 触达批次头（会员标签与定向营销 批 C）：与明细同一归属。运营端触达健康度读它的计数，
+        // 商家端「发出去的」按 entity_no 列 —— 登记在这里，两边都不必记得自己加条件
+        registry.register("mbr_reach_task", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
 
         /*
          * 违规处置记录。判据与前两批一致：**运营端有一条全量队列读它**

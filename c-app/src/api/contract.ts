@@ -369,6 +369,12 @@ export interface ShopApi {
   myMemberships(): Promise<MyMembership[]>;
   /** 关掉/打开某一家店的消息。**只有本人能改**，后端按登录人反查会员号 */
   setMembershipReach(entityNo: string, optOut: boolean): Promise<void>;
+  /**
+   * 点了商家发来的推送、进了店：回写「来了」（商家效果页的第二个数）。
+   * **只认本人** —— 服务端核对这条推送是不是发给当前账号的；`counted=false`
+   * 不区分原因，端上也不据此提示任何东西。
+   */
+  reachOpened(reachNo: string): Promise<{ counted: boolean }>;
   /** 领券。返回的是**领到手的那张**（UserCoupon），不是券模板 */
   receiveCoupon(couponNo: string): Promise<UserCoupon>;
   /** 只取当前自提点的团 —— 成团单位是自提点 */

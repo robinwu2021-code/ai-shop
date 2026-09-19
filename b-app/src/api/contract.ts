@@ -53,6 +53,7 @@ import type {
   ActivityConflict,
   ReachPlan,
   ReachResult,
+  ReachTask,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
@@ -1550,7 +1551,15 @@ export interface MerchantApi {
   /** 真发。跳过分布要显示在结果里，不能只报一句「发送成功」 */
   mSendReach(payload: {
     segmentNo?: string; audiences?: AudienceItem[]; scene: string; title: string; body: string;
+    /** 选人面板上那句受众描述，原样记进批次头 —— 「发出去的」列表直接显示它 */
+    audienceDesc?: string;
   }): Promise<ReachResult>;
+
+  /** 「发出去的」消息（原型 m19），新的在前。券的批次走 {@link mCouponIssues} */
+  mReachTasks(page?: number): Promise<ReachTask[]>;
+
+  /** 一次触达的效果（原型 m20）：发出 · 来了 · 成单，下单的人，没来的人数 */
+  mReachTask(taskNo: string): Promise<ReachTask>;
 
   // ---- 结算（B-11.9）
   /**

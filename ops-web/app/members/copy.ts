@@ -33,7 +33,7 @@ const zh = {
   revealDone: "完整号：{phone}",
   revealHint: "这是唯一能把后四位还原成真实号码的地方。谁在什么时候看了谁的号，都会留下记录",
 
-  reachHint: "按退订率倒序 —— 发得多不是成绩，发到有人关掉才是问题",
+  reachHint: "按跳过率倒序，同率再按退订率。跳过率高 = 在反复给同一批人发、被频次限制拦下；退订多 = 发的内容没人要。这一页只有计数，看不到商家的标签名与人群条件",
   lvTitle: "会员分层口径",
   lvHint: "全平台统一，商家只读。改了不会立刻重算：明天凌晨 3 点起生效；要马上看效果，去「定时任务」手动运行「会员分层重算」",
   lvSleep: "沉睡：超过几天没下单",
@@ -56,6 +56,10 @@ const zh = {
   emptyActivities: "还没有任何会员活动。活动由商家在自己的会员体系里发起，这里只列已发起的。",
   colSent: "近 30 天发送",
   colMembers: "会员数",
+  colTagCount: "标签数",
+  colSegmentCount: "人群数",
+  colTasks: "触达次数",
+  colSkipRate: "跳过率",
   colOptOut: "已退订",
   colOptOutRate: "退订率",
 
@@ -122,7 +126,7 @@ const en: typeof zh = {
   revealDone: "Full number: {phone}",
   revealHint: "This is the only place that turns the last four digits back into a real number. Every view is recorded",
 
-  reachHint: "Sorted by opt-out rate — sending a lot is not an achievement; being switched off is a problem",
+  reachHint: "Sorted by skip rate, then opt-out rate. High skip rate = sending to the same people again and again, blocked by frequency limits; many opt-outs = nobody wants the content. Counts only — merchants' tag names and segment rules are not shown",
   lvTitle: "Member tier rules",
   lvHint: "Platform-wide; merchants can only view. Saving does not recalculate immediately: takes effect from 03:00 tomorrow. To see it now, run \"Member tier recalculation\" under Scheduled jobs",
   lvSleep: "Dormant: days without an order",
@@ -145,6 +149,10 @@ const en: typeof zh = {
   emptyActivities: "No membership campaigns yet. Merchants start them from their own membership setup; this page only lists what they started.",
   colSent: "Sent (30d)",
   colMembers: "Members",
+  colTagCount: "Tags",
+  colSegmentCount: "Segments",
+  colTasks: "Sends",
+  colSkipRate: "Skip rate",
   colOptOut: "Opted out",
   colOptOutRate: "Opt-out rate",
 

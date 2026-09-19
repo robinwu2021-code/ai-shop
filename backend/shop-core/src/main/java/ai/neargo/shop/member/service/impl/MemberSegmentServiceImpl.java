@@ -173,7 +173,8 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
                 // 人群里不存手机号：那是找具体某个人用的，存进条件等于把号码抄了一份
                 null,
                 q.tagNos() == null ? List.of() : q.tagNos(),
-                q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0);
+                q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(), 1, 0,
+                q.reachTaskNo(), q.reachOutcome());
     }
 
     @Override
@@ -220,7 +221,7 @@ public class MemberSegmentServiceImpl implements MemberSegmentService {
                     .map(t -> t.equals(fromTagNo) ? toTagNo : t).distinct().toList();
             MemberQuery next = new MemberQuery(q.storeNo(), q.level(), q.source(), q.status(), q.phone(),
                     tags, q.lastOrderBefore(), q.lastOrderAfter(), q.spentMin(), q.spentMax(),
-                    q.page(), q.size());
+                    q.page(), q.size(), q.reachTaskNo(), q.reachOutcome());
             row.setRuleJson(json.writeValueAsString(next));
             segmentMapper.updateById(row);
             n++;

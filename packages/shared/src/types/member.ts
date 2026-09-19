@@ -121,6 +121,76 @@ export interface MemberDetail {
   sources: MemberSourceItem[];
   /** 身上的标签 */
   tags: MemberTag[];
+  /** 最近一次触达（原型 m04）。没发过为空 —— 商家打电话前能先看到上周已经发过一次唤回、而且他来了 */
+  lastReach?: MemberLastReach | null;
+}
+/** 一个人身上最近的一次触达 */
+export interface MemberLastReach {
+  /** 那一次的批次号，点进去是效果页 */
+  taskNo: string;
+  /** `NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知 */
+  scene: string;
+  /** 发出时刻 */
+  sentAt: number;
+  /** 点推送进店的时刻。没来为空 */
+  openedAt?: number | null;
+  /** 归到这次的下单时刻。没下为空 */
+  orderedAt?: number | null;
+}
+/**
+ * 一次触达（原型 m19 / m20）：发出 · 来了 · 成单。
+ *
+ * @remarks `settled` 为假时界面写「统计中」—— 归因窗口（默认 7 天）还没关，
+ * 数字还会涨；不写的话商家第二天看到 2 单就判定这次失败了。
+ */
+export interface ReachTask {
+  /** 批次号 */
+  taskNo: string;
+  /** `NOTICE` / `WAKEUP` / `COUPON` */
+  scene: string;
+  /** 消息标题 */
+  title: string;
+  /** 消息正文 */
+  body?: string | null;
+  /** 发给了谁（发送时选人面板上的那句话） */
+  audienceDesc: string;
+  /** 发出时刻 */
+  sentAt: number;
+  /** 归因窗口关闭时刻 */
+  statsUntil: number;
+  /** 窗口已关，数字不会再变 */
+  settled: boolean;
+  /** 条件命中多少人 */
+  matched: number;
+  /** 发出多少人 */
+  sent: number;
+  /** 跳过多少人 */
+  skipped: number;
+  /** 跳过的原因分布 */
+  skips: Array<{ reason: string; count: number }>;
+  /** 点推送进了店的人数 */
+  opened: number;
+  /** 窗口内下单的人数（每人只算触达后的第一单） */
+  ordered: number;
+  /** 这些单的实付合计（分） */
+  orderedAmountMinor: number;
+  /** 下单的人，最多 50 个。列表接口里为空 */
+  orderedMembers: ReachOrderedMember[];
+  /** 没来的人数。「没来的存人群」存进去的就是这些人 */
+  notOpened: number;
+}
+/** 效果页上下单的一个人 */
+export interface ReachOrderedMember {
+  /** 会员号 */
+  memberNo: string;
+  /** 商家给他记的备注名；没记为空，界面用手机尾号 */
+  name?: string | null;
+  /** 手机尾号 */
+  phoneTail?: string | null;
+  /** 这一单的实付（分） */
+  amountMinor: number;
+  /** 下单时刻 */
+  orderedAt: number;
 }
 /**
  * 会员标签。
@@ -246,6 +316,10 @@ export interface MemberSegmentRule {
   spentMin?: number | null;
   /** 累计消费上限（分）。空 = 不限 */
   spentMax?: number | null;
+  /** 限定某一次触达里的人（效果页「没来的存人群 / 下单的打标签」） */
+  reachTaskNo?: string | null;
+  /** 与 `reachTaskNo` 配用：`ORDERED` 下了单的 / `OPENED` 来了的 / `NOT_OPENED` 没来的；空 = 那次发到的所有人 */
+  reachOutcome?: string | null;
 }
 /**
  * 人群试算。

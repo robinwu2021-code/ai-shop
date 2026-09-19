@@ -17,6 +17,21 @@ const data = ref<MemberDetail | null>(null);
 const memberNo = ref("");
 
 /** 多店主体才显示「各店往来」—— 单店时它与上面的总数一模一样 */
+/** 最近触达那一行（m04）：「09-12 唤回 · 已下单」—— 商家打电话前先看到上周发过、他来没来 */
+const lastReachText = computed(() => {
+  const r = data.value?.lastReach;
+  if (!r) return "";
+  const outcome = r.orderedAt ? "ORDERED" : r.openedAt ? "OPENED" : "NONE";
+  return tt("memberDetail.lastReachLine", {
+    d: monthDay(r.sentAt), s: tt(`reach.scene.${r.scene}`), o: tt(`memberDetail.reachOutcome.${outcome}`),
+  });
+});
+
+function openLastReach() {
+  const r = data.value?.lastReach;
+  if (r) uni.navigateTo({ url: `/pages/reach-task/index?taskNo=${r.taskNo}` });
+}
+
 const showStores = computed(() => merchant.multiStore && (data.value?.stores.length ?? 0) > 0);
 
 function storeName(no?: string | null) {
@@ -153,6 +168,15 @@ onLoad(async (q) => {
             <text v-for="tg in mine" :key="tg.tagNo" class="sh-chip">{{ tg.name }}</text>
           </view>
           <text v-else class="sh-muted blk">{{ $t("memberDetail.noTags") }}</text>
+        </view>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+
+      <!-- 最近触达（原型 m04）：没发过就不占这一行 -->
+      <view v-if="data.lastReach" class="sh-card sh-mt-sm sh-row sh-row--between" @tap="openLastReach">
+        <view class="sh-fill">
+          <text class="txt-title">{{ $t("memberDetail.lastReach") }}</text>
+          <text class="sh-muted blk">{{ lastReachText }}</text>
         </view>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>

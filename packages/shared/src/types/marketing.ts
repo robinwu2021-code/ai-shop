@@ -536,6 +536,10 @@ export interface CouponIssueBatch {
   operatorNo?: string | null;
   /** 发放时刻（毫秒） */
   issuedAt: number;
+  /** 这一批里用过的张数。券不推送、没有「来了」，效果按已用算（原型 m19） */
+  usedCount?: number;
+  /** 这一批人发放后用这张券省下的钱（分） */
+  usedAmountMinor?: number;
 }
 /**
  * 买家券包里<b>商家发的那一张</b>（新模型，P6）。

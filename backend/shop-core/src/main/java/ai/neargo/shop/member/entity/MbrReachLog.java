@@ -37,4 +37,8 @@ public class MbrReachLog extends BaseEntity {
      * 打开率不是生意：他点开看了一眼然后关掉，对商家没有任何意义。
      */
     private Long orderedAt;
+    /** 归到这次触达的那一单的实付（分）。批次头的成交额由它累加 */
+    private Long orderedAmountMinor;
+    /** 归到这次触达的那一单。只记触达后的第一单 */
+    private String orderedRef;
 }

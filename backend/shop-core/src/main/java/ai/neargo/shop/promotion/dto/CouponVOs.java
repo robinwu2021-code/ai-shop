@@ -73,12 +73,16 @@ public final class CouponVOs {
      *                    {@code SOLD_OUT}（券发完了）
      * @param audiences   发给了哪些受众项（按标签 / 分层 / 人群，取或）。旧批次只有 segmentNo，这里为空 ——
      *                    此前按标签发的批次在发放记录里会显示成「全部会员」，因为那一页只认 segmentNo
+     * @param usedCount   这一批里用过的张数（至少核销一次）。券不推送、没有「来了」，效果按已用算（原型 m19）
+     * @param usedAmountMinor 这一批人发放后用这张券省下的钱（分，已撤销的不算）。
+     *                    <b>发放接口返回时两者为 0</b>：刚发出去，还没人用
      */
     public record CouponIssueVO(String issueNo, String couponNo, String segmentNo,
                                 int planned, int issued, int skipped,
                                 List<SkipReason> skipReasons, long amountMinor,
                                 String operatorNo, long issuedAt,
-                                List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences) {
+                                List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                                int usedCount, long usedAmountMinor) {
 
         public record SkipReason(String reason, int count) {
         }

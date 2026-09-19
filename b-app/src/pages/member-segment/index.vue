@@ -46,6 +46,10 @@ const conditions = computed(() => {
   if (r.lastOrderAfter) rows.push({ k: tt("memberSegment.lastAfter"), v: monthDay(r.lastOrderAfter) });
   if (r.spentMin != null) rows.push({ k: tt("memberSegment.spentMin"), v: money(r.spentMin) });
   if (r.spentMax != null) rows.push({ k: tt("memberSegment.spentMax"), v: money(r.spentMax) });
+  // 从效果页存下来的「某次触达里没来的 / 下单的」：名单跟着那一次走，不随时间变
+  if (r.reachTaskNo) {
+    rows.push({ k: tt("memberSegment.fromReach"), v: tt(`memberSegment.reachOutcome.${r.reachOutcome || "ALL"}`) });
+  }
   if (!rows.length) rows.push({ k: tt("memberSegment.rule"), v: tt("memberSegments.allMembers") });
   return rows;
 });

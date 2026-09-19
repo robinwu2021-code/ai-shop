@@ -34,9 +34,11 @@ export const levelPolicy: MemberLevelPolicy = {
 };
 
 export const reachStats: ReachStat[] = [
-  // 按退订率倒序 —— 发得多不是成绩，发到有人关掉才是问题
-  { entityNo: "M0002", entityName: "老张粮油店", sent: 12, members: 4, optOut: 2, optOutRate: 50 },
-  { entityNo: "M0001", entityName: "张记生鲜", sent: 86, members: 52, optOut: 3, optOutRate: 5.77 },
+  // 按跳过率倒序、同率再按退订率 —— 发得多不是成绩
+  { entityNo: "M0001", entityName: "张记生鲜", sent: 86, members: 52, optOut: 3, optOutRate: 5.77,
+    tagCount: 6, segmentCount: 3, tasks: 7, skipped: 59, skipRate: 40.69 },
+  { entityNo: "M0002", entityName: "老张粮油店", sent: 12, members: 4, optOut: 2, optOutRate: 50,
+    tagCount: 0, segmentCount: 1, tasks: 3, skipped: 0, skipRate: 0 },
 ];
 
 export const opsPromoCoupons: OpsPromoCoupon[] = [

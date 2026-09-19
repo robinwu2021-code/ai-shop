@@ -284,6 +284,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mPeriodPurchaseLines: { method: "GET", path: "/biz/period/{periodNo}/purchase-lines", auth: true, summary: "社区集单：按 SKU 汇总给进货单" },
   mPlanReach: { method: "POST", path: "/biz/member-reach/plan", auth: true, summary: "群发试算：能发多少、跳过多少" },
   mSendReach: { method: "POST", path: "/biz/member-reach/send", auth: true, summary: "群发（会打扰真实用户）" },
+  mReachTasks: { method: "GET", path: "/biz/member-reach/tasks", auth: true, summary: "发出去的消息（批次列表）" },
+  mReachTask: { method: "GET", path: "/biz/member-reach/tasks/{taskNo}", auth: true, summary: "一次触达的效果" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },

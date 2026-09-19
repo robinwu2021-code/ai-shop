@@ -62,6 +62,21 @@ public final class MemberMappers {
             extends BaseMapper<ai.neargo.shop.member.entity.MbrReachLog> {
     }
 
+    /** 触达批次头。效果计数只走下面两条带条件的累加 */
+    public interface ReachTaskMapper
+            extends BaseMapper<ai.neargo.shop.member.entity.MbrReachTask> {
+
+        @org.apache.ibatis.annotations.Update("UPDATE mbr_reach_task SET opened_count = opened_count + 1 "
+                + "WHERE task_no = #{taskNo} AND deleted = 0")
+        int incOpened(@org.apache.ibatis.annotations.Param("taskNo") String taskNo);
+
+        @org.apache.ibatis.annotations.Update("UPDATE mbr_reach_task SET ordered_count = ordered_count + 1, "
+                + "ordered_amount_minor = ordered_amount_minor + #{amount} "
+                + "WHERE task_no = #{taskNo} AND deleted = 0")
+        int incOrdered(@org.apache.ibatis.annotations.Param("taskNo") String taskNo,
+                       @org.apache.ibatis.annotations.Param("amount") long amountMinor);
+    }
+
     public interface TagMergeLogMapper
             extends BaseMapper<ai.neargo.shop.member.entity.MbrTagMergeLog> {
     }

@@ -88,6 +88,7 @@ import type {
   ActivityConflict,
   ReachPlan,
   ReachResult,
+  ReachTask,
   CouponIssueBatch,
   CouponRedeemResult,
   CouponRedeemView,
@@ -563,6 +564,8 @@ export const httpApi: MerchantApi = {
     http.get<BatchPurchaseLine[]>(buildPath(E.mPeriodPurchaseLines.path, { periodNo })),
   mPlanReach: (payload) => http.post<ReachPlan>(E.mPlanReach.path, payload),
   mSendReach: (payload) => http.post<ReachResult>(E.mSendReach.path, payload),
+  mReachTasks: (page) => http.get<ReachTask[]>(E.mReachTasks.path, { page: page ?? 1, size: 20 }),
+  mReachTask: (taskNo) => http.get<ReachTask>(buildPath(E.mReachTask.path, { taskNo })),
 
   mIncomeSummary: (allStores) =>
     http.get<IncomeSummary>(E.mIncomeSummary.path, allStores ? { allStores: true } : undefined),

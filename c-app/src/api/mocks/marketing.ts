@@ -18,6 +18,7 @@ export const marketingMock: Pick<ShopApi,
   | "myStoreCoupons"
   | "myMemberships"
   | "setMembershipReach"
+  | "reachOpened"
   | "receiveCoupon"
   | "groupBuyList"
   | "groupBuyDetail"
@@ -116,6 +117,11 @@ export const marketingMock: Pick<ShopApi,
     m.reachOptOut = optOut;
     persist();
     return delay(undefined as unknown as void);
+  },
+
+  /** mock 里没有推送：点进来就当本人，计入 */
+  async reachOpened() {
+    return delay({ counted: true });
   },
 
   async receiveCoupon(couponNo) {

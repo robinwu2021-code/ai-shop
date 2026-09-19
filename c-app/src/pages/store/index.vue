@@ -124,6 +124,15 @@ onLoad(async (q) => {
   // from=QR 表示扫码进店 —— 归因写在服务端，决定订单的 trafficSource 与商家费率档
   fromParam.value = (q?.from as string) || (storeCode ? "QR" : "");
 
+  /*
+   * 从商家发来的推送点进来（链接带 reach=<这一条的号>）：回写「来了」。
+   * 没登录就不报 —— 服务端要核是不是本人；报不上也不影响进店，吞掉失败。
+   */
+  const reachNo = (q?.reach as string) || "";
+  if (reachNo && user.isLogin) {
+    api.reachOpened(reachNo).catch(() => undefined);
+  }
+
   if (storeCode && !merchantNo.value) {
     const home = await api.storeByCode(storeCode, deviceId());
     // 主页数据一次就拿回来了，不再多打一次 storeHome

@@ -37,8 +37,31 @@ public interface MemberReachService {
      *
      * @return 实际发出多少
      */
-    ReachResult send(String entityNo, List<AudienceItem> audiences, String scene, String title,
-                     String body, String operatorNo);
+    ReachResult send(String entityNo, List<AudienceItem> audiences, String audienceDesc, String scene,
+                     String title, String body, String operatorNo);
+
+    /** 不带受众描述的写法（旧版 App 没传）。批次头上的描述由受众项兜底拼出 */
+    default ReachResult send(String entityNo, List<AudienceItem> audiences, String scene, String title,
+                             String body, String operatorNo) {
+        return send(entityNo, audiences, null, scene, title, body, operatorNo);
+    }
+
+    /** 「发出去的」列表（原型 m19），新的在前。列表项不带下单名单 */
+    List<ReachTaskVO> tasks(String entityNo, long page, long size);
+
+    /** 一次触达的效果（原型 m20）。不是这家店的批次号返回空 */
+    java.util.Optional<ReachTaskVO> task(String entityNo, String taskNo);
+
+    /**
+     * 买家点推送进了店（C 端）。<b>只认本人</b>：这条触达的会员对不上当前账号就不记，
+     * 且不说是哪一种原因 —— 免得 reachNo 被拿来探号。
+     *
+     * @return 这一下有没有计入
+     */
+    boolean opened(String reachNo, String userNo);
+
+    /** 效果页的下单名单最多列多少人：再多商家也不会一行行看，要看就存成人群 */
+    int ORDERED_MEMBERS_LIMIT = 50;
 
     /** 旧入参，见 {@link #plan(String, String, String)} */
     default ReachResult send(String entityNo, String segmentNo, String scene, String title,
@@ -67,5 +90,24 @@ public interface MemberReachService {
 
     /** @param taskNo 这一批的号。效果回看按它聚合 */
     record ReachResult(String taskNo, int sent, int skipped, List<ReachPlan.Skip> skips) {
+    }
+
+    /**
+     * 一次触达（原型 m19 / m20）。
+     *
+     * @param settled        归因窗口已关：数字不会再变。没关时界面写「统计中」——
+     *                       免得商家第二天看到 2 单就判定这次失败
+     * @param orderedMembers 下单的人，最多 {@link #ORDERED_MEMBERS_LIMIT} 个；列表接口里为空
+     * @param notOpened      没来的人数（发出 − 来了）。「没来的存人群」按它
+     */
+    record ReachTaskVO(String taskNo, String scene, String title, String body, String audienceDesc,
+                       long sentAt, long statsUntil, boolean settled,
+                       int matched, int sent, int skipped, List<ReachPlan.Skip> skips,
+                       int opened, int ordered, long orderedAmountMinor,
+                       List<OrderedMember> orderedMembers, int notOpened) {
+    }
+
+    /** @param name 商家给他记的备注名；没记为空，界面用手机尾号 */
+    record OrderedMember(String memberNo, String name, String phoneTail, long amountMinor, long orderedAt) {
     }
 }
