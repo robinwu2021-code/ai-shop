@@ -55,10 +55,6 @@ const bars = computed(() => {
 
 const orderedNos = computed(() => (data.value?.orderedMembers ?? []).map((m) => m.memberNo));
 
-function who(m: ReachTask["orderedMembers"][number]) {
-  return m.name || tt("reachTask.anon");
-}
-
 function openMember(memberNo: string) {
   uni.navigateTo({ url: `/pages/member-detail/index?memberNo=${memberNo}` });
 }
@@ -118,7 +114,7 @@ onLoad((q) => {
       <view class="sh-card">
         <view v-for="b in bars" :key="b.key" class="sh-row meter">
           <text class="txt-sub meter__label">{{ b.label }}</text>
-          <view class="bar sh-fill"><view class="bar__in" :style="{ width: b.w + '%' }"></view></view>
+          <view class="meter__bar sh-fill"><view class="meter__in" :style="{ width: b.w + '%' }"></view></view>
           <text class="txt-body sh-num meter__n">{{ b.n }}</text>
         </view>
         <text v-if="data.skipped" class="txt-caption sh-muted blk">
@@ -126,26 +122,29 @@ onLoad((q) => {
         </text>
       </view>
 
-      <sh-section :title="tt('reachTask.orderedN', { n: data.ordered })">
-        <view v-if="data.orderedMembers.length" class="sh-cells">
-          <view v-for="m in data.orderedMembers" :key="m.memberNo" class="sh-cell sh-row sh-row--between"
-            @tap="openMember(m.memberNo)">
-            <text class="txt-body">{{ who(m) }} <text class="sh-muted sh-num">···{{ m.phoneTail || "----" }}</text></text>
-            <text class="txt-body sh-num">{{ money(m.amountMinor) }}</text>
-          </view>
+      <sh-section class="sh-mt-sm" :title="tt('reachTask.orderedN', { n: data.ordered })"></sh-section>
+      <view v-if="data.orderedMembers.length" class="sh-cells">
+        <view v-for="m in data.orderedMembers" :key="m.memberNo" class="sh-cell sh-row sh-row--between"
+          @tap="openMember(m.memberNo)">
+          <text class="txt-body">
+            <text v-if="m.name">{{ m.name }} </text><text class="sh-num" :class="{ 'sh-muted': m.name }">···{{ m.phoneTail || "----" }}</text>
+          </text>
+          <text class="txt-body sh-num">{{ money(m.amountMinor) }}</text>
         </view>
-        <sh-empty v-else compact bare :text="tt('reachTask.noOrdered')"></sh-empty>
-      </sh-section>
+      </view>
+      <sh-empty v-else compact bare :text="tt('reachTask.noOrdered')"></sh-empty>
 
       <view class="sh-card sh-mt-sm sh-row sh-row--between">
         <text class="txt-body">{{ $t("reachTask.notOpenedN", { n: data.notOpened }) }}</text>
       </view>
 
       <sh-actionbar>
-        <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !data.notOpened || saving }"
-          @tap="saveNotOpened">{{ $t("reachTask.saveNotOpened") }}</view>
-        <view class="sh-btn sh-fill" :class="{ 'is-disabled': !orderedNos.length }"
-          @tap="orderedNos.length && (showTag = true)">{{ $t("reachTask.tagOrdered") }}</view>
+        <view class="sh-row acts">
+          <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !data.notOpened || saving }"
+            @tap="saveNotOpened">{{ $t("reachTask.saveNotOpened") }}</view>
+          <view class="sh-btn sh-fill" :class="{ 'is-disabled': !orderedNos.length }"
+            @tap="orderedNos.length && (showTag = true)">{{ $t("reachTask.tagOrdered") }}</view>
+        </view>
       </sh-actionbar>
 
       <biz-batch-tag-sheet
@@ -187,16 +186,20 @@ onLoad((q) => {
   width: 64rpx;
   text-align: end;
 }
-.bar {
+.meter__bar {
   height: 12rpx;
   border-radius: 9999px;
   background: var(--sh-faint);
   overflow: hidden;
 }
-.bar__in {
+.meter__in {
   height: 100%;
   border-radius: 9999px;
   background: var(--sh-primary);
+}
+.acts {
+  gap: 16rpx;
+  width: 100%;
 }
 .blk {
   display: block;

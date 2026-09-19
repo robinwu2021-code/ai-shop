@@ -83,11 +83,6 @@ onShow(async () => {
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
-      <!-- 发出去的（原型 s01 加的一行 → m19）：消息与券的效果回看 -->
-      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.reachTasks)">
-        <text class="txt-body">{{ $t("marketing.reachTasks") }}</text>
-        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.groups)">
         <text class="txt-body">{{ $t("marketing.groups") }}</text>
         <view class="sh-row">
@@ -96,6 +91,11 @@ onShow(async () => {
           </text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
+      </view>
+      <!-- 发出去的（原型 s01 加的一行 → m19）：消息与券的效果回看 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.reachTasks)">
+        <text class="txt-body">{{ $t("marketing.reachTasks") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 

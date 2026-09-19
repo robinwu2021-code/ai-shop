@@ -539,9 +539,11 @@ export function allMockMembers() {
  * 效果页「没来的存人群」存进去的条件要能在 matchSegment 里按它筛回来，
  * 只存三个计数的话，存出来的人群会是全部会员。
  */
+import type { ReachScene } from "@shared/types";
+
 interface MockReachRow { memberNo: string; opened: boolean; orderedMinor: number | null; orderedAt: number | null }
 interface MockReachTask {
-  taskNo: string; scene: string; title: string; body: string; audienceDesc: string;
+  taskNo: string; scene: ReachScene; title: string; body: string; audienceDesc: string;
   sentAt: number; matched: number; skips: Array<{ reason: string; count: number }>; rows: MockReachRow[];
 }
 const REACH_WINDOW = 7 * 86400_000;
@@ -552,7 +554,7 @@ function seedReach() {
   if (mockReach.length) return;
   const ms = mockMembers();
   const day = 86400_000;
-  const mk = (taskNo: string, scene: string, title: string, desc: string, ago: number, n: number,
+  const mk = (taskNo: string, scene: ReachScene, title: string, desc: string, ago: number, n: number,
     opened: number, ordered: number[]): MockReachTask => ({
     taskNo, scene, title, body: "", audienceDesc: desc, sentAt: Date.now() - ago * day,
     matched: n + 2, skips: [{ reason: "TOO_SOON", count: 2 }],

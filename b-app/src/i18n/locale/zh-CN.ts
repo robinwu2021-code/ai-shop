@@ -2006,7 +2006,6 @@ export default {
     ordered: "成单",
     skipped: "另有 {n} 人因频次限制等原因没有发出",
     orderedN: "已下单 {n} 人",
-    anon: "未备注",
     noOrdered: "还没有人下单",
     notOpenedN: "未进店 {n} 人",
     saveNotOpened: "未进店的存为人群",

@@ -5,6 +5,7 @@
 
 import { db, delay, nextNo, persist } from "@shared/mock/db";
 import { ApiError } from "@shared/net/http-client";
+import type { ReachScene } from "@shared/types";
 import type { ActivityConflict, BatchPeriod, BatchPeriodDetail, CouponIssueBatch, MarketingCampaign, MerchantCoupon, StoreActivity } from "@shared/types";
 import { isPhone } from "@shared/utils/validate";
 import {
@@ -537,7 +538,7 @@ export const marketingMock: Pick<MerchantApi,
     }
     persist();
     const taskNo = `RC-${now}`;
-    addMockReachTask({ taskNo, scene: payload.scene, title: payload.title, body: payload.body,
+    addMockReachTask({ taskNo, scene: payload.scene as ReachScene, title: payload.title, body: payload.body,
       audienceDesc: payload.audienceDesc || "—", sentAt: now, matched: plan.matched, skips: plan.skips }, sentTo);
     return delay({
       taskNo,
