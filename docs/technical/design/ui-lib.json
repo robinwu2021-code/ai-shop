@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 319,
+        "b-app": 320,
         "c-app": 226
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 128,
         "c-app": 41
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 110,
         "c-app": 27
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 206,
+        "b-app": 205,
         "c-app": 73
       }
     },
@@ -785,7 +785,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 171,
+        "b-app": 172,
         "c-app": 59
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 118,
         "c-app": 13
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 132,
+        "b-app": 134,
         "c-app": 61
       }
     },
@@ -1155,7 +1155,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 0
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 58,
         "c-app": 29
       }
     },
@@ -1637,7 +1637,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 44,
+        "b-app": 45,
         "c-app": 19
       }
     },
@@ -1845,7 +1845,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 11,
         "c-app": 3
       }
     },
@@ -1877,7 +1877,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 19,
+        "b-app": 18,
         "c-app": 0
       }
     }
@@ -1894,7 +1894,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 29,
+        "b-app": 30,
         "c-app": 12,
         "lib": 0
       },
@@ -2640,7 +2640,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 21,
+        "b-app": 22,
         "c-app": 5,
         "lib": 1
       },
@@ -3069,6 +3069,49 @@
         "sh-cells"
       ],
       "rootDecl": {}
+    },
+    {
+      "name": "biz-category-sheet",
+      "file": "b-app/src/components/biz/biz-category-sheet.vue",
+      "scope": "B 端",
+      "lines": 129,
+      "props": [
+        "visible: boolean",
+        "storeNo: string"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "调整经营类目 —— 经营类目页与建商品页共用的底部面板（TDD-门店经营类目 §4.2）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-ink",
+          "txt-strong",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16,
+          24,
+          32
+        ],
+        "radius": [],
+        "deps": [
+          "sh-option",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "grp"
+      ],
+      "rootDecl": {
+        "margin-top": "24rpx"
+      }
     },
     {
       "name": "biz-item-picker",
@@ -3607,9 +3650,10 @@
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
-        "sh-uploader"
+        "sh-uploader",
+        "biz-category-sheet"
       ],
-      "libClassHits": 302,
+      "libClassHits": 309,
       "localSelectors": 67,
       "localCssLines": 294,
       "rolled": []
@@ -4491,15 +4535,24 @@
       "key": "b-app/store-categories",
       "file": "b-app/src/pages/store-categories/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
         "sh-icon",
-        "sh-option",
-        "sh-scaffold"
+        "sh-scaffold",
+        "biz-category-sheet"
       ],
-      "libClassHits": 25,
-      "localSelectors": 6,
-      "localCssLines": 20,
-      "rolled": []
+      "libClassHits": 15,
+      "localSelectors": 3,
+      "localCssLines": 10,
+      "rolled": [
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：store-categories .opt（逐处核过）",
+          "gap": true
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5159,6 +5212,28 @@
     },
     {
       "app": "b-app",
+      "page": "biz-category-sheet",
+      "key": "b-app/biz-category-sheet",
+      "file": "b-app/src/components/biz/biz-category-sheet.vue",
+      "components": [
+        "sh-option",
+        "sh-sheet"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 4,
+      "localCssLines": 13,
+      "rolled": [
+        {
+          "id": "sechead",
+          "label": "分段标题（只有标题）",
+          "lib": ".txt-title + 间距档",
+          "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
       "page": "biz-item-picker",
       "key": "b-app/biz-item-picker",
       "file": "b-app/src/components/biz/biz-item-picker.vue",
@@ -5440,6 +5515,16 @@
   ],
   "gaps": [
     {
+      "id": "optcard",
+      "label": "选项卡片",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：store-categories .opt（逐处核过）",
+      "pages": [
+        "b-app/store-categories"
+      ]
+    },
+    {
       "id": "stat",
       "label": "统计数字格",
       "lib": null,
@@ -5448,13 +5533,23 @@
       "pages": [
         "c-app/merchant"
       ]
+    },
+    {
+      "id": "sechead",
+      "label": "分段标题（只有标题）",
+      "lib": ".txt-title + 间距档",
+      "gap": false,
+      "rule": "^\\s*\\.(?:sec__h|grp)\\b[^{}]*\\{[^}]*margin",
+      "pages": [
+        "b-app/biz-category-sheet"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
     "blocks": 82,
-    "components": 36,
-    "pages": 136,
-    "gapKinds": 1
+    "components": 37,
+    "pages": 137,
+    "gapKinds": 2
   }
 }

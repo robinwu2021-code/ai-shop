@@ -7874,6 +7874,12 @@
           "ar": "أدخل اسم الخاصية"
         },
         {
+          "key": "goods.addStoreCategory",
+          "zh-CN": "添加经营类目",
+          "en": "Add store category",
+          "ar": "إضافة فئة للمتجر"
+        },
+        {
           "key": "goods.applyAll",
           "zh-CN": "统一填入",
           "en": "Apply to all",
@@ -8400,6 +8406,12 @@
           "zh-CN": "已加载全部",
           "en": "No more items",
           "ar": "لا مزيد من العناصر"
+        },
+        {
+          "key": "goods.noStoreCategory",
+          "zh-CN": "本店还没有经营类目，先添加一个",
+          "en": "This store has no categories yet. Add one first.",
+          "ar": "لا توجد فئات لهذا المتجر بعد. أضف واحدة أولاً."
         },
         {
           "key": "goods.nominalGram",
@@ -9243,15 +9255,15 @@
         },
         {
           "key": "home.catalogEntry",
-          "zh-CN": "我的类目",
-          "en": "My categories",
-          "ar": "فئاتي"
+          "zh-CN": "经营类目",
+          "en": "Store categories",
+          "ar": "فئات المتجر"
         },
         {
           "key": "home.catalogEntryHint",
-          "zh-CN": "本店摆哪几类、叫什么名",
-          "en": "Which categories this store carries, and what they are called",
-          "ar": "الفئات التي يعرضها متجرك وكيف تسمّيها"
+          "zh-CN": "本店卖哪几类",
+          "en": "What this store sells",
+          "ar": "ما يبيعه هذا المتجر"
         },
         {
           "key": "home.cell.afterSale",
@@ -11589,9 +11601,9 @@
         },
         {
           "key": "mySpecs.noShelf",
-          "zh-CN": "尚未设置货架类目。在「我的类目」中选定后，此处将列出对应的可用规格。",
-          "en": "No categories on your shelf yet. Pick some in “My categories”.",
-          "ar": "لا توجد فئات على رفّك بعد. اخترها من «فئاتي»."
+          "zh-CN": "尚未设置经营类目。在「经营类目」中添加后，此处将列出对应的可用规格。",
+          "en": "No store categories yet. Add some in “Store categories”.",
+          "ar": "لا توجد فئات للمتجر بعد. أضفها من «فئات المتجر»."
         },
         {
           "key": "mySpecs.noValueYet",
@@ -18080,16 +18092,22 @@
           "ar": "بالكامل"
         },
         {
+          "key": "storeCategories.adjust",
+          "zh-CN": "调整经营类目",
+          "en": "Edit store categories",
+          "ar": "تعديل فئات المتجر"
+        },
+        {
           "key": "storeCategories.empty",
-          "zh-CN": "还没摆货架",
-          "en": "No shelves yet",
-          "ar": "لا توجد أرفف بعد"
+          "zh-CN": "还没有经营类目",
+          "en": "No store categories yet",
+          "ar": "لا توجد فئات للمتجر بعد"
         },
         {
           "key": "storeCategories.emptyTip",
-          "zh-CN": "建一件商品，它的类目会自动加进来",
-          "en": "Publish a product and its category shows up here",
-          "ar": "انشر منتجاً وستظهر فئته هنا"
+          "zh-CN": "先添加经营类目，再建商品",
+          "en": "Add a store category before creating products",
+          "ar": "أضف فئة للمتجر قبل إنشاء المنتجات"
         },
         {
           "key": "storeCategories.goodsCount",
@@ -18104,12 +18122,6 @@
           "ar": "هذا الرف يحتوي على منتجات؛ انقلها أولاً."
         },
         {
-          "key": "storeCategories.mine",
-          "zh-CN": "本店货架",
-          "en": "On display",
-          "ar": "معروضة"
-        },
-        {
           "key": "storeCategories.needCert",
           "zh-CN": "需资质",
           "en": "licence needed",
@@ -18117,7 +18129,7 @@
         },
         {
           "key": "storeCategories.notAuthorized",
-          "zh-CN": "缺少经营这一类的资质，去「资质证照」里补齐后再摆",
+          "zh-CN": "缺少经营这一类的资质，去「资质证照」里补齐后再添加",
           "en": "You are not credentialed for this category. Add it under “My licences” first.",
           "ar": "لا تملك رخصة هذه الفئة؛ أضفها من «تراخيصي» ثم اعرضها"
         },
@@ -18140,10 +18152,10 @@
           "ar": "إعادة تسمية"
         },
         {
-          "key": "storeCategories.renameHint",
-          "zh-CN": "改的只是店里的叫法，平台类目不变，比价与筛选照常",
-          "en": "This only changes the in-store label — the platform category stays the same.",
-          "ar": "يغيّر الاسم داخل المتجر فقط؛ فئة المنصة تبقى كما هي."
+          "key": "storeCategories.scopeHint",
+          "zh-CN": "本店卖哪几类。建商品时只能从这里选",
+          "en": "What this store sells. New products can only use these categories.",
+          "ar": "ما يبيعه هذا المتجر. عند إنشاء منتج يمكن الاختيار من هذه الفئات فقط."
         },
         {
           "key": "storeCategories.specsEntry",
@@ -18153,9 +18165,9 @@
         },
         {
           "key": "storeCategories.title",
-          "zh-CN": "我的类目",
-          "en": "My categories",
-          "ar": "فئاتي"
+          "zh-CN": "经营类目",
+          "en": "Store categories",
+          "ar": "فئات المتجر"
         },
         {
           "key": "storeCategories.total",
@@ -21265,6 +21277,12 @@
           "zh-CN": "该商品仅限活动购买",
           "en": "This item is only available through a promotion",
           "ar": "هذا المنتج متاح فقط ضمن العروض"
+        },
+        {
+          "key": "err.goods.category_not_in_store",
+          "zh-CN": "本店经营类目里没有「{0}」，请先添加",
+          "en": "This store does not sell \"{0}\" yet. Add it to the store categories first",
+          "ar": "«{0}» ليست ضمن فئات هذا المتجر، أضفها أولًا"
         },
         {
           "key": "err.goods.cover_required",
@@ -29486,6 +29504,7 @@
           "MEMBER_AUDIENCE_REQUIRED",
           "MEMBER_AUDIENCE_EMPTY",
           "GOODS_ACTIVITY_ONLY",
+          "GOODS_CATEGORY_NOT_IN_STORE",
           "PAY_CHANNEL_UNAVAILABLE",
           "PROXY_ORDER_AMOUNT_LIMIT",
           "PROXY_ORDER_DAILY_LIMIT",

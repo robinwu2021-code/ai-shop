@@ -217,7 +217,7 @@
 | 传一张资质证件 | POST | `/biz/qualifications/save` | `mSaveQualification` | qualifications |
 | 店铺门面 | GET | `/biz/store` | `mStore` | home、store、store-notice、store-scope |
 | 保存店铺门面 | POST | `/biz/store` | `mSaveStore` | store、store-scope |
-| 本店经营类目 | GET | `/biz/store/:storeNo/categories` | `mStoreCategories` | goods-list、store-categories |
+| 本店经营类目 | GET | `/biz/store/:storeNo/categories` | `mStoreCategories` | goods-edit、goods-list、store-categories |
 | 整份替换本店经营类目 | POST | `/biz/store/:storeNo/categories` | `mSaveStoreCategories` | store-categories |
 | 只改公告（含有效期，可同时发到别的门店） | POST | `/biz/store/announcement` | `mSaveAnnouncement` | store-notice |
 | 从常用里删一条 | POST | `/biz/store/announcement/recent/remove` | `mDropNoticeRecent` | store-notice |
@@ -377,7 +377,7 @@
 | `deposit` | `biz:finance` | `biz:finance` | 老板 | — |
 | `entities` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `entity-detail` | `biz:store:admin` | `biz:store:admin`、`biz:store`、`biz:finance` | 老板 | — |
-| `goods-edit` | `biz:goods` | `biz:goods`、`biz:store`、`biz:stock` | 老板、店长 | — |
+| `goods-edit` | `biz:goods` | `biz:store`、`biz:goods`、`biz:stock` | 老板、店长 | — |
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `goods-publish` | `biz:goods` | `biz:goods`、`biz:stock` | 老板、店长 | — |
 | `group` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
