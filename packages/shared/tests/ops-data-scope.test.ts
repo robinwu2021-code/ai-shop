@@ -286,6 +286,10 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "MemberQueryPortImpl#judge":
     "判「这个人符不符合这条人群规则」。它是**判定**不是列举 —— 输入的 userNo 已经由调用方"
     + "圈定，这里再按数据域裁一次的效果是「符合的人被判成不符合」，把一次规则命中变成静默漏发",
+  "MemberQueryPortImpl#matchesRule":
+    "与 judge 同一件事的另一半：判这个买家是否满足活动发布时抄下来的人群条件快照（AC-9）。"
+    + "同样是**判定**不是列举，userNo 由调用方（算价）给定、按 entity_no + person_no 定位到一行会员；"
+    + "按数据域再裁一次，会把快照受众里的人判成不符合 —— 活动对他静默不减钱",
 
   // ── 批① ord_sub_order 之后留下的 ──
   "MerchantOrderServiceImpl#toOpsVO":

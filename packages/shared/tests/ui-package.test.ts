@@ -246,7 +246,9 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     //    `biz-address-region` 之后这条闸门当场变红 —— 而它报的是「这个件不在
     //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
     "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
-    "biz-item-picker", "biz-supplier-picker"]);
+    "biz-item-picker", "biz-supplier-picker",
+    // 选人面板与批量打标：外面包的是 sh-sheet，同样是浮层
+    "biz-audience-picker", "biz-batch-tag-sheet"]);
 
   /** base.css 里**所有** `#ifdef MP-WEIXIN` 段拼起来 —— 不能只取第一段：
    *  2026-09-06 在块间缝那段之前又插了一段（button::after 重置），

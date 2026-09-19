@@ -34,6 +34,8 @@ const title = ref("");
 const body = ref("");
 const plan = ref<ReachPlan | null>(null);
 const result = ref<ReachResult | null>(null);
+/** 试算没算出来。**与「一个人都发不出去」是两件事** —— 只弹一句提示的话，卡片空着，看起来像 0 人 */
+const planFailed = ref(false);
 const busy = ref(false);
 
 const canSend = computed(
@@ -45,12 +47,13 @@ const canSend = computed(
 async function recount() {
   plan.value = null;
   result.value = null;
+  planFailed.value = false;
   if (busy.value || !items.value.length) return;
   busy.value = true;
   try {
     plan.value = await api.mPlanReach({ audiences: items.value, scene: scene.value });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } catch {
+    planFailed.value = true;
   } finally {
     busy.value = false;
   }
@@ -130,6 +133,10 @@ onShow(() => {
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
+    </view>
+
+    <view v-if="planFailed" class="sh-card sh-mt-sm">
+      <sh-empty line :failed="planFailed" @retry="recount"></sh-empty>
     </view>
 
     <!-- ③ 试算：三个数字在写内容之前就摆出来 -->

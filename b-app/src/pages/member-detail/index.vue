@@ -36,14 +36,26 @@ const mine = computed(() => (data.value?.tags ?? []).filter((x) => x.tagType ===
 // 选标签弹层（原型 m05）：多选，勾 / 去勾，按「保存」一次提交差集
 const showTags = ref(false);
 const allTags = ref<MemberTag[]>([]);
+/** 标签字典拉过没有 / 拉失败没有 —— 没拉到之前不该显示「还没有标签」 */
+const tagsLoaded = ref(false);
+const tagsFailed = ref(false);
 const picked = ref<string[]>([]);
 const saving = ref(false);
 
 async function openTags() {
   picked.value = mine.value.map((x) => x.tagNo);
   showTags.value = true;
-  allTags.value = (await api.mMemberTags().catch(() => []))
-    .filter((x) => x.tagType === "MCH" && x.status === "ACTIVE");
+  await loadTags();
+}
+
+async function loadTags() {
+  try {
+    allTags.value = (await api.mMemberTags()).filter((x) => x.tagType === "MCH" && x.status === "ACTIVE");
+    tagsFailed.value = false;
+  } catch {
+    tagsFailed.value = true;
+  }
+  tagsLoaded.value = true;
 }
 
 function toggleTag(no: string) {
@@ -190,7 +202,8 @@ onLoad(async (q) => {
             </view>
           </view>
         </view>
-        <sh-empty v-if="!allTags.length" compact bare :text="tt('batchTag.noTags')"></sh-empty>
+        <sh-empty v-if="!allTags.length" :pending="!tagsLoaded" :failed="tagsFailed" compact bare
+                  :text="tt('batchTag.noTags')" @retry="loadTags"></sh-empty>
         <template #foot>
           <text class="txt-caption sh-muted blk foot__hint">{{ $t("memberDetail.tagCount", { n: picked.length, m: MAX_TAGS }) }}</text>
           <view class="sh-row bar">
