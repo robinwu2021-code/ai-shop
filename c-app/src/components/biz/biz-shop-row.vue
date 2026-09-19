@@ -57,7 +57,7 @@ const metaText = computed(() => {
       <text class="txt-caption txt-quiet row__line sh-num">{{ metaText }}</text>
       <text v-if="merchant.desc" class="txt-caption txt-quiet row__line">{{ merchant.desc }}</text>
     </view>
-    <sh-icon name="chevronRight" :size="28" color="var(--sh-sub)"></sh-icon>
+    <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
   </view>
 </template>
 
