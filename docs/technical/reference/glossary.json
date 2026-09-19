@@ -2302,6 +2302,12 @@
           "ar": "مجموعات الحي"
         },
         {
+          "key": "home.approx",
+          "zh-CN": "大概位置",
+          "en": "Approx.",
+          "ar": "موقع تقريبي"
+        },
+        {
           "key": "home.communityFeedEmpty",
           "zh-CN": "这个社区还没有商家上架",
           "en": "No one is selling here yet",
