@@ -1622,7 +1622,6 @@ export default {
     sources: "来源轨迹",
     byInviterCustomer: "顾客分享",
     byInviterStaff: "店员分享",
-    byStaff: "店员录入",
   },
   memberAdd: {
     title: "添加会员",

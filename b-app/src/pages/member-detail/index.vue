@@ -146,7 +146,7 @@ onLoad(async (q) => {
         <text v-if="data.member.firstStoreNo" class="sh-muted">
           {{ $t("memberDetail.firstStore", { s: storeName(data.member.firstStoreNo) }) }}
         </text>
-        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="txt-sub sh-mt-xs blk">
+        <sh-kv between :label="String($t('memberDetail.lifetime'))" class="sh-mt-xs">
           <text class="txt-bold sh-num">
             {{ $t("members.stat", {
               n: data.member.orderCount, m: money(data.member.totalSpentMinor) }) }}
@@ -184,7 +184,7 @@ onLoad(async (q) => {
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
       <view v-if="showStores" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.stores") }}</text>
-        <view v-for="s in data.stores" :key="s.storeNo" class="txt-sub kv line">
+        <view v-for="s in data.stores" :key="s.storeNo" class="txt-sub store-row">
           <text>
             {{ storeName(s.storeNo) }}
             <text v-if="s.isFirstStore" class="sh-chip">{{ $t("memberDetail.firstTag") }}</text>
@@ -198,21 +198,19 @@ onLoad(async (q) => {
       <!-- 来源轨迹：谁发的链接、哪个员工录的，都要写出来 -->
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.sources") }}</text>
-        <view v-for="(s, i) in data.sources" :key="i" class="txt-sub kv line">
-          <text>
-            {{ monthDay(s.occurredAt) }} · {{ $t(`members.source.${s.sourceType}`) }}
-          </text>
-          <text class="sh-muted">
-            <!-- 不显示内部账号号（U2026…）：商家认不出是谁，而且那是内部标识 -->
+        <!--
+          一条来源一行：左边「日期 · 怎么来的」，右边「谁带来的 / 在哪家店」。用 sh-kv 两端对齐（与上面「累计」同一个件）。
+          不显示内部账号号（U2026…）：商家认不出是谁；手工录入不再补一句「店员录入」—— 来源本身已经说了。
+        -->
+        <sh-kv v-for="(s, i) in data.sources" :key="i" between divided
+          :label="`${monthDay(s.occurredAt)} · ${tt(`members.source.${s.sourceType}`)}`">
+          <text class="txt-sub sh-muted">
             <template v-if="s.inviterUserNo">
               {{ $t(s.inviterRole === "STAFF" ? "memberDetail.byInviterStaff" : "memberDetail.byInviterCustomer") }}
             </template>
-            <template v-else-if="s.operatorNo">
-              {{ $t("memberDetail.byStaff") }}
-            </template>
             <template v-else>{{ storeName(s.storeNo) }}</template>
           </text>
-        </view>
+        </sh-kv>
       </view>
 
       <text class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
@@ -263,13 +261,13 @@ onLoad(async (q) => {
 .bar__main {
   flex: 2;
 }
-/* 只留本页版面：排法（两端对齐）归 sh-kv。
-   ⚠️ 这个类名与 sh-kv 的根同名，**不要挂到 <sh-kv> 上** ——
-   小程序上调用点的 class 会同时落在宿主与组件根，内边距吃两遍。下面两处是普通行 */
-.kv {
-  padding: 8rpx 0;
-}
-.kv.line {
+/* 各店往来一行：店名（带首店胶囊）+ 右侧数字。名字里要放胶囊，所以不用 sh-kv（它的名目只收文字）。
+   ⚠️ 不叫 .kv：scoped 样式会落到子组件根上，而 sh-kv 的根就叫 kv —— 同名会把这一页的样式叠到所有 sh-kv 上 */
+.store-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
   border-top: var(--sh-hairline-soft);
   padding-top: 12rpx;
   margin-top: 12rpx;

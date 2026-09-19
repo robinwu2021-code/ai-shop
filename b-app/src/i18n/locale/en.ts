@@ -1383,7 +1383,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     sources: "How they arrived",
     byInviterCustomer: "shared by a customer",
     byInviterStaff: "shared by staff",
-    byStaff: "added by staff",
   },
   memberAdd: {
     title: "Add member",

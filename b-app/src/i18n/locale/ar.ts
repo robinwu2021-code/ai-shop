@@ -1381,7 +1381,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     sources: "كيف وصل",
     byInviterCustomer: "شاركه عميل",
     byInviterStaff: "شاركه موظف",
-    byStaff: "أضافه موظف",
   },
   memberAdd: {
     title: "إضافة عضو",
