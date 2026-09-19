@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 商品/服务上的商家信息条。点进商家详情。
 import type { MerchantBrief } from "@shared/types";
 
@@ -13,12 +14,7 @@ defineEmits<{ (e: "tap"): void }>();
 
 <template>
   <view class="sh-row bar" @tap="$emit('tap')">
-    <biz-shop-avatar
-      :name="merchant.name"
-      :logo="merchant.logo"
-      :self-operated="merchant.selfOperated"
-      :size="80"
-    ></biz-shop-avatar>
+    <text class="bar__logo">{{ merchant.logo || MERCHANT_LOGO_FALLBACK }}</text>
     <view class="sh-fill bar__main">
       <view class="sh-row bar__title">
         <!--
@@ -46,6 +42,16 @@ defineEmits<{ (e: "tap"): void }>();
 <style scoped>
 .bar {
   gap: 20rpx;
+}
+.bar__logo {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  text-align: center;
+  line-height: 80rpx;
+  font-size: 40rpx;
+  flex-shrink: 0;
 }
 .bar__title {
   gap: 12rpx;
