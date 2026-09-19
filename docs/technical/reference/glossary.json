@@ -13838,6 +13838,12 @@
           "ar": "{n} لم يسجلوا بعد"
         },
         {
+          "key": "reach.reason.NO_CHANNEL",
+          "zh-CN": "{n} 人只用小程序，暂时收不到消息",
+          "en": "{n} only use the mini-program and can't receive messages yet",
+          "ar": "{n} يستخدمون البرنامج المصغّر فقط ولا يمكنهم استلام الرسائل بعد"
+        },
+        {
           "key": "reach.reason.OPT_OUT",
           "zh-CN": "{n} 人已关闭消息接收",
           "en": "{n} have turned messages off",
