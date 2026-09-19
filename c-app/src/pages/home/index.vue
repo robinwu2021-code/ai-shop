@@ -330,7 +330,7 @@ onShareAppMessage(() =>
       这里只回答「现在有几个团在拼」，给专门来找团的人一个入口。
       此前是一段三张团卡 —— 与下面同一件商品的普通卡重复出现。
     -->
-    <view v-if="groups.length" class="gentry sh-row" @tap="gotoGroups">
+    <view v-if="groups.length" class="sh-card gentry sh-row" @tap="gotoGroups">
       <text class="sh-chip sh-chip--danger">{{ $t("home.groups") }}</text>
       <text class="txt-body sh-fill">{{ $t("home.groupsEntry", { n: groups.length }) }}</text>
       <text class="sh-muted">{{ $t("home.groupsMore") }}</text>
@@ -427,13 +427,10 @@ onShareAppMessage(() =>
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 团购入口行：白块、一行，与下面的商品块之间留一道常规缝 */
+/* 团购入口行：一张 sh-card、一行，与下面的商品块之间留一道常规缝 */
 .gentry {
   gap: 16rpx;
   margin-bottom: 20rpx;
-  padding: 24rpx;
-  border-radius: 32rpx;
-  background: var(--sh-surface);
 }
 /* 常买：横滑窄卡。比商品卡窄得多 —— 这里不做决策，只做「就是它，加一个」，
    标题一行 + 价格 + 加号就够，副标题、销量、商家统统是噪音 */

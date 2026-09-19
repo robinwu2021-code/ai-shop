@@ -144,7 +144,7 @@ onShareAppMessage(() =>
       </view>
 
       <view class="stats">
-        <view v-for="st in stats" :key="st.k" class="stat">
+        <view v-for="st in stats" :key="st.k" class="sh-fill stat">
           <text class="txt-title stat__v sh-num">{{ st.v }}</text>
           <text class="txt-caption txt-quiet stat__k">{{ st.k }}</text>
         </view>
@@ -249,8 +249,6 @@ onShareAppMessage(() =>
   border-top: 2rpx solid var(--sh-faint);
 }
 .stat {
-  flex: 1;
-  min-width: 0;
   text-align: center;
 }
 .stat__v {
