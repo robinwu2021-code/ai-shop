@@ -303,9 +303,12 @@ onShareAppMessage(() =>
           取不到任何位置时才回落到「收货地址」四个字 —— 这一行**任何时候都要有内容**，
           空着的顶栏会让人以为页面没加载完。点它照旧跳收货地址页。
         -->
-        <text class="txt-body sh-fill place__name">
+        <text class="txt-body place__name">
           {{ location.label || $t("address.title") }}
         </text>
+        <!-- 模糊定位只准到区：标出来，别让「龙华区」被读成「就在这儿」。点这一行去地址页可在地图上选准的 -->
+        <text v-if="location.approx" class="txt-caption sh-chip place__approx">{{ $t("home.approx") }}</text>
+        <view class="sh-fill"></view>
       </view>
       <!--
         **顶栏不放「重新定位」。** 点这一行本来就跳收货地址页，而那一页上
@@ -431,6 +434,9 @@ onShareAppMessage(() =>
 .gentry {
   gap: 16rpx;
   margin-bottom: 20rpx;
+}
+.place__approx {
+  flex-shrink: 0;
 }
 /* 常买：横滑窄卡。比商品卡窄得多 —— 这里不做决策，只做「就是它，加一个」，
    标题一行 + 价格 + 加号就够，副标题、销量、商家统统是噪音 */

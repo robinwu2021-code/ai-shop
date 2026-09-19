@@ -56,7 +56,7 @@ const locatedAt = ref<{ lat: number; lng: number } | null>(null);
  * 当前位置的地名（「龙华区地域馆」）。**读 store 的单一真源，这一页不自己算。**
  * 取不到就是空串，界面回落到「当前位置」四个字 —— 宁可少一行，不要编一个地名。
  */
-const locatedName = computed(() => location.here?.place?.name ?? "");
+const locatedName = computed(() => location.hereName);
 
 /**
  * 「我在哪」**走 store 的单一真源**，这一页不再自己定位、自己解析。

@@ -155,9 +155,10 @@ async function locate(force = false) {
          * 地名同样来自单一真源。**围栏命中时优先用「附近」里那一条的地址** ——
          * 它带着更完整的门牌，而 store 里那个只有名字。
          */
-        const hit = nearby.value.find((c) => c.name === here?.place?.name);
-        hereName.value = here?.place?.name ?? "";
-        hereAddress.value = hit?.address ?? here?.place?.address ?? "";
+        // 模糊定位只说到区（location.hereName），也不给门牌 —— 那条门牌属于偏移点旁的楼盘
+        const hit = here?.coarse ? undefined : nearby.value.find((c) => c.name === here?.place?.name);
+        hereName.value = location.hereName;
+        hereAddress.value = here?.coarse ? "" : hit?.address ?? here?.place?.address ?? "";
       } catch {
         failed.value = true;
       }
@@ -314,7 +315,7 @@ onLoad((q?: Record<string, string>) => {
     -->
     <view class="sh-card cityrow sh-row sh-row--between" @tap="gotoCity">
       <text class="txt-caption">{{ $t("addressPick.searchIn") }}</text>
-      <text class="txt-body sh-fill cityrow__name">{{ city?.name || location.here?.place?.name || $t("addressPick.nearHere") }}</text>
+      <text class="txt-body sh-fill cityrow__name">{{ city?.name || location.hereName || $t("addressPick.nearHere") }}</text>
       <text class="txt-caption txt-primary">{{ $t("addressPick.changeCity") }}</text>
     </view>
 

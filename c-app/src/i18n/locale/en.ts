@@ -33,6 +33,8 @@ export default {
     communityFeedEmpty: "No one is selling here yet",
     cutoffIn: "Closes in {t}",
     /** 顶栏那颗「重新定位」。三处入口共用同一个动作 */
+    /** 顶栏地名旁：模糊定位只准到区 */
+    approx: "Approx.",
     relocate: "Relocate",
     noPlaceText: "We don't know where you are yet",
     noPlaceTip: "Pick an address to see what can reach you",

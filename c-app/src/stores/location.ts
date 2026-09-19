@@ -44,6 +44,8 @@ export const useLocationStore = defineStore("location", {
       coords: { lat: number; lng: number };
       coarse: boolean;
       place: ResolvedPlace | null;
+      /** 所在区县名。模糊定位时顶栏只说到这一级（见 label） */
+      regionName: string | null;
       at: number;
     } | null,
     /**
@@ -113,14 +115,34 @@ export const useLocationStore = defineStore("location", {
       if (s.pickedByUser && s.active) {
         return s.active.tag || s.active.detail || s.active.region || "";
       }
+      /*
+       * **模糊定位只说到区。**（2026-09-19 真机：人在龙华体育馆，顶栏写「棱镜·男生公寓(清湖地铁站总店)」）
+       *
+       * 小程序拿不到精确定位（wx.getLocation 被驳回），走的是 getFuzzyLocation ——
+       * 坐标故意偏几公里、只准到区。拿这个点去反查地名，得到的是偏移点旁边的某个楼盘，
+       * 用一个看着很精确的名字说一个只准到区的位置，就是在说假话。
+       * 区名是真话；要准的，点顶栏去地址页在地图上选（chooseLocation 不受那条限制）。
+       */
+      if (s.here?.coarse) {
+        const r = s.here.regionName || s.coarseRegion?.name;
+        if (r) return r;
+      }
       // M9：顶栏 = 当前定位。它回答的是「我在看哪一带的货」，不是「送到哪」
-      if (s.here?.place?.name) return s.here.place.name;
+      if (s.here?.place?.name && !s.here.coarse) return s.here.place.name;
       if (s.transientAt && s.transientName) return s.transientName;
       if (s.active) return s.active.tag || s.active.detail || s.active.region || "";
       // 退到粗定位的区名 —— 顶栏那一行任何时候都要有内容，
       // 而「西湖区」至少是句真话：这一屏的货正是按那个区筛出来的
       return s.coarseRegion?.name ?? "";
     },
+    /**
+     * 「我在哪」的地名，给收货地址页、选择地点页那张「当前位置」卡。
+     * 模糊定位只给区名 —— 理由同 label：偏移点反查出的楼盘名是假的精确。
+     */
+    hereName: (s) => (s.here?.coarse ? s.here.regionName ?? "" : s.here?.place?.name ?? ""),
+    /** 顶栏写的只是个大概（模糊定位，只准到区）—— 界面上要标出来，别让人当成精确位置 */
+    approx: (s) => !(s.pickedByUser && s.active) && !!s.here?.coarse
+      && !!(s.here.regionName || s.coarseRegion?.name),
     /** 顶栏那个地名可能不是最新的（地图挂了、用的是库里旧的那条） */
     placeStale: (s) => s.here?.place?.stale === true,
     /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
@@ -179,6 +201,7 @@ export const useLocationStore = defineStore("location", {
         coarse: r.fuzzy === true,
         // 拿不到就留 null，界面退回区名。**不编地名**
         place: ctx?.place ?? null,
+        regionName: ctx?.regionName ?? null,
         at: Date.now(),
       };
       return this.here;
