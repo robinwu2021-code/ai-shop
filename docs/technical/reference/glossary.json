@@ -11391,9 +11391,9 @@
         },
         {
           "key": "members.phoneTail",
-          "zh-CN": "尾号 {n}",
-          "en": "Ends in {n}",
-          "ar": "ينتهي بـ {n}"
+          "zh-CN": "****{n}",
+          "en": "****{n}",
+          "ar": "****{n}"
         },
         {
           "key": "members.privacyHint",
