@@ -30,7 +30,7 @@ DOMAINS = [
     ("商品", ["goods", "goods-list", "goods-edit", "goods-publish", "goods-detail", "search", "category", "my-specs", "store-categories"]),
     ("门店", ["stores", "store", "store-notice", "store-scope", "store-pick", "qualifications"]),
     ("会员与营销", ["customers", "marketing", "coupons", "member", "cards", "members",
-                    "member-detail",
+                    "member-detail", "member-tag", "member-segment",
                     "member-tags", "member-settings", "segments", "coupon-edit", "coupon-issue", "member-card",
                     "coupon", "coupon-send", "coupon-issues", "coupon-code",
                     "platform-activities", "platform-activity-apply"]),

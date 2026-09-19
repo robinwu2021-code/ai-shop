@@ -2103,6 +2103,20 @@ components:
             - "string"
             - "null"
           description: "发给哪个人群。空 = 手动挑的人"
+        audiences: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              type: 
+                type: "string"
+              value: 
+                type: "string"
+            required: 
+              - "type"
+              - "value"
+            additionalProperties: false
+          description: "发给了哪些受众项（标签 / 分层 / 人群，取或）。旧批次为空，只看 segmentNo"
         planned: 
           type: "number"
           description: "人群此刻命中多少人"
@@ -2361,6 +2375,11 @@ components:
         joinedAt: 
           type: "number"
           description: "成为会员的时刻"
+        tagNames: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "他身上的商家标签名（名单卡片第二行）。只在名单接口里有"
       required: 
         - "memberNo"
         - "personNo"
@@ -2758,6 +2777,164 @@ components:
         - "reachable"
       additionalProperties: false
       description: "人群试算。"
+    AudienceItem: 
+      type: "object"
+      properties: 
+        type: 
+          type: "string"
+          description: "`ALL` 全部会员 · `LEVEL` 分层 · `TAG` 标签 · `SEGMENT` 人群 · `SOURCE` 首次来源 · `NON_MEMBER` 非本店会员（只在活动里）"
+        value: 
+          type: "string"
+          description: "分层码 / 标签号 / 人群号 / 来源码；`ALL`、`NON_MEMBER` 为 `*`。**存号不存文本** —— 标签改名不该动到这里"
+      required: 
+        - "type"
+        - "value"
+      additionalProperties: false
+      description: "一个受众项：活动、发券、发消息「发给谁」的最小单位。"
+    AudiencePreview: 
+      type: "object"
+      properties: 
+        matched: 
+          type: 
+            - "number"
+            - "null"
+          description: "命中多少人（含收不到的）；数不出来时为 null"
+        reachable: 
+          type: 
+            - "number"
+            - "null"
+          description: "其中收得到消息的；活动场景为 null"
+        skips: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              reason: 
+                type: "string"
+              count: 
+                type: "number"
+            required: 
+              - "reason"
+              - "count"
+            additionalProperties: false
+          description: "收不到的按原因分档：`LEAD` 手录未认领 · `BLOCKED` 已拉黑 · `OPT_OUT` 关了本店消息 · `NO_ACCOUNT` 还没注册 · `TOO_SOON` 最近刚收到过"
+      required: 
+        - "matched"
+        - "reachable"
+        - "skips"
+      additionalProperties: false
+      description: "选人面板的试算：命中多少、收得到多少、收不到的为什么。"
+    BatchTagResult: 
+      type: "object"
+      properties: 
+        matched: 
+          type: "number"
+          description: "圈到的人（只算本店的）"
+        alreadyInState: 
+          type: "number"
+          description: "已经是目标状态的（打：本来就有；去：本来就没有），不重复计"
+        willChange: 
+          type: "number"
+          description: "实际会改的人数"
+        skippedFull: 
+          type: "number"
+          description: "标签已满（每人上限）而跳过的"
+        applied: 
+          type: "boolean"
+          description: "false = 这只是试算，没有落库"
+      required: 
+        - "matched"
+        - "alreadyInState"
+        - "willChange"
+        - "skippedFull"
+        - "applied"
+      additionalProperties: false
+      description: "批量打标的试算 / 结果。**确认框上写的就是 `willChange`** ——「其中 5 人已有，实际新增 32 人」。"
+    AudienceRef: 
+      type: "object"
+      properties: 
+        kind: 
+          type: "string"
+          description: "`ACTIVITY` 活动 / `COUPON_ISSUE` 发券批次"
+        refNo: 
+          type: "string"
+          description: "活动号 / 发放批次号"
+        name: 
+          type: 
+            - "string"
+            - "null"
+          description: "活动名 / 券名"
+        status: 
+          type: 
+            - "string"
+            - "null"
+          description: "活动状态（`RUNNING` / `PAUSED` …）；发券批次为空"
+        at: 
+          type: 
+            - "number"
+            - "null"
+          description: "发放时刻；活动为空"
+      required: 
+        - "kind"
+        - "refNo"
+      additionalProperties: false
+      description: "标签 / 人群被谁引用着：一个活动，或一批发券"
+    MemberTagUsage: 
+      type: "object"
+      properties: 
+        tag: 
+          "$ref": "#/components/schemas/MemberTag"
+          description: "标签本身（含人数）"
+        newThisMonth: 
+          type: "number"
+          description: "本月新打上的人数"
+        activities: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/AudienceRef"
+          description: "受众里引用它的未结束活动"
+        segments: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MemberSegment"
+          description: "条件里含它的人群"
+      required: 
+        - "tag"
+        - "newThisMonth"
+        - "activities"
+        - "segments"
+      additionalProperties: false
+      description: "一个标签用在哪。**停用或合并前先给商家看** —— 引用它的活动会跟着受影响。"
+    MemberSegmentDetail: 
+      type: "object"
+      properties: 
+        segment: 
+          "$ref": "#/components/schemas/MemberSegment"
+          description: "人群本身"
+        matched: 
+          type: "number"
+          description: "此刻命中（当场算，不是 `lastCount`）"
+        reachable: 
+          type: "number"
+          description: "其中收得到消息的"
+        activities: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/AudienceRef"
+          description: "引用它的未结束活动"
+        couponIssues: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/AudienceRef"
+          description: "按它发过的券（最近 20 批）"
+      required: 
+        - "segment"
+        - "matched"
+        - "reachable"
+        - "activities"
+        - "couponIssues"
+      additionalProperties: false
+      description: "人群详情：条件 + 此刻人数（当场算）+ 用在哪。"
     MemberMergePreview: 
       type: "object"
       properties: 

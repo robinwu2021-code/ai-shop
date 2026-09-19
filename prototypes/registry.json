@@ -287,7 +287,9 @@
     },
     {
      "id": "m08",
-     "title": "标签详情"
+     "title": "标签详情",
+     "client": "b-app",
+     "route": "pages/member-tag/index"
     },
     {
      "id": "m09",
@@ -301,7 +303,9 @@
     },
     {
      "id": "m11",
-     "title": "人群详情"
+     "title": "人群详情",
+     "client": "b-app",
+     "route": "pages/member-segment/index"
     },
     {
      "id": "m12",

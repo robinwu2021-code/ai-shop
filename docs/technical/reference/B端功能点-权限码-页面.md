@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 192 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 196 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -24,10 +24,10 @@
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
+| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
-| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 18 | ✅ | ✅ | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
@@ -163,6 +163,39 @@
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
 
+### `biz:customer`　顾客列表（含累计消费额）、经营数据
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 跨店对比（销售额/订单/复购/缺货） | GET | `/biz/cross-store/compare` | `mCrossStoreCompare` | cross-store |
+| 跨店总览（按店并列今日/本月/待办） | GET | `/biz/cross-store/overview` | `mCrossStoreOverview` | stores |
+| 客户与复购（跨店总览在用） | GET | `/biz/customers` | `mCustomers` | — |
+| 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
+| 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
+| 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
+| 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
+| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、member-segments |
+| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
+| 人群详情：此刻人数与用在哪 | GET | `/biz/member-segments/{segmentNo}` | `mMemberSegmentDetail` | member-segment |
+| 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segment、member-segments |
+| 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
+| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | coupon-issues、customers、member-add、member-detail、member-segment、member-segments、member-tag、member-tags |
+| 新建标签 | POST | `/biz/member-tags` | `mCreateMemberTag` | member-tags |
+| 改名 / 停用 | PUT | `/biz/member-tags/{tagNo}` | `mEditMemberTag` | member-tag、member-tags |
+| 合并（confirm=false 只试算） | POST | `/biz/member-tags/{tagNo}/merge` | `mMergeMemberTag` | member-tag、member-tags |
+| 标签用在哪（活动与人群） | GET | `/biz/member-tags/{tagNo}/usage` | `mMemberTagUsage` | member-tag、member-tags |
+| 会员列表（筛选+分页） | GET | `/biz/members` | `mMembers` | customers |
+| 手工录入（未注册记为线索） | POST | `/biz/members` | `mEnrollMember` | member-add |
+| 会员详情：各店往来与来源轨迹 | GET | `/biz/members/{memberNo}` | `mMemberDetail` | member-detail |
+| 改备注 / 拉黑 | PUT | `/biz/members/{memberNo}` | `mPatchMember` | — |
+| 选人试算：命中 / 收得到 / 跳过原因 | POST | `/biz/members/audience-preview` | `mAudiencePreview` | activity-edit、coupon-send |
+| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | customers |
+| 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | member-detail |
+| 批量打/去一个标签（confirm=false 只试算） | POST | `/biz/members/tags/batch` | `mBatchTagMembers` | — |
+| —（b-app 未接） | — | `/biz/inventory/export` | — | — |
+
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
 
 **可用角色**：老板、店长
@@ -254,35 +287,6 @@
 | 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
 
-### `biz:customer`　顾客列表（含累计消费额）、经营数据
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 跨店对比（销售额/订单/复购/缺货） | GET | `/biz/cross-store/compare` | `mCrossStoreCompare` | cross-store |
-| 跨店总览（按店并列今日/本月/待办） | GET | `/biz/cross-store/overview` | `mCrossStoreOverview` | stores |
-| 客户与复购（跨店总览在用） | GET | `/biz/customers` | `mCustomers` | — |
-| 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
-| 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
-| 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
-| 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
-| 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、coupon-send、member-reach、member-segments |
-| 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments |
-| 删人群（端上没有 DELETE，见 http-client） | POST | `/biz/member-segments/{segmentNo}/remove` | `mRemoveMemberSegment` | member-segments |
-| 试算命中与可触达 | POST | `/biz/member-segments/preview` | `mPreviewMemberSegment` | customers |
-| 标签字典（含人数） | GET | `/biz/member-tags` | `mMemberTags` | customers、member-add、member-segments、member-tags |
-| 新建标签 | POST | `/biz/member-tags` | `mCreateMemberTag` | member-tags |
-| 改名 / 停用 | PUT | `/biz/member-tags/{tagNo}` | `mEditMemberTag` | member-tags |
-| 合并（confirm=false 只试算） | POST | `/biz/member-tags/{tagNo}/merge` | `mMergeMemberTag` | member-tags |
-| 会员列表（筛选+分页） | GET | `/biz/members` | `mMembers` | customers |
-| 手工录入（未注册记为线索） | POST | `/biz/members` | `mEnrollMember` | member-add |
-| 会员详情：各店往来与来源轨迹 | GET | `/biz/members/{memberNo}` | `mMemberDetail` | member-detail |
-| 改备注 / 拉黑 | PUT | `/biz/members/{memberNo}` | `mPatchMember` | — |
-| 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | coupon-send、customers |
-| 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | — |
-| —（b-app 未接） | — | `/biz/inventory/export` | — | — |
-
 ### `biz:verify`　核销、批量核销、按码搜索
 
 **可用角色**：老板、店长、店员
@@ -358,7 +362,7 @@
 | 页面 | 门禁 | 该页需要的码 | 进得来的角色 | ⚠ 会撞码 |
 |---|---|---|---|---|
 | `activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
-| `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign` | 老板、店长 | — |
+| `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign`、`biz:customer` | 老板、店长 | — |
 | `after-sale` | `biz:aftersale` | `biz:aftersale`、`biz:order:view` | 老板、店长、客服 | — |
 | `coupon` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
@@ -386,8 +390,10 @@
 | `member-add` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-detail` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-reach` | `biz:customer` | `biz:customer`、`biz:campaign` | 老板、店长 | — |
+| `member-segment` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-segments` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-settings` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
+| `member-tag` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-tags` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `my-specs` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `order` | `biz:order:view` | `biz:receive`、`biz:order:view`、`biz:ship` | 老板、店长、店员、配送员、客服 | 配送员（缺 biz:receive）　客服（缺 biz:receive、biz:ship） |
@@ -461,7 +467,7 @@
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
-| 批量打标 / 去标 | `/biz/members/tags` | `mTagMembers` | `biz:customer` |
+| 批量打/去一个标签（confirm=false 只试算） | `/biz/members/tags/batch` | `mBatchTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |
 | 给自建维度改名 | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | `biz:goods` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |

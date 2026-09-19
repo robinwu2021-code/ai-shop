@@ -22,7 +22,8 @@ import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
 import { PLAY_TEMPLATES, playOf, playOfActivity, type PlayTemplate } from "@shared/utils/play-templates";
-import type { ActivityConflict, ActivityRuleItem, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
+import type { ActivityConflict, ActivityRuleItem, AudienceItem, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
+import { loadAudienceLabel } from "@/shared/audience";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -47,8 +48,11 @@ const form = ref({
   from: "08:00",
   to: "20:00",
   goodsNos: [] as string[],
-  /** "" 所有人 / NON_MEMBER / SLEEPING / LOYAL */
-  audience: "",
+  /**
+   * 受众项（取或）。空 = 所有人。点「人群」一行打开选人面板（原型 m13），
+   * 与发券、发消息同一块 —— 此前这里只有四个固定项，标签与人群选不到，而后端早就支持。
+   */
+  audiences: [] as AudienceItem[],
   threshold: "",
   qtyN: "",
   amount: "",
@@ -128,7 +132,25 @@ const has = (f: string) => !!play.value?.rules.includes(f as never);
 const showPlay = ref(false);
 const showGoods = ref(false);
 const showAudience = ref(false);
-const AUDIENCES = ["", "NON_MEMBER", "SLEEPING", "LOYAL"] as const;
+/** 受众的显示文字（「沉睡 · 爱囤货」）。面板确认时带回；回显已有活动时现取名字 */
+const audienceName = ref("");
+/** 确认页的覆盖人数：null = 所有人或数不出来（非本店会员）；0 = 一个人都没有，不让发布（AC-10） */
+const cover = ref<number | null>(null);
+
+/** 玩法里预设的受众（新客立减 → 非本店会员）换成受众项 */
+function presetItem(v: string): AudienceItem {
+  return v === "NON_MEMBER" ? { type: "NON_MEMBER", value: "*" } : { type: "LEVEL", value: v };
+}
+
+async function setAudiences(items: AudienceItem[], label?: string) {
+  form.value.audiences = items;
+  audienceName.value = label ?? (items.length ? await loadAudienceLabel(items, (k, a) => String(t(k, a ?? {}))) : "");
+}
+
+function onAudience(items: AudienceItem[], label: string) {
+  void setAudiences(items, label);
+  showAudience.value = false;
+}
 
 function pickPlay(key: string) {
   const prev = form.value.playKey;
@@ -136,7 +158,7 @@ function pickPlay(key: string) {
   const p = playOf(key)!;
   if (p.fixedSchedule) form.value.scheduleType = p.fixedSchedule;
   else if (prev && playOf(prev)?.fixedSchedule) form.value.scheduleType = "ONE_OFF";
-  if (p.audience) form.value.audience = p.audience;
+  if (p.audience) void setAudiences([presetItem(p.audience)]);
   if (!form.value.name.trim()) form.value.name = String(t(`plays.name.${key}`));
   showPlay.value = false;
 }
@@ -171,7 +193,8 @@ const goodsText = computed(() => {
   return String(t("activityEdit.goodsN", { n }));
 });
 
-const audienceText = computed(() => String(t(`activityEdit.audienceOpt.${form.value.audience || "ALL"}`)));
+const audienceText = computed(() =>
+  form.value.audiences.length ? audienceName.value : String(t("activityEdit.audienceOpt.ALL")));
 
 // ---------------------------------------------------------------- 日期
 function dayOf(ms: number): string {
@@ -203,9 +226,7 @@ const exposureText = computed(() => {
 
 function draft(): StoreActivityDraft {
   const p = play.value!;
-  const aud = form.value.audience;
-  const audiences = !aud ? [] : aud === "NON_MEMBER" ? [{ type: "NON_MEMBER", value: "*" }]
-    : [{ type: "LEVEL", value: aud }];
+  const audiences = form.value.audiences.map((x) => ({ ...x }));
   const schedule = p.fixedSchedule ?? form.value.scheduleType;
   const triggerQty = p.key === "GROUP" ? Number(form.value.groupN || 0)
     : p.key === "CUT_QTY" ? Number(form.value.qtyN || 0)
@@ -290,6 +311,10 @@ async function next() {
   conflicts.value = play.value?.needsGoods && form.value.goodsNos.length
     ? await api.mActivityConflicts(form.value.goodsNos).catch(() => [])
     : [];
+  // 覆盖人数当场算（原型 m15）：人群存的是条件，名单每天在变
+  cover.value = form.value.audiences.length
+    ? (await api.mAudiencePreview({ audiences: form.value.audiences, forActivity: true }).catch(() => null))?.matched ?? null
+    : null;
   step.value = 2;
 }
 
@@ -421,8 +446,7 @@ async function loadExisting(no: string) {
     startDay: a.startAt ? dayOf(a.startAt) : form.value.startDay,
     endDay: a.endAt ? dayOf(a.endAt) : form.value.endDay,
     goodsNos: [...a.goodsNos],
-    audience: a.audiences[0]?.type === "NON_MEMBER" ? "NON_MEMBER"
-      : a.audiences[0]?.type === "LEVEL" ? String(a.audiences[0]?.value) : "",
+    audiences: a.audiences.map((x) => ({ ...x })),
     threshold: yuan(a.triggerAmountMinor),
     qtyN: a.triggerType === "QTY" && a.benefitType === "CUT" ? String(a.triggerQty ?? "") : "",
     amount: a.benefitType === "CUT" ? yuan(a.benefitAmountMinor) : "",
@@ -440,6 +464,8 @@ async function loadExisting(no: string) {
     budget: a.budgetMinor ? (a.budgetMinor / 100).toFixed(2) : "",
     periodQuota: a.periodQuota == null ? "" : String(a.periodQuota),
   };
+  // 受众存的是号：回显时现取标签与人群的名字（「沉睡 · 爱囤货」）
+  void setAudiences(form.value.audiences);
   if (a.triggerType === "COMBO") {
     const rules = a.rules ?? [];
     form.value.conds = rules.filter((r) => r.kind === "CONDITION").map((r) => ({
@@ -886,6 +912,10 @@ onLoad((q) => {
           <text class="txt-body sh-muted">{{ $t("activityEdit.audience") }}</text>
           <text class="txt-body">{{ audienceText }}</text>
         </view>
+        <view v-if="form.audiences.length && cover != null" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("activityEdit.cover") }}</text>
+          <text class="txt-strong txt-primary sh-num">{{ $t("activityEdit.coverN", { n: cover }) }}</text>
+        </view>
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("activityEdit.groupRule") }}</text>
           <text class="txt-body sh-num">{{ ruleSummary }}</text>
@@ -902,11 +932,15 @@ onLoad((q) => {
       <view v-for="c in conflicts" :key="c.activityNo + c.goodsNo" class="sh-notice sh-notice--warning">
         <text class="txt-caption">{{ $t("activityEdit.conflict", { name: c.activityName }) }}</text>
       </view>
+      <!-- 覆盖 0 人（原型 m16）：发布了也没人享受得到。原因写在按钮上方，只灰着他会以为网络卡了 -->
+      <view v-if="cover === 0" class="sh-notice sh-notice--warning">
+        <text class="txt-caption">{{ $t("activityEdit.coverZero") }}</text>
+      </view>
 
       <sh-actionbar>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
-          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="publish">
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving || cover === 0 }" @tap="cover !== 0 && publish()">
             {{ $t("activityEdit.publish") }}
           </view>
         </view>
@@ -944,15 +978,13 @@ onLoad((q) => {
       </view>
     </sh-sheet>
 
-    <sh-sheet :visible="showAudience" :title="String($t('activityEdit.audience'))" @close="showAudience = false">
-      <view class="sh-cells">
-        <view v-for="a in AUDIENCES" :key="a || 'ALL'" class="sh-cell sh-row sh-row--between"
-              @tap="form.audience = a; showAudience = false">
-          <text class="txt-body" :class="{ 'txt-primary': form.audience === a }">{{ $t(`activityEdit.audienceOpt.${a || "ALL"}`) }}</text>
-          <sh-icon v-if="form.audience === a" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
-        </view>
-      </view>
-    </sh-sheet>
+    <biz-audience-picker
+      :visible="showAudience"
+      :model-value="form.audiences"
+      for-activity
+      @close="showAudience = false"
+      @confirm="onAudience"
+    ></biz-audience-picker>
 
     <sh-sheet :visible="showGoods" :title="String($t('activityEdit.goodsPick'))" @close="showGoods = false">
       <view class="sh-cells">

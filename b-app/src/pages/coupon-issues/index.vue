@@ -12,7 +12,8 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
-import type { CouponIssueBatch, MemberSegment, MerchantCoupon } from "@shared/types";
+import type { CouponIssueBatch, MemberSegment, MemberTag, MerchantCoupon } from "@shared/types";
+import { audienceLabel } from "@/shared/audience";
 
 const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
@@ -23,19 +24,22 @@ const issueNo = ref("");
 const list = ref<CouponIssueBatch[]>([]);
 const coupons = ref<MerchantCoupon[]>([]);
 const segments = ref<MemberSegment[]>([]);
+const tags = ref<MemberTag[]>([]);
 const loaded = ref(false);
 const failed = ref(false);
 
 async function load() {
   try {
-    const [bs, cs, sg] = await Promise.all([
+    const [bs, cs, sg, tg] = await Promise.all([
       api.mCouponIssues(couponNo.value || undefined),
       api.mCoupons(true),
       api.mMemberSegments(),
+      api.mMemberTags().catch(() => []),
     ]);
     list.value = bs;
     coupons.value = cs;
     segments.value = sg;
+    tags.value = tg;
     failed.value = false;
   } catch {
     failed.value = true;
@@ -47,6 +51,17 @@ const one = computed(() => (issueNo.value ? list.value.find((b) => b.issueNo ===
 
 function couponTitle(no: string) {
   return coupons.value.find((c) => c.couponNo === no)?.title || no;
+}
+
+/**
+ * 发给了谁。新批次带受众项（标签 / 分层 / 人群，取或），按名字拼；
+ * 旧批次只有人群号或预设键 —— 只认人群号的话，按标签发的批次会显示成「全部会员」。
+ */
+function whom(b: CouponIssueBatch) {
+  if (b.audiences?.length) {
+    return audienceLabel(b.audiences, { tags: tags.value, segments: segments.value }, tt);
+  }
+  return segmentName(b.segmentNo);
 }
 
 /** 人群名：预设键（@ALL 等）翻成字，存下来的人群查名字 */
@@ -86,7 +101,7 @@ onShow(() => {
     <template v-if="one">
       <view class="hero">
         <text class="txt-display sh-num">{{ $t("couponIssues.people", { n: one.issued }) }}</text>
-        <text class="txt-sub sh-muted hero__sub">{{ $t("couponIssues.sentTo", { name: segmentName(one.segmentNo) }) }}</text>
+        <text class="txt-sub sh-muted hero__sub">{{ $t("couponIssues.sentTo", { name: whom(one) }) }}</text>
       </view>
 
       <template v-if="one.skipped">
@@ -113,7 +128,7 @@ onShow(() => {
     <template v-else>
       <view v-for="b in list" :key="b.issueNo" class="sh-card card">
         <view class="sh-row sh-row--between">
-          <text class="txt-strong">{{ segmentName(b.segmentNo) }}</text>
+          <text class="txt-strong">{{ whom(b) }}</text>
           <text class="txt-caption sh-muted sh-num">{{ stamp(b.issuedAt) }}</text>
         </view>
         <text v-if="!couponNo" class="txt-sub sh-muted card__meta">{{ couponTitle(b.couponNo) }}</text>

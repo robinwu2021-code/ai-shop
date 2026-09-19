@@ -50,6 +50,10 @@ export const ROUTES = {
   crossStore: "/pages/cross-store/index",
   plan: "/pages/plan/index",
   customers: "/pages/customers/index",
+  // 会员标签与定向营销：标签详情（m08）、人群详情（m11）、发消息（m18）
+  memberTag: "/pages/member-tag/index",
+  memberSegment: "/pages/member-segment/index",
+  memberReach: "/pages/member-reach/index",
   activities: "/pages/activities/index",
   coupons: "/pages/coupons/index",
   // 券：详情（s15）、新建（s13/s14）、发放选人群（s18）、发放结果与记录（s16）

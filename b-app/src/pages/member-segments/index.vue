@@ -14,6 +14,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberSegment, MemberTag } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -105,6 +106,11 @@ function recount(sg: MemberSegment) {
   }));
 }
 
+/** 详情：此刻人数（当场算，不是 lastCount）+ 用在哪（原型 m11） */
+function open(sg: MemberSegment) {
+  uni.navigateTo({ url: `${ROUTES.memberSegment}?segmentNo=${sg.segmentNo}` });
+}
+
 onShow(load);
 </script>
 
@@ -114,7 +120,7 @@ onShow(load);
 
     <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
       <view class="item__head sh-row sh-row--between sh-row--baseline">
-        <text class="txt-strong">{{ sg.name }}</text>
+        <text class="txt-strong" @tap="open(sg)">{{ sg.name }} ›</text>
         <text class="txt-caption sh-num count txt-primary">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
       </view>
       <text class="txt-caption sh-muted cond">{{ summary(sg) }}</text>

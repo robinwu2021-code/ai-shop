@@ -12,6 +12,8 @@ import {
   belongsToMerchant,
   countTag,
   matchSegment,
+  resolveAudienceMock,
+  skipReasonMock,
   mockMemberTags,
   mockMembers,
   mockTags,
@@ -31,6 +33,10 @@ export const marketingMock: Pick<MerchantApi,
   | "mEnrollMember"
   | "mPatchMember"
   | "mTagMembers"
+  | "mBatchTagMembers"
+  | "mAudiencePreview"
+  | "mMemberTagUsage"
+  | "mMemberSegmentDetail"
   | "mMemberTags"
   | "mCreateMemberTag"
   | "mEditMemberTag"
@@ -196,8 +202,12 @@ export const marketingMock: Pick<MerchantApi,
     }
     const page = f.page ?? 1;
     const size = f.size ?? 20;
+    // 与后端同一条：只列在用的商家标签名（停用 / 已合并的名字会让人以为它还在起作用）
+    const names = new Map(mockTags().filter((t) => t.status === "ACTIVE").map((t) => [t.tagNo, t.name]));
+    const withTags = (m: (typeof out)[number]) => ({ ...m,
+      tagNames: (db.memberTagRel[m.memberNo] ?? []).map((no) => names.get(no)).filter((x): x is string => !!x) });
     return delay({
-      records: out.slice((page - 1) * size, page * size),
+      records: out.slice((page - 1) * size, page * size).map(withTags),
       total: out.length,
       page,
       size,
@@ -304,6 +314,83 @@ export const marketingMock: Pick<MerchantApi,
 
   async mMemberTags() {
     return delay(mockTags());
+  },
+
+  async mBatchTagMembers(payload) {
+    const t = db.memberTags.find((x) => x.tagNo === payload.tagNo);
+    if (!t) throw new ApiError(10404, "标签不存在");
+    const add = payload.action !== "REMOVE";
+    const all = allMockMembers();
+    const members = payload.memberNos?.length
+      ? all.filter((m) => payload.memberNos!.includes(m.memberNo))
+      : matchSegment(payload.rule ?? {});
+    let already = 0;
+    let full = 0;
+    const change: string[] = [];
+    for (const m of members) {
+      const cur = db.memberTagRel[m.memberNo] ?? [];
+      if (add === cur.includes(payload.tagNo)) { already++; continue; }
+      // 与后端同一条：满 10 个的跳过并计数，不让一个人拦住整批
+      if (add && cur.length >= 10) { full++; continue; }
+      change.push(m.memberNo);
+    }
+    if (payload.confirm) {
+      for (const no of change) {
+        const cur = new Set(db.memberTagRel[no] ?? []);
+        if (add) cur.add(payload.tagNo); else cur.delete(payload.tagNo);
+        db.memberTagRel[no] = [...cur];
+      }
+      persist();
+    }
+    return delay({ matched: members.length, alreadyInState: already, willChange: change.length,
+      skippedFull: full, applied: !!payload.confirm });
+  },
+
+  async mAudiencePreview(payload) {
+    const items = payload.audiences ?? [];
+    if (!items.length && payload.forActivity) return delay({ matched: null, reachable: null, skips: [] });
+    if (!items.length) throw new ApiError(70065, "请选择发给谁");
+    const hit = resolveAudienceMock(items);
+    if (hit == null) return delay({ matched: null, reachable: null, skips: [] });
+    if (payload.forActivity) return delay({ matched: hit.length, reachable: null, skips: [] });
+    const skips = new Map<string, number>();
+    let reachable = 0;
+    for (const m of hit) {
+      const why = skipReasonMock(m, payload.scene);
+      if (why) skips.set(why, (skips.get(why) ?? 0) + 1); else reachable++;
+    }
+    return delay({ matched: hit.length, reachable,
+      skips: [...skips].map(([reason, count]) => ({ reason, count })) });
+  },
+
+  async mMemberTagUsage(tagNo) {
+    const tag = mockTags().find((t) => t.tagNo === tagNo);
+    if (!tag) throw new ApiError(10404, "标签不存在");
+    const activities = db.storeActivities
+      .filter((a) => a.status !== "ENDED"
+        && (a.audiences ?? []).some((x) => x.type === "TAG" && x.value === tagNo))
+      .map((a) => ({ kind: "ACTIVITY", refNo: a.activityNo, name: a.name, status: a.status, at: null }));
+    const segments = db.memberSegments.filter((sg) => (sg.rule.tagNos ?? []).includes(tagNo))
+      .map((sg) => ({ ...sg }));
+    // mock 里没有「打标时刻」，本月新增按一个固定的小数演示
+    return delay({ tag, newThisMonth: Math.min(tag.count, 3), activities, segments });
+  },
+
+  async mMemberSegmentDetail(segmentNo) {
+    const sg = db.memberSegments.find((x) => x.segmentNo === segmentNo);
+    if (!sg) throw new ApiError(70043, "人群不存在");
+    const hit = matchSegment(sg.rule);
+    const activities = db.storeActivities
+      .filter((a) => a.status !== "ENDED"
+        && (a.audiences ?? []).some((x) => x.type === "SEGMENT" && x.value === segmentNo))
+      .map((a) => ({ kind: "ACTIVITY", refNo: a.activityNo, name: a.name, status: a.status, at: null }));
+    const couponIssues = (db.couponIssues ?? [])
+      .filter((b) => b.segmentNo === segmentNo)
+      .map((b) => ({ kind: "COUPON_ISSUE", refNo: b.issueNo,
+        name: db.merchantCoupons.find((c) => c.couponNo === b.couponNo)?.title ?? null,
+        status: null, at: b.issuedAt }));
+    return delay({ segment: { ...sg }, matched: hit.length,
+      reachable: hit.filter((m) => !skipReasonMock(m)).length, activities, couponIssues });
   },
 
   async mCreateMemberTag(name) {
@@ -421,38 +508,23 @@ export const marketingMock: Pick<MerchantApi,
    * 演示时看到的「能发 12 人」到了真实环境会变成别的数，而没人知道差在哪。
    */
   async mPlanReach(payload) {
-    const all = allMockMembers();
-    const gate = db.reachSentAt[payload.scene] ?? {};
-    const minDays = payload.scene === "WAKEUP" ? 14 : payload.scene === "COUPON" ? 7 : 3;
-    const now = Date.now();
-
-    let tooSoon = 0;
-    let optOut = 0;
-    let lead = 0;
+    const all = reachTargets(payload);
+    const skips = new Map<string, number>();
     let reachable = 0;
     for (const m of all) {
-      if (m.status === "LEAD") { lead++; continue; }          // 线索一律不发
-      if (m.reachOptOut) { optOut++; continue; }
-      const last = gate[m.memberNo];
-      if (last && now - last < minDays * 86400_000) { tooSoon++; continue; }
-      reachable++;
+      const why = skipReasonMock(m, payload.scene);
+      if (why) skips.set(why, (skips.get(why) ?? 0) + 1); else reachable++;
     }
-    const skips: Array<{ reason: string; count: number }> = [];
-    if (tooSoon > 0) skips.push({ reason: "TOO_SOON", count: tooSoon });
-    if (optOut > 0) skips.push({ reason: "OPT_OUT", count: optOut });
-    if (lead > 0) skips.push({ reason: "LEAD", count: lead });
-    return delay({ matched: all.length, reachable, skips });
+    return delay({ matched: all.length, reachable,
+      skips: [...skips].map(([reason, count]) => ({ reason, count })) });
   },
 
   async mSendReach(payload) {
     const plan = await this.mPlanReach(payload);
     const now = Date.now();
     const gate = db.reachSentAt[payload.scene] ?? (db.reachSentAt[payload.scene] = {});
-    const minDays = payload.scene === "WAKEUP" ? 14 : payload.scene === "COUPON" ? 7 : 3;
-    for (const m of allMockMembers()) {
-      if (m.status === "LEAD" || m.reachOptOut) continue;
-      const last = gate[m.memberNo];
-      if (last && now - last < minDays * 86400_000) continue;
+    for (const m of reachTargets(payload)) {
+      if (skipReasonMock(m, payload.scene)) continue;
       gate[m.memberNo] = now;      // 记下来，第二次发就会被频次闸拦住
     }
     persist();
@@ -775,7 +847,7 @@ export const marketingMock: Pick<MerchantApi,
    * 定向发券。**三类跳过分开算**，与后端同一口径 ——
    * 只报一个「发放成功」的话，商家会以为人群里每个人都收到了。
    */
-  async mIssueCoupon(couponNo, segmentNo) {
+  async mIssueCoupon(couponNo, segmentNo, audiences) {
     const c = db.merchantCoupons.find((x) => x.couponNo === couponNo);
     if (!c) throw new ApiError(10404, "券不存在");
     if (c.status !== "ACTIVE") throw new ApiError(40014, "这张券已暂停或已结束，发不出去");
@@ -783,8 +855,9 @@ export const marketingMock: Pick<MerchantApi,
     const sg = db.memberSegments.find((x) => x.segmentNo === segmentNo);
     // 预设人群「@ALL / @NEW / @LOYAL / @SLEEPING」按分层现筛，与后端同一口径
     const level = segmentNo?.startsWith("@") ? segmentNo.slice(1) : null;
-    const hit = sg ? matchSegment(sg.rule)
-      : allMockMembers().filter((m) => !level || level === "ALL" || m.level === level);
+    const hit = audiences?.length ? (resolveAudienceMock(audiences) ?? [])
+      : sg ? matchSegment(sg.rule)
+        : allMockMembers().filter((m) => !level || level === "ALL" || m.level === level);
     const reachable = hit.filter((m) => m.status === "ACTIVE" && !m.reachOptOut);
     const unreachable = hit.length - reachable.length;
 
@@ -953,4 +1026,14 @@ function memberSettingView() {
     regularD90Orders: saved.regularD90Orders ?? 2,
     levelComputedAt: todayAt3(),
   };
+}
+
+/**
+ * 发消息圈到的人：新入参给受众项（取或）；旧入参给一个人群号；都没有 = 全部会员。
+ * 此前 mock 不论选哪个人群都按全部会员算，演示时「选了沉睡 24 人、能发 118」对不上。
+ */
+function reachTargets(payload: { segmentNo?: string; audiences?: Array<{ type: string; value: string }> }) {
+  if (payload.audiences?.length) return resolveAudienceMock(payload.audiences) ?? [];
+  const sg = payload.segmentNo ? db.memberSegments.find((x) => x.segmentNo === payload.segmentNo) : null;
+  return sg ? matchSegment(sg.rule) : allMockMembers();
 }

@@ -9,7 +9,8 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
-import type { MemberDetail } from "@shared/types";
+import type { MemberDetail, MemberTag } from "@shared/types";
+import { useI18n } from "vue-i18n";
 
 const merchant = useMerchantStore();
 const data = ref<MemberDetail | null>(null);
@@ -21,6 +22,59 @@ const showStores = computed(() => merchant.multiStore && (data.value?.stores.len
 function storeName(no?: string | null) {
   if (!no) return "—";
   return merchant.stores.find((s) => s.storeNo === no)?.name || no;
+}
+
+const { t } = useI18n();
+const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
+
+/** 每人最多几个商家标签。与后端 member.tag.max-per-member 的默认值一致；超了后端会拒并写明上限 */
+const MAX_TAGS = 10;
+
+/** 他身上的商家标签。系统标签（分层）不在这里 —— 那是按口径算的，不能手改 */
+const mine = computed(() => (data.value?.tags ?? []).filter((x) => x.tagType === "MCH"));
+
+// 选标签弹层（原型 m05）：多选，勾 / 去勾，按「保存」一次提交差集
+const showTags = ref(false);
+const allTags = ref<MemberTag[]>([]);
+const picked = ref<string[]>([]);
+const saving = ref(false);
+
+async function openTags() {
+  picked.value = mine.value.map((x) => x.tagNo);
+  showTags.value = true;
+  allTags.value = (await api.mMemberTags().catch(() => []))
+    .filter((x) => x.tagType === "MCH" && x.status === "ACTIVE");
+}
+
+function toggleTag(no: string) {
+  if (picked.value.includes(no)) {
+    picked.value = picked.value.filter((x) => x !== no);
+  } else if (picked.value.length < MAX_TAGS) {
+    picked.value = [...picked.value, no];
+  } else {
+    uni.showToast({ title: tt("memberDetail.tagFull", { n: MAX_TAGS }), icon: "none" });
+  }
+}
+
+async function saveTags() {
+  if (saving.value) return;
+  const before = mine.value.map((x) => x.tagNo);
+  const add = picked.value.filter((x) => !before.includes(x));
+  const remove = before.filter((x) => !picked.value.includes(x));
+  if (!add.length && !remove.length) {
+    showTags.value = false;
+    return;
+  }
+  saving.value = true;
+  try {
+    await api.mTagMembers({ memberNos: [memberNo.value], add, remove });
+    showTags.value = false;
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    saving.value = false;
+  }
 }
 
 /** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
@@ -76,6 +130,21 @@ onLoad(async (q) => {
         </sh-kv>
       </view>
 
+      <!--
+        标签（原型 m04）。整行可点，打开选标签弹层 —— 此前后端能打标签、页面上一个入口都没有。
+        线索会员也能打：打了不等于能给他发消息，那一条在选人面板里会写成「手录未同意」。
+      -->
+      <view class="sh-card sh-mt-sm sh-row sh-row--between" @tap="openTags">
+        <view class="sh-fill">
+          <text class="txt-title">{{ $t("memberDetail.tags") }}</text>
+          <view v-if="mine.length" class="sh-wrap tags">
+            <text v-for="tg in mine" :key="tg.tagNo" class="sh-chip">{{ tg.name }}</text>
+          </view>
+          <text v-else class="sh-muted blk">{{ $t("memberDetail.noTags") }}</text>
+        </view>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
       <view v-if="showStores" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.stores") }}</text>
@@ -110,6 +179,26 @@ onLoad(async (q) => {
       </view>
 
       <text class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
+
+      <sh-sheet :visible="showTags" :title="tt('memberDetail.tagsOf')" @close="showTags = false">
+        <view class="sh-cells">
+          <view v-for="tg in allTags" :key="tg.tagNo" class="sh-cell sh-row sh-row--between" @tap="toggleTag(tg.tagNo)">
+            <text class="txt-body" :class="{ 'txt-primary': picked.includes(tg.tagNo) }">{{ tg.name }}</text>
+            <view class="sh-row">
+              <text class="txt-body sh-muted sh-num">{{ tg.count }}</text>
+              <sh-icon v-if="picked.includes(tg.tagNo)" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
+            </view>
+          </view>
+        </view>
+        <sh-empty v-if="!allTags.length" compact bare :text="tt('batchTag.noTags')"></sh-empty>
+        <template #foot>
+          <text class="txt-caption sh-muted blk foot__hint">{{ $t("memberDetail.tagCount", { n: picked.length, m: MAX_TAGS }) }}</text>
+          <view class="sh-row bar">
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="showTags = false">{{ $t("batchTag.cancel") }}</view>
+            <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveTags">{{ $t("memberDetail.saveTags") }}</view>
+          </view>
+        </template>
+      </sh-sheet>
     </template>
   </sh-scaffold>
 </template>
@@ -121,6 +210,20 @@ onLoad(async (q) => {
 
 .blk {
   display: block;
+}
+.tags {
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+.foot__hint {
+  padding-bottom: 16rpx;
+}
+.bar {
+  gap: 16rpx;
+  width: 100%;
+}
+.bar__main {
+  flex: 2;
 }
 /* 只留本页版面：排法（两端对齐）归 sh-kv。
    ⚠️ 这个类名与 sh-kv 的根同名，**不要挂到 <sh-kv> 上** ——

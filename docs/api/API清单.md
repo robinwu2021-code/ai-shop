@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 737 个接口**：后端已实现 665（90%）· 前端在调 666
+**合计 741 个接口**：后端已实现 669（90%）· 前端在调 670
 
 ---
 
@@ -219,7 +219,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **244** 个接口 ｜ 后端已实现 **239**（98%）｜ 前端在调 **244**
+共 **248** 个接口 ｜ 后端已实现 **243**（98%）｜ 前端在调 **248**
 
 ### activities（4）
 
@@ -471,12 +471,13 @@
 | POST | `/biz/member-reach/plan` | 群发试算：能发多少、跳过多少 | — | `ReachPlan` | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-reach/send` | 群发（会打扰真实用户） | — | `ReachResult` | 🔒 | ✅ | ✅ |
 
-### member-segments（4）
+### member-segments（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/member-segments` | 人群列表 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-segments` | 存人群（存条件不存名单） | — | `MemberSegment` | 🔒 | ✅ | ✅ |
+| GET | `/biz/member-segments/{segmentNo}` | 人群详情：此刻人数与用在哪 | — | `MemberSegmentDetail` | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-segments/{segmentNo}/remove` | 删人群（端上没有 DELETE，见 http-client） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-segments/preview` | 试算命中与可触达 | — | `MemberSegmentPreview` | 🔒 | ✅ | ✅ |
 
@@ -487,7 +488,7 @@
 | GET | `/biz/member-settings` | 会员经营口径 | — | `MemberSetting` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/member-settings` | 改口径（店主） | — | `MemberSetting` | 🔒 | ✅ | ✅ |
 
-### member-tags（4）
+### member-tags（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -495,8 +496,9 @@
 | POST | `/biz/member-tags` | 新建标签 | — | `MemberTag` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/member-tags/{tagNo}` | 改名 / 停用 | — | `MemberTag` | 🔒 | ✅ | ✅ |
 | POST | `/biz/member-tags/{tagNo}/merge` | 合并（confirm=false 只试算） | — | `MemberMergePreview` | 🔒 | ✅ | ✅ |
+| GET | `/biz/member-tags/{tagNo}/usage` | 标签用在哪（活动与人群） | — | `MemberTagUsage` | 🔒 | ✅ | ✅ |
 
-### members（6）
+### members（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -504,8 +506,10 @@
 | POST | `/biz/members` | 手工录入（未注册记为线索） | — | `Member` | 🔒 | ✅ | ✅ |
 | GET | `/biz/members/{memberNo}` | 会员详情：各店往来与来源轨迹 | — | `MemberDetail` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/members/{memberNo}` | 改备注 / 拉黑 | — | `Member` | 🔒 | ✅ | ✅ |
+| POST | `/biz/members/audience-preview` | 选人试算：命中 / 收得到 / 跳过原因 | — | `AudiencePreview` | 🔒 | ✅ | ✅ |
 | GET | `/biz/members/stats` | 四层人数与未计入买家 | — | `MemberStats` | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/members/tags/batch` | 批量打/去一个标签（confirm=false 只试算） | — | `BatchTagResult` | 🔒 | ✅ | ✅ |
 
 ### merchant（11）
 

@@ -1,6 +1,6 @@
 # TDD-会员标签与定向营销
 
-状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 实现中
+状态：已确认（2026-09-19）· 批 A 已上线（待运营开任务）· 批 B 已实现（待上线）
 关联需求：[PRD-会员标签与定向营销](../requirements/PRD-会员标签与定向营销.md)（AC-1 … AC-15）
 原型：[会员标签与定向营销](https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc)（m01–m21 · c01 · o01–o02）·
 [营销 v2](https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt)（s01 · s04–s06 · s16 · s18）
@@ -131,7 +131,7 @@
 
 | 方法 | 路径 | 权限 | 新/改 | 原型 |
 |---|---|---|---|---|
-| POST | `/biz/member-audience/preview` | `biz:customer` | **新** | m12 · m13 · m15 · m16 · m17 · m18 |
+| POST | `/biz/members/audience-preview` | `biz:customer` | **新**（挂在 members 下，见 §6 批 B） | m12 · m13 · m15 · m16 · m17 · m18 |
 | POST | `/biz/members/tags/batch` | `biz:customer` | **新** | m06 · m20 |
 | GET | `/biz/member-tags/{tagNo}/usage` | `biz:customer` | **新** | m08 · m09 |
 | GET | `/biz/member-segments/{segmentNo}` | `biz:customer` | **新**（详情 + 用在哪） | m11 |
@@ -477,6 +477,47 @@ int retargetTag(String entityNo, String fromTagNo, String toTagNo);             
 | 重算时 `level = m.getLevel()`（不按口径算） | `idleRegularBecomesSleepingNextDay` · `raisingSleepDaysRestoresLevel` · `d90DecaysWhenOrdersLeaveWindow` |
 | 去掉「没变就不写」 | `recomputeTwiceChangesNoRow` |
 | `MemberLevelServiceImpl` 加一个 `UserPushPort` 字段 | `memberLevelServiceMustNotTouchReach` |
+
+### 批 B 实现记录（2026-09-19）
+
+| 与设计的差异 | 原因 |
+|---|---|
+| 试算端点 `/biz/members/audience-preview`（设计写 `/biz/member-audience/preview`） | `BizMemberController` 在「一个控制器多个资源」棘轮名单上，新开资源族会让它更胖；挂在已有的 `members` 下 |
+| 引用查询 SPI 放在 `spi/marketing/AudienceRefPort`（设计写 `spi/promotion`） | `spi` 下没有 promotion 子包，营销域的 Port 都在 marketing；新开子包要过「顶层包登记」闸 |
+| 编排放进新服务 `MemberAudienceService`（设计写在 `MemberTagService`） | 会员 → 标签 → 人群 → 会员会绕出循环依赖；标签服务只加纯标签层面的 `batch` |
+| ErrorCode 只加两个（`MEMBER_AUDIENCE_REQUIRED` 70065 · `MEMBER_AUDIENCE_EMPTY` 70066），没加 `MEMBER_TAG_BATCH_TOO_LARGE` | 批量打标不设上限：按条件圈人时后端分块处理，超限者按人跳过计数 |
+| 发放记录 `CouponIssueVO` 增加 `audiences` | 设计漏了：按标签发的批次没有人群号，发放记录页会显示成「全部会员」 |
+| 名单「对这批人」→ 发券 / 发消息：单个分层或单个标签直接变成一个受众项，否则先存成人群 | 筛选是「且」、受众项之间是「或」—— 把「沉睡 且 爱囤货」拆成两项会发给「沉睡 或 爱囤货」 |
+| 受众在「名单 → 券列表 → 发放页」之间用页面内的待带入状态传（10 分钟过期），不走查询串 | 中间隔两跳，查询串每一跳都要转交，漏一跳就静默丢成「全部会员」 |
+| 页面：新增 `member-tag`、`member-segment` 两页 + `biz-audience-picker`、`biz-batch-tag-sheet` 两个组件 | 与 §2.4 一致；原型登记表 m08 / m11 挂上路由 |
+
+**顺手修掉的现成缺陷**（都在这条线的路径上，不修批 B 走不通）：
+
+| 缺陷 | 症状 | 处理 |
+|---|---|---|
+| `pmt_activity_audience` 唯一键不含 `deleted`，保存时逻辑删再插 | 编辑一个带受众的活动、受众不变 → DuplicateKey（商品表 2026-09-18 已修过同一个坑，受众表当时漏了） | 物理删 `hardDeleteByActivity` |
+| `mbr_member_tag` 同上 | 去掉一个标签再打回去 → DuplicateKey | 物理删 `hardDelete` / `hardDeleteById` |
+| 合并标签只改关系行 | 引用源标签的活动受众与人群条件从此一个人都命中不了，活动照样「进行中」 | 合并时一并改指（`AudienceRefPort#retargetTag` + `MemberSegmentService#retargetTag`） |
+| `MemberTagService#tag` 不校验会员归属 | 传别家会员号也能写进一条关系行 | 校验会员须属本店 |
+| 发消息筛人不挡「被拉黑」 | 发券挡了、发消息没挡 | 统一进 `AudienceResolver`，多一档跳过原因 `BLOCKED` |
+| 发消息 mock 不论选哪个人群都按全部会员算 | 演示时「选沉睡 24 人、能发 118」 | mock 按受众项筛 |
+| 会员名单卡片 `.row__main .sh-muted { display:block }` 挂空（那一层没有这个类） | 「¥285.50下过单」几行挤成一行 | 补类名 |
+
+测试：`MemberAudienceFlowTest` 12 条（AC-1/2/3/4/8/9/10/11/16 + 两个撞键 + 别家会员号），
+`ActivityAudienceFlowTest` 一条改为先造会员再建活动（AC-10 的有意行为变化）。消融七处各自变红：
+
+| 消融 | 变红的 |
+|---|---|
+| 人群快照不落 | `segmentAudienceUsesSnapshotAfterRuleChange` |
+| 进行中的活动重抄快照 | 同上 |
+| 受众改回逻辑删 | `resaveActivityWithSameAudience` · `segmentAudienceUsesSnapshotAfterRuleChange` |
+| 去标签改回逻辑删 | `tagThenFilterFindsMember` |
+| 去掉 0 人校验 | `publishRejectedWhenAudienceEmpty` |
+| 合并不改指活动受众 | `tagUsageAndMergeRetargets` |
+| 线索不跳过 | `leadCanBeTaggedButNeverReachable` |
+
+B 端 H5 mock 实测：名单卡片标签行、「对这 2 人…」四个去处、批量打标试算「其中 1 人已有，实际新增 1 人」与确认、
+活动选人面板实时「覆盖 2 人」与「非本店会员」互斥、标签详情。发券页、发消息页、人群详情过了 `vue-tsc`，未在浏览器里点。
 
 ### 偏差说明（设计阶段已知，写在前面）
 

@@ -569,6 +569,45 @@ export function matchSegment(rule: MemberSegmentRule) {
 }
 
 /** 字典 + 人数。**人数是数出来的**，与真库一样不存冗余列 */
+/**
+ * 受众项 → 命中的会员。**与后端 AudienceResolver 同一口径**：多项之间取或，重叠只算一次；
+ * 含 `NON_MEMBER` 时返回 null（「所有不是本店会员的人」数不出来）。
+ */
+export function resolveAudienceMock(items: Array<{ type: string; value: string }>) {
+  if (items.some((i) => i.type === "NON_MEMBER")) return null;
+  const all = allMockMembers();
+  const hit = new Map<string, (typeof all)[number]>();
+  for (const it of items) {
+    let part: typeof all = [];
+    if (it.type === "ALL") part = all;
+    else if (it.type === "LEVEL") part = all.filter((m) => m.level === it.value);
+    else if (it.type === "SOURCE") part = all.filter((m) => m.source === it.value);
+    else if (it.type === "TAG") part = all.filter((m) => (db.memberTagRel[m.memberNo] ?? []).includes(it.value));
+    else if (it.type === "SEGMENT") {
+      const sg = db.memberSegments.find((x) => x.segmentNo === it.value);
+      part = sg ? matchSegment(sg.rule) : [];
+    }
+    for (const m of part) hit.set(m.memberNo, m);
+  }
+  return [...hit.values()];
+}
+
+/**
+ * 这个人为什么收不到。与后端同一顺序：线索 → 拉黑 → 退订 → 频次（mock 里人人都有账号，没有 NO_ACCOUNT）。
+ * @returns null = 收得到
+ */
+export function skipReasonMock(m: { memberNo: string; status: string; reachOptOut?: boolean }, scene?: string) {
+  if (m.status === "LEAD") return "LEAD";
+  if (m.status !== "ACTIVE") return "BLOCKED";
+  if (m.reachOptOut) return "OPT_OUT";
+  if (scene) {
+    const minDays = scene === "WAKEUP" ? 14 : scene === "COUPON" ? 7 : 3;
+    const last = (db.reachSentAt[scene] ?? {})[m.memberNo];
+    if (last && Date.now() - last < minDays * 86400_000) return "TOO_SOON";
+  }
+  return null;
+}
+
 export function mockTags() {
   return db.memberTags
     .filter((t) => t.status !== "MERGED")

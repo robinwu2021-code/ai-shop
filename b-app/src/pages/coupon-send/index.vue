@@ -1,12 +1,13 @@
 <script setup lang="ts">
 /*
- * 发放 · 选人群（原型 s18）。单选列表与新建活动的玩法面板同一种写法：选中项变红、右侧打勾。
+ * 发放 · 选人（原型 m17，由 s18 改版）。
  *
- * 前四行是**预设人群**（全部会员 / 新客 / 熟客 / 沉睡会员），按会员分层现筛，不用先去会员页存人群 ——
- * 「发给沉睡会员」是最常见的一次发放。存下来的人群收在「我的人群」里。
+ * 「发给」一行打开选人面板（与活动、发消息同一块）：分层、标签、人群、来源多选，取或。
+ * 此前是四个预设层加「我的人群」—— 选不到标签，而「给爱吃辣的发一张券」恰恰是小店最常见的一次发放。
  *
- * 底部写「最多支出」：人数 × 单张最大优惠。商家选的是一群人，要为之负责的是钱。
- * 发出去收不回来，所以点「发放」还要再确认一次，确认框里写清发给谁、多少人。
+ * 选完当场算两个数：命中与收得到。**最多支出按收得到算**，按钮写实际张数 ——
+ * 按命中算的话，线索会员那几张永远发不出去，却让支出看起来比真实的大。
+ * 从会员名单「对这批人」、人群详情「发给他们」过来时，受众已经预选好。
  */
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
@@ -15,8 +16,9 @@ import { api } from "@/api";
 import { confirm } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { takePendingAudience } from "@/shared/audience";
 import { money } from "@shared/utils/money";
-import type { MemberSegment, MemberStats, MerchantCoupon } from "@shared/types";
+import type { AudienceItem, AudiencePreview, MerchantCoupon } from "@shared/types";
 
 const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
@@ -24,44 +26,37 @@ const merchant = useMerchantStore();
 
 const couponNo = ref("");
 const c = ref<MerchantCoupon | null>(null);
-const stats = ref<MemberStats | null>(null);
-const segments = ref<MemberSegment[]>([]);
 const failed = ref(false);
 const busy = ref(false);
-const picked = ref("@ALL");
-const showMine = ref(false);
+const showPicker = ref(false);
+/** 默认发给全部会员 —— 与此前「@ALL」选中是同一个默认 */
+const items = ref<AudienceItem[]>([{ type: "ALL", value: "*" }]);
+const label = ref("");
+const preview = ref<AudiencePreview | null>(null);
 
 async function load() {
   if (!couponNo.value) return;
   try {
-    const [one, st, sg] = await Promise.all([api.mCoupon(couponNo.value), api.mMemberStats(), api.mMemberSegments()]);
-    c.value = one;
-    stats.value = st;
-    segments.value = sg;
+    c.value = await api.mCoupon(couponNo.value);
     failed.value = false;
+    await recount();
   } catch {
     failed.value = true;
   }
 }
 
-/** 预设人群。熟客 = 忠实客（LOYAL），与活动受众里「熟客」同一个口径 */
-const presets = computed(() => {
-  const s = stats.value;
-  if (!s) return [];
-  return [
-    { key: "@ALL", label: tt("couponSend.preset.ALL"), n: s.newCount + s.regularCount + s.loyalCount + s.sleepingCount },
-    { key: "@NEW", label: tt("couponSend.preset.NEW"), n: s.newCount },
-    { key: "@LOYAL", label: tt("couponSend.preset.LOYAL"), n: s.loyalCount },
-    { key: "@SLEEPING", label: tt("couponSend.preset.SLEEPING"), n: s.sleepingCount },
-  ];
-});
+async function recount() {
+  preview.value = await api.mAudiencePreview({ audiences: items.value }).catch(() => null);
+}
 
-const pickedMine = computed(() => segments.value.find((s) => s.segmentNo === picked.value) ?? null);
-const pickedCount = computed(() =>
-  pickedMine.value ? pickedMine.value.lastCount : presets.value.find((p) => p.key === picked.value)?.n ?? 0);
-const pickedLabel = computed(() =>
-  pickedMine.value ? pickedMine.value.name : presets.value.find((p) => p.key === picked.value)?.label ?? "");
+function onPick(next: AudienceItem[], text: string) {
+  items.value = next;
+  label.value = text;
+  showPicker.value = false;
+  void recount();
+}
 
+const reachable = computed(() => preview.value?.reachable ?? 0);
 const left = computed(() => (c.value?.totalCount == null ? null : Math.max(0, c.value.totalCount - c.value.receivedCount)));
 
 /** 单张最多优惠 × 次数：现金按面额，折扣按封顶，兑换 / 免运费不计 */
@@ -71,27 +66,21 @@ const perCoupon = computed(() => {
   const one = x.benefitMode === "CASH" ? x.benefitValue : x.benefitMode === "PERCENT" ? x.benefitCapMinor ?? 0 : 0;
   return one * (x.timesTotal || 1);
 });
-const maxSpend = computed(() => {
-  const n = left.value == null ? pickedCount.value : Math.min(pickedCount.value, left.value);
-  return n * perCoupon.value;
-});
-
-function pickMine(no: string) {
-  picked.value = no;
-  showMine.value = false;
-}
+/** 实际能发出的张数：收得到的人与剩余张数取小 */
+const willIssue = computed(() => (left.value == null ? reachable.value : Math.min(reachable.value, left.value)));
+const maxSpend = computed(() => willIssue.value * perCoupon.value);
 
 async function send() {
   const x = c.value;
-  if (!x || busy.value || !pickedCount.value) return;
+  if (!x || busy.value || !willIssue.value) return;
   const ok = await confirm({
-    title: tt("couponSend.confirmTitle", { name: pickedLabel.value }),
-    hint: tt("couponSend.confirmBody", { n: pickedCount.value, title: x.title }),
+    title: tt("couponSend.confirmTitle", { name: label.value }),
+    hint: tt("couponSend.confirmBody", { n: willIssue.value, title: x.title }),
   });
   if (!ok) return;
   busy.value = true;
   try {
-    const r = await api.mIssueCoupon(x.couponNo, picked.value);
+    const r = await api.mIssueCoupon(x.couponNo, null, items.value);
     uni.redirectTo({ url: `${ROUTES.couponIssues}?couponNo=${x.couponNo}&issueNo=${r.issueNo}` });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -106,6 +95,12 @@ function back() {
 
 onLoad((q) => {
   couponNo.value = String(q?.couponNo ?? "");
+  label.value = tt("audience.allMembers");
+  const pending = takePendingAudience();
+  if (pending) {
+    items.value = pending.items;
+    label.value = pending.label;
+  }
   void load();
 });
 </script>
@@ -126,19 +121,20 @@ onLoad((q) => {
 
       <text class="txt-caption sh-muted grp">{{ $t("couponSend.to") }}</text>
       <view class="sh-cells">
-        <view v-for="p in presets" :key="p.key" class="sh-cell sh-row sh-row--between" @tap="picked = p.key">
-          <text class="txt-body" :class="{ 'txt-primary': picked === p.key }">{{ p.label }}</text>
+        <view class="sh-cell sh-row sh-row--between" @tap="showPicker = true">
+          <text class="txt-body sh-muted">{{ $t("couponSend.audience") }}</text>
           <view class="sh-row">
-            <text class="txt-body sh-muted sh-num">{{ p.n }}</text>
-            <sh-icon v-if="picked === p.key" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
-          </view>
-        </view>
-        <view class="sh-cell sh-row sh-row--between" @tap="showMine = true">
-          <text class="txt-body" :class="{ 'txt-primary': !!pickedMine }">{{ pickedMine?.name || $t("couponSend.mine") }}</text>
-          <view class="sh-row">
-            <text class="txt-body sh-muted sh-num">{{ $t("couponSend.mineN", { n: segments.length }) }}</text>
+            <text class="txt-body">{{ label }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponSend.matched") }}</text>
+          <text class="txt-body sh-num">{{ preview?.matched ?? "…" }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponSend.reachable") }}</text>
+          <text class="txt-body sh-num">{{ preview?.reachable ?? "…" }}</text>
         </view>
       </view>
 
@@ -150,24 +146,18 @@ onLoad((q) => {
       <sh-actionbar>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("couponSend.cancel") }}</view>
-          <view class="sh-btn bar__main" :class="{ 'is-disabled': busy || !pickedCount }" @tap="send">
-            {{ $t("couponSend.submit") }}
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': busy || !willIssue }" @tap="send">
+            {{ $t("couponSend.submitN", { n: willIssue }) }}
           </view>
         </view>
       </sh-actionbar>
 
-      <sh-sheet :visible="showMine" :title="tt('couponSend.mine')" @close="showMine = false">
-        <view class="sh-cells">
-          <view v-for="s in segments" :key="s.segmentNo" class="sh-cell sh-row sh-row--between" @tap="pickMine(s.segmentNo)">
-            <text class="txt-body" :class="{ 'txt-primary': picked === s.segmentNo }">{{ s.name }}</text>
-            <view class="sh-row">
-              <text class="txt-body sh-muted sh-num">{{ s.lastCount }}</text>
-              <sh-icon v-if="picked === s.segmentNo" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
-            </view>
-          </view>
-        </view>
-        <sh-empty v-if="!segments.length" line :text="tt('couponSend.mineEmpty')"></sh-empty>
-      </sh-sheet>
+      <biz-audience-picker
+        :visible="showPicker"
+        :model-value="items"
+        @close="showPicker = false"
+        @confirm="onPick"
+      ></biz-audience-picker>
     </template>
   </sh-scaffold>
 </template>

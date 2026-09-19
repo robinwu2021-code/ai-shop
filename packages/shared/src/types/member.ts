@@ -48,6 +48,8 @@ export interface Member {
   remark?: string | null;
   /** 成为会员的时刻 */
   joinedAt: number;
+  /** 他身上的商家标签名（名单卡片第二行）。只在名单接口里有 */
+  tagNames?: string[];
 }
 /**
  * 会员四层人数 + 两个提醒数。
@@ -257,6 +259,90 @@ export interface MemberSegmentPreview {
   count: number;
   /** 其中**能真正收到东西**的有多少（线索会员与已退订的人进不了受众）。只显示 count 的话，商家在人群页看到 120、发放页发出 96，会以为发漏了 */
   reachable: number;
+}
+/**
+ * 一个受众项：活动、发券、发消息「发给谁」的最小单位。
+ *
+ * @remarks **多项之间取或**（「沉睡的 + 爱囤货的都给」）；与筛选里「同时含以下标签」的取且相反，
+ * 界面上两处要分别写清。要「既沉睡又爱囤货」，先在筛选里存成人群，再选这个人群。
+ */
+export interface AudienceItem {
+  /** `ALL` 全部会员 · `LEVEL` 分层 · `TAG` 标签 · `SEGMENT` 人群 · `SOURCE` 首次来源 · `NON_MEMBER` 非本店会员（只在活动里） */
+  type: string;
+  /** 分层码 / 标签号 / 人群号 / 来源码；`ALL`、`NON_MEMBER` 为 `*`。**存号不存文本** —— 标签改名不该动到这里 */
+  value: string;
+}
+/**
+ * 选人面板的试算：命中多少、收得到多少、收不到的为什么。
+ *
+ * @remarks 活动场景只有 `matched`（活动不推送，没有「收得到」一说）；
+ * 含「非本店会员」时两个数都为 null —— 「所有不是本店会员的人」数不出来。
+ */
+export interface AudiencePreview {
+  /** 命中多少人（含收不到的）；数不出来时为 null */
+  matched: number | null;
+  /** 其中收得到消息的；活动场景为 null */
+  reachable: number | null;
+  /** 收不到的按原因分档：`LEAD` 手录未认领 · `BLOCKED` 已拉黑 · `OPT_OUT` 关了本店消息 · `NO_ACCOUNT` 还没注册 · `TOO_SOON` 最近刚收到过 */
+  skips: Array<{ reason: string; count: number }>;
+}
+/**
+ * 批量打标的试算 / 结果。**确认框上写的就是 `willChange`** ——「其中 5 人已有，实际新增 32 人」。
+ */
+export interface BatchTagResult {
+  /** 圈到的人（只算本店的） */
+  matched: number;
+  /** 已经是目标状态的（打：本来就有；去：本来就没有），不重复计 */
+  alreadyInState: number;
+  /** 实际会改的人数 */
+  willChange: number;
+  /** 标签已满（每人上限）而跳过的 */
+  skippedFull: number;
+  /** false = 这只是试算，没有落库 */
+  applied: boolean;
+}
+/** 标签 / 人群被谁引用着：一个活动，或一批发券 */
+export interface AudienceRef {
+  /** `ACTIVITY` 活动 / `COUPON_ISSUE` 发券批次 */
+  kind: string;
+  /** 活动号 / 发放批次号 */
+  refNo: string;
+  /** 活动名 / 券名 */
+  name?: string | null;
+  /** 活动状态（`RUNNING` / `PAUSED` …）；发券批次为空 */
+  status?: string | null;
+  /** 发放时刻；活动为空 */
+  at?: number | null;
+}
+/**
+ * 一个标签用在哪。**停用或合并前先给商家看** —— 引用它的活动会跟着受影响。
+ */
+export interface MemberTagUsage {
+  /** 标签本身（含人数） */
+  tag: MemberTag;
+  /** 本月新打上的人数 */
+  newThisMonth: number;
+  /** 受众里引用它的未结束活动 */
+  activities: AudienceRef[];
+  /** 条件里含它的人群 */
+  segments: MemberSegment[];
+}
+/**
+ * 人群详情：条件 + 此刻人数（当场算）+ 用在哪。
+ *
+ * @remarks 进行中的活动按**发布那一刻**的人群条件生效 —— 改这里的条件不影响它们。
+ */
+export interface MemberSegmentDetail {
+  /** 人群本身 */
+  segment: MemberSegment;
+  /** 此刻命中（当场算，不是 `lastCount`） */
+  matched: number;
+  /** 其中收得到消息的 */
+  reachable: number;
+  /** 引用它的未结束活动 */
+  activities: AudienceRef[];
+  /** 按它发过的券（最近 20 批） */
+  couponIssues: AudienceRef[];
 }
 /**
  * 合并标签的影响面。**先给商家看这几个数，再让他按** —— 合并不可逆。

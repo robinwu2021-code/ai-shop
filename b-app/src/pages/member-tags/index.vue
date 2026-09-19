@@ -13,6 +13,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { MemberTag } from "@shared/types";
 import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -66,9 +67,28 @@ async function rename(tg: MemberTag) {
   run(() => api.mEditMemberTag(tg.tagNo, { name }));
 }
 
-function toggleEnabled(tg: MemberTag) {
+/**
+ * 停用前先看引用（AC-16）：引用它的活动从停用那一刻起一个人都命中不了，
+ * 而活动照样显示「进行中」。0 处在用时直接停，不打扰。
+ */
+async function toggleEnabled(tg: MemberTag) {
   const enable = tg.status !== "ACTIVE";
+  if (!enable) {
+    const u = await api.mMemberTagUsage(tg.tagNo).catch(() => null);
+    const n = (u?.activities.length ?? 0) + (u?.segments.length ?? 0);
+    if (n > 0) {
+      const ok = await confirm({
+        title: String(t("memberTags.disableTitle", { a: tg.name })),
+        hint: String(t("memberTags.disableUsed", { a: u!.activities.length, s: u!.segments.length })),
+      });
+      if (!ok) return;
+    }
+  }
   run(() => api.mEditMemberTag(tg.tagNo, { enabled: enable }));
+}
+
+function openTag(tg: MemberTag) {
+  uni.navigateTo({ url: `${ROUTES.memberTag}?tagNo=${tg.tagNo}` });
 }
 
 /**
@@ -89,7 +109,12 @@ async function merge(tg: MemberTag) {
   const into = others[idx]!;
 
   const preview = await api.mMergeMemberTag(tg.tagNo, { intoTagNo: into.tagNo });
-  const ok = await confirm({ title: String(t("memberTags.mergeTitle", { a: tg.name, b: into.name })), hint: String(t("memberTags.mergeBody", { n: preview.affectedMembers })) });
+  const body = [String(t("memberTags.mergeBody", { n: preview.affectedMembers }))];
+  // 引用源标签的活动与人群会一起改指到目标标签 —— 不写出来，他会以为活动的受众被悄悄换了
+  if (preview.referencedActivities > 0) {
+    body.push(String(t("memberTags.mergeActivities", { n: preview.referencedActivities })));
+  }
+  const ok = await confirm({ title: String(t("memberTags.mergeTitle", { a: tg.name, b: into.name })), hint: body.join("\n") });
   if (!ok) return;
   await run(() => api.mMergeMemberTag(tg.tagNo, { intoTagNo: into.tagNo, confirm: true }));
   uni.showToast({ title: t("memberTags.merged"), icon: "none" });
@@ -121,7 +146,7 @@ onShow(load);
 
       <view v-for="tg in mine" :key="tg.tagNo" class="item sh-mt-sm">
         <view class="sh-row sh-row--baseline">
-          <text class="txt-strong" :class="{ 'sh-void': tg.status !== 'ACTIVE' }">{{ tg.name }}</text>
+          <text class="txt-strong" :class="{ 'sh-void': tg.status !== 'ACTIVE' }" @tap="openTag(tg)">{{ tg.name }} ›</text>
           <text class="sh-muted">
             {{ $t("memberTags.count", { n: tg.count }) }}
             <template v-if="tg.status !== 'ACTIVE'"> · {{ $t("memberTags.disabled") }}</template>

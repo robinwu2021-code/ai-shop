@@ -857,6 +857,7 @@ _无字段_
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
+| `audiences` | `object`（见下）\[\] | 否 | 发给了哪些受众项（标签 / 分层 / 人群，取或）。旧批次为空，只看 segmentNo |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
 | `issued` | `number` | 是 | 实发多少张 |
 | `skipped` | `number` | 是 | 跳过多少人 |
@@ -864,6 +865,13 @@ _无字段_
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
 | `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
+
+`audiences[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | — |
+| `value` | `string` | 是 | — |
 
 `skipReasons[]` 的字段：
 
@@ -3000,6 +3008,25 @@ _无字段_
 | `countedAt` | `number,null` | 否 | 上次算的时刻。**人群是快照不是实时** —— 中间新来的人不在里面 |
 
 
+#### GET `/biz/member-segments/{segmentNo}`
+
+人群详情：此刻人数与用在哪　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MemberSegmentDetail`](#membersegmentdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `segment` | [`MemberSegment`](#membersegment) | 是 | 人群本身 |
+| `matched` | `number` | 是 | 此刻命中（当场算，不是 `lastCount`） |
+| `reachable` | `number` | 是 | 其中收得到消息的 |
+| `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 引用它的未结束活动 |
+| `couponIssues` | [`AudienceRef`](#audienceref)\[\] | 是 | 按它发过的券（最近 20 批） |
+
+
 #### POST `/biz/member-segments/{segmentNo}/remove`
 
 删人群（端上没有 DELETE，见 http-client）　🔒
@@ -3138,6 +3165,24 @@ _无字段_
 | `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
 
+#### GET `/biz/member-tags/{tagNo}/usage`
+
+标签用在哪（活动与人群）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MemberTagUsage`](#membertagusage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tag` | [`MemberTag`](#membertag) | 是 | 标签本身（含人数） |
+| `newThisMonth` | `number` | 是 | 本月新打上的人数 |
+| `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 受众里引用它的未结束活动 |
+| `segments` | [`MemberSegment`](#membersegment)\[\] | 是 | 条件里含它的人群 |
+
+
 ### members
 
 #### GET `/biz/members`
@@ -3185,6 +3230,7 @@ _无字段_
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
 | `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
 | `joinedAt` | `number` | 是 | 成为会员的时刻 |
+| `tagNames` | `string`\[\] | 否 | 他身上的商家标签名（名单卡片第二行）。只在名单接口里有 |
 
 
 #### GET `/biz/members/{memberNo}`
@@ -3232,6 +3278,31 @@ _无字段_
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
 | `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
 | `joinedAt` | `number` | 是 | 成为会员的时刻 |
+| `tagNames` | `string`\[\] | 否 | 他身上的商家标签名（名单卡片第二行）。只在名单接口里有 |
+
+
+#### POST `/biz/members/audience-preview`
+
+选人试算：命中 / 收得到 / 跳过原因　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`AudiencePreview`](#audiencepreview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `matched` | `number,null` | 是 | 命中多少人（含收不到的）；数不出来时为 null |
+| `reachable` | `number,null` | 是 | 其中收得到消息的；活动场景为 null |
+| `skips` | `object`（见下）\[\] | 是 | 收不到的按原因分档：`LEAD` 手录未认领 · `BLOCKED` 已拉黑 · `OPT_OUT` 关了本店消息 · `NO_ACCOUNT` 还没注册 · `TOO_SOON` 最近刚收到过 |
+
+`skips[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
 
 
 #### GET `/biz/members/stats`
@@ -3265,6 +3336,25 @@ _无字段_
 **出参**（`data`）
 
 类型：`any`
+
+
+#### POST `/biz/members/tags/batch`
+
+批量打/去一个标签（confirm=false 只试算）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BatchTagResult`](#batchtagresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `matched` | `number` | 是 | 圈到的人（只算本店的） |
+| `alreadyInState` | `number` | 是 | 已经是目标状态的（打：本来就有；去：本来就没有），不重复计 |
+| `willChange` | `number` | 是 | 实际会改的人数 |
+| `skippedFull` | `number` | 是 | 标签已满（每人上限）而跳过的 |
+| `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
 
 ### merchant
@@ -6013,6 +6103,35 @@ _无字段_
 - `SHORTAGE`
 - `DAMAGE`
 
+### AudiencePreview
+
+选人面板的试算：命中多少、收得到多少、收不到的为什么。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `matched` | `number,null` | 是 | 命中多少人（含收不到的）；数不出来时为 null |
+| `reachable` | `number,null` | 是 | 其中收得到消息的；活动场景为 null |
+| `skips` | `object`（见下）\[\] | 是 | 收不到的按原因分档：`LEAD` 手录未认领 · `BLOCKED` 已拉黑 · `OPT_OUT` 关了本店消息 · `NO_ACCOUNT` 还没注册 · `TOO_SOON` 最近刚收到过 |
+
+`skips[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reason` | `string` | 是 | — |
+| `count` | `number` | 是 | — |
+
+### AudienceRef
+
+标签 / 人群被谁引用着：一个活动，或一批发券
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | `string` | 是 | `ACTIVITY` 活动 / `COUPON_ISSUE` 发券批次 |
+| `refNo` | `string` | 是 | 活动号 / 发放批次号 |
+| `name` | `string,null` | 否 | 活动名 / 券名 |
+| `status` | `string,null` | 否 | 活动状态（`RUNNING` / `PAUSED` …）；发券批次为空 |
+| `at` | `number,null` | 否 | 发放时刻；活动为空 |
+
 ### AuthCodeInfo
 
 门槛码字典的一条：这个码要哪一类证、对应哪些类目。 `categoryNames` 由**应用层**拼（商家域不读商品域的类目，见 `CategoryUsagePort` 的说明）—— 商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品、熟食卤味」， 而不是三个码。
@@ -6092,6 +6211,18 @@ _无字段_
 | `title` | `string` | 是 | 商品名 |
 | `spec` | `string,null` | 否 | 规格，如「5 斤装」 |
 | `qty` | `number` | 是 | 这一期要进的份数 |
+
+### BatchTagResult
+
+批量打标的试算 / 结果。**确认框上写的就是 `willChange`** ——「其中 5 人已有，实际新增 32 人」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `matched` | `number` | 是 | 圈到的人（只算本店的） |
+| `alreadyInState` | `number` | 是 | 已经是目标状态的（打：本来就有；去：本来就没有），不重复计 |
+| `willChange` | `number` | 是 | 实际会改的人数 |
+| `skippedFull` | `number` | 是 | 标签已满（每人上限）而跳过的 |
+| `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
 ### BizScope
 
@@ -6269,6 +6400,7 @@ _无字段_
 | `issueNo` | `string` | 是 | 这一批发放的编号 |
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `segmentNo` | `string,null` | 否 | 发给哪个人群。空 = 手动挑的人 |
+| `audiences` | `object`（见下）\[\] | 否 | 发给了哪些受众项（标签 / 分层 / 人群，取或）。旧批次为空，只看 segmentNo |
 | `planned` | `number` | 是 | 人群此刻命中多少人 |
 | `issued` | `number` | 是 | 实发多少张 |
 | `skipped` | `number` | 是 | 跳过多少人 |
@@ -6276,6 +6408,13 @@ _无字段_
 | `amountMinor` | `number` | 是 | 这一批券的面额合计（分）—— 商家据此估敞口 |
 | `operatorNo` | `string,null` | 否 | 谁发的 |
 | `issuedAt` | `number` | 是 | 发放时刻（毫秒） |
+
+`audiences[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `type` | `string` | 是 | — |
+| `value` | `string` | 是 | — |
 
 `skipReasons[]` 的字段：
 
@@ -6849,6 +6988,7 @@ _无字段_
 | `reachOptOut` | `boolean` | 是 | 买家关掉了这家店的消息。商家看得到状态，看不到原因 |
 | `remark` | `string,null` | 否 | 商家写的备注。**只有商家自己看得到** |
 | `joinedAt` | `number` | 是 | 成为会员的时刻 |
+| `tagNames` | `string`\[\] | 否 | 他身上的商家标签名（名单卡片第二行）。只在名单接口里有 |
 
 ### MemberDetail
 
@@ -6882,6 +7022,18 @@ _无字段_
 | `rule` | [`MemberSegmentRule`](#membersegmentrule) | 是 | 筛选条件。存的是 JSON —— 条件会长，拆成列的话每加一个维度都要改表 |
 | `lastCount` | `number` | 是 | 上次算出来命中多少人 |
 | `countedAt` | `number,null` | 否 | 上次算的时刻。**人群是快照不是实时** —— 中间新来的人不在里面 |
+
+### MemberSegmentDetail
+
+人群详情：条件 + 此刻人数（当场算）+ 用在哪。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `segment` | [`MemberSegment`](#membersegment) | 是 | 人群本身 |
+| `matched` | `number` | 是 | 此刻命中（当场算，不是 `lastCount`） |
+| `reachable` | `number` | 是 | 其中收得到消息的 |
+| `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 引用它的未结束活动 |
+| `couponIssues` | [`AudienceRef`](#audienceref)\[\] | 是 | 按它发过的券（最近 20 批） |
 
 ### MemberSegmentPreview
 
@@ -6974,6 +7126,17 @@ _无字段_
 | `tagType` | `string` | 是 | `SYS` 系统算的（只读）/ `MCH` 商家自己的 |
 | `status` | `string` | 是 | `ACTIVE` / `DISABLED` 停用（老的还在、新的打不上）/ `MERGED` 已并入别的标签 |
 | `count` | `number` | 是 | 打了多少人。服务端 COUNT 出来的，不是冗余列 |
+
+### MemberTagUsage
+
+一个标签用在哪。**停用或合并前先给商家看** —— 引用它的活动会跟着受影响。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tag` | [`MemberTag`](#membertag) | 是 | 标签本身（含人数） |
+| `newThisMonth` | `number` | 是 | 本月新打上的人数 |
+| `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 受众里引用它的未结束活动 |
+| `segments` | [`MemberSegment`](#membersegment)\[\] | 是 | 条件里含它的人群 |
 
 ### MerchantApplyReq
 

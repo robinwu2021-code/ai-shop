@@ -520,6 +520,8 @@ export interface CouponIssueBatch {
   couponNo: string;
   /** 发给哪个人群。空 = 手动挑的人 */
   segmentNo?: string | null;
+  /** 发给了哪些受众项（标签 / 分层 / 人群，取或）。旧批次为空，只看 segmentNo */
+  audiences?: Array<{ type: string; value: string }>;
   /** 人群此刻命中多少人 */
   planned: number;
   /** 实发多少张 */

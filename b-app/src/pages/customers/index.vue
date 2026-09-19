@@ -10,7 +10,7 @@ import { hourMinute, monthDay } from "@shared/utils/datetime";
 // ⚠️ 隐私：只给手机号后四位（B12）。按号找人**必须输完整号** ——
 // 前缀模糊查询会把会员库变成一本通讯录，输「138」就能翻出一屏人。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
@@ -18,6 +18,9 @@ import { FEATURES } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
 import type { Member, MemberStats, MemberTag } from "@shared/types";
 import { pick, prompt } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
+import { setPendingAudience } from "@/shared/audience";
+import type { AudienceItem, BatchTagResult } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -28,6 +31,10 @@ function stamp(ts: number) {
   return `${monthDay(ts)} ${hourMinute(ts)}`;
 }
 const list = ref<Member[]>([]);
+/** 这组筛选命中的总人数（列表只取前 50 条） */
+const total = ref(0);
+/** 批量打标弹层 */
+const showBatch = ref(false);
 const loading = ref(false);
 
 /** 四层之一，或空 = 全部。点顶部那四个数字就是在切它 */
@@ -75,6 +82,7 @@ async function load() {
     ]);
     stats.value = s;
     list.value = page.records;
+    total.value = page.total;
     if (!tags.value.length) {
       tags.value = (await api.mMemberTags().catch(() => []))
         .filter((x) => x.status === "ACTIVE");
@@ -107,7 +115,7 @@ function toggleTag(no: string) {
  * 在筛出来的地方存，而不是另开一个筛选器 —— 少一处口径，也少一次「为什么两边人数不一样」。
  * 存的是条件不是名单：发券那一刻会重算，所以这里先把试算的两个数摆给他看。
  */
-async function saveAsSegment() {
+async function saveAsSegment(): Promise<string | null> {
   const rule = {
     level: level.value || undefined,
     tagNos: pickedTags.value.length ? [...pickedTags.value] : undefined,
@@ -116,7 +124,7 @@ async function saveAsSegment() {
     scopeStoreNo: storeNo.value || undefined,
     rule,
   }).catch(() => null);
-  if (!pv) return;
+  if (!pv) return null;
   /*
    * 试算结果现在走 `hint`（说明），不必再挤进标题 ——
    * 当初挤进标题是因为 `showModal` 的 `content` 在 `editable` 下是**初值**：
@@ -131,13 +139,57 @@ async function saveAsSegment() {
     placeholder: String(t("members.segmentNamePh")),
   });
   const name = (input ?? "").trim();
-  if (!name) return;
+  if (!name) return null;
   try {
-    await api.mSaveMemberSegment({ name, scopeStoreNo: storeNo.value || undefined, rule });
+    const sg = await api.mSaveMemberSegment({ name, scopeStoreNo: storeNo.value || undefined, rule });
     uni.showToast({ title: t("members.segmentSaved"), icon: "none" });
+    return sg.segmentNo;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+    return null;
   }
+}
+
+/** 有筛选条件才有「这批人」—— 不筛就是全部会员，那不是一批，是整份名单 */
+const filtered = computed(() => !!level.value || pickedTags.value.length > 0);
+
+/**
+ * 这批人 → 受众项。筛选是「且」（分层 且 同时含这些标签），而受众项之间是「或」——
+ * 只有单个分层、或单个标签时能原样变成一项；其余先存成人群，带人群号过去。
+ * 反过来把「沉睡 且 爱囤货」拆成两项的话，会发给「沉睡 或 爱囤货」，人数翻倍。
+ */
+async function currentAudience(): Promise<{ items: AudienceItem[]; label: string } | null> {
+  const tagName = (no: string) => tags.value.find((x) => x.tagNo === no)?.name ?? no;
+  if (!storeNo.value && level.value && !pickedTags.value.length) {
+    return { items: [{ type: "LEVEL", value: level.value }], label: String(t(`members.level.${level.value}`)) };
+  }
+  if (!storeNo.value && !level.value && pickedTags.value.length === 1) {
+    const no = pickedTags.value[0]!;
+    return { items: [{ type: "TAG", value: no }], label: tagName(no) };
+  }
+  const segmentNo = await saveAsSegment();
+  return segmentNo ? { items: [{ type: "SEGMENT", value: segmentNo }], label: String(t("members.thisBatch")) } : null;
+}
+
+/** 「对这批人」四个去处（原型 m03） */
+async function batchActions() {
+  const idx = await pick({ items: [
+    String(t("members.act.tag")), String(t("members.act.segment")),
+    String(t("members.act.reach")), String(t("members.act.coupon")),
+  ] });
+  if (idx === null) return;
+  if (idx === 0) { showBatch.value = true; return; }
+  if (idx === 1) { await saveAsSegment(); return; }
+  const aud = await currentAudience();
+  if (!aud) return;
+  setPendingAudience(aud.items, aud.label);
+  // 发券要先挑一张券：去券列表，发放页会把这批人预选上
+  go(idx === 2 ? ROUTES.memberReach : ROUTES.coupons);
+}
+
+function onBatchDone(_r: BatchTagResult) {
+  showBatch.value = false;
+  void load();
 }
 
 async function pickStore() {
@@ -166,6 +218,11 @@ function open(m: Member) {
 function levelClass(lv?: string | null) {
   return lv === "SLEEPING" ? "sh-chip--warning" : "sh-chip--primary";
 }
+
+/** 从标签详情「看这些人」进来时带着标签号：按它筛好 */
+onLoad((q) => {
+  if (q?.tagNo) pickedTags.value = [String(q.tagNo)];
+});
 
 onShow(() => {
   void load();
@@ -252,6 +309,7 @@ onShow(() => {
       标签筛选。**取交集**：点第二个标签是想收窄。
       筛出来之后可以直接存成人群 —— 条件在哪儿筛就在哪儿存。
     -->
+    <text v-if="tags.length" class="txt-caption sh-muted sub">{{ $t("members.tagsAll") }}</text>
     <view v-if="tags.length" class="tagbar sh-wrap">
       <text
         v-for="tg in tags"
@@ -271,6 +329,11 @@ onShow(() => {
       </text>
     </view>
 
+    <!-- 筛出来之后，这批人可以直接去打标、发消息、发券（原型 m03） -->
+    <view v-if="filtered && total > 0" class="sh-btn sh-btn--muted sh-mt-sm" @tap="batchActions">
+      {{ $t("members.forThese", { n: total }) }}
+    </view>
+
     <view class="search">
       <input
         v-model="phone"
@@ -286,7 +349,8 @@ onShow(() => {
     <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry='load' :text="String($t('members.empty'))" :tip="String($t('members.emptyTip'))"></sh-empty>
 
     <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
-      <view class="sh-fill">
+      <!-- row__main：下面那条 `.row__main .sh-muted { display: block }` 此前一直挂空（这一层没有这个类），三行挤成一行 -->
+      <view class="sh-fill row__main">
         <view class="row__head sh-row">
           <text class="txt-strong">···{{ m.phoneTail || "----" }}</text>
           <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
@@ -294,6 +358,7 @@ onShow(() => {
           </text>
           <text v-if="m.status === 'LEAD'" class="sh-chip">{{ $t("members.lead") }}</text>
         </view>
+        <text v-if="m.tagNames?.length" class="sh-muted">{{ m.tagNames.join(" · ") }}</text>
         <text class="sh-muted sh-num">
           {{ $t("members.stat", { n: m.orderCount, m: money(m.totalSpentMinor) }) }}
         </text>
@@ -318,6 +383,15 @@ onShow(() => {
     >
       {{ $t("memberSettings.entry") }}
     </text>
+
+    <biz-batch-tag-sheet
+      :visible="showBatch"
+      :count="total"
+      :rule="{ level: level || undefined, tagNos: pickedTags.length ? [...pickedTags] : undefined }"
+      :scope-store-no="storeNo || undefined"
+      @close="showBatch = false"
+      @done="onBatchDone"
+    ></biz-batch-tag-sheet>
   </sh-scaffold>
 </template>
 

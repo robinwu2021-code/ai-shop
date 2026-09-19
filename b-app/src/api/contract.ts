@@ -70,6 +70,11 @@ import type {
   MemberSegmentRule,
   MemberSetting,
   MemberMergePreview,
+  AudienceItem,
+  AudiencePreview,
+  BatchTagResult,
+  MemberTagUsage,
+  MemberSegmentDetail,
   MemberStats,
   MemberTag,
   MerchantStats,
@@ -1372,6 +1377,30 @@ export interface MerchantApi {
   /** 批量打标 / 去标。先筛出人再一次性打 —— 一个个点是这一页最没必要的重复劳动 */
   mTagMembers(payload: { memberNos: string[]; add?: string[]; remove?: string[] }): Promise<void>;
 
+  /**
+   * 批量打 / 去**一个**标签。两种圈人方式二选一：`memberNos`（效果页「下单的 3 人」），
+   * 或 `rule`（名单「这 37 人」，后端当场按条件筛，不信前端传来的名单）。
+   * `confirm` 不传 = **只试算** —— 确认框上的「实际新增 32 人」就是它算的。
+   */
+  mBatchTagMembers(payload: {
+    memberNos?: string[]; rule?: MemberSegmentRule; scopeStoreNo?: string;
+    tagNo: string; action?: "ADD" | "REMOVE"; confirm?: boolean;
+  }): Promise<BatchTagResult>;
+
+  /**
+   * 选人面板的试算：命中 / 收得到 / 收不到的原因。多项之间**取或**。
+   * `forActivity` 只给命中数；`scene` 给了才判频次闸（发消息用）。
+   */
+  mAudiencePreview(payload: {
+    audiences: AudienceItem[]; scene?: string; forActivity?: boolean;
+  }): Promise<AudiencePreview>;
+
+  /** 标签用在哪：引用它的活动与人群。停用 / 合并前先看 */
+  mMemberTagUsage(tagNo: string): Promise<MemberTagUsage>;
+
+  /** 人群详情：此刻人数（当场算）+ 引用它的活动与发券 */
+  mMemberSegmentDetail(segmentNo: string): Promise<MemberSegmentDetail>;
+
   /** 标签字典 + 每个标签多少人 */
   mMemberTags(): Promise<MemberTag[]>;
 
@@ -1452,7 +1481,7 @@ export interface MerchantApi {
    * 不显示的话商家会以为人群里每个人都收到了。
    * 超预算时整批拒绝（不部分发放），这时抛错而不是返回一个「发了一半」的结果。
    */
-  mIssueCoupon(couponNo: string, segmentNo: string): Promise<CouponIssueBatch>;
+  mIssueCoupon(couponNo: string, segmentNo: string | null, audiences?: AudienceItem[]): Promise<CouponIssueBatch>;
 
   mCouponIssues(couponNo?: string): Promise<CouponIssueBatch[]>;
 
@@ -1510,11 +1539,11 @@ export interface MerchantApi {
    * 群发试算。**先算后发** —— 这是唯一会打扰真实用户的动作。
    * `scene` 决定频次闸的档位：`NOTICE` 公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。
    */
-  mPlanReach(payload: { segmentNo?: string; scene: string }): Promise<ReachPlan>;
+  mPlanReach(payload: { segmentNo?: string; audiences?: AudienceItem[]; scene: string }): Promise<ReachPlan>;
 
   /** 真发。跳过分布要显示在结果里，不能只报一句「发送成功」 */
   mSendReach(payload: {
-    segmentNo?: string; scene: string; title: string; body: string;
+    segmentNo?: string; audiences?: AudienceItem[]; scene: string; title: string; body: string;
   }): Promise<ReachResult>;
 
   // ---- 结算（B-11.9）

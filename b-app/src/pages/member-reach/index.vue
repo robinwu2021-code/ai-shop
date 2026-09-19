@@ -8,13 +8,17 @@
 //   ③ 发送按钮上写着人数，确认框里再写一遍「发出去撤不回来」
 //
 // 没有「全部会员」这个默认选项：群发的默认对象不该是所有人。
+//
+// 「发给谁」打开选人面板（原型 m18，与活动、发券同一块）：分层、标签、人群、来源多选，取或。
+// 从会员名单「对这批人」、人群详情「发给他们」过来时已经预选好。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { MemberSegment, ReachPlan, ReachResult } from "@shared/types";
-import { confirm, pick } from "@ai-shop/ui/prompt";
+import type { AudienceItem, ReachPlan, ReachResult } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
+import { takePendingAudience } from "@/shared/audience";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -22,10 +26,12 @@ const merchant = useMerchantStore();
 const SCENES = ["NOTICE", "WAKEUP", "COUPON"] as const;
 
 const scene = ref<string>("NOTICE");
-const segmentNo = ref("");
+/** 受众项（取或）。空 = 还没选 —— 群发不给默认对象 */
+const items = ref<AudienceItem[]>([]);
+const itemsLabel = ref("");
+const showPicker = ref(false);
 const title = ref("");
 const body = ref("");
-const segments = ref<MemberSegment[]>([]);
 const plan = ref<ReachPlan | null>(null);
 const result = ref<ReachResult | null>(null);
 const busy = ref(false);
@@ -34,31 +40,15 @@ const canSend = computed(
   () => !!plan.value && plan.value.reachable > 0 && !!title.value.trim() && !busy.value,
 );
 
-/** 这次没取到。**与「确定为空」是两件事** —— 空的选择器与「一件都没有」长得一样 */
-const failed = ref(false);
-
-async function load() {
-  // 兜成空之后这个下拉只剩「全部会员」一条 —— 商家会以为自己没建过人群，
-  // 而他刚在隔壁页建完
-  try {
-    segments.value = await api.mMemberSegments();
-    failed.value = false;
-  } catch {
-    failed.value = true;
-  }
-}
 
 /** 换场景或换人群都要重算 —— 上一次的数字对这一次没有意义，留着比没有更糟 */
 async function recount() {
   plan.value = null;
   result.value = null;
-  if (busy.value) return;
+  if (busy.value || !items.value.length) return;
   busy.value = true;
   try {
-    plan.value = await api.mPlanReach({
-      segmentNo: segmentNo.value || undefined,
-      scene: scene.value,
-    });
+    plan.value = await api.mPlanReach({ audiences: items.value, scene: scene.value });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -71,19 +61,12 @@ function pickScene(s: string) {
   void recount();
 }
 
-async function pickSegment() {
-  const items = [String(t("reach.allMembers")), ...segments.value.map((s) => s.name)];
-  const idx = await pick({ items, selected: segmentNo.value
-    ? segments.value.findIndex((s) => s.segmentNo === segmentNo.value) + 1 : 0 });
-  if (idx === null) return;
-  segmentNo.value = idx === 0 ? "" : segments.value[idx - 1]?.segmentNo ?? "";
+function onPick(next: AudienceItem[], label: string) {
+  items.value = next;
+  itemsLabel.value = label;
+  showPicker.value = false;
   void recount();
 }
-
-const segmentName = computed(() => {
-  if (!segmentNo.value) return t("reach.allMembers");
-  return segments.value.find((s) => s.segmentNo === segmentNo.value)?.name ?? segmentNo.value;
-});
 
 async function send() {
   const p = plan.value;
@@ -94,17 +77,14 @@ async function send() {
   busy.value = true;
   try {
     result.value = await api.mSendReach({
-      segmentNo: segmentNo.value || undefined,
+      audiences: items.value,
       scene: scene.value,
       title: title.value.trim(),
       body: body.value.trim(),
     });
     // 发完立刻重算：频次闸已经把这批人挡住了，界面上要立刻反映出来，
     // 否则他会以为「再点一次能再发一遍」
-    plan.value = await api.mPlanReach({
-      segmentNo: segmentNo.value || undefined,
-      scene: scene.value,
-    });
+    plan.value = await api.mPlanReach({ audiences: items.value, scene: scene.value });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -113,7 +93,11 @@ async function send() {
 }
 
 onShow(() => {
-  void load();
+  const pending = takePendingAudience();
+  if (pending) {
+    items.value = pending.items;
+    itemsLabel.value = pending.label;
+  }
   void recount();
 });
 </script>
@@ -137,9 +121,14 @@ onShow(() => {
 
     <!-- ② 发给谁 -->
     <view class="sh-card sh-mt-sm">
-      <view class="sh-row sh-row--between" @tap="pickSegment">
+      <view class="sh-row sh-row--between" @tap="showPicker = true">
         <text class="txt-body">{{ $t("reach.toWhom") }}</text>
-        <text class="txt-body row__v txt-primary">{{ segmentName }} ▾</text>
+        <view class="sh-row">
+          <text class="txt-body row__v" :class="items.length ? 'txt-primary' : 'sh-muted'">
+            {{ items.length ? itemsLabel : $t("audience.none") }}
+          </text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
       </view>
     </view>
 
@@ -184,6 +173,14 @@ onShow(() => {
       </view>
       <text class="sh-muted sh-hint">{{ $t("reach.doneHint") }}</text>
     </view>
+
+    <biz-audience-picker
+      :visible="showPicker"
+      :model-value="items"
+      :scene="scene"
+      @close="showPicker = false"
+      @confirm="onPick"
+    ></biz-audience-picker>
   </sh-scaffold>
 </template>
 

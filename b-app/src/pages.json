@@ -634,6 +634,30 @@
       }
     },
     {
+      "path": "pages/member-tag/index",
+      "style": {
+        "navigationBarTitleText": "标签详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/member-segment/index",
+      "style": {
+        "navigationBarTitleText": "人群详情",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/member-settings/index",
       "style": {
         "navigationBarTitleText": "会员设置",

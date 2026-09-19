@@ -5012,6 +5012,24 @@
           "ar": "يتداخل مع «{name}»؛ الطلب يحصل على الأفضل فقط"
         },
         {
+          "key": "activityEdit.cover",
+          "zh-CN": "覆盖",
+          "en": "Covers",
+          "ar": "يشمل"
+        },
+        {
+          "key": "activityEdit.coverN",
+          "zh-CN": "{n} 人",
+          "en": "{n}",
+          "ar": "{n}"
+        },
+        {
+          "key": "activityEdit.coverZero",
+          "zh-CN": "这个人群里现在一个人也没有，发布后没有人能享受到。请返回上一步换一个人群",
+          "en": "No one is in this audience right now, so no one could use it. Go back and choose another audience",
+          "ar": "لا يوجد أحد في هذا الجمهور حاليًا، فلن يستفيد أحد. ارجع واختر جمهورًا آخر"
+        },
+        {
           "key": "activityEdit.edit",
           "zh-CN": "编辑",
           "en": "Edit",
@@ -5960,6 +5978,192 @@
           "ar": "إضافة رخصة أخرى"
         },
         {
+          "key": "audience.activityTitle",
+          "zh-CN": "人群",
+          "en": "Audience",
+          "ar": "الجمهور"
+        },
+        {
+          "key": "audience.allMembers",
+          "zh-CN": "全部会员",
+          "en": "All members",
+          "ar": "كل الأعضاء"
+        },
+        {
+          "key": "audience.anyOf",
+          "zh-CN": "满足任一即可",
+          "en": "Any of these",
+          "ar": "أيٌّ منها"
+        },
+        {
+          "key": "audience.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "audience.cover",
+          "zh-CN": "覆盖 {n} 人",
+          "en": "Covers {n}",
+          "ar": "يشمل {n}"
+        },
+        {
+          "key": "audience.coverAll",
+          "zh-CN": "所有人",
+          "en": "Everyone",
+          "ar": "الجميع"
+        },
+        {
+          "key": "audience.coverNonMember",
+          "zh-CN": "所有不是本店会员的人",
+          "en": "Everyone who is not a member",
+          "ar": "كل من ليس عضوًا"
+        },
+        {
+          "key": "audience.everyone",
+          "zh-CN": "所有人",
+          "en": "Everyone",
+          "ar": "الجميع"
+        },
+        {
+          "key": "audience.exclusive",
+          "zh-CN": "选了「非本店会员」时不能再选其他",
+          "en": "Nothing else can be picked with Non-members",
+          "ar": "لا يمكن اختيار شيء آخر مع غير الأعضاء"
+        },
+        {
+          "key": "audience.gone",
+          "zh-CN": "已删除",
+          "en": "Deleted",
+          "ar": "محذوف"
+        },
+        {
+          "key": "audience.level",
+          "zh-CN": "分层",
+          "en": "Tiers",
+          "ar": "الفئات"
+        },
+        {
+          "key": "audience.matched",
+          "zh-CN": "命中 {n} 人 · 能收到 {m}",
+          "en": "{n} matched · {m} reachable",
+          "ar": "{n} مطابق · {m} يمكن مراسلتهم"
+        },
+        {
+          "key": "audience.nonMember",
+          "zh-CN": "非本店会员",
+          "en": "Non-members",
+          "ar": "غير الأعضاء"
+        },
+        {
+          "key": "audience.nonMemberHint",
+          "zh-CN": "只给还不是会员的人",
+          "en": "Only people who are not members yet",
+          "ar": "فقط من ليسوا أعضاء بعد"
+        },
+        {
+          "key": "audience.none",
+          "zh-CN": "请选择",
+          "en": "Choose",
+          "ar": "اختر"
+        },
+        {
+          "key": "audience.ok",
+          "zh-CN": "确定",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "audience.segments",
+          "zh-CN": "我的人群",
+          "en": "My audiences",
+          "ar": "جماهيري"
+        },
+        {
+          "key": "audience.sources",
+          "zh-CN": "来源",
+          "en": "Source",
+          "ar": "المصدر"
+        },
+        {
+          "key": "audience.tags",
+          "zh-CN": "我的标签",
+          "en": "My tags",
+          "ar": "وسومي"
+        },
+        {
+          "key": "audience.title",
+          "zh-CN": "发给",
+          "en": "Send to",
+          "ar": "إرسال إلى"
+        },
+        {
+          "key": "batchTag.action",
+          "zh-CN": "动作",
+          "en": "Action",
+          "ar": "الإجراء"
+        },
+        {
+          "key": "batchTag.add",
+          "zh-CN": "打上",
+          "en": "Add",
+          "ar": "إضافة"
+        },
+        {
+          "key": "batchTag.cancel",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "إلغاء"
+        },
+        {
+          "key": "batchTag.done",
+          "zh-CN": "已改 {n} 人",
+          "en": "Updated {n}",
+          "ar": "تم تحديث {n}"
+        },
+        {
+          "key": "batchTag.full",
+          "zh-CN": "{n} 人标签已满 10 个，跳过",
+          "en": "{n} already have 10 tags and will be skipped",
+          "ar": "{n} لديهم 10 وسوم وسيتم تخطيهم"
+        },
+        {
+          "key": "batchTag.noTags",
+          "zh-CN": "还没有标签，先去「标签」页新建",
+          "en": "No tags yet. Create one on the Tags page first",
+          "ar": "لا توجد وسوم بعد. أنشئ واحدًا في صفحة الوسوم أولًا"
+        },
+        {
+          "key": "batchTag.pick",
+          "zh-CN": "选一个标签",
+          "en": "Pick one tag",
+          "ar": "اختر وسمًا واحدًا"
+        },
+        {
+          "key": "batchTag.remove",
+          "zh-CN": "去掉",
+          "en": "Remove",
+          "ar": "إزالة"
+        },
+        {
+          "key": "batchTag.title",
+          "zh-CN": "给 {n} 人打标签",
+          "en": "Tag {n} members",
+          "ar": "وسم {n} عضوًا"
+        },
+        {
+          "key": "batchTag.willAdd",
+          "zh-CN": "其中 {a} 人已有，实际新增 {n} 人",
+          "en": "{a} already have it; {n} will be added",
+          "ar": "{a} لديهم الوسم مسبقًا؛ سيُضاف إلى {n}"
+        },
+        {
+          "key": "batchTag.willRemove",
+          "zh-CN": "其中 {a} 人本来就没有，实际去掉 {n} 人",
+          "en": "{a} don't have it; {n} will be removed",
+          "ar": "{a} ليس لديهم الوسم؛ سيُزال من {n}"
+        },
+        {
           "key": "channel.EXPRESS",
           "zh-CN": "快递发货",
           "en": "Courier",
@@ -6596,6 +6800,12 @@
           "ar": "سجل الإرسال"
         },
         {
+          "key": "couponSend.audience",
+          "zh-CN": "人群",
+          "en": "Audience",
+          "ar": "الجمهور"
+        },
+        {
           "key": "couponSend.cancel",
           "zh-CN": "取消",
           "en": "Cancel",
@@ -6630,6 +6840,12 @@
           "zh-CN": "{n} 张",
           "en": "{n}",
           "ar": "{n}"
+        },
+        {
+          "key": "couponSend.matched",
+          "zh-CN": "命中",
+          "en": "Matched",
+          "ar": "مطابق"
         },
         {
           "key": "couponSend.maxSpend",
@@ -6680,10 +6896,22 @@
           "ar": "الأعضاء الخاملون"
         },
         {
+          "key": "couponSend.reachable",
+          "zh-CN": "能收到",
+          "en": "Reachable",
+          "ar": "يمكن مراسلتهم"
+        },
+        {
           "key": "couponSend.submit",
           "zh-CN": "发放",
           "en": "Send",
           "ar": "إرسال"
+        },
+        {
+          "key": "couponSend.submitN",
+          "zh-CN": "发放 {n} 张",
+          "en": "Send {n}",
+          "ar": "إرسال {n}"
         },
         {
           "key": "couponSend.title",
@@ -10190,6 +10418,18 @@
           "ar": "الإجمالي"
         },
         {
+          "key": "memberDetail.noTags",
+          "zh-CN": "还没有标签，点这里打上",
+          "en": "No tags yet. Tap to add",
+          "ar": "لا وسوم بعد. اضغط للإضافة"
+        },
+        {
+          "key": "memberDetail.saveTags",
+          "zh-CN": "保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
           "key": "memberDetail.sources",
           "zh-CN": "来源轨迹",
           "en": "How they arrived",
@@ -10202,10 +10442,142 @@
           "ar": "حسب المتجر"
         },
         {
+          "key": "memberDetail.tagCount",
+          "zh-CN": "已选 {n} 个，最多 {m} 个",
+          "en": "{n} selected, up to {m}",
+          "ar": "تم اختيار {n}، الحد {m}"
+        },
+        {
+          "key": "memberDetail.tagFull",
+          "zh-CN": "每人最多 {n} 个标签",
+          "en": "Up to {n} tags per member",
+          "ar": "حتى {n} وسوم لكل عضو"
+        },
+        {
+          "key": "memberDetail.tags",
+          "zh-CN": "标签",
+          "en": "Tags",
+          "ar": "الوسوم"
+        },
+        {
+          "key": "memberDetail.tagsOf",
+          "zh-CN": "他的标签",
+          "en": "Their tags",
+          "ar": "وسومه"
+        },
+        {
           "key": "memberDetail.title",
           "zh-CN": "会员详情",
           "en": "Member",
           "ar": "بطاقة العضو"
+        },
+        {
+          "key": "memberSegment.coupon",
+          "zh-CN": "发券 · {name}",
+          "en": "Coupon · {name}",
+          "ar": "قسيمة · {name}"
+        },
+        {
+          "key": "memberSegment.lastAfter",
+          "zh-CN": "上次下单晚于",
+          "en": "Last order after",
+          "ar": "آخر طلب بعد"
+        },
+        {
+          "key": "memberSegment.lastBefore",
+          "zh-CN": "上次下单早于",
+          "en": "Last order before",
+          "ar": "آخر طلب قبل"
+        },
+        {
+          "key": "memberSegment.level",
+          "zh-CN": "分层",
+          "en": "Tier",
+          "ar": "الفئة"
+        },
+        {
+          "key": "memberSegment.matched",
+          "zh-CN": "命中",
+          "en": "Matched",
+          "ar": "مطابق"
+        },
+        {
+          "key": "memberSegment.none",
+          "zh-CN": "还没有活动或发券用到它",
+          "en": "No promotions or coupons use it yet",
+          "ar": "لا تستخدمه أي عروض أو قسائم بعد"
+        },
+        {
+          "key": "memberSegment.reachable",
+          "zh-CN": "能收到",
+          "en": "Reachable",
+          "ar": "يمكن مراسلتهم"
+        },
+        {
+          "key": "memberSegment.rule",
+          "zh-CN": "条件",
+          "en": "Conditions",
+          "ar": "الشروط"
+        },
+        {
+          "key": "memberSegment.sendTo",
+          "zh-CN": "发给他们",
+          "en": "Send to them",
+          "ar": "إرسال إليهم"
+        },
+        {
+          "key": "memberSegment.snapshotNote",
+          "zh-CN": "修改条件不影响进行中的活动：它们按发布时的条件生效",
+          "en": "Editing conditions won't change running promotions: they keep the conditions from when they were published",
+          "ar": "تعديل الشروط لا يغيّر العروض الجارية: تبقى على الشروط وقت نشرها"
+        },
+        {
+          "key": "memberSegment.source",
+          "zh-CN": "来源",
+          "en": "Source",
+          "ar": "المصدر"
+        },
+        {
+          "key": "memberSegment.spentMax",
+          "zh-CN": "累计消费不超过",
+          "en": "Total spend at most",
+          "ar": "إجمالي الإنفاق لا يزيد عن"
+        },
+        {
+          "key": "memberSegment.spentMin",
+          "zh-CN": "累计消费不少于",
+          "en": "Total spend at least",
+          "ar": "إجمالي الإنفاق لا يقل عن"
+        },
+        {
+          "key": "memberSegment.store",
+          "zh-CN": "门店",
+          "en": "Store",
+          "ar": "المتجر"
+        },
+        {
+          "key": "memberSegment.tags",
+          "zh-CN": "同时含标签",
+          "en": "Has all tags",
+          "ar": "يحمل كل الوسوم"
+        },
+        {
+          "key": "memberSegment.title",
+          "zh-CN": "人群详情",
+          "en": "Audience details",
+          "ar": "تفاصيل الجمهور"
+        },
+        {
+          "key": "memberSegment.used",
+          "zh-CN": "处在用",
+          "en": "In use",
+          "ar": "قيد الاستخدام"
+        },
+        {
+          "key": "memberSegment.usedIn",
+          "zh-CN": "用在哪",
+          "en": "Used in",
+          "ar": "مستخدم في"
         },
         {
           "key": "memberSegments.allMembers",
@@ -10418,6 +10790,84 @@
           "ar": "إعدادات الأعضاء"
         },
         {
+          "key": "memberTag.active",
+          "zh-CN": "使用中",
+          "en": "Active",
+          "ar": "فعّال"
+        },
+        {
+          "key": "memberTag.activity",
+          "zh-CN": "活动 · {name}",
+          "en": "Promotion · {name}",
+          "ar": "عرض · {name}"
+        },
+        {
+          "key": "memberTag.members",
+          "zh-CN": "人",
+          "en": "Members",
+          "ar": "الأعضاء"
+        },
+        {
+          "key": "memberTag.merge",
+          "zh-CN": "合并",
+          "en": "Merge",
+          "ar": "دمج"
+        },
+        {
+          "key": "memberTag.name",
+          "zh-CN": "名称",
+          "en": "Name",
+          "ar": "الاسم"
+        },
+        {
+          "key": "memberTag.none",
+          "zh-CN": "还没有活动或人群用到它",
+          "en": "No promotions or audiences use it yet",
+          "ar": "لا تستخدمه أي عروض أو جماهير بعد"
+        },
+        {
+          "key": "memberTag.segment",
+          "zh-CN": "人群 · {name}",
+          "en": "Audience · {name}",
+          "ar": "جمهور · {name}"
+        },
+        {
+          "key": "memberTag.status",
+          "zh-CN": "状态",
+          "en": "Status",
+          "ar": "الحالة"
+        },
+        {
+          "key": "memberTag.thisMonth",
+          "zh-CN": "本月新增",
+          "en": "New this month",
+          "ar": "جدد هذا الشهر"
+        },
+        {
+          "key": "memberTag.title",
+          "zh-CN": "标签详情",
+          "en": "Tag details",
+          "ar": "تفاصيل الوسم"
+        },
+        {
+          "key": "memberTag.used",
+          "zh-CN": "处在用",
+          "en": "In use",
+          "ar": "قيد الاستخدام"
+        },
+        {
+          "key": "memberTag.usedIn",
+          "zh-CN": "用在哪",
+          "en": "Used in",
+          "ar": "مستخدم في"
+        },
+        {
+          "key": "memberTag.viewMembers",
+          "zh-CN": "查看这 {n} 人",
+          "en": "View these {n}",
+          "ar": "عرض هؤلاء الـ {n}"
+        },
+        {
           "key": "memberTags.count",
           "zh-CN": "{n} 人",
           "en": "{n} people",
@@ -10434,6 +10884,18 @@
           "zh-CN": "停用",
           "en": "Disable",
           "ar": "إيقاف"
+        },
+        {
+          "key": "memberTags.disableTitle",
+          "zh-CN": "停用「{a}」？",
+          "en": "Disable \"{a}\"?",
+          "ar": "إيقاف «{a}»؟"
+        },
+        {
+          "key": "memberTags.disableUsed",
+          "zh-CN": "有 {a} 个活动、{s} 个人群在用它。停用后，这些活动与人群里的这一项不再命中任何人",
+          "en": "{a} promotions and {s} audiences use it. Once disabled, this item in them won't match anyone",
+          "ar": "يستخدمه {a} عروض و{s} جماهير. بعد الإيقاف لن يطابق هذا البند أحدًا فيها"
         },
         {
           "key": "memberTags.disabled",
@@ -10458,6 +10920,12 @@
           "zh-CN": "合并",
           "en": "Merge",
           "ar": "دمج"
+        },
+        {
+          "key": "memberTags.mergeActivities",
+          "zh-CN": "引用它的 {n} 个活动会一起改为目标标签",
+          "en": "{n} promotions using it will switch to the target tag",
+          "ar": "ستتحول {n} عروض تستخدمه إلى الوسم الهدف"
         },
         {
           "key": "memberTags.mergeBody",
@@ -10538,6 +11006,30 @@
           "ar": "الوسوم"
         },
         {
+          "key": "members.act.coupon",
+          "zh-CN": "发券",
+          "en": "Send coupon",
+          "ar": "إرسال قسيمة"
+        },
+        {
+          "key": "members.act.reach",
+          "zh-CN": "发消息",
+          "en": "Send message",
+          "ar": "إرسال رسالة"
+        },
+        {
+          "key": "members.act.segment",
+          "zh-CN": "存为人群",
+          "en": "Save as audience",
+          "ar": "حفظ كجمهور"
+        },
+        {
+          "key": "members.act.tag",
+          "zh-CN": "打标签",
+          "en": "Tag them",
+          "ar": "وسمهم"
+        },
+        {
           "key": "members.allStores",
           "zh-CN": "全部门店",
           "en": "All stores",
@@ -10560,6 +11052,12 @@
           "zh-CN": "有人在这里买过一单，就会出现在这里",
           "en": "Anyone who buys once shows up here",
           "ar": "من يشترِ مرة يظهر هنا"
+        },
+        {
+          "key": "members.forThese",
+          "zh-CN": "对这 {n} 人…",
+          "en": "For these {n}…",
+          "ar": "لهؤلاء الـ {n}…"
         },
         {
           "key": "members.lead",
@@ -10686,6 +11184,18 @@
           "zh-CN": "本月新增 {n} · 可触达 {m}",
           "en": "{n} new this month · {m} reachable",
           "ar": "{n} جديد هذا الشهر · {m} يمكن مراسلتهم"
+        },
+        {
+          "key": "members.tagsAll",
+          "zh-CN": "同时含以下标签",
+          "en": "Has all of these tags",
+          "ar": "يحمل كل هذه الوسوم"
+        },
+        {
+          "key": "members.thisBatch",
+          "zh-CN": "这批人",
+          "en": "This group",
+          "ar": "هذه المجموعة"
         },
         {
           "key": "members.title",
@@ -13236,6 +13746,12 @@
           "zh-CN": "能收到",
           "en": "Will receive",
           "ar": "سيستلمون"
+        },
+        {
+          "key": "reach.reason.BLOCKED",
+          "zh-CN": "{n} 人已被你拉黑",
+          "en": "{n} blocked by you",
+          "ar": "{n} محظورون من قبلك"
         },
         {
           "key": "reach.reason.LEAD",
@@ -20733,6 +21249,18 @@
           "ar": "تغيّرت حالة هذه الدفعة؛ حدّث الصفحة وحاول مجددًا"
         },
         {
+          "key": "err.member.audience_empty",
+          "zh-CN": "所选人群里现在一个人都没有，发布后没有人能享受到，请换一个人群",
+          "en": "No one is in the selected audience right now, so no one could use this. Choose another audience",
+          "ar": "لا يوجد أحد في الفئة المختارة حاليًا، فلن يستفيد أحد. اختر فئة أخرى"
+        },
+        {
+          "key": "err.member.audience_required",
+          "zh-CN": "请选择发给谁",
+          "en": "Choose who to send to",
+          "ar": "اختر المستلمين"
+        },
+        {
           "key": "err.member.phone_required",
           "zh-CN": "加入会员需要先绑定手机号",
           "en": "Add your phone number to join",
@@ -24218,6 +24746,62 @@
         "name": "PLATFORM",
         "value": "PLATFORM",
         "zh": "全平台 —— 无履约半径的：虚拟商品、卡券、平台自营的快递品",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceRef",
+        "name": "ACTIVITY",
+        "value": "ACTIVITY",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceRef",
+        "name": "COUPON_ISSUE",
+        "value": "COUPON_ISSUE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "ALL",
+        "value": "ALL",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "LEVEL",
+        "value": "LEVEL",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "TAG",
+        "value": "TAG",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "SEGMENT",
+        "value": "SEGMENT",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "SOURCE",
+        "value": "SOURCE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AudienceItem",
+        "name": "NON_MEMBER",
+        "value": "NON_MEMBER",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -28575,6 +29159,8 @@
           "MEMBER_SEGMENT_LIMIT",
           "MEMBER_SEGMENT_NOT_FOUND",
           "MEMBER_SEGMENT_BROKEN",
+          "MEMBER_AUDIENCE_REQUIRED",
+          "MEMBER_AUDIENCE_EMPTY",
           "PAY_CHANNEL_UNAVAILABLE",
           "PROXY_ORDER_AMOUNT_LIMIT",
           "PROXY_ORDER_DAILY_LIMIT",
@@ -30106,6 +30692,9 @@
           "/pages/cross-store/index",
           "/pages/plan/index",
           "/pages/customers/index",
+          "/pages/member-tag/index",
+          "/pages/member-segment/index",
+          "/pages/member-reach/index",
           "/pages/activities/index",
           "/pages/coupons/index",
           "/pages/coupon/index",

@@ -98,6 +98,10 @@ import type {
   BatchPurchaseLine,
   MarketingSummary,
   MemberMergePreview,
+  AudiencePreview,
+  BatchTagResult,
+  MemberTagUsage,
+  MemberSegmentDetail,
   MemberSegment,
   MemberSegmentPreview,
   MemberSetting,
@@ -502,6 +506,11 @@ export const httpApi: MerchantApi = {
   mPatchMember: (memberNo, payload) =>
     http.put<Member>(buildPath(E.mPatchMember.path, { memberNo }), payload),
   mTagMembers: (payload) => http.post<void>(E.mTagMembers.path, payload),
+  mBatchTagMembers: (payload) => http.post<BatchTagResult>(E.mBatchTagMembers.path, payload),
+  mAudiencePreview: (payload) => http.post<AudiencePreview>(E.mAudiencePreview.path, payload),
+  mMemberTagUsage: (tagNo) => http.get<MemberTagUsage>(buildPath(E.mMemberTagUsage.path, { tagNo })),
+  mMemberSegmentDetail: (segmentNo) =>
+    http.get<MemberSegmentDetail>(buildPath(E.mMemberSegmentDetail.path, { segmentNo })),
   mMemberTags: () => http.get<MemberTag[]>(E.mMemberTags.path),
   mCreateMemberTag: (name) => http.post<MemberTag>(E.mCreateMemberTag.path, { name }),
   mEditMemberTag: (tagNo, payload) =>
@@ -526,8 +535,9 @@ export const httpApi: MerchantApi = {
   mSaveCoupon: (payload) => http.post<MerchantCoupon>(E.mSaveCoupon.path, payload),
   mSetCouponStatus: (couponNo, status) =>
     http.put<MerchantCoupon>(buildPath(E.mSetCouponStatus.path, { couponNo }), { status }),
-  mIssueCoupon: (couponNo, segmentNo) =>
-    http.post<CouponIssueBatch>(buildPath(E.mIssueCoupon.path, { couponNo }), { segmentNo }),
+  mIssueCoupon: (couponNo, segmentNo, audiences) =>
+    http.post<CouponIssueBatch>(buildPath(E.mIssueCoupon.path, { couponNo }),
+      audiences?.length ? { audiences } : { segmentNo }),
   mCouponIssues: (couponNo) =>
     http.get<CouponIssueBatch[]>(E.mCouponIssues.path, couponNo ? { couponNo } : undefined),
   mPeekCouponCode: (code) =>
