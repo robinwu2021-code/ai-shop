@@ -184,7 +184,7 @@ onLoad(async (q) => {
       <!-- 各店往来：多店商家问的是「南门店有多少熟客」，单店没有这个问题 -->
       <view v-if="showStores" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("memberDetail.stores") }}</text>
-        <view v-for="s in data.stores" :key="s.storeNo" class="txt-sub store-row">
+        <view v-for="s in data.stores" :key="s.storeNo" class="txt-sub sh-row sh-row--between store-row">
           <text>
             {{ storeName(s.storeNo) }}
             <text v-if="s.isFirstStore" class="sh-chip">{{ $t("memberDetail.firstTag") }}</text>
@@ -264,9 +264,6 @@ onLoad(async (q) => {
 /* 各店往来一行：店名（带首店胶囊）+ 右侧数字。名字里要放胶囊，所以不用 sh-kv（它的名目只收文字）。
    ⚠️ 不叫 .kv：scoped 样式会落到子组件根上，而 sh-kv 的根就叫 kv —— 同名会把这一页的样式叠到所有 sh-kv 上 */
 .store-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 16rpx;
   border-top: var(--sh-hairline-soft);
   padding-top: 12rpx;
