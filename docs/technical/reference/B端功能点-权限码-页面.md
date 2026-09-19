@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 196 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 198 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -24,7 +24,7 @@
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
-| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 22 | ✅ | ✅ | — | — | — | — |
+| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -176,6 +176,8 @@
 | 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
 | 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
 | 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
+| 发出去的消息（批次列表） | GET | `/biz/member-reach/task` | `mReachTasks` | reach-tasks |
+| 一次触达的效果 | GET | `/biz/member-reach/task/{taskNo}` | `mReachTask` | reach-task |
 | 人群列表 | GET | `/biz/member-segments` | `mMemberSegments` | coupon-issues、member-segments、reach-tasks |
 | 存人群（存条件不存名单） | POST | `/biz/member-segments` | `mSaveMemberSegment` | customers、member-segments、reach-task |
 | 人群详情：此刻人数与用在哪 | GET | `/biz/member-segments/{segmentNo}` | `mMemberSegmentDetail` | member-segment |
@@ -411,7 +413,7 @@
 | `qualifications` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `quotes` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `reach-task` | `biz:customer` | `biz:customer` | 老板、店长 | — |
-| `reach-tasks` | `biz:customer` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
+| `reach-tasks` | `biz:customer` | `biz:customer`、`biz:campaign` | 老板、店长 | — |
 | `reviews` | `biz:review` | `biz:review` | 老板、店长、客服 | — |
 | `role-detail` | `biz:store:admin` | `biz:store:admin` | 老板 | — |
 | `schedule` | `biz:store` | `biz:store` | 老板、店长 | — |

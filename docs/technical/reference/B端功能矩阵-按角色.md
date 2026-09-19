@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 196 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 198 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -19,7 +19,7 @@
 | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
-| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 22 | ✅ | ✅ | — | — | — | — |
+| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
@@ -147,6 +147,8 @@
 - `/biz/inventory/report/monthly`
 - `/biz/inventory/report/ranking`
 - `/biz/member-reach/plan`
+- `/biz/member-reach/task`
+- `/biz/member-reach/task/{taskNo}`
 - `/biz/member-segments`
 - `/biz/member-segments/preview`
 - `/biz/member-segments/{segmentNo}`
