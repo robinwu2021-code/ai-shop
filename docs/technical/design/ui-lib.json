@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 451,
+        "b-app": 449,
         "c-app": 54
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 349,
+        "b-app": 341,
         "c-app": 58
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 320,
+        "b-app": 323,
         "c-app": 228
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 126,
         "c-app": 40
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 107,
+        "b-app": 111,
         "c-app": 78
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 114,
         "c-app": 27
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 116,
         "c-app": 13
       }
     },
@@ -1053,7 +1053,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 318,
+        "b-app": 320,
         "c-app": 134
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 134,
+        "b-app": 133,
         "c-app": 64
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 58,
+        "b-app": 57,
         "c-app": 30
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 129,
         "c-app": 61
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 492,
+        "b-app": 488,
         "c-app": 161
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 284,
+        "b-app": 280,
         "c-app": 81
       }
     },
@@ -1753,7 +1753,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 56,
+        "b-app": 55,
         "c-app": 0
       }
     },
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 89,
+        "b-app": 88,
         "c-app": 3
       }
     },
@@ -2332,7 +2332,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 46,
+        "b-app": 50,
         "c-app": 0,
         "lib": 0
       },
@@ -2763,7 +2763,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 3,
+        "b-app": 4,
         "c-app": 2,
         "lib": 0
       },
@@ -3568,7 +3568,7 @@
         "sh-stat",
         "biz-batch-tag-sheet"
       ],
-      "libClassHits": 42,
+      "libClassHits": 43,
       "localSelectors": 6,
       "localCssLines": 20,
       "rolled": []
@@ -3871,7 +3871,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 63,
+      "libClassHits": 64,
       "localSelectors": 8,
       "localCssLines": 28,
       "rolled": []
@@ -3931,12 +3931,14 @@
       "key": "b-app/member-settings",
       "file": "b-app/src/pages/member-settings/index.vue",
       "components": [
+        "sh-kv",
         "sh-option",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-switch"
       ],
-      "libClassHits": 49,
+      "libClassHits": 31,
       "localSelectors": 4,
-      "localCssLines": 13,
+      "localCssLines": 17,
       "rolled": []
     },
     {

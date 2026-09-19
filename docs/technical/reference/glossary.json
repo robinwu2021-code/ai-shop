@@ -10412,16 +10412,22 @@
           "ar": "إضافة عضو"
         },
         {
-          "key": "memberDetail.byInviter",
-          "zh-CN": "{s} 分享",
-          "en": "shared by {s}",
-          "ar": "شاركه {s}"
+          "key": "memberDetail.byInviterCustomer",
+          "zh-CN": "顾客分享",
+          "en": "shared by a customer",
+          "ar": "شاركه عميل"
         },
         {
-          "key": "memberDetail.byOperator",
-          "zh-CN": "{s} 录入",
-          "en": "added by {s}",
-          "ar": "أضافه {s}"
+          "key": "memberDetail.byInviterStaff",
+          "zh-CN": "店员分享",
+          "en": "shared by staff",
+          "ar": "شاركه موظف"
+        },
+        {
+          "key": "memberDetail.byStaff",
+          "zh-CN": "店员录入",
+          "en": "added by staff",
+          "ar": "أضافه موظف"
         },
         {
           "key": "memberDetail.d90",
@@ -10527,9 +10533,9 @@
         },
         {
           "key": "memberDetail.tagsOf",
-          "zh-CN": "他的标签",
-          "en": "Their tags",
-          "ar": "وسومه"
+          "zh-CN": "会员标签",
+          "en": "Member tags",
+          "ar": "وسوم العضو"
         },
         {
           "key": "memberDetail.title",
@@ -10797,9 +10803,9 @@
         },
         {
           "key": "memberSettings.entry",
-          "zh-CN": "会员设置 · 经营口径",
-          "en": "Member settings · scope",
-          "ar": "إعدادات الأعضاء · نطاق الحساب"
+          "zh-CN": "会员设置",
+          "en": "Member settings",
+          "ar": "إعدادات الأعضاء"
         },
         {
           "key": "memberSettings.levelComputedAt",
@@ -10812,18 +10818,6 @@
           "zh-CN": "分层口径",
           "en": "Tier rules",
           "ar": "قواعد الفئات"
-        },
-        {
-          "key": "memberSettings.off",
-          "zh-CN": "已关",
-          "en": "Off",
-          "ar": "معطّل"
-        },
-        {
-          "key": "memberSettings.on",
-          "zh-CN": "已开",
-          "en": "On",
-          "ar": "مفعّل"
         },
         {
           "key": "memberSettings.reversible",
@@ -11151,9 +11145,9 @@
         },
         {
           "key": "members.forThese",
-          "zh-CN": "对这 {n} 人…",
-          "en": "For these {n}…",
-          "ar": "لهؤلاء الـ {n}…"
+          "zh-CN": "批量操作（{n} 人）",
+          "en": "Bulk actions ({n})",
+          "ar": "إجراءات جماعية ({n})"
         },
         {
           "key": "members.lead",
@@ -11202,6 +11196,12 @@
           "zh-CN": "请输入完整手机号",
           "en": "Enter the full phone number",
           "ar": "أدخل رقم الهاتف كاملًا"
+        },
+        {
+          "key": "members.phoneTail",
+          "zh-CN": "尾号 {n}",
+          "en": "Ends in {n}",
+          "ar": "ينتهي بـ {n}"
         },
         {
           "key": "members.privacyHint",
