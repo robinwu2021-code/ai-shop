@@ -138,6 +138,20 @@ describe("商品详情页重排", () => {
     expect(w.find(".skuhead").exists(), "多规格要先弹面板").toBe(true);
   });
 
+  it("★★★ 详情页不说配送：「送至」「配送」是订单的事，只留销售范围（2026-09-19 用户拍板）", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      fulfillments: [FULFILLMENT.EXPRESS, FULFILLMENT.PICKUP],
+      arrivalDesc: "次日 16 点后可提",
+      saleScope: { unlimited: false, areaNames: ["深圳市"], areaCount: 1 },
+    } as Partial<Goods>));
+    const html = (await render()).html();
+    for (const k of ["goods.shipTo", "goods.shipVia", "goods.pickAddress", "fulfillment.", "次日 16 点后可提"]) {
+      expect(html, `详情页出现了配送信息 ${k}`).not.toContain(k);
+    }
+    expect(html).toContain("goods.scopeShort");
+    expect(html).toContain("深圳市");
+  });
+
   it("★★ 限购只在真有限购时出现 ——「限购：不限购」是一行什么都没说的话", async () => {
     goodsDetail.mockResolvedValue(goods({ limitPerUser: 0 }));
     expect((await render()).html()).not.toContain("goods.limitLabel");

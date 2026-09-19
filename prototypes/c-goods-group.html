@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商品详情与拼团</title>
+<!-- 真源在仓库 prototypes/c-goods-group.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写内联样式 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-19</div>
+  <h1>商品详情，与拼团的完整买家流程</h1>
+  <p class="sub">两件事：① 商品详情页只回答「买不买」—— 送到哪、怎么送挪到下单时再定；② 拼团从看到、开团 / 参团、付款、邀请、成团或退款，到在订单里跟进度，一条线画全。邻里求团（先有需求、后有商家报价）单列一节。共 16 屏。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>商品详情</h2></div>
+  <p class="sec-note">改动只有一处：去掉「送至」「配送」两行（2026-09-19 已改）。「范围」留下 —— 它说的是这件商品卖到哪，是商品的属性；送到哪是这一单的事，在结算页选地址时才定。</p>
+  <div class="grid">
+
+    <figure id="g01">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">香梨</span><span></span></div>
+        <div class="scr">
+          <div class="img hero">主图 · 可左右滑</div>
+          <div class="pz ink">
+            <div class="p"><b class="num">¥50.00</b><s class="num">¥55.00</s><span class="chip bad">省 ¥5.00</span></div>
+            <div class="t">香梨</div>
+            <div class="meta">脆甜多汁 · 产地直发</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">领券</span><span class="v go"><span class="chip bad">满 99 减 10</span></span></div>
+            <div class="frow"><span class="k">已选</span><span class="v go">约 10 斤 · 1 件</span></div>
+            <div class="frow"><span class="k">范围</span><span class="v">深圳市</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic">分享</span><span class="ic">购物车</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>g01 普通商品 · 首屏</b>价格 → 名字 → 卖点；一张卡里只剩领券、已选、范围三行。</figcaption>
+      <p class="why">「送至 嘉逸花园」「配送 快递配送」两行删了：还没决定买，先让人确认收货地址是反的；而且那个地址在结算页还要再选一次，两处说的可能不是同一个地方。</p>
+    </figure>
+
+    <figure id="g02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">香梨</span><span></span></div>
+        <div class="scr">
+          <div class="gc"><div class="th">HX</div><div class="bd"><div class="ln"><span><span class="chip pri">自营</span> <b>虹选鲜果</b> ✓</span><span class="meta">›</span></div><div class="meta">主营水果，面向深圳地区</div></div></div>
+          <div class="group">
+            <div class="frow"><b>商品参数</b><span></span></div>
+            <div class="frow"><span class="k">产地</span><span class="v">新疆库尔勒</span></div>
+            <div class="frow"><span class="k">规格</span><span class="v">约 10 斤 / 箱</span></div>
+          </div>
+          <div class="card"><b>商品详情</b><div class="img">详情长图（按顺序全宽竖排）</div></div>
+          <div class="card"><b>评价</b><span class="meta">还没有评价 · 购买后可发表评价</span></div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic">分享</span><span class="ic">购物车</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>g02 普通商品 · 下半页</b>谁在卖 → 参数 → 图文详情 → 评价。</figcaption>
+      <p class="why">商家条整条可点、行尾只留箭头；认证是盾牌图标，不再是第二颗文字标签（0.1.43 已落地）。</p>
+    </figure>
+
+    <figure id="g03">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">香梨</span><span></span></div>
+        <div class="scr"><div class="img hero">主图</div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="gc"><div class="th">🍐</div><div class="bd"><span class="pr num">¥50.00</span><span class="meta">已选 约 10 斤</span></div></div>
+            <div class="gt"><span>重量</span></div>
+            <div><span class="chip act">约 10 斤</span> <span class="chip">约 5 斤</span> <span class="chip off">约 20 斤</span></div>
+            <div class="frow"><span class="k">数量</span><span class="v num">－ 1 ＋</span></div>
+            <div class="acts"><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>g03 规格面板</b>点「已选」或多规格时点底栏按钮弹出；不可组合的规格置灰划线。</figcaption>
+      <p class="why">数量只在这里调：还没决定买就先让人调数量是反的。库存只在紧缺（≤ 10）时说「仅剩 N 件」。</p>
+    </figure>
+
+    <figure id="g04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">香梨</span><span></span></div>
+        <div class="scr">
+          <div class="img hero">主图</div>
+          <div class="pz ink">
+            <div class="p"><b class="num">¥50.00</b><span class="chip pri">2 人团 ¥5.00</span></div>
+            <div class="t">香梨</div>
+          </div>
+          <div class="group">
+            <div class="frow"><b>2 个团在拼</b><span class="meta">没凑齐自动退款</span></div>
+            <div class="frow"><span class="k">商家团 · 还差 1 人</span><span class="v"><span class="meta num">05:12:30</span> <span class="chip act">去参团</span></span></div>
+            <div class="frow"><span class="k">小王的团 · 还差 1 人</span><span class="v"><span class="meta num">21:40:08</span> <span class="chip act">去参团</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic">分享</span><div class="btn soft">单买 ¥50.00</div><div class="btn">开团 ¥5.00</div></div>
+      </div>
+      <figcaption class="cap"><b>g04 拼团商品 · 首屏</b>价格旁直接标「2 人团 ¥5」；正在拼的团排在已选之后，点「去参团」进 p05。</figcaption>
+      <p class="why">底栏换成「单买 | 开团」两个价；购物车图标让位 —— 团单不进购物车。「去参团」要比「开团」更显眼：凑一个已有的团，成团最快。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">p01 — p12</span><h2>拼团 · 买家完整流程</h2></div>
+  <p class="sec-note">主线：看到团 → 开团或参团 → 结算付款（按团价）→ 邀请 → 成团发货 / 到期没凑齐自动全额退款。进度在三处能看到：团详情、订单详情、「我的拼团」。</p>
+  <div class="grid">
+
+    <figure id="p01">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">社区好物</span><span></span></div>
+        <div class="scr">
+          <div class="inp">📍 嘉逸花园</div>
+          <div class="card"><div class="hd"><span><span class="chip bad">邻里团购</span> 2 个团正在拼</span><span class="meta">全部团 ›</span></div></div>
+          <div class="gc"><div class="th">🍐<i>2人团</i></div><div class="bd"><span class="nm">香梨</span><span class="warn">2 个团在拼 · 最快还差 1 人</span><div class="ln"><span><span class="pr num">¥5.00</span> <span class="meta num">单买 ¥50.00</span></span><div class="btn sm">去拼团</div></div><span class="meta"><span class="chip pri">自营</span> 虹选鲜果</span></div></div>
+          <div class="gc"><div class="th">🍇</div><div class="bd"><span class="nm">阳光玫瑰葡萄</span><span class="meta">晴王 · 脆甜无籽</span><div class="ln"><span class="pr num">¥39.90</span><span class="chip act">＋</span></div><span class="meta"><span class="chip pri">自营</span> 虹选鲜果</span></div></div>
+        </div>
+        <div class="tabbar"><span class="on">首页</span><span>分类</span><span>店铺</span><span>购物车</span><span>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>p01 首页 · 团并进商品卡</b>一件商品一张卡；有团的置顶，按最早截止在前。（0.1.40 已落地）</figcaption>
+      <p class="why">「去拼团」直接进差人最少的那个团（p05），不经商品详情 —— 否则要多点一次去找同一个按钮。</p>
+    </figure>
+
+    <figure id="p02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">邻里团购</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">商家团 2</span><span>邻里求团 1</span></div>
+          <div class="meta">商品和价格商家已定好，凑够人数就按团价发货</div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 · 商家团</span><div class="metric"><span class="num">1/2 人</span><span class="bar"><i></i></span></div><div class="ln"><span class="pr num">¥5.00</span><span class="meta num">05:12:30 后截止</span></div></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 · 小王的团</span><div class="metric"><span class="num">1/2 人</span><span class="bar"><i></i></span></div><div class="ln"><span class="pr num">¥5.00</span><span class="meta num">21:40:08 后截止</span></div></div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>p02 邻里团购 · 商家团</b>从首页「全部团」或「我的」进。每个团一张卡：商品、进度条、团价、截止。</figcaption>
+      <p class="why">现状卡上没有商品图，列表读起来是一排字；补上缩略图，和首页的团卡长得一样。「＋ 我要发起一个团」从这页移走 —— 开团的入口在商品详情（g04），不需要第二个。</p>
+    </figure>
+
+    <figure id="p03">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="note">开团：按团价付款。24 小时内没凑齐 2 人，自动全额退款</div>
+          <div class="group">
+            <div class="frow"><span class="k">收货方式</span><span class="seg"><span class="on">送到家</span><span>自提</span></span></div>
+            <div class="frow"><span class="k">送至</span><span class="v go">嘉逸花园 3 栋 1201</span></div>
+            <div class="frow"><span class="k">送达</span><span class="v">成团后次日送达</span></div>
+          </div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 × 1</span><div class="ln"><span class="pr num">¥5.00</span><span class="meta num">单买 ¥50.00</span></div></div></div>
+          <div class="group"><div class="frow"><span class="k">运费</span><span class="v num">¥0.00</span></div><div class="frow"><span class="k">实付</span><span class="v hot num">¥5.00</span></div></div>
+        </div>
+        <div class="foot"><div class="btn">支付 ¥5.00</div></div>
+      </div>
+      <figcaption class="cap"><b>p03 开团 / 参团 · 确认订单</b>送到哪、怎么送、什么时候到 —— 从商品详情挪过来的信息都在这里。参团时顶部改为「参团：按团价付款，没凑齐自动全额退款」。</figcaption>
+      <p class="why">团单一次只拼一件商品，不经过购物车；「送达」写的是成团后，不是下单后 —— 没成团不会发货。</p>
+    </figure>
+
+    <figure id="p04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的团</span><span></span></div>
+        <div class="scr">
+          <div class="big"><div class="n num">23:59:12</div><div class="l">后截止 · 还差 1 人成团</div></div>
+          <div class="who"><i class="in">我</i><i>？</i></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><div class="ln"><span class="pr num">¥5.00</span><span class="meta num">单买 ¥50.00</span></div></div></div>
+          <div class="sum"><span>付款成功，已开团</span><span>¥5.00</span></div>
+          <div class="meta">没凑齐会自动全额退款，原路退回</div>
+        </div>
+        <div class="foot"><div class="btn">邀请邻居来拼</div></div>
+      </div>
+      <figcaption class="cap"><b>p04 开团成功 · 邀请</b>付完款直接落在自己的团页：倒计时、人头、一颗「邀请邻居来拼」。</figcaption>
+      <p class="why">现在付完款落到订单页，开团的人不知道下一步该干什么 —— 而团成不成就取决于他转不转发。这一屏只放一件事：分享。</p>
+    </figure>
+
+    <figure id="p05">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">小王的团</span><span></span></div>
+        <div class="scr">
+          <div class="big"><div class="n num">21:40:08</div><div class="l">后截止 · 还差 1 人成团</div></div>
+          <div class="who"><i class="in">王</i><i>？</i></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 · 虹选鲜果</span><div class="ln"><span class="pr num">¥5.00</span><span class="meta">商品详情 ›</span></div></div></div>
+          <div class="group"><div class="frow"><span class="k">送达</span><span class="v">下单时选</span></div></div>
+          <div class="meta">参团按团价付款；到期没凑齐自动全额退款</div>
+        </div>
+        <div class="foot"><div class="btn sec">分享</div><div class="btn main">参团 ¥5.00</div></div>
+      </div>
+      <figcaption class="cap"><b>p05 团详情 · 参团视角</b>别人分享进来、或从首页 / 列表点进来都落这页。</figcaption>
+      <p class="why">现状这页只有「商品：香梨」一行字，看不到图也看不到单买价，不知道便宜了多少。换成商品行（图 + 名 + 团价），整行点进商品详情 —— 团页不复制整份详情，见下方对照表。</p>
+    </figure>
+
+    <figure id="p06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">小王的团</span><span></span></div>
+        <div class="scr">
+          <div class="big"><div class="n">已成团</div><div class="l num">2 / 2 人</div></div>
+          <div class="who"><i class="in">王</i><i class="in">我</i></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><span class="pr num">¥5.00</span></div></div>
+          <div class="tl"><span class="st done">已付款</span><span class="st done">已成团 · 09-19 16:20</span><span class="st now">商家备货中</span><span class="st">送达</span></div>
+        </div>
+        <div class="foot"><div class="btn sec">查看订单</div></div>
+      </div>
+      <figcaption class="cap"><b>p06 团详情 · 已成团</b>人头满了；下面一条状态轴接到发货。</figcaption>
+      <p class="why">成团之后买家关心的是「什么时候到」，所以把订单进度搬到团页，按钮给「查看订单」。</p>
+    </figure>
+
+    <figure id="p07">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的团</span><span></span></div>
+        <div class="scr">
+          <div class="big"><div class="n">没凑齐</div><div class="l num">1 / 2 人 · 已截止</div></div>
+          <div class="who"><i class="in">我</i><i>？</i></div>
+          <div class="sum"><span>已全额退款，原路退回</span><span class="num">¥5.00</span></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><div class="ln"><span class="meta num">单买 ¥50.00</span><span class="meta">商品详情 ›</span></div></div></div>
+        </div>
+        <div class="foot"><div class="btn sec">单独买</div><div class="btn main">再开一个团</div></div>
+      </div>
+      <figcaption class="cap"><b>p07 团详情 · 没凑齐、已退款</b>退款金额和去向写清楚；给两条出路：单独买，或重开一团。</figcaption>
+      <p class="why">现状只有一句「未成团，已退款」，页面到这儿就断了。这时人还想要这件东西，不给出路就流失了。</p>
+    </figure>
+
+    <figure id="p08">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="hd"><span class="nm">拼团中 · 还差 1 人</span><span class="chip warn">待成团</span></div><div class="metric"><span class="num">1/2</span><span class="bar"><i></i></span><span class="num">23:59:12</span></div><span class="meta">没凑齐自动全额退款</span></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 × 1</span><span class="pr num">¥5.00</span></div></div>
+          <div class="group"><div class="frow"><span class="k">送至</span><span class="v">嘉逸花园 3 栋 1201</span></div><div class="frow"><span class="k">订单号</span><span class="v num">202609191620…</span></div></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消（退款）</div><div class="btn main">邀请邻居来拼</div></div>
+      </div>
+      <figcaption class="cap"><b>p08 订单详情 · 拼团中</b>团单在订单里多一张进度卡；主按钮是邀请。</figcaption>
+      <p class="why">现状订单详情看不出这是团单，也看不到差几人 —— 用户只能回商品页去找那个团。</p>
+    </figure>
+
+    <figure id="p09">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">邻里团购</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span>商家团 2</span><span class="on">邻里求团 1</span></div>
+          <div class="meta">想买的东西还没人卖？发起求团，邻居 +1 攒够量，商家来报价</div>
+          <div class="card"><div class="hd"><span class="nm">1.8 米乳胶床垫</span></div><span class="meta">小李发起 · 嘉逸花园</span><div><span class="chip act">12 人想要</span> <span class="chip warn">3 家报价</span> <span class="chip">最低 ¥1,280</span></div></div>
+        </div>
+        <div class="foot"><div class="btn">＋ 发起求团</div></div>
+      </div>
+      <figcaption class="cap"><b>p09 邻里求团 · 列表</b>先有需求、后有商家：发起时商品还不存在。</figcaption>
+      <p class="why">与商家团分 tab：一个能直接买，一个还只是想法，混在一起用户分不清。</p>
+    </figure>
+
+    <figure id="p10">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">求团详情</span><span></span></div>
+        <div class="scr">
+          <div class="card"><span class="nm">1.8 米乳胶床垫</span><span class="meta">要 20 件 · 心理价 ¥1,500 以内 · 09-25 截止</span><div class="metric"><span class="num">12/20 人</span><span class="bar"><i></i></span></div></div>
+          <div class="gt"><span>商家报价 3</span><span>低价在前</span></div>
+          <div class="gc"><div class="th">A</div><div class="bd"><div class="ln"><span class="nm">安睡家居</span><span class="chip ok">最低</span></div><span class="meta">含安装 · 起订 15 件 · 4.8★</span><span class="pr num">¥1,280</span></div></div>
+          <div class="gc"><div class="th">梦</div><div class="bd"><span class="nm">梦境床品</span><span class="meta">不含安装 · 起订 20 件</span><span class="pr num">¥1,350</span></div></div>
+        </div>
+        <div class="foot"><div class="btn sec">分享</div><div class="btn main">我也要 +1</div></div>
+      </div>
+      <figcaption class="cap"><b>p10 求团详情 · 报价对比</b>谁便宜、起订够不够、含不含安装一眼比；发起人在这里选定一家。</figcaption>
+      <p class="why">选定后转成商家团：大家按选中的价付款，流程与 p03 → p08 相同。</p>
+    </figure>
+
+    <figure id="p11">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">发起求团</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">想买什么</span><span class="v ph-">商品名称</span></div>
+            <div class="frow"><span class="k">说明</span><span class="v ph-">规格、要求</span></div>
+            <div class="frow"><span class="k">要几件</span><span class="v in num">20</span></div>
+            <div class="frow"><span class="k">心理价位</span><span class="v ph-">选填</span></div>
+          </div>
+          <div class="meta">发起后邻居可 +1，商家看到后会来报价</div>
+        </div>
+        <div class="foot"><div class="btn">发起</div></div>
+      </div>
+      <figcaption class="cap"><b>p11 发起求团</b>四个字段，刻意做短。</figcaption>
+      <p class="why">邻里发帖不是填工单：字段多一个，发起率就低一截。</p>
+    </figure>
+
+    <figure id="p12">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的拼团</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">拼团中 1</span><span>已成团 3</span><span>没凑齐 1</span></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 · 我开的团</span><div class="metric"><span class="num">1/2</span><span class="bar"><i></i></span><span class="num">23:59</span></div><div class="ln"><span class="pr num">¥5.00</span><div class="btn sm">邀请</div></div></div></div>
+          <div class="card"><span class="meta">我发起的邻里自提团（签收、核销）›</span></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>p12 我的拼团</b>「我的」页一个入口，按状态三个 tab；拼团中的卡上直接给「邀请」。</figcaption>
+      <p class="why">新页。现在参过的团没有集中看的地方；「我发起的团」（邻里自提的签收核销）收进这页底部，不再单独占「我的」一行。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">对照</span><h2>团详情和商品详情是不是一样？</h2></div>
+  <p class="sec-note">不一样，也不该一样。商品详情回答「这件东西怎么样、买不买」；团详情回答「这个团还差几个人、我要不要加入」。团详情只放一行商品（图 + 名 + 团价），整行点进商品详情看全部信息 —— 两页各做各的事，不复制内容。</p>
+  <div class="tw">
+    <table class="spec">
+      <tr><th>内容</th><th>商品详情（g01 / g04）</th><th>团详情 现状</th><th>团详情 建议（p05）</th></tr>
+      <tr><td>主图 / 图文详情</td><td>有</td><td>没有</td><td>缩略图；点进商品详情看全部</td></tr>
+      <tr><td>价格</td><td>单买价；拼团商品另标「N 人团 ¥X」</td><td>只有成团价</td><td>团价 + 单买价，看得出省多少</td></tr>
+      <tr><td>规格</td><td>规格面板里选</td><td>取默认规格，看不到</td><td>写明规格；多规格时参团前弹面板</td></tr>
+      <tr><td>倒计时 / 人头</td><td>「正在拼」列表里每团一行</td><td>有</td><td>有</td></tr>
+      <tr><td>商家 / 参数 / 评价</td><td>有</td><td>没有</td><td>不放（点商品行进详情）</td></tr>
+      <tr><td>送到哪</td><td>不放（本次删除）</td><td>「自提点：下单时选」</td><td>不放，在结算页定（p03）</td></tr>
+      <tr><td>主按钮</td><td>单买 / 开团</td><td>分享 · 参团 ¥X</td><td>分享 · 参团 ¥X</td></tr>
+    </table>
+  </div>
+</section>
+
+<footer>真源：prototypes/c-goods-group.html · 登记：prototypes/registry.json · 相关：docs/technical/TDD-C端商品详情页重排.md · 已落地：g01 去掉配送两行（0.1.45）、p01 首页团卡（0.1.40）</footer>
+</div>
+</html>

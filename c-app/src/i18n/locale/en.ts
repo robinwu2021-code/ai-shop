@@ -71,8 +71,6 @@ export default {
   },
   goods: {
     saveAmount: "Save {p}",
-    shipTo: "Ship to",
-    shipVia: "Delivery",
     scopeShort: "Area",
     chosen: "Selected",
     chosenValue: "{spec} · {n} pcs",
@@ -81,7 +79,6 @@ export default {
     shop: "Store",
     share: "Share",
     cart: "Cart",
-    pickAddress: "Choose an address",
     qty: "Quantity",
     whyNoSku: "This option is out of stock",
     whyNoSlot: "Pick a visit time to continue",

@@ -9,7 +9,6 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
-import { useLocationStore } from "@/stores/location";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -28,7 +27,6 @@ const { t } = useI18n();
 const cart = useCartStore();
 const user = useUserStore();
 const community = useCommunityStore();
-const location = useLocationStore();
 /** 小程序才有原生分享按钮；H5 与团购页同一约定：不显示 */
 const nativeShare = canNativeShare();
 
@@ -188,17 +186,6 @@ const lowStock = computed(() => {
 const saved = computed(() => {
   const s = sku.value;
   return s?.originPrice && s.originPrice > s.price ? s.originPrice - s.price : 0;
-});
-
-/** 实物才有「送到哪」。服务、虚拟、卡券不出「送至」那一行 */
-const isShipped = computed(() => !isService.value && !isVirtual.value && !isCard.value);
-
-/** 配送那一行：方式，生鲜再接商家写的到货说明 */
-const shipText = computed(() => {
-  const g = goods.value;
-  if (!g?.fulfillments?.length) return "";
-  const ways = g.fulfillments.map((x) => String(t(`fulfillment.${x}`))).join(" · ");
-  return isFresh.value && g.arrivalDesc ? `${ways} · ${g.arrivalDesc}` : ways;
 });
 
 /** 价格下面那排小标签有没有内容 —— 全空时整排不渲染，不留一道空缝 */
@@ -508,11 +495,6 @@ async function buyNow() {
   }
 }
 
-/** 「送至」那一行：去收货地址页换 */
-function gotoAddress() {
-  uni.navigateTo({ url: ROUTES.address });
-}
-
 /** 底栏「加入购物车」：多规格先弹面板，单规格直接加 */
 function tapAdd(e: unknown) {
   if (multiSku.value) {
@@ -693,34 +675,6 @@ onShareAppMessage(() =>
         </view>
 
         <!--
-          **送到哪、怎么送、卖到哪** —— 买家点进来最先要确认的三件事，放首屏一张卡。
-          此前配送方式在第五张卡、销售范围塞在商家卡里，首屏一个都看不到。
-          「送至」读当前位置（与首页顶栏同一个 label），点了去收货地址页换；
-          下单用哪条地址仍在结算页定。服务 / 虚拟 / 卡券没有「送到哪」，不出那一行。
-        -->
-        <view v-if="isShipped || shipText || saleScopeText" class="sh-card block rows">
-          <view v-if="isShipped" class="sh-row sh-row--divided row" @tap="gotoAddress">
-            <text class="txt-sub sh-muted row__label">{{ $t("goods.shipTo") }}</text>
-            <sh-icon name="pin" :size="28" color="var(--sh-primary-text)"></sh-icon>
-            <text class="txt-strong sh-fill row__value">{{ location.label || $t("goods.pickAddress") }}</text>
-            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-          </view>
-          <view v-if="shipText" class="sh-row sh-row--divided row">
-            <text class="txt-sub sh-muted row__label">{{ isShipped ? $t("goods.shipVia") : $t("goods.fulfillment") }}</text>
-            <text class="txt-body sh-fill row__value">{{ shipText }}</text>
-          </view>
-          <!--
-            销售范围。整行不渲染的判据是后端给的 saleScopeText，**不是 areaNames 为空**：
-            只做自提却没配范围的商家也是空的，而那个空的意思正好相反（谁也看不到），
-            在端上判必然判反一半。
-          -->
-          <view v-if="saleScopeText" class="sh-row sh-row--divided row">
-            <text class="txt-sub sh-muted row__label">{{ $t("goods.scopeShort") }}</text>
-            <text class="txt-body sh-fill row__value">{{ saleScopeText }}</text>
-          </view>
-        </view>
-
-        <!--
           领券 + 已选。**规格、数量不再常驻页面** —— 还没决定买就先让人调数量是反的；
           库存数也不露：对买家没有意义，只在紧缺时（≤10）在面板里说「仅剩 N 件」。
         -->
@@ -741,9 +695,22 @@ onShareAppMessage(() =>
             <text class="txt-body sh-fill row__value sh-num">{{ chosenText }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
+          <!--
+            销售范围：**这件商品卖到哪**，是商品的属性，所以留在详情页。
+            送到哪、怎么送（此前的「送至」「配送」两行）是**订单**的事，挪到结算页去看 ——
+            详情页先回答「买不买」，还没决定买就让人确认收货地址是反的（2026-09-19）。
+
+            整行不渲染的判据是后端给的 saleScopeText，**不是 areaNames 为空**：
+            只做自提却没配范围的商家也是空的，而那个空的意思正好相反（谁也看不到），
+            在端上判必然判反一半。
+          -->
+          <view v-if="saleScopeText" class="sh-row sh-row--divided row">
+            <text class="txt-sub sh-muted row__label">{{ $t("goods.scopeShort") }}</text>
+            <text class="txt-body sh-fill row__value">{{ saleScopeText }}</text>
+          </view>
         </view>
 
-        <!-- 预约：日期 + 时刻 -->        <!-- 预约：日期 + 时刻 -->
+        <!-- 预约：日期 + 时刻 -->
         <view v-if="needAppointment" class="sh-card block">
           <text class="sh-muted">{{ $t("goods.pickDate") }}</text>
           <scroll-view class="dates" scroll-x>

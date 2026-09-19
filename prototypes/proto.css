@@ -232,9 +232,38 @@ a{color:inherit}
 .pcard__meta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
 .pcard__sum{margin:0;font-size:13px;line-height:1.55;color:var(--ink)}
 .screens{display:flex;flex-wrap:wrap;gap:5px}
-.scr{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--rule);color:var(--muted);text-decoration:none}
-.scr:hover{color:var(--ink);border-color:var(--ink)}
+/* 限定在 .screens 里：裸 .scr 会压掉手机屏的 .scr（屏内容器），每份原型的屏内都被换成等宽字 + 描边 */
+.screens .scr{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--rule);color:var(--muted);text-decoration:none}
+.screens .scr:hover{color:var(--ink);border-color:var(--ink)}
 .pcard__links{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}
 .pcard__links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 .pcard__links a:hover{color:var(--ink)}
 .chip.dead{background:transparent;outline:1px solid var(--rule);outline-offset:-1px;color:var(--muted)}
+
+/* ── C 端小程序（2026-09-19，商品详情 / 拼团稿）──
+ * 屏上加 .c：换成 C 端的 fresh 皮肤（packages/ui base.css 的 skin-fresh）。
+ * 绿底配墨字（on-primary = 墨），不是白字 —— 白字在 #00B578 上对比度只有 2.66。 */
+.ph.c{--sh-primary:#00B578;--sh-primary-tint:rgba(0,181,120,.12);--sh-primary-text:#007A51;
+  --sh-on-primary:#14161A;--sh-ink:#14161A}
+.ph.c .btn{color:var(--sh-on-primary)}
+.ph.c .btn.sec{color:var(--sh-ink)}
+.ph.c .btn.soft,.ph.c .btn.tint{color:var(--sh-primary-text)}
+/* 整幅主图：贴满屏宽，压在导航下 */
+.scr .hero{margin:-10px -10px 0;height:150px;border-radius:0;flex:0 0 auto}
+/* 价格卡：C 端价格用墨色，不用主色（靠字重与字号分层） */
+.pz.ink .p b{color:var(--sh-ink)}
+.pz .t{font-size:13px;font-weight:600}
+/* 商品行：缩略图 + 三行字，列表与团详情共用 */
+.gc{background:var(--sh-card);border-radius:13px;padding:10px;display:flex;gap:9px;align-items:flex-start}
+.gc .th{width:58px;height:58px;border-radius:9px;background:var(--sh-faint);flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:24px;position:relative}
+.gc .th i{position:absolute;top:3px;left:3px;font-style:normal;font-size:8.5px;background:var(--sh-primary);color:var(--sh-on-primary);border-radius:99px;padding:0 5px}
+.gc .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gc .nm{font-size:12px;font-weight:600}
+.gc .ln{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.gc .pr{font-size:14px;font-weight:700}
+.gc .warn{color:var(--sh-warning-text);font-size:10.5px}
+/* 详情页底栏：左边三个图标位（店铺 / 分享 / 购物车），右边两颗胶囊 */
+.foot .ic{flex:0 0 30px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:var(--sh-sub);gap:1px}
+.foot .ic::before{content:"";width:14px;height:12px;border-radius:3px;background:var(--sh-faint)}
+/* 行内 chip 贴在标题前（「自营」） */
+.chip.pri{background:var(--sh-primary-tint);color:var(--sh-primary-text)}

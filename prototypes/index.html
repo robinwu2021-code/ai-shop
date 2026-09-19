@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">19 份有效稿子，其中页面稿 9 份、共 124 屏；2 份作废。
+  <p class="sub">19 份有效稿子，其中页面稿 9 份、共 135 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -98,15 +98,15 @@
   <div class="screens"><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s01 没有地址（新用户）">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s02 地址列表">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s03 新建收货地址（整页）">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s04 选择地点">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s05 文案对照">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s06 选择城市">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s07 海外地址">·</a><a class="scr" href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i" title="s08 搜不到时">·</a></div>
   <div class="pcard__links"><a href="https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i">claude.ai</a> <a href="../docs/technical/TDD-C端收货地址-录入与定位重排.md">TDD-C端收货地址-录入与定位重排</a> <a href="../docs/technical/design/C端地址管理-交互方案.md">C端地址管理-交互方案</a></div>
   
-</article><article class="pcard" id="goods-detail-opt">
+</article><article class="pcard" id="c-goods-group">
   <div class="pcard__hd">
-    <b>C 端商品详情页：现状与优化</b>
+    <b>C 端商品详情与拼团</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">画布稿 · 买家小程序 · 2026-09-19 · 5 屏</div>
-  <p class="pcard__sum">现状 / 优化后首屏 / 整页 / 规格面板 / 拼团商品五块画布。</p>
-  <div class="screens"><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="现状">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 首屏">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 整页">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="规格面板">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="拼团商品">·</a></div>
-  <div class="pcard__links"><a href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn">claude.ai</a> <a href="../docs/technical/TDD-C端商品详情页重排.md">TDD-C端商品详情页重排</a></div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 2026-09-19 · 16 屏</div>
+  <p class="pcard__sum">商品详情去掉配送信息（送至 / 配送挪到结算页）；拼团买家全流程：团卡 → 开团 / 参团结算 → 邀请 → 成团 / 退款 → 订单进度 → 我的拼团，另含邻里求团三屏与团详情 vs 商品详情对照。取代 goods-detail-opt。</p>
+  <div class="screens"><a class="scr" href="c-goods-group.html#g01" title="g01 普通商品 · 首屏">g01</a><a class="scr" href="c-goods-group.html#g02" title="g02 普通商品 · 下半页">g02</a><a class="scr" href="c-goods-group.html#g03" title="g03 规格面板">g03</a><a class="scr" href="c-goods-group.html#g04" title="g04 拼团商品 · 首屏">g04</a><a class="scr" href="c-goods-group.html#p01" title="p01 首页 · 团并进商品卡">p01</a><a class="scr" href="c-goods-group.html#p02" title="p02 邻里团购 · 商家团">p02</a><a class="scr" href="c-goods-group.html#p03" title="p03 开团 / 参团 · 确认订单">p03</a><a class="scr" href="c-goods-group.html#p04" title="p04 开团成功 · 邀请">p04</a><a class="scr" href="c-goods-group.html#p05" title="p05 团详情 · 参团视角">p05</a><a class="scr" href="c-goods-group.html#p06" title="p06 团详情 · 已成团">p06</a><a class="scr" href="c-goods-group.html#p07" title="p07 团详情 · 没凑齐已退款">p07</a><a class="scr" href="c-goods-group.html#p08" title="p08 订单详情 · 拼团中">p08</a><a class="scr" href="c-goods-group.html#p09" title="p09 邻里求团 · 列表">p09</a><a class="scr" href="c-goods-group.html#p10" title="p10 求团详情 · 报价对比">p10</a><a class="scr" href="c-goods-group.html#p11" title="p11 发起求团">p11</a><a class="scr" href="c-goods-group.html#p12" title="p12 我的拼团">p12</a></div>
+  <div class="pcard__links"><a href="c-goods-group.html">本地稿</a> <a href="https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1">claude.ai</a> <a href="../docs/technical/TDD-C端商品详情页重排.md">TDD-C端商品详情页重排</a></div>
   
 </article>
   </div>
@@ -220,7 +220,17 @@
 <section>
   <div class="sec-head"><span class="sec-num">03</span><h2>作废：被后来的稿子取代</h2></div>
   <div class="pgrid">
-<article class="pcard" id="inventory-nine-v0">
+<article class="pcard" id="goods-detail-opt">
+  <div class="pcard__hd">
+    <b>C 端商品详情页：现状与优化</b>
+    <span class="chip dead">作废</span>
+  </div>
+  <div class="pcard__meta">画布稿 · 买家小程序 · 2026-09-19 · 5 屏</div>
+  <p class="pcard__sum">现状 / 优化后首屏 / 整页 / 规格面板 / 拼团商品五块画布。</p>
+  <div class="screens"><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="现状">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 首屏">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="优化后 · 整页">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="规格面板">·</a><a class="scr" href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn" title="拼团商品">·</a></div>
+  <div class="pcard__links"><a href="https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn">claude.ai</a> <a href="../docs/technical/TDD-C端商品详情页重排.md">TDD-C端商品详情页重排</a></div>
+  <p class="why">已由 <a href="#c-goods-group">c-goods-group</a> 取代</p>
+</article><article class="pcard" id="inventory-nine-v0">
   <div class="pcard__hd">
     <b>进销存九屏（第一版）</b>
     <span class="chip dead">作废</span>

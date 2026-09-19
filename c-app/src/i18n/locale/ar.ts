@@ -71,8 +71,6 @@ export default {
   },
   goods: {
     saveAmount: "وفّر {p}",
-    shipTo: "التوصيل إلى",
-    shipVia: "التوصيل",
     scopeShort: "النطاق",
     chosen: "المحدد",
     chosenValue: "{spec} · {n} قطعة",
@@ -81,7 +79,6 @@ export default {
     shop: "المتجر",
     share: "مشاركة",
     cart: "السلة",
-    pickAddress: "اختر عنوانًا",
     qty: "الكمية",
     whyNoSku: "هذا الخيار غير متوفر",
     whyNoSlot: "اختر موعد الزيارة للمتابعة",

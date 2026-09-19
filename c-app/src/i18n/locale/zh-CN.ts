@@ -74,8 +74,6 @@ export default {
   },
   goods: {
     saveAmount: "省 {p}",
-    shipTo: "送至",
-    shipVia: "配送",
     scopeShort: "范围",
     chosen: "已选",
     chosenValue: "{spec} · {n} 件",
@@ -84,7 +82,6 @@ export default {
     shop: "店铺",
     share: "分享",
     cart: "购物车",
-    pickAddress: "选择收货地址",
     qty: "数量",
     whyNoSku: "该规格暂无现货",
     whyNoSlot: "请先选择上门时段",

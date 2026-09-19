@@ -1,7 +1,7 @@
 # TDD-C端商品详情页重排
 
 状态：已确认（2026-09-19，按原型 + 用户逐条拍板）
-原型：https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn（现状 / 优化后·首屏 / 优化后·整页 / 规格面板 / 拼团商品）
+原型：https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1（`prototypes/c-goods-group.html`，g01–g04 商品详情、p01–p12 拼团）；旧稿 J7fZfruVH5YhmYbkzsGzMn 已作废
 创建日期：2026-09-19
 
 ## 1. 需求摘要
@@ -56,3 +56,12 @@ paramsTitle / shop / share / cart / pickAddress，三语齐。
 
 - 分享在 H5 没有原生能力，按团购页的约定只在小程序显示。
 - 「送至」读的是当前位置（`location.label`），不是下单地址；下单地址仍在结算页选。
+
+## 变更记录
+
+- **2026-09-19 去掉「送至」「配送」两行**（用户：配送信息、配送位置是在订单中才能看到的）。
+  送到哪、怎么送、什么时候到是**这一单**的事，在结算页选地址时才定；详情页先回答「买不买」。
+  「范围」（销售范围）留下 —— 它是商品的属性，挪进「已选」那张卡，不再单独成卡。
+  生鲜的到货说明（`arrivalDesc`）随「配送」一行一起离开详情页，列表卡的截单倒计时里仍有。
+  上面第 27 行与第 58 行描述的「配送卡」因此作废。守卫：`goods-detail-layout.test.ts`
+  「详情页不说配送」（换回旧页面即红）。

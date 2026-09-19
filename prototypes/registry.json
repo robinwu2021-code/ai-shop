@@ -813,6 +813,101 @@
    ]
   },
   {
+   "slug": "c-goods-group",
+   "file": "c-goods-group.html",
+   "title": "C 端商品详情与拼团",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-19",
+   "artifact": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+   "summary": "商品详情去掉配送信息（送至 / 配送挪到结算页）；拼团买家全流程：团卡 → 开团 / 参团结算 → 邀请 → 成团 / 退款 → 订单进度 → 我的拼团，另含邻里求团三屏与团详情 vs 商品详情对照。取代 goods-detail-opt。",
+   "docs": [
+    {
+     "label": "TDD-C端商品详情页重排",
+     "path": "docs/technical/TDD-C端商品详情页重排.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "g01",
+     "title": "普通商品 · 首屏",
+     "client": "c-app",
+     "route": "pages/goods/index"
+    },
+    {
+     "id": "g02",
+     "title": "普通商品 · 下半页"
+    },
+    {
+     "id": "g03",
+     "title": "规格面板"
+    },
+    {
+     "id": "g04",
+     "title": "拼团商品 · 首屏"
+    },
+    {
+     "id": "p01",
+     "title": "首页 · 团并进商品卡"
+    },
+    {
+     "id": "p02",
+     "title": "邻里团购 · 商家团",
+     "client": "c-app",
+     "route": "pages/groups/index"
+    },
+    {
+     "id": "p03",
+     "title": "开团 / 参团 · 确认订单"
+    },
+    {
+     "id": "p04",
+     "title": "开团成功 · 邀请"
+    },
+    {
+     "id": "p05",
+     "title": "团详情 · 参团视角",
+     "client": "c-app",
+     "route": "pages/group/index"
+    },
+    {
+     "id": "p06",
+     "title": "团详情 · 已成团"
+    },
+    {
+     "id": "p07",
+     "title": "团详情 · 没凑齐已退款"
+    },
+    {
+     "id": "p08",
+     "title": "订单详情 · 拼团中"
+    },
+    {
+     "id": "p09",
+     "title": "邻里求团 · 列表"
+    },
+    {
+     "id": "p10",
+     "title": "求团详情 · 报价对比",
+     "client": "c-app",
+     "route": "pages/request/index"
+    },
+    {
+     "id": "p11",
+     "title": "发起求团",
+     "client": "c-app",
+     "route": "pages/request-create/index"
+    },
+    {
+     "id": "p12",
+     "title": "我的拼团"
+    }
+   ]
+  },
+  {
    "slug": "goods-detail-opt",
    "file": null,
    "title": "C 端商品详情页：现状与优化",
@@ -820,7 +915,8 @@
    "clients": [
     "c-app"
    ],
-   "status": "在建",
+   "status": "作废",
+   "supersededBy": "c-goods-group",
    "date": "2026-09-19",
    "artifact": "https://claude.ai/artifact/J7fZfruVH5YhmYbkzsGzMn",
    "summary": "现状 / 优化后首屏 / 整页 / 规格面板 / 拼团商品五块画布。",
