@@ -19,7 +19,7 @@ import { SHOW_CATEGORY_GATE } from "@/shared/flags";
  * 而不是选了再拦：选完才说「这类不能建」，等于让人白走一趟。
  */
 const ALLOWED_TEMPLATES = ["STANDARD", "FRESH", "SERVICE"];
-import type { Category } from "@shared/types";
+import type { Category, StoreCategory } from "@shared/types";
 
 /**
  * 类目选择的全部状态与动作。
@@ -204,10 +204,52 @@ export function useCategoryPicker(onSelected: (leaf: Category) => Promise<void>)
     return [];
   }
 
-  /** 拉本店货架。取不到不该挡住建品：那时退回全量类目树，与改版前一样 */
+  /**
+   * 本店的经营类目 —— 有门店上下文时，候选**只有这几类**（TDD-门店经营类目 §4.2）。
+   *
+   * <p>`null` = 不按门店选：没有门店上下文，或这次没取到。那时退回全量类目树，
+   * 与改版前一样 —— 后端在没有门店上下文时也不校验，两边同一个边界。
+   * 平台树照样要拉：面包屑、形态推断、识别回填都按编号回树上找路径。
+   */
+  const storeCats = ref<StoreCategory[] | null>(null);
+
+  /** 经营类目里、且在（砍过的）平台树上找得到的那几类 —— 找不到的点了也落不了选 */
+  const storeOptions = computed(() =>
+    (storeCats.value ?? []).filter((c) => findPath(categoryTree.value, c.categoryNo).length),
+  );
+
+  /** 这个类目能不能在本店选。不按门店选时一律能 */
+  function inStore(no: string) {
+    return !storeCats.value || storeCats.value.some((c) => c.categoryNo === no);
+  }
+
+  /** 点一个经营类目：按编号回平台树找路径，连面包屑与形态一起落 */
+  function pickStore(no: string) {
+    const path = findPath(categoryTree.value, no);
+    if (path.length) void select(path);
+  }
+
+  /** 新建时经营类目只有一项：直接选中，不让他点 */
+  function autoPickSingle() {
+    if (!categoryNo.value && storeOptions.value.length === 1) pickStore(storeOptions.value[0]!.categoryNo);
+  }
+
+  /** 就地面板里加 / 移出之后：刷新候选；新加的那一类回填为选中 */
+  function onStoreCatsChanged(next: StoreCategory[], added: string | null) {
+    storeCats.value = next;
+    if (added) pickStore(added);
+  }
+
+  /** 拉平台类目树与本店经营类目。取不到不该挡住建品 */
   async function loadCategories() {
+    const storeNo = merchant.storeNo;
     // 取不到不该挡住整个编辑页：拿不到就退化成「不归类」，商品照样存得下
-    categoryTree.value = prunable(await api.mCategoryTree().catch(() => []));
+    const [tree, mine] = await Promise.all([
+      api.mCategoryTree().catch(() => []),
+      storeNo ? api.mStoreCategories(storeNo).catch(() => null) : Promise.resolve(null),
+    ]);
+    categoryTree.value = prunable(tree);
+    storeCats.value = mine;
   }
 
   /**
@@ -228,5 +270,6 @@ export function useCategoryPicker(onSelected: (leaf: Category) => Promise<void>)
     categoryTree, categoryNo, catPath, parentNo, children, gateOf, pickedGate, categoryLabel,
     pickParent, recentCats, loadRecentCats, rememberCat, pickRecent, pickChild, select,
     findPath, loadCategories,
+    storeCats, storeOptions, inStore, pickStore, autoPickSingle, onStoreCatsChanged,
   };
 }

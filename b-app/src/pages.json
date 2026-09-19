@@ -228,7 +228,7 @@
     {
       "path": "pages/store-categories/index",
       "style": {
-        "navigationBarTitleText": "我的类目",
+        "navigationBarTitleText": "经营类目",
         "app-plus": {
           "navigationStyle": "custom"
         },

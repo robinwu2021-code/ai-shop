@@ -385,6 +385,7 @@ const {
   categoryTree, categoryNo, catPath, parentNo, children, gateOf, pickedGate, categoryLabel,
   pickParent, recentCats, loadRecentCats, rememberCat, pickRecent, pickChild, select,
   findPath, loadCategories,
+  storeCats, storeOptions, inStore, pickStore, autoPickSingle, onStoreCatsChanged,
 } = useCategoryPicker(async (leaf) => {
   const inferred = leaf.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
   if (inferred && inferred !== type.value) {
@@ -397,6 +398,8 @@ const {
    */
   await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
 });
+/** 「＋ 添加经营类目」的就地面板开没开 —— 与经营类目页同一个面板，加完回填为选中 */
+const addingCat = ref(false);
 
 
 // ── 五、规格与详情生成 ──────────────────────────────────────────────────
@@ -594,7 +597,8 @@ async function applyGuess(guess: GoodsGuess) {
      * 落在被砍掉那一支上的编号在这棵树里不存在。
      * 只到一级也不填 —— 一级类目挂不住商品，填了反而让人以为已经选好了。
      */
-    if (!categoryNo.value && guess.categoryNo) {
+    // 识别出的类目不在本店经营类目里就不填：填了也存不进（后端 70068），不如让他自己选
+    if (!categoryNo.value && guess.categoryNo && inStore(guess.categoryNo)) {
       const path = findPath(categoryTree.value, guess.categoryNo);
       if (path.length > 1 || (path.length === 1 && !path[0]?.children?.length)) {
         await select(path);
@@ -710,6 +714,7 @@ onLoad(async (q) => {
       rememberExternal(true);
     }
     await Promise.all([loadTemplates(), loadCategories(), loadStoreChannels()]);
+    autoPickSingle();
     return;
   }
   /*
@@ -1374,64 +1379,87 @@ async function save(thenSubmit = false) {
           那层弹层就只剩成本。
         -->
         <!--
-          最近用过。**摆在最外面而不是藏进类目列表** —— 一家店的货高度集中，
-          第二次建品要选的那一档多半就在这三五个里，一点就换。
-          识别填错了、或者压根没识别出来，这一行都是最快的路。
+          **有门店时只列本店的经营类目**（TDD-门店经营类目 §4.2）。
+          此前列平台整棵树：卖水果的店建一件梨，要从「电子产品 / 生活服务」里翻过去，
+          而误点的那一类还会被悄悄加进经营类目。现在不在经营类目里的，后端直接拒。
+          缺的那一类在末尾就地加，加完回填为选中，不离开编辑页。
         -->
-        <!--
-          最近用过。一家店的货高度集中，第二次建品要选的那一档多半就在这三五个里。
-          识别填错了、或者压根没识别出来，这一行都是最快的路。
-        -->
-        <view v-if="recentCats.length" class="cat-lv">
-          <text class="txt-caption cat-lv__t">{{ $t("goods.recentCats") }}</text>
+        <view v-if="storeCats" class="cat-lv">
           <view class="cat-lv__opts sh-wrap">
             <text
-              v-for="c in recentCats"
+              v-for="c in storeOptions"
               :key="c.categoryNo"
               class="sh-chip"
               :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
-              @tap="pickRecent(c.categoryNo)"
+              @tap="pickStore(c.categoryNo)"
             >
               {{ c.name }}
             </text>
+            <text class="sh-chip sh-chip--dashed" @tap="addingCat = true">＋ {{ $t("goods.addStoreCategory") }}</text>
           </view>
+          <text v-if="!storeOptions.length" class="txt-caption sh-muted cat-lv__t">{{ $t("goods.noStoreCategory") }}</text>
         </view>
+        <template v-else>
+          <!--
+            最近用过。**摆在最外面而不是藏进类目列表** —— 一家店的货高度集中，
+            第二次建品要选的那一档多半就在这三五个里，一点就换。
+            识别填错了、或者压根没识别出来，这一行都是最快的路。
+          -->
+          <!--
+            最近用过。一家店的货高度集中，第二次建品要选的那一档多半就在这三五个里。
+            识别填错了、或者压根没识别出来，这一行都是最快的路。
+          -->
+          <view v-if="recentCats.length" class="cat-lv">
+            <text class="txt-caption cat-lv__t">{{ $t("goods.recentCats") }}</text>
+            <view class="cat-lv__opts sh-wrap">
+              <text
+                v-for="c in recentCats"
+                :key="c.categoryNo"
+                class="sh-chip"
+                :class="{ 'sh-chip--primary': categoryNo === c.categoryNo }"
+                @tap="pickRecent(c.categoryNo)"
+              >
+                {{ c.name }}
+              </text>
+            </view>
+          </view>
 
-        <view class="cat-lv">
-          <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL1") }}</text>
-          <view class="cat-lv__opts sh-wrap">
-            <text
-              v-for="c in categoryTree"
-              :key="c.categoryNo"
-              class="sh-chip"
-              :class="{ 'sh-chip--primary': parentNo === c.categoryNo }"
-              @tap="pickParent(c)"
-            >
-              {{ c.name }}
-            </text>
+          <view class="cat-lv">
+            <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL1") }}</text>
+            <view class="cat-lv__opts sh-wrap">
+              <text
+                v-for="c in categoryTree"
+                :key="c.categoryNo"
+                class="sh-chip"
+                :class="{ 'sh-chip--primary': parentNo === c.categoryNo }"
+                @tap="pickParent(c)"
+              >
+                {{ c.name }}
+              </text>
+            </view>
           </view>
-        </view>
 
-        <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
-        <view v-if="parentNo && children.length" class="cat-lv">
-          <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL2") }}</text>
-          <view class="cat-lv__opts sh-wrap">
-            <text
-              v-for="c in children"
-              :key="c.categoryNo"
-              class="sh-chip"
-              :class="{
-                'sh-chip--primary': categoryNo === c.categoryNo,
-                'sh-chip--warning': SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted,
-              }"
-              @tap="pickChild(c)"
-            >
-              {{ c.name
-              }}<template v-if="SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted">
-                · {{ $t("goods.needCert") }}</template>
-            </text>
+          <!-- 二级只在选了一级之后出现：先摆一排空椅子只会让人以为加载失败 -->
+          <view v-if="parentNo && children.length" class="cat-lv">
+            <text class="txt-caption cat-lv__t">{{ $t("goods.categoryL2") }}</text>
+            <view class="cat-lv__opts sh-wrap">
+              <text
+                v-for="c in children"
+                :key="c.categoryNo"
+                class="sh-chip"
+                :class="{
+                  'sh-chip--primary': categoryNo === c.categoryNo,
+                  'sh-chip--warning': SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted,
+                }"
+                @tap="pickChild(c)"
+              >
+                {{ c.name
+                }}<template v-if="SHOW_CATEGORY_GATE && gateOf(c) && !gateOf(c)?.granted">
+                  · {{ $t("goods.needCert") }}</template>
+              </text>
+            </view>
           </view>
-        </view>
+        </template>
 
         <text v-if="categoryLabel" class="txt-sub cat-lv__sel">{{ categoryLabel }}</text>
         <!--
@@ -2147,6 +2175,12 @@ async function save(thenSubmit = false) {
         </view>
       </view>
     </sh-actionbar>
+    <biz-category-sheet
+      :visible="addingCat"
+      :store-no="merchant.storeNo"
+      @close="addingCat = false"
+      @change="onStoreCatsChanged"
+    ></biz-category-sheet>
   </sh-scaffold>
 </template>
 

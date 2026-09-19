@@ -1,6 +1,6 @@
 # TDD · 门店经营类目
 
-> 状态：**方案已确认 · 原型待确认** · 2026-09-19
+> 状态：**已实现（后端 + B 端）· 待上线前核对 §6** · 2026-09-19
 > 原型：[门店经营类目](https://claude.ai/artifact/2Ajyyb4EbSPyoyHn2PASfY)
 > 起因：店主「虽然是自营店，虽然不需要提交资料，但是每个门店也需要经营的类目」；
 > 具体表现是虹选鲜果只卖水果，App 里却到处列着蔬菜、日用百货、生活服务……
@@ -58,7 +58,7 @@ B 端「我的类目」页底部那份「本店货架」就是它。虹选鲜果
 | `MerchantGoodsServiceImpl.toggle` L1856 | 同上（上架那家店） |
 | `StoreCategoryPort.ensure` | 两个调用点都撤掉后删除；接口上保留 `categoryNosOf` |
 | `StoreCategoryServiceImpl.replace` L56 → `requireSelectable` L155（shop-merchant） | **这家门店**是自营时跳过资质那一段（「启用」校验照做）；第三方不变 |
-| 新错误码 | `GOODS_CATEGORY_NOT_IN_STORE`（700xx，落地时取空号）+ `err.goods.category_not_in_store` 三语：「本店经营类目里没有「{c}」，请先添加」 |
+| 新错误码 | `GOODS_CATEGORY_NOT_IN_STORE`（70068）+ `err.goods.category_not_in_store` 三语：「本店经营类目里没有「{c}」，请先添加」 |
 
 - **没有门店上下文时不校验**（单店老账号、运营代操作）—— 与 `ensure` 原来的 `ctxStore != null` 同一个边界
 - **不追溯存量**：规则只在「保存 / 上架」那一刻判。已上架的老商品不受影响，下次编辑时才会被要求
@@ -107,7 +107,7 @@ B 端「我的类目」页底部那份「本店货架」就是它。虹选鲜果
 
 ## 7 验证
 
-场景测试 `StoreBusinessCategoryFlowTest`：
+场景测试 `StoreCategoryFlowTest`（与原有经营类目用例同一个类）：
 
 1. 保存商品，类目在本店经营类目里 → 通过；不在 → `GOODS_CATEGORY_NOT_IN_STORE`，且**经营类目没有被撑大**（读回 `categoryNosOf` 仍是原集合）
 2. 上架同上
@@ -117,6 +117,10 @@ B 端「我的类目」页底部那份「本店货架」就是它。虹选鲜果
 6. 老商品（类目不在经营类目里、已上架）→ 读、列表、C 端下单都不受影响
 
 **消融**：把 L881 的校验改回 `ensure`，第 1 条的「经营类目没有被撑大」必须变红。
+
+**夹具跟着改**：26 个场景类的建品夹具原先靠「自动加入」，规则收紧后在建品那一行一起断了。
+它们改为先调 `support/TestStoreCategory.open(...)` 开类目 —— 与店主的真实流程同序，
+不是给规则开后门。
 
 ## 8 不做什么
 
