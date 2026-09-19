@@ -43,11 +43,9 @@ public interface StoreCategoryPort {
     record Shelf(String categoryNo, String displayName, int sort) {
     }
 
-    /**
-     * 把一个类目加进这家店的货架；已经有了就什么都不做。
-     *
-     * <p><b>幂等</b>：建品是高频动作，每次都先查再插会写出竞态；
-     * 这里靠唯一键 {@code (store_no, category_no)} 兜底。
+    /*
+     * 原有的 ensure（「建品 / 上架时缺了就自动加进货架」）已删（TDD-门店经营类目）：
+     * 经营类目是门店的承诺，不该是一次建品或上架的副作用。现在不在经营类目里就拒，
+     * 判定只需要上面的 categoryNosOf。
      */
-    void ensure(String entityNo, String storeNo, String categoryNo);
 }

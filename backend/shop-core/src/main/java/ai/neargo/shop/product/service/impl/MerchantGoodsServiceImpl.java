@@ -686,6 +686,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         boolean isNew = cmd.goodsNo() == null || cmd.goodsNo().isBlank();
         PrdGoods g = isNew ? newGoods(merchantNo) : mine(merchantNo, cmd.goodsNo());
         /*
+         * **经营类目（TDD-门店经营类目 §4.1）：商品的类目必须在当前门店的经营类目里，不在就拒。**
+         * 放在草稿分支之前：在售商品的编辑在下面就存草稿返回了，放在后面草稿会绕过去 ——
+         * 而草稿同样是「打算在这家店卖」的承诺。判的是这次生效的类目：传了用传的，没传用原来的。
+         * 老商品的类目不在经营类目里时，下次编辑就会被要求先加类目（TDD §5，不追溯）。
+         */
+        String effectiveCategory = cmd.categoryNo() != null && !cmd.categoryNo().isBlank()
+                ? cmd.categoryNo() : g.getCategoryNo();
+        requireInStore(ai.neargo.shop.auth.BizContext.current().currentStoreNo(), effectiveCategory);
+        /*
          * **双版本（TDD-商品规格与发布 §3.3）：在售商品的编辑只落草稿，线上一个字节不动。**
          *
          * 这条推翻 V247 的「保存即自动下架送审」—— 那是单版本下的最优解，
@@ -867,19 +876,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         publishSkuUpserted(merchantNo, g,
                 saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
-        /*
-         * **建品时把这一类自动加进本店货架**（TDD-品类约束全链路 §4.2）。
-         *
-         * 选一个本店还没摆的类目不是错误，是「他要开始卖这个了」。让商家先去
-         * 「我的类目」勾一遍再回来建品，是把一个系统能自己完成的动作变成了两趟。
-         *
-         * 这里<b>不校验经营资质</b>：那是上架时的事（见 requireCategoryAuthorized），
-         * 草稿归到一个还没批下来的类目下是合法的 —— 他可能正在申请。
-         */
-        String ctxStore = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
-        if (ctxStore != null && !ctxStore.isBlank()) {
-            storeCategoryPort.ensure(merchantNo, ctxStore, g.getCategoryNo());
-        }
+        // 经营类目的校验已提到方法开头（草稿分支之前），这里不再「自动加进货架」—— 见 requireInStore
         /*
          * 免审直通（goods.audit=off）：编辑已过审商品那条路（stayDraft=false，
          * 正常要 AUDITING 等人）改成当场编译过审，pendingOnSale 立刻兑现 ——
@@ -1276,6 +1273,43 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         } finally {
             PUBLISHING.remove();
         }
+    }
+
+    /**
+     * 类目必须在门店经营类目里（TDD-门店经营类目）。
+     * <p><b>没有门店上下文时不判</b>（单店老账号、运营代操作）—— 与原来 ensure 的边界相同；
+     * 没归类的也不判，那由必填校验管。
+     * <p>报错带上类目名：「本店经营类目里没有「蔬菜」」—— 只说「类目不对」他不知道该去加哪一个。
+     */
+    private void requireInStore(String storeNo, String categoryNo) {
+        if (storeNo == null || storeNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
+            return;
+        }
+        /*
+         * 归档 / 查无此类目的让给后面原有的判断（CATEGORY_NOT_FOUND）：
+         * 那是更根本的问题（归档类目谁都加不进经营类目），先说它；
+         * 也不破坏那边的豁免 —— 已经在归档类目下的老商品照旧能保存。
+         */
+        if (!categoryService.isActive(categoryNo)) {
+            return;
+        }
+        if (!storeCategoryPort.categoryNosOf(storeNo).contains(categoryNo)) {
+            throw BizException.of(ErrorCode.GOODS_CATEGORY_NOT_IN_STORE, categoryNameOf(categoryNo));
+        }
+    }
+
+    private String categoryNameOf(String categoryNo) {
+        for (var lv1 : categoryService.tree()) {
+            if (categoryNo.equals(lv1.categoryNo())) {
+                return lv1.name();
+            }
+            for (var lv2 : lv1.children()) {
+                if (categoryNo.equals(lv2.categoryNo())) {
+                    return lv2.name();
+                }
+            }
+        }
+        return categoryNo;
     }
 
     private void applyOptional(PrdGoods g, SaveCommand cmd) {
@@ -1843,17 +1877,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         String storeNo = BizContext.current().currentStoreNo();
         /*
-         * 闸二：**上架的商品，它的类目必须在这家店的货架上**（TDD-品类约束全链路 §4.3）。
-         *
-         * 走到这里资质已经过了闸一，所以缺的只可能是「这家店还没摆这个货架」——
-         * 那是一次登记，不是一次拒绝，补上即可。硬拒的话，商家会看到一句
-         * 「本店不能卖这一类」，而他明明有资质，也确实想卖。
-         *
-         * 反向的口子（货架被撤而商品还在）由 StoreCategoryService.replace 那侧堵：
-         * 底下还有商品的类目删不掉。两侧合起来，「上架商品 ⊆ 本店货架」才是闭的。
+         * 闸二：**上架的商品，它的类目必须在这家店的经营类目里**（TDD-门店经营类目 §4.1）。
+         * 此前这里是「缺了就补登记」—— 理由是硬拒会让有资质的商家看到「本店不能卖这一类」。
+         * 改成拒是因为建品页现在只列本店经营类目，正常路径走不到这里；
+         * 能走到的只有老商品、多门店互相上架、接口直调 —— 那时一句「请先添加」正是他要的出路，
+         * 而补登记会让经营类目被一次上架悄悄撑大。
+         * 反向的口子（类目被撤而商品还在）仍由 StoreCategoryService.replace 堵：底下有商品删不掉。
          */
-        if (onSale && storeNo != null && !storeNo.isBlank()) {
-            storeCategoryPort.ensure(merchantNo, storeNo, g.getCategoryNo());
+        if (onSale) {
+            requireInStore(storeNo, g.getCategoryNo());
         }
         /*
          * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。

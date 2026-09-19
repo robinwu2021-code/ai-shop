@@ -730,6 +730,13 @@ public enum ErrorCode {
      * 而这件货明明就在详情页上。说清「要走活动买」，他才知道去点开团。
      */
     GOODS_ACTIVITY_ONLY(70067, "err.goods.activity_only"),
+    /**
+     * 商品的类目不在当前门店的经营类目里（TDD-门店经营类目）。保存、上架时判。
+     *
+     * <p>带一个参数：类目名。只说「类目不对」他不知道该去加哪一个；
+     * 说出「蔬菜」他就知道去经营类目里加蔬菜。此前这里是「自动加进去」，不报错。
+     */
+    GOODS_CATEGORY_NOT_IN_STORE(70068, "err.goods.category_not_in_store"),
 
     /**
      * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。

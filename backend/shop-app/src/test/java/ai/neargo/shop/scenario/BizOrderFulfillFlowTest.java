@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -176,6 +177,7 @@ class BizOrderFulfillFlowTest {
         // A7：这个令牌要打 /biz/**，必须是 btk_
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, merchantPhone);
 
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

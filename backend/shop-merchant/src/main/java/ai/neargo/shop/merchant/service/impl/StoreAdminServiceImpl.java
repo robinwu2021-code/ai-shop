@@ -237,6 +237,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 staffCount.getOrDefault(s.getStoreNo(), 0L).intValue(),
                 Boolean.TRUE.equals(s.getPlanSuspended()),
                 s.getRating() == null ? 0 : s.getRating(),
-                s.getRatingCount() == null ? 0 : s.getRatingCount());
+                s.getRatingCount() == null ? 0 : s.getRatingCount(),
+                s.getBusinessMode());
     }
 }

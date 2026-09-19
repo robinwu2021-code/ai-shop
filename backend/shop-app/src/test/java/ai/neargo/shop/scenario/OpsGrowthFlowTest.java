@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.support.TestLogin;
@@ -471,6 +472,7 @@ class OpsGrowthFlowTest {
     }
 
     private String listedGoods(String token, int stock) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"增长归因测试品\",\"type\":\"NORMAL\","

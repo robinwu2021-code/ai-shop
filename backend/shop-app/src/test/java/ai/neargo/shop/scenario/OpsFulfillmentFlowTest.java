@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.fulfillment.dto.ArrivalBatchVO;
 import ai.neargo.shop.fulfillment.dto.OverdueRuleVO;
 import ai.neargo.shop.fulfillment.dto.RedeemStatVO;
@@ -446,6 +447,7 @@ class OpsFulfillmentFlowTest {
     }
 
     private String listedGoods(String token, int stock) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"履约调度测试品\",\"type\":\"NORMAL\","

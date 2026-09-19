@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
 import ai.neargo.shop.merchant.service.StoreFulfillmentService;
@@ -472,6 +473,7 @@ class StoreScopedVisibilityFlowTest {
     }
 
     private String saveGoods(String token, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         return json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

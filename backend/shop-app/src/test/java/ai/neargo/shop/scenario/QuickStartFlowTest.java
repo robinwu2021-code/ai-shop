@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -257,6 +258,7 @@ class QuickStartFlowTest {
          * 在 PENDING_LICENSE 期间就把货录好、上架 —— 这正是「先开店」要换来的东西：
          * 等证照的那几天不是白等，准备工作可以先做完。
          */
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -338,6 +340,7 @@ class QuickStartFlowTest {
 
     /** 建一件商品、过审、上架，返回 goodsNo。CAT210 纸品清洁是无门槛类目，不牵扯资质 */
     private String onSaleGoods(String token, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

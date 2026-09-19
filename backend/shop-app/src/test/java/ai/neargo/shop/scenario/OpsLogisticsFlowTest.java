@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -563,6 +564,7 @@ class OpsLogisticsFlowTest {
     }
 
     private String listedGoods(String token, int stock) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"物流测试品\",\"type\":\"NORMAL\","

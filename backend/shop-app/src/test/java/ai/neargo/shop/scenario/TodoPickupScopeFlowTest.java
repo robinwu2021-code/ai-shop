@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -214,6 +215,7 @@ class TodoPickupScopeFlowTest {
     }
 
     private String onSaleGoods(String merchantToken, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, merchantToken, "CAT210");
         String body = mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + merchantToken)
                         .contentType(MediaType.APPLICATION_JSON)

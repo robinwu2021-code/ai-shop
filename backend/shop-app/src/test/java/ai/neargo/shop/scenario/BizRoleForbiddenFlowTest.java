@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
@@ -422,6 +423,7 @@ class BizRoleForbiddenFlowTest {
      * 撤掉裁剪照样绿。测试的替身太干净时，它验的就不再是代码而是自己。
      */
     private void placePaidOrder(String ownerToken, String buyerPhone) throws Exception {
+        TestStoreCategory.open(mvc(), json, ownerToken, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)

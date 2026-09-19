@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -500,6 +501,7 @@ class Phase1MasterDataTest {
     }
 
     private String saveGoods(String token, String title, String categoryNo, String type) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, categoryNo);
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"" + type + "\","

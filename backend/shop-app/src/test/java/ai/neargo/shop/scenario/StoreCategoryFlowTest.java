@@ -51,14 +51,22 @@ class StoreCategoryFlowTest {
     }
 
     @Test
-    @DisplayName("★ 建品会把这一类自动加进本店货架 —— 商家不必先去勾一遍再回来")
-    void savingGoodsJoinsTheShelf() throws Exception {
-        String token = merchant("12600141001", "货架测试·自动加入");
+    @DisplayName("★★★ 类目不在本店经营类目里就拒，且经营类目不被撑大（TDD-门店经营类目 · 取代原「建品自动加入」）")
+    void savingGoodsOutsideStoreIsRejected() throws Exception {
+        String token = merchant("12600141001", "货架测试·经营类目");
         String storeNo = defaultStore(token);
 
-        // 新店货架是空的，且这不是错误状态：他还没建过货
+        // 新店经营类目是空的，且这不是错误状态：他还没开过类目
         assertThat(categories(token, storeNo)).isEmpty();
 
+        String rejected = saveGoodsBody(token, "抽纸一提", "CAT210");
+        assertThat(codeOf(rejected)).as("不在经营类目里：拒，而不是像从前那样悄悄加进去").isEqualTo(70068);
+        assertThat(json.readTree(rejected).get("msg").asString())
+                .as("报错要说出缺的是哪一类，不然他不知道去加哪个").contains(platformName("CAT210"));
+        assertThat(categories(token, storeNo)).as("★ 被拒的那一下不能把经营类目撑大").isEmpty();
+
+        // 先开类目，再建商品 —— 这才是现在的路
+        open(token, storeNo, "CAT210");
         saveGoods(token, "抽纸一提", "CAT210");
 
         JsonNode rows = categories(token, storeNo);
@@ -74,6 +82,7 @@ class StoreCategoryFlowTest {
     void shelfInUseCannotBeRemoved() throws Exception {
         String token = merchant("12600141002", "货架测试·占用");
         String storeNo = defaultStore(token);
+        open(token, storeNo, "CAT210");
         saveGoods(token, "洗洁精", "CAT210");
 
         // 整份替换成空 = 把 CAT210 撤掉
@@ -143,6 +152,12 @@ class StoreCategoryFlowTest {
     void gatedCategoryNeedsTheCode() throws Exception {
         String token = merchant("12600141004", "货架测试·门槛");
         String storeNo = defaultStore(token);
+        /*
+         * **显式设成第三方。**门店经营模式的建表默认是 SELF_OPERATED，而入驻这条路不改它 ——
+         * 不设的话这家店按自营算，资质一段直接跳过（TDD-门店经营类目 规则 2），
+         * 这条用例会在什么都没验到的情况下变红或变绿。
+         */
+        thirdParty(storeNo);
 
         /*
          * **摆货架这条路此前不受任何开关控制。**「暂时别拦资质」那一轮只接了商品上架，
@@ -162,6 +177,24 @@ class StoreCategoryFlowTest {
         JsonNode rows = json.readTree(ok).get("data");
         assertThat(rows.get(0).get("name").asString()).isEqualTo("日杂");
         assertThat(rows.get(0).get("platformName").asString()).isNotEqualTo("日杂");
+    }
+
+    @Test
+    @DisplayName("★★ 自营门店加经营类目不判资质 —— 与上面第三方那条同一个类目、同一个开关，只差门店的经营模式")
+    void selfOperatedStoreSkipsQualification() throws Exception {
+        String token = merchant("12600141008", "货架测试·自营");
+        String storeNo = defaultStore(token);
+        selfOperated(storeNo);
+        gate(true);
+
+        // CAT110 蔬菜要 FRESH_VEG，这家一张证都没有 —— 第三方会被 70002 拒，自营直接加上
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT110\"}]}"))).isZero();
+        assertThat(categories(token, storeNo)).hasSize(1);
+
+        // 「类目必须启用」自营照判：归档的谁都不该再摆
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT110\"},{\"categoryNo\":\"CAT111\"}]}"))).isEqualTo(80007);
     }
 
     @Test
@@ -218,6 +251,51 @@ class StoreCategoryFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get(0).get("storeNo").asString();
+    }
+
+    /** 给这家店开一个经营类目（在现有的基础上加一个） */
+    private void open(String token, String storeNo, String categoryNo) throws Exception {
+        StringBuilder items = new StringBuilder();
+        for (JsonNode r : categories(token, storeNo)) {
+            items.append("{\"categoryNo\":\"").append(r.get("categoryNo").asString()).append("\"},");
+        }
+        items.append("{\"categoryNo\":\"").append(categoryNo).append("\"}");
+        assertThat(codeOf(replace(token, storeNo, "{\"items\":[" + items + "]}"))).isZero();
+    }
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private void thirdParty(String storeNo) {
+        jdbc.update("update mch_store set business_mode='THIRD_PARTY' where store_no=?", storeNo);
+    }
+
+    private void selfOperated(String storeNo) {
+        jdbc.update("update mch_store set business_mode='SELF_OPERATED' where store_no=?", storeNo);
+    }
+
+    @Autowired
+    private ai.neargo.shop.product.service.CategoryService categoryService;
+
+    private String platformName(String categoryNo) {
+        for (var lv1 : categoryService.tree()) {
+            for (var lv2 : lv1.children()) {
+                if (categoryNo.equals(lv2.categoryNo())) {
+                    return lv2.name();
+                }
+            }
+        }
+        throw new AssertionError("类目树里没有 " + categoryNo);
+    }
+
+    private String saveGoodsBody(String token, String title, String categoryNo) throws Exception {
+        return mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\","
+                                + "\"categoryNo\":\"" + categoryNo + "\",\"cover\":\"c.jpg\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":10}]}"))
+                .andReturn().getResponse().getContentAsString();
     }
 
     private void saveGoods(String token, String title, String categoryNo) throws Exception {

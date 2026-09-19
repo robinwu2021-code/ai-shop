@@ -22,5 +22,11 @@ package ai.neargo.shop.merchant.dto;
  */
 public record StoreVO(String storeNo, String name, String address, boolean isDefault,
                       String status, String payMerchantNo, boolean payReady, int staffCount,
-                      boolean planSuspended, int rating, int ratingCount) {
+                      boolean planSuspended, int rating, int ratingCount,
+                      /**
+                       * 经营模式：SELF_OPERATED / THIRD_PARTY（门店级）。
+                       * B 端「调整经营类目」面板据此决定标不标「需资质」—— 自营门店后端不判资质，
+                       * 标了就是在说一件不存在的事（TDD-门店经营类目）
+                       */
+                      String businessMode) {
 }

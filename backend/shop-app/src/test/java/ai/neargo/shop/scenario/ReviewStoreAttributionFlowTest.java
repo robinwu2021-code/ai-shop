@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
@@ -272,6 +273,7 @@ class ReviewStoreAttributionFlowTest {
     }
 
     private String listedGoods(String bizToken, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, bizToken, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)

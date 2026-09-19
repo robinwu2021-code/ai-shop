@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.support.TestLogin;
@@ -608,6 +609,7 @@ class InventoryBizEndpointTest {
 
     /** 建品/改品。{@code goodsNo} 为 null 是新建 */
     private String saveGoods(String token, String goodsNo, String specGroups, String skus) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT110");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")
@@ -656,6 +658,7 @@ class InventoryBizEndpointTest {
          * 跑批还要 worker profile，线上没有常驻调度。
          */
         String token = merchant("12600288001", "建品上账·粮油");
+        TestStoreCategory.open(mvc(), json, token, "CAT110");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"东北五常大米\","

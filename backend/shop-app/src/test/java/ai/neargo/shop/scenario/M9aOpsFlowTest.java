@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -462,6 +463,7 @@ class M9aOpsFlowTest {
         approve(opsLogin("bd", "bd123"), applyNo);
         // A7：这个令牌要打 /biz/**，必须是 btk_
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String saved = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + goodsTitle + "\",\"subtitle\":\"测试\","

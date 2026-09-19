@@ -57,26 +57,4 @@ public class StoreCategoryPortImpl implements StoreCategoryPort {
                         r.getSort() == null ? 999 : r.getSort()))
                 .toList();
     }
-
-    @Override
-    public void ensure(String entityNo, String storeNo, String categoryNo) {
-        if (storeNo == null || storeNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
-            return;
-        }
-        Long exists = DataScopeContext.executeWithoutScope(() -> mapper.selectCount(
-                Wrappers.<MchStoreCategory>lambdaQuery()
-                        .eq(MchStoreCategory::getStoreNo, storeNo)
-                        .eq(MchStoreCategory::getCategoryNo, categoryNo)));
-        if (exists != null && exists > 0) {
-            return;
-        }
-        MchStoreCategory row = new MchStoreCategory();
-        row.setStoreNo(storeNo);
-        row.setEntityNo(entityNo);
-        row.setCategoryNo(categoryNo);
-        // 自动加入的排在最后：商家自己拖过的顺序不该被一次建品打乱
-        row.setSort(999);
-        row.setEnabled(true);
-        DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
-    }
 }

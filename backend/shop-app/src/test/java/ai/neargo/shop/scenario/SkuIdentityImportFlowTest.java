@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -230,6 +231,7 @@ class SkuIdentityImportFlowTest {
     }
 
     private String createGoods(String token, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT110");
         String body = mvc().perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                                 .post("/biz/goods/save").header("Authorization", "Bearer " + token)

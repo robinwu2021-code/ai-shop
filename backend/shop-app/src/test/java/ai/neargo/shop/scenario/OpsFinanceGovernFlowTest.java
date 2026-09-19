@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.entity.StlSettleInvoice;
@@ -633,6 +634,7 @@ class OpsFinanceGovernFlowTest {
     }
 
     private String listedGoods(String token, int stock) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"财务测试品\",\"type\":\"NORMAL\","

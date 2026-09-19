@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
@@ -1913,7 +1914,12 @@ class M9bBizGoodsFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
         // 商家身份是登录时解析进 BizContext 的，旧 token 上还没有
         // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
-        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+        // 这个类建品用到的三类先开成经营类目 —— 店主的真实顺序（TDD-门店经营类目 规则 1）
+        for (String cat : new String[]{"CAT110", "CAT120", "CAT210"}) {
+            TestStoreCategory.open(mvc(), json, token, cat);
+        }
+        return token;
     }
 
     private String login(String phone) throws Exception {

@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -322,6 +323,7 @@ class OpsProductGovernFlowTest {
         assertThat(mine.get("options").get(0).get("code").asString()).isEqualTo("W500");
 
         // ★ 拿它建品，商品身上真的带着 optionCode（没有 code 的模板与手输没有区别）
+        TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"按模板建的生鲜\",\"type\":\"NORMAL\","
@@ -645,6 +647,7 @@ class OpsProductGovernFlowTest {
         assertThat(saleNames).as("产地是 PROP，不该出现在销售规格里").doesNotContain("产地");
 
         // 三、存得进去、读得回来
+        TestStoreCategory.open(mvc(), json, biz, "CAT110");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"本地菠菜\",\"type\":\"NORMAL\","
@@ -676,6 +679,7 @@ class OpsProductGovernFlowTest {
     @DisplayName("★★★ SKU 的外部身份：条码/货号/单位存得进读得回，且条码可以跨店重复")
     void skuCarriesExternalIdentity() throws Exception {
         String biz = merchant("12600400120", "外部身份店");
+        TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"带条码的饼干\",\"type\":\"NORMAL\","
@@ -700,6 +704,7 @@ class OpsProductGovernFlowTest {
          * 哪天有人「顺手」把它改成唯一索引，这里会红。
          */
         String other = merchant("12600400130", "另一家也卖这饼干");
+        TestStoreCategory.open(mvc(), json, other, "CAT210");
         mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + other)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"同款饼干\",\"type\":\"NORMAL\","
@@ -740,6 +745,7 @@ class OpsProductGovernFlowTest {
     @DisplayName("★★ 划线价与成本价要删得掉 —— updateById 默认跳过 null，删了会自己回来")
     void clearableSkuFieldsActuallyClear() throws Exception {
         String biz = merchant("12600400140", "删得掉店");
+        TestStoreCategory.open(mvc(), json, biz, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"有划线价的货\",\"type\":\"NORMAL\","
@@ -785,6 +791,7 @@ class OpsProductGovernFlowTest {
 
     /** 建品但不过审（SKU 级审核用例要一个待审的）。 */
     private String pendingGoods(String token, int stock) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"商品治理测试品\",\"type\":\"NORMAL\","

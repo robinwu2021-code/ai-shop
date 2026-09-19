@@ -32,10 +32,15 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
     private final MerchantQueryPort merchantPort;
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
 
+    /** 读门店的经营模式：自营门店加经营类目不判资质（TDD-门店经营类目） */
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
     public StoreCategoryServiceImpl(MchStoreCategoryMapper mapper,
                                     CategoryUsagePort categoryPort,
                                     MerchantQueryPort merchantPort,
-                                    ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
+                                    ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper) {
+        this.storeMapper = storeMapper;
         this.mapper = mapper;
         this.categoryPort = categoryPort;
         this.merchantPort = merchantPort;
@@ -64,8 +69,9 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
          * 它不是「商家还没做的事」，是「他做不了的事」，让他勾完一屏再告诉他不行
          * 是最差的一种拒绝。
          */
+        boolean selfOperated = isSelfOperated(storeNo);
         for (Item it : want) {
-            requireSelectable(merchantNo, it.categoryNo());
+            requireSelectable(merchantNo, it.categoryNo(), selfOperated);
         }
 
         List<MchStoreCategory> existing = rows(storeNo);
@@ -152,12 +158,21 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
      *   <li><b>无门槛，或主体持有那张码</b> —— 报错要说得出缺哪张证</li>
      * </ol>
      */
-    private void requireSelectable(String merchantNo, String categoryNo) {
+    private void requireSelectable(String merchantNo, String categoryNo, boolean selfOperated) {
         if (categoryNo == null || categoryNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (!categoryPort.isActive(categoryNo)) {
             throw BizException.of(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        /*
+         * **自营门店不判资质**（TDD-门店经营类目 §2 规则 2）：平台自己是销售主体，
+         * 不向自己提交资料。按**门店**判不按商家 —— 经营模式挂在门店上，
+         * 同一主体下可以既有自营店又有第三方店，按商家判会把第三方店也放过去。
+         * 上面「类目必须启用」照判：归档类目谁都不该再摆。
+         */
+        if (selfOperated) {
+            return;
         }
         String required = categoryPort.requiredCodeOf(categoryNo);
         if (required == null || required.isBlank()) {
@@ -180,6 +195,14 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
             }
             throw BizException.of(ErrorCode.CATEGORY_NOT_AUTHORIZED);
         }
+    }
+
+    private boolean isSelfOperated(String storeNo) {
+        var st = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        return st != null && ai.neargo.shop.merchant.entity.MchStore.SELF_OPERATED.equals(st.getBusinessMode());
     }
 
     private List<MchStoreCategory> rows(String storeNo) {

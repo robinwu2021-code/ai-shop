@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
@@ -245,6 +246,7 @@ class MultiStoreOrderScopeTest {
     }
 
     private String saveGoods(String token) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"门店作用域测试品\",\"type\":\"NORMAL\","

@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.merchant.entity.MchEntityPlan;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
@@ -555,6 +556,7 @@ class OpsMerchantPlanFlowTest {
      * @return 商家视角的子单号
      */
     private String placeAndPay(String bizToken, String buyerPhone) throws Exception {
+        TestStoreCategory.open(mvc(), json, bizToken, "CAT210");
         String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)

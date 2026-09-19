@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -1021,6 +1022,7 @@ class CategoryTreeFlowTest {
 
     /** 建一件商品并落到指定类目，返回 goodsNo */
     private String saveGoods(String token, String title, String categoryNo) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, categoryNo);
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"FRESH\","
@@ -1488,6 +1490,7 @@ class CategoryTreeFlowTest {
         String catNo = json.readTree(catB).get("data").get("categoryNo").asString();
 
         String biz = merchant("13700007890", "停用守卫店");
+        TestStoreCategory.open(mvc(), json, biz, catNo);
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"" + catNo + "\",\"title\":\"停用守卫测试\","
@@ -1570,6 +1573,7 @@ class CategoryTreeFlowTest {
                         .content("{\"dimNo\":\"" + dimNo + "\",\"label\":\"微微辣\"}"))
                 .andExpect(jsonPath("$.code").value(0));
 
+        TestStoreCategory.open(mvc(), json, biz, catNo2);
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"" + catNo2 + "\",\"title\":\"自建守卫测试\","
@@ -1629,6 +1633,7 @@ class CategoryTreeFlowTest {
         String keepNo = newValue(ops, dimNo, "蓝盒");    // code=蓝盒
 
         String biz = merchant("13700009012", "合并守卫店");
+        TestStoreCategory.open(mvc(), json, biz, "CAT110");
         String goodsBody = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT110\",\"title\":\"合并守卫测试\","
