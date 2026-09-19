@@ -202,7 +202,7 @@ onLoad(async (q) => {
           一条来源一行：左边「日期 · 怎么来的」，右边「谁带来的 / 在哪家店」。用 sh-kv 两端对齐（与上面「累计」同一个件）。
           不显示内部账号号（U2026…）：商家认不出是谁；手工录入不再补一句「店员录入」—— 来源本身已经说了。
         -->
-        <sh-kv v-for="(s, i) in data.sources" :key="i" between divided
+        <sh-kv v-for="(s, i) in data.sources" :key="i" between :divided="i > 0"
           :label="`${monthDay(s.occurredAt)} · ${tt(`members.source.${s.sourceType}`)}`">
           <text class="txt-sub sh-muted">
             <template v-if="s.inviterUserNo">
