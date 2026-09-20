@@ -740,7 +740,7 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**永远不给完整号** |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**完整号不下发** |
 | `phoneMasked` | `string,null` | 否 | 持券人的脱敏号 138****8000，店员当面核对是不是本人 |
 | `expireAt` | `number` | 是 | 过期时刻（毫秒） |
 | `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |
@@ -6579,7 +6579,7 @@ _无字段_
 | `couponNo` | `string` | 是 | 券模板号 —— 一张券和它的模板是两个对象 |
 | `title` | `string` | 是 | 券名，买家在券包里看到的就是它 |
 | `benefitText` | `string` | 是 | 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 |
-| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**永远不给完整号** |
+| `phoneTail` | `string,null` | 否 | 持券人手机号后四位。**完整号不下发** |
 | `phoneMasked` | `string,null` | 否 | 持券人的脱敏号 138****8000，店员当面核对是不是本人 |
 | `expireAt` | `number` | 是 | 过期时刻（毫秒） |
 | `timesTotal` | `number` | 是 | 一张券可核几次。次卡看这个数，普通券恒为 1 |

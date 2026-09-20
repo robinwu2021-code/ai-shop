@@ -2266,7 +2266,7 @@ components:
           type: 
             - "string"
             - "null"
-          description: "持券人手机号后四位。**永远不给完整号**"
+          description: "持券人手机号后四位。**完整号不下发**"
         phoneMasked: 
           type: 
             - "string"
