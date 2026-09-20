@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 323,
+        "b-app": 324,
         "c-app": 239
       }
     },
@@ -4019,9 +4019,9 @@
         "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 78,
+      "libClassHits": 79,
       "localSelectors": 15,
-      "localCssLines": 60,
+      "localCssLines": 58,
       "rolled": [
         {
           "id": "wraprow",
