@@ -217,7 +217,7 @@ onLoad((q) => {
           <text
             v-for="(c, i) in carriers"
             :key="c.code"
-            class="carrier__chip"
+            class="carrier__chip txt-caption"
             :class="{ 'carrier__chip--on': carrierIdx === i }"
             @tap="carrierIdx = i"
           >{{ c.name }}</text>
@@ -336,9 +336,7 @@ onLoad((q) => {
 .carrier__chip {
   padding: 8rpx 20rpx;
   border: var(--sh-hairline);
-  border-radius: 9999px;   /* full 档：胶囊 */
-  font-size: 24rpx;
-  color: var(--sh-sub);
+  border-radius: 9999px;   /* full 档：胶囊。字号/字色交给 .txt-caption */
 }
 .carrier__chip--on {
   border-color: var(--sh-primary);
