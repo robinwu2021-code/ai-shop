@@ -325,6 +325,12 @@ export interface Order {
   pickupNo?: string;
   /** PICKUP：自提点名称快照 */
   pickupName?: string;
+  /**
+   * PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**，
+   * 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。
+   * `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。
+   */
+  pickupDistanceM?: number | null;
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
   /** APPOINTMENT：预约开始时间戳 */

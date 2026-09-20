@@ -476,7 +476,15 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 这正是上面说的那个钝处 —— 真要把两类分开，得给子集类型加个标记，
      * 那是这条棘轮自己的下一步。
      */
-    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 28 };
+    /*
+     * ⚠️ **2026-09-20 从 28 抬到 29，抬的同样不是欠账**：`OrderVO` 加了
+     * `pickupDistanceM`（配到的自提点离买家多远，TDD-C端定位地名与自提点距离），
+     * 端上**接了** —— 接在 `Order.pickupDistanceM` 与 `OrderPreview.subOrders[].pickupDistanceM` 上，
+     * 确认页那一行显示的就是它。多欠的这一条是 `OrderPreview` 顶层，
+     * 而它是 `OrderVO` 的有意子集：预览顶层根本没有自提点这回事（点是逐个子单配的）。
+     * 与上面那三条同一个钝处，不是新账。
+     */
+    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 29 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`
