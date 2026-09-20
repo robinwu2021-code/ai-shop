@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>首页位置怎么选</title>
+<!-- 真源在仓库 prototypes/c-locate.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写内联样式 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-20</div>
+  <h1>首页那一行位置，点开之后</h1>
+  <p class="sub">按美团外卖首页「地址」的那套走：点顶栏位置，进一页专门的「选择位置」——搜索框在最上、当前定位在其次、我的收货地址、附近小区，底下一颗「新增收货地址」。选中任何一条，首页立刻按它看货，不必先建一条收货地址。共 6 屏。</p>
+  <p class="sub">微信驳回了静默精确定位（<code class="code">wx.getLocation</code>），所以「当前定位」只到区、还会偏几公里。美团那一格在我们这儿要多一颗「在地图上选」——地图选点（<code class="code">wx.chooseLocation</code>）不受那条限制，是这个端上唯一能拿到准坐标的路。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">l01 — l02</span><h2>入口：从首页到选择位置</h2></div>
+  <p class="sec-note">现状点一下去的是「收货地址」整页 —— 那一页回答的是「下单寄到哪」，要先建一条地址才能改看货的位置。美团把这两件事分开：顶栏点开的是「现在按哪儿看货」。</p>
+  <div class="grid">
+
+    <figure id="l01">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">社区好物</span><span></span></div>
+        <div class="scr">
+          <div class="inp">📍 嘉逸花园 <span class="meta">›</span></div>
+          <div class="gc"><div class="th">🍋</div><div class="bd"><span class="nm">柠檬</span><span class="meta">新鲜柠檬</span><div class="ln"><span class="pr num">¥0.10</span><span class="chip act">＋</span></div></div></div>
+          <div class="gc"><div class="th">🍇</div><div class="bd"><span class="nm">阳光玫瑰青提</span><span class="meta">清甜多汁新鲜水果</span><div class="ln"><span class="pr num">¥39.90</span><span class="chip act">＋</span></div></div></div>
+        </div>
+        <div class="tabbar"><span class="on">首页</span><span>分类</span><span>店铺</span><span>购物车</span><span>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>l01 现状 · 首页顶栏</b>显示当前生效位置；拿不到精确定位时显示「龙华区 · 大概」。</figcaption>
+      <p class="why">这一行本身不改。改的只是点下去之后去哪一页。</p>
+    </figure>
+
+    <figure id="l02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">选择位置</span><span></span></div>
+        <div class="scr">
+          <div class="inp ph-">🔍 搜小区 / 写字楼 / 学校</div>
+          <div class="card">
+            <div class="hd"><span class="meta">当前定位</span><span class="meta">重新定位 ↻</span></div>
+            <div class="frow"><span class="k">📍 深圳市龙华区</span><span class="v go">在地图上选 ›</span></div>
+            <div class="frow"><span class="k">只能定到区，误差约 5 公里</span><span class="v"></span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">我的收货地址</span></div>
+            <div class="frow"><span class="k"><span class="chip pri">家</span> 嘉逸花园 3 栋 2 单元 501</span><span class="v">✓</span></div>
+            <div class="frow"><span class="k"><span class="chip">公司</span> 天安云谷 3 栋 A 座 1802</span><span class="v meta">›</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">附近小区</span></div>
+            <div class="frow"><span class="k">桂澜新村</span><span class="v meta num">380 m</span></div>
+            <div class="frow"><span class="k">龙华体育馆</span><span class="v meta num">1.2 km</span></div>
+            <div class="frow"><span class="k">清湖新村</span><span class="v meta num">2.4 km</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn">＋ 新增收货地址</div></div>
+      </div>
+      <figcaption class="cap"><b>l02 选择位置（新页）</b>四段从上到下：搜索、当前定位、我的收货地址、附近小区。</figcaption>
+      <p class="why">四段的顺序照美团：最快的路（搜）在最上，最常用的（我存过的地址）在中间，兜底的（附近）在下。选中任何一条就回首页，按它看货 —— <b>不写进地址簿</b>，地址簿上限 20 条，逛一次存一条很快就满。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">l03 — l04</span><h2>搜索，与在地图上选</h2></div>
+  <p class="sec-note">搜索走后端的地点搜索（库里的小区 + 地图 POI），任何端都搜得到；地图选点是这个端上唯一能拿到准坐标的路。</p>
+  <div class="grid">
+
+    <figure id="l03">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">选择位置</span><span></span></div>
+        <div class="scr">
+          <div class="inp">🔍 龙华体育 <span class="meta">✕</span></div>
+          <div class="card">
+            <div class="frow"><span class="k">龙华体育馆</span><span class="v meta num">和平路 71 号 · 1.2 km</span></div>
+            <div class="frow"><span class="k">龙华体育中心游泳馆</span><span class="v meta num">腾龙路 · 1.5 km</span></div>
+            <div class="frow"><span class="k">龙华体育公园</span><span class="v meta num">民治街道 · 3.1 km</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>l03 搜索结果</b>一条一行：名字、地址、离当前定位多远。</figcaption>
+      <p class="why">搜不到时给的是「换个词试试」＋「在地图上选」，不是一屏空白。距离按当前定位算；连模糊定位都没有就不显示距离，而不是显示「0 m」。</p>
+    </figure>
+
+    <figure id="l04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">选择位置</span><span></span></div>
+        <div class="scr">
+          <div class="img hero full">微信地图选点</div>
+          <div class="card"><div class="frow"><span class="k">📍 龙华体育馆</span><span class="v go">确定</span></div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>l04 在地图上选</b>微信自带的选点界面，选完把名字和坐标交回来。</figcaption>
+      <p class="why">这是精确定位被驳回之后唯一准的一条路。选回来的位置显示在顶栏上，和「按某条收货地址逛」长得不一样 —— 两种状态看起来一样的话，用户会把此刻能买的当成家里能买的。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">l05 — l06</span><h2>两种没有位置的样子</h2></div>
+  <p class="sec-note">定位被拒、以及新用户一条地址都没有：这两格现在长得差不多，实际要走的下一步完全不同。</p>
+  <div class="grid">
+
+    <figure id="l05">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">选择位置</span><span></span></div>
+        <div class="scr">
+          <div class="inp ph-">🔍 搜小区 / 写字楼 / 学校</div>
+          <div class="card">
+            <div class="hd"><span class="meta">当前定位</span></div>
+            <div class="frow"><span class="k">没能定位</span><span class="v go">在地图上选 ›</span></div>
+            <div class="frow"><span class="k">你拒绝了位置授权，也可以直接搜地名</span><span class="v"></span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">我的收货地址</span></div>
+            <div class="frow"><span class="k"><span class="chip pri">家</span> 嘉逸花园 3 栋 2 单元 501</span><span class="v">✓</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn">＋ 新增收货地址</div></div>
+      </div>
+      <figcaption class="cap"><b>l05 定位被拒</b>「附近小区」整段不显示 —— 没有坐标算不出附近。</figcaption>
+      <p class="why">不显示一个点了没反应的入口，也不假装还在定位。有地址的人这一屏照样能用。</p>
+    </figure>
+
+    <figure id="l06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">选择位置</span><span></span></div>
+        <div class="scr">
+          <div class="inp ph-">🔍 搜小区 / 写字楼 / 学校</div>
+          <div class="card">
+            <div class="hd"><span class="meta">当前定位</span><span class="meta">重新定位 ↻</span></div>
+            <div class="frow"><span class="k">📍 深圳市龙华区</span><span class="v">✓</span></div>
+            <div class="frow"><span class="k">只能定到区，误差约 5 公里</span><span class="v"></span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">附近小区</span></div>
+            <div class="frow"><span class="k">桂澜新村</span><span class="v meta num">380 m</span></div>
+            <div class="frow"><span class="k">龙华体育馆</span><span class="v meta num">1.2 km</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn">＋ 新增收货地址</div></div>
+      </div>
+      <figcaption class="cap"><b>l06 新用户 · 一条地址都没有</b>「我的收货地址」整段不显示，先逛起来。</figcaption>
+      <p class="why">下单时才需要收货地址。这一屏不把新用户堵在建地址上 —— 底下那颗按钮是出口，不是关卡。</p>
+    </figure>
+
+  </div>
+</section>
+
+</div>

@@ -1447,6 +1447,63 @@
      "title": "提案 · 滚到底"
     }
    ]
+  },
+  {
+   "slug": "c-locate",
+   "file": "c-locate.html",
+   "title": "C 端首页位置选择",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "已落地",
+   "date": "2026-09-20",
+   "summary": "点首页顶栏位置进「选择位置」页：搜索、当前定位（只到区 + 地图选点）、我的收货地址、附近小区，底部新增地址。按美团外卖首页地址那套走。6 屏。",
+   "docs": [
+    {
+     "label": "TDD-C端首页位置选择",
+     "path": "docs/technical/TDD-C端首页位置选择.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "l01",
+     "title": "首页顶栏（现状）",
+     "client": "c-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "l02",
+     "title": "选择位置",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    },
+    {
+     "id": "l03",
+     "title": "搜索结果",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    },
+    {
+     "id": "l04",
+     "title": "在地图上选",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    },
+    {
+     "id": "l05",
+     "title": "定位被拒",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    },
+    {
+     "id": "l06",
+     "title": "新用户没有地址",
+     "client": "c-app",
+     "route": "pages/address-pick/index"
+    }
+   ],
+   "artifact": "https://claude.ai/artifact/8fR5US62QopHk6cxULpNFL"
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

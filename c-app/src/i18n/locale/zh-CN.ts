@@ -777,6 +777,10 @@ export default {
     nearHere: "当前位置附近",
     changeCity: "切换城市",
     title: "选择收货地址",
+    /** 浏览模式（首页顶栏点位置进来）的标题：它问的是「现在按哪儿看货」，不是「寄到哪」 */
+    browseTitle: "选择位置",
+    myAddresses: "我的收货地址",
+    addAddress: "新增收货地址",
     /** 这一段的存在是为了让地址带上坐标——手打出来的那串字，自送半径判不了、导航也打不开 */
     searchPh: "搜小区、写字楼、街道",
     results: "搜索结果",

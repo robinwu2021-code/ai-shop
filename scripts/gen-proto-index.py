@@ -58,6 +58,10 @@ def lint(items: list[dict]) -> list[str]:
             bad.append(f"{slug}: 非画布稿必须有本地文件（真源在仓库，artifact 只是副本）")
         if p["status"] == "作废" and not p.get("supersededBy"):
             bad.append(f"{slug}: 作废的稿子要写 supersededBy")
+        # 认不出的 kind 会被下面三个分组**全部漏掉**，而登记表校验、总数、退出码全是绿的：
+        # 2026-09-20 写成 "page"（少个 s），稿子登记上了、文件也在，就是不出现在总览里。
+        if p["kind"] not in KIND_LABEL:
+            bad.append(f'{slug}: kind 只能是 {"/".join(KIND_LABEL)}，写的是 "{p["kind"]}"')
     for path in sorted(DIR.glob("*.html")):
         if path.name in ("index.html", "_template.html"):
             continue

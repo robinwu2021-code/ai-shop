@@ -16,7 +16,7 @@ import { canChooseLocation, chooseLocation } from "@shared/ports/location";
 import { useLocationStore } from "@/stores/location";
 import { distance as fmtDistance } from "@shared/utils/format";
 import { pickedCity, pickedPlace, placeFrom } from "@/shared/address-pick";
-import type { Community } from "@shared/types";
+import type { Address, Community } from "@shared/types";
 
 const { t } = useI18n();
 const location = useLocationStore();
@@ -47,6 +47,18 @@ const canMap = canChooseLocation();
  * 空 = 从新建页的「重选」过来，原样返回。见 {@link choose}。
  */
 let next = "";
+
+/**
+ * **浏览模式**（`?mode=browse`，首页顶栏点位置进来的）。TDD-C端首页位置选择。
+ *
+ * <p>同一页两个问题：默认那个是「这条收货地址填哪儿」，浏览模式是
+ * 「现在按哪儿看货」。差别只在**选完干什么** —— 前者把地点交回给建地址那条流程，
+ * 后者当场把浏览位置切过去（`useTransient` / `switchTo`），一条地址都不写。
+ *
+ * <p>没做成第二个页面：搜索、附近、地图选点这三段就是这一页，
+ * 再写一份的话两页的搜索迟早给出两种结果，而界面上看不出来。
+ */
+const browse = ref(false);
 
 const city = ref<{ code: string; name: string } | null>(null);
 
@@ -227,7 +239,17 @@ async function runSearch(kw: string) {
  * <p>`redirectTo` 而不是 `navigateTo`：这一页的任务到此为止，
  * 留在栈上的话用户从新建页往回退会又看到它一次。
  */
-function choose(p: { name?: string; address?: string; lat: number; lng: number }) {
+async function choose(p: { name?: string; address?: string; lat: number; lng: number }) {
+  /*
+   * **浏览模式在这儿分叉。** 选中的那个点当场变成「现在按哪儿看货」，
+   * 不进地址簿 —— 地址簿上限 20 条，逛一次存一条很快就满，
+   * 而且它是上下文不是资料（PRD §6.1.0，`useTransient` 的说明）。
+   */
+  if (browse.value) {
+    await location.useTransient({ lat: p.lat, lng: p.lng });
+    uni.navigateBack();
+    return;
+  }
   pickedPlace.offer(placeFrom(p));
   if (next === "edit") {
     uni.redirectTo({ url: ROUTES.addressEdit });
@@ -238,17 +260,34 @@ function choose(p: { name?: string; address?: string; lat: number; lng: number }
 
 function chooseHit(h: PlaceSearchHit) {
   if (h.latE6 == null || h.lngE6 == null) return;   // 没坐标的不列，见模板
-  choose({ name: h.name, address: h.address ?? "", lat: h.latE6 / 1e6, lng: h.lngE6 / 1e6 });
+  void choose({ name: h.name, address: h.address ?? "", lat: h.latE6 / 1e6, lng: h.lngE6 / 1e6 });
 }
 
 function chooseCommunity(c: Community) {
   if (c.latE6 == null || c.lngE6 == null) return; // 没坐标的不列，见模板里的 v-if
-  choose({ name: c.name, address: c.address, lat: c.latE6 / 1e6, lng: c.lngE6 / 1e6 });
+  void choose({ name: c.name, address: c.address, lat: c.latE6 / 1e6, lng: c.lngE6 / 1e6 });
 }
 
 function chooseHere() {
   if (!at.value) return;
-  choose({ name: "", address: "", lat: at.value.lat, lng: at.value.lng });
+  void choose({ name: "", address: "", lat: at.value.lat, lng: at.value.lng });
+}
+
+/**
+ * 浏览模式里点一条收货地址：**切生效地址**，不是「选中一个地点」。
+ *
+ * <p>与上面那条路刻意不同 —— 他点的是一条**存过的**地址，
+ * 那是一个明确的长期偏好，`switchTo` 会把「这次逛的临时位置」一并清掉，
+ * 否则顶栏挂着「当前位置 · XX」而货已经按这条地址换过了。
+ */
+async function pickAddress(a: Address) {
+  await location.switchTo(a.addressId).catch(() => null);
+  uni.navigateBack();
+}
+
+/** 浏览模式底部那颗出口：去新建收货地址。**它是出口不是关卡** —— 没有地址照样能逛 */
+function addAddress() {
+  uni.navigateTo({ url: ROUTES.addressEdit });
 }
 
 async function onMap() {
@@ -257,7 +296,7 @@ async function onMap() {
     if (r.reason === "unsupported") uni.showToast({ title: String(t("address.mapUnsupported")), icon: "none" });
     return;
   }
-  choose(r.picked);
+  await choose(r.picked);
 }
 
 /**
@@ -299,6 +338,9 @@ onLoad((q?: Record<string, string>) => {
    * 对用户仍然是一次点击：这一页只是过一下，定位拿到就自己交回去。
    */
     next = q?.next ?? "";
+  browse.value = q?.mode === "browse";
+  // 浏览模式要把地址簿摆出来；默认模式不需要，别白发一次请求
+  if (browse.value) void location.load();
   const auto = q?.useHere === "1";
   void locate().then(() => {
     if (auto && at.value) chooseHere();
@@ -307,7 +349,7 @@ onLoad((q?: Record<string, string>) => {
 </script>
 
 <template>
-  <sh-scaffold title-key="addressPick.title">
+  <sh-scaffold :title-key="browse ? 'addressPick.browseTitle' : 'addressPick.title'">
     <!--
       **在哪个城市里搜**。默认跟着定位走，点一下能换 ——
       「给父母下单」「出差前囤货」在这个品类里是真实高频，
@@ -376,6 +418,33 @@ onLoad((q?: Record<string, string>) => {
       </view>
       <text v-else-if="!locating" class="sh-hint">{{ $t(locateFailedKey) }}</text>
 
+      <!--
+        **我的收货地址** —— 只在浏览模式给（原型 l02）。
+        默认模式这一页是在「造一条地址」，把地址簿摆出来等于让人在建地址时去挑一条已有的。
+
+        一条都没有时整段不渲染（l06）：新用户先逛起来，底下那颗按钮才是他的下一步。
+      -->
+      <view v-if="browse && location.list.length" class="sh-card block">
+        <text class="txt-strong block__title">{{ $t("addressPick.myAddresses") }}</text>
+        <view
+          v-for="a in location.list"
+          :key="a.addressId"
+          class="sh-row sh-row--divided"
+          @tap="pickAddress(a)"
+        >
+          <view class="sh-fill nb__body">
+            <text class="txt-body row__name">{{ a.tag || a.name }}</text>
+            <text class="txt-caption row__sub">{{ a.region }}{{ a.detail }}</text>
+          </view>
+          <sh-icon
+            v-if="a.addressId === location.active?.addressId"
+            name="check"
+            :size="28"
+            color="var(--sh-primary)"
+          ></sh-icon>
+        </view>
+      </view>
+
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
       <!-- `|| failed` 一起判：没取到时这一块留在原地说出来，而不是整块消失 -->
       <view v-if="nearbyPickable.length || failed" class="sh-card block">
@@ -415,6 +484,11 @@ onLoad((q?: Record<string, string>) => {
         {{ $t("addressPick.onMap") }}
       </view>
     </view>
+
+    <!-- 浏览模式的出口：这一页不负责建地址，但下单要用的那条得有地方去建 -->
+    <sh-actionbar v-if="browse" :pad="160">
+      <view class="sh-btn" @tap="addAddress">{{ $t("addressPick.addAddress") }}</view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
