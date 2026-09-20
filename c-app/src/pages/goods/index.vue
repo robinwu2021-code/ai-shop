@@ -279,6 +279,18 @@ const batch = ref<GoodsBatch | null>(null);
  */
 const grp = ref<GoodsGroup | null>(null);
 
+/**
+ * 底栏那颗「开团 ¥X」**暂时关掉**（用户 2026-09-20）。
+ *
+ * <p>关它的直接原因是底栏：拼团商品的底栏是「店铺 · 单买 ¥50.00 · 开团 ¥5.00」，
+ * 三样挤一行，两颗按钮被压到只剩几个字宽，**而「加入购物车」整个没有位置** ——
+ * 详情页最常用的那个动作反而不在。关掉之后底栏回到「店铺 · 加入购物车 · 立即购买」。
+ *
+ * <p><b>团没有被删</b>：页面上方那张团卡（有团时「去拼团」）照旧，首页与团列表的入口也都在。
+ * 关掉的只是「从详情页发起一个新团」这一条。要放回来把这个常量改成 true 就行。
+ */
+const SHOW_GROUP_CTA = false;
+
 /** 取不到按「没有团」算 —— 拼团是补充信息，不该拖垮详情 */
 async function fetchGroup(goodsNo: string): Promise<GoodsGroup | null> {
   // async + try 而不是 `.catch()`：调用本身同步抛错（比如接口不存在）时，`.catch` 接不住，
@@ -1167,7 +1179,7 @@ onShareAppMessage(() =>
           </view>
           <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
           <!-- 仅活动可售：directBuyable 为假时没有单买 / 加购；拼团也没有就只剩一颗压暗的「暂不可购买」 -->
-          <template v-if="grp">
+          <template v-if="grp && SHOW_GROUP_CTA">
             <view v-if="directBuyable" class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
               {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
             </view>
@@ -1420,9 +1432,16 @@ onShareAppMessage(() =>
   40% { transform: scale(1.28); }
   100% { transform: scale(1); }
 }
+/*
+ * 两颗按钮**等宽平分**剩下的地方，不再是「加购按内容宽、立即购买吃掉余量」。
+ * 后者在拼团商品上被压到只剩四个字宽（真机 2026-09-20：「单买 ¥50」换行都放不下），
+ * 而这两个动作在详情页是同等重要的 —— 宽度不该由文案长短决定。
+ */
 .actionbar__add,
 .actionbar__buy {
-  padding: 24rpx 8rpx;
+  flex: 1;
+  min-width: 0;
+  padding: 28rpx 12rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

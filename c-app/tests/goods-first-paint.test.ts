@@ -99,7 +99,13 @@ function frame(w: ReturnType<typeof mount>) {
     title: html.includes("香梨标题"),
     // 只看**那一行**的文字：领券弹层的 title 属性里也有这个键，按整页 HTML 搜会恒为真
     couponRow: w.findAll(".row__label").some((e) => e.text() === "goods.couponRow"),
-    groupBar: html.includes("goods.groupStart"),
+    /*
+     * 「团到了没有」看**价格行的团价标记**，不是底栏那颗「开团」——
+     * 2026-09-20 底栏那颗按钮被暂时关掉了（SHOW_GROUP_CTA），
+     * 再拿它当判据的话这条守卫会一直判「团没到」，而它要守的那件事
+     * （不出现「有标题、没团价」的中间帧）其实照常成立。
+     */
+    groupBar: html.includes("home.groupTag"),
   };
 }
 
