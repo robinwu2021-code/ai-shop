@@ -17,8 +17,9 @@ import lombok.Setter;
  * 两边指向的从头到尾是同一份人档，转正只是给这一份补一个 {@code userNo}。
  *
  * <p><b>手机号只在这里存一份</b>：匹配用不可逆的 {@code phoneHash}，原文加密进 {@code phoneEnc}，
- * 展示用 {@code phoneTail}。商家侧永远只拿得到后四位 —— 散在各商家表里的手机号，
- * 是最容易出事的那种数据。
+ * 展示用 {@code phoneTail}。商家侧拿到的是脱敏号（2026-09-20 起按用户决定改为头三尾四
+ * 138****8000，见 {@code PersonService#maskedPhone}），完整原文只走
+ * {@code revealPhone}（要理由、记审计）—— 散在各商家表里的手机号，是最容易出事的那种数据。
  */
 @Getter
 @Setter

@@ -602,7 +602,7 @@ export interface CouponRedeemView {
   title: string;
   /** 「减 3 元」「8.5 折」「兑换」这种人话，后端拼好 */
   benefitText: string;
-  /** 持券人手机号后四位。**永远不给完整号** */
+  /** 持券人手机号后四位。**完整号不下发** */
   phoneTail?: string | null;
   /** 持券人的脱敏号 138****8000，店员当面核对是不是本人 */
   phoneMasked?: string | null;
