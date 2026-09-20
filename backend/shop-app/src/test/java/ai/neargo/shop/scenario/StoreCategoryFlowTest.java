@@ -184,7 +184,11 @@ class StoreCategoryFlowTest {
     @Test
     @DisplayName("★★ 运营授码之后，同一个类目就加得上了 —— 没证的第三方的出路在运营那一侧")
     void opsGrantOpensTheCategory() throws Exception {
-        String token = merchant("12600141009", "货架测试·授权后");
+        /*
+         * 号段避开 12600141009 —— 那个号在 BizDashboardAndReviewFlowTest 里被当作
+         * 「不是商家的人」，这里注册成商家会让那条用例在全量跑时变红（而报错与类目无关）
+         */
+        String token = merchant("12600141019", "货架测试·授权后");
         String storeNo = defaultStore(token);
         gate(true);
 
