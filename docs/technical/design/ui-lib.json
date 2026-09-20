@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 449,
+        "b-app": 451,
         "c-app": 53
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 132,
         "c-app": 64
       }
     },
@@ -1155,7 +1155,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 129,
+        "b-app": 131,
         "c-app": 74
       }
     },
@@ -1731,7 +1731,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 66,
         "c-app": 24
       }
     },
@@ -1924,12 +1924,13 @@
       "name": "sh-add",
       "file": "packages/ui/src/components/sh-add.vue",
       "scope": "跨端",
-      "lines": 97,
+      "lines": 113,
       "props": [
         "text: string",
         "activeText?: string",
         "active?: boolean",
-        "small?: boolean"
+        "small?: boolean",
+        "flat?: boolean"
       ],
       "usage": {
         "b-app": 8,
@@ -1947,6 +1948,7 @@
           2,
           4,
           8,
+          16,
           24
         ],
         "radius": [],
@@ -3081,7 +3083,7 @@
         "storeNo: string"
       ],
       "usage": {
-        "b-app": 2,
+        "b-app": 1,
         "c-app": 0,
         "lib": 0
       },
@@ -3647,8 +3649,7 @@
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
-        "sh-uploader",
-        "biz-category-sheet"
+        "sh-uploader"
       ],
       "libClassHits": 309,
       "localSelectors": 67,

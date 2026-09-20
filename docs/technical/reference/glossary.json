@@ -8096,12 +8096,6 @@
           "ar": "أدخل اسم الخاصية"
         },
         {
-          "key": "goods.addStoreCategory",
-          "zh-CN": "添加经营类目",
-          "en": "Add store category",
-          "ar": "إضافة فئة للمتجر"
-        },
-        {
           "key": "goods.applyAll",
           "zh-CN": "统一填入",
           "en": "Apply to all",
@@ -8283,9 +8277,33 @@
         },
         {
           "key": "goods.durationMin",
-          "zh-CN": "服务时长（分钟）",
-          "en": "Duration (min)",
-          "ar": "المدة (دقيقة)"
+          "zh-CN": "服务时长",
+          "en": "Duration",
+          "ar": "المدة"
+        },
+        {
+          "key": "goods.durationOther",
+          "zh-CN": "其他（手动填）",
+          "en": "Other (type it)",
+          "ar": "أخرى (اكتبها)"
+        },
+        {
+          "key": "goods.durationPh",
+          "zh-CN": "多少分钟",
+          "en": "How many minutes",
+          "ar": "كم دقيقة"
+        },
+        {
+          "key": "goods.durationPick",
+          "zh-CN": "选择时长",
+          "en": "Pick a duration",
+          "ar": "اختر المدة"
+        },
+        {
+          "key": "goods.durationValue",
+          "zh-CN": "{n} 分钟",
+          "en": "{n} min",
+          "ar": "{n} دقيقة"
         },
         {
           "key": "goods.edit",
@@ -8631,9 +8649,9 @@
         },
         {
           "key": "goods.noStoreCategory",
-          "zh-CN": "本店还没有经营类目，先添加一个",
-          "en": "This store has no categories yet. Add one first.",
-          "ar": "لا توجد فئات لهذا المتجر بعد. أضف واحدة أولاً."
+          "zh-CN": "本店还没有经营类目。去「工作台 → 经营类目」添加后再建商品",
+          "en": "This store has no categories yet. Add one under Workbench → Store categories, then create the product.",
+          "ar": "لا توجد فئات لهذا المتجر بعد. أضفها من «لوحة العمل ← فئات المتجر» ثم أنشئ المنتج."
         },
         {
           "key": "goods.nominalGram",
@@ -9132,6 +9150,18 @@
           "zh-CN": "核销门店",
           "en": "Redeem at",
           "ar": "متجر الاستبدال"
+        },
+        {
+          "key": "goods.verifyStoreHint",
+          "zh-CN": "顾客到这家店核销。只能选本主体的门店 —— 手打的名字对不上，核销那天才会发现",
+          "en": "Customers redeem at this store. Only your own stores can be chosen — a hand-typed name that does not match only surfaces on the day of redemption.",
+          "ar": "يستبدل العميل في هذا المتجر. يمكن اختيار متاجرك فقط — الاسم المكتوب يدوياً لا يظهر خطؤه إلا يوم الاستبدال."
+        },
+        {
+          "key": "goods.verifyStorePick",
+          "zh-CN": "选择门店",
+          "en": "Pick a store",
+          "ar": "اختر متجراً"
         },
         {
           "key": "goods.viewDiff",
