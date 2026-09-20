@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 129,
-        "c-app": 72
+        "c-app": 74
       }
     },
     {
@@ -4861,18 +4861,10 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 240,
+      "libClassHits": 242,
       "localSelectors": 63,
-      "localCssLines": 266,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "localCssLines": 265,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5564,16 +5556,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "c-app/goods"
       ]
     }
   ],
