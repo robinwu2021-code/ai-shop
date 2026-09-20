@@ -973,8 +973,8 @@
               "domain": "工作台",
               "tab": true,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "l01",
+              "protoUrl": "https://claude.ai/artifact/8fR5US62QopHk6cxULpNFL",
               "preview": "http://localhost:5176/#/pages/home/index"
             }
           ]
