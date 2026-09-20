@@ -514,6 +514,12 @@ components:
         - "SELF_OPERATED"
         - "THIRD_PARTY"
       description: "经营模式。与  {@link  FeeRuleVersion }  一起构成费率的第一个维度。\n\n自营：平台是销售主体，这个费率是**进销差价（毛利）**。 第三方：平台是撮合方，这个费率是**服务收入（佣金）**。 算法一样，记账口径不同 —— 口径由结算单上的 `businessMode` 快照决定。"
+    ModeRiskType: 
+      type: "string"
+      enum: 
+        - "UNLICENSED_SELF_OPERATED"
+        - "MODE_NOT_SET"
+      description: "这一行在说哪种问题（后端 ModeRiskVO.riskType，TDD-门店经营模式与结算口径 §7）。\n\n<p>`UNLICENSED_SELF_OPERATED` 无照主体 + 自营门店 —— 税：无进项票，成本不可税前扣除。 <p>`MODE_NOT_SET` 有照主体 + 自营门店 + 有可用收款号 —— 结算口径：本该按第三方算。\n\n<p>**两档的处置方式不同**（前者找财务与档位，后者运营切一下就好），所以界面要分开标。"
     ModeRisk: 
       type: "object"
       properties: 
@@ -541,6 +547,9 @@ components:
         settledMinor: 
           type: "number"
           description: "累计商家实得（分）。**这就是不可税前扣除的成本规模**"
+        riskType: 
+          "$ref": "#/definitions/ModeRiskType"
+          description: "这一行属于哪一档 —— 老后端不发时按「无票成本」处理（那是本表原本的唯一一档）"
       required: 
         - "merchantNo"
         - "merchantName"
@@ -551,7 +560,6 @@ components:
         - "settledBills"
         - "settledMinor"
       additionalProperties: false
-      description: "无营业执照的主体 × 自营门店 —— **税务敞口清单**。\n\n自营下平台是销售主体，列支成本要进项发票，而无照主体开不出票 —— 这笔支出**不得在企业所得税前扣除**，不是「多交一点税」， 是账面上凭空多出等额利润。\n\n而这个组合**是默认会发生的**：`mch_store.business_mode` 默认就是自营， 且后端没有任何一处校验「无照不得自营」。所以这份清单不是异常报表， 是**现状盘点**。"
     AdmissionPolicy: 
       type: "object"
       properties: 

@@ -30848,6 +30848,15 @@
         "zh": ""
       },
       {
+        "name": "ModeRiskType",
+        "client": "ops-web",
+        "values": [
+          "UNLICENSED_SELF_OPERATED",
+          "MODE_NOT_SET"
+        ],
+        "zh": "这一行在说哪种问题（后端 ModeRiskVO.riskType，TDD-门店经营模式与结算口径 §7）。"
+      },
+      {
         "name": "MsgChannel",
         "client": "ops-web",
         "values": [
