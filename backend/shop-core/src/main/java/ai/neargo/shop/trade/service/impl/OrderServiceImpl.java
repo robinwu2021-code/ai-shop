@@ -321,13 +321,16 @@ public class OrderServiceImpl implements OrderService {
          * 非 strict：配不出来的商家留空，由确认页标出来，而不是把整页打死。
          */
         var matched = resolvePickups(cmd, split, userNo, false);
+        // 距离只在预览这一次算：确认页要说「这个点离你多远」，而历史订单里这个数没有意义
+        var distances = pickupDistances(cmd, split, userNo);
         /*
          * 名字在这儿查好一起传进去：Split 是静态类，够不着 port。
          * **预览就要给名字** —— 只给点号的话确认页只能显示一串 PP0001。
          */
-        java.util.Map<String, String[]> pickups = new java.util.LinkedHashMap<>();
+        java.util.Map<String, PickupPick> pickups = new java.util.LinkedHashMap<>();
         matched.forEach((merchantNo, pickupNo) ->
-                pickups.put(merchantNo, new String[] {pickupNo, pickupNameOf(pickupNo)}));
+                pickups.put(merchantNo, new PickupPick(pickupNo, pickupNameOf(pickupNo),
+                        distances.get(pickupNo))));
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
         return split.toVO(discountsOf(cmd, split, userNo), pickups);
@@ -1770,7 +1773,7 @@ public class OrderServiceImpl implements OrderService {
          *     确认页据它按取货点分组 —— 两家配到同一个点要合并成一组，
          *     按商家分会让人以为要跑两趟
          */
-        OrderVO toVO(Discounts discounts, java.util.Map<String, String[]> pickups) {
+        OrderVO toVO(Discounts discounts, java.util.Map<String, PickupPick> pickups) {
             List<OrderVO> children = groups.stream().map(g -> new OrderVO(
                     null, null, OrdOrder.WAIT_PAY, null, g.merchantNo, g.merchantName,
                     g.lines.stream().map(l -> new OrderVO.ItemVO(
@@ -1781,13 +1784,15 @@ public class OrderServiceImpl implements OrderService {
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     // 预览还没有单，收件人与预约时间自然也没有；自提点是**已经配好的那个**
                     null,
-                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo)[0] : null,
-                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo)[1] : null,
+                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo).pickupNo() : null,
+                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo).name() : null,
                     null, 0L, null, null, null, null, null, List.of(), null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
                 // 预览还没有单：评价、售后、支付分组三样都无从谈起
-                false, null, 1)).toList();
+                false, null, 1)
+                    .withPickupDistance(pickups.containsKey(g.merchantNo)
+                            ? pickups.get(g.merchantNo).distanceM() : null)).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
@@ -2143,6 +2148,45 @@ public class OrderServiceImpl implements OrderService {
     /** 自提点名：**预览就要给名字**，只给点号的话确认页只能显示一串 PP0001 */
     private String pickupNameOf(String pickupNo) {
         return pickupNo == null ? null : pickupPort.find(pickupNo).map(p -> p.name()).orElse(null);
+    }
+
+    /**
+     * 配到的那个自提点：点号、名字、离买家多远（米）。
+     *
+     * <p>此前这三样是一个 {@code String[]}，加第三样时才发现下标 0/1 谁也不认得 ——
+     * 而距离是个数，塞进字符串数组还要再解析回来。
+     *
+     * @param distanceM 米；{@code -1} = 点没标坐标（排不出远近，但不代表不能用）；
+     *                  null = 这一次没算（没坐标、或不是自提单）
+     */
+    record PickupPick(String pickupNo, String name, Integer distanceM) {
+    }
+
+    /**
+     * 这一单配到的点各自离买家多远。**确认页要把它说出来** ——
+     * 点是后端按地址配的，买家没得挑；不说距离的话，他要到取货那天才知道有多远。
+     *
+     * <p>与 {@link #resolvePickups} 用同一套候选（`pickupOptions` 已按距离排序），
+     * 所以这里不重新挑点，只是把那一批候选里的距离取出来。
+     * 拿不到坐标就返回空表 —— 缺距离比编一个数强。
+     */
+    private java.util.Map<String, Integer> pickupDistances(CreateOrderCommand cmd, Split split,
+                                                           String userNo) {
+        if (cmd.fulfillment() == null || !Fulfillments.isPickup(cmd.fulfillment())) {
+            return java.util.Map.of();
+        }
+        var point = userPort.buyerPoint(userNo, cmd.addressId()).orElse(null);
+        if (point == null) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, Integer> out = new java.util.LinkedHashMap<>();
+        for (Group g : split.groups) {
+            for (var o : communityQueryPort.pickupOptions(point.latE6(), point.lngE6(),
+                    merchantPort.allowedPickupNos(g.merchantNo))) {
+                out.putIfAbsent(o.pickupNo(), o.distanceM());
+            }
+        }
+        return out;
     }
 
     private java.util.Map<String, String> resolvePickups(CreateOrderCommand cmd, Split split,

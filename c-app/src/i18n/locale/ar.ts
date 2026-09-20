@@ -542,6 +542,7 @@ export default {
     pickupGroups: "{n} نقاط استلام لهذا الطلب",
     pickupNoneFor: "لا توجد نقطة استلام متاحة لـ {names} بالقرب منك",
     pickupMatching: "جارٍ البحث عن نقطة استلام قرب عنوانك…",
+    pickupFar: "يبعد حوالي {d} — تأكد أنه يناسبك",
     pickAddress: "اختر عنوان التوصيل",
     appointmentAt: "الموعد {t}",
     coupon: "قسيمة",

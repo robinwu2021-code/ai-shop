@@ -524,14 +524,23 @@ public class CommunityServiceImpl implements CommunityService {
          * 只会让端上有两个主语 —— 而两个主语的分叉迟早会在某一页上被选错。
          */
         /*
-         * **落进围栏时 place 就是这个聚落，不再去问地名库。**
-         * 聚落是我们自己维护的业务对象（围栏、商品池、开没开通），它比任何
-         * 外部地名都权威；再去问一次既多花一次往返，又可能给出第二个名字。
+         * **落进围栏也要问地名库**（2026-09-20，TDD-C端定位地名与自提点距离）。
+         *
+         * 此前这儿直接把聚落当地名返回，理由是「聚落比外部地名权威」——
+         * 那句话对**商品池**成立，对**顶栏的「我在哪」不成立**：
+         * 覆盖圈默认 1000 米，站在龙华文体中心会落进 256 米外那个学生公寓的圈里，
+         * 于是顶栏写着「棱镜·男生公寓(清湖地铁站总店)」。用户报的就是这个，
+         * 而当时被归因成「定位不准」——精确定位开通后偏移没了，名字照旧错。
+         *
+         * 所以两个问题分开回答：`innermostNo` 回答「按哪个聚落供货」（一字不动），
+         * `place` 回答「这儿叫什么」。地名库取不到就回落到聚落名 —— **不编地名**。
          */
+        CommunityService.PlaceVO place = placeAt(latE6, lngE6);
         return new LocationVO(innermost.getCommunityNo(), innermost.getName(),
                 chainOf(innermost), false, district, districtName(district), null, null, -1,
-                new CommunityService.PlaceVO(innermost.getName(), innermost.getAddress(),
-                        "COMMUNITY", "COMMUNITY", false));
+                place != null ? place
+                        : new CommunityService.PlaceVO(innermost.getName(), innermost.getAddress(),
+                                "COMMUNITY", "COMMUNITY", false));
     }
 
     @Override

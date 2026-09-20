@@ -19,8 +19,8 @@ import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
-import { FEATURES, FULFILLMENT, PAY_MODE, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
-import { datetime, money } from "@shared/utils/format";
+import { FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { datetime, distance as fmtDistance, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
@@ -216,6 +216,16 @@ const merchantSegments = computed(() => segmentByMerchant(items.value));
  * 但一旦服务端的数到了就以它为准。
  */
 const serverAmount = ref<OrderAmount | null>(null);
+/** 距离文案。-1（没标坐标）与空都给空串 —— 宁可少一行，不要编一个数 */
+function distanceOf(m?: number | null): string {
+  return m == null || m < 0 ? "" : fmtDistance(m);
+}
+
+/** 这个点算不算远。**只影响提不提醒**，不拦提交 */
+function isFar(m?: number | null): boolean {
+  return m != null && m > PICKUP_FAR_M;
+}
+
 /**
  * 后端为这一单配好的自提点，**按取货点分组**。
  *
@@ -225,7 +235,13 @@ const serverAmount = ref<OrderAmount | null>(null);
  *
  * <b>两家配到同一个点要合并成一组</b>：按商家分会让人以为要跑两趟。
  */
-const pickupGroups = ref<Array<{ pickupNo: string; pickupName: string; merchants: string[] }>>([]);
+const pickupGroups = ref<Array<{
+  pickupNo: string;
+  pickupName: string;
+  merchants: string[];
+  /** 离买家多远（米）。-1 = 这个点没标坐标，排不出远近；null = 这一次没算 */
+  distanceM?: number | null;
+}>>([]);
 /** 后端没给点的那几家 —— 它们在这一带没有可用的取货点，付款前就要说 */
 const pickupMissing = ref<string[]>([]);
 /**
@@ -365,13 +381,23 @@ const amount = computed(() => serverAmount.value ?? localEstimate.value);
  * 两家配到同一个点时合并成一组 —— 按商家分组会让买家以为要跑两趟，
  * 而他只需要去一个地方。没配到点的那几家单列，付款前就标出来。
  */
-function applyPickupGroups(subs: Array<{ merchantName?: string; pickupNo?: string; pickupName?: string }>) {
+function applyPickupGroups(subs: Array<{
+  merchantName?: string;
+  pickupNo?: string;
+  pickupName?: string;
+  pickupDistanceM?: number | null;
+}>) {
   if (!needPickup.value) {
     pickupGroups.value = [];
     pickupMissing.value = [];
     return;
   }
-  const byPoint = new Map<string, { pickupNo: string; pickupName: string; merchants: string[] }>();
+  const byPoint = new Map<string, {
+    pickupNo: string;
+    pickupName: string;
+    merchants: string[];
+    distanceM?: number | null;
+  }>();
   const missing: string[] = [];
   for (const sub of subs) {
     const name = sub.merchantName ?? "";
@@ -380,7 +406,12 @@ function applyPickupGroups(subs: Array<{ merchantName?: string; pickupNo?: strin
       continue;
     }
     const g = byPoint.get(sub.pickupNo)
-      ?? { pickupNo: sub.pickupNo, pickupName: sub.pickupName ?? sub.pickupNo, merchants: [] };
+      ?? {
+        pickupNo: sub.pickupNo,
+        pickupName: sub.pickupName ?? sub.pickupNo,
+        merchants: [],
+        distanceM: sub.pickupDistanceM,
+      };
     g.merchants.push(name);
     byPoint.set(sub.pickupNo, g);
   }
@@ -792,8 +823,19 @@ onMounted(async () => {
           {{ $t("confirm.pickupGroups", { n: pickupGroups.length }) }}
         </text>
         <view v-for="g in pickupGroups" :key="g.pickupNo" class="recv__group">
-          <text class="txt-strong">{{ g.pickupName }}</text>
+          <view class="sh-row sh-row--between">
+            <text class="txt-strong">{{ g.pickupName }}</text>
+            <!--
+              **点是后端按地址配的，买家没得挑** —— 不说距离的话，
+              他要到取货那天才知道有多远。没坐标（-1）就不显示，别编一个数。
+            -->
+            <text v-if="distanceOf(g.distanceM)" class="txt-caption">{{ distanceOf(g.distanceM) }}</text>
+          </view>
           <text class="txt-caption recv__sub">{{ g.merchants.join("、") }}</text>
+          <!-- 远只是提醒：顺路取两公里外的点很常见，拦下来等于替他做决定 -->
+          <text v-if="isFar(g.distanceM)" class="txt-caption recv__warn">
+            {{ $t("confirm.pickupFar", { d: distanceOf(g.distanceM) }) }}
+          </text>
         </view>
         <!-- 配不出点的那几家：付款前就说，别等他付完钱 -->
         <text v-if="pickupMissing.length" class="txt-caption recv__warn">

@@ -145,6 +145,14 @@ export interface OrderPreview {
     merchantName?: string;
     pickupNo?: string;
     pickupName?: string;
+    /**
+     * 这个自提点离买家多远（米）。**点是后端按地址配的，买家没得挑** ——
+     * 不说距离的话，他要到取货那天才知道有多远。
+     *
+     * `-1` = 这个点没标坐标（存量点是手填地址建的），**不是 0**：
+     * 0 会被显示成「0 米」，那是一句假话。预览之外为空。
+     */
+    pickupDistanceM?: number | null;
   }>;
   /**
    * 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期），

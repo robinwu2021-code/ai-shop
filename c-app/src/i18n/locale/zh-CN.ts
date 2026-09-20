@@ -574,6 +574,8 @@ export default {
     pickupGroups: "本单 {n} 个取货点，分别去取",
     pickupNoneFor: "{names} 在你这一带没有可用的取货点，换个送货方式或先把它的商品移出本单",
     pickupMatching: "正在按你的地址找取货点…",
+    /** 自提点离得远。只是提醒不是闸门 —— 顺路取两公里外的点很常见 */
+    pickupFar: "离你约 {d}，确认方便取货",
     pickAddress: "请选择收货地址",
     appointmentAt: "预约时段 {t}",
     coupon: "优惠券",

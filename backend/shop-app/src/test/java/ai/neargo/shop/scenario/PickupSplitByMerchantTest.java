@@ -143,6 +143,18 @@ class PickupSplitByMerchantTest {
             for (var sub : previewSubs) {
                 assertThat(sub.path("pickupName").asString())
                         .as("只给点号不给名字，确认页只能显示一串 PP0001").isNotBlank();
+                /*
+                 * ★ **距离也要在付款前给**（2026-09-20，TDD-C端定位地名与自提点距离）。
+                 *
+                 * 点是后端按地址配的、买家没得挑，不说距离的话他要到取货那天
+                 * 才知道有多远。-1 是「这个点没标坐标」，也是一个合法答案；
+                 * 缺字段（null）才是缺陷 —— 那时确认页那一行什么都不显示。
+                 */
+                assertThat(sub.hasNonNull("pickupDistanceM"))
+                        .as("预览不带距离 = 确认页只能说点名，说不出远近").isTrue();
+                assertThat(sub.path("pickupDistanceM").asInt())
+                        .as("距离要么是真实米数，要么是 -1（没标坐标），不能是 0 那种假话")
+                        .isNotZero();
             }
 
             String order = mvc().perform(post("/mp/order")

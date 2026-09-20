@@ -131,10 +131,48 @@ class PlaceResolveChainTest {
     }
 
     @Test
-    @DisplayName("★★★ ①围栏命中 → source=COMMUNITY，而且**一次地图都不问**")
-    void fenceHitNeverAsksTheMap() throws Exception {
+    @DisplayName("★★★ ①围栏命中：聚落回答「按谁供货」，地名回答「这儿叫什么」")
+    void fenceHitStillAsksForTheRealPlaceName() throws Exception {
         CmtCommunity c = new CmtCommunity();
         c.setCommunityNo(FENCE_NO);
+        c.setName("测试聚落");
+        c.setKind("ESTATE");
+        c.setStatus("OPEN");
+        c.setLatE6(LAT);
+        c.setLngE6(LNG);
+        c.setFenceRadius(1000);
+        c.setRegionCode("650100");
+        c.setCreatedAt(LocalDateTime.now());
+        c.setUpdatedAt(LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+
+        /*
+         * **2026-09-20 改口径**（TDD-C端定位地名与自提点距离）。
+         *
+         * 此前这条用例钉的是「围栏命中就一次地图都不问，place 直接用聚落名」。
+         * 线上实测：覆盖圈默认 1000 米，站在龙华文体中心落进 256 米外那个
+         * 学生公寓的圈里，顶栏于是写着「棱镜·男生公寓(清湖地铁站总店)」——
+         * 用户报的就是这个，而它被归因成了「定位不准」。
+         *
+         * 现在两个问题分开回答：`innermostName` 仍是聚落（商品池、自提点都认它），
+         * `place` 来自地名库。**这条断言的方向是反过来的**：以前禁止问地图，现在要求问。
+         */
+        JsonNode node = resolve(LAT, LNG);
+        assertThat(node.get("innermostName").asString())
+                .as("按谁供货还是聚落说了算").isEqualTo("测试聚落");
+        JsonNode place = node.get("place");
+        assertThat(place.get("source").asString()).isEqualTo("MAP");
+        assertThat(place.get("name").asString()).isEqualTo("龙华区地域馆");
+        verify(geoPort, times(1)).reverse(anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("★★★ ①之二：地图给不出名字时回落聚落名 —— 不编地名，也不空着")
+    void fenceHitFallsBackToCommunityNameWhenMapIsDown() throws Exception {
+        when(geoPort.available()).thenReturn(false);
+        CmtCommunity c = new CmtCommunity();
+        // 与上一条用例不同的号：同一个类里两条都插，撞唯一键的报错会指向毫不相干的地方
+        c.setCommunityNo(FENCE_NO + "-DOWN");
         c.setName("测试聚落");
         c.setKind("ESTATE");
         c.setStatus("OPEN");
@@ -149,7 +187,6 @@ class PlaceResolveChainTest {
         JsonNode place = resolve(LAT, LNG).get("place");
         assertThat(place.get("source").asString()).isEqualTo("COMMUNITY");
         assertThat(place.get("name").asString()).isEqualTo("测试聚落");
-        verify(geoPort, never()).reverse(anyInt(), anyInt());
     }
 
     @Test

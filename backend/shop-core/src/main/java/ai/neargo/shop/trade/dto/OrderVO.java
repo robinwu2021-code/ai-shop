@@ -105,7 +105,15 @@ public record OrderVO(String orderNo,
                       /** 这一单参加的团（ord_sub_order.group_no）。非团单为空。
                           支付页付完团单落团页、订单详情画拼团进度卡都靠它（TDD-C端拼团买家流程）。
                           端上 Order 类型早就声明了它，后端此前从没下发过 */
-                      String groupNo) {
+                      String groupNo,
+                      /**
+                       * 配到的自提点离买家多远（米）。**只有确认页那一次预览填**，
+                       * 历史订单为 null —— 那时买家在哪儿已经无从谈起。
+                       *
+                       * <p>{@code -1} = 这个点没标坐标（存量点是手填地址建的），
+                       * <b>不是 0</b>：0 会被端上显示成「0 米」，那是一句假话。
+                       */
+                      Integer pickupDistanceM) {
 
     /** 不带集单字段的旧签名：存量构造处不必跟着改 */
     public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
@@ -118,7 +126,7 @@ public record OrderVO(String orderNo,
         this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
                 verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
-                reviewed, afterSale, payGroupSize, null, null, null);
+                reviewed, afterSale, payGroupSize, null, null, null, null);
     }
 
     /**
@@ -129,7 +137,8 @@ public record OrderVO(String orderNo,
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM);
     }
 
     /**
@@ -143,14 +152,28 @@ public record OrderVO(String orderNo,
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM);
+    }
+
+    /**
+     * 挂上「这个自提点离你多远」。**只有确认页那一次预览用** ——
+     * 距离是按买家此刻的坐标算的，存进订单没有意义，下次看又该变了。
+     */
+    public OrderVO withPickupDistance(Integer pickupDistanceM) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM);
     }
 
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo);
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM);
     }
 
     /**

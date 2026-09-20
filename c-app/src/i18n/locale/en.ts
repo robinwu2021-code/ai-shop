@@ -542,6 +542,7 @@ export default {
     pickupGroups: "{n} pickup points for this order",
     pickupNoneFor: "{names} has no usable pickup point near you",
     pickupMatching: "Finding a pickup point near your address…",
+    pickupFar: "About {d} away — make sure you can collect there",
     pickAddress: "Choose a delivery address",
     appointmentAt: "Booked for {t}",
     coupon: "Voucher",
