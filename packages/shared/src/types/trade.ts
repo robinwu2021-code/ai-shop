@@ -333,6 +333,13 @@ export interface Order {
   pickupDistanceM?: number | null;
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
+  /**
+   * EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。
+   *
+   * **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。
+   * V344 之前发的存量单是空的 —— 当时根本没收集过。
+   */
+  expressCompany?: string;
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /** 下单时间 */

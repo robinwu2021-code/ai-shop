@@ -637,6 +637,8 @@ export default {
     REFUNDED: "Refunded",
   },
   order: {
+    /** Landed on the detail page with no order number (e.g. an external link) */
+    noOrderNo: "No order specified",
     /** 订单里的拼团进度卡（p08）*/
     groupNeed: "Group open · {n} more to go",
     groupLeft: "Closes in {t} · full refund if it doesn't fill",

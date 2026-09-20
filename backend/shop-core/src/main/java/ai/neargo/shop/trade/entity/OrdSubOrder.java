@@ -222,6 +222,18 @@ public class OrdSubOrder extends BaseEntity {
     private String expressNo;
 
     /**
+     * EXPRESS 履约：快递公司，存的是<b>微信的 {@code delivery_id}</b>（见
+     * {@link ai.neargo.shop.common.ExpressCompanies}）。
+     *
+     * <p><b>与 {@link #expressNo} 成对</b>：微信发货信息录入两者缺一就拒
+     * （268485226 / 268485227）。不报的后果不是少个功能 ——
+     * 那笔订单的货款一直冻在微信那边，买家无感，商家几天后才发现。
+     *
+     * <p>存量单是空的：加这一列之前根本没收集过，补不出来。
+     */
+    private String expressCompany;
+
+    /**
      * 1 = <b>核销不等于完成</b>，必须买家确认收货（准入矩阵降级单，F-4）。
      *
      * <p>供货方就是自提点运营者时，「独立第三方核销」这道其实不存在 ——

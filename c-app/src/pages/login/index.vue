@@ -44,9 +44,18 @@ function goBrowse() {
 const inviterNo = ref("");
 const merchantNo = ref("");
 
+/**
+ * 被 401 踢来登录时带着的来源页（`/pages/xxx/index?a=b`）。登录完要回到它。
+ *
+ * <p>空的时候走 `navigateBack()` —— 那是用户自己点进登录页的情形，栈是好的。
+ */
+const redirect = ref("");
+
 onLoad((q) => {
   inviterNo.value = (q?.inviterNo as string) || "";
   merchantNo.value = (q?.merchantNo as string) || "";
+  // 被 401 踢来时带的来源页，登录完要回到它。见 goBackAfterLogin
+  redirect.value = decodeURIComponent((q?.redirect as string) || "");
 });
 
 /*
@@ -82,6 +91,29 @@ async function sendOtp() {
   }
 }
 
+/**
+ * 登录成功后的去向。
+ *
+ * <h2>为什么不能只 navigateBack</h2>
+ * 401 处理器是用 `reLaunch` 把人送过来的，**页面栈已经清空** ——
+ * 那时 `navigateBack()` 是空转：登录成功了，人还停在登录页。
+ *
+ * <h2>为什么 reLaunch 而不是 navigateTo</h2>
+ * 来源页可能是 tab 页（购物车、我的），`navigateTo` 对 tab 页会静默失败。
+ *
+ * <h2>为什么要校验前缀</h2>
+ * 这个值来自 URL 参数。只放行 `/pages/` 开头的站内路径 ——
+ * 不校验的话，一条构造过的链接就能让登录后跳到任意地方。
+ */
+function goBackAfterLogin() {
+  const to = redirect.value;
+  if (to.startsWith("/pages/")) {
+    uni.reLaunch({ url: to });
+    return;
+  }
+  uni.navigateBack();
+}
+
 async function doLogin(method: LoginMethod) {
   // 只有要手机号的方式才校验手机号 —— 微信登录不需要，此前的写法会拦住它
   if (method.needsPhone && !isPhone(phone.value)) {
@@ -94,7 +126,7 @@ async function doLogin(method: LoginMethod) {
     const cred = await method.acquire(phone.value, otp.value);
     await user.login({ ...cred, inviterNo: inviterNo.value, merchantNo: merchantNo.value });
     uni.showToast({ title: String(t("login.success")), icon: "none" });
-    setTimeout(() => uni.navigateBack(), 400);
+    setTimeout(goBackAfterLogin, 400);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {

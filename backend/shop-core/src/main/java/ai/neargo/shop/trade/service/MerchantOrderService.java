@@ -71,9 +71,18 @@ public interface MerchantOrderService {
      * <p><b>快递单号必填</b>：没有单号的「已发货」对买家没有任何用处 ——
      * 他既查不到物流，也无法判断该不该等。
      *
-     * @param expressNo 快递单号
+     * <p><b>快递公司也必填</b>（2026-09-20 加）：微信发货信息录入要求它与运单号
+     * <b>成对</b>，缺一就拒（268485226 / 268485227）。而不报的后果不是少个功能 ——
+     * 那笔订单的货款一直冻在微信那边，买家无感，商家几天后才发现。
+     *
+     * @param expressNo      快递单号
+     * @param expressCompany 快递公司，取 {@link ai.neargo.shop.common.ExpressCompanies} 里的码。
+     *                       <b>认不得的码直接拒</b>，不放行到上报那一步 ——
+     *                       到那时错误已经离「商家填错了」很远：台账上一条失败、
+     *                       界面上什么都没发生、而商家以为自己发过货了
      */
-    OrderVO ship(String merchantNo, String storeNo, String subOrderNo, String expressNo);
+    OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
+                 String expressNo, String expressCompany);
 
     /**
      * 标记送达。FULFILLING → COMPLETED。

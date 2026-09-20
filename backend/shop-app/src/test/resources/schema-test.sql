@@ -631,6 +631,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     pickup_owner_store_no VARCHAR(32) NULL,
     period_no VARCHAR(64) DEFAULT NULL,
     arrive_date VARCHAR(10) DEFAULT NULL,
+    express_company VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)

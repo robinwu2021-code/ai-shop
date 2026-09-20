@@ -586,6 +586,7 @@ export default {
     receiver: "收件人",
     ship: "发货",
     expressNo: "运单号",
+    pickCarrier: "请选择快递公司",
     delivered: "已送达",
     detail: "详情",
     empty: "还没有订单",

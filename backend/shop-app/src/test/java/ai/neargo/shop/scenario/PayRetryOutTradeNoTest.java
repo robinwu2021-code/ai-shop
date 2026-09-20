@@ -38,7 +38,7 @@ class PayRetryOutTradeNoTest {
     private static int seq = 0;
 
     private SettlePort.PaymentOpen cmd(String orderNo) {
-        return new SettlePort.PaymentOpen(orderNo, "U-RETRY", null, "STUB", 8800L);
+        return new SettlePort.PaymentOpen(orderNo, "U-RETRY", null, "STUB", 8800L, "测试商品");
     }
 
     private List<StlPayment> paymentsOf(String orderNo) {

@@ -63,6 +63,21 @@ onLaunch(() => {
    * 再延一个宏任务：这条路径最常见的触发点是启动时的那几个请求，
    * 那一刻首页还没挂载，此时发起的跳转会被直接丢掉（B 端实测过两次）。
    */
+  /**
+   * 现在这一页的完整路径（含参数），形如 `/pages/order/index?orderNo=X`。
+   *
+   * <p>取不到就返回空 —— 启动时那几个请求触发 401 时页面栈可能还是空的，
+   * 那时没有「回得去的地方」，直接跳登录页才是对的。
+   */
+  function currentRoute(): string {
+    const pages = getCurrentPages();
+    const top = pages[pages.length - 1] as undefined | { route?: string; options?: Record<string, string> };
+    if (!top?.route) return "";
+    const q = Object.entries(top.options ?? {})
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
+    return `/${top.route}${q ? `?${q}` : ""}`;
+  }
+
   setUnauthorizedHandler(async () => {
     /*
      * **先等一等还在飞的那次静默登录，再决定要不要把人踢去登录页。**
@@ -93,7 +108,21 @@ onLaunch(() => {
       return;
     }
     uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
-    setTimeout(() => uni.reLaunch({ url: ROUTES.login }), 0);
+    /*
+     * **把当前这一页带过去，登录完要回得来。**
+     *
+     * 此前只跳 `ROUTES.login`，而登录页登完调的是 `navigateBack()` ——
+     * 我们这一跳用的是 `reLaunch`，**页面栈已经被清空了**，没有「上一页」，
+     * 于是那句 `navigateBack` 是空转：人登录成功了，却停在登录页。
+     *
+     * 这条路径不是边角：微信《小程序订单管理》要求「通过 path 进入订单中心，
+     * 检测到无登录态时引导登录，**登录后停留在订单中心页**」——
+     * 登完回不去正是平台点名要驳回的形态。
+     */
+    const back = currentRoute();
+    setTimeout(() => uni.reLaunch({
+      url: back ? `${ROUTES.login}?redirect=${encodeURIComponent(back)}` : ROUTES.login,
+    }), 0);
   });
 
   // 社区归属里存的是**绑定当时那门语言/那个市场**的文案快照。

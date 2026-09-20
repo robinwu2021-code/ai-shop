@@ -484,7 +484,15 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 而它是 `OrderVO` 的有意子集：预览顶层根本没有自提点这回事（点是逐个子单配的）。
      * 与上面那三条同一个钝处，不是新账。
      */
-    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 29 };
+    /*
+     * ⚠️ **2026-09-20 从 29 抬到 30，抬的同样不是欠账**：`OrderVO` 加了
+     * `expressCompany`（快递公司，微信发货信息录入要求它与运单号成对，
+     * TDD-微信发货信息录入 §7）。端上**接了** —— 接在 `Order.expressCompany` 上，
+     * C 端订单详情把它与运单号一起显示。多欠的这一条是 `OrderPreview` 顶层，
+     * 而它是 `OrderVO` 的有意子集：预览顶层没有快递这回事（快递号逐个子单发），
+     * 和已在基线里的 `OrderPreview.expressNo` 完全同类。不是新账。
+     */
+    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 30 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`

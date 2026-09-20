@@ -21,6 +21,7 @@ import {
   takePendingAfterSale,
 } from "./_shared";
 import type { MerchantApi } from "../contract";
+import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
   "mOrderList"
@@ -70,11 +71,19 @@ export const orderMock: Pick<MerchantApi,
     return delay({ ...findOrder(orderNo) });
   },
 
-  async mShip(orderNo, expressNo) {
+  async mShip(orderNo, expressNo, expressCompany) {
     const o = findOrder(orderNo);
+    /*
+     * **替身也要校验快递公司。**吞掉这个参数的话，mock 下发货一路通畅，
+     * 而真后端会 400 —— 「只在 mock 里验过」正是这个仓库反复吃过的那种绿。
+     */
+    if (!EXPRESS_COMPANIES.some((c) => c.code === expressCompany)) {
+      throw new Error("请选择快递公司");
+    }
     assertTransition(o.status, "FULFILLING");
     o.status = "FULFILLING";
     o.expressNo = expressNo;
+    o.expressCompany = expressCompany;
     pushTimeline(o, "已发货");
     pushMessage(
       "TRADE",

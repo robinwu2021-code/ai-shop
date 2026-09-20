@@ -73,6 +73,23 @@ public class WxShippingUploadService {
         }
         TrdShippingUpload exist = byOrder(orderNo);
         if (exist != null) {
+            /*
+             * **一单里履约方式不止一种时，这里会静默丢掉后到的那一种。**
+             *
+             * 台账是一笔订单一行（uk_shipping_order），而一张多商家的单
+             * 完全可能一张子单走快递、另一张走自提。先动的那张定了 logistics_type，
+             * 后动的那张在这里被当成「重复」返回 —— 报上去的语义就是错的，
+             * 而微信不会拒，没有任何地方会说一句。
+             *
+             * 真正的解法是 upload_combined_shipping_info（合单发货），
+             * 那要改表的唯一键。在那之前**至少让它可见**：
+             * 不静默，记 ERROR，让人能从日志里数出这种单有多少。
+             */
+            if (exist.getLogisticsType() != null && exist.getLogisticsType() != logisticsType) {
+                log.error("[wxship] 订单 {} 混合履约：台账已是 type={}，本次 type={} 被丢弃"
+                        + " —— **上报语义会是错的**，需合单发货（见 V323 注释）",
+                        orderNo, exist.getLogisticsType(), logisticsType);
+            }
             return;   // 一笔一行；已成功的更不该被改回待上报
         }
         TrdShippingUpload row = new TrdShippingUpload();
@@ -124,6 +141,27 @@ public class WxShippingUploadService {
     }
 
     /**
+     * 这一行<b>材料不齐，这次发不出去</b>：把原因写进台账，状态留 PENDING。
+     *
+     * <h2>为什么不计入重试次数</h2>
+     * 缺件不是「调用失败」——重试一万次也还是缺。计进去的话 8 次之后它变成 FAILED，
+     * 而等我们把缺的那一列补上时，<b>这些单已经不在补报任务的视野里了</b>，
+     * 要人去一笔笔翻回来。留在 PENDING，材料齐的那天下一轮自己就报上去了。
+     *
+     * <h2>为什么还是要写进 err_msg</h2>
+     * 不写的话台账上这些行看起来和「刚入队还没轮到」一模一样 ——
+     * 「为什么这批单一直没报出去」就没有任何地方答得上来。
+     */
+    @Transactional
+    public void blocked(TrdShippingUpload row, String reason) {
+        TrdShippingUpload patch = new TrdShippingUpload();
+        patch.setId(row.getId());
+        patch.setErrCode(0);
+        patch.setErrMsg(trim(reason, 500));
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(patch));
+    }
+
+    /**
      * 「这一次之后该落成什么状态」。<b>抽成纯函数是为了能不起 Spring 就测</b> ——
      * 起一个新的上下文来测三个分支，代价是测试上下文缓存被挤掉重建，
      * 而重建会把 H2 的初始化脚本再跑一遍、种子撞主键（实测踩过）。
@@ -153,6 +191,16 @@ public class WxShippingUploadService {
                         .eq(TrdShippingUpload::getStatus, TrdShippingUpload.PENDING)
                         .orderByAsc(TrdShippingUpload::getId)
                         .last("LIMIT " + limit)));
+    }
+
+    /**
+     * 这一行现在是什么状态。补报任务用来把「已终态」再分成成功与失败 ——
+     * {@link #upload} 只回答「还要不要再来」，而那个布尔值对成功和
+     * 不可重试的失败是同一个值。
+     */
+    public String statusOf(Long id) {
+        TrdShippingUpload row = DataScopeContext.executeWithoutScope(() -> mapper.selectById(id));
+        return row == null ? null : row.getStatus();
     }
 
     private TrdShippingUpload byOrder(String orderNo) {

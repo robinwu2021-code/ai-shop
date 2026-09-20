@@ -115,6 +115,32 @@ public interface PaymentLedgerService {
     java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo);
 
     /**
+     * 这个订单**付成功的那一笔**收款流水，给微信发货信息录入定位微信那笔单用。
+     *
+     * <h2>为什么只认 SUCCESS</h2>
+     * 一个订单可以有多笔 PAY 流水（每次重试开一笔带后缀的新单号，
+     * 见 {@link #open}）。拿最后一笔或第一笔都可能拿到<b>已关闭</b>的那次尝试 ——
+     * 报上去微信查无此单（{@code 268485226}），而错误信息不会告诉你
+     * 「你报的是一笔没付成功的单」。付成功的只会有一笔。
+     *
+     * <h2>为什么 openid 也从这里取</h2>
+     * openid 按 AppID 隔离。拿当前会话的那个去报一笔旧号下的订单，微信认不出这个人。
+     * 支付那一刻的 openid 记在这一行上（{@link #recordPayer}），只此一处可信。
+     *
+     * @return 找不到（没付过 / 没付成功）时 empty
+     */
+    java.util.Optional<PaidPayment> paidPayment(String orderNo);
+
+    /**
+     * @param outTradeNo  商户单号。上报按它定位（{@code order_number_type=1}）
+     * @param payerOpenid 付款人 openid，<b>可能为空</b> ——
+     *                    V310 之前的存量流水没有这一列，调用方要当缺件处理而不是报空串
+     * @param wxAppid     记下 openid 时那个 AppID。换过号时用它判「这个 openid 还能不能用」
+     */
+    record PaidPayment(String outTradeNo, String payerOpenid, String wxAppid) {
+    }
+
+    /**
      * @param payChannel        原收款走的通道
      * @param originTradeNo     原收款的<b>通道交易号</b>。退款优先按它认单
      * @param originOutTradeNo  原收款的商户单号，{@code originTradeNo} 为空时的兜底

@@ -11,6 +11,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { FULFILLMENT } from "@shared/utils/constants";
+import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import type { Order } from "@shared/types";
 
 const { t } = useI18n();
@@ -18,6 +19,13 @@ const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
 const expressNo = ref("");
+/**
+ * 选中的快递公司下标。**默认 -1（未选）**，不默认第一家 ——
+ * 默认一家的话，商家不点也「选」了顺丰，发出去的一半是错的快递公司，
+ * 而买家点「查看物流」查无此单。宁可强制他选一次。
+ */
+const carrierIdx = ref(-1);
+const carriers = EXPRESS_COMPANIES;
 const busy = ref(false);
 
 /** 快递单且已付款 → 该发货 */
@@ -89,9 +97,15 @@ async function load(orderNo: string) {
 
 async function ship() {
   if (!order.value || !expressNo.value || busy.value) return;
+  const carrier = carriers[carrierIdx.value];
+  if (!carrier) {
+    uni.showToast({ title: t("order.pickCarrier"), icon: "none" });
+    return;
+  }
   busy.value = true;
   try {
-    order.value = await api.mShip(order.value.orderNo, expressNo.value);
+    order.value = await api.mShip(
+      order.value.orderNo, expressNo.value, carrier.code);
     uni.showToast({ title: t("order.shipped"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -195,16 +209,30 @@ onLoad((q) => {
         <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
-      <!-- 快递发货：运单号回填（B-11.4.3） -->
+      <!-- 快递发货：快递公司 + 运单号（B-11.4.3；快递公司 2026-09-20 加，微信发货信息录入要求成对） -->
       <view v-if="canShip" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.ship") }}</text>
+        <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
+        <view class="carrier sh-mt-sm">
+          <text
+            v-for="(c, i) in carriers"
+            :key="c.code"
+            class="carrier__chip"
+            :class="{ 'carrier__chip--on': carrierIdx === i }"
+            @tap="carrierIdx = i"
+          >{{ c.name }}</text>
+        </view>
         <input
           maxlength="64"
           v-model="expressNo"
           class="field__input sh-mt-sm"
           :placeholder="$t('order.expressNo')"
         />
-        <view class="sh-btn sh-mt-sm" :class="{ 'sh-btn--muted': !expressNo }" @tap="ship">
+        <view
+          class="sh-btn sh-mt-sm"
+          :class="{ 'sh-btn--muted': !expressNo || carrierIdx < 0 }"
+          @tap="ship"
+        >
           {{ $t("order.ship") }}
         </view>
       </view>
@@ -303,5 +331,18 @@ onLoad((q) => {
 .due__hint {
   display: block;
   margin-top: 16rpx;
+}
+.carrier { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.carrier__chip {
+  padding: 8rpx 20rpx;
+  border: var(--sh-hairline);
+  border-radius: 9999px;   /* full 档：胶囊 */
+  font-size: 24rpx;
+  color: var(--sh-sub);
+}
+.carrier__chip--on {
+  border-color: var(--sh-primary);
+  color: var(--sh-primary-text);
+  background: var(--sh-primary-tint);
 }
 </style>

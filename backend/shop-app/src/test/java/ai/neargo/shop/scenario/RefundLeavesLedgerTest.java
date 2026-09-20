@@ -45,7 +45,7 @@ class RefundLeavesLedgerTest {
     private String paidOrder() {
         String orderNo = "OD-RF-" + (++seq);
         String out = ledger.open(new SettlePort.PaymentOpen(
-                orderNo, "U-RF", null, "TEST", 20_000L));
+                orderNo, "U-RF", null, "TEST", 20_000L, "测试商品"));
         ledger.settle(new SettlePort.PaymentSettled(
                 out, "TEST", "TX-RF-" + seq, 20_000L, System.currentTimeMillis()));
         return orderNo;

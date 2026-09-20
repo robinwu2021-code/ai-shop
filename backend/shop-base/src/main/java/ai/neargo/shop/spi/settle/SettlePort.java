@@ -116,9 +116,17 @@ public interface SettlePort {
      * @param entityNo    收款主体。可为空 —— 多商家的单在这一层还没拆开
      * @param payChannel  通道
      * @param amountMinor 应付金额（分）
+     * @param subject     <b>商品描述</b>，直接进微信支付的 {@code description}。
+     *                    它不只是下单参数 —— 用户在微信「我-小店与卡包-小程序购物订单」里
+     *                    看到的商品信息<b>就是这一串</b>，而「能认出自己买了什么」
+     *                    正是《小程序订单管理》这个能力存在的全部理由。
+     *                    <p>此前这里传的是 {@code "订单 " + orderNo}，于是用户在微信里
+     *                    看到的是「订单 O202609200001」—— 恰好是认不出的那一串。
+     *                    <p>由<b>交易域</b>拼：只有那一层手里有订单明细。
+     *                    支付域拿不到商品名，编不出来。
      */
     record PaymentOpen(String orderNo, String userNo, String entityNo,
-                       String payChannel, long amountMinor) {
+                       String payChannel, long amountMinor, String subject) {
     }
 
     /**

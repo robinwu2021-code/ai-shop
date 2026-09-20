@@ -28,6 +28,10 @@ import java.util.List;
 @Service
 public class MerchantOrderServiceImpl implements MerchantOrderService {
 
+    /** 叫 LOG 不叫 log：这个类里已经有一个 {@code log(sub, ...)} 方法，同名字段读起来会打架 */
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(MerchantOrderServiceImpl.class);
+
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final StatusLogMapper statusLogMapper;
@@ -44,6 +48,17 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final ai.neargo.shop.trade.service.OrderService orderService;
     /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
     private final UserQueryPort userPort;
+
+    /**
+     * 微信发货信息录入。setter 注入：{@code shop-core} 单独跑测试时没有 paybridge，
+     * 缺了不该让整个交易域起不来 —— 但**缺了就不会上报**，见 {@link #ship} 里那句 ERROR。
+     */
+    private ai.neargo.shop.spi.trade.ShippingUploadPort shippingUploadPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
+        this.shippingUploadPort = port;
+    }
 
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
@@ -64,7 +79,18 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     @Transactional
-    public OrderVO ship(String merchantNo, String storeNo, String subOrderNo, String expressNo) {
+    public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
+                        String expressNo, String expressCompany) {
+        /*
+         * **快递公司与运单号成对校验，在这里拒，不要等微信拒。**
+         *
+         * 放行到上报那一步的话，微信回的是一个编码错误码，而那时错误已经离
+         * 「商家刚才填错了」很远：台账上是一条失败、界面上什么都没发生、
+         * 商家以为自己发过货了，几天后才发现钱没结出来。
+         */
+        if (!ai.neargo.shop.common.ExpressCompanies.isValid(expressCompany)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         if (expressNo == null || expressNo.isBlank()) {
             /*
              * 没有单号的「已发货」对买家没有任何用处 —— 他既查不到物流，
@@ -83,7 +109,10 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          *                      买家那边的物流号变了却查不到是谁改的，是纠纷的开始。
          */
         boolean shipped = OrdSubOrder.FULFILLING.equals(sub.getStatus());
-        if (shipped && no.equals(sub.getExpressNo())) {
+        // 单号与公司**都**没变才算重复点击。只比单号的话，「单号没填错、
+        // 快递公司选错了」这种改不进去 —— 而那正是最需要能改的一种
+        if (shipped && no.equals(sub.getExpressNo())
+                && expressCompany.equals(sub.getExpressCompany())) {
             return toVO(sub);
         }
         // 商家发起 → 用带「未付款不许推进」那条闸的断言（见 assertMerchantSubOrderTransit）
@@ -91,10 +120,21 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         String old = sub.getExpressNo();
         sub.setStatus(OrdSubOrder.FULFILLING);
         sub.setExpressNo(no);
+        sub.setExpressCompany(expressCompany);
         save(sub);
         log(sub, OrdSubOrder.FULFILLING,
                 shipped ? "商家改快递单号：" + old + " → " + no : "商家发货：" + no,
                 merchantNo);
+        /*
+         * **向微信报发货**（TDD-微信发货信息录入 §5.2）。挂在状态迁移上而不是 controller 上：
+         * 挂 controller 的话，每多一个推进到「已发货」的入口就要记得加一次，
+         * 而漏掉的那一个不报错、只是那些单的钱结不出来。
+         *
+         * 改单号的那次（shipped==true）也走这里：台账幂等，重复入队不产生第二行。
+         * 运单号变了要不要重报是另一件事 —— 微信的 10060002 会把它挡掉，
+         * 已记在 §7 待确认。
+         */
+        notifyShipping(sub);
         return toVO(sub);
     }
 
@@ -166,6 +206,20 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          */
         log(sub, OrdSubOrder.COMPLETED, "商家标记送达", merchantNo);
         return toVO(sub);
+    }
+
+    /**
+     * 把「这笔单可以向微信报发货了」交给上报台账。
+     *
+     * <p><b>不在这里发请求</b>：上报是跨网络的副作用，一次抖动不该让商家点不动发货。
+     */
+    private void notifyShipping(OrdSubOrder sub) {
+        if (shippingUploadPort == null) {
+            LOG.error("[wxship] 装配里没有 ShippingUploadPort，子单 {} 不会上报 —— 这笔钱会结不出来",
+                    sub.getSubOrderNo());
+            return;
+        }
+        shippingUploadPort.enqueue(sub.getOrderNo(), sub.getSubOrderNo(), sub.getFulfillment());
     }
 
     /**
@@ -297,7 +351,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 main == null ? null : userPort.find(main.getUserNo())
                         .map(ai.neargo.shop.spi.user.UserQueryPort.UserBrief::nickname).orElse(null),
                 // 商家侧不查这三样：评价与售后在 b-app 有自己的页面，支付分组是买家视角的事
-                false, null, 1);
+                false, null, 1,
+                // 走全参构造而不是旧的短签名：末尾要带上快递公司。
+                // 商家改完单号要能核对自己选的是哪一家 —— 选错快递公司与填错单号
+                // 对买家是同一种后果（查不到物流），却只有单号看得见
+                null, null, null, null, s.getExpressCompany());
     }
 
     private static final int PHONE_TAIL = 4;

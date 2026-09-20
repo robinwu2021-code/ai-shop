@@ -67,7 +67,7 @@ class PayGoesThroughGatewayTest {
                 java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
 
         var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, userNo, null, "TEST", 1_000L));
+                orderNo, userNo, null, "TEST", 1_000L, "测试商品"));
         assertThat(r.success()).isTrue();
 
         assertThat(paymentOf(orderNo).getPayerOpenid())
@@ -81,7 +81,7 @@ class PayGoesThroughGatewayTest {
         String orderNo = "OD-GW-" + (++seq);
 
         var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, "U-GW", null, "TEST", 8_800L));
+                orderNo, "U-GW", null, "TEST", 8_800L, "测试商品"));
 
         assertThat(r.success()).as("下单失败了？TEST 通道总是装配的").isTrue();
 
@@ -113,7 +113,7 @@ class PayGoesThroughGatewayTest {
         String orderNo = "OD-GW-" + (++seq);
 
         var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, "U-GW", null, "NO_SUCH_CHANNEL", 5_000L));
+                orderNo, "U-GW", null, "NO_SUCH_CHANNEL", 5_000L, "测试商品"));
 
         assertThat(r.success()).isFalse();
         assertThat(r.message()).contains("未接入");
@@ -133,7 +133,7 @@ class PayGoesThroughGatewayTest {
         String orderNo = "OD-GW-" + (++seq);
 
         var r = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, "U-GW", null, "TEST", 0L));
+                orderNo, "U-GW", null, "TEST", 0L, "测试商品"));
 
         assertThat(r.success()).as("0 元单下单成功了？真通道一定会拒").isFalse();
         assertThat(paymentOf(orderNo).getStatus()).isEqualTo(StlPayment.CLOSED);

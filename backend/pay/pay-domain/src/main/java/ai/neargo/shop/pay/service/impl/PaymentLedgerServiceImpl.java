@@ -79,6 +79,21 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         .eq(StlPayment::getOrderNo, orderNo)));
     }
 
+    @Override
+    public java.util.Optional<PaidPayment> paidPayment(String orderNo) {
+        StlPayment p = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo)
+                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId)
+                        .last("LIMIT 1")));
+        return p == null
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(new PaidPayment(
+                        p.getOutTradeNo(), p.getPayerOpenid(), p.getWxAppid()));
+    }
+
     /** 这个订单未终态（INIT / PENDING）的收款 —— 有就复用，没有才开新的 */
     private StlPayment openPaymentOf(String orderNo) {
         return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(

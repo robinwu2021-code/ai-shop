@@ -125,7 +125,7 @@ class RefundReachesChannelTest {
         String subOrderNo = "SUBRC" + n + System.nanoTime() % 1_000_000;
 
         String out = ledger.open(new SettlePort.PaymentOpen(
-                orderNo, "U-RC", null, payChannel, 20_000L));
+                orderNo, "U-RC", null, payChannel, 20_000L, "测试商品"));
         String tradeNo = "TX-RC-" + n;
         if (ai.neargo.shop.pay.channel.TestPayGateway.CHANNEL.equals(payChannel)) {
             // 通道侧也要有这笔并且已付，否则退款会被通道拒（如实的行为）

@@ -113,7 +113,17 @@ public record OrderVO(String orderNo,
                        * <p>{@code -1} = 这个点没标坐标（存量点是手填地址建的），
                        * <b>不是 0</b>：0 会被端上显示成「0 米」，那是一句假话。
                        */
-                      Integer pickupDistanceM) {
+                      Integer pickupDistanceM,
+                      /**
+                       * 快递公司（微信 {@code delivery_id}，如 SF / ZTO）。
+                       *
+                       * <p><b>加在最后而不是紧挨着 {@code expressNo}</b>：这个 record 有十处
+                       * 位置参数构造，插在中间会让每一处都要改，而改错了编译器**未必**报错
+                       * —— 相邻两个都是 String。加在末尾，只有真有值的那几处需要动。
+                       *
+                       * <p>V344 之前发的存量单为空：当时根本没收集过这一项。
+                       */
+                      String expressCompany) {
 
     /** 不带集单字段的旧签名：存量构造处不必跟着改 */
     public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
@@ -126,7 +136,7 @@ public record OrderVO(String orderNo,
         this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
                 verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
-                reviewed, afterSale, payGroupSize, null, null, null, null);
+                reviewed, afterSale, payGroupSize, null, null, null, null, null);
     }
 
     /**
@@ -138,7 +148,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM);
+                groupNo, pickupDistanceM, expressCompany);
     }
 
     /**
@@ -153,7 +163,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM);
+                groupNo, pickupDistanceM, expressCompany);
     }
 
     /**
@@ -165,7 +175,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM);
+                groupNo, pickupDistanceM, expressCompany);
     }
 
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
@@ -173,7 +183,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM);
+                groupNo, pickupDistanceM, expressCompany);
     }
 
     /**

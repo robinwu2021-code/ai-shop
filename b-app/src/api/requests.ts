@@ -293,6 +293,13 @@ export interface OrderListQuery {
 export interface ShipReq {
   /** 快递单号。填了即视为已发货，订单流转到 SHIPPED */
   expressNo: string;
+  /**
+   * 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。
+   *
+   * **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227），
+   * 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。
+   */
+  expressCompany: string;
 }
 
 export type SaveDeliveryRuleReqBody = DeliveryRule;

@@ -40,6 +40,31 @@ import java.util.Optional;
 @Component
 public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
 
+    /**
+     * 微信发货信息录入。setter 注入：{@code shop-core} 单独跑测试时没有 paybridge，
+     * 缺了不该让交易域起不来 —— 但缺了就不会上报，所以 {@link #notifyShipping} 里要喊一声。
+     */
+    private ai.neargo.shop.spi.trade.ShippingUploadPort shippingUploadPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
+        this.shippingUploadPort = port;
+    }
+
+    /** 把「可以向微信报发货了」交给上报台账。不在这里发请求 —— 一次网络抖动不该让到货登记失败 */
+    private void notifyShipping(OrdSubOrder sub) {
+        if (shippingUploadPort == null) {
+            WXSHIP_LOG.error("[wxship] 装配里没有 ShippingUploadPort，子单 {} 不会上报 —— 这笔钱会结不出来",
+                    sub.getSubOrderNo());
+            return;
+        }
+        shippingUploadPort.enqueue(sub.getOrderNo(), sub.getSubOrderNo(), sub.getFulfillment());
+    }
+
+    private static final org.slf4j.Logger WXSHIP_LOG =
+            org.slf4j.LoggerFactory.getLogger(FulfillmentQueryPortImpl.class);
+
+
     private final SubOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final StatusLogMapper statusLogMapper;
@@ -197,6 +222,13 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
             sub.setStatus(OrdSubOrder.FULFILLING);
             DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
             appendLog(sub.getSubOrderNo(), OrdSubOrder.FULFILLING, "已到自提点，可来取货", operatorNo);
+            /*
+             * **自提单的「发货」就是这一刻**，不是买家来取的那一刻
+             * （微信 logistics_type=4 的语义是「商家已备货、用户可来取」）。
+             * 等核销才报的话，微信那张「48 小时未发货」的表会先响 ——
+             * 而那时看起来像是我们没发货，实际只是报晚了。见 WxLogisticsTypes 类注释。
+             */
+            notifyShipping(sub);
             moved.add(sub.getSubOrderNo());
         }
 

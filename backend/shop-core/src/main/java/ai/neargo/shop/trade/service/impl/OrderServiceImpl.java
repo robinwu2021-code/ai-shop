@@ -160,6 +160,64 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 微信发货信息录入。setter 注入，理由同 {@link #groupJoinPort}：
+     * {@code shop-core} 单独跑测试时没有 paybridge。**缺了就不会上报**，
+     * 所以 {@link #notifyShippingOnPaid} 里要喊一声，不能静默。
+     */
+    private ai.neargo.shop.spi.trade.ShippingUploadPort shippingUploadPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
+        this.shippingUploadPort = port;
+    }
+
+    /**
+     * 微信支付下单的 {@code description}。
+     *
+     * <p><b>它不只是下单参数</b>：用户在微信「我-小店与卡包-小程序购物订单」里
+     * 看到的商品信息就是这一串，而「能认出自己买了什么」正是
+     * 《小程序订单管理》这个能力存在的理由。此前这里传的是 {@code "订单 " + orderNo}，
+     * 于是用户看到的是「订单 O202609200001」—— 恰好是认不出的那一串。
+     *
+     * <p>拼不出来时<b>退回订单号</b>而不是空串：微信的 {@code description} 不许为空，
+     * 空了整笔下单会被拒 —— 认不出总比付不了强。走到这一步说明订单没有明细，
+     * 那本身是另一个问题，会在别处报出来。
+     */
+    private String payDescription(String orderNo) {
+        var titles = DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getOrderNo, orderNo)))
+                .stream().map(OrdItem::getTitle).toList();
+        String desc = ai.neargo.shop.common.GoodsDesc.of(
+                titles, ai.neargo.shop.common.GoodsDesc.PAY_MAX);
+        if (desc.isBlank()) {
+            log.error("[pay] 订单 {} 没有明细，拼不出商品描述 —— 退回订单号，"
+                    + "用户在微信购物订单里将认不出这一单", orderNo);
+            return "订单 " + orderNo;
+        }
+        return desc;
+    }
+
+    /**
+     * 服务类（到店核销 / 预约上门）**在支付成功这一刻**向微信报发货。
+     *
+     * <p>它们在我们这儿根本没有「发货」这个动作 —— 付款即出码，商家没有任何前置动作，
+     * 因此<b>没有任何按钮能触发上报</b>。把上报挂在按钮上的写法会整块漏掉这一类，
+     * 而漏掉的后果不是少个功能，是这些单的钱结不出来。见 {@code WxLogisticsTypes} 类注释。
+     */
+    private void notifyShippingOnPaid(OrdSubOrder sub) {
+        if (!ai.neargo.shop.common.WxLogisticsTypes.uploadOnPaid(sub.getFulfillment())) {
+            return;   // 实物类等商家发货 / 等到自提点，各自有迁移点
+        }
+        if (shippingUploadPort == null) {
+            log.error("[wxship] 装配里没有 ShippingUploadPort，服务类子单 {} 不会上报 —— 这笔钱会结不出来",
+                    sub.getSubOrderNo());
+            return;
+        }
+        shippingUploadPort.enqueue(sub.getOrderNo(), sub.getSubOrderNo(), sub.getFulfillment());
+    }
+
+    /**
      * 仅活动商品的可买判定（TDD-商品仅活动可售）。setter 注入，理由同 {@link #periodPort}。
      * <b>缺了按「没有活动在跑」处理</b>—— 仅活动的货普通下单一律拒。与拼团缺口同一取向：
      * 宁可少卖，也不把它当单品卖出去。
@@ -1128,7 +1186,8 @@ public class OrderServiceImpl implements OrderService {
         String channel = resolvePayChannel(order, payChannel);
         var init = settlePort.initPayment(new SettlePort.PaymentOpen(
                 orderNo, order.getUserNo(), null, channel,
-                order.getPayAmount() == null ? 0L : order.getPayAmount()));
+                order.getPayAmount() == null ? 0L : order.getPayAmount(),
+                payDescription(orderNo)));
 
         if (!init.success()) {
             /*
@@ -1193,6 +1252,9 @@ public class OrderServiceImpl implements OrderService {
             appendStatusLog(sub.getSubOrderNo(), next,
                     serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
                     OrdStatusLog.BY_SYSTEM, null);
+
+            // 服务类在这一刻就要向微信报发货（实物类走各自的发货/到货迁移点）
+            notifyShippingOnPaid(sub);
 
             /*
              * 参团单：**付款成功才算成员**（设计 D1）。团在付款之前已经散了 / 过期了的，
@@ -1802,7 +1864,9 @@ public class OrderServiceImpl implements OrderService {
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
                 // 预览还没有单；分组数用得上，结算页要说「会生成几笔订单」
-                false, null, children.size());
+                false, null, children.size(),
+                // 预览还没发货，无快递公司
+                null, null, null, null, null);
         }
     }
 
@@ -1891,7 +1955,10 @@ public class OrderServiceImpl implements OrderService {
                  * `withDetail` 补上 —— 这个方法被列表与详情共用，
                  * 在这里查就是每条订单三次额外查询（N+1）。
                  */
-                false, null, 1);
+                false, null, 1,
+                // 集单四样这里不填；末位 expressCompany 要下发 ——
+                // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
+                null, null, null, null, s.getExpressCompany());
     }
 
     /** 子单上的收件人快照 → VO。三列都空（自提单）时给 null，让端上少判一层 */
@@ -1925,7 +1992,9 @@ public class OrderServiceImpl implements OrderService {
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
                 // 支付视角：分组数就是子单数，收银台那句「本次付款覆盖 N 笔」读它
-                false, null, children.size());
+                false, null, children.size(),
+                // 支付视角跨商家，快递公司同快递号：它在每个子单上，主单这层没有
+                null, null, null, null, null);
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

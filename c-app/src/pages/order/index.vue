@@ -11,6 +11,7 @@ import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, datetime, money } from "@shared/utils/format";
 import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { orderNoOf } from "@/shared/order-no";
 
 const { t } = useI18n();
 
@@ -161,7 +162,21 @@ const isVirtualOrCard = computed(() => {
 });
 
 async function load() {
-  if (!orderNo.value) return;
+  if (!orderNo.value) {
+    /*
+     * **没有单号时也要给出个交代**，不能直接 return。
+     *
+     * 此前 return 掉之后页面上只剩一个标题栏 —— 一整片白，没有任何文字、
+     * 没有重试、也没有出路。而微信《小程序订单管理》的规范里写明
+     * 「页面不出现加载失败等 bug」，这种空白正是会被驳回的形态。
+     *
+     * 走 failed 这条既有的空态：它已经有「没能加载出来 + 重试」的样子，
+     * 不必为这一种情形再造一个新界面。
+     */
+    failed.value = true;
+    failReason.value = String(t("order.noOrderNo"));
+    return;
+  }
   failed.value = false;
   failReason.value = "";
   try {
@@ -265,8 +280,12 @@ function buyAgain() {
   if (first) uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${first.goodsNo}` });
 }
 
+/*
+ * 从微信「小程序购物订单」点进来时，参数是**支付单号**（可能带 -2 / -3 后缀），
+ * 不是订单号 —— 要先还原，否则重试付成功的那些单点开是一片空。见 orderNoOf。
+ */
 onLoad((q) => {
-  orderNo.value = (q?.orderNo as string) || "";
+  orderNo.value = orderNoOf((q?.orderNo as string) || "");
 });
 
 // 用 onShow 而非 onLoad 加载：从售后页返回时状态会变，必须重新拉
@@ -402,7 +421,16 @@ onShow(load);
 
     <!-- 履约信息 -->
     <view class="sh-card block">
-      <view class="fact sh-row sh-row--between sh-row--top">
+      <!--
+        **没有履约方式就整行不出**，不要渲染一个空值。
+        此前这一行无条件渲染，而主订单（多商家的单在这一层还没拆开）的
+        `fulfillment` 是 null —— 界面上显示的是那个 i18n 键本身（键名 + 点 + null），
+        直接漏到用户眼前。注释里不写出那个字面量：模板注释会被渲染进 HTML，
+        而 order-detail-review.test.ts 正是按「输出里不许出现它」来判的。
+        微信《小程序订单管理》的订单详情 path 传的正是主订单号，
+        所以从微信点进来的每一单都会看到它。
+      -->
+      <view v-if="order.fulfillment" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("goods.fulfillment") }}</text>
         <text class="txt-caption fact__v">{{ $t(`fulfillment.${order.fulfillment}`) }}</text>
       </view>

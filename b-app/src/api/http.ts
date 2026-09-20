@@ -408,8 +408,9 @@ export const httpApi: MerchantApi = {
 
   mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
-  mShip: (orderNo, expressNo) =>
-    http.post<Order>(buildPath(E.mShip.path, { orderNo }), { expressNo } satisfies ShipReq),
+  mShip: (orderNo, expressNo, expressCompany) =>
+    http.post<Order>(buildPath(E.mShip.path, { orderNo }),
+      { expressNo, expressCompany } satisfies ShipReq),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
   mConfirmOfflinePay: (subOrderNo) =>
     http.post<Order>(buildPath(E.mConfirmOfflinePay.path, { orderNo: subOrderNo }), {}),

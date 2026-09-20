@@ -88,13 +88,19 @@ public class BizOrderController {
         return ctx.courierOnlyOrderView() ? CourierOrderVO.of(full) : full;
     }
 
-    /** 发货：快递单号必填 —— 没有单号的「已发货」对买家没有任何用处。 */
+    /**
+     * 发货：快递单号与<b>快递公司</b>都必填。
+     *
+     * <p>单号：没有单号的「已发货」对买家没有任何用处。
+     * <p>公司：微信发货信息录入要求两者<b>成对</b>，缺一就拒 ——
+     * 而不报的后果是那笔订单的货款一直冻在微信那边。
+     */
     @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
     @PostMapping("/biz/order/{subOrderNo}/ship")
     public OrderVO ship(@PathVariable String subOrderNo, @RequestBody ShipReq req) {
         var ctx = BizContext.current();
         return merchantOrderService.ship(ctx.requireMerchantNo(), ctx.currentStoreNo(),
-                subOrderNo, req.expressNo());
+                subOrderNo, req.expressNo(), req.expressCompany());
     }
 
     /**
@@ -126,7 +132,12 @@ public class BizOrderController {
                 ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo, ctx.requireMerchantNo());
     }
 
-    /** @param expressNo 快递单号 */
-    public record ShipReq(String expressNo) {
+    /**
+     * @param expressNo      快递单号
+     * @param expressCompany 快递公司，取 {@code ExpressCompanies} 里的码（如 SF / ZTO）。
+     *                       <b>原样是微信的 delivery_id</b>，上报时直接发过去 ——
+     *                       中间再映射一次就多一处会错的地方
+     */
+    public record ShipReq(String expressNo, String expressCompany) {
     }
 }

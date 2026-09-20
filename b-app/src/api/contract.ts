@@ -1202,7 +1202,7 @@ export interface MerchantApi {
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
   /** 快递发货：回填运单号 */
-  mShip(orderNo: string, expressNo: string): Promise<Order>;
+  mShip(orderNo: string, expressNo: string, expressCompany: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
   mDelivered(orderNo: string): Promise<Order>;
   /**

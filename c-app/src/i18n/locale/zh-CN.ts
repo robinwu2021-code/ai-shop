@@ -678,6 +678,8 @@ export default {
     REFUNDED: "已退款",
   },
   order: {
+    /** 没带单号就进了详情页（例如从外部链接）。短位：不解释、只说事实 */
+    noOrderNo: "没有指定订单",
     /** 订单里的拼团进度卡（p08）*/
     groupNeed: "拼团中 · 还差 {n} 人",
     groupLeft: "{t} 后截止 · 没凑齐自动全额退款",
