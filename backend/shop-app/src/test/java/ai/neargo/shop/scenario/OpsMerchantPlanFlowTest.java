@@ -328,7 +328,7 @@ class OpsMerchantPlanFlowTest {
         mvc().perform(post("/biz/order/" + subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expressNo\":\"SF9900001\"}"))
+                        .content("{\"expressNo\":\"SF9900001\",\"expressCompany\":\"SF\"}"))
                 .andExpect(jsonPath("$.code").value(0))
                 /*
                  * 发货后是 **FULFILLING**，不是 SHIPPED。`SHIPPED` / `ARRIVED` 早就不是

@@ -550,10 +550,12 @@ class OpsLogisticsFlowTest {
 
     /** 商家发货并回填快递单号 —— 运单记录的来源就是这一步。 */
     private String shipRaw(String bizToken, String subOrderNo, String expressNo) throws Exception {
+        // 快递公司与运单号成对必填（微信发货信息录入要求）。这里的物流测试
+        // 只关心运单号进没进得去，公司给一个有效码即可
         return mvc().perform(post("/biz/order/" + subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expressNo\":\"" + expressNo + "\"}"))
+                        .content("{\"expressNo\":\"" + expressNo + "\",\"expressCompany\":\"SF\"}"))
                 .andReturn().getResponse().getContentAsString();
     }
 

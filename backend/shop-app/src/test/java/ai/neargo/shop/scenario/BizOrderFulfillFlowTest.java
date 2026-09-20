@@ -61,7 +61,7 @@ class BizOrderFulfillFlowTest {
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + c.merchantToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expressNo\":\"SF1234567890\"}"))
+                        .content("{\"expressNo\":\"SF1234567890\",\"expressCompany\":\"SF\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 /*
@@ -87,7 +87,7 @@ class BizOrderFulfillFlowTest {
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + c.merchantToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expressNo\":\"  \"}"))
+                        .content("{\"expressNo\":\"  \",\"expressCompany\":\"SF\"}"))
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
     }
 
@@ -118,7 +118,7 @@ class BizOrderFulfillFlowTest {
         return mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                 .header("Authorization", "Bearer " + c.merchantToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"expressNo\":\"" + expressNo + "\"}"));
+                .content("{\"expressNo\":\"" + expressNo + "\",\"expressCompany\":\"SF\"}"));
     }
 
     @Test
@@ -127,7 +127,7 @@ class BizOrderFulfillFlowTest {
         Ctx c = prepare("12600129007", "送达测试店", "12600129008");
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
                 .header("Authorization", "Bearer " + c.merchantToken)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"expressNo\":\"SF888\"}"));
+                .contentType(MediaType.APPLICATION_JSON).content("{\"expressNo\":\"SF888\",\"expressCompany\":\"SF\"}"));
 
         mvc().perform(post("/biz/order/" + c.subOrderNo + "/delivered")
                         .header("Authorization", "Bearer " + c.merchantToken))

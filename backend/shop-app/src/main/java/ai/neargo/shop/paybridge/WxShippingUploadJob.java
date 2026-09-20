@@ -6,6 +6,7 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.spi.trade.WxShippingPort;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -49,14 +50,20 @@ public class WxShippingUploadJob implements JobHandler {
 
     private final WxShippingUploadService uploads;
     private final WxShippingUploadResolver resolver;
-    private final WxShippingPort shipping;
+    /**
+     * 用 ObjectProvider 而不是直接注入：{@code WxShippingPort} 由 stub
+     * （{@code matchIfMissing=true}）保证恒存在，但 ConditionalBeanWiringTest 是静态分析，
+     * 看不到 matchIfMissing —— 直接注入会被误判成「依赖了开关更严的 bean」。
+     * 延迟解析既避开这个误报，也没有加载顺序风险（运行时那一刻 stub/真通道必有其一）。
+     */
+    private final ObjectProvider<WxShippingPort> shippingProvider;
     private final JobSupport jobs;
 
     public WxShippingUploadJob(WxShippingUploadService uploads, WxShippingUploadResolver resolver,
-                               WxShippingPort shipping, JobSupport jobs) {
+                               ObjectProvider<WxShippingPort> shippingProvider, JobSupport jobs) {
         this.uploads = uploads;
         this.resolver = resolver;
-        this.shipping = shipping;
+        this.shippingProvider = shippingProvider;
         this.jobs = jobs;
     }
 
@@ -87,6 +94,7 @@ public class WxShippingUploadJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
+        WxShippingPort shipping = shippingProvider.getObject();
         if (!shipping.enabled()) {
             /*
              * 桩模式。**这不是「跑成功了」** —— 说清楚，否则运营页面上一行绿色的「成功」
