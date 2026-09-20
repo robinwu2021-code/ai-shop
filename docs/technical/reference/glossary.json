@@ -3694,6 +3694,12 @@
           "ar": "انتهت مهلة الدفع"
         },
         {
+          "key": "pay.freeSettled",
+          "zh-CN": "无需付款，已完成",
+          "en": "Nothing to pay — done",
+          "ar": "لا حاجة للدفع — تم"
+        },
+        {
           "key": "pay.invokeFailedTitle",
           "zh-CN": "支付没能唤起",
           "en": "Could not open payment",
@@ -25257,6 +25263,13 @@
         "module": "shop-base"
       },
       {
+        "host": "PayChannels",
+        "name": "FREE",
+        "value": "FREE",
+        "zh": "免支付：**应付金额为 0** 的单走它。",
+        "module": "shop-base"
+      },
+      {
         "host": "PayModes",
         "name": "ONLINE",
         "value": "ONLINE",
@@ -32031,6 +32044,14 @@
       "type": "String",
       "value": "ORDER_SETTLE",
       "zh": "营销补差 —— 推断为「反向的分账」，尚未确认。",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "FreePayGateway",
+      "name": "CHANNEL",
+      "type": "String",
+      "value": "ai.neargo.shop.common.PayChannels.FREE",
+      "zh": "通道名。",
       "module": "pay/pay-channel"
     },
     {
