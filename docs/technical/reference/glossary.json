@@ -1252,6 +1252,12 @@
           "ar": "اختر موعدًا؛ يصل الفني في هذا الوقت"
         },
         {
+          "key": "confirm.pickupFar",
+          "zh-CN": "离你约 {d}，确认方便取货",
+          "en": "About {d} away — make sure you can collect there",
+          "ar": "يبعد حوالي {d} — تأكد أنه يناسبك"
+        },
+        {
           "key": "confirm.pickupGroups",
           "zh-CN": "本单 {n} 个取货点，分别去取",
           "en": "{n} pickup points for this order",
