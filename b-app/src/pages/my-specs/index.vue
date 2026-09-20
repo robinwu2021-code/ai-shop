@@ -730,6 +730,7 @@ onShow(() => void load());
           展开后同一个位置变「收起」：同一个按钮管开合，不必再找关掉它的地方。
         -->
         <sh-add
+          flat
           :text="String($t(tab === 'dims' ? 'mySpecs.addDim' : 'mySpecs.addProp'))"
           :active-text="String($t('mySpecs.collapse'))"
           :active="picking === g.categoryNo"

@@ -29,7 +29,7 @@ import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constant
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
 import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SaleMode, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
-import { confirm, pick } from "@ai-shop/ui/prompt";
+import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -325,6 +325,56 @@ const limitPerUser = ref("");
 const fresh = ref({ cutoffAt: "", arrivalDesc: "", weighed: false, origin: "" });
 const service = ref({ durationMin: "", storeName: "" });
 
+/**
+ * 服务时长的档。**不是随便定的几个数**：家政按半小时计费、美容美发按次约 1 小时、
+ * 保洁常见 2～4 小时，所以从 30 起、到 4 小时，跨度大的用整点。
+ * 末尾留「其他」手打 —— 档位是给常见情况省事的，不是把不常见的拦在外面。
+ */
+const DURATION_MINUTES = [30, 60, 90, 120, 180, 240];
+
+/** 选服务时长 */
+async function pickDuration() {
+  const items = [
+    ...DURATION_MINUTES.map((n) => String(t("goods.durationValue", { n }))),
+    String(t("goods.durationOther")),
+  ];
+  const cur = DURATION_MINUTES.indexOf(Number(service.value.durationMin));
+  const i = await pick({ title: String(t("goods.durationMin")), items, selected: cur });
+  if (i === null) return;
+  if (i < DURATION_MINUTES.length) {
+    service.value.durationMin = String(DURATION_MINUTES[i]);
+    return;
+  }
+  const input = await prompt({
+    title: String(t("goods.durationMin")),
+    placeholder: String(t("goods.durationPh")),
+    value: service.value.durationMin,
+    type: "number",
+    maxlength: 4,
+  });
+  if (input === null) return;
+  const n = Number(input.trim());
+  service.value.durationMin = Number.isFinite(n) && n > 0 ? String(Math.round(n)) : "";
+}
+
+/**
+ * 选核销门店。**候选是这个主体的门店**，不让他手打 ——
+ * 核销要拿这个名字去对门店，手打的名字对不上时不会报错，只是核销那天对不上。
+ */
+async function pickVerifyStore() {
+  const stores = merchant.stores;
+  if (!stores.length) return;
+  const items = stores.map((s) => s.name);
+  const i = await pick({
+    title: String(t("goods.verifyStore")),
+    hint: String(t("goods.verifyStoreHint")),
+    items,
+    selected: items.indexOf(service.value.storeName),
+  });
+  if (i === null) return;
+  service.value.storeName = items[i] ?? "";
+}
+
 const isFresh = computed(() => type.value === CATEGORY_TYPE.FRESH);
 const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
 
@@ -385,7 +435,7 @@ const {
   categoryTree, categoryNo, catPath, parentNo, children, gateOf, pickedGate, categoryLabel,
   pickParent, recentCats, loadRecentCats, rememberCat, pickRecent, pickChild, select,
   findPath, loadCategories,
-  storeCats, storeOptions, inStore, pickStore, autoPickSingle, onStoreCatsChanged,
+  storeCats, storeOptions, inStore, pickStore, autoPickSingle,
 } = useCategoryPicker(async (leaf) => {
   const inferred = leaf.template ? TEMPLATE_TO_TYPE[leaf.template] : undefined;
   if (inferred && inferred !== type.value) {
@@ -398,8 +448,6 @@ const {
    */
   await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
 });
-/** 「＋ 添加经营类目」的就地面板开没开 —— 与经营类目页同一个面板，加完回填为选中 */
-const addingCat = ref(false);
 
 
 // ── 五、规格与详情生成 ──────────────────────────────────────────────────
@@ -1382,7 +1430,9 @@ async function save(thenSubmit = false) {
           **有门店时只列本店的经营类目**（TDD-门店经营类目 §4.2）。
           此前列平台整棵树：卖水果的店建一件梨，要从「电子产品 / 生活服务」里翻过去，
           而误点的那一类还会被悄悄加进经营类目。现在不在经营类目里的，后端直接拒。
-          缺的那一类在末尾就地加，加完回填为选中，不离开编辑页。
+          **这里不放「添加经营类目」**：建品页是选货的地方，不是配店的地方 ——
+          在这儿改经营范围，改的是整家店而不是这一件商品，而他此刻想的是这一件。
+          缺类目去「工作台 → 经营类目」加（2026-09-20 店主要求）。
         -->
         <view v-if="storeCats" class="cat-lv">
           <view class="cat-lv__opts sh-wrap">
@@ -1395,7 +1445,6 @@ async function save(thenSubmit = false) {
             >
               {{ c.name }}
             </text>
-            <text class="sh-chip sh-chip--dashed" @tap="addingCat = true">＋ {{ $t("goods.addStoreCategory") }}</text>
           </view>
           <text v-if="!storeOptions.length" class="txt-caption sh-muted cat-lv__t">{{ $t("goods.noStoreCategory") }}</text>
         </view>
@@ -1545,14 +1594,24 @@ async function save(thenSubmit = false) {
         </sh-kv>
       </view>
 
-      <!-- 服务段 -->
+      <!--
+        服务段。**两行都是「点一下选」，不是输入框**（2026-09-20 店主）：
+        原来两个原生输入框上下紧挨着，App 上原生输入的实际高度比 H5 高，
+        两行在真机上叠在一起；而它们本来也不该手打 ——
+        时长是几个固定档（半小时、一小时…），核销门店只能是自己的店，
+        手打出来的「福田店 」多一个空格就与门店对不上，谁也不会发现。
+      -->
       <view v-if="isService" class="field">
         <text class="txt-strong field__label">{{ $t("goods.serviceSection") }}</text>
-        <sh-kv :label="String($t('goods.durationMin'))">
-          <input maxlength="6" v-model="service.durationMin" class="field__input" type="number" />
+        <sh-kv :label="String($t('goods.durationMin'))" divided>
+          <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.durationMin }" @tap="pickDuration">
+            {{ service.durationMin ? $t("goods.durationValue", { n: service.durationMin }) : $t("goods.durationPick") }}
+          </text>
         </sh-kv>
-        <sh-kv :label="String($t('goods.verifyStore'))">
-          <input maxlength="64" v-model="service.storeName" class="field__input" />
+        <sh-kv :label="String($t('goods.verifyStore'))" divided>
+          <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.storeName }" @tap="pickVerifyStore">
+            {{ service.storeName || $t("goods.verifyStorePick") }}
+          </text>
         </sh-kv>
       </view>
 
@@ -2175,12 +2234,6 @@ async function save(thenSubmit = false) {
         </view>
       </view>
     </sh-actionbar>
-    <biz-category-sheet
-      :visible="addingCat"
-      :store-no="merchant.storeNo"
-      @close="addingCat = false"
-      @change="onStoreCatsChanged"
-    ></biz-category-sheet>
   </sh-scaffold>
 </template>
 

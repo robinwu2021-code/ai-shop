@@ -1412,6 +1412,13 @@ export const db = {
       // 3 件里 2 件在卖、1 件待审 —— 让 mock 上就能看出这三个数不是同一个数
       { categoryNo: "CAT130", name: "米面粮油", platformName: "预包装食品", displayName: "米面粮油",
         sort: 1, goodsCount: 3, onSaleCount: 2, pendingCount: 1 },
+      /*
+       * **服务类目也要有一个。**建品页的服务段（服务时长、核销门店）只在服务类目下出现，
+       * 而 mock 店里一个服务类目都没有 —— 那一段在 mock 上永远走不到，
+       * 于是它的版面只能靠真机验（2026-09-20 就是这么漏掉「两个输入框叠在一起」的）。
+       */
+      { categoryNo: "CAT310", name: "家政保洁", platformName: "家政保洁", sort: 2,
+        goodsCount: 0, onSaleCount: 0, pendingCount: 0 },
     ],
   } as Record<string, StoreCategory[]>,
 

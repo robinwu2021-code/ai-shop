@@ -22,8 +22,17 @@ const props = withDefaults(
     active?: boolean;
     /** 小一号：嵌在内容行里用（如每个参数后面的「＋ 加值」） */
     small?: boolean;
+    /**
+     * 矮一档（约 36px）：**跟在分段标题行里**用。
+     *
+     * <p>默认那一档压在 44px 可点下限上，因为它在进货/报损页是「这一屏第一个要点的东西」。
+     * 而在分段标题行里它是次要入口（主路径是点下面的规格行），旁边就是 28px 的 chip ——
+     * 同一行里 44 比 28 高出一半，看起来像个误放的主按钮。
+     * 2026-09-20 店主：「添加规格 button 有一点大，高度稍高，不太协调，适当扁一点」。
+     */
+    flat?: boolean;
   }>(),
-  { activeText: "", active: false, small: false },
+  { activeText: "", active: false, small: false, flat: false },
 );
 
 defineEmits<{ (e: "tap"): void }>();
@@ -33,7 +42,7 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
 
 <template>
   <!-- 横排居中挂 .sh-center（库件），不在下面再敲一遍 display/align/justify -->
-  <view class="add sh-center" :class="{ 'add--on': active, 'add--sm': small }" @tap.stop="$emit('tap')">
+  <view class="add sh-center" :class="{ 'add--on': active, 'add--sm': small, 'add--flat': flat }" @tap.stop="$emit('tap')">
     <sh-icon
       :name="active ? 'close' : 'plus'"
       :size="small ? 20 : 24"
@@ -84,6 +93,13 @@ const label = computed(() => (props.active && props.activeText ? props.activeTex
 /* 小一号：跟在一排 chip 后面时不该比它们高（goods-edit 的「＋ 加值」就是这个位置） */
 .add--sm {
   padding: 4rpx 16rpx;
+}
+/* 矮一档：24rpx → 16rpx，量出来 35.6px。见 props 里 flat 的说明 */
+.add--flat {
+  padding: 16rpx 24rpx;
+}
+.add--flat.add--on {
+  padding: 16rpx 24rpx;
 }
 .add--sm.add--on {
   padding: 2rpx 16rpx;

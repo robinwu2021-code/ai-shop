@@ -234,12 +234,6 @@ export function useCategoryPicker(onSelected: (leaf: Category) => Promise<void>)
     if (!categoryNo.value && storeOptions.value.length === 1) pickStore(storeOptions.value[0]!.categoryNo);
   }
 
-  /** 就地面板里加 / 移出之后：刷新候选；新加的那一类回填为选中 */
-  function onStoreCatsChanged(next: StoreCategory[], added: string | null) {
-    storeCats.value = next;
-    if (added) pickStore(added);
-  }
-
   /** 拉平台类目树与本店经营类目。取不到不该挡住建品 */
   async function loadCategories() {
     const storeNo = merchant.storeNo;
@@ -270,6 +264,6 @@ export function useCategoryPicker(onSelected: (leaf: Category) => Promise<void>)
     categoryTree, categoryNo, catPath, parentNo, children, gateOf, pickedGate, categoryLabel,
     pickParent, recentCats, loadRecentCats, rememberCat, pickRecent, pickChild, select,
     findPath, loadCategories,
-    storeCats, storeOptions, inStore, pickStore, autoPickSingle, onStoreCatsChanged,
+    storeCats, storeOptions, inStore, pickStore, autoPickSingle,
   };
 }
