@@ -213,7 +213,7 @@ onLoad((q) => {
       <view v-if="canShip" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.ship") }}</text>
         <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
-        <view class="carrier sh-mt-sm">
+        <view class="sh-wrap sh-mt-sm">
           <text
             v-for="(c, i) in carriers"
             :key="c.code"
@@ -332,7 +332,6 @@ onLoad((q) => {
   display: block;
   margin-top: 16rpx;
 }
-.carrier { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .carrier__chip {
   padding: 8rpx 20rpx;
   border: var(--sh-hairline);
