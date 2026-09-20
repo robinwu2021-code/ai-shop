@@ -59,6 +59,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -104,6 +105,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -744,6 +746,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -1510,6 +1513,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -1579,6 +1583,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -1633,6 +1638,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -1678,6 +1684,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -1723,6 +1730,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
@@ -3316,6 +3324,7 @@
 | `verifyCode` | `string` | 否 | 自提码 / 核销码 |
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
