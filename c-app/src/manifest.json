@@ -48,10 +48,14 @@
        查了四轮才落到这一行。**声明与获批必须同时成立，缺哪一半都是坏的。**
        所以顺序是：先在后台申请通过，再往这里加。
        两个都要在后台「开发管理 → 接口设置」单独申请开通，声明与申请缺一不可：
-       · getLocation    选社区自提点时按距离排序
-       · chooseLocation 收货地址页在地图上选点
+       · getLocation      选社区自提点时按距离排序
+       · chooseLocation   收货地址页、选择位置页在地图上选点
+       · getFuzzyLocation 首页「我在哪」（区级）—— 2026-09-20 后台已开通，这天补进来。
+         在这之前它被调用着却没声明（没获批时不敢写，见上面那段）。
+         声明与获批必须同时成立，缺哪一半都是坏的；补上之后要真机回看一次，
+         别只在模拟器上判 —— 模拟器对这一类声明一概不拦。
        openLocation（导航到自提点）不在受限名单里，不用声明也不用申请。 */
-    "requiredPrivateInfos": ["getLocation", "chooseLocation", "chooseAddress"]
+    "requiredPrivateInfos": ["getLocation", "chooseLocation", "chooseAddress", "getFuzzyLocation"]
   },
   "h5": {
     "router": { "mode": "hash" },

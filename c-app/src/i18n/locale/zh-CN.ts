@@ -71,7 +71,7 @@ export default {
   community: {
     /** 精确定位到区 */
     /** 模糊定位（区级）—— 文案要说「大致」，别让人以为我们知道得更细 */
-    /** 拿不到坐标时唯一的精确路径（getLocation 被驳回，见 ports/location.ts） */
+    /** 拿不到坐标时的精确路径：用户自己在地图上点（见 ports/location.ts） */
     navigate: "导航",
   },
   goods: {

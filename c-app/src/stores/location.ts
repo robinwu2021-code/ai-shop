@@ -118,7 +118,7 @@ export const useLocationStore = defineStore("location", {
       /*
        * **模糊定位只说到区。**（2026-09-19 真机：人在龙华体育馆，顶栏写「棱镜·男生公寓(清湖地铁站总店)」）
        *
-       * 小程序拿不到精确定位（wx.getLocation 被驳回），走的是 getFuzzyLocation ——
+       * 走到 getFuzzyLocation 的那一次（精确定位被拒 / 接口不可用）——
        * 坐标故意偏几公里、只准到区。拿这个点去反查地名，得到的是偏移点旁边的某个楼盘，
        * 用一个看着很精确的名字说一个只准到区的位置，就是在说假话。
        * 区名是真话；要准的，点顶栏去地址页在地图上选（chooseLocation 不受那条限制）。
