@@ -31,16 +31,35 @@ type Copy = (typeof MERCHANTS_COPY)["zh"];
 export function ModeRiskTab({ c }: { c: Copy }) {
   const list = useQuery({ queryKey: ["mode-risk"], queryFn: () => api.modeRisk() });
   const rows = list.data ?? [];
+  /* 老后端不发 riskType：那时这张表只有「无票成本」一档，按它处理 */
+  const isModeNotSet = (r: ModeRisk) => r.riskType === "MODE_NOT_SET";
+  const hasModeNotSet = rows.some(isModeNotSet);
+  const hasUnlicensed = rows.some((r) => !isModeNotSet(r));
   const totalMinor = rows.reduce((n, r) => n + r.settledMinor, 0);
   const traded = rows.filter((r) => r.settledBills > 0).length;
 
   const cols: Column<ModeRisk>[] = [
     { header: c.mrColMerchant, cell: (r) => r.merchantName },
     {
+      header: c.mrColRisk,
+      /*
+       * **这一列回答的是「为什么它在这张表上」**，两档的答案不一样：
+       * 无票成本要找财务与主体档位，未切第三方只要运营在门店经营模式里切一下。
+       * 混成一个无差别的标签，运营就只能逐行去猜。
+       */
+      cell: (r) =>
+        isModeNotSet(r)
+          ? <Badge tone="warning">{c.mrTypeModeNotSet}</Badge>
+          : <Badge tone="danger">{c.mrTypeUnlicensed}</Badge>,
+    },
+    {
       header: c.mrColLegalForm,
-      // 显示「无营业执照」而不是档位码：这一列要回答的是「为什么它在这张表上」，
+      // 显示「无营业执照」而不是档位码：这一列要回答的是主体资格，
       // 而 MICRO 这个码既不解释原因，还与法规「小微企业（有照）」重名
-      cell: () => <Badge tone="warning">{c.mrNoLicense}</Badge>,
+      cell: (r) =>
+        isModeNotSet(r)
+          ? <span className="text-muted-foreground">{r.legalForm}</span>
+          : <Badge tone="warning">{c.mrNoLicense}</Badge>,
     },
     { header: c.mrColStore, cell: (r) => r.storeName },
     {
@@ -64,8 +83,11 @@ export function ModeRiskTab({ c }: { c: Copy }) {
   return (
     <div className="space-y-4">
       {/* 不可关闭、不是 toast：这段说明是这张表的判读方式，
-          每次打开都要在，而不是看过一次就消失 */}
-      <Notice tone="danger">{c.mrWarning}</Notice>
+          每次打开都要在，而不是看过一次就消失。
+          **两档各写各的**：处置方式不同，合成一段就没人知道哪句话对着哪一行。
+          只有表里真有那一档时才显示，否则空表下面挂两段互相矛盾的说明。 */}
+      {hasUnlicensed && <Notice tone="danger">{c.mrWarning}</Notice>}
+      {hasModeNotSet && <Notice tone="warning">{c.mrModeWarning}</Notice>}
 
       {rows.length > 0 && (
         <Notice tone="muted">

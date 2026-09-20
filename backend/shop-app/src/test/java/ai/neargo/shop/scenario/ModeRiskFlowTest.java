@@ -2,7 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.MerchantGovernService;
 import org.junit.jupiter.api.DisplayName;
@@ -39,19 +41,59 @@ class ModeRiskFlowTest {
     @Autowired
     private MchStoreMapper storeMapper;
 
+    @Autowired
+    private MchPaymentMapper paymentMapper;
+
     @Test
-    @DisplayName("★★ 无照主体的自营门店进清单，有照的不进")
-    void onlyUnlicensedSelfOperatedListed() {
+    @DisplayName("★★ 无照主体的自营门店进清单，标成税那一档")
+    void unlicensedSelfOperatedListed() {
         String micro = anEntity("NATURAL_PERSON");
-        String company = anEntity("ENTERPRISE");
         String microStore = aStore(micro, MchStore.SELF_OPERATED);
-        aStore(company, MchStore.SELF_OPERATED);
 
         var risk = governService.modeRiskStores();
 
-        assertThat(risk).anySatisfy(r -> assertThat(r.storeNo()).isEqualTo(microStore));
-        // 有照主体即便自营也不是风险 —— 它开得出进项票
-        assertThat(risk).noneSatisfy(r -> assertThat(r.merchantNo()).isEqualTo(company));
+        assertThat(risk).anySatisfy(r -> {
+            assertThat(r.storeNo()).isEqualTo(microStore);
+            assertThat(r.riskType()).isEqualTo("UNLICENSED_SELF_OPERATED");
+        });
+    }
+
+    @Test
+    @DisplayName("★★ 有照 + 自营 + 有收款号 = 结算口径那一档 —— 本该按第三方算，现在按自营算")
+    void licensedSelfOperatedWithPayAccountListed() {
+        String company = anEntity("ENTERPRISE");
+        String store = aStore(company, MchStore.SELF_OPERATED);
+        activePayMerchant(company, store);
+
+        var risk = governService.modeRiskStores();
+
+        assertThat(risk).anySatisfy(r -> {
+            assertThat(r.storeNo()).isEqualTo(store);
+            assertThat(r.riskType()).isEqualTo("MODE_NOT_SET");
+        });
+    }
+
+    @Test
+    @DisplayName("★★ 有照 + 自营但**没有收款号**：不进清单 —— 列出来运营也切不了（第三方要求收款号）")
+    void licensedWithoutPayAccountNotListed() {
+        String company = anEntity("ENTERPRISE");
+        String store = aStore(company, MchStore.SELF_OPERATED);
+
+        var risk = governService.modeRiskStores();
+
+        assertThat(risk).noneSatisfy(r -> assertThat(r.storeNo()).isEqualTo(store));
+    }
+
+    @Test
+    @DisplayName("★★ 平台自营主体不进清单 —— 它本来就该是自营（V329 的第三根轴）")
+    void platformSelfOperatedEntityNotListed() {
+        String platform = anEntity("ENTERPRISE", 1);
+        String store = aStore(platform, MchStore.SELF_OPERATED);
+        activePayMerchant(platform, store);
+
+        var risk = governService.modeRiskStores();
+
+        assertThat(risk).noneSatisfy(r -> assertThat(r.storeNo()).isEqualTo(store));
     }
 
     @Test
@@ -97,14 +139,32 @@ class ModeRiskFlowTest {
     }
 
     private String anEntity(String legalForm) {
+        return anEntity(legalForm, 0);
+    }
+
+    /** @param selfOperated 1 = 平台自营主体（mch_entity.self_operated，V329） */
+    private String anEntity(String legalForm, int selfOperated) {
         String no = "MRK" + System.nanoTime() % 100_000_000;
         MchEntity m = new MchEntity();
         m.setEntityNo(no);
         m.setName("风险清单测试主体");
         m.setLegalForm(legalForm);
         m.setStatus("ACTIVE");
+        m.setSelfOperated(selfOperated);
         entityMapper.insert(m);
         return no;
+    }
+
+    /** 给这家店挂一个 ACTIVE 的本店收款号 —— 「切得成第三方」的硬前提 */
+    private void activePayMerchant(String entityNo, String storeNo) {
+        MchPaymentMerchant p = new MchPaymentMerchant();
+        p.setEntityNo(entityNo);
+        p.setStoreNo(storeNo);
+        p.setPayMerchantNo("PMMRK" + System.nanoTime() % 100_000_000);
+        p.setPayChannel("WECHAT");
+        p.setLegalForm("ENTERPRISE");
+        p.setApplyStatus(MchPaymentMerchant.ACTIVE);
+        paymentMapper.insert(p);
     }
 
     private String aStore(String entityNo, String mode) {

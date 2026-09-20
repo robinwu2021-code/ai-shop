@@ -347,9 +347,24 @@ public interface MerchantGovernService {
      *                      0 表示「查过了，没有」—— 与「还没查」要在界面上区分开
      * @param settledMinor  累计商家实得（分）。<b>这就是不可税前扣除的成本规模</b>
      */
+    /**
+     * 经营模式风险的一行。
+     *
+     * @param riskType 这一行在说哪种问题（TDD-门店经营模式与结算口径 §7）：
+     *                 <ul>
+     *                   <li>{@code UNLICENSED_SELF_OPERATED} 无照主体 + 自营门店 ——
+     *                       <b>税</b>：平台是销售主体要取得进项票，而无照主体开不出，成本不可税前扣除</li>
+     *                   <li>{@code MODE_NOT_SET} 有照主体 + 自营门店 + 有可用收款号 ——
+     *                       <b>结算口径</b>：本该按第三方算（佣金率 + 分账），现在按自营算。
+     *                       它不是配错了，是 {@code business_mode} 的建表默认值 + 入驻不写它的必然结果</li>
+     *                 </ul>
+     *                 <b>两档要分开标</b>：处理方式不同 —— 前者要农业生产者标记或换档位，
+     *                 后者只要运营在「门店经营模式」里切一下。混成一张无差别的表，
+     *                 运营就只能逐行去猜这一行为什么在这儿
+     */
     record ModeRiskVO(String merchantNo, String merchantName, String legalForm,
                       String storeNo, String storeName, String businessMode,
-                      long settledBills, long settledMinor) {
+                      long settledBills, long settledMinor, String riskType) {
     }
 
     /**

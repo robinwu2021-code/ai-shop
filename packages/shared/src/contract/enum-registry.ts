@@ -238,6 +238,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "**已对齐（2026-08-11）**。判权改读后端下发的 staff.perms，前端 UI 码经 lib/perm-map.ts 的 UI_PERM_MAP 翻译成后端码 —— 两套码的粒度不同不是错（前端 45 个要控按钮，后端 14 个只管端点），错的是此前根本没连接。三条守卫在 ops-web/lib/perm-map.test.ts：页面用的码必须登记、映射到的后端码必须真存在于 Perms.java、前端的角色镜像必须与 Java 源码一致。角色码异名同义仍在 http 层翻译（BD↔MERCHANT_BD 等）。**ops-web 保留 11 个角色**：它们与需求矩阵 §2.3 逐条对应，后端只配了 4 个 —— 那是后端的缺口，不是前端多造，砍前端等于砍需求" },
   { decl: "ops-web:FieldType", dom: "ui", shape: "CLASS", verdict: "OK",
     note: "运营端表单控件类型，纯渲染层。后端零出现" },
+  { decl: "ops-web:ModeRiskType", dom: "settle", shape: "CLASS", verdict: "OK",
+    note: "经营模式风险清单的档（TDD-门店经营模式与结算口径 §7）。后端 ModeRiskVO.riskType 的两个取值，"
+      + "端上只读不写；两档的处置方式不同，所以不能合并成一个布尔" },
   { decl: "ops-web:BusinessMode", dom: "settle", shape: "CLASS", verdict: "OK",
     note: "经营模式，与后端 MchStore.SELF_OPERATED / THIRD_PARTY 同一套取值。**它与「分账时机」是两个正交的轴，不要合并** —— 合并之后「自营 + 直连分账」这种非法组合在类型上就是可表达的" },
   { decl: "ops-web:FeeTrafficSource", dom: "settle", shape: "CLASS", verdict: "OK",

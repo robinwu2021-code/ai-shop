@@ -401,6 +401,16 @@ export interface StoreMode {
  * 且后端没有任何一处校验「无照不得自营」。所以这份清单不是异常报表，
  * 是**现状盘点**。
  */
+/**
+ * 这一行在说哪种问题（后端 ModeRiskVO.riskType，TDD-门店经营模式与结算口径 §7）。
+ *
+ * <p>`UNLICENSED_SELF_OPERATED` 无照主体 + 自营门店 —— 税：无进项票，成本不可税前扣除。
+ * <p>`MODE_NOT_SET` 有照主体 + 自营门店 + 有可用收款号 —— 结算口径：本该按第三方算。
+ *
+ * <p>**两档的处置方式不同**（前者找财务与档位，后者运营切一下就好），所以界面要分开标。
+ */
+export type ModeRiskType = "UNLICENSED_SELF_OPERATED" | "MODE_NOT_SET";
+
 export interface ModeRisk {
   /** 商家主体号 */
   merchantNo: string;
@@ -418,6 +428,8 @@ export interface ModeRisk {
   settledBills: number;
   /** 累计商家实得（分）。**这就是不可税前扣除的成本规模** */
   settledMinor: number;
+  /** 这一行属于哪一档 —— 老后端不发时按「无票成本」处理（那是本表原本的唯一一档） */
+  riskType?: ModeRiskType;
 }
 
 /**

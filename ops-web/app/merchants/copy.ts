@@ -187,21 +187,30 @@ const zh = {
   soResultReachZero: "可达 0 个小区 —— 主体建出来了，但它现在对谁都不可见：商品能上架、店在列表里、订单永远是零，而任何页面都不会报错。下一步是先有小区（B 端提报 → 运营通过），不是继续配这家店。",
   soResultCreated: "新建成功：{no}。接下来去「商家档案」给它授经营类目，再去 B 端建商品。",
   soResultIdempotent: "没有新建。{no} 是这个手机号原本就有的主体，覆盖社区等配置已按本次填写对齐了一遍。",
-  mrTitle: "无执照主体的自营门店",
-  mrDesc: "自营下平台是销售方，需要供应商的进项发票才能列支成本",
+  mrTitle: "经营模式待处理的门店",
+  mrDesc: "两类都源自同一件事：门店经营模式默认是自营，而入驻这条路从不改它",
   mrNoLicense: "无营业执照",
+  mrColRisk: "问题",
+  mrTypeUnlicensed: "无票成本",
+  mrTypeModeNotSet: "未切第三方",
   mrColMerchant: "商家主体",
   mrColLegalForm: "主体资格",
   mrColStore: "门店",
   mrColBills: "已结算单数",
   mrColExposure: "累计商家实得",
   mrNotTraded: "尚未成交",
-  mrEmpty: "没有无执照主体挂在自营门店上。这一页空着是好事，说明没有进项票缺口。",
+  mrEmpty: "没有待处理的门店。这一页空着是好事：既没有进项票缺口，也没有该切第三方却还挂着自营的店。",
   mrWarning:
     "这些门店的经营主体没有营业执照，而门店按自营结算 —— 平台是销售方，"
     + "需取得进项发票才能列支成本。无票的支出不得在企业所得税前扣除，"
     + "等于账面上凭空多出等额利润。处置方式请与财务确认。",
   mrSummary: "共 {stores} 家门店，其中 {traded} 家已产生成交，累计 {amount}。",
+  mrModeWarning:
+    "标「未切第三方」的门店：主体有执照、也有可用收款号，本该按第三方结算"
+    + "（佣金率、钱直接进商家账户），而门店还挂着自营，于是按自营口径（毛利率）算。"
+    + "这不是谁配错了 —— 经营模式的默认值就是自营，入驻这条路不改它。"
+    + "处置：在「门店经营模式」里逐个切成第三方。已结算的账单不回改 —— "
+    + "账单上的口径是当时的快照，差额怎么处理由财务定。",
   adQuotaTitle: "收款额度",
   adQuotaHint: "小微收款号有单日/单笔的通道额度，超过就收不进钱 —— 订单会在支付这一步失败，而商家看到的只是「支付失败」。0 = 未设置（不拦），不是「额度为零」；填小了会把正常商家的货全拦下来，所以阈值要由服务商确认后再填。已用量是支付累加出来的事实，运营改不了。",
   adQuotaNoAccount: "这家还没有收款号 —— 要先走进件，不是把额度调大。",
@@ -833,22 +842,32 @@ const en: typeof zh = {
   soResultReachZero: "Reaches 0 communities — the entity exists but is visible to nobody: products can be listed, the store shows in lists, orders stay at zero, and no page reports anything wrong. The next step is to get a community (merchant submits, ops approves), not to configure this store further.",
   soResultCreated: "Created: {no}. Next, grant its categories under Merchant profiles, then add products from the merchant app.",
   soResultIdempotent: "Nothing new was created. {no} already belonged to this number; its covered communities were realigned with what you entered.",
-  mrTitle: "Self-operated stores under unlicensed entities",
-  mrDesc: "In self-operated mode the platform is the seller and needs supplier invoices to deduct costs",
+  mrTitle: "Stores whose business mode needs attention",
+  mrDesc: "Both kinds come from one thing: a store's business mode defaults to self-operated and onboarding never changes it",
   mrNoLicense: "No business licence",
+  mrColRisk: "Issue",
+  mrTypeUnlicensed: "No input invoice",
+  mrTypeModeNotSet: "Still self-operated",
   mrColMerchant: "Merchant",
   mrColLegalForm: "Legal status",
   mrColStore: "Store",
   mrColBills: "Settled bills",
   mrColExposure: "Paid to supplier",
   mrNotTraded: "No sales yet",
-  mrEmpty: "No unlicensed entity is attached to a self-operated store. An empty page is the good outcome: no input-invoice exposure.",
+  mrEmpty: "Nothing to handle. An empty page is the good outcome: no input-invoice exposure, and no store left as self-operated that should settle as third-party.",
   mrWarning:
     "These stores belong to entities without a business licence, yet settle as self-operated. "
     + "The platform is the seller and needs input invoices to deduct costs. "
     + "Spending without an invoice is not deductible for corporate income tax, "
     + "which inflates reported profit by the same amount. Confirm the handling with finance.",
   mrSummary: "{stores} stores, {traded} with sales, {amount} in total.",
+  mrModeWarning:
+    "Stores marked \"Still self-operated\": the entity has a licence and a usable payment account, "
+    + "so they should settle as third-party (commission rate, money going straight to the merchant), "
+    + "yet the store is still self-operated and settles on the self-operated basis (margin rate). "
+    + "Nobody misconfigured this — business mode defaults to self-operated and onboarding never sets it. "
+    + "To handle: switch them one by one under Store business mode. Settled bills are not rewritten; "
+    + "each bill carries the basis used at the time, and finance decides what to do about the difference.",
   adQuotaTitle: "Payment quota",
   adQuotaHint: "Micro-merchant payment accounts carry per-day and per-transaction channel limits; once exceeded, money simply stops coming in — the order fails at the payment step and all the merchant sees is \"payment failed\". 0 means unset (no limit enforced), not \"a quota of zero\". Setting it too low blocks a healthy merchant entirely, so confirm the threshold with the payment provider before entering it. Used amounts accumulate from real payments and cannot be edited.",
   adQuotaNoAccount: "This merchant has no payment account yet — the fix is onboarding, not a bigger quota.",

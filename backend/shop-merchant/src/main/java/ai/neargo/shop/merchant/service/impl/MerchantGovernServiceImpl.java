@@ -793,13 +793,18 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         // 「哪一档免执照」由注册表决定，SQL 里写不出这个条件
         // ★ 接数据域（批②）：这是主查询 —— 商家域运营的风险清单只该有那一家
         List<MchEntity> all = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery());
-        Map<String, MchEntity> unlicensed = new java.util.HashMap<>();
+        Map<String, MchEntity> candidates = new java.util.HashMap<>();
         for (MchEntity m : all) {
-            if (!masterDataPort.needLicense(m.getLegalForm())) {
-                unlicensed.put(m.getEntityNo(), m);
+            /*
+             * **平台自营主体不进这张表。**它本来就该是自营 —— 列出来等于让运营
+             * 把平台自己的店切成第三方，那才是错的（V329：self_operated 是第三根轴）。
+             */
+            if (Integer.valueOf(1).equals(m.getSelfOperated())) {
+                continue;
             }
+            candidates.put(m.getEntityNo(), m);
         }
-        if (unlicensed.isEmpty()) {
+        if (candidates.isEmpty()) {
             return List.of();
         }
 
@@ -807,7 +812,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         List<MchStore> selfOperated = storeProfileMapper.selectList(
                 Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getBusinessMode, MchStore.SELF_OPERATED)
-                        .in(MchStore::getEntityNo, unlicensed.keySet()));
+                        .in(MchStore::getEntityNo, candidates.keySet()));
         if (selfOperated.isEmpty()) {
             return List.of();
         }
@@ -817,19 +822,47 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
 
         return selfOperated.stream()
                 .map(st -> {
-                    MchEntity m = unlicensed.get(st.getEntityNo());
+                    MchEntity m = candidates.get(st.getEntityNo());
+                    String riskType = riskTypeOf(m, st);
+                    if (riskType == null) {
+                        return null;
+                    }
                     // 缺省成 0 而不是跳过：**「有这家店但还没成交」也是要显示的一行** ——
                     // 它是即将发生的敞口，正好是最该在成交前处理掉的那些
                     var e = exposure.getOrDefault(st.getEntityNo(),
                             new ai.neargo.shop.spi.settle.SelfOperatedExposurePort.Exposure(0, 0));
                     return new ModeRiskVO(m.getEntityNo(), m.getName(), m.getLegalForm(),
                             st.getStoreNo(), st.getName(), st.getBusinessMode(),
-                            e.billCount(), e.amountMinor());
+                            e.billCount(), e.amountMinor(), riskType);
                 })
+                .filter(java.util.Objects::nonNull)
                 // 敞口大的排前面 —— 这份清单的用途就是决定先处理谁
                 .sorted(java.util.Comparator.comparingLong(ModeRiskVO::settledMinor).reversed())
                 .toList();
     }
+
+    /**
+     * 这家自营门店属于哪一档风险，{@code null} = 不进清单
+     *（TDD-门店经营模式与结算口径 §7）。
+     */
+    private String riskTypeOf(MchEntity entity, MchStore store) {
+        if (!masterDataPort.needLicense(entity.getLegalForm())) {
+            return UNLICENSED_SELF_OPERATED;   // 税那一档，与本次改动之前逐字一致
+        }
+        /*
+         * 有照主体 + 自营门店：本该走第三方（佣金率 + 分账）。
+         *
+         * <p>**没有可用收款号的不列** —— 那种店切成第三方会被 setBusinessMode 的硬前提
+         * 当场拒掉（PAY_MERCHANT_REQUIRED），列出来运营也处理不了，只会把清单稀释成噪声。
+         * 等它进件拿到收款号，自然就出现在这张表上。
+         */
+        return activePayMerchantNo(store) == null ? null : MODE_NOT_SET;
+    }
+
+    /** 无照主体 + 自营门店：税前扣除那一档 */
+    private static final String UNLICENSED_SELF_OPERATED = "UNLICENSED_SELF_OPERATED";
+    /** 有照主体 + 自营门店 + 有可用收款号：结算口径那一档，运营切一下就好 */
+    private static final String MODE_NOT_SET = "MODE_NOT_SET";
 
     /**
      * 该店实际可用的收款号：优先本店专属号，回落到主体默认号。
