@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 88,
+        "b-app": 89,
         "c-app": 3
       }
     },
@@ -4019,10 +4019,18 @@
         "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 77,
-      "localSelectors": 12,
-      "localCssLines": 47,
-      "rolled": []
+      "libClassHits": 78,
+      "localSelectors": 15,
+      "localCssLines": 60,
+      "rolled": [
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5557,6 +5565,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "b-app/order"
       ]
     }
   ],

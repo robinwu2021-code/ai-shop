@@ -3388,6 +3388,12 @@
           "ar": "المجموعة مفتوحة · يلزم {n} آخرون"
         },
         {
+          "key": "order.noOrderNo",
+          "zh-CN": "没有指定订单",
+          "en": "No order specified",
+          "ar": "لم يُحدَّد طلب"
+        },
+        {
           "key": "order.orderNo",
           "zh-CN": "订单号",
           "en": "Order no.",
@@ -12132,6 +12138,12 @@
           "zh-CN": "确认收到货款",
           "en": "Confirm payment received",
           "ar": "تأكيد استلام المبلغ"
+        },
+        {
+          "key": "order.pickCarrier",
+          "zh-CN": "请选择快递公司",
+          "en": "Pick a courier",
+          "ar": "اختر شركة الشحن"
         },
         {
           "key": "order.receiver",
@@ -32315,6 +32327,22 @@
       "type": "Set<String>",
       "value": "Set.of(STORE_PICKUP, NEIGHBOR_PICKUP, MERCHANT_DELIVERY, EXPRESS)",
       "zh": "实物类履约 —— 新建商品的默认集合。",
+      "module": "shop-base"
+    },
+    {
+      "host": "GoodsDesc",
+      "name": "PAY_MAX",
+      "type": "int",
+      "value": "127",
+      "zh": "微信支付 description 的上限",
+      "module": "shop-base"
+    },
+    {
+      "host": "GoodsDesc",
+      "name": "SHIPPING_MAX",
+      "type": "int",
+      "value": "120",
+      "zh": "发货信息录入 item_desc 的上限",
       "module": "shop-base"
     },
     {
