@@ -182,6 +182,31 @@ class StoreCategoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 运营授码之后，同一个类目就加得上了 —— 没证的第三方的出路在运营那一侧")
+    void opsGrantOpensTheCategory() throws Exception {
+        String token = merchant("12600141009", "货架测试·授权后");
+        String storeNo = defaultStore(token);
+        gate(true);
+
+        // 没证：加不上，也就建不了这一类的商品（TDD-门店经营类目 §11）
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT110\"}]}"))).isEqualTo(70002);
+
+        // 运营在「类目授权」里授码 —— 这就是「增加 / 放行」的那一下，带 reason 留痕
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/ops/merchants/" + merchantNoOf(token) + "/auth-codes")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"codes\":[\"FRESH_VEG\"],\"reason\":\"已核验食品经营许可证\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT110\"}]}"))).isZero();
+        assertThat(categories(token, storeNo)).hasSize(1);
+    }
+
+    @Test
     @DisplayName("★★ 平台自营主体加经营类目不判资质 —— 与上面那条同一个类目、同一个开关，只差主体的 self_operated")
     void selfOperatedStoreSkipsQualification() throws Exception {
         String token = merchant("12600141008", "货架测试·自营");
