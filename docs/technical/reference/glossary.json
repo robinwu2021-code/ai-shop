@@ -6405,14 +6405,14 @@
         },
         {
           "key": "channel.NEIGHBOR_PICKUP",
-          "zh-CN": "社区自提点",
-          "en": "Community pickup point",
-          "ar": "نقطة استلام المجتمع"
+          "zh-CN": "自提点自提",
+          "en": "Pickup point",
+          "ar": "نقطة استلام"
         },
         {
           "key": "channel.STORE_PICKUP",
-          "zh-CN": "门店自取",
-          "en": "In-store pickup",
+          "zh-CN": "门店自提",
+          "en": "Store pickup",
           "ar": "الاستلام من المتجر"
         },
         {
@@ -8025,15 +8025,15 @@
         },
         {
           "key": "fulfillmentLabel.NEIGHBOR_PICKUP",
-          "zh-CN": "邻里自提",
-          "en": "Neighbour pickup",
-          "ar": "استلام من الجار"
-        },
-        {
-          "key": "fulfillmentLabel.STORE_PICKUP",
           "zh-CN": "自提点自提",
           "en": "Pickup point",
           "ar": "نقطة استلام"
+        },
+        {
+          "key": "fulfillmentLabel.STORE_PICKUP",
+          "zh-CN": "门店自提",
+          "en": "Store pickup",
+          "ar": "الاستلام من المتجر"
         },
         {
           "key": "fulfillmentLabel.STORE_VERIFY",
@@ -8439,15 +8439,15 @@
         },
         {
           "key": "goods.fulfillmentType.NEIGHBOR_PICKUP",
-          "zh-CN": "邻居家自提",
-          "en": "Neighbour pickup",
-          "ar": "استلام من الجار"
-        },
-        {
-          "key": "goods.fulfillmentType.STORE_PICKUP",
           "zh-CN": "自提点自提",
           "en": "Pickup point",
           "ar": "نقطة استلام"
+        },
+        {
+          "key": "goods.fulfillmentType.STORE_PICKUP",
+          "zh-CN": "门店自提",
+          "en": "Store pickup",
+          "ar": "الاستلام من المتجر"
         },
         {
           "key": "goods.fulfillmentType.STORE_VERIFY",
@@ -17181,9 +17181,9 @@
         },
         {
           "key": "store.channelDesc.NEIGHBOR_PICKUP",
-          "zh-CN": "送到社区自提点，顾客就近拿",
-          "en": "Delivered to community pickup points for customers nearby",
-          "ar": "التوصيل إلى نقاط الاستلام المجتمعية ليستلم العميل من الأقرب"
+          "zh-CN": "送到系统里的自提点，顾客就近取",
+          "en": "Delivered to a pickup point in the system for customers to collect nearby",
+          "ar": "التوصيل إلى نقطة استلام في النظام ليستلم العميل من الأقرب"
         },
         {
           "key": "store.channelDesc.STORE_PICKUP",
