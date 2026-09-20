@@ -201,6 +201,12 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   raiseDispute: { method: "POST", path: "/mp/after-sale/:afterSaleNo/escalate", auth: true, summary: "上升平台裁决" },
 
   couponList: { method: "GET", path: "/mp/coupon", auth: false, summary: "优惠券列表" },
+  /*
+   * **「我的券」与「领券中心」是两个端点，别混用**（TDD-C端我的券接真接口）。
+   * `couponList` 回答「现在能领哪些」，下面这个回答「我手里有哪些」——
+   * 活动下架 / 抢光 / 过期之后，券从前者消失，而它还在用户手里。
+   */
+  myCoupons: { method: "GET", path: "/mp/coupon/mine", auth: true, summary: "我领到的券" },
   myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
   myMemberships: { method: "GET", path: "/mp/my-memberships", auth: true, summary: "我是哪几家店的会员" },
   reachOpened: { method: "POST", path: "/mp/member-reach/:reachNo/opened", auth: true, summary: "点推送进店" },

@@ -25,7 +25,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, CheckoutCapability, Coupon, FulfillmentType, OrderItem, OrderAmount, PointsDeductible } from "@shared/types";
+import type { Address, CartItem, CheckoutCapability, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
@@ -41,7 +41,8 @@ const fulfillment = ref<FulfillmentType>(FULFILLMENT.PICKUP);
 const items = ref<CartItem[]>([]);
 const addresses = ref<Address[]>([]);
 const addressId = ref("");
-const coupons = ref<Coupon[]>([]);
+/** 我领到的券（`/mp/coupon/mine`）。不是领券中心那批 —— 见 onMounted */
+const coupons = ref<UserCoupon[]>([]);
 const couponNo = ref("");
 const remark = ref("");
 const usePoints = ref(false);
@@ -159,15 +160,22 @@ async function confirmPlaceMismatch(): Promise<boolean> {
  * 否则住在小区斜对面的人每次下单都被问一遍。
  */
 const COMMUNITY_REACH_M = 2000;
-const coupon = computed(() => coupons.value.find((c) => c.couponNo === couponNo.value));
+const coupon = computed(
+  () => coupons.value.find((u) => u.coupon.couponNo === couponNo.value)?.coupon,
+);
 
-/** 可用券：已领取、未过期、且达到门槛 */
+/**
+ * 可用券。**「还能不能用」以服务端的 `usableNow` 为准**（用没用过、在不在有效期，
+ * 只有它知道）；端上只再判这一单自己的事：金额够不够门槛、当面付能不能用平台券。
+ */
 const usableCoupons = computed(() =>
-  coupons.value.filter(
-    (c) => c.received && c.endAt > Date.now() && goodsMinor.value >= c.thresholdMinor
-      // 当面付下平台券用不了 —— 列表里就不该出现，否则他选完才被摘掉
-      && !(payMode.value === PAY_MODE.OFFLINE && c.funder === "PLATFORM"),
-  ),
+  coupons.value
+    .filter(
+      (u) => u.usableNow && goodsMinor.value >= u.coupon.thresholdMinor
+        // 当面付下平台券用不了 —— 列表里就不该出现，否则他选完才被摘掉
+        && !(payMode.value === PAY_MODE.OFFLINE && u.coupon.funder === "PLATFORM"),
+    )
+    .map((u) => u.coupon),
 );
 
 const goodsMinor = computed(() =>
@@ -587,12 +595,18 @@ async function loadAddresses() {
   }
 }
 
+/** 「09-30」。券行与选择弹层共用 —— 两处写法不一样会让人以为是两个日期 */
+function mmdd(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 async function pickCoupon() {
   // 券没取到时这一行显示「没能加载出来」，点它就是重试 ——
   // 否则那句话说了等于没说：顾客知道出事了，却没有能做的事
   if (couponFailed.value) {
     try {
-      coupons.value = await api.couponList();
+      coupons.value = await api.myCoupons();
       couponFailed.value = false;
     } catch {
       couponFailed.value = true;
@@ -600,9 +614,18 @@ async function pickCoupon() {
     return;
   }
   if (!usableCoupons.value.length) return;
+  /*
+   * 每一行要说清**这张券是什么**：名字、抵多少、门槛、到什么时候。
+   * 只给「名字 -金额」的话，用户看不出为什么这张能用那张不能，也不知道快过期了。
+   */
   const names = [
     String(t("confirm.noCoupon")),
-    ...usableCoupons.value.map((c) => `${c.title} -${money(couponDiscount(c, goodsMinor.value))}`),
+    ...usableCoupons.value.map((c) => {
+      const parts = [`${c.title} -${money(couponDiscount(c, goodsMinor.value))}`];
+      if (c.thresholdMinor) parts.push(String(t("coupon.threshold", { p: money(c.thresholdMinor) })));
+      parts.push(String(t("coupon.until", { d: mmdd(c.endAt) })));
+      return parts.join(" · ");
+    }),
   ];
   const idx = await pick({
     title: String(t("confirm.pickCoupon")),
@@ -765,8 +788,13 @@ onMounted(async () => {
    * 券那一行显示「无可用券」，而顾客明明有券；积分抵扣那一行直接不出现。
    * 两件事互不相干，一条挂了不该带走另一条。
    */
+  /*
+   * **券走「我的券」，不走领券中心**（TDD-C端我的券接真接口）。
+   * 领券中心回答的是「现在能领哪些」—— 活动下架 / 抢光 / 过了可领期之后，
+   * 用户手里那张就从返回里消失，结算页于是说「无可用券」，而他明明有。
+   */
   const [c, a] = await Promise.allSettled([
-    api.couponList(),
+    api.myCoupons(),
     FEATURES.points ? api.pointAccount() : Promise.resolve(null),
   ]);
   if (c.status === "fulfilled") coupons.value = c.value;

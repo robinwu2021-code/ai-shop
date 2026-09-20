@@ -15,6 +15,7 @@ import type { ShopApi } from "../contract";
 
 export const marketingMock: Pick<ShopApi,
   "couponList"
+  | "myCoupons"
   | "myStoreCoupons"
   | "myMemberships"
   | "setMembershipReach"
@@ -37,6 +38,37 @@ export const marketingMock: Pick<ShopApi,
         title: pick(c.title),
         scopeDesc: pick(c.scopeDesc),
       })),
+    );
+  },
+
+  /**
+   * 我领到的券。由领券中心那批里「已领」的变出来 ——
+   * **形状按真接口来**（UserCoupon：status / usableNow / usedAt），
+   * 否则页面在 mock 上跑得通、接真后端就散架。
+   *
+   * 三种状态各造一张（能用 / 用掉 / 过期）：三栏都空的话，
+   * 「已使用」「已过期」那两栏改坏了也看不出来。
+   */
+  async myCoupons() {
+    const now = Date.now();
+    /*
+     * **不筛 `received`**：种子里所有券默认都是「没领过」（领过才置真），
+     * 筛了的话这一页在本机永远是空的 —— 而空页面看起来和「接口坏了」一模一样。
+     * 这里直接拿前三张模板造出三种状态，**不改种子**（种子是全量测试共用的）。
+     */
+    return delay(
+      db.couponSeeds.slice(0, 3).map((c, i) => {
+        const coupon = { ...c, title: pick(c.title), scopeDesc: pick(c.scopeDesc) };
+        const status = i === 1 ? "USED" : i === 2 ? "EXPIRED" : "UNUSED";
+        return {
+          userCouponNo: `UC${String(i + 1).padStart(4, "0")}`,
+          coupon,
+          status,
+          usableNow: status === "UNUSED" && coupon.endAt > now,
+          receivedAt: now - (i + 1) * 86400_000,
+          usedAt: status === "USED" ? now - 3600_000 : undefined,
+        };
+      }),
     );
   },
 

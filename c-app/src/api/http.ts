@@ -178,6 +178,7 @@ export const httpApi: ShopApi = {
     http.post<AfterSale>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
 
   couponList: () => call<Coupon[]>("couponList"),
+  myCoupons: () => call<UserCoupon[]>("myCoupons"),
   myStoreCoupons: () => call<MyStoreCoupon[]>("myStoreCoupons"),
   myMemberships: () => call<MyMembership[]>("myMemberships"),
   setMembershipReach: (entityNo, optOut) =>

@@ -14,7 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
-import type { Coupon, MyStoreCoupon } from "@shared/types";
+import type { MyStoreCoupon, UserCoupon } from "@shared/types";
 
 const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
@@ -28,19 +28,27 @@ const TABS = [
 const tab = ref<Tab>("usable");
 
 const store = ref<MyStoreCoupon[]>([]);
-const center = ref<Coupon[]>([]);
+/** 我领到的那些（`/mp/coupon/mine`）。**不是领券中心** —— 见 load() */
+const mineCoupons = ref<UserCoupon[]>([]);
 const loaded = ref(false);
 const failed = ref(false);
 
 async function load() {
   try {
+    /*
+     * **走「我的券」，不走领券中心**（TDD-C端我的券接真接口）。
+     *
+     * 此前这儿是 `couponList().filter(c => c.received)` —— 领券中心回答的是
+     * 「现在能领哪些」：活动一下架、被抢光、或者过了可领期，那张券就从返回里消失，
+     * 而它**还在用户手里**。于是「我的券」会凭空少几张，
+     * 「已使用 / 已过期」两栏更是基本恒空（领券中心不回答用没用过）。
+     */
     const [mine, list] = await Promise.all([
       api.myStoreCoupons(),
-      // 领券中心那一套（平台券 / 老的店铺券）：领过的也算我的券。取不到不拖垮整页
-      api.couponList().catch(() => [] as Coupon[]),
+      api.myCoupons().catch(() => [] as UserCoupon[]),
     ]);
     store.value = mine;
-    center.value = list.filter((c) => c.received);
+    mineCoupons.value = list;
     failed.value = false;
   } catch {
     failed.value = true;
@@ -88,20 +96,34 @@ function storeRow(c: MyStoreCoupon): Row {
   };
 }
 
-function centerRow(c: Coupon): Row {
-  const live = c.endAt > Date.now();
+/**
+ * 我领到的那一张。**哪一栏由服务端的 status 决定**，不靠 `endAt` 猜 ——
+ * 用掉的券多半还没过期，按时间猜会把它放进「可用」。
+ */
+function mineRow(u: UserCoupon): Row {
+  const c = u.coupon;
+  const tabOf: Tab = u.status === "USED" ? "used" : u.status === "EXPIRED" ? "expired" : "usable";
   const rule = c.type === "DISCOUNT"
     ? tt("coupon.rate", { n: (c.discountRate / 1000).toFixed(1).replace(/\.0$/, "") })
     : money(c.faceMinor);
+  let state = tt("coupon.state.usable");
+  if (tabOf === "used") state = tt("coupon.state.used");
+  else if (tabOf === "expired") state = tt("coupon.state.expired");
+  else if (c.endAt - Date.now() < 7 * DAY) {
+    state = tt("coupon.state.expireIn", { n: Math.max(1, Math.ceil((c.endAt - Date.now()) / DAY)) });
+  }
   return {
-    key: c.couponNo, title: c.title, tab: live ? "usable" : "expired",
-    state: live ? tt("coupon.state.usable") : tt("coupon.state.expired"), live,
-    meta: [c.scopeDesc || tt("coupon.scopeAll"),
-      c.thresholdMinor ? tt("coupon.threshold", { p: money(c.thresholdMinor) }) : rule].join(" · "),
+    key: u.userCouponNo, title: c.title, tab: tabOf, state, live: tabOf === "usable",
+    // 券的具体信息就在这一行：适用范围 · 门槛（或面额） · 到什么时候
+    meta: [
+      c.scopeDesc || tt("coupon.scopeAll"),
+      c.thresholdMinor ? tt("coupon.threshold", { p: money(c.thresholdMinor) }) : rule,
+      tt("coupon.until", { d: md(c.endAt) }),
+    ].join(" · "),
   };
 }
 
-const rows = computed(() => [...store.value.map(storeRow), ...center.value.map(centerRow)]);
+const rows = computed(() => [...store.value.map(storeRow), ...mineCoupons.value.map(mineRow)]);
 const shown = computed(() => rows.value.filter((r) => r.tab === tab.value));
 
 function open(r: Row) {
