@@ -105,8 +105,10 @@ describe("两段空态各自消失", () => {
       .toContain("browse");
   });
 
-  it("没有坐标时「附近」整段本来就不渲染（既有行为，一并钉住）", () => {
-    expect(tpl).toContain('v-if="nearbyPickable.length || failed"');
+  it("★★★ 浏览模式不出搜索、不出附近（用户 2026-09-20：尽量简洁，统一走地图选点）", () => {
+    expect(tpl, "搜索框在浏览模式要收起来").toContain('v-if="canSearch && !browse"');
+    expect(tpl, "附近列表在浏览模式要收起来").toContain('v-if="!browse && (nearbyPickable.length || failed)"');
+    expect(tpl, "「搜索范围 / 切换城市」那一行同理").toContain('<view v-if="!browse" class="sh-card cityrow');
   });
 });
 

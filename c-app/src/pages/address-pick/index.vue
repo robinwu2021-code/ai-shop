@@ -363,13 +363,19 @@ onLoad((q?: Record<string, string>) => {
       「给父母下单」「出差前囤货」在这个品类里是真实高频，
       而那时他要填的地址不在他站着的城市。
     -->
-    <view class="sh-card cityrow sh-row sh-row--between" @tap="gotoCity">
+    <!--
+      **浏览模式只留三样：当前位置、我的收货地址、地图选点**（用户 2026-09-20）。
+      搜索与附近先不给 —— 顶栏点进来的人要的是「换个地方看货」，
+      而换地方这件事地图选点一步就能做完；两条列表反而要他先读再挑。
+      将来要搜索时把这两段的 v-if 去掉即可，逻辑都还在。
+    -->
+    <view v-if="!browse" class="sh-card cityrow sh-row sh-row--between" @tap="gotoCity">
       <text class="txt-caption">{{ $t("addressPick.searchIn") }}</text>
       <text class="txt-body sh-fill cityrow__name">{{ city?.name || location.hereName || $t("addressPick.nearHere") }}</text>
       <text class="txt-caption txt-primary">{{ $t("addressPick.changeCity") }}</text>
     </view>
 
-    <view v-if="canSearch" class="sh-card searchbox">
+    <view v-if="canSearch && !browse" class="sh-card searchbox">
       <input
         v-model="keyword"
         class="field__input"
@@ -380,7 +386,7 @@ onLoad((q?: Record<string, string>) => {
     </view>
 
     <!-- 有关键词时结果顶掉「附近」：别让用户在两份列表里找自己刚搜的那个 -->
-    <view v-if="keyword.trim()" class="sh-card block">
+    <view v-if="keyword.trim() && !browse" class="sh-card block">
       <text class="txt-strong block__title">{{ $t("addressPick.results") }}</text>
       <view v-for="(h, i) in hits" :key="`${h.name}-${i}`" class="sh-row--divided" @tap="chooseHit(h)">
         <text class="txt-body row__name">{{ h.name }}</text>
@@ -455,7 +461,7 @@ onLoad((q?: Record<string, string>) => {
 
       <!-- 判的是「能用的有几条」，不是「拿回来几条」—— 见 nearbyPickable 那段 -->
       <!-- `|| failed` 一起判：没取到时这一块留在原地说出来，而不是整块消失 -->
-      <view v-if="nearbyPickable.length || failed" class="sh-card block">
+      <view v-if="!browse && (nearbyPickable.length || failed)" class="sh-card block">
         <text class="txt-strong block__title">{{ $t("addressPick.nearby") }}</text>
         <!-- **摆在标题之下**：它说的是「这一块的内容没取到」，
              放到标题上面会读成「这张卡整个没加载」，而卡里还有别的东西。
