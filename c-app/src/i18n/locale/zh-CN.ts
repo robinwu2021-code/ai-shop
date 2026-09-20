@@ -241,7 +241,7 @@ export default {
     allCats: "全部",
     allGoods: "全部商品",
     searchPh: "搜索本店商品",
-    fulfillHint: "到店自提免运费；送货上门满 50 元免配送费，3 公里内当天送到。",
+    fulfillHint: "门店自提免运费；商家配送满 50 元免配送费，3 公里内当天送到。",
     faved: "已收藏，可在「我的 → 常去的店」找到",
     unfaved: "已取消收藏",
     closed: "这家店已停业，暂时不能下单",
@@ -253,7 +253,7 @@ export default {
     reached: "已成团",
     need: "还差 {n} 人",
     slot: "取货时段：",
-    freeHint: "邻里自提不收任何费用：平台不抽成，也不向你收费。",
+    freeHint: "社区自提不收任何费用：平台不抽成，也不向你收费。",
     receive: "整批签收并通知邻居（{n} 单）",
     received: "已通知 {n} 位邻居来取",
     verify: "邻居来取货",
@@ -264,7 +264,7 @@ export default {
     noWaiting: "当前没有待取的订单",
     entryHint: "送到我家的团 · 签收与核销",
     afterSaleHint: "签收不等于放弃售后：整批签收后，个别少发或破损仍可各自申请售后。",
-    toMyHome: "送到我家（邻里自提）",
+    toMyHome: "送到我家（社区自提）",
     toMyHomeHint: "货送到你家，邻居上门取。适合床垫、校服这类没有门店可提的东西。",
     addressPh: "收货地址",
     timeSlotPh: "期望送达时间",
@@ -661,7 +661,7 @@ export default {
   },
   /*
    * 状态文案按 `(状态 × 交付形态)` 分化 —— 同一个 FULFILLING，自提说「已到自提点」、
-   * 快递说「已发货」、到店核销说「待使用」、上门预约说「待服务 · 时间」。
+   * 快递说「已发货」、到店核销说「待使用」、上门服务说「待服务 · 时间」。
    * key 由 orderView() 给出，加一种履约方式在这里加一行，不动状态枚举。
    */
   orderView: {

@@ -966,7 +966,7 @@ export const storeMock: Pick<MerchantApi,
     if (goodsNo) {
       const g = toGoods(findGoodsSeed(goodsNo));
       return delay({
-        text: `【${name}】${g.title} ${money(g.price)}，到店自提或送货上门，点开直接下单`,
+        text: `【${name}】${g.title} ${money(g.price)}，门店自提或商家配送，点开直接下单`,
         posterUrl: "",
       });
     }

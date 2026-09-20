@@ -156,7 +156,7 @@
     {
       "path": "pages/delivery/index",
       "style": {
-        "navigationBarTitleText": "商家自送",
+        "navigationBarTitleText": "商家配送",
         "app-plus": {
           "navigationStyle": "custom"
         },
