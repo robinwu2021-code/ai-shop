@@ -441,6 +441,39 @@ class StoreScopedVisibilityFlowTest {
                 .get(0).getAreaNo();
     }
 
+    @Test
+    @DisplayName("★★★ 同一门店连着下架两次不许报错 —— 播种门店行是 check-then-act，连点会撞唯一键")
+    void togglingOffTwiceAtTheSameStoreDoesNotBlowUp() throws Exception {
+        String biz = merchant("12600180009", "连点下架的店");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String storeA = defaultStoreNo(biz);
+        createStore(biz, "第二家店");   // 多门店才会走 setStoreOnSale
+
+        String goodsNo = onSaleGoodsAt(biz, storeA, "连点下架的柠檬");
+
+        /*
+         * 第一次下架会**播种另一家店的行**（把它当时的在售状态固化下来）。
+         * 第二次原先仍按「整体为空」判要不要播种 —— 而在并发/连点下那个判据不成立：
+         * 第一个事务插了行还没提交，第二个读到的还是空，于是又播一遍，
+         * 撞 uk_store_goods，异常被包成通用 500「系统开小差」。
+         *
+         * 线上实测撞到过（2026-09-20 17:58 柠檬下架）：**第一次其实成功了**，
+         * 商家看到的却是「开小差」，以为整个操作没生效。
+         */
+        offShelfAt(biz, storeA, goodsNo);
+        offShelfAt(biz, storeA, goodsNo);   // ← 修之前这一下是 500
+
+        /*
+         * ⚠️ **这条用例撤掉任意一道防线都不会红，两道一起撤才红**（实测过）：
+         *   ① 按已有 store_no 去重  ② 撞唯一键时当成「别人刚播过」
+         * 顺序调用走的是 ①（第一个事务已提交，读得到行），真并发走的是 ②。
+         * 所以别因为「删了一道测试还是绿的」就把另一道删掉 ——
+         * 它们挡的是两种不同的时序。
+         */
+    }
+
     /** 在指定门店下架一件货 —— 用来表达「这家店不卖它」 */
     private void offShelfAt(String token, String storeNo, String goodsNo) throws Exception {
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")

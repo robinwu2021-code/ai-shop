@@ -2160,19 +2160,44 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 正好绕开了转换那一刻。这类「迁移瞬间」的缺陷，写用例时最容易被跳过。
      */
     private void setStoreOnSale(PrdGoods g, String storeNo, boolean onSale) {
-        if (storeGoodsRows(g.getGoodsNo()).isEmpty()) {
-            boolean current = Boolean.TRUE.equals(g.getOnSale());
-            for (String other : merchantPort.storeNos(g.getEntityNo())) {
-                if (other.equals(storeNo)) {
-                    continue;
-                }
-                ai.neargo.shop.product.entity.PrdStoreGoods seed =
-                        new ai.neargo.shop.product.entity.PrdStoreGoods();
-                seed.setStoreNo(other);
-                seed.setGoodsNo(g.getGoodsNo());
-                seed.setEntityNo(g.getEntityNo());
-                seed.setOnSale(current);
+        /*
+         * **逐店判「有没有行」，不靠「整体为空」这一个判据。**
+         *
+         * 原先是 `if (storeGoodsRows(...).isEmpty())` 再无条件 insert ——
+         * 典型的 check-then-act，在**连点两下**时不成立：
+         * 第一个事务插了行还没提交，第二个读到的仍是空，于是又播一遍，
+         * 撞 uk_store_goods，异常被包成通用 500「系统开小差」。
+         *
+         * 线上实测过（2026-09-20 17:58，柠檬下架）：第一次其实成功了，
+         * 商家看到的却是「开小差」，以为没下成。
+         *
+         * 现在按已有 store_no 逐个排除，并把撞唯一键当成
+         * 「别人刚播过」—— 播进去的值对谁都一样（当前主体级 on_sale），
+         * 谁播的不影响结果。
+         */
+        java.util.Set<String> seeded = storeGoodsRows(g.getGoodsNo()).stream()
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo)
+                .collect(java.util.stream.Collectors.toSet());
+        boolean current = Boolean.TRUE.equals(g.getOnSale());
+        for (String other : merchantPort.storeNos(g.getEntityNo())) {
+            if (other.equals(storeNo) || seeded.contains(other)) {
+                continue;
+            }
+            ai.neargo.shop.product.entity.PrdStoreGoods seed =
+                    new ai.neargo.shop.product.entity.PrdStoreGoods();
+            seed.setStoreNo(other);
+            seed.setGoodsNo(g.getGoodsNo());
+            seed.setEntityNo(g.getEntityNo());
+            seed.setOnSale(current);
+            try {
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(seed));
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                /*
+                 * 并发下另一个事务刚插了同一行。**这不是错误** ——
+                 * 它要的那一行现在存在了，而值与我们要写的一样。
+                 * 抛上去的话商家看到的是「系统开小差」，而他那次操作其实是成功的。
+                 */
+                log.debug("[goods] 门店行已被并发播种，跳过：store={} goods={}", other, g.getGoodsNo());
             }
         }
         writeStoreOnSale(g, storeNo, onSale);
@@ -2192,8 +2217,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setEntityNo(g.getEntityNo());
             row.setOnSale(onSale);
             ai.neargo.shop.product.entity.PrdStoreGoods toInsert = row;
-            DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(toInsert));
-            return;
+            try {
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(toInsert));
+                return;
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                /*
+                 * 与播种那处同一个坑：查不到就插，是 check-then-act。
+                 * 并发下另一个事务刚插了这一行 —— 此时**要改成更新**，
+                 * 不能就这么返回：这次调用要写的 onSale 还没落下去，
+                 * 直接 return 的话商家点的那一下**静默没生效**（比报错更糟）。
+                 */
+                row = DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectOne(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo)
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, g.getGoodsNo())
+                                .last("limit 1")));
+                if (row == null) {
+                    throw e;   // 撞了键却又查不到：不是并发，如实抛
+                }
+            }
         }
         row.setOnSale(onSale);
         ai.neargo.shop.product.entity.PrdStoreGoods toUpdate = row;

@@ -978,7 +978,17 @@ onMounted(async () => {
 
     <!-- 券 + 备注 -->
     <view class="sh-card block">
-      <view class="cell sh-row sh-row--between" @tap="pickCoupon">
+      <!--
+        **没券可选时压暗**：`pickCoupon` 在无可用券时第一行就 return，
+        而这一行原先看上去和能点的时候一模一样 —— 用户点下去毫无反应，
+        分不清是「没券」还是「坏了」。线上券表此刻是空的，所以这是常态不是边角。
+        （取不到券时不压暗：那时点它就是重试，是有动作的。）
+      -->
+      <view
+        class="cell sh-row sh-row--between"
+        :class="{ 'is-disabled': !couponFailed && !usableCoupons.length }"
+        @tap="pickCoupon"
+      >
         <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
         <text class="txt-bold txt-sub cell__v" :class="{ 'is-danger': !!coupon }">
           {{ coupon
