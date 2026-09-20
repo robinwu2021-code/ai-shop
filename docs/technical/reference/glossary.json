@@ -2303,7 +2303,7 @@
         },
         {
           "key": "groupHost.freeHint",
-          "zh-CN": "邻里自提不收任何费用：平台不抽成，也不向你收费。",
+          "zh-CN": "社区自提不收任何费用：平台不抽成，也不向你收费。",
           "en": "Neighbourhood pickup is free: the platform takes nothing and charges you nothing.",
           "ar": "الاستلام من الجوار بلا مقابل: لا تأخذ المنصة شيئًا ولا تتقاضى منك شيئًا."
         },
@@ -2357,7 +2357,7 @@
         },
         {
           "key": "groupHost.toMyHome",
-          "zh-CN": "送到我家（邻里自提）",
+          "zh-CN": "送到我家（社区自提）",
           "en": "Deliver to my home",
           "ar": "التوصيل إلى منزلي"
         },
@@ -4613,7 +4613,7 @@
         },
         {
           "key": "store.fulfillHint",
-          "zh-CN": "到店自提免运费；送货上门满 50 元免配送费，3 公里内当天送到。",
+          "zh-CN": "门店自提免运费；商家配送满 50 元免配送费，3 公里内当天送到。",
           "en": "Free pickup in store. Delivery is free over 50 within 3 km, same day.",
           "ar": "الاستلام من المتجر مجاني. التوصيل مجاني فوق ٥٠ ضمن ٣ كم في اليوم نفسه."
         },
@@ -7677,8 +7677,8 @@
         },
         {
           "key": "delivery.title",
-          "zh-CN": "商家自送",
-          "en": "Self delivery",
+          "zh-CN": "商家配送",
+          "en": "Merchant delivery",
           "ar": "توصيل التاجر"
         },
         {
@@ -17055,7 +17055,7 @@
         },
         {
           "key": "store.addressHint",
-          "zh-CN": "开了「门店自取」时，这就是顾客的取货地址",
+          "zh-CN": "开了「门店自提」时，这就是顾客的取货地址",
           "en": "With “Store pickup” on, this is where customers collect",
           "ar": "عند تفعيل «الاستلام من الفرع» هذا هو مكان الاستلام"
         },
@@ -17385,8 +17385,8 @@
         },
         {
           "key": "store.needAddressBody",
-          "zh-CN": "门店自取的取货地址就是门店地址。先填好地址，再回来开这一路。",
-          "en": "In-store pickup uses the store address as the pickup address. Add the address first, then come back and turn it on.",
+          "zh-CN": "门店自提的取货地址就是门店地址。先填好地址，再回来开这一路。",
+          "en": "Store pickup uses the store address as the pickup address. Add the address first, then come back and turn it on.",
           "ar": "الاستلام من الفرع يستخدم عنوان الفرع. أضف العنوان أولاً ثم عد لتفعيله."
         },
         {

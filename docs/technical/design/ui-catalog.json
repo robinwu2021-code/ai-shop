@@ -71,7 +71,7 @@
             {
               "app": "b-app",
               "route": "/pages/delivery/index",
-              "title": "商家自送",
+              "title": "商家配送",
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
