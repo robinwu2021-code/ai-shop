@@ -124,6 +124,21 @@ export function closeConfirm(ok: boolean): void {
 
 /** 由 sh-prompt 调用，页面不用管 */
 export function closePrompt(value: string | null): void {
+  /*
+   * **先收键盘，再撤弹层。**App 默认的键盘适配是 adjustPan：键盘弹出时整个
+   * webview 上移，收起时再移回来。而按下「确定」是**输入框还聚焦着就被销毁** ——
+   * 键盘因为焦点没了而消失，走不到那条还原路径，页面就永远停在上移状态：
+   * 标题被顶到状态栏底下，自绘的底部菜单停在屏幕中间，下面空出一条灰。
+   * 2026-09-20 店主在商品列表「改库存」后撞到，且切页、返回都恢复不了，只能重启 App。
+   *
+   * 显式调一次 hideKeyboard，让还原由「键盘收起」这件事本身触发。
+   * H5 与小程序上它是空操作，不影响那两端。
+   */
+  try {
+    uni.hideKeyboard();
+  } catch {
+    // 没有 uni 运行时（单测、SSR）时忽略 —— 收键盘不是这个函数的主业
+  }
   promptState.visible = false;
   const done = settle;
   settle = null;
