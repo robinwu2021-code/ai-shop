@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 341,
-        "c-app": 60
+        "c-app": 61
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 323,
-        "c-app": 236
+        "c-app": 237
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 126,
-        "c-app": 42
+        "c-app": 43
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 205,
-        "c-app": 75
+        "c-app": 76
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 172,
-        "c-app": 65
+        "c-app": 66
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 129,
-        "c-app": 71
+        "c-app": 72
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 489,
-        "c-app": 168
+        "c-app": 169
       }
     },
     {
@@ -1484,7 +1484,7 @@
       },
       "usage": {
         "b-app": 7,
-        "c-app": 6
+        "c-app": 7
       }
     },
     {
@@ -1895,7 +1895,7 @@
       ],
       "usage": {
         "b-app": 30,
-        "c-app": 12,
+        "c-app": 13,
         "lib": 0
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
@@ -2294,7 +2294,7 @@
       ],
       "usage": {
         "b-app": 113,
-        "c-app": 17,
+        "c-app": 18,
         "lib": 13
       },
       "note": "单色图标",
@@ -4718,10 +4718,12 @@
       "key": "c-app/address-pick",
       "file": "c-app/src/pages/address-pick/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
+        "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 46,
+      "libClassHits": 54,
       "localSelectors": 14,
       "localCssLines": 48,
       "rolled": []

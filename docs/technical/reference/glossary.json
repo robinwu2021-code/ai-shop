@@ -328,6 +328,18 @@
           "ar": "الموقع الحالي"
         },
         {
+          "key": "addressPick.addAddress",
+          "zh-CN": "新增收货地址",
+          "en": "Add address",
+          "ar": "إضافة عنوان"
+        },
+        {
+          "key": "addressPick.browseTitle",
+          "zh-CN": "选择位置",
+          "en": "Choose location",
+          "ar": "اختر الموقع"
+        },
+        {
           "key": "addressPick.changeCity",
           "zh-CN": "切换城市",
           "en": "Change",
@@ -368,6 +380,12 @@
           "zh-CN": "只列出最近的几个，其他请用地图选点",
           "en": "Showing the closest few — pick others on the map",
           "ar": "نعرض الأقرب فقط — استخدم الخريطة لغير ذلك"
+        },
+        {
+          "key": "addressPick.myAddresses",
+          "zh-CN": "我的收货地址",
+          "en": "My addresses",
+          "ar": "عناويني"
         },
         {
           "key": "addressPick.nearHere",
