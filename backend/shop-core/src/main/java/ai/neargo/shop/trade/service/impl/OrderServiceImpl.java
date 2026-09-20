@@ -391,7 +391,8 @@ public class OrderServiceImpl implements OrderService {
                         distances.get(pickupNo))));
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
-        return split.toVO(discountsOf(cmd, split, userNo), pickups);
+        Discounts discounts = discountsOf(cmd, split, userNo);
+        return split.toVO(discounts, pickups).withDiscountLines(discountLinesOf(discounts));
     }
 
     /**
@@ -604,6 +605,29 @@ public class OrderServiceImpl implements OrderService {
      * 分别问的话，每加一种优惠就要在主单、子单、VO 三处各改一遍，
      * 而漏改一处的症状是「金额对不上」，最难查的那种。
      */
+    /**
+     * 把这一单的优惠**拆成给人看的几条**（TDD-C端优惠依据）。
+     *
+     * <p>买家此前看到的是一个光秃秃的「优惠 −¥10」—— 活动？券？两者叠加？一个字都没有。
+     * 后端一直知道（算价时就带着活动号与券名），只是没下发。
+     *
+     * <p>名字取不到就**不给这一条**，而不是编一个「活动优惠」——
+     * 那种占位说法与真名字长得一样，读的人分不出哪个是真的。
+     */
+    private java.util.List<OrderVO.DiscountLine> discountLinesOf(Discounts d) {
+        java.util.List<OrderVO.DiscountLine> out = new java.util.ArrayList<>();
+        for (var a : d.auto().applied()) {
+            if (a.amountMinor() > 0 && a.name() != null && !a.name().isBlank()) {
+                out.add(new OrderVO.DiscountLine(OrderVO.DiscountLine.ACTIVITY, a.name(), a.amountMinor()));
+            }
+        }
+        var c = d.coupon();
+        if (c.totalDiscount() > 0 && c.title() != null && !c.title().isBlank()) {
+            out.add(new OrderVO.DiscountLine(OrderVO.DiscountLine.COUPON, c.title(), c.totalDiscount()));
+        }
+        return out;
+    }
+
     private record Discounts(CampaignPort.Discount auto, CouponPort.Allocation coupon) {
 
         static Discounts none() {
@@ -1469,6 +1493,18 @@ public class OrderServiceImpl implements OrderService {
                     afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
                     subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
                             .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())).intValue());
+            /*
+             * **优惠依据只在详情查**（与上面那三样同一条理由：列表一次几十条）。
+             * 读的是当时落下的 `pmt_apply`，不是按现在的规则重算 —— 规则可能早改了。
+             */
+            if (sub.getDiscountAmount() != null && sub.getDiscountAmount() > 0) {
+                var lines = campaignPort.appliedOf(sub.getOrderNo()).stream()
+                        .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor()))
+                        .toList();
+                if (!lines.isEmpty()) {
+                    vo = vo.withDiscountLines(lines);
+                }
+            }
             if (sub.getPeriodNo() != null) {
                 // 集单（s37）：提货日与「截单前可取消」。已截单、已退款的不再给可取消时刻
                 Long until = periodPort == null || OrdSubOrder.REFUNDED.equals(sub.getStatus())

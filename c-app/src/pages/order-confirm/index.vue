@@ -25,7 +25,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, CheckoutCapability, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
+import type { Address, CartItem, CheckoutCapability, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
@@ -224,6 +224,11 @@ const merchantSegments = computed(() => segmentByMerchant(items.value));
  * 但一旦服务端的数到了就以它为准。
  */
 const serverAmount = ref<OrderAmount | null>(null);
+/**
+ * 这笔优惠是怎么来的（活动名 / 券名 + 各减多少）。TDD-C端优惠依据。
+ * **只来自服务端** —— 本地估算那一支算不出是哪个活动减的，宁可不说。
+ */
+const discountLines = ref<DiscountLine[]>([]);
 /** 距离文案。-1（没标坐标）与空都给空串 —— 宁可少一行，不要编一个数 */
 function distanceOf(m?: number | null): string {
   return m == null || m < 0 ? "" : fmtDistance(m);
@@ -431,6 +436,7 @@ let amountSeq = 0;
 async function refreshAmount() {
   if (!items.value.length) {
     serverAmount.value = null;
+    discountLines.value = [];
     amountPending.value = false;
     return;
   }
@@ -451,12 +457,14 @@ async function refreshAmount() {
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
+    discountLines.value = p.discountLines ?? [];
     amountStale.value = false;
     applyPickupGroups(p.subOrders ?? []);
   } catch {
     if (seq !== amountSeq) return;
     // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定 —— 但要说出来
     serverAmount.value = null;
+    discountLines.value = [];
     amountStale.value = true;
   } finally {
     if (seq === amountSeq) amountPending.value = false;
@@ -593,6 +601,11 @@ async function loadAddresses() {
       addresses.value[0]?.addressId ??
       "";
   }
+}
+
+/** 「活动「abc」」「券「新人首单券」」—— 一眼看出这一条是什么减的 */
+function discountLabel(d: DiscountLine): string {
+  return String(t(d.kind === "COUPON" ? "confirm.fromCoupon" : "confirm.fromActivity", { name: d.name }));
 }
 
 /** 「09-30」。券行与选择弹层共用 —— 两处写法不一样会让人以为是两个日期 */
@@ -1074,6 +1087,15 @@ onMounted(async () => {
       <view v-if="amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
         <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.discountMinor) }}</text>
+      </view>
+      <!--
+        **减的是什么，直接写在下面**（用户 2026-09-20，TDD-C端优惠依据）。
+        此前只有一个「优惠 −¥10」—— 活动？券？买家看不出来，而后端一直知道。
+        不做弹层：少一次点击，也少一套交互。名字取不到的那条后端不会下发。
+      -->
+      <view v-for="(d, i) in discountLines" :key="i" class="amt sh-row sh-row--between sh-row--top">
+        <text class="txt-caption sh-muted">{{ discountLabel(d) }}</text>
+        <text class="txt-caption amt__v sh-num sh-muted">-{{ money(d.amountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>

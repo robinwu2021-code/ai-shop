@@ -103,7 +103,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
             }
         }
         return new CouponPort.Allocation(total,
-                PmtCoupon.BY_MERCHANT.equals(coupon.getFunder()), shares);
+                PmtCoupon.BY_MERCHANT.equals(coupon.getFunder()), shares, coupon.getTitle());
     }
 
     @Override

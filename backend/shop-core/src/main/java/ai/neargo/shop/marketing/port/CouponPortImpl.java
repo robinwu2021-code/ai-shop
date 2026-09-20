@@ -86,7 +86,8 @@ public class CouponPortImpl implements CouponPort {
 
         boolean byMerchant = MktCoupon.BY_MERCHANT.equals(coupon.getFunder());
         return new Allocation(total, byMerchant,
-                shares.stream().map(sh -> new MerchantDiscount(sh.merchantNo(), sh.amount())).toList());
+                shares.stream().map(sh -> new MerchantDiscount(sh.merchantNo(), sh.amount())).toList(),
+                coupon.getTitle());
     }
 
     @Override

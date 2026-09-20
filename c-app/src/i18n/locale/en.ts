@@ -543,6 +543,8 @@ export default {
     pickupNoneFor: "{names} has no usable pickup point near you",
     pickupMatching: "Finding a pickup point near your address…",
     pickupFar: "About {d} away — make sure you can collect there",
+    fromActivity: "Promotion \u201c{name}\u201d",
+    fromCoupon: "Coupon \u201c{name}\u201d",
     pickAddress: "Choose a delivery address",
     appointmentAt: "Booked for {t}",
     coupon: "Voucher",

@@ -397,6 +397,17 @@ onShow(load);
         <text class="txt-caption">{{ $t("confirm.discount") }}</text>
         <text class="txt-caption amt__v sh-num is-danger">-{{ money(order.amount.discountMinor) }}</text>
       </view>
+      <!-- 减的是什么，直接写在下面（TDD-C端优惠依据）。后端取不到名字的条目不会下发 -->
+      <view
+        v-for="(d, k) in order.discountLines ?? []"
+        :key="k"
+        class="amt sh-row sh-row--between sh-row--top"
+      >
+        <text class="txt-caption sh-muted">
+          {{ $t(d.kind === "COUPON" ? "confirm.fromCoupon" : "confirm.fromActivity", { name: d.name }) }}
+        </text>
+        <text class="txt-caption amt__v sh-num sh-muted">-{{ money(d.amountMinor) }}</text>
+      </view>
       <view v-if="order.amount.weighAdjustMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("order.weighAdjust") }}</text>
         <text class="txt-caption amt__v sh-num txt-ink">{{ money(order.amount.weighAdjustMinor) }}</text>

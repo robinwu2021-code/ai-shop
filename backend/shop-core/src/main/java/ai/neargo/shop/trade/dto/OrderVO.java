@@ -123,7 +123,51 @@ public record OrderVO(String orderNo,
                        *
                        * <p>V344 之前发的存量单为空：当时根本没收集过这一项。
                        */
-                      String expressCompany) {
+                      String expressCompany,
+                      /**
+                       * 这笔优惠**是怎么来的**（TDD-C端优惠依据）。空 = 没有优惠。
+                       *
+                       * <p>合计仍在 {@code amount.discountMinor}，这里只是把它拆开：
+                       * 买家看到的「优惠 −¥10」此前来历不明（活动？券？两者叠加？），
+                       * 而后端一直知道 —— `pmt_apply` 每一笔都记着是哪个活动减的。
+                       *
+                       * <p>明细是**解释不是账**：与合计对不上时以合计为准。
+                       * 老订单（走老模型 mkt_campaign 的那些）没有明细，为空。
+                       */
+                      List<DiscountLine> discountLines) {
+
+    /**
+     * 一条优惠的来历。
+     *
+     * @param kind ACTIVITY（商家 / 平台活动）或 COUPON（券）
+     * @param name 给人看的名字：活动名、券名
+     * @param amountMinor 这一条减了多少（正数）
+     */
+    public record DiscountLine(String kind, String name, long amountMinor) {
+        public static final String ACTIVITY = "ACTIVITY";
+        public static final String COUPON = "COUPON";
+    }
+
+    /**
+     * 不带优惠明细的签名：**存量构造处不必跟着改**（同 expressCompany 那一条的理由）。
+     * 明细只有预览与订单详情两处填，其余位置给空表 —— 空表的含义是「没有优惠」，
+     * 与「没查」不必区分：没有优惠时合计本来就是 0。
+     */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, List.of());
+    }
 
     /** 不带集单字段的旧签名：存量构造处不必跟着改 */
     public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
@@ -136,7 +180,7 @@ public record OrderVO(String orderNo,
         this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
                 verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
-                reviewed, afterSale, payGroupSize, null, null, null, null, null);
+                reviewed, afterSale, payGroupSize, null, null, null, null, null, List.of());
     }
 
     /**
@@ -148,7 +192,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany);
+                groupNo, pickupDistanceM, expressCompany, discountLines);
     }
 
     /**
@@ -163,7 +207,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany);
+                groupNo, pickupDistanceM, expressCompany, discountLines);
     }
 
     /**
@@ -175,7 +219,16 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany);
+                groupNo, pickupDistanceM, expressCompany, discountLines);
+    }
+
+    /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
+    public OrderVO withDiscountLines(List<DiscountLine> lines) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines);
     }
 
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
@@ -183,7 +236,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany);
+                groupNo, pickupDistanceM, expressCompany, discountLines);
     }
 
     /**

@@ -182,11 +182,50 @@ public interface CampaignPort {
      * @param platformMinor 优惠额里平台出资的部分；商家活动恒为 0
      * @param enrollmentNo  平台活动时是这家店的报名单号（限量扣在报名上，不扣在活动上）；商家活动为空
      */
+    /**
+     * 这一单**已经用上的**那几条优惠，按单号回查（TDD-C端优惠依据）。
+     *
+     * <p>与 {@link #autoDiscount} 的区别是时态：那个是「下单时算一遍」，
+     * 这个是「这单当时减了什么」—— 订单详情要的是后者，而活动规则可能早就改了，
+     * 所以**不能拿现在的规则重算**，只能读当时落下的那几行。
+     *
+     * <p>默认空表：老模型（mkt_campaign）没有这张账，端上退回只显示合计。
+     */
+    default List<AppliedDiscount> appliedOf(String orderNo) {
+        return List.of();
+    }
+
+    /**
+     * 一条已经用上的优惠。
+     *
+     * @param kind ACTIVITY / COUPON
+     * @param name 给买家看的名字；取不到就是空，调用方**不要编一个**
+     */
+    record AppliedDiscount(String kind, String name, long amountMinor) {
+        public static final String ACTIVITY = "ACTIVITY";
+        public static final String COUPON = "COUPON";
+    }
+
     record AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,
-                           long platformMinor, String enrollmentNo) {
+                           long platformMinor, String enrollmentNo,
+                           /**
+                            * 活动名，**给买家看的那个**（TDD-C端优惠依据）。
+                            *
+                            * <p>算价那一侧本来就读了活动行，顺手带出来 ——
+                            * 否则确认页与订单详情要为了一个名字再查一次 promotion，
+                            * 而 trade 与 promotion 之间只有这个 port。
+                            *
+                            * <p>取不到就是空：端上退回只显示金额，<b>不编名字</b>。
+                            */
+                           String name) {
 
         public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty) {
-            this(activityNo, merchantNo, amountMinor, qty, 0L, null);
+            this(activityNo, merchantNo, amountMinor, qty, 0L, null, null);
+        }
+
+        public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,
+                               long platformMinor, String enrollmentNo) {
+            this(activityNo, merchantNo, amountMinor, qty, platformMinor, enrollmentNo, null);
         }
     }
 }

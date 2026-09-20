@@ -44,15 +44,26 @@ public class CampaignPortImpl implements CampaignPort {
         }
         long now = System.currentTimeMillis();
         List<MerchantDiscount> shares = new ArrayList<>();
+        /*
+         * **记下是哪个活动减的**（TDD-C端优惠依据）。此前这一支只给金额，
+         * 于是老模型的活动减了钱、确认页却说不出名字 —— 而买家看到的
+         * 「优惠 −¥8」来历不明。新模型那边一直记着，两边口径这才一致。
+         */
+        List<AppliedActivity> applied = new ArrayList<>();
         long total = 0L;
         for (MerchantAmount g : groups) {
-            long off = fullCutOf(g.merchantNo(), g.storeNo(), g.goodsAmount(), now);
+            MktCampaign best = bestFullCut(g.merchantNo(), g.storeNo(), g.goodsAmount(), now);
+            long off = best == null ? 0L
+                    : Math.min(best.getDiscountMinor() == null ? 0L : best.getDiscountMinor(),
+                            g.goodsAmount());
             if (off > 0) {
                 shares.add(new MerchantDiscount(g.merchantNo(), off));
+                applied.add(new AppliedActivity(best.getCampaignNo(), g.merchantNo(), off, 1,
+                        0L, null, best.getName()));
                 total += off;
             }
         }
-        return shares.isEmpty() ? Discount.none() : new Discount(total, shares);
+        return shares.isEmpty() ? Discount.none() : new Discount(total, shares, applied);
     }
 
     @Override
@@ -132,7 +143,8 @@ public class CampaignPortImpl implements CampaignPort {
      * <p>下单查的是**下单那一刻**的活动：活动的起止时间与状态都在这里判，
      * 不信任端上传来的任何优惠额。端上算的那份只用于展示。
      */
-    private long fullCutOf(String merchantNo, String storeNo, long goodsAmount, long now) {
+    /** 这一家此刻最优的那个满减活动。没有就 null —— 调用方据此不记任何一条 */
+    private MktCampaign bestFullCut(String merchantNo, String storeNo, long goodsAmount, long now) {
         List<MktCampaign> running = DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
                         .eq(MktCampaign::getEntityNo, merchantNo)
@@ -140,7 +152,8 @@ public class CampaignPortImpl implements CampaignPort {
                         .eq(MktCampaign::getStatus, MktCampaign.RUNNING)
                         .le(MktCampaign::getStartAt, now)
                         .ge(MktCampaign::getEndAt, now)));
-        long best = 0L;
+        MktCampaign best = null;
+        long bestOff = 0L;
         for (MktCampaign c : running) {
             /*
              * 门店级活动只对**这单出货的那家店**生效。
@@ -159,7 +172,11 @@ public class CampaignPortImpl implements CampaignPort {
                 continue;
             }
             // 不能减成负数：优惠额大于商品额时按商品额封顶（与券同一口径）
-            best = Math.max(best, Math.min(off, goodsAmount));
+            long capped = Math.min(off, goodsAmount);
+            if (capped > bestOff) {
+                bestOff = capped;
+                best = c;
+            }
         }
         return best;
     }

@@ -61,6 +61,17 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         this.enrollmentGoodsMapper = enrollmentGoodsMapper;
     }
 
+    /**
+     * 券名只在 {@link #appliedOf} 里用到（订单详情回查那一条券叫什么）。
+     * **setter 注入**：切片测试里没有它时，券那一条就不给名字，其余行为一字不差。
+     */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.CouponMapper couponMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCouponMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.CouponMapper couponMapper) {
+        this.couponMapper = couponMapper;
+    }
+
     public ActivityPricingServiceImpl(ActivityMapper activityMapper,
                                       ActivityAudienceMapper audienceMapper,
                                       ActivityGoodsMapper goodsMapper,
@@ -135,12 +146,13 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (bestPlatform != null && bestOff > 0) {
                 shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
                 applied.add(new CampaignPort.AppliedActivity(bestPlatform.activity().getActivityNo(),
-                        g.merchantNo(), bestOff, 1, bestPlatform.platformMinor(), bestPlatform.enrollmentNo()));
+                        g.merchantNo(), bestOff, 1, bestPlatform.platformMinor(),
+                        bestPlatform.enrollmentNo(), bestPlatform.activity().getName()));
                 total += bestOff;
             } else if (best != null && bestOff > 0) {
                 shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
                 applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(),
-                        g.merchantNo(), bestOff, 1));
+                        g.merchantNo(), bestOff, 1, 0L, null, best.getName()));
                 total += bestOff;
             } else if (best != null && PmtActivity.BENEFIT_COMBO.equals(best.getBenefitType())) {
                 // 只送积分的组合：不减钱，但要记下「这一单用上了它」—— 付款时按它发积分、扣它的量
@@ -149,6 +161,56 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         return shares.isEmpty() ? CampaignPort.Discount.none()
                 : new CampaignPort.Discount(total, shares, applied);
+    }
+
+    @Override
+    public java.util.List<CampaignPort.AppliedDiscount> appliedOf(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            return java.util.List.of();
+        }
+        var rows = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                Wrappers.<ai.neargo.shop.promotion.entity.PmtApply>lambdaQuery()
+                        .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)));
+        java.util.List<CampaignPort.AppliedDiscount> out = new ArrayList<>();
+        for (var r : rows) {
+            long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
+            if (amount <= 0) {
+                // 只送积分的组合也会记一行（减 0）—— 那不是「优惠依据」，别列出来
+                continue;
+            }
+            String name = nameOfPromo(r.getPromoType(), r.getPromoNo());
+            if (name == null || name.isBlank()) {
+                // 名字取不到就不给这一条：占位说法与真名字长得一样，读的人分不出
+                continue;
+            }
+            out.add(new CampaignPort.AppliedDiscount(
+                    CampaignPort.AppliedDiscount.COUPON.equals(r.getPromoType())
+                            ? CampaignPort.AppliedDiscount.COUPON
+                            : CampaignPort.AppliedDiscount.ACTIVITY,
+                    name, amount));
+        }
+        return out;
+    }
+
+    /** 活动名 / 券名。查不到给空 —— 调用方据此跳过这一条 */
+    private String nameOfPromo(String type, String no) {
+        if (no == null || no.isBlank()) {
+            return null;
+        }
+        if (CampaignPort.AppliedDiscount.COUPON.equals(type)) {
+            if (couponMapper == null) {
+                return null;
+            }
+            var c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                    Wrappers.<ai.neargo.shop.promotion.entity.PmtCoupon>lambdaQuery()
+                            .eq(ai.neargo.shop.promotion.entity.PmtCoupon::getCouponNo, no)
+                            .last("limit 1")));
+            return c == null ? null : c.getTitle();
+        }
+        var a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getActivityNo, no).last("limit 1")));
+        return a == null ? null : a.getName();
     }
 
     /**

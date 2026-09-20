@@ -154,6 +154,8 @@ export interface OrderPreview {
      */
     pickupDistanceM?: number | null;
   }>;
+  /** 这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠 */
+  discountLines?: DiscountLine[];
   /**
    * 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期），
    * 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。
@@ -231,6 +233,22 @@ export interface OrderItem {
   /** 该商品每件赠送的积分 */
   points?: number;
 }
+/**
+ * 一条优惠的来历（TDD-C端优惠依据）。
+ *
+ * <p>合计在 `amount.discountMinor` 里，这几条只是把它拆开说清楚：
+ * 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。
+ * **明细是解释不是账**：与合计对不上时以合计为准。
+ */
+export interface DiscountLine {
+  /** ACTIVITY（活动）/ COUPON（券） */
+  kind: "ACTIVITY" | "COUPON";
+  /** 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 */
+  name: string;
+  /** 这一条减了多少（最小货币单位，正数） */
+  amountMinor: number;
+}
+
 export interface OrderAmount {
   /** 商品小计（最小货币单位），不含运费与优惠 */
   goodsMinor: number;
@@ -331,6 +349,11 @@ export interface Order {
    * `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。
    */
   pickupDistanceM?: number | null;
+  /**
+   * 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。
+   * 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。
+   */
+  discountLines?: DiscountLine[];
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
   /**

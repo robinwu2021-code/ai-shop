@@ -37,6 +37,15 @@ public class CampaignPortRouter implements CampaignPort {
         this.promo = promo;
     }
 
+    /**
+     * 「这一单当时减了什么」只有新模型记着（`pmt_apply`）——
+     * 老模型那边没有这张账，所以不必合并，直接转发。
+     */
+    @Override
+    public List<AppliedDiscount> appliedOf(String orderNo) {
+        return promo.appliedOf(orderNo);
+    }
+
     @Override
     public Discount autoDiscount(List<MerchantAmount> groups) {
         Discount a = legacy.autoDiscount(groups);

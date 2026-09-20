@@ -543,6 +543,8 @@ export default {
     pickupNoneFor: "لا توجد نقطة استلام متاحة لـ {names} بالقرب منك",
     pickupMatching: "جارٍ البحث عن نقطة استلام قرب عنوانك…",
     pickupFar: "يبعد حوالي {d} — تأكد أنه يناسبك",
+    fromActivity: "عرض «{name}»",
+    fromCoupon: "قسيمة «{name}»",
     pickAddress: "اختر عنوان التوصيل",
     appointmentAt: "الموعد {t}",
     coupon: "قسيمة",

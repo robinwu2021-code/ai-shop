@@ -96,7 +96,17 @@ export const aftersaleMock: Pick<ShopApi,
       usePoints: Math.max(0, Math.min(pointBalance(db.points), req.usePoints ?? 0)),
       earnPoints: 0,
     });
-    return delay({ amount, items });
+    /*
+     * **优惠要说出是谁减的**（TDD-C端优惠依据）。mock 里按券有没有选来给：
+     * 选了券就是券那一条；没选券而仍然有优惠，那就是活动减的。
+     * 一条都不给的话，页面上那一段在本机永远不显示 —— 改坏了也看不出来。
+     */
+    const discountLines = amount.discountMinor > 0
+      ? [coupon
+        ? { kind: "COUPON" as const, name: coupon.title, amountMinor: amount.discountMinor }
+        : { kind: "ACTIVITY" as const, name: "满 30 减 5", amountMinor: amount.discountMinor }]
+      : [];
+    return delay({ amount, items, discountLines });
   },
 
   /**

@@ -41,6 +41,14 @@ class CampaignDiscountFlowTest {
 
     /** 本测试造的活动都用这个名字，便于精确清理 */
     private static final String TEST_CAMPAIGN = "测试活动";
+    /**
+     * 本类建的活动一律用这个号前缀。
+     *
+     * <p><b>清理按号删，不按名删</b>：2026-09-20 让 `fullCut(name, ...)` 真的用上那个名字
+     * （优惠依据要把活动名发给买家）之后，按名删的那条钩子就删不掉它们了 ——
+     * 残留活动泄漏进别的用例，症状是「本来不该减的单减了 800」，而报错指向毫不相干的用例。
+     */
+    private static final String TEST_CAMPAIGN_PREFIX = "CPTEST";
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -70,7 +78,9 @@ class CampaignDiscountFlowTest {
     void clearOwnCampaigns() {
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<MktCampaign>lambdaQuery().eq(MktCampaign::getName, TEST_CAMPAIGN)));
+                        .<MktCampaign>lambdaQuery()
+                        .likeRight(MktCampaign::getCampaignNo, TEST_CAMPAIGN_PREFIX)
+                        .or().eq(MktCampaign::getName, TEST_CAMPAIGN)));
     }
 
     private MockMvc mvc() {
@@ -90,6 +100,20 @@ class CampaignDiscountFlowTest {
         JsonNode data = preview(token, null);
         assertThat(data.get("amount").get("discountMinor").asLong()).isEqualTo(800L);
         assertThat(data.get("amount").get("payableMinor").asLong()).isEqualTo(9960L - 800L);
+        /*
+         * ★ **减的是什么，要说出来**（2026-09-20，TDD-C端优惠依据）。
+         *
+         * 线上抓到的样子：商品 ¥39.90、优惠 −¥10.00，而减这 10 块的是一个叫「abc」的
+         * 商家直减活动 —— 端上只有一个光秃秃的金额，买家分不出是活动还是券。
+         * 合计仍然由上面两条断言守着；这里守的是「合计能拆开」。
+         */
+        JsonNode lines = data.get("discountLines");
+        assertThat(lines).as("预览不给优惠依据 —— 买家看到的减免来历不明").isNotNull();
+        assertThat(lines.size()).isEqualTo(1);
+        assertThat(lines.get(0).get("kind").asString()).isEqualTo("ACTIVITY");
+        assertThat(lines.get(0).get("name").asString())
+                .as("只给金额不给名字，等于没说").isEqualTo("满50减8");
+        assertThat(lines.get(0).get("amountMinor").asLong()).isEqualTo(800L);
     }
 
     @Test
@@ -372,16 +396,23 @@ class CampaignDiscountFlowTest {
 
     // ---------------------------------------------------------------- 装配
 
+    /**
+     * 建一个满减活动。
+     *
+     * <p><b>name 真的会落到活动上</b>：此前这个参数被丢掉了（活动名恒为「测试活动」），
+     * 于是调用处写着「满50减8」，库里却不是 —— 读用例的人会以为名字有用。
+     * 2026-09-20 优惠依据要把名字发给买家，这才露出来。
+     */
     private void fullCut(String entityNo, String name, long threshold, long off) {
         long now = System.currentTimeMillis();
         campaign(entityNo, MktCampaign.FULL_CUT, MktCampaign.RUNNING, threshold, off,
-                now - 1000L, now + Duration.ofDays(7).toMillis());
+                now - 1000L, now + Duration.ofDays(7).toMillis(), name);
     }
 
     private void buyGift(String entityNo, int buyN, int giftM, String goodsNo) {
         long now = System.currentTimeMillis();
         MktCampaign c = new MktCampaign();
-        c.setCampaignNo("CP" + System.nanoTime());
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
         c.setEntityNo(entityNo);
         c.setType(MktCampaign.BUY_GIFT);
         c.setName(TEST_CAMPAIGN);
@@ -421,7 +452,7 @@ class CampaignDiscountFlowTest {
 
     private void flashWindow(String entityNo, long price, String goodsNo, long startAt, long endAt) {
         MktCampaign c = new MktCampaign();
-        c.setCampaignNo("CP" + System.nanoTime());
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
         c.setEntityNo(entityNo);
         c.setType(MktCampaign.FLASH);
         c.setName(TEST_CAMPAIGN);
@@ -443,11 +474,16 @@ class CampaignDiscountFlowTest {
 
     private void campaign(String entityNo, String type, String status,
                           long threshold, long off, long startAt, long endAt) {
+        campaign(entityNo, type, status, threshold, off, startAt, endAt, TEST_CAMPAIGN);
+    }
+
+    private void campaign(String entityNo, String type, String status,
+                          long threshold, long off, long startAt, long endAt, String name) {
         MktCampaign c = new MktCampaign();
-        c.setCampaignNo("CP" + System.nanoTime());
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
         c.setEntityNo(entityNo);
         c.setType(type);
-        c.setName(TEST_CAMPAIGN);
+        c.setName(name == null || name.isBlank() ? TEST_CAMPAIGN : name);
         c.setStatus(status);
         c.setThresholdMinor(threshold);
         c.setDiscountMinor(off);

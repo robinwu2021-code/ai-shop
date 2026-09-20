@@ -26,6 +26,12 @@ public interface ActivityPricingService {
      */
     CampaignPort.Discount autoDiscount(String userNo, List<CampaignPort.MerchantAmount> groups);
 
+    /**
+     * 这一单当时用上了哪些优惠（订单详情要显示依据）。
+     * **读 `pmt_apply` 那几行，不按现在的规则重算** —— 规则可能早就改了。
+     */
+    java.util.List<CampaignPort.AppliedDiscount> appliedOf(String orderNo);
+
     /** 限时特价：这些商品此刻的活动价。只含命中的 */
     Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos);
 

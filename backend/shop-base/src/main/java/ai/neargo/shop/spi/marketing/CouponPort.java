@@ -38,10 +38,20 @@ public interface CouponPort {
     /**
      * @param byMerchant 出资方是商家（决定记 {@code discount_merchant} 还是 {@code discount_platform}，Q9）
      */
-    record Allocation(long totalDiscount, boolean byMerchant, List<MerchantDiscount> shares) {
+    record Allocation(long totalDiscount, boolean byMerchant, List<MerchantDiscount> shares,
+                      /**
+                       * 券名，**给买家看的那个**（TDD-C端优惠依据）。
+                       * 算分摊时本来就读了券行，顺手带出来 —— 否则确认页为了一个名字要再查一次。
+                       * 取不到就是空：端上退回只显示金额，<b>不编名字</b>。
+                       */
+                      String title) {
+
+        public Allocation(long totalDiscount, boolean byMerchant, List<MerchantDiscount> shares) {
+            this(totalDiscount, byMerchant, shares, null);
+        }
 
         public static Allocation none() {
-            return new Allocation(0L, false, List.of());
+            return new Allocation(0L, false, List.of(), null);
         }
 
         public long discountOf(String merchantNo) {
