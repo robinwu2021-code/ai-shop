@@ -168,6 +168,29 @@ public final class MerchantMappers {
      */
     public interface MchStoreCategoryMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
+
+        /**
+         * 把一条**被逻辑删除的**经营类目复活。
+         *
+         * <p>撤类目走的是逻辑删除（{@code deleted=1}），而唯一键
+         * {@code uk_store_category (store_no, category_no)} <b>不含这一列</b> ——
+         * 那一行还占着位置。所以「移出再加回来」不能 INSERT，会撞唯一键，
+         * 端上只看到一句「系统开小差了」（2026-09-20 线上真实发生）。
+         *
+         * <p>不写成 {@code selectList} + {@code updateById}：逻辑删除的行选不出来
+         * （MyBatis-Plus 自动加 {@code deleted=0}），绕开它要关全局配置。
+         *
+         * @return 影响行数；0 = 这家店压根没有过这个类目，调用方去 INSERT
+         */
+        @Update("""
+                UPDATE mch_store_category
+                   SET deleted = 0, enabled = 1, sort = #{sort}, display_name = #{displayName},
+                       entity_no = #{entityNo}, updated_at = NOW(), version = version + 1
+                 WHERE store_no = #{storeNo} AND category_no = #{categoryNo} AND deleted = 1
+                """)
+        int revive(@Param("storeNo") String storeNo, @Param("categoryNo") String categoryNo,
+                   @Param("entityNo") String entityNo, @Param("displayName") String displayName,
+                   @Param("sort") int sort);
     }
 
     public interface MchStoreMapper extends BaseMapper<MchStore> {

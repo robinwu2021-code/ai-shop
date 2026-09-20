@@ -114,8 +114,18 @@ public class StoreCategoryServiceImpl implements StoreCategoryService {
                     ? null : it.displayName().trim());
             row.setSort(it.sort() == null ? i : it.sort());
             MchStoreCategory toSave = row;
-            DataScopeContext.executeWithoutScope(() ->
-                    fresh ? mapper.insert(toSave) : mapper.updateById(toSave));
+            /*
+             * 新加的那一类**先试复活**：这家店以前撤过它的话，那一行还在（逻辑删除），
+             * 而唯一键不含 deleted —— 直接 INSERT 会撞键（见 mapper.revive 的说明）。
+             */
+            DataScopeContext.executeWithoutScope(() -> {
+                if (!fresh) {
+                    return mapper.updateById(toSave);
+                }
+                int revived = mapper.revive(storeNo, toSave.getCategoryNo(), merchantNo,
+                        toSave.getDisplayName(), toSave.getSort());
+                return revived > 0 ? revived : mapper.insert(toSave);
+            });
             i++;
         }
         return list(merchantNo, storeNo);

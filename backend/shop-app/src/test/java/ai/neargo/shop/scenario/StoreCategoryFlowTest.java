@@ -182,6 +182,34 @@ class StoreCategoryFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 移出再加回同一个类目 —— 逻辑删除留下的行不能把唯一键占死")
+    void removedCategoryCanBeAddedBack() throws Exception {
+        String token = merchant("12600141020", "货架测试·加回");
+        String storeNo = defaultStore(token);
+
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT210\"}]}"))).isZero();
+        // 移出（底下没有商品，允许）
+        assertThat(codeOf(replace(token, storeNo, "{\"items\":[]}"))).isZero();
+        assertThat(categories(token, storeNo)).isEmpty();
+
+        /*
+         * 再加回来。删是**逻辑删除**（deleted=1），而唯一键是 (store_no, category_no) 不含这一列 ——
+         * 直接 INSERT 会撞唯一键，端上只看到「系统开小差了」。2026-09-20 线上真实发生。
+         */
+        assertThat(codeOf(replace(token, storeNo,
+                "{\"items\":[{\"categoryNo\":\"CAT210\",\"displayName\":\"日杂\"}]}"))).isZero();
+        JsonNode rows = categories(token, storeNo);
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("categoryNo").asString()).isEqualTo("CAT210");
+        assertThat(rows.get(0).get("name").asString()).isEqualTo("日杂");
+        // 复活的是同一行，不是又插了一条
+        assertThat(jdbc.queryForObject(
+                "select count(*) from mch_store_category where store_no=? and category_no='CAT210'",
+                Integer.class, storeNo)).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★ 运营授码之后，同一个类目就加得上了 —— 没证的第三方的出路在运营那一侧")
     void opsGrantOpensTheCategory() throws Exception {
         /*
