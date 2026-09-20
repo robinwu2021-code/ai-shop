@@ -1180,7 +1180,7 @@ onShareAppMessage(() =>
           <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
           <!-- 仅活动可售：directBuyable 为假时没有单买 / 加购；拼团也没有就只剩一颗压暗的「暂不可购买」 -->
           <template v-if="grp && SHOW_GROUP_CTA">
-            <view v-if="directBuyable" class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
+            <view v-if="directBuyable" class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
               {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) }}
             </view>
             <view class="txt-sub sh-btn actionbar__buy sh-fill" :class="{ 'is-disabled': !barReady }" @tap="tapGroup">
@@ -1191,7 +1191,7 @@ onShareAppMessage(() =>
             {{ $t("goods.notBuyable") }}
           </view>
           <template v-else>
-            <view class="sh-btn actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapAdd($event)">
+            <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !barReady }" @tap="tapAdd($event)">
               {{ soldOut && !multiSku ? $t("goods.soldOut") : $t("goods.addCart") }}
             </view>
             <view class="txt-sub sh-btn actionbar__buy sh-fill" :class="{ 'is-disabled': !barReady }" @tap="tapBuy">
@@ -1439,7 +1439,6 @@ onShareAppMessage(() =>
  */
 .actionbar__add,
 .actionbar__buy {
-  flex: 1;
   min-width: 0;
   padding: 28rpx 12rpx;
   white-space: nowrap;
