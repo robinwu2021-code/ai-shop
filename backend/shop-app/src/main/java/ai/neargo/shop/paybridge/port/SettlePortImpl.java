@@ -163,6 +163,24 @@ public class SettlePortImpl implements SettlePort {
          */
         paymentLedger.recordPayer(outTradeNo, payerId,
                 WECHAT.equals(cmd.payChannel()) ? wechatAppId : null);
+
+        /*
+         * **免支付通道：就地结清，不等回调。**
+         *
+         * 其它通道靠异步回调把流水推成 SUCCESS，而 0 元单
+         * <b>没有任何外部系统会回调我们</b>。不在这里结清的话，那笔流水会永远停在
+         * PENDING，被收款对账轴每轮回查一次、每轮查不到 —— 而它本来就不存在于
+         * 任何通道那边。
+         *
+         * 结清放在这里而不是交给交易域：**支付成功这件事的权威在支付域**
+         * （SettlePort#settlePayment 的类注释），订单状态是它的下游投影。
+         * 反过来先改订单，一旦这一步失败，库里就是「订单说付了、而支付域没有这笔钱」。
+         */
+        if (ai.neargo.shop.common.PayChannels.FREE.equals(cmd.payChannel())) {
+            paymentLedger.settle(new PaymentSettled(outTradeNo, cmd.payChannel(),
+                    r.tradeNo(), 0L, System.currentTimeMillis()));
+            log.info("[pay-init] 0 元单已就地结清：{}（订单 {}）", outTradeNo, cmd.orderNo());
+        }
         return new PayInitResult(true, outTradeNo, cmd.payChannel(), r.params(), null);
     }
 

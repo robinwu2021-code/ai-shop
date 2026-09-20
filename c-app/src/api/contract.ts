@@ -74,6 +74,16 @@ export interface PayInit {
   payChannel: string;
   /** 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** */
   payParams: Record<string, string>;
+  /**
+   * **这笔已经付掉了，不要唤起收银台**（应付 0 元的单）。此时 `payParams` 是空的。
+   *
+   * 优惠、券、积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款 ——
+   * 后端就地结清并把订单推成已支付，端上直接去查详情即可。
+   *
+   * **不要改成按 `payChannel === "FREE"` 判**：那是把通道名当协议用，
+   * 将来多一个免支付的来源（全额积分抵扣、全额券）就要改端上。
+   */
+  settled?: boolean;
 }
 
 export interface GoodsQuery extends PageQuery {

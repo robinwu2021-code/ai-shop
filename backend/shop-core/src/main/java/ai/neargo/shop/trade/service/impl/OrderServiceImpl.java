@@ -1202,7 +1202,20 @@ public class OrderServiceImpl implements OrderService {
             log.warn("[pay] 下单失败 order={} channel={}：{}", orderNo, init.payChannel(), init.message());
             throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         }
-        return new PayResult(orderNo, init.payChannel(), init.payParams());
+        /*
+         * **免支付通道：就地把订单推成已支付。**
+         *
+         * 支付域那边已经结清了（SettlePortImpl 里那一段），这里做的是它的下游投影。
+         * 0 元单没有任何外部系统会回调我们，不在这里推的话订单会一直停在待支付 ——
+         * 而那正是本方案要修的缺陷。
+         *
+         * markPaid 自身幂等（已是 PAID 直接返回），用户连点两下不会推乱。
+         */
+        boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
+        if (settled) {
+            markPaid(orderNo, init.payChannel(), init.outTradeNo());
+        }
+        return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
 
     @Override
@@ -2621,6 +2634,20 @@ public class OrderServiceImpl implements OrderService {
      * 端上应当把结算台给的那个通道传进来，这一支是它没传时的兜底。
      */
     private String resolvePayChannel(OrdOrder order, String requested) {
+        /*
+         * **应付为 0 → 免支付通道，且优先于端上指定的通道。**
+         *
+         * 放在最前面（连 requested 都盖掉）是有意的：0 元的单送进任何真通道
+         * 都会被「金额必须大于 0」拒掉，而那时订单已经建好了 ——
+         * 用户看到的是「下单成功但永远付不了」，线上实测卡住过一笔
+         * （SO202609201740370006341，见 TDD-零元订单支付 §2）。
+         *
+         * 优惠、券、积分任何一种都能把应付打到 0，所以这不是某个活动配错了，
+         * 是这条链本来就缺一个出口。
+         */
+        if (order.getPayAmount() != null && order.getPayAmount() == 0L) {
+            return ai.neargo.shop.common.PayChannels.FREE;
+        }
         if (requested != null && !requested.isBlank()) {
             return requested;
         }

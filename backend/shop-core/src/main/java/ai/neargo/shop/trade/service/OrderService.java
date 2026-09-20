@@ -168,7 +168,15 @@ public interface OrderService {
      * @param payParams 端上调起支付的参数（微信 JSAPI 的 timeStamp/nonceStr/package/paySign 等）。
      *                  S2 是 stub 通道，S4 换真微信支付时这个结构不变
      */
-    record PayResult(String orderNo, String payChannel, java.util.Map<String, String> payParams) {
+    /**
+     * @param settled <b>这笔已经付掉了，端上不要唤起收银台</b>（应付 0 元的单）。
+     *                此时 {@code payParams} 为空。
+     *                <p>端上<b>不该</b>改成按 {@code payChannel == "FREE"} 判：
+     *                那是把通道名当协议用，将来多一个免支付的来源
+     *                （全额积分抵扣、全额券）就要改端上。见 TDD-零元订单支付 §4.2。
+     */
+    record PayResult(String orderNo, String payChannel, java.util.Map<String, String> payParams,
+                     boolean settled) {
     }
 
     /**

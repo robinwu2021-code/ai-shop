@@ -571,6 +571,8 @@ export default {
     payNow: "Pay now",
     paying: "Paying…",
     cancelled: "Payment cancelled",
+    /** Nothing to pay (total is 0) */
+    freeSettled: "Nothing to pay — done",
     invokeFailedTitle: "Could not open payment",
     invokeFailedUnknown: "WeChat gave no reason — please send a screenshot",
     cancel: "Cancel order",

@@ -604,6 +604,8 @@ export default {
     payNow: "立即支付",
     paying: "支付中…",
     cancelled: "已取消支付",
+    /** 应付 0 元，无需付款。短位：只说结果 */
+    freeSettled: "无需付款，已完成",
     invokeFailedTitle: "支付没能唤起",
     invokeFailedUnknown: "微信没有给出原因，请截图反馈",
     cancel: "取消订单",

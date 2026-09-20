@@ -292,15 +292,29 @@ export const tradeMock: Pick<ShopApi,
      * 返回 Order 的话端上编译不过，那正是我们要的：
      * <b>契约变了，mock 必须跟着变</b>，否则 mock 下能跑而真实链路跑不通。
      */
+    /*
+     * **应付 0 元走免支付**，与真后端同形（TDD-零元订单支付 §4）。
+     * 替身也照这条分：不分的话 mock 下 0 元单一路通畅，
+     * 而真后端会被「金额必须大于 0」拒掉 —— 那正是这个特性要修的缺陷。
+     */
+    if ((target.amount?.payableMinor ?? 0) === 0) {
+      return delay({
+        orderNo,
+        payChannel: "FREE",
+        payParams: {},
+        settled: true,
+      });
+    }
     return delay({
       orderNo,
       payChannel: "TEST",
       payParams: {
         prepayId: "mock_" + orderNo,
         outTradeNo: orderNo,
-        amount: String(target.amount ?? 0),
+        amount: String(target.amount?.payableMinor ?? 0),
         testChannel: "true",
       },
+      settled: false,
     });
   },
 

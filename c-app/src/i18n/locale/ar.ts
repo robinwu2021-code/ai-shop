@@ -571,6 +571,8 @@ export default {
     payNow: "ادفع الآن",
     paying: "جارٍ الدفع…",
     cancelled: "أُلغي الدفع",
+    /** لا شيء للدفع (الإجمالي صفر) */
+    freeSettled: "لا حاجة للدفع — تم",
     invokeFailedTitle: "تعذّر فتح الدفع",
     invokeFailedUnknown: "لم يقدّم WeChat سبباً — أرسل لقطة شاشة",
     cancel: "إلغاء الطلب",

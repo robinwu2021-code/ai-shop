@@ -123,6 +123,23 @@ async function pay() {
      */
     const init = await api.payOrder(o.orderNo, chosen.value || undefined);
 
+    /*
+     * **应付 0 元：后端已经结清了，不要唤起收银台。**
+     *
+     * 优惠/券/积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款。
+     * 拿一组空参数去 requestPayment 的话，通道会回一个参数错 ——
+     * 用户看到的是「下单成功却付不了」，而这单其实已经付掉了。
+     *
+     * 判 `settled` 不判 `payChannel === "FREE"`：通道名是后端的实现细节，
+     * 将来多一个免支付的来源就要改这里。见 TDD-零元订单支付 §4.2。
+     */
+    if (init.settled) {
+      order.value = await api.orderDetail(o.orderNo);
+      if (paid.value) clearCheckoutKey();
+      uni.showToast({ title: String(t("pay.freeSettled")), icon: "none" });
+      return;
+    }
+
     // 参数原样透传：不同通道字段完全不同，端上不该翻译成一套「统一格式」
     const res = await requestPayment(init.payParams);
     if (res.cancelled) {
