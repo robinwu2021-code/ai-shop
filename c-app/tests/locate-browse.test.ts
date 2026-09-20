@@ -110,6 +110,15 @@ describe("两段空态各自消失", () => {
   });
 });
 
+describe("从新增地址返回，刚存的那条要出现", () => {
+  it("★★★ 浏览模式在 onShow 里重拉地址簿", () => {
+    // 只在 onLoad 拉：真机上建完地址返回，「我的收货地址」整块还是不显示（2026-09-20）
+    const onShow = bodyOf(pick, "onShow(");
+    expect(onShow, "没有 onShow 了 —— 守卫失去了扫描对象").not.toBeNull();
+    expect(onShow).toContain("location.load()");
+  });
+});
+
 describe("标题分得开", () => {
   it("浏览模式的标题不是「选择收货地址」", () => {
     expect(pick).toContain("addressPick.browseTitle");

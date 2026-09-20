@@ -322,6 +322,14 @@ function manual() {
  * 城市的结果，而列表本身没有任何地方写着它是哪儿的。
  */
 onShow(() => {
+  /*
+   * **浏览模式每次显示都重拉一次地址簿。**
+   *
+   * 只在 onLoad 拉的话，从「新增收货地址」返回时**刚存的那条不出现** ——
+   * 用户会以为没存上，回去再存一遍。收货地址页当年就是这么坏的（见那一页的 onShow），
+   * 而这一页自己又踩了一次：2026-09-20 真机上建完地址返回，这一段整块还是不显示。
+   */
+  if (browse.value) void location.load();
   const c = pickedCity.take();
   if (!c) return;
   city.value = c;
