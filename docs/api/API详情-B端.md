@@ -258,6 +258,7 @@
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -304,6 +305,7 @@
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -356,6 +358,7 @@
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -3879,6 +3882,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -3925,6 +3929,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -3971,6 +3976,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -4006,6 +4012,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
+| `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
 
 **出参**（`data`）
 
@@ -4023,6 +4030,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -4206,6 +4214,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -4314,6 +4323,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -7660,6 +7670,7 @@ _无字段_
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -8579,6 +8590,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
+| `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
 
 ### Sku
 
