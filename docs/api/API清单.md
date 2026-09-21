@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 750 个接口**：后端已实现 678（90%）· 前端在调 679
+**合计 754 个接口**：后端已实现 682（90%）· 前端在调 683
 
 ---
 
@@ -236,7 +236,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **250** 个接口 ｜ 后端已实现 **245**（98%）｜ 前端在调 **250**
+共 **254** 个接口 ｜ 后端已实现 **249**（98%）｜ 前端在调 **254**
 
 ### activities（4）
 
@@ -391,7 +391,7 @@
 | GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### goods（15）
+### goods（17）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -399,6 +399,7 @@
 | GET | `/biz/goods/{goodsNo}` | 商品详情 | — | `Goods` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}/draft` | 读草稿（编辑页回填） | — | `SaveGoodsReqBody` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/draft/discard` | 放弃草稿（线上不动，幂等） | — | `Goods` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/goods/{goodsNo}/inv-mode` | 单件商品记不记库存（跟随品类 / 记 / 不记） | — | `InvModeChange` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/presale` | 改截单与到货说明 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/publish` | 发布草稿（原子换版；冲突后带 confirmVersion） | — | `Goods` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}/publish-preview` | 发布预览（字段级差异） | — | `PublishPreview` | 🔒 | ✅ | ✅ |
@@ -408,6 +409,7 @@
 | POST | `/biz/goods/{goodsNo}/submit` | 提交审核（草稿→待审） | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/describe` | 自动生成图文详情 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/goods/inv-mode` | 几件商品记不记库存（列表标签、编辑页那一行） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
 
@@ -433,12 +435,14 @@
 | GET | `/biz/groups` | 我的商家团 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/groups` | 开团 | `CreateGroupReq` | `GroupBuy` | 🔒 | ✅ | ✅ |
 
-### inventory（37）
+### inventory（39）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/inventory/adjust` | 直接改数（走盘点，落单落流水） | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/inventory/balances` | 库存列表（默认只给要处理的） | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/inventory/category-setting` | 记库存的品类（各门店经营类目合集，每类一行） | — | `数组` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/inventory/category-setting/{categoryNo}` | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | — | `InvModeChange` | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/counts` | 开盘点单（锁账面数） | — | `string` | 🔒 | ✅ | ✅ |
 | GET | `/biz/inventory/counts/{no}` | 读回盘点单（含账面快照） | — | `StockCount` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/inventory/counts/{no}/lines` | 填实盘数 | — | — | 🔒 | ✅ | ✅ |

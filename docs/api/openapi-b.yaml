@@ -1249,6 +1249,111 @@ components:
         - "lines"
       additionalProperties: false
       description: "一张调拨单（`TransferVO`）。**草稿态没有行**（行在发出的那张出库单上），不是空单"
+    InvCategorySetting: 
+      type: "object"
+      properties: 
+        categoryNo: 
+          type: "string"
+        name: 
+          type: "string"
+        managed: 
+          type: "boolean"
+          description: "生效值：记不记库存"
+        isDefault: 
+          type: "boolean"
+          description: "没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」"
+        goodsCount: 
+          type: "number"
+          description: "这一类下本店有几件商品"
+      required: 
+        - "categoryNo"
+        - "name"
+        - "managed"
+        - "isDefault"
+        - "goodsCount"
+      additionalProperties: false
+      description: "库存设置页的一行：本店各门店经营类目的合集，每类一个开关"
+    InvMode: 
+      type: "string"
+      enum: 
+        - "INHERIT"
+        - "ON"
+        - "OFF"
+      description: "单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存"
+    GoodsInvMode: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+        mode: 
+          "$ref": "#/components/schemas/InvMode"
+        managed: 
+          type: "boolean"
+          description: "生效值"
+        categoryManaged: 
+          type: "boolean"
+          description: "品类那一级的生效值 —— 「跟随品类（记库存）」括号里写的就是它"
+      required: 
+        - "goodsNo"
+        - "mode"
+        - "managed"
+        - "categoryManaged"
+      additionalProperties: false
+    InvModeBlocker: 
+      type: "object"
+      properties: 
+        kind: 
+          type: "string"
+          enum: 
+            - "INBOUND"
+            - "OUTBOUND"
+            - "TRANSFER"
+            - "RESERVATION"
+            - "COUNT"
+        docNo: 
+          type: "string"
+      required: 
+        - "kind"
+        - "docNo"
+      additionalProperties: false
+      description: "挡住「改为不记库存」的在途单据。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单"
+    InvAffectedGoods: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+        title: 
+          type: "string"
+        onHand: 
+          type: "number"
+        blockers: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/InvModeBlocker"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "onHand"
+        - "blockers"
+      additionalProperties: false
+    InvModeChange: 
+      type: "object"
+      properties: 
+        status: 
+          type: "string"
+          enum: 
+            - "DONE"
+            - "BLOCKED"
+            - "NEEDS_CONFIRM"
+        goods: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/InvAffectedGoods"
+      required: 
+        - "status"
+        - "goods"
+      additionalProperties: false
+      description: "切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改"
     CouponFunder: 
       type: "string"
       enum: 
@@ -17631,6 +17736,132 @@ paths:
                   data: 
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/category-setting": 
+    get: 
+      operationId: "mInvCategorySettings"
+      summary: "记库存的品类（各门店经营类目合集，每类一行）"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/InvCategorySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/inventory/category-setting/{categoryNo}": 
+    put: 
+      operationId: "mInvSetCategory"
+      summary: "拨一个品类记不记库存（有在途拒绝、有库存要确认）"
+      tags: 
+        - "inventory"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "categoryNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvModeChange"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/goods/inv-mode": 
+    get: 
+      operationId: "mGoodsInvModes"
+      summary: "几件商品记不记库存（列表标签、编辑页那一行）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/GoodsInvMode"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/goods/{goodsNo}/inv-mode": 
+    put: 
+      operationId: "mGoodsSetInvMode"
+      summary: "单件商品记不记库存（跟随品类 / 记 / 不记）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/InvModeChange"
                 required: 
                   - "code"
                   - "msg"

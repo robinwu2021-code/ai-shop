@@ -1440,6 +1440,26 @@ _无字段_
 | `price` | `number` | 是 | — |
 
 
+#### PUT `/biz/goods/{goodsNo}/inv-mode`
+
+单件商品记不记库存（跟随品类 / 记 / 不记）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`InvModeChange`](#invmodechange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
+
+
 #### POST `/biz/goods/{goodsNo}/presale`
 
 改截单与到货说明　🔒
@@ -1983,6 +2003,17 @@ _无字段_
 类型：[`{ detail: string }`](#detailstring)
 
 
+#### GET `/biz/goods/inv-mode`
+
+几件商品记不记库存（列表标签、编辑页那一行）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GoodsInvMode`](#goodsinvmode)\[\]
+
+
 #### POST `/biz/goods/recognize`
 
 拍照识别商品　🔒
@@ -2389,6 +2420,37 @@ _无字段_
 **出参**（`data`）
 
 类型：[`StockBalance`](#stockbalance)\[\]
+
+
+#### GET `/biz/inventory/category-setting`
+
+记库存的品类（各门店经营类目合集，每类一行）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvCategorySetting`](#invcategorysetting)\[\]
+
+
+#### PUT `/biz/inventory/category-setting/{categoryNo}`
+
+拨一个品类记不记库存（有在途拒绝、有库存要确认）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `categoryNo` | path | `string` | 是 | 类目单号 |
+
+**出参**（`data`）
+
+类型：[`InvModeChange`](#invmodechange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
 
 
 #### POST `/biz/inventory/counts`
@@ -6981,6 +7043,15 @@ _无字段_
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
 
+### GoodsInvMode
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `mode` | [`InvMode`](#invmode) | 是 | — |
+| `managed` | `boolean` | 是 | 生效值 |
+| `categoryManaged` | `boolean` | 是 | 品类那一级的生效值 —— 「跟随品类（记库存）」括号里写的就是它 |
+
 ### GoodsParam
 
 一条商品参数。 <p>`valueNo` 是平台值池里的编号，**有它才参与筛选与跨店比较**； 量纲型（功率、净重）平台不枚举值，那时只有 `label`。
@@ -7150,6 +7221,55 @@ _无字段_
 | `offlineMinor` | `number` | 是 | 当面收款：**他早就拿到了**，无需结算 |
 | `inFlightCount` | `number` | 是 | 在途的结算单数。金额之外还要给条数 —— 一笔大的和十笔小的，商家的处理方式不同 |
 | `oldestInFlightAt` | `number,null` | 否 | 最早一笔在途的发起时刻。**「卡了多久」是商家真正想问的** |
+
+### InvAffectedGoods
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `onHand` | `number` | 是 | — |
+| `blockers` | [`InvModeBlocker`](#invmodeblocker)\[\] | 是 | — |
+
+### InvCategorySetting
+
+库存设置页的一行：本店各门店经营类目的合集，每类一个开关
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `categoryNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `managed` | `boolean` | 是 | 生效值：记不记库存 |
+| `isDefault` | `boolean` | 是 | 没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」 |
+| `goodsCount` | `number` | 是 | 这一类下本店有几件商品 |
+
+### InvMode
+
+单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存
+
+枚举取值：
+
+- `INHERIT`
+- `ON`
+- `OFF`
+
+### InvModeBlocker
+
+挡住「改为不记库存」的在途单据。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | `INBOUND` \| `OUTBOUND` \| `TRANSFER` \| `RESERVATION` \| `COUNT` | 是 | — |
+| `docNo` | `string` | 是 | — |
+
+### InvModeChange
+
+切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
 
 ### LimitReason
 

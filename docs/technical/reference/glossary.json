@@ -10196,6 +10196,54 @@
           "ar": "الدخل"
         },
         {
+          "key": "invMode.adjustHint",
+          "zh-CN": "这件商品不记库存，这里的数就是商城上可卖的数",
+          "en": "This product doesn't track stock. This number is what the store can sell.",
+          "ar": "هذا المنتج لا يتتبع المخزون. هذا الرقم هو ما يمكن للمتجر بيعه."
+        },
+        {
+          "key": "invMode.afterSave",
+          "zh-CN": "保存后可设置",
+          "en": "Available after saving",
+          "ar": "متاح بعد الحفظ"
+        },
+        {
+          "key": "invMode.categoryState",
+          "zh-CN": "品类目前{state}",
+          "en": "Category: {state}",
+          "ar": "الفئة: {state}"
+        },
+        {
+          "key": "invMode.inherit",
+          "zh-CN": "跟随品类（{state}）",
+          "en": "Follow category ({state})",
+          "ar": "حسب الفئة ({state})"
+        },
+        {
+          "key": "invMode.label",
+          "zh-CN": "库存管理",
+          "en": "Stock tracking",
+          "ar": "تتبع المخزون"
+        },
+        {
+          "key": "invMode.off",
+          "zh-CN": "不记库存",
+          "en": "Don't track stock",
+          "ar": "بدون تتبع المخزون"
+        },
+        {
+          "key": "invMode.on",
+          "zh-CN": "记库存",
+          "en": "Track stock",
+          "ar": "تتبع المخزون"
+        },
+        {
+          "key": "invMode.sheetHint",
+          "zh-CN": "记库存：参与进货、盘点、调拨、报损。不记库存：只用商城上的库存数。",
+          "en": "Track stock: included in purchases, counts, transfers and scrap. Don't track: only the store stock number is used.",
+          "ar": "تتبع المخزون: يدخل في المشتريات والجرد والتحويل والإتلاف. بدون تتبع: يُستخدم رقم مخزون المتجر فقط."
+        },
+        {
           "key": "invoice.amountHint",
           "zh-CN": "票面金额必须正好等于这个数。对不上会被拒收，退回重开要走红字流程。",
           "en": "The invoice must be for exactly this amount. Anything else is rejected, and reissuing means a credit-note process.",
@@ -16274,6 +16322,12 @@
           "ar": "تقرير"
         },
         {
+          "key": "stock.entry.settings",
+          "zh-CN": "库存设置",
+          "en": "Stock settings",
+          "ar": "إعدادات المخزون"
+        },
+        {
           "key": "stock.entry.suppliers",
           "zh-CN": "供应商",
           "en": "Suppliers",
@@ -17448,6 +17502,114 @@
           "zh-CN": "台账不平衡，请勿据此对账",
           "en": "The books do not balance — a ledger entry is missing; do not reconcile against this report",
           "ar": "الحسابات غير متوازنة؛ ينقص قيد في السجل؛ لا تطابق على هذا التقرير"
+        },
+        {
+          "key": "stockSettings.blockedHint",
+          "zh-CN": "以下单据还没完成，本次没有做任何改动：{list}。收货或作废进货单、订单出库后，再来关闭。",
+          "en": "These documents are still open, so nothing was changed: {list}. Receive or void the purchases and ship the orders, then try again.",
+          "ar": "هذه المستندات لم تكتمل، لذا لم يتغير شيء: {list}. استلم المشتريات أو ألغِها واشحن الطلبات، ثم حاول مجددًا."
+        },
+        {
+          "key": "stockSettings.blockedTitle",
+          "zh-CN": "暂时不能改为不记库存",
+          "en": "Can't stop tracking yet",
+          "ar": "لا يمكن إيقاف التتبع الآن"
+        },
+        {
+          "key": "stockSettings.blocker.COUNT",
+          "zh-CN": "盘点单 {no} 正在盘",
+          "en": "Count {no} in progress",
+          "ar": "الجرد {no} قيد التنفيذ"
+        },
+        {
+          "key": "stockSettings.blocker.INBOUND",
+          "zh-CN": "进货单 {no} 待收货",
+          "en": "Purchase {no} awaiting receipt",
+          "ar": "الشراء {no} بانتظار الاستلام"
+        },
+        {
+          "key": "stockSettings.blocker.OUTBOUND",
+          "zh-CN": "出库单 {no} 未完成",
+          "en": "Outbound {no} not finished",
+          "ar": "الصرف {no} لم يكتمل"
+        },
+        {
+          "key": "stockSettings.blocker.RESERVATION",
+          "zh-CN": "线上订单待出库",
+          "en": "Online order awaiting shipment",
+          "ar": "طلب عبر الإنترنت بانتظار الشحن"
+        },
+        {
+          "key": "stockSettings.blocker.TRANSFER",
+          "zh-CN": "调拨单 {no} 在途",
+          "en": "Transfer {no} in transit",
+          "ar": "التحويل {no} قيد النقل"
+        },
+        {
+          "key": "stockSettings.confirmOk",
+          "zh-CN": "不记库存",
+          "en": "Stop tracking",
+          "ar": "إيقاف التتبع"
+        },
+        {
+          "key": "stockSettings.confirmStocked",
+          "zh-CN": "{n} 件商品还有库存：{list}。关闭后这些库存与流水保留、只读，不再出现在进货、盘点、报损里；重新打开即恢复。",
+          "en": "{n} products still have stock: {list}. Their stock and history stay, read-only, and leave purchases, counts and scrap. Turn it back on to restore them.",
+          "ar": "لا يزال لدى {n} منتجات مخزون: {list}. يبقى المخزون والسجل للقراءة فقط ويخرجان من المشتريات والجرد والإتلاف. أعد التفعيل لاستعادتهما."
+        },
+        {
+          "key": "stockSettings.confirmTitle",
+          "zh-CN": "「{name}」改为不记库存？",
+          "en": "Stop tracking stock for {name}?",
+          "ar": "إيقاف تتبع مخزون {name}؟"
+        },
+        {
+          "key": "stockSettings.defaultOff",
+          "zh-CN": "默认不记 · {n} 件",
+          "en": "Off by default · {n}",
+          "ar": "غير مُفعَّل افتراضيًا · {n}"
+        },
+        {
+          "key": "stockSettings.empty",
+          "zh-CN": "还没有经营类目",
+          "en": "No business categories yet",
+          "ar": "لا توجد فئات نشاط بعد"
+        },
+        {
+          "key": "stockSettings.goodsCount",
+          "zh-CN": "{n} 件商品",
+          "en": "{n} products",
+          "ar": "{n} منتجات"
+        },
+        {
+          "key": "stockSettings.goodsHint",
+          "zh-CN": "单件商品可在「编辑商品 → 库存管理」里单独设置，单件的设置优先。",
+          "en": "You can override a single product under Edit product → Stock tracking. The product setting wins.",
+          "ar": "يمكنك ضبط منتج واحد من تعديل المنتج ← تتبع المخزون. إعداد المنتج هو المعتمد."
+        },
+        {
+          "key": "stockSettings.onHand",
+          "zh-CN": "{title} 实存 {n}",
+          "en": "{title} on hand {n}",
+          "ar": "{title} المتوفر {n}"
+        },
+        {
+          "key": "stockSettings.section",
+          "zh-CN": "记库存的品类",
+          "en": "Categories with stock tracking",
+          "ar": "الفئات التي يُتتبَّع مخزونها"
+        },
+        {
+          "key": "stockSettings.sharedHint",
+          "zh-CN": "全店各门店共用。服务类默认不记，实物、生鲜默认记。",
+          "en": "Shared by all your stores. Services are off by default; physical goods and fresh produce are on.",
+          "ar": "مشترك بين جميع متاجرك. الخدمات غير مُفعَّلة افتراضيًا، والسلع والمنتجات الطازجة مُفعَّلة."
+        },
+        {
+          "key": "stockSettings.title",
+          "zh-CN": "库存设置",
+          "en": "Stock settings",
+          "ar": "إعدادات المخزون"
         },
         {
           "key": "store.addArea",
@@ -23711,6 +23873,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_entity_category_inv",
+      "class": "PrdEntityCategoryInv",
+      "zh": "主体按类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_goods",
       "class": "PrdGoods",
       "zh": "商品（SPU）。",
@@ -24958,6 +25127,27 @@
         "value": "SPLIT",
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "BLOCKED",
+        "value": "BLOCKED",
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvManagedAppService",
+        "name": "NEEDS_CONFIRM",
+        "value": "NEEDS_CONFIRM",
+        "zh": "",
+        "module": "shop-app"
       },
       {
         "host": "InvMirrorEvent",
@@ -27756,6 +27946,27 @@
         "host": "PrdGoods",
         "name": "TYPE_CARD",
         "value": "CARD",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "INV_INHERIT",
+        "value": "INHERIT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "INV_ON",
+        "value": "ON",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoods",
+        "name": "INV_OFF",
+        "value": "OFF",
         "zh": "",
         "module": "shop-core"
       },
@@ -31113,6 +31324,16 @@
         "zh": "每一档指向不同的人 —— 这正是它比「积压 N 条」多出来的那点信息"
       },
       {
+        "name": "InvMode",
+        "client": "shared",
+        "values": [
+          "INHERIT",
+          "ON",
+          "OFF"
+        ],
+        "zh": "单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存"
+      },
+      {
         "name": "InvoiceRequestStatus",
         "client": "shared",
         "values": [
@@ -31855,7 +32076,8 @@
           "/pages/transfer/index",
           "/pages/stock-report/index",
           "/pages/locations/index",
-          "/pages/suppliers/index"
+          "/pages/suppliers/index",
+          "/pages/stock-settings/index"
         ],
         "zh": ""
       },

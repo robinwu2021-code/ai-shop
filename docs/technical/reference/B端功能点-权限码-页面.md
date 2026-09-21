@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 198 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 202 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,9 +21,9 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 37 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 39 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 27 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
@@ -52,8 +52,10 @@
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
 | 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
+| 几件商品记不记库存（列表标签、编辑页那一行） | GET | `/biz/goods/inv-mode` | `mGoodsInvModes` | goods-edit、goods-list |
 | 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
 | 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | stock、stock-out、transfer |
+| 记库存的品类（各门店经营类目合集，每类一行） | GET | `/biz/inventory/category-setting` | `mInvCategorySettings` | stock-settings |
 | 开盘点单（锁账面数） | POST | `/biz/inventory/counts` | `mCountOpen` | stock-check |
 | 读回盘点单（含账面快照） | GET | `/biz/inventory/counts/:no` | `mCountDetail` | stock-check |
 | 填实盘数 | PUT | `/biz/inventory/counts/:no/lines` | `mCountFill` | stock-check |
@@ -86,6 +88,44 @@
 | 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
 | 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
 | 作废调拨草稿 | POST | `/biz/inventory/transfers/:no/void` | `mTransferVoid` | stock-docs、transfer |
+
+### `biz:goods`　建/改商品、上下架、规格模板、识图
+
+**可用角色**：老板、店长
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 读草稿（编辑页回填） | GET | `/biz/goods/:goodsNo/draft` | `mGoodsDraft` | goods-edit |
+| 放弃草稿（线上不动，幂等） | POST | `/biz/goods/:goodsNo/draft/discard` | `mDiscardGoodsDraft` | goods-publish |
+| 单件商品记不记库存（跟随品类 / 记 / 不记） | PUT | `/biz/goods/:goodsNo/inv-mode` | `mGoodsSetInvMode` | goods-edit |
+| 改截单与到货说明 | POST | `/biz/goods/:goodsNo/presale` | `mSavePresale` | — |
+| 发布草稿（原子换版；冲突后带 confirmVersion） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
+| 发布预览（字段级差异） | GET | `/biz/goods/:goodsNo/publish-preview` | `mPublishPreview` | goods-publish |
+| 改当前门店售价 | POST | `/biz/goods/:goodsNo/store-price` | `mSaveStorePrice` | goods-list |
+| 提交审核（草稿→待审） | POST | `/biz/goods/:goodsNo/submit` | `mSubmitGoods` | goods-edit、goods-list |
+| 上下架 | POST | `/biz/goods/:goodsNo/toggle` | `mToggleGoods` | goods-list |
+| 自动生成图文详情 | POST | `/biz/goods/describe` | `mDescribeGoods` | goods-edit |
+| 拍照识别商品 | POST | `/biz/goods/recognize` | `mRecognizeGoods` | goods-edit |
+| 新建/编辑商品 | POST | `/biz/goods/save` | `mSaveGoods` | goods-edit |
+| 拨一个品类记不记库存（有在途拒绝、有库存要确认） | PUT | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | stock-settings |
+| 我建的规格维度（含用量与配额） | GET | `/biz/my-spec-dims` | `mMySpecDims` | my-specs |
+| 停用/启用自建维度 | POST | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | — |
+| 给自建维度改名 | POST | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | — |
+| 还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建） | GET | `/biz/pickable-props` | `mPickableProps` | my-specs |
+| 把条码绑到一件 SKU 上（幂等；本店内唯一） | POST | `/biz/sku-identity/barcode` | `mBindBarcode` | — |
+| 导出本店全部规格行的条码/货号/单位 | GET | `/biz/sku-identity/export` | `mSkuIdentityExport` | sku-identity |
+| 商品编码批量导入 | POST | `/biz/sku-identity/import` | `mSkuIdentityImport` | sku-identity |
+| 商品编码导入试算（不写库） | POST | `/biz/sku-identity/import/plan` | `mSkuIdentityPlan` | sku-identity |
+| 加规格组时能挑的维度（本类目已配 + 平台通用 + 自建） | GET | `/biz/spec-dims` | `mPickableDims` | goods-edit、my-specs |
+| 自建规格维度（只本店可用） | POST | `/biz/spec-dims` | `mAddSpecDim` | goods-edit、my-specs |
+| 某个规格下平台有的全部档位（加档位的候选） | GET | `/biz/spec-dims/{dimNo}/values` | `mDimValues` | goods-edit、my-specs |
+| 本店用哪几个规格、什么顺序、叫什么 | POST | `/biz/spec-override/{categoryNo}` | `mSaveSpecOverride` | goods-edit、my-specs |
+| 这一类的商品参数（产地/保质期/材质，不分 SKU） | GET | `/biz/spec-props` | `mSpecProps` | goods-edit |
+| 规格模板 | GET | `/biz/spec-templates` | `mSpecTemplates` | goods-edit |
+| 存为常用规格 | POST | `/biz/spec-templates` | `mSaveSpecTemplate` | — |
+| 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
+| 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
+| 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
 
 ### `biz:campaign`　营销活动、开团、报价
 
@@ -126,42 +166,6 @@
 | 报名平台活动（审核前可改） | POST | `/biz/platform-activity/:activityNo/enrollment` | `mEnroll` | platform-activity-apply |
 | 撤回待审的报名 | POST | `/biz/platform-activity/:activityNo/withdraw` | `mWithdrawEnrollment` | platform-activity-apply |
 | —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
-
-### `biz:goods`　建/改商品、上下架、规格模板、识图
-
-**可用角色**：老板、店长
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 读草稿（编辑页回填） | GET | `/biz/goods/:goodsNo/draft` | `mGoodsDraft` | goods-edit |
-| 放弃草稿（线上不动，幂等） | POST | `/biz/goods/:goodsNo/draft/discard` | `mDiscardGoodsDraft` | goods-publish |
-| 改截单与到货说明 | POST | `/biz/goods/:goodsNo/presale` | `mSavePresale` | — |
-| 发布草稿（原子换版；冲突后带 confirmVersion） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
-| 发布预览（字段级差异） | GET | `/biz/goods/:goodsNo/publish-preview` | `mPublishPreview` | goods-publish |
-| 改当前门店售价 | POST | `/biz/goods/:goodsNo/store-price` | `mSaveStorePrice` | goods-list |
-| 提交审核（草稿→待审） | POST | `/biz/goods/:goodsNo/submit` | `mSubmitGoods` | goods-edit、goods-list |
-| 上下架 | POST | `/biz/goods/:goodsNo/toggle` | `mToggleGoods` | goods-list |
-| 自动生成图文详情 | POST | `/biz/goods/describe` | `mDescribeGoods` | goods-edit |
-| 拍照识别商品 | POST | `/biz/goods/recognize` | `mRecognizeGoods` | goods-edit |
-| 新建/编辑商品 | POST | `/biz/goods/save` | `mSaveGoods` | goods-edit |
-| 我建的规格维度（含用量与配额） | GET | `/biz/my-spec-dims` | `mMySpecDims` | my-specs |
-| 停用/启用自建维度 | POST | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | — |
-| 给自建维度改名 | POST | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | — |
-| 还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建） | GET | `/biz/pickable-props` | `mPickableProps` | my-specs |
-| 把条码绑到一件 SKU 上（幂等；本店内唯一） | POST | `/biz/sku-identity/barcode` | `mBindBarcode` | — |
-| 导出本店全部规格行的条码/货号/单位 | GET | `/biz/sku-identity/export` | `mSkuIdentityExport` | sku-identity |
-| 商品编码批量导入 | POST | `/biz/sku-identity/import` | `mSkuIdentityImport` | sku-identity |
-| 商品编码导入试算（不写库） | POST | `/biz/sku-identity/import/plan` | `mSkuIdentityPlan` | sku-identity |
-| 加规格组时能挑的维度（本类目已配 + 平台通用 + 自建） | GET | `/biz/spec-dims` | `mPickableDims` | goods-edit、my-specs |
-| 自建规格维度（只本店可用） | POST | `/biz/spec-dims` | `mAddSpecDim` | goods-edit、my-specs |
-| 某个规格下平台有的全部档位（加档位的候选） | GET | `/biz/spec-dims/{dimNo}/values` | `mDimValues` | goods-edit、my-specs |
-| 本店用哪几个规格、什么顺序、叫什么 | POST | `/biz/spec-override/{categoryNo}` | `mSaveSpecOverride` | goods-edit、my-specs |
-| 这一类的商品参数（产地/保质期/材质，不分 SKU） | GET | `/biz/spec-props` | `mSpecProps` | goods-edit |
-| 规格模板 | GET | `/biz/spec-templates` | `mSpecTemplates` | goods-edit |
-| 存为常用规格 | POST | `/biz/spec-templates` | `mSaveSpecTemplate` | — |
-| 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
-| 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
-| 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
 
 ### `biz:customer`　顾客列表（含累计消费额）、经营数据
 
@@ -430,6 +434,7 @@
 | `stock-docs` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-out` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-report` | `biz:customer` | `biz:customer` | 老板、店长 | — |
+| `stock-settings` | `biz:goods` | `biz:stock`、`biz:goods` | 老板、店长 | — |
 | `store` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-categories` | `biz:store:admin` | `biz:store` | 老板 | — |
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
