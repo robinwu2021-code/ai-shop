@@ -1078,6 +1078,12 @@
           "ar": "انتهى العرض «{name}»، وتم تحديث المبلغ"
         },
         {
+          "key": "confirm.activityPick",
+          "zh-CN": "活动 · 同一家店只能参加一个",
+          "en": "Offers · one per store",
+          "ar": "العروض · عرض واحد لكل متجر"
+        },
+        {
           "key": "confirm.add",
           "zh-CN": "去添加",
           "en": "Add",
@@ -1216,6 +1222,12 @@
           "ar": "الشبكة غير مستقرة — هذا مبلغ تقديري، والمعتمد هو مبلغ الإرسال"
         },
         {
+          "key": "confirm.failActivity",
+          "zh-CN": "你选的活动已经结束了，已按最省的方式重新计算",
+          "en": "The offer you chose has ended; we recalculated the best deal",
+          "ar": "انتهى العرض الذي اخترته، وأعدنا حساب أفضل خيار"
+        },
+        {
           "key": "confirm.failCoupon",
           "zh-CN": "这张券刚刚用不了了，已经取消，请重新选",
           "en": "That coupon just became unusable; it has been removed",
@@ -1276,6 +1288,12 @@
           "ar": "تُفتح مجموعتك بعد الدفع، ويُسترد المبلغ كاملًا تلقائيًا إن لم تكتمل"
         },
         {
+          "key": "confirm.noActivity",
+          "zh-CN": "不参加活动",
+          "en": "Skip offers",
+          "ar": "بدون عروض"
+        },
+        {
           "key": "confirm.noCoupon",
           "zh-CN": "不使用优惠券",
           "en": "Don't use a voucher",
@@ -1298,6 +1316,12 @@
           "zh-CN": "{names} 送不到这个地址，换个地址或把这家的货挪出这一单",
           "en": "{names} cannot deliver here. Change the address, or order from them separately",
           "ar": "{names} لا يوصّل إلى هذا العنوان. غيّر العنوان أو اطلب منه بطلب منفصل"
+        },
+        {
+          "key": "confirm.panelSaved",
+          "zh-CN": "当前共减 {p}",
+          "en": "{p} off now",
+          "ar": "خصم حالي {p}"
         },
         {
           "key": "confirm.payMode",
@@ -1478,6 +1502,12 @@
           "zh-CN": "确认订单",
           "en": "Confirm order",
           "ar": "تأكيد الطلب"
+        },
+        {
+          "key": "confirm.useBest",
+          "zh-CN": "换成最省组合，可再省 {p}",
+          "en": "Switch to the best deal and save {p} more",
+          "ar": "بدّل إلى أفضل عرض ووفّر {p} إضافية"
         },
         {
           "key": "confirm.whyNoAddress",
@@ -4192,6 +4222,24 @@
           "ar": "اشترِ {n} واحصل على {m}"
         },
         {
+          "key": "promo.cutAmount",
+          "zh-CN": "满 {m} 减 {n}",
+          "en": "{n} off over {m}",
+          "ar": "خصم {n} عند {m}"
+        },
+        {
+          "key": "promo.cutAny",
+          "zh-CN": "立减 {n}",
+          "en": "{n} off",
+          "ar": "خصم {n}"
+        },
+        {
+          "key": "promo.cutQty",
+          "zh-CN": "满 {q} 件减 {n}",
+          "en": "{n} off {q}+ items",
+          "ar": "خصم {n} عند شراء {q} قطع"
+        },
+        {
           "key": "promo.gift",
           "zh-CN": "赠品",
           "en": "FREE",
@@ -4208,6 +4256,12 @@
           "zh-CN": "再加 {n} 件即可获赠",
           "en": "{n} more to get a free one",
           "ar": "أضف {n} للحصول على واحدة مجانًا"
+        },
+        {
+          "key": "promo.newCut",
+          "zh-CN": "新客立减 {n}",
+          "en": "{n} off for new customers",
+          "ar": "خصم {n} للعملاء الجدد"
         },
         {
           "key": "promo.willGift",
@@ -12344,6 +12398,18 @@
           "ar": "التفاصيل"
         },
         {
+          "key": "order.discountActivity",
+          "zh-CN": "活动「{name}」",
+          "en": "Offer “{name}”",
+          "ar": "العرض «{name}»"
+        },
+        {
+          "key": "order.discountCoupon",
+          "zh-CN": "券「{name}」",
+          "en": "Coupon “{name}”",
+          "ar": "القسيمة «{name}»"
+        },
+        {
           "key": "order.empty",
           "zh-CN": "还没有订单",
           "en": "No orders yet",
@@ -12360,6 +12426,18 @@
           "zh-CN": "履约方式",
           "en": "Fulfilment",
           "ar": "طريقة التنفيذ"
+        },
+        {
+          "key": "order.funderMerchant",
+          "zh-CN": "本店让利",
+          "en": "paid by your store",
+          "ar": "على حساب متجرك"
+        },
+        {
+          "key": "order.funderPlatform",
+          "zh-CN": "平台补贴",
+          "en": "paid by the platform",
+          "ar": "على حساب المنصة"
         },
         {
           "key": "order.items",
@@ -21921,6 +21999,12 @@
           "ar": "الحملة الدائمة تحتاج حدًا أو ميزانية، وإلا لن تتوقف أبدًا"
         },
         {
+          "key": "err.marketing.activity_choice_unavailable",
+          "zh-CN": "你选的活动已经不可用了，请重新选择优惠",
+          "en": "The offer you chose is no longer available. Please choose again",
+          "ar": "العرض الذي اخترته لم يعد متاحًا، يرجى الاختيار مرة أخرى"
+        },
+        {
           "key": "err.marketing.activity_ended_immutable",
           "zh-CN": "已结束的活动不能修改或重新开启，请复制一个新的",
           "en": "Ended activities cannot be edited or restarted; copy it into a new one",
@@ -27585,6 +27669,13 @@
         "module": "shop-core"
       },
       {
+        "host": "PromotionVO",
+        "name": "BUY_N_GET_M",
+        "value": "BUY_N_GET_M",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdCategory",
         "name": "TEMPLATE_STANDARD",
         "value": "STANDARD",
@@ -30093,6 +30184,7 @@
           "GROUP_CLOSED",
           "GROUP_JOIN_NEEDS_UPGRADE",
           "ACTIVITY_RISK_UNCONFIRMED",
+          "ACTIVITY_CHOICE_UNAVAILABLE",
           "ENROLLMENT_CLOSED",
           "ENROLLMENT_OVER_BUDGET",
           "SPLIT_RECEIVER_NOT_READY",

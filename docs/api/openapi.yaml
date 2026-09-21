@@ -5422,6 +5422,35 @@ components:
         - "giftM"
       additionalProperties: false
       description: "促销：买 N 送 M。 语义：购买数量达到 N 件，赠送 M 件 —— 用户**付 N 件的钱，收到 N+M 件**。 赠品不进计价（价格为 0），只作为订单里的独立行存在，履约时随单发出。"
+    ActivityTag: 
+      type: "object"
+      properties: 
+        activityNo: 
+          type: "string"
+        name: 
+          type: "string"
+          description: "商家起的活动名。拼不出规则时（理论上不会）才用它"
+        amountMinor: 
+          type: "number"
+          description: "减多少（分）"
+        thresholdMinor: 
+          type: "number"
+          description: "满多少元才减（分）；0 = 不按金额"
+        thresholdQty: 
+          type: "number"
+          description: "满几件才减；0 = 不按件数"
+        newCustomerOnly: 
+          type: "boolean"
+          description: "只给新客 —— 老客看到「新客立减」会以为自己也有"
+      required: 
+        - "activityNo"
+        - "name"
+        - "amountMinor"
+        - "thresholdMinor"
+        - "thresholdQty"
+        - "newCustomerOnly"
+      additionalProperties: false
+      description: "商品页上的一条活动标签（后端 `GoodsVO.ActivityTagVO`）"
     VirtualSpec: 
       type: "object"
       properties: 
@@ -5587,7 +5616,12 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/Promotion"
-          description: "促销（一期只有买 N 送 M）。**后端未下发**"
+          description: "促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。"
+        activityTags: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ActivityTag"
+          description: "这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。"
         groupBuy: 
           type: "object"
           properties: 
@@ -7945,6 +7979,11 @@ components:
                 type: "string"
             - type: "null"
           description: "自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。"
+        offers: 
+          anyOf: 
+            - "$ref": "#/components/schemas/CheckoutOffers"
+            - type: "null"
+          description: "下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个； 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。"
         returned: 
           anyOf: 
             - "$ref": "#/components/schemas/OrderReturned"
@@ -8100,6 +8139,11 @@ components:
         amountMinor: 
           type: "number"
           description: "这一条减了多少（最小货币单位，正数）"
+        funder: 
+          anyOf: 
+            - "$ref": "#/components/schemas/CouponFunder"
+            - type: "null"
+          description: "谁出的钱：本店让利 / 平台补贴（批 3）。**只有订单详情给**，预览为空。 B 端详情据此写出来 —— 商家对账要知道这 ¥5 是他让的还是平台补的"
       required: 
         - "kind"
         - "name"
@@ -8111,6 +8155,79 @@ components:
         - "ACTIVITY"
         - "COUPON"
       description: "这笔优惠是活动给的还是券给的。\n\n**具名而不是内联联合**：内联的枚举对登记表与对账工具都不可见，改名必漏 （packages/shared 的枚举登记闸门拦的就是这条）。"
+    CheckoutOffers: 
+      type: "object"
+      properties: 
+        merchants: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MerchantOffers"
+          description: "有活动可选的那几家店"
+        suggestedChoices: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ActivityChoice"
+          description: "最省组合里每家店参加哪个活动（或 `ACTIVITY_NONE`）"
+        suggestedCouponNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "最省组合用哪张券（用户持有的那张的号）；null = 不用券更省"
+        suggestedDiscountMinor: 
+          type: "number"
+          description: "最省组合一共减多少（活动 + 券，不含积分）"
+      required: 
+        - "merchants"
+        - "suggestedChoices"
+        - "suggestedDiscountMinor"
+      additionalProperties: false
+      description: "下单页的优惠选项（后端 `OrderVO.Offers`）"
+    MerchantOffers: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        merchantName: 
+          type: "string"
+        options: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              activityNo: 
+                type: "string"
+              name: 
+                type: "string"
+              amountMinor: 
+                type: "number"
+            required: 
+              - "activityNo"
+              - "name"
+              - "amountMinor"
+            additionalProperties: false
+          description: "这家店命中的活动。金额 = 只参加它时减多少"
+        chosen: 
+          type: 
+            - "string"
+            - "null"
+          description: "这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动"
+      required: 
+        - "merchantNo"
+        - "merchantName"
+        - "options"
+      additionalProperties: false
+    ActivityChoice: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        activityNo: 
+          type: "string"
+      required: 
+        - "merchantNo"
+        - "activityNo"
+      additionalProperties: false
+      description: "顾客对某家店活动的选择：活动号，或 `ACTIVITY_NONE`（不参加）"
     OrderReturned: 
       type: "object"
       properties: 

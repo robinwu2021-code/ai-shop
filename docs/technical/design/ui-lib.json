@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 455,
-        "c-app": 63
+        "b-app": 456,
+        "c-app": 65
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 345,
-        "c-app": 65
+        "c-app": 69
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 325,
-        "c-app": 255
+        "b-app": 326,
+        "c-app": 258
       }
     },
     {
@@ -558,7 +558,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 16
+        "c-app": 17
       }
     },
     {
@@ -636,7 +636,7 @@
       },
       "usage": {
         "b-app": 156,
-        "c-app": 25
+        "c-app": 27
       }
     },
     {
@@ -660,7 +660,7 @@
       },
       "usage": {
         "b-app": 58,
-        "c-app": 9
+        "c-app": 10
       }
     },
     {
@@ -938,7 +938,7 @@
       },
       "usage": {
         "b-app": 44,
-        "c-app": 6
+        "c-app": 7
       }
     },
     {
@@ -1053,8 +1053,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 320,
-        "c-app": 144
+        "b-app": 321,
+        "c-app": 146
       }
     },
     {
@@ -1118,7 +1118,7 @@
       },
       "usage": {
         "b-app": 132,
-        "c-app": 64
+        "c-app": 65
       }
     },
     {
@@ -1136,7 +1136,7 @@
       },
       "usage": {
         "b-app": 6,
-        "c-app": 12
+        "c-app": 13
       }
     },
     {
@@ -1379,8 +1379,8 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 131,
-        "c-app": 75
+        "b-app": 132,
+        "c-app": 76
       }
     },
     {
@@ -1435,8 +1435,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 492,
-        "c-app": 177
+        "b-app": 493,
+        "c-app": 180
       }
     },
     {
@@ -1467,8 +1467,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 283,
-        "c-app": 89
+        "b-app": 284,
+        "c-app": 92
       }
     },
     {
@@ -2296,7 +2296,7 @@
       ],
       "usage": {
         "b-app": 113,
-        "c-app": 20,
+        "c-app": 22,
         "lib": 13
       },
       "note": "单色图标",
@@ -4019,7 +4019,7 @@
         "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 84,
+      "libClassHits": 90,
       "localSelectors": 15,
       "localCssLines": 61,
       "rolled": []
@@ -4862,7 +4862,7 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 219,
+      "libClassHits": 222,
       "localSelectors": 59,
       "localCssLines": 250,
       "rolled": []
@@ -5081,9 +5081,9 @@
         "sh-stepper",
         "sh-switch"
       ],
-      "libClassHits": 165,
-      "localSelectors": 31,
-      "localCssLines": 126,
+      "libClassHits": 187,
+      "localSelectors": 32,
+      "localCssLines": 130,
       "rolled": []
     },
     {

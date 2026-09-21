@@ -1277,7 +1277,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1409,7 +1410,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1480,7 +1482,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1551,7 +1554,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1644,7 +1648,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1715,7 +1720,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1786,7 +1792,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1857,7 +1864,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1934,7 +1942,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -2077,7 +2086,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -6143,6 +6153,19 @@ _无字段_
 - `CONDITION`
 - `BENEFIT`
 
+### ActivityTag
+
+商品页上的一条活动标签（后端 `GoodsVO.ActivityTagVO`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | 商家起的活动名。拼不出规则时（理论上不会）才用它 |
+| `amountMinor` | `number` | 是 | 减多少（分） |
+| `thresholdMinor` | `number` | 是 | 满多少元才减（分）；0 = 不按金额 |
+| `thresholdQty` | `number` | 是 | 满几件才减；0 = 不按件数 |
+| `newCustomerOnly` | `boolean` | 是 | 只给新客 —— 老客看到「新客立减」会以为自己也有 |
+
 ### AddStaffReq
 
 加员工。只要手机号 —— 不发密码、不建 C 端账号
@@ -6570,6 +6593,15 @@ _无字段_
 - `APPROVED`
 - `REJECTED`
 
+### CouponFunder
+
+券的出资方。决定这张券的钱最后从谁账上扣 —— 平台券走平台预算，商家券从结算里扣
+
+枚举取值：
+
+- `PLATFORM`
+- `MERCHANT`
+
 ### CouponIssueBatch
 
 一次定向发放的结果。
@@ -6747,6 +6779,7 @@ _无字段_
 | `kind` | [`DiscountKind`](#discountkind) | 是 | ACTIVITY（活动）/ COUPON（券） |
 | `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
 | `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
+| `funder` | [`CouponFunder`](#couponfunder) \| `null` | 否 | 谁出的钱：本店让利 / 平台补贴（批 3）。**只有订单详情给**，预览为空。 B 端详情据此写出来 —— 商家对账要知道这 ¥5 是他让的还是平台补的 |
 
 ### DissolveGroupReq
 
@@ -6893,7 +6926,8 @@ _无字段_
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |

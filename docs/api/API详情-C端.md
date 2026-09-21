@@ -519,7 +519,8 @@
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -1893,6 +1894,7 @@
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠 |
 | `outOfRange` | `string`\[\] \| `null` | 否 | 自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。 |
+| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个； 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
@@ -2495,6 +2497,28 @@
 
 ## 数据模型
 
+### ActivityChoice
+
+顾客对某家店活动的选择：活动号，或 `ACTIVITY_NONE`（不参加）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `activityNo` | `string` | 是 | — |
+
+### ActivityTag
+
+商品页上的一条活动标签（后端 `GoodsVO.ActivityTagVO`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | 商家起的活动名。拼不出规则时（理论上不会）才用它 |
+| `amountMinor` | `number` | 是 | 减多少（分） |
+| `thresholdMinor` | `number` | 是 | 满多少元才减（分）；0 = 不按金额 |
+| `thresholdQty` | `number` | 是 | 满几件才减；0 = 不按件数 |
+| `newCustomerOnly` | `boolean` | 是 | 只给新客 —— 老客看到「新客立减」会以为自己也有 |
+
 ### Address
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2695,6 +2719,17 @@
 | `merchants` | [`MerchantCapability`](#merchantcapability)\[\] | 是 | 逐商家的能力，端上据此在对应的商家分组上打标 |
 | `usablePayModes` | `string`\[\] | 是 | 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。 ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道** （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。 一笔订单要同时确定两者。 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**， 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods` 的取舍不同，因为那边真的可能「没配过」。 |
 
+### CheckoutOffers
+
+下单页的优惠选项（后端 `OrderVO.Offers`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchants` | [`MerchantOffers`](#merchantoffers)\[\] | 是 | 有活动可选的那几家店 |
+| `suggestedChoices` | [`ActivityChoice`](#activitychoice)\[\] | 是 | 最省组合里每家店参加哪个活动（或 `ACTIVITY_NONE`） |
+| `suggestedCouponNo` | `string,null` | 否 | 最省组合用哪张券（用户持有的那张的号）；null = 不用券更省 |
+| `suggestedDiscountMinor` | `number` | 是 | 最省组合一共减多少（活动 + 券，不含积分） |
+
 ### ChooseQuoteReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2875,6 +2910,7 @@
 | `kind` | [`DiscountKind`](#discountkind) | 是 | ACTIVITY（活动）/ COUPON（券） |
 | `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
 | `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
+| `funder` | [`CouponFunder`](#couponfunder) \| `null` | 否 | 谁出的钱：本店让利 / 平台补贴（批 3）。**只有订单详情给**，预览为空。 B 端详情据此写出来 —— 商家对账要知道这 ¥5 是他让的还是平台补的 |
 
 ### FrequentItem
 
@@ -2938,7 +2974,8 @@
 | `slots` | [`AppointmentDaySlots`](#appointmentdayslots)\[\] | 否 | SERVICE + APPOINTMENT：可预约时段。**后端未下发** |
 | `card` | [`CardSpec`](#cardspec) | 否 | CARD。**后端未下发** |
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
-| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**后端未下发** |
+| `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
+| `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -3359,6 +3396,23 @@
 | `deliveryLngE6` | `number,null` | 否 | 自送圆心的经度（gcj02 ×1e6）。与纬度同生共死：一个为 null 就当没标过点 |
 | `deliveryRadiusM` | `number,null` | 否 | 自送半径（米）。**null 或 ≤ 0 都表示「不限距离」**，一律放行 |
 
+### MerchantOffers
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `merchantName` | `string` | 是 | — |
+| `options` | `object`（见下）\[\] | 是 | 这家店命中的活动。金额 = 只参加它时减多少 |
+| `chosen` | `string,null` | 否 | 这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动 |
+
+`options[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+
 ### MerchantSubject
 
 枚举取值：
@@ -3515,6 +3569,7 @@
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠 |
 | `outOfRange` | `string`\[\] \| `null` | 否 | 自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。 |
+| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个； 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
