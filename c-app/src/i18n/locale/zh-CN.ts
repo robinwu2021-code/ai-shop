@@ -549,6 +549,9 @@ export default {
     whyNoAddress: "先选一个收货地址才能提交",
     whyNoSlot: "先选一个上门时段才能提交",
     whyOutOfRange: "有商家送不到这个地址，换个地址或把这家的货挪出这一单",
+    changeFulfillment: "换配送方式",
+    activityEnded: "「{name}」活动已结束，金额已更新",
+    qtyClamped: "{name} 库存变少了，已调整为 {n} 件",
     whyNoPayMethod: "这一车商品没有共同支持的支付方式，分开下单即可",
     whyQuota: "有商家本期收款额度不足，暂时下不了单",
     /** 点名是哪一家送不到——车里有三家店时，只说「超出范围」他不知道该改什么 */

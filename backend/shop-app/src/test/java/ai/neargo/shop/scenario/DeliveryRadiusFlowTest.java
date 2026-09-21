@@ -130,6 +130,22 @@ class DeliveryRadiusFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 预览不拦、给出送不到的商家名（P6）—— 选完地址当场说，不等点付款")
+    void previewFlagsOutOfRange() {
+        enableSelfDelivery();
+        store(STORE_LAT, STORE_LNG, 3000);
+        String far = address(FAR_LAT, FAR_LNG);
+        String near = address(NEAR_LAT, NEAR_LNG);
+        asBuyer();
+
+        var flagged = orderService.preview(deliveryOrder(far));
+        assertThat(flagged.outOfRange()).as("送不到却不说，他要到付款那一下才知道").isNotEmpty();
+
+        assertThat(orderService.preview(deliveryOrder(near)).outOfRange())
+                .as("送得到的不该带标记").isNull();
+    }
+
+    @Test
     @DisplayName("范围内的地址照常下单 —— 这条不过，等于把所有自送单都拦死了")
     void nearAddressPasses() {
         enableSelfDelivery();

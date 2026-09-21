@@ -401,7 +401,9 @@ public class OrderServiceImpl implements OrderService {
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
         Discounts discounts = discountsOf(cmd, split, userNo);
         return split.toVO(discounts, pickups, remainingOf(split, userNo))
-                .withDiscountLines(discountLinesOf(discounts));
+                .withDiscountLines(discountLinesOf(discounts))
+                // 超出配送范围：预览给标记不拦（P6），建单时 requireWithinDeliveryRadius 才拦
+                .withOutOfRange(outOfRangeMerchants(cmd, split, userNo));
     }
 
     /**
@@ -2309,13 +2311,24 @@ public class OrderServiceImpl implements OrderService {
      * <p>拦在**创建**这一步而不是支付后：付过钱再告诉他「超出范围」，他要先退款才能重下。
      */
     private void requireWithinDeliveryRadius(CreateOrderCommand cmd, Split split, String userNo) {
+        if (!outOfRangeMerchants(cmd, split, userNo).isEmpty()) {
+            throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
+        }
+    }
+
+    /**
+     * 自送送不到的那几家（商家名）。**建单与预览共用这一份判定**（待办设计 P6）：
+     * 建单时非空就拒；预览只把名字带回去，确认页当场给「换地址 / 换配送方式」。
+     */
+    private List<String> outOfRangeMerchants(CreateOrderCommand cmd, Split split, String userNo) {
+        List<String> out = new ArrayList<>();
         if (!Fulfillments.MERCHANT_DELIVERY.equals(cmd.fulfillment())
                 || cmd.addressId() == null || cmd.addressId().isBlank()) {
-            return;
+            return out;
         }
         var receiver = userPort.receiverOf(userNo, cmd.addressId()).orElse(null);
         if (receiver == null || receiver.latE6() == null || receiver.lngE6() == null) {
-            return;
+            return out;
         }
         /*
          * 逐商家判：购物车跨商家时会拆成多张子单，各家的圆心与半径都不同。
@@ -2329,9 +2342,10 @@ public class OrderServiceImpl implements OrderService {
             }
             if (metersBetween(origin.latE6(), origin.lngE6(), receiver.latE6(), receiver.lngE6())
                     > origin.radiusM()) {
-                throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
+                out.add(g.merchantName());
             }
         }
+        return out;
     }
 
     /**

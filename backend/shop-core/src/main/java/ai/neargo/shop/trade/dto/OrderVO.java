@@ -139,7 +139,13 @@ public record OrderVO(String orderNo,
                        * 已取消 / 已退款时券与积分的去向（待办设计 P3）。
                        * <b>只在详情视角、只在这两个状态填</b>，其余为 null；每一项从数据查，不从状态推。
                        */
-                      Returned returned) {
+                      Returned returned,
+                      /**
+                       * 自送超出配送范围的商家名（待办设计 P6）。<b>只有预览填</b>，送得到时为 null。
+                       * 预览不拦、建单才拦 —— 与自提点同一口径：确认页当场给「换地址 / 换配送方式」，
+                       * 而不是等他点了付款才说送不到。
+                       */
+                      List<String> outOfRange) {
 
     /** 订单关闭后券与积分去了哪。三项都可能为空 / 0 —— 有才说 */
     public record Returned(String couponTitle, long pointsReturned, long pointsClawedBack) {
@@ -147,6 +153,23 @@ public record OrderVO(String orderNo,
             return (couponTitle == null || couponTitle.isBlank())
                     && pointsReturned <= 0 && pointsClawedBack <= 0;
         }
+    }
+
+    /** 不带配送范围标记的签名：存量构造处不必跟着改 */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany, List<DiscountLine> discountLines, Returned returned) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, discountLines, returned, null);
     }
 
     /** 不带去向的签名：存量构造处不必跟着改 */
@@ -222,7 +245,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange);
     }
 
     /**
@@ -237,7 +260,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange);
     }
 
     /**
@@ -249,7 +272,17 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange);
+    }
+
+    /** 挂上超出配送范围的商家（P6，只在预览）。空表给 null —— 端上看 null 就不提示 */
+    public OrderVO withOutOfRange(List<String> merchants) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned,
+                merchants == null || merchants.isEmpty() ? null : merchants);
     }
 
     /** 挂上去向（P3）。空的一律给 null —— 端上看 null 就整块不显示 */
@@ -259,7 +292,7 @@ public record OrderVO(String orderNo,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines,
-                r == null || r.isEmpty() ? null : r);
+                r == null || r.isEmpty() ? null : r, outOfRange);
     }
 
     /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
@@ -268,7 +301,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned);
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange);
     }
 
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
@@ -276,7 +309,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange);
     }
 
     /**

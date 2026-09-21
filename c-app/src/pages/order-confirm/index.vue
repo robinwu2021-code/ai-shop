@@ -380,7 +380,29 @@ const payModes = computed<string[]>(
   () => capability.value?.usablePayModes ?? [PAY_MODE.ONLINE],
 );
 const canPayOffline = computed(() => payModes.value.includes(PAY_MODE.OFFLINE));
-const payMode = ref<string>(PAY_MODE.ONLINE);
+/**
+ * 上次选的**在线**支付方式（待办设计 P9），存在本机。
+ * **当面付不记**：它受商家与券的限制，下一单换了商家多半用不了 —— 默认回到在线更稳。
+ * 读写都包 try：隐私模式、存储满了都会抛，而这只是个便利，不能让结算页打不开。
+ */
+const PAY_MODE_KEY = "checkout.payMode";
+function lastPayMode(): string {
+  try {
+    const v = uni.getStorageSync(PAY_MODE_KEY) as string;
+    return v && v !== PAY_MODE.OFFLINE ? v : PAY_MODE.ONLINE;
+  } catch {
+    return PAY_MODE.ONLINE;
+  }
+}
+const payMode = ref<string>(lastPayMode());
+watch(payMode, (m) => {
+  if (m === PAY_MODE.OFFLINE) return;
+  try {
+    uni.setStorageSync(PAY_MODE_KEY, m);
+  } catch {
+    /* 记不住就算了，下次回到默认 */
+  }
+});
 /*
  * 后端不再给线下时**当场退回线上**。
  * 不退的话，用户先选了当面付、再把履约改成快递，选项已经消失而 payMode 还是 OFFLINE ——
@@ -494,6 +516,51 @@ function applyPickupGroups(subs: Array<{
   pickupMissing.value = missing;
 }
 
+/**
+ * 上一次还在、这一次没了的活动（待办设计 P5）：活动刚结束或配额刚用完。
+ * 金额会自己变，但**不说为什么变**的话，他会以为页面算错了。第一次预览不比（没有「上一次」）。
+ */
+const endedNotice = ref("");
+function endedActivities(before: DiscountLine[], after: DiscountLine[]): string {
+  const now = new Set(after.filter((d) => d.kind === "ACTIVITY").map((d) => d.name));
+  const gone = before.filter((d) => d.kind === "ACTIVITY" && !now.has(d.name)).map((d) => d.name);
+  return gone.length ? String(t("confirm.activityEnded", { name: gone.join("、") })) : "";
+}
+
+/**
+ * 后端预览说送不到的商家（P6）。与上面端上算的那份**取并集** ——
+ * 端上那份靠 capability 里的门店坐标，拿不到时就判不出；后端那份是建单时真正拦的口径。
+ */
+const serverOutOfRange = ref<string[]>([]);
+const outOfRangeNames = computed(() => [
+  ...new Set([...outOfRange.value.map((m) => m.merchantName), ...serverOutOfRange.value]),
+]);
+
+/** 换配送方式：配送方式是在购物车里按分组选的，回去那一页换 */
+function changeFulfillment() {
+  uni.navigateBack();
+}
+
+/**
+ * 库存变少了：数量**自动压到上限**，并说一句（待办设计 P6）。
+ * 等提交时报「库存不足」的话，他要自己猜该改成几件。
+ * 上限为 0 的不动 —— 那是卖完了，交给提交那一刻去说，别悄悄把整行删掉。
+ */
+const clampNotice = ref("");
+function clampToMax(): boolean {
+  let changed = false;
+  items.value = items.value.map((it) => {
+    const max = maxQtyOf.value[it.skuNo];
+    if (max != null && max > 0 && it.qty > max) {
+      changed = true;
+      clampNotice.value = String(t("confirm.qtyClamped", { name: it.title, n: max }));
+      return { ...it, qty: max };
+    }
+    return it;
+  });
+  return changed;
+}
+
 let amountSeq = 0;
 async function refreshAmount() {
   if (!items.value.length) {
@@ -519,12 +586,19 @@ async function refreshAmount() {
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
+    endedNotice.value = endedActivities(discountLines.value, p.discountLines ?? []);
     discountLines.value = p.discountLines ?? [];
+    serverOutOfRange.value = p.outOfRange ?? [];
     // 上限只有后端算得准；没给的行不设限（宁可提交时拦，也不要凭旧数挡人）
     maxQtyOf.value = Object.fromEntries(
       (p.items ?? []).filter((i) => i.maxQty != null).map((i) => [i.skuNo, i.maxQty as number]),
     );
     limitOf.value = Object.fromEntries((p.items ?? []).map((i) => [i.skuNo, i]));
+    if (clampToMax()) {
+      // 压过数量就要按新数量再问一次价 —— 否则屏幕上是旧数量的金额
+      void refreshAmount();
+      return;
+    }
     amountStale.value = false;
     // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
     void loadCouponBest();
@@ -641,7 +715,7 @@ const submitBlockedReason = computed(() => {
   if (!items.value.length) return String(t("confirm.emptyItems"));
   if (needAddress.value && !address.value) return String(t("confirm.whyNoAddress"));
   if (needAppointment.value && !appointmentAt.value) return String(t("confirm.whyNoSlot"));
-  if (outOfRange.value.length) return String(t("confirm.whyOutOfRange"));
+  if (outOfRangeNames.value.length) return String(t("confirm.whyOutOfRange"));
   if (noPayMethod.value) return String(t("confirm.whyNoPayMethod"));
   if (quotaBlocked.value.length) return String(t("confirm.whyQuota"));
   return "";
@@ -1057,8 +1131,12 @@ onMounted(async () => {
             送不到要**点名是哪一家**。只说「超出配送范围」的话，
             车里有三家店时他不知道该换地址还是该把某一家的货拿出来。
           -->
-          <text v-if="outOfRange.length" class="txt-caption recv__warn">
-            {{ $t("confirm.outOfRange", { names: outOfRange.map((m) => m.merchantName).join("、") }) }}
+          <text v-if="outOfRangeNames.length" class="txt-caption recv__warn">
+            {{ $t("confirm.outOfRange", { names: outOfRangeNames.join("、") }) }}
+          </text>
+          <!-- 两条出路（P6）：点整张卡是换地址；配送方式在购物车里选，回去换 -->
+          <text v-if="outOfRangeNames.length" class="txt-caption sh-link recv__alt" @tap.stop="changeFulfillment">
+            {{ $t("confirm.changeFulfillment") }}
           </text>
         </template>
         <!-- 没取到与「一条地址都没存过」是两件事：后者该去新建，前者该重试 -->
@@ -1211,6 +1289,15 @@ onMounted(async () => {
         <text class="txt-sub cell__k">{{ $t("confirm.remark") }}</text>
         <input maxlength="255" v-model="remark" class="txt-sub cell__input" :placeholder="$t('confirm.remarkPh')" />
       </view>
+    </view>
+
+    <!--
+      金额为什么变了（P5 / P6）：活动刚结束、库存变少被压了数量。
+      金额会自己变，**不说为什么变**的话他会以为页面算错了。
+    -->
+    <view v-if="endedNotice || clampNotice" class="txt-sub sh-notice sh-notice--warning cap">
+      <text v-if="endedNotice">{{ endedNotice }}</text>
+      <text v-if="clampNotice">{{ clampNotice }}</text>
     </view>
 
     <!-- 金额明细 -->
@@ -1481,6 +1568,10 @@ onMounted(async () => {
 }
 .amt {
   padding: 12rpx 0;
+}
+.recv__alt {
+  display: block;
+  margin-top: 8rpx;
 }
 
 
