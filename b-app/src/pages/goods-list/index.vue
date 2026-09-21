@@ -835,7 +835,7 @@ onShow(() => {
           驳回 / 强制下架的理由。**没有它，商家面对「已驳回」只能猜要改什么** ——
           审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
         -->
-        <text v-if="invOff.has(g.goodsNo)" class="txt-caption sh-muted">{{ $t("invMode.off") }}</text>
+        <text v-if="invOff.has(g.goodsNo)" class="txt-caption sh-muted">{{ $t("invMode.tag") }}</text>
         <text v-if="g.auditReason" class="txt-caption reason">{{ g.auditReason }}</text>
         <!--
           有未发布修改（双版本草稿）。**线上照卖旧版**，这行是提醒商家
