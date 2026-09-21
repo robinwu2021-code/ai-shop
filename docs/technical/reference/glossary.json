@@ -12578,30 +12578,6 @@
           "ar": "القسائم والنقاط"
         },
         {
-          "key": "order.scopeAll",
-          "zh-CN": "全部门店",
-          "en": "All stores",
-          "ar": "كل الفروع"
-        },
-        {
-          "key": "order.scopeCurrent",
-          "zh-CN": "当前门店",
-          "en": "Current store",
-          "ar": "الفرع الحالي"
-        },
-        {
-          "key": "order.scopeToAll",
-          "zh-CN": "看全部门店",
-          "en": "View all stores",
-          "ar": "عرض كل الفروع"
-        },
-        {
-          "key": "order.scopeToCurrent",
-          "zh-CN": "只看当前门店",
-          "en": "Current store only",
-          "ar": "الفرع الحالي فقط"
-        },
-        {
           "key": "order.ship",
           "zh-CN": "发货",
           "en": "Ship",

@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 330,
+        "b-app": 329,
         "c-app": 258
       }
     },
@@ -393,7 +393,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 11,
         "c-app": 18
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 495,
+        "b-app": 494,
         "c-app": 180
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 285,
+        "b-app": 284,
         "c-app": 92
       }
     },
@@ -2221,7 +2221,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 17,
+        "b-app": 16,
         "c-app": 0,
         "lib": 0
       },
@@ -3275,7 +3275,7 @@
         "readonly?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 6,
         "c-app": 0,
         "lib": 0
       },
@@ -3669,8 +3669,7 @@
         "sh-icon",
         "sh-scaffold",
         "sh-sheet",
-        "sh-tabs",
-        "biz-store-tag"
+        "sh-tabs"
       ],
       "libClassHits": 53,
       "localSelectors": 20,
@@ -4032,13 +4031,12 @@
       "components": [
         "sh-cover",
         "sh-empty",
-        "sh-go",
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 22,
-      "localSelectors": 6,
-      "localCssLines": 26,
+      "libClassHits": 18,
+      "localSelectors": 5,
+      "localCssLines": 21,
       "rolled": []
     },
     {
