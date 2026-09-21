@@ -10197,9 +10197,9 @@
         },
         {
           "key": "invMode.adjustHint",
-          "zh-CN": "未接入库存系统，此数即线上可售数量",
-          "en": "Not in the inventory system. This is the quantity sold online.",
-          "ar": "غير مرتبط بنظام المخزون. هذا هو الكمية المعروضة للبيع عبر الإنترنت."
+          "zh-CN": "未接入进销存，此数即线上可售数量",
+          "en": "Not in Inventory. This is the quantity sold online.",
+          "ar": "غير مرتبط بالمخزون. هذا هو الكمية المعروضة للبيع عبر الإنترنت."
         },
         {
           "key": "invMode.afterSave",
@@ -10215,9 +10215,9 @@
         },
         {
           "key": "invMode.label",
-          "zh-CN": "库存系统",
-          "en": "Inventory system",
-          "ar": "نظام المخزون"
+          "zh-CN": "进销存",
+          "en": "Inventory",
+          "ar": "المخزون"
         },
         {
           "key": "invMode.off",
@@ -10239,9 +10239,9 @@
         },
         {
           "key": "invMode.tag",
-          "zh-CN": "未接入库存系统",
-          "en": "Not in inventory system",
-          "ar": "خارج نظام المخزون"
+          "zh-CN": "未接入进销存",
+          "en": "Not in Inventory",
+          "ar": "غير مرتبط بالمخزون"
         },
         {
           "key": "invoice.amountHint",
@@ -17535,9 +17535,9 @@
         },
         {
           "key": "stockSettings.confirmTitle",
-          "zh-CN": "「{name}」不再接入库存系统？",
-          "en": "Remove {name} from the inventory system?",
-          "ar": "إزالة {name} من نظام المخزون؟"
+          "zh-CN": "「{name}」不再接入进销存？",
+          "en": "Remove {name} from Inventory?",
+          "ar": "إزالة {name} من المخزون؟"
         },
         {
           "key": "stockSettings.defaultOff",
@@ -17571,9 +17571,9 @@
         },
         {
           "key": "stockSettings.section",
-          "zh-CN": "接入库存系统",
-          "en": "Use inventory system",
-          "ar": "استخدام نظام المخزون"
+          "zh-CN": "接入进销存",
+          "en": "Use Inventory",
+          "ar": "ربط بالمخزون"
         },
         {
           "key": "stockSettings.sharedHint",
@@ -18903,9 +18903,9 @@
         },
         {
           "key": "storeCategories.invLabel",
-          "zh-CN": "接入库存系统",
-          "en": "Use inventory system",
-          "ar": "استخدام نظام المخزون"
+          "zh-CN": "接入进销存",
+          "en": "Use Inventory",
+          "ar": "ربط بالمخزون"
         },
         {
           "key": "storeCategories.needCert",
