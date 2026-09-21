@@ -585,6 +585,11 @@ export default {
     qtyMax: "最多还能买 {n} 件",
     /** 线上支付时底栏直接写金额：点一次就拉起微信（B3）。当面付仍是「提交订单」 */
     payNow: "立即支付 {p}",
+    /** 建单失败要说清改什么（B4）。认不出的码回落后端原句 —— 别把真原因藏掉 */
+    failStock: "库存不够了，调一下数量再试",
+    failCoupon: "这张券刚刚用不了了，已经取消，请重新选",
+    failRange: "这个地址超出配送范围，换个地址或改配送方式",
+    couponDroppedOffline: "当面付不能用平台券，已取消这张券",
     qtyLeft: "仅剩 {n} 件",
     autoActivity: "自动参与的活动（不用选）",
     couponUnusable: "用不了的（{n}）",

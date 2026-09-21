@@ -13,6 +13,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
@@ -382,8 +383,16 @@ const platformCouponBlocked = computed(
   () => payMode.value === PAY_MODE.OFFLINE && coupon.value?.funder === "PLATFORM",
 );
 watch(platformCouponBlocked, (blocked) => {
-  // 已经选了平台券又改成当面付 → 把券摘掉，别让他带着一张用不了的券去下单
-  if (blocked) couponNo.value = "";
+  /*
+   * 已经选了平台券又改成当面付 → 把券摘掉，别让他带着一张用不了的券去下单。
+   *
+   * **而且要说一声**（执行计划 B4）：此前是静默摘掉的 —— 金额悄悄涨回去，
+   * 用户以为页面算错了。券是他自己挑的，替他取消就得告诉他为什么。
+   */
+  if (blocked) {
+    couponNo.value = "";
+    uni.showToast({ title: String(t("confirm.couponDroppedOffline")), icon: "none" });
+  }
 });
 
 /**
@@ -730,6 +739,25 @@ function gotoAddress() {
   uni.navigateTo({ url: `${ROUTES.address}?picking=1` });
 }
 
+/** 券相关的错误码：撞上它们要把券摘掉重算，否则再点一次还是同一个错 */
+const COUPON_ERRORS = new Set([40001, 40002]);
+
+/**
+ * 建单失败时**说清是哪一条变了**（执行计划 B4）。
+ *
+ * <p>此前一律 toast 后端那句话。后端的话是对的，但它面向的是「这次请求为什么被拒」，
+ * 而买家要知道的是「我现在该改什么」：库存变少了就去改数量，券失效了就重选一张。
+ *
+ * <p>**认不出的码回落后端原句** —— 编一句「提交失败，请重试」等于把真正的原因藏掉。
+ */
+function submitFailText(e: unknown): string {
+  const code = e instanceof ApiError ? e.code : 0;
+  if (code === 20001 || code === 20005) return String(t("confirm.failStock"));
+  if (COUPON_ERRORS.has(code)) return String(t("confirm.failCoupon"));
+  if (code === 20003) return String(t("confirm.failRange"));
+  return (e as Error).message;
+}
+
 async function submit() {
   if (!canSubmit.value) return;
   /*
@@ -820,7 +848,12 @@ async function submit() {
     const auto = payMode.value === PAY_MODE.ONLINE ? "&auto=1" : "";
     uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}${auto}` });
   } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
+    uni.showToast({ title: submitFailText(e), icon: "none" });
+    // 券出问题就当场摘掉并重算：留着那张券，他再点一次还是同样的错
+    if (e instanceof ApiError && COUPON_ERRORS.has(e.code)) {
+      couponNo.value = "";
+      void refreshAmount();
+    }
   } finally {
     submitting.value = false;
   }
