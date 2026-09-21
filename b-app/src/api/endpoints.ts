@@ -399,6 +399,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStockLocations: { method: "GET", path: "/biz/inventory/locations", auth: true, summary: "库位与仓" },
   mWarehouseCreate: { method: "POST", path: "/biz/inventory/locations", auth: true, summary: "加一个仓" },
   mLocationSetSource: { method: "PUT", path: "/biz/inventory/locations/:id/source", auth: true, summary: "设发货源" },
+  mInvCategorySettings: { method: "GET", path: "/biz/inventory/category-setting", auth: true, summary: "记库存的品类（各门店经营类目合集，每类一行）" },
+  mInvSetCategory: { method: "PUT", path: "/biz/inventory/category-setting/:categoryNo", auth: true, summary: "拨一个品类记不记库存（有在途拒绝、有库存要确认）" },
+  mGoodsInvModes: { method: "GET", path: "/biz/goods/inv-mode", auth: true, summary: "几件商品记不记库存（列表标签、编辑页那一行）" },
+  mGoodsSetInvMode: { method: "PUT", path: "/biz/goods/:goodsNo/inv-mode", auth: true, summary: "单件商品记不记库存（跟随品类 / 记 / 不记）" },
 };
 
 /**

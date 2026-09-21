@@ -26,7 +26,13 @@ public final class ProductEvents {
      */
     public record SkuUpserted(String skuNo, String entityNo, String goodsNo, String title,
                               String specText, String barcode, String merchantSkuCode,
-                              String saleUnit) implements DomainEvent {
+                              String saleUnit,
+                              /*
+                               * 这件商品记不记库存（TDD-商品纳入进销存开关 §3）。{@code false} 时进销存不建物料，
+                               * 已有的物料若余额为 0 就停用。<b>消费方把缺省（老事件没这个字段）当作 true</b> ——
+                               * 与改版前的行为一致，宁可多建一件物料，不能漏掉一件该记的货
+                               */
+                              boolean invManaged) implements DomainEvent {
         @Override
         public String aggregateType() {
             return "SKU";
@@ -40,6 +46,34 @@ public final class ProductEvents {
         @Override
         public String eventType() {
             return "SKU_UPSERTED";
+        }
+    }
+
+    /**
+     * 店主<b>确认过</b>的「记不记库存」切换（TDD-商品纳入进销存开关 §3）。消费方：inventory。
+     *
+     * <p><b>与 {@link SkuUpserted#invManaged()} 的分工</b>：那一个是保存商品时顺带带上的状态，
+     * 消费方只收空的物料（余额为 0 才停用）；这一个是店主在库存设置 / 编辑商品里明确改的，
+     * 已经过了「在途单据拒绝、有库存二次确认」两道，消费方有库存也照样停用（余额与流水只读保留）。
+     *
+     * @param managed {@code true} 记库存：建物料或恢复停用的物料；{@code false} 停用物料
+     */
+    public record SkuInvModeChanged(String skuNo, String entityNo, String goodsNo, String title,
+                                    String specText, String barcode, String merchantSkuCode,
+                                    String saleUnit, boolean managed) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "SKU";
+        }
+
+        @Override
+        public String aggregateId() {
+            return skuNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SKU_INV_MODE_CHANGED";
         }
     }
 

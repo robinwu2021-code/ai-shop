@@ -146,6 +146,7 @@ import type {
   StockSummary, StockBalance, StockCrossStoreRow, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer, I18nText,
+  InvCategorySetting, GoodsInvMode, InvModeChange,
   CertRecognition,
 } from "@shared/types";
 
@@ -662,4 +663,12 @@ export const httpApi: MerchantApi = {
     http.post<{ no: string }>(E.mWarehouseCreate.path, { name }).then((r) => r.no),
   mLocationSetSource: (id, sourceLocationId) =>
     http.put<void>(buildPath(E.mLocationSetSource.path, { id }), { sourceLocationId }),
+  mInvCategorySettings: () => http.get<InvCategorySetting[]>(E.mInvCategorySettings.path),
+  mInvSetCategory: (categoryNo, body) =>
+    http.put<InvModeChange>(buildPath(E.mInvSetCategory.path, { categoryNo }), body),
+  // 后端 `@RequestParam List<String>` 认逗号分隔
+  mGoodsInvModes: (goodsNos) =>
+    http.get<GoodsInvMode[]>(E.mGoodsInvModes.path, { goodsNos: goodsNos.join(",") }),
+  mGoodsSetInvMode: (goodsNo, body) =>
+    http.put<InvModeChange>(buildPath(E.mGoodsSetInvMode.path, { goodsNo }), body),
 };

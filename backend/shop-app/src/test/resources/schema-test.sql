@@ -728,6 +728,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     pending_on_sale TINYINT NOT NULL DEFAULT 0,
     params TEXT DEFAULT NULL,
     sale_mode VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
+    inv_mode VARCHAR(8) NOT NULL DEFAULT 'INHERIT',
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -4291,6 +4292,23 @@ CREATE TABLE IF NOT EXISTS prd_goods_favorite
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_prd_goods_favorite UNIQUE (user_no, goods_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_entity_category_inv
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    entity_no VARCHAR(64) NOT NULL,
+    category_no VARCHAR(64) NOT NULL,
+    managed TINYINT(4) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_entity_category_inv UNIQUE (entity_no, category_no)
 );
 
 -- 种子数据

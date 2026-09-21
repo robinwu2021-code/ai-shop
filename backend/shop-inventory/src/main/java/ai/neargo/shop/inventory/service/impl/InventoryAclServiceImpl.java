@@ -7,7 +7,25 @@ import ai.neargo.shop.inventory.entity.InvLedger;
 import ai.neargo.shop.inventory.entity.InvLocation;
 import ai.neargo.shop.inventory.entity.InvOwner;
 import ai.neargo.shop.inventory.entity.InvStockBalance;
+import ai.neargo.shop.inventory.entity.InvInboundLine;
+import ai.neargo.shop.inventory.entity.InvInboundOrder;
+import ai.neargo.shop.inventory.entity.InvOutboundLine;
+import ai.neargo.shop.inventory.entity.InvOutboundOrder;
+import ai.neargo.shop.inventory.entity.InvReservation;
+import ai.neargo.shop.inventory.entity.InvReservationLine;
+import ai.neargo.shop.inventory.entity.InvStockCount;
+import ai.neargo.shop.inventory.entity.InvStockCountLine;
+import ai.neargo.shop.inventory.entity.InvTransferOrder;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundLineMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundLineMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationLineMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountLineMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.TransferOrderMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
@@ -20,6 +38,15 @@ import ai.neargo.shop.inventory.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** 防腐层实现。 */
 @ConditionalOnInventory
@@ -36,11 +63,35 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     private final LedgerMapper ledgerMapper;
     private final BalanceMapper balanceMapper;
     private final LocationService locations;
+    /** 下面几张单据表只给 {@link #stateOf} 用：改「不记库存」之前查在途 */
+    private final InboundOrderMapper inboundMapper;
+    private final InboundLineMapper inboundLineMapper;
+    private final OutboundOrderMapper outboundMapper;
+    private final OutboundLineMapper outboundLineMapper;
+    private final TransferOrderMapper transferMapper;
+    private final ReservationMapper reservationMapper;
+    private final ReservationLineMapper reservationLineMapper;
+    private final StockCountMapper countMapper;
+    private final StockCountLineMapper countLineMapper;
 
     public InventoryAclServiceImpl(OwnerMapper ownerMapper, LocationMapper locationMapper,
                                    ItemMapper itemMapper, ItemRefMapper refMapper,
                                    LedgerMapper ledgerMapper, BalanceMapper balanceMapper,
-                                   LocationService locations) {
+                                   LocationService locations,
+                                   InboundOrderMapper inboundMapper, InboundLineMapper inboundLineMapper,
+                                   OutboundOrderMapper outboundMapper, OutboundLineMapper outboundLineMapper,
+                                   TransferOrderMapper transferMapper,
+                                   ReservationMapper reservationMapper, ReservationLineMapper reservationLineMapper,
+                                   StockCountMapper countMapper, StockCountLineMapper countLineMapper) {
+        this.inboundMapper = inboundMapper;
+        this.inboundLineMapper = inboundLineMapper;
+        this.outboundMapper = outboundMapper;
+        this.outboundLineMapper = outboundLineMapper;
+        this.transferMapper = transferMapper;
+        this.reservationMapper = reservationMapper;
+        this.reservationLineMapper = reservationLineMapper;
+        this.countMapper = countMapper;
+        this.countLineMapper = countLineMapper;
         this.ownerMapper = ownerMapper;
         this.locationMapper = locationMapper;
         this.itemMapper = itemMapper;
@@ -266,6 +317,154 @@ public class InventoryAclServiceImpl implements InventoryAclService {
             item.setStatus(InvEnums.MasterStatus.ARCHIVED);
         }
         itemMapper.updateById(item);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void setItemActive(String entityNo, String skuNo, boolean active, String name, String specText,
+                              String barcode, String merchantSkuCode, String saleUnit) {
+        if (active) {
+            // upsertItem 不改状态：先确保物料在，再单独拨回 ACTIVE
+            String itemId = upsertItem(entityNo, skuNo, name, specText, barcode, merchantSkuCode, saleUnit);
+            setStatus(ownerIdOf(entityNo), itemId, InvEnums.MasterStatus.ACTIVE);
+            return;
+        }
+        InvOwner owner = findOwner(entityNo);
+        InvItemRef ref = owner == null ? null : findRef(owner.getOwnerId(), InvEnums.RefSystem.AISHOP, skuNo);
+        if (ref == null) {
+            return;   // 进销存里本来就没有它，没什么可停
+        }
+        setStatus(owner.getOwnerId(), ref.getItemId(), InvEnums.MasterStatus.ARCHIVED);
+    }
+
+    private void setStatus(String ownerId, String itemId, String status) {
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
+        if (item == null || status.equals(item.getStatus())) {
+            return;
+        }
+        item.setStatus(status);
+        itemMapper.updateById(item);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public Map<String, ItemState> stateOf(String entityNo, Collection<String> skuNos) {
+        Map<String, ItemState> out = new LinkedHashMap<>();
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null || skuNos == null || skuNos.isEmpty()) {
+            return out;
+        }
+        String ownerId = owner.getOwnerId();
+        // skuNo → itemId（只认 AISHOP 引用）
+        Map<String, String> itemOfSku = new LinkedHashMap<>();
+        refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                        .eq(InvItemRef::getOwnerId, ownerId)
+                        .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                        .in(InvItemRef::getRef, new HashSet<>(skuNos)))
+                .forEach(r -> itemOfSku.put(r.getRef(), r.getItemId()));
+        if (itemOfSku.isEmpty()) {
+            return out;
+        }
+        Set<String> itemIds = new HashSet<>(itemOfSku.values());
+
+        Map<String, int[]> qty = new HashMap<>();
+        balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()
+                        .eq(InvStockBalance::getOwnerId, ownerId)
+                        .in(InvStockBalance::getItemId, itemIds))
+                .forEach(b -> {
+                    int[] q = qty.computeIfAbsent(b.getItemId(), k -> new int[2]);
+                    q[0] += b.getOnHand() == null ? 0 : b.getOnHand();
+                    q[1] += b.getReserved() == null ? 0 : b.getReserved();
+                });
+
+        Map<String, List<Blocker>> blockers = new HashMap<>();
+        // 未收货的进货单
+        Set<String> draftInbound = new HashSet<>();
+        inboundMapper.selectList(Wrappers.<InvInboundOrder>lambdaQuery()
+                        .select(InvInboundOrder::getInboundNo)
+                        .eq(InvInboundOrder::getOwnerId, ownerId)
+                        .eq(InvInboundOrder::getStatus, InvEnums.DocStatus.DRAFT))
+                .forEach(o -> draftInbound.add(o.getInboundNo()));
+        if (!draftInbound.isEmpty()) {
+            inboundLineMapper.selectList(Wrappers.<InvInboundLine>lambdaQuery()
+                            .in(InvInboundLine::getInboundNo, draftInbound)
+                            .in(InvInboundLine::getItemId, itemIds))
+                    .forEach(l -> addBlocker(blockers, l.getItemId(), "INBOUND", l.getInboundNo()));
+        }
+        // 未过账的出库单，加上已发出未收货的调拨（调拨的明细挂在它那张出库单上）
+        Map<String, Blocker> openOutbound = new HashMap<>();
+        outboundMapper.selectList(Wrappers.<InvOutboundOrder>lambdaQuery()
+                        .select(InvOutboundOrder::getOutboundNo)
+                        .eq(InvOutboundOrder::getOwnerId, ownerId)
+                        .eq(InvOutboundOrder::getStatus, InvEnums.DocStatus.DRAFT))
+                .forEach(o -> openOutbound.put(o.getOutboundNo(), new Blocker("OUTBOUND", o.getOutboundNo())));
+        transferMapper.selectList(Wrappers.<InvTransferOrder>lambdaQuery()
+                        .select(InvTransferOrder::getTransferNo, InvTransferOrder::getShippedOutboundNo)
+                        .eq(InvTransferOrder::getOwnerId, ownerId)
+                        .eq(InvTransferOrder::getStatus, InvEnums.TransferStatus.SHIPPED))
+                .forEach(t -> {
+                    if (t.getShippedOutboundNo() != null) {
+                        openOutbound.put(t.getShippedOutboundNo(), new Blocker("TRANSFER", t.getTransferNo()));
+                    }
+                });
+        if (!openOutbound.isEmpty()) {
+            outboundLineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
+                            .in(InvOutboundLine::getOutboundNo, openOutbound.keySet())
+                            .in(InvOutboundLine::getItemId, itemIds))
+                    .forEach(l -> {
+                        Blocker b = openOutbound.get(l.getOutboundNo());
+                        addBlocker(blockers, l.getItemId(), b.kind(), b.docNo());
+                    });
+        }
+        // 线上订单占着、还没出库
+        Map<String, String> held = new HashMap<>();
+        reservationMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
+                        .select(InvReservation::getReservationId, InvReservation::getExternalRef)
+                        .eq(InvReservation::getOwnerId, ownerId)
+                        .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD))
+                .forEach(r -> held.put(r.getReservationId(), r.getExternalRef()));
+        if (!held.isEmpty()) {
+            reservationLineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                            .in(InvReservationLine::getReservationId, held.keySet())
+                            .in(InvReservationLine::getItemId, itemIds))
+                    .forEach(l -> addBlocker(blockers, l.getItemId(), "RESERVATION",
+                            held.getOrDefault(l.getReservationId(), l.getReservationId())));
+        }
+        // 正在盘：开单时锁了账面数，这时停用，过账那一刻找不到物料
+        Set<String> counting = new HashSet<>();
+        countMapper.selectList(Wrappers.<InvStockCount>lambdaQuery()
+                        .select(InvStockCount::getCountNo)
+                        .eq(InvStockCount::getOwnerId, ownerId)
+                        .eq(InvStockCount::getStatus, InvEnums.DocStatus.COUNTING))
+                .forEach(c -> counting.add(c.getCountNo()));
+        if (!counting.isEmpty()) {
+            countLineMapper.selectList(Wrappers.<InvStockCountLine>lambdaQuery()
+                            .in(InvStockCountLine::getCountNo, counting)
+                            .in(InvStockCountLine::getItemId, itemIds))
+                    .forEach(l -> addBlocker(blockers, l.getItemId(), "COUNT", l.getCountNo()));
+        }
+
+        for (Map.Entry<String, String> e : itemOfSku.entrySet()) {
+            int[] q = qty.getOrDefault(e.getValue(), new int[2]);
+            out.put(e.getKey(), new ItemState(e.getKey(), q[0], q[1],
+                    blockers.getOrDefault(e.getValue(), List.of())));
+        }
+        return out;
+    }
+
+    private static void addBlocker(Map<String, List<Blocker>> into, String itemId, String kind, String docNo) {
+        List<Blocker> list = into.computeIfAbsent(itemId, k -> new ArrayList<>());
+        Blocker b = new Blocker(kind, docNo);
+        if (!list.contains(b)) {
+            list.add(b);
+        }
+    }
+
+    /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
+    private InvOwner findOwner(String entityNo) {
+        return entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getExternalRef, entityNo));
     }
 
     // ────────────────────────────────────────────────────────────────────

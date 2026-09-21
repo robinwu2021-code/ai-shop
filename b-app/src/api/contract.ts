@@ -117,6 +117,7 @@ import type {
   StockSummary, StockBalance, StockCrossStoreRow, StockItemDetail, StockLedgerPage, StockDocument, Supplier, Carrier,
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
+  InvCategorySetting, GoodsInvMode, InvMode, InvModeChange,
   FulfillmentImpactItem,
   SpecValueAdded,
   ScopePreview,
@@ -1765,4 +1766,15 @@ export interface MerchantApi {
   mWarehouseCreate(name: string): Promise<string>;
   /** 设发货源。**不允许接力**（A→B→C）：第一个后果是环，第二个是没人说得清货从哪出 */
   mLocationSetSource(id: string, sourceLocationId: string | null): Promise<void>;
+
+  /** 记库存的品类。设置挂在主体上，各门店共用 */
+  mInvCategorySettings(): Promise<InvCategorySetting[]>;
+  /**
+   * 拨一个品类。改为不记时：有在途单据回 BLOCKED（什么都没改），
+   * 还有库存且没带 `confirm` 回 NEEDS_CONFIRM —— 界面据此弹确认，确认后带 `confirm: true` 再来一次
+   */
+  mInvSetCategory(categoryNo: string, body: { managed: boolean; confirm?: boolean }): Promise<InvModeChange>;
+  mGoodsInvModes(goodsNos: string[]): Promise<GoodsInvMode[]>;
+  /** 单件优先于品类。判据与品类开关同一套 */
+  mGoodsSetInvMode(goodsNo: string, body: { mode: InvMode; confirm?: boolean }): Promise<InvModeChange>;
 }

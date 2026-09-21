@@ -112,4 +112,35 @@ public interface InventoryAclService {
      * 那是存量「主体级库存」的落点。
      */
     String locationOfStore(String ownerId, String storeNo);
+
+    // ─────────────────────────── 记不记库存（TDD-商品纳入进销存开关 §3）
+
+    /**
+     * 停用 / 恢复一件物料。<b>只动状态，不碰余额与流水</b> —— 停用的物料在清单、挑货、
+     * 进货盘点报损里都不出现，而它的余额和流水原样留着、只读；恢复即原样回来。
+     *
+     * <p>与 {@link #retireItemIfEmpty} 的区别：那一条只收零库存的空壳；
+     * 这一条是店主确认过「不记库存」之后的动作，<b>有库存也停</b>。
+     *
+     * @param active {@code true} 恢复（物料不存在就按传入字段建一件）；{@code false} 停用（不存在就什么也不做）
+     */
+    void setItemActive(String entityNo, String skuNo, boolean active, String name, String specText,
+                       String barcode, String merchantSkuCode, String saleUnit);
+
+    /**
+     * 这件货在进销存里还压着的东西。改为「不记库存」之前要看：
+     * 有在途单据 → 拒绝（货到了没处入、单出不了库）；只有库存 → 让店主确认。
+     *
+     * @param kind 在途单据的种类：{@code INBOUND} 未收货的进货单 / {@code OUTBOUND} 未过账的出库单 /
+     *             {@code TRANSFER} 已发出未收货的调拨 / {@code RESERVATION} 线上订单占着待出库 /
+     *             {@code COUNT} 正在盘的盘点单
+     */
+    record Blocker(String kind, String docNo) {
+    }
+
+    record ItemState(String skuNo, int onHand, int reserved, java.util.List<Blocker> blockers) {
+    }
+
+    /** 查不到物料的 SKU 不在结果里（它在进销存里什么都没有）。只读，不建业主不建物料 */
+    java.util.Map<String, ItemState> stateOf(String entityNo, java.util.Collection<String> skuNos);
 }

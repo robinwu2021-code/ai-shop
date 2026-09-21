@@ -20,6 +20,11 @@ public final class ProductMappers {
     public interface GoodsMapper extends BaseMapper<PrdGoods> {
     }
 
+    /** 主体按类目的「记不记库存」（V345）。稀疏，只改不删 */
+    public interface EntityCategoryInvMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
+    }
+
     public interface SpecTemplateMapper extends BaseMapper<PrdSpecTemplate> {
     }
 

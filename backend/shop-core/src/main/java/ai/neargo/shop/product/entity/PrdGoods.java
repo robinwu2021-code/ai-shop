@@ -205,6 +205,17 @@ public class PrdGoods extends BaseEntity {
      */
     private String saleMode;
 
+    /**
+     * 记不记库存（V345，TDD-商品纳入进销存开关 §3）：{@link #INV_INHERIT} 跟随品类 /
+     * {@link #INV_ON} 记 / {@link #INV_OFF} 不记。生效值由 {@code InvManagedService} 三级取值得出，
+     * <b>别在别处自己判</b> —— 两份判据迟早分岔。
+     */
+    private String invMode;
+
+    public static final String INV_INHERIT = "INHERIT";
+    public static final String INV_ON = "ON";
+    public static final String INV_OFF = "OFF";
+
     public static final String SALE_NORMAL = "NORMAL";
     public static final String SALE_ACTIVITY_ONLY = "ACTIVITY_ONLY";
 

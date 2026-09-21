@@ -4,7 +4,9 @@
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
 import { delay } from "@shared/mock/db";
-import type { Carrier, StockBalance, StockCount, StockTransfer, Supplier } from "@shared/types";
+import type {
+  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, StockBalance, StockCount, StockTransfer, Supplier,
+} from "@shared/types";
 import {
   currentStoreNo,
   invBalances,
@@ -61,6 +63,10 @@ export const inventoryMock: Pick<MerchantApi,
   | "mStockLocations"
   | "mWarehouseCreate"
   | "mLocationSetSource"
+  | "mInvCategorySettings"
+  | "mInvSetCategory"
+  | "mGoodsInvModes"
+  | "mGoodsSetInvMode"
 > = {
   // ---- 进销存（P-18）
   //
@@ -495,4 +501,45 @@ export const inventoryMock: Pick<MerchantApi,
   async mLocationSetSource() {
     return delay(undefined);
   },
+
+  // ---- 记不记库存。水果有两件还压着货：第一次关它会先要确认（原型 s03）
+  async mInvCategorySettings() {
+    return delay(invCategories.map((c) => ({ ...c })));
+  },
+  async mInvSetCategory(categoryNo, body) {
+    const c = invCategories.find((x) => x.categoryNo === categoryNo);
+    if (!c) return delay<InvModeChange>({ status: "DONE", goods: [] });
+    if (!body.managed && c.managed && categoryNo === "CAT110" && !body.confirm) {
+      return delay<InvModeChange>({
+        status: "NEEDS_CONFIRM",
+        goods: [
+          { goodsNo: "G1001", title: "香梨 · 5 斤装", onHand: 30, blockers: [] },
+          { goodsNo: "G1002", title: "阳光玫瑰青提", onHand: 12, blockers: [] },
+        ],
+      });
+    }
+    c.managed = body.managed;
+    c.isDefault = false;
+    return delay<InvModeChange>({ status: "DONE", goods: [] });
+  },
+  async mGoodsInvModes(goodsNos) {
+    return delay(goodsNos.map((g) => invGoodsMode(g)));
+  },
+  async mGoodsSetInvMode(goodsNo, body) {
+    invGoodsModes.set(goodsNo, body.mode);
+    return delay<InvModeChange>({ status: "DONE", goods: [] });
+  },
 };
+
+const invCategories: InvCategorySetting[] = [
+  { categoryNo: "CAT110", name: "水果", managed: true, isDefault: true, goodsCount: 3 },
+  { categoryNo: "CAT330", name: "家政保洁", managed: false, isDefault: true, goodsCount: 1 },
+];
+const invGoodsModes = new Map<string, InvMode>();
+
+function invGoodsMode(goodsNo: string): GoodsInvMode {
+  const mode = invGoodsModes.get(goodsNo) ?? "INHERIT";
+  const categoryManaged = true;
+  const managed = mode === "INHERIT" ? categoryManaged : mode === "ON";
+  return { goodsNo, mode, managed, categoryManaged };
+}

@@ -28,7 +28,8 @@ class DualWriteStockPortSellableTest {
         when(platform.sellable("SKU-X")).thenReturn(4);
 
         DualWriteStockPort dual = new DualWriteStockPort(platform,
-                mock(ai.neargo.shop.event.OutboxEventBus.class));
+                mock(ai.neargo.shop.event.OutboxEventBus.class),
+                mock(ai.neargo.shop.spi.product.InvManagedPort.class));
 
         assertThat(dual.sellable("SKU-X"))
                 .as("落到默认实现的话是 Integer.MAX_VALUE —— 生产上加购永远不拦")

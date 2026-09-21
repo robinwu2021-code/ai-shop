@@ -6,6 +6,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ai.neargo.shop.spi.product.InvManagedPort;
 import ai.neargo.shop.spi.product.StockPort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
@@ -56,10 +57,16 @@ public class DualWriteStockPort implements StockPort {
 
     private final StockPortImpl platform;
     private final OutboxEventBus bus;
+    /**
+     * 不记库存的商品只走平台那本账（TDD-商品纳入进销存开关 §5.3）。
+     * 过滤放在发事件这一侧而不是消费侧：消费时再判，切换那一刻前后的事件会按新设置被解释
+     */
+    private final InvManagedPort invManaged;
 
-    public DualWriteStockPort(StockPortImpl platform, OutboxEventBus bus) {
+    public DualWriteStockPort(StockPortImpl platform, OutboxEventBus bus, InvManagedPort invManaged) {
         this.platform = platform;
         this.bus = bus;
+        this.invManaged = invManaged;
         /*
          * **开关生效了没有，要能在日志里看见。**
          *
@@ -114,6 +121,10 @@ public class DualWriteStockPort implements StockPort {
     @Override
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
         platform.setOnHand(skuNo, storeNo, onHand, reason);
+        if (invManaged.managedSkus(List.of(skuNo)).isEmpty()) {
+            // 不记库存：商城上的数就是全部，进销存里没有它的账可对
+            return;
+        }
         // 手改也要镜像，否则商家在商品页改完，两本账当场分叉
         bus.publish(new AdjustEvent(skuNo, storeNo, onHand, reason));
     }
@@ -126,7 +137,20 @@ public class DualWriteStockPort implements StockPort {
      * 而那正是双写要防的事。
      */
     private void mirror(String type, String ref, List<StockPort.SkuQty> items) {
-        bus.publish(new MirrorEvent(type, ref, items));
+        List<StockPort.SkuQty> kept = items;
+        if (!items.isEmpty()) {
+            java.util.Set<String> managed = invManaged.managedSkus(
+                    items.stream().map(StockPort.SkuQty::skuNo).toList());
+            kept = items.stream().filter(i -> managed.contains(i.skuNo())).toList();
+            /*
+             * 整单都是不记库存的货：RESERVE / RESTORE 不发。之后按 ref 来的 COMMIT / RELEASE
+             * 在消费侧找不到预留，按已处理跳过 —— 那条路本来就为「预留没建成」留着
+             */
+            if (kept.isEmpty()) {
+                return;
+            }
+        }
+        bus.publish(new MirrorEvent(type, ref, kept));
     }
 
     /**

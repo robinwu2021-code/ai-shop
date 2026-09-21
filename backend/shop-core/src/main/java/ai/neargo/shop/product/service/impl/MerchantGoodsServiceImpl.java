@@ -121,6 +121,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
     /** 建成 SKU 之后往外发一条 —— 进销存靠它把这个 SKU 放上账。见 ProductEvents.SkuUpserted */
     private final ai.neargo.shop.event.OutboxEventBus events;
+    /** 记不记库存的唯一判据；投影事件带上它，进销存据此决定建不建物料 */
+    private final ai.neargo.shop.product.service.InvManagedService invManaged;
     /** 门店级售价。**无行回退主体价**（与库存的「无行视为 0」相反，见 PrdStorePrice） */
     private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
     /** 规格库（V195）：类目级规格从这里来，SKU 的值编号也靠它反查 */
@@ -146,8 +148,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.product.service.SpecLibraryService specLibrary,
                                     ai.neargo.shop.event.OutboxEventBus events,
                                     ai.neargo.shop.spi.pay.MarketPort marketPort,
+                                    ai.neargo.shop.product.service.InvManagedService invManaged,
                                     ObjectMapper json) {
         this.marketPort = marketPort;
+        this.invManaged = invManaged;
         this.specLibrary = specLibrary;
         this.storePriceMapper = storePriceMapper;
         this.storeCategoryPort = storeCategoryPort;
@@ -1385,6 +1389,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return;
         }
         java.util.Set<String> sent = new java.util.HashSet<>();
+        boolean managed = invManaged.isManaged(g);
         for (PrdSku row : saved) {
             /*
              * **必须用落库那一行，不能用命令里的 Sku。** 新建时命令里
@@ -1399,7 +1404,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             events.publish(new ai.neargo.shop.spi.product.ProductEvents.SkuUpserted(
                     row.getSkuNo(), merchantNo, g.getGoodsNo(), g.getTitle(),
-                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit()));
+                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit(), managed));
         }
     }
 

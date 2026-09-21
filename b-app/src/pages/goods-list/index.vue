@@ -269,6 +269,23 @@ const loaded = ref(false);
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
+/**
+ * 不记库存的商品（TDD-商品纳入进销存开关，原型 s07）。单独一次批量取，不塞进商品列表的 VO ——
+ * 那份 VO 被好几端共用。取不到就当都记：少一个标签，比给在记的货标错「不记」要好。
+ */
+const invOff = ref<Set<string>>(new Set());
+
+async function loadInvModes(goodsNos: string[], more: boolean) {
+  if (!goodsNos.length) {
+    if (!more) invOff.value = new Set();
+    return;
+  }
+  const rows = await api.mGoodsInvModes(goodsNos).catch(() => []);
+  const next = more ? new Set(invOff.value) : new Set<string>();
+  for (const r of rows) if (!r.managed) next.add(r.goodsNo);
+  invOff.value = next;
+}
+
 async function load(more = false) {
   if (!merchant.canOperate) return;
   if (more && (!hasMore.value || loading.value)) return;
@@ -283,6 +300,7 @@ async function load(more = false) {
       size: PAGE_SIZE,
     });
     list.value = more ? [...list.value, ...res.records] : res.records;
+    void loadInvModes(res.records.map((r) => r.goodsNo), more);
     page.value = next;
     // 拿满一页就认为还有下一页 —— 比信任 total 稳：total 与 records 的口径
     // 在按门店裁剪的场景下会分岔，而「这一页满了」是端上能自己看见的事实
@@ -387,22 +405,27 @@ async function editStock(g: Goods) {
    * 网络失败同理 —— 一个用来对照的数，不该让主动作失败。
    */
   let inv: string = "";
-  try {
-    const item = await api.mItemBySku(sku.skuNo);
-    if (item) {
-      const where = (item.byLocation ?? [])
-        .filter((l) => l.onHand !== 0)
-        .map((l) => `${l.locationName} ${l.onHand}`)
-        .join("、");
-      inv = String(t("goods.stockInvHint", {
-        n: item.onHand,
-        where: where || String(t("goods.stockInvNowhere")),
-      }));
-    } else {
-      inv = String(t("goods.stockInvNone"));
+  // 不记库存的货只有商城这一个数，提进销存那本账只会让人困惑（原型 s07）
+  if (invOff.value.has(g.goodsNo)) {
+    inv = String(t("invMode.adjustHint"));
+  } else {
+    try {
+      const item = await api.mItemBySku(sku.skuNo);
+      if (item) {
+        const where = (item.byLocation ?? [])
+          .filter((l) => l.onHand !== 0)
+          .map((l) => `${l.locationName} ${l.onHand}`)
+          .join("、");
+        inv = String(t("goods.stockInvHint", {
+          n: item.onHand,
+          where: where || String(t("goods.stockInvNowhere")),
+        }));
+      } else {
+        inv = String(t("goods.stockInvNone"));
+      }
+    } catch {
+      // 对照信息拿不到就不显示 —— 不打断改库存这件事
     }
-  } catch {
-    // 对照信息拿不到就不显示 —— 不打断改库存这件事
   }
 
   const value = await prompt({
@@ -806,6 +829,7 @@ onShow(() => {
           驳回 / 强制下架的理由。**没有它，商家面对「已驳回」只能猜要改什么** ——
           审计日志只有运营看得到。后端一直在发这个字段，端上此前连声明都没有。
         -->
+        <text v-if="invOff.has(g.goodsNo)" class="txt-caption sh-muted">{{ $t("invMode.off") }}</text>
         <text v-if="g.auditReason" class="txt-caption reason">{{ g.auditReason }}</text>
         <!--
           有未发布修改（双版本草稿）。**线上照卖旧版**，这行是提醒商家

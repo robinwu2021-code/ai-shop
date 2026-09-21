@@ -37,9 +37,11 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
     private final OutboxEventBus events;
+    private final ai.neargo.shop.spi.product.InvManagedPort invManaged;
 
     public SkuIdentityServiceImpl(SkuMapper skuMapper, GoodsMapper goodsMapper,
-                                  OutboxEventBus events) {
+                                  OutboxEventBus events, ai.neargo.shop.spi.product.InvManagedPort invManaged) {
+        this.invManaged = invManaged;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.events = events;
@@ -285,6 +287,7 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
      */
     private void publishUpserted(String merchantNo, List<PrdSku> rows) {
         Map<String, String> titles = titlesOf(rows);
+        Set<String> managed = invManaged.managedSkus(rows.stream().map(PrdSku::getSkuNo).toList());
         for (PrdSku row : rows) {
             if (row.getSkuNo() == null) {
                 continue;
@@ -292,7 +295,8 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
             events.publish(new ProductEvents.SkuUpserted(
                     row.getSkuNo(), merchantNo, row.getGoodsNo(),
                     titles.getOrDefault(row.getGoodsNo(), ""),
-                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit()));
+                    row.getSpec(), row.getBarcode(), row.getMerchantSkuCode(), row.getSaleUnit(),
+                    managed.contains(row.getSkuNo())));
         }
     }
 

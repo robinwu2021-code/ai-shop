@@ -134,6 +134,11 @@ class BizEndpointPermTest {
         put("/biz/inventory/adjust", BizPerms.STOCK);
         // 按条码找货：只读，与挑货同一档
         put("/biz/inventory/items/by-barcode", BizPerms.STOCK);
+        // 记不记库存：看用库存的码（店员要看懂某件货为什么不在库存页），改用商品的码
+        put("/biz/inventory/category-setting", BizPerms.STOCK);
+        put("/biz/inventory/category-setting/{categoryNo}", BizPerms.GOODS);
+        put("/biz/goods/inv-mode", BizPerms.STOCK);
+        put("/biz/goods/{goodsNo}/inv-mode", BizPerms.GOODS);
         // 商品页读「这件货在进销存的账」。与 balances 同权：都是「看得见这家的货」
         put("/biz/inventory/item-by-sku", BizPerms.STOCK);
         // 设安全库存：判 STOCK 而不是更高的码 —— 阈值是理货员日常要调的东西

@@ -66,6 +66,16 @@ public class InventoryItemProjectionConsumer implements OutboxConsumer {
             return;
         }
         /*
+         * **不记库存的货不建物料**（TDD-商品纳入进销存开关 §3）。已有的物料若余额、预留都为 0
+         * 就顺手收掉；有数的不动 —— 停用有库存的物料要店主确认，那条路走 SKU_INV_MODE_CHANGED。
+         * 缺这个字段（改版前入队的老事件）按「记」处理，与改版前一致。
+         */
+        JsonNode managed = p.get("invManaged");
+        if (managed != null && !managed.isNull() && !managed.asBoolean()) {
+            acl.retireItemIfEmpty(entityNo, skuNo, true);
+            return;
+        }
+        /*
          * **名字用商品标题，不是货号。** 2026-08-28 之前搬运传的是 `goodsNo`，
          * 于是商家在库存清单上看到的是一列 `G0001 · 10斤装`，认不出是什么货。
          */

@@ -382,3 +382,57 @@ export interface StockTransfer {
 }
 /** 库存台账的方向。IN 入库 / OUT 出库 —— 台账不可变，只有查看没有编辑 */
 export type StockDocKind = "IN" | "OUT";
+
+// ---- 记不记库存（TDD-商品纳入进销存开关 §3）
+//
+// 形状逐字对着后端 `InvManagedService.CategorySetting / GoodsInvMode`
+// 与 `InvManagedAppService.ModeChange / AffectedGoods`。
+
+/** 库存设置页的一行：本店各门店经营类目的合集，每类一个开关 */
+export interface InvCategorySetting {
+  categoryNo: string;
+  name: string;
+  /** 生效值：记不记库存 */
+  managed: boolean;
+  /** 没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」 */
+  isDefault: boolean;
+  /** 这一类下本店有几件商品 */
+  goodsCount: number;
+}
+
+/** 单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存 */
+export type InvMode = "INHERIT" | "ON" | "OFF";
+
+export interface GoodsInvMode {
+  goodsNo: string;
+  mode: InvMode;
+  /** 生效值 */
+  managed: boolean;
+  /** 品类那一级的生效值 —— 「跟随品类（记库存）」括号里写的就是它 */
+  categoryManaged: boolean;
+}
+
+/**
+ * 挡住「改为不记库存」的在途单据。
+ * INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 ·
+ * RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单
+ */
+export interface InvModeBlocker {
+  kind: "INBOUND" | "OUTBOUND" | "TRANSFER" | "RESERVATION" | "COUNT";
+  docNo: string;
+}
+
+export interface InvAffectedGoods {
+  goodsNo: string;
+  title: string;
+  onHand: number;
+  blockers: InvModeBlocker[];
+}
+
+/**
+ * 切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改
+ */
+export interface InvModeChange {
+  status: "DONE" | "BLOCKED" | "NEEDS_CONFIRM";
+  goods: InvAffectedGoods[];
+}

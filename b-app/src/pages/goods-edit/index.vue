@@ -21,6 +21,8 @@ import { useCategoryPicker } from "./category";
 import { useGoodsParams } from "./params";
 import { useSpecGroups } from "./spec-groups";
 import type { Row } from "./price-rows";
+import type { GoodsInvMode, InvMode } from "@shared/types";
+import { describeBlockers, describeStocked, invModeLabel } from "@/shared/inv-mode";
 import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
@@ -331,6 +333,59 @@ const service = ref({ durationMin: "", storeName: "" });
  * 末尾留「其他」手打 —— 档位是给常见情况省事的，不是把不常见的拦在外面。
  */
 const DURATION_MINUTES = [30, 60, 90, 120, 180, 240];
+
+/**
+ * 记不记库存（原型 inv-managed-switch s05 / s06）。**只在编辑已有商品时能设** ——
+ * 后端按 goodsNo 存，新建时还没有这个号；新建的默认跟随品类，保存后再来改。
+ * 读不到按 null 处理：那一行显示成「—」，不挡保存（它不是这一页的主线）。
+ */
+const invMode = ref<GoodsInvMode | null>(null);
+const INV_MODES: InvMode[] = ["INHERIT", "ON", "OFF"];
+
+const invModeText = computed(() =>
+  invMode.value ? invModeLabel(t, invMode.value.mode, invMode.value.categoryManaged) : "—",
+);
+
+async function loadInvMode(no: string) {
+  invMode.value = (await api.mGoodsInvModes([no]).catch(() => []))[0] ?? null;
+}
+
+async function pickInvMode() {
+  const cur = invMode.value;
+  if (!cur || !goodsNo.value) return;
+  const i = await pick({
+    title: String(t("invMode.label")),
+    hint: `${String(t("invMode.categoryState", { state: String(t(cur.categoryManaged ? "invMode.on" : "invMode.off")) }))}。${String(t("invMode.sheetHint"))}`,
+    items: INV_MODES.map((m) => invModeLabel(t, m, cur.categoryManaged)),
+    selected: INV_MODES.indexOf(cur.mode),
+  });
+  const mode = i === null ? undefined : INV_MODES[i];
+  if (!mode || mode === cur.mode) return;
+  const no = goodsNo.value;
+  try {
+    let r = await api.mGoodsSetInvMode(no, { mode });
+    if (r.status === "NEEDS_CONFIRM") {
+      const ok = await confirm({
+        title: String(t("stockSettings.confirmTitle", { name: title.value["zh-CN"] || no })),
+        hint: String(t("stockSettings.confirmStocked", { n: r.goods.length, list: describeStocked(t, r.goods) })),
+        confirmText: String(t("stockSettings.confirmOk")),
+      });
+      if (!ok) return;
+      r = await api.mGoodsSetInvMode(no, { mode, confirm: true });
+    }
+    if (r.status === "BLOCKED") {
+      await confirm({
+        title: String(t("stockSettings.blockedTitle")),
+        hint: String(t("stockSettings.blockedHint", { list: describeBlockers(t, r.goods) })),
+        alert: true,
+      });
+      return;
+    }
+    await loadInvMode(no);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
 
 /** 选服务时长 */
 async function pickDuration() {
@@ -798,6 +853,7 @@ onLoad(async (q) => {
     loadCategories(),
     loadStoreChannels(),
   ]).finally(() => { hydrating.value = false; });
+  void loadInvMode(q.goodsNo);
   /*
    * **主图要回显**。保存时无条件带 `cover: cover.value`，而这里不回填的话
    * 它是空串 —— 于是「编辑一次商品，主图就没了」，且页面上那个 📷 占位
@@ -2110,6 +2166,14 @@ async function save(thenSubmit = false) {
     -->
     <view class="sh-card sh-mt-sm">
       <sh-section :title="String($t('goods.secStock'))"></sh-section>
+
+      <!-- 先决定记不记，再填数（原型 s05）。跟随品类要把跟到的结果写进括号 -->
+      <view class="pr sh-row" @tap="pickInvMode">
+        <text class="txt-sub pr__k sh-fill">{{ $t("invMode.label") }}</text>
+        <text v-if="isEdit" class="txt-body">{{ invModeText }}</text>
+        <text v-else class="txt-body sh-muted">{{ $t("invMode.afterSave") }}</text>
+        <sh-icon v-if="isEdit" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
 
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->
       <view v-if="multi" class="bulk sh-row">
