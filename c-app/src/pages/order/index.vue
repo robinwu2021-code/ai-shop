@@ -390,7 +390,7 @@ onShow(load);
         没有就不说 —— 「已为你退回」若不成立，比什么都不说更糟。
       -->
       <view v-if="returnedLines.length" class="returned">
-        <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption returned__line">{{ l }}</text>
+        <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption txt-primary">{{ l }}</text>
       </view>
 
       <view class="timeline">
@@ -590,9 +590,6 @@ onShow(load);
   flex-direction: column;
   gap: 4rpx;
   margin-top: 12rpx;
-}
-.returned__line {
-  color: var(--sh-primary-text);
 }
 /* 拼团进度卡（p08）：三行竖排，邀请按钮贴左 */
 .grpcard {
