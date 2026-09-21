@@ -592,7 +592,7 @@ onShow(load);
   margin-top: 12rpx;
 }
 .returned__line {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 /* 拼团进度卡（p08）：三行竖排，邀请按钮贴左 */
 .grpcard {

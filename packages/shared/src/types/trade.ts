@@ -161,6 +161,8 @@ export interface OrderPreview {
    * 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。
    */
   outOfRange?: string[] | null;
+  /** 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） */
+  returned?: OrderReturned | null;
   /**
    * 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期），
    * 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。
@@ -397,6 +399,8 @@ export interface Order {
    * 编一句「已为你退回」是在说一句可能不成立的话。
    */
   returned?: OrderReturned | null;
+  /** 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） */
+  outOfRange?: string[] | null;
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
   /**
@@ -613,6 +617,7 @@ export interface AfterSale {
 }
 /** 整单退款会一并退回的券与积分（后端 `AfterSaleVO.RefundImpact`） */
 export interface RefundImpact {
+  /** 会一并退回的券名（此刻还占在这一单上的那张）；没用券或退券开关关着时为空 */
   couponTitle?: string | null;
   /** 退回用户的抵扣积分 */
   pointsReturn: number;
