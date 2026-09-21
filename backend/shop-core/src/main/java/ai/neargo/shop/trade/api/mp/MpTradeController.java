@@ -233,9 +233,18 @@ public class MpTradeController {
                                   */
                                  String groupNo,
                                  /* 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
-                                 Boolean openGroup) {
+                                 Boolean openGroup,
+                                 /*
+                                  * 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或不参加。
+                                  * 不传 = 全部按最优（存量端上没有这个字段）
+                                  */
+                                 List<ActivityChoice> activityChoices) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
+        }
+
+        /** @param activityNo 活动号，或 "NONE"（这家店不参加活动） */
+        public record ActivityChoice(String merchantNo, String activityNo) {
         }
 
         OrderService.CreateOrderCommand toCommand(String payScene) {
@@ -244,7 +253,11 @@ public class MpTradeController {
                             .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
                             .toList(),
                     fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
-                    payMode, payScene, appointmentSlotNo, groupNo, Boolean.TRUE.equals(openGroup));
+                    payMode, payScene, appointmentSlotNo, groupNo, Boolean.TRUE.equals(openGroup),
+                    activityChoices == null ? null : activityChoices.stream()
+                            .filter(c -> c.merchantNo() != null && c.activityNo() != null)
+                            .collect(java.util.stream.Collectors.toMap(ActivityChoice::merchantNo,
+                                    ActivityChoice::activityNo, (a, b) -> b)));
         }
     }
 }

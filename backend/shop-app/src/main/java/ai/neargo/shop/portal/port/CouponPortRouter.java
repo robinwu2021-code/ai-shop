@@ -80,4 +80,12 @@ public class CouponPortRouter implements CouponPort {
         String t = legacy.usedTitleOf(orderNo);
         return t != null ? t : promo.usedTitleOf(orderNo);
     }
+
+    /** 两套各自的可用券合在一起（批 2 枚举最省组合用） */
+    @Override
+    public List<String> heldUsable(String userNo) {
+        List<String> all = new java.util.ArrayList<>(legacy.heldUsable(userNo));
+        all.addAll(promo.heldUsable(userNo));
+        return all;
+    }
 }

@@ -33,6 +33,15 @@ public interface CouponPort {
     void release(String orderNo);
 
     /**
+     * 这个人手里<b>此刻可用</b>的券（用户持有的那张的号）。下单页枚举「活动 × 券」
+     * 找最省组合时用（优惠券全链路梳理 批 2）。门槛、店铺这些「这一单能不能用」
+     * 不在这里判 —— 交给 {@link #allocate}，两处各判一次迟早对不上。
+     */
+    default List<String> heldUsable(String userNo) {
+        return List.of();
+    }
+
+    /**
      * 这一单用过、**现在已回到券包**的券名；没有返回 null（待办设计 P3）。
      * 从券的现状查，不从订单状态推 —— 退款关着退券开关时，券其实没回来。
      */

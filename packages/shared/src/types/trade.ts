@@ -161,6 +161,11 @@ export interface OrderPreview {
    * 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。
    */
   outOfRange?: string[] | null;
+  /**
+   * 下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个；
+   * 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。
+   */
+  offers?: CheckoutOffers | null;
   /** 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） */
   returned?: OrderReturned | null;
   /**
@@ -252,6 +257,30 @@ export interface OrderItem {
   limitPerUser?: number | null;
   /** 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 */
   boughtQty?: number | null;
+}
+/** 下单页的优惠选项（后端 `OrderVO.Offers`） */
+export interface CheckoutOffers {
+  /** 有活动可选的那几家店 */
+  merchants: MerchantOffers[];
+  /** 最省组合里每家店参加哪个活动（或 `ACTIVITY_NONE`） */
+  suggestedChoices: ActivityChoice[];
+  /** 最省组合用哪张券（用户持有的那张的号）；null = 不用券更省 */
+  suggestedCouponNo?: string | null;
+  /** 最省组合一共减多少（活动 + 券，不含积分） */
+  suggestedDiscountMinor: number;
+}
+export interface MerchantOffers {
+  merchantNo: string;
+  merchantName: string;
+  /** 这家店命中的活动。金额 = 只参加它时减多少 */
+  options: { activityNo: string; name: string; amountMinor: number }[];
+  /** 这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动 */
+  chosen?: string | null;
+}
+/** 顾客对某家店活动的选择：活动号，或 `ACTIVITY_NONE`（不参加） */
+export interface ActivityChoice {
+  merchantNo: string;
+  activityNo: string;
 }
 /** 订单关闭后券与积分去了哪（后端 `OrderVO.Returned`） */
 export interface OrderReturned {

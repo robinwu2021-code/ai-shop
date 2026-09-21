@@ -402,6 +402,8 @@ public class OrderServiceImpl implements OrderService {
         Discounts discounts = discountsOf(cmd, split, userNo);
         return split.toVO(discounts, pickups, remainingOf(split, userNo))
                 .withDiscountLines(discountLinesOf(discounts))
+                // 优惠选项与最省组合（批 2）：只在预览算，下单时按顾客提交的选择走
+                .withOffers(offersOf(cmd, split, userNo, discounts))
                 // 超出配送范围：预览给标记不拦（P6），建单时 requireWithinDeliveryRadius 才拦
                 .withOutOfRange(outOfRangeMerchants(cmd, split, userNo));
     }
@@ -629,14 +631,9 @@ public class OrderServiceImpl implements OrderService {
          * 线下没有资金流可补（与平台券不能线下用同一条理由）。平台活动是自动生效的、买家没法不选，
          * 所以这里是「不参与」而不是像平台券那样「拒单」—— 拒了的话活动期间线下单一律下不了。
          */
-        boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
-        CampaignPort.Discount auto = campaignPort.autoDiscount(split.groups.stream()
-                .map(g -> new CampaignPort.MerchantAmount(
-                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo),
-                        // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
-                        offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
-                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
-                .toList());
+        // 顾客对活动的选择（批 2）：没选的店按最优；选的那个不成立就拒（ACTIVITY_CHOICE_UNAVAILABLE）
+        CampaignPort.Discount auto = campaignPort.autoDiscount(merchantAmounts(cmd, split, stores),
+                cmd.activityChoices());
         if (cmd.couponNo() == null || cmd.couponNo().isBlank()) {
             return new Discounts(auto, CouponPort.Allocation.none());
         }
@@ -646,6 +643,148 @@ public class OrderServiceImpl implements OrderService {
                                 g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo)))
                         .toList());
         return new Discounts(auto, coupon);
+    }
+
+    /** 按商家算活动用的金额。预览、下单、枚举最省组合三处共用这一份 */
+    private List<CampaignPort.MerchantAmount> merchantAmounts(CreateOrderCommand cmd, Split split,
+                                                             Map<String, String> stores) {
+        boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
+        return split.groups.stream()
+                .map(g -> new CampaignPort.MerchantAmount(
+                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo),
+                        // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
+                        offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
+                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
+                .toList();
+    }
+
+    /** 枚举超过这么多组合就退回「活动取最优、再挑最好的券」—— 预览要快，几百组以内都算得动 */
+    private static final int MAX_OFFER_COMBOS = 200;
+
+    /**
+     * 下单页的优惠选项与<b>最省组合</b>（优惠券全链路梳理 批 2，Q2 + Q4）。
+     *
+     * <p><b>活动与券一起枚举，不是「先挑最优活动、再在剩下的金额上挑券」</b>：
+     * 参加满减后本店金额可能掉到券门槛以下，于是「不参加活动、只用券」反而更省 ——
+     * 这正是顾客要自己去点「不参与」最常见的理由，系统应该先替他想到。
+     *
+     * <p>券能不能用、减多少只问 {@code couponPort.allocate}（与下单同一个实现），这里不另算一遍。
+     * 同额时取枚举里靠前的：每家店的选项按「系统默认的最优在前、不参加在最后」排，券「不用」在最前 ——
+     * 所以同样省钱的组合里，建议的总是改动最少的那个。
+     */
+    private OrderVO.Offers offersOf(CreateOrderCommand cmd, Split split, String userNo, Discounts current) {
+        Map<String, String> stores = storesOf(cmd, split);
+        List<CampaignPort.MerchantAmount> amounts = merchantAmounts(cmd, split, stores);
+        List<CampaignPort.AppliedActivity> cands = campaignPort.candidates(amounts);
+        Map<String, List<CampaignPort.AppliedActivity>> byMerchant = new LinkedHashMap<>();
+        for (Group g : split.groups) {
+            List<CampaignPort.AppliedActivity> mine = cands.stream()
+                    .filter(a -> a.merchantNo().equals(g.merchantNo)).toList();
+            if (!mine.isEmpty()) {
+                // 默认最优在前：与 CampaignPort.pick 同一个取法（同额取先出现的）
+                List<CampaignPort.AppliedActivity> sorted = new ArrayList<>(mine);
+                sorted.sort((x, y) -> Long.compare(y.amountMinor(), x.amountMinor()));
+                byMerchant.put(g.merchantNo, sorted);
+            }
+        }
+        List<OrderVO.MerchantOffers> merchants = new ArrayList<>();
+        for (Group g : split.groups) {
+            List<CampaignPort.AppliedActivity> mine = byMerchant.get(g.merchantNo);
+            if (mine == null) {
+                continue;
+            }
+            String chosen = current.auto().applied().stream().filter(a -> a.merchantNo().equals(g.merchantNo))
+                    .map(CampaignPort.AppliedActivity::activityNo).findFirst()
+                    .orElse(cmd.activityChoices() != null
+                            && CampaignPort.CHOICE_NONE.equals(cmd.activityChoices().get(g.merchantNo))
+                            ? CampaignPort.CHOICE_NONE : null);
+            merchants.add(new OrderVO.MerchantOffers(g.merchantNo, g.merchantName,
+                    mine.stream().map(a -> new OrderVO.Option(a.activityNo(), a.name(), a.amountMinor())).toList(),
+                    chosen));
+        }
+
+        List<String> coupons = new ArrayList<>();
+        coupons.add(null);
+        if (userNo != null) {
+            coupons.addAll(couponPort.heldUsable(userNo));
+        }
+        if (merchants.isEmpty() && coupons.size() == 1) {
+            return null;
+        }
+        List<String> mNos = new ArrayList<>(byMerchant.keySet());
+        long combos = coupons.size();
+        for (String m : mNos) {
+            combos *= byMerchant.get(m).size() + 1;
+        }
+        boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
+        Map<String, Long> goodsOf = new HashMap<>();
+        split.groups.forEach(g -> goodsOf.put(g.merchantNo, g.goodsAmount()));
+
+        // 活动组合：每家店从 [候选…, 不参加] 里选一个。超过上限只看「全部按最优」这一组
+        List<Map<String, CampaignPort.AppliedActivity>> actCombos = new ArrayList<>();
+        if (combos > MAX_OFFER_COMBOS) {
+            Map<String, CampaignPort.AppliedActivity> best = new LinkedHashMap<>();
+            mNos.forEach(m -> best.put(m, byMerchant.get(m).get(0)));
+            actCombos.add(best);
+        } else {
+            actCombos.add(new LinkedHashMap<>());
+            for (String m : mNos) {
+                List<Map<String, CampaignPort.AppliedActivity>> next = new ArrayList<>();
+                for (var base : actCombos) {
+                    for (CampaignPort.AppliedActivity a : byMerchant.get(m)) {
+                        var c = new LinkedHashMap<>(base);
+                        c.put(m, a);
+                        next.add(c);
+                    }
+                    var none = new LinkedHashMap<>(base);
+                    none.put(m, null);
+                    next.add(none);
+                }
+                actCombos = next;
+            }
+        }
+
+        long bestTotal = -1;
+        Map<String, CampaignPort.AppliedActivity> bestActs = Map.of();
+        String bestCoupon = null;
+        for (var acts : actCombos) {
+            long actTotal = acts.values().stream().filter(java.util.Objects::nonNull)
+                    .mapToLong(CampaignPort.AppliedActivity::amountMinor).sum();
+            List<CouponPort.MerchantAmount> after = split.groups.stream()
+                    .map(g -> new CouponPort.MerchantAmount(g.merchantNo,
+                            goodsOf.get(g.merchantNo) - (acts.get(g.merchantNo) == null
+                                    ? 0L : acts.get(g.merchantNo).amountMinor())))
+                    .toList();
+            for (String c : coupons) {
+                long couponOff = 0L;
+                if (c != null) {
+                    try {
+                        CouponPort.Allocation al = couponPort.allocate(userNo, c, after);
+                        // 当面付用不了平台出资的券（requirePayModeSupported 同一条规则）
+                        if (offline && !al.byMerchant()) {
+                            continue;
+                        }
+                        couponOff = al.totalDiscount();
+                    } catch (BizException notApplicable) {
+                        continue;
+                    }
+                    if (couponOff <= 0) {
+                        continue;
+                    }
+                }
+                if (actTotal + couponOff > bestTotal) {
+                    bestTotal = actTotal + couponOff;
+                    bestActs = acts;
+                    bestCoupon = c;
+                }
+            }
+        }
+        List<OrderVO.Choice> suggested = new ArrayList<>();
+        for (String m : mNos) {
+            CampaignPort.AppliedActivity a = bestActs.get(m);
+            suggested.add(new OrderVO.Choice(m, a == null ? CampaignPort.CHOICE_NONE : a.activityNo()));
+        }
+        return new OrderVO.Offers(merchants, suggested, bestCoupon, Math.max(bestTotal, 0L));
     }
 
     /**

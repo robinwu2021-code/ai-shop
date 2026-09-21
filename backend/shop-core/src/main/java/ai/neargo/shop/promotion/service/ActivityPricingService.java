@@ -26,6 +26,13 @@ public interface ActivityPricingService {
      */
     CampaignPort.Discount autoDiscount(String userNo, List<CampaignPort.MerchantAmount> groups);
 
+    /** 这个活动号是不是新模型的（路由把老模型的活动交给新模型记配额之前要先筛掉） */
+    boolean ownsActivity(String activityNo);
+
+    /** 每家店命中的全部活动（候选）。见实现上的注释 */
+    List<ai.neargo.shop.spi.marketing.CampaignPort.AppliedActivity> candidates(
+            String userNo, List<ai.neargo.shop.spi.marketing.CampaignPort.MerchantAmount> groups);
+
     /** 关单：把这一单占掉的配额与预算退回去（执行计划 B6）。幂等 */
     void release(String orderNo);
 

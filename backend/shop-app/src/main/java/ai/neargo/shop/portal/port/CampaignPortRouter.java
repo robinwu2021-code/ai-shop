@@ -54,48 +54,36 @@ public class CampaignPortRouter implements CampaignPort {
 
     @Override
     public Discount autoDiscount(List<MerchantAmount> groups) {
-        Discount a = legacy.autoDiscount(groups);
-        Discount b = promo.autoDiscount(SecurityUtils.currentUserNoOrNull(), groups);
-        if (b.total() == 0) {
-            return a;
-        }
-        if (a.total() == 0) {
-            return b;
-        }
-        /*
-         * 逐个商家取更优的那一边（不是把两边相加）。
-         * 按商家而不是按总额比：两个商家各有一边更优时，相加会让顾客少减。
-         */
-        Map<String, Long> best = new HashMap<>();
-        Map<String, AppliedActivity> from = new HashMap<>();
-        for (MerchantDiscount d : a.shares()) {
-            best.put(d.merchantNo(), d.amount());
-        }
-        for (MerchantDiscount d : b.shares()) {
-            if (d.amount() > best.getOrDefault(d.merchantNo(), 0L)) {
-                best.put(d.merchantNo(), d.amount());
-                b.applied().stream()
-                        .filter(x -> x.merchantNo().equals(d.merchantNo()))
-                        .findFirst().ifPresent(x -> from.put(d.merchantNo(), x));
-            } else {
-                // 老模型赢了这一家：新模型的那个活动这一单没用上，不能扣它的量
-                from.remove(d.merchantNo());
-            }
-        }
-        List<MerchantDiscount> shares = new ArrayList<>();
-        long total = 0L;
-        for (var e : best.entrySet()) {
-            shares.add(new MerchantDiscount(e.getKey(), e.getValue()));
-            total += e.getValue();
-        }
-        return new Discount(total, shares, List.copyOf(from.values()));
+        return autoDiscount(groups, Map.of());
+    }
+
+    /**
+     * 两套活动的候选合在一起：<b>老模型在前</b>。{@link CampaignPort#pick} 同额取先出现的，
+     * 于是没人选的时候仍是「新模型要严格更优才替换老模型」—— 与改造前逐商家比较的结果一致。
+     * 按商家而不是按总额比：两个商家各有一边更优时，按总额比会让顾客少减。
+     */
+    @Override
+    public List<AppliedActivity> candidates(List<MerchantAmount> groups) {
+        List<AppliedActivity> all = new ArrayList<>(legacy.candidates(groups));
+        all.addAll(promo.candidates(SecurityUtils.currentUserNoOrNull(), groups));
+        return all;
+    }
+
+    @Override
+    public Discount autoDiscount(List<MerchantAmount> groups, Map<String, String> choices) {
+        return CampaignPort.pick(candidates(groups), choices == null ? Map.of() : choices);
     }
 
     @Override
     public void commit(String userNo, String orderNo, Discount discount) {
-        // 老实现是空的；新实现按 applied 扣限量。applied 里只有真正用上的那些
         legacy.commit(userNo, orderNo, discount);
-        promo.commit(userNo, orderNo, discount);
+        /*
+         * 只把新模型的活动交给新模型记配额。applied 里现在也有老模型赢下的那家
+         * （为了明细有名字）—— 交过去它会找不到这个活动，记一条「限量已满仍命中」的假告警。
+         */
+        List<AppliedActivity> mine = discount.applied().stream()
+                .filter(a -> promo.ownsActivity(a.activityNo())).toList();
+        promo.commit(userNo, orderNo, new Discount(discount.total(), discount.shares(), mine));
     }
 
     @Override

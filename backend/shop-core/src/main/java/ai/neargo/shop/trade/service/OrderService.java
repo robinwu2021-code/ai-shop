@@ -152,7 +152,28 @@ public interface OrderService {
     record CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
                               String addressId, String couponNo, Long usePoints, String remark,
                               Long appointmentAt, String payMode, String payScene,
-                              String appointmentSlotNo, String groupNo, boolean openGroup) {
+                              String appointmentSlotNo, String groupNo, boolean openGroup,
+                              /**
+                               * 顾客在下单页对活动的选择（优惠券全链路梳理 批 2）：商家号 → 活动号，
+                               * 或 {@code CampaignPort.CHOICE_NONE}（这家店不参加）。
+                               * <b>没出现的店按最优</b>；null / 空 = 全部按最优，与加这个字段之前一致
+                               */
+                              java.util.Map<String, String> activityChoices) {
+
+        /** 不带活动选择的签名：存量调用方（代客下单、测试）照旧全部按最优 */
+        public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
+                                  String addressId, String couponNo, Long usePoints, String remark,
+                                  Long appointmentAt, String payMode, String payScene,
+                                  String appointmentSlotNo, String groupNo, boolean openGroup) {
+            this(items, fulfillment, pickupNo, addressId, couponNo, usePoints, remark,
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, null);
+        }
+
+        /** 换一组活动选择与券（预览里枚举最省组合时用） */
+        public CreateOrderCommand withChoices(java.util.Map<String, String> choices, String coupon) {
+            return new CreateOrderCommand(items, fulfillment, pickupNo, addressId, coupon, usePoints, remark,
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, choices);
+        }
 
         /** 不参团的下单（代客下单、测试与存量调用方）。行为与加团字段之前逐字相同 */
         public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,

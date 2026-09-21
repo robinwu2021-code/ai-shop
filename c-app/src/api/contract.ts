@@ -1,6 +1,7 @@
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
+  ActivityChoice,
   MyMembership,
   ReachOpened,
   PlaceSearchHit,
@@ -114,6 +115,11 @@ export interface CreateOrderReq {
   couponNo?: string;
   /** 使用的积分数（后端会按抵扣上限截断，端上算的只是预览） */
   usePoints?: number;
+  /**
+   * 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。
+   * 不传 = 全部按最优。选的那个此刻不成立时后端回 40035，不会偷偷换成别的
+   */
+  activityChoices?: ActivityChoice[];
   remark?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;

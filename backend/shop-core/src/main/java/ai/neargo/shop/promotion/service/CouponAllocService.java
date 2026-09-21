@@ -18,6 +18,11 @@ public interface CouponAllocService {
     /** 这张用户券是不是新模型的（路由靠它分流） */
     boolean owns(String userNo, String userCouponNo);
 
+    /** 这个人手里此刻可用、下单可抵扣的新模型券（批 2 枚举最省组合用） */
+    default List<String> heldUsable(String userNo) {
+        return List.of();
+    }
+
     /** 与 {@link CouponPort#allocate} 同义，只是读的是 {@code pmt_*} */
     CouponPort.Allocation allocate(String userNo, String userCouponNo,
                                    List<CouponPort.MerchantAmount> groups);

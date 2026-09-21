@@ -20,13 +20,13 @@ import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
-import { FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { ACTIVITY_NONE, FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, distance as fmtDistance, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, CheckoutCapability, CouponBestResult, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
+import type { ActivityChoice, Address, CartItem, CheckoutCapability, CheckoutOffers, CouponBestResult, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
@@ -567,6 +567,58 @@ function clampToMax(): boolean {
   return changed;
 }
 
+/**
+ * 优惠选项与最省组合（优惠券全链路梳理 批 2）。来自预览；老后端 / mock 没给时为空，面板回落到只读的活动列表。
+ */
+const offers = ref<CheckoutOffers | null>(null);
+/** 顾客对每家店活动的选择：商家号 → 活动号 或 ACTIVITY_NONE。空 = 全部按最优 */
+const activityChoices = ref<Record<string, string>>({});
+/**
+ * 顾客自己动过券或活动没有。**没动过就照系统建议的最省组合来**（Q2：进来先看到最低价），
+ * 动过就不再替他改 —— 他明确选了的，下一次预览不能悄悄换回去。
+ */
+const touched = ref(false);
+
+function choicesPayload(): ActivityChoice[] | undefined {
+  const e = Object.entries(activityChoices.value);
+  return e.length ? e.map(([merchantNo, activityNo]) => ({ merchantNo, activityNo })) : undefined;
+}
+
+/**
+ * 把系统建议的组合套上去。套了返回 true（券号或活动选择变了，watch 会再问一次价）。
+ * 建议与当前选择无关（后端从头枚举），所以套一次之后下一次预览给的还是同一组，不会来回跳。
+ */
+function applySuggestion(o: CheckoutOffers | null | undefined): boolean {
+  if (!o) return false;
+  const wantCoupon = o.suggestedCouponNo ?? "";
+  const wantChoices = Object.fromEntries(o.suggestedChoices.map((c) => [c.merchantNo, c.activityNo]));
+  const same = wantCoupon === couponNo.value
+    && JSON.stringify(wantChoices) === JSON.stringify(activityChoices.value);
+  if (same) return false;
+  couponNo.value = wantCoupon;
+  activityChoices.value = wantChoices;
+  return true;
+}
+
+/** 面板里选了某家店的某个活动（或不参加） */
+function chooseActivity(merchantNo: string, activityNo: string) {
+  touched.value = true;
+  activityChoices.value = { ...activityChoices.value, [merchantNo]: activityNo };
+}
+
+/** 当前组合比最省组合少省多少。顾客自己选了不划算的组合时，面板里给一句「换回最省」 */
+const missedSaving = computed(() => {
+  const o = offers.value;
+  if (!o || !touched.value || !amount.value) return 0;
+  return Math.max(0, o.suggestedDiscountMinor - (amount.value.discountMinor ?? 0));
+});
+
+/** 换回系统建议的最省组合 */
+function useSuggestion() {
+  touched.value = false;
+  applySuggestion(offers.value);
+}
+
 let amountSeq = 0;
 async function refreshAmount() {
   if (!items.value.length) {
@@ -589,12 +641,16 @@ async function refreshAmount() {
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
+      activityChoices: choicesPayload(),
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
     endedNotice.value = endedActivities(discountLines.value, p.discountLines ?? []);
     discountLines.value = p.discountLines ?? [];
     serverOutOfRange.value = p.outOfRange ?? [];
+    offers.value = p.offers ?? null;
+    // 没动过就照最省组合来：套上之后 watch 会再问一次价，这一次的结果就不必往下渲染了
+    if (!touched.value && applySuggestion(p.offers)) return;
     // 上限只有后端算得准；没给的行不设限（宁可提交时拦，也不要凭旧数挡人）
     maxQtyOf.value = Object.fromEntries(
       (p.items ?? []).filter((i) => i.maxQty != null).map((i) => [i.skuNo, i.maxQty as number]),
@@ -609,8 +665,18 @@ async function refreshAmount() {
     // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
     void loadCouponBest();
     applyPickupGroups(p.subOrders ?? []);
-  } catch {
+  } catch (e) {
     if (seq !== amountSeq) return;
+    /*
+     * 他选的活动此刻不成立了（结束了、配额刚用完）：清掉选择、说一句、重新按最省组合问一次。
+     * 不静默换 —— 后端也不会替他换（40035）。
+     */
+    if (e instanceof ApiError && e.code === ACTIVITY_CHOICE_UNAVAILABLE) {
+      activityChoices.value = {};
+      touched.value = false;
+      uni.showToast({ title: String(t("confirm.failActivity")), icon: "none" });
+      return;
+    }
     // 预览失败不挡下单：兜底显示本地估算，真实金额在提交时由后端定 —— 但要说出来
     serverAmount.value = null;
     discountLines.value = [];
@@ -679,7 +745,7 @@ async function refreshPoints() {
 
 watch(
   () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value,
-    appointmentAt.value, payMode.value],
+    appointmentAt.value, payMode.value, JSON.stringify(activityChoices.value)],
   () => void refreshAmount(),
   { immediate: true },
 );
@@ -832,6 +898,7 @@ async function loadCouponBest() {
 }
 
 function chooseCoupon(no: string) {
+  touched.value = true;
   couponNo.value = no;
   couponPanel.value = false;
 }
@@ -859,6 +926,8 @@ function gotoAddress() {
 
 /** 券相关的错误码：撞上它们要把券摘掉重算，否则再点一次还是同一个错 */
 const COUPON_ERRORS = new Set([40001, 40002]);
+/** 与后端 ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE 同号：顾客选的活动此刻不成立了 */
+const ACTIVITY_CHOICE_UNAVAILABLE = 40035;
 
 /**
  * 建单失败时**说清是哪一条变了**（执行计划 B4）。
@@ -873,6 +942,7 @@ function submitFailText(e: unknown): string {
   if (code === 20001 || code === 20005) return String(t("confirm.failStock"));
   if (COUPON_ERRORS.has(code)) return String(t("confirm.failCoupon"));
   if (code === 20003) return String(t("confirm.failRange"));
+  if (code === ACTIVITY_CHOICE_UNAVAILABLE) return String(t("confirm.failActivity"));
   return (e as Error).message;
 }
 
@@ -941,6 +1011,7 @@ async function submit() {
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+      activityChoices: choicesPayload(),
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
@@ -1381,7 +1452,32 @@ onMounted(async () => {
       活动是自动生效的、券要自己选、用不了的要说清为什么。
     -->
     <sh-sheet :visible="couponPanel" :title="String($t('confirm.couponPanel'))" @close="couponPanel = false">
-      <view v-if="autoActivities.length" class="sh-block">
+      <!--
+        **活动可以换、可以不参加**（优惠券全链路梳理 批 2）。同一家店只能参加一个；
+        选了不参加，这家店的活动一个都不减 —— 常见的理由是参加满减后够不到券的门槛。
+        后端没给选项时（老后端 / mock）回落到下面那段只读列表。
+      -->
+      <view v-if="offers?.merchants.length" class="sh-block">
+        <text class="txt-caption sh-muted">{{ $t("confirm.activityPick") }}</text>
+        <view v-for="m in offers.merchants" :key="m.merchantNo" class="sh-cells">
+          <text v-if="offers.merchants.length > 1" class="txt-caption sh-muted">{{ m.merchantName }}</text>
+          <view
+            v-for="o in m.options"
+            :key="o.activityNo"
+            class="sh-cell sh-row sh-row--between"
+            @tap="chooseActivity(m.merchantNo, o.activityNo)"
+          >
+            <text class="txt-body sh-fill">{{ o.name }}</text>
+            <text class="txt-body is-danger sh-num">-{{ money(o.amountMinor) }}</text>
+            <sh-icon v-if="m.chosen === o.activityNo" name="check" :size="28" color="var(--sh-primary)"></sh-icon>
+          </view>
+          <view class="sh-cell sh-row sh-row--between" @tap="chooseActivity(m.merchantNo, ACTIVITY_NONE)">
+            <text class="txt-body">{{ $t("confirm.noActivity") }}</text>
+            <sh-icon v-if="m.chosen === ACTIVITY_NONE" name="check" :size="28" color="var(--sh-primary)"></sh-icon>
+          </view>
+        </view>
+      </view>
+      <view v-else-if="autoActivities.length" class="sh-block">
         <text class="txt-caption sh-muted">{{ $t("confirm.autoActivity") }}</text>
         <view v-for="(d, i) in autoActivities" :key="i" class="sh-cell sh-row sh-row--between">
           <text class="txt-body">{{ d.name }}</text>
@@ -1421,6 +1517,17 @@ onMounted(async () => {
         <view v-for="u in couponBest.unusable" :key="u.userCouponNo" class="sh-cell">
           <text class="txt-caption sh-muted">{{ unusableText(u) }}</text>
         </view>
+      </view>
+
+      <!--
+        当前组合一共减多少；他自己选的组合不如系统算的最省组合时，说一句还能多省多少，给一个换回去的出口。
+        不强制换：他可能就是想留着券下次用。
+      -->
+      <view v-if="amount" class="panel__sum sh-row sh-row--between">
+        <text class="txt-body">{{ $t("confirm.panelSaved", { p: money(amount.discountMinor ?? 0) }) }}</text>
+        <text v-if="missedSaving > 0" class="txt-caption sh-link" @tap="useSuggestion">
+          {{ $t("confirm.useBest", { p: money(missedSaving) }) }}
+        </text>
       </view>
     </sh-sheet>
 
@@ -1574,6 +1681,10 @@ onMounted(async () => {
 }
 .amt {
   padding: 12rpx 0;
+}
+.panel__sum {
+  gap: 16rpx;
+  padding-top: 24rpx;
 }
 .recv__alt {
   display: block;

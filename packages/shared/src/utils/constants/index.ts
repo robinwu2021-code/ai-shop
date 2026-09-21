@@ -418,6 +418,9 @@ export const ADDRESS_RULES = {
  */
 export const PICKUP_FAR_M = 2000;
 
+/** 顾客选了「这家店不参加活动」。与后端 `CampaignPort.CHOICE_NONE` 逐字一致 */
+export const ACTIVITY_NONE = "NONE";
+
 /**
  * 购物车的展示口径。
  *

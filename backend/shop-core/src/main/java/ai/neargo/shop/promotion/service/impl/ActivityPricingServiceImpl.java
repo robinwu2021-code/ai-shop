@@ -87,80 +87,71 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     @Override
     public CampaignPort.Discount autoDiscount(String userNo,
                                               List<CampaignPort.MerchantAmount> groups) {
+        // 与顾客「一个都没选」同一条路：每家店取最优（CampaignPort.pick 里写着取法）
+        return CampaignPort.pick(candidates(userNo, groups), java.util.Map.of());
+    }
+
+    @Override
+    public boolean ownsActivity(String activityNo) {
+        Long n = DataScopeContext.executeWithoutScope(() -> activityMapper.selectCount(
+                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo)));
+        return n != null && n > 0;
+    }
+
+    /**
+     * 每家店命中的<b>全部</b>活动（优惠券全链路梳理 批 2）。
+     *
+     * <p>此前这里只算出每家店「最优的那一个」—— 顾客没法说「这家店的满减我不要」。
+     * 现在先列全、再由 {@link CampaignPort#pick} 按选择（或默认最优）挑一个。
+     * 候选的顺序就是原来比较的顺序（本店活动在前、平台活动在后），
+     * 所以没人选的时候挑出来的与改造前一模一样。
+     *
+     * <p>只送积分、不减钱的组合（金额 0）也列进来：没有别的活动时它照样生效。
+     */
+    @Override
+    public List<CampaignPort.AppliedActivity> candidates(String userNo,
+                                                         List<CampaignPort.MerchantAmount> groups) {
+        List<CampaignPort.AppliedActivity> out = new ArrayList<>();
         if (groups == null || groups.isEmpty()) {
-            return CampaignPort.Discount.none();
+            return out;
         }
         long now = System.currentTimeMillis();
-        List<CampaignPort.MerchantDiscount> shares = new ArrayList<>();
-        List<CampaignPort.AppliedActivity> applied = new ArrayList<>();
-        long total = 0L;
-
         for (CampaignPort.MerchantAmount g : groups) {
-            PmtActivity best = null;
-            long bestOff = 0L;
-            PlatformHit bestPlatform = null;
             for (PmtActivity a : live(g.merchantNo(), g.storeNo(), now)) {
                 if (PmtActivity.BENEFIT_COMBO.equals(a.getBenefitType())) {
-                    /*
-                     * 自己组合（P3b）与满减类**同类取最优**：一单只减一个满减类活动，按买家省多少比。
-                     * 只送积分、不减钱的组合（off = 0）在没有别的活动时照样生效 —— 否则它永远赢不了任何比较。
-                     */
                     if (!audienceHits(a, g.merchantNo(), userNo)) {
                         continue;
                     }
                     ComboHit h = comboHit(a, g);
-                    if (h != null && (h.off() > bestOff || (best == null && bestOff == 0 && h.points() > 0))) {
-                        bestOff = h.off();
-                        best = a;
+                    if (h != null && (h.off() > 0 || h.points() > 0)) {
+                        out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
+                                h.off(), 1, 0L, null, a.getName()));
                     }
                     continue;
                 }
-                if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
-                    continue;
-                }
-                if (!cutTriggerHits(a, g)) {
-                    continue;
-                }
-                if (!audienceHits(a, g.merchantNo(), userNo)) {
+                if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())
+                        || !cutTriggerHits(a, g) || !audienceHits(a, g.merchantNo(), userNo)) {
                     continue;
                 }
                 // 减不能超过商品额：券那边同一条规矩，否则会减出负数
                 long off = Math.min(nz(a.getBenefitAmountMinor()), g.goodsAmount());
-                // **同类取最优**：商家多建一个活动不该让顾客少减
-                if (off > bestOff) {
-                    bestOff = off;
-                    best = a;
+                if (off > 0) {
+                    out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
+                            off, 1, 0L, null, a.getName()));
                 }
             }
             /*
-             * 平台活动（P3）与商家活动**同类取最优**：一单只减一个满减类活动，按买家能省多少比 ——
-             * 同样的钱，谁出资不影响买家该减多少。平台活动只按报名里那几件货的小计判门槛与封顶。
+             * 平台活动（P3）与商家活动**同类取最优**：同样的钱，谁出资不影响买家该减多少。
+             * 平台活动只按报名里那几件货的小计判门槛与封顶。
              */
             for (PlatformHit h : platformHits(g, now)) {
-                if (h.off() > bestOff) {
-                    bestOff = h.off();
-                    best = null;
-                    bestPlatform = h;
+                if (h.off() > 0) {
+                    out.add(new CampaignPort.AppliedActivity(h.activity().getActivityNo(), g.merchantNo(),
+                            h.off(), 1, h.platformMinor(), h.enrollmentNo(), h.activity().getName()));
                 }
             }
-            if (bestPlatform != null && bestOff > 0) {
-                shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
-                applied.add(new CampaignPort.AppliedActivity(bestPlatform.activity().getActivityNo(),
-                        g.merchantNo(), bestOff, 1, bestPlatform.platformMinor(),
-                        bestPlatform.enrollmentNo(), bestPlatform.activity().getName()));
-                total += bestOff;
-            } else if (best != null && bestOff > 0) {
-                shares.add(new CampaignPort.MerchantDiscount(g.merchantNo(), bestOff));
-                applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(),
-                        g.merchantNo(), bestOff, 1, 0L, null, best.getName()));
-                total += bestOff;
-            } else if (best != null && PmtActivity.BENEFIT_COMBO.equals(best.getBenefitType())) {
-                // 只送积分的组合：不减钱，但要记下「这一单用上了它」—— 付款时按它发积分、扣它的量
-                applied.add(new CampaignPort.AppliedActivity(best.getActivityNo(), g.merchantNo(), 0L, 1));
-            }
         }
-        return shares.isEmpty() ? CampaignPort.Discount.none()
-                : new CampaignPort.Discount(total, shares, applied);
+        return out;
     }
 
     @Override

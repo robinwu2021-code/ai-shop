@@ -34,6 +34,81 @@ public interface CampaignPort {
      */
     Discount autoDiscount(List<MerchantAmount> groups);
 
+    /** 顾客选了「这家店不参加活动」 */
+    String CHOICE_NONE = "NONE";
+
+    /**
+     * 每家店<b>命中的全部活动</b>（候选，优惠券全链路梳理 批 2）。每一条的金额 =
+     * 这家店<b>只参加它</b>时减多少。下单页据此列出「满 50 减 8 / 新客立减 5 / 不参加」让顾客选。
+     *
+     * <p>默认实现只给最优的那一个 —— 没有候选概念的实现（老模型）照旧只有一个选项。
+     */
+    default List<AppliedActivity> candidates(List<MerchantAmount> groups) {
+        return autoDiscount(groups).applied();
+    }
+
+    /**
+     * 按顾客的选择算活动优惠。
+     *
+     * @param choices 商家号 → 活动号，或 {@link #CHOICE_NONE}。<b>没出现的店按最优</b>，
+     *                所以空 Map 与 {@link #autoDiscount(List)} 完全一致
+     * @throws ai.neargo.shop.common.BizException ACTIVITY_CHOICE_UNAVAILABLE —— 选的那个此刻不命中
+     */
+    default Discount autoDiscount(List<MerchantAmount> groups, java.util.Map<String, String> choices) {
+        if (choices == null || choices.isEmpty()) {
+            return autoDiscount(groups);
+        }
+        return pick(candidates(groups), choices);
+    }
+
+    /**
+     * 从候选里挑：选了不参加 → 这家店没有活动；选了某个 → 就是它（不命中就拒）；
+     * 没选 → 金额最大的那个（同额取先出现的 —— 与改造前「严格大于才替换」同一个结果）；
+     * 全都不减钱时取第一个只送积分的组合（它不减钱，但付款时要按它发分、扣它的量）。
+     */
+    static Discount pick(List<AppliedActivity> candidates, java.util.Map<String, String> choices) {
+        java.util.Map<String, List<AppliedActivity>> byMerchant = new java.util.LinkedHashMap<>();
+        for (AppliedActivity a : candidates) {
+            byMerchant.computeIfAbsent(a.merchantNo(), k -> new java.util.ArrayList<>()).add(a);
+        }
+        for (String m : choices.keySet()) {
+            byMerchant.putIfAbsent(m, List.of());
+        }
+        List<MerchantDiscount> shares = new java.util.ArrayList<>();
+        List<AppliedActivity> applied = new java.util.ArrayList<>();
+        long total = 0L;
+        for (var e : byMerchant.entrySet()) {
+            String choice = choices == null ? null : choices.get(e.getKey());
+            AppliedActivity chosen = null;
+            if (CHOICE_NONE.equals(choice)) {
+                continue;
+            }
+            if (choice != null) {
+                chosen = e.getValue().stream().filter(a -> choice.equals(a.activityNo()))
+                        .findFirst().orElseThrow(() -> ai.neargo.shop.common.BizException.of(
+                                ai.neargo.shop.common.ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE));
+            } else {
+                for (AppliedActivity a : e.getValue()) {
+                    if (chosen == null ? a.amountMinor() > 0 : a.amountMinor() > chosen.amountMinor()) {
+                        chosen = a;
+                    }
+                }
+                if (chosen == null) {
+                    chosen = e.getValue().stream().findFirst().orElse(null);
+                }
+            }
+            if (chosen == null) {
+                continue;
+            }
+            if (chosen.amountMinor() > 0) {
+                shares.add(new MerchantDiscount(e.getKey(), chosen.amountMinor()));
+                total += chosen.amountMinor();
+            }
+            applied.add(chosen);
+        }
+        return new Discount(total, shares, applied);
+    }
+
     /**
      * 限时特价：这些商品此刻的活动价。
      *

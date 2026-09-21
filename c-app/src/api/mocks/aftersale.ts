@@ -5,8 +5,9 @@
 
 import { db, delay, findGoodsSeed, nextNo, persist, pick, pointBalance, pushMessage, toGoods } from "@shared/mock/db";
 import { pricingFor } from "@shared/strategies/pricing";
+import { couponDiscount } from "@shared/strategies/pricing/types";
 import type { AfterSaleReason, Coupon, Order, OrderItem } from "@shared/types";
-import { FULFILLMENT, PAY_MODE, TRADE_RULES } from "@shared/utils/constants";
+import { ACTIVITY_NONE, FULFILLMENT, PAY_MODE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import {
   findOrder,
@@ -100,15 +101,51 @@ export const aftersaleMock: Pick<ShopApi,
       earnPoints: 0,
     });
     /*
-     * **优惠要说出是谁减的**（TDD-C端优惠依据）。mock 里按券有没有选来给：
-     * 选了券就是券那一条；没选券而仍然有优惠，那就是活动减的。
-     * 一条都不给的话，页面上那一段在本机永远不显示 —— 改坏了也看不出来。
+     * **mock 里的一个店铺活动「满 30 减 5」**（优惠券全链路梳理 批 2）：按顾客的选择生效，
+     * 券在活动之后的金额上算 —— 与后端 discountsOf 同一个顺序。没有它的话，
+     * 下单页「换活动 / 不参加 / 换回最省」那一整段在本机永远看不见，改坏了也不知道。
      */
-    const discountLines = amount.discountMinor > 0
-      ? [coupon
-        ? { kind: "COUPON" as const, name: coupon.title, amountMinor: amount.discountMinor }
-        : { kind: "ACTIVITY" as const, name: "满 30 减 5", amountMinor: amount.discountMinor }]
-      : [];
+    const MOCK_ACT = { activityNo: "MOCK-CUT-5", name: "满 30 减 5", amountMinor: 500 };
+    const merchantNo = items[0]!.merchantNo;
+    const merchantName = toGoods(findGoodsSeed(items[0]!.goodsNo)).merchant.name;
+    const goodsMinor = items.reduce((n, it) => n + it.price * it.qty, 0);
+    const actHits = goodsMinor >= 3000;
+    const choice = req.activityChoices?.find((c) => c.merchantNo === merchantNo)?.activityNo;
+    const actOff = actHits && choice !== ACTIVITY_NONE ? MOCK_ACT.amountMinor : 0;
+    const couponOff = couponDiscount(coupon, goodsMinor - actOff);
+    amount.discountMinor = actOff + couponOff;
+    amount.payableMinor = Math.max(0, goodsMinor + amount.freightMinor - amount.discountMinor
+      - (amount.pointsDeductMinor ?? 0));
+    const discountLines = [
+      ...(actOff ? [{ kind: "ACTIVITY" as const, name: MOCK_ACT.name, amountMinor: actOff }] : []),
+      ...(couponOff && coupon ? [{ kind: "COUPON" as const, name: coupon.title, amountMinor: couponOff }] : []),
+    ];
+    /*
+     * 最省组合：与后端一样把「活动 × 券」一起枚举（这里只有一个活动 + 券包里的券）。
+     * 同额取靠前的：活动参加在前、券「不用」在前 —— 建议的总是改动最少的那个。
+     */
+    const heldNos = ["UC0001", ...db.couponSeeds.filter((c) => c.received).map((c) => `UC-${c.couponNo}`)];
+    let best = { act: false, coupon: null as string | null, total: -1 };
+    for (const act of actHits ? [true, false] : [false]) {
+      const off = act ? MOCK_ACT.amountMinor : 0;
+      for (const no of [null, ...heldNos]) {
+        const seed = couponSeedOfUserCoupon(no ?? undefined);
+        const c = seed ? { ...seed, title: pick(seed.title), scopeDesc: pick(seed.scopeDesc) } : undefined;
+        const cOff = no ? couponDiscount(c, goodsMinor - off) : 0;
+        if (no && cOff <= 0) continue;
+        if (off + cOff > best.total) best = { act, coupon: no, total: off + cOff };
+      }
+    }
+    const offers = {
+      merchants: actHits ? [{
+        merchantNo, merchantName, options: [MOCK_ACT],
+        chosen: actOff ? MOCK_ACT.activityNo : ACTIVITY_NONE,
+      }] : [],
+      suggestedChoices: actHits
+        ? [{ merchantNo, activityNo: best.act ? MOCK_ACT.activityNo : ACTIVITY_NONE }] : [],
+      suggestedCouponNo: best.coupon,
+      suggestedDiscountMinor: Math.max(best.total, 0),
+    };
     /*
      * **每行给出上限**（执行计划 B2）：下单页的步进器要知道还能加到几。
      * mock 里给库存那个数；不给的话步进器在本机永远不压暗，改坏了也看不出来。
@@ -127,7 +164,7 @@ export const aftersaleMock: Pick<ShopApi,
         ? { ...it, maxQty: byLimit, limitReason: "PER_USER" as const, limitPerUser: limit, boughtQty: bought }
         : { ...it, maxQty: stock, limitReason: "STOCK" as const, limitPerUser: limit, boughtQty: bought };
     });
-    return delay({ amount, items: withMax, discountLines });
+    return delay({ amount, items: withMax, discountLines, offers });
   },
 
   /**

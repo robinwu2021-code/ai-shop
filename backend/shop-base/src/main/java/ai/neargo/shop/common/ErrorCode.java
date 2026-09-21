@@ -374,6 +374,14 @@ public enum ErrorCode {
      * 直到限量用完 —— 线上「abc」就是这样。开关 {@code marketing.always-on-cut.confirm} 关掉则不问。
      */
     ACTIVITY_RISK_UNCONFIRMED(40034, "err.marketing.activity_risk_unconfirmed"),
+
+    /**
+     * 顾客在下单页选的活动这一刻不成立了（结束了、配额刚用完、门槛不够了）。
+     *
+     * <p>优惠券全链路梳理 批 2 · B4：<b>不静默换成别的活动</b> —— 他明确选了这一个，
+     * 悄悄换掉等于替他做决定，金额也会和他确认过的不一样。端上收到就重新预览、让他重选。
+     */
+    ACTIVITY_CHOICE_UNAVAILABLE(40035, "err.marketing.activity_choice_unavailable"),
     /** 报名不成：过了报名截止，或不满足报名门槛（评分、违规、类目） */
     ENROLLMENT_CLOSED(40031, "err.marketing.enrollment_closed"),
     /**

@@ -50,6 +50,26 @@ public class CouponAllocServiceImpl implements CouponAllocService {
     }
 
     @Override
+    public List<String> heldUsable(String userNo) {
+        long now = System.currentTimeMillis();
+        List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .eq(PmtUserCoupon::getStatus, PmtUserCoupon.UNUSED)));
+        List<String> out = new java.util.ArrayList<>();
+        for (PmtUserCoupon uc : rows) {
+            PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                    Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+            if (c != null && PmtCoupon.ACTIVE.equals(c.getStatus())
+                    && PmtCoupon.REDEEM_ORDER.equals(c.getRedeemMode())
+                    && uc.usableAt(now, c.timesTotalOrOne())) {
+                out.add(uc.getUserCouponNo());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public boolean owns(String userNo, String userCouponNo) {
         if (userCouponNo == null || userCouponNo.isBlank()) {
             return false;

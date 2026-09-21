@@ -129,6 +129,25 @@ public class CouponPortImpl implements CouponPort {
     }
 
     @Override
+    public List<String> heldUsable(String userNo) {
+        long now = System.currentTimeMillis();
+        List<MktUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<MktUserCoupon>lambdaQuery()
+                        .eq(MktUserCoupon::getUserNo, userNo)
+                        .eq(MktUserCoupon::getStatus, MktUserCoupon.UNUSED)));
+        List<String> out = new java.util.ArrayList<>();
+        for (MktUserCoupon uc : rows) {
+            MktCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                    Wrappers.<MktCoupon>lambdaQuery().eq(MktCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+            if (c != null && "ACTIVE".equals(c.getStatus())
+                    && nz(c.getStartAt()) <= now && nz(c.getEndAt()) >= now) {
+                out.add(uc.getUserCouponNo());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public String usedTitleOf(String orderNo) {
         return titleOnOrder(orderNo, MktUserCoupon.USED);
     }
