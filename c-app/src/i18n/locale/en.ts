@@ -521,7 +521,6 @@ export default {
     whyNoPayMethod: "No payment method works for all of these items — order them separately",
     whyQuota: "A shop has used up its collection quota for this period",
     outOfRange: "{names} cannot deliver here. Change the address, or order from them separately",
-    pickCoupon: "Choose a coupon",
     pickSlot: "Choose a time slot",
     splitNote: "These items come from {n} shops and will create {n} orders, paid in one go",
     appointmentSlot: "Appointment slot",

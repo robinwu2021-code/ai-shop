@@ -553,7 +553,6 @@ export default {
     whyQuota: "有商家本期收款额度不足，暂时下不了单",
     /** 点名是哪一家送不到——车里有三家店时，只说「超出范围」他不知道该改什么 */
     outOfRange: "{names} 送不到这个地址，换个地址或把这家的货挪出这一单",
-    pickCoupon: "选择优惠券",
     pickSlot: "选择上门时间",
     splitNote: "这些商品来自 {n} 家店，将生成 {n} 笔订单，一次付清",
     appointmentSlot: "上门时段",
