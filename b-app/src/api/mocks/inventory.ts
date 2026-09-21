@@ -3,12 +3,13 @@
 // 从 `api/mock.ts`（5240 行 / 228 个接口）按域拆出来；实现一个字没改。
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
-import { delay } from "@shared/mock/db";
+import { db, delay } from "@shared/mock/db";
 import type {
   Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, StockBalance, StockCount, StockTransfer, Supplier,
 } from "@shared/types";
 import {
   currentStoreNo,
+  flatCategories,
   invBalances,
   invDocuments,
   invLedger,
@@ -504,12 +505,13 @@ export const inventoryMock: Pick<MerchantApi,
 
   // ---- 记不记库存。水果有两件还压着货：第一次关它会先要确认（原型 s03）
   async mInvCategorySettings() {
-    return delay(invCategories.map((c) => ({ ...c })));
+    return delay(invCategoryRows().map((c) => ({ ...c })));
   },
   async mInvSetCategory(categoryNo, body) {
-    const c = invCategories.find((x) => x.categoryNo === categoryNo);
+    const c = invCategoryRows().find((x) => x.categoryNo === categoryNo);
     if (!c) return delay<InvModeChange>({ status: "DONE", goods: [] });
-    if (!body.managed && c.managed && categoryNo === "CAT110" && !body.confirm) {
+    // 第一类（有货的那一类）第一次关会先要确认 —— 演示 s03 那一支
+    if (!body.managed && c.managed && categoryNo === invCategoryRows()[0]?.categoryNo && !body.confirm) {
       return delay<InvModeChange>({
         status: "NEEDS_CONFIRM",
         goods: [
@@ -518,8 +520,7 @@ export const inventoryMock: Pick<MerchantApi,
         ],
       });
     }
-    c.managed = body.managed;
-    c.isDefault = false;
+    invSet.set(categoryNo, body.managed);
     return delay<InvModeChange>({ status: "DONE", goods: [] });
   },
   async mGoodsInvModes(goodsNos) {
@@ -531,10 +532,29 @@ export const inventoryMock: Pick<MerchantApi,
   },
 };
 
-const invCategories: InvCategorySetting[] = [
-  { categoryNo: "CAT110", name: "水果", managed: true, isDefault: true, goodsCount: 3 },
-  { categoryNo: "CAT330", name: "家政保洁", managed: false, isDefault: true, goodsCount: 1 },
-];
+/**
+ * 与真后端同一个口径：**当前门店的经营类目**一类一行，默认值按类目模板（服务 / 券 / 虚拟不记）。
+ * 设过的记在 invSet 里。此前这里写死了两行，与 mock 的经营类目对不上号 ——
+ * 于是经营类目页上那个开关在 mock 下一行都不出现，看起来像没做。
+ */
+const invSet = new Map<string, boolean>();
+const UNTRACKED_TEMPLATES = new Set(["SERVICE", "VOUCHER", "VIRTUAL"]);
+
+function invCategoryRows(): InvCategorySetting[] {
+  const flat = flatCategories(db.categories);
+  const storeNo = currentStoreNo() || db.stores[0]?.storeNo || "";
+  return (db.storeCategories[storeNo] ?? []).map((c) => {
+    const def = !UNTRACKED_TEMPLATES.has(flat.get(c.categoryNo)?.template ?? "");
+    const set = invSet.get(c.categoryNo);
+    return {
+      categoryNo: c.categoryNo,
+      name: c.name,
+      managed: set ?? def,
+      isDefault: set === undefined,
+      goodsCount: c.goodsCount,
+    };
+  });
+}
 const invGoodsModes = new Map<string, InvMode>();
 
 function invGoodsMode(goodsNo: string): GoodsInvMode {

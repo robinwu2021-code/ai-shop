@@ -14,8 +14,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import { confirm } from "@ai-shop/ui/prompt";
-import { describeBlockers, describeStocked } from "@/shared/inv-mode";
+import { toggleInvCategory } from "@/utils/inv-category";
 import type { InvCategorySetting } from "@shared/types";
 
 const { t } = useI18n();
@@ -41,38 +40,8 @@ async function load() {
 async function toggle(row: InvCategorySetting) {
   if (busy.value) return;
   busy.value = row.categoryNo;
-  const managed = !row.managed;
   try {
-    let r = await api.mInvSetCategory(row.categoryNo, { managed });
-    if (r.status === "BLOCKED") {
-      await confirm({
-        title: String(t("stockSettings.blockedTitle")),
-        hint: String(t("stockSettings.blockedHint", { list: describeBlockers(t, r.goods) })),
-        alert: true,
-      });
-      return;
-    }
-    if (r.status === "NEEDS_CONFIRM") {
-      const ok = await confirm({
-        title: String(t("stockSettings.confirmTitle", { name: row.name })),
-        hint: String(t("stockSettings.confirmStocked", { n: r.goods.length, list: describeStocked(t, r.goods) })),
-        confirmText: String(t("stockSettings.confirmOk")),
-      });
-      if (!ok) return;
-      r = await api.mInvSetCategory(row.categoryNo, { managed, confirm: true });
-      // 确认之后又冒出在途单据（这几秒里有人开了进货单）：照样说清楚
-      if (r.status === "BLOCKED") {
-        await confirm({
-          title: String(t("stockSettings.blockedTitle")),
-          hint: String(t("stockSettings.blockedHint", { list: describeBlockers(t, r.goods) })),
-          alert: true,
-        });
-        return;
-      }
-    }
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
+    if (await toggleInvCategory(t, row)) await load();
   } finally {
     busy.value = null;
   }

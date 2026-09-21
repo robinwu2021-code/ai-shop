@@ -882,6 +882,7 @@ export default {
     scopeHint: "本店卖哪几类。建商品时只能从这里选",
     specsEntry: "商品规格与参数",
     empty: "还没有经营类目", emptyTip: "先添加经营类目，再建商品",
+    invLabel: "记库存",
     rename: "改显示名",
     needCert: "需资质",
     goodsCount: "{n} 件",

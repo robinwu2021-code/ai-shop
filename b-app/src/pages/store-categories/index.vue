@@ -15,8 +15,9 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { handOffGoodsCategory } from "@/shared/handoff";
-import type { StoreCategory } from "@shared/types";
+import type { InvCategorySetting, StoreCategory } from "@shared/types";
 import { prompt } from "@ai-shop/ui/prompt";
+import { toggleInvCategory } from "@/utils/inv-category";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -59,6 +60,31 @@ async function load() {
     failed.value = true;
   }
   loaded.value = true;
+  void loadInv();
+}
+
+/**
+ * 各类目记不记库存（TDD-商品纳入进销存开关 §3）。店主找这个设置时找的是「类目」这一页，
+ * 所以开关也挂在这里；与「库存 → 更多 → 库存设置」是同一份数据、同一套三道判。
+ * 取不到就不显示那一行 —— 它不是这一页的主线，不该拖着类目列表一起失败。
+ */
+const inv = ref<Record<string, InvCategorySetting>>({});
+const invBusy = ref(false);
+
+async function loadInv() {
+  const rows = await api.mInvCategorySettings().catch(() => [] as InvCategorySetting[]);
+  inv.value = Object.fromEntries(rows.map((r) => [r.categoryNo, r]));
+}
+
+async function toggleInv(c: StoreCategory) {
+  const row = inv.value[c.categoryNo];
+  if (!row || invBusy.value || !merchant.can("biz:goods")) return;
+  invBusy.value = true;
+  try {
+    if (await toggleInvCategory(t, { ...row, name: c.name })) await loadInv();
+  } finally {
+    invBusy.value = false;
+  }
 }
 
 /** 面板里每保存成功一次就回来一份最新的 */
@@ -114,6 +140,14 @@ async function rename(c: StoreCategory) {
               · {{ $t("storeCategories.total", { n: c.goodsCount }) }}
             </template>
           </text>
+          <!-- 记不记库存。店主找这个设置时找的是这一页；改它要商品的码，没有的人只看状态 -->
+          <view v-if="inv[c.categoryNo]" class="inv sh-row" @tap.stop="toggleInv(c)">
+            <text class="txt-caption sh-muted">{{ $t("storeCategories.invLabel") }}</text>
+            <sh-switch
+              :model-value="inv[c.categoryNo]?.managed"
+              :disabled="invBusy || !merchant.can('biz:goods')"
+            ></sh-switch>
+          </view>
         </view>
         <text class="sh-link row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
       </view>
@@ -151,5 +185,9 @@ async function rename(c: StoreCategory) {
 .row__stat {
   display: block;
   margin-top: 4rpx;
+}
+.inv {
+  gap: 16rpx;
+  margin-top: 12rpx;
 }
 </style>
