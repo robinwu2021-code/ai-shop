@@ -200,6 +200,7 @@ export interface Promotion {
 }
 /** 商品页上的一条活动标签（后端 `GoodsVO.ActivityTagVO`） */
 export interface ActivityTag {
+  /** 活动号 */
   activityNo: string;
   /** 商家起的活动名。拼不出规则时（理论上不会）才用它 */
   name: string;

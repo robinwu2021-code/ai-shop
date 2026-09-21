@@ -271,7 +271,9 @@ export interface CheckoutOffers {
   suggestedDiscountMinor: number;
 }
 export interface MerchantOffers {
+  /** 商家号 */
   merchantNo: string;
+  /** 店名（一单多家店时，面板里每家店的活动前面写它） */
   merchantName: string;
   /** 这家店命中的活动。金额 = 只参加它时减多少 */
   options: { activityNo: string; name: string; amountMinor: number }[];
@@ -280,7 +282,9 @@ export interface MerchantOffers {
 }
 /** 顾客对某家店活动的选择：活动号，或 `ACTIVITY_NONE`（不参加） */
 export interface ActivityChoice {
+  /** 商家号 */
   merchantNo: string;
+  /** 活动号，或 `ACTIVITY_NONE`（这家店不参加活动） */
   activityNo: string;
 }
 /** 订单关闭后券与积分去了哪（后端 `OrderVO.Returned`） */
@@ -436,6 +440,8 @@ export interface Order {
   returned?: OrderReturned | null;
   /** 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） */
   outOfRange?: string[] | null;
+  /** 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） */
+  offers?: CheckoutOffers | null;
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
   /**
