@@ -46,6 +46,9 @@ vi.mock("@/shared/fly", () => ({
 }));
 
 import GoodsPage from "@/pages/goods/index.vue";
+// easycom 的自动注册在 vitest 里不生效：领券条抽成组件之后（优惠券全链路梳理 批 1）要手动挂上真组件，
+// 否则它渲染成一个空标签，「领券行在不在」这条判据会恒为假
+import BizCouponStrip from "@/components/biz/biz-coupon-strip.vue";
 
 const GOODS = {
   goodsNo: "G1", title: "香梨标题", subtitle: "", cover: "🍐", type: "GOODS",
@@ -73,6 +76,7 @@ function deferred<T>() {
 function mountPage() {
   return mount(GoodsPage, {
     global: {
+      components: { "biz-coupon-strip": BizCouponStrip },
       stubs: {
         "sh-scaffold": { template: "<div><slot /></div>" },
         "sh-actionbar": { template: "<div><slot /></div>" },
@@ -98,7 +102,7 @@ function frame(w: ReturnType<typeof mount>) {
   return {
     title: html.includes("香梨标题"),
     // 只看**那一行**的文字：领券弹层的 title 属性里也有这个键，按整页 HTML 搜会恒为真
-    couponRow: w.findAll(".row__label").some((e) => e.text() === "goods.couponRow"),
+    couponRow: w.findAll(".cstrip__label").some((e) => e.text() === "goods.couponRow"),
     /*
      * 「团到了没有」看**价格行的团价标记**，不是底栏那颗「开团」——
      * 2026-09-20 底栏那颗按钮被暂时关掉了（SHOW_GROUP_CTA），

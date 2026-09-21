@@ -362,6 +362,9 @@ function navToStore() {
         <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
       </view>
 
+      <!-- 领券（优惠券全链路梳理 批 1）：放在公告之后、常买之前 —— 领了券再挑货 -->
+      <biz-coupon-strip :merchant-no="data.merchant.merchantNo"></biz-coupon-strip>
+
       <!-- 第一屏：我买过的。这是本页存在的理由 -->
       <view class="sh-block">
         <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">

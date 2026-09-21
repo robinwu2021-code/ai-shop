@@ -182,6 +182,141 @@ public class PmtCouponServiceImpl implements CouponService {
         };
     }
 
+    // ---------------------------------------------------------------- C 端领券（优惠券全链路梳理 批 1）
+
+    /** 顾客那一侧只认这两种：下单能减钱、而且 C 端的券形状表达得了 */
+    private static boolean customerFacing(PmtCoupon c) {
+        return PmtCoupon.REDEEM_ORDER.equals(c.getRedeemMode())
+                && (PmtCoupon.CASH.equals(c.getBenefitMode()) || PmtCoupon.PERCENT.equals(c.getBenefitMode()));
+    }
+
+    /** 有效期窗口内（相对有效期的券随时可领，领到手才开始算天数） */
+    private static boolean inWindow(PmtCoupon c, long now) {
+        return PmtCoupon.RELATIVE.equals(c.getValidityMode())
+                || (nz(c.getStartAt()) <= now && nz(c.getEndAt()) >= now);
+    }
+
+    private int heldCount(String userNo, String couponNo) {
+        Long n = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectCount(
+                Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .eq(PmtUserCoupon::getCouponNo, couponNo)));
+        return n == null ? 0 : n.intValue();
+    }
+
+    private ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon customerView(PmtCoupon c, boolean received) {
+        int remain = c.getTotalCount() == null ? Integer.MAX_VALUE
+                : Math.max(0, c.getTotalCount() - nz(c.getReceivedCount()));
+        return new ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon(c.getCouponNo(), c.getTitle(),
+                c.getBenefitMode(), nz(c.getBenefitValue()), nz(c.getBenefitCapMinor()),
+                nz(c.getMinAmountMinor()), c.getEntityNo(), c.getFunder(),
+                nz(c.getStartAt()), nz(c.getEndAt()), c.getValidDays(), remain, received, c.getStatus());
+    }
+
+    @Override
+    public List<ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon> center(String userNo) {
+        long now = System.currentTimeMillis();
+        // 券模板只按 entity_no 登记数据域，买家会话读它会被判 1=0（见 myCoupons 的注释）
+        List<PmtCoupon> rows = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+                        .eq(PmtCoupon::getStatus, PmtCoupon.ACTIVE)
+                        .eq(PmtCoupon::getIssueMode, PmtCoupon.ISSUE_CENTER)
+                        .isNull(PmtCoupon::getArchivedAt)));
+        List<ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon> out = new ArrayList<>();
+        for (PmtCoupon c : rows) {
+            if (!customerFacing(c) || !inWindow(c, now)) {
+                continue;
+            }
+            boolean full = userNo != null
+                    && heldCount(userNo, c.getCouponNo()) >= Math.max(nz(c.getPerUserLimit()), 1);
+            out.add(customerView(c, full));
+        }
+        return out;
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo) {
+        PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo).last("limit 1")));
+        long now = System.currentTimeMillis();
+        if (c == null || !PmtCoupon.ISSUE_CENTER.equals(c.getIssueMode()) || !customerFacing(c)) {
+            // 定向券、到店券不能自己领：它们的对象是商家选的，不是谁点到谁拿
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!PmtCoupon.ACTIVE.equals(c.getStatus()) || !inWindow(c, now)) {
+            throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
+        }
+        if (heldCount(userNo, couponNo) >= Math.max(nz(c.getPerUserLimit()), 1)) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+        // 预算是硬闸门：再发这一张会超就不发（与定向发放同一口径，不部分发放）
+        long per = maxPerCoupon(c);
+        if (nz(c.getBudgetMinor()) > 0 && (long) (nz(c.getReceivedCount()) + 1) * per > nz(c.getBudgetMinor())) {
+            throw BizException.of(ErrorCode.COUPON_BUDGET_EXCEEDED);
+        }
+        /*
+         * **原子扣库存**：一条 UPDATE 带着「还有余量」的条件。先查后改在并发下必然超发，
+         * 而超发出去的券是查不回来的钱（received_count 那一列的注释说的就是这件事）。
+         */
+        int affected = DataScopeContext.executeWithoutScope(() -> couponMapper.update(null,
+                Wrappers.<PmtCoupon>lambdaUpdate()
+                        .eq(PmtCoupon::getCouponNo, couponNo)
+                        .eq(PmtCoupon::getStatus, PmtCoupon.ACTIVE)
+                        .apply("(total_count IS NULL OR received_count < total_count)")
+                        .setSql("received_count = received_count + 1")));
+        if (affected == 0) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+        PmtUserCoupon uc = new PmtUserCoupon();
+        uc.setUserCouponNo(BizKey.next(BizKey.PROMO_USER_COUPON));
+        uc.setCouponNo(couponNo);
+        uc.setUserNo(userNo);
+        uc.setEntityNo(c.getEntityNo());
+        uc.setStatus(PmtUserCoupon.UNUSED);
+        uc.setTimesUsed(0);
+        uc.setReceivedAt(now);
+        // 到期时刻领取时就落库（理由见 issue() 里同一句）
+        uc.setExpireAt(PmtCoupon.RELATIVE.equals(c.getValidityMode())
+                ? now + (long) c.getValidDays() * DAY : nz(c.getEndAt()));
+        DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+        return heldView(uc, c, now);
+    }
+
+    @Override
+    public List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> held(String userNo) {
+        long now = System.currentTimeMillis();
+        List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .ne(PmtUserCoupon::getStatus, PmtUserCoupon.REVOKED)
+                        .orderByDesc(PmtUserCoupon::getId)));
+        List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> out = new ArrayList<>();
+        for (PmtUserCoupon uc : rows) {
+            PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                    Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo())
+                            .last("limit 1")));
+            if (c != null && customerFacing(c)) {
+                out.add(heldView(uc, c, now));
+            }
+        }
+        return out;
+    }
+
+    private ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon heldView(PmtUserCoupon uc, PmtCoupon c, long now) {
+        boolean usable = uc.usableAt(now, c.timesTotalOrOne()) && PmtCoupon.ACTIVE.equals(c.getStatus());
+        return new ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon(uc.getUserCouponNo(),
+                customerView(c, true), uc.getStatus(), usable, nz(uc.getReceivedAt()), uc.getUsedAt(),
+                nz(uc.getExpireAt()));
+    }
+
+    @Override
+    public boolean ownsTemplate(String couponNo) {
+        Long n = DataScopeContext.executeWithoutScope(() -> couponMapper.selectCount(
+                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo)));
+        return n != null && n > 0;
+    }
+
     // ---------------------------------------------------------------- 建券
 
     @Override

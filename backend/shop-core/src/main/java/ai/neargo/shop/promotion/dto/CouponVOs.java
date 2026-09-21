@@ -87,4 +87,35 @@ public final class CouponVOs {
         public record SkipReason(String reason, int count) {
         }
     }
+
+    /**
+     * 顾客能看到、能领的一张券（领券中心 / 商品页 / 店铺页）。<b>只有下单可抵扣的现金券与折扣券</b> ——
+     * 兑换券、包邮券下单时减不了钱，C 端那套 {@code Coupon} 形状也表达不了它们。
+     *
+     * @param validDays 领取后 N 天有效（相对有效期）；绝对有效期时为 null，看 startAt / endAt
+     * @param received  这个人已经领满了（按每人限领算）
+     */
+    public record CustomerCoupon(String couponNo, String title, String benefitMode,
+                                 long benefitValue, long capMinor, long minAmountMinor,
+                                 String entityNo, String funder, long startAt, long endAt,
+                                 Integer validDays, int remain, boolean received, String status) {
+
+        /** 与下单算价同一个实现（{@link ai.neargo.shop.promotion.entity.PmtCoupon#discountFor}） */
+        public long discountFor(long base) {
+            var c = new ai.neargo.shop.promotion.entity.PmtCoupon();
+            c.setBenefitMode(benefitMode);
+            c.setBenefitValue(benefitValue);
+            c.setBenefitCapMinor(capMinor);
+            return c.discountFor(base);
+        }
+    }
+
+    /**
+     * 顾客手里的一张券（下单可抵扣的那种）。
+     *
+     * @param expireAt 到期时刻（领取时就算好落库的那个）
+     */
+    public record HeldCoupon(String userCouponNo, CustomerCoupon coupon, String status,
+                             boolean usableNow, long receivedAt, Long usedAt, long expireAt) {
+    }
 }

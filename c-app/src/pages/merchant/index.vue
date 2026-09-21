@@ -165,6 +165,9 @@ onShareAppMessage(() =>
       </view>
     </view>
 
+    <!-- 领券（优惠券全链路梳理 批 1）：这家店能领的券与平台券。没有就整条不出 -->
+    <biz-coupon-strip :merchant-no="merchant.merchantNo"></biz-coupon-strip>
+
     <!-- 商品 / 评价：切换本身就是标题，收进块内 -->
     <view class="sh-block">
       <view class="sh-block__head sh-block__head--tabs">

@@ -48,7 +48,12 @@ async function load() {
       api.myCoupons().catch(() => [] as UserCoupon[]),
     ]);
     store.value = mine;
-    mineCoupons.value = list;
+    /*
+     * **按券号去重**（优惠券全链路梳理 批 1）：/mp/coupon/mine 现在也带上了新券表里
+     * 下单可抵扣的那些，而它们已经在 myStoreCoupons 里了 —— 不去重同一张券会出现两次。
+     */
+    const seen = new Set(mine.map((c) => c.userCouponNo));
+    mineCoupons.value = list.filter((u) => !seen.has(u.userCouponNo));
     failed.value = false;
   } catch {
     failed.value = true;

@@ -31,6 +31,9 @@ const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
 type Kind = "FULL_CUT" | "CASH" | "PERCENT" | "GOODS";
+/** 顾客领取 / 定向发给人群。商品券到店核销、顾客不能自己领，固定定向 */
+type IssueMode = "CENTER" | "TARGETED";
+const ISSUE_MODES: IssueMode[] = ["CENTER", "TARGETED"];
 const KINDS: Kind[] = ["FULL_CUT", "CASH", "PERCENT", "GOODS"];
 
 const couponNo = ref("");
@@ -59,6 +62,11 @@ const form = ref({
   endDay: today(30),
   totalCount: "100",
   perUserLimit: "1",
+  /**
+   * 发放方式（优惠券全链路梳理 批 1）。**默认「顾客领取」** —— 此前写死定向发放，
+   * 商家建的券只能按人群发，顾客在商品页、店铺页一张都领不到。
+   */
+  issueMode: "CENTER" as IssueMode,
 });
 
 const currentNo = ref("");
@@ -93,6 +101,7 @@ async function loadExisting(no: string) {
     endDay: c.endAt ? today(Math.round((c.endAt - Date.now()) / 86_400_000)) : today(30),
     totalCount: c.totalCount == null ? "" : String(c.totalCount),
     perUserLimit: String(c.perUserLimit),
+    issueMode: c.issueMode === "CENTER" ? "CENTER" : "TARGETED",
   };
 }
 
@@ -122,7 +131,7 @@ const draft = computed<MerchantCouponDraft>(() => {
     validDays: f.validityMode === "RELATIVE" ? Number(f.validDays || 7) : null,
     startAt: f.validityMode === "ABSOLUTE" ? Date.now() : null,
     endAt,
-    issueMode: "TARGETED",
+    issueMode: kind === "GOODS" ? "TARGETED" : f.issueMode,
     // 商品券要到店拿货、按次扣，只能到店核销；满减 / 现金 / 折扣在下单时自动抵扣
     redeemMode: kind === "GOODS" ? "STORE_CODE" : "ORDER",
     timesTotal: kind === "GOODS" ? Number(f.times || 1) : 1,
@@ -169,6 +178,8 @@ function checkFill(): string | null {
   if (f.kind === "GOODS" && !f.gift.trim()) return "couponEdit.needGift";
   if (f.validityMode === "ABSOLUTE" && f.endDay < today()) return "couponEdit.badEnd";
   if (!(Number(f.perUserLimit) >= 1)) return "couponEdit.needPerUser";
+  // 顾客领取的券必须限量：不限量等于把敞口交给运气（后端同一条规则，这里先说）
+  if (f.kind !== "GOODS" && f.issueMode === "CENTER" && !(Number(f.totalCount) >= 1)) return "couponEdit.needTotal";
   return null;
 }
 
@@ -292,6 +303,14 @@ onLoad((q) => {
 
       <text class="txt-caption sh-muted grp">{{ $t("couponEdit.groupIssue") }}</text>
       <view class="sh-cells">
+        <view v-if="form.kind !== 'GOODS'" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.issueMode") }}</text>
+          <view class="sh-row segs">
+            <text v-for="m in ISSUE_MODES" :key="m" class="sh-seg seg"
+                  :class="{ 'sh-seg--on': form.issueMode === m }"
+                  @tap="form.issueMode = m">{{ $t(`couponEdit.issue.${m}`) }}</text>
+          </view>
+        </view>
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.total") }}</text>
           <input v-model="form.totalCount" maxlength="6" type="number" class="txt-body cell__input sh-num" :placeholder="$t('couponEdit.totalPh')" />
@@ -332,6 +351,10 @@ onLoad((q) => {
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("couponEdit.groupValidity") }}</text>
           <text class="txt-body sh-num">{{ couponValidity(tt, preview) }}</text>
+        </view>
+        <view class="sh-cell sh-row sh-row--between">
+          <text class="txt-body sh-muted">{{ $t("couponEdit.issueMode") }}</text>
+          <text class="txt-body">{{ $t(`couponEdit.issue.${preview.issueMode}`) }}</text>
         </view>
         <view class="sh-cell sh-row sh-row--between">
           <text class="txt-body sh-muted">{{ $t("couponEdit.total") }}</text>

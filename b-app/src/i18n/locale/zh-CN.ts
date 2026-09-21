@@ -1862,6 +1862,9 @@ export default {
     pauseBody: "不再发放新券，已领的 {n} 张照常可用",
   },
   couponEdit: {
+    issueMode: "发放方式",
+    issue: { CENTER: "顾客领取", TARGETED: "定向发放" },
+    needTotal: "顾客领取的券要填数量",
     title: "新建券",
     stepFill: "填写",
     stepConfirm: "确认",

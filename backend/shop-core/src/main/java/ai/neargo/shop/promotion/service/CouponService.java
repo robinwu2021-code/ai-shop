@@ -54,4 +54,21 @@ public interface CouponService {
      * 「平台把我的券吞了」——那是券功能第二大客诉。让它带着「已过期」留在那儿。
      */
     List<MyCouponVO> myCoupons(String userNo);
+
+    // ---------------------------------------------------------------- C 端领券（优惠券全链路梳理 批 1）
+
+    /**
+     * 顾客能领的券：发放方式为「顾客领取」、进行中、下单可抵扣的现金 / 折扣券。
+     * 此前 C 端领券只读老模型，**商家在 B 端建的券顾客一张都看不到**。
+     */
+    List<ai.neargo.shop.promotion.dto.CouponVOs.CustomerCoupon> center(String userNo);
+
+    /** 顾客领一张。判据：进行中、有效期内、没领满、有库存（一条 UPDATE 原子扣）、不超预算 */
+    ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon receive(String userNo, String couponNo);
+
+    /** 这个人手里下单可抵扣的券（不含已撤销） */
+    List<ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon> held(String userNo);
+
+    /** 这个券模板号是不是新模型的 —— 领券按它分流 */
+    boolean ownsTemplate(String couponNo);
 }

@@ -317,8 +317,6 @@ function openGroupPage(groupNo: string) {
  * 同样独立加载：取不到就不出这一行，不拖垮详情。
  */
 const coupons = ref<Coupon[]>([]);
-const showCoupons = ref(false);
-const claiming = ref("");
 
 /** 取不到就不出「领券」那一行 —— 同样不拖垮详情 */
 async function fetchCoupons(): Promise<Coupon[]> {
@@ -333,37 +331,6 @@ async function fetchCoupons(): Promise<Coupon[]> {
 function couponsFor(all: Coupon[], g: Goods): Coupon[] {
   return all.filter((c) => c.endAt > Date.now()
     && (c.merchantNo === g.merchant.merchantNo || c.funder === "PLATFORM"));
-}
-
-/** 「满 50 减 5」「9 折 · 封顶 ¥20」 */
-function couponRuleText(c: Coupon): string {
-  if (c.type === "DISCOUNT") {
-    return String(t("goods.couponRate", { n: (c.discountRate / 1000).toFixed(1).replace(/\.0$/, ""),
-      cap: money(c.maxDiscountMinor) }));
-  }
-  return c.thresholdMinor
-    ? String(t("goods.couponCut", { m: money(c.thresholdMinor), n: money(c.faceMinor) }))
-    : String(t("goods.couponCutAny", { n: money(c.faceMinor) }));
-}
-
-function couponUntil(c: Coupon): string {
-  const d = new Date(c.endAt);
-  return String(t("goods.couponUntil", {
-    d: `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-  }));
-}
-
-async function claim(c: Coupon) {
-  if (c.received || claiming.value) return;
-  claiming.value = c.couponNo;
-  try {
-    await api.receiveCoupon(c.couponNo);
-    c.received = true;
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    claiming.value = "";
-  }
 }
 
 /** 取不到按「没有集单」算 */
@@ -884,19 +851,8 @@ onShareAppMessage(() =>
           「已选」一行去掉了：还没决定买就问规格和件数是反的 —— 点底栏按钮时面板里再选。
           「范围」一行也去掉了：销售区域挪进商品参数，对绝大多数人它是一句不用看的话。
         -->
-        <view v-if="coupons.length" class="sh-card block rows">
-          <!-- 领券（s36）：前两张券的规则直接摆出来，点开是面板 -->
-          <view class="sh-row sh-row--divided row" @tap="showCoupons = true">
-            <text class="txt-sub sh-muted row__label">{{ $t("goods.couponRow") }}</text>
-            <view class="sh-fill sh-row couponchips">
-              <text v-for="c in coupons.slice(0, 2)" :key="c.couponNo" class="txt-caption sh-chip sh-chip--danger sh-num">
-                {{ couponRuleText(c) }}
-              </text>
-            </view>
-            <text class="txt-sub is-danger">{{ $t("goods.couponClaim") }}</text>
-            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-          </view>
-        </view>
+        <!-- 领券（s36）：与店铺页、商家页同一个组件；券由本页预取，首屏只渲染一次 -->
+        <biz-coupon-strip :merchant-no="goods.merchant.merchantNo" :preset="coupons"></biz-coupon-strip>
 
         <!-- 预约：日期 + 时刻 -->
         <view v-if="needAppointment" class="sh-card block">
@@ -1082,17 +1038,6 @@ onShareAppMessage(() =>
           <text v-if="outOfScope" class="sh-link" @tap="gotoAddress">{{ $t("goods.changeAddress") }}</text>
         </view>
 
-        <sh-sheet :visible="showCoupons" :title="String($t('goods.couponRow'))" @close="showCoupons = false">
-          <view class="sh-cells">
-            <view v-for="c in coupons" :key="c.couponNo" class="sh-cell sh-row sh-row--between" @tap="claim(c)">
-              <text class="txt-body sh-num">{{ couponRuleText(c) }} <text class="sh-muted">· {{ couponUntil(c) }}</text></text>
-              <text class="txt-body" :class="c.received ? 'sh-muted' : 'txt-primary'">
-                {{ c.received ? $t("goods.couponGot") : $t("goods.couponClaim") }}
-              </text>
-            </view>
-          </view>
-          <view class="sh-btn coupon__done" @tap="showCoupons = false">{{ $t("goods.couponDone") }}</view>
-        </sh-sheet>
 
         <!--
           规格面板。规格矩阵、买赠提示、数量都在这里 —— 页面上只留一行「已选」。
@@ -1210,9 +1155,6 @@ onShareAppMessage(() =>
 
 
 
-.coupon__done {
-  margin-top: 24rpx;
-}
 
 /* 买不了的原因。用 warning 不用 danger：**它不是故障，是还差一步**
    （与 order-confirm 的 .why 同一档） */
@@ -1483,14 +1425,6 @@ onShareAppMessage(() =>
 .row {
   min-height: 56rpx;
   gap: 16rpx;
-}
-.row__label {
-  flex-shrink: 0;
-  min-width: 72rpx;
-}
-.couponchips {
-  gap: 12rpx;
-  overflow: hidden;
 }
 /* 规格面板 */
 .skuhead {
