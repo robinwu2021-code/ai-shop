@@ -1504,6 +1504,77 @@
     }
    ],
    "artifact": "https://claude.ai/artifact/8fR5US62QopHk6cxULpNFL"
+  },
+  {
+   "slug": "c-checkout-order",
+   "file": "c-checkout-order.html",
+   "title": "C 端下单与订单",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "待实现",
+   "date": "2026-09-21",
+   "summary": "确认页补数量步进、选券面板（不可用要说出为什么）、优惠逐条；订单详情补状态进度与动作；订单列表每卡一个主动作。10 屏。",
+   "docs": [
+    {
+     "label": "TDD-C端优惠依据",
+     "path": "docs/technical/TDD-C端优惠依据.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "k01",
+     "title": "确认订单（现状）",
+     "client": "c-app",
+     "route": "pages/order-confirm/index"
+    },
+    {
+     "id": "k02",
+     "title": "确认订单（新版）",
+     "client": "c-app",
+     "route": "pages/order-confirm/index"
+    },
+    {
+     "id": "k03",
+     "title": "选择优惠券"
+    },
+    {
+     "id": "k04",
+     "title": "改数量与失效商品"
+    },
+    {
+     "id": "k05",
+     "title": "券与积分都用不上"
+    },
+    {
+     "id": "k06",
+     "title": "订单详情（现状）",
+     "client": "c-app",
+     "route": "pages/order/index"
+    },
+    {
+     "id": "k07",
+     "title": "订单详情（新版）",
+     "client": "c-app",
+     "route": "pages/order/index"
+    },
+    {
+     "id": "k08",
+     "title": "待付款"
+    },
+    {
+     "id": "k09",
+     "title": "订单列表",
+     "client": "c-app",
+     "route": "pages/orders/index"
+    },
+    {
+     "id": "k10",
+     "title": "已取消"
+    }
+   ],
+   "artifact": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz"
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

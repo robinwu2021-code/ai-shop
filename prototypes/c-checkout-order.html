@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>下单与订单</title>
+<!-- 真源在仓库 prototypes/c-checkout-order.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写内联样式 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-21</div>
+  <h1>下单与订单，把能改的和该说的补回来</h1>
+  <p class="sub">现状两页都只够「看一眼」：确认页改不了数量、选不了券（无券时那一行还是灰的，点了没反应）、优惠只有一个光秃秃的金额；订单页同样只有合计，减了什么、怎么减的都说不出。这一稿把<b>能改的动作</b>与<b>该说的依据</b>补齐，共 10 屏。</p>
+  <p class="sub">两条贯穿全稿的规矩：① <b>不可用的选项要说出为什么</b>（灰着不说 = 用户以为坏了）；② <b>钱的每一笔都要有来处</b>（活动名 / 券名 / 积分，各占一行）。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">k01 — k02</span><h2>确认订单：现状与重排</h2></div>
+  <p class="sec-note">现状的信息是齐的，缺的是动作：数量改不了（要退回购物车）、券选不了、优惠说不清。</p>
+  <div class="grid">
+
+    <figure id="k01">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k"><span class="chip pri">快递配送</span> 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k">广东省深圳市龙华新区 招商锦绣观园 5-10F</span><span class="v"></span></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div>
+          <div class="card">
+            <div class="frow"><span class="k">优惠券</span><span class="v meta">无可用</span></div>
+            <div class="frow"><span class="k">备注</span><span class="v meta">备注，选填</span></div>
+          </div>
+          <div class="card">
+            <div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div>
+            <div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v num hot">−¥10.00</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥40.00</b></span><div class="btn">提交订单</div></div>
+      </div>
+      <figcaption class="cap"><b>k01 现状（0.1.53）</b>信息齐、动作少。</figcaption>
+      <p class="why">三处说不清：①「无可用」那一行是灰的，点下去没反应 —— 分不清是没券还是坏了；②「优惠 −¥10」没有来处（其实是商家活动「abc」直减）；③ 数量要改只能退回购物车。</p>
+    </figure>
+
+    <figure id="k02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k"><span class="chip pri">快递配送</span> 武国斌 185****8359</span><span class="v go">更换</span></div><div class="frow"><span class="k">广东省深圳市龙华新区 招商锦绣观园 5-10F</span><span class="v"></span></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 · 库存 200</span><div class="ln"><span class="pr num">¥50.00</span><span class="seg"><span>−</span><b class="num">1</b><span>＋</span></span></div></div></div>
+          <div class="card">
+            <div class="frow"><span class="k">优惠券</span><span class="v go">2 张可用 · 最多省 ¥5</span></div>
+            <div class="frow"><span class="k">积分抵扣</span><span class="v go">可抵 ¥2.00（200 分）</span></div>
+            <div class="frow"><span class="k">备注</span><span class="v meta">备注，选填</span></div>
+          </div>
+          <div class="card">
+            <div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div>
+            <div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v num hot">−¥15.00</span></div>
+            <div class="frow"><span class="meta">活动「开业直减」</span><span class="v meta num">−¥10.00</span></div>
+            <div class="frow"><span class="meta">券「满 30 减 5」</span><span class="v meta num">−¥5.00</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥35.00</b><br><span class="meta">已省 ¥15.00</span></span><div class="btn">提交订单</div></div>
+      </div>
+      <figcaption class="cap"><b>k02 新版 · 确认订单</b>数量可调、券可选、每一笔优惠各占一行。</figcaption>
+      <p class="why">优惠明细已经落地（0.1.54）。这一稿补的是：数量步进器（上限取库存与限购的较小者）、券行说清「几张可用、最多省多少」、积分行说清能抵多少。底栏加一句「已省 ¥15.00」——它是买家此刻最想确认的那个数。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">k03 — k05</span><h2>选券、调量、以及不能用时</h2></div>
+  <p class="sec-note">这三屏都是同一条规矩的应用：<b>不可用要说出为什么</b>。</p>
+  <div class="grid">
+
+    <figure id="k03">
+      <div class="ph c">
+        <div class="ph strip"><div class="sheet">
+          <div class="hd"><b>选择优惠券</b><span class="meta">✕</span></div>
+          <div class="frow"><span class="k">不使用优惠券</span><span class="v"></span></div>
+          <div class="card">
+            <div class="hd"><span class="meta">可用（2）</span></div>
+            <div class="frow"><span class="k"><b>满 30 减 5</b><br><span class="meta">全场可用 · 满 ¥30.00 · 至 09-27</span></span><span class="v go">✓</span></div>
+            <div class="frow"><span class="k"><b>新人首单券 ¥3</b><br><span class="meta">全场可用 · 无门槛 · 至 09-30</span></span><span class="v meta">选择</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">不可用（2）</span></div>
+            <div class="frow"><span class="k"><span class="meta">生鲜满减 ¥8 · 还差 ¥20.00 到门槛</span></span><span class="v"></span></div>
+            <div class="frow"><span class="k"><span class="meta">张记粮油 ¥10 · 本单没有这家店的商品</span></span><span class="v"></span></div>
+          </div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>k03 选择优惠券</b>可用在上、不可用在下，每张都写清为什么。</figcaption>
+      <p class="why">不可用的**要列出来**：券在他券包里，不列等于「券丢了」。每条给的是<b>可操作的差距</b>（还差 ¥20），不是「不满足条件」这种废话。</p>
+    </figure>
+
+    <figure id="k04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 · 库存 3</span><div class="ln"><span class="pr num">¥50.00</span><span class="seg"><span>−</span><b class="num">3</b><span>＋</span></span></div><span class="warn">仅剩 3 件</span></div></div>
+          <div class="gc dead"><div class="th">🍋</div><div class="bd"><span class="nm">柠檬</span><span class="meta">已售罄</span><div class="ln"><span class="meta">这一件买不了了</span><span class="chip">移出</span></div></div></div>
+          <div class="card"><div class="frow"><span class="k">优惠券</span><span class="v go">1 张可用</span></div></div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥150.00</b></span><div class="btn">提交订单</div></div>
+      </div>
+      <figcaption class="cap"><b>k04 改数量与失效商品</b>加号到上限就压暗，旁边说清为什么。</figcaption>
+      <p class="why">上限是「库存」与「每人限购」里小的那个，压暗时必须说出是哪一条挡住的。售罄的那件<b>留在原地并标灰</b>，给一个「移出」——直接消失会让人以为自己没加过。</p>
+    </figure>
+
+    <figure id="k05">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k">优惠券</span><span class="v meta">暂无可用券</span></div><div class="frow"><span class="meta">你的券包里有 2 张，本单都用不了</span><span class="v go">看看</span></div></div>
+          <div class="card"><div class="frow"><span class="k">积分抵扣</span><span class="v meta">积分不足 100 分</span></div></div>
+          <div class="card"><div class="frow"><span class="k">商品金额</span><span class="v num">¥20.00</span></div><div class="frow"><span class="k">优惠</span><span class="v num">无</span></div></div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥20.00</b></span><div class="btn">提交订单</div></div>
+      </div>
+      <figcaption class="cap"><b>k05 一样都用不上时</b>说清「有券但本单用不了」，并给一条出路。</figcaption>
+      <p class="why">现状是一行灰字「无可用」，点了没反应。券包里明明有券的人会以为券没了 —— 所以要把「有几张、为什么用不了」说出来，「看看」点进 k03 的不可用那一段。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">k06 — k08</span><h2>订单详情：钱说清楚，动作找得到</h2></div>
+  <p class="sec-note">订单页现在是一列事实（状态、商品、金额、编号），缺的是「这笔钱怎么算的」和「我现在能做什么」。</p>
+  <div class="grid">
+
+    <figure id="k06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k"><b>待发货</b></span><span class="v meta">下单 09-20 22:25</span></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div>
+          <div class="card">
+            <div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div>
+            <div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v num hot">−¥10.00</span></div>
+            <div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div>
+          </div>
+          <div class="card"><div class="frow"><span class="k">订单编号</span><span class="v meta num">SO2026…9616</span></div><div class="frow"><span class="k">下单时间</span><span class="v meta num">09-20 22:25</span></div></div>
+        </div>
+        <div class="foot"><span class="ic">取消订单</span><div class="btn soft">再来一单</div></div>
+      </div>
+      <figcaption class="cap"><b>k06 现状（0.1.53）</b>事实齐全，解释与动作偏薄。</figcaption>
+      <p class="why">「优惠 −¥10.00」不说来处（0.1.54 已补明细，这一稿继续往下排）；状态只有两个字，不说下一步会发生什么、什么时候。</p>
+    </figure>
+
+    <figure id="k07">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k"><b>待发货</b></span><span class="v meta">已付款 09-20 22:26</span></div>
+            <div class="frow"><span class="meta">商家 24 小时内发货，发货后可查物流</span><span class="v"></span></div>
+          </div>
+          <div class="seg"><span class="on">已下单</span><span class="on">已付款</span><span>待发货</span><span>待收货</span><span>已完成</span></div>
+          <div class="card"><div class="frow"><span class="k"><span class="chip pri">快递配送</span> 武国斌 185****8359</span><span class="v"></span></div><div class="frow"><span class="k">广东省深圳市龙华新区 招商锦绣观园 5-10F</span><span class="v"></span></div></div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div><span class="meta">虹选鲜果 · 申请售后 ›</span></div></div>
+          <div class="card">
+            <div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div>
+            <div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v num hot">−¥15.00</span></div>
+            <div class="frow"><span class="meta">活动「开业直减」</span><span class="v meta num">−¥10.00</span></div>
+            <div class="frow"><span class="meta">券「满 30 减 5」</span><span class="v meta num">−¥5.00</span></div>
+            <div class="frow"><span class="k"><b>实付</b></span><span class="v num"><b>¥35.00</b></span></div>
+          </div>
+          <div class="card"><div class="frow"><span class="k">订单编号</span><span class="v meta num">SO2026…9616 <span class="chip">复制</span></span></div><div class="frow"><span class="k">下单 / 付款</span><span class="v meta num">09-20 22:25 / 22:26</span></div></div>
+        </div>
+        <div class="foot"><span class="ic">联系商家</span><span class="ic">申请售后</span><div class="btn soft">再来一单</div></div>
+      </div>
+      <figcaption class="cap"><b>k07 新版 · 订单详情</b>状态说下一步、金额说来处、动作按状态给。</figcaption>
+      <p class="why">四处补齐：① 状态下面一句「接下来会发生什么」；② 进度条让人一眼知道走到哪；③ 优惠逐条列出（已落地）；④ 订单号可复制 —— 找客服时他要念这一串。</p>
+    </figure>
+
+    <figure id="k08">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k"><b>待付款</b></span><span class="v num hot">14:32 后自动关闭</span></div>
+            <div class="frow"><span class="meta">超时未付款，库存会释放给其他邻居</span><span class="v"></span></div>
+          </div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div>
+          <div class="card"><div class="frow"><span class="k">应付</span><span class="v num"><b>¥40.00</b></span></div><div class="frow"><span class="meta">已优惠 ¥10.00</span><span class="v"></span></div></div>
+        </div>
+        <div class="foot"><span class="ic">取消订单</span><div class="btn">去支付 ¥40.00</div></div>
+      </div>
+      <figcaption class="cap"><b>k08 待付款</b>倒计时给在最显眼处，主按钮带金额。</figcaption>
+      <p class="why">待付款是唯一一个「有时限」的状态，所以倒计时进状态行、并说清超时会怎样。主按钮写上金额：从列表点进来的人不必再往下找。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">k09 — k10</span><h2>订单列表：一眼分得出该做什么</h2></div>
+  <p class="sec-note">列表的任务不是把详情压扁，而是回答「哪几单还要我动手」。</p>
+  <div class="grid">
+
+    <figure id="k09">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的订单</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>待付款 1</span><span>待发货</span><span>待收货</span><span>待评价</span></div>
+          <div class="card">
+            <div class="hd"><span>虹选鲜果</span><span class="bad">待付款 · 14:32</span></div>
+            <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 ×1</span><div class="ln"><span class="pr num">¥40.00</span><span class="meta">已优惠 ¥10</span></div></div></div>
+            <div class="frow"><span class="k"><span class="meta">09-20 22:25</span></span><span class="v"><span class="chip">取消</span> <span class="btn sm">去支付</span></span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span>虹选鲜果</span><span class="meta">待发货</span></div>
+            <div class="gc"><div class="th">🍇</div><div class="bd"><span class="nm">阳光玫瑰青提</span><span class="meta">×2</span><div class="ln"><span class="pr num">¥59.80</span><span class="meta">已优惠 ¥20</span></div></div></div>
+            <div class="frow"><span class="k"><span class="meta">09-20 19:26</span></span><span class="v"><span class="chip">申请售后</span> <span class="chip">再来一单</span></span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>首页</span><span>分类</span><span>店铺</span><span>购物车</span><span class="on">我的</span></div>
+      </div>
+      <figcaption class="cap"><b>k09 订单列表</b>每张卡带一个主动作，待付款带倒计时。</figcaption>
+      <p class="why">卡上只给<b>这一单此刻该做的那个动作</b>，其余收进详情。金额旁边一句「已优惠 ¥10」——列表是他比对花了多少的地方。</p>
+    </figure>
+
+    <figure id="k10">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k"><b>已取消</b></span><span class="v meta">09-20 22:40</span></div>
+            <div class="frow"><span class="meta">超时未付款，已自动关闭</span><span class="v"></span></div>
+          </div>
+          <div class="gc dead"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 ×1</span><div class="ln"><span class="meta num">¥50.00</span></div></div></div>
+          <div class="card"><div class="frow"><span class="k">券已退回</span><span class="v meta">「满 30 减 5」已回到券包</span></div></div>
+        </div>
+        <div class="foot"><div class="btn soft">再来一单</div></div>
+      </div>
+      <figcaption class="cap"><b>k10 已取消</b>说清为什么关的，以及券退回哪儿去了。</figcaption>
+      <p class="why">取消要交代两件事：为什么关（超时 / 你点的 / 商家拒单），以及<b>券和积分回没回来</b>——不说的话用户会以为券被吞了，而那正是他最容易记住的损失。</p>
+    </figure>
+
+  </div>
+</section>
+
+</div>
