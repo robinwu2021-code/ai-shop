@@ -161,8 +161,14 @@ async function confirmPlaceMismatch(): Promise<boolean> {
  * 否则住在小区斜对面的人每次下单都被问一遍。
  */
 const COMMUNITY_REACH_M = 2000;
+/**
+ * 选中的券。**`couponNo` 里存的是用户持有的那一张（`userCouponNo`），不是券模板号** ——
+ * 后端下单按 `userCouponNo` 查券（`CouponPortImpl.ownUserCoupon`）。
+ * 2026-09-21 之前这里存的是模板号，于是真后端上选任何券都回 40002、被当成「券失效」摘掉，
+ * 而 mock 按模板号查，本机一路是好的。
+ */
 const coupon = computed(
-  () => coupons.value.find((u) => u.coupon.couponNo === couponNo.value)?.coupon,
+  () => coupons.value.find((u) => u.userCouponNo === couponNo.value)?.coupon,
 );
 
 /**
@@ -1392,14 +1398,14 @@ onMounted(async () => {
           v-for="u in couponBest?.usable ?? []"
           :key="u.userCouponNo"
           class="sh-cell sh-row sh-row--between"
-          @tap="chooseCoupon(u.coupon.couponNo)"
+          @tap="chooseCoupon(u.userCouponNo)"
         >
           <view class="sh-fill cp__body">
             <text class="txt-body">{{ u.coupon.title }}</text>
             <text class="txt-caption sh-muted cp__meta">{{ couponMeta(u) }}</text>
           </view>
           <sh-icon
-            v-if="couponNo === u.coupon.couponNo"
+            v-if="couponNo === u.userCouponNo"
             name="check"
             :size="28"
             color="var(--sh-primary)"

@@ -15,6 +15,7 @@ import {
   settleRefund,
   boughtQtyOf,
   limitOf,
+  couponSeedOfUserCoupon,
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
@@ -87,7 +88,7 @@ export const aftersaleMock: Pick<ShopApi,
       };
     });
     if (!items.length) throw new Error("订单商品为空");
-    const couponSeed = db.couponSeeds.find((c) => c.couponNo === req.couponNo);
+    const couponSeed = couponSeedOfUserCoupon(req.couponNo);
     const coupon: Coupon | undefined = couponSeed
       ? { ...couponSeed, title: pick(couponSeed.title), scopeDesc: pick(couponSeed.scopeDesc) }
       : undefined;

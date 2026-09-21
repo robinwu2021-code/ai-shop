@@ -107,6 +107,10 @@ export interface CreateOrderReq {
   fulfillment: FulfillmentType;
   pickupNo?: string;
   addressId?: string;
+  /**
+   * 用的是**哪一张券**：用户持有的那张（`UserCoupon.userCouponNo`），**不是券模板号**。
+   * 字段名沿用后端 `CreateOrderCommand.couponNo`；传模板号会被当成「券不可用」（40002）。
+   */
   couponNo?: string;
   /** 使用的积分数（后端会按抵扣上限截断，端上算的只是预览） */
   usePoints?: number;

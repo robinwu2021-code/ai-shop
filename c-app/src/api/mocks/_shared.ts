@@ -308,3 +308,18 @@ export function requireWithinLimit(goodsNo: string, wanted: number): void {
     throw new ApiError(PURCHASE_LIMIT_EXCEEDED, `超出每人限购，这件商品你还能买 ${left} 件`);
   }
 }
+
+/**
+ * 下单传来的券号 → 券模板种子。**与后端同一口径：传的是用户持有的那张（userCouponNo）**。
+ * mock 的券包号有两种造法（myCoupons 的 `UC0001` 按种子序号、领券的 `UC-<模板号>`），这里都认；
+ * **不再认模板号** —— 此前 mock 按模板号查，替端上「传错了号」背了书，真后端上选券一律失败。
+ */
+export function couponSeedOfUserCoupon(userCouponNo?: string) {
+  if (!userCouponNo) return undefined;
+  const byIndex = /^UC(\d{4})$/.exec(userCouponNo);
+  if (byIndex) return db.couponSeeds[Number(byIndex[1]) - 1];
+  if (userCouponNo.startsWith("UC-")) {
+    return db.couponSeeds.find((c) => c.couponNo === userCouponNo.slice(3));
+  }
+  return undefined;
+}
