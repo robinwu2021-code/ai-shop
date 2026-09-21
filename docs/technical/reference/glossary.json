@@ -9375,9 +9375,9 @@
         },
         {
           "key": "goods.stock",
-          "zh-CN": "库存",
-          "en": "Stock",
-          "ar": "المخزون"
+          "zh-CN": "可售库存",
+          "en": "Sellable",
+          "ar": "قابل للبيع"
         },
         {
           "key": "goods.stockByInvGo",
@@ -9387,27 +9387,27 @@
         },
         {
           "key": "goods.stockByInvHint",
-          "zh-CN": "这家店的库存以进销存为准，这一页只是展示。进货开进货单，数对不上开盘点单。",
-          "en": "This store's stock is authoritative in Inventory; the number here is display only. Record a purchase for goods coming in, or a stocktake when the count differs.",
-          "ar": "مخزون هذا المتجر مرجعه نظام المخزون، والرقم هنا للعرض فقط. سجّل أمر شراء للوارد، أو أمر جرد عند اختلاف العدّ."
+          "zh-CN": "这家店按实物库存售卖，这里仅作展示。进货请开进货单，数量不符请开盘点单。",
+          "en": "This store sells from physical stock; the number here is display only. Record a purchase for incoming goods, or a stocktake when counts differ.",
+          "ar": "يبيع هذا المتجر من المخزون الفعلي، والرقم هنا للعرض فقط. سجّل أمر شراء للوارد، أو أمر جرد عند اختلاف العدّ."
         },
         {
           "key": "goods.stockByInvTitle",
-          "zh-CN": "库存改在进销存里",
-          "en": "Stock is managed in Inventory",
-          "ar": "يُدار المخزون في نظام المخزون"
+          "zh-CN": "可售库存以实物库存为准",
+          "en": "Sellable stock follows physical stock",
+          "ar": "المخزون القابل للبيع يتبع المخزون الفعلي"
         },
         {
           "key": "goods.stockInvHint",
-          "zh-CN": "进销存记着 {n}（{where}）。这里改的是商城显示的数，两本账各记各的",
-          "en": "Inventory has {n} ({where}). This edits the storefront number — the two ledgers are kept separately",
-          "ar": "المخزون يسجل {n} ({where}). هذا يعدّل رقم المتجر — الدفتران منفصلان"
+          "zh-CN": "实物库存 {n}（{where}）。这里改的是可售库存",
+          "en": "Physical stock {n} ({where}). This edits the sellable stock",
+          "ar": "المخزون الفعلي {n} ({where}). هذا يعدّل المخزون القابل للبيع"
         },
         {
           "key": "goods.stockInvNone",
-          "zh-CN": "这件货在进销存里还没建账",
-          "en": "No inventory record for this item yet",
-          "ar": "لا يوجد سجل مخزون لهذا الصنف بعد"
+          "zh-CN": "尚未建立实物库存",
+          "en": "No physical stock record yet",
+          "ar": "لا يوجد سجل مخزون فعلي بعد"
         },
         {
           "key": "goods.stockInvNowhere",
@@ -9951,9 +9951,9 @@
         },
         {
           "key": "home.inv.title",
-          "zh-CN": "进销存",
-          "en": "Inventory",
-          "ar": "المخزون"
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
         },
         {
           "key": "home.laterBatch",
@@ -10197,9 +10197,9 @@
         },
         {
           "key": "invMode.adjustHint",
-          "zh-CN": "未开启进销存，此数即线上可售数量",
-          "en": "Inventory management is off. This is the quantity sold online.",
-          "ar": "إدارة المخزون متوقفة. هذا هو الكمية المعروضة للبيع عبر الإنترنت."
+          "zh-CN": "未启用实物库存，此数即可售库存",
+          "en": "Physical stock is off. This number is the sellable stock.",
+          "ar": "المخزون الفعلي متوقف. هذا الرقم هو المخزون القابل للبيع."
         },
         {
           "key": "invMode.afterSave",
@@ -10215,9 +10215,9 @@
         },
         {
           "key": "invMode.label",
-          "zh-CN": "进销存管理",
-          "en": "Inventory management",
-          "ar": "إدارة المخزون"
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
         },
         {
           "key": "invMode.off",
@@ -10239,9 +10239,9 @@
         },
         {
           "key": "invMode.tag",
-          "zh-CN": "未开启进销存",
-          "en": "Inventory off",
-          "ar": "المخزون متوقف"
+          "zh-CN": "未启用实物库存",
+          "en": "No physical stock",
+          "ar": "بلا مخزون فعلي"
         },
         {
           "key": "invoice.amountHint",
@@ -16503,9 +16503,9 @@
         },
         {
           "key": "stock.title",
-          "zh-CN": "库存",
-          "en": "Stock",
-          "ar": "المخزون"
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
         },
         {
           "key": "stock.uom.BAG",
@@ -17535,9 +17535,9 @@
         },
         {
           "key": "stockSettings.confirmTitle",
-          "zh-CN": "关闭「{name}」的进销存管理？",
-          "en": "Turn off inventory management for {name}?",
-          "ar": "إيقاف إدارة المخزون لـ {name}؟"
+          "zh-CN": "关闭「{name}」的实物库存？",
+          "en": "Turn off physical stock for {name}?",
+          "ar": "إيقاف المخزون الفعلي لـ {name}؟"
         },
         {
           "key": "stockSettings.defaultOff",
@@ -17571,9 +17571,9 @@
         },
         {
           "key": "stockSettings.section",
-          "zh-CN": "进销存管理",
-          "en": "Inventory management",
-          "ar": "إدارة المخزون"
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
         },
         {
           "key": "stockSettings.sharedHint",
@@ -18903,9 +18903,9 @@
         },
         {
           "key": "storeCategories.invLabel",
-          "zh-CN": "进销存管理",
-          "en": "Inventory management",
-          "ar": "إدارة المخزون"
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
         },
         {
           "key": "storeCategories.needCert",
