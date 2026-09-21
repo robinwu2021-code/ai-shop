@@ -28,7 +28,9 @@ const order = code("src/pages/order/index.vue");
 
 describe("两处都把依据写出来", () => {
   it("★★★ 确认页逐条渲染 discountLines", () => {
-    expect(confirm).toContain('v-for="(d, i) in discountLines"');
+    // 活动逐条列；券那一笔由券那一行自己说（每笔优惠只出现一次，用户 2026-09-21）
+    expect(confirm).toContain('v-for="(d, i) in activityLines"');
+    expect(confirm).toContain("couponLineMinor");
     expect(confirm, "只显示金额不显示名字，等于没说").toContain("discountLabel(d)");
   });
 
@@ -47,7 +49,7 @@ describe("两处都把依据写出来", () => {
 describe("为空时整段不渲染", () => {
   it("没有优惠就没有这几行 —— 不显示「无优惠」", () => {
     // v-for 在空数组上天然不渲染；这里钉住的是**没有**「否则显示一句话」的兜底分支
-    const at = confirm.indexOf('v-for="(d, i) in discountLines"');
+    const at = confirm.indexOf('v-for="(d, i) in activityLines"');
     const around = confirm.slice(at - 300, at + 400);
     expect(around).not.toContain("noDiscount");
   });

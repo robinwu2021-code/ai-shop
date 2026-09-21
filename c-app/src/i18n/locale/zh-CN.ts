@@ -609,6 +609,7 @@ export default {
     freight: "运费",
     free: "免运费",
     discount: "优惠",
+    savedTotal: "共减 {p}",
     payable: "应付",
     submit: "提交订单",
     submitting: "提交中…",

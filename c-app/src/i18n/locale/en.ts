@@ -570,6 +570,7 @@ export default {
     freight: "Delivery",
     free: "Free",
     discount: "Discount",
+    savedTotal: "{p} off",
     payable: "To pay",
     submit: "Place order",
     submitting: "Placing…",

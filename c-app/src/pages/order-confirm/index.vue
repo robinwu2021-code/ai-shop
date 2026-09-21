@@ -653,6 +653,25 @@ async function loadAddresses() {
   }
 }
 
+/** 金额卡里逐条列的只有活动 —— 券那一笔由券那一行自己说（见模板里的注释） */
+const activityLines = computed(() => discountLines.value.filter((d) => d.kind === "ACTIVITY"));
+
+/** 服务端算出来的券减了多少；没有明细时回落到端上估算 */
+const couponLineMinor = computed(() => {
+  const lines = discountLines.value.filter((d) => d.kind === "COUPON");
+  return lines.length ? lines.reduce((n, d) => n + d.amountMinor, 0) : null;
+});
+
+/** 合计里有、明细说不出名字的那部分。**不会是负数**：明细多于合计时按 0 */
+const otherDiscountMinor = computed(() => {
+  const total = amount.value?.discountMinor ?? 0;
+  if (!discountLines.value.length) {
+    // 没有明细：券那一行已经说了券的估算，剩下的才落到「优惠」
+    return Math.max(0, total - (coupon.value ? couponDiscount(coupon.value, goodsMinor.value) : 0));
+  }
+  return Math.max(0, total - discountLines.value.reduce((n, d) => n + d.amountMinor, 0));
+});
+
 /** 「活动「abc」」「券「新人首单券」」—— 一眼看出这一条是什么减的 */
 function discountLabel(d: DiscountLine): string {
   return String(t(d.kind === "COUPON" ? "confirm.fromCoupon" : "confirm.fromActivity", { name: d.name }));
@@ -1144,24 +1163,6 @@ onMounted(async () => {
 
     <!-- 券 + 备注 -->
     <view class="sh-card block">
-      <!--
-        **这一行永远可点**（用户 2026-09-21）。此前没有可用券时它是灰的、点了没反应，
-        而券包里有券的人会以为券丢了 —— 面板里会把「有几张、为什么用不了」说清楚。
-      -->
-      <view class="cell sh-row sh-row--between" @tap="pickCoupon">
-        <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
-        <text class="txt-bold txt-sub cell__v" :class="{ 'is-danger': !!coupon }">
-          {{ coupon
-            ? `${coupon.title} -${money(couponDiscount(coupon, goodsMinor))}`
-            : couponFailed
-              ? $t("common.loadFailed")
-              : usableCoupons.length
-                ? $t("confirm.couponAvailable", { n: usableCoupons.length })
-                : couponTotal
-                  ? $t("confirm.couponNoneUsable", { n: couponTotal })
-                  : $t("confirm.noCouponAvailable") }}
-        </text>
-      </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
         v-if="FEATURES.points && pointBalance > 0"
@@ -1205,18 +1206,38 @@ onMounted(async () => {
           {{ amount.freightMinor ? money(amount.freightMinor) : $t("confirm.free") }}
         </text>
       </view>
-      <view v-if="amount.discountMinor" class="amt sh-row sh-row--between sh-row--top">
-        <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.discountMinor) }}</text>
+      <!--
+        **每一笔优惠只出现一次**（用户 2026-09-21：「优惠券、优惠、活动优惠三个位置都有优惠」）。
+        此前券在上面的卡片里减一次、这里「优惠」合计一次、明细里又逐条一次 ——
+        同一个 ¥5 在屏幕上出现三回，他得自己算是不是减了三次。
+        现在：活动逐条列、券那一行本身就是选择入口、合计只在底栏说一次「共减」。
+        名字取不到的那部分（后端没下发明细）才落到一行不带名字的「优惠」。
+      -->
+      <view v-for="(d, i) in activityLines" :key="i" class="amt sh-row sh-row--between sh-row--top">
+        <text class="txt-caption">{{ discountLabel(d) }}</text>
+        <text class="txt-caption amt__v sh-num is-danger">-{{ money(d.amountMinor) }}</text>
       </view>
       <!--
-        **减的是什么，直接写在下面**（用户 2026-09-20，TDD-C端优惠依据）。
-        此前只有一个「优惠 −¥10」—— 活动？券？买家看不出来，而后端一直知道。
-        不做弹层：少一次点击，也少一套交互。名字取不到的那条后端不会下发。
+        **这一行永远可点**（用户 2026-09-21）。此前没有可用券时它是灰的、点了没反应，
+        而券包里有券的人会以为券丢了 —— 面板里会把「有几张、为什么用不了」说清楚。
       -->
-      <view v-for="(d, i) in discountLines" :key="i" class="amt sh-row sh-row--between sh-row--top">
-        <text class="txt-caption sh-muted">{{ discountLabel(d) }}</text>
-        <text class="txt-caption amt__v sh-num sh-muted">-{{ money(d.amountMinor) }}</text>
+      <view class="amt sh-row sh-row--between sh-row--top" @tap="pickCoupon">
+        <text class="txt-caption">{{ $t("confirm.coupon") }}</text>
+        <text class="txt-caption amt__v cell__v" :class="coupon ? 'is-danger sh-num' : 'sh-muted'">
+          {{ coupon
+            ? `${coupon.title} -${money(couponLineMinor ?? couponDiscount(coupon, goodsMinor))}`
+            : couponFailed
+              ? $t("common.loadFailed")
+              : usableCoupons.length
+                ? $t("confirm.couponAvailable", { n: usableCoupons.length })
+                : couponTotal
+                  ? $t("confirm.couponNoneUsable", { n: couponTotal })
+                  : $t("confirm.noCouponAvailable") }}
+        </text>
+      </view>
+      <view v-if="otherDiscountMinor > 0" class="amt sh-row sh-row--between sh-row--top">
+        <text class="txt-caption">{{ $t("confirm.discount") }}</text>
+        <text class="txt-caption amt__v sh-num is-danger">-{{ money(otherDiscountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
@@ -1298,6 +1319,9 @@ onMounted(async () => {
           class="txt-price actionbar__total sh-num"
           :class="{ 'is-pending': amountPending }"
         >{{ money(amount?.payableMinor ?? 0) }}</text>
+        <text v-if="amount?.discountMinor && !amountPending" class="txt-caption is-danger">
+          {{ $t("confirm.savedTotal", { p: money(amount.discountMinor) }) }}
+        </text>
       </view>
       <view
         class="txt-body sh-btn actionbar__btn"

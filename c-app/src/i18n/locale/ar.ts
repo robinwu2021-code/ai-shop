@@ -570,6 +570,7 @@ export default {
     freight: "التوصيل",
     free: "مجاني",
     discount: "الخصم",
+    savedTotal: "وفرت {p}",
     payable: "المطلوب",
     submit: "إرسال الطلب",
     submitting: "جارٍ الإرسال…",
