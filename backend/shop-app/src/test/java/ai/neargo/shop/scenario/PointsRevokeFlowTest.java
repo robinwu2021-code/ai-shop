@@ -120,6 +120,81 @@ class PointsRevokeFlowTest {
         assertThat(recoveryOf(unsettled)).as("池子从没收过这笔钱，出了就扣成负的").isZero();
     }
 
+    // ------------------------------------------------------------------ P2b 分账后退积分
+
+    @Test
+    @DisplayName("★★★ 分账后整单退款：分退回，补差收回了就对冲入池 —— 本市场的池子回到原位")
+    void confirmedRefundWithSubsidyBack() {
+        String user = user(0, 0);
+        String sub = confirmedUse(user, 300);
+        long poolBefore = poolOf();
+        points.recordPoolFlow(StlPointsPool.MERCHANT_PAY, 300, "M0001", sub, null, MKT); // 分账时那笔出池
+        reversedBill(sub, 300L, true);
+
+        assertThat(points.refundConfirmed(sub, "整单退款")).isEqualTo(300);
+        assertThat(account(user).getBalance()).isEqualTo(300L);
+        assertThat(poolOf()).as("补差回来了却不入池，恒等式永远差这一截").isEqualTo(poolBefore);
+        assertThat(points.refundConfirmed(sub, "整单退款")).as("重复退 = 凭空印分").isZero();
+    }
+
+    @Test
+    @DisplayName("★★ 补差没收回：分照退，池子不入账 —— 不能用一笔假入账盖住待追回的钱")
+    void confirmedRefundSubsidyStuck() {
+        String user = user(0, 0);
+        String sub = confirmedUse(user, 200);
+        points.recordPoolFlow(StlPointsPool.MERCHANT_PAY, 200, "M0001", sub, null, MKT);
+        long poolAfterPay = poolOf();
+        reversedBill(sub, 200L, false);
+
+        assertThat(points.refundConfirmed(sub, "整单退款")).isEqualTo(200);
+        assertThat(account(user).getBalance()).as("平台追款失败不能让买家吃亏").isEqualTo(200L);
+        assertThat(poolOf()).isEqualTo(poolAfterPay);
+    }
+
+    private String confirmedUse(String userNo, long pts) {
+        String sub = "SUB-RVK-" + System.nanoTime() % 1_000_000_000L + "-" + (++seq);
+        PtsUserLedger l = new PtsUserLedger();
+        l.setLedgerNo(BizKey.next(BizKey.POINTS_LEDGER));
+        l.setUserNo(userNo);
+        l.setBizType(PtsUserLedger.USE);
+        l.setStatus(PtsUserLedger.CONFIRMED);
+        l.setPoints(-pts);
+        l.setAmountMinor(pts);
+        l.setBalanceAfter(0L);
+        l.setSubOrderNo(sub);
+        l.setMarket(MKT);
+        l.setAcceptorMerchantNo("M0001");
+        ledgerMapper.insert(l);
+        return sub;
+    }
+
+    /** 已回退的结算单；subsidyBack = 补差回退成功（subsidy_at 已清） */
+    private void reversedBill(String subOrderNo, long subsidy, boolean subsidyBack) {
+        StlBill b = new StlBill();
+        b.setSettleNo(BizKey.next(BizKey.SETTLE_BILL));
+        b.setSubOrderNo(subOrderNo);
+        b.setOrderNo("ORD-" + subOrderNo);
+        b.setEntityNo("M0001");
+        b.setGrossMinor(1000L);
+        b.setCommissionMinor(0L);
+        b.setServiceFeeMinor(0L);
+        b.setNetMinor(1000L);
+        b.setCommissionRate(0);
+        b.setPayChannel("WECHAT");
+        b.setSubsidyMinor(subsidy);
+        b.setSubsidyAt(subsidyBack ? null : System.currentTimeMillis());
+        b.setStatus(StlBill.REVERSED);
+        b.setRetryCount(0);
+        DataScopeContext.executeWithoutScope(() -> billMapper.insert(b));
+    }
+
+    private long poolOf() {
+        return DataScopeContext.executeWithoutScope(() -> poolMapper.selectList(
+                        Wrappers.<StlPointsPool>lambdaQuery().eq(StlPointsPool::getMarket, MKT)))
+                .stream().mapToLong(f -> StlPointsPool.IN.equals(f.getDirection())
+                        ? f.getAmountMinor() : -f.getAmountMinor()).sum();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private String user(long balance, long pending) {

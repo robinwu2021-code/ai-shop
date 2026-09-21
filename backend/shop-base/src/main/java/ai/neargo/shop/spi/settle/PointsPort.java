@@ -64,6 +64,14 @@ public interface PointsPort {
         return 0L;
     }
 
+    /**
+     * 分账后整单退款退回抵扣积分（待办设计 P2b）。{@link #reverse} 只认 PENDING，
+     * 这里只认 CONFIRMED —— 两条按状态互斥，整单退款时两个都调。
+     */
+    default long refundConfirmed(String subOrderNo, String reason) {
+        return 0L;
+    }
+
     default PointsReturned returnedOf(List<String> subOrderNos) {
         return new PointsReturned(0L, 0L);
     }

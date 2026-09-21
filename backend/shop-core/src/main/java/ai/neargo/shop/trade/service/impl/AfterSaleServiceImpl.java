@@ -498,8 +498,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      *
      * <p><b>抵扣积分同一个判据一起退</b>（待办设计 P2a）：逐子单调 {@code pointsPort.reverse}。
      * 它只认 PENDING 的抵扣流水 —— 分账前的单（绝大多数退款）池子一分没动，退回也不碰池子；
-     * 分账后的单那笔已是 CONFIRMED，这里静默不动，留给 P2b 连池子一起冲，
-     * 否则「流通中的积分 == 池子里的钱」这条恒等式会失衡，而失衡了没有任何地方会报。
+     * 分账后的单那笔已是 CONFIRMED，由 {@code refundConfirmed}（P2b）连池子一起冲 ——
+     * 补差收回了才入池，没收回不入池，否则「流通中的积分 == 池子里的钱」会被一笔假入账盖住。
      *
      * <p>两件事各有一个开关（{@value #FLAG_RETURN_COUPON} / {@value #FLAG_RETURN_POINTS}）：
      * 影响的账不同，出问题时要能只关其中一个。
@@ -527,8 +527,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                  * 幂等在数据本身（只认 PENDING），取消时已退过的子单这里找不到流水、静默返回。
                  */
                 final String subNo = x.getSubOrderNo();
-                ai.neargo.shop.event.AfterCommit.run("整单退款退回积分 subOrderNo=" + subNo,
-                        () -> pointsPort.reverse(subNo, "整单退款"));
+                ai.neargo.shop.event.AfterCommit.run("整单退款退回积分 subOrderNo=" + subNo, () -> {
+                    pointsPort.reverse(subNo, "整单退款");
+                    // 分账后的单那笔已 CONFIRMED：连池子一起冲（P2b），按状态与上一行互斥
+                    pointsPort.refundConfirmed(subNo, "整单退款");
+                });
             }
         }
         /*

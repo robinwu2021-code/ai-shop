@@ -46,6 +46,11 @@ public class PointsPortImpl implements PointsPort {
     }
 
     @Override
+    public long refundConfirmed(String subOrderNo, String reason) {
+        return pointsService.refundConfirmed(subOrderNo, reason);
+    }
+
+    @Override
     public long revokeEarned(String subOrderNo, String reason) {
         return pointsService.revokeEarned(subOrderNo, reason);
     }

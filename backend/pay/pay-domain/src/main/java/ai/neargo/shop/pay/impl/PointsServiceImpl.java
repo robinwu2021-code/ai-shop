@@ -623,6 +623,66 @@ public class PointsServiceImpl implements PointsService {
 
     @Override
     @Transactional("payTxManager")
+    public long refundConfirmed(String subOrderNo, String reason) {
+        PtsUserLedger use = DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectOne(
+                Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
+                        .eq(PtsUserLedger::getBizType, BIZ_USE)
+                        // 只认 CONFIRMED —— PENDING 的归 reverse()，两条路按状态互斥
+                        .eq(PtsUserLedger::getStatus, USE_CONFIRMED)
+                        .last("LIMIT 1")));
+        if (use == null) {
+            return 0L;
+        }
+        long pts = Math.abs(use.getPoints() == null ? 0L : use.getPoints());
+        if (pts <= 0) {
+            return 0L;
+        }
+        long now = System.currentTimeMillis();
+        String market = use.getMarket() == null ? DEFAULT_MARKET : use.getMarket();
+        accountMapper.refund(use.getUserNo(), market, pts, now,
+                now + config().inactiveDays() * 86_400_000L);
+        use.setStatus(USE_REVERSED);
+        DataScopeContext.executeWithoutScope(() -> ledgerMapper.updateById(use));
+
+        PtsUserLedger back = new PtsUserLedger();
+        back.setLedgerNo(BizKey.next(BizKey.POINTS_LEDGER));
+        back.setUserNo(use.getUserNo());
+        back.setBizType(BIZ_REFUND);
+        back.setPoints(pts);
+        back.setBalanceAfter(loadAccount(use.getUserNo()).getBalance());
+        back.setSubOrderNo(subOrderNo);
+        back.setRemark(reason);
+        back.setMarket(market);
+        DataScopeContext.executeWithoutScope(() -> ledgerMapper.insert(back));
+
+        /*
+         * **池子只在补差真的收回时入账**（与结算域对过的口径，2026-09-21）。
+         *
+         * 直连路径：分账时平台把抵扣那部分补差划给商家（SUBSIDY），同时记 MERCHANT_PAY 出池；
+         * 分账回退成功后 reverseSplit 会把补差划回（SUBSIDY_RETURN），成功则清掉 subsidy_at。
+         * 所以判据是「结算单已回退、有补差、且 subsidy_at 已被清掉」—— 钱回来了，对冲入池。
+         *
+         * 补差回退失败（subsidy_at 仍有值）或归集路径（已打款给商家）：钱还在商家那边，
+         * 这里<b>不入池</b>。用户的分照退（不能因为平台追款失败让买家吃亏），
+         * 池子因此少的那一截恰好等于待追回的钱 —— 恒等式巡检会把它亮出来，而不是被一笔假入账盖住。
+         */
+        StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
+                Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo, subOrderNo).last("limit 1")));
+        long amount = use.getAmountMinor() == null ? 0L : use.getAmountMinor();
+        if (bill != null && StlBill.REVERSED.equals(bill.getStatus())
+                && bill.getSubsidyMinor() != null && bill.getSubsidyMinor() > 0
+                && bill.getSubsidyAt() == null && amount > 0) {
+            recordPoolFlow(StlPointsPool.MERCHANT_PAY_REVERSE, Math.min(amount, bill.getSubsidyMinor()),
+                    use.getAcceptorMerchantNo(), subOrderNo, null, market);
+        } else {
+            log.warn("分账后退积分：补差未收回，池子不入账（待追回）sub={} amount={}", subOrderNo, amount);
+        }
+        return pts;
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public long revokeEarned(String subOrderNo, String reason) {
         if (subOrderNo == null) {
             return 0L;
@@ -701,7 +761,8 @@ public class PointsServiceImpl implements PointsService {
                         Wrappers.<PtsUserLedger>lambdaQuery()
                                 .in(PtsUserLedger::getSubOrderNo, subOrderNos)
                                 .eq(PtsUserLedger::getBizType, BIZ_USE)
-                                .eq(PtsUserLedger::getStatus, USE_PENDING)))
+                                // P2b 之后分账前后的抵扣都会退
+                                .in(PtsUserLedger::getStatus, USE_PENDING, USE_CONFIRMED)))
                 .stream().mapToLong(l -> Math.abs(l.getPoints() == null ? 0L : l.getPoints())).sum();
     }
 
@@ -745,6 +806,7 @@ public class PointsServiceImpl implements PointsService {
         }
         String mkt = market == null || market.isBlank() ? DEFAULT_MARKET : market;
         String direction = StlPointsPool.MERCHANT_RECEIVE.equals(poolType)
+                || StlPointsPool.MERCHANT_PAY_REVERSE.equals(poolType)
                 ? StlPointsPool.IN : StlPointsPool.OUT;
 
         StlPointsPool f = new StlPointsPool();

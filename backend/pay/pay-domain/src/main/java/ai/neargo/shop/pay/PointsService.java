@@ -98,6 +98,12 @@ public interface PointsService {
      */
     long revokeEarned(String subOrderNo, String reason);
 
+    /**
+     * 分账后整单退款退回抵扣积分（待办设计 P2b）：USE 从 CONFIRMED 转 REVERSED、分退回余额；
+     * 补差已收回时记 MERCHANT_PAY_REVERSE 入池对冲，没收回不入池（留作待追回）。只认 CONFIRMED。
+     */
+    long refundConfirmed(String subOrderNo, String reason);
+
     /** 整单退款会退回的抵扣分（PENDING 的 USE）之和 */
     long pendingUseOf(java.util.List<String> subOrderNos);
 

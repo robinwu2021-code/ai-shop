@@ -28,6 +28,12 @@ public class StlPointsPool extends BaseEntity {
 
     /** 补贴收单商家（补差） */
     public static final String MERCHANT_PAY = "MERCHANT_PAY";
+    /**
+     * 补差收回（待办设计 P2b）：分账后整单退款、补差回退成功，那笔钱回到平台 ——
+     * 与原来那笔 {@link #MERCHANT_PAY} 对冲，<b>入池</b>。补差没收回来就不记：
+     * 钱还在商家账上，记了等于池子凭空多出一笔。
+     */
+    public static final String MERCHANT_PAY_REVERSE = "MERCHANT_PAY_REVERSE";
     /** 收商家的发分服务费 */
     public static final String MERCHANT_RECEIVE = "MERCHANT_RECEIVE";
     /** 平台自发的成本 */
