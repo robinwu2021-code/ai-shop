@@ -816,7 +816,7 @@
     {
       "path": "pages/stock/index",
       "style": {
-        "navigationBarTitleText": "库存",
+        "navigationBarTitleText": "实物库存",
         "app-plus": {
           "navigationStyle": "custom"
         },
