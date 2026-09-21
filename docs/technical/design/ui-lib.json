@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 341,
-        "c-app": 68
+        "c-app": 65
       }
     },
     {
@@ -1054,7 +1054,7 @@
       },
       "usage": {
         "b-app": 320,
-        "c-app": 144
+        "c-app": 143
       }
     },
     {
@@ -1362,7 +1362,7 @@
       },
       "usage": {
         "b-app": 26,
-        "c-app": 29
+        "c-app": 27
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 489,
-        "c-app": 178
+        "c-app": 177
       }
     },
     {
@@ -2725,7 +2725,7 @@
       ],
       "usage": {
         "b-app": 0,
-        "c-app": 3,
+        "c-app": 4,
         "lib": 0
       },
       "note": "数量步进器：减 · 数 · 加，装在一枚弱色药丸里",
@@ -5078,11 +5078,12 @@
         "sh-icon",
         "sh-scaffold",
         "sh-sheet",
+        "sh-stepper",
         "sh-switch"
       ],
-      "libClassHits": 166,
-      "localSelectors": 33,
-      "localCssLines": 135,
+      "libClassHits": 159,
+      "localSelectors": 30,
+      "localCssLines": 122,
       "rolled": []
     },
     {

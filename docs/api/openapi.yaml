@@ -8059,10 +8059,7 @@ components:
       type: "object"
       properties: 
         kind: 
-          type: "string"
-          enum: 
-            - "ACTIVITY"
-            - "COUPON"
+          "$ref": "#/components/schemas/DiscountKind"
           description: "ACTIVITY（活动）/ COUPON（券）"
         name: 
           type: "string"
@@ -8075,7 +8072,12 @@ components:
         - "name"
         - "amountMinor"
       additionalProperties: false
-      description: "一条优惠的来历（TDD-C端优惠依据）。\n\n<p>合计在 `amount.discountMinor` 里，这几条只是把它拆开说清楚： 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。\n**明细是解释不是账**：与合计对不上时以合计为准。"
+    DiscountKind: 
+      type: "string"
+      enum: 
+        - "ACTIVITY"
+        - "COUPON"
+      description: "这笔优惠是活动给的还是券给的。\n\n**具名而不是内联联合**：内联的枚举对登记表与对账工具都不可见，改名必漏 （packages/shared 的枚举登记闸门拦的就是这条）。"
     CheckoutCapability: 
       type: "object"
       properties: 

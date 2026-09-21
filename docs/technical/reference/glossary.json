@@ -30581,6 +30581,15 @@
         "zh": ""
       },
       {
+        "name": "DiscountKind",
+        "client": "shared",
+        "values": [
+          "ACTIVITY",
+          "COUPON"
+        ],
+        "zh": "这笔优惠是活动给的还是券给的。"
+      },
+      {
         "name": "DuplicateReason",
         "client": "ops-web",
         "values": [
