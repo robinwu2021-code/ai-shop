@@ -1072,6 +1072,12 @@
           "ar": "الاتجاهات"
         },
         {
+          "key": "confirm.activityEnded",
+          "zh-CN": "「{name}」活动已结束，金额已更新",
+          "en": "“{name}” has ended; the total has been updated",
+          "ar": "انتهى العرض «{name}»، وتم تحديث المبلغ"
+        },
+        {
           "key": "confirm.add",
           "zh-CN": "去添加",
           "en": "Add",
@@ -1130,6 +1136,12 @@
           "zh-CN": "更换",
           "en": "Change",
           "ar": "تغيير"
+        },
+        {
+          "key": "confirm.changeFulfillment",
+          "zh-CN": "换配送方式",
+          "en": "Change delivery method",
+          "ar": "تغيير طريقة التوصيل"
         },
         {
           "key": "confirm.coupon",
@@ -1396,16 +1408,28 @@
           "ar": "استُخدمت {n} نقطة، خصم {p}"
         },
         {
+          "key": "confirm.qtyClamped",
+          "zh-CN": "{name} 库存变少了，已调整为 {n} 件",
+          "en": "Stock for {name} dropped; quantity changed to {n}",
+          "ar": "انخفض مخزون {name}، وتم تعديل الكمية إلى {n}"
+        },
+        {
           "key": "confirm.qtyLeft",
           "zh-CN": "仅剩 {n} 件",
           "en": "Only {n} left",
           "ar": "بقي {n} فقط"
         },
         {
-          "key": "confirm.qtyMax",
-          "zh-CN": "最多还能买 {n} 件",
-          "en": "Only {n} available",
-          "ar": "المتاح {n} فقط"
+          "key": "confirm.qtyLimit",
+          "zh-CN": "每人限购 {limit} 件",
+          "en": "Limit {limit} per customer",
+          "ar": "الحد {limit} لكل عميل"
+        },
+        {
+          "key": "confirm.qtyLimitBought",
+          "zh-CN": "每人限购 {limit} 件，你已买 {bought} 件",
+          "en": "Limit {limit} per customer; you have bought {bought}",
+          "ar": "الحد {limit} لكل عميل، اشتريت {bought}"
         },
         {
           "key": "confirm.remark",
@@ -1424,6 +1448,12 @@
           "zh-CN": "这一单要送到「{s}」？点这儿把它存成收货地址（还要填姓名电话）",
           "en": "Deliver to {s}? Tap to save it as an address (name and phone still needed)",
           "ar": "التوصيل إلى {s}؟ اضغط لحفظه كعنوان (يلزم الاسم والهاتف)"
+        },
+        {
+          "key": "confirm.savedTotal",
+          "zh-CN": "共减 {p}",
+          "en": "{p} off",
+          "ar": "وفرت {p}"
         },
         {
           "key": "confirm.splitNote",
@@ -3556,6 +3586,24 @@
           "ar": "استخدم هذا الرمز للاستبدال"
         },
         {
+          "key": "order.returned.clawback",
+          "zh-CN": "已收回本单赠送的 {n} 积分",
+          "en": "{n} points earned on this order were taken back",
+          "ar": "تم استرداد {n} نقطة مكتسبة من هذا الطلب"
+        },
+        {
+          "key": "order.returned.coupon",
+          "zh-CN": "「{name}」已回到券包",
+          "en": "“{name}” is back in your coupons",
+          "ar": "عادت القسيمة «{name}» إلى قسائمك"
+        },
+        {
+          "key": "order.returned.points",
+          "zh-CN": "{n} 积分已退回",
+          "en": "{n} points returned",
+          "ar": "تمت إعادة {n} نقطة"
+        },
+        {
           "key": "order.splitHint",
           "zh-CN": "同一次下单如果买了多家的东西，会按商家拆成多笔订单，但只付一次钱。",
           "en": "Items from different shops are split into separate orders, but you pay once.",
@@ -5660,6 +5708,30 @@
           "ar": "اتركه فارغًا لعدد غير محدود"
         },
         {
+          "key": "activityEdit.riskBudget",
+          "zh-CN": "每单减 {m}，不限单数，预算 {b} 用完为止。确认保存？",
+          "en": "{m} off every order, no order cap, until the {b} budget runs out. Save anyway?",
+          "ar": "خصم {m} على كل طلب، دون حد لعدد الطلبات، حتى نفاد الميزانية {b}. هل تريد الحفظ؟"
+        },
+        {
+          "key": "activityEdit.riskConfirm",
+          "zh-CN": "确认保存",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "activityEdit.riskQuota",
+          "zh-CN": "每单减 {m}，最多 {n} 单（共 {total}）。确认保存？",
+          "en": "{m} off every order, up to {n} orders ({total} in total). Save anyway?",
+          "ar": "خصم {m} على كل طلب، حتى {n} طلب (الإجمالي {total}). هل تريد الحفظ؟"
+        },
+        {
+          "key": "activityEdit.riskTitle",
+          "zh-CN": "这个活动常驻、无门槛",
+          "en": "Always on, no minimum spend",
+          "ar": "عرض دائم بلا حد أدنى"
+        },
+        {
           "key": "activityEdit.rule.amount",
           "zh-CN": "减（元）",
           "en": "Discount",
@@ -5922,6 +5994,30 @@
           "zh-CN": "驳回后订单仍处于售后中，顾客可申请平台介入。理由填写清楚可减少一轮沟通。",
           "en": "The order stays in after-sales after a rejection and the customer may escalate to the platform. A clear reason saves a round of correspondence.",
           "ar": "بعد الرفض تبقى الحالة مفتوحة ليتمكن العميل من التصعيد. السبب الواضح يوفّر جولة نقاش."
+        },
+        {
+          "key": "afterSale.impactCoupon",
+          "zh-CN": "券「{name}」",
+          "en": "coupon “{name}”",
+          "ar": "القسيمة «{name}»"
+        },
+        {
+          "key": "afterSale.impactPoints",
+          "zh-CN": "{n} 积分",
+          "en": "{n} points",
+          "ar": "{n} نقطة"
+        },
+        {
+          "key": "afterSale.impactReturn",
+          "zh-CN": "整单退款，将同时退回用户的{what}",
+          "en": "Full refund: the customer also gets back {what}",
+          "ar": "استرداد كامل: سيستعيد العميل أيضًا {what}"
+        },
+        {
+          "key": "afterSale.impactRevoke",
+          "zh-CN": "并收回本单赠送的 {n} 积分",
+          "en": "and {n} points earned on this order will be taken back",
+          "ar": "وسيتم استرداد {n} نقطة مكتسبة من هذا الطلب"
         },
         {
           "key": "afterSale.instantHint",
@@ -8742,6 +8838,12 @@
           "zh-CN": "每人限购",
           "en": "Limit per customer",
           "ar": "الحد لكل عميل"
+        },
+        {
+          "key": "goods.limitPerUserHint",
+          "zh-CN": "不填为不限。按每位顾客累计计算，已取消、已退款的订单不计入",
+          "en": "Leave blank for no limit. Counted per customer over all orders; cancelled and refunded orders are excluded",
+          "ar": "اتركه فارغًا لعدم التقييد. يُحتسب لكل عميل عبر جميع الطلبات، ولا تُحتسب الطلبات الملغاة أو المستردة"
         },
         {
           "key": "goods.manageSpecs",
@@ -12300,6 +12402,30 @@
           "zh-CN": "收件人",
           "en": "Ship to",
           "ar": "المستلم"
+        },
+        {
+          "key": "order.returnedClawback",
+          "zh-CN": "已收回本单赠送的 {n} 积分",
+          "en": "{n} points earned on this order were taken back",
+          "ar": "تم استرداد {n} نقطة مكتسبة من هذا الطلب"
+        },
+        {
+          "key": "order.returnedCoupon",
+          "zh-CN": "券「{name}」已退回顾客券包",
+          "en": "Coupon “{name}” returned to the customer",
+          "ar": "أُعيدت القسيمة «{name}» إلى العميل"
+        },
+        {
+          "key": "order.returnedPoints",
+          "zh-CN": "已退回顾客 {n} 积分",
+          "en": "{n} points returned to the customer",
+          "ar": "أُعيدت {n} نقطة إلى العميل"
+        },
+        {
+          "key": "order.returnedTitle",
+          "zh-CN": "券与积分去向",
+          "en": "Coupons and points",
+          "ar": "القسائم والنقاط"
         },
         {
           "key": "order.scopeAll",
@@ -21801,6 +21927,12 @@
           "ar": "اضبط قاعدة التكرار (الأيام والساعات)"
         },
         {
+          "key": "err.marketing.activity_risk_unconfirmed",
+          "zh-CN": "这个活动常驻、无门槛，每一单都会减，请确认后再保存",
+          "en": "This offer is always on with no minimum spend; every order gets the discount. Please confirm before saving",
+          "ar": "هذا العرض دائم وبلا حد أدنى، وكل طلب يحصل على الخصم. يرجى التأكيد قبل الحفظ"
+        },
+        {
           "key": "err.marketing.activity_rule_locked",
           "zh-CN": "活动已开始，只能改结束时间和上限；改规则请结束后另建",
           "en": "This activity has started. Only the end time and caps can change; end it and create a new one to change the rules",
@@ -22543,6 +22675,12 @@
           "zh-CN": "今天的代客下单笔数已达上限，明天再试或联系管理员调整",
           "en": "You have reached today’s limit for orders placed on a customer’s behalf — try tomorrow or ask an administrator to raise it",
           "ar": "بلغت الحد اليومي للطلبات المُنشأة نيابةً عن العملاء — حاول غدًا أو اطلب من المسؤول رفع الحد"
+        },
+        {
+          "key": "err.trade.purchase_limit_exceeded",
+          "zh-CN": "超出每人限购，这件商品你还能买 {0} 件",
+          "en": "Purchase limit reached: you can buy {0} more of this item",
+          "ar": "تم بلوغ الحد الأقصى للشراء: يمكنك شراء {0} أخرى من هذا المنتج"
         },
         {
           "key": "err.trade.receiver_required",
@@ -24361,6 +24499,13 @@
         "name": "MERCHANT_PAY",
         "value": "MERCHANT_PAY",
         "zh": "补贴收单商家（补差）",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPointsPool",
+        "name": "MERCHANT_PAY_REVERSE",
+        "value": "MERCHANT_PAY_REVERSE",
+        "zh": "补差收回（待办设计 P2b）：分账后整单退款、补差回退成功，那笔钱回到平台 —— 与原来那笔 MERCHANT_PAY 对冲，入池。",
         "module": "pay/pay-domain"
       },
       {
@@ -28305,6 +28450,20 @@
         "module": "shop-core"
       },
       {
+        "host": "ItemVO",
+        "name": "LIMIT_STOCK",
+        "value": "STOCK",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ItemVO",
+        "name": "LIMIT_PER_USER",
+        "value": "PER_USER",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdAfterSale",
         "name": "APPLIED",
         "value": "APPLIED",
@@ -29865,6 +30024,7 @@
           "PRICE_CHANGED",
           "OUT_OF_DELIVERY_RANGE",
           "ORDER_STATE_ILLEGAL",
+          "PURCHASE_LIMIT_EXCEEDED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -29908,6 +30068,7 @@
           "ACTIVITY_RULE_LOCKED",
           "GROUP_CLOSED",
           "GROUP_JOIN_NEEDS_UPGRADE",
+          "ACTIVITY_RISK_UNCONFIRMED",
           "ENROLLMENT_CLOSED",
           "ENROLLMENT_OVER_BUDGET",
           "SPLIT_RECEIVER_NOT_READY",
@@ -30914,6 +31075,15 @@
           "PICKUP"
         ],
         "zh": "责任方（P-6.1.4）。"
+      },
+      {
+        "name": "LimitReason",
+        "client": "shared",
+        "values": [
+          "STOCK",
+          "PER_USER"
+        ],
+        "zh": "与后端 `OrderVO.ItemVO.LIMIT_STOCK / LIMIT_PER_USER` 逐字一致"
       },
       {
         "name": "Locale",
@@ -33798,6 +33968,14 @@
       "type": "String",
       "value": "ai.neargo.shop.common.Fulfillments.STORE_VERIFY",
       "zh": "到店核销（服务品类）。",
+      "module": "shop-core"
+    },
+    {
+      "host": "PurchaseLimitGuard",
+      "name": "FLAG",
+      "type": "String",
+      "value": "\"trade.purchase-limit.enforce\"",
+      "zh": "",
       "module": "shop-core"
     },
     {

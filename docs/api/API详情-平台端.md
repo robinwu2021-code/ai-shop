@@ -4736,6 +4736,7 @@ _无字段_
 | `scheduleType` | `string` | 是 | 排期：短期 / 长期 / 周期 |
 | `quota` | `number,null` | 是 | 限量。空 = 不限量 |
 | `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaReleased` | `number` | 否 | 被关单退回的份数（待办设计 P4）。`quotaUsed` 已经不含它们 —— 这个数让运营知道「真实卖出」与「曾经被占过」差多少 |
 | `budgetMinor` | `number,null` | 是 | 预算上限（分）。空 = 不限 |
 | `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `audienceCount` | `number` | 是 | 定向人数。**0 表示对所有人生效**，不是「谁也不发」 |
@@ -11075,6 +11076,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `scheduleType` | `string` | 是 | 排期：短期 / 长期 / 周期 |
 | `quota` | `number,null` | 是 | 限量。空 = 不限量 |
 | `quotaUsed` | `number` | 是 | 已用掉的限量 |
+| `quotaReleased` | `number` | 否 | 被关单退回的份数（待办设计 P4）。`quotaUsed` 已经不含它们 —— 这个数让运营知道「真实卖出」与「曾经被占过」差多少 |
 | `budgetMinor` | `number,null` | 是 | 预算上限（分）。空 = 不限 |
 | `budgetUsedMinor` | `number` | 是 | 已花掉的预算（分） |
 | `audienceCount` | `number` | 是 | 定向人数。**0 表示对所有人生效**，不是「谁也不发」 |

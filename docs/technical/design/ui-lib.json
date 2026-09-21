@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 451,
-        "c-app": 64
+        "b-app": 453,
+        "c-app": 63
       }
     },
     {
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 341,
+        "b-app": 342,
         "c-app": 65
       }
     },
@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 21,
-        "c-app": 15
+        "c-app": 14
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 324,
-        "c-app": 250
+        "b-app": 325,
+        "c-app": 255
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 78
+        "c-app": 77
       }
     },
     {
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 115,
         "c-app": 27
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 205,
+        "b-app": 206,
         "c-app": 76
       }
     },
@@ -682,7 +682,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -754,7 +754,7 @@
       },
       "usage": {
         "b-app": 14,
-        "c-app": 10
+        "c-app": 11
       }
     },
     {
@@ -938,7 +938,7 @@
       },
       "usage": {
         "b-app": 44,
-        "c-app": 5
+        "c-app": 6
       }
     },
     {
@@ -1054,7 +1054,7 @@
       },
       "usage": {
         "b-app": 320,
-        "c-app": 143
+        "c-app": 144
       }
     },
     {
@@ -1500,7 +1500,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 32
+        "c-app": 33
       }
     },
     {
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 89,
+        "b-app": 90,
         "c-app": 3
       }
     },
@@ -3439,9 +3439,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 55,
-      "localSelectors": 14,
-      "localCssLines": 49,
+      "libClassHits": 57,
+      "localSelectors": 15,
+      "localCssLines": 53,
       "rolled": []
     },
     {
@@ -3651,7 +3651,7 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 309,
+      "libClassHits": 310,
       "localSelectors": 67,
       "localCssLines": 294,
       "rolled": []
@@ -4019,9 +4019,9 @@
         "sh-dialog",
         "sh-scaffold"
       ],
-      "libClassHits": 80,
-      "localSelectors": 14,
-      "localCssLines": 57,
+      "libClassHits": 84,
+      "localSelectors": 15,
+      "localCssLines": 61,
       "rolled": []
     },
     {
@@ -5062,9 +5062,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 151,
-      "localSelectors": 33,
-      "localCssLines": 129,
+      "libClassHits": 152,
+      "localSelectors": 35,
+      "localCssLines": 138,
       "rolled": []
     },
     {
@@ -5081,9 +5081,9 @@
         "sh-stepper",
         "sh-switch"
       ],
-      "libClassHits": 159,
-      "localSelectors": 30,
-      "localCssLines": 122,
+      "libClassHits": 165,
+      "localSelectors": 31,
+      "localCssLines": 126,
       "rolled": []
     },
     {

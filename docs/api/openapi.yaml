@@ -7938,6 +7938,13 @@ components:
           items: 
             "$ref": "#/components/schemas/DiscountLine"
           description: "这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠"
+        outOfRange: 
+          anyOf: 
+            - type: "array"
+              items: 
+                type: "string"
+            - type: "null"
+          description: "自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。"
         arriveDate: 
           type: 
             - "string"
@@ -8043,7 +8050,22 @@ components:
           type: 
             - "number"
             - "null"
-          description: "这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。\n\n上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数； 猜大了提交才报错、猜小了少卖。当前只按库存算，「每人限购」还没接。"
+          description: "这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。\n\n上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数； 猜大了提交才报错、猜小了少卖。取「可售库存」与「每人限购还剩几件」的小值（待办设计 P1）。"
+        limitReason: 
+          anyOf: 
+            - "$ref": "#/components/schemas/LimitReason"
+            - type: "null"
+          description: "是谁挡住了 `maxQty`。到顶时那句话要说对：库存等补货能买，限购补货也没用"
+        limitPerUser: 
+          type: 
+            - "number"
+            - "null"
+          description: "每人限购（只在设了限购且平台开关开着时给）"
+        boughtQty: 
+          type: 
+            - "number"
+            - "null"
+          description: "该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现"
       required: 
         - "goodsNo"
         - "merchantNo"
@@ -8055,6 +8077,12 @@ components:
         - "qty"
         - "type"
       additionalProperties: false
+    LimitReason: 
+      type: "string"
+      enum: 
+        - "STOCK"
+        - "PER_USER"
+      description: "与后端 `OrderVO.ItemVO.LIMIT_STOCK / LIMIT_PER_USER` 逐字一致"
     DiscountLine: 
       type: "object"
       properties: 
@@ -8108,6 +8136,26 @@ components:
         - "usablePayModes"
       additionalProperties: false
       description: "结算页的<b>能力提示</b>：这一车货能不能开票、能用哪些支付方式、额度还够不够。\n\n<p>与  {@link  OrderPreview }  分开是有意的：preview 回答「多少钱」， 这个回答「付得了吗、票拿得到吗」。\n\n<p>三件事一起给，是因为它们的共同后果都是<b>付款那一刻才炸</b>—— 小微没有 H5/App 支付方式（混合购物车整单付不了）、小微不能开票 （买完才发现补救不了）、额度用尽（通道直接拒收）。 每一条单独看都像偶发故障，放在一起看才是同一件事： 平台放弱主体进来了，而结算页还没告诉买家这意味着什么。"
+    OrderReturned: 
+      type: "object"
+      properties: 
+        couponTitle: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一单用过、现在已回到券包的券名"
+        pointsReturned: 
+          type: 
+            - "number"
+            - "null"
+          description: "退回的抵扣积分（该单 REFUND 流水之和）"
+        pointsClawedBack: 
+          type: 
+            - "number"
+            - "null"
+          description: "收回的本单赠送积分（该单 CLAWBACK 流水之和）"
+      additionalProperties: false
+      description: "订单关闭后券与积分去了哪（后端 `OrderVO.Returned`）"
     OrderReceiver: 
       type: "object"
       properties: 
@@ -8223,6 +8271,11 @@ components:
           items: 
             "$ref": "#/components/schemas/DiscountLine"
           description: "这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。"
+        returned: 
+          anyOf: 
+            - "$ref": "#/components/schemas/OrderReturned"
+            - type: "null"
+          description: "已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。"
         expressNo: 
           type: "string"
           description: "EXPRESS：快递单号，发货后才有"
@@ -8384,6 +8437,11 @@ components:
               - "at"
             additionalProperties: false
           description: "售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开"
+        impact: 
+          anyOf: 
+            - "$ref": "#/components/schemas/RefundImpact"
+            - type: "null"
+          description: "同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。"
       required: 
         - "afterSaleNo"
         - "subOrderNo"
@@ -8411,6 +8469,24 @@ components:
         - "ARBITRATING"
         - "CLOSED"
       description: "售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。**\n\n⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`， 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条， 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现 （它 gate 在一个后端永远不会下发的 `AGREED` 上）。\n\n那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`， 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择， 端上不能自己补一套更细的词然后假装后端会给。"
+    RefundImpact: 
+      type: "object"
+      properties: 
+        couponTitle: 
+          type: 
+            - "string"
+            - "null"
+        pointsReturn: 
+          type: "number"
+          description: "退回用户的抵扣积分"
+        pointsRevoke: 
+          type: "number"
+          description: "收回用户的赠送积分"
+      required: 
+        - "pointsReturn"
+        - "pointsRevoke"
+      additionalProperties: false
+      description: "整单退款会一并退回的券与积分（后端 `AfterSaleVO.RefundImpact`）"
     GoodsBatch: 
       type: "object"
       properties: 
