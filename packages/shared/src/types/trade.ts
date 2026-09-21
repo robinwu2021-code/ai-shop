@@ -247,9 +247,17 @@ export interface OrderItem {
  * 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。
  * **明细是解释不是账**：与合计对不上时以合计为准。
  */
+/**
+ * 这笔优惠是活动给的还是券给的。
+ *
+ * **具名而不是内联联合**：内联的枚举对登记表与对账工具都不可见，改名必漏
+ * （packages/shared 的枚举登记闸门拦的就是这条）。
+ */
+export type DiscountKind = "ACTIVITY" | "COUPON";
+
 export interface DiscountLine {
   /** ACTIVITY（活动）/ COUPON（券） */
-  kind: "ACTIVITY" | "COUPON";
+  kind: DiscountKind;
   /** 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 */
   name: string;
   /** 这一条减了多少（最小货币单位，正数） */

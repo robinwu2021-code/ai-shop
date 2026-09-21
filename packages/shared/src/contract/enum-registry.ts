@@ -318,6 +318,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "增长活动冲突策略，后端无增长模块" },
   { decl: "ops-web:NewUserFactor", dom: "growth", shape: "CLASS", verdict: "PLANNED",
     note: "新客判定因子，同上" },
+  { decl: "shared:DiscountKind", dom: "marketing", shape: "CLASS", verdict: "OK",
+    note: "订单优惠明细里这一条是活动给的还是券给的（OrderVO.discountLines.kind，"
+      + "与后端 OrderVO.DiscountLine 的两个常量逐字一致）。买家看到的「优惠 −¥10」"
+      + "此前来历不明，这个字段决定那一行说「活动」还是「券」" },
   { decl: "shared:CouponFunder", dom: "marketing", shape: "CLASS", verdict: "OK",
     note: "券的出资方，与后端 MktCoupon.funder 一致。平台券走平台预算，商家券从结算里扣 —— 这个字段决定钱从谁账上出，不是展示用" },
   { decl: "shared:CouponType", dom: "marketing", shape: "CLASS", verdict: "OK",

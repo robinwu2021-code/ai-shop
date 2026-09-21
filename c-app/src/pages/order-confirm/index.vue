@@ -1084,21 +1084,16 @@ onMounted(async () => {
             <text class="txt-price sh-num">{{ money(it.price) }}</text>
             <!--
               **数量在这儿改，不用退回购物车**（原型 k02/k04）。
-              加号到上限就压暗，并把「还剩几件」说出来 —— 压暗却不说，用户会以为点坏了。
+              用库里的 sh-stepper：夹取、点按面积、加减号的样子都在它那儿，
+              自己写一只的话这三样都要再对一遍（闸门也会拦）。
+              下界给 0：减到 0 = 把这一行移出本单（购物车里那行还在）。
             -->
-            <view class="qty sh-row">
-              <view class="qty__btn sh-center" @tap="setQty(it, it.qty - 1)">
-                <text class="txt-body">−</text>
-              </view>
-              <text class="txt-body sh-num qty__n">{{ it.qty }}</text>
-              <view
-                class="qty__btn sh-center"
-                :class="{ 'is-disabled': atMax(it) }"
-                @tap="setQty(it, it.qty + 1)"
-              >
-                <text class="txt-body">＋</text>
-              </view>
-            </view>
+            <sh-stepper
+              :model-value="it.qty"
+              :min="0"
+              :max="maxQtyOf[it.skuNo] ?? Number.POSITIVE_INFINITY"
+              @change="(n: number) => setQty(it, n)"
+            ></sh-stepper>
           </view>
           <text v-if="atMax(it)" class="txt-caption sh-muted row__max">
             {{ $t("confirm.qtyLeft", { n: maxQtyOf[it.skuNo] }) }}
@@ -1339,20 +1334,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 数量步进器：两个方块 + 中间的数。与购物车那只同形，只是不写回购物车 */
-.qty {
-  gap: 0;
-}
-.qty__btn {
-  width: 56rpx;
-  height: 56rpx;
-  background: var(--sh-fill);
-  border-radius: var(--sh-radius-sm);
-}
-.qty__n {
-  min-width: 64rpx;
-  text-align: center;
-}
 .row__max {
   display: block;
   margin-top: 8rpx;
