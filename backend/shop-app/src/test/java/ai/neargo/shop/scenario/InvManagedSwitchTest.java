@@ -88,23 +88,23 @@ class InvManagedSwitchTest {
     void closingEmptyCategoryArchivesAndReopenRestores() throws Exception {
         String token = shop();
         Goods g = goods(token, "香梨空仓");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("记库存的货建品即上账").isEqualTo("ACTIVE");
 
         JsonNode r = ok(put("/biz/inventory/category-setting/" + FRUIT)
                 .content("{\"managed\":false}"), token);
         assertThat(r.get("status").asString()).isEqualTo("DONE");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("关掉品类 → 物料停用，不再出现在进货盘点里").isEqualTo("ARCHIVED");
         assertThat(mode(token, g.goodsNo).get("managed").asBoolean()).isFalse();
 
         // 保存一次商品：投影事件带着「不记」，不许把物料又建回来
         resave(token, g, "香梨空仓");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("编辑一次商品就把停用的物料复活 = 开关形同虚设").isEqualTo("ARCHIVED");
 
         ok(put("/biz/inventory/category-setting/" + FRUIT).content("{\"managed\":true}"), token);
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("改回记库存 → 原样恢复").isEqualTo("ACTIVE");
     }
 
@@ -113,7 +113,7 @@ class InvManagedSwitchTest {
     void closingStockedCategoryNeedsConfirmAndKeepsBalance() throws Exception {
         String token = shop();
         Goods g = goods(token, "阳光玫瑰");
-        dispatcher.dispatchPending();
+        settle();
         String inbound = inbound(token, g.skuNo, 12);
         ok(post("/biz/inventory/inbounds/" + inbound + "/post"), token);
 
@@ -128,7 +128,7 @@ class InvManagedSwitchTest {
         r = ok(put("/biz/inventory/category-setting/" + FRUIT)
                 .content("{\"managed\":false,\"confirm\":true}"), token);
         assertThat(r.get("status").asString()).isEqualTo("DONE");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("有库存也停：店主已经确认过").isEqualTo("ARCHIVED");
         assertThat(acl.stateOf(entityOf(token), java.util.List.of(g.skuNo)).get(g.skuNo).onHand())
                 .as("停用不是报损：余额原样留着").isEqualTo(12);
@@ -139,7 +139,7 @@ class InvManagedSwitchTest {
     void openInboundBlocksEvenWithConfirm() throws Exception {
         String token = shop();
         Goods g = goods(token, "香梨在途");
-        dispatcher.dispatchPending();
+        settle();
         String inbound = inbound(token, g.skuNo, 5);   // 草稿，不过账
 
         for (String body : new String[]{"{\"managed\":false}", "{\"managed\":false,\"confirm\":true}"}) {
@@ -149,7 +149,7 @@ class InvManagedSwitchTest {
             assertThat(b.get("kind").asString()).isEqualTo("INBOUND");
             assertThat(b.get("docNo").asString()).as("s04 要能点进那张单").isEqualTo(inbound);
         }
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(g.skuNo)).as("被拒 = 什么都没改").isEqualTo("ACTIVE");
         assertThat(row(ok(get("/biz/inventory/category-setting"), token), FRUIT).get("managed").asBoolean())
                 .isTrue();
@@ -161,11 +161,11 @@ class InvManagedSwitchTest {
         String token = shop();
         Goods a = goods(token, "代卖香蕉");
         Goods b = goods(token, "自营苹果");
-        dispatcher.dispatchPending();
+        settle();
 
         JsonNode r = ok(put("/biz/goods/" + a.goodsNo + "/inv-mode").content("{\"mode\":\"OFF\"}"), token);
         assertThat(r.get("status").asString()).isEqualTo("DONE");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(a.skuNo)).isEqualTo("ARCHIVED");
         assertThat(itemStatus(b.skuNo)).as("只动这一件").isEqualTo("ACTIVE");
 
@@ -176,12 +176,12 @@ class InvManagedSwitchTest {
         // 关掉再打开品类：设过「不记」的那件不跟着动
         ok(put("/biz/inventory/category-setting/" + FRUIT).content("{\"managed\":false}"), token);
         ok(put("/biz/inventory/category-setting/" + FRUIT).content("{\"managed\":true}"), token);
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(a.skuNo)).as("单件设置优先").isEqualTo("ARCHIVED");
         assertThat(itemStatus(b.skuNo)).isEqualTo("ACTIVE");
 
         ok(put("/biz/goods/" + a.goodsNo + "/inv-mode").content("{\"mode\":\"INHERIT\"}"), token);
-        dispatcher.dispatchPending();
+        settle();
         assertThat(itemStatus(a.skuNo)).as("改回跟随品类（记）→ 恢复").isEqualTo("ACTIVE");
     }
 
@@ -191,13 +191,24 @@ class InvManagedSwitchTest {
         String token = shop();
         ok(put("/biz/inventory/category-setting/" + FRUIT).content("{\"managed\":false}"), token);
         Goods g = goods(token, "临时代卖橙子");
-        dispatcher.dispatchPending();
+        settle();
         assertThat(acl.itemIdOfSku(g.skuNo))
                 .as("不记库存的货出现在库存页 = 这一期要解决的那件事没解决")
                 .isNull();
     }
 
     // ------------------------------------------------------------------ 种子
+
+    /**
+     * 推到队列清空。**一次 dispatchPending 只取最老的 200 条** —— 全量跑时别的用例留下的积压
+     * 会把这里刚发的事件排在后面，推一把看到的是「还没投到」，而断言读起来像「开关没生效」。
+     * 上限 50 轮：一直失败重投的事件不该让这里死循环。
+     */
+    private void settle() {
+        for (int i = 0; i < 50 && dispatcher.dispatchPending() > 0; i++) {
+            // 继续推
+        }
+    }
 
     private record Goods(String goodsNo, String skuNo) {
     }
@@ -231,6 +242,7 @@ class InvManagedSwitchTest {
 
     private String inbound(String token, String skuNo, int qty) throws Exception {
         String itemId = acl.itemIdOfSku(skuNo);
+        assertThat(itemId).as("进货前物料应已投影：%s", skuNo).isNotNull();
         return ok(post("/biz/inventory/inbounds").content("""
                 {"sourceType":"PURCHASE","supplierName":"果园直供",
                  "occurredAt":"2026-09-21T00:00:00",

@@ -674,9 +674,15 @@ class OpsDataScopeFlowTest {
         assertThat(mine).as("配了商家域的运营，商品池里不该出现别家的货").isNotEmpty();
         assertThat(mine.values()).containsOnly("M0001");
 
-        // 对照组：不设域的人看得到两家 —— 没有这一条，上面那句可能只是「查询坏了」
-        var all = goodsPool(TestLogin.operator(mvc(), json, "goods", "goods123"));
+        // 对照组：不设域的人看得到两家 —— 没有这一条，上面那句可能只是「查询坏了」。
+        // **按商家各查一次**，不取「最新 200 条」：全量跑时别的用例建的商品会把种子挤出那一页，
+        // 断言就变成了在量「测试建了多少件货」（2026-09-21 多 7 件就红了）
+        String ops = TestLogin.operator(mvc(), json, "goods", "goods123");
+        var all = new java.util.LinkedHashMap<String, String>();
+        all.putAll(goodsPool(ops, "M0001"));
+        all.putAll(goodsPool(ops, "M0002"));
         assertThat(all.keySet()).contains("G0001", "G0003");
+        assertThat(all.values()).contains("M0001", "M0002");
     }
 
     @Test
@@ -815,7 +821,12 @@ class OpsDataScopeFlowTest {
 
     /** 商品池：goodsNo → merchantNo */
     private java.util.Map<String, String> goodsPool(String token) throws Exception {
-        String body = mvc().perform(get("/ops/goods?page=1&size=200")
+        return goodsPool(token, null);
+    }
+
+    private java.util.Map<String, String> goodsPool(String token, String merchantNo) throws Exception {
+        String body = mvc().perform(get("/ops/goods?page=1&size=200"
+                                + (merchantNo == null ? "" : "&merchantNo=" + merchantNo))
                         .header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();

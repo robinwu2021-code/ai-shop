@@ -37,10 +37,10 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
     private final SkuMapper skuMapper;
     private final GoodsMapper goodsMapper;
     private final OutboxEventBus events;
-    private final ai.neargo.shop.spi.product.InvManagedPort invManaged;
+    private final ai.neargo.shop.product.service.InvManagedService invManaged;
 
     public SkuIdentityServiceImpl(SkuMapper skuMapper, GoodsMapper goodsMapper,
-                                  OutboxEventBus events, ai.neargo.shop.spi.product.InvManagedPort invManaged) {
+                                  OutboxEventBus events, ai.neargo.shop.product.service.InvManagedService invManaged) {
         this.invManaged = invManaged;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;

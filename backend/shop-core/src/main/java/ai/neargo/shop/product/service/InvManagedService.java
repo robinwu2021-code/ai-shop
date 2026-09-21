@@ -2,7 +2,6 @@ package ai.neargo.shop.product.service;
 
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.spi.product.InvManagedPort;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,7 +16,13 @@ import java.util.Map;
  * <p>这里只管「判与存」。改为不记库存之前的在途单据、库存检查要看进销存，
  * 商品域看不到那一侧，由 shop-app 的编排层做完检查再调这里（见 {@code InvManagedAppService}）。
  */
-public interface InvManagedService extends InvManagedPort {
+public interface InvManagedService {
+
+    /**
+     * 这些 SKU 里记库存的那几个。查不到的 SKU 算「记」。
+     * 跨域调用方走 {@code InvManagedPort}（实现在 {@code product.port}，只转发到这里）
+     */
+    java.util.Set<String> managedSkus(Collection<String> skuNos);
 
     /** 平台默认：类目模板是实物 / 生鲜才记。查不到类目按「记」—— 与改版前一致 */
     boolean platformDefault(String categoryNo);
