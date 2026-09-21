@@ -5065,7 +5065,15 @@
       "libClassHits": 152,
       "localSelectors": 35,
       "localCssLines": 138,
-      "rolled": []
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5560,6 +5568,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "primover",
+      "label": "主色文字自写",
+      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+      "pages": [
+        "c-app/order"
       ]
     }
   ],

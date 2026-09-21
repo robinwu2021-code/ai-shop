@@ -259,6 +259,7 @@
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -308,6 +309,7 @@
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -363,6 +365,7 @@
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3889,6 +3892,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3938,6 +3942,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3987,6 +3992,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4043,6 +4049,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4229,6 +4236,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4340,6 +4348,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -7716,6 +7725,7 @@ _无字段_
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
 | `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -8299,7 +8309,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `couponTitle` | `string,null` | 否 | — |
+| `couponTitle` | `string,null` | 否 | 会一并退回的券名（此刻还占在这一单上的那张）；没用券或退券开关关着时为空 |
 | `pointsReturn` | `number` | 是 | 退回用户的抵扣积分 |
 | `pointsRevoke` | `number` | 是 | 收回用户的赠送积分 |
 
