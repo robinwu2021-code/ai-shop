@@ -1049,8 +1049,8 @@
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "k11",
+              "protoUrl": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz",
               "preview": "http://localhost:5176/#/pages/pay/index"
             },
             {
@@ -1060,8 +1060,8 @@
               "domain": "订单与履约",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "k09",
+              "protoUrl": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz",
               "preview": "http://localhost:5176/#/pages/orders/index"
             },
             {

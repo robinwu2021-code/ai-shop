@@ -1090,6 +1090,12 @@
           "ar": "موعد الزيارة"
         },
         {
+          "key": "confirm.autoActivity",
+          "zh-CN": "自动参与的活动（不用选）",
+          "en": "Applied automatically",
+          "ar": "مطبَّق تلقائيًا"
+        },
+        {
           "key": "confirm.backToCart",
           "zh-CN": "回购物车",
           "en": "Back to cart",
@@ -1138,6 +1144,48 @@
           "ar": "{n} متاحة"
         },
         {
+          "key": "confirm.couponDroppedOffline",
+          "zh-CN": "当面付不能用平台券，已取消这张券",
+          "en": "Platform coupons can't be used when paying in person; removed",
+          "ar": "لا تُستخدم قسائم المنصة مع الدفع الحضوري، تمت إزالتها"
+        },
+        {
+          "key": "confirm.couponExpired",
+          "zh-CN": "已过期",
+          "en": "Expired",
+          "ar": "منتهية"
+        },
+        {
+          "key": "confirm.couponGap",
+          "zh-CN": "还差 {p} 到门槛",
+          "en": "{p} short of the minimum",
+          "ar": "ينقص {p} للحد الأدنى"
+        },
+        {
+          "key": "confirm.couponNoneUsable",
+          "zh-CN": "{n} 张券本单不可用",
+          "en": "{n} coupons, none apply here",
+          "ar": "{n} قسائم لا تنطبق على هذا الطلب"
+        },
+        {
+          "key": "confirm.couponNotStarted",
+          "zh-CN": "还没到使用时间",
+          "en": "Not valid yet",
+          "ar": "لم تبدأ بعد"
+        },
+        {
+          "key": "confirm.couponPanel",
+          "zh-CN": "优惠",
+          "en": "Discounts",
+          "ar": "الخصومات"
+        },
+        {
+          "key": "confirm.couponUnusable",
+          "zh-CN": "用不了的（{n}）",
+          "en": "Can't be used ({n})",
+          "ar": "غير قابلة للاستخدام ({n})"
+        },
+        {
           "key": "confirm.discount",
           "zh-CN": "优惠",
           "en": "Discount",
@@ -1156,6 +1204,24 @@
           "ar": "الشبكة غير مستقرة — هذا مبلغ تقديري، والمعتمد هو مبلغ الإرسال"
         },
         {
+          "key": "confirm.failCoupon",
+          "zh-CN": "这张券刚刚用不了了，已经取消，请重新选",
+          "en": "That coupon just became unusable; it has been removed",
+          "ar": "لم تعد القسيمة صالحة، وتمت إزالتها"
+        },
+        {
+          "key": "confirm.failRange",
+          "zh-CN": "这个地址超出配送范围，换个地址或改配送方式",
+          "en": "Address is out of delivery range — change it or pick another method",
+          "ar": "العنوان خارج نطاق التوصيل — غيّره أو غيّر طريقة التسليم"
+        },
+        {
+          "key": "confirm.failStock",
+          "zh-CN": "库存不够了，调一下数量再试",
+          "en": "Not enough stock — adjust the quantity",
+          "ar": "المخزون غير كافٍ — عدِّل الكمية"
+        },
+        {
           "key": "confirm.free",
           "zh-CN": "免运费",
           "en": "Free",
@@ -1166,6 +1232,18 @@
           "zh-CN": "运费",
           "en": "Delivery",
           "ar": "التوصيل"
+        },
+        {
+          "key": "confirm.fromActivity",
+          "zh-CN": "活动「{name}」",
+          "en": "Promotion “{name}”",
+          "ar": "عرض «{name}»"
+        },
+        {
+          "key": "confirm.fromCoupon",
+          "zh-CN": "券「{name}」",
+          "en": "Coupon “{name}”",
+          "ar": "قسيمة «{name}»"
         },
         {
           "key": "confirm.goods",
@@ -1214,6 +1292,12 @@
           "zh-CN": "支付方式",
           "en": "Payment",
           "ar": "طريقة الدفع"
+        },
+        {
+          "key": "confirm.payNow",
+          "zh-CN": "立即支付 {p}",
+          "en": "Pay {p}",
+          "ar": "ادفع {p}"
         },
         {
           "key": "confirm.payable",
@@ -1316,6 +1400,18 @@
           "zh-CN": "已用 {n} 积分，抵 {p}",
           "en": "{n} points used, {p} off",
           "ar": "استُخدمت {n} نقطة، خصم {p}"
+        },
+        {
+          "key": "confirm.qtyLeft",
+          "zh-CN": "仅剩 {n} 件",
+          "en": "Only {n} left",
+          "ar": "بقي {n} فقط"
+        },
+        {
+          "key": "confirm.qtyMax",
+          "zh-CN": "最多还能买 {n} 件",
+          "en": "Only {n} available",
+          "ar": "المتاح {n} فقط"
         },
         {
           "key": "confirm.remark",
@@ -3364,6 +3460,12 @@
           "ar": "أظهر هذا الرمز في نقطة الاستلام"
         },
         {
+          "key": "order.copy",
+          "zh-CN": "复制",
+          "en": "Copy",
+          "ar": "نسخ"
+        },
+        {
           "key": "order.createdAt",
           "zh-CN": "下单时间",
           "en": "Placed",
@@ -3386,6 +3488,42 @@
           "zh-CN": "拼团中 · 还差 {n} 人",
           "en": "Group open · {n} more to go",
           "ar": "المجموعة مفتوحة · يلزم {n} آخرون"
+        },
+        {
+          "key": "order.next.CANCELLED",
+          "zh-CN": "这一单已经关闭",
+          "en": "This order is closed",
+          "ar": "أُغلق هذا الطلب"
+        },
+        {
+          "key": "order.next.COMPLETED",
+          "zh-CN": "这一单已经完成，有问题可以申请售后",
+          "en": "Completed. You can still request after-sales",
+          "ar": "اكتمل الطلب، ويمكنك طلب خدمة ما بعد البيع"
+        },
+        {
+          "key": "order.next.FULFILLING",
+          "zh-CN": "商家已经发出，请留意到货通知",
+          "en": "On its way — watch for the arrival notice",
+          "ar": "في الطريق — انتبه لإشعار الوصول"
+        },
+        {
+          "key": "order.next.REFUNDED",
+          "zh-CN": "钱已原路退回，到账时间以银行为准",
+          "en": "Refunded to the original method",
+          "ar": "تمت إعادة المبلغ بنفس طريقة الدفع"
+        },
+        {
+          "key": "order.next.WAIT_FULFILL",
+          "zh-CN": "商家正在备货，发出后可以查看进度",
+          "en": "The seller is preparing your order",
+          "ar": "التاجر يجهّز طلبك"
+        },
+        {
+          "key": "order.next.WAIT_PAY",
+          "zh-CN": "付款后商家开始备货，超时未付会自动关闭",
+          "en": "The seller starts preparing after payment; unpaid orders close automatically",
+          "ar": "يبدأ التاجر التجهيز بعد الدفع، والطلب غير المدفوع يُغلق تلقائيًا"
         },
         {
           "key": "order.noOrderNo",
@@ -3572,6 +3710,18 @@
           "zh-CN": "去支付",
           "en": "Pay",
           "ar": "ادفع"
+        },
+        {
+          "key": "orders.payLeft",
+          "zh-CN": "{t} 后关闭",
+          "en": "Closes in {t}",
+          "ar": "يُغلق خلال {t}"
+        },
+        {
+          "key": "orders.saved",
+          "zh-CN": "已优惠 {p}",
+          "en": "Saved {p}",
+          "ar": "وفّرت {p}"
         },
         {
           "key": "orders.tab.afterSale",
@@ -25354,6 +25504,20 @@
         "module": "shop-base"
       },
       {
+        "host": "AppliedDiscount",
+        "name": "ACTIVITY",
+        "value": "ACTIVITY",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "AppliedDiscount",
+        "name": "COUPON",
+        "value": "COUPON",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "AudienceItem",
         "name": "ALL",
         "value": "ALL",
@@ -26127,6 +26291,27 @@
         "host": "MktCampaign",
         "name": "ENDED",
         "value": "ENDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "Unusable",
+        "name": "BELOW_THRESHOLD",
+        "value": "BELOW_THRESHOLD",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "Unusable",
+        "name": "EXPIRED",
+        "value": "EXPIRED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "Unusable",
+        "name": "NOT_STARTED",
+        "value": "NOT_STARTED",
         "zh": "",
         "module": "shop-core"
       },
@@ -28108,6 +28293,20 @@
         "host": "RiskEvent",
         "name": "DISMISSED",
         "value": "DISMISSED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "DiscountLine",
+        "name": "ACTIVITY",
+        "value": "ACTIVITY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "DiscountLine",
+        "name": "COUPON",
+        "value": "COUPON",
         "zh": "",
         "module": "shop-core"
       },
