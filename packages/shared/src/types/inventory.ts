@@ -390,21 +390,25 @@ export type StockDocKind = "IN" | "OUT";
 
 /** 库存设置页的一行：本店各门店经营类目的合集，每类一个开关 */
 export interface InvCategorySetting {
+  /** 平台类目号 */
   categoryNo: string;
+  /** 类目名（平台类目树上的名字） */
   name: string;
   /** 生效值：记不记库存 */
   managed: boolean;
-  /** 没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」 */
+  /** 没设过、用的是平台默认 —— 界面写「默认不记」 */
   isDefault: boolean;
-  /** 这一类下本店有几件商品 */
+  /** 这一类下本店有几件商品 —— 拨开关之前让他知道会动到多少东西 */
   goodsCount: number;
 }
 
-/** 单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存 */
+/** 单件商品的设置。与后端 `PrdGoods.INV_*` 逐字一致 */
 export type InvMode = "INHERIT" | "ON" | "OFF";
 
 export interface GoodsInvMode {
+  /** 商品号 */
   goodsNo: string;
+  /** 单件设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存 */
   mode: InvMode;
   /** 生效值 */
   managed: boolean;
@@ -413,26 +417,38 @@ export interface GoodsInvMode {
 }
 
 /**
- * 挡住「改为不记库存」的在途单据。
+ * 挡住「改为不记库存」的在途单据种类。
  * INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 ·
- * RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单
+ * RESERVATION 线上订单待出库 · COUNT 正在盘的盘点单
  */
+export type InvModeBlockerKind = "INBOUND" | "OUTBOUND" | "TRANSFER" | "RESERVATION" | "COUNT";
+
 export interface InvModeBlocker {
-  kind: "INBOUND" | "OUTBOUND" | "TRANSFER" | "RESERVATION" | "COUNT";
+  /** 单据种类 */
+  kind: InvModeBlockerKind;
+  /** 单号。RESERVATION 是订单侧的锁号，界面不展示 */
   docNo: string;
 }
 
 export interface InvAffectedGoods {
+  /** 商品号 */
   goodsNo: string;
+  /** 商品标题 */
   title: string;
+  /** 各库位实存合计。只在 NEEDS_CONFIRM 时有意义，其余为 0 */
   onHand: number;
+  /** 挡住它的在途单据。只在 BLOCKED 时非空 */
   blockers: InvModeBlocker[];
 }
 
 /**
  * 切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改
  */
+export type InvModeChangeStatus = "DONE" | "BLOCKED" | "NEEDS_CONFIRM";
+
 export interface InvModeChange {
-  status: "DONE" | "BLOCKED" | "NEEDS_CONFIRM";
+  /** 结果 */
+  status: InvModeChangeStatus;
+  /** BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 */
   goods: InvAffectedGoods[];
 }

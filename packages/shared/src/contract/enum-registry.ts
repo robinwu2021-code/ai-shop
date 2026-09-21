@@ -552,6 +552,18 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "`status: string`，取值只写在注释里，且注释漏了 VOIDED 而页面已经在比较它。"
       + "ops-web 没有调拨页面，所以只有 shared 一侧，不是漏登" },
 
+  { decl: "shared:InvMode", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "单件商品记不记库存：跟随品类 / 记 / 不记。与后端 PrdGoods.INV_* 逐字一致。"
+      + "三档而不是布尔：「跟随」与「显式记」在品类改了之后行为不同" },
+
+  { decl: "shared:InvModeBlockerKind", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "挡住「改为不记库存」的在途单据种类，与 InventoryAclService.Blocker.kind 逐字一致。"
+      + "界面按它说「进货单待收货 / 调拨在途 / 线上订单待出库」—— 店主要知道去哪儿把它办完" },
+
+  { decl: "shared:InvModeChangeStatus", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "切换结果：已改 / 被在途单据拦下 / 还有库存要确认。不是单据状态，是一次请求的三种答复，"
+      + "所以不走 L1 状态词表" },
+
   { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "MERGE",
     note: "与 ops-web:InvDocKind 逐字相同（IN/OUT）。归一到 shared 是对的，"
       + "但要连 ops-web 的引用一起改，属独立一批" },
