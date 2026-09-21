@@ -32,8 +32,13 @@
 #     令牌**，在 401 那一刻恰好用不了 —— 接它是拿一条更弱的路去替一条更强的。
 #     （真正的缺口在别处：expires_at 此前是签发时定死的，B 端与运营端没有静默登录，
 #     到点就硬踢。已改成「用着就不过期」，见 DbTokenStore#touchIfStale。）
-#   · GET /mp/coupon/mine  与端上在用的 /mp/my-coupons 疑似同一件事的两套实现，
-#     接之前先判是不是该删后端那个，而不是给它补入口。
+#
+# 2026-09-21 销掉 2 条（不是放宽，是真的接上了）：
+#   · GET  /mp/coupon/mine  端上「我的券」与结算页的可用券改读它 ——
+#     此前两处都读领券中心（/mp/coupon），活动一下架用户手里的券就从两处一起消失。
+#   · POST /mp/coupon/best  下单页的优惠面板读它：可用券、**不可用券及原因**都来自它。
+#     当初留在名单里的顾虑是「疑似与 /mp/my-coupons 两套实现」——
+#     查下来不是：那个是商家发给我的券（带到店码、次卡余次），老形状表达不了，两者并存。
 #
 # 2026-09-19 加 1 条，**有意保留、有删除时点**：
 #   · POST /mp/group-buy/*/join  拼团 P1b（64e83533）把参团并进了下单（带团号下单、
@@ -48,7 +53,6 @@ b-app POST /biz/quote/*/revise
 c-app GET /mp/after-sale/*
 c-app GET /mp/category/tree
 c-app GET /mp/config/bootstrap
-c-app GET /mp/coupon/mine
 c-app GET /mp/goods/*/sku-price
 c-app GET /mp/group-request/*/price-history
 c-app GET /mp/group-request/*/quotes
@@ -65,7 +69,6 @@ c-app GET /mp/topics
 c-app GET /mp/topics/*/goods
 c-app POST /mp/after-sale/*/cancel
 c-app POST /mp/attribution/report
-c-app POST /mp/coupon/best
 c-app POST /mp/group-buy/*/join
 c-app POST /mp/order/*/confirm-receipt
 c-app POST /mp/risk/appeal
