@@ -1456,8 +1456,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
-| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
+| `status` | [`InvModeChangeStatus`](#invmodechangestatus) | 是 | 结果 |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 |
 
 
 #### POST `/biz/goods/{goodsNo}/presale`
@@ -2449,8 +2449,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
-| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
+| `status` | [`InvModeChangeStatus`](#invmodechangestatus) | 是 | 结果 |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 |
 
 
 #### POST `/biz/inventory/counts`
@@ -7047,8 +7047,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `mode` | [`InvMode`](#invmode) | 是 | — |
+| `goodsNo` | `string` | 是 | 商品号 |
+| `mode` | [`InvMode`](#invmode) | 是 | 单件设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存 |
 | `managed` | `boolean` | 是 | 生效值 |
 | `categoryManaged` | `boolean` | 是 | 品类那一级的生效值 —— 「跟随品类（记库存）」括号里写的就是它 |
 
@@ -7226,10 +7226,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
-| `onHand` | `number` | 是 | — |
-| `blockers` | [`InvModeBlocker`](#invmodeblocker)\[\] | 是 | — |
+| `goodsNo` | `string` | 是 | 商品号 |
+| `title` | `string` | 是 | 商品标题 |
+| `onHand` | `number` | 是 | 各库位实存合计。只在 NEEDS_CONFIRM 时有意义，其余为 0 |
+| `blockers` | [`InvModeBlocker`](#invmodeblocker)\[\] | 是 | 挡住它的在途单据。只在 BLOCKED 时非空 |
 
 ### InvCategorySetting
 
@@ -7237,15 +7237,15 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categoryNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `categoryNo` | `string` | 是 | 平台类目号 |
+| `name` | `string` | 是 | 类目名（平台类目树上的名字） |
 | `managed` | `boolean` | 是 | 生效值：记不记库存 |
-| `isDefault` | `boolean` | 是 | 没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」 |
-| `goodsCount` | `number` | 是 | 这一类下本店有几件商品 |
+| `isDefault` | `boolean` | 是 | 没设过、用的是平台默认 —— 界面写「默认不记」 |
+| `goodsCount` | `number` | 是 | 这一类下本店有几件商品 —— 拨开关之前让他知道会动到多少东西 |
 
 ### InvMode
 
-单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存
+单件商品的设置。与后端 `PrdGoods.INV_*` 逐字一致
 
 枚举取值：
 
@@ -7255,21 +7255,39 @@ _无字段_
 
 ### InvModeBlocker
 
-挡住「改为不记库存」的在途单据。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `kind` | `INBOUND` \| `OUTBOUND` \| `TRANSFER` \| `RESERVATION` \| `COUNT` | 是 | — |
-| `docNo` | `string` | 是 | — |
+| `kind` | [`InvModeBlockerKind`](#invmodeblockerkind) | 是 | 单据种类 |
+| `docNo` | `string` | 是 | 单号。RESERVATION 是订单侧的锁号，界面不展示 |
+
+### InvModeBlockerKind
+
+挡住「改为不记库存」的在途单据种类。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库 · COUNT 正在盘的盘点单
+
+枚举取值：
+
+- `INBOUND`
+- `OUTBOUND`
+- `TRANSFER`
+- `RESERVATION`
+- `COUNT`
 
 ### InvModeChange
 
-切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | `DONE` \| `BLOCKED` \| `NEEDS_CONFIRM` | 是 | — |
-| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | — |
+| `status` | [`InvModeChangeStatus`](#invmodechangestatus) | 是 | 结果 |
+| `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 |
+
+### InvModeChangeStatus
+
+切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改
+
+枚举取值：
+
+- `DONE`
+- `BLOCKED`
+- `NEEDS_CONFIRM`
 
 ### LimitReason
 

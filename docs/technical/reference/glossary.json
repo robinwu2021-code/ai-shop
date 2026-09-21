@@ -31331,7 +31331,29 @@
           "ON",
           "OFF"
         ],
-        "zh": "单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存"
+        "zh": "单件商品的设置。"
+      },
+      {
+        "name": "InvModeBlockerKind",
+        "client": "shared",
+        "values": [
+          "INBOUND",
+          "OUTBOUND",
+          "TRANSFER",
+          "RESERVATION",
+          "COUNT"
+        ],
+        "zh": "挡住「改为不记库存」的在途单据种类。"
+      },
+      {
+        "name": "InvModeChangeStatus",
+        "client": "shared",
+        "values": [
+          "DONE",
+          "BLOCKED",
+          "NEEDS_CONFIRM"
+        ],
+        "zh": "切换的结果。"
       },
       {
         "name": "InvoiceRequestStatus",

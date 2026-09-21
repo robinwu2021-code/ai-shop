@@ -1255,17 +1255,19 @@ components:
       properties: 
         categoryNo: 
           type: "string"
+          description: "平台类目号"
         name: 
           type: "string"
+          description: "类目名（平台类目树上的名字）"
         managed: 
           type: "boolean"
           description: "生效值：记不记库存"
         isDefault: 
           type: "boolean"
-          description: "没设过、用的是平台默认 —— 界面写「默认不记 / 默认记」"
+          description: "没设过、用的是平台默认 —— 界面写「默认不记」"
         goodsCount: 
           type: "number"
-          description: "这一类下本店有几件商品"
+          description: "这一类下本店有几件商品 —— 拨开关之前让他知道会动到多少东西"
       required: 
         - "categoryNo"
         - "name"
@@ -1280,14 +1282,16 @@ components:
         - "INHERIT"
         - "ON"
         - "OFF"
-      description: "单件商品的设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存"
+      description: "单件商品的设置。与后端 `PrdGoods.INV_*` 逐字一致"
     GoodsInvMode: 
       type: "object"
       properties: 
         goodsNo: 
           type: "string"
+          description: "商品号"
         mode: 
           "$ref": "#/components/schemas/InvMode"
+          description: "单件设置：INHERIT 跟随品类 / ON 记库存 / OFF 不记库存"
         managed: 
           type: "boolean"
           description: "生效值"
@@ -1300,61 +1304,73 @@ components:
         - "managed"
         - "categoryManaged"
       additionalProperties: false
+    InvModeBlockerKind: 
+      type: "string"
+      enum: 
+        - "INBOUND"
+        - "OUTBOUND"
+        - "TRANSFER"
+        - "RESERVATION"
+        - "COUNT"
+      description: "挡住「改为不记库存」的在途单据种类。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库 · COUNT 正在盘的盘点单"
     InvModeBlocker: 
       type: "object"
       properties: 
         kind: 
-          type: "string"
-          enum: 
-            - "INBOUND"
-            - "OUTBOUND"
-            - "TRANSFER"
-            - "RESERVATION"
-            - "COUNT"
+          "$ref": "#/components/schemas/InvModeBlockerKind"
+          description: "单据种类"
         docNo: 
           type: "string"
+          description: "单号。RESERVATION 是订单侧的锁号，界面不展示"
       required: 
         - "kind"
         - "docNo"
       additionalProperties: false
-      description: "挡住「改为不记库存」的在途单据。 INBOUND 未收货的进货单 · OUTBOUND 未过账的出库单 · TRANSFER 已发出未收货的调拨 · RESERVATION 线上订单待出库（docNo 是订单侧的锁号）· COUNT 正在盘的盘点单"
     InvAffectedGoods: 
       type: "object"
       properties: 
         goodsNo: 
           type: "string"
+          description: "商品号"
         title: 
           type: "string"
+          description: "商品标题"
         onHand: 
           type: "number"
+          description: "各库位实存合计。只在 NEEDS_CONFIRM 时有意义，其余为 0"
         blockers: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/InvModeBlocker"
+          description: "挡住它的在途单据。只在 BLOCKED 时非空"
       required: 
         - "goodsNo"
         - "title"
         - "onHand"
         - "blockers"
       additionalProperties: false
+    InvModeChangeStatus: 
+      type: "string"
+      enum: 
+        - "DONE"
+        - "BLOCKED"
+        - "NEEDS_CONFIRM"
+      description: "切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改"
     InvModeChange: 
       type: "object"
       properties: 
         status: 
-          type: "string"
-          enum: 
-            - "DONE"
-            - "BLOCKED"
-            - "NEEDS_CONFIRM"
+          "$ref": "#/components/schemas/InvModeChangeStatus"
+          description: "结果"
         goods: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/InvAffectedGoods"
+          description: "BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品"
       required: 
         - "status"
         - "goods"
       additionalProperties: false
-      description: "切换的结果。BLOCKED：有在途单据、什么都没改 · NEEDS_CONFIRM：还有库存，带 confirm 再来一次 · DONE：已改"
     CouponFunder: 
       type: "string"
       enum: 
