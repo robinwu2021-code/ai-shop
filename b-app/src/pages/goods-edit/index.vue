@@ -355,7 +355,7 @@ async function pickInvMode() {
   if (!cur || !goodsNo.value) return;
   const i = await pick({
     title: String(t("invMode.label")),
-    hint: `${String(t("invMode.categoryState", { state: String(t(cur.categoryManaged ? "invMode.on" : "invMode.off")) }))}。${String(t("invMode.sheetHint"))}`,
+    hint: String(t("invMode.sheetHint")),
     items: INV_MODES.map((m) => invModeLabel(t, m, cur.categoryManaged)),
     selected: INV_MODES.indexOf(cur.mode),
   });
