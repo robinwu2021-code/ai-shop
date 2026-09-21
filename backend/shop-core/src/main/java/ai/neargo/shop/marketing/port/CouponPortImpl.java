@@ -129,14 +129,24 @@ public class CouponPortImpl implements CouponPort {
     }
 
     @Override
+    public String usedTitleOf(String orderNo) {
+        return titleOnOrder(orderNo, MktUserCoupon.USED);
+    }
+
+    @Override
     public String returnedTitleOf(String orderNo) {
+        return titleOnOrder(orderNo, MktUserCoupon.UNUSED);
+    }
+
+    /** 挂在这一单上、处于 {@code status} 的那张券的名字 */
+    private String titleOnOrder(String orderNo, String status) {
         if (orderNo == null || orderNo.isBlank()) {
             return null;
         }
         MktUserCoupon uc = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
                 Wrappers.<MktUserCoupon>lambdaQuery()
                         .eq(MktUserCoupon::getOrderNo, orderNo)
-                        .eq(MktUserCoupon::getStatus, MktUserCoupon.UNUSED)
+                        .eq(MktUserCoupon::getStatus, status)
                         .last("limit 1")));
         if (uc == null) {
             return null;

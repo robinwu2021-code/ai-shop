@@ -100,6 +100,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     static final String FLAG_RETURN_COUPON = "refund.return-coupon";
     static final String FLAG_RETURN_POINTS = "refund.return-points";
+    static final String FLAG_CLAWBACK_EARNED = "refund.clawback-earned";
 
     /** 开关取不到按默认开 —— 这几条是本次拍板的口径，关掉才是例外 */
     private boolean on(String flag) {
@@ -323,7 +324,46 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         w.orderByDesc(OrdAfterSale::getId);
         return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(w))
-                .stream().map(this::detailOf).toList();
+                .stream().map(as -> {
+                    AfterSaleVO vo = detailOf(as);
+                    // 待处理的才算「同意之后会退回什么」—— 已经处理完的，说了也改变不了什么
+                    return OrdAfterSale.APPLIED.equals(as.getStatus())
+                            || OrdAfterSale.REFUNDING.equals(as.getStatus())
+                            ? vo.withImpact(impactOf(as)) : vo;
+                }).toList();
+    }
+
+    /**
+     * 同意这一笔之后会一并退回什么（待办设计 P2c · B 端售后单）。
+     *
+     * <p>判据与真正退的那一刻（{@link #returnBenefitsIfWholeOrderRefunded}）同一条：
+     * 这是主单下<b>最后一笔</b>还在履约中的子单才算整单退；开关关掉的那一项不说。
+     * 从现状查：券看它此刻是不是还占在这一单上，分看流水。
+     */
+    private AfterSaleVO.RefundImpact impactOf(OrdAfterSale as) {
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        if (sub == null || sub.getOrderNo() == null) {
+            return null;
+        }
+        var siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
+        boolean last = siblings.stream().filter(x -> !x.getSubOrderNo().equals(sub.getSubOrderNo()))
+                .allMatch(x -> OrdSubOrder.REFUNDED.equals(x.getStatus())
+                        || OrdSubOrder.CANCELLED.equals(x.getStatus()));
+        if (!last) {
+            return null;
+        }
+        String coupon = couponPort != null && on(FLAG_RETURN_COUPON)
+                ? couponPort.usedTitleOf(sub.getOrderNo()) : null;
+        long ret = 0L;
+        long revoke = 0L;
+        if (pointsPort != null) {
+            var impact = pointsPort.pendingImpactOf(
+                    siblings.stream().map(OrdSubOrder::getSubOrderNo).toList());
+            ret = on(FLAG_RETURN_POINTS) ? impact.refunded() : 0L;
+            revoke = on(FLAG_CLAWBACK_EARNED) ? impact.clawedBack() : 0L;
+        }
+        return new AfterSaleVO.RefundImpact(coupon, ret, revoke);
     }
 
     @Override
@@ -491,6 +531,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                         () -> pointsPort.reverse(subNo, "整单退款"));
             }
         }
+        /*
+         * 收回这一单发放的购物积分（待办设计 P2c）。货钱都退了，买它得的分还留着的话，
+         * 「买了退、退了买」就能刷分。已转正且花掉的允许扣成负数（points.config 可关）。
+         */
+        if (pointsPort != null && on(FLAG_CLAWBACK_EARNED)) {
+            for (OrdSubOrder x : siblings) {
+                final String subNo = x.getSubOrderNo();
+                ai.neargo.shop.event.AfterCommit.run("整单退款收回赠送积分 subOrderNo=" + subNo,
+                        () -> pointsPort.revokeEarned(subNo, "整单退款"));
+            }
+        }
     }
 
     /**
@@ -625,7 +676,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 Boolean.TRUE.equals(as.getInstant()), as.getMerchantRemark(),
                 as.getExpressNo(), as.getLiability(), millis(as.getCreatedAt()),
                 // 更新时间：库里有 updated_at，此前没往外发 —— 两个端都按它显示「最后动了什么时候」
-                millis(as.getUpdatedAt()), timeline);
+                millis(as.getUpdatedAt()), timeline, null);
     }
 
     private void appendLog(String subOrderNo, String status, String label,

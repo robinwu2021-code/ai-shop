@@ -46,9 +46,20 @@ public class PointsPortImpl implements PointsPort {
     }
 
     @Override
+    public long revokeEarned(String subOrderNo, String reason) {
+        return pointsService.revokeEarned(subOrderNo, reason);
+    }
+
+    @Override
+    public PointsReturned pendingImpactOf(java.util.List<String> subOrderNos) {
+        return new PointsReturned(pointsService.pendingUseOf(subOrderNos),
+                pointsService.revocableEarnOf(subOrderNos));
+    }
+
+    @Override
     public PointsReturned returnedOf(java.util.List<String> subOrderNos) {
         return new PointsReturned(pointsService.sumOf(subOrderNos, "REFUND"),
-                pointsService.sumOf(subOrderNos, "CLAWBACK"));
+                pointsService.sumOf(subOrderNos, "REVOKE"));
     }
 
     @Override

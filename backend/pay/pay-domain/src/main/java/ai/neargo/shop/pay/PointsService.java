@@ -84,6 +84,26 @@ public interface PointsService {
      */
     void reverse(String subOrderNo, String reason);
 
+    /**
+     * 整单退款时收回这张子单发放的购物积分（待办设计 P2c），返回实际收回的分数。
+     *
+     * <ul>
+     *   <li>还在待生效：从 pending 扣回，那条 EARN 标成作废（转正任务不再扫它）；</li>
+     *   <li>已经转正：从余额扣。{@code allowNegativeBalance} 为真时可以扣成负数，
+     *       否则只扣到 0，差额写进流水备注「未收回 N」供对账；</li>
+     *   <li>该子单的结算单<b>已向商家收过发分费</b>时，按收回的分数记一笔 RECOVERY 出池 ——
+     *       分回收了、池里那笔钱不再欠任何人，不记的话恒等式永远多出一截。</li>
+     * </ul>
+     * 幂等：已有 REVOKE 流水就返回 0。
+     */
+    long revokeEarned(String subOrderNo, String reason);
+
+    /** 整单退款会退回的抵扣分（PENDING 的 USE）之和 */
+    long pendingUseOf(java.util.List<String> subOrderNos);
+
+    /** 整单退款会收回的发放分（未作废、未收回的 EARN）之和 */
+    long revocableEarnOf(java.util.List<String> subOrderNos);
+
     /** 这些子单上某一类流水的分数之和（取绝对值）。订单详情说「退回 / 收回了多少」用 */
     long sumOf(java.util.List<String> subOrderNos, String bizType);
 

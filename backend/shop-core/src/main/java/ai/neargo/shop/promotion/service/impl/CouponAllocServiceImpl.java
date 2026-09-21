@@ -181,6 +181,23 @@ public class CouponAllocServiceImpl implements CouponAllocService {
      * 从那一行找回用户券，**再看它此刻是不是 UNUSED** —— 两件事都成立才说「已回到券包」。
      */
     @Override
+    public String usedTitleOf(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            return null;
+        }
+        PmtUserCoupon uc = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
+                Wrappers.<PmtUserCoupon>lambdaQuery().eq(PmtUserCoupon::getOrderNo, orderNo)
+                        .eq(PmtUserCoupon::getStatus, PmtUserCoupon.USED).last("limit 1")));
+        if (uc == null) {
+            return null;
+        }
+        PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery()
+                        .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+        return c == null ? null : c.getTitle();
+    }
+
+    @Override
     public String returnedTitleOf(String orderNo) {
         if (orderNo == null || orderNo.isBlank()) {
             return null;

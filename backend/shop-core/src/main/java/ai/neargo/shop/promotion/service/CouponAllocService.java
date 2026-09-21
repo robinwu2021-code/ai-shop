@@ -38,4 +38,9 @@ public interface CouponAllocService {
     default String returnedTitleOf(String orderNo) {
         return null;
     }
+
+    /** 这一单此刻正占用着的券名；没有返回 null */
+    default String usedTitleOf(String orderNo) {
+        return null;
+    }
 }

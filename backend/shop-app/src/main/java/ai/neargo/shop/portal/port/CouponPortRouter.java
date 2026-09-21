@@ -73,4 +73,11 @@ public class CouponPortRouter implements CouponPort {
         String t = legacy.returnedTitleOf(orderNo);
         return t != null ? t : promo.returnedTitleOf(orderNo);
     }
+
+    /** 同上：不转发就永远是 null（P2c · B 端售后单「会退回哪张券」） */
+    @Override
+    public String usedTitleOf(String orderNo) {
+        String t = legacy.usedTitleOf(orderNo);
+        return t != null ? t : promo.usedTitleOf(orderNo);
+    }
 }

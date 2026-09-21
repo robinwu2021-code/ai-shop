@@ -1220,6 +1220,10 @@ export default {
     dictPicked: "已关联官方村：{s}",
   },
   afterSale: {
+    impactReturn: "整单退款，将同时退回用户的{what}",
+    impactCoupon: "券「{name}」",
+    impactPoints: "{n} 积分",
+    impactRevoke: "并收回本单赠送的 {n} 积分",
     agreeReturn: "同意退货",
     buyerReason: "顾客理由：",
     rejectedHint: "已驳回，等待顾客确认或申请平台介入。",

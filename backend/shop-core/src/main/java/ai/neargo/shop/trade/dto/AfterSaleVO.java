@@ -36,7 +36,26 @@ public record AfterSaleVO(String afterSaleNo,
                            * 超时自动同意之类的时效规则也以它为基准。
                            */
                           long updatedAt,
-                          List<TimelineNode> timeline) {
+                          List<TimelineNode> timeline,
+                          /**
+                           * 同意这一笔之后<b>会一并退回什么</b>（待办设计 P2c · B 端售后单）。
+                           * 只在商家侧、待处理、且这是整单最后一笔时给；其余为 null。
+                           * <b>商家券</b>的退回让他少收一次券核销，所以要在点同意之前看见。
+                           */
+                          RefundImpact impact) {
+
+    /** 整单退款会一并退回的券与积分；开关关掉的那一项为空 / 0 */
+    public record RefundImpact(String couponTitle, long pointsReturn, long pointsRevoke) {
+        public boolean isEmpty() {
+            return (couponTitle == null || couponTitle.isBlank()) && pointsReturn <= 0 && pointsRevoke <= 0;
+        }
+    }
+
+    public AfterSaleVO withImpact(RefundImpact i) {
+        return new AfterSaleVO(afterSaleNo, subOrderNo, orderNo, type, status, reason, images,
+                refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt,
+                updatedAt, timeline, i == null || i.isEmpty() ? null : i);
+    }
 
     public record TimelineNode(String status, String label, long at) {
     }

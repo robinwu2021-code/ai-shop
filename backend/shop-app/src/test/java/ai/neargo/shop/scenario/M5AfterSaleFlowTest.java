@@ -234,8 +234,29 @@ class M5AfterSaleFlowTest {
 
             String subNo = payWithPoints(token, 800L, "m5-refund-points");
             assertThat(pointsBalanceOf(userNo)).isEqualTo(9_200L);
+            long earned = pendingOf(userNo);
+            assertThat(earned).as("付款没发分，后面「收回」那条断言就没有意义").isPositive();
 
-            approve(loginAsOwnerOf("M0001", "13200132511"), mvcApply(token, subNo));
+            String asNo = mvcApply(token, subNo);
+            String owner = loginAsOwnerOf("M0001", "13200132511");
+            /*
+             * P2c · B 端：**同意之前**就要看见会一并退回什么 ——
+             * 商家券的退回让他少收一次核销，点下去之后再说就晚了。
+             */
+            JsonNode rows = json.readTree(mvc().perform(get("/biz/after-sale")
+                            .header("Authorization", "Bearer " + owner))
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            JsonNode impact = null;
+            for (JsonNode r : rows) {
+                if (asNo.equals(r.get("afterSaleNo").asString())) {
+                    impact = r.get("impact");
+                }
+            }
+            assertThat(impact).as("同意前看不到会退回什么").isNotNull();
+            assertThat(impact.get("pointsReturn").asLong()).isEqualTo(800L);
+            assertThat(impact.get("pointsRevoke").asLong()).isEqualTo(earned);
+
+            approve(owner, asNo);
 
             assertThat(pointsBalanceOf(userNo))
                     .as("整单退了，抵扣的 800 分没回来 —— 用户会说「钱退了分没了」").isEqualTo(10_000L);
@@ -243,6 +264,9 @@ class M5AfterSaleFlowTest {
             JsonNode returned = orderDetail(token, subNo).get("returned");
             assertThat(returned).as("退款后的详情要说清去向").isNotNull();
             assertThat(returned.get("pointsReturned").asLong()).isEqualTo(800L);
+            // P2c：货钱都退了，买它得的分也收回 —— 不收的话「买了退、退了买」就能刷分
+            assertThat(pendingOf(userNo)).as("赠送的分没收回").isZero();
+            assertThat(returned.get("pointsClawedBack").asLong()).isEqualTo(earned);
 
             String biz = loginAsOwnerOf("M0001", "13200132511");
             JsonNode bizDetail = json.readTree(mvc().perform(get("/biz/order/" + subNo)
@@ -269,8 +293,13 @@ class M5AfterSaleFlowTest {
             approve(loginAsOwnerOf("M0001", "13200132513"), mvcApply(token, subNo));
 
             assertThat(pointsBalanceOf(userNo)).isEqualTo(9_500L);
-            assertThat(absent(orderDetail(token, subNo).get("returned")))
-                    .as("没退就不说 —— 「已退回」若不成立比什么都不说更糟").isTrue();
+            /*
+             * 没退就不说 —— 「已退回」若不成立比什么都不说更糟。
+             * 只看「退回」这一项：赠送分的收回是另一个开关，此时照常发生，去向块里会有它。
+             */
+            JsonNode returned = orderDetail(token, subNo).get("returned");
+            assertThat(absent(returned) || returned.get("pointsReturned").asLong() == 0L)
+                    .as("开关关着却说「已退回」").isTrue();
         } finally {
             platformConfig.saveFeatureFlag("refund.return-points", true, 0, "TEST");
             restore.run();
@@ -363,6 +392,12 @@ class M5AfterSaleFlowTest {
         a.setCreatedAt(java.time.LocalDateTime.now());
         a.setUpdatedAt(java.time.LocalDateTime.now());
         pointsAccountMapper.insert(a);
+    }
+
+    private long pendingOf(String userNo) {
+        var a = pointsAccountMapper.selectOne(Wrappers.<ai.neargo.shop.pay.entity.PtsUserAccount>lambdaQuery()
+                .eq(ai.neargo.shop.pay.entity.PtsUserAccount::getUserNo, userNo).last("LIMIT 1"));
+        return a == null || a.getPendingBalance() == null ? 0L : a.getPendingBalance();
     }
 
     private long pointsBalanceOf(String userNo) {

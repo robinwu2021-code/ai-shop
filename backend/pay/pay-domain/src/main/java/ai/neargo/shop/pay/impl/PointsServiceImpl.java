@@ -622,6 +622,108 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
+    @Transactional("payTxManager")
+    public long revokeEarned(String subOrderNo, String reason) {
+        if (subOrderNo == null) {
+            return 0L;
+        }
+        boolean done = DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectCount(
+                Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
+                        .eq(PtsUserLedger::getBizType, PtsUserLedger.REVOKE))) > 0;
+        PtsUserLedger earn = DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectOne(
+                Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getSubOrderNo, subOrderNo)
+                        .eq(PtsUserLedger::getBizType, BIZ_EARN)
+                        .last("limit 1")));
+        long points = earn == null || earn.getPoints() == null ? 0L : earn.getPoints();
+        if (done || points <= 0) {
+            return 0L;
+        }
+        String market = earn.getMarket() == null ? DEFAULT_MARKET : earn.getMarket();
+        long revoked;
+        String remark = reason;
+        if (earn.getActivatedAt() == null) {
+            // 还在待生效：pending 扣回，EARN 作废 —— 转正任务按 status 跳过它
+            int moved = accountMapper.revokePending(earn.getUserNo(), market, points);
+            if (moved == 0) {
+                log.warn("积分收回跳过：pending 不足 user={} sub={} points={}",
+                        earn.getUserNo(), subOrderNo, points);
+                return 0L;
+            }
+            revoked = points;
+            earn.setStatus(USE_REVERSED);
+            DataScopeContext.executeWithoutScope(() -> ledgerMapper.updateById(earn));
+        } else {
+            long balance = loadAccount(earn.getUserNo()).getBalance() == null
+                    ? 0L : loadAccount(earn.getUserNo()).getBalance();
+            revoked = config().allowNegative() ? points : Math.max(0L, Math.min(points, balance));
+            if (revoked < points) {
+                remark = reason + "（未收回 " + (points - revoked) + "）";
+            }
+            if (revoked > 0) {
+                accountMapper.revokeBalance(earn.getUserNo(), market, revoked);
+            }
+            /*
+             * 结算时已向商家收过这张子单的发分费（MERCHANT_RECEIVE 入池）：
+             * 分收回来了，池里对应的钱不再欠任何人，按收回的分数记一笔出池。
+             * 还没结算的单池子从没收过这笔钱，这里就不能出 —— 否则池子会被扣成负的。
+             */
+            StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
+                    Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo, subOrderNo)
+                            .last("limit 1")));
+            if (bill != null && bill.getPointsFeeMinor() != null && bill.getPointsFeeMinor() > 0
+                    && revoked > 0) {
+                recordPoolFlow(StlPointsPool.RECOVERY,
+                        Math.min(bill.getPointsFeeMinor(), config().toMinor(revoked)),
+                        earn.getIssuerMerchantNo(), subOrderNo, null, market);
+            }
+        }
+        PtsUserLedger row = new PtsUserLedger();
+        row.setLedgerNo(BizKey.next(BizKey.POINTS_LEDGER));
+        row.setUserNo(earn.getUserNo());
+        row.setBizType(PtsUserLedger.REVOKE);
+        row.setPoints(-revoked);
+        row.setBalanceAfter(loadAccount(earn.getUserNo()).getBalance());
+        row.setSubOrderNo(subOrderNo);
+        row.setRemark(remark);
+        row.setMarket(market);
+        DataScopeContext.executeWithoutScope(() -> ledgerMapper.insert(row));
+        return revoked;
+    }
+
+    @Override
+    public long pendingUseOf(List<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return 0L;
+        }
+        return DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectList(
+                        Wrappers.<PtsUserLedger>lambdaQuery()
+                                .in(PtsUserLedger::getSubOrderNo, subOrderNos)
+                                .eq(PtsUserLedger::getBizType, BIZ_USE)
+                                .eq(PtsUserLedger::getStatus, USE_PENDING)))
+                .stream().mapToLong(l -> Math.abs(l.getPoints() == null ? 0L : l.getPoints())).sum();
+    }
+
+    @Override
+    public long revocableEarnOf(List<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return 0L;
+        }
+        var revoked = DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectList(
+                        Wrappers.<PtsUserLedger>lambdaQuery()
+                                .in(PtsUserLedger::getSubOrderNo, subOrderNos)
+                                .eq(PtsUserLedger::getBizType, PtsUserLedger.REVOKE)))
+                .stream().map(PtsUserLedger::getSubOrderNo).collect(java.util.stream.Collectors.toSet());
+        return DataScopeContext.executeWithoutScope(() -> ledgerMapper.selectList(
+                        Wrappers.<PtsUserLedger>lambdaQuery()
+                                .in(PtsUserLedger::getSubOrderNo, subOrderNos)
+                                .eq(PtsUserLedger::getBizType, BIZ_EARN)))
+                .stream().filter(l -> !revoked.contains(l.getSubOrderNo()))
+                .mapToLong(l -> l.getPoints() == null ? 0L : l.getPoints()).sum();
+    }
+
+    @Override
     public long sumOf(List<String> subOrderNos, String bizType) {
         if (subOrderNos == null || subOrderNos.isEmpty()) {
             return 0L;
@@ -738,6 +840,9 @@ public class PointsServiceImpl implements PointsService {
                 ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
                         .eq(PtsUserLedger::getBizType, BIZ_EARN)
                         .isNull(PtsUserLedger::getActivatedAt)
+                        // 退款已收回的（P2c）不再转正 —— status 为空是正常发放，要写成 IS NULL OR
+                        .and(w -> w.isNull(PtsUserLedger::getStatus)
+                                .or().ne(PtsUserLedger::getStatus, USE_REVERSED))
                         .isNotNull(PtsUserLedger::getAvailableAt)
                         .le(PtsUserLedger::getAvailableAt, now)
                         // 一次别捞太多：这条链上每行都要改账户余额，

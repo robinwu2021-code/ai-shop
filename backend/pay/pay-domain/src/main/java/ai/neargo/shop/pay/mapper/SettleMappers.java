@@ -146,6 +146,33 @@ public final class SettleMappers {
                    AND pending_balance >= #{points} AND deleted = 0""")
         int activatePending(@Param("userNo") String userNo, @Param("market") String market,
                             @Param("points") long points, @Param("now") long now);
+
+        /**
+         * 退款收回<b>还没转正</b>的分（待办设计 P2c）：从 pending 扣回，发放总额一并减回。
+         * pending 不许扣成负数 —— 影响 0 行说明账已经对不上，由调用方留痕。
+         */
+        @Update("""
+                UPDATE pts_user_account
+                   SET pending_balance = pending_balance - #{points},
+                       total_earn = total_earn - #{points},
+                       updated_at = NOW(), version = version + 1
+                 WHERE user_no = #{userNo} AND market = #{market}
+                   AND pending_balance >= #{points} AND deleted = 0""")
+        int revokePending(@Param("userNo") String userNo, @Param("market") String market,
+                          @Param("points") long points);
+
+        /**
+         * 退款收回<b>已转正</b>的分：从可用余额扣。<b>不设下限</b> ——
+         * 能不能扣成负数由调用方按 {@code allowNegativeBalance} 先算好 {@code points}。
+         */
+        @Update("""
+                UPDATE pts_user_account
+                   SET balance = balance - #{points},
+                       total_earn = total_earn - #{points},
+                       updated_at = NOW(), version = version + 1
+                 WHERE user_no = #{userNo} AND market = #{market} AND deleted = 0""")
+        int revokeBalance(@Param("userNo") String userNo, @Param("market") String market,
+                          @Param("points") long points);
     }
 
     public interface PointsLedgerMapper extends BaseMapper<PtsUserLedger> {

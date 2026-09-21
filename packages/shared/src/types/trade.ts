@@ -605,4 +605,17 @@ export interface AfterSale {
   liability?: string;
   /** 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 */
   timeline?: { status: string; label: string; at: number }[];
+  /**
+   * 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。
+   * 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。
+   */
+  impact?: RefundImpact | null;
+}
+/** 整单退款会一并退回的券与积分（后端 `AfterSaleVO.RefundImpact`） */
+export interface RefundImpact {
+  couponTitle?: string | null;
+  /** 退回用户的抵扣积分 */
+  pointsReturn: number;
+  /** 收回用户的赠送积分 */
+  pointsRevoke: number;
 }

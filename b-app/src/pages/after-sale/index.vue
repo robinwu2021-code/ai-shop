@@ -19,6 +19,18 @@ import type { AfterSale, Order } from "@shared/types";
 
 const { t } = useI18n();
 
+/** 「整单退款，将同时退回用户的券「满 30 减 5」、200 积分，并收回赠送的 50 积分」 */
+function impactText(r: Row): string {
+  const i = r.as.impact;
+  if (!i) return "";
+  const parts: string[] = [];
+  if (i.couponTitle) parts.push(String(t("afterSale.impactCoupon", { name: i.couponTitle })));
+  if (i.pointsReturn) parts.push(String(t("afterSale.impactPoints", { n: i.pointsReturn })));
+  const head = parts.length ? String(t("afterSale.impactReturn", { what: parts.join("、") })) : "";
+  const tail = i.pointsRevoke ? String(t("afterSale.impactRevoke", { n: i.pointsRevoke })) : "";
+  return [head, tail].filter(Boolean).join("；");
+}
+
 /**
  * 一行 = 一张售后单 + 它所属的订单。
  *
@@ -168,6 +180,11 @@ onShow(load);
 
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
+      <!--
+        **同意之前说清会一并退回什么**（待办设计 P2c）。整单最后一笔才有；
+        券若是本店发的，退回等于少收一次核销 —— 要在点下去之前看见。
+      -->
+      <text v-if="impactText(r)" class="txt-caption sh-muted impact">{{ impactText(r) }}</text>
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
@@ -288,5 +305,9 @@ onShow(load);
 
 .tip {
   margin: 32rpx 8rpx;
+}
+.impact {
+  display: block;
+  margin-top: 12rpx;
 }
 </style>

@@ -24,7 +24,24 @@ package ai.neargo.shop.pay;
  *                       而已经花掉的分收不回来
  */
 public record PointsConfig(long perMinor, double maxDeductRatio, double earnPerMinor,
-                           int inactiveDays, int pendingDays) {
+                           int inactiveDays, int pendingDays,
+                           /**
+                            * 退款收回已发放的分时，余额不够能不能扣成负数（待办设计 P2c）。
+                            * <b>缺省（null）= 允许</b>：行业通行「扣成负数，下次获得时先抵」。
+                            * 用包装类型是有意的 —— 存量配置里没有这个键，基本类型会被读成 false。
+                            */
+                           Boolean allowNegativeBalance) {
+
+    /** 老的五字段签名：存量构造处不必跟着改 */
+    public PointsConfig(long perMinor, double maxDeductRatio, double earnPerMinor,
+                        int inactiveDays, int pendingDays) {
+        this(perMinor, maxDeductRatio, earnPerMinor, inactiveDays, pendingDays, null);
+    }
+
+    /** 收回时允许扣成负数（缺省允许） */
+    public boolean allowNegative() {
+        return !Boolean.FALSE.equals(allowNegativeBalance);
+    }
 
     /** {@code sys_setting} 的键。 */
     public static final String KEY = "points.config";

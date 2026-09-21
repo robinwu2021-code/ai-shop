@@ -40,6 +40,11 @@ public interface CouponPort {
         return null;
     }
 
+    /** 这一单此刻<b>正占用着</b>的券名（整单退款前告诉商家「会退回哪张券」）；没有返回 null */
+    default String usedTitleOf(String orderNo) {
+        return null;
+    }
+
     record MerchantAmount(String merchantNo, long goodsAmount) {
     }
 

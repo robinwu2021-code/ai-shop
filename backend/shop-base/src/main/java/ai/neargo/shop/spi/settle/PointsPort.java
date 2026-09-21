@@ -52,15 +52,31 @@ public interface PointsPort {
     /**
      * 这些子单上退回了多少分、收回了多少分（待办设计 P3，订单详情「去向」那一块用）。
      *
-     * <p><b>只读、从流水查</b>：退回 = REFUND 流水之和，收回 = CLAWBACK 流水之和。
+     * <p><b>只读、从流水查</b>：退回 = REFUND 流水之和，收回 = REVOKE（退款扣回）流水之和。
      * 端上据此说「200 积分已退回」—— 不从订单状态推，推出来的话可能不成立。
      * 默认实现返回零：没有积分域的部署里这一块自然不显示。
      */
+    /**
+     * 整单退款收回这张子单发放的购物积分（待办设计 P2c），返回实际收回的分数。
+     * 幂等；没有积分域的部署里什么都不做。
+     */
+    default long revokeEarned(String subOrderNo, String reason) {
+        return 0L;
+    }
+
     default PointsReturned returnedOf(List<String> subOrderNos) {
         return new PointsReturned(0L, 0L);
     }
 
     record PointsReturned(long refunded, long clawedBack) {
+    }
+
+    /**
+     * 这些子单<b>如果现在整单退款</b>会动多少分（P2c · B 端售后单同意前的提示）：
+     * 退回 = 还在 PENDING 的抵扣，收回 = 还没收回的发放。只读。
+     */
+    default PointsReturned pendingImpactOf(List<String> subOrderNos) {
+        return new PointsReturned(0L, 0L);
     }
 
     /**
