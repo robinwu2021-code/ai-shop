@@ -49,9 +49,28 @@ class CartStockGuardFlowTest {
 
     private static int seq = 0;
 
+    /** 本条用例建的商品与 SKU —— 跑完要删，见 {@link #cleanUp} */
+    private final List<ai.neargo.shop.product.entity.PrdGoods> createdGoods = new java.util.ArrayList<>();
+    private final List<PrdSku> createdSkus = new java.util.ArrayList<>();
+
+    /**
+     * **建的在售商品必须删掉。**
+     *
+     * <p>这些商品是在售、已审核的，不删就留在全局商品池里。运营端商品池是**分页**的，
+     * 多出来的货会把别的测试依赖的老种子挤出第一页 ——
+     * 2026-09-21 实测：{@code OpsDataScopeFlowTest.goodsPoolIsScopedToItsMerchant}
+     * 在本类加入前全量 2140 条全绿，加入后找不到 {@code G0001}/{@code G0003} 而变红。
+     * 单独跑、两个类一起跑都是绿的，只有全量才积累到那个量 —— 报错也完全不指向这里。
+     *
+     * <p>商品号以 {@code G-CS-} 开头，字典序排在 {@code G0001} 之前，压得最准。
+     */
     @AfterEach
-    void clearAuth() {
+    void cleanUp() {
         SecurityContextHolder.clearContext();
+        createdGoods.forEach(g -> DataScopeContext.executeWithoutScope(() -> goodsMapper.deleteById(g.getId())));
+        createdSkus.forEach(k -> DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(k.getId())));
+        createdGoods.clear();
+        createdSkus.clear();
     }
 
     private void asBuyer() {
@@ -78,6 +97,7 @@ class CartStockGuardFlowTest {
         s.setSoldCount(soldCount);
         s.setDeleted(0);
         DataScopeContext.executeWithoutScope(() -> skuMapper.insert(s));
+        createdSkus.add(s);
         /*
          * 商品行也要建：列表要查商品快照，快照在商品不存在时跳过这一行，
          * 购物车就会走「该商品已下架」分支、available 固定为 0 —— 那样断言红了
@@ -91,6 +111,7 @@ class CartStockGuardFlowTest {
         g.setOnSale(true);
         g.setAuditStatus("APPROVED");
         DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
+        createdGoods.add(g);
         return skuNo;
     }
 
