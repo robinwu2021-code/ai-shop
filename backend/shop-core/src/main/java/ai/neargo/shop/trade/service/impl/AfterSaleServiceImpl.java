@@ -71,6 +71,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final UserQueryPort userPort;
     private final StockPort stockPort;
     private final OrderItemMapper orderItemMapper;
+    /**
+     * 整单退款时把券退回券包（执行计划 B6）。
+     * **setter 注入**：切片测试里没有它时，退款其余行为一字不差。
+     */
+    private ai.neargo.shop.spi.marketing.CouponPort couponPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCouponPort(ai.neargo.shop.spi.marketing.CouponPort couponPort) {
+        this.couponPort = couponPort;
+    }
 
     public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, SubOrderMapper subOrderMapper,
                                 StatusLogMapper statusLogMapper, SettlePort settlePort,
@@ -407,9 +417,39 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             sub.setStatus(OrdSubOrder.REFUNDED);
             DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
         }
+        releaseCouponIfWholeOrderRefunded(sub);
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, label, OrdStatusLog.BY_SYSTEM, null);
         eventBus.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), as.getRefundMinor()));
+    }
+
+    /**
+     * **整单退完才退券**（执行计划 B6，用户 2026-09-21 拍板）。
+     *
+     * <p>口径是行业通行的那一条：整单退则退券，部分退不退。判据是
+     * 「这笔主单下所有子单都不在履约中了」——券是按主单占的（一张券一单），
+     * 部分退还要按比例拆券，那是另一套账。
+     *
+     * <p><b>幂等</b>：{@code release} 只作用于状态仍是 USED 的券，重复调不会退两张。
+     *
+     * <p>⚠️ <b>积分没在这里退</b>：付款成功时那笔抵扣已经从 PENDING 转成 CONFIRMED，
+     * 并且**记过一笔出池**（平台把钱付给了商家）。退它要连着把池子冲回来，
+     * 否则「流通中的积分 == 池子里的钱」这条恒等式会失衡，而失衡了没有任何地方会报。
+     * 这一条单列（执行计划 B6-2b），要与结算域一起对账之后再做。
+     */
+    private void releaseCouponIfWholeOrderRefunded(OrdSubOrder sub) {
+        if (couponPort == null || sub == null || sub.getOrderNo() == null) {
+            return;
+        }
+        var siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
+        boolean whole = siblings.stream().allMatch(x ->
+                OrdSubOrder.REFUNDED.equals(x.getStatus())
+                        || OrdSubOrder.CANCELLED.equals(x.getStatus()));
+        if (whole) {
+            couponPort.release(sub.getOrderNo());
+        }
     }
 
     /**

@@ -1673,6 +1673,12 @@ public class OrderServiceImpl implements OrderService {
         // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
+        /*
+         * **活动配额也要退**（执行计划 B6）。此前这一行没有 ——
+         * 限量 100 份的活动被没付款的单吃掉量，运营看到的「已用 N 份」里
+         * 有几份从来没成交，而库存、券、积分三样都退了，唯独它不退。
+         */
+        campaignPort.release(order.getOrderNo());
         // 同上，积分逐子单退，并同样推迟到提交之后。
         // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {

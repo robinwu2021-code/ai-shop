@@ -84,6 +84,10 @@ class M5AfterSaleFlowTest {
     @Autowired
     private MchEntityMapper merchantMapper;
 
+    /** 整单退款退券那条用例要自己造一张券（与 M6bCouponFlowTest 同一手法） */
+    @Autowired
+    private ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper couponTemplateMapper;
+
     @Autowired
     private ai.neargo.shop.pay.SettleService settleService;
 
@@ -144,6 +148,91 @@ class M5AfterSaleFlowTest {
         // 反过来说，只要结算单还没回退，就绝不可能出现 REFUNDED（下一条用例守住反向）
         assertThat(json.readTree(detail(o.userToken, asNo)).get("data").get("status").asString())
                 .isEqualTo("REFUNDED");
+    }
+
+    @Test
+    @DisplayName("★★★ 整单退款退回券 —— 退了货还扣着券，用户会说「东西退了券也没了」")
+    void couponReturnedOnWholeOrderRefund() throws Exception {
+        String phone = "13200132500";
+        String token = login(phone);
+
+        // 一张无门槛平台券，领到手里
+        long now = System.currentTimeMillis();
+        ai.neargo.shop.marketing.coupon.entity.MktCoupon c =
+                new ai.neargo.shop.marketing.coupon.entity.MktCoupon();
+        c.setCouponNo("CP-REFUND-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        c.setTitle("退款退券测试");
+        c.setType("FULL_CUT");
+        c.setFaceMinor(500L);
+        c.setThresholdMinor(0L);
+        c.setFunder("PLATFORM");
+        c.setTotalCount(100);
+        c.setPerUserLimit(1);
+        c.setStartAt(now - 86_400_000L);
+        c.setEndAt(now + 86_400_000L);
+        c.setStatus("ACTIVE");
+        couponTemplateMapper.insert(c);
+
+        String receiveBody = mvc().perform(post("/mp/coupon/" + c.getCouponNo() + "/receive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String userCouponNo = json.readTree(receiveBody).get("data").get("userCouponNo").asString();
+
+        // 用这张券下单并付款
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
+        String orderBody = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "m5-refund-coupon")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
+                                + "\"couponNo\":\"" + userCouponNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String payOrderNo = json.readTree(orderBody).get("data").get("payOrderNo").asString();
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-m5-refund\","
+                        + "\"sign\":\"" + STUB_SECRET + "\"}"));
+        assertThat(couponStatusOf(token, userCouponNo)).isEqualTo("USED");
+
+        String subNo = json.readTree(orderBody).get("data").get("subOrders").get(0)
+                .get("orderNo").asString();
+        String asNo = mvcApply(token, subNo);
+        String biz = loginAsOwnerOf("M0001", "13200132501");
+        approve(biz, asNo);
+
+        /*
+         * **整单退完，券要回到券包**（执行计划 B6，用户 2026-09-21 拍板）。
+         *
+         * 不退的话用户的说法是「东西我退了，券也没了」—— 而那张券本来还能用。
+         * 口径是整单退才退：部分退还要按比例拆券，那是另一套账。
+         */
+        assertThat(couponStatusOf(token, userCouponNo))
+                .as("整单退款没退券 —— 用户会认为平台吞了券").isEqualTo("UNUSED");
+    }
+
+    /** 这一单的券此刻什么状态 */
+    private String couponStatusOf(String token, String userCouponNo) throws Exception {
+        String body = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode n : json.readTree(body).get("data")) {
+            if (userCouponNo.equals(n.get("userCouponNo").asString())) {
+                return n.get("status").asString();
+            }
+        }
+        throw new AssertionError("user coupon not found: " + userCouponNo);
+    }
+
+    /** 申请一张仅退款的售后单，返回单号 */
+    private String mvcApply(String token, String subOrderNo) throws Exception {
+        String body = mvc().perform(post("/mp/order/" + subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("afterSaleNo").asString();
     }
 
     @Test

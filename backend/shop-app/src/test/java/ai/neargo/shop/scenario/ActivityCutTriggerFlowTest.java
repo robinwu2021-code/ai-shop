@@ -35,6 +35,9 @@ class ActivityCutTriggerFlowTest {
     @Autowired
     private ActivityPricingService pricing;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     private static int seq = 7600;
 
     /** 建一个减 5 元的活动，触发方式由参数给 */
@@ -59,6 +62,41 @@ class ActivityCutTriggerFlowTest {
 
         assertThat(pricing.autoDiscount("U-X", basket(e, 500, 1)).total())
                 .as("NONE 触发恒命中").isEqualTo(500);
+    }
+
+    @Test
+    @DisplayName("★★★ 关单要把配额退回去 —— 不退的话限量活动被没付款的单吃掉量")
+    void quotaGoesBackOnRelease() {
+        String e = "M-CUT-" + (++seq);
+        cut(e, PmtActivity.TRIGGER_NONE, null, null);
+        String orderNo = "SO-REL-" + seq;
+
+        var d = pricing.autoDiscount("U-REL", basket(e, 500, 1));
+        assertThat(d.total()).isEqualTo(500);
+        pricing.commit("U-REL", orderNo, d);
+
+        String activityNo = d.applied().get(0).activityNo();
+        assertThat(quotaUsed(activityNo)).as("占用没记上，后面的断言就没有意义").isEqualTo(1);
+
+        /*
+         * **关单退配额**（执行计划 B6，用户 2026-09-21 拍板）。
+         *
+         * 此前关单释放了库存、券、积分、预约时段，唯独没退它 ——
+         * 限量 100 份的活动被没付款的单吃掉量，而运营看到的「已用 N 份」里
+         * 有几份从来没成交。
+         */
+        pricing.release(orderNo);
+        assertThat(quotaUsed(activityNo)).as("关单没退配额").isZero();
+
+        // 幂等：对账、重试都会再调一次，退两次会把配额退成负数，而那看起来完全正常
+        pricing.release(orderNo);
+        assertThat(quotaUsed(activityNo)).as("退了两次 —— 配额变成负数，这个活动此后谁都抢不到").isZero();
+    }
+
+    private int quotaUsed(String activityNo) {
+        Integer n = jdbc.queryForObject(
+                "select quota_used from pmt_activity where activity_no=?", Integer.class, activityNo);
+        return n == null ? 0 : n;
     }
 
     @Test

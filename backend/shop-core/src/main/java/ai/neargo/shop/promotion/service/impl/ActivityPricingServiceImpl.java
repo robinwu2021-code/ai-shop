@@ -164,6 +164,39 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void release(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            return;
+        }
+        var rows = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                Wrappers.<ai.neargo.shop.promotion.entity.PmtApply>lambdaQuery()
+                        .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)
+                        .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
+                                CampaignPort.AppliedDiscount.ACTIVITY)));
+        for (var r : rows) {
+            long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
+            /*
+             * 配额按「份」退，一单占一份（与 commit 那边的 qty 同一口径）。
+             * **用 SQL 直接减并且不许减成负数** —— 并发下两次关单撞在一起时，
+             * 负数配额会让这个活动此后谁都抢不到，而它看起来完全正常。
+             */
+            DataScopeContext.executeWithoutScope(() -> activityMapper.update(null,
+                    Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .apply("quota_used > 0")
+                            .setSql("quota_used = quota_used - 1")
+                            .setSql("budget_used_minor = GREATEST(budget_used_minor - "
+                                    + amount + ", 0)")));
+            /*
+             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次。
+             * 不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
+             */
+            DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+        }
+    }
+
+    @Override
     public java.util.List<CampaignPort.AppliedDiscount> appliedOf(String orderNo) {
         if (orderNo == null || orderNo.isBlank()) {
             return java.util.List.of();

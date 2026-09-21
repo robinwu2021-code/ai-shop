@@ -46,6 +46,12 @@ public class CampaignPortRouter implements CampaignPort {
         return promo.appliedOf(orderNo);
     }
 
+    /** 配额只有新模型有，直接转发（老模型没有这张账） */
+    @Override
+    public void release(String orderNo) {
+        promo.release(orderNo);
+    }
+
     @Override
     public Discount autoDiscount(List<MerchantAmount> groups) {
         Discount a = legacy.autoDiscount(groups);
