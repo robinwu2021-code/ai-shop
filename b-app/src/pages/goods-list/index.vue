@@ -693,6 +693,8 @@ onShow(() => {
     catsOfStore.value = merchant.storeNo;
     void loadCategories();
   }
+  // 标题栏的门店名要它：胶囊撤掉后没人再拉门店，冷启动时标题会缺那一截
+  void merchant.ensureStores();
   void load();
 });
 </script>
@@ -703,7 +705,13 @@ onShow(() => {
     客服与配送员没有这个码 —— 不判的话他们每天点一次「商品」，每天吃一个 70006 toast，
     而页内那几个按钮反倒早就按 can() 裁好了。门禁漏的偏偏是列表这一件必做的事。
   -->
-  <sh-scaffold title-key="goods.title" tab="goods" :denied="!merchant.can('biz:stock')">
+  <!-- 门店名缀在标题栏（「商品 · 福田店」），不占正文：切店只在工作台与「我的」 -->
+  <sh-scaffold
+    title-key="goods.title"
+    tab="goods"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:stock')"
+  >
     <!--
       **搜索提到第一行，状态页签独占整宽。**
 
@@ -771,8 +779,6 @@ onShow(() => {
       没设的店按 0 —— 少卖可恢复，超卖不可）。真实链路上验过：
       在新店设了 5 件，主店那 80 件当场变成 0 —— **不写出来的话没人能预料到**。
     -->
-    <!-- 当前门店只读标记（库存按店）：切店在「我的」 -->
-    <biz-store-tag readonly></biz-store-tag>
 
     <!--
       空状态只说事实，不再放「新建第一个商品」——

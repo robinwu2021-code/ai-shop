@@ -60,7 +60,6 @@ export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
   // 它是 marketing 那一页的编辑器，同一条理由：活动本身有 storeNo，按不按店是这张表单里的一项，
   // 而选货用的是商品列表（按店取数）—— 页头挂一枚固定胶囊会与表单里那一项互相矛盾
   "activity-edit": "活动可以按店也可以全店，表单里自己选",
-  orders: "已在筛选条上直接写出当前门店范围（allStores 时写「全部门店」），不重复标",
   order: "订单详情页的门店写在单据本身上（这一单从哪家店出），比页头胶囊更准",
   "after-sale": "同 order：售后跟着那一单走",
   groups: "团挂在主体上（mkt_group_buy.entity_no），列表不按门店",
@@ -89,6 +88,7 @@ export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
 export const STORE_SCOPED_PAGES: Record<string, string> = {
   home: "工作台的统计与待办按当前门店（mStats / mTodo）",
   "goods-list": "在售与库存按店（mGoodsList）",
+  orders: "订单列表按当前门店（mOrderList）。门店名缀在标题栏；「全部门店」切换已撤（切店只在工作台与「我的」）",
   store: "门面资料、公告、店铺码都是这家店的（mStore / mStoreQrcode）",
   "store-scope": "服务范围与配送规则按门店（mStore / mDeliveryRule）",
   delivery: "配送规则与本店待送（mDeliveryRule / mOrderList）",

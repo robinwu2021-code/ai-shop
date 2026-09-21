@@ -449,10 +449,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
   },
 
   order: {
-    scopeAll: "كل الفروع",
-    scopeCurrent: "الفرع الحالي",
-    scopeToAll: "عرض كل الفروع",
-    scopeToCurrent: "الفرع الحالي فقط",
     statusWAIT_PAY: "غير مدفوع",
     statusPAID: "بانتظار الشحن",
     statusSHIPPED: "تم الشحن", delivering: "قيد التوصيل",

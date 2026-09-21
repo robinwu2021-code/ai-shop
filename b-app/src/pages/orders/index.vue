@@ -105,18 +105,6 @@ const tab = ref("all");
 const list = ref<Order[]>([]);
 const loading = ref(false);
 
-/**
- * 看全部门店还是只看当前门店。
- *
- * ⚠️ 后端一直支持 `allStores`，端上从没传过 —— 于是这一页恒等于「当前门店」，
- * 而界面上既不显示是哪家店、也没有切换入口。单店时看不出区别，
- * 多店老板会以为自己看到的是全部流水。
- *
- * 只在**真的有多家店**时显示这个开关：单店商家看到一个「全部门店 / 当前门店」
- * 的切换，只会疑惑自己是不是漏配了什么。
- */
-const allStores = ref(false);
-
 const empty = computed(() => !loading.value && !list.value.length);
 
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
@@ -128,7 +116,7 @@ async function load() {
   if (!merchant.canOperate) return;
   loading.value = true;
   try {
-    const scope = { size: 50, allStores: allStores.value || undefined };
+    const scope = { size: 50 };
     if (tab.value === "afterSale") {
       const afterSales = await api.mAfterSaleList();
       // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
@@ -155,11 +143,6 @@ function switchTab(key: string) {
   void load();
 }
 
-function toggleScope() {
-  allStores.value = !allStores.value;
-  void load();
-}
-
 function open(o: Order) {
   uni.navigateTo({ url: `${ROUTES.order}?orderNo=${o.orderNo}` });
 }
@@ -176,20 +159,18 @@ onShow(() => {
 </script>
 
 <template>
-  <sh-scaffold title-key="order.title" tab="orders" :denied="!merchant.can('biz:order:view')">
+  <!-- 门店名缀在标题栏（「订单 · 福田店」），不占正文：切店只在工作台与「我的」 -->
+  <sh-scaffold
+    title-key="order.title"
+    tab="orders"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:order:view')"
+  >
     <sh-tabs
       :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
       :active="tab"
       @change="switchTab"
     ></sh-tabs>
-
-    <!-- 门店范围。只有多店才出现 —— 单店商家看到这个切换只会疑惑 -->
-    <view v-if="merchant.multiStore" class="scope sh-row sh-row--between" @tap="toggleScope">
-      <text class="txt-caption scope__cur txt-ink">
-        {{ allStores ? $t("order.scopeAll") : merchant.currentStore?.name || $t("order.scopeCurrent") }}
-      </text>
-      <sh-go>{{ allStores ? $t("order.scopeToCurrent") : $t("order.scopeToAll") }}</sh-go>
-    </view>
 
     <sh-empty v-if="empty" :pending="!loaded" :failed="failed" @retry='load' :text='$t("order.empty")'></sh-empty>
 
@@ -221,11 +202,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.scope {
-  padding: 16rpx 24rpx;
-  background: var(--sh-faint);
-  border-radius: 16rpx;
-}
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 
