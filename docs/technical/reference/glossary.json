@@ -10197,21 +10197,15 @@
         },
         {
           "key": "invMode.adjustHint",
-          "zh-CN": "这件商品不做进销存管理，这里的数就是商城上可卖的数",
-          "en": "This product isn't under inventory management. This number is what the store can sell.",
-          "ar": "هذا المنتج لا يخضع لإدارة المخزون. هذا الرقم هو ما يمكن للمتجر بيعه."
+          "zh-CN": "未开启进销存，此数即线上可售数量",
+          "en": "Inventory management is off. This is the quantity sold online.",
+          "ar": "إدارة المخزون متوقفة. هذا هو الكمية المعروضة للبيع عبر الإنترنت."
         },
         {
           "key": "invMode.afterSave",
           "zh-CN": "保存后可设置",
           "en": "Available after saving",
           "ar": "متاح بعد الحفظ"
-        },
-        {
-          "key": "invMode.categoryState",
-          "zh-CN": "品类目前：{state}",
-          "en": "Category: {state}",
-          "ar": "الفئة: {state}"
         },
         {
           "key": "invMode.inherit",
@@ -10227,27 +10221,27 @@
         },
         {
           "key": "invMode.off",
-          "zh-CN": "不管理",
-          "en": "Not managed",
-          "ar": "غير مُدار"
+          "zh-CN": "关闭",
+          "en": "Off",
+          "ar": "إيقاف"
         },
         {
           "key": "invMode.on",
-          "zh-CN": "管理",
-          "en": "Managed",
-          "ar": "مُدار"
+          "zh-CN": "开启",
+          "en": "On",
+          "ar": "تشغيل"
         },
         {
           "key": "invMode.sheetHint",
-          "zh-CN": "管理：参与进货、盘点、调拨、报损。不管理：只用商城上的库存数。",
-          "en": "Managed: included in purchases, counts, transfers and scrap. Not managed: only the store stock number is used.",
-          "ar": "مُدار: يدخل في المشتريات والجرد والتحويل والإتلاف. غير مُدار: يُستخدم رقم مخزون المتجر فقط."
+          "zh-CN": "开启后参与进货、盘点、调拨、报损",
+          "en": "When on, included in purchases, counts, transfers and scrap",
+          "ar": "عند التشغيل يدخل في المشتريات والجرد والتحويل والإتلاف"
         },
         {
           "key": "invMode.tag",
-          "zh-CN": "不做进销存",
-          "en": "No inventory management",
-          "ar": "بدون إدارة مخزون"
+          "zh-CN": "未开启进销存",
+          "en": "Inventory off",
+          "ar": "المخزون متوقف"
         },
         {
           "key": "invoice.amountHint",
@@ -17487,15 +17481,15 @@
         },
         {
           "key": "stockSettings.blockedHint",
-          "zh-CN": "以下单据还没完成，本次没有做任何改动：{list}。收货或作废进货单、订单出库后，再来关闭。",
-          "en": "These documents are still open, so nothing was changed: {list}. Receive or void the purchases and ship the orders, then try again.",
-          "ar": "هذه المستندات لم تكتمل، لذا لم يتغير شيء: {list}. استلم المشتريات أو ألغِها واشحن الطلبات، ثم حاول مجددًا."
+          "zh-CN": "以下单据未完成：{list}。处理完再关闭。",
+          "en": "Open documents: {list}. Finish them first.",
+          "ar": "مستندات غير مكتملة: {list}. أكملها أولًا."
         },
         {
           "key": "stockSettings.blockedTitle",
-          "zh-CN": "暂时不能关闭进销存管理",
-          "en": "Can't stop inventory management yet",
-          "ar": "لا يمكن إيقاف إدارة المخزون الآن"
+          "zh-CN": "暂时无法关闭",
+          "en": "Can't turn off yet",
+          "ar": "لا يمكن الإيقاف الآن"
         },
         {
           "key": "stockSettings.blocker.COUNT",
@@ -17529,27 +17523,27 @@
         },
         {
           "key": "stockSettings.confirmOk",
-          "zh-CN": "不管理",
-          "en": "Stop managing",
-          "ar": "إيقاف الإدارة"
+          "zh-CN": "关闭",
+          "en": "Turn off",
+          "ar": "إيقاف"
         },
         {
           "key": "stockSettings.confirmStocked",
-          "zh-CN": "{n} 件商品还有库存：{list}。关闭后这些库存与流水保留、只读，不再出现在进货、盘点、报损里；重新打开即恢复。",
-          "en": "{n} products still have stock: {list}. Their stock and history stay, read-only, and leave purchases, counts and scrap. Turn it back on to restore them.",
-          "ar": "لا يزال لدى {n} منتجات مخزون: {list}. يبقى المخزون والسجل للقراءة فقط ويخرجان من المشتريات والجرد والإتلاف. أعد التفعيل لاستعادتهما."
+          "zh-CN": "{list} 仍有库存。关闭后记录保留，可随时重新开启。",
+          "en": "{list} still in stock. Records are kept and you can turn it back on anytime.",
+          "ar": "{list} لا يزال في المخزون. تبقى السجلات ويمكن إعادة التشغيل في أي وقت."
         },
         {
           "key": "stockSettings.confirmTitle",
-          "zh-CN": "「{name}」不再做进销存管理？",
-          "en": "Stop inventory management for {name}?",
+          "zh-CN": "关闭「{name}」的进销存管理？",
+          "en": "Turn off inventory management for {name}?",
           "ar": "إيقاف إدارة المخزون لـ {name}؟"
         },
         {
           "key": "stockSettings.defaultOff",
-          "zh-CN": "默认不管理 · {n} 件",
-          "en": "Not managed by default · {n}",
-          "ar": "غير مُدارة افتراضيًا · {n}"
+          "zh-CN": "{n} 件商品 · 默认关闭",
+          "en": "{n} products · Off by default",
+          "ar": "{n} منتجات · متوقفة افتراضيًا"
         },
         {
           "key": "stockSettings.empty",
@@ -17565,27 +17559,27 @@
         },
         {
           "key": "stockSettings.goodsHint",
-          "zh-CN": "单件商品可在「编辑商品 → 进销存管理」里单独设置，单件的设置优先。",
-          "en": "You can override a single product under Edit product → Inventory management. The product setting wins.",
-          "ar": "يمكنك ضبط منتج واحد من تعديل المنتج ← إدارة المخزون. إعداد المنتج هو المعتمد."
+          "zh-CN": "单个商品可在编辑商品中单独设置。",
+          "en": "You can set a single product in Edit product.",
+          "ar": "يمكن ضبط منتج واحد من تعديل المنتج."
         },
         {
           "key": "stockSettings.onHand",
-          "zh-CN": "{title} 实存 {n}",
-          "en": "{title} on hand {n}",
-          "ar": "{title} المتوفر {n}"
+          "zh-CN": "{title}（{n}）",
+          "en": "{title} ({n})",
+          "ar": "{title} ({n})"
         },
         {
           "key": "stockSettings.section",
-          "zh-CN": "进销存管理的品类",
-          "en": "Categories under inventory management",
-          "ar": "الفئات الخاضعة لإدارة المخزون"
+          "zh-CN": "进销存管理",
+          "en": "Inventory management",
+          "ar": "إدارة المخزون"
         },
         {
           "key": "stockSettings.sharedHint",
-          "zh-CN": "全店各门店共用。服务类默认不管理，实物、生鲜默认管理。",
-          "en": "Shared by all your stores. Services are not managed by default; physical goods and fresh produce are.",
-          "ar": "مشترك بين جميع متاجرك. الخدمات غير مُدارة افتراضيًا، والسلع والمنتجات الطازجة مُدارة."
+          "zh-CN": "各门店通用。服务类默认关闭。",
+          "en": "Applies to all stores. Services are off by default.",
+          "ar": "تنطبق على كل المتاجر. الخدمات متوقفة افتراضيًا."
         },
         {
           "key": "stockSettings.title",
