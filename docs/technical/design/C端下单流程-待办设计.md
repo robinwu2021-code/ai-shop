@@ -1,6 +1,6 @@
 # C 端下单流程 · 待办设计（含 B 端与运营端设置）
 
-状态：设计已定（2026-09-21），按 P1 → P2a → P3 → P7 → P5/P6 → P4 → P2c → P2b 顺序落地
+状态：已实现（2026-09-21），P4 的线上回补待确认后执行（见文末落地记录）
 依据：用户 2026-09-21「以上都按照建议，并补充设计方案，包含 b 端以及运营端的设置」
 前情：[待办方案](./C端下单流程-待办方案.md)（实测与取舍）
 
@@ -165,3 +165,40 @@
 
 每条：后端用例 + 消融（撤掉修复必须变红）+ 开关关掉那一支也要有用例（**默认关的那一半最没人测**）。
 P4 执行前后各回读一次线上数据。P2b 上线前与结算域对账一次。
+
+---
+
+## 落地记录（2026-09-21）
+
+| # | 落点 | 用例 |
+|---|---|---|
+| P1 | `PurchaseLimitGuard`（建单 / 加购 / 加量三处共用）；预览 `ItemVO.limitReason / limitPerUser / boughtQty`；错误码 20007 | `PurchaseLimitFlowTest` 6 条（含开关关闭、取消后恢复）；c-app `purchase-limit` |
+| P2a | `AfterSaleServiceImpl#returnBenefitsIfWholeOrderRefunded` 逐子单 `reverse` | `M5AfterSaleFlowTest#pointsReturnedOnWholeOrderRefund`、`#pointsKeptWhenSwitchOff` |
+| P2b | `PointsService#refundConfirmed`；池子类型 `MERCHANT_PAY_REVERSE`（入池） | `PointsRevokeFlowTest#confirmedRefund*` |
+| P2c | `PointsService#revokeEarned`；**用现成的 `REVOKE`（退款扣回）流水**，不另造 CLAWBACK；`points.config.allowNegativeBalance` | `PointsRevokeFlowTest` 5 条 |
+| P3 | `OrderVO.returned`（C/B 详情）；`CouponPortRouter` 必须转发 `returnedTitleOf` | `M5AfterSaleFlowTest#cancelledOrderSaysCouponReturned` |
+| P4 | 运营端敞口 `quotaReleased`；**线上回补待确认** | `ActivityCutTriggerFlowTest#quotaGoesBackOnRelease` |
+| P5 / P6 | 确认页 `endedActivities` / `clampToMax`；预览 `outOfRange`（与建单共用 `outOfRangeMerchants`） | `DeliveryRadiusFlowTest#previewFlagsOutOfRange`；c-app `checkout-notices` |
+| P7 | `BizActivityController` 回 40034、B 端确认后带 `riskConfirmed` 重提；运营端 `ALWAYS_ON_FREE_CUT` 置顶 | `AlwaysOnCutConfirmTest` 4 条；`#alwaysOnFreeCutFlaggedAndFirst` |
+| P9 | 确认页 `lastPayMode`（本机，当面付不记） | c-app `checkout-notices` |
+
+### 与设计有出入的三处
+
+1. **P2b 的池子入账有条件**：只在「结算单已回退、有补差、补差已收回（`subsidy_at` 清空）」时入池。
+   补差回退失败或归集路径已打款时，分照退、池子不入账 —— 差额就是待追回的钱，恒等式巡检会亮出来。
+2. **P2c 已结算的单才出池**：发分费是结算时才入池的，没结算的单收回分不动池子，否则池子被扣成负的。
+3. **B 端 P7 的开关不在端上读**：B 端没有读平台开关的接口，判据与开关都放在后端（40034），端上只负责把钱数说出来。
+
+### 开发中踩到的
+
+- 新测试的手机号与 `CampaignDiscountFlowTest` 撞号，残留的购物车让那边「买 2 件」凑成「买 3 送 1」—— 单独跑绿、全量红。
+  已换独占号段，并只清本用例期间新增的购物车行。
+- `CouponPortRouter` 是 @Primary 的分流器，接口上加的默认方法它不转发就永远落到默认值，页面安安静静不显示。
+
+### P4 线上 dry-run（只读，2026-09-21）
+
+| 活动 | 限量 | 已用 | 其中来自已关闭单 | 退回预算 |
+|---|---|---|---|---|
+| abc（PT202609201328190007701） | 100 | 5 | 5 | ¥40.30 |
+
+执行后应为：已用 0、预算已用 0、5 行 `pmt_apply` 逻辑删（与关单退配额同一段逻辑）。**等确认后执行，执行后回读。**
