@@ -531,9 +531,24 @@ class OpsProductGovernFlowTest {
     /** @return 下单响应的 code，0 = 成功 */
     private int buy(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
         String buyer = login(phone);
-        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"));
+        String added = mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"))
+                .andReturn().getResponse().getContentAsString();
+        /*
+         * **加购这一步也可能已经拦下了**（2026-09-21 起加购校验库存，见 CartStockGuardFlowTest）。
+         *
+         * 此前加购永远成功，库存不足要等下单锁库存才报 20001；现在加购就报同一个码。
+         * 这里不看加购结果的话，被拦下之后购物车是空的，下单返回的是 10400「请求参数有误」——
+         * 本条测试问的「这个人买不买得到」答案没变，只是在更早的一步答了。
+         *
+         * 判的是「买不买得到」而不是「在哪一步被拦」：两处用的是同一套规则
+         * （StockPort#sellable 与 lock 逐条对应），哪一步报出来都是同一个事实。
+         */
+        int addCode = json.readTree(added).get("code").asInt();
+        if (addCode != 0) {
+            return addCode;
+        }
         String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
                         .header("Idempotency-Key", idem)
                         .contentType(MediaType.APPLICATION_JSON)

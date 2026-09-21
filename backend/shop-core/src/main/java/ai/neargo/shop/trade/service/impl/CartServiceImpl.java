@@ -21,11 +21,35 @@ public class CartServiceImpl implements CartService {
     private final CartItemMapper cartMapper;
     private final GoodsQueryPort goodsPort;
     private final MerchantQueryPort merchantPort;
+    /** 加购前置校验库存。与下单锁库存是同一个 Port、同一套规则，见 {@link StockPort#sellable} */
+    private final ai.neargo.shop.spi.product.StockPort stockPort;
 
-    public CartServiceImpl(CartItemMapper cartMapper, GoodsQueryPort goodsPort, MerchantQueryPort merchantPort) {
+    public CartServiceImpl(CartItemMapper cartMapper, GoodsQueryPort goodsPort, MerchantQueryPort merchantPort,
+                           ai.neargo.shop.spi.product.StockPort stockPort) {
         this.cartMapper = cartMapper;
         this.goodsPort = goodsPort;
         this.merchantPort = merchantPort;
+        this.stockPort = stockPort;
+    }
+
+    /**
+     * 这件货的<b>车内总量</b>能不能下单。超过就拒。
+     *
+     * <p>报错不带剩余件数：{@code STOCK_NOT_ENOUGH} 的文案刻意没有占位符（见 ErrorCode）。
+     * 剩余件数由购物车列表的 {@code available} 字段下发，端上自己显示。
+     *
+     * <p>此前加购只判「仅活动」与「限购」，<b>从不看库存</b> ——
+     * 只剩 4 件的货加 100 件照样「加入成功」，直到结账锁库存才报不足。
+     * 顾客在购物车里看着 100 件、点结算才被拒，比加购那一刻就说清楚更糟。
+     *
+     * <p>它只是提前告诉你，不占库存。真正的闸门仍是下单时的原子锁定。
+     */
+    private void requireInStock(String skuNo, int newQty) {
+        int sellable = stockPort.sellable(skuNo);
+        if (newQty > sellable) {
+            throw ai.neargo.shop.common.BizException.of(
+                    ai.neargo.shop.common.ErrorCode.STOCK_NOT_ENOUGH);
+        }
     }
 
     /**
@@ -107,8 +131,32 @@ public class CartServiceImpl implements CartService {
                     s.fulfillments().isEmpty() ? "" : s.fulfillments().get(0),
                     s.merchantNo(), merchantName,
                     Boolean.TRUE.equals(row.getSelected()),
-                    !s.onSale() || (s.activityOnly() && !open.contains(s.goodsNo())), s.available());
+                    !s.onSale() || (s.activityOnly() && !open.contains(s.goodsNo())),
+                    /*
+                     * **下发 sellable，不下发快照的 available。**
+                     *
+                     * 端上拿这个数做三件事：步进器的上限、「仅剩 N 件」、以及为 0 时显示「售罄」。
+                     * 快照的 available 只看主体现货 —— 不算预售、不看分店。于是预售商品
+                     * 在购物车里显示成「售罄」、步进器卡在 0，而加购校验（按 sellable）
+                     * 明明放它进来了：同一件货，后端说能买 7 件，购物车说一件都没有。
+                     *
+                     * 与加购校验用同一个数，三处才不会各说各的。
+                     */
+                    displaySellable(s));
         }).toList();
+    }
+
+    /**
+     * 给端上显示用的可售数。
+     *
+     * <p>{@code sellable} 在算不出来的真相源下返回 {@link Integer#MAX_VALUE}（意思是「不拦」）。
+     * 那个数<b>不能原样下发</b>：端上会把步进器上限设成 21 亿，
+     * 连 {@code CART_RULES.maxQtyPerLine} 那道单行上限都被绕过。
+     * 这种时候退回快照原来的数，保持改动前的显示；真相源算得出来时（生产的 DUAL）用真值。
+     */
+    private int displaySellable(GoodsQueryPort.SkuSnapshot s) {
+        int n = stockPort.sellable(s.skuNo());
+        return n == Integer.MAX_VALUE ? s.available() : n;
     }
 
     @Override
@@ -124,7 +172,10 @@ public class CartServiceImpl implements CartService {
             throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.GOODS_ACTIVITY_ONLY);
         }
         TrdCartItem existing = find(skuNo);
-        requireWithinLimit(snap, skuNo, (existing == null ? 0 : existing.getQty()) + Math.max(qty, 1));
+        int newQty = (existing == null ? 0 : existing.getQty()) + Math.max(qty, 1);
+        requireWithinLimit(snap, skuNo, newQty);
+        // 判的是**车内总量**不是这一次加的量：车里已有 3、再加 2 要看 5 够不够
+        requireInStock(skuNo, newQty);
         if (existing == null) {
             TrdCartItem row = new TrdCartItem();
             row.setUserNo(SecurityUtils.currentUserNo());
@@ -151,8 +202,10 @@ public class CartServiceImpl implements CartService {
             cartMapper.deleteById(row.getId());   // 逻辑删除（BaseEntity 的 @TableLogic）
         } else {
             if (qty > row.getQty()) {
-                // 只在加量时判：减量永远放行，否则超限的车里连减都减不下来
+                // 只在加量时判：减量永远放行，否则超限的车里连减都减不下来。
+                // 库存同理 —— 库存掉到 2 而车里躺着 5 件，得允许他减到 2，不能卡死在 5
                 requireWithinLimit(goodsPort.snapshot(List.of(skuNo)).get(skuNo), skuNo, qty);
+                requireInStock(skuNo, qty);
             }
             row.setQty(qty);
             cartMapper.updateById(row);

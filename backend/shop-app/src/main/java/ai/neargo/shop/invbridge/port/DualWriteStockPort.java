@@ -100,6 +100,17 @@ public class DualWriteStockPort implements StockPort {
         mirror(InvMirrorEvent.RESTORE, restoreNo, items);
     }
 
+    /**
+     * 双写模式下平台是真相源，照平台算。
+     *
+     * <p><b>必须显式转发</b>：不写这个方法的话会落到接口的默认实现（返回 MAX_VALUE、不拦），
+     * 而生产跑的正是 DUAL —— 加购校验在线上会整个静默失效，本地 PLATFORM 模式下测试却全绿。
+     */
+    @Override
+    public int sellable(String skuNo) {
+        return platform.sellable(skuNo);
+    }
+
     @Override
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
         platform.setOnHand(skuNo, storeNo, onHand, reason);

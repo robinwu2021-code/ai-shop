@@ -180,6 +180,46 @@ public class StockPortImpl implements StockPort {
      * 变成事实上的无限供应。前者则是「你开始分店管了，那每家店都得设」，
      * 没设的店卖不出去 —— 少卖是可恢复的，超卖不是。
      */
+    /**
+     * 见 {@link StockPort#sellable}。<b>每个分支都对应 {@link #lock} 里的一个分支</b>——
+     * 改 lock 的判据时这里要一起改，否则加购与下单对同一件货给出不同答案。
+     */
+    @Override
+    public int sellable(String skuNo) {
+        if (hasStoreStock(skuNo)) {
+            // 分店库存：lock 按门店扣、不走预售。加购时不知道哪家店履约，取最能卖的那家
+            return DataScopeContext.executeWithoutScope(() ->
+                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                            .eq(PrdStoreStock::getSkuNo, skuNo)))
+                    .stream()
+                    .mapToInt(s -> nz(s.getStock()) - nz(s.getLockedStock()))
+                    .max().stream().map(n -> Math.max(n, 0)).findFirst().orElse(0);
+        }
+        ai.neargo.shop.product.entity.PrdSku sku = DataScopeContext.executeWithoutScope(() ->
+                skuMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo)
+                        .last("limit 1")));
+        if (sku == null) {
+            return 0;
+        }
+        int onHand = Math.max(nz(sku.getStock()) - nz(sku.getLockedStock()), 0);
+        /*
+         * 预售余量：与 lockPresale 的三个 WHERE 条件逐条对应 ——
+         * 没开预售 / 已截单 都视为 0。**与现货取大，不相加**：
+         * lock 是整单先试现货、不够再整单试预售，两者从不拼在一单里。
+         */
+        int presale = 0;
+        if (nz(sku.getPresaleQuota()) > 0
+                && (sku.getCutoffAt() == null || sku.getCutoffAt().isAfter(LocalDateTime.now()))) {
+            presale = Math.max(nz(sku.getPresaleQuota()) - nz(sku.getSoldCount()), 0);
+        }
+        return Math.max(onHand, presale);
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
+    }
+
     private boolean hasStoreStock(String skuNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeStockMapper.selectCount(Wrappers.<PrdStoreStock>lambdaQuery()

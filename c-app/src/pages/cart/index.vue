@@ -106,7 +106,25 @@ async function askQty(it: CartItem) {
   if (!Number.isFinite(n) || n <= 0) return;
   const capped = Math.min(n, max ?? CART_RULES.maxQtyPerLine);
   if (capped === it.qty) return;
-  void cart.update(it.skuNo, capped);
+  void changeQty(it.skuNo, capped);
+}
+
+/**
+ * 改数量，**被拒要说出来**。
+ *
+ * <p>加量会被后端的库存校验拒掉（2026-09-21 起）。此前这里是 `void cart.update(...)`，
+ * 失败的 Promise 没人接 —— 点「+」被拒时什么提示都没有，数字也不动，
+ * 用户只看到「点了没反应」。
+ *
+ * <p>步进器的上限已经按可售数卡住了，正常点不到被拒；会走到这里的是**时间差**：
+ * 列表加载之后别人下单锁走了库存，他这一下才撞上。
+ */
+async function changeQty(skuNo: string, n: number) {
+  try {
+    await cart.update(skuNo, n);
+  } catch (err) {
+    uni.showToast({ title: (err as Error).message, icon: "none" });
+  }
 }
 
 // ── 删除 ──────────────────────────────────────────────────────────────
@@ -255,7 +273,7 @@ onShow(() => cart.load());
                 :model-value="it.qty"
                 :max="maxOf(it) ?? CART_RULES.maxQtyPerLine"
                 editable
-                @change="(n: number) => cart.update(it.skuNo, n)"
+                @change="(n: number) => changeQty(it.skuNo, n)"
                 @edit="askQty(it)"
               ></sh-stepper>
             </view>
