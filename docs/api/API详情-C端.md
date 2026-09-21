@@ -60,6 +60,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -107,6 +108,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -336,6 +338,44 @@
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
 | `status` | [`CouponStatus`](#couponstatus) | 是 | 状态 |
 | `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
+
+
+#### POST `/mp/coupon/best`
+
+最优券试算（含不可用原因）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`CouponBestResult`](#couponbestresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bestUserCouponNo` | `string,null` | 否 | 最划算的那张（端上默认选它）。没有可用券时为空 |
+| `discountMinor` | `number` | 是 | 选最优那张能省多少（最小货币单位） |
+| `usable` | [`UserCoupon`](#usercoupon)\[\] | 是 | 这一单能用的 |
+| `unusable` | `object`（见下）\[\] | 是 | 用不了的，以及为什么 |
+
+`unusable[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `userCouponNo` | `string` | 是 | — |
+| `reason` | `string` | 是 | 后端给的中文原句。**端上只在拿不到 `code` 时回落显示它** —— 它是硬编码中文，且门槛那句以「分」为单位（「还差 2000 分」）。 |
+| `code` | `string,null` | 否 | BELOW_THRESHOLD / EXPIRED / NOT_STARTED。老后端没有这个字段 |
+| `gapMinor` | `number,null` | 否 | 差多少（最小货币单位）。只有 BELOW_THRESHOLD 有值 |
+
+
+#### GET `/mp/coupon/mine`
+
+我领到的券　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`UserCoupon`](#usercoupon)\[\]
 
 
 ### favorite
@@ -749,6 +789,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1517,6 +1558,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1588,6 +1630,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1644,6 +1687,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1691,6 +1735,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1738,6 +1783,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -1829,6 +1875,7 @@
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致 |
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠 |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
 
@@ -2656,8 +2703,6 @@
 
 ### Coupon
 
-优惠券模板。**字段与后端 `CouponVO` 一一对应**。 这里原先是一个被简化过的形状（`name` / `discountMinor` / `expireAt`）， 与后端一个都对不上，后果不是「少显示一块」而是**领券中心永远是空的**： 页面按 `c.expireAt > now` 过滤，而后端发的是 `endAt` —— `undefined > now` 恒 false，于是商家配好的券一张都露不出来，两边都不报错。 <b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 —— 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。
-
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `couponNo` | `string` | 是 | 券单号 |
@@ -2675,6 +2720,26 @@
 | `received` | `boolean` | 是 | 当前用户是否已领取。列表页据此显示「领取」还是「去使用」 |
 | `status` | [`CouponStatus`](#couponstatus) | 是 | 状态 |
 | `scopeDesc` | `string` | 是 | 适用范围文案，如「仅限张记粮油店」。展示用，实际校验在服务端 |
+
+### CouponBestResult
+
+最优券试算的结果（`POST /mp/coupon/best`）。 <p>**不可用的券也在里面**，带原因 —— 「为什么我的券用不了」是券功能最大的客诉来源， 而把它们从列表里滤掉，用户看到的是「券丢了」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bestUserCouponNo` | `string,null` | 否 | 最划算的那张（端上默认选它）。没有可用券时为空 |
+| `discountMinor` | `number` | 是 | 选最优那张能省多少（最小货币单位） |
+| `usable` | [`UserCoupon`](#usercoupon)\[\] | 是 | 这一单能用的 |
+| `unusable` | `object`（见下）\[\] | 是 | 用不了的，以及为什么 |
+
+`unusable[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `userCouponNo` | `string` | 是 | — |
+| `reason` | `string` | 是 | 后端给的中文原句。**端上只在拿不到 `code` 时回落显示它** —— 它是硬编码中文，且门槛那句以「分」为单位（「还差 2000 分」）。 |
+| `code` | `string,null` | 否 | BELOW_THRESHOLD / EXPIRED / NOT_STARTED。老后端没有这个字段 |
+| `gapMinor` | `number,null` | 否 | 差多少（最小货币单位）。只有 BELOW_THRESHOLD 有值 |
 
 ### CouponFunder
 
@@ -2774,6 +2839,16 @@
 - `CNY`
 - `USD`
 - `AED`
+
+### DiscountLine
+
+一条优惠的来历（TDD-C端优惠依据）。 <p>合计在 `amount.discountMinor` 里，这几条只是把它拆开说清楚： 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。 **明细是解释不是账**：与合计对不上时以合计为准。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | `ACTIVITY` \| `COUPON` | 是 | ACTIVITY（活动）/ COUPON（券） |
+| `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
+| `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
 
 ### FrequentItem
 
@@ -3333,6 +3408,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3386,6 +3462,7 @@
 | `weighed` | `boolean` | 否 | 是否已实际称重。称重后按实重产生差价，见 `OrderAmount.weighAdjustMinor` |
 | `isGift` | `boolean` | 否 | 赠品行：价格为 0，不参与计价，履约时随单发出 |
 | `points` | `number` | 否 | 该商品每件赠送的积分 |
+| `maxQty` | `number,null` | 否 | 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。 上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数； 猜大了提交才报错、猜小了少卖。当前只按库存算，「每人限购」还没接。 |
 
 ### OrderPreview
 
@@ -3396,6 +3473,7 @@
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致 |
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的（活动名 / 券名 + 各减了多少）。空 = 没有优惠 |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
 
@@ -3918,6 +3996,19 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `timesLeft` | `number` | 否 | 次卡剩余次数 |
 | `expireAt` | `number` | 是 | 过期时间。过期后余额/次数作废 |
 | `currency` | [`CurrencyCode`](#currencycode) | 是 | 购卡时锁定的货币，不随用户切市场变化 |
+
+### UserCoupon
+
+领到手的那张券（`mkt_user_coupon` 的一行）。 与  {@link  Coupon }  的关系：Coupon 是**模板**（活动配的那张）， UserCoupon 是**某个人手里的那一张**。领取接口返回的是后者 —— 契约此前写成返回 Coupon，而后端一直返回这个形状，字段一个都对不上。 页面恰好不读返回值（领完重拉列表），所以没人撞上；但契约说的是假话。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `userCouponNo` | `string` | 是 | 这个人手里那一张的编号 |
+| `coupon` | [`Coupon`](#coupon) | 是 | 券模板快照 |
+| `status` | `string` | 是 | UNUSED / USED / EXPIRED |
+| `usableNow` | `boolean` | 是 | 当前这笔订单能不能用它 —— 由服务端算，端上不要自己判门槛 |
+| `receivedAt` | `number` | 是 | 领取时刻 |
+| `usedAt` | `number` | 否 | 核销/使用时刻。空 = 还没用 |
 
 ### VirtualSpec
 

@@ -257,6 +257,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -304,6 +305,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -357,6 +359,7 @@
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3881,6 +3884,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3928,6 +3932,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -3975,6 +3980,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4029,6 +4035,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4213,6 +4220,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -4322,6 +4330,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -6703,6 +6712,16 @@ _无字段_
 | `feeMinor` | `number` | 是 | 配送费，最小货币单位 |
 | `freeThresholdMinor` | `number` | 是 | 免配送费门槛，最小货币单位；0 表示不免 |
 
+### DiscountLine
+
+一条优惠的来历（TDD-C端优惠依据）。 <p>合计在 `amount.discountMinor` 里，这几条只是把它拆开说清楚： 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。 **明细是解释不是账**：与合计对不上时以合计为准。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | `ACTIVITY` \| `COUPON` | 是 | ACTIVITY（活动）/ COUPON（券） |
+| `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
+| `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
+
 ### DissolveGroupReq
 
 散团
@@ -7669,6 +7688,7 @@ _无字段_
 | `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
 | `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
 | `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
@@ -7722,6 +7742,7 @@ _无字段_
 | `weighed` | `boolean` | 否 | 是否已实际称重。称重后按实重产生差价，见 `OrderAmount.weighAdjustMinor` |
 | `isGift` | `boolean` | 否 | 赠品行：价格为 0，不参与计价，履约时随单发出 |
 | `points` | `number` | 否 | 该商品每件赠送的积分 |
+| `maxQty` | `number,null` | 否 | 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。 上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数； 猜大了提交才报错、猜小了少卖。当前只按库存算，「每人限购」还没接。 |
 
 ### OrderReceiver
 

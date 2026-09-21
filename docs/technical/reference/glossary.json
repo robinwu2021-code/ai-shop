@@ -1318,12 +1318,6 @@
           "ar": "اختر عنوان التوصيل"
         },
         {
-          "key": "confirm.pickCoupon",
-          "zh-CN": "选择优惠券",
-          "en": "Choose a coupon",
-          "ar": "اختر قسيمة"
-        },
-        {
           "key": "confirm.pickSlot",
           "zh-CN": "选择上门时间",
           "en": "Choose a time slot",
