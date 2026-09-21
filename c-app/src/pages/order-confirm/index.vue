@@ -25,7 +25,7 @@ import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { Address, CartItem, CheckoutCapability, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
+import type { Address, CartItem, CheckoutCapability, CouponBestResult, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
@@ -459,6 +459,8 @@ async function refreshAmount() {
     serverAmount.value = p.amount;
     discountLines.value = p.discountLines ?? [];
     amountStale.value = false;
+    // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
+    void loadCouponBest();
     applyPickupGroups(p.subOrders ?? []);
   } catch {
     if (seq !== amountSeq) return;
@@ -614,40 +616,71 @@ function mmdd(ms: number): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-async function pickCoupon() {
-  // 券没取到时这一行显示「没能加载出来」，点它就是重试 ——
-  // 否则那句话说了等于没说：顾客知道出事了，却没有能做的事
-  if (couponFailed.value) {
-    try {
-      coupons.value = await api.myCoupons();
-      couponFailed.value = false;
-    } catch {
-      couponFailed.value = true;
-    }
-    return;
+/** 券面板开着没有。**不用 pick 弹层** —— 那个只给得出一行字，说不出门槛、到期、为什么不能用 */
+const couponPanel = ref(false);
+/** 最优券试算的结果：能用的、不能用的（带原因）、最划算的那张 */
+const couponBest = ref<CouponBestResult | null>(null);
+/** 这一单自动生效的活动（不用选）。来自预览的优惠明细 */
+const autoActivities = computed(() => discountLines.value.filter((d) => d.kind === "ACTIVITY"));
+
+/** 券包里一共几张（可用 + 不可用）。**「有券但都用不了」要说出来**，否则用户以为券丢了 */
+const couponTotal = computed(
+  () => (couponBest.value?.usable.length ?? 0) + (couponBest.value?.unusable.length ?? 0),
+);
+
+/**
+ * 不可用的原因，**说人话**。
+ *
+ * <p>后端给的 `reason` 是硬编码中文，且门槛那句以「分」为单位（「还差 2000 分」）——
+ * 照搬上去买家看不懂，英文与阿语用户还会看到中文。所以按 `code` 出文案、
+ * 自己格式化金额；**拿不到 code 才回落原句**（老后端、或将来新增的原因）。
+ */
+function unusableText(u: { reason: string; code?: string | null; gapMinor?: number | null }): string {
+  if (u.code === "BELOW_THRESHOLD" && u.gapMinor != null) {
+    return String(t("confirm.couponGap", { p: money(u.gapMinor) }));
   }
-  if (!usableCoupons.value.length) return;
+  if (u.code === "EXPIRED") return String(t("confirm.couponExpired"));
+  if (u.code === "NOT_STARTED") return String(t("confirm.couponNotStarted"));
+  return u.reason;
+}
+
+/** 券的一行说明：范围 · 门槛 · 到期 —— 这就是「券的具体信息」 */
+function couponMeta(u: UserCoupon): string {
+  const c = u.coupon;
+  return [
+    c.scopeDesc || String(t("coupon.scopeAll")),
+    c.thresholdMinor ? String(t("coupon.threshold", { p: money(c.thresholdMinor) })) : "",
+    String(t("coupon.until", { d: mmdd(c.endAt) })),
+  ].filter(Boolean).join(" · ");
+}
+
+async function loadCouponBest() {
+  try {
+    couponBest.value = await api.couponBest(
+      items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
+    );
+    couponFailed.value = false;
+  } catch {
+    couponFailed.value = true;
+  }
+}
+
+function chooseCoupon(no: string) {
+  couponNo.value = no;
+  couponPanel.value = false;
+}
+
+async function pickCoupon() {
   /*
-   * 每一行要说清**这张券是什么**：名字、抵多少、门槛、到什么时候。
-   * 只给「名字 -金额」的话，用户看不出为什么这张能用那张不能，也不知道快过期了。
+   * **总是打开面板**，哪怕一张能用的都没有。
+   *
+   * 此前这儿是「没有可用券就 return」——于是那一行灰着、点了没反应，
+   * 而券包里明明有券的人会以为券没了。面板里会把「有几张、为什么用不了」说清楚。
    */
-  const names = [
-    String(t("confirm.noCoupon")),
-    ...usableCoupons.value.map((c) => {
-      const parts = [`${c.title} -${money(couponDiscount(c, goodsMinor.value))}`];
-      if (c.thresholdMinor) parts.push(String(t("coupon.threshold", { p: money(c.thresholdMinor) })));
-      parts.push(String(t("coupon.until", { d: mmdd(c.endAt) })));
-      return parts.join(" · ");
-    }),
-  ];
-  const idx = await pick({
-    title: String(t("confirm.pickCoupon")),
-    items: names,
-    selected: couponNo.value
-      ? usableCoupons.value.findIndex((c) => c.couponNo === couponNo.value) + 1 : 0,
-  });
-  if (idx === null) return;
-  couponNo.value = idx === 0 ? "" : usableCoupons.value[idx - 1]!.couponNo;
+  if (couponFailed.value || !couponBest.value) {
+    await loadCouponBest();
+  }
+  couponPanel.value = true;
 }
 
 function backToCart() {
@@ -1025,11 +1058,11 @@ onMounted(async () => {
         分不清是「没券」还是「坏了」。线上券表此刻是空的，所以这是常态不是边角。
         （取不到券时不压暗：那时点它就是重试，是有动作的。）
       -->
-      <view
-        class="cell sh-row sh-row--between"
-        :class="{ 'is-disabled': !couponFailed && !usableCoupons.length }"
-        @tap="pickCoupon"
-      >
+      <!--
+        **这一行永远可点**（用户 2026-09-21）。此前没有可用券时它是灰的、点了没反应，
+        而券包里有券的人会以为券丢了 —— 面板里会把「有几张、为什么用不了」说清楚。
+      -->
+      <view class="cell sh-row sh-row--between" @tap="pickCoupon">
         <text class="txt-sub cell__k">{{ $t("confirm.coupon") }}</text>
         <text class="txt-bold txt-sub cell__v" :class="{ 'is-danger': !!coupon }">
           {{ coupon
@@ -1038,7 +1071,9 @@ onMounted(async () => {
               ? $t("common.loadFailed")
               : usableCoupons.length
                 ? $t("confirm.couponAvailable", { n: usableCoupons.length })
-                : $t("confirm.noCouponAvailable") }}
+                : couponTotal
+                  ? $t("confirm.couponNoneUsable", { n: couponTotal })
+                  : $t("confirm.noCouponAvailable") }}
         </text>
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
@@ -1121,6 +1156,54 @@ onMounted(async () => {
     <view v-if="submitBlockedReason" class="txt-caption sh-notice sh-notice--warning why">
       <text>{{ submitBlockedReason }}</text>
     </view>
+
+    <!--
+      优惠面板（原型 k03）：**三段回答三个问题** ——
+      活动是自动生效的、券要自己选、用不了的要说清为什么。
+    -->
+    <sh-sheet :visible="couponPanel" :title="String($t('confirm.couponPanel'))" @close="couponPanel = false">
+      <view v-if="autoActivities.length" class="sh-block">
+        <text class="txt-caption sh-muted">{{ $t("confirm.autoActivity") }}</text>
+        <view v-for="(d, i) in autoActivities" :key="i" class="sh-cell sh-row sh-row--between">
+          <text class="txt-body">{{ d.name }}</text>
+          <text class="txt-body is-danger sh-num">-{{ money(d.amountMinor) }}</text>
+        </view>
+      </view>
+
+      <view class="sh-cells">
+        <view class="sh-cell sh-row sh-row--between" @tap="chooseCoupon('')">
+          <text class="txt-body">{{ $t("confirm.noCoupon") }}</text>
+          <sh-icon v-if="!couponNo" name="check" :size="28" color="var(--sh-primary)"></sh-icon>
+        </view>
+        <view
+          v-for="u in couponBest?.usable ?? []"
+          :key="u.userCouponNo"
+          class="sh-cell sh-row sh-row--between"
+          @tap="chooseCoupon(u.coupon.couponNo)"
+        >
+          <view class="sh-fill cp__body">
+            <text class="txt-body">{{ u.coupon.title }}</text>
+            <text class="txt-caption sh-muted cp__meta">{{ couponMeta(u) }}</text>
+          </view>
+          <sh-icon
+            v-if="couponNo === u.coupon.couponNo"
+            name="check"
+            :size="28"
+            color="var(--sh-primary)"
+          ></sh-icon>
+        </view>
+      </view>
+
+      <!-- 用不了的**也要列出来**：券在他券包里，不列等于「券丢了」 -->
+      <view v-if="couponBest?.unusable.length" class="sh-block">
+        <text class="txt-caption sh-muted">
+          {{ $t("confirm.couponUnusable", { n: couponBest.unusable.length }) }}
+        </text>
+        <view v-for="u in couponBest.unusable" :key="u.userCouponNo" class="sh-cell">
+          <text class="txt-caption sh-muted">{{ unusableText(u) }}</text>
+        </view>
+      </view>
+    </sh-sheet>
 
     <sh-actionbar pill="lead" :pad="200">
       <view class="sh-fill">

@@ -579,6 +579,15 @@ export default {
     /** 优惠依据：这一条是哪个活动 / 哪张券减的 */
     fromActivity: "活动「{name}」",
     fromCoupon: "券「{name}」",
+    /** 优惠面板（原型 k03）。三段：自动活动 / 可用券 / 不可用券 */
+    couponPanel: "优惠",
+    autoActivity: "自动参与的活动（不用选）",
+    couponUnusable: "用不了的（{n}）",
+    /** 券包里有券、但这一单都用不了 —— 不说的话用户以为券丢了 */
+    couponNoneUsable: "{n} 张券本单不可用",
+    couponGap: "还差 {p} 到门槛",
+    couponExpired: "已过期",
+    couponNotStarted: "还没到使用时间",
     pickAddress: "请选择收货地址",
     appointmentAt: "预约时段 {t}",
     coupon: "优惠券",

@@ -36,7 +36,27 @@ public interface CouponService {
     record BestResult(String bestUserCouponNo, long discountMinor,
                       List<UserCouponVO> usable, List<Unusable> unusable) {
 
-        public record Unusable(String userCouponNo, String reason) {
+        /**
+         * 一张用不了的券，以及**为什么**。
+         *
+         * @param reason 中文原句。**保留不动** —— 老版本小程序还在用户手机上跑着，
+         *               删了它那边就空白。新端上不读它，只在拿不到 {@code code} 时回落。
+         * @param code   机器读的原因码：{@link #BELOW_THRESHOLD} / {@link #EXPIRED} /
+         *               {@link #NOT_STARTED}。端上据它出文案与格式化金额 ——
+         *               此前门槛那句是后端拼的「还差 2000 分」，**以分为单位**，
+         *               而买家心里的单位是「¥20.00」；英文与阿语用户还会看到中文。
+         * @param gapMinor 差多少（分）。只有 {@code BELOW_THRESHOLD} 有值，其余为 null
+         */
+        public record Unusable(String userCouponNo, String reason, String code, Long gapMinor) {
+
+            public static final String BELOW_THRESHOLD = "BELOW_THRESHOLD";
+            public static final String EXPIRED = "EXPIRED";
+            public static final String NOT_STARTED = "NOT_STARTED";
+
+            /** 不带码的老签名：存量调用处不必跟着改 */
+            public Unusable(String userCouponNo, String reason) {
+                this(userCouponNo, reason, null, null);
+            }
         }
     }
 

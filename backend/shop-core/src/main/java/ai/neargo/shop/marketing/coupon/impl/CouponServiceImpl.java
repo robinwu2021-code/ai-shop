@@ -165,9 +165,9 @@ public class CouponServiceImpl implements CouponService {
             long base = c.getEntityNo() == null || c.getEntityNo().isBlank()
                     ? total : byMerchant.getOrDefault(c.getEntityNo(), 0L);
 
-            String reason = reasonOfUnusable(c, base);
-            if (reason != null) {
-                unusable.add(new BestResult.Unusable(uc.getUserCouponNo(), reason));
+            BestResult.Unusable why = reasonOfUnusable(uc.getUserCouponNo(), c, base);
+            if (why != null) {
+                unusable.add(why);
                 continue;
             }
             usable.add(toVO(uc, c, true));
@@ -184,19 +184,29 @@ public class CouponServiceImpl implements CouponService {
     }
 
     /**
-     * 不可用原因。**给用户看的文案**，不是错误码 ——
-     * 「满 500 可用，还差 200」比「COUPON_NOT_APPLICABLE」有用得多。
+     * 不可用原因。**码 + 差额 + 一句中文**三样一起给。
+     *
+     * <p>此前只给中文句子，而且门槛那句写的是「还差 2000 <b>分</b>」——
+     * 买家心里的单位是「¥20.00」，英文与阿语用户还会看到中文。
+     * 现在端上按 {@code code} 出文案、用 {@code gapMinor} 自己格式化金额；
+     * 中文原句留着给老版本小程序（它们还在用户手机上跑）。
+     *
+     * @return null = 这张券能用
      */
-    private String reasonOfUnusable(MktCoupon c, long base) {
+    private BestResult.Unusable reasonOfUnusable(String userCouponNo, MktCoupon c, long base) {
         long now = System.currentTimeMillis();
         if (!"ACTIVE".equals(c.getStatus()) || nz(c.getEndAt()) < now) {
-            return "已过期";
+            return new BestResult.Unusable(userCouponNo, "已过期",
+                    BestResult.Unusable.EXPIRED, null);
         }
         if (nz(c.getStartAt()) > now) {
-            return "未到使用时间";
+            return new BestResult.Unusable(userCouponNo, "未到使用时间",
+                    BestResult.Unusable.NOT_STARTED, null);
         }
-        if (base < nz(c.getThresholdMinor())) {
-            return "未达使用门槛，还差 " + (nz(c.getThresholdMinor()) - base) + " 分";
+        long gap = nz(c.getThresholdMinor()) - base;
+        if (gap > 0) {
+            return new BestResult.Unusable(userCouponNo, "未达使用门槛，还差 " + gap + " 分",
+                    BestResult.Unusable.BELOW_THRESHOLD, gap);
         }
         return null;
     }

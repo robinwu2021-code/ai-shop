@@ -27,6 +27,34 @@ export type CouponStatus = "ACTIVE" | "PAUSED" | "ENDED";
  * <b>而且那个简化本身是错的</b>：`discountMinor` 一个数表达不了折扣券 ——
  * 折扣券要的是「打几折 + 最多减多少」。后端的形状才是对的，端上跟它。
  */
+/**
+ * 最优券试算的结果（`POST /mp/coupon/best`）。
+ *
+ * <p>**不可用的券也在里面**，带原因 —— 「为什么我的券用不了」是券功能最大的客诉来源，
+ * 而把它们从列表里滤掉，用户看到的是「券丢了」。
+ */
+export interface CouponBestResult {
+  /** 最划算的那张（端上默认选它）。没有可用券时为空 */
+  bestUserCouponNo?: string | null;
+  /** 选最优那张能省多少（最小货币单位） */
+  discountMinor: number;
+  /** 这一单能用的 */
+  usable: UserCoupon[];
+  /** 用不了的，以及为什么 */
+  unusable: Array<{
+    userCouponNo: string;
+    /**
+     * 后端给的中文原句。**端上只在拿不到 `code` 时回落显示它** ——
+     * 它是硬编码中文，且门槛那句以「分」为单位（「还差 2000 分」）。
+     */
+    reason: string;
+    /** BELOW_THRESHOLD / EXPIRED / NOT_STARTED。老后端没有这个字段 */
+    code?: string | null;
+    /** 差多少（最小货币单位）。只有 BELOW_THRESHOLD 有值 */
+    gapMinor?: number | null;
+  }>;
+}
+
 export interface Coupon {
   /** 券单号 */
   couponNo: string;

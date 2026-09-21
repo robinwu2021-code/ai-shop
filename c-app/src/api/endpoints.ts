@@ -207,6 +207,11 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
    * 活动下架 / 抢光 / 过期之后，券从前者消失，而它还在用户手里。
    */
   myCoupons: { method: "GET", path: "/mp/coupon/mine", auth: true, summary: "我领到的券" },
+  /*
+   * 最优券试算。**不可用的券也返回并带原因** —— 下单页的优惠面板靠它，
+   * 少了它只能自己按门槛猜，而「适用范围」这类规则端上根本算不了。
+   */
+  couponBest: { method: "POST", path: "/mp/coupon/best", auth: true, summary: "最优券试算（含不可用原因）" },
   myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
   myMemberships: { method: "GET", path: "/mp/my-memberships", auth: true, summary: "我是哪几家店的会员" },
   reachOpened: { method: "POST", path: "/mp/member-reach/:reachNo/opened", auth: true, summary: "点推送进店" },

@@ -214,6 +214,18 @@ class M6bCouponFlowTest {
         assertThat(data.get("unusable").size()).isEqualTo(1);
         assertThat(data.get("unusable").get(0).get("userCouponNo").asString()).isEqualTo(tooHigh);
         assertThat(data.get("unusable").get(0).get("reason").asString()).contains("门槛");
+        /*
+         * ★ **原因要给码与差额，不能只给中文句子**（2026-09-21，执行计划 B1）。
+         *
+         * 那句中文是硬编码的，而且写的是「还差 35060 <b>分</b>」—— 买家心里的单位是元，
+         * 英文与阿语用户还会看到中文。端上按 code 出文案、用 gapMinor 自己格式化，
+         * 所以这两样缺一不可。reason 仍然保留：老版本小程序还在读它。
+         */
+        JsonNode why = data.get("unusable").get(0);
+        assertThat(why.get("code").asString())
+                .as("不给码，端上只能把后端拼的中文原样贴上去").isEqualTo("BELOW_THRESHOLD");
+        assertThat(why.get("gapMinor").asLong())
+                .as("差额要给数：50000 门槛 − 14940 商品额").isEqualTo(50000L - 14940L);
         assertThat(small).isNotBlank();
     }
 

@@ -48,6 +48,7 @@ import type {
   Community,
   LocationContext,
   Coupon,
+  CouponBestResult,
   UserCoupon,
   GroupPickupOrder,
   Goods,
@@ -179,6 +180,7 @@ export const httpApi: ShopApi = {
 
   couponList: () => call<Coupon[]>("couponList"),
   myCoupons: () => call<UserCoupon[]>("myCoupons"),
+  couponBest: (items) => call<CouponBestResult>("couponBest", undefined, { items }),
   myStoreCoupons: () => call<MyStoreCoupon[]>("myStoreCoupons"),
   myMemberships: () => call<MyMembership[]>("myMemberships"),
   setMembershipReach: (entityNo, optOut) =>

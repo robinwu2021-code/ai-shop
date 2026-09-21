@@ -16,6 +16,7 @@ import type { ShopApi } from "../contract";
 export const marketingMock: Pick<ShopApi,
   "couponList"
   | "myCoupons"
+  | "couponBest"
   | "myStoreCoupons"
   | "myMemberships"
   | "setMembershipReach"
@@ -70,6 +71,45 @@ export const marketingMock: Pick<ShopApi,
         };
       }),
     );
+  },
+
+  /**
+   * 最优券试算。mock 里**三种都要有**：能用的、差门槛的、已过期的 ——
+   * 只给能用的那几张，面板上「不可用」那一段改坏了也看不出来。
+   *
+   * 门槛按传进来的商品额算，这样在本机改数量也能看到「还差多少」跟着变。
+   */
+  async couponBest(items) {
+    const now = Date.now();
+    const base = items.reduce((s, it) => s + 2980 * it.qty, 0);
+    const mine = await marketingMock.myCoupons!();
+    const usable: typeof mine = [];
+    const unusable: Array<{ userCouponNo: string; reason: string; code?: string; gapMinor?: number }> = [];
+    let bestNo: string | null = null;
+    let best = 0;
+    for (const u of mine) {
+      const c = u.coupon;
+      if (c.endAt < now) {
+        unusable.push({ userCouponNo: u.userCouponNo, reason: "已过期", code: "EXPIRED" });
+        continue;
+      }
+      const gap = c.thresholdMinor - base;
+      if (gap > 0) {
+        unusable.push({
+          userCouponNo: u.userCouponNo,
+          reason: `未达使用门槛，还差 ${gap} 分`,
+          code: "BELOW_THRESHOLD",
+          gapMinor: gap,
+        });
+        continue;
+      }
+      usable.push(u);
+      if (c.faceMinor > best) {
+        best = c.faceMinor;
+        bestNo = u.userCouponNo;
+      }
+    }
+    return delay({ bestUserCouponNo: bestNo, discountMinor: best, usable, unusable });
   },
 
   /**

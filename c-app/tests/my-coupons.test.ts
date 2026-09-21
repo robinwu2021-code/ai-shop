@@ -44,12 +44,18 @@ describe("两处都读「我的券」", () => {
 });
 
 describe("券的具体信息要说出来", () => {
-  it("★★★ 选择弹层每行带门槛与到期", () => {
-    const at = confirmPage.indexOf("async function pickCoupon");
-    const body = confirmPage.slice(at, at + 900);
-    expect(body, "只给「名字 -金额」，用户看不出为什么这张能用、也不知道快过期了")
-      .toContain("coupon.threshold");
+  it("★★★ 券的每一行带范围 · 门槛 · 到期", () => {
+    /*
+     * 2026-09-21 这件事从「pick 弹层拼一行字符串」挪进了优惠面板（原型 k03），
+     * 断言跟着挪到 couponMeta —— 守的是同一件事：只给「名字 -金额」的话，
+     * 用户看不出为什么这张能用、也不知道它快过期了。
+     */
+    const at = confirmPage.indexOf("function couponMeta");
+    expect(at, "couponMeta 没了 —— 守卫失去了扫描对象，先修守卫").toBeGreaterThan(0);
+    const body = confirmPage.slice(at, at + 600);
+    expect(body).toContain("coupon.threshold");
     expect(body).toContain("coupon.until");
+    expect(body).toContain("coupon.scopeAll");
   });
 
   it("我的券那一行也给范围 · 门槛 · 到期", () => {

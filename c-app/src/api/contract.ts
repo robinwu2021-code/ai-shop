@@ -18,6 +18,7 @@ import type {
   Community,
   LocationContext,
   Coupon,
+  CouponBestResult,
   UserCoupon,
   GroupPickupOrder,
   Goods,
@@ -376,6 +377,13 @@ export interface ShopApi {
    * 活动一下架 / 抢光 / 过期，用户手里的券就从两处一起消失，而券并没有失效。
    */
   myCoupons(): Promise<UserCoupon[]>;
+  /**
+   * 这一单的最优券试算：**可用的、不可用的（带原因）、以及最划算的那张**。
+   *
+   * <p>门槛能在端上算，但「适用范围」「限定商家」这类规则算不了 —— 所以判定在后端，
+   * 端上只负责把原因说成人话。
+   */
+  couponBest(items: Array<{ goodsNo: string; skuNo: string; qty: number }>): Promise<CouponBestResult>;
   /**
    * 商家发给我的券（新模型）。**与领券中心那批分开**：
    * 这批是被动收到的，有到店码和次卡余次，老形状表达不了。
