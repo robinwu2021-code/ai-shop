@@ -5427,6 +5427,7 @@ components:
       properties: 
         activityNo: 
           type: "string"
+          description: "活动号"
         name: 
           type: "string"
           description: "商家起的活动名。拼不出规则时（理论上不会）才用它"
@@ -8187,8 +8188,10 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家号"
         merchantName: 
           type: "string"
+          description: "店名（一单多家店时，面板里每家店的活动前面写它）"
         options: 
           type: "array"
           items: 
@@ -8221,8 +8224,10 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家号"
         activityNo: 
           type: "string"
+          description: "活动号，或 `ACTIVITY_NONE`（这家店不参加活动）"
       required: 
         - "merchantNo"
         - "activityNo"
@@ -8405,6 +8410,11 @@ components:
                 type: "string"
             - type: "null"
           description: "订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`）"
+        offers: 
+          anyOf: 
+            - "$ref": "#/components/schemas/CheckoutOffers"
+            - type: "null"
+          description: "订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`）"
         expressNo: 
           type: "string"
           description: "EXPRESS：快递单号，发货后才有"
@@ -9210,6 +9220,11 @@ components:
         openGroup: 
           type: "boolean"
           description: "开团：按这件货在跑的拼团活动开一个新团，下单人即发起人"
+        activityChoices: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ActivityChoice"
+          description: "对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的"
         appointmentAt: 
           type: "number"
           description: "APPOINTMENT：预约开始时间戳"

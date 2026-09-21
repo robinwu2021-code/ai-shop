@@ -5426,6 +5426,7 @@ components:
       properties: 
         activityNo: 
           type: "string"
+          description: "活动号"
         name: 
           type: "string"
           description: "商家起的活动名。拼不出规则时（理论上不会）才用它"
@@ -8186,8 +8187,10 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家号"
         merchantName: 
           type: "string"
+          description: "店名（一单多家店时，面板里每家店的活动前面写它）"
         options: 
           type: "array"
           items: 
@@ -8220,8 +8223,10 @@ components:
       properties: 
         merchantNo: 
           type: "string"
+          description: "商家号"
         activityNo: 
           type: "string"
+          description: "活动号，或 `ACTIVITY_NONE`（这家店不参加活动）"
       required: 
         - "merchantNo"
         - "activityNo"
@@ -8404,6 +8409,11 @@ components:
                 type: "string"
             - type: "null"
           description: "订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`）"
+        offers: 
+          anyOf: 
+            - "$ref": "#/components/schemas/CheckoutOffers"
+            - type: "null"
+          description: "订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`）"
         expressNo: 
           type: "string"
           description: "EXPRESS：快递单号，发货后才有"
