@@ -24,6 +24,26 @@ const grp = ref<GroupBuy | null>(null);
 const nativeShare = canNativeShare();
 const grpOpen = computed(() => !!grp.value && grp.value.status === "OPEN" && grp.value.expireAt > Date.now());
 const orderNo = ref("");
+
+/**
+ * 「接下来会发生什么」。**按状态说**，没写过说明的状态返回空串（整行不显示）——
+ * 编一句放之四海皆准的话，等于什么都没说。
+ */
+const nextStepText = computed(() => {
+  const o = order.value;
+  if (!o) return "";
+  const key = `order.next.${o.status}`;
+  const text = String(t(key));
+  // vue-i18n 找不到键时原样返回键名 —— 那正是「这个状态还没写过说明」
+  return text === key ? "" : text;
+});
+
+/** 复制订单号。找客服要念这一串，照着屏幕抄最容易抄错 */
+function copyOrderNo() {
+  const no = order.value?.orderNo;
+  if (!no) return;
+  uni.setClipboardData({ data: no });
+}
 /**
  * 拉挂了。
  *
@@ -348,6 +368,12 @@ onShow(load);
       <text class="txt-title status" :class="statusTone(order.status)">
         {{ $t(`orderStatus.${order.status}`) }}
       </text>
+      <!--
+        **状态下面说一句「接下来会发生什么」**（原型 k07）。
+        「待发货」三个字只说了此刻，没说他要等什么 —— 而那正是他点进这一页想知道的。
+        没写过说明的状态整行不显示：编一句放之四海皆准的话等于什么都没说。
+      -->
+      <text v-if="nextStepText" class="txt-caption sh-muted status__next">{{ nextStepText }}</text>
 
       <view class="timeline">
         <view v-for="(n, i) in order.timeline" :key="i" class="node">
@@ -463,7 +489,10 @@ onShow(load);
       </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
-        <text class="txt-caption fact__v sh-num">{{ order.orderNo }}</text>
+        <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
+        <text class="txt-caption fact__v sh-num" @tap="copyOrderNo">
+          {{ order.orderNo }} <text class="txt-primary">{{ $t("order.copy") }}</text>
+        </text>
       </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.createdAt") }}</text>
@@ -534,6 +563,10 @@ onShow(load);
 </template>
 
 <style scoped>
+.status__next {
+  display: block;
+  margin-top: 8rpx;
+}
 /* 拼团进度卡（p08）：三行竖排，邀请按钮贴左 */
 .grpcard {
   display: flex;

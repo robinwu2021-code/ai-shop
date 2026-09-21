@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // 订单列表。tab 是「用户视角的下一步动作」，不是订单状态枚举 ——
 // 用户关心的是「我要去付钱 / 我要去取货」，不是 PAID 和 ARRIVED 的区别。
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
-import { datetime, money } from "@shared/utils/format";
+import { countdown, datetime, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
 import {
   DELIVERY_SHAPE,
@@ -86,6 +86,24 @@ const failed = ref(false);
  * 而错的解释比没有解释更费时间。
  */
 const failReason = ref("");
+
+/**
+ * 秒表。**待付款那几单要显示还剩多久**（原型 k09）——
+ * 列表是他决定「先付哪一单」的地方，而「还有 3 分钟」和「还有 3 小时」是两回事。
+ */
+const now = ref(Date.now());
+let tick: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  tick = setInterval(() => (now.value = Date.now()), 1000);
+});
+onUnmounted(() => clearInterval(tick));
+
+/** 这一单还剩多久自动关闭。没有截止时刻（不是待付款）就返回空串 */
+function payLeft(o: Order): string {
+  if (o.status !== "WAIT_PAY" || !o.payDeadlineAt) return "";
+  const left = o.payDeadlineAt - now.value;
+  return left > 0 ? countdown(left) : "";
+}
 
 /**
  * 状态页签由**后端**筛完了，端上不再二次过滤。
@@ -199,12 +217,22 @@ onShow(load);
 
       <view class="card__foot sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ datetime(o.createdAt) }}</text>
-        <text class="txt-price sh-num">
-          {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
-        </text>
+        <view class="sh-row foot__right">
+          <!-- 省了多少是他在列表里最想比的那个数（原型 k09） -->
+          <text v-if="o.amount.discountMinor" class="txt-caption sh-muted sh-num">
+            {{ $t("orders.saved", { p: money(o.amount.discountMinor) }) }}
+          </text>
+          <text class="txt-price sh-num">
+            {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
+          </text>
+        </view>
       </view>
 
-      <view v-if="o.status === 'WAIT_PAY'" class="card__ops">
+      <view v-if="o.status === 'WAIT_PAY'" class="card__ops sh-row sh-row--between">
+        <!-- 倒计时给在按钮旁边：不说的话他不知道这一单还等不等得起 -->
+        <text v-if="payLeft(o)" class="txt-caption is-danger sh-num">
+          {{ $t("orders.payLeft", { t: payLeft(o) }) }}
+        </text>
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
       <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="sh-notice codeline sh-row sh-row--between">
@@ -241,6 +269,9 @@ onShow(load);
 </template>
 
 <style scoped>
+.foot__right {
+  gap: 16rpx;
+}
 .card {
   margin-bottom: 20rpx;
 }

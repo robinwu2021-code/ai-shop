@@ -655,6 +655,9 @@ export default {
     },
     hiddenCount: "还有 {n} 笔更早的订单未显示",
     total: "合计 {p}",
+    /** 列表卡上的两句（原型 k09）：省了多少、还剩多久自动关 */
+    saved: "已优惠 {p}",
+    payLeft: "{t} 后关闭",
     pay: "去支付",
     moreItems: "等共 {n} 件其他商品",
     empty: "还没有订单",
@@ -718,6 +721,16 @@ export default {
     appointment: "预约时段",
     express: "运单号",
     orderNo: "订单号",
+    /** 状态下面那一句「接下来会发生什么」（原型 k07）。没写的状态不显示，不编话 */
+    next: {
+      WAIT_PAY: "付款后商家开始备货，超时未付会自动关闭",
+      WAIT_FULFILL: "商家正在备货，发出后可以查看进度",
+      FULFILLING: "商家已经发出，请留意到货通知",
+      COMPLETED: "这一单已经完成，有问题可以申请售后",
+      CANCELLED: "这一单已经关闭",
+      REFUNDED: "钱已原路退回，到账时间以银行为准",
+    },
+    copy: "复制",
     createdAt: "下单时间",
     cancel: "取消订单",
     batchPickup: "提货日",
