@@ -547,6 +547,7 @@ export default {
     fromCoupon: "قسيمة «{name}»",
     couponPanel: "الخصومات",
     qtyMax: "المتاح {n} فقط",
+    payNow: "ادفع {p}",
     qtyLeft: "بقي {n} فقط",
     autoActivity: "مطبَّق تلقائيًا",
     couponUnusable: "غير قابلة للاستخدام ({n})",

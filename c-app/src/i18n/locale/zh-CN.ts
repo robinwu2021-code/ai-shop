@@ -583,6 +583,8 @@ export default {
     couponPanel: "优惠",
     /** 数量到顶（原型 k04）。压暗却不说为什么，用户会以为点坏了 */
     qtyMax: "最多还能买 {n} 件",
+    /** 线上支付时底栏直接写金额：点一次就拉起微信（B3）。当面付仍是「提交订单」 */
+    payNow: "立即支付 {p}",
     qtyLeft: "仅剩 {n} 件",
     autoActivity: "自动参与的活动（不用选）",
     couponUnusable: "用不了的（{n}）",

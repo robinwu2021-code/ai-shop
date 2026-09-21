@@ -812,7 +812,13 @@ async function submit() {
     const order = await api.createOrder({ ...body, idempotencyKey: checkoutKey(fingerprint) });
     checkoutKeyBoundTo(fingerprint, order.payDeadlineAt);
     await cart.load();
-    uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}` });
+    /*
+     * **线上支付：一次点击到微信面板**（执行计划 B3）。带 `auto=1` 过去，
+     * 收银台页加载完直接拉起支付 —— 用户不必再点第二次「立即支付」。
+     * 当面付没有「拉起」这一步，照旧落到收银台页让他看单。
+     */
+    const auto = payMode.value === PAY_MODE.ONLINE ? "&auto=1" : "";
+    uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}${auto}` });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -1276,7 +1282,11 @@ onMounted(async () => {
         :class="{ 'is-disabled': !canSubmit }"
         @tap="submit"
       >
-        {{ submitting ? $t("confirm.submitting") : $t("confirm.submit") }}
+        {{ submitting
+          ? $t("confirm.submitting")
+          : payMode === PAY_MODE.ONLINE
+            ? $t("confirm.payNow", { p: money(amount?.payableMinor ?? 0) })
+            : $t("confirm.submit") }}
       </view>
     </sh-actionbar>
     </template>

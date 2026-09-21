@@ -547,6 +547,7 @@ export default {
     fromCoupon: "Coupon \u201c{name}\u201d",
     couponPanel: "Discounts",
     qtyMax: "Only {n} available",
+    payNow: "Pay {p}",
     qtyLeft: "Only {n} left",
     autoActivity: "Applied automatically",
     couponUnusable: "Can't be used ({n})",
