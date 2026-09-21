@@ -11,14 +11,24 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">21 份有效稿子，其中页面稿 11 份、共 157 屏；3 份作废。
+  <p class="sub">22 份有效稿子，其中页面稿 12 份、共 164 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
 <section>
   <div class="sec-head"><span class="sec-num">01</span><h2>页面稿：每一屏长什么样</h2></div>
   <div class="pgrid">
-<article class="pcard" id="marketing-unified">
+<article class="pcard" id="inv-managed-switch">
+  <div class="pcard__hd">
+    <b>库存：哪些商品记库存</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-09-21 · 7 屏</div>
+  <p class="pcard__sum">门店库存方案第一期。按品类、按单件商品决定记不记库存；服务类默认不记；关闭时有库存二次确认、有在途单据拒绝。七屏。</p>
+  <div class="screens"><a class="scr" href="inv-managed-switch.html#s01" title="s01 库存首页 · 设置入口">s01</a><a class="scr" href="inv-managed-switch.html#s02" title="s02 库存设置 · 记库存的品类">s02</a><a class="scr" href="inv-managed-switch.html#s03" title="s03 关闭品类 · 还有库存">s03</a><a class="scr" href="inv-managed-switch.html#s04" title="s04 关闭品类 · 有在途单据">s04</a><a class="scr" href="inv-managed-switch.html#s05" title="s05 编辑商品 · 库存管理">s05</a><a class="scr" href="inv-managed-switch.html#s06" title="s06 选择库存管理方式">s06</a><a class="scr" href="inv-managed-switch.html#s07" title="s07 商品列表 · 不记库存">s07</a></div>
+  <div class="pcard__links"><a href="inv-managed-switch.html">本地稿</a> <a href="https://claude.ai/artifact/F6WeTTr6aYReBd4wseF5Ug">claude.ai</a> <a href="../docs/technical/design/TDD-商品纳入进销存开关.md">TDD-商品纳入进销存开关</a></div>
+  
+</article><article class="pcard" id="marketing-unified">
   <div class="pcard__hd">
     <b>营销：活动统一模型</b>
     <span class="chip ok">已落地</span>

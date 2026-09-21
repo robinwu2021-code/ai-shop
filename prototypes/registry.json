@@ -2,6 +2,57 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "inv-managed-switch",
+   "file": "inv-managed-switch.html",
+   "title": "库存：哪些商品记库存",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-21",
+   "artifact": "https://claude.ai/artifact/F6WeTTr6aYReBd4wseF5Ug",
+   "summary": "门店库存方案第一期。按品类、按单件商品决定记不记库存；服务类默认不记；关闭时有库存二次确认、有在途单据拒绝。七屏。",
+   "docs": [
+    {
+     "label": "TDD-商品纳入进销存开关",
+     "path": "docs/technical/design/TDD-商品纳入进销存开关.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "库存首页 · 设置入口"
+    },
+    {
+     "id": "s02",
+     "title": "库存设置 · 记库存的品类",
+     "client": "b-app",
+     "route": "pages/stock-settings/index"
+    },
+    {
+     "id": "s03",
+     "title": "关闭品类 · 还有库存"
+    },
+    {
+     "id": "s04",
+     "title": "关闭品类 · 有在途单据"
+    },
+    {
+     "id": "s05",
+     "title": "编辑商品 · 库存管理"
+    },
+    {
+     "id": "s06",
+     "title": "选择库存管理方式"
+    },
+    {
+     "id": "s07",
+     "title": "商品列表 · 不记库存"
+    }
+   ]
+  },
+  {
    "slug": "marketing-unified",
    "file": "marketing-unified.html",
    "title": "营销：活动统一模型",

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 81,
+      "count": 82,
       "domains": [
         {
           "name": "工作台",
@@ -439,6 +439,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stock-cross/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-settings/index",
+              "title": "库存设置 · 记库存的品类",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/artifact/F6WeTTr6aYReBd4wseF5Ug",
+              "preview": null
             }
           ]
         },
@@ -3285,5 +3296,5 @@
       ]
     }
   ],
-  "total": 258
+  "total": 259
 }
