@@ -106,7 +106,16 @@ export const aftersaleMock: Pick<ShopApi,
         ? { kind: "COUPON" as const, name: coupon.title, amountMinor: amount.discountMinor }
         : { kind: "ACTIVITY" as const, name: "满 30 减 5", amountMinor: amount.discountMinor }]
       : [];
-    return delay({ amount, items, discountLines });
+    /*
+     * **每行给出上限**（执行计划 B2）：下单页的步进器要知道还能加到几。
+     * mock 里给库存那个数；不给的话步进器在本机永远不压暗，改坏了也看不出来。
+     */
+    const withMax = items.map((it) => {
+      const g = toGoods(findGoodsSeed(it.goodsNo));
+      const sku = g.skus.find((s) => s.skuNo === it.skuNo);
+      return { ...it, maxQty: sku?.stock ?? null };
+    });
+    return delay({ amount, items: withMax, discountLines });
   },
 
   /**

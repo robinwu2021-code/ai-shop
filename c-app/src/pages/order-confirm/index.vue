@@ -209,6 +209,41 @@ const gifts = computed(() => items.value.filter((it) => (it.giftQty ?? 0) > 0));
 const merchantSegments = computed(() => segmentByMerchant(items.value));
 
 /**
+ * 每一行还能买几件（skuNo → 上限）。**来自预览** —— 只有后端算得准
+ * （可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数。
+ *
+ * <p>没拿到就不设限：宁可让提交那一刻去拦，也不要凭旧数把人挡在这儿。
+ */
+const maxQtyOf = ref<Record<string, number>>({});
+
+/** 这一行加到顶了没有 */
+function atMax(it: CartItem): boolean {
+  const m = maxQtyOf.value[it.skuNo];
+  return m != null && it.qty >= m;
+}
+
+/**
+ * 改数量。**只改这一单，不写回购物车** —— 下单页上的数量是这一单的意图，
+ * 不是购物车状态；写回去的话，他改完没付款就退出，购物车被悄悄改了。
+ *
+ * <p>减到 0 = 把这一行移出本单（购物车里那行还在）。
+ */
+function setQty(it: CartItem, next: number) {
+  const max = maxQtyOf.value[it.skuNo];
+  if (next > 0 && max != null && next > max) {
+    uni.showToast({ title: String(t("confirm.qtyMax", { n: max })), icon: "none" });
+    return;
+  }
+  if (next <= 0) {
+    items.value = items.value.filter((x) => x.skuNo !== it.skuNo);
+  } else {
+    items.value = items.value.map((x) => (x.skuNo === it.skuNo ? { ...x, qty: next } : x));
+  }
+  // 金额、优惠、券的可用性全跟着变 —— 走与改地址同一条重算路（带 seq，过期的丢弃）
+  void refreshAmount();
+}
+
+/**
  * 金额**以后端预览为准**，端上不自己算。
  *
  * ⚠️ 这里此前调的是共享定价策略 `pricingFor(type).estimate(...)`，
@@ -458,6 +493,10 @@ async function refreshAmount() {
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
     discountLines.value = p.discountLines ?? [];
+    // 上限只有后端算得准；没给的行不设限（宁可提交时拦，也不要凭旧数挡人）
+    maxQtyOf.value = Object.fromEntries(
+      (p.items ?? []).filter((i) => i.maxQty != null).map((i) => [i.skuNo, i.maxQty as number]),
+    );
     amountStale.value = false;
     // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
     void loadCouponBest();
@@ -1004,8 +1043,27 @@ onMounted(async () => {
         >
           <view class="row__foot sh-row sh-row--between">
             <text class="txt-price sh-num">{{ money(it.price) }}</text>
-            <text class="txt-caption sh-num">×{{ it.qty }}</text>
+            <!--
+              **数量在这儿改，不用退回购物车**（原型 k02/k04）。
+              加号到上限就压暗，并把「还剩几件」说出来 —— 压暗却不说，用户会以为点坏了。
+            -->
+            <view class="qty sh-row">
+              <view class="qty__btn sh-center" @tap="setQty(it, it.qty - 1)">
+                <text class="txt-body">−</text>
+              </view>
+              <text class="txt-body sh-num qty__n">{{ it.qty }}</text>
+              <view
+                class="qty__btn sh-center"
+                :class="{ 'is-disabled': atMax(it) }"
+                @tap="setQty(it, it.qty + 1)"
+              >
+                <text class="txt-body">＋</text>
+              </view>
+            </view>
           </view>
+          <text v-if="atMax(it)" class="txt-caption sh-muted row__max">
+            {{ $t("confirm.qtyLeft", { n: maxQtyOf[it.skuNo] }) }}
+          </text>
         </biz-sku-row>
       </template>
 
@@ -1244,6 +1302,24 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* 数量步进器：两个方块 + 中间的数。与购物车那只同形，只是不写回购物车 */
+.qty {
+  gap: 0;
+}
+.qty__btn {
+  width: 56rpx;
+  height: 56rpx;
+  background: var(--sh-fill);
+  border-radius: var(--sh-radius-sm);
+}
+.qty__n {
+  min-width: 64rpx;
+  text-align: center;
+}
+.row__max {
+  display: block;
+  margin-top: 8rpx;
+}
 .modes {
   display: flex;
   gap: 16rpx;

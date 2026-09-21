@@ -581,6 +581,9 @@ export default {
     fromCoupon: "券「{name}」",
     /** 优惠面板（原型 k03）。三段：自动活动 / 可用券 / 不可用券 */
     couponPanel: "优惠",
+    /** 数量到顶（原型 k04）。压暗却不说为什么，用户会以为点坏了 */
+    qtyMax: "最多还能买 {n} 件",
+    qtyLeft: "仅剩 {n} 件",
     autoActivity: "自动参与的活动（不用选）",
     couponUnusable: "用不了的（{n}）",
     /** 券包里有券、但这一单都用不了 —— 不说的话用户以为券丢了 */

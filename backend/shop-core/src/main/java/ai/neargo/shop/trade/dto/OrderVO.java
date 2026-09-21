@@ -295,7 +295,26 @@ public record OrderVO(String orderNo,
                           * 于是买赠订单里会出现一条「¥0.00 ×4」的行，而 C 端认不出它是赠品，
                           * 既显示不了「赠」标，也无法与「商家把价格填成 0」区分开。
                           */
-                         boolean isGift) {
+                         boolean isGift,
+                         /**
+                          * 这一行**最多还能买几件**（TDD/执行计划 B2）。
+                          *
+                          * <p>下单页要给步进器，而上限只有后端算得准：可售库存是按门店覆盖层算的，
+                          * 端上手里那份是商品详情缓存下来的旧数。不给的话端上只能猜，
+                          * 猜大了提交才报错、猜小了少卖。
+                          *
+                          * <p>**只有预览填**，历史订单为 null：那时候的库存与现在无关。
+                          * 当前只按库存算；「每人限购」要算历史购买量，那是另一件事（见执行计划）。
+                          */
+                         Integer maxQty) {
+
+        /** 不带上限的旧签名：订单视角那几处构造不必跟着改 */
+        public ItemVO(String goodsNo, String merchantNo, String skuNo, String title,
+                      String cover, String spec, long price, int qty, long amount,
+                      String type, boolean isGift) {
+            this(goodsNo, merchantNo, skuNo, title, cover, spec, price, qty, amount, type,
+                    isGift, null);
+        }
     }
 
     /**

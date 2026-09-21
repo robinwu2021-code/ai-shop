@@ -1890,7 +1890,9 @@ public class OrderServiceImpl implements OrderService {
                     g.lines.stream().map(l -> new OrderVO.ItemVO(
                             l.snapshot.goodsNo(), g.merchantNo, l.snapshot.skuNo(), l.snapshot.title(),
                             l.snapshot.cover(), l.snapshot.spec(), l.snapshot.price(), l.qty,
-                            l.amount(), l.snapshot.categoryType(), false)).toList(),
+                            l.amount(), l.snapshot.categoryType(), false,
+                            // 下单页的步进器要知道还能加到几 —— 只有后端算得准（见 ItemVO.maxQty）
+                            l.snapshot.available())).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     // 预览还没有单，收件人与预约时间自然也没有；自提点是**已经配好的那个**

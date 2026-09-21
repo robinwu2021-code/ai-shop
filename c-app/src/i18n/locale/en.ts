@@ -546,6 +546,8 @@ export default {
     fromActivity: "Promotion \u201c{name}\u201d",
     fromCoupon: "Coupon \u201c{name}\u201d",
     couponPanel: "Discounts",
+    qtyMax: "Only {n} available",
+    qtyLeft: "Only {n} left",
     autoActivity: "Applied automatically",
     couponUnusable: "Can't be used ({n})",
     couponNoneUsable: "{n} coupons, none apply here",

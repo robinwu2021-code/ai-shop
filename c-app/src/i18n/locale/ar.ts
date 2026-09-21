@@ -546,6 +546,8 @@ export default {
     fromActivity: "عرض «{name}»",
     fromCoupon: "قسيمة «{name}»",
     couponPanel: "الخصومات",
+    qtyMax: "المتاح {n} فقط",
+    qtyLeft: "بقي {n} فقط",
     autoActivity: "مطبَّق تلقائيًا",
     couponUnusable: "غير قابلة للاستخدام ({n})",
     couponNoneUsable: "{n} قسائم لا تنطبق على هذا الطلب",
