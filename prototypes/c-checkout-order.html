@@ -11,12 +11,12 @@
 <header class="top">
   <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-21</div>
   <h1>下单与订单，把能改的和该说的补回来</h1>
-  <p class="sub">现状两页都只够「看一眼」：确认页改不了数量、选不了券（无券时那一行还是灰的，点了没反应）、优惠只有一个光秃秃的金额；订单页同样只有合计，减了什么、怎么减的都说不出。这一稿把<b>能改的动作</b>与<b>该说的依据</b>补齐，共 10 屏。</p>
+  <p class="sub">现状两页都只够「看一眼」：确认页改不了数量、选不了券（无券时那一行还是灰的，点了没反应）、优惠只有一个光秃秃的金额；订单页同样只有合计，减了什么、怎么减的都说不出。这一稿把<b>能改的动作</b>与<b>该说的依据</b>补齐，共 11 屏。<b>不做确认订单页</b>（用户 2026-09-21：主流电商已经没有这一步）——下单页底栏直接拉起支付。</p>
   <p class="sub">两条贯穿全稿的规矩：① <b>不可用的选项要说出为什么</b>（灰着不说 = 用户以为坏了）；② <b>钱的每一笔都要有来处</b>（活动名 / 券名 / 积分，各占一行）。</p>
 </header>
 
 <section>
-  <div class="sec-head"><span class="sec-num">k01 — k02</span><h2>确认订单：现状与重排</h2></div>
+  <div class="sec-head"><span class="sec-num">k01 — k02</span><h2>下单页：现状与重排</h2></div>
   <p class="sec-note">现状的信息是齐的，缺的是动作：数量改不了（要退回购物车）、券选不了、优惠说不清。</p>
   <div class="grid">
 
@@ -44,13 +44,14 @@
 
     <figure id="k02">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">下单</span><span></span></div>
         <div class="scr">
           <div class="card"><div class="frow"><span class="k"><span class="chip pri">快递配送</span> 武国斌 185****8359</span><span class="v go">更换</span></div><div class="frow"><span class="k">广东省深圳市龙华新区 招商锦绣观园 5-10F</span><span class="v"></span></div></div>
           <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 · 库存 200</span><div class="ln"><span class="pr num">¥50.00</span><span class="seg"><span>−</span><b class="num">1</b><span>＋</span></span></div></div></div>
           <div class="card">
             <div class="frow"><span class="k">优惠券</span><span class="v go">2 张可用 · 最多省 ¥5</span></div>
             <div class="frow"><span class="k">积分抵扣</span><span class="v go">可抵 ¥2.00（200 分）</span></div>
+            <div class="frow"><span class="k">支付方式</span><span class="v go">微信支付</span></div>
             <div class="frow"><span class="k">备注</span><span class="v meta">备注，选填</span></div>
           </div>
           <div class="card">
@@ -61,10 +62,10 @@
             <div class="frow"><span class="meta">券「满 30 减 5」</span><span class="v meta num">−¥5.00</span></div>
           </div>
         </div>
-        <div class="foot"><span class="meta">应付 <b class="num">¥35.00</b><br><span class="meta">已省 ¥15.00</span></span><div class="btn">提交订单</div></div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥35.00</b><br><span class="meta">已省 ¥15.00</span></span><div class="btn">立即支付</div></div>
       </div>
-      <figcaption class="cap"><b>k02 新版 · 确认订单</b>数量可调、券可选、每一笔优惠各占一行。</figcaption>
-      <p class="why">优惠明细已经落地（0.1.54）。这一稿补的是：数量步进器（上限取库存与限购的较小者）、券行说清「几张可用、最多省多少」、积分行说清能抵多少。底栏加一句「已省 ¥15.00」——它是买家此刻最想确认的那个数。</p>
+      <figcaption class="cap"><b>k02 新版 · 下单页</b>数量可调、券可选、每一笔优惠各占一行。</figcaption>
+      <p class="why">优惠明细已经落地（0.1.54）。这一稿补的是：数量步进器（上限取库存与限购的较小者）、券行说清「几张可用、最多省多少」、积分行说清能抵多少、支付方式一行。底栏那一颗是<b>「立即支付」不是「提交订单」</b>：点一次完成建单与拉起微信支付，中间不再经过收银台页。</p>
     </figure>
 
   </div>
@@ -79,6 +80,10 @@
       <div class="ph c">
         <div class="ph strip"><div class="sheet">
           <div class="hd"><b>选择优惠券</b><span class="meta">✕</span></div>
+          <div class="card">
+            <div class="hd"><span class="meta">自动参与的活动（不用选）</span></div>
+            <div class="frow"><span class="k">活动「开业直减」<br><span class="meta">满 ¥30 可用 · 商家出资</span></span><span class="v num hot">−¥10.00</span></div>
+          </div>
           <div class="frow"><span class="k">不使用优惠券</span><span class="v"></span></div>
           <div class="card">
             <div class="hd"><span class="meta">可用（2）</span></div>
@@ -92,13 +97,13 @@
           </div>
         </div></div>
       </div>
-      <figcaption class="cap"><b>k03 选择优惠券</b>可用在上、不可用在下，每张都写清为什么。</figcaption>
-      <p class="why">不可用的**要列出来**：券在他券包里，不列等于「券丢了」。每条给的是<b>可操作的差距</b>（还差 ¥20），不是「不满足条件」这种废话。</p>
+      <figcaption class="cap"><b>k03 优惠面板</b>活动在上（自动生效）、可用券居中、不可用在下。</figcaption>
+      <p class="why"><b>平台活动也列在这儿并写出活动名</b>：买家问的是「这 10 块哪来的」，他不关心后端把它算成券还是活动。不可用的券**必须列出来**：券在他券包里，不列等于「券丢了」；每条给<b>可操作的差距</b>（还差 ¥20），不是「不满足条件」这种废话。</p>
     </figure>
 
     <figure id="k04">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">下单</span><span></span></div>
         <div class="scr">
           <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 · 库存 3</span><div class="ln"><span class="pr num">¥50.00</span><span class="seg"><span>−</span><b class="num">3</b><span>＋</span></span></div><span class="warn">仅剩 3 件</span></div></div>
           <div class="gc dead"><div class="th">🍋</div><div class="bd"><span class="nm">柠檬</span><span class="meta">已售罄</span><div class="ln"><span class="meta">这一件买不了了</span><span class="chip">移出</span></div></div></div>
@@ -112,7 +117,7 @@
 
     <figure id="k05">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">下单</span><span></span></div>
         <div class="scr">
           <div class="card"><div class="frow"><span class="k">优惠券</span><span class="v meta">暂无可用券</span></div><div class="frow"><span class="meta">你的券包里有 2 张，本单都用不了</span><span class="v go">看看</span></div></div>
           <div class="card"><div class="frow"><span class="k">积分抵扣</span><span class="v meta">积分不足 100 分</span></div></div>
@@ -241,6 +246,31 @@
       </div>
       <figcaption class="cap"><b>k10 已取消</b>说清为什么关的，以及券退回哪儿去了。</figcaption>
       <p class="why">取消要交代两件事：为什么关（超时 / 你点的 / 商家拒单），以及<b>券和积分回没回来</b>——不说的话用户会以为券被吞了，而那正是他最容易记住的损失。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">k11</span><h2>支付没走完时，单不会丢</h2></div>
+  <p class="sec-note">底栏直接拉起支付之后，收银台页退回它真正的角色：<b>二次支付入口</b>。</p>
+  <div class="grid">
+
+    <figure id="k11">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">待支付</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k"><b>订单已创建，还没付款</b></span><span class="v num hot">14:32</span></div>
+            <div class="frow"><span class="k"><span class="meta">超时未付款会自动关闭，库存释放给其他邻居</span></span><span class="v"></span></div>
+          </div>
+          <div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨</span><span class="meta">约 10 斤 ×1</span><div class="ln"><span class="pr num">¥35.00</span><span class="meta">已优惠 ¥15</span></div></div></div>
+          <div class="card"><div class="frow"><span class="k">支付方式</span><span class="v go">微信支付</span></div></div>
+        </div>
+        <div class="foot"><span class="ic">取消订单</span><div class="btn">继续支付 ¥35.00</div></div>
+      </div>
+      <figcaption class="cap"><b>k11 支付中断</b>从微信支付面板退回来会落到这儿，单已经建好了。</figcaption>
+      <p class="why">现在这一页出现在**首次下单的必经之路上**（提交后先落到它，再点一次才拉起微信）。改完之后它只在两种情况下出现：支付被中断 / 失败，或从订单列表点「去支付」。页面第一句话要说清「单已经建好、还剩多久」——这正是被打断的人最担心的两件事。</p>
     </figure>
 
   </div>

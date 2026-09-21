@@ -1515,11 +1515,15 @@
    ],
    "status": "待实现",
    "date": "2026-09-21",
-   "summary": "确认页补数量步进、选券面板（不可用要说出为什么）、优惠逐条；订单详情补状态进度与动作；订单列表每卡一个主动作。10 屏。",
+   "summary": "下单页一页到底、底栏直接拉起支付（不做确认订单页）：数量可调、优惠面板含平台活动名与不可用原因、优惠逐条；订单详情补状态与动作；支付中断落收银台。11 屏。",
    "docs": [
     {
      "label": "TDD-C端优惠依据",
      "path": "docs/technical/TDD-C端优惠依据.md"
+    },
+    {
+     "label": "C端下单流程-方案",
+     "path": "docs/technical/design/C端下单流程-方案.md"
     }
    ],
    "screens": [
@@ -1572,6 +1576,12 @@
     {
      "id": "k10",
      "title": "已取消"
+    },
+    {
+     "id": "k11",
+     "title": "支付中断",
+     "client": "c-app",
+     "route": "pages/pay/index"
     }
    ],
    "artifact": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz"
