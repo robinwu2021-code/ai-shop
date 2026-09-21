@@ -15,6 +15,10 @@ vi.mock("@/api", () => ({
     goodsDetail: (...a: unknown[]) => goodsDetail(...a),
     toggleFavoriteGoods: (...a: unknown[]) => toggleFavoriteGoods(...a),
     couponList: vi.fn(() => Promise.resolve([])),
+    // 下单页改读「我的券」与最优券试算（B1）——
+    // 替身缺了它们，挂载时抛 unhandled error：用例还是绿的，闸门才会红
+    myCoupons: vi.fn(() => Promise.resolve([])),
+    couponBest: vi.fn(() => Promise.resolve({ discountMinor: 0, usable: [], unusable: [] })),
     goodsGroup: vi.fn(() => Promise.resolve(null)),
     goodsBatch: vi.fn(() => Promise.resolve(null)),
     cartList: vi.fn(() => Promise.resolve([])),
