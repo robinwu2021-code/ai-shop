@@ -55,7 +55,7 @@
 | 几件商品记不记库存（列表标签、编辑页那一行） | GET | `/biz/goods/inv-mode` | `mGoodsInvModes` | goods-edit、goods-list |
 | 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
 | 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | stock、stock-out、transfer |
-| 记库存的品类（各门店经营类目合集，每类一行） | GET | `/biz/inventory/category-setting` | `mInvCategorySettings` | stock-settings |
+| 记库存的品类（各门店经营类目合集，每类一行） | GET | `/biz/inventory/category-setting` | `mInvCategorySettings` | stock-settings、store-categories |
 | 开盘点单（锁账面数） | POST | `/biz/inventory/counts` | `mCountOpen` | stock-check |
 | 读回盘点单（含账面快照） | GET | `/biz/inventory/counts/:no` | `mCountDetail` | stock-check |
 | 填实盘数 | PUT | `/biz/inventory/counts/:no/lines` | `mCountFill` | stock-check |
@@ -107,7 +107,7 @@
 | 自动生成图文详情 | POST | `/biz/goods/describe` | `mDescribeGoods` | goods-edit |
 | 拍照识别商品 | POST | `/biz/goods/recognize` | `mRecognizeGoods` | goods-edit |
 | 新建/编辑商品 | POST | `/biz/goods/save` | `mSaveGoods` | goods-edit |
-| 拨一个品类记不记库存（有在途拒绝、有库存要确认） | PUT | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | stock-settings |
+| 拨一个品类记不记库存（有在途拒绝、有库存要确认） | PUT | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | — |
 | 我建的规格维度（含用量与配额） | GET | `/biz/my-spec-dims` | `mMySpecDims` | my-specs |
 | 停用/启用自建维度 | POST | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | — |
 | 给自建维度改名 | POST | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | — |
@@ -434,9 +434,9 @@
 | `stock-docs` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-out` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-report` | `biz:customer` | `biz:customer` | 老板、店长 | — |
-| `stock-settings` | `biz:goods` | `biz:stock`、`biz:goods` | 老板、店长 | — |
+| `stock-settings` | `biz:goods` | `biz:stock` | 老板、店长 | — |
 | `store` | `biz:store` | `biz:store` | 老板、店长 | — |
-| `store-categories` | `biz:store:admin` | `biz:store` | 老板 | — |
+| `store-categories` | `biz:store:admin` | `biz:store`、`biz:stock` | 老板 | — |
 | `store-notice` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `store-scope` | `biz:store` | `biz:store` | 老板、店长 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
@@ -474,6 +474,7 @@
 | 地图上选中的小区直接开通 | `/biz/communities/from-map` | `mOpenCommunityFromMap` | `biz:store` |
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
+| 拨一个品类记不记库存（有在途拒绝、有库存要确认） | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
 | 批量打/去一个标签（confirm=false 只试算） | `/biz/members/tags/batch` | `mBatchTagMembers` | `biz:customer` |

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 461,
+        "b-app": 462,
         "c-app": 65
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 329,
+        "b-app": 330,
         "c-app": 258
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 494,
+        "b-app": 495,
         "c-app": 180
       }
     },
@@ -2765,7 +2765,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 5,
+        "b-app": 6,
         "c-app": 2,
         "lib": 0
       },
@@ -4552,11 +4552,12 @@
         "sh-empty",
         "sh-icon",
         "sh-scaffold",
+        "sh-switch",
         "biz-category-sheet"
       ],
-      "libClassHits": 15,
-      "localSelectors": 3,
-      "localCssLines": 10,
+      "libClassHits": 18,
+      "localSelectors": 4,
+      "localCssLines": 14,
       "rolled": [
         {
           "id": "optcard",

@@ -18902,6 +18902,12 @@
           "ar": "هذا الرف يحتوي على منتجات؛ انقلها أولاً."
         },
         {
+          "key": "storeCategories.invLabel",
+          "zh-CN": "记库存",
+          "en": "Track stock",
+          "ar": "تتبع المخزون"
+        },
+        {
           "key": "storeCategories.needCert",
           "zh-CN": "需资质",
           "en": "licence needed",
