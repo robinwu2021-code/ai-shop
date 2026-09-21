@@ -183,6 +183,8 @@ const RESPONSE_TYPES = {
   cancelOrder: "Order",
   applyAfterSale: "Order",
   couponList: "Coupon[]",
+  myCoupons: "UserCoupon[]",
+  couponBest: "CouponBestResult",
   receiveCoupon: "Coupon",
   groupBuyList: "GroupBuy[]",
   groupBuyDetail: "GroupBuy",
