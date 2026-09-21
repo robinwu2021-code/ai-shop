@@ -1422,10 +1422,6 @@ onShareAppMessage(() =>
   color: #fff;
 }
 /* 配送卡、领券与已选卡：一行一件事，行高够一根手指 */
-.row {
-  min-height: 56rpx;
-  gap: 16rpx;
-}
 /* 规格面板 */
 .skuhead {
   gap: 24rpx;
