@@ -6712,13 +6712,20 @@ _无字段_
 | `feeMinor` | `number` | 是 | 配送费，最小货币单位 |
 | `freeThresholdMinor` | `number` | 是 | 免配送费门槛，最小货币单位；0 表示不免 |
 
-### DiscountLine
+### DiscountKind
 
-一条优惠的来历（TDD-C端优惠依据）。 <p>合计在 `amount.discountMinor` 里，这几条只是把它拆开说清楚： 「优惠 −¥10」此前来历不明 —— 活动？券？两者叠加？后端一直知道，只是没下发。 **明细是解释不是账**：与合计对不上时以合计为准。
+这笔优惠是活动给的还是券给的。 **具名而不是内联联合**：内联的枚举对登记表与对账工具都不可见，改名必漏 （packages/shared 的枚举登记闸门拦的就是这条）。
+
+枚举取值：
+
+- `ACTIVITY`
+- `COUPON`
+
+### DiscountLine
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `kind` | `ACTIVITY` \| `COUPON` | 是 | ACTIVITY（活动）/ COUPON（券） |
+| `kind` | [`DiscountKind`](#discountkind) | 是 | ACTIVITY（活动）/ COUPON（券） |
 | `name` | `string` | 是 | 给人看的名字：活动名、券名。后端取不到名字时整条不下发，所以这里必有值 |
 | `amountMinor` | `number` | 是 | 这一条减了多少（最小货币单位，正数） |
 
