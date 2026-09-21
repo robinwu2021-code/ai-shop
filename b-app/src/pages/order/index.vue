@@ -18,6 +18,17 @@ const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+
+/** 已取消 / 已退款的单：券与积分的去向（后端只在这两个状态、只在详情给） */
+const returnedLines = computed(() => {
+  const r = order.value?.returned;
+  if (!r) return [] as string[];
+  const out: string[] = [];
+  if (r.couponTitle) out.push(String(t("order.returnedCoupon", { name: r.couponTitle })));
+  if (r.pointsReturned) out.push(String(t("order.returnedPoints", { n: r.pointsReturned })));
+  if (r.pointsClawedBack) out.push(String(t("order.returnedClawback", { n: r.pointsClawedBack })));
+  return out;
+});
 const expressNo = ref("");
 /**
  * 选中的快递公司下标。**默认 -1（未选）**，不默认第一家 ——
@@ -200,6 +211,15 @@ onLoad((q) => {
       </view>
 
       <!--
+        **已取消 / 已退款：券与积分去了哪**（待办设计 P3）。与 C 端同一份数据 ——
+        顾客来问「我的券呢」时，商家要能指着这一块回答。有一项说一项，全空整块不显示。
+      -->
+      <view v-if="returnedLines.length" class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t("order.returnedTitle") }}</text>
+        <text v-for="(l, i) in returnedLines" :key="i" class="txt-body returned__line">{{ l }}</text>
+      </view>
+
+      <!--
         线下收款。**入口是一个按钮，动作在弹窗里** —— 收钱这件事不该一点就成，
         中间要有一屏让老板核对金额。
       -->
@@ -279,6 +299,10 @@ onLoad((q) => {
 </template>
 
 <style scoped>
+.returned__line {
+  display: block;
+  margin-top: 12rpx;
+}
 .line {
   padding: 8rpx 0;
 }

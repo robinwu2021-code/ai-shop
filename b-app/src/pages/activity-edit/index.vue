@@ -23,6 +23,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { money, toMinor } from "@shared/utils/money";
 import { PLAY_TEMPLATES, playOf, playOfActivity, type PlayTemplate } from "@shared/utils/play-templates";
 import type { ActivityConflict, ActivityRuleItem, AudienceItem, Goods, StoreActivity, StoreActivityDraft } from "@shared/types";
+import { ApiError } from "@shared/net/http-client";
 import { loadAudienceLabel } from "@/shared/audience";
 
 const { t } = useI18n();
@@ -355,11 +356,46 @@ function lockedDraft(): StoreActivityDraft {
   };
 }
 
+/** 与后端 ErrorCode.ACTIVITY_RISK_UNCONFIRMED 同号 */
+const RISK_UNCONFIRMED = 40034;
+
+/**
+ * 保存；后端说「这个组合要确认」（常驻 + 无门槛 + 直减，待办设计 P7）就弹一次再重提。
+ *
+ * <p>**不拦，只让商家看清楚**：这类活动每一单都减，直到限量用完。
+ * 判据与开关都在后端（`marketing.always-on-cut.confirm`），端上只负责把钱数说出来。
+ * 商家取消返回 null，停在当前页。
+ */
+async function saveWithRiskConfirm(d: StoreActivityDraft): Promise<StoreActivity | null> {
+  try {
+    return await api.mSaveActivity(d);
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.code !== RISK_UNCONFIRMED) throw e;
+    const ok = await confirm({
+      title: String(t("activityEdit.riskTitle")),
+      hint: riskHint(d),
+      confirmText: String(t("activityEdit.riskConfirm")),
+    });
+    return ok ? api.mSaveActivity(d, { riskConfirmed: true }) : null;
+  }
+}
+
+/** 「每单减 ¥10，最多 100 单（共 ¥1000）」；没设份数时说「不限单数，预算 ¥X 用完为止」 */
+function riskHint(d: StoreActivityDraft): string {
+  const each = money(d.benefitAmountMinor ?? 0);
+  if (d.quota) {
+    return String(t("activityEdit.riskQuota", {
+      m: each, n: d.quota, total: money((d.benefitAmountMinor ?? 0) * d.quota),
+    }));
+  }
+  return String(t("activityEdit.riskBudget", { m: each, b: money(d.budgetMinor ?? 0) }));
+}
+
 async function saveLocked() {
   if (saving.value || !current.value) return;
   saving.value = true;
   try {
-    await api.mSaveActivity(lockedDraft());
+    if (!(await saveWithRiskConfirm(lockedDraft()))) return;
     uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
     await loadExisting(current.value.activityNo);
     mode.value = "detail";
@@ -374,7 +410,7 @@ async function publish() {
   if (saving.value) return;
   saving.value = true;
   try {
-    await api.mSaveActivity(draft());
+    if (!(await saveWithRiskConfirm(draft()))) return;
     uni.showToast({ title: String(t("activityEdit.saved")), icon: "none" });
     setTimeout(() => uni.navigateBack(), 600);
   } catch (e) {

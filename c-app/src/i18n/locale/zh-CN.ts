@@ -581,7 +581,8 @@ export default {
     /** 优惠面板（原型 k03）。三段：自动活动 / 可用券 / 不可用券 */
     couponPanel: "优惠",
     /** 数量到顶（原型 k04）。压暗却不说为什么，用户会以为点坏了 */
-    qtyMax: "最多还能买 {n} 件",
+    qtyLimit: "每人限购 {limit} 件",
+    qtyLimitBought: "每人限购 {limit} 件，你已买 {bought} 件",
     /** 线上支付时底栏直接写金额：点一次就拉起微信（B3）。当面付仍是「提交订单」 */
     payNow: "立即支付 {p}",
     /** 建单失败要说清改什么（B4）。认不出的码回落后端原句 —— 别把真原因藏掉 */
@@ -729,6 +730,11 @@ export default {
       COMPLETED: "这一单已经完成，有问题可以申请售后",
       CANCELLED: "这一单已经关闭",
       REFUNDED: "钱已原路退回，到账时间以银行为准",
+    },
+    returned: {
+      coupon: "「{name}」已回到券包",
+      points: "{n} 积分已退回",
+      clawback: "已收回本单赠送的 {n} 积分",
     },
     copy: "复制",
     createdAt: "下单时间",

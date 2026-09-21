@@ -116,10 +116,35 @@ public class CouponPortImpl implements CouponPort {
                         .eq(MktUserCoupon::getOrderNo, orderNo)
                         .eq(MktUserCoupon::getStatus, MktUserCoupon.USED)));
         for (MktUserCoupon uc : used) {
+            /*
+             * **订单号留在券上**（2026-09-21 写明）。此前这里写着 setOrderNo(null)，
+             * 但 updateById 跳过 null 字段 —— 那一行从来没生效过，订单号一直都留着。
+             * 现在把它当成有意的：它是「这张券上一次用在哪一单」，订单详情据此说
+             * 「「满 30 减 5」已回到券包」（returnedTitleOf）。重复退回由上面的 USED 过滤挡住，
+             * 再用到别的单时 markUsed 会覆盖它。
+             */
             uc.setStatus(MktUserCoupon.UNUSED);
-            uc.setOrderNo(null);
-            uc.setUsedAt(null);
             DataScopeContext.executeWithoutScope(() -> userCouponMapper.updateById(uc));
+        }
+    }
+
+    @Override
+    public String returnedTitleOf(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            return null;
+        }
+        MktUserCoupon uc = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
+                Wrappers.<MktUserCoupon>lambdaQuery()
+                        .eq(MktUserCoupon::getOrderNo, orderNo)
+                        .eq(MktUserCoupon::getStatus, MktUserCoupon.UNUSED)
+                        .last("limit 1")));
+        if (uc == null) {
+            return null;
+        }
+        try {
+            return templateOf(uc.getCouponNo()).getTitle();
+        } catch (BizException e) {
+            return null;   // 模板被删了：说不出名字就不说，别让订单详情整页报错
         }
     }
 

@@ -75,7 +75,17 @@ export function ExposureTab({ c, kind, canStop }: {
     { header: c.exposureActivity, cell: (x) => x.name },
     { header: c.exposureEntity, cell: (x) => x.entityName },
     { header: c.exposureSchedule, cell: (x) => x.scheduleType },
-    { header: c.exposureQuota, cell: (x) => (x.quota == null ? c.exposureUnlimited : `${x.quotaUsed} / ${x.quota}`) },
+    // 关单退回的份数补在「已用」旁边（P4）：已用只算成交的，这个数说明曾经被占过多少
+    { header: c.exposureQuota, cell: (x) => (
+      <div>
+        <div>{x.quota == null ? c.exposureUnlimited : `${x.quotaUsed} / ${x.quota}`}</div>
+        {x.quotaReleased ? (
+          <div className="txt-caption text-muted-foreground">
+            {c.exposureReleased.replace("{n}", String(x.quotaReleased))}
+          </div>
+        ) : null}
+      </div>
+    ) },
     // 0 条受众 = 对所有人生效。**这一列必须显示** ——
     // 「给所有人」与「没设置」在库里长得一样，含义差很远
     { header: c.exposureAudience, cell: (x) => (x.audienceCount === 0 ? c.exposureAudienceAll : String(x.audienceCount)) },

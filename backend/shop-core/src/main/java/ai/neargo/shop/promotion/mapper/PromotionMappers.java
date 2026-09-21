@@ -106,5 +106,18 @@ public final class PromotionMappers {
 
     /** 优惠发生记录。**只增不改**，撤销是往 {@code reverted_at} 上写一笔 */
     public interface ApplyMapper extends BaseMapper<PmtApply> {
+
+        /**
+         * 这个活动被关单退回了几份（待办设计 P4）。
+         *
+         * <p>关单退配额时那一行被<b>逻辑删</b>（ActivityPricingServiceImpl#release），
+         * 所以数的是 {@code deleted = 1} 的活动行 —— 走 BaseMapper 的查询会被 @TableLogic 滤掉，
+         * 只能这样直接写。运营据此知道「已用 5 份」里有几份是没付款就关掉的。
+         */
+        @org.apache.ibatis.annotations.Select("""
+                SELECT COUNT(*) FROM pmt_apply
+                WHERE promo_no = #{activityNo} AND promo_type = 'ACTIVITY' AND deleted = 1
+                """)
+        int releasedCount(@org.apache.ibatis.annotations.Param("activityNo") String activityNo);
     }
 }

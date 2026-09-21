@@ -236,10 +236,27 @@ export interface OrderItem {
    * 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。
    *
    * 上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数；
-   * 猜大了提交才报错、猜小了少卖。当前只按库存算，「每人限购」还没接。
+   * 猜大了提交才报错、猜小了少卖。取「可售库存」与「每人限购还剩几件」的小值（待办设计 P1）。
    */
   maxQty?: number | null;
+  /** 是谁挡住了 `maxQty`。到顶时那句话要说对：库存等补货能买，限购补货也没用 */
+  limitReason?: LimitReason | null;
+  /** 每人限购（只在设了限购且平台开关开着时给） */
+  limitPerUser?: number | null;
+  /** 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 */
+  boughtQty?: number | null;
 }
+/** 订单关闭后券与积分去了哪（后端 `OrderVO.Returned`） */
+export interface OrderReturned {
+  /** 这一单用过、现在已回到券包的券名 */
+  couponTitle?: string | null;
+  /** 退回的抵扣积分（该单 REFUND 流水之和） */
+  pointsReturned?: number | null;
+  /** 收回的本单赠送积分（该单 CLAWBACK 流水之和） */
+  pointsClawedBack?: number | null;
+}
+/** 与后端 `OrderVO.ItemVO.LIMIT_STOCK / LIMIT_PER_USER` 逐字一致 */
+export type LimitReason = "STOCK" | "PER_USER";
 /**
  * 一条优惠的来历（TDD-C端优惠依据）。
  *
@@ -369,6 +386,12 @@ export interface Order {
    * 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。
    */
   discountLines?: DiscountLine[];
+  /**
+   * 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。
+   * 从数据查，不从状态推：每一项有才给，端上有才说 ——
+   * 编一句「已为你退回」是在说一句可能不成立的话。
+   */
+  returned?: OrderReturned | null;
   /** EXPRESS：快递单号，发货后才有 */
   expressNo?: string;
   /**

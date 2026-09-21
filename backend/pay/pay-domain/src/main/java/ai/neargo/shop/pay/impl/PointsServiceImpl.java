@@ -622,6 +622,17 @@ public class PointsServiceImpl implements PointsService {
     }
 
     @Override
+    public long sumOf(List<String> subOrderNos, String bizType) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return 0L;
+        }
+        return ledgerMapper.selectList(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .in(PtsUserLedger::getSubOrderNo, subOrderNos)
+                        .eq(PtsUserLedger::getBizType, bizType))
+                .stream().mapToLong(l -> Math.abs(l.getPoints() == null ? 0L : l.getPoints())).sum();
+    }
+
+    @Override
     @Transactional("payTxManager")
     public void recordPoolFlow(String poolType, long amountMinor, String entityNo,
                                String refNo, String payChannel, String market) {

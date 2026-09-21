@@ -84,6 +84,9 @@ public interface PointsService {
      */
     void reverse(String subOrderNo, String reason);
 
+    /** 这些子单上某一类流水的分数之和（取绝对值）。订单详情说「退回 / 收回了多少」用 */
+    long sumOf(java.util.List<String> subOrderNos, String bizType);
+
     /**
      * 支付成功后发分，进 {@code pending_balance}。
      *

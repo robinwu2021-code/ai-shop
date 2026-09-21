@@ -318,6 +318,9 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "增长活动冲突策略，后端无增长模块" },
   { decl: "ops-web:NewUserFactor", dom: "growth", shape: "CLASS", verdict: "PLANNED",
     note: "新客判定因子，同上" },
+  { decl: "shared:LimitReason", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "下单页步进器到顶是谁挡住的（OrderVO.ItemVO.limitReason，与后端两个常量逐字一致）。"
+      + "库存挡住说「仅剩 N 件」、限购挡住说「每人限购 5 件，你已买 3 件」—— 前者等补货能买，后者不能" },
   { decl: "shared:DiscountKind", dom: "marketing", shape: "CLASS", verdict: "OK",
     note: "订单优惠明细里这一条是活动给的还是券给的（OrderVO.discountLines.kind，"
       + "与后端 OrderVO.DiscountLine 的两个常量逐字一致）。买家看到的「优惠 −¥10」"

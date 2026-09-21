@@ -27,6 +27,9 @@ import {
 } from "./_shared";
 import type { MerchantApi } from "../contract";
 
+/** 与后端 ErrorCode.ACTIVITY_RISK_UNCONFIRMED 同号 */
+export const ACTIVITY_RISK_UNCONFIRMED = 40034;
+
 export const marketingMock: Pick<MerchantApi,
   "mCampaignList"
   | "mSaveCampaign"
@@ -583,7 +586,12 @@ export const marketingMock: Pick<MerchantApi,
    * 建 / 改活动。**三条硬校验与后端一字不差** ——
    * mock 放宽的话，演示时填得过、连真后端被拒，而那时没人记得是哪一条拦的。
    */
-  async mSaveActivity(payload) {
+  async mSaveActivity(payload, opts) {
+    // P7：与后端同一判据 —— 常驻 + 无门槛 + 直减，没确认过就先要确认（mock 读不到平台开关，按默认开）
+    if (!opts?.riskConfirmed && payload.scheduleType === "ALWAYS_ON"
+      && (!payload.triggerType || payload.triggerType === "NONE") && payload.benefitType === "CUT") {
+      throw new ApiError(ACTIVITY_RISK_UNCONFIRMED, "这个活动常驻、无门槛，每一单都会减，请确认后再保存");
+    }
     /*
      * **先脱响应式外壳**（同 mSaveStore / mSaveGoods）：`goodsNos` 与 `audiences`
      * 是页面 `form.value` 里的 reactive 代理数组，而 `delay()` 用 structuredClone

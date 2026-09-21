@@ -46,6 +46,12 @@ public class PointsPortImpl implements PointsPort {
     }
 
     @Override
+    public PointsReturned returnedOf(java.util.List<String> subOrderNos) {
+        return new PointsReturned(pointsService.sumOf(subOrderNos, "REFUND"),
+                pointsService.sumOf(subOrderNos, "CLAWBACK"));
+    }
+
+    @Override
     public GrantResult grant(String userNo, String merchantNo,
                              java.util.List<EarnLine> lines, String subOrderNo,
                              String payChannel, String payScene) {

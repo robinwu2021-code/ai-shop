@@ -2150,6 +2150,11 @@ async function save(thenSubmit = false) {
         <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
         <input maxlength="6" v-model="limitPerUser" class="txt-body pr__v pr__v--n pr__v--pad sh-num" type="number" />
       </view>
+      <!--
+        **口径要写出来**（待办设计 P1）：此前这个数只显示不拦，后端 2026-09-21 起真的拦。
+        「终身」还是「每天」、退了货算不算 —— 商家不知道的话，顾客来问他答不上来。
+      -->
+      <text class="sh-muted hint">{{ $t("goods.limitPerUserHint") }}</text>
     </view>
 
     <!--

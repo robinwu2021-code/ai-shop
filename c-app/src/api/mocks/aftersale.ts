@@ -13,6 +13,8 @@ import {
   findOrderByAfterSale,
   pushTimeline,
   settleRefund,
+  boughtQtyOf,
+  limitOf,
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
@@ -113,7 +115,16 @@ export const aftersaleMock: Pick<ShopApi,
     const withMax = items.map((it) => {
       const g = toGoods(findGoodsSeed(it.goodsNo));
       const sku = g.skus.find((s) => s.skuNo === it.skuNo);
-      return { ...it, maxQty: sku?.stock ?? null };
+      const stock = sku?.stock ?? null;
+      // 每人限购（P1）：与后端同一口径 —— 同一件货其他规格在这一单里占掉的名额要扣掉
+      const limit = limitOf(it.goodsNo);
+      if (!limit || stock == null) return { ...it, maxQty: stock, limitReason: "STOCK" as const };
+      const bought = boughtQtyOf(it.goodsNo);
+      const others = items.filter((o) => o !== it && o.goodsNo === it.goodsNo).reduce((n, o) => n + o.qty, 0);
+      const byLimit = Math.max(0, limit - bought - others);
+      return byLimit < stock
+        ? { ...it, maxQty: byLimit, limitReason: "PER_USER" as const, limitPerUser: limit, boughtQty: bought }
+        : { ...it, maxQty: stock, limitReason: "STOCK" as const, limitPerUser: limit, boughtQty: bought };
     });
     return delay({ amount, items: withMax, discountLines });
   },

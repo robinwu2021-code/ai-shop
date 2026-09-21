@@ -57,7 +57,7 @@ describe("到顶要说出为什么", () => {
   it("超过上限时给提示而不是静默不动", () => {
     const at = confirm.indexOf("function setQty");
     const body = confirm.slice(at, at + 700);
-    expect(body).toContain("confirm.qtyMax");
+    expect(body, "到顶那句话库存与限购要分开说（P1）").toContain("maxText(it.skuNo)");
   });
 });
 

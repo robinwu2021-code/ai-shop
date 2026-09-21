@@ -16,6 +16,7 @@ import {
   grantPointsOnComplete,
   issueCard,
   pushTimeline,
+  requireWithinLimit,
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
@@ -74,6 +75,11 @@ export const tradeMock: Pick<ShopApi,
         joined: false,
       });
     }
+
+    // 每人限购：与后端同一口径，在任何写入之前（见 _shared.requireWithinLimit）
+    const wantedByGoods = new Map<string, number>();
+    for (const it of req.items) wantedByGoods.set(it.goodsNo, (wantedByGoods.get(it.goodsNo) ?? 0) + it.qty);
+    wantedByGoods.forEach((n, goodsNo) => requireWithinLimit(goodsNo, n));
 
     const items: OrderItem[] = req.items.map((it) => {
       const seed = findGoodsSeed(it.goodsNo);

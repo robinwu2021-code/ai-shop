@@ -1514,7 +1514,11 @@ export interface MerchantApi {
    * 长期活动必须有限量或预算（没有结束时间又没上限 = 永久敞口）；
    * 改单价与送商品必须限量且必须选商品（单次成本由商品决定，卖得越好亏得越多）。
    */
-  mSaveActivity(payload: StoreActivityDraft): Promise<StoreActivity>;
+  /**
+   * `riskConfirmed`：常驻 + 无门槛 + 直减的活动，后端第一次会回 40034 要商家确认（待办设计 P7），
+   * 商家在弹窗里点确认后带上它重提。
+   */
+  mSaveActivity(payload: StoreActivityDraft, opts?: { riskConfirmed?: boolean }): Promise<StoreActivity>;
 
   /** 启停 / 结束。**已结束的不能复活** —— 复活会覆盖掉「当初为什么停」 */
   mSetActivityStatus(activityNo: string, status: string): Promise<StoreActivity>;

@@ -176,6 +176,36 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                         .set(PmtApply::getRevertedAt, now)));
     }
 
+    /**
+     * 新模型：退券时 {@code pmt_apply} 那一行标了 {@code reverted_at}（券上的订单号已清掉），
+     * 从那一行找回用户券，**再看它此刻是不是 UNUSED** —— 两件事都成立才说「已回到券包」。
+     */
+    @Override
+    public String returnedTitleOf(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            return null;
+        }
+        PmtApply row = DataScopeContext.executeWithoutScope(() -> applyMapper.selectOne(
+                Wrappers.<PmtApply>lambdaQuery()
+                        .eq(PmtApply::getOrderNo, orderNo)
+                        .eq(PmtApply::getPromoType, PmtApply.COUPON)
+                        .isNotNull(PmtApply::getRevertedAt)
+                        .last("limit 1")));
+        if (row == null) {
+            return null;
+        }
+        PmtUserCoupon uc = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
+                Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getUserCouponNo, row.getPromoNo()).last("limit 1")));
+        if (uc == null || !PmtUserCoupon.UNUSED.equals(uc.getStatus())) {
+            return null;
+        }
+        PmtCoupon c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery()
+                        .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
+        return c == null ? null : c.getTitle();
+    }
+
     private void assertUsable(PmtUserCoupon uc, PmtCoupon coupon) {
         long now = System.currentTimeMillis();
         boolean ok = uc.usableAt(now, coupon.timesTotalOrOne())

@@ -91,6 +91,35 @@ class ActivityCutTriggerFlowTest {
         // 幂等：对账、重试都会再调一次，退两次会把配额退成负数，而那看起来完全正常
         pricing.release(orderNo);
         assertThat(quotaUsed(activityNo)).as("退了两次 —— 配额变成负数，这个活动此后谁都抢不到").isZero();
+
+        // 运营端敞口（P4）：已用只算成交的，另说「有几份来自已关闭的单」—— 退两次也只算一份
+        var vo = ops(e).stream().filter(a -> a.activityNo().equals(activityNo)).findFirst().orElseThrow();
+        assertThat(vo.quotaReleased()).as("运营看不出这个活动曾被没付款的单占过").isEqualTo(1);
+    }
+
+    @Autowired
+    private ai.neargo.shop.promotion.service.OpsPromotionService opsPromotion;
+
+    private List<ai.neargo.shop.promotion.dto.OpsPromotionVOs.OpsActivityVO> ops(String entityNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> opsPromotion.activities(entityNo));
+    }
+
+    @Test
+    @DisplayName("★★ 运营端：常驻 + 无门槛 + 直减打标签并置顶（P7）—— 最容易被薅的一类要一眼找到")
+    void alwaysOnFreeCutFlaggedAndFirst() {
+        String e = "M-CUT-" + (++seq);
+        long now = System.currentTimeMillis();
+        // 先建常驻那一条：按建立时间倒序它会排在后面，置顶靠的是标签不是巧合
+        activityService.save(e, new ActivityDraft(null, "常驻减 · " + seq, "BASKET", null,
+                PmtActivity.TRIGGER_NONE, null, null, PmtActivity.BENEFIT_CUT, 1000L, null, null,
+                PmtActivity.ALWAYS_ON, now - 1000, null, null, 100, null, List.of(), List.of()), "OP");
+        cut(e, PmtActivity.TRIGGER_AMOUNT, 3000L, null);
+
+        var list = ops(e);
+        assertThat(list).hasSize(2);
+        assertThat(list.get(0).flags()).contains("ALWAYS_ON_FREE_CUT");
+        assertThat(list.get(1).flags()).doesNotContain("ALWAYS_ON_FREE_CUT");
     }
 
     private int quotaUsed(String activityNo) {

@@ -29,6 +29,17 @@ const orderNo = ref("");
  * 「接下来会发生什么」。**按状态说**，没写过说明的状态返回空串（整行不显示）——
  * 编一句放之四海皆准的话，等于什么都没说。
  */
+/** 已取消 / 已退款的单：券与积分去了哪。有一项说一项 */
+const returnedLines = computed(() => {
+  const r = order.value?.returned;
+  if (!r) return [] as string[];
+  const out: string[] = [];
+  if (r.couponTitle) out.push(String(t("order.returned.coupon", { name: r.couponTitle })));
+  if (r.pointsReturned) out.push(String(t("order.returned.points", { n: r.pointsReturned })));
+  if (r.pointsClawedBack) out.push(String(t("order.returned.clawback", { n: r.pointsClawedBack })));
+  return out;
+});
+
 const nextStepText = computed(() => {
   const o = order.value;
   if (!o) return "";
@@ -374,6 +385,13 @@ onShow(load);
         没写过说明的状态整行不显示：编一句放之四海皆准的话等于什么都没说。
       -->
       <text v-if="nextStepText" class="txt-caption sh-muted status__next">{{ nextStepText }}</text>
+      <!--
+        **退了什么说什么**（待办设计 P3，原型 k10）。每一行都来自后端查到的数据，
+        没有就不说 —— 「已为你退回」若不成立，比什么都不说更糟。
+      -->
+      <view v-if="returnedLines.length" class="returned">
+        <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption returned__line">{{ l }}</text>
+      </view>
 
       <view class="timeline">
         <view v-for="(n, i) in order.timeline" :key="i" class="node">
@@ -566,6 +584,15 @@ onShow(load);
 .status__next {
   display: block;
   margin-top: 8rpx;
+}
+.returned {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  margin-top: 12rpx;
+}
+.returned__line {
+  color: var(--sh-primary);
 }
 /* 拼团进度卡（p08）：三行竖排，邀请按钮贴左 */
 .grpcard {

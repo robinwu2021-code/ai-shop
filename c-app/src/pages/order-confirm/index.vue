@@ -217,6 +217,24 @@ const merchantSegments = computed(() => segmentByMerchant(items.value));
  */
 const maxQtyOf = ref<Record<string, number>>({});
 
+/** 每一行的上限是谁挡住的（skuNo → 预览那一行）。只用来说那句话，不参与夹取 */
+const limitOf = ref<Record<string, OrderItem>>({});
+
+/**
+ * 到顶时说的那句话。**库存与限购是两件事**（待办设计 P1）：
+ * 「仅剩 3 件」他会等补货，「每人限购 5 件，你已买 2 件」他就知道补货也没用。
+ */
+function maxText(skuNo: string): string {
+  const row = limitOf.value[skuNo];
+  const n = maxQtyOf.value[skuNo];
+  if (row?.limitReason === "PER_USER" && row.limitPerUser) {
+    return String(row.boughtQty
+      ? t("confirm.qtyLimitBought", { limit: row.limitPerUser, bought: row.boughtQty })
+      : t("confirm.qtyLimit", { limit: row.limitPerUser }));
+  }
+  return String(t("confirm.qtyLeft", { n }));
+}
+
 /** 这一行加到顶了没有 */
 function atMax(it: CartItem): boolean {
   const m = maxQtyOf.value[it.skuNo];
@@ -232,7 +250,7 @@ function atMax(it: CartItem): boolean {
 function setQty(it: CartItem, next: number) {
   const max = maxQtyOf.value[it.skuNo];
   if (next > 0 && max != null && next > max) {
-    uni.showToast({ title: String(t("confirm.qtyMax", { n: max })), icon: "none" });
+    uni.showToast({ title: maxText(it.skuNo), icon: "none" });
     return;
   }
   if (next <= 0) {
@@ -506,6 +524,7 @@ async function refreshAmount() {
     maxQtyOf.value = Object.fromEntries(
       (p.items ?? []).filter((i) => i.maxQty != null).map((i) => [i.skuNo, i.maxQty as number]),
     );
+    limitOf.value = Object.fromEntries((p.items ?? []).map((i) => [i.skuNo, i]));
     amountStale.value = false;
     // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
     void loadCouponBest();
@@ -1115,7 +1134,7 @@ onMounted(async () => {
             ></sh-stepper>
           </view>
           <text v-if="atMax(it)" class="txt-caption sh-muted row__max">
-            {{ $t("confirm.qtyLeft", { n: maxQtyOf[it.skuNo] }) }}
+            {{ maxText(it.skuNo) }}
           </text>
         </biz-sku-row>
       </template>

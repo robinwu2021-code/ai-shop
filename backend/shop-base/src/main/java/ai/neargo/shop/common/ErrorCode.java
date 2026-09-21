@@ -213,6 +213,15 @@ public enum ErrorCode {
     OUT_OF_DELIVERY_RANGE(20003, "err.trade.out_of_delivery_range"),
     ORDER_STATE_ILLEGAL(20004, "err.trade.order_state_illegal"),
 
+    /**
+     * 超出每人限购（待办设计 P1）。
+     *
+     * <p>参数是<b>这件货还能买几件</b>（0 = 一件都不能再买了）。
+     * 口径：该用户在这件商品上、子单不是已取消 / 已退款的行数量之和，终身累计。
+     * 不复用 {@link #STOCK_NOT_ENOUGH}：用户看到「库存不足」会以为等补货就能买，而这一条补货也没用。
+     */
+    PURCHASE_LIMIT_EXCEEDED(20007, "err.trade.purchase_limit_exceeded"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),
@@ -356,6 +365,15 @@ public enum ErrorCode {
      * 老接口不再落成员行 —— 返回这一条让旧版本提示升级，而不是静默成功。
      */
     GROUP_JOIN_NEEDS_UPGRADE(40033, "err.marketing.group_join_needs_upgrade"),
+
+    /**
+     * 常驻 + 无门槛 + 直减的活动保存前要商家确认一次（待办设计 P7）。
+     *
+     * <p><b>不是拒绝，是提醒</b>：B 端收到这个码就弹「每单减 ¥10，最多 100 单（共 ¥1000）」，
+     * 商家点确认后带 {@code riskConfirmed=true} 重提。这类组合等于每一单都白送，
+     * 直到限量用完 —— 线上「abc」就是这样。开关 {@code marketing.always-on-cut.confirm} 关掉则不问。
+     */
+    ACTIVITY_RISK_UNCONFIRMED(40034, "err.marketing.activity_risk_unconfirmed"),
     /** 报名不成：过了报名截止，或不满足报名门槛（评分、违规、类目） */
     ENROLLMENT_CLOSED(40031, "err.marketing.enrollment_closed"),
     /**

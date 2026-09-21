@@ -229,6 +229,14 @@ public class OrderServiceImpl implements OrderService {
         this.saleGatePort = saleGatePort;
     }
 
+    /** 每人限购（P1）。setter 注入：构造器已经很长，且缺了只意味着「不拦」—— 与今天的行为一样 */
+    private PurchaseLimitGuard purchaseLimit;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPurchaseLimit(PurchaseLimitGuard purchaseLimit) {
+        this.purchaseLimit = purchaseLimit;
+    }
+
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
@@ -392,7 +400,47 @@ public class OrderServiceImpl implements OrderService {
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
         Discounts discounts = discountsOf(cmd, split, userNo);
-        return split.toVO(discounts, pickups).withDiscountLines(discountLinesOf(discounts));
+        return split.toVO(discounts, pickups, remainingOf(split, userNo))
+                .withDiscountLines(discountLinesOf(discounts));
+    }
+
+    /**
+     * 预览用：每件设了限购的货的限购数与已买量。
+     * 开关关着时返回空 —— 步进器只按库存，与「只显示不拦」一致。
+     */
+    private Map<String, Quota> remainingOf(Split split, String userNo) {
+        Map<String, Integer> limits = split.limitsByGoods();
+        if (purchaseLimit == null || limits.isEmpty() || !purchaseLimit.enforced()) {
+            return Map.of();
+        }
+        Map<String, Integer> bought = purchaseLimit.boughtQty(userNo, limits.keySet());
+        Map<String, Quota> out = new HashMap<>();
+        limits.forEach((goodsNo, limit) ->
+                out.put(goodsNo, new Quota(limit, bought.getOrDefault(goodsNo, 0))));
+        return out;
+    }
+
+    /**
+     * 这一张子单关闭后券与积分的去向（待办设计 P3）。**从数据查，不从状态推**：
+     * 券看它现在是不是回到了券包，分看这张子单上的 REFUND / CLAWBACK 流水。
+     * 非关闭态返回 null。B 端订单详情也用这一份，商家客服接到「我的券呢」时要看得到。
+     */
+    @Override
+    public OrderVO.Returned returnedOf(OrdSubOrder sub) {
+        if (sub == null || !(OrdSubOrder.CANCELLED.equals(sub.getStatus())
+                || OrdSubOrder.REFUNDED.equals(sub.getStatus()))) {
+            return null;
+        }
+        String title = couponPort.returnedTitleOf(sub.getOrderNo());
+        var pts = pointsPort.returnedOf(List.of(sub.getSubOrderNo()));
+        return new OrderVO.Returned(title, pts.refunded(), pts.clawedBack());
+    }
+
+    /** 一件货的限购与已买量 */
+    private record Quota(int limit, int bought) {
+        int left() {
+            return Math.max(0, limit - bought);
+        }
     }
 
     /**
@@ -715,6 +763,10 @@ public class OrderServiceImpl implements OrderService {
          * 不是「在它中间插一脚」。
          */
         String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
+        if (purchaseLimit != null) {
+            // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
+            purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
+        }
         requireReceiverWhenShipped(cmd, userNo);
         requireWithinDeliveryRadius(cmd, split, userNo);
         /*
@@ -1505,6 +1557,8 @@ public class OrderServiceImpl implements OrderService {
                     vo = vo.withDiscountLines(lines);
                 }
             }
+            // 已取消 / 已退款：券与积分去了哪（P3）。只在详情、只在这两个状态查
+            vo = vo.withReturned(returnedOf(sub));
             if (sub.getPeriodNo() != null) {
                 // 集单（s37）：提货日与「截单前可取消」。已截单、已退款的不再给可取消时刻
                 Long until = periodPort == null || OrdSubOrder.REFUNDED.equals(sub.getStatus())
@@ -1833,7 +1887,7 @@ public class OrderServiceImpl implements OrderService {
             return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
                     s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
                     q.groupPriceMinor(), s.available(), s.onSale(), s.fulfillments(),
-                    s.groupPriceMinor(), s.groupMinCount(), s.saleMode()), l.qty);
+                    s.groupPriceMinor(), s.groupMinCount(), s.saleMode(), s.limitPerUser()), l.qty);
         }).toList();
         List<Group> groups = split.groups.stream().map(g -> new Group(g.merchantNo, g.merchantName,
                 lines.stream().filter(l -> l.snapshot.merchantNo().equals(g.merchantNo)).toList(),
@@ -1871,6 +1925,49 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private record Split(List<Line> items, List<Group> groups) {
+        /** 这一单每件货买几件（多个规格合在一起 —— 限购按商品算） */
+        Map<String, Integer> qtyByGoods() {
+            Map<String, Integer> out = new HashMap<>();
+            items.forEach(l -> out.merge(l.snapshot.goodsNo(), l.qty, Integer::sum));
+            return out;
+        }
+
+        /** 设了每人限购的货 → 限购数 */
+        Map<String, Integer> limitsByGoods() {
+            Map<String, Integer> out = new HashMap<>();
+            items.stream().filter(l -> l.snapshot.limited())
+                    .forEach(l -> out.put(l.snapshot.goodsNo(), l.snapshot.limitPerUser()));
+            return out;
+        }
+
+        /**
+         * 这一行最多能买几件 + 是谁挡住的。
+         *
+         * <p>同一件货的其他规格已经在这一单里占掉的名额要扣掉 ——
+         * 限购 5、A 规格买了 3，B 规格的步进器就只能到 2。
+         */
+        OrderVO.ItemVO itemOf(Line l, String merchantNo, Map<String, Quota> quotas) {
+            int max = l.snapshot.available();
+            String reason = OrderVO.ItemVO.LIMIT_STOCK;
+            Quota q = quotas.get(l.snapshot.goodsNo());
+            if (q != null) {
+                int others = items.stream().filter(o -> o != l
+                        && o.snapshot.goodsNo().equals(l.snapshot.goodsNo())).mapToInt(Line::qty).sum();
+                int byLimit = Math.max(0, q.left() - others);
+                if (byLimit < max) {
+                    max = byLimit;
+                    reason = OrderVO.ItemVO.LIMIT_PER_USER;
+                }
+            }
+            return new OrderVO.ItemVO(
+                    l.snapshot.goodsNo(), merchantNo, l.snapshot.skuNo(), l.snapshot.title(),
+                    l.snapshot.cover(), l.snapshot.spec(), l.snapshot.price(), l.qty,
+                    l.amount(), l.snapshot.categoryType(), false,
+                    // 下单页的步进器要知道还能加到几 —— 只有后端算得准（见 ItemVO.maxQty）
+                    max, reason,
+                    q == null ? null : q.limit(), q == null ? null : q.bought());
+        }
+
         long goodsAmount() {
             return groups.stream().mapToLong(Group::goodsAmount).sum();
         }
@@ -1890,15 +1987,11 @@ public class OrderServiceImpl implements OrderService {
          *     确认页据它按取货点分组 —— 两家配到同一个点要合并成一组，
          *     按商家分会让人以为要跑两趟
          */
-        OrderVO toVO(Discounts discounts, java.util.Map<String, PickupPick> pickups) {
+        OrderVO toVO(Discounts discounts, java.util.Map<String, PickupPick> pickups,
+                     Map<String, Quota> quotas) {
             List<OrderVO> children = groups.stream().map(g -> new OrderVO(
                     null, null, OrdOrder.WAIT_PAY, null, g.merchantNo, g.merchantName,
-                    g.lines.stream().map(l -> new OrderVO.ItemVO(
-                            l.snapshot.goodsNo(), g.merchantNo, l.snapshot.skuNo(), l.snapshot.title(),
-                            l.snapshot.cover(), l.snapshot.spec(), l.snapshot.price(), l.qty,
-                            l.amount(), l.snapshot.categoryType(), false,
-                            // 下单页的步进器要知道还能加到几 —— 只有后端算得准（见 ItemVO.maxQty）
-                            l.snapshot.available())).toList(),
+                    g.lines.stream().map(l -> itemOf(l, g.merchantNo, quotas)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
                             discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
                     // 预览还没有单，收件人与预约时间自然也没有；自提点是**已经配好的那个**

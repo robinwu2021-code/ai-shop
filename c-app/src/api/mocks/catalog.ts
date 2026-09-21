@@ -10,8 +10,14 @@ import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import {
   distanceOf,
   reaches,
+  requireWithinLimit,
 } from "./_shared";
 import type { ShopApi } from "../contract";
+
+/** 车里这件货所有规格的件数 —— 限购按商品算 */
+function cartQtyOfGoods(goodsNo: string): number {
+  return db.cart.filter((c) => c.goodsNo === goodsNo).reduce((n, c) => n + c.qty, 0);
+}
 
 
 /**
@@ -167,6 +173,8 @@ export const catalogMock: Pick<ShopApi,
     if (!sku) throw new Error("规格不存在");
     // 生鲜截单校验：截单后不可加购
     if (g.cutoffAt && Date.now() > g.cutoffAt) throw new Error("已过今日截单时间");
+    // 每人限购：先判再改车（与后端同一口径，见 _shared.requireWithinLimit）
+    requireWithinLimit(goodsNo, cartQtyOfGoods(goodsNo) + Math.max(qty, 1));
     const exist = db.cart.find((c) => c.skuNo === skuNo);
     if (exist) {
       exist.qty += qty;
@@ -188,14 +196,6 @@ export const catalogMock: Pick<ShopApi,
         merchantName: g.merchant.name,
       });
     }
-    // 限购校验
-    if (g.limitPerUser > 0) {
-      const item = db.cart.find((c) => c.skuNo === skuNo)!;
-      if (item.qty > g.limitPerUser) {
-        item.qty = g.limitPerUser;
-        throw new Error(`每人限购 ${g.limitPerUser} 件`);
-      }
-    }
     persist();
     db.cart = refreshCart();
     return delay([...db.cart]);
@@ -203,6 +203,10 @@ export const catalogMock: Pick<ShopApi,
 
   async cartUpdate(skuNo, qty) {
     const item = db.cart.find((c) => c.skuNo === skuNo);
+    if (item && qty > item.qty) {
+      // 只在加量时判：减量永远放行（与后端一致）
+      requireWithinLimit(item.goodsNo, cartQtyOfGoods(item.goodsNo) - item.qty + qty);
+    }
     if (item) {
       if (qty <= 0) db.cart = db.cart.filter((c) => c.skuNo !== skuNo);
       else item.qty = qty;

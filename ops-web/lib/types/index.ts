@@ -308,6 +308,11 @@ export interface OpsPromoActivity {
   quota: number | null;
   /** 已用掉的限量 */
   quotaUsed: number;
+  /**
+   * 被关单退回的份数（待办设计 P4）。`quotaUsed` 已经不含它们 ——
+   * 这个数让运营知道「真实卖出」与「曾经被占过」差多少
+   */
+  quotaReleased?: number;
   /** 预算上限（分）。空 = 不限 */
   budgetMinor: number | null;
   /** 已花掉的预算（分） */

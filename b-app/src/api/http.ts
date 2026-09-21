@@ -550,7 +550,8 @@ export const httpApi: MerchantApi = {
   mActivities: (includeEnded) =>
     http.get<StoreActivity[]>(E.mActivities.path, includeEnded ? { includeEnded: true } : undefined),
   mActivity: (activityNo) => http.get<StoreActivity>(buildPath(E.mActivity.path, { activityNo })),
-  mSaveActivity: (payload) => http.post<StoreActivity>(E.mSaveActivity.path, payload),
+  mSaveActivity: (payload, opts) => http.post<StoreActivity>(
+    E.mSaveActivity.path + (opts?.riskConfirmed ? "?riskConfirmed=true" : ""), payload),
   mSetActivityStatus: (activityNo, status) =>
     http.put<StoreActivity>(buildPath(E.mSetActivityStatus.path, { activityNo }), { status }),
   mActivityConflicts: (goodsNos) =>

@@ -62,12 +62,19 @@ export const opsPromoActivities: OpsPromoActivity[] = [
     activityNo: "PT-DEMO-1", entityNo: "M0001", entityName: "张记生鲜",
     name: "满 50 减 5", triggerType: "AMOUNT", benefitType: "CUT", scheduleType: "ALWAYS_ON",
     quota: 200, quotaUsed: 190, budgetMinor: null, budgetUsedMinor: 95000,
-    audienceCount: 0, status: "RUNNING", endedReason: null, flags: ["QUOTA_NEARLY_OUT"],
+    audienceCount: 0, status: "RUNNING", endedReason: null, flags: ["QUOTA_NEARLY_OUT"], quotaReleased: 0,
   },
   {
     activityNo: "PT-DEMO-7", entityNo: "M0002", entityName: "老张粮油店",
     name: "长期九折", triggerType: "AMOUNT", benefitType: "CUT", scheduleType: "ALWAYS_ON",
     quota: null, quotaUsed: 0, budgetMinor: null, budgetUsedMinor: 0,
-    audienceCount: 0, status: "RUNNING", endedReason: null, flags: ["ALWAYS_ON_UNCAPPED"],
+    audienceCount: 0, status: "RUNNING", endedReason: null, flags: ["ALWAYS_ON_UNCAPPED"], quotaReleased: 0,
+  },
+  // 线上「abc」的样子（P7 / P4）：常驻、无门槛、每单减 10；已用 5 份里全是没付款关掉的单
+  {
+    activityNo: "PT-DEMO-9", entityNo: "M0001", entityName: "张记生鲜",
+    name: "abc", triggerType: "NONE", benefitType: "CUT", scheduleType: "ALWAYS_ON",
+    quota: 100, quotaUsed: 0, budgetMinor: null, budgetUsedMinor: 0,
+    audienceCount: 0, status: "RUNNING", endedReason: null, flags: ["ALWAYS_ON_FREE_CUT"], quotaReleased: 5,
   },
 ];

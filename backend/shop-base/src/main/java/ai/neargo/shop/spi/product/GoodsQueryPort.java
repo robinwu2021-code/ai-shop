@@ -114,7 +114,25 @@ public interface GoodsQueryPort {
                        long price, int available, boolean onSale, List<String> fulfillments,
                        Long groupPriceMinor, Integer groupMinCount,
                        /** 销售方式（V340）。空按 NORMAL —— 与迁移默认值同一口径 */
-                       String saleMode) {
+                       String saleMode,
+                       /** 每人限购（按商品，终身累计）。null / 0 = 不限 */
+                       Integer limitPerUser) {
+
+        /** 老调用点：不带限购 = 不限 */
+        public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
+                           String title, String cover, String spec,
+                           String categoryType, String categoryNo,
+                           long price, int available, boolean onSale, List<String> fulfillments,
+                           Long groupPriceMinor, Integer groupMinCount, String saleMode) {
+            this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
+                    price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
+                    saleMode, null);
+        }
+
+        /** 这件货设了每人限购 */
+        public boolean limited() {
+            return limitPerUser != null && limitPerUser > 0;
+        }
 
         /** 仅活动：此刻有点名它的活动在跑才能买（{@code SaleGatePort}） */
         public boolean activityOnly() {

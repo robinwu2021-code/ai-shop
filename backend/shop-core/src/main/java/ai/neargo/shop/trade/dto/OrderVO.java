@@ -134,7 +134,37 @@ public record OrderVO(String orderNo,
                        * <p>明细是**解释不是账**：与合计对不上时以合计为准。
                        * 老订单（走老模型 mkt_campaign 的那些）没有明细，为空。
                        */
-                      List<DiscountLine> discountLines) {
+                      List<DiscountLine> discountLines,
+                      /**
+                       * 已取消 / 已退款时券与积分的去向（待办设计 P3）。
+                       * <b>只在详情视角、只在这两个状态填</b>，其余为 null；每一项从数据查，不从状态推。
+                       */
+                      Returned returned) {
+
+    /** 订单关闭后券与积分去了哪。三项都可能为空 / 0 —— 有才说 */
+    public record Returned(String couponTitle, long pointsReturned, long pointsClawedBack) {
+        public boolean isEmpty() {
+            return (couponTitle == null || couponTitle.isBlank())
+                    && pointsReturned <= 0 && pointsClawedBack <= 0;
+        }
+    }
+
+    /** 不带去向的签名：存量构造处不必跟着改 */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany, List<DiscountLine> discountLines) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, discountLines, null);
+    }
 
     /**
      * 一条优惠的来历。
@@ -192,7 +222,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
     }
 
     /**
@@ -207,7 +237,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
     }
 
     /**
@@ -219,7 +249,17 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
+    }
+
+    /** 挂上去向（P3）。空的一律给 null —— 端上看 null 就整块不显示 */
+    public OrderVO withReturned(Returned r) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
+                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
+                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
+                groupNo, pickupDistanceM, expressCompany, discountLines,
+                r == null || r.isEmpty() ? null : r);
     }
 
     /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
@@ -228,7 +268,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines);
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned);
     }
 
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
@@ -236,7 +276,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned);
     }
 
     /**
@@ -304,9 +344,30 @@ public record OrderVO(String orderNo,
                           * 猜大了提交才报错、猜小了少卖。
                           *
                           * <p>**只有预览填**，历史订单为 null：那时候的库存与现在无关。
-                          * 当前只按库存算；「每人限购」要算历史购买量，那是另一件事（见执行计划）。
+                          * 取「可售库存」与「每人限购还剩几件」的小值（待办设计 P1）。
                           */
-                         Integer maxQty) {
+                         Integer maxQty,
+                         /**
+                          * 是谁挡住了 {@code maxQty}：{@value #LIMIT_STOCK} 库存 / {@value #LIMIT_PER_USER} 每人限购。
+                          * 端上到顶时的那句话要说对 ——「仅剩 3 件」与「每人限购 5 件，你已买 2 件」
+                          * 是两件事，前者等补货能买，后者补货也没用。只有预览填。
+                          */
+                         String limitReason,
+                         /** 每人限购（只在设了限购且开关开着时给） */
+                         Integer limitPerUser,
+                         /** 已买量（口径见 PurchaseLimitGuard）。与 limitPerUser 同时出现 */
+                         Integer boughtQty) {
+
+        public static final String LIMIT_STOCK = "STOCK";
+        public static final String LIMIT_PER_USER = "PER_USER";
+
+        /** 只带库存上限的签名（B2 时的形状） */
+        public ItemVO(String goodsNo, String merchantNo, String skuNo, String title,
+                      String cover, String spec, long price, int qty, long amount,
+                      String type, boolean isGift, Integer maxQty) {
+            this(goodsNo, merchantNo, skuNo, title, cover, spec, price, qty, amount, type,
+                    isGift, maxQty, null, null, null);
+        }
 
         /** 不带上限的旧签名：订单视角那几处构造不必跟着改 */
         public ItemVO(String goodsNo, String merchantNo, String skuNo, String title,

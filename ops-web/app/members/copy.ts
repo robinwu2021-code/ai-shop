@@ -92,6 +92,7 @@ const zh = {
   flag_ALWAYS_ON_UNCAPPED: "长期且无上限",
   flag_QUOTA_NEARLY_OUT: "限量快用完",
   flag_ENDED_BY_QUOTA: "已到量结束",
+  flag_ALWAYS_ON_FREE_CUT: "常驻无门槛",
 };
 
 const en: typeof zh = {
@@ -183,6 +184,7 @@ const en: typeof zh = {
   flag_ALWAYS_ON_UNCAPPED: "Always-on, uncapped",
   flag_QUOTA_NEARLY_OUT: "Quota nearly used",
   flag_ENDED_BY_QUOTA: "Ended on quota",
+  flag_ALWAYS_ON_FREE_CUT: "Always on, no minimum",
 };
 
 export const MEMBERS_COPY: PageCopy<typeof zh> = { zh, en };

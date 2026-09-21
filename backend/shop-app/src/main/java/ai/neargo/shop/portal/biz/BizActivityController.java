@@ -3,10 +3,14 @@ package ai.neargo.shop.portal.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityDraft;
 import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityVO;
 import ai.neargo.shop.promotion.dto.ActivityVOs.ConflictVO;
+import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.service.ActivityService;
+import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,8 +30,25 @@ public class BizActivityController {
 
     private final ActivityService activityService;
 
-    public BizActivityController(ActivityService activityService) {
+    private final PlatformSwitchPort switchPort;
+
+    public BizActivityController(ActivityService activityService,
+                                 PlatformSwitchPort switchPort) {
         this.activityService = activityService;
+        this.switchPort = switchPort;
+    }
+
+    static final String FLAG_ALWAYS_ON_CUT_CONFIRM = "marketing.always-on-cut.confirm";
+
+    /**
+     * 常驻 + 无门槛 + 直减：每一单都减，直到限量用完（待办设计 P7）。
+     * 这是<b>提醒不是规则</b>，「abc」这样的配置是合法的 —— 所以放在入口而不是服务里校验。
+     */
+    static boolean alwaysOnCut(ActivityDraft d) {
+        return PmtActivity.ALWAYS_ON.equals(d.scheduleType())
+                && (d.triggerType() == null
+                        || PmtActivity.TRIGGER_NONE.equals(d.triggerType()))
+                && PmtActivity.BENEFIT_CUT.equals(d.benefitType());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
@@ -48,7 +69,11 @@ public class BizActivityController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/activities")
-    public ActivityVO save(@RequestBody ActivityDraft draft) {
+    public ActivityVO save(@RequestBody ActivityDraft draft,
+                           @RequestParam(defaultValue = "false") boolean riskConfirmed) {
+        if (!riskConfirmed && alwaysOnCut(draft) && switchPort.bool(FLAG_ALWAYS_ON_CUT_CONFIRM, true)) {
+            throw BizException.of(ErrorCode.ACTIVITY_RISK_UNCONFIRMED);
+        }
         return activityService.save(BizContext.requireMerchantNo(), draft,
                 SecurityUtils.currentUserNo());
     }

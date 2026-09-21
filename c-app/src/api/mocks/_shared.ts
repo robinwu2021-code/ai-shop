@@ -33,6 +33,7 @@ import { isPhone } from "@shared/utils/validate";
 import { pointsExpireAt } from "@shared/utils/datetime";
 import { defaultFulfillment } from "@shared/utils/goods";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
+import { ApiError } from "@shared/net/http-client";
 import type { CreateOrderReq, GoodsQuery, ShopApi } from "../contract";
 import type {
   InvoiceRequest,
@@ -270,3 +271,40 @@ export function findOrderByAfterSale(afterSaleNo: string): Order {
   return o;
 }
 
+
+/** 与后端 `ErrorCode.PURCHASE_LIMIT_EXCEEDED` 同号 */
+export const PURCHASE_LIMIT_EXCEEDED = 20007;
+
+/**
+ * 每人限购 —— **与后端 PurchaseLimitGuard 同一口径**（待办设计 P1）。
+ *
+ * 此前 mock 在加购时自己拦了一道「每人限购 N 件」，而真后端一处都不拦：
+ * 本机点一遍是对的，线上买 50 件照样成交 —— mock 替一条不存在的规则背了书。
+ * 现在两边同一套：按商品算、终身累计、已取消 / 已退款的不算、赠品不算。
+ */
+export function boughtQtyOf(goodsNo: string): number {
+  let n = 0;
+  for (const o of db.orders) {
+    if (o.status === "CANCELLED" || o.status === "REFUNDED") continue;
+    for (const it of o.items) {
+      if (it.goodsNo === goodsNo && !it.isGift) n += it.qty;
+    }
+  }
+  return n;
+}
+
+/** 这件货的每人限购；0 = 不限 */
+export function limitOf(goodsNo: string): number {
+  return toGoods(findGoodsSeed(goodsNo)).limitPerUser || 0;
+}
+
+/** 这一次要买 `wanted` 件（该商品所有规格合计）会不会超限购；超了抛与后端同号的错 */
+export function requireWithinLimit(goodsNo: string, wanted: number): void {
+  const limit = limitOf(goodsNo);
+  if (!limit) return;
+  const bought = boughtQtyOf(goodsNo);
+  if (wanted + bought > limit) {
+    const left = Math.max(0, limit - bought);
+    throw new ApiError(PURCHASE_LIMIT_EXCEEDED, `超出每人限购，这件商品你还能买 ${left} 件`);
+  }
+}

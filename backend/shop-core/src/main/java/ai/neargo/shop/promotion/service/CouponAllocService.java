@@ -33,4 +33,9 @@ public interface CouponAllocService {
 
     /** 订单取消/关闭时退回，并把那一行 {@code pmt_apply} 标记为已撤销 */
     void release(String orderNo);
+
+    /** 这一单用过、现在已回到券包的券名（待办设计 P3）；没有返回 null */
+    default String returnedTitleOf(String orderNo) {
+        return null;
+    }
 }

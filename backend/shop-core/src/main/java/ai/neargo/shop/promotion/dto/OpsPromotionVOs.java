@@ -29,12 +29,16 @@ public final class OpsPromotionVOs {
      * @param audienceCount 受众条数。<b>0 = 对所有人生效</b> —— 这一列要显示出来，
      *                      「给所有人」与「没设置」在库里长得一样，但含义差很远
      * @param flags         {@code ALWAYS_ON_UNCAPPED} 长期且没限量没预算、
-     *                      {@code QUOTA_NEARLY_OUT} 限量快用完、{@code ENDED_BY_QUOTA} 已到量
+     *                      {@code QUOTA_NEARLY_OUT} 限量快用完、{@code ENDED_BY_QUOTA} 已到量、
+     *                      {@code ALWAYS_ON_FREE_CUT} 常驻 + 无门槛 + 直减（每一单都减，最容易被薅，置顶）
+     * @param quotaReleased 被关单退回的份数（P4）。{@code quotaUsed} 已经不含它们 ——
+     *                      这个数让运营知道「真实卖出」与「曾经被占过」差多少
      */
     public record OpsActivityVO(String activityNo, String entityNo, String entityName,
                                 String name, String triggerType, String benefitType,
                                 String scheduleType, Integer quota, int quotaUsed,
                                 Long budgetMinor, long budgetUsedMinor, int audienceCount,
-                                String status, String endedReason, List<String> flags) {
+                                String status, String endedReason, List<String> flags,
+                                int quotaReleased) {
     }
 }

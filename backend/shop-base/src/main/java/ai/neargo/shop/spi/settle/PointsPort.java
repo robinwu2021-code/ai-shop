@@ -50,6 +50,20 @@ public interface PointsPort {
     void reverse(String subOrderNo, String reason);
 
     /**
+     * 这些子单上退回了多少分、收回了多少分（待办设计 P3，订单详情「去向」那一块用）。
+     *
+     * <p><b>只读、从流水查</b>：退回 = REFUND 流水之和，收回 = CLAWBACK 流水之和。
+     * 端上据此说「200 积分已退回」—— 不从订单状态推，推出来的话可能不成立。
+     * 默认实现返回零：没有积分域的部署里这一块自然不显示。
+     */
+    default PointsReturned returnedOf(List<String> subOrderNos) {
+        return new PointsReturned(0L, 0L);
+    }
+
+    record PointsReturned(long refunded, long clawedBack) {
+    }
+
+    /**
      * 发放积分。支付成功后调用，落 {@code pending_balance}（待生效）。
      *
      * <p><b>不是落 balance</b>：售后期内退款的话分要收回，

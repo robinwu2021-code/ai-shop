@@ -97,6 +97,8 @@ const zh = {
   flag_ALWAYS_ON_UNCAPPED: "长期且无上限",
   flag_QUOTA_NEARLY_OUT: "限量快用完",
   flag_ENDED_BY_QUOTA: "已到量结束",
+  flag_ALWAYS_ON_FREE_CUT: "常驻无门槛",
+  exposureReleased: "另有 {n} 份来自已关闭的单（已退回）",
 
   memberNotice: "会员卡卖出去的是承诺，不是配置：只要有人持卡，权益与月费就锁死 —— 要调整请新建一张卡并把这张停售，让在售的那张始终与用户当初买的一致。会员折扣不得低于 {zhe} 折，月费远补不回被打穿的毛利。",
   searchCard: "搜会员卡号 / 名称",
@@ -405,6 +407,8 @@ const en: typeof zh = {
   flag_ALWAYS_ON_UNCAPPED: "Always-on, uncapped",
   flag_QUOTA_NEARLY_OUT: "Quota nearly used",
   flag_ENDED_BY_QUOTA: "Ended on quota",
+  flag_ALWAYS_ON_FREE_CUT: "Always on, no minimum",
+  exposureReleased: "{n} more were taken by closed orders (returned)",
 
   memberNotice: "A membership sold is a promise, not a setting: once anyone holds the card, its benefits and monthly fee lock. To change them, create a new card and retire this one, so what is on sale always matches what people bought. Member discounts cannot go below {off}% off — the monthly fee never covers the margin that deep a cut burns.",
   searchCard: "Search card no. / name",

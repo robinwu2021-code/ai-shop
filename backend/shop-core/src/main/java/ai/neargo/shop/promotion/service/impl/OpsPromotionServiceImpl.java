@@ -85,7 +85,11 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
                         // 这一页是「商家的活动会不会失控」；平台活动在「平台活动」那一栏看（s29 · s30）
                         .ne(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
                         .orderByDesc(PmtActivity::getId))
-                .stream().map(this::vo).toList();
+                .stream().map(this::vo)
+                // 常驻无门槛直减置顶（P7）：它们是最容易出现「被薅」的一类，运营要一眼找到
+                .sorted(java.util.Comparator.comparing(
+                        (OpsActivityVO v) -> !v.flags().contains(FLAG_ALWAYS_ON_FREE_CUT)))
+                .toList();
     }
 
     @Override
@@ -157,6 +161,16 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
                 exposure, c.getStatus(), flags);
     }
 
+    static final String FLAG_ALWAYS_ON_FREE_CUT = "ALWAYS_ON_FREE_CUT";
+
+    /** 关单退回的份数（P4）。setter 注入：构造器被测试直接 new 过 */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper applyMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApplyMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper applyMapper) {
+        this.applyMapper = applyMapper;
+    }
+
     private OpsActivityVO vo(PmtActivity a) {
         int audiences = Math.toIntExact(nzL(audienceMapper.selectCount(
                 Wrappers.<PmtActivityAudience>lambdaQuery()
@@ -174,10 +188,16 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
         if (PmtActivity.ENDED_QUOTA.equals(a.getEndedReason())) {
             flags.add("ENDED_BY_QUOTA");
         }
+        if (PmtActivity.ALWAYS_ON.equals(a.getScheduleType())
+                && (a.getTriggerType() == null || PmtActivity.TRIGGER_NONE.equals(a.getTriggerType()))
+                && PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
+            flags.add(FLAG_ALWAYS_ON_FREE_CUT);
+        }
         return new OpsActivityVO(a.getActivityNo(), a.getEntityNo(), entityName(a.getEntityNo()),
                 a.getName(), a.getTriggerType(), a.getBenefitType(), a.getScheduleType(),
                 a.getQuota(), nz(a.getQuotaUsed()), a.getBudgetMinor(), nz(a.getBudgetUsedMinor()),
-                audiences, a.getStatus(), a.getEndedReason(), flags);
+                audiences, a.getStatus(), a.getEndedReason(), flags,
+                applyMapper == null ? 0 : applyMapper.releasedCount(a.getActivityNo()));
     }
 
     private String entityName(String entityNo) {

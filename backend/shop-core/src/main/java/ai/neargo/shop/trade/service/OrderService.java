@@ -110,6 +110,14 @@ public interface OrderService {
     OrderVO cancel(String orderNo, String reason);
 
     /**
+     * 这张子单关闭后券与积分的去向（待办设计 P3）；非关闭态返回 null。
+     * C 端与 B 端的订单详情共用这一份 —— 两边说的话要一样。
+     */
+    default OrderVO.Returned returnedOf(ai.neargo.shop.trade.entity.OrdSubOrder sub) {
+        return null;
+    }
+
+    /**
      * 确认收货（C-4.4）。**非自提线的终态出口** —— 自提线走核销台。
      * 两条线殊途同归到 COMPLETED，评价与结算都以它为准。
      */

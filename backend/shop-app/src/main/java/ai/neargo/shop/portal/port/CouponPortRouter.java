@@ -63,4 +63,14 @@ public class CouponPortRouter implements CouponPort {
         legacy.release(orderNo);
         promo.release(orderNo);
     }
+
+    /**
+     * 去向（P3）。**路由必须转发** —— 接口上是默认实现，不转发就永远落到默认的 null，
+     * 而那恰好是「没有券要说」，页面安安静静地什么都不显示。2026-09-21 第一版就漏在这里。
+     */
+    @Override
+    public String returnedTitleOf(String orderNo) {
+        String t = legacy.returnedTitleOf(orderNo);
+        return t != null ? t : promo.returnedTitleOf(orderNo);
+    }
 }

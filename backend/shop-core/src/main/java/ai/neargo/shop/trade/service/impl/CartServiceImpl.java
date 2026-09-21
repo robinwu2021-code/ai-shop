@@ -56,6 +56,30 @@ public class CartServiceImpl implements CartService {
         return saleGatePort.live(only, System.currentTimeMillis()).any();
     }
 
+    /** 每人限购（P1）。与下单共用一份口径 —— 购物车说能加、结账却被拒，比两边都拒更糟 */
+    private PurchaseLimitGuard purchaseLimit;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPurchaseLimit(PurchaseLimitGuard purchaseLimit) {
+        this.purchaseLimit = purchaseLimit;
+    }
+
+    /**
+     * 车里这件货（所有规格合计）改成 {@code cartQtyOfSku} 之后会不会超限购。
+     * 「立即购买」也是先加购再结账（goods 页 buyNow），所以这里拦住的是两条路。
+     */
+    private void requireWithinLimit(GoodsQueryPort.SkuSnapshot snap, String skuNo, int newQtyOfSku) {
+        if (purchaseLimit == null || snap == null || !snap.limited()) {
+            return;
+        }
+        int others = rows().stream()
+                .filter(r -> snap.goodsNo().equals(r.getGoodsNo()) && !skuNo.equals(r.getSkuNo()))
+                .mapToInt(r -> r.getQty() == null ? 0 : r.getQty()).sum();
+        purchaseLimit.require(SecurityUtils.currentUserNo(),
+                Map.of(snap.goodsNo(), others + newQtyOfSku),
+                Map.of(snap.goodsNo(), snap.limitPerUser()));
+    }
+
     @Override
     public List<CartItemVO> list() {
         List<TrdCartItem> rows = rows();
@@ -100,6 +124,7 @@ public class CartServiceImpl implements CartService {
             throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.GOODS_ACTIVITY_ONLY);
         }
         TrdCartItem existing = find(skuNo);
+        requireWithinLimit(snap, skuNo, (existing == null ? 0 : existing.getQty()) + Math.max(qty, 1));
         if (existing == null) {
             TrdCartItem row = new TrdCartItem();
             row.setUserNo(SecurityUtils.currentUserNo());
@@ -125,6 +150,10 @@ public class CartServiceImpl implements CartService {
         if (qty <= 0) {
             cartMapper.deleteById(row.getId());   // 逻辑删除（BaseEntity 的 @TableLogic）
         } else {
+            if (qty > row.getQty()) {
+                // 只在加量时判：减量永远放行，否则超限的车里连减都减不下来
+                requireWithinLimit(goodsPort.snapshot(List.of(skuNo)).get(skuNo), skuNo, qty);
+            }
             row.setQty(qty);
             cartMapper.updateById(row);
         }

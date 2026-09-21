@@ -32,6 +32,14 @@ public interface CouponPort {
     /** 订单取消/关闭时退回券。 */
     void release(String orderNo);
 
+    /**
+     * 这一单用过、**现在已回到券包**的券名；没有返回 null（待办设计 P3）。
+     * 从券的现状查，不从订单状态推 —— 退款关着退券开关时，券其实没回来。
+     */
+    default String returnedTitleOf(String orderNo) {
+        return null;
+    }
+
     record MerchantAmount(String merchantNo, long goodsAmount) {
     }
 

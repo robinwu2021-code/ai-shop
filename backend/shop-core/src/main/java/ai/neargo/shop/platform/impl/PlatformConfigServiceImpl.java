@@ -67,7 +67,17 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
             {"key":"goods.audit","name":"商品上架审核",\
             "enabled":true,"rolloutPercent":0,"updatedAt":null},\
             {"key":"group.audit","name":"拼团上线审核",\
-            "enabled":false,"rolloutPercent":0,"updatedAt":null}]""";
+            "enabled":false,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"trade.purchase-limit.enforce","name":"每人限购校验",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"refund.return-coupon","name":"整单退款退券",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"refund.return-points","name":"整单退款退抵扣积分",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"refund.clawback-earned","name":"整单退款收回赠送积分",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"marketing.always-on-cut.confirm","name":"常驻无门槛直减保存确认",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null}]""";
 
     private static final String DEFAULT_RULE_TEXTS =
             "{\"refund\":\"\",\"pickup\":\"\",\"weighDiff\":\"\",\"version\":0}";
@@ -131,8 +141,31 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
 
     @Override
     public List<FeatureFlagVO> featureFlags() {
-        return readValue(KEY_FLAGS, DEFAULT_FLAGS, new TypeReference<List<FeatureFlagVO>>() {
-        });
+        List<FeatureFlagVO> stored = readValue(KEY_FLAGS, DEFAULT_FLAGS,
+                new TypeReference<List<FeatureFlagVO>>() {
+                });
+        /*
+         * **把登记表里新加、库里还没有的开关补进来**（2026-09-21）。
+         *
+         * 默认登记表只在「库里一行都没有」时生效。线上早就存过一份，
+         * 于是代码里新加的开关**在运营端的列表里永远不出现** —— 它照样按默认值生效
+         * （PlatformSwitchPort 找不到就走默认），但运营想关也找不到在哪关。
+         * 补进来的只是展示用的默认条目，库里存的值一条都不覆盖。
+         */
+        List<FeatureFlagVO> defaults;
+        try {
+            defaults = json.readValue(DEFAULT_FLAGS, new TypeReference<List<FeatureFlagVO>>() {
+            });
+        } catch (Exception e) {
+            return stored;
+        }
+        List<FeatureFlagVO> merged = new ArrayList<>(stored);
+        for (FeatureFlagVO d : defaults) {
+            if (indexOfKey(merged, d.key()) < 0) {
+                merged.add(d);
+            }
+        }
+        return merged;
     }
 
     @Override

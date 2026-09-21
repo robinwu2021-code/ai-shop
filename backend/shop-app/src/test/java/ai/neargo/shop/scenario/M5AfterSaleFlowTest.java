@@ -212,6 +212,196 @@ class M5AfterSaleFlowTest {
                 .as("整单退款没退券 —— 用户会认为平台吞了券").isEqualTo("UNUSED");
     }
 
+    // ---------------------------------------------------------------- P2a / P3：整单退款退积分、说清去向
+
+    @Autowired
+    private ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper pointsAccountMapper;
+
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapperForPoints;
+
+    @Autowired
+    private ai.neargo.shop.platform.PlatformConfigService platformConfig;
+
+    @Test
+    @DisplayName("★★★ 整单退款退回抵扣积分，并在 C 端与 B 端详情里说清「退回了多少」（P2a / P3）")
+    void pointsReturnedOnWholeOrderRefund() throws Exception {
+        var restore = openPoints();
+        try {
+            String token = login("13200132510");
+            String userNo = userNoOf(token);
+            givePoints(userNo, 10_000L);
+
+            String subNo = payWithPoints(token, 800L, "m5-refund-points");
+            assertThat(pointsBalanceOf(userNo)).isEqualTo(9_200L);
+
+            approve(loginAsOwnerOf("M0001", "13200132511"), mvcApply(token, subNo));
+
+            assertThat(pointsBalanceOf(userNo))
+                    .as("整单退了，抵扣的 800 分没回来 —— 用户会说「钱退了分没了」").isEqualTo(10_000L);
+
+            JsonNode returned = orderDetail(token, subNo).get("returned");
+            assertThat(returned).as("退款后的详情要说清去向").isNotNull();
+            assertThat(returned.get("pointsReturned").asLong()).isEqualTo(800L);
+
+            String biz = loginAsOwnerOf("M0001", "13200132511");
+            JsonNode bizDetail = json.readTree(mvc().perform(get("/biz/order/" + subNo)
+                            .header("Authorization", "Bearer " + biz))
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            assertThat(bizDetail.get("returned").get("pointsReturned").asLong())
+                    .as("商家客服接到「我的分呢」要看得到").isEqualTo(800L);
+        } finally {
+            restore.run();
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 开关 refund.return-points 关掉 = 不退分（关着的那一半也要测）")
+    void pointsKeptWhenSwitchOff() throws Exception {
+        var restore = openPoints();
+        platformConfig.saveFeatureFlag("refund.return-points", false, 0, "TEST");
+        try {
+            String token = login("13200132512");
+            String userNo = userNoOf(token);
+            givePoints(userNo, 10_000L);
+            String subNo = payWithPoints(token, 500L, "m5-refund-points-off");
+
+            approve(loginAsOwnerOf("M0001", "13200132513"), mvcApply(token, subNo));
+
+            assertThat(pointsBalanceOf(userNo)).isEqualTo(9_500L);
+            assertThat(absent(orderDetail(token, subNo).get("returned")))
+                    .as("没退就不说 —— 「已退回」若不成立比什么都不说更糟").isTrue();
+        } finally {
+            platformConfig.saveFeatureFlag("refund.return-points", true, 0, "TEST");
+            restore.run();
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 取消的单详情里说出券已回到券包（P3）")
+    void cancelledOrderSaysCouponReturned() throws Exception {
+        String token = login("13200132514");
+        long now = System.currentTimeMillis();
+        ai.neargo.shop.marketing.coupon.entity.MktCoupon c =
+                new ai.neargo.shop.marketing.coupon.entity.MktCoupon();
+        c.setCouponNo("CP-RET-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        c.setTitle("去向测试券");
+        c.setType("FULL_CUT");
+        c.setFaceMinor(300L);
+        c.setThresholdMinor(0L);
+        c.setFunder("PLATFORM");
+        c.setTotalCount(100);
+        c.setPerUserLimit(1);
+        c.setStartAt(now - 86_400_000L);
+        c.setEndAt(now + 86_400_000L);
+        c.setStatus("ACTIVE");
+        couponTemplateMapper.insert(c);
+        String userCouponNo = json.readTree(mvc().perform(post("/mp/coupon/" + c.getCouponNo() + "/receive")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString()).get("data").get("userCouponNo").asString();
+
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
+        JsonNode order = json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "m5-returned-coupon")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
+                                + "\"couponNo\":\"" + userCouponNo + "\"}"))
+                .andReturn().getResponse().getContentAsString()).get("data");
+        String subNo = order.get("subOrders").get(0).get("orderNo").asString();
+        assertThat(absent(orderDetail(token, subNo).get("returned"))).as("还没关的单不给去向").isTrue();
+
+        mvc().perform(post("/mp/order/" + order.get("orderNo").asString() + "/cancel")
+                .header("Authorization", "Bearer " + token)).andExpect(jsonPath("$.code").value(0));
+
+        assertThat(orderDetail(token, subNo).get("returned").get("couponTitle").asString())
+                .isEqualTo("去向测试券");
+    }
+
+    /** 付款：带抵扣下单 + 回调，返回子单号 */
+    private String payWithPoints(String token, long usePoints, String idem) throws Exception {
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
+        JsonNode order = json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
+                                + "\"usePoints\":" + usePoints + "}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString()).get("data");
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + order.get("payOrderNo").asString()
+                        + "\",\"transactionId\":\"TX-" + idem + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        return order.get("subOrders").get(0).get("orderNo").asString();
+    }
+
+    private static boolean absent(JsonNode n) {
+        return n == null || n.isNull();
+    }
+
+    private JsonNode orderDetail(String token, String subNo) throws Exception {
+        return json.readTree(mvc().perform(get("/mp/order/" + subNo)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString()).get("data");
+    }
+
+    private String userNoOf(String token) throws Exception {
+        return json.readTree(mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString()).get("data").get("userNo").asString();
+    }
+
+    private void givePoints(String userNo, long points) {
+        var a = new ai.neargo.shop.pay.entity.PtsUserAccount();
+        a.setUserNo(userNo);
+        a.setBalance(points);
+        a.setPendingBalance(0L);
+        a.setTotalEarn(points);
+        a.setTotalUse(0L);
+        a.setMarket("CN");
+        a.setCreatedAt(java.time.LocalDateTime.now());
+        a.setUpdatedAt(java.time.LocalDateTime.now());
+        pointsAccountMapper.insert(a);
+    }
+
+    private long pointsBalanceOf(String userNo) {
+        var a = pointsAccountMapper.selectOne(Wrappers.<ai.neargo.shop.pay.entity.PtsUserAccount>lambdaQuery()
+                .eq(ai.neargo.shop.pay.entity.PtsUserAccount::getUserNo, userNo).last("LIMIT 1"));
+        return a == null || a.getBalance() == null ? 0L : a.getBalance();
+    }
+
+    /**
+     * 打开积分的社区与商家开关（默认全关），**返回还原动作** —— 这两处是共享种子，
+     * 开着不还会让后面每一个「没开积分就不抵」的用例都变红，而报错指向它们自己。
+     */
+    private Runnable openPoints() {
+        return DataScopeContext.executeWithoutScope(() -> {
+            java.util.Map<Long, Boolean> cmt = new java.util.HashMap<>();
+            for (var c : communityMapperForPoints.selectList(null)) {
+                cmt.put(c.getId(), c.getPointsEnabled());
+                c.setPointsEnabled(true);
+                communityMapperForPoints.updateById(c);
+            }
+            java.util.Map<Long, Boolean> mch = new java.util.HashMap<>();
+            for (MchEntity m : entityMapperForFunds.selectList(null)) {
+                mch.put(m.getId(), m.getPointsEnabled());
+                m.setPointsEnabled(true);
+                entityMapperForFunds.updateById(m);
+            }
+            return (Runnable) () -> DataScopeContext.executeWithoutScope(() -> {
+                cmt.forEach((id, v) -> communityMapperForPoints.update(null,
+                        Wrappers.<ai.neargo.shop.community.entity.CmtCommunity>lambdaUpdate()
+                                .set(ai.neargo.shop.community.entity.CmtCommunity::getPointsEnabled, v)
+                                .eq(ai.neargo.shop.community.entity.CmtCommunity::getId, id)));
+                mch.forEach((id, v) -> entityMapperForFunds.update(null,
+                        Wrappers.<MchEntity>lambdaUpdate().set(MchEntity::getPointsEnabled, v)
+                                .eq(MchEntity::getId, id)));
+                return null;
+            });
+        });
+    }
+
     /** 这一单的券此刻什么状态 */
     private String couponStatusOf(String token, String userCouponNo) throws Exception {
         String body = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + token))

@@ -82,6 +82,30 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         this.couponPort = couponPort;
     }
 
+    /** 整单退款退抵扣积分（待办设计 P2a）。setter 注入，理由同 couponPort */
+    private ai.neargo.shop.spi.settle.PointsPort pointsPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsPort(ai.neargo.shop.spi.settle.PointsPort pointsPort) {
+        this.pointsPort = pointsPort;
+    }
+
+    /** 退券 / 退积分 / 收回赠送积分各一个开关（运营端功能开关，默认开） */
+    private ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSwitchPort(ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
+        this.switchPort = switchPort;
+    }
+
+    static final String FLAG_RETURN_COUPON = "refund.return-coupon";
+    static final String FLAG_RETURN_POINTS = "refund.return-points";
+
+    /** 开关取不到按默认开 —— 这几条是本次拍板的口径，关掉才是例外 */
+    private boolean on(String flag) {
+        return switchPort == null || switchPort.bool(flag, true);
+    }
+
     public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, SubOrderMapper subOrderMapper,
                                 StatusLogMapper statusLogMapper, SettlePort settlePort,
                                 OutboxEventBus eventBus, ObjectMapper json,
@@ -417,7 +441,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             sub.setStatus(OrdSubOrder.REFUNDED);
             DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
         }
-        releaseCouponIfWholeOrderRefunded(sub);
+        returnBenefitsIfWholeOrderRefunded(sub);
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, label, OrdStatusLog.BY_SYSTEM, null);
         eventBus.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), as.getRefundMinor()));
@@ -432,23 +456,40 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      *
      * <p><b>幂等</b>：{@code release} 只作用于状态仍是 USED 的券，重复调不会退两张。
      *
-     * <p>⚠️ <b>积分没在这里退</b>：付款成功时那笔抵扣已经从 PENDING 转成 CONFIRMED，
-     * 并且**记过一笔出池**（平台把钱付给了商家）。退它要连着把池子冲回来，
+     * <p><b>抵扣积分同一个判据一起退</b>（待办设计 P2a）：逐子单调 {@code pointsPort.reverse}。
+     * 它只认 PENDING 的抵扣流水 —— 分账前的单（绝大多数退款）池子一分没动，退回也不碰池子；
+     * 分账后的单那笔已是 CONFIRMED，这里静默不动，留给 P2b 连池子一起冲，
      * 否则「流通中的积分 == 池子里的钱」这条恒等式会失衡，而失衡了没有任何地方会报。
-     * 这一条单列（执行计划 B6-2b），要与结算域一起对账之后再做。
+     *
+     * <p>两件事各有一个开关（{@value #FLAG_RETURN_COUPON} / {@value #FLAG_RETURN_POINTS}）：
+     * 影响的账不同，出问题时要能只关其中一个。
      */
-    private void releaseCouponIfWholeOrderRefunded(OrdSubOrder sub) {
-        if (couponPort == null || sub == null || sub.getOrderNo() == null) {
+    private void returnBenefitsIfWholeOrderRefunded(OrdSubOrder sub) {
+        if (sub == null || sub.getOrderNo() == null) {
             return;
         }
-        var siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+        final var siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
                 com.baomidou.mybatisplus.core.toolkit.Wrappers.<OrdSubOrder>lambdaQuery()
                         .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
         boolean whole = siblings.stream().allMatch(x ->
                 OrdSubOrder.REFUNDED.equals(x.getStatus())
                         || OrdSubOrder.CANCELLED.equals(x.getStatus()));
-        if (whole) {
+        if (!whole) {
+            return;
+        }
+        if (couponPort != null && on(FLAG_RETURN_COUPON)) {
             couponPort.release(sub.getOrderNo());
+        }
+        if (pointsPort != null && on(FLAG_RETURN_POINTS)) {
+            for (OrdSubOrder x : siblings) {
+                /*
+                 * 跨域写推迟到提交之后，与取消订单退分同一个姿势（OrderServiceImpl.cancel）。
+                 * 幂等在数据本身（只认 PENDING），取消时已退过的子单这里找不到流水、静默返回。
+                 */
+                final String subNo = x.getSubOrderNo();
+                ai.neargo.shop.event.AfterCommit.run("整单退款退回积分 subOrderNo=" + subNo,
+                        () -> pointsPort.reverse(subNo, "整单退款"));
+            }
         }
     }
 
