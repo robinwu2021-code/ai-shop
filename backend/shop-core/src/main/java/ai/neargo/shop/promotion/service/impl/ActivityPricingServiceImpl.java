@@ -72,6 +72,14 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         this.couponMapper = couponMapper;
     }
 
+    /** 券那一行反查模板号用（见 nameOfPromo）。setter 注入，理由同 couponMapper */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.UserCouponMapper userCouponMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setUserCouponMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.UserCouponMapper m) {
+        this.userCouponMapper = m;
+    }
+
     public ActivityPricingServiceImpl(ActivityMapper activityMapper,
                                       ActivityAudienceMapper audienceMapper,
                                       ActivityGoodsMapper goodsMapper,
@@ -89,6 +97,36 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                                               List<CampaignPort.MerchantAmount> groups) {
         // 与顾客「一个都没选」同一条路：每家店取最优（CampaignPort.pick 里写着取法）
         return CampaignPort.pick(candidates(userNo, groups), java.util.Map.of());
+    }
+
+    /**
+     * 商品页的活动标签。<b>只列全主体的</b>（门店级活动要知道顾客在哪家店下单，商品页不知道）；
+     * 只列减钱类（满额减 / 满件减 / 无门槛减）—— 组合、特价、买赠各有各的露出。
+     */
+    @Override
+    public List<CampaignPort.ActivityTag> activityTags(String merchantNo) {
+        List<CampaignPort.ActivityTag> out = new ArrayList<>();
+        if (merchantNo == null) {
+            return out;
+        }
+        for (PmtActivity a : live(merchantNo, null, System.currentTimeMillis())) {
+            if (!PmtActivity.BENEFIT_CUT.equals(a.getBenefitType())) {
+                continue;
+            }
+            String trig = a.getTriggerType() == null ? PmtActivity.TRIGGER_NONE : a.getTriggerType();
+            if (!PmtActivity.TRIGGER_NONE.equals(trig) && !PmtActivity.TRIGGER_AMOUNT.equals(trig)
+                    && !PmtActivity.TRIGGER_QTY.equals(trig)) {
+                continue;
+            }
+            boolean newOnly = DataScopeContext.executeWithoutScope(() -> audienceMapper.selectList(
+                    Wrappers.<PmtActivityAudience>lambdaQuery().eq(PmtActivityAudience::getActivityNo, a.getActivityNo())))
+                    .stream().anyMatch(r -> PmtActivityAudience.NON_MEMBER.equals(r.getAudienceType()));
+            out.add(new CampaignPort.ActivityTag(a.getActivityNo(), a.getName(), nz(a.getBenefitAmountMinor()),
+                    PmtActivity.TRIGGER_AMOUNT.equals(trig) ? nz(a.getTriggerAmountMinor()) : 0L,
+                    PmtActivity.TRIGGER_QTY.equals(trig) && a.getTriggerQty() != null ? a.getTriggerQty() : 0,
+                    newOnly));
+        }
+        return out;
     }
 
     @Override
@@ -211,7 +249,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     CampaignPort.AppliedDiscount.COUPON.equals(r.getPromoType())
                             ? CampaignPort.AppliedDiscount.COUPON
                             : CampaignPort.AppliedDiscount.ACTIVITY,
-                    name, amount));
+                    name, amount, r.getEntityNo(), r.getFunder()));
         }
         return out;
     }
@@ -225,9 +263,20 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (couponMapper == null) {
                 return null;
             }
+            /*
+             * **券那一行记的是用户持有的那张的号**（CouponAllocServiceImpl 写 promoNo = userCouponNo），
+             * 不是券模板号。此前直接拿它去查模板，一条都查不到 —— 于是新券在订单详情里
+             * 永远说不出名字、整行被跳过（批 3 发现）。先按持有的那张反查模板号。
+             */
+            var held = userCouponMapper == null ? null
+                    : DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
+                            Wrappers.<ai.neargo.shop.promotion.entity.PmtUserCoupon>lambdaQuery()
+                                    .eq(ai.neargo.shop.promotion.entity.PmtUserCoupon::getUserCouponNo, no)
+                                    .last("limit 1")));
+            final String couponNo = held != null ? held.getCouponNo() : no;
             var c = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
                     Wrappers.<ai.neargo.shop.promotion.entity.PmtCoupon>lambdaQuery()
-                            .eq(ai.neargo.shop.promotion.entity.PmtCoupon::getCouponNo, no)
+                            .eq(ai.neargo.shop.promotion.entity.PmtCoupon::getCouponNo, couponNo)
                             .last("limit 1")));
             return c == null ? null : c.getTitle();
         }

@@ -155,6 +155,27 @@ class CheckoutOffersFlowTest {
                 .isEqualTo(offers.get("suggestedDiscountMinor").asLong());
     }
 
+    @Test
+    @DisplayName("★★ 商品页带出本店活动标签 —— 满减此前只在下单页出现，逛的时候不知道要凑单")
+    void goodsPageShowsActivityTags() throws Exception {
+        String token = login("13000320005");
+        JsonNode g = json.readTree(mvc().perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/mp/goods/G0002")
+                                .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString()).get("data");
+        JsonNode tags = g.get("activityTags");
+        assertThat(tags).as("详情没下发活动标签").isNotNull();
+        JsonNode t8 = null;
+        for (JsonNode t : tags) {
+            if (cut8.equals(t.get("activityNo").asString())) {
+                t8 = t;
+            }
+        }
+        assertThat(t8).isNotNull();
+        assertThat(t8.get("thresholdMinor").asLong()).isEqualTo(5_000L);
+        assertThat(t8.get("amountMinor").asLong()).isEqualTo(800L);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private String choice(String activityNo) {

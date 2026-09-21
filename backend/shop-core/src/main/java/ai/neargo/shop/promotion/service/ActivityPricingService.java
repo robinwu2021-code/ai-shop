@@ -26,6 +26,9 @@ public interface ActivityPricingService {
      */
     CampaignPort.Discount autoDiscount(String userNo, List<CampaignPort.MerchantAmount> groups);
 
+    /** 商品页的活动标签（批 3）：这家店全主体、减钱类的进行中活动 */
+    List<ai.neargo.shop.spi.marketing.CampaignPort.ActivityTag> activityTags(String merchantNo);
+
     /** 这个活动号是不是新模型的（路由把老模型的活动交给新模型记配额之前要先筛掉） */
     boolean ownsActivity(String activityNo);
 

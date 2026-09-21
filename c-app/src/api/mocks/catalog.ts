@@ -102,7 +102,15 @@ export const catalogMock: Pick<ShopApi,
 
   async goodsDetail(goodsNo) {
     // mock 不判送达（deliverable 缺省 = 没判）；收藏读本地那份
-    return delay({ ...toGoods(findGoodsSeed(goodsNo)), favorited: db.favoriteGoods.includes(goodsNo) });
+    // 活动标签（批 3）：与 mock 预览里那个「满 30 减 5」同一个 —— 商品页说了，下单页就要真的减
+    return delay({
+      ...toGoods(findGoodsSeed(goodsNo)),
+      favorited: db.favoriteGoods.includes(goodsNo),
+      activityTags: [{
+        activityNo: "MOCK-CUT-5", name: "满 30 减 5", amountMinor: 500,
+        thresholdMinor: 3000, thresholdQty: 0, newCustomerOnly: false,
+      }],
+    });
   },
 
   async toggleFavoriteGoods(goodsNo) {

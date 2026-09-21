@@ -69,6 +69,14 @@ public class CampaignPortRouter implements CampaignPort {
         return all;
     }
 
+    /** 商品页的活动标签：两套合在一起（批 3） */
+    @Override
+    public List<ActivityTag> activityTags(String merchantNo) {
+        List<ActivityTag> all = new ArrayList<>(legacy.activityTags(merchantNo));
+        all.addAll(promo.activityTags(merchantNo));
+        return all;
+    }
+
     @Override
     public Discount autoDiscount(List<MerchantAmount> groups, Map<String, String> choices) {
         return CampaignPort.pick(candidates(groups), choices == null ? Map.of() : choices);

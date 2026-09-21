@@ -117,6 +117,11 @@ public interface OrderService {
         return null;
     }
 
+    /** 这张子单减了什么、谁出的钱（C / B 订单详情共用） */
+    default List<OrderVO.DiscountLine> discountLinesOf(ai.neargo.shop.trade.entity.OrdSubOrder sub) {
+        return List.of();
+    }
+
     /**
      * 确认收货（C-4.4）。**非自提线的终态出口** —— 自提线走核销台。
      * 两条线殊途同归到 COMPLETED，评价与结算都以它为准。

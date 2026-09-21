@@ -240,9 +240,19 @@ public record OrderVO(String orderNo,
      * @param name 给人看的名字：活动名、券名
      * @param amountMinor 这一条减了多少（正数）
      */
-    public record DiscountLine(String kind, String name, long amountMinor) {
+    public record DiscountLine(String kind, String name, long amountMinor,
+                               /**
+                                * 谁出的钱：MERCHANT / PLATFORM（批 3 · B8）。只有订单详情填，预览为 null。
+                                * B 端详情据此写「本店让利」还是「平台补贴」—— 商家对账要知道这 ¥5 是谁的
+                                */
+                               String funder) {
         public static final String ACTIVITY = "ACTIVITY";
         public static final String COUPON = "COUPON";
+
+        /** 不带出资方（预览） */
+        public DiscountLine(String kind, String name, long amountMinor) {
+            this(kind, name, amountMinor, null);
+        }
     }
 
     /**

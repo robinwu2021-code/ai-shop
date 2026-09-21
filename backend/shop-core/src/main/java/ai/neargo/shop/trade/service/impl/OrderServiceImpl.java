@@ -429,6 +429,23 @@ public class OrderServiceImpl implements OrderService {
      * 券看它现在是不是回到了券包，分看这张子单上的 REFUND / CLAWBACK 流水。
      * 非关闭态返回 null。B 端订单详情也用这一份，商家客服接到「我的券呢」时要看得到。
      */
+    /**
+     * 这张子单减了什么、谁出的钱（C 端与 B 端订单详情共用，批 3 · B8）。
+     *
+     * <p><b>只列本子单那家店的</b>：优惠记录按主单查，一单多家店时不过滤的话，
+     * 每张子单都会把别家店的满减也列出来。
+     */
+    @Override
+    public List<OrderVO.DiscountLine> discountLinesOf(OrdSubOrder sub) {
+        if (sub == null || sub.getDiscountAmount() == null || sub.getDiscountAmount() <= 0) {
+            return List.of();
+        }
+        return campaignPort.appliedOf(sub.getOrderNo()).stream()
+                .filter(d -> d.merchantNo() == null || d.merchantNo().equals(sub.getEntityNo()))
+                .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor(), d.funder()))
+                .toList();
+    }
+
     @Override
     public OrderVO.Returned returnedOf(OrdSubOrder sub) {
         if (sub == null || !(OrdSubOrder.CANCELLED.equals(sub.getStatus())
@@ -1690,13 +1707,9 @@ public class OrderServiceImpl implements OrderService {
              * **优惠依据只在详情查**（与上面那三样同一条理由：列表一次几十条）。
              * 读的是当时落下的 `pmt_apply`，不是按现在的规则重算 —— 规则可能早改了。
              */
-            if (sub.getDiscountAmount() != null && sub.getDiscountAmount() > 0) {
-                var lines = campaignPort.appliedOf(sub.getOrderNo()).stream()
-                        .map(d -> new OrderVO.DiscountLine(d.kind(), d.name(), d.amountMinor()))
-                        .toList();
-                if (!lines.isEmpty()) {
-                    vo = vo.withDiscountLines(lines);
-                }
+            var lines = discountLinesOf(sub);
+            if (!lines.isEmpty()) {
+                vo = vo.withDiscountLines(lines);
             }
             // 已取消 / 已退款：券与积分去了哪（P3）。只在详情、只在这两个状态查
             vo = vo.withReturned(returnedOf(sub));

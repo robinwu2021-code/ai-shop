@@ -291,7 +291,22 @@ public class GoodsServiceImpl implements GoodsService {
     public GoodsVO detailForBuyer(String goodsNo) {
         GoodsVO v = detail(goodsNo);
         v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
-        return v.withSaleGate(directBuyable(v), null);
+        v = v.withSaleGate(directBuyable(v), null);
+        return v.withPromotions(promotionsOf(v.goodsNo()),
+                v.merchant() == null ? List.of() : campaignPort.activityTags(v.merchant().merchantNo()).stream()
+                        .map(t -> new GoodsVO.ActivityTagVO(t.activityNo(), t.name(), t.amountMinor(),
+                                t.thresholdMinor(), t.thresholdQty(), t.newCustomerOnly()))
+                        .toList());
+    }
+
+    /**
+     * 买 N 送 M（契约 {@code Goods.promotions}）。与下单算赠品同一个来源（{@code giftRules}）——
+     * 两处各查一次的话，商品页说「买 2 送 1」、下单却没送，顾客只会觉得被骗。
+     */
+    private List<GoodsVO.PromotionVO> promotionsOf(String goodsNo) {
+        var rule = campaignPort.giftRules(List.of(goodsNo)).get(goodsNo);
+        return rule == null || rule.buyN() <= 0 || rule.giftM() <= 0 ? List.of()
+                : List.of(new GoodsVO.PromotionVO(GoodsVO.PromotionVO.BUY_N_GET_M, rule.buyN(), rule.giftM()));
     }
 
     @Override

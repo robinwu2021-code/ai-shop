@@ -29,7 +29,7 @@ import {
 import { buyNGetM, giftQtyFor, promoLabelArgs } from "@shared/utils/promotion";
 import { scrollToTop, scrollToY } from "@ai-shop/ui/scroll";
 import { defaultFulfillment } from "@shared/utils/goods";
-import type { Coupon, Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
+import type { ActivityTag, Coupon, Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -210,8 +210,20 @@ const hasChips = computed(() => {
   return (isFresh.value && !!cutoffText.value && !cutoffPassed.value) || cutoffPassed.value
     || (isService.value && !!g.durationMin) || isVirtual.value
     || (isCard.value && !!(g.card?.timesTotal || g.card?.faceValueMinor))
-    || !!promo.value || (FEATURES.points && !!g.points) || g.sales > 0 || lowStock.value > 0;
+    || !!promo.value || !!g.activityTags?.length
+    || (FEATURES.points && !!g.points) || g.sales > 0 || lowStock.value > 0;
 });
+
+/**
+ * 活动标签的一句话（优惠券全链路梳理 批 3）：「满 ¥50 减 ¥8」「满 3 件减 ¥5」「新客立减 ¥5」。
+ * 满减类活动此前只在下单页出现 —— 逛的时候不知道要凑单，这条标签就是为了让他在这里知道。
+ */
+function activityTagText(a: ActivityTag): string {
+  const n = money(a.amountMinor);
+  if (a.thresholdMinor > 0) return String(t("promo.cutAmount", { m: money(a.thresholdMinor), n }));
+  if (a.thresholdQty > 0) return String(t("promo.cutQty", { q: a.thresholdQty, n }));
+  return String(t(a.newCustomerOnly ? "promo.newCut" : "promo.cutAny", { n }));
+}
 
 /** 商品参数卡有没有内容 —— 限购只在真有限购时算 */
 const hasParams = computed(() => {
@@ -832,6 +844,9 @@ onShareAppMessage(() =>
             </text>
             <text v-if="promo" class="sh-chip sh-chip--danger">
               {{ $t("promo.buyNGetM", promoLabelArgs(promo)) }}
+            </text>
+            <text v-for="a in goods.activityTags ?? []" :key="a.activityNo" class="sh-chip sh-chip--danger sh-num">
+              {{ activityTagText(a) }}
             </text>
             <text v-if="FEATURES.points && goods.points" class="sh-chip sh-chip--primary sh-num">
               {{ $t("points.earnChip", { n: goods.points }) }}

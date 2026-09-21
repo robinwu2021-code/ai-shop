@@ -144,6 +144,24 @@ public class CampaignPortImpl implements CampaignPort {
      * 不信任端上传来的任何优惠额。端上算的那份只用于展示。
      */
     /** 这一家此刻最优的那个满减活动。没有就 null —— 调用方据此不记任何一条 */
+    /** 老模型的满减也上商品页标签（批 3）：只列全主体的，门店级的商品页不知道顾客在哪家店下单 */
+    @Override
+    public List<ActivityTag> activityTags(String merchantNo) {
+        long now = System.currentTimeMillis();
+        return DataScopeContext.executeWithoutScope(() ->
+                        campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                                .eq(MktCampaign::getEntityNo, merchantNo)
+                                .eq(MktCampaign::getType, MktCampaign.FULL_CUT)
+                                .eq(MktCampaign::getStatus, MktCampaign.RUNNING)
+                                .le(MktCampaign::getStartAt, now)
+                                .ge(MktCampaign::getEndAt, now))).stream()
+                .filter(c -> c.getStoreNo() == null || c.getStoreNo().isBlank())
+                .map(c -> new ActivityTag(c.getCampaignNo(), c.getName(),
+                        c.getDiscountMinor() == null ? 0L : c.getDiscountMinor(),
+                        c.getThresholdMinor() == null ? 0L : c.getThresholdMinor(), 0, false))
+                .toList();
+    }
+
     private MktCampaign bestFullCut(String merchantNo, String storeNo, long goodsAmount, long now) {
         List<MktCampaign> running = DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()

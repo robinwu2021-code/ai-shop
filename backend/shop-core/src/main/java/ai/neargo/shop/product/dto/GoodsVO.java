@@ -153,18 +153,89 @@ public record GoodsVO(String goodsNo,
                       Boolean favorited,
                       /* 这件商品卖不卖到端上传来的那个社区（收货地址推出来的）。
                          判据与首页商品池同一份；没传社区号 = null（不判 —— 模糊定位只准到区，拿它判会误拦） */
-                      Boolean deliverable) {
+                      Boolean deliverable,
+                      /**
+                       * 促销（契约 {@code Goods.promotions}，一期只有买 N 送 M）。<b>只在 C 端详情下发</b>。
+                       * 此前后端从不下发，商品页的「买 2 送 1」标签只在 mock 下出现过。
+                       */
+                      List<PromotionVO> promotions,
+                      /**
+                       * 这家店此刻的减钱活动（优惠券全链路梳理 批 3）。<b>只在 C 端详情下发</b>。
+                       * 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 不让后端拼中文，三种语言都要用
+                       */
+                      List<ActivityTagVO> activityTags) {
+
+    /** 买 N 送 M。与契约 {@code Promotion} 同形 */
+    public record PromotionVO(String type, int buyN, int giftM) {
+        public static final String BUY_N_GET_M = "BUY_N_GET_M";
+    }
+
+    /** 一条活动标签。见 {@code CampaignPort.ActivityTag} */
+    public record ActivityTagVO(String activityNo, String name, long amountMinor, long thresholdMinor,
+                                int thresholdQty, boolean newCustomerOnly) {
+    }
+
+    /** 不带促销与活动标签的签名：存量构造处不必跟着改（这两项只有买家详情填） */
+    public GoodsVO(String goodsNo,
+                   String title,
+                   String subtitle,
+                   String cover,
+                   List<String> images,
+                   String detail,
+                   List<String> detailImages,
+                   String type,
+                   String categoryNo,
+                   MerchantBriefVO merchant,
+                   double rating,
+                   int ratingCount,
+                   long price,
+                   Long originPrice,
+                   List<String> fulfillments,
+                   List<SpecGroupVO> specGroups,
+                   List<SkuVO> skus,
+                   int sales,
+                   Long cutoffAt,
+                   String arrivalDesc,
+                   Boolean weighed,
+                   String origin,
+                   Integer durationMin,
+                   String storeName,
+                   int limitPerUser,
+                   boolean onSale,
+                   String status,
+                   java.util.Map<String, String> titleI18n,
+                   java.util.Map<String, String> subtitleI18n,
+                   String stdNo,
+                   String auditReason,
+                   GroupBuyConfVO groupBuy,
+                   List<GoodsParamVO> params,
+                   Boolean hasDraft,
+                   Boolean storeOnSale,
+                   SaleScopeVO saleScope,
+                   String saleMode,
+                   Boolean directBuyable,
+                   Boolean activityLive,
+                   Boolean favorited,
+                   Boolean deliverable) {
+        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null);
+    }
+
+    /** 挂上促销与活动标签（只在买家详情） */
+    public GoodsVO withPromotions(List<PromotionVO> promotions, List<ActivityTagVO> activityTags) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
+    }
 
     /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
     public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
     }
 
     /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
     public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

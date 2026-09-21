@@ -348,6 +348,60 @@ class M5AfterSaleFlowTest {
                 .isEqualTo("去向测试券");
     }
 
+    @Autowired
+    private ai.neargo.shop.promotion.service.CouponService promoCoupons;
+
+    @Test
+    @DisplayName("★★★ 用新券下单后，C 端与 B 端详情都说得出券名与出资方（批 3 · B8）")
+    void detailNamesNewCouponWithFunder() throws Exception {
+        String title = "详情券名" + System.nanoTime() % 100000;
+        String couponNo = promoCoupons.save("M0001", new ai.neargo.shop.promotion.dto.CouponVOs.CouponSaveCmd(
+                null, title, "CASH", 300L, null, null, 1_000L, null, "ALL", java.util.List.of(), null,
+                "RELATIVE", null, null, 7, "CENTER", "ORDER", 1, 10, 1, null), "OP").couponNo();
+        try {
+            String token = login("13200132520");
+            String userCouponNo = json.readTree(mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                            .header("Authorization", "Bearer " + token))
+                    .andReturn().getResponse().getContentAsString()).get("data").get("userCouponNo").asString();
+            mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
+            JsonNode order = json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                            .header("Idempotency-Key", "m5-detail-coupon-" + System.nanoTime())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
+                                    + "\"couponNo\":\"" + userCouponNo + "\"}"))
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            String subNo = order.get("subOrders").get(0).get("orderNo").asString();
+
+            JsonNode cLine = couponLine(orderDetail(token, subNo));
+            assertThat(cLine).as("新券在详情里说不出名字 —— 此前按持有的券号去查模板，一条都查不到").isNotNull();
+            assertThat(cLine.get("name").asString()).isEqualTo(title);
+            assertThat(cLine.get("funder").asString()).isEqualTo("MERCHANT");
+
+            String biz = loginAsOwnerOf("M0001", "13200132521");
+            JsonNode bizDetail = json.readTree(mvc().perform(get("/biz/order/" + subNo)
+                            .header("Authorization", "Bearer " + biz))
+                    .andReturn().getResponse().getContentAsString()).get("data");
+            assertThat(couponLine(bizDetail)).as("商家看不到这单减了什么").isNotNull();
+        } finally {
+            promoCoupons.setStatus("M0001", couponNo, "ENDED");
+        }
+    }
+
+    private static JsonNode couponLine(JsonNode detail) {
+        JsonNode lines = detail == null ? null : detail.get("discountLines");
+        if (lines == null) {
+            return null;
+        }
+        for (JsonNode l : lines) {
+            if ("COUPON".equals(l.get("kind").asString())) {
+                return l;
+            }
+        }
+        return null;
+    }
+
     /** 付款：带抵扣下单 + 回调，返回子单号 */
     private String payWithPoints(String token, long usePoints, String idem) throws Exception {
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)

@@ -34,6 +34,23 @@ public interface CampaignPort {
      */
     Discount autoDiscount(List<MerchantAmount> groups);
 
+    /**
+     * 商品页上的活动标签（优惠券全链路梳理 批 3 · B6）：这家店此刻在跑、满足条件就自动减的活动。
+     * 此前满减类活动<b>只在下单页出现</b> —— 顾客逛商品时不知道「满 50 减 8」，也就不会凑单。
+     *
+     * @param thresholdMinor 满多少元（分）才减；0 = 不按金额
+     * @param thresholdQty   满几件才减；0 = 不按件数
+     * @param newCustomerOnly 只给新客（受众是「非会员」）—— 老客看到「新客立减」会以为自己也有
+     */
+    record ActivityTag(String activityNo, String name, long amountMinor, long thresholdMinor,
+                       int thresholdQty, boolean newCustomerOnly) {
+    }
+
+    /** 这家店此刻的活动标签。默认没有 */
+    default List<ActivityTag> activityTags(String merchantNo) {
+        return List.of();
+    }
+
     /** 顾客选了「这家店不参加活动」 */
     String CHOICE_NONE = "NONE";
 
@@ -289,9 +306,18 @@ public interface CampaignPort {
      * @param kind ACTIVITY / COUPON
      * @param name 给买家看的名字；取不到就是空，调用方**不要编一个**
      */
-    record AppliedDiscount(String kind, String name, long amountMinor) {
+    /**
+     * @param merchantNo 这一笔记在哪家店上（一单多家店时，详情只列本子单那家的）
+     * @param funder     谁出的钱：MERCHANT / PLATFORM（批 3 · B8，商家对账要知道是他让的还是平台补的）
+     */
+    record AppliedDiscount(String kind, String name, long amountMinor, String merchantNo, String funder) {
         public static final String ACTIVITY = "ACTIVITY";
         public static final String COUPON = "COUPON";
+
+        /** 老签名：不带商家与出资方 */
+        public AppliedDiscount(String kind, String name, long amountMinor) {
+            this(kind, name, amountMinor, null, null);
+        }
     }
 
     record AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,

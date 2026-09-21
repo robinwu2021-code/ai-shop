@@ -521,6 +521,10 @@ export default {
     share: "{title}｜已有 {n} 位邻居想要，一起报个数",
   },
   promo: {
+    cutAmount: "满 {m} 减 {n}",
+    cutQty: "满 {q} 件减 {n}",
+    cutAny: "立减 {n}",
+    newCut: "新客立减 {n}",
     buyNGetM: "买 {n} 送 {m}",
     willGift: "当前数量可获赠 {n} 件",
     needMore: "再加 {n} 件即可获赠",

@@ -202,6 +202,17 @@ onLoad((q) => {
           </view>
           <text class="sh-num">{{ money(it.price, order.amount.currency) }}</text>
         </view>
+        <!--
+          **这单减了什么、谁出的钱**（优惠券全链路梳理 批 3）。此前商家只看得到应付，
+          顾客问「怎么少了 5 块」他答不上来，对账时也分不清是自己让的还是平台补的。
+        -->
+        <view v-for="(d, i) in order.discountLines ?? []" :key="i" class="line sh-row sh-row--between">
+          <text class="sh-muted sh-fill">
+            {{ $t(d.kind === "COUPON" ? "order.discountCoupon" : "order.discountActivity", { name: d.name }) }}
+            <text v-if="d.funder" class="txt-caption"> · {{ $t(d.funder === "PLATFORM" ? "order.funderPlatform" : "order.funderMerchant") }}</text>
+          </text>
+          <text class="sh-num is-danger">-{{ money(d.amountMinor, order.amount.currency) }}</text>
+        </view>
         <view class="line total sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.amount") }}</text>
           <text class="txt-title sh-num">

@@ -490,6 +490,10 @@ export default {
     share: "{title} — {n} neighbours already want one, add your name",
   },
   promo: {
+    cutAmount: "{n} off over {m}",
+    cutQty: "{n} off {q}+ items",
+    cutAny: "{n} off",
+    newCut: "{n} off for new customers",
     buyNGetM: "Buy {n} get {m}",
     willGift: "{n} free with this quantity",
     needMore: "{n} more to get a free one",

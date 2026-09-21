@@ -198,6 +198,20 @@ export interface Promotion {
   /** 赠品展示名（后端下发已本地化） */
   giftTitle?: string;
 }
+/** 商品页上的一条活动标签（后端 `GoodsVO.ActivityTagVO`） */
+export interface ActivityTag {
+  activityNo: string;
+  /** 商家起的活动名。拼不出规则时（理论上不会）才用它 */
+  name: string;
+  /** 减多少（分） */
+  amountMinor: number;
+  /** 满多少元才减（分）；0 = 不按金额 */
+  thresholdMinor: number;
+  /** 满几件才减；0 = 不按件数 */
+  thresholdQty: number;
+  /** 只给新客 —— 老客看到「新客立减」会以为自己也有 */
+  newCustomerOnly: boolean;
+}
 /** 虚拟商品属性（VIRTUAL） */
 export interface VirtualSpec {
   /** 发放说明，如「支付后 1 分钟内短信发码」 */
@@ -336,8 +350,16 @@ export interface Goods {
   card?: CardSpec;
   /** VIRTUAL。**后端未下发** */
   virtual?: VirtualSpec;
-  /** 促销（一期只有买 N 送 M）。**后端未下发** */
+  /**
+   * 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3），
+   * 与下单算赠品同一个来源；列表页仍不下发。
+   */
   promotions?: Promotion[];
+  /**
+   * 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。
+   * 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。
+   */
+  activityTags?: ActivityTag[];
   /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
   groupBuy?: { minCount: number; price: number };
   /**

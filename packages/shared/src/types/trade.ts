@@ -4,6 +4,7 @@
 
 import type { CategoryType, CurrencyCode, FulfillmentType, TrafficSource } from "./core";
 import type { MerchantCapability } from "./merchant";
+import type { CouponFunder } from "./marketing";
 
 // ---------------------------------------------------------------- 售后
 
@@ -315,6 +316,11 @@ export interface DiscountLine {
   name: string;
   /** 这一条减了多少（最小货币单位，正数） */
   amountMinor: number;
+  /**
+   * 谁出的钱：本店让利 / 平台补贴（批 3）。**只有订单详情给**，预览为空。
+   * B 端详情据此写出来 —— 商家对账要知道这 ¥5 是他让的还是平台补的
+   */
+  funder?: CouponFunder | null;
 }
 
 export interface OrderAmount {

@@ -490,6 +490,10 @@ export default {
     share: "{title} · {n} من الجيران يريدونه، سجّل اسمك",
   },
   promo: {
+    cutAmount: "خصم {n} عند {m}",
+    cutQty: "خصم {n} عند شراء {q} قطع",
+    cutAny: "خصم {n}",
+    newCut: "خصم {n} للعملاء الجدد",
     buyNGetM: "اشترِ {n} واحصل على {m}",
     willGift: "تحصل على {n} مجانًا بهذه الكمية",
     needMore: "أضف {n} للحصول على واحدة مجانًا",

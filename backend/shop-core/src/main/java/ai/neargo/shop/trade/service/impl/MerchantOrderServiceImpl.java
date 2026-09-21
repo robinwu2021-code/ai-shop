@@ -76,7 +76,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public OrderVO detail(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         // 已取消 / 已退款：券与积分的去向（P3）—— 商家客服接到「我的券呢」时要看得到
-        return toVO(sub).withReturned(orderService.returnedOf(sub));
+        // 优惠明细（批 3 · B8）：此前 B 端详情只有应付，商家看不到这单减了什么、谁出的钱
+        return toVO(sub).withDiscountLines(orderService.discountLinesOf(sub))
+                .withReturned(orderService.returnedOf(sub));
     }
 
     @Override
