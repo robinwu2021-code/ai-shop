@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 453,
+        "b-app": 455,
         "c-app": 63
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 342,
+        "b-app": 345,
         "c-app": 65
       }
     },
@@ -635,7 +635,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 154,
+        "b-app": 156,
         "c-app": 25
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 489,
+        "b-app": 492,
         "c-app": 177
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 281,
+        "b-app": 283,
         "c-app": 89
       }
     },
@@ -1563,7 +1563,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 6
       }
     },
@@ -1617,7 +1617,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 6
       }
     },
@@ -3491,7 +3491,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 179,
+      "libClassHits": 193,
       "localSelectors": 10,
       "localCssLines": 33,
       "rolled": []
@@ -4862,9 +4862,9 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 242,
-      "localSelectors": 63,
-      "localCssLines": 265,
+      "libClassHits": 219,
+      "localSelectors": 60,
+      "localCssLines": 254,
       "rolled": []
     },
     {
@@ -5413,6 +5413,20 @@
     },
     {
       "app": "c-app",
+      "page": "biz-coupon-strip",
+      "key": "c-app/biz-coupon-strip",
+      "file": "c-app/src/components/biz/biz-coupon-strip.vue",
+      "components": [
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 23,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
       "page": "biz-goods-card",
       "key": "c-app/biz-goods-card",
       "file": "c-app/src/components/biz/biz-goods-card.vue",
@@ -5567,7 +5581,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 37,
-    "pages": 139,
+    "pages": 140,
     "gapKinds": 2
   }
 }

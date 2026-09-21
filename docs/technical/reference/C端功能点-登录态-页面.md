@@ -39,8 +39,8 @@
 | `communityDetail` | `GET /mp/community/:communityNo` | 游客 | (stores) | — |
 | `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) · address-pick | — |
 | `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
-| `couponList` | `GET /mp/coupon` | 游客 | goods | — |
-| `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | goods | — |
+| `couponList` | `GET /mp/coupon` | 游客 | (components)/biz · goods | — |
+| `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | (components)/biz | — |
 | `couponBest` | `POST /mp/coupon/best` | 是 | order-confirm | — |
 | `myCoupons` | `GET /mp/coupon/mine` | 是 | coupons · order-confirm | — |
 | `favoriteGoods` | `GET /mp/favorite/goods` | 是 | favorites | — |

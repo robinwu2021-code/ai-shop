@@ -6986,6 +6986,24 @@
           "ar": "الصلاحية"
         },
         {
+          "key": "couponEdit.issue.CENTER",
+          "zh-CN": "顾客领取",
+          "en": "Customers claim",
+          "ar": "يستلمها العملاء"
+        },
+        {
+          "key": "couponEdit.issue.TARGETED",
+          "zh-CN": "定向发放",
+          "en": "Send to a group",
+          "ar": "إرسال لمجموعة"
+        },
+        {
+          "key": "couponEdit.issueMode",
+          "zh-CN": "发放方式",
+          "en": "Distribution",
+          "ar": "طريقة التوزيع"
+        },
+        {
           "key": "couponEdit.kind",
           "zh-CN": "类型",
           "en": "Type",
@@ -7086,6 +7104,12 @@
           "zh-CN": "请填写名称",
           "en": "Enter a name",
           "ar": "أدخل الاسم"
+        },
+        {
+          "key": "couponEdit.needTotal",
+          "zh-CN": "顾客领取的券要填数量",
+          "en": "Set a quantity for coupons customers claim",
+          "ar": "حدّد الكمية للقسائم التي يستلمها العملاء"
         },
         {
           "key": "couponEdit.needValue",
