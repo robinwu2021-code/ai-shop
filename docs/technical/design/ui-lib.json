@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 339,
-        "c-app": 258
+        "c-app": 259
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 36
+        "c-app": 37
       }
     },
     {
@@ -5410,9 +5410,9 @@
       "components": [
         "sh-switch"
       ],
-      "libClassHits": 50,
-      "localSelectors": 17,
-      "localCssLines": 60,
+      "libClassHits": 52,
+      "localSelectors": 18,
+      "localCssLines": 65,
       "rolled": []
     },
     {
