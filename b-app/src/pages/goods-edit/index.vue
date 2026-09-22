@@ -342,13 +342,52 @@ const DURATION_MINUTES = [30, 60, 90, 120, 180, 240];
 const invMode = ref<GoodsInvMode | null>(null);
 const INV_MODES: InvMode[] = ["INHERIT", "ON", "OFF"];
 
-const invModeText = computed(() =>
-  invMode.value ? invModeLabel(t, invMode.value.mode, invMode.value.categoryManaged) : "—",
-);
+/**
+ * 那一行的字。跟随品类时写出跟的是哪一类：「接入 · 跟随水果」—— 只写「跟随品类」的话，
+ * 商家得自己去想这件货在哪一类、那一类又开没开。
+ */
+const invModeText = computed(() => {
+  const m = invMode.value;
+  if (!m) return "—";
+  const cat = catPath.value[catPath.value.length - 1]?.name;
+  if (m.mode === "INHERIT" && cat) {
+    return String(t("invMode.inheritOf", { state: String(t(m.categoryManaged ? "invMode.on" : "invMode.off")), c: cat }));
+  }
+  return invModeLabel(t, m.mode, m.categoryManaged);
+});
+
+/**
+ * 接入进销存的商品，每个规格在进销存里记着多少（skuNo → 实存 / 物料号）。
+ * 摆在库存数下面一行小字：商城这个数与进销存那本账不是一个数，改之前要看得见另一个。
+ * 查不到（还没建账、网络失败）就不显示，不挡着改库存。
+ */
+const invOnHand = ref<Record<string, { onHand: number; itemId: string }>>({});
 
 async function loadInvMode(no: string) {
   invMode.value = (await api.mGoodsInvModes([no]).catch(() => []))[0] ?? null;
+  invOnHand.value = {};
+  if (!invMode.value?.managed) return;
+  const next: Record<string, { onHand: number; itemId: string }> = {};
+  await Promise.all(rows.value.filter((r) => r.skuNo).map(async (r) => {
+    const item = await api.mItemBySku(r.skuNo as string).catch(() => null);
+    if (item) next[r.skuNo as string] = { onHand: item.onHand, itemId: item.itemId };
+  }));
+  invOnHand.value = next;
 }
+
+function openInvItem(skuNo?: string) {
+  const itemId = skuNo ? invOnHand.value[skuNo]?.itemId : undefined;
+  if (!itemId) return;
+  uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(itemId)}` });
+}
+
+/** 每人限购的口径。常驻一行太占地方，大多数时候没人看 —— 收进标签旁的 ⓘ */
+function explainLimit() {
+  void confirm({ title: String(t("goods.limitPerUser")), hint: String(t("goods.limitPerUserHint")), alert: true });
+}
+
+/** 限购与库存后面跟的单位：取第一个规格的销售单位，没填按「件」 */
+const unitText = computed(() => rows.value[0]?.saleUnit?.trim() || String(t("goods.unitPiece")));
 
 async function pickInvMode() {
   const cur = invMode.value;
@@ -2165,7 +2204,10 @@ async function save(thenSubmit = false) {
       分开之后，「改库存」这件高频事不必先滚过一整片价格字段。
     -->
     <view class="sh-card sh-mt-sm">
-      <sh-section :title="String($t('goods.secStock'))"></sh-section>
+      <!-- 多店时店名写在标题右侧：改的是哪家店的库存，一个店名就够，不再单占一行 -->
+      <sh-section :title="String($t('goods.secStock'))">
+        <text v-if="merchant.multiStore" class="txt-caption sh-muted">{{ merchant.currentStore?.name }}</text>
+      </sh-section>
 
       <!-- 先决定记不记，再填数（原型 s05）。跟随品类要把跟到的结果写进括号 -->
       <view class="pr sh-row" @tap="pickInvMode">
@@ -2187,7 +2229,8 @@ async function save(thenSubmit = false) {
         <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applyBulkStock">{{ $t("goods.applyAll") }}</text>
       </view>
 
-      <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
+      <template v-for="(r, i) in rows" :key="i">
+      <view class="pr sh-row">
         <text class="txt-sub pr__k sh-fill">{{ multi ? r.optionValues.join(" · ") : $t("goods.stock") }}</text>
         <!--
           −／＋ 步进。**库存是每天都在动的数**，最常见的改动是「卖掉两袋」——
@@ -2203,22 +2246,33 @@ async function save(thenSubmit = false) {
           type="number"
         />
         <view class="txt-body step sh-hit sh-center" @tap="stepStock(r, 1)"><sh-icon name="plus" :size="26" color="var(--sh-sub)"></sh-icon></view>
+        <text class="txt-sub sh-muted unit">{{ r.saleUnit || unitText }}</text>
       </view>
-      <!-- 多店：改的是哪家店的库存必须写出来。主体总量与门店库存是两个数 -->
-      <text v-if="merchant.multiStore" class="sh-muted hint">
-        {{ $t("goods.stockStoreScope", { s: merchant.currentStore?.name || "" }) }}
-      </text>
+      <!-- 接入进销存的货：进销存那本账记着多少，紧跟在这个规格下面，点开看明细 -->
+      <view v-if="r.skuNo && invOnHand[r.skuNo]" class="invline sh-row" @tap="openInvItem(r.skuNo)">
+        <text class="txt-caption sh-muted sh-fill">{{ $t("goods.invOnHand", { n: invOnHand[r.skuNo]?.onHand ?? 0 }) }}</text>
+        <sh-go :text="String($t('goods.invView'))"></sh-go>
+      </view>
+      </template>
 
-      <view class="pr sh-row">
-        <text class="txt-sub pr__k sh-fill">{{ $t("goods.limitPerUser") }}</text>
-        <!-- 右侧留出 −／＋ 那两格的宽度，两行的输入框才在同一竖列上 -->
-        <input maxlength="6" v-model="limitPerUser" class="txt-body pr__v pr__v--n pr__v--pad sh-num" type="number" />
+      <view class="pr sh-row pr--sep">
+        <view class="pr__k sh-fill sh-row limit__k" @tap="explainLimit">
+          <text class="txt-sub">{{ $t("goods.limitPerUser") }}</text>
+          <sh-icon name="info" :size="24" color="var(--sh-sub)"></sh-icon>
+        </view>
+        <!--
+          口径（按顾客累计、退款不计）收进 ⓘ：后端 2026-09-21 起真的拦，商家要答得上顾客的问，
+          但它不必常驻一行。不填＝不限，占位字直接写「不限」
+        -->
+        <input
+          maxlength="6"
+          v-model="limitPerUser"
+          class="txt-body pr__v pr__v--n pr__v--pad sh-num"
+          type="number"
+          :placeholder="$t('goods.limitNone')"
+        />
+        <text class="txt-sub sh-muted unit">{{ unitText }}</text>
       </view>
-      <!--
-        **口径要写出来**（待办设计 P1）：此前这个数只显示不拦，后端 2026-09-21 起真的拦。
-        「终身」还是「每天」、退了货算不算 —— 商家不知道的话，顾客来问他答不上来。
-      -->
-      <text class="sh-muted hint">{{ $t("goods.limitPerUserHint") }}</text>
     </view>
 
     <!--
@@ -2591,6 +2645,24 @@ async function save(thenSubmit = false) {
 /* 让开右边那个 ＋（64rpx）加一道 gap（16rpx）：两行的输入框右缘才在同一竖线上 */
 .pr__v--pad {
   margin-inline-end: 80rpx;
+}
+/* 数字后面的单位（斤 / 件）：定宽，库存行与限购行的单位落在同一竖列 */
+.unit {
+  flex: none;
+  width: 48rpx;
+}
+/* 进销存实存那一行小字：紧贴在库存行下面，属于它 */
+.invline {
+  margin-top: 4rpx;
+}
+/* 限购与库存隔一道细线：一个是「有多少」，一个是「每人能买多少」 */
+.pr--sep {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: var(--sh-hairline);
+}
+.limit__k {
+  gap: 8rpx;
 }
 /* 货币符号贴着输入框左侧，不进框里 —— 进框里会被输入法当成待编辑内容 */
 .pr__cur {

@@ -537,7 +537,6 @@ export default {
     margin: "毛利 ￥{a} · {r}%",
     avgMargin: "平均毛利 {r}%",
     bulkCost: "统一成本价",
-    stockStoreScope: "仅修改「{s}」的库存",
     originPrice: "划线价",
     originPriceInvalid: "划线价要高于售价，否则会标出「涨价」的折扣",
     nominalGram: "标称重量(克)",
@@ -556,6 +555,10 @@ export default {
     fieldPrice: "售价",
     fieldOrigin: "划线价",
     fieldGram: "标称重量",
+    invOnHand: "进销存 {n}",
+    invView: "查看",
+    limitNone: "不限",
+    unitPiece: "件",
   },
 
   order: {
@@ -2414,6 +2417,7 @@ entryHint: "谁在买 · 谁不来了",
     afterSave: "保存后可设置",
     adjustHint: "未接入进销存，此数即线上可售数量",
     tag: "未接入进销存",
+    inheritOf: "{state} · 跟随{c}",
   },
   stock: {
     offSale: "（已下架）",
