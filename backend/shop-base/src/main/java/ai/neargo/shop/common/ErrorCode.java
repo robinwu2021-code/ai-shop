@@ -765,6 +765,12 @@ public enum ErrorCode {
     GOODS_CATEGORY_NOT_IN_STORE(70068, "err.goods.category_not_in_store"),
 
     /**
+     * 这家店还没做期初对齐，不能打开库存同步（TDD-商品纳入进销存开关 §7）。
+     * 带着两本账的旧差额开写回，第一天线上就不对。
+     */
+    STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
+
+    /**
      * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。
      *
      * <p>此前这里是 {@link #BAD_REQUEST}：商家把结算账号、执照照片、联系人一整张表填完，

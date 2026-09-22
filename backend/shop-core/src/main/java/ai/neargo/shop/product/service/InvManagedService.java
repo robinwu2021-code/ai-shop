@@ -66,6 +66,9 @@ public interface InvManagedService {
     /** 这几件商品的 SKU（按 skuNo 去重，只取本市场那一行 —— 库存不分市场） */
     List<PrdSku> skusOf(Collection<String> goodsNos);
 
+    /** 本主体接入进销存的商品（生效值为接入）。写回兜底、期初对齐按它列 */
+    List<PrdGoods> managedGoods(String entityNo);
+
     /** 发「店主确认过的切换」事件：每个 SKU 一条，进销存据此建 / 恢复 / 停用物料 */
     void publishModeChanged(PrdGoods g, boolean managed);
 

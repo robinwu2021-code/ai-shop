@@ -88,7 +88,7 @@
 | 手动 | T = min(店主设定值, 可用) | 想完全自己控，但不会超过可用 |
 
 一家店内的取值顺序：**单品 › 品类 › 门店默认 › 全部可售**。
-存 `inv_sell_rule(store_no, scope_type[STORE/CATEGORY/GOODS], scope_ref, rule_type, param)`，稀疏。
+存 `prd_sell_rule(store_no, scope_type[STORE/CATEGORY/GOODS], scope_ref, rule_type, param)`，稀疏。
 
 ## 5 两条路径的流程（纳入的商品，按门店）
 
@@ -231,8 +231,8 @@
 
 | 类型 | 内容 |
 |---|---|
-| 迁移（主库） | `prd_goods.inv_mode`；新表 `prd_entity_category_inv`、`inv_sell_rule`（按门店，建在主库，因为写回在平台侧执行）。别漏补实体字段 |
-| 迁移（进销存库） | 出库单 / 入库单 `purpose` 新增 `OFFLINE_SALE` / `OFFLINE_RETURN`；期初对齐用现有盘点单，`reason_code=OPENING` |
+| 迁移（主库） | `prd_goods.inv_mode`；新表 `prd_entity_category_inv`、`prd_sell_rule`（按门店，建在主库，因为写回在平台侧执行）。别漏补实体字段 |
+| 迁移（进销存库） | 出库单 / 入库单 `purpose` 新增 `OFFLINE_SALE` / `OFFLINE_RETURN`；期初对齐用现有盘点（原因码 `CHECK`） |
 | 事件 | `SkuUpserted` 载荷加 `invManaged`；新增 `GOODS_INV_MODE_CHANGED`；进销存过账发 `STOCK_POSTED(storeNo, skuNo, delta, docNo)` 供写回 |
 | 消费方 | 投影据 `invManaged` 建 / 停用物料；`DualWriteStockPort` 不纳入的不入镜像；新增写回消费者按 §6 |
 | 端点 | `GET/PUT /biz/inventory/category-settings`；`GET/PUT /biz/stores/{storeNo}/sell-rules`；`POST /biz/stores/{storeNo}/offline-sales`（及撤销）；`GET /biz/stores/{storeNo}/stock-alignment` + `POST …/confirm`；商品保存体加 `invMode`、`sellRule` |
@@ -310,17 +310,17 @@
 |---|---|
 | `stock` 含已锁定；**线上可卖 = stock − locked_stock** | `on_hand` 实存、`reserved` 占用（= 商城锁定的镜像） |
 
-写回只改商城：让「线上可卖」等于目标值 T，即 `stock = T + locked_stock`，条件 `version = 读到的值`。
+写回只改商城：让「线上可卖」等于目标值 T。**一条 SQL 里用当下的锁定量算**：`SET stock = T + locked_stock`（手动规则：`WHERE stock − locked_stock > U` 时才压到 U）——不先读后写，读写之间的订单锁定不会被算丢，因此不需要版本号比较。
 **不经过 `StockPort.setOnHand`** —— 那条路会发 ADJUST 镜像回进销存，把实存改成商城的数，写回就成了自己改自己。
-商城侧新增一个只改商城、不发镜像的写法（`StoreStockMapper.syncOnline`，带 version）。
+商城侧新增只改商城、不发镜像的写法：`StoreStockMapper.syncSellable / capSellable`，主体级那一档对应 `SkuMapper` 的同名方法。
 
 ### 18.2 数据（主库，V346）
 
 | 表 | 列 | 说明 |
 |---|---|---|
-| `inv_sell_rule` | `store_no`, `scope_type`(STORE/CATEGORY/GOODS), `scope_ref`, `rule_type`(ALL/RESERVE/RATIO/CAP/MANUAL), `param` | 稀疏；唯一键 `(store_no, scope_type, scope_ref)`；**只改不删**（「恢复默认」= `rule_type=ALL` 的行，或删到上一级由服务层判断） |
-| `inv_store_sync` | `store_no`(唯一), `entity_no`, `enabled`, `aligned_at`, `aligned_by`, `align_mode`(COUNT/MALL) | 每店一行；`enabled=1` 才写回。**没有对齐过（`aligned_at` 为空）不许打开** |
-| `inv_sync_log` | `store_no`, `sku_no`, `source_ref`, `rule_type`, `available`, `before_qty`, `after_qty`, `created_at` | 同步明细；唯一键 `(source_ref, store_no, sku_no)` 即幂等键 |
+| `prd_sell_rule` | `store_no`, `scope_type`(STORE/CATEGORY/GOODS), `scope_ref`, `rule_type`(ALL/RESERVE/RATIO/CAP/MANUAL), `param` | 稀疏；唯一键 `(store_no, scope_type, scope_ref)`；**只改不删**（「恢复默认」= `rule_type=ALL` 的行，或删到上一级由服务层判断） |
+| `prd_store_stock_sync` | `store_no`(唯一), `entity_no`, `enabled`, `aligned_at`, `aligned_by`, `align_mode`(COUNT/MALL) | 每店一行；`enabled=1` 才写回。**没有对齐过（`aligned_at` 为空）不许打开** |
+| `prd_stock_sync_log` | `store_no`, `sku_no`, `source_ref`, `rule_type`, `available`, `before_qty`, `after_qty`, `created_at` | 同步明细；唯一键 `(source_ref, store_no, sku_no)` 即幂等键 |
 
 `source_ref` 取值：单据号（`IN…`/`OUT…`/`CNT…`/`TRF…`）、`RULE:{规则行 id}:{version}`、`SWEEP:{yyyyMMdd}`、`ALIGN:{storeNo}:{时间戳}`。
 安全库存沿用进销存已有的（物料默认值 + 库位覆盖，`/biz/inventory/safety-stock`），不另建。
@@ -335,12 +335,12 @@
 
 消费者对每条 DocumentPosted：
 1. 取单据的 (库位, 物料) 明细 → 反查 (门店号, skuNo)（ACL 新方法 `docLines(docNo)`；库位→门店走 `inv_location.external_ref`，物料→SKU 走 `inv_item_ref`）
-2. 逐个 (门店, SKU)：门店没开同步 → 跳过；SKU 不接入进销存 → 跳过；`(docNo, 门店, SKU)` 已在 `inv_sync_log` → 跳过
+2. 逐个 (门店, SKU)：门店没开同步 → 跳过；SKU 不接入进销存 → 跳过；`(docNo, 门店, SKU)` 已在 `prd_stock_sync_log` → 跳过
 3. **等追平**：`sys_outbox` 里还有这家店这个 SKU 未投递的镜像事件（`INV_MIRROR_*` 且载荷含该 skuNo）→ 抛可重试异常，交给投递器退避重投
 4. U = max(0, 实存 − 占用 − 安全库存)（ACL 新方法 `available(entityNo, storeNo, skuNo)`，库位按门店解析，与镜像同一套 `resolveStockLocation`）
 5. T = 规则(U)，取值顺序 单品 › 品类 › 本店默认 › 全部可售
-6. 读 `prd_store_stock`（stock, locked, version）→ 非手动：可卖 = T；手动：可卖 > U 时压到 U，否则不动 → 条件更新；影响 0 行回到第 3 步，最多三次
-7. 写 `inv_sync_log`（同一事务）
+6. 非手动：可卖 = T；手动：可卖 > U 时压到 U，否则不动（原子 SQL，见 18.1）。**主体级库存且主体不止一家店**的 SKU 不写（改主体级会把几家店混成一个数，建按店行会让别的店变 0），期初对齐页标出来让店主先按店设一次
+7. 写 `prd_stock_sync_log`（同一事务）
 
 同一套「算 + 写」被三处复用：单据过账、规则变更（受影响 SKU 各算一次，`source_ref=RULE:…`）、每晚兜底（`SWEEP:日期`，并出对差日报，只报不改实存）。
 
@@ -348,10 +348,10 @@
 
 - `GET /biz/stores/{storeNo}/stock-alignment`：本店接入进销存的每个 SKU 一行 —— 商品、规格、实存、占用、商城库存、差额
 - `POST /biz/stores/{storeNo}/stock-alignment/confirm`，`{mode: "MALL" | "COUNT"}`：
-  - `MALL`（以商城为准）：对有差额的行开一张盘点单（`reason_code=OPENING`）把实存调成商城库存 + 锁定，过账
+  - `MALL`（以商城为准）：对有差额的行各调一次实存（盘点，原因码 `CHECK`）把实存调成商城库存 + 锁定，过账
   - `COUNT`（已实地盘点）：不调实存，只记对齐时间 —— 盘点单本身已经把实存改对了
-  - 两种都写 `inv_store_sync.aligned_at`，**并立刻按 T 写回一次**（`source_ref=ALIGN:…`）
-- `PUT /biz/stores/{storeNo}/stock-sync`，`{enabled}`：打开要求 `aligned_at` 不为空，否则 70071「先完成期初对齐」
+  - 两种都写 `prd_store_stock_sync.aligned_at`，**并立刻按 T 写回一次**（`source_ref=ALIGN:…`）
+- `PUT /biz/stores/{storeNo}/stock-sync`，`{enabled}`：打开要求 `aligned_at` 不为空，否则 70069 `STOCK_SYNC_NOT_ALIGNED`
 
 ### 18.5 规则接口（§4）
 
@@ -381,13 +381,18 @@
 | 进货过账 → 商城可卖 = 可用 | 撤掉写回消费者 |
 | 保留线下 5 → 可卖 = 可用 − 5；手动额度只降不升 | 规则取值顺序反过来 |
 | 镜像未投完时不写回，投完后写回正确（不多放一件） | 撤掉第 3 步「等追平」 |
-| 两次写回之间有订单锁定 → version 冲突后重算，结果正确 | 撤掉 version 条件 |
 | 同一单据重投两次 → 只写一次、日志一行 | 撤掉幂等键 |
 | 没对齐不能开同步；没开同步的店单据过账不写回 | 撤掉 `aligned_at` 判断 |
 | 不接入的 SKU 不写回 | 撤掉接入判断 |
 | 写回不产生 ADJUST 镜像（进销存实存不被改） | 把写回改走 `setOnHand` |
 
-### 18.9 分步交付
+### 18.9 实现与验证记录（后端，2026-09-22）
+
+- 平台 outbox 里进销存事件的类型带 `INV_` 前缀（`INV_DocumentPosted`），载荷是 `{ownerId, type, payload:"{…}"}`，单号在内层字符串里 —— 两处都在实现时踩到、已按实际格式接
+- 场景测试 `StockSyncWritebackTest` 7 条走真实事件链；消融：撤掉消费者匹配 / 撤掉「等追平」/ 撤掉「未对齐不许开」各自打红对应用例
+- 每晚兜底：`StockSyncSweepJob`（04:10，`SWEEP:日期`）
+
+### 18.10 分步交付
 
 1. 后端：V346 + 规则 / 同步 / 日志三张表与服务；写回消费者；对齐与开关接口；场景测试与消融
 2. B 端：库存设置页两段、期初对齐页、编辑商品与改库存弹层

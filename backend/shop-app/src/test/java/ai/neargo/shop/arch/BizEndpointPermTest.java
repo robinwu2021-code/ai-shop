@@ -139,6 +139,11 @@ class BizEndpointPermTest {
         put("/biz/inventory/category-setting/{categoryNo}", BizPerms.GOODS);
         put("/biz/goods/inv-mode", BizPerms.STOCK);
         put("/biz/goods/{goodsNo}/inv-mode", BizPerms.GOODS);
+        // 门店库存同步（第二期）：看用库存的码，开同步 / 期初对齐 / 定线上放多少货是店主级
+        put("/biz/stores/{storeNo}/stock-sync", BizPerms.STOCK);
+        put("/biz/stores/{storeNo}/stock-alignment", BizPerms.STOCK);
+        put("/biz/stores/{storeNo}/stock-alignment/confirm", BizPerms.STORE_ADMIN);
+        put("/biz/stores/{storeNo}/sell-rules", BizPerms.STOCK);
         // 商品页读「这件货在进销存的账」。与 balances 同权：都是「看得见这家的货」
         put("/biz/inventory/item-by-sku", BizPerms.STOCK);
         // 设安全库存：判 STOCK 而不是更高的码 —— 阈值是理货员日常要调的东西

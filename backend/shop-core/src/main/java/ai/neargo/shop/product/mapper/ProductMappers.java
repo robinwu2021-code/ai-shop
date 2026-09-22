@@ -20,6 +20,18 @@ public final class ProductMappers {
     public interface GoodsMapper extends BaseMapper<PrdGoods> {
     }
 
+    /** 门店线上可售规则（V346）。稀疏，只改不删 */
+    public interface SellRuleMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdSellRule> {
+    }
+
+    /** 门店库存同步开关与期初对齐（V346）。每店一行 */
+    public interface StoreStockSyncMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStoreStockSync> {
+    }
+
+    /** 写回明细（V346）。唯一键即幂等键 */
+    public interface StockSyncLogMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStockSyncLog> {
+    }
+
     /** 主体按类目的「记不记库存」（V345）。稀疏，只改不删 */
     public interface EntityCategoryInvMapper
             extends BaseMapper<ai.neargo.shop.product.entity.PrdEntityCategoryInv> {
@@ -175,6 +187,20 @@ public final class ProductMappers {
                 """)
         int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
 
+        /** 写回，主体级库存那一档（没有按店库存行、主体只有一家店时）。口径同 StoreStockMapper#syncSellable */
+        @Update("""
+                UPDATE prd_sku SET stock = #{target} + locked_stock, version = version + 1
+                WHERE sku_no = #{skuNo} AND deleted = 0
+                """)
+        int syncSellable(@Param("skuNo") String skuNo, @Param("target") int target);
+
+        /** 手动规则的写回，主体级那一档：只降不升 */
+        @Update("""
+                UPDATE prd_sku SET stock = #{cap} + locked_stock, version = version + 1
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND stock - locked_stock > #{cap}
+                """)
+        int capSellable(@Param("skuNo") String skuNo, @Param("cap") int cap);
+
         /**
          * 预售成交（P-3.3.1）：现货不足时的**第二级闸门**，与 {@link #lockStock} 同一套手法 ——
          * 三个条件全写在 WHERE 里，靠影响行数判断，绝不先查后改。
@@ -262,6 +288,27 @@ public final class ProductMappers {
                 """)
         int setStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                      @Param("stock") int stock);
+
+        /**
+         * 写回（TDD §18.1）：让线上可卖 = {@code target}。**一条 SQL 里用当下的 locked_stock 算**，
+         * 不先读后写 —— 读与写之间有订单锁定的话，先读后写会把那笔锁定算丢。
+         * 不走 {@link #setStock}：那条路被 {@code StockPort.setOnHand} 用，会发镜像回进销存。
+         */
+        @Update("""
+                UPDATE prd_store_stock SET stock = #{target} + locked_stock, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                """)
+        int syncSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                         @Param("target") int target);
+
+        /** 手动规则的写回：线上可卖超过 {@code cap} 才压到 cap，否则不动（只降不升） */
+        @Update("""
+                UPDATE prd_store_stock SET stock = #{cap} + locked_stock, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                  AND stock - locked_stock > #{cap}
+                """)
+        int capSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
+                        @Param("cap") int cap);
     }
 
     /**

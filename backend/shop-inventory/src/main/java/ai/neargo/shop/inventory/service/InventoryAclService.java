@@ -143,4 +143,31 @@ public interface InventoryAclService {
 
     /** 查不到物料的 SKU 不在结果里（它在进销存里什么都没有）。只读，不建业主不建物料 */
     java.util.Map<String, ItemState> stateOf(String entityNo, java.util.Collection<String> skuNos);
+
+    // ─────────────────────────── 写回商城（TDD-商品纳入进销存开关 §18，只读）
+
+    /** 一张已过账单据动到的一行：哪个主体的哪件货、在哪个库位 */
+    record PostedLine(String entityNo, String skuNo, String locationId) {
+    }
+
+    /**
+     * 按单号取它动到的（主体, SKU, 库位），去重。取自流水 —— 每次过账每行都写一条，
+     * 进货、出库（含线上订单的销售出库）、盘点、调拨两头都在里面。
+     * 物料没有平台 SKU 引用的（纯进销存自建物料）不返回：商城里没有它可写。
+     */
+    java.util.List<PostedLine> postedLines(String docNo);
+
+    /** 这家店实际出货的库位（门店库位，或它的发货源仓）。业主不存在返回 {@code null}，不建 */
+    String stockLocationOf(String entityNo, String storeNo);
+
+    /** 某店某 SKU 在出货库位上的数。安全库存取库位覆盖，没有取物料默认 */
+    record StockAt(int onHand, int reserved, int safety) {
+        /** 可用 = 实存 − 占用 − 安全库存，不小于 0 */
+        public int available() {
+            return Math.max(0, onHand - reserved - safety);
+        }
+    }
+
+    /** 查不到业主或物料返回 {@code null}（进销存里没有这件货）。没有余额行按 0 */
+    StockAt stockAt(String entityNo, String storeNo, String skuNo);
 }

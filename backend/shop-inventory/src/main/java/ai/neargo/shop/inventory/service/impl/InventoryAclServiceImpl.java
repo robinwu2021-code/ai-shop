@@ -461,6 +461,81 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         }
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public List<PostedLine> postedLines(String docNo) {
+        List<InvLedger> rows = docNo == null ? List.of() : ledgerMapper.selectList(
+                Wrappers.<InvLedger>lambdaQuery().eq(InvLedger::getDocNo, docNo));
+        Map<String, PostedLine> out = new LinkedHashMap<>();
+        Map<String, String> entityOfOwner = new HashMap<>();
+        for (InvLedger l : rows) {
+            String entityNo = entityOfOwner.computeIfAbsent(l.getOwnerId(), o -> {
+                InvOwner owner = ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                        .eq(InvOwner::getOwnerId, o).last("LIMIT 1"));
+                return owner == null ? "" : owner.getExternalRef();
+            });
+            if (entityNo == null || entityNo.isEmpty()) {
+                continue;
+            }
+            InvItemRef ref = refMapper.selectOne(Wrappers.<InvItemRef>lambdaQuery()
+                    .eq(InvItemRef::getOwnerId, l.getOwnerId())
+                    .eq(InvItemRef::getItemId, l.getItemId())
+                    .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP).last("LIMIT 1"));
+            if (ref == null) {
+                continue;
+            }
+            out.putIfAbsent(ref.getRef() + "@" + l.getLocationId(),
+                    new PostedLine(entityNo, ref.getRef(), l.getLocationId()));
+        }
+        return new ArrayList<>(out.values());
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public String stockLocationOf(String entityNo, String storeNo) {
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null) {
+            return null;
+        }
+        String own = storeNo == null || storeNo.isBlank() ? null : locationMapper.selectList(
+                        Wrappers.<InvLocation>lambdaQuery()
+                                .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                                .eq(InvLocation::getExternalRef, storeNo).last("LIMIT 1"))
+                .stream().findFirst().map(InvLocation::getLocationId).orElse(null);
+        if (own == null) {
+            // 与 locationOfStore 同一个兜底（默认库位），但不在只读路径上建默认库位
+            own = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                            .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                            .eq(InvLocation::getIsDefault, 1).last("LIMIT 1"))
+                    .stream().findFirst().map(InvLocation::getLocationId).orElse(null);
+        }
+        return own == null ? null : locations.resolveStockLocation(owner.getOwnerId(), own);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public StockAt stockAt(String entityNo, String storeNo, String skuNo) {
+        InvOwner owner = findOwner(entityNo);
+        InvItemRef ref = owner == null ? null : findRef(owner.getOwnerId(), InvEnums.RefSystem.AISHOP, skuNo);
+        if (ref == null) {
+            return null;
+        }
+        String locationId = stockLocationOf(entityNo, storeNo);
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, owner.getOwnerId()).eq(InvItem::getItemId, ref.getItemId()));
+        int itemSafety = item == null || item.getSafetyStock() == null ? 0 : item.getSafetyStock();
+        InvStockBalance b = locationId == null ? null : balanceMapper.selectOne(
+                Wrappers.<InvStockBalance>lambdaQuery()
+                        .eq(InvStockBalance::getOwnerId, owner.getOwnerId())
+                        .eq(InvStockBalance::getItemId, ref.getItemId())
+                        .eq(InvStockBalance::getLocationId, locationId));
+        if (b == null) {
+            return new StockAt(0, 0, itemSafety);
+        }
+        return new StockAt(b.getOnHand() == null ? 0 : b.getOnHand(), b.getReserved() == null ? 0 : b.getReserved(),
+                b.getSafetyStock() != null ? b.getSafetyStock() : itemSafety);
+    }
+
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
     private InvOwner findOwner(String entityNo) {
         return entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()

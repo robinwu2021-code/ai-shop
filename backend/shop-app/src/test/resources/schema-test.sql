@@ -4311,6 +4311,66 @@ CREATE TABLE IF NOT EXISTS prd_entity_category_inv
     CONSTRAINT uk_prd_entity_category_inv UNIQUE (entity_no, category_no)
 );
 
+CREATE TABLE IF NOT EXISTS prd_sell_rule
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    scope_type VARCHAR(16) NOT NULL,
+    scope_ref VARCHAR(64) NOT NULL,
+    rule_type VARCHAR(16) NOT NULL,
+    param INT(11) NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_sell_rule UNIQUE (store_no, scope_type, scope_ref)
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_stock_sync
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 0,
+    aligned_at DATETIME DEFAULT NULL,
+    aligned_by VARCHAR(64) DEFAULT NULL,
+    align_mode VARCHAR(16) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_store_stock_sync UNIQUE (store_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_sync_log
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    store_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    source_ref VARCHAR(96) NOT NULL,
+    rule_type VARCHAR(16) NOT NULL,
+    available INT(11) NOT NULL,
+    before_qty INT(11) NOT NULL,
+    after_qty INT(11) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_stock_sync_log UNIQUE (source_ref, store_no, sku_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

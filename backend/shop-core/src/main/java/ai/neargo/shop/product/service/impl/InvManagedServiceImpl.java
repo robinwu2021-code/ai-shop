@@ -289,6 +289,12 @@ public class InvManagedServiceImpl implements InvManagedService {
         return out;
     }
 
+    @Override
+    public List<PrdGoods> managedGoods(String entityNo) {
+        Map<String, Boolean> rows = categoryRows(entityNo);
+        return goodsOfEntity(entityNo).stream().filter(g -> effective(g, rows)).toList();
+    }
+
     private List<PrdGoods> goodsOfEntity(String entityNo) {
         if (entityNo == null) {
             return List.of();
