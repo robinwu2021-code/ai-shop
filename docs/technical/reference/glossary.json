@@ -22,6 +22,12 @@
           "ar": "اجعله العنوان الافتراضي"
         },
         {
+          "key": "address.bindPhone",
+          "zh-CN": "绑定手机号，自动填入",
+          "en": "Link your phone to fill this in",
+          "ar": "اربط رقم هاتفك لملء هذا تلقائيًا"
+        },
+        {
           "key": "address.city",
           "zh-CN": "市",
           "en": "City",
