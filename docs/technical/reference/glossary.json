@@ -1084,12 +1084,6 @@
           "ar": "انتهى العرض «{name}»، وتم تحديث المبلغ"
         },
         {
-          "key": "confirm.activityPick",
-          "zh-CN": "活动 · 同一家店只能参加一个",
-          "en": "Offers · one per store",
-          "ar": "العروض · عرض واحد لكل متجر"
-        },
-        {
           "key": "confirm.add",
           "zh-CN": "去添加",
           "en": "Add",
@@ -1106,12 +1100,6 @@
           "zh-CN": "上门时段",
           "en": "Appointment slot",
           "ar": "موعد الزيارة"
-        },
-        {
-          "key": "confirm.autoActivity",
-          "zh-CN": "自动参与的活动（不用选）",
-          "en": "Applied automatically",
-          "ar": "مطبَّق تلقائيًا"
         },
         {
           "key": "confirm.backToCart",
@@ -1154,12 +1142,6 @@
           "zh-CN": "换配送方式",
           "en": "Change delivery method",
           "ar": "تغيير طريقة التوصيل"
-        },
-        {
-          "key": "confirm.coupon",
-          "zh-CN": "优惠券",
-          "en": "Voucher",
-          "ar": "قسيمة"
         },
         {
           "key": "confirm.couponAvailable",
@@ -1312,6 +1294,24 @@
           "ar": "لا يوجد"
         },
         {
+          "key": "confirm.offer",
+          "zh-CN": "优惠",
+          "en": "Offers",
+          "ar": "العروض"
+        },
+        {
+          "key": "confirm.offerActivity",
+          "zh-CN": "活动 -{p}",
+          "en": "Promo -{p}",
+          "ar": "عرض المتجر −{p}"
+        },
+        {
+          "key": "confirm.offerCouponUsed",
+          "zh-CN": "券「{name}」-{p}",
+          "en": "Coupon \"{name}\" -{p}",
+          "ar": "قسيمة «{name}» −{p}"
+        },
+        {
           "key": "confirm.offlineNoPlatformCoupon",
           "zh-CN": "当面付款时平台券用不了。商家券照常可用，积分也照常抵扣。",
           "en": "Platform coupons cannot be used when paying on site. Merchant coupons and points still apply.",
@@ -1322,6 +1322,24 @@
           "zh-CN": "{names} 送不到这个地址，换个地址或把这家的货挪出这一单",
           "en": "{names} cannot deliver here. Change the address, or order from them separately",
           "ar": "{names} لا يوصّل إلى هذا العنوان. غيّر العنوان أو اطلب منه بطلب منفصل"
+        },
+        {
+          "key": "confirm.panelActivityAuto",
+          "zh-CN": "① 店家活动（自动参与，不用选）",
+          "en": "① Shop promos (auto-applied, no need to pick)",
+          "ar": "① عروض المتجر (تُطبّق تلقائياً، لا داعي للاختيار)"
+        },
+        {
+          "key": "confirm.panelActivityPick",
+          "zh-CN": "① 店家活动（自动生效，可换 / 可不参加。同一家店只能参加一个）",
+          "en": "① Shop promos (auto-applied; you can switch or opt out — one per shop)",
+          "ar": "① عروض المتجر (تُطبّق تلقائياً؛ يمكن التبديل أو عدم المشاركة — واحد لكل متجر)"
+        },
+        {
+          "key": "confirm.panelCoupon",
+          "zh-CN": "② 优惠券（选一张）",
+          "en": "② Coupons (pick one)",
+          "ar": "② القسائم (اختر واحدة)"
         },
         {
           "key": "confirm.panelSaved",
