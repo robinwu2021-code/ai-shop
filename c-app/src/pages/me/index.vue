@@ -131,6 +131,8 @@ function gotoVisited() {
 }
 
 async function applyMerchant() {
+  // 联系电话默认填他自己的号（本人号码不脱敏）。只填空的：驳回重填或填了一半关掉再开，不盖他写过的
+  if (!mForm.value.contactPhone && user.user?.phone) mForm.value.contactPhone = user.user.phone;
   merchantVisible.value = true;
   if (!master.value) master.value = await api.masterData().catch(() => null);
 }

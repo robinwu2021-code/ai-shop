@@ -1568,8 +1568,10 @@ onMounted(async () => {
       绑完手机号**自动继续提交**，不让他再点一次「提交订单」——
       多那一次点击，人会以为刚才那下没生效。
     -->
+    <!-- 所选地址上已有收货电话的话带进去：同一个号不让人输第二遍，只剩验证码 -->
     <phone-gate
       :visible="phoneGate"
+      :suggest="address?.phone"
       @done="((phoneGate = false), submit())"
       @close="phoneGate = false"
     />

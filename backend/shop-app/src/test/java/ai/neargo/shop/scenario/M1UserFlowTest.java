@@ -104,7 +104,7 @@ class M1UserFlowTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"13600136003\",\"code\":\"" + code + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.phone").value("136****6003"));
+                .andExpect(jsonPath("$.data.phone").value("13600136003"));
 
         // 之后用手机号登录，必须还是同一个人 —— 否则同一用户会有两套订单与两个购物车
         String byPhone = login("13600136003");

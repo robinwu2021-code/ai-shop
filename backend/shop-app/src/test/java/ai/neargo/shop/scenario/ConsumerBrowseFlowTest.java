@@ -127,7 +127,7 @@ class ConsumerBrowseFlowTest {
     }
 
     @Test
-    @DisplayName("登录 → 绑定归属 → 我的资料（手机号脱敏）")
+    @DisplayName("登录 → 绑定归属 → 我的资料（本人手机号是完整号，端上要拿它预填地址）")
     void loginThenBindCommunity() throws Exception {
         String token = login("13800138000");
 
@@ -142,7 +142,7 @@ class ConsumerBrowseFlowTest {
         mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.cUserNo").isNotEmpty())
-                .andExpect(jsonPath("$.data.phone").value("138****8000"));
+                .andExpect(jsonPath("$.data.phone").value("13800138000"));
     }
 
     @Test

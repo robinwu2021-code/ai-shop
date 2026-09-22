@@ -807,6 +807,8 @@ export default {
     manual: "Type it in",
   },
   address: {
+    /** 地址表单里没绑号时的入口：绑完回填到手机号栏 */
+    bindPhone: "Link your phone to fill this in",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
     /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
     placeStale: "This location may be out of date",

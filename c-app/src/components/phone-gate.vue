@@ -12,8 +12,18 @@ import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
+import { isPhone } from "@shared/utils/validate";
 
-const props = defineProps<{ visible: boolean }>();
+const props = defineProps<{
+  visible: boolean;
+  /**
+   * 他在别处已经填过的号码（下单页 = 所选地址上的收货电话；地址表单 = 刚输进手机号栏的）。
+   * 带进验证码那一栏，**他只需要再填验证码** —— 同一个号不让人输第二遍。
+   *
+   * 只是预填、不是绑定：地址上的号码没验证过，谁都能填别人的号，账号归属必须过验证码或微信一键。
+   */
+  suggest?: string;
+}>();
 const emit = defineEmits<{ (e: "done"): void; (e: "close"): void }>();
 
 const { t } = useI18n();
@@ -32,6 +42,9 @@ watch(
   async (on) => {
     if (!on) return;
     conflict.value = false;
+    // 不用 phoneStr()：它声明在下面，而 immediate 的 watch 在 setup 里同步跑 —— 那时还在 TDZ
+    const typed = String(phone.value ?? "").trim();
+    if (!typed && props.suggest && isPhone(props.suggest)) phone.value = props.suggest;
     try {
       capable.value = (await api.phoneCapable()).capable;
     } catch {

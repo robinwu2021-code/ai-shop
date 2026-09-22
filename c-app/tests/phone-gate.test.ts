@@ -31,12 +31,12 @@ vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
 
 import PhoneGate from "@/components/phone-gate.vue";
 
-async function render() {
+async function render(extra: Record<string, unknown> = {}) {
   const w = mount(PhoneGate, {
     // 组件的 prop 是 visible（8a80a75b「弹层 API 统一」把 show 改成了 visible），
     // 传 show 的话 visible 为 undefined，弹层根本不渲染 ——
     // 症状是后面 find("button") 拿到空 wrapper，报错指向触发那一行，看不出根因在这里
-    props: { visible: true },
+    props: { visible: true, ...extra },
     global: { mocks: { $t: (k: string) => k } },
   });
   for (let i = 0; i < 8; i++) {
@@ -107,5 +107,26 @@ describe("留手机号弹层", () => {
 
     expect(bindPhone).toHaveBeenCalledWith("13500135001", "123456");
     expect(w.emitted("done")).toBeTruthy();
+  });
+
+  it("★★★ 带了 suggest（所选地址上的收货电话）→ 验证码那一栏已经填好，只剩验证码", async () => {
+    bindPhone.mockResolvedValue({ phone: "13500135002" });
+    const w = await render({ suggest: "13500135002" });
+
+    expect((w.findAll("input")[0].element as HTMLInputElement).value)
+      .toBe("13500135002");
+    // 只填验证码就能提交 —— 号码不用再输一遍
+    await w.findAll("input")[1].setValue("123456");
+    await w.find(".form__submit").trigger("tap");
+    for (let i = 0; i < 8; i++) {
+      await Promise.resolve();
+      await w.vm.$nextTick();
+    }
+    expect(bindPhone).toHaveBeenCalledWith("13500135002", "123456");
+  });
+
+  it("★ suggest 不是合法号码（海外 / 残缺）→ 不预填，别给他一个过不了校验的「已填好」", async () => {
+    const w = await render({ suggest: "12345" });
+    expect((w.findAll("input")[0].element as HTMLInputElement).value).toBe("");
   });
 });

@@ -821,7 +821,7 @@ public class BizMerchantController {
         return "SUSPENDED";
     }
 
-    /** 登录手机号已在 UserVO 里按 C 端同口径脱敏，B 端只用来展示「已绑定 138****8000」。 */
+    /** 登录人自己的手机号：UserVO 与员工账号两条路都给完整号（本人不脱敏）。 */
     private static String nz(String s) {
         return s == null ? "" : s;
     }

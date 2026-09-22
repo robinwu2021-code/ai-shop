@@ -21,20 +21,17 @@ public record UserVO(String userNo,
                      String pickupNo,
                      String merchantNo) {
 
+    /*
+     * **phone 是完整号码，不脱敏** —— 这个 VO 只返回给号码的主人自己（资料 / 登录 / 绑定）。
+     *
+     * 此前连本人也脱敏成 138****8000，端上就拿不到自己的号：新增地址、开店申请的联系电话
+     * 只能让他再输一遍，而这个号几分钟前刚验证过。别人的号仍按 Masks 脱敏
+     * （AddressVO.forFulfillment、会员、核销），那是另一件事。
+     */
     public static UserVO of(UsrAccount u) {
         // C1 过渡期双写：两个字段同值。前端改完 C2 后删 cUserNo，删的时候只动这一行
         return new UserVO(u.getUserNo(), u.getUserNo(),
-                u.getNickname(), u.getAvatar(), maskPhone(u.getPhone()),
+                u.getNickname(), u.getAvatar(), u.getPhone(),
                 u.getCommunityNo(), u.getPickupNo(), u.getEntityNo());
-    }
-
-    /**
-     * 自己的手机号也脱敏：端上只用来展示「已绑定 138****8000」，没有场景需要完整号。
-     *
-     * <p>口径走 {@link ai.neargo.shop.common.Masks} —— 此前这里、AddressVO、进件服务
-     * 各写了一份，三种口径会让人以为其中一处泄了更多。
-     */
-    private static String maskPhone(String phone) {
-        return ai.neargo.shop.common.Masks.phone(phone);
     }
 }

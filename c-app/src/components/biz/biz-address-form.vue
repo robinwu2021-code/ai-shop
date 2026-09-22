@@ -19,6 +19,8 @@ import { canSearchPlaces } from "@shared/ports/geo-search";
 import { ROUTES } from "@shared/utils/constants";
 import { isCompleteRegion, joinRegion, splitRegion } from "@shared/utils/region";
 import type { PlacePick } from "@/shared/address-pick";
+import { useUserStore } from "@/stores/user";
+import PhoneGate from "@/components/phone-gate.vue";
 
 const props = defineProps<{
   /** 编辑模式：要改的那一条 */
@@ -34,6 +36,18 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const user = useUserStore();
+
+/**
+ * **新增地址时手机号栏默认填他自己的号**（资料接口给本人的是完整号，不脱敏）。
+ *
+ * 此前每条新地址的手机号都是空的：刚在下单页验证过的号，到这里要再输一遍。
+ * 只是默认值 —— 寄给家人时他改掉就是。编辑存量地址不动它，那条上的号是他当时填的。
+ */
+function accountPhone(): string {
+  const p = user.user?.phone ?? "";
+  return isPhone(p) ? p : "";
+}
 
 /** 编辑中的草稿。addressId 为空 = 新增 */
 const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>(
@@ -41,7 +55,7 @@ const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>(
     // houseNo 存量为 null，直接绑到 input 上会显示 "null"
     ? { ...props.address, houseNo: props.address.houseNo ?? "" }
     : {
-      name: "", phone: "",
+      name: "", phone: accountPhone(),
       region: props.place?.region ?? "",
       province: props.place?.province ?? "",
       city: props.place?.city ?? "",
@@ -63,7 +77,14 @@ async function fillFromWx() {
   const a = await chooseWxAddress();
   if (!a) return; // 取消 / 不支持：什么都不做，不弹提示
   const put = (k: "name" | "phone" | "detail", v: string) => {
-    if (v && !draft.value[k].trim()) draft.value[k] = v;
+    /*
+     * 手机号栏里如果还是**我们预填的本人号**，微信地址簿里的号要能盖掉它 ——
+     * 他导入的多半是家人那一条，名字换成了家人、电话却还是自己的，送货打错人。
+     */
+    // String()：手机号栏是 type="number"，H5 上 v-model 会把它转成数字，`.trim` 当场抛错
+    const cur = String(draft.value[k] ?? "").trim();
+    const untouched = k === "phone" && cur === accountPhone();
+    if (v && (untouched || !cur)) draft.value[k] = v;
   };
   put("name", a.name);
   put("phone", a.phone);
@@ -74,6 +95,20 @@ async function fillFromWx() {
     draft.value.district = a.district;
     draft.value.region = joinRegion({ province: a.province, city: a.city, district: a.district });
   }
+}
+
+/**
+ * 还没绑手机号：手机号栏下面给一个绑定入口，绑完直接回填到这一栏。
+ *
+ * 不做成硬门槛（不绑不让存地址）：寄给家人的人并不需要先交出自己的号。
+ * 但这里绑了，下单那一步就不会再问 —— 否则地址里填一遍、下单再验一遍。
+ * 他在手机号栏里已经输了号码的话，带进弹层，只剩验证码要填。
+ */
+const phoneGate = ref(false);
+function onPhoneBound() {
+  phoneGate.value = false;
+  const p = accountPhone();
+  if (p && !isPhone(String(draft.value.phone ?? ""))) draft.value.phone = p;
 }
 
 const picked = computed(() => draft.value.latE6 != null && draft.value.lngE6 != null);
@@ -162,7 +197,7 @@ const valid = computed(
     notBlank(draft.value.name) &&
     // 此前是 `/^\d{11}$/` —— 只查长度，`00000000000` 一路存进地址簿
     // 海外号码不是 11 位大陆格式 —— 端上也要按国家放宽，否则按钮一直是灰的
-    (overseas.value ? /^\+?\d{3,20}$/.test(draft.value.phone) : isPhone(draft.value.phone)) &&
+    (overseas.value ? /^\+?\d{3,20}$/.test(String(draft.value.phone)) : isPhone(String(draft.value.phone ?? ""))) &&
     notBlank(draft.value.region) &&
     notBlank(draft.value.detail) &&
     /*
@@ -386,6 +421,10 @@ function pickCountry(code: string, cc: string) {
         :placeholder="$t('address.phone')"
       />
     </view>
+    <text v-if="!user.user?.phone" class="txt-caption txt-primary bindphone" @tap="phoneGate = true">
+      {{ $t("address.bindPhone") }}
+    </text>
+    <phone-gate :visible="phoneGate" :suggest="draft.phone" @done="onPhoneBound" @close="phoneGate = false" />
     <!--
       标签：预设三个点一下就填好，旁边仍留一个输入框。
       **不做成「预设/自定义」两种模式** —— 输入框始终是唯一真源，
@@ -477,6 +516,12 @@ function pickCountry(code: string, cc: string) {
 }
 .namerow {
   gap: 16rpx;
+}
+/* 手机号栏下面的绑定入口：靠右，与手机号那一半对齐 */
+.bindphone {
+  display: block;
+  margin-top: 12rpx;
+  text-align: right;
 }
 .tagrow {
   gap: 12rpx;
