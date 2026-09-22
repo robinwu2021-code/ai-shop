@@ -54,8 +54,9 @@ async function run(mode: StockAlignMode) {
   }
 }
 
+/** 不参与对齐的行（note 非空）不写差额 —— 写了像是「确认后会调它」，而它不会被动 */
 function diffText(r: StockAlignRow): string {
-  if (r.diff === null) return "";
+  if (r.note || r.diff === null) return "";
   return r.diff === 0 ? String(t("stockAlign.same")) : String(t("stockAlign.diff", { n: r.diff > 0 ? `+${r.diff}` : r.diff }));
 }
 
