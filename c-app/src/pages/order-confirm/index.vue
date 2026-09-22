@@ -1464,7 +1464,7 @@ onMounted(async () => {
         后端没给选项时（老后端 / mock）回落到下面那段只读列表。
       -->
       <view v-if="offers?.merchants.length" class="sh-block">
-        <text class="txt-caption panel__head">{{ $t("confirm.panelActivityPick") }}</text>
+        <text class="txt-caption txt-strong panel__head">{{ $t("confirm.panelActivityPick") }}</text>
         <view v-for="m in offers.merchants" :key="m.merchantNo" class="sh-cells">
           <text v-if="offers.merchants.length > 1" class="txt-caption sh-muted">{{ m.merchantName }}</text>
           <view
@@ -1484,7 +1484,7 @@ onMounted(async () => {
         </view>
       </view>
       <view v-else-if="autoActivities.length" class="sh-block">
-        <text class="txt-caption panel__head">{{ $t("confirm.panelActivityAuto") }}</text>
+        <text class="txt-caption txt-strong panel__head">{{ $t("confirm.panelActivityAuto") }}</text>
         <view v-for="(d, i) in autoActivities" :key="i" class="sh-cell sh-row sh-row--between">
           <text class="txt-body">{{ d.name }}</text>
           <text class="txt-body is-danger sh-num">-{{ money(d.amountMinor) }}</text>
@@ -1492,7 +1492,7 @@ onMounted(async () => {
       </view>
 
       <view class="sh-block">
-        <text class="txt-caption panel__head">{{ $t("confirm.panelCoupon") }}</text>
+        <text class="txt-caption txt-strong panel__head">{{ $t("confirm.panelCoupon") }}</text>
       </view>
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between" @tap="chooseCoupon('')">
@@ -1691,11 +1691,10 @@ onMounted(async () => {
   text-align: end;
 }
 /* 面板里两段各带一个小标题：清晰的"活动 / 券"分界，别让用户以为整个面板叫「优惠券」 */
+/* 小标题：字重走 .txt-strong，别自写 font-weight */
 .panel__head {
   display: block;
   margin: 8rpx 0 12rpx;
-  color: var(--sh-ink);
-  font-weight: 500;
 }
 .amt {
   padding: 12rpx 0;
