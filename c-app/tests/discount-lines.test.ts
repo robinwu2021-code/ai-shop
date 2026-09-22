@@ -27,11 +27,12 @@ const confirm = code("src/pages/order-confirm/index.vue");
 const order = code("src/pages/order/index.vue");
 
 describe("两处都把依据写出来", () => {
-  it("★★★ 确认页逐条渲染 discountLines", () => {
-    // 活动逐条列；券那一笔由券那一行自己说（每笔优惠只出现一次，用户 2026-09-21）
-    expect(confirm).toContain('v-for="(d, i) in activityLines"');
+  it("★★★ 确认页在优惠面板里逐条列活动（名字 + 金额）", () => {
+    // 金额卡合并成一行「优惠」以后，逐条依据挪进面板 —— 依然是同一份 discountLines
+    // （用户 2026-09-22：活动/券合并入口，面板里两段各带小标题）
+    expect(confirm).toContain('v-for="(d, i) in autoActivities"');
     expect(confirm).toContain("couponLineMinor");
-    expect(confirm, "只显示金额不显示名字，等于没说").toContain("discountLabel(d)");
+    expect(confirm, "只显示金额不显示名字，等于没说").toMatch(/\{\{ d\.name \}\}/);
   });
 
   it("★★★ 订单详情页同样逐条渲染", () => {
@@ -48,8 +49,8 @@ describe("两处都把依据写出来", () => {
 
 describe("为空时整段不渲染", () => {
   it("没有优惠就没有这几行 —— 不显示「无优惠」", () => {
-    // v-for 在空数组上天然不渲染；这里钉住的是**没有**「否则显示一句话」的兜底分支
-    const at = confirm.indexOf('v-for="(d, i) in activityLines"');
+    // 现在优惠明细全在面板里；v-for 在空数组上天然不渲染，这里钉住**没有**「否则显示一句话」的兜底
+    const at = confirm.indexOf('v-for="(d, i) in autoActivities"');
     const around = confirm.slice(at - 300, at + 400);
     expect(around).not.toContain("noDiscount");
   });

@@ -26,10 +26,11 @@ function code(rel: string): string {
 
 const confirm = code("src/pages/order-confirm/index.vue");
 
-describe("券那一行永远可点", () => {
+describe("优惠那一行永远可点", () => {
   it("★★★ 不再按「有没有可用券」压暗", () => {
-    const row = confirm.slice(confirm.indexOf('$t("confirm.coupon")') - 400,
-      confirm.indexOf('$t("confirm.coupon")'));
+    // 用户 2026-09-22 起金额卡合并成一行「优惠」，入口挂在这一行
+    const at = confirm.indexOf('$t("confirm.offer")');
+    const row = confirm.slice(at - 400, at);
     expect(row, "又把它压暗了 —— 点了没反应的一行，用户分不清是没券还是坏了")
       .not.toContain("!usableCoupons.length");
   });
@@ -41,8 +42,10 @@ describe("券那一行永远可点", () => {
     expect(body, "无可用券就 return = 那一行永远点不开").not.toContain("if (!usableCoupons.value.length) return");
   });
 
-  it("有券但都用不了时，行里要说出「几张」", () => {
+  it("有券但都用不了时，行里要说出「几张」（进入 offerSummary 的一支分支）", () => {
     expect(confirm).toContain("confirm.couponNoneUsable");
+    // 该分支挂在合并后的「优惠」行汇总里
+    expect(confirm).toContain("offerSummary");
   });
 });
 
@@ -52,7 +55,9 @@ describe("面板三段", () => {
   it("★★★ 自动活动段取自优惠明细，并显示活动名", () => {
     expect(confirm).toContain("const autoActivities");
     expect(confirm).toMatch(/discountLines\.value\.filter\(\(d\) => d\.kind === "ACTIVITY"\)/);
-    expect(tpl).toContain("confirm.autoActivity");
+    // 段小标题（可换 / 只读两种形态）；面板不再叫「优惠券」，两段清晰分界
+    expect(tpl).toMatch(/panelActivityPick|panelActivityAuto/);
+    expect(tpl).toContain("panelCoupon");
     expect(tpl, "活动只给金额不给名字，等于没说").toContain("{{ d.name }}");
   });
 

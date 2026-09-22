@@ -553,7 +553,6 @@ export default {
     whyNoAddress: "先选一个收货地址才能提交",
     whyNoSlot: "先选一个上门时段才能提交",
     whyOutOfRange: "有商家送不到这个地址，换个地址或把这家的货挪出这一单",
-    activityPick: "活动 · 同一家店只能参加一个",
     noActivity: "不参加活动",
     panelSaved: "当前共减 {p}",
     useBest: "换成最省组合，可再省 {p}",
@@ -592,6 +591,15 @@ export default {
     fromCoupon: "券「{name}」",
     /** 优惠面板（原型 k03）。三段：自动活动 / 可用券 / 不可用券 */
     couponPanel: "优惠",
+    /**
+     * 金额卡「优惠」行右侧汇总；面板两段各一个小标题（用户 2026-09-22）
+     */
+    offer: "优惠",
+    offerActivity: "活动 -{p}",
+    offerCouponUsed: "券「{name}」-{p}",
+    panelActivityPick: "① 店家活动（自动生效，可换 / 可不参加。同一家店只能参加一个）",
+    panelActivityAuto: "① 店家活动（自动参与，不用选）",
+    panelCoupon: "② 优惠券（选一张）",
     /** 数量到顶（原型 k04）。压暗却不说为什么，用户会以为点坏了 */
     qtyLimit: "每人限购 {limit} 件",
     qtyLimitBought: "每人限购 {limit} 件，你已买 {bought} 件",
@@ -603,7 +611,6 @@ export default {
     failRange: "这个地址超出配送范围，换个地址或改配送方式",
     couponDroppedOffline: "当面付不能用平台券，已取消这张券",
     qtyLeft: "仅剩 {n} 件",
-    autoActivity: "自动参与的活动（不用选）",
     couponUnusable: "用不了的（{n}）",
     /** 券包里有券、但这一单都用不了 —— 不说的话用户以为券丢了 */
     couponNoneUsable: "{n} 张券本单不可用",
@@ -612,7 +619,6 @@ export default {
     couponNotStarted: "还没到使用时间",
     pickAddress: "请选择收货地址",
     appointmentAt: "预约时段 {t}",
-    coupon: "优惠券",
     couponAvailable: "{n} 张可用", payMode: "支付方式", offlineNoPlatformCoupon: "当面付款时平台券用不了。商家券照常可用，积分也照常抵扣。",
     noCouponAvailable: "无可用",
     noCoupon: "不使用优惠券",

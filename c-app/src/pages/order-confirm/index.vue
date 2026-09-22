@@ -827,14 +827,38 @@ const couponLineMinor = computed(() => {
   return lines.length ? lines.reduce((n, d) => n + d.amountMinor, 0) : null;
 });
 
-/** 合计里有、明细说不出名字的那部分。**不会是负数**：明细多于合计时按 0 */
-const otherDiscountMinor = computed(() => {
-  const total = amount.value?.discountMinor ?? 0;
-  if (!discountLines.value.length) {
-    // 没有明细：券那一行已经说了券的估算，剩下的才落到「优惠」
-    return Math.max(0, total - (coupon.value ? couponDiscount(coupon.value, goodsMinor.value) : 0));
+/**
+ * 金额卡里那一行「优惠」右侧显示什么。
+ *
+ * <p>把「活动 -X · 券 -Y / N 张券可用」拼成一句话 —— 这一行既是账本合计，
+ * 也是入口（点开是同一个面板）。规则：
+ * <ul>
+ *   <li>选了券：显示「活动 -X · 券「名」-Y」；没活动就只说券那一段；</li>
+ *   <li>没选券但有活动：显示「活动 -X · N 张券可用」；没有可用券就只说活动；</li>
+ *   <li>都没有：显示「N 张券可用 / N 张券本单不可用 / 无可用」，仍然可点；</li>
+ *   <li>取券失败：显示「加载失败」，也可点。</li>
+ * </ul>
+ * `tinted` 决定右侧是不是走 is-danger 的暗红。
+ */
+const offerSummary = computed<{ text: string; tinted: boolean }>(() => {
+  const activityTotal = activityLines.value.reduce((n, d) => n + d.amountMinor, 0);
+  const couponAmt = coupon.value
+    ? (couponLineMinor.value ?? couponDiscount(coupon.value, goodsMinor.value))
+    : 0;
+  const parts: string[] = [];
+  if (activityTotal > 0) parts.push(String(t("confirm.offerActivity", { p: money(activityTotal) })));
+  if (couponAmt > 0 && coupon.value) {
+    parts.push(String(t("confirm.offerCouponUsed", { name: coupon.value.title, p: money(couponAmt) })));
   }
-  return Math.max(0, total - discountLines.value.reduce((n, d) => n + d.amountMinor, 0));
+  if (parts.length) return { text: parts.join(" · "), tinted: true };
+  if (couponFailed.value) return { text: String(t("common.loadFailed")), tinted: false };
+  if (usableCoupons.value.length) {
+    return { text: String(t("confirm.couponAvailable", { n: usableCoupons.value.length })), tinted: false };
+  }
+  if (couponTotal.value) {
+    return { text: String(t("confirm.couponNoneUsable", { n: couponTotal.value })), tinted: false };
+  }
+  return { text: String(t("confirm.noCouponAvailable")), tinted: false };
 });
 
 /** 「活动「abc」」「券「新人首单券」」—— 一眼看出这一条是什么减的 */
@@ -1390,37 +1414,19 @@ onMounted(async () => {
         </text>
       </view>
       <!--
-        **每一笔优惠只出现一次**（用户 2026-09-21：「优惠券、优惠、活动优惠三个位置都有优惠」）。
-        此前券在上面的卡片里减一次、这里「优惠」合计一次、明细里又逐条一次 ——
-        同一个 ¥5 在屏幕上出现三回，他得自己算是不是减了三次。
-        现在：活动逐条列、券那一行本身就是选择入口、合计只在底栏说一次「共减」。
-        名字取不到的那部分（后端没下发明细）才落到一行不带名字的「优惠」。
-      -->
-      <view v-for="(d, i) in activityLines" :key="i" class="amt sh-row sh-row--between sh-row--top">
-        <text class="txt-caption">{{ discountLabel(d) }}</text>
-        <text class="txt-caption amt__v sh-num is-danger">-{{ money(d.amountMinor) }}</text>
-      </view>
-      <!--
-        **这一行永远可点**（用户 2026-09-21）。此前没有可用券时它是灰的、点了没反应，
-        而券包里有券的人会以为券丢了 —— 面板里会把「有几张、为什么用不了」说清楚。
+        **活动 + 优惠券合并成一行「优惠」**（用户 2026-09-22：「活动在上、优惠券在下，
+        优惠券里又包含活动」）。此前的三种毛病都在这一行修掉：
+        ① 金额卡里活动逐条列 + 券一行 + 其它一行 —— 同一件事切成三段，用户 2026-09-21 已经吐过；
+        ② 面板叫「优惠券」而第一段是活动 —— 想换活动的人不知道点哪儿；
+        ③ 没可用券时那一行是灰的、点了没反应 —— 有券的人以为券丢了。
+        现在只有一行「优惠」，右侧用一句话把「活动 -X · 券 -Y / N 张券可用」说完，
+        点开是同一个面板（标题就叫「优惠」），面板里两段各带小标题。
       -->
       <view class="amt sh-row sh-row--between sh-row--top" @tap="pickCoupon">
-        <text class="txt-caption">{{ $t("confirm.coupon") }}</text>
-        <text class="txt-caption amt__v cell__v" :class="coupon ? 'is-danger sh-num' : 'sh-muted'">
-          {{ coupon
-            ? `${coupon.title} -${money(couponLineMinor ?? couponDiscount(coupon, goodsMinor))}`
-            : couponFailed
-              ? $t("common.loadFailed")
-              : usableCoupons.length
-                ? $t("confirm.couponAvailable", { n: usableCoupons.length })
-                : couponTotal
-                  ? $t("confirm.couponNoneUsable", { n: couponTotal })
-                  : $t("confirm.noCouponAvailable") }}
+        <text class="txt-caption">{{ $t("confirm.offer") }}</text>
+        <text class="txt-caption amt__v cell__v" :class="offerSummary.tinted ? 'is-danger sh-num' : 'sh-muted'">
+          {{ offerSummary.text }}
         </text>
-      </view>
-      <view v-if="otherDiscountMinor > 0" class="amt sh-row sh-row--between sh-row--top">
-        <text class="txt-caption">{{ $t("confirm.discount") }}</text>
-        <text class="txt-caption amt__v sh-num is-danger">-{{ money(otherDiscountMinor) }}</text>
       </view>
       <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
@@ -1458,7 +1464,7 @@ onMounted(async () => {
         后端没给选项时（老后端 / mock）回落到下面那段只读列表。
       -->
       <view v-if="offers?.merchants.length" class="sh-block">
-        <text class="txt-caption sh-muted">{{ $t("confirm.activityPick") }}</text>
+        <text class="txt-caption panel__head">{{ $t("confirm.panelActivityPick") }}</text>
         <view v-for="m in offers.merchants" :key="m.merchantNo" class="sh-cells">
           <text v-if="offers.merchants.length > 1" class="txt-caption sh-muted">{{ m.merchantName }}</text>
           <view
@@ -1478,13 +1484,16 @@ onMounted(async () => {
         </view>
       </view>
       <view v-else-if="autoActivities.length" class="sh-block">
-        <text class="txt-caption sh-muted">{{ $t("confirm.autoActivity") }}</text>
+        <text class="txt-caption panel__head">{{ $t("confirm.panelActivityAuto") }}</text>
         <view v-for="(d, i) in autoActivities" :key="i" class="sh-cell sh-row sh-row--between">
           <text class="txt-body">{{ d.name }}</text>
           <text class="txt-body is-danger sh-num">-{{ money(d.amountMinor) }}</text>
         </view>
       </view>
 
+      <view class="sh-block">
+        <text class="txt-caption panel__head">{{ $t("confirm.panelCoupon") }}</text>
+      </view>
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between" @tap="chooseCoupon('')">
           <text class="txt-body">{{ $t("confirm.noCoupon") }}</text>
@@ -1680,6 +1689,13 @@ onMounted(async () => {
   flex: 1;
   color: var(--sh-ink);
   text-align: end;
+}
+/* 面板里两段各带一个小标题：清晰的"活动 / 券"分界，别让用户以为整个面板叫「优惠券」 */
+.panel__head {
+  display: block;
+  margin: 8rpx 0 12rpx;
+  color: var(--sh-ink);
+  font-weight: 500;
 }
 .amt {
   padding: 12rpx 0;
