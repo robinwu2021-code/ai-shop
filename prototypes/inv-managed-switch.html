@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>记库存开关</title>
+<title>接入进销存开关</title>
 <!-- 真源在仓库 prototypes/inv-managed-switch.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="proto.css">
@@ -10,9 +10,9 @@
 <div class="wrap">
 <header class="top">
   <div class="eyebrow">B 端 App · 界面原型 · 2026-09-21</div>
-  <h1>库存：哪些商品记库存</h1>
-  <p class="sub">门店库存方案第一期。店主按品类、按单件商品决定「记不记库存」：记库存的参与进货、盘点、调拨、报损；
-  不记库存的只用商城上的库存数，库存页里看不到它。服务类默认不记。七屏，示例数据取自虹选鲜果·福田店。</p>
+  <h1>库存：哪些商品接入进销存</h1>
+  <p class="sub">门店库存方案第一期。店主按品类、按单件商品决定「是否接入进销存」：接入进销存的参与进货、盘点、调拨、报损；
+  不接入进销存的只用商城上的库存数，库存页里看不到它。服务类默认不接入。七屏，示例数据取自虹选鲜果·福田店。</p>
 </header>
 
 <section>
@@ -38,7 +38,7 @@
         </div>
       </div>
       <figcaption class="cap"><b>01 库存首页</b>右上角多一个「设置」。</figcaption>
-      <p class="why">设置放在库存页自己身上，而不是工作台：「哪些货记库存」只有在管库存的时候才会想到。
+      <p class="why">设置放在库存页自己身上，而不是工作台：「哪些货接入进销存」只有在管库存的时候才会想到。
       首页不再出现「家政保洁 2 小时」这类永远不会进货的项目 —— 这是这一期店主最先感到的变化。</p>
     </figure>
 
@@ -46,56 +46,56 @@
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">库存设置</span><span></span></div>
         <div class="scr">
-          <div class="gt">记库存的品类</div>
+          <div class="gt">接入进销存的品类</div>
           <div class="group">
             <div class="frow"><span class="k">水果</span><span class="meta">3 件商品</span><span class="sw on"></span></div>
-            <div class="frow"><span class="k">家政保洁</span><span class="meta">默认不记 · 1 件</span><span class="sw"></span></div>
+            <div class="frow"><span class="k">家政保洁</span><span class="meta">默认不接入 · 1 件</span><span class="sw"></span></div>
           </div>
-          <div class="meta">全店各门店共用。服务类默认不记，实物、生鲜默认记。</div>
+          <div class="meta">全店各门店共用。服务类默认不接入，实物、生鲜默认记。</div>
           <div class="meta">单件商品可在「编辑商品 → 库存管理」里单独设置，单件的设置优先。</div>
         </div>
       </div>
-      <figcaption class="cap"><b>02 库存设置 · 记库存的品类</b>本店各门店经营类目的合集，每类一个开关。</figcaption>
+      <figcaption class="cap"><b>02 库存设置 · 接入进销存的品类</b>本店各门店经营类目的合集，每类一个开关。</figcaption>
       <p class="why">开关挂在主体上而不是门店：同一件货在 A 店记、B 店不记，账就说不清。
-      「3 件商品」告诉他拨这一下会动到多少东西；「默认不记」让他知道这个灰着的状态不是出错，是平台给服务类的默认值。</p>
+      「3 件商品」告诉他拨这一下会动到多少东西；「默认不接入」让他知道这个灰着的状态不是出错，是平台给服务类的默认值。</p>
     </figure>
 
     <figure id="s03">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">库存设置</span><span></span></div>
         <div class="scr">
-          <div class="gt">记库存的品类</div>
+          <div class="gt">接入进销存的品类</div>
           <div class="group">
             <div class="frow"><span class="k">水果</span><span class="meta">3 件商品</span><span class="sw on"></span></div>
           </div>
         </div>
         <div class="mask"><div class="sheet">
-          <div class="h">「水果」改为不记库存？</div>
+          <div class="h">「水果」改为不接入进销存？</div>
           <div class="d">影响 3 件商品，其中 2 件还有库存</div>
           <div class="group">
             <div class="frow"><span class="k">香梨 · 5 斤装</span><span class="v num">实存 30</span></div>
             <div class="frow"><span class="k">阳光玫瑰青提</span><span class="v num">实存 12</span></div>
           </div>
           <div class="d">关闭后这些库存与流水保留、只读，不再出现在进货、盘点、报损里；重新打开即恢复。</div>
-          <div class="acts"><div class="btn sec">取消</div><div class="btn">不记库存</div></div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn">不接入进销存</div></div>
         </div></div>
       </div>
       <figcaption class="cap"><b>03 关闭品类 · 还有库存</b>列出还压着货的商品，二次确认。</figcaption>
       <p class="why">不逼他先把货报损掉：那几件货是真实存在的，报损等于做假账。
-      停用而不删除，余额与流水留着，改回来原样恢复。确认键写「不记库存」而不是「确定」，按下去之前就知道会发生什么。</p>
+      停用而不删除，余额与流水留着，改回来原样恢复。确认键写「不接入进销存」而不是「确定」，按下去之前就知道会发生什么。</p>
     </figure>
 
     <figure id="s04">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">库存设置</span><span></span></div>
         <div class="scr">
-          <div class="gt">记库存的品类</div>
+          <div class="gt">接入进销存的品类</div>
           <div class="group">
             <div class="frow"><span class="k">水果</span><span class="meta">3 件商品</span><span class="sw on"></span></div>
           </div>
         </div>
         <div class="mask"><div class="sheet">
-          <div class="h">暂时不能改为不记库存</div>
+          <div class="h">暂时不能改为不接入进销存</div>
           <div class="d">以下单据还没完成，本次没有做任何改动</div>
           <div class="group">
             <div class="frow"><span class="k">香梨 · 5 斤装</span><span class="v go">进货单 PO0921-003 · 待收货</span></div>
@@ -123,7 +123,7 @@
         <div class="scr">
           <div class="gt">库存</div>
           <div class="group">
-            <div class="frow"><span class="k">库存管理</span><span class="v go">跟随品类（记库存）</span></div>
+            <div class="frow"><span class="k">库存管理</span><span class="v go">跟随品类（接入）</span></div>
             <div class="frow"><span class="k">库存</span><span class="v num">30</span></div>
             <div class="frow"><span class="k">每人限购</span><span class="v ph-">不限</span></div>
           </div>
@@ -142,23 +142,23 @@
         <div class="scr">
           <div class="gt">库存</div>
           <div class="group">
-            <div class="frow"><span class="k">库存管理</span><span class="v go">跟随品类（记库存）</span></div>
+            <div class="frow"><span class="k">库存管理</span><span class="v go">跟随品类（接入）</span></div>
           </div>
         </div>
         <div class="mask"><div class="sheet">
           <div class="h">库存管理</div>
-          <div class="d">「水果」目前记库存</div>
+          <div class="d">「水果」目前接入进销存</div>
           <div class="group">
-            <div class="pickrow"><span>跟随品类（记库存）</span><span class="c">✓</span></div>
-            <div class="pickrow"><span>记库存</span><span></span></div>
-            <div class="pickrow"><span>不记库存</span><span></span></div>
+            <div class="pickrow"><span>跟随品类（接入）</span><span class="c">✓</span></div>
+            <div class="pickrow"><span>接入进销存</span><span></span></div>
+            <div class="pickrow"><span>不接入进销存</span><span></span></div>
           </div>
-          <div class="d">记库存：参与进货、盘点、调拨、报损。不记库存：只用商城上的库存数。</div>
+          <div class="d">接入进销存：参与进货、盘点、调拨、报损。不接入进销存：只用商城上的库存数。</div>
         </div></div>
       </div>
       <figcaption class="cap"><b>06 选择库存管理方式</b>三选一。</figcaption>
-      <p class="why">给单件的例外：水果类里有一样代卖的货不想记，单独设「不记库存」即可，不用把整个品类关掉。
-      选「不记库存」且这件货还有库存或在途单据时，走 03 / 04 同样的确认与拒绝。</p>
+      <p class="why">给单件的例外：水果类里有一样代卖的货不想记，单独设「不接入进销存」即可，不用把整个品类关掉。
+      选「不接入进销存」且这件货还有库存或在途单据时，走 03 / 04 同样的确认与拒绝。</p>
     </figure>
 
     <figure id="s07">
@@ -171,19 +171,19 @@
           </div>
           <div class="card">
             <div class="hd"><span class="nm">家政保洁 · 2 小时</span><span class="chip ok">在售</span></div>
-            <div class="meta">¥120.00 · 库存 99 · <span class="chip">不记库存</span></div>
+            <div class="meta">¥120.00 · 库存 99 · <span class="chip">不接入进销存</span></div>
           </div>
         </div>
         <div class="mask"><div class="sheet">
           <div class="h">改库存 · 家政保洁 · 2 小时</div>
           <div class="group"><div class="frow"><span class="v num">99</span></div></div>
-          <div class="d">这件商品不记库存，这里的数就是商城上可卖的数</div>
+          <div class="d">这件商品不接入进销存，这里的数就是商城上可卖的数</div>
           <div class="acts"><div class="btn sec">取消</div><div class="btn">确定</div></div>
         </div></div>
       </div>
-      <figcaption class="cap"><b>07 商品列表 · 不记库存的商品</b>标「不记库存」；改库存不再提库存账。</figcaption>
-      <p class="why">记库存的商品，改库存弹层仍提示「库存页记着 X」；不记库存的只有一个数，提那本账只会让人困惑。
-      进货、盘点、报损的选商品列表里，不记库存的商品不出现。</p>
+      <figcaption class="cap"><b>07 商品列表 · 不接入进销存的商品</b>标「不接入进销存」；改库存不再提库存账。</figcaption>
+      <p class="why">接入进销存的商品，改库存弹层仍提示「库存页记着 X」；不接入进销存的只有一个数，提那本账只会让人困惑。
+      进货、盘点、报损的选商品列表里，不接入进销存的商品不出现。</p>
     </figure>
 
   </div>
