@@ -517,11 +517,11 @@ function pickCountry(code: string, cc: string) {
 .namerow {
   gap: 16rpx;
 }
-/* 手机号栏下面的绑定入口：靠右，与手机号那一半对齐 */
+/* 手机号栏下面的绑定入口：靠行尾，与手机号那一半对齐（阿语下跟着翻） */
 .bindphone {
   display: block;
   margin-top: 12rpx;
-  text-align: right;
+  text-align: end;
 }
 .tagrow {
   gap: 12rpx;
