@@ -298,3 +298,97 @@
 - 第二期的写回**按门店逐家打开**：每店一个「启用库存同步」开关，打开前必须完成期初对齐；先开虹选鲜果·福田店，对差连续一周为零再开下一家
 - 福田店期初对齐做一次**实地盘点**；来不及则以商城库存为准
 - 安全库存默认 0；生鲜可设 1～2
+
+## 18 第二期实施设计（2026-09-22）
+
+> 范围：§4 线上可售规则、§6 写回、§7 期初对齐、§8「改库存」新语义。线下卖出（§5.2）仍在第三期。
+> 界面叫法沿用第一期定下的：开关「接入进销存」，商城那个数仍叫「库存」。
+
+### 18.1 两边的数怎么对上
+
+| 商城（`prd_store_stock`） | 进销存（本店库位 `inv_stock_balance`） |
+|---|---|
+| `stock` 含已锁定；**线上可卖 = stock − locked_stock** | `on_hand` 实存、`reserved` 占用（= 商城锁定的镜像） |
+
+写回只改商城：让「线上可卖」等于目标值 T，即 `stock = T + locked_stock`，条件 `version = 读到的值`。
+**不经过 `StockPort.setOnHand`** —— 那条路会发 ADJUST 镜像回进销存，把实存改成商城的数，写回就成了自己改自己。
+商城侧新增一个只改商城、不发镜像的写法（`StoreStockMapper.syncOnline`，带 version）。
+
+### 18.2 数据（主库，V346）
+
+| 表 | 列 | 说明 |
+|---|---|---|
+| `inv_sell_rule` | `store_no`, `scope_type`(STORE/CATEGORY/GOODS), `scope_ref`, `rule_type`(ALL/RESERVE/RATIO/CAP/MANUAL), `param` | 稀疏；唯一键 `(store_no, scope_type, scope_ref)`；**只改不删**（「恢复默认」= `rule_type=ALL` 的行，或删到上一级由服务层判断） |
+| `inv_store_sync` | `store_no`(唯一), `entity_no`, `enabled`, `aligned_at`, `aligned_by`, `align_mode`(COUNT/MALL) | 每店一行；`enabled=1` 才写回。**没有对齐过（`aligned_at` 为空）不许打开** |
+| `inv_sync_log` | `store_no`, `sku_no`, `source_ref`, `rule_type`, `available`, `before_qty`, `after_qty`, `created_at` | 同步明细；唯一键 `(source_ref, store_no, sku_no)` 即幂等键 |
+
+`source_ref` 取值：单据号（`IN…`/`OUT…`/`CNT…`/`TRF…`）、`RULE:{规则行 id}:{version}`、`SWEEP:{yyyyMMdd}`、`ALIGN:{storeNo}:{时间戳}`。
+安全库存沿用进销存已有的（物料默认值 + 库位覆盖，`/biz/inventory/safety-stock`），不另建。
+
+### 18.3 写回链路
+
+```
+进销存过账 → inv_outbox(DocumentPosted{docNo, docKind})
+          → InvOutboxDispatchJob → PlatformInventoryEventSink → sys_outbox
+          → InventoryWritebackConsumer（shop-app，新）
+```
+
+消费者对每条 DocumentPosted：
+1. 取单据的 (库位, 物料) 明细 → 反查 (门店号, skuNo)（ACL 新方法 `docLines(docNo)`；库位→门店走 `inv_location.external_ref`，物料→SKU 走 `inv_item_ref`）
+2. 逐个 (门店, SKU)：门店没开同步 → 跳过；SKU 不接入进销存 → 跳过；`(docNo, 门店, SKU)` 已在 `inv_sync_log` → 跳过
+3. **等追平**：`sys_outbox` 里还有这家店这个 SKU 未投递的镜像事件（`INV_MIRROR_*` 且载荷含该 skuNo）→ 抛可重试异常，交给投递器退避重投
+4. U = max(0, 实存 − 占用 − 安全库存)（ACL 新方法 `available(entityNo, storeNo, skuNo)`，库位按门店解析，与镜像同一套 `resolveStockLocation`）
+5. T = 规则(U)，取值顺序 单品 › 品类 › 本店默认 › 全部可售
+6. 读 `prd_store_stock`（stock, locked, version）→ 非手动：可卖 = T；手动：可卖 > U 时压到 U，否则不动 → 条件更新；影响 0 行回到第 3 步，最多三次
+7. 写 `inv_sync_log`（同一事务）
+
+同一套「算 + 写」被三处复用：单据过账、规则变更（受影响 SKU 各算一次，`source_ref=RULE:…`）、每晚兜底（`SWEEP:日期`，并出对差日报，只报不改实存）。
+
+### 18.4 期初对齐（§7）
+
+- `GET /biz/stores/{storeNo}/stock-alignment`：本店接入进销存的每个 SKU 一行 —— 商品、规格、实存、占用、商城库存、差额
+- `POST /biz/stores/{storeNo}/stock-alignment/confirm`，`{mode: "MALL" | "COUNT"}`：
+  - `MALL`（以商城为准）：对有差额的行开一张盘点单（`reason_code=OPENING`）把实存调成商城库存 + 锁定，过账
+  - `COUNT`（已实地盘点）：不调实存，只记对齐时间 —— 盘点单本身已经把实存改对了
+  - 两种都写 `inv_store_sync.aligned_at`，**并立刻按 T 写回一次**（`source_ref=ALIGN:…`）
+- `PUT /biz/stores/{storeNo}/stock-sync`，`{enabled}`：打开要求 `aligned_at` 不为空，否则 70071「先完成期初对齐」
+
+### 18.5 规则接口（§4）
+
+- `GET /biz/stores/{storeNo}/sell-rules`：本店默认 + 按品类覆盖 + 按单品覆盖
+- `PUT /biz/stores/{storeNo}/sell-rules`：`{scopeType, scopeRef, ruleType, param}`，保存后触发受影响 SKU 重算
+- 校验：RESERVE/CAP/MANUAL 的 `param ≥ 0`，RATIO 在 1–100；越界 10400
+
+### 18.6「改库存」（§8）
+
+接入进销存且本店已开同步的商品：`POST /biz/goods/{goodsNo}/store-stock` 的语义变成「把本品本店规则切成手动、额度 = 输入值」，
+超过 U 按 U 存并在返回里说明；不开单据、不改实存。本店没开同步的一律照旧改商城库存。
+界面弹层写「线上可卖（进销存可用 18）」。
+
+### 18.7 B 端
+
+| 位置 | 内容 |
+|---|---|
+| 库存设置页 | 新增一段「库存同步 · 本店」：状态（未对齐 / 已对齐未开启 / 同步中）+ 入口「期初对齐」+ 开关；再一段「线上可售规则 · 本店」：默认规则 + 按品类覆盖 |
+| 期初对齐页（新） | 差额清单；底部「以商城为准」/「已实地盘点」两个动作，二次确认 |
+| 编辑商品 · 库存 | 接入且本店同步中时，库存行标签改「线上可卖」，下面一行「进销存可用 18 · 规则：全部可售 ›」，点开选本品规则 |
+| 改库存弹层 | 见 18.6 |
+
+### 18.8 验证与消融
+
+| 用例 | 消融（撤掉它必须变红） |
+|---|---|
+| 进货过账 → 商城可卖 = 可用 | 撤掉写回消费者 |
+| 保留线下 5 → 可卖 = 可用 − 5；手动额度只降不升 | 规则取值顺序反过来 |
+| 镜像未投完时不写回，投完后写回正确（不多放一件） | 撤掉第 3 步「等追平」 |
+| 两次写回之间有订单锁定 → version 冲突后重算，结果正确 | 撤掉 version 条件 |
+| 同一单据重投两次 → 只写一次、日志一行 | 撤掉幂等键 |
+| 没对齐不能开同步；没开同步的店单据过账不写回 | 撤掉 `aligned_at` 判断 |
+| 不接入的 SKU 不写回 | 撤掉接入判断 |
+| 写回不产生 ADJUST 镜像（进销存实存不被改） | 把写回改走 `setOnHand` |
+
+### 18.9 分步交付
+
+1. 后端：V346 + 规则 / 同步 / 日志三张表与服务；写回消费者；对齐与开关接口；场景测试与消融
+2. B 端：库存设置页两段、期初对齐页、编辑商品与改库存弹层
+3. 部署；福田店做期初对齐并打开同步；看一周对差日报
