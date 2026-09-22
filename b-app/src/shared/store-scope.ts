@@ -47,6 +47,12 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mCountOpen: "BizStockDocController → 盘点开在这家店的库位",
   mCountDetail: "同上",
   mOutboundCreate: "同上，出库扣的是这家店",
+  mStockAlignment: "BizStockSyncController → 路径带门店号，对照这家店出货库位的实存与这家店的线上库存",
+  mConfirmAlignment: "同上，写路径：调的是这家店的实存",
+  mStockSync: "BizStockSyncController → 路径带门店号，这家店的同步开关与期初对齐",
+  mSetStockSync: "同上，写路径",
+  mSellRules: "BizStockSyncController → 路径带门店号，这家店的线上可售规则",
+  mSaveSellRule: "同上，写路径",
 };
 
 /**
@@ -55,6 +61,8 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
  * 写下来是为了让「漏了」和「想过、不该标」在清单上分得开。
  */
 export const NOT_STORE_SCOPED_REASONS: Record<string, string> = {
+  "stock-settings": "整页上半是主体级设置（接入进销存的品类，各门店共用）；只有「线上库存同步」「线上可售规则」两段按当前门店，"
+    + "店名写在那两段的标题右侧 —— 页头挂一枚门店胶囊会让人以为上半页也是这家店单独的",
   customers: "页内自带门店选择器（可选「全部门店」），它比一枚固定胶囊表达力更强；再挂一枚会出现两个互相矛盾的门店提示",
   marketing: "活动可以按店也可以全店，页内自己选",
   // 它是 marketing 那一页的编辑器，同一条理由：活动本身有 storeNo，按不按店是这张表单里的一项，
@@ -96,6 +104,7 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   "stock-out": "出库扣的是这家店的库存（mOutboundCreate / mStockBalances）",
   stock: "库存总览按门店（mStockSummary / mStockBalances）",
   stats: "经营统计整页走 mStats —— 与工作台同一个数",
+  "stock-align": "期初对齐对照的是这家店的实存与线上库存（mStockAlignment 路径带当前门店号），确认会调这家店的实存",
 };
 
 /** 这一页是不是按门店取数。`dir` 是 `b-app/src/pages/` 下的目录名。 */

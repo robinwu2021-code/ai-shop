@@ -147,6 +147,8 @@ async function editRule(scope: SellRuleScope, scopeRef?: string) {
 }
 
 onShow(() => {
+  // 同步那一段的标题右侧写当前店名（多店时）：要门店列表
+  void merchant.ensureStores();
   void load();
   void loadSync();
 });

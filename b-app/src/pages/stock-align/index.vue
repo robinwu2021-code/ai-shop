@@ -59,7 +59,11 @@ function diffText(r: StockAlignRow): string {
   return r.diff === 0 ? String(t("stockAlign.same")) : String(t("stockAlign.diff", { n: r.diff > 0 ? `+${r.diff}` : r.diff }));
 }
 
-onShow(load);
+// 标题栏的门店名要门店列表；冷启动时没人拉就只剩「期初对齐」四个字
+onShow(() => {
+  void merchant.ensureStores();
+  void load();
+});
 </script>
 
 <template>

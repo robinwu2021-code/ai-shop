@@ -68,6 +68,39 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "门店线上可售规则",
+    field: "prd_sell_rule.rule_type",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/product/entity/PrdSellRule.java",
+      only: ["ALL", "RESERVE", "RATIO", "CAP", "MANUAL", "INHERIT"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "SellRuleType" },
+    ],
+  },
+  {
+    concept: "线上可售规则的作用范围",
+    field: "prd_sell_rule.scope_type",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/product/entity/PrdSellRule.java",
+      only: ["STORE", "CATEGORY", "GOODS"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "SellRuleScope" },
+    ],
+  },
+  {
+    concept: "期初对齐方式",
+    field: "prd_store_stock_sync.align_mode",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/product/entity/PrdStoreStockSync.java",
+      only: ["MALL", "COUNT"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "StockAlignMode" },
+    ],
+  },
+  {
     concept: "会员触达场景（明细）",
     field: "mbr_reach_log.scene",
     backend: {
@@ -593,6 +626,7 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  { key: "prd_sell_rule.param", why: "数字列（件数或百分比）。注释里点名了 RESERVE / CAP / MANUAL 是在说「哪几种规则用件数」，不是取值域 —— 候选启发式的误报" },
   { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
   { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "stl_recon_diff.bill_date", why: "日期格式 YYYY/MM/DD，同上" },

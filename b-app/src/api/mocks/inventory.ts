@@ -540,33 +540,44 @@ export const inventoryMock: Pick<MerchantApi,
 
   // ---- 门店库存同步：一家店从「未对齐」走到「同步中」（第二期）
   async mStockSync(storeNo) {
+    storeNo = storeNo || currentStoreNo();
     return delay(syncStateOf(storeNo));
   },
   async mSetStockSync(storeNo, enabled) {
+    storeNo = storeNo || currentStoreNo();
     const st = syncStateOf(storeNo);
     if (enabled && !st.alignedAt) throw new Error("这家店还没做期初对齐，先对齐再打开库存同步");
     syncStates.set(storeNo, { ...st, enabled, state: enabled ? "SYNCING" : "ALIGNED" });
     return delay(syncStateOf(storeNo));
   },
-  async mStockAlignment() {
-    return delay<StockAlignRow[]>([
+  async mStockAlignment(storeNo) {
+    storeNo = storeNo || currentStoreNo();
+    // 对齐过的店差额已抹平：清单回来全是「一致」，与真后端对齐后的样子一样
+    const aligned = !!syncStateOf(storeNo).alignedAt;
+    const rows: StockAlignRow[] = [
       { goodsNo: "G001", title: "山东烟台红富士苹果", skuNo: "S001", spec: "约 5 斤", onHand: 45, reserved: 2,
         mallStock: 200, mallLocked: 2, diff: -155, note: null },
       { goodsNo: "G001", title: "山东烟台红富士苹果", skuNo: "S002", spec: "约 10 斤", onHand: 45, reserved: 0,
         mallStock: 45, mallLocked: 0, diff: 0, note: null },
       { goodsNo: "G002", title: "本地绿叶菜组合", skuNo: "S003", spec: null, onHand: null, reserved: null,
         mallStock: 150, mallLocked: 0, diff: null, note: "NO_ITEM" },
-    ]);
+    ];
+    return delay(aligned
+      ? rows.map((r) => (r.note ? r : { ...r, onHand: r.mallStock, diff: 0 }))
+      : rows);
   },
   async mConfirmAlignment(storeNo, mode) {
+    storeNo = storeNo || currentStoreNo();
     const st = syncStateOf(storeNo);
     syncStates.set(storeNo, { ...st, state: st.enabled ? "SYNCING" : "ALIGNED", alignedAt: Date.now(), alignMode: mode });
     return delay({ adjusted: mode === "MALL" ? 1 : 0 });
   },
   async mSellRules(storeNo) {
+    storeNo = storeNo || currentStoreNo();
     return delay(sellRules.filter((r) => r.storeNo === storeNo).map(({ storeNo: _s, ...r }) => r));
   },
   async mSaveSellRule(storeNo, rule) {
+    storeNo = storeNo || currentStoreNo();
     const scopeRef = rule.scopeType === "STORE" ? storeNo : rule.scopeRef ?? "";
     const i = sellRules.findIndex((r) => r.storeNo === storeNo && r.scopeType === rule.scopeType && r.scopeRef === scopeRef);
     const row = { storeNo, scopeType: rule.scopeType, scopeRef, ruleType: rule.ruleType, param: rule.param };

@@ -57,6 +57,9 @@ const cutsBy = (src: string, code: string) =>
  */
 const EXEMPT: Record<string, string> = {
   // ① 页内逐块裁
+  "stock-align/biz:store:admin":
+    "对照清单只要 biz:stock 就能看；确认对齐（调实存）那两个按钮所在的贴底条整条按 can('biz:store:admin') 裁掉 —— "
+    + "店长、店员、理货员进得来、看得到差额，按不到确认，页面里不会出现他打不通的请求",
   "purchase-edit/biz:campaign":
     "只有从社区集单「去采购」进来时才调 mPeriodPurchaseLines 预填，调用前先 can('biz:campaign')、失败单独 catch —— "
     + "理货员与店员进得来这一页（门禁是 biz:stock），他们手动挑货不受影响，只是没有预填",

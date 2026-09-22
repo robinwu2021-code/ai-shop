@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS prd_sell_rule
     store_no VARCHAR(64) NOT NULL COMMENT '门店',
     scope_type VARCHAR(16) NOT NULL COMMENT 'STORE 本店默认 / CATEGORY 类目 / GOODS 商品',
     scope_ref VARCHAR(64) NOT NULL COMMENT 'STORE 时为门店号，其余为类目号 / 商品号',
-    rule_type VARCHAR(16) NOT NULL COMMENT 'ALL 全部可售 / RESERVE 保留线下 N / RATIO 按比例 P% / CAP 封顶 M / MANUAL 手动',
+    rule_type VARCHAR(16) NOT NULL COMMENT 'ALL 全部可售 / RESERVE 保留线下 N / RATIO 按比例 P% / CAP 封顶 M / MANUAL 手动 / INHERIT 跟随上一级',
     param INT(11) NOT NULL DEFAULT 0 COMMENT 'RESERVE/CAP/MANUAL 为件数，RATIO 为百分比',
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
