@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 464,
+        "b-app": 472,
         "c-app": 65
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 347,
+        "b-app": 353,
         "c-app": 69
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 332,
+        "b-app": 339,
         "c-app": 258
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 128,
         "c-app": 43
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 207,
+        "b-app": 210,
         "c-app": 76
       }
     },
@@ -785,7 +785,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 172,
+        "b-app": 174,
         "c-app": 66
       }
     },
@@ -897,7 +897,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 33,
+        "b-app": 34,
         "c-app": 9
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 134,
+        "b-app": 135,
         "c-app": 76
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 497,
+        "b-app": 503,
         "c-app": 180
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 284,
+        "b-app": 290,
         "c-app": 92
       }
     },
@@ -1829,7 +1829,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 23,
+        "b-app": 24,
         "c-app": 1
       }
     },
@@ -1845,7 +1845,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 12,
+        "b-app": 14,
         "c-app": 3
       }
     },
@@ -1894,7 +1894,7 @@
         "pad?: number"
       ],
       "usage": {
-        "b-app": 30,
+        "b-app": 31,
         "c-app": 13,
         "lib": 0
       },
@@ -2139,7 +2139,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 58,
+        "b-app": 59,
         "c-app": 33,
         "lib": 1
       },
@@ -2221,7 +2221,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 17,
+        "b-app": 20,
         "c-app": 0,
         "lib": 0
       },
@@ -2557,7 +2557,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 81,
+        "b-app": 82,
         "c-app": 39,
         "lib": 1
       },
@@ -2604,7 +2604,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 21,
+        "b-app": 23,
         "c-app": 2,
         "lib": 0
       },
@@ -2765,7 +2765,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 2,
         "lib": 0
       },
@@ -4413,6 +4413,21 @@
     },
     {
       "app": "b-app",
+      "page": "stock-align",
+      "key": "b-app/stock-align",
+      "file": "b-app/src/pages/stock-align/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 17,
+      "localSelectors": 1,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "stock-check",
       "key": "b-app/stock-check",
       "file": "b-app/src/pages/stock-check/index.vue",
@@ -4518,10 +4533,12 @@
       "file": "b-app/src/pages/stock-settings/index.vue",
       "components": [
         "sh-empty",
+        "sh-go",
         "sh-scaffold",
+        "sh-section",
         "sh-switch"
       ],
-      "libClassHits": 11,
+      "libClassHits": 38,
       "localSelectors": 3,
       "localCssLines": 14,
       "rolled": []
@@ -5596,7 +5613,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 37,
-    "pages": 141,
+    "pages": 142,
     "gapKinds": 2
   }
 }

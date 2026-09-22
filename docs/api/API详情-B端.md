@@ -5829,6 +5829,43 @@ _无字段_
 | `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
+#### GET `/biz/store/{storeNo}/sell-rules`
+
+本店线上可售规则　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SellRule`](#sellrule)\[\]
+
+
+#### PUT `/biz/store/{storeNo}/sell-rules`
+
+存一条线上可售规则并重算　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SellRule`](#sellrule)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeType` | [`SellRuleScope`](#sellrulescope) | 是 | 作用范围 |
+| `scopeRef` | `string` | 是 | STORE 时为门店号，其余为类目号 / 商品号 |
+| `ruleType` | [`SellRuleType`](#sellruletype) | 是 | 规则 |
+| `param` | `number` | 是 | RESERVE / CAP / MANUAL 为件数，RATIO 为百分比 |
+
+
 #### POST `/biz/store/{storeNo}/status`
 
 停用/启用门店　🔒
@@ -5864,6 +5901,82 @@ _无字段_
 | `planSuspended` | `boolean` | 否 | 这家店的只读**是套餐降级压下来的**，不是店主自己停的。 <p>两者的 `status` 一模一样（都是 `READONLY`），而端上要给的下一步完全不同： 降级压的要**补缴/升档**，自己停的**点一下启用就开**。 不分开的表现是店主反复点那个对降级店无效的启用按钮。 |
 | `businessMode` | [`BusinessMode`](#businessmode) | 否 | 经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。 |
 | `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
+
+
+#### GET `/biz/store/{storeNo}/stock-alignment`
+
+期初对齐清单：实存与商城库存逐件对照　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockAlignRow`](#stockalignrow)\[\]
+
+
+#### POST `/biz/store/{storeNo}/stock-alignment/confirm`
+
+确认期初对齐（以商城为准 / 已实地盘点）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`{ adjusted: number }`](#adjustednumber)
+
+
+#### GET `/biz/store/{storeNo}/stock-sync`
+
+本店库存同步状态　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockSyncState`](#stocksyncstate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `state` | [`StockSyncStatus`](#stocksyncstatus) | 是 | 同步状态 |
+| `enabled` | `boolean` | 是 | 是否在同步 |
+| `alignedAt` | `number,null` | 是 | 期初对齐时间（毫秒）；没对齐为 null |
+| `alignMode` | [`StockAlignMode`](#stockalignmode) \| `null` | 是 | 期初对齐方式；没对齐为 null |
+
+
+#### PUT `/biz/store/{storeNo}/stock-sync`
+
+开 / 关本店库存同步（要先期初对齐）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockSyncState`](#stocksyncstate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `state` | [`StockSyncStatus`](#stocksyncstatus) | 是 | 同步状态 |
+| `enabled` | `boolean` | 是 | 是否在同步 |
+| `alignedAt` | `number,null` | 是 | 期初对齐时间（毫秒）；没对齐为 null |
+| `alignMode` | [`StockAlignMode`](#stockalignmode) \| `null` | 是 | 期初对齐方式；没对齐为 null |
 
 
 #### POST `/biz/store/announcement`
@@ -8772,6 +8885,38 @@ _无字段_
 | `nextCommunities` | `number` | 是 | 改成这一组之后覆盖几个聚落 |
 | `nextBuyers` | `number` | 是 | 改成这一组之后有几个能定位的买家 |
 
+### SellRule
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeType` | [`SellRuleScope`](#sellrulescope) | 是 | 作用范围 |
+| `scopeRef` | `string` | 是 | STORE 时为门店号，其余为类目号 / 商品号 |
+| `ruleType` | [`SellRuleType`](#sellruletype) | 是 | 规则 |
+| `param` | `number` | 是 | RESERVE / CAP / MANUAL 为件数，RATIO 为百分比 |
+
+### SellRuleScope
+
+线上可售规则的作用范围。STORE 本店默认 · CATEGORY 某个类目 · GOODS 某件商品
+
+枚举取值：
+
+- `STORE`
+- `CATEGORY`
+- `GOODS`
+
+### SellRuleType
+
+线上可售规则。ALL 全部可售 · RESERVE 给门店留 N 件 · RATIO 放出 P% · CAP 最多放 M 件 · MANUAL 手动 · INHERIT 跟随上一级（类目 / 商品撤掉覆盖时存这一档）
+
+枚举取值：
+
+- `ALL`
+- `RESERVE`
+- `RATIO`
+- `CAP`
+- `MANUAL`
+- `INHERIT`
+
 ### ServiceArea
 
 一条地理覆盖项。名字由后端拼好下发 —— 端上只拿到 330106 的话，要么显示一串数字，要么自己再查一次
@@ -9107,6 +9252,39 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 - `ACTIVE`
 - `DISABLED`
 
+### StockAlignMode
+
+期初对齐方式。MALL 以商城库存为准（调实存）· COUNT 已实地盘点（不调）
+
+枚举取值：
+
+- `MALL`
+- `COUNT`
+
+### StockAlignNote
+
+对齐清单一行的提示。ENTITY_MULTI_STORE 这件货在商城是全店共用一个数、要先按店设一次库存 · NO_ITEM 进销存里还没有这件货
+
+枚举取值：
+
+- `ENTITY_MULTI_STORE`
+- `NO_ITEM`
+
+### StockAlignRow
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品号 |
+| `title` | `string` | 是 | 商品标题 |
+| `skuNo` | `string` | 是 | SKU 号 |
+| `spec` | `string,null` | 是 | 规格文字 |
+| `onHand` | `number,null` | 是 | 进销存实存；进销存里没有这件货时为 null |
+| `reserved` | `number,null` | 是 | 进销存占用（线上订单锁着的） |
+| `mallStock` | `number` | 是 | 商城库存总量（含已锁定），与实存同口径 |
+| `mallLocked` | `number` | 是 | 商城已锁定 |
+| `diff` | `number,null` | 是 | 实存 − 商城库存；为 null 表示比不了 |
+| `note` | [`StockAlignNote`](#stockalignnote) \| `null` | 是 | 为什么这一行不参与对齐；正常为 null |
+
 ### StockBalance
 
 一行库存（`BalanceVO`）。
@@ -9307,6 +9485,26 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `staleCount` | `number` | 是 | 滞销件数（长期未动销） |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 | `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
+
+### StockSyncState
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `state` | [`StockSyncStatus`](#stocksyncstatus) | 是 | 同步状态 |
+| `enabled` | `boolean` | 是 | 是否在同步 |
+| `alignedAt` | `number,null` | 是 | 期初对齐时间（毫秒）；没对齐为 null |
+| `alignMode` | [`StockAlignMode`](#stockalignmode) \| `null` | 是 | 期初对齐方式；没对齐为 null |
+
+### StockSyncStatus
+
+同步状态。NOT_ALIGNED 还没做期初对齐 · ALIGNED 已对齐、未开启 · SYNCING 同步中
+
+枚举取值：
+
+- `NOT_ALIGNED`
+- `ALIGNED`
+- `SYNCING`
 
 ### StockTransfer
 

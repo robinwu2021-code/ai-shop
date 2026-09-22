@@ -1370,6 +1370,147 @@ components:
         - "status"
         - "goods"
       additionalProperties: false
+    StockSyncStatus: 
+      type: "string"
+      enum: 
+        - "NOT_ALIGNED"
+        - "ALIGNED"
+        - "SYNCING"
+      description: "同步状态。NOT_ALIGNED 还没做期初对齐 · ALIGNED 已对齐、未开启 · SYNCING 同步中"
+    StockAlignMode: 
+      type: "string"
+      enum: 
+        - "MALL"
+        - "COUNT"
+      description: "期初对齐方式。MALL 以商城库存为准（调实存）· COUNT 已实地盘点（不调）"
+    StockSyncState: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号"
+        state: 
+          "$ref": "#/components/schemas/StockSyncStatus"
+          description: "同步状态"
+        enabled: 
+          type: "boolean"
+          description: "是否在同步"
+        alignedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "期初对齐时间（毫秒）；没对齐为 null"
+        alignMode: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StockAlignMode"
+            - type: "null"
+          description: "期初对齐方式；没对齐为 null"
+      required: 
+        - "storeNo"
+        - "state"
+        - "enabled"
+        - "alignedAt"
+        - "alignMode"
+      additionalProperties: false
+    StockAlignNote: 
+      type: "string"
+      enum: 
+        - "ENTITY_MULTI_STORE"
+        - "NO_ITEM"
+      description: "对齐清单一行的提示。ENTITY_MULTI_STORE 这件货在商城是全店共用一个数、要先按店设一次库存 · NO_ITEM 进销存里还没有这件货"
+    StockAlignRow: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品号"
+        title: 
+          type: "string"
+          description: "商品标题"
+        skuNo: 
+          type: "string"
+          description: "SKU 号"
+        spec: 
+          type: 
+            - "string"
+            - "null"
+          description: "规格文字"
+        onHand: 
+          type: 
+            - "number"
+            - "null"
+          description: "进销存实存；进销存里没有这件货时为 null"
+        reserved: 
+          type: 
+            - "number"
+            - "null"
+          description: "进销存占用（线上订单锁着的）"
+        mallStock: 
+          type: "number"
+          description: "商城库存总量（含已锁定），与实存同口径"
+        mallLocked: 
+          type: "number"
+          description: "商城已锁定"
+        diff: 
+          type: 
+            - "number"
+            - "null"
+          description: "实存 − 商城库存；为 null 表示比不了"
+        note: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StockAlignNote"
+            - type: "null"
+          description: "为什么这一行不参与对齐；正常为 null"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "skuNo"
+        - "spec"
+        - "onHand"
+        - "reserved"
+        - "mallStock"
+        - "mallLocked"
+        - "diff"
+        - "note"
+      additionalProperties: false
+    SellRuleScope: 
+      type: "string"
+      enum: 
+        - "STORE"
+        - "CATEGORY"
+        - "GOODS"
+      description: "线上可售规则的作用范围。STORE 本店默认 · CATEGORY 某个类目 · GOODS 某件商品"
+    SellRuleType: 
+      type: "string"
+      enum: 
+        - "ALL"
+        - "RESERVE"
+        - "RATIO"
+        - "CAP"
+        - "MANUAL"
+        - "INHERIT"
+      description: "线上可售规则。ALL 全部可售 · RESERVE 给门店留 N 件 · RATIO 放出 P% · CAP 最多放 M 件 · MANUAL 手动 · INHERIT 跟随上一级（类目 / 商品撤掉覆盖时存这一档）"
+    SellRule: 
+      type: "object"
+      properties: 
+        scopeType: 
+          "$ref": "#/components/schemas/SellRuleScope"
+          description: "作用范围"
+        scopeRef: 
+          type: "string"
+          description: "STORE 时为门店号，其余为类目号 / 商品号"
+        ruleType: 
+          "$ref": "#/components/schemas/SellRuleType"
+          description: "规则"
+        param: 
+          type: "number"
+          description: "RESERVE / CAP / MANUAL 为件数，RATIO 为百分比"
+      required: 
+        - "scopeType"
+        - "scopeRef"
+        - "ruleType"
+        - "param"
+      additionalProperties: false
     CouponFunder: 
       type: "string"
       enum: 
@@ -17878,6 +18019,206 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/InvModeChange"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-sync": 
+    get: 
+      operationId: "mStockSync"
+      summary: "本店库存同步状态"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StockSyncState"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    put: 
+      operationId: "mSetStockSync"
+      summary: "开 / 关本店库存同步（要先期初对齐）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StockSyncState"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-alignment": 
+    get: 
+      operationId: "mStockAlignment"
+      summary: "期初对齐清单：实存与商城库存逐件对照"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/StockAlignRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-alignment/confirm": 
+    post: 
+      operationId: "mConfirmAlignment"
+      summary: "确认期初对齐（以商城为准 / 已实地盘点）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/{ adjusted: number }"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/sell-rules": 
+    get: 
+      operationId: "mSellRules"
+      summary: "本店线上可售规则"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/SellRule"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    put: 
+      operationId: "mSaveSellRule"
+      summary: "存一条线上可售规则并重算"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/SellRule"
                 required: 
                   - "code"
                   - "msg"

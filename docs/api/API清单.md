@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 754 个接口**：后端已实现 682（90%）· 前端在调 683
+**合计 760 个接口**：后端已实现 688（91%）· 前端在调 689
 
 ---
 
@@ -236,7 +236,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **254** 个接口 ｜ 后端已实现 **249**（98%）｜ 前端在调 **254**
+共 **260** 个接口 ｜ 后端已实现 **255**（98%）｜ 前端在调 **260**
 
 ### activities（4）
 
@@ -763,7 +763,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（16）
+### store（22）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -774,7 +774,13 @@
 | POST | `/biz/store/{storeNo}/default` | 设为默认店 | — | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/payment` | 换门店收款号 | `SetStorePaymentReq` | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/rename` | 改门店名与地址 | `StoreEditReq` | `Store` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/sell-rules` | 本店线上可售规则 | — | `数组` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/store/{storeNo}/sell-rules` | 存一条线上可售规则并重算 | — | `SellRule` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/status` | 停用/启用门店 | `SetActiveReq` | `Store` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/stock-alignment` | 期初对齐清单：实存与商城库存逐件对照 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/{storeNo}/stock-alignment/confirm` | 确认期初对齐（以商城为准 / 已实地盘点） | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/stock-sync` | 本店库存同步状态 | — | `StockSyncState` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/store/{storeNo}/stock-sync` | 开 / 关本店库存同步（要先期初对齐） | — | `StockSyncState` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/announcement` | 只改公告（含有效期，可同时发到别的门店） | — | `StoreProfile` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/announcement/recent/remove` | 从常用里删一条 | — | `StoreProfile` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/create` | 新建门店 | `StoreEditReq` | `Store` | 🔒 | ✅ | ✅ |

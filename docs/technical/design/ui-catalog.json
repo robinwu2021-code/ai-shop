@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 82,
+      "count": 83,
       "domains": [
         {
           "name": "工作台",
@@ -428,6 +428,17 @@
               "proto": "m18",
               "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
               "preview": "http://localhost:5175/#/pages/member-reach/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-align/index",
+              "title": "期初对齐",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-align/index"
             },
             {
               "app": "b-app",
@@ -3296,5 +3307,5 @@
       ]
     }
   ],
-  "total": 259
+  "total": 260
 }

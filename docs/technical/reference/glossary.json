@@ -16580,6 +16580,102 @@
           "ar": "حصة"
         },
         {
+          "key": "stockAlign.byCount",
+          "zh-CN": "已实地盘点",
+          "en": "Counted on site",
+          "ar": "تم الجرد في الموقع"
+        },
+        {
+          "key": "stockAlign.byMall",
+          "zh-CN": "以线上库存为准",
+          "en": "Use online stock",
+          "ar": "اعتماد المخزون عبر الإنترنت"
+        },
+        {
+          "key": "stockAlign.confirmCountHint",
+          "zh-CN": "实存保持不变，以盘点结果为准。",
+          "en": "Physical stock stays as counted.",
+          "ar": "يبقى المخزون الفعلي كما جُرد."
+        },
+        {
+          "key": "stockAlign.confirmCountTitle",
+          "zh-CN": "确认已实地盘点？",
+          "en": "Confirm you counted on site?",
+          "ar": "تأكيد الجرد في الموقع؟"
+        },
+        {
+          "key": "stockAlign.confirmMallHint",
+          "zh-CN": "{n} 件商品的实存将调整为线上库存。",
+          "en": "Physical stock of {n} products will be set to the online stock.",
+          "ar": "سيُضبط المخزون الفعلي لـ {n} منتجات على المخزون عبر الإنترنت."
+        },
+        {
+          "key": "stockAlign.confirmMallTitle",
+          "zh-CN": "以线上库存为准？",
+          "en": "Use online stock?",
+          "ar": "اعتماد المخزون عبر الإنترنت؟"
+        },
+        {
+          "key": "stockAlign.diff",
+          "zh-CN": "差 {n}",
+          "en": "Off by {n}",
+          "ar": "فرق {n}"
+        },
+        {
+          "key": "stockAlign.done",
+          "zh-CN": "已对齐",
+          "en": "Aligned",
+          "ar": "تمت المطابقة"
+        },
+        {
+          "key": "stockAlign.empty",
+          "zh-CN": "没有接入进销存的商品",
+          "en": "No products use Inventory",
+          "ar": "لا توجد منتجات مرتبطة بالمخزون"
+        },
+        {
+          "key": "stockAlign.intro",
+          "zh-CN": "对照进销存实存和线上库存，确认以哪边为准。",
+          "en": "Compare physical stock with online stock and choose which one is right.",
+          "ar": "قارن المخزون الفعلي بالمخزون عبر الإنترنت واختر المعتمد."
+        },
+        {
+          "key": "stockAlign.mall",
+          "zh-CN": "线上 {n}",
+          "en": "Online {n}",
+          "ar": "عبر الإنترنت {n}"
+        },
+        {
+          "key": "stockAlign.note.ENTITY_MULTI_STORE",
+          "zh-CN": "线上库存为全店共用，请先按门店设置库存",
+          "en": "Online stock is shared by all stores. Set stock per store first",
+          "ar": "المخزون عبر الإنترنت مشترك بين المتاجر؛ اضبطه لكل متجر أولًا"
+        },
+        {
+          "key": "stockAlign.note.NO_ITEM",
+          "zh-CN": "进销存中还没有这件商品",
+          "en": "Not in Inventory yet",
+          "ar": "غير موجود في المخزون بعد"
+        },
+        {
+          "key": "stockAlign.onHand",
+          "zh-CN": "实存 {n}",
+          "en": "Physical {n}",
+          "ar": "الفعلي {n}"
+        },
+        {
+          "key": "stockAlign.same",
+          "zh-CN": "一致",
+          "en": "Match",
+          "ar": "مطابق"
+        },
+        {
+          "key": "stockAlign.title",
+          "zh-CN": "期初对齐",
+          "en": "Opening alignment",
+          "ar": "المطابقة الافتتاحية"
+        },
+        {
           "key": "stockCheck.bookN",
           "zh-CN": "账面 {n}",
           "en": "Book {n}",
@@ -17610,6 +17706,174 @@
           "zh-CN": "库存设置",
           "en": "Stock settings",
           "ar": "إعدادات المخزون"
+        },
+        {
+          "key": "stockSync.align",
+          "zh-CN": "期初对齐",
+          "en": "Opening alignment",
+          "ar": "المطابقة الافتتاحية"
+        },
+        {
+          "key": "stockSync.hint",
+          "zh-CN": "开启后，进货、盘点、报损完成时，线上库存按下方规则自动更新。",
+          "en": "When on, online stock updates by the rules below after purchases, counts and scrap.",
+          "ar": "عند التشغيل يُحدَّث المخزون عبر الإنترنت وفق القواعد أدناه بعد الشراء والجرد والإتلاف."
+        },
+        {
+          "key": "stockSync.needAlign",
+          "zh-CN": "请先完成期初对齐",
+          "en": "Complete the opening alignment first",
+          "ar": "أكمل المطابقة الافتتاحية أولًا"
+        },
+        {
+          "key": "stockSync.param.CAP",
+          "zh-CN": "最多放几件",
+          "en": "Maximum",
+          "ar": "الحد الأقصى"
+        },
+        {
+          "key": "stockSync.param.MANUAL",
+          "zh-CN": "线上放几件",
+          "en": "Online quantity",
+          "ar": "الكمية عبر الإنترنت"
+        },
+        {
+          "key": "stockSync.param.RATIO",
+          "zh-CN": "放出百分之几（1–100）",
+          "en": "Percentage (1–100)",
+          "ar": "النسبة (1–100)"
+        },
+        {
+          "key": "stockSync.param.RESERVE",
+          "zh-CN": "给门店留几件",
+          "en": "How many to keep",
+          "ar": "كم تُبقي"
+        },
+        {
+          "key": "stockSync.rule.ALL",
+          "zh-CN": "全部可售",
+          "en": "Sell all",
+          "ar": "بيع الكل"
+        },
+        {
+          "key": "stockSync.rule.CAP",
+          "zh-CN": "最多放 {n} 件",
+          "en": "Up to {n}",
+          "ar": "حتى {n}"
+        },
+        {
+          "key": "stockSync.rule.INHERIT",
+          "zh-CN": "跟随本店默认",
+          "en": "Store default",
+          "ar": "افتراضي المتجر"
+        },
+        {
+          "key": "stockSync.rule.MANUAL",
+          "zh-CN": "手动 {n} 件",
+          "en": "Manual {n}",
+          "ar": "يدوي {n}"
+        },
+        {
+          "key": "stockSync.rule.RATIO",
+          "zh-CN": "放出 {n}%",
+          "en": "Release {n}%",
+          "ar": "إتاحة {n}%"
+        },
+        {
+          "key": "stockSync.rule.RESERVE",
+          "zh-CN": "给门店留 {n} 件",
+          "en": "Keep {n} for the store",
+          "ar": "إبقاء {n} للمتجر"
+        },
+        {
+          "key": "stockSync.ruleDefault",
+          "zh-CN": "本店默认",
+          "en": "Store default",
+          "ar": "افتراضي المتجر"
+        },
+        {
+          "key": "stockSync.ruleHint",
+          "zh-CN": "单个类目的设置优先于本店默认。",
+          "en": "A category setting overrides the store default.",
+          "ar": "إعداد الفئة مقدَّم على افتراضي المتجر."
+        },
+        {
+          "key": "stockSync.ruleOpt.ALL",
+          "zh-CN": "全部可售",
+          "en": "Sell all",
+          "ar": "بيع الكل"
+        },
+        {
+          "key": "stockSync.ruleOpt.CAP",
+          "zh-CN": "最多放几件",
+          "en": "Set a maximum",
+          "ar": "تحديد حد أقصى"
+        },
+        {
+          "key": "stockSync.ruleOpt.INHERIT",
+          "zh-CN": "跟随本店默认",
+          "en": "Use store default",
+          "ar": "اتباع افتراضي المتجر"
+        },
+        {
+          "key": "stockSync.ruleOpt.MANUAL",
+          "zh-CN": "手动设置",
+          "en": "Set manually",
+          "ar": "تحديد يدوي"
+        },
+        {
+          "key": "stockSync.ruleOpt.RATIO",
+          "zh-CN": "按比例放出",
+          "en": "Release a percentage",
+          "ar": "إتاحة نسبة"
+        },
+        {
+          "key": "stockSync.ruleOpt.RESERVE",
+          "zh-CN": "给门店留几件",
+          "en": "Keep some for the store",
+          "ar": "إبقاء كمية للمتجر"
+        },
+        {
+          "key": "stockSync.rules",
+          "zh-CN": "线上可售规则",
+          "en": "Online selling rules",
+          "ar": "قواعد البيع عبر الإنترنت"
+        },
+        {
+          "key": "stockSync.section",
+          "zh-CN": "线上库存同步",
+          "en": "Online stock sync",
+          "ar": "مزامنة المخزون عبر الإنترنت"
+        },
+        {
+          "key": "stockSync.state.ALIGNED",
+          "zh-CN": "已对齐，未开启",
+          "en": "Aligned, off",
+          "ar": "مطابق، متوقف"
+        },
+        {
+          "key": "stockSync.state.NOT_ALIGNED",
+          "zh-CN": "未对齐",
+          "en": "Not aligned",
+          "ar": "غير مطابق"
+        },
+        {
+          "key": "stockSync.state.SYNCING",
+          "zh-CN": "同步中",
+          "en": "Syncing",
+          "ar": "قيد المزامنة"
+        },
+        {
+          "key": "stockSync.status",
+          "zh-CN": "状态",
+          "en": "Status",
+          "ar": "الحالة"
+        },
+        {
+          "key": "stockSync.switchLabel",
+          "zh-CN": "同步到线上",
+          "en": "Sync to online",
+          "ar": "مزامنة مع المتجر الإلكتروني"
         },
         {
           "key": "store.addArea",
@@ -22161,6 +22425,12 @@
           "ar": "حدث خطأ ما، يرجى المحاولة لاحقًا"
         },
         {
+          "key": "err.inventory.sync_not_aligned",
+          "zh-CN": "这家店还没做期初对齐，先对齐再打开库存同步",
+          "en": "Align this store's stock first, then turn on stock sync",
+          "ar": "أكمل مطابقة مخزون هذا المتجر أولًا، ثم فعّل مزامنة المخزون"
+        },
+        {
           "key": "err.marketing.activity_always_on_needs_cap",
           "zh-CN": "长期活动必须设限量或预算，否则没有停下来的那一天",
           "en": "An always-on activity needs a quota or budget, or it never stops",
@@ -23928,6 +24198,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_sell_rule",
+      "class": "PrdSellRule",
+      "zh": "门店线上可售规则（V346，TDD-商品纳入进销存开关 §4 / §18）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_sku",
       "class": "PrdSku",
       "zh": "SKU 与价格。",
@@ -23970,6 +24247,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_stock_sync_log",
+      "class": "PrdStockSyncLog",
+      "zh": "进销存 → 商城写回明细（V346，TDD §6.2 第 6 步）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_store_goods",
       "class": "PrdStoreGoods",
       "zh": "门店级上架关系：这家店卖不卖这件货。",
@@ -23987,6 +24271,13 @@
       "table": "prd_store_stock",
       "class": "PrdStoreStock",
       "zh": "门店级库存。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_store_stock_sync",
+      "class": "PrdStoreStockSync",
+      "zh": "门店库存同步开关与期初对齐（V346，TDD §7 / §18）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -28005,6 +28296,69 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdSellRule",
+        "name": "SCOPE_STORE",
+        "value": "STORE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "SCOPE_CATEGORY",
+        "value": "CATEGORY",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "SCOPE_GOODS",
+        "value": "GOODS",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "ALL",
+        "value": "ALL",
+        "zh": "全部可售：T = 可用",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "RESERVE",
+        "value": "RESERVE",
+        "zh": "保留线下 N 件：T = max(0, 可用 − N)",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "RATIO",
+        "value": "RATIO",
+        "zh": "按比例 P%：T = ⌊可用 × P%⌋",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "CAP",
+        "value": "CAP",
+        "zh": "封顶 M 件：T = min(可用, M)",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "MANUAL",
+        "value": "MANUAL",
+        "zh": "手动：店主给的额度，只降不升（可卖超过可用时压到可用）",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSellRule",
+        "name": "INHERIT",
+        "value": "INHERIT",
+        "zh": "回到上一级（类目 / 商品专用）。",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdSpecDim",
         "name": "PLATFORM",
         "value": "PLATFORM",
@@ -28127,6 +28481,20 @@
         "host": "PrdStockLock",
         "name": "CONFIRMED",
         "value": "CONFIRMED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdStoreStockSync",
+        "name": "ALIGN_MALL",
+        "value": "MALL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdStoreStockSync",
+        "name": "ALIGN_COUNT",
+        "value": "COUNT",
         "zh": "",
         "module": "shop-core"
       },
@@ -30476,6 +30844,7 @@
           "MEMBER_AUDIENCE_EMPTY",
           "GOODS_ACTIVITY_ONLY",
           "GOODS_CATEGORY_NOT_IN_STORE",
+          "STOCK_SYNC_NOT_ALIGNED",
           "PAY_CHANNEL_UNAVAILABLE",
           "PROXY_ORDER_AMOUNT_LIMIT",
           "PROXY_ORDER_DAILY_LIMIT",
@@ -32105,7 +32474,8 @@
           "/pages/stock-report/index",
           "/pages/locations/index",
           "/pages/suppliers/index",
-          "/pages/stock-settings/index"
+          "/pages/stock-settings/index",
+          "/pages/stock-align/index"
         ],
         "zh": ""
       },
@@ -32368,6 +32738,29 @@
         "zh": "店铺装修区块的排布方式"
       },
       {
+        "name": "SellRuleScope",
+        "client": "shared",
+        "values": [
+          "STORE",
+          "CATEGORY",
+          "GOODS"
+        ],
+        "zh": "线上可售规则的作用范围。"
+      },
+      {
+        "name": "SellRuleType",
+        "client": "shared",
+        "values": [
+          "ALL",
+          "RESERVE",
+          "RATIO",
+          "CAP",
+          "MANUAL",
+          "INHERIT"
+        ],
+        "zh": "线上可售规则。"
+      },
+      {
         "name": "SettleAccountType",
         "client": "shared",
         "values": [
@@ -32539,6 +32932,24 @@
         "zh": "员工账号状态"
       },
       {
+        "name": "StockAlignMode",
+        "client": "shared",
+        "values": [
+          "MALL",
+          "COUNT"
+        ],
+        "zh": "期初对齐方式。"
+      },
+      {
+        "name": "StockAlignNote",
+        "client": "shared",
+        "values": [
+          "ENTITY_MULTI_STORE",
+          "NO_ITEM"
+        ],
+        "zh": "对齐清单一行的提示。"
+      },
+      {
         "name": "StockDocKind",
         "client": "shared",
         "values": [
@@ -32546,6 +32957,16 @@
           "OUT"
         ],
         "zh": "库存台账的方向。"
+      },
+      {
+        "name": "StockSyncStatus",
+        "client": "shared",
+        "values": [
+          "NOT_ALIGNED",
+          "ALIGNED",
+          "SYNCING"
+        ],
+        "zh": "同步状态。"
       },
       {
         "name": "StoreAuditKind",

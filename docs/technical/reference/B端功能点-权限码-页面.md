@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 202 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 206 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,13 +21,13 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 39 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 42 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 20 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 19 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
@@ -88,6 +88,11 @@
 | 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
 | 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
 | 作废调拨草稿 | POST | `/biz/inventory/transfers/:no/void` | `mTransferVoid` | stock-docs、transfer |
+| 本店线上可售规则 | GET | `/biz/store/:storeNo/sell-rules` | `mSellRules` | stock-settings |
+| 存一条线上可售规则并重算 | PUT | `/biz/store/:storeNo/sell-rules` | `mSaveSellRule` | stock-settings |
+| 期初对齐清单：实存与商城库存逐件对照 | GET | `/biz/store/:storeNo/stock-alignment` | `mStockAlignment` | stock-align |
+| 本店库存同步状态 | GET | `/biz/store/:storeNo/stock-sync` | `mStockSync` | stock-settings |
+| 开 / 关本店库存同步（要先期初对齐） | PUT | `/biz/store/:storeNo/stock-sync` | `mSetStockSync` | stock-settings |
 
 ### `biz:goods`　建/改商品、上下架、规格模板、识图
 
@@ -234,6 +239,36 @@
 | 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
 | 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
 
+### `biz:store:admin`　建店、改名、停用、设默认店、挂收款号
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
+| 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
+| 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
+| 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
+| 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
+| 我的套餐（档位/用量/三档对比） | GET | `/biz/plan` | `mMyPlan` | me、plan、stores |
+| 自助开通试用（一主体一次） | POST | `/biz/plan/trial` | `mStartTrial` | plan、stores |
+| 可勾的权限点 | GET | `/biz/role-perms` | `mRolePerms` | role-detail |
+| 改角色 | POST | `/biz/role/:roleCode` | `mUpdateRole` | role-detail |
+| 删除自定义角色 | POST | `/biz/role/:roleCode/delete` | `mDeleteRole` | role-detail |
+| 角色列表（预置 + 自定义） | GET | `/biz/roles` | `mRoles` | role-detail、staff、staff-detail |
+| 建自定义角色 | POST | `/biz/roles` | `mCreateRole` | role-detail |
+| 员工列表 | GET | `/biz/staff` | `mStaffList` | role-detail、staff、staff-detail |
+| 加员工 | POST | `/biz/staff` | `mAddStaff` | — |
+| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff-detail |
+| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff-detail |
+| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff、staff-detail |
+| 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
+| 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
+| 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
+| 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
+| 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | stock-align |
+| 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
+
 ### `biz:finance`　结算账单、费率卡、收款进件、积分开关
 
 **可用角色**：老板
@@ -263,35 +298,6 @@
 | 我的提现 | GET | `/biz/settle/withdraw` | `mWithdrawPage` | withdraw |
 | 申请提现 | POST | `/biz/settle/withdraw` | `mApplyWithdraw` | withdraw |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-
-### `biz:store:admin`　建店、改名、停用、设默认店、挂收款号
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
-| 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
-| 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
-| 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
-| 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
-| 我的套餐（档位/用量/三档对比） | GET | `/biz/plan` | `mMyPlan` | me、plan、stores |
-| 自助开通试用（一主体一次） | POST | `/biz/plan/trial` | `mStartTrial` | plan、stores |
-| 可勾的权限点 | GET | `/biz/role-perms` | `mRolePerms` | role-detail |
-| 改角色 | POST | `/biz/role/:roleCode` | `mUpdateRole` | role-detail |
-| 删除自定义角色 | POST | `/biz/role/:roleCode/delete` | `mDeleteRole` | role-detail |
-| 角色列表（预置 + 自定义） | GET | `/biz/roles` | `mRoles` | role-detail、staff、staff-detail |
-| 建自定义角色 | POST | `/biz/roles` | `mCreateRole` | role-detail |
-| 员工列表 | GET | `/biz/staff` | `mStaffList` | role-detail、staff、staff-detail |
-| 加员工 | POST | `/biz/staff` | `mAddStaff` | — |
-| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff-detail |
-| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff-detail |
-| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff、staff-detail |
-| 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
-| 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
-| 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
-| 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
-| 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
 
 ### `biz:verify`　核销、批量核销、按码搜索
 
@@ -428,6 +434,7 @@
 | `statement` | `biz:finance` | `biz:finance` | 老板 | — |
 | `stats` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `stock` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
+| `stock-align` | `biz:stock` | `biz:stock`、`biz:store:admin` | 老板、店长、店员、理货员 | 店长（缺 biz:store:admin）　店员（缺 biz:store:admin）　理货员（缺 biz:store:admin） |
 | `stock-check` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-cross` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `stock-detail` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
