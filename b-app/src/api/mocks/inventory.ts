@@ -5,7 +5,8 @@
 
 import { db, delay } from "@shared/mock/db";
 import type {
-  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, StockBalance, StockCount, StockTransfer, Supplier,
+  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, SellRule, StockAlignRow, StockBalance, StockCount,
+  StockSyncState, StockTransfer, Supplier,
 } from "@shared/types";
 import {
   currentStoreNo,
@@ -68,6 +69,12 @@ export const inventoryMock: Pick<MerchantApi,
   | "mInvSetCategory"
   | "mGoodsInvModes"
   | "mGoodsSetInvMode"
+  | "mStockSync"
+  | "mSetStockSync"
+  | "mStockAlignment"
+  | "mConfirmAlignment"
+  | "mSellRules"
+  | "mSaveSellRule"
 > = {
   // ---- 进销存（P-18）
   //
@@ -530,6 +537,42 @@ export const inventoryMock: Pick<MerchantApi,
     invGoodsModes.set(goodsNo, body.mode);
     return delay<InvModeChange>({ status: "DONE", goods: [] });
   },
+
+  // ---- 门店库存同步：一家店从「未对齐」走到「同步中」（第二期）
+  async mStockSync(storeNo) {
+    return delay(syncStateOf(storeNo));
+  },
+  async mSetStockSync(storeNo, enabled) {
+    const st = syncStateOf(storeNo);
+    if (enabled && !st.alignedAt) throw new Error("这家店还没做期初对齐，先对齐再打开库存同步");
+    syncStates.set(storeNo, { ...st, enabled, state: enabled ? "SYNCING" : "ALIGNED" });
+    return delay(syncStateOf(storeNo));
+  },
+  async mStockAlignment() {
+    return delay<StockAlignRow[]>([
+      { goodsNo: "G001", title: "山东烟台红富士苹果", skuNo: "S001", spec: "约 5 斤", onHand: 45, reserved: 2,
+        mallStock: 200, mallLocked: 2, diff: -155, note: null },
+      { goodsNo: "G001", title: "山东烟台红富士苹果", skuNo: "S002", spec: "约 10 斤", onHand: 45, reserved: 0,
+        mallStock: 45, mallLocked: 0, diff: 0, note: null },
+      { goodsNo: "G002", title: "本地绿叶菜组合", skuNo: "S003", spec: null, onHand: null, reserved: null,
+        mallStock: 150, mallLocked: 0, diff: null, note: "NO_ITEM" },
+    ]);
+  },
+  async mConfirmAlignment(storeNo, mode) {
+    const st = syncStateOf(storeNo);
+    syncStates.set(storeNo, { ...st, state: st.enabled ? "SYNCING" : "ALIGNED", alignedAt: Date.now(), alignMode: mode });
+    return delay({ adjusted: mode === "MALL" ? 1 : 0 });
+  },
+  async mSellRules(storeNo) {
+    return delay(sellRules.filter((r) => r.storeNo === storeNo).map(({ storeNo: _s, ...r }) => r));
+  },
+  async mSaveSellRule(storeNo, rule) {
+    const scopeRef = rule.scopeType === "STORE" ? storeNo : rule.scopeRef ?? "";
+    const i = sellRules.findIndex((r) => r.storeNo === storeNo && r.scopeType === rule.scopeType && r.scopeRef === scopeRef);
+    const row = { storeNo, scopeType: rule.scopeType, scopeRef, ruleType: rule.ruleType, param: rule.param };
+    if (i >= 0) sellRules[i] = row; else sellRules.push(row);
+    return delay<SellRule>({ scopeType: row.scopeType, scopeRef, ruleType: row.ruleType, param: row.param });
+  },
 };
 
 /**
@@ -538,6 +581,13 @@ export const inventoryMock: Pick<MerchantApi,
  * 于是经营类目页上那个开关在 mock 下一行都不出现，看起来像没做。
  */
 const invSet = new Map<string, boolean>();
+const syncStates = new Map<string, StockSyncState>();
+const sellRules: (SellRule & { storeNo: string })[] = [];
+
+function syncStateOf(storeNo: string): StockSyncState {
+  return syncStates.get(storeNo)
+    ?? { storeNo, state: "NOT_ALIGNED", enabled: false, alignedAt: null, alignMode: null };
+}
 const UNTRACKED_TEMPLATES = new Set(["SERVICE", "VOUCHER", "VIRTUAL"]);
 
 function invCategoryRows(): InvCategorySetting[] {

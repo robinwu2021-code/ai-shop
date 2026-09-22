@@ -564,6 +564,23 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "切换结果：已改 / 被在途单据拦下 / 还有库存要确认。不是单据状态，是一次请求的三种答复，"
       + "所以不走 L1 状态词表" },
 
+  { decl: "shared:StockSyncStatus", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "门店库存同步的三档：未对齐 / 已对齐未开启 / 同步中。是一家店这项设置走到了哪一步，"
+      + "不是单据状态，所以不走 L1 状态词表" },
+
+  { decl: "shared:StockAlignMode", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "期初对齐方式：以商城为准（调实存）/ 已实地盘点（不调）。两者对实存的动作完全不同，店主要选清楚" },
+
+  { decl: "shared:StockAlignNote", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "对齐清单里某一行为什么不参与对齐：商城是全店一个数而主体多店 / 进销存里没有这件货" },
+
+  { decl: "shared:SellRuleScope", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "线上可售规则的作用范围：本店默认 / 类目 / 商品。取值顺序 商品 › 类目 › 本店默认" },
+
+  { decl: "shared:SellRuleType", dom: "inventory", shape: "CLASS", verdict: "OK",
+    note: "线上可售规则：全部可售 / 给门店留 N 件 / 放出 P% / 最多放 M 件 / 手动 / 跟随上一级。与后端 PrdSellRule 常量逐字一致；"
+      + "跟随上一级单列一档，是因为规则行只改不删（唯一键不含 deleted）" },
+
   { decl: "shared:StockDocKind", dom: "inventory", shape: "CLASS", verdict: "MERGE",
     note: "与 ops-web:InvDocKind 逐字相同（IN/OUT）。归一到 shared 是对的，"
       + "但要连 ops-web 的引用一起改，属独立一批" },

@@ -147,6 +147,7 @@ import type {
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer, I18nText,
   InvCategorySetting, GoodsInvMode, InvModeChange,
+  StockSyncState, StockAlignRow, SellRule,
   CertRecognition,
 } from "@shared/types";
 
@@ -671,4 +672,12 @@ export const httpApi: MerchantApi = {
     http.get<GoodsInvMode[]>(E.mGoodsInvModes.path, { goodsNos: goodsNos.join(",") }),
   mGoodsSetInvMode: (goodsNo, body) =>
     http.put<InvModeChange>(buildPath(E.mGoodsSetInvMode.path, { goodsNo }), body),
+  mStockSync: (storeNo) => http.get<StockSyncState>(buildPath(E.mStockSync.path, { storeNo })),
+  mSetStockSync: (storeNo, enabled) =>
+    http.put<StockSyncState>(buildPath(E.mSetStockSync.path, { storeNo }), { enabled }),
+  mStockAlignment: (storeNo) => http.get<StockAlignRow[]>(buildPath(E.mStockAlignment.path, { storeNo })),
+  mConfirmAlignment: (storeNo, mode) =>
+    http.post<{ adjusted: number }>(buildPath(E.mConfirmAlignment.path, { storeNo }), { mode }),
+  mSellRules: (storeNo) => http.get<SellRule[]>(buildPath(E.mSellRules.path, { storeNo })),
+  mSaveSellRule: (storeNo, rule) => http.put<SellRule>(buildPath(E.mSaveSellRule.path, { storeNo }), rule),
 };

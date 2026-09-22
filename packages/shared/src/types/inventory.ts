@@ -452,3 +452,72 @@ export interface InvModeChange {
   /** BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 */
   goods: InvAffectedGoods[];
 }
+
+// ---- 门店库存同步（TDD-商品纳入进销存开关 §18）
+//
+// 形状逐字对着后端 `StockSyncAppService.SyncState / AlignRow / RuleRow`。
+
+/** 同步状态。NOT_ALIGNED 还没做期初对齐 · ALIGNED 已对齐、未开启 · SYNCING 同步中 */
+export type StockSyncStatus = "NOT_ALIGNED" | "ALIGNED" | "SYNCING";
+
+/** 期初对齐方式。MALL 以商城库存为准（调实存）· COUNT 已实地盘点（不调） */
+export type StockAlignMode = "MALL" | "COUNT";
+
+export interface StockSyncState {
+  /** 门店号 */
+  storeNo: string;
+  /** 同步状态 */
+  state: StockSyncStatus;
+  /** 是否在同步 */
+  enabled: boolean;
+  /** 期初对齐时间（毫秒）；没对齐为 null */
+  alignedAt: number | null;
+  /** 期初对齐方式；没对齐为 null */
+  alignMode: StockAlignMode | null;
+}
+
+/** 对齐清单一行的提示。ENTITY_MULTI_STORE 这件货在商城是全店共用一个数、要先按店设一次库存 · NO_ITEM 进销存里还没有这件货 */
+export type StockAlignNote = "ENTITY_MULTI_STORE" | "NO_ITEM";
+
+export interface StockAlignRow {
+  /** 商品号 */
+  goodsNo: string;
+  /** 商品标题 */
+  title: string;
+  /** SKU 号 */
+  skuNo: string;
+  /** 规格文字 */
+  spec: string | null;
+  /** 进销存实存；进销存里没有这件货时为 null */
+  onHand: number | null;
+  /** 进销存占用（线上订单锁着的） */
+  reserved: number | null;
+  /** 商城库存总量（含已锁定），与实存同口径 */
+  mallStock: number;
+  /** 商城已锁定 */
+  mallLocked: number;
+  /** 实存 − 商城库存；为 null 表示比不了 */
+  diff: number | null;
+  /** 为什么这一行不参与对齐；正常为 null */
+  note: StockAlignNote | null;
+}
+
+/** 线上可售规则的作用范围。STORE 本店默认 · CATEGORY 某个类目 · GOODS 某件商品 */
+export type SellRuleScope = "STORE" | "CATEGORY" | "GOODS";
+
+/**
+ * 线上可售规则。ALL 全部可售 · RESERVE 给门店留 N 件 · RATIO 放出 P% · CAP 最多放 M 件 · MANUAL 手动 ·
+ * INHERIT 跟随上一级（类目 / 商品撤掉覆盖时存这一档）
+ */
+export type SellRuleType = "ALL" | "RESERVE" | "RATIO" | "CAP" | "MANUAL" | "INHERIT";
+
+export interface SellRule {
+  /** 作用范围 */
+  scopeType: SellRuleScope;
+  /** STORE 时为门店号，其余为类目号 / 商品号 */
+  scopeRef: string;
+  /** 规则 */
+  ruleType: SellRuleType;
+  /** RESERVE / CAP / MANUAL 为件数，RATIO 为百分比 */
+  param: number;
+}

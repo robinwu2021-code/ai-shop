@@ -30,8 +30,8 @@ public class StockSyncServiceImpl implements StockSyncService {
 
     private static final Set<String> SCOPES = Set.of(
             PrdSellRule.SCOPE_STORE, PrdSellRule.SCOPE_CATEGORY, PrdSellRule.SCOPE_GOODS);
-    private static final Set<String> RULES = Set.of(
-            PrdSellRule.ALL, PrdSellRule.RESERVE, PrdSellRule.RATIO, PrdSellRule.CAP, PrdSellRule.MANUAL);
+    private static final Set<String> RULES = Set.of(PrdSellRule.ALL, PrdSellRule.RESERVE, PrdSellRule.RATIO,
+            PrdSellRule.CAP, PrdSellRule.MANUAL, PrdSellRule.INHERIT);
 
     private final SellRuleMapper ruleMapper;
     private final StoreStockSyncMapper syncMapper;
@@ -77,6 +77,8 @@ public class StockSyncServiceImpl implements StockSyncService {
         }
         return rows.stream()
                 .filter(r -> scope.equals(r.getScopeType()) && ref.equals(r.getScopeRef()))
+                // INHERIT = 这一级撤掉了覆盖，往上一级取
+                .filter(r -> !PrdSellRule.INHERIT.equals(r.getRuleType()))
                 .findFirst().orElse(null);
     }
 
@@ -95,6 +97,10 @@ public class StockSyncServiceImpl implements StockSyncService {
                                 String operator) {
         if (storeNo == null || !SCOPES.contains(scopeType) || !RULES.contains(ruleType)
                 || param < 0 || (PrdSellRule.RATIO.equals(ruleType) && (param < 1 || param > 100))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (PrdSellRule.INHERIT.equals(ruleType) && PrdSellRule.SCOPE_STORE.equals(scopeType)) {
+            // 本店默认没有上一级可回
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         String ref = PrdSellRule.SCOPE_STORE.equals(scopeType) ? storeNo : scopeRef;

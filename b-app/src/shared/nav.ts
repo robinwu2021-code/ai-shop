@@ -91,6 +91,7 @@ export const ROUTES = {
   locations: "/pages/locations/index",
   suppliers: "/pages/suppliers/index",
   stockSettings: "/pages/stock-settings/index",
+  stockAlign: "/pages/stock-align/index",
 } as const;
 
 /**

@@ -2,7 +2,7 @@
 //
 // 设置页与编辑商品页走同一套判，说法也要同一套 —— 两处各写一份，迟早一处说「待收货」一处说「在途」。
 // 不碰 i18n 实例：翻译函数由调用方传进来，于是它能在 node 里直接断言。
-import type { InvAffectedGoods, InvMode } from "@shared/types";
+import type { InvAffectedGoods, InvMode, SellRule, SellRuleType } from "@shared/types";
 
 type T = (key: string, params?: Record<string, unknown>) => unknown;
 
@@ -31,4 +31,15 @@ export function invModeLabel(t: T, mode: InvMode, categoryManaged: boolean): str
   if (mode === "ON") return String(t("invMode.on"));
   if (mode === "OFF") return String(t("invMode.off"));
   return String(t("invMode.inherit", { state: String(t(categoryManaged ? "invMode.on" : "invMode.off")) }));
+}
+
+/** 规则那一格的字：「给门店留 3 件」「放出 80%」。没有规则（或跟随上一级）时由调用方传 fallback */
+export function sellRuleText(t: T, rule: Pick<SellRule, "ruleType" | "param"> | null | undefined): string {
+  const type: SellRuleType = rule?.ruleType ?? "ALL";
+  return String(t(`stockSync.rule.${type}`, { n: rule?.param ?? 0 }));
+}
+
+/** 需要填数的规则 */
+export function ruleNeedsParam(type: SellRuleType): boolean {
+  return type === "RESERVE" || type === "RATIO" || type === "CAP" || type === "MANUAL";
 }

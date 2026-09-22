@@ -28,6 +28,10 @@ public class PrdSellRule extends BaseEntity {
     public static final String CAP = "CAP";
     /** 手动：店主给的额度，只降不升（可卖超过可用时压到可用） */
     public static final String MANUAL = "MANUAL";
+    /**
+     * 回到上一级（类目 / 商品专用）。唯一键不含 deleted、行只改不删，所以「撤掉这条覆盖」存成这一档，取值时跳过
+     */
+    public static final String INHERIT = "INHERIT";
 
     private String storeNo;
     private String scopeType;

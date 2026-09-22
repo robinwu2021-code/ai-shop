@@ -118,6 +118,7 @@ import type {
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
   InvCategorySetting, GoodsInvMode, InvMode, InvModeChange,
+  StockSyncState, StockAlignRow, StockAlignMode, SellRule,
   FulfillmentImpactItem,
   SpecValueAdded,
   ScopePreview,
@@ -1777,4 +1778,17 @@ export interface MerchantApi {
   mGoodsInvModes(goodsNos: string[]): Promise<GoodsInvMode[]>;
   /** 单件优先于品类。判据与品类开关同一套 */
   mGoodsSetInvMode(goodsNo: string, body: { mode: InvMode; confirm?: boolean }): Promise<InvModeChange>;
+
+  /** 本店库存同步状态 */
+  mStockSync(storeNo: string): Promise<StockSyncState>;
+  /** 开 / 关同步。没做期初对齐时打开返回 70069 */
+  mSetStockSync(storeNo: string, enabled: boolean): Promise<StockSyncState>;
+  /** 期初对齐清单 */
+  mStockAlignment(storeNo: string): Promise<StockAlignRow[]>;
+  /** 确认期初对齐。返回以商城为准时调了几行实存 */
+  mConfirmAlignment(storeNo: string, mode: StockAlignMode): Promise<{ adjusted: number }>;
+  /** 本店线上可售规则 */
+  mSellRules(storeNo: string): Promise<SellRule[]>;
+  /** 存一条规则（STORE 级不传 scopeRef） */
+  mSaveSellRule(storeNo: string, rule: Omit<SellRule, "scopeRef"> & { scopeRef?: string }): Promise<SellRule>;
 }

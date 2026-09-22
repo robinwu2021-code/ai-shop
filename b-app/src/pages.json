@@ -826,6 +826,18 @@
       }
     },
     {
+      "path": "pages/stock-align/index",
+      "style": {
+        "navigationBarTitleText": "期初对齐",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/stock-settings/index",
       "style": {
         "navigationBarTitleText": "库存设置",
