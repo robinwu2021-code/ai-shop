@@ -67,7 +67,7 @@
 | 改进货草稿 | PUT | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | — |
 | 进货过账 | POST | `/biz/inventory/inbounds/:no/post` | `mInboundPost` | purchase-edit |
 | 作废入库单 | POST | `/biz/inventory/inbounds/:no/void` | `mInboundVoid` | stock-docs |
-| 按平台 SKU 查进销存的账 | GET | `/biz/inventory/item-by-sku` | `mItemBySku` | goods-list |
+| 按平台 SKU 查进销存的账 | GET | `/biz/inventory/item-by-sku` | `mItemBySku` | goods-edit、goods-list |
 | 单件库存明细 | GET | `/biz/inventory/items/:itemId` | `mStockItem` | stock-detail |
 | 按条码找货（没绑过回 null，不是 404） | GET | `/biz/inventory/items/by-barcode` | `mItemByBarcode` | stock-check |
 | 库存变动明细 | GET | `/biz/inventory/ledger` | `mStockLedger` | stock-detail、stock-docs |

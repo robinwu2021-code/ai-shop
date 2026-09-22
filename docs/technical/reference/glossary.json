@@ -8894,6 +8894,18 @@
           "ar": "تمت إضافة {n} / {m}"
         },
         {
+          "key": "goods.invOnHand",
+          "zh-CN": "进销存 {n}",
+          "en": "Inventory {n}",
+          "ar": "المخزون {n}"
+        },
+        {
+          "key": "goods.invView",
+          "zh-CN": "查看",
+          "en": "View",
+          "ar": "عرض"
+        },
+        {
           "key": "goods.langAr",
           "zh-CN": "ع",
           "en": "AR",
@@ -8910,6 +8922,12 @@
           "zh-CN": "中",
           "en": "ZH",
           "ar": "ZH"
+        },
+        {
+          "key": "goods.limitNone",
+          "zh-CN": "不限",
+          "en": "No limit",
+          "ar": "بلا حد"
         },
         {
           "key": "goods.limitPerUser",
@@ -9422,12 +9440,6 @@
           "ar": "يجب أن يكون المخزون 0 أو عدداً صحيحاً موجباً"
         },
         {
-          "key": "goods.stockStoreScope",
-          "zh-CN": "仅修改「{s}」的库存",
-          "en": "Only {s}",
-          "ar": "{s} فقط"
-        },
-        {
           "key": "goods.storePriceTip",
           "zh-CN": "仅调整本门店售价，清空后与主体价一致",
           "en": "Changes this store's price only; clear it to follow the main price",
@@ -9468,6 +9480,12 @@
           "zh-CN": "如 件 / 斤 / kg",
           "en": "e.g. item / jin / kg",
           "ar": "مثال: قطعة / جين / كغ"
+        },
+        {
+          "key": "goods.unitPiece",
+          "zh-CN": "件",
+          "en": "pcs",
+          "ar": "قطعة"
         },
         {
           "key": "goods.unpriced",
@@ -10212,6 +10230,12 @@
           "zh-CN": "跟随品类（{state}）",
           "en": "Follow category ({state})",
           "ar": "حسب الفئة ({state})"
+        },
+        {
+          "key": "invMode.inheritOf",
+          "zh-CN": "{state} · 跟随{c}",
+          "en": "{state} · follows {c}",
+          "ar": "{state} · حسب {c}"
         },
         {
           "key": "invMode.label",

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 462,
+        "b-app": 464,
         "c-app": 65
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 330,
+        "b-app": 332,
         "c-app": 258
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 113,
         "c-app": 77
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 134,
         "c-app": 76
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 495,
+        "b-app": 497,
         "c-app": 180
       }
     },
@@ -2221,7 +2221,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 16,
+        "b-app": 17,
         "c-app": 0,
         "lib": 0
       },
@@ -2295,7 +2295,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 114,
+        "b-app": 115,
         "c-app": 22,
         "lib": 13
       },
@@ -3643,6 +3643,7 @@
         "sh-actionbar",
         "sh-add",
         "sh-cover",
+        "sh-go",
         "sh-icon-btn",
         "sh-icon",
         "sh-kv",
@@ -3651,9 +3652,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 316,
-      "localSelectors": 67,
-      "localCssLines": 294,
+      "libClassHits": 325,
+      "localSelectors": 71,
+      "localCssLines": 309,
       "rolled": []
     },
     {
