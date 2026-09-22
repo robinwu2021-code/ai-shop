@@ -103,12 +103,12 @@ class StockSyncWritebackTest {
         postInbound(s, 10);
         pump();
 
-        ok(put("/biz/stores/" + s.storeNo + "/sell-rules")
+        ok(put("/biz/store/" + s.storeNo + "/sell-rules")
                 .content("{\"scopeType\":\"STORE\",\"ruleType\":\"RESERVE\",\"param\":3}"), s.token);
         assertThat(sellable(s)).as("本店默认保留 3 件给柜台").isEqualTo(7);
 
         // 单品规则盖过本店默认
-        ok(put("/biz/stores/" + s.storeNo + "/sell-rules")
+        ok(put("/biz/store/" + s.storeNo + "/sell-rules")
                 .content("{\"scopeType\":\"GOODS\",\"scopeRef\":\"" + s.goodsNo + "\",\"ruleType\":\"CAP\",\"param\":4}"),
                 s.token);
         assertThat(sellable(s)).as("单品封顶 4 件，优先于本店默认").isEqualTo(4);
@@ -120,7 +120,7 @@ class StockSyncWritebackTest {
         Shop s = syncingShop();
         postInbound(s, 10);
         pump();
-        ok(put("/biz/stores/" + s.storeNo + "/sell-rules")
+        ok(put("/biz/store/" + s.storeNo + "/sell-rules")
                 .content("{\"scopeType\":\"GOODS\",\"scopeRef\":\"" + s.goodsNo + "\",\"ruleType\":\"MANUAL\",\"param\":6}"),
                 s.token);
         assertThat(sellable(s)).as("手动 6 件：可卖 10 不会被抬，也不会被压（10 ≤ 可用 10）——等于不动").isEqualTo(10);
@@ -136,7 +136,7 @@ class StockSyncWritebackTest {
     @DisplayName("★★★ 没做期初对齐不许开同步；没开同步的店，过账不动商城")
     void syncNeedsAlignmentAndIsOffByDefault() throws Exception {
         Shop s = shop();
-        String body = send(put("/biz/stores/" + s.storeNo + "/stock-sync").content("{\"enabled\":true}"), s.token);
+        String body = send(put("/biz/store/" + s.storeNo + "/stock-sync").content("{\"enabled\":true}"), s.token);
         assertThat(json.readTree(body).get("code").asInt()).as("没对齐 → 70069").isEqualTo(70069);
 
         postInbound(s, 10);
@@ -190,16 +190,16 @@ class StockSyncWritebackTest {
     void alignToMallAdjustsOnHand() throws Exception {
         Shop s = shop();
         DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 8));
-        JsonNode rows = ok(get("/biz/stores/" + s.storeNo + "/stock-alignment"), s.token);
+        JsonNode rows = ok(get("/biz/store/" + s.storeNo + "/stock-alignment"), s.token);
         JsonNode row = rows.get(0);
         assertThat(row.get("mallStock").asInt()).isEqualTo(8);
         assertThat(row.get("diff").asInt()).as("进销存 0、商城 8").isEqualTo(-8);
 
-        JsonNode r = ok(post("/biz/stores/" + s.storeNo + "/stock-alignment/confirm").content("{\"mode\":\"MALL\"}"),
+        JsonNode r = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/confirm").content("{\"mode\":\"MALL\"}"),
                 s.token);
         assertThat(r.get("adjusted").asInt()).isEqualTo(1);
         assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isEqualTo(8);
-        assertThat(ok(get("/biz/stores/" + s.storeNo + "/stock-sync"), s.token).get("state").asString())
+        assertThat(ok(get("/biz/store/" + s.storeNo + "/stock-sync"), s.token).get("state").asString())
                 .as("对齐后是「已对齐未开启」—— 打开是店主另一个动作").isEqualTo("ALIGNED");
     }
 
@@ -211,8 +211,8 @@ class StockSyncWritebackTest {
     /** 一家对齐过、开了同步的店 */
     private Shop syncingShop() throws Exception {
         Shop s = shop();
-        ok(post("/biz/stores/" + s.storeNo + "/stock-alignment/confirm").content("{\"mode\":\"COUNT\"}"), s.token);
-        JsonNode st = ok(put("/biz/stores/" + s.storeNo + "/stock-sync").content("{\"enabled\":true}"), s.token);
+        ok(post("/biz/store/" + s.storeNo + "/stock-alignment/confirm").content("{\"mode\":\"COUNT\"}"), s.token);
+        JsonNode st = ok(put("/biz/store/" + s.storeNo + "/stock-sync").content("{\"enabled\":true}"), s.token);
         assertThat(st.get("state").asString()).isEqualTo("SYNCING");
         return s;
     }

@@ -40,41 +40,41 @@ public class BizStockSyncController {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
-    @GetMapping("/biz/stores/{storeNo}/stock-sync")
+    @GetMapping("/biz/store/{storeNo}/stock-sync")
     public StockSyncAppService.SyncState state(@PathVariable String storeNo) {
         entity(storeNo);
         return service.state(storeNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
-    @PutMapping("/biz/stores/{storeNo}/stock-sync")
+    @PutMapping("/biz/store/{storeNo}/stock-sync")
     public StockSyncAppService.SyncState setEnabled(@PathVariable String storeNo, @RequestBody EnabledReq req) {
         return service.setEnabled(entity(storeNo), storeNo, Boolean.TRUE.equals(req.enabled()),
                 SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
-    @GetMapping("/biz/stores/{storeNo}/stock-alignment")
+    @GetMapping("/biz/store/{storeNo}/stock-alignment")
     public List<StockSyncAppService.AlignRow> alignment(@PathVariable String storeNo) {
         return service.alignment(entity(storeNo), storeNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
-    @PostMapping("/biz/stores/{storeNo}/stock-alignment/confirm")
+    @PostMapping("/biz/store/{storeNo}/stock-alignment/confirm")
     public AlignResult confirm(@PathVariable String storeNo, @RequestBody AlignReq req) {
         return new AlignResult(service.confirmAlignment(entity(storeNo), storeNo, req.mode(),
                 SecurityUtils.currentUserNo()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
-    @GetMapping("/biz/stores/{storeNo}/sell-rules")
+    @GetMapping("/biz/store/{storeNo}/sell-rules")
     public List<StockSyncAppService.RuleRow> rules(@PathVariable String storeNo) {
         entity(storeNo);
         return service.rules(storeNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
-    @PutMapping("/biz/stores/{storeNo}/sell-rules")
+    @PutMapping("/biz/store/{storeNo}/sell-rules")
     public StockSyncAppService.RuleRow saveRule(@PathVariable String storeNo, @RequestBody RuleReq req) {
         return service.saveRule(entity(storeNo), storeNo, req.scopeType(), req.scopeRef(), req.ruleType(),
                 req.param() == null ? 0 : req.param(), SecurityUtils.currentUserNo());

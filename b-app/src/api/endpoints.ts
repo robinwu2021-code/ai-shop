@@ -403,12 +403,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mInvSetCategory: { method: "PUT", path: "/biz/inventory/category-setting/:categoryNo", auth: true, summary: "拨一个品类记不记库存（有在途拒绝、有库存要确认）" },
   mGoodsInvModes: { method: "GET", path: "/biz/goods/inv-mode", auth: true, summary: "几件商品记不记库存（列表标签、编辑页那一行）" },
   mGoodsSetInvMode: { method: "PUT", path: "/biz/goods/:goodsNo/inv-mode", auth: true, summary: "单件商品记不记库存（跟随品类 / 记 / 不记）" },
-  mStockSync: { method: "GET", path: "/biz/stores/:storeNo/stock-sync", auth: true, summary: "本店库存同步状态" },
-  mSetStockSync: { method: "PUT", path: "/biz/stores/:storeNo/stock-sync", auth: true, summary: "开 / 关本店库存同步（要先期初对齐）" },
-  mStockAlignment: { method: "GET", path: "/biz/stores/:storeNo/stock-alignment", auth: true, summary: "期初对齐清单：实存与商城库存逐件对照" },
-  mConfirmAlignment: { method: "POST", path: "/biz/stores/:storeNo/stock-alignment/confirm", auth: true, summary: "确认期初对齐（以商城为准 / 已实地盘点）" },
-  mSellRules: { method: "GET", path: "/biz/stores/:storeNo/sell-rules", auth: true, summary: "本店线上可售规则" },
-  mSaveSellRule: { method: "PUT", path: "/biz/stores/:storeNo/sell-rules", auth: true, summary: "存一条线上可售规则并重算" },
+  mStockSync: { method: "GET", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "本店库存同步状态" },
+  mSetStockSync: { method: "PUT", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "开 / 关本店库存同步（要先期初对齐）" },
+  mStockAlignment: { method: "GET", path: "/biz/store/:storeNo/stock-alignment", auth: true, summary: "期初对齐清单：实存与商城库存逐件对照" },
+  mConfirmAlignment: { method: "POST", path: "/biz/store/:storeNo/stock-alignment/confirm", auth: true, summary: "确认期初对齐（以商城为准 / 已实地盘点）" },
+  mSellRules: { method: "GET", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "本店线上可售规则" },
+  mSaveSellRule: { method: "PUT", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "存一条线上可售规则并重算" },
 };
 
 /**

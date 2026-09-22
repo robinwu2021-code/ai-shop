@@ -235,7 +235,7 @@
 | 迁移（进销存库） | 出库单 / 入库单 `purpose` 新增 `OFFLINE_SALE` / `OFFLINE_RETURN`；期初对齐用现有盘点（原因码 `CHECK`） |
 | 事件 | `SkuUpserted` 载荷加 `invManaged`；新增 `GOODS_INV_MODE_CHANGED`；进销存过账发 `STOCK_POSTED(storeNo, skuNo, delta, docNo)` 供写回 |
 | 消费方 | 投影据 `invManaged` 建 / 停用物料；`DualWriteStockPort` 不纳入的不入镜像；新增写回消费者按 §6 |
-| 端点 | `GET/PUT /biz/inventory/category-settings`；`GET/PUT /biz/stores/{storeNo}/sell-rules`；`POST /biz/stores/{storeNo}/offline-sales`（及撤销）；`GET /biz/stores/{storeNo}/stock-alignment` + `POST …/confirm`；商品保存体加 `invMode`、`sellRule` |
+| 端点 | `GET/PUT /biz/inventory/category-settings`；`GET/PUT /biz/store/{storeNo}/sell-rules`；`POST /biz/stores/{storeNo}/offline-sales`（及撤销）；`GET /biz/store/{storeNo}/stock-alignment` + `POST …/confirm`；商品保存体加 `invMode`、`sellRule` |
 | 登记 | 新 `/biz` 端点按七处登记；新枚举进枚举登记表 |
 
 ## 13 分期
@@ -346,17 +346,17 @@
 
 ### 18.4 期初对齐（§7）
 
-- `GET /biz/stores/{storeNo}/stock-alignment`：本店接入进销存的每个 SKU 一行 —— 商品、规格、实存、占用、商城库存、差额
-- `POST /biz/stores/{storeNo}/stock-alignment/confirm`，`{mode: "MALL" | "COUNT"}`：
+- `GET /biz/store/{storeNo}/stock-alignment`：本店接入进销存的每个 SKU 一行 —— 商品、规格、实存、占用、商城库存、差额
+- `POST /biz/store/{storeNo}/stock-alignment/confirm`，`{mode: "MALL" | "COUNT"}`：
   - `MALL`（以商城为准）：对有差额的行各调一次实存（盘点，原因码 `CHECK`）把实存调成商城库存 + 锁定，过账
   - `COUNT`（已实地盘点）：不调实存，只记对齐时间 —— 盘点单本身已经把实存改对了
   - 两种都写 `prd_store_stock_sync.aligned_at`，**并立刻按 T 写回一次**（`source_ref=ALIGN:…`）
-- `PUT /biz/stores/{storeNo}/stock-sync`，`{enabled}`：打开要求 `aligned_at` 不为空，否则 70069 `STOCK_SYNC_NOT_ALIGNED`
+- `PUT /biz/store/{storeNo}/stock-sync`，`{enabled}`：打开要求 `aligned_at` 不为空，否则 70069 `STOCK_SYNC_NOT_ALIGNED`
 
 ### 18.5 规则接口（§4）
 
-- `GET /biz/stores/{storeNo}/sell-rules`：本店默认 + 按品类覆盖 + 按单品覆盖
-- `PUT /biz/stores/{storeNo}/sell-rules`：`{scopeType, scopeRef, ruleType, param}`，保存后触发受影响 SKU 重算
+- `GET /biz/store/{storeNo}/sell-rules`：本店默认 + 按品类覆盖 + 按单品覆盖
+- `PUT /biz/store/{storeNo}/sell-rules`：`{scopeType, scopeRef, ruleType, param}`，保存后触发受影响 SKU 重算
 - 校验：RESERVE/CAP/MANUAL 的 `param ≥ 0`，RATIO 在 1–100；越界 10400
 
 ### 18.6「改库存」（§8）
