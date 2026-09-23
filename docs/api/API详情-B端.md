@@ -8091,10 +8091,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `skuNo` | `string` | 是 | — |
-| `title` | `string` | 是 | — |
-| `spec` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
+| `skuNo` | `string` | 是 | 商城的 SKU 号 —— 记账时端上传的就是它，进销存那侧再换成物料号 |
+| `title` | `string` | 是 | 商品名（服务端查了写快照口径的当下值，人读的） |
+| `spec` | `string` | 是 | 规格描述（「10 斤装」）；没有规格时是空串 |
+| `qty` | `number` | 是 | 这件货卖了几件 |
 
 ### OfflineSaleRow
 
@@ -8103,10 +8103,10 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `docNo` | `string` | 是 | 出库单号。撤销时带它回去 |
-| `occurredAt` | `string` | 是 | — |
-| `totalQty` | `number` | 是 | — |
+| `occurredAt` | `string` | 是 | 记这一笔的时间（本地时间，`YYYY-MM-DDTHH:mm:ss`）。列表按天分组、只显示到分 |
+| `totalQty` | `number` | 是 | 这一笔合计几件 —— 卖出的口径只有件数 |
 | `revoked` | `boolean` | 是 | 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 |
-| `items` | [`OfflineSaleItem`](#offlinesaleitem)\[\] | 是 | — |
+| `items` | [`OfflineSaleItem`](#offlinesaleitem)\[\] | 是 | 这一笔卖了哪几件货 |
 
 ### Order
 
