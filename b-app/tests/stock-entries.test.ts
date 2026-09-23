@@ -17,17 +17,17 @@ const keys = (list: { key: string }[]) => list.map((e) => e.key);
  *   盘点没了 → 三枚　·　调拨被拦 → 三枚（回抽屉，那儿写得下原因）　·　都没 → 两枚
  */
 describe("stock-entries", () => {
-  it("底下那条只留进货和报损", () => {
+  it("底下那条只留进货和线下卖出", () => {
     const { primary, more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 3 });
-    expect(keys(primary)).toEqual(["purchase", "out", "check", "transfer"]);
-    // 盘点与调拨**不在**底下那条里 —— 它们一周到一月才一次
+    expect(keys(primary)).toEqual(["purchase", "offlineSale", "check", "transfer"]);
+    // 盘点与调拨**不在**底下那条里 —— 它们一周到一月才一次；报损同理（第三期让位给线下卖出）
     expect(keys(more)).not.toContain("check");
     expect(keys(more)).not.toContain("transfer");
   });
 
-  it("「更多」里是六条，按多久用一次排", () => {
+  it("「更多」里按多久用一次排", () => {
     const { more } = stockEntries({ can: boss, multiStore: false, canStartCount: true, usableLocations: 3 });
-    expect(keys(more)).toEqual(["docs", "report", "locations", "suppliers"]);
+    expect(keys(more)).toEqual(["out", "docs", "report", "locations", "suppliers"]);
   });
 
   it("跨店只给多门店商家，且不在那六条里", () => {
@@ -82,8 +82,8 @@ describe("stock-entries", () => {
     expect(keys(more)).not.toContain("report");
     expect(keys(more)).not.toContain("locations");
     // 店员也是多门店商家的店员，跨店那一条跟着 multiStore 走
-    expect(keys(more)).toEqual(["docs", "suppliers", "cross"]);
-    expect(keys(primary)).toEqual(["purchase", "out", "check", "transfer"]);
+    expect(keys(more)).toEqual(["out", "docs", "suppliers", "cross"]);
+    expect(keys(primary)).toEqual(["purchase", "offlineSale", "check", "transfer"]);
   });
 
   it("一个码都没有的人：菜单是空的，不是一排点不动的名字", () => {
@@ -99,8 +99,8 @@ describe("stock-entries", () => {
       can: boss, multiStore: false, canStartCount: false, usableLocations: 3,
     });
     // 整条拿掉，不是灰掉 —— 这件事正由上面那条「继续盘点」接着
-    expect(keys(open.more)).toEqual(["docs", "report", "locations", "suppliers"]);
-    expect(keys(open.primary)).toEqual(["purchase", "out", "transfer"]);
+    expect(keys(open.more)).toEqual(["out", "docs", "report", "locations", "suppliers"]);
+    expect(keys(open.primary)).toEqual(["purchase", "offlineSale", "transfer"]);
     expect(keys(open.primary)).not.toContain("check");
 
     // 没单开着时它照常占条上第三枚
