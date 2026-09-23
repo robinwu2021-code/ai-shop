@@ -50,7 +50,7 @@
 | 员工 | `mch_account` 是**登录账号**，`mch_store_role` 是权限角色 | `shop-merchant/entity/*` | ⚠️ **没有「服务人员档案」**（技能、等级、提成、排班），见 §7.2 |
 | 事件 | outbox + `OutboxDispatchJob`，交易域已发 `OrderPaid` | `shop-base/event/*` | ✅ 行业编排挂事件，不侵入交易 |
 | 设备 | **无** | — | ❌ 打印从零起，见 §8 |
-| 任务 | 独立 job 域，支持手动触发 | `shop-job*` | ✅ 排班生成、超时未结账巡检直接挂 |
+| 任务 | 独立 job 域，支持手动触发 | `job-worker*` | ✅ 排班生成、超时未结账巡检直接挂 |
 
 **一句话**：统一层缺口只有四处 —— 堂食履约、可约资源、人员档案、会员资产（储值/次卡）；
 其余全是行业模块自己的事。
@@ -371,7 +371,7 @@ prn_job(job_no, store_no, printer_no, template_code, payload, status, retry_coun
 shop-industry-food        shop-industry-service      ← 独立 maven 项目，互不认识
         └──────── 只依赖 ────────┘
                     ▼
-             shop-industry-spi                          ← 零依赖契约（照 shop-job-api 的写法）
+             shop-industry-spi                          ← 零依赖契约（照 job-api 的写法）
                     ▲
                     └── 实现 ── shop-app / shop-core / shop-merchant / shop-channel
                                         │ 依赖

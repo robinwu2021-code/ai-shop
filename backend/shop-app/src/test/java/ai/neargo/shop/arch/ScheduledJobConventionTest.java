@@ -131,7 +131,7 @@ class ScheduledJobConventionTest {
         assertThat(locks).as("一个 @SchedulerLock(name=…) 都没抽到，先怀疑正则").isNotEmpty();
 
         // 声明可以写在任何模块里（进销存那三个的声明在 shop-app/invbridge，
-        // 因为 shop-inventory 刻意不依赖 shop-job-api —— 它要能独立交付）
+        // 因为 shop-inventory 刻意不依赖 job-api —— 它要能独立交付）
         StringBuilder allSources = new StringBuilder();
         for (Path module : Files.list(BACKEND).filter(Files::isDirectory).toList()) {
             Path src = module.resolve("src/main/java");

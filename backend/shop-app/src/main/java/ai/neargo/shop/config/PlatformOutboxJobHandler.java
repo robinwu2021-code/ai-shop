@@ -36,7 +36,7 @@ import org.springframework.context.annotation.Configuration;
  * <h2>为什么声明写在这里而不是任务旁边</h2>
  *
  * {@code OutboxDispatchJob} 住在 {@code shop-store-mybatis}，那个模块<b>不依赖
- * {@code shop-job-api}</b>。平台侧其余的声明也都在 {@code shop-app} 下，本类照办。
+ * {@code job-api}</b>。平台侧其余的声明也都在 {@code shop-app} 下，本类照办。
  */
 @Configuration
 @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")

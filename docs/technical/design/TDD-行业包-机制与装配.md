@@ -2,7 +2,7 @@
 
 状态：**草稿 · 待确认** · 创建 2026-08-27
 关联：[ADR-019 行业工作流做成独立行业包](../ADR/ADR-019-行业工作流做成独立行业包.md) · [核心能力清单](../reference/核心能力清单.md) · [行业包功能清单](../reference/行业包功能清单.md) · [TDD-行业化扩展](../TDD-行业化扩展-餐饮与服务业.md)
-先例：`shop-job-api`（零依赖契约模块）· `shop-inventory`（独立数据源与独立迁移历史）· ADR-016（一份 jar 三个 profile）
+先例：`job-api`（零依赖契约模块）· `shop-inventory`（独立数据源与独立迁移历史）· ADR-016（一份 jar 三个 profile）
 
 ---
 
@@ -74,7 +74,7 @@ ALTER TABLE mch_store ADD COLUMN industry_pkg VARCHAR(32) NOT NULL DEFAULT 'RETA
 
 ## 3. 契约：`shop-industry-spi`
 
-新增模块，**零依赖**（连 Spring 都不引），照 `shop-job-api` 的写法。
+新增模块，**零依赖**（连 Spring 都不引），照 `job-api` 的写法。
 它是基座与行业包之间**唯一**的共同语言。
 
 > 为什么必须有它：没有它，行业包为了拿订单就得引 `shop-core`，

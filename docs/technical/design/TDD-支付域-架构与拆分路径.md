@@ -25,7 +25,7 @@
 
 ## L2 · 一、模块划分
 
-**模块划分照 `shop-job` 的四层形状**（`-api` / `-core` / `-store` + 可跑的服务），
+**模块划分照 `job-worker` 的四层形状**（`-api` / `-core` / `-store` + 可跑的服务），
 名字按支付域的实际分工命名：
 
 ```
@@ -35,7 +35,7 @@ backend/
 ├── pay-core       业务逻辑：结算 · 分账 · 对账 · 进件 · 费率 · 积分
 ├── pay-channel    通道适配：微信 / 支付宝 / 后续（带第三方 SDK）
 ├── pay-risk       资金风控：指标计算与拦截判定
-└── pay-svc        阶段 3 的可跑产物：web 层 + 装配（对应 shop-job）
+└── pay-svc        阶段 3 的可跑产物：web 层 + 装配（对应 job-worker）
 ```
 
 | 模块 | 允许依赖 | 为什么单独 |
@@ -49,7 +49,7 @@ backend/
 
 ### ★ 一条硬约束：`pay-*` **不依赖 `shop-base`**
 
-与 `shop-job` 同一条理由（[ADR-021 §3.5](../ADR/ADR-021-支付域独立为服务与独立库.md)）：
+与 `job-worker` 同一条理由（[ADR-021 §3.5](../ADR/ADR-021-支付域独立为服务与独立库.md)）：
 `shop-base` 把 `mybatis-plus-spring-boot4-starter` 作为**编译依赖**引入，
 依赖它就等于把 MyBatis 拖进 classpath，而 **Spring Data AOT 是 Spring Data 的特性**，
 MyBatis 不在这条路上 —— **一旦用它，这个模块永远进不了 AOT / native**，
@@ -123,7 +123,7 @@ spring.aot.repositories.enabled = true             ⚠️ 显式写出来，不�
 shop.pay.enabled = false（业务侧）/ true（pay-svc）
 ```
 
-**四条 ⚠️ 都不是推测，是 `shop-inventory` 与 `shop-job` 已经踩过并记录的**：
+**四条 ⚠️ 都不是推测，是 `shop-inventory` 与 `job-worker` 已经踩过并记录的**：
 
 1. 第二个数据源标了 `@Primary` 会把平台主数据源抢走 —— 全站查询静默走错库，
    而症状是 **DataScope 行级越权防线静默丢失**；
@@ -265,6 +265,6 @@ shop.pay.enabled = false（业务侧）/ true（pay-svc）
 3. 支付库的备份、保留期限与写权限（审计要求）
 4. **阶段 3 的同步调用量要重算**：job 那句「同步毫无压力」建立在一天几千次上，
    而支付是跟单量线性增长的（见 [ADR-021 §4.5](../ADR/ADR-021-支付域独立为服务与独立库.md) 第 3 条）
-5. `pay-svc` 与 `shop-job` 的关系：支付的定时任务是**自己带 `@Scheduled`**，
-   还是注册成 job 的 `JobHandler` 由调度器来调？后者要依赖 `shop-job-api`（零依赖契约模块，
+5. `pay-svc` 与 `job-worker` 的关系：支付的定时任务是**自己带 `@Scheduled`**，
+   还是注册成 job 的 `JobHandler` 由调度器来调？后者要依赖 `job-api`（零依赖契约模块，
    与 `pay-api` 同性质，不破坏 §一那条硬约束），但也把支付的定时能力挂到了 worker 的可用性上

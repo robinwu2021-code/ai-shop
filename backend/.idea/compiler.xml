@@ -13,16 +13,16 @@
         <module name="pay-svc" />
         <module name="shop-merchant" />
         <module name="shop-core" />
-        <module name="shop-job-core" />
+        <module name="job-core" />
         <module name="shop-inventory" />
-        <module name="shop-job-store" />
+        <module name="job-store" />
         <module name="shop-channel" />
         <module name="shop-app" />
         <module name="shop-auth-store" />
         <module name="shop-store-mybatis" />
         <module name="shop-base" />
-        <module name="shop-job" />
-        <module name="shop-job-api" />
+        <module name="job-worker" />
+        <module name="job-api" />
       </profile>
     </annotationProcessing>
   </component>
@@ -38,10 +38,10 @@
       <module name="shop-channel" options="-parameters" />
       <module name="shop-core" options="-parameters" />
       <module name="shop-inventory" options="-parameters" />
-      <module name="shop-job" options="-parameters" />
-      <module name="shop-job-api" options="-parameters" />
-      <module name="shop-job-core" options="-parameters" />
-      <module name="shop-job-store" options="-parameters" />
+      <module name="job-worker" options="-parameters" />
+      <module name="job-api" options="-parameters" />
+      <module name="job-core" options="-parameters" />
+      <module name="job-store" options="-parameters" />
       <module name="shop-merchant" options="-parameters" />
       <module name="shop-notify" options="-parameters" />
       <module name="shop-store-mybatis" options="-parameters" />

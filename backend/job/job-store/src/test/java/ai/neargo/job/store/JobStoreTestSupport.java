@@ -57,8 +57,8 @@ public final class JobStoreTestSupport {
 
                         它是生成物，不是手写的。改完 db/job/V*.sql 后重跑：
                           python3 backend/scripts/gen-test-schema.py \\
-                            backend/shop-job-store/src/test/resources/db/job-h2/V1__job_baseline.sql \\
-                            backend/shop-job-store/src/main/resources/db/job
+                            backend/job-store/src/test/resources/db/job-h2/V1__job_baseline.sql \\
+                            backend/job-store/src/main/resources/db/job
                         """.formatted(path));
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

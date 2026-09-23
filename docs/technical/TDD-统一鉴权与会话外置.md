@@ -153,7 +153,7 @@ shop-base/auth/
 > —— 与 `LivePermResolver` / `BizIdentityResolver` 同一手法，那两个已经这么做了。
 >
 > `shop-auth-store` 不依赖 `shop-base` 是刻意的：`shop-base` 把 mybatis-plus 作为编译依赖，
-> 而将来任何服务（含 `shop-job`）要嵌入鉴权，都不该被迫把 MyBatis 拖进 classpath。
+> 而将来任何服务（含 `job-worker`）要嵌入鉴权，都不该被迫把 MyBatis 拖进 classpath。
 > **这一条就是「统一鉴权」下一阶段的地基。**
 
 ### 5.2 装配：一份实现，三次
@@ -464,7 +464,7 @@ T1–T12 **三端各跑一次**。T4 / T6 / T9 做撤掉修复验证（撤掉后
     ↓
 阶段 2    抽 shop-auth-filter（spring-security-web + shop-auth-store，
           零 MyBatis、零 shop-base）→ 任何服务可嵌入鉴权
-          · shop-job 因此可以自己鉴权，ops-web 直连 worker 的路才通
+          · job-worker 因此可以自己鉴权，ops-web 直连 worker 的路才通
     ↓
 阶段 3    gateway 统一入口，filter 下沉或保留作纵深防御
 ```

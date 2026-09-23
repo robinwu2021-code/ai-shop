@@ -77,7 +77,7 @@ public class OutboxDispatchJob {
      * {@code JobDeclaration}，于是没进 {@code job_definition} —— <b>两条路都不通</b>。
      * 今天没出事只是因为 {@code sys_outbox} 还是空的（线上 0 订单）；
      * 第一条事件写进去的那一刻它就会永远躺在那儿。声明在
-     * {@code PlatformOutboxJobHandler}（shop-app），本模块不依赖 shop-job-api。
+     * {@code PlatformOutboxJobHandler}（shop-app），本模块不依赖 job-api。
      */
     public String dispatchOnce() {
         {

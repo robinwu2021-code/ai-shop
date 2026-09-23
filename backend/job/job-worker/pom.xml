@@ -11,7 +11,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>shop-job</artifactId>
+    <artifactId>job-worker</artifactId>
     <packaging>jar</packaging>
     <description>定时任务 · 独立可部署的调度器（不含任何业务代码）</description>
 
@@ -31,12 +31,12 @@
     <dependencies>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-api</artifactId>
+            <artifactId>job-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-core</artifactId>
+            <artifactId>job-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- ⚠️ **显式声明，不要白蹭 flyway-core 的传递依赖。**
@@ -59,7 +59,7 @@
         <!-- 复用 store 的 H2 建库支撑，避免第二份 schema 加载逻辑 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-store</artifactId>
+            <artifactId>job-store</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>

@@ -11,7 +11,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>shop-job-api</artifactId>
+    <artifactId>job-api</artifactId>
     <packaging>jar</packaging>
     <description>定时任务 · 契约包（零依赖：不引 Spring，不引 shop-base）</description>
 

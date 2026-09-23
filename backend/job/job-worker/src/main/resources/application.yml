@@ -4,7 +4,7 @@
 # 这份文件进仓库，凭据不进仓库。
 spring:
   application:
-    name: ai-shop-job
+    name: ai-job-worker
   # 不是 Web 应用：没有人调 worker，运营端直读 job 库。见 JobApplication 的类注释
   main:
     web-application-type: none

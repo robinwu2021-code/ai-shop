@@ -42,7 +42,7 @@ import java.util.function.Supplier;
  *
  * <h2>为什么放在 invbridge 而不是 shop-inventory 里</h2>
  *
- * {@code shop-inventory} <b>不依赖 {@code shop-job-api}</b>，这是有意的：那个模块要能
+ * {@code shop-inventory} <b>不依赖 {@code job-api}</b>，这是有意的：那个模块要能
  * 独立交付给没有本平台调度器的客户。把 {@code JobHandler} 实现放进去等于给它加一个
  * 平台侧依赖。{@code InventoryReconJob} 当初放在这里就是这个原因，本类照办。
  *

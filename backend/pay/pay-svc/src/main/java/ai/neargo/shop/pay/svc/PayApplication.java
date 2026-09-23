@@ -19,8 +19,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 「两种形态都装得起来，<b>不接流量</b>」）。先让装配路径跑通，
  * 缺什么由 Spring 自己报出来 —— 那份缺失清单比任何设计文档都准。
  *
- * <h2>照的是 shop-job 的先例</h2>
- * 这个仓库已经独立部署过一个进程（{@code shop-job}）：独立 jar、独立库、
+ * <h2>照的是 job-worker 的先例</h2>
+ * 这个仓库已经独立部署过一个进程（{@code job-worker}）：独立 jar、独立库、
  * 通过 {@code /internal} 与主应用对话，四条硬要求写在
  * {@code JobHandlerEndpoint} 的类注释里。支付域抄的是那个形状。
  *

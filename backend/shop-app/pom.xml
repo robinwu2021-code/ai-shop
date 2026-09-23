@@ -21,7 +21,7 @@
              这条路上才不会变成两套各自演进的实现 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-core</artifactId>
+            <artifactId>job-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

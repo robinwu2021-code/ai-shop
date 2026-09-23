@@ -28,12 +28,12 @@ export function backendModules(backendDir) {
 /** 扫描面的对照量：漏扫在调用方不会报错，所以在这里当场抛。 */
 export function assertScanScope(mods) {
   // 两个嵌套目录各点一个名：pay/ 与 job/ 都在第二层，少扫一整组时这里当场抛
-  const want = ["shop-app", "pay/pay-domain", "job/shop-job-core"];
+  const want = ["shop-app", "pay/pay-domain", "job/job-core"];
   const missing = want.filter((m) => !mods.includes(m));
   if (missing.length || mods.length < 10) {
     throw new Error(
       `后端模块扫描面不对：${mods.length} 个 [${mods.join(", ")}]，缺 [${missing.join(", ")}]。\n` +
-      "  期望至少 10 个、且含 shop-app、pay/pay-domain、job/shop-job-core。");
+      "  期望至少 10 个、且含 shop-app、pay/pay-domain、job/job-core。");
   }
   return mods;
 }

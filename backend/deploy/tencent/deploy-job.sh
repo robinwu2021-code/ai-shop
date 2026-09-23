@@ -9,13 +9,16 @@
 # 用法：./deploy-job.sh [ssh-host]
 set -euo pipefail
 
+# **本地模块叫 job-worker，线上目录与服务名仍叫 shop-job**（2026-09-23 改模块名时有意不动）：
+# 那边的目录、软链、systemd 单元、日志路径是一整套，改名要停服务、改单元文件、挪日志，
+# 与「把模块收进 backend/job/」这件事没有关系。两边不同名只在这一行里体现。
 HOST="${1:-soukmind-tx-root}"
 REMOTE_DIR=/data/app/ai-shop/shop-job
-LOCAL_JAR="$(cd "$(dirname "$0")/../../.." && pwd)/backend/shop-job/target/shop-job-0.1.0-SNAPSHOT.jar"
+LOCAL_JAR="$(cd "$(dirname "$0")/../../.." && pwd)/backend/job/job-worker/target/job-worker-0.1.0-SNAPSHOT.jar"
 STAMP="$(date +%Y%m%d-%H%M)"
 KEEP=5
 
-[ -f "$LOCAL_JAR" ] || { echo "✗ 找不到 $LOCAL_JAR，先 mvn -DskipTests package -pl shop-job -am" >&2; exit 1; }
+[ -f "$LOCAL_JAR" ] || { echo "✗ 找不到 $LOCAL_JAR，先 mvn -DskipTests package -pl job-worker -am" >&2; exit 1; }
 
 echo "→ 上传 shop-job-$STAMP.jar（$(du -h "$LOCAL_JAR" | cut -f1)）"
 scp -q "$LOCAL_JAR" "$HOST:$REMOTE_DIR/shop-job-$STAMP.jar"

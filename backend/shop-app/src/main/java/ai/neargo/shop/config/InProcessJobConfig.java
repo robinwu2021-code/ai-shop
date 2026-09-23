@@ -32,7 +32,7 @@ import java.util.List;
 /**
  * <b>业务实例内的 worker</b>（J2/G2 阶段）：调度器跑在 shop-app 里，任务体直接进程内调。
  *
- * <p>与独立 worker（{@code shop-job}）**跑的是同一套引擎** —— 只有
+ * <p>与独立 worker（{@code job-worker}）**跑的是同一套引擎** —— 只有
  * {@link JobInvoker} 的实现不同：这里查进程内的 {@link JobHandlerRegistry}，
  * 那边发 HTTP。切换是换一个 bean，不是重写调度。
  *
@@ -149,7 +149,7 @@ public class InProcessJobConfig {
 
     /*
      * job 库的三个 DAO **不在这里声明** —— JobStoreConfig 是自动配置，
-     * 引了 shop-job-store 且 shop.job.enabled=true 就已经装好了（用它自己的 jobJdbcClient，
+     * 引了 job-store 且 shop.job.enabled=true 就已经装好了（用它自己的 jobJdbcClient，
      * 指向独立的 job 库）。在这里再声明一遍会指向平台库，而那是另一个库。
      */
 

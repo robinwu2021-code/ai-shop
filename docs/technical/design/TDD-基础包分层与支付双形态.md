@@ -54,7 +54,7 @@ b-app 的 `ApiError` 同理。支付域返回另一套码，前端就要写第�
 而两套码迟早会在同一个数字上表示不同的意思，那时排查的人看到的是
 「同一个 40301，一个说没权限、一个说通道拒绝」。
 
-`shop-job` 已经付过这笔账：它的 `-api` 模块零依赖，代价是它**没有 web 层**，
+`job-worker` 已经付过这笔账：它的 `-api` 模块零依赖，代价是它**没有 web 层**，
 所以还没撞上错误码这条。支付域有 web 层，一定会撞。
 
 ### 一个具体的例子：`PageData`
@@ -154,7 +154,7 @@ inventory / notify）与 `shop-app` 只改 pom 里的一行 `<artifactId>`。
 ## L2 · 三、支付双形态：同一份代码，两种装配
 
 用户要求：**方案一（与核心业务同一个服务）功能保持完整的前提下，支持方案二（独立服务）。**
-这正是 `shop-job` 没做到的 —— 它只有独立一种形态，所以本地起一个进程就要连两个库。
+这正是 `job-worker` 没做到的 —— 它只有独立一种形态，所以本地起一个进程就要连两个库。
 
 ### 3.1 两种形态
 
@@ -270,7 +270,7 @@ permitAll + 验签（`ChannelCallbackVerifier`）。它是**改账的入口**，
 | 1 | 建 `shop-base-web` / `shop-base-auth`，把 17 个 web/security 文件搬过去 | 全量编译 + 现有测试全绿 |
 | 2 | 建 `shop-store-mybatis`，把 22 个文件搬过去；`PageData.of(IPage)` → `MybatisPages.of` | 同上 |
 | 3 | 建聚合 pom `shop-app-base`，6 个业务模块改一行依赖 | 同上；**ArchUnit：`shop-base` 不出现 `com.baomidou`** |
-| 4 | `shop-job` 改依赖 `shop-base`（拿到统一错误码） | job 的 worker 测试全绿；**jar 里不含 mybatis** |
+| 4 | `job-worker` 改依赖 `shop-base`（拿到统一错误码） | job 的 worker 测试全绿；**jar 里不含 mybatis** |
 | 5 | 建 `shop-store-data-aot`（先只做幂等 + Outbox） | 新模块自己的测试 + **AOT 产物断言** |
 | 6 | `pay-*` 依赖 `shop-base` + `shop-store-data-aot` | ArchUnit：`pay/**` 不依赖 `shop-app-base` |
 | 7 | `shop.pay.deployment` 双形态装配 | **两种形态各跑一遍同一组集成测试** |
@@ -286,7 +286,7 @@ permitAll + 验签（`ChannelCallbackVerifier`）。它是**改账的入口**，
    `jakarta.servlet` / `org.springframework.security`。
 2. **ArchUnit** —— `pay/**` 不许依赖 `shop-app-base` / `shop-store-mybatis`
    （放行 `shop-base` / `shop-base-web` / `shop-base-auth` / `shop-store-data-aot`）。
-3. **jar 级断言** —— `pay-svc` 与 `shop-job` 的构建产物里**不存在 `mybatis-*.jar`**。
+3. **jar 级断言** —— `pay-svc` 与 `job-worker` 的构建产物里**不存在 `mybatis-*.jar`**。
 
    > 第 3 条不是第 1 条的重复。**ArchUnit 看不见传递依赖** ——
    > 而 ADR-021 §3.5 担心的正是「进了 classpath 且没有报错」这件事，

@@ -28,12 +28,12 @@
     -->
     <modules>
         <!-- 契约包：**零依赖**（连 Spring 都不引），业务侧实现 JobHandler，worker 只认名字 -->
-        <module>shop-job-api</module>
+        <module>job-api</module>
         <!-- 持久层：独立库 + JdbcClient 手写 SQL -->
-        <module>shop-job-store</module>
+        <module>job-store</module>
         <!-- 调度引擎：独立 worker 与业务实例内的 worker 共用同一套代码 -->
-        <module>shop-job-core</module>
+        <module>job-core</module>
         <!-- 调度器：独立可部署单元，不含业务代码 -->
-        <module>shop-job</module>
+        <module>job-worker</module>
     </modules>
 </project>

@@ -11,7 +11,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>shop-job-store</artifactId>
+    <artifactId>job-store</artifactId>
     <packaging>jar</packaging>
     <description>定时任务 · 独立库持久层（JdbcClient 手写 SQL，不引 Spring Data、不引 shop-base）</description>
 
@@ -33,7 +33,7 @@
     <dependencies>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-job-api</artifactId>
+            <artifactId>job-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- JdbcClient + Hikari + @ConfigurationProperties。**不是** starter-data-jdbc -->
@@ -60,7 +60,7 @@
 
     <build>
         <plugins>
-            <!-- 把测试支撑打成 test-jar 给 shop-job 用。
+            <!-- 把测试支撑打成 test-jar 给 job-worker 用。
                  **不是为了省事，是为了不出现第二份 schema 加载逻辑** ——
                  复制一份的话，改了 db/job 之后两处要同步，而漏掉的那一处照样绿。 -->
             <plugin>
