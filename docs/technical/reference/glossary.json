@@ -16437,9 +16437,9 @@
         },
         {
           "key": "stock.entry.offlineSale",
-          "zh-CN": "线下卖出",
-          "en": "In-store sale",
-          "ar": "بيع في المتجر"
+          "zh-CN": "卖出",
+          "en": "Sell",
+          "ar": "بيع"
         },
         {
           "key": "stock.entry.out",
