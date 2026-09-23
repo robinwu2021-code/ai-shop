@@ -57,6 +57,8 @@ public final class InvEnums {
         public static final String TRANSFER_IN = "TRANSFER_IN";
         public static final String COUNT_GAIN = "COUNT_GAIN";
         public static final String INIT = "INIT";
+        /** 线下卖出的撤销：把柜台卖错的那几件加回来，指回原出库单号 */
+        public static final String OFFLINE_RETURN = "OFFLINE_RETURN";
         public static final String OTHER = "OTHER";
 
         private InboundSource() {
@@ -71,6 +73,11 @@ public final class InvEnums {
         public static final String SCRAP = "SCRAP";
         public static final String COUNT_LOSS = "COUNT_LOSS";
         public static final String INTERNAL = "INTERNAL";
+        /**
+         * 柜台卖出。<b>与 {@code SALE} 分开</b>：线上销售挂订单号、可点进订单、进销售额，
+         * 线下只有件数 —— 混在一个码里，销售报表就永远说不清那几件到底卖了多少钱。
+         */
+        public static final String OFFLINE_SALE = "OFFLINE_SALE";
         /**
          * 退回供应商。<b>去向指向 {@code inv_supplier}</b> —— 供应商建了档，退货才有对象可指，
          * 而「这个月退给老周多少货」是应付账款对账的一半。

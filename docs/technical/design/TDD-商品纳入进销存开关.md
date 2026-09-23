@@ -397,3 +397,37 @@
 1. 后端：V346 + 规则 / 同步 / 日志三张表与服务；写回消费者；对齐与开关接口；场景测试与消融
 2. B 端：库存设置页两段、期初对齐页、编辑商品与改库存弹层
 3. 部署；福田店做期初对齐并打开同步；看一周对差日报
+
+## 19 第三期实现记录（线下卖出与报表口径，2026-09-23）
+
+### 19.1 线下卖出（§5.2）
+
+| 件 | 说明 |
+|---|---|
+| 枚举 | `InvEnums.OutboundPurpose.OFFLINE_SALE` / `InboundSource.OFFLINE_RETURN`；迁移 `db/inventory/V8` 只改两列注释（不加表、不加列） |
+| 服务 | `OfflineSaleService`：`sell` 直接过账一张出库单、`list` 列当天、`revoke` 开一张退回入库单指回原单号 |
+| 端点 | `GET/POST /biz/store/{storeNo}/offline-sale`、`POST /biz/store/{storeNo}/offline-sale/{docNo}/revoke`，都判 `biz:stock` |
+| 写回 | **不自己调**：过账事件走 `InventoryWritebackConsumer` 那条现成的链，与进货、盘点同一条路 |
+| B 端 | 新页 `offline-sale`；库存页贴底条第二枚（报损退进「更多」——柜台一天记很多笔卖出，报损一周未必一次） |
+
+两条刻意的选择：**撤销不删单**（开退回单、原单标「已撤销」），**不许撤两次**（同一原单已有退回单就拒）。
+
+### 19.2 报表口径（§9）
+
+- 月报：`OFFLINE_SALE` 归「销」、`OFFLINE_RETURN` 从「销」里减回 —— 归进兜底的「调」会让报表说「这个月没怎么卖，倒是调了很多」
+- 动销榜：线上线下都算「货动了」
+- 金额仍只有销货成本：出库单不带售价，线下卖出不进销售额
+
+### 19.3「改库存」→ 线上额度（§8，第二期补完）
+
+`SPI OnlineQuotaPort`（shop-base）→ `OnlineQuotaPortImpl`（shop-app，`invbridge/port`）。
+三条同时满足才接住：本店同步开着、这件货接入进销存、进销存里有它的账；否则返回 false，调用方照旧改商城库存。
+
+**踩到的一处**：写回对手动规则只压不抬（`capSellable`），所以设额度不能靠写回重算 ——
+存 4 而现在可卖 10 时一个数都不会动。新开 `StockSyncService.applyQuota`：线上可卖 = min(额度, 可用)，实存不动。
+消融：撤掉这条路径，`editStockBecomesOnlineQuota` 变红。
+
+### 19.4 验证
+
+`StockSyncWritebackTest` 11 条（新增：改库存转额度、没开同步照旧、线下卖出降线上可售、撤销加回且不许撤两次），
+迁移在本机 `ai_shop_inv` 副本上跑过，b-app 在 mock 下走了一遍记账 → 撤销。

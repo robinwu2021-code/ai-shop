@@ -108,7 +108,12 @@ export function stockEntries(ctx: StockEntriesCtx): {
   const primary: StockEntry[] = (
     [
       { key: "purchase", route: ROUTES.purchaseEdit, perm: "biz:stock" },
-      { key: "out", route: ROUTES.stockOut, perm: "biz:stock" },
+      /*
+       * 线下卖出排在报损前面，而报损**退到抽屉里**（第三期）。
+       * 柜台一天要记很多笔卖出，报损一周未必一次 —— 条上四个位子按频次排，
+       * 而不是按这几件事是什么时候做出来的。
+       */
+      { key: "offlineSale", route: ROUTES.offlineSale, perm: "biz:stock" },
       ...(ctx.canStartCount
         ? [{ key: "check", route: ROUTES.stockCheck, perm: "biz:stock" }] : []),
       ...(transferBlocked
@@ -129,6 +134,7 @@ export function stockEntries(ctx: StockEntriesCtx): {
       // 而是「这件事正由工作台那条『继续盘点』接着」，摆个灰名字只会让人问为什么
       ...(transferBlocked
         ? [{ key: "transfer", route: ROUTES.transfer, perm: "biz:stock" }] : []),
+      { key: "out", route: ROUTES.stockOut, perm: "biz:stock" },
       { key: "docs", route: ROUTES.stockDocs, perm: "biz:stock" },
       { key: "report", route: ROUTES.stockReport, perm: "biz:customer" },
       { key: "locations", route: ROUTES.locations, perm: "biz:store:admin" },

@@ -144,6 +144,14 @@ public interface InventoryAclService {
     /** 查不到物料的 SKU 不在结果里（它在进销存里什么都没有）。只读，不建业主不建物料 */
     java.util.Map<String, ItemState> stateOf(String entityNo, java.util.Collection<String> skuNos);
 
+    /**
+     * 批量把 skuNo 换成物料号（只认 {@code AISHOP} 引用）。查不到的 sku 不出现在结果里。
+     *
+     * <p>有 {@link #itemIdOf} 还要它：按行逐个查在列表页是几百次往返，
+     * 而「这一屏的货分别是哪个物料」本来就是一次能查完的事。
+     */
+    java.util.Map<String, String> itemIdsOf(String entityNo, java.util.Collection<String> skuNos);
+
     // ─────────────────────────── 写回商城（TDD-商品纳入进销存开关 §18，只读）
 
     /** 一张已过账单据动到的一行：哪个主体的哪件货、在哪个库位 */

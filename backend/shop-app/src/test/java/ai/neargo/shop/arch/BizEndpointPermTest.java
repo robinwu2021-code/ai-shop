@@ -144,6 +144,9 @@ class BizEndpointPermTest {
         put("/biz/store/{storeNo}/stock-alignment", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-alignment/confirm", BizPerms.STORE_ADMIN);
         put("/biz/store/{storeNo}/sell-rules", BizPerms.STOCK);
+        // 线下卖出（第三期）：柜台每天在做的事，判库存的码 —— 要店主权限的话店里就没人记得上账
+        put("/biz/store/{storeNo}/offline-sale", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/offline-sale/{docNo}/revoke", BizPerms.STOCK);
         // 商品页读「这件货在进销存的账」。与 balances 同权：都是「看得见这家的货」
         put("/biz/inventory/item-by-sku", BizPerms.STOCK);
         // 设安全库存：判 STOCK 而不是更高的码 —— 阈值是理货员日常要调的东西

@@ -103,6 +103,34 @@ public class InventoryWritebackService {
         }
     }
 
+    /**
+     * 店主当场定线上额度（§8 的「改库存」）：线上可卖 = min(额度, 可用)，实存不动。
+     *
+     * <p>不走 {@link #syncGoods} —— 写回对手动规则只压不抬，刚存下的额度要是比现在的可卖大，
+     * 走那条路一个数都不会动（存 4 → 线上仍是 10）。这里按店主说的数写。
+     *
+     * @return 写成了返回 true；这件货在进销存里没有账则 false
+     */
+    public boolean quotaOne(String entityNo, String storeNo, String skuNo, int qty, String sourceRef) {
+        if (invManaged.managedSkus(List.of(skuNo)).isEmpty()) {
+            return false;
+        }
+        if (mirrorPending(skuNo)) {
+            throw new MirrorNotCaughtUp(skuNo);
+        }
+        InventoryAclService.StockAt st = acl.stockAt(entityNo, storeNo, skuNo);
+        if (st == null) {
+            return false;
+        }
+        StockSyncService.Result r =
+                stockSync.applyQuota(entityNo, storeNo, skuNo, qty, st.available(), sourceRef, OPERATOR);
+        if (r.skipped() != null) {
+            log.info("[stock-quota] 跳过 store={} sku={} src={} 原因={}", storeNo, skuNo, sourceRef, r.skipped());
+            return false;
+        }
+        return true;
+    }
+
     StockSyncService.Result syncOne(String entityNo, String storeNo, String skuNo, String sourceRef) {
         return syncOne(entityNo, storeNo, skuNo, sourceRef, true);
     }

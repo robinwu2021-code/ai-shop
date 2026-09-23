@@ -111,6 +111,8 @@ onShow(load);
     <template v-if="monthly">
       <view class="sh-block">
         <sh-section pad :title="String($t('stockReport.goodsThisMonth'))"></sh-section>
+        <!-- 口径写在数的旁边：不写的话，店主会拿这里的「销」去减经营报表的销售额（§9） -->
+        <text class="txt-caption sh-muted scope">{{ $t("stockReport.scopeHint") }}</text>
         <view class="blk">
           <sh-kv between :label="String($t('stockReport.opening'))">
             <text class="sh-num">{{ monthly.opening }}</text>
@@ -208,6 +210,10 @@ onShow(load);
 </template>
 
 <style scoped>
+.scope {
+  display: block;
+  padding: 0 24rpx 12rpx;
+}
 .hd > view > text {
   display: block;
 }

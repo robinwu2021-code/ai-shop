@@ -4,9 +4,10 @@
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
 import { db, delay } from "@shared/mock/db";
+import { isoDay } from "@/shared/quick-dates";
 import type {
-  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, SellRule, StockAlignRow, StockBalance, StockCount,
-  StockSyncState, StockTransfer, Supplier,
+  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, OfflineSaleRow, SellRule, StockAlignRow,
+  StockBalance, StockCount, StockSyncState, StockTransfer, Supplier,
 } from "@shared/types";
 import {
   currentStoreNo,
@@ -75,6 +76,9 @@ export const inventoryMock: Pick<MerchantApi,
   | "mConfirmAlignment"
   | "mSellRules"
   | "mSaveSellRule"
+  | "mOfflineSales"
+  | "mOfflineSell"
+  | "mOfflineSaleRevoke"
 > = {
   // ---- 进销存（P-18）
   //
@@ -584,7 +588,47 @@ export const inventoryMock: Pick<MerchantApi,
     if (i >= 0) sellRules[i] = row; else sellRules.push(row);
     return delay<SellRule>({ scopeType: row.scopeType, scopeRef, ruleType: row.ruleType, param: row.param });
   },
+
+  // ---- 线下卖出（第三期）：记一笔、看当天、撤一笔
+  async mOfflineSales(storeNo, date) {
+    storeNo = storeNo || currentStoreNo();
+    const day = date || isoDay();
+    return delay((offlineSales.get(storeNo) ?? []).filter((r) => r.occurredAt.slice(0, 10) === day));
+  },
+  async mOfflineSell(storeNo, lines) {
+    storeNo = storeNo || currentStoreNo();
+    const rows = offlineSales.get(storeNo) ?? [];
+    const stock = invBalances();
+    const docNo = `OFS${String(rows.length + 1).padStart(4, "0")}`;
+    rows.unshift({
+      docNo,
+      // **本地时间，不是 UTC**：toISOString() 会让列表把 11:13 写成 03:13，
+      // 而真后端给的是本地时间 —— 替身在这种地方偏一点，看界面就看不出真问题
+      occurredAt: `${isoDay()}T${new Date().toTimeString().slice(0, 8)}`,
+      totalQty: lines.reduce((n, l) => n + l.qty, 0),
+      revoked: false,
+      items: lines.map((l) => ({
+        skuNo: l.skuNo,
+        title: stock.find((b) => b.skuNo === l.skuNo)?.name ?? l.skuNo,
+        spec: stock.find((b) => b.skuNo === l.skuNo)?.specText ?? "",
+        qty: l.qty,
+      })),
+    });
+    offlineSales.set(storeNo, rows);
+    return delay({ docNo });
+  },
+  async mOfflineSaleRevoke(storeNo, docNo) {
+    storeNo = storeNo || currentStoreNo();
+    const row = (offlineSales.get(storeNo) ?? []).find((r) => r.docNo === docNo);
+    // 与真后端同一条：撤两次等于凭空多出一批货
+    if (!row || row.revoked) throw new Error("这一笔已经撤销过了");
+    row.revoked = true;
+    return delay({ docNo: `${docNo}R` });
+  },
 };
+
+/** 各门店当天记的线下卖出。刷新即清 —— 它是替身，不是账 */
+const offlineSales = new Map<string, OfflineSaleRow[]>();
 
 /**
  * 与真后端同一个口径：**当前门店的经营类目**一类一行，默认值按类目模板（服务 / 券 / 虚拟不记）。

@@ -93,7 +93,9 @@ public class InventorySnapshotServiceImpl implements InventorySnapshotService {
                 inbound += d;
             } else {
                 outbound += -d;
-                if (InvEnums.OutboundPurpose.SALE.equals(e.getReasonCode())) {
+                // 线上线下同一口径（§9）：漏掉线下，日快照的「卖了多少」会比月报少一截
+                if (InvEnums.OutboundPurpose.SALE.equals(e.getReasonCode())
+                        || InvEnums.OutboundPurpose.OFFLINE_SALE.equals(e.getReasonCode())) {
                     sold += -d;
                     soldCost += (e.getUnitCostMinor() == null ? 0 : e.getUnitCostMinor()) * -d;
                 }

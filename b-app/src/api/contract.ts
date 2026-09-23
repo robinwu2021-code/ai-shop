@@ -118,7 +118,7 @@ import type {
   StockMonthly, StockRank, StockLocation, StockLineReq, StockCountFilled,
   StockCount, StockTransfer,
   InvCategorySetting, GoodsInvMode, InvMode, InvModeChange,
-  StockSyncState, StockAlignRow, StockAlignMode, SellRule,
+  StockSyncState, StockAlignRow, StockAlignMode, SellRule, OfflineSaleRow,
   FulfillmentImpactItem,
   SpecValueAdded,
   ScopePreview,
@@ -1791,4 +1791,10 @@ export interface MerchantApi {
   mSellRules(storeNo: string): Promise<SellRule[]>;
   /** 存一条规则（STORE 级不传 scopeRef） */
   mSaveSellRule(storeNo: string, rule: Omit<SellRule, "scopeRef"> & { scopeRef?: string }): Promise<SellRule>;
+  /** 本店某天的线下卖出；不传日期是今天 */
+  mOfflineSales(storeNo: string, date?: string): Promise<OfflineSaleRow[]>;
+  /** 记一笔线下卖出，当场过账；返回出库单号 */
+  mOfflineSell(storeNo: string, lines: { skuNo: string; qty: number }[], remark?: string): Promise<{ docNo: string }>;
+  /** 撤销一笔（开一张退回入库单，原单留着）；返回退回单号 */
+  mOfflineSaleRevoke(storeNo: string, docNo: string): Promise<{ docNo: string }>;
 }

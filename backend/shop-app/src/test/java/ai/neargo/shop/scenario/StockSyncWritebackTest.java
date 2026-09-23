@@ -186,6 +186,94 @@ class StockSyncWritebackTest {
     }
 
     @Test
+    @DisplayName("★★★ 同步开着时「改库存」改的是线上额度，不动实存（§8）")
+    void editStockBecomesOnlineQuota() throws Exception {
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        assertThat(sellable(s)).isEqualTo(10);
+
+        ok(post("/biz/goods/" + s.goodsNo + "/stock")
+                .content("{\"skuNo\":\"" + s.skuNo + "\",\"stock\":4}"), s.token);
+
+        assertThat(sellable(s)).as("线上放 4 件").isEqualTo(4);
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand())
+                .as("实物一件都没动 —— 实存只由单据改").isEqualTo(10);
+
+        // 再进一笔货：手动额度只降不升，仍是 4
+        postInbound(s, 5);
+        pump();
+        assertThat(sellable(s)).as("进货不抬手动额度").isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("★★ 没开同步的店：「改库存」还是直接改商城库存（老行为一个字没变）")
+    void editStockStaysPlainWhenSyncOff() throws Exception {
+        Shop s = shop();
+        ok(post("/biz/goods/" + s.goodsNo + "/stock")
+                .content("{\"skuNo\":\"" + s.skuNo + "\",\"stock\":7}"), s.token);
+        assertThat(sellable(s)).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("★★★ 线下卖出 8 件：实存 −8，线上跟着降 —— 柜台卖掉的货不会被线上再卖一次")
+    void offlineSaleCutsOnHandAndOnlineStock() throws Exception {
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        assertThat(sellable(s)).isEqualTo(10);
+
+        String docNo = ok(post("/biz/store/" + s.storeNo + "/offline-sale")
+                .content("{\"lines\":[{\"skuNo\":\"" + s.skuNo + "\",\"qty\":8}]}"), s.token)
+                .get("docNo").asString();
+        pump();
+
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).as("实存 10 − 8").isEqualTo(2);
+        assertThat(sellable(s)).as("线上可卖跟着降到 2 —— 没有这一步就会超卖").isEqualTo(2);
+
+        // 报表口径（§9）：线下卖出算「销」，不算兜底的「调」—— 归错了报表会说「没怎么卖，倒是调了很多」
+        JsonNode monthly = ok(get("/biz/inventory/report/monthly")
+                .param("month", java.time.YearMonth.now().toString()), s.token);
+        assertThat(monthly.get("sold").asInt()).as("线下卖出 8 件计入「销」").isEqualTo(8);
+        assertThat(monthly.get("balanced").asBoolean()).as("分类之和仍等于净变动").isTrue();
+
+        JsonNode rows = ok(get("/biz/store/" + s.storeNo + "/offline-sale"), s.token);
+        assertThat(rows.size()).isEqualTo(1);
+        assertThat(rows.get(0).get("docNo").asString()).isEqualTo(docNo);
+        assertThat(rows.get(0).get("totalQty").asInt()).isEqualTo(8);
+        assertThat(rows.get(0).get("revoked").asBoolean()).isFalse();
+        assertThat(rows.get(0).get("items").get(0).get("qty").asInt()).isEqualTo(8);
+        assertThat(rows.get(0).get("items").get(0).get("skuNo").asString()).isEqualTo(s.skuNo);
+    }
+
+    @Test
+    @DisplayName("★★ 撤销线下卖出：货加回来，原单留着，不许撤两次")
+    void offlineSaleCanBeRevokedOnce() throws Exception {
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        String docNo = ok(post("/biz/store/" + s.storeNo + "/offline-sale")
+                .content("{\"lines\":[{\"skuNo\":\"" + s.skuNo + "\",\"qty\":3}]}"), s.token)
+                .get("docNo").asString();
+        pump();
+        assertThat(sellable(s)).isEqualTo(7);
+
+        ok(post("/biz/store/" + s.storeNo + "/offline-sale/" + docNo + "/revoke"), s.token);
+        pump();
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).as("撤销把 3 件加回来").isEqualTo(10);
+        assertThat(sellable(s)).isEqualTo(10);
+
+        JsonNode rows = ok(get("/biz/store/" + s.storeNo + "/offline-sale"), s.token);
+        assertThat(rows.size()).as("原单留着 —— 删单等于账上从没发生过").isEqualTo(1);
+        assertThat(rows.get(0).get("revoked").asBoolean()).isTrue();
+
+        mvc().perform(post("/biz/store/" + s.storeNo + "/offline-sale/" + docNo + "/revoke")
+                        .header("Authorization", "Bearer " + s.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
+    @Test
     @DisplayName("★★ 期初对齐「以商城为准」：实存调成商城的数")
     void alignToMallAdjustsOnHand() throws Exception {
         Shop s = shop();

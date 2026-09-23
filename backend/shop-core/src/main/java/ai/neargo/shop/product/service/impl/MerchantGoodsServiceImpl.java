@@ -115,6 +115,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <b>真相源在哪它就落到哪</b> —— 入口可以有两个，账只能有一本。
      */
     private final ai.neargo.shop.spi.product.StockPort stockPort;
+    /** 「改库存」在接入进销存之后的去处（§8）。进销存没开时这个 Provider 是空的，照老路走 */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.product.OnlineQuotaPort> quotaPort;
     /** 门店级上架关系。与库存同一套「有行按店算、无行回退主体」的语义 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
     /** 门店货架。商品域只用它回答两个问题：本店有没有这一类、把这一类加进去 */
@@ -149,7 +152,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.event.OutboxEventBus events,
                                     ai.neargo.shop.spi.pay.MarketPort marketPort,
                                     ai.neargo.shop.product.service.InvManagedService invManaged,
+                                    org.springframework.beans.factory.ObjectProvider<
+                                            ai.neargo.shop.spi.product.OnlineQuotaPort> quotaPort,
                                     ObjectMapper json) {
+        this.quotaPort = quotaPort;
         this.marketPort = marketPort;
         this.invManaged = invManaged;
         this.specLibrary = specLibrary;
@@ -2569,6 +2575,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (stock < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        // 主体级那一档同样按 §8：接入进销存且同步开着时，这个数是线上额度（门店由实现解析）
+        if (quotaPort.getIfAvailable() != null
+                && quotaPort.getObject().setOnlineQuota(merchantNo, null, goodsNo, skuNo, stock)) {
+            return toVO(g);
+        }
         /*
          * **这个 SKU 已经按店管理时，写到当前门店去** —— 否则写与读不是同一个数。
          *
@@ -2645,6 +2656,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             toInsert.setLockedStock(0);
             toInsert.setStock(0);
             DataScopeContext.executeWithoutScope(() -> storeStockMapper.insert(toInsert));
+        }
+        /*
+         * **接入进销存、且本店开了同步的货，改的是「线上放多少」，不是实物**（§8）。
+         * 实物只由单据改；这里直接写商城库存的话，下一次进货 / 盘点的写回会把它盖掉 ——
+         * 店主会看到「我刚改的数又变回去了」，而没有任何地方解释。
+         */
+        if (quotaPort.getIfAvailable() != null
+                && quotaPort.getObject().setOnlineQuota(merchantNo, storeNo, goodsNo, skuNo, stock)) {
+            return toVO(g);
         }
         // 与主体级同一条：走 Port，两本账才不会分叉（见 saveStock 的说明）
         stockPort.setOnHand(skuNo, storeNo, stock, "OTHER");

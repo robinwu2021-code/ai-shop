@@ -910,6 +910,18 @@
       }
     },
     {
+      "path": "pages/offline-sale/index",
+      "style": {
+        "navigationBarTitleText": "线下卖出",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/stock-out/index",
       "style": {
         "navigationBarTitleText": "报损",

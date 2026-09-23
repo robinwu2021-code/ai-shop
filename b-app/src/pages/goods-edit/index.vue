@@ -21,8 +21,9 @@ import { useCategoryPicker } from "./category";
 import { useGoodsParams } from "./params";
 import { useSpecGroups } from "./spec-groups";
 import type { Row } from "./price-rows";
-import type { GoodsInvMode, InvMode } from "@shared/types";
-import { describeBlockers, describeStocked, invModeLabel } from "@/shared/inv-mode";
+import type { GoodsInvMode, InvMode, SellRule } from "@shared/types";
+import { describeBlockers, describeStocked, invModeLabel, sellRuleText } from "@/shared/inv-mode";
+import { pickSellRule } from "@/utils/sell-rule";
 import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
@@ -373,6 +374,55 @@ async function loadInvMode(no: string) {
     if (item) next[r.skuNo as string] = { onHand: item.onHand, itemId: item.itemId };
   }));
   invOnHand.value = next;
+  await loadSellRule(no);
+}
+
+/**
+ * 这一件的线上可售规则（§4 / §18.7）。**只有接入进销存、且本店开了同步才有意义** ——
+ * 没开同步时线上库存就是店主填的那个数，谈不上「从实存里放多少出去」。
+ * 单品没设过时写「跟随」并把跟到的结果写出来，与上面那一行同一个写法。
+ */
+const sellRule = ref<SellRule | null>(null);
+/** 单品没设时实际生效的那条（本店默认或类目），只用来写那行字 */
+const inheritedRule = ref<SellRule | null>(null);
+const sellRuleOn = ref(false);
+
+const sellRuleText_ = computed(() => {
+  if (!sellRule.value) {
+    return String(t("stockSync.inheritOf", { v: sellRuleText(t, inheritedRule.value) }));
+  }
+  return sellRuleText(t, sellRule.value);
+});
+
+async function loadSellRule(no: string) {
+  sellRule.value = null;
+  inheritedRule.value = null;
+  sellRuleOn.value = false;
+  const storeNo = merchant.storeNo;
+  if (!storeNo || !invMode.value?.managed) return;
+  const sync = await api.mStockSync(storeNo).catch(() => null);
+  if (!sync?.enabled) return;
+  const rules = await api.mSellRules(storeNo).catch(() => [] as SellRule[]);
+  const own = rules.find((r) => r.scopeType === "GOODS" && r.scopeRef === no && r.ruleType !== "INHERIT");
+  const cat = catPath.value[catPath.value.length - 1]?.categoryNo;
+  sellRule.value = own ?? null;
+  inheritedRule.value = rules.find((r) => r.scopeType === "CATEGORY" && r.scopeRef === cat && r.ruleType !== "INHERIT")
+    ?? rules.find((r) => r.scopeType === "STORE") ?? null;
+  sellRuleOn.value = true;
+}
+
+async function pickRule() {
+  const no = goodsNo.value;
+  const storeNo = merchant.storeNo;
+  if (!no || !storeNo || !sellRuleOn.value || !merchant.can("biz:store:admin")) return;
+  const r = await pickSellRule(t, true, sellRule.value ?? undefined);
+  if (!r) return;
+  try {
+    await api.mSaveSellRule(storeNo, { scopeType: "GOODS", scopeRef: no, ...r });
+    await loadSellRule(no);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
 }
 
 function openInvItem(skuNo?: string) {
@@ -2215,6 +2265,13 @@ async function save(thenSubmit = false) {
         <text v-if="isEdit" class="txt-body">{{ invModeText }}</text>
         <text v-else class="txt-body sh-muted">{{ $t("invMode.afterSave") }}</text>
         <sh-icon v-if="isEdit" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+
+      <!-- 接入进销存、且本店开了同步：这一件线上放多少（不设就跟随类目 / 本店默认） -->
+      <view v-if="sellRuleOn" class="pr sh-row" @tap="pickRule">
+        <text class="txt-sub pr__k sh-fill">{{ $t("stockSync.goodsRule") }}</text>
+        <text class="txt-body">{{ sellRuleText_ }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
 
       <!-- 与价格卡同构：同样的分组、同样的规格名、同样的「统一填入」 -->

@@ -52,6 +52,9 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mStockSync: "BizStockSyncController → 路径带门店号，这家店的同步开关与期初对齐",
   mSetStockSync: "同上，写路径",
   mSellRules: "BizStockSyncController → 路径带门店号，这家店的线上可售规则",
+  mOfflineSales: "BizOfflineSaleController → 路径带门店号，只列这家店出货库位上的线下卖出",
+  mOfflineSell: "同上，写路径：扣的是这家店的实存",
+  mOfflineSaleRevoke: "同上，撤销开的退回入库单落回这家店的库位",
   mSaveSellRule: "同上，写路径",
 };
 
@@ -105,6 +108,7 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   stock: "库存总览按门店（mStockSummary / mStockBalances）",
   stats: "经营统计整页走 mStats —— 与工作台同一个数",
   "stock-align": "期初对齐对照的是这家店的实存与线上库存（mStockAlignment 路径带当前门店号），确认会调这家店的实存",
+  "offline-sale": "柜台卖出扣的是这家店的实存（mOfflineSales / mOfflineSell 路径带当前门店号）",
 };
 
 /** 这一页是不是按门店取数。`dir` 是 `b-app/src/pages/` 下的目录名。 */

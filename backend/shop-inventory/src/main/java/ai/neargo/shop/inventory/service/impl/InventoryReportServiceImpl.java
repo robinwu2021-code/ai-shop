@@ -73,9 +73,19 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             String r = e.getReasonCode();
             if (InvEnums.InboundSource.PURCHASE.equals(r)) {
                 purchased += d;
-            } else if (InvEnums.OutboundPurpose.SALE.equals(r)) {
+            } else if (InvEnums.OutboundPurpose.SALE.equals(r)
+                    || InvEnums.OutboundPurpose.OFFLINE_SALE.equals(r)) {
+                /*
+                 * **线上线下都算「销」**（§9）：两条渠道卖的是同一批货，
+                 * 把柜台卖掉的那几件归进「调」，报表就会说「这个月没怎么卖，倒是调了很多」。
+                 * 金额仍只是销货成本 —— 出库单不带售价，线下也就不进销售额。
+                 */
                 sold += -d;
                 soldCostMinor += costOf(e);
+            } else if (InvEnums.InboundSource.OFFLINE_RETURN.equals(r)) {
+                // 撤销一笔线下卖出：从「销」里减回去，而不是记成一次进货
+                sold -= d;
+                soldCostMinor -= costOf(e);
             } else if (InvEnums.OutboundPurpose.SCRAP.equals(r)
                     || InvEnums.OutboundPurpose.COUNT_LOSS.equals(r)) {
                 lost += -d;
@@ -114,7 +124,9 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         }
         LocalDateTime from = LocalDateTime.now().minusDays(days);
         List<InvLedger> rows = inPeriod(ownerId, locationId, from, LocalDateTime.now()).stream()
-                .filter(e -> InvEnums.OutboundPurpose.SALE.equals(e.getReasonCode()))
+                // 动销看的是「货动没动」：柜台卖出与线上销售同样算动
+                .filter(e -> InvEnums.OutboundPurpose.SALE.equals(e.getReasonCode())
+                        || InvEnums.OutboundPurpose.OFFLINE_SALE.equals(e.getReasonCode()))
                 .toList();
         Map<String, int[]> qtyByItem = new HashMap<>();
         Map<String, long[]> costByItem = new HashMap<>();

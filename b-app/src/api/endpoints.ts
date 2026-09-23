@@ -409,6 +409,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mConfirmAlignment: { method: "POST", path: "/biz/store/:storeNo/stock-alignment/confirm", auth: true, summary: "确认期初对齐（以商城为准 / 已实地盘点）" },
   mSellRules: { method: "GET", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "本店线上可售规则" },
   mSaveSellRule: { method: "PUT", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "存一条线上可售规则并重算" },
+  mOfflineSales: { method: "GET", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "本店某天的线下卖出" },
+  mOfflineSell: { method: "POST", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "记一笔线下卖出并过账" },
+  mOfflineSaleRevoke: { method: "POST", path: "/biz/store/:storeNo/offline-sale/:docNo/revoke", auth: true, summary: "撤销一笔线下卖出（开退回入库单）" },
 };
 
 /**

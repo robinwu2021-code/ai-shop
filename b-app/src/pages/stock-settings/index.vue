@@ -15,10 +15,10 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { toggleInvCategory } from "@/utils/inv-category";
-import { ruleNeedsParam, sellRuleText } from "@/shared/inv-mode";
+import { sellRuleText } from "@/shared/inv-mode";
+import { pickSellRule } from "@/utils/sell-rule";
 import { ROUTES } from "@/shared/nav";
-import { pick, prompt } from "@ai-shop/ui/prompt";
-import type { InvCategorySetting, SellRule, SellRuleScope, SellRuleType, StockSyncState } from "@shared/types";
+import type { InvCategorySetting, SellRule, SellRuleScope, StockSyncState } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -114,32 +114,13 @@ function categoryRuleText(categoryNo: string): string {
 /** 进销存管着的类目才有线上可售规则可言 */
 const managedRows = computed(() => rows.value.filter((r) => r.managed));
 
-const RULE_TYPES: SellRuleType[] = ["ALL", "RESERVE", "RATIO", "CAP", "MANUAL"];
-
 async function editRule(scope: SellRuleScope, scopeRef?: string) {
   if (!storeNo.value || !canAdmin.value) return;
-  const types: SellRuleType[] = scope === "STORE" ? RULE_TYPES : ["INHERIT", ...RULE_TYPES];
   const cur = scope === "STORE" ? ruleOf("STORE", storeNo.value) : ruleOf(scope, scopeRef ?? "");
-  const i = await pick({
-    title: String(t("stockSync.rules")),
-    items: types.map((x) => String(t(`stockSync.ruleOpt.${x}`))),
-    selected: Math.max(0, types.indexOf(cur?.ruleType ?? (scope === "STORE" ? "ALL" : "INHERIT"))),
-  });
-  const type = i === null ? undefined : types[i];
-  if (!type) return;
-  let param = 0;
-  if (ruleNeedsParam(type)) {
-    const v = await prompt({
-      title: String(t(`stockSync.param.${type}`)),
-      value: cur?.ruleType === type ? String(cur.param) : "",
-      type: "number",
-      maxlength: 5,
-    });
-    if (v === null) return;
-    param = Math.max(0, Math.floor(Number(v.trim()) || 0));
-  }
+  const r = await pickSellRule(t, scope !== "STORE", cur ?? undefined);
+  if (!r) return;
   try {
-    await api.mSaveSellRule(storeNo.value, { scopeType: scope, scopeRef, ruleType: type, param });
+    await api.mSaveSellRule(storeNo.value, { scopeType: scope, scopeRef, ...r });
     rules.value = await api.mSellRules(storeNo.value);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

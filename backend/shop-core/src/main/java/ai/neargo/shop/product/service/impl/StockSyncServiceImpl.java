@@ -214,44 +214,63 @@ public class StockSyncServiceImpl implements StockSyncService {
 
     @Override
     @Transactional
+    public Result applyQuota(String entityNo, String storeNo, String skuNo, int qty, int available,
+                             String sourceRef, String operator) {
+        return write(entityNo, storeNo, skuNo, Math.max(0, available),
+                Math.min(Math.max(0, qty), Math.max(0, available)), false, PrdSellRule.MANUAL, sourceRef, operator);
+    }
+
+    @Override
+    @Transactional
     public Result apply(String entityNo, String storeNo, String skuNo, int available, String sourceRef,
                         String operator) {
-        if (done(sourceRef, storeNo, skuNo)) {
-            return new Result(false, "DONE_BEFORE", null, available, 0, 0);
-        }
         PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
                 Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo).last("limit 1")));
         if (sku == null) {
             return new Result(false, "NO_SKU", null, available, 0, 0);
         }
-        String categoryNo = categoryOf(sku.getGoodsNo());
-        Rule rule = ruleOf(storeNo, sku.getGoodsNo(), categoryNo);
+        Rule rule = ruleOf(storeNo, sku.getGoodsNo(), categoryOf(sku.getGoodsNo()));
         int u = Math.max(0, available);
         boolean manual = PrdSellRule.MANUAL.equals(rule.ruleType());
-        // 手动：店主的额度只降不升 —— 可卖超过可用时压到可用
-        int target = manual ? u : StockSyncService.target(rule, u);
+        // 手动：店主的额度只降不升 —— 可卖超过可用时压到可用（往上写是 applyQuota 的事）
+        return write(entityNo, storeNo, skuNo, u, manual ? u : StockSyncService.target(rule, u), manual,
+                rule.ruleType(), sourceRef, operator);
+    }
 
+    /**
+     * 把线上可卖写成 {@code target} 并记一行明细（同一事务）。
+     *
+     * @param capOnly 只压不抬（手动规则的写回）
+     */
+    private Result write(String entityNo, String storeNo, String skuNo, int u, int target, boolean capOnly,
+                         String ruleType, String sourceRef, String operator) {
+        if (done(sourceRef, storeNo, skuNo)) {
+            return new Result(false, "DONE_BEFORE", null, u, 0, 0);
+        }
         Sellable before = sellableOf(storeNo, skuNo);
         String mode = before.mode();
+        if ("NONE".equals(mode)) {
+            return new Result(false, "NO_SKU", ruleType, u, 0, 0);
+        }
         if ("ENTITY".equals(mode) && merchants.storeNos(entityNo).size() > 1) {
             /*
              * 主体级库存、主体不止一家店：不改。
              * 改主体级 = 把几家店的数混成一个；建本店的按店行 = 这个 SKU 转成按店算，别的店当场变 0。
              * 期初对齐页会把这类 SKU 标出来，让店主先按店设一次库存。
              */
-            return new Result(false, "ENTITY_MULTI_STORE", rule.ruleType(), u, before.sellable(), before.sellable());
+            return new Result(false, "ENTITY_MULTI_STORE", ruleType, u, before.sellable(), before.sellable());
         }
-        if ("STORE".equals(mode) && storeRow(storeNo, skuNo) == null && !manual) {
+        if ("STORE".equals(mode) && storeRow(storeNo, skuNo) == null && !capOnly) {
             insertStoreRow(entityNo, storeNo, skuNo, target, operator);
         } else if ("STORE".equals(mode)) {
-            // 影响 0 行不是错：手动规则下可卖本来就不超过可用。结果以写完再读为准
-            if (manual) {
+            // 影响 0 行不是错：只压不抬时可卖本来就不超过目标。结果以写完再读为准
+            if (capOnly) {
                 storeStockMapper.capSellable(storeNo, skuNo, target);
             } else {
                 storeStockMapper.syncSellable(storeNo, skuNo, target);
             }
         } else {
-            DataScopeContext.executeWithoutScope(() -> manual
+            DataScopeContext.executeWithoutScope(() -> capOnly
                     ? skuMapper.capSellable(skuNo, target) : skuMapper.syncSellable(skuNo, target));
         }
         int after = sellableOf(storeNo, skuNo).sellable();
@@ -260,14 +279,14 @@ public class StockSyncServiceImpl implements StockSyncService {
         log.setStoreNo(storeNo);
         log.setSkuNo(skuNo);
         log.setSourceRef(sourceRef);
-        log.setRuleType(rule.ruleType());
+        log.setRuleType(ruleType);
         log.setAvailable(u);
         log.setBeforeQty(before.sellable());
         log.setAfterQty(after);
         log.setCreatedBy(operator);
         log.setUpdatedBy(operator);
         DataScopeContext.executeWithoutScope(() -> logMapper.insert(log));
-        return new Result(true, null, rule.ruleType(), u, before.sellable(), after);
+        return new Result(true, null, ruleType, u, before.sellable(), after);
     }
 
     private boolean done(String sourceRef, String storeNo, String skuNo) {

@@ -92,6 +92,7 @@ export const ROUTES = {
   suppliers: "/pages/suppliers/index",
   stockSettings: "/pages/stock-settings/index",
   stockAlign: "/pages/stock-align/index",
+  offlineSale: "/pages/offline-sale/index",
 } as const;
 
 /**

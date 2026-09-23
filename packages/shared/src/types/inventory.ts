@@ -521,3 +521,26 @@ export interface SellRule {
   /** RESERVE / CAP / MANUAL 为件数，RATIO 为百分比 */
   param: number;
 }
+
+/**
+ * 一笔线下卖出（TDD-商品纳入进销存开关 §5.2）。柜台卖掉的货，账上要减。
+ *
+ * **没有金额**：出库单不带售价，线下卖出只回答「货少了几件」——
+ * 线下收银是另一件事，混进来就有了第二个销售真源。
+ */
+export interface OfflineSaleRow {
+  /** 出库单号。撤销时带它回去 */
+  docNo: string;
+  occurredAt: string;
+  totalQty: number;
+  /** 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 */
+  revoked: boolean;
+  items: OfflineSaleItem[];
+}
+
+export interface OfflineSaleItem {
+  skuNo: string;
+  title: string;
+  spec: string;
+  qty: number;
+}

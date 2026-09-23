@@ -89,4 +89,14 @@ public interface StockSyncService {
      * @param available 可用 = 实存 − 占用 − 安全库存，由调用方从进销存算好
      */
     Result apply(String entityNo, String storeNo, String skuNo, int available, String sourceRef, String operator);
+
+    /**
+     * 店主当场把线上放多少定死（§8 的「改库存」）：线上可卖 = min(额度, 可用)，实存不动。
+     *
+     * <p><b>与 {@link #apply} 分开是有意的</b>：写回对手动规则只做「压到可用」，从不往上抬 ——
+     * 那是为了不让进货悄悄把店主设的数改大。而这一次是店主自己按的，要按他说的数写，
+     * 包括把线上从 4 调回 9。两者用同一张明细表，来源不同。
+     */
+    Result applyQuota(String entityNo, String storeNo, String skuNo, int qty, int available, String sourceRef,
+                      String operator);
 }
