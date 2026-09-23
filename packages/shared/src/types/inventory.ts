@@ -531,16 +531,23 @@ export interface SellRule {
 export interface OfflineSaleRow {
   /** 出库单号。撤销时带它回去 */
   docNo: string;
+  /** 记这一笔的时间（本地时间，`YYYY-MM-DDTHH:mm:ss`）。列表按天分组、只显示到分 */
   occurredAt: string;
+  /** 这一笔合计几件 —— 卖出的口径只有件数 */
   totalQty: number;
   /** 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 */
   revoked: boolean;
+  /** 这一笔卖了哪几件货 */
   items: OfflineSaleItem[];
 }
 
 export interface OfflineSaleItem {
+  /** 商城的 SKU 号 —— 记账时端上传的就是它，进销存那侧再换成物料号 */
   skuNo: string;
+  /** 商品名（服务端查了写快照口径的当下值，人读的） */
   title: string;
+  /** 规格描述（「10 斤装」）；没有规格时是空串 */
   spec: string;
+  /** 这件货卖了几件 */
   qty: number;
 }
