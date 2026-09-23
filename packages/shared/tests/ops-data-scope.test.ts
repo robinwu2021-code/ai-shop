@@ -39,10 +39,11 @@ const MODULES = backendModules(BACKEND);
  * 它只是把硬编码换成了另一条假设**。所以这里把假设写成断言：
  * 支付域与主应用必须在里面，且总数不能突然缩水。
  */
-if (!MODULES.includes("pay/pay-domain") || !MODULES.includes("shop-app") || MODULES.length < 10) {
+if (!MODULES.includes("pay/pay-domain") || !MODULES.includes("job/shop-job-core")
+    || !MODULES.includes("shop-app") || MODULES.length < 10) {
   throw new Error(
     `后端模块扫描面不对：${MODULES.length} 个 [${MODULES.join(", ")}]。\n` +
-    "  期望至少 10 个、且含 shop-app 与 pay/pay-domain。\n" +
+    "  期望至少 10 个、且含 shop-app、pay/pay-domain、job/shop-job-core。\n" +
     "  少扫在这几条闸门上不会报错 —— 它表现为「没有违规」，所以这里当场抛。");
 }
 const REGISTRATION = join(

@@ -27,21 +27,10 @@
              也不认识 Realm —— 它只为「一个命名的令牌池」存会话。
              依赖方向：shop-auth-store ← shop-base，无环 -->
         <module>shop-auth-store</module>
-        <!-- 定时任务契约：**零依赖**（连 Spring 都不引）。
-             业务侧实现 JobHandler，worker 只认名字。
-             不放进 shop-base 的理由见它自己的 pom 注释 —— 一句话：
-             shop-base 会把 mybatis-plus 拖给每一个引用者，而 worker 要的正是干净 -->
-        <module>shop-job-api</module>
-        <!-- 定时任务持久层：独立库 + JdbcClient 手写 SQL。
-             不引 Spring Data（代理是 native 的负担），不引 shop-base（会拖来 MyBatis） -->
-        <module>shop-job-store</module>
-        <!-- 定时任务调度引擎：注册表/执行器/同步。**两个宿主共用** ——
-             独立 worker 与业务实例内的 worker。抽出来是为了「先在业务实例内跑通、
-             观察一周、再拆出去」这条路上两边跑的是同一套代码 -->
-        <module>shop-job-core</module>
-        <!-- 定时任务调度器：**独立可部署单元**，不含任何业务代码。
-             没有 starter-web 是有意的（运营端读库不调它），HTTP 客户端用 JDK 自带的 -->
-        <module>shop-job</module>
+        <!-- 定时任务四个模块（契约 / 持久层 / 引擎 / 独立调度器）收在 backend/job/ 下，
+             各自做什么见 job/pom.xml 里那四条注释。
+             它们的包名是 ai.neargo.job.*，与业务域分开：worker 要的正是「不认识业务」 -->
+        <module>job</module>
         <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
         <module>shop-base</module>
         <!-- 持久层的 MyBatis 实现。**排在 shop-base 之后、业务域之前** —— 它依赖前者、被后者依赖 -->
@@ -53,11 +42,8 @@
         <module>shop-core</module>
         <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
         <module>shop-merchant</module>
-        <!-- 支付通道适配。2026-09-01 从 shop-channel 拆出 —— 通道是支付域的核心能力 -->
-        <module>pay/pay-channel</module>
-        <module>pay/pay-domain</module>
-        <!-- 独立部署形态（形态 B）。今天装得起来但不接流量 —— 见 PayApplication 的类注释 -->
-        <module>pay/pay-svc</module>
+        <!-- 支付域三个模块（通道 / 领域 / 独立服务形态）收在 backend/pay/ 下，见 pay/pom.xml -->
+        <module>pay</module>
         <!-- 进销存：**独立数据源与独立迁移历史**（db/inventory），将来可独立交付。
              与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
              这个是「数据边界不同」：它的表不在 ai_shop 里 -->

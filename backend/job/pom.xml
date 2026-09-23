@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>job-modules</artifactId>
+    <packaging>pom</packaging>
+    <description>定时任务四个模块的聚合 pom（目录分组，不是第二个父工程）</description>
+
+    <!--
+        **这里只列模块，一个 property、一个 dependency、一条 dependencyManagement 都不放。**
+
+        它存在的理由只有一个：把四个 job 模块收进 backend/job/ 之后，
+        根 pom 只需要列一条，加模块也只改这一处。
+
+        为什么不许放别的：版本与依赖管理全在 shop-parent。
+        中间层一旦也写这些，同一个属性会有两处定义，而 Maven 只会用其中一处 ——
+        「模块 pom 里钉的版本不生效」正是这么来的，且没有任何报错。
+        子模块的 <parent> 因此仍然直指 shop-parent，不指这里。
+    -->
+    <modules>
+        <!-- 契约包：**零依赖**（连 Spring 都不引），业务侧实现 JobHandler，worker 只认名字 -->
+        <module>shop-job-api</module>
+        <!-- 持久层：独立库 + JdbcClient 手写 SQL -->
+        <module>shop-job-store</module>
+        <!-- 调度引擎：独立 worker 与业务实例内的 worker 共用同一套代码 -->
+        <module>shop-job-core</module>
+        <!-- 调度器：独立可部署单元，不含业务代码 -->
+        <module>shop-job</module>
+    </modules>
+</project>

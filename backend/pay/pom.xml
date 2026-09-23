@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pay-modules</artifactId>
+    <packaging>pom</packaging>
+    <description>支付域三个模块的聚合 pom（目录分组，不是第二个父工程）</description>
+
+    <!-- 只列模块，不放属性与依赖管理 —— 理由同 job/pom.xml -->
+    <modules>
+        <!-- 支付通道适配。2026-09-01 从 shop-channel 拆出 —— 通道是支付域的核心能力 -->
+        <module>pay-channel</module>
+        <module>pay-domain</module>
+        <!-- 独立部署形态（形态 B）。今天装得起来但不接流量 —— 见 PayApplication 的类注释 -->
+        <module>pay-svc</module>
+    </modules>
+</project>

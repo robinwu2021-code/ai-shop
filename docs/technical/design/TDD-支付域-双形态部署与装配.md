@@ -301,7 +301,7 @@ pay 的四个任务（对账扫描、账期截批、冻结兜底、积分转正�
 调度器 `shop-job` **已经支持多目标**：
 
 ```
-shop-job-core/.../JobWorkerProperties.java:36
+job/shop-job-core/.../JobWorkerProperties.java:36
     private Map<String, String> targets = new LinkedHashMap<>();   // job_definition.target → base URL
 ```
 
