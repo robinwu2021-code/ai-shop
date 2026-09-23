@@ -1511,6 +1511,48 @@ components:
         - "ruleType"
         - "param"
       additionalProperties: false
+    OfflineSaleRow: 
+      type: "object"
+      properties: 
+        docNo: 
+          type: "string"
+          description: "出库单号。撤销时带它回去"
+        occurredAt: 
+          type: "string"
+        totalQty: 
+          type: "number"
+        revoked: 
+          type: "boolean"
+          description: "已撤销：原单留着（删单等于账上从没发生过），列表上标出来"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/OfflineSaleItem"
+      required: 
+        - "docNo"
+        - "occurredAt"
+        - "totalQty"
+        - "revoked"
+        - "items"
+      additionalProperties: false
+      description: "一笔线下卖出（TDD-商品纳入进销存开关 §5.2）。柜台卖掉的货，账上要减。\n\n**没有金额**：出库单不带售价，线下卖出只回答「货少了几件」—— 线下收银是另一件事，混进来就有了第二个销售真源。"
+    OfflineSaleItem: 
+      type: "object"
+      properties: 
+        skuNo: 
+          type: "string"
+        title: 
+          type: "string"
+        spec: 
+          type: "string"
+        qty: 
+          type: "number"
+      required: 
+        - "skuNo"
+        - "title"
+        - "spec"
+        - "qty"
+      additionalProperties: false
     CouponFunder: 
       type: "string"
       enum: 
@@ -18219,6 +18261,111 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/SellRule"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/offline-sale": 
+    get: 
+      operationId: "mOfflineSales"
+      summary: "本店某天的线下卖出"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OfflineSaleRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    post: 
+      operationId: "mOfflineSell"
+      summary: "记一笔线下卖出并过账"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/{ docNo: string }"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/offline-sale/{docNo}/revoke": 
+    post: 
+      operationId: "mOfflineSaleRevoke"
+      summary: "撤销一笔线下卖出（开退回入库单）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "docNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/{ docNo: string }"
                 required: 
                   - "code"
                   - "msg"

@@ -12452,6 +12452,114 @@
           "ar": "لدى المنصة «{name}» بالفعل؛ سنستخدمها"
         },
         {
+          "key": "offlineSale.addItem",
+          "zh-CN": "添加商品",
+          "en": "Add product",
+          "ar": "إضافة منتج"
+        },
+        {
+          "key": "offlineSale.availableN",
+          "zh-CN": "可用 {n}",
+          "en": "{n} available",
+          "ar": "المتاح {n}"
+        },
+        {
+          "key": "offlineSale.done",
+          "zh-CN": "已记账",
+          "en": "Recorded",
+          "ar": "تم التسجيل"
+        },
+        {
+          "key": "offlineSale.empty",
+          "zh-CN": "今天还没有记录",
+          "en": "Nothing recorded today",
+          "ar": "لا توجد سجلات اليوم"
+        },
+        {
+          "key": "offlineSale.hint",
+          "zh-CN": "线下卖出只记件数，不计销售额；记账后线上可售数量会自动更新。",
+          "en": "In-store sales record quantity only, not revenue. Online stock updates automatically.",
+          "ar": "البيع في المتجر يسجل الكمية فقط دون الإيرادات، ويُحدَّث المخزون أونلاين تلقائيًا."
+        },
+        {
+          "key": "offlineSale.qtyBad",
+          "zh-CN": "填一个大于 0 的整数",
+          "en": "Enter a whole number above 0",
+          "ar": "أدخل عددًا صحيحًا أكبر من 0"
+        },
+        {
+          "key": "offlineSale.qtyHint",
+          "zh-CN": "可用 {n}，不可超出",
+          "en": "{n} available, cannot exceed",
+          "ar": "المتاح {n}، لا يمكن تجاوزه"
+        },
+        {
+          "key": "offlineSale.qtyN",
+          "zh-CN": "共 {n} 件",
+          "en": "{n} items",
+          "ar": "{n} قطعة"
+        },
+        {
+          "key": "offlineSale.qtyOver",
+          "zh-CN": "最多 {n}",
+          "en": "At most {n}",
+          "ar": "بحد أقصى {n}"
+        },
+        {
+          "key": "offlineSale.qtyTitle",
+          "zh-CN": "{name} · 卖出数量",
+          "en": "{name} · quantity sold",
+          "ar": "{name} · الكمية المباعة"
+        },
+        {
+          "key": "offlineSale.revoke",
+          "zh-CN": "撤销",
+          "en": "Undo",
+          "ar": "تراجع"
+        },
+        {
+          "key": "offlineSale.revokeHint",
+          "zh-CN": "{n} 件货将加回库存，原记录保留。",
+          "en": "{n} items will be added back to stock. The record is kept.",
+          "ar": "ستعاد {n} قطعة إلى المخزون مع الاحتفاظ بالسجل."
+        },
+        {
+          "key": "offlineSale.revokeTitle",
+          "zh-CN": "撤销这一笔？",
+          "en": "Undo this sale?",
+          "ar": "التراجع عن هذا البيع؟"
+        },
+        {
+          "key": "offlineSale.revoked",
+          "zh-CN": "已撤销",
+          "en": "Undone",
+          "ar": "تم التراجع"
+        },
+        {
+          "key": "offlineSale.submit",
+          "zh-CN": "记一笔",
+          "en": "Record sale",
+          "ar": "تسجيل البيع"
+        },
+        {
+          "key": "offlineSale.title",
+          "zh-CN": "线下卖出",
+          "en": "In-store sale",
+          "ar": "بيع في المتجر"
+        },
+        {
+          "key": "offlineSale.today",
+          "zh-CN": "今天已记",
+          "en": "Recorded today",
+          "ar": "المسجل اليوم"
+        },
+        {
+          "key": "offlineSale.totalQty",
+          "zh-CN": "合计",
+          "en": "Total",
+          "ar": "الإجمالي"
+        },
+        {
           "key": "order.amount",
           "zh-CN": "金额",
           "en": "Amount",
@@ -16328,6 +16436,12 @@
           "ar": "المواقع"
         },
         {
+          "key": "stock.entry.offlineSale",
+          "zh-CN": "线下卖出",
+          "en": "In-store sale",
+          "ar": "بيع في المتجر"
+        },
+        {
           "key": "stock.entry.out",
           "zh-CN": "报损",
           "en": "Scrap",
@@ -16454,6 +16568,18 @@
           "ar": "استخدام داخلي"
         },
         {
+          "key": "stock.reason.OFFLINE_RETURN",
+          "zh-CN": "线下退回",
+          "en": "In-store return",
+          "ar": "إرجاع في المتجر"
+        },
+        {
+          "key": "stock.reason.OFFLINE_SALE",
+          "zh-CN": "线下卖出",
+          "en": "In-store sale",
+          "ar": "بيع في المتجر"
+        },
+        {
           "key": "stock.reason.OTHER",
           "zh-CN": "其他",
           "en": "Other",
@@ -16473,7 +16599,7 @@
         },
         {
           "key": "stock.reason.SALE",
-          "zh-CN": "销售出库",
+          "zh-CN": "线上销售",
           "en": "Sale out",
           "ar": "إخراج بيع"
         },
@@ -17594,6 +17720,12 @@
           "ar": "وارد"
         },
         {
+          "key": "stockReport.scopeHint",
+          "zh-CN": "只统计接入进销存的商品，按当前门店。线下卖出只计件数，不计销售额 —— 与经营报表的销售额不是同一个口径。",
+          "en": "Covers only products tracked in inventory, for the current store. In-store sales count quantity only, not revenue — a different basis from the sales report.",
+          "ar": "يشمل فقط المنتجات المُدارة في المخزون لهذا المتجر. البيع في المتجر يُحسب بالكمية فقط دون الإيرادات، وهو أساس مختلف عن تقرير المبيعات."
+        },
+        {
           "key": "stockReport.slow",
           "zh-CN": "滞销",
           "en": "Slow movers",
@@ -17601,7 +17733,7 @@
         },
         {
           "key": "stockReport.sold",
-          "zh-CN": "销",
+          "zh-CN": "销（线上 + 线下）",
           "en": "Sold",
           "ar": "مبيع"
         },
@@ -17738,10 +17870,22 @@
           "ar": "المطابقة الافتتاحية"
         },
         {
+          "key": "stockSync.goodsRule",
+          "zh-CN": "线上可售",
+          "en": "Online availability",
+          "ar": "المتاح للبيع أونلاين"
+        },
+        {
           "key": "stockSync.hint",
           "zh-CN": "开启后，进货、盘点、报损完成时，线上库存按下方规则自动更新。",
           "en": "When on, online stock updates by the rules below after purchases, counts and scrap.",
           "ar": "عند التشغيل يُحدَّث المخزون عبر الإنترنت وفق القواعد أدناه بعد الشراء والجرد والإتلاف."
+        },
+        {
+          "key": "stockSync.inheritOf",
+          "zh-CN": "跟随 · {v}",
+          "en": "Inherited · {v}",
+          "ar": "متوارث · {v}"
         },
         {
           "key": "stockSync.needAlign",
@@ -17835,9 +17979,9 @@
         },
         {
           "key": "stockSync.ruleOpt.INHERIT",
-          "zh-CN": "跟随本店默认",
-          "en": "Use store default",
-          "ar": "اتباع افتراضي المتجر"
+          "zh-CN": "跟随上一级",
+          "en": "Inherit",
+          "ar": "توارث"
         },
         {
           "key": "stockSync.ruleOpt.MANUAL",
@@ -29700,6 +29844,13 @@
       },
       {
         "host": "InboundSource",
+        "name": "OFFLINE_RETURN",
+        "value": "OFFLINE_RETURN",
+        "zh": "线下卖出的撤销：把柜台卖错的那几件加回来，指回原出库单号",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "InboundSource",
         "name": "OTHER",
         "value": "OTHER",
         "zh": "",
@@ -29738,6 +29889,13 @@
         "name": "INTERNAL",
         "value": "INTERNAL",
         "zh": "",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "OFFLINE_SALE",
+        "value": "OFFLINE_SALE",
+        "zh": "柜台卖出。",
         "module": "shop-inventory"
       },
       {
@@ -32499,7 +32657,8 @@
           "/pages/locations/index",
           "/pages/suppliers/index",
           "/pages/stock-settings/index",
-          "/pages/stock-align/index"
+          "/pages/stock-align/index",
+          "/pages/offline-sale/index"
         ],
         "zh": ""
       },

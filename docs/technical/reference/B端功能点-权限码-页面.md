@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 206 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 208 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -21,7 +21,7 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
-| `biz:stock` | `STOCK` | 改库存（含门店库存） | 42 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
@@ -54,7 +54,7 @@
 | 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
 | 几件商品记不记库存（列表标签、编辑页那一行） | GET | `/biz/goods/inv-mode` | `mGoodsInvModes` | goods-edit、goods-list |
 | 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
-| 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | stock、stock-out、transfer |
+| 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | offline-sale、stock、stock-out、transfer |
 | 记库存的品类（各门店经营类目合集，每类一行） | GET | `/biz/inventory/category-setting` | `mInvCategorySettings` | stock-settings、store-categories |
 | 开盘点单（锁账面数） | POST | `/biz/inventory/counts` | `mCountOpen` | stock-check |
 | 读回盘点单（含账面快照） | GET | `/biz/inventory/counts/:no` | `mCountDetail` | stock-check |
@@ -88,10 +88,13 @@
 | 调拨收货 | POST | `/biz/inventory/transfers/:no/receive` | `mTransferReceive` | transfer |
 | 调拨发出 | POST | `/biz/inventory/transfers/:no/ship` | `mTransferShip` | transfer |
 | 作废调拨草稿 | POST | `/biz/inventory/transfers/:no/void` | `mTransferVoid` | stock-docs、transfer |
-| 本店线上可售规则 | GET | `/biz/store/:storeNo/sell-rules` | `mSellRules` | stock-settings |
-| 存一条线上可售规则并重算 | PUT | `/biz/store/:storeNo/sell-rules` | `mSaveSellRule` | stock-settings |
+| 本店某天的线下卖出 | GET | `/biz/store/:storeNo/offline-sale` | `mOfflineSales` | offline-sale |
+| 记一笔线下卖出并过账 | POST | `/biz/store/:storeNo/offline-sale` | `mOfflineSell` | offline-sale |
+| 撤销一笔线下卖出（开退回入库单） | POST | `/biz/store/:storeNo/offline-sale/:docNo/revoke` | `mOfflineSaleRevoke` | offline-sale |
+| 本店线上可售规则 | GET | `/biz/store/:storeNo/sell-rules` | `mSellRules` | goods-edit、stock-settings |
+| 存一条线上可售规则并重算 | PUT | `/biz/store/:storeNo/sell-rules` | `mSaveSellRule` | goods-edit、stock-settings |
 | 期初对齐清单：实存与商城库存逐件对照 | GET | `/biz/store/:storeNo/stock-alignment` | `mStockAlignment` | stock-align |
-| 本店库存同步状态 | GET | `/biz/store/:storeNo/stock-sync` | `mStockSync` | stock-settings |
+| 本店库存同步状态 | GET | `/biz/store/:storeNo/stock-sync` | `mStockSync` | goods-edit、stock-settings |
 | 开 / 关本店库存同步（要先期初对齐） | PUT | `/biz/store/:storeNo/stock-sync` | `mSetStockSync` | stock-settings |
 
 ### `biz:goods`　建/改商品、上下架、规格模板、识图
@@ -408,6 +411,7 @@
 | `member-tag` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `member-tags` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `my-specs` | `biz:goods` | `biz:goods` | 老板、店长 | — |
+| `offline-sale` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `order` | `biz:order:view` | `biz:receive`、`biz:order:view`、`biz:ship` | 老板、店长、店员、配送员、客服 | 配送员（缺 biz:receive）　客服（缺 biz:receive、biz:ship） |
 | `orders` | `biz:order:view` | `biz:aftersale`、`biz:order:view` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:aftersale）　配送员（缺 biz:aftersale） |
 | `payment` | `biz:finance` | `biz:finance` | 老板 | — |
