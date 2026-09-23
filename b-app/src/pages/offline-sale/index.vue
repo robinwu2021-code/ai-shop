@@ -227,7 +227,7 @@ onShow(() => {
 }
 .qty {
   min-width: 80rpx;
-  text-align: right;
+  text-align: end;
 }
 .addrow {
   gap: 16rpx;

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 83,
+      "count": 84,
       "domains": [
         {
           "name": "工作台",
@@ -461,6 +461,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stock-cross/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/offline-sale/index",
+              "title": "线下卖出",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/offline-sale/index"
             }
           ]
         },
@@ -3307,5 +3318,5 @@
       ]
     }
   ],
-  "total": 260
+  "total": 261
 }

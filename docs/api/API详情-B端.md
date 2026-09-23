@@ -5752,6 +5752,52 @@ _无字段_
 | `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
+#### GET `/biz/store/{storeNo}/offline-sale`
+
+本店某天的线下卖出　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`OfflineSaleRow`](#offlinesalerow)\[\]
+
+
+#### POST `/biz/store/{storeNo}/offline-sale`
+
+记一笔线下卖出并过账　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`{ docNo: string }`](#docnostring)
+
+
+#### POST `/biz/store/{storeNo}/offline-sale/{docNo}/revoke`
+
+撤销一笔线下卖出（开退回入库单）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `docNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`{ docNo: string }`](#docnostring)
+
+
 #### POST `/biz/store/{storeNo}/payment`
 
 换门店收款号　🔒
@@ -8040,6 +8086,27 @@ _无字段_
 | `netMinor` | `number` | 是 | 本批应放款合计（分） |
 | `blockedReason` | `string` | 否 | 挂起原因，**原话展示**（含具体数字与阈值），不要在端上再拼一遍 |
 | `blockExpireAt` | `number` | 否 | 超时未处置将自动放行的时刻 |
+
+### OfflineSaleItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `spec` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+
+### OfflineSaleRow
+
+一笔线下卖出（TDD-商品纳入进销存开关 §5.2）。柜台卖掉的货，账上要减。 **没有金额**：出库单不带售价，线下卖出只回答「货少了几件」—— 线下收银是另一件事，混进来就有了第二个销售真源。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `docNo` | `string` | 是 | 出库单号。撤销时带它回去 |
+| `occurredAt` | `string` | 是 | — |
+| `totalQty` | `number` | 是 | — |
+| `revoked` | `boolean` | 是 | 已撤销：原单留着（删单等于账上从没发生过），列表上标出来 |
+| `items` | [`OfflineSaleItem`](#offlinesaleitem)\[\] | 是 | — |
 
 ### Order
 
