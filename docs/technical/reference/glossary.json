@@ -30925,7 +30925,7 @@
           "RUNNING"
         ],
         "zh": "一轮执行的结局。",
-        "module": "shop-job-api"
+        "module": "job"
       },
       {
         "name": "Kind",
@@ -31036,7 +31036,7 @@
           "BACKFILL"
         ],
         "zh": "这一轮是怎么被触发的。",
-        "module": "shop-job-api"
+        "module": "job"
       }
     ],
     "clientEnums": [
