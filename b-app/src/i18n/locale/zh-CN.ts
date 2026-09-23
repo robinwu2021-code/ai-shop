@@ -2462,7 +2462,7 @@ entryHint: "谁在买 · 谁不来了",
     // 待收货的**调拨单数**，不是件数 —— 收货按单做，件数点不进任何一张单
     statTransit: "在途",
     tabTodo: "要处理",
-    entry: { purchase: "进货", offlineSale: "线下卖出", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", suppliers: "供应商", locations: "库位", cross: "跨店库存", settings: "库存设置" },
+    entry: { purchase: "进货", offlineSale: "卖出", check: "盘点", out: "报损", docs: "单据", transfer: "调拨", report: "报表", suppliers: "供应商", locations: "库位", cross: "跨店库存", settings: "库存设置" },
     // 「更多」展开的那段菜单：低频的六个入口收在这里，**只有名字**。
     // 分组标题与每条一句的说明都去掉了（2026-09-17 商家定的）——
     // 这六个名字是这一行通用的说法，给每条配一句解释反而像在教人认字

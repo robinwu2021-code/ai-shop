@@ -244,6 +244,12 @@ class StockSyncWritebackTest {
         assertThat(rows.get(0).get("revoked").asBoolean()).isFalse();
         assertThat(rows.get(0).get("items").get(0).get("qty").asInt()).isEqualTo(8);
         assertThat(rows.get(0).get("items").get(0).get("skuNo").asString()).isEqualTo(s.skuNo);
+        /*
+         * **名字要真出得来。** 第一版从商品表取名（带数据域），单测里没有域上下文照样查得到，
+         * 而真机上每一行都是空名字 —— 2026-09-23 装机当场看见的。现在从物料表取，这条断言钉住它。
+         */
+        assertThat(rows.get(0).get("items").get(0).get("title").asString())
+                .as("列表要显示商品名，不能只剩「×1」").startsWith("同步香梨");
     }
 
     @Test

@@ -4,9 +4,13 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvInboundOrder;
+import ai.neargo.shop.inventory.entity.InvItem;
+import ai.neargo.shop.inventory.entity.InvItemRef;
 import ai.neargo.shop.inventory.entity.InvOutboundLine;
 import ai.neargo.shop.inventory.entity.InvOutboundOrder;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
 import ai.neargo.shop.inventory.service.InboundService;
@@ -14,9 +18,6 @@ import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.support.InvEnums;
-import ai.neargo.shop.product.entity.PrdGoods;
-import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.service.InvManagedService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,11 +54,12 @@ public class OfflineSaleService {
     private final OutboundOrderMapper orders;
     private final OutboundLineMapper lines;
     private final InboundOrderMapper inbounds;
-    private final InvManagedService invManaged;
+    private final ItemMapper items;
+    private final ItemRefMapper refs;
 
     public OfflineSaleService(InventoryAclService acl, LocationService locations, OutboundService outbound,
                               InboundService inbound, OutboundOrderMapper orders, OutboundLineMapper lines,
-                              InboundOrderMapper inbounds, InvManagedService invManaged) {
+                              InboundOrderMapper inbounds, ItemMapper items, ItemRefMapper refs) {
         this.acl = acl;
         this.locations = locations;
         this.outbound = outbound;
@@ -65,7 +67,8 @@ public class OfflineSaleService {
         this.orders = orders;
         this.lines = lines;
         this.inbounds = inbounds;
-        this.invManaged = invManaged;
+        this.items = items;
+        this.refs = refs;
     }
 
     /** @param qty 卖出件数，必须为正 —— 负数「卖出」是撤销，走 {@link #revoke} */
@@ -142,21 +145,38 @@ public class OfflineSaleService {
                         .in(InvInboundOrder::getSourceRef, docNos)).stream()
                 .map(InvInboundOrder::getSourceRef).toList();
 
-        Map<String, String[]> names = namesOfItems(entityNo);
-        // itemId → skuNo：列表要把物料号翻回商品名，一次查完
+        /*
+         * **名字从 inv_item 取，不回头查商品表。**
+         * 第一版走 `invManaged.managedGoods` + `skusOf`，在真机上列出来每一行都是空名字 ——
+         * 那两张表带数据域，B 端请求里查不出东西（读不报错，只是空），而这一页恰恰是在请求里跑的。
+         * 物料名本来就是投影过来的同一份，同库、无域、一次查完。
+         */
+        Map<String, InvItem> byItem = new LinkedHashMap<>();
+        List<String> itemIds = byDoc.values().stream().flatMap(List::stream)
+                .map(InvOutboundLine::getItemId).distinct().toList();
         Map<String, String> skuOfItem = new LinkedHashMap<>();
-        acl.itemIdsOf(entityNo, names.keySet()).forEach((sku, item) -> skuOfItem.put(item, sku));
+        if (!itemIds.isEmpty()) {
+            // 按 item_id 查，不用 selectBatchIds —— 那条按**主键**走，而这张表的主键是自增 id
+            items.selectList(Wrappers.<InvItem>lambdaQuery().in(InvItem::getItemId, itemIds))
+                    .forEach(it -> byItem.put(it.getItemId(), it));
+            // skuNo 不在 inv_item 上，它在引用表里（一件物料可以有多套外部编号，只认 AISHOP 那套）
+            refs.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                            .eq(InvItemRef::getOwnerId, ownerId)
+                            .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                            .in(InvItemRef::getItemId, itemIds))
+                    .forEach(r -> skuOfItem.put(r.getItemId(), r.getRef()));
+        }
         List<SaleRow> out = new ArrayList<>();
         for (InvOutboundOrder o : rows) {
-            List<ItemRow> items = new ArrayList<>();
+            List<ItemRow> lineRows = new ArrayList<>();
             for (InvOutboundLine l : byDoc.getOrDefault(o.getOutboundNo(), List.of())) {
-                String skuNo = skuOfItem.get(l.getItemId());
-                String[] n = skuNo == null ? null : names.get(skuNo);
-                items.add(new ItemRow(skuNo, n == null ? "" : n[0], n == null ? "" : n[1], l.getQty()));
+                InvItem it = byItem.get(l.getItemId());
+                lineRows.add(new ItemRow(skuOfItem.get(l.getItemId()),
+                        it == null ? "" : nz(it.getName()), it == null ? "" : nz(it.getSpecText()), l.getQty()));
             }
             out.add(new SaleRow(o.getOutboundNo(), o.getOccurredAt(),
                     o.getTotalQty() == null ? 0 : o.getTotalQty(),
-                    revoked.contains(o.getOutboundNo()), items));
+                    revoked.contains(o.getOutboundNo()), lineRows));
         }
         return out;
     }
@@ -198,16 +218,7 @@ public class OfflineSaleService {
                 null, docLines), operator);
     }
 
-    /** skuNo → {商品名, 规格}，只查本主体接入进销存的货 */
-    private Map<String, String[]> namesOfItems(String entityNo) {
-        List<PrdGoods> goods = invManaged.managedGoods(entityNo);
-        Map<String, String> titles = goods.stream()
-                .collect(Collectors.toMap(PrdGoods::getGoodsNo, PrdGoods::getTitle, (a, b) -> a));
-        Map<String, String[]> out = new LinkedHashMap<>();
-        for (PrdSku s : invManaged.skusOf(titles.keySet())) {
-            out.put(s.getSkuNo(), new String[]{titles.getOrDefault(s.getGoodsNo(), ""),
-                    s.getSpec() == null ? "" : s.getSpec()});
-        }
-        return out;
+    private static String nz(String v) {
+        return v == null ? "" : v;
     }
 }

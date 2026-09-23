@@ -348,21 +348,6 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     }
 
     @Override
-    public Map<String, String> itemIdsOf(String entityNo, Collection<String> skuNos) {
-        Map<String, String> out = new LinkedHashMap<>();
-        InvOwner owner = findOwner(entityNo);
-        if (owner == null || skuNos == null || skuNos.isEmpty()) {
-            return out;
-        }
-        refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
-                        .eq(InvItemRef::getOwnerId, owner.getOwnerId())
-                        .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
-                        .in(InvItemRef::getRef, new HashSet<>(skuNos)))
-                .forEach(r -> out.put(r.getRef(), r.getItemId()));
-        return out;
-    }
-
-    @Override
     @Transactional(transactionManager = "invTransactionManager", readOnly = true)
     public Map<String, ItemState> stateOf(String entityNo, Collection<String> skuNos) {
         Map<String, ItemState> out = new LinkedHashMap<>();

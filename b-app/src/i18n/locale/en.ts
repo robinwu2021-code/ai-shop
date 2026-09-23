@@ -2193,7 +2193,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     statStale: "Idle",
     statTransit: "In transit",
     tabTodo: "Needs action",
-    entry: { purchase: "Record purchase", offlineSale: "In-store sale", check: "Count", out: "Scrap", docs: "Documents", transfer: "Transfer", report: "Report", suppliers: "Suppliers", locations: "Locations", cross: "Across stores", settings: "Stock settings" },
+    entry: { purchase: "Record purchase", offlineSale: "Sell", check: "Count", out: "Scrap", docs: "Documents", transfer: "Transfer", report: "Report", suppliers: "Suppliers", locations: "Locations", cross: "Across stores", settings: "Stock settings" },
     more: "More",
     entryBlocked: { transfer: "Needs two places for goods, has {n}" },
     goAddLocation: "Add one",

@@ -2191,7 +2191,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     statStale: "راكد",
     statTransit: "قيد النقل",
     tabTodo: "يحتاج إجراء",
-    entry: { purchase: "تسجيل شراء", offlineSale: "بيع في المتجر", check: "جرد", out: "إتلاف", docs: "المستندات", transfer: "تحويل", report: "تقرير", suppliers: "الموردون", locations: "المواقع", cross: "عبر المتاجر", settings: "إعدادات المخزون" },
+    entry: { purchase: "تسجيل شراء", offlineSale: "بيع", check: "جرد", out: "إتلاف", docs: "المستندات", transfer: "تحويل", report: "تقرير", suppliers: "الموردون", locations: "المواقع", cross: "عبر المتاجر", settings: "إعدادات المخزون" },
     more: "المزيد",
     entryBlocked: { transfer: "يحتاج مكانين للبضاعة، والموجود {n}" },
     goAddLocation: "إضافة مكان",

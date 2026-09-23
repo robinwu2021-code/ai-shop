@@ -150,7 +150,6 @@ onShow(() => {
 <template>
   <sh-scaffold
     title-key="offlineSale.title"
-    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
     :denied="!merchant.can('biz:stock')"
     :failed="failed"
     @retry="load"
