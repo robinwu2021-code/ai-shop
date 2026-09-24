@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 /**
  * 全局异常 → {@link ApiResult}。
@@ -210,8 +211,24 @@ public class GlobalExceptionHandler {
         return (T) sra.getRequest().getAttribute(name);
     }
 
+    /**
+     * 兜底。<b>客户端已断开的那一类不在这里收</b>，原样抛回给 Spring。
+     *
+     * <p>线上每天几十条 ERROR 都是它：运营端关页签时 {@code /ops/stream}（SSE）断开，报
+     * {@code AsyncRequestNotUsableException}；手机切后台时写到一半的响应报 Broken pipe。
+     * 没有一条是服务端的错，却和真故障混在同一个级别里。
+     *
+     * <p><b>为什么是抛回去，而不是返回 null</b>：返回值会经过 {@link ApiResponseWrapper}，
+     * null 被包成 {@code ok(null)} 再往已经断开的连接上写一次 —— 又一个异常，而且包体说的是「成功」。
+     * Spring 的 {@code ExceptionHandlerExceptionResolver} 对「处理器自己抛出的断连异常」
+     * 有现成的收尾：返回空 ModelAndView，只在 {@code DisconnectedClient} 日志器上打 DEBUG。
+     */
     @ExceptionHandler(Exception.class)
-    public ApiResult<Void> onAny(Exception e) {
+    public ApiResult<Void> onAny(Exception e) throws Exception {
+        if (DisconnectedClientHelper.isClientDisconnectedException(e)) {
+            log.debug("客户端已断开 {} · {}", requestLine(), e.getMessage());
+            throw e;
+        }
         log.error("unhandled error", e);
         return ApiResult.error(ErrorCode.INTERNAL_ERROR.code(), Messages.get(ErrorCode.INTERNAL_ERROR.msgKey()));
     }
