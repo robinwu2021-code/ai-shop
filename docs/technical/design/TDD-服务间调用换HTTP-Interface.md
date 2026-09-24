@@ -1,6 +1,6 @@
 # TDD-服务间调用换 HTTP Interface
 
-状态：已实现（未上线）
+状态：已上线（2026-09-24，`892bf807`）
 关联：[ADR-025 服务间调用用 HTTP Interface](../ADR/ADR-025-服务间调用用HTTP-Interface.md) ·
 [ADR-023 服务发现先不装中间件](../ADR/ADR-023-服务发现先不装中间件.md) ·
 [ADR-021 支付域独立为服务](../ADR/ADR-021-支付域独立为服务与独立库.md)
@@ -195,6 +195,17 @@ public class InternalHttp {
 | AC7 | 两边注解引用同一份常量（`JobHttpPaths`、`PayInternalPaths`）；`PayInternalApiRoundTripTest` 验参数名 | ✅ 编译过 | 客户端参数名 `at` 改错 → 400 红 ✅ |
 | AC8 | `ServiceClientsTest#resolvesBaseUrlPerCall` | ✅ | 地址启动时定死 → 红 ✅ |
 | 生产形态装配 | `PayStandaloneAssemblyTest`（按 `standalone` 装 shop-app 上下文） | ✅ 4/4 | — |
+
+**生产验证（2026-09-24 22:19–22:24）**：
+
+| 进程 | 版本 | 验证 |
+|---|---|---|
+| shop-app | `shop-app-20260924-2219-892bf807` | health=200；启动后 0 条 ERROR；旧 job-worker 调它（服务端已改用常量）：重启窗口外 0 失败 |
+| pay-svc | `pay-svc-20260924-2221-892bf807` | 活口 401；带令牌实调 3 个只读端点均 200，**应答未被信封包裹**（数组 / 无 `code` 字段的对象） |
+| job-worker | `shop-job-20260924-2222` | 启动即经新客户端取到任务声明（「新增 21 … 共 21 个」）；`outbox-dispatch` 每 5 秒一次，头 65 秒 0 调用失败 / 0 任务失败 / 0 ERROR。对照：shop-app 重启那几秒旧 worker 当场记了 `ConnectException` —— 失败是会被记下的 |
+
+**未在生产实测**：shop-app → pay-svc 经新客户端的真实调用，只由运营端费率页 / 开票页触发，需要运营账号去点一次。
+旧 job-worker 关闭时有几条 `CannotGetJdbcConnectionException`：连接池先于定时任务关掉，是旧版本自身的关闭顺序，与本次改动无关。
 
 **一次读错结果的记录**：第 1 步消融时三次全「绿」，原因是读的是 `target/surefire-reports` 里上一轮留下的报告 ——
 改成直接读 Maven 输出后三处都红。验证量本身也要能证伪。
