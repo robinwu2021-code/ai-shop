@@ -12,7 +12,10 @@ import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.PostExchange;
 
 /**
- * shop-app 调支付域独立进程（{@code shop.pay.deployment=standalone}）的全部入口。
+ * 支付域独立进程（pay-svc）对外的全部内部端点，调用方是主应用。
+ *
+ * <p>支付域自己<b>不知道</b>它跑在哪种形态里（{@code PayHasNoControllerTest} 盯着这一条）——
+ * 这里只描述这几个端点长什么样；用不用它、何时用，是主应用装配时决定的。
  *
  * <p>放在 pay-domain 而不是 shop-app：服务端（pay-svc）与客户端（shop-app）都看得见它，
  * 两边的请求体 {@link IssueReq} / {@link RejectReq} 也就只有这一份 —— 此前是服务端一份 public record、

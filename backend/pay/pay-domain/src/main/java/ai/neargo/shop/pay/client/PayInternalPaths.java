@@ -5,7 +5,7 @@ package ai.neargo.shop.pay.client;
  *
  * <p><b>服务端 {@code InternalPayEndpoint} 的 mapping 与客户端 {@link PayInternalApi} 引用同一份常量</b>，
  * 路径漂了就编译不过。此前两边各写一份字面量，一边改了，另一边只会在运行时收到 404 ——
- * 而 standalone 形态平时不跑，那个 404 要等到切过去的那天才露出来。
+ * 而测试默认装配的是进程内实现，那个 404 在本地根本碰不到。
  */
 public final class PayInternalPaths {
 
