@@ -39,6 +39,14 @@
             <artifactId>spring-tx</artifactId>
         </dependency>
 
+        <!-- 服务间调用：@HttpExchange + RestClient 的传输零件（TDD-服务间调用换HTTP-Interface）。
+             它只带 spring-web —— 不带 Tomcat、不带 Servlet API，地基不因此变重 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>svc-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- neargo L1 纯库（IdGenerator/ErrorCode 等），不含 autoconfig -->
         <dependency>
             <groupId>ai.neargo</groupId>

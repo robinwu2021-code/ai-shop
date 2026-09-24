@@ -5,18 +5,20 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
+import ai.neargo.shop.pay.client.PayInternalApi;
+import ai.neargo.shop.pay.client.PayInternalApi.IssueReq;
+import ai.neargo.shop.pay.client.PayInternalApi.RejectReq;
 import ai.neargo.shop.payclient.OpsSettleInvoiceAppService;
 import ai.neargo.shop.spi.platform.AuditLogPort;
-import ai.neargo.shop.svc.InternalClient;
 import ai.neargo.shop.svc.ServiceName;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import ai.neargo.svc.client.CallOutcome;
+import ai.neargo.svc.client.ServiceCallException;
+import ai.neargo.svc.client.ServiceCalls;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * 商家结算发票的<b>远程</b>实现。切换的第二刀，与费率同形状。
@@ -46,40 +48,24 @@ public class RemoteOpsSettleInvoiceAppService implements OpsSettleInvoiceAppServ
 
     private static final Logger log = LoggerFactory.getLogger(RemoteOpsSettleInvoiceAppService.class);
 
-    private static final int TIMEOUT_SEC = 5;
-    private static final String BASE = "/internal/pay/settle-invoices";
-
-    private final InternalClient client;
+    private final PayInternalApi pay;
     private final AuditLogPort auditLogPort;
-    private final ObjectMapper json;
 
-    public RemoteOpsSettleInvoiceAppService(InternalClient client, AuditLogPort auditLogPort,
-                                            ObjectMapper json) {
-        this.client = client;
+    public RemoteOpsSettleInvoiceAppService(PayInternalApi pay, AuditLogPort auditLogPort) {
+        this.pay = pay;
         this.auditLogPort = auditLogPort;
-        this.json = json;
     }
 
     @Override
     public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size) {
-        StringBuilder q = new StringBuilder(BASE + "?page=" + page + "&size=" + size);
-        if (status != null && !status.isBlank()) {
-            q.append("&status=").append(enc(status));
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            q.append("&keyword=").append(enc(keyword));
-        }
-        return json.readValue(call(client.get(ServiceName.PAY, q.toString(), TIMEOUT_SEC)),
-                new TypeReference<PageData<SettleInvoiceVO>>() { });
+        // 空串与 null 同义：不带这个参数，服务端按「不筛」处理（与迁移前一致）
+        return call(() -> pay.settleInvoices(blankToNull(status), blankToNull(keyword), page, size));
     }
 
     @Override
     public SettleInvoiceVO issue(String invoiceNo, String serialNo) {
         String operator = SecurityUtils.currentUserNo();
-        String body = json.writeValueAsString(new IssueReq(serialNo, operator));
-        SettleInvoiceVO vo = json.readValue(
-                call(client.post(ServiceName.PAY, BASE + "/" + invoiceNo + "/issue", body, TIMEOUT_SEC)),
-                SettleInvoiceVO.class);
+        SettleInvoiceVO vo = call(() -> pay.issue(invoiceNo, new IssueReq(serialNo, operator)));
         // 先远程成功、再留痕 —— 反过来的话失败也会留下一条「已开票」，而审计记录必须是真的
         auditLogPort.record("SETTLE_INVOICE_ISSUE", invoiceNo, "流水号 " + vo.serialNo(), true);
         return vo;
@@ -88,37 +74,30 @@ public class RemoteOpsSettleInvoiceAppService implements OpsSettleInvoiceAppServ
     @Override
     public SettleInvoiceVO reject(String invoiceNo, String reason) {
         String operator = SecurityUtils.currentUserNo();
-        String body = json.writeValueAsString(new RejectReq(reason, operator));
-        SettleInvoiceVO vo = json.readValue(
-                call(client.post(ServiceName.PAY, BASE + "/" + invoiceNo + "/reject", body, TIMEOUT_SEC)),
-                SettleInvoiceVO.class);
+        SettleInvoiceVO vo = call(() -> pay.reject(invoiceNo, new RejectReq(reason, operator)));
         auditLogPort.record("SETTLE_INVOICE_REJECT", invoiceNo, reason);
         return vo;
     }
 
-    private String call(InternalClient.Result r) {
-        if (r.ok()) {
-            return r.body();
+    private <R> R call(Supplier<R> invocation) {
+        try {
+            return ServiceCalls.call(ServiceName.PAY, invocation);
+        } catch (ServiceCallException e) {
+            /*
+             * 远程返回的业务错误（409 已处理、400 缺流水号）要**原样透出**，
+             * 不能一律变成「系统开小差」—— 那三条校验（重复开票、没有流水号、
+             * 超出已结算金额）每一条都是运营需要看见的原因。
+             */
+            if (e.outcome() == CallOutcome.REMOTE_ERROR && e.statusCode() > 0) {
+                log.warn("[pay-remote] 发票操作被支付域拒绝 status={}", e.statusCode());
+                throw BizException.of(e.statusCode() == 409 ? ErrorCode.CONFLICT : ErrorCode.BAD_REQUEST);
+            }
+            log.error("[pay-remote] 发票操作失败 outcome={} msg={}", e.outcome(), e.getMessage());
+            throw BizException.of(ErrorCode.INTERNAL_ERROR);
         }
-        /*
-         * 远程返回的业务错误（409 已处理、400 缺流水号）要**原样透出**，
-         * 不能一律变成「系统开小差」—— 那三条校验（重复开票、没有流水号、
-         * 超出已结算金额）每一条都是运营需要看见的原因。
-         */
-        if (r.outcome() == InternalClient.Outcome.REMOTE_ERROR) {
-            log.warn("[pay-remote] 发票操作被支付域拒绝 status={} body={}", r.statusCode(),
-                    r.statusCode());
-            throw BizException.of(r.statusCode() == 409 ? ErrorCode.CONFLICT : ErrorCode.BAD_REQUEST);
-        }
-        log.error("[pay-remote] 发票操作失败 outcome={} msg={}", r.outcome(), r.message());
-        throw BizException.of(ErrorCode.INTERNAL_ERROR);
     }
 
-    private static String enc(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
     }
-
-    private record IssueReq(String serialNo, String operatorNo) { }
-
-    private record RejectReq(String reason, String operatorNo) { }
 }

@@ -166,7 +166,7 @@ public class InternalHttp {
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
-| `/internal` 被全局信封包住 | 200 + 字段全 null，**不报错**（仓库踩过） | AC6 回归用例 |
+| `/internal` 被全局信封包住 | 200 + 字段全 null，**不报错**（仓库踩过） | AC6：`PayInternalApiRoundTripTest` 真客户端打真服务端。**实现时发现**：信封按包名放行（只放 `…portal.internal.`），而 `InternalPayEndpoint` 在 `…pay.svc` 包里 —— 今天没被包住，只因为 pay-svc 没扫描到信封类（它就在 classpath 上）。消融：把信封 `@Import` 进来 → 4 条变红 |
 | JDK HttpClient 走 HTTP/2 发大 body 挂住 | 调用卡死直到超时 | 请求工厂写死 `HTTP_1_1`，`WireTest` 断言协议版本 |
 | 异常映射漏了一种 | 运维看到「连不上」却是配置问题，守着一个不会自己好的故障 | 五种 `Outcome` 各一条用例，逐条消融 |
 | 将来有人给写操作加重试 | 重复开票 / 重复驳回 | `InternalCalls` 不提供重试；`@Retryable` 只允许加在只读方法上，写进 `PayInternalApi` 的类注释 |
@@ -183,7 +183,7 @@ public class InternalHttp {
 | AC3 | `RemoteFeeRuleFailureTest#unreachableRulesThrowsInsteadOfEmptyList` / `…EffectiveRates…` | | 适配层吞异常返回空 → 红 |
 | AC4 | `RemoteFeeRuleFailureTest#addIsRefusedUntilItHasAnIdempotencyKey` | | — |
 | AC5 | `PayInternalApiWireTest#sendsTokenOverHttp11` · `#missingTokenIsNotConfigured` | | 去掉 `HTTP_1_1` / 去掉令牌头 → 红 |
-| AC6 | `PayInternalApiWireTest#internalResponseIsNotEnveloped` | | 服务端响应套上 `{code,msg,data}` → 红 |
+| AC6 | `PayInternalApiRoundTripTest#feeRulesAreNotEnveloped` 等 5 条（pay-svc，随机端口） | ✅ 5/5 | 信封 `@Import` 进上下文 → 4 条红 ✅；客户端参数名 `at` 改错 → 400 红 ✅ |
 | AC1b | `HttpBusinessClientTest` 各条 | | 409 分支改成 FAILED → 红 |
 | AC7 | 编译：两边注解引用同一常量 | | 服务端改回字面量并改错 → 另一侧不受影响，所以这条靠「只许用常量」的 grep：`git grep -nE '"/internal/(pay\|job)' -- '*.java'` 在 main 代码里为空 | 
 

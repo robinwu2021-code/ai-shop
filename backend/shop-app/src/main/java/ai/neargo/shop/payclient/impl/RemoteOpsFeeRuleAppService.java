@@ -4,15 +4,17 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.dto.FeeRuleVO;
 import ai.neargo.shop.payclient.OpsFeeRuleAppService;
-import ai.neargo.shop.svc.InternalClient;
+import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.svc.ServiceName;
+import ai.neargo.svc.client.ServiceCallException;
+import ai.neargo.svc.client.ServiceCalls;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * 费率的<b>远程</b>实现 —— 支付域独立形态（{@code shop.pay.deployment=standalone}）。
@@ -42,20 +44,15 @@ public class RemoteOpsFeeRuleAppService implements OpsFeeRuleAppService {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteOpsFeeRuleAppService.class);
 
-    private static final int TIMEOUT_SEC = 5;
+    private final PayInternalApi pay;
 
-    private final InternalClient client;
-    private final ObjectMapper json;
-
-    public RemoteOpsFeeRuleAppService(InternalClient client, ObjectMapper json) {
-        this.client = client;
-        this.json = json;
+    public RemoteOpsFeeRuleAppService(PayInternalApi pay) {
+        this.pay = pay;
     }
 
     @Override
     public List<FeeRuleVO> rules() {
-        String body = get("/internal/pay/fee-rules");
-        return json.readValue(body, new tools.jackson.core.type.TypeReference<List<FeeRuleVO>>() { });
+        return read(pay::feeRules);
     }
 
     @Override
@@ -67,9 +64,7 @@ public class RemoteOpsFeeRuleAppService implements OpsFeeRuleAppService {
          * 事后完全复现不了。
          */
         long millis = at == null ? System.currentTimeMillis() : at;
-        String body = get("/internal/pay/fee-rules/effective?at=" + millis);
-        return json.readValue(body,
-                new tools.jackson.core.type.TypeReference<Map<String, Integer>>() { });
+        return read(() -> pay.effectiveRates(millis));
     }
 
     @Override
@@ -90,17 +85,18 @@ public class RemoteOpsFeeRuleAppService implements OpsFeeRuleAppService {
                 + "否则超时重试会多出一个费率版本。见本类注释。");
     }
 
-    private String get(String path) {
-        InternalClient.Result r = client.get(ServiceName.PAY, path, TIMEOUT_SEC);
-        if (r.ok()) {
-            return r.body();
+    /** 只读调用。调不通一律抛 —— 不返回空集合，理由见类注释 */
+    private <R> R read(Supplier<R> call) {
+        try {
+            return ServiceCalls.call(ServiceName.PAY, call);
+        } catch (ServiceCallException e) {
+            /*
+             * 三种失败在日志里分开（改配置 / 等对方 / 看对方日志），
+             * 但对运营都是同一句「暂时取不到」—— 页面上区分它们没有意义，
+             * 而日志里不区分会让排查从第一步就走错方向。
+             */
+            log.error("[pay-remote] 取费率失败 outcome={} msg={}", e.outcome(), e.getMessage());
+            throw BizException.of(ErrorCode.INTERNAL_ERROR);
         }
-        /*
-         * 三种失败在日志里分开（改配置 / 等对方 / 看对方日志），
-         * 但对运营都是同一句「暂时取不到」—— 页面上区分它们没有意义，
-         * 而日志里不区分会让排查从第一步就走错方向。
-         */
-        log.error("[pay-remote] 取费率失败 outcome={} msg={}", r.outcome(), r.message());
-        throw BizException.of(ErrorCode.INTERNAL_ERROR);
     }
 }

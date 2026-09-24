@@ -1,10 +1,14 @@
 package ai.neargo.shop.pay.svc;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.pay.client.PayInternalApi.IssueReq;
+import ai.neargo.shop.pay.client.PayInternalApi.RejectReq;
+import ai.neargo.shop.pay.client.PayInternalPaths;
 import ai.neargo.shop.pay.dto.FeeRuleVO;
 import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
 import ai.neargo.shop.pay.service.SettleInvoiceService;
 import ai.neargo.shop.pay.service.FeeRuleService;
+import ai.neargo.shop.svc.InternalHttp;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,9 +65,9 @@ public class InternalPayEndpoint {
     }
 
     /** 全部费率版本，含历史 */
-    @GetMapping("/internal/pay/fee-rules")
+    @GetMapping(PayInternalPaths.FEE_RULES)
     public ResponseEntity<List<FeeRuleVO>> rules(
-            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -77,10 +81,10 @@ public class InternalPayEndpoint {
      *           调用方与被调方各自取一次「现在」，两个时刻之间跨过一次费率生效，
      *           算出来的就是两套数。时刻由调用方决定，这条链路上只有一个 now。
      */
-    @GetMapping("/internal/pay/fee-rules/effective")
+    @GetMapping(PayInternalPaths.FEE_RULES_EFFECTIVE)
     public ResponseEntity<Map<String, Integer>> effective(
             @RequestParam long at,
-            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -90,13 +94,13 @@ public class InternalPayEndpoint {
     // ──────────────────────────────────────────── 商家结算发票（P-12.2.4）
 
     /** 开票申请列表 */
-    @GetMapping("/internal/pay/settle-invoices")
+    @GetMapping(PayInternalPaths.SETTLE_INVOICES)
     public ResponseEntity<PageData<SettleInvoiceVO>> invoices(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
-            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -118,11 +122,11 @@ public class InternalPayEndpoint {
      * <p>对比 {@code addRule}：那是「插新行」，重试会多出一版费率，
      * 而两版都在历史里、事后分不清哪次是重试。所以那个至今没切。
      */
-    @PostMapping("/internal/pay/settle-invoices/{invoiceNo}/issue")
+    @PostMapping(PayInternalPaths.SETTLE_INVOICE_ISSUE)
     public ResponseEntity<SettleInvoiceVO> issue(
             @PathVariable String invoiceNo,
             @RequestBody IssueReq req,
-            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -131,11 +135,11 @@ public class InternalPayEndpoint {
     }
 
     /** 驳回。同样靠状态机防重复 */
-    @PostMapping("/internal/pay/settle-invoices/{invoiceNo}/reject")
+    @PostMapping(PayInternalPaths.SETTLE_INVOICE_REJECT)
     public ResponseEntity<SettleInvoiceVO> reject(
             @PathVariable String invoiceNo,
             @RequestBody RejectReq req,
-            @RequestHeader(value = "X-Internal-Token", required = false) String given) {
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -147,11 +151,6 @@ public class InternalPayEndpoint {
      * @param operatorNo 操作人由<b>主应用</b>解析后传进来 ——
      *                   支付域不认用户身份，这条链路上没有会话
      */
-    public record IssueReq(String serialNo, String operatorNo) {
-    }
-
-    public record RejectReq(String reason, String operatorNo) {
-    }
 
     /** 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状 */
     private boolean authorized(String given) {

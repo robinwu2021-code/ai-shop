@@ -4,13 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.payclient.impl.RemoteOpsFeeRuleAppService;
 import ai.neargo.shop.svc.ConfigServiceLocator;
-import ai.neargo.shop.svc.InternalClient;
+import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
+import ai.neargo.svc.client.CallOutcome;
+import ai.neargo.svc.client.ServiceCallException;
+import ai.neargo.svc.client.ServiceCalls;
+import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * 远程调用失败时<b>必须抛，不能返回空集合</b>。
@@ -35,17 +39,11 @@ class RemoteFeeRuleFailureTest {
     private static RemoteOpsFeeRuleAppService unreachableRemote() {
         var locator = new ConfigServiceLocator();
         locator.getTargets().put(ServiceName.PAY, "http://127.0.0.1:1");
-        var client = new InternalClient(locator);
-        // 密钥用反射塞进去：@Value 在单测里不生效，而空密钥会走到「没配」那条分支，
-        // 测不到「调不通」——**两种失败要分开测，不能靠一条撞上哪个算哪个**
-        try {
-            var f = InternalClient.class.getDeclaredField("token");
-            f.setAccessible(true);
-            f.set(client, "test-token");
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-        return new RemoteOpsFeeRuleAppService(client, new ObjectMapper());
+        // 密钥要给：空密钥会走到「没配」那条分支，测不到「调不通」——
+        // **两种失败要分开测，不能靠一条撞上哪个算哪个**
+        var api = new InternalHttp(locator, "test-token")
+                .client(ServiceName.PAY, PayInternalApi.class, Duration.ofSeconds(1));
+        return new RemoteOpsFeeRuleAppService(api);
     }
 
     @Test
@@ -79,12 +77,13 @@ class RemoteFeeRuleFailureTest {
     @Test
     @DisplayName("★★ 地址没配与调不通要分开 —— 前者改配置，后者等对方起来")
     void notConfiguredIsDistinctFromUnreachable() {
-        var client = new InternalClient(new ConfigServiceLocator());   // 什么都没配
-        var r = client.get(ServiceName.PAY, "/internal/pay/fee-rules", 1);
+        var api = new InternalHttp(new ConfigServiceLocator(), "test-token")   // 地址什么都没配
+                .client(ServiceName.PAY, PayInternalApi.class, Duration.ofSeconds(1));
 
-        assertThat(r.outcome())
-                .as("没配地址要报 NOT_CONFIGURED（改配置），不能报 UNREACHABLE（等对方）—— "
-                        + "后者永远等不到")
-                .isEqualTo(InternalClient.Outcome.NOT_CONFIGURED);
+        assertThatThrownBy(() -> ServiceCalls.call(ServiceName.PAY, api::feeRules))
+                .isInstanceOfSatisfying(ServiceCallException.class, e -> assertThat(e.outcome())
+                        .as("没配地址要报 NOT_CONFIGURED（改配置），不能报 UNREACHABLE（等对方）—— "
+                                + "后者永远等不到")
+                        .isEqualTo(CallOutcome.NOT_CONFIGURED));
     }
 }
