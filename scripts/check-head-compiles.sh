@@ -104,11 +104,18 @@ echo "  用时 $(( $(date +%s) - START )) 秒"
 #
 # maven 因为别的原因中途死掉时，「没有失败」和「一条都没跑」在输出上长得一样。
 # 没有这一步的话，闸门会在最该拦住的时候安静放行。
-TOTAL="$(grep -oE '^\[(INFO|ERROR)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$LOG" \
-  | tail -1 | sed -E 's/.*Tests run: ([0-9]+),.*/\1/')"
+#
+# ⚠ **要把每个模块的汇总加起来，不能取最后一行**（2026-09-24 改）。
+# 此前取 `tail -1`，那是 reactor 里最后一个模块（shop-app）的数 —— 显示成「全量 2170」，
+# 而真实是 17 个模块共 2492 条。拦截没有漏（失败行扫的是整份日志），但这个数会误导：
+# 新增在 svc-client / job-worker / pay-svc 里的测试一条都不会让它变，看上去像「没被跑」。
+SUMMARIES="$(grep -oE '^\[(INFO|ERROR)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$LOG" \
+  | sed -E 's/.*Tests run: ([0-9]+),.*/\1/' || true)"
+TOTAL="$(printf '%s\n' "$SUMMARIES" | awk 'NF{s+=$1} END{print s+0}')"
+MODULES="$(printf '%s\n' "$SUMMARIES" | grep -c . || true)"
 if [ -z "$TOTAL" ] || [ "$TOTAL" -lt 800 ]; then
   echo ""
-  echo "✗ 全量测试没有正常跑起来（识别到 ${TOTAL:-0} 条，正常在 1200 上下）。"
+  echo "✗ 全量测试没有正常跑起来（识别到 ${TOTAL:-0} 条，正常在 2500 上下）。"
   echo "  这不是「全绿」，是**没测**。日志：$LOG"
   tail -30 "$LOG"
   exit 1
@@ -129,7 +136,7 @@ NOW="$WT/now.txt"; BASE="$WT/known.txt"
 NEW="$(comm -23 "$NOW" "$BASE")"
 FIXED="$(comm -13 "$NOW" "$BASE")"
 
-echo "  全量 $TOTAL 跑 / $(wc -l < "$NOW" | tr -d ' ') 红（基线 $(wc -l < "$BASE" | tr -d ' ') 条）"
+echo "  全量 $TOTAL 跑（$MODULES 个模块）/ $(wc -l < "$NOW" | tr -d ' ') 红（基线 $(wc -l < "$BASE" | tr -d ' ') 条）"
 
 if [ -n "$FIXED" ]; then
   echo ""
