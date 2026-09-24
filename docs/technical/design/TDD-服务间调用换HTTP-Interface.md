@@ -204,7 +204,9 @@ public class InternalHttp {
 | pay-svc | `pay-svc-20260924-2221-892bf807` | 活口 401；带令牌实调 3 个只读端点均 200，**应答未被信封包裹**（数组 / 无 `code` 字段的对象） |
 | job-worker | `shop-job-20260924-2222` | 启动即经新客户端取到任务声明（「新增 21 … 共 21 个」）；`outbox-dispatch` 每 5 秒一次，头 65 秒 0 调用失败 / 0 任务失败 / 0 ERROR。对照：shop-app 重启那几秒旧 worker 当场记了 `ConnectException` —— 失败是会被记下的 |
 
-**未在生产实测**：shop-app → pay-svc 经新客户端的真实调用，只由运营端费率页 / 开票页触发，需要运营账号去点一次。
+**shop-app → pay-svc 经新客户端（23:35 补测，用户登录运营端后）**：费率页 `/ops/settle/fee-rules` 与 `…/effective` 均 200，
+页面「全部版本（4）」与在 pay-svc 上直接查到的 4 条一致；发票页 `/ops/finance/invoices` 200（走 `RemoteOpsSettleInvoiceAppService`）。
+shop-app 日志 `[pay-remote]` 0 条。期间 6 条 ERROR 全是 `/ops/stream` 实时推送在切页时断开（`AsyncRequestNotUsableException`），与本次无关。
 旧 job-worker 关闭时有几条 `CannotGetJdbcConnectionException`：连接池先于定时任务关掉，是旧版本自身的关闭顺序，与本次改动无关 —— 随后已修，见偏差说明 7。
 
 **一次读错结果的记录**：第 1 步消融时三次全「绿」，原因是读的是 `target/surefire-reports` 里上一轮留下的报告 ——
