@@ -969,7 +969,10 @@ function mdDeps(mvn, npm) {
     L.push("| 包 | 规格 | 档 | 锁文件版本 |");
     L.push("|---|---|---|---|");
     for (const [pkg, spec, kind] of all.sort()) {
-      L.push(`| \`${pkg}\` | \`${spec}\` | ${kind} | \`${npm.installed(pkg) ?? "—"}\` |`);
+      // 先认本 workspace 自己那份（npm 按「最近的 node_modules」解析）：ops-web 的 eslint 10
+      // 装在 ops-web/node_modules，根上提升的是 c-app 传递来的 eslint 8 —— 只查根会把 10 报成 8。
+      const ver = npm.installed(pkg, w.rel) ?? npm.installed(pkg);
+      L.push(`| \`${pkg}\` | \`${spec}\` | ${kind} | \`${ver ?? "—"}\` |`);
     }
   }
   return L.join("\n") + "\n";
