@@ -345,8 +345,18 @@ if [ -d "$ROOT/node_modules" ]; then
   # --quiet 只报错误：代码里给别的插件写的 eslint-disable 注释会出「无效」警告，与此无关。
   # 两秒左右。
   if [ -f "$GATE_WT/ops-web/eslint.config.mjs" ] && [ -x "$ROOT/ops-web/node_modules/.bin/eslint" ]; then
-    ln -sfn "$ROOT/ops-web/node_modules" "$GATE_WT/ops-web/node_modules" 2>/dev/null
-    if ! (cd "$GATE_WT/ops-web" && node_modules/.bin/eslint --quiet . 2>&1); then
+    # 先删再链：上面的共享守卫跑 vitest 时已在副本里建了 ops-web/node_modules/.vite（真目录），
+    # ln -sfn 遇到目录会把链接建进它里面，eslint 就找不到。副本是一次性的，删它不伤人。
+    rm -rf "$GATE_WT/ops-web/node_modules"
+    ln -s "$ROOT/ops-web/node_modules" "$GATE_WT/ops-web/node_modules"
+    (cd "$GATE_WT/ops-web" && node_modules/.bin/eslint --quiet . 2>&1); rc=$?
+    # eslint 退出码：1 = 有违规，2 = 自己崩了（配置 / 依赖）。两件事要说成两句话 ——
+    # 第一次挂上去时崩了却报「Hook 写错了」，读的人会去翻一段根本没问题的代码。
+    if [ "$rc" -ge 2 ]; then
+      echo "✗ ops-web 的 ESLint 没跑起来（退出码 $rc，上面是原始输出）—— 不是代码的问题，是闸门本身。"
+      echo "  本机试：cd ops-web && npm run lint；没装就 npm i"
+      exit 1
+    elif [ "$rc" -ne 0 ]; then
       echo "✗ ops-web 有 Hook 写在了条件 / 提前 return 之后（上面是原始输出）。本机重现："
       echo "    cd ops-web && npm run lint"
       echo "  修法见 components/layout/secondary-nav.tsx：把 return 之后的部分拆成子组件，"
