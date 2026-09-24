@@ -336,6 +336,26 @@ if [ -d "$ROOT/node_modules" ]; then
       exit 1
     fi
   done
+
+  # ops-web 的 Hook 规则（ESLint react-hooks/rules-of-hooks，只开这一条）。
+  #
+  # 2026-09-24 线上白屏：侧栏的两个 Hook 写在 `return null` 之后，从看板点进商户页
+  # 才崩（React #310），直接刷新不崩 —— tsc、vitest、构建全绿。挂之前全量扫过：
+  # 存量 0 条，所以不设基线；拿修复前的那份文件回放，报 2 条，正是那两个 Hook。
+  # --quiet 只报错误：代码里给别的插件写的 eslint-disable 注释会出「无效」警告，与此无关。
+  # 两秒左右。
+  if [ -f "$GATE_WT/ops-web/eslint.config.mjs" ] && [ -x "$ROOT/ops-web/node_modules/.bin/eslint" ]; then
+    ln -sfn "$ROOT/ops-web/node_modules" "$GATE_WT/ops-web/node_modules" 2>/dev/null
+    if ! (cd "$GATE_WT/ops-web" && node_modules/.bin/eslint --quiet . 2>&1); then
+      echo "✗ ops-web 有 Hook 写在了条件 / 提前 return 之后（上面是原始输出）。本机重现："
+      echo "    cd ops-web && npm run lint"
+      echo "  修法见 components/layout/secondary-nav.tsx：把 return 之后的部分拆成子组件，"
+      echo "  别把 Hook 挪到 return 前面 —— 挂载时量一次的 effect 会量到 null 且不报错。"
+      exit 1
+    fi
+  else
+    echo "⚠ 跳过 ops-web Hook 规则：HEAD 里没有 ops-web/eslint.config.mjs，或本机 ops-web 没装 eslint（npm i）"
+  fi
 else
   echo "⚠ 跳过类型检查与两端单测：本机没有 node_modules（跑一次 npm i 就会启用）"
 fi
