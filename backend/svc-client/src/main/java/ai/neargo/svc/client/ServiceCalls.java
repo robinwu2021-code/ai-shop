@@ -28,16 +28,16 @@ public final class ServiceCalls {
             throw e;
         } catch (ResourceAccessException e) {
             if (causedBy(e, HttpTimeoutException.class) || causedBy(e, SocketTimeoutException.class)) {
-                throw new ServiceCallException(CallOutcome.TIMEOUT, service, 0, "调用 " + service + " 超时");
+                throw new ServiceCallException(CallOutcome.TIMEOUT, service, 0, "调用 " + service + " 超时", e);
             }
             // 只记异常类名：异常消息里可能带完整 URL，而 URL 上可能有业务参数
             String kind = rootCause(e).getClass().getSimpleName();
             log.warn("服务间调用失败 service={} 异常={}", service, kind);
-            throw new ServiceCallException(CallOutcome.UNREACHABLE, service, 0, "连不上 " + service + "：" + kind);
+            throw new ServiceCallException(CallOutcome.UNREACHABLE, service, 0, "连不上 " + service + "：" + kind, e);
         } catch (RestClientException e) {
             // 应答了，但内容读不了（比如 200 回了一段不是 JSON 的东西）。**算失败而不是成功**
             throw new ServiceCallException(CallOutcome.REMOTE_ERROR, service, 0,
-                    service + " 的应答读不了：" + rootCause(e).getClass().getSimpleName());
+                    service + " 的应答读不了：" + rootCause(e).getClass().getSimpleName(), e);
         }
     }
 

@@ -23,7 +23,9 @@
          少一个端口、少一份攻击面、少一堆自动配置。
          健康状况看 job_run 表，那本来就是这个模块对外的唯一视图。
 
-         **HTTP 客户端用 JDK 自带的 java.net.http**，不引任何 HTTP 库。
+         **HTTP 客户端：底层仍是 JDK 自带的 java.net.http，外面套 svc-client 的 @HttpExchange**
+         （2026-09-24 起，见 TDD-服务间调用换HTTP-Interface）。svc-client 只带 spring-web，
+         不引任何第三方 HTTP 库，也不带 Servlet API；上一条「不监听端口」由启动类显式 .web(NONE) 保证，不受影响。
 
          **不引任何业务模块**（shop-core / shop-merchant / …）。这是整件事的全部要点：
          worker 里若编译进业务代码，业务发版后 worker 不重启就跑着上一版逻辑，
@@ -45,6 +47,14 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 调业务侧的两个内部端点走 @HttpExchange（TDD-服务间调用换HTTP-Interface）。
+             svc-client 只带 spring-web，不带 Servlet API。**不会因此起端口**：JobApplication 显式
+             .web(WebApplicationType.NONE)，application.yml 也写了 web-application-type: none —— 不靠 classpath 推断 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>svc-client</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>

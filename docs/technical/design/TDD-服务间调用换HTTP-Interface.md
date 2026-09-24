@@ -144,7 +144,7 @@ public class InternalHttp {
 | 步 | 做什么 | 完成判据 |
 |---|---|---|
 | 1 | 新模块 `svc-client` + 测试，**不接任何调用方** | `ServiceClientsTest` 五种分类全绿；逐条消融变红 |
-| 2 | job：`JobHttpPaths` 常量 → 服务端改用常量 → `JobBusinessApi` → `HttpBusinessClient` 改调 | `HttpBusinessClientTest` 全绿；`JobApplicationSmokeTest` 证明 worker **仍是非 web 应用**（没起端口） |
+| 2 | job：`JobHttpPaths` 常量 → 服务端改用常量 → `JobBusinessApi` → `HttpBusinessClient` 改调 | `HttpBusinessClientTest` 全绿并逐条消融；`JobApplicationSmokeTest`、`WorkerTokenRequiredTest` 仍绿 |
 | 3 | pay：`PayInternalPaths` + `PayInternalApi` → 服务端改用常量 → `InternalHttp` + `PayClientConfig` → 两个 `Remote*` 改调 | `RemoteFeeRuleFailureTest` 4 条**断言不动**全绿；`PayApplicationBootTest` 绿 |
 | 4 | 删 `InternalClient`；`git grep InternalClient` 只剩文档 | 全量测试绿 |
 | 5 | 冒烟：本机起 `job-worker` 对 `shop-app` 手动触发一个任务；起 `pay-svc` + `shop-app(standalone)` 点费率页与开票页 | 真实往返成功；停掉对方后报「不可达」而不是空结果 |
@@ -171,7 +171,7 @@ public class InternalHttp {
 | 异常映射漏了一种 | 运维看到「连不上」却是配置问题，守着一个不会自己好的故障 | 五种 `Outcome` 各一条用例，逐条消融 |
 | 将来有人给写操作加重试 | 重复开票 / 重复驳回 | `InternalCalls` 不提供重试；`@Retryable` 只允许加在只读方法上，写进 `PayInternalApi` 的类注释 |
 | 客户端与服务端路径漂移 | 调用 404 | AC7：两边引用同一份常量，漂了编译不过 |
-| `job-worker` 带上 `spring-web` 后被 Boot 判成 web 应用、起了端口 | 多一个监听端口、多吃内存 | `spring-web` 单独不带 Servlet API，Boot 判不成 web 应用；`JobApplicationSmokeTest` 断言 |
+| `job-worker` 带上 `spring-web` 后起了端口 | 多一个监听端口、多吃内存 | **不成立**：`JobApplication` 显式 `.web(WebApplicationType.NONE)`，`application.yml` 也写了 `none`，不靠 classpath 推断（实现时核对，原先写的「靠 Servlet API 缺席」不是真实依据） |
 | 自造 `RestClient`（不走 Boot 的 `RestClient.Builder`）拿不到自动的 Observation | 链路追踪暂时不经过这两条 | 今天没有接 tracing，无损失；接 tracing 那天把 `ObservationRegistry` 传进 `ServiceClientSpec` |
 
 ## §5 对账三 · 实现 → 需求（测试）

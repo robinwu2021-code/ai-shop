@@ -2,6 +2,7 @@ package ai.neargo.shop.portal.internal;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
+import ai.neargo.job.api.JobHttpPaths;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.job.api.JobStatus;
@@ -72,9 +73,9 @@ public class JobHandlerEndpoint {
      * （中文名、默认 cron、属于哪个模块，只有代码知道），
      * 而业务系统按设计碰不到 job 库 —— 它连连接串都没有。只剩这一条路。
      */
-    @GetMapping("/internal/job/declarations")
+    @GetMapping(JobHttpPaths.DECLARATIONS)
     public ResponseEntity<List<JobDeclaration>> declarations(
-            @RequestHeader(value = "X-Job-Token", required = false) String given) {
+            @RequestHeader(value = JobHttpPaths.TOKEN_HEADER, required = false) String given) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -87,9 +88,9 @@ public class JobHandlerEndpoint {
      * <p>不用 202 异步：那需要一条回调链路，外加一个「回调丢了导致 run 永远卡在
      * RUNNING」的失败态。调用量实测约 4640 次/天（每 19 秒一次），同步毫无压力。
      */
-    @PostMapping("/internal/job/{handlerName}/run")
+    @PostMapping(JobHttpPaths.RUN)
     public ResponseEntity<RunResp> run(@PathVariable String handlerName,
-                                       @RequestHeader(value = "X-Job-Token", required = false) String given,
+                                       @RequestHeader(value = JobHttpPaths.TOKEN_HEADER, required = false) String given,
                                        @RequestBody(required = false) RunReq req) {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

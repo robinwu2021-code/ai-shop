@@ -13,7 +13,12 @@ public class ServiceCallException extends RuntimeException {
     private final int statusCode;
 
     public ServiceCallException(CallOutcome outcome, String service, int statusCode, String message) {
-        super(message);
+        this(outcome, service, statusCode, message, null);
+    }
+
+    /** @param cause 传输层的原始异常。调用方要它的类名（如 {@code ConnectException}）记进运行记录 */
+    public ServiceCallException(CallOutcome outcome, String service, int statusCode, String message, Throwable cause) {
+        super(message, cause);
         this.outcome = outcome;
         this.service = service;
         this.statusCode = statusCode;
@@ -25,6 +30,15 @@ public class ServiceCallException extends RuntimeException {
 
     public String service() {
         return service;
+    }
+
+    /** 传输层根因的简单类名（{@code ConnectException} 之类）；没有根因时为本异常的类名 */
+    public String causeKind() {
+        Throwable t = this;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        return t.getClass().getSimpleName();
     }
 
     /** 对方应答的 HTTP 状态码；连不上 / 超时 / 没配地址时为 0 */
