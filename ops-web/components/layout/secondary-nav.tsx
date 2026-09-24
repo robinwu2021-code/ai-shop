@@ -116,13 +116,36 @@ export function SecondaryNav() {
   // 不是把导航拿走不给替代品；展开按钮常驻顶栏，收起态也能一键回来。
   if (panelCollapsed) return null;
 
+  return <SecondaryNavPanel title={tNav(section.label)} segments={segments} segBase={segBase} activeIdx={activeIdx} />;
+}
+
+/**
+ * 真正画出来的那块面板。**单独成一个组件，是为了让 ref 与滚动提示的 Hook 跟着它一起挂载**。
+ *
+ * <p>2026-09-24 线上崩溃：这两个 Hook 原先写在 {@link SecondaryNav} 的两个 {@code return null} 之后。
+ * 看板页没有子功能、走第一个 return，少调两个 Hook；从看板点进商户页，同一个组件实例这次调了 ——
+ * React 报 #310「Rendered more hooks than during the previous render」，整页白屏。
+ * 直接刷新打开商户页不会崩（那是全新挂载），所以只在「从看板点过去」时出现。
+ *
+ * <p>为什么不是把两行挪到 return 前面：{@code useScrollHint} 的 effect 只在挂载时量一次
+ * （依赖是不变的 ref 对象）。挪上去之后，在看板页挂载时 {@code <nav>} 还不存在、量到 null；
+ * 切到商户页面板出现了，effect 却不会再跑 —— 「下面还有」的提示从此不亮，而且不报错。
+ * 拆成子组件后，面板每次出现都是一次新挂载，effect 量到的一定是真元素。
+ */
+function SecondaryNavPanel({ title, segments, segBase, activeIdx }: {
+  title: string;
+  segments: ReturnType<typeof groupedLeaves>;
+  segBase: number[];
+  activeIdx: number;
+}) {
+  const { tNav } = useI18n();
   const scrollRef = React.useRef<HTMLElement>(null);
   const hint = useScrollHint(scrollRef);
 
   return (
     <aside className="hidden shrink-0 flex-col bg-sidebar/60 md:flex" style={{ width: PANEL_WIDTH }}>
       <div className="flex h-14 shrink-0 items-center px-3">
-        <span className="truncate txt-strong">{tNav(section.label)}</span>
+        <span className="truncate txt-strong">{title}</span>
       </div>
       {/* 同 Rail：容器一直能滚，缺的是「下面还有」的提示。结算与资金 15 叶，
           720px 高时只剩 17px 余量，再矮一档就开始有功能落在折线以下 */}
