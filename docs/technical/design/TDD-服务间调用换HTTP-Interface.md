@@ -1,6 +1,6 @@
 # TDD-服务间调用换 HTTP Interface
 
-状态：草稿
+状态：已实现（未上线）
 关联：[ADR-025 服务间调用用 HTTP Interface](../ADR/ADR-025-服务间调用用HTTP-Interface.md) ·
 [ADR-023 服务发现先不装中间件](../ADR/ADR-023-服务发现先不装中间件.md) ·
 [ADR-021 支付域独立为服务](../ADR/ADR-021-支付域独立为服务与独立库.md)
@@ -42,7 +42,7 @@
 - 服务端只把 mapping 里的路径字面量换成常量，路径值不变
 - 可直接复用：`ServiceLocator` / `ConfigServiceLocator`（寻址）、`ServiceName`（服务名常量）、`JobWorkerProperties`（job 的地址与令牌）
 - **明确不受影响**：
-  - `shop.pay.deployment=embedded`（今天的生产形态）走本地实现，一行不经过 pay 这条代码
+  - `shop.pay.deployment=embedded` 形态（本地实现）不经过 pay 这条代码 —— **但生产是 standalone，经过**，见 §2 生产影响
   - 端点、响应格式、两边的配置键（`shop.services.*`、job 的 `targets` / `token`）、请求头名（`X-Internal-Token`、`X-Job-Token`）
   - 第三方网关（微信、个推、FCM、APNs、阿里短信、视觉识别）：它们调的是外部 API，不是服务间调用，不在本次范围
 
@@ -147,12 +147,17 @@ public class InternalHttp {
 | 2 | job：`JobHttpPaths` 常量 → 服务端改用常量 → `JobBusinessApi` → `HttpBusinessClient` 改调 | `HttpBusinessClientTest` 全绿并逐条消融；`JobApplicationSmokeTest`、`WorkerTokenRequiredTest` 仍绿 |
 | 3 | pay：`PayInternalPaths` + `PayInternalApi` → 服务端改用常量 → `InternalHttp` + `PayClientConfig` → 两个 `Remote*` 改调 | `RemoteFeeRuleFailureTest` 4 条**断言不动**全绿；`PayApplicationBootTest` 绿 |
 | 4 | 删 `InternalClient`；`git grep InternalClient` 只剩文档 | 全量测试绿 |
-| 5 | 冒烟：本机起 `job-worker` 对 `shop-app` 手动触发一个任务；起 `pay-svc` + `shop-app(standalone)` 点费率页与开票页 | 真实往返成功；停掉对方后报「不可达」而不是空结果 |
+| 5 | 冒烟：`PayInternalApiRoundTripTest`（真 pay-svc + 真客户端）、`HttpBusinessClientTest`（真 socket）、`PayStandaloneAssemblyTest`（按生产形态装配 shop-app） | 全绿；「停掉对方后报不可达」由 `unreachable` / `refused` 用例覆盖 |
 | 6 | 重跑生成物（后端分层清单、依赖清单）；整套 pre-push；部署 `shop-app` 与 `job-worker` | 闸门全绿；两个进程 health 回到 200，调度器下一次触发成功 |
 
-**生产影响**：
-- **job 这条是生产在用的**：`job-worker` 每一次触发任务都走它。上线后要看调度器下一轮触发的结果，而不只是 health；
-- pay 这条：生产是 `embedded` 形态，不走这段代码，上线后行为不变；风险在将来切 `standalone` 那天，以第 5 步冒烟为准。
+**生产影响**（2026-09-24 上服务器核实过：`SHOP_PAY_DEPLOYMENT=standalone`，`ai-shop-pay` 在跑）：
+- **两条链路生产都在用**。本文初稿写的「生产是 embedded、pay 这条不经过」是错的，是未经查证写下的；
+  `PayStandaloneAssemblyTest` 的类注释早就写着「生产跑的是 standalone」
+- pay 这条的调用方：运营端费率页（`rules` / `effectiveRates`）与开票页（`list` / `issue` / `reject`）——
+  `effectiveRates` 只有 `OpsFeeRuleController` 在调，**不在下单与结算的主路径上**
+- job 这条：调度器的每一次触发
+- 兼容性：端点、JSON、请求头都没变，所以新 shop-app 对旧 pay-svc、新 job-worker 对旧 shop-app 都能通，
+  三个进程不必同时切；上线顺序 shop-app → pay-svc → job-worker，每切一个看 health 与一次真实调用
 
 ## §3 选型
 
@@ -176,23 +181,49 @@ public class InternalHttp {
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-| AC | 测试方法 | 跑过 | 消融验证 |
-|---|---|---|---|
-| AC1 | `git grep -nE '"/internal/pay\|TypeReference' -- backend/shop-app/src/main/java/ai/neargo/shop/payclient` 为空 | | — |
-| AC2 | `PayInternalApiWireTest#fiveOutcomesAreDistinct` · `RemoteFeeRuleFailureTest#notConfiguredIsDistinctFromUnreachable` | | 拦截器里「没配」改成返回空 → 红 |
-| AC3 | `RemoteFeeRuleFailureTest#unreachableRulesThrowsInsteadOfEmptyList` / `…EffectiveRates…` | | 适配层吞异常返回空 → 红 |
-| AC4 | `RemoteFeeRuleFailureTest#addIsRefusedUntilItHasAnIdempotencyKey` | | — |
-| AC5 | `PayInternalApiWireTest#sendsTokenOverHttp11` · `#missingTokenIsNotConfigured` | | 去掉 `HTTP_1_1` / 去掉令牌头 → 红 |
-| AC6 | `PayInternalApiRoundTripTest#feeRulesAreNotEnveloped` 等 5 条（pay-svc，随机端口） | ✅ 5/5 | 信封 `@Import` 进上下文 → 4 条红 ✅；客户端参数名 `at` 改错 → 400 红 ✅ |
-| AC1b | `HttpBusinessClientTest` 各条 | | 409 分支改成 FAILED → 红 |
-| AC7 | 编译：两边注解引用同一常量 | | 服务端改回字面量并改错 → 另一侧不受影响，所以这条靠「只许用常量」的 grep：`git grep -nE '"/internal/(pay\|job)' -- '*.java'` 在 main 代码里为空 | 
+「跑过」一栏是实现时的真实结果；消融是把实现改回去（或注掉那一行）、看对应用例是否变红，改完即还原。
 
-| AC8 | `PayInternalApiWireTest#resolvesBaseUrlPerCall` | | 改成启动时写死 → 红 |
+| AC | 测试 | 跑过 | 消融验证 |
+|---|---|---|---|
+| AC1 | `git grep -nE '"/internal/pay\|TypeReference\|URLEncoder' -- backend/shop-app/src/main/java/ai/neargo/shop/payclient` | ✅ 空 | — |
+| AC1b | `HttpBusinessClientTest` 11 条（真 socket） | ✅ 11/11 | 409 当失败 → `conflictIsSkipped` 红 ✅；超时固定 10s → `timeoutIsPerJob` 红 ✅；解析不了当成功 → `unparseableIsFailed` 红 ✅ |
+| AC2 | `ServiceClientsTest`（`notConfigured` / `unreachable` / `timeout` / `remoteErrorKeepsStatus` / `unreadableBodyIsRemoteError`）· `RemoteFeeRuleFailureTest#notConfiguredIsDistinctFromUnreachable` · `ServiceLocatorTest` 两条 | ✅ | 非 2xx 不判错 → `remoteErrorKeepsStatus` 红 ✅；令牌必填不拦 → `missingRequiredToken` 红 ✅ |
+| AC3 | `RemoteFeeRuleFailureTest#unreachableRulesThrowsInsteadOfEmptyList` / `…EffectiveRates…` | ✅ | — |
+| AC4 | `RemoteFeeRuleFailureTest#addIsRefusedUntilItHasAnIdempotencyKey`；`ServiceCalls` 不提供重试 | ✅ | — |
+| AC5 | `ServiceClientsTest#okRoundTrip`（令牌头 + 无 `Upgrade: h2c`）、`#missingRequiredToken` | ✅ | 去掉 `HTTP_1_1` → 3 条红 ✅ |
+| AC6 | `PayInternalApiRoundTripTest` 5 条（pay-svc 随机端口，真客户端） | ✅ 5/5 | 信封 `@Import` 进上下文 → 4 条红 ✅ |
+| AC7 | 两边注解引用同一份常量（`JobHttpPaths`、`PayInternalPaths`）；`PayInternalApiRoundTripTest` 验参数名 | ✅ 编译过 | 客户端参数名 `at` 改错 → 400 红 ✅ |
+| AC8 | `ServiceClientsTest#resolvesBaseUrlPerCall` | ✅ | 地址启动时定死 → 红 ✅ |
+| 生产形态装配 | `PayStandaloneAssemblyTest`（按 `standalone` 装 shop-app 上下文） | ✅ 4/4 | — |
+
+**一次读错结果的记录**：第 1 步消融时三次全「绿」，原因是读的是 `target/surefire-reports` 里上一轮留下的报告 ——
+改成直接读 Maven 输出后三处都红。验证量本身也要能证伪。
 
 ## §6 对账二 · 设计 → 实现
 
-（实现完填：`git diff --stat` 与 §2 模块设计逐行比对）
+`git diff --name-status d15a976f~1 64914cad -- backend`：28 个文件，与 §2 模块设计逐行比对 ——
+
+| §2 条目 | 实际 | 结论 |
+|---|---|---|
+| svc-client 5 个类 + 测试 + pom + 父 pom `<module>` | 同 | ✅ |
+| `JobHttpPaths` / `JobBusinessApi` / `HttpBusinessClient` / job-worker pom / `JobHandlerEndpoint` | 同 | ✅ |
+| shop-base pom + `InternalHttp` | 同 | ✅ |
+| `PayInternalPaths` / `PayInternalApi`（pay-domain）/ `InternalPayEndpoint` | 同 | ✅ |
+| `PayClientConfig` / 两个 `Remote*` / `RemoteFeeRuleFailureTest` | 同 | ✅ |
+| 删 `InternalClient` | 同 | ✅ |
+| 测试文件 | `ServiceClientsTest`、`HttpBusinessClientTest`、`PayInternalApiRoundTripTest`（§2 写的是 `PayInternalApiWireTest` + `ContractTest`，见偏差 1） | ⚠️ |
+| — | `ServiceLocatorTest`、`ServiceLocator.java`、`ArchitectureTest.java`（仅注释） | ⚠️ 见偏差 3 |
 
 ## 偏差说明
 
-（实现完填）
+1. **契约对齐从反射测试改成共享常量 + 真实往返**：`ContractTest` 要在 shop-app 里反射 `InternalPayEndpoint`，
+   而 shop-app 不依赖 pay-svc，看不见那个类。改为两边注解引用同一份常量（漂了编译不过），
+   再由 `PayInternalApiRoundTripTest` 在 pay-svc 里用真客户端打真服务端 —— 比 `MockRestServiceServer` 更接近实况。
+2. **范围从一条链路变成两条**：用户定「全部迁移」，`job-worker` 纳入。因此传输零件不能放 shop-base
+   （worker 不能依赖它），新开 `svc-client` 模块。
+3. **补回一条迁移中丢掉的行为**：「没配地址 / 令牌」的报错要点名配置项（`ServiceLocatorTest` 原有断言）。
+   svc-client 不认识配置键，改为调用方经 `ServiceClientSpec#withConfigKeys` 传入。
+4. **初稿对生产形态判断错误**：写成「生产是 embedded」，实为 standalone，已在 §2 生产影响改正。
+5. **`job-worker` 不会起端口的依据写错**：初稿写「靠 Servlet API 缺席」，实为启动类显式 `.web(NONE)`，已改正。
+6. **实现时发现的潜在风险（未改，已加测试兜住）**：全局信封按包名放行 `…portal.internal.`，
+   `InternalPayEndpoint` 不在其中；今天没被包住只因 pay-svc 没扫描到信封类。
