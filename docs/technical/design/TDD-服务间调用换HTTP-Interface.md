@@ -205,7 +205,7 @@ public class InternalHttp {
 | job-worker | `shop-job-20260924-2222` | 启动即经新客户端取到任务声明（「新增 21 … 共 21 个」）；`outbox-dispatch` 每 5 秒一次，头 65 秒 0 调用失败 / 0 任务失败 / 0 ERROR。对照：shop-app 重启那几秒旧 worker 当场记了 `ConnectException` —— 失败是会被记下的 |
 
 **未在生产实测**：shop-app → pay-svc 经新客户端的真实调用，只由运营端费率页 / 开票页触发，需要运营账号去点一次。
-旧 job-worker 关闭时有几条 `CannotGetJdbcConnectionException`：连接池先于定时任务关掉，是旧版本自身的关闭顺序，与本次改动无关。
+旧 job-worker 关闭时有几条 `CannotGetJdbcConnectionException`：连接池先于定时任务关掉，是旧版本自身的关闭顺序，与本次改动无关 —— 随后已修，见偏差说明 7。
 
 **一次读错结果的记录**：第 1 步消融时三次全「绿」，原因是读的是 `target/surefire-reports` 里上一轮留下的报告 ——
 改成直接读 Maven 输出后三处都红。验证量本身也要能证伪。
@@ -236,5 +236,10 @@ public class InternalHttp {
    svc-client 不认识配置键，改为调用方经 `ServiceClientSpec#withConfigKeys` 传入。
 4. **初稿对生产形态判断错误**：写成「生产是 embedded」，实为 standalone，已在 §2 生产影响改正。
 5. **`job-worker` 不会起端口的依据写错**：初稿写「靠 Servlet API 缺席」，实为启动类显式 `.web(NONE)`，已改正。
-6. **实现时发现的潜在风险（未改，已加测试兜住）**：全局信封按包名放行 `…portal.internal.`，
-   `InternalPayEndpoint` 不在其中；今天没被包住只因 pay-svc 没扫描到信封类。
+6. **实现时发现的潜在风险**：全局信封按包名放行 `…portal.internal.`，`InternalPayEndpoint` 不在其中；
+   当时没被包住只因 pay-svc 没扫描到信封类。**已修**（`f194042d`）：改为按路径放行 `/internal/**`，
+   `ApiResponseWrapperTest` 钉住；把信封 `@Import` 进 pay-svc 重做实验，此前 4 条红，修后全绿。
+7. **顺带修掉的旧问题**：job-worker 每次重启都刷出几条 `CannotGetJdbcConnectionException`（连接池先于调度器关闭，
+   且关闭时排队的 cron 仍被触发）。**已修**（`f218ddae`），生产上重启验证：关闭从等满 30 秒超时变为 1 秒，0 条 ERROR。
+8. **闸门显示的条数是错的**：pre-push 显示「全量 2170」，只是最后一个模块（shop-app）的数，真实 17 个模块共 2492 条。
+   拦截没有漏，只是数字误导。**已修**（`50fed1a9`）：改为求和并显示模块数。
