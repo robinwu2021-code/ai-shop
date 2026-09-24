@@ -31,6 +31,9 @@
              各自做什么见 job/pom.xml 里那四条注释。
              它们的包名是 ai.neargo.job.*，与业务域分开：worker 要的正是「不认识业务」 -->
         <module>job</module>
+        <!-- 服务间调用的传输零件（@HttpExchange + RestClient）。**只依赖 spring-web**：
+             shop-base 与 job-worker 都要用，而 job-worker 不能依赖 shop-base，所以单独成模块 -->
+        <module>svc-client</module>
         <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
         <module>shop-base</module>
         <!-- 持久层的 MyBatis 实现。**排在 shop-base 之后、业务域之前** —— 它依赖前者、被后者依赖 -->
