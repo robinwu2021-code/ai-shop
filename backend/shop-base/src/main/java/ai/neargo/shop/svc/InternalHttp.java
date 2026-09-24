@@ -43,6 +43,7 @@ public class InternalHttp {
      */
     public <T> T client(String service, Class<T> api, Duration readTimeout) {
         return ServiceClients.create(api, new ServiceClientSpec(
-                service, locator::baseUrlOf, TOKEN_HEADER, () -> token, true, CONNECT_TIMEOUT, readTimeout));
+                service, locator::baseUrlOf, TOKEN_HEADER, () -> token, true, CONNECT_TIMEOUT, readTimeout)
+                .withConfigKeys("shop.services.targets." + service, "shop.services.internal-token"));
     }
 }

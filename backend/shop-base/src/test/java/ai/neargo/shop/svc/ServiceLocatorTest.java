@@ -1,5 +1,11 @@
 package ai.neargo.shop.svc;
 
+import ai.neargo.svc.client.CallOutcome;
+import ai.neargo.svc.client.ServiceCallException;
+import ai.neargo.svc.client.ServiceCalls;
+import java.time.Duration;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
@@ -66,30 +72,43 @@ class ServiceLocatorTest {
                 .contains("http://127.0.0.1:8083");
     }
 
+    /** 随便一个内部端点：这两条测的是「请求发不发得出去」，与端点是什么无关 */
+    @HttpExchange("/internal")
+    interface PingApi {
+        @PostExchange("/ping")
+        String ping();
+    }
+
+    private static ServiceCallException failureOf(InternalHttp http) {
+        var api = http.client(ServiceName.PAY, PingApi.class, Duration.ofSeconds(1));
+        try {
+            ServiceCalls.call(ServiceName.PAY, api::ping);
+        } catch (ServiceCallException e) {
+            return e;
+        }
+        throw new AssertionError("应当失败却调通了");
+    }
+
     @Test
     @DisplayName("★★★ 密钥没配时一律拒绝 —— 「没配就不校验」等于内部口对任何人开放，且没有症状")
     void missingTokenRefusesInsteadOfSkippingTheCheck() {
-        var client = new InternalClient(locatorWith(ServiceName.PAY, "http://127.0.0.1:1"));
-        // token 字段默认空串（@Value 在这里不生效，正好是「没配」的那种状态）
+        // 密钥给空串，正好是「没配」的那种状态
+        var e = failureOf(new InternalHttp(locatorWith(ServiceName.PAY, "http://127.0.0.1:1"), ""));
 
-        var r = client.post(ServiceName.PAY, "/internal/ping", "{}", 1);
-
-        assertThat(r.outcome())
+        assertThat(e.outcome())
                 .as("密钥没配必须是 NOT_CONFIGURED（改配置），"
                         + "不能是 UNREACHABLE（等对方起来）—— 后者永远等不到")
-                .isEqualTo(InternalClient.Outcome.NOT_CONFIGURED);
-        assertThat(r.ok()).isFalse();
+                .isEqualTo(CallOutcome.NOT_CONFIGURED);
+        assertThat(e.getMessage()).contains("shop.services.internal-token");
     }
 
     @Test
     @DisplayName("★★ 地址没配与连不上要分开 —— 前者改配置，后者等对方起来")
     void notConfiguredIsNotTheSameAsUnreachable() {
-        var client = new InternalClient(new ConfigServiceLocator());   // 什么都没配
+        var e = failureOf(new InternalHttp(new ConfigServiceLocator(), "tk"));   // 地址什么都没配
 
-        var r = client.post(ServiceName.PAY, "/internal/ping", "{}", 1);
-
-        assertThat(r.outcome()).isEqualTo(InternalClient.Outcome.NOT_CONFIGURED);
-        assertThat(r.message())
+        assertThat(e.outcome()).isEqualTo(CallOutcome.NOT_CONFIGURED);
+        assertThat(e.getMessage())
                 .as("报错要说清是哪个配置项 —— 只说「调用失败」的话，"
                         + "读的人得先去猜是网络还是配置")
                 .contains("shop.services.targets");

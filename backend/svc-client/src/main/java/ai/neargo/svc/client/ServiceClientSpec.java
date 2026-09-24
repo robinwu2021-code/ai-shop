@@ -19,6 +19,9 @@ import java.util.function.Supplier;
  *                       <b>「没配就不校验」的表现是内部口对任何人开放，而且没有任何症状</b>
  * @param connectTimeout 连接超时
  * @param readTimeout    读超时（从发出请求到拿到应答）
+ * @param addressConfigKey 「地址没配」时报错里点名的配置项，可为 {@code null}。
+ *                       <b>报错要说清改哪个配置</b> —— 只说「没配地址」的话，读的人还得先去猜键名
+ * @param tokenConfigKey   同上，「令牌没配」时点名的配置项
  */
 public record ServiceClientSpec(
         String service,
@@ -27,7 +30,16 @@ public record ServiceClientSpec(
         Supplier<String> token,
         boolean requireToken,
         Duration connectTimeout,
-        Duration readTimeout) {
+        Duration readTimeout,
+        String addressConfigKey,
+        String tokenConfigKey) {
+
+    /** 不点名配置项的写法（报错里只说「没配」） */
+    public ServiceClientSpec(String service, Function<String, Optional<String>> baseUrl, String tokenHeader,
+                             Supplier<String> token, boolean requireToken, Duration connectTimeout,
+                             Duration readTimeout) {
+        this(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout, null, null);
+    }
 
     public ServiceClientSpec {
         Objects.requireNonNull(service, "service");
@@ -40,6 +52,13 @@ public record ServiceClientSpec(
 
     /** 同一个服务、换一个读超时 —— job 侧每个任务的超时各不相同 */
     public ServiceClientSpec withReadTimeout(Duration timeout) {
-        return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, timeout);
+        return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, timeout,
+                addressConfigKey, tokenConfigKey);
+    }
+
+    /** 报错里点名配置项 */
+    public ServiceClientSpec withConfigKeys(String addressKey, String tokenKey) {
+        return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout,
+                addressKey, tokenKey);
     }
 }

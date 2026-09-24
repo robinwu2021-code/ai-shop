@@ -117,7 +117,7 @@ public class InternalPayEndpoint {
      * <p>所以远程化的风险不是「数据错」而是「状态不明」：
      * 超时后运营不知道成没成，他手动点第二次会看到 CONFLICT，
      * 再去列表里一看就知道已经开了。<b>前提是调用链上没有自动重试</b> ——
-     * {@code InternalClient} 刻意不做重试，就是为了这类操作。
+     * 服务间调用（svc-client 的 {@code ServiceCalls}）刻意不做重试，就是为了这类操作。
      *
      * <p>对比 {@code addRule}：那是「插新行」，重试会多出一版费率，
      * 而两版都在历史里、事后分不清哪次是重试。所以那个至今没切。

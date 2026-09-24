@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
  * 而是「状态不明」：超时后运营不知道成没成，他点第二次会看到「已处理」，
  * 再看列表就清楚了。
  *
- * <p><b>前提是这条链上没有自动重试</b>。{@code InternalClient} 刻意不做重试 ——
+ * <p><b>前提是这条链上没有自动重试</b>。服务间调用（svc-client 的 {@code ServiceCalls}）刻意不做重试 ——
  * 自动重试会把「状态不明」变成「运营完全不知道发生过什么」。
  */
 @Service

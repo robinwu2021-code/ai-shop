@@ -110,6 +110,17 @@ class ServiceClientsTest {
     }
 
     @Test
+    @DisplayName("★★ 没配的报错点名配置项 —— 只说「没配」的话，读的人得先去猜是哪个键")
+    void notConfiguredNamesTheKey() {
+        AtomicReference<String> base = new AtomicReference<>(null);
+        DemoApi api = ServiceClients.create(DemoApi.class,
+                spec(base, "s3cret", true).withConfigKeys("demo.targets.DEMO", "demo.token"));
+
+        assertThatThrownBy(() -> ServiceCalls.call("DEMO", () -> api.rules(1)))
+                .hasMessageContaining("demo.targets.DEMO");
+    }
+
+    @Test
     @DisplayName("★★★ 令牌必填而没配：NOT_CONFIGURED，不发请求 —— 「没配就不校验」等于内部口对任何人开放")
     void missingRequiredToken() throws IOException {
         AtomicReference<String> base = new AtomicReference<>(startServer(200, "[]"));

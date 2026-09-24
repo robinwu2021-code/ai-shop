@@ -61,6 +61,10 @@ public final class ServiceClients {
         return HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build().createClient(api);
     }
 
+    private static String hint(String configKey) {
+        return configKey == null || configKey.isBlank() ? "" : "（" + configKey + "）";
+    }
+
     /** 占位地址 → 这一刻 {@code baseUrl} 给出的真实地址。保留路径与查询串 */
     static final class ResolveBaseUrl implements ClientHttpRequestInterceptor {
         private final ServiceClientSpec spec;
@@ -75,7 +79,7 @@ public final class ServiceClients {
             String base = spec.baseUrl().apply(spec.service())
                     .filter(b -> !b.isBlank())
                     .orElseThrow(() -> new ServiceCallException(CallOutcome.NOT_CONFIGURED, spec.service(), 0,
-                            "没有配置服务 " + spec.service() + " 的地址"));
+                            "没有配置服务 " + spec.service() + " 的地址" + hint(spec.addressConfigKey())));
             // 尾斜杠统一去掉：路径一律以 / 开头，两边都留会拼出 //internal，有些反代下会 404
             String trimmed = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
             URI original = request.getURI();
@@ -104,7 +108,8 @@ public final class ServiceClients {
             if (token == null || token.isBlank()) {
                 if (spec.requireToken()) {
                     throw new ServiceCallException(CallOutcome.NOT_CONFIGURED, spec.service(), 0,
-                            "调用 " + spec.service() + " 的令牌没配 —— 内部调用一律拒绝");
+                            "调用 " + spec.service() + " 的令牌没配" + hint(spec.tokenConfigKey())
+                                    + " —— 内部调用一律拒绝");
                 }
                 token = "";
             }
