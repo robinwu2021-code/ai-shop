@@ -14,6 +14,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.time.Duration;
@@ -32,7 +33,13 @@ public class JobWorkerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(JobWorkerConfig.class);
 
+    /*
+     * **依赖 jobDataSource，是为了让调度器先于连接池被销毁**（Spring 按依赖的逆序销毁）。
+     * 不写这一条时两者没有依赖关系，连接池先关 —— 关闭那 30 秒里还在跑、还在到点的任务
+     * 全部 CannotGetJdbcConnectionException。2026-09-24 部署时每次重启都会刷出几条 ERROR。
+     */
     @Bean(destroyMethod = "shutdown")
+    @DependsOn("jobDataSource")
     ThreadPoolTaskScheduler jobTaskScheduler(JobWorkerProperties props) {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(props.getPoolSize());
@@ -41,6 +48,10 @@ public class JobWorkerConfig {
         // 而是 job_run 停在 running=1，下次启动看上去像「有个任务卡住了」
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(30);
+        // **还没开始的就不要开始了**。cron 每一轮都是排队的一次性延时任务，而底层线程池默认
+        // 在 shutdown 之后照样执行已排队的延时任务 —— 于是关闭那 30 秒里到点的 cron 被一个个触发，
+        // 撞上已经关掉的连接池。在跑的仍然等它跑完（上一条），这里只丢掉排着队的
+        scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         scheduler.initialize();
         return scheduler;
     }
