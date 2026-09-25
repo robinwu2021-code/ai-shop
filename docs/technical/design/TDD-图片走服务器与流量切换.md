@@ -1,6 +1,6 @@
 # 图片走服务器与流量切换 方案
 
-> 状态：**待决策**（2026-09-25）· 上游：[TDD-图片存储与空间回收](TDD-图片存储与门店空间清理.md) §9 ·
+> 状态：**已实现**（2026-09-25，server 模式已上线；direct 模式待 §4 的触发条件）· 上游：[TDD-图片存储与空间回收](TDD-图片存储与门店空间清理.md) §9 ·
 > [ADR-026 图片出口用两个自有域名、按配置切换](../ADR/ADR-026-图片出口两个域名按配置切换.md) · 优先级：高（COS 欠费停服中）
 >
 > 档位：2（跨三端 + 存量数据迁移 + 对外域名是不可逆决策）。
@@ -247,3 +247,56 @@ location ^~ /cos-private/ {
 | Q3 | 桶改私有之后，`img.hxmall.top` 的公开图转发也要带签名（nginx 做不了签名） | 切换 4.3 第 14 步 | 收口前改由后端签名转发，或者桶保持公有读、只靠 CDN 防盗链。现在不做 |
 | Q4 | 切换要不要做到不重启 | 切换 4.3 第 10 步 | 先做「改配置 + 重启」（约 24 秒）。要不停机切换，可以把 `delivery` 挂到运营端现有的功能开关上 |
 | Q5 | 欠费是否真的来自 COS 流量 | 判断本方案能不能根治欠费 | 请在费用中心按产品看明细；如果主要来自别的服务（比如数据万象），本方案只解决图片这一项 |
+
+## 七、实现记录（2026-09-25）
+
+### 对账二 · 设计 → 实现
+
+| 任务 | 实际落点 | 与设计一致？ |
+|---|---|---|
+| T0 | 用户充值，COS 恢复（服务器上同一张图 451 → 200） | ✅ |
+| T1 | DNSPod 加 `img A 106.55.27.246 TTL 600`（域名在腾讯云 DNSPod，不在阿里云） | ✅ |
+| T2 | `deploy/tencent/nginx/img.hxmall.top.conf`（新）· `www.hxmall.top.conf` 加 `/cos-private/`；服务器装 `libnginx-mod-http-image-filter` | ⚠️ 偏差 1、2 |
+| T3 | `MediaDeliveryConfig`（新）· `CosMediaStore#signedUrl` + `rebase` · `MediaKeys` 认 `cos-private/` · `application.yml` 三个配置项 | ⚠️ 偏差 3、4 |
+| T4 | `MediaHostRewriteFilter`（新） | ✅ |
+| T5 | `V347__media_host_img.sql`（25 条 UPDATE） | ⚠️ 偏差 5 |
+| T6 | `packages/shared/src/utils/media-thumb.ts`（新）· `sh-cover` 加 `w` · 17 个调用点 + 详情长图 + 店头像 | ⚠️ 偏差 6 |
+| T7 | `packages/shared/src/ports/media.ts`：`fitLongEdge` + `shrink` | ✅ |
+| T8 | 线上验证：`/mp/goods` 返回里 COS 地址 6 → 0、`img.hxmall.top` 0 → 6；三张图原图与 `!w375` 均 200 | ✅ |
+| T8 | 发版：B 端 0.4.98（官网回读已指向 0.4.98）· 小程序 0.1.61 开发版（体验版跟随；提审与发布待人工） | ✅ |
+| T9 | `deploy/tencent/logwatch.sh` 第 4d 节（已装到服务器） | ⚠️ 偏差 7 |
+| T10 | 本节 + 《TDD-图片存储与空间回收》§9 更正 | ✅ |
+
+### 对账三 · 实现 → 需求（测试）
+
+| AC | 测试 | 消融 |
+|---|---|---|
+| AC1 | `MediaHostMigrationTest#coversExactlyTheRegistry` / `#replacesEveryForm` | 删迁移一行 → 覆盖面测试点名缺 `prd_goods.detail_images` ✅ |
+| AC2 | 线上六条 curl（§5.3）全部符合预期 | — |
+| AC3 | `MediaHostRewriteFilterTest`（7 条）· `MediaDirectDeliveryFlowTest`（真 Tomcat） | 去掉入口替换 → 「入库的」变红；配置改 server → 真 Tomcat 那条变红 ✅ |
+| AC5 | `CosSignedUrlRebaseTest`（2 条）；线上签名有效 200 / 篡改 403 | 去掉 rebase → 变红 ✅ |
+| AC6 | `media-thumb.test.ts`（5 条）；线上 910 KB → `!w375` 22 KB | — |
+| AC7 | 线上：根路径 403、POST 405、`!w376` 404 | — |
+| AC8 | `MediaKeyRoundTripTest`（加了 direct 出口与签名地址两条） | 去掉 `cos-private/` → 签名地址抠不回 key ✅ |
+| AC9 | `media-fit.test.ts`（3 条） | — |
+| AC10 | `MediaHostRewriteFilterTest#misconfigurationFailsFast` | — |
+
+### 偏差说明
+
+1. **缩略图分两层**：`image_filter` 作用在代理响应之后，与 `proxy_cache` 写在同一层时缓存存的是原图。
+   改为外层缓存、内层 `127.0.0.1:8095` 缩图。
+2. **nginx 顺带升级**：缩图模块要求 nginx 1.24.0-2ubuntu7.18，连带从 7.15 升上来（同版本安全补丁，重启约 1 秒，三个站点回读均 200）。
+3. **配置绑定沿用 yml 显式映射 + `@Value`**，没有改成 §5.2 写的 `@ConfigurationProperties`：
+   `application.yml` 里每个键都写成 `${ENV_VAR:默认}`，环境变量能读到，这正是这个文件一直以来的写法。
+   `@Value` 不做宽松绑定的坑只在「键名直接对环境变量」时出现，这里不是。
+4. **`MediaKeys` 多认一个前缀 `cos-private/`**：设计里说它不用改（它先剥掉 `协议://主机`），
+   但签名地址的路径多一段 `cos-private/`，客户端原样提交回来时会抠出错的 key。按它「宁可多抠」的原则加上。
+5. **迁移没在 MySQL 空库上从 V1 跑到 V347**：V1 用了 MariaDB 专有排序规则 `utf8mb4_uca1400_ai_ci`，
+   MySQL 起不来 —— 生产库是从 MariaDB 导入的，不是从 V1 建的。改为在 MySQL 9.7 容器里按本机真实列类型
+   建出 25 列（两列原生 JSON），整份执行 V347：50 行 0 异常，相似域名一条没误换。
+6. **运营端缩略图没做**：「存储管理 → 待回收」拼的是本地盘 `/uploads/` 路径，COS 下一直是裂的（存量问题）。
+   修它要后端返回缩略图地址（动契约），另开任务。
+7. **流量量具用 nginx 日志，不用网卡计数器**：网卡 tx 含经内网往 COS 传备份的流量，开机以来 15 GB 而流量包只记 2.8 GB。
+   带宽触发条件从「一周 ≥3 天」简化为「近一小时 ≥10 分钟超 4 Mbps」（每小时判一次，按天聚合交给人看日志）。
+   首次安装按 Lighthouse API 的权威用量（3055053696 字节）播种。
+

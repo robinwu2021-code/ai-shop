@@ -357,6 +357,12 @@ public interface MediaStore {
 接口放 `shop-base`，实现放 `shop-channel/media`。一期 `LocalDiskMediaStore`，二期 `CosMediaStore`。
 **切换时改的只有实现类和端上图片域名** —— 目录结构、记账表、扫描逻辑、业务表里的 URL 一行不用改。
 
+> **2026-09-25 更正**：「业务表里的 URL 一行不用改」对本地盘 → COS 那一次成立，但 COS 上线后库里存的是
+> COS 公网域名，客户端直连 COS，出流量被写死在数据里，同日因欠费全站裂图。
+> 已改为：库里只存规范地址 `https://img.hxmall.top/<key>`（迁移 V347 改写了登记表的 25 个字段），
+> 出口由配置 `shop.media.delivery=server|direct` 决定 —— 见
+> [TDD-图片走服务器与流量切换](TDD-图片走服务器与流量切换.md)、ADR-026。
+
 ### 10. 存量数据：不搬家
 
 扫 `data/uploads/`，每个文件补一条 `sys_media_asset`（`asset_key` = 老路径原样，
