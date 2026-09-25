@@ -20,6 +20,15 @@ import { prompt } from "@ai-shop/ui/prompt";
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
+/*
+ * 「有没有开店」这件事知不知道。**不知道的时候什么都别说**：
+ * 此前没有这一层 —— 没缓存的冷启（刚装、缓存过期）先亮一下「还没有开店」，数据回来才变成工作台；
+ * 更糟的是 loadProfile 的失败被 `.catch(() => null)` 吞掉，**网络不通时也显示「还没有开店 · 先把店开起来」**，
+ * 店主看到的是「你没有店」，实际只是没网（2026-09-25 真机上看到的那一闪）。
+ * 有缓存的 profile 直接算「知道」：工作台照常秒开，不受这一层影响。
+ */
+const profileState = ref<"pending" | "ok" | "failed">(merchant.profile ? "ok" : "pending");
+
 const todo = ref<MerchantTodo | null>(null);
 /**
  * 库存待办的三个数。**与 todo 分开取** —— 它在另一个域（进销存独立库），
@@ -234,7 +243,14 @@ const ownedRate = computed(() =>
 );
 
 async function load() {
-  await merchant.loadProfile().catch(() => null);
+  if (!merchant.profile) profileState.value = "pending";
+  try {
+    await merchant.loadProfile();
+    profileState.value = "ok";
+  } catch {
+    // 有缓存就照缓存显示（能用的入口别收起来）；连缓存都没有，才是真的「不知道」
+    profileState.value = merchant.profile ? "ok" : "failed";
+  }
   if (!merchant.canOperate) return;
   // 门店要先定下来：它决定后面这一屏所有数字属于哪家店
   await merchant.loadStores();
@@ -328,8 +344,15 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="tab.home" tab="home">
+    <!-- 还不知道有没有店：等待时什么都不渲染，失败给重试 —— 都不能说成「还没有开店」 -->
+    <sh-empty
+      v-if="!merchant.canOperate && profileState !== 'ok'"
+      :pending="profileState === 'pending'"
+      :failed="profileState === 'failed'"
+      @retry="load"
+    ></sh-empty>
     <!-- 未入驻：整屏只讲一件事 —— 去开张 -->
-    <view v-if="!merchant.canOperate" class="empty">
+    <view v-else-if="!merchant.canOperate" class="empty">
       <text class="txt-display">{{ $t("home.notMerchant") }}</text>
       <text class="sh-muted sh-mt-sm blk">{{ $t("home.notMerchantHint") }}</text>
       <view class="sh-btn go" @tap="goQuickStart">
