@@ -194,6 +194,11 @@ export interface MediaReclaimable {
   reason: string;
   /** 状态 */
   status: string;
+  /**
+   * 这一行的缩略图地址，由后端给：COS 下公开图是缩略图、私有图是 10 分钟签名地址；
+   * 本地盘下是站内相对路径。用 `mediaThumbSrc()` 取，别自己拼。
+   */
+  thumbUrl?: string | null;
 }
 
 export interface MediaPurgeBatch {

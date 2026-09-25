@@ -28,6 +28,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { fmtTime } from "@/lib/utils";
 import { usePaging } from "@/lib/use-paging";
+import { mediaThumbSrc } from "@/lib/media-thumb-src";
 import type { SystemCopy } from "./copy";
 
 /**
@@ -202,12 +203,10 @@ export function StorageTab({ c, canPurge }: { c: SystemCopy; canPurge: boolean }
     { header: c.stColThumb,
       cell: (r) => (
         /*
-         * 一期直接引原图 + 懒加载：运营端在内网，一页 20 张约 6 MB，可接受。
-         * 切对象存储后换成 ?imageMogr2/thumbnail/160x —— 一行 URL 参数的事。
-         *
+         * 地址由后端给（公开图缩略图 / 私有图短签名），见 lib/media-thumb-src。
          * **没有缩略图就是让人盲删**，所以这一列不能省。
          */
-        <img src={`${MEDIA_BASE}/uploads/${r.assetKey}`} alt="" loading="lazy"
+        <img src={mediaThumbSrc(r, MEDIA_BASE)} alt="" loading="lazy"
              className="h-12 w-12 rounded-field object-cover ring-1 ring-border" />
       ),
     },

@@ -173,6 +173,28 @@ class MediaPurgeFlowTest {
         assertThat(vo.totalBytes()).isEqualTo(vo.activeBytes() + vo.reclaimableBytes());
     }
 
+    @Test
+    @DisplayName("★★★ 待回收的每一行带一个打得开的缩略图地址 —— 没有缩略图就是让运营盲删")
+    void reclaimableRowCarriesAWorkingThumb() throws Exception {
+        String key = reclaimableKey();
+        var filter = new MediaPurgeService.Filter(null, storeOf(key), false, null);
+
+        MediaUsageService.ReclaimableVO row = usageService.reclaimable(filter, 1, 200).records().stream()
+                .filter(r -> key.equals(r.assetKey())).findFirst().orElseThrow();
+
+        /*
+         * 此前前端自己拼 `${API_BASE}/uploads/<key>`，生产切 COS 后那条路径不存在，这一列一直是裂图。
+         * 这里是本地盘 provider：给的就是站内相对路径，而且**真的能取到字节** —— 只断言「不为空」的话，
+         * 给一个 404 的地址也会绿。COS 下的写法（缩略图后缀 / 签名地址）见 shop-channel 的 CosThumbUrlTest。
+         */
+        assertThat(row.thumbUrl()).isEqualTo("/uploads/" + key);
+        byte[] bytes = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get(row.thumbUrl()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(bytes).isNotEmpty();
+    }
+
     // ---------------------------------------------------------------- 器具
 
     /** 传一张图、推回宽限期之前、扫一遍 —— 得到一个真的躺在待回收清单里的 key。 */

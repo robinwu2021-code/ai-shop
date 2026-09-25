@@ -54,6 +54,8 @@ public class CosMediaStore implements MediaStore {
      * 空 = 用 SDK 生成的 COS 默认域名原样返回。
      */
     private final String privateBaseUrl;
+    /** 配了 {@code shop.cos.domain}（自有图片域名）才有缩略图服务 */
+    private final boolean ownDomain;
 
     public CosMediaStore(@Value("${shop.cos.secret-id:}") String secretId,
                          @Value("${shop.cos.secret-key:}") String secretKey,
@@ -74,6 +76,7 @@ public class CosMediaStore implements MediaStore {
                 ? "https://" + bucket + ".cos." + region + ".myqcloud.com"
                 : domain.replaceAll("/+$", "");
         this.privateBaseUrl = privateBaseUrl == null ? "" : privateBaseUrl.replaceAll("/+$", "");
+        this.ownDomain = domain != null && !domain.isBlank();
         log.info("[media] COS 存储已启用 bucket={} region={} baseUrl={} privateBaseUrl={}",
                 bucket, region, baseUrl, this.privateBaseUrl.isEmpty() ? "(COS 默认域名)" : this.privateBaseUrl);
     }
@@ -130,6 +133,20 @@ public class CosMediaStore implements MediaStore {
     @Override
     public String publicUrl(String key) {
         return baseUrl + "/" + key;
+    }
+
+    /**
+     * 公开图加 {@code !w<宽>}（ADR-026 的缩略图写法，nginx 与数据万象样式都认）。
+     * <b>只在配了自有域名时加</b>：桶的默认域名上没有这个样式，加了就是 404 —— 那时宁可给原图。
+     */
+    @Override
+    public String thumbUrl(String key, boolean isPublic, int width) {
+        if (!isPublic) {
+            return signedUrl(key, THUMB_SIGN_TTL);
+        }
+        // nginx 只放行这三档（img.hxmall.top.conf），别的宽度拼出来就是 404，不如给原图
+        boolean supported = width == 200 || width == 375 || width == 750;
+        return ownDomain && supported ? publicUrl(key) + "!w" + width : publicUrl(key);
     }
 
     @Override

@@ -68,4 +68,17 @@ public interface MediaStore {
      * 签名 URL 把凭证放进 URL 本身，这也正是 COS 的做法 —— 一期照着它做，切换时语义不变。
      */
     String signedUrl(String key, Duration ttl);
+
+    /**
+     * 列表里的小图地址（运营端「待回收」那一列）。<b>该怎么给由实现决定，调用方只说公开与否</b>：
+     * 公开图给缩略图，私有图给 {@link #THUMB_SIGN_TTL} 的签名地址 —— 证件照不能因为「只是缩略图」就公开。
+     *
+     * <p>默认实现给原图地址（本地盘没有缩图服务）；COS 实现在配了自有域名时追加 {@code !w<宽>}（ADR-026）。
+     */
+    default String thumbUrl(String key, boolean isPublic, int width) {
+        return isPublic ? publicUrl(key) : signedUrl(key, THUMB_SIGN_TTL);
+    }
+
+    /** 列表里私有图签名的有效期。按分钟计：列表是现看现用的，签名活太久就等于公开。 */
+    Duration THUMB_SIGN_TTL = Duration.ofMinutes(10);
 }

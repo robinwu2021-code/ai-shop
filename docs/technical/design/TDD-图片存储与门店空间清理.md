@@ -291,6 +291,13 @@ public interface MediaRefSource {
 
 ⚠️ 证件（QUAL）的缩略图不能走公开 URL，要走 §L3-9 的签名 URL，**且有效期按分钟计**。
 
+> **2026-09-25 落地（此前没实现，生产切 COS 后这一列一直是裂图）**：前端原先自己拼
+> `${API_BASE}/uploads/<key>`，那是本地盘的路径，COS 下不存在 —— 运营一直在看不到图的情况下判断删不删。
+> 改为**由后端给出**：`GET /ops/media/reclaimable` 与批次详情的每一行多一个 `thumbUrl`，
+> 由 `MediaStore#thumbUrl(key, public, 200)` 决定 ——
+> 公开图（GOODS）在 COS 下是 `https://img.hxmall.top/<key>!w200`（ADR-026 的缩略图写法，不再用数据万象参数），
+> 本地盘下是 `/uploads/<key>`；私有图（证件、售后等）是 **10 分钟**的签名地址。前端只负责把相对路径补上 API 前缀。
+
 #### 接口
 
 | 端点 | 权限 | 返回 |

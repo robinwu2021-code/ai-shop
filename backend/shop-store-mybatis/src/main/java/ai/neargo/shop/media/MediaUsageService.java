@@ -28,6 +28,7 @@ public class MediaUsageService {
     private final SysMediaAssetMapper assetMapper;
     private final SysMediaPurgeBatchMapper batchMapper;
     private final MediaPurgeService purgeService;
+    private final MediaStore mediaStore;
 
     /**
      * 可回收占比超过它，页面置顶红条并<b>禁用批量回收</b> ——
@@ -40,11 +41,12 @@ public class MediaUsageService {
     private final double abnormalRatio;
 
     public MediaUsageService(SysMediaAssetMapper assetMapper, SysMediaPurgeBatchMapper batchMapper,
-                             MediaPurgeService purgeService,
+                             MediaPurgeService purgeService, MediaStore mediaStore,
                              @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
         this.assetMapper = assetMapper;
         this.batchMapper = batchMapper;
         this.purgeService = purgeService;
+        this.mediaStore = mediaStore;
         this.abnormalRatio = abnormalRatio;
     }
 
@@ -99,7 +101,7 @@ public class MediaUsageService {
     public PageData<ReclaimableVO> reclaimable(MediaPurgeService.Filter filter, long page, long size) {
         IPage<SysMediaAsset> result = assetMapper.selectPage(new Page<>(page, size),
                 purgeService.reclaimableQuery(filter).orderByDesc(SysMediaAsset::getMarkedAt));
-        return PageData.of(result.getRecords().stream().map(ReclaimableVO::of).toList(),
+        return PageData.of(result.getRecords().stream().map(this::toVO).toList(),
                 result.getTotal(), page, size);
     }
 
@@ -113,8 +115,16 @@ public class MediaUsageService {
                 .eq(SysMediaPurgeBatch::getBatchNo, batchNo));
         List<ReclaimableVO> items = assetMapper.selectList(Wrappers.<SysMediaAsset>lambdaQuery()
                         .eq(SysMediaAsset::getPurgeBatchNo, batchNo))
-                .stream().map(ReclaimableVO::of).toList();
+                .stream().map(this::toVO).toList();
         return new BatchDetailVO(batch, items);
+    }
+
+    /** 缩略图宽度：列表那一格是 48px，200 宽在高分屏上也够清楚 */
+    private static final int THUMB_WIDTH = 200;
+
+    private ReclaimableVO toVO(SysMediaAsset a) {
+        String thumb = mediaStore.thumbUrl(a.getAssetKey(), SysMediaAsset.GOODS.equals(a.getBizType()), THUMB_WIDTH);
+        return ReclaimableVO.of(a, thumb);
     }
 
     private List<SysMediaAsset> live() {
@@ -143,9 +153,15 @@ public class MediaUsageService {
     public record ReclaimableVO(String assetKey, String entityNo, String storeNo, String bizType,
                                 long bytes, Integer width, Integer height,
                                 String uploadedBy, String createdAt, String markedAt,
-                                String reason, String status) {
+                                String reason, String status,
+                                /*
+                                 * 那一行的缩略图，**由后端给**。此前前端自己拼 `${API_BASE}/uploads/<key>` ——
+                                 * 本地盘的路径，生产切 COS 后不存在，这一列一直是裂图，运营等于盲删。
+                                 * 公开图是缩略图，私有图（证件、售后）是 10 分钟签名地址；本地盘下是站内相对路径。
+                                 */
+                                String thumbUrl) {
 
-        static ReclaimableVO of(SysMediaAsset a) {
+        static ReclaimableVO of(SysMediaAsset a, String thumbUrl) {
             String reason = a.getLastReferencedAt() == null
                     ? "从未被引用"
                     : "曾被「" + a.getLastRefDesc() + "」引用，" + a.getLastReferencedAt() + " 后失去引用";
@@ -153,7 +169,7 @@ public class MediaUsageService {
                     bytesOf(a), a.getWidth(), a.getHeight(), a.getUploadedBy(),
                     a.getCreatedAt() == null ? null : a.getCreatedAt().toString(),
                     a.getMarkedAt() == null ? null : a.getMarkedAt().toString(),
-                    reason, a.getStatus());
+                    reason, a.getStatus(), thumbUrl);
         }
     }
 
