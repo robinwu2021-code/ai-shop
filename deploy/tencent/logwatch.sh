@@ -17,6 +17,8 @@
 #   DISK_WARN=80  DISK_CRIT=90  LOG_TOTAL_MB=1024  RATE_MB_PER_H=50  WEBHOOK_URL=
 #   OUTBOX_FAILED_BASELINE=20   （outbox 死信的已知条数，见第 4 节）
 #   BINLOG_MAX_MB=1024          （binlog 总量上限，见第 4b 节）
+#   TRAFFIC_PACKAGE_GB=500  TRAFFIC_WARN_PCT=70  TRAFFIC_PERIOD_DAY=18   （公网出流量，见第 4d 节）
+#   IMG_PEAK_MBPS=4  IMG_PEAK_MINUTES=10                                 （图片出口带宽峰值，同上）
 set -euo pipefail
 
 DATA="${DATA:-/data}"
@@ -230,6 +232,71 @@ if [ -n "$HEALTH_MYSQL" ]; then
     else
         say CRIT "mysql" "**连不上或查不动** —— 三个服务都靠它，看 systemctl status mysql97 与 /data/log/infra/mysql97/error.log"
     fi
+fi
+
+# ── 4d. 公网出流量（2026-09-25 图片改走应用服务器后补，ADR-026）──────────────
+# 图片从 COS 直连改成经这台机器（img.hxmall.top）之后，出流量吃的是轻量服务器的月流量包
+# （500 GB，每月 18 日起算）与 5 Mbps 峰值带宽。两件事要在小时级被发现：
+#   a) 本期累计出流量 > 流量包的 TRAFFIC_WARN_PCT%   → 该考虑切到图片服务器（shop.media.delivery=direct）
+#   b) 图片出口最近一小时里超过 IMG_PEAK_MBPS 的分钟数 ≥ IMG_PEAK_MINUTES → 带宽快被图片吃满
+#
+# **量的是 nginx 日志里的 $body_bytes_sent，不是网卡计数器**：网卡的 tx 把内网流量也算进去了
+# （backup-to-cos.sh 经内网往 COS 传备份），实测开机以来 15 GB 而流量包只记了 2.8 GB，
+# 拿它判会天天误报。公网流量全都经过 nginx，日志口径与流量包一致（略少：不含响应头与 TLS 开销）。
+# 权威数在控制台（轻量服务器 → 流量包），这里只负责「够早地发现」。
+#
+# 窗口 = 上次跑到这次之间的每一分钟（最多两天，读当前文件与 .1）—— 漏跑一次不丢数，下一轮补上。
+TRAFFIC_PACKAGE_GB="${TRAFFIC_PACKAGE_GB:-500}"
+TRAFFIC_WARN_PCT="${TRAFFIC_WARN_PCT:-70}"
+TRAFFIC_PERIOD_DAY="${TRAFFIC_PERIOD_DAY:-18}"
+NGINX_LOG_DIR="${NGINX_LOG_DIR-/var/log/nginx}"
+IMG_LOG_NAME="${IMG_LOG_NAME:-img.access.log}"
+IMG_PEAK_MBPS="${IMG_PEAK_MBPS:-4}"
+IMG_PEAK_MINUTES="${IMG_PEAK_MINUTES:-10}"
+if [ -n "$NGINX_LOG_DIR" ] && [ -d "$NGINX_LOG_DIR" ]; then
+    # 本期起点：最近一个「每月 TRAFFIC_PERIOD_DAY 日」
+    if [ "$(date +%-d)" -ge "$TRAFFIC_PERIOD_DAY" ]; then
+        period="$(date +%Y-%m)-$(printf %02d "$TRAFFIC_PERIOD_DAY")"
+    else
+        period="$(date -d "$(date +%Y-%m-01) -1 day" +%Y-%m)-$(printf %02d "$TRAFFIC_PERIOD_DAY")"
+    fi
+    pf="$STATE/egress-period"; af="$STATE/egress-acc"; lf="$STATE/egress-last-run"
+    if [ "$(cat "$pf" 2>/dev/null)" != "$period" ]; then echo "$period" > "$pf"; echo 0 > "$af"; fi
+    last_run="$(cat "$lf" 2>/dev/null || echo $((now - 3600)))"
+    # 从上次那一分钟的下一分钟，到上一整分钟（当前这一分钟还没写完，留给下一轮）
+    from=$(( (last_run / 60 + 1) * 60 )); to=$(( (now / 60 - 1) * 60 ))
+    if [ $((to - from)) -gt 172800 ]; then from=$((to - 172800)); fi
+    hour_from=$(( to - 3540 ))
+    keys="$(t=$from; while [ "$t" -le "$to" ]; do LC_ALL=C date -d "@$t" '+%d/%b/%Y:%H:%M'; t=$((t + 60)); done)"
+    hour_keys="$(t=$hour_from; while [ "$t" -le "$to" ]; do LC_ALL=C date -d "@$t" '+%d/%b/%Y:%H:%M'; t=$((t + 60)); done)"
+    if [ -n "$keys" ]; then
+        read -r added peak over < <(
+            for f in "$NGINX_LOG_DIR"/*access.log "$NGINX_LOG_DIR"/*access.log.1; do
+                [ -r "$f" ] || continue
+                # 用 if 不用 case：case 的「模式)」写在 $( ) 里，bash 会把那个 ) 当成替换的结尾
+                b="$(basename "$f")"; tag=-
+                if [ "$b" = "$IMG_LOG_NAME" ] || [ "$b" = "$IMG_LOG_NAME.1" ]; then tag=IMG; fi
+                awk -v tag="$tag" '{ print tag, substr($4, 2, 17), $10 }' "$f"
+            done | LC_ALL=C awk -v keys="$keys" -v hkeys="$hour_keys" -v lim="$IMG_PEAK_MBPS" '
+                BEGIN { n = split(keys, a, "\n"); for (i = 1; i <= n; i++) want[a[i]] = 1
+                        n = split(hkeys, a, "\n"); for (i = 1; i <= n; i++) hour[a[i]] = 1 }
+                ($3 ~ /^[0-9]+$/) && ($2 in want) { sum += $3 }
+                ($1 == "IMG") && ($3 ~ /^[0-9]+$/) && ($2 in hour) { img[$2] += $3 }
+                END { peak = 0; over = 0
+                      for (m in img) { r = img[m] * 8 / 60 / 1000000; if (r > peak) peak = r; if (r > lim) over++ }
+                      printf "%d %.2f %d\n", sum, peak, over }')
+        acc=$(( $(cat "$af") + added ))
+        echo "$acc" > "$af"
+        echo "$now" > "$lf"
+        pkg=$(( TRAFFIC_PACKAGE_GB * 1073741824 ))
+        pct=$(( acc * 100 / pkg ))
+        if [ "$pct" -ge "$TRAFFIC_WARN_PCT" ]; then lv=WARN; else lv=OK; fi
+        say "$lv" "egress" "本期（$period 起）公网出流量 $(mb "$acc") / ${TRAFFIC_PACKAGE_GB}G = ${pct}%（阈值 ${TRAFFIC_WARN_PCT}%）· 本轮 +$(mb "$added")"
+        if [ "$over" -ge "$IMG_PEAK_MINUTES" ]; then lv=WARN; else lv=OK; fi
+        say "$lv" "img-peak" "图片出口近一小时峰值 ${peak} Mbps · 超 ${IMG_PEAK_MBPS} Mbps 的分钟 ${over}（阈值 ${IMG_PEAK_MINUTES}）"
+    fi
+else
+    say OK "egress" "未配 NGINX_LOG_DIR，跳过"
 fi
 
 # ── 5. 告警出口 ─────────────────────────────────────────────────────────────
