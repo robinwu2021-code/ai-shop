@@ -34877,6 +34877,22 @@
       "module": "shop-base-auth"
     },
     {
+      "host": "MediaDeliveryConfig",
+      "name": "SERVER",
+      "type": "String",
+      "value": "\"server\"",
+      "zh": "",
+      "module": "shop-channel"
+    },
+    {
+      "host": "MediaDeliveryConfig",
+      "name": "DIRECT",
+      "type": "String",
+      "value": "\"direct\"",
+      "zh": "",
+      "module": "shop-channel"
+    },
+    {
       "host": "FulBatch",
       "name": "NEXT",
       "type": "java.util.Map<String, String>",

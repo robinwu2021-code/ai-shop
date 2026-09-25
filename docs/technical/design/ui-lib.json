@@ -2049,10 +2049,11 @@
       "name": "sh-cover",
       "file": "packages/ui/src/components/sh-cover.vue",
       "scope": "跨端",
-      "lines": 92,
+      "lines": 106,
       "props": [
         "src?: string",
-        "mode?: CoverMode"
+        "mode?: CoverMode",
+        "w?: ThumbWidth"
       ],
       "usage": {
         "b-app": 5,
