@@ -30,7 +30,7 @@ withDefaults(
 
 <template>
   <view class="sh-row skurow" :class="`skurow--${size}`">
-    <sh-cover class="sh-center skurow__cover" :src="cover"></sh-cover>
+    <sh-cover class="sh-center skurow__cover" :src="cover" :w="200"></sh-cover>
     <view class="sh-fill skurow__main">
       <text class="txt-strong skurow__title">{{ title }}</text>
       <text v-if="spec" class="sh-hint">{{ spec }}</text>

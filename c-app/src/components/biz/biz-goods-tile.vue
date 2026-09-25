@@ -19,7 +19,7 @@ const soldOut = computed(() => goodsSoldOut(props.goods));
 
 <template>
   <view class="tile" @tap.stop="$emit('tap')">
-    <sh-cover class="sh-center tile__cover" :src="goods.cover || GOODS_COVER_FALLBACK"></sh-cover>
+    <sh-cover class="sh-center tile__cover" :src="goods.cover || GOODS_COVER_FALLBACK" :w="375"></sh-cover>
     <view class="tile__body">
       <text class="txt-strong tile__title">{{ goods.title }}</text>
       <view class="sh-row tile__foot">

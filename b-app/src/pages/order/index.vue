@@ -195,7 +195,7 @@ onLoad((q) => {
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="sh-row item sh-mt-sm">
-          <sh-cover class="item__cover" :src="it.cover"></sh-cover>
+          <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
           <view class="sh-fill">
             <text class="txt-body item__title">{{ it.title }}</text>
             <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>

@@ -39,7 +39,7 @@ onShow(load);
   <sh-scaffold title-key="cards.title">
     <view v-for="c in cards" :key="c.cardNo" class="sh-card card" :class="{ 'is-expired': expired(c) }">
       <view class="card__head sh-row">
-        <sh-cover class="card__cover" :src="c.cover"></sh-cover>
+        <sh-cover class="card__cover" :src="c.cover" :w="200"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong card__title">{{ c.title }}</text>
           <text class="txt-caption card__no sh-num">{{ c.cardNo }}</text>

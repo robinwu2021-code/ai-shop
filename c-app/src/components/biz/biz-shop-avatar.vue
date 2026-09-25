@@ -11,6 +11,7 @@
 // 尺寸走 `size` 而不是调用点的 class：小程序里调用点的 class 落在宿主节点上、
 // 进不到组件内部（见 sh-cover 那段注释），用参数传进来两端一致。
 import { computed } from "vue";
+import { thumb } from "@shared/utils/media-thumb";
 
 /** 自营店头像。只有 C 端小程序包里有这张图（c-app/src/static/brand/） */
 const SELF_STORE_AVATAR = "/static/brand/store-self.png";
@@ -40,7 +41,7 @@ const textStyle = computed(() => ({ fontSize: `${Math.round(props.size * 0.44)}r
 
 <template>
   <view class="sh-center av" :style="boxStyle">
-    <image v-if="src" :src="src" mode="aspectFill" class="av__img" />
+    <image v-if="src" :src="thumb(src, 200)" mode="aspectFill" class="av__img" />
     <text v-else class="txt-bold txt-primary" :style="textStyle">{{ initial }}</text>
   </view>
 </template>

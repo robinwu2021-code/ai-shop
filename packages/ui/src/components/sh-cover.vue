@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { thumb, type ThumbWidth } from "@shared/utils/media-thumb";
 // 商品封面。**`cover` 是一个二义字段** —— 种子数据里是 emoji（🍚），
 // 商家自己拍完上传后是一条 COS 的 https URL。
 //
@@ -20,10 +22,22 @@
 type CoverMode = "scaleToFill" | "aspectFit" | "aspectFill" | "widthFix" | "heightFix"
   | "top" | "bottom" | "center" | "left" | "right";
 
-const props = withDefaults(defineProps<{ src?: string; mode?: CoverMode }>(), {
+const props = withDefaults(defineProps<{
+  src?: string;
+  mode?: CoverMode;
+  /**
+   * 缩略图宽度（ADR-026）。**给了就走缩略图**：列表、卡片里的小封面一律传，
+   * 经应用服务器出图受 5 Mbps 限制，一张原图 910 KB、375 宽缩略图 22 KB。
+   * 不传 = 原图（详情页大图、上传预览）。只对我们自己的图片域名生效，emoji、本地路径、别家地址原样。
+   */
+  w?: ThumbWidth;
+}>(), {
   src: "",
   mode: "aspectFill",
+  w: undefined,
 });
+
+const shown = computed(() => (props.w ? thumb(props.src, props.w) : props.src));
 
 /** data: 也算 —— 拍照预览阶段给的是本地临时路径或 base64，同样不能当文字排 */
 const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith("data:") || s.startsWith("blob:") || s.startsWith("file://") || s.startsWith("/");
@@ -31,7 +45,7 @@ const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith(
 
 <template>
   <view class="sh-center cover">
-    <image v-if="isImg(props.src)" :src="props.src" :mode="props.mode" class="cover__img" />
+    <image v-if="isImg(props.src)" :src="shown" :mode="props.mode" class="cover__img" />
     <text v-else class="cover__emoji"><slot>{{ props.src }}</slot></text>
   </view>
 </template>

@@ -355,7 +355,7 @@ onShareAppMessage(() =>
           class="freq__i"
           @tap="openGoods(g)"
         >
-          <sh-cover class="freq__cover" :src="g.cover || GOODS_COVER_FALLBACK"></sh-cover>
+          <sh-cover class="freq__cover" :src="g.cover || GOODS_COVER_FALLBACK" :w="200"></sh-cover>
           <text class="txt-strong freq__title">{{ g.title }}</text>
           <view class="freq__foot sh-row sh-row--between">
             <text class="txt-price freq__price sh-num">{{ money(g.price) }}</text>

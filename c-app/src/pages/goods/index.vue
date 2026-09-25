@@ -10,6 +10,7 @@
 // 往下滑过主图后顶部换成实色导航，带「商品 / 评价 / 详情」三个锚点。
 import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { thumb } from "@shared/utils/media-thumb";
 import { onLoad, onPageScroll, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
@@ -773,11 +774,11 @@ onShareAppMessage(() =>
           @change="(e: { detail: { current: number } }) => (heroAt = e.detail.current)"
         >
           <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
-            <sh-cover class="hero__emoji" :src="img"></sh-cover>
+            <sh-cover class="hero__emoji" :src="img" :w="750"></sh-cover>
           </swiper-item>
         </swiper>
         <view v-else class="hero sh-center">
-          <sh-cover class="hero__emoji" :src="goods.cover"></sh-cover>
+          <sh-cover class="hero__emoji" :src="goods.cover" :w="750"></sh-cover>
         </view>
         <view v-if="gallery.length > 1" class="hero__wrap">
           <text class="txt-caption hero__count sh-num">{{ heroAt + 1 }}/{{ gallery.length }}</text>
@@ -1037,7 +1038,7 @@ onShareAppMessage(() =>
             v-for="(img, i) in goods.detailImages ?? []"
             :key="img + i"
             class="dt__img"
-            :src="img"
+            :src="thumb(img, 750)"
             mode="widthFix"
           />
         </view>
@@ -1061,7 +1062,7 @@ onShareAppMessage(() =>
         -->
         <sh-sheet :visible="showSku" :title="String($t('goods.chosen'))" @close="showSku = false">
           <view class="skuhead sh-row">
-            <sh-cover class="skuhead__img" :src="goods.cover"></sh-cover>
+            <sh-cover class="skuhead__img" :src="goods.cover" :w="200"></sh-cover>
             <view class="sh-fill skuhead__main">
               <view class="sh-row sh-row--baseline">
                 <text class="txt-display sh-num">{{ money(sku?.price ?? goods.price) }}</text>

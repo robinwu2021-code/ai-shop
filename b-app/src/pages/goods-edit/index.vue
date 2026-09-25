@@ -1537,7 +1537,7 @@ async function save(thenSubmit = false) {
         </view>
         <view class="dimgs">
           <view v-for="(img, i) in detailImages" :key="img + i" class="dimgs__row sh-row">
-            <sh-cover class="dimgs__img" :src="img"></sh-cover>
+            <sh-cover class="dimgs__img" :src="img" :w="200"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
               <view class="sh-chip sh-chip--primary mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>

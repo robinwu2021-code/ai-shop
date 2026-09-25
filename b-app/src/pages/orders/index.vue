@@ -186,7 +186,7 @@ onShow(() => {
       </view>
 
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
-        <sh-cover class="item__cover" :src="it.cover"></sh-cover>
+        <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong item__title">{{ it.title }}</text>
           <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>

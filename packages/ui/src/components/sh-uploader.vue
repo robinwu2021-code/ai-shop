@@ -65,7 +65,7 @@ function add() {
       :style="cell"
       @tap="emit('tapItem', i)"
     >
-      <sh-cover class="up__img" :style="cell" :src="img"></sh-cover>
+      <sh-cover class="up__img" :style="cell" :src="img" :w="200"></sh-cover>
       <text v-if="badge && i === 0" class="txt-caption up__badge">{{ badge }}</text>
       <view v-if="removable" class="up__del sh-hit sh-center" @tap.stop="emit('remove', i)">
         <sh-icon name="close" :size="24" color="#fff"></sh-icon>

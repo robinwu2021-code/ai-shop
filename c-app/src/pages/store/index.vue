@@ -379,7 +379,7 @@ function navToStore() {
           class="freq sh-row"
           :class="{ 'is-off': f.invalid }"
         >
-          <sh-cover class="freq__cover" :src="f.cover"></sh-cover>
+          <sh-cover class="freq__cover" :src="f.cover" :w="200"></sh-cover>
           <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
             <text class="txt-strong freq__title">{{ f.title }}</text>
             <text class="sh-muted">{{ f.spec }}</text>

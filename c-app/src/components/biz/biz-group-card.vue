@@ -23,7 +23,7 @@ const off = computed(() =>
 <template>
   <view class="gcard" @tap.stop="$emit('tap')">
     <view class="gcard__top">
-      <sh-cover class="sh-center gcard__cover" :src="group.cover"></sh-cover>
+      <sh-cover class="sh-center gcard__cover" :src="group.cover" :w="375"></sh-cover>
       <view class="sh-fill gcard__main">
         <text class="txt-strong gcard__title">{{ group.title }}</text>
         <text class="sh-hint">{{ group.pickupName }}</text>

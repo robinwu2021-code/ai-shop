@@ -176,7 +176,7 @@ onShow(load);
     <template v-if="view === 'goods'">
       <view v-for="r in rows" :key="r.skuNo" class="sh-card sh-mb-sm">
         <view class="row__head sh-row">
-          <sh-cover class="row__cover" :src="r.cover"></sh-cover>
+          <sh-cover class="row__cover" :src="r.cover" :w="200"></sh-cover>
           <view class="sh-fill">
             <text class="txt-strong row__title">{{ r.title }}</text>
             <text class="sh-muted">{{ r.spec }}</text>

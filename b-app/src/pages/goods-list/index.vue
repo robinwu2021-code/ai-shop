@@ -804,7 +804,7 @@ onShow(() => {
         :class="{ 'row__top--tap': merchant.can('biz:goods') }"
         @tap="onRowTap(g)"
       >
-        <sh-cover class="row__cover" :src="g.cover"></sh-cover>
+        <sh-cover class="row__cover" :src="g.cover" :w="200"></sh-cover>
         <view class="sh-fill">
           <text class="txt-strong row__title">{{ g.title }}</text>
           <view class="row__meta sh-row sh-row--baseline">

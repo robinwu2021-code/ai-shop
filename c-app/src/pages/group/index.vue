@@ -170,7 +170,7 @@ onShareAppMessage(() => {
 
       <!-- 商品行（p05）：图 + 名 + 团价 + 单买价，整行进商品详情。团页不复制整份详情 -->
       <view class="sh-card sh-row goodsrow" @tap="openGoods">
-        <sh-cover class="goodsrow__cover" :src="group.cover"></sh-cover>
+        <sh-cover class="goodsrow__cover" :src="group.cover" :w="200"></sh-cover>
         <view class="sh-fill goodsrow__main">
           <text class="txt-strong goodsrow__title">{{ group.title }}</text>
           <view class="sh-row sh-row--baseline goodsrow__price">
