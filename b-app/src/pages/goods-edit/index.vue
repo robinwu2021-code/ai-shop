@@ -1338,7 +1338,7 @@ async function save(thenSubmit = false) {
 
     <view v-if="editingDraft" class="sh-notice sh-notice--warning draft-banner sh-row">
       <text class="txt-caption sh-fill">{{ $t("goods.draftBanner") }}</text>
-      <text class="txt-caption draft-banner__link" @tap="toPublishPage">
+      <text class="sh-link sh-link--warn draft-banner__link" @tap="toPublishPage">
         {{ $t("goods.viewDiff") }}
       </text>
     </view>
@@ -2423,7 +2423,6 @@ async function save(thenSubmit = false) {
 .draft-banner {
 }
 .draft-banner__link {
-  color: var(--sh-warning);
   text-decoration: underline;
   margin-inline-start: 16rpx;
 }

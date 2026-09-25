@@ -398,7 +398,7 @@ function at(iso?: string): string {
           各自单独占一行的话，两枚一左一右吊在那儿，看不出谁跟谁有关系。
         -->
         <view class="sh-row sh-row--between acts">
-          <text class="txt-caption voidlink" @tap="voidDoc">
+          <text class="sh-link voidlink" @tap="voidDoc">
             {{ $t("stockCheck.voidDoc") }}
           </text>
           <!--
@@ -486,7 +486,6 @@ function at(iso?: string): string {
 .voidlink {
   display: block;
   margin-top: 12rpx;
-  color: var(--sh-danger);
 }
 
 /* 连扫入口贴在单号右下：它属于这张单，不是一个独立功能 */

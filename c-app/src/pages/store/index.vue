@@ -342,7 +342,7 @@ function navToStore() {
             <text class="sh-muted sh-fill">
               {{ data.store.openHours }} · {{ data.store.address }}
             </text>
-            <text v-if="data.store.latE6 != null" class="txt-caption addr__nav" @tap="navToStore">
+            <text v-if="data.store.latE6 != null" class="sh-btn sh-btn--sm sh-btn--soft addr__nav" @tap="navToStore">
               {{ $t("community.navigate") }}
             </text>
           </view>
@@ -368,7 +368,7 @@ function navToStore() {
       <!-- 第一屏：我买过的。这是本页存在的理由 -->
       <view class="sh-block">
         <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">
-          <text v-if="hasFrequent" class="sh-link" @tap="reorder">{{
+          <text v-if="hasFrequent" class="sh-btn sh-btn--sm sh-btn--soft" @tap="reorder">{{
             $t("store.reorder")
           }}</text>
         </sh-section>
@@ -490,10 +490,6 @@ function navToStore() {
 
 .addr__nav {
   flex-shrink: 0;
-  padding: 8rpx 16rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 .closed {
   margin-bottom: 16rpx;

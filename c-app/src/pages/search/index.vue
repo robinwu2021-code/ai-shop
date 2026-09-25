@@ -120,7 +120,7 @@ onLoad((q) => {
     <view v-if="!searched && history.length" class="sh-block">
       <view class="sh-block__head hist__head">
         <text class="sh-muted">{{ $t("search.history") }}</text>
-        <text class="txt-caption hist__clear txt-primary" @tap="clearHistory">{{
+        <text class="sh-link hist__clear" @tap="clearHistory">{{
           $t("search.clear")
         }}</text>
       </view>

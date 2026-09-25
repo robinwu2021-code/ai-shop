@@ -158,7 +158,7 @@ onShow(() => {
           {{ stateText(s) }}
         </text>
         <!-- 停约不删行也不赶人：已经约进来的单还指着它 -->
-        <text v-if="s.status === 'OPEN'" class="txt-sub slot__act txt-primary" @tap="close(s)">
+        <text v-if="s.status === 'OPEN'" class="sh-link slot__act" @tap="close(s)">
           {{ $t("schedule.close") }}
         </text>
       </view>

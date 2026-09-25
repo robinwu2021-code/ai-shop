@@ -381,7 +381,7 @@ onShow(() => {
     <!-- 口径开关只给店主：它一改，全主体的分层与所有活动受众跟着变 -->
     <text
       v-if="merchant.can('biz:store:admin')"
-      class="txt-caption settings"
+      class="sh-link settings"
       @tap="go('/pages/member-settings/index')"
     >
       {{ $t("memberSettings.entry") }}
@@ -406,7 +406,6 @@ onShow(() => {
 .settings {
   display: block;
   margin-top: 16rpx;
-  color: var(--sh-primary-text);
 }
 .sub {
   display: block;

@@ -60,7 +60,7 @@ onShow(load);
         :active="tab"
         @change="(k: string) => (tab = k as typeof tab)"
       ></sh-tabs>
-      <text v-if="unread" class="txt-caption readall" @tap="readAll">{{ $t("message.readAll") }}</text>
+      <text v-if="unread" class="sh-link readall" @tap="readAll">{{ $t("message.readAll") }}</text>
     </view>
 
     <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
@@ -86,7 +86,6 @@ onShow(load);
 
 .readall {
   flex-shrink: 0;
-  color: var(--sh-primary-text);
 }
 /* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
    内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），

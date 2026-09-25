@@ -290,8 +290,8 @@ onShow(() => {
           </text>
           <text v-if="qrcode?.storeCode" class="txt-sub qr__code sh-num">{{ qrcode.storeCode }}</text>
           <view class="btns">
-            <text v-if="qrcode?.imageBase64" class="txt-caption mini" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
-            <text v-if="qrcode?.url" class="txt-caption mini" @tap="copyLink">{{ $t("store.copyLink") }}</text>
+            <text v-if="qrcode?.imageBase64" class="sh-btn sh-btn--sm sh-btn--muted" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
+            <text v-if="qrcode?.url" class="sh-btn sh-btn--sm sh-btn--muted" @tap="copyLink">{{ $t("store.copyLink") }}</text>
           </view>
         </view>
       </view>

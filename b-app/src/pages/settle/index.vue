@@ -229,7 +229,7 @@ onShow(() => {
         明细按需展开：**一笔支出必须能对到单**，否则「这个月 ¥3.76」就是一个
         无法核对的数字 —— 商家对不上的账，早晚变成一张工单。
       -->
-      <text v-if="points.periodExpenseMinor > 0" class="points__more" @tap="loadPointsRecords">
+      <text v-if="points.periodExpenseMinor > 0" class="sh-link points__more" @tap="loadPointsRecords">
         {{ pointsRecords ? $t("settle.pointsFold") : $t("settle.pointsDetail") }}
       </text>
       <view v-if="pointsRecords" class="rows">

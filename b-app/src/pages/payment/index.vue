@@ -312,7 +312,7 @@ async function refresh() {
         -->
         <view v-if="!storeOf(st.storeNo)" class="sh-row store__act">
           <text
-            class="sh-link"
+            class="sh-btn sh-btn--sm sh-btn--soft"
             :class="{ 'is-dim': openingStore === st.storeNo }"
             @tap="openForStore(st.storeNo)"
           >{{ openingStore === st.storeNo ? $t("payment.storeOpening") : $t("payment.storeOpen") }}</text>

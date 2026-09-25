@@ -318,7 +318,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         -->
         <view class="st__name sh-row sh-fill">
           <text class="txt-title">{{ s.name }}</text>
-          <text class="txt-caption st__rename" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
+          <text class="sh-link st__rename" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
         </view>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="sh-chip sh-chip--primary">{{ $t("stores.currentTag") }}</text>
@@ -549,7 +549,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 /* 改名是次要动作：跟着店名走，但不与店名争视线 */
 .st__rename {
   flex: none;
-  color: var(--sh-primary-text);
 }
 /* 整张卡是切店的点击区时给一个可点的暗示 —— 没有它，「能点」这件事无从得知 */
 .st--switchable {

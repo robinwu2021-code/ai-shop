@@ -411,7 +411,7 @@ onLoad((q?: Record<string, string>) => {
       <view v-if="hasHere" class="sh-card block">
         <view class="sh-row sh-row--between">
           <text class="txt-strong block__title">{{ $t("addressPick.here") }}</text>
-          <text class="txt-caption txt-primary" @tap="locate(true)">{{ $t("addressPick.relocate") }}</text>
+          <text class="sh-link" @tap="locate(true)">{{ $t("addressPick.relocate") }}</text>
         </view>
         <!-- 模糊定位时不显示距离，理由见 script 里 coarse 那段 -->
         <text v-if="coarse" class="sh-hint">{{ $t("addressPick.coarseHint") }}</text>

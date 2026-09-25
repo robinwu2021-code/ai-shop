@@ -335,7 +335,7 @@ onUnmounted(() => clearInterval(timer));
             <view class="sh-btn" :class="{ 'is-disabled': paying || expired || !canPay }" @tap="pay">
               {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
             </view>
-            <text class="txt-caption cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
+            <text class="sh-link sh-link--quiet cancel sh-hit" @tap="cancel">{{ $t("pay.cancel") }}</text>
           </sh-actionbar>
         </template>
 
@@ -365,7 +365,7 @@ onUnmounted(() => clearInterval(timer));
 
           <sh-actionbar class="bar-center" :pad="220">
             <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-            <text class="txt-caption cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
+            <text class="sh-link sh-link--quiet cancel sh-hit" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
           </sh-actionbar>
         </template>
   

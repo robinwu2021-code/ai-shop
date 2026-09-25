@@ -274,7 +274,7 @@ onShow(load);
       </view>
 
       <!-- 撤下：只在店铺页上真的挂着东西时出现 -->
-      <text v-if="live" class="txt-sub withdraw" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
+      <text v-if="live" class="sh-link sh-link--quiet withdraw sh-hit" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
     </view>
 
     <!--

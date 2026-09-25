@@ -824,7 +824,7 @@ onShow(() => void load());
         手指下滑很容易顺手点掉自己刚调好的一切。
       -->
       <view class="cat__foot">
-        <text class="txt-caption" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
+        <text class="sh-link sh-link--quiet" @tap="resetOverride(g)">{{ $t("mySpecs.reset") }}</text>
       </view>
     </view>
 
@@ -868,7 +868,7 @@ onShow(() => void load());
                 @tap="pickDim(pickingCat, p)">＋ {{ p.name }}</text>
         </view>
         <view v-if="pickRest.length && pickCat.length" class="picker__more">
-          <text class="link" @tap="showRest = !showRest">
+          <text class="sh-link" @tap="showRest = !showRest">
             {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
           </text>
         </view>
@@ -894,7 +894,7 @@ onShow(() => void load());
               :placeholder="buildOwnPhWord"
               @confirm="confirmBuild(pickingCat)"
             />
-            <text class="txt-sub link" @tap="confirmBuild(pickingCat)">
+            <text class="sh-btn sh-btn--sm" @tap="confirmBuild(pickingCat)">
               {{ $t("mySpecs.save") }}
             </text>
           </view>
@@ -957,7 +957,7 @@ onShow(() => void load());
               :placeholder="valuePhWord"
               @confirm="confirmNewValue"
             />
-            <text class="txt-sub link" @tap="confirmNewValue">{{ $t("mySpecs.add") }}</text>
+            <text class="sh-btn sh-btn--sm" @tap="confirmNewValue">{{ $t("mySpecs.add") }}</text>
           </view>
           <text class="txt-caption sh-muted picker__own-s">{{ valueHintWord }}</text>
         </view>

@@ -253,7 +253,7 @@ onShow(() => void load());
           <text class="txt-caption sh-muted">{{ c.requiredQualification }}</text>
         </view>
         <text v-if="submitted(c)" class="txt-caption lock__wait">{{ $t("qual.waiting") }}</text>
-        <text v-else class="link" @tap="startAdd((c.qualType ?? 'OTHER') as QualificationType)">
+        <text v-else class="sh-btn sh-btn--sm sh-btn--soft" @tap="startAdd((c.qualType ?? 'OTHER') as QualificationType)">
           {{ $t("qual.goUpload") }}
         </text>
       </view>

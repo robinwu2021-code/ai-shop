@@ -635,7 +635,7 @@ async function submit() {
         <view v-for="(q, i) in qualItems" :key="i" class="qual">
           <view class="qual__head sh-row sh-row--between">
             <text class="txt-bold">{{ $t(`apply.qual${q.type}`) }}</text>
-            <text class="txt-caption is-danger" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
+            <text class="sh-link sh-link--quiet sh-hit" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
           <input
             maxlength="64"
@@ -668,8 +668,8 @@ async function submit() {
         </view>
 
         <view class="qual__add">
-          <text @tap="addQual('BUSINESS_LICENSE')">＋ {{ $t("apply.qualBUSINESS_LICENSE") }}</text>
-          <text @tap="addQual('FOOD_PERMIT')">＋ {{ $t("apply.qualFOOD_PERMIT") }}</text>
+          <sh-add small :text="String($t('apply.qualBUSINESS_LICENSE'))" @tap="addQual('BUSINESS_LICENSE')"></sh-add>
+          <sh-add small :text="String($t('apply.qualFOOD_PERMIT'))" @tap="addQual('FOOD_PERMIT')"></sh-add>
         </view>
         <text v-if="licenseMissing" class="txt-caption warn">{{ $t("apply.licenseRequired") }}</text>
       </view>
@@ -720,7 +720,7 @@ async function submit() {
 .qual__row { margin-top: 12rpx; }
 .qual__forever { gap: 8rpx; }
 .qual__date { flex: 1; }
-.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; color: var(--sh-primary-text); }
+.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; }
 
 .head {
   padding: 32rpx 8rpx 28rpx;

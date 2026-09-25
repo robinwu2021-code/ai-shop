@@ -200,7 +200,7 @@ async function discard() {
       <!-- 第三条路：放弃草稿、以线上为准。弱化成文字链 —— 它是退路，不是并列选项。
            危险色走库件 .is-danger（语义色不自写）：删除不可恢复，值得警示色 -->
       <view class="discard-row">
-        <text class="txt-caption is-danger" @tap="discard">{{ $t("goods.discardBtn") }}</text>
+        <text class="sh-link is-danger sh-hit" @tap="discard">{{ $t("goods.discardBtn") }}</text>
       </view>
     </template>
   </sh-scaffold>
