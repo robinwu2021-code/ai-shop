@@ -53,10 +53,15 @@ class MediaKeyRoundTripTest {
         LocalDiskMediaStore local = new LocalDiskMediaStore(
                 "./target/test-uploads", "/uploads", "/media", "test-secret");
         CosMediaStore cos = new CosMediaStore(
-                "test-id", "test-key", "ap-guangzhou", "hxmall-test-1300000000", "");
+                "test-id", "test-key", "ap-guangzhou", "hxmall-test-1300000000", "", "");
         CosMediaStore cosCdn = new CosMediaStore(
                 "test-id", "test-key", "ap-guangzhou", "hxmall-test-1300000000",
-                "https://img.example.com/");
+                "https://img.example.com/", "https://www.example.com/cos-private/");
+        // ADR-026：direct 模式下过滤器把规范前缀换成图片服务器前缀 —— 那也是客户端会提交回来的形态
+        byte[] viaDirect = MediaHostRewriteFilter.replace(
+                cosCdn.publicUrl(KEY).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "https://img.example.com/".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "https://cdn.example.com/".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
         return List.of(
                 new Exit("本地盘 publicUrl", local.publicUrl(KEY)),
@@ -64,7 +69,11 @@ class MediaKeyRoundTripTest {
                 new Exit("COS publicUrl（默认域名）", cos.publicUrl(KEY)),
                 new Exit("COS privatePath（裸 key —— 08-30 栽的就是它）",
                         cos.privatePath(PRIVATE_KEY)),
-                new Exit("COS publicUrl（挂了 CDN 域名）", cosCdn.publicUrl(KEY)));
+                new Exit("COS publicUrl（挂了 CDN 域名）", cosCdn.publicUrl(KEY)),
+                new Exit("COS publicUrl 经图片服务器出口（direct）",
+                        new String(viaDirect, java.nio.charset.StandardCharsets.UTF_8)),
+                new Exit("COS private signedUrl（经 /cos-private/）",
+                        cosCdn.signedUrl(PRIVATE_KEY, java.time.Duration.ofMinutes(5))));
     }
 
     private static String keyOf(Exit e) {

@@ -49,12 +49,18 @@ public class CosMediaStore implements MediaStore {
     private final String bucket;
     /** 公读图片对外前缀（CDN 或 COS 默认域名），末尾无 `/`。 */
     private final String baseUrl;
+    /**
+     * 私有图签名地址对外的前缀（生产 {@code https://www.hxmall.top/cos-private}），末尾无 `/`；
+     * 空 = 用 SDK 生成的 COS 默认域名原样返回。
+     */
+    private final String privateBaseUrl;
 
     public CosMediaStore(@Value("${shop.cos.secret-id:}") String secretId,
                          @Value("${shop.cos.secret-key:}") String secretKey,
                          @Value("${shop.cos.region:}") String region,
                          @Value("${shop.cos.bucket:}") String bucket,
-                         @Value("${shop.cos.domain:}") String domain) {
+                         @Value("${shop.cos.domain:}") String domain,
+                         @Value("${shop.cos.private-base-url:}") String privateBaseUrl) {
         require(secretId, "COS_SECRET_ID");
         require(secretKey, "COS_SECRET_KEY");
         require(region, "COS_REGION");
@@ -67,7 +73,9 @@ public class CosMediaStore implements MediaStore {
         this.baseUrl = (domain == null || domain.isBlank())
                 ? "https://" + bucket + ".cos." + region + ".myqcloud.com"
                 : domain.replaceAll("/+$", "");
-        log.info("[media] COS 存储已启用 bucket={} region={} baseUrl={}", bucket, region, baseUrl);
+        this.privateBaseUrl = privateBaseUrl == null ? "" : privateBaseUrl.replaceAll("/+$", "");
+        log.info("[media] COS 存储已启用 bucket={} region={} baseUrl={} privateBaseUrl={}",
+                bucket, region, baseUrl, this.privateBaseUrl.isEmpty() ? "(COS 默认域名)" : this.privateBaseUrl);
     }
 
     private static void require(String v, String envName) {
@@ -133,7 +141,22 @@ public class CosMediaStore implements MediaStore {
     @Override
     public String signedUrl(String key, Duration ttl) {
         Date expire = new Date(System.currentTimeMillis() + ttl.toMillis());
-        return cos.generatePresignedUrl(bucket, key, expire, HttpMethodName.GET).toString();
+        return rebase(cos.generatePresignedUrl(bucket, key, expire, HttpMethodName.GET), privateBaseUrl);
+    }
+
+    /**
+     * 把 SDK 给的签名地址换到我们自己的前缀上，路径与查询串（签名）<b>一个字节都不动</b>。
+     *
+     * <p>为什么换了域名签名还有效：签名算进去的是 {@code host} 请求头，不是 URL 里的主机名。
+     * nginx 的 {@code /cos-private/} 转发时把 Host 设回桶域名，COS 验到的仍是签名时那个 host
+     * （ADR-026；nginx 那侧见 deploy/tencent/nginx/www.hxmall.top.conf）。
+     */
+    static String rebase(java.net.URL signed, String base) {
+        if (base == null || base.isEmpty()) {
+            return signed.toString();
+        }
+        String query = signed.getQuery();
+        return base + signed.getPath() + (query == null ? "" : "?" + query);
     }
 
     @PreDestroy

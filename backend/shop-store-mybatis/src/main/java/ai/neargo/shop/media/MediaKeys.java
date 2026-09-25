@@ -59,12 +59,14 @@ public final class MediaKeys {
      * 路径段不含点，只有扩展名前那一个点 —— 排除 '.' 能避免
      * 「一直吃到句子末尾的另一个 .jpg」这种贪婪匹配。
      *
-     * 前导的 `/`、`uploads/`、`media/` 都是可选的：剥掉之后剩下的就与
-     * sys_media_asset.asset_key 同形。三者都可选，是为了同时吃下
+     * 前导的 `/`、`uploads/`、`media/`、`cos-private/` 都是可选的：剥掉之后剩下的就与
+     * sys_media_asset.asset_key 同形。都可选，是为了同时吃下
      * 「/uploads/k」「/k」「k」三种，也就是两个 provider 的四个出口。
+     * `cos-private/` 是私有图签名地址经应用服务器的那一段（ADR-026）：签名地址本不该入库，
+     * 但客户端把显示用的地址原样提交回来时，要抠得回 key。
      */
     private static final Pattern KEY = Pattern.compile(
-            "/?((?:uploads/|media/)?)([A-Za-z0-9_\\-/]+\\.(?:jpg|jpeg|png|webp|gif))",
+            "/?((?:uploads/|media/|cos-private/)?)([A-Za-z0-9_\\-/]+\\.(?:jpg|jpeg|png|webp|gif))",
             Pattern.CASE_INSENSITIVE);
 
     private MediaKeys() {

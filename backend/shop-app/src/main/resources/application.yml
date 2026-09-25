@@ -105,6 +105,12 @@ shop:
   # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
   media:
     provider: ${SHOP_MEDIA_PROVIDER:local}
+    # 公开图出口（ADR-026）。库里只存规范地址（= shop.cos.domain，生产 https://img.hxmall.top）。
+    #   server = 经应用服务器：客户端拿到的就是规范地址（默认，零开销）
+    #   direct = 经图片服务器：接口响应里的规范前缀换成 direct-base-url（如 https://cdn.hxmall.top），
+    #            请求体里的 direct 前缀换回规范地址再入库。direct 下 direct-base-url 为空则拒绝启动。
+    delivery: ${SHOP_MEDIA_DELIVERY:server}
+    direct-base-url: ${SHOP_MEDIA_DIRECT_BASE_URL:}
   # 腾讯云 COS。provider=cos 时必填（缺任一项直接起不来）。密钥走 env，不入库不入镜像。
   # 逆地理编码（店铺地址「定位」按钮）。腾讯位置服务 WebService key；空 = 功能关闭，端上藏按钮
   geo:
@@ -115,8 +121,11 @@ shop:
     secret-key: ${COS_SECRET_KEY:}
     region: ${COS_REGION:}
     bucket: ${COS_BUCKET:}
-    # 可选 CDN/自定义域名；留空用 COS 默认域名
+    # 公开图的**规范地址**前缀（入库的就是它）；留空用 COS 默认域名。生产：https://img.hxmall.top
     domain: ${COS_DOMAIN:}
+    # 私有图签名地址对外的前缀；留空用 COS 默认域名。生产：https://www.hxmall.top/cos-private
+    # （nginx 转发时把 Host 设回桶域名，签名才对得上）
+    private-base-url: ${COS_PRIVATE_BASE_URL:}
   auth:
     # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
     #   memory  = 零依赖但**重启即全员掉线**，只适合测试
