@@ -10609,6 +10609,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `markedAt` | `string,null` | 否 | 被标记为可回收的时刻。**与 createdAt 分开**：刚失去引用就删，容易删掉正在编辑的东西 |
 | `reason` | `string` | 是 | 「从未被引用」或「曾被『商品 G0012 · 主图』引用，… 后失去引用」 |
 | `status` | `string` | 是 | 状态 |
+| `thumbUrl` | `string,null` | 否 | 这一行的缩略图地址，由后端给：COS 下公开图是缩略图、私有图是 10 分钟签名地址； 本地盘下是站内相对路径。用 `mediaThumbSrc()` 取，别自己拼。 |
 
 ### MediaScanResult
 

@@ -2140,7 +2140,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 60,
+        "b-app": 61,
         "c-app": 33,
         "lib": 1
       },
@@ -3747,6 +3747,7 @@
       "key": "b-app/home",
       "file": "b-app/src/pages/home/index.vue",
       "components": [
+        "sh-empty",
         "sh-go",
         "sh-scaffold",
         "sh-stat",
