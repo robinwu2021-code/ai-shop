@@ -98,6 +98,50 @@ class OpsStreamTest {
                 .doesNotThrowAnyException();
     }
 
+    /**
+     * ★★ 到点是设计好的（{@code EMITTER_TIMEOUT_MS}，让浏览器重连一次），不是故障。
+     *
+     * <p>2026-09-25 生产日志：客户端断开那类 ERROR 修掉之后，一夜里剩下的唯一一条是
+     * {@code AsyncRequestTimeoutException} —— {@code onTimeout} 只把连接从名单里摘掉、
+     * 没有 {@code complete()}，Spring 见超时无人收尾，就抛出这个异常，落进全局兜底记 ERROR。
+     */
+    @Test
+    @DisplayName("★★ SSE 到点自己收尾 —— 不再落进全局兜底记一条 ERROR")
+    void timeoutCompletesQuietly() throws Exception {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory
+                .getLogger(ai.neargo.shop.common.GlobalExceptionHandler.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            String token = opsLogin("support", "support123");
+            org.springframework.test.web.servlet.MvcResult started = mvc().perform(get("/ops/stream")
+                            .header("Authorization", "Bearer " + token)
+                            .accept(MediaType.TEXT_EVENT_STREAM))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .request().asyncStarted())
+                    .andReturn();
+
+            var ac = (org.springframework.mock.web.MockAsyncContext) started.getRequest().getAsyncContext();
+            for (jakarta.servlet.AsyncListener l : ac.getListeners()) {
+                l.onTimeout(new jakarta.servlet.AsyncEvent(ac));
+            }
+            mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch(started));
+
+            // 正常收尾时结果是 null（isNotInstanceOf 碰到 null 直接判失败，所以用 instanceof）
+            assertThat(started.getAsyncResult()
+                    instanceof org.springframework.web.context.request.async.AsyncRequestTimeoutException)
+                    .as("到点没人收尾，Spring 就把结果设成 AsyncRequestTimeoutException")
+                    .isFalse();
+            assertThat(appender.list)
+                    .filteredOn(ev -> ev.getLevel() == ch.qos.logback.classic.Level.ERROR)
+                    .as("每 30 分钟一次的正常重连不该记 ERROR")
+                    .isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
     private String opsLogin(String username, String password) throws Exception {
         String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)

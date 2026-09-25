@@ -136,7 +136,12 @@ public class OpsStreamController {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
         Client client = new Client(emitter, staffNo);
         emitter.onCompletion(() -> clients.remove(client));
-        emitter.onTimeout(() -> clients.remove(client));
+        // 到点要自己 complete()：只摘名单的话，Spring 见超时无人收尾，会抛 AsyncRequestTimeoutException
+        // 落进全局兜底记 ERROR —— 每 30 分钟一条，而这本来就是设计好的重连。
+        emitter.onTimeout(() -> {
+            clients.remove(client);
+            emitter.complete();
+        });
         emitter.onError(e -> clients.remove(client));
         clients.add(client);
         /*
