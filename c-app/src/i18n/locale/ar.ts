@@ -83,6 +83,8 @@ export default {
     anchorGoods: "المنتج",
     anchorReviews: "التقييمات",
     anchorDetail: "التفاصيل",
+    anchorRecommend: "المزيد",
+    recommendTitle: "المزيد من هذا المتجر",
     scopeLabel: "مناطق البيع",
     saveAmount: "وفّر {p}",
     chosen: "المحدد",

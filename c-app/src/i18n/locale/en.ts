@@ -83,6 +83,8 @@ export default {
     anchorGoods: "Item",
     anchorReviews: "Reviews",
     anchorDetail: "Details",
+    anchorRecommend: "More",
+    recommendTitle: "More from this shop",
     scopeLabel: "Sold in",
     saveAmount: "Save {p}",
     chosen: "Selected",

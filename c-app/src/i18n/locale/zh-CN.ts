@@ -86,6 +86,8 @@ export default {
     anchorGoods: "商品",
     anchorReviews: "评价",
     anchorDetail: "详情",
+    anchorRecommend: "推荐",
+    recommendTitle: "本店还卖",
     scopeLabel: "销售区域",
     saveAmount: "省 {p}",
     chosen: "已选",

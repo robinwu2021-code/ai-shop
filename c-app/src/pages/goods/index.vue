@@ -50,6 +50,15 @@ const reviewFilter = ref<ReviewFilter>("ALL");
 /** 评分概览随详情一起下发 —— 首屏那一行不值得多打一次请求 */
 const summary = computed(() => goods.value?.reviewSummary ?? null);
 const REVIEW_FILTERS: ReviewFilter[] = ["ALL", "IMAGE", "GOOD", "BAD"];
+
+/**
+ * 推荐位（§3.4 批 4）：**同店在售**优先，不够再补同类目。
+ *
+ * <p>不做算法、不新开端点 —— 用的是列表那条现成的查询。理由有两条：
+ * 线上一共三件商品，任何「猜你喜欢」都只是把同一批货换个顺序；
+ * 而「这家店还卖什么」本身就是买家在详情页最常有的下一个问题。
+ */
+const recommends = ref<Goods[]>([]);
 /** 「大家还问」：只有已回答的会下发 —— 一排没人答的问题比没有问答区更糟 */
 const questions = ref<Question[]>([]);
 const asking = ref(false);
@@ -491,6 +500,7 @@ async function load(goodsNo: string) {
     ]);
     reviews.value = rs;
     questions.value = qs;
+    void loadRecommends(g);
     failed.value = false;
     // 评价到了，下面两段的位置变了 —— 锚点重新量
     measureAnchors();
@@ -529,6 +539,31 @@ async function askQuestion() {
   } finally {
     asking.value = false;
   }
+}
+
+/**
+ * 取推荐。**失败就不显示**，一条都不补 —— 推荐是锦上添花，
+ * 不能因为它把整页的失败态点亮（领券条同一条取舍）。
+ */
+async function loadRecommends(g: Goods) {
+  try {
+    const page = await api.goodsList({ merchantNo: g.merchant.merchantNo, size: 10 });
+    let list = (page.records ?? []).filter((x) => x.goodsNo !== g.goodsNo);
+    if (list.length < 4 && g.categoryNo) {
+      const more = await api.goodsList({ categoryNo: g.categoryNo, size: 10 }).catch(() => null);
+      const seen = new Set([g.goodsNo, ...list.map((x) => x.goodsNo)]);
+      // 同店的排在前面：它比「同类目的另一家店」更接近买家此刻的问题
+      list = [...list, ...(more?.records ?? []).filter((x) => !seen.has(x.goodsNo))];
+    }
+    recommends.value = list.slice(0, 6);
+  } catch {
+    recommends.value = [];
+  }
+}
+
+/** 点推荐位：**跳新页而不是原地换数据** —— 返回时他要回到原来那件货 */
+function openGoods(goodsNo: string) {
+  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${goodsNo}` });
 }
 
 function openMerchant() {
@@ -722,6 +757,8 @@ const ANCHORS = [
   { key: "top", label: "goods.anchorGoods" },
   { key: "reviews", label: "goods.anchorReviews" },
   { key: "detail", label: "goods.anchorDetail" },
+  // 推荐排在最后：它是「看完了，还想看点别的」那一步（§3.4 批 4）
+  { key: "recommend", label: "goods.anchorRecommend" },
 ] as const;
 type AnchorKey = (typeof ANCHORS)[number]["key"];
 const activeAnchor = ref<AnchorKey>("top");
@@ -737,11 +774,13 @@ function measureAnchors(then?: () => void) {
     q.selectViewport().scrollOffset(() => {});
     q.select("#sec-reviews").boundingClientRect(() => {});
     q.select("#sec-detail").boundingClientRect(() => {});
+    q.select("#sec-recommend").boundingClientRect(() => {});
     q.exec((res: Array<{ scrollTop?: number; top?: number } | null>) => {
       const st = res[0]?.scrollTop ?? 0;
       const tops: Record<string, number> = {};
       if (res[1]?.top != null) tops.reviews = res[1].top + st;
       if (res[2]?.top != null) tops.detail = res[2].top + st;
+      if (res[3]?.top != null) tops.recommend = res[3].top + st;
       anchorTops.value = tops;
       then?.();
     });
@@ -1180,6 +1219,31 @@ onShareAppMessage(() =>
             mode="widthFix"
             lazy-load
           />
+        </view>
+
+        <!--
+          推荐位（§3.4 批 4）：**同店在售优先**，不够再补同类目。
+          不做算法 —— 线上一共三件商品，任何「猜你喜欢」都只是换个顺序；
+          而「这家店还卖什么」本身就是买家看完详情最常有的下一个问题。
+          取不到就整段不出，不留一个空标题。
+        -->
+        <view id="sec-recommend"></view>
+        <view v-if="recommends.length" class="sh-card block">
+          <text class="txt-title dt__h">{{ $t("goods.recommendTitle") }}</text>
+          <scroll-view class="recs" scroll-x>
+            <view class="sh-row recs__row">
+              <view
+                v-for="r in recommends"
+                :key="r.goodsNo"
+                class="recs__item"
+                @tap="openGoods(r.goodsNo)"
+              >
+                <image class="recs__img" :src="thumb(r.cover, 200)" mode="aspectFill" />
+                <text class="txt-caption recs__t">{{ r.title }}</text>
+                <text class="txt-caption sh-num is-danger">{{ money(r.price) }}</text>
+              </view>
+            </view>
+          </scroll-view>
         </view>
 
         <!-- 服务承诺细则（§3.4）：承诺写在页面上，细则就得能查到 -->
@@ -1677,5 +1741,29 @@ onShareAppMessage(() =>
 }
 .qa__a {
   margin-top: 4rpx;
+}
+
+/* 推荐位：横滑一排小卡，不占竖向空间 */
+.recs {
+  margin-top: 12rpx;
+  white-space: nowrap;
+}
+.recs__row {
+  gap: 16rpx;
+}
+.recs__item {
+  flex-shrink: 0;
+  width: 180rpx;
+}
+.recs__img {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: var(--sh-radius-sm);
+}
+.recs__t {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>

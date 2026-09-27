@@ -11,6 +11,7 @@ import { createPinia, setActivePinia } from "pinia";
 import type { Goods } from "@shared/types";
 
 const goodsDetail = vi.fn();
+const goodsList = vi.fn(async () => ({ records: [], total: 0 }));
 
 vi.mock("@/api", () => ({
   api: {
@@ -20,6 +21,7 @@ vi.mock("@/api", () => ({
     goodsBatch: vi.fn(async () => null),
     reviewList: vi.fn(async () => []),
     questionList: vi.fn(async () => []),
+    goodsList: (...a: unknown[]) => goodsList(...(a as [])),
     askQuestion: vi.fn(),
     favorited: vi.fn(async () => false),
     addCart: vi.fn(),
@@ -157,5 +159,31 @@ describe("详情页 · 评价与问答（§3.3）", () => {
     // 没有问答时：空态 + 入口都在（入口是这一段存在的理由）
     expect(html).toContain("goods.qaEmpty");
     expect(html).toContain("goods.askAction");
+  });
+});
+
+describe("详情页 · 推荐位（§3.4 批 4）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    goodsDetail.mockReset();
+    goodsList.mockReset();
+  });
+
+  it("★★★ 同店在售里**不含当前这件** —— 推荐自己是这类模块最常见的错", async () => {
+    goodsDetail.mockResolvedValue(aGoods());
+    goodsList.mockResolvedValue({
+      records: [aGoods({ goodsNo: "G1", title: "就是这件" }), aGoods({ goodsNo: "G2", title: "另一件" })],
+      total: 2,
+    });
+    const html = (await render()).html();
+    expect(html).toContain("goods.recommendTitle");
+    expect(html).toContain("另一件");
+    expect(html).not.toContain("就是这件");
+  });
+
+  it("★★ 取不到就整段不出 —— 不留一个空标题", async () => {
+    goodsDetail.mockResolvedValue(aGoods());
+    goodsList.mockRejectedValue(new Error("网络异常"));
+    expect((await render()).html()).not.toContain("goods.recommendTitle");
   });
 });
