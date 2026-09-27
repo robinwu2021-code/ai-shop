@@ -163,7 +163,18 @@ public record GoodsVO(String goodsNo,
                        * 这家店此刻的减钱活动（优惠券全链路梳理 批 3）。<b>只在 C 端详情下发</b>。
                        * 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 不让后端拼中文，三种语言都要用
                        */
-                      List<ActivityTagVO> activityTags) {
+                      List<ActivityTagVO> activityTags,
+                      /**
+                       * 服务承诺（§3.4）：详情页上那一条**可核验的短语**，如极速退款、门店自提免运。
+                       *
+                       * <p>下发的是**码**不是文案：这是三语 App，下发中文等于把翻译从端上剥夺掉
+                       * （与 {@code ord_after_sale.reason} 同一条口径）。
+                       *
+                       * <p><b>由后端判定</b>：「极速退款」成不成立取决于售后规则里的金额上限与
+                       * 总开关（运营可调）。端上拿常量比金额，就是那份 ¥50 常量的翻版 ——
+                       * 页面写着承诺、后端按另一个数执行。只在买家详情填。
+                       */
+                      List<String> services) {
 
     /** 买 N 送 M。与契约 {@code Promotion} 同形 */
     public record PromotionVO(String type, int buyN, int giftM) {
@@ -217,25 +228,37 @@ public record GoodsVO(String goodsNo,
                    Boolean activityLive,
                    Boolean favorited,
                    Boolean deliverable) {
-        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null);
+        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null, null);
+    }
+
+    /** 极速退款 —— 受售后规则的金额上限与总开关约束，逐件判 */
+    public static final String SERVICE_INSTANT_REFUND = "INSTANT_REFUND";
+    /** 门店自提免运 —— 支持到店自提时才给 */
+    public static final String SERVICE_PICKUP_FREE = "PICKUP_FREE";
+
+    /** 挂上服务承诺（只在买家详情）。空列表与 null 同义：整条不显示 */
+    public GoodsVO withServices(List<String> services) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags,
+                services == null || services.isEmpty() ? null : services);
     }
 
     /** 挂上促销与活动标签（只在买家详情） */
     public GoodsVO withPromotions(List<PromotionVO> promotions, List<ActivityTagVO> activityTags) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services);
     }
 
     /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
     public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services);
     }
 
     /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
     public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services);
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

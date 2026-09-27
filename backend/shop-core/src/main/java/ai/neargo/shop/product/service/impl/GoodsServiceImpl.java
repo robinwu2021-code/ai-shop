@@ -193,6 +193,17 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     /**
+     * 极速退的覆盖范围（§3.4）。setter 注入：缺了就少一条服务承诺 ——
+     * 承诺缺席比承诺错了好，而切片测试里本来就没有 trade 域。
+     */
+    private ai.neargo.shop.spi.trade.AfterSaleRulePort afterSaleRulePort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAfterSaleRulePort(ai.neargo.shop.spi.trade.AfterSaleRulePort afterSaleRulePort) {
+        this.afterSaleRulePort = afterSaleRulePort;
+    }
+
+    /**
      * 货架可见：<b>正常售卖</b>，或<b>仅活动且此刻有点名它的活动在跑</b>。
      *
      * <p>不是「仅活动永远不上货架」—— 集单没有 C 端列表页，仅活动的集单货若不上货架，
@@ -292,11 +303,37 @@ public class GoodsServiceImpl implements GoodsService {
         GoodsVO v = detail(goodsNo);
         v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
         v = v.withSaleGate(directBuyable(v), null);
-        return v.withPromotions(promotionsOf(v.goodsNo()),
+        v = v.withPromotions(promotionsOf(v.goodsNo()),
                 v.merchant() == null ? List.of() : campaignPort.activityTags(v.merchant().merchantNo()).stream()
                         .map(t -> new GoodsVO.ActivityTagVO(t.activityNo(), t.name(), t.amountMinor(),
                                 t.thresholdMinor(), t.thresholdQty(), t.newCustomerOnly()))
                         .toList());
+        return v.withServices(servicesOf(v));
+    }
+
+    /**
+     * 服务承诺（§3.4）：只放**可核验**的短语，一条都不许是空话。
+     *
+     * <ul>
+     *   <li><b>极速退款</b> —— 按这件货的价问售后规则（运营可调的金额上限与总开关）。
+     *       价格高于上限还挂这四个字就是假承诺，所以逐件判，不是整站挂一句。</li>
+     *   <li><b>门店自提免运</b> —— 支持到店自提才给。自提本来就没有运费，
+     *       这句是把「不用付运费」说出来，而不是一项额外优待。</li>
+     * </ul>
+     *
+     * <p>拿不到售后规则时（port 没装配，例如切片测试）只是少一条承诺，不影响整页 ——
+     * 承诺缺席比承诺错了好。
+     */
+    private List<String> servicesOf(GoodsVO v) {
+        var out = new java.util.ArrayList<String>();
+        long price = v.price();
+        if (afterSaleRulePort != null && price > 0 && afterSaleRulePort.instantRefundCovers(price)) {
+            out.add(GoodsVO.SERVICE_INSTANT_REFUND);
+        }
+        if (v.fulfillments() != null && v.fulfillments().contains("STORE_PICKUP")) {
+            out.add(GoodsVO.SERVICE_PICKUP_FREE);
+        }
+        return out;
     }
 
     /**

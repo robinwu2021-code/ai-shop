@@ -18,7 +18,7 @@ import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
-import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, FEATURES, FULFILLMENT, GOODS_SERVICE, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import {
   clearCartAnchor,
@@ -210,9 +210,8 @@ const hasChips = computed(() => {
   if (!g) return false;
   return (isFresh.value && !!cutoffText.value && !cutoffPassed.value) || cutoffPassed.value
     || (isService.value && !!g.durationMin) || isVirtual.value
-    || (isCard.value && !!(g.card?.timesTotal || g.card?.faceValueMinor))
     || !!promo.value || !!g.activityTags?.length
-    || (FEATURES.points && !!g.points) || g.sales > 0 || lowStock.value > 0;
+    || g.sales > 0 || lowStock.value > 0;
 });
 
 /**
@@ -226,16 +225,70 @@ function activityTagText(a: ActivityTag): string {
   return String(t(a.newCustomerOnly ? "promo.newCut" : "promo.cutAny", { n }));
 }
 
-/** 商品参数卡有没有内容 —— 限购只在真有限购时算 */
-const hasParams = computed(() => {
+/**
+ * 服务承诺码（§3.4）。**后端判的**，端上只负责显示 ——
+ * 「极速退款」成不成立取决于售后规则里的金额上限与总开关，而那两样运营随时可调。
+ *
+ * 不认识的码直接跳过：后端加了新承诺而端上还没发版时，宁可少显示一条，
+ * 也不要把 `INSTANT_REFUND` 这样的原始码印给买家看。
+ */
+const services = computed(() =>
+  (goods.value?.services ?? []).filter((c): c is keyof typeof GOODS_SERVICE => c in GOODS_SERVICE));
+const svcOpen = ref(false);
+
+/**
+ * 商品参数：商家填的 + **系统已经知道的事实**。
+ *
+ * <p>后者此前散落在参数卡里各写一行 `v-if`，而它们与商家填的参数是同一类信息
+ * （买家在同一个地方找「这件货是什么样」）。收进同一个列表之后，
+ * 「前几条直出、其余进抽屉」才有统一的口径 —— 否则抽屉里只有一半内容。
+ *
+ * <p><b>不收 arrivalDesc</b>：方案里本来写着「把它搬上详情页」，而
+ * `goods-detail-layout.test.ts` 拦住了 —— 详情页不说配送是 2026-09-19 拍过板的
+ * （「送至」「配送」是订单的事）。到货说明属于配送，守卫拦得对，方案那一条作废。
+ */
+const facts = computed<Array<{ label: string; value: string }>>(() => {
   const g = goods.value;
-  if (!g) return false;
-  return !!g.params?.length || (isFresh.value && !!g.origin && !hasOriginParam.value)
-    || (isService.value && !!g.storeName) || (isCard.value && !!g.card)
-    || !!g.limitPerUser || !!g.weighed || (isVirtual.value && !!g.virtual)
-    // v2 起销售区域在参数里：只有它时参数卡也要出
-    || !!saleScopeText.value;
+  if (!g) return [];
+  const out: Array<{ label: string; value: string }> = [];
+  for (const p of g.params ?? []) {
+    out.push({ label: p.name || p.dimNo, value: p.label });
+  }
+  // 旧的 origin 列：参数里已经有产地就不再重复（两个产地谁也说不清哪个算数）
+  if (isFresh.value && g.origin && !hasOriginParam.value) {
+    out.push({ label: String(t("goods.origin")), value: g.origin });
+  }
+  if (isService.value && g.storeName) {
+    out.push({ label: String(t("goods.store")), value: g.storeName });
+  }
+  if (saleScopeText.value) {
+    out.push({ label: String(t("goods.scopeLabel")), value: saleScopeText.value });
+  }
+  if (g.limitPerUser) {
+    out.push({ label: String(t("goods.limitLabel")), value: String(t("goods.limit", { n: g.limitPerUser })) });
+  }
+  return out;
 });
+
+/** 前几条直出，其余进抽屉（淘宝京东同一形状）。4 条是一屏不被参数吃掉的上限 */
+const FACTS_HEAD = 4;
+const factsHead = computed(() => facts.value.slice(0, FACTS_HEAD));
+const factsOpen = ref(false);
+
+/** 图文正文按空行分段。后端存的是纯文本，这里只做排版，不解析任何标记 */
+const detailParas = computed(() =>
+  (goods.value?.detail ?? "").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean));
+
+/** 商品参数卡有没有内容 —— 限购只在真有限购时算 */
+/*
+ * 参数卡有没有内容。
+ *
+ * <p><b>不再判 card / virtual</b>（§3.2 收尾）：`Goods.card`、`Goods.virtual`、
+ * `Goods.points` 这三样端上声明了、而 `GoodsVO` 里<b>一个组件都没有</b> ——
+ * 后端从来没发过，那几段 `v-if` 是死代码。留着的代价不是多几行，
+ * 是让人以为卡券与虚拟商品的详情页「已经做好了」。
+ */
+const hasParams = computed(() => facts.value.length > 0 || !!goods.value?.weighed);
 
 /** 多规格才需要先弹面板；单规格直接按 1 件执行 */
 const multiSku = computed(() => (goods.value?.skus.length ?? 0) > 1);
@@ -837,20 +890,11 @@ onShareAppMessage(() =>
             <text v-if="isVirtual" class="sh-chip sh-chip--primary">
               {{ $t("goods.virtualTag") }}
             </text>
-            <text v-if="isCard && goods.card?.timesTotal" class="sh-chip sh-chip--primary">
-              {{ $t("goods.cardTimes", { n: goods.card.timesTotal }) }}
-            </text>
-            <text v-if="isCard && goods.card?.faceValueMinor" class="sh-chip sh-chip--primary">
-              {{ $t("goods.cardValue", { v: money(goods.card.faceValueMinor) }) }}
-            </text>
             <text v-if="promo" class="sh-chip sh-chip--danger">
               {{ $t("promo.buyNGetM", promoLabelArgs(promo)) }}
             </text>
             <text v-for="a in goods.activityTags ?? []" :key="a.activityNo" class="sh-chip sh-chip--danger sh-num">
               {{ activityTagText(a) }}
-            </text>
-            <text v-if="FEATURES.points && goods.points" class="sh-chip sh-chip--primary sh-num">
-              {{ $t("points.earnChip", { n: goods.points }) }}
             </text>
             <!--
               紧缺才说「仅剩 N 件」。v2 起单规格商品不弹面板，这句只放面板里的话单规格就永远看不到 ——
@@ -869,6 +913,24 @@ onShareAppMessage(() =>
         -->
         <!-- 领券（s36）：与店铺页、商家页同一个组件；券由本页预取，首屏只渲染一次 -->
         <biz-coupon-strip :merchant-no="goods.merchant.merchantNo" :preset="coupons"></biz-coupon-strip>
+
+        <!--
+          服务承诺（§3.4）。**只放可核验的短语** —— 每一条背后都有一条真的规则：
+          「极速退款」由后端按这件货的价问售后规则（运营可调的金额上限与总开关），
+          价高于上限就不给这四个字；「门店自提免运」只在支持自提时出现。
+
+          <p>点开是时限表，讲清「商家 48 小时不处理会怎样」这类问题 ——
+          承诺写在页面上，细则就得能查到，否则那句话只是广告。
+        -->
+        <view v-if="services.length" class="sh-card block svc" @tap="svcOpen = true">
+          <view class="sh-row svc__row">
+            <text v-for="c in services" :key="c" class="txt-sub svc__item">
+              <text class="svc__dot">·</text>{{ $t(`goods.svc${c}`) }}
+            </text>
+            <view class="sh-fill"></view>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+        </view>
 
         <!-- 预约：日期 + 时刻 -->
         <view v-if="needAppointment" class="sh-card block">
@@ -974,49 +1036,26 @@ onShareAppMessage(() =>
         <view id="sec-detail"></view>
         <view v-if="hasParams" class="sh-card block">
           <text class="txt-title dt__h">{{ $t("goods.paramsTitle") }}</text>
-          <view v-for="p in goods.params ?? []" :key="p.dimNo" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ p.name || p.dimNo }}</text>
-            <text class="txt-sub fact__value">{{ p.label }}</text>
-          </view>
           <!--
-            旧的 `origin` 列：**参数里已经有产地就不再重复显示**。
-            两处都显示的话，商家在新的参数里填了「本地」、老列里还留着
-            早年填的「山东」—— 买家看到两个产地，而谁也说不清哪个算数。
+            **前 4 条直出，其余进抽屉**（§3.2，淘宝京东同一形状）。
+            全列的话，参数多的商品会把评价与图文顶到两屏以外；
+            而参数恰恰是「已经想买、来核对细节」的人才看的。
           -->
-          <view v-if="isFresh && goods.origin && !hasOriginParam" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.origin") }}</text>
-            <text class="txt-sub fact__value">{{ goods.origin }}</text>
+          <view v-for="(f, i) in factsHead" :key="i" class="fact sh-row sh-row--between sh-row--top">
+            <text class="txt-sub fact__label">{{ f.label }}</text>
+            <text class="txt-sub fact__value">{{ f.value }}</text>
           </view>
-          <view v-if="isService && goods.storeName" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.store") }}</text>
-            <text class="txt-sub fact__value">{{ goods.storeName }}</text>
-          </view>
-          <view v-if="isCard && goods.card" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.validity") }}</text>
-            <text class="txt-sub fact__value sh-num">
-              {{ $t("goods.validDays", { n: goods.card.validDays }) }}
-            </text>
-          </view>
-          <!--
-            销售区域：**这件商品卖到哪**，是商品的属性。v2 起从首屏挪到这里 ——
-            信息还在，只是不占首屏。整行不渲染的判据是后端给的 saleScopeText，
-            **不是 areaNames 为空**：只做自提却没配范围的商家也是空的，而那个空的意思
-            正好相反（谁也看不到），在端上判必然判反一半。
-          -->
-          <view v-if="saleScopeText" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.scopeLabel") }}</text>
-            <text class="txt-sub fact__value">{{ saleScopeText }}</text>
-          </view>
-          <view v-if="goods.limitPerUser" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ $t("goods.limitLabel") }}</text>
-            <text class="txt-sub fact__value">{{ $t("goods.limit", { n: goods.limitPerUser }) }}</text>
+          <view
+            v-if="facts.length > factsHead.length"
+            class="sh-row sh-row--between fact fact--more"
+            @tap="factsOpen = true"
+          >
+            <text class="txt-sub txt-primary">{{ $t("goods.paramsAll", { n: facts.length }) }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
 
           <view v-if="goods.weighed" class="sh-notice sh-notice--warning notice">
             <text class="txt-caption notice__text">{{ $t("goods.weighed") }}</text>
-          </view>
-          <view v-if="isVirtual && goods.virtual" class="sh-notice notice">
-            <text class="txt-caption notice__text">{{ goods.virtual.deliverDesc }}</text>
           </view>
         </view>
 
@@ -1031,7 +1070,12 @@ onShareAppMessage(() =>
         -->
         <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
           <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
-          <text v-if="goods.detail" class="txt-body dt__text">{{ goods.detail }}</text>
+          <!--
+            **按空行分段**（§3.2）。后端存的是纯文本，这里只排版、不解析任何标记 ——
+            收 HTML 要在三端各消毒一次，漏一处就是 XSS（建品页那侧的注释同此）。
+            此前整段正文挤成一坨，商家写的分段在买家这边一行都看不出来。
+          -->
+          <text v-for="(para, i) in detailParas" :key="i" class="txt-body dt__text">{{ para }}</text>
           <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
                1:3 的长图会被压进默认的 320×240 里 -->
           <image
@@ -1040,8 +1084,31 @@ onShareAppMessage(() =>
             class="dt__img"
             :src="thumb(img, 750)"
             mode="widthFix"
+            lazy-load
           />
         </view>
+
+        <!-- 服务承诺细则（§3.4）：承诺写在页面上，细则就得能查到 -->
+        <sh-sheet :visible="svcOpen" :title="String($t('goods.svcTitle'))" @close="svcOpen = false">
+          <view class="sh-cells">
+            <view v-for="c in services" :key="c" class="sh-cell">
+              <text class="txt-body">{{ $t(`goods.svc${c}`) }}</text>
+              <text class="txt-caption sh-muted svc__desc">{{ $t(`goods.svc${c}Desc`) }}</text>
+            </view>
+          </view>
+          <view class="sh-btn sheet__done" @tap="svcOpen = false">{{ $t("goods.couponDone") }}</view>
+        </sh-sheet>
+
+        <!-- 全部参数 -->
+        <sh-sheet :visible="factsOpen" :title="String($t('goods.paramsTitle'))" @close="factsOpen = false">
+          <view class="sh-cells">
+            <view v-for="(f, i) in facts" :key="i" class="sh-cell sh-row sh-row--between sh-row--top">
+              <text class="txt-sub fact__label">{{ f.label }}</text>
+              <text class="txt-sub fact__value">{{ f.value }}</text>
+            </view>
+          </view>
+          <view class="sh-btn sheet__done" @tap="factsOpen = false">{{ $t("goods.couponDone") }}</view>
+        </sh-sheet>
 
         <!--
           买不了要说是为什么。**贴着操作条上方** —— 他往下滚就是为了按那两个按钮，
@@ -1461,5 +1528,31 @@ onShareAppMessage(() =>
 .sheetbar {
   gap: 16rpx;
   margin-top: 40rpx;
+}
+
+/* 服务承诺条：一行摆完，点整行进细则 */
+.svc__row {
+  min-height: 56rpx;
+  gap: 24rpx;
+}
+.svc__item {
+  color: var(--sh-sub);
+}
+.svc__dot {
+  margin-inline-end: 6rpx;
+  color: var(--sh-primary);
+}
+.svc__desc {
+  display: block;
+  margin-top: 6rpx;
+}
+
+/* 「全部参数」入口：与参数行同一行高，靠 txt-primary 与上面几行区分 */
+.fact--more {
+  padding-top: 12rpx;
+}
+
+.sheet__done {
+  margin-top: 24rpx;
 }
 </style>

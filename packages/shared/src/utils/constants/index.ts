@@ -127,6 +127,19 @@ export const DEFAULT_MARKET = "CN";
  * 用的是 GOODS（端上当年跟的是它）。同一个「五品类」在后端有两套名字，
  * 而商品筛选走的是前者。
  */
+/**
+ * 服务承诺码（`Goods.services`）。与后端 `GoodsVO.SERVICE_*` 同一份取值域。
+ *
+ * <p>页面按码取 i18n 文案，**遇到不认识的码跳过** —— 后端加了新承诺而端上还没发版时，
+ * 宁可少显示一条，也不要把 `INSTANT_REFUND` 这样的原始码印给买家看。
+ */
+export const GOODS_SERVICE = {
+  /** 极速退款：小额仅退款申请即退。受售后规则的金额上限与总开关约束，**逐件判** */
+  INSTANT_REFUND: "INSTANT_REFUND",
+  /** 门店自提免运费 */
+  PICKUP_FREE: "PICKUP_FREE",
+} as const;
+
 export const CATEGORY_TYPE = {
   /**
    * 日用品（标品）。

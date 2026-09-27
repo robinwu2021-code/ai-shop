@@ -21,7 +21,13 @@ describe("商品详情的销售范围", () => {
   });
 
   it("★★★ 那一行只跟着 saleScopeText 走 —— 空与不限是两件事", () => {
-    expect(goodsPage).toContain('v-if="saleScopeText"');
+    /*
+     * 判据从模板挪到了脚本里的 `facts`（§3.2 起参数收成一个列表，前 4 条直出、
+     * 其余进抽屉）。断言跟着挪，**不是放松**：要的仍是「这一行的有无只看
+     * saleScopeText」，只是它现在写成一句 if 而不是一个 v-if。
+     */
+    expect(goodsPage).toContain("if (saleScopeText.value) {");
+    expect(goodsPage).toContain('label: String(t("goods.scopeLabel"))');
     const body = goodsPage.slice(
       goodsPage.indexOf("const saleScopeText = computed("),
       goodsPage.indexOf("const isService = computed("),
