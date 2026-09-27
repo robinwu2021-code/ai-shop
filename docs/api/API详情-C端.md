@@ -525,6 +525,8 @@
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
 | `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
 | `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
+| `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
+| `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -597,6 +599,17 @@
 | `minCount` | `number` | 是 | 几人成团 |
 | `groupHours` | `number` | 是 | 开团后多少小时内成团 |
 | `openGroups` | [`GroupBuy`](#groupbuy)\[\] | 是 | 正在拼的团，差人最少的在前，最多 3 个 |
+
+
+#### GET `/mp/goods/{goodsNo}/question`
+
+商品问答　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Question`](#question)\[\]
 
 
 #### GET `/mp/goods/promoted`
@@ -2017,6 +2030,31 @@
 类型：`any`
 
 
+### question
+
+#### POST `/mp/question`
+
+提问　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Question`](#question)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `questionNo` | `string` | 是 | — |
+| `goodsNo` | `string,null` | 否 | — |
+| `skuNo` | `string,null` | 否 | 提问时那件货的规格号与标题快照（运营端按规格看） |
+| `skuTitle` | `string,null` | 否 | — |
+| `content` | `string` | 是 | — |
+| `answer` | `string,null` | 否 | — |
+| `answeredAt` | `number,null` | 否 | — |
+| `status` | `string` | 是 | — |
+| `createdAt` | `string,null` | 否 | — |
+
+
 ### regions
 
 #### GET `/mp/regions`
@@ -2084,6 +2122,7 @@
 | `likeCount` | `number` | 是 | 点赞数 |
 | `liked` | `boolean` | 是 | 当前用户是否已点赞 |
 | `reply` | `string` | 否 | 商家回复 |
+| `repliedAt` | `number,null` | 否 | 商家回复的时间。**库里一直有、从没发过** —— 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。 |
 | `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
 | `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
 
@@ -2117,6 +2156,7 @@
 | `likeCount` | `number` | 是 | 点赞数 |
 | `liked` | `boolean` | 是 | 当前用户是否已点赞 |
 | `reply` | `string` | 否 | 商家回复 |
+| `repliedAt` | `number,null` | 否 | 商家回复的时间。**库里一直有、从没发过** —— 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。 |
 | `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
 | `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
 
@@ -2995,6 +3035,8 @@
 | `virtual` | [`VirtualSpec`](#virtualspec) | 否 | VIRTUAL。**后端未下发** |
 | `promotions` | [`Promotion`](#promotion)\[\] | 否 | 促销（一期只有买 N 送 M）。**2026-09-21 起商品详情下发**（优惠券全链路梳理 批 3）， 与下单算赠品同一个来源；列表页仍不下发。 |
 | `activityTags` | [`ActivityTag`](#activitytag)\[\] | 否 | 这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。 |
+| `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
+| `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
@@ -3839,6 +3881,22 @@
 - `FOOD_WORKSHOP`
 - `OTHER`
 
+### Question
+
+商品问答。买家在商品页问，运营在后台答。 **只有已回答的会下发给买家** —— 一排没人答的问题传达的是「这家店不管事」， 比没有问答区更糟。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `questionNo` | `string` | 是 | — |
+| `goodsNo` | `string,null` | 否 | — |
+| `skuNo` | `string,null` | 否 | 提问时那件货的规格号与标题快照（运营端按规格看） |
+| `skuTitle` | `string,null` | 否 | — |
+| `content` | `string` | 是 | — |
+| `answer` | `string,null` | 否 | — |
+| `answeredAt` | `number,null` | 否 | — |
+| `status` | `string` | 是 | — |
+| `createdAt` | `string,null` | 否 | — |
+
 ### Quote
 
 商家对某个需求单的报价。一个需求单可多家报价，由发起人挑。 **报价不做事前审核，防加价靠三层机制**（见 docs/technical/ADR/ADR-003）：   1. 锁价 —— 被选定后 `locked`，下单一律用快照价，系统层面加不了价   2. 公示 —— 每次改价都写进 `revisions` 并对所有邻居可见，谁涨价谁被看见   3. 信用 —— 选定后不履约计入商家 `breachCount` 与评分，累计则限制报价资格
@@ -3952,6 +4010,7 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `likeCount` | `number` | 是 | 点赞数 |
 | `liked` | `boolean` | 是 | 当前用户是否已点赞 |
 | `reply` | `string` | 否 | 商家回复 |
+| `repliedAt` | `number,null` | 否 | 商家回复的时间。**库里一直有、从没发过** —— 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。 |
 | `scores` | [`ReviewScores`](#reviewscores) | 否 | 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。 |
 | `appeal` | [`ReviewAppeal`](#reviewappeal) | 否 | 商家申诉（B-9.4）。裁决在平台端 P-13.1 |
 
@@ -3985,6 +4044,20 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `goods` | `number` | 是 | 商品本身，1–5 |
 | `fulfillment` | `number` | 是 | 履约：快慢、包装、缺损，1–5 |
 | `service` | `number` | 是 | 服务：沟通、售后态度，1–5 |
+
+### ReviewSummary
+
+评分概览（随商品详情下发，见 `Goods.reviewSummary`）。 与列表分开：列表是分页的，而概览说的是整体 —— 从当前这一页算平均分， 翻页时那个「总分」会变。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | 可见评价总数 |
+| `avg` | `number` | 是 | 平均分，一位小数 |
+| `dist` | `number`\[\] | 是 | 1~5 星各自的条数，**下标 0 是 1 星** |
+| `withImages` | `number` | 是 | 有图的条数 |
+| `avgGoods` | `number` | 是 | 商品分；没人打过这一维时为 0 |
+| `avgFulfillment` | `number` | 是 | 履约分 |
+| `avgService` | `number` | 是 | 服务分 |
 
 ### SaleMode
 

@@ -1852,10 +1852,40 @@
           "ar": "المنتج"
         },
         {
+          "key": "goods.anchorRecommend",
+          "zh-CN": "推荐",
+          "en": "More",
+          "ar": "المزيد"
+        },
+        {
           "key": "goods.anchorReviews",
           "zh-CN": "评价",
           "en": "Reviews",
           "ar": "التقييمات"
+        },
+        {
+          "key": "goods.askAction",
+          "zh-CN": "我要问",
+          "en": "Ask",
+          "ar": "اسأل"
+        },
+        {
+          "key": "goods.askDone",
+          "zh-CN": "已提交，商家回答后会出现在这里",
+          "en": "Submitted — it will show up here once answered",
+          "ar": "تم الإرسال، وسيظهر هنا بعد الرد"
+        },
+        {
+          "key": "goods.askPh",
+          "zh-CN": "想了解什么",
+          "en": "What would you like to know",
+          "ar": "ما الذي تود معرفته"
+        },
+        {
+          "key": "goods.askTitle",
+          "zh-CN": "向商家提问",
+          "en": "Ask the merchant",
+          "ar": "اسأل التاجر"
         },
         {
           "key": "goods.batchCutoff",
@@ -1904,18 +1934,6 @@
           "zh-CN": "立即购买",
           "en": "Buy now",
           "ar": "اشترِ الآن"
-        },
-        {
-          "key": "goods.cardTimes",
-          "zh-CN": "{n} 次卡",
-          "en": "{n}-visit card",
-          "ar": "بطاقة {n} زيارات"
-        },
-        {
-          "key": "goods.cardValue",
-          "zh-CN": "面值 {v}",
-          "en": "Value {v}",
-          "ar": "القيمة {v}"
         },
         {
           "key": "goods.changeAddress",
@@ -2098,6 +2116,12 @@
           "ar": "مباشرة من المصدر"
         },
         {
+          "key": "goods.paramsAll",
+          "zh-CN": "全部 {n} 项参数",
+          "en": "All {n} attributes",
+          "ar": "كل الخصائص ({n})"
+        },
+        {
           "key": "goods.paramsTitle",
           "zh-CN": "商品参数",
           "en": "Specifications",
@@ -2116,10 +2140,28 @@
           "ar": "اختر الوقت"
         },
         {
+          "key": "goods.qaEmpty",
+          "zh-CN": "还没有人问过 —— 有疑问可以直接问商家",
+          "en": "No questions yet — ask the merchant anything",
+          "ar": "لا توجد أسئلة بعد — اسأل التاجر مباشرة"
+        },
+        {
+          "key": "goods.qaTitle",
+          "zh-CN": "大家还问",
+          "en": "Questions & answers",
+          "ar": "أسئلة المشترين"
+        },
+        {
           "key": "goods.qty",
           "zh-CN": "数量",
           "en": "Quantity",
           "ar": "الكمية"
+        },
+        {
+          "key": "goods.recommendTitle",
+          "zh-CN": "本店还卖",
+          "en": "More from this shop",
+          "ar": "المزيد من هذا المتجر"
         },
         {
           "key": "goods.saveAmount",
@@ -2176,16 +2218,34 @@
           "ar": "الموقع"
         },
         {
-          "key": "goods.validDays",
-          "zh-CN": "{n} 天",
-          "en": "{n} days",
-          "ar": "{n} يومًا"
+          "key": "goods.svcINSTANT_REFUND",
+          "zh-CN": "极速退款",
+          "en": "Instant refund",
+          "ar": "استرداد فوري"
         },
         {
-          "key": "goods.validity",
-          "zh-CN": "有效期",
-          "en": "Validity",
-          "ar": "الصلاحية"
+          "key": "goods.svcINSTANT_REFUNDDesc",
+          "zh-CN": "小额仅退款申请后立即退，不用等商家处理。金额上限由平台设定，超出的按普通售后走。",
+          "en": "Small refund-only claims are paid out immediately, with no wait for the merchant. The cap is set by the platform; anything above it follows the normal after-sales flow.",
+          "ar": "تُدفع طلبات الاسترداد الصغيرة فورًا دون انتظار التاجر. الحد الأقصى يحدده المنصة، وما فوقه يمر بمسار ما بعد البيع المعتاد."
+        },
+        {
+          "key": "goods.svcPICKUP_FREE",
+          "zh-CN": "门店自提免运费",
+          "en": "Free store pickup",
+          "ar": "استلام من المتجر مجانًا"
+        },
+        {
+          "key": "goods.svcPICKUP_FREEDesc",
+          "zh-CN": "到店自提不收运费；选择配送时按商家的运费规则计算。",
+          "en": "Picking up in store costs nothing extra; delivery is charged by the merchant's shipping rules.",
+          "ar": "الاستلام من المتجر بلا رسوم شحن؛ أما التوصيل فيُحتسب وفق قواعد التاجر."
+        },
+        {
+          "key": "goods.svcTitle",
+          "zh-CN": "服务承诺",
+          "en": "Service promises",
+          "ar": "التزامات الخدمة"
         },
         {
           "key": "goods.virtualTag",
@@ -4150,12 +4210,6 @@
           "ar": "النقاط المتاحة"
         },
         {
-          "key": "points.earnChip",
-          "zh-CN": "可得 {n} 积分",
-          "en": "Earn {n} pts",
-          "ar": "اكسب {n} نقطة"
-        },
-        {
           "key": "points.empty",
           "zh-CN": "还没有积分记录",
           "en": "No point activity yet",
@@ -4540,6 +4594,12 @@
           "ar": "الخدمة"
         },
         {
+          "key": "review.dims",
+          "zh-CN": "商品 {g} · 履约 {f} · 服务 {s}",
+          "en": "Item {g} · Delivery {f} · Service {s}",
+          "ar": "المنتج {g} · التسليم {f} · الخدمة {s}"
+        },
+        {
           "key": "review.empty",
           "zh-CN": "还没有评价",
           "en": "No reviews yet",
@@ -4550,6 +4610,30 @@
           "zh-CN": "购买后可发表评价",
           "en": "Reviews appear after purchase",
           "ar": "تظهر التقييمات بعد الشراء"
+        },
+        {
+          "key": "review.filterALL",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "review.filterBAD",
+          "zh-CN": "差评",
+          "en": "Critical",
+          "ar": "سلبي"
+        },
+        {
+          "key": "review.filterGOOD",
+          "zh-CN": "好评",
+          "en": "Positive",
+          "ar": "إيجابي"
+        },
+        {
+          "key": "review.filterIMAGE",
+          "zh-CN": "有图",
+          "en": "With photos",
+          "ar": "بالصور"
         },
         {
           "key": "review.images",
@@ -8576,6 +8660,12 @@
           "ar": "النص"
         },
         {
+          "key": "goods.detailEmptyHint",
+          "zh-CN": "还没写图文详情 —— 买家在详情页看不到任何介绍",
+          "en": "No description yet — buyers will see nothing on the product page",
+          "ar": "لا يوجد وصف بعد — لن يرى المشتري أي تفاصيل"
+        },
+        {
           "key": "goods.detailImages",
           "zh-CN": "详情图",
           "en": "Description photos",
@@ -8870,6 +8960,12 @@
           "ar": "تم التوليد؛ يمكنك التعديل"
         },
         {
+          "key": "goods.genDetailDoneWithParams",
+          "zh-CN": "已生成，并填好 {n} 项参数",
+          "en": "Generated, plus {n} attributes filled in",
+          "ar": "تم التوليد، مع تعبئة {n} من الخصائص"
+        },
+        {
           "key": "goods.genDetailFail",
           "zh-CN": "生成失败，请稍后再试",
           "en": "Generation failed, try again later",
@@ -8892,6 +8988,12 @@
           "zh-CN": "生成中…",
           "en": "Generating…",
           "ar": "جارٍ التوليد…"
+        },
+        {
+          "key": "goods.genParamsOnly",
+          "zh-CN": "详情没生成出来，先填好了 {n} 项参数",
+          "en": "No description this time; {n} attributes filled in",
+          "ar": "تعذّر توليد الوصف، وتمت تعبئة {n} من الخصائص"
         },
         {
           "key": "goods.hasDraftRow",
@@ -26197,6 +26299,13 @@
       },
       {
         "host": "BizKey",
+        "name": "QUESTION",
+        "value": "QA",
+        "zh": "商品问答（买家在商品页提问，运营在后台回答）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "STAFF_LOG",
         "value": "SL",
         "zh": "员工与授权的操作日志（B-11.10.3）",
@@ -28328,6 +28437,20 @@
         "name": "BUY_N_GET_M",
         "value": "BUY_N_GET_M",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "GoodsVO",
+        "name": "SERVICE_INSTANT_REFUND",
+        "value": "INSTANT_REFUND",
+        "zh": "极速退款 —— 受售后规则的金额上限与总开关约束，逐件判",
+        "module": "shop-core"
+      },
+      {
+        "host": "GoodsVO",
+        "name": "SERVICE_PICKUP_FREE",
+        "value": "PICKUP_FREE",
+        "zh": "门店自提免运 —— 支持到店自提时才给",
         "module": "shop-core"
       },
       {
@@ -31450,7 +31573,7 @@
           "VIRTUAL",
           "CARD"
         ],
-        "zh": "五品类。"
+        "zh": ""
       },
       {
         "name": "COMMUNITY_APPLY_STATUS",
@@ -31768,6 +31891,15 @@
           "FIRST_ORDER"
         ],
         "zh": "增长漏斗的四段。"
+      },
+      {
+        "name": "GOODS_SERVICE",
+        "client": "shared",
+        "values": [
+          "INSTANT_REFUND",
+          "PICKUP_FREE"
+        ],
+        "zh": "服务承诺码（`Goods.services`）。"
       },
       {
         "name": "GoodsStatus",
@@ -32797,6 +32929,17 @@
           "REJECTED"
         ],
         "zh": ""
+      },
+      {
+        "name": "ReviewFilter",
+        "client": "shared",
+        "values": [
+          "ALL",
+          "IMAGE",
+          "GOOD",
+          "BAD"
+        ],
+        "zh": "评价列表的筛选。"
       },
       {
         "name": "ReviewStatus",
