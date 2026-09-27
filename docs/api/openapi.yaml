@@ -7049,35 +7049,43 @@ components:
       properties: 
         questionNo: 
           type: "string"
+          description: "问题单号"
         goodsNo: 
           type: 
             - "string"
             - "null"
+          description: "所属商品。买家在商品页问，按它查 —— 只按规格存的话，同一件货的问答会按规格散开"
         skuNo: 
           type: 
             - "string"
             - "null"
-          description: "提问时那件货的规格号与标题快照（运营端按规格看）"
+          description: "提问时那件货的规格号快照（运营端按规格看）"
         skuTitle: 
           type: 
             - "string"
             - "null"
+          description: "提问时那件货的标题快照。商品改名之后，这条问题说的仍是当时那件货"
         content: 
           type: "string"
+          description: "问题正文"
         answer: 
           type: 
             - "string"
             - "null"
+          description: "商家/运营的回答。没答的不会下发给买家，所以这里有值"
         answeredAt: 
           type: 
             - "number"
             - "null"
+          description: "回答时间（毫秒）"
         status: 
           type: "string"
+          description: "PENDING 待回答 / ANSWERED 已回答 / HIDDEN 已隐藏。**买家只看得到 ANSWERED**"
         createdAt: 
           type: 
             - "string"
             - "null"
+          description: "提问时间（ISO 串，后端按运营端口径下发）"
       required: 
         - "questionNo"
         - "content"

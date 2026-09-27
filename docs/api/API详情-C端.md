@@ -2044,15 +2044,15 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `questionNo` | `string` | 是 | — |
-| `goodsNo` | `string,null` | 否 | — |
-| `skuNo` | `string,null` | 否 | 提问时那件货的规格号与标题快照（运营端按规格看） |
-| `skuTitle` | `string,null` | 否 | — |
-| `content` | `string` | 是 | — |
-| `answer` | `string,null` | 否 | — |
-| `answeredAt` | `number,null` | 否 | — |
-| `status` | `string` | 是 | — |
-| `createdAt` | `string,null` | 否 | — |
+| `questionNo` | `string` | 是 | 问题单号 |
+| `goodsNo` | `string,null` | 否 | 所属商品。买家在商品页问，按它查 —— 只按规格存的话，同一件货的问答会按规格散开 |
+| `skuNo` | `string,null` | 否 | 提问时那件货的规格号快照（运营端按规格看） |
+| `skuTitle` | `string,null` | 否 | 提问时那件货的标题快照。商品改名之后，这条问题说的仍是当时那件货 |
+| `content` | `string` | 是 | 问题正文 |
+| `answer` | `string,null` | 否 | 商家/运营的回答。没答的不会下发给买家，所以这里有值 |
+| `answeredAt` | `number,null` | 否 | 回答时间（毫秒） |
+| `status` | `string` | 是 | PENDING 待回答 / ANSWERED 已回答 / HIDDEN 已隐藏。**买家只看得到 ANSWERED** |
+| `createdAt` | `string,null` | 否 | 提问时间（ISO 串，后端按运营端口径下发） |
 
 
 ### regions
@@ -3887,15 +3887,15 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `questionNo` | `string` | 是 | — |
-| `goodsNo` | `string,null` | 否 | — |
-| `skuNo` | `string,null` | 否 | 提问时那件货的规格号与标题快照（运营端按规格看） |
-| `skuTitle` | `string,null` | 否 | — |
-| `content` | `string` | 是 | — |
-| `answer` | `string,null` | 否 | — |
-| `answeredAt` | `number,null` | 否 | — |
-| `status` | `string` | 是 | — |
-| `createdAt` | `string,null` | 否 | — |
+| `questionNo` | `string` | 是 | 问题单号 |
+| `goodsNo` | `string,null` | 否 | 所属商品。买家在商品页问，按它查 —— 只按规格存的话，同一件货的问答会按规格散开 |
+| `skuNo` | `string,null` | 否 | 提问时那件货的规格号快照（运营端按规格看） |
+| `skuTitle` | `string,null` | 否 | 提问时那件货的标题快照。商品改名之后，这条问题说的仍是当时那件货 |
+| `content` | `string` | 是 | 问题正文 |
+| `answer` | `string,null` | 否 | 商家/运营的回答。没答的不会下发给买家，所以这里有值 |
+| `answeredAt` | `number,null` | 否 | 回答时间（毫秒） |
+| `status` | `string` | 是 | PENDING 待回答 / ANSWERED 已回答 / HIDDEN 已隐藏。**买家只看得到 ANSWERED** |
+| `createdAt` | `string,null` | 否 | 提问时间（ISO 串，后端按运营端口径下发） |
 
 ### Quote
 
