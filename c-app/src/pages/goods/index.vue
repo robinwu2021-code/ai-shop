@@ -1155,9 +1155,12 @@ onShareAppMessage(() =>
 
         <!-- 评价。排在参数与图文之前（原型 g02）：「别人买了觉得怎样」比长图先被看。id 给锚点用 -->
         <!-- 评价、问答都空时合成一行（v3 d04）：新店的详情页不该一半是「还没有…」。id 仍给锚点用 -->
-        <view v-if="rvqaEmpty" id="sec-reviews" class="sh-card block rvqa-empty sh-row sh-row--between">
-          <text class="txt-sub sh-muted">{{ $t("goods.rvqaEmpty") }}</text>
-          <text class="txt-sub txt-primary sh-hit" @tap="askQuestion">{{ $t("goods.askAction") }}</text>
+        <!-- 外层挂 block、内层挂 sh-row：同一元素上 block 与 sh-row 并存时，UnoCSS 的 .block 会把横排压成竖排 -->
+        <view v-if="rvqaEmpty" id="sec-reviews" class="sh-card block">
+          <view class="rvqa-empty sh-row sh-row--between">
+            <text class="txt-sub sh-muted">{{ $t("goods.rvqaEmpty") }}</text>
+            <text class="txt-sub txt-primary sh-hit" @tap="askQuestion">{{ $t("goods.askAction") }}</text>
+          </view>
         </view>
         <view v-else id="sec-reviews" class="sh-card block">
           <view class="rvhead">
