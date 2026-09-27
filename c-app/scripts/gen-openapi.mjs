@@ -202,6 +202,8 @@ const RESPONSE_TYPES = {
   masterData: "MasterData",
   merchantApply: "MerchantApplyStatus",
   reviewList: "Review[]",
+  questionList: "Question[]",
+  askQuestion: "Question",
   createReview: "Review",
   toggleReviewLike: "Review",
   pointAccount: "PointAccount",

@@ -5,6 +5,9 @@
 import type { CategoryType, FulfillmentType } from "./core";
 import type { AppointmentDaySlots } from "./fulfillment";
 import type { BizScope, MerchantBrief } from "./merchant";
+// 具名导入而不是内联 `import("./review").X`：内联写法会让 gen-openapi 整个中止
+// （UnknownNodeError: LastTypeNode）—— 不是少一个字段，是三份 spec 一条都生成不出来
+import type { ReviewSummary } from "./review";
 
 /** 新加的规格取值（商家自建维度）。同上：命名是为了它能进契约 */
 export interface SpecValueAdded {
@@ -375,7 +378,7 @@ export interface Goods {
    * 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。
    * **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。
    */
-  reviewSummary?: import("./review").ReviewSummary | null;
+  reviewSummary?: ReviewSummary | null;
   /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
   groupBuy?: { minCount: number; price: number };
   /**
