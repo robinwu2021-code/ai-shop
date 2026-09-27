@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.service.AfterSaleRuleService;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 
@@ -50,10 +51,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             OrdAfterSale.REFUND_ONLY, OrdAfterSale.RETURN_REFUND, OrdAfterSale.EXCHANGE);
 
 
-    /** 极速退阈值：≤ 该金额自动通过。真实阈值由 P-6.1.2 运营配置，这里是缺省。 */
-    @Value("${shop.after-sale.instant-threshold-minor:10000}")
-    private long instantThresholdMinor;
-
     /*
      * 售后原因已收编到 {@link OrdAfterSale#REASONS}（与它的 status / type 两组取值域同处），
      * 并登记进按字段对账（`ord_after_sale.reason`）。这里不再另存一份 ——
@@ -71,6 +68,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final UserQueryPort userPort;
     private final StockPort stockPort;
     private final OrderItemMapper orderItemMapper;
+    /**
+     * 极速退的门槛与各环节时效（§3）。
+     *
+     * <p>此前这里读的是本类自己的 {@code @Value} 默认值，而运营端那一屏
+     * （{@code aftersale.fast-refund-rule}）写进参数表之后**没有任何代码读** ——
+     * 运营改阈值、关开关、设「下单 N 小时内」，三样都是白配。
+     */
+    private final AfterSaleRuleService ruleService;
     /**
      * 整单退款时把券退回券包（执行计划 B6）。
      * **setter 注入**：切片测试里没有它时，退款其余行为一字不差。
@@ -111,7 +116,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 StatusLogMapper statusLogMapper, SettlePort settlePort,
                                 OutboxEventBus eventBus, ObjectMapper json,
                                 MerchantQueryPort merchantPort, UserQueryPort userPort,
-                                StockPort stockPort, OrderItemMapper orderItemMapper) {
+                                StockPort stockPort, OrderItemMapper orderItemMapper,
+                                AfterSaleRuleService ruleService) {
+        this.ruleService = ruleService;
         this.afterSaleMapper = afterSaleMapper;
         this.subOrderMapper = subOrderMapper;
         this.statusLogMapper = statusLogMapper;
@@ -199,8 +206,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setStatus(platformIsSeller ? OrdAfterSale.ARBITRATING : OrdAfterSale.APPLIED);
         as.setSplitReversed(false);
 
-        // 极速退：仅退款且金额在阈值内 → 自动通过。退货退款要等收到货，不能自动
-        boolean instant = OrdAfterSale.REFUND_ONLY.equals(cmd.type()) && refund <= instantThresholdMinor;
+        // 极速退：仅退款、开关开着、金额在上限内、还在下单后的时限内 → 自动通过。
+        // 四个条件都在 ruleService 里，端上也读同一份判定结果，不再各算一遍
+        boolean instant = ruleService.instantEligible(cmd.type(), refund, placedAtOf(sub));
         as.setInstant(instant);
         afterSaleMapper.insert(as);
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
@@ -408,6 +416,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         doRefund(as, "商家已收到退货");
         return detailOf(as);
+    }
+
+
+    /**
+     * 下单时间（毫秒）。{@code withinHours} 的措辞就是「下单后多少小时内」，所以取的是
+     * 子单的创建时间，而不是主单的 {@code paidAt} —— 后者要多一个 mapper，
+     * 而两者在这条规则的量级（小时）上没有区别。
+     */
+    private static Long placedAtOf(OrdSubOrder sub) {
+        return sub.getCreatedAt() == null ? null
+                : sub.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     // ---------------------------------------------------------------- 退款（唯一入口）
@@ -821,9 +840,25 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 带上的话 worker 里没有 BizContext，查出来的是空集 ——
          * 而空集与「没有卡住的单」在结果上一模一样。
          */
+        /*
+         * **排除退货退款**（§3 施工时发现的资损口子）。
+         *
+         * {@code REFUNDING} 这个状态被两件完全不同的事共用：
+         * 「退款在途、分账回退失败了等重试」与「商家已同意退货、<b>等买家把货寄回来</b>」
+         * （{@link #approve} 对 RETURN_REFUND 就是转到 REFUNDING）。
+         * 而这条查询只看状态与时间，于是后者在 30 分钟后被本任务当成「卡住的退款」
+         * 捞起来退掉 —— <b>货还没寄回，钱已经退出去了</b>，且全程零报错。
+         *
+         * 退货退款的时限归 {@code AfterSaleTimeoutJob} 管（寄回 N 天、确认 N 小时），
+         * 它那条「已寄回但商家不确认」的分支同时也是这一类的重试入口，所以这里排除掉
+         * 不会让任何单子失去续跑的机会。
+         *
+         * 线上此刻 {@code ord_after_sale} 一行都没有，所以这个口子还没花过钱。
+         */
         return DataScopeContext.executeWithoutScope(() ->
                 afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                                .ne(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                                 .last("limit " + Math.max(1, limit)))
@@ -884,6 +919,117 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         doRefund(as, "平台执行退款回退分账");
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, "财务执行：先回退分账，再退款",
                 OrdStatusLog.BY_PLATFORM, operatorNo);
+    }
+
+    // ------------------------------------------------------------------ 时效（§3）
+
+    /**
+     * {@code APPLIED} 里放着的都是<b>等商家</b>的单 —— 自营单一申请就进 {@code ARBITRATING}
+     * （责任跟着钱走，平台就是卖家），所以按状态取已经天然排除了它们，
+     * 不需要再去问一次 {@code funds_mode}。这条判断有测试盯着。
+     */
+    @Override
+    public List<String> idlePendingNos(long idleBefore, int limit) {
+        return idleNos(idleBefore, limit, q -> q.eq(OrdAfterSale::getStatus, OrdAfterSale.APPLIED));
+    }
+
+    @Override
+    public List<String> unshippedReturnNos(long idleBefore, int limit) {
+        return idleNos(idleBefore, limit, q -> q
+                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                .eq(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
+                // 空串与 null 都算「没寄」：端上把输入框留空提交过来就是空串
+                .and(w -> w.isNull(OrdAfterSale::getExpressNo)
+                        .or().eq(OrdAfterSale::getExpressNo, "")));
+    }
+
+    @Override
+    public List<String> unconfirmedReturnNos(long idleBefore, int limit) {
+        return idleNos(idleBefore, limit, q -> q
+                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                .eq(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
+                .isNotNull(OrdAfterSale::getExpressNo)
+                .ne(OrdAfterSale::getExpressNo, ""));
+    }
+
+    /**
+     * 三条时效查询共用的骨架：同一个「最后动过的时间早于 X」+ 同一条数据域豁免。
+     *
+     * <p><b>不带数据域</b>：系统巡检没有 BizContext，带上查出来的是空集 ——
+     * 而空集与「没有超时的单」在结果上一模一样（{@link #stuckRefundNos} 同一条注释）。
+     */
+    private List<String> idleNos(long idleBefore, int limit,
+                                 java.util.function.Consumer<
+                                         com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrdAfterSale>> where) {
+        LocalDateTime cutoff = LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(idleBefore), java.time.ZoneId.systemDefault());
+        var q = Wrappers.<OrdAfterSale>lambdaQuery();
+        where.accept(q);
+        q.lt(OrdAfterSale::getUpdatedAt, cutoff)
+                .orderByAsc(OrdAfterSale::getUpdatedAt)
+                .last("limit " + Math.max(1, limit));
+        return DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectList(q).stream()
+                        .map(OrdAfterSale::getAfterSaleNo).toList());
+    }
+
+    @Override
+    @Transactional
+    public void autoApprove(String afterSaleNo) {
+        OrdAfterSale as = bySystem(afterSaleNo);
+        if (as == null || !OrdAfterSale.APPLIED.equals(as.getStatus())) {
+            return;   // 幂等：上一轮已经处置过，或者商家在这一刻自己点了
+        }
+        appendLog(as.getSubOrderNo(), as.getStatus(),
+                "商家超时未处理，系统自动同意", OrdStatusLog.BY_SYSTEM, null);
+        if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
+            // 退货退款：自动同意也只推进到「等买家寄回」，不能在货回来之前退钱
+            as.setStatus(OrdAfterSale.REFUNDING);
+            update(as);
+            appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "待买家寄回",
+                    OrdStatusLog.BY_SYSTEM, null);
+            return;
+        }
+        doRefund(as, "商家超时未处理，系统自动退款");
+    }
+
+    @Override
+    @Transactional
+    public void autoCloseUnshipped(String afterSaleNo) {
+        OrdAfterSale as = bySystem(afterSaleNo);
+        if (as == null || !OrdAfterSale.REFUNDING.equals(as.getStatus())
+                || !OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
+            return;
+        }
+        // 再查一次运单号：买家可能在本轮扫描与这一刻之间寄了
+        if (as.getExpressNo() != null && !as.getExpressNo().isBlank()) {
+            return;
+        }
+        as.setStatus(OrdAfterSale.CLOSED);
+        update(as);
+        appendLog(as.getSubOrderNo(), OrdAfterSale.CLOSED,
+                "超过寄回时限仍未寄出，本次申请已关闭 —— 可重新申请",
+                OrdStatusLog.BY_SYSTEM, null);
+    }
+
+    @Override
+    @Transactional
+    public void autoConfirmReturn(String afterSaleNo) {
+        OrdAfterSale as = bySystem(afterSaleNo);
+        if (as == null || !OrdAfterSale.REFUNDING.equals(as.getStatus())
+                || !OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
+            return;
+        }
+        appendLog(as.getSubOrderNo(), as.getStatus(),
+                "商家超时未确认收货，系统自动退款", OrdStatusLog.BY_SYSTEM, null);
+        doRefund(as, "商家超时未确认收货，系统自动退款");
+    }
+
+    /** 系统身份取单：没有属主校验（{@link #ofMerchant} 那套是给商家用的），也不带数据域 */
+    private OrdAfterSale bySystem(String afterSaleNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo).last("limit 1")));
     }
 
     /** 责任方取值域，与 {@code ord_after_sale.liability} 的注释一致。 */

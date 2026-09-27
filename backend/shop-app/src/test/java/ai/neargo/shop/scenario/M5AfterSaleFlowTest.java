@@ -664,8 +664,16 @@ class M5AfterSaleFlowTest {
         mvc().perform(get("/ops/after-sales/fast-refund-rule")
                         .header("Authorization", "Bearer " + support))
                 .andExpect(jsonPath("$.code").value(0))
-                // 默认关闭：自动退款的开关默认开着是件危险的事
-                .andExpect(jsonPath("$.data.enabled").value(false));
+                /*
+                 * **默认开着**（§3 起）。此前这里断言 false，理由写的是「自动退款的开关
+                 * 默认开着是件危险的事」—— 那句话本身没错，错的是当时这个开关<b>谁也不读</b>：
+                 * 极速退按 AfterSaleServiceImpl 自己的 @Value 无条件生效，这一屏显示的
+                 * 「关闭 · ¥20 · 24 小时」只是一张贴纸。
+                 *
+                 * 现在它真的接上了业务，默认值的含义随之改变：线上 sys_setting 里没有这一行，
+                 * 默认 false 就会在一次「只是接线」的改动里<b>把已经在跑的极速退关掉</b>。
+                 */
+                .andExpect(jsonPath("$.data.enabled").value(true));
 
         mvc().perform(post("/ops/after-sales/fast-refund-rule")
                         .header("Authorization", "Bearer " + support)

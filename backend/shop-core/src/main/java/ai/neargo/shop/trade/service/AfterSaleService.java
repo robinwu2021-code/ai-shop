@@ -157,4 +157,48 @@ public interface AfterSaleService {
      * @param limit 单轮上限
      */
     java.util.List<String> refundedWithoutSplitReversal(long since, int limit);
+
+    // ------------------------------------------------------------------ 时效（§3）
+
+    /**
+     * 商家迟迟不处理的售后单（{@code APPLIED} 且最后动过的时间早于 {@code idleBefore}）。
+     *
+     * <p><b>只取非自营</b>：归集路径下平台就是卖家，那些单一申请就直接进
+     * {@code ARBITRATING}，根本没有「等商家」这一步 —— 把它们算成商家超时，
+     * 等于让平台自动同意自己，而平台仲裁是要看材料的。
+     *
+     * <p>与 {@link #stuckRefundNos} 同一套路：只查不做，逐条处置放在 job 里
+     * （自调用不走代理，在本类里循环调带事务的方法，那个事务一条都不生效）。
+     */
+    java.util.List<String> idlePendingNos(long idleBefore, int limit);
+
+    /**
+     * 商家不处理，系统替他同意（时效 T1）。
+     *
+     * <p><b>与商家自己点「同意」走同一条实现</b> —— 退款的顺序（先回退分账再退款）
+     * 只有一份，不为自动化再写一遍。区别只在时间线上记的是「系统」而不是「商家」：
+     * 用户日后看这张单，必须能看出钱是谁放的。
+     */
+    void autoApprove(String afterSaleNo);
+
+    /**
+     * 同意退货后买家一直没寄回的单（时效 T3a）。判据是 {@code REFUNDING} + 退货退款
+     * + <b>没有运单号</b>。
+     */
+    java.util.List<String> unshippedReturnNos(long idleBefore, int limit);
+
+    /** 买家逾期没寄回 → 关闭本次申请。他可以重新申请，但不能让单子永远悬着 */
+    void autoCloseUnshipped(String afterSaleNo);
+
+    /**
+     * 买家已寄回、而商家迟迟不确认收货的单（时效 T3b）。判据是 {@code REFUNDING}
+     * + 退货退款 + <b>有运单号</b>。
+     *
+     * <p>这条同时兼作退货退款的<b>退款重试入口</b>：分账回退失败而停在 REFUNDING 的
+     * 退货单也落在这个集合里，而 {@code autoConfirmReturn} 是幂等的。
+     */
+    java.util.List<String> unconfirmedReturnNos(long idleBefore, int limit);
+
+    /** 商家逾期不确认收货 → 系统退款。走的仍是那条唯一的退款实现 */
+    void autoConfirmReturn(String afterSaleNo);
 }

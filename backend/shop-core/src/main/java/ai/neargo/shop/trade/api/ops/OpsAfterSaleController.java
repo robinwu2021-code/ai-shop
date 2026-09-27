@@ -2,11 +2,11 @@ package ai.neargo.shop.trade.api.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.platform.AuditLogPort;
-import ai.neargo.shop.spi.platform.SettingPort;
 import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
+
+import java.util.List;
+import ai.neargo.shop.trade.service.AfterSaleRuleService;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,9 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import tools.jackson.databind.ObjectMapper;
-
-import java.util.List;
 
 /**
  * 平台端 · 售后仲裁（P-6.1）。
@@ -33,22 +30,24 @@ import java.util.List;
 @Validated
 public class OpsAfterSaleController {
 
-    /** 极速退阈值的参数键与默认值。默认关闭 —— 自动退款的开关默认开着是件危险的事 */
-    private static final String FAST_REFUND_KEY = "aftersale.fast-refund-rule";
-    private static final String FAST_REFUND_DEFAULT =
-            "{\"enabled\":false,\"maxAmount\":2000,\"withinHours\":24,\"categories\":[]}";
-
     private final AfterSaleService afterSaleService;
-    private final SettingPort settingPort;
+    /**
+     * 售后规则的唯一读写口。
+     *
+     * <p><b>这两条端点此前是悬空的</b>：自己拿 {@code SettingPort} 读写
+     * {@code aftersale.fast-refund-rule}，而<b>没有任何业务代码读那个键</b> ——
+     * {@code AfterSaleServiceImpl} 读的是它自己的 {@code @Value}。于是这一屏显示
+     * 「关闭 · 上限 ¥20 · 24 小时内」，线上真正在跑的却是「无条件 · ¥100 · 不限时」。
+     * 页面回读对得上、审计日志有记录、极速退照原样跑，没有一处会报错。
+     */
+    private final AfterSaleRuleService ruleService;
     private final AuditLogPort auditLogPort;
-    private final ObjectMapper json;
 
-    public OpsAfterSaleController(AfterSaleService afterSaleService, SettingPort settingPort,
-                                  AuditLogPort auditLogPort, ObjectMapper json) {
+    public OpsAfterSaleController(AfterSaleService afterSaleService,
+                                  AfterSaleRuleService ruleService, AuditLogPort auditLogPort) {
         this.afterSaleService = afterSaleService;
-        this.settingPort = settingPort;
+        this.ruleService = ruleService;
         this.auditLogPort = auditLogPort;
-        this.json = json;
     }
 
     @GetMapping("/ops/after-sales")
@@ -77,41 +76,67 @@ public class OpsAfterSaleController {
         return vo;
     }
 
-    // ---------------------------------------------------------------- 极速退阈值
+    // ---------------------------------------------------------------- 售后规则（极速退 + 时效）
 
     @GetMapping("/ops/after-sales/fast-refund-rule")
     @PreAuthorize("@perm.can('" + Perms.AFTERSALE_REFUND_READ + "')")
-    public FastRefundRule fastRefundRule() {
-        return json.readValue(settingPort.get(FAST_REFUND_KEY, FAST_REFUND_DEFAULT),
-                FastRefundRule.class);
+    public AfterSaleRuleService.AfterSaleRuleVO fastRefundRule() {
+        return ruleService.get();
     }
 
     /**
-     * 保存极速退阈值。
+     * 保存售后规则：极速退的门槛，以及各环节的时效。
      *
-     * <p>{@code withinHours} 必须 ≥ 1：0 小时等于把功能关掉，但开关看起来还是开着的 ——
-     * 运营会以为极速退在跑，实际每一单都进了人工队列。
+     * <p>路径与四个原有字段名一个字都没动 —— 运营端那一屏正在用它们
+     * （{@code lib/api/https/aftersale.ts}）。新增的四个时效字段是加上去的，不是换掉的。
+     *
+     * <p>校验在 {@link AfterSaleRuleService#save} 里：0 小时等于把功能关掉，
+     * 而开关看起来还是开着的 —— 运营会以为极速退在跑，实际每一单都进了人工队列。
+     * 时效那四个数被写成 0 更糟：{@code replyHours=0} 意味着每一笔申请下一分钟就自动同意。
      */
     @PostMapping("/ops/after-sales/fast-refund-rule")
     @PreAuthorize("@perm.can('" + Perms.AFTERSALE_REFUND_APPROVE + "')")
-    public FastRefundRule saveFastRefundRule(@RequestBody FastRefundRule req) {
-        if (req.maxAmount() <= 0 || req.withinHours() < 1) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
+    public AfterSaleRuleService.AfterSaleRuleVO saveFastRefundRule(@RequestBody RuleReq req) {
+        var saved = ruleService.save(req.mergeInto(ruleService.get()), SecurityUtils.currentUserNo());
+        // 这份规则决定多少钱可以**不经人工**退出去、以及商家沉默多久就替他同意，改动必须留痕
+        auditLogPort.record("FAST_REFUND_RULE", "aftersale.fast-refund-rule",
+                "%s｜上限 %d 分｜下单 %d 小时内｜商家 %d 小时未处理自动同意｜寄回 %d 天｜确认 %d 小时"
+                        .formatted(saved.enabled() ? "开启" : "关闭", saved.maxAmount(),
+                                saved.withinHours(), saved.replyHours(), saved.shipBackDays(),
+                                saved.confirmHours()));
+        return saved;
+    }
+
+    /**
+     * 请求体。<b>每个字段都是包装类型，缺的字段保持原值</b>。
+     *
+     * <p>不直接收 {@link AfterSaleRuleService.AfterSaleRuleVO}：那是 record，
+     * Jackson 对缺组件是硬拒（{@code HttpMessageNotReadableException} → 400）。
+     * 而运营端那一屏此刻只发四个字段（{@code enabled/maxAmount/withinHours/categories}）——
+     * 直接收 VO 会让<b>它的保存按钮当场 400</b>，而这次改动本该只是往里加字段。
+     *
+     * <p>顺带得到的是「改一格存一格」：以后拆成两屏（极速退 / 时效）也不必互相带着对方的值。
+     */
+    public record RuleReq(Boolean enabled, Long maxAmount, Integer withinHours,
+                          List<String> categories, Integer replyHours, Integer shipBackDays,
+                          Integer confirmHours, Integer interveneWorkDays) {
+
+        AfterSaleRuleService.AfterSaleRuleVO mergeInto(AfterSaleRuleService.AfterSaleRuleVO cur) {
+            return new AfterSaleRuleService.AfterSaleRuleVO(
+                    enabled == null ? cur.enabled() : enabled,
+                    maxAmount == null ? cur.maxAmount() : maxAmount,
+                    withinHours == null ? cur.withinHours() : withinHours,
+                    categories == null ? cur.categories() : categories,
+                    replyHours == null ? cur.replyHours() : replyHours,
+                    shipBackDays == null ? cur.shipBackDays() : shipBackDays,
+                    confirmHours == null ? cur.confirmHours() : confirmHours,
+                    interveneWorkDays == null ? cur.interveneWorkDays() : interveneWorkDays,
+                    null, null);
         }
-        settingPort.put(FAST_REFUND_KEY, json.writeValueAsString(req), SecurityUtils.currentUserNo());
-        // 这个阈值决定多少钱可以**不经人工**退出去，改动必须留痕
-        auditLogPort.record("FAST_REFUND_RULE", FAST_REFUND_KEY,
-                "%s｜上限 %d 分｜%d 小时内".formatted(
-                        req.enabled() ? "开启" : "关闭", req.maxAmount(), req.withinHours()));
-        return req;
     }
 
     /** @param liability PLATFORM / MERCHANT / PICKUP */
     public record DecideReq(Boolean refund, String liability, String verdict) {
     }
 
-    /** @param categories 适用品类编码，空 = 全品类 */
-    public record FastRefundRule(boolean enabled, long maxAmount, int withinHours,
-                                 List<String> categories) {
-    }
 }
