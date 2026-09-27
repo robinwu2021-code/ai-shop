@@ -394,7 +394,7 @@
       },
       "usage": {
         "b-app": 11,
-        "c-app": 18
+        "c-app": 22
       }
     },
     {
@@ -4918,18 +4918,10 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 270,
-      "localSelectors": 85,
-      "localCssLines": 362,
-      "rolled": [
-        {
-          "id": "inkover",
-          "label": "正文色自写",
-          "lib": ".txt-ink",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 274,
+      "localSelectors": 84,
+      "localCssLines": 358,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5638,16 +5630,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "inkover",
-      "label": "正文色自写",
-      "lib": ".txt-ink",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
-      "pages": [
-        "c-app/goods"
       ]
     }
   ],
