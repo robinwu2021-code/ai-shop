@@ -30,6 +30,22 @@ import type { ShopApi } from "../contract";
  */
 type MockOrder = Order & { payGroupNo?: string };
 
+/**
+ * mock 自己的极速退阈值（分）。
+ *
+ * **刻意留在 mock 里、而不是抬回共享常量**：真正的判定在后端 `AfterSaleRuleService`，
+ * 由运营配置（总开关 / 金额上限 / 下单 N 小时内），mock 拿不到那份配置。
+ * 此前端上与 mock 读的是同一个共享常量 `TRADE_RULES.instantRefundMaxMinor`，
+ * 于是 mock 下页面永远「猜对」—— 而线上那份常量是 ¥50、后端阈值是 ¥100。
+ * 替身与被测对象共用一把尺，量不出两者的差。
+ */
+const MOCK_INSTANT_MAX_MINOR = 5000;
+
+/** mock 下的秒退判定：只对「仅退款」成立，退货退款要等货回来 */
+function mockInstantEligible(o: Order): boolean {
+  return (o.amount.paidMinor || o.amount.payableMinor) <= MOCK_INSTANT_MAX_MINOR;
+}
+
 export const tradeMock: Pick<ShopApi,
   "createOrder"
   | "payMethods"
@@ -395,7 +411,13 @@ export const tradeMock: Pick<ShopApi,
     const siblings = pg
       ? db.orders.filter((x) => (x as MockOrder).payGroupNo === pg)
       : [];
-    return delay(siblings.length > 1 ? { ...o, subOrders: siblings } : o);
+    /*
+     * 「现在申请仅退款会不会秒退」**由这一层答**，与后端的 withDetail 同一位置。
+     * 页面不再自己拿常量比金额 —— 那是此前那份 ¥50 常量与后端 ¥100 阈值分叉的由来，
+     * 而 mock 也照同一个常量算，于是<b>替身替缺陷背了书</b>：两边都说「会秒退」。
+     */
+    const withFlag = { ...o, instantRefundEligible: mockInstantEligible(o) };
+    return delay(siblings.length > 1 ? { ...withFlag, subOrders: siblings } : withFlag);
   },
 
   async cancelOrder(orderNo) {

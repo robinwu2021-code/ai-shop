@@ -7,7 +7,7 @@ import { db, delay, findGoodsSeed, nextNo, persist, pick, pointBalance, pushMess
 import { pricingFor } from "@shared/strategies/pricing";
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import type { AfterSaleReason, Coupon, Order, OrderItem } from "@shared/types";
-import { ACTIVITY_NONE, FULFILLMENT, PAY_MODE, TRADE_RULES } from "@shared/utils/constants";
+import { ACTIVITY_NONE, FULFILLMENT, PAY_MODE } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import {
   findOrder,
@@ -48,8 +48,9 @@ export const aftersaleMock: Pick<ShopApi,
       images,
       // 整单退：mock 不做部分退款
       refundMinor: o.amount.paidMinor || o.amount.payableMinor,
-      instant: type === "REFUND_ONLY"
-        && (o.amount.paidMinor || o.amount.payableMinor) <= TRADE_RULES.instantRefundMaxMinor,
+      // 与后端同一口径：会不会秒退由订单详情那一层给（mock 里是 mockInstantEligible），
+      // 这里只读它 —— 两处各算一遍是此前那份常量能与后端分叉两年的原因
+      instant: type === "REFUND_ONLY" && o.instantRefundEligible === true,
       updatedAt: Date.now(),
     };
     pushTimeline(o, `已申请${type === "RETURN_REFUND" ? "退货退款" : "仅退款"}：${reason}`);
@@ -58,7 +59,7 @@ export const aftersaleMock: Pick<ShopApi,
      * 极速退：小额自动通过。**只对「仅退款」生效** ——
      * 退货退款要等货回来才能退，自动退等于货款两失。
      */
-    if (type === "REFUND_ONLY" && o.amount.paidMinor <= TRADE_RULES.instantRefundMaxMinor) {
+    if (type === "REFUND_ONLY" && o.instantRefundEligible === true) {
       settleRefund(o, "极速退款已到账");
     }
     persist();

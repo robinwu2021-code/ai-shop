@@ -150,7 +150,16 @@ public record OrderVO(String orderNo,
                        * 下单页的优惠选项（优惠券全链路梳理 批 2）：每家店命中哪些活动、现在选的是哪个，
                        * 以及系统算好的<b>最省组合</b>（活动选择 × 券一起枚举）。<b>只有预览填</b>。
                        */
-                      Offers offers) {
+                      Offers offers,
+                      /**
+                       * 这一单现在申请「仅退款」会不会<b>立即退</b>（极速退）。<b>只有订单详情填</b>。
+                       *
+                       * <p>由后端答而不是端上算：端上此前拿 {@code TRADE_RULES.instantRefundMaxMinor}
+                       * 这个常量比金额，那份常量是 ¥50、后端阈值是 ¥100，<b>差了一倍</b>；
+                       * 而且常量表达不了规则里的另两半 —— 总开关与「下单 N 小时内」。
+                       * 于是「会不会秒退」这句话在页面上说的和在后端做的，从来不是同一个判断。
+                       */
+                      Boolean instantRefundEligible) {
 
     /**
      * @param merchants          有活动可选的那几家店
@@ -196,7 +205,25 @@ public record OrderVO(String orderNo,
                 verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
                 reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
-                pickupDistanceM, expressCompany, discountLines, returned, outOfRange, null);
+                pickupDistanceM, expressCompany, discountLines, returned, outOfRange, null, null);
+    }
+
+    /** 带优惠选项、不带极速退判定的签名：存量构造处不必跟着改 */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany, List<DiscountLine> discountLines, Returned returned,
+                   List<String> outOfRange, Offers offers) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, null);
     }
 
     /** 不带配送范围标记的签名：存量构造处不必跟着改 */
@@ -299,7 +326,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible);
     }
 
     /**
@@ -314,7 +341,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible);
     }
 
     /**
@@ -326,7 +353,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible);
     }
 
     /** 挂上超出配送范围的商家（P6，只在预览）。空表给 null —— 端上看 null 就不提示 */
@@ -336,7 +363,8 @@ public record OrderVO(String orderNo,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines, returned,
-                merchants == null || merchants.isEmpty() ? null : merchants, offers);
+                merchants == null || merchants.isEmpty() ? null : merchants, offers,
+                instantRefundEligible);
     }
 
     /** 挂上优惠选项（批 2，只在预览）。没有活动也没有券可选时给 null */
@@ -364,15 +392,21 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers);
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers, instantRefundEligible);
     }
 
-    public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize) {
+    /**
+     * 详情特有的几件事，包括「现在申请仅退款会不会秒退」。
+     *
+     * @param instantRefundEligible 由 {@code AfterSaleRuleService} 判定 —— 端上不再自己拿常量比金额
+     */
+    public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize,
+                              Boolean instantRefundEligible) {
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible);
     }
 
     /**

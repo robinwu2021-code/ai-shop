@@ -29,6 +29,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -136,6 +137,8 @@ public class OrderServiceImpl implements OrderService {
     /** 订单详情要说「评价过没有」与「有没有挂着售后单」。**只在详情用**，列表不查 */
     private final ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort;
     private final AfterSaleService afterSaleService;
+    /** 极速退判定（§3）：详情页要在申请之前就说得出会不会秒退 */
+    private final ai.neargo.shop.trade.service.AfterSaleRuleService afterSaleRuleService;
     /**
      * 社区集单：下单时问「这一单属于哪一期」（TDD-营销域-详细设计 §1.3）。
      * 用 setter 注入而不是再加一个构造参数：构造函数已经 30 个参数，
@@ -240,6 +243,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderServiceImpl(ai.neargo.shop.spi.user.AppointmentSlotPort appointmentSlotPort,
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
+                            ai.neargo.shop.trade.service.AfterSaleRuleService afterSaleRuleService,
                             OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             ai.neargo.shop.spi.product.PayModePort payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
@@ -264,6 +268,7 @@ public class OrderServiceImpl implements OrderService {
         this.appointmentSlotPort = appointmentSlotPort;
         this.reviewQueryPort = reviewQueryPort;
         this.afterSaleService = afterSaleService;
+        this.afterSaleRuleService = afterSaleRuleService;
         this.orderMapper = orderMapper;
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
@@ -1702,7 +1707,14 @@ public class OrderServiceImpl implements OrderService {
                     reviewQueryPort.reviewed(sub.getSubOrderNo()),
                     afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
                     subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
-                            .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())).intValue());
+                            .eq(OrdSubOrder::getOrderNo, sub.getOrderNo())).intValue(),
+                    // 「现在申请仅退款会不会秒退」由后端答。端上此前拿一份 ¥50 的常量比金额，
+                    // 而后端阈值是 ¥100，且常量表达不了总开关与「下单 N 小时内」那两半
+                    afterSaleRuleService.instantEligible(OrdAfterSale.REFUND_ONLY,
+                            sub.getPayAmount() == null ? 0L : sub.getPayAmount(),
+                            sub.getCreatedAt() == null ? null
+                                    : sub.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                            .toInstant().toEpochMilli()));
             /*
              * **优惠依据只在详情查**（与上面那三样同一条理由：列表一次几十条）。
              * 读的是当时落下的 `pmt_apply`，不是按现在的规则重算 —— 规则可能早改了。

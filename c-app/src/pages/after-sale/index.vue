@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { chooseImages } from "@shared/ports/media";
-import { ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
@@ -37,14 +37,17 @@ const images = ref<string[]>([]);
 const submitting = ref(false);
 const submitted = ref(false);
 
-/** 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现 */
+/**
+ * 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现。
+ *
+ * **判定来自后端**（`Order.instantRefundEligible`）。此前这里拿
+ * `TRADE_RULES.instantRefundMaxMinor` 比金额，那份常量是 ¥50、后端阈值是 ¥100 ——
+ * 差了一倍；而且常量表达不了规则里的另两半：总开关，和「下单 N 小时内」。
+ * 于是这句提示说的和后端做的，从来不是同一个判断。
+ */
 // 只对仅退款成立：要退货的，货还没回来就秒退等于白送
 const instantRefund = computed(
-  () =>
-    !!order.value &&
-    type.value === "REFUND_ONLY" &&
-    (order.value.amount.paidMinor || order.value.amount.payableMinor) <=
-      TRADE_RULES.instantRefundMaxMinor,
+  () => type.value === "REFUND_ONLY" && order.value?.instantRefundEligible === true,
 );
 
 const canSubmit = computed(() => !!reason.value && !submitting.value);

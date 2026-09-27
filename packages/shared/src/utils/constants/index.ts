@@ -459,8 +459,6 @@ export const TRADE_RULES = {
   freshCutoffTime: "21:00",
   /** 坏果包赔申请时限（小时，自核销起算） */
   freshClaimHours: 24,
-  /** 极速退款自动通过的金额上限（最小货币单位） */
-  instantRefundMaxMinor: 5000,
   /** 逾期未自提：顺延天数，超出作废 */
   pickupGraceDays: 1,
   /** 拼团超时未成团自动退款（小时） */
