@@ -223,6 +223,24 @@ export interface UploadImageReq {
  * 自动生成图文详情。**主图可选** —— 没图时模型只按文字写，
  * 写出来更泛，但总比让商家对着空白框强。
  */
+/**
+ * 「自动生成」一次往返的结果：详情正文 + 替商家挑好的商品参数。
+ *
+ * <p>两件事同一个端点，因为商家点的是同一个按钮；新开一条 /biz 端点要在七处登记，
+ * 为一个附带结果不值当。
+ */
+export interface DescribeGoodsRes {
+  /** 空串 = 没生成出来。不是错误，提示一句即可 */
+  detail: string;
+  /**
+   * 按**这一类目的参数模板**挑的值，可能为空数组。
+   *
+   * <p>是挑不是写：候选由平台的类目模板给定，模型只能在里面选，后端返回前还会逐个核验。
+   * <b>同样是草稿</b> —— 端上摆成待确认，商家点了才落到表单里。
+   */
+  params: Array<{ dimNo: string; name: string; code: string; label: string }>;
+}
+
 export interface DescribeGoodsReq {
   /** 图片地址 */
   imageUrl?: string;

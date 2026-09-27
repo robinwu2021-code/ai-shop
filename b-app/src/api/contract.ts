@@ -548,6 +548,7 @@ import type {
   CreateGroupReq,
   EnrollReq,
   DescribeGoodsReq,
+  DescribeGoodsRes,
   PickupSelfBuildReq,
   PointsRecordQuery,
   StaffLoginReq,
@@ -1065,7 +1066,7 @@ export interface MerchantApi {
    * <p>结果**只填进输入框，不直接保存**：模型不知道这家店真实的产地与保质期，
    * 一键写进详情等于替商家做了他没做过的承诺。
    */
-  mDescribeGoods(req: DescribeGoodsReq): Promise<{ detail: string }>;
+  mDescribeGoods(req: DescribeGoodsReq): Promise<DescribeGoodsRes>;
 
   // ---- 类目（B-11.3.1）
   /**

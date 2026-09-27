@@ -603,14 +603,72 @@ public class BizGoodsController {
             }
         }
         String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category);
-        return new DescribeVO(text == null ? "" : text);
+        return new DescribeVO(text == null ? "" : text, suggestParams(req, category));
+    }
+
+    /**
+     * 顺带把**商品参数**也挑好（§2.B）。
+     *
+     * <p><b>挂在同一个端点上而不是另开一个</b>：商家点的是同一个「自动生成」按钮，
+     * 两件事同一次往返；而新开一条 /biz 端点要在七处登记，为一个附带结果不值当。
+     *
+     * <p>候选值来自**这一类目的 PROP 维度**（平台配的模板），所以模型只能在里面选。
+     * 类目没配 PROP 维度时这里就是空的 —— 那正是补 V349 之前的样子：
+     * 水果类目只有「产地」一个维度，参数区最多出一行。
+     */
+    private List<DescribeVO.ParamPick> suggestParams(DescribeReq req, String category) {
+        if (req.categoryNo() == null || req.categoryNo().isBlank()) {
+            return List.of();
+        }
+        List<SpecTemplateVO> props = specLibrary.propsForCategory(
+                BizContext.requireMerchantNo(), req.categoryNo());
+        if (props.isEmpty()) {
+            return List.of();
+        }
+        // 维度名 → 候选值标签。用**名字**而不是编号喂模型：它认得「冷藏 0~5℃」，不认得 SV_STORAGE_STGCHILL
+        var candidates = new java.util.LinkedHashMap<String, List<String>>();
+        for (SpecTemplateVO t : props) {
+            List<String> labels = t.options().stream().map(SpecTemplateVO.Option::label).toList();
+            if (!labels.isEmpty()) {
+                candidates.put(t.name(), labels);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+        var picked = vision.suggestParams(req.imageUrl(), req.title(), req.subtitle(), category, candidates);
+        // 把标签翻回端上要的 (dimNo, valueNo, label) —— 端上存的是编号，展示的是标签
+        var out = new java.util.ArrayList<DescribeVO.ParamPick>();
+        for (SpecTemplateVO t : props) {
+            String label = picked.get(t.name());
+            if (label == null || label.isBlank()) {
+                continue;
+            }
+            t.options().stream().filter(o -> label.equals(o.label())).findFirst().ifPresent(o ->
+                    out.add(new DescribeVO.ParamPick(t.templateNo(), t.name(), o.code(), o.label())));
+        }
+        return out;
     }
 
     public record DescribeReq(String imageUrl, String title, String subtitle, String categoryNo) {
     }
 
-    /** 空串 = 没生成出来。端上据此提示，而不是把空白填进详情框 */
-    public record DescribeVO(String detail) {
+    /**
+     * @param detail 空串 = 没生成出来。端上据此提示，而不是把空白填进详情框
+     * @param params 替商家挑好的商品参数（可能为空）。<b>同样是草稿</b> ——
+     *               端上摆成待确认的选项，商家点了才算数
+     */
+    public record DescribeVO(String detail, List<ParamPick> params) {
+
+        /**
+         * 与端上落进 {@code prd_goods.params} 的那四个字段同形（b-app params.ts:223）。
+         *
+         * <p><b>不发 valueNo</b>：那是库里的行号，端上手里只有 code —— code 才是跨店可比的
+         * 稳定编码。发一个行号过去，端上原样存回来就是一条对不上的引用（params.ts 里
+         * 那段注释记着同一条）。
+         */
+        public record ParamPick(String dimNo, String name, String code, String label) {
+        }
     }
 
     /**

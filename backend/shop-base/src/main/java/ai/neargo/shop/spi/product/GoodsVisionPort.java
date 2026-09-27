@@ -55,4 +55,22 @@ public interface GoodsVisionPort {
      * @return null = 没生成出来 / 模型不可达
      */
     String describe(String imageUrl, String title, String subtitle, String category);
+
+    /**
+     * 按类目给定的候选值，替商家**挑**商品参数（TDD-C 端商品详情页·内容丰富度 §2.B）。
+     *
+     * <p><b>是挑不是写</b>：候选值由平台的类目模板给定，模型只能在里面选，选不出就不选。
+     * 让它自由发挥的话会冒出「口感：入口即化」这种不在值集里的字符串，
+     * 而参数区要的是可比、可筛的枚举 —— 自由文本那条路商家自己填就有。
+     *
+     * <p>取不到模型时返回空 Map，调用方照旧把空候选摆给商家自己点。
+     *
+     * @param candidates 维度名 → 该维度的候选值标签，例如 {@code {"储存条件": ["常温","冷藏 0~5℃"]}}
+     * @return 维度名 → 选中的值标签。<b>只会是 candidates 里出现过的字符串</b>，
+     *         没把握的维度直接缺席，不硬凑
+     */
+    default Map<String, String> suggestParams(String imageUrl, String title, String subtitle,
+                                              String category, Map<String, java.util.List<String>> candidates) {
+        return Map.of();
+    }
 }

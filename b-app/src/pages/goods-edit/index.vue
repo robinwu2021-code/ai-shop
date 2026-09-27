@@ -639,19 +639,31 @@ async function genDetail() {
   }
   generating.value = true;
   try {
-    const { detail: text } = await api.mDescribeGoods({
+    const { detail: text, params: picks } = await api.mDescribeGoods({
       imageUrl: cover.value || undefined,
       title: title.value["zh-CN"].trim(),
       subtitle: subtitle.value["zh-CN"].trim() || undefined,
       categoryNo: categoryNo.value || undefined,
     });
+    /*
+     * 参数是**顺带**挑的（§2.B）：同一次往返，只填还空着的那几项。
+     * 先填参数再判详情 —— 详情写不出来不该把已经挑好的参数一起扔掉，
+     * 那两件事在后端就是各自独立的。
+     */
+    const filled = applyParamPicks(picks ?? []);
     // 空串 = 没生成出来。**不要把空白填进框** —— 那看起来像把他写的内容清掉了
     if (!text.trim()) {
-      uni.showToast({ title: t("goods.genDetailFail"), icon: "none" });
+      uni.showToast({
+        title: filled > 0 ? String(t("goods.genParamsOnly", { n: filled })) : String(t("goods.genDetailFail")),
+        icon: "none",
+      });
       return;
     }
     detail.value = text;
-    uni.showToast({ title: t("goods.genDetailDone"), icon: "none" });
+    uni.showToast({
+      title: filled > 0 ? String(t("goods.genDetailDoneWithParams", { n: filled })) : String(t("goods.genDetailDone")),
+      icon: "none",
+    });
   } catch {
     uni.showToast({ title: t("goods.genDetailFail"), icon: "none" });
   } finally {
@@ -808,7 +820,7 @@ async function applyGuess(guess: GoodsGuess) {
  * 它只按类目取候选，所以只需要把 `categoryNo` 传进去。
  */
 const {
-  propDims, paramValues, loadProps,
+  propDims, paramValues, loadProps, applyParamPicks,
   addingParam, newParam, addingValueFor, newParamValue,
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
@@ -1519,6 +1531,17 @@ async function save(thenSubmit = false) {
         />
         <!-- 字数常驻。不写的话，商家要一直写到第 2000 字才知道有上限 -->
         <text class="sh-muted area-len">{{ $t("goods.detailLen", { n: detail.length, m: 2000 }) }}</text>
+        <!--
+          空着时说一句**后果**，不是「请填写」（§2.B）。
+
+          线上三件在售商品的详情正文与详情图一条都没有 —— 不是商家不愿意填，
+          是没有任何地方告诉过他买家那一屏会空着。
+          **只提示不拦**：`prd_category_spec.required` 的列注释写着本版不校验，
+          这里硬拦等于给一个填不完的必填项，而老商品一件都没填过。
+        -->
+        <text v-if="!detail.trim()" class="txt-caption is-warning detail-empty">
+          {{ $t("goods.detailEmptyHint") }}
+        </text>
       </view>
 
       <!--
@@ -2621,6 +2644,12 @@ async function save(thenSubmit = false) {
   display: block;
   margin-top: 8rpx;
   text-align: end;
+}
+
+/* 空详情提示：贴着输入框，不占一整行的视觉重量 */
+.detail-empty {
+  display: block;
+  margin-top: 8rpx;
 }
 
 .langs {

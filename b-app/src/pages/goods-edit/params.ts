@@ -202,6 +202,30 @@ export function useGoodsParams(categoryNo: Ref<string>) {
     }
   }
 
+  /**
+   * 把「自动生成」挑好的参数填进表单（§2.B）。
+   *
+   * <p><b>只填空着的那几项</b>：商家已经点过的不动 —— 一键覆盖掉他自己选的值，
+   * 与详情那边「覆盖前先问」是同一条理由，而这里连问都不必：留着他的更对。
+   *
+   * <p>维度不在本类目模板里、或值不在候选里的，直接丢掉。后端已经核验过一遍，
+   * 这里再拦一次是因为**端上的模板是另取的一份**（loadProps），两边可能差一个类目。
+   *
+   * @returns 实际填进去几项 —— 调用方据此决定提示什么
+   */
+  function applyParamPicks(picks: Array<{ dimNo: string; code: string; label: string }>): number {
+    let n = 0;
+    for (const p of picks) {
+      const dim = propDims.value.find((d) => d.templateNo === p.dimNo);
+      if (!dim || paramValues.value[p.dimNo]) continue;
+      const o = (dim.options ?? []).find((x) => (x.code ?? x.label) === (p.code ?? p.label));
+      if (!o) continue;
+      pickParam(dim, o);
+      n++;
+    }
+    return n;
+  }
+
   /** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
   function pickParam(dim: SpecTemplate, o: SpecOption) {
     const cur = paramValues.value[dim.templateNo];
@@ -226,7 +250,7 @@ export function useGoodsParams(categoryNo: Ref<string>) {
 
 
   return {
-    propDims, paramValues, loadProps,
+    propDims, paramValues, loadProps, applyParamPicks,
     addingParam, newParam, addingValueFor, newParamValue,
     paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
     paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,

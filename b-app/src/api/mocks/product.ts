@@ -541,14 +541,26 @@ export const productMock: Pick<MerchantApi,
    * 所以那一档在服务端也是拒绝，不该只在真机上才发现。
    */
   async mDescribeGoods(req) {
-    if (!req.title?.trim()) return delay({ detail: "" }, 300);
+    if (!req.title?.trim()) return delay({ detail: "", params: [] }, 300);
     const lines = [
       `· ${req.subtitle?.trim() || req.title.trim()}，适合日常家庭采买。`,
       "· 规格与分量以商品页所列为准，下单后按规格备货。",
       "· 建议收到后尽快食用或使用，开封后请按包装说明保存。",
       "· 如遇缺货或规格调整，我们会在发货前与你确认。",
     ];
-    return delay({ detail: lines.join("\n") }, 900);
+    /*
+     * 参数也挑一份（§2.B）。**只给这一类目模板里真有的维度**：
+     * mock 这边照着 V349 给生鲜绑的那几个写死，是为了让「一键生成 → 参数被填上」
+     * 这条链路在 mock 下点得通。真实现由模型在平台候选里挑，后端返回前逐个核验。
+     *
+     * 故意只给两项而不是四项：全给的话，端上「只填空着的那几项」那条分支
+     * 在 mock 下永远走不到 —— 而那条分支保护的是商家已经选好的值。
+     */
+    const params = [
+      { dimNo: "SD_STORE_COND", name: "储存条件", code: "STGCHILL", label: "冷藏 0~5℃" },
+      { dimNo: "SD_TASTE", name: "口感风味", code: "TSTSWEET", label: "清甜" },
+    ];
+    return delay({ detail: lines.join("\n"), params }, 900);
   },
 
   // ---------------------------------------------------------------- 标准品库

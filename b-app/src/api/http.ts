@@ -24,6 +24,7 @@ import type {
   OrderListQuery,
   QuoteReq,
   DescribeGoodsReq,
+  DescribeGoodsRes,
   RecognizeGoodsReq,
   ReplyReviewReq,
   ReportShortageReq,
@@ -380,7 +381,7 @@ export const httpApi: MerchantApi = {
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
 
   mDescribeGoods: (req) =>
-    http.post<{ detail: string }>(E.mDescribeGoods.path, req satisfies DescribeGoodsReq),
+    http.post<DescribeGoodsRes>(E.mDescribeGoods.path, req satisfies DescribeGoodsReq),
 
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
   mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),

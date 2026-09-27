@@ -215,6 +215,108 @@ public class GoodsVisionGateway implements GoodsVisionPort {
     }
 
     /**
+     * 按候选值挑参数。与 {@link #describe} 共用同一个模型与同一条取舍：
+     * <b>结果是草稿，端上摆给商家点确认，不直接落库</b>。
+     *
+     * <p><b>返回前逐个核验</b>：只保留「维度名在 candidates 里」且「值也在那一维的候选里」
+     * 的条目。不核验的话，模型编出来的「储存条件：冷鲜」会带着一个不存在的 valueNo
+     * 走到建品页上 —— 而商家看到的是一个看起来很正常的选项。
+     * describePrompt 那段注释记着同一类教训：字面清单拦不住模型，只有事后核验拦得住。
+     */
+    @Override
+    public Map<String, String> suggestParams(String imageUrl, String title, String subtitle,
+                                             String category, Map<String, List<String>> candidates) {
+        if (!isEnabled() || title == null || title.isBlank() || candidates == null || candidates.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            var content = new java.util.ArrayList<Map<String, Object>>();
+            content.add(Map.of("type", "text", "text", paramsPrompt(title, subtitle, category, candidates)));
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                content.add(Map.of("type", "image_url", "image_url", Map.of("url", imageUrl)));
+            }
+            var body = Map.of(
+                    "model", model,
+                    "max_tokens", 400,
+                    // 挑选要的是可复现，不是文采 —— 与 recognize 同一档，比 describe 低
+                    "temperature", 0.1,
+                    "chat_template_kwargs", Map.of("enable_thinking", false),
+                    "messages", List.of(Map.of("role", "user", "content", content)));
+
+            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .header("Content-Type", "application/json");
+            if (!apiKey.isBlank()) {
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            var resp = http.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                log.warn("参数建议失败：HTTP {} {}", resp.statusCode(), abbreviate(resp.body()));
+                return Map.of();
+            }
+            String text = json.readTree(resp.body())
+                    .path("choices").path(0).path("message").path("content").asText("").trim();
+            if (text.startsWith("```")) {
+                int nl = text.indexOf('\n');
+                int close = text.lastIndexOf("```");
+                if (nl > 0 && close > nl) {
+                    text = text.substring(nl + 1, close).trim();
+                }
+            }
+            var picked = new java.util.LinkedHashMap<String, String>();
+            var node = json.readTree(text);
+            for (var e : candidates.entrySet()) {
+                String v = node.path(e.getKey()).asText("").trim();
+                // 空 = 模型没把握，这是允许的结果；不在候选里 = 它编的，丢掉
+                if (!v.isEmpty() && e.getValue().contains(v)) {
+                    picked.put(e.getKey(), v);
+                }
+            }
+            return picked;
+        } catch (Exception ex) {
+            log.warn("参数建议异常：{}", ex.toString());
+            return Map.of();
+        }
+    }
+
+    /**
+     * 参数提示词。要的是**挑**，所以把话说死：只许从给定清单里选、没把握就留空。
+     *
+     * <p>「没把握就留空」必须写进去并且给它一条出路（留空是合法答案），
+     * 否则模型会为了完成任务而硬选一个 —— 那正是 describePrompt 踩过的坑：
+     * 不给合法的「不知道」，它就编一个看起来合理的。
+     */
+    private String paramsPrompt(String title, String subtitle, String category,
+                                Map<String, List<String>> candidates) {
+        var sb = new StringBuilder("""
+                你是社区团购的商品资料助手。下面是一件商品，请为它挑选商品参数。
+
+                规则：
+                · 每一项**只能从给定的候选里选一个**，原样照抄那个词
+                · 拿不准就**留空字符串**，留空是完全可以接受的答案，不要硬选
+                · 只输出 JSON 对象，不要解释、不要代码块
+
+                """);
+        sb.append("商品名：").append(title).append('\n');
+        if (subtitle != null && !subtitle.isBlank()) {
+            sb.append("卖点：").append(subtitle).append('\n');
+        }
+        if (category != null && !category.isBlank()) {
+            sb.append("类目：").append(category).append('\n');
+        }
+        sb.append("\n候选：\n");
+        candidates.forEach((dim, values) ->
+                sb.append("· ").append(dim).append("：").append(String.join("、", values)).append('\n'));
+        sb.append("\n输出示例：{");
+        sb.append(candidates.keySet().stream().map(k -> "\"" + k + "\": \"\"")
+                .collect(java.util.stream.Collectors.joining(", ")));
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /**
      * 详情提示词。**改之前先照着真模型跑至少 5 个样本**，一个样本说明不了任何事。
      *
      * <p>这一版是第三版，前两版都是这么栽的：

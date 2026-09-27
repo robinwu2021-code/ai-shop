@@ -9196,3 +9196,52 @@ UPDATE mch_store_audit SET content = REPLACE(content, 'https://hxmall-merchant-1
 UPDATE sys_function_point
 SET name = '售后规则'
 WHERE point_code = 'OPS_AFTERSALE__TAB_FASTREFUND';
+INSERT INTO prd_spec_dim
+  (dim_no, code, name, value_type, unit, usage_type, universal, scope, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('SD_STORE_COND', 'STORE_COND', '储存条件', 'ENUM', NULL, 'PROP', 1, 'PLATFORM', 180, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SD_TASTE', 'TASTE', '口感风味', 'ENUM', NULL, 'PROP', 1, 'PLATFORM', 190, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT INTO prd_spec_value
+  (value_no, dim_no, code, label, numeric_value, numeric_unit, aliases, scope, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('SV_STORE_COND_STGROOM', 'SD_STORE_COND', 'STGROOM', '常温', NULL, NULL, NULL, 'PLATFORM', 10,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_STORE_COND_STGCOOL', 'SD_STORE_COND', 'STGCOOL', '阴凉干燥', NULL, NULL, NULL, 'PLATFORM', 20,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_STORE_COND_STGCHILL', 'SD_STORE_COND', 'STGCHILL', '冷藏 0~5℃', NULL, NULL, NULL, 'PLATFORM', 30,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_STORE_COND_STGFROZEN', 'SD_STORE_COND', 'STGFROZEN', '冷冻 -18℃', NULL, NULL, NULL, 'PLATFORM', 40,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTSWEET', 'SD_TASTE', 'TSTSWEET', '清甜', NULL, NULL, NULL, 'PLATFORM', 10,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTSOURSWT', 'SD_TASTE', 'TSTSOURSWT', '酸甜', NULL, NULL, NULL, 'PLATFORM', 20,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTCRISP', 'SD_TASTE', 'TSTCRISP', '脆爽', NULL, NULL, NULL, 'PLATFORM', 30,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTJUICY', 'SD_TASTE', 'TSTJUICY', '多汁', NULL, NULL, NULL, 'PLATFORM', 40,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTSOFT', 'SD_TASTE', 'TSTSOFT', '软糯', NULL, NULL, NULL, 'PLATFORM', 50,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SV_TASTE_TSTFRESH', 'SD_TASTE', 'TSTFRESH', '鲜嫩', NULL, NULL, NULL, 'PLATFORM', 60,
+   'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT INTO prd_category_spec
+  (category_no, dim_no, usage_type, is_primary, required, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('CAT110', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT110', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_ORIGIN', 'PROP', 0, 0, 200, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_ORIGIN', 'PROP', 0, 0, 200, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');

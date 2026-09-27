@@ -546,6 +546,10 @@ export default {
     genDetailNeed: "先填商品名称，再自动生成",
     genDetailFail: "生成失败，请稍后再试",
     genDetailDone: "已生成，可直接修改",
+    /** `{n}` 是填上的参数条数 */
+    genDetailDoneWithParams: "已生成，并填好 {n} 项参数",
+    genParamsOnly: "详情没生成出来，先填好了 {n} 项参数",
+    detailEmptyHint: "还没写图文详情 —— 买家在详情页看不到任何介绍",
     genDetailOverwrite: "已有内容，生成后会被替换。继续？",
     gateRow: "缺资质",
     gateBlocked: "缺「{s}」，上架会被拒",
