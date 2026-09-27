@@ -77,23 +77,93 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public List<ReviewVO> list(String goodsNo, String merchantNo) {
-        // 两个都不传就是全表扫描，没有任何使用场景 —— 与契约注释一致，直接拒绝
-        if (isBlank(goodsNo) && isBlank(merchantNo)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        // 评价对游客可见（看评价才有下单动机），所以要跳过数据域裁剪
-        List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
-                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
-                        .eq(RvwReview::getStatus, VISIBLE)
-                        .eq(!isBlank(goodsNo), RvwReview::getGoodsNo, goodsNo)
-                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
-                        .orderByDesc(RvwReview::getId)));
+    public List<ReviewVO> list(String goodsNo, String merchantNo, String filter, int page, int size) {
+        List<RvwReview> rows = visibleRows(goodsNo, merchantNo);
+        rows = rows.stream().filter(r -> matches(r, filter)).toList();
+
+        int p = Math.max(1, page);
+        int sz = Math.min(Math.max(1, size), ReviewService.MAX_PAGE_SIZE);
+        int from = Math.min((p - 1) * sz, rows.size());
+        int to = Math.min(from + sz, rows.size());
+        rows = rows.subList(from, to);
 
         Set<String> likedByMe = likedByCurrentUser(rows);
         Map<String, RvwAppeal> appeals = appealsOf(rows);
         return rows.stream().map(r -> toVO(r, likedByMe.contains(r.getReviewNo()),
                 appeals.get(r.getReviewNo()))).toList();
+    }
+
+    @Override
+    public ReviewService.ReviewSummaryVO summary(String goodsNo, String merchantNo) {
+        List<RvwReview> rows = visibleRows(goodsNo, merchantNo);
+        var dist = new java.util.ArrayList<>(java.util.Collections.nCopies(5, 0));
+        long sum = 0;
+        int withImages = 0;
+        long g = 0;
+        long f = 0;
+        long sv = 0;
+        int gN = 0;
+        int fN = 0;
+        int svN = 0;
+        for (RvwReview r : rows) {
+            int star = Math.min(5, Math.max(1, r.getRating() == null ? 5 : r.getRating()));
+            dist.set(star - 1, dist.get(star - 1) + 1);
+            sum += star;
+            if (!readJson(r.getImages()).isEmpty()) {
+                withImages++;
+            }
+            // 三个维度各自算各自的：没打过那一维的单不该把它的平均分拉低到 0
+            if (r.getScoreGoods() != null && r.getScoreGoods() > 0) {
+                g += r.getScoreGoods();
+                gN++;
+            }
+            if (r.getScoreFulfillment() != null && r.getScoreFulfillment() > 0) {
+                f += r.getScoreFulfillment();
+                fN++;
+            }
+            if (r.getScoreService() != null && r.getScoreService() > 0) {
+                sv += r.getScoreService();
+                svN++;
+            }
+        }
+        int n = rows.size();
+        return new ReviewService.ReviewSummaryVO(n, round1(sum, n), dist, withImages,
+                round1(g, gN), round1(f, fN), round1(sv, svN));
+    }
+
+    /** 保留一位小数。分母为 0 时给 0 —— 「还没有人评价」不是 0 分，端上按 total 判空 */
+    private static double round1(long sum, int n) {
+        return n <= 0 ? 0 : Math.round(sum * 10.0 / n) / 10.0;
+    }
+
+    /**
+     * 这一条落不落在所选的筛选里。
+     *
+     * <p>不认识的 filter 按全部处理：筛选是便利，不该因为端上传错一个词就把整页打空。
+     */
+    private boolean matches(RvwReview r, String filter) {
+        int star = r.getRating() == null ? 5 : r.getRating();
+        return switch (filter == null ? "" : filter) {
+            case ReviewService.FILTER_IMAGE -> !readJson(r.getImages()).isEmpty();
+            case ReviewService.FILTER_GOOD -> star >= 4;
+            case ReviewService.FILTER_BAD -> star <= 2;
+            default -> true;
+        };
+    }
+
+    /** 列表与概览共用的那一次查询：同一批行，两种用法 */
+    private List<RvwReview> visibleRows(String goodsNo, String merchantNo) {
+        // 两个都不传就是全表扫描，没有任何使用场景 —— 与契约注释一致，直接拒绝
+        if (isBlank(goodsNo) && isBlank(merchantNo)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 评价对游客可见（看评价才有下单动机），所以要跳过数据域裁剪
+        return DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getStatus, VISIBLE)
+                        .eq(!isBlank(goodsNo), RvwReview::getGoodsNo, goodsNo)
+                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                        .orderByDesc(RvwReview::getId)));
     }
 
     @Override
@@ -239,7 +309,7 @@ public class ReviewServiceImpl implements ReviewService {
         return new ReviewVO(r.getReviewNo(), r.getGoodsNo(), r.getEntityNo(),
                 r.getNickname(), r.getAvatar(), nz(r.getRating()), r.getContent(),
                 readJson(r.getImages()), r.getSpec(), createdAtMillis(r),
-                nz(r.getLikeCount()), liked, r.getReply(), scores, appealVO);
+                nz(r.getLikeCount()), liked, r.getReply(), r.getRepliedAt(), scores, appealVO);
     }
 
     private long createdAtMillis(RvwReview r) {

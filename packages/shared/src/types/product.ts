@@ -371,6 +371,11 @@ export interface Goods {
    * 端上拿常量比金额就是那份 ¥50 常量的翻版。
    */
   services?: string[];
+  /**
+   * 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。
+   * **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。
+   */
+  reviewSummary?: import("./review").ReviewSummary | null;
   /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
   groupBuy?: { minCount: number; price: number };
   /**

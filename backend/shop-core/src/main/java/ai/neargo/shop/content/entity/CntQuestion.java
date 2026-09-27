@@ -21,6 +21,11 @@ public class CntQuestion extends BaseEntity {
     public static final String HIDDEN = "HIDDEN";
 
     private String questionNo;
+    /**
+     * 所属商品（V350）。买家在商品页提问，按它查 —— 只按 skuNo 的话，
+     * 同一件商品的问答会按规格散开，详情页上只显示得出其中一份。
+     */
+    private String goodsNo;
     private String skuNo;
     /** 商品名快照：商品改名不该让历史问答对不上 */
     private String skuTitle;

@@ -169,6 +169,43 @@ public class ContentServiceImpl implements ContentService {
     }
 
     @Override
+    public List<QuestionVO> answeredOfGoods(String goodsNo, int limit) {
+        if (goodsNo == null || goodsNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        int n = Math.min(Math.max(1, limit), 50);
+        /*
+         * **不带数据域**：商品页对游客可见，与评价同一条理由 ——
+         * 带上的话游客查出来的是空集，而空集与「还没人问过」看起来一模一样。
+         */
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                questionMapper.selectList(Wrappers.<CntQuestion>lambdaQuery()
+                                .eq(CntQuestion::getGoodsNo, goodsNo)
+                                .eq(CntQuestion::getStatus, CntQuestion.ANSWERED)
+                                .orderByDesc(CntQuestion::getId)
+                                .last("limit " + n))
+                        .stream().map(this::toVO).toList());
+    }
+
+    @Override
+    @Transactional
+    public QuestionVO ask(String goodsNo, String skuNo, String skuTitle, String content, String userNo) {
+        if (goodsNo == null || goodsNo.isBlank() || content == null || content.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CntQuestion q = new CntQuestion();
+        q.setQuestionNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.QUESTION));
+        q.setGoodsNo(goodsNo);
+        q.setSkuNo(skuNo);
+        q.setSkuTitle(skuTitle);
+        q.setContent(content.trim());
+        q.setAskedBy(userNo);
+        q.setStatus(CntQuestion.PENDING);
+        questionMapper.insert(q);
+        return toVO(q);
+    }
+
+    @Override
     @Transactional
     public QuestionVO answerQuestion(String questionNo, String answer, String operatorNo) {
         if (answer == null || answer.isBlank()) {
@@ -421,7 +458,7 @@ public class ContentServiceImpl implements ContentService {
     private QuestionVO toVO(CntQuestion q) {
         return new QuestionVO(q.getQuestionNo(), q.getSkuNo(), q.getSkuTitle(), q.getContent(),
                 q.getAskedBy(), q.getAnswer(), q.getAnsweredBy(), q.getAnsweredAt(),
-                q.getStatus(), q.getHideReason(), iso(q.getCreatedAt()));
+                q.getStatus(), q.getHideReason(), iso(q.getCreatedAt()), q.getGoodsNo());
     }
 
     private RankingVO toVO(CntRanking r) {

@@ -2032,6 +2032,7 @@ CREATE TABLE IF NOT EXISTS cnt_question
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    goods_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_cnt_question_no UNIQUE (question_no)
 );

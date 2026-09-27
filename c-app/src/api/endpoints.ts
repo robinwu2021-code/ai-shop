@@ -306,6 +306,9 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // ---------------------------------------------------------------- 评价
   reviewList: { method: "GET", path: "/mp/review", auth: false, summary: "评价列表" },
   createReview: { method: "POST", path: "/mp/review", auth: true, summary: "发表评价" },
+  // 商品问答（§3.3）。列表按商品号走路径：它是这条集合的归属，不是筛选条件
+  questionList: { method: "GET", path: "/mp/goods/{goodsNo}/question", auth: false, summary: "商品问答" },
+  askQuestion: { method: "POST", path: "/mp/question", auth: true, summary: "提问" },
   toggleReviewLike: {
     method: "POST",
     path: "/mp/review/:reviewNo/like",

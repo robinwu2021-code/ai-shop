@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { thumb } from "@shared/utils/media-thumb";
 import { onLoad, onPageScroll, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
@@ -30,7 +31,7 @@ import {
 import { buyNGetM, giftQtyFor, promoLabelArgs } from "@shared/utils/promotion";
 import { scrollToTop, scrollToY } from "@ai-shop/ui/scroll";
 import { defaultFulfillment } from "@shared/utils/goods";
-import type { ActivityTag, Coupon, Goods, GoodsBatch, GoodsGroup, Review, Sku } from "@shared/types";
+import type { ActivityTag, Coupon, Goods, GoodsBatch, GoodsGroup, Review, Sku, Question, ReviewFilter } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -41,6 +42,17 @@ const nativeShare = canNativeShare();
 
 const goods = ref<Goods | null>(null);
 const reviews = ref<Review[]>([]);
+/**
+ * 评价筛选（§3.3）。后端按同一份取值域判，**不认识的词按全部处理** ——
+ * 筛选是便利，不该因为传错一个词把整页打空。
+ */
+const reviewFilter = ref<ReviewFilter>("ALL");
+/** 评分概览随详情一起下发 —— 首屏那一行不值得多打一次请求 */
+const summary = computed(() => goods.value?.reviewSummary ?? null);
+const REVIEW_FILTERS: ReviewFilter[] = ["ALL", "IMAGE", "GOOD", "BAD"];
+/** 「大家还问」：只有已回答的会下发 —— 一排没人答的问题比没有问答区更糟 */
+const questions = ref<Question[]>([]);
+const asking = ref(false);
 
 /**
  * 顶部轮播的图。**封面排第一** —— 它是买家在列表里点进来时看到的那张，
@@ -472,12 +484,50 @@ async function load(goodsNo: string) {
   slotDate.value = g.slots?.[0]?.date ?? "";
   uni.setNavigationBarTitle({ title: g.title });
   measureCartAnchor();
-    reviews.value = await api.reviewList({ goodsNo });
+    const [rs, qs] = await Promise.all([
+      api.reviewList({ goodsNo, filter: reviewFilter.value }),
+      // 问答取不到不该拖垮评价：它是附加信息，而评价是这一屏的主角
+      api.questionList(goodsNo).catch(() => []),
+    ]);
+    reviews.value = rs;
+    questions.value = qs;
     failed.value = false;
     // 评价到了，下面两段的位置变了 —— 锚点重新量
     measureAnchors();
   } catch {
     failed.value = true;
+  }
+}
+
+/**
+ * 切换评价筛选。**重取而不是端上过滤**：端上只有第一页，按它过滤会得出
+ * 「差评 0 条」这种结论，而那可能只是第一页里没有。
+ */
+async function pickReviewFilter(f: ReviewFilter) {
+  if (reviewFilter.value === f) return;
+  reviewFilter.value = f;
+  const goodsNo = currentNo.value;
+  try {
+    reviews.value = await api.reviewList({ goodsNo, filter: f });
+  } catch {
+    reviews.value = [];
+  }
+  measureAnchors();
+}
+
+/** 提问。没登录时走登录页 —— 运营回答时要能回到问的那个人 */
+async function askQuestion() {
+  if (asking.value) return;
+  const text = await prompt({ title: String(t("goods.askTitle")), placeholder: String(t("goods.askPh")) });
+  if (!text || !text.trim()) return;
+  asking.value = true;
+  try {
+    await api.askQuestion(currentNo.value, text.trim());
+    uni.showToast({ title: t("goods.askDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    asking.value = false;
   }
 }
 
@@ -1013,8 +1063,33 @@ onShareAppMessage(() =>
         <!-- 评价。排在参数与图文之前（原型 g02）：「别人买了觉得怎样」比长图先被看。id 给锚点用 -->
         <view id="sec-reviews" class="sh-card block">
           <view class="rvhead">
-            <text class="txt-title">{{ reviews.length ? $t("review.title", { n: reviews.length }) : $t("review.titleBare") }}</text>
+            <text class="txt-title">
+              {{ summary?.total ? $t("review.title", { n: summary.total }) : $t("review.titleBare") }}
+            </text>
+            <!--
+              评分与三维度分（§3.3）。**总数与平均分来自概览而不是当前这一页** ——
+              按页算平均分的话，翻页时那个「总分」会变，而它看起来完全正常。
+            -->
+            <text v-if="summary?.total" class="txt-sub sh-num rvhead__avg">
+              {{ summary.avg }} · {{ $t("review.dims", {
+                g: summary.avgGoods, f: summary.avgFulfillment, s: summary.avgService,
+              }) }}
+            </text>
           </view>
+          <!-- 筛选：切一次重取一次，不在端上过滤（端上只有第一页） -->
+          <scroll-view v-if="summary?.total" class="rvfilter" scroll-x>
+            <view class="sh-row rvfilter__row">
+              <text
+                v-for="f in REVIEW_FILTERS"
+                :key="f"
+                class="txt-caption sh-chip rvfilter__chip"
+                :class="reviewFilter === f ? 'sh-chip--primary' : ''"
+                @tap="pickReviewFilter(f)"
+              >
+                {{ $t(`review.filter${f}`) }}{{ f === "IMAGE" && summary.withImages ? ` ${summary.withImages}` : "" }}
+              </text>
+            </view>
+          </scroll-view>
           <biz-review
             v-for="r in reviews"
             :key="r.reviewNo"
@@ -1025,6 +1100,25 @@ onShareAppMessage(() =>
           <text v-if="!reviews.length" class="txt-sub sh-muted">
             {{ $t("review.empty") }} · {{ $t("review.emptyTip") }}
           </text>
+        </view>
+
+        <!--
+          大家还问（§3.3）。**只有已回答的会下发** —— 一排没人答的问题传达的是
+          「这家店不管事」，比没有问答区更糟；待回答的在运营端那一屏。
+
+          <p>一条问题占两行：问句 + 回答。没有问答时只留「我要问」那一行 ——
+          空着的问答区对买家没有意义，而那一个入口有。
+        -->
+        <view class="sh-card block qa">
+          <view class="sh-row sh-row--between">
+            <text class="txt-title">{{ $t("goods.qaTitle") }}</text>
+            <text class="txt-sub txt-primary sh-hit" @tap="askQuestion">{{ $t("goods.askAction") }}</text>
+          </view>
+          <view v-for="q in questions" :key="q.questionNo" class="qa__item">
+            <text class="txt-body qa__q">{{ q.content }}</text>
+            <text class="txt-sub sh-muted qa__a">{{ q.answer }}</text>
+          </view>
+          <text v-if="!questions.length" class="txt-sub sh-muted">{{ $t("goods.qaEmpty") }}</text>
         </view>
 
         <!--
@@ -1554,5 +1648,34 @@ onShareAppMessage(() =>
 
 .sheet__done {
   margin-top: 24rpx;
+}
+
+/* 评价头部：标题与评分同一行的两端 */
+.rvhead__avg {
+  color: var(--sh-sub);
+}
+
+/* 筛选条：横滑一行，不换行占两层 */
+.rvfilter {
+  margin-top: 12rpx;
+  white-space: nowrap;
+}
+.rvfilter__row {
+  gap: 12rpx;
+}
+.rvfilter__chip {
+  flex-shrink: 0;
+}
+
+/* 问答：一问一答两行，问句重、答句轻 */
+.qa__item {
+  margin-top: 16rpx;
+}
+.qa__q,
+.qa__a {
+  display: block;
+}
+.qa__a {
+  margin-top: 4rpx;
 }
 </style>

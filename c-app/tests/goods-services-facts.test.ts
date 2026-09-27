@@ -19,6 +19,8 @@ vi.mock("@/api", () => ({
     couponList: vi.fn(async () => []),
     goodsBatch: vi.fn(async () => null),
     reviewList: vi.fn(async () => []),
+    questionList: vi.fn(async () => []),
+    askQuestion: vi.fn(),
     favorited: vi.fn(async () => false),
     addCart: vi.fn(),
   },
@@ -119,5 +121,41 @@ describe("详情页 · 服务承诺与参数", () => {
     }));
     goodsDetail.mockResolvedValue(aGoods({ params } as Partial<Goods>));
     expect((await render()).html()).not.toContain("goods.paramsAll");
+  });
+});
+
+describe("详情页 · 评价与问答（§3.3）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    goodsDetail.mockReset();
+  });
+
+  it("★★★ 总数与平均分来自概览，不是当前这一页 —— 按页算的话翻页就会变", async () => {
+    goodsDetail.mockResolvedValue(aGoods({
+      reviewSummary: {
+        total: 37, avg: 4.6, dist: [1, 1, 2, 10, 23], withImages: 9,
+        avgGoods: 4.7, avgFulfillment: 4.5, avgService: 4.4,
+      },
+    } as Partial<Goods>));
+    const html = (await render()).html();
+    // 列表是空的（mock 的 reviewList 返回 []），而标题仍要说 37 条
+    expect(html).toContain("review.title");
+    expect(html).toContain("4.6");
+    expect(html).toContain("review.dims");
+  });
+
+  it("★★ 没有评价时不出筛选条 —— 一排筛不出任何东西的按钮", async () => {
+    goodsDetail.mockResolvedValue(aGoods());
+    const html = (await render()).html();
+    expect(html).not.toContain("review.filterIMAGE");
+    expect(html).toContain("review.empty");
+  });
+
+  it("★★★ 问答只显示已回答的那几条，并始终留着提问入口", async () => {
+    goodsDetail.mockResolvedValue(aGoods());
+    const html = (await render()).html();
+    // 没有问答时：空态 + 入口都在（入口是这一段存在的理由）
+    expect(html).toContain("goods.qaEmpty");
+    expect(html).toContain("goods.askAction");
   });
 });

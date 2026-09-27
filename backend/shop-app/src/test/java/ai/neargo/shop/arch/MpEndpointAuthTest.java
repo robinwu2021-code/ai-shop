@@ -124,6 +124,8 @@ class MpEndpointAuthTest {
             "POST /mp/push-token",
             "POST /mp/push-token/unregister",
             "POST /mp/review/{reviewNo}/like",
+            // 提问要记是谁问的（运营回答时要能回到人），所以必须登录
+            "POST /mp/question",
             "POST /mp/risk/appeal",
             "POST /mp/store/{merchantNo}/enter",
             // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）
@@ -146,6 +148,8 @@ class MpEndpointAuthTest {
             "GET /mp/goods/{goodsNo}",
             // 集单块（s26）：未登录的人也要看得到截单时间才会下单；不是集单商品时 data 为 null
             "GET /mp/goods/{goodsNo}/batch",
+            // 问答与评价同一条理由：看得到才有下单动机（§3.3）
+            "GET /mp/goods/{goodsNo}/question",
             "GET /mp/goods/{goodsNo}/group",
             "GET /mp/merchant/{merchantNo}",
             "GET /mp/merchant/{merchantNo}/score",
@@ -476,7 +480,9 @@ class MpEndpointAuthTest {
             "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
             "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",
             "POST /mp/after-sale/{afterSaleNo}/ship", "{\"expressNo\":\"PROBE1\"}",
-            "POST /mp/group-request", "{\"title\":\"探针\"}");
+            "POST /mp/group-request", "{\"title\":\"探针\"}",
+            // 两个字段都带 @NotBlank：不给的话被挡在鉴权之前，探到的是 200/10400 而不是 401
+            "POST /mp/question", "{\"goodsNo\":\"G0001\",\"content\":\"探针\"}");
 
     private String probeDetail(String endpoint) {
         String[] parts = endpoint.split(" ", 2);

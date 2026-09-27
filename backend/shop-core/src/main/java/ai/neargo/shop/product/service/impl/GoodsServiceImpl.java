@@ -204,6 +204,17 @@ public class GoodsServiceImpl implements GoodsService {
     }
 
     /**
+     * 评分概览（§3.3）。评价与商品同在 product 域，所以直接用 Service，不必走 port。
+     * setter 注入：切片测试里没有它时，详情的其余部分一字不差。
+     */
+    private ai.neargo.shop.product.review.ReviewService reviewService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setReviewService(ai.neargo.shop.product.review.ReviewService reviewService) {
+        this.reviewService = reviewService;
+    }
+
+    /**
      * 货架可见：<b>正常售卖</b>，或<b>仅活动且此刻有点名它的活动在跑</b>。
      *
      * <p>不是「仅活动永远不上货架」—— 集单没有 C 端列表页，仅活动的集单货若不上货架，
@@ -308,7 +319,9 @@ public class GoodsServiceImpl implements GoodsService {
                         .map(t -> new GoodsVO.ActivityTagVO(t.activityNo(), t.name(), t.amountMinor(),
                                 t.thresholdMinor(), t.thresholdQty(), t.newCustomerOnly()))
                         .toList());
-        return v.withServices(servicesOf(v));
+        v = v.withServices(servicesOf(v));
+        // 评分概览随详情一起下发（§3.3）：首屏那一行「4.6 分 · 12 条」不值得多打一次请求
+        return reviewService == null ? v : v.withReviewSummary(reviewService.summary(v.goodsNo(), null));
     }
 
     /**

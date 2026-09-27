@@ -132,6 +132,8 @@ public final class BizKey {
     public static final String RANKING = "RK";
     /** 运营素材 */
     public static final String MATERIAL = "MT";
+    /** 商品问答（买家在商品页提问，运营在后台回答） */
+    public static final String QUESTION = "QA";
     /** 员工与授权的操作日志（B-11.10.3） */
     public static final String STAFF_LOG = "SL";
     /** 商家自定义角色（V71）。预置角色的码是 OWNER/MANAGER… 这类词，不走这里 */

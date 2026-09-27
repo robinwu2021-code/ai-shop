@@ -24,6 +24,11 @@ public record ReviewVO(String reviewNo,
                        int likeCount,
                        boolean liked,
                        String reply,
+                       /**
+                        * 商家回复的时间。<b>库里一直有、从没发过</b> ——
+                        * 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。
+                        */
+                       Long repliedAt,
                        Scores scores,
                        Appeal appeal) {
 

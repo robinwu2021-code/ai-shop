@@ -25,11 +25,20 @@ public class MpReviewController {
         this.reviewService = reviewService;
     }
 
-    /** 评价列表。**游客可见** —— 看得到评价才有下单动机，与领券中心同一条理由。 */
+    /**
+     * 评价列表。**游客可见** —— 看得到评价才有下单动机，与领券中心同一条理由。
+     *
+     * <p><b>筛选与分页是后加的</b>（§3.3）：此前它返回全部 VISIBLE 行、没有上限。
+     * 概览（平均分、星级分布）不在这里 —— 它随商品详情一起下发（{@code Goods.reviewSummary}），
+     * 否则详情页要为了一行「4.6 分」多打一次请求。
+     */
     @GetMapping("/mp/review")
     public List<ReviewVO> list(@RequestParam(required = false) String goodsNo,
-                               @RequestParam(required = false) String merchantNo) {
-        return reviewService.list(goodsNo, merchantNo);
+                               @RequestParam(required = false) String merchantNo,
+                               @RequestParam(required = false) String filter,
+                               @RequestParam(defaultValue = "1") int page,
+                               @RequestParam(defaultValue = "20") int size) {
+        return reviewService.list(goodsNo, merchantNo, filter, page, size);
     }
 
     @PostMapping("/mp/review")

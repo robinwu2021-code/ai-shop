@@ -12,6 +12,20 @@ import {
 } from "./_shared";
 import type { ShopApi } from "../contract";
 
+/**
+ * mock 的问答库。**种一条已回答的**：端上那段「大家还问」在 mock 下要看得见，
+ * 否则改完版式只能靠读代码判断它有没有渲染。
+ */
+const mockQuestions: Array<{
+  questionNo: string; goodsNo: string; content: string; status: string;
+  answer?: string; createdAt?: string;
+}> = [
+  {
+    questionNo: "QA-SEED-1", goodsNo: "G1001", content: "这个甜吗？",
+    status: "ANSWERED", answer: "很甜，糖度 16 以上。", createdAt: "2026-09-01T00:00:00Z",
+  },
+];
+
 export const merchantMock: Pick<ShopApi,
   "merchantList"
   | "visitedMerchants"
@@ -26,6 +40,8 @@ export const merchantMock: Pick<ShopApi,
   | "favoriteStores"
   | "myStores"
   | "reviewList"
+  | "questionList"
+  | "askQuestion"
   | "toggleReviewLike"
 > = {
   // ---------------------------------------------------------------- 商家
@@ -227,6 +243,14 @@ export const merchantMock: Pick<ShopApi,
     let list = [...db.reviews];
     if (q.goodsNo) list = list.filter((r) => r.goodsNo === q.goodsNo);
     if (q.merchantNo) list = list.filter((r) => r.merchantNo === q.merchantNo);
+    /*
+     * 筛选与分页**也在 mock 里做一遍**（§3.3）：不做的话，端上「切到差评」
+     * 在 mock 下看起来什么都没变，而那正是要验的那一步。
+     * 不认识的筛选词按全部处理，与后端同一条取舍。
+     */
+    if (q.filter === "IMAGE") list = list.filter((r) => r.images.length > 0);
+    if (q.filter === "GOOD") list = list.filter((r) => r.rating >= 4);
+    if (q.filter === "BAD") list = list.filter((r) => r.rating <= 2);
     // 有图的、点赞多的排前面 —— 对后来的买家更有参考价值
     list.sort(
       (a, b) =>
@@ -234,7 +258,32 @@ export const merchantMock: Pick<ShopApi,
         b.likeCount - a.likeCount ||
         b.createdAt - a.createdAt,
     );
+    const size = Math.max(1, Math.min(q.size ?? 20, 50));
+    const from = Math.max(0, ((q.page ?? 1) - 1) * size);
+    return delay(list.slice(from, from + size));
+  },
+
+  /**
+   * 商品问答。mock 自己存一份 —— 「提问 → 待回答 → 答完才出现」这条链路
+   * 在 mock 下也要走得通，否则端上那段空态永远看不到。
+   */
+  async questionList(goodsNo, limit) {
+    const list = mockQuestions
+      .filter((x) => x.goodsNo === goodsNo && x.status === "ANSWERED")
+      .slice(0, limit ?? 3);
     return delay(list);
+  },
+
+  async askQuestion(goodsNo, content) {
+    const q = {
+      questionNo: `QA${Date.now()}`,
+      goodsNo,
+      content,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+    mockQuestions.unshift(q);
+    return delay(q);
   },
 
   async toggleReviewLike(reviewNo) {

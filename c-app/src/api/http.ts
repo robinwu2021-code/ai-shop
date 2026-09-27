@@ -7,6 +7,7 @@ import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PhoneCapable,
+  Question,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
@@ -263,6 +264,9 @@ export const httpApi: ShopApi = {
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
+  questionList: (goodsNo, limit) =>
+    call<Question[]>("questionList", { goodsNo }, limit == null ? undefined : { limit }),
+  askQuestion: (goodsNo, content) => call<Question>("askQuestion", undefined, { goodsNo, content }),
   createReview: (payload) => call<Review>("createReview", undefined, { ...payload } satisfies CreateReviewReq),
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 

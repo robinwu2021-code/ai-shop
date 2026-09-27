@@ -99,6 +99,12 @@ export default {
     svcPICKUP_FREEDesc: "到店自提不收运费；选择配送时按商家的运费规则计算。",
     /** `{n}` 是参数总条数 */
     paramsAll: "全部 {n} 项参数",
+    qaTitle: "大家还问",
+    qaEmpty: "还没有人问过 —— 有疑问可以直接问商家",
+    askAction: "我要问",
+    askTitle: "向商家提问",
+    askPh: "想了解什么",
+    askDone: "已提交，商家回答后会出现在这里",
     arrivalLabel: "到货",
     shop: "店铺",
     share: "分享",
@@ -378,6 +384,12 @@ export default {
   },
   review: {
     titleBare: "评价",
+    /** `{g}` 商品分 `{f}` 履约分 `{s}` 服务分 */
+    dims: "商品 {g} · 履约 {f} · 服务 {s}",
+    filterALL: "全部",
+    filterIMAGE: "有图",
+    filterGOOD: "好评",
+    filterBAD: "差评",
     dimGoods: "商品质量",
     dimFulfill: "履约速度",
     dimService: "服务态度",

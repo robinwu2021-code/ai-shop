@@ -32,6 +32,11 @@ export interface Review {
   /** 商家回复 */
   reply?: string;
   /**
+   * 商家回复的时间。**库里一直有、从没发过** ——
+   * 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。
+   */
+  repliedAt?: number | null;
+  /**
    * 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 ——
    * 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**：
    * 「货好但送得慢」这种问题，只看总分永远看不出来。
@@ -71,4 +76,49 @@ export interface ReviewAppeal {
   submittedAt: number;
   /** 裁决说明。**无论成立还是驳回都必须写** —— 商家会看到，「已读不处理」不是一种结果 */
   verdict?: string;
+}
+
+/**
+ * 评分概览（随商品详情下发，见 `Goods.reviewSummary`）。
+ *
+ * 与列表分开：列表是分页的，而概览说的是整体 —— 从当前这一页算平均分，
+ * 翻页时那个「总分」会变。
+ */
+export interface ReviewSummary {
+  /** 可见评价总数 */
+  total: number;
+  /** 平均分，一位小数 */
+  avg: number;
+  /** 1~5 星各自的条数，**下标 0 是 1 星** */
+  dist: number[];
+  /** 有图的条数 */
+  withImages: number;
+  /** 商品分；没人打过这一维时为 0 */
+  avgGoods: number;
+  /** 履约分 */
+  avgFulfillment: number;
+  /** 服务分 */
+  avgService: number;
+}
+
+/** 评价列表的筛选。空或不认识的值按全部处理 */
+export type ReviewFilter = "ALL" | "IMAGE" | "GOOD" | "BAD";
+
+/**
+ * 商品问答。买家在商品页问，运营在后台答。
+ *
+ * **只有已回答的会下发给买家** —— 一排没人答的问题传达的是「这家店不管事」，
+ * 比没有问答区更糟。
+ */
+export interface Question {
+  questionNo: string;
+  goodsNo?: string | null;
+  /** 提问时那件货的规格号与标题快照（运营端按规格看） */
+  skuNo?: string | null;
+  skuTitle?: string | null;
+  content: string;
+  answer?: string | null;
+  answeredAt?: number | null;
+  status: string;
+  createdAt?: string | null;
 }

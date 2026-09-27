@@ -52,6 +52,8 @@ import type {
   PhoneCapable,
   RegionNode,
   RegionOption,
+  ReviewFilter,
+  Question,
 } from "@shared/types";
 
 export interface PayMethodList {
@@ -499,7 +501,30 @@ export interface ShopApi {
   myStores(): Promise<Merchant[]>;
 
   // ---- 评价
-  reviewList(q: { goodsNo?: string; merchantNo?: string }): Promise<Review[]>;
+  /**
+   * 评价列表。
+   *
+   * **筛选与分页是后加的**（§3.3）：此前它返回全部可见行、没有上限。
+   * 概览（平均分、星级分布）不在这里 —— 它随商品详情下发（`Goods.reviewSummary`），
+   * 否则详情页要为了一行「4.6 分」多打一次请求。
+   */
+  reviewList(q: {
+    goodsNo?: string;
+    merchantNo?: string;
+    filter?: ReviewFilter;
+    page?: number;
+    size?: number;
+  }): Promise<Review[]>;
+
+  /**
+   * 某件商品下**已回答**的问答（「大家还问」）。游客可见。
+   *
+   * 没回答的不下发：一排没人答的问题传达的是「这家店不管事」，比没有问答区更糟。
+   */
+  questionList(goodsNo: string, limit?: number): Promise<Question[]>;
+
+  /** 提问。要登录 —— 运营回答时要能回到问的那个人。落库即待回答 */
+  askQuestion(goodsNo: string, content: string): Promise<Question>;
   /** 点赞/取消点赞，返回更新后的评价 */
   toggleReviewLike(reviewNo: string): Promise<Review>;
   /** 发表评价（订单完成后） */

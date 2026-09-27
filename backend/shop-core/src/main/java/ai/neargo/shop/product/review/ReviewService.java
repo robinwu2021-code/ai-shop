@@ -11,7 +11,51 @@ public interface ReviewService {
      * 评价列表。{@code goodsNo} 与 {@code merchantNo} **二选一**，都不传直接拒绝 ——
      * 无条件全表返回评价没有任何使用场景，只会变成一次慢查询。
      */
-    List<ReviewVO> list(String goodsNo, String merchantNo);
+    /**
+     * 评价列表。
+     *
+     * <p><b>加了筛选与分页</b>（§3.3）：此前它返回**全部** VISIBLE 行且没有上限 ——
+     * 现在线上评价为 0 所以看不出来，有单量之后这是一次整表下发。
+     *
+     * @param filter {@link #FILTER_ALL} / {@link #FILTER_IMAGE}（有图）/
+     *               {@link #FILTER_GOOD}（好评 4~5 星）/ {@link #FILTER_BAD}（差评 1~2 星）。
+     *               空或不认识的值按全部处理 —— 筛选是便利，不该因为传错一个词就报错
+     * @param page   从 1 开始
+     * @param size   每页条数，上限 {@link #MAX_PAGE_SIZE}
+     */
+    List<ReviewVO> list(String goodsNo, String merchantNo, String filter, int page, int size);
+
+    /** 旧签名：全部、第一页。留着是因为它在别处还有调用方 */
+    default List<ReviewVO> list(String goodsNo, String merchantNo) {
+        return list(goodsNo, merchantNo, FILTER_ALL, 1, MAX_PAGE_SIZE);
+    }
+
+    /**
+     * 评分概览：平均分、星级分布、有图条数、三个维度各自的平均分。
+     *
+     * <p><b>与列表分开</b>：列表是分页的，而概览说的是整体 —— 从当前这一页算平均分，
+     * 翻页时数字会变，那是一个看起来很正常、却每一页都不一样的「总分」。
+     */
+    ReviewSummaryVO summary(String goodsNo, String merchantNo);
+
+    String FILTER_ALL = "ALL";
+    String FILTER_IMAGE = "IMAGE";
+    String FILTER_GOOD = "GOOD";
+    String FILTER_BAD = "BAD";
+    int MAX_PAGE_SIZE = 50;
+
+    /**
+     * @param total        可见评价总数
+     * @param avg          平均分（保留一位小数，例如 4.6）
+     * @param dist         1~5 星各自的条数，**下标 0 是 1 星**
+     * @param withImages   有图的条数
+     * @param avgGoods     商品分；没人打过这一维时为 0
+     * @param avgFulfillment 履约分
+     * @param avgService   服务分
+     */
+    record ReviewSummaryVO(int total, double avg, List<Integer> dist, int withImages,
+                           double avgGoods, double avgFulfillment, double avgService) {
+    }
 
     /** 发表评价。要求订单已完成且未评价过 —— 两条都由库唯一键 + 服务端校验双重挡住。 */
     ReviewVO create(CreateCommand cmd);

@@ -49,6 +49,24 @@ public interface ContentService {
     /** 回答。<b>已回答的不能再答</b> —— 要改先隐藏，让改动本身留下痕迹。 */
     QuestionVO answerQuestion(String questionNo, String answer, String operatorNo);
 
+    /**
+     * 商品页的「大家还问」（§3.3）：**只给已回答的**。
+     *
+     * <p>没回答的不给买家看 —— 一排没人答的问题传达的是「这家店不管事」，
+     * 比没有问答区更糟；而运营端那一屏看的正是这些待回答的。
+     *
+     * @param limit 条数上限。详情页只摆 3 条，点开才看全部
+     */
+    List<QuestionVO> answeredOfGoods(String goodsNo, int limit);
+
+    /**
+     * 买家提问。落库即 {@code PENDING}，等运营在后台回答。
+     *
+     * <p>skuNo / skuTitle 是**快照**：运营端那一屏按规格看，而商品改名或换规格之后
+     * 那条问题说的仍是当时那件货。
+     */
+    QuestionVO ask(String goodsNo, String skuNo, String skuTitle, String content, String userNo);
+
     /** 隐藏（导流、辱骂等）。同样要写原因。 */
     QuestionVO hideQuestion(String questionNo, String reason, String operatorNo);
 
@@ -98,7 +116,17 @@ public interface ContentService {
 
     record QuestionVO(String questionNo, String skuNo, String skuTitle, String content,
                       String askedBy, String answer, String answeredBy, Long answeredAt,
-                      String status, String hideReason, String createdAt) {
+                      String status, String hideReason, String createdAt,
+                      /** 所属商品（V350）。买家页按它查 */
+                      String goodsNo) {
+
+        /** 旧签名：运营端那几处构造不必跟着改 */
+        public QuestionVO(String questionNo, String skuNo, String skuTitle, String content,
+                          String askedBy, String answer, String answeredBy, Long answeredAt,
+                          String status, String hideReason, String createdAt) {
+            this(questionNo, skuNo, skuTitle, content, askedBy, answer, answeredBy, answeredAt,
+                    status, hideReason, createdAt, null);
+        }
     }
 
     record RankingVO(String rankNo, String name, String kind, int size,
