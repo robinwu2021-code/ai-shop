@@ -31360,6 +31360,15 @@
         "zh": "归因来源。"
       },
       {
+        "name": "AutomationRealm",
+        "client": "b-app",
+        "values": [
+          "B",
+          "OPS"
+        ],
+        "zh": "密钥票据的端：B = 店主（btk_），OPS = 运营（otk_）。"
+      },
+      {
         "name": "BatchPeriodStatus",
         "client": "shared",
         "values": [
