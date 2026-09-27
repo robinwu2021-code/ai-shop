@@ -50,6 +50,9 @@ def request(method: str, path: str, token: str | None = None, body=None, timeout
     req.add_header("Content-Type", "application/json")
     if token:
         req.add_header("Authorization", "Bearer " + token)
+    # B 端接口按「当前门店」取数，与 App 一样用 X-Store-No 指定（不给 = 默认门店）
+    if os.environ.get("AUTOMATION_STORE_NO"):
+        req.add_header("X-Store-No", os.environ["AUTOMATION_STORE_NO"])
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, json.loads(r.read() or b"null")
@@ -70,3 +73,25 @@ def session(realm: str, sub: str) -> str:
         raise SystemExit(f"换会话被拒：HTTP {status} code={(resp or {}).get('code')} msg={(resp or {}).get('msg')}"
                          "（原因码在服务器日志 [automation-login] 那一行）")
     return token
+
+
+def upload(path: str, token: str, biz_type: str = "GOODS"):
+    """传一张图到 /biz/upload/image（multipart），返回 (status, 响应体)。biz_type：GOODS 公开 / QUAL 私有。"""
+    import mimetypes
+    boundary = "----automation" + secrets.token_hex(8)
+    name = os.path.basename(path)
+    ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    with open(path, "rb") as f:
+        data = f.read()
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\n"
+            f"Content-Type: {ctype}\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(f"{BASE_URL}/biz/upload/image?bizType={biz_type}", data=body, method="POST")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    req.add_header("Authorization", "Bearer " + token)
+    if os.environ.get("AUTOMATION_STORE_NO"):
+        req.add_header("X-Store-No", os.environ["AUTOMATION_STORE_NO"])
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, json.loads(r.read() or b"null")
+    except urllib.error.HTTPError as e:
+        return e.code, {"raw": e.read()[:300].decode("utf8", "replace")}
