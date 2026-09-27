@@ -1041,7 +1041,7 @@ onShareAppMessage(() =>
         <view class="sh-card block buycard">
           <view class="row sh-row" @tap="openSheet('pick')">
             <text class="txt-sub row__label">{{ $t("goods.rowChosen") }}</text>
-            <view class="sh-fill row__value">
+            <view class="sh-fill row__value txt-ink">
               <text class="txt-sub sh-num">{{ chosenText }}</text>
               <text v-if="specCount > 1" class="txt-caption sh-muted sh-num">{{ $t("goods.specCount", { n: specCount }) }}</text>
             </view>
@@ -1049,14 +1049,14 @@ onShareAppMessage(() =>
           </view>
           <view v-if="shipText" class="row sh-row">
             <text class="txt-sub row__label">{{ $t("goods.rowShip") }}</text>
-            <view class="sh-fill row__value">
+            <view class="sh-fill row__value txt-ink">
               <text class="txt-sub">{{ shipText }}</text>
               <text v-if="shipSub" class="txt-caption sh-muted">{{ shipSub }}</text>
             </view>
           </view>
           <view v-if="services.length" class="row sh-row" @tap="svcOpen = true">
             <text class="txt-sub row__label">{{ $t("goods.rowService") }}</text>
-            <text class="txt-sub sh-fill row__value">{{ services.map((c) => $t(`goods.svc${c}`)).join(" · ") }}</text>
+            <text class="txt-sub sh-fill row__value txt-ink">{{ services.map((c) => $t(`goods.svc${c}`)).join(" · ") }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
@@ -1240,7 +1240,7 @@ onShareAppMessage(() =>
           <view class="facts">
             <template v-for="(f, i) in factsHead" :key="i">
               <text class="txt-sub fact__label">{{ f.label }}</text>
-              <text class="txt-sub facts__value">{{ f.value }}</text>
+              <text class="txt-sub txt-ink">{{ f.value }}</text>
             </template>
           </view>
           <view
@@ -1833,7 +1833,6 @@ onShareAppMessage(() =>
   flex-direction: column;
   gap: 4rpx;
   min-width: 0;
-  color: var(--sh-ink);
 }
 /* 评价、问答都空时的那一行 */
 .rvqa-empty {
@@ -1872,9 +1871,6 @@ onShareAppMessage(() =>
   grid-template-columns: auto 1fr;
   gap: 12rpx 32rpx;
   margin-top: 16rpx;
-}
-.facts__value {
-  color: var(--sh-ink);
 }
 /* 看了又看：双列卡，卡片本身是块，没有外层白卡 */
 .lookmore__grid {
