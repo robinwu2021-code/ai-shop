@@ -97,14 +97,18 @@ getFastRefundRule
 | `enabled` | `boolean` | 是 | 总开关。关掉后所有小额售后都走人工 |
 | `maxAmount` | `number` | 是 | 金额上限（分），必须 > 0 |
 | `withinHours` | `number` | 是 | 下单后多少小时内可用，必须 ≥ 1（0 小时等于关掉，但看起来像开着） |
-| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类 |
+| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类。**目前只存不判**（后端注释里记着这条账） |
+| `replyHours` | `number` | 是 | 商家响应时限（小时）：超时系统替他同意并退款 |
+| `shipBackDays` | `number` | 是 | 买家寄回时限（天）：逾期未寄出则关闭本次申请 |
+| `confirmHours` | `number` | 是 | 商家确认收货时限（小时）：超时系统退款 |
+| `interveneWorkDays` | `number` | 是 | 平台介入承诺时限（工作日）：仅展示与超期提醒，不自动裁决 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
 #### POST `/ops/after-sales/fast-refund-rule`
 
-极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时
+售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1
 
 **入参**
 
@@ -119,7 +123,11 @@ _无字段_
 | `enabled` | `boolean` | 是 | 总开关。关掉后所有小额售后都走人工 |
 | `maxAmount` | `number` | 是 | 金额上限（分），必须 > 0 |
 | `withinHours` | `number` | 是 | 下单后多少小时内可用，必须 ≥ 1（0 小时等于关掉，但看起来像开着） |
-| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类 |
+| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类。**目前只存不判**（后端注释里记着这条账） |
+| `replyHours` | `number` | 是 | 商家响应时限（小时）：超时系统替他同意并退款 |
+| `shipBackDays` | `number` | 是 | 买家寄回时限（天）：逾期未寄出则关闭本次申请 |
+| `confirmHours` | `number` | 是 | 商家确认收货时限（小时）：超时系统退款 |
+| `interveneWorkDays` | `number` | 是 | 平台介入承诺时限（工作日）：仅展示与超期提醒，不自动裁决 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
@@ -10066,14 +10074,18 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### FastRefundRule
 
-极速退阈值（P-6.1.2）：满足条件的小额售后由系统自动通过，不占人工。
+售后规则（P-6.1.2）：极速退的门槛 + 各环节时限。 端点路径仍是 `/ops/after-sales/fast-refund-rule` —— 名字留着，内容长大了。 **这一屏此前是悬空的**：写进参数表之后没有任何业务代码读它，于是页面显示 「关闭 · ¥20 · 24 小时」，线上真正在跑的是「无条件 · ¥100 · 不限时」。现在它真的生效了。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `enabled` | `boolean` | 是 | 总开关。关掉后所有小额售后都走人工 |
 | `maxAmount` | `number` | 是 | 金额上限（分），必须 > 0 |
 | `withinHours` | `number` | 是 | 下单后多少小时内可用，必须 ≥ 1（0 小时等于关掉，但看起来像开着） |
-| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类 |
+| `categories` | `string`\[\] | 是 | 适用品类编码，空 = 全品类。**目前只存不判**（后端注释里记着这条账） |
+| `replyHours` | `number` | 是 | 商家响应时限（小时）：超时系统替他同意并退款 |
+| `shipBackDays` | `number` | 是 | 买家寄回时限（天）：逾期未寄出则关闭本次申请 |
+| `confirmHours` | `number` | 是 | 商家确认收货时限（小时）：超时系统退款 |
+| `interveneWorkDays` | `number` | 是 | 平台介入承诺时限（工作日）：仅展示与超期提醒，不自动裁决 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
