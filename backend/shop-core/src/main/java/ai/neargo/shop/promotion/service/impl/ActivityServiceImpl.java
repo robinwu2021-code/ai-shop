@@ -116,7 +116,7 @@ public class ActivityServiceImpl implements ActivityService {
         if (create) {
             activityMapper.insert(a);
         } else {
-            activityMapper.updateById(a);
+            updateOrFail(a);
         }
         saveAudiences(entityNo, a.getActivityNo(), d.audiences(), started);
         saveGoods(entityNo, a.getActivityNo(), d.goodsNos());
@@ -600,8 +600,25 @@ public class ActivityServiceImpl implements ActivityService {
         if (PmtActivity.ENDED.equals(status)) {
             a.setEndedReason(PmtActivity.ENDED_MANUAL);
         }
-        activityMapper.updateById(a);
+        updateOrFail(a);
         return vo(a);
+    }
+
+    /**
+     * 写活动行：<b>绕过数据域，并且写不进去就报错</b>。
+     *
+     * <p>{@code pmt_activity} 登记了数据域，店主会话带着 SELF 域；{@link #require} 读的时候绕过了，
+     * 写的时候没绕 —— UPDATE 被域条件过滤成 0 行，接口却把内存里的对象当结果返回。
+     * 2026-09-27 生产上「结束活动」返回 ENDED、回读还是 RUNNING，编辑活动同样不落库。
+     * 绕过是安全的：能走到这里的行已经过 {@link #require} 按 entityNo 验过归属。
+     *
+     * <p>0 行就抛：静默成功比报错更糟 —— 商家以为停了的活动还在给顾客减钱。
+     */
+    private void updateOrFail(PmtActivity a) {
+        int rows = DataScopeContext.executeWithoutScope(() -> activityMapper.updateById(a));
+        if (rows != 1) {
+            throw new IllegalStateException("活动 " + a.getActivityNo() + " 没写进库（影响 " + rows + " 行）");
+        }
     }
 
     @Override
