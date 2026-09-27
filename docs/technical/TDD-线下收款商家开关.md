@@ -71,9 +71,29 @@ List<String> MerchantGoodsService#setPayModes(String merchantNo, String goodsNo,
 
 | AC | 测试方法 | 结果 |
 |---|---|---|
-| AC-1 商品开线下 → 判定出 OFFLINE | `OfflinePaySwitchFlowTest#storeAndGoodsSwitchesOpenOfflinePay` | 见下 |
-| 门店默认关、商品开了也不给 | 同上前半段 | |
-| 资质不足开门店开关被拒 80012 | `#enablingWithoutLicenseIsRejected` | |
-| 关线下连带关货到付款 | `#turningOfflineOffAlsoTurnsCodOff` | |
-| 非法取值 400、恒含 ONLINE | `#payModesAreValidatedAndAlwaysKeepOnline` | |
-| 别家的店 / 商品 404 | `#otherEntitysStoreIsNotFound` | |
+| AC-1 商品开线下 → 判定出 OFFLINE | `OfflinePaySwitchFlowTest#storeAndGoodsSwitchesOpenOfflinePay` | ✅ |
+| 门店默认关、商品开了也不给 | 同上前半段 | ✅ |
+| 资质不足开门店开关被拒 80012 | `#enablingWithoutLicenseIsRejected` | ✅ |
+| 关线下连带关货到付款 | `#turningOfflineOffAlsoTurnsCodOff` | ✅ |
+| 非法取值 400、恒含 ONLINE | `#payModesAreValidatedAndAlwaysKeepOnline` | ✅ |
+| 别家的店 / 商品 404 | `#otherEntitysStoreIsNotFound` | ✅ |
+
+```
+Tests run: 5, Failures: 0, Errors: 0 -- OfflinePaySwitchFlowTest
+Tests run: 4, Failures: 0, Errors: 0 -- BizEndpointPermTest
+Tests run: 16, Failures: 0, Errors: 0 -- ArchitectureTest
+全量 2549 跑（17 个模块）/ 0 红（基线 0 条）   ← check-head-compiles.sh @ db3f18c5
+```
+
+**消融**（改回去必须变红）：
+- 去掉开关时的资质校验 → `enablingWithoutLicenseIsRejected` 红
+- 商品写入不绕数据域 → 两条红，报「影响 0 行」—— 证明用例真的在店主域下跑，
+  也证明 `rows != 1` 那道自检是必要的（不然接口返回成功、库里没变）
+
+**线上**：2026-09-27 db3f18c5 上线；虹选粮油（ST202609271616020003110）经新端点打开门店开关、
+4 件商品加 OFFLINE，回读库四层（门店 1 / 商品含 OFFLINE / 执照有效 / 类目无禁止行）齐备。
+
+## 偏差说明
+
+- 设计初稿想把门店开关挂在 `/biz/store` 门店资料上（少一组端点登记）。改为独立端点：
+  门店资料的保存会顺带跑公告机审与覆盖范围校验，开一个收款开关不该触发这些副作用。
