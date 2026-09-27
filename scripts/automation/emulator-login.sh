@@ -21,9 +21,17 @@ DEST="/sdcard/Android/data/$PKG/apps/$APPID/doc/automation-ticket.txt"
 
 TMP="$(mktemp)"; chmod 600 "$TMP"; trap 'rm -f "$TMP"' EXIT
 python3 -c "import sys; sys.path.insert(0, '$HERE'); from _ticket import sign_ticket; sys.stdout.write(sign_ticket('B', '$SUB'))" > "$TMP"
+launch() { "$ADB" -s "$SERIAL" shell am start -n "$PKG/io.dcloud.PandoraEntry" >/dev/null; }
+DIR="$(dirname "$DEST")"
+# 新装的 App 还没跑过时，它的私有目录不存在；新版 Android 上 adb 建不了别的 App 私有区里的目录
+# （secure_mkdirs: Operation not permitted）。先让 App 自己跑一次把目录建出来。
+if ! "$ADB" -s "$SERIAL" shell ls "$DIR" >/dev/null 2>&1; then
+  launch
+  for _ in $(seq 1 20); do "$ADB" -s "$SERIAL" shell ls "$DIR" >/dev/null 2>&1 && break; sleep 1; done
+fi
 "$ADB" -s "$SERIAL" shell am force-stop "$PKG"
 "$ADB" -s "$SERIAL" push "$TMP" "$DEST" >/dev/null
 rm -f "$TMP"
-"$ADB" -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 \
-  || "$ADB" -s "$SERIAL" shell am start -n "$PKG/io.dcloud.PandoraEntry" >/dev/null
+# 用 am start 不用 monkey：monkey 在这台模拟器上时灵时不灵（点了图标式的启动常常没把 App 拉到前台）
+launch
 echo "已写入票据并冷启动 $PKG（$SERIAL），几秒后应进入工作台"

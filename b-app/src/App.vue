@@ -42,12 +42,35 @@ onLaunch(() => {
    * 自动化测试：私有目录里有 adb 写入的密钥票据就换会话（ADR-027）。只在 App 运行时有这条路径；
    * 没有私钥签不出有效票据，线上默认关（换会话的接口 404）。换失败就留在原来的状态，不打断启动。
    */
-  void readAutomationTicket().then((ticket) => {
-    if (!ticket) return;
-    return merchant.loginWithTicket(ticket)
-      .then(() => uni.reLaunch({ url: "/pages/home/index" }))
-      .catch((e: unknown) => console.warn("[automation] 票据登录失败", e));
-  });
+  /*
+   * 票据还没读完、会话还没换回来时，首屏那几个请求是**不带令牌**发出去的，必然 401 ——
+   * 若照常「登出 + 回登录页」，那一跳正好落在票据登录成功之后，把人拽回登录页
+   * （2026-09-27 模拟器上实测：服务器已签发会话、本地也存上了，界面却停在登录页）。
+   * 所以这段时间里的 401 先记下不处理：换成功就作废；没有票据或换失败，再照常处理。
+   */
+  let ticketPending = true;
+  let deferred401 = false;
+  const on401 = () => {
+    merchant.logout();
+    uni.showToast({ title: String(t("common.sessionExpired")), icon: "none" });
+    setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
+  };
+  void readAutomationTicket()
+    .then(async (ticket) => {
+      if (!ticket) return false;
+      try {
+        await merchant.loginWithTicket(ticket);
+        return true;
+      } catch (e: unknown) {
+        console.warn("[automation] 票据登录失败", e);
+        return false;
+      }
+    })
+    .then((ok) => {
+      ticketPending = false;
+      if (ok) uni.reLaunch({ url: "/pages/home/index" });
+      else if (deferred401) on401();
+    });
 
   /*
    * 登录失效时去登录页。**注册在壳上，因为 401 可能从任何一个请求回来** ——
@@ -61,9 +84,11 @@ onLaunch(() => {
    * 此时发起的跳转会被直接丢掉 —— 实测两次，navigateTo 无效，reLaunch 也无效。
    */
   setUnauthorizedHandler(() => {
-    merchant.logout();
-    uni.showToast({ title: String(t("common.sessionExpired")), icon: "none" });
-    setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
+    if (ticketPending) {
+      deferred401 = true;
+      return;
+    }
+    on401();
   });
   /*
    * 被拒了：**多半是老板刚收回了他的权限，而这一页的入口还是旧的**。
