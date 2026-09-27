@@ -6,7 +6,7 @@
 --
 -- 存量为 0（线上 cnt_question 一行都没有），所以不需要回填。
 ALTER TABLE cnt_question
-    ADD COLUMN IF NOT EXISTS goods_no VARCHAR(64) DEFAULT NULL
+    ADD COLUMN goods_no VARCHAR(64) DEFAULT NULL
         COMMENT '所属商品。买家在商品页提问，按它查；sku_no 仍留着，运营端按规格看';
 
 CREATE INDEX idx_cnt_question_goods ON cnt_question (goods_no, status);
