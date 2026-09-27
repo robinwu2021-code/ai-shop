@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 477,
-        "c-app": 66
+        "c-app": 68
       }
     },
     {
@@ -4917,18 +4917,10 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 233,
-      "localSelectors": 77,
-      "localCssLines": 316,
-      "rolled": [
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 235,
+      "localSelectors": 75,
+      "localCssLines": 310,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5637,16 +5629,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "quietover",
-      "label": "次要色自写",
-      "lib": ".txt-quiet（整段次要用 .sh-muted）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-      "pages": [
-        "c-app/goods"
       ]
     }
   ],
