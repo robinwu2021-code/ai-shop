@@ -1913,6 +1913,7 @@
 | `outOfRange` | `string`\[\] \| `null` | 否 | 自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。 |
 | `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个； 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） |
+| `instantRefundEligible` | `boolean,null` | 否 | 预览恒为空 —— 只有订单详情给（见 `Order.instantRefundEligible`） |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
 
@@ -3591,6 +3592,7 @@
 | `outOfRange` | `string`\[\] \| `null` | 否 | 自送超出配送范围的商家名（待办设计 P6）。送得到时为空。 预览不拦、建单才拦：确认页当场给「换地址 / 换配送方式」，不等他点了付款才说送不到。 |
 | `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 下单页的优惠选项与**最省组合**（优惠券全链路梳理 批 2）：每家店命中哪些活动、这次用上的是哪个； 系统把「活动 × 券」一起枚举后建议的组合。顾客没动过就照建议来，动过就不再替他改。 |
 | `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） |
+| `instantRefundEligible` | `boolean,null` | 否 | 预览恒为空 —— 只有订单详情给（见 `Order.instantRefundEligible`） |
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期）， 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。 |
 | `cancellableUntil` | `number,null` | 否 | 同上：预览时恒为空。见 `Order.cancellableUntil` |
 
