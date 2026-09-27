@@ -11,7 +11,7 @@ const zh = {
   liabPlatformHint: "规则或系统问题：超时未配送、价格展示错误",
 
   toastDecided: "已裁决，退款待资金域执行",
-  toastRuleSaved: "极速退规则已保存",
+  toastRuleSaved: "售后规则已保存",
 
   colAsNo: "售后单号",
   colOrderNo: "订单号",
@@ -46,10 +46,10 @@ const zh = {
   emptyIntervene: "没有需要平台介入的争议。这是好事 —— 说明商家自己把问题解决了。",
   emptyTickets: "没有符合条件的售后单。清空筛选，或换个状态看看。",
 
-  ruleTitle: "极速退阈值",
-  ruleReadOnlyWhat: "极速退阈值配置",
-  ruleReadOnlyNote: "不能修改金额上限与时限",
-  ruleNotice: "满足阈值的小额售后由系统自动通过，不占人工。阈值给大了是白送钱，给小了客服会被小额工单淹没。",
+  ruleTitle: "售后规则",
+  ruleReadOnlyWhat: "售后规则配置",
+  ruleReadOnlyNote: "不能修改金额上限与各环节时限",
+  ruleNotice: "满足阈值的小额售后由系统自动通过，不占人工。阈值给大了是白送钱，给小了客服会被小额工单淹没。下面的时限决定沉默的一方多久之后由系统替他做决定 —— 买家在商品页看到的「极速退款」就是靠它兑现的。",
   ariaEnableFastRefund: "启用极速退",
   enabled: "已启用",
   disabled: "已停用",
@@ -57,6 +57,16 @@ const zh = {
   fieldWithinHours: "下单后可用时限（小时）",
   /** `{n}` 是最小小时数 */
   hoursHint: "至少 {n} 小时：填 0 等于关掉极速退，但开关还显示「已启用」，比停用更难排查。",
+
+  slaTitle: "各环节时限",
+  fieldReplyHours: "商家响应时限（小时）",
+  replyHint: "超过这个时长商家还没处理，系统替他同意并退款。填得过短等于替商家认赔，过长则买家一直在等。",
+  fieldShipBackDays: "买家寄回时限（天）",
+  shipBackHint: "商家同意退货后，买家逾期未寄出就关闭本次申请 —— 他可以重新申请。",
+  fieldConfirmHours: "商家确认收货时限（小时）",
+  confirmHint: "买家已寄回而商家迟迟不确认，超时由系统退款。",
+  fieldInterveneWorkDays: "平台介入承诺时限（工作日）",
+  interveneHint: "只用于展示与超期提醒，不会自动裁决 —— 钱的判定要有人看过材料。",
 
   /** `{no}` 是订单号 */
   drawerOrder: "订单 {no}",
@@ -93,7 +103,7 @@ const en: typeof zh = {
   liabPlatformHint: "A rule or system problem: missed delivery window, wrong price shown",
 
   toastDecided: "Decided — the refund now awaits execution in Settlement",
-  toastRuleSaved: "Instant-refund rules saved",
+  toastRuleSaved: "After-sales rules saved",
 
   colAsNo: "After-sales no.",
   colOrderNo: "Order no.",
@@ -128,11 +138,11 @@ const en: typeof zh = {
   emptyIntervene: "No disputes need platform review. That is good news — the merchants sorted it out themselves.",
   emptyTickets: "No after-sales tickets match these filters. Clear them, or try another status.",
 
-  ruleTitle: "Instant-refund thresholds",
-  ruleReadOnlyWhat: "instant-refund threshold settings",
-  ruleReadOnlyNote: "cannot change the amount cap or the time limit",
+  ruleTitle: "After-sales rules",
+  ruleReadOnlyWhat: "after-sales rule settings",
+  ruleReadOnlyNote: "cannot change the amount cap or any time limit",
   ruleNotice:
-    "Small claims under the threshold are approved automatically and never reach a human. Set it too high and you give money away; set it too low and support drowns in tiny tickets.",
+    "Small claims under the threshold are approved automatically and never reach a human. Set it too high and you give money away; set it too low and support drowns in tiny tickets. The time limits below decide how long a silent party has before the system decides for them — they are what makes the “instant refund” promise on the product page real.",
   ariaEnableFastRefund: "Enable instant refunds",
   enabled: "Enabled",
   disabled: "Disabled",
@@ -140,6 +150,20 @@ const en: typeof zh = {
   fieldWithinHours: "Available within (hours of ordering)",
   hoursHint:
     "At least {n} hours. Setting 0 switches instant refunds off while the toggle still reads “Enabled” — harder to diagnose than simply disabling it.",
+
+  slaTitle: "Time limits",
+  fieldReplyHours: "Merchant response (hours)",
+  replyHint:
+    "If the merchant has not acted within this window, the system approves and refunds on their behalf. Too short and you decide against the merchant for them; too long and the customer keeps waiting.",
+  fieldShipBackDays: "Customer ships back within (days)",
+  shipBackHint:
+    "After the merchant agrees to a return, the claim is closed if nothing is shipped in time — the customer can file again.",
+  fieldConfirmHours: "Merchant confirms receipt (hours)",
+  confirmHint:
+    "The customer has shipped the goods back and the merchant is not confirming; the system refunds once this expires.",
+  fieldInterveneWorkDays: "Platform review pledge (working days)",
+  interveneHint:
+    "Display and overdue alerts only — never an automatic decision. Money questions need a human who has read the evidence.",
 
   drawerOrder: "Order {no}",
   btnConfirmDecide: "Confirm decision",

@@ -49,19 +49,33 @@ describe("平台介入队列与极速退阈值", () => {
 
   it("金额上限必须大于 0", async () => {
     await expect(
-      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 0, withinHours: 24, categories: [] }),
+      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 0, withinHours: 24, categories: [], replyHours: 48, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5 }),
     ).rejects.toThrow(/大于 0/);
   });
 
   it("时限不能为 0（等于关掉极速退，但开关还显示已启用）", async () => {
     await expect(
-      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 2000, withinHours: 0, categories: [] }),
+      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 2000, withinHours: 0, categories: [], replyHours: 48, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5 }),
     ).rejects.toThrow(/时限/);
   });
 
   it("合法配置落库", async () => {
-    await afterSaleMock.saveFastRefundRule({ enabled: false, maxAmount: 5_000, withinHours: 48, categories: ["FRESH"] });
+    await afterSaleMock.saveFastRefundRule({
+      enabled: false, maxAmount: 5_000, withinHours: 48, categories: ["FRESH"],
+      replyHours: 24, shipBackDays: 10, confirmHours: 72, interveneWorkDays: 3,
+    });
     const r = await afterSaleMock.getFastRefundRule();
     expect(r).toMatchObject({ enabled: false, maxAmount: 5_000, withinHours: 48 });
+    // 时限也要真的落下去 —— 它们决定沉默多久之后由系统替人做决定
+    expect(r).toMatchObject({ replyHours: 24, shipBackDays: 10, confirmHours: 72, interveneWorkDays: 3 });
+  });
+
+  it("时限为 0 被拒 —— replyHours=0 等于每笔申请下一分钟就自动同意", async () => {
+    await expect(
+      afterSaleMock.saveFastRefundRule({
+        enabled: true, maxAmount: 2_000, withinHours: 24, categories: [],
+        replyHours: 0, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5,
+      }),
+    ).rejects.toThrow(/replyHours/);
   });
 });

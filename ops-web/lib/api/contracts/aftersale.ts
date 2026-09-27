@@ -18,6 +18,11 @@ export interface AfterSaleApi {
   }): Promise<AfterSale>;
 
   getFastRefundRule(): Promise<FastRefundRule>;
-  /** 极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时。 */
-  saveFastRefundRule(v: Pick<FastRefundRule, "enabled" | "maxAmount" | "withinHours" | "categories">): Promise<FastRefundRule>;
+  /**
+   * 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1。
+   *
+   * 后端按**缺字段保持原值**处理，所以少发几项不会把它们清成 0 ——
+   * 这一屏整份发，将来拆成两屏也不必互相带着对方的值。
+   */
+  saveFastRefundRule(v: Omit<FastRefundRule, "updatedAt" | "updatedBy">): Promise<FastRefundRule>;
 }

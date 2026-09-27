@@ -313,7 +313,7 @@ export const NAV: NavSection[] = [
       // 责任判定（6.1.4）并入裁决抽屉：判了责任才谈得上赔付归属，拆成两页会出现
       // 「裁决完了忘了判责」的空档。
       { href: "/after-sales?tab=intervene", label: "平台介入裁决", perm: "aftersale:ticket:handle", group: "处置", matrix: "P-6.1", ready: true },
-      { href: "/after-sales?tab=fastrefund", label: "极速退阈值配置", perm: "aftersale:refund:approve", group: "规则", matrix: "P-6.1", ready: true },
+      { href: "/after-sales?tab=fastrefund", label: "售后规则", perm: "aftersale:refund:approve", group: "规则", matrix: "P-6.1", ready: true },
       // 跨 section 深链：E4 的执行面在资金域（P-12 已交付），售后这边只负责打标记。
       // 保留入口是因为客服/财务是从售后单找过去的，不该让他们自己去猜在哪个菜单里。
       { href: "/finance?tab=refund-back", label: "退款回退分账", perm: "finance:settle:execute", group: "规则", matrix: "P-6.1", ready: true },

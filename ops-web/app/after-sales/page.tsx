@@ -102,6 +102,10 @@ function AfterSalesInner() {
     enabled: d.enabled,
     maxAmount: String(d.maxAmount / 100),
     withinHours: String(d.withinHours),
+    replyHours: String(d.replyHours),
+    shipBackDays: String(d.shipBackDays),
+    confirmHours: String(d.confirmHours),
+    interveneWorkDays: String(d.interveneWorkDays),
   }));
   const saveRule = useMutation({
     mutationFn: () =>
@@ -110,6 +114,10 @@ function AfterSalesInner() {
         maxAmount: Math.round(Number(editing!.maxAmount) * 100),
         withinHours: Number(editing!.withinHours),
         categories: rule.data?.categories ?? [],
+        replyHours: Number(editing!.replyHours),
+        shipBackDays: Number(editing!.shipBackDays),
+        confirmHours: Number(editing!.confirmHours),
+        interveneWorkDays: Number(editing!.interveneWorkDays),
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["fast-refund"] }); resetRule(); notify.success(c.toastRuleSaved); },
   });
@@ -234,6 +242,34 @@ function AfterSalesInner() {
                   <p className="txt-caption text-muted-foreground">
                     {fill(c.hoursHint, { n: MIN_FAST_REFUND_HOURS })}
                   </p>
+                </div>
+
+                {/* 时限：与极速退同一份配置，但它们管的是「沉默多久之后由系统替他决定」 */}
+                <h3 className="txt-body font-medium pt-2">{c.slaTitle}</h3>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-reply" required>{c.fieldReplyHours}</Label>
+                  <Input id="fr-reply" className="w-full" disabled={!canApprove} value={editing.replyHours}
+                    onChange={(e) => setField("replyHours", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.replyHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-shipback" required>{c.fieldShipBackDays}</Label>
+                  <Input id="fr-shipback" className="w-full" disabled={!canApprove} value={editing.shipBackDays}
+                    onChange={(e) => setField("shipBackDays", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.shipBackHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-confirm" required>{c.fieldConfirmHours}</Label>
+                  <Input id="fr-confirm" className="w-full" disabled={!canApprove} value={editing.confirmHours}
+                    onChange={(e) => setField("confirmHours", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.confirmHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-intervene" required>{c.fieldInterveneWorkDays}</Label>
+                  <Input id="fr-intervene" className="w-full" disabled={!canApprove}
+                    value={editing.interveneWorkDays}
+                    onChange={(e) => setField("interveneWorkDays", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.interveneHint}</p>
                 </div>
             </>
           )}

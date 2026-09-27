@@ -42,6 +42,14 @@ export const afterSaleMock: AfterSaleApi = {
     if (v.maxAmount <= 0) fail("极速退金额上限必须大于 0", "The instant-refund cap must be greater than 0");
     // 0 小时等于关掉极速退，但开关还显示"已启用" —— 看起来在跑，实际一单都不会自动过
     if (v.withinHours < MIN_FAST_REFUND_HOURS) fail(`时限至少 ${MIN_FAST_REFUND_HOURS} 小时`, `The window must be at least ${MIN_FAST_REFUND_HOURS} hours`);
+    /*
+     * 时限同样不许为 0，而这一条比上面那句更要紧：`replyHours=0` 意味着
+     * **每一笔售后申请下一分钟就被系统自动同意**（后端 AfterSaleRuleServiceImpl 同一处校验）。
+     */
+    for (const [k, n] of [["replyHours", v.replyHours], ["shipBackDays", v.shipBackDays],
+      ["confirmHours", v.confirmHours], ["interveneWorkDays", v.interveneWorkDays]] as const) {
+      if (!(n >= 1)) fail(`${k} 至少为 1`, `${k} must be at least 1`);
+    }
     Object.assign(db.fastRefundRule, v, { updatedAt: "2026-08-06T00:00:00Z", updatedBy: "admin" });
     return wait(db.fastRefundRule, 400);
   },

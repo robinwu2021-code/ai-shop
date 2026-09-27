@@ -42,6 +42,11 @@ export const fastRefundRule: FastRefundRule = {
   maxAmount: 2_000,
   withinHours: 72,
   categories: [],
+  // 时限的默认值与后端 AfterSaleRuleService 的常量同一套（48h / 7 天 / 48h / 5 工作日）
+  replyHours: 48,
+  shipBackDays: 7,
+  confirmHours: 48,
+  interveneWorkDays: 5,
   updatedAt: "2026-07-20T02:00:00Z",
   updatedBy: "admin",
 };

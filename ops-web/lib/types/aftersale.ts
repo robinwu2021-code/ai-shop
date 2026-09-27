@@ -90,7 +90,13 @@ export interface AfterSale {
   createdAt: string;
 }
 
-/** 极速退阈值（P-6.1.2）：满足条件的小额售后由系统自动通过，不占人工。 */
+/**
+ * 售后规则（P-6.1.2）：极速退的门槛 + 各环节时限。
+ *
+ * 端点路径仍是 `/ops/after-sales/fast-refund-rule` —— 名字留着，内容长大了。
+ * **这一屏此前是悬空的**：写进参数表之后没有任何业务代码读它，于是页面显示
+ * 「关闭 · ¥20 · 24 小时」，线上真正在跑的是「无条件 · ¥100 · 不限时」。现在它真的生效了。
+ */
 export interface FastRefundRule {
   /** 总开关。关掉后所有小额售后都走人工 */
   enabled: boolean;
@@ -98,8 +104,16 @@ export interface FastRefundRule {
   maxAmount: number;
   /** 下单后多少小时内可用，必须 ≥ 1（0 小时等于关掉，但看起来像开着） */
   withinHours: number;
-  /** 适用品类编码，空 = 全品类 */
+  /** 适用品类编码，空 = 全品类。**目前只存不判**（后端注释里记着这条账） */
   categories: string[];
+  /** 商家响应时限（小时）：超时系统替他同意并退款 */
+  replyHours: number;
+  /** 买家寄回时限（天）：逾期未寄出则关闭本次申请 */
+  shipBackDays: number;
+  /** 商家确认收货时限（小时）：超时系统退款 */
+  confirmHours: number;
+  /** 平台介入承诺时限（工作日）：仅展示与超期提醒，不自动裁决 */
+  interveneWorkDays: number;
   /** 最后修改时间 */
   updatedAt: string;
   /** 最后修改人（STAFF 账号） */
