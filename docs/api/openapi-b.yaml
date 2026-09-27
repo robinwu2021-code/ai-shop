@@ -8300,6 +8300,11 @@ components:
             - "$ref": "#/components/schemas/OrderReturned"
             - type: "null"
           description: "预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`）"
+        instantRefundEligible: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "预览恒为空 —— 只有订单详情给（见 `Order.instantRefundEligible`）"
         arriveDate: 
           type: 
             - "string"
