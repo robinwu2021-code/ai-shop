@@ -98,7 +98,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   售后治理: { en: "After-sales" },
   售后工单池: { en: "After-sales tickets" },
   平台介入裁决: { en: "Platform adjudication" },
-  极速退阈值配置: { en: "Instant-refund rules" },
+  售后规则: { en: "After-sales rules" },
   退款回退分账: { en: "Refund split reversal" },
 
   会员与人档: { en: "Members & persons" },

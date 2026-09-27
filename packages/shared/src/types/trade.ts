@@ -169,6 +169,8 @@ export interface OrderPreview {
   offers?: CheckoutOffers | null;
   /** 预览恒为空 —— 只有订单详情在已取消 / 已退款时给（见 `Order.returned`） */
   returned?: OrderReturned | null;
+  /** 预览恒为空 —— 只有订单详情给（见 `Order.instantRefundEligible`） */
+  instantRefundEligible?: boolean | null;
   /**
    * 社区集单的提货日。**预览时恒为空** —— 期是下单那一刻才落定的（截单前后下单会进不同的期），
    * 预览只算钱，不预占期。与 `Order.arriveDate` 同一个后端字段。
