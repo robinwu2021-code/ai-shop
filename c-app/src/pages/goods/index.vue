@@ -1697,14 +1697,14 @@ onShareAppMessage(() =>
   color: var(--sh-sub);
 }
 .svc__dot {
-  margin-inline-end: 6rpx;
+  margin-inline-end: 8rpx;
   /* 主色是**背景色**，当文字色用对比度不够（design-tokens 守卫拦的就是这个）；
      文字要走 primary-text */
   color: var(--sh-primary-text);
 }
 .svc__desc {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 /* 「全部参数」入口：与参数行同一行高，靠 txt-primary 与上面几行区分 */

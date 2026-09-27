@@ -111,14 +111,22 @@ export type ReviewFilter = "ALL" | "IMAGE" | "GOOD" | "BAD";
  * 比没有问答区更糟。
  */
 export interface Question {
+  /** 问题单号 */
   questionNo: string;
+  /** 所属商品。买家在商品页问，按它查 —— 只按规格存的话，同一件货的问答会按规格散开 */
   goodsNo?: string | null;
-  /** 提问时那件货的规格号与标题快照（运营端按规格看） */
+  /** 提问时那件货的规格号快照（运营端按规格看） */
   skuNo?: string | null;
+  /** 提问时那件货的标题快照。商品改名之后，这条问题说的仍是当时那件货 */
   skuTitle?: string | null;
+  /** 问题正文 */
   content: string;
+  /** 商家/运营的回答。没答的不会下发给买家，所以这里有值 */
   answer?: string | null;
+  /** 回答时间（毫秒） */
   answeredAt?: number | null;
+  /** PENDING 待回答 / ANSWERED 已回答 / HIDDEN 已隐藏。**买家只看得到 ANSWERED** */
   status: string;
+  /** 提问时间（ISO 串，后端按运营端口径下发） */
   createdAt?: string | null;
 }
