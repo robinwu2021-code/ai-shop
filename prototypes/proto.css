@@ -369,3 +369,19 @@ a{color:inherit}
 .foot .ic.cart b{position:absolute;top:-2px;right:0;min-width:13px;height:13px;border-radius:99px;background:var(--sh-danger);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center}
 .gd-g3 div em{font-style:normal;font-size:10px}
 .frow .v.l{text-align:left;flex:1}
+
+/* ── 支付方式选择（2026-09-28，c-pay-method）：一张列表装下通道与当面付 ── */
+.pm{background:var(--sh-card);border-radius:13px;padding:2px 12px;display:flex;flex-direction:column}
+.pm .gh{font-size:10px;color:var(--sh-sub);padding:8px 0 2px}
+.pm .it{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--sh-line)}
+.pm .gh+.it{border-top:0}
+.pm .it .ico{width:22px;height:22px;border-radius:6px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.pm .it .ico.wx{background:#07C160}.pm .it .ico.ali{background:#1677FF}.pm .it .ico.up{background:#D7000F}
+.pm .it .ico.ap{background:#14161A}.pm .it .ico.cash{background:var(--sh-faint);color:var(--sh-ink)}
+.pm .it .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pm .it .nm small{font-size:9.5px;color:var(--sh-sub)}
+.pm .it .rd{width:15px;height:15px;border-radius:99px;box-shadow:inset 0 0 0 1.5px var(--sh-line);flex:0 0 auto}
+.pm .it .rd.on{box-shadow:inset 0 0 0 4.5px var(--sh-primary)}
+.pm .it.off{opacity:.45}
+.pm .it .tag{font-size:9px;padding:0 6px;border-radius:99px;background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.pm .it .ico.wx,.pm .it .ico.ali,.pm .it .ico.up,.pm .it .ico.ap{letter-spacing:0}

@@ -1686,6 +1686,54 @@
     }
    ],
    "artifact": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz"
+  },
+  {
+   "slug": "c-pay-method",
+   "file": "c-pay-method.html",
+   "title": "C 端支付方式：通道与当面付款同一张列表",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-28",
+   "artifact": "https://claude.ai/artifact/2BPrUDYJ9hJV39B7uzSasD",
+   "summary": "结算页一行「支付方式」+ 选择面板：在线通道一组、当面付款一组（按履约叫到店付款 / 送货时付款）；底栏按钮随选择变字；App 默认上次使用、本机不可用置灰；只有一种时不出箭头；收银台只做继续支付、只列在线通道。七屏，附规则表，不需改后端。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "p01",
+     "title": "结算页 · 默认微信",
+     "client": "c-app",
+     "route": "pages/order-confirm/index"
+    },
+    {
+     "id": "p02",
+     "title": "选择面板 · 小程序"
+    },
+    {
+     "id": "p03",
+     "title": "选了到店付款"
+    },
+    {
+     "id": "p04",
+     "title": "选择面板 · App"
+    },
+    {
+     "id": "p05",
+     "title": "结算页 · App"
+    },
+    {
+     "id": "p06",
+     "title": "只有一种可选"
+    },
+    {
+     "id": "p07",
+     "title": "收银台 · 继续支付",
+     "client": "c-app",
+     "route": "pages/pay/index"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

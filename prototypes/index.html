@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">23 份有效稿子，其中页面稿 13 份、共 172 屏；3 份作废。
+  <p class="sub">24 份有效稿子，其中页面稿 14 份、共 179 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -147,6 +147,16 @@
   <p class="pcard__sum">下单页一页到底、底栏直接拉起支付（不做确认订单页）：数量可调、优惠面板含平台活动名与不可用原因、优惠逐条；订单详情补状态与动作；支付中断落收银台。11 屏。</p>
   <div class="screens"><a class="scr" href="c-checkout-order.html#k01" title="k01 确认订单（现状）">k01</a><a class="scr" href="c-checkout-order.html#k02" title="k02 确认订单（新版）">k02</a><a class="scr" href="c-checkout-order.html#k03" title="k03 选择优惠券">k03</a><a class="scr" href="c-checkout-order.html#k04" title="k04 改数量与失效商品">k04</a><a class="scr" href="c-checkout-order.html#k05" title="k05 券与积分都用不上">k05</a><a class="scr" href="c-checkout-order.html#k06" title="k06 订单详情（现状）">k06</a><a class="scr" href="c-checkout-order.html#k07" title="k07 订单详情（新版）">k07</a><a class="scr" href="c-checkout-order.html#k08" title="k08 待付款">k08</a><a class="scr" href="c-checkout-order.html#k09" title="k09 订单列表">k09</a><a class="scr" href="c-checkout-order.html#k10" title="k10 已取消">k10</a><a class="scr" href="c-checkout-order.html#k11" title="k11 支付中断">k11</a></div>
   <div class="pcard__links"><a href="c-checkout-order.html">本地稿</a> <a href="https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz">claude.ai</a> <a href="../docs/technical/TDD-C端优惠依据.md">TDD-C端优惠依据</a> <a href="../docs/technical/design/C端下单流程-方案.md">C端下单流程-方案</a></div>
+  
+</article><article class="pcard" id="c-pay-method">
+  <div class="pcard__hd">
+    <b>C 端支付方式：通道与当面付款同一张列表</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 2026-09-28 · 7 屏</div>
+  <p class="pcard__sum">结算页一行「支付方式」+ 选择面板：在线通道一组、当面付款一组（按履约叫到店付款 / 送货时付款）；底栏按钮随选择变字；App 默认上次使用、本机不可用置灰；只有一种时不出箭头；收银台只做继续支付、只列在线通道。七屏，附规则表，不需改后端。</p>
+  <div class="screens"><a class="scr" href="c-pay-method.html#p01" title="p01 结算页 · 默认微信">p01</a><a class="scr" href="c-pay-method.html#p02" title="p02 选择面板 · 小程序">p02</a><a class="scr" href="c-pay-method.html#p03" title="p03 选了到店付款">p03</a><a class="scr" href="c-pay-method.html#p04" title="p04 选择面板 · App">p04</a><a class="scr" href="c-pay-method.html#p05" title="p05 结算页 · App">p05</a><a class="scr" href="c-pay-method.html#p06" title="p06 只有一种可选">p06</a><a class="scr" href="c-pay-method.html#p07" title="p07 收银台 · 继续支付">p07</a></div>
+  <div class="pcard__links"><a href="c-pay-method.html">本地稿</a> <a href="https://claude.ai/artifact/2BPrUDYJ9hJV39B7uzSasD">claude.ai</a></div>
   
 </article>
   </div>
