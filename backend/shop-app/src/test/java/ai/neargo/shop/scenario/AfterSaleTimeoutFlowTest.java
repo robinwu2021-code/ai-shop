@@ -46,6 +46,7 @@ class AfterSaleTimeoutFlowTest {
 
     private static final long HOUR = 3_600_000L;
     private static final String MERCHANT = "M0001";
+    private static final String SKU = "SK0003";
     /** 与 M5AfterSaleFlowTest 同一个桩密钥 */
     private static final String STUB_SECRET = "stub-secret";
 
@@ -88,6 +89,26 @@ class AfterSaleTimeoutFlowTest {
                 AfterSaleRuleService.DEFAULT_REPLY_HOURS, AfterSaleRuleService.DEFAULT_SHIP_BACK_DAYS,
                 AfterSaleRuleService.DEFAULT_CONFIRM_HOURS,
                 AfterSaleRuleService.DEFAULT_INTERVENE_WORK_DAYS, null, null), "TEST");
+    }
+
+    /**
+     * 本类下单吃掉的是**共享种子的库存**（SK0003），而「仅退款」不回补库存
+     * （只有退货退款会）。不还原的话，单独跑这一类是绿的，全量跑到后面几个类时
+     * 下单开始报 20001 —— 而那个报错与它们自己毫无关系，指不到真因。
+     */
+    private Integer stockBefore;
+
+    @BeforeEach
+    void rememberStock() {
+        stockBefore = jdbc.queryForObject(
+                "SELECT stock FROM prd_sku WHERE sku_no = ?", Integer.class, SKU);
+    }
+
+    @AfterEach
+    void restoreStock() {
+        if (stockBefore != null) {
+            jdbc.update("UPDATE prd_sku SET stock = ? WHERE sku_no = ?", stockBefore, SKU);
+        }
     }
 
     @AfterEach

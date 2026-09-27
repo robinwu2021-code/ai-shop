@@ -71,7 +71,9 @@ class TableHasProducerTest {
         NO_PRODUCER.put("stl_settle_invoice",
                 "同上 —— 商家申请结算发票的入口未做，运营侧的开票/驳回先落地");
         // 未核实：这条闸门立起来时就在库里，归属由各域自己填
-        for (String t : List.of("cmt_community_apply", "cnt_post", "cnt_question", "inv_uom",
+        // cnt_question 从这张表里去掉了：买家提问那条入口做出来了（MpQuestionController，
+        // TDD-C 端商品详情页·内容丰富度 §3.3），它现在有生产者
+        for (String t : List.of("cmt_community_apply", "cnt_post", "inv_uom",
                 "mch_channel_area", "mch_channel_pickup", "notify_scene_channel",
                 "notify_template", "prd_merchant_spec", "prd_merchant_spec_value",
                 "prd_store_goods", "prd_store_price")) {
