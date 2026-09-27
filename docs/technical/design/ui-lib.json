@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 477,
-        "c-app": 63
+        "c-app": 66
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 355,
-        "c-app": 69
+        "c-app": 71
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 334,
-        "c-app": 250
+        "b-app": 335,
+        "c-app": 253
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 45,
-        "c-app": 35
+        "c-app": 37
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 77
+        "c-app": 75
       }
     },
     {
@@ -536,7 +536,7 @@
       },
       "usage": {
         "b-app": 116,
-        "c-app": 27
+        "c-app": 29
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 213,
-        "c-app": 76
+        "c-app": 79
       }
     },
     {
@@ -636,7 +636,7 @@
       },
       "usage": {
         "b-app": 156,
-        "c-app": 27
+        "c-app": 29
       }
     },
     {
@@ -660,7 +660,7 @@
       },
       "usage": {
         "b-app": 58,
-        "c-app": 10
+        "c-app": 12
       }
     },
     {
@@ -682,7 +682,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 34
+        "c-app": 33
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 181,
-        "c-app": 68
+        "c-app": 70
       }
     },
     {
@@ -1118,7 +1118,7 @@
       },
       "usage": {
         "b-app": 132,
-        "c-app": 65
+        "c-app": 63
       }
     },
     {
@@ -1212,7 +1212,7 @@
       },
       "usage": {
         "b-app": 57,
-        "c-app": 30
+        "c-app": 28
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 139,
-        "c-app": 76
+        "c-app": 77
       }
     },
     {
@@ -1396,7 +1396,7 @@
       },
       "usage": {
         "b-app": 19,
-        "c-app": 15
+        "c-app": 16
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 508,
-        "c-app": 178
+        "c-app": 179
       }
     },
     {
@@ -1468,7 +1468,7 @@
       },
       "usage": {
         "b-app": 292,
-        "c-app": 90
+        "c-app": 88
       }
     },
     {
@@ -1500,7 +1500,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 31
+        "c-app": 27
       }
     },
     {
@@ -2297,7 +2297,7 @@
       ],
       "usage": {
         "b-app": 117,
-        "c-app": 22,
+        "c-app": 24,
         "lib": 13
       },
       "note": "单色图标",
@@ -2645,7 +2645,7 @@
       ],
       "usage": {
         "b-app": 22,
-        "c-app": 6,
+        "c-app": 8,
         "lib": 1
       },
       "note": "底部弹层",
@@ -3654,9 +3654,9 @@
         "sh-sheet",
         "sh-uploader"
       ],
-      "libClassHits": 330,
-      "localSelectors": 71,
-      "localCssLines": 308,
+      "libClassHits": 331,
+      "localSelectors": 72,
+      "localCssLines": 312,
       "rolled": []
     },
     {
@@ -4917,10 +4917,18 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 222,
-      "localSelectors": 59,
-      "localCssLines": 250,
-      "rolled": []
+      "libClassHits": 233,
+      "localSelectors": 77,
+      "localCssLines": 316,
+      "rolled": [
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5629,6 +5637,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "quietover",
+      "label": "次要色自写",
+      "lib": ".txt-quiet（整段次要用 .sh-muted）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
+      "pages": [
+        "c-app/goods"
       ]
     }
   ],

@@ -5933,6 +5933,16 @@ components:
           items: 
             "$ref": "#/components/schemas/ActivityTag"
           description: "这家店此刻满足条件就自动减的活动（批 3）。**只在商品详情下发**。 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 三种语言都要用，不让后端拼中文。"
+        services: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。\n\n下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。\n\n由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。"
+        reviewSummary: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ReviewSummary"
+            - type: "null"
+          description: "评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。\n**只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。"
         groupBuy: 
           type: "object"
           properties: 
@@ -6009,6 +6019,42 @@ components:
         - "limitPerUser"
         - "onSale"
       additionalProperties: false
+    ReviewSummary: 
+      type: "object"
+      properties: 
+        total: 
+          type: "number"
+          description: "可见评价总数"
+        avg: 
+          type: "number"
+          description: "平均分，一位小数"
+        dist: 
+          type: "array"
+          items: 
+            type: "number"
+          description: "1~5 星各自的条数，**下标 0 是 1 星**"
+        withImages: 
+          type: "number"
+          description: "有图的条数"
+        avgGoods: 
+          type: "number"
+          description: "商品分；没人打过这一维时为 0"
+        avgFulfillment: 
+          type: "number"
+          description: "履约分"
+        avgService: 
+          type: "number"
+          description: "服务分"
+      required: 
+        - "total"
+        - "avg"
+        - "dist"
+        - "withImages"
+        - "avgGoods"
+        - "avgFulfillment"
+        - "avgService"
+      additionalProperties: false
+      description: "评分概览（随商品详情下发，见 `Goods.reviewSummary`）。\n\n与列表分开：列表是分页的，而概览说的是整体 —— 从当前这一页算平均分， 翻页时那个「总分」会变。"
     GoodsStatus: 
       type: "string"
       enum: 
@@ -6909,6 +6955,11 @@ components:
         reply: 
           type: "string"
           description: "商家回复"
+        repliedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "商家回复的时间。**库里一直有、从没发过** —— 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。"
         scores: 
           "$ref": "#/components/schemas/ReviewScores"
           description: "三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 —— 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**： 「货好但送得慢」这种问题，只看总分永远看不出来。"
@@ -6984,6 +7035,54 @@ components:
         - "PENDING"
         - "UPHELD"
         - "REJECTED"
+    ReviewFilter: 
+      type: "string"
+      enum: 
+        - "ALL"
+        - "IMAGE"
+        - "GOOD"
+        - "BAD"
+      description: "评价列表的筛选。空或不认识的值按全部处理"
+    Question: 
+      type: "object"
+      properties: 
+        questionNo: 
+          type: "string"
+        goodsNo: 
+          type: 
+            - "string"
+            - "null"
+        skuNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "提问时那件货的规格号与标题快照（运营端按规格看）"
+        skuTitle: 
+          type: 
+            - "string"
+            - "null"
+        content: 
+          type: "string"
+        answer: 
+          type: 
+            - "string"
+            - "null"
+        answeredAt: 
+          type: 
+            - "number"
+            - "null"
+        status: 
+          type: "string"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "questionNo"
+        - "content"
+        - "status"
+      additionalProperties: false
+      description: "商品问答。买家在商品页问，运营在后台答。\n\n**只有已回答的会下发给买家** —— 一排没人答的问题传达的是「这家店不管事」， 比没有问答区更糟。"
     StoreFulfillmentChannel: 
       type: "object"
       properties: 
@@ -9628,6 +9727,37 @@ components:
       required: 
         - "tempPath"
       additionalProperties: false
+    DescribeGoodsRes: 
+      type: "object"
+      properties: 
+        detail: 
+          type: "string"
+          description: "空串 = 没生成出来。不是错误，提示一句即可"
+        params: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              dimNo: 
+                type: "string"
+              name: 
+                type: "string"
+              code: 
+                type: "string"
+              label: 
+                type: "string"
+            required: 
+              - "dimNo"
+              - "name"
+              - "code"
+              - "label"
+            additionalProperties: false
+          description: "按**这一类目的参数模板**挑的值，可能为空数组。\n\n<p>是挑不是写：候选由平台的类目模板给定，模型只能在里面选，后端返回前还会逐个核验。 <b>同样是草稿</b> —— 端上摆成待确认，商家点了才落到表单里。"
+      required: 
+        - "detail"
+        - "params"
+      additionalProperties: false
+      description: "「自动生成」一次往返的结果：详情正文 + 替商家挑好的商品参数。\n\n<p>两件事同一个端点，因为商家点的是同一个按钮；新开一条 /biz 端点要在七处登记， 为一个附带结果不值当。"
     DescribeGoodsReq: 
       type: "object"
       properties: 
@@ -9646,7 +9776,6 @@ components:
       required: 
         - "title"
       additionalProperties: false
-      description: "自动生成图文详情。**主图可选** —— 没图时模型只按文字写， 写出来更泛，但总比让商家对着空白框强。"
     RecognizeGoodsReq: 
       type: "object"
       properties: 
