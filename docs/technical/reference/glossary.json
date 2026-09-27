@@ -1930,6 +1930,12 @@
           "ar": "اشترِ الآن"
         },
         {
+          "key": "goods.cart",
+          "zh-CN": "购物车",
+          "en": "Cart",
+          "ar": "السلة"
+        },
+        {
           "key": "goods.changeAddress",
           "zh-CN": "换地址",
           "en": "Change address",
@@ -1946,6 +1952,12 @@
           "zh-CN": "已选",
           "en": "Selected",
           "ar": "المحدد"
+        },
+        {
+          "key": "goods.chosenQty",
+          "zh-CN": "{n} 件",
+          "en": "Qty {n}",
+          "ar": "الكمية {n}"
         },
         {
           "key": "goods.chosenValue",
@@ -2020,6 +2032,12 @@
           "ar": "مدة الخدمة {n} دقيقة"
         },
         {
+          "key": "goods.enterShop",
+          "zh-CN": "进店逛逛 ›",
+          "en": "Visit store ›",
+          "ar": "زيارة المتجر ›"
+        },
+        {
           "key": "goods.favDone",
           "zh-CN": "已收藏，可在「我的 → 收藏」查看",
           "en": "Saved — find it in Me → Saved",
@@ -2048,6 +2066,12 @@
           "zh-CN": "配送方式",
           "en": "Delivery",
           "ar": "طريقة الاستلام"
+        },
+        {
+          "key": "goods.goodRate",
+          "zh-CN": "好评率 {n}%",
+          "en": "{n}% positive",
+          "ar": "{n}% تقييمات إيجابية"
         },
         {
           "key": "goods.groupMerchant",
@@ -2090,6 +2114,12 @@
           "zh-CN": "限购",
           "en": "Purchase limit",
           "ar": "حد الشراء"
+        },
+        {
+          "key": "goods.lookMore",
+          "zh-CN": "看了又看",
+          "en": "You may also like",
+          "ar": "قد يعجبك أيضًا"
         },
         {
           "key": "goods.lowStock",
@@ -2152,10 +2182,28 @@
           "ar": "الكمية"
         },
         {
-          "key": "goods.recommendTitle",
-          "zh-CN": "本店还卖",
-          "en": "More from this shop",
-          "ar": "المزيد من هذا المتجر"
+          "key": "goods.rowChosen",
+          "zh-CN": "已选",
+          "en": "Selected",
+          "ar": "المحدد"
+        },
+        {
+          "key": "goods.rowService",
+          "zh-CN": "保障",
+          "en": "Service",
+          "ar": "الضمان"
+        },
+        {
+          "key": "goods.rowShip",
+          "zh-CN": "配送",
+          "en": "Delivery",
+          "ar": "التوصيل"
+        },
+        {
+          "key": "goods.rvqaEmpty",
+          "zh-CN": "暂无评价与提问",
+          "en": "No reviews or questions yet",
+          "ar": "لا توجد تقييمات أو أسئلة بعد"
         },
         {
           "key": "goods.saveAmount",
@@ -2194,6 +2242,12 @@
           "ar": "المتجر"
         },
         {
+          "key": "goods.shopHot",
+          "zh-CN": "本店热卖",
+          "en": "Popular in this store",
+          "ar": "الأكثر مبيعًا في المتجر"
+        },
+        {
           "key": "goods.slotLeft",
           "zh-CN": "余 {n}",
           "en": "{n} left",
@@ -2204,6 +2258,12 @@
           "zh-CN": "已售罄",
           "en": "Sold out",
           "ar": "نفدت الكمية"
+        },
+        {
+          "key": "goods.specCount",
+          "zh-CN": "共 {n} 种规格可选",
+          "en": "{n} options available",
+          "ar": "{n} خيارات متاحة"
         },
         {
           "key": "goods.store",

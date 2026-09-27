@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 478,
-        "c-app": 68
+        "c-app": 74
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 337,
-        "c-app": 251
+        "c-app": 257
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 45,
-        "c-app": 37
+        "c-app": 38
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 133,
-        "c-app": 46
+        "c-app": 49
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 76
+        "c-app": 84
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 214,
-        "c-app": 78
+        "c-app": 79
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 181,
-        "c-app": 70
+        "c-app": 72
       }
     },
     {
@@ -1054,7 +1054,7 @@
       },
       "usage": {
         "b-app": 325,
-        "c-app": 144
+        "c-app": 147
       }
     },
     {
@@ -1118,7 +1118,7 @@
       },
       "usage": {
         "b-app": 132,
-        "c-app": 64
+        "c-app": 63
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 142,
-        "c-app": 77
+        "c-app": 81
       }
     },
     {
@@ -1436,7 +1436,7 @@
       },
       "usage": {
         "b-app": 512,
-        "c-app": 181
+        "c-app": 183
       }
     },
     {
@@ -1468,7 +1468,7 @@
       },
       "usage": {
         "b-app": 293,
-        "c-app": 89
+        "c-app": 90
       }
     },
     {
@@ -1500,7 +1500,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 27
+        "c-app": 26
       }
     },
     {
@@ -2297,7 +2297,7 @@
       ],
       "usage": {
         "b-app": 117,
-        "c-app": 24,
+        "c-app": 25,
         "lib": 13
       },
       "note": "单色图标",
@@ -4918,10 +4918,18 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 235,
-      "localSelectors": 75,
-      "localCssLines": 310,
-      "rolled": []
+      "libClassHits": 270,
+      "localSelectors": 85,
+      "localCssLines": 362,
+      "rolled": [
+        {
+          "id": "inkover",
+          "label": "正文色自写",
+          "lib": ".txt-ink",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5630,6 +5638,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "inkover",
+      "label": "正文色自写",
+      "lib": ".txt-ink",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-ink\\);?\\s*\\}",
+      "pages": [
+        "c-app/goods"
       ]
     }
   ],
