@@ -1013,7 +1013,7 @@ onShareAppMessage(() =>
         -->
         <view v-if="services.length" class="sh-card block svc" @tap="svcOpen = true">
           <view class="sh-row svc__row">
-            <text v-for="c in services" :key="c" class="txt-sub svc__item">
+            <text v-for="c in services" :key="c" class="txt-sub sh-muted">
               <text class="svc__dot">·</text>{{ $t(`goods.svc${c}`) }}
             </text>
             <view class="sh-fill"></view>
@@ -1109,7 +1109,7 @@ onShareAppMessage(() =>
               评分与三维度分（§3.3）。**总数与平均分来自概览而不是当前这一页** ——
               按页算平均分的话，翻页时那个「总分」会变，而它看起来完全正常。
             -->
-            <text v-if="summary?.total" class="txt-sub sh-num rvhead__avg">
+            <text v-if="summary?.total" class="txt-sub sh-num sh-muted">
               {{ summary.avg }} · {{ $t("review.dims", {
                 g: summary.avgGoods, f: summary.avgFulfillment, s: summary.avgService,
               }) }}
@@ -1693,9 +1693,6 @@ onShareAppMessage(() =>
   min-height: 56rpx;
   gap: 24rpx;
 }
-.svc__item {
-  color: var(--sh-sub);
-}
 .svc__dot {
   margin-inline-end: 8rpx;
   /* 主色是**背景色**，当文字色用对比度不够（design-tokens 守卫拦的就是这个）；
@@ -1717,9 +1714,6 @@ onShareAppMessage(() =>
 }
 
 /* 评价头部：标题与评分同一行的两端 */
-.rvhead__avg {
-  color: var(--sh-sub);
-}
 
 /* 筛选条：横滑一行，不换行占两层 */
 .rvfilter {
