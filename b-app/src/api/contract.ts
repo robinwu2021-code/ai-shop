@@ -132,9 +132,12 @@ import type {
  * 平台出的这份对账单是他唯一能说明「这笔钱是怎么来的」的东西。
  * 所以每一行都要能与外部账单勾对，且必须导得出去留存。
  */
+/** 密钥票据的端：B = 店主（btk_），OPS = 运营（otk_）。与后端 AutomationTicketVerifier.TicketRealm 同名 */
+export type AutomationRealm = "B" | "OPS";
+
 /** 密钥票据换出的会话（ADR-027）。realm 为 B 时 token 是 btk_ */
 export interface AutomationSession {
-  realm: "B" | "OPS";
+  realm: AutomationRealm;
   subject: string;
   token: string;
 }

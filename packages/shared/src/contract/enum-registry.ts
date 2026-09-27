@@ -420,6 +420,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
   { decl: "b-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
+  { decl: "b-app:AutomationRealm", dom: "infra", shape: "CLASS", verdict: "OK",
+    note: "密钥票据换会话的端（ADR-027）：B=店主、OPS=运营。与后端 AutomationTicketVerifier.TicketRealm 同名同值" },
 
   /*
    * 以下四条是**修好扫描盲区之后才浮现的**。
