@@ -387,36 +387,28 @@ const payModes = computed<string[]>(
 );
 const canPayOffline = computed(() => payModes.value.includes(PAY_MODE.OFFLINE));
 /**
- * 上次选的**在线**支付方式（待办设计 P9），存在本机。
- * **当面付不记**：它受商家与券的限制，下一单换了商家多半用不了 —— 默认回到在线更稳。
- * 读写都包 try：隐私模式、存储满了都会抛，而这只是个便利，不能让结算页打不开。
+ * 整单能不能收线上的钱 —— **看进件**：车里每家店（按门店）都配好了线上渠道，且整单交集非空。
+ * 能力行里的 `payMethods` 就是这家店进件后开出来的渠道；空的就是还没进件，收不了线上的钱。
  */
-const PAY_MODE_KEY = "checkout.payMode";
-function lastPayMode(): string {
-  try {
-    const v = uni.getStorageSync(PAY_MODE_KEY) as string;
-    return v && v !== PAY_MODE.OFFLINE ? v : PAY_MODE.ONLINE;
-  } catch {
-    return PAY_MODE.ONLINE;
-  }
-}
-const payMode = ref<string>(lastPayMode());
-watch(payMode, (m) => {
-  if (m === PAY_MODE.OFFLINE) return;
-  try {
-    uni.setStorageSync(PAY_MODE_KEY, m);
-  } catch {
-    /* 记不住就算了，下次回到默认 */
-  }
+const onlineReady = computed(() => {
+  const cap = capability.value;
+  if (!cap?.merchants?.length) return false;
+  return cap.merchants.every((m) => (m.payMethods?.length ?? 0) > 0) && (cap.usablePayMethods?.length ?? 0) > 0;
 });
-/*
- * 后端不再给线下时**当场退回线上**。
- * 不退的话，用户先选了当面付、再把履约改成快递，选项已经消失而 payMode 还是 OFFLINE ——
- * 下单被 80011 拒，而屏幕上看不出他选了什么。
+
+/**
+ * 这一单用哪种付法 —— **小程序里线上与线下互斥，不让买家选**（2026-09-28 用户拍板）。
+ *
+ * 具体付法由门店决定：线上看进件（onlineReady），线下看门店在 B 端「收款方式」里开没开（usablePayModes）。
+ * 小程序只有微信一种在线付法；商家开「到付」是因为收不了线上的钱，所以：
+ *   进件完成 → 只走微信；没进件但整单可线下 → 只走线下；都没有 → 按线上（维持原状）。
+ * App 上多通道时改成「通道 + 当面付款同一张列表」（原型 prototypes/c-pay-method.html），那时再放开选择。
+ *
+ * 由 capability 推出来而不是存一个 ref：履约改成快递、线下没了，付法跟着当场回到线上，
+ * 不会出现「屏幕上看不出选了线下、下单被 80011 拒」。
  */
-watch(canPayOffline, (ok) => {
-  if (!ok) payMode.value = PAY_MODE.ONLINE;
-});
+const payMode = computed<string>(() =>
+  !onlineReady.value && canPayOffline.value ? PAY_MODE.OFFLINE : PAY_MODE.ONLINE);
 
 /**
  * 平台券在当面付下用不了。
@@ -1334,20 +1326,13 @@ onMounted(async () => {
     <!-- 支付方式 + 积分 + 备注 -->
     <view class="sh-card block">
       <!--
-        支付方式**只在真的有得选时才画**，且只占一行 —— 只支持线上时多一行「在线支付」是纯噪声。
-        当面付款时平台券直接不进可选列表（见 usableCoupons），这里不再挂说明文字。
+        支付方式：只在走线下时写出来 —— 买家要知道这单是当面把钱给商家。
+        线上（微信）是默认，底栏按钮已经说了「立即支付」，这里不再多一行。
+        不给选择：小程序里线上与线下互斥（见 payMode 的注释）。
       -->
-      <view v-if="canPayOffline" class="cell sh-row sh-row--between">
+      <view v-if="payMode === PAY_MODE.OFFLINE" class="cell sh-row sh-row--between">
         <text class="txt-sub cell__k">{{ $t("confirm.payMode") }}</text>
-        <view class="paymodes sh-row">
-          <text
-            v-for="m in payModes"
-            :key="m"
-            class="sh-chip paymode"
-            :class="{ 'sh-chip--primary': payMode === m }"
-            @tap="payMode = m"
-          >{{ $t(`payMode.${m}`) }}</text>
-        </view>
+        <text class="txt-sub txt-ink paymode">{{ $t("payMode.OFFLINE") }}</text>
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
@@ -1579,9 +1564,6 @@ onMounted(async () => {
 .row__max {
   display: block;
   margin-top: 8rpx;
-}
-.paymodes {
-  gap: 12rpx;
 }
 .recv {
   margin-top: 24rpx;

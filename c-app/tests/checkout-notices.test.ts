@@ -50,14 +50,10 @@ describe("P6 库存变少 / 送不到", () => {
   });
 });
 
-describe("P9 记住支付方式", () => {
-  it("★★★ 当面付不记，也不从存储里读回当面付", () => {
-    expect(body("function lastPayMode")).toContain("v !== PAY_MODE.OFFLINE");
-    expect(body("watch(payMode", 200)).toContain("if (m === PAY_MODE.OFFLINE) return;");
-  });
-
-  it("读写都包 try —— 存储不可用时结算页照样打开", () => {
-    expect(body("function lastPayMode")).toContain("try {");
-    expect(body("watch(payMode", 300)).toContain("try {");
+describe("支付方式：小程序里线上与线下互斥（2026-09-28 用户拍板，取代 P9「记住支付方式」）", () => {
+  it("★★★ 付法由 capability 推出，不是买家选的，也不存本机", () => {
+    expect(code).toMatch(/const payMode = computed<string>\(\(\) =>\s*!onlineReady\.value && canPayOffline\.value \? PAY_MODE\.OFFLINE : PAY_MODE\.ONLINE\)/);
+    expect(code, "又出现了可点的付法选项").not.toMatch(/@tap="payMode = /);
+    expect(code, "又开始记上次的付法").not.toContain("checkout.payMode");
   });
 });

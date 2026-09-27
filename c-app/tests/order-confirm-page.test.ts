@@ -126,8 +126,9 @@ describe("结算页", () => {
 
   it("★★★ 迟到的试算响应不许盖住新的 —— 否则屏幕上是上一次的价", async () => {
     /*
-     * 造一次真实的乱序：第一次请求（线上支付）**后**才返回，
-     * 而第二次（当面付）先返回。没有那道序号闸的话，最后写进去的是 29.80。
+     * 造一次真实的乱序：进页先按线上试算一次；capability 回来说「整单可线下付」，
+     * 付法自动切成线下（小程序里二者互斥），再试算一次。
+     * 第一次**后**才返回、第二次先返回 —— 没有那道序号闸的话，最后写进去的是 29.80。
      */
     const deferred: { resolve: (v: unknown) => void }[] = [];
     orderPreview.mockImplementation(
@@ -140,14 +141,7 @@ describe("结算页", () => {
     });
 
     const w = await render([item()]);
-    expect(deferred.length, "进页就该问一次").toBe(1);
-
-    // 改支付方式 → 第二次试算
-    const modes = w.findAll(".paymode");
-    expect(modes.length, "两种支付方式都要画出来").toBe(2);
-    await modes[1]!.trigger("tap");
-    await settle(w);
-    expect(deferred.length).toBe(2);
+    expect(deferred.length, "线上一次 + 切成线下后一次").toBe(2);
 
     // 后发的先回，先发的后回
     deferred[1]!.resolve(amount(2500));
@@ -159,6 +153,33 @@ describe("结算页", () => {
     // 拿整页去判「不含 29.80」会因为一个无关的数而永远红
     const payable = w.find(".actionbar__total").text();
     expect(payable, "显示的必须是最后一次问出来的那个数").toBe("¥25.00");
+  });
+
+  it("★★★ 没进件、门店开了线下 → 只走线下，不给选择（2026-09-28 用户拍板）", async () => {
+    orderCapability.mockResolvedValue({
+      merchants: [{ merchantNo: "M1", merchantName: "虹选粮油", payMethods: [] }],
+      usablePayMethods: null, usablePayModes: ["ONLINE", "OFFLINE"],
+    });
+    const w = await render([item()]);
+    expect(w.findAll(".paymode"), "只写一行，不是两颗可选的标签").toHaveLength(1);
+    expect(w.find(".paymode").text()).toBe("payMode.OFFLINE");
+    expect(w.text()).not.toContain("payMode.ONLINE");
+  });
+
+  it("★★★ 进件完成 → 只走微信，即便门店也开了线下（两者不共存）", async () => {
+    orderCapability.mockResolvedValue({
+      merchants: [{ merchantNo: "M1", merchantName: "虹选粮油", payMethods: ["WECHAT_MINI"] }],
+      usablePayMethods: ["WECHAT_MINI"], usablePayModes: ["ONLINE", "OFFLINE"],
+    });
+    const w = await render([item()]);
+    expect(w.find(".paymode").exists()).toBe(false);
+    expect(w.text()).not.toContain("payMode.OFFLINE");
+  });
+
+  it("★★ 没进件、也没开线下 → 按线上，支付方式那一行不出", async () => {
+    orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, usablePayModes: ["ONLINE"] });
+    const w = await render([item()]);
+    expect(w.find(".paymode").exists()).toBe(false);
   });
 
   it("★★★ 提交不了要说是为什么 —— 快递单没选地址", async () => {
