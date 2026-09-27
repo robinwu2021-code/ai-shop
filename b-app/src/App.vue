@@ -49,12 +49,8 @@ onLaunch(() => {
    * 所以这段时间里的 401 先记下不处理：换成功就作废；没有票据或换失败，再照常处理。
    */
   let ticketPending = true;
-  let deferred401 = false;
-  const on401 = () => {
-    merchant.logout();
-    uni.showToast({ title: String(t("common.sessionExpired")), icon: "none" });
-    setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
-  };
+  /** 票据未决期间收到的 401：记下处理函数，票据没换成时再重放 */
+  let replay401: (() => void) | null = null;
   void readAutomationTicket()
     .then(async (ticket) => {
       if (!ticket) return false;
@@ -69,7 +65,7 @@ onLaunch(() => {
     .then((ok) => {
       ticketPending = false;
       if (ok) uni.reLaunch({ url: "/pages/home/index" });
-      else if (deferred401) on401();
+      else replay401?.();
     });
 
   /*
@@ -83,12 +79,14 @@ onLaunch(() => {
    * 再延一个宏任务：最常见的触发点是下面那两个 ensure，那一刻首页还没挂载，
    * 此时发起的跳转会被直接丢掉 —— 实测两次，navigateTo 无效，reLaunch 也无效。
    */
-  setUnauthorizedHandler(() => {
+  setUnauthorizedHandler(function on401() {
     if (ticketPending) {
-      deferred401 = true;
+      replay401 = on401;
       return;
     }
-    on401();
+    merchant.logout();
+    uni.showToast({ title: String(t("common.sessionExpired")), icon: "none" });
+    setTimeout(() => uni.reLaunch({ url: "/pages/login/index" }), 0);
   });
   /*
    * 被拒了：**多半是老板刚收回了他的权限，而这一页的入口还是旧的**。
