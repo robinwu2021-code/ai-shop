@@ -1115,21 +1115,21 @@
         },
         {
           "key": "confirm.capNoInvoice",
-          "zh-CN": "以下商家无法开具发票：{names}。下单前请确认。",
-          "en": "These merchants cannot issue invoices: {names}. Please confirm before ordering.",
-          "ar": "لا يمكن لهؤلاء التجار إصدار فواتير: {names}. يرجى التأكيد قبل الطلب."
+          "zh-CN": "{names} 不支持开具发票",
+          "en": "{names} can't issue invoices",
+          "ar": "{names} لا يصدر فواتير"
         },
         {
           "key": "confirm.capNoPayMethod",
-          "zh-CN": "这一车商品没有共同支持的支付方式，请分开下单或移除部分商品。",
-          "en": "These items share no common payment method. Please order them separately or remove some.",
-          "ar": "لا توجد طريقة دفع مشتركة لهذه المنتجات. يرجى طلبها بشكل منفصل أو إزالة بعضها."
+          "zh-CN": "所选商品无共同支付方式，请分开下单",
+          "en": "These items share no payment method. Please order separately.",
+          "ar": "لا توجد طريقة دفع مشتركة لهذه المنتجات. يرجى الطلب بشكل منفصل."
         },
         {
           "key": "confirm.capQuotaBlocked",
-          "zh-CN": "以下商家本期收款额度不足，暂时无法下单：{names}。",
-          "en": "These merchants have insufficient collection quota for this period: {names}.",
-          "ar": "حد التحصيل غير كافٍ لهؤلاء التجار في هذه الفترة: {names}."
+          "zh-CN": "{names} 暂无法下单（收款额度不足）",
+          "en": "{names} can't accept orders now (payment limit reached)",
+          "ar": "{names} لا يقبل الطلبات حاليًا (بلغ حد التحصيل)"
         },
         {
           "key": "confirm.change",
@@ -1187,9 +1187,9 @@
         },
         {
           "key": "confirm.couponUnusable",
-          "zh-CN": "用不了的（{n}）",
-          "en": "Can't be used ({n})",
-          "ar": "غير قابلة للاستخدام ({n})"
+          "zh-CN": "不可用（{n}）",
+          "en": "Unavailable ({n})",
+          "ar": "غير متاحة ({n})"
         },
         {
           "key": "confirm.discount",
@@ -1205,9 +1205,9 @@
         },
         {
           "key": "confirm.estimateOnly",
-          "zh-CN": "网络不稳，这里是估算金额，以提交后为准",
-          "en": "Network is shaky — this is an estimate; the amount at submit wins",
-          "ar": "الشبكة غير مستقرة — هذا مبلغ تقديري، والمعتمد هو مبلغ الإرسال"
+          "zh-CN": "金额为估算，以提交后为准",
+          "en": "Estimated; the final amount is confirmed on submission",
+          "ar": "مبلغ تقديري؛ يُعتمد المبلغ النهائي عند الإرسال"
         },
         {
           "key": "confirm.failActivity",
@@ -1265,15 +1265,15 @@
         },
         {
           "key": "confirm.groupJoinNote",
-          "zh-CN": "参团单按成团价结算，没凑齐会自动全额退款",
-          "en": "Charged at the group price. Fully refunded automatically if the group doesn’t fill",
-          "ar": "يُحتسب بسعر المجموعة، ويُسترد المبلغ كاملًا تلقائيًا إن لم تكتمل"
+          "zh-CN": "按成团价结算，未成团自动全额退款",
+          "en": "Charged at group price; full refund if the group doesn't fill",
+          "ar": "يُحتسب بسعر المجموعة، ويُسترد المبلغ كاملًا إن لم تكتمل"
         },
         {
           "key": "confirm.groupOpenNote",
-          "zh-CN": "付款后团即开出，没凑齐会自动全额退款",
-          "en": "Your group opens once you pay. Fully refunded automatically if it doesn’t fill",
-          "ar": "تُفتح مجموعتك بعد الدفع، ويُسترد المبلغ كاملًا تلقائيًا إن لم تكتمل"
+          "zh-CN": "支付后开团，未成团自动全额退款",
+          "en": "Group opens after payment; full refund if it doesn't fill",
+          "ar": "تُفتح المجموعة بعد الدفع، ويُسترد المبلغ كاملًا إن لم تكتمل"
         },
         {
           "key": "confirm.noActivity",
@@ -1312,28 +1312,22 @@
           "ar": "قسيمة «{name}» −{p}"
         },
         {
-          "key": "confirm.offlineNoPlatformCoupon",
-          "zh-CN": "当面付款时平台券用不了。商家券照常可用，积分也照常抵扣。",
-          "en": "Platform coupons cannot be used when paying on site. Merchant coupons and points still apply.",
-          "ar": "لا يمكن استخدام قسائم المنصة عند الدفع نقدًا. قسائم التاجر والنقاط تعمل كالمعتاد."
-        },
-        {
           "key": "confirm.outOfRange",
-          "zh-CN": "{names} 送不到这个地址，换个地址或把这家的货挪出这一单",
-          "en": "{names} cannot deliver here. Change the address, or order from them separately",
-          "ar": "{names} لا يوصّل إلى هذا العنوان. غيّر العنوان أو اطلب منه بطلب منفصل"
+          "zh-CN": "{names} 不在配送范围，请更换地址或移除其商品",
+          "en": "{names} doesn't deliver here. Change the address or remove these items.",
+          "ar": "{names} لا يوصّل إلى هذا العنوان. غيّر العنوان أو أزل منتجاته."
         },
         {
           "key": "confirm.panelActivityAuto",
-          "zh-CN": "① 店家活动（自动参与，不用选）",
-          "en": "① Shop promos (auto-applied, no need to pick)",
-          "ar": "① عروض المتجر (تُطبّق تلقائياً، لا داعي للاختيار)"
+          "zh-CN": "① 店铺活动（自动参与）",
+          "en": "① Store promotions (applied automatically)",
+          "ar": "① عروض المتجر (تُطبّق تلقائيًا)"
         },
         {
           "key": "confirm.panelActivityPick",
-          "zh-CN": "① 店家活动（自动生效，可换 / 可不参加。同一家店只能参加一个）",
-          "en": "① Shop promos (auto-applied; you can switch or opt out — one per shop)",
-          "ar": "① عروض المتجر (تُطبّق تلقائياً؛ يمكن التبديل أو عدم المشاركة — واحد لكل متجر)"
+          "zh-CN": "① 店铺活动（每店限参加一个）",
+          "en": "① Store promotions (one per store)",
+          "ar": "① عروض المتجر (عرض واحد لكل متجر)"
         },
         {
           "key": "confirm.panelCoupon",
@@ -1385,33 +1379,33 @@
         },
         {
           "key": "confirm.pickSlotHint",
-          "zh-CN": "请选择上门时段，师傅按这个时间到",
-          "en": "Pick a slot — the technician arrives at this time",
-          "ar": "اختر موعدًا؛ يصل الفني في هذا الوقت"
+          "zh-CN": "请选择上门时段",
+          "en": "Select a service time",
+          "ar": "اختر موعد الخدمة"
         },
         {
           "key": "confirm.pickupFar",
-          "zh-CN": "离你约 {d}，确认方便取货",
-          "en": "About {d} away — make sure you can collect there",
-          "ar": "يبعد حوالي {d} — تأكد أنه يناسبك"
+          "zh-CN": "距你约 {d}",
+          "en": "About {d} away",
+          "ar": "على بُعد {d} تقريبًا"
         },
         {
           "key": "confirm.pickupGroups",
-          "zh-CN": "本单 {n} 个取货点，分别去取",
-          "en": "{n} pickup points for this order",
-          "ar": "{n} نقاط استلام لهذا الطلب"
+          "zh-CN": "共 {n} 个取货点",
+          "en": "{n} pickup points",
+          "ar": "{n} نقاط استلام"
         },
         {
           "key": "confirm.pickupMatching",
-          "zh-CN": "正在按你的地址找取货点…",
-          "en": "Finding a pickup point near your address…",
-          "ar": "جارٍ البحث عن نقطة استلام قرب عنوانك…"
+          "zh-CN": "正在匹配取货点…",
+          "en": "Finding pickup points…",
+          "ar": "جارٍ البحث عن نقاط الاستلام…"
         },
         {
           "key": "confirm.pickupNoneFor",
-          "zh-CN": "{names} 在你这一带没有可用的取货点，换个送货方式或先把它的商品移出本单",
-          "en": "{names} has no usable pickup point near you",
-          "ar": "لا توجد نقطة استلام متاحة لـ {names} بالقرب منك"
+          "zh-CN": "{names} 附近暂无取货点，请更换配送方式或移除其商品",
+          "en": "No pickup point near you for {names}. Change delivery method or remove these items.",
+          "ar": "لا توجد نقطة استلام قريبة لـ {names}. غيّر طريقة التوصيل أو أزل منتجاته."
         },
         {
           "key": "confirm.placeMismatchBody",
@@ -1493,9 +1487,9 @@
         },
         {
           "key": "confirm.saveHere",
-          "zh-CN": "这一单要送到「{s}」？点这儿把它存成收货地址（还要填姓名电话）",
-          "en": "Deliver to {s}? Tap to save it as an address (name and phone still needed)",
-          "ar": "التوصيل إلى {s}؟ اضغط لحفظه كعنوان (يلزم الاسم والهاتف)"
+          "zh-CN": "将「{s}」保存为收货地址",
+          "en": "Save \"{s}\" as a delivery address",
+          "ar": "حفظ «{s}» كعنوان توصيل"
         },
         {
           "key": "confirm.savedTotal",
@@ -1505,9 +1499,9 @@
         },
         {
           "key": "confirm.splitNote",
-          "zh-CN": "这些商品来自 {n} 家店，将生成 {n} 笔订单，一次付清",
-          "en": "These items come from {n} shops and will create {n} orders, paid in one go",
-          "ar": "هذه المنتجات من {n} متاجر وستُنشئ {n} طلبات تُدفع دفعة واحدة"
+          "zh-CN": "共 {n} 家店铺，拆分为 {n} 笔订单合并支付",
+          "en": "{n} stores: split into {n} orders, paid together",
+          "ar": "{n} متاجر: {n} طلبات تُدفع معًا"
         },
         {
           "key": "confirm.submit",
@@ -1529,9 +1523,9 @@
         },
         {
           "key": "confirm.useBest",
-          "zh-CN": "换成最省组合，可再省 {p}",
-          "en": "Switch to the best deal and save {p} more",
-          "ar": "بدّل إلى أفضل عرض ووفّر {p} إضافية"
+          "zh-CN": "使用最优组合，可再减 {p}",
+          "en": "Use the best combination to save {p} more",
+          "ar": "استخدم أفضل تركيبة لتوفير {p} إضافية"
         },
         {
           "key": "confirm.whyNoAddress",
@@ -4100,18 +4094,6 @@
           "zh-CN": "在线支付",
           "en": "Pay online",
           "ar": "الدفع أونلاين"
-        },
-        {
-          "key": "payModeDesc.OFFLINE",
-          "zh-CN": "见到商家时把钱给他，平台不代收",
-          "en": "Pay the merchant in person; the platform does not hold this money",
-          "ar": "ادفع للتاجر مباشرة؛ المنصة لا تحتفظ بهذا المبلغ"
-        },
-        {
-          "key": "payModeDesc.ONLINE",
-          "zh-CN": "微信/支付宝，付完即下单",
-          "en": "WeChat / Alipay, order placed on payment",
-          "ar": "وي‑تشات / علي‑باي، يتم الطلب فور الدفع"
         },
         {
           "key": "phoneGate.codePlaceholder",
