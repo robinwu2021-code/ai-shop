@@ -87,8 +87,16 @@ function communityCoords(no) {
   return { latitude: Number(lat) / 1e6, longitude: Number(lng) / 1e6 };
 }
 
+/** 聚落挂在哪个区划下（判「是不是真的切到了运城」） */
+function regionOf(no) {
+  if (!no) return "";
+  const sql = `SELECT IFNULL(region_code,'') FROM ai_shop.cmt_community WHERE community_no='${no}'`;
+  return execFileSync("ssh", ["soukmind-tx-root",
+    `mysql -S /run/mysqld97/mysqld.sock -N -e "${sql}" 2>/dev/null`]).toString().trim();
+}
+
 /** reLaunch 的返回值常抛 rawPath（memory 第 4 条）；跳完自己等页面路径对上 */
-async function go(mp, url) {
+async function go(mp, url, retried = false) {
   // 首页是 tab 页只能 reLaunch；其余用 navigateTo —— reLaunch 到普通页在这版工具上常常落不了地
   const tab = url.startsWith("/pages/home/");
   try {
@@ -105,6 +113,17 @@ async function go(mp, url) {
       // 页面栈还在切换
     }
     await sleep(500);
+  }
+  // 没落地：多半是页面栈满了（上几轮留下的详情页、结算页，小程序栈上限 10 层）。
+  // 回首页清栈再跳一次；还不行才算失败
+  if (!tab && !retried) {
+    try {
+      await mp.reLaunch("/pages/home/index");
+    } catch {
+      // 跳转其实成功了
+    }
+    await sleep(2500);
+    return go(mp, url, true);
   }
   throw new Error(`没跳到 ${url}`);
 }
@@ -196,17 +215,38 @@ async function mpApi(mp, method, path, data) {
  * 浏览模式选位置：重新定位（走 mock 的坐标）→ 等「当前位置」那张卡换成目标一带 → 点「使用」。
  * 不等就点的话，用的是卡上还没刷新的旧位置 —— 看起来切过了，其实一动没动。
  */
-async function moveTo(mp, at, expect, label) {
+async function moveTo(mp, at, expect, label, settled) {
   await mp.mockWxMethod("getLocation", { ...at, accuracy: 30, errMsg: "getLocation:ok" });
   await mp.mockWxMethod("getFuzzyLocation", { ...at, errMsg: "getFuzzyLocation:ok" });
   const p = await go(mp, "/pages/address-pick/index?mode=browse");
   await sleep(1500);
+  /*
+   * **只看「当前位置」那张卡，且要求它变了**。第二版看整页文字：页面下方列着买家的收货地址
+   * （「广东省深圳市…」），于是「等出现深圳」一进页面就成立 —— 没等新坐标回来就点了「使用」，
+   * 用的是上一次的坐标，买家被留在了运城。
+   */
+  const cardText = async () => {
+    const el = await (await page(mp)).$(".hererow");
+    return el ? (await el.text()).trim() : "";
+  };
+  const before = await cardText();
   await tapText(p, "重新定位");
-  const card = await waitText(mp, expect, 12000);
+  let card = "";
+  for (let i = 0; i < 20; i++) {
+    card = await cardText();
+    if (card && card !== before && card.includes(expect)) break;
+    await sleep(700);
+  }
   if (!card.includes(expect)) throw new Error(`重新定位后「当前位置」没变成${label}：${card.slice(0, 120)}`);
   await tapText(await page(mp), "使用");
-  await sleep(3000);
-  info(`已切到${label}`);
+  // **等服务端真的换了归属再往下走**。第一版固定等 3 秒：绑定是异步的（附近聚落 → 解析 → 绑定三跳），
+  // 3 秒时还是旧值，首页按旧城市要货；更糟的是它在「还原」之后才落地，把买家留在了运城。
+  const want = typeof settled === "function" ? settled : (no) => no === settled;
+  for (let i = 0; i < 30; i++) {
+    if (want(serverCommunity())) break;
+    await sleep(1000);
+  }
+  info(`已切到${label}（服务端归属 ${serverCommunity()}）`);
 }
 
 // ---------------------------------------------------------------- 跑
@@ -235,7 +275,7 @@ try {
   ok("小程序连得上生产，运城坐标解析为盐湖区（140802）");
 
   // ② 买家把位置切到运城（STAY=1 时跳过，按现有归属看货）
-  if (!STAY) await moveTo(mp, YUNCHENG, "运城", "运城盐湖区");
+  if (!STAY) await moveTo(mp, YUNCHENG, "运城", "运城盐湖区", (no) => regionOf(no).startsWith("140802"));
   const bound = serverCommunity();
   info(`切换后服务端归属：${bound || "（空）"}`);
 
@@ -325,7 +365,7 @@ try {
   // ⑥ 还原买家位置：同一条路切回原聚落的坐标，再从库回读
   if (home && !STAY) {
     try {
-      await moveTo(mp, home, "深圳", "原来的位置");
+      await moveTo(mp, home, "深圳", "原来的位置", before);
       const now = serverCommunity();
       if (now === before) ok(`买家归属已还原（${now}）`);
       else fail(`买家归属没还原：原 ${before}，现 ${now}`);

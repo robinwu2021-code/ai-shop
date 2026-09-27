@@ -321,8 +321,14 @@ export const useLocationStore = defineStore("location", {
          * 而商品池挂在本地的 community 归属上。只读不同步的话，
          * 会出现「顶栏写着公司、商品还是家那边的」—— 两个都对，合起来是错的。
          * 实测撞到过：从别处切了位置，回到首页顶栏变了、商品没变。
+         *
+         * **这一次在「当前位置」逛的时候不回写**（transientAt 有值）。
+         * 他在选择位置页点了「使用当前位置」，那是比生效地址更新、更明确的意图；
+         * 这里再按生效地址同步一次，等于把刚切过去的位置立刻顶回去 ——
+         * 2026-09-28 小程序连生产复现：账号里有深圳的生效地址，切到运城后回首页又变回深圳，
+         * 「使用当前位置」永远白点。切回地址簿里的某一条时 switchTo 会清掉 transientAt，同步照常。
          */
-        if (this.active) await this.syncCommunityFromActive();
+        if (this.active && !this.transientAt) await this.syncCommunityFromActive();
       } finally {
         this.loading = false;
       }
