@@ -232,7 +232,7 @@ const hasChips = computed(() => {
   return (isFresh.value && !!cutoffText.value && !cutoffPassed.value) || cutoffPassed.value
     || (isService.value && !!g.durationMin) || isVirtual.value
     || !!promo.value || !!g.activityTags?.length
-    || g.sales > 0 || lowStock.value > 0;
+    || lowStock.value > 0;
 });
 
 /**
@@ -318,16 +318,55 @@ const showSku = ref(false);
  * 面板是被哪颗按钮叫出来的。面板底部**只放那一个动作** ——
  * 点的是「加入购物车」，面板里就只有「加入购物车」，不再让人在面板里二选一（原型 g03）。
  */
-type SheetMode = "add" | "buy" | "group";
+type SheetMode = "add" | "buy" | "group" | "pick";
 const sheetMode = ref<SheetMode>("add");
 function openSheet(mode: SheetMode) {
   sheetMode.value = mode;
   showSku.value = true;
 }
 /** 「已选」那一行：规格 · 件数 */
-const chosenText = computed(() =>
-  String(t("goods.chosenValue", { spec: sku.value?.spec || chosen.value.join(" "), n: qty.value })),
-);
+const chosenText = computed(() => {
+  const spec = (sku.value?.spec || chosen.value.join(" ")).trim();
+  // 不分规格的货没有规格名：只说件数，不留一个「 · 1 件」的空头
+  return spec
+    ? String(t("goods.chosenValue", { spec, n: qty.value }))
+    : String(t("goods.chosenQty", { n: qty.value }));
+});
+/*
+ * ── v3 选购卡（TDD-C端商品详情页v3 AC2–AC4）──
+ * 「已选」答规格与件数；多规格再说一句「共几种」—— 一眼知道还有别的可挑（2026-09-28 用户拍板恢复）。
+ */
+const specCount = computed(() => goods.value?.skus.length ?? 0);
+/** 「配送」：这件货怎么拿到。名称用 fulfillment.* 的现成文案，按商品声明的顺序 */
+const shipText = computed(() =>
+  (goods.value?.fulfillments ?? [])
+    .map((f) => String(t(`fulfillment.${f}`)))
+    .join(" · "));
+/** 「配送」第二行：到货说明（生鲜的「次日 17:00 前到店」这一类），没有就不出 */
+const shipSub = computed(() => goods.value?.arrivalDesc?.trim() || "");
+
+/** 好评率：4、5 星之和 / 总数（dist 下标 0 是 1 星）。没人评过时不算 */
+const goodRate = computed(() => {
+  const s = summary.value;
+  if (!s?.total || !s.dist || s.dist.length < 5) return 0;
+  return Math.round(((s.dist[3] ?? 0) + (s.dist[4] ?? 0)) * 100 / s.total);
+});
+/** 评价与问答都空：合成一行（AC6）。新店的详情页不该一半是「还没有…」 */
+const rvqaEmpty = computed(() => !summary.value?.total && !reviews.value.length && !questions.value.length);
+
+/** 本店热卖：推荐里同店的前 3 件，挂在店铺卡下面（AC7） */
+const shopHot = computed(() =>
+  recommends.value.filter((r) => r.merchant?.merchantNo === goods.value?.merchant.merchantNo).slice(0, 3));
+/** 看了又看：推荐里除去本店热卖的其余件；不足 2 件整块不出，免得一张卡孤零零一行（AC10） */
+const lookMore = computed(() => {
+  const hot = new Set(shopHot.value.map((r) => r.goodsNo));
+  const rest = recommends.value.filter((r) => !hot.has(r.goodsNo));
+  return rest.length >= 2 ? rest.slice(0, 6) : [];
+});
+/** 图文详情兜底：商家没写正文也没传长图时，用主图全宽排开（AC9，淘宝的做法） */
+const detailFallback = computed(() =>
+  !detailParas.value.length && !goods.value?.detailImages?.length ? gallery.value : []);
+
 /**
  * 底栏按钮点不点得动。多规格时**恒可点** —— 它的作用是打开面板，
  * 当前选中的规格卖完了，他还得能进面板换一个；单规格时就是 buyable。
@@ -818,8 +857,8 @@ const instance = getCurrentInstance();
 const bouncing = ref(false);
 
 function measureCartAnchor() {
-  // 落点是左上角浮着的那个购物车（v2 起底栏不再有购物车）
-  nextTick(() => registerCartAnchor(".topbar__cart", instance?.proxy));
+  // 落点是底栏的购物车（v3 起购物车从左上回到底栏，2026-09-28 用户拍板）
+  nextTick(() => registerCartAnchor(".actionbar__cart", instance?.proxy));
   measureAnchors();
 }
 
@@ -869,19 +908,13 @@ onShareAppMessage(() =>
     <template v-if="goods">
         <!--
           顶部浮层（原型 g01 / g02）。压在主图上时是两颗半透明圆钮；滑过主图变实色导航，
-          带「商品 / 评价 / 详情」锚点。右边让出微信胶囊的位置（navBox.right）。
-          购物车在这里而不在底栏：随时看得到件数、点得到，又不占底栏。
+          带「商品 / 评价 / 详情 / 推荐」锚点。右边让出微信胶囊的位置（navBox.right）。
+          v3 起购物车回到底栏（2026-09-28 用户拍板，淘宝京东同位置），这里只留返回。
         -->
         <view class="topbar" :class="{ 'is-solid': solid }" :style="topbarStyle">
           <view class="topbar__row sh-row" :style="topRowStyle">
             <view class="topbar__btn sh-center sh-hit" :style="btnStyle" @tap="goBack">
               <sh-icon name="chevronLeft" :size="34" :color="solid ? 'var(--sh-ink)' : '#fff'"></sh-icon>
-            </view>
-            <view class="topbar__btn topbar__cart sh-center sh-hit" :class="{ 'is-bouncing': bouncing }" :style="btnStyle" @tap="gotoCart">
-              <sh-icon name="cart" :size="32" :color="solid ? 'var(--sh-ink)' : '#fff'"></sh-icon>
-              <text v-if="cart.count" class="sh-badge-count topbar__badge sh-num">
-                {{ cart.count > 99 ? "99+" : cart.count }}
-              </text>
             </view>
             <view v-if="solid" class="sh-fill sh-row topbar__anchors">
               <text
@@ -942,6 +975,8 @@ onShareAppMessage(() =>
             <text v-if="saved" class="txt-caption sh-chip sh-chip--danger sh-num save">
               {{ $t("goods.saveAmount", { p: money(saved) }) }}
             </text>
+            <!-- 已售放价格行右侧（v3 d01）。0 不说：零销量是个劝退信号 -->
+            <text v-if="goods.sales > 0" class="txt-caption sh-muted sh-num price__sold">{{ $t("common.sold", { n: goods.sales }) }}</text>
           </view>
           <!-- 标题行：右边是分享（原型 g01）。小程序里是原生按钮盖在上面的透明层，版式交给 view -->
           <!-- 标题与副标题同在左列，分享在右 —— 分享比标题高，副标题放在外面会被它顶下去空出一行（真机 0.1.47） -->
@@ -990,33 +1025,38 @@ onShareAppMessage(() =>
               而库存紧缺恰恰是该让人看见的那一刻
             -->
             <text v-if="lowStock" class="sh-chip sh-chip--danger sh-num">{{ $t("goods.lowStock", { n: lowStock }) }}</text>
-            <!-- 已售 0 不说：零销量是个负面信号，说出来只会劝退 -->
-            <text v-if="goods.sales > 0" class="sh-chip sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
           </view>
         </view>
 
-        <!--
-          领券。**只在有券时出现**（原型 g01）。
-          「已选」一行去掉了：还没决定买就问规格和件数是反的 —— 点底栏按钮时面板里再选。
-          「范围」一行也去掉了：销售区域挪进商品参数，对绝大多数人它是一句不用看的话。
-        -->
+        <!-- 领券。**只在有券时出现**（原型 g01）。销售区域仍在商品参数里 -->
         <!-- 领券（s36）：与店铺页、商家页同一个组件；券由本页预取，首屏只渲染一次 -->
         <biz-coupon-strip :merchant-no="goods.merchant.merchantNo" :preset="coupons"></biz-coupon-strip>
 
         <!--
-          服务承诺（§3.4）。**只放可核验的短语** —— 每一条背后都有一条真的规则：
-          「极速退款」由后端按这件货的价问售后规则（运营可调的金额上限与总开关），
-          价高于上限就不给这四个字；「门店自提免运」只在支持自提时出现。
-
-          <p>点开是时限表，讲清「商家 48 小时不处理会怎样」这类问题 ——
-          承诺写在页面上，细则就得能查到，否则那句话只是广告。
+          选购卡（v3 d01 / d02，2026-09-28 用户拍板恢复）：已选 · 配送 · 保障。
+          淘宝京东首屏都有这一块 —— 它回答「买哪个、怎么拿到、有什么保障」。
+          「已选」不追问件数以外的事：多规格时补一句「共 N 种规格可选」。
+          保障（§3.4）**只放可核验的短语**，每一条背后都有一条真的规则；点开是细则。
         -->
-        <view v-if="services.length" class="sh-card block svc" @tap="svcOpen = true">
-          <view class="sh-row svc__row">
-            <text v-for="c in services" :key="c" class="txt-sub sh-muted">
-              <text class="svc__dot">·</text>{{ $t(`goods.svc${c}`) }}
-            </text>
-            <view class="sh-fill"></view>
+        <view class="sh-card block buycard">
+          <view class="row sh-row" @tap="openSheet('pick')">
+            <text class="txt-sub row__label">{{ $t("goods.rowChosen") }}</text>
+            <view class="sh-fill row__value">
+              <text class="txt-sub sh-num">{{ chosenText }}</text>
+              <text v-if="specCount > 1" class="txt-caption sh-muted sh-num">{{ $t("goods.specCount", { n: specCount }) }}</text>
+            </view>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
+          <view v-if="shipText" class="row sh-row">
+            <text class="txt-sub row__label">{{ $t("goods.rowShip") }}</text>
+            <view class="sh-fill row__value">
+              <text class="txt-sub">{{ shipText }}</text>
+              <text v-if="shipSub" class="txt-caption sh-muted">{{ shipSub }}</text>
+            </view>
+          </view>
+          <view v-if="services.length" class="row sh-row" @tap="svcOpen = true">
+            <text class="txt-sub row__label">{{ $t("goods.rowService") }}</text>
+            <text class="txt-sub sh-fill row__value">{{ services.map((c) => $t(`goods.svc${c}`)).join(" · ") }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
@@ -1095,12 +1135,31 @@ onShareAppMessage(() =>
         </view>
 
         <!-- 商家。挪到配送与规格之后：先定「买不买」，再看「谁在卖」。没人评过时不说「暂无评价」 -->
-        <view class="sh-card block">
+        <view class="sh-card block shop">
           <biz-merchant-bar :merchant="goods.merchant" quiet-no-rating @tap="openMerchant"></biz-merchant-bar>
+          <!-- 本店热卖（v3 d04）：推荐里同店的前 3 件。没有同店在售就只留商家条 -->
+          <template v-if="shopHot.length">
+            <view class="sh-row sh-row--between shop__head" @tap="openMerchant">
+              <text class="txt-strong">{{ $t("goods.shopHot") }}</text>
+              <text class="txt-caption sh-muted">{{ $t("goods.enterShop") }}</text>
+            </view>
+            <view class="shop__grid">
+              <view v-for="r in shopHot" :key="r.goodsNo" class="shop__item" @tap="openGoods(r.goodsNo)">
+                <image class="shop__img" :src="thumb(r.cover, 375)" mode="aspectFill" />
+                <text class="txt-caption shop__t">{{ r.title }}</text>
+                <text class="txt-caption txt-strong sh-num">{{ money(r.price) }}</text>
+              </view>
+            </view>
+          </template>
         </view>
 
         <!-- 评价。排在参数与图文之前（原型 g02）：「别人买了觉得怎样」比长图先被看。id 给锚点用 -->
-        <view id="sec-reviews" class="sh-card block">
+        <!-- 评价、问答都空时合成一行（v3 d04）：新店的详情页不该一半是「还没有…」。id 仍给锚点用 -->
+        <view v-if="rvqaEmpty" id="sec-reviews" class="sh-card block rvqa-empty sh-row sh-row--between">
+          <text class="txt-sub sh-muted">{{ $t("goods.rvqaEmpty") }}</text>
+          <text class="txt-sub txt-primary sh-hit" @tap="askQuestion">{{ $t("goods.askAction") }}</text>
+        </view>
+        <view v-else id="sec-reviews" class="sh-card block">
           <view class="rvhead">
             <text class="txt-title">
               {{ summary?.total ? $t("review.title", { n: summary.total }) : $t("review.titleBare") }}
@@ -1110,7 +1169,7 @@ onShareAppMessage(() =>
               按页算平均分的话，翻页时那个「总分」会变，而它看起来完全正常。
             -->
             <text v-if="summary?.total" class="txt-sub sh-num sh-muted">
-              {{ summary.avg }} · {{ $t("review.dims", {
+              {{ goodRate ? `${$t("goods.goodRate", { n: goodRate })} · ` : "" }}{{ summary.avg }} · {{ $t("review.dims", {
                 g: summary.avgGoods, f: summary.avgFulfillment, s: summary.avgService,
               }) }}
             </text>
@@ -1148,7 +1207,7 @@ onShareAppMessage(() =>
           <p>一条问题占两行：问句 + 回答。没有问答时只留「我要问」那一行 ——
           空着的问答区对买家没有意义，而那一个入口有。
         -->
-        <view class="sh-card block qa">
+        <view v-if="!rvqaEmpty" class="sh-card block qa">
           <view class="sh-row sh-row--between">
             <text class="txt-title">{{ $t("goods.qaTitle") }}</text>
             <text class="txt-sub txt-primary sh-hit" @tap="askQuestion">{{ $t("goods.askAction") }}</text>
@@ -1174,9 +1233,12 @@ onShareAppMessage(() =>
             全列的话，参数多的商品会把评价与图文顶到两屏以外；
             而参数恰恰是「已经想买、来核对细节」的人才看的。
           -->
-          <view v-for="(f, i) in factsHead" :key="i" class="fact sh-row sh-row--between sh-row--top">
-            <text class="txt-sub fact__label">{{ f.label }}</text>
-            <text class="txt-sub fact__value">{{ f.value }}</text>
+          <!-- 两列表（v3 d05）：同样四条只要原来一半高 -->
+          <view class="facts">
+            <template v-for="(f, i) in factsHead" :key="i">
+              <text class="txt-sub fact__label">{{ f.label }}</text>
+              <text class="txt-sub facts__value">{{ f.value }}</text>
+            </template>
           </view>
           <view
             v-if="facts.length > factsHead.length"
@@ -1201,7 +1263,7 @@ onShareAppMessage(() =>
           漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
           两样都没有时整段不渲染，不拿一个空白区块占着详情页。
         -->
-        <view v-if="goods.detail || goods.detailImages?.length" class="sh-card block">
+        <view v-if="detailParas.length || goods.detailImages?.length || detailFallback.length" class="sh-card block">
           <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
           <!--
             **按空行分段**（§3.2）。后端存的是纯文本，这里只排版、不解析任何标记 ——
@@ -1219,6 +1281,15 @@ onShareAppMessage(() =>
             mode="widthFix"
             lazy-load
           />
+          <!-- 兜底（v3 d05）：没写正文也没传长图时，主图全宽排开 —— 此前这一段整块消失，往下滑是空的 -->
+          <image
+            v-for="(img, i) in detailFallback"
+            :key="'fb' + img + i"
+            class="dt__img"
+            :src="thumb(img, 750)"
+            mode="widthFix"
+            lazy-load
+          />
         </view>
 
         <!--
@@ -1228,22 +1299,19 @@ onShareAppMessage(() =>
           取不到就整段不出，不留一个空标题。
         -->
         <view id="sec-recommend"></view>
-        <view v-if="recommends.length" class="sh-card block">
-          <text class="txt-title dt__h">{{ $t("goods.recommendTitle") }}</text>
-          <scroll-view class="recs" scroll-x>
-            <view class="sh-row recs__row">
-              <view
-                v-for="r in recommends"
-                :key="r.goodsNo"
-                class="recs__item"
-                @tap="openGoods(r.goodsNo)"
-              >
-                <image class="recs__img" :src="thumb(r.cover, 200)" mode="aspectFill" />
-                <text class="txt-caption recs__t">{{ r.title }}</text>
-                <text class="txt-caption sh-num is-danger">{{ money(r.price) }}</text>
+        <!-- 看了又看（v3 d06）：本店热卖之外的推荐，双列卡；不足 2 件整块不出 -->
+        <view v-if="lookMore.length" class="block lookmore">
+          <text class="txt-title dt__h">{{ $t("goods.lookMore") }}</text>
+          <view class="lookmore__grid">
+            <view v-for="r in lookMore" :key="r.goodsNo" class="sh-card lookmore__item" @tap="openGoods(r.goodsNo)">
+              <image class="lookmore__img" :src="thumb(r.cover, 375)" mode="aspectFill" />
+              <view class="lookmore__body">
+                <text class="txt-sub lookmore__t">{{ r.title }}</text>
+                <text class="txt-strong sh-num">{{ money(r.price) }}</text>
+                <text class="txt-caption sh-muted">{{ r.merchant?.name }}</text>
               </view>
             </view>
-          </scroll-view>
+          </view>
         </view>
 
         <!-- 服务承诺细则（§3.4）：承诺写在页面上，细则就得能查到 -->
@@ -1348,6 +1416,15 @@ onShareAppMessage(() =>
             <view v-else-if="sheetMode === 'group' && grp" class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetGroup">
               {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
             </view>
+            <!-- 从「已选」打开：两颗都给（v3），与底栏同样顺序 -->
+            <template v-else-if="sheetMode === 'pick' && !grp">
+              <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetAdd($event)">
+                {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
+              </view>
+              <view class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
+                {{ $t("goods.buyNow") }}
+              </view>
+            </template>
             <view v-else-if="sheetMode === 'buy'" class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
               {{ soldOut ? $t("goods.soldOut") : grp ? $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) : $t("goods.buyNow") }}
             </view>
@@ -1358,10 +1435,15 @@ onShareAppMessage(() =>
         </sh-sheet>
 
         <sh-actionbar pill="plain" :pad="220">
-          <!-- 底栏三格：店铺 · 两颗按钮（原型 g01）。分享挪到标题旁、购物车挪到左上角 -->
+          <!-- 底栏：店铺 · 购物车 · 两颗按钮（v3，2026-09-28 用户拍板购物车回底栏）。分享仍在标题旁 -->
           <view class="actionbar__icon sh-center" @tap="openMerchant">
             <sh-icon name="store" :size="40" color="var(--sh-sub)"></sh-icon>
             <text class="txt-caption sh-muted">{{ $t("goods.shop") }}</text>
+          </view>
+          <view class="actionbar__icon actionbar__cart sh-center" :class="{ 'is-bouncing': bouncing }" @tap="gotoCart">
+            <sh-icon name="cart" :size="40" color="var(--sh-sub)"></sh-icon>
+            <text v-if="cart.count" class="sh-badge-count actionbar__badge sh-num">{{ cart.count > 99 ? "99+" : cart.count }}</text>
+            <text class="txt-caption sh-muted">{{ $t("goods.cart") }}</text>
           </view>
           <!-- 拼团商品：单买 / 开团（s21）。参团在团页上，开团价由活动定 -->
           <!-- 仅活动可售：directBuyable 为假时没有单买 / 加购；拼团也没有就只剩一颗压暗的「暂不可购买」 -->
@@ -1588,11 +1670,6 @@ onShareAppMessage(() =>
 .topbar.is-solid .topbar__btn {
   background: transparent;
 }
-.topbar__badge {
-  position: absolute;
-  top: -8rpx;
-  inset-inline-end: -12rpx;
-}
 .topbar__anchors {
   gap: 32rpx;
   padding-inline-start: 8rpx;
@@ -1607,7 +1684,7 @@ onShareAppMessage(() =>
   color: var(--sh-ink);
   border-bottom-color: var(--sh-primary);
 }
-.topbar__cart.is-bouncing {
+.actionbar__cart.is-bouncing {
   animation: shCartBounce var(--sh-t-slow) var(--sh-ease-spring);
 }
 @keyframes shCartBounce {
@@ -1688,17 +1765,6 @@ onShareAppMessage(() =>
   margin-top: 40rpx;
 }
 
-/* 服务承诺条：一行摆完，点整行进细则 */
-.svc__row {
-  min-height: 56rpx;
-  gap: 24rpx;
-}
-.svc__dot {
-  margin-inline-end: 8rpx;
-  /* 主色是**背景色**，当文字色用对比度不够（design-tokens 守卫拦的就是这个）；
-     文字要走 primary-text */
-  color: var(--sh-primary-text);
-}
 .svc__desc {
   display: block;
   margin-top: 8rpx;
@@ -1739,27 +1805,99 @@ onShareAppMessage(() =>
   margin-top: 4rpx;
 }
 
-/* 推荐位：横滑一排小卡，不占竖向空间 */
-.recs {
-  margin-top: 12rpx;
-  white-space: nowrap;
+/* ── v3（TDD-C端商品详情页v3）── */
+/* 已售挤到价格行最右 */
+.price__sold {
+  margin-inline-start: auto;
+  align-self: center;
 }
-.recs__row {
-  gap: 16rpx;
+/* 选购卡：已选 / 配送 / 保障，左标签右内容，行间一条细线 */
+.buycard .row {
+  gap: 24rpx;
+  padding: 20rpx 0;
+  align-items: flex-start;
 }
-.recs__item {
+.buycard .row + .row {
+  border-top: var(--sh-hairline);
+}
+.row__label {
   flex-shrink: 0;
-  width: 180rpx;
+  width: 64rpx;
+  color: var(--sh-sub);
 }
-.recs__img {
-  width: 180rpx;
-  height: 180rpx;
+.row__value {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+  color: var(--sh-ink);
+}
+/* 评价、问答都空时的那一行 */
+.rvqa-empty {
+  gap: 24rpx;
+}
+/* 店铺卡下的本店热卖：三列等宽 */
+.shop__head {
+  margin-top: 20rpx;
+}
+.shop__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.shop__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+.shop__img {
+  width: 100%;
+  height: 200rpx;
   border-radius: 16rpx;
 }
-.recs__t {
-  display: block;
+.shop__t,
+.lookmore__t {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* 参数两列表：标签列按内容宽，值列吃余量 */
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12rpx 32rpx;
+  margin-top: 16rpx;
+}
+.facts__value {
+  color: var(--sh-ink);
+}
+/* 看了又看：双列卡，卡片本身是块，没有外层白卡 */
+.lookmore__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.lookmore__item {
+  padding: 0;
+  overflow: hidden;
+}
+.lookmore__img {
+  width: 100%;
+  height: 330rpx;
+}
+.lookmore__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  padding: 12rpx 16rpx 16rpx;
+}
+/* 底栏购物车的件数角标 */
+.actionbar__badge {
+  position: absolute;
+  top: -4rpx;
+  inset-inline-end: 4rpx;
 }
 </style>

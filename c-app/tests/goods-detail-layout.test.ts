@@ -140,38 +140,73 @@ describe("商品详情页重排", () => {
     expect(w.find(".skuhead").exists(), "多规格要先弹面板").toBe(true);
   });
 
-  it("★★★ 详情页不说配送：「送至」「配送」是订单的事，只留销售范围（2026-09-19 用户拍板）", async () => {
+  it("★★★ v3 选购卡：已选、配送（按商品声明的方式）与到货说明都出现（2026-09-28 用户拍板恢复）", async () => {
+    // 2026-09-19 的拍板是「详情页不说配送」；2026-09-28 用户改了决定 —— 这条钉的是新决定
     goodsDetail.mockResolvedValue(goods({
       fulfillments: [FULFILLMENT.EXPRESS, FULFILLMENT.PICKUP],
       arrivalDesc: "次日 16 点后可提",
       saleScope: { unlimited: false, areaNames: ["深圳市"], areaCount: 1 },
     } as Partial<Goods>));
-    const html = (await render()).html();
-    for (const k of ["goods.shipTo", "goods.shipVia", "goods.pickAddress", "fulfillment.", "次日 16 点后可提"]) {
-      expect(html, `详情页出现了配送信息 ${k}`).not.toContain(k);
-    }
-    expect(html).toContain("goods.scopeLabel");
-    expect(html).toContain("深圳市");
-  });
-
-  it("★★★ v2 底栏三格：店铺 + 两颗按钮；购物车在左上浮层，分享在标题旁（原型 g01）", async () => {
-    goodsDetail.mockResolvedValue(goods());
     const w = await render();
-    expect(w.findAll(".actionbar__icon"), "底栏图标位只剩「店铺」").toHaveLength(1);
-    expect(w.find(".actionbar__cart").exists()).toBe(false);
-    expect(w.find(".topbar .topbar__cart").exists(), "购物车挪到左上").toBe(true);
-    expect(w.findAll(".actionbar__add, .actionbar__buy").filter((b) => !b.element.closest(".sheetbar"))).toHaveLength(2);
-  });
-
-  it("★★★ v2 页面上没有「已选」「范围」两行；销售区域进商品参数（原型 g01 / g02）", async () => {
-    goodsDetail.mockResolvedValue(goods({ saleScope: { unlimited: false, areaNames: ["深圳市"], areaCount: 1 } } as Partial<Goods>));
-    const w = await render();
-    const rows = w.findAll(".row__label").map((r) => r.text());
-    expect(rows).not.toContain("goods.chosen");
-    expect(rows).not.toContain("goods.scopeShort");
+    const labels = w.findAll(".buycard .row__label").map((r) => r.text());
+    expect(labels).toEqual(expect.arrayContaining(["goods.rowChosen", "goods.rowShip"]));
+    const html = w.html();
+    expect(html).toContain(`fulfillment.${FULFILLMENT.EXPRESS}`);
+    expect(html).toContain(`fulfillment.${FULFILLMENT.PICKUP}`);
+    expect(html).toContain("次日 16 点后可提");
+    // 销售区域仍在商品参数里，不进选购卡
     const params = w.find("#sec-detail").element.nextElementSibling!;
     expect(params.textContent).toContain("goods.scopeLabel");
     expect(params.textContent).toContain("深圳市");
+  });
+
+  it("★★★ v3 多规格时「已选」说共几种；单规格不说", async () => {
+    goodsDetail.mockResolvedValue(goods());
+    expect((await render()).html()).not.toContain("goods.specCount");
+    goodsDetail.mockResolvedValue(goods({
+      specGroups: [{ name: "重量", options: ["约10斤", "约5斤"] }],
+      skus: [
+        { skuNo: "S1", optionValues: ["约10斤"], spec: "约10斤", price: 5000, stock: 100 },
+        { skuNo: "S2", optionValues: ["约5斤"], spec: "约5斤", price: 2800, stock: 100 },
+      ] as never,
+    }));
+    expect((await render()).html()).toContain("goods.specCount");
+  });
+
+  it("★★★ v3 点「已选」弹面板，面板里两颗按钮都在（加购 + 立即购买）", async () => {
+    goodsDetail.mockResolvedValue(goods());
+    const w = await render();
+    await w.find(".buycard .row").trigger("tap");
+    await w.vm.$nextTick();
+    const texts = w.findAll(".sheetbar .sh-btn").map((b) => b.text());
+    expect(texts).toHaveLength(2);
+    expect(texts.join()).toContain("goods.addCart");
+    expect(texts.join()).toContain("goods.buyNow");
+  });
+
+  it("★★★ v3 底栏：店铺 · 购物车 · 两颗按钮；左上不再有购物车（2026-09-28 用户拍板）", async () => {
+    goodsDetail.mockResolvedValue(goods());
+    const w = await render();
+    expect(w.findAll(".actionbar__icon"), "底栏图标位：店铺 + 购物车").toHaveLength(2);
+    expect(w.find(".actionbar__cart").exists()).toBe(true);
+    expect(w.find(".topbar .topbar__cart").exists(), "左上只留返回").toBe(false);
+    expect(w.findAll(".actionbar__add, .actionbar__buy").filter((b) => !b.element.closest(".sheetbar"))).toHaveLength(2);
+  });
+
+  it("★★ v3 没有图文详情时用主图兜底；有长图时不兜底", async () => {
+    goodsDetail.mockResolvedValue(goods({ cover: "https://x/c.jpg", images: ["https://x/a.jpg"] } as Partial<Goods>));
+    expect((await render()).html()).toContain("goods.detailTitle");
+    goodsDetail.mockResolvedValue(goods({ cover: "https://x/c.jpg", detailImages: ["https://x/d.jpg"] } as Partial<Goods>));
+    const w = await render();
+    expect(w.findAll(".dt__img")).toHaveLength(1);
+  });
+
+  it("★★ v3 评价头给好评率：4、5 星之和 / 总数", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      reviewSummary: { total: 10, avg: 4.6, dist: [0, 1, 1, 3, 5], withImages: 2, avgGoods: 4.7, avgFulfillment: 4.5, avgService: 4.6 },
+    } as Partial<Goods>));
+    const html = (await render()).html();
+    expect(html).toContain("goods.goodRate");
   });
 
   it("★★ v2 评价排在参数与图文之前（原型 g02）", async () => {

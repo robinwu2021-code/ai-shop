@@ -150,14 +150,16 @@ describe("详情页 · 评价与问答（§3.3）", () => {
     goodsDetail.mockResolvedValue(aGoods());
     const html = (await render()).html();
     expect(html).not.toContain("review.filterIMAGE");
-    expect(html).toContain("review.empty");
+    // v3：评价与问答都空时合成一行（TDD-C端商品详情页v3 AC6）
+    expect(html).toContain("goods.rvqaEmpty");
   });
 
   it("★★★ 问答只显示已回答的那几条，并始终留着提问入口", async () => {
     goodsDetail.mockResolvedValue(aGoods());
     const html = (await render()).html();
-    // 没有问答时：空态 + 入口都在（入口是这一段存在的理由）
-    expect(html).toContain("goods.qaEmpty");
+    // 没有问答时：空态 + 入口都在（入口是这一段存在的理由）。
+    // v3：评价也空时两块合成一行，入口仍在那一行上
+    expect(html).toContain("goods.rvqaEmpty");
     expect(html).toContain("goods.askAction");
   });
 });
@@ -176,7 +178,8 @@ describe("详情页 · 推荐位（§3.4 批 4）", () => {
       total: 2,
     });
     const html = (await render()).html();
-    expect(html).toContain("goods.recommendTitle");
+    // v3：同店的挂在店铺卡下「本店热卖」（AC7）
+    expect(html).toContain("goods.shopHot");
     expect(html).toContain("另一件");
     expect(html).not.toContain("就是这件");
   });
@@ -184,6 +187,8 @@ describe("详情页 · 推荐位（§3.4 批 4）", () => {
   it("★★ 取不到就整段不出 —— 不留一个空标题", async () => {
     goodsDetail.mockResolvedValue(aGoods());
     goodsList.mockRejectedValue(new Error("网络异常"));
-    expect((await render()).html()).not.toContain("goods.recommendTitle");
+    const html = (await render()).html();
+    expect(html).not.toContain("goods.shopHot");
+    expect(html).not.toContain("goods.lookMore");
   });
 });
