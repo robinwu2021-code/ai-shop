@@ -991,6 +991,56 @@
    ]
   },
   {
+   "slug": "c-goods-detail-v3",
+   "file": "c-goods-detail-v3.html",
+   "title": "C 端商品详情 v3：参照淘宝京东",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-27",
+   "artifact": "https://claude.ai/artifact/VchXxtadSj5aK3xcZUNxrw",
+   "summary": "首屏定买不买（张数、已售、促销标签、领券、已选规格数、配送与到货）；第二屏评价头（好评率、三项分、筛选）与店铺卡（本店热卖三列）；往下参数两列表、图文详情（无详情用主图兜底）、看了又看双列。缺的块不出。八屏，附数据来源表（两处要后端补）。",
+   "docs": [],
+   "screens": [
+    {
+     "id": "d01",
+     "title": "首屏 · 价格区",
+     "client": "c-app",
+     "route": "pages/goods/index"
+    },
+    {
+     "id": "d02",
+     "title": "选购卡"
+    },
+    {
+     "id": "d03",
+     "title": "评价（有评价）"
+    },
+    {
+     "id": "d04",
+     "title": "空态合并 · 店铺卡"
+    },
+    {
+     "id": "d05",
+     "title": "参数 · 图文详情"
+    },
+    {
+     "id": "d06",
+     "title": "推荐 · 双列"
+    },
+    {
+     "id": "d07",
+     "title": "现状对照"
+    },
+    {
+     "id": "d08",
+     "title": "数据少的商品"
+    }
+   ]
+  },
+  {
    "slug": "goods-detail-opt",
    "file": null,
    "title": "C 端商品详情页：现状与优化",

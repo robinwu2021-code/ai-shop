@@ -298,3 +298,74 @@ a{color:inherit}
   font-size:10.5px;padding:6px 12px;border-radius:99px;white-space:nowrap;z-index:3}
 /* 失效条目：整行压淡 */
 .gc.dead{opacity:.55}
+
+/* ── C 端商品详情 v3（2026-09-27，c-goods-detail-v3）：参照淘宝 / 京东的信息密度 ──
+ * 前缀 gd-：只在这份稿子里用；落地时对应 c-app pages/goods 的同名块。 */
+/* 主图张数角标（右下）与缩略点 */
+.scr .hero{position:relative}
+.gd-cnt{position:absolute;right:10px;bottom:8px;background:rgba(0,0,0,.38);color:#fff;font-size:9.5px;padding:1px 8px;border-radius:99px}
+/* 价格区：大价 + 划线 + 省；第二行促销标签；右上已售 */
+.gd-price{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.gd-price b{font-size:22px;font-weight:700;line-height:1}
+.gd-price b small{font-size:12px;font-weight:600}
+.gd-price .sold{margin-left:auto;font-size:10px;color:var(--sh-sub)}
+.gd-tags{display:flex;gap:5px;flex-wrap:wrap}
+.gd-tags .chip{font-size:9.5px}
+/* 选购卡：已选 / 配送 / 保障 三行，淘宝京东都有的那一块；每行左标签右内容 */
+.gd-rows{background:var(--sh-card);border-radius:13px;padding:2px 12px}
+.gd-rows .r{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--sh-line);align-items:flex-start}
+.gd-rows .r:first-child{border-top:0}
+.gd-rows .r .k{flex:0 0 30px;color:var(--sh-sub)}
+.gd-rows .r .v{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gd-rows .r .v .s{font-size:10px;color:var(--sh-sub)}
+.gd-rows .r::after{content:"›";color:var(--sh-sub)}
+.gd-rows .r.nogo::after{content:""}
+/* 评价头：评分大字 + 好评率 + 三项分；标签云；两条评价 */
+.gd-rv{background:var(--sh-card);border-radius:13px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.gd-rv .hd{display:flex;align-items:baseline;gap:6px}
+.gd-rv .hd b{font-size:13px}
+.gd-rv .hd .more{margin-left:auto;font-size:10px;color:var(--sh-sub)}
+.gd-rv .hd .more::after{content:" ›"}
+.gd-rv .sc{display:flex;gap:10px;font-size:10px;color:var(--sh-sub)}
+.gd-rv .sc em{font-style:normal;color:var(--sh-ink);font-weight:600}
+.gd-rv .it{display:flex;flex-direction:column;gap:3px;padding-top:7px;border-top:1px solid var(--sh-line)}
+.gd-rv .it .by{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--sh-sub)}
+.gd-rv .it .by i{width:16px;height:16px;border-radius:99px;background:var(--sh-faint)}
+.gd-rv .it .pics{display:flex;gap:4px}
+.gd-rv .it .pics span{width:40px;height:40px;border-radius:6px;background:var(--sh-faint)}
+/* 空态合并成一行：评价 · 问答 */
+.gd-empty{background:var(--sh-card);border-radius:13px;padding:9px 12px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--sh-sub)}
+.gd-empty b{color:var(--sh-ink);font-weight:600;margin-right:6px}
+/* 店铺卡：头像 + 名称 + 三项分 + 进店；下挂本店热卖三列 */
+.gd-shop{background:var(--sh-card);border-radius:13px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.gd-shop .hd{display:flex;align-items:center;gap:8px}
+.gd-shop .hd .lg{width:34px;height:34px;border-radius:9px;background:var(--sh-danger);color:#fff;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.gd-shop .hd .nm{font-size:12.5px;font-weight:600}
+.gd-shop .hd .go{margin-left:auto;font-size:10px;padding:4px 10px;border-radius:99px;background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.gd-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.gd-g3 div{display:flex;flex-direction:column;gap:2px;font-size:9.5px}
+.gd-g3 div>span{aspect-ratio:1;border-radius:8px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:18px}
+.gd-g3 div b{font-size:10.5px}
+/* 参数表：两列键值，前 4 条 + 全部 */
+.gd-params{background:var(--sh-card);border-radius:13px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:10.5px}
+.gd-params .k{color:var(--sh-sub)}
+.gd-params .all{grid-column:1/-1;text-align:center;color:var(--sh-sub);font-size:10px;padding-top:3px;border-top:1px solid var(--sh-line)}
+/* 图文详情：长图全宽 */
+.gd-detail{display:flex;flex-direction:column;gap:0;border-radius:13px;overflow:hidden}
+.gd-detail span{height:120px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;color:var(--sh-sub);font-size:10px;border-top:1px solid var(--sh-card)}
+.gd-detail p{background:var(--sh-card);margin:0;padding:10px 12px;font-size:10.5px;color:var(--sh-ink)}
+/* 推荐：双列卡 */
+.gd-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gd-g2 .cd{background:var(--sh-card);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.gd-g2 .cd>span{aspect-ratio:1;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:28px}
+.gd-g2 .cd div{padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.gd-g2 .cd b{font-size:12px}
+.gd-g2 .cd .m{font-size:9.5px;color:var(--sh-sub)}
+/* 分节小标题（屏内） */
+.gd-h{font-size:12px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline}
+.gd-h small{font-size:10px;color:var(--sh-sub);font-weight:400}
+/* 底栏图标位带角标（购物车） */
+.foot .ic.cart{position:relative}
+.foot .ic.cart b{position:absolute;top:-2px;right:0;min-width:13px;height:13px;border-radius:99px;background:var(--sh-danger);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center}
+.gd-g3 div em{font-style:normal;font-size:10px}
+.frow .v.l{text-align:left;flex:1}
