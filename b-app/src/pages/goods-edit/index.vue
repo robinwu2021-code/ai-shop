@@ -23,6 +23,7 @@ import { useSpecGroups } from "./spec-groups";
 import type { Row } from "./price-rows";
 import type { GoodsInvMode, InvMode, SellRule } from "@shared/types";
 import { describeBlockers, describeStocked, invModeLabel, sellRuleText } from "@/shared/inv-mode";
+import { mergeI18nText } from "@/shared/i18n-text";
 import { pickSellRule } from "@/utils/sell-rule";
 import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
@@ -1009,12 +1010,8 @@ onLoad(async (q) => {
    * 后端给不出 `titleI18n` 的老数据（或 C 端拍平的那份）才回落到
    * 「只填当前语言」，那是能拿到的全部信息。
    */
-  title.value = g.titleI18n
-    ? { ...title.value, ...g.titleI18n }
-    : { ...title.value, [lang.value]: g.title };
-  subtitle.value = g.subtitleI18n
-    ? { ...subtitle.value, ...g.subtitleI18n }
-    : { ...subtitle.value, [lang.value]: g.subtitle };
+  title.value = mergeI18nText(title.value, g.titleI18n, lang.value, g.title);
+  subtitle.value = mergeI18nText(subtitle.value, g.subtitleI18n, lang.value, g.subtitle);
   detail.value = g.detail ?? "";
   // 详情图与轮播图同理：保存整份覆盖，不回显就等于「打开编辑页再保存一次就清空」
   detailImages.value = [...(g.detailImages ?? [])];
