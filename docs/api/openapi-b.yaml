@@ -10391,6 +10391,33 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/common/auth/automation": 
+    post: 
+      operationId: "mAutomationLogin"
+      summary: "密钥票据换会话（自动化测试，ADR-027）"
+      tags: 
+        - "auth"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/AutomationSession"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/merchant/agreement/accept": 
     post: 
       operationId: "mAcceptAgreement"

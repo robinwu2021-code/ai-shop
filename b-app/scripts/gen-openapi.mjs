@@ -247,6 +247,7 @@ const RESPONSE_TYPES = {
   mPreviewMemberSegment: "MemberSegmentPreview",
   mQualifications: "MyQualifications",
   mQuickStart: "MerchantProfile",
+  mAutomationLogin: "AutomationSession",
   mRedeemCoupon: "CouponRedeemResult",
   mRegionPath: "Region[]",
   mRegionSearch: "RegionSearchResult",

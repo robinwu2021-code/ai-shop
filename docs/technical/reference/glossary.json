@@ -31186,6 +31186,15 @@
         "module": "shop-auth-store"
       },
       {
+        "name": "TicketRealm",
+        "values": [
+          "B",
+          "OPS"
+        ],
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
         "name": "TriggerType",
         "values": [
           "CRON",

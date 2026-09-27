@@ -502,6 +502,17 @@
 | `merchant` | [`MerchantProfile`](#merchantprofile) | 是 | 商家档案 |
 
 
+#### POST `/common/auth/automation`
+
+密钥票据换会话（自动化测试，ADR-027）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`AutomationSession`](#automationsession)
+
+
 ### campaign
 
 #### GET `/biz/campaign`
