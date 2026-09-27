@@ -132,6 +132,13 @@ import type {
  * 平台出的这份对账单是他唯一能说明「这笔钱是怎么来的」的东西。
  * 所以每一行都要能与外部账单勾对，且必须导得出去留存。
  */
+/** 密钥票据换出的会话（ADR-027）。realm 为 B 时 token 是 btk_ */
+export interface AutomationSession {
+  realm: "B" | "OPS";
+  subject: string;
+  token: string;
+}
+
 export interface Statement {
   /** YYYY-MM；查全部时为空 */
   period: string;
@@ -613,6 +620,11 @@ export interface MerchantApi {
    * 之后补证照走的还是 `mApply`，服务端会认领这家店，店与货原样留着。
    */
   mQuickStart(payload: { storeName: string; address?: string }): Promise<MerchantProfile>;
+  /**
+   * 密钥票据换会话（ADR-027）。只给自动化测试用：票据由本机私钥签发、60 秒一次性，
+   * 线上默认关（接口 404）。拿到的 token 与正常登录同一种（btk_）。
+   */
+  mAutomationLogin(ticket: string): Promise<AutomationSession>;
   /**
    * 上次申请。返回的是**申请单**而不是请求体 —— 回填要用的是「上次填了什么」，
    * 而「审到哪一步、为什么被驳回」和它是同一份数据，拆成两条接口只会让两边不同步。

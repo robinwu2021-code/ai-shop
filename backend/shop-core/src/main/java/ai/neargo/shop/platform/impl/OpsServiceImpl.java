@@ -174,7 +174,26 @@ public class OpsServiceImpl implements OpsService {
         if (passwordHasher.needsUpgrade(staff.getPassword())) {
             staff.setPassword(passwordHasher.encode(password));
         }
+        return issue(staff);
+    }
 
+    @Override
+    public LoginResultVO issueSessionFor(String staffNo) {
+        SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getStaffNo, staffNo).last("limit 1")));
+        if (staff == null || !"ACTIVE".equals(staff.getStatus())) {
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        return issue(staff);
+    }
+
+    /**
+     * 验过身份之后的那一段：现算角色与权限、签会话、记最近登录。
+     * <b>密码登录与票据登录共用它</b> —— 两份的话，将来给登录加一条规矩（比如数据域）只改了一份，
+     * 另一条路就成了绕过那条规矩的门。
+     */
+    private LoginResultVO issue(SysOpsStaff staff) {
         List<String> roles = readList(staff.getRoles());
         List<String> perms = rolePermResolver.of(roles);
         String token = tokenStore.issue(TokenStore.SessionData.of(

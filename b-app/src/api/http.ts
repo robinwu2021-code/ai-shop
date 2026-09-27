@@ -2,7 +2,7 @@
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
-import type { EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
+import type { AutomationSession, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
   WithdrawPage, WithdrawRecord, DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PurchaseInvoice, Statement } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
@@ -164,6 +164,7 @@ export const httpApi: MerchantApi = {
 
   mApply: (payload: MerchantApplyReq) => http.post<MerchantProfile>(E.mApply.path, payload),
   mQuickStart: (payload) => http.post<MerchantProfile>(E.mQuickStart.path, payload),
+  mAutomationLogin: (ticket) => http.post<AutomationSession>(E.mAutomationLogin.path, { ticket }),
   mApplyDraft: () => http.get<MerchantApplyStatus | null>(E.mApplyDraft.path),
   mAcceptAgreement: () => http.post<number>(E.mAcceptAgreement.path, {}),
   mMasterData: () => http.get<MasterData>(E.mMasterData.path),

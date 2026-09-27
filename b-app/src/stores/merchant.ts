@@ -180,6 +180,19 @@ export const useMerchantStore = defineStore("merchant", {
       await this.loadProfile();
     },
 
+    /**
+     * 密钥票据登录（ADR-027）：只给模拟器上的自动化测试用，票据由本机私钥签发。
+     * 与 {@link login} 存在同一个位置，之后的一切与正常登录无异。
+     */
+    async loginWithTicket(ticket: string) {
+      const resp = await api.mAutomationLogin(ticket);
+      if (resp.realm !== "B") throw new Error("票据不是店主身份");
+      this.token = resp.token;
+      uni.setStorageSync(STORAGE.token, resp.token);
+      await this.loadProfile();
+      void this.bindPushDevice();
+    },
+
     async login(req: LoginReq) {
       const resp = await api.mLogin(req);
       this.token = resp.token;

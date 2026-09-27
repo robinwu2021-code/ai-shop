@@ -19,6 +19,7 @@ export const accountMock: Pick<MerchantApi,
   | "mProfile"
   | "mApply"
   | "mQuickStart"
+  | "mAutomationLogin"
   | "mApplyDraft"
   | "mAcceptAgreement"
 > = {
@@ -99,6 +100,11 @@ export const accountMock: Pick<MerchantApi,
     };
     persist();
     return delay({ ...db.merchant });
+  },
+
+  /** mock 下没有线上会话可换：直接给演示会话（与 restore 里的 demo-token 同一个） */
+  async mAutomationLogin() {
+    return delay({ realm: "B" as const, subject: "demo", token: "demo-token" });
   },
 
   async mQuickStart(payload) {
