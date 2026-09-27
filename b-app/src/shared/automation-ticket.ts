@@ -1,8 +1,8 @@
 // 从 App 启动参数里取密钥票据（ADR-027，TDD-密钥票据免登录 §4.4）。
 //
-// 模拟器上由 scripts/automation/emulator-login.sh 用 adb 带进来。uni 的
-// `plus.runtime.arguments` 在不同启动方式下给的形态不一样：JSON 字符串、查询串、
-// 或者直接就是票据本身 —— 三种都认，认不出来就当没有（**不猜**：猜错的代价是拿一段垃圾去换会话）。
+// 模拟器上由 scripts/automation/emulator-login.sh 用 adb 写进 App 私有目录的一个文件。
+// 内容的形态宽容：票据本身、JSON、查询串三种都认，认不出来就当没有
+// （**不猜**：猜错的代价是拿一段垃圾去换会话）。
 //
 // 票据本身没有私钥签不出来，所以「App 会读启动参数」不是一扇门；它只是把本机脚本签好的票据送到登录那一步。
 
@@ -29,15 +29,46 @@ export function parseAutomationTicket(raw: unknown): string | null {
   return null;
 }
 
-/** App 运行时才有启动参数；H5、小程序一律 null（它们没有这条路径）。 */
-export function readAutomationTicket(): string | null {
+/**
+ * 模拟器上交票据的文件（相对 `_doc`，即 /sdcard/Android/data/<包名>/apps/<appid>/doc/）。
+ *
+ * <p>为什么走文件不走启动参数：离线 SDK 5.24 里 `plus.runtime.arguments` 只从 uni 小程序模式的
+ * Intent extra 取值，普通 App 冷启动带 extra 它不读（2026-09-27 实测，见 emulator-login.sh）；
+ * 走 URL scheme 又要改仓库外的离线工程、并让正式包多一个深链入口。
+ * 这个目录在新版 Android 上只有本 App 与 adb 写得进去，别的 App 放不了东西。
+ */
+export const AUTOMATION_TICKET_FILE = "_doc/automation-ticket.txt";
+
+/** 读出来就删：票据一次性，文件留着只会让下一次启动拿旧票据去换、白记一次失败审计。 */
+export function readAutomationTicket(): Promise<string | null> {
   // #ifdef APP-PLUS
-  try {
-    return parseAutomationTicket(plus.runtime.arguments);
-  } catch {
-    return null;
-  }
+  return new Promise((resolve) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const io = (plus as any).io;
+      io.resolveLocalFileSystemURL(
+        AUTOMATION_TICKET_FILE,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (entry: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          entry.file((file: any) => {
+            const reader = new io.FileReader();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            reader.onloadend = (e: any) => {
+              entry.remove(() => undefined, () => undefined);
+              resolve(parseAutomationTicket(e?.target?.result));
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsText(file, "utf-8");
+          }, () => resolve(null));
+        },
+        () => resolve(null),
+      );
+    } catch {
+      resolve(null);
+    }
+  });
   // #endif
   // eslint-disable-next-line no-unreachable
-  return null;
+  return Promise.resolve(null);
 }

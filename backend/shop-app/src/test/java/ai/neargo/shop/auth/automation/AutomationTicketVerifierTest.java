@@ -1,4 +1,4 @@
-package ai.neargo.shop.portal.common;
+package ai.neargo.shop.auth.automation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

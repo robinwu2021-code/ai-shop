@@ -3,18 +3,27 @@
 #
 #   scripts/automation/emulator-login.sh <店主 user_no> [设备序列号，默认 emulator-5554]
 #
-# 本机私钥签一张 60 秒一次性票据，冷启动 App 时经启动参数交进去；App 换成会话后直接进工作台。
-# 票据只在这条管道里经过，不打印。
+# 本机私钥签一张 60 秒一次性票据，adb 写进 App 私有目录的 _doc/automation-ticket.txt，
+# 冷启动 App：它读到就删掉文件、换成会话、进工作台。票据不打印。
+#
+# 为什么走文件不走启动参数：离线 SDK 5.24 的 plus.runtime.arguments 只从 uni 小程序模式的
+# Intent extra（unimp_run_arguments）取值，普通 App 冷启动带 extra 它不读 —— 第一版就栽在这，
+# 两种 key 都试过、服务器一条请求都没收到。
 set -euo pipefail
 SUB="${1:?用法：emulator-login.sh <店主 user_no> [序列号]}"
 SERIAL="${2:-emulator-5554}"
 ADB="${ADB:-/opt/homebrew/share/android-commandlinetools/platform-tools/adb}"
 PKG=top.hxmall.bapp
 HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+APPID="$(python3 -c "import json,re,sys; s=open('$ROOT/b-app/src/manifest.json',encoding='utf8').read(); s=re.sub(r'/\*.*?\*/','',s,flags=re.S); print(json.loads(s)['appid'])")"
+DEST="/sdcard/Android/data/$PKG/apps/$APPID/doc/automation-ticket.txt"
 
-TICKET="$(python3 -c "import sys; sys.path.insert(0, '$HERE'); from _ticket import sign_ticket; print(sign_ticket('B', '$SUB'))")"
+TMP="$(mktemp)"; chmod 600 "$TMP"; trap 'rm -f "$TMP"' EXIT
+python3 -c "import sys; sys.path.insert(0, '$HERE'); from _ticket import sign_ticket; sys.stdout.write(sign_ticket('B', '$SUB'))" > "$TMP"
 "$ADB" -s "$SERIAL" shell am force-stop "$PKG"
-# DCloud 的启动参数走 Intent extra「arguments」—— App 里 plus.runtime.arguments 读到的就是它
-"$ADB" -s "$SERIAL" shell am start -n "$PKG/io.dcloud.PandoraEntry" --es arguments "$TICKET" >/dev/null
-unset TICKET
-echo "已用票据冷启动 $PKG（$SERIAL），几秒后应进入工作台"
+"$ADB" -s "$SERIAL" push "$TMP" "$DEST" >/dev/null
+rm -f "$TMP"
+"$ADB" -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 \
+  || "$ADB" -s "$SERIAL" shell am start -n "$PKG/io.dcloud.PandoraEntry" >/dev/null
+echo "已写入票据并冷启动 $PKG（$SERIAL），几秒后应进入工作台"

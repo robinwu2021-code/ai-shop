@@ -4,12 +4,14 @@ import ai.neargo.shop.auth.LoginAuditor;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.auth.automation.AutomationTicketVerifier;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,8 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 关着时<b>整个控制器不注册</b>，接口就是不存在 —— 与任何不存在的路径一样回 404。
  * 在方法里抛 404 不行：全局兜底会把它包成「200 + 服务器错误」，反而告诉探测者「这里有东西」。
  */
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
-        name = "shop.auth.automation.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "shop.auth.automation.enabled", havingValue = "true")
 public class AutomationLoginController {
 
     private static final Logger log = LoggerFactory.getLogger(AutomationLoginController.class);

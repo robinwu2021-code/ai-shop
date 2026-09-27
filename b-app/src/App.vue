@@ -39,15 +39,15 @@ onLaunch(() => {
   merchant.restore(); // 商家登录态
 
   /*
-   * 自动化测试：启动参数里带了密钥票据就换会话（ADR-027）。只在 App 运行时有这条路径；
+   * 自动化测试：私有目录里有 adb 写入的密钥票据就换会话（ADR-027）。只在 App 运行时有这条路径；
    * 没有私钥签不出有效票据，线上默认关（换会话的接口 404）。换失败就留在原来的状态，不打断启动。
    */
-  const ticket = readAutomationTicket();
-  if (ticket) {
-    void merchant.loginWithTicket(ticket)
+  void readAutomationTicket().then((ticket) => {
+    if (!ticket) return;
+    return merchant.loginWithTicket(ticket)
       .then(() => uni.reLaunch({ url: "/pages/home/index" }))
       .catch((e: unknown) => console.warn("[automation] 票据登录失败", e));
-  }
+  });
 
   /*
    * 登录失效时去登录页。**注册在壳上，因为 401 可能从任何一个请求回来** ——

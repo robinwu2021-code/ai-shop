@@ -1,4 +1,4 @@
-package ai.neargo.shop.portal.common;
+package ai.neargo.shop.auth.automation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -64,7 +65,7 @@ public class AutomationTicketVerifier {
     /** 用过的 nonce → 可以忘掉它的时刻（秒）。单实例部署，进程内存够用；多实例要换共享存储（ADR-027 代价）。 */
     private final Map<String, Long> usedNonces = new ConcurrentHashMap<>();
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public AutomationTicketVerifier(@Value("${shop.auth.automation.enabled:false}") boolean enabled,
                                     @Value("${shop.auth.automation.public-key:}") String publicKey,
                                     @Value("${shop.auth.automation.subjects:}") String subjects) {
