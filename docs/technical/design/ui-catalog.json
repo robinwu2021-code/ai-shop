@@ -2221,7 +2221,7 @@
             {
               "app": "ops-web",
               "route": "/after-sales?tab=fastrefund",
-              "title": "极速退阈值配置",
+              "title": "售后规则",
               "domain": "售后治理",
               "group": "规则",
               "matrix": "P-6.1",
