@@ -559,7 +559,6 @@ export default {
     giftItem: "{title} ×{n}（0 元）",
   },
   payMode: {
-    ONLINE: "在线支付",
     OFFLINE: "当面付款",
   },
 

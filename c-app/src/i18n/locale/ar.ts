@@ -526,7 +526,6 @@ export default {
     giftItem: "{title} ×{n} (مجانًا)",
   },
   payMode: {
-    ONLINE: "الدفع أونلاين",
     OFFLINE: "الدفع نقدًا",
   },
 
