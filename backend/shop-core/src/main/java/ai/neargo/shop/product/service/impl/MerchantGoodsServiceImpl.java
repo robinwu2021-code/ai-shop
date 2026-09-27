@@ -8,6 +8,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.GoodsVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
@@ -3146,6 +3147,42 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 取自己的商品。<b>不是自己的按 404 处理而不是 403</b> ——
      * 403 等于告诉对方「这个编号确实存在，只是不归你」，那是一条可以拿来枚举别家商品的信道。
      */
+    @Override
+    public List<String> payModes(String merchantNo, String goodsNo) {
+        return normalizePayModes(readList(mine(merchantNo, goodsNo).getPayModes()));
+    }
+
+    @Override
+    @Transactional
+    public List<String> setPayModes(String merchantNo, String goodsNo, List<String> payModes) {
+        if (payModes == null || payModes.stream().anyMatch(m -> !PayModes.isValid(m))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        PrdGoods g = mine(merchantNo, goodsNo);
+        List<String> modes = normalizePayModes(payModes);
+        String value = writeJson(modes);
+        // 只写这一列：整行 updateById 会带上版本号与别的字段，和并发的编辑互相踩
+        int rows = DataScopeContext.executeWithoutScope(() -> goodsMapper.update(null,
+                Wrappers.<PrdGoods>lambdaUpdate()
+                        .set(PrdGoods::getPayModes, value)
+                        .eq(PrdGoods::getGoodsNo, g.getGoodsNo())
+                        .eq(PrdGoods::getEntityNo, merchantNo)));
+        if (rows != 1) {
+            throw new IllegalStateException("商品 " + goodsNo + " 支付方式没写进库（影响 " + rows + " 行）");
+        }
+        return modes;
+    }
+
+    /** 恒含 ONLINE、去重、按取值域的固定顺序排 —— 同一个集合两次写出来的字节一样 */
+    private static List<String> normalizePayModes(List<String> modes) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        out.add(PayModes.ONLINE);
+        if (modes != null && modes.contains(PayModes.OFFLINE)) {
+            out.add(PayModes.OFFLINE);
+        }
+        return out;
+    }
+
     private PrdGoods mine(String merchantNo, String goodsNo) {
         PrdGoods g = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery()

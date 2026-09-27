@@ -27,8 +27,8 @@ import { pickSellRule } from "@/utils/sell-rule";
 import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
-import type { GoodsGuess } from "@/api/contract";
-import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
+import type { GoodsGuess, PayMode } from "@/api/contract";
+import { CATEGORY_TYPE, MARKETS, PAY_MODE, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { toMajor, toMinor } from "@shared/utils/money";
 import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SaleMode, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
@@ -438,6 +438,34 @@ function explainLimit() {
 
 /** 限购与库存后面跟的单位：取第一个规格的销售单位，没填按「件」 */
 const unitText = computed(() => rows.value[0]?.saleUnit?.trim() || String(t("goods.unitPiece")));
+
+/**
+ * 这件货收不收当面付（PRD-支付方式 AC-1）。**即点即存、不进草稿、不重审** ——
+ * 与「记不记库存」同类：它不是审核对象，放进保存指令的话在售商品一改就得重审。
+ * 新建时还没有 goodsNo，只能保存后再设。
+ */
+const payOffline = ref(false);
+const savingPay = ref(false);
+
+async function loadPayMode(no: string) {
+  const r = await api.mGoodsPayMode(no).catch(() => null);
+  payOffline.value = !!r?.payModes.includes(PAY_MODE.OFFLINE);
+}
+
+async function togglePayOffline() {
+  const no = goodsNo.value;
+  if (!no || savingPay.value) return;
+  savingPay.value = true;
+  try {
+    const next: PayMode[] = payOffline.value ? [PAY_MODE.ONLINE] : [PAY_MODE.ONLINE, PAY_MODE.OFFLINE];
+    const r = await api.mSetGoodsPayMode(no, next);
+    payOffline.value = r.payModes.includes(PAY_MODE.OFFLINE);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    savingPay.value = false;
+  }
+}
 
 async function pickInvMode() {
   const cur = invMode.value;
@@ -955,6 +983,7 @@ onLoad(async (q) => {
     loadStoreChannels(),
   ]).finally(() => { hydrating.value = false; });
   void loadInvMode(q.goodsNo);
+  void loadPayMode(q.goodsNo);
   /*
    * **主图要回显**。保存时无条件带 `cover: cover.value`，而这里不回填的话
    * 它是空串 —— 于是「编辑一次商品，主图就没了」，且页面上那个 📷 占位
@@ -1732,6 +1761,15 @@ async function save(thenSubmit = false) {
         <text v-if="fulfillmentClosed" class="txt-caption cat-lv__gate">
           {{ $t("goods.fulfillmentClosedWarn") }}
         </text>
+      </view>
+
+      <!-- 线下付款：即点即存。买家最终看不看得到，还要门店开了线下收款、主体证照有效 -->
+      <view class="field">
+        <view class="fieldrow sh-row" @tap="togglePayOffline">
+          <text class="txt-strong field__label sh-fill">{{ $t("goods.payOffline") }}</text>
+          <sh-switch v-if="isEdit" :model-value="payOffline" :disabled="savingPay"></sh-switch>
+        </view>
+        <text class="sh-muted hint">{{ isEdit ? $t("goods.payOfflineHint") : $t("goods.payAfterSave") }}</text>
       </view>
 
       <!-- 生鲜段：形态由类目带出，所以选完类目这一段自动出现 -->

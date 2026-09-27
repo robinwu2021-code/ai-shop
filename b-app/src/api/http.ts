@@ -2,7 +2,7 @@
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
-import type { AutomationSession, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
+import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
   WithdrawPage, WithdrawRecord, DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PurchaseInvoice, Statement } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
@@ -677,6 +677,12 @@ export const httpApi: MerchantApi = {
   mStockSync: (storeNo) => http.get<StockSyncState>(buildPath(E.mStockSync.path, { storeNo })),
   mSetStockSync: (storeNo, enabled) =>
     http.put<StockSyncState>(buildPath(E.mSetStockSync.path, { storeNo }), { enabled }),
+  mStorePaySetting: (storeNo) => http.get<StorePaySetting>(buildPath(E.mStorePaySetting.path, { storeNo })),
+  mSaveStorePaySetting: (storeNo, body) =>
+    http.put<StorePaySetting>(buildPath(E.mSaveStorePaySetting.path, { storeNo }), body),
+  mGoodsPayMode: (goodsNo) => http.get<GoodsPayMode>(buildPath(E.mGoodsPayMode.path, { goodsNo })),
+  mSetGoodsPayMode: (goodsNo, payModes: PayMode[]) =>
+    http.put<GoodsPayMode>(buildPath(E.mSetGoodsPayMode.path, { goodsNo }), { payModes }),
   mStockAlignment: (storeNo) => http.get<StockAlignRow[]>(buildPath(E.mStockAlignment.path, { storeNo })),
   mConfirmAlignment: (storeNo, mode) =>
     http.post<{ adjusted: number }>(buildPath(E.mConfirmAlignment.path, { storeNo }), { mode }),

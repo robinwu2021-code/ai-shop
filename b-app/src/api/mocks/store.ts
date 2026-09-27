@@ -57,6 +57,8 @@ export const storeMock: Pick<MerchantApi,
   | "mSetStoreStatus"
   | "mSetDefaultStore"
   | "mSetStorePayment"
+  | "mStorePaySetting"
+  | "mSaveStorePaySetting"
   | "mStaffList"
   | "mAddStaff"
   | "mSetStaffStatus"
@@ -430,6 +432,21 @@ export const storeMock: Pick<MerchantApi,
     s.payMerchantNo = payMerchantNo || undefined;
     persist();
     return delay({ ...s });
+  },
+
+  // ---- 收款方式：与后端同规则 —— 关线下连带关货到付款，线下没开不能开货到付款
+  async mStorePaySetting(storeNo) {
+    const s = requireStore(storeNo);
+    return delay(paySettingOf(s.storeNo));
+  },
+  async mSaveStorePaySetting(storeNo, body) {
+    const s = requireStore(storeNo);
+    const cur = paySettingOf(s.storeNo);
+    const offline = body.offlinePayEnabled ?? cur.offlinePayEnabled;
+    if (body.codEnabled && !offline) throw new Error("先开启线下收款");
+    const next = { ...cur, offlinePayEnabled: offline, codEnabled: offline && (body.codEnabled ?? cur.codEnabled) };
+    mockPaySettings.set(s.storeNo, next);
+    return delay({ ...next });
   },
 
   async mStaffList() {
@@ -986,3 +1003,10 @@ export const storeMock: Pick<MerchantApi,
     });
   },
 };
+
+/** mock 的门店收款方式：默认全关、有执照（演示账号走得通开关） */
+const mockPaySettings = new Map<string, import("../contract").StorePaySetting>();
+function paySettingOf(storeNo: string): import("../contract").StorePaySetting {
+  return mockPaySettings.get(storeNo)
+    ?? { storeNo, offlinePayEnabled: false, codEnabled: false, qualified: true };
+}

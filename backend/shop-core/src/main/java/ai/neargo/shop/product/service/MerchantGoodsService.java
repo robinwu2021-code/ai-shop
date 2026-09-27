@@ -138,6 +138,21 @@ public interface MerchantGoodsService {
     GoodsVO toggle(String merchantNo, String goodsNo, boolean onSale);
 
     /**
+     * 这件货商家愿意收哪几种钱（支付方式四层判定的第 ④ 层，PRD-支付方式 AC-1）。
+     * 读不出来按「只支持线上」—— 与列默认值一致。
+     */
+    List<String> payModes(String merchantNo, String goodsNo);
+
+    /**
+     * 改支付方式。<b>即时生效、不进草稿、不触发重审</b>：支付方式不是审核对象，
+     * 与上下架同类（TDD-线下收款商家开关 §2）。取值域 {@code PayModes.ALL}，
+     * <b>恒含 ONLINE</b> —— 判定层本来就让线上永远在，库里也不留一个「不收线上」的假象。
+     *
+     * @return 写入后的集合
+     */
+    List<String> setPayModes(String merchantNo, String goodsNo, List<String> payModes);
+
+    /**
      * 改库存。单独一条接口而不是走 {@link #save}：
      * 补货是每天都在做的事，走完整保存意味着<b>每次补货都要重新过一遍审核</b>。
      */

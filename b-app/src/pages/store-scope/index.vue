@@ -19,6 +19,7 @@ import { money } from "@shared/utils/money";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import { includedAreas } from "@shared/utils/coverage";
 import type { ScopePreview } from "@shared/types";
+import type { StorePaySetting } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
 import type {
   CommunityApply,
@@ -165,6 +166,49 @@ watch([areas, deliveryOn, expressOn], async () => {
 
 /** 这次没取到。**与「确定为空」是两件事** —— 整页内容都挂在拉来的数据后面 */
 const failed = ref(false);
+
+/**
+ * ③ 收款方式（门店级，即点即存）。与送货方式同一种交互 —— 都是开店时定一次的经营决定。
+ * 读不到就不渲染整卡，不摆一对不知真假的开关。
+ */
+const paySetting = ref<StorePaySetting | null>(null);
+const savingPay = ref("");
+const payEditable = computed(() => merchant.can("biz:store:admin"));
+
+async function loadPaySetting() {
+  try {
+    paySetting.value = await api.mStorePaySetting(merchant.storeNo || "default");
+  } catch {
+    paySetting.value = null;
+  }
+}
+
+async function togglePay(key: "offlinePayEnabled" | "codEnabled") {
+  const cur = paySetting.value;
+  if (!cur || savingPay.value) return;
+  if (!payEditable.value) {
+    uni.showToast({ title: t("store.payAdminOnly"), icon: "none" });
+    return;
+  }
+  const turningOn = !cur[key];
+  // 没证先说清楚：打到后端也是 80012，但那时商家已经以为「开上了」
+  if (key === "offlinePayEnabled" && turningOn && !cur.qualified) {
+    uni.showToast({ title: t("store.payNeedLicense"), icon: "none" });
+    return;
+  }
+  if (key === "codEnabled" && turningOn && !cur.offlinePayEnabled) return;
+  savingPay.value = key;
+  try {
+    paySetting.value = await api.mSaveStorePaySetting(cur.storeNo, { [key]: turningOn });
+    if (key === "offlinePayEnabled" && turningOn) {
+      uni.showToast({ title: t("store.payGoodsHint"), icon: "none", duration: 3000 });
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    savingPay.value = "";
+  }
+}
 
 async function loadFulfillment() {
   try {
@@ -442,6 +486,7 @@ function goAddress() {
 onShow(() => {
   void merchant.ensureStores().then(() => {
     void loadFulfillment();
+    void loadPaySetting();
   });
   void load();
   void loadRule();
@@ -611,6 +656,29 @@ onShow(() => {
           <text class="txt-caption sum__t sh-fill">{{ $t("store.sumExpress") }}</text>
         </view>
       </template>
+    </view>
+
+    <!-- ③ 收款方式（门店级，即点即存） -->
+    <view v-if="paySetting" class="sh-card sh-mt-sm">
+      <view class="head sh-row sh-row--between sh-row--baseline">
+        <text class="txt-title">{{ $t("store.payCard") }}</text>
+      </view>
+      <view class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('offlinePayEnabled')">
+        <view class="sh-fill">
+          <text class="txt-strong ch__name">{{ $t("store.payOffline") }}</text>
+          <text class="txt-caption ch__desc" :class="{ 'is-warning': !paySetting.qualified }">{{ paySetting.qualified ? $t("store.payOfflineDesc") : $t("store.payNeedLicense") }}</text>
+        </view>
+        <sh-switch :model-value="paySetting.offlinePayEnabled" :disabled="savingPay === 'offlinePayEnabled'"></sh-switch>
+      </view>
+      <!-- 货到付款从属于线下收款：线下没开时不出现，免得多一个点了没反应的开关 -->
+      <view v-if="paySetting.offlinePayEnabled" class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('codEnabled')">
+        <view class="sh-fill">
+          <text class="txt-strong ch__name">{{ $t("store.payCod") }}</text>
+          <text class="txt-caption ch__desc">{{ $t("store.payCodDesc") }}</text>
+        </view>
+        <sh-switch :model-value="paySetting.codEnabled" :disabled="savingPay === 'codEnabled'"></sh-switch>
+      </view>
+      <text v-if="!payEditable" class="sh-hint">{{ $t("store.payAdminOnly") }}</text>
     </view>
 
     <biz-pickup-sheet

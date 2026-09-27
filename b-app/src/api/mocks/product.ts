@@ -3,7 +3,7 @@
 // 从 `api/mock.ts`（5240 行 / 228 个接口）按域拆出来；实现一个字没改。
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
-import type { GoodsDraft, PublishPreview } from "../contract";
+import type { GoodsDraft, PayMode, PublishPreview } from "../contract";
 import { db, delay, findGoodsSeed, nextNo, paginate, persist, pick, toGoods } from "@shared/mock/db";
 import type { CategoryType, CurrencyCode, Goods, MarketId, SpecTemplate } from "@shared/types";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
@@ -30,6 +30,8 @@ export const productMock: Pick<MerchantApi,
   | "mGoodsDetail"
   | "mSaveGoods"
   | "mToggleGoods"
+  | "mGoodsPayMode"
+  | "mSetGoodsPayMode"
   | "mSaveStock"
   | "mSaveStoreStock"
   | "mSubmitGoods"
@@ -389,6 +391,18 @@ export const productMock: Pick<MerchantApi,
     seed.onSale = onSale;
     persist();
     return delay(toGoods(seed));
+  },
+
+  async mGoodsPayMode(goodsNo) {
+    findGoodsSeed(goodsNo);
+    return delay({ goodsNo, payModes: mockPayModes.get(goodsNo) ?? ["ONLINE"] });
+  },
+  async mSetGoodsPayMode(goodsNo, payModes) {
+    findGoodsSeed(goodsNo);
+    // 与后端同规则：恒含 ONLINE，只看要不要 OFFLINE
+    const next: PayMode[] = payModes.includes("OFFLINE") ? ["ONLINE", "OFFLINE"] : ["ONLINE"];
+    mockPayModes.set(goodsNo, next);
+    return delay({ goodsNo, payModes: next });
   },
 
   async mSaveStock(goodsNo, skuNo, stock) {
@@ -1083,3 +1097,6 @@ export const productMock: Pick<MerchantApi,
     return delay({ ...created });
   },
 };
+
+/** mock 的商品付款方式：没设过 = 只收线上（与列默认值一致） */
+const mockPayModes = new Map<string, PayMode[]>();

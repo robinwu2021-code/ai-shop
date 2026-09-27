@@ -11,6 +11,7 @@ import ai.neargo.shop.product.service.MerchantGoodsService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
@@ -159,6 +160,30 @@ public class BizGoodsController {
     public GoodsVO toggle(@PathVariable String goodsNo, @RequestBody ToggleReq req) {
         return goodsService.toggle(BizContext.requireMerchantNo(), goodsNo,
                 Boolean.TRUE.equals(req.onSale()));
+    }
+
+    /** 这件货支持哪几种付款（线上恒在）。PRD-支付方式 AC-1 */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/goods/{goodsNo}/pay-mode")
+    public PayModeResp payMode(@PathVariable String goodsNo) {
+        return new PayModeResp(goodsNo, goodsService.payModes(BizContext.requireMerchantNo(), goodsNo));
+    }
+
+    /**
+     * 改支付方式。<b>不触发重审、不进草稿</b> —— 与上下架同类的经营开关。
+     * 买家最终能不能选线下，还要过类目、主体资质、门店开关三层（{@code PayModeServiceImpl}）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PutMapping("/biz/goods/{goodsNo}/pay-mode")
+    public PayModeResp setPayMode(@PathVariable String goodsNo, @RequestBody PayModeReq req) {
+        return new PayModeResp(goodsNo,
+                goodsService.setPayModes(BizContext.requireMerchantNo(), goodsNo, req.payModes()));
+    }
+
+    public record PayModeReq(List<String> payModes) {
+    }
+
+    public record PayModeResp(String goodsNo, List<String> payModes) {
     }
 
     /** 改库存。<b>不触发重审</b> —— 补货是每天都在做的事。 */

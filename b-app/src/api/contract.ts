@@ -3,6 +3,7 @@
 //
 // 类型全部来自 @shared/types —— **不在这里重复定义**。同一笔订单两端看到的是同一个
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
+import type { PAY_MODE } from "@shared/utils/constants";
 import type {
   IncomeSummary,
   AppointmentSlot,
@@ -132,6 +133,26 @@ import type {
  * 平台出的这份对账单是他唯一能说明「这笔钱是怎么来的」的东西。
  * 所以每一行都要能与外部账单勾对，且必须导得出去留存。
  */
+/** 支付方式，与后端 PayModes 逐字一致。ONLINE 恒在，商家只决定要不要加 OFFLINE */
+export type PayMode = (typeof PAY_MODE)[keyof typeof PAY_MODE];
+
+/** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
+export interface StorePaySetting {
+  storeNo: string;
+  /** 买家可选「到店付款」，钱当面付给商家、平台不代收 */
+  offlinePayEnabled: boolean;
+  /** 商家自送 + 当面收款。关线下收款时后端连带关掉 */
+  codEnabled: boolean;
+  /** 主体有没有有效营业执照 —— 没有时开线下收款会被拒（80012），端上先说清楚 */
+  qualified: boolean;
+}
+
+/** 一件商品支持的付款方式 */
+export interface GoodsPayMode {
+  goodsNo: string;
+  payModes: PayMode[];
+}
+
 /** 密钥票据的端：B = 店主（btk_），OPS = 运营（otk_）。与后端 AutomationTicketVerifier.TicketRealm 同名 */
 export type AutomationRealm = "B" | "OPS";
 
@@ -1799,6 +1820,18 @@ export interface MerchantApi {
   mStockSync(storeNo: string): Promise<StockSyncState>;
   /** 开 / 关同步。没做期初对齐时打开返回 70069 */
   mSetStockSync(storeNo: string, enabled: boolean): Promise<StockSyncState>;
+
+  /** 本店收款方式 */
+  mStorePaySetting(storeNo: string): Promise<StorePaySetting>;
+  /** 改收款方式，字段不传 = 不改。开线下收款要有效营业执照（80012）；关线下连带关货到付款 */
+  mSaveStorePaySetting(
+    storeNo: string,
+    body: { offlinePayEnabled?: boolean; codEnabled?: boolean },
+  ): Promise<StorePaySetting>;
+  /** 商品支持的付款方式（ONLINE 恒在） */
+  mGoodsPayMode(goodsNo: string): Promise<GoodsPayMode>;
+  /** 改商品付款方式。即时生效、不进草稿、不重审 */
+  mSetGoodsPayMode(goodsNo: string, payModes: PayMode[]): Promise<GoodsPayMode>;
   /** 期初对齐清单 */
   mStockAlignment(storeNo: string): Promise<StockAlignRow[]>;
   /** 确认期初对齐。返回以商城为准时调了几行实存 */
