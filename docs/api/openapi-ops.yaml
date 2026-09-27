@@ -4052,7 +4052,19 @@ components:
           type: "array"
           items: 
             type: "string"
-          description: "适用品类编码，空 = 全品类"
+          description: "适用品类编码，空 = 全品类。**目前只存不判**（后端注释里记着这条账）"
+        replyHours: 
+          type: "number"
+          description: "商家响应时限（小时）：超时系统替他同意并退款"
+        shipBackDays: 
+          type: "number"
+          description: "买家寄回时限（天）：逾期未寄出则关闭本次申请"
+        confirmHours: 
+          type: "number"
+          description: "商家确认收货时限（小时）：超时系统退款"
+        interveneWorkDays: 
+          type: "number"
+          description: "平台介入承诺时限（工作日）：仅展示与超期提醒，不自动裁决"
         updatedAt: 
           type: "string"
           description: "最后修改时间"
@@ -4064,10 +4076,14 @@ components:
         - "maxAmount"
         - "withinHours"
         - "categories"
+        - "replyHours"
+        - "shipBackDays"
+        - "confirmHours"
+        - "interveneWorkDays"
         - "updatedAt"
         - "updatedBy"
       additionalProperties: false
-      description: "极速退阈值（P-6.1.2）：满足条件的小额售后由系统自动通过，不占人工。"
+      description: "售后规则（P-6.1.2）：极速退的门槛 + 各环节时限。\n\n端点路径仍是 `/ops/after-sales/fast-refund-rule` —— 名字留着，内容长大了。\n**这一屏此前是悬空的**：写进参数表之后没有任何业务代码读它，于是页面显示 「关闭 · ¥20 · 24 小时」，线上真正在跑的是「无条件 · ¥100 · 不限时」。现在它真的生效了。"
     GroupStatus: 
       type: "string"
       enum: 
@@ -9393,7 +9409,7 @@ paths:
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post: 
       operationId: "saveFastRefundRule"
-      summary: "极速退阈值（P-6.1.2）：金额上限 > 0、时限 ≥ 1 小时"
+      summary: "售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1"
       tags: 
         - "aftersale"
       responses: 

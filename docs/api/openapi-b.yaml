@@ -8725,6 +8725,11 @@ components:
             - "$ref": "#/components/schemas/CheckoutOffers"
             - type: "null"
           description: "订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`）"
+        instantRefundEligible: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。\n\n由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。"
         expressNo: 
           type: "string"
           description: "EXPRESS：快递单号，发货后才有"

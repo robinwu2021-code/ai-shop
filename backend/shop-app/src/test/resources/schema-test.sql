@@ -9193,3 +9193,6 @@ UPDATE mch_entity SET logo = REPLACE(logo, 'https://hxmall-merchant-1301656997.c
 UPDATE mch_entity_apply SET qualifications = REPLACE(qualifications, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE qualifications LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
 UPDATE mch_qualification SET image_url = REPLACE(image_url, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE image_url LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
 UPDATE mch_store_audit SET content = REPLACE(content, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE content LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+UPDATE sys_function_point
+SET name = '售后规则'
+WHERE point_code = 'OPS_AFTERSALE__TAB_FASTREFUND';
