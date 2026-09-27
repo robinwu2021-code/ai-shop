@@ -52,9 +52,9 @@ public class MpQuestionController {
      * 而查询参数它不填，于是那条端点永远只能探到一个 400。
      */
     @GetMapping("/mp/goods/{goodsNo}/question")
-    public List<QuestionVO> list(@org.springframework.web.bind.annotation.PathVariable String goodsNo,
-                                 @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
-        return contentService.answeredOfGoods(goodsNo, limit);
+    public List<BuyerQuestionVO> list(@org.springframework.web.bind.annotation.PathVariable String goodsNo,
+                                      @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
+        return contentService.answeredOfGoods(goodsNo, limit).stream().map(BuyerQuestionVO::of).toList();
     }
 
     /**
@@ -65,7 +65,7 @@ public class MpQuestionController {
      * 取不到快照不拦 —— 问题本身比那条线索重要。
      */
     @PostMapping("/mp/question")
-    public QuestionVO ask(@RequestBody @Valid AskReq req) {
+    public BuyerQuestionVO ask(@RequestBody @Valid AskReq req) {
         /*
          * **让 currentUserNo 自己抛**，不在这里补一层 BizException：
          * 它抛出的是认证异常，由 ApiAuthEntryPoint 翻成真正的 HTTP 401；
@@ -74,10 +74,28 @@ public class MpQuestionController {
          */
         String userNo = SecurityUtils.currentUserNo();
         var snap = goodsPort.snapshotOfGoods(req.goodsNo());
-        return contentService.ask(req.goodsNo(),
+        return BuyerQuestionVO.of(contentService.ask(req.goodsNo(),
                 snap.map(GoodsQueryPort.SkuSnapshot::skuNo).orElse(null),
                 snap.map(GoodsQueryPort.SkuSnapshot::title).orElse(null),
-                req.content(), userNo);
+                req.content(), userNo));
+    }
+
+    /**
+     * 买家看得到的那几项。
+     *
+     * <p><b>不直接下发 {@link QuestionVO}</b>：那是运营端那一屏的形状，带着
+     * {@code askedBy}（问的是谁）、{@code answeredBy}（哪个运营答的）、
+     * {@code hideReason}（为什么被藏）。前一个是别人的身份，后两个是内部信息 ——
+     * 没有一项是买家该看到的，而端上不声明它们并不会让它们不被发出去。
+     */
+    public record BuyerQuestionVO(String questionNo, String goodsNo, String skuNo, String skuTitle,
+                                  String content, String answer, Long answeredAt,
+                                  String status, String createdAt) {
+
+        static BuyerQuestionVO of(QuestionVO q) {
+            return new BuyerQuestionVO(q.questionNo(), q.goodsNo(), q.skuNo(), q.skuTitle(),
+                    q.content(), q.answer(), q.answeredAt(), q.status(), q.createdAt());
+        }
     }
 
     /** @param content 问题正文。空的问题对谁都没用，在入口就挡住 */

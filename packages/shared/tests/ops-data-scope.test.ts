@@ -257,8 +257,9 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "DebtServiceImpl#txns":
     "同上，欠款流水",
 
-    "ReviewServiceImpl#list":
-    "C 端评价列表，给游客看；游客无会话、买家是 SELF，不绕商品页看不到评价",
+    "ReviewServiceImpl#visibleRows":
+    "C 端评价列表与评分概览共用的那一次查询，给游客看；游客无会话、买家是 SELF，"
+    + "不绕商品页看不到评价。§3.3 把它从 list 里抽出来（列表分页、概览要整体），绕过的理由一字没变",
   "ReviewServiceImpl#appealsOf":
     "同上，随 C 端评价一起带出申诉状态",
 

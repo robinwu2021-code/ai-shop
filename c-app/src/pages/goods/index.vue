@@ -1698,7 +1698,9 @@ onShareAppMessage(() =>
 }
 .svc__dot {
   margin-inline-end: 6rpx;
-  color: var(--sh-primary);
+  /* 主色是**背景色**，当文字色用对比度不够（design-tokens 守卫拦的就是这个）；
+     文字要走 primary-text */
+  color: var(--sh-primary-text);
 }
 .svc__desc {
   display: block;
@@ -1758,7 +1760,7 @@ onShareAppMessage(() =>
 .recs__img {
   width: 180rpx;
   height: 180rpx;
-  border-radius: var(--sh-radius-sm);
+  border-radius: 16rpx;
 }
 .recs__t {
   display: block;
