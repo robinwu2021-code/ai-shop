@@ -143,7 +143,7 @@ describe("结算页", () => {
     expect(deferred.length, "进页就该问一次").toBe(1);
 
     // 改支付方式 → 第二次试算
-    const modes = w.findAll(".mode");
+    const modes = w.findAll(".paymode");
     expect(modes.length, "两种支付方式都要画出来").toBe(2);
     await modes[1]!.trigger("tap");
     await settle(w);

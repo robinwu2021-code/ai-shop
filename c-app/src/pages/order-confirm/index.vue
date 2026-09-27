@@ -1331,36 +1331,24 @@ onMounted(async () => {
       </view>
     </view>
 
-    <!--
-      支付方式。**只在真的有得选时才画** —— 只支持线上时多一行「在线支付」
-      是纯噪声，而结算页每多一行就少一分「一眼看清要付多少」。
-    -->
-    <view v-if="canPayOffline" class="sh-card block">
-      <text class="block__t">{{ $t("confirm.payMode") }}</text>
-      <view class="modes">
-        <view
-          v-for="m in payModes"
-          :key="m"
-          class="mode"
-          :class="{ 'is-on': payMode === m }"
-          @tap="payMode = m"
-        >
-          <text class="txt-body mode__t">{{ $t(`payMode.${m}`) }}</text>
-          <text class="txt-caption mode__d">{{ $t(`payModeDesc.${m}`) }}</text>
+    <!-- 支付方式 + 积分 + 备注 -->
+    <view class="sh-card block">
+      <!--
+        支付方式**只在真的有得选时才画**，且只占一行 —— 只支持线上时多一行「在线支付」是纯噪声。
+        当面付款时平台券直接不进可选列表（见 usableCoupons），这里不再挂说明文字。
+      -->
+      <view v-if="canPayOffline" class="cell sh-row sh-row--between">
+        <text class="txt-sub cell__k">{{ $t("confirm.payMode") }}</text>
+        <view class="paymodes sh-row">
+          <text
+            v-for="m in payModes"
+            :key="m"
+            class="sh-chip paymode"
+            :class="{ 'sh-chip--primary': payMode === m }"
+            @tap="payMode = m"
+          >{{ $t(`payMode.${m}`) }}</text>
         </view>
       </view>
-      <!--
-        当面付的两句话都不能省：
-          · 平台不代收 —— 出纠纷时双方对这一点没有分歧
-          · 平台券用不了 —— 而且要说**为什么**，否则看着像故障
-      -->
-      <text v-if="payMode === PAY_MODE.OFFLINE" class="txt-caption mode__note">
-        {{ $t("confirm.offlineNoPlatformCoupon") }}
-      </text>
-    </view>
-
-    <!-- 券 + 备注 -->
-    <view class="sh-card block">
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
         v-if="FEATURES.points && pointBalance > 0"
@@ -1592,32 +1580,8 @@ onMounted(async () => {
   display: block;
   margin-top: 8rpx;
 }
-.modes {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 16rpx;
-}
-.mode {
-  flex: 1;
-  padding: 20rpx;
-  border-radius: 16rpx;
-  border: 2rpx solid var(--sh-line);
-  background: var(--sh-bg);
-}
-.mode.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-faint);
-}
-.mode__t {
-  display: block;
-}
-.mode__d {
-  display: block;
-  margin-top: 8rpx;
-}
-.mode__note {
-  display: block;
-  margin-top: 16rpx;
+.paymodes {
+  gap: 12rpx;
 }
 .recv {
   margin-top: 24rpx;
