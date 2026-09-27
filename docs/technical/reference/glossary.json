@@ -4150,12 +4150,6 @@
           "ar": "الدفع نقدًا"
         },
         {
-          "key": "payMode.ONLINE",
-          "zh-CN": "在线支付",
-          "en": "Pay online",
-          "ar": "الدفع أونلاين"
-        },
-        {
           "key": "phoneGate.codePlaceholder",
           "zh-CN": "验证码",
           "en": "Code",
