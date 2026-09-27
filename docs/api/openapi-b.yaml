@@ -18311,6 +18311,136 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/store/{storeNo}/pay-setting": 
+    get: 
+      operationId: "mStorePaySetting"
+      summary: "本店收款方式（线下收款 / 货到付款）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePaySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    put: 
+      operationId: "mSaveStorePaySetting"
+      summary: "开 / 关线下收款与货到付款（开线下要有有效营业执照）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePaySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/goods/{goodsNo}/pay-mode": 
+    get: 
+      operationId: "mGoodsPayMode"
+      summary: "这件商品支持哪几种付款"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsPayMode"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    put: 
+      operationId: "mSetGoodsPayMode"
+      summary: "改商品支持的付款方式（即时生效，不重审）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsPayMode"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/store/{storeNo}/stock-alignment": 
     get: 
       operationId: "mStockAlignment"

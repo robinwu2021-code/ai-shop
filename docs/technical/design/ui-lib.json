@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 477,
+        "b-app": 478,
         "c-app": 68
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 335,
+        "b-app": 337,
         "c-app": 253
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 130,
+        "b-app": 133,
         "c-app": 46
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 116,
+        "b-app": 117,
         "c-app": 29
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 213,
+        "b-app": 214,
         "c-app": 79
       }
     },
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 116,
+        "b-app": 117,
         "c-app": 13
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 139,
+        "b-app": 142,
         "c-app": 77
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 508,
+        "b-app": 512,
         "c-app": 179
       }
     },
@@ -1451,7 +1451,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 36,
+        "b-app": 37,
         "c-app": 9
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 292,
+        "b-app": 293,
         "c-app": 88
       }
     },
@@ -1653,7 +1653,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 41,
+        "b-app": 42,
         "c-app": 0
       }
     },
@@ -1753,7 +1753,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 55,
+        "b-app": 56,
         "c-app": 0
       }
     },
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 90,
+        "b-app": 91,
         "c-app": 3
       }
     },
@@ -2766,7 +2766,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 10,
         "c-app": 2,
         "lib": 0
       },
@@ -3652,9 +3652,10 @@
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
+        "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 331,
+      "libClassHits": 337,
       "localSelectors": 72,
       "localCssLines": 312,
       "rolled": []
@@ -4654,7 +4655,7 @@
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 95,
+      "libClassHits": 110,
       "localSelectors": 28,
       "localCssLines": 105,
       "rolled": []

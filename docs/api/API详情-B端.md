@@ -1478,6 +1478,36 @@ _无字段_
 | `goods` | [`InvAffectedGoods`](#invaffectedgoods)\[\] | 是 | BLOCKED：被拦的商品 · NEEDS_CONFIRM：还有库存的商品 · DONE：生效值变了的商品 |
 
 
+#### GET `/biz/goods/{goodsNo}/pay-mode`
+
+这件商品支持哪几种付款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`GoodsPayMode`](#goodspaymode)
+
+
+#### PUT `/biz/goods/{goodsNo}/pay-mode`
+
+改商品支持的付款方式（即时生效，不重审）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`GoodsPayMode`](#goodspaymode)
+
+
 #### POST `/biz/goods/{goodsNo}/presale`
 
 改截单与到货说明　🔒
@@ -5838,6 +5868,36 @@ _无字段_
 **出参**（`data`）
 
 类型：[`{ docNo: string }`](#docnostring)
+
+
+#### GET `/biz/store/{storeNo}/pay-setting`
+
+本店收款方式（线下收款 / 货到付款）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePaySetting`](#storepaysetting)
+
+
+#### PUT `/biz/store/{storeNo}/pay-setting`
+
+开 / 关线下收款与货到付款（开线下要有有效营业执照）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePaySetting`](#storepaysetting)
 
 
 #### POST `/biz/store/{storeNo}/payment`

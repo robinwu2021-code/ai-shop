@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 208 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 210 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,10 +22,10 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 29 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 30 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
-| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 20 | ✅ | ✅ | — | — | — | — |
+| `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 21 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 20 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
@@ -106,6 +106,8 @@
 | 读草稿（编辑页回填） | GET | `/biz/goods/:goodsNo/draft` | `mGoodsDraft` | goods-edit |
 | 放弃草稿（线上不动，幂等） | POST | `/biz/goods/:goodsNo/draft/discard` | `mDiscardGoodsDraft` | goods-publish |
 | 单件商品记不记库存（跟随品类 / 记 / 不记） | PUT | `/biz/goods/:goodsNo/inv-mode` | `mGoodsSetInvMode` | goods-edit |
+| 这件商品支持哪几种付款 | GET | `/biz/goods/:goodsNo/pay-mode` | `mGoodsPayMode` | goods-edit |
+| 改商品支持的付款方式（即时生效，不重审） | PUT | `/biz/goods/:goodsNo/pay-mode` | `mSetGoodsPayMode` | goods-edit |
 | 改截单与到货说明 | POST | `/biz/goods/:goodsNo/presale` | `mSavePresale` | — |
 | 发布草稿（原子换版；冲突后带 confirmVersion） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
 | 发布预览（字段级差异） | GET | `/biz/goods/:goodsNo/publish-preview` | `mPublishPreview` | goods-publish |
@@ -231,6 +233,8 @@
 | 保存店铺门面 | POST | `/biz/store` | `mSaveStore` | store、store-scope |
 | 本店经营类目 | GET | `/biz/store/:storeNo/categories` | `mStoreCategories` | goods-edit、goods-list、store-categories |
 | 整份替换本店经营类目 | POST | `/biz/store/:storeNo/categories` | `mSaveStoreCategories` | store-categories |
+| 本店收款方式（线下收款 / 货到付款） | GET | `/biz/store/:storeNo/pay-setting` | `mStorePaySetting` | store-scope |
+| 开 / 关线下收款与货到付款（开线下要有有效营业执照） | PUT | `/biz/store/:storeNo/pay-setting` | `mSaveStorePaySetting` | store-scope |
 | 只改公告（含有效期，可同时发到别的门店） | POST | `/biz/store/announcement` | `mSaveAnnouncement` | store-notice |
 | 从常用里删一条 | POST | `/biz/store/announcement/recent/remove` | `mDropNoticeRecent` | store-notice |
 | 分享海报 | GET | `/biz/store/poster` | `mPoster` | goods-list、store |

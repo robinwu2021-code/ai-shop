@@ -9230,6 +9230,24 @@
           "ar": "لا توجد خصائص بعد؛ يمكنك إضافة واحدة"
         },
         {
+          "key": "goods.payAfterSave",
+          "zh-CN": "保存商品后可设置",
+          "en": "Available after the product is saved",
+          "ar": "متاح بعد حفظ المنتج"
+        },
+        {
+          "key": "goods.payOffline",
+          "zh-CN": "线下付款",
+          "en": "Offline payment",
+          "ar": "الدفع دون اتصال"
+        },
+        {
+          "key": "goods.payOfflineHint",
+          "zh-CN": "买家下单时可选择当面付款；门店需已开启线下收款",
+          "en": "Buyers can choose to pay in person; the store must have offline payment enabled",
+          "ar": "يمكن للمشتري الدفع شخصيًا؛ يجب أن يكون الدفع دون اتصال مفعّلًا في المتجر"
+        },
+        {
           "key": "goods.photos",
           "zh-CN": "商品图",
           "en": "Photos",
@@ -18606,6 +18624,54 @@
           "zh-CN": "营业时间",
           "en": "Opening hours",
           "ar": "ساعات العمل"
+        },
+        {
+          "key": "store.payAdminOnly",
+          "zh-CN": "仅店主可修改收款方式",
+          "en": "Only the store owner can change payment methods",
+          "ar": "يمكن لمالك المتجر فقط تغيير طرق الدفع"
+        },
+        {
+          "key": "store.payCard",
+          "zh-CN": "收款方式",
+          "en": "Payment methods",
+          "ar": "طرق الدفع"
+        },
+        {
+          "key": "store.payCod",
+          "zh-CN": "货到付款",
+          "en": "Cash on delivery",
+          "ar": "الدفع عند الاستلام"
+        },
+        {
+          "key": "store.payCodDesc",
+          "zh-CN": "送货上门时当面收款，拒收风险由门店承担",
+          "en": "Collect payment when you deliver; the store bears the risk of refused deliveries",
+          "ar": "تحصيل المبلغ عند التوصيل؛ يتحمل المتجر مخاطر رفض الاستلام"
+        },
+        {
+          "key": "store.payGoodsHint",
+          "zh-CN": "开启后，还需在商品编辑页为商品开启线下付款",
+          "en": "After enabling, also turn on offline payment for each product in its edit page",
+          "ar": "بعد التفعيل، فعّل الدفع دون اتصال لكل منتج من صفحة تعديله"
+        },
+        {
+          "key": "store.payNeedLicense",
+          "zh-CN": "开启线下收款需要有效的营业执照",
+          "en": "A valid business license is required to enable offline payment",
+          "ar": "يلزم ترخيص تجاري ساري المفعول لتفعيل الدفع دون اتصال"
+        },
+        {
+          "key": "store.payOffline",
+          "zh-CN": "线下收款",
+          "en": "Offline payment",
+          "ar": "الدفع دون اتصال"
+        },
+        {
+          "key": "store.payOfflineDesc",
+          "zh-CN": "买家可选择到店付款，货款由您当面收取，平台不代收",
+          "en": "Buyers can choose to pay in store; you collect the money directly and the platform does not hold it",
+          "ar": "يمكن للمشتري الدفع في المتجر؛ تستلم المبلغ بنفسك ولا تحتفظ به المنصة"
         },
         {
           "key": "store.pickAddr",
