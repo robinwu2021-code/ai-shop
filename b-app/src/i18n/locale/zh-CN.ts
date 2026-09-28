@@ -174,6 +174,7 @@ export default {
     noticeNone: "未发布",
     noticeUntil: "{s}到期",
     scopeEntry: "经营范围",
+    entriesTitle: "常用功能",
     noticeEntry: "店铺公告",
     catalogEntry: "经营类目",
     specsEntry: "商品规格",

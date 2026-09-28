@@ -242,22 +242,40 @@ const cells = computed(() => {
  * 功能入口：两列小格，标题四字以内（2026-09-28 店主：入口太多，字小一号、两列排）。
  *
  * <p>说明行一律不要 —— 「经营类目 · 本店卖哪几类」这种是把名字再说一遍。
- * 只有公告保留一行**现状**（挂没挂、哪天到期），那是点进去之前就该知道的事。
+ * 公告的**现状**（挂没挂、哪天到期）是点进去之前就该知道的事 —— 放在卡顶单独一行（noticeShown），
+ * 不塞进格子：塞进去那一格会比别的高一截。
  * 每格跟自己的权限走，与待办格子同一条规矩。
  */
 const entries = computed(() =>
   [
-    { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store", value: noticeValue.value },
-    { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store", value: "" },
-    { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store", value: "" },
+    { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store" },
+    { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store" },
+    { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store" },
     // 发货设置：寄件人、地址、默认快递与重量，一次填好，发货时自动带出（TDD-快递100商家寄件 §7）
-    { key: "ship", label: t("home.shipEntry"), route: ROUTES.shipSettings, perm: "biz:store", value: "" },
-    { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin", value: "" },
-    { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods", value: "" },
-    { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods", value: "" },
+    { key: "ship", label: t("home.shipEntry"), route: ROUTES.shipSettings, perm: "biz:store" },
+    { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin" },
+    { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods" },
+    { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods" },
     // 营销是唯一入口：活动 / 优惠券 / 团购都在它下面（2026-09-18 店主）
-    { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign", value: "" },
+    { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign" },
   ].filter((e) => merchant.can(e.perm)));
+
+/** 公告现状那一行：只在门店可读、且有公告入口时出现 */
+const noticeShown = computed(() => !!noticeValue.value && entries.value.some((e) => e.key === "notice"));
+
+/** 核销分拣的两个数：各跟自己的权限走，有活的那一格用主色 */
+const fulfillItems = computed(() =>
+  [
+    { key: "toPick", perm: "biz:receive", n: todo.value?.toPick ?? 0 },
+    { key: "toVerify", perm: "biz:verify", n: todo.value?.toVerify ?? 0 },
+  ]
+    .filter((x) => merchant.can(x.perm))
+    .map((x) => ({
+      key: x.key,
+      value: x.n,
+      label: String(t(`home.cell.${x.key}`)),
+      tone: x.n ? ("primary" as const) : undefined,
+    })));
 
 const ownedRate = computed(() =>
   stats.value ? `${Math.round(stats.value.ownedTrafficRate * 100)}%` : "—",
@@ -416,9 +434,13 @@ onShow(load);
         下面三个是他每天真正要做的动作，直达，不用先进库存页再找。
       -->
       <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
-        <view class="inv__head sh-row sh-row--between sh-row--baseline" @tap="open(ROUTES.stock)">
+        <!-- 「全部」是按钮不是一行字：药丸底 + 箭头，与卡里其他可点的东西同一个长相 -->
+        <view class="head" @tap="open(ROUTES.stock)">
           <text class="txt-title">{{ $t("home.inv.title") }}</text>
-          <sh-go :text="String($t('home.inv.all'))"></sh-go>
+          <view class="sh-chip sh-chip--primary sh-chip--icon">
+            {{ $t("home.inv.all") }}
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-primary-text)"></sh-icon>
+          </view>
         </view>
         <!--
           **与库存页顶部逐字相同的那一块**：同样四个数、同一个库件、同样的顺序。
@@ -454,27 +476,25 @@ onShow(load);
         </view>
       </view>
 
-      <view v-if="stats" class="sh-card stats">
-        <text class="txt-title">{{ $t("home.today") }}</text>
-        <view class="stats__row">
-          <view class="stats__item">
-            <text class="txt-title stats__v sh-num">{{ stats.todayOrders }}</text>
-            <text class="sh-muted">{{ $t("home.orders") }}</text>
-          </view>
-          <view class="stats__item">
-            <text class="txt-title stats__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
-            <text class="sh-muted">{{ $t("home.gmv") }}</text>
-          </view>
-          <view class="stats__item">
-            <text class="txt-title stats__v sh-num">{{ stats.rating || "—" }}</text>
-            <text class="sh-muted">{{ $t("home.rating") }}</text>
-          </view>
+      <!-- 今日：与进销存同一块读数（sh-stat panel）—— 此前这里手写三等分、数字用标题字阶，
+           同一屏上两种「一排数」长得不一样 -->
+      <view v-if="stats" class="sh-card">
+        <view class="head">
+          <text class="txt-title">{{ $t("home.today") }}</text>
         </view>
+        <sh-stat
+          panel
+          :items="[
+            { value: stats.todayOrders, label: String($t('home.orders')) },
+            { value: money(stats.todayGmvMinor, stats.currency), label: String($t('home.gmv')) },
+            { value: stats.rating || '—', label: String($t('home.rating')) },
+          ]"
+        ></sh-stat>
       </view>
 
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
-        <view class="owned__row sh-row sh-row--between sh-row--baseline">
+        <view class="head">
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
           <text class="txt-display owned__v sh-num txt-primary">{{ ownedRate }}</text>
         </view>
@@ -504,27 +524,33 @@ onShow(load);
         v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
         class="sh-card fulfill"
       >
-        <text class="txt-strong fulfill__title">{{ $t("home.fulfillEntry") }}</text>
-        <view class="fulfill__row">
-          <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
-            <text class="txt-display fulfill__n sh-num" :class="todo?.toPick ? 'txt-primary' : 'txt-faint'">{{ todo?.toPick ?? 0 }}</text>
-            <text class="sh-muted">{{ $t("home.cell.toPick") }}</text>
-          </view>
-          <view v-if="merchant.can('biz:verify')" class="fulfill__half" @tap="open(ROUTES.verify)">
-            <text class="txt-display fulfill__n sh-num" :class="todo?.toVerify ? 'txt-primary' : 'txt-faint'">{{ todo?.toVerify ?? 0 }}</text>
-            <text class="sh-muted">{{ $t("home.cell.toVerify") }}</text>
-          </view>
+        <view class="head">
+          <text class="txt-title">{{ $t("home.fulfillEntry") }}</text>
         </view>
+        <sh-stat panel :items="fulfillItems" @change="open($event === 'toPick' ? ROUTES.picking : ROUTES.verify)"></sh-stat>
       </view>
 
       <!--
         功能入口：两列小格。「规格」与「类目」各自一格（规格页已独立，埋在类目页里等于找不到）；
         「商品编码」也要有门 —— 那一页第一版漏了入口，真机装完才发现。
       -->
-      <view v-if="entries.length" class="sh-wrap entries">
-        <view v-for="e in entries" :key="e.key" class="sh-card entry" @tap="open(e.route)">
-          <text class="txt-strong entry__t">{{ e.label }}</text>
-          <text v-if="e.value" class="txt-caption sh-muted entry__v">{{ e.value }}</text>
+      <!--
+        格子一律等高：每格只有「名字 + 箭头」。公告的现状此前塞在「店铺公告」格子里，
+        那一格因此比别的高一截、两列对不齐；现状挪到卡顶单独一行，点它同样进公告页。
+      -->
+      <view v-if="entries.length" class="sh-card">
+        <view class="head">
+          <text class="txt-title">{{ $t("home.entriesTitle") }}</text>
+        </view>
+        <view v-if="noticeShown" class="notice sh-row" @tap="open(ROUTES.storeNotice)">
+          <text class="txt-caption sh-muted notice__k">{{ $t("home.noticeEntry") }}</text>
+          <text class="txt-caption notice__v sh-fill">{{ noticeValue }}</text>
+        </view>
+        <view class="entries">
+          <view v-for="e in entries" :key="e.key" class="entry" @tap="open(e.route)">
+            <text class="txt-body entry__t">{{ e.label }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+          </view>
         </view>
       </view>
 
@@ -558,14 +584,15 @@ onShow(load);
   gap: 16rpx;
 }
 /* 面色与圆角交给 `.sh-card`。**内边距留在这里是有意的**：
-   三列排布下格子只有 ~110px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
+   四列排布下格子只有 ~80px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
    用积木 + 覆盖一条，比整张卡照抄一遍强 —— 覆盖的那条一眼看得出是特例。 */
 .tiles__cell {
   /* 最小宽按边框盒算：默认的内容盒会把内边距加在 33% 之外，三列被挤成两列 */
   box-sizing: border-box;
-  flex: 0 1 calc(33.33% - 11rpx);
-  min-width: calc(33.33% - 11rpx);
-  padding: 20rpx 16rpx;
+  /* 四列：七个待办排成 4 + 3，不再剩一格孤零零地占一整行（三列时是 3 + 3 + 1） */
+  flex: 0 1 calc(25% - 12rpx);
+  min-width: calc(25% - 12rpx);
+  padding: 20rpx 8rpx;
   text-align: center;
 }
 .tiles__n {
@@ -597,55 +624,50 @@ onShow(load);
   background: var(--sh-bg);
 }
 
-.stats__row {
-  display: flex;
-  margin-top: 16rpx;
-}
-.stats__item {
-  flex: 1;
-  text-align: center;
-}
-.stats__v {
-  display: block;
-}
 .owned {
   background: var(--sh-primary-tint);
 }
-.owned__row {
-  margin-bottom: 12rpx;
+/* 卡头：每张卡同一行 —— 标题在左、动作或读数在右，与下方内容隔一档。
+   此前四张卡四种写法（sh-row baseline / 裸 text / txt-strong + margin），
+   进销存那张干脆没有间距，标题贴着数字。 */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
 }
-/* 功能入口：两列等宽，缝与待办格子同一档（sh-wrap 的 12rpx） */
+/* 公告现状：一行，超出省略 */
+.notice {
+  gap: 16rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  background: var(--sh-bg);
+}
+.notice__k {
+  flex-shrink: 0;
+}
+.notice__v {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 功能入口：两列等高的按钮 —— 与进销存那排快捷同一个长相（浅底圆角） */
+.entries {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rpx;
+}
 .entry {
-  box-sizing: border-box;
-  flex: 0 1 calc(50% - 6rpx);
-  min-width: calc(50% - 6rpx);
-  padding: 20rpx 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 20rpx 0 24rpx;
+  border-radius: 16rpx;
+  background: var(--sh-bg);
 }
 .entry__t {
-  display: block;
-}
-.fulfill {
-  margin-bottom: 12rpx;
-}
-/* 带右值的入口：标题在左、现状在右。右边那句可能被挤，所以给它单独收缩 */
-.fulfill__title {
-  display: block;
-}
-.fulfill__row {
-  display: flex;
-  margin-top: 16rpx;
-}
-.fulfill__half {
-  flex: 1;
-  text-align: center;
-}
-.fulfill__n {
-  display: block;
-  margin-bottom: 8rpx;
-}
-.entry__v {
-  display: block;
-  margin-top: 4rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
