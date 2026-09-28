@@ -1,5 +1,6 @@
 export default {
   common: {
+    later: "لاحقًا",
     loadFailed: "تعذّر التحميل",
     loadFailedTip: "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة.",
     retry: "إعادة المحاولة",
@@ -60,7 +61,6 @@ export default {
     sendCode: "إرسال الرمز",
     sent: "تم إرسال الرمز",
     submit: "ربط",
-    later: "لاحقاً",
     needPhone: "أدخل رقم هاتفك أولاً",
     needBoth: "الرقم والرمز مطلوبان",
     wxFailed: "لم يُرجع WeChat رقماً",
@@ -373,7 +373,6 @@ export default {
       INDIVIDUAL: "تاجر فردي",
       ENTERPRISE: "شركة",
     },
-    applySubmitted: "أُرسل الطلب؛ سنتواصل معك",
     applyDoneTitle: "تم إرسال الطلب",
     applyDoneBody: "سنتواصل معك قريبًا. الإدراج والطلبات والشحن تتم كلها في تطبيق التاجر — يُفضّل تثبيته الآن.",
     getApp: "نسخ رابط تطبيق التاجر",

@@ -1,5 +1,6 @@
 export default {
   common: {
+    later: "Later",
     loadFailed: "Could not load",
     loadFailedTip: "Most likely the network. Check it and try again.",
     retry: "Retry",
@@ -60,7 +61,6 @@ export default {
     sendCode: "Send code",
     sent: "Code sent",
     submit: "Bind",
-    later: "Later",
     needPhone: "Enter your phone number first",
     needBoth: "Both phone and code are required",
     wxFailed: "WeChat did not return a number",
@@ -373,7 +373,6 @@ export default {
       INDIVIDUAL: "Sole trader",
       ENTERPRISE: "Company",
     },
-    applySubmitted: "Application sent — we'll be in touch",
     applyDoneTitle: "Application submitted",
     applyDoneBody: "We will contact you shortly. Listing, orders and shipping all happen in the merchant app — worth installing now.",
     getApp: "Copy merchant app link",

@@ -1,5 +1,6 @@
 export default {
   common: {
+    later: "以后再说",
     loadFailed: "没能加载出来",
     loadFailedTip: "多半是网络不通。检查网络后重试。",
     retry: "重试",
@@ -63,7 +64,6 @@ export default {
     sendCode: "获取验证码",
     sent: "验证码已发送",
     submit: "绑定",
-    later: "以后再说",
     needPhone: "先填手机号",
     needBoth: "手机号和验证码都要填",
     wxFailed: "没从微信拿到手机号",
@@ -406,7 +406,6 @@ export default {
       INDIVIDUAL: "个体工商户",
       ENTERPRISE: "企业",
     },
-    applySubmitted: "申请已提交，运营会尽快联系你",
     applyDoneTitle: "报名已提交",
     applyDoneBody: "平台会尽快与你联系。上架、接单、发货这些经营动作都在「商家版」里完成，建议先装上。",
     getApp: "复制商家版下载地址",
