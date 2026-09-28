@@ -228,4 +228,26 @@ public class MchStore extends BaseEntity {
      * 拒收、跑单，损失全在商家。所以要商家在承担得起的时候自己打开。
      */
     private Integer codEnabled;
+
+    /*
+     * 发货设置（V352，TDD-快递100商家寄件 §7）。全部可空：空 = 回落门店名 / 店主登录手机 / 门店地址。
+     * updateStrategy=ALWAYS：商家把寄件人清空是「改回默认」，updateById 默认跳过 null 会让这一下不生效。
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String shipSenderName;
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String shipSenderPhone;
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String shipAddress;
+    /** 默认快递公司，微信 delivery_id */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private String shipCarrier;
+    /** 默认包裹重量（克） */
+    @com.baomidou.mybatisplus.annotation.TableField(
+            updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
+    private Integer shipWeightG;
 }

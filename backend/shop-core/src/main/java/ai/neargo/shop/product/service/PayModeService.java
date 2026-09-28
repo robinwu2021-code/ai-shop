@@ -46,4 +46,7 @@ public interface PayModeService {
      * @param fulfillment 可空。空表示不看履约（与两参版本相同）
      */
     Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment);
+
+    /** 快递测试模式开着且是快递单：这时快递单也允许线下付（TDD-快递100商家寄件 §7 AC10） */
+    boolean expressUnderTest(String fulfillment);
 }

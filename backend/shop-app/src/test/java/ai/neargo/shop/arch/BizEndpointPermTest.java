@@ -146,6 +146,8 @@ class BizEndpointPermTest {
         put("/biz/store/{storeNo}/sell-rules", BizPerms.STOCK);
         // 门店收款方式（线下收款 / 货到付款）：看用门店的码，改是店主级（控制器里 PUT 挂 store:admin）
         put("/biz/store/{storeNo}/pay-setting", BizPerms.STORE);
+        // 发货设置（TDD-快递100商家寄件 §7）：读 biz:store、写 biz:store:admin，同收款设置
+        put("/biz/store/{storeNo}/ship-setting", BizPerms.STORE);
         // 商品支持哪几种付款：与上下架同档的经营开关，不进草稿、不重审
         put("/biz/goods/{goodsNo}/pay-mode", BizPerms.GOODS);
         // 线下卖出（第三期）：柜台每天在做的事，判库存的码 —— 要店主权限的话店里就没人记得上账

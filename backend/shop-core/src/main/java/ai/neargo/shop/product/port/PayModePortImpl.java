@@ -30,4 +30,9 @@ public class PayModePortImpl implements PayModePort {
     public Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment) {
         return payModeService.availablePayModes(goodsNo, storeNo, fulfillment);
     }
+
+    @Override
+    public boolean expressUnderTest(String fulfillment) {
+        return payModeService.expressUnderTest(fulfillment);
+    }
 }

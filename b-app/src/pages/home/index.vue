@@ -250,6 +250,8 @@ const entries = computed(() =>
     { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store", value: noticeValue.value },
     { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store", value: "" },
     { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store", value: "" },
+    // 发货设置：寄件人、地址、默认快递与重量，一次填好，发货时自动带出（TDD-快递100商家寄件 §7）
+    { key: "ship", label: t("home.shipEntry"), route: ROUTES.shipSettings, perm: "biz:store", value: "" },
     { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin", value: "" },
     { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods", value: "" },
     { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods", value: "" },

@@ -60,6 +60,9 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
      * （B 端传证 + 运营按证授码），存量商家的授权码还在补。这时候闸门拦住的
      * 不是无证经营，是平台自己还没建好的那条路。它同时管两条路：
      * 商品上架、门店摆货架。
+     *
+     * <p>`express.test-mode` 默认 **false**：开着时快递代下单走快递100 测试环境、快递单可线下付，
+     * 只为在生产上跑通快递闭环（TDD-快递100商家寄件 §7）。
      */
     private static final String DEFAULT_FLAGS = """
             [{"key":"category.gate.enforce","name":"类目资质校验",\
@@ -77,7 +80,9 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
             {"key":"refund.clawback-earned","name":"整单退款收回赠送积分",\
             "enabled":true,"rolloutPercent":0,"updatedAt":null},\
             {"key":"marketing.always-on-cut.confirm","name":"常驻无门槛直减保存确认",\
-            "enabled":true,"rolloutPercent":0,"updatedAt":null}]""";
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"express.test-mode","name":"快递测试模式",\
+            "enabled":false,"rolloutPercent":0,"updatedAt":null}]""";
 
     private static final String DEFAULT_RULE_TEXTS =
             "{\"refund\":\"\",\"pickup\":\"\",\"weighDiff\":\"\",\"version\":0}";

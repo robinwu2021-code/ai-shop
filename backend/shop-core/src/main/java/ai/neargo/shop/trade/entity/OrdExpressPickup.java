@@ -52,4 +52,6 @@ public class OrdExpressPickup extends BaseEntity {
     private String courierName;
     private String courierMobile;
     private String failReason;
+    /** 快递测试模式下的单（V352）：走快递100 测试环境，取消回同一环境；运费不记商家欠款 */
+    private Boolean sandbox;
 }

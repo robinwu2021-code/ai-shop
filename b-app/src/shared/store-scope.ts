@@ -30,6 +30,7 @@
  * 的那个类 —— 不写「我觉得它按门店」。
  */
 export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
+  mShipSetting: "路径带 storeNo：这家店的寄件人、寄件地址与默认快递",
   mStats: "BizDashboardController#stats → orderService.stats(merchantNo, ctx.currentStoreScope())",
   mTodo: "BizDashboardController#todo → orderService.todo(..., ctx.currentStoreScope(), ...)",
   mCustomers: "BizDashboardController#customers → ctx.currentStoreScope()",
@@ -101,6 +102,7 @@ export const STORE_SCOPED_PAGES: Record<string, string> = {
   "goods-list": "在售与库存按店（mGoodsList）",
   orders: "订单列表按当前门店（mOrderList）。门店名缀在标题栏；「全部门店」切换已撤（切店只在工作台与「我的」）",
   store: "门面资料、公告、店铺码都是这家店的（mStore / mStoreQrcode）",
+  "ship-settings": "寄件人、寄件地址、默认快递都是这家店的（mShipSetting）",
   "store-scope": "服务范围与配送规则按门店（mStore / mDeliveryRule）",
   delivery: "配送规则与本店待送（mDeliveryRule / mOrderList）",
   "stock-check": "盘点改的是这家店的库存（mCountOpen / mStockPickable）",

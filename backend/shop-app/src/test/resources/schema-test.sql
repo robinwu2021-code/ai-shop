@@ -1526,6 +1526,11 @@ CREATE TABLE IF NOT EXISTS mch_store
     cod_enabled TINYINT NOT NULL DEFAULT 0,
     store_code VARCHAR(32) DEFAULT NULL,
     acode_base64 MEDIUMTEXT NULL,
+    ship_sender_name VARCHAR(64) DEFAULT NULL,
+    ship_sender_phone VARCHAR(32) DEFAULT NULL,
+    ship_address VARCHAR(255) DEFAULT NULL,
+    ship_carrier VARCHAR(16) DEFAULT NULL,
+    ship_weight_g INT(11) DEFAULT NULL,
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)
@@ -4402,6 +4407,7 @@ CREATE TABLE IF NOT EXISTS ord_express_pickup
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    sandbox TINYINT(4) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_express_pickup_no UNIQUE (pickup_no)
 );

@@ -29,7 +29,8 @@ public class StubExpressPickupGateway implements ExpressPickupPort {
     }
 
     @Override
-    public Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG) {
+    public Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG,
+                                 boolean sandbox) {
         return Optional.empty();
     }
 
@@ -39,7 +40,7 @@ public class StubExpressPickupGateway implements ExpressPickupPort {
     }
 
     @Override
-    public Booked cancel(String taskId, String providerOrderId, String reason) {
+    public Booked cancel(String taskId, String providerOrderId, String reason, boolean sandbox) {
         return Booked.fail("stub");
     }
 

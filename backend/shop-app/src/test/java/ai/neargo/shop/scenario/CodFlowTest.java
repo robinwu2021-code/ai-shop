@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.platform.PlatformConfigService;
 import ai.neargo.shop.product.service.PayModeService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import java.util.Map;
@@ -38,6 +39,7 @@ class CodFlowTest {
 
     @Autowired private PayModeService payModeService;
     @Autowired private MerchantQueryPort merchantPort;
+    @Autowired private PlatformConfigService platformConfig;
     @Autowired private JdbcTemplate jdbc;
 
     private String store;
@@ -88,6 +90,25 @@ class CodFlowTest {
         jdbc.update("update mch_store set cod_enabled=1 where store_no=?", store);
         assertThat(payModeService.availablePayModes(goods, store, Fulfillments.EXPRESS))
                 .containsExactly(PayModes.ONLINE);
+    }
+
+    @Test
+    @DisplayName("★★★ 快递 × 线下只在「快递测试模式」下放行，且只放快递这一种（TDD-快递100商家寄件 §7 AC10）")
+    void expressOfflineOnlyUnderTestMode() {
+        assertThat(payModeService.availablePayModes(goods, store, Fulfillments.EXPRESS))
+                .as("正式环境：货寄出去之后没有当面收款的那一刻")
+                .containsExactly(PayModes.ONLINE);
+        try {
+            platformConfig.saveFeatureFlag(PayModes.EXPRESS_TEST_MODE_FLAG, true, 0, "TEST");
+            assertThat(payModeService.availablePayModes(goods, store, Fulfillments.EXPRESS))
+                    .contains(PayModes.OFFLINE);
+            assertThat(payModeService.availablePayModes(goods, store, Fulfillments.NEIGHBOR_PICKUP))
+                    .as("测试模式只放快递：自提点代收货款照样是资金归集")
+                    .containsExactly(PayModes.ONLINE);
+        } finally {
+            // 共享库：开关必须关回去，否则此后所有快递单都能线下付，而报错不会指向这里
+            platformConfig.saveFeatureFlag(PayModes.EXPRESS_TEST_MODE_FLAG, false, 0, "TEST");
+        }
     }
 
     @Test

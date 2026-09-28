@@ -57,6 +57,9 @@ const cutsBy = (src: string, code: string) =>
  */
 const EXEMPT: Record<string, string> = {
   // ① 页内逐块裁
+  "order/biz:store":
+    "发货卡读「发货设置」（mShipSetting）只为带出默认快递公司与重量：调用前先 ensureScope 再 can('biz:store')、失败单独 catch —— "
+    + "店员、配送员、客服进得来订单详情，没有这个码只是不预填，发货照样能发（TDD-快递100商家寄件 §7）",
   "stock-align/biz:store:admin":
     "对照清单只要 biz:stock 就能看；确认对齐（调实存）那两个按钮所在的贴底条整条按 can('biz:store:admin') 裁掉 —— "
     + "店长、店员、理货员进得来、看得到差额，按不到确认，页面里不会出现他打不通的请求",

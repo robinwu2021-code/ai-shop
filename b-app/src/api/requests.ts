@@ -308,6 +308,20 @@ export interface OrderListQuery {
   allStores?: boolean;
 }
 
+/** 改门店发货设置（`mSaveShipSetting`）。**空串 = 改回默认**（门店名 / 店主手机 / 门店地址） */
+export interface SaveShipSettingReq {
+  /** 寄件人，≤64 字。空 = 门店名 */
+  senderName: string;
+  /** 寄件电话：手机或座机，数字与短横 7–20 位。空 = 店主登录手机 */
+  senderPhone: string;
+  /** 寄件地址，带省市区的整条，≤255 字。空 = 门店地址 */
+  address: string;
+  /** 默认快递公司，微信 delivery_id。空 = 不预选 */
+  carrier: string;
+  /** 默认包裹重量（克），100–30000。null = 不预填 */
+  weightG: number | null;
+}
+
 /** 快递报价（`mExpressQuotes`，GET 查询参数）。重量公斤，0.1–30 */
 export interface ExpressQuotesQuery {
   /** 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 */

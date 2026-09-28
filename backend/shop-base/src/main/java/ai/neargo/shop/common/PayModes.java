@@ -47,6 +47,14 @@ public final class PayModes {
     /** 新建商品的默认集合。<b>只给线上</b> —— 线下收款要商家显式开，不该一建出来就支持。 */
     public static final Set<String> DEFAULT = Set.of(ONLINE);
 
+    /**
+     * 功能开关「快递测试模式」（TDD-快递100商家寄件 §7）。开着时：
+     * ① 快递代下单走快递100 测试环境（不扣费、不真派快递员）；
+     * ② 快递单也允许线下付 —— 微信支付被封期间，唯一能在生产上把「下单 → 叫快递 → 取件 → 发货 → 收货」
+     *    整条链路跑通的办法。**只为测试**：货寄出去之后本没有当面收款的那一刻，所以正式环境不放行。
+     */
+    public static final String EXPRESS_TEST_MODE_FLAG = "express.test-mode";
+
     private PayModes() {
     }
 

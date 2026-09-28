@@ -39,9 +39,10 @@ public interface ExpressPickupService {
      * @param weightG        商家申报重量（克）
      * @param chargedWeightG 快递员称重后的计费重量（克），取件前为空
      * @param freightMinor   平台实付运费（分），取件前为空；取件后记到商家欠款
+     * @param sandbox        快递测试模式下的单（快递100 测试环境）：不真派快递员、运费不记欠款
      */
     record PickupVO(String pickupNo, String carrier, String carrierName, String status, String trackingNo,
                     int weightG, Integer chargedWeightG, Long freightMinor, String courierName,
-                    String courierMobile, String failReason, long createdAt) {
+                    String courierMobile, String failReason, long createdAt, boolean sandbox) {
     }
 }

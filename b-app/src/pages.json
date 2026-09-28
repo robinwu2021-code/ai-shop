@@ -346,6 +346,18 @@
       }
     },
     {
+      "path": "pages/ship-settings/index",
+      "style": {
+        "navigationBarTitleText": "发货设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/store-scope/index",
       "style": {
         "navigationBarTitleText": "经营范围与送货",

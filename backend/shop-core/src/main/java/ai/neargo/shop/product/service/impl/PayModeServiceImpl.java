@@ -1,5 +1,6 @@
 package ai.neargo.shop.product.service.impl;
 
+import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
@@ -29,15 +30,17 @@ public class PayModeServiceImpl implements PayModeService {
     private final CategoryPayModeMapper catPayModeMapper;
     private final QualificationPort qualificationPort;
     private final StorePayPort storePayPort;
+    private final PlatformSwitchPort switchPort;
     private final ObjectMapper json;
 
     public PayModeServiceImpl(GoodsMapper goodsMapper, CategoryPayModeMapper catPayModeMapper,
                               QualificationPort qualificationPort, StorePayPort storePayPort,
-                              ObjectMapper json) {
+                              PlatformSwitchPort switchPort, ObjectMapper json) {
         this.goodsMapper = goodsMapper;
         this.catPayModeMapper = catPayModeMapper;
         this.qualificationPort = qualificationPort;
         this.storePayPort = storePayPort;
+        this.switchPort = switchPort;
         this.json = json;
     }
 
@@ -92,7 +95,7 @@ public class PayModeServiceImpl implements PayModeService {
         if (fulfillment == null || fulfillment.isBlank() || !out.contains(PayModes.OFFLINE)) {
             return out;
         }
-        boolean offlineOk = PayModes.OFFLINE_FULFILLMENTS.contains(fulfillment)
+        boolean offlineOk = (PayModes.OFFLINE_FULFILLMENTS.contains(fulfillment) || expressUnderTest(fulfillment))
                 // 货到付款：门店级开关，默认关（此前只写在注释里，下单从没查过）
                 && (!Fulfillments.MERCHANT_DELIVERY.equals(fulfillment) || storePayPort.codEnabled(storeNo));
         if (!offlineOk) {
@@ -101,6 +104,12 @@ public class PayModeServiceImpl implements PayModeService {
             return onlineOnly;
         }
         return out;
+    }
+
+    /** 快递测试模式下，快递单也可线下付（见 {@link PayModes#EXPRESS_TEST_MODE_FLAG}） */
+    @Override
+    public boolean expressUnderTest(String fulfillment) {
+        return Fulfillments.EXPRESS.equals(fulfillment) && switchPort.bool(PayModes.EXPRESS_TEST_MODE_FLAG, false);
     }
 
     /**

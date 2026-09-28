@@ -25,4 +25,7 @@ public interface PayModePort {
 
     /** 再叠履约方式这一层（线下要有当面收钱的那一刻；商家配送 × 线下要门店开了货到付款）。见 PayModeService 同名方法 */
     Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment);
+
+    /** 快递测试模式开着且是快递单（TDD-快递100商家寄件 §7 AC10）。建单校验用它放行「快递 × 线下」 */
+    boolean expressUnderTest(String fulfillment);
 }

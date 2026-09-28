@@ -31,7 +31,8 @@ import {
   storeOverrides,
   usersOfRole,
 } from "./_shared";
-import type { MerchantApi } from "../contract";
+import type { MerchantApi, ShipSetting } from "../contract";
+import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const storeMock: Pick<MerchantApi,
   "mStore"
@@ -58,6 +59,8 @@ export const storeMock: Pick<MerchantApi,
   | "mSetDefaultStore"
   | "mSetStorePayment"
   | "mStorePaySetting"
+  | "mShipSetting"
+  | "mSaveShipSetting"
   | "mSaveStorePaySetting"
   | "mStaffList"
   | "mAddStaff"
@@ -446,6 +449,29 @@ export const storeMock: Pick<MerchantApi,
     if (body.codEnabled && !offline) throw new Error("先开启线下收款");
     const next = { ...cur, offlinePayEnabled: offline, codEnabled: offline && (body.codEnabled ?? cur.codEnabled) };
     mockPaySettings.set(s.storeNo, next);
+    return delay({ ...next });
+  },
+
+  // ---- 发货设置：与后端同规则 —— 空串改回默认、电话 / 快递公司 / 重量要合法
+  async mShipSetting(storeNo) {
+    // 页面传的是 merchant.storeNo；没传（"default"）时认 mock 的当前门店 —— 切店后这一页要跟着变
+    const s = requireStore(storeNo === "default" ? currentStoreNo() : storeNo);
+    return delay(shipSettingOf(s.storeNo, s.name, s.address ?? ""));
+  },
+  async mSaveShipSetting(storeNo, body) {
+    const s = requireStore(storeNo);
+    const blank = (v: string) => (v.trim() ? v.trim() : null);
+    const phone = blank(body.senderPhone);
+    if (phone && !/^[0-9-]{7,20}$/.test(phone)) throw new Error("请求参数有误");
+    const carrier = blank(body.carrier);
+    if (carrier && !EXPRESS_COMPANIES.some((c) => c.code === carrier)) throw new Error("请求参数有误");
+    if (body.weightG != null && (body.weightG < 100 || body.weightG > 30000)) throw new Error("请求参数有误");
+    const next = {
+      ...shipSettingOf(s.storeNo, s.name, s.address ?? ""),
+      senderName: blank(body.senderName), senderPhone: phone, address: blank(body.address),
+      carrier, weightG: body.weightG,
+    };
+    mockShipSettings.set(s.storeNo, next);
     return delay({ ...next });
   },
 
@@ -1009,4 +1035,13 @@ const mockPaySettings = new Map<string, import("../contract").StorePaySetting>()
 function paySettingOf(storeNo: string): import("../contract").StorePaySetting {
   return mockPaySettings.get(storeNo)
     ?? { storeNo, offlinePayEnabled: false, codEnabled: false, qualified: true };
+}
+
+// ---- 发货设置的替身状态（内存里，刷新即清空）
+const mockShipSettings = new Map<string, ShipSetting>();
+function shipSettingOf(storeNo: string, storeName: string, storeAddress: string): ShipSetting {
+  return mockShipSettings.get(storeNo) ?? {
+    storeNo, senderName: null, senderPhone: null, address: null, carrier: null, weightG: null,
+    defaultSenderName: storeName, defaultSenderPhone: "13800000000", defaultAddress: storeAddress,
+  };
 }

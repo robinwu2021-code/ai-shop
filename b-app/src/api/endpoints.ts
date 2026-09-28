@@ -185,6 +185,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mBookExpress: { method: "POST", path: "/biz/order/:orderNo/express", auth: true, summary: "叫快递上门取件" },
   mExpressPickup: { method: "GET", path: "/biz/order/:orderNo/express", auth: true, summary: "取件单" },
   mCancelExpress: { method: "POST", path: "/biz/order/:orderNo/express/cancel", auth: true, summary: "取消取件" },
+  mShipSetting: { method: "GET", path: "/biz/store/:storeNo/ship-setting", auth: true, summary: "发货设置" },
+  mSaveShipSetting: { method: "PUT", path: "/biz/store/:storeNo/ship-setting", auth: true, summary: "改发货设置" },
   mDeliveryRule: { method: "GET", path: "/biz/delivery/rule", auth: true, summary: "自送规则" },
   mSaveDeliveryRule: { method: "POST", path: "/biz/delivery/rule", auth: true, summary: "保存自送规则" },
 

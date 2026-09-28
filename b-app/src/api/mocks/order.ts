@@ -170,6 +170,7 @@ export const orderMock: Pick<MerchantApi,
       courierMobile: null,
       failReason: null,
       createdAt: Date.now(),
+      sandbox: false,
     };
     pickups.set(orderNo, p);
     return delay({ ...p });

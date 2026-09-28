@@ -271,9 +271,11 @@ shop:
   express:
     kuaidi100:
       stub: ${SHOP_EXPRESS_KUAIDI100_STUB:true}
-      # 测试环境：http://e-test.kuaidilab.com/api（下单不产生真实取件、不扣费；
-      # 各阶段状态在「寄件测试平台」testapi.kuaidilab.com 里手动推）。正式环境用默认值
+      # 正式 / 测试两个地址都常驻，**用哪个由运营端功能开关「快递测试模式」(express.test-mode) 定**，
+      # 按取件单落库（取消要回同一个环境）。测试环境下单不产生真实取件、不扣费；
+      # 各阶段状态在「寄件测试平台」testapi.kuaidilab.com 里手动推
       host: ${KUAIDI100_HOST:https://poll.kuaidi100.com}
+      sandbox-host: ${KUAIDI100_SANDBOX_HOST:http://e-test.kuaidilab.com/api}
       key: ${KUAIDI100_KEY:}
       secret: ${KUAIDI100_SECRET:}
       salt: ${KUAIDI100_SALT:}

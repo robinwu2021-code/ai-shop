@@ -66,6 +66,8 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final String endpoint;
+    /** 测试环境：下单不产生真实取件、不扣费；状态在「寄件测试平台」手动推（TDD §7 AC9） */
+    private final String sandboxEndpoint;
     private final String key;
     private final String secret;
     private final String salt;
@@ -73,6 +75,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
 
     public Kuaidi100PickupGateway(
             @Value("${shop.express.kuaidi100.host:https://poll.kuaidi100.com}") String host,
+            @Value("${shop.express.kuaidi100.sandbox-host:http://e-test.kuaidilab.com/api}") String sandboxHost,
             @Value("${shop.express.kuaidi100.key:}") String key,
             @Value("${shop.express.kuaidi100.secret:}") String secret,
             @Value("${shop.express.kuaidi100.salt:}") String salt,
@@ -83,6 +86,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
                     + "但缺少 KUAIDI100_KEY / KUAIDI100_SECRET / KUAIDI100_SALT / 回调地址");
         }
         this.endpoint = host + "/order/borderapi.do";
+        this.sandboxEndpoint = sandboxHost + "/order/borderapi.do";
         this.key = key;
         this.secret = secret;
         this.salt = salt;
@@ -101,7 +105,8 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
     }
 
     @Override
-    public Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG) {
+    public Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG,
+                                 boolean sandbox) {
         String com = CODES.get(carrier);
         if (com == null) {
             return Optional.empty();
@@ -112,7 +117,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
         p.put("recManPrintAddr", receiverAddress);
         p.put("weight", kg(weightG));
         try {
-            JsonNode resp = post("price", p.toString(), Duration.ofSeconds(4));
+            JsonNode resp = post("price", p.toString(), Duration.ofSeconds(4), sandbox);
             if (!ok(resp)) {
                 log.info("[kd100] 查价无结果 com={} code={} msg={}", com, resp.path("returnCode").asText(),
                         resp.path("message").asText());
@@ -154,7 +159,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
         p.put("salt", salt);
         p.put("thirdOrderId", cmd.thirdOrderNo());
         try {
-            JsonNode resp = post("bOrder", p.toString(), Duration.ofSeconds(10));
+            JsonNode resp = post("bOrder", p.toString(), Duration.ofSeconds(10), cmd.sandbox());
             if (!ok(resp)) {
                 String msg = resp.path("message").asText("下单失败");
                 log.warn("[kd100] 下单被拒 no={} code={} msg={}", cmd.thirdOrderNo(),
@@ -162,7 +167,8 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
                 return Booked.fail(msg);
             }
             JsonNode d = resp.path("data");
-            log.info("[kd100] 下单成功 no={} taskId={}", cmd.thirdOrderNo(), d.path("taskId").asText());
+            log.info("[kd100] 下单成功 no={} taskId={}{}", cmd.thirdOrderNo(), d.path("taskId").asText(),
+                    cmd.sandbox() ? "（测试环境）" : "");
             return new Booked(true, text(d, "taskId"), text(d, "orderId"), text(d, "kuaidinum"),
                     resp.path("message").asText(null));
         } catch (Exception e) {
@@ -172,13 +178,13 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
     }
 
     @Override
-    public Booked cancel(String taskId, String providerOrderId, String reason) {
+    public Booked cancel(String taskId, String providerOrderId, String reason, boolean sandbox) {
         ObjectNode p = JSON.createObjectNode();
         p.put("taskId", taskId);
         p.put("orderId", providerOrderId);
         p.put("cancelMsg", reason == null ? "商家取消" : reason.length() > 30 ? reason.substring(0, 30) : reason);
         try {
-            JsonNode resp = post("cancel", p.toString(), Duration.ofSeconds(10));
+            JsonNode resp = post("cancel", p.toString(), Duration.ofSeconds(10), sandbox);
             if (!ok(resp)) {
                 return Booked.fail(resp.path("message").asText("取消失败"));
             }
@@ -216,11 +222,11 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
 
     // ── 报文 ─────────────────────────────────────────────────────────────
 
-    private JsonNode post(String method, String param, Duration timeout) throws Exception {
+    private JsonNode post(String method, String param, Duration timeout, boolean sandbox) throws Exception {
         String t = String.valueOf(System.currentTimeMillis());
         String form = "method=" + enc(method) + "&key=" + enc(key) + "&t=" + t
                 + "&sign=" + enc(requestSign(param, t, key, secret)) + "&param=" + enc(param);
-        HttpRequest req = HttpRequest.newBuilder(URI.create(endpoint))
+        HttpRequest req = HttpRequest.newBuilder(URI.create(sandbox ? sandboxEndpoint : endpoint))
                 .timeout(timeout)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(form, StandardCharsets.UTF_8))

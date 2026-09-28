@@ -2426,7 +2426,9 @@ public class OrderServiceImpl implements OrderService {
          * **排除自提点自提**：自提点承接的是别家商家的货，让它代收货款
          * 立刻变成资金归集 —— 与 ADR-002 要避开的二清是同一件事。
          */
-        if (!PayModes.OFFLINE_FULFILLMENTS.contains(cmd.fulfillment())) {
+        if (!PayModes.OFFLINE_FULFILLMENTS.contains(cmd.fulfillment())
+                // 快递测试模式：快递单也可线下付，只为在生产上跑通快递闭环（TDD-快递100商家寄件 §7 AC10）
+                && !payModeService.expressUnderTest(cmd.fulfillment())) {
             throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
         }
         for (Group g : split.groups()) {

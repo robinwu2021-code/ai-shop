@@ -5,7 +5,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.spi.fulfillment.ExpressPickupPort;
+import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.shop.spi.user.MerchantDebtPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
@@ -60,11 +62,12 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     private final MerchantQueryPort merchantPort;
     private final MerchantDebtPort debtPort;
     private final MerchantOrderService merchantOrderService;
+    private final PlatformSwitchPort switchPort;
 
     public ExpressPickupServiceImpl(ExpressPickupPort port, ExpressPickupMapper pickupMapper,
                                     SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     MerchantQueryPort merchantPort, MerchantDebtPort debtPort,
-                                    MerchantOrderService merchantOrderService) {
+                                    MerchantOrderService merchantOrderService, PlatformSwitchPort switchPort) {
         this.port = port;
         this.pickupMapper = pickupMapper;
         this.subOrderMapper = subOrderMapper;
@@ -72,6 +75,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         this.merchantPort = merchantPort;
         this.debtPort = debtPort;
         this.merchantOrderService = merchantOrderService;
+        this.switchPort = switchPort;
     }
 
     // ── 商家侧 ───────────────────────────────────────────────────────────
@@ -83,6 +87,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         OrdSubOrder sub = requireShippable(merchantNo, storeNo, subOrderNo);
         ExpressPickupPort.Party sender = sender(sub);
         ExpressPickupPort.Party receiver = receiver(sub);
+        boolean sandbox = testMode();
         /*
          * 各家并发查：一家 1–3 秒，八家串行就是十几秒，商家早关页面了。
          * 虚拟线程：这是纯等网络的活，不该占公共线程池。
@@ -90,7 +95,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             List<CompletableFuture<Optional<ExpressPickupPort.Quote>>> fs = port.carriers().stream()
                     .map(c -> CompletableFuture.supplyAsync(
-                            () -> port.quote(c, sender.address(), receiver.address(), weightG), pool))
+                            () -> port.quote(c, sender.address(), receiver.address(), weightG, sandbox), pool))
                     .toList();
             return fs.stream()
                     .map(CompletableFuture::join)
@@ -132,11 +137,13 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         p.setStatus(OrdExpressPickup.CREATED);
         p.setWeightG(weightG);
         p.setFreightBookedMinor(0L);
+        // 环境在下单这一刻定、并落库：之后开关怎么拨，这一单的取消都回到它下单的那个环境
+        p.setSandbox(testMode());
         stamp(p, true);
         DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
 
         ExpressPickupPort.Booked b = port.create(new ExpressPickupPort.CreateCmd(
-                p.getPickupNo(), carrier, weightG, cargo(sub), sender, receiver));
+                p.getPickupNo(), carrier, weightG, cargo(sub), sender, receiver, Boolean.TRUE.equals(p.getSandbox())));
         if (!b.ok()) {
             p.setStatus(OrdExpressPickup.FAILED);
             p.setFailReason(truncate(b.message(), 255));
@@ -174,7 +181,8 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
             throw BizException.of(ErrorCode.EXPRESS_NOT_CANCELLABLE);
         }
         if (p.getTaskId() != null) {
-            ExpressPickupPort.Booked b = port.cancel(p.getTaskId(), p.getProviderOrderId(), "商家取消");
+            ExpressPickupPort.Booked b = port.cancel(p.getTaskId(), p.getProviderOrderId(), "商家取消",
+                    Boolean.TRUE.equals(p.getSandbox()));
             if (!b.ok()) {
                 throw BizException.of(ErrorCode.EXPRESS_PROVIDER_REJECTED, nz(b.message()));
             }
@@ -315,6 +323,10 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
      * 多记的由运营在欠款页处理）。来源号带上累计额，重复推送同一个数不会多记。
      */
     private void bookFreight(OrdExpressPickup p) {
+        if (Boolean.TRUE.equals(p.getSandbox())) {
+            // 测试环境的运费是假的，平台也没付这笔钱 —— 记进商家欠款就是凭空让他欠一笔（§7 AC11）
+            return;
+        }
         long freight = p.getFreightMinor() == null ? 0L : p.getFreightMinor();
         long booked = p.getFreightBookedMinor() == null ? 0L : p.getFreightBookedMinor();
         if (freight <= booked) {
@@ -331,6 +343,10 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     }
 
     // ── 校验与取数 ───────────────────────────────────────────────────────
+
+    private boolean testMode() {
+        return switchPort.bool(PayModes.EXPRESS_TEST_MODE_FLAG, false);
+    }
 
     private void requireChannel() {
         if (!port.enabled()) {
@@ -440,7 +456,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         return new PickupVO(p.getPickupNo(), p.getCarrier(), ExpressCompanies.nameOf(p.getCarrier()),
                 p.getStatus(), p.getTrackingNo(), Objects.requireNonNullElse(p.getWeightG(), 0),
                 p.getChargedWeightG(), p.getFreightMinor(), p.getCourierName(), p.getCourierMobile(),
-                p.getFailReason(), created);
+                p.getFailReason(), created, Boolean.TRUE.equals(p.getSandbox()));
     }
 
     private static boolean isBlank(String s) {

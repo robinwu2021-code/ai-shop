@@ -20,14 +20,18 @@ public interface ExpressPickupPort {
     /**
      * 查一家的价。查不到（这家不接这条线、通道超时）返回空，调用方跳过这一家 ——
      * 一家查不到不该让整张报价单打不开。
+     *
+     * @param sandbox true = 走通道的测试环境（快递测试模式，TDD §7 AC9）。调用方按取件单记下的环境传，
+     *                不在实现里各自读开关 —— 下单与取消必须落在同一个环境
      */
-    Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG);
+    Optional<Quote> quote(String carrier, String senderAddress, String receiverAddress, int weightG,
+                          boolean sandbox);
 
     /** 下单。通道拒单时 {@link Booked#ok()} 为 false，{@link Booked#message()} 是通道原话 */
     Booked create(CreateCmd cmd);
 
-    /** 取消。通道拒绝时返回 false 与原因 */
-    Booked cancel(String taskId, String providerOrderId, String reason);
+    /** 取消。通道拒绝时返回 false 与原因。{@code sandbox} 取下单时的那个 */
+    Booked cancel(String taskId, String providerOrderId, String reason, boolean sandbox);
 
     /**
      * 解析并验签一条回调。<b>验签不过返回空</b> —— 调用方不落库、不回成功。
@@ -42,7 +46,8 @@ public interface ExpressPickupPort {
     }
 
     /** @param thirdOrderNo 我方取件单号，通道原样带回，对账用 */
-    record CreateCmd(String thirdOrderNo, String carrier, int weightG, String cargo, Party sender, Party receiver) {
+    record CreateCmd(String thirdOrderNo, String carrier, int weightG, String cargo, Party sender, Party receiver,
+                     boolean sandbox) {
     }
 
     record Booked(boolean ok, String taskId, String orderId, String trackingNo, String message) {

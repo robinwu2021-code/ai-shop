@@ -175,6 +175,30 @@ export interface ExpressQuote {
   listPriceMinor: number;
 }
 
+/**
+ * 门店发货设置（TDD-快递100商家寄件 §7 AC12）。五项都可空：空 = 用 `default*` 那一份
+ * （门店名 / 店主登录手机 / 门店地址）。`default*` 给端上当 placeholder，让商家看到「不填会用什么」。
+ */
+export interface ShipSetting {
+  storeNo: string;
+  /** 寄件人。空 = 门店名 */
+  senderName: string | null;
+  /** 寄件电话。空 = 店主登录手机 */
+  senderPhone: string | null;
+  /** 寄件地址（带省市区的整条）。空 = 门店地址 */
+  address: string | null;
+  /** 默认快递公司，微信 delivery_id；叫快递与自己发货都先选中它 */
+  carrier: string | null;
+  /** 默认包裹重量（克） */
+  weightG: number | null;
+  /** 不填寄件人时用的名字（门店名） */
+  defaultSenderName: string;
+  /** 不填电话时用的号码（店主登录手机） */
+  defaultSenderPhone: string;
+  /** 不填地址时用的地址（门店地址，缺省份时已用区划补全） */
+  defaultAddress: string;
+}
+
 /** 取件单状态：已下单 / 已接单 / 已取件 / 已签收 / 已取消 / 失败 */
 export type ExpressPickupStatus = "CREATED" | "ACCEPTED" | "PICKED" | "DONE" | "CANCELLED" | "FAILED";
 
@@ -192,6 +216,8 @@ export interface ExpressPickup {
   courierMobile: string | null;
   failReason: string | null;
   createdAt: number;
+  /** 快递测试模式下的单：走快递100 测试环境，不真派快递员、运费不记欠款 */
+  sandbox: boolean;
 }
 
 export interface Statement {
@@ -610,6 +636,7 @@ import type {
   TogglePointsReq,
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
+  SaveShipSettingReq,
 } from "./requests";
 
 /** 缓存里的一条小区。坐标必有 —— 没坐标的在服务端就被滤掉了（买家定位落不进去） */
@@ -1291,6 +1318,10 @@ export interface MerchantApi {
   mExpressPickup(orderNo: string): Promise<ExpressPickup | null>;
   /** 取件前取消 */
   mCancelExpress(orderNo: string): Promise<ExpressPickup>;
+  /** 本店发货设置（寄件人、电话、地址、默认快递公司与重量） */
+  mShipSetting(storeNo: string): Promise<ShipSetting>;
+  /** 改发货设置。空串 = 改回默认。要 biz:store:admin */
+  mSaveShipSetting(storeNo: string, body: SaveShipSettingReq): Promise<ShipSetting>;
 
   // ---- 预约排期（B-11.5）
   /** 本店时段。**连约满的和停掉的一起列** —— 只给「还能约的」，商家看不出为什么没人约 */

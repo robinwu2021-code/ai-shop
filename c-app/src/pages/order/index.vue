@@ -12,8 +12,18 @@ import { countdown, datetime, money } from "@shared/utils/format";
 import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
+import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
+/**
+ * 快递公司名（TDD-快递100商家寄件 §7 AC14）。订单一直带着 `expressCompany`（微信 delivery_id），
+ * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
+ */
+const expressCompanyName = computed(() => {
+  const code = order.value?.expressCompany;
+  if (!code) return "";
+  return EXPRESS_COMPANIES.find((c) => c.code === code)?.name ?? code;
+});
 
 const order = ref<Order | null>(null);
 /**
@@ -503,7 +513,7 @@ onShow(load);
       </view>
       <view v-if="order.expressNo" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
-        <text class="txt-caption fact__v sh-num">{{ order.expressNo }}</text>
+        <text class="txt-caption fact__v sh-num">{{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}</text>
       </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>

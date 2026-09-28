@@ -7,6 +7,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { ROUTES } from "@/shared/nav";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
@@ -102,6 +103,7 @@ async function load(orderNo: string) {
     order.value = await api.mOrderDetail(orderNo);
     failed.value = false;
     void loadPickup();
+    if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
   } catch {
     // 此前这句是裸的：拉挂了是一个没人接的 Promise 拒绝，
     // 界面上一个字都不说，整页停在空白
@@ -159,6 +161,34 @@ const weightOk = computed(() => {
   return w >= 0.1 && w <= 30;
 });
 
+/** 发货方式：叫快递上门 / 自己发货。默认叫快递 —— 它是推荐路径（平台批量价、运单号自动回填） */
+const SHIP_MODES = ["PICKUP", "SELF"] as const;
+const shipMode = ref<(typeof SHIP_MODES)[number]>("PICKUP");
+/** 发货设置里的默认快递公司：查到价后先选中它；自己发货时也先选中它 */
+const defaultCarrier = ref<string | null>(null);
+
+function openShipSettings() {
+  uni.navigateTo({ url: ROUTES.shipSettings });
+}
+
+/**
+ * 带出发货设置的默认值（快递公司、重量）。**拉不到不挡发货** —— 那一页是方便，不是前提；
+ * 商家手动选一次照样能发。只在他还没动过的时候填，不覆盖手上的输入。
+ */
+async function loadShipDefaults() {
+  // 深链进来时权限可能还没加载：can() 在那时 fail-closed 返回 false，而这里不会再重试
+  await merchant.ensureScope();
+  if (!merchant.can("biz:store")) return;
+  try {
+    const s = await api.mShipSetting(merchant.storeNo || "default");
+    defaultCarrier.value = s.carrier;
+    if (!weightKg.value && s.weightG) weightKg.value = String(s.weightG / 1000);
+    if (carrierIdx.value < 0 && s.carrier) carrierIdx.value = carriers.findIndex((c) => c.code === s.carrier);
+  } catch {
+    // 见上：不挡发货
+  }
+}
+
 async function loadPickup() {
   if (order.value?.fulfillment !== FULFILLMENT.EXPRESS || !merchant.can("biz:ship")) return;
   try {
@@ -174,7 +204,9 @@ async function fetchQuotes() {
   busy.value = true;
   try {
     quotes.value = await api.mExpressQuotes(order.value.orderNo, Number(weightKg.value));
-    quoteIdx.value = quotes.value.length ? 0 : -1;
+    // 发货设置里的默认快递在报价单里就先选中它；不在（这条线不接）就选最便宜的那家
+    const def = quotes.value.findIndex((q) => q.carrier === defaultCarrier.value);
+    quoteIdx.value = def >= 0 ? def : quotes.value.length ? 0 : -1;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -324,14 +356,18 @@ onLoad((q) => {
         <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
-      <!-- 快递发货：快递公司 + 运单号（B-11.4.3；快递公司 2026-09-20 加，微信发货信息录入要求成对） -->
       <!--
-        叫快递上门（TDD-快递100商家寄件）。放在手填运单号之前：它是推荐路径 ——
-        平台共用一个快递100 账号，小单量也拿得到批量价。叫过之后这张卡只显示进度。
+        发货（TDD-快递100商家寄件 §7 AC13）：一张卡、两种做法二选一 ——
+          · 叫快递上门：平台共用一个快递100 账号，小单量也拿得到批量价；取件后运单号自动回填
+          · 自己发货：已经交给快递了，填运单号（B-11.4.3；快递公司与运单号成对，微信发货信息录入要求）
+        默认值取「发货设置」（快递公司、重量），右上角直达那一页。叫过快递之后这张卡只显示进度。
       -->
       <view v-if="pickupActive && pickup" class="sh-card sh-mt-sm">
         <view class="sh-row sh-row--between">
-          <text class="txt-title">{{ pickup.carrierName }}</text>
+          <view class="sh-row">
+            <text class="txt-title">{{ pickup.carrierName }}</text>
+            <text v-if="pickup.sandbox" class="sh-chip sh-chip--warning">{{ $t("order.expressSandbox") }}</text>
+          </view>
           <text class="sh-chip" :class="pickup.status === 'PICKED' || pickup.status === 'DONE' ? 'sh-chip--primary' : ''">
             {{ $t(`order.expressStatus.${pickup.status}`) }}
           </text>
@@ -357,67 +393,81 @@ onLoad((q) => {
         </view>
       </view>
       <view v-else-if="canShip" class="sh-card sh-mt-sm">
-        <text class="txt-title">{{ $t("order.expressBook") }}</text>
-        <text v-if="pickup?.failReason" class="txt-caption sh-muted sh-mt-sm express__last">
-          {{ $t(`order.expressStatus.${pickup.status}`) }}：{{ pickup.failReason }}
-        </text>
-        <view class="sh-row sh-mt-sm">
-          <input
-            v-model="weightKg"
-            type="digit"
-            maxlength="5"
-            class="field__input sh-fill"
-            :placeholder="$t('order.expressWeightPh')"
-            @input="quotes = null"
-          />
-          <view class="sh-btn sh-btn--sm" :class="{ 'sh-btn--muted': !weightOk }" @tap="fetchQuotes">
-            {{ $t("order.expressQuote") }}
-          </view>
+        <view class="sh-row sh-row--between">
+          <text class="txt-title">{{ $t("order.ship") }}</text>
+          <sh-go :text="String($t('home.shipEntry'))" @tap="openShipSettings"></sh-go>
         </view>
-        <template v-if="quotes">
-          <text v-if="!quotes.length" class="txt-caption sh-muted sh-mt-sm express__last">{{ $t("order.expressNoQuote") }}</text>
-          <view
-            v-for="(q, i) in quotes"
-            :key="q.carrier"
-            class="quote sh-row sh-row--between"
-            :class="{ 'quote--on': quoteIdx === i }"
-            @tap="quoteIdx = i"
-          >
-            <text>{{ q.carrierName }}</text>
-            <view class="sh-row">
-              <text v-if="q.listPriceMinor > q.priceMinor" class="sh-was sh-num">{{ money(q.listPriceMinor) }}</text>
-              <text class="txt-strong sh-num">{{ money(q.priceMinor) }}</text>
+        <view class="sh-row ship__modes sh-mt-sm">
+          <text
+            v-for="m in SHIP_MODES"
+            :key="m"
+            class="sh-seg sh-seg--fill"
+            :class="{ 'sh-seg--on': shipMode === m }"
+            @tap="shipMode = m"
+          >{{ $t(`order.shipMode.${m}`) }}</text>
+        </view>
+
+        <template v-if="shipMode === 'PICKUP'">
+          <text v-if="pickup?.failReason" class="txt-caption sh-muted sh-mt-sm express__last">
+            {{ $t(`order.expressStatus.${pickup.status}`) }}：{{ pickup.failReason }}
+          </text>
+          <view class="sh-row sh-mt-sm">
+            <input
+              v-model="weightKg"
+              type="digit"
+              maxlength="5"
+              class="field__input sh-fill"
+              :placeholder="$t('order.expressWeightPh')"
+              @input="quotes = null"
+            />
+            <view class="sh-btn sh-btn--sm" :class="{ 'sh-btn--muted': !weightOk }" @tap="fetchQuotes">
+              {{ $t("order.expressQuote") }}
             </view>
           </view>
-          <view v-if="quotes.length" class="sh-btn sh-mt-sm" @tap="bookExpress">{{ $t("order.expressBookBtn") }}</view>
+          <template v-if="quotes">
+            <text v-if="!quotes.length" class="txt-caption sh-muted sh-mt-sm express__last">{{ $t("order.expressNoQuote") }}</text>
+            <view
+              v-for="(q, i) in quotes"
+              :key="q.carrier"
+              class="quote sh-row sh-row--between"
+              :class="{ 'quote--on': quoteIdx === i }"
+              @tap="quoteIdx = i"
+            >
+              <text>{{ q.carrierName }}</text>
+              <view class="sh-row">
+                <text v-if="q.listPriceMinor > q.priceMinor" class="sh-was sh-num">{{ money(q.listPriceMinor) }}</text>
+                <text class="txt-strong sh-num">{{ money(q.priceMinor) }}</text>
+              </view>
+            </view>
+            <view v-if="quotes.length" class="sh-btn sh-mt-sm" @tap="bookExpress">{{ $t("order.expressBookBtn") }}</view>
+          </template>
         </template>
-      </view>
 
-      <view v-if="canShip && !pickupActive" class="sh-card sh-mt-sm">
-        <text class="txt-title">{{ $t("order.ship") }}</text>
-        <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
-        <view class="sh-wrap sh-mt-sm">
-          <text
-            v-for="(c, i) in carriers"
-            :key="c.code"
-            class="carrier__chip txt-caption"
-            :class="{ 'carrier__chip--on': carrierIdx === i }"
-            @tap="carrierIdx = i"
-          >{{ c.name }}</text>
-        </view>
-        <input
-          maxlength="64"
-          v-model="expressNo"
-          class="field__input sh-mt-sm"
-          :placeholder="$t('order.expressNo')"
-        />
-        <view
-          class="sh-btn sh-mt-sm"
-          :class="{ 'sh-btn--muted': !expressNo || carrierIdx < 0 }"
-          @tap="ship"
-        >
-          {{ $t("order.ship") }}
-        </view>
+        <template v-else>
+          <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
+          <view class="sh-wrap sh-mt-sm">
+            <text
+              v-for="(c, i) in carriers"
+              :key="c.code"
+              class="carrier__chip txt-caption"
+              :class="{ 'carrier__chip--on': carrierIdx === i }"
+              @tap="carrierIdx = i"
+            >{{ c.name }}</text>
+          </view>
+          <input
+            maxlength="64"
+            v-model="expressNo"
+            class="field__input sh-mt-sm"
+            :placeholder="$t('order.expressNo')"
+          />
+          <view
+            class="sh-btn sh-mt-sm"
+            :class="{ 'sh-btn--muted': !expressNo || carrierIdx < 0 }"
+            @tap="ship"
+          >
+            {{ $t("order.ship") }}
+          </view>
+        </template>
       </view>
 
       <!-- 商家自送：老板点一下就是送到了，不做骑手轨迹（ADR-005 §5） -->
@@ -518,6 +568,10 @@ onLoad((q) => {
 .due__hint {
   display: block;
   margin-top: 16rpx;
+}
+/* 发货方式两段：等分铺满，与商品编辑页「售卖方式」同一件（sh-seg--fill） */
+.ship__modes {
+  gap: 16rpx;
 }
 /* 报价行：一家一行，选中的那行描主色边。行高够一根手指 */
 .quote {
