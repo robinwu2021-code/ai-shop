@@ -1,5 +1,5 @@
 // 系统配置 mock（P-17.1）。
-import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, RuleTexts } from "@/lib/types";
+import type { Industry, AuthCodeAdmin, ServiceScopeConfig, AppearanceConfig, FeatureFlag, MarketConfig, OtpTestPhone, RuleTexts } from "@/lib/types";
 
 export const appearance: AppearanceConfig = {
   // 与 packages/shared/src/design/tokens.ts 的 SKINS 同名同色
@@ -61,6 +61,19 @@ export const authCodeAdmins: AuthCodeAdmin[] = [
   { code: "DAILY", name: "日用百货", sort: 50, enabled: true, merchantCount: 1, categoryCount: 0 },
   { code: "SERVICE_REPAIR", name: "维修服务", requiredQualification: "家电维修资质", sort: 60, enabled: false, merchantCount: 1, categoryCount: 0 },
   { code: "HOUSEKEEPING", name: "家政服务", sort: 65, enabled: true, merchantCount: 0, categoryCount: 1 },
+];
+
+/**
+ * 测试号固定验证码白名单（mock）。
+ *
+ * **两条，一开一关** —— 只放启用的那条，「停用即时生效」与「停用不是删除」
+ * 这两件事在 mock 上就演示不出来，而那正是这一页最需要运营看懂的地方。
+ *
+ * 第一条与后端 V354 的种子同口径（13800000000 / 123456）。
+ */
+export const otpTestPhones: OtpTestPhone[] = [
+  { id: 1, phone: "13800000000", code: "123456", enabled: true, remark: "苹果审核演示账号（App Store Connect 审核资料里填的就是它）" },
+  { id: 2, phone: "13900000001", code: "654321", enabled: false, remark: "上一轮回归用完已停用，留着是为了记住它被用过" },
 ];
 
 /** 经营范围三档（mock）。一期 PLATFORM 是关的 —— 没有商品形态支撑它。 */

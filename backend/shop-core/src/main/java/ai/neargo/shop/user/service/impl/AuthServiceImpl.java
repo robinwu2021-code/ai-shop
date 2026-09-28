@@ -3,6 +3,7 @@ package ai.neargo.shop.user.service.impl;
 import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.OtpTestPhoneService;
 import ai.neargo.shop.common.OtpStore;
 
 import ai.neargo.shop.auth.LoginUser;
@@ -83,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
      * </ul>
      */
     private final String fixedOtp;
+    private final OtpTestPhoneService testPhoneService;
 
     private final OtpSendGuard sendGuard;
     private final SmsPort smsPort;
@@ -102,7 +104,8 @@ public class AuthServiceImpl implements AuthService {
                            ai.neargo.shop.user.service.PersonService personService,
                            @org.springframework.beans.factory.annotation.Value(
                                    "${shop.auth.otp.fixed:}") String fixedOtp,
-                           ai.neargo.shop.spi.marketing.FissionPort fissionPort) {
+                           ai.neargo.shop.spi.marketing.FissionPort fissionPort,
+                           OtpTestPhoneService testPhoneService) {
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
@@ -115,6 +118,7 @@ public class AuthServiceImpl implements AuthService {
         this.personService = personService;
         this.fixedOtp = fixedOtp;
         this.fissionPort = fissionPort;
+        this.testPhoneService = testPhoneService;
         if (usingFixedOtp()) {
             /*
              * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
@@ -151,6 +155,26 @@ public class AuthServiceImpl implements AuthService {
              */
             otpStore.save(phone, fixedOtp);
             log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
+            return;
+        }
+        /*
+         * 测试号白名单（TDD-测试号固定验证码）。**位置有讲究**：
+         *
+         *   · 在 sendGuard 之后 —— 白名单号不该绕过限流。绕过的话，那个号就是一条
+         *     免费的、无限次的发码通道，而它的码是公开可猜的。
+         *   · 在生成随机码之前 —— 放在之后的话，随机码会先写进 OtpStore，
+         *     把上一条固定码冲掉，然后再被固定码覆盖回去。中间那一瞬正确的码是哪个，
+         *     取决于两次 save 的顺序，而两次 save 之间任何一次 verify 都会失败。
+         *   · **不调 smsPort** —— 这是它与「把码写进库再捞出来」那个方案的关键差别：
+         *     后者只改了存码那半句，短信照样会发给一个真实号段的陌生人。
+         *
+         * 与上面的 usingFixedOtp() 的差别只有一处，但是关键的一处：
+         * **作用域从「任意手机号」收窄到「列表里的号」**。
+         */
+        var fixed = testPhoneService.fixedCodeFor(phone);
+        if (fixed.isPresent()) {
+            otpStore.save(phone, fixed.get());
+            log.warn("[otp] 测试号白名单命中 {}，已下发固定验证码（未发短信）", mask(phone));
             return;
         }
         String code = "%06d".formatted(RANDOM.nextInt(1_000_000));

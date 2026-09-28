@@ -117,6 +117,12 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      */
     "/marketing?tab=platform",
     "/marketing?tab=platformAudit",
+    /*
+     * 测试号固定验证码（2026-09-28，TDD-测试号固定验证码）。挂它自己的读码
+     * system:testphone:read，而那个码**一个角色都没配** —— 所以这一条
+     * 只在超管那一行多出来，其余十个角色的清单一个字都不变。
+     */
+    "/system?tab=testPhone",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {

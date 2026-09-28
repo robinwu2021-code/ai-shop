@@ -96,6 +96,28 @@ public enum ErrorCode {
      * 判据按国家不同（大陆 11 位、海外 3–20 位），泛话会让他反复试。
      */
     ADDRESS_PHONE_FORMAT(10460, "err.address.phone_format"),
+
+    /*
+     * 测试号固定验证码白名单的四条护栏（TDD-测试号固定验证码 §2）。
+     *
+     * **一条都不复用 BAD_REQUEST**：这四种情况下运营的下一步动作各不相同，
+     * 而「请求参数有误」会让他去改手机号那一格 —— 其中三次那一格是对的。
+     * 尤其第一条：它不是输错，是**这个号不该被录**，改格子改不出结果。
+     */
+    /**
+     * 这个手机号<b>已经有账号了</b>，不许录进白名单。
+     *
+     * <p>这是整套护栏里最关键的一条。演示账号的用法是「先录白名单 → 再注册」，
+     * 录的时候那个号不存在；而要拿别人的店，那个号一定已经存在。
+     * 有这条，拿到权限码的人也登不进任何现有商家。
+     */
+    OTP_TEST_PHONE_EXISTS_ACCOUNT(10461, "err.otp.test_phone_exists_account"),
+    /** 启用中的测试号已达上限。上限存在的理由是防止这张表长成一个通用后门 */
+    OTP_TEST_PHONE_LIMIT(10462, "err.otp.test_phone_limit"),
+    /** 固定验证码太短。下限与 {@code PWD_MIN_LEN} 同档 —— 拦的是「1234」这种 */
+    OTP_TEST_PHONE_CODE_TOO_SHORT(10463, "err.otp.test_phone_code_too_short"),
+    /** 手机号格式不对（大陆 11 位）。白名单只用于自家演示号，不需要海外号段 */
+    OTP_TEST_PHONE_FORMAT(10464, "err.otp.test_phone_format"),
     /**
      * 手机号或密码不对。
      *

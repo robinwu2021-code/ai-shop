@@ -260,6 +260,13 @@ export const ROLE_LABEL: Record<Role, string> = {
 /** 高危权限码：矩阵 §2.3「高危权限」列。发布前要能一眼数清谁持有它们。 */
 export const CRITICAL_PERMS = [
   "iam:role:grant",
+  /*
+   * 测试号固定验证码白名单的写码。**这是全系统最危险的一个** ——
+   * 白名单里每一行都是一把能登进那个手机号账号的钥匙。
+   * 它一个角色都没配（只有超管的通配能到），列在这里是为了让发布前
+   * 「谁持有高危码」那一份清单数得到它。
+   */
+  "system:testphone:update",
   "merchant:merchant:ban",
   "finance:settle:execute",
   "finance:withdraw:approve",

@@ -139,4 +139,5 @@ export const POINT_CODES: Record<string, string> = {
   "/system?tab=industry": "OPS_SYSTEM__TAB_INDUSTRY",
   "/system?tab=authCode": "OPS_SYSTEM__TAB_AUTHCODE",
   "/system?tab=scope": "OPS_SYSTEM__TAB_SCOPE",
+  "/system?tab=testPhone": "OPS_SYSTEM__TAB_TESTPHONE",
 };

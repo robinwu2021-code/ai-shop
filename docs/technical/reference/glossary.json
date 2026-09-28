@@ -23697,6 +23697,30 @@
           "ar": "عدد كبير من المحاولات الخاطئة. يرجى المحاولة بعد {0} دقيقة"
         },
         {
+          "key": "err.otp.test_phone_code_too_short",
+          "zh-CN": "固定验证码至少 {0} 位",
+          "en": "The fixed code must be at least {0} digits",
+          "ar": "يجب أن يكون الرمز الثابت مكوَّنًا من {0} أرقام على الأقل"
+        },
+        {
+          "key": "err.otp.test_phone_exists_account",
+          "zh-CN": "这个手机号已经有账号了，不能录进测试号白名单。测试号的用法是先录号、再用它注册，所以录的时候它必须是个没注册过的号",
+          "en": "This number already has an account, so it cannot be added to the test-number list. A test number is meant to be added first and registered afterwards, so it must be an unregistered number",
+          "ar": "هذا الرقم لديه حساب بالفعل، لذا لا يمكن إضافته إلى قائمة أرقام الاختبار. رقم الاختبار يُضاف أولًا ثم يُسجَّل به، لذا يجب أن يكون رقمًا غير مسجَّل"
+        },
+        {
+          "key": "err.otp.test_phone_format",
+          "zh-CN": "请填 11 位大陆手机号",
+          "en": "Enter an 11-digit Chinese mainland mobile number",
+          "ar": "أدخل رقم هاتف محمول صينيًا مكوَّنًا من 11 رقمًا"
+        },
+        {
+          "key": "err.otp.test_phone_limit",
+          "zh-CN": "启用中的测试号已达上限（{0} 个）。先停用或删掉一个不用的，再录新的",
+          "en": "You have reached the limit of {0} active test numbers. Disable or remove one before adding another",
+          "ar": "بلغت الحد الأقصى وهو {0} أرقام اختبار مفعَّلة. عطِّل أحدها أو احذفه قبل إضافة رقم جديد"
+        },
+        {
           "key": "err.otp.too_frequent",
           "zh-CN": "验证码发送过于频繁，请 {0} 秒后重试",
           "en": "Verification code requested too often. Please retry in {0}s",
@@ -25484,6 +25508,13 @@
       "table": "usr_identity",
       "class": "UsrIdentity",
       "zh": "登录凭证。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.user.entity"
+    },
+    {
+      "table": "usr_otp_test_phone",
+      "class": "UsrOtpTestPhone",
+      "zh": "测试号固定验证码白名单（TDD-测试号固定验证码）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.user.entity"
     },
@@ -31635,6 +31666,10 @@
           "OTP_INVALID",
           "PHONE_ALREADY_BOUND",
           "ADDRESS_PHONE_FORMAT",
+          "OTP_TEST_PHONE_EXISTS_ACCOUNT",
+          "OTP_TEST_PHONE_LIMIT",
+          "OTP_TEST_PHONE_CODE_TOO_SHORT",
+          "OTP_TEST_PHONE_FORMAT",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
           "NOT_IMPLEMENTED",
@@ -35664,10 +35699,26 @@
     },
     {
       "host": "Perms",
+      "name": "SYSTEM_TESTPHONE_READ",
+      "type": "String",
+      "value": "\"system:testphone:read\"",
+      "zh": "测试号固定验证码白名单 —— 只读（TDD-测试号固定验证码）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SYSTEM_TESTPHONE_UPDATE",
+      "type": "String",
+      "value": "\"system:testphone:update\"",
+      "zh": "测试号固定验证码白名单 —— 增 / 改 / 删 / 启停。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "SYSTEM_MEDIA_READ",
       "type": "String",
       "value": "\"system:media:read\"",
-      "zh": "存储空间统计与待回收清单，只读。",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

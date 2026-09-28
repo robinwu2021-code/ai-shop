@@ -550,6 +550,17 @@ export const NAV: NavSection[] = [
       // 而「能看占用」的人比「能删」的人多；删的权限由页面内部按 system:media:purge 判，
       // 没有它就隐藏勾选框与批量操作条（TDD-图片存储与空间回收 §L3-7）
       { href: "/system?tab=storage", label: "存储空间治理", perm: "system:media:read", group: "运行配置", matrix: "P-17.1", ready: true },
+      /*
+       * 测试号固定验证码白名单（TDD-测试号固定验证码）。
+       *
+       * **perm 用的是它自己的读码，不是 system:param:read** —— 与旁边几条相反。
+       * 别的 tab 用 param:read 是因为「能看配置」比「能改」宽；这一页不是那个形状：
+       * 它把固定验证码明文显示出来，能看这一页就等于知道那几个号的登录码。
+       * 用 param:read 的话，持有它的 TECH_OPS 立刻就能看到那几把钥匙。
+       *
+       * 两个码都不配给任何角色，只有超管的通配能到（Perms.SYSTEM_TESTPHONE_UPDATE）。
+       */
+      { href: "/system?tab=testPhone", label: "测试号固定验证码", perm: "system:testphone:read", group: "运行配置", matrix: "P-17.1", ready: true },
       // 下面三个页面早有 tab、菜单一直漏登记 —— 都是「平台一共允许经营什么」这组配置。
       // perm 用 read 码而不是各自的写码（env:switch / category:manage）：
       // 叶子的 perm 决定**能不能看见这个入口**，写权限由页面内部各自判。

@@ -3,6 +3,12 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
+  // ── 测试号固定验证码白名单 ──
+  listTestPhones: () => client.get("/ops/test-phones"),
+  saveTestPhone: (v) => client.post("/ops/test-phones", v),
+  setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),
+  removeTestPhone: (id) => client.post(`/ops/test-phones/${id}/remove`, {}),
+
   // 行业主数据是本文件里**唯一接了真后端**的一组（其余仍走 mock，见 Ops契约对账）
   listIndustries: () => client.get("/ops/industries"),
   setIndustryMicroAllowed: (industry, payChannel, allowed, remark) =>

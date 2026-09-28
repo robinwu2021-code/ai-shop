@@ -16,6 +16,51 @@ function findIndustry(industry: string) {
 }
 
 export const systemMock: SystemApi = {
+  // ── 测试号固定验证码白名单 ──
+  //
+  // 后端那四条护栏里，**只有「已存在账号」这条 mock 演不出来**（mock 里没有账号表）。
+  // 其余三条照抄，因为它们决定运营在这一页上能做什么；少一条，联调时才第一次看到报错。
+
+  listTestPhones: async () => wait(db.otpTestPhones.map((r) => ({ ...r }))),
+
+  saveTestPhone: async (v) => {
+    const phone = v.phone?.trim() ?? "";
+    if (!/^1\d{10}$/.test(phone)) fail("请填 11 位大陆手机号", "Enter an 11-digit Chinese mainland mobile number");
+    const code = v.code?.trim() ?? "";
+    if (code.length < 6) fail("固定验证码至少 6 位", "The fixed code must be at least 6 digits");
+    const row = db.otpTestPhones.find((x) => x.phone === phone);
+    if (row) {
+      row.code = code;
+      row.remark = v.remark?.trim() || undefined;
+    } else {
+      if (db.otpTestPhones.filter((x) => x.enabled).length >= 3) {
+        fail("启用中的测试号已达上限（3 个）", "You have reached the limit of 3 active test numbers");
+      }
+      db.otpTestPhones.push({
+        id: Math.max(0, ...db.otpTestPhones.map((x) => x.id)) + 1,
+        phone, code, enabled: true, remark: v.remark?.trim() || undefined,
+      });
+    }
+    return wait(db.otpTestPhones.map((r) => ({ ...r })));
+  },
+
+  setTestPhoneEnabled: async (id, enabled) => {
+    const row = db.otpTestPhones.find((x) => x.id === id);
+    if (!row) notFound("测试号", "Test number", String(id));
+    if (enabled && !row.enabled && db.otpTestPhones.filter((x) => x.enabled).length >= 3) {
+      fail("启用中的测试号已达上限（3 个）", "You have reached the limit of 3 active test numbers");
+    }
+    row.enabled = enabled;
+    return wait(db.otpTestPhones.map((r) => ({ ...r })));
+  },
+
+  removeTestPhone: async (id) => {
+    const i = db.otpTestPhones.findIndex((x) => x.id === id);
+    if (i < 0) notFound("测试号", "Test number", String(id));
+    db.otpTestPhones.splice(i, 1);
+    return wait(db.otpTestPhones.map((r) => ({ ...r })));
+  },
+
   listIndustries: async () => wait([...db.industries]),
 
   listAuthCodeDict: async () => wait(db.authCodeAdmins.map((c) => ({ ...c }))),

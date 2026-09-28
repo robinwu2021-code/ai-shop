@@ -126,6 +126,11 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
    */
   "system:env:switch": "system:param:update",
   // 存储空间治理：看清单与发起回收是两个码，页面按后者显隐勾选框与批量条
+  // 测试号固定验证码白名单。恒等映射，但**必须登记** ——
+  // can() 是先查映射再判通配的，未登记一律判无权限：菜单在、页面在、后端也在，
+  // 界面上就是看不到，且不报错（这仓库在 MERCHANT_APPLY_ONBEHALF 上栽过一次）。
+  "system:testphone:read": "system:testphone:read",
+  "system:testphone:update": "system:testphone:update",
   "system:media:read": "system:media:read",
   "system:media:purge": "system:media:purge",
   // 定时任务：看与管两个码。读的人多得多 —— 一个任务出事时，

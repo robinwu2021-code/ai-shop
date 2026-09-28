@@ -449,6 +449,14 @@ export const RULES = [
   ["GET", /^\/ops\/media\//, "system:media:read"],
   ["*", /^\/ops\/media\/(purge|scan|backfill)/, "system:media:purge"],
 
+  // ── 测试号固定验证码白名单（P-17.1「运行配置」）─────────────────────────
+  // **读也是独立码，不并进 system:param:read** —— 与上面几组相反。
+  // 别处「读码比写码宽」是因为看配置无害；这一页不是那个形状：
+  // 它把固定验证码明文列出来，能看这一页就等于知道那几个号的登录码。
+  // 用 param:read 的话，持有它的 TECH_OPS 立刻就拿到了那几把钥匙。
+  ["GET", /^\/ops\/test-phones/, "system:testphone:read"],
+  ["*", /^\/ops\/test-phones/, "system:testphone:update"],
+
   // ── 会员与人档（P-13）──────────────────────────────────────────────────
   ["GET", /^\/ops\/members/, "member:member:read"],
   ["GET", /^\/ops\/persons\/[^/]+$/, "member:person:read"],

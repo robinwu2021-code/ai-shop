@@ -4413,6 +4413,24 @@ CREATE TABLE IF NOT EXISTS ord_express_pickup
     CONSTRAINT uk_express_pickup_no UNIQUE (pickup_no)
 );
 
+CREATE TABLE IF NOT EXISTS usr_otp_test_phone
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    phone VARCHAR(32) NOT NULL,
+    code VARCHAR(16) NOT NULL,
+    enabled TINYINT(4) NOT NULL DEFAULT 1,
+    remark VARCHAR(128) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_otp_test_phone UNIQUE (phone)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -9292,3 +9310,20 @@ VALUES
   ('CAT122', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT INTO usr_otp_test_phone
+    (phone, code, enabled, remark, created_at, updated_at, created_by)
+VALUES
+    ('13800000000', '123456', 1, '苹果审核演示账号（App Store Connect 审核资料里填的就是它）',
+     NOW(), NOW(), 'V354');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'OPS_SYSTEM__TAB_TESTPHONE', 'OPS_IAM', '测试号固定验证码', '运行配置', '/system?tab=testPhone', 'system:testphone:read', 'system:testphone:read', 'IMPLEMENTED', 1, 'P-17.1', 'MENU', NULL, 100, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_SYSTEM__TAB_TESTPHONE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_SYSTEM__TAB_TESTPHONE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_SYSTEM__TAB_TESTPHONE');
+INSERT INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, gated_by, sort, created_at, updated_at)
+SELECT 'ACT__SYSTEM_TESTPHONE_UPDATE', 'OPS_IAM', 'system:testphone:update', '页面内操作', NULL, 'system:testphone:update', 'system:testphone:update', 'IMPLEMENTED', 1, NULL, 'ACTION', NULL, 921, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='ACT__SYSTEM_TESTPHONE_UPDATE');
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_TESTPHONE_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_TESTPHONE_UPDATE');

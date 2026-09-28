@@ -359,6 +359,9 @@ components:
         contactPhone: 
           type: "string"
           description: "联系手机号（申请人自己填的，不一定是登录号）。**通过后它就是商家账号的登录号**"
+        referrerPhone: 
+          type: "string"
+          description: "推荐人手机号（V353，选填）。**奖励靠它人工发** —— 小程序里不能出现「邀请商家入驻得 X 元」（拉人头 + 奖励会被判平台型经营）， 所以规则只在官网与企微里，运营在这一栏看到号之后自己去发券 （TDD-C 端裂变与商家招募 §8.3）。\n\n可选：绝大多数申请没有推荐人，那时这一栏整个不渲染。"
         category: 
           type: "string"
           description: "主营类目。**商家自己的说法**（「食品」），不是权威码"
@@ -8243,6 +8246,31 @@ components:
         - "pointsForced"
       additionalProperties: false
       description: "行业主数据（后端 `sys_industry`）。**已接真后端。**\n\n<p>它不是一张普通的字典表：**行业决定商家能不能以小微主体进件** —— 微信的小微白名单按行业给，判错一次商家就是进件被拒，而那时他已经开完店、上完架。"
+    OtpTestPhone: 
+      type: "object"
+      properties: 
+        id: 
+          type: "number"
+          description: "库内自增 id。启停与删除按它定位（手机号会被改，id 不会）"
+        phone: 
+          type: "string"
+          description: "11 位大陆手机号"
+        code: 
+          type: "string"
+          description: "固定验证码。**明文显示** —— 不显示的话就没法填进苹果审核资料，而那是这张表的全部意义"
+        enabled: 
+          type: "boolean"
+          description: "启用中。**停用即时生效**，不等缓存过期、不等重启"
+        remark: 
+          type: "string"
+          description: "这一条为什么存在。空 = 没写（不是「没有原因」）"
+      required: 
+        - "id"
+        - "phone"
+        - "code"
+        - "enabled"
+      additionalProperties: false
+      description: "测试号固定验证码白名单的一条（TDD-测试号固定验证码）。\n\n命中的号请求验证码时**不发真实短信**，码恒为 `code`。唯一用途是苹果审核 —— 审核员在美国，收不到中国短信，而 App 的登录是手机号 + 验证码。\n\n**这里的每一行都是一把能登进那个手机号账号的钥匙。** 真正拦住「拿它登进别人的店」 的不是权限码，是后端那条「拒绝录入已存在账号的手机号」—— 页面上要把这件事说清楚， 否则运营会以为它只是一个普通的配置项。"
     AuthCodeAdmin: 
       type: "object"
       properties: 
@@ -8275,7 +8303,6 @@ components:
         - "merchantCount"
         - "categoryCount"
       additionalProperties: false
-      description: "授权码字典（运营视图）。\n\n⚠️ 与 `AuthCode`（给商家发证时的可选项，见 types/merchant.ts）**是两个口径**： 那个只给启用的，这个含停用的并带影响面计数。合并的话，停用过的码就再也 恢复不了 —— 页面上根本看不见它。"
     ServiceScopeConfig: 
       type: "object"
       properties: 
@@ -22547,6 +22574,147 @@ paths:
                   - "data"
       parameters: 
         - name: "templateNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-phones": 
+    get: 
+      operationId: "listTestPhones"
+      summary: "全量，**含停用的**"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OtpTestPhone"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "saveTestPhone"
+      summary: "录一条或改一条（按手机号认，不按 id）"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OtpTestPhone"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-phones/{id}/enabled": 
+    post: 
+      operationId: "setTestPhoneEnabled"
+      summary: "开 / 关"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OtpTestPhone"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "id"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/test-phones/{id}/remove": 
+    post: 
+      operationId: "removeTestPhone"
+      summary: "删"
+      tags: 
+        - "system"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/OtpTestPhone"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "id"
           in: "path"
           required: true
           schema: 

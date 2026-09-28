@@ -500,6 +500,29 @@ public final class Perms {
     public static final String SYSTEM_PARAM_UPDATE = "system:param:update";
 
     /** 存储空间统计与待回收清单，只读。 */
+    /**
+     * 测试号固定验证码白名单 —— <b>只读</b>（TDD-测试号固定验证码）。
+     *
+     * <p>连读都单独一个码、不并进 {@link #SYSTEM_PARAM_READ}：列表页会把固定验证码
+     * <b>明文显示</b>出来（不显示的话运营没法把它填进苹果审核资料，而那是这张表的全部意义）。
+     * 也就是说「能看这一页」等于「知道那几个号的登录码」—— 这跟看一眼汇率不是一回事。
+     */
+    public static final String SYSTEM_TESTPHONE_READ = "system:testphone:read";
+
+    /**
+     * 测试号固定验证码白名单 —— 增 / 改 / 删 / 启停。
+     *
+     * <p><b>这是全系统最危险的一个码</b>：白名单里的每一行都是一把能登进那个手机号账号的钥匙。
+     * 所以它不并进 {@link #SYSTEM_PARAM_UPDATE}（那个已经给了 TECH_OPS），
+     * 而是<b>一个角色都不配，只有超管的通配能到</b> —— 先例见 {@code MERCHANT_SELFOP_CREATE}。
+     *
+     * <p>真正拦住「拿它登进别人的店」的不是这个码，是服务层那条
+     * 「拒绝录入已存在账号的手机号」（{@code OtpTestPhoneServiceImpl}）。
+     * 权限码只决定谁能碰这一页；护栏决定碰了也没用。<b>两者缺一不可</b>：
+     * 只有权限码的话，超管账号一旦被借用就是全平台任意账号登录。
+     */
+    public static final String SYSTEM_TESTPHONE_UPDATE = "system:testphone:update";
+
     public static final String SYSTEM_MEDIA_READ = "system:media:read";
 
     /**

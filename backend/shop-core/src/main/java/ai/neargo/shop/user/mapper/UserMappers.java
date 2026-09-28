@@ -59,6 +59,25 @@ public final class UserMappers {
     }
 
     /**
+     * 测试号固定验证码白名单（苹果审核演示账号）。
+     *
+     * <p>删要<b>物理删</b>：{@code BaseEntity} 上有 {@code @TableLogic}，普通 {@code delete}
+     * 会变成 {@code update ... set deleted = 1}，而 <b>{@code uk_otp_test_phone} 唯一键里
+     * 没有 deleted</b> —— 软删掉的行仍然占着那个手机号。后果是**删掉的号再也录不回来**：
+     * 插入撞唯一键、接口 500，而报错与「删过一次」看不出任何关系。
+     * 与 {@code IdentityMapper.deleteAllByUserPhysically}、{@code StoreFavoriteMapper.purge}
+     * 同一个坑（这仓库已经栽过两次）。
+     */
+    public interface OtpTestPhoneMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrOtpTestPhone> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_otp_test_phone WHERE id = #{id}")
+        int purge(@org.apache.ibatis.annotations.Param("id") Long id);
+    }
+
+
+    /**
      * 取消收藏要<b>真删</b>：全局逻辑删除只是 {@code deleted=1}，这一行还占着唯一键
      * {@code uk_user_entity(user_no, entity_no)} —— 同一家店取消后再收藏就撞（TDD-C端商品收藏与送达判断 §2）。
      */

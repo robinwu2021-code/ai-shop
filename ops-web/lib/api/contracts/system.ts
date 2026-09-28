@@ -2,10 +2,33 @@
 import type {
   AppearanceConfig, AuthCodeAdmin, FeatureFlag, Industry, MarketConfig, RuleTexts, ServiceScopeConfig,
   MediaBackfillResult, MediaBatchDetail, MediaOverview, MediaPurgeBatch, MediaPurgePreview,
-  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, Page,
+  MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page,
 } from "@/lib/types";
 
 export interface SystemApi {
+  // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
+  //
+  // 四个方法都返回**整份列表**而不是改动的那一条：这一页的每个动作都会改变
+  // 「还能不能再加一个」（有启用上限），只回单条的话页面得自己推算剩余额度。
+
+  /** 全量，**含停用的**。停用那些也要看得见，否则没法解释为什么某个号不生效 */
+  listTestPhones(): Promise<OtpTestPhone[]>;
+  /**
+   * 录一条或改一条（按手机号认，不按 id）。
+   *
+   * **已经有账号的手机号会被后端拒绝**（10461）—— 这不是校验失败，是这个号不该被录：
+   * 白名单的用法是「先录号 → 再用它注册」，所以录的时候它必须是个没注册过的号。
+   */
+  saveTestPhone(v: Pick<OtpTestPhone, "phone" | "code"> & { remark?: string }): Promise<OtpTestPhone[]>;
+  /** 开 / 关。**即刻生效** —— 出事要能当场关掉，不用等一次部署 */
+  setTestPhoneEnabled(id: number, enabled: boolean): Promise<OtpTestPhone[]>;
+  /**
+   * 删。**物理删**，不是归档 —— 所以叫 remove 不叫 archive：
+   * 库里那张表的唯一键是手机号且不含 deleted，软删掉的行仍占着这个号，
+   * 于是删过一次就再也录不回来。删掉之后这个号可以重新录。
+   */
+  removeTestPhone(id: number): Promise<OtpTestPhone[]>;
+
   // ── 授权码字典（TDD-一期主数据收敛 阶段二）—— **已接真后端** `/ops/auth-codes/**`
 
   /**

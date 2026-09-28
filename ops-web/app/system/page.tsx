@@ -22,6 +22,7 @@ import { IndustryTab } from "./industry-tab";
 import { AuthCodeTab } from "./auth-code-tab";
 import { ServiceScopeTab } from "./service-scope-tab";
 import { StorageTab } from "./storage-tab";
+import { TestPhoneTab } from "./test-phone-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,8 @@ import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
-const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope"] as const;
+const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope",
+  "testPhone"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -274,6 +276,11 @@ function SystemInner() {
       {/* 授权码字典改的是「一共有哪些门槛」，与类目树同权限（category:manage） */}
       {tab === "authCode" && <AuthCodeTab c={c} canWrite={allow("category:manage")} />}
       {tab === "scope" && <ServiceScopeTab c={c} canWrite={canEnv} />}
+      {/*
+        * 测试号白名单：读与写各一个独立码，**都不并进 system:param:***
+        * —— 这一页把固定验证码明文显示出来，能看它就等于知道那几个号的登录码。
+        */}
+      {tab === "testPhone" && <TestPhoneTab c={c} canWrite={allow("system:testphone:update")} />}
 
       {tab === "flags" && (
         <>
