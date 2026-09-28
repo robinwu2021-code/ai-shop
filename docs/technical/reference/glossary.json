@@ -28244,6 +28244,13 @@
         "module": "shop-core"
       },
       {
+        "host": "NotifyScene",
+        "name": "NEW_GOODS_ON_SALE",
+        "value": "NEW_GOODS_ON_SALE",
+        "zh": "收藏的店铺有新品开售 —— 扇出给该店的收藏者（C 端）。",
+        "module": "shop-core"
+      },
+      {
         "host": "MsgMessage",
         "name": "TRADE",
         "value": "TRADE",
@@ -35669,8 +35676,16 @@
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED)",
+      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE)",
       "zh": "全部场景码。",
+      "module": "shop-core"
+    },
+    {
+      "host": "NotifyScene",
+      "name": "MARKETING",
+      "type": "Set<String>",
+      "value": "Set.of(NEW_GOODS_ON_SALE)",
+      "zh": "营销类场景 —— 站内信不强制开。",
       "module": "shop-core"
     },
     {
