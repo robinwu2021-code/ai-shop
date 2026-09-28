@@ -873,6 +873,23 @@ uni-page-wrapper[style*="--window-bottom"] {
   padding: var(--sh-pad-card, 32rpx);
 }
 
+/* 卡头：卡里的第一行 —— 标题（.txt-title）在左，动作或读数在右，与下面的内容隔一档。
+   B 端工作台四张卡、常用功能进去的八个页面曾是八种写法（裸 text / sh-row baseline /
+   txt-strong + margin / 什么都不写），标题贴着内容、字阶忽大忽小。收成一条。
+   说明文字最多一行，紧跟在卡头下面（.sh-hint 自带 8rpx 上距，这里负责与内容的距离）。 */
+.sh-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+/* 紧跟卡头的那一句说明：往上收一点贴住标题，下面留一档再接内容 */
+.sh-card__head + .sh-hint {
+  margin-top: -8rpx;
+  margin-bottom: 12rpx;
+}
+
 /*
  * 区块：**标题与内容同属一个白块**。
  *

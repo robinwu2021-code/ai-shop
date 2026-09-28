@@ -29,11 +29,6 @@ const adjusting = ref(false);
 /** 当前门店。多门店时经营类目各店各有一份 —— 分店卖的不一定是同一批货 */
 const storeNo = computed(() => merchant.storeNo);
 
-/** 商品规格：本店在用哪些规格、各有哪些档位。按类目分组，所以挂在这一页 */
-function goSpecs() {
-  uni.navigateTo({ url: ROUTES.mySpecs });
-}
-
 /**
  * 点一类直接去商品列表，**并且落在这一类上**。
  * <p>商家看得出这一类卖得怎么样，也能从这里直接走到那批货。
@@ -127,6 +122,8 @@ async function rename(c: StoreCategory) {
       改版前它们铺在这一页上面，标题又叫「我的类目」，店主以为那些灰框也是自己的。
     -->
     <view v-if="picked.length" class="sh-card">
+      <!-- 说明收进卡里第一行：此前飘在卡片下方的灰底上，像是下一块的标题 -->
+      <text class="sh-hint lead">{{ $t("storeCategories.scopeHint") }}</text>
       <view v-for="c in picked" :key="c.categoryNo" class="sh-row sh-row--divided row">
         <view class="sh-fill" @tap="openGoods(c.categoryNo)">
           <text class="txt-body row__name">{{ c.name }}</text>
@@ -149,17 +146,11 @@ async function rename(c: StoreCategory) {
             ></sh-switch>
           </view>
         </view>
-        <text class="sh-link row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
+        <text class="sh-chip row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
       </view>
     </view>
-    <text v-if="picked.length" class="sh-hint">{{ $t("storeCategories.scopeHint") }}</text>
     <sh-empty v-else :pending="!loaded" :failed="failed" @retry="load"
       :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
-
-    <view v-if="merchant.can('biz:goods')" class="sh-card specs sh-row sh-row--between" @tap="goSpecs">
-      <text class="txt-title">{{ $t("storeCategories.specsEntry") }}</text>
-      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-    </view>
 
     <!-- 这一页的主动作：二级页的主动作放贴底通栏，与建活动、建券同位 -->
     <sh-actionbar v-if="storeNo">
@@ -175,6 +166,12 @@ async function rename(c: StoreCategory) {
 </template>
 
 <style scoped>
+.lead {
+  margin: 0 0 8rpx;
+}
+.row__act {
+  flex-shrink: 0;
+}
 .row__name {
   flex: 1;
 }

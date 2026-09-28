@@ -99,44 +99,21 @@ function arrow(from?: string | null, to?: string | null): string {
 
 <template>
   <sh-scaffold title-key="skuIdentity.title" :denied="!merchant.can('biz:goods')">
-    <!--
-      **规则写在动手之前，不写在出错之后。**这三条决定了他的表会被怎么读，
-      而其中第二条与建品页里「清空输入框就是清空」的直觉正好相反 ——
-      不先说清，他会以为空列会被清掉，于是不敢用这个功能；
-      或者更糟：以为空列会被保留，而我们真按「清空」处理。
-    -->
-    <view class="sh-card">
-      <text class="txt-title">{{ $t("skuIdentity.howTitle") }}</text>
-      <view class="rules">
-        <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
-        </sh-kv>
-        <sh-kv :label="String($t('skuIdentity.ruleBlankK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
-        </sh-kv>
-        <sh-kv :label="String($t('skuIdentity.ruleDashK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
-        </sh-kv>
-      </view>
-    </view>
-
     <!-- 第一步：把现状拿下来。**先导出再改**是唯一不会认错行的路 -->
-    <view class="sh-card sh-mt-sm">
-      <sh-section :title="String($t('skuIdentity.step1'))">
-        <view class="txt-sub sh-btn sh-btn--soft act" :class="{ 'sh-btn--muted': busy }" @tap="doExport">
-          {{ $t("skuIdentity.export") }}
-        </view>
-      </sh-section>
-      <text class="sh-muted sh-hint">{{ $t("skuIdentity.exportHint") }}</text>
+    <view class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("skuIdentity.step1") }}</text>
+        <text class="sh-chip sh-chip--primary" :class="{ 'is-busy': busy }" @tap="doExport">{{ $t("skuIdentity.export") }}</text>
+      </view>
+      <text class="sh-hint">{{ $t("skuIdentity.exportHint") }}</text>
     </view>
 
     <!-- 第二步：把改好的表交回来 -->
-    <view class="sh-card sh-mt-sm">
-      <sh-section :title="String($t('skuIdentity.step2'))">
-        <view v-if="canPickFile" class="txt-sub sh-btn sh-btn--soft act" @tap="choose">
-          {{ $t("skuIdentity.choose") }}
-        </view>
-      </sh-section>
+    <view class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("skuIdentity.step2") }}</text>
+        <text v-if="canPickFile" class="sh-chip sh-chip--primary" @tap="choose">{{ $t("skuIdentity.choose") }}</text>
+      </view>
       <!--
         **粘贴这条路两端都留着。**小程序没有 file input，而商家真会
         在电脑上打开这一页（/b/ 就是网页）。少一条路等于少一半的人能用。
@@ -155,8 +132,10 @@ function arrow(from?: string | null, to?: string | null): string {
     </view>
 
     <!-- 第三步：核对。**这一屏才是这个功能的主体** -->
-    <view v-if="report" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("skuIdentity.step3") }}</text>
+    <view v-if="report" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("skuIdentity.step3") }}</text>
+      </view>
       <!--
         四个数各回答一件事。少了「没变化」那一格，商家会把「改 3 行」
         读成「另外 197 行失败了」—— 而那三个数字里最让人安心的恰恰是它。
@@ -189,7 +168,7 @@ function arrow(from?: string | null, to?: string | null): string {
       <view v-if="report.samples.length" class="prev">
         <text class="txt-caption sh-muted prev__t">{{ $t("skuIdentity.previewTitle") }}</text>
         <view v-for="s in report.samples" :key="s.skuNo" class="row">
-          <text class="txt-strong row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
+          <text class="txt-body row__t">{{ s.goods }}<text v-if="s.spec" class="sh-muted"> · {{ s.spec }}</text></text>
           <view class="row__cells sh-wrap">
             <text class="txt-caption">{{ $t("skuIdentity.barcode") }} {{ arrow(s.barcodeFrom, s.barcodeTo) }}</text>
             <text class="txt-caption">{{ $t("skuIdentity.code") }} {{ arrow(s.codeFrom, s.codeTo) }}</text>
@@ -209,18 +188,34 @@ function arrow(from?: string | null, to?: string | null): string {
       </view>
     </view>
 
-    <text class="txt-caption sh-muted foot">{{ $t("skuIdentity.foot") }}</text>
+    <!--
+      规则：这三条决定了他的表会被怎么读（第二条与「清空输入框就是清空」的直觉相反）。
+      此前放在页首，一进来先读一整张规则表才看到要做的两步 —— 现在两步在前，
+      规则放在下面当对照：动手前扫一眼左列就够，右边是给存疑的人看的。
+    -->
+    <view class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("skuIdentity.howTitle") }}</text>
+      </view>
+      <view>
+        <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="180">
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('skuIdentity.ruleBlankK'))" divided :key-width="180">
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
+        </sh-kv>
+        <sh-kv :label="String($t('skuIdentity.ruleDashK'))" divided :key-width="180">
+          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
+        </sh-kv>
+      </view>
+    </view>
+
   </sh-scaffold>
 </template>
 
 <style scoped>
-.act {
-  padding: 8rpx 24rpx;
-}
-
-/* 规则表：左边一个词、右边一句话 —— 他扫左边就够，右边是给存疑的人看的 */
-.rules {
-  margin-top: 16rpx;
+.is-busy {
+  opacity: 0.5;
 }
 
 .rule:first-child {
@@ -228,7 +223,6 @@ function arrow(from?: string | null, to?: string | null): string {
 }
 
 .paste {
-  margin-top: 16rpx;
   min-height: 200rpx;
 }
 
@@ -272,9 +266,4 @@ function arrow(from?: string | null, to?: string | null): string {
   margin-top: 8rpx;
 }
 
-.foot {
-  display: block;
-  margin-top: 24rpx;
-  padding: 0 8rpx;
-}
 </style>

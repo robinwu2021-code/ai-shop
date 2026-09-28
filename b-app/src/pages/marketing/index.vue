@@ -48,8 +48,9 @@ onShow(async () => {
 
 <template>
   <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
-    <view v-if="sum" class="sh-card stats">
-      <sh-stat :items="[
+    <!-- 与工作台「今日」同一块读数（sh-stat panel） -->
+    <view v-if="sum" class="sh-card">
+      <sh-stat panel :items="[
         { value: money(sum.monthDiscountMinor), label: String($t('marketing.monthDiscount')) },
         { value: sum.monthOrders, label: String($t('marketing.monthOrders')) },
       ]"></sh-stat>
@@ -130,10 +131,3 @@ onShow(async () => {
     </view>
   </sh-scaffold>
 </template>
-
-<style scoped>
-.stats {
-  padding-top: 8rpx;
-  padding-bottom: 8rpx;
-}
-</style>

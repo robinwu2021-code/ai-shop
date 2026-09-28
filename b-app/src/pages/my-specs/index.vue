@@ -722,7 +722,7 @@ onShow(() => void load());
       {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
     </text>
 
-    <view v-for="g in byCategory" :key="g.categoryNo" class="sh-cells cat">
+    <view v-for="g in byCategory" :key="g.categoryNo" class="sh-block cat">
       <sh-section pad :title="g.categoryName">
         <!--
           **带字的按钮，不是裸图标。**一个 ＋ 摆在标题栏里认不出是加什么 ——
@@ -766,7 +766,7 @@ onShow(() => void load());
             <sh-icon name="grip" :size="28" color="var(--sh-sub)" />
           </view>
           <!-- 虚线下划线：一眼看出这行字可以改，而不必再摆一个图标 -->
-          <text class="txt-bold txt-strong spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
+          <text class="txt-body spec__name" @tap.stop="startRename(g, t)">{{ t.name }}</text>
           <!-- 自建的标出来：它不参与跨店比价，而那是看不见的差别 -->
           <text v-if="t.scope === 'MERCHANT'" class="txt-caption spec__own">{{ $t("mySpecs.own") }}</text>
           <view class="spec__spacer"></view>
@@ -838,7 +838,6 @@ onShow(() => void load());
       现在自建规格回到它所属的类目卡里，带「本店」标记，改名/停用就是那一行的两个图标；
       配额挪进了「加规格」面板 —— 那是唯一需要知道它的时刻。
     -->
-    <text class="txt-caption sh-muted foot">{{ $t("mySpecs.foot") }}</text>
 
     <!--
       **整条链路一个弹层，三步。**（为什么见 sheetStep 那段注释）
@@ -1011,7 +1010,10 @@ onShow(() => void load());
   padding: 0 8rpx;
 }
 
+/* 每个类目一块白底：此前是 sh-cells（它自己不画底，靠子格子画），而这里的子项没有底色 ——
+   整页标题、行、按钮全浮在灰底上，看不出哪几行属于哪一类 */
 .cat {
+  padding-top: 0;
 }
 .cat__empty,
 /* 「可添加」区：压在卡片内容与「恢复平台默认」之间 —— 它比每一行的操作轻，
@@ -1215,8 +1217,4 @@ onShow(() => void load());
   flex: 1;
 }
 
-.foot {
-  display: block;
-  margin: 0 8rpx;
-}
 </style>

@@ -12,6 +12,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import type { ShipSetting, StoreFreightTemplate } from "@/api/contract";
 import { money } from "@shared/utils/money";
+import { pick } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -60,9 +61,16 @@ const dirty = computed(() => {
     || weightG(f.weightKg) !== (s.weightG ?? null);
 });
 
-function pickCarrier(code: string) {
+const carrierName = computed(() => EXPRESS_COMPANIES.find((c) => c.code === form.value.carrier)?.name ?? "");
+
+/** 十几家快递摊成一片药丸太乱：收成一行，点开再选（第一项是「不指定」） */
+async function pickCarrier() {
   if (!editable.value) return;
-  form.value.carrier = form.value.carrier === code ? "" : code;
+  const items = [String(t("shipSetting.carrierNone")), ...EXPRESS_COMPANIES.map((c) => c.name)];
+  const at = EXPRESS_COMPANIES.findIndex((c) => c.code === form.value.carrier);
+  const i = await pick({ title: String(t("shipSetting.carrier")), items, selected: at + 1 });
+  if (i === null) return;
+  form.value.carrier = i === 0 ? "" : (EXPRESS_COMPANIES[i - 1]?.code ?? "");
 }
 
 async function load() {
@@ -114,72 +122,79 @@ onShow(load);
   <sh-scaffold title-key="shipSetting.title" :denied="!merchant.can('biz:store')" :failed="failed" @retry="load">
     <biz-store-tag readonly></biz-store-tag>
 
+    <!--
+      一行一项：名字在左、值在右（与营销、常用功能同一套行）。
+      「不填时用什么」此前是每项底下一行小字，三行说的是同一件事 ——
+      收成卡头一句，具体的默认值直接当占位灰字显示在框里：留空＝用这个。
+    -->
     <view v-if="setting" class="sh-card">
-      <text class="txt-title">{{ $t("shipSetting.sender") }}</text>
-
-      <view class="field">
-        <text class="field__label">{{ $t("shipSetting.senderName") }}</text>
-        <input v-model="form.senderName" class="field__input" maxlength="64" :disabled="!editable"
-          :placeholder="$t('shipSetting.senderName')" />
-        <text class="sh-hint">{{ $t("shipSetting.fallback", { v: setting.defaultSenderName }) }}</text>
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("shipSetting.sender") }}</text>
       </view>
-
-      <view class="field">
-        <text class="field__label">{{ $t("shipSetting.senderPhone") }}</text>
-        <input v-model="form.senderPhone" class="field__input sh-num" type="text" maxlength="20" :disabled="!editable"
-          :placeholder="$t('shipSetting.senderPhone')" />
-        <text class="sh-hint">{{ $t("shipSetting.fallback", { v: setting.defaultSenderPhone || "—" }) }}</text>
+      <text class="sh-hint">{{ $t("shipSetting.senderHint") }}</text>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.senderName") }}</text>
+        <input v-model="form.senderName" class="txt-body row__v" maxlength="64" :disabled="!editable"
+          :placeholder="setting.defaultSenderName" />
       </view>
-
-      <view class="field">
-        <text class="field__label">{{ $t("shipSetting.address") }}</text>
-        <textarea v-model="form.address" class="field__area" maxlength="255" auto-height :disabled="!editable"
-          :placeholder="$t('shipSetting.address')" />
-        <text class="sh-hint">{{ $t("shipSetting.fallback", { v: setting.defaultAddress || "—" }) }}</text>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.senderPhone") }}</text>
+        <input v-model="form.senderPhone" class="txt-body row__v sh-num" type="text" maxlength="20" :disabled="!editable"
+          :placeholder="setting.defaultSenderPhone || String($t('shipSetting.senderPhone'))" />
+      </view>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.address") }}</text>
+        <input v-model="form.address" class="txt-body row__v" maxlength="255" :disabled="!editable"
+          :placeholder="setting.defaultAddress || String($t('shipSetting.address'))" />
       </view>
     </view>
 
-    <view v-if="setting" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("shipSetting.defaults") }}</text>
-
-      <view class="field">
-        <text class="field__label">{{ $t("shipSetting.carrier") }}</text>
-        <view class="sh-wrap">
-          <text
-            v-for="c in EXPRESS_COMPANIES"
-            :key="c.code"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': form.carrier === c.code }"
-            @tap="pickCarrier(c.code)"
-          >{{ c.name }}</text>
+    <view v-if="setting" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("shipSetting.defaults") }}</text>
+      </view>
+      <view class="sh-row sh-row--between sh-row--divided" @tap="pickCarrier">
+        <text class="txt-body row__k">{{ $t("shipSetting.carrier") }}</text>
+        <view class="sh-row">
+          <text class="txt-body" :class="carrierName ? '' : 'sh-muted'">{{ carrierName || $t("shipSetting.carrierNone") }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
-
-      <view class="field">
-        <text class="field__label">{{ $t("shipSetting.weight") }}</text>
-        <input v-model="form.weightKg" class="field__input sh-num" type="digit" maxlength="5" :disabled="!editable"
-          :placeholder="$t('shipSetting.weightPh')" />
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.weight") }}</text>
+        <view class="sh-row">
+          <input v-model="form.weightKg" class="txt-body row__v sh-num" type="digit" maxlength="5" :disabled="!editable"
+            :placeholder="String($t('shipSetting.weight'))" />
+          <text class="txt-body sh-muted">kg</text>
+        </view>
       </view>
     </view>
 
-    <view v-if="template" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("shipSetting.template") }}</text>
+    <view v-if="template" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("shipSetting.template") }}</text>
+      </view>
       <text class="sh-hint">{{ $t("shipSetting.templateHint") }}</text>
-      <sh-kv between :label="String($t('shipSetting.tplFirst'))">
-        <text class="sh-num">{{ weightText(template.firstWeightGram) }} {{ money(template.firstFee) }}</text>
-      </sh-kv>
-      <sh-kv between :label="String($t('shipSetting.tplAdd'))">
-        <text class="sh-num">{{ $t("shipSetting.tplAddValue", { w: weightText(template.addWeightGram), fee: money(template.addFee) }) }}</text>
-      </sh-kv>
-      <sh-kv between :label="String($t('shipSetting.tplFree'))">
-        <text class="sh-num">{{ template.freeThreshold > 0 ? $t("shipSetting.tplFreeValue", { v: money(template.freeThreshold) }) : $t("shipSetting.tplNoFree") }}</text>
-      </sh-kv>
-      <sh-kv v-if="surcharges.length" between :label="String($t('shipSetting.tplSurcharge'))">
-        <text class="sh-num tpl__v">{{ surcharges.map((r) => `${r.region} +${money(r.surcharge)}`).join("、") }}</text>
-      </sh-kv>
-      <sh-kv v-if="rejected.length" between :label="String($t('shipSetting.tplReject'))">
-        <text class="tpl__v">{{ rejected.map((r) => r.region).join("、") }}</text>
-      </sh-kv>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.tplFirst") }}</text>
+        <text class="txt-body sh-num">{{ weightText(template.firstWeightGram) }} {{ money(template.firstFee) }}</text>
+      </view>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.tplAdd") }}</text>
+        <text class="txt-body sh-num">{{ $t("shipSetting.tplAddValue", { w: weightText(template.addWeightGram), fee: money(template.addFee) }) }}</text>
+      </view>
+      <view class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.tplFree") }}</text>
+        <text class="txt-body sh-num">{{ template.freeThreshold > 0 ? $t("shipSetting.tplFreeValue", { v: money(template.freeThreshold) }) : $t("shipSetting.tplNoFree") }}</text>
+      </view>
+      <view v-if="surcharges.length" class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.tplSurcharge") }}</text>
+        <text class="txt-body sh-num row__long">{{ surcharges.map((r) => `${r.region} +${money(r.surcharge)}`).join("、") }}</text>
+      </view>
+      <view v-if="rejected.length" class="sh-row sh-row--between sh-row--divided">
+        <text class="txt-body row__k">{{ $t("shipSetting.tplReject") }}</text>
+        <text class="txt-body row__long">{{ rejected.map((r) => r.region).join("、") }}</text>
+      </view>
     </view>
 
     <sh-savebar
@@ -194,11 +209,18 @@ onShow(load);
 </template>
 
 <style scoped>
-.field + .field {
-  margin-top: 24rpx;
+/* 行：名字不缩，值占剩下的宽、贴右 */
+.row__k {
+  flex-shrink: 0;
+  margin-inline-end: 24rpx;
+}
+.row__v {
+  flex: 1;
+  min-width: 0;
+  text-align: end;
 }
 /* 地区一长串：右对齐、可折行 */
-.tpl__v {
+.row__long {
   text-align: end;
 }
 </style>

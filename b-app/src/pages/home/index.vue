@@ -433,7 +433,7 @@ onShow(load);
       <!-- 今日：与进销存同一块读数（sh-stat panel）—— 此前这里手写三等分、数字用标题字阶，
            同一屏上两种「一排数」长得不一样 -->
       <view v-if="stats" class="sh-card">
-        <view class="head">
+        <view class="sh-card__head">
           <text class="txt-title">{{ $t("home.today") }}</text>
         </view>
         <sh-stat
@@ -458,7 +458,7 @@ onShow(load);
       -->
       <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
         <!-- 「全部」是按钮不是一行字：药丸底 + 箭头，与卡里其他可点的东西同一个长相 -->
-        <view class="head" @tap="open(ROUTES.stock)">
+        <view class="sh-card__head" @tap="open(ROUTES.stock)">
           <text class="txt-title">{{ $t("home.inv.title") }}</text>
           <view class="sh-chip sh-chip--primary sh-chip--icon">
             {{ $t("home.inv.all") }}
@@ -502,7 +502,7 @@ onShow(load);
 
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
-        <view class="head">
+        <view class="sh-card__head">
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
           <text class="txt-display owned__v sh-num txt-primary">{{ ownedRate }}</text>
         </view>
@@ -532,7 +532,7 @@ onShow(load);
         v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
         class="sh-card fulfill"
       >
-        <view class="head">
+        <view class="sh-card__head">
           <text class="txt-title">{{ $t("home.fulfillEntry") }}</text>
         </view>
         <sh-stat panel :items="fulfillItems" @change="open($event === 'toPick' ? ROUTES.picking : ROUTES.verify)"></sh-stat>
@@ -547,7 +547,7 @@ onShow(load);
         此前是正文摘要占第二行，那一格比别的高一截、两列对不齐。
       -->
       <view v-if="entries.length" class="sh-card">
-        <view class="head">
+        <view class="sh-card__head">
           <text class="txt-title">{{ $t("home.entriesTitle") }}</text>
         </view>
         <view class="entries">
@@ -635,15 +635,6 @@ onShow(load);
 
 .owned {
   background: var(--sh-primary-tint);
-}
-/* 卡头：每张卡同一行 —— 标题在左、动作或读数在右，与下方内容隔一档。
-   此前四张卡四种写法（sh-row baseline / 裸 text / txt-strong + margin），
-   进销存那张干脆没有间距，标题贴着数字。 */
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
 }
 /* 功能入口：两列等高的按钮 —— 与进销存那排快捷同一个长相（浅底圆角） */
 .entries {

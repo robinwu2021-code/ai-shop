@@ -227,29 +227,35 @@ onShow(() => {
   >
     <biz-store-tag readonly></biz-store-tag>
 
-    <!-- 门面：只有三个字段。公告在自己的页（pages/store-notice）里，即改即发 -->
+    <!--
+      与发货设置、营销同一套骨架：卡头（标题 + 右侧动作）→ 最多一句说明 → 内容。
+      动作一律是卡头右侧的药丸，不再是卡中间的整宽红按钮 —— 此前一页上三个一样的大红条，
+      分不出哪个是这一页的主动作（主动作只有一个：底部的「保存」）。
+    -->
     <view class="sh-card">
-      <text class="txt-title">{{ $t("store.decorate") }}</text>
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.decorate") }}</text>
+      </view>
 
       <view class="field">
         <text class="field__label">{{ $t("store.openHours") }}</text>
         <biz-time-range v-model="form.openHours"></biz-time-range>
-        <view class="quick">
-          <text v-for="h in HOURS" :key="h.key" class="txt-caption mini" @tap="form.openHours = h.value">
+        <view class="sh-wrap quick">
+          <text v-for="h in HOURS" :key="h.key" class="sh-chip" @tap="form.openHours = h.value">
             {{ $t(`store.${h.key}`) }}
           </text>
         </view>
       </view>
 
       <view class="field">
-        <text class="field__label">{{ $t("store.address") }}</text>
-        <view class="addr sh-row">
-          <input v-model="form.address" class="field__input sh-fill" :maxlength="100" :placeholder="$t('store.addressPh')" />
-          <view v-if="geoAvailable" class="addr__locate sh-row" @tap="locateAddress">
-            <sh-icon name="pin" :size="18" color="var(--sh-primary-text)"></sh-icon>
-            <text class="txt-caption addr__t txt-primary">{{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}</text>
+        <view class="sh-row sh-row--between">
+          <text class="field__label">{{ $t("store.address") }}</text>
+          <view v-if="geoAvailable" class="sh-chip sh-chip--primary sh-chip--icon" @tap="locateAddress">
+            <sh-icon name="pin" :size="22" color="var(--sh-primary-text)"></sh-icon>
+            {{ locating ? "…" : pinned ? $t("store.repinAddr") : $t("store.pickAddr") }}
           </view>
         </view>
+        <input v-model="form.address" class="field__input" :maxlength="100" :placeholder="$t('store.addressPh')" />
         <!--
           门牌号单独一格。地图选点只能给到小区门口，而买家照着找门缺的正是这一截；
           放在同一个输入框里的话，商家补完再点一次选点就被整条覆盖 —— 补的那截无声消失。
@@ -264,11 +270,17 @@ onShow(() => {
       </view>
     </view>
 
-    <!-- 获客工具：店铺码 + 分享文案合一卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
-    <view class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("store.tools") }}</text>
-
-      <view class="qr">
+    <!-- 获客工具：店铺码 / 文案 / 海报 各一张卡。一期主获客路径的商家侧（ADR-004 决策 3） -->
+    <view class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.qrcode") }}</text>
+        <view class="sh-row acts">
+          <text v-if="qrcode?.url" class="sh-chip sh-chip--primary" @tap="copyLink">{{ $t("store.copyLink") }}</text>
+          <text v-if="qrcode?.imageBase64" class="sh-chip sh-chip--primary" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
+        </view>
+      </view>
+      <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
+      <view class="qr sh-row">
         <view class="qr__box sh-center">
           <image
             v-if="qrcode?.imageBase64"
@@ -277,43 +289,37 @@ onShow(() => {
             mode="widthFix"
           />
           <!-- **不画一张假码**：占位图会被印到包装袋上，而它扫不出任何东西 -->
-          <text v-else class="qr__ph">▦</text>
+          <sh-icon v-else name="scan" :size="56" color="var(--sh-sub)"></sh-icon>
         </view>
         <view class="sh-fill">
-          <text class="txt-strong qr__t">{{ $t("store.qrcode") }}</text>
-          <text class="sh-hint">
-            {{ qrcode?.imageBase64 ? (qrcode.printableHint || $t("store.qrcodeDesc")) : $t("store.qrcodePending") }}
-          </text>
           <!-- 码属于哪家店，摆在码值上面：印之前先看见它 -->
-          <text v-if="qrStoreName" class="txt-sub qr__store">
-            {{ $t("store.qrcodeOfStore", { name: qrStoreName }) }}
-          </text>
-          <text v-if="qrcode?.storeCode" class="txt-sub qr__code sh-num">{{ qrcode.storeCode }}</text>
-          <view class="btns">
-            <text v-if="qrcode?.imageBase64" class="sh-btn sh-btn--sm sh-btn--muted" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
-            <text v-if="qrcode?.url" class="sh-btn sh-btn--sm sh-btn--muted" @tap="copyLink">{{ $t("store.copyLink") }}</text>
-          </view>
+          <text v-if="qrStoreName" class="txt-body blk">{{ $t("store.qrcodeOfStore", { name: qrStoreName }) }}</text>
+          <text v-if="qrcode?.storeCode" class="txt-caption sh-muted sh-num blk qr__code">{{ qrcode.storeCode }}</text>
+          <text v-if="!qrcode?.imageBase64" class="txt-caption sh-muted blk qr__code">{{ $t("store.qrcodePending") }}</text>
         </view>
       </view>
       <!-- 多门店才提示：单店商家看到「每家店的码不一样」只会困惑 -->
       <text v-if="merchant.multiStore" class="sh-hint is-warning">{{ $t("store.qrcodeStoreWarn") }}</text>
-      <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
+    </view>
 
-      <view class="kitwrap">
-        <text class="txt-strong qr__t">{{ $t("store.shareKit") }}</text>
-        <view class="txt-sub kit">{{ kit?.text }}</view>
-        <view class="sh-btn" @tap="copyText">{{ $t("store.copyKit") }}</view>
-        <text class="sh-hint">{{ $t("store.shareKitHint") }}</text>
-
-        <!--
-          真海报：封面/店名/价格/小程序码合成的一张图，不是上面那句话再配一个假 URL。
-          没生成出来（商家异常/极端情况）就不占地方——不摆一张加载不出来的坏图。
-        -->
-        <view v-if="poster?.imageBase64" class="poster">
-          <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
-          <view class="sh-btn poster__save" @tap="savePosterImage">{{ $t("store.saveImage") }}</view>
-        </view>
+    <view v-if="kit?.text" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.shareKit") }}</text>
+        <text class="sh-chip sh-chip--primary" @tap="copyText">{{ $t("store.copyText") }}</text>
       </view>
+      <view class="txt-body kit">{{ kit.text }}</view>
+    </view>
+
+    <!--
+      真海报：封面/店名/价格/小程序码合成的一张图，不是上面那句话再配一个假 URL。
+      没生成出来（商家异常/极端情况）就不占地方——不摆一张加载不出来的坏图。
+    -->
+    <view v-if="poster?.imageBase64" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.poster") }}</text>
+        <text class="sh-chip sh-chip--primary" @tap="savePosterImage">{{ $t("store.saveImage") }}</text>
+      </view>
+      <image class="poster__img" :src="`data:image/png;base64,${poster.imageBase64}`" mode="widthFix" />
     </view>
 
     <sh-savebar
@@ -328,104 +334,47 @@ onShow(() => {
 </template>
 
 <style scoped>
+.blk {
+  display: block;
+}
 .field + .field {
-  margin-top: 20rpx;
-}
-
-.quick {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-.addr {
-  gap: 12rpx;
-}
-
-.addr__locate {
-  flex-shrink: 0;
-  gap: 8rpx;
-  height: 88rpx;
-  padding: 0 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-}
-.mini {
-  padding: 12rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.qr {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 20rpx;
-}
-.qr__box {
-  flex-shrink: 0;
-  width: 192rpx;
-  height: 192rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  overflow: hidden;
-}
-.qr__img {
-  width: 192rpx;
-}
-.qr__ph {
-  font-size: 48rpx;
-  line-height: 1;
-  color: var(--sh-sub);
-}
-
-.qr__t {
-  display: block;
-}
-.qr__store {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-ink);
-}
-.qr__code {
-  display: block;
-  margin-top: 8rpx;
-  letter-spacing: 4rpx;
-  color: var(--sh-ink);
-}
-.btns {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-.kitwrap {
   margin-top: 24rpx;
-  padding-top: 24rpx;
-  border-top: var(--sh-hairline);
 }
-.poster {
-  margin-top: 20rpx;
+.quick {
+  margin-top: 12rpx;
 }
-.poster__img {
-  width: 100%;
-  border-radius: 24rpx;
-  border: var(--sh-hairline);
-}
-.poster__save {
-  margin-top: 16rpx;
-}
-.kit {
-  margin: 12rpx 0 16rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  color: var(--sh-ink);
-}
-
 /* 门牌号：接在地址下面，视觉上属于同一格 */
 .addr__detail {
   margin-top: 12rpx;
 }
-
-/* 卡头：标题 + 右侧一句副标题。这一页此前没有这个块，两段文字会黏成一行 */
-.head__sub {
+.acts {
+  gap: 12rpx;
+}
+.qr {
+  gap: 24rpx;
+}
+.qr__box {
   flex-shrink: 0;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+  background: var(--sh-bg);
+  overflow: hidden;
+}
+.qr__img {
+  width: 160rpx;
+}
+.qr__code {
+  margin-top: 8rpx;
+}
+.kit {
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-bg);
+}
+/* 海报本身是一张有内容的图，只收圆角，不压尺寸 */
+.poster__img {
+  width: 100%;
+  border-radius: 24rpx;
 }
 </style>

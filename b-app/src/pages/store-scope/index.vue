@@ -502,16 +502,20 @@ onShow(() => {
 
     <!-- ① 经营范围（主体级） -->
     <view class="sh-card">
-      <view class="head sh-row sh-row--between sh-row--baseline">
+      <view class="sh-card__head">
         <text class="txt-title">{{ $t("store.scope") }}</text>
-        <text class="txt-caption head__sub">{{ $t("store.scopeAll") }}</text>
+        <!-- 添加是这张卡的动作：放卡头右侧的药丸，不再是卡底一整条粉色大块 -->
+        <view class="sh-chip sh-chip--primary sh-chip--icon" @tap="pickerOpen = true">
+          <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
+          {{ $t("store.addArea") }}
+        </view>
       </view>
       <text class="sh-hint">{{ $t("store.scopeLead") }}</text>
 
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
           <view class="sh-fill">
-            <text class="txt-strong item__name" :class="{ 'txt-quiet': areaPending(a) || isExclude(a) }">
+            <text class="txt-body item__name" :class="{ 'txt-quiet': areaPending(a) || isExclude(a) }">
               {{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text>
             </text>
             <text v-if="splitName(a).path" class="txt-caption item__path">{{ splitName(a).path }}</text>
@@ -556,9 +560,6 @@ onShow(() => {
       </view>
       <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
-      <view class="sh-btn sh-btn--soft add" @tap="pickerOpen = true">
-        {{ $t("store.addArea") }}
-      </view>
 
       <view v-if="pendingApplies.length || rejectedApplies.length" class="progress">
         <text v-if="pendingApplies.length" class="sh-hint">
@@ -571,15 +572,15 @@ onShow(() => {
     </view>
 
     <!-- ② 送货方式（门店级，即点即存） -->
-    <view v-if="fulfillment" class="sh-card sh-mt-sm">
-      <view class="head sh-row sh-row--between sh-row--baseline">
+    <view v-if="fulfillment" class="sh-card">
+      <view class="sh-card__head">
         <text class="txt-title">{{ $t("store.fulfillCard") }}</text>
       </view>
 
       <template v-for="c in channelRows" :key="c.channel">
         <view class="ch sh-row" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="sh-fill">
-            <text class="txt-strong ch__name">{{ $t(`channel.${c.channel}`) }}</text>
+            <text class="txt-body ch__name">{{ $t(`channel.${c.channel}`) }}</text>
             <text class="txt-caption ch__desc" :class="{ 'is-warning': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
           </view>
           <sh-switch
@@ -659,13 +660,13 @@ onShow(() => {
     </view>
 
     <!-- ③ 收款方式（门店级，即点即存） -->
-    <view v-if="paySetting" class="sh-card sh-mt-sm">
-      <view class="head sh-row sh-row--between sh-row--baseline">
+    <view v-if="paySetting" class="sh-card">
+      <view class="sh-card__head">
         <text class="txt-title">{{ $t("store.payCard") }}</text>
       </view>
       <view class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('offlinePayEnabled')">
         <view class="sh-fill">
-          <text class="txt-strong ch__name">{{ $t("store.payOffline") }}</text>
+          <text class="txt-body ch__name">{{ $t("store.payOffline") }}</text>
           <text class="txt-caption ch__desc" :class="{ 'is-warning': !paySetting.qualified }">{{ paySetting.qualified ? $t("store.payOfflineDesc") : $t("store.payNeedLicense") }}</text>
         </view>
         <sh-switch :model-value="paySetting.offlinePayEnabled" :disabled="savingPay === 'offlinePayEnabled'"></sh-switch>
@@ -673,7 +674,7 @@ onShow(() => {
       <!-- 货到付款从属于线下收款：线下没开时不出现，免得多一个点了没反应的开关 -->
       <view v-if="paySetting.offlinePayEnabled" class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('codEnabled')">
         <view class="sh-fill">
-          <text class="txt-strong ch__name">{{ $t("store.payCod") }}</text>
+          <text class="txt-body ch__name">{{ $t("store.payCod") }}</text>
           <text class="txt-caption ch__desc">{{ $t("store.payCodDesc") }}</text>
         </view>
         <sh-switch :model-value="paySetting.codEnabled" :disabled="savingPay === 'codEnabled'"></sh-switch>
@@ -709,9 +710,6 @@ onShow(() => {
 </template>
 
 <style scoped>
-.head__sub {
-  flex-shrink: 0;
-}
 
 .warn {
   display: block;
@@ -748,9 +746,6 @@ onShow(() => {
   display: block;
   margin-top: 8rpx;
   color: var(--sh-danger);
-}
-.add {
-  margin-top: 20rpx;
 }
 .progress {
   margin-top: 16rpx;

@@ -237,6 +237,12 @@ onShow(load);
     @retry="load"
   >
     <view class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.noticeContent") }}</text>
+        <!-- 撤下：只在店铺页上真的挂着东西时出现。卡头右侧的轻药丸 —— 它与发布不是一对平级动作 -->
+        <text v-if="live" class="sh-chip" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
+      </view>
+      <text class="sh-hint">{{ $t("store.announcementHint") }}</text>
       <textarea
         v-model="text"
         class="field__area"
@@ -245,6 +251,7 @@ onShow(load);
       />
 
       <view class="ttl sh-row">
+        <text class="txt-body ttl__k">{{ $t("store.noticeTtl") }}</text>
         <text
           v-for="o in TTL_OPTIONS"
           :key="o.key"
@@ -269,21 +276,22 @@ onShow(load);
         </view>
       </view>
 
-      <view class="sh-btn go" :class="{ 'is-off': !dirty || saving }" @tap="publish">
+    </view>
+
+    <!-- 发布是这一页唯一的主动作：贴底，与其他二级页同位 -->
+    <sh-actionbar>
+      <view class="sh-btn" :class="{ 'is-off': !dirty || saving }" @tap="publish">
         {{ saving ? "…" : $t("store.noticePublish") }}
       </view>
-
-      <!-- 撤下：只在店铺页上真的挂着东西时出现 -->
-      <text v-if="live" class="sh-link sh-link--quiet withdraw sh-hit" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
-    </view>
+    </sh-actionbar>
 
     <!--
       审核中。**摆在发布区下面、常用上面**：它说的是「你刚发的那句还没上」，
       看不到它的话，商家读到的是「已发布」而店铺页上什么都没变。
     -->
-    <view v-if="pending" class="sh-card sh-mt-md pend">
+    <view v-if="pending" class="sh-card pend">
       <view class="pend__top sh-row sh-row--between">
-        <text class="txt-strong pend__tag txt-primary">{{ $t("store.noticeAuditing") }}</text>
+        <text class="txt-body pend__tag txt-primary">{{ $t("store.noticeAuditing") }}</text>
         <text class="txt-caption">{{ pendingAt }}</text>
       </view>
       <text class="txt-body pend__text">{{ pending.content }}</text>
@@ -291,11 +299,13 @@ onShow(load);
     </view>
 
     <!-- 常用：店主的公告是在几句话之间轮换，不是每次都写新的。点一下换上，再点发布 -->
-    <view v-if="recent.length" class="sh-card sh-mt-md">
-      <text class="txt-sub field__label">{{ $t("store.noticeRecent") }}</text>
+    <view v-if="recent.length" class="sh-card">
+      <view class="sh-card__head">
+        <text class="txt-title">{{ $t("store.noticeRecent") }}</text>
+      </view>
       <view class="recent">
         <view v-for="(r, i) in recent" :key="i" class="recent__row sh-row">
-          <text class="txt-sub recent__i sh-fill" @tap="text = r">{{ r }}</text>
+          <text class="txt-body recent__i sh-fill" @tap="text = r">{{ r }}</text>
           <sh-icon-btn v-if="BACKEND_READY" name="close" @tap="dropRecent(r)"></sh-icon-btn>
         </view>
       </view>
@@ -319,22 +329,17 @@ onShow(load);
   gap: 12rpx;
   margin-top: 16rpx;
 }
+.ttl__k {
+  flex-shrink: 0;
+  margin-inline-end: 8rpx;
+}
 .ttl__at {
   margin-inline-start: auto;
 }
 /* 发布：没有改动时灰着 —— 按下去什么都不会发生的按钮不该长得能按 */
-.go {
-  margin-top: 32rpx;
-}
-.go.is-off {
+.sh-btn.is-off {
   background: var(--sh-faint);
   color: var(--sh-sub);
-}
-/* 撤下：文字链，不做成按钮 —— 它与发布不是一对平级动作 */
-.withdraw {
-  display: block;
-  margin-top: 20rpx;
-  text-align: center;
 }
 /* 审核中：主色浅底，不用警示红 —— 这不是错误，是还没轮到 */
 .pend {
@@ -348,10 +353,6 @@ onShow(load);
 .pend__hint {
   display: block;
   margin-top: 12rpx;
-}
-.field__label {
-  display: block;
-  margin-bottom: 12rpx;
 }
 /* 常用是内容不是标签：不截断、允许换行 */
 .recent {
