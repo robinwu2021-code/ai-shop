@@ -94,6 +94,115 @@ class CallbackVerifierTest {
     }
 
     @Test
+    @DisplayName("★★★ 微信：公钥从 -path 指向的文件里读得出来 —— 生产就是这么给的")
+    void wechatReadsPlatformKeyFromPath(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        // 这条守着的是 2026-09-28 的那个缺陷：生产 env 用 WX_PLATFORM_PUBLIC_KEY_PATH
+        // 指文件，而 verifier 只读 -key 内容字段 → 公钥恒空、每一条回调都验签失败。
+        // 两笔 0.1 元订单被超时关闭，微信侧钱已成交、后端不知情。
+        //
+        // 判据：走一个**真实密文** —— 只有验签通过 + 解密通过才拿得到业务字段。
+        // 撤掉 pemOf fallback（inline 空、path 有值时不读文件）→ 公钥空 →
+        // rsaVerify 拿到空数组抛异常 → catch → 返 null，这一步就断了。
+        KeyPair kp = rsa();
+        String apiV3Key = "0123456789abcdef0123456789abcdef";
+        String pem = "-----BEGIN PUBLIC KEY-----\n" + pub(kp) + "\n-----END PUBLIC KEY-----\n";
+        java.nio.file.Path certFile = tmp.resolve("wxpay_pub_key.pem");
+        java.nio.file.Files.writeString(certFile, pem);
+
+        String plain = "{\"out_trade_no\":\"OT-PATH\",\"transaction_id\":\"TX-PATH\"}";
+        String nonce = "abcdefghijkl";
+        String aad = "transaction";
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+        c.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(apiV3Key.getBytes(StandardCharsets.UTF_8), "AES"),
+                new GCMParameterSpec(128, nonce.getBytes(StandardCharsets.UTF_8)));
+        c.updateAAD(aad.getBytes(StandardCharsets.UTF_8));
+        String cipherText = Base64.getEncoder()
+                .encodeToString(c.doFinal(plain.getBytes(StandardCharsets.UTF_8)));
+        String body = "{\"resource\":{\"algorithm\":\"AEAD_AES_256_GCM\",\"associated_data\":\"" + aad
+                + "\",\"nonce\":\"" + nonce + "\",\"ciphertext\":\"" + cipherText + "\"}}";
+        String ts = "1554208460";
+        String nc = "hdgs";
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("wechatpay-signature", sign(kp, WechatCallbackVerifier.signContent(ts, nc, body)));
+        headers.put("wechatpay-timestamp", ts);
+        headers.put("wechatpay-nonce", nc);
+
+        // **内容字段留空、只给路径** —— 生产的真实用法（fallback 分支）
+        var v = new WechatCallbackVerifier(apiV3Key, "", certFile.toString(),
+                new tools.jackson.databind.ObjectMapper());
+
+        Map<String, Object> out = v.verify(headers, body);
+        assertThat(out).as("fallback 生效 → 公钥读到 → 验签通过 → 解密通过 → 业务字段可读").isNotNull();
+        assertThat(out.get("out_trade_no")).isEqualTo("OT-PATH");
+        assertThat(out.get("transaction_id")).isEqualTo("TX-PATH");
+    }
+
+    @Test
+    @DisplayName("★★★ 微信：连续失败到 ALARM_AFTER 次就提级到 error —— 让 journal 看得到")
+    void wechatEscalatesAfterConsecutiveFailures() throws Exception {
+        WechatCallbackVerifier.resetFailCount();
+        var v = new WechatCallbackVerifier("0123456789abcdef0123456789abcdef", "",
+                "/does/not/exist.pem", new tools.jackson.databind.ObjectMapper());
+        Map<String, String> h = Map.of("wechatpay-signature", "x",
+                "wechatpay-timestamp", "1", "wechatpay-nonce", "n");
+        // 阈值前：只增计数，不提级
+        v.verify(h, "{}"); // 1
+        v.verify(h, "{}"); // 2
+        assertThat(WechatCallbackVerifier.currentFailCount()).isEqualTo(2);
+        v.verify(h, "{}"); // 3 → 达 ALARM_AFTER
+        assertThat(WechatCallbackVerifier.currentFailCount())
+                .as("已到阈值，从这一次起走 error 分支")
+                .isGreaterThanOrEqualTo(WechatCallbackVerifier.ALARM_AFTER);
+    }
+
+    @Test
+    @DisplayName("★★★ 微信：成功一次立刻归零 —— 修完配置马上静音")
+    void wechatSuccessResetsFailCount(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
+        WechatCallbackVerifier.resetFailCount();
+        // 先累一些失败
+        var bad = new WechatCallbackVerifier("0123456789abcdef0123456789abcdef", "",
+                "/does/not/exist.pem", new tools.jackson.databind.ObjectMapper());
+        bad.verify(Map.of("wechatpay-signature", "x", "wechatpay-timestamp", "1", "wechatpay-nonce", "n"), "{}");
+        bad.verify(Map.of("wechatpay-signature", "x", "wechatpay-timestamp", "1", "wechatpay-nonce", "n"), "{}");
+        assertThat(WechatCallbackVerifier.currentFailCount()).isGreaterThan(0);
+
+        // 再来一次真验证成功
+        KeyPair kp = rsa();
+        String apiV3Key = "0123456789abcdef0123456789abcdef";
+        String plain = "{\"out_trade_no\":\"OT-OK\"}";
+        String nonce = "abcdefghijkl"; String aad = "t";
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+        c.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(apiV3Key.getBytes(StandardCharsets.UTF_8), "AES"),
+                new GCMParameterSpec(128, nonce.getBytes(StandardCharsets.UTF_8)));
+        c.updateAAD(aad.getBytes(StandardCharsets.UTF_8));
+        String ct = Base64.getEncoder().encodeToString(c.doFinal(plain.getBytes(StandardCharsets.UTF_8)));
+        String body = "{\"resource\":{\"algorithm\":\"AEAD\",\"associated_data\":\"" + aad
+                + "\",\"nonce\":\"" + nonce + "\",\"ciphertext\":\"" + ct + "\"}}";
+        String ts = "1554208460"; String nc = "hdgs";
+        Map<String, String> good = new LinkedHashMap<>();
+        good.put("wechatpay-signature", sign(kp, WechatCallbackVerifier.signContent(ts, nc, body)));
+        good.put("wechatpay-timestamp", ts);
+        good.put("wechatpay-nonce", nc);
+        var ok = new WechatCallbackVerifier(apiV3Key, pub(kp), new tools.jackson.databind.ObjectMapper());
+
+        assertThat(ok.verify(good, body)).isNotNull();
+        assertThat(WechatCallbackVerifier.currentFailCount())
+                .as("一次成功即清零").isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 微信：路径读不出来时不装配阻塞、只 fail-closed —— 但要能起来")
+    void wechatMissingKeyPathDegradesGracefully() {
+        // 老规矩（WechatPayChannelConfig）是装配期直接 fail：那是签发 + 验签同时依赖公钥
+        // 时的正确姿势。但 CallbackVerifier 只做验证；容忍它起来 + 每条回调拒掉，
+        // 更符合「不因一个证书文件缺了让整个 shop-app 起不来」的取舍。
+        var v = new WechatCallbackVerifier("0123456789abcdef0123456789abcdef", "",
+                "/does/not/exist.pem", new tools.jackson.databind.ObjectMapper());
+        assertThat(v.verify(Map.of("wechatpay-signature", "x", "wechatpay-timestamp", "1",
+                "wechatpay-nonce", "n"), "{}")).isNull();
+    }
+
+    @Test
     @DisplayName("★★★ 微信：报文被改一个字节就必须拒 —— 否则验签等于没验")
     void wechatRejectsTamperedBody() throws Exception {
         KeyPair kp = rsa();
