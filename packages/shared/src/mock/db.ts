@@ -1355,6 +1355,12 @@ export const db = {
       status: "ACTIVE",
       payReady: true,
       staffCount: 1,
+      /*
+       * **刻意不给 slug**：「还没设过门店代码」才是生产常态（V357 不回填），
+       * 链接回落系统发的店铺码 —— 那一串读不出是谁家的店，正是这个功能要解决的问题。
+       * 设过代码的那一态在 mSetStoreSlug 里现场产生，不在种子里预置。
+       */
+      shareUrl: "https://www.hxmall.top/s/V9VTDW",
     },
   ] as Store[],
 

@@ -40,5 +40,13 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                        * 门店代码（V357）：店主自己定的那一串，对外链接 {@code /s/<代码>} 用它。
                        * <b>空 = 还没设过</b>，链接回落店铺码。格式与保留词见 {@code StoreSlugs}
                        */
-                      String slug) {
+                      String slug,
+                      /**
+                       * 这家店的对外链接（完整地址，V357）。后端按 {@code shop.web.base-url}
+                       * 与门店代码拼好 —— <b>端上不自己拼</b>：域名写在端上就会有两处真源，
+                       * 而它已经错过一次（此前是写死的 shop.example.com，商家印了贴纸才发现）。
+                       *
+                       * <p><b>空 = 没配域名</b>，端上据此不显示链接（不是显示一个点不开的地址）。
+                       */
+                      String shareUrl) {
 }

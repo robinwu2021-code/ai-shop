@@ -114,6 +114,22 @@ export interface Store {
    * 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10）
    */
   selfOperated?: boolean;
+  /**
+   * 门店代码（V357）：店主自己定的那一串，对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。
+   *
+   * **空 = 还没设过**，链接回落系统发的店铺码（6 位随机大写，读不出是谁家的店）。
+   * 格式与保留词的判据在后端 `StoreSlugs`，端上那份提示要与它同口径 ——
+   * 提交回来才报错的话，店主得试几次才知道规则。
+   */
+  slug?: string;
+  /**
+   * 这家店的对外链接（完整地址，V357）。**后端拼好发下来，端上不自己拼** ——
+   * 域名写在端上就会有两处真源，而它已经错过一次：此前后端写死 `shop.example.com`，
+   * 商家把那个链接印了贴纸才发现指向一个不存在的地方。
+   *
+   * **空 = 后端没配域名**，端上据此不显示链接，而不是显示一个点不开的地址。
+   */
+  shareUrl?: string;
 }
 /** 门店经营模式。与后端 MchStore.SELF_OPERATED / THIRD_PARTY、ops-web 的 BusinessMode 同一套取值 */
 export type BusinessMode = "SELF_OPERATED" | "THIRD_PARTY";

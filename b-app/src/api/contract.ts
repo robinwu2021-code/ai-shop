@@ -912,6 +912,14 @@ export interface MerchantApi {
   mSetStoreStatus(storeNo: string, active: boolean): Promise<Store>;
   /** 转移默认标。显式动作 —— 勾选式会出现两家默认或零家默认的中间态 */
   mSetDefaultStore(storeNo: string): Promise<Store>;
+  /**
+   * 设门店代码（V357）—— 对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。
+   *
+   * **传空串 = 清掉它**，链接回落系统发的店铺码。取错名字想撤回是真会发生的动作。
+   * 格式不合给 `STORE_SLUG_INVALID`、被别家占了给 `STORE_SLUG_TAKEN` ——
+   * 端上先用 `slugSuggest` 与同一套正则挡一遍，别让店主靠点保存来试规则。
+   */
+  mSetStoreSlug(storeNo: string, slug: string): Promise<Store>;
   /** 换收款号。只能挑本主体已开通的；传空 = 回到主体默认号（合法操作） */
   mSetStorePayment(storeNo: string, payMerchantNo?: string): Promise<Store>;
 

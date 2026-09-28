@@ -76,6 +76,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mRenameStore: { method: "POST", path: "/biz/store/:storeNo/rename", auth: true, summary: "改门店名与地址" },
   mSetStoreStatus: { method: "POST", path: "/biz/store/:storeNo/status", auth: true, summary: "停用/启用门店" },
   mSetDefaultStore: { method: "POST", path: "/biz/store/:storeNo/default", auth: true, summary: "设为默认店" },
+  mSetStoreSlug: { method: "POST", path: "/biz/store/:storeNo/slug", auth: true, summary: "设门店代码（对外链接那一段）" },
   mSetStorePayment: { method: "POST", path: "/biz/store/:storeNo/payment", auth: true, summary: "换门店收款号" },
 
   // 门店货架（TDD-品类约束全链路）。读挂 biz:store（店长要看得见本店卖哪几类），

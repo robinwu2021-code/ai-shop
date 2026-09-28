@@ -57,6 +57,7 @@ export const storeMock: Pick<MerchantApi,
   | "mRenameStore"
   | "mSetStoreStatus"
   | "mSetDefaultStore"
+  | "mSetStoreSlug"
   | "mSetStorePayment"
   | "mStorePaySetting"
   | "mShipSetting"
@@ -426,6 +427,31 @@ export const storeMock: Pick<MerchantApi,
     const s = requireStore(storeNo);
     if (s.status !== "ACTIVE") throw new Error("已停用的店不能设为默认");
     db.stores.forEach((x) => { x.isDefault = x.storeNo === storeNo; });
+    persist();
+    return delay({ ...s });
+  },
+
+  async mSetStoreSlug(storeNo, slug) {
+    const s = requireStore(storeNo);
+    const next = (slug ?? "").trim().toLowerCase();
+    /*
+     * 这里照后端 StoreSlugs 的判据挡一遍。**mock 不宽于真后端** ——
+     * 宽了的话界面在 mock 下过得去、接真接口才报错，而那正是 mock 最该提前暴露的东西。
+     */
+    if (next) {
+      if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(next)) throw new Error("门店代码格式不对");
+      if (db.stores.some((x) => x.slug === next && x.storeNo !== storeNo)) {
+        throw new Error("这个门店代码已经被占用了，换一个");
+      }
+    }
+    // 空串是清掉，不是「不改」
+    s.slug = next || undefined;
+    /*
+     * **链接要跟着变。** 只改 slug 不改 shareUrl 的话，界面上代码是新的、
+     * 链接还是老的 —— 店主复制出去的是旧地址，而两处都显示得好好的。
+     * 真后端在 toVO 里一起算，mock 这里手动跟上（回落码写死 V9VTDW，与种子同一串）。
+     */
+    s.shareUrl = "https://www.hxmall.top/s/" + (next || "V9VTDW");
     persist();
     return delay({ ...s });
   },

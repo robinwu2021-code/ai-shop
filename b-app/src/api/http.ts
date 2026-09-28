@@ -236,6 +236,8 @@ export const httpApi: MerchantApi = {
     http.post<Store>(buildPath(E.mSetStoreStatus.path, { storeNo }), { active } satisfies SetActiveReq),
   mSetDefaultStore: (storeNo) =>
     http.post<Store>(buildPath(E.mSetDefaultStore.path, { storeNo })),
+  mSetStoreSlug: (storeNo, slug) =>
+    http.post<Store>(buildPath(E.mSetStoreSlug.path, { storeNo }), { slug }),
   mSetStorePayment: (storeNo, payMerchantNo) =>
     http.post<Store>(buildPath(E.mSetStorePayment.path, { storeNo }),
       { payMerchantNo } satisfies SetStorePaymentReq),

@@ -943,6 +943,13 @@ export default {
     payNotReady: "收款未开通",
     staffLabel: "授权员工",
     staffValue: "{n} 人",
+    linkLabel: "店铺链接",
+    linkEdit: "改",
+    linkEditTitle: "门店代码",
+    linkCopied: "链接已复制",
+    // placeholder 只说字段名 —— 举例子的话，一打字例子就消失，而那正是最需要它的时候
+    slugPh: "门店代码",
+    slugInvalid: "3-32 位小写字母、数字或连字符，首尾不能是连字符",
     payment: "收款账户",
     payDefault: "主体默认账户",
     rename: "重命名", setDefault: "设为默认",

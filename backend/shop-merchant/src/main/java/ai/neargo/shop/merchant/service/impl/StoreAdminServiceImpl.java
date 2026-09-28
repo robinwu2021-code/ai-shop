@@ -45,15 +45,20 @@ public class StoreAdminServiceImpl implements StoreAdminService {
      */
     private final ai.neargo.shop.merchant.service.MerchantPlanService planService;
 
+    /** 对外链接（V357）：域名只在这一层读配置，端上不拼 */
+    private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
+
     public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
-                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper) {
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
+                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
         this.paymentMapper = paymentMapper;
         this.planService = planService;
+        this.storeLinkService = storeLinkService;
     }
 
     @Override
@@ -280,7 +285,14 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 s.getRatingCount() == null ? 0 : s.getRatingCount(),
                 s.getBusinessMode(),
                 entitySelfOperated(s.getEntityNo()),
-                s.getSlug());
+                s.getSlug(),
+                /*
+                 * 链接里用门店代码，没设过就回落店铺码 —— 与 StoreCodeService.linkCodeOf
+                 * 同一个口径。这里不调它是为了少一次查库：这一行本来就在手上。
+                 */
+                storeLinkService.linkOf(
+                        s.getSlug() != null && !s.getSlug().isBlank() ? s.getSlug() : s.getStoreCode(),
+                        null));
     }
 
     /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */

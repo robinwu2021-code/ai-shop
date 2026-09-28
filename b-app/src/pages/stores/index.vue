@@ -15,6 +15,7 @@ import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { CrossStoreOverview, MerchantPlan, PaymentApplyment, Store } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { slugSuggest } from "@/utils/slug";
 
 /**
  * 门店额度用尽（后端 `ErrorCode.STORE_QUOTA_EXCEEDED`）。
@@ -285,6 +286,47 @@ function hasActs(s: Store) {
   return canSwitchTo(s) || s.planSuspended || !s.isDefault;
 }
 
+/**
+ * 店铺链接里露出来的那一段。优先门店代码，没设过就是系统发的店铺码 ——
+ * 从 `shareUrl` 末尾截，而不是端上自己拼：域名与回落规则都归后端（V357）。
+ */
+function linkTail(s: Store) {
+  if (s.slug) return s.slug;
+  const url = s.shareUrl ?? "";
+  return url.slice(url.lastIndexOf("/") + 1);
+}
+
+/** 复制整条链接。店主要粘到微信群、朋友圈、外卖平台的店铺简介里 */
+function copyLink(s: Store) {
+  if (!s.shareUrl) return;
+  uni.setClipboardData({
+    data: s.shareUrl,
+    success: () => uni.showToast({ title: String(t("stores.linkCopied")), icon: "none" }),
+  });
+}
+
+/**
+ * 改门店代码。
+ *
+ * <p>**没设过时预填按店名转的拼音** —— 让他改一个建议值，比面对一个空框容易。
+ * 校验用与后端 `StoreSlugs` 同一套正则，在这儿先挡一遍：提交回来才报错的话，
+ * 他得点几次保存才知道规则是什么。
+ */
+async function editSlug(s: Store) {
+  const next = ((await prompt({
+    title: String(t("stores.linkEditTitle")),
+    placeholder: String(t("stores.slugPh")),
+    value: s.slug || slugSuggest(s.name),
+  })) ?? "").trim().toLowerCase();
+  if (next === (s.slug ?? "")) return;
+  // 空 = 清掉代码，链接回落店铺码。这一支要放过去，不能当成格式错
+  if (next && !/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(next)) {
+    uni.showToast({ title: String(t("stores.slugInvalid")), icon: "none" });
+    return;
+  }
+  run(() => api.mSetStoreSlug(s.storeNo, next));
+}
+
 /** 传空 = 回到主体默认收款号，是合法操作 */
 function pickPayment(s: Store, payMerchantNo?: string) {
   run(() => api.mSetStorePayment(s.storeNo, payMerchantNo));
@@ -411,6 +453,19 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         <view class="fact sh-row">
           <text class="txt-caption fact__k">{{ $t("stores.staffLabel") }}</text>
           <text class="txt-body sh-fill">{{ $t("stores.staffValue", { n: s.staffCount }) }}</text>
+        </view>
+        <!--
+          ★ 店铺链接。**放在 facts 里而不是动作行**：它是一条信息（这家店对外是哪个地址），
+          而动作行整行带 v-if —— 往那里加一个每家店都有的动作，会让默认店那张卡
+          重新长出一整行加一条横线，正是改版时去掉的东西。
+
+          `shareUrl` 为空 = 后端没配域名，整行不显示（不显示一个点不开的地址）。
+          代码本身可点 = 复制整条链接；右边「改」进输入框。
+        -->
+        <view v-if="s.shareUrl" class="fact sh-row">
+          <text class="txt-caption fact__k">{{ $t("stores.linkLabel") }}</text>
+          <text class="txt-body sh-fill txt-primary" @tap.stop="copyLink(s)">{{ linkTail(s) }}</text>
+          <text class="sh-link" @tap.stop="editSlug(s)">{{ $t("stores.linkEdit") }}</text>
         </view>
       </view>
 
