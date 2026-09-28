@@ -12758,10 +12758,124 @@
           "ar": "لا طلبات بعد"
         },
         {
+          "key": "order.expressBook",
+          "zh-CN": "叫快递上门",
+          "en": "Book a courier",
+          "ar": "طلب مندوب شحن"
+        },
+        {
+          "key": "order.expressBookBtn",
+          "zh-CN": "叫快递",
+          "en": "Book",
+          "ar": "اطلب"
+        },
+        {
+          "key": "order.expressBooked",
+          "zh-CN": "已叫快递",
+          "en": "Courier booked",
+          "ar": "تم طلب المندوب"
+        },
+        {
+          "key": "order.expressCancel",
+          "zh-CN": "取消取件",
+          "en": "Cancel pickup",
+          "ar": "إلغاء الاستلام"
+        },
+        {
+          "key": "order.expressCancelAsk",
+          "zh-CN": "取消这次取件？",
+          "en": "Cancel this pickup?",
+          "ar": "إلغاء هذا الاستلام؟"
+        },
+        {
+          "key": "order.expressConfirm",
+          "zh-CN": "{carrier}，运费约 {price}。快递员上门取件后，运费记入本店欠款。",
+          "en": "{carrier}, about {price}. After pickup, the fee is added to this store's balance due.",
+          "ar": "{carrier}، حوالي {price}. بعد الاستلام تُضاف الرسوم إلى المستحقات على المتجر."
+        },
+        {
+          "key": "order.expressCourier",
+          "zh-CN": "快递员",
+          "en": "Courier",
+          "ar": "المندوب"
+        },
+        {
+          "key": "order.expressFreight",
+          "zh-CN": "运费",
+          "en": "Shipping fee",
+          "ar": "رسوم الشحن"
+        },
+        {
+          "key": "order.expressKeep",
+          "zh-CN": "保留",
+          "en": "Keep",
+          "ar": "إبقاء"
+        },
+        {
           "key": "order.expressNo",
           "zh-CN": "运单号",
           "en": "Tracking no.",
           "ar": "رقم التتبع"
+        },
+        {
+          "key": "order.expressNoQuote",
+          "zh-CN": "这条线路暂无快递可接",
+          "en": "No courier serves this route",
+          "ar": "لا توجد شركة شحن لهذا المسار"
+        },
+        {
+          "key": "order.expressQuote",
+          "zh-CN": "查价",
+          "en": "Get prices",
+          "ar": "عرض الأسعار"
+        },
+        {
+          "key": "order.expressStatus.ACCEPTED",
+          "zh-CN": "已接单",
+          "en": "Accepted",
+          "ar": "تم القبول"
+        },
+        {
+          "key": "order.expressStatus.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "أُلغي"
+        },
+        {
+          "key": "order.expressStatus.CREATED",
+          "zh-CN": "已下单",
+          "en": "Booked",
+          "ar": "تم الطلب"
+        },
+        {
+          "key": "order.expressStatus.DONE",
+          "zh-CN": "已签收",
+          "en": "Delivered",
+          "ar": "تم التسليم"
+        },
+        {
+          "key": "order.expressStatus.FAILED",
+          "zh-CN": "未成功",
+          "en": "Failed",
+          "ar": "لم ينجح"
+        },
+        {
+          "key": "order.expressStatus.PICKED",
+          "zh-CN": "已取件",
+          "en": "Picked up",
+          "ar": "تم الاستلام"
+        },
+        {
+          "key": "order.expressWeight",
+          "zh-CN": "重量",
+          "en": "Weight",
+          "ar": "الوزن"
+        },
+        {
+          "key": "order.expressWeightPh",
+          "zh-CN": "重量（公斤）",
+          "en": "Weight (kg)",
+          "ar": "الوزن (كغ)"
         },
         {
           "key": "order.fulfillment",
@@ -22611,6 +22725,36 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
+          "key": "err.express.channel_off",
+          "zh-CN": "平台快递代下单还没开通，请先自己叫快递并填写运单号",
+          "en": "Courier booking is not available yet. Book a courier yourself and enter the tracking number",
+          "ar": "حجز شركة الشحن غير متاح بعد. احجز بنفسك وأدخل رقم التتبع"
+        },
+        {
+          "key": "err.express.not_cancellable",
+          "zh-CN": "快递员已取件，不能再取消",
+          "en": "The parcel has been picked up and can no longer be cancelled",
+          "ar": "تم استلام الطرد ولا يمكن الإلغاء"
+        },
+        {
+          "key": "err.express.pickup_exists",
+          "zh-CN": "这一单已经叫过快递，取消后才能重新叫",
+          "en": "A courier is already booked for this order. Cancel it before booking again",
+          "ar": "تم حجز شركة شحن لهذا الطلب بالفعل. ألغِ الحجز قبل الحجز مرة أخرى"
+        },
+        {
+          "key": "err.express.provider_rejected",
+          "zh-CN": "快递公司没有接单：{0}",
+          "en": "The courier declined this order: {0}",
+          "ar": "رفضت شركة الشحن هذا الطلب: {0}"
+        },
+        {
+          "key": "err.express.sender_incomplete",
+          "zh-CN": "门店寄件信息不全：请在店铺设置里填好门店地址，并确认店主账号绑定了手机号",
+          "en": "Store sender details are incomplete: set the store address in shop settings and make sure the owner account has a phone number",
+          "ar": "بيانات المرسل غير مكتملة: أدخل عنوان المتجر في الإعدادات وتأكد من ربط رقم هاتف بحساب المالك"
+        },
+        {
           "key": "err.forbidden",
           "zh-CN": "没有操作权限",
           "en": "Permission denied",
@@ -24324,6 +24468,13 @@
       "table": "ord_after_sale",
       "class": "OrdAfterSale",
       "zh": "售后单。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_express_pickup",
+      "class": "OrdExpressPickup",
+      "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
     },
@@ -26463,6 +26614,13 @@
         "name": "QRCODE_PRINT",
         "value": "QP",
         "zh": "店铺码印刷量登记。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "EXPRESS_PICKUP",
+        "value": "EP",
+        "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
         "module": "shop-base"
       },
       {
@@ -29651,6 +29809,55 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdExpressPickup",
+        "name": "PROVIDER_KUAIDI100",
+        "value": "KUAIDI100",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "CREATED",
+        "value": "CREATED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "ACCEPTED",
+        "value": "ACCEPTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "PICKED",
+        "value": "PICKED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "CANCELLED",
+        "value": "CANCELLED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdExpressPickup",
+        "name": "FAILED",
+        "value": "FAILED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdInvoiceRequest",
         "name": "REQUESTED",
         "value": "REQUESTED",
@@ -31246,6 +31453,11 @@
           "GOODS_ACTIVITY_ONLY",
           "GOODS_CATEGORY_NOT_IN_STORE",
           "STOCK_SYNC_NOT_ALIGNED",
+          "EXPRESS_CHANNEL_OFF",
+          "EXPRESS_PICKUP_EXISTS",
+          "EXPRESS_SENDER_INCOMPLETE",
+          "EXPRESS_PROVIDER_REJECTED",
+          "EXPRESS_NOT_CANCELLABLE",
           "PAY_CHANNEL_UNAVAILABLE",
           "PROXY_ORDER_AMOUNT_LIMIT",
           "PROXY_ORDER_DAILY_LIMIT",
@@ -31889,6 +32101,19 @@
           "PETTY"
         ],
         "zh": "免登记情形（电商法 §10）。"
+      },
+      {
+        "name": "ExpressPickupStatus",
+        "client": "b-app",
+        "values": [
+          "CREATED",
+          "ACCEPTED",
+          "PICKED",
+          "DONE",
+          "CANCELLED",
+          "FAILED"
+        ],
+        "zh": "取件单状态：已下单 / 已接单 / 已取件 / 已签收 / 已取消 / 失败"
       },
       {
         "name": "FONT_FAMILY",
@@ -35223,6 +35448,14 @@
       "type": "List<String>",
       "value": "List.of( REASON_NOT_WANTED, REASON_DAMAGED, REASON_MISSING, REASON_WRONG_ITEM, REASON_QUALITY, REASON_EXPIRED, REASON_OTHER)",
       "zh": "下发给端上的原因清单。",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrdExpressPickup",
+      "name": "OPEN",
+      "type": "List<String>",
+      "value": "List.of(CREATED, ACCEPTED, PICKED)",
+      "zh": "进行中的几种：同一子单同时只能有一张",
       "module": "shop-core"
     },
     {

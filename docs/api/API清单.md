@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 769 个接口**：后端已实现 697（91%）· 前端在调 698
+**合计 773 个接口**：后端已实现 697（90%）· 前端在调 702
 
 ---
 
@@ -243,7 +243,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **267** 个接口 ｜ 后端已实现 **262**（98%）｜ 前端在调 **267**
+共 **271** 个接口 ｜ 后端已实现 **262**（97%）｜ 前端在调 **271**
 
 ### activities（4）
 
@@ -576,7 +576,7 @@
 | POST | `/biz/my-spec-dims/{dimNo}/archive` | 停用/启用自建维度 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/my-spec-dims/{dimNo}/rename` | 给自建维度改名 | — | — | 🔒 | ✅ | ✅ |
 
-### order（5）
+### order（9）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -584,6 +584,10 @@
 | GET | `/biz/order/{orderNo}` | 订单详情 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/confirm-offline-pay` | 确认线下收款 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/delivered` | 自送已送达 | — | `Order` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/express` | 叫快递上门取件 | `BookExpressReq` | `ExpressPickup` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/express` | 取件单 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/express/cancel` | 取消取件 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/express/quotes` | 快递报价 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
 
 ### period（5）

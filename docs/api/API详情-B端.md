@@ -4160,6 +4160,74 @@ _无字段_
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
+#### POST `/biz/order/{orderNo}/express`
+
+叫快递上门取件　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+请求体：[`BookExpressReq`](#bookexpressreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `carrier` | `string` | 是 | 微信 delivery_id |
+| `weightKg` | `number` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ExpressPickup`](#expresspickup)
+
+
+#### GET `/biz/order/{orderNo}/express`
+
+取件单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ExpressPickup`](#expresspickup)
+
+
+#### POST `/biz/order/{orderNo}/express/cancel`
+
+取消取件　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ExpressPickup`](#expresspickup)
+
+
+#### GET `/biz/order/{orderNo}/express/quotes`
+
+快递报价　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `weightKg` | query | `number` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ExpressQuote`](#expressquote)\[\]
+
+
 #### POST `/biz/order/{orderNo}/ship`
 
 快递发货　🔒
@@ -6774,6 +6842,15 @@ _无字段_
 | `categoryCodes` | `string`\[\] | 否 | 主体已获批的经营类目码（如 `["FRESH_VEG"]`）。 **与门店货架是两件事**：这是平台批的证（能不能卖这一类）， 货架是商家自己摆的（店里怎么摆）。 |
 | `switches` | [`Record_string_boolean`](#record_string_boolean) | 否 | 平台开关里与商家侧有关的那几个（后端 `/biz/context` 下发）。 <p>`categoryGate`：类目资质校验**是否真的拦人**。 <p>此前这是 `b-app/src/shared/flags.ts` 里的编译期常量，运营改一次开关要重新 打包发版；更糟的是它与后端那份不同步时，症状是「点不动一个其实能按的按钮」 或者「点下去吃一句说不清缘由的报错」—— 两种都难查，因为界面与后端各自看起来都对。 <p>取不到时按 **false（不拦）** 处理：与后端默认值一致，且宁可放行也不要 凭一个拿不到的开关把商家挡在门外。 |
 | `perms` | `string`\[\] | 是 | 这些角色合起来的权限码，**已取并集**（老板是 `["*"]`）。 端上照它裁剪入口，**不要自己按角色再推一遍** —— 两处各推一次迟早分岔， 而分岔的表现是「看得见但点了报错」。 |
+
+### BookExpressReq
+
+叫快递（`mBookExpress`）。重量公斤，0.1–30
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `carrier` | `string` | 是 | 微信 delivery_id |
+| `weightKg` | `number` | 是 | — |
 
 ### BusinessMode
 
