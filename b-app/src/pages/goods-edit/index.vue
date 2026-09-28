@@ -2503,7 +2503,13 @@ async function save(thenSubmit = false) {
       填不全时两颗保存都压暗（is-disabled 只降透明度）、save() 直接返回；
       缺哪几项由上面那行 .missing 说 —— 与改版前同一套行为，只换了位置。
     -->
-    <sh-actionbar v-if="!hydrating">
+    <!--
+      dock：贴底通栏、方角、顶上一条线。**不能用默认的浮动药丸档** ——
+      那一档不带底，两个按钮之间与两侧都是透空的，页面内容从缝里透出来，
+      「取消」还会被屏幕边缘切掉一块（2026-09-28 店主在真机上指出「很怪异」）。
+      浮动档对的是「只有一个实心按钮」的页面（本页是两个）。
+    -->
+    <sh-actionbar v-if="!hydrating" dock>
       <view class="sh-row bar">
         <view v-if="isDraft" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !canSave }" @tap="save(false)">
           {{ $t("goods.saveDraft") }}
