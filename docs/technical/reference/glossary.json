@@ -2230,12 +2230,6 @@
           "ar": "بدون حدود جغرافية"
         },
         {
-          "key": "goods.share",
-          "zh-CN": "分享",
-          "en": "Share",
-          "ar": "مشاركة"
-        },
-        {
           "key": "goods.shop",
           "zh-CN": "店铺",
           "en": "Store",
@@ -3196,6 +3190,18 @@
           "ar": "أضف رقم هاتف ›"
         },
         {
+          "key": "me.contact",
+          "zh-CN": "联系客服",
+          "en": "Contact support",
+          "ar": "تواصل مع الدعم"
+        },
+        {
+          "key": "me.contactHint",
+          "zh-CN": "有问题找我们",
+          "en": "We are here to help",
+          "ar": "نحن هنا للمساعدة"
+        },
+        {
           "key": "me.deregister",
           "zh-CN": "注销账号",
           "en": "Delete account",
@@ -3434,6 +3440,12 @@
           "zh-CN": "店铺名称",
           "en": "Shop name",
           "ar": "اسم المتجر"
+        },
+        {
+          "key": "merchant.statDays",
+          "zh-CN": "开店天数",
+          "en": "Days open",
+          "ar": "أيام العمل"
         },
         {
           "key": "merchant.statGoods",

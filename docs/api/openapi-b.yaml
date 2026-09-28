@@ -5495,6 +5495,21 @@ components:
         - "desc"
       additionalProperties: false
       description: "入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。\n\n状态机：`PENDING → REVIEWING → APPROVED | REJECTED`，`REJECTED → PENDING`（补料重提）。\n**APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。\n\n⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关： 审核发生在商家还不存在的时候，封禁发生在商家已经存在之后。混成一个枚举会让 「驳回一份申请」和「封禁一家店」共用取值，两件事迟早互相踩。"
+    StoreAcode: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        imageBase64: 
+          type: 
+            - "string"
+            - "null"
+          description: "PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报"
+      required: 
+        - "merchantNo"
+        - "imageBase64"
+      additionalProperties: false
+      description: "店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。\n\n**码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限， 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。 所以海报归因到**店**，邀请归因走小程序内转发那条路。"
     MessageType: 
       type: "string"
       enum: 

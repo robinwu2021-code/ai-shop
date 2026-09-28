@@ -2775,6 +2775,70 @@ components:
         - "REJECT"
         - "SURCHARGE"
       description: "超区处置：不配送，或加价配送。"
+    FreightProvincePrice: 
+      type: "object"
+      properties: 
+        region: 
+          type: "string"
+          description: "省份简称，写进模板的地区名（按收货地址开头匹配）"
+        firstFee: 
+          type: 
+            - "number"
+            - "null"
+          description: "首重价（分）"
+        addFee: 
+          type: 
+            - "number"
+            - "null"
+          description: "一个续重单位的价（分）"
+      required: 
+        - "region"
+        - "firstFee"
+        - "addFee"
+      additionalProperties: false
+      description: "发货城市 → 快递100 报价生成模板时，每个省的原始报价（分）。查不到价为 null"
+    FreightDraft: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+          description: "建议的模板名，如「运城市发 · 中通快递」"
+        firstWeightGram: 
+          type: "number"
+          description: "首重（克）"
+        firstFee: 
+          type: "number"
+          description: "首重费（分）"
+        addWeightGram: 
+          type: "number"
+          description: "续重单位（克）"
+        addFee: 
+          type: "number"
+          description: "每个续重单位的费用（分）"
+        outOfRange: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/OutOfRangeRule"
+          description: "地区规则：贵的省份加收、查不到价的省份不配送"
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/FreightProvincePrice"
+          description: "31 个省的原始报价，运营据此核对"
+        unquoted: 
+          type: "number"
+          description: "查不到价的省份数"
+      required: 
+        - "name"
+        - "firstWeightGram"
+        - "firstFee"
+        - "addWeightGram"
+        - "addFee"
+        - "outOfRange"
+        - "rows"
+        - "unquoted"
+      additionalProperties: false
+      description: "从快递100 报价生成的运费模板草稿（TDD-快递100商家寄件 §8 AC17）。**不落库** —— 运营核对、改过之后走 saveFreightTemplate。首重 / 续重取多数省份那一档，贵的省份写成加收，查不到价的省份不配送。"
     CarrierConfig: 
       type: "object"
       properties: 
@@ -12902,10 +12966,42 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/freight-templates/draft": 
+    post: 
+      operationId: "draftFreightTemplate"
+      summary: "按发货城市从快递100 报价生成模板草稿（31 省 × 2 个重量的查价）"
+      tags: 
+        - "fulfillment"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/FreightDraft"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/freight-templates/{templateNo}/archive": 
     post: 
       operationId: "archiveFreightTemplate"
-      summary: "归档模板（G1：软删除，不是删除）"
+      summary: "archiveFreightTemplate"
       tags: 
         - "fulfillment"
       responses: 

@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**101 个功能点**，其中 **28 个游客可用**；**2 个没有任何页面调用**。
+统计：**103 个功能点**，其中 **29 个游客可用**；**2 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -47,6 +47,7 @@
 | `toggleFavoriteGoods` | `POST /mp/favorite/goods/:goodsNo` | 是 | favorites · goods | — |
 | `favoriteStores` | `GET /mp/favorite/store` | 是 | favorites | — |
 | `toggleFavoriteStore` | `POST /mp/favorite/store/:merchantNo` | 是 | store | — |
+| `myFission` | `GET /mp/fission` | 是 | invite · me | — |
 | `goodsList` | `GET /mp/goods` | 游客 | category · goods · groups · home · merchant · search | — |
 | `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods · group | — |
 | `goodsBatch` | `GET /mp/goods/:goodsNo/batch` | 游客 | goods | — |
@@ -74,6 +75,7 @@
 | `reachOpened` | `POST /mp/member-reach/:reachNo/opened` | 是 | store | — |
 | `merchantList` | `GET /mp/merchant` | 游客 | merchants · search | — |
 | `merchantDetail` | `GET /mp/merchant/:merchantNo` | 游客 | merchant | — |
+| `merchantAcode` | `GET /mp/merchant/{merchantNo}/acode` | 游客 | (components)/biz | — |
 | `merchantApply` | `POST /mp/merchant/apply` | 是 | me | — |
 | `myMerchantApply` | `GET /mp/merchant/apply` | 是 | me | — |
 | `promotedMerchants` | `GET /mp/merchant/promoted` | 游客 | merchants | — |

@@ -2717,6 +2717,47 @@ components:
         - "duplicated"
       additionalProperties: false
       description: "核销结果。"
+    MyFission: 
+      type: "object"
+      properties: 
+        fissionNo: 
+          type: "string"
+        name: 
+          type: "string"
+          description: "活动名，运营配的"
+        inviterCount: 
+          type: "number"
+          description: "邀请人得几张"
+        inviteeCount: 
+          type: "number"
+          description: "被邀请人得几张"
+        couponTitle: 
+          type: "string"
+          description: "奖励券的名字。页面要说得出「得的是什么」，只说「得 1 张券」等于没说"
+        faceMinor: 
+          type: "number"
+          description: "券面值（分）；折扣券为 0"
+        thresholdMinor: 
+          type: "number"
+          description: "使用门槛（分）；0 = 无门槛"
+        myInvited: 
+          type: "number"
+          description: "我邀到的人数"
+        myConverted: 
+          type: "number"
+          description: "其中完成首单的人数。\n\n**奖励是按首单发的**，所以这两个数要并列摆出来 —— 只给 myInvited 的话，用户会问「我邀了 3 个怎么只得 1 张」。"
+      required: 
+        - "fissionNo"
+        - "name"
+        - "inviterCount"
+        - "inviteeCount"
+        - "couponTitle"
+        - "faceMinor"
+        - "thresholdMinor"
+        - "myInvited"
+        - "myConverted"
+      additionalProperties: false
+      description: "邀请有礼（`GET /mp/fission`）：当前在跑的活动 + 我自己邀到了几个。\n\n**没有在跑的活动时后端返回 null**，端上据此整条入口不显示 —— 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。"
     Member: 
       type: "object"
       properties: 
@@ -5455,6 +5496,21 @@ components:
         - "desc"
       additionalProperties: false
       description: "入驻申请状态（C 端查自己的进度 / 平台端审核队列共用）。\n\n状态机：`PENDING → REVIEWING → APPROVED | REJECTED`，`REJECTED → PENDING`（补料重提）。\n**APPROVED 是终态** —— 已经建了商家、发了账号，回退没有意义。\n\n⚠️ 这条是**审核**生命周期，与 `Merchant` 上的**经营**状态（ACTIVE/SUSPENDED）无关： 审核发生在商家还不存在的时候，封禁发生在商家已经存在之后。混成一个枚举会让 「驳回一份申请」和「封禁一家店」共用取值，两件事迟早互相踩。"
+    StoreAcode: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+        imageBase64: 
+          type: 
+            - "string"
+            - "null"
+          description: "PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报"
+      required: 
+        - "merchantNo"
+        - "imageBase64"
+      additionalProperties: false
+      description: "店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。\n\n**码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限， 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。 所以海报归因到**店**，邀请归因走小程序内转发那条路。"
     MessageType: 
       type: "string"
       enum: 
@@ -11556,6 +11612,61 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/UserCoupon"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/fission": 
+    get: 
+      operationId: "myFission"
+      summary: "邀请有礼"
+      tags: 
+        - "fission"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MyFission"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/merchant/{merchantNo}/acode": 
+    get: 
+      operationId: "merchantAcode"
+      summary: "商家小程序码"
+      tags: 
+        - "merchant"
+      security: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreAcode"
                 required: 
                   - "code"
                   - "msg"
