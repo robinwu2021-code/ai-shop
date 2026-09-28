@@ -76,12 +76,6 @@
           "ar": "نعرض المنتجات حسب موقعك الحالي. احفظه كعنوان لتتمكن من الطلب."
         },
         {
-          "key": "address.entryHint",
-          "zh-CN": "送货上门 · 快递",
-          "en": "Home delivery · Courier",
-          "ar": "توصيل للمنزل · بريد"
-        },
-        {
           "key": "address.fromWx",
           "zh-CN": "微信地址",
           "en": "WeChat address",
@@ -734,12 +728,6 @@
           "zh-CN": "卡包是空的",
           "en": "No cards yet",
           "ar": "لا بطاقات بعد"
-        },
-        {
-          "key": "cards.entryHint",
-          "zh-CN": "储值卡 · 次卡",
-          "en": "Store credit · Visit cards",
-          "ar": "رصيد · زيارات"
         },
         {
           "key": "cards.expired",
@@ -1592,12 +1580,6 @@
           "zh-CN": "在商品详情的「领券」里领取",
           "en": "Claim them under “Coupons” on a product page",
           "ar": "استلمها من «القسائم» في صفحة المنتج"
-        },
-        {
-          "key": "coupon.entryHint",
-          "zh-CN": "可用 · 已用 · 过期",
-          "en": "Usable · Used · Expired",
-          "ar": "صالحة · مستخدمة · منتهية"
         },
         {
           "key": "coupon.inStore",
@@ -2674,12 +2656,6 @@
           "ar": "+ ابدأ مجموعة"
         },
         {
-          "key": "groups.entryHint",
-          "zh-CN": "商家团 · 求团",
-          "en": "Shop groups · Requests",
-          "ar": "مجموعات المتاجر · الطلبات"
-        },
-        {
           "key": "groups.interested",
           "zh-CN": "{n} 人想要",
           "en": "{n} interested",
@@ -3184,12 +3160,6 @@
           "ar": "المظهر واللغة"
         },
         {
-          "key": "me.appearanceValue",
-          "zh-CN": "配色 · 明暗 · 语言",
-          "en": "Colour · Theme · Language",
-          "ar": "الألوان · السمة · اللغة"
-        },
-        {
           "key": "me.bindPhone",
           "zh-CN": "绑定手机号 ›",
           "en": "Add a phone number ›",
@@ -3200,12 +3170,6 @@
           "zh-CN": "联系客服",
           "en": "Contact support",
           "ar": "تواصل مع الدعم"
-        },
-        {
-          "key": "me.contactHint",
-          "zh-CN": "有问题找我们",
-          "en": "We are here to help",
-          "ar": "نحن هنا للمساعدة"
         },
         {
           "key": "me.deregister",
@@ -3244,22 +3208,10 @@
           "ar": "تأكيد الحذف"
         },
         {
-          "key": "me.favoritesHint",
-          "zh-CN": "商品 · 店铺",
-          "en": "Items · Shops",
-          "ar": "المنتجات · المتاجر"
-        },
-        {
           "key": "me.help",
           "zh-CN": "帮助中心",
           "en": "Help centre",
           "ar": "مركز المساعدة"
-        },
-        {
-          "key": "me.helpValue",
-          "zh-CN": "退款 · 自提 · 称重差价",
-          "en": "Refunds · Pickup · Weight adjustments",
-          "ar": "الاسترجاع · الاستلام · تعديل الوزن"
         },
         {
           "key": "me.login",
@@ -3338,12 +3290,6 @@
           "zh-CN": "填好后运营会联系你核对资质。个体户也可以先入驻，之后再升级。",
           "en": "We'll contact you to verify details. Sole traders can join now and upgrade later.",
           "ar": "سنتواصل للتحقق من البيانات. يمكن للأفراد الانضمام الآن والترقية لاحقًا."
-        },
-        {
-          "key": "merchant.applyHint",
-          "zh-CN": "个体户 / 企业均可",
-          "en": "Sole traders & companies",
-          "ar": "أفراد وشركات"
         },
         {
           "key": "merchant.applyStatus.APPROVED",
@@ -3434,6 +3380,18 @@
           "zh-CN": "暂无评价",
           "en": "No reviews yet",
           "ar": "لا تقييمات بعد"
+        },
+        {
+          "key": "merchant.openShop",
+          "zh-CN": "我也想开店",
+          "en": "I want to open a shop",
+          "ar": "أريد فتح متجر"
+        },
+        {
+          "key": "merchant.openShopSub",
+          "zh-CN": "不收入驻费与年费，个体户 / 企业都能开",
+          "en": "No onboarding or annual fee — sole traders and companies welcome",
+          "ar": "بدون رسوم انضمام أو سنوية — للأفراد والشركات"
         },
         {
           "key": "merchant.phone",
@@ -3628,12 +3586,6 @@
           "ar": "لا توجد مجموعات هنا بعد"
         },
         {
-          "key": "myGroups.entryHint",
-          "zh-CN": "拼团中 · 已成团",
-          "en": "Open · Formed",
-          "ar": "مفتوحة · مكتملة"
-        },
-        {
           "key": "myGroups.failed",
           "zh-CN": "没凑齐 {n}",
           "en": "Didn't fill {n}",
@@ -3668,12 +3620,6 @@
           "zh-CN": "在店里买过一单就会成为会员",
           "en": "One order makes you one",
           "ar": "طلب واحد يجعلك عضوًا"
-        },
-        {
-          "key": "myMembership.entryHint",
-          "zh-CN": "看看哪些店能给我发消息",
-          "en": "See which stores can message you",
-          "ar": "شاهد المتاجر التي يمكنها مراسلتك"
         },
         {
           "key": "myMembership.hint",
@@ -4028,12 +3974,6 @@
           "zh-CN": "还没有订单",
           "en": "No orders yet",
           "ar": "لا توجد طلبات بعد"
-        },
-        {
-          "key": "orders.entryHint",
-          "zh-CN": "全部订单",
-          "en": "All orders",
-          "ar": "كل الطلبات"
         },
         {
           "key": "orders.hiddenCount",
@@ -5390,12 +5330,6 @@
           "zh-CN": "去逛逛",
           "en": "Start browsing",
           "ar": "ابدأ التصفح"
-        },
-        {
-          "key": "visited.hint",
-          "zh-CN": "回购老店",
-          "en": "Reorder from favourites",
-          "ar": "أعد الطلب من متاجرك"
         },
         {
           "key": "visited.last",

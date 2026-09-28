@@ -1350,6 +1350,7 @@
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
 | `goodsCount` | `number` | 是 | 在售商品数 |
+| `favoriteCount` | `number` | 否 | 多少人收藏了这家店。**0 时端上不显示** —— 收藏功能上线至今线上 0 行，显示「0 人收藏」等于自曝冷启动 （与不显示成交数同一个取向，TDD-C 端裂变与商家招募 §8.2 批 2）。 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |
 | `joinedAt` | `number` | 是 | 入驻时间 |
@@ -3431,6 +3432,7 @@
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
 | `goodsCount` | `number` | 是 | 在售商品数 |
+| `favoriteCount` | `number` | 否 | 多少人收藏了这家店。**0 时端上不显示** —— 收藏功能上线至今线上 0 行，显示「0 人收藏」等于自曝冷启动 （与不显示成交数同一个取向，TDD-C 端裂变与商家招募 §8.2 批 2）。 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |
 | `joinedAt` | `number` | 是 | 入驻时间 |
@@ -4355,6 +4357,7 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `distance` | `number` | 否 | 距当前社区的距离（米）。由服务端按用户当前社区算好下发，端上不自己算 |
 | `salesCount` | `number` | 是 | 累计订单量（评分权重之一） |
 | `goodsCount` | `number` | 是 | 在售商品数 |
+| `favoriteCount` | `number` | 否 | 多少人收藏了这家店。**0 时端上不显示** —— 收藏功能上线至今线上 0 行，显示「0 人收藏」等于自曝冷启动 （与不显示成交数同一个取向，TDD-C 端裂变与商家招募 §8.2 批 2）。 |
 | `address` | `string` | 否 | 店铺地址。纯线上商家可能没有 |
 | `openHours` | `string` | 否 | 营业时间文案 |
 | `joinedAt` | `number` | 是 | 入驻时间 |
