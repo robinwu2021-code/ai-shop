@@ -59,6 +59,8 @@ BLOCK_NOTES = {
     ".sh-card": ("容器", "一条内容一张卡：列表行、表单分区、统计块", "块内还要分小节时用 .sh-block"),
     ".sh-block": ("容器", "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道", "只有内容没有标题时用 .sh-card"),
     ".sh-block__head": ("容器", "块内标题行（横向留白 26rpx，列表行仍通铺到边）", "—"),
+    ".sh-card__head": ("容器", "卡内第一行：标题在左、动作在右，与下面内容隔一档",
+                       "块（.sh-block）里的标题行用 .sh-block__head"),
     ".sh-chip": ("标签", "状态、分类、筛选项。tint 色块，不描边", "可点的主操作用 .sh-btn"),
     ".sh-was": ("排版", "划线原价：折扣前的价。自带 caption 字号与次要色", "「不再有效」用 .sh-void"),
     ".sh-void": ("排版", "划掉：这个东西不再有效（作废、被移出、旧值）。**不带字号** —— 它挂在原本就有大小的字上", "折扣前的价用 .sh-was"),
@@ -363,9 +365,12 @@ def read_base() -> dict:
             light = d
         elif f'[data-skin="{PROTO_SKIN}"][data-theme="dark"]' in sel:
             dark = d
-        # 只收「单一类名」的积木：.sh-root / .sh-root.is-rtl 是外壳状态，不是可复用的件
+        # 只收「单一类名」的积木：.sh-root / .sh-root.is-rtl 是外壳状态，不是可复用的件。
+        # 伪类也不收（`.sh-card__head:last-child`）：那是同一个积木的一种情形，
+        # 收进来的话清单里会多出一条没人会去「用」的件，登记表也只能给它编一句话。
         elif (re.match(r"^\.(sh-|txt-|field)", sel) and " " not in sel
-              and "," not in sel and sel.count(".") == 1 and sel != ".sh-root"):
+              and "," not in sel and ":" not in sel
+              and sel.count(".") == 1 and sel != ".sh-root"):
             blocks[sel] = d
     assert consts and light and dark, "base.css 的皮肤/常量段没解析出来"
     return {"consts": consts, "light": light, "dark": dark, "blocks": blocks}
