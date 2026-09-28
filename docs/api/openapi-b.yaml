@@ -82,6 +82,26 @@ components:
         - "MERCHANT_OWNED"
         - "PLATFORM"
       description: "流量来源。与 `ord_sub_order.traffic_source` 的库列注释逐字一致（下单时固化）。 ops-web 的同名类型 2026-09-10 起也是这两个值 —— 它此前多的 INVITE/CHANNEL 后端从不下发，已删（见 ops-web/lib/types/order.ts 的注释）。"
+    BootstrapConfig: 
+      type: "object"
+      properties: 
+        defaultSkin: 
+          type: "string"
+        features: 
+          "$ref": "#/components/schemas/Record_string_boolean"
+          description: "平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible`"
+        minAppVer: 
+          type: "string"
+          description: "低于它要提示升级"
+        serviceHours: 
+          type: "string"
+      required: 
+        - "defaultSkin"
+        - "features"
+        - "minAppVer"
+        - "serviceHours"
+      additionalProperties: false
+      description: "冷启动配置（`GET /mp/config/bootstrap`）。\n\n`features` 里 **yml 与运营端那一屏已经在后端合流**，端上只认这一份 —— 有它才谈得上「运营后台改一下开关」对买家侧生效（此前端上一次都没调过这条端点， 拿到的只有编译期常量，改一个开关要重新发版、小程序还要重新提审）。"
     PickupRef: 
       type: "object"
       properties: 

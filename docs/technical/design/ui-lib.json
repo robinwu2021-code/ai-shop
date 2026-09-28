@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 355,
-        "c-app": 74
+        "c-app": 75
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 184,
-        "c-app": 75
+        "c-app": 77
       }
     },
     {
@@ -2646,7 +2646,7 @@
       ],
       "usage": {
         "b-app": 22,
-        "c-app": 9,
+        "c-app": 10,
         "lib": 1
       },
       "note": "底部弹层",
@@ -5061,7 +5061,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 124,
+      "libClassHits": 127,
       "localSelectors": 13,
       "localCssLines": 62,
       "rolled": []

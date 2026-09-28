@@ -1042,6 +1042,12 @@
           "ar": "لا يوجد شيء هنا بعد"
         },
         {
+          "key": "common.later",
+          "zh-CN": "以后再说",
+          "en": "Later",
+          "ar": "لاحقًا"
+        },
+        {
           "key": "common.loadFailed",
           "zh-CN": "没能加载出来",
           "en": "Could not load",
@@ -3304,10 +3310,28 @@
           "ar": "عرض الطلبات"
         },
         {
+          "key": "merchant.appLinkCopied",
+          "zh-CN": "地址已复制，用手机浏览器打开",
+          "en": "Link copied — open it in your phone browser",
+          "ar": "تم نسخ الرابط — افتحه في متصفح هاتفك"
+        },
+        {
           "key": "merchant.apply",
           "zh-CN": "商家入驻",
           "en": "Sell with us",
           "ar": "انضم كتاجر"
+        },
+        {
+          "key": "merchant.applyDoneBody",
+          "zh-CN": "平台会尽快与你联系。上架、接单、发货这些经营动作都在「商家版」里完成，建议先装上。",
+          "en": "We will contact you shortly. Listing, orders and shipping all happen in the merchant app — worth installing now.",
+          "ar": "سنتواصل معك قريبًا. الإدراج والطلبات والشحن تتم كلها في تطبيق التاجر — يُفضّل تثبيته الآن."
+        },
+        {
+          "key": "merchant.applyDoneTitle",
+          "zh-CN": "报名已提交",
+          "en": "Application submitted",
+          "ar": "تم إرسال الطلب"
         },
         {
           "key": "merchant.applyFormHint",
@@ -3346,12 +3370,6 @@
           "ar": "قيد المراجعة"
         },
         {
-          "key": "merchant.applySubmitted",
-          "zh-CN": "申请已提交，运营会尽快联系你",
-          "en": "Application sent — we'll be in touch",
-          "ar": "أُرسل الطلب؛ سنتواصل معك"
-        },
-        {
           "key": "merchant.category",
           "zh-CN": "主营类目",
           "en": "Main category",
@@ -3386,6 +3404,12 @@
           "zh-CN": "时效",
           "en": "Speed",
           "ar": "السرعة"
+        },
+        {
+          "key": "merchant.getApp",
+          "zh-CN": "复制商家版下载地址",
+          "en": "Copy merchant app link",
+          "ar": "نسخ رابط تطبيق التاجر"
         },
         {
           "key": "merchant.goodsTab",
