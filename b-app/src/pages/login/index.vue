@@ -42,10 +42,44 @@ const pwdMethod = methods.find((m) => m.id === "PASSWORD");
 const quickMethods = computed(() => methods.filter((m) => !m.needsPhone));
 
 /**
- * 当前用验证码还是密码。**默认验证码**，理由不是习惯而是硬约束：
- * 密码登录不建户，新商家第一次来根本没有密码，默认到那一栏他会卡住。
+ * 当前用验证码还是密码。**默认密码，并记住上一次登录成功用的那种。**
+ *
+ * 原来无条件默认验证码，理由是一条硬约束：<b>密码登录不建户</b> ——
+ * 新商家第一次来根本没有密码，默认到那一栏他会卡住。
+ * <b>那条约束今天仍然成立</b>，所以这里不是把 false 翻成 true 就完事：
+ *
+ * <ul>
+ *   <li>没有记录（真正第一次开）→ 密码。<b>换机重装的老商家与苹果审核员都落在这一档</b>，
+ *       而他们正是「手里有密码、却被默认丢进验证码栏」的那批人 ——
+ *       商家每天开好几次 App，每次等一条短信是实打实的摩擦。</li>
+ *   <li>新商家在密码栏登不进去，点一下上面的「验证码登录」就行；
+ *       <b>而那一次成功会被记住</b>，他不会再遇到这一步。代价是一次点击，
+ *       不是「卡住」—— 开关就在这张卡片最上面，且高亮跟着状态走。</li>
+ *   <li>老商家惯用哪种记哪种，两边都不被打扰。</li>
+ * </ul>
+ *
+ * <b>为什么不按手机号去问后端「这个号有没有密码」来决定</b>：那会把
+ * 「这个号在你们这儿注册过没有」变成一条任何人都能免费枚举的信息 ——
+ * 与 {@code PHONE_ALREADY_BOUND} 刻意不区分「号是别人的」是同一个理由。
+ *
+ * <b>存储读不到也不影响默认</b>：catch 之后返回密码那一侧。
+ * App 运行时的持久化曾经整段失效过，而这条默认值不该跟着一起塌。
  */
-const byPwd = ref(false);
+const LOGIN_MODE_KEY = "biz.login.mode";
+
+function rememberedByPwd(): boolean {
+  try {
+    const v = uni.getStorageSync(LOGIN_MODE_KEY);
+    if (v === "otp") return false;
+    if (v === "pwd") return true;
+  } catch {
+    /* 读不到就走默认 —— 下面那个 true */
+  }
+  return true;
+}
+
+/** 没有密码方式的端（将来可能有）不许默认到那一栏，否则 phoneMethod 是 undefined */
+const byPwd = ref(!!pwdMethod && rememberedByPwd());
 const phoneMethod = computed(() => (byPwd.value ? pwdMethod : otpMethod));
 
 const phone = ref("");
@@ -122,6 +156,17 @@ async function doLogin(method: LoginMethod) {
   try {
     const cred = await method.acquire(phone.value, code.value);
     const profile = await merchant.login({ ...cred, agreed: true });
+    /*
+     * **记成功的那一次，不记他点了什么。** 点了密码但登不进去（新商家没有密码）
+     * 的人，下次仍然默认密码 —— 记「点过」会把一次失败的尝试固化成他的偏好。
+     */
+    if (method.needsPhone) {
+      try {
+        uni.setStorageSync(LOGIN_MODE_KEY, byPwd.value ? "pwd" : "otp");
+      } catch {
+        /* 存不上只是下次少个便利，不该让已经成功的登录报错 */
+      }
+    }
     /*
      * 进哪一屏看**后端判出来的身份**，不看端上选了什么：
      * 未入驻（status NONE）→ 入驻页；已入驻或店员 → 工作台。
