@@ -302,6 +302,26 @@
 类型：[`RegionOption`](#regionoption)\[\]
 
 
+### config
+
+#### GET `/mp/config/bootstrap`
+
+冷启动配置　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`BootstrapConfig`](#bootstrapconfig)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `defaultSkin` | `string` | 是 | — |
+| `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
+| `minAppVer` | `string` | 是 | 低于它要提示升级 |
+| `serviceHours` | `string` | 是 | — |
+
+
 ### coupon
 
 #### GET `/mp/coupon`
@@ -2746,6 +2766,17 @@
 | `phone` | `string` | 是 | 手机号 |
 | `code` | `string` | 是 | 短信/微信下发的验证码 |
 
+### BootstrapConfig
+
+冷启动配置（`GET /mp/config/bootstrap`）。 `features` 里 **yml 与运营端那一屏已经在后端合流**，端上只认这一份 —— 有它才谈得上「运营后台改一下开关」对买家侧生效（此前端上一次都没调过这条端点， 拿到的只有编译期常量，改一个开关要重新发版、小程序还要重新提审）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `defaultSkin` | `string` | 是 | — |
+| `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
+| `minAppVer` | `string` | 是 | 低于它要提示升级 |
+| `serviceHours` | `string` | 是 | — |
+
 ### CardSpec
 
 卡券属性（CARD）
@@ -3987,6 +4018,10 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `counted` | `boolean` | 是 | 这一下有没有计入 |
+
+### Record_string_boolean
+
+类型：`object`
 
 ### Record_string_number
 
