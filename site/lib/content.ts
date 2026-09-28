@@ -61,6 +61,13 @@ function tokens(): Record<string, string> {
     "site.name": site.name,
     "site.email": site.contact.email,
     "site.merchantEntry": site.entry.merchant,
+    /*
+     * 招商电话。**空值是合法的** —— 没配时 `tel:` 会变成空串，
+     * Actions 据此渲染成禁用态而不是死链（与下载地址同一条处理）。
+     * 社区门店店主不用邮箱，这一项与微信才是他真会走的路。
+     */
+    "site.salesPhone": site.contact.salesPhone,
+    "site.salesTel": site.contact.salesPhone ? `tel:${site.contact.salesPhone}` : "",
     /* 上架前全为空 —— 空值是合法的，Actions 会把它渲染成禁用态而不是死链 */
     "download.consumerAppStore": site.download.consumerAppStore,
     "download.consumerAndroid": site.download.consumerAndroid,
@@ -95,11 +102,21 @@ function parseProps(block: string): Record<string, unknown> {
     const [, key, raw] = m;
     const val = raw!.trim();
     if (val.startsWith("[") && val.endsWith("]")) {
-      out[key!] = val
+      const items = val
         .slice(1, -1)
         .split(",")
-        .map((s) => s.trim().replace(/^["']|["']$/g, ""))
-        .filter(Boolean);
+        .map((s) => s.trim().replace(/^["']|["']$/g, ""));
+      /*
+       * **`ctaHref` 里的空串要留着**，其余数组照旧滤空。
+       *
+       * <p>`cta` 与 `ctaHref` 是**按下标配对**的两个数组，而插值出来的空值
+       * （电话还没配、安装包还没上架）在这里被 `filter(Boolean)` 整项删掉之后，
+       * 后面的链接会**整体前移一格** —— 于是「电话咨询」拿到了下一项的
+       * `mailto:`，点下去发邮件。它不报错、链接也不是死的，只是接错了人。
+       *
+       * <p>留着空串，`Actions` 那边本来就认它：没配就渲染成禁用态而不是死链。
+       */
+      out[key!] = key === "ctaHref" ? items : items.filter(Boolean);
     } else {
       out[key!] = val.replace(/^["']|["']$/g, "");
     }

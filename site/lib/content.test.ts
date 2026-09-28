@@ -150,6 +150,8 @@ describe("内容集 · 插值 token", () => {
     "site.name",
     "site.email",
     "site.merchantEntry",
+    "site.salesPhone",
+    "site.salesTel",
     "download.consumerAppStore",
     "download.consumerAndroid",
     "download.consumerMiniProgram",
@@ -300,5 +302,33 @@ describe("内容集 · 站点地图", () => {
       (slug) => slug && !map.includes(slug),
     );
     expect(missing, `这些页在 sitemap.md 里查无此项：${missing.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * CTA 的链接**按下标配对**，空值不许让后面的整体前移。
+ *
+ * <p>这一条是实测出来的：`ctaHref` 里插值出来的空串（电话还没配）被 `filter(Boolean)`
+ * 整项删掉，于是「电话咨询」拿到了下一项的 `mailto:` —— 点下去发邮件。
+ * 它不报错、链接也不是死的，**只是接错了人**。
+ */
+describe("CTA 链接与按钮按下标配对", () => {
+  it("★★★ ctaHref 里的空值要占位，不许让后面的链接前移", () => {
+    /*
+     * 判据落在解析那一行上：`filter(Boolean)` 会把插值出来的空串整项删掉，
+     * 后面的链接整体前移一格 —— 「电话咨询」因此拿到了下一项的 mailto:。
+     * 它不报错、链接也不是死的，只是接错了人（实测出来的）。
+     */
+    const src = read(join(__dirname, "content.ts"));
+    expect(src).toContain('key === "ctaHref" ? items : items.filter(Boolean)');
+  });
+
+  it("★★ 首页的 cta 与 ctaHref 条数一致 —— 少一条就是有个按钮拿别人的链接", () => {
+    const src = read(join(__dirname, "../content/home/index.md"));
+    for (const m of src.matchAll(/cta:\s*\[([^\]]*)\]\s*\nctaHref:\s*\[([^\]]*)\]/g)) {
+      const cta = m[1]!.split(",").length;
+      const href = m[2]!.split(",").length;
+      expect(href, `cta ${cta} 项而 ctaHref ${href} 项`).toBe(cta);
+    }
   });
 });

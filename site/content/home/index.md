@@ -149,8 +149,8 @@ type: faq
 ```yaml
 type: cta
 tone: brand
-cta: [免费开店, 联系招商]
-ctaHref: ["{{site.merchantEntry}}", "mailto:{{site.email}}"]
+cta: [免费开店, 电话咨询, 邮件联系]
+ctaHref: ["{{site.merchantEntry}}", "{{site.salesTel}}", "mailto:{{site.email}}"]
 ```
 
-不收取入驻费、年费与押金。
+不收取入驻费、年费与押金。开店前有问题，直接打电话问。
