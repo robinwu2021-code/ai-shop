@@ -196,7 +196,7 @@ onShow(() => {
       <text class="txt-caption sh-muted">{{ $t("offlineSale.hint") }}</text>
     </view>
 
-    <sh-actionbar :pad="180">
+    <sh-actionbar dock :pad="180">
       <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="submit">
         {{ $t("offlineSale.submit") }}
       </view>

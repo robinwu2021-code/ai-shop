@@ -394,7 +394,7 @@ onShow(async () => {
       `sh-actionbar` 同时给条和占位块，两者高度不会再对不上。
     -->
     <text class="sh-hint hint">{{ $t("purchase.postHint") }}</text>
-    <sh-actionbar :pad="200">
+    <sh-actionbar dock :pad="200">
       <view class="btns">
         <view class="sh-btn sh-btn--muted sh-fill" @tap="save(false)">{{ $t("purchase.draft") }}</view>
         <view

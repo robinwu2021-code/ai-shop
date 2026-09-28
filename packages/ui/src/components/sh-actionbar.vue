@@ -179,6 +179,9 @@ const padStyle = computed(() => ({
   inset-inline: 0;
   bottom: 0;
   border-radius: 0;
+  /* 白底自带，不依赖 `pill`。**此前它只给形状与定位** —— 只写 dock 的页面条是透的，
+     按钮之间与两侧都能看见下面的内容，而症状与「没加 dock」一模一样（2026-09-28）。 */
+  background: var(--sh-surface);
   border-top: var(--sh-hairline);
   box-shadow: var(--sh-shadow-up);
   padding-inline: var(--sh-pad-page, 28rpx);

@@ -627,7 +627,7 @@ onLoad((q) => {
         </view>
       </view>
 
-      <sh-actionbar v-if="current.status !== 'ENDED'">
+      <sh-actionbar dock v-if="current.status !== 'ENDED'">
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }" @tap="edit">
             {{ $t("activityEdit.edit") }}
@@ -688,7 +688,7 @@ onLoad((q) => {
         <text class="txt-caption">{{ $t("activityEdit.lockedNote") }}</text>
       </view>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.cancel") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveLocked">{{ $t("activityEdit.save") }}</view>
@@ -913,7 +913,7 @@ onLoad((q) => {
         </view>
       </template>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
           <view class="sh-btn bar__main" @tap="next">{{ $t("activityEdit.next") }}</view>
@@ -973,7 +973,7 @@ onLoad((q) => {
         <text class="txt-caption">{{ $t("activityEdit.coverZero") }}</text>
       </view>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': saving || cover === 0 }" @tap="cover !== 0 && publish()">

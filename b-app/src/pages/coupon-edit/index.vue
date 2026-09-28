@@ -321,7 +321,7 @@ onLoad((q) => {
         </view>
       </view>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.cancel") }}</view>
           <view class="sh-btn bar__main" @tap="next">{{ $t("couponEdit.next") }}</view>
@@ -367,7 +367,7 @@ onLoad((q) => {
         <text class="txt-title sh-num">{{ maxSpend == null ? $t("couponEdit.unlimited") : money(maxSpend) }}</text>
       </view>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.back") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="save">{{ $t("couponEdit.save") }}</view>

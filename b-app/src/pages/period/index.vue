@@ -166,7 +166,7 @@ onShow(() => {
         </view>
       </template>
 
-      <sh-actionbar v-if="p.status !== 'CANCELLED'">
+      <sh-actionbar dock v-if="p.status !== 'CANCELLED'">
         <view class="sh-row bar">
           <template v-if="p.status === 'SHORT'">
             <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }" @tap="decide('CANCEL')">

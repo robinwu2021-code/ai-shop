@@ -166,7 +166,7 @@ onShow(() => {
       :tip="String($t('activities.emptyTip'))"
     ></sh-empty>
 
-    <sh-actionbar>
+    <sh-actionbar dock>
       <view class="sh-btn" @tap="go('/pages/activity-edit/index')">{{ $t("activities.new") }}</view>
     </sh-actionbar>
   </sh-scaffold>

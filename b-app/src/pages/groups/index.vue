@@ -110,7 +110,7 @@ onShow(() => {
       :tip="String($t('groups.emptyTip'))"
     ></sh-empty>
 
-    <sh-actionbar>
+    <sh-actionbar dock>
       <view class="sh-btn" @tap="go(ROUTES.groupOpen)">{{ $t("groups.open") }}</view>
     </sh-actionbar>
   </sh-scaffold>

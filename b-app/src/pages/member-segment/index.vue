@@ -140,7 +140,7 @@ onShow(load);
       <sh-empty v-else compact bare :text="tt('memberSegment.none')"></sh-empty>
       <text v-if="data.activities.length" class="sh-hint sh-mt-sm">{{ $t("memberSegment.snapshotNote") }}</text>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--danger sh-fill" @tap="remove">{{ $t("memberSegments.remove") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': !data.reachable }" @tap="data.reachable && sendTo()">

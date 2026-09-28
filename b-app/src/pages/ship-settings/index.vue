@@ -124,14 +124,13 @@ onShow(load);
 
     <!--
       一行一项：名字在左、值在右（与营销、常用功能同一套行）。
-      「不填时用什么」此前是每项底下一行小字，三行说的是同一件事 ——
-      收成卡头一句，具体的默认值直接当占位灰字显示在框里：留空＝用这个。
+      「不填时用什么」不写成文字：**默认值本身就当占位灰字显示在框里**，留空＝用它。
+      placeholder 也不重复左边的标签（「寄件电话｜寄件电话」读两遍同一个词）。
     -->
     <view v-if="setting" class="sh-card">
       <view class="sh-card__head">
         <text class="txt-title">{{ $t("shipSetting.sender") }}</text>
       </view>
-      <text class="sh-hint">{{ $t("shipSetting.senderHint") }}</text>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.senderName") }}</text>
         <input v-model="form.senderName" class="txt-body row__v" maxlength="64" :disabled="!editable"
@@ -140,12 +139,12 @@ onShow(load);
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.senderPhone") }}</text>
         <input v-model="form.senderPhone" class="txt-body row__v sh-num" type="text" maxlength="20" :disabled="!editable"
-          :placeholder="setting.defaultSenderPhone || String($t('shipSetting.senderPhone'))" />
+          :placeholder="setting.defaultSenderPhone" />
       </view>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.address") }}</text>
         <input v-model="form.address" class="txt-body row__v" maxlength="255" :disabled="!editable"
-          :placeholder="setting.defaultAddress || String($t('shipSetting.address'))" />
+          :placeholder="setting.defaultAddress" />
       </view>
     </view>
 
@@ -164,7 +163,7 @@ onShow(load);
         <text class="txt-body row__k">{{ $t("shipSetting.weight") }}</text>
         <view class="sh-row">
           <input v-model="form.weightKg" class="txt-body row__v sh-num" type="digit" maxlength="5" :disabled="!editable"
-            :placeholder="String($t('shipSetting.weight'))" />
+            placeholder="" />
           <text class="txt-body sh-muted">kg</text>
         </view>
       </view>
@@ -174,7 +173,6 @@ onShow(load);
       <view class="sh-card__head">
         <text class="txt-title">{{ $t("shipSetting.template") }}</text>
       </view>
-      <text class="sh-hint">{{ $t("shipSetting.templateHint") }}</text>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.tplFirst") }}</text>
         <text class="txt-body sh-num">{{ weightText(template.firstWeightGram) }} {{ money(template.firstFee) }}</text>

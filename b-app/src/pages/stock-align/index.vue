@@ -88,7 +88,7 @@ onShow(() => {
       </text>
     </view>
 
-    <sh-actionbar v-if="rows.length && merchant.can('biz:store:admin')">
+    <sh-actionbar dock v-if="rows.length && merchant.can('biz:store:admin')">
       <view class="sh-btn sh-btn--soft" @tap="run('COUNT')">{{ $t("stockAlign.byCount") }}</view>
       <view class="sh-btn" @tap="run('MALL')">{{ $t("stockAlign.byMall") }}</view>
     </sh-actionbar>

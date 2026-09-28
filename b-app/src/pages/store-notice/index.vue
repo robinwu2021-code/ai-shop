@@ -278,7 +278,7 @@ onShow(load);
     </view>
 
     <!-- 发布是这一页唯一的主动作：贴底，与其他二级页同位 -->
-    <sh-actionbar>
+    <sh-actionbar dock>
       <view class="sh-btn" :class="{ 'is-off': !dirty || saving }" @tap="publish">
         {{ saving ? "…" : $t("store.noticePublish") }}
       </view>

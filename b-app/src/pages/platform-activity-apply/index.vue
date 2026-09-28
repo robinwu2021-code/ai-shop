@@ -185,7 +185,7 @@ onLoad((q) => {
         <text class="txt-caption">{{ status === "SUBMITTED" ? $t("platformApply.pending") : $t("platformApply.note") }}</text>
       </view>
 
-      <sh-actionbar v-if="editable">
+      <sh-actionbar dock v-if="editable">
         <view class="sh-row bar">
           <view v-if="status === 'SUBMITTED'" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }"
                 @tap="withdraw">{{ $t("platformApply.withdraw") }}</view>

@@ -618,7 +618,6 @@ onShow(() => {
                 <input v-model="ruleForm.free" class="field__input" type="digit" :maxlength="8" />
               </view>
             </view>
-            <text class="sh-hint">{{ $t("store.rateHint") }}</text>
             <view class="rate__btns">
               <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
               <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="saveRule">{{ $t("store.saveRate") }}</text>
@@ -631,7 +630,6 @@ onShow(() => {
             <sh-go class="sum__go" @tap.stop="openSubset(c)">{{ $t("store.subset.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
-            <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
               <text class="txt-body subset__t txt-ink">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>

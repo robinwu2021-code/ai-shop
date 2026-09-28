@@ -332,7 +332,7 @@ onShow(() => {
          它没有「把你圈在这件事里」的意思 -->
     <view v-if="moreOpen" class="catch" @tap="moreOpen = false"></view>
 
-    <sh-actionbar v-if="entries.primary.length || entries.more.length" :pad="barPad">
+    <sh-actionbar dock v-if="entries.primary.length || entries.more.length" :pad="barPad">
       <view class="sh-card bar">
         <!--
           伸缩菜单：**从这条自己往上长**，不是另开一层。

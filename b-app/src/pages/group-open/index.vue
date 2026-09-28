@@ -137,7 +137,7 @@ onLoad((q) => {
       :tip="String($t('groupOpen.noActivityTip'))"
     ></sh-empty>
 
-    <sh-actionbar>
+    <sh-actionbar dock>
       <view class="sh-row bar">
         <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("groupOpen.cancel") }}</view>
         <view class="sh-btn bar__main" :class="{ 'is-disabled': !ready || busy }" @tap="submit">

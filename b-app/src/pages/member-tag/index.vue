@@ -180,7 +180,7 @@ onShow(load);
         </view>
       </view>
 
-      <sh-actionbar>
+      <sh-actionbar dock>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }" @tap="merge">{{ $t("memberTag.merge") }}</view>
           <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }" @tap="toggleEnabled">

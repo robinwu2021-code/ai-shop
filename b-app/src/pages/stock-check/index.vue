@@ -361,7 +361,7 @@ function at(iso?: string): string {
         **禁用态尤其要准** —— 没选货 / 没填数时是 muted，那是唯一的护栏。
         （原来它们在流末，滚不到就点不到，等于多了一道物理护栏；现在没有了。）
       -->
-      <sh-actionbar :pad="180">
+      <sh-actionbar dock :pad="180">
         <view
           class="sh-btn"
           :class="{ 'sh-btn--muted': !picked.length || busy }"
@@ -468,7 +468,7 @@ function at(iso?: string): string {
       </view>
 
       <text class="sh-hint hint">{{ $t("stockCheck.postHint") }}</text>
-      <sh-actionbar :pad="200">
+      <sh-actionbar dock :pad="200">
         <view
           class="sh-btn"
           :class="{ 'sh-btn--muted': !filledCount || busy }"
