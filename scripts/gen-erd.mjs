@@ -80,6 +80,9 @@ export const KEY_OWNERS = {
   // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
   event_no: "sys_outbox",
   shipment_no: "ful_shipment",
+  // 商户订单号：stl_payment 是主，trd_shipping_upload（微信发货上报台账 V323）引用它。
+  // 判据与理由见 packages/shared/tests/schema-lineage.test.ts 的同一条 —— 两份必须一致
+  out_trade_no: "stl_payment",
   area_no: "mch_service_area",
   // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份
   person_no: "usr_person",

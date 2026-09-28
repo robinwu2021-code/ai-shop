@@ -158,6 +158,14 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   event_no: { table: "sys_outbox" },
   // 履约：运单与轨迹是一对多
   shipment_no: { table: "ful_shipment" },
+  /*
+   * 商户订单号：stl_payment 是主（它建的唯一键），trd_shipping_upload 引用它。
+   * 后者是微信「发货信息录入」的上报台账（V323），一次上报对应一笔支付 ——
+   * **按 out_trade_no join 这两张表是正确用法**，排查「这笔付了但微信说没发货」
+   * 时要做的第一件事就是它。不是同名不同义：两边都是同一个商户订单号，
+   * 传给微信的也是这一个值。
+   */
+  out_trade_no: { table: "stl_payment" },
   // 商家服务范围。mch_channel_area 引用它 —— 渠道覆盖哪些服务区
   area_no: { table: "mch_service_area" },
   // 人档与会员：**两级，别混**。person_no 是跨商家的人，member_no 是他在某一家的会员身份。
