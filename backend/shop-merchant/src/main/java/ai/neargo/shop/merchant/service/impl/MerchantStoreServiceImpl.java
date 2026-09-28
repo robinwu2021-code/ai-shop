@@ -341,7 +341,17 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          * 曾经要在这里保住旧的审核状态（PENDING/REJECTED 不能被删重插抹掉）——
          * 现在所有粒度都自选即生效，新插入的一律是 ACTIVE，不再需要记这份旧状态。
          */
+        /*
+         * **同一条范围沿用原来的 area_no**（2026-09-28 修）。
+         *
+         * 门店级的「这一路只服务其中几块」（mch_channel_area）按 area_no 引用这里的行。
+         * 此前每次保存都换一批新号 —— 店主改一句地址、App 把范围原样带回来，
+         * 子集引用就全部落空，那家店与主体足迹取交后变成空集：**从买家端整家消失，保存提示成功**。
+         * 删重插的写法不变，只是把号接回去。
+         */
+        java.util.Map<String, String> keptNo = new java.util.HashMap<>();
         for (MchServiceArea old : current) {
+            keptNo.put(old.getLevel() + "|" + old.getRefCode(), old.getAreaNo());
             DataScopeContext.executeWithoutScope(() ->
                     serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
         }
@@ -350,7 +360,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 continue;
             }
             MchServiceArea row = new MchServiceArea();
-            row.setAreaNo(BizKey.next(BizKey.SERVICE_AREA));
+            String kept = keptNo.get(a.level() + "|" + a.refCode());
+            row.setAreaNo(kept != null ? kept : BizKey.next(BizKey.SERVICE_AREA));
             row.setEntityNo(merchantNo);
             row.setLevel(a.level());
             row.setRefCode(a.refCode());
