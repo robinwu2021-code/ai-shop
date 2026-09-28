@@ -47,6 +47,22 @@ class ApiResponseWrapperTest {
     }
 
     @Test
+    @DisplayName("★★★ 店铺码短链不包 —— 它只发 302，包了会在响应体里留一句没人看的 JSON")
+    void shortLinkIsNotWrapped() {
+        // 实况：ResponseEntity<Void> 的 body 是 null，仍然走这一层，于是 302 的响应体
+        // 变成 {"code":0,"msg":"success","data":null}。浏览器不看 302 的 body，所以看不出来
+        assertThat(write("", "/s/SMTBA2", null)).isNull();
+        assertThat(write("", "/s/my-store", "x")).isEqualTo("x");
+    }
+
+    @Test
+    @DisplayName("★★ /s/ 也只认前缀：/search 与 /biz/s/... 照旧要包")
+    void shortLinkPrefixMustBeExact() {
+        assertThat(write("", "/search?kw=x", "x")).isInstanceOf(ApiResult.class);
+        assertThat(write("", "/biz/s/SMTBA2", "x")).isInstanceOf(ApiResult.class);
+    }
+
+    @Test
     @DisplayName("★★ 只认路径前缀：/internalx 与 /biz/internal/... 不算内部口")
     void prefixMustBeExact() {
         assertThat(write("", "/internalx/pay", "x")).isInstanceOf(ApiResult.class);

@@ -1,6 +1,6 @@
 # TDD-店铺码与分享
 
-状态：**待确认（2026-08-17）· 边写边实施**
+状态：**边写边实施** · §3.1–3.4 已实现（2026-08-17 起）· **§3.5 / §3.6 在做（2026-09-28）**
 关联需求：[B 端功能清单](../../requirements/B端功能清单.md) B-3.3 分享素材 · B-11.12.6 店铺码 · [C 端功能清单](../../requirements/C端功能清单.md) C-ST-05 分享门店
 关联：[ADR-004 增长模型](../ADR/) · [小程序上线指南](./小程序上线指南.md)
 创建日期：2026-08-17
@@ -89,6 +89,90 @@ WxAcodePort（shop-base/spi）
 
 `merchant`（商家详情页）此前没有 `onShareAppMessage`，而门店主页有。
 分享路径带 `merchantNo`，落 `ROUTES.store`。
+
+### 3.5 `/s/<码>` 真正落到那家店（2026-09-28 补）
+
+**§3.3 修了域名，没修落点。** 生产早就配上了 `SHOP_WEB_BASE_URL=https://www.hxmall.top`，
+于是 `StoreLinkServiceImpl` 一直在发 `https://www.hxmall.top/s/<码>` ——
+而 nginx 那一侧是这样接的：
+
+```nginx
+# 老店铺码链接 —— 官网接管 / 之后不能 404
+location ^~ /s/ { return 302 /c/$is_args$args; }
+```
+
+`$is_args$args` 只保住了 query，**路径里的码被丢掉**。实测（2026-09-28，服务器本机打）：
+
+```
+curl https://www.hxmall.top/s/SMTBA2
+→ HTTP/2 302
+→ location: https://www.hxmall.top/c/          ← 码没了
+```
+
+同一个码后端解析得好好的：`GET /mp/store/by-code?storeCode=SMTBA2` 返回商家
+「虹选鲜果」、门店信息与在售商品。**能力齐备、链接在发，中间那一跳把参数扔了** ——
+店主分享出去的链接、印在包装上的码，点开都只到 C 端首页。
+
+§4 测试策略最后一行写着「手工：真机扫码 → 落 c-app 门店页 → `merchantNo` 归因写入」，
+断的就是这一条 —— 它从来没被真正跑过。
+
+**改法**：nginx 把 `/s/` 反代给后端，后端出一个 `GET /s/{code}`：
+
+| 步 | 行为 |
+|---|---|
+| 解析 | `mch_store.slug`（§3.6）→ `mch_store.store_code` → `mch_entity.store_code`，命中即止 |
+| 命中 | 302 → `{base}/c/#/pages/store/index?storeCode=<码原样>&from=QR`，透传 `g`（商品号）与 `inviter` |
+| 不命中 | 302 → `{base}/c/`（**保持今天的行为**：码可能已经印在包装上，给首页比给错误页体面），记一条 warn |
+
+三个决定的理由：
+
+- **为什么不用纯 nginx 正则 302**：那样码写错、门店停业、slug 改过都只能落到一个空页；
+  后端这一跳能先确认码存在，也能把扫码埋点与进店归因接上（`from=QR` 决定订单的
+  `trafficSource` 与商家费率档，见 ADR-004 §6）。
+- **为什么落 c-app H5 而不是官网新做落地页**：官网 `site` 是静态导出，按门店出页面意味着
+  每开一家新店都要重新构建官网。H5 这一侧再由 c-app 自己引导「打开小程序」。
+- **为什么 302 不是 301**：门店可以改 slug、也可能停业，301 会被浏览器永久缓存住。
+
+**两处容易静默出错的接线**：
+
+1. **全局信封真的裹住了 302**（写这份设计时判断错了一次，实测纠正）。
+   本来的推理是「`ResponseEntity<Void>` 没有响应体，`ResponseBodyAdvice` 不触发」——
+   不成立：body 为 null 仍然走那一层，302 的响应体里出现了
+   `{"code":0,"msg":"success","data":null}`。浏览器不看 302 的 body，
+   所以这个错在浏览器里一点都看不出来，是 `assertThat(body).isEmpty()` 抓到的。
+   **这是同一个坑第二次**（[[global-envelope-breaks-internal-contracts]] 那次是
+   200 + 合法 JSON + 字段全 null）。
+
+   修法：`ApiResponseWrapper` 按路径再排除一段 `/s/`，与 `/internal/` 同一个判法。
+   **不用 `sendRedirect` 绕过去** —— 绕过去只解决这一个方法，下一个在 `/s/` 下
+   加端点的人会再踩一遍；按路径排除才是把边界写成一条断言。
+2. `/s/**` 要进 `SecurityConfig` 的 `publicChain` —— 四条链按 `/biz` `/mp` `/ops` 与
+   一份公开清单分流，不显式加就是靠「碰巧没链匹配所以放行」。
+
+### 3.6 门店代码：店主自己定，默认由店名转拼音（2026-09-28 补）
+
+现在的码是 6 位随机串（生产实况：`SMTBA2` = 虹选鲜果·福田店，`V9VTDW` = 默认店）。
+它能用，但发出去的链接读不出是谁家的店，店主也没法印在名片上。
+
+**新增 `mch_store.slug`，不改 `store_code`。** V298 的注释把理由写死了：
+「已经印出去的码不作废」。`store_code` 是物料上的那一串，改它等于让店里贴的那张纸失效
+（同类教训见 [[stable-id-must-not-embed-movable]]）。两列并存、解析时都认，
+新链接优先用 slug。
+
+| 项 | 取值 |
+|---|---|
+| 格式 | `^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$` —— 小写、数字、连字符，3–32 位，首尾不是连字符 |
+| 唯一 | `uk_mch_store_slug`（全平台唯一：它是 URL 的一段） |
+| 保留词 | `s c b dl api ops ops-web admin login download static assets` —— 现在它们在 `/s/` 之下撞不着，但将来若做顶级短链就会撞，先禁比以后改容易 |
+| 默认值 | **不由后端生成**：b-app 设置页按店名给一个拼音建议，店主可改 |
+
+**拼音为什么在端上转**：`~/.m2` 里没有任何拼音库（pinyin4j / TinyPinyin 都没有），
+而本仓库的 maven 一律离线跑（`-o`）—— 后端加这个依赖装不上。
+端上 npm 能联网装，且「给个建议让人改」本来就是前端该干的事：
+后端只校验格式与唯一性，不替店主决定名字。
+
+**大小写不会撞**：slug 强制小写，`store_code` 是 6 位大写。但 MySQL 的默认 collation
+不区分大小写，所以解析顺序必须固定（slug 先、code 后，命中即止）而不是"哪个查得到用哪个"。
 
 ---
 

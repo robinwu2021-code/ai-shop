@@ -37,6 +37,21 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
      */
     private static final String INTERNAL_PATH_PREFIX = "/internal/";
 
+    /**
+     * 店铺码短链 {@code /s/<码>}（TDD-店铺码与分享 §3.5）。这下面只有 302，没有业务响应。
+     *
+     * <p><b>为什么非得在这儿排除一次。</b>那个端点返回的是 {@code ResponseEntity<Void>} ——
+     * 看起来「没有响应体，{@code ResponseBodyAdvice} 不会触发」。实测不是：
+     * body 为 null 仍然走这一层，于是 302 的响应体里出现了
+     * {@code {"code":0,"msg":"success","data":null}}。浏览器不看 302 的 body，
+     * 所以这个错误在浏览器里完全看不出来，只有断言响应体为空才抓得到
+     * （同一个坑第二次：上次是内部口变成「200 + 字段全 null」）。
+     *
+     * <p>不用 {@code sendRedirect} 绕过去，是因为绕过去只解决这一个方法：
+     * 下一个在 {@code /s/} 下加端点的人会再踩一遍。按路径排除才是把边界写成一条断言。
+     */
+    private static final String SHORT_LINK_PATH_PREFIX = "/s/";
+
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         // String 走 StringHttpMessageConverter，包成对象再交给它会 ClassCastException —— 这里就排除
@@ -48,7 +63,7 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   Class<? extends HttpMessageConverter<?>> selectedConverterType,
                                   ServerHttpRequest request, ServerHttpResponse response) {
         // supports() 拿不到请求，所以路径在这里判
-        if (body instanceof ApiResult<?> || isInternal(request)) {
+        if (body instanceof ApiResult<?> || isInternal(request) || isShortLink(request)) {
             return body;
         }
         return ApiResult.ok(body);
@@ -56,13 +71,23 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
 
     /** 请求路径（去掉 context path 之后）是否在 {@code /internal/} 之下 */
     static boolean isInternal(ServerHttpRequest request) {
+        return pathOf(request).startsWith(INTERNAL_PATH_PREFIX);
+    }
+
+    /** 请求路径（去掉 context path 之后）是否在 {@code /s/} 之下 */
+    static boolean isShortLink(ServerHttpRequest request) {
+        return pathOf(request).startsWith(SHORT_LINK_PATH_PREFIX);
+    }
+
+    /** 去掉 context path 的请求路径。两处判前缀共用一份 —— 分开写迟早只改一处 */
+    private static String pathOf(ServerHttpRequest request) {
         String path = request.getURI().getRawPath();
         if (request instanceof ServletServerHttpRequest servlet) {
             String contextPath = servlet.getServletRequest().getContextPath();
-            if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath)) {
+            if (contextPath != null && !contextPath.isEmpty() && path != null && path.startsWith(contextPath)) {
                 path = path.substring(contextPath.length());
             }
         }
-        return path != null && path.startsWith(INTERNAL_PATH_PREFIX);
+        return path == null ? "" : path;
     }
 }

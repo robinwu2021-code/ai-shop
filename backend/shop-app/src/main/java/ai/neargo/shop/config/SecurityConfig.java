@@ -274,8 +274,12 @@ public class SecurityConfig {
                 // /media/** 是私有资产（证件 / 售后凭证）：它同样不走 Bearer，
                 // 但**不是不鉴权** —— 凭 URL 里的 HMAC 签名放行，有效期按分钟计。
                 // 之所以不能用带 Bearer 的接口：<img> 与小程序的 <image> 都没法带请求头。
+                // /s/** 是店铺码短链（TDD-店铺码与分享 §3.5）：扫码的人多数没登录，
+                // 这一跳只解析码并 302 到门店页，不读任何用户数据。
+                // **显式写出来**：不写就是靠「碰巧没有一条链匹配它所以放行」，
+                // 而那种性质会在有人把 securityMatcher 改宽时静默消失。
                 .securityMatcher("/common/**", "/callback/**", "/actuator/**",
-                        "/uploads/**", "/media/**")
+                        "/uploads/**", "/media/**", "/s/**")
                 .cors(c -> c.configurationSource(corsSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
