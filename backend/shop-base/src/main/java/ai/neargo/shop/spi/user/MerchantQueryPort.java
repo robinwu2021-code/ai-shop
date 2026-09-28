@@ -126,6 +126,13 @@ public interface MerchantQueryPort {
     java.util.Optional<DeliveryOrigin> deliveryOrigin(String merchantNo);
 
     /**
+     * 同上，按**指定门店**取圆心与半径 —— 订单落在哪家店就用哪家店的。
+     * 此前只有主体级（取默认店），多门店商家的非默认店开了商家配送也永远按默认店的位置判。
+     * 门店不存在或没标点时回落默认店；{@code storeNo} 为空等同单参版本。
+     */
+    java.util.Optional<DeliveryOrigin> deliveryOrigin(String merchantNo, String storeNo);
+
+    /**
      * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
      *
      * <p>没标点的门店，{@code requireWithinDeliveryRadius} 那条闸直接放行 ——

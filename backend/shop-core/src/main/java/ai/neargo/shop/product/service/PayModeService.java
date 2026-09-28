@@ -34,4 +34,16 @@ public interface PayModeService {
      * @param storeNo 可空。空表示按主体判（单店场景两者恒等）
      */
     Set<String> availablePayModes(String goodsNo, String storeNo);
+
+    /**
+     * 同上，再叠**履约方式**这一层 —— 线下要有「当面收钱的那一刻」（TDD-货到付款闭环与门店级配送圆心）：
+     * <ul>
+     *   <li>快递、自提点自提：没有线下（货寄走了；自提点代收是资金归集）</li>
+     *   <li>商家配送 × 线下 = 货到付款：另要门店打开 {@code cod_enabled} —— 拒收跑单的损失全在商家</li>
+     * </ul>
+     * <b>结算页与建单都走这一个</b>：只在建单时判的话，结算页说能当面付、提交被拒。
+     *
+     * @param fulfillment 可空。空表示不看履约（与两参版本相同）
+     */
+    Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment);
 }

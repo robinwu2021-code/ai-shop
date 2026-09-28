@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.product.entity.PrdCategoryPayMode;
 import ai.neargo.shop.product.entity.PrdGoods;
@@ -82,6 +83,23 @@ public class PayModeServiceImpl implements PayModeService {
         }
 
         out.add(PayModes.OFFLINE);
+        return out;
+    }
+
+    @Override
+    public Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment) {
+        Set<String> out = availablePayModes(goodsNo, storeNo);
+        if (fulfillment == null || fulfillment.isBlank() || !out.contains(PayModes.OFFLINE)) {
+            return out;
+        }
+        boolean offlineOk = PayModes.OFFLINE_FULFILLMENTS.contains(fulfillment)
+                // 货到付款：门店级开关，默认关（此前只写在注释里，下单从没查过）
+                && (!Fulfillments.MERCHANT_DELIVERY.equals(fulfillment) || storePayPort.codEnabled(storeNo));
+        if (!offlineOk) {
+            Set<String> onlineOnly = new LinkedHashSet<>(out);
+            onlineOnly.remove(PayModes.OFFLINE);
+            return onlineOnly;
+        }
         return out;
     }
 

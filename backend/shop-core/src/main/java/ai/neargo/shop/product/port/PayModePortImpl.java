@@ -25,4 +25,9 @@ public class PayModePortImpl implements PayModePort {
     public Set<String> availablePayModes(String goodsNo, String storeNo) {
         return payModeService.availablePayModes(goodsNo, storeNo);
     }
+
+    @Override
+    public Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment) {
+        return payModeService.availablePayModes(goodsNo, storeNo, fulfillment);
+    }
 }

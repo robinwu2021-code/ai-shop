@@ -35,6 +35,15 @@ public final class PayModes {
 
     public static final Set<String> ALL = Set.of(ONLINE, OFFLINE);
 
+    /**
+     * 允许线下的履约方式 —— 判据是「有没有当面收钱的那一刻」。
+     * 快递没有（货已寄走）；自提点自提不行（自提点代收别家货款 = 资金归集，ADR-002 要避开的二清）。
+     * 商家配送在列，但另要门店打开货到付款（见 {@code StorePayPort#codEnabled}）。
+     */
+    public static final Set<String> OFFLINE_FULFILLMENTS = Set.of(
+            Fulfillments.STORE_PICKUP, Fulfillments.MERCHANT_DELIVERY,
+            Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT);
+
     /** 新建商品的默认集合。<b>只给线上</b> —— 线下收款要商家显式开，不该一建出来就支持。 */
     public static final Set<String> DEFAULT = Set.of(ONLINE);
 

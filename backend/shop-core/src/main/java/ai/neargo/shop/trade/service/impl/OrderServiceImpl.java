@@ -320,7 +320,8 @@ public class OrderServiceImpl implements OrderService {
              * 取不到（门店没标点）就是三个 null —— 那正是「这条规则不成立」的表达，
              * 与 requireWithinDeliveryRadius 里的放行是同一件事。
              */
-            var origin = merchantPort.deliveryOrigin(g.merchantNo).orElse(null);
+            // 圆心按这一单落在的那家店（多门店时不是默认店）
+            var origin = merchantPort.deliveryOrigin(g.merchantNo, stores.get(g.merchantNo)).orElse(null);
             rows.add(new ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability(
                     g.merchantNo, g.merchantName, cap.invoiceCapable(),
                     new ArrayList<>(cap.payMethods()),
@@ -362,8 +363,9 @@ public class OrderServiceImpl implements OrderService {
          */
         java.util.Set<String> payModes = null;
         for (Line line : split.items) {
+            // 带履约判：商家配送 × 线下要门店开了货到付款 —— 与建单同一个入口，结算页不会说一套、提交判一套
             var modes = payModeService.availablePayModes(
-                    line.snapshot.goodsNo(), stores.get(line.snapshot.merchantNo()));
+                    line.snapshot.goodsNo(), stores.get(line.snapshot.merchantNo()), cmd.fulfillment());
             payModes = payModes == null ? new java.util.LinkedHashSet<>(modes)
                     : intersect(payModes, modes);
         }
@@ -2424,13 +2426,13 @@ public class OrderServiceImpl implements OrderService {
          * **排除自提点自提**：自提点承接的是别家商家的货，让它代收货款
          * 立刻变成资金归集 —— 与 ADR-002 要避开的二清是同一件事。
          */
-        if (!OFFLINE_PAYABLE.contains(cmd.fulfillment())) {
+        if (!PayModes.OFFLINE_FULFILLMENTS.contains(cmd.fulfillment())) {
             throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
         }
         for (Group g : split.groups()) {
             String storeNo = storeOfMerchant.get(g.merchantNo());
             for (Line line : g.lines()) {
-                if (!payModeService.availablePayModes(line.snapshot().goodsNo(), storeNo)
+                if (!payModeService.availablePayModes(line.snapshot().goodsNo(), storeNo, cmd.fulfillment())
                         .contains(payMode)) {
                     throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
                 }
@@ -2439,16 +2441,7 @@ public class OrderServiceImpl implements OrderService {
         return payMode;
     }
 
-    /**
-     * 允许线下支付的履约方式 —— 判据是「<b>有没有当面收钱的那一刻</b>」。
-     *
-     * <p>货到付款（{@code MERCHANT_DELIVERY}）在列，但它另有一道门店级开关
-     * （{@code mch_store.cod_enabled}）：它是整张组合表里风险最高的一格，
-     * 拒收跑单的损失全在商家，所以要商家自己打开。
-     */
-    private static final java.util.Set<String> OFFLINE_PAYABLE = java.util.Set.of(
-            Fulfillments.STORE_PICKUP, Fulfillments.MERCHANT_DELIVERY,
-            Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT);
+    // 允许线下的履约方式挪到 PayModes.OFFLINE_FULFILLMENTS：结算页与建单共用一份
 
     private void requireReceiverWhenShipped(CreateOrderCommand cmd, String userNo) {
         if (cmd.fulfillment() == null || !SHIPPED_FULFILLMENTS.contains(cmd.fulfillment())) {
@@ -2499,8 +2492,10 @@ public class OrderServiceImpl implements OrderService {
          * 只要有一家送不到，这一单就下不成 —— 让他先拆开或换送货方式，
          * 比下成之后由那一家单独退款要好解释。
          */
+        // 圆心按这一单落在的那家店 —— 多门店商家的非默认店此前一律拿默认店的圆心判，永远送不到
+        Map<String, String> stores = storesOf(cmd, split);
         for (var g : split.groups) {
-            var origin = merchantPort.deliveryOrigin(g.merchantNo()).orElse(null);
+            var origin = merchantPort.deliveryOrigin(g.merchantNo(), stores.get(g.merchantNo())).orElse(null);
             if (origin == null || origin.radiusM() <= 0) {
                 continue;
             }

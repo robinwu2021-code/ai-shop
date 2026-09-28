@@ -22,4 +22,7 @@ public interface PayModePort {
      * @param storeNo 可空。空表示按主体判（单店场景两者恒等）
      */
     Set<String> availablePayModes(String goodsNo, String storeNo);
+
+    /** 再叠履约方式这一层（线下要有当面收钱的那一刻；商家配送 × 线下要门店开了货到付款）。见 PayModeService 同名方法 */
+    Set<String> availablePayModes(String goodsNo, String storeNo, String fulfillment);
 }

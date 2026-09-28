@@ -677,6 +677,23 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo, String storeNo) {
+        if (merchantNo != null && !merchantNo.isBlank() && storeNo != null && !storeNo.isBlank()) {
+            var store = DataScopeContext.executeWithoutScope(() ->
+                    storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                            .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                            .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                            .last("limit 1")));
+            if (store != null && store.getLatE6() != null && store.getLngE6() != null) {
+                return Optional.of(new DeliveryOrigin(store.getLatE6(), store.getLngE6(),
+                        store.getDeliveryRadiusM() == null ? 0 : store.getDeliveryRadiusM()));
+            }
+        }
+        // 没指定门店 / 那家店没标点：回落主体默认店（与改造前逐字相同）
+        return deliveryOrigin(merchantNo);
+    }
+
+    @Override
     public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
