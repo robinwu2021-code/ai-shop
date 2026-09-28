@@ -320,7 +320,7 @@
       },
       "usage": {
         "b-app": 396,
-        "c-app": 75
+        "c-app": 74
       }
     },
     {
@@ -358,7 +358,7 @@
       },
       "usage": {
         "b-app": 336,
-        "c-app": 266
+        "c-app": 256
       }
     },
     {
@@ -576,7 +576,7 @@
       },
       "usage": {
         "b-app": 117,
-        "c-app": 30
+        "c-app": 31
       }
     },
     {
@@ -658,7 +658,7 @@
       },
       "usage": {
         "b-app": 213,
-        "c-app": 83
+        "c-app": 84
       }
     },
     {
@@ -676,7 +676,7 @@
       },
       "usage": {
         "b-app": 156,
-        "c-app": 31
+        "c-app": 30
       }
     },
     {
@@ -5125,10 +5125,18 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 129,
-      "localSelectors": 13,
-      "localCssLines": 62,
-      "rolled": []
+      "libClassHits": 119,
+      "localSelectors": 17,
+      "localCssLines": 76,
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5790,6 +5798,16 @@
       "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
       "pages": [
         "c-app/home"
+      ]
+    },
+    {
+      "id": "primover",
+      "label": "主色文字自写",
+      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+      "pages": [
+        "c-app/me"
       ]
     }
   ],

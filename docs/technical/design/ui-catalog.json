@@ -1463,7 +1463,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 142,
+      "count": 143,
       "domains": [
         {
           "name": "经营看板",
@@ -3298,6 +3298,19 @@
             },
             {
               "app": "ops-web",
+              "route": "/system?tab=testPhone",
+              "title": "测试号固定验证码",
+              "domain": "平台管理",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=testPhone"
+            },
+            {
+              "app": "ops-web",
               "route": "/system?tab=industry",
               "title": "行业与小微白名单",
               "domain": "平台管理",
@@ -3340,5 +3353,5 @@
       ]
     }
   ],
-  "total": 263
+  "total": 264
 }
