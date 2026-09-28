@@ -37,7 +37,8 @@ vi.mock("@dcloudio/uni-app", () => ({
   onUnload: vi.fn(),
   onPullDownRefresh: vi.fn(),
   onReachBottom: vi.fn(),
-  onShareAppMessage: vi.fn(), onPageScroll: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
 }));
 vi.mock("@/shared/fly", () => ({
   flyToCart: vi.fn(),

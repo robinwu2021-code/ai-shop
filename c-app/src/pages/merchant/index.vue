@@ -7,14 +7,14 @@
 // 留下的都回答「这家店能不能买、靠不靠谱」。
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import { buildShareMessage } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
 
 const { t } = useI18n();
@@ -135,6 +135,17 @@ onShareAppMessage(() =>
     title: merchant.value?.name ?? "",
     path: `${ROUTES.store}?from=SHARE`,
     merchantNo: currentNo.value,
+  }),
+);
+
+/* 分享到朋友圈。与门店页同一条：朋友圈只吃 query，path 会被忽略 */
+onShareTimeline(() =>
+  buildShareTimeline({
+    title: merchant.value?.name ?? "",
+    path: ROUTES.store,
+    params: "from=SHARE",
+    merchantNo: currentNo.value,
+    inviterNo: user.user?.cUserNo,
   }),
 );
 </script>

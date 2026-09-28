@@ -241,15 +241,11 @@ async function ensureIdentity() {
  * 存进 store 等到登录那一刻。不接的话：他注册成功、也下单了，一切看起来都正常，
  * 只有邀请人永远等不到那张券，而台账里连一行都没有。
  *
- * <p>**只在有值时写**：空值覆盖会把上一次存的邀请人抹掉 ——
- * 而用户从别处（扫码、历史记录）再进首页是常事。
+ * <p>接管那一手收在 `user.captureInviter` 里，三个分享落地页（首页 / 商品 / 门店）
+ * 共用同一份判断 —— 空值不覆盖、自己不算。
  */
 onLoad((q) => {
-  const from = (q?.inviterNo as string) || "";
-  if (from && from !== user.user?.cUserNo) {
-    user.pendingInviter = from;
-    invitedBy.value = from;
-  }
+  invitedBy.value = user.captureInviter(q?.inviterNo);
 });
 
 /** 这一次是被谁邀来的。只影响那条提示条，不参与任何判权 */

@@ -28,7 +28,8 @@ vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (cb: (q: Record<string, string>) => unknown) => cb(query),
   onShow: (cb: () => unknown) => cb(),
   onHide: vi.fn(), onUnload: vi.fn(), onPullDownRefresh: vi.fn(), onReachBottom: vi.fn(),
-  onShareAppMessage: vi.fn(), onPageScroll: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
 }));
 
 import GroupPage from "@/pages/group/index.vue";

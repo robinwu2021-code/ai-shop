@@ -9,7 +9,7 @@
 // 另一条：**不经过首页与选社区**。老客扫码是来买东西的，中间插一个「请先选择你的社区」
 // 会把人挡在门外 —— 游客可逛，加购时再引导登录。
 import { computed, ref } from "vue";
-import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { fromE6, openLocation } from "@shared/ports/location";
 import { api } from "@/api";
@@ -20,7 +20,7 @@ import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import { money } from "@shared/utils/money";
 import { hourMinute, isoDate } from "@shared/utils/datetime";
-import { buildShareMessage } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
 import type { FrequentItem, Goods, StoreHome } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
 
@@ -120,6 +120,8 @@ onLoad(async (q) => {
   const rawScene = (q?.scene as string) || (q?.storeCode as string) || "";
   const storeCode = rawScene ? safeDecode(rawScene) : "";
 
+  // 分享落地页之一：邀请人要在这里接住（登录页只读自己 query 上的那份）
+  user.captureInviter(q?.inviterNo);
   merchantNo.value = (q?.merchantNo as string) || "";
   // from=QR 表示扫码进店 —— 归因写在服务端，决定订单的 trafficSource 与商家费率档
   fromParam.value = (q?.from as string) || (storeCode ? "QR" : "");
@@ -296,6 +298,23 @@ onShareAppMessage(() =>
     // from=SHARE 让落地页知道这是分享进来的，与扫码同样计入商家自带客流
     path: `${ROUTES.store}?from=SHARE`,
     merchantNo: merchantNo.value,
+  }),
+);
+
+/*
+ * 分享到朋友圈（§3.2）。「把这家店发到朋友圈」是社区场景里最常发生的分享之一，
+ * 而此前这一栏是灰的 —— 全仓没有一处 onShareTimeline。
+ *
+ * <p>朋友圈落单页模式、只吃 `query`，所以 `from=SHARE` 与归因都要拼进 query，
+ * 不能沿用好友那份的 path（给了会被忽略，归因一起丢）。
+ */
+onShareTimeline(() =>
+  buildShareTimeline({
+    title: data.value ? `${data.value.merchant.name} · ${data.value.store.announcement}` : "",
+    path: ROUTES.store,
+    params: "from=SHARE",
+    merchantNo: merchantNo.value,
+    inviterNo: user.user?.cUserNo,
   }),
 );
 

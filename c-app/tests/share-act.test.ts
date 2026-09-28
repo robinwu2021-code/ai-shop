@@ -73,3 +73,38 @@ describe("分享入口", () => {
     expect(clipboard.data).toBe("/pages/goods/index?goodsNo=G1");
   });
 });
+
+/**
+ * 分享到朋友圈（`onShareTimeline`）。
+ *
+ * <p><b>形状与转发给好友不是一回事</b>：朋友圈落的是「单页模式」，微信只接受 `query`——
+ * 给 `path` 会被忽略。直接把 `buildShareMessage` 的结果返回给 `onShareTimeline`，
+ * 归因参数会**跟着那个被忽略的 path 一起没掉**：人从朋友圈进来了，却算不到任何人头上，
+ * 而页面上一切正常。
+ */
+describe("分享到朋友圈", () => {
+  it("★★★ 归因拼进 query，不靠 path", async () => {
+    const { buildShareTimeline } = await import("@shared/ports/share");
+    const r = buildShareTimeline({
+      title: "柠檬",
+      path: "/pages/goods/index",
+      params: "goodsNo=G1",
+      inviterNo: "U-ME",
+      merchantNo: "M1",
+    });
+    expect(r.query).toContain("goodsNo=G1");
+    expect(r.query).toContain("inviterNo=U-ME");
+    expect(r.query).toContain("merchantNo=M1");
+    expect(r, "朋友圈不吃 path —— 给了只会让人以为归因带上了").not.toHaveProperty("path");
+  });
+
+  it("★★★ 三个页面都注册了 onShareTimeline —— 没有它那一栏是灰的，点不了", () => {
+    const fs = require("node:fs"), path = require("node:path");
+    for (const page of ["goods", "store", "merchant"]) {
+      const src = fs.readFileSync(
+        path.resolve(__dirname, `../src/pages/${page}/index.vue`), "utf8");
+      expect(src, `${page} 页不能分享到朋友圈`).toContain("onShareTimeline(");
+      expect(src).toContain("buildShareTimeline(");
+    }
+  });
+});

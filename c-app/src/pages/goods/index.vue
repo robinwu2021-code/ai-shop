@@ -11,13 +11,13 @@
 import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { thumb } from "@shared/utils/media-thumb";
-import { onLoad, onPageScroll, onShareAppMessage } from "@dcloudio/uni-app";
+import { onLoad, onPageScroll, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
-import { buildShareMessage } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, GOODS_SERVICE, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -878,6 +878,12 @@ watch(
 );
 
 onLoad((q) => {
+  /*
+   * 分享落地页之一（朋友圈那条落的是单页模式，参数全从 query 来）。
+   * **邀请人要在这里接住** —— 登录页只读自己 query 上的那份，从这一屏点去登录时
+   * 它不会跟过来（首页那条同理，判断收在 store 里共用）。
+   */
+  user.captureInviter(q?.inviterNo);
   const no = (q?.goodsNo as string) || "";
   if (no) load(no);
   timer = setInterval(() => (now.value = Date.now()), 1000);
@@ -889,6 +895,24 @@ onShareAppMessage(() =>
   buildShareMessage({
     title: goods.value?.title ?? "",
     path: `${ROUTES.goods}?goodsNo=${goods.value?.goodsNo ?? ""}`,
+    merchantNo: community.pickup?.hostMerchantNo,
+    inviterNo: user.user?.cUserNo,
+  }),
+);
+
+/*
+ * 分享到**朋友圈**。此前全仓一处 `onShareTimeline` 都没有 ——
+ * 于是小程序右上角那一栏里「分享到朋友圈」是灰的，点不了。
+ * 而在社区场景里，朋友圈与群聊是同一量级的入口。
+ *
+ * <p>形状与转发给好友不同：朋友圈落的是**单页模式**，微信只接受 `query`
+ * （给 path 会被忽略）—— 直接把好友那份返回过来，归因参数会一起没掉。
+ */
+onShareTimeline(() =>
+  buildShareTimeline({
+    title: goods.value?.title ?? "",
+    path: ROUTES.goods,
+    params: `goodsNo=${goods.value?.goodsNo ?? ""}`,
     merchantNo: community.pickup?.hostMerchantNo,
     inviterNo: user.user?.cUserNo,
   }),

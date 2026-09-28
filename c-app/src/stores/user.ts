@@ -91,6 +91,25 @@ export const useUserStore = defineStore("user", {
       return silentInFlight;
     },
 
+    /**
+     * 接住分享链接带来的邀请人（§3.1）。**每个分享落地页都要调**。
+     *
+     * <p>分享出去的落地页有三处：首页、商品页、门店页（朋友圈那条还会落成单页模式）。
+     * 而登录页只读**自己 query 上**的 `inviterNo` —— 被邀请人从落地页点去登录时，
+     * 那个参数不会跟过来。不接这一手：他注册成功、也下单了，一切看起来都正常，
+     * 只有邀请人永远等不到那张券，台账里连一行都没有。
+     *
+     * <p>两条边界：**空值不覆盖**（他从扫码/历史记录再进来是常事，
+     * 覆盖会把上一次存的抹掉）；**自己不算**（把链接发给自己再点开也是常事）。
+     */
+    captureInviter(raw: unknown) {
+      const from = typeof raw === "string" ? raw : "";
+      if (from && from !== this.user?.cUserNo) {
+        this.pendingInviter = from;
+      }
+      return this.pendingInviter;
+    },
+
     async login(req: LoginReq) {
       const resp = await api.login(req);
       this.token = resp.token;

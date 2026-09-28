@@ -35,6 +35,7 @@ vi.mock("@dcloudio/uni-app", () => ({
   onPullDownRefresh: vi.fn(),
   onReachBottom: vi.fn(),
   onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onPageScroll: vi.fn(),
 }));
 

@@ -33,6 +33,7 @@ vi.mock("@dcloudio/uni-app", () => ({
   onPullDownRefresh: vi.fn(),
   onReachBottom: vi.fn(),
   onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(),
   onPageScroll: vi.fn(),
 }));
 
@@ -132,12 +133,22 @@ describe("邀请人不能在跳登录时丢", () => {
   const read = (p: string) => require("node:fs").readFileSync(
     require("node:path").resolve(__dirname, p), "utf8");
 
-  it("★★★ 首页把 query 上的邀请人接住并存起来", () => {
-    const home = read("../src/pages/home/index.vue");
-    expect(home, "首页没有 onLoad，query 上的邀请人根本读不到").toContain("onLoad((q)");
-    expect(home).toContain("user.pendingInviter = from");
-    // 空值不许覆盖：他从扫码/历史记录再进首页是常事，覆盖会把上一次的抹掉
-    expect(home).toContain("if (from &&");
+  it("★★★ **三个分享落地页**都把 query 上的邀请人接住", () => {
+    /*
+     * 判据从「首页那几行」挪到「三页都调了那个动作」——**不是放松，是扩大**：
+     * 好友转发落在商品页与门店页，朋友圈那条还落成单页模式，
+     * 只接首页的话，从商品页进来的被邀请人照样会在跳登录时丢掉邀请人。
+     */
+    for (const page of ["home", "goods", "store"]) {
+      expect(read(`../src/pages/${page}/index.vue`), `${page} 页没接住邀请人`)
+        .toContain("user.captureInviter(");
+    }
+  });
+
+  it("★★★ 接管那一手：空值不覆盖、自己不算", () => {
+    const store = read("../src/stores/user.ts");
+    // 空值覆盖会把上一次存的抹掉（从扫码/历史记录再进来是常事）
+    expect(store).toContain("if (from && from !== this.user?.cUserNo)");
   });
 
   it("★★★ 登录页 query 没有时用暂存的", () => {
@@ -148,7 +159,4 @@ describe("邀请人不能在跳登录时丢", () => {
     expect(read("../src/stores/user.ts")).toContain('this.pendingInviter = "";');
   });
 
-  it("★★ 不把自己算成邀请人 —— 他把链接发给自己再点开是常有的事", () => {
-    expect(read("../src/pages/home/index.vue")).toContain("from !== user.user?.cUserNo");
-  });
 });
