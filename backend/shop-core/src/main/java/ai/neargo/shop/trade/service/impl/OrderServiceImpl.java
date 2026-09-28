@@ -308,7 +308,8 @@ public class OrderServiceImpl implements OrderService {
         Split raw = split(cmd);
         Map<String, String> stores = storesOf(cmd, raw);
         // 运费计进额度判断：快递单的「这一单要付多少」含运费（TDD-快递100商家寄件 §8）
-        Split split = withFreight(raw, cmd, stores, SecurityUtils.currentUserNo());
+        // OrNull：结算能力也被不带登录态的内部调用读（没有用户就拿不到收货地址，运费按基础价算，不因此抛错）
+        Split split = withFreight(raw, cmd, stores, SecurityUtils.currentUserNoOrNull());
 
         List<ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability> rows =
                 new ArrayList<>();
