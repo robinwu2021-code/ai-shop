@@ -41,6 +41,7 @@ export const merchantMock: Pick<ShopApi,
   | "myStores"
   | "reviewList"
   | "questionList"
+  | "myFission"
   | "askQuestion"
   | "toggleReviewLike"
 > = {
@@ -267,6 +268,27 @@ export const merchantMock: Pick<ShopApi,
    * 商品问答。mock 自己存一份 —— 「提问 → 待回答 → 答完才出现」这条链路
    * 在 mock 下也要走得通，否则端上那段空态永远看不到。
    */
+  /**
+   * 邀请有礼。**mock 里默认有一场活动在跑** —— 要验的正是「有活动时那一屏长什么样」，
+   * 而线上此刻一场都没建（`mkt_fission_campaign` 0 行）。
+   * 额度取方案 §7.2 建议的那套：双方各 1 张「满 60 减 8」。
+   */
+  async myFission() {
+    return delay({
+      fissionNo: "FS-MOCK-1",
+      name: "邀请有礼",
+      inviterCount: 1,
+      inviteeCount: 1,
+      couponTitle: "满 60 减 8",
+      faceMinor: 800,
+      thresholdMinor: 6000,
+      myInvited: 2,
+      // 刻意与 myInvited 不等：奖励按首单发，两个数不一样才是常态，
+      // 相等的话端上那句「其中 N 人已下单」永远看不出差别
+      myConverted: 1,
+    });
+  },
+
   async questionList(goodsNo, limit) {
     const list = mockQuestions
       .filter((x) => x.goodsNo === goodsNo && x.status === "ANSWERED")

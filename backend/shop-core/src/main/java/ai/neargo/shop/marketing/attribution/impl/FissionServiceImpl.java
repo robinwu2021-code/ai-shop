@@ -143,6 +143,59 @@ public class FissionServiceImpl implements FissionService {
                 IsoTime.toIso(c.getCreatedAt()));
     }
 
+    /**
+     * C 端的「邀请有礼」（§3.1）。
+     *
+     * <p><b>只认在跑的活动，且只取一个</b>：同时开两场的话端上没法回答「我得几张」——
+     * 取最新那一场，与运营端列表的排序同源。一场都没开就是 empty，端上整条入口不出现。
+     */
+    @Override
+    public java.util.Optional<MyFissionVO> myFission(String userNo) {
+        var enabled = list(true);
+        if (enabled.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        CampaignVO c = enabled.get(0);
+        /*
+         * 券模板的名字与面值**要说出来**：页面上写「各得 1 张券」等于没说，
+         * 用户问的是「得的是什么券、能省多少」。取不到模板时给空名与 0 ——
+         * 不拦整条：活动还在，只是这一行描述不出来（启用时已经校验过模板存在）。
+         */
+        var coupon = couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.marketing.coupon.entity.MktCoupon>lambdaQuery()
+                .eq(ai.neargo.shop.marketing.coupon.entity.MktCoupon::getCouponNo, c.couponNo())
+                .last("limit 1"));
+
+        long mine = countMine(c.fissionNo(), userNo, false);
+        long mineConverted = countMine(c.fissionNo(), userNo, true);
+        return java.util.Optional.of(new MyFissionVO(
+                c.fissionNo(), c.name(), c.inviterCount(), c.inviteeCount(),
+                coupon == null ? "" : coupon.getTitle(),
+                coupon == null || coupon.getFaceMinor() == null ? 0L : coupon.getFaceMinor(),
+                coupon == null || coupon.getThresholdMinor() == null ? 0L : coupon.getThresholdMinor(),
+                (int) mine, (int) mineConverted));
+    }
+
+    /**
+     * 我邀到的人数。
+     *
+     * <p><b>不带数据域</b>：台账是平台级的，而 C 端用户是 SELF 维度 ——
+     * 带上的话查出来恒为空集，而空集与「一个都没邀到」看起来一模一样
+     * （与 {@link #countInvites} 同一条理由）。
+     */
+    private long countMine(String fissionNo, String userNo, boolean convertedOnly) {
+        if (userNo == null || userNo.isBlank()) {
+            return 0;
+        }
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                inviteMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.marketing.attribution.entity.MktFissionInvite>lambdaQuery()
+                        .eq(ai.neargo.shop.marketing.attribution.entity.MktFissionInvite::getFissionNo, fissionNo)
+                        .eq(ai.neargo.shop.marketing.attribution.entity.MktFissionInvite::getInviterNo, userNo)
+                        .isNotNull(convertedOnly,
+                                ai.neargo.shop.marketing.attribution.entity.MktFissionInvite::getOrderNo)));
+    }
+
     /** 台账计数。{@code convertedOnly} = 只数已回填首单的（= 转化）。 */
     private long countInvites(String fissionNo, boolean convertedOnly) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->

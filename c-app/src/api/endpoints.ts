@@ -207,6 +207,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
    * 活动下架 / 抢光 / 过期之后，券从前者消失，而它还在用户手里。
    */
   myCoupons: { method: "GET", path: "/mp/coupon/mine", auth: true, summary: "我领到的券" },
+  // 邀请有礼（§3.1）：当前活动 + 我邀到了几个。没有活动时后端返回 null
+  myFission: { method: "GET", path: "/mp/fission", auth: true, summary: "邀请有礼" },
   /*
    * 最优券试算。**不可用的券也返回并带原因** —— 下单页的优惠面板靠它，
    * 少了它只能自己按门槛猜，而「适用范围」这类规则端上根本算不了。

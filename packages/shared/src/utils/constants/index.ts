@@ -673,6 +673,8 @@ export const ROUTES = {
   order: "/pages/order/index",
   afterSale: "/pages/after-sale/index",
   coupons: "/pages/coupons/index",
+  /** 邀请有礼（§3.1）。没有在跑的活动时「我的」页不显示这条入口 */
+  invite: "/pages/invite/index",
   // 出示券码（原型 s25）：到店出示的券从「我的券」点进来
   couponCode: "/pages/coupon-code/index",
   myMemberships: "/pages/my-memberships/index",

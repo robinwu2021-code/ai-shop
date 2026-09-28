@@ -161,6 +161,21 @@ export default {
     changeRule: "Free to reschedule up to {n} hours before",
   },
   /** 我的收藏（原型 g08）*/
+  invite: {
+    entryHint: "{n} invited",
+    title: "Invite & earn",
+    none: "No invite campaign is running right now",
+    rewardCut: "a {n}-off voucher on orders over {m}",
+    rewardAny: "a {n} voucher, no minimum",
+    rule: "Once your friend places their first order, they get {a} and you get {b}",
+    invited: "Invited",
+    converted: "Ordered",
+    share: "Share with a friend",
+    copy: "Copy invite link",
+    copied: "Link copied",
+    tip: "Your voucher lands in your wallet once the friend's first order is placed",
+    shareTitle: "Shop with me — we both get {n}",
+  },
   favorites: {
     title: "Saved",
     goodsTab: "Items {n}",

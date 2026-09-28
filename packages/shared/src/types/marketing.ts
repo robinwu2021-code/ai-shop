@@ -666,3 +666,34 @@ export interface CouponRedeemResult {
   /** 为真 = 店员**连点了两下**（3 秒窗口内），不是第二次核销 —— 报错会让他以为没成功，于是再按一次 */
   duplicated: boolean;
 }
+
+/**
+ * 邀请有礼（`GET /mp/fission`）：当前在跑的活动 + 我自己邀到了几个。
+ *
+ * **没有在跑的活动时后端返回 null**，端上据此整条入口不显示 ——
+ * 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
+ */
+export interface MyFission {
+  fissionNo: string;
+  /** 活动名，运营配的 */
+  name: string;
+  /** 邀请人得几张 */
+  inviterCount: number;
+  /** 被邀请人得几张 */
+  inviteeCount: number;
+  /** 奖励券的名字。页面要说得出「得的是什么」，只说「得 1 张券」等于没说 */
+  couponTitle: string;
+  /** 券面值（分）；折扣券为 0 */
+  faceMinor: number;
+  /** 使用门槛（分）；0 = 无门槛 */
+  thresholdMinor: number;
+  /** 我邀到的人数 */
+  myInvited: number;
+  /**
+   * 其中完成首单的人数。
+   *
+   * **奖励是按首单发的**，所以这两个数要并列摆出来 ——
+   * 只给 myInvited 的话，用户会问「我邀了 3 个怎么只得 1 张」。
+   */
+  myConverted: number;
+}

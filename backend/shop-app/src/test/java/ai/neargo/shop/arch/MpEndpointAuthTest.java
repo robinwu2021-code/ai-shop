@@ -126,6 +126,8 @@ class MpEndpointAuthTest {
             "POST /mp/review/{reviewNo}/like",
             // 提问要记是谁问的（运营回答时要能回到人），所以必须登录
             "POST /mp/question",
+            // 「我邀到了几个」——没有「我」就没有答案（§3.1）
+            "GET /mp/fission",
             "POST /mp/risk/appeal",
             "POST /mp/store/{merchantNo}/enter",
             // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）

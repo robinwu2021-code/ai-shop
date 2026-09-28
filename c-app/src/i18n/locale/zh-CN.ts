@@ -165,6 +165,25 @@ export default {
     changeRule: "开始前 {n} 小时可免费改期",
   },
   /** 我的收藏（原型 g08）*/
+  invite: {
+    /** `{n}` 是已邀请人数 */
+    entryHint: "已邀请 {n} 人",
+    title: "邀请有礼",
+    none: "当前没有在进行的邀请活动",
+    /** `{m}` 门槛 `{n}` 面值 */
+    rewardCut: "满 {m} 减 {n} 的券",
+    rewardAny: "{n} 无门槛券",
+    /** `{a}` 新朋友得几张 `{b}` 我得几张 */
+    rule: "新朋友首单后，他得 {a} 张，你得 {b} 张",
+    invited: "已邀请",
+    converted: "其中已下单",
+    share: "分享给好友",
+    copy: "复制邀请链接",
+    copied: "链接已复制",
+    tip: "新朋友完成首单后，奖励券会自动发到你的券包",
+    /** `{n}` 是奖励说明 */
+    shareTitle: "一起来买，各得{n}",
+  },
   favorites: {
     title: "我的收藏",
     goodsTab: "商品 {n}",

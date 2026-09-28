@@ -8,6 +8,7 @@ import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PhoneCapable,
   Question,
+  MyFission,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
@@ -264,6 +265,7 @@ export const httpApi: ShopApi = {
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
+  myFission: () => call<MyFission | null>("myFission"),
   questionList: (goodsNo, limit) =>
     call<Question[]>("questionList", { goodsNo }, limit == null ? undefined : { limit }),
   askQuestion: (goodsNo, content) => call<Question>("askQuestion", undefined, { goodsNo, content }),

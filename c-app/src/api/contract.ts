@@ -54,6 +54,7 @@ import type {
   RegionOption,
   ReviewFilter,
   Question,
+  MyFission,
 } from "@shared/types";
 
 export interface PayMethodList {
@@ -521,6 +522,14 @@ export interface ShopApi {
    *
    * 没回答的不下发：一排没人答的问题传达的是「这家店不管事」，比没有问答区更糟。
    */
+  /**
+   * 邀请有礼：当前在跑的活动 + 我邀到了几个（§3.1）。
+   *
+   * **没有在跑的活动时返回 null** —— 端上据此整条入口不显示，
+   * 不给一个点进去说「暂无活动」的入口。
+   */
+  myFission(): Promise<MyFission | null>;
+
   questionList(goodsNo: string, limit?: number): Promise<Question[]>;
 
   /** 提问。要登录 —— 运营回答时要能回到问的那个人。落库即待回答 */

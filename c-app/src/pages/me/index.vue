@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MasterData, MerchantApplyStatus, MerchantSubject } from "@shared/types";
+import type { MasterData, MerchantApplyStatus, MerchantSubject, MyFission } from "@shared/types";
 // 我的：登录入口 + 归属信息 + 外观与语言。
 // 列表项之间用间距分块，不用分隔线（扁平色块风格）。
 import { computed, ref } from "vue";
@@ -102,6 +102,16 @@ function gotoCoupons() {
   uni.navigateTo({ url: ROUTES.coupons });
 }
 
+/**
+ * 邀请有礼（§3.1）。**取不到就当没有活动** —— 这一条是锦上添花，
+ * 不能因为它把「我的」整页点亮成失败态（领券条同一条取舍）。
+ */
+const fission = ref<MyFission | null>(null);
+
+function gotoInvite() {
+  uni.navigateTo({ url: ROUTES.invite });
+}
+
 function gotoCards() {
   uni.navigateTo({ url: ROUTES.cards });
 }
@@ -199,6 +209,8 @@ onShow(() => {
     api.myMerchantApply().then((a) => (applyStatus.value = a)).catch(() => {});
     // 只取一个数 —— 拉整个列表数未读是把带宽当角标用
     api.unreadMessages().then((n) => (unread.value = n)).catch(() => {});
+    // 没有在跑的活动时后端返回 null，那条入口就整条不显示
+    api.myFission().then((f) => (fission.value = f)).catch(() => (fission.value = null));
   } else {
     /*
      * **未登录必须清零**：这一条此前写在 isLogin 块外面 ——
@@ -207,6 +219,8 @@ onShow(() => {
      * 不清零的话，登出之后旧数字还挂在那儿。
      */
     unread.value = 0;
+    // 登出之后不该还挂着别人的邀请进度
+    fission.value = null;
   }
   if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
 });
@@ -274,6 +288,17 @@ onShow(() => {
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
         <text class="txt-caption cell__value">{{ $t("coupon.entryHint") }}</text>
+      </view>
+      <!--
+        邀请有礼（§3.1）。**没有在跑的活动时整条不出现** ——
+        一个点进去说「暂无活动」的入口比没有入口更糟。
+        右侧显示的是「已邀请 N 人」而不是活动名：他来这一屏是想知道自己的进度。
+      -->
+      <view v-if="fission" class="sh-cell sh-row sh-row--between" @tap="gotoInvite">
+        <text class="txt-body cell__label">{{ $t("invite.title") }}</text>
+        <text class="txt-caption cell__value sh-num">
+          {{ $t("invite.entryHint", { n: fission.myInvited }) }}
+        </text>
       </view>
       <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoMemberships">
