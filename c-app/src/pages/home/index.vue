@@ -298,7 +298,7 @@ onShareAppMessage(() =>
 
       未登录时也显示：这条提示的作用恰恰是告诉还没注册的人「注册下单有券」。
     -->
-    <view v-if="invitedBy && !inviteTipClosed" class="sh-notice block sh-row invtip">
+    <view v-if="invitedBy && !inviteTipClosed" class="sh-notice sh-row invtip">
       <text class="txt-caption sh-fill">{{ $t("home.invitedTip") }}</text>
       <text class="txt-caption sh-muted invtip__x" @tap="inviteTipClosed = true">✕</text>
     </view>

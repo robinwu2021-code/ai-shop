@@ -422,9 +422,9 @@ onShow(() => {
       而那里什么都没有，看起来像是没提交成功。
     -->
     <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
-      <text class="txt-body block">{{ $t("merchant.applyDoneBody") }}</text>
-      <view class="sh-btn block" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
-      <view class="sh-btn sh-btn--muted block" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
+      <text class="txt-body block done__body">{{ $t("merchant.applyDoneBody") }}</text>
+      <view class="sh-btn done__btn" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
+      <view class="sh-btn sh-btn--muted done__btn" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
     </sh-sheet>
 
     <!-- 设置：与生意无关，放最后 -->
@@ -551,6 +551,16 @@ onShow(() => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+/* 报名已提交那一屏：说明与两颗按钮之间要有间距 —— `.sh-btn` 自己是 display:block
+   但不带外边距，而模板上那个 `block` 只是 UnoCSS 的 display 工具类，什么间距都不给。
+   此前三件东西是贴死在一起的。 */
+.done__body {
+  margin-bottom: 16rpx;
+}
+.done__btn {
+  margin-top: 16rpx;
+}
+
 /* 提交按钮下面那两行：一句说下一步在哪，一行电话。居中、弱化，不跟按钮抢。
    **不用 flex**：两行文字不需要一个横排容器，而 `display:flex + align-items:center + gap`
    这个形状会被当成自造的「横排行」（库里那件是 .sh-row，语义对不上）。
