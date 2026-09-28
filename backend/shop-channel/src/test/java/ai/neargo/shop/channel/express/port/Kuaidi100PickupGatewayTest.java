@@ -62,4 +62,14 @@ class Kuaidi100PickupGatewayTest {
         assertThat(Kuaidi100PickupGateway.CODES.keySet()).allMatch(ExpressCompanies::isValid);
         assertThat(Kuaidi100PickupGateway.CODES).doesNotContainKey("SF");
     }
+
+    @Test
+    @DisplayName("★ 600 / 601 是平台账户的事（余额不足、未开通），不能把「KEY已过期」原话丢给商家")
+    void accountErrorsAreTranslated() throws Exception {
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        assertThat(Kuaidi100PickupGateway.reason(json.readTree("{\"returnCode\":\"601\",\"message\":\"KEY已过期\"}"), "x"))
+                .isEqualTo("平台快递账户余额不足或未开通，请联系平台");
+        assertThat(Kuaidi100PickupGateway.reason(json.readTree("{\"returnCode\":\"400\",\"message\":\"收件地址有误\"}"), "x"))
+                .as("其余照原话").isEqualTo("收件地址有误");
+    }
 }

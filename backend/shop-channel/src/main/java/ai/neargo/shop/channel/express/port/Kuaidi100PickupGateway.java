@@ -161,7 +161,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
         try {
             JsonNode resp = post("bOrder", p.toString(), Duration.ofSeconds(10), cmd.sandbox());
             if (!ok(resp)) {
-                String msg = resp.path("message").asText("下单失败");
+                String msg = reason(resp, "下单失败");
                 log.warn("[kd100] 下单被拒 no={} code={} msg={}", cmd.thirdOrderNo(),
                         resp.path("returnCode").asText(), msg);
                 return Booked.fail(msg);
@@ -186,7 +186,7 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
         try {
             JsonNode resp = post("cancel", p.toString(), Duration.ofSeconds(10), sandbox);
             if (!ok(resp)) {
-                return Booked.fail(resp.path("message").asText("取消失败"));
+                return Booked.fail(reason(resp, "取消失败"));
             }
             return new Booked(true, taskId, providerOrderId, null, resp.path("message").asText(null));
         } catch (Exception e) {
@@ -237,6 +237,19 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
 
     static String requestSign(String param, String t, String key, String secret) {
         return md5Upper(param + t + key + secret);
+    }
+
+    /**
+     * 通道的原话给商家看，但 600 / 601 例外：快递100 对「账户余额不足、产品未开通」回的是
+     * 「非法用户」「KEY已过期」—— 商家读到会以为是自己填错了什么，而这是平台账户的事
+     * （2026-09-28 首次接通时撞上：签名、key 都对，余额 0 元、产品未开通）。
+     */
+    static String reason(JsonNode resp, String fallback) {
+        String code = resp.path("returnCode").asText("");
+        if ("600".equals(code) || "601".equals(code)) {
+            return "平台快递账户余额不足或未开通，请联系平台";
+        }
+        return resp.path("message").asText(fallback);
     }
 
     private static boolean ok(JsonNode resp) {
