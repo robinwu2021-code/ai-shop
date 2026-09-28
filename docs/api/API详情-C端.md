@@ -1393,12 +1393,12 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
-| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
-| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 否 | 主体类型。个人 → 个体户 → 企业，门槛前低后高。 **选填**（2026-09-28）：C 端报名这一屏不再问它。它受行业白名单管控， 端上选错要到进件那一步才炸，而报名的人多半分不清「个人经营者」与「个体工商户」。 后端收到空时 `requireSubjectAllowedByIndustry` 直接放行（canonical == null 即 return）， 主体由运营在审核核营业执照时定。B 端代填仍然传 —— 那一侧填表的是运营自己。 |
+| `contactName` | `string` | 否 | 联系人姓名。审核要打电话找人。 **选填**（2026-09-28）：C 端只问手机号 —— 拨过去自然知道是谁， 多一格输入换不来一条审核用得上的信息。后端不校验。 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
 | `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
-| `desc` | `string` | 是 | 店铺简介 |
+| `desc` | `string` | 否 | 店铺简介。**选填**（2026-09-28）：C 端报名不问，通过后在商家版 App 里补 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
 | `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
@@ -1423,7 +1423,8 @@
 | `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
-| `category` | `string` | 是 | 主营类目 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号（V353）。后端 `MerchantApplyVO` 在发，契约此前没接。 **端上不展示**：C 端报名这一屏已经不问它了（规则只在官网与企微里出现）， 声明它是为了驳回后回填不把这一格丢掉 —— 发奖靠这个号，丢了就找不到推荐人。 |
+| `category` | `string` | 是 | 主营类目。C 端报名以「经营范围」的说法出现 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
@@ -1457,7 +1458,8 @@
 | `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
-| `category` | `string` | 是 | 主营类目 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号（V353）。后端 `MerchantApplyVO` 在发，契约此前没接。 **端上不展示**：C 端报名这一屏已经不问它了（规则只在官网与企微里出现）， 声明它是为了驳回后回填不把这一格丢掉 —— 发奖靠这个号，丢了就找不到推荐人。 |
+| `category` | `string` | 是 | 主营类目。C 端报名以「经营范围」的说法出现 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
@@ -3452,12 +3454,12 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 拟用店铺名 |
-| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
-| `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 否 | 主体类型。个人 → 个体户 → 企业，门槛前低后高。 **选填**（2026-09-28）：C 端报名这一屏不再问它。它受行业白名单管控， 端上选错要到进件那一步才炸，而报名的人多半分不清「个人经营者」与「个体工商户」。 后端收到空时 `requireSubjectAllowedByIndustry` 直接放行（canonical == null 即 return）， 主体由运营在审核核营业执照时定。B 端代填仍然传 —— 那一侧填表的是运营自己。 |
+| `contactName` | `string` | 否 | 联系人姓名。审核要打电话找人。 **选填**（2026-09-28）：C 端只问手机号 —— 拨过去自然知道是谁， 多一格输入换不来一条审核用得上的信息。后端不校验。 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
 | `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
-| `desc` | `string` | 是 | 店铺简介 |
+| `desc` | `string` | 否 | 店铺简介。**选填**（2026-09-28）：C 端报名不问，通过后在商家版 App 里补 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
 | `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
@@ -3493,7 +3495,8 @@
 | `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
 | `contactName` | `string` | 是 | 联系人姓名 |
 | `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
-| `category` | `string` | 是 | 主营类目 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号（V353）。后端 `MerchantApplyVO` 在发，契约此前没接。 **端上不展示**：C 端报名这一屏已经不问它了（规则只在官网与企微里出现）， 声明它是为了驳回后回填不把这一格丢掉 —— 发奖靠这个号，丢了就找不到推荐人。 |
+| `category` | `string` | 是 | 主营类目。C 端报名以「经营范围」的说法出现 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
 | `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
