@@ -421,7 +421,6 @@ export default {
     noRating: "暂无评价",
     reply: "商家回复：",
     openShop: "我也想开店",
-    openShopSub: "不收入驻费与年费，个体户 / 企业都能开",
     apply: "商家入驻",
     hours: "营业时间",
     goodsTab: "在售商品 {n}",

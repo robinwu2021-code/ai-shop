@@ -399,13 +399,15 @@ onShow(() => {
       看不见它。文案也从「商家入驻」换成「我也想开店」：前者是平台视角的流程名，
       后者是他心里那句话。
     -->
-    <view v-if="merchantApplyVisible(config.features)" class="sh-card open-shop" @tap="applyMerchant">
-      <view class="sh-row sh-row--between">
-        <text class="txt-title open-shop__title">{{ $t("merchant.openShop") }}</text>
-        <!-- 有申请时这里是审核状态（那是状态，要显示）；没申请时不占位 -->
-        <text v-if="applyStatus" class="txt-caption open-shop__status">{{ applyStatusText }}</text>
-      </view>
-      <text class="txt-caption open-shop__sub">{{ $t("merchant.openShopSub") }}</text>
+    <view v-if="merchantApplyVisible(config.features)" class="sh-card sh-row sh-row--between open-shop"
+          @tap="applyMerchant">
+      <text class="txt-title open-shop__title">{{ $t("merchant.openShop") }}</text>
+      <!--
+        有申请时这里是审核状态（那是状态，要显示）；没申请时给一个进入指示。
+        **不配副标题** —— 上面刚把整页的解释文案删干净，这里再写一句
+        「不收入驻费与年费…」就是同一个毛病。标题自己说得清。
+      -->
+      <text class="txt-caption open-shop__status">{{ applyStatus ? applyStatusText : "›" }}</text>
     </view>
 
     <!--
@@ -603,11 +605,6 @@ onShow(() => {
   background: var(--sh-primary-tint);
 }
 .open-shop__title {
-  color: var(--sh-primary-text);
-}
-.open-shop__sub {
-  display: block;
-  margin-top: 8rpx;
   color: var(--sh-primary-text);
 }
 .open-shop__status {

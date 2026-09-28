@@ -388,7 +388,6 @@ export default {
     noRating: "No reviews yet",
     reply: "Seller:",
     openShop: "I want to open a shop",
-    openShopSub: "No onboarding or annual fee — sole traders and companies welcome",
     apply: "Sell with us",
     hours: "Opening hours",
     goodsTab: "Products {n}",

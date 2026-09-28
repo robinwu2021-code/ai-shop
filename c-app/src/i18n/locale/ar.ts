@@ -388,7 +388,6 @@ export default {
     noRating: "لا تقييمات بعد",
     reply: "رد التاجر:",
     openShop: "أريد فتح متجر",
-    openShopSub: "بدون رسوم انضمام أو سنوية — للأفراد والشركات",
     apply: "انضم كتاجر",
     hours: "ساعات العمل",
     goodsTab: "المنتجات {n}",
