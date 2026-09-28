@@ -49,12 +49,15 @@ public class MpCatalogController {
     private final ai.neargo.shop.platform.OpsService opsService;
     private final ai.neargo.shop.platform.RegionService regionService;
     private final ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService;
+    /** 海报要的店铺码（§7.3）。一店一码、生成一次落库复用 */
+    private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
                                ai.neargo.shop.platform.OpsService opsService,
                                ai.neargo.shop.platform.RegionService regionService,
-                               ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService) {
+                               ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService,
+                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
@@ -62,6 +65,7 @@ public class MpCatalogController {
         this.opsService = opsService;
         this.goodsFavoriteService = goodsFavoriteService;
         this.regionService = regionService;
+        this.storeCodeService = storeCodeService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -343,6 +347,31 @@ public class MpCatalogController {
         long onSale = goodsService.list(new GoodsService.GoodsQuery(
                 null, null, merchantNo, null, null, null, 1, 1)).total();
         return m.withGoodsCount((int) onSale);
+    }
+
+    /**
+     * 这家店的小程序码（海报要用，§7.3）。**游客可见** —— 海报本来就是发出去给陌生人看的。
+     *
+     * <p><b>码是店铺码，不带邀请人。</b> {@code wxacode.getUnlimited} 生成的是
+     * <b>永久码且每个 appid 总量有限</b>（十万级），所以 {@code StoreCodeService} 的做法是
+     * 一店一码、生成一次落库复用。把 {@code inviterNo} 编进 scene 意味着「每个用户一张永久码」，
+     * 用户一多就把额度烧穿 —— 而烧穿之后<b>新入驻的商家再也拿不到店铺码</b>，
+     * 代价落在完全无关的地方。所以海报归因到<b>店</b>，邀请归因走小程序内转发那条路。
+     *
+     * <p>放在这个控制器里而不是 {@code MpStoreController}：那一条的资源是 store，
+     * 而这条挂在 merchant 下（与 {@code GET /mp/merchant/&#123;merchantNo&#125;} 同一资源）——
+     * 放错了会让那个控制器多装一种资源，闸门当场报。
+     *
+     * <p>通道未开启或生成失败时 {@code imageBase64} 为 <b>null</b> ——
+     * 端上据此画一张不带码的海报，而不是卡在那里等一张永远来不了的图。
+     */
+    @GetMapping("/mp/merchant/{merchantNo}/acode")
+    public StoreAcode merchantAcode(@PathVariable String merchantNo) {
+        return new StoreAcode(merchantNo, storeCodeService.acodeBase64(merchantNo, null));
+    }
+
+    /** @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）；通道未开启时为 null */
+    public record StoreAcode(String merchantNo, String imageBase64) {
     }
 
     private Integer toE6(Double degree) {

@@ -69,30 +69,6 @@ public class MpStoreController {
      * <p>埋点<b>不影响本接口的成败</b>：{@code record} 内部吞掉一切异常。
      * 商家印出去的贴纸不能因为一次埋点写失败就扫不进来。
      */
-    /**
-     * 这家店的小程序码（海报要用，§7.3）。**游客可见** —— 海报本来就是发出去给陌生人看的。
-     *
-     * <p><b>码是店铺码，不带邀请人。</b> {@code wxacode.getUnlimited} 生成的是
-     * <b>永久码且每个 appid 总量有限</b>（十万级），所以 {@code StoreCodeService} 的做法是
-     * 一店一码、生成一次落库复用。把 {@code inviterNo} 编进 scene 意味着「每个用户一张永久码」，
-     * 用户一多就把额度烧穿 —— 而烧穿之后<b>新入驻的商家再也拿不到店铺码</b>，
-     * 代价落在完全无关的地方。
-     *
-     * <p>所以海报承担的是「朋友圈曝光 → 进店」，归因到<b>店</b>；
-     * 邀请归因（{@code inviterNo}）走小程序内转发那条路。这是取舍，不是疏漏。
-     *
-     * <p>通道未开启或生成失败时 {@code imageBase64} 为 <b>null</b> ——
-     * 端上据此画一张不带码的海报，而不是卡在那里等一张永远来不了的图。
-     */
-    @GetMapping("/mp/merchant/{merchantNo}/acode")
-    public StoreAcode acode(@org.springframework.web.bind.annotation.PathVariable String merchantNo) {
-        return new StoreAcode(merchantNo, storeCodeService.acodeBase64(merchantNo, null));
-    }
-
-    /** @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）；通道未开启时为 null */
-    public record StoreAcode(String merchantNo, String imageBase64) {
-    }
-
     @GetMapping("/mp/store/by-code")
     public StoreHomeVO byCode(@RequestParam String storeCode,
                               @RequestParam(required = false) String deviceId,
