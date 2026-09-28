@@ -4175,7 +4175,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `carrier` | `string` | 是 | 微信 delivery_id |
-| `weightKg` | `number` | 是 | — |
+| `weightKg` | `number` | 是 | 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 |
 
 **出参**（`data`）
 
@@ -6850,7 +6850,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `carrier` | `string` | 是 | 微信 delivery_id |
-| `weightKg` | `number` | 是 | — |
+| `weightKg` | `number` | 是 | 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 |
 
 ### BusinessMode
 

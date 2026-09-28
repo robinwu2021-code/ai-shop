@@ -9846,6 +9846,7 @@ components:
       properties: 
         weightKg: 
           type: "number"
+          description: "申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准"
       required: 
         - "weightKg"
       additionalProperties: false
@@ -9858,6 +9859,7 @@ components:
           description: "微信 delivery_id"
         weightKg: 
           type: "number"
+          description: "申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准"
       required: 
         - "carrier"
         - "weightKg"
@@ -13883,6 +13885,7 @@ paths:
           required: true
           schema: 
             type: "number"
+            description: "申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准"
       responses: 
         "200": 
           description: "OK"
