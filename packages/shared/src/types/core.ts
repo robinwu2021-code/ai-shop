@@ -53,3 +53,19 @@ export interface PageQuery {
  * 后端从不下发，已删（见 ops-web/lib/types/order.ts 的注释）。
  */
 export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
+
+/**
+ * 冷启动配置（`GET /mp/config/bootstrap`）。
+ *
+ * `features` 里 **yml 与运营端那一屏已经在后端合流**，端上只认这一份 ——
+ * 有它才谈得上「运营后台改一下开关」对买家侧生效（此前端上一次都没调过这条端点，
+ * 拿到的只有编译期常量，改一个开关要重新发版、小程序还要重新提审）。
+ */
+export interface BootstrapConfig {
+  defaultSkin: string;
+  /** 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` */
+  features: Record<string, boolean>;
+  /** 低于它要提示升级 */
+  minAppVer: string;
+  serviceHours: string;
+}

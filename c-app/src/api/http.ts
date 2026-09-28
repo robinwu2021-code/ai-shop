@@ -10,6 +10,7 @@ import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSea
   Question,
   MyFission,
   StoreAcode,
+  BootstrapConfig,
 } from "@shared/types";
 // 入参的 wire 契约。satisfies 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现。
@@ -266,9 +267,7 @@ export const httpApi: ShopApi = {
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
-  bootstrapConfig: () => call<{
-    defaultSkin: string; features: Record<string, boolean>; minAppVer: string; serviceHours: string;
-  }>("bootstrapConfig"),
+  bootstrapConfig: () => call<BootstrapConfig>("bootstrapConfig"),
   myFission: () => call<MyFission | null>("myFission"),
   merchantAcode: (merchantNo) =>
     call<StoreAcode>("merchantAcode", { merchantNo }),

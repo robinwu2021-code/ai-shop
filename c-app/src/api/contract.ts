@@ -56,6 +56,7 @@ import type {
   Question,
   MyFission,
   StoreAcode,
+  BootstrapConfig,
 } from "@shared/types";
 
 export interface PayMethodList {
@@ -535,12 +536,7 @@ export interface ShopApi {
    * `features` 里 yml 与运营端那一屏已经在后端合流，端上只认这一份 ——
    * 有它才谈得上「运营后台改一下开关」对买家侧生效。
    */
-  bootstrapConfig(): Promise<{
-    defaultSkin: string;
-    features: Record<string, boolean>;
-    minAppVer: string;
-    serviceHours: string;
-  }>;
+  bootstrapConfig(): Promise<BootstrapConfig>;
 
   myFission(): Promise<MyFission | null>;
 
