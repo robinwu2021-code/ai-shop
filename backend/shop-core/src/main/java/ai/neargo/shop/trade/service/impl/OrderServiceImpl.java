@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
@@ -125,6 +126,9 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 取买家绑定的社区，下单时固化到主单 —— 运营按社区做数据域隔离 */
     private final ai.neargo.shop.spi.user.UserQueryPort userPort;
+    /** 快递运费模板（TDD-快递100商家寄件 §8）。可空：只装了交易域的测试切片里没有履约域 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private FreightPort freightPort;
     /** 挑「服务这个社区的最近门店」时要它给社区坐标 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityPort;
     private final IdempotencyService idempotency;
@@ -301,8 +305,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(CreateOrderCommand cmd) {
-        Split split = split(cmd);
-        Map<String, String> stores = storesOf(cmd, split);
+        Split raw = split(cmd);
+        Map<String, String> stores = storesOf(cmd, raw);
+        // 运费计进额度判断：快递单的「这一单要付多少」含运费（TDD-快递100商家寄件 §8）
+        Split split = withFreight(raw, cmd, stores, SecurityUtils.currentUserNo());
 
         List<ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability> rows =
                 new ArrayList<>();
@@ -387,7 +393,9 @@ public class OrderServiceImpl implements OrderService {
         String userNo = SecurityUtils.currentUserNo();
         // 团价在预览就要算进去：确认页显示的是「参团 ¥8」，提交后不能变成原价
         Split raw = split(cmd);
-        Split split = repriced(raw, groupQuoteOf(cmd, raw, userNo));
+        Split priced = repriced(raw, groupQuoteOf(cmd, raw, userNo));
+        // 快递运费按模板算进预览：确认页显示的运费就是提交后要付的（TDD-快递100商家寄件 §8）
+        Split split = withFreight(priced, cmd, storesOf(cmd, priced), userNo);
         /*
          * **预览也要把配到的自提点算出来**：确认页要在**付款前**按取货点分组说清楚
          * 「本单 2 个取货点」。等到下单响应才知道就晚了 —— 那时钱已经付了。
@@ -922,6 +930,15 @@ public class OrderServiceImpl implements OrderService {
         Map<String, String> storeOfMerchant = storesOf(cmd, split);
 
         requireFulfillmentSupported(cmd.fulfillment(), split, storeOfMerchant, userNo);
+        /*
+         * 快递运费（TDD-快递100商家寄件 §8 AC15）：与预览同一个 withFreight，写进子单的 freight_amount 就是它。
+         * 收货地址命中模板的「不配送」地区：在这里拒，不让买家付完钱才发现寄不到。
+         */
+        var freightQuotes = freightQuotes(split, cmd, storeOfMerchant, userNo);
+        if (freightQuotes.values().stream().anyMatch(FreightPort.Quote::rejected)) {
+            throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
+        }
+        split = applyFreight(split, freightQuotes);
         /*
          * 支付方式的三道校验。**全部前置且只读**，不改上面任何分支的顺序 ——
          * create 是全站最要害的方法，加东西的正确姿势是「在它之前挡住」，
@@ -2041,6 +2058,56 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 快递运费（TDD-快递100商家寄件 §8）：按商家分组，每组按这家店快递通道的模板（没配用平台默认）算。
+     *
+     * <p>计费重 = Σ(规格标称重量 × 件数)；**没填重量的件每件按首重** —— 不按 0 算：
+     * 按 0 就是没填重量的货一律只收首重，商家越不填越便宜，填了反而贵。
+     * 非快递单、没有任何模板时运费为 0（与改造前一致，不编一个数）。
+     */
+    private Split withFreight(Split split, CreateOrderCommand cmd, Map<String, String> stores, String userNo) {
+        return applyFreight(split, freightQuotes(split, cmd, stores, userNo));
+    }
+
+    private Map<String, FreightPort.Quote> freightQuotes(Split split, CreateOrderCommand cmd,
+                                                         Map<String, String> stores, String userNo) {
+        if (!Fulfillments.EXPRESS.equals(cmd.fulfillment()) || freightPort == null) {
+            return Map.of();
+        }
+        String address = cmd.addressId() == null || cmd.addressId().isBlank() || userNo == null ? ""
+                : userPort.receiverOf(userNo, cmd.addressId())
+                        .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
+        Map<String, FreightPort.Quote> out = new LinkedHashMap<>();
+        for (Group g : split.groups) {
+            int weighed = 0;
+            int unweighed = 0;
+            for (Line l : g.lines()) {
+                Integer w = l.snapshot().nominalGram();
+                if (w != null && w > 0) {
+                    weighed += w * l.qty();
+                } else {
+                    unweighed += l.qty();
+                }
+            }
+            String template = merchantPort.expressTemplateNo(g.merchantNo(), stores.get(g.merchantNo())).orElse(null);
+            freightPort.quote(template, weighed, unweighed, g.goodsAmount(), address)
+                    .ifPresent(q -> out.put(g.merchantNo(), q));
+        }
+        return out;
+    }
+
+    private static Split applyFreight(Split split, Map<String, FreightPort.Quote> quotes) {
+        if (quotes.isEmpty()) {
+            return split;
+        }
+        List<Group> groups = split.groups.stream().map(g -> {
+            FreightPort.Quote q = quotes.get(g.merchantNo());
+            long fee = q == null || q.rejected() ? g.freight() : q.feeMinor();
+            return new Group(g.merchantNo(), g.merchantName(), g.lines(), fee);
+        }).toList();
+        return new Split(split.items, groups);
+    }
+
+    /**
      * 团单按团价重算每一行。**替换快照上的单价**而不是事后打折：
      * 订单行的 price / amount、子单的商品金额、满减门槛全都读它，
      * 只在一处改，预览与下单、主单与子单就不会各算出一个数。
@@ -2055,7 +2122,7 @@ public class OrderServiceImpl implements OrderService {
             return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
                     s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
                     q.groupPriceMinor(), s.available(), s.onSale(), s.fulfillments(),
-                    s.groupPriceMinor(), s.groupMinCount(), s.saleMode(), s.limitPerUser()), l.qty);
+                    s.groupPriceMinor(), s.groupMinCount(), s.saleMode(), s.limitPerUser(), s.nominalGram()), l.qty);
         }).toList();
         List<Group> groups = split.groups.stream().map(g -> new Group(g.merchantNo, g.merchantName,
                 lines.stream().filter(l -> l.snapshot.merchantNo().equals(g.merchantNo)).toList(),

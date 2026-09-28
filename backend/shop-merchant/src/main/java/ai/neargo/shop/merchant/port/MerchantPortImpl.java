@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
@@ -708,6 +709,21 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         .last("limit 1")));
         // 口径只在 StoreSenderResolver 一处：发货设置优先，没填的回落门店名 / 店主手机 / 门店地址
         return store == null ? Optional.empty() : Optional.of(senderResolver.effective(store));
+    }
+
+    @Override
+    public Optional<String> expressTemplateNo(String merchantNo, String storeNo) {
+        if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        var row = DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getChannel, Fulfillments.EXPRESS)
+                        .last("limit 1")));
+        return Optional.ofNullable(row == null ? null
+                : ai.neargo.shop.merchant.service.impl.StoreFulfillmentServiceImpl.templateNoOf(row.getConfig()));
     }
 
     @Override

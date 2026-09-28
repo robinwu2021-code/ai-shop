@@ -57,9 +57,10 @@ export function emptyPrices(): Record<CurrencyCode, string> {
 /**
  * 价格与 SKU 行的全部状态与规则。
  *
- * @param isFresh 这件货是不是生鲜 —— 只有生鲜才有「标称重量」那一格
+ * @param isFresh 这件货是不是生鲜 —— 生鲜有「标称重量」那一格（按标称预扣）
+ * @param ships   这件货走快递 —— 快递运费按规格重量算（TDD-快递100商家寄件 §8），同样要能填重量
  */
-export function usePriceRows(isFresh: Ref<boolean>) {
+export function usePriceRows(isFresh: Ref<boolean>, ships: Ref<boolean>) {
   // ── 七、价格 · 成本 · 毛利 ────────────────────────────────────────────
   //    三个市场各一套价，毛利与低于成本的告警都在这
   /**
@@ -113,8 +114,8 @@ export function usePriceRows(isFresh: Ref<boolean>) {
       { key: "cost", labelKey: "goods.fieldCost" },
       { key: "origin", labelKey: "goods.fieldOrigin" },
     ];
-    // 标称重量属于「按标称预扣」那条链，与生鲜段一起收着（见 flags.ts）
-    if (SHOW_FRESH_FIELDS && isFresh.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
+    // 标称重量：生鲜按标称预扣要它（与生鲜段一起收着，见 flags.ts）；走快递的货按它算运费
+    if ((SHOW_FRESH_FIELDS && isFresh.value) || ships.value) out.push({ key: "gram", labelKey: "goods.fieldGram" });
     return out;
   });
 

@@ -826,6 +826,8 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
       "app/communities/health-tab.tsx",
       // 详情子表：行数据取自父查询已选中的那一行，自己没有查询
       "app/finance/pay-channel-tab.tsx",
+      // 详情子表：快递100 各省报价，行数据取自已到手的草稿（生成那一下的 mutation 结果），自己没有查询
+      "app/fulfillment/freight-draft-rows.tsx",
     ];
     const offenders: string[] = [];
     for (const f of pageFiles()) {

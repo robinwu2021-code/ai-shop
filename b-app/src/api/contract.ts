@@ -199,6 +199,28 @@ export interface ShipSetting {
   defaultAddress: string;
 }
 
+/**
+ * 本店适用的运费模板（TDD-快递100商家寄件 §8 AC19）：快递通道指定了就是它，没指定是平台默认。
+ * 买家下快递单按它付运费；端上预估用 `@shared/utils/freight` 同一公式。重量克、金额分
+ */
+export interface StoreFreightTemplate {
+  templateNo: string;
+  /** 模板名，如「运城市发 · 中通快递」 */
+  name: string;
+  /** 首重（克） */
+  firstWeightGram: number;
+  /** 首重费（分） */
+  firstFee: number;
+  /** 续重单位（克） */
+  addWeightGram: number;
+  /** 每个续重单位的费用（分） */
+  addFee: number;
+  /** 满多少分包邮；0 = 不包邮 */
+  freeThreshold: number;
+  /** 地区规则：SURCHARGE 加收 surcharge 分；REJECT 不配送。按收货地址开头匹配省份 */
+  rules: { region: string; action: "REJECT" | "SURCHARGE"; surcharge: number }[];
+}
+
 /** 取件单状态：已下单 / 已接单 / 已取件 / 已签收 / 已取消 / 失败 */
 export type ExpressPickupStatus = "CREATED" | "ACCEPTED" | "PICKED" | "DONE" | "CANCELLED" | "FAILED";
 
@@ -1318,6 +1340,8 @@ export interface MerchantApi {
   mExpressPickup(orderNo: string): Promise<ExpressPickup | null>;
   /** 取件前取消 */
   mCancelExpress(orderNo: string): Promise<ExpressPickup>;
+  /** 本店适用的运费模板；平台一个模板都没配时为 null（此时快递单运费按 0 收） */
+  mFreightTemplate(storeNo: string): Promise<StoreFreightTemplate | null>;
   /** 本店发货设置（寄件人、电话、地址、默认快递公司与重量） */
   mShipSetting(storeNo: string): Promise<ShipSetting>;
   /** 改发货设置。空串 = 改回默认。要 biz:store:admin */

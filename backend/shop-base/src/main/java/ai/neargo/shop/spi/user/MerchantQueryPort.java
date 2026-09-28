@@ -147,6 +147,11 @@ public interface MerchantQueryPort {
     }
 
     /**
+     * 这家店快递通道指定的运费模板号（TDD-快递100商家寄件 §8 AC16）。没指定 / 没开快递为空 —— 用平台默认模板。
+     */
+    java.util.Optional<String> expressTemplateNo(String merchantNo, String storeNo);
+
+    /**
      * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
      *
      * <p>没标点的门店，{@code requireWithinDeliveryRadius} 那条闸直接放行 ——

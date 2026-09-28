@@ -37,6 +37,8 @@ class BizEndpointPermTest {
 
     /** 不需要授权的端点：登录相关，以及「还不是商家的人」也要能用的那几个 */
     private static final Set<String> PUBLIC = Set.of(
+            // 本店适用的运费模板：平台定的价目，不含店的经营数据；发货设置（biz:store）与商品编辑（biz:goods）都要读
+            "/biz/store/{storeNo}/freight-template",
             "/biz/regions/search",
             "/biz/regions/path",
             "/biz/geo/reverse",

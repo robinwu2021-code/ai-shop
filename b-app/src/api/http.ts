@@ -4,7 +4,7 @@ import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
 import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
   WithdrawPage, WithdrawRecord, DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
-  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting } from "./contract";
+  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
@@ -429,6 +429,8 @@ export const httpApi: MerchantApi = {
   mExpressPickup: (orderNo) => http.get<ExpressPickup | null>(buildPath(E.mExpressPickup.path, { orderNo })),
   mCancelExpress: (orderNo) => http.post<ExpressPickup>(buildPath(E.mCancelExpress.path, { orderNo }), {}),
   mShipSetting: (storeNo) => http.get<ShipSetting>(buildPath(E.mShipSetting.path, { storeNo })),
+  mFreightTemplate: (storeNo) =>
+    http.get<StoreFreightTemplate | null>(buildPath(E.mFreightTemplate.path, { storeNo })),
   mSaveShipSetting: (storeNo, body) =>
     http.put<ShipSetting>(buildPath(E.mSaveShipSetting.path, { storeNo }), body satisfies SaveShipSettingReq),
   mAppointmentSlots: (storeNo, from, to) =>

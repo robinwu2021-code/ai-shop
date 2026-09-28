@@ -1,5 +1,6 @@
 package ai.neargo.shop.fulfillment.api.ops;
 
+import ai.neargo.shop.fulfillment.service.FreightDraftService;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
@@ -35,10 +36,13 @@ public class OpsLogisticsController {
 
     private final LogisticsService logisticsService;
     private final AuditLogPort auditLogPort;
+    private final FreightDraftService freightDraftService;
 
-    public OpsLogisticsController(LogisticsService logisticsService, AuditLogPort auditLogPort) {
+    public OpsLogisticsController(LogisticsService logisticsService, AuditLogPort auditLogPort,
+                                  FreightDraftService freightDraftService) {
         this.logisticsService = logisticsService;
         this.auditLogPort = auditLogPort;
+        this.freightDraftService = freightDraftService;
     }
 
     @GetMapping("/ops/shipments")
@@ -87,6 +91,22 @@ public class OpsLogisticsController {
                 SecurityUtils.currentUserNo());
         auditLogPort.record("FREIGHT_TEMPLATE", vo.templateNo(), vo.name());
         return vo;
+    }
+
+    /**
+     * 从快递100 报价生成模板草稿（TDD-快递100商家寄件 §8 AC17）。**不保存** —— 运营在页面上核对、改过，
+     * 再走上面的保存。权限与保存同一档：生成会打 62 次快递100 查价。
+     */
+    @PostMapping("/ops/freight-templates/draft")
+    @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_RULE_UPDATE + "')")
+    public FreightDraftService.Draft draftFreightTemplate(@RequestBody FreightDraftReq req) {
+        return freightDraftService.draft(req.origin(), req.carrier(),
+                req.firstWeightGram() == null ? 1000 : req.firstWeightGram(),
+                req.addWeightGram() == null ? 1000 : req.addWeightGram());
+    }
+
+    /** @param origin 发货地址（至少到城市）；@param carrier 微信 delivery_id；重量单位克，缺省 1000 / 1000 */
+    public record FreightDraftReq(String origin, String carrier, Integer firstWeightGram, Integer addWeightGram) {
     }
 
     @PostMapping("/ops/freight-templates/{templateNo}/archive")

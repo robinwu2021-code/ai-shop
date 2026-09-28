@@ -60,6 +60,7 @@ export const storeMock: Pick<MerchantApi,
   | "mSetStorePayment"
   | "mStorePaySetting"
   | "mShipSetting"
+  | "mFreightTemplate"
   | "mSaveShipSetting"
   | "mSaveStorePaySetting"
   | "mStaffList"
@@ -457,6 +458,18 @@ export const storeMock: Pick<MerchantApi,
     // 页面传的是 merchant.storeNo；没传（"default"）时认 mock 的当前门店 —— 切店后这一页要跟着变
     const s = requireStore(storeNo === "default" ? currentStoreNo() : storeNo);
     return delay(shipSettingOf(s.storeNo, s.name, s.address ?? ""));
+  },
+  // 与后端种子 FT0001 同值：首重 1kg ¥8、续重 500g ¥2、满 ¥99 包邮、新疆加收 ¥20、西藏不配送
+  async mFreightTemplate(storeNo) {
+    requireStore(storeNo === "default" ? currentStoreNo() : storeNo);
+    return delay({
+      templateNo: "FT0001", name: "默认运费模板", firstWeightGram: 1000, firstFee: 800,
+      addWeightGram: 500, addFee: 200, freeThreshold: 9900,
+      rules: [
+        { region: "新疆维吾尔自治区", action: "SURCHARGE" as const, surcharge: 2000 },
+        { region: "西藏自治区", action: "REJECT" as const, surcharge: 0 },
+      ],
+    });
   },
   async mSaveShipSetting(storeNo, body) {
     const s = requireStore(storeNo);

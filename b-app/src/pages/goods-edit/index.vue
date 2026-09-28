@@ -28,10 +28,11 @@ import { pickSellRule } from "@/utils/sell-rule";
 import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
-import type { GoodsGuess, PayMode } from "@/api/contract";
-import { CATEGORY_TYPE, MARKETS, PAY_MODE, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
+import type { GoodsGuess, PayMode, StoreFreightTemplate } from "@/api/contract";
+import { CATEGORY_TYPE, FULFILLMENT, MARKETS, PAY_MODE, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
-import { toMajor, toMinor } from "@shared/utils/money";
+import { money, toMajor, toMinor } from "@shared/utils/money";
+import { estimateFreight } from "@shared/utils/freight";
 import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SaleMode, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
 import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 
@@ -561,6 +562,35 @@ const {
   addDetailImages, removeDetailImage, moveDetailImage, recognizeInto,
 } = useGoodsPhotos((guess) => applyGuess(guess));
 
+/**
+ * 这件货走快递（TDD-快递100商家寄件 §8）：买家按平台运费模板、按规格重量付运费 ——
+ * 于是重量那一格对非生鲜也要出现，并在旁边给出运费预估，让商家下单前就知道买家要付多少运费。
+ */
+const shipsByExpress = computed(() => fulfillments.value.includes(FULFILLMENT.EXPRESS));
+/** 本店适用的运费模板。只为预估，拉不到就不显示预估，不挡编辑 */
+const freightTpl = ref<StoreFreightTemplate | null>(null);
+async function loadFreightTpl() {
+  if (freightTpl.value || !shipsByExpress.value) return;
+  freightTpl.value = await api.mFreightTemplate(merchant.storeNo || "default").catch(() => null);
+}
+watch(shipsByExpress, (on) => { if (on) void loadFreightTpl(); }, { immediate: true });
+/** 单规格：这一件的运费预估；没填重量按首重（与下单同口径），并提示补重量 */
+const freightOne = computed(() => {
+  const t = freightTpl.value;
+  const r = rows.value[0];
+  if (!t || !r) return null;
+  const g = Number(r.nominalGram) || null;
+  return estimateFreight(t, g);
+});
+/** 多规格：各规格运费的最低到最高 */
+const freightRange = computed(() => {
+  const t = freightTpl.value;
+  if (!t || !rows.value.length) return null;
+  const fees = rows.value.map((r) => estimateFreight(t, Number(r.nominalGram) || null));
+  const vals = fees.map((f) => f.fee);
+  return { min: Math.min(...vals), max: Math.max(...vals), unweighed: fees.filter((f) => !f.weighed).length };
+});
+
 /*
  * 价格 / 成本 / 毛利 / 条码货号单位 / SKU 行 —— 整块在 `./price-rows.ts`。
  * 它只依赖「是不是生鲜」这一个外部条件，其余都是自己的事。
@@ -568,7 +598,7 @@ const {
 const {
   priceField, externalOn, rememberExternal, restoreExternal, isTextField, priceFields, extFields,
   marginOf, belowCost, avgMargin, badOrigin, rows, MARKET_CURRENCIES, market, bulk,
-} = usePriceRows(isFresh);
+} = usePriceRows(isFresh, shipsByExpress);
 /** 保存中（属于保存流程，不属于价格块） */
 const saving = ref(false);
 
@@ -2234,11 +2264,17 @@ async function save(thenSubmit = false) {
             type="digit"
           />
         </view>
-        <view v-if="SHOW_FRESH_FIELDS && isFresh" class="pr sh-row">
+        <view v-if="(SHOW_FRESH_FIELDS && isFresh) || shipsByExpress" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="txt-sub pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="txt-body pr__v sh-num" type="number" />
         </view>
+        <!-- 快递运费预估（§8 AC20）：买家寄基础价地区付多少；偏远加收与满额包邮见「发货设置」里的运费模板 -->
+        <text v-if="shipsByExpress && freightOne" class="txt-caption sh-muted freight__est">
+          {{ freightOne.weighed
+            ? $t("goods.freightEst", { v: money(freightOne.fee) })
+            : $t("goods.freightEstUnweighed", { v: money(freightOne.fee) }) }}
+        </text>
       </template>
 
       <!--
@@ -2246,6 +2282,12 @@ async function save(thenSubmit = false) {
         所以切的是「这一列看哪个字段」，任何时候都只有「一行一个规格、一个数字」。
       -->
       <template v-else>
+        <text v-if="shipsByExpress && priceField === 'gram' && freightRange" class="txt-caption sh-muted freight__est">
+          {{ freightRange.min === freightRange.max
+            ? $t("goods.freightEst", { v: money(freightRange.min) })
+            : $t("goods.freightEstRange", { a: money(freightRange.min), b: money(freightRange.max) }) }}
+          <text v-if="freightRange.unweighed">{{ $t("goods.freightEstMissing", { n: freightRange.unweighed }) }}</text>
+        </text>
         <view v-for="(r, i) in rows" :key="i" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ r.optionValues.join(" · ") }}</text>
           <text class="txt-sub pr__cur">{{ priceField === "gram" ? "g" : "￥" }}</text>
@@ -2978,5 +3020,10 @@ async function save(thenSubmit = false) {
 .cat-sheet__empty {
   padding: 40rpx 24rpx;
   text-align: center;
+}
+/* 运费预估：跟在重量下面的一行小字，与上一行对齐 */
+.freight__est {
+  display: block;
+  margin-top: 8rpx;
 }
 </style>

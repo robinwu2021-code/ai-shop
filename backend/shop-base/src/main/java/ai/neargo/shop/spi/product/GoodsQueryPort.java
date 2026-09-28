@@ -116,9 +116,22 @@ public interface GoodsQueryPort {
                        /** 销售方式（V340）。空按 NORMAL —— 与迁移默认值同一口径 */
                        String saleMode,
                        /** 每人限购（按商品，终身累计）。null / 0 = 不限 */
-                       Integer limitPerUser) {
+                       Integer limitPerUser,
+                       /** 规格标称重量（克）。快递运费按它算（TDD-快递100商家寄件 §8）；空 = 商家没填，按首重计 */
+                       Integer nominalGram) {
 
-        /** 老调用点：不带限购 = 不限 */
+        /** 不带重量的调用点：按「没填重量」处理 */
+        public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
+                           String title, String cover, String spec,
+                           String categoryType, String categoryNo,
+                           long price, int available, boolean onSale, List<String> fulfillments,
+                           Long groupPriceMinor, Integer groupMinCount, String saleMode, Integer limitPerUser) {
+            this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
+                    price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
+                    saleMode, limitPerUser, null);
+        }
+
+        /** 老调用点：不带限购 = 不限
         public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
                            String title, String cover, String spec,
                            String categoryType, String categoryNo,
@@ -126,7 +139,7 @@ public interface GoodsQueryPort {
                            Long groupPriceMinor, Integer groupMinCount, String saleMode) {
             this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
                     price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
-                    saleMode, null);
+                    saleMode, null, null);
         }
 
         /** 这件货设了每人限购 */

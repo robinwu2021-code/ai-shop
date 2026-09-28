@@ -1,5 +1,5 @@
 // 覆盖范围：履约调度（P-5.1）。实际核销动作在 B 端核销台，这里只做调度与监控。
-import type { ArrivalBatch, BatchStatus, CarrierConfig, FreightTemplate, OverdueRule, Page, RedeemStat, Shipment, SortingRow } from "@/lib/types";
+import type { ArrivalBatch, BatchStatus, CarrierConfig, FreightDraft, FreightTemplate, OverdueRule, Page, RedeemStat, Shipment, SortingRow } from "@/lib/types";
 import type { BatchQ, PageQ, ScopedQ } from "../query";
 
 export type ShipmentQ = PageQ & { status?: string; carrier?: string };
@@ -48,6 +48,11 @@ export interface FulfillmentApi {
    * 硬删会把历史订单的运费依据一起抹掉 —— 之后谁也说不清那单当时为什么收了 8 元。
    * 默认模板归档不了：归档之后新商家没有模板可用。
    */
+  /**
+   * 按发货城市从快递100 报价生成模板草稿（31 省 × 2 个重量的查价）。**不保存**。
+   * 快递100 通道没开时 70070；一个价都没查到时 70073。
+   */
+  draftFreightTemplate(v: { origin: string; carrier: string; firstWeightGram: number; addWeightGram: number }): Promise<FreightDraft>;
   archiveFreightTemplate(templateNo: string): Promise<FreightTemplate>;
   unarchiveFreightTemplate(templateNo: string): Promise<FreightTemplate>;
 

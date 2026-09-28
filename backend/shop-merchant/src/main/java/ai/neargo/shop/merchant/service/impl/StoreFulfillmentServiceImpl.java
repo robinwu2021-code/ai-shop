@@ -409,7 +409,8 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 ? null : "{\"templateNo\":\"" + templateNo + "\"}";
     }
 
-    private static String templateNoOf(String config) {
+    /** 快递通道配置里的运费模板号。门店接口（算运费）与本类同用这一份解析 */
+    public static String templateNoOf(String config) {
         if (config == null) {
             return null;
         }

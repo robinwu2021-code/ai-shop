@@ -161,6 +161,19 @@ const weightOk = computed(() => {
   return w >= 0.1 && w <= 30;
 });
 
+/**
+ * 买家付的运费与叫快递的实际运费之差（TDD-快递100商家寄件 §8 AC18）。取件后才有实际运费；测试单不算（运费是假的）。
+ * subsidy=true：买家付的不够，本店补贴；否则是结余。相等时不显示这一行。
+ */
+const freightGap = computed(() => {
+  const p = pickup.value;
+  const o = order.value;
+  if (!p || !o || p.freightMinor == null || p.sandbox) return null;
+  const diff = o.amount.freightMinor - p.freightMinor;
+  if (diff === 0) return null;
+  return { subsidy: diff < 0, amount: Math.abs(diff) };
+});
+
 /** 发货方式：叫快递上门 / 自己发货。默认叫快递 —— 它是推荐路径（平台批量价、运单号自动回填） */
 const SHIP_MODES = ["PICKUP", "SELF"] as const;
 const shipMode = ref<(typeof SHIP_MODES)[number]>("PICKUP");
@@ -329,6 +342,11 @@ onLoad((q) => {
           </text>
           <text class="sh-num is-danger">-{{ money(d.amountMinor, order.amount.currency) }}</text>
         </view>
+        <!-- 快递单买家付的运费（TDD-快递100商家寄件 §8 AC18）：按平台运费模板收，已含在应付里 -->
+        <view v-if="order.fulfillment === FULFILLMENT.EXPRESS" class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.buyerFreight") }}</text>
+          <text class="sh-num">{{ money(order.amount.freightMinor, order.amount.currency) }}</text>
+        </view>
         <view class="line total sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.amount") }}</text>
           <text class="txt-title sh-num">
@@ -387,6 +405,14 @@ onLoad((q) => {
         <view v-if="pickup.freightMinor != null" class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.expressFreight") }}</text>
           <text class="sh-num">{{ money(pickup.freightMinor) }}</text>
+        </view>
+        <!--
+          买家付的 vs 实际运费（§8 AC18）：差额由本店承担或留给本店 —— 实际运费记在本店欠款上，
+          买家付的运费随货款结算给本店。不说清这一行，商家只看到「欠了平台一笔运费」，不知道自己亏没亏。
+        -->
+        <view v-if="freightGap" class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t(freightGap.subsidy ? "order.freightSubsidy" : "order.freightSurplus") }}</text>
+          <text class="sh-num" :class="freightGap.subsidy ? 'is-danger' : ''">{{ money(freightGap.amount) }}</text>
         </view>
         <view v-if="canCancelPickup" class="sh-btn sh-btn--danger sh-mt-sm" @tap="cancelPickup">
           {{ $t("order.expressCancel") }}

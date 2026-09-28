@@ -179,6 +179,39 @@ export interface OutOfRangeRule {
   surcharge: number;
 }
 
+/** 发货城市 → 快递100 报价生成模板时，每个省的原始报价（分）。查不到价为 null */
+export interface FreightProvincePrice {
+  /** 省份简称，写进模板的地区名（按收货地址开头匹配） */
+  region: string;
+  /** 首重价（分） */
+  firstFee: number | null;
+  /** 一个续重单位的价（分） */
+  addFee: number | null;
+}
+
+/**
+ * 从快递100 报价生成的运费模板草稿（TDD-快递100商家寄件 §8 AC17）。**不落库** ——
+ * 运营核对、改过之后走 saveFreightTemplate。首重 / 续重取多数省份那一档，贵的省份写成加收，查不到价的省份不配送。
+ */
+export interface FreightDraft {
+  /** 建议的模板名，如「运城市发 · 中通快递」 */
+  name: string;
+  /** 首重（克） */
+  firstWeightGram: number;
+  /** 首重费（分） */
+  firstFee: number;
+  /** 续重单位（克） */
+  addWeightGram: number;
+  /** 每个续重单位的费用（分） */
+  addFee: number;
+  /** 地区规则：贵的省份加收、查不到价的省份不配送 */
+  outOfRange: OutOfRangeRule[];
+  /** 31 个省的原始报价，运营据此核对 */
+  rows: FreightProvincePrice[];
+  /** 查不到价的省份数 */
+  unquoted: number;
+}
+
 // ── 第三方运力配置（P-5.2.4）──────────────────────────────────────
 
 /**
