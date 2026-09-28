@@ -1,6 +1,6 @@
 # TDD-店铺码与分享
 
-状态：**边写边实施** · §3.1–3.4 已实现（2026-08-17 起）· **§3.5 / §3.6 在做（2026-09-28）**
+状态：**边写边实施** · §3.1–3.4 已实现（2026-08-17 起）· **§3.5 / §3.6 已实现（2026-09-28），nginx 待上线** —— 见 §6
 关联需求：[B 端功能清单](../../requirements/B端功能清单.md) B-3.3 分享素材 · B-11.12.6 店铺码 · [C 端功能清单](../../requirements/C端功能清单.md) C-ST-05 分享门店
 关联：[ADR-004 增长模型](../ADR/) · [小程序上线指南](./小程序上线指南.md)
 创建日期：2026-08-17
@@ -198,4 +198,63 @@ curl https://www.hxmall.top/s/SMTBA2
 
 ---
 
-确认记录：2026-08-17 用户「按建议执行 / 开工」
+## 6. §3.5 / §3.6 的实施记录（2026-09-28）
+
+### 6.1 设计 → 实现对账
+
+| TDD 里说的 | 实际落在哪 |
+|---|---|
+| `/s/{code}` 后端解析 + 302 | `portal/link/StoreShortLinkController.java`（新） |
+| 三级解析 slug → store_code → 主体 code | `StoreCodeServiceImpl.resolveTarget` 加第一段 |
+| nginx 交给后端 | `deploy/tencent/nginx/www.hxmall.top.conf`：删掉 `^~ /s/` 前缀规则、把 `s` 加进反代正则 |
+| `/s/**` 进公开链 | `SecurityConfig.publicChain` 的 securityMatcher |
+| 信封排除 `/s/` | `ApiResponseWrapper.SHORT_LINK_PATH_PREFIX`（**设计里判断错了一次，见 §3.5 第 1 条**） |
+| `mch_store.slug` + 唯一键 | `V357__store_slug.sql` · `MchStore.slug` · `schema-test.sql`（生成） |
+| 格式与保留词一份真源 | `merchant/StoreSlugs.java` |
+| 两个专门错误码 | `ErrorCode` 10465/10466 + 三份 messages + `响应格式规范.md` §3 分段表 |
+| 设代码的 /biz 端点 | `POST /biz/store/{storeNo}/slug` · `StoreAdminService.setSlug` · `BizEndpointPermTest` 判权表 |
+| 链接优先用代码 | `StoreCodeService.linkCodeOf` · `StoreVO.shareUrl`（后端拼好发下来） |
+| B 端设置入口 + 拼音建议 | `b-app/src/utils/slug.ts`（pinyin-pro）· `pages/stores/index.vue` 的 facts 行 |
+
+**偏差两处**（都写进了正文，不只记在这里）：
+
+1. **信封会裹 302**。设计时写的是「`ResponseEntity<Void>` 没有响应体，
+   `ResponseBodyAdvice` 不触发」—— 不成立。是 `assertThat(body).isEmpty()` 抓到的，
+   浏览器不看 302 的 body，所以这个错在浏览器里完全看不出来。
+2. **`shareUrl` 是后来加的**。原设计让端上按域名拼链接，写到一半发现那会让域名有两处真源
+   （而它已经错过一次：写死 `shop.example.com`），改成后端拼好发下来。
+
+### 6.2 实现 → 需求对账
+
+| AC | 测试方法 | 结果 |
+|---|---|---|
+| 扫码/点链接落到那家店 | `StoreShortLinkFlowTest#shortLinkCarriesCodeAndAttribution` | ✅ Location 上有 storeCode 与 from=QR |
+| 老链接的 `?g=` 不丢 | `#goodsParamIsPassedThrough` | ✅ |
+| 码不认识不给 404 | `#unknownCodeFallsBackToHomeNot404` | ✅ 302 → `/c/` |
+| 码不能变成开放重定向 | `#illegalCodeCharsNeverReachLocation` | ✅ 容器层 400 + 白名单拦 `abc$evil` |
+| 302 不带信封 | `#redirectIsNotWrappedInApiEnvelope` | ✅ 响应体为空 |
+| 设了代码链接仍落同一家店、老码不失效 | `#slugResolvesToTheSameStore` | ✅ |
+| 清掉代码要真的清掉 | `#clearingSlugActuallyClearsIt` | ✅ 含回读库 |
+| 坏写法与撞车各给自己的错误码 | `#invalidSlugIsRejectedWithItsOwnCode` · `#takenSlugIsRejected` | ✅ |
+| 建议值一定通得过后端判据 | `b-app/tests/slug-suggest.test.ts` 5 条 | ✅ 含超长截断与多音字 |
+
+**两次消融**（都红了）：
+
+- 去掉 `&from=QR` → `shortLinkCarriesCodeAndAttribution` 红（耗时 13.84 → 14.25s，
+  确认是重跑而不是读旧报告）
+- 把 `setSlug` 那句 `set` 换成 `updateById` → `clearingSlugActuallyClearsIt` 红，
+  **而且只红在「从库里读回来的也要是空」那一行** —— 上一条断言（返回值为 null）照样通过。
+  这正是 `updateById` 跳 null 的症状，也说明只信返回值的测法会假绿。
+
+### 6.3 还没做的
+
+- **B 端的二维码图片与 App 微信分享**：拍板时定的是「先只做链接本身」
+- **c-app 落地页**：`/s/` 落到 c-app 的门店页，那一页本来就能接 `storeCode` / `from=QR`，
+  这次一行没改。微信里打开后引导「打开小程序」是另一件事
+- **nginx 上线**：配置改在仓库里了（真源就是它，与线上 md5 一致），
+  要 scp + `nginx -t` + reload 才生效。**在那之前 /s/ 仍然丢码**
+
+---
+
+确认记录：2026-08-17 用户「按建议执行 / 开工」·
+2026-09-28 §3.5/§3.6 用户「后端短链 302 / 门店自定义代码（默认店名转拼音）/ 先只做链接本身」
