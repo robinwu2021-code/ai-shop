@@ -277,6 +277,16 @@ const fulfillItems = computed(() =>
       tone: x.n ? ("primary" as const) : undefined,
     })));
 
+/**
+ * 待办格子几列：**按个数挑，让最后一行别只剩一格**。格子数随角色与门店能力变（真机上福田店 5 个、
+ * 自提点 7 个）：写死四列，5 个就是 4 + 1；写死三列，7 个就是 3 + 3 + 1。
+ * 余 1 或 2 用三列（5→3+2、6→3+3、9→3+3+3），其余用四列（7→4+3、8→4+4）。
+ */
+const tileCols = computed(() => {
+  const n = cells.value.length;
+  return n > 4 && (n % 4 === 1 || n % 4 === 2) ? 3 : 4;
+});
+
 const ownedRate = computed(() =>
   stats.value ? `${Math.round(stats.value.ownedTrafficRate * 100)}%` : "—",
 );
@@ -416,7 +426,7 @@ onShow(load);
         <text class="txt-caption blocker__go">{{ $t("home.blockerGo") }}</text>
       </view>
 
-      <view class="tiles sh-wrap">
+      <view class="tiles sh-wrap" :class="`tiles--${tileCols}`">
         <view v-for="c in cells" :key="c.key" class="sh-card tiles__cell" @tap="open(c.route)">
           <text class="txt-hero tiles__n sh-num" :class="c.n ? 'txt-primary' : 'txt-faint'">{{ c.n }}</text>
           <text class="txt-caption tiles__label">{{ $t(`home.cell.${c.key}`) }}</text>
@@ -584,16 +594,20 @@ onShow(load);
   gap: 16rpx;
 }
 /* 面色与圆角交给 `.sh-card`。**内边距留在这里是有意的**：
-   四列排布下格子只有 ~80px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
+   四列时格子只有 ~80px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
    用积木 + 覆盖一条，比整张卡照抄一遍强 —— 覆盖的那条一眼看得出是特例。 */
 .tiles__cell {
   /* 最小宽按边框盒算：默认的内容盒会把内边距加在 33% 之外，三列被挤成两列 */
   box-sizing: border-box;
-  /* 四列：七个待办排成 4 + 3，不再剩一格孤零零地占一整行（三列时是 3 + 3 + 1） */
+  /* 列数由 tileCols 按个数挑（三列或四列），这里只给四列的宽；三列见下一条 */
   flex: 0 1 calc(25% - 12rpx);
   min-width: calc(25% - 12rpx);
   padding: 20rpx 8rpx;
   text-align: center;
+}
+.tiles--3 .tiles__cell {
+  flex-basis: calc(33.33% - 11rpx);
+  min-width: calc(33.33% - 11rpx);
 }
 .tiles__n {
   display: block;
