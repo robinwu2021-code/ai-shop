@@ -365,6 +365,7 @@ onLoad((q) => {
           <input
             v-model="weightKg"
             type="digit"
+            maxlength="5"
             class="field__input sh-fill"
             :placeholder="$t('order.expressWeightPh')"
             @input="quotes = null"

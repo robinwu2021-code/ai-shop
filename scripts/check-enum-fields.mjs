@@ -68,6 +68,17 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "快递代下单取件单的状态",
+    field: "ord_express_pickup.status",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdExpressPickup.java",
+      only: ["CREATED", "ACCEPTED", "PICKED", "DONE", "CANCELLED", "FAILED"],
+    },
+    clients: [
+      { file: "b-app/src/api/contract.ts", type: "ExpressPickupStatus" },
+    ],
+  },
+  {
     concept: "门店线上可售规则",
     field: "prd_sell_rule.rule_type",
     backend: {

@@ -310,6 +310,7 @@ export interface OrderListQuery {
 
 /** 快递报价（`mExpressQuotes`，GET 查询参数）。重量公斤，0.1–30 */
 export interface ExpressQuotesQuery {
+  /** 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 */
   weightKg: number;
 }
 
@@ -317,6 +318,7 @@ export interface ExpressQuotesQuery {
 export interface BookExpressReq {
   /** 微信 delivery_id */
   carrier: string;
+  /** 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 */
   weightKg: number;
 }
 

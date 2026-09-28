@@ -424,6 +424,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
   { decl: "b-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
+  { decl: "b-app:ExpressPickupStatus", dom: "trade", shape: "STATUS", verdict: "OK",
+    note: "快递代下单取件单的状态（TDD-快递100商家寄件）。与后端 OrdExpressPickup 常量同名同值；只有 B 端用" },
   { decl: "b-app:AutomationRealm", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "密钥票据换会话的端（ADR-027）：B=店主、OPS=运营。与后端 AutomationTicketVerifier.TicketRealm 同名同值" },
 

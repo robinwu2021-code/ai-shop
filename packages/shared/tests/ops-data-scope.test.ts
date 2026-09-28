@@ -466,6 +466,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
   "mch_deposit_txn:PICKUP": "同上",
   "mch_debt:COMMUNITY": "欠款属于商家，不属于片区",
   "mch_debt:PICKUP": "同上",
+  "ord_express_pickup:COMMUNITY":
+    "快递取件单属于商家（运费记它的欠款），不属于片区。**看到空白的是**：今天没有人 ——"
+    + "运营端还没有读这张表的页面；将来接运营页时，配了社区域的运营会看到空白",
+  "ord_express_pickup:PICKUP": "同上。自提点运营者不叫快递",
   "mch_debt_txn:COMMUNITY": "同上",
   "mch_debt_txn:PICKUP": "同上",
     "rvw_review:COMMUNITY":
