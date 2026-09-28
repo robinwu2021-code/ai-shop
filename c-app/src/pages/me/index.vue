@@ -206,12 +206,14 @@ const mValid = computed(
 /**
  * 入驻进度。**此前提交完这一行还写着「个体户/企业均可」** ——
  * 商家不知道审到哪一步，只能打电话问运营。
+ *
+ * <p>没申请过时**不兜一句解释**（2026-09-28）：那一句是「个体户 / 企业均可」，
+ * 属于说明而不是状态，而卡片上的副标题已经说了同一件事。
+ * 模板里用 `v-if="applyStatus"` 控制这一格显不显示，所以这里返空串就够。
  */
 const applyStatus = ref<MerchantApplyStatus | null>(null);
 const applyStatusText = computed(() =>
-  applyStatus.value
-    ? String(t(`merchant.applyStatus.${applyStatus.value.status}`))
-    : String(t("merchant.applyHint")),
+  applyStatus.value ? String(t(`merchant.applyStatus.${applyStatus.value.status}`)) : "",
 );
 
 async function submitMerchant() {
@@ -337,16 +339,13 @@ onShow(() => {
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoOrders">
         <text class="txt-body cell__label">{{ $t("orders.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("orders.entryHint") }}</text>
       </view>
       <!-- 我的收藏（原型 g08）：商品与店铺两栏 -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoFavorites">
         <text class="txt-body cell__label">{{ $t("favorites.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("me.favoritesHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoCoupons">
         <text class="txt-body cell__label">{{ $t("coupon.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("coupon.entryHint") }}</text>
       </view>
       <!--
         邀请有礼（§3.1）。**没有在跑的活动时整条不出现** ——
@@ -362,15 +361,12 @@ onShow(() => {
       <!-- 会员与消息：**退订入口必须在显眼处**，藏起来的开关等于没有 -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoMemberships">
         <text class="txt-body cell__label">{{ $t("myMembership.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("myMembership.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.cards" class="sh-cell sh-row sh-row--between" @tap="gotoCards">
         <text class="txt-body cell__label">{{ $t("cards.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("cards.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("address.entryHint") }}</text>
       </view>
       <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
@@ -383,26 +379,33 @@ onShow(() => {
       <!-- 我的拼团（p12）。「我发起的团」（邻里自提的签收核销）收进那一页的页底 -->
       <view class="sh-cell sh-row sh-row--between" @tap="gotoMyGroups">
         <text class="txt-body cell__label">{{ $t("myGroups.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("myGroups.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoGroups">
         <text class="txt-body cell__label">{{ $t("groups.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("groups.entryHint") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoVisited">
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
-        <text class="txt-caption cell__value">{{ $t("visited.hint") }}</text>
       </view>
-      <!--
-        商家入驻（2026-09-28 拍板：小程序上也要能注册）。
-        显不显示由**后端开关**决定（`merchant.apply.mp-visible`，随 bootstrap 下发）——
-        做成开关是为了让「被微信判成平台型经营而驳回」这条风险可回滚：
-        真驳回了运营在后台关一下就止血，不用重新发版重新提审。
-      -->
-      <view v-if="merchantApplyVisible(config.features)" class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
-        <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
-        <text class="txt-caption cell__value">{{ applyStatusText }}</text>
+    </view>
+
+    <!--
+      开店入口（2026-09-28 拍板：小程序上也要能注册）。
+      显不显示由**后端开关**决定（`merchant.apply.mp-visible`，随 bootstrap 下发）——
+      做成开关是为了让「被微信判成平台型经营而驳回」这条风险可回滚：
+      真驳回了运营在后台关一下就止血，不用重新发版重新提审。
+
+      **从「邻里」那组里单拎出来做成一块。** 此前它是那一组的第五行，
+      与「我的拼团」「我买过的商家」并列 —— 一个想开店的人在一串「我买过什么」里
+      看不见它。文案也从「商家入驻」换成「我也想开店」：前者是平台视角的流程名，
+      后者是他心里那句话。
+    -->
+    <view v-if="merchantApplyVisible(config.features)" class="sh-card open-shop" @tap="applyMerchant">
+      <view class="sh-row sh-row--between">
+        <text class="txt-title open-shop__title">{{ $t("merchant.openShop") }}</text>
+        <!-- 有申请时这里是审核状态（那是状态，要显示）；没申请时不占位 -->
+        <text v-if="applyStatus" class="txt-caption open-shop__status">{{ applyStatusText }}</text>
       </view>
+      <text class="txt-caption open-shop__sub">{{ $t("merchant.openShopSub") }}</text>
     </view>
 
     <!--
@@ -431,12 +434,12 @@ onShow(() => {
       -->
       <view class="sh-cell sh-row sh-row--between contact">
         <text class="txt-body cell__label">{{ $t("me.contact") }}</text>
-        <text class="txt-caption cell__value">{{ nativeContact ? $t("me.contactHint") : PLATFORM_EMAIL }}</text>
+        <!-- 小程序上原生客服按钮自己会说话，不再加一句解释；H5 上显示邮箱 —— 那是信息不是解释 -->
+        <text v-if="!nativeContact" class="txt-caption cell__value">{{ PLATFORM_EMAIL }}</text>
         <button v-if="nativeContact" class="contact__btn" open-type="contact"></button>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="themeVisible = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
-        <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
       </view>
       <!--
         帮助中心这一行带**构建版本号**。它不是给用户看的功能说明，
@@ -447,7 +450,6 @@ onShow(() => {
       -->
       <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
-        <text class="txt-caption cell__value">{{ $t("me.helpValue") }}</text>
       </view>
       <view class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.version") }}</text>
@@ -596,6 +598,21 @@ onShow(() => {
   text-align: center;
 }
 
+/* 开店入口：单独一块、主色标题 —— 它此前混在「我买过什么」那一串里，想开店的人看不见 */
+.open-shop {
+  background: var(--sh-primary-tint);
+}
+.open-shop__title {
+  color: var(--sh-primary-text);
+}
+.open-shop__sub {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--sh-primary-text);
+}
+.open-shop__status {
+  color: var(--sh-primary-text);
+}
 .cell__label {
   flex-shrink: 0;
 }

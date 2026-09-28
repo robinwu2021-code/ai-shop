@@ -328,14 +328,10 @@ export default {
     addressPrivacy: "成团前只显示到楼栋，付款后才对参团邻居展示完整门牌。",
   },
   me: {
-    favoritesHint: "商品 · 店铺",
     appearance: "外观与语言",
     contact: "联系客服",
-    contactHint: "有问题找我们",
-    appearanceValue: "配色 · 明暗 · 语言",
     myPlace: "我的位置",
     help: "帮助中心",
-    helpValue: "退款 · 自提 · 称重差价",
     version: "版本",
     logout: "退出登录",
     logoutConfirm: "退出后需要重新登录才能查看订单与优惠券。",
@@ -424,8 +420,9 @@ export default {
     selfOperated: "自营",
     noRating: "暂无评价",
     reply: "商家回复：",
+    openShop: "我也想开店",
+    openShopSub: "不收入驻费与年费，个体户 / 企业都能开",
     apply: "商家入驻",
-    applyHint: "个体户 / 企业均可",
     hours: "营业时间",
     goodsTab: "在售商品 {n}",
     reviewTab: "全部评价 {n}",
@@ -488,7 +485,6 @@ export default {
   },
   visited: {
     title: "我买过的商家",
-    hint: "回购老店",
     orders: "买过 {n} 单",
     last: "最近 {d}",
     go: "去逛逛",
@@ -530,7 +526,6 @@ export default {
   /** 我的拼团（p12 · TDD-C端拼团买家流程）*/
   myGroups: {
     title: "我的拼团",
-    entryHint: "拼团中 · 已成团",
     open: "拼团中 {n}",
     formed: "已成团 {n}",
     failed: "没凑齐 {n}",
@@ -541,7 +536,6 @@ export default {
     submitCreate: "发起",
     needAddress: "送到我家要填地址和取货时段",
     title: "邻里团购",
-    entryHint: "商家团 · 求团",
     merchantTab: "商家团 {n}",
     requestTab: "邻里求团 {n}",
     merchantHint: "商家开的团，商品和价格都是现成的，够人数即成团价。",
@@ -732,7 +726,6 @@ export default {
   },
   orders: {
     title: "我的订单",
-    entryHint: "全部订单",
     // toPick=自提类到点了要去取；toReceive=配送类在路上要等。两者在库里是同一个
     // FULFILLING，靠履约方式分开（后端 OrderStatusView）—— 合成一个页签会让
     // 买快递的用户在「待取货」下看到自己的单
@@ -966,7 +959,6 @@ export default {
     repick: "重选",
     mapUnsupported: "这个端不支持地图选点，手动填写即可",
     title: "收货地址",
-    entryHint: "送货上门 · 快递",
     default: "默认",
     setDefault: "设为默认",
     edit: "编辑",
@@ -1023,7 +1015,6 @@ export default {
   },
   myMembership: {
     title: "我的会员与消息",
-    entryHint: "看看哪些店能给我发消息",
     empty: "还不是任何一家店的会员", emptyTip: "在店里买过一单就会成为会员",
     stat: "{n} 单 · {m}",
     since: "{d} 起",
@@ -1037,7 +1028,6 @@ export default {
   },
   coupon: {
     title: "我的券",
-    entryHint: "可用 · 已用 · 过期",
     codeTitle: "出示券码",
     tab: { usable: "可用", used: "已用", expired: "过期" },
     state: { usable: "可用", used: "已用", expired: "已过期", left: "剩 {n} 次", expireIn: "{n} 天后过期" },
@@ -1054,7 +1044,6 @@ export default {
   },
   cards: {
     title: "我的卡包",
-    entryHint: "储值卡 · 次卡",
     timesLeft: "剩 {n} 次",
     until: "有效至 {d}",
     expired: "已过期",

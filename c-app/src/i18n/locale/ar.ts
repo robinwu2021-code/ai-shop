@@ -301,14 +301,10 @@ export default {
     addressPrivacy: "يظهر المبنى فقط قبل اكتمال العدد، ويظهر العنوان الكامل للأعضاء بعد الدفع.",
   },
   me: {
-    favoritesHint: "المنتجات · المتاجر",
     appearance: "المظهر واللغة",
     contact: "تواصل مع الدعم",
-    contactHint: "نحن هنا للمساعدة",
-    appearanceValue: "الألوان · السمة · اللغة",
     myPlace: "موقعي",
     help: "مركز المساعدة",
-    helpValue: "الاسترجاع · الاستلام · تعديل الوزن",
     version: "الإصدار",
     logout: "تسجيل الخروج",
     logoutConfirm: "ستحتاج إلى تسجيل الدخول مرة أخرى لعرض الطلبات والقسائم.",
@@ -391,8 +387,9 @@ export default {
     selfOperated: "منصة",
     noRating: "لا تقييمات بعد",
     reply: "رد التاجر:",
+    openShop: "أريد فتح متجر",
+    openShopSub: "بدون رسوم انضمام أو سنوية — للأفراد والشركات",
     apply: "انضم كتاجر",
-    applyHint: "أفراد وشركات",
     hours: "ساعات العمل",
     goodsTab: "المنتجات {n}",
     reviewTab: "التقييمات {n}",
@@ -451,7 +448,6 @@ export default {
   },
   visited: {
     title: "متاجر اشتريت منها",
-    hint: "أعد الطلب من متاجرك",
     orders: "{n} طلبًا",
     last: "آخر مرة {d}",
     go: "ابدأ التصفح",
@@ -493,7 +489,6 @@ export default {
   /** 我的拼团（p12 · TDD-C端拼团买家流程）*/
   myGroups: {
     title: "مجموعاتي",
-    entryHint: "مفتوحة · مكتملة",
     open: "مفتوحة {n}",
     formed: "مكتملة {n}",
     failed: "لم تكتمل {n}",
@@ -504,7 +499,6 @@ export default {
     submitCreate: "ابدأ",
     needAddress: "العنوان ووقت الاستلام إلزاميان",
     title: "مجموعات الحي",
-    entryHint: "مجموعات المتاجر · الطلبات",
     merchantTab: "مجموعات المتاجر {n}",
     requestTab: "طلبات الجيران {n}",
     merchantHint: "يفتحها المتجر؛ المنتج والسعر جاهزان. عند اكتمال العدد يحصل الجميع على سعر المجموعة.",
@@ -684,7 +678,6 @@ export default {
   },
   orders: {
     title: "طلباتي",
-    entryHint: "كل الطلبات",
     tab: {
       all: "الكل", toPay: "بانتظار الدفع", toShip: "قيد التجهيز",
       toPick: "للاستلام", toReceive: "في الطريق", done: "مكتملة", afterSale: "الاسترجاع",
@@ -898,7 +891,6 @@ export default {
     repick: "تغيير",
     mapUnsupported: "اختيار الخريطة غير متاح هنا؛ اكتب العنوان",
     title: "العناوين",
-    entryHint: "توصيل للمنزل · بريد",
     default: "افتراضي",
     setDefault: "اجعله افتراضيًا",
     edit: "تعديل",
@@ -951,7 +943,6 @@ export default {
   },
   myMembership: {
     title: "عضوياتي والرسائل",
-    entryHint: "شاهد المتاجر التي يمكنها مراسلتك",
     empty: "لست عضوًا في أي متجر بعد", emptyTip: "طلب واحد يجعلك عضوًا",
     stat: "{n} طلبات · {m}",
     since: "منذ {d}",
@@ -965,7 +956,6 @@ export default {
   },
   coupon: {
     title: "قسائمي",
-    entryHint: "صالحة · مستخدمة · منتهية",
     codeTitle: "عرض الرمز",
     tab: { usable: "صالحة", used: "مستخدمة", expired: "منتهية" },
     state: { usable: "صالحة", used: "مستخدمة", expired: "منتهية", left: "متبقٍ {n}", expireIn: "تنتهي خلال {n} أيام" },
@@ -982,7 +972,6 @@ export default {
   },
   cards: {
     title: "بطاقاتي",
-    entryHint: "رصيد · زيارات",
     timesLeft: "متبقٍ {n} زيارات",
     until: "صالحة حتى {d}",
     expired: "منتهية",

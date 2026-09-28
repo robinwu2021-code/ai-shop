@@ -301,14 +301,10 @@ export default {
     addressPrivacy: "Only the building shows before the group fills; the full address appears to members after payment.",
   },
   me: {
-    favoritesHint: "Items · Shops",
     appearance: "Appearance & language",
     contact: "Contact support",
-    contactHint: "We are here to help",
-    appearanceValue: "Colour · Theme · Language",
     myPlace: "My location",
     help: "Help centre",
-    helpValue: "Refunds · Pickup · Weight adjustments",
     version: "Version",
     logout: "Sign out",
     logoutConfirm: "You'll need to sign in again to view orders and coupons.",
@@ -391,8 +387,9 @@ export default {
     selfOperated: "Platform",
     noRating: "No reviews yet",
     reply: "Seller:",
+    openShop: "I want to open a shop",
+    openShopSub: "No onboarding or annual fee — sole traders and companies welcome",
     apply: "Sell with us",
-    applyHint: "Sole traders & companies",
     hours: "Opening hours",
     goodsTab: "Products {n}",
     reviewTab: "Reviews {n}",
@@ -451,7 +448,6 @@ export default {
   },
   visited: {
     title: "Shops you've bought from",
-    hint: "Reorder from favourites",
     orders: "{n} orders",
     last: "Last {d}",
     go: "Start browsing",
@@ -493,7 +489,6 @@ export default {
   /** 我的拼团（p12 · TDD-C端拼团买家流程）*/
   myGroups: {
     title: "My groups",
-    entryHint: "Open · Formed",
     open: "Open {n}",
     formed: "Formed {n}",
     failed: "Didn't fill {n}",
@@ -504,7 +499,6 @@ export default {
     submitCreate: "Start",
     needAddress: "Address and pickup window are required",
     title: "Neighbourhood groups",
-    entryHint: "Shop groups · Requests",
     merchantTab: "Shop groups {n}",
     requestTab: "Requests {n}",
     merchantHint: "Opened by shops — product and price are already set. Hit the headcount and everyone gets the group price.",
@@ -684,7 +678,6 @@ export default {
   },
   orders: {
     title: "My orders",
-    entryHint: "All orders",
     tab: {
       all: "All", toPay: "To pay", toShip: "Preparing",
       toPick: "To collect", toReceive: "In transit", done: "Completed", afterSale: "Refunds",
@@ -898,7 +891,6 @@ export default {
     repick: "Change",
     mapUnsupported: "Map picking is unavailable here — type it in",
     title: "Addresses",
-    entryHint: "Home delivery · Courier",
     default: "Default",
     setDefault: "Set default",
     edit: "Edit",
@@ -951,7 +943,6 @@ export default {
   },
   myMembership: {
     title: "Memberships & messages",
-    entryHint: "See which stores can message you",
     empty: "Not a member of any store yet", emptyTip: "One order makes you one",
     stat: "{n} orders · {m}",
     since: "since {d}",
@@ -965,7 +956,6 @@ export default {
   },
   coupon: {
     title: "My coupons",
-    entryHint: "Usable · Used · Expired",
     codeTitle: "Show code",
     tab: { usable: "Usable", used: "Used", expired: "Expired" },
     state: { usable: "Usable", used: "Used", expired: "Expired", left: "{n} left", expireIn: "Expires in {n} days" },
@@ -982,7 +972,6 @@ export default {
   },
   cards: {
     title: "My cards",
-    entryHint: "Store credit · Visit cards",
     timesLeft: "{n} visits left",
     until: "Valid until {d}",
     expired: "Expired",
