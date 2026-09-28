@@ -425,7 +425,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "b-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
   { decl: "b-app:ExpressPickupStatus", dom: "trade", shape: "STATUS", verdict: "OK",
-    note: "快递代下单取件单的状态（TDD-快递100商家寄件）。与后端 OrdExpressPickup 常量同名同值；只有 B 端用" },
+    note: "快递代下单取件单的状态（TDD-快递100商家寄件）。与后端 OrdExpressPickup 常量同名同值；只有 B 端用。"
+      + "申报四个词：它们是快递取件的环节名（下单 / 接单 / 取件 / 签收），L1 的 PENDING / PROCESSING 分不开"
+      + "「已接单」与「已取件」—— 而后者是触发发货与记运费的那一步，必须单独可见",
+    words: ["CREATED", "ACCEPTED", "PICKED", "DONE"] },
   { decl: "b-app:AutomationRealm", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "密钥票据换会话的端（ADR-027）：B=店主、OPS=运营。与后端 AutomationTicketVerifier.TicketRealm 同名同值" },
 
