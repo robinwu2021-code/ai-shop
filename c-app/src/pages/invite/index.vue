@@ -109,11 +109,11 @@ function copyLink() {
 
       <!-- ③ 分享。小程序走转发，H5 走复制链接 —— 两端都要有出口 -->
       <view class="sh-card block">
-        <view v-if="nativeShare" class="sh-btn sh-btn--primary inv__act">
+        <view v-if="nativeShare" class="sh-btn inv__act">
           {{ $t("invite.share") }}
           <button class="inv__share" open-type="share"></button>
         </view>
-        <view v-else class="sh-btn sh-btn--primary inv__act" @tap="copyLink">
+        <view v-else class="sh-btn inv__act" @tap="copyLink">
           {{ $t("invite.copy") }}
         </view>
         <text class="txt-caption sh-muted inv__tip">{{ $t("invite.tip") }}</text>

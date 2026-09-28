@@ -1671,22 +1671,6 @@ onShareTimeline(() =>
   gap: 2rpx;
   width: 72rpx;
 }
-/* 分享的原生 <button> 只当点击层：铺满整格、完全透明，版式交给外面那个 view
-   （直接把图标和字放进 button，真机上字会被它的默认行高挤下去 —— 0.1.42 修过一次） */
-.titlerow__share {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-}
-.titlerow__share::after {
-  border: none;
-}
-
 /* 顶部浮层：固定在屏顶。压在图上时透明，滑过主图后变实色 */
 .topbar {
   position: fixed;

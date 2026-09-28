@@ -62,10 +62,12 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  * 拿到的只有编译期常量，改一个开关要重新发版、小程序还要重新提审）。
  */
 export interface BootstrapConfig {
+  /** 默认皮肤（`fresh` / `brand` …）。用户没挑过时按它渲染 */
   defaultSkin: string;
   /** 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` */
   features: Record<string, boolean>;
   /** 低于它要提示升级 */
   minAppVer: string;
+  /** 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 */
   serviceHours: string;
 }

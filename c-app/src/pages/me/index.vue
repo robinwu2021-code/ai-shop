@@ -172,6 +172,8 @@ const mForm = ref({
   subject: "NATURAL_PERSON" as MerchantSubject,
   contactName: "",
   contactPhone: "",
+  /** 推荐人手机号（选填）。不带奖励文案 —— 规则在官网与企微里，端内只是个输入框 */
+  referrerPhone: "",
   category: "",
   desc: "",
   /**
@@ -398,8 +400,8 @@ onShow(() => {
     -->
     <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
       <text class="txt-body block">{{ $t("merchant.applyDoneBody") }}</text>
-      <view class="sh-btn sh-btn--primary block" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
-      <view class="sh-btn block" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
+      <view class="sh-btn block" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
+      <view class="sh-btn sh-btn--muted block" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
     </sh-sheet>
 
     <!-- 设置：与生意无关，放最后 -->

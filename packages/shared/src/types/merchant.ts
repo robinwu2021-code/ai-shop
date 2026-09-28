@@ -670,6 +670,13 @@ export interface MerchantApplyReq {
   contactName: string;
   /** 联系手机号 */
   contactPhone: string;
+  /**
+   * 推荐人手机号。**选填，端上一句奖励文案都不写** ——
+   * 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。
+   * 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理
+   * （TDD-C 端裂变与商家招募 §8.3）。
+   */
+  referrerPhone?: string;
   /** 主营类目 */
   category: string;
   /** 店铺简介 */
@@ -1415,6 +1422,7 @@ export interface MerchantApplyStatus {
  * 所以海报归因到**店**，邀请归因走小程序内转发那条路。
  */
 export interface StoreAcode {
+  /** 码所属的商家。一店一码、生成一次落库复用，所以它就是这张码的身份 */
   merchantNo: string;
   /** PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 */
   imageBase64: string | null;

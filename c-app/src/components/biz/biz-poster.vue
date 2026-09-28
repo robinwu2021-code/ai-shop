@@ -285,7 +285,7 @@ defineExpose({ open });
     </view>
     <image v-else-if="imagePath" class="poster__img" :src="imagePath" mode="widthFix" show-menu-by-longpress />
 
-    <view v-if="imagePath" class="sh-btn sh-btn--primary poster__save" @tap="save">
+    <view v-if="imagePath" class="sh-btn poster__save" @tap="save">
       {{ $t("poster.save") }}
     </view>
   </sh-sheet>

@@ -674,6 +674,7 @@ export interface CouponRedeemResult {
  * 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
  */
 export interface MyFission {
+  /** 活动号。端上只用来回传，不显示 */
   fissionNo: string;
   /** 活动名，运营配的 */
   name: string;
