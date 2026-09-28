@@ -52,6 +52,7 @@ export default {
     card: "Cards",
   },
   phoneGate: {
+    later: "Later",
     title: "Leave a phone number",
     why: "We need it after you order: pickup points send arrival notices, couriers call. Nothing else.",
     oneTap: "Use my WeChat number",
