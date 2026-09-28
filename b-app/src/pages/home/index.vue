@@ -170,29 +170,29 @@ const blockers = computed(() => {
 });
 
 /**
- * 公告入口右侧那一句：现在挂着什么、什么时候没。
+ * 「店铺公告」格子右侧的短状态：审核中 / 未发布 / 几号到期。挂着且不过期就不写 —— 那是常态。
  *
- * <p><b>为什么值得占这一行</b>：公告是这一屏唯一的日频内容，最常见的故障是
- * 「早上挂的今日到货，晚上忘了撤」。此前工作台上只有「公告」两个字，
- * 挂没挂、挂的是哪句，只有点进去才知道 —— 于是没人会去点，也就没人会去撤。
+ * <p><b>为什么值得占这一格</b>：公告是这一屏唯一的日频内容，最常见的故障是
+ * 「早上挂的今日到货，晚上忘了撤」。只有「公告」两个字的话，挂没挂、哪天没，
+ * 只有点进去才知道 —— 于是没人会去点，也就没人会去撤。
  *
- * <p>审核中优先于正文：那时店铺页上挂的和他以为的不是同一句，这件事更要紧。
+ * <p>**只给短状态，不给正文**：此前挂的是「正文前 10 字 · 到期」，放不进等高的格子，
+ * 挪到卡顶单独一行后又和「店铺公告」格子成了同一件事的两个位置（2026-09-28 店主指出）。
+ * 审核中优先：那时店铺页上挂的和他以为的不是同一句，这件事更要紧。
  * `store` 是这一页本来就要拉的（三条开张告警都读它），不多发请求。
  */
-const noticeValue = computed(() => {
+const noticeTag = computed(() => {
   const st = store.value;
   if (!st) return "";
   if (st.noticePending) return String(t("store.noticeAuditing"));
-  const text = (st.announcement ?? "").trim();
-  if (!text) return String(t("home.noticeNone"));
-  const head = text.length > 10 ? `${text.slice(0, 10)}…` : text;
+  if (!(st.announcement ?? "").trim()) return String(t("home.noticeNone"));
   const at = st.announcementUntil;
-  if (!at) return head;
+  if (!at) return "";
   const d = new Date(at);
   const sameDay = d.toDateString() === new Date().toDateString();
-  return `${head} · ${t("home.noticeUntil", {
+  return String(t("home.noticeUntil", {
     s: sameDay ? String(t("store.ttl.todayAt")) : `${d.getMonth() + 1}/${d.getDate()}`,
-  })}`;
+  }));
 });
 
 /**
@@ -242,8 +242,8 @@ const cells = computed(() => {
  * 功能入口：两列小格，标题四字以内（2026-09-28 店主：入口太多，字小一号、两列排）。
  *
  * <p>说明行一律不要 —— 「经营类目 · 本店卖哪几类」这种是把名字再说一遍。
- * 公告的**现状**（挂没挂、哪天到期）是点进去之前就该知道的事 —— 放在卡顶单独一行（noticeShown），
- * 不塞进格子：塞进去那一格会比别的高一截。
+ * 公告的**现状**（挂没挂、哪天到期）是点进去之前就该知道的事 —— 只放一个短状态在它格子的右侧（noticeTag），
+ * 与箭头同一行，格子不会因此变高。
  * 每格跟自己的权限走，与待办格子同一条规矩。
  */
 const entries = computed(() =>
@@ -259,9 +259,6 @@ const entries = computed(() =>
     // 营销是唯一入口：活动 / 优惠券 / 团购都在它下面（2026-09-18 店主）
     { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign" },
   ].filter((e) => merchant.can(e.perm)));
-
-/** 公告现状那一行：只在门店可读、且有公告入口时出现 */
-const noticeShown = computed(() => !!noticeValue.value && entries.value.some((e) => e.key === "notice"));
 
 /** 核销分拣的两个数：各跟自己的权限走，有活的那一格用主色 */
 const fulfillItems = computed(() =>
@@ -433,6 +430,22 @@ onShow(load);
         </view>
       </view>
 
+      <!-- 今日：与进销存同一块读数（sh-stat panel）—— 此前这里手写三等分、数字用标题字阶，
+           同一屏上两种「一排数」长得不一样 -->
+      <view v-if="stats" class="sh-card">
+        <view class="head">
+          <text class="txt-title">{{ $t("home.today") }}</text>
+        </view>
+        <sh-stat
+          panel
+          :items="[
+            { value: stats.todayOrders, label: String($t('home.orders')) },
+            { value: money(stats.todayGmvMinor, stats.currency), label: String($t('home.gmv')) },
+            { value: stats.rating || '—', label: String($t('home.rating')) },
+          ]"
+        ></sh-stat>
+      </view>
+
       <!--
         进销存：**给它一张自己的卡**，不塞进上面那个待办九宫格。
 
@@ -486,21 +499,6 @@ onShow(load);
         </view>
       </view>
 
-      <!-- 今日：与进销存同一块读数（sh-stat panel）—— 此前这里手写三等分、数字用标题字阶，
-           同一屏上两种「一排数」长得不一样 -->
-      <view v-if="stats" class="sh-card">
-        <view class="head">
-          <text class="txt-title">{{ $t("home.today") }}</text>
-        </view>
-        <sh-stat
-          panel
-          :items="[
-            { value: stats.todayOrders, label: String($t('home.orders')) },
-            { value: money(stats.todayGmvMinor, stats.currency), label: String($t('home.gmv')) },
-            { value: stats.rating || '—', label: String($t('home.rating')) },
-          ]"
-        ></sh-stat>
-      </view>
 
       <!-- 自带客流占比：这是商家最该关心的数字，它直接决定费率档（ADR-004 §6） -->
       <view v-if="stats" class="sh-card owned">
@@ -545,20 +543,17 @@ onShow(load);
         「商品编码」也要有门 —— 那一页第一版漏了入口，真机装完才发现。
       -->
       <!--
-        格子一律等高：每格只有「名字 + 箭头」。公告的现状此前塞在「店铺公告」格子里，
-        那一格因此比别的高一截、两列对不齐；现状挪到卡顶单独一行，点它同样进公告页。
+        格子一律等高：每格一行「名字 + 箭头」。公告的现状只留一个短状态，与箭头同一行 ——
+        此前是正文摘要占第二行，那一格比别的高一截、两列对不齐。
       -->
       <view v-if="entries.length" class="sh-card">
         <view class="head">
           <text class="txt-title">{{ $t("home.entriesTitle") }}</text>
         </view>
-        <view v-if="noticeShown" class="notice sh-row" @tap="open(ROUTES.storeNotice)">
-          <text class="txt-caption sh-muted notice__k">{{ $t("home.noticeEntry") }}</text>
-          <text class="txt-caption notice__v sh-fill">{{ noticeValue }}</text>
-        </view>
         <view class="entries">
           <view v-for="e in entries" :key="e.key" class="entry" @tap="open(e.route)">
             <text class="txt-body entry__t">{{ e.label }}</text>
+            <text v-if="e.key === 'notice' && noticeTag" class="txt-caption sh-muted entry__tag">{{ noticeTag }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
@@ -650,22 +645,6 @@ onShow(load);
   justify-content: space-between;
   margin-bottom: 20rpx;
 }
-/* 公告现状：一行，超出省略 */
-.notice {
-  gap: 16rpx;
-  padding: 16rpx 20rpx;
-  margin-bottom: 16rpx;
-  border-radius: 16rpx;
-  background: var(--sh-bg);
-}
-.notice__k {
-  flex-shrink: 0;
-}
-.notice__v {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 /* 功能入口：两列等高的按钮 —— 与进销存那排快捷同一个长相（浅底圆角） */
 .entries {
   display: grid;
@@ -682,6 +661,8 @@ onShow(load);
   background: var(--sh-bg);
 }
 .entry__t {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -689,6 +670,10 @@ onShow(load);
 /* 未入驻的整屏空态：它带标题与主按钮，不是通用空态那一行灰字，所以留在页面里 */
 /* 字号与颜色由 `sh-go` 给（24rpx / primary-text，即 `.sh-link` 那一档）——
    此前这里是 26rpx，五个同族调用点里唯一的一个例外，没有理由。 */
+.entry__tag {
+  flex-shrink: 0;
+  margin-inline-end: 4rpx;
+}
 .applylink {
   display: flex;
   margin-top: 24rpx;
