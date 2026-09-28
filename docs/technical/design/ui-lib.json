@@ -358,7 +358,7 @@
       },
       "usage": {
         "b-app": 336,
-        "c-app": 256
+        "c-app": 255
       }
     },
     {
@@ -1033,7 +1033,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 109,
         "c-app": 13
       }
     },
@@ -1927,7 +1927,7 @@
       "name": "sh-actionbar",
       "file": "packages/ui/src/components/sh-actionbar.vue",
       "scope": "跨端",
-      "lines": 189,
+      "lines": 192,
       "props": [
         "pill?: \"plain\" | \"lead\"",
         "tabbar?: boolean",
@@ -4407,7 +4407,7 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 72,
+      "libClassHits": 70,
       "localSelectors": 3,
       "localCssLines": 12,
       "rolled": [
@@ -4737,7 +4737,7 @@
         "biz-region-picker",
         "biz-store-tag"
       ],
-      "libClassHits": 102,
+      "libClassHits": 100,
       "localSelectors": 26,
       "localCssLines": 100,
       "rolled": []
@@ -5125,9 +5125,9 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 119,
-      "localSelectors": 17,
-      "localCssLines": 76,
+      "libClassHits": 118,
+      "localSelectors": 16,
+      "localCssLines": 71,
       "rolled": [
         {
           "id": "primover",

@@ -3388,12 +3388,6 @@
           "ar": "أريد فتح متجر"
         },
         {
-          "key": "merchant.openShopSub",
-          "zh-CN": "不收入驻费与年费，个体户 / 企业都能开",
-          "en": "No onboarding or annual fee — sole traders and companies welcome",
-          "ar": "بدون رسوم انضمام أو سنوية — للأفراد والشركات"
-        },
-        {
           "key": "merchant.phone",
           "zh-CN": "手机号",
           "en": "Phone number",
@@ -16010,12 +16004,6 @@
           "ar": "المرسل"
         },
         {
-          "key": "shipSetting.senderHint",
-          "zh-CN": "留空用门店信息",
-          "en": "Blank fields use store info",
-          "ar": "الحقول الفارغة تستخدم بيانات المتجر"
-        },
-        {
           "key": "shipSetting.senderName",
           "zh-CN": "寄件人",
           "en": "Sender name",
@@ -16032,12 +16020,6 @@
           "zh-CN": "运费模板",
           "en": "Shipping rates",
           "ar": "أسعار الشحن"
-        },
-        {
-          "key": "shipSetting.templateHint",
-          "zh-CN": "平台统一维护",
-          "en": "Set by the platform",
-          "ar": "تحدده المنصة"
         },
         {
           "key": "shipSetting.title",
@@ -18838,7 +18820,7 @@
         {
           "key": "store.fee",
           "zh-CN": "配送费",
-          "en": "Delivery fee",
+          "en": "Fee",
           "ar": "رسوم التوصيل"
         },
         {
@@ -18934,7 +18916,7 @@
         {
           "key": "store.minOrder",
           "zh-CN": "起送价",
-          "en": "Min order",
+          "en": "Minimum",
           "ar": "الحد الأدنى"
         },
         {
@@ -19065,9 +19047,9 @@
         },
         {
           "key": "store.payAdminOnly",
-          "zh-CN": "仅店主可修改收款方式",
-          "en": "Only the store owner can change payment methods",
-          "ar": "يمكن لمالك المتجر فقط تغيير طرق الدفع"
+          "zh-CN": "仅店主可改",
+          "en": "Owner only",
+          "ar": "المالك فقط"
         },
         {
           "key": "store.payCard",
@@ -19491,15 +19473,15 @@
         },
         {
           "key": "store.pickup.sumNone",
-          "zh-CN": "还没选取货点，顾客到门店地址取",
-          "en": "No pickup point yet — customers collect at the store address",
-          "ar": "لا نقطة استلام بعد؛ يستلم العملاء من عنوان الفرع"
+          "zh-CN": "还没选取货点",
+          "en": "No pickup point yet",
+          "ar": "لا نقطة استلام بعد"
         },
         {
           "key": "store.pickup.sumNoneNoAddr",
-          "zh-CN": "尚未设置自提点，门店也未填写地址，顾客无法确定取货位置",
-          "en": "No pickup point set and no store address entered; customers cannot tell where to collect",
-          "ar": "لا نقطة استلام ولا عنوان للفرع؛ لا يعرف العميل أين يستلم"
+          "zh-CN": "取货点和门店地址都没填",
+          "en": "No pickup point and no store address",
+          "ar": "لا نقطة استلام ولا عنوان للفرع"
         },
         {
           "key": "store.pickup.sumRefs",
@@ -19742,12 +19724,6 @@
           "ar": "تغيير النطاق"
         },
         {
-          "key": "store.subset.hint",
-          "zh-CN": "默认送整个经营范围",
-          "en": "Defaults to your whole coverage",
-          "ar": "افتراضيًا كامل نطاق التغطية"
-        },
-        {
           "key": "store.subset.needOne",
           "zh-CN": "至少勾一项",
           "en": "Check at least one",
@@ -19803,9 +19779,9 @@
         },
         {
           "key": "store.sumNoAddress",
-          "zh-CN": "门店还没填地址，顾客不知道去哪取",
-          "en": "No store address yet — customers won't know where to collect",
-          "ar": "لم يُدخل عنوان الفرع بعد؛ لن يعرف العميل أين يستلم"
+          "zh-CN": "门店还没填地址",
+          "en": "Store address is empty",
+          "ar": "عنوان المتجر فارغ"
         },
         {
           "key": "store.sumPickupAddr",
