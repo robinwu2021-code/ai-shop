@@ -139,7 +139,7 @@ onLoad((q) => {
         <text class="txt-body">{{ $t("reachTask.notOpenedN", { n: data.notOpened }) }}</text>
       </view>
 
-      <sh-actionbar dock>
+      <sh-actionbar>
         <view class="sh-row acts">
           <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !data.notOpened || saving }"
             @tap="saveNotOpened">{{ $t("reachTask.saveNotOpened") }}</view>

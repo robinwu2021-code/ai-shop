@@ -93,7 +93,7 @@ onShow(() => {
       :tip="tt('coupons.emptyTip')"
     ></sh-empty>
 
-    <sh-actionbar dock>
+    <sh-actionbar>
       <view class="sh-btn" @tap="go(ROUTES.couponEdit)">{{ $t("coupons.new") }}</view>
     </sh-actionbar>
   </sh-scaffold>

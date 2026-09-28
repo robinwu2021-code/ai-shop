@@ -143,7 +143,7 @@ onLoad((q) => {
         <text class="txt-title sh-num">{{ money(maxSpend) }}</text>
       </view>
 
-      <sh-actionbar dock>
+      <sh-actionbar>
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("couponSend.cancel") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': busy || !willIssue }" @tap="send">

@@ -2504,14 +2504,12 @@ async function save(thenSubmit = false) {
       缺哪几项由上面那行 .missing 说 —— 与改版前同一套行为，只换了位置。
     -->
     <!--
-      dock：贴底通栏、方角、顶上一条线。**不能用默认的浮动药丸档** ——
-      那一档不带底，两个按钮之间与两侧都是透空的，页面内容从缝里透出来，
-      「取消」还会被屏幕边缘切掉一块（2026-09-28 店主在真机上指出「很怪异」）。
-      浮动档对的是「只有一个实心按钮」的页面（本页是两个）。
-      **`dock` 要和 `pill` 一起给**：dock 只管形状与定位，那层白底是 `pill` 给的 ——
-      只写 dock 的话条依旧是透的，症状与没改之前一模一样（c-app 的商品详情页同样是两个都写）。
+pill="plain"：浮动药丸 + 白底。**不给壳的话条是透的** ——
+      两个按钮之间与两侧都能看见下面的内容，「取消」还会被屏幕边缘切掉一块
+      （2026-09-28 店主在真机上指出「很怪异」）。不给壳只对「一个实心按钮」的页面成立。
+      贴底通栏（`dock`）试过一版，店主说不好看，改回浮动。
     -->
-    <sh-actionbar v-if="!hydrating" pill="plain" dock>
+    <sh-actionbar v-if="!hydrating" pill="plain">
       <view class="sh-row bar">
         <view v-if="isDraft" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !canSave }" @tap="save(false)">
           {{ $t("goods.saveDraft") }}

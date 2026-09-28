@@ -137,7 +137,7 @@ onShow(() => {
         </view>
       </view>
 
-      <sh-actionbar dock v-if="live">
+      <sh-actionbar v-if="live">
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }" @tap="dissolve">
             {{ $t("group.dissolve") }}

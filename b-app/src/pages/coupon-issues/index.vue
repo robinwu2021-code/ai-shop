@@ -119,7 +119,7 @@ onShow(() => {
         <text class="txt-title sh-num">{{ money(one.amountMinor) }}</text>
       </view>
 
-      <sh-actionbar dock>
+      <sh-actionbar>
         <view class="sh-btn" @tap="done">{{ $t("couponIssues.done") }}</view>
       </sh-actionbar>
     </template>

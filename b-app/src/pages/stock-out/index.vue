@@ -307,7 +307,7 @@ onShow(load);
     </view>
 
     <!-- 主动作贴底：报损单的行数没有上限，按钮跟在行后面会被推下去 -->
-    <sh-actionbar dock :pad="180">
+    <sh-actionbar :pad="180">
       <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
         {{ $t("stockOut.post") }}
       </view>

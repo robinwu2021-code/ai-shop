@@ -201,7 +201,7 @@ function arrow(from?: string | null, to?: string | null): string {
       第一个要滚到粘贴框下面，第二个只在核对之后才出现 —— 同一条流水线上的两步，
       却在两个位置各长一个一样重的按钮。这里按当前这一步换文字。
     -->
-    <sh-actionbar dock>
+    <sh-actionbar>
       <view v-if="report" class="sh-btn" :class="{ 'sh-btn--muted': busy || !checked || !report.willSet }" @tap="applyImport">
         {{ $t("skuIdentity.apply", { n: report.willSet }) }}
       </view>

@@ -120,7 +120,7 @@ onShow(() => {
         </view>
       </view>
 
-      <sh-actionbar dock v-if="c.status !== 'ENDED'">
+      <sh-actionbar v-if="c.status !== 'ENDED'">
         <view class="sh-row bar">
           <view v-if="c.status === 'ACTIVE'" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }"
                 @tap="setStatus('PAUSED')">

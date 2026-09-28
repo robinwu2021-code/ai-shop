@@ -151,7 +151,7 @@ async function rename(c: StoreCategory) {
       :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
 
     <!-- 这一页的主动作：二级页的主动作放贴底通栏，与建活动、建券同位 -->
-    <sh-actionbar dock v-if="storeNo">
+    <sh-actionbar v-if="storeNo">
       <view class="sh-btn" @tap="adjusting = true">{{ $t("storeCategories.adjust") }}</view>
     </sh-actionbar>
     <biz-category-sheet

@@ -432,7 +432,7 @@ onShow(load);
       </view>
 
       <!-- 收货：单据详情一屏放不下时，这枚在最下面，而它是收货人唯一要点的东西 -->
-      <sh-actionbar dock v-if="doc.status === 'SHIPPED'" :pad="180">
+      <sh-actionbar v-if="doc.status === 'SHIPPED'" :pad="180">
         <view class="sh-btn" @tap="receive">{{ $t("transfer.receive") }}</view>
       </sh-actionbar>
 
@@ -441,7 +441,7 @@ onShow(load);
         出入库单，这一页也没有口子，于是建错一张就永远挂在那儿。
         已发出的不给 —— 那时要的是「退回」，是另一件事。
       -->
-      <sh-actionbar dock v-else-if="doc.status === 'DRAFT'" :pad="180">
+      <sh-actionbar v-else-if="doc.status === 'DRAFT'" :pad="180">
         <view class="sh-btn sh-btn--danger" :class="{ 'sh-btn--muted': busy }" @tap="voidTransfer">
           {{ $t("transfer.void") }}
         </view>
@@ -537,7 +537,7 @@ onShow(load);
       </view>
 
       <!-- 主动作贴底：调拨单的行数没有上限 -->
-      <sh-actionbar dock :pad="180">
+      <sh-actionbar :pad="180">
         <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="openShip">
           {{ $t("transfer.ship") }}
         </view>
