@@ -176,6 +176,55 @@ class WxShippingUploadFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 商家自送点「送达」→ 上报 local_delivery。**没这一句所有 MERCHANT_DELIVERY 单钱都结不出来**")
+    void deliveredEnqueuesLocalDeliveryForMerchantSelfDelivery() {
+        // 自送没有 ship() —— ship() 硬性要求快递公司 + 单号，自送两样都没有。
+        // 唯一的商家动作是「点送达」。这一句掉了微信侧就永远收不到发货信息，
+        // 24 小时后 remind_access_api、48 小时未发货比例拉高。2026-09-28 撞过一次。
+        String entityNo = "EWD" + (++seq);
+        String subNo = "SUBWD" + System.nanoTime() % 100_000_000L;
+        String orderNo = aPaidSelfDeliveryOrder(entityNo, subNo);
+
+        assertThat(row(orderNo))
+                .as("送达之前不该有台账行 —— 否则下面证明不了是 delivered() 放进去的")
+                .isNull();
+
+        merchantOrderService.delivered(entityNo, null, subNo);
+
+        TrdShippingUpload r = row(orderNo);
+        assertThat(r)
+                .as("delivered() 里那句 notifyShipping 掉了的话，这里就是 null —— "
+                        + "而界面、状态机、b 端全都正常，没有任何地方会说一句")
+                .isNotNull();
+        assertThat(r.getLogisticsType())
+                .as("自送映射成微信的 local_delivery(2)。不是 EXPRESS(1) —— "
+                        + "报成 EXPRESS 会因缺运单号被微信拒（268485226）")
+                .isEqualTo(ai.neargo.shop.common.WxLogisticsTypes.LOCAL_DELIVERY);
+    }
+
+    /** 造一笔「已支付、待发货、商家自送」的单 */
+    private String aPaidSelfDeliveryOrder(String entityNo, String subOrderNo) {
+        String orderNo = "ORDWD" + System.nanoTime() % 100_000_000L;
+        ai.neargo.shop.trade.entity.OrdSubOrder sub =
+                new ai.neargo.shop.trade.entity.OrdSubOrder();
+        sub.setSubOrderNo(subOrderNo);
+        sub.setOrderNo(orderNo);
+        sub.setUserNo("UWD" + System.nanoTime() % 100_000_000L);
+        sub.setEntityNo(entityNo);
+        sub.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.WAIT_FULFILL);
+        sub.setFulfillment(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
+        sub.setPayAmount(10L);
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.insert(sub));
+
+        String out = ledger.open(new ai.neargo.shop.spi.settle.SettlePort.PaymentOpen(
+                orderNo, sub.getUserNo(), entityNo, "TEST", 10L, "自送测试"));
+        ledger.settle(new ai.neargo.shop.spi.settle.SettlePort.PaymentSettled(
+                out, "TEST", "TX-" + out, 10L, System.currentTimeMillis()));
+        ledger.recordPayer(out, "oPAYER-WD", "wxAPPID");
+        return orderNo;
+    }
+
+    @Test
     @DisplayName("★★★ 发货缺快递公司 / 编码认不得 → 当场拒，不放行到上报（微信要求成对）")
     void shipRejectsWhenCarrierMissingOrUnknown() {
         String entityNo = "EWSC" + (++seq);

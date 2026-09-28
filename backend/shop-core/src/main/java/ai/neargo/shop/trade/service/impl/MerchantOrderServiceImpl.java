@@ -209,6 +209,19 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 买家自己确认收货也会把单推到 COMPLETED，纠纷时要能分清是谁点的。
          */
         log(sub, OrdSubOrder.COMPLETED, "商家标记送达", merchantNo);
+        /*
+         * **商家点送达也要向微信报发货**（2026-09-28 补）。
+         *
+         * MERCHANT_DELIVERY（商家自送）没有 ship() 那一步 —— 它硬性要
+         * 快递单号 + 快递公司码，自送没有这两样。以前这类单唯一的商家动作是
+         * 「点送达」，而 delivered() 从不 notifyShipping：结果整批自送订单
+         * 微信侧全部收不到发货信息，24 小时后微信推 remind_access_api 让商家
+         * 去后台手工补 —— 已在 2026-09-28 那笔 0.1 元测试单上撞过一次。
+         *
+         * enqueue **幂等**（一笔订单一行）—— 其它类型走 ship 时已 enqueue 过，
+         * 这里再来是 no-op；MERCHANT_DELIVERY 唯一的入队机会就在这一行。
+         */
+        notifyShipping(sub);
         return toVO(sub);
     }
 
