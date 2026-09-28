@@ -361,6 +361,7 @@ export default {
   merchant: {
     statRating: "التقييم",
     statSold: "الطلبات",
+    statFavorited: "المحفوظة",
     statGoods: "المنتجات",
     statDays: "أيام العمل",
     applyStatus: {

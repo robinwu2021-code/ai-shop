@@ -51,13 +51,16 @@ public class MpCatalogController {
     private final ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService;
     /** 海报要的店铺码（§7.3）。一店一码、生成一次落库复用 */
     private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
+    /** 商家页那个「N 人收藏」（§8.2 批 2）。现算，主体表上没有这一列 */
+    private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
                                ai.neargo.shop.platform.OpsService opsService,
                                ai.neargo.shop.platform.RegionService regionService,
                                ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService,
-                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService) {
+                               ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
+                               ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
@@ -66,6 +69,7 @@ public class MpCatalogController {
         this.goodsFavoriteService = goodsFavoriteService;
         this.regionService = regionService;
         this.storeCodeService = storeCodeService;
+        this.storeFavoriteService = storeFavoriteService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -352,7 +356,13 @@ public class MpCatalogController {
         MerchantVO m = merchantService.detail(merchantNo);
         long onSale = goodsService.list(new GoodsService.GoodsQuery(
                 null, null, merchantNo, null, null, null, 1, 1)).total();
-        return m.withGoodsCount((int) onSale);
+        /*
+         * 收藏人数同样现算（§8.2 批 2）。**0 时端上不显示** ——
+         * 这个功能上线至今线上 0 行，显示「0 人收藏」等于自曝冷启动，
+         * 与 §7.4 不显示成交数是同一个取向。判 0 在端上做，这里只给真值。
+         */
+        return m.withGoodsCount((int) onSale)
+                .withFavoriteCount(storeFavoriteService.countByMerchant(merchantNo));
     }
 
     /**

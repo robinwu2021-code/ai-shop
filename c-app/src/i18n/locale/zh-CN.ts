@@ -392,6 +392,7 @@ export default {
   merchant: {
     statRating: "评分",
     statSold: "已售单",
+    statFavorited: "收藏",
     statGoods: "在售",
     statDays: "开店天数",
     applyStatus: {

@@ -114,4 +114,29 @@ public class StoreFavoriteServiceImpl implements StoreFavoriteService {
         }
         return out;
     }
+
+    /**
+     * 按店数收藏人数。
+     *
+     * <p><b>不需要 executeWithoutScope</b>，这一点是实测出来的：第一版写了它，
+     * 理由是「usr_store_favorite 是带域表、B 端 SELF 维度会 fail-closed 拼成 1=0」——
+     * 而消融（撤掉它跑 {@code M9aOpsFlowTest#bizProfileShowsFavoriteCount}）照样绿。
+     * 查 {@code DataScopeRegistration} 才知道：<b>登记的 114 张表里没有任何 usr_ 表</b>，
+     * 数据域是商家/门店维度的，用户域的表本来就不受它管。
+     *
+     * <p>留这段话是因为那个多余的 bypass 会制造一种错觉 ——
+     * 「这里有个坑已经被防住了」，而真相是这里没有那个坑。
+     * 真要防的是下面这件：<b>这是本类唯一跨所有用户的查询</b>，
+     * 其余方法都按 {@code SecurityUtils.currentUserNo()} 过滤。
+     * 谁顺手给它加一个 userNo 条件，商家页就会永远显示 0 或 1。
+     */
+    @Override
+    public int countByMerchant(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return 0;
+        }
+        Long n = favoriteMapper.selectCount(Wrappers.<UsrStoreFavorite>lambdaQuery()
+                        .eq(UsrStoreFavorite::getEntityNo, merchantNo));
+        return n == null ? 0 : n.intValue();
+    }
 }

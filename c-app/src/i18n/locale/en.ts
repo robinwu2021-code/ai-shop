@@ -361,6 +361,7 @@ export default {
   merchant: {
     statRating: "Rating",
     statSold: "Orders",
+    statFavorited: "Saved",
     statGoods: "Items",
     statDays: "Days open",
     applyStatus: {

@@ -73,6 +73,8 @@ public class BizMerchantController {
     private final ai.neargo.shop.merchant.service.MerchantEntityService entityService;
     /** 欠款：商家要看得到「为什么欠、扣到哪了」 */
     private final ai.neargo.shop.merchant.service.DebtService debtService;
+    /** 「N 人收藏本店」（§8.2 批 2）。现算，内部绕数据域 —— B 端会话是 SELF 维度，不绕会恒 0 */
+    private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
 
     public BizMerchantController(ai.neargo.shop.merchant.service.DebtService debtService,
                                  MerchantService merchantService, OpsService opsService,
@@ -87,7 +89,9 @@ public class BizMerchantController {
                                  ai.neargo.shop.merchant.service.MerchantGovernService governService,
                                  ai.neargo.shop.product.service.CategoryService categoryService,
                                  MerchantAdminPort merchantAdminPort,
-                                 ai.neargo.shop.merchant.service.MerchantEntityService entityService) {
+                                 ai.neargo.shop.merchant.service.MerchantEntityService entityService,
+                                 ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
+        this.storeFavoriteService = storeFavoriteService;
         this.entityService = entityService;
         this.categoryService = categoryService;
         this.merchantAdminPort = merchantAdminPort;
@@ -183,7 +187,8 @@ public class BizMerchantController {
                     // 猜 AGGREGATED 的话，申请人会在入驻页看到「期望收购价」——
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
-                    agreementPending(apply));
+                    agreementPending(apply),
+                    0);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
@@ -191,7 +196,8 @@ public class BizMerchantController {
                 phone, !pickups.isEmpty(), pickups.isEmpty() ? null : pickups.get(0),
                 null, account.industry(), account.description(),
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
-                agreementPending(apply));
+                agreementPending(apply),
+                storeFavoriteService.countByMerchant(account.merchantNo()));
     }
 
     /**
@@ -875,6 +881,17 @@ public class BizMerchantController {
                                      * 而拦上架或拦收款会打断一家已经审核通过的店的生意 ——
                                      * 协议没勾是平台流程造成的（运营代填），代价不该由商户承担。
                                      */
-                                    boolean agreementPending) {
+                                    boolean agreementPending,
+                                    /**
+                                     * 多少人收藏了这家店（§8.2 批 2）。
+                                     *
+                                     * <p><b>商家看不到这个数就不会去经营收藏者</b> —— 收藏功能上线
+                                     * 至今线上 0 行，入口在、接口通，没人点是因为收藏了什么都不发生，
+                                     * 而商家这边连「有多少人收藏了我」都不知道。
+                                     *
+                                     * <p>现算（`countByMerchant` 内部绕数据域）：没有哪张表在维护这个数。
+                                     * 还没进件的那一支恒 0 —— 那时店都还没有。
+                                     */
+                                    int favoriteCount) {
     }
 }

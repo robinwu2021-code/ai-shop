@@ -1018,6 +1018,68 @@ class M9aOpsFlowTest {
     }
 
     @Autowired
+    private ai.neargo.shop.user.mapper.UserMappers.StoreFavoriteMapper favoriteMapperForCount;
+
+    @Test
+    @DisplayName("★★★ B 端 profile 下发「N 人收藏」—— 是跨所有买家的数，不是店主自己收藏了几家")
+    void bizProfileShowsFavoriteCount() throws Exception {
+        /*
+         * **这一条走真实链路**：B 端令牌 → /biz/merchant/profile → countByMerchant。
+         *
+         * 它守的是「下发的是跨所有买家的数」。最容易坏的改法是顺手给那个查询
+         * 加一个 userNo 条件（本类其余收藏方法都那么写）—— 那样商家页会恒显示 0，
+         * 而接口成功、日志干净，看起来完全像「真的没人收藏」。
+         *
+         * ⚠️ 这一条**不守「绕数据域」**：起初以为 usr_store_favorite 受数据域管、
+         * B 端 SELF 维度会 fail-closed，实测撤掉 executeWithoutScope 照样绿 ——
+         * DataScopeRegistration 登记的 114 张表里没有 usr_ 族。那个 bypass 已删。
+         */
+        String user = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126301");
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/biz/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(applyBody("收藏数测试店")))
+                .andExpect(jsonPath("$.data.status").value("APPLYING"));
+        mvc().perform(post("/ops/merchant/apply/" + pendingApplyNo(bd, "收藏数测试店") + "/audit")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String owner = TestLogin.merchantOwner(mvc(), json, otpStore, "12600126301");
+        String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + owner))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andReturn().getResponse().getContentAsString();
+        String merchantNo = json.readTree(body).get("data").get("merchantNo").asString();
+        assertThat(json.readTree(body).get("data").get("favoriteCount").asInt())
+                .as("还没人收藏时是 0").isZero();
+
+        // 两个**别的**用户收藏这家店 —— 按登录人查的话一条都数不到
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        for (String u : java.util.List.of("U-FAVBIZ-1", "U-FAVBIZ-2")) {
+            var row = new ai.neargo.shop.user.entity.UsrStoreFavorite();
+            row.setUserNo(u + System.nanoTime() % 1_000_000L);
+            row.setEntityNo(merchantNo);
+            ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                    () -> favoriteMapperForCount.insert(row));
+            ids.add(row.getId());
+        }
+        try {
+            String after = mvc().perform(get("/biz/merchant/profile")
+                            .header("Authorization", "Bearer " + owner))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(json.readTree(after).get("data").get("favoriteCount").asInt())
+                    .as("给那个查询加上 userNo 条件就会是 0 —— 店主自己没收藏过自己的店，"
+                            + "而接口成功、日志干净，他只会以为「真的没人收藏」")
+                    .isEqualTo(2);
+        } finally {
+            // 共享种子库：造的行要删，留着会让别的测试数出别的数
+            ids.forEach(id -> ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                    () -> favoriteMapperForCount.deleteById(id)));
+        }
+    }
+
+    @Autowired
     private ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper applyMapperForReferrer;
 
     @Test

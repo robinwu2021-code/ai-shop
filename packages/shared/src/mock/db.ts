@@ -409,6 +409,8 @@ export function toMerchant(merchantNo: string): Merchant {
     ratingCount,
     salesCount: seed.salesCount,
     goodsCount: goodsSeeds.filter((g) => g.merchantNo === merchantNo).length,
+    // 收藏人数：mock 里没有跨用户的收藏表，给 0 —— 0 时端上不显示，与真后端「还没人收藏」表现一致
+    favoriteCount: 0,
     address: seed.address ? pick(seed.address) : undefined,
     openHours: seed.openHours,
     joinedAt: seed.joinedAt,

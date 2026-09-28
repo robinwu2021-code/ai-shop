@@ -26,7 +26,16 @@ public record MerchantVO(String merchantNo,
                          /* 自营（电商法 §37），读 mch_entity.self_operated —— 与商品卡上的
                             MerchantQueryPort.MerchantBrief 同一个判据。店铺列表 / 推荐 / 详情此前都不带，
                             真机上虹选鲜果在店铺页没有自营标、头像是一个「虹」字（2026-09-19） */
-                         boolean selfOperated) {
+                         boolean selfOperated,
+                         /**
+                          * 多少人收藏了这家店（§8.2 批 2）。<b>0 时端上不显示</b> ——
+                          * 收藏功能上线至今线上 0 行，显示「0 人收藏」等于自曝冷启动
+                          * （与 §7.4 不显示成交数同一个取向）。
+                          *
+                          * <p>与 goodsCount 一样是买家侧出口现算的，不读快照列 ——
+                          * 没有哪张表在维护这个数。
+                          */
+                         int favoriteCount) {
 
     public record Scores(double goods, double service, double speed) {
     }
@@ -43,7 +52,9 @@ public record MerchantVO(String merchantNo,
                 nz(m.getGoodsCount()), address, openHours,
                 m.getJoinedAt() == null ? 0L : m.getJoinedAt(), tags,
                 new Scores(score(m.getScoreGoods()), score(m.getScoreService()), score(m.getScoreSpeed())),
-                Integer.valueOf(1).equals(m.getSelfOperated()));
+                Integer.valueOf(1).equals(m.getSelfOperated()),
+                // 收藏人数由买家侧出口现算后 withFavoriteCount 挂上来 —— 主体表上没有这一列
+                0);
     }
 
     /**
@@ -89,6 +100,16 @@ public record MerchantVO(String merchantNo,
     public MerchantVO withGoodsCount(int goodsCount) {
         return new MerchantVO(merchantNo, name, logo, rating, verified, breachCount, type, desc,
                 salesCount, ratingCount, goodsCount, address, openHours, joinedAt, tags, scores,
-                selfOperated);
+                selfOperated, favoriteCount);
+    }
+
+    /**
+     * 只换收藏人数（§8.2 批 2）。与 {@link #withGoodsCount} 同一个理由：
+     * 没有哪张表在维护这个数，买家侧出口现算一次再挂上来。
+     */
+    public MerchantVO withFavoriteCount(int favoriteCount) {
+        return new MerchantVO(merchantNo, name, logo, rating, verified, breachCount, type, desc,
+                salesCount, ratingCount, goodsCount, address, openHours, joinedAt, tags, scores,
+                selfOperated, favoriteCount);
     }
 }
