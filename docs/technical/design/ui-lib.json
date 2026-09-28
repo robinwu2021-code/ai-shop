@@ -1887,11 +1887,12 @@
       "name": "sh-actionbar",
       "file": "packages/ui/src/components/sh-actionbar.vue",
       "scope": "跨端",
-      "lines": 166,
+      "lines": 189,
       "props": [
         "pill?: \"plain\" | \"lead\"",
         "tabbar?: boolean",
-        "pad?: number"
+        "pad?: number",
+        "dock?: boolean"
       ],
       "usage": {
         "b-app": 32,

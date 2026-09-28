@@ -34045,6 +34045,14 @@
     },
     {
       "host": "PayModes",
+      "name": "OFFLINE_FULFILLMENTS",
+      "type": "Set<String>",
+      "value": "Set.of( Fulfillments.STORE_PICKUP, Fulfillments.MERCHANT_DELIVERY, Fulfillments.STORE_VERIFY, Fulfillments.APPOINTMENT)",
+      "zh": "允许线下的履约方式 —— 判据是「有没有当面收钱的那一刻」。",
+      "module": "shop-base"
+    },
+    {
+      "host": "PayModes",
       "name": "DEFAULT",
       "type": "Set<String>",
       "value": "Set.of(ONLINE)",
