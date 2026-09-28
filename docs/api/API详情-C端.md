@@ -316,10 +316,10 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `defaultSkin` | `string` | 是 | — |
+| `defaultSkin` | `string` | 是 | 默认皮肤（`fresh` / `brand` …）。用户没挑过时按它渲染 |
 | `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
 | `minAppVer` | `string` | 是 | 低于它要提示升级 |
-| `serviceHours` | `string` | 是 | — |
+| `serviceHours` | `string` | 是 | 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 |
 
 
 ### coupon
@@ -481,7 +481,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `fissionNo` | `string` | 是 | — |
+| `fissionNo` | `string` | 是 | 活动号。端上只用来回传，不显示 |
 | `name` | `string` | 是 | 活动名，运营配的 |
 | `inviterCount` | `number` | 是 | 邀请人得几张 |
 | `inviteeCount` | `number` | 是 | 被邀请人得几张 |
@@ -1377,7 +1377,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchantNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 码所属的商家。一店一码、生成一次落库复用，所以它就是这张码的身份 |
 | `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 |
 
 
@@ -1395,6 +1395,7 @@
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
@@ -2772,10 +2773,10 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `defaultSkin` | `string` | 是 | — |
+| `defaultSkin` | `string` | 是 | 默认皮肤（`fresh` / `brand` …）。用户没挑过时按它渲染 |
 | `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
 | `minAppVer` | `string` | 是 | 低于它要提示升级 |
-| `serviceHours` | `string` | 是 | — |
+| `serviceHours` | `string` | 是 | 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 |
 
 ### CardSpec
 
@@ -3452,6 +3453,7 @@
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
@@ -3586,7 +3588,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `fissionNo` | `string` | 是 | — |
+| `fissionNo` | `string` | 是 | 活动号。端上只用来回传，不显示 |
 | `name` | `string` | 是 | 活动名，运营配的 |
 | `inviterCount` | `number` | 是 | 邀请人得几张 |
 | `inviteeCount` | `number` | 是 | 被邀请人得几张 |
@@ -4240,7 +4242,7 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `merchantNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | 码所属的商家。一店一码、生成一次落库复用，所以它就是这张码的身份 |
 | `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 |
 
 ### StoreFront

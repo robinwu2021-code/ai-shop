@@ -3684,6 +3684,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
@@ -7972,6 +7973,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。个人 → 个体户 → 企业，门槛前低后高 |
 | `contactName` | `string` | 是 | 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 |
 | `contactPhone` | `string` | 是 | 联系手机号 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
 | `category` | `string` | 是 | 主营类目 |
 | `desc` | `string` | 是 | 店铺简介 |
 | `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
