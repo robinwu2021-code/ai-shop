@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 775 个接口**：后端已实现 699（90%）· 前端在调 704
+**合计 776 个接口**：后端已实现 700（90%）· 前端在调 705
 
 ---
 
@@ -243,7 +243,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **273** 个接口 ｜ 后端已实现 **264**（97%）｜ 前端在调 **273**
+共 **274** 个接口 ｜ 后端已实现 **265**（97%）｜ 前端在调 **274**
 
 ### activities（4）
 
@@ -776,7 +776,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（29）
+### store（30）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -785,6 +785,7 @@
 | GET | `/biz/store/{storeNo}/categories` | 本店经营类目 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/categories` | 整份替换本店经营类目 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/default` | 设为默认店 | — | `Store` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/freight-template` | 本店运费模板 | — | `StoreFreightTemplate` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/{storeNo}/offline-sale` | 本店某天的线下卖出 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/offline-sale` | 记一笔线下卖出并过账 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/offline-sale/{docNo}/revoke` | 撤销一笔线下卖出（开退回入库单） | — | — | 🔒 | ✅ | ✅ |

@@ -5892,6 +5892,21 @@ _无字段_
 | `selfOperated` | `boolean` | 否 | 所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10） |
 
 
+#### GET `/biz/store/{storeNo}/freight-template`
+
+本店运费模板　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StoreFreightTemplate`](#storefreighttemplate)
+
+
 #### GET `/biz/store/{storeNo}/offline-sale`
 
 本店某天的线下卖出　🔒

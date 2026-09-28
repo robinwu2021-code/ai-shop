@@ -2716,6 +2716,47 @@ components:
         - "duplicated"
       additionalProperties: false
       description: "核销结果。"
+    MyFission: 
+      type: "object"
+      properties: 
+        fissionNo: 
+          type: "string"
+        name: 
+          type: "string"
+          description: "活动名，运营配的"
+        inviterCount: 
+          type: "number"
+          description: "邀请人得几张"
+        inviteeCount: 
+          type: "number"
+          description: "被邀请人得几张"
+        couponTitle: 
+          type: "string"
+          description: "奖励券的名字。页面要说得出「得的是什么」，只说「得 1 张券」等于没说"
+        faceMinor: 
+          type: "number"
+          description: "券面值（分）；折扣券为 0"
+        thresholdMinor: 
+          type: "number"
+          description: "使用门槛（分）；0 = 无门槛"
+        myInvited: 
+          type: "number"
+          description: "我邀到的人数"
+        myConverted: 
+          type: "number"
+          description: "其中完成首单的人数。\n\n**奖励是按首单发的**，所以这两个数要并列摆出来 —— 只给 myInvited 的话，用户会问「我邀了 3 个怎么只得 1 张」。"
+      required: 
+        - "fissionNo"
+        - "name"
+        - "inviterCount"
+        - "inviteeCount"
+        - "couponTitle"
+        - "faceMinor"
+        - "thresholdMinor"
+        - "myInvited"
+        - "myConverted"
+      additionalProperties: false
+      description: "邀请有礼（`GET /mp/fission`）：当前在跑的活动 + 我自己邀到了几个。\n\n**没有在跑的活动时后端返回 null**，端上据此整条入口不显示 —— 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。"
     Member: 
       type: "object"
       properties: 
@@ -14110,6 +14151,39 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/SaveShipSettingReq"
+  "/biz/store/{storeNo}/freight-template": 
+    get: 
+      operationId: "mFreightTemplate"
+      summary: "本店运费模板"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StoreFreightTemplate"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/delivery/rule": 
     get: 
       operationId: "mDeliveryRule"

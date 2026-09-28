@@ -1005,7 +1005,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 35,
+      "count": 36,
       "domains": [
         {
           "name": "工作台",
@@ -1336,6 +1336,17 @@
               "proto": "g08",
               "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
               "preview": "http://localhost:5176/#/pages/favorites/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/invite/index",
+              "title": "邀请有礼",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/invite/index"
             }
           ]
         },
@@ -3329,5 +3340,5 @@
       ]
     }
   ],
-  "total": 262
+  "total": 263
 }

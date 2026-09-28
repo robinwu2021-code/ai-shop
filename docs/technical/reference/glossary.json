@@ -2830,6 +2830,12 @@
           "ar": "عرض الكل ›"
         },
         {
+          "key": "home.invitedTip",
+          "zh-CN": "朋友邀请你来，完成首单双方各得一张优惠券",
+          "en": "A friend invited you — both of you get a voucher after your first order",
+          "ar": "دعاك صديق — يحصل كلاكما على قسيمة بعد أول طلب"
+        },
+        {
           "key": "home.noPlaceAction",
           "zh-CN": "选择地址",
           "en": "Pick an address",
@@ -2876,6 +2882,84 @@
           "zh-CN": "社区好物",
           "en": "Neighbourhood Picks",
           "ar": "مختارات الحي"
+        },
+        {
+          "key": "invite.converted",
+          "zh-CN": "其中已下单",
+          "en": "Ordered",
+          "ar": "منهم طلبوا"
+        },
+        {
+          "key": "invite.copied",
+          "zh-CN": "链接已复制",
+          "en": "Link copied",
+          "ar": "تم نسخ الرابط"
+        },
+        {
+          "key": "invite.copy",
+          "zh-CN": "复制邀请链接",
+          "en": "Copy invite link",
+          "ar": "نسخ رابط الدعوة"
+        },
+        {
+          "key": "invite.entryHint",
+          "zh-CN": "已邀请 {n} 人",
+          "en": "{n} invited",
+          "ar": "تمت دعوة {n}"
+        },
+        {
+          "key": "invite.invited",
+          "zh-CN": "已邀请",
+          "en": "Invited",
+          "ar": "تمت دعوتهم"
+        },
+        {
+          "key": "invite.none",
+          "zh-CN": "当前没有在进行的邀请活动",
+          "en": "No invite campaign is running right now",
+          "ar": "لا توجد حملة دعوة جارية الآن"
+        },
+        {
+          "key": "invite.rewardAny",
+          "zh-CN": "{n} 无门槛券",
+          "en": "a {n} voucher, no minimum",
+          "ar": "قسيمة {n} بدون حد أدنى"
+        },
+        {
+          "key": "invite.rewardCut",
+          "zh-CN": "满 {m} 减 {n} 的券",
+          "en": "a {n}-off voucher on orders over {m}",
+          "ar": "قسيمة خصم {n} على الطلبات فوق {m}"
+        },
+        {
+          "key": "invite.rule",
+          "zh-CN": "新朋友首单后，他得 {a} 张，你得 {b} 张",
+          "en": "Once your friend places their first order, they get {a} and you get {b}",
+          "ar": "بعد أول طلب لصديقك، يحصل على {a} وتحصل أنت على {b}"
+        },
+        {
+          "key": "invite.share",
+          "zh-CN": "分享给好友",
+          "en": "Share with a friend",
+          "ar": "شارك مع صديق"
+        },
+        {
+          "key": "invite.shareTitle",
+          "zh-CN": "一起来买，各得{n}",
+          "en": "Shop with me — we both get {n}",
+          "ar": "تسوّق معي — كلانا يحصل على {n}"
+        },
+        {
+          "key": "invite.tip",
+          "zh-CN": "新朋友完成首单后，奖励券会自动发到你的券包",
+          "en": "Your voucher lands in your wallet once the friend's first order is placed",
+          "ar": "تصلك القسيمة بعد إتمام صديقك لأول طلب"
+        },
+        {
+          "key": "invite.title",
+          "zh-CN": "邀请有礼",
+          "en": "Invite & earn",
+          "ar": "ادعُ واربح"
         },
         {
           "key": "invoice.applied",
@@ -4330,6 +4414,60 @@
           "ar": "تعادل نحو {p}"
         },
         {
+          "key": "poster.act",
+          "zh-CN": "海报",
+          "en": "Poster",
+          "ar": "ملصق"
+        },
+        {
+          "key": "poster.drawing",
+          "zh-CN": "正在生成…",
+          "en": "Generating…",
+          "ar": "جارٍ الإنشاء…"
+        },
+        {
+          "key": "poster.failed",
+          "zh-CN": "海报生成失败，可直接截图分享",
+          "en": "Could not generate the poster — a screenshot works too",
+          "ar": "تعذّر إنشاء الملصق — يمكنك أخذ لقطة شاشة"
+        },
+        {
+          "key": "poster.longPress",
+          "zh-CN": "长按上方图片即可保存",
+          "en": "Press and hold the image above to save",
+          "ar": "اضغط مطولًا على الصورة للحفظ"
+        },
+        {
+          "key": "poster.save",
+          "zh-CN": "保存图片",
+          "en": "Save image",
+          "ar": "حفظ الصورة"
+        },
+        {
+          "key": "poster.saveFailed",
+          "zh-CN": "保存失败，请检查相册权限",
+          "en": "Save failed — check album permission",
+          "ar": "فشل الحفظ — تحقق من إذن الألبوم"
+        },
+        {
+          "key": "poster.saved",
+          "zh-CN": "已保存到相册",
+          "en": "Saved to album",
+          "ar": "تم الحفظ في الألبوم"
+        },
+        {
+          "key": "poster.scanTip",
+          "zh-CN": "扫码进店选购",
+          "en": "Scan to shop",
+          "ar": "امسح الرمز للتسوق"
+        },
+        {
+          "key": "poster.title",
+          "zh-CN": "分享海报",
+          "en": "Share poster",
+          "ar": "ملصق للمشاركة"
+        },
+        {
           "key": "promo.buyNGetM",
           "zh-CN": "买 {n} 送 {m}",
           "en": "Buy {n} get {m}",
@@ -4678,6 +4816,12 @@
           "ar": "صور (حتى ٣)"
         },
         {
+          "key": "review.orderMissing",
+          "zh-CN": "订单信息还没取到，请刷新重试",
+          "en": "Order not loaded yet — please refresh",
+          "ar": "لم يُحمَّل الطلب بعد — يُرجى التحديث"
+        },
+        {
           "key": "review.star1",
           "zh-CN": "很差",
           "en": "Poor",
@@ -4736,6 +4880,12 @@
           "zh-CN": "评价",
           "en": "Reviews",
           "ar": "التقييمات"
+        },
+        {
+          "key": "review.tooShort",
+          "zh-CN": "至少写 5 个字才能发表",
+          "en": "Please write at least 5 characters",
+          "ar": "اكتب 5 أحرف على الأقل"
         },
         {
           "key": "review.writeTitle",
@@ -4826,6 +4976,24 @@
           "zh-CN": "全平台发货",
           "en": "Ships anywhere",
           "ar": "شحن لكل المناطق"
+        },
+        {
+          "key": "share.act",
+          "zh-CN": "分享",
+          "en": "Share",
+          "ar": "مشاركة"
+        },
+        {
+          "key": "share.copied",
+          "zh-CN": "链接已复制，发给好友即可",
+          "en": "Link copied — paste it to a friend",
+          "ar": "تم نسخ الرابط — أرسله لصديق"
+        },
+        {
+          "key": "share.copy",
+          "zh-CN": "复制链接",
+          "en": "Copy link",
+          "ar": "نسخ الرابط"
         },
         {
           "key": "shops.empty",
@@ -8864,6 +9032,30 @@
           "ar": "الوحدة"
         },
         {
+          "key": "goods.freightEst",
+          "zh-CN": "买家快递运费约 {v}",
+          "en": "Buyer pays about {v} shipping",
+          "ar": "يدفع المشتري شحنًا بحوالي {v}"
+        },
+        {
+          "key": "goods.freightEstMissing",
+          "zh-CN": "（{n} 个规格未填重量，按首重计）",
+          "en": " ({n} options without weight, charged at first weight)",
+          "ar": " ({n} خيارات بلا وزن، تُحسب بالوزن الأول)"
+        },
+        {
+          "key": "goods.freightEstRange",
+          "zh-CN": "买家快递运费约 {a}～{b}",
+          "en": "Buyer pays about {a}–{b} shipping",
+          "ar": "يدفع المشتري شحنًا بحوالي {a}–{b}"
+        },
+        {
+          "key": "goods.freightEstUnweighed",
+          "zh-CN": "未填重量，按首重计：买家快递运费约 {v}",
+          "en": "No weight set, charged at first weight: buyer pays about {v} shipping",
+          "ar": "لا وزن محدد، يُحسب بالوزن الأول: يدفع المشتري شحنًا بحوالي {v}"
+        },
+        {
           "key": "goods.freshSection",
           "zh-CN": "生鲜信息",
           "en": "Fresh details",
@@ -12716,6 +12908,12 @@
           "ar": "العميل"
         },
         {
+          "key": "order.buyerFreight",
+          "zh-CN": "买家付运费",
+          "en": "Buyer paid shipping",
+          "ar": "شحن دفعه المشتري"
+        },
+        {
           "key": "order.createdAt",
           "zh-CN": "下单时间",
           "en": "Placed",
@@ -12807,9 +13005,9 @@
         },
         {
           "key": "order.expressFreight",
-          "zh-CN": "运费",
-          "en": "Shipping fee",
-          "ar": "رسوم الشحن"
+          "zh-CN": "实际运费",
+          "en": "Actual shipping",
+          "ar": "الشحن الفعلي"
         },
         {
           "key": "order.expressKeep",
@@ -12888,6 +13086,18 @@
           "zh-CN": "重量（公斤）",
           "en": "Weight (kg)",
           "ar": "الوزن (كغ)"
+        },
+        {
+          "key": "order.freightSubsidy",
+          "zh-CN": "本店补贴运费",
+          "en": "Store covers",
+          "ar": "يتحمله المتجر"
+        },
+        {
+          "key": "order.freightSurplus",
+          "zh-CN": "运费结余",
+          "en": "Shipping surplus",
+          "ar": "فائض الشحن"
         },
         {
           "key": "order.fulfillment",
@@ -15848,10 +16058,70 @@
           "ar": "هاتف المرسل"
         },
         {
+          "key": "shipSetting.template",
+          "zh-CN": "运费模板",
+          "en": "Shipping rates",
+          "ar": "أسعار الشحن"
+        },
+        {
+          "key": "shipSetting.templateHint",
+          "zh-CN": "买家下快递单按这个模板付运费，由平台维护",
+          "en": "Buyers pay shipping on courier orders at these rates, set by the platform",
+          "ar": "يدفع المشتري الشحن لطلبات الشركة وفق هذه الأسعار التي تحددها المنصة"
+        },
+        {
           "key": "shipSetting.title",
           "zh-CN": "发货设置",
           "en": "Shipping settings",
           "ar": "إعدادات الشحن"
+        },
+        {
+          "key": "shipSetting.tplAdd",
+          "zh-CN": "续重",
+          "en": "Additional",
+          "ar": "الإضافي"
+        },
+        {
+          "key": "shipSetting.tplAddValue",
+          "zh-CN": "每 {w} {fee}",
+          "en": "{fee} per {w}",
+          "ar": "{fee} لكل {w}"
+        },
+        {
+          "key": "shipSetting.tplFirst",
+          "zh-CN": "首重",
+          "en": "First weight",
+          "ar": "الوزن الأول"
+        },
+        {
+          "key": "shipSetting.tplFree",
+          "zh-CN": "包邮",
+          "en": "Free shipping",
+          "ar": "شحن مجاني"
+        },
+        {
+          "key": "shipSetting.tplFreeValue",
+          "zh-CN": "满 {v} 包邮",
+          "en": "Over {v}",
+          "ar": "فوق {v}"
+        },
+        {
+          "key": "shipSetting.tplNoFree",
+          "zh-CN": "不包邮",
+          "en": "None",
+          "ar": "لا يوجد"
+        },
+        {
+          "key": "shipSetting.tplReject",
+          "zh-CN": "不配送",
+          "en": "Not shipped to",
+          "ar": "لا يُشحن إلى"
+        },
+        {
+          "key": "shipSetting.tplSurcharge",
+          "zh-CN": "加收地区",
+          "en": "Surcharged regions",
+          "ar": "مناطق برسوم إضافية"
         },
         {
           "key": "shipSetting.unsaved",
@@ -33252,6 +33522,7 @@
           "/pages/order/index",
           "/pages/after-sale/index",
           "/pages/coupons/index",
+          "/pages/invite/index",
           "/pages/coupon-code/index",
           "/pages/my-memberships/index",
           "/pages/cards/index",

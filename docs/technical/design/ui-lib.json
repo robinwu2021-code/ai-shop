@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 482,
-        "c-app": 74
+        "b-app": 486,
+        "c-app": 83
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 355,
-        "c-app": 70
+        "c-app": 73
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 339,
-        "c-app": 257
+        "b-app": 341,
+        "c-app": 265
       }
     },
     {
@@ -378,7 +378,7 @@
       },
       "usage": {
         "b-app": 4,
-        "c-app": 10
+        "c-app": 12
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 110,
-        "c-app": 85
+        "c-app": 88
       }
     },
     {
@@ -535,8 +535,8 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 112,
-        "c-app": 29
+        "b-app": 113,
+        "c-app": 30
       }
     },
     {
@@ -617,8 +617,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 211,
-        "c-app": 79
+        "b-app": 212,
+        "c-app": 83
       }
     },
     {
@@ -636,7 +636,7 @@
       },
       "usage": {
         "b-app": 156,
-        "c-app": 29
+        "c-app": 30
       }
     },
     {
@@ -682,7 +682,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -786,7 +786,7 @@
       },
       "usage": {
         "b-app": 184,
-        "c-app": 72
+        "c-app": 75
       }
     },
     {
@@ -993,7 +993,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 120,
+        "b-app": 121,
         "c-app": 13
       }
     },
@@ -1053,8 +1053,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 333,
-        "c-app": 147
+        "b-app": 339,
+        "c-app": 150
       }
     },
     {
@@ -1362,7 +1362,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 27
+        "c-app": 32
       }
     },
     {
@@ -1380,7 +1380,7 @@
       },
       "usage": {
         "b-app": 142,
-        "c-app": 81
+        "c-app": 84
       }
     },
     {
@@ -1435,8 +1435,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 522,
-        "c-app": 183
+        "b-app": 524,
+        "c-app": 185
       }
     },
     {
@@ -1467,8 +1467,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 299,
-        "c-app": 90
+        "b-app": 301,
+        "c-app": 91
       }
     },
     {
@@ -1861,7 +1861,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 99,
+        "b-app": 100,
         "c-app": 3
       }
     },
@@ -2298,7 +2298,7 @@
       ],
       "usage": {
         "b-app": 117,
-        "c-app": 25,
+        "c-app": 26,
         "lib": 13
       },
       "note": "单色图标",
@@ -2336,7 +2336,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 50,
+        "b-app": 55,
         "c-app": 0,
         "lib": 0
       },
@@ -2560,7 +2560,7 @@
       ],
       "usage": {
         "b-app": 84,
-        "c-app": 39,
+        "c-app": 40,
         "lib": 1
       },
       "note": "页面外壳",
@@ -2646,7 +2646,7 @@
       ],
       "usage": {
         "b-app": 22,
-        "c-app": 8,
+        "c-app": 9,
         "lib": 1
       },
       "note": "底部弹层",
@@ -3656,9 +3656,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 337,
-      "localSelectors": 72,
-      "localCssLines": 312,
+      "libClassHits": 341,
+      "localSelectors": 73,
+      "localCssLines": 316,
       "rolled": []
     },
     {
@@ -4045,7 +4045,7 @@
         "sh-go",
         "sh-scaffold"
       ],
-      "libClassHits": 148,
+      "libClassHits": 156,
       "localSelectors": 19,
       "localCssLines": 77,
       "rolled": []
@@ -4346,13 +4346,14 @@
       "key": "b-app/ship-settings",
       "file": "b-app/src/pages/ship-settings/index.vue",
       "components": [
+        "sh-kv",
         "sh-savebar",
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 27,
-      "localSelectors": 1,
-      "localCssLines": 3,
+      "libClassHits": 35,
+      "localSelectors": 2,
+      "localCssLines": 6,
       "rolled": []
     },
     {
@@ -4998,9 +4999,30 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 31,
-      "localSelectors": 14,
-      "localCssLines": 74,
+      "libClassHits": 36,
+      "localSelectors": 16,
+      "localCssLines": 82,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "invite",
+      "key": "c-app/invite",
+      "file": "c-app/src/pages/invite/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 27,
+      "localSelectors": 7,
+      "localCssLines": 26,
       "rolled": []
     },
     {
@@ -5039,7 +5061,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 113,
+      "libClassHits": 119,
       "localSelectors": 11,
       "localCssLines": 50,
       "rolled": []
@@ -5243,7 +5265,7 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 14,
+      "libClassHits": 15,
       "localSelectors": 12,
       "localCssLines": 44,
       "rolled": []
@@ -5566,6 +5588,19 @@
     },
     {
       "app": "c-app",
+      "page": "biz-poster",
+      "key": "c-app/biz-poster",
+      "file": "c-app/src/components/biz/biz-poster.vue",
+      "components": [
+        "sh-sheet"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
       "page": "biz-review",
       "key": "c-app/biz-review",
       "file": "c-app/src/components/biz/biz-review.vue",
@@ -5575,6 +5610,19 @@
       "libClassHits": 25,
       "localSelectors": 15,
       "localCssLines": 72,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-share-act",
+      "key": "c-app/biz-share-act",
+      "file": "c-app/src/components/biz/biz-share-act.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 3,
+      "localCssLines": 19,
       "rolled": []
     },
     {
@@ -5648,13 +5696,23 @@
       "pages": [
         "c-app/merchant"
       ]
+    },
+    {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "c-app/home"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
     "blocks": 82,
     "components": 37,
-    "pages": 144,
+    "pages": 147,
     "gapKinds": 2
   }
 }
