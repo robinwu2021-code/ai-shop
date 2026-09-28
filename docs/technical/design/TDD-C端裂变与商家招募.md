@@ -689,6 +689,36 @@ ST-TECHOPS  PLATFORM_FLAG  merchant.apply.mp-visible  false｜灰度=null
 
 **④ 迁移号从 V354 改到 V356**：写的时候 V354/V355 已被同伴占用，本地不报、上生产才炸。
 
+### 10.7b 上线时炸了一次：表名抄的是改名前的（2026-09-28 21:01）
+
+**线上挂了约 4 分钟**（21:58 切包 → 21:01 回滚完成 health=200）。
+
+```
+Migration V356 failed: Table 'ai_shop.msg_scene_channel' doesn't exist  (1146)
+```
+
+V156 里那张表叫 `msg_scene_channel`，**V162 把 msg_* 全改成了 notify_***。
+我照抄 V156 的种子写法，连表名一起抄了。
+
+**为什么测试全绿还是炸了** —— 这是这次真正值得记的一条：
+`schema-test.sql` 的生成器**会跟踪 RENAME**，它把种子里的表名自动改成了新名。
+于是 H2 里那张表叫 `notify_scene_channel`，我的 INSERT 跑得好好的，
+而**迁移源文件里的旧名一次都没被执行过**。
+测试不是漏了这条断言，是它在结构上看不见这类错误。
+
+**收拾的顺序**（迁移失败会挡住所有 jar，回滚救不了）：
+
+1. 删 `flyway_schema_history` 里 V356 的 failed 记录 —— 不删的话旧 jar 也 validate 失败；
+2. 软链切回上一版，重启，等到 health=200；
+3. **查 DDL 那一半有没有半执行** —— MySQL 的 `ALTER` 自动提交，不跟着回滚。
+   `prd_goods.new_notified_at` 确实已经建出来了（0 行有值），手工 DROP 掉，
+   否则下次部署撞 duplicate column；
+4. 修表名，**在生产库结构的副本上真跑一遍**（V353 做了这一步，V356 我跳过了 —— 代价就是这次）。
+
+**建议补一道闸门**：扫迁移里 `INSERT INTO` / `ALTER TABLE` 的表名，
+与生成器算出的「当前表名集合」比对，不在集合里就红。
+生成器已经有改名跟踪的逻辑，复用它即可 —— 那正好补上测试看不见的这一面。
+
 ### 10.8 还没做的
 
 - **AC1 只能真机验**：微信里打开小程序 → 店铺页点收藏 → 应弹出订阅授权 →

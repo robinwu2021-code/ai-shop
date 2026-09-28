@@ -19,8 +19,14 @@ ALTER TABLE prd_goods
 -- 且一次授权只够一条，额度本身就是限流。运营要开站内信，后台那一屏打开即可，不用发版。
 --
 -- WHERE NOT EXISTS 的写法照 V156：重复执行不会撞唯一键。
+--
+-- ⚠️ **表名是 notify_scene_channel，不是 V156 里的 msg_scene_channel** ——
+-- V162 把 msg_* 全改成了 notify_*。照抄 V156 的后果是生产上 1146 建不起来，
+-- 而**测试永远发现不了**：schema-test.sql 的生成器会跟踪 RENAME，
+-- 它把种子里的表名自动改成了新名，于是迁移源文件里的旧名在 H2 上照样跑通。
+-- 抄老迁移之前先确认那张表今天还叫不叫那个名字。
 
-INSERT INTO msg_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
 SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
 FROM (
     SELECT 'NEW_GOODS_ON_SALE' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 0 AS enabled, 'NORMAL' AS push_level UNION ALL
@@ -28,6 +34,6 @@ FROM (
     SELECT 'NEW_GOODS_ON_SALE', 'C_USER', 'PUSH', 0, 'NORMAL'
 ) t
 WHERE NOT EXISTS (
-    SELECT 1 FROM msg_scene_channel m
+    SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
