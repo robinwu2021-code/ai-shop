@@ -41,5 +41,5 @@ i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚�
 ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错 @<=1
 ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=12
 ops-reason-required.test.ts::运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason @<=13
-schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=2
+schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=1
 spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=75
