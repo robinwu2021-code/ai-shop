@@ -266,7 +266,6 @@ onShow(() => {
           :maxlength="40"
           :placeholder="$t('store.addressDetailPh')"
         />
-        <text class="sh-hint">{{ pinned ? $t("store.addressPinned") : $t("store.addressHint") }}</text>
       </view>
     </view>
 
@@ -279,7 +278,6 @@ onShow(() => {
           <text v-if="qrcode?.imageBase64" class="sh-chip sh-chip--primary" @tap="saveQrImage">{{ $t("store.saveImage") }}</text>
         </view>
       </view>
-      <text class="sh-hint">{{ $t("store.qrcodeHint") }}</text>
       <view class="qr sh-row">
         <view class="qr__box sh-center">
           <image
@@ -372,9 +370,12 @@ onShow(() => {
   border-radius: 24rpx;
   background: var(--sh-bg);
 }
-/* 海报本身是一张有内容的图，只收圆角，不压尺寸 */
+/* 海报是预览：缩到六成居中，不占满一整屏（要原图点「保存图片」） */
 .poster__img {
-  width: 100%;
+  display: block;
+  width: 60%;
+  margin: 0 auto;
   border-radius: 24rpx;
+  border: var(--sh-hairline);
 }
 </style>

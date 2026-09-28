@@ -884,6 +884,10 @@ uni-page-wrapper[style*="--window-bottom"] {
   gap: 16rpx;
   margin-bottom: 20rpx;
 }
+/* 卡里只有卡头（如「自带客流 54%」）时不留下边距 */
+.sh-card__head:last-child {
+  margin-bottom: 0;
+}
 /* 紧跟卡头的那一句说明：往上收一点贴住标题，下面留一档再接内容 */
 .sh-card__head + .sh-hint {
   margin-top: -8rpx;

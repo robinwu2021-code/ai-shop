@@ -506,7 +506,6 @@ onShow(load);
           <text class="txt-title">{{ $t("home.ownedTraffic") }}</text>
           <text class="txt-display owned__v sh-num txt-primary">{{ ownedRate }}</text>
         </view>
-        <text class="sh-muted">{{ $t("home.ownedTrafficHint") }}</text>
       </view>
 
       <!--

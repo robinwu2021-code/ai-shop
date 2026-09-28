@@ -242,7 +242,6 @@ onShow(load);
         <!-- 撤下：只在店铺页上真的挂着东西时出现。卡头右侧的轻药丸 —— 它与发布不是一对平级动作 -->
         <text v-if="live" class="sh-chip" @tap="withdraw">{{ $t("store.noticeWithdraw") }}</text>
       </view>
-      <text class="sh-hint">{{ $t("store.announcementHint") }}</text>
       <textarea
         v-model="text"
         class="field__area"

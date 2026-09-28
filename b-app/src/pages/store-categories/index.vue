@@ -122,8 +122,6 @@ async function rename(c: StoreCategory) {
       改版前它们铺在这一页上面，标题又叫「我的类目」，店主以为那些灰框也是自己的。
     -->
     <view v-if="picked.length" class="sh-card">
-      <!-- 说明收进卡里第一行：此前飘在卡片下方的灰底上，像是下一块的标题 -->
-      <text class="sh-hint lead">{{ $t("storeCategories.scopeHint") }}</text>
       <view v-for="c in picked" :key="c.categoryNo" class="sh-row sh-row--divided row">
         <view class="sh-fill" @tap="openGoods(c.categoryNo)">
           <text class="txt-body row__name">{{ c.name }}</text>
@@ -166,9 +164,6 @@ async function rename(c: StoreCategory) {
 </template>
 
 <style scoped>
-.lead {
-  margin: 0 0 8rpx;
-}
 .row__act {
   flex-shrink: 0;
 }

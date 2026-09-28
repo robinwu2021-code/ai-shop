@@ -718,9 +718,6 @@ onShow(() => void load());
         @change="(k: string) => { tab = k as 'dims' | 'props'; void loadAddable(); }"
       ></sh-tabs>
     </view>
-    <text class="txt-caption sh-muted intro">
-      {{ $t(tab === "dims" ? "mySpecs.intro" : "mySpecs.introProps") }}
-    </text>
 
     <view v-for="g in byCategory" :key="g.categoryNo" class="sh-block cat">
       <sh-section pad :title="g.categoryName">
@@ -1005,10 +1002,6 @@ onShow(() => void load());
   margin: 0 24rpx;
 }
 
-.intro {
-  display: block;
-  padding: 0 8rpx;
-}
 
 /* 每个类目一块白底：此前是 sh-cells（它自己不画底，靠子格子画），而这里的子项没有底色 ——
    整页标题、行、按钮全浮在灰底上，看不出哪几行属于哪一类 */

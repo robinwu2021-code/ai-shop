@@ -510,7 +510,6 @@ onShow(() => {
           {{ $t("store.addArea") }}
         </view>
       </view>
-      <text class="sh-hint">{{ $t("store.scopeLead") }}</text>
 
       <view v-if="areas.length" class="list">
         <view v-for="a in areas" :key="`${a.level}:${a.refCode}`" class="sh-row sh-row--divided item">
@@ -581,7 +580,8 @@ onShow(() => {
         <view class="ch sh-row" :class="{ 'is-off': c.denied || c.locked }" @tap="toggleChannel(c.channel)">
           <view class="sh-fill">
             <text class="txt-body ch__name">{{ $t(`channel.${c.channel}`) }}</text>
-            <text class="txt-caption ch__desc" :class="{ 'is-warning': c.locked }">{{ c.locked ? $t("store.channelLocked") : c.denied ? $t("store.channelDenied") : $t(`store.channelDesc.${c.channel}`) }}</text>
+            <!-- 名字已经说清是什么，不再配说明；只在「开不了」时说一句为什么 -->
+            <text v-if="c.locked || c.denied" class="txt-caption ch__desc" :class="{ 'is-warning': c.locked }">{{ c.locked ? $t("store.channelLocked") : $t("store.channelDenied") }}</text>
           </view>
           <sh-switch
             :model-value="c.enabled"
@@ -667,7 +667,7 @@ onShow(() => {
       <view class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('offlinePayEnabled')">
         <view class="sh-fill">
           <text class="txt-body ch__name">{{ $t("store.payOffline") }}</text>
-          <text class="txt-caption ch__desc" :class="{ 'is-warning': !paySetting.qualified }">{{ paySetting.qualified ? $t("store.payOfflineDesc") : $t("store.payNeedLicense") }}</text>
+          <text v-if="!paySetting.qualified" class="txt-caption ch__desc is-warning">{{ $t("store.payNeedLicense") }}</text>
         </view>
         <sh-switch :model-value="paySetting.offlinePayEnabled" :disabled="savingPay === 'offlinePayEnabled'"></sh-switch>
       </view>
@@ -675,7 +675,6 @@ onShow(() => {
       <view v-if="paySetting.offlinePayEnabled" class="ch sh-row" :class="{ 'is-off': !payEditable }" @tap="togglePay('codEnabled')">
         <view class="sh-fill">
           <text class="txt-body ch__name">{{ $t("store.payCod") }}</text>
-          <text class="txt-caption ch__desc">{{ $t("store.payCodDesc") }}</text>
         </view>
         <sh-switch :model-value="paySetting.codEnabled" :disabled="savingPay === 'codEnabled'"></sh-switch>
       </view>
@@ -756,7 +755,18 @@ onShow(() => {
 .ch {
   gap: 24rpx;
   padding: 24rpx 0;
-  border-bottom: var(--sh-hairline);
+}
+/* 线画在「后一行」的头顶（同 .sh-row--divided 的规矩）：画在每行脚下的话，
+   卡片最后一行下面会悬着一条线，真机上看像内容被截断了 */
+.ch + .ch,
+.ch + .sum,
+.sum + .sum,
+.sum + .ch {
+  border-top: var(--sh-hairline);
+}
+/* 卡头已经留了一档距离，第一行不再叠上自己的上内边距 */
+.sh-card__head + .ch {
+  padding-top: 0;
 }
 .ch.is-off {
   opacity: 0.55;
@@ -781,7 +791,6 @@ onShow(() => {
  */
 .sum {
   padding: 16rpx 0 16rpx 24rpx;
-  border-bottom: var(--sh-hairline);
 }
 /* 缺配置是**状态**不是装饰：起始侧一条竖杠 + 文字变色，不换整块底色。
    用逻辑属性而不是 border-left —— 阿语下起始侧在右，写死 left 那条杠会留在错的一边 */

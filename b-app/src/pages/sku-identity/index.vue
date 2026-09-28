@@ -198,14 +198,14 @@ function arrow(from?: string | null, to?: string | null): string {
         <text class="txt-title">{{ $t("skuIdentity.howTitle") }}</text>
       </view>
       <view>
-        <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
+        <sh-kv :label="String($t('skuIdentity.ruleMissingK'))" divided :key-width="160">
+          <text class="txt-body rule__v">{{ $t("skuIdentity.ruleMissingV") }}</text>
         </sh-kv>
-        <sh-kv :label="String($t('skuIdentity.ruleBlankK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
+        <sh-kv :label="String($t('skuIdentity.ruleBlankK'))" divided :key-width="160">
+          <text class="txt-body rule__v">{{ $t("skuIdentity.ruleBlankV") }}</text>
         </sh-kv>
-        <sh-kv :label="String($t('skuIdentity.ruleDashK'))" divided :key-width="180">
-          <text class="sh-muted rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
+        <sh-kv :label="String($t('skuIdentity.ruleDashK'))" divided :key-width="160">
+          <text class="txt-body rule__v">{{ $t("skuIdentity.ruleDashV") }}</text>
         </sh-kv>
       </view>
     </view>
