@@ -240,7 +240,7 @@
     {
       "path": "pages/my-specs/index",
       "style": {
-        "navigationBarTitleText": "商品规格与参数",
+        "navigationBarTitleText": "商品规格",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -252,7 +252,7 @@
     {
       "path": "pages/sku-identity/index",
       "style": {
-        "navigationBarTitleText": "商品编码导入导出",
+        "navigationBarTitleText": "商品编码",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -336,7 +336,7 @@
     {
       "path": "pages/store-notice/index",
       "style": {
-        "navigationBarTitleText": "公告",
+        "navigationBarTitleText": "店铺公告",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -360,7 +360,7 @@
     {
       "path": "pages/store-scope/index",
       "style": {
-        "navigationBarTitleText": "经营范围与送货",
+        "navigationBarTitleText": "经营范围",
         "app-plus": {
           "navigationStyle": "custom"
         },
