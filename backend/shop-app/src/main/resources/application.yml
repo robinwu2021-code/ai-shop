@@ -271,6 +271,9 @@ shop:
   express:
     kuaidi100:
       stub: ${SHOP_EXPRESS_KUAIDI100_STUB:true}
+      # 测试环境：http://e-test.kuaidilab.com/api（下单不产生真实取件、不扣费；
+      # 各阶段状态在「寄件测试平台」testapi.kuaidilab.com 里手动推）。正式环境用默认值
+      host: ${KUAIDI100_HOST:https://poll.kuaidi100.com}
       key: ${KUAIDI100_KEY:}
       secret: ${KUAIDI100_SECRET:}
       salt: ${KUAIDI100_SALT:}
