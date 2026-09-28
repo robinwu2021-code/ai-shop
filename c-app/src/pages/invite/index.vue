@@ -96,7 +96,7 @@ function copyLink() {
 
       <!-- ② 我邀到了几个。**两个数并列** —— 奖励是按首单发的，
            只给「已邀请」会让人问「我邀了 3 个怎么只得 1 张」 -->
-      <view class="sh-card block sh-row inv__stats">
+      <view class="sh-card sh-row inv__stats">
         <view class="sh-fill sh-center inv__stat">
           <text class="txt-hero sh-num">{{ fission.myInvited }}</text>
           <text class="txt-caption sh-muted">{{ $t("invite.invited") }}</text>
