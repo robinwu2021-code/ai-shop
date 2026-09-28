@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 210 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 213 个受控功能点**
 （另有 29 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -29,10 +29,10 @@
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 20 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
+| `biz:ship` | `SHIP` | 发货、标记自送送达 | 5 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `biz:ship` | `SHIP` | 发货、标记自送送达 | 2 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
@@ -320,6 +320,19 @@
 | 批量核销 | POST | `/biz/pickup/verify/batch` | `mVerifyBatch` | verify |
 | 按取货码片段搜单 | GET | `/biz/pickup/verify/search` | `mVerifySearch` | verify |
 
+### `biz:ship`　发货、标记自送送达
+
+**可用角色**：老板、店长、店员、配送员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 自送已送达 | POST | `/biz/order/:orderNo/delivered` | `mDelivered` | delivery、order |
+| 叫快递上门取件 | POST | `/biz/order/:orderNo/express` | `mBookExpress` | order |
+| 取件单 | GET | `/biz/order/:orderNo/express` | `mExpressPickup` | order |
+| 取消取件 | POST | `/biz/order/:orderNo/express/cancel` | `mCancelExpress` | order |
+| 快递报价 | GET | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | order |
+| 快递发货 | POST | `/biz/order/:orderNo/ship` | `mShip` | order |
+
 ### `biz:receive`　到货登记、分拣单、短少上报
 
 **可用角色**：老板、店长、店员、理货员
@@ -351,15 +364,6 @@
 | 评价列表 | GET | `/biz/review` | `mReviewList` | reviews |
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
-
-### `biz:ship`　发货、标记自送送达
-
-**可用角色**：老板、店长、店员、配送员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 自送已送达 | POST | `/biz/order/:orderNo/delivered` | `mDelivered` | delivery、order |
-| 快递发货 | POST | `/biz/order/:orderNo/ship` | `mShip` | order |
 
 ### `biz:order:view`　订单列表与详情、工作台待办
 

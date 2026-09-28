@@ -9841,6 +9841,28 @@ components:
           type: "boolean"
           description: "看全部门店的单，不传/false 只看**当前门店**。\n\n⚠️ 后端一直支持这个参数，端上从没传过 —— 于是订单页恒等于「当前门店」， 而界面上既没有门店名也没有切换入口，多门店老板会以为自己看到的是全部。\n\n「全部」对老板和店员**不是一回事**：老板的全部是主体名下所有店， 店员的全部只是他被授权的那几家。这个区分在后端（allowedStoresOrAll）， 端上只管传不传。"
       additionalProperties: false
+    ExpressQuotesQuery: 
+      type: "object"
+      properties: 
+        weightKg: 
+          type: "number"
+      required: 
+        - "weightKg"
+      additionalProperties: false
+      description: "快递报价（`mExpressQuotes`，GET 查询参数）。重量公斤，0.1–30"
+    BookExpressReq: 
+      type: "object"
+      properties: 
+        carrier: 
+          type: "string"
+          description: "微信 delivery_id"
+        weightKg: 
+          type: "number"
+      required: 
+        - "carrier"
+        - "weightKg"
+      additionalProperties: false
+      description: "叫快递（`mBookExpress`）。重量公斤，0.1–30"
     ShipReq: 
       type: "object"
       properties: 
@@ -13838,6 +13860,150 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/Order"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/express/quotes": 
+    get: 
+      operationId: "mExpressQuotes"
+      summary: "快递报价"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "weightKg"
+          in: "query"
+          required: true
+          schema: 
+            type: "number"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ExpressQuote"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/express": 
+    post: 
+      operationId: "mBookExpress"
+      summary: "叫快递上门取件"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ExpressPickup"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/BookExpressReq"
+    get: 
+      operationId: "mExpressPickup"
+      summary: "取件单"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ExpressPickup"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/express/cancel": 
+    post: 
+      operationId: "mCancelExpress"
+      summary: "取消取件"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ExpressPickup"
                 required: 
                   - "code"
                   - "msg"

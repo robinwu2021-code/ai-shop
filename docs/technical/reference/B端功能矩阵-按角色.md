@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 210 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 213 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -24,10 +24,10 @@
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 20 | ✅ | — | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
+| `SHIP` | 发货、标记自送送达 | 5 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `SHIP` | 发货、标记自送送达 | 2 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 
 **只有 OWNER 能碰的 2 项**：`STORE_ADMIN`、`FINANCE`
@@ -254,6 +254,14 @@
 - `/biz/pickup/verify/batch`
 - `/biz/pickup/verify/search`
 
+### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
+
+- `/biz/order/{subOrderNo}/delivered`
+- `/biz/order/{subOrderNo}/express`
+- `/biz/order/{subOrderNo}/express/cancel`
+- `/biz/order/{subOrderNo}/express/quotes`
+- `/biz/order/{subOrderNo}/ship`
+
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
 - `/biz/order/{subOrderNo}/confirm-offline-pay`
@@ -273,11 +281,6 @@
 - `/biz/review`
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
-
-### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
-
-- `/biz/order/{subOrderNo}/delivered`
-- `/biz/order/{subOrderNo}/ship`
 
 ### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
 
