@@ -129,8 +129,7 @@ describe("site.config 的空占位", () => {
     // legal.icp 已于 2026-08-21 备案通过填上，从清单里移除 —— 它再空就是回退
     "legal.policeNo",
     "contact.salesWechatQr",
-    // 招商电话：结构已就位，值等运营给（社区门店店主不用邮箱，这一项与微信才是他真会走的路）
-    "contact.salesPhone",
+    // contact.salesPhone 已于 2026-09-28 填上 18503088359 —— 从清单里移除，它再空就是回退
     "download.consumerAppStore",
     "download.consumerAndroid",
     "download.consumerMiniProgram",
