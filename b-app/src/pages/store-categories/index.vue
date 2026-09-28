@@ -125,7 +125,7 @@ async function rename(c: StoreCategory) {
       <view v-for="c in picked" :key="c.categoryNo" class="sh-row sh-row--divided row">
         <view class="sh-fill" @tap="openGoods(c.categoryNo)">
           <text class="txt-body row__name">{{ c.name }}</text>
-          <text v-if="c.displayName" class="txt-caption">{{ c.platformName }}</text>
+          <text v-if="c.displayName" class="txt-caption row__plat">{{ c.platformName }}</text>
           <text class="txt-caption sh-muted row__stat">
             {{ $t("storeCategories.onSale", { n: c.onSaleCount }) }}
             <template v-if="c.pendingCount">
@@ -170,8 +170,11 @@ async function rename(c: StoreCategory) {
 .row__name {
   flex: 1;
 }
-/* 改过名时跟在后面的平台原名：与新名字隔开，别读成一个词 */
-.row__name + .txt-caption {
+/* 改过名时跟在后面的平台原名：与新名字隔开，别读成一个词。
+   **选择器要写到 `.row__plat`**：原来是 `.row__name + .txt-caption`，
+   而「在售 N」那行也是 `.txt-caption`、也紧跟在名字后面（没改过名时），
+   于是它跟着缩进 8rpx —— 三行左边线对不齐，只有这一行往里让了一截。 */
+.row__plat {
   margin-inline-start: 8rpx;
 }
 .row__stat {
