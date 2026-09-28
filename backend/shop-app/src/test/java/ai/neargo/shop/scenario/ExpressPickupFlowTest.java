@@ -35,7 +35,8 @@ import org.springframework.test.context.ActiveProfiles;
  * <p>数据全用自建的测试商家 {@link #ENTITY}，自建自删，不碰共享种子。
  */
 @SpringBootTest
-@ActiveProfiles("test")
+// 换了通道 bean = 另一个 Spring 上下文，要一套独立内存库（见 application-expresspickup.yml）
+@ActiveProfiles({"test", "expresspickup"})
 @DisplayName("快递代下单：下单、回调、取件回填运单号、运费记欠款")
 class ExpressPickupFlowTest {
 
