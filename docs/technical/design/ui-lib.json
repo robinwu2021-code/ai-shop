@@ -240,46 +240,6 @@
   },
   "blocks": [
     {
-      "class": ".sh-card__head",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "space-between",
-        "gap": "16rpx",
-        "margin-bottom": "20rpx"
-      },
-      "px": {
-        "display": "flex",
-        "align-items": "center",
-        "justify-content": "space-between",
-        "gap": "8px",
-        "margin-bottom": "10px"
-      },
-      "usage": {
-        "b-app": 21,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-card__head:last-child",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "margin-bottom": "0"
-      },
-      "px": {
-        "margin-bottom": "0"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -659,6 +619,30 @@
       "usage": {
         "b-app": 213,
         "c-app": 84
+      }
+    },
+    {
+      "class": ".sh-card__head",
+      "group": "容器",
+      "when": "卡内第一行：标题在左、动作在右，与下面内容隔一档",
+      "avoid": "块（.sh-block）里的标题行用 .sh-block__head",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "gap": "16rpx",
+        "margin-bottom": "20rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "gap": "8px",
+        "margin-bottom": "10px"
+      },
+      "usage": {
+        "b-app": 21,
+        "c-app": 0
       }
     },
     {
@@ -1440,26 +1424,6 @@
       }
     },
     {
-      "class": ".sh-hit::after",
-      "group": "行与列",
-      "when": "`.sh-hit` 撑开的那块看不见的点按区",
-      "avoid": "不要单独挂，它是上一条的一半",
-      "decl": {
-        "content": "\"\"",
-        "position": "absolute",
-        "inset": "-24rpx"
-      },
-      "px": {
-        "content": "\"\"",
-        "position": "absolute",
-        "inset": "-12px"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
-      }
-    },
-    {
       "class": ".sh-row",
       "group": "行与列",
       "when": "一行之内的横排：图标 + 文字 + 右侧值，纵向居中，缝 16rpx",
@@ -1561,26 +1525,6 @@
       "usage": {
         "b-app": 0,
         "c-app": 1
-      }
-    },
-    {
-      "class": ".sh-scrollx::-webkit-scrollbar",
-      "group": "行与列",
-      "when": "`.sh-scrollx` 藏滚动条用",
-      "avoid": "同上",
-      "decl": {
-        "display": "none",
-        "width": "0",
-        "height": "0"
-      },
-      "px": {
-        "display": "none",
-        "width": "0",
-        "height": "0"
-      },
-      "usage": {
-        "b-app": 0,
-        "c-app": 0
       }
     },
     {
@@ -5813,7 +5757,7 @@
   ],
   "counts": {
     "tokens": 16,
-    "blocks": 84,
+    "blocks": 81,
     "components": 37,
     "pages": 147,
     "gapKinds": 2
