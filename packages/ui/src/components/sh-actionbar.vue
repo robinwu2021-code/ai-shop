@@ -50,8 +50,14 @@ const props = withDefaults(
      * 所以这里明写一个数，而不是假装它会自己对上。
      */
     pad?: number;
+    /**
+     * 贴底通栏（不浮）。**商品详情这类长图文页用** —— 浮动药丸与下面同为白色的卡片叠在一起，
+     * 滑动时分不出哪是按钮、哪是内容（2026-09-28 用户在真机上反馈「看不清」）。
+     * 淘宝 / 京东的详情页底栏都是这一形态：贴底、方角、顶上一条线加一层向上的阴影。
+     */
+    dock?: boolean;
   }>(),
-  { pill: undefined, tabbar: false, pad: 180 },
+  { pill: undefined, tabbar: false, pad: 180, dock: false },
 );
 
 /*
@@ -75,7 +81,7 @@ const padStyle = computed(() => ({
   <view class="ab__pad" :style="padStyle"></view>
   <view
     class="ab"
-    :class="[pill ? `ab--${pill}` : '', { 'ab--tabbar': tabbar }]"
+    :class="[pill ? `ab--${pill}` : '', { 'ab--tabbar': tabbar, 'ab--dock': dock }]"
   >
     <slot></slot>
   </view>
@@ -162,5 +168,22 @@ const padStyle = computed(() => ({
 .ab--tabbar.ab--lead,
 .ab--tabbar.ab--plain {
   padding-inline: var(--sh-pad-page, 28rpx);
+}
+/*
+ * 贴底通栏（`dock`）。与 `tabbar` 那一档同一个理由换成方角通栏，只是贴的是屏幕底边：
+ * 浮动药丸在长图文页上与白卡片叠在一起读不出层次，贴底 + 顶线 + 向上的阴影才分得开。
+ * 安全区加在**它自己的** padding-bottom 上（条是贴底的，底部那一截要让给 Home 条），
+ * 与占位块同一套兜底写法：不认 env() 的内核就是没有安全区，而不是整条声明失效。
+ */
+.ab--dock {
+  inset-inline: 0;
+  bottom: 0;
+  border-radius: 0;
+  border-top: var(--sh-hairline);
+  box-shadow: var(--sh-shadow-up);
+  padding-inline: var(--sh-pad-page, 28rpx);
+  padding-bottom: 12rpx;
+  padding-bottom: calc(12rpx + constant(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(12rpx + env(safe-area-inset-bottom, 0px));
 }
 </style>

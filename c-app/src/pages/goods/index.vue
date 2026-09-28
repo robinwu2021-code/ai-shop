@@ -1437,7 +1437,8 @@ onShareAppMessage(() =>
           </view>
         </sh-sheet>
 
-        <sh-actionbar pill="plain" :pad="220">
+        <!-- dock：贴底通栏（2026-09-28 真机反馈浮动药丸滑动时与商品卡叠在一起看不清） -->
+        <sh-actionbar pill="plain" dock :pad="160">
           <!-- 底栏：店铺 · 购物车 · 两颗按钮（v3，2026-09-28 用户拍板购物车回底栏）。分享仍在标题旁 -->
           <view class="actionbar__icon sh-center" @tap="openMerchant">
             <sh-icon name="store" :size="40" color="var(--sh-sub)"></sh-icon>
