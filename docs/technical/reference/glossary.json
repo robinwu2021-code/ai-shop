@@ -10244,6 +10244,12 @@
           "ar": "التغطية"
         },
         {
+          "key": "home.shipEntry",
+          "zh-CN": "发货设置",
+          "en": "Shipping",
+          "ar": "الشحن"
+        },
+        {
           "key": "home.skuIdentityEntry",
           "zh-CN": "商品编码",
           "en": "SKU codes",
@@ -12830,6 +12836,12 @@
           "ar": "عرض الأسعار"
         },
         {
+          "key": "order.expressSandbox",
+          "zh-CN": "测试",
+          "en": "Test",
+          "ar": "تجريبي"
+        },
+        {
           "key": "order.expressStatus.ACCEPTED",
           "zh-CN": "已接单",
           "en": "Accepted",
@@ -12990,6 +13002,18 @@
           "zh-CN": "发货",
           "en": "Ship",
           "ar": "شحن"
+        },
+        {
+          "key": "order.shipMode.PICKUP",
+          "zh-CN": "叫快递上门",
+          "en": "Book a courier",
+          "ar": "طلب مندوب شحن"
+        },
+        {
+          "key": "order.shipMode.SELF",
+          "zh-CN": "自己发货",
+          "en": "Ship myself",
+          "ar": "أشحن بنفسي"
         },
         {
           "key": "order.shipped",
@@ -15768,6 +15792,90 @@
           "zh-CN": "结算单",
           "en": "Settlement",
           "ar": "كشف التسوية"
+        },
+        {
+          "key": "shipSetting.address",
+          "zh-CN": "寄件地址",
+          "en": "Sender address",
+          "ar": "عنوان المرسل"
+        },
+        {
+          "key": "shipSetting.adminOnly",
+          "zh-CN": "仅店主可修改发货设置",
+          "en": "Only the owner can change shipping settings",
+          "ar": "يمكن للمالك فقط تعديل إعدادات الشحن"
+        },
+        {
+          "key": "shipSetting.carrier",
+          "zh-CN": "默认快递",
+          "en": "Default courier",
+          "ar": "شركة الشحن الافتراضية"
+        },
+        {
+          "key": "shipSetting.defaults",
+          "zh-CN": "默认选项",
+          "en": "Defaults",
+          "ar": "الافتراضيات"
+        },
+        {
+          "key": "shipSetting.fallback",
+          "zh-CN": "不填时用：{v}",
+          "en": "If left blank: {v}",
+          "ar": "عند الترك فارغًا: {v}"
+        },
+        {
+          "key": "shipSetting.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "shipSetting.sender",
+          "zh-CN": "寄件信息",
+          "en": "Sender",
+          "ar": "المرسل"
+        },
+        {
+          "key": "shipSetting.senderName",
+          "zh-CN": "寄件人",
+          "en": "Sender name",
+          "ar": "اسم المرسل"
+        },
+        {
+          "key": "shipSetting.senderPhone",
+          "zh-CN": "寄件电话",
+          "en": "Sender phone",
+          "ar": "هاتف المرسل"
+        },
+        {
+          "key": "shipSetting.title",
+          "zh-CN": "发货设置",
+          "en": "Shipping settings",
+          "ar": "إعدادات الشحن"
+        },
+        {
+          "key": "shipSetting.unsaved",
+          "zh-CN": "有修改未保存",
+          "en": "Unsaved changes",
+          "ar": "تغييرات غير محفوظة"
+        },
+        {
+          "key": "shipSetting.weight",
+          "zh-CN": "默认重量",
+          "en": "Default weight",
+          "ar": "الوزن الافتراضي"
+        },
+        {
+          "key": "shipSetting.weightPh",
+          "zh-CN": "默认重量（公斤）",
+          "en": "Default weight (kg)",
+          "ar": "الوزن الافتراضي (كغ)"
+        },
+        {
+          "key": "shipSetting.weightRange",
+          "zh-CN": "重量要在 0.1 到 30 公斤之间",
+          "en": "Weight must be 0.1–30 kg",
+          "ar": "يجب أن يكون الوزن بين 0.1 و30 كغ"
         },
         {
           "key": "skin.amber",
@@ -33057,6 +33165,7 @@
           "/pages/delivery/index",
           "/pages/store/index",
           "/pages/store-notice/index",
+          "/pages/ship-settings/index",
           "/pages/store-scope/index",
           "/pages/store-pick/index",
           "/pages/payment/index",
@@ -34264,6 +34373,14 @@
       "type": "Set<String>",
       "value": "Set.of(ONLINE)",
       "zh": "新建商品的默认集合。",
+      "module": "shop-base"
+    },
+    {
+      "host": "PayModes",
+      "name": "EXPRESS_TEST_MODE_FLAG",
+      "type": "String",
+      "value": "\"express.test-mode\"",
+      "zh": "功能开关「快递测试模式」（TDD-快递100商家寄件 §7）。",
       "module": "shop-base"
     },
     {

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 84,
+      "count": 85,
       "domains": [
         {
           "name": "工作台",
@@ -274,6 +274,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/sku-identity/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/ship-settings/index",
+              "title": "发货设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/ship-settings/index"
             },
             {
               "app": "b-app",
@@ -3318,5 +3329,5 @@
       ]
     }
   ],
-  "total": 261
+  "total": 262
 }

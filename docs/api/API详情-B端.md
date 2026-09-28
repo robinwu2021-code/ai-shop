@@ -6082,6 +6082,46 @@ _无字段_
 | `param` | `number` | 是 | RESERVE / CAP / MANUAL 为件数，RATIO 为百分比 |
 
 
+#### GET `/biz/store/{storeNo}/ship-setting`
+
+发货设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ShipSetting`](#shipsetting)
+
+
+#### PUT `/biz/store/{storeNo}/ship-setting`
+
+改发货设置　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+请求体：[`SaveShipSettingReq`](#saveshipsettingreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `senderName` | `string` | 是 | 寄件人，≤64 字。空 = 门店名 |
+| `senderPhone` | `string` | 是 | 寄件电话：手机或座机，数字与短横 7–20 位。空 = 店主登录手机 |
+| `address` | `string` | 是 | 寄件地址，带省市区的整条，≤255 字。空 = 门店地址 |
+| `carrier` | `string` | 是 | 默认快递公司，微信 delivery_id。空 = 不预选 |
+| `weightG` | `number,null` | 是 | 默认包裹重量（克），100–30000。null = 不预填 |
+
+**出参**（`data`）
+
+类型：[`ShipSetting`](#shipsetting)
+
+
 #### POST `/biz/store/{storeNo}/status`
 
 停用/启用门店　🔒
@@ -9119,6 +9159,18 @@ _无字段_
 |---|---|:---:|---|
 | `minCount` | `number` | 否 | 起团人数，最小 2 —— 一个人不叫团 |
 | `price` | `number` | 否 | 团购价（最小货币单位） |
+
+### SaveShipSettingReq
+
+改门店发货设置（`mSaveShipSetting`）。**空串 = 改回默认**（门店名 / 店主手机 / 门店地址）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `senderName` | `string` | 是 | 寄件人，≤64 字。空 = 门店名 |
+| `senderPhone` | `string` | 是 | 寄件电话：手机或座机，数字与短横 7–20 位。空 = 店主登录手机 |
+| `address` | `string` | 是 | 寄件地址，带省市区的整条，≤255 字。空 = 门店地址 |
+| `carrier` | `string` | 是 | 默认快递公司，微信 delivery_id。空 = 不预选 |
+| `weightG` | `number,null` | 是 | 默认包裹重量（克），100–30000。null = 不预填 |
 
 ### SaveSpecTemplateReq
 
