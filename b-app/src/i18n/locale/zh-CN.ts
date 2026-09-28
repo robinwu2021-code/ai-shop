@@ -1087,8 +1087,8 @@ export default {
       manage: "管理",
       sumRefs: "取货点：{s}",
       sumMore: "{a} 等 {n} 个",
-      sumNone: "还没选取货点，顾客到门店地址取",
-      sumNoneNoAddr: "尚未设置自提点，门店也未填写地址，顾客无法确定取货位置",
+      sumNone: "还没选取货点",
+      sumNoneNoAddr: "取货点和门店地址都没填",
     },
     channelLocked: "平台已暂停，请联系运营",
     subset: {
