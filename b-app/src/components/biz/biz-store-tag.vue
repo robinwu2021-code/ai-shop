@@ -56,7 +56,11 @@ const actionKey = computed(() =>
 
 function go() {
   if (props.readonly) return;
-  uni.navigateTo({ url: ROUTES.stores });
+  /*
+   * **多证照时去选店页**：门店管理只列当前证照下的店，
+   * 跨证照的店在那儿一家都看不到（同 me 页头部，2026-09-29 真机）。
+   */
+  uni.navigateTo({ url: merchant.multiEntity ? ROUTES.storePick : ROUTES.stores });
 }
 </script>
 

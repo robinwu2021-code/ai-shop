@@ -59,7 +59,16 @@ const storeEntryKey = computed(() => (merchant.multiStore
  * 出问题时第一反应不会是「这一行的写法不一样」。
  */
 function onHeadTap() {
-  if (storeEntry.value) go(ROUTES.stores);
+  if (!storeEntry.value) return;
+  /*
+   * **多证照时去选店页，不是门店管理。**
+   *
+   * 门店管理（ROUTES.stores）只列**当前证照**下的店 —— 名下三张证照的人
+   * 在那儿永远看不到另外两张下面的店，等于跨证照切店这条路是断的
+   * （2026-09-29 真机上撞到：店主看得到「3 张证照」，却没有一条路切过去）。
+   * 选店页按证照分组列全部，切过去的底层逻辑 `switchStore` 早就写好了。
+   */
+  go(merchant.multiEntity ? ROUTES.storePick : ROUTES.stores);
 }
 
 const headStatusKey = computed(() => (merchant.multiStore
