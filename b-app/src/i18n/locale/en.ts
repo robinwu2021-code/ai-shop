@@ -2094,6 +2094,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
   },
   me: {
     switchStore: "Switch",
+    account: "Account",
     password: "Login password",
     passwordSet: "Change",
     passwordUnset: "Set up",

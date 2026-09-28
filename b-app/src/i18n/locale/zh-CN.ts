@@ -2378,6 +2378,7 @@ entryHint: "谁在买 · 谁不来了",
   me: {
     switchStore: "切换",
     loggedOut: "已退出登录",
+    account: "登录账号",
     password: "登录密码",
     passwordSet: "修改密码",
     passwordUnset: "去设置",

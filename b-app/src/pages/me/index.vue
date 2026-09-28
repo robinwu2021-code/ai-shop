@@ -297,6 +297,13 @@ onShow(() => {
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
+      <!-- 登录账号：这一页此前没有一处告诉店主「我是用哪个号登进来的」——
+           多店 / 多人时他分不清此刻是哪个身份，改密码、找回都无从对起。
+           只读展示登录手机号；第三方登录没有手机号时留空提示去补绑（补绑入口在登录页）。 -->
+      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between">
+        <text class="txt-body cell__label">{{ $t("me.account") }}</text>
+        <text class="txt-caption cell__value sh-num">{{ merchant.profile?.phone || "—" }}</text>
+      </view>
       <!-- 登录密码：设过就是「修改」，没设过是「设置」——
            两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
       <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="editPassword">

@@ -2092,6 +2092,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
   },
   me: {
     switchStore: "تبديل",
+    account: "الحساب",
     password: "كلمة مرور الدخول",
     passwordSet: "تغيير",
     passwordUnset: "تعيين",
