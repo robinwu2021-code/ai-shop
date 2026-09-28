@@ -203,6 +203,10 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
                 <Field label={c.colContact}>{`${current.contactName} ${current.contactPhone}`}</Field>
                 <Field label={c.applyColCategory}>{current.category}</Field>
+                {/* 推荐人：**只在有值时显示** —— 绝大多数申请没有，空着一栏比不显示更容易误读成「查不到」 */}
+                {current.referrerPhone ? (
+                  <Field label={c.applyColReferrer}>{current.referrerPhone}</Field>
+                ) : null}
                 <Field label={c.colStatus}>
                   <StatusBadge value={current.status} map={STATUS_MAP} />
                 </Field>

@@ -417,6 +417,7 @@ export default {
     category: "主营类目",
     contact: "联系人",
     phone: "手机号",
+    referrerPh: "推荐人手机号（选填）",
     descPh: "选填，一句话介绍",
     submitApply: "提交入驻申请",
     selfOperated: "自营",

@@ -31,8 +31,8 @@ class MerchantStatusMappingTest {
                 status, null, 0L, 0L,
                 // 结构化资质（V79）：本测试只关心状态映射，给空即可
                 List.of(),
-                // 代填与协议（三期）：同上，与状态映射无关
-                false, 0L);
+                // 代填与协议（三期）、推荐人（V353）：同上，与状态映射无关
+                false, 0L, null);
     }
 
     /** 造一张单，只调这两个维度 —— 其余字段与本组断言无关 */
@@ -40,7 +40,7 @@ class MerchantStatusMappingTest {
         return new MerchantApplyVO("MA1", "", "老张粮油店", "PERSONAL",
                 "张三", "13800000000", "", "", "COMMUNITY",
                 List.of(), List.of(), false, "GROCERY",
-                "PENDING", null, 0L, 0L, List.of(), onBehalf, agreedAt);
+                "PENDING", null, 0L, 0L, List.of(), onBehalf, agreedAt, null);
     }
 
     /**

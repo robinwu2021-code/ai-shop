@@ -1198,7 +1198,8 @@ public class OpsServiceImpl implements OpsService {
                 a.getAuditedAt() == null ? 0L : a.getAuditedAt(),
                 readQualItems(a.getQualificationItems()),
                 notBlank(a.getSubmittedBy()),
-                a.getAgreedAt() == null ? 0L : a.getAgreedAt());
+                a.getAgreedAt() == null ? 0L : a.getAgreedAt(),
+                a.getReferrerPhone());
     }
 
     /** 申请单上的结构化资质 → VO。解析不出来给空 —— 审核页不该被脏数据整页打不开 */

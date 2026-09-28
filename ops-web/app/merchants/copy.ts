@@ -6,6 +6,7 @@ const zh = {
   applyColIndustry: "行业",
   applyColSubject: "主体类型",
   applyColCategory: "主营类目",
+  applyColReferrer: "推荐人",
   applyColScope: "服务范围",
   applyScopeEmpty: "未设置",
   applySearchPh: "店名 / 联系人 / 手机号",
@@ -664,6 +665,7 @@ const zh = {
 const en: typeof zh = {
   applyColIndustry: "Industry",
   applyColSubject: "Legal form",
+  applyColReferrer: "Referrer",
   applyColCategory: "Category",
   applyColScope: "Service area",
   applyScopeEmpty: "Not set",

@@ -216,7 +216,19 @@ const applyStatusText = computed(() =>
 
 async function submitMerchant() {
   if (!mValid.value) return;
-  applyStatus.value = await api.merchantApply({ ...mForm.value });
+  /*
+   * **手机号要以字符串发出去**：两个号码框都是 `type="number"`（为了弹数字键盘），
+   * 而 H5 上 v-model 会把值转成数字 —— 后端收的是 String（见 phone-gate 里同一个坑）。
+   *
+   * **推荐人为空时传 undefined 不传空串**：空串与 null 在「有没有推荐人」上语义不同，
+   * 落成空串的话运营端会看到一个空白的推荐人而不是「没有」。
+   */
+  const referrer = String(mForm.value.referrerPhone ?? "").trim();
+  applyStatus.value = await api.merchantApply({
+    ...mForm.value,
+    contactPhone: String(mForm.value.contactPhone ?? "").trim(),
+    referrerPhone: referrer || undefined,
+  });
   merchantVisible.value = false;
   /*
    * 提交成功 → **引导去装商家版 App**（2026-09-28 拍板的后半句）。
@@ -509,6 +521,18 @@ onShow(() => {
           :placeholder="$t('merchant.phone')"
         />
         <input maxlength="255" v-model="mForm.desc" class="field__input" :placeholder="$t('merchant.descPh')" />
+        <!--
+          推荐人手机号。**选填，且这里一句奖励文案都没有** ——
+          小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。
+          规则只在官网与企微里出现（TDD-C 端裂变与商家招募 §8.3），端内只留这个输入框。
+        -->
+        <input
+          v-model="mForm.referrerPhone"
+          class="field__input"
+          type="number"
+          maxlength="11"
+          :placeholder="$t('merchant.referrerPh')"
+        />
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
           {{ $t("merchant.submitApply") }}

@@ -384,6 +384,7 @@ export default {
     category: "Main category",
     contact: "Contact person",
     phone: "Phone number",
+    referrerPh: "Referrer's phone (optional)",
     descPh: "Optional, a one-line description",
     submitApply: "Submit application",
     selfOperated: "Platform",

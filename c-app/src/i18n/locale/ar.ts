@@ -384,6 +384,7 @@ export default {
     category: "التصنيف الرئيسي (مثل: طازج، خدمات منزلية)",
     contact: "الشخص المسؤول",
     phone: "رقم الجوال",
+    referrerPh: "رقم هاتف المُوصي (اختياري)",
     descPh: "اختياري، وصف بسطر واحد",
     submitApply: "إرسال الطلب",
     selfOperated: "منصة",

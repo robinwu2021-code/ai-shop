@@ -78,7 +78,15 @@ public final class OpsVOs {
                                    * 存量单子这一列同样是空的（协议勾选此前从没落过库）。
                                    * 要分开看 {@link #onBehalf}。
                                    */
-                                  long agreedAt) {
+                                  long agreedAt,
+                                  /**
+                                   * 推荐人手机号（V353，选填）。<b>给运营端审核页看的</b> ——
+                                   * 奖励由运营按这个号人工发（TDD-C 端裂变与商家招募 §8.3）。
+                                   *
+                                   * <p>C 端拿到它但<b>不渲染</b>：端内出现任何与推荐/奖励相关的展示，
+                                   * 都会把「拉人头 + 奖励」这件事搬回小程序里，而那正是要避开的。
+                                   */
+                                  String referrerPhone) {
     }
 
     /** @param expireAt 有效期截止（毫秒）；<b>null = 长期有效</b> */
