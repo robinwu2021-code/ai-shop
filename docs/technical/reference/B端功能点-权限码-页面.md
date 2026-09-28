@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 214 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 215 个受控功能点**
 （另有 30 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -26,7 +26,7 @@
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 20 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 20 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 5 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -274,6 +274,7 @@
 | 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
 | 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
 | 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
+| 设门店代码（对外链接那一段） | POST | `/biz/store/:storeNo/slug` | `mSetStoreSlug` | stores |
 | 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
 | 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | stock-align |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |

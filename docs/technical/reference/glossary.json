@@ -20060,6 +20060,30 @@
           "ar": "هنا عدد المتاجر؛ أما واجهة المتجر الواحد فتُعدَّل في إعدادات المتجر"
         },
         {
+          "key": "stores.linkCopied",
+          "zh-CN": "链接已复制",
+          "en": "Link copied",
+          "ar": "تم نسخ الرابط"
+        },
+        {
+          "key": "stores.linkEdit",
+          "zh-CN": "改",
+          "en": "Edit",
+          "ar": "تعديل"
+        },
+        {
+          "key": "stores.linkEditTitle",
+          "zh-CN": "门店代码",
+          "en": "Store code",
+          "ar": "رمز المتجر"
+        },
+        {
+          "key": "stores.linkLabel",
+          "zh-CN": "店铺链接",
+          "en": "Store link",
+          "ar": "رابط المتجر"
+        },
+        {
           "key": "stores.name",
           "zh-CN": "门店名",
           "en": "Store name",
@@ -20136,6 +20160,18 @@
           "zh-CN": "设为默认",
           "en": "Make default",
           "ar": "اجعله الافتراضي"
+        },
+        {
+          "key": "stores.slugInvalid",
+          "zh-CN": "3-32 位小写字母、数字或连字符，首尾不能是连字符",
+          "en": "3-32 lowercase letters, digits or hyphens; cannot start or end with a hyphen",
+          "ar": "من 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطة، ولا يبدأ أو ينتهي بشرطة"
+        },
+        {
+          "key": "stores.slugPh",
+          "zh-CN": "门店代码",
+          "en": "Store code",
+          "ar": "رمز المتجر"
         },
         {
           "key": "stores.staffLabel",
@@ -23863,6 +23899,18 @@
           "zh-CN": "登录名 {0} 已被占用",
           "en": "Username {0} is already taken",
           "ar": "اسم المستخدم {0} مُستخدم بالفعل"
+        },
+        {
+          "key": "err.store.slug_invalid",
+          "zh-CN": "门店代码只能用 3-32 位小写字母、数字和连字符，首尾不能是连字符",
+          "en": "Store code must be 3-32 lowercase letters, digits or hyphens, and cannot start or end with a hyphen",
+          "ar": "رمز المتجر: 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطة، ولا يبدأ أو ينتهي بشرطة"
+        },
+        {
+          "key": "err.store.slug_taken",
+          "zh-CN": "这个门店代码已经被占用了，换一个",
+          "en": "That store code is already taken — pick another one",
+          "ar": "رمز المتجر مستخدم بالفعل — اختر رمزًا آخر"
         },
         {
           "key": "err.store_category.in_use",
@@ -31557,6 +31605,8 @@
           "OTP_TEST_PHONE_LIMIT",
           "OTP_TEST_PHONE_CODE_TOO_SHORT",
           "OTP_TEST_PHONE_FORMAT",
+          "STORE_SLUG_INVALID",
+          "STORE_SLUG_TAKEN",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
           "NOT_IMPLEMENTED",
@@ -35847,6 +35897,22 @@
       "value": "\"LowStockDetected\"",
       "zh": "",
       "module": "shop-inventory"
+    },
+    {
+      "host": "StoreSlugs",
+      "name": "PATTERN",
+      "type": "Pattern",
+      "value": "Pattern.compile(\"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$\")",
+      "zh": "3–32 位，小写字母/数字/连字符，首尾不是连字符",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "StoreSlugs",
+      "name": "RESERVED",
+      "type": "Set<String>",
+      "value": "Set.of( \"s\", \"c\", \"b\", \"dl\", \"api\", \"ops\", \"ops-web\", \"admin\", \"login\", \"download\", \"static\", \"assets\", \"media\", \"uploads\", \"internal\")",
+      "zh": "保留词。",
+      "module": "shop-merchant"
     },
     {
       "host": "MchAdmissionPolicy",

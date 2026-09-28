@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 784 个接口**：后端已实现 708（90%）· 前端在调 713
+**合计 785 个接口**：后端已实现 709（90%）· 前端在调 714
 
 ---
 
@@ -256,7 +256,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **274** 个接口 ｜ 后端已实现 **265**（97%）｜ 前端在调 **274**
+共 **275** 个接口 ｜ 后端已实现 **266**（97%）｜ 前端在调 **275**
 
 ### activities（4）
 
@@ -789,7 +789,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（30）
+### store（31）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -810,6 +810,7 @@
 | PUT | `/biz/store/{storeNo}/sell-rules` | 存一条线上可售规则并重算 | — | `SellRule` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/{storeNo}/ship-setting` | 发货设置 | — | `ShipSetting` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/store/{storeNo}/ship-setting` | 改发货设置 | `SaveShipSettingReq` | `ShipSetting` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/{storeNo}/slug` | 设门店代码（对外链接那一段） | `SetStoreSlugReq` | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/status` | 停用/启用门店 | `SetActiveReq` | `Store` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/{storeNo}/stock-alignment` | 期初对齐清单：实存与商城库存逐件对照 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/stock-alignment/confirm` | 确认期初对齐（以商城为准 / 已实地盘点） | — | — | 🔒 | ✅ | ✅ |
