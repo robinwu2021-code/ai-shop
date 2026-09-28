@@ -67,7 +67,8 @@ public class OpsMerchantApplyController {
         String ownerUserNo = userProvision.ensureUserByPhone(req.phone());
         String applyNo = opsService.createApplyOnBehalf(new OpsService.SubmitApplyCommand(
                 ownerUserNo, req.name(), req.subject(),
-                req.contactName(), req.contactPhone(), req.category(), req.description(),
+                // 推荐人传 null：这条是 BD 代填，来源已由 submitted_by 记下，不是「谁推荐的」
+                req.contactName(), req.contactPhone(), null, req.category(), req.description(),
                 req.serviceScope(), req.communityNos(), req.qualifications(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 req.qualificationItems()), operator);

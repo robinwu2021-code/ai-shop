@@ -258,7 +258,8 @@ public class BizMerchantController {
     public MerchantProfileVO apply(@RequestBody ApplyReq req) {
         opsService.createApply(new OpsService.SubmitApplyCommand(
                 SecurityUtils.currentUserNo(), req.name(), req.subject(),
-                req.contactName(), req.contactPhone(), req.category(), req.desc(),
+                // B 端没有推荐人入口（能进 b-app 的人已经是商家了），传 null
+                req.contactName(), req.contactPhone(), null, req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
                 req.qualificationItems()));

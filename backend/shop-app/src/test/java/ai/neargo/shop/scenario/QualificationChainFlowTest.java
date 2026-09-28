@@ -134,7 +134,7 @@ class QualificationChainFlowTest {
         String phone = "138" + (System.nanoTime() % 100_000_000L);
         return opsService.createApply(new SubmitApplyCommand(
                 "U" + System.nanoTime() % 100_000_000L, "资质链路测试店", subject,
-                "张三", phone, "FRESH_VEG", "测试",
+                "张三", phone, null, "FRESH_VEG", "测试",
                 "COMMUNITY", List.of("C001"),
                 List.of(), false, "RETAIL", items));
     }

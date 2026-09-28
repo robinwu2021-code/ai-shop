@@ -1016,4 +1016,65 @@ class M9aOpsFlowTest {
     private String login(String phone) throws Exception {
         return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
+
+    @Autowired
+    private ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper applyMapperForReferrer;
+
+    @Test
+    @DisplayName("★★★ 入驻申请带推荐人手机号 → 落库（发奖靠它，端上一句奖励文案都不写）")
+    void applyKeepsReferrerPhone() throws Exception {
+        /*
+         * 这一列的全部意义在于**运营发得出奖**（TDD-C 端裂变与商家招募 §8.3）。
+         * 小程序里不能出现「邀请商家入驻得 X 元」——那是拉人头 + 奖励，会被判
+         * 平台型经营而整包驳。所以规则只在官网/企微，端内只留这个中性字段。
+         *
+         * 它要是没落库，症状是：官网宣传了奖励、商家也填了推荐人，
+         * 而运营在审核页上看不到任何人 —— 奖发不出去，且没有任何地方会报错。
+         */
+        String user = login("12600126211");
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"推荐人测试店\",\"subject\":\"PERSONAL\","
+                                + "\"contactName\":\"王五\",\"contactPhone\":\"13900002211\","
+                                + "\"referrerPhone\":\"13511112222\","
+                                + "\"category\":\"日用\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+
+        var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                applyMapperForReferrer.selectOne(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.platform.entity.MchEntityApply>lambdaQuery()
+                                .eq(ai.neargo.shop.platform.entity.MchEntityApply::getApplyNo, applyNo)
+                                .last("limit 1")));
+        assertThat(row).isNotNull();
+        assertThat(row.getReferrerPhone())
+                .as("落库那一句掉了的话，接口照样 200、申请照样建 —— 只有发奖那天才发现没人可发")
+                .isEqualTo("13511112222");
+    }
+
+    @Test
+    @DisplayName("★★ 不填推荐人是常态 —— 绝大多数申请没有，那一列留 null 不是缺陷")
+    void applyWithoutReferrerIsFine() throws Exception {
+        String user = login("12600126212");
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"无推荐人测试店\",\"subject\":\"PERSONAL\","
+                                + "\"contactName\":\"赵六\",\"contactPhone\":\"13900002212\","
+                                + "\"category\":\"日用\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+
+        var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                applyMapperForReferrer.selectOne(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.platform.entity.MchEntityApply>lambdaQuery()
+                                .eq(ai.neargo.shop.platform.entity.MchEntityApply::getApplyNo, applyNo)
+                                .last("limit 1")));
+        assertThat(row.getReferrerPhone()).isNull();
+    }
 }

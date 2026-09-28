@@ -1383,6 +1383,7 @@ CREATE TABLE IF NOT EXISTS mch_entity_apply
     category_codes TEXT DEFAULT NULL,
     submitted_by VARCHAR(64) NULL,
     agreed_at BIGINT NULL,
+    referrer_phone VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_apply_no UNIQUE (apply_no),
     CONSTRAINT uk_apply_active_owner UNIQUE (active_owner)

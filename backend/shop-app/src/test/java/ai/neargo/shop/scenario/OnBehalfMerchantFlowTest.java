@@ -97,7 +97,7 @@ class OnBehalfMerchantFlowTest {
     private OpsService.SubmitApplyCommand full(String userNo, String name) {
         return new OpsService.SubmitApplyCommand(
                 userNo, name, "ENTERPRISE",
-                "老板", "13900001111", "水果", "社区水果店",
+                "老板", "13900001111", null, "水果", "社区水果店",
                 null, List.of("CMT-OB-1"), List.of("https://example.com/l.jpg"),
                 false, "RETAIL",
                 List.of(new OpsService.QualificationItem(
@@ -163,7 +163,7 @@ class OnBehalfMerchantFlowTest {
         String owner = userProvision.ensureUserByPhone(phone(4));
         var noLicense = new OpsService.SubmitApplyCommand(
                 owner, "没执照水果店", "ENTERPRISE",
-                "老板", "13900001111", "水果", null,
+                "老板", "13900001111", null, "水果", null,
                 null, List.of("CMT-OB-1"), List.of(),
                 false, "RETAIL",
                 List.of());   // 非 null 的空表 = 「这个端懂结构化资质」，于是闸门生效

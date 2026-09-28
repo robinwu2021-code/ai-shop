@@ -220,6 +220,12 @@ public interface OpsService {
 
     record SubmitApplyCommand(String userNo, String name, String subject,
                               String contactName, String contactPhone,
+                              /*
+                               * 推荐人手机号（选填，V353）。**端上只是一个输入框，不带奖励文案** ——
+                               * 奖励规则只在官网与企微里出现（TDD-C 端裂变与商家招募 §8.3）。
+                               * 存号不存 user_no：推荐人可能还不是平台用户。
+                               */
+                              String referrerPhone,
                               String category, String description,
                               String serviceScope, List<String> communityNos,
                               List<String> qualifications,

@@ -288,7 +288,8 @@ public class MpCatalogController {
     public MerchantApplyVO merchantApply(@RequestBody ApplyReq req) {
         opsService.createApply(new OpsService.SubmitApplyCommand(
                 SecurityUtils.currentUserNo(), req.name(), req.subject(),
-                req.contactName(), req.contactPhone(), req.category(), req.desc(),
+                req.contactName(), req.contactPhone(), req.referrerPhone(),
+                req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
                 false, req.industry(), req.qualificationItems()));
         return opsService.myApply(SecurityUtils.currentUserNo());
@@ -309,6 +310,11 @@ public class MpCatalogController {
      * @param communityNos 期望覆盖的社区。申请时可空，审核通过时由运营确认
      */
     public record ApplyReq(String name, String subject, String contactName, String contactPhone,
+                           /**
+                            * 推荐人手机号（选填，V353）。**端上只是一个输入框，不带任何奖励文案** ——
+                            * 规则只在官网与企微里出现（TDD-C 端裂变与商家招募 §8.3）。
+                            */
+                           String referrerPhone,
                            String category, String desc, String serviceScope,
                            List<String> communityNos, List<String> licenses,
                            /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */

@@ -443,6 +443,8 @@ public class OpsServiceImpl implements OpsService {
         apply.setLegalForm(canonicalSubject != null ? canonicalSubject : cmd.subject());
         apply.setContactName(cmd.contactName());
         apply.setContactPhone(cmd.contactPhone());
+        // 推荐人（选填）。不校验号码归属 —— 推荐人可能还不是平台用户，发奖时由运营按号找人
+        apply.setReferrerPhone(cmd.referrerPhone());
         apply.setCategory(cmd.category());
         apply.setDescription(cmd.description());
         masterDataService.assertServiceScopeAllowed(cmd.serviceScope());

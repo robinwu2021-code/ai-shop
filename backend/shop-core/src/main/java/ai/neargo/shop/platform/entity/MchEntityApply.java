@@ -66,6 +66,18 @@ public class MchEntityApply extends BaseEntity {
     /** 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 */
     private String contactName;
 
+    /**
+     * 推荐人手机号（选填，V353）。
+     *
+     * <p><b>只是一个中性字段，端内不展示任何奖励规则</b> —— 小程序里出现
+     * 「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳
+     * （TDD-C 端裂变与商家招募 §3.3 / §8.3）。规则只在官网与企微里出现，
+     * 发奖由运营按这个号人工处理。
+     *
+     * <p>存手机号不存 user_no：推荐人可能还不是平台用户。
+     */
+    private String referrerPhone;
+
     /** 主营类目。**商家自己的说法**（「食品」），不是权威码 */
     private String category;
 
