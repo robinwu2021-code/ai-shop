@@ -3442,6 +3442,12 @@
           "ar": "رقم الجوال"
         },
         {
+          "key": "merchant.referrerPh",
+          "zh-CN": "推荐人手机号（选填）",
+          "en": "Referrer's phone (optional)",
+          "ar": "رقم هاتف المُوصي (اختياري)"
+        },
+        {
           "key": "merchant.reply",
           "zh-CN": "商家回复：",
           "en": "Seller:",
@@ -3470,6 +3476,12 @@
           "zh-CN": "开店天数",
           "en": "Days open",
           "ar": "أيام العمل"
+        },
+        {
+          "key": "merchant.statFavorited",
+          "zh-CN": "收藏",
+          "en": "Saved",
+          "ar": "المحفوظة"
         },
         {
           "key": "merchant.statGoods",
@@ -10436,12 +10448,6 @@
           "ar": "عملاؤك"
         },
         {
-          "key": "home.ownedTrafficHint",
-          "zh-CN": "自带客流的订单费率更低",
-          "en": "Orders from your own traffic carry a lower rate",
-          "ar": "طلبات عملائك الخاصين برسوم أقل"
-        },
-        {
           "key": "home.quickStart",
           "zh-CN": "先把店开起来",
           "en": "Open your shop first",
@@ -12495,9 +12501,9 @@
         },
         {
           "key": "mySpecs.addableHere",
-          "zh-CN": "可添加（平台为本类目配过）",
-          "en": "Can be added back (platform configured these for this category)",
-          "ar": "يمكن إضافتها (أعدّتها المنصة لهذه الفئة)"
+          "zh-CN": "可加回",
+          "en": "Add back",
+          "ar": "إعادة الإضافة"
         },
         {
           "key": "mySpecs.adjust",
@@ -12585,27 +12591,27 @@
         },
         {
           "key": "mySpecs.catAllRemoved",
-          "zh-CN": "本类目的规格都被移除了，下面可以加回来",
-          "en": "You removed every spec for this category — add them back below",
-          "ar": "أزلت كل مواصفات هذه الفئة؛ أعدها من الأسفل"
+          "zh-CN": "已全部移除",
+          "en": "All removed",
+          "ar": "أُزيلت كلها"
         },
         {
           "key": "mySpecs.catAllRemovedProps",
-          "zh-CN": "本类目的参数都被移除了，下面可以加回来",
-          "en": "You removed every parameter for this category — add them back below",
-          "ar": "أزلت كل خصائص هذه الفئة؛ أعدها من الأسفل"
+          "zh-CN": "已全部移除",
+          "en": "All removed",
+          "ar": "أُزيلت كلها"
         },
         {
           "key": "mySpecs.catNoDims",
-          "zh-CN": "平台尚未为本类目配置规格，可联系运营补充",
-          "en": "No specs configured for this category yet — ask ops to add them",
-          "ar": "لم تُضبط مواصفات لهذه الفئة بعد؛ اطلب من التشغيل إضافتها"
+          "zh-CN": "暂无规格",
+          "en": "No specs yet",
+          "ar": "لا مواصفات بعد"
         },
         {
           "key": "mySpecs.catNoProps",
-          "zh-CN": "平台尚未为本类目配置参数，可自建",
-          "en": "No parameters configured for this category yet — add one yourself",
-          "ar": "لم تُضبط خصائص لهذه الفئة بعد؛ أضف واحدة بنفسك"
+          "zh-CN": "暂无参数",
+          "en": "No parameters yet",
+          "ar": "لا خصائص بعد"
         },
         {
           "key": "mySpecs.collapse",
@@ -12618,24 +12624,6 @@
           "zh-CN": "暂无自建规格。建品时如无合适选项，可在此新建。",
           "en": "Nothing built yet. You can create one while adding a product.",
           "ar": "لم تنشئ أي مواصفة بعد. يمكنك إنشاء واحدة أثناء إضافة منتج."
-        },
-        {
-          "key": "mySpecs.foot",
-          "zh-CN": "自建规格仅本店可用，不参与跨店比价；平台已收录的建议优先选用。",
-          "en": "Your own specs are store-only and stay out of cross-store comparison — prefer platform specs where they exist.",
-          "ar": "مواصفاتك الخاصة بمتجرك وحده ولا تدخل في المقارنة بين المتاجر؛ فضّل مواصفات المنصة حين تتوفر."
-        },
-        {
-          "key": "mySpecs.intro",
-          "zh-CN": "本店建品时可用的规格，按货架类目列出。平台未收录的可自建。",
-          "en": "Every spec you can use when adding a product. Build your own if the platform has none.",
-          "ar": "كل المواصفات المتاحة عند إضافة منتج. أنشئ خاصتك إن لم تتوفر لدى المنصة."
-        },
-        {
-          "key": "mySpecs.introProps",
-          "zh-CN": "产地、保质期等描述性信息。不生成 SKU，不影响价格与库存。",
-          "en": "Origin, shelf life and the like — description only; no effect on price or stock.",
-          "ar": "المنشأ ومدة الصلاحية ونحوها؛ للوصف فقط؛ لا تؤثر على السعر أو المخزون."
         },
         {
           "key": "mySpecs.mineTitle",
@@ -12795,9 +12783,9 @@
         },
         {
           "key": "mySpecs.title",
-          "zh-CN": "商品规格与参数",
-          "en": "Product options & attributes",
-          "ar": "مواصفات المنتجات وخصائصها"
+          "zh-CN": "商品规格",
+          "en": "Product options",
+          "ar": "مواصفات المنتجات"
         },
         {
           "key": "mySpecs.typeMine",
@@ -16064,16 +16052,16 @@
           "ar": "شركة الشحن الافتراضية"
         },
         {
+          "key": "shipSetting.carrierNone",
+          "zh-CN": "不指定",
+          "en": "None",
+          "ar": "بدون"
+        },
+        {
           "key": "shipSetting.defaults",
           "zh-CN": "默认选项",
           "en": "Defaults",
           "ar": "الافتراضيات"
-        },
-        {
-          "key": "shipSetting.fallback",
-          "zh-CN": "不填时用：{v}",
-          "en": "If left blank: {v}",
-          "ar": "عند الترك فارغًا: {v}"
         },
         {
           "key": "shipSetting.saved",
@@ -16086,6 +16074,12 @@
           "zh-CN": "寄件信息",
           "en": "Sender",
           "ar": "المرسل"
+        },
+        {
+          "key": "shipSetting.senderHint",
+          "zh-CN": "留空用门店信息",
+          "en": "Blank fields use store info",
+          "ar": "الحقول الفارغة تستخدم بيانات المتجر"
         },
         {
           "key": "shipSetting.senderName",
@@ -16107,9 +16101,9 @@
         },
         {
           "key": "shipSetting.templateHint",
-          "zh-CN": "买家下快递单按这个模板付运费，由平台维护",
-          "en": "Buyers pay shipping on courier orders at these rates, set by the platform",
-          "ar": "يدفع المشتري الشحن لطلبات الشركة وفق هذه الأسعار التي تحددها المنصة"
+          "zh-CN": "平台统一维护",
+          "en": "Set by the platform",
+          "ar": "تحدده المنصة"
         },
         {
           "key": "shipSetting.title",
@@ -16176,12 +16170,6 @@
           "zh-CN": "默认重量",
           "en": "Default weight",
           "ar": "الوزن الافتراضي"
-        },
-        {
-          "key": "shipSetting.weightPh",
-          "zh-CN": "默认重量（公斤）",
-          "en": "Default weight (kg)",
-          "ar": "الوزن الافتراضي (كغ)"
         },
         {
           "key": "shipSetting.weightRange",
@@ -16365,15 +16353,9 @@
         },
         {
           "key": "skuIdentity.exportHint",
-          "zh-CN": "先导出再修改，是唯一不会认错行的做法。表格第一列 skuNo 用于识别行，请勿删除；若使用 ERP 自行导出的表格，至少需包含「货号」列。",
-          "en": "Exporting first is the only way rows cannot be mismatched. The first column, skuNo, identifies rows and must not be removed. A sheet exported from your own ERP must contain at least an item-code column.",
-          "ar": "التصدير أولًا هو الطريقة الوحيدة لضمان مطابقة الصفوف؛ العمود الأول skuNo هو ما يُعرّف الصف، لا تحذفه."
-        },
-        {
-          "key": "skuIdentity.foot",
-          "zh-CN": "这三列只给 ERP、收银秤、供应商对接用，不影响顾客看到的内容，也不影响价格与库存。",
-          "en": "These three columns are only for ERP, scales and suppliers. They do not affect what customers see, nor price or stock.",
-          "ar": "هذه الأعمدة الثلاثة للربط مع ERP والموازين والموردين فقط. لا تؤثر على ما يراه العميل ولا على السعر أو المخزون."
+          "zh-CN": "第一列 skuNo 勿删",
+          "en": "Keep the first column (skuNo)",
+          "ar": "لا تحذف العمود الأول skuNo"
         },
         {
           "key": "skuIdentity.howTitle",
@@ -16413,51 +16395,51 @@
         },
         {
           "key": "skuIdentity.ruleBlankK",
-          "zh-CN": "格子是空的",
+          "zh-CN": "空格子",
           "en": "Cell empty",
           "ar": "خانة فارغة"
         },
         {
           "key": "skuIdentity.ruleBlankV",
-          "zh-CN": "保持原值不变。ERP 导出的表天生有空列，空不等于要清空。",
-          "en": "Keeps the current value. ERP exports have empty columns by nature — empty does not mean clear.",
-          "ar": "تُبقي القيمة الحالية. ملفات ERP بها أعمدة فارغة بطبيعتها؛ الفراغ لا يعني المسح."
+          "zh-CN": "保持原值",
+          "en": "Keeps current value",
+          "ar": "تبقى القيمة الحالية"
         },
         {
           "key": "skuIdentity.ruleDashK",
-          "zh-CN": "格子写 -",
+          "zh-CN": "填 -",
           "en": "Cell is -",
           "ar": "خانة بها -"
         },
         {
           "key": "skuIdentity.ruleDashV",
-          "zh-CN": "清空这一格。填错的条码要擦掉，就写一个减号。",
-          "en": "Clears that cell. Write a dash to wipe a wrong barcode.",
-          "ar": "تمسح تلك الخانة. اكتب شرطة لمحو باركود خاطئ."
+          "zh-CN": "清空",
+          "en": "Clears it",
+          "ar": "تُمسح"
         },
         {
           "key": "skuIdentity.ruleMissingK",
-          "zh-CN": "整列没有",
+          "zh-CN": "缺整列",
           "en": "Column absent",
           "ar": "عمود غائب"
         },
         {
           "key": "skuIdentity.ruleMissingV",
-          "zh-CN": "表头里没有这一列，这一列一个字都不改。只想改货号，就把其余列删掉。",
-          "en": "A column missing from the header is left untouched. To change only the SKU code, delete the other columns.",
-          "ar": "العمود غير الموجود في الترويسة لا يُمسّ. لتغيير رقم الصنف فقط، احذف بقية الأعمدة."
+          "zh-CN": "不改",
+          "en": "Unchanged",
+          "ar": "لا يتغير"
         },
         {
           "key": "skuIdentity.step1",
-          "zh-CN": "第一步 · 导出现有编码",
-          "en": "Step 1 · Export what you have",
-          "ar": "الخطوة ١ · تصدير الحالي"
+          "zh-CN": "第一步 · 导出",
+          "en": "Step 1 · Export",
+          "ar": "الخطوة ١ · التصدير"
         },
         {
           "key": "skuIdentity.step2",
-          "zh-CN": "第二步 · 交回改好的表",
-          "en": "Step 2 · Send the edited file back",
-          "ar": "الخطوة ٢ · أعد الملف بعد التعديل"
+          "zh-CN": "第二步 · 导入",
+          "en": "Step 2 · Import",
+          "ar": "الخطوة ٢ · الاستيراد"
         },
         {
           "key": "skuIdentity.step3",
@@ -16467,9 +16449,9 @@
         },
         {
           "key": "skuIdentity.title",
-          "zh-CN": "商品编码导入导出",
-          "en": "Product codes: import & export",
-          "ar": "استيراد وتصدير أكواد المنتجات"
+          "zh-CN": "商品编码",
+          "en": "Item codes",
+          "ar": "رموز المنتجات"
         },
         {
           "key": "skuIdentity.total",
@@ -18717,9 +18699,9 @@
         },
         {
           "key": "store.addArea",
-          "zh-CN": "＋ 添加范围",
-          "en": "＋ Add coverage",
-          "ar": "＋ إضافة نطاق"
+          "zh-CN": "添加",
+          "en": "Add",
+          "ar": "إضافة"
         },
         {
           "key": "store.addRegion",
@@ -18740,22 +18722,10 @@
           "ar": "مثال: مبنى ٣ وحدة ٢"
         },
         {
-          "key": "store.addressHint",
-          "zh-CN": "开了「门店自提」时，这就是顾客的取货地址",
-          "en": "With “Store pickup” on, this is where customers collect",
-          "ar": "عند تفعيل «الاستلام من الفرع» هذا هو مكان الاستلام"
-        },
-        {
           "key": "store.addressPh",
           "zh-CN": "请填写门牌上的正式地址",
           "en": "Enter the official address as shown on the premises",
           "ar": "أدخل العنوان الرسمي كما على اللافتة"
-        },
-        {
-          "key": "store.addressPinned",
-          "zh-CN": "已在地图上标点，顾客导航到的就是这里",
-          "en": "Pinned on the map — customers navigate right here",
-          "ar": "تم التحديد على الخريطة؛ يصل العملاء إلى هنا مباشرة"
         },
         {
           "key": "store.addressTooShort",
@@ -18768,12 +18738,6 @@
           "zh-CN": "店铺公告",
           "en": "Announcement",
           "ar": "إعلان المتجر"
-        },
-        {
-          "key": "store.announcementHint",
-          "zh-CN": "公告显示在门店主页第一屏，老客一进来就看到",
-          "en": "Shown at the top of your shop page — the first thing regulars see",
-          "ar": "يظهر في أعلى صفحة متجرك، وأول ما يراه العميل الدائم"
         },
         {
           "key": "store.announcementPh",
@@ -18831,15 +18795,15 @@
         },
         {
           "key": "store.areaPendingHint",
-          "zh-CN": "省、市、区等整片范围需运营审核后生效，审核前不计入；小区、村、街道勾选后即时生效。",
-          "en": "Province, city and district areas take effect after operations review and do not count until then. Communities, villages and streets take effect immediately.",
-          "ar": "تغطية المحافظة أو المدينة أو المنطقة تسري بعد موافقة التشغيل فقط؛ أما المجمعات والقرى والشوارع فتسري فور اختيارها."
+          "zh-CN": "整区、整市需运营审核",
+          "en": "Whole districts or cities need review",
+          "ar": "المناطق أو المدن الكاملة تحتاج مراجعة"
         },
         {
           "key": "store.areaUnlimited",
-          "zh-CN": "未设置范围即不限，全平台顾客均可看到本店商品",
-          "en": "No area set means unlimited: customers across the platform can see these products",
-          "ar": "بلا تحديد = بلا حدود؛ يرى بضاعتك العملاء في كل مكان"
+          "zh-CN": "不限范围",
+          "en": "No limit",
+          "ar": "بلا حدود"
         },
         {
           "key": "store.areas",
@@ -18849,39 +18813,15 @@
         },
         {
           "key": "store.channelDenied",
-          "zh-CN": "当前主体类型暂不支持这条送货方式",
-          "en": "Not available for your current business entity type",
-          "ar": "غير متاح لنوع الكيان التجاري الحالي"
-        },
-        {
-          "key": "store.channelDesc.EXPRESS",
-          "zh-CN": "走快递，承运商由平台调度",
-          "en": "Shipped by courier, dispatched by the platform",
-          "ar": "الشحن عبر شركة نقل يحددها النظام"
-        },
-        {
-          "key": "store.channelDesc.MERCHANT_DELIVERY",
-          "zh-CN": "本店自己送，费用在配送规则里配",
-          "en": "Your store delivers; fees are set in delivery rules",
-          "ar": "يوصّل متجرك بنفسه؛ الرسوم في قواعد التوصيل"
-        },
-        {
-          "key": "store.channelDesc.NEIGHBOR_PICKUP",
-          "zh-CN": "送到社区自提点，顾客就近取",
-          "en": "Delivered to a community pickup point for customers to collect nearby",
-          "ar": "التوصيل إلى نقطة استلام في الحي ليستلم العميل من الأقرب"
-        },
-        {
-          "key": "store.channelDesc.STORE_PICKUP",
-          "zh-CN": "顾客到门店自提，取货地址即门店地址",
-          "en": "Customers collect at the store; the pickup address is the store address",
-          "ar": "يستلم العميل من متجرك؛ عنوان المتجر هو عنوان الاستلام"
+          "zh-CN": "当前主体暂不支持",
+          "en": "Not available for your business type",
+          "ar": "غير متاح لنوع نشاطك"
         },
         {
           "key": "store.channelLocked",
-          "zh-CN": "平台已暂停这条送货方式，请联系运营",
-          "en": "The platform has suspended this method — contact ops",
-          "ar": "أوقفت المنصة هذه الطريقة؛ تواصل مع التشغيل"
+          "zh-CN": "平台已暂停，请联系运营",
+          "en": "Paused by the platform",
+          "ar": "أوقفتها المنصة، تواصل مع التشغيل"
         },
         {
           "key": "store.collapse",
@@ -19094,6 +19034,12 @@
           "ar": "سيحل محل الإعلان الحالي بعد الموافقة"
         },
         {
+          "key": "store.noticeContent",
+          "zh-CN": "公告内容",
+          "en": "Notice",
+          "ar": "نص الإعلان"
+        },
+        {
           "key": "store.noticePublish",
           "zh-CN": "发布",
           "en": "Publish",
@@ -19119,9 +19065,15 @@
         },
         {
           "key": "store.noticeTitle",
-          "zh-CN": "公告",
-          "en": "Notice",
-          "ar": "الإعلان"
+          "zh-CN": "店铺公告",
+          "en": "Store notice",
+          "ar": "إعلان المتجر"
+        },
+        {
+          "key": "store.noticeTtl",
+          "zh-CN": "有效期",
+          "en": "Valid for",
+          "ar": "المدة"
         },
         {
           "key": "store.noticeWithdraw",
@@ -19196,12 +19148,6 @@
           "ar": "الدفع عند الاستلام"
         },
         {
-          "key": "store.payCodDesc",
-          "zh-CN": "送货上门时当面收款，拒收风险由门店承担",
-          "en": "Collect payment when you deliver; the store bears the risk of refused deliveries",
-          "ar": "تحصيل المبلغ عند التوصيل؛ يتحمل المتجر مخاطر رفض الاستلام"
-        },
-        {
           "key": "store.payGoodsHint",
           "zh-CN": "开启后，还需在商品编辑页为商品开启线下付款",
           "en": "After enabling, also turn on offline payment for each product in its edit page",
@@ -19209,21 +19155,15 @@
         },
         {
           "key": "store.payNeedLicense",
-          "zh-CN": "开启线下收款需要有效的营业执照",
-          "en": "A valid business license is required to enable offline payment",
-          "ar": "يلزم ترخيص تجاري ساري المفعول لتفعيل الدفع دون اتصال"
+          "zh-CN": "需要营业执照",
+          "en": "Business license required",
+          "ar": "يتطلب رخصة تجارية"
         },
         {
           "key": "store.payOffline",
           "zh-CN": "线下收款",
           "en": "Offline payment",
           "ar": "الدفع دون اتصال"
-        },
-        {
-          "key": "store.payOfflineDesc",
-          "zh-CN": "买家可选择到店付款，货款由您当面收取，平台不代收",
-          "en": "Buyers can choose to pay in store; you collect the money directly and the platform does not hold it",
-          "ar": "يمكن للمشتري الدفع في المتجر؛ تستلم المبلغ بنفسك ولا تحتفظ به المنصة"
         },
         {
           "key": "store.pickAddr",
@@ -19658,6 +19598,12 @@
           "ar": "تم إرفاق موقع الخريطة: {s}"
         },
         {
+          "key": "store.poster",
+          "zh-CN": "海报",
+          "en": "Poster",
+          "ar": "الملصق"
+        },
+        {
           "key": "store.previewBuyers",
           "zh-CN": "这些地方有 {a} → {b}{d} 个能定位的买家",
           "en": "Locatable buyers there: {a} → {b}{d}",
@@ -19688,18 +19634,6 @@
           "ar": "رمز المتجر"
         },
         {
-          "key": "store.qrcodeDesc",
-          "zh-CN": "可张贴于摊位或印在名片上，扫码直达店铺",
-          "en": "Display it at the stall or print it on a card; scanning opens the shop",
-          "ar": "ألصقه على الكشك أو البطاقة؛ المسح يفتح متجرك"
-        },
-        {
-          "key": "store.qrcodeHint",
-          "zh-CN": "印在包装袋、贴在收银台。老客扫码进店，订单记为「自带客流」，费率更低。",
-          "en": "Print it on bags, stick it by the till. Scans count as your own customers — lower fee.",
-          "ar": "اطبعه على الأكياس وألصقه عند الصندوق. المسح يُحتسب عملاءك الخاصين برسوم أقل."
-        },
-        {
           "key": "store.qrcodeOfStore",
           "zh-CN": "这是「{name}」的码",
           "en": "This is {name}'s code",
@@ -19713,9 +19647,9 @@
         },
         {
           "key": "store.qrcodeStoreWarn",
-          "zh-CN": "你有多家店，每家店的码不一样 —— 印之前先确认贴的是哪家。",
-          "en": "You have several stores and each has its own code — check which one before printing.",
-          "ar": "لديك عدة متاجر ولكل متجر رمز مختلف — تحقق قبل الطباعة."
+          "zh-CN": "每家店的码不同，印前确认",
+          "en": "Each store has its own code",
+          "ar": "لكل فرع رمز خاص به"
         },
         {
           "key": "store.rateHint",
@@ -19826,12 +19760,6 @@
           "ar": "يحدّد من يرى منتجاتك؛ الخطأ فيه يعني لا طلبات"
         },
         {
-          "key": "store.scopeLead",
-          "zh-CN": "决定商品在顾客端的可见范围。先选择范围，再选择送货方式。",
-          "en": "Determines where products are visible to customers. Choose the area first, then the delivery method.",
-          "ar": "يحدد من يرى بضاعتك. اختر النطاق أولاً ثم طرق التوصيل."
-        },
-        {
           "key": "store.scopeNeedCommunity",
           "zh-CN": "至少选择一个小区，否则顾客无法搜索到本店",
           "en": "Select at least one community, otherwise customers cannot find the shop",
@@ -19839,9 +19767,9 @@
         },
         {
           "key": "store.scopeTitle",
-          "zh-CN": "经营范围与送货",
-          "en": "Coverage & delivery",
-          "ar": "نطاق التغطية والتوصيل"
+          "zh-CN": "经营范围",
+          "en": "Coverage",
+          "ar": "نطاق التغطية"
         },
         {
           "key": "store.settleApplyEntry",
@@ -19868,12 +19796,6 @@
           "ar": "مواد المشاركة"
         },
         {
-          "key": "store.shareKitHint",
-          "zh-CN": "复制后可直接发送至顾客群。",
-          "en": "Once copied, send it straight to a customer group.",
-          "ar": "الصقها في مجموعة عملائك؛ أفضل من أي إعلان."
-        },
-        {
           "key": "store.subset.all",
           "zh-CN": "送整个经营范围",
           "en": "Whole coverage",
@@ -19887,9 +19809,9 @@
         },
         {
           "key": "store.subset.hint",
-          "zh-CN": "自送默认送整个经营范围；也可以只送其中几项",
-          "en": "Self-delivery covers your whole coverage by default; narrow it to a few items if needed",
-          "ar": "التوصيل الذاتي يغطي كامل نطاقك افتراضياً؛ يمكنك حصره ببعض البنود"
+          "zh-CN": "默认送整个经营范围",
+          "en": "Defaults to your whole coverage",
+          "ar": "افتراضيًا كامل نطاق التغطية"
         },
         {
           "key": "store.subset.needOne",
@@ -20112,18 +20034,6 @@
           "zh-CN": "改显示名",
           "en": "Rename",
           "ar": "إعادة تسمية"
-        },
-        {
-          "key": "storeCategories.scopeHint",
-          "zh-CN": "本店卖哪几类。建商品时只能从这里选",
-          "en": "What this store sells. New products can only use these categories.",
-          "ar": "ما يبيعه هذا المتجر. عند إنشاء منتج يمكن الاختيار من هذه الفئات فقط."
-        },
-        {
-          "key": "storeCategories.specsEntry",
-          "zh-CN": "商品规格与参数",
-          "en": "Product options & attributes",
-          "ar": "مواصفات المنتجات وخصائصها"
         },
         {
           "key": "storeCategories.title",

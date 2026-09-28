@@ -142,7 +142,7 @@
             {
               "app": "b-app",
               "route": "/pages/my-specs/index",
-              "title": "商品规格与参数",
+              "title": "商品规格",
               "domain": "商品",
               "tab": false,
               "status": "已实现",
@@ -267,7 +267,7 @@
             {
               "app": "b-app",
               "route": "/pages/sku-identity/index",
-              "title": "商品编码导入导出",
+              "title": "商品编码",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -607,7 +607,7 @@
             {
               "app": "b-app",
               "route": "/pages/store-notice/index",
-              "title": "公告",
+              "title": "店铺公告",
               "domain": "门店",
               "tab": false,
               "status": "已实现",
@@ -618,7 +618,7 @@
             {
               "app": "b-app",
               "route": "/pages/store-scope/index",
-              "title": "经营范围与送货",
+              "title": "经营范围",
               "domain": "门店",
               "tab": false,
               "status": "已实现",
