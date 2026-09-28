@@ -124,11 +124,6 @@ function arrow(from?: string | null, to?: string | null): string {
         :placeholder="$t('skuIdentity.pastePh')"
         @input="onEdited"
       />
-      <view class="acts">
-        <view class="sh-btn act--wide" :class="{ 'sh-btn--muted': busy || !csv.trim() }" @tap="check">
-          {{ $t("skuIdentity.check") }}
-        </view>
-      </view>
     </view>
 
     <!-- 第三步：核对。**这一屏才是这个功能的主体** -->
@@ -177,15 +172,6 @@ function arrow(from?: string | null, to?: string | null): string {
         </view>
       </view>
 
-      <view class="acts">
-        <view
-          class="sh-btn act--wide"
-          :class="{ 'sh-btn--muted': busy || !checked || !report.willSet }"
-          @tap="applyImport"
-        >
-          {{ $t("skuIdentity.apply", { n: report.willSet }) }}
-        </view>
-      </view>
     </view>
 
     <!--
@@ -210,6 +196,19 @@ function arrow(from?: string | null, to?: string | null): string {
       </view>
     </view>
 
+    <!--
+      一页只有一个主动作，贴底。**此前是两个整宽红按钮**，分别埋在第二张和第三张卡里：
+      第一个要滚到粘贴框下面，第二个只在核对之后才出现 —— 同一条流水线上的两步，
+      却在两个位置各长一个一样重的按钮。这里按当前这一步换文字。
+    -->
+    <sh-actionbar>
+      <view v-if="report" class="sh-btn" :class="{ 'sh-btn--muted': busy || !checked || !report.willSet }" @tap="applyImport">
+        {{ $t("skuIdentity.apply", { n: report.willSet }) }}
+      </view>
+      <view v-else class="sh-btn" :class="{ 'sh-btn--muted': busy || !csv.trim() }" @tap="check">
+        {{ $t("skuIdentity.check") }}
+      </view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -224,14 +223,6 @@ function arrow(from?: string | null, to?: string | null): string {
 
 .paste {
   min-height: 200rpx;
-}
-
-.acts {
-  margin-top: 20rpx;
-}
-
-.act--wide {
-  width: 100%;
 }
 
 .probs {

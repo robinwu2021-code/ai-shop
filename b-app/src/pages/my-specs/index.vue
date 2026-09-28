@@ -875,7 +875,7 @@ onShow(() => void load());
         <!-- 自己建放最后：顺序即建议，先看平台有没有现成的 -->
         <view class="sheet-own">
           <view class="picker__own-line sh-row sh-row--between sh-row--baseline">
-            <text class="txt-strong picker__own-t">
+            <text class="txt-body picker__own-t">
               {{ $t(tab === "dims" ? "mySpecs.buildOwnDim" : "mySpecs.buildOwnProp") }}
             </text>
             <text class="txt-caption sh-muted">
@@ -943,7 +943,7 @@ onShow(() => void load());
 
         <view class="sheet-own">
           <view class="picker__own-line sh-row sh-row--between sh-row--baseline">
-            <text class="txt-strong picker__own-t">{{ ownValueWord }}</text>
+            <text class="txt-body picker__own-t">{{ ownValueWord }}</text>
           </view>
           <view class="build sh-row">
             <input

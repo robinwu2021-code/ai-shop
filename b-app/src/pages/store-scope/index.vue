@@ -620,8 +620,8 @@ onShow(() => {
             </view>
             <text class="sh-hint">{{ $t("store.rateHint") }}</text>
             <view class="rate__btns">
-              <text class="sh-btn sh-btn--soft rate__save" @tap="saveRule">{{ $t("store.saveRate") }}</text>
-              <text class="txt-sub sh-btn sh-btn--muted rate__cancel" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="saveRule">{{ $t("store.saveRate") }}</text>
             </view>
           </view>
         </view>
@@ -633,23 +633,23 @@ onShow(() => {
           <view v-else class="rate" @tap.stop>
             <text class="sh-hint">{{ $t("store.subset.hint") }}</text>
             <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': subsetAll }" @tap="subsetAll = true">
-              <text class="txt-sub subset__t txt-ink">{{ $t("store.subset.all") }}</text>
+              <text class="txt-body subset__t txt-ink">{{ $t("store.subset.all") }}</text>
               <sh-icon v-if="subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view class="subset__opt sh-row sh-row--between" :class="{ 'is-on': !subsetAll }" @tap="subsetAll = false">
-              <text class="txt-sub subset__t txt-ink">{{ $t("store.subset.only") }}</text>
+              <text class="txt-body subset__t txt-ink">{{ $t("store.subset.only") }}</text>
               <sh-icon v-if="!subsetAll" name="check" :size="26" color="var(--sh-primary-text)"></sh-icon>
             </view>
             <view v-if="!subsetAll" class="subset__list">
               <view v-for="a in activeAreas" :key="a.areaNo || a.refCode" class="subset__row sh-row sh-row--between" @tap="toggleSubsetArea(a)">
-                <text class="txt-sub subset__name sh-fill txt-ink">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
+                <text class="txt-body subset__name sh-fill txt-ink">{{ splitName(a).main }}<text v-if="isWhole(a)" class="txt-caption"> {{ $t("store.whole") }}</text></text>
                 <sh-check :model-value="subsetPicked.includes(a.areaNo || '')"></sh-check>
               </view>
               <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
             </view>
             <view class="rate__btns">
-              <text class="sh-btn sh-btn--soft rate__save" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
-              <text class="txt-sub sh-btn sh-btn--muted rate__cancel" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
             </view>
           </view>
         </view>
@@ -827,22 +827,12 @@ onShow(() => {
   gap: 12rpx;
 }
 
+/* 展开态的两个动作：小药丸靠右。**此前是整宽 soft + 整宽 muted** ——
+   一个局部表单的保存长得和页面主动作一样重，而这一页的主动作是底部的「保存」 */
 .rate__btns {
   display: flex;
+  justify-content: flex-end;
   gap: 16rpx;
-  margin-top: 12rpx;
-}
-.rate__save {
-  flex: 1;
-}
-/*
- * 展开态里的两个按钮：主操作 soft、次操作 muted，**都是 .sh-btn**。
- * 此前次操作是本页自造的 `.mini`（16rpx 圆角的小灰块）—— 与旁边的胶囊按钮
- * 既不同形也不同高，并排时基线都对不齐。收窄内边距是为了不让它在一行里占太满，
- * 形状与配色仍走设计系统。
- */
-.rate__cancel {
-  flex-shrink: 0;
-  padding: 24rpx 32rpx;
+  margin-top: 16rpx;
 }
 </style>
