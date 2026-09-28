@@ -161,10 +161,18 @@ public class FissionServiceImpl implements FissionService {
          * 用户问的是「得的是什么券、能省多少」。取不到模板时给空名与 0 ——
          * 不拦整条：活动还在，只是这一行描述不出来（启用时已经校验过模板存在）。
          */
-        var coupon = couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                .<ai.neargo.shop.marketing.coupon.entity.MktCoupon>lambdaQuery()
-                .eq(ai.neargo.shop.marketing.coupon.entity.MktCoupon::getCouponNo, c.couponNo())
-                .last("limit 1"));
+        /*
+         * **不带数据域**（与下面的 countMine 同一条理由）：`mkt_coupon` 是带域表，
+         * 而调用方是 C 端用户（SELF 维度）—— 带上的话这条 SELECT 恒为空集。
+         * 症状是「活动在、奖励说不出来」：页面照常显示，只是那一行写着
+         * 「得 1 张券」而没有券名与面值，**而上面那段注释恰好把它解释成了
+         * 「取不到模板」的正常兜底**，于是看起来完全不像缺陷。
+         */
+        var coupon = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.marketing.coupon.entity.MktCoupon>lambdaQuery()
+                        .eq(ai.neargo.shop.marketing.coupon.entity.MktCoupon::getCouponNo, c.couponNo())
+                        .last("limit 1")));
 
         long mine = countMine(c.fissionNo(), userNo, false);
         long mineConverted = countMine(c.fissionNo(), userNo, true);
