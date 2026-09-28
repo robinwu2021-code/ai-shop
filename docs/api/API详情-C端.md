@@ -447,6 +447,31 @@
 类型：`object`
 
 
+### fission
+
+#### GET `/mp/fission`
+
+邀请有礼　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MyFission`](#myfission)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `fissionNo` | `string` | 是 | — |
+| `name` | `string` | 是 | 活动名，运营配的 |
+| `inviterCount` | `number` | 是 | 邀请人得几张 |
+| `inviteeCount` | `number` | 是 | 被邀请人得几张 |
+| `couponTitle` | `string` | 是 | 奖励券的名字。页面要说得出「得的是什么」，只说「得 1 张券」等于没说 |
+| `faceMinor` | `number` | 是 | 券面值（分）；折扣券为 0 |
+| `thresholdMinor` | `number` | 是 | 使用门槛（分）；0 = 无门槛 |
+| `myInvited` | `number` | 是 | 我邀到的人数 |
+| `myConverted` | `number` | 是 | 其中完成首单的人数。 **奖励是按首单发的**，所以这两个数要并列摆出来 —— 只给 myInvited 的话，用户会问「我邀了 3 个怎么只得 1 张」。 |
+
+
 ### goods
 
 #### GET `/mp/goods`
@@ -1318,6 +1343,22 @@
 | `goods` | `number` | 是 | — |
 | `service` | `number` | 是 | — |
 | `speed` | `number` | 是 | — |
+
+
+#### GET `/mp/merchant/{merchantNo}/acode`
+
+商家小程序码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoreAcode`](#storeacode)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 |
 
 
 #### POST `/mp/merchant/apply`
@@ -3508,6 +3549,22 @@
 - `MARKETING`
 - `SYSTEM`
 
+### MyFission
+
+邀请有礼（`GET /mp/fission`）：当前在跑的活动 + 我自己邀到了几个。 **没有在跑的活动时后端返回 null**，端上据此整条入口不显示 —— 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `fissionNo` | `string` | 是 | — |
+| `name` | `string` | 是 | 活动名，运营配的 |
+| `inviterCount` | `number` | 是 | 邀请人得几张 |
+| `inviteeCount` | `number` | 是 | 被邀请人得几张 |
+| `couponTitle` | `string` | 是 | 奖励券的名字。页面要说得出「得的是什么」，只说「得 1 张券」等于没说 |
+| `faceMinor` | `number` | 是 | 券面值（分）；折扣券为 0 |
+| `thresholdMinor` | `number` | 是 | 使用门槛（分）；0 = 无门槛 |
+| `myInvited` | `number` | 是 | 我邀到的人数 |
+| `myConverted` | `number` | 是 | 其中完成首单的人数。 **奖励是按首单发的**，所以这两个数要并列摆出来 —— 只给 myInvited 的话，用户会问「我邀了 3 个怎么只得 1 张」。 |
+
 ### MyMembership
 
 「我是这家店的会员」（C 端，P7）。
@@ -4141,6 +4198,15 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `options` | `string`\[\] | 是 | 该维度的可选值，如 `["约5斤", "约10斤"]` |
 | `optionCodes` | `string` \| `any`\[\] | 否 | 与 options 一一对应的模板编码。来自模板的选项有值，自由输入的为空。 一期只写入不消费 —— 但不留位的话，二期做规格聚合要刷全部历史商品。 |
 | `templateNo` | `string` | 否 | 该规格组来自哪个模板（便于「用的人多不多」这类平台侧统计） |
+
+### StoreAcode
+
+店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。 **码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限， 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。 所以海报归因到**店**，邀请归因走小程序内转发那条路。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 |
 
 ### StoreFront
 

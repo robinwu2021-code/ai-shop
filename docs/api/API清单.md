@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 776 个接口**：后端已实现 700（90%）· 前端在调 705
+**合计 779 个接口**：后端已实现 703（90%）· 前端在调 708
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **100** 个接口 ｜ 后端已实现 **99**（99%）｜ 前端在调 **100**
+共 **102** 个接口 ｜ 后端已实现 **101**（99%）｜ 前端在调 **102**
 
 ### after-sale（4）
 
@@ -66,6 +66,12 @@
 | POST | `/mp/favorite/goods/{goodsNo}` | 收藏 / 取消收藏商品 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/favorite/store` | 我的收藏 · 店铺 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/favorite/store/{merchantNo}` | 收藏 / 取消收藏店铺 | — | `object` | 🔒 | ✅ | ✅ |
+
+### fission（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/mp/fission` | 邀请有礼 | — | `MyFission` | 🔒 | ✅ | ✅ |
 
 ### goods（6）
 
@@ -122,12 +128,13 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/mp/member-reach/{reachNo}/opened` | 点推送进店 | — | `ReachOpened` | 🔒 | ✅ | ✅ |
 
-### merchant（6）
+### merchant（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/merchant` | 商家列表/搜索 | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/merchant/{merchantNo}` | 商家详情 | — | `Merchant` | — | ✅ | ✅ |
+| GET | `/mp/merchant/{merchantNo}/acode` | 商家小程序码 | — | `StoreAcode` | — | ✅ | ✅ |
 | POST | `/mp/merchant/apply` | 商家入驻申请 | `MerchantApplyReq` | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/apply` | 我的入驻申请状态 | — | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | — | ✅ | ✅ |
@@ -836,7 +843,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **402** 个接口 ｜ 后端已实现 **336**（84%）｜ 前端在调 **331**
+共 **403** 个接口 ｜ 后端已实现 **337**（84%）｜ 前端在调 **332**
 
 ### aftersale（4）
 
@@ -958,14 +965,15 @@
 | GET | `/ops/settlements` | listSettlements | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/split-records` | listSplitRecords | — | `object` | — | ✅ | ✅ |
 
-### fulfillment（15）
+### fulfillment（16）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/freight-templates` | `showArchived` 为真时连归档的一起返回（G1：归档不是删除，得看得见） | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/freight-templates` | 新建/保存运费模板（含超区规则） | — | `FreightTemplate` | — | ✅ | ✅ |
-| POST | `/ops/freight-templates/{templateNo}/archive` | 归档模板（G1：软删除，不是删除） | — | `FreightTemplate` | — | ✅ | ✅ |
+| POST | `/ops/freight-templates/{templateNo}/archive` | archiveFreightTemplate | — | `FreightTemplate` | — | ✅ | ✅ |
 | POST | `/ops/freight-templates/{templateNo}/unarchive` | unarchiveFreightTemplate | — | `FreightTemplate` | — | ✅ | ✅ |
+| POST | `/ops/freight-templates/draft` | 按发货城市从快递100 报价生成模板草稿（31 省 × 2 个重量的查价） | — | `FreightDraft` | — | ✅ | ✅ |
 | GET | `/ops/fulfillment/batches` | listArrivalBatches | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/fulfillment/batches/{batchNo}/status` | 批次推进（计划→已发车→已到货→已签收），跳步抛错 | — | `ArrivalBatch` | — | ✅ | ✅ |
 | GET | `/ops/fulfillment/carriers` | listCarriers | — | `数组` | — | ✅ | ✅ |

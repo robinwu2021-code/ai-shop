@@ -2452,7 +2452,7 @@ _无字段_
 
 #### POST `/ops/freight-templates/{templateNo}/archive`
 
-归档模板（G1：软删除，不是删除）
+archiveFreightTemplate
 
 **入参**
 
@@ -2512,6 +2512,30 @@ _无字段_
 | `outOfRange` | [`#/definitions/OutOfRangeRule`](#definitionsoutofrangerule)\[\] | 是 | 超区规则 |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+
+
+#### POST `/ops/freight-templates/draft`
+
+按发货城市从快递100 报价生成模板草稿（31 省 × 2 个重量的查价）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`FreightDraft`](#freightdraft)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 建议的模板名，如「运城市发 · 中通快递」 |
+| `firstWeightGram` | `number` | 是 | 首重（克） |
+| `firstFee` | `number` | 是 | 首重费（分） |
+| `addWeightGram` | `number` | 是 | 续重单位（克） |
+| `addFee` | `number` | 是 | 每个续重单位的费用（分） |
+| `outOfRange` | [`#/definitions/OutOfRangeRule`](#definitionsoutofrangerule)\[\] | 是 | 地区规则：贵的省份加收、查不到价的省份不配送 |
+| `rows` | [`#/definitions/FreightProvincePrice`](#definitionsfreightprovinceprice)\[\] | 是 | 31 个省的原始报价，运营据此核对 |
+| `unquoted` | `number` | 是 | 查不到价的省份数 |
 
 
 #### GET `/ops/fulfillment/batches`
@@ -10143,6 +10167,21 @@ KPI 卡（金额为最小货币单位整数）。
 | `invitedCount` | `number` | 是 | 累计邀请人数 |
 | `convertedCount` | `number` | 是 | 其中转化（完成首单）的人数 |
 | `createdAt` | `string` | 是 | 创建时间 |
+
+### FreightDraft
+
+从快递100 报价生成的运费模板草稿（TDD-快递100商家寄件 §8 AC17）。**不落库** —— 运营核对、改过之后走 saveFreightTemplate。首重 / 续重取多数省份那一档，贵的省份写成加收，查不到价的省份不配送。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 建议的模板名，如「运城市发 · 中通快递」 |
+| `firstWeightGram` | `number` | 是 | 首重（克） |
+| `firstFee` | `number` | 是 | 首重费（分） |
+| `addWeightGram` | `number` | 是 | 续重单位（克） |
+| `addFee` | `number` | 是 | 每个续重单位的费用（分） |
+| `outOfRange` | [`#/definitions/OutOfRangeRule`](#definitionsoutofrangerule)\[\] | 是 | 地区规则：贵的省份加收、查不到价的省份不配送 |
+| `rows` | [`#/definitions/FreightProvincePrice`](#definitionsfreightprovinceprice)\[\] | 是 | 31 个省的原始报价，运营据此核对 |
+| `unquoted` | `number` | 是 | 查不到价的省份数 |
 
 ### FreightTemplate
 
