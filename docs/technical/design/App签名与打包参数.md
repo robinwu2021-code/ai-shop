@@ -119,14 +119,19 @@ SHA256: 2D:33:A1:46:12:BE:AF:22:E9:F7:DD:45:06:C9:8A:C0:3D:CA:41:18:78:5A:A9:2E:
 - uni-push 控制台的 appId / appKey / masterSecret → 后端 `GETUI_APP_ID` / `GETUI_APP_KEY`；
 - 厂商通道资质（小米/华为/OPPO/vivo/荣耀逐家申请），拿到后把
   `sdkConfigs.push.unipush.offline` 改 `true`，后端零改动；
-- iOS 的 APNs 证书，依赖 Apple 开发者账号。
+- ~~iOS 的 APNs 证书，依赖 Apple 开发者账号~~ —— **2026-09-28 已办**，见 §7。
 
 **不要把新的原生 SDK 手写进 `android-shell/`。** 那个壳是开发预览用的 WebView 壳
 （见 `android-shell/README.md`），注定不是上架的那个包 ——
 写进去的集成代码不会跟着上架，到时候要在离线包里重做一遍。
 
 （个推是例外：壳里**已经**接了原生个推 + `PushBridge` JS 桥，为的是在没有离线包的
-那段时间能验推送。上架那条路仍然走 uni-push 2.0，端上不写原生代码。）
+那段时间能验推送。）
+
+> ⚠️ **这里原先写着「上架那条路仍然走 uni-push 2.0，端上不写原生代码」，已被实现推翻。**
+> 实际走的是**个推原生直连**：`b-app/src/manifest.json` 刻意**不声明** uni-push 模块
+> （uni-push 2.0 要 DCloud 实名认证，没开通时 register 报 errorCode 1），
+> 端上由 `packages/shared/src/ports/push.ts` 取 cid。照旧文走会再踩一次那个错误码。
 
 ## 6. 高德地图 Key（2026-08-22 接入）
 
@@ -139,7 +144,7 @@ Key 不进仓库：写在 `b-app/.env.local`（根 `.gitignore` 已挡）。
 | 变量 | 平台 | 谁读它 |
 | --- | --- | --- |
 | `AMAP_KEY_ANDROID` | Android SDK | `b-app/offline/amap-key.gradle` → `manifestPlaceholders` → AndroidManifest 的 `com.amap.api.v2.apikey` |
-| `AMAP_KEY_IOS` | iOS SDK | 还没有（iOS 离线打包链路未建） |
+| `AMAP_KEY_IOS` | iOS SDK | **2026-09-28 已申请**（高德「虹选」应用下的 `hxmall-bapp-ios`，绑 BundleID）。消费者待建：iOS 侧对应 `amap-key.gradle` 的那个注入脚本还没有，值先放着 |
 | ~~b-app 的 Web 端 JS API~~ | — | **不申请**（2026-08-28 拍板：店主用 App，B 端 H5 只我们自己调试用；后果见 `utils/geo.ts`） |
 | `AMAP_WEB_KEY` | Web 服务 | 后端 `application.yml` 的 `amap-key`（在 `backend/.env.local`） |
 | `NEXT_PUBLIC_AMAP_JS_KEY` + `_SECURITY_CODE` | Web 端 JS API | `ops-web/lib/amap.ts`（在 `ops-web/.env.local`） |
@@ -176,3 +181,49 @@ Key 不对的表现：定位 fail 且原生错误码 **7（KEY 鉴权失败）**
 模拟器上另有两条与 key 无关的假阴性：SIM 为美国运营商（MCC 310）时高德 SDK 走海外链路报错误码 4「网络连接异常」，
 关掉蜂窝后变错误码 2「WIFI信息不足」（模拟器没有真实 AP/基站，且高德默认丢弃 mock GPS）——地图瓦片能正常渲染即说明 key 已通过，定位要真机验。
 
+
+## 7. 苹果侧资源（2026-09-28 办齐）
+
+打 iOS 包要的东西**全部在仓库外**：密钥文件在 `~/work/env/apple/`（700，文件 600），
+标识记在同目录的 `apple.env`。**这一节只记标识，不记任何密钥内容** —— 与高德 Key 同一条规矩，
+但更严：`.p8` 一旦泄露，别人能以我们的名义发推送、传包。
+
+| 项 | 值 | 谁用它 |
+| --- | --- | --- |
+| Team ID | `72TUZXTHY5`（NearGo L.L.C-FZ，组织账号） | 签名、APNs 的 `iss`、描述文件 |
+| Bundle ID | `top.hxmall.bapp`（与安卓包名同，见 §1） | 全部 |
+| App Store Connect App ID | `6816814379`（「虹选商家」，主语言简体中文，SKU `hxmall-bapp`） | 传包、TestFlight |
+| 发布证书 | `7L852DQR7M`，Apple Distribution，2027-09-28 到期 | `codesign` |
+| 描述文件 | `HXMall Merchant AppStore`（IOS_APP_STORE） | 打包 |
+| APNs 密钥 | Key ID `HM4F5HVQTN`，Sandbox & Production，Team Scoped | 后端直连 APNs / 个推 iOS |
+| 传包密钥 | ASC Key ID `PVSW227SPD`，Issuer `4aa221ae-ce21-4e62-b6a3-fc8d7c7961c7`，权限「App 管理」 | `xcrun altool` 传 TestFlight |
+
+**App ID 上开了三个能力**：Push Notifications、Sign in with Apple、Associated Domains。
+后两个是为微信 Universal Links 与 Apple 登录预留的 —— **首版都不接**（理由见下）。
+
+### 签名不弹窗的做法
+
+证书私钥**不进 login 钥匙串**：那个要交互式输开机密码才能给 `codesign` 授权，脚本里过不去。
+改成专用钥匙串 `hxmall-ios.keychain-db`，密码由脚本生成并记在 `apple.env`：
+
+```bash
+security create-keychain -p "$PW" hxmall-ios.keychain-db
+security import ios_distribution.p12 -k hxmall-ios.keychain-db -P "$P12PW" -T /usr/bin/codesign -A
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PW" hxmall-ios.keychain-db
+security list-keychains -d user -s login.keychain-db hxmall-ios.keychain-db
+```
+
+⚠️ `openssl pkcs12 -export` **别加 `-legacy`**：本机 `/usr/bin/openssl` 是 LibreSSL，不认这个参数，
+而它的默认格式正好是 macOS 钥匙串能收的。（加了会静默不产出文件 —— 报错在 stderr，
+被 `2>/dev/null` 吞掉后看起来像成功。）
+
+### 首版 TestFlight 的范围
+
+**不接微信、不接 Apple 登录**，理由各不相同：
+
+- **微信**：iOS 应用要先在 `hxmall.top` 挂 Universal Links，开放平台审核另算时间。
+- **Apple 登录**：后端 `AuthServiceImpl` 的 `GRANT_APPLE` 只有一个 TODO，
+  **不校验 identityToken 就信任请求里的 principal**（见那里的注释）。接上去等于把账号送人。
+
+两者是**互相绑定的**：苹果只在「App 提供了第三方登录」时才强制要求 Apple 登录。
+首版两个都不带，就不触发这条审核规则；等后端验签补好、微信审下来，同一版一起加。
