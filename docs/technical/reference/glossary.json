@@ -10042,14 +10042,8 @@
         {
           "key": "home.catalogEntry",
           "zh-CN": "经营类目",
-          "en": "Store categories",
-          "ar": "فئات المتجر"
-        },
-        {
-          "key": "home.catalogEntryHint",
-          "zh-CN": "本店卖哪几类",
-          "en": "What this store sells",
-          "ar": "ما يبيعه هذا المتجر"
+          "en": "Categories",
+          "ar": "الفئات"
         },
         {
           "key": "home.cell.afterSale",
@@ -10095,7 +10089,7 @@
         },
         {
           "key": "home.fulfillEntry",
-          "zh-CN": "核销与分拣",
+          "zh-CN": "核销分拣",
           "en": "Redeem & pick",
           "ar": "الاستلام والفرز"
         },
@@ -10179,7 +10173,7 @@
         },
         {
           "key": "home.noticeEntry",
-          "zh-CN": "公告",
+          "zh-CN": "店铺公告",
           "en": "Notice",
           "ar": "الإعلان"
         },
@@ -10245,39 +10239,27 @@
         },
         {
           "key": "home.scopeEntry",
-          "zh-CN": "经营范围与送货",
-          "en": "Coverage & delivery",
-          "ar": "نطاق التغطية والتوصيل"
+          "zh-CN": "经营范围",
+          "en": "Coverage",
+          "ar": "التغطية"
         },
         {
           "key": "home.skuIdentityEntry",
-          "zh-CN": "商品编码导入导出",
-          "en": "Product codes: import & export",
-          "ar": "استيراد وتصدير أكواد المنتجات"
-        },
-        {
-          "key": "home.skuIdentityEntryHint",
-          "zh-CN": "条码 / 货号 / 单位，批量改",
-          "en": "Barcode / SKU code / unit, in bulk",
-          "ar": "الباركود ورقم الصنف والوحدة، دفعة واحدة"
+          "zh-CN": "商品编码",
+          "en": "SKU codes",
+          "ar": "أكواد المنتجات"
         },
         {
           "key": "home.specsEntry",
-          "zh-CN": "商品规格与参数",
-          "en": "Product options & attributes",
-          "ar": "مواصفات المنتجات وخصائصها"
-        },
-        {
-          "key": "home.specsEntryHint",
-          "zh-CN": "各类目可用的规格与参数",
-          "en": "Options and attributes available per category",
-          "ar": "المواصفات والخصائص المتاحة لكل فئة"
+          "zh-CN": "商品规格",
+          "en": "Options",
+          "ar": "المواصفات"
         },
         {
           "key": "home.storeEntry",
           "zh-CN": "店铺设置",
-          "en": "Shop settings",
-          "ar": "إعدادات المتجر"
+          "en": "Shop",
+          "ar": "المتجر"
         },
         {
           "key": "home.today",

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 478,
+        "b-app": 476,
         "c-app": 74
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 135,
         "c-app": 49
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 109,
         "c-app": 29
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 214,
+        "b-app": 208,
         "c-app": 79
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 142,
+        "b-app": 141,
         "c-app": 81
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 512,
+        "b-app": 511,
         "c-app": 183
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 293,
+        "b-app": 292,
         "c-app": 90
       }
     },
@@ -1637,7 +1637,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 46,
+        "b-app": 47,
         "c-app": 19
       }
     },
@@ -3755,9 +3755,9 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 80,
-      "localSelectors": 26,
-      "localCssLines": 102,
+      "libClassHits": 64,
+      "localSelectors": 27,
+      "localCssLines": 109,
       "rolled": []
     },
     {
