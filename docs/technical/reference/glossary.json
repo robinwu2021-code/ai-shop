@@ -10316,6 +10316,12 @@
           "ar": "بانتظار الاستلام"
         },
         {
+          "key": "home.entriesTitle",
+          "zh-CN": "常用功能",
+          "en": "Tools",
+          "ar": "الأدوات"
+        },
+        {
           "key": "home.fulfillEntry",
           "zh-CN": "核销分拣",
           "en": "Redeem & pick",

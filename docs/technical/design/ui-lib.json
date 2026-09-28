@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 486,
+        "b-app": 481,
         "c-app": 83
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 355,
+        "b-app": 356,
         "c-app": 75
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 341,
+        "b-app": 342,
         "c-app": 266
       }
     },
@@ -339,7 +339,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 39,
+        "b-app": 37,
         "c-app": 7
       }
     },
@@ -355,7 +355,7 @@
         "color": "var(--sh-faint)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 3,
         "c-app": 0
       }
     },
@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 45,
+        "b-app": 43,
         "c-app": 38
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 136,
+        "b-app": 134,
         "c-app": 49
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 112,
         "c-app": 30
       }
     },
@@ -1053,7 +1053,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 339,
+        "b-app": 334,
         "c-app": 150
       }
     },
@@ -1117,7 +1117,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 135,
+        "b-app": 136,
         "c-app": 62
       }
     },
@@ -1193,7 +1193,7 @@
         "gap": "4px"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 6,
         "c-app": 0
       }
     },
@@ -1211,7 +1211,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 59,
+        "b-app": 60,
         "c-app": 28
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 142,
+        "b-app": 143,
         "c-app": 84
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 524,
+        "b-app": 523,
         "c-app": 186
       }
     },
@@ -1451,7 +1451,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 35,
         "c-app": 9
       }
     },
@@ -1467,7 +1467,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 301,
+        "b-app": 299,
         "c-app": 92
       }
     },
@@ -1637,7 +1637,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 47,
         "c-app": 19
       }
     },
@@ -2223,7 +2223,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 21,
+        "b-app": 20,
         "c-app": 0,
         "lib": 0
       },
@@ -2297,7 +2297,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 117,
+        "b-app": 119,
         "c-app": 26,
         "lib": 13
       },
@@ -2686,7 +2686,7 @@
         "active?: string"
       ],
       "usage": {
-        "b-app": 12,
+        "b-app": 14,
         "c-app": 0,
         "lib": 0
       },
@@ -3751,14 +3751,23 @@
       "components": [
         "sh-empty",
         "sh-go",
+        "sh-icon",
         "sh-scaffold",
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 64,
-      "localSelectors": 27,
-      "localCssLines": 109,
-      "rolled": []
+      "libClassHits": 45,
+      "localSelectors": 22,
+      "localCssLines": 101,
+      "rolled": [
+        {
+          "id": "rowbetween",
+          "label": "两端对齐行",
+          "lib": ".sh-row + .sh-row--between",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5695,6 +5704,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "rowbetween",
+      "label": "两端对齐行",
+      "lib": ".sh-row + .sh-row--between",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+      "pages": [
+        "b-app/home"
       ]
     },
     {
