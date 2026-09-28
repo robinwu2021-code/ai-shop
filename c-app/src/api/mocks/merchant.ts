@@ -42,6 +42,7 @@ export const merchantMock: Pick<ShopApi,
   | "reviewList"
   | "questionList"
   | "myFission"
+  | "bootstrapConfig"
   | "merchantAcode"
   | "askQuestion"
   | "toggleReviewLike"
@@ -274,6 +275,19 @@ export const merchantMock: Pick<ShopApi,
    * 而线上此刻一场都没建（`mkt_fission_campaign` 0 行）。
    * 额度取方案 §7.2 建议的那套：双方各 1 张「满 60 减 8」。
    */
+  /**
+   * 冷启动配置。**mock 里入驻开关默认开** —— 与后端默认一致（2026-09-28 拍板），
+   * 要验的正是「开着时那一屏长什么样」。
+   */
+  async bootstrapConfig() {
+    return delay({
+      defaultSkin: "fresh",
+      features: { "merchant.apply.mp-visible": true, points: false },
+      minAppVer: "1.0.0",
+      serviceHours: "09:00-21:00",
+    });
+  },
+
   async myFission() {
     return delay({
       fissionNo: "FS-MOCK-1",

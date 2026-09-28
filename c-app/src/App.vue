@@ -11,6 +11,7 @@ import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
+import { useConfigStore } from "@/stores/config";
 import { useCartStore } from "@/stores/cart";
 import { initFonts } from "@shared/ports/font";
 import { USE_MOCK } from "@/api";
@@ -131,6 +132,14 @@ onLaunch(() => {
   const community = useCommunityStore();
   community.restore();
   void community.refreshLocalized();
+
+  /*
+   * 平台开关（`/mp/config/bootstrap`）。**此前端上一次都没调过这条端点** ——
+   * 后端在发、运营端能改，而买家侧拿到的只有编译期常量，改一个开关要重新发版。
+   * 小程序还要重新提审，而「商家入驻入口显不显示」正是一条随时可能要立刻关掉的开关。
+   * 失败不阻塞启动：拿不到就各用各的默认值。
+   */
+  void useConfigStore().load();
 
   initFonts(); // 远程字体，失败静默降级
 

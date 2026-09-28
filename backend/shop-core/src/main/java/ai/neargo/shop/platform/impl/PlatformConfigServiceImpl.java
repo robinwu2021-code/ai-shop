@@ -63,9 +63,17 @@ public class PlatformConfigServiceImpl implements PlatformConfigService {
      *
      * <p>`express.test-mode` 默认 **false**：开着时快递代下单走快递100 测试环境、快递单可线下付，
      * 只为在生产上跑通快递闭环（TDD-快递100商家寄件 §7）。
+     *
+     * <p>`merchant.apply.mp-visible` 默认 **true**（2026-09-28 拍板：小程序上要能注册商家）。
+     * <b>它是一条会影响小程序审核的开关</b>：微信按类目审，自营类目的包里出现
+     * 「招商 / 入驻 / 商家申请」可能被判**平台型经营**而驳回。做成开关而不是写死在端上，
+     * 是为了万一驳回能<b>立刻关掉止血</b> —— 关它不用重新发版、不用重新提审，
+     * 而改端上代码两样都要。
      */
     private static final String DEFAULT_FLAGS = """
-            [{"key":"category.gate.enforce","name":"类目资质校验",\
+            [{"key":"merchant.apply.mp-visible","name":"小程序显示商家入驻入口",\
+            "enabled":true,"rolloutPercent":0,"updatedAt":null},\
+            {"key":"category.gate.enforce","name":"类目资质校验",\
             "enabled":false,"rolloutPercent":0,"updatedAt":null},\
             {"key":"goods.audit","name":"商品上架审核",\
             "enabled":true,"rolloutPercent":0,"updatedAt":null},\

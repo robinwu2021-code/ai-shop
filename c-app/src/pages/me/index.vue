@@ -8,6 +8,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { merchantApplyVisible } from "@shared/ports";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
+import { useConfigStore } from "@/stores/config";
 // 小程序才有原生客服会话；借 canNativeShare 判端（两者的条件编译判据相同）
 import { canNativeShare } from "@shared/ports/share";
 import PhoneGate from "@/components/phone-gate.vue";
@@ -22,6 +23,12 @@ const { t } = useI18n();
 /** 构建版本号（vite define 注入）。见「帮助中心」那一行上方的注释 */
 const buildVersion = __BUILD_VERSION__;
 const user = useUserStore();
+const config = useConfigStore();
+/**
+ * 商家版下载页。**与官网同一个地址** —— 官网那一页已经在维护安装包版本号，
+ * 端上再写一份就会出现「官网 0.5.2、端上还指着 0.4.98」这种谁也不会发现的漂移。
+ */
+const MERCHANT_APP_URL = "https://hxmall.top/download";
 /** 「我的」页的绑定入口。静默登录之后「有账号没手机号」是常态 */
 const phoneGate = ref(false);
 const community = useCommunityStore();
@@ -209,7 +216,35 @@ async function submitMerchant() {
   if (!mValid.value) return;
   applyStatus.value = await api.merchantApply({ ...mForm.value });
   merchantVisible.value = false;
-  uni.showToast({ title: String(t("merchant.applySubmitted")), icon: "none" });
+  /*
+   * 提交成功 → **引导去装商家版 App**（2026-09-28 拍板的后半句）。
+   *
+   * <p>不是客套：经营动作（上架、改价、接单、发货、看账）都在 App 里，
+   * 小程序这一侧只承接「报名」这一步。不说这句的话，他提交完会在小程序里
+   * 找「我的店铺」—— 而那里什么都没有，看起来像是没提交成功。
+   *
+   * <p>小程序里**不能直接下载 APK**（微信拦），所以给的是官网商家端地址，
+   * 让他复制到手机浏览器打开；H5/App 上直接跳。
+   */
+  appDownloadVisible.value = true;
+}
+
+/** 提交完那一屏：告诉他下一步在 App 里做 */
+const appDownloadVisible = ref(false);
+
+/**
+ * 商家版入口：**复制链接**，两端一样。
+ *
+ * <p>小程序里本来就打不开 APK 下载（微信拦），而这一侧也没有 webview 页 ——
+ * 跳一个不存在的页面会静默失败，表现是「点了没反应」。复制出去让他在浏览器打开，
+ * 是这两端都真的走得通的那条路（官网首页的安装包提示写的也是这句）。
+ */
+function goMerchantApp() {
+  uni.setClipboardData({
+    data: MERCHANT_APP_URL,
+    success: () => uni.showToast({ title: String(t("merchant.appLinkCopied")), icon: "none" }),
+  });
+  appDownloadVisible.value = false;
 }
 
 onShow(() => {
@@ -344,13 +379,28 @@ onShow(() => {
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
         <text class="txt-caption cell__value">{{ $t("visited.hint") }}</text>
       </view>
-      <!-- 小程序上不出现：自营类目的包里有「入驻」会被判成平台型经营而驳回。
-           判断在 ports/storefront，页面不写 #ifdef -->
-      <view v-if="merchantApplyVisible()" class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
+      <!--
+        商家入驻（2026-09-28 拍板：小程序上也要能注册）。
+        显不显示由**后端开关**决定（`merchant.apply.mp-visible`，随 bootstrap 下发）——
+        做成开关是为了让「被微信判成平台型经营而驳回」这条风险可回滚：
+        真驳回了运营在后台关一下就止血，不用重新发版重新提审。
+      -->
+      <view v-if="merchantApplyVisible(config.features)" class="sh-cell sh-row sh-row--between" @tap="applyMerchant">
         <text class="txt-body cell__label">{{ $t("merchant.apply") }}</text>
         <text class="txt-caption cell__value">{{ applyStatusText }}</text>
       </view>
     </view>
+
+    <!--
+      提交入驻之后那一屏（2026-09-28 拍板的后半句）：**下一步在 App 里做**。
+      不说这句的话，他提交完会在小程序里找「我的店铺」——
+      而那里什么都没有，看起来像是没提交成功。
+    -->
+    <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
+      <text class="txt-body block">{{ $t("merchant.applyDoneBody") }}</text>
+      <view class="sh-btn sh-btn--primary block" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
+      <view class="sh-btn block" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
+    </sh-sheet>
 
     <!-- 设置：与生意无关，放最后 -->
     <view class="sh-cells">

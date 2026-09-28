@@ -529,6 +529,19 @@ export interface ShopApi {
    * **没有在跑的活动时返回 null** —— 端上据此整条入口不显示，
    * 不给一个点进去说「暂无活动」的入口。
    */
+  /**
+   * 冷启动配置：皮肤、**平台开关**、最低版本、服务时段。游客可调。
+   *
+   * `features` 里 yml 与运营端那一屏已经在后端合流，端上只认这一份 ——
+   * 有它才谈得上「运营后台改一下开关」对买家侧生效。
+   */
+  bootstrapConfig(): Promise<{
+    defaultSkin: string;
+    features: Record<string, boolean>;
+    minAppVer: string;
+    serviceHours: string;
+  }>;
+
   myFission(): Promise<MyFission | null>;
 
   /**

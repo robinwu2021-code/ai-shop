@@ -208,6 +208,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
    */
   myCoupons: { method: "GET", path: "/mp/coupon/mine", auth: true, summary: "我领到的券" },
   // 邀请有礼（§3.1）：当前活动 + 我邀到了几个。没有活动时后端返回 null
+  // 冷启动配置（皮肤 / 开关 / 最低版本）。**端上此前一次都没调过它**
+  bootstrapConfig: { method: "GET", path: "/mp/config/bootstrap", auth: false, summary: "冷启动配置" },
   myFission: { method: "GET", path: "/mp/fission", auth: true, summary: "邀请有礼" },
   // 海报要用的店铺码（§7.3）。游客可见 —— 海报本来就是发出去给陌生人看的
   merchantAcode: { method: "GET", path: "/mp/merchant/{merchantNo}/acode", auth: false, summary: "商家小程序码" },

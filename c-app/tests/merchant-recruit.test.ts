@@ -19,13 +19,33 @@ function allFiles(dir: string, out: string[] = []): string[] {
 }
 
 describe("商家招募", () => {
-  it("★★★ 入驻入口仍然挂在 merchantApplyVisible 上 —— 小程序里露出来会被判平台型经营", () => {
+  it("★★★ 入驻入口受**后端开关**控制 —— 被驳回时要能不发版就关掉", () => {
+    /*
+     * 这条判据以前是「小程序里恒不显示」（编译期 #ifdef）。2026-09-28 拍板要在小程序上
+     * 开放商家注册 —— 那条审核风险（自营类目的包里出现入驻可能被判平台型经营）**并没有消失**，
+     * 变的是谁来承担它。所以判据换成「可回滚」：显不显示由后端开关决定，
+     * 真被驳回时运营在后台关一下就止血，不用重新发版、不用重新提审。
+     *
+     * **不许退回编译期判断** —— 那等于把这条风险变成一个只能靠发版解决的问题。
+     */
     const me = readFileSync(join(SRC, "pages/me/index.vue"), "utf8");
-    expect(me).toContain("merchantApplyVisible()");
+    expect(me).toContain("merchantApplyVisible(config.features)");
+
     const gate = readFileSync(
       resolve(__dirname, "../../packages/shared/src/ports/storefront.ts"), "utf8");
-    // 判据是「小程序那一支返回 false」，不是「文件里有这个函数」
-    expect(gate).toMatch(/#ifdef MP-WEIXIN[\s\S]{0,80}return false/);
+    expect(gate, "判断退回成编译期了，开关关不掉它").not.toContain("#ifdef MP-WEIXIN");
+    expect(gate).toContain('flags?.["merchant.apply.mp-visible"]');
+  });
+
+  it("★★★ 冷启动真的去拉那份开关 —— 不拉的话开关永远是默认值", () => {
+    const app = readFileSync(join(SRC, "App.vue"), "utf8");
+    expect(app).toContain("useConfigStore().load()");
+  });
+
+  it("★★ 提交入驻之后引导去装商家版 —— 经营动作都在 App 里", () => {
+    const me = readFileSync(join(SRC, "pages/me/index.vue"), "utf8");
+    expect(me).toContain("appDownloadVisible");
+    expect(me).toContain("merchant.getApp");
   });
 
   it("★★★ 界面文案里不出现招商话术 —— 自营类目的包里有它就会被驳回", () => {

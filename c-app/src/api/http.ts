@@ -266,6 +266,9 @@ export const httpApi: ShopApi = {
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
+  bootstrapConfig: () => call<{
+    defaultSkin: string; features: Record<string, boolean>; minAppVer: string; serviceHours: string;
+  }>("bootstrapConfig"),
   myFission: () => call<MyFission | null>("myFission"),
   merchantAcode: (merchantNo) =>
     call<StoreAcode>("merchantAcode", { merchantNo }),

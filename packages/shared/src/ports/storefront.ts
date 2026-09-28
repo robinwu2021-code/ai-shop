@@ -13,21 +13,25 @@
 /**
  * 「商家入驻」入口能不能出现。
  *
- * <p><b>小程序上不出现。</b>微信按类目审小程序：以自营类目提交的包里出现
- * 「招商 / 入驻 / 商家申请」这类内容，会被判为**平台型经营**而驳回 ——
- * 平台型要另外的资质（见 [小程序上线指南](../../../../docs/technical/design/小程序上线指南.md) §一）。
+ * <p><b>2026-09-28 起由后端开关决定</b>（`merchant.apply.mp-visible`，随
+ * `/mp/config/bootstrap` 下发），不再是编译期的 `#ifdef`。
  *
- * <p>入口藏起来而不是把代码摘掉：申请表、后端接口、运营端的审核流程都还在，
- * 拿到平台类目之后改这一处就露出来，不用重新走一遍发布。
+ * <h2>为什么换成开关</h2>
+ * 此前这里在小程序上恒为 false：微信按类目审，自营类目的包里出现
+ * 「招商 / 入驻 / 商家申请」可能被判**平台型经营**而驳回。
+ * 拍板要在小程序上开放商家注册之后，那条风险并没有消失 —— 变的是谁来承担它。
  *
- * <p>⚠️ **不要把它挪进 `FEATURES` 顺手关成 false** —— 那样 App 与 H5 上
- * 这个入口也一起没了，而那两个端从来没有这个限制。
+ * <p>做成**后端开关**而不是把 `#ifdef` 删掉，是为了让这条风险**可回滚**：
+ * 真被驳回时，运营在后台关一下就止血，不需要重新发版、不需要重新提审；
+ * 而改端上代码两样都要，那中间至少是几天。
+ *
+ * <p>申请表、后端接口、运营端的审核流程一直都在，这一处只决定**露不露出来**。
+ *
+ * @param flags 来自 `bootstrap` 的平台开关。**拿不到配置时按 `true` 走** ——
+ *              这条开关的默认态是开（拍板要它开着），而一次网络抖动不该把它悄悄关掉；
+ *              真要关是运营的动作，那时端上拿到的是一个明确的 `false`。
  */
-export function merchantApplyVisible(): boolean {
-  // #ifdef MP-WEIXIN
-  return false;
-  // #endif
-  // #ifndef MP-WEIXIN
-  return true;
-  // #endif
+export function merchantApplyVisible(flags?: Record<string, boolean>): boolean {
+  const v = flags?.["merchant.apply.mp-visible"];
+  return v === undefined ? true : v;
 }
