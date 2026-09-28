@@ -202,6 +202,8 @@ const RESPONSE_TYPES = {
   masterData: "MasterData",
   merchantApply: "MerchantApplyStatus",
   reviewList: "Review[]",
+  myFission: "MyFission",
+  merchantAcode: "StoreAcode",
   questionList: "Question[]",
   askQuestion: "Question",
   createReview: "Review",

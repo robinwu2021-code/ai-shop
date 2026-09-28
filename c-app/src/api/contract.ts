@@ -55,6 +55,7 @@ import type {
   ReviewFilter,
   Question,
   MyFission,
+  StoreAcode,
 } from "@shared/types";
 
 export interface PayMethodList {
@@ -537,7 +538,7 @@ export interface ShopApi {
    * 一人一张会烧穿额度，而烧穿之后新入驻的商家再也拿不到码。所以海报归因到**店**，
    * 邀请归因走小程序内转发。`imageBase64` 为 null = 通道没开，端上画一张不带码的海报。
    */
-  merchantAcode(merchantNo: string): Promise<{ merchantNo: string; imageBase64: string | null }>;
+  merchantAcode(merchantNo: string): Promise<StoreAcode>;
 
   questionList(goodsNo: string, limit?: number): Promise<Question[]>;
 

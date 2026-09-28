@@ -1406,3 +1406,16 @@ export interface MerchantApplyStatus {
    */
   agreedAt?: number;
 }
+
+/**
+ * 店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。
+ *
+ * **码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限，
+ * 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。
+ * 所以海报归因到**店**，邀请归因走小程序内转发那条路。
+ */
+export interface StoreAcode {
+  merchantNo: string;
+  /** PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 */
+  imageBase64: string | null;
+}
