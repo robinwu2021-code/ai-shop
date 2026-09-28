@@ -3268,6 +3268,12 @@
           "ar": "تم نسخ الرابط — افتحه في متصفح هاتفك"
         },
         {
+          "key": "merchant.appTip",
+          "zh-CN": "上架、接单、发货都在「虹选商家」App 里做",
+          "en": "Listing, orders and delivery all happen in the merchant app",
+          "ar": "الإدراج والطلبات والتسليم تتم كلها في تطبيق التاجر"
+        },
+        {
           "key": "merchant.apply",
           "zh-CN": "商家入驻",
           "en": "Sell with us",
@@ -3287,9 +3293,9 @@
         },
         {
           "key": "merchant.applyFormHint",
-          "zh-CN": "填好后运营会联系你核对资质。个体户也可以先入驻，之后再升级。",
-          "en": "We'll contact you to verify details. Sole traders can join now and upgrade later.",
-          "ar": "سنتواصل للتحقق من البيانات. يمكن للأفراد الانضمام الآن والترقية لاحقًا."
+          "zh-CN": "填好后运营电话联系你",
+          "en": "We'll call you to confirm the details",
+          "ar": "سنتصل بك لتأكيد البيانات"
         },
         {
           "key": "merchant.applyStatus.APPROVED",
@@ -3316,22 +3322,16 @@
           "ar": "قيد المراجعة"
         },
         {
+          "key": "merchant.callSales",
+          "zh-CN": "有问题打 {p}",
+          "en": "Questions? Call {p}",
+          "ar": "لديك سؤال؟ اتصل بـ {p}"
+        },
+        {
           "key": "merchant.category",
-          "zh-CN": "主营类目",
-          "en": "Main category",
-          "ar": "التصنيف الرئيسي (مثل: طازج، خدمات منزلية)"
-        },
-        {
-          "key": "merchant.contact",
-          "zh-CN": "联系人",
-          "en": "Contact person",
-          "ar": "الشخص المسؤول"
-        },
-        {
-          "key": "merchant.descPh",
-          "zh-CN": "选填，一句话介绍",
-          "en": "Optional, a one-line description",
-          "ar": "اختياري، وصف بسطر واحد"
+          "zh-CN": "经营范围，如水果、粮油",
+          "en": "What you sell, e.g. fruit, groceries",
+          "ar": "ماذا تبيع، مثل: فواكه، بقالة"
         },
         {
           "key": "merchant.dim.goods",
@@ -3370,12 +3370,6 @@
           "ar": "ساعات العمل"
         },
         {
-          "key": "merchant.microBlocked",
-          "zh-CN": "该行业不支持个人经营者，请选个体户或企业",
-          "en": "This industry does not allow individual sellers — pick sole trader or company",
-          "ar": "هذا المجال لا يسمح ببائع فرد؛ اختر مؤسسة فردية أو شركة"
-        },
-        {
           "key": "merchant.noRating",
           "zh-CN": "暂无评价",
           "en": "No reviews yet",
@@ -3392,12 +3386,6 @@
           "zh-CN": "手机号",
           "en": "Phone number",
           "ar": "رقم الجوال"
-        },
-        {
-          "key": "merchant.referrerPh",
-          "zh-CN": "推荐人手机号（选填）",
-          "en": "Referrer's phone (optional)",
-          "ar": "رقم هاتف المُوصي (اختياري)"
         },
         {
           "key": "merchant.reply",
@@ -3452,24 +3440,6 @@
           "zh-CN": "已售单",
           "en": "Orders",
           "ar": "الطلبات"
-        },
-        {
-          "key": "merchant.subject.ENTERPRISE",
-          "zh-CN": "企业",
-          "en": "Company",
-          "ar": "شركة"
-        },
-        {
-          "key": "merchant.subject.INDIVIDUAL",
-          "zh-CN": "个体工商户",
-          "en": "Sole trader",
-          "ar": "تاجر فردي"
-        },
-        {
-          "key": "merchant.subject.NATURAL_PERSON",
-          "zh-CN": "个人经营者",
-          "en": "Individual seller",
-          "ar": "بائع فرد"
         },
         {
           "key": "merchant.submitApply",

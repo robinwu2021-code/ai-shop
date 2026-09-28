@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 336,
-        "c-app": 255
+        "c-app": 256
       }
     },
     {
@@ -1548,7 +1548,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 6
+        "c-app": 5
       }
     },
     {
@@ -1566,7 +1566,7 @@
       },
       "usage": {
         "b-app": 3,
-        "c-app": 2
+        "c-app": 1
       }
     },
     {
@@ -1582,7 +1582,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 2
+        "c-app": 1
       }
     },
     {
@@ -1602,7 +1602,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 6
+        "c-app": 5
       }
     },
     {
@@ -1716,7 +1716,7 @@
       },
       "usage": {
         "b-app": 67,
-        "c-app": 25
+        "c-app": 22
       }
     },
     {
@@ -2620,7 +2620,7 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 150,
+      "lines": 169,
       "props": [
         "visible: boolean",
         "title: string",
@@ -5069,10 +5069,17 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 118,
-      "localSelectors": 16,
-      "localCssLines": 71,
+      "libClassHits": 112,
+      "localSelectors": 18,
+      "localCssLines": 79,
       "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        },
         {
           "id": "primover",
           "label": "主色文字自写",
@@ -5725,6 +5732,17 @@
       ]
     },
     {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "c-app/home",
+        "c-app/me"
+      ]
+    },
+    {
       "id": "rowbetween",
       "label": "两端对齐行",
       "lib": ".sh-row + .sh-row--between",
@@ -5732,16 +5750,6 @@
       "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
       "pages": [
         "b-app/home"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "c-app/home"
       ]
     },
     {
