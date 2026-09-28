@@ -255,6 +255,8 @@ function activityTagText(a: ActivityTag): string {
 const services = computed(() =>
   (goods.value?.services ?? []).filter((c): c is keyof typeof GOODS_SERVICE => c in GOODS_SERVICE));
 const svcOpen = ref(false);
+/** 海报组件（§3.2 B3）。点「海报」时才开始画 —— 画布与下载都不该在进页面时发生 */
+const poster = ref<{ open: () => void } | null>(null);
 
 /**
  * 商品参数：商家填的 + **系统已经知道的事实**。
@@ -994,6 +996,16 @@ onShareAppMessage(() =>
               于是 H5 上这一页没有任何分享入口。换成共用组件：小程序转发、H5 复制链接，
               **入口始终在**。
             -->
+            <!--
+              海报（§3.2 B3）：朋友圈只吃图片，没有它那条路完全走不了。
+              与「分享」并排 —— 两个动作同一层：一个发给人，一个发到朋友圈。
+            -->
+            <view class="titlerow__act sh-center" @tap="poster?.open()">
+              <!-- 用 scan 而不是 image：图标名拼错不报错、只是不显示（icons.ts 里没有 image），
+                   而海报的用处正是「扫码进店」 -->
+              <sh-icon name="scan" :size="32" color="var(--sh-ink)"></sh-icon>
+              <text class="txt-caption sh-muted">{{ $t("poster.act") }}</text>
+            </view>
             <biz-share-act
               compact
               :path="`${ROUTES.goods}?goodsNo=${goods.goodsNo}`"
@@ -1321,6 +1333,9 @@ onShareAppMessage(() =>
             </view>
           </view>
         </view>
+
+        <!-- 海报：画布离屏，用户看到的是画完导出的那张图 -->
+        <biz-poster ref="poster" :goods="goods"></biz-poster>
 
         <!-- 服务承诺细则（§3.4）：承诺写在页面上，细则就得能查到 -->
         <sh-sheet :visible="svcOpen" :title="String($t('goods.svcTitle'))" @close="svcOpen = false">

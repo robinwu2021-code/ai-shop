@@ -266,6 +266,8 @@ export const httpApi: ShopApi = {
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),
   myFission: () => call<MyFission | null>("myFission"),
+  merchantAcode: (merchantNo) =>
+    call<{ merchantNo: string; imageBase64: string | null }>("merchantAcode", { merchantNo }),
   questionList: (goodsNo, limit) =>
     call<Question[]>("questionList", { goodsNo }, limit == null ? undefined : { limit }),
   askQuestion: (goodsNo, content) => call<Question>("askQuestion", undefined, { goodsNo, content }),

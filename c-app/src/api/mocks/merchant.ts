@@ -42,6 +42,7 @@ export const merchantMock: Pick<ShopApi,
   | "reviewList"
   | "questionList"
   | "myFission"
+  | "merchantAcode"
   | "askQuestion"
   | "toggleReviewLike"
 > = {
@@ -287,6 +288,15 @@ export const merchantMock: Pick<ShopApi,
       // 相等的话端上那句「其中 N 人已下单」永远看不出差别
       myConverted: 1,
     });
+  },
+
+  /**
+   * 店铺码。**mock 给 null** —— 它走的是微信的 wxacode 通道，mock 里没有，
+   * 编一张假码图只会让「通道没开时海报长什么样」这条分支永远测不到，
+   * 而那恰恰是常态（通道未开启时后端就返回 null）。
+   */
+  async merchantAcode(merchantNo) {
+    return delay({ merchantNo, imageBase64: null });
   },
 
   async questionList(goodsNo, limit) {

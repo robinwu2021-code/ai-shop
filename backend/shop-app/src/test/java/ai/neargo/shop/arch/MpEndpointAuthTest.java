@@ -152,6 +152,8 @@ class MpEndpointAuthTest {
             "GET /mp/goods/{goodsNo}/batch",
             // 问答与评价同一条理由：看得到才有下单动机（§3.3）
             "GET /mp/goods/{goodsNo}/question",
+            // 海报要用的店铺码。游客可见 —— 海报本来就是发出去给陌生人看的（§7.3）
+            "GET /mp/merchant/{merchantNo}/acode",
             "GET /mp/goods/{goodsNo}/group",
             "GET /mp/merchant/{merchantNo}",
             "GET /mp/merchant/{merchantNo}/score",

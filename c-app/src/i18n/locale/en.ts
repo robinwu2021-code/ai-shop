@@ -162,6 +162,17 @@ export default {
     changeRule: "Free to reschedule up to {n} hours before",
   },
   /** 我的收藏（原型 g08）*/
+  poster: {
+    act: "Poster",
+    title: "Share poster",
+    drawing: "Generating…",
+    failed: "Could not generate the poster — a screenshot works too",
+    save: "Save image",
+    saved: "Saved to album",
+    saveFailed: "Save failed — check album permission",
+    longPress: "Press and hold the image above to save",
+    scanTip: "Scan to shop",
+  },
   share: {
     act: "Share",
     copy: "Copy link",

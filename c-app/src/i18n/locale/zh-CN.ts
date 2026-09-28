@@ -166,6 +166,17 @@ export default {
     changeRule: "开始前 {n} 小时可免费改期",
   },
   /** 我的收藏（原型 g08）*/
+  poster: {
+    act: "海报",
+    title: "分享海报",
+    drawing: "正在生成…",
+    failed: "海报生成失败，可直接截图分享",
+    save: "保存图片",
+    saved: "已保存到相册",
+    saveFailed: "保存失败，请检查相册权限",
+    longPress: "长按上方图片即可保存",
+    scanTip: "扫码进店选购",
+  },
   share: {
     act: "分享",
     copy: "复制链接",
