@@ -55,9 +55,25 @@ eq("iPhone @3x 180", "icon-180.png" in rend, True)
 eq("图标总数 ≥ 12", len(rend) >= 12, True)
 eq("dcloud_appkey 等于我们的", d.get("dcloud_appkey") == env["DCLOUD_APPKEY_IOS"], True)
 eq("amap.appkey 等于我们的", (d.get("amap") or {}).get("appkey") == env["AMAP_KEY_IOS"], True)
-eq("无个推演示值", "getui" in d, False)
+# 个推：**开着就必须等于我们的值，关着就必须整段不在**。
+# 不能只判「有没有 getui 段」—— 演示工程里那一段本来就有值（DCloud 演示账号的）。
+# 也不能只判非空：DCloud 的 uniapp_module_config.rb 有个 `changed ||=` 短路 bug，
+# 写完 appid 就不再写 appkey/appsecret，两者留空而不报错（cid 拿得到、推送发不出去）。
+_g = d.get("getui") or {}
+if env.get("GETUI_APPSECRET"):
+    for _k, _e in (("appid", "GETUI_APPID"), ("appkey", "GETUI_APPKEY"), ("appsecret", "GETUI_APPSECRET")):
+        eq(f"getui.{_k} 等于我们的", _g.get(_k) == env[_e], True)
+else:
+    eq("无个推演示值（未启用推送）", "getui" in d, False)
 eq("出口合规已声明", d.get("ITSAppUsesNonExemptEncryption"), False)
 eq("定位文案非空", bool((d.get("NSLocationWhenInUseUsageDescription") or "").strip()), True)
+# ★ 苹果查的是**二进制引用了哪些 API**，不是 App 调用了哪些。
+# 2026-09-28 我按「b-app 调用了什么」裁权限，删掉了通讯录/麦克风，
+# 结果连续三个构建被 90683 打回：AddressBook 是 uniapp/Core 自己声明的（必选模块），
+# AVAudioSession 来自 liblibCamera.a（拍照/相册要的），EventKit 同属运行时内置引用。
+# 这三处 App 都不触发，对话框永远不会弹 —— 但少了 purpose string 处理阶段就失败。
+for _k in ("NSContactsUsageDescription", "NSCalendarsUsageDescription", "NSMicrophoneUsageDescription"):
+    eq(f"{_k} 非空", bool((d.get(_k) or "").strip()), True)
 eq("启动页 storyboard", d.get("UILaunchStoryboardName"), "LaunchScreen")
 eq("隐私清单在包里", os.path.exists(f"{app}/PrivacyInfo.xcprivacy"), True)
 eq("签名主体", "Apple Distribution: NearGo L.L.C-FZ (72TUZXTHY5)" in sig, True)
