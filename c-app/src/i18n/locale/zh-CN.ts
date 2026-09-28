@@ -330,6 +330,8 @@ export default {
   me: {
     favoritesHint: "商品 · 店铺",
     appearance: "外观与语言",
+    contact: "联系客服",
+    contactHint: "有问题找我们",
     appearanceValue: "配色 · 明暗 · 语言",
     myPlace: "我的位置",
     help: "帮助中心",
@@ -391,6 +393,7 @@ export default {
     statRating: "评分",
     statSold: "已售单",
     statGoods: "在售",
+    statDays: "开店天数",
     applyStatus: {
       PENDING: "待审核",
       REVIEWING: "审核中",

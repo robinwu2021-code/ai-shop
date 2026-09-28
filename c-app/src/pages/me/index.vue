@@ -8,6 +8,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { merchantApplyVisible } from "@shared/ports";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
+// 小程序才有原生客服会话；借 canNativeShare 判端（两者的条件编译判据相同）
+import { canNativeShare } from "@shared/ports/share";
 import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
@@ -107,6 +109,14 @@ function gotoCoupons() {
  * 不能因为它把「我的」整页点亮成失败态（领券条同一条取舍）。
  */
 const fission = ref<MyFission | null>(null);
+
+/**
+ * 小程序上才有原生客服会话（`open-type="contact"`）。
+ * 其余端显示邮箱 —— 画一颗点了没反应的按钮比没有按钮更糟。
+ */
+const nativeContact = canNativeShare();
+/** 平台邮箱。与官网页脚同一个地址，改了两处都要改（官网在 site.config.ts） */
+const PLATFORM_EMAIL = "hello@hxmall.top";
 
 function gotoInvite() {
   uni.navigateTo({ url: ROUTES.invite });
@@ -344,6 +354,22 @@ onShow(() => {
 
     <!-- 设置：与生意无关，放最后 -->
     <view class="sh-cells">
+      <!--
+        联系客服（TDD-C 端裂变与商家招募 §4.1）。
+
+        <p>**小程序上用微信原生的客服会话**（`open-type="contact"`）：不需要后端，
+        点开直接进微信客服。这也是这一屏在小程序里唯一能做的对外联络 ——
+        招商、入驻、商家申请那一类按类目红线不能出现（自营类目的包里有它会被判平台型经营
+        而驳回），而「联系客服」是任何小程序都该有的。
+
+        <p>⚠️ 它要在微信后台**配过客服人员**才有反应，否则点了什么都不发生。
+        H5/App 上没有这个能力，那两端显示平台邮箱（那里本来就有入驻入口）。
+      -->
+      <view class="sh-cell sh-row sh-row--between contact">
+        <text class="txt-body cell__label">{{ $t("me.contact") }}</text>
+        <text class="txt-caption cell__value">{{ nativeContact ? $t("me.contactHint") : PLATFORM_EMAIL }}</text>
+        <button v-if="nativeContact" class="contact__btn" open-type="contact"></button>
+      </view>
       <view class="sh-cell sh-row sh-row--between" @tap="themeVisible = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
@@ -502,5 +528,19 @@ onShow(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 客服：原生按钮盖在整行上，自己不占视觉 */
+.contact {
+  position: relative;
+}
+.contact__btn {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  opacity: 0;
 }
 </style>

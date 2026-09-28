@@ -303,6 +303,8 @@ export default {
   me: {
     favoritesHint: "المنتجات · المتاجر",
     appearance: "المظهر واللغة",
+    contact: "تواصل مع الدعم",
+    contactHint: "نحن هنا للمساعدة",
     appearanceValue: "الألوان · السمة · اللغة",
     myPlace: "موقعي",
     help: "مركز المساعدة",
@@ -360,6 +362,7 @@ export default {
     statRating: "التقييم",
     statSold: "الطلبات",
     statGoods: "المنتجات",
+    statDays: "أيام العمل",
     applyStatus: {
       PENDING: "قيد الانتظار",
       REVIEWING: "قيد المراجعة",

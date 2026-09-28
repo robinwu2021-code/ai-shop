@@ -64,6 +64,11 @@ const tags = computed(() => {
  * - 没人评过写「新店」，不写分：后端对零评价回 5.0，那是默认值；
  * - 已售 0 不出：零销量是劝退信号（与商品卡、详情页同一条规矩；真机上「已售单 0」很扎眼）。
  */
+/** 开店天数。当天开的算 1 天 —— 「开店 0 天」读起来像没开 */
+function daysSince(ts: number): number {
+  return Math.max(1, Math.floor((Date.now() - ts) / 86_400_000) + 1);
+}
+
 const stats = computed(() => {
   const m = merchant.value;
   if (!m) return [];
@@ -71,7 +76,18 @@ const stats = computed(() => {
     { k: t("merchant.statRating"), v: m.ratingCount > 0 ? m.rating.toFixed(1) : String(t("shops.newShop")) },
     m.salesCount > 0 ? { k: t("merchant.statSold"), v: String(m.salesCount) } : null,
     m.openHours ? { k: t("merchant.hours"), v: m.openHours } : null,
-    { k: t("merchant.statGoods"), v: String(goods.value.length) },
+    /*
+     * 在售件数：**用后端给的总数**，不是 `goods.value.length` ——
+     * 后者是当前页加载到的条数，分页之后它说的是「第一页有几件」。
+     * 一家有 50 件货的店在这里会显示「在售 10」，而那个数看起来完全正常。
+     */
+    { k: t("merchant.statGoods"), v: String(m.goodsCount) },
+    /*
+     * 开店时长（§7.4）。**这是可核验的真实数**，与成交数不同：
+     * 线上真实成交是个位数，显示出来是在自曝冷启动；而「开店多久」
+     * 同样真实、同样是买家关心的（这家店是不是刚冒出来的），却不会因为数小变成反效果。
+     */
+    m.joinedAt ? { k: t("merchant.statDays"), v: String(daysSince(m.joinedAt)) } : null,
   ];
   return all.filter((x): x is { k: string; v: string } => x !== null).slice(0, 3);
 });

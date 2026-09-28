@@ -303,6 +303,8 @@ export default {
   me: {
     favoritesHint: "Items · Shops",
     appearance: "Appearance & language",
+    contact: "Contact support",
+    contactHint: "We are here to help",
     appearanceValue: "Colour · Theme · Language",
     myPlace: "My location",
     help: "Help centre",
@@ -360,6 +362,7 @@ export default {
     statRating: "Rating",
     statSold: "Orders",
     statGoods: "Items",
+    statDays: "Days open",
     applyStatus: {
       PENDING: "Submitted",
       REVIEWING: "In review",

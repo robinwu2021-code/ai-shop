@@ -80,4 +80,15 @@ public record MerchantVO(String merchantNo,
     private static int nz(Integer v) {
         return v == null ? 0 : v;
     }
+    /**
+     * 只换在售件数（§7.4）。
+     *
+     * <p>`mch_entity.goods_count` 线上恒为 0 —— 那一列声明了却没人维护，
+     * 而商家页要把「这家店在卖什么规模」说给买家听。买家侧的出口现算一次再挂上来。
+     */
+    public MerchantVO withGoodsCount(int goodsCount) {
+        return new MerchantVO(merchantNo, name, logo, rating, verified, breachCount, type, desc,
+                salesCount, ratingCount, goodsCount, address, openHours, joinedAt, tags, scores,
+                selfOperated);
+    }
 }

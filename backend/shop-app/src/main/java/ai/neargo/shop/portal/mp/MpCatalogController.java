@@ -326,9 +326,23 @@ public class MpCatalogController {
         return merchantService.search(keyword, communityNo, page, Math.min(size, 50));
     }
 
+    /**
+     * 商家详情。
+     *
+     * <p><b>在售件数现算</b>（TDD-C 端裂变与商家招募 §7.4）：`mch_entity.goods_count`
+     * 那一列<b>线上恒为 0</b> —— 它声明了却没人维护，而商家页要把「这家店在卖什么规模」
+     * 说给买家听。现算是一次带条件的 count，这一页本来就是低频的详情页。
+     *
+     * <p>为什么不顺手修那一列：它同时被商品页的销量、商家列表用着，
+     * 改写入口是商品域的事（已记进欠账）—— 在这里现算只影响这一页，
+     * 而把一个没人写的快照列改成有人写，是另一件要单独验的事。
+     */
     @GetMapping("/mp/merchant/{merchantNo}")
     public MerchantVO merchantDetail(@PathVariable String merchantNo) {
-        return merchantService.detail(merchantNo);
+        MerchantVO m = merchantService.detail(merchantNo);
+        long onSale = goodsService.list(new GoodsService.GoodsQuery(
+                null, null, merchantNo, null, null, null, 1, 1)).total();
+        return m.withGoodsCount((int) onSale);
     }
 
     private Integer toE6(Double degree) {
