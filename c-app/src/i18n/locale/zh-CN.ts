@@ -119,7 +119,6 @@ export default {
     askPh: "想了解什么",
     askDone: "已提交，商家回答后会出现在这里",
     shop: "店铺",
-    share: "分享",
     qty: "数量",
     whyNoSku: "该规格暂无现货",
     whyNoSlot: "请先选择上门时段",

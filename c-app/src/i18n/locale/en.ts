@@ -115,7 +115,6 @@ export default {
     askPh: "What would you like to know",
     askDone: "Submitted — it will show up here once answered",
     shop: "Store",
-    share: "Share",
     qty: "Quantity",
     whyNoSku: "This option is out of stock",
     whyNoSlot: "Pick a visit time to continue",
