@@ -2508,8 +2508,10 @@ async function save(thenSubmit = false) {
       那一档不带底，两个按钮之间与两侧都是透空的，页面内容从缝里透出来，
       「取消」还会被屏幕边缘切掉一块（2026-09-28 店主在真机上指出「很怪异」）。
       浮动档对的是「只有一个实心按钮」的页面（本页是两个）。
+      **`dock` 要和 `pill` 一起给**：dock 只管形状与定位，那层白底是 `pill` 给的 ——
+      只写 dock 的话条依旧是透的，症状与没改之前一模一样（c-app 的商品详情页同样是两个都写）。
     -->
-    <sh-actionbar v-if="!hydrating" dock>
+    <sh-actionbar v-if="!hydrating" pill="plain" dock>
       <view class="sh-row bar">
         <view v-if="isDraft" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': !canSave }" @tap="save(false)">
           {{ $t("goods.saveDraft") }}
