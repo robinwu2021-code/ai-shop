@@ -569,6 +569,18 @@ export interface SetStorePaymentReq {
   payMerchantNo?: string;
 }
 
+/**
+ * 设门店代码（V357）—— 对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。
+ *
+ * **空串 = 清掉它**（链接回落系统发的店铺码），不是「不改」。
+ * 所以这个字段是必填的 string 而不是可选 —— 可选会让「清掉」与「没传」长得一样，
+ * 而后端对这两种情况的处理不同。
+ */
+export interface SetStoreSlugReq {
+  /** 门店代码。小写字母/数字/连字符，3-32 位，首尾不是连字符；空串 = 清掉 */
+  slug: string;
+}
+
 /** 加员工。只要手机号 —— 不发密码、不建 C 端账号 */
 export interface AddStaffReq {
   /** 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 */

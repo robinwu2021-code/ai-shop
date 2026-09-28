@@ -4779,6 +4779,12 @@ components:
         selfOperated: 
           type: "boolean"
           description: "所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10）"
+        slug: 
+          type: "string"
+          description: "门店代码（V357）：店主自己定的那一串，对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。\n\n**空 = 还没设过**，链接回落系统发的店铺码（6 位随机大写，读不出是谁家的店）。 格式与保留词的判据在后端 `StoreSlugs`，端上那份提示要与它同口径 —— 提交回来才报错的话，店主得试几次才知道规则。"
+        shareUrl: 
+          type: "string"
+          description: "这家店的对外链接（完整地址，V357）。**后端拼好发下来，端上不自己拼** —— 域名写在端上就会有两处真源，而它已经错过一次：此前后端写死 `shop.example.com`， 商家把那个链接印了贴纸才发现指向一个不存在的地方。\n\n**空 = 后端没配域名**，端上据此不显示链接，而不是显示一个点不开的地址。"
       required: 
         - "storeNo"
         - "name"
@@ -10280,6 +10286,16 @@ components:
           description: "目标收款商户号。只能是本主体已开通的号；空 = 回到主体默认号"
       additionalProperties: false
       description: "换门店收款号。**不传或传空 = 回到主体默认号**，这是合法操作不是清空错误"
+    SetStoreSlugReq: 
+      type: "object"
+      properties: 
+        slug: 
+          type: "string"
+          description: "门店代码。小写字母/数字/连字符，3-32 位，首尾不是连字符；空串 = 清掉"
+      required: 
+        - "slug"
+      additionalProperties: false
+      description: "设门店代码（V357）—— 对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。\n\n**空串 = 清掉它**（链接回落系统发的店铺码），不是「不改」。 所以这个字段是必填的 string 而不是可选 —— 可选会让「清掉」与「没传」长得一样， 而后端对这两种情况的处理不同。"
     AddStaffReq: 
       type: "object"
       properties: 
@@ -11847,6 +11863,45 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/store/{storeNo}/slug": 
+    post: 
+      operationId: "mSetStoreSlug"
+      summary: "设门店代码（对外链接那一段）"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Store"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/SetStoreSlugReq"
   "/biz/store/{storeNo}/payment": 
     post: 
       operationId: "mSetStorePayment"
