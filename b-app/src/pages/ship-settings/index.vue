@@ -133,17 +133,17 @@ onShow(load);
       </view>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.senderName") }}</text>
-        <input v-model="form.senderName" class="txt-body row__v" maxlength="64" :disabled="!editable"
+        <input v-model="form.senderName" class="txt-body sh-fill row__v" maxlength="64" :disabled="!editable"
           :placeholder="setting.defaultSenderName" />
       </view>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.senderPhone") }}</text>
-        <input v-model="form.senderPhone" class="txt-body row__v sh-num" type="text" maxlength="20" :disabled="!editable"
+        <input v-model="form.senderPhone" class="txt-body sh-fill row__v sh-num" type="text" maxlength="20" :disabled="!editable"
           :placeholder="setting.defaultSenderPhone" />
       </view>
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.address") }}</text>
-        <input v-model="form.address" class="txt-body row__v" maxlength="255" :disabled="!editable"
+        <input v-model="form.address" class="txt-body sh-fill row__v" maxlength="255" :disabled="!editable"
           :placeholder="setting.defaultAddress" />
       </view>
     </view>
@@ -162,7 +162,7 @@ onShow(load);
       <view class="sh-row sh-row--between sh-row--divided">
         <text class="txt-body row__k">{{ $t("shipSetting.weight") }}</text>
         <view class="sh-row">
-          <input v-model="form.weightKg" class="txt-body row__v sh-num" type="digit" maxlength="5" :disabled="!editable"
+          <input v-model="form.weightKg" class="txt-body sh-fill row__v sh-num" type="digit" maxlength="5" :disabled="!editable"
             placeholder="" />
           <text class="txt-body sh-muted">kg</text>
         </view>
@@ -212,9 +212,8 @@ onShow(load);
   flex-shrink: 0;
   margin-inline-end: 24rpx;
 }
+/* 占满剩余走 .sh-fill（模板上挂着），这里只留右对齐 */
 .row__v {
-  flex: 1;
-  min-width: 0;
   text-align: end;
 }
 /* 地区一长串：右对齐、可折行 */

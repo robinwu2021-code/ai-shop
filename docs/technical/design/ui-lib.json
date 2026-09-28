@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 336,
-        "c-app": 256
+        "c-app": 255
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 42,
-        "c-app": 38
+        "c-app": 40
       }
     },
     {
@@ -962,7 +962,7 @@
       },
       "usage": {
         "b-app": 56,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 141,
+        "b-app": 147,
         "c-app": 84
       }
     },
@@ -1439,8 +1439,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 531,
-        "c-app": 186
+        "b-app": 532,
+        "c-app": 187
       }
     },
     {
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 306,
+        "b-app": 307,
         "c-app": 92
       }
     },
@@ -3740,25 +3740,10 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 46,
+      "libClassHits": 50,
       "localSelectors": 20,
-      "localCssLines": 90,
-      "rolled": [
-        {
-          "id": "rowbetween",
-          "label": "两端对齐行",
-          "lib": ".sh-row + .sh-row--between",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
-          "gap": false
-        },
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "localCssLines": 84,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4351,18 +4336,10 @@
         "sh-scaffold",
         "biz-store-tag"
       ],
-      "libClassHits": 70,
+      "libClassHits": 74,
       "localSelectors": 3,
-      "localCssLines": 12,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "localCssLines": 10,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5007,18 +4984,10 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 36,
-      "localSelectors": 16,
-      "localCssLines": 82,
-      "rolled": [
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        }
-      ]
+      "libClassHits": 37,
+      "localSelectors": 15,
+      "localCssLines": 77,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5069,25 +5038,10 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 112,
-      "localSelectors": 18,
-      "localCssLines": 79,
-      "rolled": [
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        },
-        {
-          "id": "primover",
-          "label": "主色文字自写",
-          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "libClassHits": 114,
+      "localSelectors": 16,
+      "localCssLines": 71,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5718,48 +5672,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "b-app/home",
-        "b-app/ship-settings"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "c-app/home",
-        "c-app/me"
-      ]
-    },
-    {
-      "id": "rowbetween",
-      "label": "两端对齐行",
-      "lib": ".sh-row + .sh-row--between",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
-      "pages": [
-        "b-app/home"
-      ]
-    },
-    {
-      "id": "primover",
-      "label": "主色文字自写",
-      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
-      "pages": [
-        "c-app/me"
       ]
     }
   ],

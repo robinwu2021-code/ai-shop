@@ -490,7 +490,7 @@ onShow(load);
           <view
             v-for="a in invActs"
             :key="a.key"
-            class="txt-sub inv__act"
+            class="txt-sub sh-fill inv__act"
             :class="a.urgent ? 'txt-primary txt-bold' : 'txt-ink'"
             @tap="open(a.route)"
           >
@@ -550,8 +550,8 @@ onShow(load);
           <text class="txt-title">{{ $t("home.entriesTitle") }}</text>
         </view>
         <view class="entries">
-          <view v-for="e in entries" :key="e.key" class="entry" @tap="open(e.route)">
-            <text class="txt-body entry__t">{{ e.label }}</text>
+          <view v-for="e in entries" :key="e.key" class="sh-row sh-row--between entry" @tap="open(e.route)">
+            <text class="txt-body sh-fill entry__t">{{ e.label }}</text>
             <text v-if="e.key === 'notice' && noticeTag" class="txt-caption sh-muted entry__tag">{{ noticeTag }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
@@ -624,8 +624,8 @@ onShow(load);
 /* 只管版面。**颜色不在这里** —— 基类一旦设 color，
    它就是 scoped 的 (0,2,0)，会压掉模板上挂的库件（.txt-primary 那类），
    而症状是「类挂上了但颜色没变」，没有任何东西会报。 */
+/* 占满剩余走 .sh-fill（模板上挂着） */
 .inv__act {
-  flex: 1;
   text-align: center;
   padding: 16rpx 0;
   border-radius: 16rpx;
@@ -642,17 +642,13 @@ onShow(load);
   gap: 12rpx;
 }
 .entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   height: 88rpx;
   padding: 0 20rpx 0 24rpx;
   border-radius: 16rpx;
   background: var(--sh-bg);
 }
+/* flex:1 + min-width:0 由 .sh-fill 给（模板上挂着），这里只留截断 */
 .entry__t {
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

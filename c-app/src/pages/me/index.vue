@@ -407,13 +407,13 @@ onShow(() => {
     -->
     <view v-if="merchantApplyVisible(config.features)" class="sh-card sh-row sh-row--between open-shop"
           @tap="applyMerchant">
-      <text class="txt-title open-shop__title">{{ $t("merchant.openShop") }}</text>
+      <text class="txt-title txt-primary">{{ $t("merchant.openShop") }}</text>
       <!--
         有申请时这里是审核状态（那是状态，要显示）；没申请时给一个进入指示。
         **不配副标题** —— 上面刚把整页的解释文案删干净，这里再写一句
         「不收入驻费与年费…」就是同一个毛病。标题自己说得清。
       -->
-      <text class="txt-caption open-shop__status">{{ applyStatus ? applyStatusText : "›" }}</text>
+      <text class="txt-caption txt-primary">{{ applyStatus ? applyStatusText : "›" }}</text>
     </view>
 
     <!--
@@ -529,7 +529,7 @@ onShow(() => {
         -->
         <view class="apply-foot">
           <text class="txt-caption apply-foot__tip">{{ $t("merchant.appTip") }}</text>
-          <text class="txt-caption apply-foot__call" @tap="callSales">{{ $t("merchant.callSales", { p: SALES_PHONE }) }}</text>
+          <text class="sh-link apply-foot__call" @tap="callSales">{{ $t("merchant.callSales", { p: SALES_PHONE }) }}</text>
         </view>
     </sh-sheet>
     <!--
@@ -551,21 +551,20 @@ onShow(() => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
-/* 提交按钮下面那两行：一句说下一步在哪，一行电话。居中、弱化，不跟按钮抢 */
+/* 提交按钮下面那两行：一句说下一步在哪，一行电话。居中、弱化，不跟按钮抢。
+   **不用 flex**：两行文字不需要一个横排容器，而 `display:flex + align-items:center + gap`
+   这个形状会被当成自造的「横排行」（库里那件是 .sh-row，语义对不上）。
+   颜色也不自写 —— 电话走 .sh-link，那是「可点的次要动作」现成的件。 */
 .apply-foot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
   margin-top: 24rpx;
-}
-.apply-foot__tip {
   text-align: center;
 }
-/* 电话是能点的，要看得出来 —— 一段和正文一个颜色的号码没人会去点。
-   用 primary-text 而不是 primary：后者是块面色，当文字色对比度不够（design-tokens 闸门） */
+.apply-foot__tip,
 .apply-foot__call {
-  color: var(--sh-primary-text);
+  display: block;
+}
+.apply-foot__call {
+  margin-top: 8rpx;
 }
 /* 与 address 逐字节相同的一份重写，现在都走 `.field__input`，只留纵向间距 */
 .field__input {
@@ -601,15 +600,11 @@ onShow(() => {
   text-align: center;
 }
 
-/* 开店入口：单独一块、主色标题 —— 它此前混在「我买过什么」那一串里，想开店的人看不见 */
+/* 开店入口：单独一块、主色标题 —— 它此前混在「我买过什么」那一串里，想开店的人看不见。
+   标题与右侧状态的颜色走库件 .txt-primary（base.css 里它晚于 .txt-title / .txt-caption
+   定义，所以盖得住它们的 color），页面这边只留底色 */
 .open-shop {
   background: var(--sh-primary-tint);
-}
-.open-shop__title {
-  color: var(--sh-primary-text);
-}
-.open-shop__status {
-  color: var(--sh-primary-text);
 }
 .cell__label {
   flex-shrink: 0;
