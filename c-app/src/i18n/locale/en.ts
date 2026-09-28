@@ -368,6 +368,8 @@ export default {
     filterBAD: "Critical",
     dimGoods: "Product quality", dimFulfill: "Delivery speed", dimService: "Service",
 
+    tooShort: "Please write at least 5 characters",
+    orderMissing: "Order not loaded yet — please refresh",
     writeTitle: "Write a review",
     contentPh: "How did it go? (at least 5 characters)",
     images: "Photos (up to 3)",

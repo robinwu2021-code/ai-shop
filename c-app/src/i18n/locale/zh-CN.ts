@@ -401,6 +401,8 @@ export default {
     dimFulfill: "履约速度",
     dimService: "服务态度",
 
+    tooShort: "至少写 5 个字才能发表",
+    orderMissing: "订单信息还没取到，请刷新重试",
     writeTitle: "发表评价",
     contentPh: "说说这次的体验（至少 5 个字）",
     images: "晒图（最多 3 张）",

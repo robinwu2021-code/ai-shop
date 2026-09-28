@@ -73,9 +73,22 @@ async function pickImages() {
 }
 
 async function submit() {
+  if (submitting.value) return;
   const o = order.value;
   const it = target.value;
-  if (!o || !it || !canSubmit.value) return;
+  /*
+   * **点了没反应"永远是缺陷**：以前这里 `if (!canSubmit) return;` 静默吞掉，
+   * 用户敲了几个字点了没动静，只能怀疑功能坏了。改成告诉他为什么点不动。
+   */
+  if (!o || !it) {
+    uni.showToast({ title: String(t("review.orderMissing")), icon: "none" });
+    return;
+  }
+  const text = content.value.trim();
+  if (text.length < 5) {
+    uni.showToast({ title: String(t("review.tooShort")), icon: "none" });
+    return;
+  }
   submitting.value = true;
   try {
     await api.createReview({
@@ -159,6 +172,10 @@ onLoad((q) => {
           maxlength="300"
         />
         <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
+        <text v-if="content.trim().length > 0 && content.trim().length < 5"
+              class="txt-caption is-danger counter">
+          {{ $t("review.tooShort") }}
+        </text>
 
         <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
         <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>

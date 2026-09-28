@@ -368,6 +368,8 @@ export default {
     filterBAD: "سلبي",
     dimGoods: "جودة المنتج", dimFulfill: "سرعة التسليم", dimService: "الخدمة",
 
+    tooShort: "اكتب 5 أحرف على الأقل",
+    orderMissing: "لم يُحمَّل الطلب بعد — يُرجى التحديث",
     writeTitle: "اكتب تقييمًا",
     contentPh: "كيف كانت التجربة؟ (٥ أحرف على الأقل)",
     images: "صور (حتى ٣)",
