@@ -134,11 +134,25 @@ public final class MerchantMappers {
     /** 自提路 × 取货点（P1 启用）。 */
     public interface ChannelPickupMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
+
+        /**
+         * **物理删**这一店这一路的取货点引用。不用 {@code delete(wrapper)}：实体继承了带 deleted 的基类，
+         * 全局逻辑删会把它改写成 UPDATE deleted=1 —— 留下墓碑行，而唯一键里没有 deleted，
+         * 同一个点再存一次就撞键（2026-09-28 生产上商家原样再存一次送货方式即 500）。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM mch_channel_pickup WHERE store_no = #{storeNo} AND channel = #{channel}")
+        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
     }
 
     /** SUBSET 收窄（P2 启用）。 */
     public interface ChannelAreaMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
+
+        /** **物理删**这一店这一路的范围子集引用。理由同 {@link ChannelPickupMapper#purge} */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM mch_channel_area WHERE store_no = #{storeNo} AND channel = #{channel}")
+        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
     }
 
     /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */

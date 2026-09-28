@@ -123,6 +123,33 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 送货方式原样再存一次不能 500 —— 范围子集是物理删后重插，逻辑删的墓碑会撞唯一键")
+    void savingSameSubsetTwiceDoesNotCollide() throws Exception {
+        String biz = merchant("12600180009", "连存两次的店");
+        String merchantNo = merchantNoOf(biz);
+        String store = defaultStoreNo(biz);
+        storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("COMMUNITY", "CM001"),
+                        new MerchantStoreService.AreaCommand("COMMUNITY", "CM002")), null, null));
+        String a1 = areaNoOf(merchantNo, "CM001");
+        String a2 = areaNoOf(merchantNo, "CM002");
+
+        /*
+         * 2026-09-28 生产：商家在 App 里只把「快递」打开、自送的范围原样带回去，保存即 500
+         * （Duplicate entry … for key uk_channel_area）。delete(wrapper) 被全局逻辑删改写成 UPDATE deleted=1，
+         * 而 uk_channel_area 不含 deleted —— 第二次插同一个 area_no 必撞。
+         */
+        for (List<String> areas : List.of(List.of(a1), List.of(a1), List.of(a2), List.of(a1, a2), List.of(a1))) {
+            fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                    Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", areas)));
+        }
+        assertThat(merchantQuery.reachableCommunities(merchantNo, store))
+                .as("最后一次存的是 CM001，就只送 CM001")
+                .containsExactly("CM001");
+    }
+
+    @Test
     @DisplayName("★★★ 挑门店是兜底不是择优：默认店服务得了就不动它")
     void defaultStoreKeepsTheOrderWhenItServes() throws Exception {
         /*

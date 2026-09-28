@@ -243,10 +243,9 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                 if (cmd.scopeMode() == null) {
                     continue;
                 }
-                // 范围子集引用：纯关联集合，物理删后重插；ALL 时清空
-                areaRefMapper.delete(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, target.getStoreNo())
-                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, cmd.channel()));
+                // 范围子集引用：纯关联集合，物理删后重插；ALL 时清空。
+                // 必须走 purge：delete(wrapper) 被全局逻辑删改写成墓碑，原样再存一次就撞唯一键
+                areaRefMapper.purge(target.getStoreNo(), cmd.channel());
                 if (MchFulfillmentChannel.SCOPE_SUBSET.equals(cmd.scopeMode())) {
                     for (String areaNo : new java.util.LinkedHashSet<>(cmd.areaNos())) {
                         var ref = new ai.neargo.shop.merchant.entity.MchChannelArea();
@@ -259,9 +258,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             }
             if (pickupNos != null) {
                 // 纯关联集合，物理删后重插（照 mch_service_area 先例，不留墓碑）
-                pickupRefMapper.delete(Wrappers.<ai.neargo.shop.merchant.entity.MchChannelPickup>lambdaQuery()
-                        .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getStoreNo, target.getStoreNo())
-                        .eq(ai.neargo.shop.merchant.entity.MchChannelPickup::getChannel, Fulfillments.NEIGHBOR_PICKUP));
+                pickupRefMapper.purge(target.getStoreNo(), Fulfillments.NEIGHBOR_PICKUP);
                 for (String no : new java.util.LinkedHashSet<>(pickupNos)) {
                     var ref = new ai.neargo.shop.merchant.entity.MchChannelPickup();
                     ref.setStoreNo(target.getStoreNo());
