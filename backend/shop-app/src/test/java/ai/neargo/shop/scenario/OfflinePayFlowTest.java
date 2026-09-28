@@ -12,9 +12,11 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers;
+import ai.neargo.shop.trade.service.MerchantOrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,6 +76,8 @@ class OfflinePayFlowTest {
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
     @Autowired
     private MerchantMappers.MchEntityMapper merchantMapper;
+    @Autowired
+    private MerchantOrderService merchantOrderService;
 
     /** 本用例打开过的开关，@AfterEach 关回去。只记「原本是关的」那些 */
     private final java.util.Set<String> communityPointsOff = new java.util.HashSet<>();
@@ -285,6 +289,35 @@ class OfflinePayFlowTest {
         assertThat(row.path("status").asString())
                 .as("子单列不用改，改的是下发口径")
                 .isEqualTo("WAIT_OFFLINE_PAY");
+    }
+
+    @Test
+    @DisplayName("★★★ 商家列表：线下单显示「待收款」、只进「待收款」页签，收款后离开")
+    void merchantListShowsWaitOfflinePay() throws Exception {
+        String token = login("13400188010");
+        addToCart(token, "G0001", "SK0001", 1);
+        String orderNo = createOffline(token, "offline-bizlist");
+        String sub = subOrderNoOf(token, orderNo);
+
+        /*
+         * 这一条钉的是买家那条（buyerListShowsWaitOfflinePay）的**商家版**，同一个缺陷漏了一半：
+         * 商家端 toVO 仍按子单单参取状态，货到付款单显示「待付款」——
+         * b-app 的「确认收款」按钮只认 WAIT_OFFLINE_PAY，店主永远点不到；
+         * 「待收款」页签传的 WAIT_OFFLINE_PAY 又不被 toStored 认识，退化成「不过滤」，列出全部订单。
+         */
+        var pending = merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, 1, 200).records();
+        assertThat(pending).extracting(OrderVO::orderNo).contains(sub);
+        assertThat(pending).extracting(OrderVO::status)
+                .as("「待收款」页签里只能是待收款的单，不是全部")
+                .containsOnly("WAIT_OFFLINE_PAY");
+        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_PAY", null, 1, 200).records())
+                .extracting(OrderVO::orderNo)
+                .as("待付款是等买家线上付的，货到付款单不该混进去")
+                .doesNotContain(sub);
+
+        confirm(bizToken(), sub).andExpect(jsonPath("$.code").value(0));
+        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, 1, 200).records())
+                .extracting(OrderVO::orderNo).doesNotContain(sub);
     }
 
     @Test

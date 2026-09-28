@@ -1,6 +1,8 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import java.util.List;
 
@@ -88,6 +90,32 @@ public final class OrderStatusView {
         return OrdSubOrder.WAIT_FULFILL.equals(status) ? PAID : status;
     }
 
+
+    /** 主单在等当面收款的那些订单号（线下单的子单停在 WAIT_PAY，只能从主单认出来） */
+    private static final String OFFLINE_PENDING_ORDERS =
+            "select order_no from ord_order where status = '" + OrdOrder.WAIT_OFFLINE_PAY + "'";
+
+    /**
+     * 商家 / 运营列表的状态筛选：在 {@link #toStored(String)} 之上<b>把「待收款」与「待付款」分开</b>。
+     *
+     * <p>「待收款」（{@code WAIT_OFFLINE_PAY}）不是子单状态，{@code toStored} 不认它、返回空集＝不过滤，
+     * 于是 b-app 的「待收款」页签列出的是<b>全部订单</b>；反过来「待付款」又会混进货到付款单。
+     * 两处都按主单状态切开。
+     */
+    public static void applyMerchantFilter(LambdaQueryWrapper<OrdSubOrder> w, String view) {
+        if (WAIT_OFFLINE_PAY.equals(view)) {
+            w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY).inSql(OrdSubOrder::getOrderNo, OFFLINE_PENDING_ORDERS);
+            return;
+        }
+        if (WAIT_PAY.equals(view)) {
+            w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY).notInSql(OrdSubOrder::getOrderNo, OFFLINE_PENDING_ORDERS);
+            return;
+        }
+        List<String> stored = toStored(view);
+        if (!stored.isEmpty()) {
+            w.in(OrdSubOrder::getStatus, stored);
+        }
+    }
 
     /**
      * 反向：端上传来的展示状态 → 该查库里的哪些状态。

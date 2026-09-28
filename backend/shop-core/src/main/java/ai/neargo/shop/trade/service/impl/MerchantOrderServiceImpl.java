@@ -288,10 +288,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 此前直接拿去比库状态，一条也匹配不上：商家的「待发货」永远是空的，
          * 而「全部」是好的，所以看起来只是几个页签没数据。
          */
-        List<String> stored = OrderStatusView.toStored(status);
-        if (!stored.isEmpty()) {
-            w.in(OrdSubOrder::getStatus, stored);
-        }
+        OrderStatusView.applyMerchantFilter(w, status);
         // 与 status 正交：页签是「状态 + 履约集合」的谓词，端上传哪些履约就筛哪些
         if (fulfillments != null && !fulfillments.isEmpty()) {
             w.in(OrdSubOrder::getFulfillment, fulfillments);
@@ -337,8 +334,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         .last("limit 1")));
 
         return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
-                // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分
-                OrderStatusView.toContract(s.getStatus()), s.getFulfillment(),
+                // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分；
+                // 带主单状态 —— 不带的话货到付款单显示「待付款」，「确认收款」按钮永远不出
+                OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()), s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(), items,
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
@@ -774,10 +772,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (storeNo != null && !storeNo.isBlank()) {
             w.eq(OrdSubOrder::getStoreNo, storeNo);
         }
-        List<String> stored = OrderStatusView.toStored(status);
-        if (!stored.isEmpty()) {
-            w.in(OrdSubOrder::getStatus, stored);
-        }
+        OrderStatusView.applyMerchantFilter(w, status);
         if (merchantNo != null && !merchantNo.isBlank()) {
             w.eq(OrdSubOrder::getEntityNo, merchantNo);
         }
@@ -968,7 +963,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 : s.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
 
         return new OpsOrderVO(s.getSubOrderNo(), s.getOrderNo(),
-                OrderStatusView.toContract(s.getStatus()),
+                OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()),
                 s.getEntityNo(), s.getEntityName(),
                 main == null ? null : main.getCommunityNo(),
                 s.getPickupNo(), s.getFulfillment(), s.getTrafficSource(),
