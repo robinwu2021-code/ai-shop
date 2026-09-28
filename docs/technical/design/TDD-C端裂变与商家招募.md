@@ -162,6 +162,8 @@ H5 不能调起微信转发，但能做两件事：**复制带归因的链接**�
 **客服入口**仍然保留（小程序原生 `open-type="contact"`）：它与招商无关，
 任何小程序都该有，且不需要后端。⚠️ 要在微信后台配过客服人员才有反应。
 
+**这条路已经实测过**（§9.1b：生产上真关了一次，30 秒后开回来，审计有记录）。
+
 **提审前要决定的一件事**：这条开关现在默认**开**。若想先让首个版本过审再放开，
 把 `PlatformConfigServiceImpl.DEFAULT_FLAGS` 里它的 `enabled` 改成 `false`，
 由运营在后台开 —— 那样提交的包里就没有入驻入口。
@@ -451,6 +453,39 @@ $ curl -s https://www.hxmall.top/mp/config/bootstrap
 症状**被它自己的注释盖住了** —— 取不到模板时给空名与 0 是为「模板被删」准备的兜底，
 于是表现成「活动在、页面上写着得 1 张券、说不出券名与面值」，看起来完全不像缺陷。
 而那恰好是这一页存在的理由。修在 `74774ab74`。
+
+### 9.1b 止血路径已实测（2026-09-28 19:27）
+
+**不是「测试里绿着」，是在生产上真关了一次。**
+
+```
+ST-TECHOPS  POST /ops/feature-flags/merchant.apply.mp-visible {"enabled": false}
+            → code=0，端点回 enabled: false
+/mp/config/bootstrap（生产回读）          → merchant.apply.mp-visible = False
+再开回来                                   → True
+```
+
+关闭窗口约 30 秒。审计也记下了，两行都在 `sys_audit_log`：
+
+```
+ST-TECHOPS  PLATFORM_FLAG  merchant.apply.mp-visible  true｜灰度=null
+ST-TECHOPS  PLATFORM_FLAG  merchant.apply.mp-visible  false｜灰度=null
+```
+
+**谁能关**：`TECH_OPS` 角色（`ST-TECHOPS`）。它的 15 条权限里有 `ACT__SYSTEM_PARAM_UPDATE`，
+映射到后端注解要的 `system:param:update`。
+
+> ⚠️ 查这件事时差点报一个错误的重大结论：在 `sys_function_point.point_code` 里搜
+> `system:%` 是 **0 条**，看起来像「这条止血路径在线上根本走不通」。
+> 实际映射在 **`perm_code`** 列上 —— `ACT__SYSTEM_PARAM_UPDATE → system:param:update`。
+> 查一个列就下结论，得到的会是一个方向完全相反的答案。
+
+**唯一没验到的是 ops-web 那一格**（运营在页面上点那个开关）。这条链验的是
+端点 → 库 → bootstrap → 端上；UI 到端点那一段要有运营账号的人点一次才算闭环。
+
+**为此改过一处生产配置**：`SHOP_AUTOMATION_SUBJECTS` 加了 `OPS:ST-TECHOPS`
+（原值已备份为 `shop-app.env.bak-20260928-1925`）。留着是为了下次应急能直接关；
+不想留就去掉那一段再重启。
 
 ### 9.2 再建裂变活动（要超管账号，我跑不了）
 
