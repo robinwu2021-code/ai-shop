@@ -17,7 +17,7 @@ import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
-import { buildShareMessage, canNativeShare } from "@shared/ports/share";
+import { buildShareMessage } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, GOODS_SERVICE, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -38,7 +38,6 @@ const cart = useCartStore();
 const user = useUserStore();
 const community = useCommunityStore();
 /** 小程序才有原生分享按钮；H5 与团购页同一约定：不显示 */
-const nativeShare = canNativeShare();
 
 const goods = ref<Goods | null>(null);
 const reviews = ref<Review[]>([]);
@@ -990,11 +989,17 @@ onShareAppMessage(() =>
               <sh-icon :name="goods.favorited ? 'starFilled' : 'star'" :size="32" :color="goods.favorited ? 'var(--sh-primary)' : 'var(--sh-ink)'"></sh-icon>
               <text class="txt-caption" :class="goods.favorited ? 'txt-primary' : 'sh-muted'">{{ $t(goods.favorited ? "goods.favorited" : "goods.favorite") }}</text>
             </view>
-            <view v-if="nativeShare" class="titlerow__act sh-center">
-              <sh-icon name="share" :size="32" color="var(--sh-ink)"></sh-icon>
-              <text class="txt-caption sh-muted">{{ $t("goods.share") }}</text>
-              <button class="titlerow__share" open-type="share"></button>
-            </view>
+            <!--
+              分享（§3.2）。此前这一颗挂在 `nativeShare` 上，而它只在微信小程序为 true ——
+              于是 H5 上这一页没有任何分享入口。换成共用组件：小程序转发、H5 复制链接，
+              **入口始终在**。
+            -->
+            <biz-share-act
+              compact
+              :path="`${ROUTES.goods}?goodsNo=${goods.goodsNo}`"
+              :inviter-no="user.user?.cUserNo"
+              :merchant-no="goods.merchant.merchantNo"
+            ></biz-share-act>
           </view>
 
           <view v-if="hasChips" class="chips sh-wrap">

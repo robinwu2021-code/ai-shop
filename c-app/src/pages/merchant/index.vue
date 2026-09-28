@@ -10,6 +10,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
+import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
@@ -18,6 +19,7 @@ import type { Goods, Merchant, Review } from "@shared/types";
 
 const { t } = useI18n();
 const cart = useCartStore();
+const user = useUserStore();
 const merchant = ref<Merchant | null>(null);
 const goods = ref<Goods[]>([]);
 const reviews = ref<Review[]>([]);
@@ -136,6 +138,16 @@ onShareAppMessage(() =>
           </view>
           <text v-if="merchant.desc" class="txt-caption txt-quiet head__desc">{{ merchant.desc }}</text>
         </view>
+        <!--
+          分享（§3.2）。与门店页同一条理由：此前只能从右上角「···」转发，H5 上没有出口。
+          路径与 `onShareAppMessage` 用同一份（带 `from=SHARE`），两处不一致的话
+          同一次分享按哪个入口走会算成两种来源。
+        -->
+        <biz-share-act
+          :path="`${ROUTES.store}?from=SHARE`"
+          :inviter-no="user.user?.cUserNo"
+          :merchant-no="currentNo"
+        ></biz-share-act>
       </view>
 
       <view v-if="merchant.serviceScope || tags.length" class="tags sh-wrap">

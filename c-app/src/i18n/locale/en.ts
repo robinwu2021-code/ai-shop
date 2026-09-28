@@ -162,6 +162,11 @@ export default {
     changeRule: "Free to reschedule up to {n} hours before",
   },
   /** 我的收藏（原型 g08）*/
+  share: {
+    act: "Share",
+    copy: "Copy link",
+    copied: "Link copied — paste it to a friend",
+  },
   invite: {
     entryHint: "{n} invited",
     title: "Invite & earn",

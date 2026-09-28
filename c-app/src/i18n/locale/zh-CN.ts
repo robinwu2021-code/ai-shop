@@ -166,6 +166,11 @@ export default {
     changeRule: "开始前 {n} 小时可免费改期",
   },
   /** 我的收藏（原型 g08）*/
+  share: {
+    act: "分享",
+    copy: "复制链接",
+    copied: "链接已复制，发给好友即可",
+  },
   invite: {
     /** `{n}` 是已邀请人数 */
     entryHint: "已邀请 {n} 人",

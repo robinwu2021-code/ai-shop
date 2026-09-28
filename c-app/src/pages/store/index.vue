@@ -350,6 +350,19 @@ function navToStore() {
         <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
           {{ data.favorited ? "★" : "☆" }}
         </text>
+        <!--
+          分享（§3.2）。**这一页此前连小程序上都只能从右上角「···」转发** ——
+          那个位置没人会去找；H5 上则完全没有出口。而「把这家店发给熟人」
+          恰恰是社区场景里最常发生的分享。
+
+          路径与 `onShareAppMessage` 用**同一份**（带 `from=SHARE`）：
+          两处不一致的话，同一次分享按哪个入口走会算成两种来源。
+        -->
+        <biz-share-act
+          :path="`${ROUTES.store}?from=SHARE`"
+          :inviter-no="user.user?.cUserNo"
+          :merchant-no="data.merchant.merchantNo"
+        ></biz-share-act>
       </view>
 
       <!--

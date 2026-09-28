@@ -13,6 +13,8 @@ import type { Goods } from "@shared/types";
 
 const goodsDetail = vi.fn();
 const cartAdd = vi.fn();
+import ShareAct from "@/components/biz/biz-share-act.vue";
+
 const nativeShare = { yes: false };
 
 vi.mock("@/api", () => ({
@@ -66,6 +68,11 @@ function goods(over: Partial<Goods> = {}): Goods {
 async function render() {
   const w = mount(GoodsPage, {
     global: {
+      /*
+       * 分享入口**真实渲染**，不 stub：这一条判据问的正是「两端各画出了什么」，
+       * stub 掉的话它永远绿（easycom 在单测里不生效，不注册就只是个未知标签）。
+       */
+      components: { "biz-share-act": ShareAct },
       stubs: {
         "sh-scaffold": { template: "<div><slot /></div>" },
         "sh-actionbar": { template: "<div><slot /></div>" },
@@ -244,14 +251,25 @@ describe("商品详情页重排", () => {
     expect((await render()).html()).not.toContain("merchant.noRating");
   });
 
-  it("★★ 分享：小程序里是原生分享按钮（open-type=share），H5 不出", async () => {
+  it("★★ 分享：小程序走原生转发，**H5 也要有出口**（§3.2 起改口径）", async () => {
+    /*
+     * 这条判据以前是「H5 不出分享按钮」。那时的理由是「H5 上点了什么都不发生，
+     * 画出来就是死按钮」—— 对的，但结论选错了：H5 没有胶囊菜单可以兜底，
+     * 于是那一端**一个分享入口都没有**。现在 H5 走复制带归因的链接，入口始终在。
+     *
+     * 判据也跟着换：不再问「有没有那颗 open-type 按钮」，而是问
+     * 「**两端都有入口**，且小程序那一端确实是原生转发」。
+     */
     goodsDetail.mockResolvedValue(goods());
-    expect((await render()).find(".titlerow__share").exists()).toBe(false);
+    const h5 = await render();
+    expect(h5.find(".shareact").exists(), "H5 上没有任何分享入口").toBe(true);
+    expect(h5.find(".shareact__native").exists(), "H5 画了一颗点了没反应的原生按钮").toBe(false);
+
     nativeShare.yes = true;
-    const w = await render();
+    const mp = await render();
     // v2：分享在标题旁，不在底栏
-    expect(w.find(".titlerow__share").exists()).toBe(true);
-    expect(w.find(".titlerow__share").attributes("open-type")).toBe("share");
+    expect(mp.find(".shareact__native").exists()).toBe(true);
+    expect(mp.find(".shareact__native").attributes("open-type")).toBe("share");
   });
 
   it("★★ 商家条不传 quiet-no-rating 时照旧说「暂无评价」—— 商家列表 / 搜索页横向比较时它有意义", () => {
