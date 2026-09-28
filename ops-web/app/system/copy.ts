@@ -218,7 +218,7 @@ const zh = {
   //
   // 这一页的文案要担一件事：让运营明白**它不是一个普通配置项**。
   // 只写「白名单」两个字的话，下一个人会顺手把自己的号加进去试功能。
-  tpNotice: "这里每一行都是一把能登进那个手机号账号的钥匙：列表里的号请求验证码时不发真实短信，收到的码恒为这里配的值。\n\n它存在的唯一理由是苹果审核 —— 审核员在美国，收不到中国短信，而 App 登录是手机号 + 验证码。用完请停用。",
+  tpNotice: "这里每一行都是一把能登进那个手机号账号的钥匙：列表里的号请求验证码时不发真实短信，收到的码恒为这里配的值。\n\n它存在的唯一理由是苹果审核 —— 审核员在美国，收不到中国短信，而 App 登录是手机号 + 验证码。",
   tpGuard: "已经有账号的手机号录不进来。测试号的用法是「先录号、再用它注册」，所以录的时候它必须是个没注册过的号 —— 这条拦住的正是「拿白名单登进别人的店」。",
   tpColPhone: "手机号",
   tpColCode: "固定验证码",
@@ -247,7 +247,7 @@ const zh = {
   tpDisableAct: "停用",
   tpRemoveAct: "删除",
   tpRemoveConfirm: "删掉之后这个号可以重新录。要删吗？",
-  tpEnabledNote: "停用即时生效，不用等部署 —— 出事在这里当场关掉就行。",
+  tpEnabledNote: "停用即时生效，不用等部署 —— 出事在这里当场关掉就行。\n\n但停用与删除都是单向的：这个号只要名下有了账号（用它注册过就有），就再也录不回来、也启不回来 —— 拦住「已存在账号的号」那条护栏对它同样生效。所以别为了「用完清理」而停用，下次审核还要用同一个号。",
 };
 
 const en: typeof zh = {
@@ -461,7 +461,7 @@ const en: typeof zh = {
   flagsReadOnlyNote: "cannot toggle features or change rollout percentages",
   flagsNotice: "Rollout is 0–100 and only applies to flags that support it; rule-style flags (such as the category qualification gate) are on/off only — half the merchants blocked and half not is impossible to explain.",
   flagsEmpty: "No feature flags yet. Flags are how features roll out gradually; without one a new feature can only ship to everybody at once.",
-  tpNotice: "Every row here is a key that unlocks the account behind that phone number: numbers on this list get no real SMS, and the code they receive is always the one configured here.\n\nIt exists for one reason only \u2014 Apple review. Reviewers are in the US, cannot receive Chinese SMS, and the app signs in with phone + code. Disable the entry once you are done.",
+  tpNotice: "Every row here is a key that unlocks the account behind that phone number: numbers on this list get no real SMS, and the code they receive is always the one configured here.\n\nIt exists for one reason only \u2014 Apple review. Reviewers are in the US, cannot receive Chinese SMS, and the app signs in with phone + code.",
   tpGuard: "A number that already has an account cannot be added. A test number is meant to be added first and registered afterwards, so it must be an unregistered number \u2014 that is what stops the list being used to walk into someone else's shop.",
   tpColPhone: "Phone",
   tpColCode: "Fixed code",
@@ -490,7 +490,7 @@ const en: typeof zh = {
   tpDisableAct: "Disable",
   tpRemoveAct: "Delete",
   tpRemoveConfirm: "Once deleted the number can be added again. Delete it?",
-  tpEnabledNote: "Disabling takes effect immediately, with no deploy \u2014 if something goes wrong, switch it off right here.",
+  tpEnabledNote: "Disabling takes effect immediately, with no deploy \u2014 if something goes wrong, switch it off right here.\n\nBut disabling and deleting are one-way: once the number has an account (registering with it creates one), it can never be added back or re-enabled \u2014 the same guardrail that blocks numbers with existing accounts applies to it too. So do not disable it just to tidy up; the next review needs the same number.",
 };
 
 export const SYSTEM_COPY: PageCopy<typeof zh> = { zh, en };
