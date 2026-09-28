@@ -77,6 +77,36 @@ public class WxSubscribeSender {
                 openId -> port.sendRefunded(openId, amountText, page, tip));
     }
 
+    /**
+     * 新品开售通知（收藏过这家店的人）。
+     *
+     * <p><b>额度扣完就没了</b>：一次授权只够一条（长期订阅这个类目拿不到）。
+     * 所以这条通知的性质是「一次预约」而不是「订阅关系」——
+     * {@code tip} 那一格默认会告诉用户「想继续收到，回店铺再点一次收藏」，
+     * 不说的话他会以为自己还订阅着。
+     */
+    public void newGoods(String userNo, String goodsTitle, String goodsDesc,
+                         long onSaleAt, String page) {
+        newGoods(userNo, goodsTitle, goodsDesc, onSaleAt, page, RESUBSCRIBE_TIP);
+    }
+
+    /**
+     * 「想继续收到，回店铺再点一次收藏」——<b>默认话术放在这里而不是网关里</b>。
+     *
+     * <p>另外两条场景的默认话术（「包裹已到自提点」这类）确实是通道话术，留在网关里没问题。
+     * 这一句不是：它说的是**这条链的性质**（一次授权只够一条），是业务决定。
+     * 放在网关里的后果是桩世界看不到它 —— 而「用户到底有没有被告知」
+     * 恰恰是这条设计成不成立的关键，测不到等于没做。
+     */
+    private static final String RESUBSCRIBE_TIP = "想继续收到，回店铺再点一次收藏";
+
+    /** 带自定义提示语的重载，与另外两条对称（运营端模拟发送走这一条）。 */
+    public void newGoods(String userNo, String goodsTitle, String goodsDesc,
+                         long onSaleAt, String page, String tip) {
+        send(userNo, WxSubscribePort.SCENE_NEW_GOODS,
+                openId -> port.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
+    }
+
     private void send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {

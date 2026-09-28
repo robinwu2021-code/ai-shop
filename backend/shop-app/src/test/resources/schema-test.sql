@@ -729,6 +729,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     params TEXT DEFAULT NULL,
     sale_mode VARCHAR(16) NOT NULL DEFAULT 'NORMAL',
     inv_mode VARCHAR(8) NOT NULL DEFAULT 'INHERIT',
+    new_notified_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
@@ -9327,3 +9328,14 @@ SELECT 'ACT__SYSTEM_TESTPHONE_UPDATE', 'OPS_IAM', 'system:testphone:update', 'é¡
 INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
 SELECT 'SUPER_ADMIN', 'ACT__SYSTEM_TESTPHONE_UPDATE', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='ACT__SYSTEM_TESTPHONE_UPDATE');
+INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'NEW_GOODS_ON_SALE' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 0 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'NEW_GOODS_ON_SALE', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'NEW_GOODS_ON_SALE', 'C_USER', 'PUSH', 0, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);

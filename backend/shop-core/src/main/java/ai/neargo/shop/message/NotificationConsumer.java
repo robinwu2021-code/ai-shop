@@ -52,17 +52,20 @@ public class NotificationConsumer implements OutboxConsumer {
     private final WxSubscribeSender wxSender;
     private final ai.neargo.shop.message.notify.PushSender pushSender;
     private final MerchantStaffPort merchantStaffPort;
+    private final ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort;
     private final SceneChannelRouting routing;
     private final ObjectMapper json;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
                                 MerchantStaffPort merchantStaffPort,
+                                ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort,
                                 SceneChannelRouting routing, ObjectMapper json) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
         this.merchantStaffPort = merchantStaffPort;
+        this.storeFavoritePort = storeFavoritePort;
         this.routing = routing;
         this.json = json;
     }
@@ -125,6 +128,7 @@ public class NotificationConsumer implements OutboxConsumer {
                 }
                 cPush(scene, userNo, "退款已处理", "退款将原路退回，到账时间以支付渠道为准", link);
             }
+            case NotifyScene.NEW_GOODS_ON_SALE -> fanOutToFollowers(event, payload);
             // ------------------------------------------------------------ B 端
             case NotifyScene.SUB_ORDER_PAID -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
                     "新订单", "有新的订单待备货，记得按时送到自提点",
@@ -181,6 +185,46 @@ public class NotificationConsumer implements OutboxConsumer {
      * <p>站内信必发；App 推送与级别（NORMAL/RING）由运营的场景×通道配置决定 ——
      * 「新订单响铃、其余常规」这条规则从硬编码搬进了 {@code notify_scene_channel}。
      */
+    /**
+     * 新品开售 → 扇出给该店收藏者（TDD-C 端裂变与商家招募 §10）。
+     *
+     * <p><b>与 {@link #fanOutToStaff} 的区别不只是收件人</b>：
+     * 那条是「必须知道的事」，站内信必发；这条是收藏者的一次**预约**，
+     * 站内信默认关着（V356 种子 {@code INAPP enabled=0}）——
+     * 上新塞进消息中心会稀释「到货了去取」那几条。
+     *
+     * <p><b>dedupKey 必须带 userNo</b>：dedup 唯一索引是全局的，
+     * 不带的话第二个收藏者会被当成重投静默丢掉（同 fanOutToStaff 的注释）。
+     */
+    private void fanOutToFollowers(SysOutbox event, JsonNode payload) {
+        String scene = event.getEventType();
+        String entityNo = text(payload, "entityNo");
+        List<String> userNos = storeFavoritePort.followerUserNos(entityNo);
+        if (userNos.isEmpty()) {
+            return;   // 没人收藏这家店：不是错误，是大多数店今天的样子
+        }
+        String title = text(payload, "goodsTitle");
+        String link = "/pages/goods/index?goodsNo=" + event.getAggregateId();
+        String body = "你收藏的店上新了：" + title;
+        boolean inapp = routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_INAPP);
+        boolean wx = routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB);
+        long onSaleAt = payload.get("onSaleAt") == null
+                ? System.currentTimeMillis() : payload.get("onSaleAt").asLong();
+        for (String userNo : userNos) {
+            if (inapp) {
+                messageService.push(userNo, MessageService.MARKETING, "店铺上新", body,
+                        link, event.getEventNo() + ":" + userNo);
+            }
+            if (wx) {
+                // 微信 page 不带前导斜杠；站内信 link 带 —— 两端各按各的约定（同到货那条）
+                wxSender.newGoods(userNo, title, text(payload, "goodsDesc"), onSaleAt,
+                        link.substring(1));
+            }
+        }
+        log.info("[notify] 新品开售扇出 entity={} goods={} 收藏者={} inapp={} wxsub={}",
+                entityNo, event.getAggregateId(), userNos.size(), inapp, wx);
+    }
+
     private void fanOutToStaff(SysOutbox event, String entityNo, Set<String> roles,
                                String title, String body, String link) {
         String scene = event.getEventType();

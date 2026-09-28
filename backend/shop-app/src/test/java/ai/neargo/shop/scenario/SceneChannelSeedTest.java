@@ -45,10 +45,24 @@ class SceneChannelSeedTest {
                     .as("场景 %s 没有任何场景×通道配置 —— 会静默不外发，请在迁移里补种子", scene)
                     .isNotEmpty();
 
-            assertThat(rows)
-                    .as("场景 %s 缺 INAPP 行或未开启 —— 站内信是必达事实记录", scene)
-                    .anyMatch(r -> MsgSceneChannel.CH_INAPP.equals(r.getChannel())
-                            && Boolean.TRUE.equals(r.getEnabled()));
+            /*
+             * **事实类场景的站内信必须开**；营销类不强制。
+             *
+             * 判据取自 NotifyScene.MARKETING 而不是在这里列例外：
+             * 写在这里的话，以后加第二个营销场景的人得先读懂这条断言才知道要改它，
+             * 而他多半会直接把断言放宽 —— 那样其余七条事实类场景就再也没人守了。
+             */
+            if (!ai.neargo.shop.message.NotifyScene.MARKETING.contains(scene)) {
+                assertThat(rows)
+                        .as("场景 %s 缺 INAPP 行或未开启 —— 站内信是必达事实记录", scene)
+                        .anyMatch(r -> MsgSceneChannel.CH_INAPP.equals(r.getChannel())
+                                && Boolean.TRUE.equals(r.getEnabled()));
+            } else {
+                assertThat(rows)
+                        .as("营销类场景 %s 也要有 INAPP 行（可以是关着的）—— "
+                                + "缺行的话运营在后台连开都开不了", scene)
+                        .anyMatch(r -> MsgSceneChannel.CH_INAPP.equals(r.getChannel()));
+            }
 
             assertThat(rows)
                     .as("场景 %s 只有 INAPP，没有任何加速通道行（WXSUB/PUSH）—— 搬进配置表没意义", scene)

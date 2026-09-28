@@ -254,6 +254,9 @@ shop:
       # 不同值的话前端攒的订阅额度后端查不到，一条也发不出去
       order-arrived: ${WX_TPL_ORDER_ARRIVED:}
       refunded: ${WX_TPL_REFUNDED:}
+      # 新品开售提醒（mp 模板 383）。缺它不拦启动，但端上收集的授权会白点：
+      # 额度扣得下去、发的时候没有模板号可用
+      new-goods: ${WX_TPL_NEW_GOODS:}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。

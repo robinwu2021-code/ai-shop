@@ -549,3 +549,152 @@ ST-TECHOPS  PLATFORM_FLAG  merchant.apply.mp-visible  false｜灰度=null
 
 `git commit -- <路径>` 的路径清单少写一个文件不会报错，也不会在本地暴露。
 **提交后要对着 `git show --stat` 的文件清单核一遍**，别只看 subject。
+
+---
+
+## 10. 批 3：新品开售提醒（2026-09-28 设计）
+
+状态：**已实现（2026-09-28）** · 档位 1 · 对账见 §10.6 · 待真机验 AC1 与配生产 env
+
+### 10.1 设计前提换过一次
+
+§8.4 把这一批排最后，理由是「微信订阅消息模板要人去后台申请」。
+**这个前提不成立**：登进 mp 后台一看，`ro****1501` 在 **2026-09-03** 就选好了
+「新品开售提醒」（模板 `RpcP4uNQriF7fDw1Jz8oU805jjtPyBzTgL9NrDOlMJ8`，模版编号 383）。
+
+真正的约束是另一条，而且更硬：**长期订阅拿不到**。
+后台「公共模板库 → 长期订阅」这一栏写着「暂时没有可选用的模板」——
+官方只向政务民生、医疗、交通、金融、教育等线下公共服务开放。
+「会员订阅（Beta）」也不行，它要虚拟支付订阅制。
+
+所以 §8.2 A 原本设想的「收藏了这家店 → 以后上新一直收到通知」**在微信上不可能**。
+能做的只有一次性订阅：**一次授权 = 一条消息**，发完即止。
+
+这不是打折，是换了一种东西：它从「订阅关系」变成了「一次预约」。
+设计要顺着这一点走，而不是假装还能长期推送。
+
+### 10.2 验收标准
+
+| AC | 内容 |
+|---|---|
+| **AC1** | 在店铺页点「收藏」时弹订阅授权；点「允许」后后端额度 +1（`notify_subscribe`） |
+| **AC2** | 该店有商品**第一次**上架时，给有额度的收藏者各发一条「新品开售提醒」 |
+| **AC3** | 同一件商品**只通知一次** —— 下架再上架不再发 |
+| **AC4** | 没 openid / 没额度 / 没配模板号 → 静默跳过，不报错、不让事件重试 |
+| **AC5** | 一次授权只够一条：发完额度归零，下次上新收不到（**这是设计，不是缺陷**） |
+| **AC6** | 店铺一个收藏者都没有时，不产生任何发送开销 |
+
+### 10.3 模块设计
+
+| 文件 | 动作 |
+|---|---|
+| `spi/notify/WxSubscribePort.java` | 加 `SCENE_NEW_GOODS` + `sendNewGoods(...)` |
+| `shop-notify/.../WxSubscribeGateway.java` | 实现；模板字段 `thing4/thing5/date6/thing7` |
+| `shop-notify/.../StubWxSubscribeGateway.java` | 实现（桩世界也要闭环） |
+| `message/notify/port/NotifyLoggingWxSubscribePort.java` | 装饰器透传 |
+| `message/notify/WxSubscribeSender.java` | `newGoods(...)`：查 openid → 扣额度 → 发 |
+| `message/NotifyScene.java` | `NEW_GOODS_ON_SALE` |
+| `message/NotificationConsumer.java` | 新 case：查收藏者扇出 |
+| `spi/user/StoreFavoritePort.java` | **新建**：`followerUserNos(merchantNo)` |
+| `user/port/StoreFavoritePortImpl.java` | **新建** |
+| `product/.../MerchantGoodsServiceImpl.java` | 首次上架发事件 |
+| `product/entity/PrdGoods.java` | 加 `newNotifiedAt` 字段 |
+| `V354__goods_new_notified.sql` | `prd_goods` 加列 + `msg_scene_channel` 种子 |
+| `application.yml` | `templates.new-goods: ${WX_TPL_NEW_GOODS:}` |
+| `c-app/src/pages/store/index.vue` | 收藏成功后 `requestSubscribe` |
+| `packages/shared/src/ports/push.ts` | `SUBSCRIBE_TMPL.newGoods` |
+| `c-app/.env.production` | `VITE_WX_TPL_NEW_GOODS`（**与后端同值**） |
+
+### 10.4 三个不显然的决定
+
+**① 幂等靠 `prd_goods.new_notified_at`，不靠「上架」这个动作。**
+`setOnSale(true)` 在 `MerchantGoodsServiceImpl` 里有 **5 处**调用点，
+多数是「下架后重新上架」。挂在动作上的话，商家反复上下架就能给收藏者刷屏，
+而且加第 6 处调用点的人不会知道要带上这件事
+（同一类坑：新枚举值漏进老分支）。
+
+挂在列上则天然幂等：为空才发，发完写上。**第 6 处调用点什么都不用改。**
+
+**② 站内信默认关（`INAPP enabled=0`），只开 `WXSUB`。**
+`NotificationConsumer` 的类注释写着「只发收件人**必须知道**的事」——
+上新是营销，不是事实记录，塞进消息中心会稀释「到货了去取」那几条。
+而订阅消息这一路有用户当场点过的授权把关，且额度天然限流。
+要开站内信，运营在后台那一屏打开即可，不用发版。
+
+**③ 模板的「温馨提示」那一格用来引导续订。**
+一次授权只够一条，用户收到之后这条链就断了。
+`thing7` 写「想继续收到，回店铺再点一次收藏」——
+否则用户会以为自己还在订阅中，而实际上再也收不到。
+
+### 10.5 为什么不做「一次授权攒多条」
+
+微信允许用户勾「总是保持以上选择」从而静默复用授权，但那是用户的选择，
+不是我们能替他做的。代码层面**不得**用反复弹窗去攒额度：
+一次交互弹多次授权会被判骚扰，而且弹窗必须由点击行为触发，攒不起来。
+
+### 10.6 三处对账
+
+**需求 → 设计**（§10.2 的 AC → 落点）
+
+| AC | 落在哪 |
+|---|---|
+| AC1 收藏时弹授权 | `c-app/src/pages/store/index.vue` `toggleFav` + `SUBSCRIBE_TMPL.newGoods` |
+| AC2 上新扇出给收藏者 | `NotificationConsumer#fanOutToFollowers` ← `StoreFavoritePort` |
+| AC3 同一件只通知一次 | `MerchantGoodsServiceImpl#publishNewGoodsOnce` + `prd_goods.new_notified_at` |
+| AC4 缺 openid/额度/模板号静默跳过 | `WxSubscribeSender#send`（既有三条跳过路径，本场景复用） |
+| AC5 一次授权只够一条 | `WxSubscribeSender#consumeQuota`（既有原子扣减，本场景复用） |
+| AC6 无收藏者零开销 | `fanOutToFollowers` 开头的 `isEmpty()` 早退 |
+
+**实现 → 需求**（AC → 测试方法，都在 `NewGoodsNotifyFlowTest`）
+
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC2 | `followerGetsNewGoodsMessage` | ✅ |
+| AC3 | `reListingDoesNotNotifyAgain` | ✅ |
+| AC5 | `quotaIsOneShot` | ✅ |
+| AC6 / 扇出边界 | `nonFollowerGetsNothing` | ✅ |
+| AC4 | `followerWithoutQuotaIsSkipped` | ✅ |
+| 跨用户查询 | `followersVisibleRegardlessOfCaller` | ✅ |
+
+`tests 6 fail 0 err 0 skip 0`。**AC1 没有自动化覆盖**：`wx.requestSubscribeMessage`
+只在微信小程序里存在，H5/单测环境返回空结果 —— 端上那几行只能真机验（见 §10.7）。
+
+**消融**（撤掉实现，对应测试必须变红）
+
+| 撤掉什么 | 结果 |
+|---|---|
+| `publishNewGoodsOnce` 的幂等判断 | `reListingDoesNotNotifyAgain` 变红 ✅ |
+| `followerUserNos` 改成按当前用户过滤 | 3 条变红 ✅ |
+| ~~`executeWithoutScope`~~ | **两次都没红** —— 见下 |
+
+### 10.7 偏差说明
+
+**① 删掉了一个多余的数据域旁路。** `StoreFavoritePortImpl` 第一版写了
+`executeWithoutScope`，理由是「带域表在 SELF 维度下会 fail-closed」。消融两次都没红，
+查 `DataScopeRegistration` 才知道：登记的 114 张表里**没有任何 `usr_` 表**，
+数据域是商家/门店维度的，用户域的表本来就不受它管。
+`StoreFavoriteServiceImpl#countByMerchant` 的注释里已经记过同一件事 —— 我又踩了一遍。
+已删除，注释改成真正要守的那条（这是跨用户查询，别加 userNo 条件）。
+
+**② 场景×通道守卫改了判据，不是放宽。** `SceneChannelSeedTest` 原本要求
+**每个**场景的 `INAPP` 必须开着（「站内信是必达事实记录」），而这是仓库里
+**第一个非事实类场景**。没有直接放宽断言，而是在 `NotifyScene.MARKETING` 里
+显式声明它的类别，守卫按类别分流 —— 其余七条事实类场景仍然被拦着，
+且营销类仍要求「有 INAPP 行」（可以关着），否则运营在后台连开都开不了。
+
+**③ 默认话术从网关上移到 sender。** 「想继续收到，回店铺再点一次收藏」原本写在
+真网关的默认值里，于是桩世界看不到它 —— 而「用户到底有没有被告知」
+恰恰是这条设计成不成立的关键，测不到等于没做。另外两条场景的默认话术
+（「包裹已到自提点」）确实是通道话术，留在网关里没动。
+
+**④ 迁移号从 V354 改到 V356**：写的时候 V354/V355 已被同伴占用，本地不报、上生产才炸。
+
+### 10.8 还没做的
+
+- **AC1 只能真机验**：微信里打开小程序 → 店铺页点收藏 → 应弹出订阅授权 →
+  点「允许」后 `notify_subscribe` 多一行（模板 `RpcP4uNQ...`）。
+- **生产 env 要配 `WX_TPL_NEW_GOODS`**，值与 `c-app/.env.production` 的
+  `VITE_WX_TPL_NEW_GOODS` 相同（`RpcP4uNQriF7fDw1Jz8oU805jjtPyBzTgL9NrDOlMJ8`）。
+  **不配的后果不是「功能没开」而是「用户白点」**：端上照常弹窗、额度照常记下，
+  发的时候没有模板号可用。启动时会打一条 WARN 说这件事。
+- 站内信那一路默认关着；要开由运营在后台打开，不用发版。

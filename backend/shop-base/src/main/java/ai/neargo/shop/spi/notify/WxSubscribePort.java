@@ -34,6 +34,14 @@ public interface WxSubscribePort {
     String SCENE_REFUNDED = "REFUNDED";
 
     /**
+     * 场景：收藏的店铺有新品开售。
+     *
+     * <p><b>一次授权只够一条</b>（订阅消息的固有限制，长期订阅这个类目拿不到）——
+     * 所以它不是「订阅关系」而是「一次预约」：发完额度归零，用户要再点一次收藏才有下一条。
+     */
+    String SCENE_NEW_GOODS = "NEW_GOODS";
+
+    /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
      *
      * <p>返回值只作为 {@code notify_subscribe} 的额度对账键使用，
@@ -64,6 +72,21 @@ public interface WxSubscribePort {
      *                   而他不会想到那是「这条没放开」，只会以为保存失败了
      */
     SendResult sendRefunded(String openId, String amountText, String page, String tip);
+
+    /**
+     * 新品开售通知（收藏过这家店的人）。
+     *
+     * @param goodsTitle 新品名称
+     * @param goodsDesc  新品详情（副标题/规格这类一句话描述）
+     * @param onSaleAt   开售时间（毫秒）。模板那一格是 {@code date} 类型，
+     *                   格式化由通道做 —— 微信对它的格式有要求，那是通道概念
+     * @param tip        提示语，同 {@link #sendOrderArrived} 的 {@code tip}。
+     *                   <b>这一格在本场景里有实际用途</b>：一次授权只够一条，
+     *                   不在这里告诉用户「想继续收到就再点一次收藏」，
+     *                   他会以为自己还订阅着，而实际上这条链已经断了
+     */
+    SendResult sendNewGoods(String openId, String goodsTitle, String goodsDesc,
+                            long onSaleAt, String page, String tip);
 
     class WxSubscribeException extends RuntimeException {
         /** 网络类失败可重试；微信业务码（额度不足、模板被封）重试一万次也是同一个结果。 */

@@ -12,6 +12,7 @@ import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { fromE6, openLocation } from "@shared/ports/location";
+import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
@@ -266,6 +267,24 @@ async function toggleFav() {
     title: on ? t("store.faved") : t("store.unfaved"),
     icon: "none",
   });
+  /*
+   * 收藏成功 → 就地收集「新品开售提醒」的订阅授权（TDD-C 端裂变与商家招募 §10）。
+   *
+   * **只在「收藏」时问，取消收藏时不问** —— 刚点了取消还弹订阅，是在追着人要权限。
+   *
+   * **弹窗必须由点击行为触发**，这里就在 tap 的调用栈里，满足微信的要求；
+   * 挪到 onShow 或者定时器里会静默失败（弹不出来，也不报错）。
+   *
+   * **不 await、不拦主流程**：授权与否都不影响收藏本身，
+   * 而 await 会让那句 toast 等在弹窗后面。
+   */
+  if (on) {
+    requestSubscribe([SUBSCRIBE_TMPL.newGoods]).then((r) => {
+      // accepted / rejected 都要上报：后端记下拒绝才不会反复弹（见 push.ts 的注释）
+      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+    });
+  }
 }
 
 function gotoGoods(goodsNo: string) {

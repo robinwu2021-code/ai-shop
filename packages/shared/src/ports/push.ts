@@ -12,6 +12,11 @@
 export const SUBSCRIBE_TMPL = {
   arrived: (import.meta.env?.VITE_WX_TPL_ARRIVED as string) || "STUB_TPL_ORDER_ARRIVED",
   refunded: (import.meta.env?.VITE_WX_TPL_REFUNDED as string) || "STUB_TPL_REFUNDED",
+  /**
+   * 新品开售提醒。**在收藏店铺那一刻收集** —— 一次授权只够一条，
+   * 所以它是「一次预约」而不是「订阅关系」：发完就没了，用户要再点一次收藏。
+   */
+  newGoods: (import.meta.env?.VITE_WX_TPL_NEW_GOODS as string) || "STUB_TPL_NEW_GOODS",
 } as const;
 
 export interface SubscribeResult {

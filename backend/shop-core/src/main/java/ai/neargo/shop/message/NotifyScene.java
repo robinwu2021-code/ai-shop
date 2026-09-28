@@ -43,6 +43,15 @@ public final class NotifyScene {
     public static final String AFTER_SALE_APPLIED = "AFTER_SALE_APPLIED";
     /** 新评价 —— 扇出给商家客服（B 端） */
     public static final String REVIEW_CREATED = "REVIEW_CREATED";
+    /**
+     * 收藏的店铺有新品开售 —— 扇出给该店的收藏者（C 端）。
+     *
+     * <p><b>这是本表里唯一一条「不是必须知道的事」</b>（其余七条都是钱/货/单的事实）。
+     * 把它放进来的依据是：收件人当场点过订阅授权，而且订阅消息一次授权只够一条 ——
+     * 额度本身就是限流。站内信那一路默认**关着**（V356 种子 enabled=0），
+     * 理由见 TDD-C 端裂变与商家招募 §10.4。
+     */
+    public static final String NEW_GOODS_ON_SALE = "NEW_GOODS_ON_SALE";
 
     /**
      * 全部场景码。
@@ -52,7 +61,21 @@ public final class NotifyScene {
      */
     public static final Set<String> ALL = Set.of(
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
-            SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED);
+            SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE);
+
+    /**
+     * <b>营销类场景</b> —— 站内信不强制开。
+     *
+     * <p>其余场景都是**事实**（钱扣了、货到了、单来了），收件人必须知道，
+     * 所以 {@code SceneChannelSeedTest} 要求它们的 {@code INAPP} 行必须开着。
+     * 这一类不是：它是收件人自己预约的一次提醒，
+     * 塞进消息中心会稀释「到货了去取」那几条（{@link NotificationConsumer} 的类注释）。
+     *
+     * <p><b>为什么要显式声明而不是在守卫里开个口子</b>：守卫那条断言背后是一个有效的约定
+     * （站内信是必达事实记录）。直接放宽它，以后真有事实类场景漏了 INAPP 也不会被拦住。
+     * 把「这条不是事实」写成代码，守卫就还能继续守住其余七条。
+     */
+    public static final Set<String> MARKETING = Set.of(NEW_GOODS_ON_SALE);
 
     private NotifyScene() {
     }

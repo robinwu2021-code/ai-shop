@@ -26,12 +26,13 @@ class WxChannelSwitchTest {
     private static final String SECRET = "testSecret";
     private static final String TPL_ARRIVED = "TPL_ARRIVED";
     private static final String TPL_REFUNDED = "TPL_REFUNDED";
+    private static final String TPL_NEW_GOODS = "TPL_NEW_GOODS";
 
     @Test
     @DisplayName("登录还是桩时，订阅消息不许真发 —— 假 openid 发出去每条都是 40003")
     void subscribeCannotGoLiveWhileLoginIsStubbed() {
         assertThatThrownBy(() -> new WxSubscribeGateway(
-                HOST, APPID, SECRET, TPL_ARRIVED, TPL_REFUNDED, "trial", true))
+                HOST, APPID, SECRET, TPL_ARRIVED, TPL_REFUNDED, TPL_NEW_GOODS, "trial", true))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("shop.wx.login.stub");
     }
@@ -44,7 +45,7 @@ class WxChannelSwitchTest {
     @DisplayName("登录已切真，但模板号没报备，仍然直接起不来")
     void missingTemplateStillFailsFast() {
         assertThatThrownBy(() -> new WxSubscribeGateway(
-                HOST, APPID, SECRET, "", TPL_REFUNDED, "trial", false))
+                HOST, APPID, SECRET, "", TPL_REFUNDED, TPL_NEW_GOODS, "trial", false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("WX_TPL_ORDER_ARRIVED");
     }
@@ -53,7 +54,23 @@ class WxChannelSwitchTest {
     @DisplayName("两条都切真且配置齐全时，通道正常建起来")
     void bothLiveWithFullConfigIsFine() {
         assertThatCode(() -> new WxSubscribeGateway(
-                HOST, APPID, SECRET, TPL_ARRIVED, TPL_REFUNDED, "trial", false))
+                HOST, APPID, SECRET, TPL_ARRIVED, TPL_REFUNDED, TPL_NEW_GOODS, "trial", false))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * 新品开售提醒缺模板号**不拦启动**（口径同退款），但要留下 WARN。
+     *
+     * <p>它与退款那条的区别在后果：退款缺了无所谓（微信支付自带到账通知），
+     * 而这条缺了意味着**用户点过的那次订阅授权白点了** —— 端上照常弹窗、
+     * 额度照常记下，发的时候却没有模板号可用。所以缺它要能起来（别把整个服务拖下水），
+     * 但不能安静。
+     */
+    @Test
+    @DisplayName("★★ 新品开售提醒没配模板号，通道照样起得来 —— 它是可选场景")
+    void missingNewGoodsTemplateDoesNotBlockStartup() {
+        assertThatCode(() -> new WxSubscribeGateway(
+                HOST, APPID, SECRET, TPL_ARRIVED, TPL_REFUNDED, "", "trial", false))
                 .doesNotThrowAnyException();
     }
 }

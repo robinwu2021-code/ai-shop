@@ -120,6 +120,16 @@ public class PrdGoods extends BaseEntity {
     private Boolean onSale;
 
     /**
+     * 新品开售提醒已发送时间（毫秒）。为空 = 还没发过（V356）。
+     *
+     * <p><b>幂等挂在这一列上，不挂在「上架」这个动作上</b>：`setOnSale(true)` 在
+     * {@code MerchantGoodsServiceImpl} 里有五处调用点，多数是下架后重新上架 ——
+     * 挂在动作上的话商家反复上下架就能给收藏者刷屏，而加第六处调用点的人
+     * 不会知道要带上这件事。挂在列上，第六处什么都不用改。
+     */
+    private Long newNotifiedAt;
+
+    /**
      * 重审期间记住的**上架意向**（V247）。
      *
      * <p>保存会把 {@code on_sale} 置 false 送去重审（审核期间不该在卖，这是对的），

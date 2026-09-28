@@ -52,6 +52,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
     private final String secret;
     private final String tplOrderArrived;
     private final String tplRefunded;
+    private final String tplNewGoods;
     /** {@code developer} / {@code trial} / {@code formal}。联调时切 trial 免得打扰真实用户。 */
     private final String mpState;
 
@@ -64,6 +65,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
                               @Value("${shop.wx.secret:}") String secret,
                               @Value("${shop.wx.templates.order-arrived:}") String tplOrderArrived,
                               @Value("${shop.wx.templates.refunded:}") String tplRefunded,
+                              @Value("${shop.wx.templates.new-goods:}") String tplNewGoods,
                               @Value("${shop.wx.mp-state:formal}") String mpState,
                               @Value("${shop.wx.login.stub:true}") boolean loginStub) {
         this.host = host;
@@ -71,6 +73,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
         this.secret = secret;
         this.tplOrderArrived = tplOrderArrived;
         this.tplRefunded = tplRefunded;
+        this.tplNewGoods = tplNewGoods;
         this.mpState = mpState;
         /*
          * 两条通道的开关拆开之后，出现了一个此前不可能存在的组合：登录走桩、订阅消息真发。
@@ -110,6 +113,19 @@ public class WxSubscribeGateway implements WxSubscribePort {
                     + "微信支付自带退款到账通知，多数情况下不需要我们再发一条；"
                     + "确实要发就去 mp 后台申请模板并配上这个变量");
         }
+        /*
+         * **新品开售提醒也是可选的**，口径与退款那条一致：缺了不拦启动，
+         * 真去发的时候（{@link #sendNewGoods}）才抛。
+         *
+         * 它和退款不同的地方在于「缺了的后果」：退款缺了无所谓（微信支付自带到账通知），
+         * 而这条缺了意味着**用户点过的那次订阅授权白点了** —— 额度扣得下去、消息发不出来。
+         * 所以 WARN 里要说清是哪一头没配。
+         */
+        if (tplNewGoods == null || tplNewGoods.isBlank()) {
+            log.warn("[wxsub] 未配 WX_TPL_NEW_GOODS —— 新品开售提醒场景**关闭**。"
+                    + "端上若已经在收集这个模板的授权，用户点的「允许」会白点："
+                    + "额度记下了，而发的时候没有模板号可用");
+        }
         log.info("[wxsub] 订阅消息通道已启用 appid={} state={}", appid, mpState);
     }
 
@@ -134,6 +150,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
         return switch (scene) {
             case SCENE_ORDER_ARRIVED -> tplOrderArrived;
             case SCENE_REFUNDED -> tplRefunded;
+            case SCENE_NEW_GOODS -> tplNewGoods;
             default -> null;
         };
     }
@@ -164,6 +181,34 @@ public class WxSubscribeGateway implements WxSubscribePort {
                 ? "退款将原路退回，到账以支付渠道为准" : tip, 20));
         return send(openId, tplRefunded, page, data);
     }
+
+    @Override
+    public SendResult sendNewGoods(String openId, String goodsTitle, String goodsDesc,
+                                   long onSaleAt, String page, String tip) {
+        if (tplNewGoods == null || tplNewGoods.isBlank()) {
+            throw new WxSubscribeException(
+                    "新品开售提醒未接入（WX_TPL_NEW_GOODS 未配）—— 端上收集的授权无处可用", false);
+        }
+        /*
+         * 字段名来自 mp 后台报备的模板 383：
+         *   thing4=新品名称  thing5=新品详情  date6=开售时间  thing7=温馨提示
+         *
+         * **date 类字段的格式是微信定的**（`yyyy年M月d日 HH:mm` 这一类），格式化留在通道里 ——
+         * 领域侧只给时间戳。给错格式整条被拒，而那是通道概念不是业务概念。
+         */
+        Map<String, String> data = new LinkedHashMap<>();
+        data.put("thing4", clamp(goodsTitle, 20));
+        data.put("thing5", clamp(goodsDesc == null || goodsDesc.isBlank() ? goodsTitle : goodsDesc, 20));
+        data.put("date6", DATE_FMT.format(
+                java.time.Instant.ofEpochMilli(onSaleAt).atZone(java.time.ZoneId.systemDefault())));
+        data.put("thing7", clamp(tip == null || tip.isBlank()
+                ? "想继续收到，回店铺再点一次收藏" : tip, 20));
+        return send(openId, tplNewGoods, page, data);
+    }
+
+    /** 微信 {@code date} 类字段的格式。**不要改成 ISO** —— 那种格式微信不认，整条被拒。 */
+    private static final java.time.format.DateTimeFormatter DATE_FMT =
+            java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日 HH:mm");
 
     private SendResult send(String openId, String templateId, String page, Map<String, String> data) {
         StringBuilder body = new StringBuilder()

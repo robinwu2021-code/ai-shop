@@ -158,6 +158,34 @@ public final class ProductEvents {
      * @param rating 1–5。消费方靠它区分「新评价」与「差评」（≤2 星）——
      *               差评要单独点名，混在普通评价里商家会当成例行夸奖划掉
      */
+    /**
+     * 新品**第一次**开售。消费方：message（扇出给该店收藏者，TDD-C 端裂变与商家招募 §10）。
+     *
+     * <p><b>「第一次」由生产方保证</b>（{@code prd_goods.new_notified_at} 为空才发，
+     * 发完写上），不是由消费方去猜。挂在动作上的话，商家反复上下架就能刷屏。
+     *
+     * @param goodsTitle 新品名称，直接进微信模板的 {@code thing4}
+     * @param goodsDesc  一句话描述，进 {@code thing5}；为空时消费方回落成品名
+     * @param onSaleAt   开售时间（毫秒），进 {@code date6}
+     */
+    public record NewGoodsOnSale(String goodsNo, String entityNo, String goodsTitle,
+                                 String goodsDesc, long onSaleAt) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "GOODS";
+        }
+
+        @Override
+        public String aggregateId() {
+            return goodsNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "NEW_GOODS_ON_SALE";
+        }
+    }
+
     public record ReviewCreated(String reviewNo, String entityNo, String goodsNo, int rating)
             implements DomainEvent {
         @Override

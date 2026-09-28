@@ -52,6 +52,16 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
                 "退款" + amountText + (tip == null || tip.isBlank() ? "" : "/" + tip) + " -> " + page);
     }
 
+    @Override
+    public SendResult sendNewGoods(String openId, String goodsTitle, String goodsDesc,
+                                   long onSaleAt, String page, String tip) {
+        // 把 tip 记进摘要，理由同上一条：一次授权只够一条，
+        // 「引导续订那句话有没有传下去」在桩世界里也要看得见
+        return record(openId, SCENE_NEW_GOODS,
+                "新品「" + goodsTitle + "」" + (tip == null || tip.isBlank() ? "" : "/" + tip)
+                        + " -> " + page);
+    }
+
     private synchronized SendResult record(String openId, String scene, String summary) {
         sent.addLast(new Sent(openId, scene, summary));
         while (sent.size() > KEEP) {

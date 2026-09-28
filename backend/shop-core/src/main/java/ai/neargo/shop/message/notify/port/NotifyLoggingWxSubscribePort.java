@@ -81,12 +81,28 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
                 () -> delegate.sendRefunded(openId, amountText, page, tip));
     }
 
+    @Override
+    public SendResult sendNewGoods(String openId, String goodsTitle, String goodsDesc,
+                                   long onSaleAt, String page, String tip) {
+        return logged(openId, SCENE_NEW_GOODS,
+                () -> delegate.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
+    }
+
     /**
      * 场景 → **我们自己的**模板号。与 {@code delegate.templateId(scene)} 不同：
      * 那个返回微信侧报备的 id（会随重新报备而变），这个是库里那份可查可改的模板。
      */
     private static String bizTemplateOf(String scene) {
-        return WxSubscribePort.SCENE_REFUNDED.equals(scene) ? "TPL_WX_REFUNDED" : "TPL_WX_ARRIVED";
+        /*
+         * **用 switch 而不是三元**：三元的 else 分支是个默认值，
+         * 加第三个场景时它会被静默归成「到货」—— 日志上看是发了一条到货通知，
+         * 而真发出去的是新品提醒。switch 漏了 case 至少有个 default 能打出来。
+         */
+        return switch (scene) {
+            case WxSubscribePort.SCENE_REFUNDED -> "TPL_WX_REFUNDED";
+            case WxSubscribePort.SCENE_NEW_GOODS -> "TPL_WX_NEW_GOODS";
+            default -> "TPL_WX_ARRIVED";
+        };
     }
 
     private SendResult logged(String openId, String scene, java.util.function.Supplier<SendResult> call) {

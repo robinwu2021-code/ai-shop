@@ -2413,6 +2413,34 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * <p>没有 SKU 就不发：进销存那边认的是 skuNo，一条都没有的话这个事件
      * 没有任何落点，发出去只是让 outbox 多一行永远没人消费的记录。
      */
+    /**
+     * 首次开售 → 通知该店收藏者（TDD-C 端裂变与商家招募 §10）。
+     *
+     * <p><b>挂在 {@code syncPool} 上而不是挂在五处 {@code setOnSale(true)} 上</b>：
+     * 那五处（以及以后的第六处）最终都会走到这里，而它们里面多数是「下架后重新上架」。
+     * 逐处去加的话，新加调用点的人不会知道还要带上这件事。
+     *
+     * <p><b>幂等靠 {@code new_notified_at}</b>：为空才发，发完立刻写上。
+     * 所以反复上下架只会发一条 —— 这不是锦上添花，是防刷屏的唯一一道闸。
+     *
+     * <p>写列与发事件在同一个事务里（调用方是 {@code @Transactional}）：
+     * 事件走 Outbox，回滚时那一行也跟着回滚，不会出现「列写了、事件没发」。
+     */
+    private void publishNewGoodsOnce(PrdGoods g, boolean onSale) {
+        if (!onSale || g.getNewNotifiedAt() != null) {
+            return;
+        }
+        // 只有审核通过的才算「开售」—— 待审商品买家看不到，这时候通知过去是空链接
+        if (!APPROVED.equals(g.getAuditStatus())) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        g.setNewNotifiedAt(now);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        events.publish(new ai.neargo.shop.spi.product.ProductEvents.NewGoodsOnSale(
+                g.getGoodsNo(), g.getEntityNo(), g.getTitle(), g.getSubtitle(), now));
+    }
+
     private void publishOnSaleChanged(PrdGoods g, boolean onSale) {
         List<String> skuNos = DataScopeContext.executeWithoutScope(() ->
                         skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
@@ -2432,6 +2460,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     private void syncPool(PrdGoods g, boolean onSale) {
         publishOnSaleChanged(g, onSale);
+        publishNewGoodsOnce(g, onSale);
         List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
                 poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
                         .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
