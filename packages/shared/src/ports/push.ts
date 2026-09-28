@@ -104,15 +104,56 @@ export function getPushDevice(): Promise<PushDevice | null> {
    * appid/appkey/appsecret 走 AndroidManifest 的 PUSH_* meta。
    */
   return new Promise((resolve) => {
-    // 仅 Android（plus.android 存在）。iOS 走 APNs，另行接入
-    const android = (globalThis as unknown as {
+    const plusApi = (globalThis as unknown as {
       plus?: {
         android?: {
           importClass: (n: string) => { getInstance: () => Record<string, (...a: unknown[]) => unknown> };
           runtimeMainActivity: () => { getApplicationContext: () => unknown };
         };
+        ios?: { importClass: (n: string) => Record<string, (...a: unknown[]) => unknown> };
       };
-    }).plus?.android;
+    }).plus;
+    const android = plusApi?.android;
+
+    /*
+     * **iOS 分支**。与安卓同构 —— 安卓反射 `com.igexin.sdk.PushManager`，
+     * iOS 反射个推的 `GeTuiSdk` 类方法 `+[GeTuiSdk clientId]`。
+     *
+     * <p>SDK 的启动不在这里：离线工程里 `Push-Getui` 模块会按 Info.plist 的
+     * `getui.{appid,appkey,appsecret}` 自动 `startSdkWithAppId:`，所以这里只取 cid。
+     * 那三个值由 `b-app/offline/ios/sync-info-plist.py` 写入并回读断言
+     * （DCloud 自己那段有短路 bug，只写 appid）。
+     *
+     * <p><b>不补这一支的后果</b>：包里有个推 SDK、也向个推注册了，
+     * 但 cid 永远不上报给我们后端 —— 后端因此**无法定向推给这台设备**。
+     * 表现不是报错，是「推送一条也收不到」，而证书、通道、配置查下来样样正常。
+     */
+    if (!android && plusApi?.ios) {
+      const ios = plusApi.ios;
+      let iosTries = 0;
+      const iosTick = () => {
+        let cid = "";
+        try {
+          const GeTuiSdk = ios.importClass("GeTuiSdk");
+          cid = ((GeTuiSdk?.clientId as (() => string) | undefined)?.() as string) || "";
+        } catch {
+          cid = "";
+        }
+        if (cid) {
+          resolve({ platform: "APP_IOS", provider: "GETUI", clientId: cid });
+          return;
+        }
+        // 与安卓同一条节奏：约 15s 拿不到就放弃，推送是加速通道，不阻塞登录
+        if (++iosTries >= 30) {
+          resolve(null);
+          return;
+        }
+        setTimeout(iosTick, 500);
+      };
+      iosTick();
+      return;
+    }
+
     if (!android) {
       resolve(null);
       return;
