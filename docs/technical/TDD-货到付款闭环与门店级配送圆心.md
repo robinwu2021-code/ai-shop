@@ -55,7 +55,19 @@
 | AC1 自提不看开关、快递无线下 | `#pickupIgnoresCodAndExpressNeverOffline` | ✅ |
 | AC3 圆心按订单门店，回落默认店 | `#deliveryOriginFollowsOrderStore` | ✅ |
 | AC5 商家端认出待收款单 | `OfflinePayFlowTest#merchantListShowsWaitOfflinePay` | ✅ |
-| AC2 / AC4 | 生产闭环（深圳测试店：商家配送 + 货到付款，0.1 元测试商品） | 见下 |
+| AC2 / AC4 | 生产闭环（深圳测试店：商家配送 + 货到付款，0.1 元测试商品） | ✅ 见下 |
+
+**生产闭环（2026-09-28，线上 3c6ac64b）**：主单 `SO202609280921070008238` / 子单 `SUB202609280921070010084`，0.1 元，虹选粮油深圳测试店。
+
+| 步骤 | 入口 | 回读 |
+|---|---|---|
+| 结算页 | 小程序（`mp-cod-loop.mjs` 驱动开发者工具） | 付法「当面付款」、无拦单提示 |
+| 提交 | 同上 | 主单 `WAIT_OFFLINE_PAY` |
+| 商家看单 | `GET /biz/order?status=WAIT_OFFLINE_PAY`（店主会话） | 1 条、状态 `WAIT_OFFLINE_PAY`；「待付款」页签 0 条 |
+| 确认收款 | `POST /biz/order/{sub}/confirm-offline-pay` | `PAID` |
+| 已送达 | `POST /biz/order/{sub}/delivered`（b-app 商家自送的唯一按钮） | `COMPLETED` |
+| 买家侧 | 小程序会话 `GET /mp/order`（订单视角） | 子单 `COMPLETED`、`MERCHANT_DELIVERY`；主单（支付视角）`PAID` |
+| 运营侧 | `GET /ops/orders/{sub}` | `COMPLETED`，10 分 |
 
 消融：去掉货到付款开关判断 → AC1 那条红；门店版圆心改为直接回落默认店 → AC3 那条红（NoSuchElement）；
 商家 toVO 改回单参 `toContract` → AC5 红（「待收款」页签混入 WAIT_PAY）；筛选改回 `toStored` → AC5 红（待付款里有货到付款单）。
