@@ -397,13 +397,6 @@ export default {
       APPROVED: "已通过",
       REJECTED: "已驳回，可修改重提",
     },
-    subject: {
-      // V87 起键名与取值一致（NATURAL_PERSON）。**文案不能沿用「小微」** ——
-      // 法规「小微企业」是有营业执照的规模划型，与本档（无照自然人）含义相反。
-      NATURAL_PERSON: "个人经营者",
-      INDIVIDUAL: "个体工商户",
-      ENTERPRISE: "企业",
-    },
     applyDoneTitle: "报名已提交",
     applyDoneBody: "平台会尽快与你联系。上架、接单、发货这些经营动作都在「商家版」里完成，建议先装上。",
     getApp: "复制商家版下载地址",
@@ -425,7 +418,15 @@ export default {
     goodsTab: "在售商品 {n}",
     reviewTab: "全部评价 {n}",
     dim: { goods: "商品", service: "服务", speed: "时效" },
-    // 与 subject 同一套取值（ADR-010）——「平台自营」不是主体类型，已去掉
+    /*
+     * 主体类型（ADR-010 同一套取值）。「平台自营」不是主体类型，已去掉。
+     *
+     * 键名与取值一致（V87 起）。**文案不能沿用「小微」** —— 法规「小微企业」
+     * 是有营业执照的规模划型，与本档（无照自然人）含义相反。
+     *
+     * 报名弹框删掉主体选择后，`merchant.subject.*` 那一份成了孤儿（与这里逐字重复），
+     * 已删；要显示主体类型一律走这一份。
+     */
     type: { NATURAL_PERSON: "个人经营者", INDIVIDUAL: "个体工商户", ENTERPRISE: "企业商家" },
   },
   review: {

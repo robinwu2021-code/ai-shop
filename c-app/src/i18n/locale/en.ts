@@ -366,11 +366,6 @@ export default {
       APPROVED: "Approved",
       REJECTED: "Rejected — you can resubmit",
     },
-    subject: {
-      NATURAL_PERSON: "Individual seller",
-      INDIVIDUAL: "Sole trader",
-      ENTERPRISE: "Company",
-    },
     applyDoneTitle: "Application submitted",
     applyDoneBody: "We will contact you shortly. Listing, orders and shipping all happen in the merchant app — worth installing now.",
     getApp: "Copy merchant app link",

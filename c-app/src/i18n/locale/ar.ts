@@ -366,11 +366,6 @@ export default {
       APPROVED: "تمت الموافقة",
       REJECTED: "مرفوض؛ يمكنك إعادة التقديم",
     },
-    subject: {
-      NATURAL_PERSON: "بائع فرد",
-      INDIVIDUAL: "تاجر فردي",
-      ENTERPRISE: "شركة",
-    },
     applyDoneTitle: "تم إرسال الطلب",
     applyDoneBody: "سنتواصل معك قريبًا. الإدراج والطلبات والشحن تتم كلها في تطبيق التاجر — يُفضّل تثبيته الآن.",
     getApp: "نسخ رابط تطبيق التاجر",
