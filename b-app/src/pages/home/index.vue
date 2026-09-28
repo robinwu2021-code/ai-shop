@@ -238,6 +238,25 @@ const cells = computed(() => {
   return base.filter((c) => merchant.can(c.perm));
 });
 
+/**
+ * 功能入口：两列小格，标题四字以内（2026-09-28 店主：入口太多，字小一号、两列排）。
+ *
+ * <p>说明行一律不要 —— 「经营类目 · 本店卖哪几类」这种是把名字再说一遍。
+ * 只有公告保留一行**现状**（挂没挂、哪天到期），那是点进去之前就该知道的事。
+ * 每格跟自己的权限走，与待办格子同一条规矩。
+ */
+const entries = computed(() =>
+  [
+    { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store", value: noticeValue.value },
+    { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store", value: "" },
+    { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store", value: "" },
+    { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin", value: "" },
+    { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods", value: "" },
+    { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods", value: "" },
+    // 营销是唯一入口：活动 / 优惠券 / 团购都在它下面（2026-09-18 店主）
+    { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign", value: "" },
+  ].filter((e) => merchant.can(e.perm)));
+
 const ownedRate = computed(() =>
   stats.value ? `${Math.round(stats.value.ownedTrafficRate * 100)}%` : "—",
 );
@@ -481,9 +500,9 @@ onShow(load);
       -->
       <view
         v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
-        class="sh-card entry fulfill"
+        class="sh-card fulfill"
       >
-        <text class="txt-title fulfill__title">{{ $t("home.fulfillEntry") }}</text>
+        <text class="txt-strong fulfill__title">{{ $t("home.fulfillEntry") }}</text>
         <view class="fulfill__row">
           <view v-if="merchant.can('biz:receive')" class="fulfill__half" @tap="open(ROUTES.picking)">
             <text class="txt-display fulfill__n sh-num" :class="todo?.toPick ? 'txt-primary' : 'txt-faint'">{{ todo?.toPick ?? 0 }}</text>
@@ -496,58 +515,15 @@ onShow(load);
         </view>
       </view>
 
-      <!-- 拆两页（方案 v3）：范围与送货是开店的两个决策；装修与获客是日常内容 -->
-      <view v-if="merchant.can('biz:store')" class="sh-card entry entry--kv sh-row sh-row--between" @tap="open(ROUTES.storeNotice)">
-        <text class="txt-title">{{ $t("home.noticeEntry") }}</text>
-        <text v-if="noticeValue" class="txt-caption entry__v sh-fill">{{ noticeValue }}</text>
-      </view>
-
-      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.storeScope)">
-        <text class="txt-title">{{ $t("home.scopeEntry") }}</text>
-      </view>
-      <view v-if="merchant.can('biz:store')" class="sh-card entry" @tap="open(ROUTES.store)">
-        <text class="txt-title">{{ $t("home.storeEntry") }}</text>
-      </view>
-
       <!--
-        **类目与规格并排两个入口。**它们曾经合成一个（「规格配置在分类页里」），
-        那时规格页确实只是类目页的附属；现在它已经长成独立的一块 ——
-        每个类目用哪几个规格、每个规格用哪几档、还能自己建，都在那一页。
-        埋在二级的结果是「找不到」：进类目页、再找一张卡、才到得了。
+        功能入口：两列小格。「规格」与「类目」各自一格（规格页已独立，埋在类目页里等于找不到）；
+        「商品编码」也要有门 —— 那一页第一版漏了入口，真机装完才发现。
       -->
-      <view v-if="merchant.can('biz:store:admin')" class="sh-card entry" @tap="open(ROUTES.storeCategories)">
-        <text class="txt-title">{{ $t("home.catalogEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.catalogEntryHint") }}</text>
-      </view>
-
-      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.mySpecs)">
-        <text class="txt-title">{{ $t("home.specsEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.specsEntryHint") }}</text>
-      </view>
-
-      <!--
-        **有页面没有门，等于没做。**这一页（商品编码批量导入导出）第一版就漏了入口：
-        路由注册了、包也打进去了，而全 app 没有一个地方跳得过去 ——
-        真机上装完才发现。与「商品规格」当年那次同一个形状
-        （见 store-categories 里那段注释：合并入口只合了名字，规格页从此没有门）。
-      -->
-      <view v-if="merchant.can('biz:goods')" class="sh-card entry" @tap="open(ROUTES.skuIdentity)">
-        <text class="txt-title">{{ $t("home.skuIdentityEntry") }}</text>
-        <text class="sh-muted">{{ $t("home.skuIdentityEntryHint") }}</text>
-      </view>
-
-      <!--
-        ★ **营销是唯一入口**（2026-09-18 店主：「都在营销下面，以活动为基础」）。
-
-        一度把「活动」提到过一级（当天的另一条指示），结果工作台上并排出现
-        「活动 / 营销 / 团购」三张卡 —— 而它们本来是一个容器与它的两个内容物。
-        现在收回：营销 → 活动 / 优惠券 / 团购。
-
-        **营销自己没有数据**，它是容器（见《营销域-概念对齐》§2.1）；
-        里面那三个各回答一个不同的问题。
-      -->
-      <view v-if="merchant.can('biz:campaign')" class="sh-card entry" @tap="open(ROUTES.marketing)">
-        <text class="txt-title">{{ $t("home.marketingEntry") }}</text>
+      <view v-if="entries.length" class="sh-wrap entries">
+        <view v-for="e in entries" :key="e.key" class="sh-card entry" @tap="open(e.route)">
+          <text class="txt-strong entry__t">{{ e.label }}</text>
+          <text v-if="e.value" class="txt-caption sh-muted entry__v">{{ e.value }}</text>
+        </view>
       </view>
 
     </template>
@@ -583,8 +559,10 @@ onShow(load);
    三列排布下格子只有 ~110px 宽，卡片档的 24rpx 会把两位数的数字挤到换行。
    用积木 + 覆盖一条，比整张卡照抄一遍强 —— 覆盖的那条一眼看得出是特例。 */
 .tiles__cell {
-  flex: 1 1 calc(33.33% - 14rpx);
-  min-width: calc(33.33% - 14rpx);
+  /* 最小宽按边框盒算：默认的内容盒会把内边距加在 33% 之外，三列被挤成两列 */
+  box-sizing: border-box;
+  flex: 0 1 calc(33.33% - 11rpx);
+  min-width: calc(33.33% - 11rpx);
   padding: 20rpx 16rpx;
   text-align: center;
 }
@@ -634,8 +612,17 @@ onShow(load);
 .owned__row {
   margin-bottom: 12rpx;
 }
-/* 入口卡之间只留一条缝：这一列有 6+ 张卡，每张多 12rpx 就少露大半张 */
+/* 功能入口：两列等宽，缝与待办格子同一档（sh-wrap 的 12rpx） */
 .entry {
+  box-sizing: border-box;
+  flex: 0 1 calc(50% - 6rpx);
+  min-width: calc(50% - 6rpx);
+  padding: 20rpx 24rpx;
+}
+.entry__t {
+  display: block;
+}
+.fulfill {
   margin-bottom: 12rpx;
 }
 /* 带右值的入口：标题在左、现状在右。右边那句可能被挤，所以给它单独收缩 */
@@ -655,14 +642,11 @@ onShow(load);
   margin-bottom: 8rpx;
 }
 .entry__v {
-  text-align: end;
+  display: block;
+  margin-top: 4rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.entry .sh-muted {
-  display: block;
-  margin-top: 8rpx;
 }
 /* 未入驻的整屏空态：它带标题与主按钮，不是通用空态那一行灰字，所以留在页面里 */
 /* 字号与颜色由 `sh-go` 给（24rpx / primary-text，即 `.sh-link` 那一档）——
