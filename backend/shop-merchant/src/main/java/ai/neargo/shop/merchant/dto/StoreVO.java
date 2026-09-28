@@ -35,5 +35,10 @@ public record StoreVO(String storeNo, String name, String address, boolean isDef
                        * <b>不能用 businessMode 代替</b>：那一列每家新店默认都是 SELF_OPERATED，
                        * 包括第三方商家的店（TDD-门店经营类目 §10）
                        */
-                      boolean selfOperated) {
+                      boolean selfOperated,
+                      /**
+                       * 门店代码（V357）：店主自己定的那一串，对外链接 {@code /s/<代码>} 用它。
+                       * <b>空 = 还没设过</b>，链接回落店铺码。格式与保留词见 {@code StoreSlugs}
+                       */
+                      String slug) {
 }

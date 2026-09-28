@@ -13,7 +13,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,6 +43,8 @@ class StoreShortLinkFlowTest {
     private ObjectMapper json;
     @Autowired
     private ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
+    @Autowired
+    private ai.neargo.shop.merchant.service.StoreAdminService storeAdminService;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -118,6 +124,88 @@ class StoreShortLinkFlowTest {
          */
         assertThat(r.getResponse().getContentAsString()).as("裹了信封就会出现 {\"code\":0,…}").isEmpty();
         assertThat(r.getResponse().getStatus()).isEqualTo(302);
+    }
+
+    @Test
+    @DisplayName("★★★ 设了门店代码，/s/<代码> 落到这家店 —— 链接从此是能念出来的")
+    void slugResolvesToTheSameStore() throws Exception {
+        String merchantNo = approvedMerchantNo("12600140004", "短链测试店D", "CM-SL-D");
+        String storeNo = defaultStoreNo(merchantNo);
+        String code = storeCodeService.ensureFor(merchantNo);
+
+        storeAdminService.setSlug(merchantNo, storeNo, "hongxuan-futian");
+
+        String bySlug = locationOf(get("/s/hongxuan-futian"));
+        assertThat(bySlug).contains("storeCode=hongxuan-futian").contains("from=QR");
+
+        // **老码不能因此失效** —— 它印在包装上（V298 的「已印出去的码不作废」）
+        assertThat(locationOf(get("/s/" + code))).contains("storeCode=" + code);
+    }
+
+    @Test
+    @DisplayName("★★★ 清掉门店代码要真的清掉 —— updateById 会跳过 null，那句 set 根本不生成")
+    void clearingSlugActuallyClearsIt() throws Exception {
+        String merchantNo = approvedMerchantNo("12600140005", "短链测试店E", "CM-SL-E");
+        String storeNo = defaultStoreNo(merchantNo);
+        String code = storeCodeService.ensureFor(merchantNo);
+
+        storeAdminService.setSlug(merchantNo, storeNo, "will-be-removed");
+        assertThat(storeAdminService.setSlug(merchantNo, storeNo, "").slug())
+                .as("空串 = 清掉；回读到的必须是空，不是老代码")
+                .isNull();
+
+        /*
+         * 回读一次库，而不是只信上面那个返回值：**这一条是整组里最容易假绿的**。
+         * 服务里那句 set 如果写成 updateById，返回的 VO 仍然是对的（内存里的对象改了），
+         * 而库里还是 `will-be-removed` —— 页面刷新后老代码又回来了，且没有任何报错。
+         */
+        assertThat(storeAdminService.list(merchantNo).stream()
+                .filter(v -> v.storeNo().equals(storeNo)).findFirst().orElseThrow().slug())
+                .as("从库里读回来的也要是空").isNull();
+
+        assertThat(locationOf(get("/s/will-be-removed")))
+                .as("清掉之后这条链接不该再落到店里").isEqualTo("/c/");
+        assertThat(locationOf(get("/s/" + code)))
+                .as("而店铺码那条照旧").contains("storeCode=" + code);
+    }
+
+    @Test
+    @DisplayName("★★ 格式不合与撞保留词都给专门的错误码，不是「请求参数有误」")
+    void invalidSlugIsRejectedWithItsOwnCode() throws Exception {
+        String merchantNo = approvedMerchantNo("12600140006", "短链测试店F", "CM-SL-F");
+        String storeNo = defaultStoreNo(merchantNo);
+
+        for (String bad : new String[]{"ab", "-abc", "abc-", "Abc_Def", "有中文", "download"}) {
+            assertThatThrownBy(() -> storeAdminService.setSlug(merchantNo, storeNo, bad))
+                    .as("被拒的写法：%s", bad)
+                    .isInstanceOf(BizException.class)
+                    .extracting(e -> ((BizException) e).errorCode())
+                    .isEqualTo(ErrorCode.STORE_SLUG_INVALID);
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 代码被别家店占了就说「换一个」，不是 500 也不是静默覆盖")
+    void takenSlugIsRejected() throws Exception {
+        String a = approvedMerchantNo("12600140007", "短链测试店G", "CM-SL-G");
+        String b = approvedMerchantNo("12600140008", "短链测试店H", "CM-SL-H");
+        storeAdminService.setSlug(a, defaultStoreNo(a), "same-name-shop");
+
+        assertThatThrownBy(() -> storeAdminService.setSlug(b, defaultStoreNo(b), "same-name-shop"))
+                .isInstanceOf(BizException.class)
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.STORE_SLUG_TAKEN);
+
+        // 改成自己原来那个值不算撞车
+        storeAdminService.setSlug(a, defaultStoreNo(a), "same-name-shop");
+    }
+
+    /** 这个主体的默认店。setSlug 要门店号，而新商家只有一家店 */
+    private String defaultStoreNo(String merchantNo) {
+        return storeAdminService.list(merchantNo).stream()
+                .filter(ai.neargo.shop.merchant.dto.StoreVO::isDefault)
+                .findFirst().orElseThrow(() -> new AssertionError("新商家应当有一家默认店"))
+                .storeNo();
     }
 
     private String locationOf(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req)

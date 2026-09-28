@@ -56,6 +56,21 @@ public interface StoreCodeService {
     String acodeBase64(String merchantNo, String storeNo);
 
     /**
+     * 对外链接里该用的那一段（V357）：<b>门店代码（{@code slug}）优先，没设过回落店铺码</b>。
+     *
+     * <p><b>为什么不是让 {@link #ensureForStore} 直接返回它</b>：那个方法的结果要印在
+     * 贴纸和小程序码上，那两样一旦印出去就不能变（V298 的「已印出去的码不作废」）。
+     * 链接是给人读的文字，码是给机器扫的 —— 同一家店这两样不一致是正常的，
+     * 而把它们混成一个返回值，将来改代码就会连带让贴纸失效。
+     *
+     * <p>不发码：只读现有的。没有门店行、也没有码时返回 null，
+     * 调用方据此不显示链接（{@link StoreLinkService#linkOf} 也是这个口径）。
+     *
+     * @param storeNo 哪家店；<b>空 = 该主体的默认店</b>
+     */
+    String linkCodeOf(String merchantNo, String storeNo);
+
+    /**
      * 码解析结果。
      *
      * @param entityNo 主体号，永不为空

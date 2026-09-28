@@ -118,6 +118,18 @@ public enum ErrorCode {
     OTP_TEST_PHONE_CODE_TOO_SHORT(10463, "err.otp.test_phone_code_too_short"),
     /** 手机号格式不对（大陆 11 位）。白名单只用于自家演示号，不需要海外号段 */
     OTP_TEST_PHONE_FORMAT(10464, "err.otp.test_phone_format"),
+
+    /*
+     * 门店代码的两条（V357，TDD-店铺码与分享 §3.6）。
+     *
+     * **都不复用 BAD_REQUEST / CONFLICT**：店主在这一格上的下一步动作不同 ——
+     * 格式不对要按规则改写法，被占用要换一个名字。而「请求参数有误」会让他
+     * 以为是别的格子填错了，「资源冲突」他根本读不懂。
+     */
+    /** 门店代码格式不合，或撞了保留词。判据在 {@code StoreSlugs} */
+    STORE_SLUG_INVALID(10465, "err.store.slug_invalid"),
+    /** 这个门店代码已经被别家店用了。它是对外链接的一段，必须全平台唯一 */
+    STORE_SLUG_TAKEN(10466, "err.store.slug_taken"),
     /**
      * 手机号或密码不对。
      *

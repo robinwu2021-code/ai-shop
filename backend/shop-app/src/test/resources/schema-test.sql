@@ -1533,6 +1533,8 @@ CREATE TABLE IF NOT EXISTS mch_store
     ship_address VARCHAR(255) DEFAULT NULL,
     ship_carrier VARCHAR(16) DEFAULT NULL,
     ship_weight_g INT(11) DEFAULT NULL,
+    slug VARCHAR(32) DEFAULT NULL,
+    CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
     CONSTRAINT uk_store_no UNIQUE (store_no)

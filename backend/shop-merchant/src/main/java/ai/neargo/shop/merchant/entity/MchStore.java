@@ -72,6 +72,18 @@ public class MchStore extends BaseEntity {
     private String storeCode;
 
     /**
+     * 门店代码（V357）：<b>店主自己定的那一串</b>，用在对外链接 {@code /s/<代码>} 上。
+     *
+     * <p>与 {@link #storeCode} 并存而不是取代它 —— 后者是印在物料上的（6 位随机大写），
+     * V298 的注释把理由写死了：「已经印出去的码不作废」。解析时两列都认，slug 先、code 后
+     * （顺序固定：MySQL 默认 collation 不区分大小写，"哪个查得到用哪个"会变成看运气）。
+     *
+     * <p><b>空 = 店主还没设过</b>，链接回落 {@code store_code}，与 V357 之前的行为一致。
+     * 格式与保留词在 {@code StoreSlugs} 里，不在这儿重复一份。
+     */
+    private String slug;
+
+    /**
      * 这家店的小程序码 PNG（base64，不含 {@code data:} 前缀）。
      *
      * <p><b>生成一次就复用</b>：微信永久码每个 appid 总量有限，码下沉到门店之后

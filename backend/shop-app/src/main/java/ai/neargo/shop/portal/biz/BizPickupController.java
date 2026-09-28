@@ -210,7 +210,8 @@ public class BizPickupController {
         String storeNo = BizContext.current().currentStoreNo();
         String code = storeCodeService.ensureForStore(merchantNo, storeNo);
         return new StoreQrcode(merchantNo, code, storeNo,
-                storeLinkService.linkOf(code, null),
+                // 链接用门店代码（V357），码值仍是上面那个 `code` —— 印出去的东西不跟着变
+                storeLinkService.linkOf(storeCodeService.linkCodeOf(merchantNo, storeNo), null),
                 // 码图与码同一家店 —— 不同源的话图扫出来是主店的，而码值显示的是分店的
                 storeCodeService.acodeBase64(merchantNo, storeNo),
                 "建议印成 3×3cm 贴纸，贴在包装袋封口处");

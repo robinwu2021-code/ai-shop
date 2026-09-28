@@ -9,6 +9,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.service.StoreAdminService;
@@ -113,6 +114,42 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             s.setAddress(address);
         }
         DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
+        return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO setSlug(String merchantNo, String storeNo, String rawSlug) {
+        MchStore s = require(merchantNo, storeNo);
+        String slug = StoreSlugs.normalize(rawSlug);
+        StoreSlugs.require(slug);
+
+        if (slug != null) {
+            /*
+             * 先查是为了给出人话错误（「这个代码被占用了，换一个」）；
+             * **真正兜底的是 uk_mch_store_slug** —— 先查后写必然有竞态。
+             * 排除自己：把代码改成原来那个值不该被当成撞车。
+             */
+            MchStore taken = DataScopeContext.executeWithoutScope(() ->
+                    storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getSlug, slug).last("limit 1")));
+            if (taken != null && !storeNo.equals(taken.getStoreNo())) {
+                throw BizException.of(ErrorCode.STORE_SLUG_TAKEN);
+            }
+        }
+
+        /*
+         * **清空必须走 UpdateWrapper 显式 set，不能用 updateById。**
+         * MyBatis-Plus 默认跳过 null 字段，于是「把代码删掉」那一句 set 根本不会生成 ——
+         * 店主点了保存、接口返回成功、页面回读还是老代码，没有任何报错。
+         * （同一个坑记在 [[mybatis-plus-skips-nulls]]：insert 也跳，
+         * 「这列没有默认值」往往就是传进来是 null。）
+         */
+        DataScopeContext.executeWithoutScope(() -> storeMapper.update(null,
+                Wrappers.<MchStore>lambdaUpdate()
+                        .set(MchStore::getSlug, slug)
+                        .eq(MchStore::getId, s.getId())));
+        s.setSlug(slug);
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }
 
@@ -242,7 +279,8 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                 s.getRating() == null ? 0 : s.getRating(),
                 s.getRatingCount() == null ? 0 : s.getRatingCount(),
                 s.getBusinessMode(),
-                entitySelfOperated(s.getEntityNo()));
+                entitySelfOperated(s.getEntityNo()),
+                s.getSlug());
     }
 
     /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */

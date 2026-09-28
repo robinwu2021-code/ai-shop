@@ -719,6 +719,18 @@ public class BizMerchantController {
                 req.name(), req.address());
     }
 
+    /**
+     * 设这家店的门店代码（V357）—— 对外链接 {@code hxmall.top/s/<代码>} 里露出来的那一段。
+     *
+     * <p>传空串就是清掉它，链接回落系统发的店铺码。
+     * 格式与保留词由 {@code StoreSlugs} 判，端上那份提示要与它同口径。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/store/{storeNo}/slug")
+    public StoreVO setStoreSlug(@PathVariable String storeNo, @RequestBody SlugReq req) {
+        return storeAdminService.setSlug(BizContext.requireMerchantNo(), storeNo, req.slug());
+    }
+
     /** 停用 / 启用。**默认店不能停用** —— 停掉之后「这个主体的店在哪」就没有答案了。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
     @PostMapping("/biz/store/{storeNo}/status")
@@ -762,6 +774,10 @@ public class BizMerchantController {
     }
 
     public record StoreCategoryItemReq(String categoryNo, String displayName, Integer sort) {
+    }
+
+    /** 门店代码。**null 与空串都表示清掉** —— 取错名字想撤回是真会发生的动作 */
+    public record SlugReq(String slug) {
     }
 
     public record StatusReq(Boolean active) {

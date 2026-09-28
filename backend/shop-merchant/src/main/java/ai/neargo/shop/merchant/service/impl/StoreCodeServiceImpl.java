@@ -3,6 +3,7 @@ package ai.neargo.shop.merchant.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
@@ -103,7 +104,21 @@ public class StoreCodeServiceImpl implements StoreCodeService {
     @Override
     public CodeTarget resolveTarget(String storeCode) {
         /*
-         * **先查门店表**：V298 之后新发的码都在那儿，默认店的旧码也回填了过去。
+         * **先查门店代码（V357）**：它是店主自己定的那一串，对外链接 /s/<代码> 优先用它。
+         *
+         * 顺序是固定的（slug → store_code → 主体的 store_code），不是「哪个查得到用哪个」——
+         * MySQL 默认 collation 不区分大小写，而 slug 强制小写、store_code 是 6 位大写，
+         * 两个值域看起来不重叠，实际上 `SMTBA2` 能匹配到 slug=`smtba2` 的那一行。
+         * 固定顺序让这种情况的行为确定，而不是取决于查询计划。
+         */
+        MchStore bySlug = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getSlug, StoreSlugs.normalize(storeCode)).last("limit 1")));
+        if (bySlug != null) {
+            return new CodeTarget(bySlug.getEntityNo(), bySlug.getStoreNo());
+        }
+        /*
+         * **再查门店的码**：V298 之后新发的码都在那儿，默认店的旧码也回填了过去。
          * 查得到就同时知道是哪家分店 —— 这正是一店一码要买的东西。
          */
         MchStore s = DataScopeContext.executeWithoutScope(() ->
@@ -159,6 +174,19 @@ public class StoreCodeServiceImpl implements StoreCodeService {
      * <p><b>按 entityNo 一起过滤</b>：只按 storeNo 查的话，传错门店号会发码到别人家店上，
      * 而这种错在界面上完全看不出来 —— 码是新的、扫得通、只是算到了另一家的账上。
      */
+    @Override
+    public String linkCodeOf(String merchantNo, String storeNo) {
+        MchStore store = storeOf(merchantNo, storeNo);
+        if (store == null) {
+            // 没有门店行的历史主体：码落在主体上，链接也只能用它
+            MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                    merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                            .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+            return m == null ? null : m.getStoreCode();
+        }
+        return notBlank(store.getSlug()) ? store.getSlug() : store.getStoreCode();
+    }
+
     private MchStore storeOf(String merchantNo, String storeNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()

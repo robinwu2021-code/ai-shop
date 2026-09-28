@@ -167,7 +167,13 @@ public class BizDashboardController {
          * 印在包装袋上的码，全都指向一个不存在的地方。而功能点在清单上是「已实现」。
          * 发假的与不发，在商家那边的区别是：**前者他印了 500 张贴纸才发现**。
          */
-        String url = storeLinkService.linkOf(code, goodsNo);
+        /*
+         * **链接里用门店代码（slug），不是贴纸上那个码**（V357）。
+         * 两者可以不同：`code` 印在包装与小程序码上，一旦印出去就不能变；
+         * 链接是给人读的文字，`hxmall.top/s/hongxuan-futian` 比 `/s/SMTBA2` 好念得多。
+         */
+        String url = storeLinkService.linkOf(
+                storeCodeService.linkCodeOf(merchantNo, BizContext.current().currentStoreNo()), goodsNo);
         String text = url == null
                 // 没链接时文案也不能带一个空洞 —— 商家会连着那半句一起粘出去
                 ? shopName + "：街坊邻居下单，楼下自提，扫下方小程序码进店"

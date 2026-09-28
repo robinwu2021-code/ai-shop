@@ -65,4 +65,16 @@ public interface StoreAdminService {
      * </ol>
      */
     StoreVO setPayment(String merchantNo, String storeNo, String payMerchantNo);
+
+    /**
+     * 设这家店的门店代码（V357）—— 对外链接 {@code /s/<代码>} 里露出来的那一段。
+     *
+     * <p><b>空串 / null = 清掉代码</b>，链接回落店铺码。这是店主会真的用到的动作
+     * （名字取错了想撤回），所以不能只支持"改成另一个"。
+     *
+     * @throws ai.neargo.shop.common.BizException
+     *     {@code STORE_SLUG_INVALID} 格式不合或撞保留词 ·
+     *     {@code STORE_SLUG_TAKEN} 已被别家店占用
+     */
+    StoreVO setSlug(String merchantNo, String storeNo, String slug);
 }
