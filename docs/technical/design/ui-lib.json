@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 342,
+        "b-app": 341,
         "c-app": 266
       }
     },
@@ -1379,7 +1379,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 143,
+        "b-app": 142,
         "c-app": 84
       }
     },
@@ -1435,7 +1435,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 523,
+        "b-app": 522,
         "c-app": 186
       }
     },
@@ -3756,15 +3756,22 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 45,
-      "localSelectors": 22,
-      "localCssLines": 101,
+      "libClassHits": 42,
+      "localSelectors": 21,
+      "localCssLines": 96,
       "rolled": [
         {
           "id": "rowbetween",
           "label": "两端对齐行",
           "lib": ".sh-row + .sh-row--between",
           "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+          "gap": false
+        },
+        {
+          "id": "fill",
+          "label": "占满剩余自写",
+          "lib": ".sh-fill",
+          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
           "gap": false
         }
       ]
@@ -5712,6 +5719,16 @@
       "lib": ".sh-row + .sh-row--between",
       "gap": false,
       "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*justify-content:\\s*space-between",
+      "pages": [
+        "b-app/home"
+      ]
+    },
+    {
+      "id": "fill",
+      "label": "占满剩余自写",
+      "lib": ".sh-fill",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
       "pages": [
         "b-app/home"
       ]
