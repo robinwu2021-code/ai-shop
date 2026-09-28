@@ -4372,6 +4372,40 @@ CREATE TABLE IF NOT EXISTS prd_stock_sync_log
     CONSTRAINT uk_prd_stock_sync_log UNIQUE (source_ref, store_no, sku_no)
 );
 
+CREATE TABLE IF NOT EXISTS ord_express_pickup
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    pickup_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) DEFAULT NULL,
+    provider VARCHAR(16) NOT NULL,
+    carrier VARCHAR(16) NOT NULL,
+    task_id VARCHAR(64) DEFAULT NULL,
+    provider_order_id VARCHAR(64) DEFAULT NULL,
+    tracking_no VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL,
+    provider_status INT(11) DEFAULT NULL,
+    weight_g INT(11) NOT NULL,
+    charged_weight_g INT(11) DEFAULT NULL,
+    freight_minor BIGINT(20) DEFAULT NULL,
+    list_price_minor BIGINT(20) DEFAULT NULL,
+    freight_booked_minor BIGINT(20) NOT NULL DEFAULT 0,
+    courier_name VARCHAR(64) DEFAULT NULL,
+    courier_mobile VARCHAR(32) DEFAULT NULL,
+    fail_reason VARCHAR(255) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_express_pickup_no UNIQUE (pickup_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

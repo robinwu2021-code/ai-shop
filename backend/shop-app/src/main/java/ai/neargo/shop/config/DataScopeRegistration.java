@@ -428,6 +428,10 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_debt_txn", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+        // 快递代下单的取件单（TDD-快递100商家寄件）。服务层读写一律显式豁免、自己按 entity_no 判归属 ——
+        // 商家用的是消费者令牌（维度 SELF），不豁免会拼成 1=0；回调线程则根本没有会话
+        registry.register("ord_express_pickup", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
 
         /*
          * 拼团与报价。运营端的全量队列（`/ops/groups`、`/ops/quotes`）此前走的是

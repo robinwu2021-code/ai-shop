@@ -694,6 +694,57 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<StoreSender> storeSender(String merchantNo, String storeNo) {
+        if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        var store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (store == null) {
+            return Optional.empty();
+        }
+        var owner = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .last("limit 1")));
+        String mobile = owner == null || owner.getLoginPhone() == null ? "" : owner.getLoginPhone().trim();
+        return Optional.of(new StoreSender(store.getName(), mobile, senderAddress(store)));
+    }
+
+    /**
+     * 寄件地址：选点地址 + 门牌，缺省份时用区划路径补在前面。
+     *
+     * <p>选点来的地址常常只到路名（「盐湖区解放路 1 号」）；快递公司按省市分拣，
+     * 缺了会拒单或分错网点。区划码是选点时一起存下的，补得上。
+     */
+    private String senderAddress(ai.neargo.shop.merchant.entity.MchStore store) {
+        String base = (store.getAddress() == null ? "" : store.getAddress().trim())
+                + (store.getAddressDetail() == null ? "" : store.getAddressDetail().trim());
+        if (base.isEmpty()) {
+            return "";
+        }
+        if (store.getAdcode() == null || store.getAdcode().isBlank()) {
+            return base;
+        }
+        String path = masterDataPort.regionPathName(store.getAdcode());
+        if (path == null || path.equals(store.getAdcode())) {
+            return base;
+        }
+        String[] parts = path.split("\\s*/\\s*");
+        StringBuilder prefix = new StringBuilder();
+        for (String part : parts) {
+            if (!part.isBlank() && !base.contains(part)) {
+                prefix.append(part);
+            }
+        }
+        return prefix + base;
+    }
+
+    @Override
     public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();

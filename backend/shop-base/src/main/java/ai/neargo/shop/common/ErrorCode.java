@@ -770,6 +770,18 @@ public enum ErrorCode {
      */
     STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
 
+    /*
+     * 快递代下单（TDD-快递100商家寄件）。
+     *
+     * 70070 与 70073 分开：前者是平台还没开通（商家怎么改都没用，去手填运单号），
+     * 后者是快递公司这一单不接（换一家、改重量可能就行）。合成一个码，商家会一直换快递公司试。
+     */
+    EXPRESS_CHANNEL_OFF(70070, "err.express.channel_off"),
+    EXPRESS_PICKUP_EXISTS(70071, "err.express.pickup_exists"),
+    EXPRESS_SENDER_INCOMPLETE(70072, "err.express.sender_incomplete"),
+    EXPRESS_PROVIDER_REJECTED(70073, "err.express.provider_rejected"),
+    EXPRESS_NOT_CANCELLABLE(70074, "err.express.not_cancellable"),
+
     /**
      * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。
      *

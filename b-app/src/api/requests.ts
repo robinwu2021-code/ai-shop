@@ -308,6 +308,18 @@ export interface OrderListQuery {
   allStores?: boolean;
 }
 
+/** 快递报价（`mExpressQuotes`，GET 查询参数）。重量公斤，0.1–30 */
+export interface ExpressQuotesQuery {
+  weightKg: number;
+}
+
+/** 叫快递（`mBookExpress`）。重量公斤，0.1–30 */
+export interface BookExpressReq {
+  /** 微信 delivery_id */
+  carrier: string;
+  weightKg: number;
+}
+
 export interface ShipReq {
   /** 快递单号。填了即视为已发货，订单流转到 SHIPPED */
   expressNo: string;

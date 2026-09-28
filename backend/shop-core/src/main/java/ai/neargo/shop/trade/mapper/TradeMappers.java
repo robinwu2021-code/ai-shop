@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.mapper;
 
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -61,5 +62,8 @@ public final class TradeMappers {
     public interface ShippingUploadMapper
             extends com.baomidou.mybatisplus.core.mapper.BaseMapper<
                     ai.neargo.shop.trade.entity.TrdShippingUpload> {
+    }
+
+    public interface ExpressPickupMapper extends BaseMapper<OrdExpressPickup> {
     }
 }

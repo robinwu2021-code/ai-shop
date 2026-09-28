@@ -12,7 +12,9 @@ import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
+import { confirm } from "@ai-shop/ui/prompt";
 import type { Order } from "@shared/types";
+import type { ExpressPickup, ExpressQuote } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -99,6 +101,7 @@ async function load(orderNo: string) {
   try {
     order.value = await api.mOrderDetail(orderNo);
     failed.value = false;
+    void loadPickup();
   } catch {
     // 此前这句是裸的：拉挂了是一个没人接的 Promise 拒绝，
     // 界面上一个字都不说，整页停在空白
@@ -131,6 +134,87 @@ async function delivered() {
   try {
     order.value = await api.mDelivered(order.value.orderNo);
     uni.showToast({ title: t("order.deliveredDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+// ---------------------------------------------------------------- 叫快递上门（TDD-快递100商家寄件）
+
+/** 最近一张取件单。叫过就显示它的进度，不再给表单 —— 同一单同时只能有一张进行中的 */
+const pickup = ref<ExpressPickup | null>(null);
+const weightKg = ref("");
+const quotes = ref<ExpressQuote[] | null>(null);
+const quoteIdx = ref(-1);
+const PICKUP_OPEN = ["CREATED", "ACCEPTED", "PICKED", "DONE"];
+/** 取消与失败之后可以重新叫：这时表单回来，上一张的原因留一行 */
+const pickupActive = computed(() => !!pickup.value && PICKUP_OPEN.includes(pickup.value.status));
+const canCancelPickup = computed(
+  () => pickup.value?.status === "CREATED" || pickup.value?.status === "ACCEPTED",
+);
+const weightOk = computed(() => {
+  const w = Number(weightKg.value);
+  return w >= 0.1 && w <= 30;
+});
+
+async function loadPickup() {
+  if (order.value?.fulfillment !== FULFILLMENT.EXPRESS || !merchant.can("biz:ship")) return;
+  try {
+    pickup.value = await api.mExpressPickup(order.value.orderNo);
+  } catch {
+    // 取件单拉不到不影响手填发货：那一块照常可用
+    pickup.value = null;
+  }
+}
+
+async function fetchQuotes() {
+  if (!order.value || !weightOk.value || busy.value) return;
+  busy.value = true;
+  try {
+    quotes.value = await api.mExpressQuotes(order.value.orderNo, Number(weightKg.value));
+    quoteIdx.value = quotes.value.length ? 0 : -1;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function bookExpress() {
+  const q = quotes.value?.[quoteIdx.value];
+  if (!order.value || !q || busy.value) return;
+  const ok = await confirm({
+    title: String(t("order.expressBook")),
+    hint: String(t("order.expressConfirm", { carrier: q.carrierName, price: money(q.priceMinor) })),
+    confirmText: String(t("order.expressBookBtn")),
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    pickup.value = await api.mBookExpress(order.value.orderNo, q.carrier, Number(weightKg.value));
+    quotes.value = null;
+    uni.showToast({ title: t("order.expressBooked"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function cancelPickup() {
+  if (!order.value || busy.value) return;
+  const ok = await confirm({
+    title: String(t("order.expressCancelAsk")),
+    confirmText: String(t("order.expressCancel")),
+    cancelText: String(t("order.expressKeep")),
+    danger: true,
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    pickup.value = await api.mCancelExpress(order.value.orderNo);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -241,7 +325,74 @@ onLoad((q) => {
       </view>
 
       <!-- 快递发货：快递公司 + 运单号（B-11.4.3；快递公司 2026-09-20 加，微信发货信息录入要求成对） -->
-      <view v-if="canShip" class="sh-card sh-mt-sm">
+      <!--
+        叫快递上门（TDD-快递100商家寄件）。放在手填运单号之前：它是推荐路径 ——
+        平台共用一个快递100 账号，小单量也拿得到批量价。叫过之后这张卡只显示进度。
+      -->
+      <view v-if="pickupActive && pickup" class="sh-card sh-mt-sm">
+        <view class="sh-row sh-row--between">
+          <text class="txt-title">{{ pickup.carrierName }}</text>
+          <text class="sh-chip" :class="pickup.status === 'PICKED' || pickup.status === 'DONE' ? 'sh-chip--primary' : ''">
+            {{ $t(`order.expressStatus.${pickup.status}`) }}
+          </text>
+        </view>
+        <view v-if="pickup.courierName" class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.expressCourier") }}</text>
+          <text class="sh-num">{{ pickup.courierName }} {{ pickup.courierMobile ?? "" }}</text>
+        </view>
+        <view v-if="pickup.trackingNo" class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.expressNo") }}</text>
+          <text class="sh-num">{{ pickup.trackingNo }}</text>
+        </view>
+        <view class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.expressWeight") }}</text>
+          <text class="sh-num">{{ ((pickup.chargedWeightG ?? pickup.weightG) / 1000).toString() }} kg</text>
+        </view>
+        <view v-if="pickup.freightMinor != null" class="line sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.expressFreight") }}</text>
+          <text class="sh-num">{{ money(pickup.freightMinor) }}</text>
+        </view>
+        <view v-if="canCancelPickup" class="sh-btn sh-btn--danger sh-mt-sm" @tap="cancelPickup">
+          {{ $t("order.expressCancel") }}
+        </view>
+      </view>
+      <view v-else-if="canShip" class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t("order.expressBook") }}</text>
+        <text v-if="pickup?.failReason" class="txt-caption sh-muted sh-mt-sm express__last">
+          {{ $t(`order.expressStatus.${pickup.status}`) }}：{{ pickup.failReason }}
+        </text>
+        <view class="sh-row sh-mt-sm">
+          <input
+            v-model="weightKg"
+            type="digit"
+            class="field__input sh-fill"
+            :placeholder="$t('order.expressWeightPh')"
+            @input="quotes = null"
+          />
+          <view class="sh-btn sh-btn--sm" :class="{ 'sh-btn--muted': !weightOk }" @tap="fetchQuotes">
+            {{ $t("order.expressQuote") }}
+          </view>
+        </view>
+        <template v-if="quotes">
+          <text v-if="!quotes.length" class="txt-caption sh-muted sh-mt-sm express__last">{{ $t("order.expressNoQuote") }}</text>
+          <view
+            v-for="(q, i) in quotes"
+            :key="q.carrier"
+            class="quote sh-row sh-row--between"
+            :class="{ 'quote--on': quoteIdx === i }"
+            @tap="quoteIdx = i"
+          >
+            <text>{{ q.carrierName }}</text>
+            <view class="sh-row">
+              <text v-if="q.listPriceMinor > q.priceMinor" class="sh-was sh-num">{{ money(q.listPriceMinor) }}</text>
+              <text class="txt-strong sh-num">{{ money(q.priceMinor) }}</text>
+            </view>
+          </view>
+          <view v-if="quotes.length" class="sh-btn sh-mt-sm" @tap="bookExpress">{{ $t("order.expressBookBtn") }}</view>
+        </template>
+      </view>
+
+      <view v-if="canShip && !pickupActive" class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.ship") }}</text>
         <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
         <view class="sh-wrap sh-mt-sm">
@@ -366,6 +517,20 @@ onLoad((q) => {
 .due__hint {
   display: block;
   margin-top: 16rpx;
+}
+/* 报价行：一家一行，选中的那行描主色边。行高够一根手指 */
+.quote {
+  margin-top: 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  border: var(--sh-hairline);
+}
+.quote--on {
+  border-color: var(--sh-primary);
+  background: var(--sh-primary-tint);
+}
+.express__last {
+  display: block;
 }
 .carrier__chip {
   padding: 8rpx 20rpx;

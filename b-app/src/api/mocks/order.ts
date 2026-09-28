@@ -20,7 +20,7 @@ import {
   storeOfOrder,
   takePendingAfterSale,
 } from "./_shared";
-import type { MerchantApi } from "../contract";
+import type { ExpressPickup, MerchantApi } from "../contract";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
@@ -29,6 +29,10 @@ export const orderMock: Pick<MerchantApi,
   | "mShip"
   | "mDelivered"
   | "mConfirmOfflinePay"
+  | "mExpressQuotes"
+  | "mBookExpress"
+  | "mExpressPickup"
+  | "mCancelExpress"
   | "mAppointmentSlots"
   | "mOpenAppointmentSlot"
   | "mCloseAppointmentSlot"
@@ -129,6 +133,60 @@ export const orderMock: Pick<MerchantApi,
     pushTimeline(o, "商家已确认收款");
     persist();
     return delay(o);
+  },
+
+  // ---------------------------------------------------------------- 快递代下单
+
+  async mExpressQuotes(orderNo, weightKg) {
+    requireExpressShippable(orderNo);
+    assertWeight(weightKg);
+    // 按重量估一个像样的价：首重 + 续重，各家差一点。**只按价升序给**，与真后端同一口径
+    const extra = Math.max(0, Math.ceil(weightKg - 1));
+    return delay(MOCK_CARRIERS
+      .map((c, i) => {
+        const price = 350 + i * 60 + extra * (120 + i * 20);
+        return { carrier: c, carrierName: nameOf(c), priceMinor: price, listPriceMinor: Math.round(price * 2.2) };
+      })
+      .sort((a, b) => a.priceMinor - b.priceMinor));
+  },
+
+  async mBookExpress(orderNo, carrier, weightKg) {
+    requireExpressShippable(orderNo);
+    assertWeight(weightKg);
+    // 替身也要校验快递公司（同 mShip 的理由）：吞掉参数的话 mock 一路通畅，真后端 400
+    if (!MOCK_CARRIERS.includes(carrier)) throw new Error("请选择快递公司");
+    const cur = pickups.get(orderNo);
+    if (cur && OPEN.includes(cur.status)) throw new Error("这一单已经叫过快递，取消后才能重新叫");
+    const p: ExpressPickup = {
+      pickupNo: `EP${Date.now()}`,
+      carrier,
+      carrierName: nameOf(carrier),
+      status: "CREATED",
+      trackingNo: null,
+      weightG: Math.round(weightKg * 1000),
+      chargedWeightG: null,
+      freightMinor: null,
+      courierName: null,
+      courierMobile: null,
+      failReason: null,
+      createdAt: Date.now(),
+    };
+    pickups.set(orderNo, p);
+    return delay({ ...p });
+  },
+
+  async mExpressPickup(orderNo) {
+    const p = pickups.get(orderNo);
+    return delay(p ? { ...p } : null);
+  },
+
+  async mCancelExpress(orderNo) {
+    const p = pickups.get(orderNo);
+    if (!p || !OPEN.includes(p.status)) throw new Error("没有进行中的取件单");
+    if (p.status === "PICKED") throw new Error("快递员已取件，不能再取消");
+    p.status = "CANCELLED";
+    p.failReason = "商家取消";
+    return delay({ ...p });
   },
 
   // ---------------------------------------------------------------- 预约排期
@@ -484,3 +542,22 @@ export const orderMock: Pick<MerchantApi,
     return delay(o.afterSale!);
   },
 };
+
+// ---- 快递代下单的替身状态。只在内存里：刷新即清空，够演示「报价 → 叫快递 → 取消」
+const MOCK_CARRIERS = ["ZTO", "YTO", "YD", "STO", "JTSD", "JD", "DBL", "EMS"];
+const OPEN: ExpressPickup["status"][] = ["CREATED", "ACCEPTED", "PICKED"];
+const pickups = new Map<string, ExpressPickup>();
+
+function nameOf(code: string): string {
+  return EXPRESS_COMPANIES.find((c) => c.code === code)?.name ?? code;
+}
+
+/** 与真后端同一道闸：快递单、待发货（PAID）才能叫快递 */
+function requireExpressShippable(orderNo: string) {
+  const o = findOrder(orderNo);
+  if (o.fulfillment !== "EXPRESS" || o.status !== "PAID") throw new Error("订单状态不允许该操作");
+}
+
+function assertWeight(kg: number) {
+  if (!(kg >= 0.1 && kg <= 30)) throw new Error("重量要在 0.1 到 30 公斤之间");
+}

@@ -163,6 +163,37 @@ export interface AutomationSession {
   token: string;
 }
 
+/**
+ * 快递代下单（TDD-快递100商家寄件）。一家快递的报价，单位分。
+ * `listPriceMinor` 是快递公司标准价，`priceMinor` 是平台实付的折后价 —— 两个都给，商家看得出省了多少。
+ */
+export interface ExpressQuote {
+  /** 微信 delivery_id，与 `EXPRESS_COMPANIES` 同一套码 */
+  carrier: string;
+  carrierName: string;
+  priceMinor: number;
+  listPriceMinor: number;
+}
+
+/** 取件单状态：已下单 / 已接单 / 已取件 / 已签收 / 已取消 / 失败 */
+export type ExpressPickupStatus = "CREATED" | "ACCEPTED" | "PICKED" | "DONE" | "CANCELLED" | "FAILED";
+
+/** 一张取件单。重量单位克，运费单位分；取件前没有计费重量与运费 */
+export interface ExpressPickup {
+  pickupNo: string;
+  carrier: string;
+  carrierName: string;
+  status: ExpressPickupStatus;
+  trackingNo: string | null;
+  weightG: number;
+  chargedWeightG: number | null;
+  freightMinor: number | null;
+  courierName: string | null;
+  courierMobile: string | null;
+  failReason: string | null;
+  createdAt: number;
+}
+
 export interface Statement {
   /** YYYY-MM；查全部时为空 */
   period: string;
@@ -1250,6 +1281,16 @@ export interface MerchantApi {
    * 权限用 `biz:receive` 不是 `biz:order:view`：后者是只读权限，配送员也持有。
    */
   mConfirmOfflinePay(subOrderNo: string): Promise<Order>;
+
+  // ---- 快递代下单（TDD-快递100商家寄件）。权限与发货同一个 biz:ship
+  /** 各家报价，按价从低到高；查不到价的那家不出现 */
+  mExpressQuotes(orderNo: string, weightKg: number): Promise<ExpressQuote[]>;
+  /** 平台代叫快递：快递员上门取件，取件后运单号自动回填、订单自动变成已发货 */
+  mBookExpress(orderNo: string, carrier: string, weightKg: number): Promise<ExpressPickup>;
+  /** 这一单最近一张取件单；没叫过为 null */
+  mExpressPickup(orderNo: string): Promise<ExpressPickup | null>;
+  /** 取件前取消 */
+  mCancelExpress(orderNo: string): Promise<ExpressPickup>;
 
   // ---- 预约排期（B-11.5）
   /** 本店时段。**连约满的和停掉的一起列** —— 只给「还能约的」，商家看不出为什么没人约 */

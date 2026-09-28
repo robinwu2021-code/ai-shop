@@ -209,6 +209,10 @@ class BizEndpointPermTest {
         put("/biz/pickup/overview", BizPerms.VERIFY);
         put("/biz/order/{subOrderNo}/ship", BizPerms.SHIP);
         put("/biz/order/{subOrderNo}/delivered", BizPerms.SHIP);
+        // 快递代下单（TDD-快递100商家寄件）：叫快递就是发货的另一种做法，与发货同一个权限
+        put("/biz/order/{subOrderNo}/express", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/express/quotes", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/express/cancel", BizPerms.SHIP);
         put("/biz/order/{subOrderNo}/confirm-offline-pay", BizPerms.RECEIVE);
 
         // ---- 订单与经营数据 ----

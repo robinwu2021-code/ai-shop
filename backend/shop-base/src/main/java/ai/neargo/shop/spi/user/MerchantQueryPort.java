@@ -133,6 +133,20 @@ public interface MerchantQueryPort {
     java.util.Optional<DeliveryOrigin> deliveryOrigin(String merchantNo, String storeNo);
 
     /**
+     * 门店的寄件人信息（快递代下单用，TDD-快递100商家寄件）。
+     *
+     * <p>手机号取<b>店主账号的登录手机</b>：门店表上没有单独的电话列，而快递员上门前要打的就是老板。
+     * 地址是<b>带省市区的整条</b>：选点来的地址可能只到路名，快递公司按它分拣会拒单，
+     * 所以缺省份时用门店的区划码补上。
+     *
+     * @return 门店不属于这个主体时为空；属于但缺地址或手机号时，对应字段为空串（由调用方说清缺什么）
+     */
+    java.util.Optional<StoreSender> storeSender(String merchantNo, String storeNo);
+
+    record StoreSender(String name, String mobile, String address) {
+    }
+
+    /**
      * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
      *
      * <p>没标点的门店，{@code requireWithinDeliveryRadius} 那条闸直接放行 ——
