@@ -119,3 +119,36 @@ describe("「我的」页的邀请入口", () => {
     expect(me).toContain("fission.value = null");
   });
 });
+
+/**
+ * 邀请人从落地到登录这一段（§3.1）。
+ *
+ * <p><b>这是整条链最容易静默断的一环</b>：邀请链接指向的是首页
+ * （`/pages/home/index?inviterNo=xxx`），而登录页只读**自己 query 上**的 `inviterNo`。
+ * 中间不接一手，参数就丢了 —— 而他注册成功、也下单了，一切看起来都正常，
+ * 只有邀请人永远等不到那张券，台账里连一行都没有。
+ */
+describe("邀请人不能在跳登录时丢", () => {
+  const read = (p: string) => require("node:fs").readFileSync(
+    require("node:path").resolve(__dirname, p), "utf8");
+
+  it("★★★ 首页把 query 上的邀请人接住并存起来", () => {
+    const home = read("../src/pages/home/index.vue");
+    expect(home, "首页没有 onLoad，query 上的邀请人根本读不到").toContain("onLoad((q)");
+    expect(home).toContain("user.pendingInviter = from");
+    // 空值不许覆盖：他从扫码/历史记录再进首页是常事，覆盖会把上一次的抹掉
+    expect(home).toContain("if (from &&");
+  });
+
+  it("★★★ 登录页 query 没有时用暂存的", () => {
+    expect(read("../src/pages/login/index.vue")).toContain("user.pendingInviter");
+  });
+
+  it("★★ 登录成功后清掉 —— 同一台设备换个人登录不该算成同一个人邀的", () => {
+    expect(read("../src/stores/user.ts")).toContain('this.pendingInviter = "";');
+  });
+
+  it("★★ 不把自己算成邀请人 —— 他把链接发给自己再点开是常有的事", () => {
+    expect(read("../src/pages/home/index.vue")).toContain("from !== user.user?.cUserNo");
+  });
+});

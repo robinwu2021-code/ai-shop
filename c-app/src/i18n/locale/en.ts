@@ -20,6 +20,7 @@ export default {
   },
   home: {
     title: "Neighbourhood Picks",
+    invitedTip: "A friend invited you — both of you get a voucher after your first order",
     groups: "Group buys",
     groupsMore: "See all ›",
     /** 首页顶上那一行团购入口：团已并进商品卡，这里只剩一个数和「全部」 */

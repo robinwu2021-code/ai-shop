@@ -13,7 +13,7 @@
  */
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onShow, onShareAppMessage } from "@dcloudio/uni-app";
+import { onLoad, onShow, onShareAppMessage } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
 import { useCartStore } from "@/stores/cart";
@@ -233,6 +233,30 @@ async function ensureIdentity() {
  * 入口没有消失：「我的」页那行「绑定手机号 ›」一直在，想绑随时能绑。
  */
 
+/**
+ * 邀请链接落地（§3.1）。
+ *
+ * <p>分享出去的路径是 `/pages/home/index?inviterNo=xxx`，而**登录页只读自己 query 上的
+ * `inviterNo`** —— 他从这一屏点去登录时，那个参数不会跟过来。所以在这里把它接住，
+ * 存进 store 等到登录那一刻。不接的话：他注册成功、也下单了，一切看起来都正常，
+ * 只有邀请人永远等不到那张券，而台账里连一行都没有。
+ *
+ * <p>**只在有值时写**：空值覆盖会把上一次存的邀请人抹掉 ——
+ * 而用户从别处（扫码、历史记录）再进首页是常事。
+ */
+onLoad((q) => {
+  const from = (q?.inviterNo as string) || "";
+  if (from && from !== user.user?.cUserNo) {
+    user.pendingInviter = from;
+    invitedBy.value = from;
+  }
+});
+
+/** 这一次是被谁邀来的。只影响那条提示条，不参与任何判权 */
+const invitedBy = ref("");
+/** 关掉就不再出现（本次会话内）—— 提示条不该在他每次回到首页时再拦一次 */
+const inviteTipClosed = ref(false);
+
 onShow(() => {
   load();
   cart.load();
@@ -271,6 +295,17 @@ onShareAppMessage(() =>
 
 <template>
   <sh-scaffold title-key="home.title" tab="home">
+    <!--
+      被邀请来的那条提示（§3.1）。**可关闭、不弹窗** ——
+      弹窗在社区场景里的第一反应是关掉，而它挡住的正是商品本身；
+      提示条留在原地，他想看就看。
+
+      未登录时也显示：这条提示的作用恰恰是告诉还没注册的人「注册下单有券」。
+    -->
+    <view v-if="invitedBy && !inviteTipClosed" class="sh-notice block invtip">
+      <text class="txt-caption sh-fill">{{ $t("home.invitedTip") }}</text>
+      <text class="txt-caption sh-muted invtip__x" @tap="inviteTipClosed = true">✕</text>
+    </view>
     <!-- 页头两行，按**使用频次**排序：
          · 自提点是「装一次、几个月不动」的设置 —— 收成一行小字，能看见、能切换即可
          · 搜索是每次打开都可能用的动作 —— 给它主视觉
@@ -497,5 +532,15 @@ onShareAppMessage(() =>
   color: var(--sh-primary-text);
   font-size: 28rpx;
   line-height: 1;
+}
+
+/* 邀请提示条：一行，右侧一个关闭 */
+.invtip {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.invtip__x {
+  padding: 8rpx;
 }
 </style>

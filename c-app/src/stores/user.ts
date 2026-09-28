@@ -18,6 +18,19 @@ export const useUserStore = defineStore("user", {
   state: () => ({
     token: "" as string,
     user: null as User | null,
+    /**
+     * 邀请链接带进来的邀请人，**暂存到登录那一刻**（§3.1）。
+     *
+     * <p>为什么要存：邀请链接指向的是**首页**（`/pages/home/index?inviterNo=xxx`），
+     * 而登录页只读**自己 query 上**的 `inviterNo` —— 被邀请人从首页点去登录时，
+     * 那个参数就丢了，于是 `fissionPort.onRegister` 拿不到邀请人，
+     * 台账那一行根本不会写。而页面上一切看起来都正常：他注册成功了、也下单了，
+     * 只是邀请人永远等不到那张券。
+     *
+     * <p><b>登录成功后清掉</b>：它只为这一次注册服务。留着的话，
+     * 这台设备上后来换个人登录也会被算成同一个人邀的。
+     */
+    pendingInviter: "" as string,
   }),
 
   getters: {
@@ -83,6 +96,12 @@ export const useUserStore = defineStore("user", {
       this.token = resp.token;
       this.user = resp.user;
       uni.setStorageSync(STORAGE.token, resp.token);
+      /*
+       * **邀请人用过就清**（§3.1）。它只为这一次注册服务 ——
+       * 留着的话，这台设备上后来换个人登录也会被算成同一个人邀来的。
+       * 清在这里而不是提交表单那一步：登录失败时它还得留着，供下一次重试用。
+       */
+      this.pendingInviter = "";
       // 游客期间选的社区要补同步 —— 否则登录这一步反而把他刚做的选择丢了
       await useCommunityStore().syncBinding();
       // App 端绑定推送设备。**不 await**：拿 clientId 要等推送服务初始化，
@@ -153,6 +172,7 @@ export const useUserStore = defineStore("user", {
 
   persist: {
     key: STORAGE.user,
-    pick: ["user"],
+    // pendingInviter 一并持久化：从落地到登录中间可能隔着一次冷启动
+    pick: ["user", "pendingInviter"],
   },
 });

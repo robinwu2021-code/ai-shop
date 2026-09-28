@@ -52,7 +52,13 @@ const merchantNo = ref("");
 const redirect = ref("");
 
 onLoad((q) => {
-  inviterNo.value = (q?.inviterNo as string) || "";
+  /*
+   * **query 没有就用暂存的**（§3.1）。邀请链接指向的是首页，
+   * 而他从首页点到这里时那个参数不会跟过来 —— 不兜这一下，
+   * `fissionPort.onRegister` 拿不到邀请人，台账那一行根本不会写，
+   * 而注册与下单看起来都正常，只有邀请人永远等不到那张券。
+   */
+  inviterNo.value = (q?.inviterNo as string) || user.pendingInviter || "";
   merchantNo.value = (q?.merchantNo as string) || "";
   // 被 401 踢来时带的来源页，登录完要回到它。见 goBackAfterLogin
   redirect.value = decodeURIComponent((q?.redirect as string) || "");
