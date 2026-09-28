@@ -88,6 +88,25 @@ const emit = defineEmits<{ close: [] }>();
 .sheet__panel {
   /* 见类注释：没有 max-height 的 bottom:0 弹层，内容一多就把上半截顶出视口 */
   max-height: 78vh;
+  /*
+   * **滚的是正文，不是整个面板**（2026-09-28）。此前面板整体滚，
+   * 于是内容一长，标题连同关闭按钮一起滚出视野 —— 人不知道这一屏在问什么，
+   * 也找不到出口，只能往回滚或点遮罩。标题是这一屏的主语，要始终在。
+   *
+   * 面板不定高：内容少时它仍按内容自然收，只有超过 78vh 才由正文接管滚动。
+   * （下面 `--tall` 那一档是另一回事：有页脚时定高 84vh，把按钮钉在底下。）
+   */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 标题、副标题不参与滚动，也不许被正文挤扁 */
+.sheet__panel > .sh-row,
+.sheet__panel > .sh-hint {
+  flex-shrink: 0;
+}
+.sheet__body {
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }

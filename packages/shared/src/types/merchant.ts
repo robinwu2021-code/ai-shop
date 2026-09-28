@@ -493,6 +493,11 @@ export interface MerchantProfile {
   pickupNo?: string;
   /** 驳回原因，status=REJECTED 时有值 */
   rejectReason?: string;
+  /**
+   * 被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 ——
+   * 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。
+   */
+  favoriteCount?: number;
   /** 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 */
   loginBy?: GrantType;
   /**
@@ -670,10 +675,22 @@ export interface CertRecognition {
 export interface MerchantApplyReq {
   /** 拟用店铺名 */
   name: string;
-  /** 主体类型。个人 → 个体户 → 企业，门槛前低后高 */
-  subject: MerchantSubject;
-  /** 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 */
-  contactName: string;
+  /**
+   * 主体类型。个人 → 个体户 → 企业，门槛前低后高。
+   *
+   * **选填**（2026-09-28）：C 端报名这一屏不再问它。它受行业白名单管控，
+   * 端上选错要到进件那一步才炸，而报名的人多半分不清「个人经营者」与「个体工商户」。
+   * 后端收到空时 `requireSubjectAllowedByIndustry` 直接放行（canonical == null 即 return），
+   * 主体由运营在审核核营业执照时定。B 端代填仍然传 —— 那一侧填表的是运营自己。
+   */
+  subject?: MerchantSubject;
+  /**
+   * 联系人姓名。审核要打电话找人。
+   *
+   * **选填**（2026-09-28）：C 端只问手机号 —— 拨过去自然知道是谁，
+   * 多一格输入换不来一条审核用得上的信息。后端不校验。
+   */
+  contactName?: string;
   /** 联系手机号 */
   contactPhone: string;
   /**
@@ -685,8 +702,8 @@ export interface MerchantApplyReq {
   referrerPhone?: string;
   /** 主营类目 */
   category: string;
-  /** 店铺简介 */
-  desc: string;
+  /** 店铺简介。**选填**（2026-09-28）：C 端报名不问，通过后在商家版 App 里补 */
+  desc?: string;
   /** 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） */
   asPickupPoint?: boolean;
   /**
@@ -1369,7 +1386,14 @@ export interface MerchantApplyStatus {
   contactName: string;
   /** 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 */
   contactPhone: string;
-  /** 主营类目 */
+  /**
+   * 推荐人手机号（V353）。后端 `MerchantApplyVO` 在发，契约此前没接。
+   *
+   * **端上不展示**：C 端报名这一屏已经不问它了（规则只在官网与企微里出现），
+   * 声明它是为了驳回后回填不把这一格丢掉 —— 发奖靠这个号，丢了就找不到推荐人。
+   */
+  referrerPhone?: string;
+  /** 主营类目。C 端报名以「经营范围」的说法出现 */
   category: string;
   /** 店铺简介 */
   desc: string;

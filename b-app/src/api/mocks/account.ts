@@ -75,6 +75,14 @@ export const accountMock: Pick<MerchantApi,
     // 一份记录同时承载内容与进度 —— 后端 usr_merchant_apply 就是一行
     db.merchantApply = {
       ...payload,
+      /*
+       * 这三格在请求里是选填的（C 端报名不问），但在**状态**里必填：
+       * 审核台按它们排版，undefined 会让那几行整块消失而不是显示为空。
+       * B 端代填这条路一定会传，兜底只是为了类型上不漏。
+       */
+      subject: payload.subject ?? "NATURAL_PERSON",
+      contactName: payload.contactName ?? "",
+      desc: payload.desc ?? "",
       applyNo: db.merchantApply?.applyNo || nextNo("MA"),
       status: "PENDING",
       createdAt: Date.now(),
@@ -85,7 +93,7 @@ export const accountMock: Pick<MerchantApi,
       // 此刻还没有任何人受理，报 REVIEWING 是替运营做了一个没发生的承诺
       merchantNo: db.merchant.merchantNo || nextNo("M"),
       name: payload.name,
-      subject: payload.subject,
+      subject: payload.subject ?? "NATURAL_PERSON",
       status: "APPLYING",
       /*
        * **重提要把上一次的拒因清掉。**

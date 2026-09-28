@@ -194,6 +194,14 @@ export const groupMock: Pick<ShopApi,
     }
     db.merchantApply = {
       ...payload,
+      /*
+       * 报名表不再问主体类型、联系人、简介（2026-09-28），但**状态里这几格仍是必填**：
+       * 运营端审核台按它们排版，`undefined` 会让那几行整块消失而不是显示为空。
+       * 真实后端也是这样 —— 落库时是 NULL，读回来由 VO 兜成空串。
+       */
+      subject: payload.subject ?? "NATURAL_PERSON",
+      contactName: payload.contactName ?? "",
+      desc: payload.desc ?? "",
       applyNo: nextNo("MA"),
       status: "PENDING",
       createdAt: Date.now(),

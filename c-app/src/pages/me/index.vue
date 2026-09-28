@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MasterData, MerchantApplyStatus, MerchantSubject, MyFission } from "@shared/types";
+import type { MasterData, MerchantApplyStatus, MyFission } from "@shared/types";
 // 我的：登录入口 + 归属信息 + 外观与语言。
 // 列表项之间用间距分块，不用分隔线（扁平色块风格）。
 import { computed, ref } from "vue";
@@ -29,6 +29,12 @@ const config = useConfigStore();
  * 端上再写一份就会出现「官网 0.5.2、端上还指着 0.4.98」这种谁也不会发现的漂移。
  */
 const MERCHANT_APP_URL = "https://hxmall.top/download";
+/**
+ * 招商电话。**写死在端上**：它是官网 `site.config.ts` 里的同一个号，
+ * 但小程序没有读官网配置的路，为一个不会变的号加一个接口不值当。
+ * 换号时两处一起改（官网 `contact.salesPhone`）。
+ */
+const SALES_PHONE = "18503088359";
 /** 「我的」页的绑定入口。静默登录之后「有账号没手机号」是常态 */
 const phoneGate = ref(false);
 const community = useCommunityStore();
@@ -167,38 +173,33 @@ async function applyMerchant() {
 const merchantVisible = ref(false);
 const mForm = ref({
   name: "",
-  // 主体类型：个人 → 个体户 → 企业，门槛前低后高（ADR-002 §4）。
-  // 默认「个人」—— 一期的目标是「入驻容易」，让摆摊的邻居也能开
-  subject: "NATURAL_PERSON" as MerchantSubject,
-  contactName: "",
   contactPhone: "",
-  /** 推荐人手机号（选填）。不带奖励文案 —— 规则在官网与企微里，端内只是个输入框 */
-  referrerPhone: "",
+  /** 经营范围（后端字段名 category）。「水果」「粮油」这一类，一句话说清卖什么 */
   category: "",
-  desc: "",
   /**
-   * 行业。**决定能不能以小微主体进件**（微信白名单按行业给），
+   * 店铺类型（后端字段名 industry）。**决定能不能以小微主体进件**（微信白名单按行业给），
    * 也是 points_forced 的来源。此前这张表没有这个字段，
    * 于是所有从 C 端入驻的商家 industry 恒空 —— 进件时才发现主体选错了。
    */
   industry: "",
 });
 
+/**
+ * 主体类型（个人 / 个体户 / 企业）**不在这一屏问**（2026-09-28）。
+ *
+ * <p>不是省一格那么简单：它受行业白名单管控，端上选错了要到进件那一步才炸，
+ * 而报名的人多半分不清「个人经营者」和「个体工商户」。后端 subject 传空时
+ * {@code requireSubjectAllowedByIndustry} 直接放行（canonical == null 即 return），
+ * 主体由运营在审核核营业执照时定 —— 那时候信息才是全的。
+ */
+
 /** 主数据：行业与主体都从服务端取，微信放开白名单时不用发版 */
 const master = ref<MasterData | null>(null);
 const industries = computed(() => master.value?.industries ?? []);
 
-/** 小微受行业白名单管控，其余主体不受。还没选行业时不禁用，免得看着像坏了 */
-function subjectAllowed(sub: MerchantSubject) {
-  const meta = master.value?.subjects.find((x) => x.subjectType === sub);
-  if (!meta?.industryGated) return true;
-  const ind = industries.value.find((i) => i.industry === mForm.value.industry);
-  return !ind || ind.microAllowed;
-}
 const mValid = computed(
   () =>
     mForm.value.name.trim() &&
-    mForm.value.contactName.trim() &&
     isPhone(mForm.value.contactPhone.trim()) &&
     mForm.value.category.trim(),
 );
@@ -222,14 +223,14 @@ async function submitMerchant() {
    * **手机号要以字符串发出去**：两个号码框都是 `type="number"`（为了弹数字键盘），
    * 而 H5 上 v-model 会把值转成数字 —— 后端收的是 String（见 phone-gate 里同一个坑）。
    *
-   * **推荐人为空时传 undefined 不传空串**：空串与 null 在「有没有推荐人」上语义不同，
-   * 落成空串的话运营端会看到一个空白的推荐人而不是「没有」。
+   * **只发这四个字段**：其余（主体类型、联系人、简介、推荐人）端上不再问，
+   * 展开整个 mForm 的话，删掉的字段会以空串发上去 —— 空串与「没填」在运营端不是一回事。
    */
-  const referrer = String(mForm.value.referrerPhone ?? "").trim();
   applyStatus.value = await api.merchantApply({
-    ...mForm.value,
+    name: mForm.value.name.trim(),
+    category: mForm.value.category.trim(),
+    industry: mForm.value.industry,
     contactPhone: String(mForm.value.contactPhone ?? "").trim(),
-    referrerPhone: referrer || undefined,
   });
   merchantVisible.value = false;
   /*
@@ -243,6 +244,11 @@ async function submitMerchant() {
    * 让他复制到手机浏览器打开；H5/App 上直接跳。
    */
   appDownloadVisible.value = true;
+}
+
+/** 报名途中卡住时打过来。三端都走得通 —— 小程序上是微信原生的拨号确认 */
+function callSales() {
+  uni.makePhoneCall({ phoneNumber: SALES_PHONE });
 }
 
 /** 提交完那一屏：告诉他下一步在 App 里做 */
@@ -482,7 +488,13 @@ onShow(() => {
       :hint="String($t('merchant.applyFormHint'))"
       @close="merchantVisible = false"
     >
-        <!-- 行业排在主体之前：它决定主体能不能选小微，顺序反了人会白挑一次 -->
+        <!--
+          **只留四项**（2026-09-28）：店铺类型、店铺名称、经营范围、手机号。
+          此前是八项 —— 主体类型（个人/个体户/企业）、联系人、简介、推荐人都在这儿，
+          一个还没决定要不要开店的人，第一眼看到的是一张要填八格的表。
+          那四项后端全都不是必填：主体与简介由运营在审核时核对，联系人用不上
+          （有手机号就够），推荐人改走官网与企微（端内出现奖励文案会被判平台型经营）。
+        -->
         <view class="types">
           <view
             v-for="i in industries"
@@ -495,28 +507,8 @@ onShow(() => {
           </view>
         </view>
 
-        <view class="types">
-          <view
-            v-for="tp in ['MICRO', 'INDIVIDUAL', 'ENTERPRISE']"
-            :key="tp"
-            class="sh-seg sh-seg--fill"
-            :class="{
-              'sh-seg--on': mForm.subject === tp,
-              'sh-seg--off': !subjectAllowed(tp as MerchantSubject),
-            }"
-            @tap="subjectAllowed(tp as MerchantSubject) && (mForm.subject = tp as MerchantSubject)"
-          >
-            {{ $t(`merchant.subject.${tp}`) }}
-          </view>
-        </view>
-        <!-- 禁用要给理由：光变灰只会让人反复点它 -->
-        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="txt-caption blocked-tip">
-          {{ $t("merchant.microBlocked") }}
-        </text>
-
         <input maxlength="64" v-model="mForm.name" class="field__input" :placeholder="$t('merchant.shopName')" />
         <input maxlength="64" v-model="mForm.category" class="field__input" :placeholder="$t('merchant.category')" />
-        <input maxlength="64" v-model="mForm.contactName" class="field__input" :placeholder="$t('merchant.contact')" />
         <input
           v-model="mForm.contactPhone"
           class="field__input"
@@ -524,22 +516,20 @@ onShow(() => {
           maxlength="11"
           :placeholder="$t('merchant.phone')"
         />
-        <input maxlength="255" v-model="mForm.desc" class="field__input" :placeholder="$t('merchant.descPh')" />
-        <!--
-          推荐人手机号。**选填，且这里一句奖励文案都没有** ——
-          小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。
-          规则只在官网与企微里出现（TDD-C 端裂变与商家招募 §8.3），端内只留这个输入框。
-        -->
-        <input
-          v-model="mForm.referrerPhone"
-          class="field__input"
-          type="number"
-          maxlength="11"
-          :placeholder="$t('merchant.referrerPh')"
-        />
 
         <view class="sh-btn sheet__save" :class="{ 'is-disabled': !mValid }" @tap="submitMerchant">
           {{ $t("merchant.submitApply") }}
+        </view>
+
+        <!--
+          **提交前就说清下一步在哪**：经营动作（上架、改价、接单、发货、看账）
+          全在商家版 App 里，小程序这一侧只承接报名。提交完那一屏也说了同一句，
+          但那时人已经填完了 —— 有人是先想知道「开完店我在哪儿干活」才决定填不填的。
+          电话是给填表当中卡住的人的，`makePhoneCall` 三端都走得通。
+        -->
+        <view class="apply-foot">
+          <text class="txt-caption apply-foot__tip">{{ $t("merchant.appTip") }}</text>
+          <text class="txt-caption apply-foot__call" @tap="callSales">{{ $t("merchant.callSales", { p: SALES_PHONE }) }}</text>
         </view>
     </sh-sheet>
     <!--
@@ -561,10 +551,21 @@ onShow(() => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
-.blocked-tip {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--sh-danger);
+/* 提交按钮下面那两行：一句说下一步在哪，一行电话。居中、弱化，不跟按钮抢 */
+.apply-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 24rpx;
+}
+.apply-foot__tip {
+  text-align: center;
+}
+/* 电话是能点的，要看得出来 —— 一段和正文一个颜色的号码没人会去点。
+   用 primary-text 而不是 primary：后者是块面色，当文字色对比度不够（design-tokens 闸门） */
+.apply-foot__call {
+  color: var(--sh-primary-text);
 }
 /* 与 address 逐字节相同的一份重写，现在都走 `.field__input`，只留纵向间距 */
 .field__input {
