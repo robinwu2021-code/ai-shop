@@ -10592,6 +10592,12 @@
           "ar": "لا توجد حركة في هذه الفترة"
         },
         {
+          "key": "income.dailyFreight",
+          "zh-CN": "快递费 {a}",
+          "en": "courier {a}",
+          "ar": "شحن {a}"
+        },
+        {
           "key": "income.dailyHint",
           "zh-CN": "按成交日算。钱哪天到看上面的账期",
           "en": "By transaction date. For when the money arrives, see the cycle above",
@@ -16052,6 +16058,42 @@
           "ar": "سجلّ يمكن مطابقته ببنكك"
         },
         {
+          "key": "settle.freightCost",
+          "zh-CN": "快递费",
+          "en": "Courier fee",
+          "ar": "رسوم الشحن"
+        },
+        {
+          "key": "settle.freightIncome",
+          "zh-CN": "运费",
+          "en": "Shipping",
+          "ar": "الشحن"
+        },
+        {
+          "key": "settle.freightOverCap",
+          "zh-CN": "超上限待核",
+          "en": "Over cap, under review",
+          "ar": "تجاوز الحد، قيد المراجعة"
+        },
+        {
+          "key": "settle.freightOverweight",
+          "zh-CN": "超重",
+          "en": "Overweight",
+          "ar": "وزن زائد"
+        },
+        {
+          "key": "settle.freightPending",
+          "zh-CN": "待称重",
+          "en": "Awaiting weigh-in",
+          "ar": "بانتظار الوزن"
+        },
+        {
+          "key": "settle.freightSelf",
+          "zh-CN": "自寄不扣",
+          "en": "Self-shipped",
+          "ar": "شحن ذاتي"
+        },
+        {
           "key": "settle.fulfillFee",
           "zh-CN": "自提点履约服务费",
           "en": "Pickup fulfilment fee",
@@ -16059,9 +16101,9 @@
         },
         {
           "key": "settle.gross",
-          "zh-CN": "结算基数",
-          "en": "Settlement base",
-          "ar": "أساس التسوية"
+          "zh-CN": "货款",
+          "en": "Goods",
+          "ar": "قيمة البضاعة"
         },
         {
           "key": "settle.net",
@@ -17120,16 +17162,34 @@
           "ar": "حين يتعذّر الحفظ على الهاتف يُنسخ إلى الحافظة — الصقه على الحاسوب واحفظه من هناك."
         },
         {
+          "key": "statement.freightCost",
+          "zh-CN": "快递费",
+          "en": "Courier fee",
+          "ar": "رسوم الشحن"
+        },
+        {
+          "key": "statement.freightIncome",
+          "zh-CN": "运费",
+          "en": "Shipping",
+          "ar": "الشحن"
+        },
+        {
           "key": "statement.gross",
-          "zh-CN": "成交额",
-          "en": "Gross",
-          "ar": "إجمالي المبيعات"
+          "zh-CN": "货款",
+          "en": "Goods",
+          "ar": "قيمة البضاعة"
         },
         {
           "key": "statement.lineBreak",
           "zh-CN": "{gross} − 佣金 {commission}（{rate}）− 履约费 {fee}",
           "en": "{gross} − commission {commission} ({rate}) − fulfilment {fee}",
           "ar": "{gross} − عمولة {commission} ({rate}) − تنفيذ {fee}"
+        },
+        {
+          "key": "statement.lineFreight",
+          "zh-CN": " + 运费 {income} − 快递费 {cost}",
+          "en": " + shipping {income} − courier {cost}",
+          "ar": " + شحن {income} − رسوم شحن {cost}"
         },
         {
           "key": "statement.linesTitle",

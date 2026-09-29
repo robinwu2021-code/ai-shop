@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 481,
+        "b-app": 483,
         "c-app": 75
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 98,
+        "b-app": 100,
         "c-app": 91
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 337,
+        "b-app": 341,
         "c-app": 149
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 147,
+        "b-app": 148,
         "c-app": 55
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 536,
+        "b-app": 539,
         "c-app": 192
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 309,
+        "b-app": 311,
         "c-app": 94
       }
     },
@@ -2320,7 +2320,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 50,
+        "b-app": 52,
         "c-app": 0,
         "lib": 0
       },
@@ -4334,9 +4334,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 99,
-      "localSelectors": 13,
-      "localCssLines": 46,
+      "libClassHits": 109,
+      "localSelectors": 14,
+      "localCssLines": 51,
       "rolled": []
     },
     {
@@ -4412,7 +4412,7 @@
         "sh-scaffold",
         "sh-section"
       ],
-      "libClassHits": 41,
+      "libClassHits": 45,
       "localSelectors": 2,
       "localCssLines": 8,
       "rolled": []
