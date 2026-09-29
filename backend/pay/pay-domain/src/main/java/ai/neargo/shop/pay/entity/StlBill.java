@@ -92,10 +92,6 @@ public class StlBill extends BaseEntity {
     /** 优惠档。今天没有任何地方会写它 —— 真出现时应由费率版本自己标明，不在结算侧猜 */
     public static final String FEE_PROMO = "PROMO";
 
-    /** 与 {@code SettleSourcePort.SHIP_PLATFORM_CALL} 同值 —— 取值域定义在 spi，这里只是转出口。 */
-    public static final String PLATFORM_CALL = ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_PLATFORM_CALL;
-    /** 与 {@code SettleSourcePort.SHIP_MERCHANT_SELF} 同值。 */
-    public static final String MERCHANT_SELF = ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_MERCHANT_SELF;
     /** 实付高于代收：商家填的标称重量不准。 */
     public static final String DIFF_OVERWEIGHT = "OVERWEIGHT";
     /** 实付高于代收：收货地在模板的加收地区。 */
@@ -134,7 +130,15 @@ public class StlBill extends BaseEntity {
      */
     private Long freightCostMinor;
 
-    /** {@link #PLATFORM_CALL} / {@link #MERCHANT_SELF}；非快递单为 null。 */
+    /**
+     * 发货方式：{@code SettleSourcePort.SHIP_PLATFORM_CALL} 平台代寄 /
+     * {@code SHIP_MERCHANT_SELF} 商家自寄；非快递单为 null。
+     *
+     * <p><b>取值域住在 spi，这里不转出口</b>：pay 里曾有两个别名常量指过去，
+     * 但没有任何调用方（文件外零处，文件内只有这句注释在 link 它们），
+     * 而它们让 pay → SettleSourcePort 的反向引用从 14 涨到 16，
+     * 撞上 known-pay-reverse-deps 那道棘轮。用注释指名比留两个没人读的常量便宜。
+     */
     private String freightShipMode;
 
     /** 实付与代收有差额时的原因，见 {@link #DIFF_OVERWEIGHT} / {@link #DIFF_REGION_SURCHARGE}。 */

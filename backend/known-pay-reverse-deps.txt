@@ -18,4 +18,11 @@
 #
 # 格式：<Port 简名><TAB><引用数>。注释与字符串不计入（扫描时已剔除块注释与行注释）。
 MerchantQueryPort	27
-SettleSourcePort	14
+# 2026-09-29 14 → 15：`SettleServiceImpl` 判「这一单是不是平台代寄」
+# （`SettleSourcePort.SHIP_PLATFORM_CALL.equals(src.freightShipMode())`，V367 运费进结算）。
+# 不这么判就会对平台已付的快递费再抽一次佣金 —— 收两遍。
+# **为什么不复制一份常量到 pay**：取值域住在 spi，复制出去就是两个真源，
+# 哪天加一档（比如第三方代寄）只改一边，而两边都不会报错。
+# 同一条提交还在 StlBill 里加过两个转出口别名（PLATFORM_CALL / MERCHANT_SELF），
+# 那两个**没有任何调用方**，已删 —— 否则这里是 16。
+SettleSourcePort	15
