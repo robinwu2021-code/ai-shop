@@ -2,6 +2,94 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "c-store-portal",
+   "file": "c-store-portal.html",
+   "title": "C 端门店化：店铺页、门店门户、分享、商品详情 v4",
+   "kind": "pages",
+   "clients": [
+    "c-app",
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-29",
+   "artifact": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
+   "summary": "C 端单位从主体换成门店。店铺页先「我的店」（逛过 ∪ 买过）再「附近」（按距离），移出平台推荐；门店门户取代 pages/store 与 pages/merchant 两个页面（门头 · 店招 · 公告 · 领券 · 商品 / 评价 / 店铺，左分类右列表，暂停营业态）；分享收成一个入口、面板里发给朋友 / 生成海报，链接与海报码带 storeNo；商品详情 v4 去掉已选 / 配送 / 保障、海报入口收进分享。附 v3→v4 取舍表；B 端分享效果为二期。",
+   "docs": [
+    {
+     "label": "TDD-C端门店化与门店门户",
+     "path": "docs/technical/TDD-C端门店化与门店门户.md"
+    },
+    {
+     "label": "TDD-C端商品详情页v3（v4 修订）",
+     "path": "docs/technical/TDD-C端商品详情页v3.md"
+    },
+    {
+     "label": "多门店与分享激励-需求 §六 R4",
+     "path": "docs/requirements/多门店与分享激励-需求.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "店铺页 · 老客",
+     "client": "c-app",
+     "route": "pages/merchants/index"
+    },
+    {
+     "id": "s02",
+     "title": "店铺页 · 新访客"
+    },
+    {
+     "id": "s03",
+     "title": "门户首屏 · 老客",
+     "client": "c-app",
+     "route": "pages/store/index"
+    },
+    {
+     "id": "s04",
+     "title": "门户首屏 · 新访客"
+    },
+    {
+     "id": "s05",
+     "title": "门户 · 评价"
+    },
+    {
+     "id": "s06",
+     "title": "门户 · 店铺（资质入口）",
+     "client": "c-app",
+     "route": "pages/merchant/index",
+     "pageTitle": "经营主体与资质"
+    },
+    {
+     "id": "s07",
+     "title": "门户 · 暂停营业"
+    },
+    {
+     "id": "s08",
+     "title": "分享面板"
+    },
+    {
+     "id": "s09",
+     "title": "海报"
+    },
+    {
+     "id": "s10",
+     "title": "商品详情 v4 首屏",
+     "client": "c-app",
+     "route": "pages/goods/index"
+    },
+    {
+     "id": "s11",
+     "title": "v3 → v4 取舍"
+    },
+    {
+     "id": "s12",
+     "title": "B 端 · 分享门店（二期）",
+     "client": "b-app"
+    }
+   ]
+  },
+  {
    "slug": "inv-managed-switch",
    "file": "inv-managed-switch.html",
    "title": "库存：哪些商品接入进销存",
@@ -1001,7 +1089,7 @@
    "status": "在建",
    "date": "2026-09-27",
    "artifact": "https://claude.ai/artifact/VchXxtadSj5aK3xcZUNxrw",
-   "summary": "首屏定买不买（张数、已售、促销标签、领券、已选规格数、配送与到货）；第二屏评价头（好评率、三项分、筛选）与店铺卡（本店热卖三列）；往下参数两列表、图文详情（无详情用主图兜底）、看了又看双列。缺的块不出。八屏，附数据来源表（两处要后端补）。",
+   "summary": "首屏定买不买（张数、已售、促销标签、领券、已选规格数、配送与到货）；第二屏评价头（好评率、三项分、筛选）与店铺卡（本店热卖三列）；往下参数两列表、图文详情（无详情用主图兜底）、看了又看双列。缺的块不出。八屏，附数据来源表（两处要后端补）。 2026-09-29 v4 修订：选购卡（已选 / 配送 / 保障）与标题行海报入口已撤，见 c-store-portal s10–s11。",
    "docs": [],
    "screens": [
     {

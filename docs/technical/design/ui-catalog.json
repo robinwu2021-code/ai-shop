@@ -1055,8 +1055,8 @@
               "domain": "商品",
               "tab": false,
               "status": "已实现",
-              "proto": "s21",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
               "preview": "http://localhost:5176/#/pages/goods/index"
             },
             {
@@ -1213,8 +1213,8 @@
               "domain": "店铺与逛",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
               "preview": "http://localhost:5176/#/pages/merchant/index"
             },
             {
@@ -1224,8 +1224,8 @@
               "domain": "店铺与逛",
               "tab": true,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
               "preview": "http://localhost:5176/#/pages/merchants/index"
             }
           ]
@@ -1463,8 +1463,8 @@
               "domain": "门店",
               "tab": false,
               "status": "已实现",
-              "proto": "s15",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
               "preview": "http://localhost:5176/#/pages/store/index"
             }
           ]

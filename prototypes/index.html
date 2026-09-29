@@ -11,14 +11,24 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">24 份有效稿子，其中页面稿 14 份、共 179 屏；3 份作废。
+  <p class="sub">25 份有效稿子，其中页面稿 15 份、共 191 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
 <section>
   <div class="sec-head"><span class="sec-num">01</span><h2>页面稿：每一屏长什么样</h2></div>
   <div class="pgrid">
-<article class="pcard" id="inv-managed-switch">
+<article class="pcard" id="c-store-portal">
+  <div class="pcard__hd">
+    <b>C 端门店化：店铺页、门店门户、分享、商品详情 v4</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 商家 App · 2026-09-29 · 12 屏</div>
+  <p class="pcard__sum">C 端单位从主体换成门店。店铺页先「我的店」（逛过 ∪ 买过）再「附近」（按距离），移出平台推荐；门店门户取代 pages/store 与 pages/merchant 两个页面（门头 · 店招 · 公告 · 领券 · 商品 / 评价 / 店铺，左分类右列表，暂停营业态）；分享收成一个入口、面板里发给朋友 / 生成海报，链接与海报码带 storeNo；商品详情 v4 去掉已选 / 配送 / 保障、海报入口收进分享。附 v3→v4 取舍表；B 端分享效果为二期。</p>
+  <div class="screens"><a class="scr" href="c-store-portal.html#s01" title="s01 店铺页 · 老客">s01</a><a class="scr" href="c-store-portal.html#s02" title="s02 店铺页 · 新访客">s02</a><a class="scr" href="c-store-portal.html#s03" title="s03 门户首屏 · 老客">s03</a><a class="scr" href="c-store-portal.html#s04" title="s04 门户首屏 · 新访客">s04</a><a class="scr" href="c-store-portal.html#s05" title="s05 门户 · 评价">s05</a><a class="scr" href="c-store-portal.html#s06" title="s06 门户 · 店铺（资质入口）">s06</a><a class="scr" href="c-store-portal.html#s07" title="s07 门户 · 暂停营业">s07</a><a class="scr" href="c-store-portal.html#s08" title="s08 分享面板">s08</a><a class="scr" href="c-store-portal.html#s09" title="s09 海报">s09</a><a class="scr" href="c-store-portal.html#s10" title="s10 商品详情 v4 首屏">s10</a><a class="scr" href="c-store-portal.html#s11" title="s11 v3 → v4 取舍">s11</a><a class="scr" href="c-store-portal.html#s12" title="s12 B 端 · 分享门店（二期）">s12</a></div>
+  <div class="pcard__links"><a href="c-store-portal.html">本地稿</a> <a href="https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf">claude.ai</a> <a href="../docs/technical/TDD-C端门店化与门店门户.md">TDD-C端门店化与门店门户</a> <a href="../docs/technical/TDD-C端商品详情页v3.md">TDD-C端商品详情页v3（v4 修订）</a> <a href="../docs/requirements/多门店与分享激励-需求.md">多门店与分享激励-需求 §六 R4</a></div>
+  
+</article><article class="pcard" id="inv-managed-switch">
   <div class="pcard__hd">
     <b>库存：哪些商品接入进销存</b>
     <span class="chip warn">在建</span>
@@ -124,7 +134,7 @@
     <span class="chip warn">在建</span>
   </div>
   <div class="pcard__meta">页面稿 · 买家小程序 · 2026-09-27 · 8 屏</div>
-  <p class="pcard__sum">首屏定买不买（张数、已售、促销标签、领券、已选规格数、配送与到货）；第二屏评价头（好评率、三项分、筛选）与店铺卡（本店热卖三列）；往下参数两列表、图文详情（无详情用主图兜底）、看了又看双列。缺的块不出。八屏，附数据来源表（两处要后端补）。</p>
+  <p class="pcard__sum">首屏定买不买（张数、已售、促销标签、领券、已选规格数、配送与到货）；第二屏评价头（好评率、三项分、筛选）与店铺卡（本店热卖三列）；往下参数两列表、图文详情（无详情用主图兜底）、看了又看双列。缺的块不出。八屏，附数据来源表（两处要后端补）。 2026-09-29 v4 修订：选购卡（已选 / 配送 / 保障）与标题行海报入口已撤，见 c-store-portal s10–s11。</p>
   <div class="screens"><a class="scr" href="c-goods-detail-v3.html#d01" title="d01 首屏 · 价格区">d01</a><a class="scr" href="c-goods-detail-v3.html#d02" title="d02 选购卡">d02</a><a class="scr" href="c-goods-detail-v3.html#d03" title="d03 评价（有评价）">d03</a><a class="scr" href="c-goods-detail-v3.html#d04" title="d04 空态合并 · 店铺卡">d04</a><a class="scr" href="c-goods-detail-v3.html#d05" title="d05 参数 · 图文详情">d05</a><a class="scr" href="c-goods-detail-v3.html#d06" title="d06 推荐 · 双列">d06</a><a class="scr" href="c-goods-detail-v3.html#d07" title="d07 现状对照">d07</a><a class="scr" href="c-goods-detail-v3.html#d08" title="d08 数据少的商品">d08</a></div>
   <div class="pcard__links"><a href="c-goods-detail-v3.html">本地稿</a> <a href="https://claude.ai/artifact/VchXxtadSj5aK3xcZUNxrw">claude.ai</a></div>
   
