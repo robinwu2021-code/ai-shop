@@ -646,6 +646,7 @@ export default {
   income: {
     batchTitle: "我的账期",
     batchHint: "同一天应结的单子合成一批放款；批次里的钱在放行前不会到账",
+    batchBills: "{n} 笔",
     dailyTitle: "每日流水",
     dailyHint: "按成交日算。钱哪天到看上面的账期",
     dailyBills: "{n} 笔",

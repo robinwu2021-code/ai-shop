@@ -492,6 +492,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
   income: {
     batchTitle: "My settlement cycle",
     batchHint: "Bills due on the same day are released as one batch; the money does not arrive before the batch is released",
+    batchBills: "{n} bills",
     dailyTitle: "Daily flow",
     dailyHint: "By transaction date. For when the money arrives, see the cycle above",
     dailyBills: "{n} bills",
