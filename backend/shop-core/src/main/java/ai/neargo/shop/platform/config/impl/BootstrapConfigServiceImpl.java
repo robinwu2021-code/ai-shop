@@ -56,6 +56,8 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
                 props.getDefaultSkin(),
                 Map.copyOf(features),
                 props.getMinAppVer(),
-                props.getServiceHours());
+                props.getServiceHours(),
+                new MerchantApp(props.getMerchantApp().getAndroid(),
+                        props.getMerchantApp().getIos()));
     }
 }

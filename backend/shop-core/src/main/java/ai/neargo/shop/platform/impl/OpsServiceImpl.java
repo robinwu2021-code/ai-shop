@@ -628,6 +628,55 @@ public class OpsServiceImpl implements OpsService {
     }
 
     @Override
+    @Transactional
+    public void updateApply(String applyNo, String userNo, SubmitApplyCommand cmd) {
+        MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
+                applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
+                        .eq(MchEntityApply::getApplyNo, applyNo).last("limit 1")));
+        /*
+         * 不是本人的单当「不存在」处理，而不是「无权限」——
+         * 后者等于告诉调用方这个单号是有效的。
+         */
+        if (apply == null || !java.util.Objects.equals(apply.getUserNo(), userNo)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!MchEntityApply.PENDING.equals(apply.getStatus())) {
+            throw BizException.of(ErrorCode.APPLY_NOT_EDITABLE);
+        }
+
+        // 与新建同一组闸门 —— 改的时候绕过去，等于给了一条「先提交再改成不合规」的路
+        requireSubjectAllowedByIndustry(cmd.industry(), cmd.subject());
+        masterDataService.assertServiceScopeAllowed(cmd.serviceScope());
+
+        String canonicalSubject = masterDataService.canonicalSubject(cmd.subject());
+        /*
+         * **逐字段 set，不用 updateById。**
+         *
+         * updateById 跳过 null 字段（MyBatis-Plus 的默认策略），于是「把简介删掉」
+         * 「把推荐人清空」那几句 set 根本不会生成 —— 接口返回成功、页面回读还是老值，
+         * 零报错（同一个坑记在 [[mybatis-plus-skips-nulls]]）。
+         * 而改意向单恰恰常常是「删掉一个填错的格子」。
+         */
+        DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
+                Wrappers.<MchEntityApply>lambdaUpdate()
+                        .set(MchEntityApply::getName, cmd.name())
+                        .set(MchEntityApply::getLegalForm,
+                                canonicalSubject != null ? canonicalSubject : cmd.subject())
+                        .set(MchEntityApply::getContactName, cmd.contactName())
+                        .set(MchEntityApply::getContactPhone, cmd.contactPhone())
+                        .set(MchEntityApply::getReferrerPhone, cmd.referrerPhone())
+                        .set(MchEntityApply::getCategory, cmd.category())
+                        .set(MchEntityApply::getDescription, cmd.description())
+                        .set(MchEntityApply::getIndustry, cmd.industry())
+                        // serviceScope 为空时保持原值：端上这一屏不问它，传空不该把它清掉
+                        .set(cmd.serviceScope() != null && !cmd.serviceScope().isBlank(),
+                                MchEntityApply::getServiceScope, cmd.serviceScope())
+                        .eq(MchEntityApply::getId, apply.getId())));
+
+        audit("MERCHANT_APPLY_UPDATE", applyNo, "商家改了自己的入驻意向（待审核中）");
+    }
+
+    @Override
     public MerchantApplyVO myApply(String userNo) {
         // 取最近一份：被驳回后重提会有多份，商家关心的是最新那份的进度
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->

@@ -161,6 +161,11 @@ shop:
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
+  # 商家版 App 的下载地址，按平台各一条。**空的那一档端上不显示**（不发点不开的地址）。
+  # iOS 现在是空的：那一版还在苹果审核队列里，上架前先放 TestFlight 公开链接。
+  merchant-app:
+    android: ${SHOP_MERCHANT_APP_ANDROID:}
+    ios: ${SHOP_MERCHANT_APP_IOS:}
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false

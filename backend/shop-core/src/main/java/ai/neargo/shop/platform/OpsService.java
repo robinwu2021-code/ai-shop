@@ -174,6 +174,26 @@ public interface OpsService {
     String createApplyOnBehalf(SubmitApplyCommand cmd, String submittedBy);
 
     /**
+     * 改自己那份<b>还在等审核</b>的入驻意向。
+     *
+     * <p><b>只有 PENDING 放行</b>，其余三档各有各的理由：
+     * <ul>
+     *   <li>{@code REVIEWING} —— 运营正在看。改了之后他看的与库里存的不是同一份，
+     *       而他不会知道中途变过</li>
+     *   <li>{@code REJECTED} —— 终态。驳回后重提是<b>新开一份单</b>
+     *       （见 {@code MchEntityApply} 的状态机注释），不是把旧单改回去</li>
+     *   <li>{@code APPROVED} —— 商家主体已经建出来了，改意向单不会改到商家档案</li>
+     * </ul>
+     *
+     * <p>不是本人的单一律当<b>不存在</b>（NOT_FOUND）而不是无权限：
+     * 后者等于告诉调用方「这个单号是有效的」。
+     *
+     * @throws ai.neargo.shop.common.BizException
+     *     {@code NOT_FOUND} 单不存在或不是本人的 · {@code APPLY_NOT_EDITABLE} 当前状态不让改
+     */
+    void updateApply(String applyNo, String userNo, SubmitApplyCommand cmd);
+
+    /**
      * <b>商户本人补勾《商家服务协议》</b>（三期）。写的是他自己最近那张申请单的
      * {@code agreed_at}。
      *

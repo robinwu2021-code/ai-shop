@@ -300,6 +300,26 @@ public class MpCatalogController {
     }
 
     /**
+     * 改自己那份还在等审核的入驻意向。
+     *
+     * <p><b>只有待审核能改</b>：运营开始看了（REVIEWING）就锁，否则他看的与库里存的
+     * 不是同一份；驳回后是重新提交一份新的（后端状态机里 REJECTED 是终态）；
+     * 已通过的改意向单也改不到商家档案。
+     */
+    @PostMapping("/mp/merchant/apply/{applyNo}")
+    public MerchantApplyVO updateMerchantApply(@PathVariable String applyNo,
+                                               @RequestBody ApplyReq req) {
+        String userNo = SecurityUtils.currentUserNo();
+        opsService.updateApply(applyNo, userNo, new OpsService.SubmitApplyCommand(
+                userNo, req.name(), req.subject(),
+                req.contactName(), req.contactPhone(), req.referrerPhone(),
+                req.category(), req.desc(),
+                req.serviceScope(), req.communityNos(), req.licenses(),
+                false, req.industry(), req.qualificationItems()));
+        return opsService.myApply(userNo);
+    }
+
+    /**
      * 我的入驻申请状态。<b>此前提交完就查不到了</b> ——
      * 商家不知道审到哪一步，只能打电话问运营。没申请过返回 null，不是错误。
      */
