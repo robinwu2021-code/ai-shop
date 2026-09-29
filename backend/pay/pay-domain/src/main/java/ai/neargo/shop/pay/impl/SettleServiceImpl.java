@@ -1532,6 +1532,8 @@ public class SettleServiceImpl implements SettleService {
                 b.getSplitAt(), b.getStoreNo(), b.getPayMerchantNo(),
                 b.getBusinessMode(), b.getInvoiceStatus(), b.getPaymentRef(),
                 nz(b.getPointsFeeMinor()),
+                nz(b.getFreightIncomeMinor()), nz(b.getFreightCostMinor()),
+                b.getFreightShipMode(), b.getFreightDiffReason(),
                 b.getSettleableAt(), batch == null ? null : batch.getDueAt(), b.getBatchNo(),
                 batch == null ? null : batch.getStatus(),
                 batch == null ? null : batch.getBlockedReason());

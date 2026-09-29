@@ -69,6 +69,29 @@ function batchTone(st: string) {
 /** 万分比 → 百分数。后端存的是万分比整数（2% = 200），直接显示会变成 200% */
 const pct = (bp: number) => `${(bp / 100).toFixed(bp % 100 === 0 ? 0 : 2)}%`;
 
+/**
+ * 快递费那一行右边的小标签。**没有要说的就不给标签**（返回空串）。
+ *
+ * 四种情形要说四句不同的话，而金额本身分不开它们：
+ *   商家自寄        ¥0.00  平台没垫钱，不扣 —— 他不必管
+ *   代寄未称重      ¥0.00  要扣，只是快递100 还没回传 —— 他要等
+ *   代寄已扣        -¥X    正常
+ *   超重 / 超上限   -¥X    他会问「为什么比运费多」，得先答上来
+ */
+function freightTag(b: SettleBill): string {
+  if (b.freightShipMode === "MERCHANT_SELF") {
+    return t("settle.freightSelf");
+  }
+  if (b.freightDiffReason === "OVER_CAP") {
+    return t("settle.freightOverCap");
+  }
+  if (b.freightDiffReason === "OVERWEIGHT") {
+    return t("settle.freightOverweight");
+  }
+  // 代寄而金额还是 0：称重回传还没到
+  return b.freightCostMinor > 0 ? "" : t("settle.freightPending");
+}
+
 /** 流水上是门店号，商家认的是门店名。查不到就原样显示号 —— 空白比一个号更难查 */
 function storeName(storeNo?: string) {
   if (!storeNo) return "—";
@@ -288,6 +311,29 @@ onShow(() => {
           <text class="sh-muted">{{ $t("settle.gross") }}</text>
           <text class="sh-num">{{ money(b.grossMinor) }}</text>
         </view>
+        <!--
+          运费两行**只在快递单出现**（freightShipMode 为空 = 自提或自送，没有快递费这回事）。
+          非快递单硬摆两个 ¥0.00，是给最常见的那类单加两行噪音。
+        -->
+        <view v-if="b.freightShipMode" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.freightIncome") }}</text>
+          <text class="sh-num">+{{ money(b.freightIncomeMinor) }}</text>
+        </view>
+        <view v-if="b.freightShipMode" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.freightCost") }}</text>
+          <!--
+            **同样是 ¥0.00，两件事**：商家自寄（平台没垫钱，不扣）与
+            平台代寄但还没称重回传（要扣，只是数还没回来）。
+            只显示金额的话这两行长得一模一样，而商家的下一步完全不同 ——
+            前者不必管，后者要等。判据取 freightShipMode，不是「金额是不是 0」。
+          -->
+          <view class="sh-row">
+            <text v-if="freightTag(b)" class="sh-chip row__tag">{{ freightTag(b) }}</text>
+            <text class="sh-num" :class="{ 'is-danger': b.freightCostMinor > 0 }">
+              {{ b.freightCostMinor > 0 ? "-" + money(b.freightCostMinor) : money(0) }}
+            </text>
+          </view>
+        </view>
         <view class="sh-row sh-row--between row">
           <text class="sh-muted">{{ $t("settle.commission") }}（{{ pct(b.commissionRate) }}）</text>
           <text class="sh-num is-danger">-{{ money(b.commissionMinor) }}</text>
@@ -405,6 +451,20 @@ onShow(() => {
   background: var(--sh-faint);
   padding: 8rpx 24rpx;
 }
+/*
+ * 金额左边的小标签：说清这个 ¥0 是「不用扣」还是「还没回传」。
+ *
+ * **底色要换成 surface**：`.sh-chip` 默认底是 `--sh-faint`，而它正好是
+ * 外层 `.rows` 的底色（同一个 #E4E5E8）—— 直接用等于把标签画成隐形。
+ * 截图里那一行看着像裸文字，而 class 是在的、圆角也生效了，
+ * 只有把两处的值摆在一起才看得出是同色。
+ */
+.row__tag {
+  margin-right: 12rpx;
+  background: var(--sh-surface);
+  color: var(--sh-sub);
+}
+
 .row {
   padding: 16rpx 0;
 }

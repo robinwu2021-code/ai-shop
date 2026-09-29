@@ -146,6 +146,33 @@ export const settleMock: Pick<MerchantApi,
             o.fulfillment === "STORE_PICKUP"
               ? o.items.reduce((n, it) => n + it.qty, 0) * SETTLE.fulfillFeePerItemMinor
               : 0;
+          /*
+           * 运费三项（V367 / §9）。**按这一单真实的履约方式造**，不是随手塞个 0：
+           * 页面上「自寄不扣 ¥0」与「待称重 ¥0」是两行不同的话，
+           * mock 里都造成 0 的话那段分支在 mock 下永远只走一条，
+           * 而它恰好是连真后端才会露馅的那种差别。
+           *
+           * 四种情形用订单号末位散开，覆盖页面上四个标签：
+           *   自寄（不扣） / 代寄待称重（0 但要扣） / 代寄已扣 / 超重多扣
+           */
+          /*
+           * **mock 的订单全是自提 / 自送**（`_shared.ts` 里
+           * `fulfillmentsOf(SELF_PICKUP, SELF_SERVE)`），一单快递都没有 ——
+           * 照 `o.fulfillment` 判的话，运费那两行在 mock 下一次都不会出现，
+           * 而它们恰好是这次要看的东西。改 `_shared` 让部分订单变快递会牵动
+           * 订单列表等一片页面，代价比收益大，所以在这一层按单号散开造。
+           *
+           * 这只影响「看不看得到这四种标签」；金额口径由后端的
+           * FreightOrderFlowTest 守，两边不互相替代。
+           */
+          const seed = Number(o.orderNo.slice(-1)) || 0;
+          const isExpress = seed % 5 !== 4;
+          const freightIncome = isExpress ? 800 : 0;
+          const shipMode = !isExpress ? undefined : seed % 4 === 0 ? "MERCHANT_SELF" : "PLATFORM_CALL";
+          const freightCost = !isExpress || shipMode === "MERCHANT_SELF"
+            ? 0
+            : seed % 4 === 1 ? 0 : seed % 4 === 2 ? 800 : 1200;
+          const diffReason = freightCost > freightIncome ? "OVERWEIGHT" : undefined;
           return {
             settleNo: `SB${o.orderNo}`,
             subOrderNo: o.orderNo,
@@ -154,7 +181,12 @@ export const settleMock: Pick<MerchantApi,
             grossMinor: gross,
             commissionMinor: commission,
             serviceFeeMinor: serviceFee,
-            netMinor: gross - commission - serviceFee,
+            freightIncomeMinor: freightIncome,
+            freightCostMinor: freightCost,
+            freightShipMode: shipMode,
+            freightDiffReason: diffReason,
+            // 与后端同一条式子：基数 − 佣金 − 服务费 + 运费收入 − 实付快递费
+            netMinor: gross - commission - serviceFee + freightIncome - freightCost,
             trafficSource: o.trafficSource ?? "PLATFORM",
             commissionRate: Math.round(rate * 10000),
             // 退过款的走回退态：账面上不能出现「退过款还照结」的钱（ADR-002 §3）

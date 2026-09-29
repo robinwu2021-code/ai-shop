@@ -41,6 +41,38 @@ public record SettleBillVO(String settleNo,
                             */
                            long pointsFeeMinor,
                            /**
+                            * 买家付的运费（代收，分）。**不在 {@code grossMinor} 里** ——
+                            * 运费是代收代付的钱，进了基数就等于让商家为它付佣金（§9 AC21）。
+                            *
+                            * <p>非快递单为 0：只有 EXPRESS 走运费模板。
+                            */
+                           long freightIncomeMinor,
+                           /**
+                            * 平台实付给快递公司的钱（分）。**只有平台代寄才有。**
+                            *
+                            * <p>商家自己填单号发货是他自付，平台一分没出，这里是 0 ——
+                            * 扣了就是收两遍。判据是 {@link #freightShipMode}，不是「这个数是不是 0」：
+                            * 平台代寄但还没称重回传时它也是 0。
+                            */
+                           long freightCostMinor,
+                           /**
+                            * {@code PLATFORM_CALL} 平台代寄 / {@code MERCHANT_SELF} 商家自寄；
+                            * 非快递单为 null。
+                            *
+                            * <p><b>端上要据它决定那一行说什么</b>：同样是 0 元快递费，
+                            * 「商家自寄，平台不扣」与「平台代寄，费用还没回传」是两件事，
+                            * 只显示金额的话商家看到的是同一行。
+                            */
+                           String freightShipMode,
+                           /**
+                            * 实付高于代收时的原因（OVERWEIGHT / REGION_SURCHARGE / OVER_CAP）。
+                            * 没有差额时为 null。
+                            *
+                            * <p>商家被多扣了钱一定会问为什么，而「超重」与「触发封顶只扣了一部分」
+                            * 要给的是两句不同的话。
+                            */
+                           String freightDiffReason,
+                           /**
                             * T2 可结算时刻。空 = 还不可结算（未履约，或售后未闭环）。
                             *
                             * <p>与下面两个一起，回答商家问的第一个问题：<b>「这笔什么时候到」</b>。

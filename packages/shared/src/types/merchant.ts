@@ -1079,7 +1079,41 @@ export interface SettleBill {
   commissionMinor: number;
   /** 自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消 */
   serviceFeeMinor: number;
-  /** 商家实得（分）= 基数 − 佣金 − 服务费 */
+  /**
+   * 买家付的运费（代收，分）。**不在 `grossMinor` 里**，所以不进佣金基数。
+   *
+   * 非快递单为 0：只有 EXPRESS 走运费模板。
+   */
+  freightIncomeMinor: number;
+  /**
+   * 平台实付给快递公司的钱（分）。**只有平台代寄才有。**
+   *
+   * 商家自己填单号发货是他自付，平台一分没出，这里是 0 —— 扣了就是收两遍。
+   * 判据是 `freightShipMode`，**不是「这个数是不是 0」**：
+   * 平台代寄但还没称重回传时它也是 0，那种情况要等回传，不是不扣。
+   */
+  freightCostMinor: number;
+  /**
+   * `PLATFORM_CALL` 平台代寄 / `MERCHANT_SELF` 商家自寄；非快递单为空。
+   *
+   * **端上据它决定那一行说什么**：同样是 0 元快递费，
+   * 「商家自寄，平台不扣」与「平台代寄，费用还没回传」是两件事，
+   * 只显示金额的话商家看到的是同一行。
+   */
+  freightShipMode?: string;
+  /**
+   * 实付高于代收时的原因：`OVERWEIGHT` 超重 / `REGION_SURCHARGE` 地区加收 /
+   * `OVER_CAP` 触发封顶（只扣到上限，差额待人工）。没有差额时为空。
+   *
+   * 商家被多扣一定会问为什么，而「超重」与「封顶只扣了一部分」要给两句不同的话。
+   */
+  freightDiffReason?: string;
+  /**
+   * 商家实得（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费。
+   *
+   * 平台代寄且不超重时后两项对消，回到「货款 − 佣金」；
+   * 商家自寄时实付为 0，运费全额留给商家。
+   */
   netMinor: number;
   /** 客流来源：MERCHANT_OWNED 自带客流（零佣金）/ PLATFORM */
   trafficSource?: string;
