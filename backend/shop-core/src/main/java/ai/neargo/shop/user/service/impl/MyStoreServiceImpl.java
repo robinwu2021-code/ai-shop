@@ -1,6 +1,7 @@
 package ai.neargo.shop.user.service.impl;
 
 import ai.neargo.shop.common.Geo;
+import ai.neargo.shop.common.OpenHours;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.trade.PurchaseHistoryPort;
 import ai.neargo.shop.spi.trade.PurchaseHistoryPort.StorePurchase;
@@ -15,8 +16,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -24,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -39,10 +36,6 @@ import java.util.stream.Collectors;
 public class MyStoreServiceImpl implements MyStoreService {
 
     private static final long DAY_MS = 86_400_000L;
-
-    /** {@code 08:00-20:00}；也认全角破折号、波浪号与「至」 */
-    private static final Pattern HOURS =
-            Pattern.compile("^\\s*(\\d{1,2}):(\\d{2})\\s*[-–—~～至]\\s*(\\d{1,2}):(\\d{2})\\s*$");
 
     private final StoreViewMapper viewMapper;
     private final StoreDirectoryPort storeDirectory;
@@ -200,29 +193,8 @@ public class MyStoreServiceImpl implements MyStoreService {
                 ? null
                 : Geo.meters(latE6, lngE6, c.latE6(), c.lngE6());
         return new StoreCardVO(c.storeNo(), c.storeName(), c.entityNo(), c.logo(), c.status(),
-                openNow(c.openHours()), c.openHours(), c.address(), distance,
+                OpenHours.openNow(c.openHours()), c.openHours(), c.address(), distance,
                 c.rating(), c.ratingCount(), rel);
-    }
-
-    /** 认得出营业时间就说开没开；认不出返回 null（页面不画那个标签，不猜） */
-    static Boolean openNow(String hours) {
-        if (hours == null || hours.isBlank()) {
-            return null;
-        }
-        Matcher m = HOURS.matcher(hours);
-        if (!m.matches()) {
-            return null;
-        }
-        int open = Integer.parseInt(m.group(1)) * 60 + Integer.parseInt(m.group(2));
-        int close = Integer.parseInt(m.group(3)) * 60 + Integer.parseInt(m.group(4));
-        LocalTime t = LocalTime.now(ZoneId.systemDefault());
-        int now = t.getHour() * 60 + t.getMinute();
-        if (open == close) {
-            return true;   // 00:00-00:00 这种写法是全天
-        }
-        return open < close ? now >= open && now < close
-                // 跨夜：22:00-02:00
-                : now >= open || now < close;
     }
 
     private static String blankToNull(String s) {

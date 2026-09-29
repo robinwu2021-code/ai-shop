@@ -20,7 +20,8 @@
 | AC4 | 「平台推荐」移出店铺页 | 店铺页不再调 `/mp/merchant/promoted` |
 | AC5 | 「附近」按门店坐标算距离；无坐标的排最后 | `NearbyStoreServiceImpl`：服务范围可达集 → 距离升序 |
 | AC6 | 「附近」只收门店 ACTIVE 且主体 ACTIVE；「我的店」里 READONLY 的压淡显示「暂停营业」 | 列表过滤；`StoreCardVO.status` |
-| AC7 | READONLY 门店**下不了单**；直达链接显示暂停营业页，并给最近的同主体门店（s07） | 下单闸 `OrderServiceImpl` 按 `store_no` 校验状态；门户 `closed` + `nearestSibling` |
+| AC7 | READONLY 门店**下不了单**；直达链接显示暂停营业页，并给最近的同主体门店（s07） | 下单落店只落 ACTIVE 门店（§2.7）；买家指定的店暂停 → `STORE_PAUSED`；门户 `closed` + `sibling` |
+| AC19 | 在哪家店的门户里买，就由哪家店履约（2026-09-29 实现时补） | 下单带 `storeChoices`（主体 → 门店）；落店优先级见 §2.7 |
 | AC8 | 任何入口进门户都记一次「逛过」，含**首次来源**（分享 / 扫码 / 列表 / 搜索 / 商品页）与首次邀请人 | 新表 `usr_store_view`；`POST /mp/store/{no}/enter` 写入 |
 | AC9 | 门户按 `storeNo` 取数；列表、扫码、分享三个入口进**同一个门户**（s03、s04） | `pages/store` 成为唯一门户；`GET /mp/store/{no}` |
 | AC10 | 老链接继续可用：`/mp/store/{merchantNo}`、老分享、老店码解析到默认 ACTIVE 门店 | 编号前缀分派（§2.1） |
@@ -81,10 +82,12 @@
 | `GET /mp/store/nearby` | 新 | `PageData<StoreCardVO>`；`lat`/`lng`/`communityNo`/`keyword`/`page`/`size`；登录时去掉「我的店」已有的；匿名可调 |
 | `GET /mp/store/{no}` | **改返回** | `StoreHomeVO` 以门店为根：门店名、状态、营业时间与是否营业中、评分、履约方式、距离、公告、是否关注、`closed`、`nearestSibling` |
 | `POST /mp/store/{no}/enter` | 改 | 请求体加 `source`（`SHARE`/`SCAN`/`LIST`/`SEARCH`/`GOODS`）；写归因（主体）+ 写 `usr_store_view`（门店） |
-| `GET /mp/store/{no}/frequent` | 改 | 「我常买」按门店 |
+| `GET /mp/store/{no}/goods` | 新 | 门户商品列表：本店在售（店级上架语义见 §2.7）；`categoryNo`（货架类目，取自门户的 `categories`）/`keyword`/`page`/`size`。**不给 `/mp/goods` 加 `storeNo`**：那是跨店目录，一条端点两种可见性口径迟早分岔；门户的读都挂在 `/mp/store/{no}/` 下，前缀分派只写一处 |
+| `POST /mp/order` · `POST /mp/order/preview` | 加字段 | `storeChoices: [{merchantNo, storeNo}]`（§2.7）。不传 = 与改造前逐字相同 |
+| `GET /mp/store/{no}/frequent` · `POST /mp/store/{no}/rebuy` | 改 | `{no}` 按前缀分派；**仍按主体聚合**（同品牌几家店买过的都算「常买」—— 商品定义本在主体级） |
 | `GET /mp/store/{no}/acode` | 新 | 门店小程序码（海报用）；一店一码生成一次落库复用，码里不带邀请人（§7.3 已定） |
-| `GET /mp/goods` | 加参数 | `storeNo`、`storeCategoryNo`（左栏分类，来自 `mch_store_category`） |
-| `GET /mp/review` | 加参数 | `storeNo` |
+| `GET /mp/goods` | **不改** | 门户商品走上面的 `/mp/store/{no}/goods`（理由同那一行） |
+| `GET /mp/review` | 加参数 | `storeNo`；可单独传（此前 `goodsNo`/`merchantNo` 至少一个） |
 | `POST /mp/favorite/store/{no}` · `GET /mp/favorite/store` | 改（二期） | 按门店 |
 | `GET /biz/store/{storeNo}/share-stats` | 新（二期） | 分享效果三数；按「新增 /biz 端点要登记七处」走 |
 | `GET /mp/merchant` · `/mp/merchant/visited` · `/mp/merchant/promoted` | 废弃 | 旧版小程序下线后删；`/mp/merchant/{merchantNo}` 保留为资质页 |
@@ -171,6 +174,32 @@ CREATE TABLE IF NOT EXISTS usr_store_view
 - B 端门店设置页：无坐标时顶部一行提示「补全门店位置，附近的顾客才看得到你」，点进地图选点。
 - 运营端门店治理列表加「坐标」一列，异常（无坐标 / 与地址所在城市不符）标黄。
 
+### 2.7 下单落店（实现时补，AC7 / AC19）
+
+**缺口**：设计阶段只改了「看」，没改「买」。下单落哪家店由 `OrderServiceImpl.storesOfEntities` 决定：
+自提点所属店 → 默认店（服务得了买家社区时）→ 最近的服务店。**不看买家是从哪个门户进来的** ——
+门户做成门店之后，在 B 店门户里下的单照样落到默认的 A 店：价格、库存、履约全按 A 店走，
+而页面上一路写的是 B 店。门户若只换展示，这一期就是一次换皮。
+
+**做法**：下单与预览带 `storeChoices`（主体号 → 门店号），端上在进门户时记下「这个主体我在逛哪家店」。
+落店优先级：
+
+| 序 | 条件 | 落到 |
+|---|---|---|
+| 1 | 自提点属于本主体 | 自提点所属店（人要去那儿取货，改不了） |
+| 2 | `storeChoices` 给了本主体的店 | 那家店；**非 ACTIVE → 拒单 `STORE_PAUSED`**；不属于本主体 → 忽略（按 3、4 走） |
+| 3 | 默认店 ACTIVE 且服务得了买家社区 | 默认店（与改造前相同） |
+| 4 | 否则 | 服务该社区的 ACTIVE 店里最近的；一家都没有 → 默认店（若它也不是 ACTIVE → `STORE_PAUSED`） |
+
+- 第 2 档**不看服务范围**：买家点进这家店的门户、在里面挑的货，送不送得到由后面的配送闸
+  （`requireFulfillmentSupported` / 自送半径）判，与今天从默认店下单是同一套闸 —— 不在落店这一步另判一遍。
+- 第 3、4 档只取 ACTIVE：此前 READONLY 的默认店照样收单（记忆「停用门店没人读」）。
+- **自提点属于一家 READONLY 店**：第 1 档照落，再由状态闸拒 `STORE_PAUSED` —— 货在那家店，换店等于让人白跑。
+- 新错误码 `STORE_PAUSED`（70075，三语）：「这家店暂停营业了，去看看同品牌的其他门店」。
+
+**门户商品的在售口径**与 `PrdStoreGoods` 注释一致：某商品没有任何店级行 → 看 `prd_goods.on_sale`；
+有了任意一行 → 只有本店那行 `on_sale=1` 才算在售。**价格仍是主体级**（`PrdStoreGoods` 注释：分店价单独一批做）。
+
 ## §3 分期
 
 | 期 | 范围 | 验收 |
@@ -193,7 +222,8 @@ CREATE TABLE IF NOT EXISTS usr_store_view
 | AC3 | `MyStoreFlowTest#只逛过的31天后退出_买过的不退出` |
 | AC5 | `MyStoreFlowTest#无坐标门店排最后` |
 | AC6 | `MyStoreFlowTest#附近不收READONLY_我的店里压淡` |
-| AC7 | `OrderPlaceFlowTest#READONLY门店拒单` |
+| AC7 | `StoreOrderRoutingFlowTest#指定暂停的店拒单` · `#默认店暂停时落到其他营业店` |
+| AC19 | `StoreOrderRoutingFlowTest#门户选店落到那家店` · `#别家主体的门店号被忽略` · `#不传与改造前相同` |
 | AC8 | `StoreViewFlowTest#首次来源只在第一次写入_之后只刷新时间与次数` |
 | AC10 | `MpStoreRouteTest#M前缀解析到默认ACTIVE门店_ST前缀直取_未知前缀404` |
 | AC12 | `ReviewFlowTest#按门店过滤` |

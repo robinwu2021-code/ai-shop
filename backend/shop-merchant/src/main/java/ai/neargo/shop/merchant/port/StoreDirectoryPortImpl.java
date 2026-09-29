@@ -131,6 +131,26 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
                 .or(() -> siblings.stream().findFirst());
     }
 
+    @Override
+    public Optional<ai.neargo.shop.spi.user.MerchantQueryPort.StoreFront> front(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        MchStore s = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getStoreNo, storeNo).last("limit 1")));
+        if (s == null) {
+            return Optional.empty();
+        }
+        String ann = s.effectiveAnnouncement();
+        return Optional.of(new ai.neargo.shop.spi.user.MerchantQueryPort.StoreFront(ann,
+                // 过期的公告连时间也不给：与 MerchantPortImpl.storeFront 同一处理
+                ann.isEmpty() ? null : s.getAnnouncementAt(),
+                Objects.requireNonNullElse(s.getOpenHours(), ""),
+                Objects.requireNonNullElse(s.getAddress(), ""),
+                Objects.requireNonNullElse(s.getStatus(), ""), s.getLatE6(), s.getLngE6()));
+    }
+
     /** 老链接的落点：默认门店（要 ACTIVE）→ 任一 ACTIVE → 任一门店（门户显示暂停营业） */
     private Optional<StoreCard> frontStoreOf(String entityNo) {
         List<StoreCard> all = storesOf(entityNo);

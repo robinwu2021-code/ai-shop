@@ -281,11 +281,14 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 商家
   merchantList: { method: "GET", path: "/mp/merchant", auth: false, summary: "商家列表/搜索" },
-  storeHome: { method: "GET", path: "/mp/store/:merchantNo", auth: false, summary: "门店主页" },
+  // `:no` 按前缀分派：门店号（ST…）直接进；主体号（M…，老链接）落到默认门店
+  storeHome: { method: "GET", path: "/mp/store/:no", auth: false, summary: "门店门户" },
+  storeGoods: { method: "GET", path: "/mp/store/:no/goods", auth: false, summary: "门户商品（本店在售）" },
+  storeAcode: { method: "GET", path: "/mp/store/:no/acode", auth: false, summary: "门店小程序码（海报用）" },
   // 扫码落地。**游客可访问** —— 扫贴纸的人多数还没登录，要求登录的话
   // 漏斗最宽的那一层永远是空的，而那一层正是「这批贴纸有没有用」的答案
   storeByCode: { method: "GET", path: "/mp/store/by-code", auth: false, summary: "扫码进店" },
-  frequentItems: { method: "GET", path: "/mp/store/:merchantNo/frequent", auth: true, summary: "常买清单" },
+  frequentItems: { method: "GET", path: "/mp/store/:no/frequent", auth: true, summary: "常买清单" },
   reorderFrom: { method: "POST", path: "/mp/order/:orderNo/reorder", auth: true, summary: "一键再来一单" },
   toggleFavoriteStore: { method: "POST", path: "/mp/favorite/store/:merchantNo", auth: true, summary: "收藏 / 取消收藏店铺" },
   toggleFavoriteGoods: { method: "POST", path: "/mp/favorite/goods/:goodsNo", auth: true, summary: "收藏 / 取消收藏商品" },

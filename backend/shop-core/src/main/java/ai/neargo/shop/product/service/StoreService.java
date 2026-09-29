@@ -12,6 +12,20 @@ public interface StoreService {
 
     StoreHomeVO home(String merchantNo, String userNo, boolean favorited);
 
+    /**
+     * 门店门户（TDD-C端门店化与门店门户 AC9）：<b>以门店为根</b> —— 门头是门店名、门面文案取这家店、
+     * 商品只列本店在售的、货架取本店的。暂停营业的店照样回（{@code closed=true}），并给同主体最近的营业店。
+     *
+     * @param latE6 买家位置，可空；有就算出到这家店的距离
+     */
+    StoreHomeVO homeOfStore(ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard store, String userNo,
+                            boolean favorited, Integer latE6, Integer lngE6);
+
+    /** 门户的商品列表：本店在售，可按货架类目与关键词筛 */
+    ai.neargo.shop.common.PageData<ai.neargo.shop.product.dto.GoodsVO> goodsOfStore(
+            ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard store, String categoryNo, String keyword,
+            long page, long size);
+
     /** 我在这家店的常买清单（C-ST-02），按购买次数倒序。 */
     List<FrequentItemVO> frequentItems(String merchantNo);
 

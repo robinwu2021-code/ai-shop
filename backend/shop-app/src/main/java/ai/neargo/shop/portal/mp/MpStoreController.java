@@ -139,8 +139,30 @@ public class MpStoreController {
                 LOG.log(java.util.logging.Level.WARNING, "扫码归因失败：" + storeCode, e);
             }
         }
-        return storeService.home(merchantNo, userNo,
-                favoriteService.isFavorited(merchantNo));
+        // 码解得出分店就进那家店的门户；解不出（历史主体级码）按主体号走前缀分派
+        return portalOf(target.storeNo() != null && !target.storeNo().isBlank() ? target.storeNo() : merchantNo,
+                userNo, null, null);
+    }
+
+    /**
+     * 门户的统一出口：按编号前缀解析成门店，以门店为根组装；
+     * 主体号解不出门店（主体一家店都没有）时退回改造前的主体主页 —— 老链接不能从能进变成 404。
+     */
+    private StoreHomeVO portalOf(String no, String userNo, Integer latE6, Integer lngE6) {
+        var store = storeDirectory.resolve(no);
+        if (store.isPresent()) {
+            var s = store.get();
+            return storeService.homeOfStore(s, userNo, favoriteService.isFavorited(s.entityNo()), latE6, lngE6);
+        }
+        if (no.startsWith("M")) {
+            return storeService.home(no, userNo, favoriteService.isFavorited(no));
+        }
+        throw BizException.of(ErrorCode.NOT_FOUND);
+    }
+
+    /** 门户里的读都先把编号解析成门店；解不出就是 404（主体号也要落得到一家店） */
+    private StoreDirectoryPort.StoreCard storeOf(String no) {
+        return storeDirectory.resolve(no).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
     }
 
     /** 取值是 web 层的事（领域服务不碰 web 运行时，ArchitectureTest 拦这条）。 */
@@ -165,10 +187,48 @@ public class MpStoreController {
         return Integer.toHexString(ua.hashCode());
     }
 
-    @GetMapping("/mp/store/{merchantNo}")
-    public StoreHomeVO home(@PathVariable String merchantNo) {
-        return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
-                favoriteService.isFavorited(merchantNo));
+    /**
+     * 门店门户。{@code no} 按前缀分派：门店号（ST…）直接进；主体号（M…，老分享 / 旧版小程序）
+     * 落到它的默认营业门店。暂停营业的店照样回，{@code closed=true} 并给同主体最近的营业店。
+     */
+    @GetMapping("/mp/store/{no}")
+    public StoreHomeVO home(@PathVariable String no,
+                            @RequestParam(required = false) Integer latE6,
+                            @RequestParam(required = false) Integer lngE6) {
+        return portalOf(no, SecurityUtils.currentUserNoOrNull(), latE6, lngE6);
+    }
+
+    /**
+     * 门户的商品列表：<b>本店在售</b>的（店级上架语义，TDD §2.7）。
+     *
+     * <p>不给 {@code /mp/goods} 加 storeNo：那是跨店目录，一条端点两种可见性口径迟早分岔；
+     * 门户的读都挂在 {@code /mp/store/{no}/} 下，前缀分派只写一处。
+     *
+     * @param categoryNo 货架类目（门户左栏，取自 {@code StoreHomeVO.categories}）
+     */
+    @GetMapping("/mp/store/{no}/goods")
+    public PageData<ai.neargo.shop.product.dto.GoodsVO> goods(@PathVariable String no,
+                                                              @RequestParam(required = false) String categoryNo,
+                                                              @RequestParam(required = false) String keyword,
+                                                              @RequestParam(defaultValue = "1") long page,
+                                                              @RequestParam(defaultValue = "20") long size) {
+        return storeService.goodsOfStore(storeOf(no), categoryNo, keyword, page, Math.min(Math.max(size, 1), 50));
+    }
+
+    /**
+     * 这家店的小程序码（海报用）。一店一码、生成一次落库复用（{@code StoreCodeService#acodeBase64}）；
+     * 码里不带邀请人（§7.3 已定：带了就是一人一码，额度烧穿）。
+     *
+     * <p>通道未开启或生成失败时 {@code imageBase64} 为 null —— 端上画一张不带码的海报。
+     */
+    @GetMapping("/mp/store/{no}/acode")
+    public StoreAcodeVO acode(@PathVariable String no) {
+        var s = storeOf(no);
+        return new StoreAcodeVO(s.storeNo(), s.storeName(), storeCodeService.acodeBase64(s.entityNo(), s.storeNo()));
+    }
+
+    /** @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）；通道未开启时为 null */
+    public record StoreAcodeVO(String storeNo, String storeName, String imageBase64) {
     }
 
     /**
@@ -208,14 +268,19 @@ public class MpStoreController {
                 new AttributionService.Clue(req.merchantNo(), req.inviterNo(), req.channel()));
     }
 
-    @GetMapping("/mp/store/{merchantNo}/frequent")
-    public List<FrequentItemVO> frequent(@PathVariable String merchantNo) {
-        return storeService.frequentItems(merchantNo);
+    /**
+     * 我常买。按<b>主体</b>聚合：同一品牌几家店买过的货都算「常买」—— 商品定义本来就在主体级。
+     * {@code no} 可以是门店号（新门户）或主体号（旧版）。
+     */
+    @GetMapping("/mp/store/{no}/frequent")
+    public List<FrequentItemVO> frequent(@PathVariable String no) {
+        return storeService.frequentItems(no.startsWith("ST") ? storeOf(no).entityNo() : no);
     }
 
-    @PostMapping("/mp/store/{merchantNo}/rebuy")
-    public RebuyResultVO rebuy(@PathVariable String merchantNo) {
-        return storeService.rebuy(merchantNo);
+    /** 把「我常买」一键加进购物车。{@code no} 与 frequent 同一口径 */
+    @PostMapping("/mp/store/{no}/rebuy")
+    public RebuyResultVO rebuy(@PathVariable String no) {
+        return storeService.rebuy(no.startsWith("ST") ? storeOf(no).entityNo() : no);
     }
 
     /**

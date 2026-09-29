@@ -2217,6 +2217,7 @@
 |---|---|---|:---:|---|
 | `goodsNo` | query | `string` | 否 | 商品单号 |
 | `merchantNo` | query | `string` | 否 | 商家单号 |
+| `storeNo` | query | `string` | 否 | — |
 
 **出参**（`data`）
 
@@ -2300,15 +2301,15 @@
 
 ### store
 
-#### GET `/mp/store/{merchantNo}`
+#### GET `/mp/store/{no}`
 
-门店主页　🔒
+门店门户　🔒
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | `string` | 是 | 商家单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 **出参**（`data`）
 
@@ -2322,21 +2323,29 @@
 | `categories` | [`StoreShelf`](#storeshelf)\[\] | 是 | 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
+| `portal` | [`StorePortal`](#storeportal) \| `null` | 否 | 门户的门头（TDD-C端门店化与门店门户）：**这家门店**的名字、状态、评分。 标题读它，不读 `merchant.name`（那是主体名，只在资质页出现）。 按主体号进来、而主体一家门店都没有时为空 —— 端上退回 `merchant`。 |
+| `sibling` | [`StoreSibling`](#storesibling) \| `null` | 否 | 暂停营业时：同主体离这家最近的营业店。营业中、或没有别的店时为空 |
 
 
-#### GET `/mp/store/{merchantNo}/frequent`
+#### GET `/mp/store/{no}/acode`
 
-常买清单　🔒
+门店小程序码（海报用）　🔒
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
-| `merchantNo` | path | `string` | 是 | 商家单号 |
+| `no` | path | `string` | 是 | 该资源的业务单号 |
 
 **出参**（`data`）
 
-类型：[`FrequentItem`](#frequentitem)\[\]
+类型：[`StoreCodeImage`](#storecodeimage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 码所属的门店 |
+| `storeName` | `string` | 是 | 门店名 —— 海报上画的就是它 |
+| `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 画一张不带码的海报 |
 
 
 #### POST `/mp/store/{no}/enter`
@@ -2363,6 +2372,47 @@
 类型：`object`
 
 
+#### GET `/mp/store/{no}/frequent`
+
+常买清单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：[`FrequentItem`](#frequentitem)\[\]
+
+
+#### GET `/mp/store/{no}/goods`
+
+门户商品（本店在售）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `categoryNo` | query | `string` | 否 | 类目单号 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`Goods`](#goods)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
 #### GET `/mp/store/by-code`
 
 扫码进店　🔒
@@ -2381,6 +2431,8 @@
 | `categories` | [`StoreShelf`](#storeshelf)\[\] | 是 | 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
+| `portal` | [`StorePortal`](#storeportal) \| `null` | 否 | 门户的门头（TDD-C端门店化与门店门户）：**这家门店**的名字、状态、评分。 标题读它，不读 `merchant.name`（那是主体名，只在资质页出现）。 按主体号进来、而主体一家门店都没有时为空 —— 端上退回 `merchant`。 |
+| `sibling` | [`StoreSibling`](#storesibling) \| `null` | 否 | 暂停营业时：同主体离这家最近的营业店。营业中、或没有别的店时为空 |
 
 
 #### GET `/mp/store/mine`
@@ -4416,6 +4468,16 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `ratingCount` | `number` | 是 | 评价数。0 表示暂无评价，此时别显示 rating |
 | `relation` | [`StoreRelation`](#storerelation) \| `null` | 否 | 买家与这家店的关系。「附近」里为空 |
 
+### StoreCodeImage
+
+门店的小程序码（海报用）。一店一码、生成一次落库复用
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 码所属的门店 |
+| `storeName` | `string` | 是 | 门店名 —— 海报上画的就是它 |
+| `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 画一张不带码的海报 |
+
 ### StoreEnterReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -4446,6 +4508,23 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `categories` | [`StoreShelf`](#storeshelf)\[\] | 是 | 本店货架：**店主自己排的顺序、自己改的名字**（「本地时鲜」而不是「蔬菜」）。 只含真的有在售商品的类目 —— 摆着却一件货都没有的类目，点进去空手而归。 少于两条时端上不画这一行：一个恒真的筛选开关只是占地方。 |
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
+| `portal` | [`StorePortal`](#storeportal) \| `null` | 否 | 门户的门头（TDD-C端门店化与门店门户）：**这家门店**的名字、状态、评分。 标题读它，不读 `merchant.name`（那是主体名，只在资质页出现）。 按主体号进来、而主体一家门店都没有时为空 —— 端上退回 `merchant`。 |
+| `sibling` | [`StoreSibling`](#storesibling) \| `null` | 否 | 暂停营业时：同主体离这家最近的营业店。营业中、或没有别的店时为空 |
+
+### StorePortal
+
+门户门头
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号（`ST…`） |
+| `storeName` | `string` | 是 | 门店名 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | READONLY = 暂停营业 |
+| `isDefault` | `boolean` | 是 | 是否主体的默认门店 |
+| `openNow` | `boolean,null` | 否 | 此刻营业与否。营业时间写得认不出来时为空 —— 不画这个标签 |
+| `rating` | `number` | 是 | 门店评分 0–5 |
+| `ratingCount` | `number` | 是 | 评价数。0 = 暂无评价，此时别显示 rating |
+| `distanceM` | `number,null` | 否 | 离我多远（米）。没给位置或门店没标坐标时为空 —— **不是 0** |
 
 ### StoreRelation
 
@@ -4467,6 +4546,16 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `categoryNo` | `string` | 是 | 类目号 |
 | `name` | `string` | 是 | 名称 |
 | `count` | `number` | 是 | 这一类下有几件在架。直接显示，省得买家点进去数 |
+
+### StoreSibling
+
+暂停营业时给的出路：同主体的另一家营业店
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号 |
+| `storeName` | `string` | 是 | 门店名 |
+| `distanceM` | `number,null` | 否 | 两家店之间的距离（米）。任一家没标坐标时为空 |
 
 ### StoreStatus
 

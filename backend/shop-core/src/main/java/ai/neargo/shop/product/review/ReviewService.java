@@ -25,6 +25,9 @@ public interface ReviewService {
      */
     List<ReviewVO> list(String goodsNo, String merchantNo, String filter, int page, int size);
 
+    /** @param storeNo 只看这家门店的评价；空 = 不按门店筛 */
+    List<ReviewVO> list(String goodsNo, String merchantNo, String storeNo, String filter, int page, int size);
+
     /** 旧签名：全部、第一页。留着是因为它在别处还有调用方 */
     default List<ReviewVO> list(String goodsNo, String merchantNo) {
         return list(goodsNo, merchantNo, FILTER_ALL, 1, MAX_PAGE_SIZE);

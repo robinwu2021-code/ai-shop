@@ -44,6 +44,7 @@ import type {
   MyStoresQuery,
   StoreNearbyQuery,
   StoreEnterReq,
+  StoreGoodsQuery,
 } from "./requests";
 import type {
   AfterSale,
@@ -70,6 +71,7 @@ import type {
   ReorderResult,
   StoreHome,
   StoreCard,
+  StoreCodeImage,
   Message,
   Order,
   PageQuery,
@@ -247,12 +249,15 @@ export const httpApi: ShopApi = {
     } satisfies MerchantListQuery).then((r) =>
       Array.isArray(r) ? r : (r?.records ?? []),
     ),
-  storeHome: (merchantNo, from) =>
-    http.get<StoreHome>(buildPath(ENDPOINTS.storeHome.path, { merchantNo }), { from }),
+  storeHome: (no, from) =>
+    http.get<StoreHome>(buildPath(ENDPOINTS.storeHome.path, { no }), { from }),
+  storeGoods: (no, q) =>
+    call<PageResult<Goods>>("storeGoods", { no }, { ...q } satisfies StoreGoodsQuery),
+  storeAcode: (no) => call<StoreCodeImage>("storeAcode", { no }),
   storeByCode: (storeCode, deviceId) =>
     http.get<StoreHome>(ENDPOINTS.storeByCode.path, { storeCode, deviceId }),
-  frequentItems: (merchantNo) =>
-    http.get<FrequentItem[]>(buildPath(ENDPOINTS.frequentItems.path, { merchantNo })),
+  frequentItems: (no) =>
+    http.get<FrequentItem[]>(buildPath(ENDPOINTS.frequentItems.path, { no })),
   reorderFrom: (orderNo) =>
     http.post<ReorderResult>(buildPath(ENDPOINTS.reorderFrom.path, { orderNo }), {}),
   toggleFavoriteStore: (merchantNo) =>

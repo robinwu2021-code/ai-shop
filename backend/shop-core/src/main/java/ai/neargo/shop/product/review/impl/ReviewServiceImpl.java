@@ -78,7 +78,12 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public List<ReviewVO> list(String goodsNo, String merchantNo, String filter, int page, int size) {
-        List<RvwReview> rows = visibleRows(goodsNo, merchantNo);
+        return list(goodsNo, merchantNo, null, filter, page, size);
+    }
+
+    @Override
+    public List<ReviewVO> list(String goodsNo, String merchantNo, String storeNo, String filter, int page, int size) {
+        List<RvwReview> rows = visibleRows(goodsNo, merchantNo, storeNo);
         rows = rows.stream().filter(r -> matches(r, filter)).toList();
 
         int p = Math.max(1, page);
@@ -153,8 +158,13 @@ public class ReviewServiceImpl implements ReviewService {
 
     /** 列表与概览共用的那一次查询：同一批行，两种用法 */
     private List<RvwReview> visibleRows(String goodsNo, String merchantNo) {
-        // 两个都不传就是全表扫描，没有任何使用场景 —— 与契约注释一致，直接拒绝
-        if (isBlank(goodsNo) && isBlank(merchantNo)) {
+        return visibleRows(goodsNo, merchantNo, null);
+    }
+
+    /** @param storeNo 门户按门店看（老评价没有门店号，不会出现在按门店的结果里） */
+    private List<RvwReview> visibleRows(String goodsNo, String merchantNo, String storeNo) {
+        // 都不传就是全表扫描，没有任何使用场景 —— 与契约注释一致，直接拒绝
+        if (isBlank(goodsNo) && isBlank(merchantNo) && isBlank(storeNo)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         // 评价对游客可见（看评价才有下单动机），所以要跳过数据域裁剪
@@ -163,6 +173,7 @@ public class ReviewServiceImpl implements ReviewService {
                         .eq(RvwReview::getStatus, VISIBLE)
                         .eq(!isBlank(goodsNo), RvwReview::getGoodsNo, goodsNo)
                         .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                        .eq(!isBlank(storeNo), RvwReview::getStoreNo, storeNo)
                         .orderByDesc(RvwReview::getId)));
     }
 

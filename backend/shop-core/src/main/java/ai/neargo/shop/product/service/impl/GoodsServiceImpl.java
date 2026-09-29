@@ -57,12 +57,16 @@ public class GoodsServiceImpl implements GoodsService {
     private final ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort;
     /** 按区筛商品池要先把区展开成社区。product → community 走 Port（ArchUnit 守着不许直连） */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
+    /** 门店级上架关系：门户只列本店在售的 */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
                             ai.neargo.shop.spi.marketing.CampaignPort campaignPort,
                             ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort,
-                            ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort) {
+                            ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
+                            ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper) {
+        this.storeGoodsMapper = storeGoodsMapper;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.poolMapper = poolMapper;
@@ -244,6 +248,30 @@ public class GoodsServiceImpl implements GoodsService {
         };
     }
 
+    /**
+     * 这个主体的商品里，<b>在这家店不卖</b>的那些。
+     *
+     * <p>口径逐字照 {@code PrdStoreGoods} 的类注释：某商品一条店级行都没有 → 不在这里排除
+     * （由 {@code prd_goods.on_sale} 决定，单店时代的行为）；有了任意一行 → 只有本店那行
+     * {@code on_sale=1} 才算在卖。取「排除集」而不是「在售集」：没有店级行的老商品不必逐件登记。
+     */
+    private List<String> notOnSaleAt(String entityNo, String storeNo) {
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectList(Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                        .eq(entityNo != null && !entityNo.isBlank(),
+                                ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, entityNo)));
+        java.util.Set<String> managed = new java.util.HashSet<>();
+        java.util.Set<String> sellingHere = new java.util.HashSet<>();
+        for (var r : rows) {
+            managed.add(r.getGoodsNo());
+            if (storeNo.equals(r.getStoreNo()) && Boolean.TRUE.equals(r.getOnSale())) {
+                sellingHere.add(r.getGoodsNo());
+            }
+        }
+        managed.removeAll(sellingHere);
+        return List.copyOf(managed);
+    }
+
     @Override
     public PageData<GoodsVO> list(GoodsQuery q) {
         LambdaQueryWrapper<PrdGoods> w = Wrappers.<PrdGoods>lambdaQuery()
@@ -265,6 +293,12 @@ public class GoodsServiceImpl implements GoodsService {
             }
         }
 
+        if (q.storeNo() != null && !q.storeNo().isBlank()) {
+            List<String> notHere = notOnSaleAt(q.merchantNo(), q.storeNo());
+            if (!notHere.isEmpty()) {
+                w.notIn(PrdGoods::getGoodsNo, notHere);
+            }
+        }
         if (q.type() != null && !q.type().isBlank()) {
             w.eq(PrdGoods::getType, q.type());
         }

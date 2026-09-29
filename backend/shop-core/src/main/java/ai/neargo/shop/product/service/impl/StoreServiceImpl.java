@@ -40,12 +40,15 @@ public class StoreServiceImpl implements StoreService {
     private final ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort;
     /** 类目名兜底：店主没改显示名时用平台类目名 */
     private final ai.neargo.shop.product.service.CategoryService categoryService;
+    private final ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory;
 
     public StoreServiceImpl(MerchantQueryPort merchantPort, GoodsQueryPort goodsPort,
                             GoodsService goodsService, StoreHistoryPort historyPort,
                             CartWritePort cartPort,
                             ai.neargo.shop.spi.user.StoreCategoryPort storeCategoryPort,
-                            ai.neargo.shop.product.service.CategoryService categoryService) {
+                            ai.neargo.shop.product.service.CategoryService categoryService,
+                            ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory) {
+        this.storeDirectory = storeDirectory;
         this.storeCategoryPort = storeCategoryPort;
         this.categoryService = categoryService;
         this.merchantPort = merchantPort;
@@ -92,7 +95,53 @@ public class StoreServiceImpl implements StoreService {
                 new StoreHomeVO.Merchant(merchant.merchantNo(), merchant.merchantName(),
                         merchant.logo(), merchant.rating(), merchant.ratingCount(),
                         merchant.verified(), merchant.breachCount()),
-                front, favorited, hot.records(), shelvesOf(merchantNo, hot.records()), closed);
+                front, favorited, hot.records(),
+                shelvesOf(merchantPort.defaultStoreNo(merchantNo).orElse(null), hot.records()), closed);
+    }
+
+    @Override
+    public StoreHomeVO homeOfStore(ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard store, String userNo,
+                                   boolean favorited, Integer latE6, Integer lngE6) {
+        var merchant = merchantPort.find(store.entityNo())
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        // 与 home() 同一个上限与理由（见那里的注释）：门户一次拿全，店内搜索与货架筛选都在这份里做
+        var goods = goodsOfStore(store, null, null, 1, 200);
+        var front = storeDirectory.front(store.storeNo())
+                .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.announcementAt(),
+                        f.openHours(), f.address(), f.latE6(), f.lngE6()))
+                .orElseGet(() -> new StoreHomeVO.StoreFront("", null, store.openHours(), store.address(),
+                        store.latE6(), store.lngE6()));
+        boolean closed = !store.active();
+        // 距离只在两边都有坐标时算：Geo.meters 遇空返回 0，不判空会显示「0 米」
+        Integer distance = latE6 == null || lngE6 == null || store.latE6() == null || store.lngE6() == null
+                ? null : ai.neargo.shop.common.Geo.meters(latE6, lngE6, store.latE6(), store.lngE6());
+        var portal = new StoreHomeVO.Portal(store.storeNo(), store.storeName(), store.status(), store.isDefault(),
+                ai.neargo.shop.common.OpenHours.openNow(store.openHours()),
+                store.rating(), store.ratingCount(), distance);
+        /*
+         * 暂停营业才给出路：营业中的店不需要「去隔壁看看」。
+         * 距离是两家店之间的，不是到买家的 —— 买家常常没给位置，而两家店的相对远近总是算得出来。
+         */
+        StoreHomeVO.Sibling sibling = !closed ? null : storeDirectory.nearestSibling(store.storeNo())
+                .map(s -> new StoreHomeVO.Sibling(s.storeNo(), s.storeName(),
+                        s.latE6() == null || s.lngE6() == null || store.latE6() == null || store.lngE6() == null
+                                ? null
+                                : ai.neargo.shop.common.Geo.meters(store.latE6(), store.lngE6(), s.latE6(), s.lngE6())))
+                .orElse(null);
+        return new StoreHomeVO(
+                new StoreHomeVO.Merchant(merchant.merchantNo(), merchant.merchantName(),
+                        merchant.logo(), merchant.rating(), merchant.ratingCount(),
+                        merchant.verified(), merchant.breachCount()),
+                front, favorited, goods.records(), shelvesOf(store.storeNo(), goods.records()), closed,
+                portal, sibling);
+    }
+
+    @Override
+    public ai.neargo.shop.common.PageData<ai.neargo.shop.product.dto.GoodsVO> goodsOfStore(
+            ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard store, String categoryNo, String keyword,
+            long page, long size) {
+        return goodsService.list(new GoodsService.GoodsQuery(
+                null, null, store.entityNo(), null, categoryNo, keyword, page, size, store.storeNo()));
     }
 
     /**
@@ -107,7 +156,7 @@ public class StoreServiceImpl implements StoreService {
      *       但没改时不能显示空串 —— 那会是一个点得动却没有字的 chip</li>
      * </ul>
      */
-    private List<StoreHomeVO.ShelfVO> shelvesOf(String merchantNo, List<ai.neargo.shop.product.dto.GoodsVO> goods) {
+    private List<StoreHomeVO.ShelfVO> shelvesOf(String storeNo, List<ai.neargo.shop.product.dto.GoodsVO> goods) {
         if (goods == null || goods.isEmpty()) {
             return List.of();
         }
@@ -119,7 +168,6 @@ public class StoreServiceImpl implements StoreService {
         if (countByCat.isEmpty()) {
             return List.of();
         }
-        String storeNo = merchantPort.defaultStoreNo(merchantNo).orElse(null);
         List<ai.neargo.shop.spi.user.StoreCategoryPort.Shelf> shelves =
                 storeNo == null ? List.of() : storeCategoryPort.shelvesOf(storeNo);
 

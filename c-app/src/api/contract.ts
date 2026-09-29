@@ -39,6 +39,7 @@ import type {
   ReorderResult,
   StoreHome,
   StoreCard,
+  StoreCodeImage,
   Message,
   PointAccount,
   PointsDeductible,
@@ -150,7 +151,7 @@ export interface CreateOrderReq {
   appointmentSlotNo?: string;
 }
 
-import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq } from "./requests";
+import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery } from "./requests";
 
 /** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
 export type PreviewOrderReq = Omit<CreateOrderReq, "idempotencyKey">;
@@ -478,7 +479,12 @@ export interface ShopApi {
 
   // ---- 门店主页（**一期主获客路径**，ADR-004 决策 3）
   /** 扫码/分享进店。`from=QR` 时写进店归因，决定订单 trafficSource 与费率档 */
-  storeHome(merchantNo: string, from?: string): Promise<StoreHome>;
+  /** @param no 门店号（ST…）；老链接带的主体号（M…）服务端会落到默认门店 */
+  storeHome(no: string, from?: string): Promise<StoreHome>;
+  /** 门户商品：本店在售的（有店级上架的商品只在上架的那家店出现） */
+  storeGoods(no: string, q?: StoreGoodsQuery): Promise<PageResult<Goods>>;
+  /** 门店小程序码（海报用）。通道未开启时 `imageBase64` 为 null */
+  storeAcode(no: string): Promise<StoreCodeImage>;
   /**
    * 扫码进店：拿印在贴纸上的短码换门店主页。
    *
@@ -490,7 +496,8 @@ export interface ShopApi {
    */
   storeByCode(storeCode: string, deviceId?: string): Promise<StoreHome>;
   /** 常买清单：按购买频次排序；未登录时降级为店铺热销 */
-  frequentItems(merchantNo: string): Promise<FrequentItem[]>;
+  /** @param no 门店号或主体号。按主体聚合：同品牌几家店买过的都算 */
+  frequentItems(no: string): Promise<FrequentItem[]>;
   /** 一键再来一单：整单复制到购物车，失效品与涨价品分别回报 */
   reorderFrom(orderNo: string): Promise<ReorderResult>;
   /** 收藏/取消收藏本店 */
@@ -525,6 +532,8 @@ export interface ShopApi {
   reviewList(q: {
     goodsNo?: string;
     merchantNo?: string;
+    /** 门户的评价页签按门店看 */
+    storeNo?: string;
     filter?: ReviewFilter;
     page?: number;
     size?: number;

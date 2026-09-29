@@ -86,7 +86,7 @@ class MpEndpointAuthTest {
             "GET /mp/order/{orderNo}/pay-method",
             "GET /mp/points/account",
             "GET /mp/points/records",
-            "GET /mp/store/{merchantNo}/frequent",
+            "GET /mp/store/{no}/frequent",
             "GET /mp/ticket",
             "GET /mp/ticket/{ticketNo}",
             "GET /mp/user/active-address",
@@ -138,7 +138,7 @@ class MpEndpointAuthTest {
             // 我的拼团（TDD-C端拼团买家流程）
             "GET /mp/group-buy/mine",
             "POST /mp/favorite/store/{merchantNo}",
-            "POST /mp/store/{merchantNo}/rebuy",
+            "POST /mp/store/{no}/rebuy",
             "POST /mp/ticket",
             "POST /mp/user/address/{addressId}/archive",
             "POST /mp/user/address/{addressId}/default",
@@ -159,7 +159,7 @@ class MpEndpointAuthTest {
             "GET /mp/merchant/{merchantNo}",
             "GET /mp/merchant/{merchantNo}/score",
             "GET /mp/pickup/{pickupNo}",
-            "GET /mp/store/{merchantNo}",
+            "GET /mp/store/{no}",
             "GET /mp/after-sale/reasons",
             "GET /mp/category/tree",
             "GET /mp/community",
@@ -184,6 +184,9 @@ class MpEndpointAuthTest {
             "GET /mp/store/mine",
             // 附近的门店（TDD-C端门店化与门店门户）：没登录的人也要能逛到店
             "GET /mp/store/nearby",
+            // 门户的商品与店码：与门户同一条理由（扫码的人多数还没登录）
+            "GET /mp/store/{no}/goods",
+            "GET /mp/store/{no}/acode",
             "GET /mp/topics",
             "GET /mp/topics/{topicNo}/goods",
             "GET /mp/user/phone/capable",
@@ -442,7 +445,9 @@ class MpEndpointAuthTest {
      */
     private static final java.util.Map<String, String> SEED = java.util.Map.of(
             "goodsNo", "G0001", "merchantNo", "M0001", "communityNo", "CM001",
-            "pickupNo", "PP0001", "storeNo", "ST-TEST", "skuNo", "SK0001");
+            "pickupNo", "PP0001", "storeNo", "ST-TEST", "skuNo", "SK0001",
+            // /mp/store/{no}：门店号或主体号按前缀分派（TDD-C端门店化与门店门户 §2.1）。用种子门店
+            "no", "ST-M0001");
 
     /** 不带令牌打一次，回状态码。 */
     private int callAnonymously(String endpoint) {

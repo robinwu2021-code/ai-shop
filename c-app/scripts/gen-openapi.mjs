@@ -131,6 +131,8 @@ const RESPONSE_TYPES = {
   raiseDispute: "Order",
   reorderFrom: "ReorderResult",
   storeHome: "StoreHome",
+  storeGoods: "PageResult<Goods>",
+  storeAcode: "StoreCodeImage",
   storeByCode: "StoreHome",
   // boolean 没有对应 schema，用 object 兜底并在此说明，避免下次又有人以为是漏配
   toggleFavoriteStore: "object",
@@ -278,6 +280,7 @@ const REQUEST_TYPES = {
   myStores: "MyStoresQuery",
   storeNearby: "StoreNearbyQuery",
   storeEnter: "StoreEnterReq",
+  storeGoods: "StoreGoodsQuery",
   merchantApply: "MerchantApplyReq",
   updateMerchantApply: "MerchantApplyReq",
   reviewList: "ReviewListQuery",

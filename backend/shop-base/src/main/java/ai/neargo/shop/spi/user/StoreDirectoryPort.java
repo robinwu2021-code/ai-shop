@@ -61,6 +61,15 @@ public interface StoreDirectoryPort {
     Optional<StoreCard> nearestSibling(String storeNo);
 
     /**
+     * 这家店的门面文案（公告、营业时间、地址、状态、坐标）。与
+     * {@link MerchantQueryPort#storeFront} 同一个形状 —— 那一条按主体取「默认店」，这条按门店号取。
+     * 过期的公告给空串（口径在 {@code MchStore.effectiveAnnouncement} 一处）。
+     *
+     * @return 门店不存在时为空；<b>不看状态</b>（暂停营业页也要显示地址与营业时间）
+     */
+    Optional<MerchantQueryPort.StoreFront> front(String storeNo);
+
+    /**
      * @param status    {@link #STORE_ACTIVE} / {@link #STORE_READONLY}
      * @param rating    门店评分 0–5（库里存 ×10）；{@code ratingCount = 0} 表示暂无评价，不是 0 分
      * @param latE6     可空：还没在地图上选过点的门店

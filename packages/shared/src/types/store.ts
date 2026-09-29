@@ -336,6 +336,51 @@ export interface StoreHome {
    * 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。
    */
   closed?: boolean;
+  /**
+   * 门户的门头（TDD-C端门店化与门店门户）：**这家门店**的名字、状态、评分。
+   * 标题读它，不读 `merchant.name`（那是主体名，只在资质页出现）。
+   * 按主体号进来、而主体一家门店都没有时为空 —— 端上退回 `merchant`。
+   */
+  portal?: StorePortal | null;
+  /** 暂停营业时：同主体离这家最近的营业店。营业中、或没有别的店时为空 */
+  sibling?: StoreSibling | null;
+}
+/** 门户门头 */
+export interface StorePortal {
+  /** 门店号（`ST…`） */
+  storeNo: string;
+  /** 门店名 */
+  storeName: string;
+  /** READONLY = 暂停营业 */
+  status: StoreStatus;
+  /** 是否主体的默认门店 */
+  isDefault: boolean;
+  /** 此刻营业与否。营业时间写得认不出来时为空 —— 不画这个标签 */
+  openNow?: boolean | null;
+  /** 门店评分 0–5 */
+  rating: number;
+  /** 评价数。0 = 暂无评价，此时别显示 rating */
+  ratingCount: number;
+  /** 离我多远（米）。没给位置或门店没标坐标时为空 —— **不是 0** */
+  distanceM?: number | null;
+}
+/** 暂停营业时给的出路：同主体的另一家营业店 */
+export interface StoreSibling {
+  /** 门店号 */
+  storeNo: string;
+  /** 门店名 */
+  storeName: string;
+  /** 两家店之间的距离（米）。任一家没标坐标时为空 */
+  distanceM?: number | null;
+}
+/** 门店的小程序码（海报用）。一店一码、生成一次落库复用 */
+export interface StoreCodeImage {
+  /** 码所属的门店 */
+  storeNo: string;
+  /** 门店名 —— 海报上画的就是它 */
+  storeName: string;
+  /** PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 画一张不带码的海报 */
+  imageBase64: string | null;
 }
 /**
  * 一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。

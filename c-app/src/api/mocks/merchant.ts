@@ -64,6 +64,8 @@ export const merchantMock: Pick<ShopApi,
   | "merchantDetail"
   | "storeByCode"
   | "storeHome"
+  | "storeGoods"
+  | "storeAcode"
   | "frequentItems"
   | "promotedGoods"
   | "promotedMerchants"
@@ -142,7 +144,9 @@ export const merchantMock: Pick<ShopApi,
     return this.storeHome(m[1]!, "QR");
   },
 
-  async storeHome(merchantNo, from) {
+  async storeHome(no, from) {
+    // 门店号与主体号都认（与服务端前缀分派同一条规则）
+    const merchantNo = toMerchantNo(no);
     const merchant = toMerchant(merchantNo);
     // 扫码/分享进店即写归因：这决定后续订单的 trafficSource 与商家费率档（ADR-004 §6）。
     // **最近一次进店覆盖前一次**，不设窗口 —— 用户此刻在谁家买，就算谁带来的
@@ -173,10 +177,44 @@ export const merchantMock: Pick<ShopApi,
        * 而它恰恰是扫码老客最需要看见的那一条。
        */
       closed: db.merchantSeeds.find((m) => m.merchantNo === merchantNo)?.closed === true,
+      portal: {
+        storeNo: toStoreNo(merchantNo),
+        storeName: merchant.name,
+        status: db.merchantSeeds.find((m) => m.merchantNo === merchantNo)?.closed === true ? "READONLY" : "ACTIVE",
+        isDefault: true,
+        openNow: null,
+        rating: merchant.rating,
+        ratingCount: merchant.ratingCount,
+        distanceM: merchant.distance ?? null,
+      },
+      // mock 一个主体只有一家店，没有「隔壁店」可给
+      sibling: null,
     });
   },
 
-  async frequentItems(merchantNo) {
+  async storeGoods(no, q) {
+    const merchantNo = toMerchantNo(no);
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    const k = q?.keyword?.trim().toLowerCase();
+    const all = allGoods().filter(
+      (g) =>
+        g.onSale &&
+        g.merchant.merchantNo === merchantNo &&
+        (!q?.categoryNo || g.categoryNo === q.categoryNo) &&
+        (!k || g.title.toLowerCase().includes(k)),
+    );
+    return delay({ records: all.slice((page - 1) * size, page * size), total: all.length, page, size });
+  },
+
+  /** 门店码：与 merchantAcode 同一个理由给 null（mock 没有 wxacode 通道） */
+  async storeAcode(no) {
+    const merchantNo = toMerchantNo(no);
+    return delay({ storeNo: toStoreNo(merchantNo), storeName: toMerchant(merchantNo).name, imageBase64: null });
+  },
+
+  async frequentItems(no) {
+    const merchantNo = toMerchantNo(no);
     const rows = aggregateFrequent((goodsNo) => findGoodsSeed(goodsNo).merchantNo === merchantNo);
     if (rows.length) return delay(rows);
     // 未登录/没买过时降级为店铺热销 —— 空着一片「我买过的」比没有这个模块更差
@@ -332,6 +370,8 @@ export const merchantMock: Pick<ShopApi,
     let list = [...db.reviews];
     if (q.goodsNo) list = list.filter((r) => r.goodsNo === q.goodsNo);
     if (q.merchantNo) list = list.filter((r) => r.merchantNo === q.merchantNo);
+    // mock 的评价没有门店号：一个主体一家店，按门店看等于按它的主体看
+    if (q.storeNo) list = list.filter((r) => r.merchantNo === toMerchantNo(q.storeNo!));
     /*
      * 筛选与分页**也在 mock 里做一遍**（§3.3）：不做的话，端上「切到差评」
      * 在 mock 下看起来什么都没变，而那正是要验的那一步。

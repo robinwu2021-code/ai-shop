@@ -7555,6 +7555,16 @@ components:
         closed: 
           type: "boolean"
           description: "已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。\n\n**是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。\n\n⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。"
+        portal: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StorePortal"
+            - type: "null"
+          description: "门户的门头（TDD-C端门店化与门店门户）：**这家门店**的名字、状态、评分。 标题读它，不读 `merchant.name`（那是主体名，只在资质页出现）。 按主体号进来、而主体一家门店都没有时为空 —— 端上退回 `merchant`。"
+        sibling: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StoreSibling"
+            - type: "null"
+          description: "暂停营业时：同主体离这家最近的营业店。营业中、或没有别的店时为空"
       required: 
         - "merchant"
         - "store"
@@ -7562,6 +7572,85 @@ components:
         - "categories"
         - "favorited"
       additionalProperties: false
+    StorePortal: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号（`ST…`）"
+        storeName: 
+          type: "string"
+          description: "门店名"
+        status: 
+          "$ref": "#/components/schemas/StoreStatus"
+          description: "READONLY = 暂停营业"
+        isDefault: 
+          type: "boolean"
+          description: "是否主体的默认门店"
+        openNow: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "此刻营业与否。营业时间写得认不出来时为空 —— 不画这个标签"
+        rating: 
+          type: "number"
+          description: "门店评分 0–5"
+        ratingCount: 
+          type: "number"
+          description: "评价数。0 = 暂无评价，此时别显示 rating"
+        distanceM: 
+          type: 
+            - "number"
+            - "null"
+          description: "离我多远（米）。没给位置或门店没标坐标时为空 —— **不是 0**"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "status"
+        - "isDefault"
+        - "rating"
+        - "ratingCount"
+      additionalProperties: false
+      description: "门户门头"
+    StoreSibling: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号"
+        storeName: 
+          type: "string"
+          description: "门店名"
+        distanceM: 
+          type: 
+            - "number"
+            - "null"
+          description: "两家店之间的距离（米）。任一家没标坐标时为空"
+      required: 
+        - "storeNo"
+        - "storeName"
+      additionalProperties: false
+      description: "暂停营业时给的出路：同主体的另一家营业店"
+    StoreCodeImage: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "码所属的门店"
+        storeName: 
+          type: "string"
+          description: "门店名 —— 海报上画的就是它"
+        imageBase64: 
+          type: 
+            - "string"
+            - "null"
+          description: "PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 画一张不带码的海报"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "imageBase64"
+      additionalProperties: false
+      description: "门店的小程序码（海报用）。一店一码、生成一次落库复用"
     StoreVisitSource: 
       type: "string"
       enum: 

@@ -35,10 +35,12 @@ public class MpReviewController {
     @GetMapping("/mp/review")
     public List<ReviewVO> list(@RequestParam(required = false) String goodsNo,
                                @RequestParam(required = false) String merchantNo,
+                               /* 门户的评价页签按门店看（TDD-C端门店化与门店门户 AC12）。老评价没有门店号，不会出现在这里 */
+                               @RequestParam(required = false) String storeNo,
                                @RequestParam(required = false) String filter,
                                @RequestParam(defaultValue = "1") int page,
                                @RequestParam(defaultValue = "20") int size) {
-        return reviewService.list(goodsNo, merchantNo, filter, page, size);
+        return reviewService.list(goodsNo, merchantNo, storeNo, filter, page, size);
     }
 
     @PostMapping("/mp/review")

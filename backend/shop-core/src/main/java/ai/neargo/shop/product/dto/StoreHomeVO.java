@@ -39,7 +39,36 @@ public record StoreHomeVO(Merchant merchant,
                            * <p>是一个标志而不是 404：扫码进来的老客要知道**店关了**，
                            * 不是链接坏了。端上据此盖「已停业」并禁掉加购。
                            */
-                          boolean closed) {
+                          boolean closed,
+                          /**
+                           * 门户的门头（TDD-C端门店化与门店门户）：<b>这家门店</b>的名字、状态、评分。
+                           * 端上的标题读它，不再读 {@code merchant.name}（那是主体名，只在资质页出现）。
+                           *
+                           * <p>按主体号进来、而这个主体一家门店都没有时为 null —— 端上退回 {@code merchant}。
+                           */
+                          Portal portal,
+                          /** 暂停营业时：同主体离这家最近的营业店，给「去看看」一个出路。没有就是 null */
+                          Sibling sibling) {
+
+    /** 老签名：按主体取、没有门店维度（主体下一家门店都没有时仍走这里） */
+    public StoreHomeVO(Merchant merchant, StoreFront store, boolean favorited, List<GoodsVO> goods,
+                       List<ShelfVO> categories, boolean closed) {
+        this(merchant, store, favorited, goods, categories, closed, null, null);
+    }
+
+    /**
+     * @param status     ACTIVE / READONLY（暂停营业）
+     * @param openNow    按营业时间文案算的此刻开没开；认不出来为 null（端上不画）
+     * @param rating     门店评分 0–5；{@code ratingCount = 0} 表示暂无评价
+     * @param distanceM  买家没给位置、或门店没标坐标时为 null —— 不是 0
+     */
+    public record Portal(String storeNo, String storeName, String status, boolean isDefault,
+                         Boolean openNow, double rating, int ratingCount, Integer distanceM) {
+    }
+
+    /** @param distanceM 两家店都有坐标才算得出，否则 null */
+    public record Sibling(String storeNo, String storeName, Integer distanceM) {
+    }
 
     /**
      * 货架上的一类。

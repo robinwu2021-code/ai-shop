@@ -325,6 +325,17 @@ export interface StoreNearbyQuery {
   size?: number;
 }
 
+export interface StoreGoodsQuery {
+  /** 货架类目（取自门户的 `categories`） */
+  categoryNo?: string;
+  /** 店内搜索，匹配标题与副标题 */
+  keyword?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数，最多 50 */
+  size?: number;
+}
+
 export interface StoreEnterReq {
   /** 进店入口。只在第一次进这家店时记下，之后不改 */
   source?: StoreVisitSource;
@@ -358,6 +369,8 @@ export interface ReviewListQuery {
   goodsNo?: string;
   /** 只看某商家的评价。与 goodsNo 二选一，都不传则报错 */
   merchantNo?: string;
+  /** 只看某门店的评价（门户的评价页签）。老评价没有门店号，不会出现在结果里 */
+  storeNo?: string;
 }
 
 export interface CreateReviewReq {

@@ -74,7 +74,18 @@ public interface GoodsService {
      *                    <b>两个都没有才是不筛</b>，而端上不该走到那一步：
      *                    「位置不明」该是空态要位置，不是一屏买不到的全平台商品
      */
+    /**
+     * @param storeNo 只看这家门店在售的（门户用，TDD-C端门店化与门店门户 §2.7）。空 = 不按门店筛。
+     *                口径与 {@code PrdStoreGoods} 相同：没有店级行的商品看主体级上下架，
+     *                有了任意一行就只认本店那行
+     */
     record GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
-                      String categoryNo, String keyword, long page, long size) {
+                      String categoryNo, String keyword, long page, long size, String storeNo) {
+
+        /** 不按门店筛（跨店目录、搜索、存量调用方） */
+        public GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
+                          String categoryNo, String keyword, long page, long size) {
+            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, null);
+        }
     }
 }
