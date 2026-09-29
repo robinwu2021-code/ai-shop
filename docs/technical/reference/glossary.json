@@ -23241,6 +23241,12 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
+          "key": "err.elec.alias_taken",
+          "zh-CN": "这个写法已经对应到厂牌 {0}，不能再指给另一家",
+          "en": "This name is already mapped to manufacturer {0} and cannot be mapped to another one",
+          "ar": "هذا الاسم مرتبط بالفعل بالشركة المصنعة {0} ولا يمكن ربطه بشركة أخرى"
+        },
+        {
           "key": "err.elec.batch_empty",
           "zh-CN": "没有可以上架的行",
           "en": "There are no rows to list",
@@ -23251,6 +23257,12 @@
           "zh-CN": "这次预览已经过期，请重新上传",
           "en": "This preview has expired. Please upload again",
           "ar": "انتهت صلاحية هذه المعاينة. يرجى الرفع مجددًا"
+        },
+        {
+          "key": "err.elec.mfr_exists",
+          "zh-CN": "这个厂牌代码已经有了",
+          "en": "This manufacturer code already exists",
+          "ar": "رمز الشركة المصنعة هذا موجود بالفعل"
         },
         {
           "key": "err.elec.not_supplier",
@@ -26012,6 +26024,34 @@
         "module": "elec"
       },
       {
+        "host": "ElcManufacturer",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcManufacturer",
+        "name": "STATUS_MERGED",
+        "value": "MERGED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcMfrAlias",
+        "name": "SOURCE_SEED",
+        "value": "SEED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcMfrAlias",
+        "name": "SOURCE_OPS",
+        "value": "OPS",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "ElcPart",
         "name": "SOURCE_UPLOAD",
         "value": "UPLOAD",
@@ -26051,6 +26091,13 @@
         "name": "STATUS_ACCEPTED",
         "value": "ACCEPTED",
         "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcQuote",
+        "name": "STATUS_EXPIRED",
+        "value": "EXPIRED",
+        "zh": "目前没有代码把它写进库：有效期过了的 ACTIVE 在读出时显示成它",
         "module": "elec"
       },
       {
@@ -32921,7 +32968,9 @@
           "ELEC_BATCH_EMPTY",
           "ELEC_RFQ_LINES_INVALID",
           "ELEC_RFQ_STATE",
-          "ELEC_QUOTE_EXPIRED"
+          "ELEC_QUOTE_EXPIRED",
+          "ELEC_MFR_EXISTS",
+          "ELEC_ALIAS_TAKEN"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
@@ -35445,7 +35494,7 @@
       "name": "PERM_RFQ_READ",
       "type": "String",
       "value": "\"elec:rfq:read\"",
-      "zh": "运营端两个权限码。",
+      "zh": "运营端的权限码。",
       "module": "elec"
     },
     {
@@ -35454,6 +35503,46 @@
       "type": "String",
       "value": "\"elec:rfq:quote\"",
       "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_SUPPLIER_READ",
+      "type": "String",
+      "value": "\"elec:supplier:read\"",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_SUPPLIER_MANAGE",
+      "type": "String",
+      "value": "\"elec:supplier:manage\"",
+      "zh": "暂停 / 恢复 / 改资料。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_PART_READ",
+      "type": "String",
+      "value": "\"elec:part:read\"",
+      "zh": "料号与库存查询：看得到每家的精确库存与电话",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_BASE_MANAGE",
+      "type": "String",
+      "value": "\"elec:base:manage\"",
+      "zh": "厂牌与别名维护。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "OPS_PERMS",
+      "type": "java.util.List<String>",
+      "value": "java.util.List.of( PERM_RFQ_READ, PERM_RFQ_QUOTE, PERM_SUPPLIER_READ, PERM_SUPPLIER_MANAGE, PERM_PART_READ, PERM_BASE_MANAGE)",
+      "zh": "元器件用得到的全部运营码。",
       "module": "elec"
     },
     {
