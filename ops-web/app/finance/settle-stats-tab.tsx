@@ -58,6 +58,18 @@ export function SettleStatsTab({ c }: { c: FinanceCopy }) {
     { header: c.ssColCommission, cell: (r) => money(r.commissionMinor), numeric: true, width: "7rem" },
     { header: c.ssColServiceFee, cell: (r) => money(r.serviceFeeMinor), numeric: true, width: "7rem" },
     { header: c.ssColChannelFee, cell: (r) => money(r.channelFeeMinor), numeric: true, width: "7rem" },
+    { header: c.ssColFreightIncome, cell: (r) => money(r.freightIncomeMinor), numeric: true, width: "7rem" },
+    {
+      header: c.ssColFreightCost,
+      /*
+       * **这两列的差额是平台自己的盈亏**，所以并排放：代收进来多少、代付出去多少。
+       * 只给其中一个的话看不出平台在快递上是赚是亏 —— 而平台一直在垫这笔钱，
+       * 此前没有任何地方能看到它。
+       */
+      cell: (r) => money(r.freightCostMinor),
+      numeric: true,
+      width: "7rem",
+    },
     { header: c.ssColNet, cell: (r) => <span className="txt-strong">{money(r.netMinor)}</span>, numeric: true, width: "8rem" },
     { header: c.ssColCount, cell: (r) => r.billCount, numeric: true, width: "5rem" },
   ];

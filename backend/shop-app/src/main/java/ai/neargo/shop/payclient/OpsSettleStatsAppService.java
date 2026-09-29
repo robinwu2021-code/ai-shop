@@ -28,7 +28,17 @@ public interface OpsSettleStatsAppService {
      *                空白会被读成「没有这家店」，而真相通常是它改名或停用了
      */
     record StatRowVO(String dimKey, String dimName, long grossMinor, long commissionMinor,
-                     long serviceFeeMinor, long channelFeeMinor, long netMinor,
+                     long serviceFeeMinor, long channelFeeMinor,
+                     /** 代收的运费合计（分）。**不在 grossMinor 里** */
+                     long freightIncomeMinor,
+                     /**
+                      * 平台代付出去的快递费合计（分）。
+                      *
+                      * <p>与 {@link #freightIncomeMinor} 的差额是**平台自己在快递上的盈亏** ——
+                      * 这个数此前没有任何地方能看到，而平台一直在垫这笔钱。
+                      */
+                     long freightCostMinor,
+                     long netMinor,
                      int billCount) {
     }
 }

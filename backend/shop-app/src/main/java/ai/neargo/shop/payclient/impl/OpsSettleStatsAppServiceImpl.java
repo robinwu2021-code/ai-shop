@@ -48,7 +48,8 @@ public class OpsSettleStatsAppServiceImpl implements OpsSettleStatsAppService {
                 r.dimKey(),
                 displayName(d, r.dimKey(), names),
                 r.grossMinor(), r.commissionMinor(), r.serviceFeeMinor(),
-                r.channelFeeMinor(), r.netMinor(), r.billCount())).toList();
+                r.channelFeeMinor(), r.freightIncomeMinor(), r.freightCostMinor(),
+                r.netMinor(), r.billCount())).toList();
     }
 
     /**

@@ -49,6 +49,10 @@ public class SettleStatsServiceImpl implements SettleStatsService {
                 "SUM(commission_minor) AS commission_minor",
                 "SUM(service_fee_minor) AS service_fee_minor",
                 "SUM(channel_fee_minor) AS channel_fee_minor",
+                // 运费两列（§9 AC28）：代收进来多少、代付出去多少。
+                // 两个数要分开看 —— 它们的差额就是平台在快递上的盈亏
+                "SUM(freight_income_minor) AS freight_income_minor",
+                "SUM(freight_cost_minor) AS freight_cost_minor",
                 "SUM(net_minor) AS net_minor",
                 "COUNT(*) AS bill_count");
         /*
@@ -71,6 +75,7 @@ public class SettleStatsServiceImpl implements SettleStatsService {
                 keyOf(pick(m, col)),
                 num(pick(m, "gross_minor")), num(pick(m, "commission_minor")),
                 num(pick(m, "service_fee_minor")), num(pick(m, "channel_fee_minor")),
+                num(pick(m, "freight_income_minor")), num(pick(m, "freight_cost_minor")),
                 num(pick(m, "net_minor")),
                 (int) num(pick(m, "bill_count")))).toList();
     }

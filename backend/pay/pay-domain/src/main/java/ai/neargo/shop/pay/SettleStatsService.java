@@ -65,7 +65,12 @@ public interface SettleStatsService {
      * @param billCount 结算单数。**只给金额的话，看不出「一笔大的还是很多笔」**
      */
     record StatRow(String dimKey, long grossMinor, long commissionMinor,
-                   long serviceFeeMinor, long channelFeeMinor, long netMinor,
+                   long serviceFeeMinor, long channelFeeMinor,
+                   /** 代收的运费合计（分）。不在 grossMinor 里 */
+                   long freightIncomeMinor,
+                   /** 平台代付出去的快递费合计（分）。与上一项的差额就是平台在快递上的盈亏 */
+                   long freightCostMinor,
+                   long netMinor,
                    int billCount) {
     }
 }

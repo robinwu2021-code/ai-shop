@@ -135,7 +135,8 @@ export const financeMock: FinanceApi = {
       if (q.businessMode && b.businessMode !== q.businessMode) continue;
       const k = key(b) ?? "__UNASSIGNED__";
       const cur = acc.get(k) ?? { dimKey: k, dimName: k, grossMinor: 0, commissionMinor: 0,
-        serviceFeeMinor: 0, channelFeeMinor: 0, netMinor: 0, billCount: 0 };
+        serviceFeeMinor: 0, channelFeeMinor: 0,
+        freightIncomeMinor: 0, freightCostMinor: 0, netMinor: 0, billCount: 0 };
       cur.grossMinor += b.grossMinor ?? 0;
       cur.commissionMinor += b.commissionMinor ?? 0;
       cur.serviceFeeMinor += b.serviceFeeMinor ?? 0;
@@ -143,6 +144,11 @@ export const financeMock: FinanceApi = {
       // （它在 StlBill 实体上有，但不进对外契约），所以这里恒 0。
       // 真后端的统计是直接从 stl_bill 聚合的，有这一列 —— 两边差异仅此一处。
       cur.channelFeeMinor += 0;
+      // 运费两列与渠道费不同：**SettleBillVO 现在带了它们**（V367 / §9），
+      // 所以 mock 能算出真数，不必留 0。留 0 的话这两列在 mock 下恒空，
+      // 而它们恰好是这次要看的东西。
+      cur.freightIncomeMinor += b.freightIncomeMinor ?? 0;
+      cur.freightCostMinor += b.freightCostMinor ?? 0;
       cur.netMinor += b.netMinor ?? 0;
       cur.billCount += 1;
       acc.set(k, cur);

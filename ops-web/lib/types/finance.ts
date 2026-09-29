@@ -617,6 +617,15 @@ export interface SettleStatRow {
   serviceFeeMinor: number;
   /** 渠道手续费（分） */
   channelFeeMinor: number;
+  /** 代收的运费（分）。**不在 grossMinor 里** */
+  freightIncomeMinor: number;
+  /**
+   * 平台代付出去的快递费（分）。
+   *
+   * 与 `freightIncomeMinor` 的差额是**平台自己在快递上的盈亏** ——
+   * 这个数此前没有任何地方能看到，而平台一直在垫这笔钱。
+   */
+  freightCostMinor: number;
   /** 商家净额（分） */
   netMinor: number;
   /** 结算单数。只给金额看不出「一笔大的还是很多笔」 */
