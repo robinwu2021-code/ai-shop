@@ -675,16 +675,18 @@ onShareTimeline(() =>
   max-height: 70vh;
   background: var(--sh-faint);
 }
-/* 竖条用左边框画：常驻 6rpx 透明边，选中时只换颜色 —— 文字不因选中而跳一下 */
+/* 竖条用起始边框画：常驻 6rpx 透明边，选中时只换颜色 —— 文字不因选中而跳一下。
+   用 border-inline-start 而不是 border-left：阿拉伯语下整条轨道会翻到右侧，
+   写死 left 的话竖条留在左边、与选中项对不上（第五道闸 check-rtl-physical 扫的就是这个）。 */
 .rail__item {
   display: block;
   padding: 28rpx 16rpx 28rpx 12rpx;
-  border-left: 6rpx solid transparent;
+  border-inline-start: 6rpx solid transparent;
   text-align: center;
   color: var(--sh-sub);
 }
 .rail__item.is-on {
-  border-left-color: var(--sh-primary);
+  border-inline-start-color: var(--sh-primary);
   background: var(--sh-surface);
   color: var(--sh-ink);
   font-weight: 600;
