@@ -1,0 +1,146 @@
+/**
+ * 门店门户（TDD-C端门店化与门店门户 s03–s07，AC1 / AC7 / AC11）。
+ *
+ * 钉三件「看起来都对、其实错了也不报错」的事：
+ * - 门头写的是**门店名**，不是主体名（主体名只在「经营主体与资质」那一行露面）；
+ * - 左栏第一格：买过的人是「我常买」，没买过从「热卖」开始 —— 反了的话老客要多点一下，新客看到一格空的；
+ * - 售罄的货**压淡、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页不可加购、给隔壁店。
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
+import type { FrequentItem, Goods, StoreHome } from "@shared/types";
+
+const storeHome = vi.fn();
+const frequentItems = vi.fn();
+
+vi.mock("@/api", () => ({
+  api: {
+    storeHome: (...a: unknown[]) => storeHome(...a),
+    frequentItems: (...a: unknown[]) => frequentItems(...a),
+    storeEnter: vi.fn(() => Promise.resolve()),
+    storeByCode: vi.fn(),
+    reviewList: vi.fn(() => Promise.resolve([])),
+    reachOpened: vi.fn(() => Promise.resolve()),
+    cartList: vi.fn(() => Promise.resolve([])),
+    couponList: vi.fn(() => Promise.resolve([])),
+  },
+}));
+vi.mock("@shared/ports/share", () => ({
+  buildShareMessage: vi.fn(() => ({})),
+  buildShareTimeline: vi.fn(() => ({})),
+  canNativeShare: () => false,
+  withAttribution: (p: string) => p,
+}));
+vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
+vi.mock("@dcloudio/uni-app", () => ({
+  onLoad: (cb: (q: Record<string, string>) => unknown) => cb({ no: "ST1", from: "LIST" }),
+  onShow: vi.fn(), onShareAppMessage: vi.fn(), onShareTimeline: vi.fn(),
+}));
+vi.mock("@/shared/fly", () => ({ flyToCart: vi.fn(), tapPoint: () => ({ x: 0, y: 0 }) }));
+
+import StorePage from "@/pages/store/index.vue";
+
+function aGoods(no: string, over: Partial<Goods> = {}): Goods {
+  return {
+    goodsNo: no, title: `货${no}`, subtitle: "", cover: "🍐", type: "GOODS", price: 1000, sales: 1,
+    categoryNo: "C1", onSale: true, fulfillments: [], specGroups: [], promotions: [], params: [],
+    skus: [{ skuNo: `${no}-S`, optionValues: [], spec: "", price: 1000, stock: 10 }],
+    merchant: { merchantNo: "M1", name: "虹选科技有限公司", logo: "", rating: 0, ratingCount: 0, verified: true },
+    ...over,
+  } as unknown as Goods;
+}
+
+function home(over: Partial<StoreHome> = {}): StoreHome {
+  return {
+    merchant: { merchantNo: "M1", name: "虹选科技有限公司", logo: "", rating: 0, ratingCount: 0, verified: true },
+    store: { announcement: "", openHours: "08:00-20:00", address: "景田北街 12 号" },
+    goods: [aGoods("G1"), aGoods("G2", { skus: [{ skuNo: "G2-S", optionValues: [], spec: "", price: 1000, stock: 0 }] } as never)],
+    categories: [{ categoryNo: "C1", name: "水果", count: 2 }],
+    favorited: false,
+    closed: false,
+    portal: {
+      storeNo: "ST1", storeName: "虹选鲜果·福田店", status: "ACTIVE", isDefault: false,
+      openNow: true, rating: 4.9, ratingCount: 12, distanceM: 320,
+    },
+    sibling: null,
+    ...over,
+  } as unknown as StoreHome;
+}
+
+const bought: FrequentItem = {
+  goodsNo: "G1", skuNo: "G1-S", title: "货G1", cover: "", spec: "", price: 1000, lastPrice: 1000,
+  times: 3, lastAt: 1, invalid: false,
+} as FrequentItem;
+
+async function render() {
+  const w = mount(StorePage, {
+    global: {
+      stubs: {
+        "sh-scaffold": { template: "<div><slot /></div>" },
+        "sh-tabs": true, "sh-icon": true, "sh-cover": true, "sh-empty": true, "sh-sheet": true,
+        "biz-shop-avatar": true, "biz-share-act": true, "biz-coupon-strip": true, "biz-cart-fab": true,
+        "biz-poster": true, "biz-review": true, "scroll-view": { template: "<div><slot /></div>" },
+      },
+      mocks: { $t: (k: string, a?: Record<string, unknown>) => (a?.name ? `${k}:${a.name}` : k) },
+    },
+  });
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+    await w.vm.$nextTick();
+  }
+  return w;
+}
+
+describe("门店门户", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it("★★★ 门头写门店名，页面上不出现主体名", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.find(".head__name").text()).toBe("虹选鲜果·福田店");
+    expect(w.html()).not.toContain("虹选科技有限公司");
+  });
+
+  it("★★★ 买过的人左栏第一格是「我常买」；没买过从「热卖」开始", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([bought]);
+    const old = await render();
+    expect(old.findAll(".rail__item").map((e) => e.text())[0]).toBe("store.frequent");
+    expect(old.find(".rail__item.is-on").text()).toBe("store.frequent");
+
+    frequentItems.mockResolvedValue([]);
+    const fresh = await render();
+    const rail = fresh.findAll(".rail__item").map((e) => e.text());
+    expect(rail).not.toContain("store.frequent");
+    expect(rail[0]).toBe("store.hot");
+  });
+
+  it("★★★ 售罄的货压淡、不藏", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    const items = w.findAll(".item");
+    expect(items, "售罄的那件也要列出来").toHaveLength(2);
+    const off = items.filter((i) => i.classes("is-off"));
+    expect(off).toHaveLength(1);
+    expect(off[0]!.text()).toContain("store.soldOut");
+  });
+
+  it("★★ 暂停营业：整页商品不可加购，并给同品牌的营业店", async () => {
+    storeHome.mockResolvedValue(home({
+      closed: true,
+      portal: { storeNo: "ST1", storeName: "虹选鲜果·车公庙店", status: "READONLY", isDefault: false,
+        openNow: null, rating: 0, ratingCount: 0, distanceM: null },
+      sibling: { storeNo: "ST2", storeName: "虹选鲜果·福田店", distanceM: 2400 },
+    } as Partial<StoreHome>));
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.findAll(".item").every((i) => i.classes("is-off"))).toBe(true);
+    expect(w.find(".paused__go").text()).toContain("虹选鲜果·福田店");
+  });
+});

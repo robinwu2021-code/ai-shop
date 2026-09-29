@@ -1,6 +1,6 @@
 # TDD-C端门店化与门店门户
 
-状态：**待实现**（方案已确认 2026-09-29）
+状态：**一期大部分已实现**（2026-09-29；未完成项见文末「偏差说明」）
 档位：1（端点返回结构、新库表、i18n；不新建域、不改结算与归因）
 关联需求：用户 2026-09-29 原话「c 端要展示的是具体的门店，不是主体或者商户；门店列表优先展示查看和消费过的门店，其次是附近的门店，这个重点用来鼓励商家分享门店」「门店首页将来成为独立的门店门户，UI 要漂亮、整洁」「取消详情页的海报入口，海报的目的是分享」；
 需求文档 [多门店与分享激励-需求](../requirements/多门店与分享激励-需求.md) §六 R4（本次补入）；上游 [ADR-011 经营主体与门店边界](ADR/ADR-011-经营主体与门店边界.md)
@@ -213,26 +213,54 @@ CREATE TABLE IF NOT EXISTS usr_store_view
 - **老版本小程序**：审核中的旧版仍按 `merchantNo` 调用，§2.1 保证它们照常工作。
 - **闸门**：`api-path-naming`（单数）、`BackendI18nParityTest`（新错误码三语）、`env-consumed`（新配置项要有读取方）、`vue-tsc`（两端）、`gen-ui-catalog --check`、`entity-alignment`（新表与实体）、二期 `/biz` 端点七处登记。
 
-## §5 对账三 · 实现 → 需求（实现后补真实输出）
+## §5 对账三 · 实现 → 需求
 
-| AC | 计划中的测试 |
-|---|---|
-| AC1 | `MyStoreFlowTest#同主体四家门店各占一行_名字是门店名` |
-| AC2 | `MyStoreFlowTest#我的店在前_附近去重且按距离` |
-| AC3 | `MyStoreFlowTest#只逛过的31天后退出_买过的不退出` |
-| AC5 | `MyStoreFlowTest#无坐标门店排最后` |
-| AC6 | `MyStoreFlowTest#附近不收READONLY_我的店里压淡` |
-| AC7 | `StoreOrderRoutingFlowTest#指定暂停的店拒单` · `#默认店暂停时落到其他营业店` |
-| AC19 | `StoreOrderRoutingFlowTest#门户选店落到那家店` · `#别家主体的门店号被忽略` · `#不传与改造前相同` |
-| AC8 | `StoreViewFlowTest#首次来源只在第一次写入_之后只刷新时间与次数` |
-| AC10 | `MpStoreRouteTest#M前缀解析到默认ACTIVE门店_ST前缀直取_未知前缀404` |
-| AC12 | `ReviewFlowTest#按门店过滤` |
-| AC14 | `c-app/tests/share-sheet.test.ts`（面板两条路；H5 复制链接） |
-| AC15 | `c-app/tests/share-sheet.test.ts`（链接带 storeNo）· `PosterAcodeTest#门店码一店一码复用` |
-| AC11 | `c-app/tests/store-portal.test.ts`（老客首格我常买；新访客首格热卖；售罄压淡不藏） |
+| AC | 测试 | 结果 |
+|---|---|---|
+| AC1 | `MyStoreFlowTest` ★ 主体号进店落到具体门店：我的店里是门店名 · ★ 同主体两家店是两行 · `StorePortalFlowTest` ★ 门户以门店为根 · `store-portal.test` ★★★ 门头写门店名、页面不出现主体名 | ✅ |
+| AC2 | `MyStoreFlowTest` ★ 附近去掉我的店、按距离升序 · 店铺页 H5 mock 两段 | ✅ |
+| AC3 | `MyStoreFlowTest` ★ 只逛过的超过 30 天掉出，买过的一直在（取消的单不算成交） | ✅ |
+| AC4 | 店铺页不再调 `/mp/merchant/promoted`（代码） | ✅ |
+| AC5 | `MyStoreFlowTest` ★ 没坐标的排最后而不是以 0 米排第一 | ✅ |
+| AC6 | `MyStoreFlowTest` ★ 停用的不列进附近、在我的店里状态为 READONLY；店铺行压淡 | ✅ |
+| AC7 | `StoreOrderRoutingTest` ★ 指定的店暂停营业拒单 · ★ 默认店暂停落到营业店 · 默认店暂停且无别店拒单 · `StorePortalFlowTest` ★ 暂停营业给同主体营业店 · `store-portal.test` ★★ 整页不可加购 | ✅ |
+| AC8 | `MyStoreFlowTest` ★ 首次来源只定一次 · 非分享不记分享人 · ★ 不带 source 按 LIST | ✅ |
+| AC9 | `StorePortalFlowTest` ★ §2.7 门户只列本店在售 | ✅ |
+| AC10 | `StorePortalFlowTest` ★ 主体号落默认门店、未知门店号 404 · `MyStoreFlowTest` 种子商家老链接落 ST-M0002 | ✅ |
+| AC11 | `store-portal.test` ★★★ 老客首格我常买、新访客首格热卖 · ★★★ 售罄压淡不藏 | ✅ |
+| AC12 | `StorePortalFlowTest` 评价按门店：只回这家店的，老评价不混进来 | ✅ |
+| AC13 | 门户「店铺」页签最后一行「经营主体与资质」→ `pages/merchant` | ⚠️ 资质页未收窄，见偏差 |
+| AC14 | `goods-detail-layout` ★★★ 海报收进分享面板 · ★★ 小程序原生转发在面板里、H5 复制链接 | ✅ |
+| AC15 | 门户分享路径带 `no`、详情从门户来的带 `storeNo`；`StorePortalFlowTest` 店码按门店；海报用门店码（H5 mock 出图） | ✅ |
+| AC19 | `StoreOrderRoutingTest` ★ 门户选店落到那家店 · 别家主体的门店号被忽略 · ★ 不传与改造前相同 · ★ 请求体 storeChoices 一路接到落店 | ✅ |
+| AC16 / AC17 | 二期 | — |
+| AC18 | 坐标治理 | ❌ 未做，见偏差 |
 
-消融计划：AC3 把 30 天判断注掉 → 必须红；AC7 把门店状态校验注掉 → 必须红；AC10 把 `M` 前缀分支注掉 → 必须红。
+```
+后端：MyStoreFlowTest 9 · StorePortalFlowTest 6 · StoreOrderRoutingTest 7 全绿；
+     下单相关回归（*Order* / *Trade* / M*Flow / *Pickup* / *Store* / *Fulfillment* / *Cart* …）803 条全绿；
+     M*Flow + Store* + Merchant* 混跑 580 条里 MyStoreFlowTest 9/9（全量的共享种子下也成立）
+前端：c-app 60 个文件 / 415 条全绿；vue-tsc 0 错；设计守卫（字色 / 圆角 / 投影 / 网格 / 孤儿样式）全过
+消融（每条都先红后还原）：
+  距离判空、30 天保留期 → MyStoreFlowTest 两条红
+  source 判空（Set.of().contains(null) 抛 NPE）→ 两条红 —— 这是 M6a 老用例先抓到的真缺陷
+  店级在售过滤、M 前缀分支 → StorePortalFlowTest 两条红
+  门户选店分支 → 3 条红；状态闸 + 默认店营业判断 → 4 条红
+  左栏「我常买」挪到「热卖」之后 → store-portal 一条红
+```
 
 ## 偏差说明
 
-（实现后补）
+- **模块归属**：「我的店 / 附近」写在 `user` 域的 `MyStoreService`（不是 §2.4 写的 `merchant/service`）——
+  它的主语是买家（逛过、买过），门店信息经新的窄端口 `StoreDirectoryPort` 取；`StoreViewService`
+  并进了 `MyStoreService.recordView`，`NearbyStoreServiceImpl` 即 `MyStoreServiceImpl.nearby`。
+- **门户商品端点**：`GET /mp/store/{no}/goods`，没给 `/mp/goods` 加参数（§2.2 已改，理由在那一行）。
+- **我常买**按主体聚合，没按门店（同品牌几家店买过的都算，商品定义在主体级）。
+- **§2.7 下单落店是实现时补的**：设计阶段漏了「买」，只改「看」的话门户是换皮。
+- **门户底部**用现有悬浮购物车（`biz-cart-fab`），没做原型里的通栏购物车条。
+- **未完成**：
+  1. AC13 资质页：`/mp/merchant/{no}` 没有营业执照等资质数据。「亮照」展示什么（执照图 / 信息摘要 / 打码规则）
+     是合规决定，**待产品确认**后补后端字段与页面。
+  2. 商品详情的店铺卡写门店名 / 距离：要后端先回答「这件货由哪家店卖给这位买家」（同 TDD-C端商品详情页v3 第二步）。
+  3. AC18 坐标治理：线上两家门店无坐标、虹选粮油坐标在山西 —— **需要真实坐标**，B 端提示与运营端标黄未做。
+  4. 待部署：后端 V361 与 c-app 新页面都还没上线；上线后旧版小程序继续按主体号调用（§2.1 保证可用）。
