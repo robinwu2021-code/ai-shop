@@ -57,7 +57,10 @@ REF="${REF:-HEAD}"
 HEAD_SHA="$(git rev-parse --short "$REF")"
 git rev-parse --verify --quiet "$REF^{commit}" >/dev/null || die "REF 不是一个提交：$REF"
 say "$APP ← $HEAD_SHA  $(git log -1 --format=%s "$REF" | cut -c1-46)"
-[ "$REF" = "HEAD" ] || say "（指定了 REF=$REF，不是当前 HEAD $(git rev-parse --short HEAD)）"
+# 比**解析后的 sha**，不比字符串：REF 给的就是当前 HEAD 的 sha 时，
+# 按字符串判会打出「不是当前 HEAD d66981aa0」而后面跟着同一个 d66981aa0 —— 一句假话
+[ "$HEAD_SHA" = "$(git rev-parse --short HEAD)" ] \
+    || say "（指定了 REF=$REF，不是当前 HEAD $(git rev-parse --short HEAD)）"
 
 # ── 锁（每个前端一把，互不阻塞）────────────────────────────────────────────
 LOCKDIR="$WWW/.deploy-$APP.lock"
