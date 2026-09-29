@@ -1822,6 +1822,119 @@
      "route": "pages/pay/index"
     }
    ]
+  },
+  {
+   "slug": "elec-rfq",
+   "file": "elec-rfq.html",
+   "title": "元器件：查料号、上传库存、在线询价",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-29",
+   "summary": "将来独立的元器件业务，先做 c-app 分包 pkg-elec/。买家：料号搜索（库存分档、参考起价）→ 单料号 / BOM 询价 → 报价 A/B/C → 选定锁价、人工跟进。供应商（独立主体）：入驻 → 从微信选 Excel 上传、列映射记住 → 上架前预演（新增/更新/下架）→ 到期续期 → 待报价与填报价 → 需求热度。一期 L0 双向匿名。十六屏 + 匿名规则表。",
+   "docs": [
+    {
+     "label": "TDD-元器件-数据库设计",
+     "path": "docs/technical/design/TDD-元器件-数据库设计.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "e01",
+     "title": "元器件首页",
+     "client": "c-app",
+     "route": "pkg-elec/home/index"
+    },
+    {
+     "id": "e02",
+     "title": "搜索结果",
+     "client": "c-app",
+     "route": "pkg-elec/search/index"
+    },
+    {
+     "id": "e03",
+     "title": "料号详情",
+     "client": "c-app",
+     "route": "pkg-elec/part/index"
+    },
+    {
+     "id": "e04",
+     "title": "单料号询价"
+    },
+    {
+     "id": "e05",
+     "title": "BOM 识别结果",
+     "client": "c-app",
+     "route": "pkg-elec/bom/index"
+    },
+    {
+     "id": "e06",
+     "title": "我的询价",
+     "client": "c-app",
+     "route": "pkg-elec/rfqs/index"
+    },
+    {
+     "id": "e07",
+     "title": "报价列表",
+     "client": "c-app",
+     "route": "pkg-elec/rfq/index"
+    },
+    {
+     "id": "e08",
+     "title": "选定报价"
+    },
+    {
+     "id": "e09",
+     "title": "供应商入驻",
+     "client": "c-app",
+     "route": "pkg-elec/supplier-apply/index"
+    },
+    {
+     "id": "e10",
+     "title": "供应商工作台",
+     "client": "c-app",
+     "route": "pkg-elec/supplier/index"
+    },
+    {
+     "id": "e11",
+     "title": "上传库存 · 列映射",
+     "client": "c-app",
+     "route": "pkg-elec/stock-upload/index"
+    },
+    {
+     "id": "e12",
+     "title": "上架前确认",
+     "client": "c-app",
+     "route": "pkg-elec/stock-preview/index"
+    },
+    {
+     "id": "e13",
+     "title": "我的库存",
+     "client": "c-app",
+     "route": "pkg-elec/stocks/index"
+    },
+    {
+     "id": "e14",
+     "title": "待报价",
+     "client": "c-app",
+     "route": "pkg-elec/dispatches/index"
+    },
+    {
+     "id": "e15",
+     "title": "填报价",
+     "client": "c-app",
+     "route": "pkg-elec/quote-edit/index"
+    },
+    {
+     "id": "e16",
+     "title": "需求热度",
+     "client": "c-app",
+     "route": "pkg-elec/demand/index"
+    }
+   ],
+   "artifact": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG"
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

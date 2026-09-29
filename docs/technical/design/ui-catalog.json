@@ -1005,7 +1005,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 36,
+      "count": 50,
       "domains": [
         {
           "name": "工作台",
@@ -1347,6 +1347,160 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/invite/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/home/index",
+              "title": "元器件首页",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e01",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/search/index",
+              "title": "搜索结果",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e02",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/part/index",
+              "title": "料号详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e03",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/bom/index",
+              "title": "BOM 识别结果",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e05",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/rfqs/index",
+              "title": "我的询价",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e06",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/rfq/index",
+              "title": "报价列表",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e07",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/supplier-apply/index",
+              "title": "供应商入驻",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e09",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/supplier/index",
+              "title": "供应商工作台",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e10",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/stock-upload/index",
+              "title": "上传库存 · 列映射",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e11",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/stock-preview/index",
+              "title": "上架前确认",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e12",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/stocks/index",
+              "title": "我的库存",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e13",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/dispatches/index",
+              "title": "待报价",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e14",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/quote-edit/index",
+              "title": "填报价",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e15",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/demand/index",
+              "title": "需求热度",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e16",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
             }
           ]
         },
@@ -3379,5 +3533,5 @@
       ]
     }
   ],
-  "total": 266
+  "total": 280
 }
