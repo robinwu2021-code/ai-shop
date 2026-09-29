@@ -7310,7 +7310,8 @@ _无字段_
 | `refundMinor` | `number` | 是 | 退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。 |
 | `commissionMinor` | `number` | 是 | 平台佣金 |
 | `serviceFeeMinor` | `number` | 是 | 履约服务费 |
-| `netMinor` | `number` | 是 | 商家净额。**不含 refund** |
+| `freightCostMinor` | `number` | 是 | 这一天被扣掉的实付快递费（分）。**只有平台代寄的才有** —— 商家自寄是他自付，平台没垫钱也没扣。 提现入口撤掉之后（ADR-011 §6），商家问「这个月我的钱少在哪」只剩这张表能答。 而快递费恰好是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。 |
+| `netMinor` | `number` | 是 | 商家净额。**不含 refund**，已扣掉 freightCostMinor |
 | `billCount` | `number` | 是 | 当天笔数。只给金额看不出「一笔大的还是很多笔」 |
 
 ### DailyFlowPage
@@ -9438,7 +9439,11 @@ _无字段_
 | `grossMinor` | `number` | 是 | 结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家**。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，算进基数等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 改口径之前这个数是「货款 + 运费」，按它做过的核对要重来一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消 |
-| `netMinor` | `number` | 是 | 商家实得（分）= 基数 − 佣金 − 服务费 |
+| `freightIncomeMinor` | `number` | 是 | 买家付的运费（代收，分）。**不在 `grossMinor` 里**，所以不进佣金基数。 非快递单为 0：只有 EXPRESS 走运费模板。 |
+| `freightCostMinor` | `number` | 是 | 平台实付给快递公司的钱（分）。**只有平台代寄才有。** 商家自己填单号发货是他自付，平台一分没出，这里是 0 —— 扣了就是收两遍。 判据是 `freightShipMode`，**不是「这个数是不是 0」**： 平台代寄但还没称重回传时它也是 0，那种情况要等回传，不是不扣。 |
+| `freightShipMode` | `string` | 否 | `PLATFORM_CALL` 平台代寄 / `MERCHANT_SELF` 商家自寄；非快递单为空。 **端上据它决定那一行说什么**：同样是 0 元快递费， 「商家自寄，平台不扣」与「平台代寄，费用还没回传」是两件事， 只显示金额的话商家看到的是同一行。 |
+| `freightDiffReason` | `string` | 否 | 实付高于代收时的原因：`OVERWEIGHT` 超重 / `REGION_SURCHARGE` 地区加收 / `OVER_CAP` 触发封顶（只扣到上限，差额待人工）。没有差额时为空。 商家被多扣一定会问为什么，而「超重」与「封顶只扣了一部分」要给两句不同的话。 |
+| `netMinor` | `number` | 是 | 商家实得（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费。 平台代寄且不超重时后两项对消，回到「货款 − 佣金」； 商家自寄时实付为 0，运费全额留给商家。 |
 | `trafficSource` | `string` | 否 | 客流来源：MERCHANT_OWNED 自带客流（零佣金）/ PLATFORM |
 | `commissionRate` | `number` | 是 | 佣金费率快照（万分比）。费率会变，历史账不跟着变 |
 | `status` | [`SettleBillStatus`](#settlebillstatus) | 是 | PENDING / SPLIT / RETRYING / MANUAL / REVERSED |
