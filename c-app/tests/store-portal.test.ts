@@ -169,6 +169,18 @@ describe("门店门户", () => {
     expect(junk.find(".band__img").exists(), "不是 http(s) 的值当 src 是一张裂图").toBe(false);
   });
 
+  it("★★ 店内的行不写店名，也不为一个销量吊一整行 —— 销量并进第二行", async () => {
+    storeHome.mockResolvedValue(home({
+      goods: [aGoods("G1", { subtitle: "脆甜多汁", sales: 1240 } as Partial<Goods>)],
+    } as Partial<StoreHome>));
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    const row = w.find(".list .card");
+    expect(row.find(".card__merchant").exists(), "只剩销量的落款行是一行空版面").toBe(false);
+    expect(row.find(".card__sub").text()).toContain("脆甜多汁");
+    expect(row.find(".card__sub").text()).toContain("common.sold");
+  });
+
   it("★★ 暂停营业：整页商品不可加购，并给同品牌的营业店", async () => {
     storeHome.mockResolvedValue(home({
       closed: true,

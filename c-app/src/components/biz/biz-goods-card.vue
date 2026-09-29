@@ -52,6 +52,19 @@ const timeText = computed(() => {
  */
 const soldOut = computed(() => goodsSoldOut(props.goods));
 
+/**
+ * 店内那一行的副标题：**描述 · 已售 N**。
+ *
+ * 店内不写店名，落款行就只剩一个销量吊在右下角 —— 一整行版面换一个数字。
+ * 并进这一句之后，一屏能多看到一件货（0 销量不说：零销量是劝退信号，与详情页同一条规矩）。
+ */
+const storeSub = computed(() => {
+  const sub = props.goods.subtitle ?? "";
+  if (!props.inStore || props.goods.sales <= 0) return sub;
+  const sold = String(t("common.sold", { n: props.goods.sales }));
+  return sub ? `${sub} · ${sold}` : sold;
+});
+
 const off = computed(() => {
   const o = props.goods.originPrice;
   if (!o || o <= props.goods.price) return 0;
@@ -85,7 +98,7 @@ const off = computed(() => {
       <text v-else-if="isService && goods.storeName" class="sh-muted card__sub">
         {{ goods.storeName }}
       </text>
-      <text v-else class="sh-muted card__sub">{{ goods.subtitle }}</text>
+      <text v-else class="sh-muted card__sub">{{ storeSub }}</text>
 
       <!-- 价格行只放价格这一件事：现价 + 划线价 + 折扣。
            时效搬到上一行之后，这里三件在英文下也放得开 -->
@@ -112,8 +125,12 @@ const off = computed(() => {
         </view>
       </view>
 
-      <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
-      <view class="sh-row sh-row--between card__merchant">
+      <!--
+        落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫。
+        **店内不画这一行**：店名不写（整页都是这一家），只剩一个销量吊在右下角 ——
+        那是一行空着的版面，销量已经并进上面那句了
+      -->
+      <view v-if="!inStore" class="sh-row sh-row--between card__merchant">
         <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
         <text v-if="goods.merchant.selfOperated && !inStore" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
         <!-- 店名前不再放 logo：此前是 `{{ logo || 🏪 }}` 当文字打印 —— 一排卡片全是同一个表情，

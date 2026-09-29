@@ -430,7 +430,7 @@ onShareTimeline(() =>
 
 <template>
   <!-- immersive：不画标题栏，顶部那条底顶到状态栏；返回 / 收藏 / 分享由下面的浮层画（与商品详情同一种做法） -->
-  <sh-scaffold immersive :padded="false" :pending="!data" :failed="failed" @retry="load">
+  <sh-scaffold immersive :pending="!data" :failed="failed" @retry="load">
     <template v-if="data">
       <!--
         顶部浮层：压在底上时是圆钮；滑过顶部那条底变白底标题条（返回 + 店名）。
@@ -625,10 +625,14 @@ onShareTimeline(() =>
  * 顶部那条底。没设背景图：主色浅底（2026-09-29 用户：「关闭时回到之前的方案」）；
  * 设了：照片，上沿压一点暗托住浮层按钮。高度由模板按浮层算好给
  */
+/*
+ * **只有这一条底出血**：页面其余部分照旧走页边距（`--sh-pad-page`），
+ * 与商品详情页的主图同一种写法。此前整页关掉了边距、每一块自己补 ——
+ * 补出来的是 24rpx，而 c-app 全站是 28rpx，且商品那块白底一个边距都没有，直接顶到屏幕两边
+ */
 .band {
   position: relative;
-  /* 顶层块之间的那道缝（base.css `.sh-scaffold > * + *`）会把它从屏顶推下来：它前面是固定定位的浮层 */
-  margin-top: 0;
+  margin: calc(-1 * var(--sh-pad-page, 28rpx)) calc(-1 * var(--sh-pad-page, 28rpx)) 0;
   overflow: hidden;
   /*
    * 这是**整幅背景**，不是白卡也不是提示条 —— 所以写成渐变而不是一块纯 tint：
@@ -651,7 +655,8 @@ onShareTimeline(() =>
 /* 信息卡压在那条底的下沿上。两种底上是同一张卡 */
 .head {
   position: relative;
-  margin: -112rpx 24rpx 0;
+  /* 只往上压到那条底上；左右交给页边距 */
+  margin: -112rpx 0 0;
 }
 .head__id {
   gap: 20rpx;
@@ -695,7 +700,7 @@ onShareTimeline(() =>
   margin-top: 16rpx;
 }
 .paused {
-  margin: 0 24rpx;
+  margin: 0;
 }
 .paused__go {
   display: inline-block;
