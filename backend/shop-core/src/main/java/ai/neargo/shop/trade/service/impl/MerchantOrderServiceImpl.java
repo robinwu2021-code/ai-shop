@@ -55,6 +55,17 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
      */
     private ai.neargo.shop.spi.trade.ShippingUploadPort shippingUploadPort;
 
+    /**
+     * 履约事件的出口。**setter 注入**，与上面那个 port 同一个理由：
+     * 构造器已经六个参数，再加会波及一批测试的 new，而这两件都是「可选的外接」。
+     */
+    private ai.neargo.shop.event.OutboxEventBus eventBus;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setEventBus(ai.neargo.shop.event.OutboxEventBus bus) {
+        this.eventBus = bus;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
         this.shippingUploadPort = port;
@@ -139,6 +150,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 已记在 §7 待确认。
          */
         notifyShipping(sub);
+        publishShipped(sub, no, expressCompany);
         return toVO(sub);
     }
 
@@ -209,6 +221,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 买家自己确认收货也会把单推到 COMPLETED，纠纷时要能分清是谁点的。
          */
         log(sub, OrdSubOrder.COMPLETED, "商家标记送达", merchantNo);
+        publishCompleted(sub);
         /*
          * **商家点送达也要向微信报发货**（2026-09-28 补）。
          *
@@ -230,6 +243,41 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
      *
      * <p><b>不在这里发请求</b>：上报是跨网络的副作用，一次抖动不该让商家点不动发货。
      */
+    /**
+     * 已发货 / 开始配送 → 通知买家。
+     *
+     * <p><b>此前这一步什么都不发</b>：买家从下单到收货，商家配送与快递这两条链
+     * 一条消息都收不到（2026-09-29 查证，而线上真实成交全走商家配送）。
+     * 微信那边的「服务动态」由 {@link #notifyShipping} 报上去、微信自己推，
+     * 这条事件管的是**我们自己的**站内信与 App 推送 —— 两者不重复：
+     * 前者只在微信里，后者是消息中心与手机通知栏。
+     */
+    private void publishShipped(OrdSubOrder sub, String expressNo, String expressCompany) {
+        if (eventBus == null) {
+            return;   // 裁剪部署 / 单测里没装事件总线，不拦业务
+        }
+        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderShipped(
+                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(), sub.getUserNo(),
+                sub.getFulfillment(), expressCompany, expressNo));
+    }
+
+    /**
+     * 商家标记送达 → 子单到终态。
+     *
+     * <p>与自提核销共用 {@code SubOrderCompleted}，靠事件里的 {@code fulfillment}
+     * 分文案 —— 自提是「已取货」，配送是「已送达」。
+     * 共用一条事件是有意的：评价开放、结算解冻计时都挂在它上面，
+     * 另起一条就要在那几处各加一个分支，而漏掉哪一处都不会报错。
+     */
+    private void publishCompleted(OrdSubOrder sub) {
+        if (eventBus == null) {
+            return;
+        }
+        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderCompleted(
+                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(),
+                sub.getUserNo(), sub.getFulfillment()));
+    }
+
     private void notifyShipping(OrdSubOrder sub) {
         if (shippingUploadPort == null) {
             LOG.error("[wxship] 装配里没有 ShippingUploadPort，子单 {} 不会上报 —— 这笔钱会结不出来",

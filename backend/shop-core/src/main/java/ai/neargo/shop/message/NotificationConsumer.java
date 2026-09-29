@@ -111,9 +111,35 @@ public class NotificationConsumer implements OutboxConsumer {
             case NotifyScene.SUB_ORDER_COMPLETED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/order/index?orderNo=" + event.getAggregateId();
+                /*
+                 * **文案按履约方式分。** 三条链走到终态的方式完全不同：
+                 * 自提是他自己去拿的，配送是送到他手上的，快递是签收的。
+                 * 共用一句「已取货」的话，收到快递的人会以为自己去过某个自提点 ——
+                 * 这正是「新履约方式落进老分支」那类缺陷：不报错，只是说错话。
+                 */
+                String doneTitle = doneTitleOf(text(payload, "fulfillment"));
                 messageService.push(userNo, MessageService.TRADE,
-                        "已取货", "订单已完成，欢迎评价", link, event.getEventNo());
-                cPush(scene, userNo, "已取货", "订单已完成，欢迎评价", link);
+                        doneTitle, "订单已完成，欢迎评价", link, event.getEventNo());
+                cPush(scene, userNo, doneTitle, "订单已完成，欢迎评价", link);
+            }
+            case NotifyScene.SUB_ORDER_SHIPPED -> {
+                String userNo = text(payload, "userNo");
+                String link = "/pages/order/index?orderNo=" + text(payload, "orderNo");
+                String expressNo = text(payload, "expressNo");
+                /*
+                 * **快递单号是这条通知的全部价值**：没有它，「已发货」只说了一件
+                 * 买家本来就在等的事。自送没有单号，说的是「正在送」——
+                 * 那一条的价值在时间（他要在家）。
+                 */
+                boolean byExpress = expressNo != null && !expressNo.isBlank();
+                String title = byExpress ? "已发货" : "开始配送";
+                String body = byExpress
+                        ? "%s %s，可在订单里查看物流".formatted(
+                                nz(text(payload, "expressCompany"), "快递"), expressNo)
+                        : "商家已出发，请保持电话畅通";
+                messageService.push(userNo, MessageService.TRADE, title, body,
+                        link, event.getEventNo());
+                cPush(scene, userNo, title, body, link);
             }
             case NotifyScene.AFTER_SALE_REFUNDED -> {
                 String userNo = text(payload, "userNo");
@@ -196,6 +222,20 @@ public class NotificationConsumer implements OutboxConsumer {
      * <p><b>dedupKey 必须带 userNo</b>：dedup 唯一索引是全局的，
      * 不带的话第二个收藏者会被当成重投静默丢掉（同 fanOutToStaff 的注释）。
      */
+    /** 走到终态的说法，按履约方式分。**不认识的履约方式回落成中性说法**，不要硬套自提。 */
+    private static String doneTitleOf(String fulfillment) {
+        return switch (fulfillment == null ? "" : fulfillment) {
+            case "STORE_PICKUP" -> "已取货";
+            case "MERCHANT_DELIVERY" -> "已送达";
+            case "EXPRESS" -> "已签收";
+            default -> "订单已完成";
+        };
+    }
+
+    private static String nz(String v, String fallback) {
+        return v == null || v.isBlank() ? fallback : v;
+    }
+
     private void fanOutToFollowers(SysOutbox event, JsonNode payload) {
         String scene = event.getEventType();
         String entityNo = text(payload, "entityNo");

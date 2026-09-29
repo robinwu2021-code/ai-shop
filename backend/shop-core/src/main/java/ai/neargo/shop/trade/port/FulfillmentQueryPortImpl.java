@@ -177,7 +177,7 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
 
         // 核销是自提线走到终态的唯一出口：评价开放、结算解冻计时、通知用户都挂在这条事件上
         eventBus.publish(new OrderEvents.SubOrderCompleted(sub.getSubOrderNo(), sub.getOrderNo(),
-                sub.getEntityNo(), sub.getUserNo()));
+                sub.getEntityNo(), sub.getUserNo(), sub.getFulfillment()));
         return true;
     }
 

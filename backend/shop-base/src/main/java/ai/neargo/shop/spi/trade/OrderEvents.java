@@ -58,7 +58,49 @@ public final class OrderEvents {
      * 子订单完成（核销/确认收货）。消费方：product(可写评价) · settle(解冻计时) · report。
      * 粒度是子订单而不是主单 —— 一次下单跨三家商家，三家各自完成，各自结算。
      */
-    public record SubOrderCompleted(String subOrderNo, String orderNo, String merchantNo, String userNo)
+    /**
+     * 子单走到终态。
+     *
+     * @param fulfillment 履约方式（{@code STORE_PICKUP} / {@code MERCHANT_DELIVERY} /
+     *                    {@code EXPRESS}）。**消费方靠它分文案** ——
+     *                    自提是「已取货」，商家配送是「已送达」，快递是「已签收」。
+     *                    不带这个字段的话三条链会共用一句「已取货」，
+     *                    而收到快递的人根本没去过任何自提点。
+     */
+    /**
+     * 已发货 / 开始配送。**这是履约链上此前完全没有通知的一环**：
+     * {@code MerchantOrderService#ship} 与 {@code #delivered} 都不发事件
+     * （路径写成通配会把 Javadoc 注释提前截断，别这么写），
+     * 于是买家从下单到收货，商家配送与快递这两条链一条消息都收不到
+     * （2026-09-29 查证：线上真实成交全走商家配送，自提零使用）。
+     *
+     * @param fulfillment    履约方式
+     * @param expressCompany 快递公司码（自送为 null）
+     * @param expressNo      快递单号（自送为 null）—— <b>单号是这条通知的全部价值</b>，
+     *                       没有它，「已发货」只说了一件买家本来就在等的事
+     */
+    public record SubOrderShipped(String subOrderNo, String orderNo, String merchantNo,
+                                  String userNo, String fulfillment,
+                                  String expressCompany, String expressNo)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return AGG_SUB_ORDER;
+        }
+
+        @Override
+        public String aggregateId() {
+            return subOrderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SUB_ORDER_SHIPPED";
+        }
+    }
+
+    public record SubOrderCompleted(String subOrderNo, String orderNo, String merchantNo,
+                                    String userNo, String fulfillment)
             implements DomainEvent {
         @Override
         public String aggregateType() {

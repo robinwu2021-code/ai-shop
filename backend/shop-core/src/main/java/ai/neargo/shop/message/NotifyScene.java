@@ -33,8 +33,16 @@ public final class NotifyScene {
     public static final String ORDER_PAID = "ORDER_PAID";
     /** 订单已到货（C 端） */
     public static final String ORDER_ARRIVED = "ORDER_ARRIVED";
-    /** 子单已完成（C 端） */
+    /** 子单已完成（C 端）。文案按履约方式分：自提「已取货」、配送「已送达」 */
     public static final String SUB_ORDER_COMPLETED = "SUB_ORDER_COMPLETED";
+    /**
+     * 已发货 / 开始配送（C 端）。
+     *
+     * <p><b>履约链上此前完全没有通知的一环</b>：商家配送与快递这两条链，
+     * 买家从下单到收货一条消息都收不到，而线上真实成交全走商家配送
+     * （2026-09-29 查证，自提零使用）。
+     */
+    public static final String SUB_ORDER_SHIPPED = "SUB_ORDER_SHIPPED";
     /** 售后已退款（C 端） */
     public static final String AFTER_SALE_REFUNDED = "AFTER_SALE_REFUNDED";
     /** 子单已支付 —— 扇出给门店员工（B 端） */
@@ -61,7 +69,8 @@ public final class NotifyScene {
      */
     public static final Set<String> ALL = Set.of(
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
-            SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE);
+            SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE,
+            SUB_ORDER_SHIPPED);
 
     /**
      * <b>营销类场景</b> —— 站内信不强制开。
