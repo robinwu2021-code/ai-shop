@@ -685,6 +685,15 @@ export const DISMISSED = [
       + "端上没有对应类型。**将来做流水列表页时改成登记 FIELDS** —— "
       + "现在为了让闸门有东西可比而造一个没人用的端上类型，是拿假接线换绿",
   },
+  {
+    key: "stl_bill.freight_ship_mode",
+    why: "结算单上这一单的发货方式（PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为 NULL），"
+      + "**不下发给任何端**：它在 SettleServiceImpl 里只做一件事 —— 判断这一单的运费该不该算进佣金基数"
+      + "（平台代寄时平台已付快递费，再抽一次就是收两遍）。"
+      + "三端零处引用（`grep -rn freightShipMode packages/shared/src c-app/src b-app/src ops-web` 为空）。"
+      + "**将来做运费对账页时改成登记 FIELDS** —— V367 建的 idx_stl_bill_freight 就是为那一页留的，"
+      + "但现在为了让闸门有东西可比而造一个没人用的端上类型，是拿假接线换绿",
+  },
   { key: "pmt_activity_rule.kind", why: "自己组合的行类型（CONDITION / BENEFIT），只在服务端读写，端上拿到的是拼好的一句话" },
   {
     key: "geo_place.kind",
