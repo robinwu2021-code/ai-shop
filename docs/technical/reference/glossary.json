@@ -13586,6 +13586,144 @@
           "ar": "إعدادات التحصيل"
         },
         {
+          "key": "payoutAccount.add",
+          "zh-CN": "添加收款账户",
+          "en": "Add payout account",
+          "ar": "إضافة حساب تحصيل"
+        },
+        {
+          "key": "payoutAccount.bank",
+          "zh-CN": "开户银行",
+          "en": "Bank",
+          "ar": "البنك"
+        },
+        {
+          "key": "payoutAccount.blockIncomplete",
+          "zh-CN": "请填写户名和银行账号",
+          "en": "Enter the account holder and number",
+          "ar": "أدخل اسم صاحب الحساب ورقمه"
+        },
+        {
+          "key": "payoutAccount.blockPending",
+          "zh-CN": "有一张在审核中，出结果后再提交",
+          "en": "One account is still under review",
+          "ar": "هناك حساب قيد المراجعة بالفعل"
+        },
+        {
+          "key": "payoutAccount.branch",
+          "zh-CN": "开户支行",
+          "en": "Branch",
+          "ar": "الفرع"
+        },
+        {
+          "key": "payoutAccount.current",
+          "zh-CN": "使用中",
+          "en": "In use",
+          "ar": "قيد الاستخدام"
+        },
+        {
+          "key": "payoutAccount.holder",
+          "zh-CN": "户名",
+          "en": "Account holder",
+          "ar": "اسم صاحب الحساب"
+        },
+        {
+          "key": "payoutAccount.holderHint",
+          "zh-CN": "须与营业执照一致",
+          "en": "Must match the business license",
+          "ar": "يجب أن يطابق الرخصة التجارية"
+        },
+        {
+          "key": "payoutAccount.noRecords",
+          "zh-CN": "还没有提交记录",
+          "en": "No submission yet",
+          "ar": "لا توجد طلبات بعد"
+        },
+        {
+          "key": "payoutAccount.none",
+          "zh-CN": "还没有收款账户",
+          "en": "No payout account yet",
+          "ar": "لا يوجد حساب تحصيل بعد"
+        },
+        {
+          "key": "payoutAccount.noneHint",
+          "zh-CN": "添加后，货款按账期打到这张卡",
+          "en": "Once added, payouts go to this card on schedule",
+          "ar": "بعد الإضافة، تُحوَّل المستحقات إلى هذه البطاقة حسب الجدول"
+        },
+        {
+          "key": "payoutAccount.number",
+          "zh-CN": "银行账号",
+          "en": "Account number",
+          "ar": "رقم الحساب البنكي"
+        },
+        {
+          "key": "payoutAccount.records",
+          "zh-CN": "提交记录",
+          "en": "History",
+          "ar": "سجل الإرسال"
+        },
+        {
+          "key": "payoutAccount.status.ACTIVE",
+          "zh-CN": "使用中",
+          "en": "In use",
+          "ar": "قيد الاستخدام"
+        },
+        {
+          "key": "payoutAccount.status.DISABLED",
+          "zh-CN": "已停用",
+          "en": "Disabled",
+          "ar": "معطّل"
+        },
+        {
+          "key": "payoutAccount.status.PENDING",
+          "zh-CN": "待审核",
+          "en": "Pending review",
+          "ar": "قيد المراجعة"
+        },
+        {
+          "key": "payoutAccount.status.REJECTED",
+          "zh-CN": "已驳回",
+          "en": "Rejected",
+          "ar": "مرفوض"
+        },
+        {
+          "key": "payoutAccount.submit",
+          "zh-CN": "提交",
+          "en": "Submit",
+          "ar": "إرسال"
+        },
+        {
+          "key": "payoutAccount.submitted",
+          "zh-CN": "已提交，等待审核",
+          "en": "Submitted, pending review",
+          "ar": "تم الإرسال، بانتظار المراجعة"
+        },
+        {
+          "key": "payoutAccount.submitting",
+          "zh-CN": "提交中…",
+          "en": "Submitting…",
+          "ar": "جارٍ الإرسال…"
+        },
+        {
+          "key": "payoutAccount.title",
+          "zh-CN": "收款账户",
+          "en": "Payout account",
+          "ar": "حساب التحصيل"
+        },
+        {
+          "key": "payoutAccount.typeCorporate",
+          "zh-CN": "对公账户",
+          "en": "Corporate account",
+          "ar": "حساب مؤسسي"
+        },
+        {
+          "key": "payoutAccount.typePersonal",
+          "zh-CN": "个人银行卡",
+          "en": "Personal bank card",
+          "ar": "بطاقة بنكية شخصية"
+        },
+        {
           "key": "period.amount",
           "zh-CN": "金额",
           "en": "Amount",
@@ -15780,6 +15918,12 @@
           "zh-CN": "开票才能拿到货款",
           "en": "Invoice us to get paid",
           "ar": "الفوترة شرط لاستلام مستحقاتك"
+        },
+        {
+          "key": "settle.entryPayoutAccount",
+          "zh-CN": "货款打到哪张卡",
+          "en": "Where payouts land",
+          "ar": "إلى أي بطاقة تصل المستحقات"
         },
         {
           "key": "settle.entryStatement",
@@ -21425,6 +21569,12 @@
           "ar": null
         },
         {
+          "key": "common.close",
+          "zh-CN": "关闭",
+          "en": "Close",
+          "ar": null
+        },
+        {
           "key": "common.confirm",
           "zh-CN": "确认",
           "en": "Confirm",
@@ -22127,6 +22277,12 @@
           "ar": null
         },
         {
+          "key": "nav.menu",
+          "zh-CN": "导航菜单",
+          "en": "Navigation",
+          "ar": null
+        },
+        {
           "key": "nav.notImplemented",
           "zh-CN": "待建",
           "en": "Planned",
@@ -22136,6 +22292,12 @@
           "key": "nav.notImplementedHint",
           "zh-CN": "后端尚未实现，暂时点不动",
           "en": "Not built yet — cannot be opened",
+          "ar": null
+        },
+        {
+          "key": "nav.openMenu",
+          "zh-CN": "打开菜单",
+          "en": "Open menu",
           "ar": null
         },
         {
@@ -33294,6 +33456,26 @@
         "zh": "支付**进件**状态（`MerchantPayment.applyStatus`）。"
       },
       {
+        "name": "PayoutAccountStatus",
+        "client": "b-app",
+        "values": [
+          "PENDING",
+          "ACTIVE",
+          "REJECTED",
+          "DISABLED"
+        ],
+        "zh": "收款账户状态。"
+      },
+      {
+        "name": "PayoutAccountType",
+        "client": "b-app",
+        "values": [
+          "PERSONAL_BANK_CARD",
+          "CORPORATE"
+        ],
+        "zh": "收款账户形态。"
+      },
+      {
         "name": "PickupFeeMode",
         "client": "ops-web",
         "values": [
@@ -33538,6 +33720,7 @@
           "/pages/income/index",
           "/pages/settle/index",
           "/pages/withdraw/index",
+          "/pages/payout-account/index",
           "/pages/deposit/index",
           "/pages/invoice/index",
           "/pages/statement/index",

@@ -4291,6 +4291,30 @@ _无字段_
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 
 
+### payout-account
+
+#### GET `/biz/payout-account`
+
+我的收款账户　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayoutAccount`](#payoutaccount)\[\]
+
+
+#### POST `/biz/payout-account`
+
+提交收款账户　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayoutAccount`](#payoutaccount)
+
+
 ### period
 
 #### GET `/biz/period`

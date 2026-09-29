@@ -6514,6 +6514,51 @@ components:
         - "outcome"
       additionalProperties: false
       description: "渠道报文一条（`stl_channel_message`，V286 起在落数据）。\n\n⚠️ **报文已脱敏**：签名、证书序列号、Authorization 都不入库， 所以它<b>不能拿去重放验签</b>。列表响应里带着这句话（`note`）， 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出 「我们的验签实现有 bug」这个结论。"
+    PayoutAccount: 
+      type: "object"
+      properties: 
+        accountNo: 
+          type: "string"
+        entityNo: 
+          type: "string"
+        accountType: 
+          type: "string"
+          description: "PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公"
+        accountName: 
+          type: "string"
+          description: "户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒"
+        accountMasked: 
+          type: "string"
+          description: "账号掩码，只留尾四位"
+        bankName: 
+          type: 
+            - "string"
+            - "null"
+        bankBranch: 
+          type: 
+            - "string"
+            - "null"
+        status: 
+          type: "string"
+          description: "PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替"
+        auditRemark: 
+          type: 
+            - "string"
+            - "null"
+          description: "驳回原因，原样回商家"
+        auditedAt: 
+          type: 
+            - "number"
+            - "null"
+      required: 
+        - "accountNo"
+        - "entityNo"
+        - "accountType"
+        - "accountName"
+        - "accountMasked"
+        - "status"
+      additionalProperties: false
+      description: "供应商收款账户（V358，ADR-011 自营供应商模式）。\n\n**没有明文账号字段** —— 后端只回掩码。审核这件事本身是资金重定向： 通过之后这个主体下一期的货款就打到这张卡。"
     ChannelMessagePage: 
       type: "object"
       properties: 
@@ -11575,6 +11620,86 @@ paths:
                   - "data"
       parameters: 
         - name: "settleNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/payout-accounts": 
+    get: 
+      operationId: "listPayoutAccounts"
+      summary: "listPayoutAccounts"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/PayoutAccount"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payout-accounts/{accountNo}/audit": 
+    post: 
+      operationId: "auditPayoutAccount"
+      summary: "审核"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PayoutAccount"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "accountNo"
           in: "path"
           required: true
           schema: 
