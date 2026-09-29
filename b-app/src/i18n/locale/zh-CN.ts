@@ -1556,7 +1556,6 @@ export default {
     none: "还没有收款账户",
     noneHint: "添加后，货款按账期打到这张卡",
     add: "添加收款账户",
-    type: "账户类型",
     typeCorporate: "对公账户",
     typePersonal: "个人银行卡",
     holder: "户名",
