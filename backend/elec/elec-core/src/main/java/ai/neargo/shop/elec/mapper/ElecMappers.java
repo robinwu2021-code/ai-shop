@@ -319,6 +319,21 @@ public final class ElecMappers {
                 """)
         List<UnknownRawRow> unknownRows(@Param("limit") int limit);
 
+        /**
+         * 有在售库存落在 [today, until] 之间到期的供应商：几行、最早哪天。到期提醒用。
+         * 只算 ACTIVE 的供应商 —— 暂停中的提醒他续期没有意义，续了买家也看不到。
+         */
+        @Select("""
+                SELECT t.supplier_no, COUNT(*) AS rows_cnt, MIN(t.valid_until) AS first_date
+                  FROM elc_stock t
+                  JOIN elc_supplier s ON s.supplier_no = t.supplier_no
+                 WHERE t.status = 'ON' AND t.valid_until >= #{today} AND t.valid_until <= #{until}
+                   AND s.status = 'ACTIVE'
+                 GROUP BY t.supplier_no
+                """)
+        List<ExpiringRow> expiringBySupplier(@Param("today") java.time.LocalDate today,
+                                             @Param("until") java.time.LocalDate until);
+
         /** 挂在「厂牌不明」料号下、且写了厂牌原文的全部库存行（含已下架的）。补别名时逐行改认用 */
         @Select("""
                 SELECT t.*
@@ -344,6 +359,14 @@ public final class ElecMappers {
         private String partNo;
         private Long supplierCnt;
         private Long totalQty;
+    }
+
+    @Getter
+    @Setter
+    public static class ExpiringRow {
+        private String supplierNo;
+        private Long rowsCnt;
+        private java.time.LocalDate firstDate;
     }
 
     @Getter

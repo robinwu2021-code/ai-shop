@@ -57,5 +57,8 @@ public class ElcQuote extends ElcMutableEntity {
     /** 只给平台看 —— 供应商常在这里写公司名和微信 */
     private String remark;
 
+    /** 首次报价通知送到买家的时间；空 = 没送到（改价不再通知，也是空） */
+    private java.time.LocalDateTime buyerNotifiedAt;
+
     private String status;
 }

@@ -3,6 +3,8 @@ package ai.neargo.shop.elec.support;
 import ai.neargo.shop.elec.gateway.ElecAlerts.RfqAlert;
 import ai.neargo.shop.elec.gateway.ElecAlerts.RfqLine;
 import ai.neargo.shop.elec.gateway.ElecAlerts.Source;
+import ai.neargo.shop.elec.gateway.ElecAlerts.DeclineAlert;
+import ai.neargo.shop.elec.gateway.ElecAlerts.QuoteAlert;
 import ai.neargo.shop.elec.gateway.ElecAlerts.SupplierAlert;
 
 import java.math.BigDecimal;
@@ -93,8 +95,81 @@ public final class AlertText {
     }
 
     /** 百万分之一元 → 元，去掉尾零（¥6.2、¥0.0015） */
+    public static String quoted(QuoteAlert q) {
+        StringBuilder md = new StringBuilder()
+                .append(q.requote() ? "**供应商改价** " : "**供应商报价** ").append(q.rfqNo())
+                .append(" 第 ").append(q.lineNo()).append(" 行\n")
+                .append("> 料号：").append(q.mpn()).append(" × ").append(q.qtyWanted()).append('\n')
+                .append("> 报价方：").append(nvl(q.companyName(), "还没填公司名")).append("　")
+                .append(q.contactPhone()).append('\n')
+                .append("> 价格：").append(money(q.priceE6(), q.currency())).append(q.taxIncluded() ? " 含税" : " 未税")
+                .append("　可供：").append(q.qtyAvailable()).append('\n');
+        StringBuilder terms = new StringBuilder();
+        if (q.dateCode() != null && !q.dateCode().isBlank()) {
+            terms.append("批号 ").append(q.dateCode()).append("　");
+        }
+        if (q.leadDays() != null) {
+            terms.append(q.leadDays() == 0 ? "现货" : "交期 " + q.leadDays() + " 天").append("　");
+        }
+        if (q.cond() != null) {
+            terms.append(cond(q.cond()));
+        }
+        if (!terms.isEmpty()) {
+            md.append("> 货况：").append(terms.toString().strip()).append('\n');
+        }
+        if (q.qtyAvailable() < q.qtyWanted()) {
+            md.append("> **只够 ").append(q.qtyAvailable()).append(" / ").append(q.qtyWanted()).append("，要再找一家补**\n");
+        }
+        return md.append("这一行目前 ").append(q.offersOnLine()).append(" 家报了价").toString();
+    }
+
+    public static String declined(DeclineAlert d) {
+        StringBuilder md = new StringBuilder();
+        if (d.lineAllDeclined()) {
+            // 整行都被拒是运营要出手的信号：放在第一行、用 warning 色，群里一眼就能从普通消息里挑出来
+            md.append("<font color=\"warning\">**⚠ 整行都被拒，要人工找货**</font> ");
+        } else {
+            md.append("**供应商拒绝** ");
+        }
+        md.append(d.rfqNo()).append(" 第 ").append(d.lineNo()).append(" 行\n")
+                .append("> 料号：").append(d.mpn()).append(" × ").append(d.qtyWanted()).append('\n')
+                .append("> 拒绝方：").append(nvl(d.companyName(), "还没填公司名")).append("　")
+                .append(d.contactPhone()).append('\n')
+                .append("> 原因：").append(declineReason(d.reason()));
+        if (d.lineAllDeclined()) {
+            md.append("\n派出去的都回了「接不了」，平台也还没报价。买家已收到「这一项暂无货源」");
+        }
+        return md.toString();
+    }
+
     public static String yuan(long e6) {
         return BigDecimal.valueOf(e6, 6).stripTrailingZeros().toPlainString();
+    }
+
+    /** 人民币写「¥1.2」，外币写「USD 1.2」—— 外币不标出来，运营会照着数字报人民币 */
+    private static String money(long e6, String currency) {
+        return currency == null || "CNY".equals(currency) ? "¥" + yuan(e6) : currency + " " + yuan(e6);
+    }
+
+    private static String cond(String v) {
+        return switch (v) {
+            case "ORIGINAL" -> "原装原包";
+            case "LOOSE" -> "原装散新";
+            case "PULLED" -> "拆机";
+            case "REFURB" -> "翻新";
+            default -> v;
+        };
+    }
+
+    private static String declineReason(String v) {
+        if (v == null) {
+            return "没说";
+        }
+        return switch (v) {
+            case "NO_STOCK" -> "没货";
+            case "PRICE" -> "价格做不了";
+            default -> "其他";
+        };
     }
 
     private static String kind(String kind) {

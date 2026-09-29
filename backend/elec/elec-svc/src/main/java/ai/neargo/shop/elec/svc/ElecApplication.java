@@ -34,6 +34,8 @@ import org.springframework.context.annotation.Import;
             ai.neargo.common.security.rbac.RbacAutoConfiguration.class,
         })
 @Import({GlobalExceptionHandler.class, ApiResponseWrapper.class, Messages.class, InMemoryRateLimiter.class})
+// 只有一个定时任务：库存到期提醒（ElecExpiryReminder）
+@org.springframework.scheduling.annotation.EnableScheduling
 public class ElecApplication {
 
     public static void main(String[] args) {

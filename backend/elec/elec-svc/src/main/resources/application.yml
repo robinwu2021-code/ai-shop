@@ -33,6 +33,10 @@ shop:
     internal-token: ${SHOP_SERVICES_INTERNAL_TOKEN:}
 
 elec:
+  # 通知点开后落到的页面前缀。并进 c-app 测试时是 pkg-elec/pages/，独立小程序时改成 pages/（见 ElecPages）
+  page-prefix: ${ELEC_PAGE_PREFIX:pkg-elec/pages/}
+  # 库存快到期的站内信，每天一次。设成 - 关掉（Spring 的「禁用」写法）
+  expiry-remind-cron: ${ELEC_EXPIRY_REMIND_CRON:0 0 9 * * *}
   wecom:
     # 企业微信群机器人。**默认复用主系统那条**（SHOP_NOTIFY_WECOM_WEBHOOK，生产上已经配着，
     # 收入驻意向的就是那个群）—— 不用为元器件再要一次地址。

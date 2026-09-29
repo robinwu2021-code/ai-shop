@@ -67,7 +67,7 @@ class ElecQuoteFlowTest {
         assertThat(n.userNo()).isEqualTo(main.userNoOf(buyer));
         assertThat(n.result()).isEqualTo("QUOTED");
         assertThat(n.summary()).isEqualTo("QT100A 等 2 项");
-        assertThat(n.page()).isEqualTo("pkg-elec/rfq/index?rfqNo=" + rfqNo);
+        assertThat(n.page()).as("路由以 elec-app 的 pages.json 为准").isEqualTo("pkg-elec/pages/rfq/index?rfqNo=" + rfqNo);
 
         JsonNode view = data(get("/elec/c/rfq/" + rfqNo), buyer, null);
         assertThat(view.get("status").asString()).isEqualTo("QUOTED");

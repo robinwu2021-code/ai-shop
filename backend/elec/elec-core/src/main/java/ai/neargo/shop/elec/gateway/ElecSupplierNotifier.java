@@ -20,4 +20,13 @@ public interface ElecSupplierNotifier {
 
     /** 你的报价被买家选中了 */
     boolean quoteAccepted(String accountRef, String quoteNo, long qty);
+
+    /**
+     * 你有库存快到期了。<b>只进站内信、不发订阅消息</b>：订阅消息一次授权只够一条，
+     * 他的额度要留给「有新求购」—— 那一条直接带来生意，到期提醒不是。
+     *
+     * @param rows  几行快到期
+     * @param first 最早那一行到期的日子
+     */
+    boolean stockExpiring(String accountRef, String supplierNo, int rows, java.time.LocalDate first);
 }

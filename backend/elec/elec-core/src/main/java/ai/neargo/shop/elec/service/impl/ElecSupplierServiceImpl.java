@@ -22,6 +22,8 @@ import ai.neargo.shop.elec.support.ElecKeys;
 import ai.neargo.shop.elec.support.Mpn;
 import ai.neargo.shop.elec.gateway.ElecAlerts;
 import ai.neargo.shop.elec.gateway.ElecAccounts;
+import ai.neargo.shop.elec.gateway.ElecSupplierNotifier;
+import ai.neargo.shop.elec.mapper.ElecMappers;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -53,6 +55,12 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     /** 「快到期」的提前量：工作台上提醒他续期或重传。运营端的「7 天内到期」用同一个数 */
     static final int EXPIRING_DAYS = 7;
 
+    /** 到期提醒：提前几天说。比工作台的「7 天内到期」近 —— 站内信要说的是「真的快了」 */
+    static final int REMIND_AHEAD_DAYS = 3;
+
+    /** 同一家最多几天提醒一次。他不续期，每天一条就成了骚扰 */
+    static final int REMIND_EVERY_DAYS = 6;
+
     private static final Pattern PHONE = Pattern.compile("^1\\d{10}$");
 
     private final ElecSupplierAccess access;
@@ -66,11 +74,13 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     private final ElecProperties props;
     private final TransactionTemplate tx;
     private final ElecStockViews views;
+    private final ElecSupplierNotifier notifier;
 
     public ElecSupplierServiceImpl(ElecSupplierAccess access, SupplierMapper supplierMapper,
                                SupplierMemberMapper memberMapper, StockMapper stockMapper,
                                StockBatchMapper batchMapper, ElecMarketService market, ElecAccounts identity,
                                ElecAlerts alerts, ElecProperties props, ElecStockViews views,
+                               ElecSupplierNotifier notifier,
                                @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.access = access;
         this.supplierMapper = supplierMapper;
@@ -83,6 +93,7 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         this.props = props;
         this.tx = new TransactionTemplate(tm);
         this.views = views;
+        this.notifier = notifier;
     }
 
     @Override
@@ -263,6 +274,52 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         return new SupplierView(s.getSupplierNo(), s.getCompanyName(), s.getKind(), s.getCity(),
                 s.getContactName(), s.getContactPhone(), s.getMaskCode(), s.getStatus(),
                 (int) on, (int) expiring, last == null ? null : last.getAppliedAt(), props.getStockTtlDays());
+    }
+
+    @Override
+    public int remindExpiring() {
+        LocalDate today = LocalDate.now();
+        int n = 0;
+        for (ElecMappers.ExpiringRow r : stockMapper.expiringBySupplier(today, today.plusDays(REMIND_AHEAD_DAYS))) {
+            /*
+             * 先抢再发：条件更新到 1 行才算这一周轮到它。单实例时它只是去重；
+             * 将来 elec-svc 扩成多实例，同一家同一周期也只有一个实例抢得到 —— 不靠分布式锁。
+             */
+            /*
+             * **截到整秒**：列是 DATETIME（秒精度），带纳秒写进去会被截掉（MySQL 默认还是四舍五入），
+             * 下面「没送到就还回去」那句按 = now 比，永远对不上 —— 占位还不回去，没送到的要等一周。
+             */
+            LocalDateTime now = LocalDateTime.now().withNano(0);
+            int won = supplierMapper.update(null, Wrappers.<ElcSupplier>lambdaUpdate()
+                    .eq(ElcSupplier::getSupplierNo, r.getSupplierNo())
+                    .and(w -> w.isNull(ElcSupplier::getExpiryRemindedAt)
+                            .or().lt(ElcSupplier::getExpiryRemindedAt, now.minusDays(REMIND_EVERY_DAYS)))
+                    .set(ElcSupplier::getExpiryRemindedAt, now));
+            if (won == 0) {
+                continue;
+            }
+            String account = access.ownerAccount(r.getSupplierNo());
+            if (account == null) {
+                continue;
+            }
+            boolean ok;
+            try {
+                ok = notifier.stockExpiring(account, r.getSupplierNo(), r.getRowsCnt().intValue(), r.getFirstDate());
+            } catch (RuntimeException e) {
+                ok = false;
+            }
+            if (ok) {
+                n++;
+            } else {
+                // 没送到就把占位还回去，明天再试 —— 否则要等一周
+                supplierMapper.update(null, Wrappers.<ElcSupplier>lambdaUpdate()
+                        .eq(ElcSupplier::getSupplierNo, r.getSupplierNo())
+                        .eq(ElcSupplier::getExpiryRemindedAt, now)
+                        .set(ElcSupplier::getExpiryRemindedAt, null));
+                log.warn("库存到期提醒没送到供应商 supplierNo={}，明天再试", r.getSupplierNo());
+            }
+        }
+        return n;
     }
 
     /**

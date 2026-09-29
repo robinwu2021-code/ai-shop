@@ -1,5 +1,7 @@
 package ai.neargo.shop.elec.support;
 
+import ai.neargo.shop.elec.gateway.ElecAlerts.DeclineAlert;
+import ai.neargo.shop.elec.gateway.ElecAlerts.QuoteAlert;
 import ai.neargo.shop.elec.gateway.ElecAlerts.RfqAlert;
 import ai.neargo.shop.elec.gateway.ElecAlerts.RfqLine;
 import ai.neargo.shop.elec.gateway.ElecAlerts.Source;
@@ -51,5 +53,26 @@ class AlertTextTest {
     void supplierWithoutCompany() {
         String msg = AlertText.supplier(new SupplierAlert("ES1", null, "TRADER", null, null, "13700003333"));
         assertThat(msg).contains("还没填").contains("13700003333").doesNotContain("null");
+    }
+
+    @Test
+    @DisplayName("★★ 外币报价写出币种：只写数字的话，运营会照着 1.2 报人民币")
+    void quotedForeignCurrency() {
+        String msg = AlertText.quoted(new QuoteAlert("ER1", 2, "STM32F103C8T6", 100, null, "13700004444",
+                1_200_000L, "USD", false, 100, "2426", 14, null, 2, false));
+        assertThat(msg).contains("USD 1.2").contains("未税").contains("交期 14 天").contains("批号 2426")
+                .contains("还没填公司名").contains("这一行目前 2 家报了价")
+                .doesNotContain("只够").as("数量够就不提醒").doesNotContain("null");
+    }
+
+    @Test
+    @DisplayName("★★ 普通的拒绝不标红；整行都拒才标红 —— 标红的消息多了就没人看了")
+    void declinedOnlyLoudWhenWholeLine() {
+        String one = AlertText.declined(new DeclineAlert("ER2", 1, "LM358", 10, "某电子", "13700005555",
+                "OTHER", false));
+        assertThat(one).startsWith("**供应商拒绝**").contains("其他").doesNotContain("warning");
+        String all = AlertText.declined(new DeclineAlert("ER2", 1, "LM358", 10, "某电子", "13700005555",
+                "NO_STOCK", true));
+        assertThat(all).contains("warning").contains("整行都被拒").contains("买家已收到");
     }
 }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.elec.service.impl;
 
+import ai.neargo.elec.api.ElecInternal;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Masks;
@@ -379,7 +380,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
                 throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
             }
         });
-        notifyBuyer(rfqNo, h.getBuyerRef(), "QUOTED", linesOf(rfqNo));
+        notifyBuyer(rfqNo, h.getBuyerRef(), ElecInternal.RESULT_QUOTED, linesOf(rfqNo));
         return opsDetail(rfqNo);
     }
 
@@ -406,7 +407,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         }
         // 「暂无货源」也是结果：买家在等，不告诉他就只能一直等下去
         if ("NO_SOURCE".equals(reason)) {
-            notifyBuyer(rfqNo, h.getBuyerRef(), "NO_SOURCE", linesOf(rfqNo));
+            notifyBuyer(rfqNo, h.getBuyerRef(), ElecInternal.RESULT_NO_SOURCE, linesOf(rfqNo));
         }
         return opsDetail(rfqNo);
     }

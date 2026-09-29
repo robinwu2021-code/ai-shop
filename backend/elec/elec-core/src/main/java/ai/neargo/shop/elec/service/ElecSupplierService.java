@@ -29,4 +29,11 @@ public interface ElecSupplierService {
 
     /** 「仍有货」：把在售库存全部续期 */
     RenewResult renew(String userNo);
+
+    /**
+     * 库存快到期的站内信（每天跑一次）。<b>只进站内信、不发订阅消息</b>；同一家<b>一周最多一条</b>。
+     *
+     * @return 这次提醒了几家
+     */
+    int remindExpiring();
 }

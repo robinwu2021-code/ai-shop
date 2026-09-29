@@ -72,8 +72,25 @@ public final class ElecInternal {
     public record User(String userNo, String phone) {
     }
 
+    /** 询价结果（{@link QuotedNotice#result}）：平台报了价 */
+    public static final String RESULT_QUOTED = "QUOTED";
+    /** 平台关单：暂无货源 */
+    public static final String RESULT_NO_SOURCE = "NO_SOURCE";
+    /** 有供应商报了价（首次报价才发，改价不发） */
+    public static final String RESULT_OFFER = "OFFER";
+    /** 某一行：收到求购的供应商都回了「没货」，平台也没报 */
+    public static final String RESULT_LINE_NO_OFFER = "LINE_NO_OFFER";
+
+    /** 通知供应商的事（{@link SupplierNotice#kind}）：有新求购 */
+    public static final String KIND_DISPATCH = "DISPATCH";
+    /** 他的报价被买家选中了 */
+    public static final String KIND_ACCEPTED = "ACCEPTED";
+    /** 库存快到期了。<b>只进站内信、不发订阅消息</b>：他的授权额度留给「有新求购」 */
+    public static final String KIND_EXPIRING = "EXPIRING";
+
     /**
-     * @param result  QUOTED 已报价 / NO_SOURCE 暂无货源
+     * @param result  {@link #RESULT_QUOTED} / {@link #RESULT_NO_SOURCE} / {@link #RESULT_OFFER} /
+     *                {@link #RESULT_LINE_NO_OFFER}
      * @param summary 料号概述，如「STM32F103C8T6 等 3 项」（≤20 字，微信 thing 字段的上限）
      * @param page    点开后落到的小程序页面
      */
@@ -81,7 +98,7 @@ public final class ElecInternal {
     }
 
     /**
-     * @param kind    DISPATCH 有新求购 / ACCEPTED 报价被选中
+     * @param kind    {@link #KIND_DISPATCH} / {@link #KIND_ACCEPTED} / {@link #KIND_EXPIRING}
      * @param title   站内信标题
      * @param body    站内信正文
      * @param page    点开落到的小程序页面

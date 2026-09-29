@@ -38,6 +38,19 @@ public class ElecSupplierAccess {
                 .eq(ElcSupplier::getSupplierNo, m.getSupplierNo()));
     }
 
+    /**
+     * 这家供应商的通知发给谁：在册成员里的一个登录号（主系统的用户号）。没有在册成员为 null。
+     *
+     * <p>第一步一家只有一个成员（入驻的那个人）；将来一家多人时，这里是改成「发给谁」规则的唯一一处。
+     */
+    public String ownerAccount(String supplierNo) {
+        return memberMapper.selectList(Wrappers.<ElcSupplierMember>lambdaQuery()
+                        .eq(ElcSupplierMember::getSupplierNo, supplierNo)
+                        .eq(ElcSupplierMember::getStatus, ElcSupplierMember.STATUS_ACTIVE)
+                        .orderByAsc(ElcSupplierMember::getId))
+                .stream().findFirst().map(ElcSupplierMember::getAccountRef).orElse(null);
+    }
+
     /** 上传、续期、看库存都要求「是供应商且没被暂停」 */
     public ElcSupplier requireActive(String userNo) {
         ElcSupplier s = of(userNo);

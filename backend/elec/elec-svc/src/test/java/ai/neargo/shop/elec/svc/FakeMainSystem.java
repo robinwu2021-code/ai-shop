@@ -117,5 +117,12 @@ public class FakeMainSystem implements MainSystemApi {
         FakeMainSystem fakeMainSystem() {
             return new FakeMainSystem();
         }
+
+        /** 企业微信换成记录器（仍返回「没送到」，与没配 webhook 同语义） */
+        @Bean
+        @Primary
+        RecordingAlerts recordingAlerts(tools.jackson.databind.ObjectMapper json) {
+            return new RecordingAlerts(json);
+        }
     }
 }

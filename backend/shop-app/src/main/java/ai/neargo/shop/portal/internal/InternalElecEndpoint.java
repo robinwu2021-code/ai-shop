@@ -122,10 +122,31 @@ public class InternalElecEndpoint {
         if (!authorized(given)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        boolean noSource = "NO_SOURCE".equals(n.result());
-        String resultText = noSource ? "暂无货源" : "已报价";
-        String title = noSource ? "询价暂无货源" : "询价有报价了";
-        String body = n.summary() + (noSource ? "：平台暂时没找到货，可以换个料号或稍后再询" : "：平台已报价，报价有有效期，请尽快查看");
+        String resultText;
+        String title;
+        String body;
+        switch (n.result()) {
+            case ElecInternal.RESULT_NO_SOURCE -> {
+                resultText = "暂无货源";
+                title = "询价暂无货源";
+                body = n.summary() + "：平台暂时没找到货，可以换个料号或稍后再询";
+            }
+            case ElecInternal.RESULT_OFFER -> {
+                resultText = "有新报价";
+                title = "询价有新报价";
+                body = n.summary() + "：有供应商报了价，报价有有效期，请尽快查看";
+            }
+            case ElecInternal.RESULT_LINE_NO_OFFER -> {
+                resultText = "暂无货源";
+                title = "询价有一项暂无货源";
+                body = n.summary() + "：收到求购的供应商都没有现货，平台会继续帮你找";
+            }
+            default -> {
+                resultText = "已报价";
+                title = "询价有报价了";
+                body = n.summary() + "：平台已报价，报价有有效期，请尽快查看";
+            }
+        }
         boolean inApp;
         try {
             messages.pushTo(MsgMessage.RECEIVER_USER, n.userNo(), MessageService.TRADE, title, body,
@@ -140,7 +161,7 @@ public class InternalElecEndpoint {
     }
 
     /**
-     * 通知供应商（有新求购 / 报价被选中）。供应商与买家是同一个账号体系，所以与
+     * 通知供应商（有新求购 / 报价被选中 / 库存快到期）。供应商与买家是同一个账号体系，所以与
      * {@link #notifyQuoted} 走同一条路：站内信必达，订阅消息是加速通道。
      *
      * <p>订阅消息用的是同一个模板（场景 ELEC_QUOTED）：报价结果与求购通知在模板上是同一类
@@ -161,8 +182,10 @@ public class InternalElecEndpoint {
         } catch (RuntimeException e) {
             inApp = false;
         }
-        boolean wx = wxSubscribe.elecQuoted(n.userNo(), "-", n.title(),
-                "DISPATCH".equals(n.kind()) ? "有新求购" : "已选中", n.page());
+        // 到期提醒只进站内信：一次授权只够一条订阅消息，额度要留给「有新求购」—— 那一条直接带来生意
+        boolean wx = !ElecInternal.KIND_EXPIRING.equals(n.kind())
+                && wxSubscribe.elecQuoted(n.userNo(), "-", n.title(),
+                ElecInternal.KIND_DISPATCH.equals(n.kind()) ? "有新求购" : "已选中", n.page());
         return ResponseEntity.ok(new ElecInternal.NoticeResult(inApp, wx));
     }
 

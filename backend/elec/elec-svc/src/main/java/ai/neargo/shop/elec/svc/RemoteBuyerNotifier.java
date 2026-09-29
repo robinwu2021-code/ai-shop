@@ -17,20 +17,19 @@ public class RemoteBuyerNotifier implements ElecBuyerNotifier {
 
     private static final Logger log = LoggerFactory.getLogger(RemoteBuyerNotifier.class);
 
-    /** 点开通知落到的小程序页面（分包路径） */
-    static final String PAGE = "pkg-elec/rfq/index?rfqNo=";
-
     private final MainSystemApi main;
+    private final ElecPages pages;
 
-    public RemoteBuyerNotifier(MainSystemApi main) {
+    public RemoteBuyerNotifier(MainSystemApi main, ElecPages pages) {
         this.main = main;
+        this.pages = pages;
     }
 
     @Override
     public boolean rfqResult(String userNo, String rfqNo, String result, String summary) {
         try {
             ElecInternal.NoticeResult r = ServiceCalls.call(ServiceName.PLATFORM, () -> main.notifyQuoted(
-                    new ElecInternal.QuotedNotice(userNo, rfqNo, result, summary, PAGE + rfqNo)));
+                    new ElecInternal.QuotedNotice(userNo, rfqNo, result, summary, pages.rfq(rfqNo))));
             return r != null && (r.inApp() || r.wx());
         } catch (RuntimeException e) {
             log.warn("询价结果交给主系统失败 rfqNo={} {}", rfqNo, e.toString());

@@ -33,5 +33,7 @@ public class ElcSupplier extends ElcMutableEntity {
 
     private java.time.LocalDateTime suspendedAt;
 
+    private java.time.LocalDateTime expiryRemindedAt;
+
     private java.time.LocalDateTime notifiedAt;
 }

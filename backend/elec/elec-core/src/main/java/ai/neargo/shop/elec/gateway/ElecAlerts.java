@@ -18,6 +18,33 @@ public interface ElecAlerts {
     /** 买家接受了平台的报价：运营要去签合同、安排发货 */
     boolean rfqAccepted(String rfqNo, String contactName, String contactPhone, String summary);
 
+    /** 供应商报了价：哪家（真名）、什么价、什么货况，这一行目前几家报了 —— 运营据此决定要不要再催别家 */
+    boolean supplierQuoted(QuoteAlert q);
+
+    /**
+     * 供应商拒了。{@link DeclineAlert#lineAllDeclined} 为 true 时这一行<b>已经没人能接了</b>，
+     * 消息标题要醒目 —— 那是运营要亲自出手找货的信号，淹在普通消息里就会被错过。
+     */
+    boolean supplierDeclined(DeclineAlert d);
+
+    /**
+     * @param priceE6      供应商填的原价（他的币种与含税口径）
+     * @param offersOnLine 这一行目前有几家有效报价（含这一家）
+     * @param requote      true = 同一条派单改价（不是新的一家）
+     */
+    record QuoteAlert(String rfqNo, int lineNo, String mpn, long qtyWanted, String companyName,
+                      String contactPhone, long priceE6, String currency, boolean taxIncluded, long qtyAvailable,
+                      String dateCode, Integer leadDays, String cond, int offersOnLine, boolean requote) {
+    }
+
+    /**
+     * @param reason          NO_STOCK 没货 / PRICE 价格做不了 / OTHER
+     * @param lineAllDeclined 这一行派出去的都回了话、都是拒绝，平台也没报 —— 已经没人能接
+     */
+    record DeclineAlert(String rfqNo, int lineNo, String mpn, long qtyWanted, String companyName,
+                        String contactPhone, String reason, boolean lineAllDeclined) {
+    }
+
     /** @param companyName 可空：点一下就成为供应商，公司名之后才补 */
     record SupplierAlert(String supplierNo, String companyName, String kind, String city,
                          String contactName, String contactPhone) {

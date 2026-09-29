@@ -1,5 +1,6 @@
 package ai.neargo.shop.elec.service.impl;
 
+import ai.neargo.elec.api.ElecInternal;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.elec.config.ConditionalOnElec;
@@ -17,6 +18,10 @@ import ai.neargo.shop.elec.entity.ElcRfq;
 import ai.neargo.shop.elec.entity.ElcRfqLine;
 import ai.neargo.shop.elec.entity.ElcStock;
 import ai.neargo.shop.elec.entity.ElcSupplier;
+import ai.neargo.shop.elec.gateway.ElecAlerts;
+import ai.neargo.shop.elec.gateway.ElecAlerts.DeclineAlert;
+import ai.neargo.shop.elec.gateway.ElecAlerts.QuoteAlert;
+import ai.neargo.shop.elec.gateway.ElecBuyerNotifier;
 import ai.neargo.shop.elec.gateway.ElecSupplierNotifier;
 import ai.neargo.shop.elec.mapper.ElecMappers.DispatchMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.CodeCount;
@@ -24,9 +29,9 @@ import ai.neargo.shop.elec.mapper.ElecMappers.DispatchRow;
 import ai.neargo.shop.elec.mapper.ElecMappers.OpsOfferRow;
 import ai.neargo.shop.elec.mapper.ElecMappers.OpsQuoteRaw;
 import ai.neargo.shop.elec.mapper.ElecMappers.QuoteMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.RfqLineMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
-import ai.neargo.shop.elec.mapper.ElecMappers.SupplierMemberMapper;
 import ai.neargo.shop.elec.service.ElecDispatchService;
 import ai.neargo.shop.elec.service.ElecMarketService;
 import ai.neargo.shop.elec.support.ElecKeys;
@@ -83,27 +88,32 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
     private final QuoteMapper quoteMapper;
     private final StockMapper stockMapper;
     private final RfqMapper rfqMapper;
-    private final SupplierMemberMapper memberMapper;
     private final ElecSupplierAccess access;
     private final ElecSupplierNotifier notifier;
     private final ElecMarketService market;
     private final ElecProperties props;
+    private final RfqLineMapper lineMapper;
+    private final ElecBuyerNotifier buyers;
+    private final ElecAlerts alerts;
     private final TransactionTemplate tx;
 
     public ElecDispatchServiceImpl(DispatchMapper dispatchMapper, QuoteMapper quoteMapper, StockMapper stockMapper,
-                                   RfqMapper rfqMapper, SupplierMemberMapper memberMapper,
+                                   RfqMapper rfqMapper,
                                    ElecSupplierAccess access, ElecSupplierNotifier notifier,
-                                   ElecMarketService market, ElecProperties props,
+                                   ElecMarketService market, ElecProperties props, RfqLineMapper lineMapper,
+                                   ElecBuyerNotifier buyers, ElecAlerts alerts,
                                    @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.dispatchMapper = dispatchMapper;
         this.quoteMapper = quoteMapper;
         this.stockMapper = stockMapper;
         this.rfqMapper = rfqMapper;
-        this.memberMapper = memberMapper;
         this.access = access;
         this.notifier = notifier;
         this.market = market;
         this.props = props;
+        this.lineMapper = lineMapper;
+        this.buyers = buyers;
+        this.alerts = alerts;
         this.tx = new TransactionTemplate(tm);
     }
 
@@ -204,11 +214,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
     /** 通知供应商。**一家一条**，不按行发 —— 一张 BOM 派给他五行，他要的是「有新求购」一条 */
     private void notifySuppliers(String rfqNo, Set<String> suppliers) {
         for (String supplierNo : suppliers) {
-            String account = memberMapper.selectList(Wrappers.<ai.neargo.shop.elec.entity.ElcSupplierMember>lambdaQuery()
-                            .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getSupplierNo, supplierNo)
-                            .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getStatus, "ACTIVE"))
-                    .stream().findFirst()
-                    .map(ai.neargo.shop.elec.entity.ElcSupplierMember::getAccountRef).orElse(null);
+            String account = access.ownerAccount(supplierNo);
             if (account == null) {
                 continue;
             }
@@ -337,6 +343,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                     .set(ElcDispatch::getUpdatedBy, userNo));
         });
         countBack(d.getRfqNo());
+        afterQuote(d, q, existing == null, s);
         return detail(userNo, dispatchNo);
     }
 
@@ -346,6 +353,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
         ElcDispatch d = mineOr404(s.getSupplierNo(), dispatchNo);
         String reason = ElecSupplierServiceImpl.oneOf(req == null ? null : req.reason(),
                 Set.of("NO_STOCK", "PRICE", "OTHER"), "OTHER");
+        boolean already = ElcDispatch.STATUS_DECLINED.equals(d.getStatus());
         tx.executeWithoutResult(st -> {
             dispatchMapper.update(null, Wrappers.<ElcDispatch>lambdaUpdate()
                     .eq(ElcDispatch::getId, d.getId())
@@ -361,7 +369,115 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                     .set(ElcQuote::getUpdatedBy, userNo));
         });
         countBack(d.getRfqNo());
+        if (!already) {
+            // 同一条再拒一次（端上重复点）不是新的事，不再通知
+            afterDecline(d, reason, s);
+        }
         return detail(userNo, dispatchNo);
+    }
+
+    // ── 报价与拒绝之后的通知（事务提交之后发：通知失败不回滚业务，也不先于数据落库）──
+
+    /**
+     * 企业微信每次都推（改价也推，标成「改价」）；买家<b>只在首次报价时</b>通知 ——
+     * 改价是常事，每改一次推一条是骚扰，买家打开详情看到的永远是最新价。
+     */
+    private void afterQuote(ElcDispatch d, ElcQuote q, boolean first, ElcSupplier s) {
+        ElcRfq h = rfqOf(d.getRfqNo());
+        ElcRfqLine line = lineOf(d.getRfqNo(), d.getLineNo());
+        if (h == null || line == null) {
+            return;
+        }
+        int offers = quoteMapper.selectCount(Wrappers.<ElcQuote>lambdaQuery()
+                .eq(ElcQuote::getRfqNo, d.getRfqNo()).eq(ElcQuote::getLineNo, d.getLineNo())
+                .eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
+                .ge(ElcQuote::getValidUntil, LocalDate.now())).intValue();
+        safeAlert(() -> alerts.supplierQuoted(new QuoteAlert(h.getRfqNo(), line.getLineNo(), line.getMpnRaw(),
+                line.getQty(), s.getCompanyName(), s.getContactPhone(), q.getPriceE6(), q.getCurrency(),
+                Boolean.TRUE.equals(q.getTaxIncluded()), q.getQtyAvailable(), q.getDateCode(), q.getLeadDays(),
+                q.getCondGrade(), offers, !first)), "供应商报价", h.getRfqNo());
+        if (!first || !open(h)) {
+            return;
+        }
+        if (notifyBuyer(h, ElecInternal.RESULT_OFFER, line.getMpnRaw())) {
+            quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate().eq(ElcQuote::getId, q.getId())
+                    .set(ElcQuote::getBuyerNotifiedAt, LocalDateTime.now()));
+        } else {
+            log.warn("「有供应商报价」没送到买家 quoteNo={}（elc_quote.buyer_notified_at 为空的就是这些）",
+                    q.getQuoteNo());
+        }
+    }
+
+    private void afterDecline(ElcDispatch d, String reason, ElcSupplier s) {
+        ElcRfq h = rfqOf(d.getRfqNo());
+        ElcRfqLine line = lineOf(d.getRfqNo(), d.getLineNo());
+        if (h == null || line == null) {
+            return;
+        }
+        boolean allDeclined = lineAllDeclined(line);
+        safeAlert(() -> alerts.supplierDeclined(new DeclineAlert(h.getRfqNo(), line.getLineNo(), line.getMpnRaw(),
+                line.getQty(), s.getCompanyName(), s.getContactPhone(), reason, allDeclined)),
+                "供应商拒绝", h.getRfqNo());
+        if (allDeclined && open(h) && !notifyBuyer(h, ElecInternal.RESULT_LINE_NO_OFFER, line.getMpnRaw())) {
+            log.warn("「有一项暂无货源」没送到买家 rfqNo={} line={}", h.getRfqNo(), line.getLineNo());
+        }
+    }
+
+    /**
+     * 这一行<b>已经没人能接了</b>：派出去的都回了话（没有 SENT / VIEWED）、没有有效的供应商报价、平台也没报。
+     * 三条缺一条都不算 —— 还有人没回话就说「没货」，第二家报价进来买家会觉得平台前后矛盾。
+     */
+    boolean lineAllDeclined(ElcRfqLine line) {
+        if (line.getQuoteE6() != null) {
+            return false;
+        }
+        long pending = dispatchMapper.selectCount(Wrappers.<ElcDispatch>lambdaQuery()
+                .eq(ElcDispatch::getRfqNo, line.getRfqNo()).eq(ElcDispatch::getLineNo, line.getLineNo())
+                .in(ElcDispatch::getStatus, ElcDispatch.STATUS_SENT, ElcDispatch.STATUS_VIEWED));
+        if (pending > 0) {
+            return false;
+        }
+        long offers = quoteMapper.selectCount(Wrappers.<ElcQuote>lambdaQuery()
+                .eq(ElcQuote::getRfqNo, line.getRfqNo()).eq(ElcQuote::getLineNo, line.getLineNo())
+                .in(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE, ElcQuote.STATUS_ACCEPTED)
+                .ge(ElcQuote::getValidUntil, LocalDate.now()));
+        return offers == 0;
+    }
+
+    /** 只有还在询价中的单子才打扰买家：已接受、已关单的不再推 */
+    private static boolean open(ElcRfq h) {
+        return ElcRfq.STATUS_SUBMITTED.equals(h.getStatus()) || ElcRfq.STATUS_QUOTED.equals(h.getStatus());
+    }
+
+    private boolean notifyBuyer(ElcRfq h, String result, String mpn) {
+        String summary = mpn == null ? "" : (mpn.length() > 20 ? mpn.substring(0, 20) : mpn);
+        try {
+            return buyers.rfqResult(h.getBuyerRef(), h.getRfqNo(), result, summary);
+        } catch (RuntimeException e) {
+            log.warn("通知买家失败 rfqNo={} result={} {}", h.getRfqNo(), result, e.toString());
+            return false;
+        }
+    }
+
+    private void safeAlert(java.util.function.BooleanSupplier send, String what, String rfqNo) {
+        boolean ok;
+        try {
+            ok = send.getAsBoolean();
+        } catch (RuntimeException e) {
+            ok = false;
+        }
+        if (!ok) {
+            log.warn("「{}」没送到企业微信 rfqNo={}", what, rfqNo);
+        }
+    }
+
+    private ElcRfq rfqOf(String rfqNo) {
+        return rfqMapper.selectOne(Wrappers.<ElcRfq>lambdaQuery().eq(ElcRfq::getRfqNo, rfqNo));
+    }
+
+    private ElcRfqLine lineOf(String rfqNo, int lineNo) {
+        return lineMapper.selectOne(Wrappers.<ElcRfqLine>lambdaQuery()
+                .eq(ElcRfqLine::getRfqNo, rfqNo).eq(ElcRfqLine::getLineNo, lineNo));
     }
 
     // ── 买家侧（匿名、已加价）────────────────────────────────────────────
@@ -430,11 +546,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
         if (n == 0) {
             throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
         }
-        String account = memberMapper.selectList(Wrappers.<ai.neargo.shop.elec.entity.ElcSupplierMember>lambdaQuery()
-                        .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getSupplierNo, q.getSupplierNo())
-                        .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getStatus, "ACTIVE"))
-                .stream().findFirst()
-                .map(ai.neargo.shop.elec.entity.ElcSupplierMember::getAccountRef).orElse(null);
+        String account = access.ownerAccount(q.getSupplierNo());
         if (account != null && !notifier.quoteAccepted(account, q.getQuoteNo(), q.getQtyAvailable())) {
             log.warn("「你的报价被选中」没送到供应商 quoteNo={}", q.getQuoteNo());
         }

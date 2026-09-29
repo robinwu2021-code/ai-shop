@@ -64,6 +64,16 @@ public class WeComElecAlerts implements ElecAlerts {
         return send("ELEC_RFQ_ACCEPTED", AlertText.accepted(rfqNo, contactName, contactPhone, summary));
     }
 
+    @Override
+    public boolean supplierQuoted(QuoteAlert q) {
+        return send("ELEC_QUOTE", AlertText.quoted(q));
+    }
+
+    @Override
+    public boolean supplierDeclined(DeclineAlert d) {
+        return send(d.lineAllDeclined() ? "ELEC_LINE_ALL_DECLINED" : "ELEC_DECLINE", AlertText.declined(d));
+    }
+
     boolean send(String kind, String markdown) {
         if (webhook.isEmpty()) {
             return false;
