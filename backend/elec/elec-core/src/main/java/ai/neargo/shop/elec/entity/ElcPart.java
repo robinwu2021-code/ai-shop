@@ -23,8 +23,7 @@ public class ElcPart extends ElcMutableEntity {
 
     private String mfrNameRaw;
 
-    /** 列名是 SQL 保留字边缘（package），实体里叫 pkg，列名显式写 */
-    @com.baomidou.mybatisplus.annotation.TableField("package")
+    /** 封装，如 LQFP-48 / 0402 */
     private String pkg;
 
     private String description;

@@ -23,7 +23,7 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames, MIGRATION_DIR as PLATFORM_MIG, INVENTORY_MIGRATION_DIR }
+import { readColumnNames, MIGRATION_DIR as PLATFORM_MIG, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR }
   from "../../../scripts/lib/ddl.mjs";
 import { describe, expect, it } from "vitest";
 
@@ -33,7 +33,7 @@ const ROOT = join(import.meta.dirname, "../../..");
  * 少扫后者的话，inv_* 的 17 张表在这条守卫眼里不存在 ——
  * 表现是实体对齐守卫报「实体多出一堆字段」，而排查方向会指向实体写错。
  */
-const MIGRATION_DIRS = [PLATFORM_MIG, INVENTORY_MIGRATION_DIR].map((d) => join(ROOT, d));
+const MIGRATION_DIRS = [PLATFORM_MIG, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR].map((d) => join(ROOT, d));
 
 /** `V15__x.sql` → 15。**按数字排，不按文件名字典序** —— 否则 V15 会排在 V2 前面。 */
 function versionOf(file: string): number {

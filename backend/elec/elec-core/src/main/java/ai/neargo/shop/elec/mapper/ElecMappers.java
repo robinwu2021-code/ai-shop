@@ -60,7 +60,7 @@ public final class ElecMappers {
          */
         @Select("""
                 <script>
-                SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.package AS pkg, p.description,
+                SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.pkg, p.description,
                        m.name_en AS mfr_name_en, m.name_cn AS mfr_name_cn,
                        k.qty_band, k.source_band, k.price_from_e6, k.dc_year_max, k.next_expiry_at
                   FROM elc_part p
@@ -73,7 +73,7 @@ public final class ElecMappers {
         List<PartHitRow> hitsOf(@Param("partNos") java.util.Collection<String> partNos);
 
         @Select("""
-                SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.package AS pkg, p.description,
+                SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.pkg, p.description,
                        m.name_en AS mfr_name_en, m.name_cn AS mfr_name_cn,
                        k.qty_band, k.source_band, k.price_from_e6, k.dc_year_max, k.next_expiry_at
                   FROM elc_part p
@@ -86,7 +86,7 @@ public final class ElecMappers {
         /** 多行插入。第一次上传的供应商整张表都是新料号，逐行插是上万次往返 */
         @Insert("""
                 <script>
-                INSERT INTO elc_part (part_no, mpn, mpn_norm, mfr_code, mfr_name_raw, package, source, status, created_by)
+                INSERT INTO elc_part (part_no, mpn, mpn_norm, mfr_code, mfr_name_raw, pkg, source, status, created_by)
                 VALUES
                 <foreach collection="rows" item="r" separator=",">
                   (#{r.partNo}, #{r.mpn}, #{r.mpnNorm}, #{r.mfrCode}, #{r.mfrNameRaw}, #{r.pkg}, #{r.source},
@@ -185,7 +185,7 @@ public final class ElecMappers {
         @Insert("""
                 <script>
                 INSERT INTO elc_stock (stock_no, supplier_no, line_key, part_no, mpn_raw, mfr_raw, mpn_norm, qty,
-                                       date_code, dc_year, package, moq, price_e6, tax_included, valid_until,
+                                       date_code, dc_year, pkg, moq, price_e6, tax_included, valid_until,
                                        confirmed_at, status, batch_no, created_by, updated_by)
                 VALUES
                 <foreach collection="rows" item="r" separator=",">

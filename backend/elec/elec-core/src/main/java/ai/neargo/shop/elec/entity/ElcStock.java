@@ -32,7 +32,7 @@ public class ElcStock extends ElcMutableEntity {
 
     private Integer dcYear;
 
-    @com.baomidou.mybatisplus.annotation.TableField("package")
+    /** 封装，如 LQFP-48 / 0402 */
     private String pkg;
 
     private Integer moq;

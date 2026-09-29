@@ -37,7 +37,7 @@
 import { writeFileSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
+import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR } from "./lib/ddl.mjs";
 import {
   walk, javaMainFiles, moduleOf, firstSentence, docBefore, cell, read,
 } from "./lib/glossary-sources.mjs";
@@ -986,7 +986,7 @@ async function main() {
 
   const surfaces = await collectI18n();
   const entities = collectEntities(javaFiles);
-  const schema = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
+  const schema = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR]);
   const consts = collectJavaConstants(javaFiles);
   const javaEnums = collectJavaEnums(javaFiles);
   const tsEnums = collectTsEnums();

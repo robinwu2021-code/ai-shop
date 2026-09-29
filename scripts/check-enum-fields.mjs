@@ -38,7 +38,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 // DDL 解析只有一份 —— 见 ddl.mjs 的文件头「为什么必须只有一份」
-import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
+import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR } from "./lib/ddl.mjs";
 
 /**
  * 重放后的表结构，**惰性 + 只算一次**：`audit()` 会对每条 FIELDS 查一次列注释，
@@ -46,7 +46,7 @@ import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mj
  */
 let SCHEMA = null;
 function schema() {
-  if (!SCHEMA) SCHEMA = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
+  if (!SCHEMA) SCHEMA = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR]);
   return SCHEMA;
 }
 
