@@ -6517,6 +6517,151 @@ components:
         - "outcome"
       additionalProperties: false
       description: "渠道报文一条（`stl_channel_message`，V286 起在落数据）。\n\n⚠️ **报文已脱敏**：签名、证书序列号、Authorization 都不入库， 所以它<b>不能拿去重放验签</b>。列表响应里带着这句话（`note`）， 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出 「我们的验签实现有 bug」这个结论。"
+    PayoutRow: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+          description: "供应商主体号"
+        merchantName: 
+          type: "string"
+          description: "商家名。查不到时回落成主体号"
+        accountType: 
+          type: "string"
+          description: "PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公"
+        accountName: 
+          type: "string"
+          description: "户名。已经过「必须等于营业执照主体名」的硬校验"
+        accountNumber: 
+          type: "string"
+          description: "**明文账号**。只在这一次响应里存在"
+        bankName: 
+          type: 
+            - "string"
+            - "null"
+          description: "开户银行，可能为空"
+        bankBranch: 
+          type: 
+            - "string"
+            - "null"
+          description: "开户支行，可能为空"
+        amountMinor: 
+          type: "number"
+          description: "本次该付多少（分）"
+        billCount: 
+          type: "number"
+          description: "这一行覆盖了几张结算单"
+        remark: 
+          type: "string"
+          description: "银行附言。**回读银行流水时靠它勾对**，所以不是一句人话"
+        settleNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "覆盖的结算单号。回填凭证号时按它逐张登记"
+      required: 
+        - "entityNo"
+        - "merchantName"
+        - "accountType"
+        - "accountName"
+        - "accountNumber"
+        - "bankName"
+        - "bankBranch"
+        - "amountMinor"
+        - "billCount"
+        - "remark"
+        - "settleNos"
+      additionalProperties: false
+      description: "付款清单的一行（ADR-011 · P2）。财务拿它去网银转账。\n\n⚠️ **这是全站唯一带明文账号的响应**。拿到之后立刻写进导出文件， 不要存进任何全局 state、不要打日志。"
+    PayoutBlockedRow: 
+      type: "object"
+      properties: 
+        entityNo: 
+          type: "string"
+          description: "供应商主体号"
+        merchantName: 
+          type: "string"
+          description: "商家名"
+        amountMinor: 
+          type: "number"
+          description: "这一期因此没付出去多少（分）"
+        billCount: 
+          type: "number"
+          description: "涉及几张结算单"
+        reason: 
+          type: "string"
+          description: "为什么没进清单。给的是可执行的原因：缺票 / 未对账 / 无收款账户"
+      required: 
+        - "entityNo"
+        - "merchantName"
+        - "amountMinor"
+        - "billCount"
+        - "reason"
+      additionalProperties: false
+      description: "本该付、但缺条件的一行。**必须显示** —— 不然财务看不出这一期怎么少了一家"
+    PayoutList: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PayoutRow"
+          description: "可付的"
+        blocked: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PayoutBlockedRow"
+          description: "被挡下的"
+        totalMinor: 
+          type: "number"
+          description: "rows 的合计（分）"
+      required: 
+        - "rows"
+        - "blocked"
+        - "totalMinor"
+      additionalProperties: false
+      description: "付款清单。`totalMinor` **不含 blocked** —— 那笔钱这次付不出去"
+    BankFlowImportResult: 
+      type: "object"
+      properties: 
+        total: 
+          type: "number"
+          description: "文件里认出来的行数 = imported + skipped + failed"
+        imported: 
+          type: "number"
+          description: "真正入库的"
+        skipped: 
+          type: "number"
+          description: "流水号已存在、跳过的。**重复上传是常态，不是错误**"
+        failed: 
+          type: "number"
+          description: "没解析成功的行数"
+        failures: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/BankFlowImportFailure"
+          description: "失败明细。`line` 是原始文件里的行号 —— 财务要对着原文件看"
+      required: 
+        - "total"
+        - "imported"
+        - "skipped"
+        - "failed"
+        - "failures"
+      additionalProperties: false
+      description: "银行流水导入的结果（TDD-供应商结算与双轨资金 §10）。\n\n**三个计数分开给，不合成一句「成功 N 条」**：它们对应三种完全不同的处置 —— 入库的不用管；跳过的说明这份传过了（正常，不是错）；失败的要对着原始文件去看那几行。"
+    BankFlowImportFailure: 
+      type: "object"
+      properties: 
+        line: 
+          type: "number"
+          description: "原始文件里的行号（1 起，含表头）"
+        reason: 
+          type: "string"
+          description: "为什么没认出来。给的是可执行的原因：看不懂的日期 / 金额 / 看不出方向"
+      required: 
+        - "line"
+        - "reason"
+      additionalProperties: false
     SettleStatRow: 
       type: "object"
       properties: 
@@ -11785,6 +11930,64 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payables/payout-list": 
+    get: 
+      operationId: "payoutList"
+      summary: "付款清单（P2）"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PayoutList"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payables/bank-flows/import": 
+    post: 
+      operationId: "importBankFlows"
+      summary: "导入银行流水（TDD §10）"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/BankFlowImportResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/purchase-invoices": 
     get: 
       operationId: "listPurchaseInvoices"
