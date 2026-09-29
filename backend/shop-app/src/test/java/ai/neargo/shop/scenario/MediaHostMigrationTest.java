@@ -47,13 +47,27 @@ class MediaHostMigrationTest {
     private static final Pattern UPDATE = Pattern.compile(
             "UPDATE (\\w+) SET (\\w+) = REPLACE\\(\\2, '([^']+)', '([^']+)'\\) WHERE \\2 LIKE '%\\3%';");
 
+    /** 主迁移 + 各条补充。新增图片列时在这里加上它那条 —— 漏了的话覆盖面断言当场变红 */
+    private static final List<String> MIGRATIONS = List.of(
+            "V347__media_host_img.sql",
+            "V369__media_host_store_banner.sql");
+
     @Autowired ApplicationContext ctx;
     @Autowired JdbcTemplate jdbc;
 
     /** 迁移文件里的每条 UPDATE：「表.列」→ 那条 SQL。 */
     private static Map<String, String> statements() throws Exception {
-        String sql = new ClassPathResource("db/migration/V347__media_host_img.sql")
-                .getContentAsString(StandardCharsets.UTF_8);
+        /*
+         * V347 是主迁移；**后来新增的图片列各带一条补充迁移** —— V347 已应用，
+         * 回去改它 checksum 就对不上，线上起不来。这里把两者合起来看，
+         * 「登记表的每一列都换过域名」这条判据才不会因为文件拆开而漏掉新列。
+         */
+        StringBuilder sb = new StringBuilder();
+        for (String f : MIGRATIONS) {
+            sb.append(new ClassPathResource("db/migration/" + f).getContentAsString(StandardCharsets.UTF_8))
+                    .append('\n');
+        }
+        String sql = sb.toString();
         Map<String, String> out = new LinkedHashMap<>();
         Matcher m = UPDATE.matcher(sql);
         while (m.find()) {
