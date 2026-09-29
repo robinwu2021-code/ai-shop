@@ -355,7 +355,7 @@ P4 撤提现入口（独立，随时可做）
 
 | 阶段 | 内容 | 依赖 | 验收（每条都要能写成断言） |
 |---|---|---|---|
-| **P0** | `mch_payout_account` 建表 + 实体 + B 端提交/查看 + ops 审核 | 无 | 商家提交账户 → 状态 PENDING；运营核过 → ACTIVE；**未审核的账户不出现在导出清单里**；库里查不到明文账号 |
+| **P0** ✅**已实现（2026-09-29）** | `mch_payout_account` 建表 + 实体 + B 端提交/查看 + ops 审核 | 无 | 商家提交账户 → 状态 PENDING；运营核过 → ACTIVE；**未审核的账户不出现在导出清单里**（`activeAccount` 只返回 ACTIVE，闸门落在服务层不在导出侧）；库里查不到明文账号（实体无明文字段） |
 | **P1a** | `stats()` 三维度聚合 + ops「经营统计」tab | 无 | 三个维度各出一行数；**门店汇总 == 主体汇总**（含 `__UNASSIGNED__`）；门店换主体后历史数据不搬家 |
 | **P1b** | `dailyFlows()` + B 端「我的收款」页改造 | P1a（共用聚合层） | 每日一行；顶部四档与 `incomeSummary()` **数值一致**；多门店可切换 |
 | **P2** | 付款清单导出 + 批量回填凭证号 | P0 | 导出含解密账号；导出写 critical 审计；缺票/未对账/账户未审核的**不进清单** |
@@ -389,4 +389,30 @@ P4 与 P1b 是同一个页面的两面，一起做省一次改动。
 |---|---|
 | 2026-09-29 | 方案草稿；现状对齐基于逐文件核对（V23/V280/payables-tab/SettleCycles/四条对账轴/PayApplymentGateway/StlBill） |
 | 2026-09-29 | §6 六条已定；新增多维统计需求（AC-13~17） |
-| | 待办：P0 开始实现 |
+| 2026-09-29 | **P0 已实现**（AC-11）。见下方对账二 |
+
+## §9 对账二 · 设计 → 实现（P0）
+
+九个提交、50 个文件、+1332/−25。与 §3.1 逐行比：
+
+| 设计条目 | 实现 | 偏差 |
+|---|---|---|
+| `mch_payout_account` 建表 | `V358__supplier_payout_account.sql` | 密文列用 `VARCHAR(512)` 不是 `VARBINARY` —— 存的是 base64(iv‖密文‖tag)，本来就是文本；用 VARBINARY 还要多一层编码转换 |
+| 实体 + Mapper | `MchPayoutAccount` + `MerchantMappers.PayoutAccountMapper` | 无 |
+| 密文存储 | `PayoutAccountCipher`（AES-256-GCM） | **新建而非复用 `NotifyCredCipher`**：做法照搬，但密钥另起一把 —— 通知凭据与资金账户共一把钥匙，一处泄露就是两处全泄 |
+| 解密仅一个入口 | `PayoutAccountService#decryptAccountNumber`，且只放 ACTIVE | 闸门放在服务层而不是导出侧：将来多一个调用方时不会漏 |
+| 变更要审核 | `audit()`，通过时先停旧再启新 | 无 |
+| 户名三流一致 | `submit()` 硬校验，新增 `PAYOUT_ACCOUNT_NAME_MISMATCH` | 无 |
+| B 端入口 | `BizPayoutAccountController` + `pages/payout-account` | 新建页面而非改造提现页 —— 撤提现入口属 P4，与 P1b 同页面两面，一起做省一次改动 |
+| ops 审核 | `OpsPayoutAccountController` + `payout-account-tab.tsx` + V359 菜单 | 权限复用 `finance:payout:execute`，不新开码 |
+
+**设计里没写、实现时才冒出来的**（都已写回本文与提交说明）：
+
+1. **登记面远比预想的大** —— 八处（判权表、perm-endpoint-map、权限矩阵基线、
+   check-enum-fields 的 FIELDS、enum-registry、ANCHOR_WAIVED、错误码分段表、
+   RESPONSE_TYPES），加上 pre-push 报出的 18 份生成物。
+2. **数据域登记会改行为**：表挂 MERCHANT 锚点后 B 端三条路径必须
+   `executeWithoutScope`，审核里停用旧账户那段也要绕（一致性逻辑不该受可见范围影响），
+   而「审得到哪张单」那次查询刻意不绕。
+3. **`finance:payout:execute` 从 ACTION 升级成 MENU**：它此前是个「仅承载授权」的点，
+   有了界面就不再需要那个形态。库里旧的 ACT 点刻意保留，理由在 V359。
