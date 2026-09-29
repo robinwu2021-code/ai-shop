@@ -55,7 +55,12 @@ class TableHasProducerTest {
     private static final List<String> SEEDED = List.of(
             "ful_carrier", "mch_admission_policy", "sys_channel_category_rule",
             "sys_function", "sys_function_point", "sys_industry", "sys_legal_form",
-            "sys_merchant_plan_def", "sys_pay_channel");
+            "sys_merchant_plan_def", "sys_pay_channel",
+            // 元器件的厂牌与厂牌别名（独立库 ai_shop_elec）：**种子写、代码只读**。
+            // 别名表是搜索命中率的来源（TI / Texas Instruments / 德州仪器 指同一家），
+            // 运营要加新厂牌时发一条迁移 —— 第一步没有后台维护入口，也不该由上传去长：
+            // 上传只长料号，厂牌认不出就落到 UNKNOWN 名下，由人来合并
+            "elc_manufacturer", "elc_mfr_alias");
 
     /**
      * 确实没有生产者的表。key 是表名，value 是<b>为什么</b>。
