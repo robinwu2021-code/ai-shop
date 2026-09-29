@@ -3214,6 +3214,24 @@
           "ar": "تم نسخ الرابط — افتحه في متصفح هاتفك"
         },
         {
+          "key": "merchant.appQrHide",
+          "zh-CN": "收起二维码",
+          "en": "Hide QR code",
+          "ar": "إخفاء رمز QR"
+        },
+        {
+          "key": "merchant.appQrHint",
+          "zh-CN": "用另一台手机扫，或让旁边的人扫",
+          "en": "Scan with another phone, or let someone next to you scan it",
+          "ar": "امسحه بهاتف آخر، أو دع من بجوارك يمسحه"
+        },
+        {
+          "key": "merchant.appQrShow",
+          "zh-CN": "显示二维码",
+          "en": "Show QR code",
+          "ar": "إظهار رمز QR"
+        },
+        {
           "key": "merchant.appTip",
           "zh-CN": "上架、接单、发货都在「虹选商家」App 里做",
           "en": "Listing, orders and delivery all happen in the merchant app",
@@ -25453,6 +25471,13 @@
       "package": "ai.neargo.shop.product.review.entity"
     },
     {
+      "table": "stl_bank_flow",
+      "class": "StlBankFlow",
+      "zh": "银行流水镜像（V363 · 出款对账 B 侧）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
       "table": "stl_bill",
       "class": "StlBill",
       "zh": "结算单（ADR-002）。",
@@ -25936,6 +25961,20 @@
         "name": "REVERSED",
         "value": "REVERSED",
         "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlBankFlow",
+        "name": "OUT",
+        "value": "OUT",
+        "zh": "付出。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlBankFlow",
+        "name": "IN",
+        "value": "IN",
+        "zh": "收入。",
         "module": "pay/pay-domain"
       },
       {
@@ -27381,6 +27420,20 @@
         "module": "shop-base"
       },
       {
+        "host": "GroupSettled",
+        "name": "FORMED",
+        "value": "FORMED",
+        "zh": "成团。",
+        "module": "shop-base"
+      },
+      {
+        "host": "GroupSettled",
+        "name": "FAILED",
+        "value": "FAILED",
+        "zh": "到期未成团。",
+        "module": "shop-base"
+      },
+      {
         "host": "AudienceItem",
         "name": "ALL",
         "value": "ALL",
@@ -28581,7 +28634,28 @@
         "host": "NotifyScene",
         "name": "SUB_ORDER_COMPLETED",
         "value": "SUB_ORDER_COMPLETED",
-        "zh": "子单已完成（C 端）",
+        "zh": "子单已完成（C 端）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "SUB_ORDER_SHIPPED",
+        "value": "SUB_ORDER_SHIPPED",
+        "zh": "已发货 / 开始配送（C 端）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "GROUP_FORMED",
+        "value": "GROUP_FORMED",
+        "zh": "拼团成团（C 端，扇出给全团）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "GROUP_FAILED",
+        "value": "GROUP_FAILED",
+        "zh": "拼团到期未成团（C 端，扇出给全团）。",
         "module": "shop-core"
       },
       {
@@ -36192,7 +36266,7 @@
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE)",
+      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE, SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED)",
       "zh": "全部场景码。",
       "module": "shop-core"
     },
