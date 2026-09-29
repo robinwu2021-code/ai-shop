@@ -1953,6 +1953,56 @@ _无字段_
 | `paymentRef` | `string,null` | 否 | 自营：付款凭证号。空 = 尚未付款 |
 
 
+#### GET `/ops/payout-accounts`
+
+listPayoutAccounts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`PayoutAccount`](#payoutaccount)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/payout-accounts/{accountNo}/audit`
+
+审核
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `accountNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PayoutAccount`](#payoutaccount)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `accountType` | `string` | 是 | PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 |
+| `accountName` | `string` | 是 | 户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒 |
+| `accountMasked` | `string` | 是 | 账号掩码，只留尾四位 |
+| `bankName` | `string,null` | 否 | — |
+| `bankBranch` | `string,null` | 否 | — |
+| `status` | `string` | 是 | PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 |
+| `auditRemark` | `string,null` | 否 | 驳回原因，原样回商家 |
+| `auditedAt` | `number,null` | 否 | — |
+
+
 #### GET `/ops/points/client-policy`
 
 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣
@@ -11323,6 +11373,23 @@ KPI 卡（金额为最小货币单位整数）。
 | `applyStatus` | `string,null` | 否 | 进件状态；未 ACTIVE 时额度设了也不生效 |
 | `limitMinor` | `number` | 是 | 上限（分）；**0 = 未设置，不拦**，不是「额度为零」 |
 | `usedMinor` | `number` | 是 | 已用（分）。支付累加出来的事实，运营改不了 |
+
+### PayoutAccount
+
+供应商收款账户（V358，ADR-011 自营供应商模式）。 **没有明文账号字段** —— 后端只回掩码。审核这件事本身是资金重定向： 通过之后这个主体下一期的货款就打到这张卡。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `accountNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `accountType` | `string` | 是 | PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 |
+| `accountName` | `string` | 是 | 户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒 |
+| `accountMasked` | `string` | 是 | 账号掩码，只留尾四位 |
+| `bankName` | `string,null` | 否 | — |
+| `bankBranch` | `string,null` | 否 | — |
+| `status` | `string` | 是 | PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 |
+| `auditRemark` | `string,null` | 否 | 驳回原因，原样回商家 |
+| `auditedAt` | `number,null` | 否 | — |
 
 ### PickupPoint
 

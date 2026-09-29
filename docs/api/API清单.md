@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 788 个接口**：后端已实现 712（90%）· 前端在调 717
+**合计 790 个接口**：后端已实现 714（90%）· 前端在调 717
 
 ---
 
@@ -858,7 +858,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **407** 个接口 ｜ 后端已实现 **341**（84%）｜ 前端在调 **336**
+共 **409** 个接口 ｜ 后端已实现 **343**（84%）｜ 前端在调 **336**
 
 ### aftersale（4）
 
@@ -938,7 +938,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（37）
+### finance（39）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -960,6 +960,8 @@
 | POST | `/ops/payables/{settleNo}/confirm` | 确认对账：双方认了这个数 | — | `Settlement` | — | ✅ | ⬜ |
 | POST | `/ops/payables/{settleNo}/no-invoice` | 标记无票供应商：**不进发票流程，但要在应付列表上标出来** —— 让财务付款前就看见 */ | — | `Settlement` | — | ✅ | ⬜ |
 | POST | `/ops/payables/{settleNo}/paid` | 登记已付款 | — | `Settlement` | — | ✅ | ⬜ |
+| GET | `/ops/payout-accounts` | listPayoutAccounts | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/payout-accounts/{accountNo}/audit` | 审核 | — | `PayoutAccount` | — | ✅ | ⬜ |
 | GET | `/ops/points/client-policy` | 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣 | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
 | POST | `/ops/points/client-policy` | savePointsClientPolicy | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
