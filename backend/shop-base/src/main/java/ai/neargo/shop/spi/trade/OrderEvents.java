@@ -196,6 +196,47 @@ public final class OrderEvents {
      * 售后退款完成。消费方：settle（账务冲销）、product（库存回补）、user（商家评分）。
      * <b>发布时机在退款成功之后</b> —— 提前发的话，下游会按「已退款」处理一笔还没退成的钱。
      */
+    /**
+     * 售后有结果了 —— 商家驳回，或者同意了但要先把货寄回来。
+     *
+     * <p><b>这两件都是「买家正在等的结果」</b>，而此前一条通知都没有：
+     * {@code AfterSaleServiceImpl#reject} 与 {@code #approve} 的退货分支都不发事件。
+     * 被驳回的人不知道自己被驳回了，该寄回的人不知道要寄 —— 而后者有时限，
+     * 不寄会被 {@code AfterSaleTimeoutJob} 自动关单（那条时效 2026-09-27 才加上）。
+     *
+     * @param decision {@link #REJECTED} / {@link #RETURN_WAIT}
+     * @param remark   商家的说明。驳回时**必须说出理由**，
+     *                 否则买家只看到「被拒了」而不知道下一步能做什么
+     */
+    public record AfterSaleDecided(String afterSaleNo, String subOrderNo, String userNo,
+                                   String decision, String remark)
+            implements DomainEvent {
+
+        /** 商家驳回。 */
+        public static final String REJECTED = "REJECTED";
+        /** 同意退货退款，等买家寄回。 */
+        public static final String RETURN_WAIT = "RETURN_WAIT";
+
+        @Override
+        public String aggregateType() {
+            return "AFTER_SALE";
+        }
+
+        @Override
+        public String aggregateId() {
+            return afterSaleNo;
+        }
+
+        /**
+         * <p><b>按结果给事件类型</b>：驳回与待寄回是两件不同的事，
+         * 运营可能想给它们不同的通道，场景×通道表里要能分别开关。
+         */
+        @Override
+        public String eventType() {
+            return REJECTED.equals(decision) ? "AFTER_SALE_REJECTED" : "AFTER_SALE_RETURN_WAIT";
+        }
+    }
+
     public record AfterSaleRefunded(String afterSaleNo, String subOrderNo, String userNo, long refundMinor)
             implements DomainEvent {
 

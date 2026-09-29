@@ -1008,6 +1008,10 @@ CREATE TABLE IF NOT EXISTS stl_bill
     settleable_at BIGINT(20) DEFAULT NULL,
     batch_no VARCHAR(64) DEFAULT NULL,
     currency VARCHAR(8) NOT NULL DEFAULT 'CNY',
+    freight_income_minor BIGINT NOT NULL DEFAULT 0,
+    freight_cost_minor BIGINT NOT NULL DEFAULT 0,
+    freight_ship_mode VARCHAR(32) NULL,
+    freight_diff_reason VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -9470,6 +9474,20 @@ FROM (
     SELECT 'GROUP_FAILED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'GROUP_FAILED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
     SELECT 'GROUP_FAILED', 'C_USER', 'WXSUB', 0, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);
+INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'AFTER_SALE_REJECTED' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'AFTER_SALE_REJECTED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_REJECTED', 'C_USER', 'WXSUB', 0, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_RETURN_WAIT', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_RETURN_WAIT', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_RETURN_WAIT', 'C_USER', 'WXSUB', 0, 'NORMAL'
 ) t
 WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m

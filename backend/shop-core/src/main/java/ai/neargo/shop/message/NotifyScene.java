@@ -54,6 +54,15 @@ public final class NotifyScene {
     public static final String GROUP_FAILED = "GROUP_FAILED";
     /** 售后已退款（C 端） */
     public static final String AFTER_SALE_REFUNDED = "AFTER_SALE_REFUNDED";
+    /** 售后被商家驳回（C 端）。**买家正在等这个结果**，不说他不知道下一步能做什么 */
+    public static final String AFTER_SALE_REJECTED = "AFTER_SALE_REJECTED";
+    /**
+     * 退货退款已同意，等买家寄回（C 端）。
+     *
+     * <p><b>这条有时限</b>：不寄会被 {@code AfterSaleTimeoutJob} 自动关单。
+     * 不通知的话，买家是在毫不知情的情况下错过那个时限的。
+     */
+    public static final String AFTER_SALE_RETURN_WAIT = "AFTER_SALE_RETURN_WAIT";
     /** 子单已支付 —— 扇出给门店员工（B 端） */
     public static final String SUB_ORDER_PAID = "SUB_ORDER_PAID";
     /** 顾客发起售后 —— 扇出给门店员工（B 端） */
@@ -79,7 +88,8 @@ public final class NotifyScene {
     public static final Set<String> ALL = Set.of(
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
             SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE,
-            SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED);
+            SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED,
+            AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT);
 
     /**
      * <b>营销类场景</b> —— 站内信不强制开。

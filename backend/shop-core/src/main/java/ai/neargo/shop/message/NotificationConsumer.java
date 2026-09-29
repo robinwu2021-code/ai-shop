@@ -155,6 +155,33 @@ public class NotificationConsumer implements OutboxConsumer {
                 cPush(scene, userNo, "退款已处理", "退款将原路退回，到账时间以支付渠道为准", link);
             }
             case NotifyScene.NEW_GOODS_ON_SALE -> fanOutToFollowers(event, payload);
+            case NotifyScene.AFTER_SALE_REJECTED -> {
+                String userNo = text(payload, "userNo");
+                String link = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId();
+                /*
+                 * **把理由带上。** 只说「被拒了」，买家不知道下一步能做什么 ——
+                 * 他要么放弃（我们少了一次挽回），要么来问客服（多一通电话）。
+                 */
+                String why = text(payload, "remark");
+                String body = why == null || why.isBlank()
+                        ? "商家未同意本次申请，可在售后详情里申请平台介入"
+                        : "商家说明：" + why;
+                messageService.push(userNo, MessageService.TRADE, "售后未通过", body,
+                        link, event.getEventNo());
+                cPush(scene, userNo, "售后未通过", body, link);
+            }
+            case NotifyScene.AFTER_SALE_RETURN_WAIT -> {
+                String userNo = text(payload, "userNo");
+                String link = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId();
+                /*
+                 * **要说「有时限」**：不寄回会被 AfterSaleTimeoutJob 自动关单，
+                 * 而买家会以为「同意了就等着收钱」。
+                 */
+                String body = "商家已同意退货，请尽快寄回并填写快递单号，超时申请会自动关闭";
+                messageService.push(userNo, MessageService.TRADE, "请寄回商品", body,
+                        link, event.getEventNo());
+                cPush(scene, userNo, "请寄回商品", body, link);
+            }
             case NotifyScene.GROUP_FORMED -> fanOutToGroup(event, payload, true);
             case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端

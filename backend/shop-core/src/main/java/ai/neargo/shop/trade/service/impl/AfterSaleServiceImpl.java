@@ -390,6 +390,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             update(as);
             appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "商家已同意，待买家寄回",
                     OrdStatusLog.BY_MERCHANT, merchantNo);
+            /*
+             * **待寄回这条有时限**：不寄会被 AfterSaleTimeoutJob 自动关单。
+             * 不通知的话，买家是在毫不知情的情况下错过那个时限的。
+             */
+            eventBus.publish(new OrderEvents.AfterSaleDecided(
+                    as.getAfterSaleNo(), as.getSubOrderNo(), as.getUserNo(),
+                    OrderEvents.AfterSaleDecided.RETURN_WAIT, as.getMerchantRemark()));
             return detailOf(as);
         }
         doRefund(as, "商家同意退款");
@@ -407,6 +414,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         update(as);
         appendLog(as.getSubOrderNo(), OrdAfterSale.REJECTED, "商家驳回：" + remark,
                 OrdStatusLog.BY_MERCHANT, merchantNo);
+        eventBus.publish(new OrderEvents.AfterSaleDecided(
+                as.getAfterSaleNo(), as.getSubOrderNo(), as.getUserNo(),
+                OrderEvents.AfterSaleDecided.REJECTED, remark));
         return detailOf(as);
     }
 
