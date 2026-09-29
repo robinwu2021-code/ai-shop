@@ -10562,6 +10562,42 @@
           "ar": "دورة التسوية"
         },
         {
+          "key": "income.dailyBills",
+          "zh-CN": "{n} 笔",
+          "en": "{n} bills",
+          "ar": "{n} فاتورة"
+        },
+        {
+          "key": "income.dailyEmpty",
+          "zh-CN": "这段时间没有流水。有成交后第二天就能在这里看到",
+          "en": "No flow in this period. A sale shows up here the next day",
+          "ar": "لا توجد حركة في هذه الفترة. تظهر عملية البيع هنا في اليوم التالي"
+        },
+        {
+          "key": "income.dailyHint",
+          "zh-CN": "按成交日算。钱哪天到看上面的账期",
+          "en": "By transaction date. For when the money arrives, see the cycle above",
+          "ar": "حسب تاريخ البيع. لمعرفة موعد وصول المبلغ راجع الدورة أعلاه"
+        },
+        {
+          "key": "income.dailyRefund",
+          "zh-CN": "退 {a}",
+          "en": "refunded {a}",
+          "ar": "مسترد {a}"
+        },
+        {
+          "key": "income.dailyTitle",
+          "zh-CN": "每日流水",
+          "en": "Daily flow",
+          "ar": "الحركة اليومية"
+        },
+        {
+          "key": "income.dailyUndated",
+          "zh-CN": "另有 {n} 笔没有成交日期，合计 {a}。这些是早期的单，只能按总额看",
+          "en": "{n} bills carry no transaction date, {a} in total. These are early records and can only be read as a sum",
+          "ar": "{n} فاتورة بلا تاريخ بيع، بإجمالي {a}. هذه سجلات قديمة تُقرأ كمجموع فقط"
+        },
+        {
           "key": "income.debt",
           "zh-CN": "欠平台",
           "en": "Owed to platform",
@@ -15998,12 +16034,6 @@
           "ar": "سجلّ يمكن مطابقته ببنكك"
         },
         {
-          "key": "settle.entryWithdraw",
-          "zh-CN": "把钱提到银行卡",
-          "en": "Move money to your bank",
-          "ar": "تحويل الأموال إلى حسابك البنكي"
-        },
-        {
           "key": "settle.fulfillFee",
           "zh-CN": "自提点履约服务费",
           "en": "Pickup fulfilment fee",
@@ -21204,108 +21234,6 @@
           "zh-CN": "待核销",
           "en": "Awaiting pickup",
           "ar": "بانتظار الاستلام"
-        },
-        {
-          "key": "withdraw.amountPlaceholder",
-          "zh-CN": "请输入提现金额（元）",
-          "en": "Amount",
-          "ar": "المبلغ"
-        },
-        {
-          "key": "withdraw.blockNotEnough",
-          "zh-CN": "超过可提现金额",
-          "en": "Exceeds available balance",
-          "ar": "يتجاوز الرصيد المتاح"
-        },
-        {
-          "key": "withdraw.blockPending",
-          "zh-CN": "还有一笔提现在处理中，完成后才能再提",
-          "en": "One request is still being processed",
-          "ar": "هناك طلب قيد المعالجة"
-        },
-        {
-          "key": "withdraw.blockTooSmall",
-          "zh-CN": "低于单笔最小金额",
-          "en": "Below the minimum amount",
-          "ar": "أقل من الحد الأدنى"
-        },
-        {
-          "key": "withdraw.canWithdraw",
-          "zh-CN": "可提现金额",
-          "en": "Available to withdraw",
-          "ar": "المبلغ المتاح للسحب"
-        },
-        {
-          "key": "withdraw.minHint",
-          "zh-CN": "单笔最少 {min}",
-          "en": "Minimum {min} per request",
-          "ar": "الحد الأدنى {min} لكل طلب"
-        },
-        {
-          "key": "withdraw.noRecords",
-          "zh-CN": "还没有提现记录",
-          "en": "No withdrawal yet",
-          "ar": "لا توجد عمليات سحب"
-        },
-        {
-          "key": "withdraw.records",
-          "zh-CN": "提现记录",
-          "en": "History",
-          "ar": "السجل"
-        },
-        {
-          "key": "withdraw.status.APPROVED",
-          "zh-CN": "已通过 · 待打款",
-          "en": "Approved · awaiting payout",
-          "ar": "تمت الموافقة · بانتظار الدفع"
-        },
-        {
-          "key": "withdraw.status.FAILED",
-          "zh-CN": "打款失败",
-          "en": "Payout failed",
-          "ar": "فشل الدفع"
-        },
-        {
-          "key": "withdraw.status.PAID",
-          "zh-CN": "已到账",
-          "en": "Paid",
-          "ar": "تم الدفع"
-        },
-        {
-          "key": "withdraw.status.PENDING",
-          "zh-CN": "待审核",
-          "en": "Pending review",
-          "ar": "قيد المراجعة"
-        },
-        {
-          "key": "withdraw.status.REJECTED",
-          "zh-CN": "已驳回",
-          "en": "Rejected",
-          "ar": "مرفوض"
-        },
-        {
-          "key": "withdraw.submit",
-          "zh-CN": "申请提现",
-          "en": "Request withdrawal",
-          "ar": "طلب سحب"
-        },
-        {
-          "key": "withdraw.submitted",
-          "zh-CN": "已提交，等待审核",
-          "en": "Submitted, pending review",
-          "ar": "تم الإرسال، بانتظار المراجعة"
-        },
-        {
-          "key": "withdraw.submitting",
-          "zh-CN": "提交中…",
-          "en": "Submitting…",
-          "ar": "جارٍ الإرسال…"
-        },
-        {
-          "key": "withdraw.title",
-          "zh-CN": "提现",
-          "en": "Withdraw",
-          "ar": "سحب"
         }
       ]
     },
@@ -33956,7 +33884,6 @@
           "/pages/groups/index",
           "/pages/income/index",
           "/pages/settle/index",
-          "/pages/withdraw/index",
           "/pages/payout-account/index",
           "/pages/deposit/index",
           "/pages/invoice/index",
