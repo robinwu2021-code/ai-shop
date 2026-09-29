@@ -109,7 +109,14 @@ export interface Settlement {
   orderNo: string;
   /** 结算对象商家 */
   merchantNo: string;
-  /** 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 */
+  /**
+   * 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。
+   *
+   * **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）：
+   * 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。
+   * 它单列在结算单的 `freight_income_minor`。
+   * 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。
+   */
   grossMinor: number;
   /** 平台佣金（分） */
   commissionMinor: number;
@@ -585,7 +592,7 @@ export interface SettleStatRow {
   dimKey: string;
   /** 展示名。查不到时回落成 dimKey 本身，**不会是空串** */
   dimName: string;
-  /** 成交额（分）。**不含退款** —— 结算单上没有退款列，退款走售后与分账回退 */
+  /** 成交额（分）。**不含退款**（退款走售后与分账回退），**也不含运费**（见结算单那份的说明） */
   grossMinor: number;
   /** 平台佣金（分） */
   commissionMinor: number;
@@ -739,7 +746,7 @@ export interface SettleBatch {
   status: SettleBatchStatus;
   /** 本批单据数 */
   billCount: number;
-  /** 本批结算基数合计（分） */
+  /** 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** */
   grossMinor: number;
   /** 本批应放款合计（分）。**放行时按这个数下发** */
   netMinor: number;
