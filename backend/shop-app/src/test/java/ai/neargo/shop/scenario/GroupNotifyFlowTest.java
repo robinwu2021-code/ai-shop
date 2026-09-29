@@ -34,8 +34,18 @@ class GroupNotifyFlowTest {
      * 与被测的东西毫无关系，很容易被当成「测试不稳」。
      */
     private String group;
-    private static final String U1 = "U-GB-1";
-    private static final String U2 = "U-GB-2";
+    /**
+     * <b>每个用例一对独立用户号。</b> 原本用固定的 U-GB-1/2 并在 AfterEach 删站内信，
+     * 结果踩到一个**生产缺陷**：{@code uk_msg_dedup} 是单列唯一键（不含 deleted），
+     * 而 {@code MessageServiceImpl#pushTo} 的查重走 MyBatis-Plus 的逻辑删除过滤 ——
+     * 查重看不见软删的行，唯一键看得见，于是「查重说不存在 → insert → 撞唯一键」。
+     * 事件因此无限重投，把 {@code sys_outbox.retrying} 顶起来，
+     * 最后变红的是别人家的 {@code OpsLinkHealthFlowTest}。
+     *
+     * <p>这里不再删站内信，也就不制造软删行；缺陷本身另行处理。
+     */
+    private String u1;
+    private String u2;
 
     @Autowired
     private ai.neargo.shop.marketing.group.GroupSettleNotifier notifier;
@@ -51,7 +61,10 @@ class GroupNotifyFlowTest {
     @BeforeEach
     void seed() {
         drain();
-        group = "GB-NOTIFY-" + System.nanoTime();
+        long seq = System.nanoTime();
+        group = "GB-NOTIFY-" + seq;
+        u1 = "U-GB-" + seq + "-1";
+        u2 = "U-GB-" + seq + "-2";
         MktGroupBuy g = new MktGroupBuy();
         g.setGroupNo(group);
         g.setTitle("阳光玫瑰青提 3 人团");
@@ -63,7 +76,7 @@ class GroupNotifyFlowTest {
         g.setJoinedCount(2);
         g.setEndAt(System.currentTimeMillis() + 3600_000L);
         groupMapper.insert(g);
-        for (String u : List.of(U1, U2)) {
+        for (String u : List.of(u1, u2)) {
             MktGroupMember m = new MktGroupMember();
             m.setGroupNo(group);
             m.setUserNo(u);
@@ -91,10 +104,8 @@ class GroupNotifyFlowTest {
             memberMapper.delete(Wrappers.<MktGroupMember>lambdaQuery().eq(MktGroupMember::getGroupNo, group));
             groupMapper.delete(Wrappers.<MktGroupBuy>lambdaQuery().eq(MktGroupBuy::getGroupNo, group));
         }
-        for (String u : List.of(U1, U2)) {
-            messageMapper.delete(Wrappers.<ai.neargo.shop.message.entity.MsgMessage>lambdaQuery()
-                    .eq(ai.neargo.shop.message.entity.MsgMessage::getReceiverNo, u));
-        }
+        // **不删站内信** —— 软删会留下占着 uk_msg_dedup 的行（见 u1/u2 的注释）。
+        // 用例级唯一的收件人号已经保证了互不干扰。
     }
 
     @Test
@@ -103,9 +114,9 @@ class GroupNotifyFlowTest {
         notifier.settled(group, MktGroupBuy.FORMED);
         drain();
 
-        assertThat(inboxOf(U1)).as("开团人没收到").isNotEmpty();
-        assertThat(inboxOf(U2)).as("参团人没收到 —— 扇出只发给了一个人").isNotEmpty();
-        assertThat(inboxOf(U1).getFirst().getTitle()).isEqualTo("拼团成功");
+        assertThat(inboxOf(u1)).as("开团人没收到").isNotEmpty();
+        assertThat(inboxOf(u2)).as("参团人没收到 —— 扇出只发给了一个人").isNotEmpty();
+        assertThat(inboxOf(u1).getFirst().getTitle()).isEqualTo("拼团成功");
     }
 
     @Test
@@ -114,7 +125,7 @@ class GroupNotifyFlowTest {
         notifier.settled(group, MktGroupBuy.FAILED);
         drain();
 
-        var msg = inboxOf(U1).getFirst();
+        var msg = inboxOf(u1).getFirst();
         assertThat(msg.getTitle()).isEqualTo("拼团未成团");
         assertThat(msg.getBody())
                 .as("不说退款的话他会来问客服，而答案本来就该写在通知里")
@@ -126,14 +137,14 @@ class GroupNotifyFlowTest {
     void secondCallDoesNotNotifyAgain() {
         notifier.settled(group, MktGroupBuy.FORMED);
         drain();
-        int first = inboxOf(U1).size();
+        int first = inboxOf(u1).size();
 
         // 第 3、第 4 个人付款：成团那条原子 UPDATE 会再走一遍，团照旧是 FORMED
         notifier.settled(group, MktGroupBuy.FORMED);
         notifier.settled(group, MktGroupBuy.FORMED);
         drain();
 
-        assertThat(inboxOf(U1)).as("挂在「状态是 FORMED」上的话，这里会变成 3 条").hasSize(first);
+        assertThat(inboxOf(u1)).as("挂在「状态是 FORMED」上的话，这里会变成 3 条").hasSize(first);
     }
 
     @Test
@@ -144,7 +155,7 @@ class GroupNotifyFlowTest {
         notifier.settled(group, MktGroupBuy.FORMED);
         drain();
 
-        assertThat(inboxOf(U1)).isEmpty();
+        assertThat(inboxOf(u1)).isEmpty();
     }
 
     @Test

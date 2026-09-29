@@ -681,11 +681,17 @@ status = CASE WHEN status = 'OPEN' AND joined_count + 1 >= min_count
 下一个用例插同一个号就撞。那种失败报的是「唯一键冲突」，
 与被测的东西毫无关系，很容易被当成「测试不稳」。改成每个用例一个团号。
 
-**其二**（更隐蔽）：`@AfterEach` 里删站内信之前**必须先把自己的事件投完**。
-顺序反了的话，本用例没投完的事件会在**下一个用例**的 drain 里被投递，
-撞上那条还占着 `uk_msg_dedup` 的逻辑删除行，表现是 outbox 反复 retry。
+**其二**（更隐蔽，而且它不是测试问题）：清理时**不要删站内信**。
 
-**它不在本类里报错**：真正变红的是别人家的 `OpsLinkHealthFlowTest` ——
-它判「投递任务是不是停了」，而 `sys_outbox.retrying` 非 0 会先落到
-`CONSUMER_FAILING`，于是断言拿到的是 `CONSUMER_FAILING` 而不是 `DISPATCHER_STALLED`。
-**跨类的假失败就是这么来的**，而错误信息指向的是一个与真因毫无关系的地方。
+`uk_msg_dedup` 是**单列**唯一键（不含 `deleted`），而 `MessageServiceImpl#pushTo`
+的查重走 MyBatis-Plus 的逻辑删除过滤 —— **查重看不见软删的行，唯一键看得见**。
+于是「查重说不存在 → insert → 撞唯一键 → DuplicateKeyException」，
+事件被 OutboxDispatcher 无限重投。
+
+**它不在本类里报错**：重投把 `sys_outbox.retrying` 顶起来，
+最后变红的是别人家的 `OpsLinkHealthFlowTest`（它判「投递任务是不是停了」，
+retrying 非 0 会先落到 `CONSUMER_FAILING`）。**跨类的假失败就是这么来的**，
+而错误信息指向一个与真因毫无关系的地方。
+
+这是**生产缺陷**而不是测试问题，只是线上还没有删站内信的路径所以触发不到，
+已单独记案。测试侧改成**用例级唯一的收件人号**，不再制造软删行。
