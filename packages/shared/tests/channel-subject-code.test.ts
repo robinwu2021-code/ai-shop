@@ -53,8 +53,12 @@ const COL = { legalForm: 1, wechatCode: 6, settleAccountType: 9, remark: 11 } as
 /**
  * 线性重放 schema-test.sql 里对 sys_legal_form 的写入，返回最终状态。
  *
- * 只认这份脚本实际用到的两种形态：`INSERT INTO ... VALUES (...),(...)`
+ * 只认这份脚本实际用到的两种形态：`INSERT [IGNORE] INTO ... VALUES (...),(...)`
  * 与 `UPDATE sys_legal_form SET col = 'v' [, ...] WHERE legal_form = 'X'`。
+ *
+ * ⚠️ `IGNORE` 是 2026-09-29 加的（d1c4a1b78：种子改幂等，根治「第二个 context 撞主键」）。
+ * 写死 `INSERT INTO` 的正则当场失配，解析出空表 —— 而这正是下面第一条断言存在的理由：
+ * 没有它，「三档主体的备注都对」会在一个空 Map 上恒真，闸门全绿而什么都没测。
  * **认不出的语句会被跳过** —— 所以下面第一条断言先确认「确实读到了三档」，
  * 不然解析器一旦失效，后面每条都恒真。
  */
@@ -62,7 +66,7 @@ function finalState(): Map<string, Row> {
   const src = readFileSync(join(ROOT, SCHEMA), "utf8");
   const state = new Map<string, Row>();
 
-  const insert = src.match(/INSERT INTO sys_legal_form VALUES([\s\S]*?);/)?.[1];
+  const insert = src.match(/INSERT\s+(?:IGNORE\s+)?INTO sys_legal_form VALUES([\s\S]*?);/)?.[1];
   if (insert) {
     for (const m of insert.matchAll(/\(([^()]*)\)/g)) {
       const f = m[1].split(",").map((v) => v.trim().replace(/^'|'$/g, ""));
