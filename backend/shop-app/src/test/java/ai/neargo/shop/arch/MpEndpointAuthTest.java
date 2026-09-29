@@ -110,6 +110,7 @@ class MpEndpointAuthTest {
             "POST /mp/group-request/{requestNo}/interest",
             "POST /mp/invoice/apply",
             "POST /mp/merchant/apply",
+            "POST /mp/merchant/apply/{applyNo}",
             "POST /mp/message/read-all",
             "POST /mp/message/subscribe",
             "POST /mp/message/{messageNo}/read",
