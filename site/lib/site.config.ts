@@ -104,9 +104,9 @@ export const site = {
      * 所以备案下来、自定义域名绑好之后，这里换成 `latest.apk` 的直链即可，
      * 包不用重传、页面不用改。
      */
-    merchantAndroid: "/dl/hxmall-merchant-0.5.17.apk",
+    merchantAndroid: "/dl/hxmall-merchant-0.5.20.apk",
     /** 商家端安卓包的版本号，跟着链接一起改 —— 页面上要让人看得出下的是哪一版 */
-    merchantAndroidVersion: "0.5.17",
+    merchantAndroidVersion: "0.5.20",
   },
 } as const;
 
