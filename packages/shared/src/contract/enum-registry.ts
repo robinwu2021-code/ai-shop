@@ -709,6 +709,38 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "**这一行还在有效期内**，与商品的上下架不是一回事，借 L1 的上架词会把两件事混掉；"
       + "EXPIRED 是「超过 N 天没再确认」，货多半还在，只是不该再给买家看，"
       + "与 L1 里表示终态的那些词不是一回事（供应商点一下「仍有货」它就回到 ON）" },
+  { decl: "shared:ElecCond", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "货况：ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新。后端 ElecValues.CONDITIONS。"
+      + "价差好几倍，认错比认不出更糟 —— 所以写法 → 码只做精确匹配（ElecValues#lookup）" },
+  { decl: "shared:ElecPacking", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "包装：REEL / TRAY / TUBE / CUT_TAPE / BULK / BOX。后端 ElecValues.PACKINGS" },
+  { decl: "shared:ElecCurrency", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "供应商报价的币种 CNY / USD / HKD（ElecValues.CURRENCIES）。买家面一律换算成人民币含税，"
+      + "只有供应商自己看、自己填时才出现；与全站的市场货币不是一回事（那是按市场定的展示货币）" },
+  { decl: "shared:ElecCondReq", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "买家的货况要求：ANY / ORIGINAL / NEW（ElecValues.COND_REQS）。与 ElecCond 不同名不同义 —— "
+      + "那个描述一批货是什么，这个描述买家要什么：多一个「不限」，少一个「翻新」（没人会指定要翻新件）" },
+  { decl: "shared:ElecPackingReq", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "买家的包装要求：ANY / REEL 必须整盘 / CUT_TAPE 可以剪带（ElecValues.PACKING_REQS）。理由同 ElecCondReq" },
+  { decl: "shared:ElecOfferFrom", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "一条报价是谁报的：PLATFORM / SUPPLIER（RfqDtos.Offer.from）。端上不显示这个词，"
+      + "只决定接受走哪条接口：平台那条走整单接受，供应商的走按行选" },
+  { decl: "shared:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "供应商「我的库存」的筛选：ALL / EXPIRING 7 天内到期 / EXPIRED（ElecSupplierController#stocks 的 filter 参数）。"
+      + "是查询条件不是状态，所以不按 STATUS 登记" },
+  { decl: "shared:ElecDispatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    words: ["SENT", "VIEWED", "QUOTED", "DECLINED"],
+    note: "派给供应商的那条求购：SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝（ElcDispatch）。"
+      + "四个都不在 L1 里：它描述的是**一次邀约的回应**，不是单据的处理进度 —— 响应率的分母是「看过」，"
+      + "所以 VIEWED 必须与 SENT 分开；DECLINED 是供应商说没货，不是 L1 的 REJECTED（那是审核驳回）" },
+  { decl: "shared:ElecQuoteStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    words: ["WITHDRAWN", "ACCEPTED"],
+    note: "供应商报价：ACTIVE 有效 / WITHDRAWN 撤回 / ACCEPTED 被买家选中（ElcQuote）。"
+      + "ACCEPTED 与询价单 ElecRfqStatus 的 ACCEPTED 同词同义（都是买家接受了价）；"
+      + "过期不落库，按 validUntil 算，所以没有 EXPIRED" },
+  { decl: "shared:ElecDeclineReason", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "供应商拒绝求购的原因：NO_STOCK / PRICE / OTHER（RfqDtos.DeclineReq）。"
+      + "「价格做不了」要与「没货」分开：前者是平台加价率与市场价的信号，后者是库存数据旧了" },
   { decl: "shared:ElecImportMode", dom: "elec", shape: "CLASS", verdict: "OK",
     note: "上传库存表的方式：MERGE 只改表里有的 / REPLACE 表里没有的下架。"
       + "**默认 MERGE**：传半截表就把全部库存下架，是这类工具最常见的事故" },

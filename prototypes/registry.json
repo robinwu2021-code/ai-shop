@@ -1829,7 +1829,7 @@
    "title": "元器件：查料号、询价、成为供应商",
    "kind": "pages",
    "clients": [
-    "c-app",
+    "elec-app",
     "ops-web"
    ],
    "status": "在建",
@@ -1849,14 +1849,14 @@
     {
      "id": "e01",
      "title": "元器件首页",
-     "client": "c-app",
-     "route": "pkg-elec/home/index"
+     "client": "elec-app",
+     "route": "pages/home/index"
     },
     {
      "id": "e02",
      "title": "搜索结果",
-     "client": "c-app",
-     "route": "pkg-elec/search/index"
+     "client": "elec-app",
+     "route": "pages/search/index"
     },
     {
      "id": "e03",
@@ -1865,32 +1865,32 @@
     {
      "id": "e04",
      "title": "料号详情",
-     "client": "c-app",
-     "route": "pkg-elec/part/index"
+     "client": "elec-app",
+     "route": "pages/part/index"
     },
     {
      "id": "e05",
      "title": "询价",
-     "client": "c-app",
-     "route": "pkg-elec/rfq-create/index"
+     "client": "elec-app",
+     "route": "pages/rfq-create/index"
     },
     {
      "id": "e06",
      "title": "批量查",
-     "client": "c-app",
-     "route": "pkg-elec/lookup/index"
+     "client": "elec-app",
+     "route": "pages/lookup/index"
     },
     {
      "id": "e07",
      "title": "我的询价",
-     "client": "c-app",
-     "route": "pkg-elec/rfqs/index"
+     "client": "elec-app",
+     "route": "pages/rfqs/index"
     },
     {
      "id": "e08",
      "title": "询价详情 · 待报价",
-     "client": "c-app",
-     "route": "pkg-elec/rfq/index"
+     "client": "elec-app",
+     "route": "pages/rfq/index"
     },
     {
      "id": "e09",
@@ -1907,14 +1907,14 @@
     {
      "id": "e12",
      "title": "成为供应商",
-     "client": "c-app",
-     "route": "pkg-elec/supplier-join/index"
+     "client": "elec-app",
+     "route": "pages/supplier-join/index"
     },
     {
      "id": "e13",
      "title": "供应商工作台 · 刚成为供应商",
-     "client": "c-app",
-     "route": "pkg-elec/supplier/index"
+     "client": "elec-app",
+     "route": "pages/supplier/index"
     },
     {
      "id": "e14",
@@ -1923,26 +1923,26 @@
     {
      "id": "e15",
      "title": "上传 · 列映射",
-     "client": "c-app",
-     "route": "pkg-elec/stock-upload/index"
+     "client": "elec-app",
+     "route": "pages/stock-upload/index"
     },
     {
      "id": "e16",
      "title": "上架前确认",
-     "client": "c-app",
-     "route": "pkg-elec/stock-preview/index"
+     "client": "elec-app",
+     "route": "pages/stock-preview/index"
     },
     {
      "id": "e17",
      "title": "我的库存",
-     "client": "c-app",
-     "route": "pkg-elec/stocks/index"
+     "client": "elec-app",
+     "route": "pages/stocks/index"
     },
     {
      "id": "e18",
      "title": "供应商资料",
-     "client": "c-app",
-     "route": "pkg-elec/supplier-profile/index"
+     "client": "elec-app",
+     "route": "pages/supplier-profile/index"
     },
     {
      "id": "e19",

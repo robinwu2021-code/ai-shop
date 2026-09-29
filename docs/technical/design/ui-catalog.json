@@ -1005,7 +1005,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 49,
+      "count": 36,
       "domains": [
         {
           "name": "工作台",
@@ -1347,149 +1347,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/invite/index"
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/home/index",
-              "title": "元器件首页",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e01",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/search/index",
-              "title": "搜索结果",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e02",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/part/index",
-              "title": "料号详情",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e04",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/rfq-create/index",
-              "title": "询价",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e05",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/lookup/index",
-              "title": "批量查",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e06",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/rfqs/index",
-              "title": "我的询价",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e07",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/rfq/index",
-              "title": "询价详情 · 待报价",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e08",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/supplier-join/index",
-              "title": "成为供应商",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e12",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/supplier/index",
-              "title": "供应商工作台 · 刚成为供应商",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e13",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/stock-upload/index",
-              "title": "上传 · 列映射",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e15",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/stock-preview/index",
-              "title": "上架前确认",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e16",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/stocks/index",
-              "title": "我的库存",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e17",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/supplier-profile/index",
-              "title": "供应商资料",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e18",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
             }
           ]
         },
@@ -1598,6 +1455,194 @@
               "proto": "s03",
               "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
               "preview": "http://localhost:5176/#/pages/store/index"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "elec-app",
+      "label": "元器件小程序",
+      "count": 16,
+      "domains": [
+        {
+          "name": "元器件",
+          "pages": [
+            {
+              "app": "elec-app",
+              "route": "/pages/home/index",
+              "title": "元器件",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e01",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/home/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/search/index",
+              "title": "搜索结果",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e02",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/search/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/part/index",
+              "title": "料号详情",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e04",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/part/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/lookup/index",
+              "title": "批量查",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e06",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/lookup/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/rfq-create/index",
+              "title": "询价",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e05",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/rfq-create/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/rfqs/index",
+              "title": "我的询价",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e07",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/rfqs/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/rfq/index",
+              "title": "询价详情",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e08",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/rfq/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/supplier-join/index",
+              "title": "成为供应商",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e12",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/supplier-join/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/supplier/index",
+              "title": "供应商工作台",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e13",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/supplier/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/stock-upload/index",
+              "title": "上传库存",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e15",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/stock-upload/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/stock-preview/index",
+              "title": "上架前确认",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e16",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/stock-preview/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/stocks/index",
+              "title": "我的库存",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e17",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/stocks/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/supplier-profile/index",
+              "title": "供应商资料",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e18",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/supplier-profile/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/dispatches/index",
+              "title": "求购",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/#/pages/dispatches/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/dispatch/index",
+              "title": "求购详情",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/#/pages/dispatch/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/login/index",
+              "title": "登录",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/#/pages/login/index"
             }
           ]
         }
@@ -3538,5 +3583,5 @@
       ]
     }
   ],
-  "total": 280
+  "total": 283
 }

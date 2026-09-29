@@ -33592,6 +33592,37 @@
         "zh": "NO_SOURCE 暂无货源（会通知买家）/ BUYER_CANCELLED 买家不要了 / DONE 已成交"
       },
       {
+        "name": "ElecCond",
+        "client": "shared",
+        "values": [
+          "ORIGINAL",
+          "LOOSE",
+          "PULLED",
+          "REFURB"
+        ],
+        "zh": "货况：ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新。"
+      },
+      {
+        "name": "ElecCondReq",
+        "client": "shared",
+        "values": [
+          "ANY",
+          "ORIGINAL",
+          "NEW"
+        ],
+        "zh": "货况要求：ANY 不限 / ORIGINAL 只要原装原包 / NEW 原装即可（散新也行）"
+      },
+      {
+        "name": "ElecCurrency",
+        "client": "shared",
+        "values": [
+          "CNY",
+          "USD",
+          "HKD"
+        ],
+        "zh": "报价币种。"
+      },
+      {
         "name": "ElecDcReq",
         "client": "shared",
         "values": [
@@ -33600,6 +33631,27 @@
           "Y2"
         ],
         "zh": "ANY 不限 / Y1 一年内 / Y2 两年内"
+      },
+      {
+        "name": "ElecDeclineReason",
+        "client": "shared",
+        "values": [
+          "NO_STOCK",
+          "PRICE",
+          "OTHER"
+        ],
+        "zh": "拒绝的原因：NO_STOCK 没货 / PRICE 价格做不了 / OTHER 其他"
+      },
+      {
+        "name": "ElecDispatchStatus",
+        "client": "shared",
+        "values": [
+          "SENT",
+          "VIEWED",
+          "QUOTED",
+          "DECLINED"
+        ],
+        "zh": "派单状态：SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝"
       },
       {
         "name": "ElecImportMode",
@@ -33643,6 +33695,38 @@
         "zh": "怎么命中的。"
       },
       {
+        "name": "ElecOfferFrom",
+        "client": "shared",
+        "values": [
+          "PLATFORM",
+          "SUPPLIER"
+        ],
+        "zh": "这条报价是谁报的：PLATFORM 平台 / SUPPLIER 供应商。"
+      },
+      {
+        "name": "ElecPacking",
+        "client": "shared",
+        "values": [
+          "REEL",
+          "TRAY",
+          "TUBE",
+          "CUT_TAPE",
+          "BULK",
+          "BOX"
+        ],
+        "zh": "包装：REEL 整盘 / TRAY 托盘 / TUBE 管装 / CUT_TAPE 剪带 / BULK 散装 / BOX 盒装"
+      },
+      {
+        "name": "ElecPackingReq",
+        "client": "shared",
+        "values": [
+          "ANY",
+          "REEL",
+          "CUT_TAPE"
+        ],
+        "zh": "包装要求：ANY 不限 / REEL 必须整盘 / CUT_TAPE 可以剪带"
+      },
+      {
         "name": "ElecQtyBand",
         "client": "shared",
         "values": [
@@ -33654,6 +33738,16 @@
           "B1M"
         ],
         "zh": "买家看到的库存档位。"
+      },
+      {
+        "name": "ElecQuoteStatus",
+        "client": "shared",
+        "values": [
+          "ACTIVE",
+          "WITHDRAWN",
+          "ACCEPTED"
+        ],
+        "zh": "供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中"
       },
       {
         "name": "ElecRfqStatus",
@@ -33687,6 +33781,16 @@
           "MANY"
         ],
         "zh": "有几家有货：1 家 / 2–4 家 / 5 家及以上。"
+      },
+      {
+        "name": "ElecStockFilter",
+        "client": "shared",
+        "values": [
+          "ALL",
+          "EXPIRING",
+          "EXPIRED"
+        ],
+        "zh": "我的库存按什么筛：ALL 全部 / EXPIRING 7 天内到期 / EXPIRED 已到期"
       },
       {
         "name": "ElecStockStatus",

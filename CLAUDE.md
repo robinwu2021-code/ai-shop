@@ -18,7 +18,7 @@
 
 **下面任何一件事做完，都要重跑生成器并把 JSON 一起提交：**
 
-- 新增 / 删除页面（`b-app|c-app/src/pages.json`）
+- 新增 / 删除页面（`b-app|c-app|elec-app/src/pages.json`）
 - 改页面标题（`pages.json` 或 `<sh-scaffold title-key>` 指向的词条）
 - 运营端加菜单或子功能（`ops-web/lib/nav.ts`）
 - 画了新的界面原型（真源放 `prototypes/<slug>.html`，在 `prototypes/registry.json` 登记，
@@ -46,7 +46,7 @@ python3 scripts/gen-ui-catalog.py --check  # 只校验（pre-push 会自动跑�
 你确实跑了工具，工具确实没报错。
 
 ```bash
-cd b-app && npx vue-tsc --noEmit    # c-app 同理；两端加起来不到 5 秒
+cd b-app && npx vue-tsc --noEmit    # c-app、elec-app 同理；三端加起来不到 8 秒
 ```
 
 `pre-push` 第九道闸跑的就是它。**挂上去当天就抓到一个已经在 HEAD 里的缺陷**：

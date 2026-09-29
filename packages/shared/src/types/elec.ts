@@ -21,6 +21,15 @@ export type ElecSourceBand = "ONE" | "FEW" | "MANY";
 /** 怎么命中的。端上把它显示成一句人话（开头一致 / 中段一致 / 相近），不是排名分数 */
 export type ElecMatch = "EXACT" | "PREFIX" | "CONTAINS" | "NEAR";
 
+/** 货况：ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新。**价差好几倍** */
+export type ElecCond = "ORIGINAL" | "LOOSE" | "PULLED" | "REFURB";
+
+/** 包装：REEL 整盘 / TRAY 托盘 / TUBE 管装 / CUT_TAPE 剪带 / BULK 散装 / BOX 盒装 */
+export type ElecPacking = "REEL" | "TRAY" | "TUBE" | "CUT_TAPE" | "BULK" | "BOX";
+
+/** 报价币种。买家面一律换算成人民币含税，只有供应商自己报价时才选 */
+export type ElecCurrency = "CNY" | "USD" | "HKD";
+
 /** 买家面的库存行情。**没有、也不许加任何供应商字段** */
 export interface ElecMarket {
   /** 数量档位：B1K = 1000 片以上。端上显示成「1k+」，**不是精确库存** */
@@ -31,6 +40,14 @@ export interface ElecMarket {
   priceFromE6?: number | null;
   /** 最新批次年份。**只给年份** —— 精确批号能认出是谁家的货 */
   dcYearMax?: number | null;
+  /** 参考起价**从多少片起**。只写「¥6.85 起」不说从 1000 起，按 10 片来询的人会觉得被坑 */
+  priceFromQty?: number | null;
+  /** 有没有现货 */
+  spot: boolean;
+  /** 最快交期（天）；空 = 没人说交期（**不是现货**） */
+  leadDaysMin?: number | null;
+  /** 这个料号在库里有哪些货况 */
+  conds: ElecCond[];
 }
 
 export interface ElecPartHit {
@@ -100,6 +117,12 @@ export type ElecInvoice = "NONE" | "VAT_NORMAL" | "VAT_SPECIAL";
 /** ANY 不限 / Y1 一年内 / Y2 两年内 */
 export type ElecDcReq = "ANY" | "Y1" | "Y2";
 
+/** 货况要求：ANY 不限 / ORIGINAL 只要原装原包 / NEW 原装即可（散新也行） */
+export type ElecCondReq = "ANY" | "ORIGINAL" | "NEW";
+
+/** 包装要求：ANY 不限 / REEL 必须整盘 / CUT_TAPE 可以剪带 */
+export type ElecPackingReq = "ANY" | "REEL" | "CUT_TAPE";
+
 /**
  * SUBMITTED 待报价 / QUOTED 已报价 / EXPIRED 报价已过期 / ACCEPTED 已接受 / CLOSED 已结束。
  *
@@ -130,6 +153,14 @@ export interface ElecRfqReq {
   needInvoice?: ElecInvoice;
   /** 批次要求：不限 / 一年内 / 两年内 */
   dcReq?: ElecDcReq;
+  /** 货况要求：不限 / 只要原装原包 / 原装即可 */
+  condReq?: ElecCondReq;
+  /** 包装要求：不限 / 必须整盘 / 可以剪带 */
+  packingReq?: ElecPackingReq;
+  /** 几天内要到货；空 = 不急。**急单与常备单的价完全不同** */
+  needByDays?: number;
+  /** 能不能用替代 / 兼容型号（含国产替代）。很多单子卡在这里 */
+  allowAlt?: boolean;
   /** 收货城市。只用于判断运费与时效；供应商那一侧只看得到省 */
   deliverCity?: string;
   /** 买家公司名，选填。**供应商看不到** */
@@ -150,8 +181,43 @@ export interface ElecLineQuote {
   dcYear?: number | null;
   /** 交期天数，0 = 现货 */
   leadDays?: number | null;
+  /** 货况 */
+  cond?: ElecCond | null;
+  /** 包装 */
+  packing?: ElecPacking | null;
   /** 这一行的说明（可换 CH340C 之类） */
   note?: string | null;
+}
+
+/** 这条报价是谁报的：PLATFORM 平台 / SUPPLIER 供应商。**端上不显示这个词**，只决定接受之后怎么跟进 */
+export type ElecOfferFrom = "PLATFORM" | "SUPPLIER";
+
+/**
+ * 买家看到的一条报价。**没有、也不许加任何供应商字段**。
+ */
+export interface ElecOffer {
+  /** 报价号。按行选中时带它 */
+  offerNo: string;
+  /** 这一行内的代号（报价 A / B / C）。**只在这一行内有意义** —— 换一行同一家就是另一个字母 */
+  label: string;
+  /** 含税单价，已加价、已换算成人民币。百万分之一元 */
+  priceE6: number;
+  /** 能供多少；少于要的数量时端上要标出来。空 = 按要的数量给 */
+  qty?: number | null;
+  /** 批次年份。只给年份 */
+  dcYear?: number | null;
+  /** 交期天数，0 = 现货；空 = 没说（不是现货） */
+  leadDays?: number | null;
+  /** 货况 */
+  cond?: ElecCond | null;
+  /** 包装 */
+  packing?: ElecPacking | null;
+  /** 这条报价有效到哪天（含） */
+  validUntil?: string | null;
+  /** 说明 */
+  note?: string | null;
+  /** 平台报的 / 供应商报的。端上不显示，只决定接受之后走哪条跟进流程 */
+  from: ElecOfferFrom;
 }
 
 export interface ElecRfqLine {
@@ -169,6 +235,8 @@ export interface ElecRfqLine {
   targetE6?: number | null;
   /** 平台对这一行的报价；空 = 还没报，或报价时这一行没找到货 */
   quote?: ElecLineQuote | null;
+  /** 这一行能选的全部报价：平台那条 + 供应商报的（已加价、已匿名），按价升序 */
+  offers: ElecOffer[];
 }
 
 export interface ElecRfq {
@@ -180,10 +248,22 @@ export interface ElecRfq {
   createdAt: string;
   /** 几行料号 */
   lineCnt: number;
+  /** 派给了几家供应商 */
+  dispatchCnt: number;
+  /** 有几家报了价 */
+  quoteCnt: number;
   /** 发票要求 */
   needInvoice: ElecInvoice;
   /** 批次要求 */
   dcReq: ElecDcReq;
+  /** 货况要求 */
+  condReq?: ElecCondReq | null;
+  /** 包装要求 */
+  packingReq?: ElecPackingReq | null;
+  /** 几天内要到货；空 = 不急 */
+  needByDays?: number | null;
+  /** 能不能用替代型号 */
+  allowAlt: boolean;
   /** 收货城市 */
   deliverCity?: string | null;
   /** 买家公司名 */
@@ -254,6 +334,17 @@ export interface ElecSupplier {
   stockTtlDays: number;
 }
 
+/** 阶梯价的一档 */
+export interface ElecPriceTier {
+  /** 从多少片起 */
+  minQty: number;
+  /** 这一档的单价，百万分之一元 */
+  priceE6: number;
+}
+
+/** 我的库存按什么筛：ALL 全部 / EXPIRING 7 天内到期 / EXPIRED 已到期 */
+export type ElecStockFilter = "ALL" | "EXPIRING" | "EXPIRED";
+
 /** ON 在售 / EXPIRED 到期（端上据此提示续期） */
 export type ElecStockStatus = "ON" | "EXPIRED";
 
@@ -272,10 +363,24 @@ export interface ElecStock {
   packageName?: string | null;
   /** 起订量 */
   moq?: number | null;
-  /** 单价，百万分之一元。空 = 没报价 */
+  /** 最小包装量 */
+  spq?: number | null;
+  /** 阶梯价，按数量档升序。**元器件报价天生是阶梯的**；只有一档时就一条 */
+  tiers: ElecPriceTier[];
+  /** 最低档的单价，百万分之一元（= tiers 第一条）。空 = 没报价 */
   priceE6?: number | null;
+  /** 币种 */
+  currency?: ElecCurrency | null;
   /** 价格含不含税。**与币种一起决定这个价的口径** */
   taxIncluded: boolean;
+  /** 包装 */
+  packing?: ElecPacking | null;
+  /** 货况 */
+  cond?: ElecCond | null;
+  /** 交期天数，0 = 现货；空 = 没说（**不是现货**） */
+  leadDays?: number | null;
+  /** 货源地 */
+  region?: string | null;
   /** 到期日（含）。到了就不再给买家看 */
   validUntil: string;
   /** ON 在售 / EXPIRED 到期（端上据此提示续期） */
@@ -347,4 +452,119 @@ export interface ElecRenewResult {
   renewed: number;
   /** 续到哪天（含） */
   validUntil: string;
+}
+
+/** 换列映射：字段 → 列序号（从 0 起）。不导入的字段不传 */
+export interface ElecRemapReq {
+  /** MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ / SPQ / PACKING / CONDITION / CURRENCY / LEAD / REGION → 列序号 */
+  columns: Record<string, number>;
+}
+
+// ── 派单：求购派给供应商、供应商报价（看得到求购，看不到买家）────────────
+
+/** 派单状态：SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝 */
+export type ElecDispatchStatus = "SENT" | "VIEWED" | "QUOTED" | "DECLINED";
+
+/** 供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中 */
+export type ElecQuoteStatus = "ACTIVE" | "WITHDRAWN" | "ACCEPTED";
+
+/** 拒绝的原因：NO_STOCK 没货 / PRICE 价格做不了 / OTHER 其他 */
+export type ElecDeclineReason = "NO_STOCK" | "PRICE" | "OTHER";
+
+/** 供应商自己填的那条报价（他看得到原样，买家看到的是加价并匿名之后的） */
+export interface ElecSupplierQuote {
+  /** 报价号 */
+  quoteNo: string;
+  /** 单价，百万分之一元，**按他填的币种与含税口径** */
+  priceE6: number;
+  /** 币种 */
+  currency: ElecCurrency;
+  /** 含不含税 */
+  taxIncluded: boolean;
+  /** 能供多少 */
+  qtyAvailable: number;
+  /** 批号原样 */
+  dateCode?: string | null;
+  /** 交期天数，0 = 现货 */
+  leadDays?: number | null;
+  /** 货况 */
+  cond?: ElecCond | null;
+  /** 包装 */
+  packing?: ElecPacking | null;
+  /** 起订量 */
+  moq?: number | null;
+  /** 有效到哪天（含） */
+  validUntil: string;
+  /** 给平台看的备注 */
+  remark?: string | null;
+  /** 有效 / 已撤回 / 被买家选中 */
+  status: ElecQuoteStatus;
+}
+
+/** 派给这家供应商的一条求购。**没有买家的任何身份信息**，收货地只到省 */
+export interface ElecDispatch {
+  /** 供应商侧的单号。**不是询价单号** —— 两边拿不到同一个号 */
+  dispatchNo: string;
+  /** 待报价 / 看过 / 已报价 / 已拒绝 */
+  status: ElecDispatchStatus;
+  /** 派来的时间 */
+  createdAt: string;
+  /** 料号 */
+  mpn: string;
+  /** 买家写的厂牌；没写为空 */
+  mfr?: string | null;
+  /** 要几片 */
+  qty: number;
+  /** 目标单价，百万分之一元；没写为空 */
+  targetE6?: number | null;
+  /** 批次要求 */
+  dcReq: ElecDcReq;
+  /** 货况要求 */
+  condReq?: ElecCondReq | null;
+  /** 包装要求 */
+  packingReq?: ElecPackingReq | null;
+  /** 几天内要到货；空 = 不急 */
+  needByDays?: number | null;
+  /** 能不能用替代型号 */
+  allowAlt: boolean;
+  /** 发票要求 */
+  needInvoice: ElecInvoice;
+  /** 收货省份。只给到省 */
+  deliverProvince?: string | null;
+  /** 他自己库里这个料号还有多少（帮他一眼判断能不能接）；没有为空 */
+  inStock?: number | null;
+  /** 他报过的价；没报过为空。再报一次就是改价 */
+  myQuote?: ElecSupplierQuote | null;
+}
+
+/** 供应商提交报价 */
+export interface ElecSupplierQuoteReq {
+  /** 单价，百万分之一元。必填 */
+  priceE6: number;
+  /** 币种，默认 CNY */
+  currency?: ElecCurrency;
+  /** 含不含税，默认含税 */
+  taxIncluded?: boolean;
+  /** 能供多少。必填 */
+  qtyAvailable: number;
+  /** 批号原样 */
+  dateCode?: string;
+  /** 交期天数，0 = 现货 */
+  leadDays?: number;
+  /** 货况 */
+  cond?: ElecCond;
+  /** 包装 */
+  packing?: ElecPacking;
+  /** 起订量 */
+  moq?: number;
+  /** 报价有效几天（默认 3） */
+  validDays?: number;
+  /** 只给平台看 */
+  remark?: string;
+}
+
+/** 没货就直说：拒绝也算响应，不回才伤响应率 */
+export interface ElecDeclineReq {
+  /** 没货 / 价格做不了 / 其他 */
+  reason?: ElecDeclineReason;
 }

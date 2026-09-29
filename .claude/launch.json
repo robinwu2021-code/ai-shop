@@ -122,6 +122,15 @@
       "autoPort": true
     },
     {
+      "_comment": "元器件小程序（独立工程 elec-app）的 H5 预览。接两个后端：/elec → elec-svc（默认 8085）、/mp → 主系统（默认 8081），由 vite 代理分流（生产上是 nginx）。本机端口不同就写 elec-app/.env.local 的 ELEC_TARGET / MAIN_TARGET（不入库），别改这里。没有 mock。",
+      "name": "elec-app-h5",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": ["-lc", "PORT=5177 npx uni"],
+      "cwd": "elec-app",
+      "port": 5177,
+      "autoPort": false
+    },
+    {
       "name": "prototypes",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
