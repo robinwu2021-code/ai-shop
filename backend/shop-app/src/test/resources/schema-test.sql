@@ -4496,6 +4496,30 @@ CREATE TABLE IF NOT EXISTS usr_store_view
     CONSTRAINT uk_store_view_user_store UNIQUE (user_no,store_no)
 );
 
+CREATE TABLE IF NOT EXISTS stl_bank_flow
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    flow_no VARCHAR(64) NOT NULL,
+    trade_date VARCHAR(10) NOT NULL,
+    direction VARCHAR(8) NOT NULL,
+    amount_minor BIGINT(20) NOT NULL,
+    counterparty_name VARCHAR(128) DEFAULT NULL,
+    counterparty_account_masked VARCHAR(64) DEFAULT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    matched_settle_no VARCHAR(64) DEFAULT NULL,
+    imported_by VARCHAR(64) DEFAULT NULL,
+    imported_at BIGINT(20) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_bank_flow UNIQUE (flow_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

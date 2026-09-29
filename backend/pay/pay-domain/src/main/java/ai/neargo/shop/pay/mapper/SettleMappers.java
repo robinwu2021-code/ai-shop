@@ -28,6 +28,14 @@ public final class SettleMappers {
     public interface BillMapper extends BaseMapper<StlBill> {
     }
 
+    /**
+     * 银行流水镜像（V363）。**唯一键 flow_no 让重复上传变成幂等** ——
+     * 财务重传同一份是常态，而重复入库会让「银行有而系统没登记」凭空多一批差异。
+     */
+    public interface BankFlowMapper
+            extends BaseMapper<ai.neargo.shop.pay.entity.StlBankFlow> {
+    }
+
     /** 采购进项票（自营）。发票代码+号码联合唯一，挡住同一张票冲两个周期的账。 */
     public interface PurchaseInvoiceMapper extends BaseMapper<StlPurchaseInvoice> {
     }
