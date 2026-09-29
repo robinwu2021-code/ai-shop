@@ -320,6 +320,14 @@
 | `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
 | `minAppVer` | `string` | 是 | 低于它要提示升级 |
 | `serviceHours` | `string` | 是 | 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 |
+| `merchantApp` | `object`（见下） | 否 | 商家版 App 的下载地址，按平台各一条。 **由后端下发，端上不写死域名** —— 写在端上就有两处真源（官网一份、小程序一份）， 而这个项目已经错过一次：商家端链接曾写死成 `shop.example.com`，印了贴纸才发现。 **空的那一档不显示**，不是显示一个点不开的地址。iOS 版在苹果审核队列里， 上架前那一档是 TestFlight 公开链接，现在是空的。 |
+
+`merchantApp` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `android` | `string` | 是 | — |
+| `ios` | `string` | 是 | — |
 
 
 ### coupon
@@ -1441,6 +1449,64 @@
 我的入驻申请状态　🔒
 
 **入参**：无
+
+**出参**（`data`）
+
+类型：[`MerchantApplyStatus`](#merchantapplystatus)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `applyNo` | `string` | 是 | 申请单号 |
+| `name` | `string` | 是 | 申请时填的店铺名。**存快照** —— 后来改名不该让历史申请跟着变 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型。决定分账主体形态与所需资质（ADR-002 §4） |
+| `status` | [`MerchantApplyReviewStatus`](#merchantapplyreviewstatus) | 是 | 审核状态。迁移见本类型的注释，APPROVED 为终态 |
+| `rejectReason` | `string` | 否 | 驳回理由。**驳回必须写** —— 不写就等于让人猜着改 |
+| `merchantNo` | `string` | 否 | 通过后生成的商家单号。未通过时为空 —— 商家在通过之前根本不存在 |
+| `createdAt` | `number` | 是 | 提交时间 |
+| `auditedAt` | `number` | 否 | 审核完成时间。PENDING/REVIEWING 期间为空 |
+| `contactName` | `string` | 是 | 联系人姓名 |
+| `contactPhone` | `string` | 是 | 联系手机号。这是申请人自己填的联系号码，**不是登录号**，不脱敏 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号（V353）。后端 `MerchantApplyVO` 在发，契约此前没接。 **端上不展示**：C 端报名这一屏已经不问它了（规则只在官网与企微里出现）， 声明它是为了驳回后回填不把这一格丢掉 —— 发奖靠这个号，丢了就找不到推荐人。 |
+| `category` | `string` | 是 | 主营类目。C 端报名以「经营范围」的说法出现 |
+| `desc` | `string` | 是 | 店铺简介 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009） |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区 |
+| `licenses` | `string`\[\] | 否 | 已传的资质图（只有图片 URL，看不出是哪种证、什么时候过期） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质（V79）：**哪张证、证件号、有效期**。 ⚠️ 这一段的标题写着「用于驳回后回填」，而此前只回填了  {@link  licenses }  ——只有图片。**证件类型、编号、有效期三项全丢**，商家重提时得逐格再填一遍， 而这正是本段注释想避免的那件事：「把补交变成重来」。 后端 `MerchantApplyVO` 一直在发它（审核台就靠它看类型与有效期）， 端上这里没声明。 |
+| `industry` | `string` | 否 | 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 |
+| `asPickupPoint` | `boolean` | 否 | 是否愿意承接自提点（ADR-005）。 **只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。 |
+| `onBehalf` | `boolean` | 否 | <b>这张单是运营代填的</b>（三期）。 <p>商户首次登录时必须看到这件事 —— 否则他会发现自己名下凭空有一家店， 而资料是谁在什么时候录的无从得知。 <p>给的是布尔而不是代填人账号：他要知道的是「这不是我自己填的」， 运营的员工标识不该发给外部商户。要查是谁填的走审计日志。 |
+| `agreedAt` | `number` | 否 | 本人同意《商家服务协议》的时刻（毫秒）；<b>0 / 空 = 尚未同意</b>。 <p>⚠️ 空<b>不等于</b>「他拒绝了」，也不等于「这是代填单」—— 存量单子同样是空的（协议勾选此前从没落过库，`agreed` 传到 `LoginCommand` 就断了）。要分开看  {@link  onBehalf } 。 |
+
+
+#### POST `/mp/merchant/apply/{applyNo}`
+
+改入驻意向（仅待审核）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `applyNo` | path | `string` | 是 | — |
+
+请求体：[`MerchantApplyReq`](#merchantapplyreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 拟用店铺名 |
+| `subject` | [`MerchantSubject`](#merchantsubject) | 否 | 主体类型。个人 → 个体户 → 企业，门槛前低后高。 **选填**（2026-09-28）：C 端报名这一屏不再问它。它受行业白名单管控， 端上选错要到进件那一步才炸，而报名的人多半分不清「个人经营者」与「个体工商户」。 后端收到空时 `requireSubjectAllowedByIndustry` 直接放行（canonical == null 即 return）， 主体由运营在审核核营业执照时定。B 端代填仍然传 —— 那一侧填表的是运营自己。 |
+| `contactName` | `string` | 否 | 联系人姓名。审核要打电话找人。 **选填**（2026-09-28）：C 端只问手机号 —— 拨过去自然知道是谁， 多一格输入换不来一条审核用得上的信息。后端不校验。 |
+| `contactPhone` | `string` | 是 | 联系手机号 |
+| `referrerPhone` | `string` | 否 | 推荐人手机号。**选填，端上一句奖励文案都不写** —— 小程序里出现「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳。 奖励规则只在官网与企微里出现，发奖由运营按这个号人工处理 （TDD-C 端裂变与商家招募 §8.3）。 |
+| `category` | `string` | 是 | 主营类目 |
+| `desc` | `string` | 否 | 店铺简介。**选填**（2026-09-28）：C 端报名不问，通过后在商家版 App 里补 |
+| `asPickupPoint` | `boolean` | 否 | 承接自提点：小店既是供给方也是取货点（ADR-005 type=STORE） |
+| `qualificationItems` | [`QualificationItem`](#qualificationitem)\[\] | 否 | 结构化资质。**可选**：老版本端上还在只传 `licenses`， 后端对未传该字段的请求跳过执照校验（见 `OpsServiceImpl.requireLicenseIfNeeded`）—— 校验必须晚于能满足它的 UI 上线，否则拦的不是坏商家，是所有人。 |
+| `serviceScope` | [`ServiceScope`](#servicescope) | 否 | 期望经营范围（ADR-009）。申请时可空，<b>审核通过时必须确定</b> —— 否则商家上着架却对谁都不可见，且没有任何报错。 |
+| `communityNos` | `string`\[\] | 否 | 期望覆盖的社区。scope=COMMUNITY 时审核通过必须非空 |
+| `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
+| `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
+| `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
 
 **出参**（`data`）
 
@@ -2780,6 +2846,14 @@
 | `features` | [`Record_string_boolean`](#record_string_boolean) | 是 | 平台开关。取值见各自的使用点，例如 `merchant.apply.mp-visible` |
 | `minAppVer` | `string` | 是 | 低于它要提示升级 |
 | `serviceHours` | `string` | 是 | 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 |
+| `merchantApp` | `object`（见下） | 否 | 商家版 App 的下载地址，按平台各一条。 **由后端下发，端上不写死域名** —— 写在端上就有两处真源（官网一份、小程序一份）， 而这个项目已经错过一次：商家端链接曾写死成 `shop.example.com`，印了贴纸才发现。 **空的那一档不显示**，不是显示一个点不开的地址。iOS 版在苹果审核队列里， 上架前那一档是 TestFlight 公开链接，现在是空的。 |
+
+`merchantApp` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `android` | `string` | 是 | — |
+| `ios` | `string` | 是 | — |
 
 ### CardSpec
 

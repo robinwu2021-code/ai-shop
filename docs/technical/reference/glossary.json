@@ -3322,6 +3322,12 @@
           "ar": "قيد المراجعة"
         },
         {
+          "key": "merchant.applyUpdated",
+          "zh-CN": "已更新",
+          "en": "Updated",
+          "ar": "تم التحديث"
+        },
+        {
           "key": "merchant.callSales",
           "zh-CN": "有问题打 {p}",
           "en": "Questions? Call {p}",
@@ -3352,10 +3358,22 @@
           "ar": "السرعة"
         },
         {
-          "key": "merchant.getApp",
-          "zh-CN": "复制商家版下载地址",
-          "en": "Copy merchant app link",
-          "ar": "نسخ رابط تطبيق التاجر"
+          "key": "merchant.getAppAndroid",
+          "zh-CN": "复制安卓下载地址",
+          "en": "Copy Android link",
+          "ar": "نسخ رابط أندرويد"
+        },
+        {
+          "key": "merchant.getAppIos",
+          "zh-CN": "复制 iOS 下载地址",
+          "en": "Copy iOS link",
+          "ar": "نسخ رابط iOS"
+        },
+        {
+          "key": "merchant.getAppTitle",
+          "zh-CN": "开店请下载「虹选商家」App",
+          "en": "To run your shop, get the Hongxuan Merchant app",
+          "ar": "لإدارة متجرك، حمّل تطبيق التاجر"
         },
         {
           "key": "merchant.goodsTab",
@@ -3368,6 +3386,48 @@
           "zh-CN": "营业时间",
           "en": "Opening hours",
           "ar": "ساعات العمل"
+        },
+        {
+          "key": "merchant.intentCategory",
+          "zh-CN": "经营范围",
+          "en": "What you sell",
+          "ar": "ماذا تبيع"
+        },
+        {
+          "key": "merchant.intentEdit",
+          "zh-CN": "修改",
+          "en": "Edit",
+          "ar": "تعديل"
+        },
+        {
+          "key": "merchant.intentIndustry",
+          "zh-CN": "店铺类型",
+          "en": "Shop type",
+          "ar": "نوع المتجر"
+        },
+        {
+          "key": "merchant.intentLocked",
+          "zh-CN": "审核中不能修改，有问题请联系客服",
+          "en": "Cannot be edited while under review — contact support if something is wrong",
+          "ar": "لا يمكن التعديل أثناء المراجعة — تواصل مع الدعم عند وجود مشكلة"
+        },
+        {
+          "key": "merchant.intentResubmit",
+          "zh-CN": "重新提交",
+          "en": "Submit again",
+          "ar": "إعادة الإرسال"
+        },
+        {
+          "key": "merchant.intentStatus",
+          "zh-CN": "状态",
+          "en": "Status",
+          "ar": "الحالة"
+        },
+        {
+          "key": "merchant.intentTitle",
+          "zh-CN": "我的入驻意向",
+          "en": "My application",
+          "ar": "طلبي"
         },
         {
           "key": "merchant.noRating",
@@ -22773,6 +22833,12 @@
           "ar": "رقم هاتف المستلم غير صحيح: 11 رقمًا للصين، و3 إلى 20 رقمًا لبقية الدول"
         },
         {
+          "key": "err.apply.not_editable",
+          "zh-CN": "这份入驻意向现在改不了，只有待审核时可以修改",
+          "en": "This application can only be edited while it is awaiting review",
+          "ar": "لا يمكن تعديل هذا الطلب إلا أثناء انتظار المراجعة"
+        },
+        {
           "key": "err.appointment.slot_full",
           "zh-CN": "该时段已约满，请换一个时段",
           "en": "That time slot is fully booked — please pick another",
@@ -31613,6 +31679,7 @@
           "OTP_TEST_PHONE_FORMAT",
           "STORE_SLUG_INVALID",
           "STORE_SLUG_TAKEN",
+          "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
           "NOT_IMPLEMENTED",

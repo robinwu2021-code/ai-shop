@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 785 个接口**：后端已实现 709（90%）· 前端在调 714
+**合计 786 个接口**：后端已实现 710（90%）· 前端在调 715
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **103** 个接口 ｜ 后端已实现 **102**（99%）｜ 前端在调 **103**
+共 **104** 个接口 ｜ 后端已实现 **103**（99%）｜ 前端在调 **104**
 
 ### after-sale（4）
 
@@ -134,7 +134,7 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/mp/member-reach/{reachNo}/opened` | 点推送进店 | — | `ReachOpened` | 🔒 | ✅ | ✅ |
 
-### merchant（7）
+### merchant（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -143,6 +143,7 @@
 | GET | `/mp/merchant/{merchantNo}/acode` | 商家小程序码 | — | `StoreAcode` | — | ✅ | ✅ |
 | POST | `/mp/merchant/apply` | 商家入驻申请 | `MerchantApplyReq` | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/apply` | 我的入驻申请状态 | — | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
+| POST | `/mp/merchant/apply/{applyNo}` | 改入驻意向（仅待审核） | `MerchantApplyReq` | `MerchantApplyStatus` | 🔒 | ✅ | ✅ |
 | GET | `/mp/merchant/promoted` | 推荐门店（运营位） | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/merchant/visited` | 我买过的商家 | — | `数组` | 🔒 | ✅ | ✅ |
 
