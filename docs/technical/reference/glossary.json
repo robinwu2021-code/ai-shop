@@ -2254,6 +2254,12 @@
           "ar": "اختر موعد الزيارة للمتابعة"
         },
         {
+          "key": "goods.whyOffSale",
+          "zh-CN": "商家已下架这件商品",
+          "en": "The seller has taken this item off the shelf",
+          "ar": "أوقف البائع عرض هذا المنتج"
+        },
+        {
           "key": "goods.whyOutOfScope",
           "zh-CN": "当前收货地址不在销售区域（{scope}）",
           "en": "Your delivery address is outside the sales area ({scope})",
@@ -9390,6 +9396,18 @@
           "zh-CN": "下架",
           "en": "Delist",
           "ar": "إيقاف"
+        },
+        {
+          "key": "goods.offSaleConfirmHint",
+          "zh-CN": "下架后 {store} 的顾客看不到、也买不了它。随时可以再上架。",
+          "en": "Customers of {store} will no longer see or be able to buy it. You can list it again any time.",
+          "ar": "لن يراه زبائن {store} ولن يتمكنوا من شرائه. يمكنك عرضه مجدداً في أي وقت."
+        },
+        {
+          "key": "goods.offSaleConfirmTitle",
+          "zh-CN": "把这件商品下架？",
+          "en": "Delist this product?",
+          "ar": "إيقاف عرض هذا المنتج؟"
         },
         {
           "key": "goods.onSale",
