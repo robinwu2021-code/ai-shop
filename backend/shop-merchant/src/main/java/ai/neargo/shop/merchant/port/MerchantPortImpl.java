@@ -761,6 +761,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (m == null) {
             return new SaleScope(false, java.util.List.of(), 0);
         }
+        /*
+         * ★ **快递压过框过的范围** —— 与 {@link #reachableCommunities} 的 `expressOn`
+         * 分支同一条判据：那边开了快递就 `return minusExcluded(openCommunityNos(), …)`，
+         * **根本不看 `areas`**。所以这里也必须先判它，再去看 INCLUDE。
+         *
+         * <p>2026-09-29 之前这一段是反的：有 INCLUDE 就直接列地名、不看履约路。
+         * 于是「框了深圳市 + 盐湖区、又开了快递」的商家，实际可达是**全部开放社区**，
+         * 买家详情页却写着「销售区域：深圳市、盐湖区」—— <b>显示比实际小</b>。
+         * 买家在第三个区明明搜得到、买得到，点进去却看见一句「这儿不在范围内」。
+         *
+         * <p>本方法下面那段注释一直写着「判据与 reachableCommunities 同一段，不另写一遍：
+         * 另写的那份迟早与可见性分叉」—— 它只在**空 INCLUDE** 那个分支兑现了，
+         * 有 INCLUDE 时走不到，恰恰就是它警告的那种分叉。
+         *
+         * <p>暂时不显形只是因为开放社区恰好都落在框过的两个区里（2026-09-29 线上：
+         * 4403 深圳 2784 + 1408 运城 75 = 2859，与池里的数对得上）；开放第三个区就显形。
+         */
+        java.util.Set<String> expressChannels = enabledFulfillments(merchantNo, null);
+        boolean expressOn = expressChannels.isEmpty()
+                ? SHIPPING.equals(m.getFulfillmentReach())
+                : expressChannels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
+        if (expressOn) {
+            // 与空 INCLUDE 分支同样的处理：EXCLUDE 在这个三字段的 VO 里表达不了，
+            // 那一段本来就不精确，这里不新增一种不精确的说法。
+            return new SaleScope(true, java.util.List.of(), 0);
+        }
         List<MchServiceArea> includes = DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)

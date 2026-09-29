@@ -120,6 +120,34 @@ class GoodsSaleScopeFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 框了范围 + 开了快递 = 仍然不限地区 —— 快递压过框过的那几块")
+    void expressBeatsConfiguredAreas() throws Exception {
+        String m = merchant("SHIPPING");
+        area(m, "DISTRICT", "440309", "ACTIVE", "INCLUDE");
+        area(m, "DISTRICT", "440305", "ACTIVE", "INCLUDE");
+
+        var scope = detail(goods(m)).get("saleScope");
+
+        /*
+         * ★ 修之前这里是 false + 两个地名。
+         *
+         * 判据取自 reachableCommunities：它的 expressOn 分支
+         * `return minusExcluded(openCommunityNos(), allAreas)` —— **根本不看 areas**，
+         * 所以开了快递的商家实际可达是全部开放社区。而 saleScope 当时有 INCLUDE
+         * 就直接列地名、不看履约路，于是页面上那行**比实际可售范围小**：
+         * 买家在第三个区明明搜得到、买得到，点进详情却看见一句「这儿不在范围内」。
+         *
+         * 线上暂时不显形，只是因为开放社区恰好都落在框过的区里
+         * （2026-09-29：4403 深圳 2784 + 1408 运城 75 = 2859，与社区池对得上）。
+         */
+        assertThat(scope.get("unlimited").asBoolean())
+                .as("开了快递就送得到所有开放社区，不该只报框过的那两块")
+                .isTrue();
+        assertThat(scope.get("areaNames")).isEmpty();
+        assertThat(scope.get("areaCount").asInt()).isZero();
+    }
+
+    @Test
     @DisplayName("★★★ 没框范围 + 开了自送 = 不限地区")
     void deliveryWithNoAreaIsUnlimited() {
         var scope = merchantQuery.saleScope(merchant("ONSITE"));
