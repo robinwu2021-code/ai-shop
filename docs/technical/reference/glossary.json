@@ -23745,6 +23745,18 @@
           "ar": "لا يدعم هذا المنتج طريقة الدفع المختارة"
         },
         {
+          "key": "err.payout_account.name_mismatch",
+          "zh-CN": "收款账户的户名必须与营业执照的主体名称一致",
+          "en": "The account holder name must match the entity name on the business license",
+          "ar": "يجب أن يطابق اسم صاحب الحساب اسم الكيان في الرخصة التجارية"
+        },
+        {
+          "key": "err.payout_account.pending_exists",
+          "zh-CN": "已有一张收款账户在审核中，请等审核结果出来再提交",
+          "en": "A payout account is already awaiting review; please wait for the result",
+          "ar": "يوجد حساب استلام قيد المراجعة بالفعل؛ يرجى انتظار النتيجة"
+        },
+        {
           "key": "err.perm.builtin_role_readonly",
           "zh-CN": "{0} 是预置角色，不能修改。要调整请改代码并重新发布",
           "en": "{0} is a built-in role and cannot be edited",
@@ -24563,6 +24575,13 @@
       "table": "mch_payment_merchant",
       "class": "MchPaymentMerchant",
       "zh": "商家支付进件 —— **每通道一条**。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_payout_account",
+      "class": "MchPayoutAccount",
+      "zh": "供应商收款账户（ADR-011 自营供应商模式 · V358）。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -26985,6 +27004,13 @@
         "module": "shop-base"
       },
       {
+        "host": "BizKey",
+        "name": "PAYOUT_ACCOUNT",
+        "value": "PAC",
+        "zh": "供应商收款账户（ADR-011 自营供应商模式）。",
+        "module": "shop-base"
+      },
+      {
         "host": "Fulfillments",
         "name": "STORE_PICKUP",
         "value": "STORE_PICKUP",
@@ -28778,6 +28804,13 @@
       },
       {
         "host": "SysNotifyLog",
+        "name": "WEBHOOK",
+        "value": "WEBHOOK",
+        "zh": "群机器人 Webhook（企业微信）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysNotifyLog",
         "name": "SENT",
         "value": "SENT",
         "zh": "",
@@ -28816,6 +28849,13 @@
         "name": "BIZ_TEST",
         "value": "TEST",
         "zh": "运营端页面上手动触发的测试发送。",
+        "module": "shop-core"
+      },
+      {
+        "host": "SysNotifyLog",
+        "name": "BIZ_MERCHANT_APPLY",
+        "value": "MERCHANT_APPLY",
+        "zh": "新的商家入驻意向 —— 推给运营的那一条",
         "module": "shop-core"
       },
       {
@@ -31213,6 +31253,48 @@
         "module": "shop-merchant"
       },
       {
+        "host": "MchPayoutAccount",
+        "name": "PENDING",
+        "value": "PENDING",
+        "zh": "已提交，等运营核。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "生效中。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "已驳回，必须带原因 —— 原文回商家 B 端。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "DISABLED",
+        "value": "DISABLED",
+        "zh": "已停用：被新账户顶替，或运营主动停。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "PERSONAL_BANK_CARD",
+        "value": "PERSONAL_BANK_CARD",
+        "zh": "个人银行卡。",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchPayoutAccount",
+        "name": "CORPORATE",
+        "value": "CORPORATE",
+        "zh": "对公账户。",
+        "module": "shop-merchant"
+      },
+      {
         "host": "MchQualification",
         "name": "BUSINESS_LICENSE",
         "value": "BUSINESS_LICENSE",
@@ -31679,6 +31761,8 @@
           "OTP_TEST_PHONE_FORMAT",
           "STORE_SLUG_INVALID",
           "STORE_SLUG_TAKEN",
+          "PAYOUT_ACCOUNT_NAME_MISMATCH",
+          "PAYOUT_ACCOUNT_PENDING_EXISTS",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
