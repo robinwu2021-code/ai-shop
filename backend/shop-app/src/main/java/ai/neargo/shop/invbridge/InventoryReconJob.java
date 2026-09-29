@@ -104,16 +104,32 @@ public class InventoryReconJob implements JobHandler {
                     "SCAN_INCOMPLETE");
         }
 
-        if (!r.clean()) {
-            /*
-             * clean=false 有两种原因，运营看报告时要分得开：
-             * 差异（两边数不一样）与待搬（进销存里根本还没这个物料）。
-             * 后者不会出现在 diffs 里 —— 见 Report 的构造器注释。
-             */
+        /*
+         * clean=false 有两种原因，**而它们该落到不同的任务状态上**：
+         *
+         *   · 差异（两边数不一样）—— 真问题，FAILED，要人去查；
+         *   · 待搬（进销存里还没这个物料）—— 只是「还没建账」，**任务本身跑成功了**。
+         *
+         * 此前两种都判 FAILED。线上的结果是这个任务**天天红、永远红**
+         * （2026-09-29 实测：差异 0 条、待搬 32 个，runCount 36 次全失败），
+         * 而恒红会训练人忽略它 —— 真出差异那天同样没人看。
+         *
+         * <p><b>SUCCESS 不等于「可以切真相源」</b>。这两件事本来就该分开：
+         * 任务状态说的是「这轮跑完了吗」，能不能切由 detail 里那句话说了算。
+         * 所以待搬不为零时 detail 仍然写死「不得切换真相源」——
+         * 判据一个字都没放松，放松的只是「用红色表达一个正常状态」。
+         */
+        if (!r.diffs().isEmpty()) {
             return JobResult.failed(
                     "对差不为零：扫描 %d，差异 %d 条，待搬 %d 个 —— 不得切换真相源"
                             .formatted(r.scannedSkus(), r.diffs().size(), r.pending()),
                     "DIFF_NOT_CLEAN");
+        }
+
+        if (r.pending() > 0) {
+            return JobResult.ok(
+                    "差异 0（扫描 %d 个 SKU），但有 %d 个还没在进销存建账 —— **不得切换真相源**"
+                            .formatted(r.scannedSkus(), r.pending()));
         }
 
         return JobResult.ok("对差为零：扫描 %d 个 SKU，差异 0、待搬 0".formatted(r.scannedSkus()));

@@ -89,4 +89,32 @@ class InventoryReconJobTest {
         assertThat(r.status()).isEqualTo(ai.neargo.job.api.JobStatus.SUCCESS);
         assertThat(r.detail()).contains("209").contains("差异 0");
     }
+
+    /**
+     * <b>只有待搬、没有差异</b> —— 这是线上 2026-09-29 的实际状态
+     * （差异 0 条、待搬 32 个），而它此前被判 FAILED，于是这个任务
+     * <b>天天红、永远红</b>（36 次全失败）。恒红会训练人忽略它，
+     * 真出差异那天同样没人看。
+     *
+     * <p><b>但判据一个字都不能放松</b>：状态改成 SUCCESS 说的是「这轮跑完了」，
+     * 能不能切真相源由 detail 那句话说了算。所以这里**同时**断言两件事 ——
+     * 状态是 SUCCESS，且 detail 仍然写着不得切换。
+     * 只断言前者的话，下一个人把那句话删了也不会有人知道。
+     */
+    @Test
+    @DisplayName("★★★ 只有待搬、无差异 → 任务算成功，但 detail 仍说「不得切换真相源」")
+    void pendingOnlyIsSuccessButStillBlocksSwitch() {
+        InventoryReconJob job = jobReturning(new InventoryBackfillService.Report(
+                209, 0, 177, 32, null, List.of()));
+
+        JobResult r = job.run(null);
+
+        assertThat(r.status())
+                .as("待搬不是差异 —— 判它失败会让这个任务恒红，而恒红等于没人看")
+                .isEqualTo(ai.neargo.job.api.JobStatus.SUCCESS);
+        assertThat(r.detail())
+                .as("**判据不许放松**：任务成功不等于可以切真相源，那句话必须还在")
+                .contains("不得切换真相源");
+        assertThat(r.detail()).contains("32");
+    }
 }
