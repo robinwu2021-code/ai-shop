@@ -460,7 +460,8 @@ onShow(() => {
  * 只有把两处的值摆在一起才看得出是同色。
  */
 .row__tag {
-  margin-right: 12rpx;
+  /* 逻辑属性：阿语下整行翻转，标签要留在金额的「起始侧之前」而不是恒在左边 */
+  margin-inline-end: 12rpx;
   background: var(--sh-surface);
   color: var(--sh-sub);
 }
