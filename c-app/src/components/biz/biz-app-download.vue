@@ -125,22 +125,25 @@ function copy(url: string) {
   align-items: center;
   width: 420rpx;
   padding: 24rpx;
-  background: #ffffff;
-  border-radius: 8rpx;
+  background: var(--sh-qr-paper);
+  /* 圆角走 token 五档最小的那一档。码本身是方的，外框圆多少都不影响扫 */
+  border-radius: 16rpx;
 }
 .qr__row {
   display: flex;
 }
 /*
-  **颜色写死黑白是有意的**，不走 --sh-* ：二维码要的是最高对比，
-  换肤把它变成主题色或深色底就直接扫不出来了，而界面上看着仍然「有一张码」。
-  这也是整块 .getapp__qr 自带白底的原因。
+  两色走 --sh-qr-*，它们在 base.css 里**恒为纯黑纯白、不随皮肤变**。
+  最初我在这儿直接写了 #000/#fff 并注明「有意为之」—— 理由没错（换肤会让码扫不出来，
+  而界面上看着仍然有一张码），但位置错了：设计系统才是「这个颜色不参与换肤」
+  该被声明的地方，写在组件里等于每个画码的人各判断一次。
+  组件层写死颜色的守卫当场拦下了这一条。
 */
 .qr__cell {
-  background: #ffffff;
+  background: var(--sh-qr-paper);
 }
 .qr__cell--on {
-  background: #000000;
+  background: var(--sh-qr-ink);
 }
 .getapp__qrhint {
   display: block;
