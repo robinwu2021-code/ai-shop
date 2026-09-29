@@ -555,6 +555,119 @@ export const FIELDS = [
       { file: "ops-web/lib/types/finance.ts", type: "SettleBatchStatus" },
     ],
   },
+  /*
+   * ── 元器件（独立服务 elec-svc · 独立库 ai_shop_elec）──
+   *
+   * **clients 暂时是空的**，而不是把这些列 DISMISSED 掉：端上契约还没建
+   * （小程序分包是 P2 的事），今天没有第二份取值可对。空 clients 的含义是
+   * 「这一列已经判过：它确实是取值域，端上还没有对应声明」——
+   * 与「没人看过」在数据里分得开，这正是这张表存在的理由。
+   *
+   * ⚠️ **建端上契约那天要回来把 clients 填上**，否则两边的取值会各走各的，
+   * 而症状是「按状态筛，筛出来永远是空列表且不报错」。
+   */
+  {
+    concept: "厂牌状态",
+    field: "elc_manufacturer.status",
+    backend: { ddl: ["elc_manufacturer", "status"] },
+    clients: [],
+  },
+  {
+    concept: "厂牌别名的来源",
+    field: "elc_mfr_alias.source",
+    backend: { ddl: ["elc_mfr_alias", "source"] },
+    clients: [],
+  },
+  {
+    concept: "料号的来源",
+    field: "elc_part.source",
+    backend: { ddl: ["elc_part", "source"] },
+    clients: [],
+  },
+  {
+    concept: "料号状态",
+    field: "elc_part.status",
+    backend: { ddl: ["elc_part", "status"] },
+    clients: [],
+  },
+  {
+    concept: "买家看到的库存档位",
+    field: "elc_part_market.qty_band",
+    backend: { ddl: ["elc_part_market", "qty_band"] },
+    clients: [],
+  },
+  {
+    concept: "买家看到的货源家数档位",
+    field: "elc_part_market.source_band",
+    backend: { ddl: ["elc_part_market", "source_band"] },
+    clients: [],
+  },
+  {
+    concept: "询价单状态",
+    field: "elc_rfq.status",
+    backend: { ddl: ["elc_rfq", "status"] },
+    clients: [],
+  },
+  {
+    concept: "询价的发票要求",
+    field: "elc_rfq.need_invoice",
+    backend: { ddl: ["elc_rfq", "need_invoice"] },
+    clients: [],
+  },
+  {
+    concept: "询价的批次要求",
+    field: "elc_rfq.dc_req",
+    backend: { ddl: ["elc_rfq", "dc_req"] },
+    clients: [],
+  },
+  {
+    concept: "询价关单原因",
+    field: "elc_rfq.close_reason",
+    backend: { ddl: ["elc_rfq", "close_reason"] },
+    clients: [],
+  },
+  {
+    concept: "元器件库存行状态",
+    field: "elc_stock.status",
+    backend: { ddl: ["elc_stock", "status"] },
+    clients: [],
+  },
+  {
+    concept: "库存上传的导入方式",
+    field: "elc_stock_batch.mode",
+    backend: { ddl: ["elc_stock_batch", "mode"] },
+    clients: [],
+  },
+  {
+    concept: "库存上传批次的状态",
+    field: "elc_stock_batch.status",
+    backend: { ddl: ["elc_stock_batch", "status"] },
+    clients: [],
+  },
+  {
+    concept: "元器件供应商类型",
+    field: "elc_supplier.kind",
+    backend: { ddl: ["elc_supplier", "kind"] },
+    clients: [],
+  },
+  {
+    concept: "元器件供应商状态",
+    field: "elc_supplier.status",
+    backend: { ddl: ["elc_supplier", "status"] },
+    clients: [],
+  },
+  {
+    concept: "元器件供应商成员角色",
+    field: "elc_supplier_member.role",
+    backend: { ddl: ["elc_supplier_member", "role"] },
+    clients: [],
+  },
+  {
+    concept: "元器件供应商成员状态",
+    field: "elc_supplier_member.status",
+    backend: { ddl: ["elc_supplier_member", "status"] },
+    clients: [],
+  },
 ];
 
 /**
