@@ -490,3 +490,22 @@ a{color:inherit}
 .sp-row .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);display:flex;align-items:center;justify-content:center;font-size:12px}
 .sp-row.off .th,.sp-row.off .nm{opacity:.5}
 .sp-shelf.paused .sp-list{opacity:.5}
+
+/* 没设背景图（默认）：主色浅底往下淡到页面底色，信息卡压在上面 —— 店名这时在卡里 */
+.sp-hero.tint{height:72px;background:linear-gradient(180deg,var(--sh-primary-tint),var(--sh-bg))}
+.sp-hero.tint::before,.sp-hero.tint::after{content:none}
+.ph .ov.on-tint i,.ph .ov.on-tint .fav,.ph .ov.on-tint .sh{background:var(--sh-card);color:var(--sh-ink)}
+.ph .ov.on-tint .mpcap{background:var(--sh-card);color:var(--sh-ink);border-color:var(--sh-line)}
+.ph .ov .sp{flex:1}
+.sp-hcard .idrow{gap:10px;align-items:center}
+.sp-hcard .idrow .lg{width:44px;height:44px;border-radius:12px;background:var(--sh-primary-tint);color:var(--sh-primary-text);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex:0 0 auto}
+.sp-hcard .idrow .mn{flex:1;min-width:0}
+.sp-hcard .idrow .nm{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-hcard .idrow .ln{display:flex;gap:6px;align-items:center;font-size:10px;color:var(--sh-sub);margin-top:2px;white-space:nowrap}
+.sp-hcard .idrow .st{background:var(--sh-primary);color:var(--sh-on-primary);border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:600}
+.sp-hcard .idrow .st.off{background:var(--sh-faint);color:var(--sh-sub)}
+/* 页签：文字 + 当前项一道短线（sh-tabs 的 line 变体）。与下面的分类 chip 分成两种样子 */
+.tabs.line{display:flex;gap:24px;padding:0 2px;border-bottom:1px solid var(--sh-faint)}
+.tabs.line span{padding:9px 0 8px;color:var(--sh-sub);font-size:12px;position:relative}
+.tabs.line span.on{color:var(--sh-ink);font-weight:600}
+.tabs.line span.on::after{content:"";position:absolute;left:50%;bottom:0;width:16px;height:2.5px;border-radius:2px;background:var(--sh-primary);transform:translateX(-50%)}
