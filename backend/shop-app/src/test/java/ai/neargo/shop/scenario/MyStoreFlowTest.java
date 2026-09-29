@@ -182,12 +182,28 @@ class MyStoreFlowTest {
         call(post("/mp/store/" + visited.getStoreNo() + "/enter"), buyer, "{\"source\":\"LIST\"}");
         call(post("/mp/store/" + closed.getStoreNo() + "/enter"), buyer, "{\"source\":\"LIST\"}");
 
-        JsonNode page = data(get("/mp/store/nearby").param("communityNo", community)
+        // keyword 收窄到本主体：全量跑时有几十家全城可达的店，默认一页 20 条会把没坐标的那家挤出去
+        JsonNode page = data(get("/mp/store/nearby").param("communityNo", community).param("keyword", "戊")
                 .param("latE6", String.valueOf(lat)).param("lngE6", String.valueOf(lng)), buyer);
-        List<String> order = storeNos(page.get("records"));
-        assertThat(order).containsExactly(near.getStoreNo(), far.getStoreNo(), def.getStoreNo());
-        assertThat(page.get("records").get(0).get("distanceM").asInt()).isBetween(100, 120);
-        assertThat(page.get("records").get(2).get("distanceM").isNull()).isTrue();
+        // 全量跑时别的测试建的 PLATFORM / CITY 范围商家对所有社区可达，也会出现在这一页 ——
+        // 顺序只比本主体的门店；「有距离的全在没距离的前面」对整页成立
+        JsonNode records = page.get("records");
+        List<String> all = storeNos(records);
+        assertThat(all).doesNotContain(visited.getStoreNo(), closed.getStoreNo());
+        List<String> own = all.stream().filter(no -> no.startsWith("STMYS0005") || no.equals(def.getStoreNo())).toList();
+        assertThat(own).containsExactly(near.getStoreNo(), far.getStoreNo(), def.getStoreNo());
+        boolean seenNull = false;
+        for (JsonNode r : records) {
+            boolean isNull = r.get("distanceM").isNull();
+            assertThat(seenNull && !isNull).as("有距离的排在了没距离的后面：%s", r.get("storeNo")).isFalse();
+            seenNull |= isNull;
+            if (r.get("storeNo").asString().equals(near.getStoreNo())) {
+                assertThat(r.get("distanceM").asInt()).isBetween(100, 120);
+            }
+            if (r.get("storeNo").asString().equals(def.getStoreNo())) {
+                assertThat(isNull).isTrue();
+            }
+        }
 
         // 停用的店不在附近，但在我的店里（压淡显示，藏起来用户会以为店没了）
         JsonNode mine = data(get("/mp/store/mine"), buyer);
@@ -208,8 +224,10 @@ class MyStoreFlowTest {
 
         JsonNode mine = data(get("/mp/store/mine"), null);
         assertThat(mine.size()).isZero();
-        JsonNode page = data(get("/mp/store/nearby").param("communityNo", community), null);
-        assertThat(storeNos(page.get("records"))).containsExactly(storeNo);
+        JsonNode page = data(get("/mp/store/nearby").param("communityNo", community).param("keyword", "己"), null);
+        // 全量跑时会混进全城可达的商家，只断「本店在、且都是营业中的」
+        assertThat(storeNos(page.get("records"))).contains(storeNo);
+        page.get("records").forEach(r -> assertThat(r.get("status").asString()).isEqualTo("ACTIVE"));
     }
 
     @Test
