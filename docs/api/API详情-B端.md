@@ -3131,6 +3131,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `industries` | [`MasterDataIndustry`](#masterdataindustry)\[\] | 是 | 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 |
+| `intentIndustries` | [`MasterDataIntentIndustry`](#masterdataintentindustry)\[\] | 是 | 行业的**意向口径**：`industries` 之外还带上这一期尚未开放的那几档。 两个列表量的不是同一件事。`industries` 回答「平台能不能接这类商家」—— 它挂着小微白名单与执照经营范围，进件与审核照它走。这一份回答 「商家能不能表达想做这一类」。**入驻意向那一屏要用这一份**： 一期只开了零售与生活服务两档，按前一把尺渲染的话，想开餐饮的人 只能选「线下零售」，而意向表的价值恰恰在于收集平台还接不了的那些。 |
 | `subjects` | [`MasterDataSubject`](#masterdatasubject)\[\] | 是 | 可选主体类型（法律形态）。决定资质要求与结算账户形态 |
 | `channels` | [`MasterDataChannel`](#masterdatachannel)\[\] | 是 | 可用支付通道与其能力位 |
 | `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
@@ -3695,6 +3696,7 @@ _无字段_
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
 | `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 | `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
+| `industryNote` | `string` | 否 | 商家**自己写的**行业（V360）。只在 `industry === "OTHER"` 时有意义 —— 选了具体行业时后端会置空，留着就是两个对不上的答案。 `sys_industry` 只有七个大类，而意向表要收的正是归不进大类的那些。 |
 
 
 #### GET `/biz/merchant/debt`
@@ -7823,6 +7825,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `industries` | [`MasterDataIndustry`](#masterdataindustry)\[\] | 是 | 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 |
+| `intentIndustries` | [`MasterDataIntentIndustry`](#masterdataintentindustry)\[\] | 是 | 行业的**意向口径**：`industries` 之外还带上这一期尚未开放的那几档。 两个列表量的不是同一件事。`industries` 回答「平台能不能接这类商家」—— 它挂着小微白名单与执照经营范围，进件与审核照它走。这一份回答 「商家能不能表达想做这一类」。**入驻意向那一屏要用这一份**： 一期只开了零售与生活服务两档，按前一把尺渲染的话，想开餐饮的人 只能选「线下零售」，而意向表的价值恰恰在于收集平台还接不了的那些。 |
 | `subjects` | [`MasterDataSubject`](#masterdatasubject)\[\] | 是 | 可选主体类型（法律形态）。决定资质要求与结算账户形态 |
 | `channels` | [`MasterDataChannel`](#masterdatachannel)\[\] | 是 | 可用支付通道与其能力位 |
 | `serviceScopes` | [`ServiceScope`](#servicescope)\[\] | 是 | **这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。 端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。 拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。 |
@@ -7843,6 +7846,14 @@ _无字段_
 | `industry` | `string` | 是 | 行业码（`sys_industry.industry`），提交申请时回传的就是它 |
 | `name` | `string` | 是 | 展示名。**取服务端的**，不要在端上再维护一份翻译 |
 | `microAllowed` | `boolean` | 是 | 该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错 |
+
+### MasterDataIntentIndustry
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `industry` | `string` | 是 | 行业码（`sys_industry.industry`） |
+| `name` | `string` | 是 | 展示名。取服务端的 |
+| `open` | `boolean` | 是 | 平台这一期是否已开放。 **false 时给一句「这一类还没开放，我们会先记下来」，但不要禁用、不要拦提交** —— 拦了就等于又拿准入的尺子量意向，那正是这个字段存在要解决的问题。 |
 
 ### MasterDataSubject
 
@@ -8059,6 +8070,7 @@ _无字段_
 | `licenses` | `string`\[\] | 否 | 资质图片（营业执照/身份证）。**选填** —— 一期 EDI 不强制。 与下面的结算账户一样，属于**分账主体开户**而不是入驻申请本身（ADR-002）： `usr_merchant_payment` 是独立一张表、有自己的 `apply_status`，就是这个道理。 申请时能传就传，通过后在 B 端补也行 —— 逼一个还没通过审核的人先传营业执照， 只会把人挡在门外。 |
 | `settleAccountType` | [`SettleAccountType`](#settleaccounttype) | 否 | 结算账户类型。真实账号由后端持有，C 端与 B 端都不回显（ADR-002 §5）。**选填**，同上 |
 | `industry` | `string` | 否 | 行业（`sys_industry.industry`）。 **它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。 后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。 |
+| `industryNote` | `string` | 否 | 商家**自己写的**行业（V360）。只在 `industry === "OTHER"` 时有意义 —— 选了具体行业时后端会置空，留着就是两个对不上的答案。 `sys_industry` 只有七个大类，而意向表要收的正是归不进大类的那些。 |
 
 ### MerchantApplyReqBody
 
