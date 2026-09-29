@@ -121,6 +121,9 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final SettlePort settlePort;
     private final StatusLogMapper statusLogMapper;
+
+    /** 自动确认收货要跳过争议中的单（AFTER_SALE_OPEN），判据与结算入批同一份。 */
+    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
     private final PickupQueryPort pickupPort;
     /** 自提点匹配的规则在聚落域一处（归属链 + 距离），这里只负责把商家的许可点喂进去 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
@@ -280,6 +283,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
                             StatusLogMapper statusLogMapper,
+                            ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
@@ -312,6 +316,7 @@ public class OrderServiceImpl implements OrderService {
         this.campaignPort = campaignPort;
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
+        this.afterSaleMapper = afterSaleMapper;
         this.pickupPort = pickupPort;
         this.communityQueryPort = communityQueryPort;
         this.userPort = userPort;
@@ -2009,6 +2014,87 @@ public class OrderServiceImpl implements OrderService {
         appendStatusLog(subOrderNo, OrdSubOrder.COMPLETED, "已确认收货",
                 OrdStatusLog.BY_USER, SecurityUtils.currentUserNo());
         return detail(subOrderNo);
+    }
+
+    /**
+     * 售后未闭环的状态 —— 与 {@code SettleSourcePortImpl.AFTER_SALE_OPEN} 同一份口径。
+     *
+     * <p>两处各写一遍迟早分岔，而分岔的方向是危险的那一侧：漏登记一个状态，
+     * 争议中的单会被自动确认收货，等于替买家签了字。
+     */
+    private static final java.util.Set<String> AFTER_SALE_OPEN = java.util.Set.of(
+            ai.neargo.shop.trade.entity.OrdAfterSale.APPLIED,
+            ai.neargo.shop.trade.entity.OrdAfterSale.REFUNDING,
+            ai.neargo.shop.trade.entity.OrdAfterSale.ARBITRATING);
+
+    @Override
+    @Transactional
+    public int autoConfirmReceipt(long now, int shippedDays) {
+        if (shippedDays <= 0) {
+            return 0;
+        }
+        List<OrdSubOrder> candidates = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getStatus, OrdSubOrder.FULFILLING)));
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+        /*
+         * 自提类排除：超时没来取要的是退款或催取，不是替买家签收。
+         * 挤进同一个 job 的话，「超时未取」会被静默结算掉 —— 而那笔钱本该退。
+         */
+        List<OrdSubOrder> shipped = candidates.stream()
+                .filter(x -> !Fulfillments.isPickup(x.getFulfillment()))
+                .toList();
+        if (shipped.isEmpty()) {
+            return 0;
+        }
+        List<String> subNos = shipped.stream().map(OrdSubOrder::getSubOrderNo).toList();
+
+        /*
+         * 发货时间取「进入 FULFILLING 那条流水的 at」——
+         * `ord_sub_order` 上**没有发货时间字段**（只有 created_at / updated_at），
+         * 而 updated_at 会被之后任何一次改动刷新，拿它当发货时间会让单子永远不到期。
+         */
+        Map<String, Long> shippedAt = DataScopeContext.executeWithoutScope(() ->
+                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                                .in(OrdStatusLog::getSubOrderNo, subNos)
+                                .eq(OrdStatusLog::getStatus, OrdSubOrder.FULFILLING)))
+                .stream()
+                .collect(Collectors.toMap(OrdStatusLog::getSubOrderNo,
+                        x -> x.getAt() == null ? Long.MAX_VALUE : x.getAt(),
+                        Math::max));
+
+        java.util.Set<String> blocked = DataScopeContext.executeWithoutScope(() ->
+                        afterSaleMapper.selectList(Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, subNos)
+                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus, AFTER_SALE_OPEN)))
+                .stream()
+                .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
+                .collect(Collectors.toSet());
+
+        long deadline = now - (long) shippedDays * 86_400_000L;
+        int n = 0;
+        for (OrdSubOrder sub : shipped) {
+            if (blocked.contains(sub.getSubOrderNo())) {
+                continue;
+            }
+            /*
+             * 查不到发货流水的按 MAX_VALUE 处理 = 永不到期。
+             * 宁可多等：没有流水说明状态是被别的路径改的，那种单自动签收的风险更高。
+             */
+            Long at = shippedAt.get(sub.getSubOrderNo());
+            if (at == null || at > deadline) {
+                continue;
+            }
+            sub.setStatus(OrdSubOrder.COMPLETED);
+            DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.COMPLETED,
+                    "发货满 " + shippedDays + " 天自动确认收货",
+                    OrdStatusLog.BY_SYSTEM, null);
+            n++;
+        }
+        return n;
     }
 
     // ---------------------------------------------------------------- 拆单

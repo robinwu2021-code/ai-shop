@@ -85,6 +85,27 @@ public interface OrderService {
     int closeExpiredOrders(long now);
 
     /**
+     * 超时自动确认收货（TDD-快递100商家寄件 §9 · B 批）。
+     *
+     * <p><b>不做这一步，货款永远结算不出来</b>：发货之后没有任何东西推动订单前进 ——
+     * {@code trade/job/} 下原本只有「未付款关单」「售后超时」「退款重试」三个，
+     * 发出去的单停在 {@code FULFILLING} 直到买家自己想起来点确认。
+     * 而结算要等 {@code COMPLETED}，于是商家的钱卡在那儿，没有任何地方会报错。
+     *
+     * <p><b>只动配送类</b>（{@code EXPRESS} / {@code MERCHANT_DELIVERY} 等）：
+     * 自提类超时是「没来取」，那要的是退款或补取货通知，不是替买家签收 ——
+     * 两件事挤进一个 job 的话，超时未取会被静默结算掉。
+     *
+     * <p><b>售后未闭环的不动</b>：与结算入批同一条判据（{@code SettleReadiness#afterSaleOpen}）。
+     * 争议中的单自动确认收货，等于替一方把钱定下来。
+     *
+     * @param now      判定基准（毫秒）—— 参数化是为了让测试不必真等 15 天
+     * @param shippedDays 发货后多少天自动确认
+     * @return 自动确认的子单数
+     */
+    int autoConfirmReceipt(long now, int shippedDays);
+
+    /**
      * 关掉指定的一笔待支付单（对账自查用：通道明确回「没有这笔」）。
      *
      * <p>与 {@link #closeExpiredOrders} 走同一段关单逻辑 —— 关单要连着释放库存、券、积分，
