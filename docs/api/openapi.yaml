@@ -98,6 +98,18 @@ components:
         serviceHours: 
           type: "string"
           description: "客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断"
+        merchantApp: 
+          type: "object"
+          properties: 
+            android: 
+              type: "string"
+            ios: 
+              type: "string"
+          required: 
+            - "android"
+            - "ios"
+          additionalProperties: false
+          description: "商家版 App 的下载地址，按平台各一条。\n\n**由后端下发，端上不写死域名** —— 写在端上就有两处真源（官网一份、小程序一份）， 而这个项目已经错过一次：商家端链接曾写死成 `shop.example.com`，印了贴纸才发现。\n\n**空的那一档不显示**，不是显示一个点不开的地址。iOS 版在苹果审核队列里， 上架前那一档是 TestFlight 公开链接，现在是空的。"
       required: 
         - "defaultSkin"
         - "features"
@@ -12916,6 +12928,45 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/merchant/apply/{applyNo}": 
+    post: 
+      operationId: "updateMerchantApply"
+      summary: "改入驻意向（仅待审核）"
+      tags: 
+        - "merchant"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "applyNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MerchantApplyStatus"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/MerchantApplyReq"
   "/mp/review": 
     get: 
       operationId: "reviewList"

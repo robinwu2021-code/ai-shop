@@ -201,6 +201,7 @@ const RESPONSE_TYPES = {
   myMerchantApply: "MerchantApplyStatus",
   masterData: "MasterData",
   merchantApply: "MerchantApplyStatus",
+  updateMerchantApply: "MerchantApplyStatus",
   reviewList: "Review[]",
   bootstrapConfig: "BootstrapConfig",
   myFission: "MyFission",
@@ -272,6 +273,7 @@ const REQUEST_TYPES = {
   chooseQuote: "ChooseQuoteReq",
   merchantList: "MerchantListQuery",
   merchantApply: "MerchantApplyReq",
+  updateMerchantApply: "MerchantApplyReq",
   reviewList: "ReviewListQuery",
   createReview: "CreateReviewReq",
 };
