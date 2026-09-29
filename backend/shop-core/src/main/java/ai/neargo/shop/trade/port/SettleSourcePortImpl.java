@@ -11,6 +11,8 @@ import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.entity.OrdExpressPickup;
+import ai.neargo.shop.trade.mapper.TradeMappers.ExpressPickupMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -28,14 +30,24 @@ public class SettleSourcePortImpl implements SettleSourcePort {
     private final StatusLogMapper statusLogMapper;
     private final AfterSaleMapper afterSaleMapper;
 
+    /**
+     * 平台代寄的实付快递费从这里来（§9 AC22）。
+     *
+     * <p>没有寄件记录 = 商家自己填的单号 = 自付，结算不扣 —— 判据是「有没有这条记录」，
+     * 不是「费用是不是 0」：平台代寄但还没称重回传时费用也是 0。
+     */
+    private final ExpressPickupMapper expressPickupMapper;
+
     public SettleSourcePortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                 OrderMapper orderMapper, StatusLogMapper statusLogMapper,
-                                AfterSaleMapper afterSaleMapper) {
+                                AfterSaleMapper afterSaleMapper,
+                                ExpressPickupMapper expressPickupMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.orderMapper = orderMapper;
         this.statusLogMapper = statusLogMapper;
         this.afterSaleMapper = afterSaleMapper;
+        this.expressPickupMapper = expressPickupMapper;
     }
 
     /**
@@ -280,13 +292,52 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                 .collect(Collectors.groupingBy(OrdItem::getSubOrderNo,
                         Collectors.summingInt(i -> i.getQty() == null ? 0 : i.getQty())));
 
+        Map<String, OrdExpressPickup> pickups = pickupsOf(
+                subs.stream().map(OrdSubOrder::getSubOrderNo).toList());
+
         return subs.stream()
-                .map(s -> new SettleSource(s.getSubOrderNo(), s.getEntityNo(), s.getTrafficSource(),
-                        nz(s.getPayAmount()), nz(s.getDiscountPlatform()), nz(s.getDiscountMerchant()),
-                        s.getPickupNo(), qtyBySub.getOrDefault(s.getSubOrderNo(), 0),
-                        s.getStoreNo(), nz(s.getPointsDeductMinor()), nz(s.getPointsFeeMinor()),
-                        payChannel, payScene))
+                .map(s -> {
+                    OrdExpressPickup p = pickups.get(s.getSubOrderNo());
+                    return new SettleSource(s.getSubOrderNo(), s.getEntityNo(), s.getTrafficSource(),
+                            nz(s.getPayAmount()), nz(s.getDiscountPlatform()), nz(s.getDiscountMerchant()),
+                            s.getPickupNo(), qtyBySub.getOrDefault(s.getSubOrderNo(), 0),
+                            s.getStoreNo(), nz(s.getPointsDeductMinor()), nz(s.getPointsFeeMinor()),
+                            payChannel, payScene,
+                            nz(s.getFreightAmount()),
+                            p == null ? 0L : nz(p.getFreightMinor()),
+                            shipModeOf(s, p));
+                })
                 .toList();
+    }
+
+    /**
+     * 这些子单的寄件记录。**批量取**：结算一批几百单，逐单查就是 N+1。
+     *
+     * <p>取消掉的寄件不算 —— 那单最后是商家自己寄的。
+     */
+    private Map<String, OrdExpressPickup> pickupsOf(List<String> subOrderNos) {
+        if (subOrderNos.isEmpty()) {
+            return Map.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> expressPickupMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers.<OrdExpressPickup>lambdaQuery()
+                                .in(OrdExpressPickup::getSubOrderNo, subOrderNos)
+                                .ne(OrdExpressPickup::getStatus, OrdExpressPickup.CANCELLED)))
+                .stream()
+                .collect(Collectors.toMap(OrdExpressPickup::getSubOrderNo, x -> x, (a, b) -> a));
+    }
+
+    /**
+     * 谁付的快递费（§9 AC22）。
+     *
+     * <p>非快递单为 null：自提与商家自送没有快递费这回事。
+     * 快递单有寄件记录 = 平台代寄，没有 = 商家自己填的单号、自己付。
+     */
+    private static String shipModeOf(OrdSubOrder s, OrdExpressPickup p) {
+        if (!ai.neargo.shop.common.Fulfillments.EXPRESS.equals(s.getFulfillment())) {
+            return null;
+        }
+        return p == null ? SettleSourcePort.SHIP_MERCHANT_SELF : SettleSourcePort.SHIP_PLATFORM_CALL;
     }
 
     private static long nz(Long v) {

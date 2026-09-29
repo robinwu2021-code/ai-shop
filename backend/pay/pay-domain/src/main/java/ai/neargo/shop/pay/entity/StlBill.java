@@ -92,18 +92,60 @@ public class StlBill extends BaseEntity {
     /** 优惠档。今天没有任何地方会写它 —— 真出现时应由费率版本自己标明，不在结算侧猜 */
     public static final String FEE_PROMO = "PROMO";
 
+    /** 与 {@code SettleSourcePort.SHIP_PLATFORM_CALL} 同值 —— 取值域定义在 spi，这里只是转出口。 */
+    public static final String PLATFORM_CALL = ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_PLATFORM_CALL;
+    /** 与 {@code SettleSourcePort.SHIP_MERCHANT_SELF} 同值。 */
+    public static final String MERCHANT_SELF = ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_MERCHANT_SELF;
+    /** 实付高于代收：商家填的标称重量不准。 */
+    public static final String DIFF_OVERWEIGHT = "OVERWEIGHT";
+    /** 实付高于代收：收货地在模板的加收地区。 */
+    public static final String DIFF_REGION_SURCHARGE = "REGION_SURCHARGE";
+    /** 实付超过代收的 200% 上限：只扣到上限，差额等人工处理（§9 AC24）。 */
+    public static final String DIFF_OVER_CAP = "OVER_CAP";
+
     private String settleNo;
     private String subOrderNo;
     private String orderNo;
     private String entityNo;
 
-    /** 应结基数 = 用户实付 + **平台补贴的优惠**（平台券的钱最终要给商家）。 */
+    /**
+     * 应结基数 = 货款 + **平台补贴的优惠**（平台券的钱最终要给商家）。
+     *
+     * <p><b>不含运费</b>（§9 AC21）：运费是代收代付的钱，进了这里就等于让商家
+     * 为平台代收的运费付佣金。它单独落在 {@link #freightIncomeMinor}。
+     */
     private Long grossMinor;
 
     private Long commissionMinor;
     private Long serviceFeeMinor;
 
-    /** 商家实得 = 基数 - 佣金 - 服务费。 */
+    /**
+     * 买家付的运费（代收）。**不进 {@link #grossMinor}，所以不进佣金基数。**
+     *
+     * <p>非快递单为 0：只有 {@code EXPRESS} 会走运费模板（`OrderServiceImpl#freightQuotes`）。
+     */
+    private Long freightIncomeMinor;
+
+    /**
+     * 平台实付给快递公司的钱。**只有平台代寄才有**。
+     *
+     * <p>商家自己填单号发货时是商家自付，平台一分没出，这里是 0 ——
+     * 扣了就是收两遍。判据是 {@link #freightShipMode}。
+     */
+    private Long freightCostMinor;
+
+    /** {@link #PLATFORM_CALL} / {@link #MERCHANT_SELF}；非快递单为 null。 */
+    private String freightShipMode;
+
+    /** 实付与代收有差额时的原因，见 {@link #DIFF_OVERWEIGHT} / {@link #DIFF_REGION_SURCHARGE}。 */
+    private String freightDiffReason;
+
+    /**
+     * 商家实得 = 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费。
+     *
+     * <p>平台代寄且不超重时后两项对消，回到「货款 − 佣金」；
+     * 商家自寄时 {@code freightCostMinor} 为 0，运费全额留给商家。
+     */
     private Long netMinor;
 
     private String trafficSource;

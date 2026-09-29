@@ -51,7 +51,7 @@ class PointsFeeFlowTest {
     void settleSourceCarriesFee() {
         var src = new SettleSourcePort.SettleSource(
                 "SUB-F", "M0001", "PLATFORM", 8_000L, 0L, 0L, null, 1, "ST001", 0L, 300L,
-                "WECHAT", "MP_WECHAT");
+                "WECHAT", "MP_WECHAT", 0L, 0L, null);
 
         assertThat(src.pointsFeeMinor()).isEqualTo(300L);
     }
@@ -61,7 +61,7 @@ class PointsFeeFlowTest {
     void feeAndDeductionAreOppositeDirections() {
         var src = new SettleSourcePort.SettleSource(
                 "SUB-G", "M0001", "PLATFORM", 8_000L, 0L, 0L, null, 1, "ST001",
-                2_000L, 300L, "WECHAT", "MP_WECHAT");
+                2_000L, 300L, "WECHAT", "MP_WECHAT", 0L, 0L, null);
 
         // 抵扣：平台**付给**收单商家（出池）；费用金：平台**向发放商家收**（入池）。
         // 并成一个字段的话，一张既发分又收分的单子会把两笔抵消掉，

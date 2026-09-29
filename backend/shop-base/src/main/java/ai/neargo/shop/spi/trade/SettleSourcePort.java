@@ -166,10 +166,26 @@ public interface SettleSourcePort {
      * @param payScene   下单端 MP_WECHAT / IOS / …（{@code PayScenes}）。与通道不是一回事：
      *                   App 两个通道都能走。报表按端切分要用它
      */
+    /** 平台叫快递（快递100），快递费平台先垫，结算时从商家收款扣。 */
+    String SHIP_PLATFORM_CALL = "PLATFORM_CALL";
+    /** 商家自己寄、自己付，平台不扣 —— 扣了就是收两遍。 */
+    String SHIP_MERCHANT_SELF = "MERCHANT_SELF";
+
+    /**
+     * @param freightIncomeMinor 买家付的运费（代收）。<b>{@code payAmount} 已经含了它</b> ——
+     *                           结算侧要把它从佣金基数里减出去，否则商家为平台代收的运费付佣金。
+     *                           非快递单为 0：只有 EXPRESS 走运费模板。
+     * @param freightCostMinor   平台实付给快递公司的钱。<b>只有平台代寄才有</b>；
+     *                           商家自己填单号发货时是商家自付，这里是 0 —— 扣了就是收两遍。
+     * @param freightShipMode    {@code PLATFORM_CALL} / {@code MERCHANT_SELF}；非快递单为 null。
+     *                           它是「扣不扣快递费」的唯一判据，不要从 {@code freightCostMinor}
+     *                           是不是 0 反推：平台代寄但还没称重回传时它也是 0。
+     */
     record SettleSource(String subOrderNo, String merchantNo, String trafficSource,
                         long payAmount, long discountPlatform, long discountMerchant,
                         String pickupNo, int itemCount, String storeNo,
                         long pointsDeductMinor, long pointsFeeMinor,
-                        String payChannel, String payScene) {
+                        String payChannel, String payScene,
+                        long freightIncomeMinor, long freightCostMinor, String freightShipMode) {
     }
 }
