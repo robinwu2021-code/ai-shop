@@ -73,28 +73,25 @@ const tabs = computed(() => [
   { key: "info" as const, label: String(t("store.tabInfo")) },
 ]);
 
-// ---------------------------------------------------------------- 商品：左分类右列表
+// ---------------------------------------------------------------- 商品：常买一栏 + 分类 + 双列
 
 const hasFrequent = computed(() => frequent.value.some((f) => f.times > 0));
 
 /**
- * 左栏：「我常买」（买过的人才有）→「热卖」→ 店主排的货架。
- * 货架是店主自己排的顺序、自己起的名字（「本地时鲜」而不是「蔬菜」）。
+ * 分类（横排，不做左右分栏 —— 2026-09-29 用户定）：「全部」+ 店主排的货架。
+ * 货架是店主自己排的顺序、自己起的名字（「本地时鲜」而不是「蔬菜」）；
+ * 少于一个货架时不画这一排：一个恒真的筛选只是占地方。
  */
-const rail = computed(() => {
-  const out: { key: string; label: string }[] = [];
-  if (hasFrequent.value) out.push({ key: "@frequent", label: String(t("store.frequent")) });
-  out.push({ key: "@hot", label: String(t("store.hot")) });
-  for (const c of data.value?.categories ?? []) out.push({ key: c.categoryNo, label: c.name });
-  return out;
-});
-/** 空 = 还没点过，取左栏第一格（老客是「我常买」，新访客是「热卖」） */
-const picked = ref("");
-const current = computed(() => picked.value || rail.value[0]?.key || "@hot");
+const ALL = "@all";
+const cats = computed(() => [
+  { key: ALL, label: String(t("store.allCats")) },
+  ...(data.value?.categories ?? []).map((c) => ({ key: c.categoryNo, label: c.name })),
+]);
+const cat = ref(ALL);
 
 /**
- * 右栏的商品。店内搜索跨全部分类 —— 他搜「番茄」时不该因为左边停在「粮油」而搜不到。
- * 「热卖」按销量排；售罄的不藏，压淡（藏起来他会以为这家店没有）。
+ * 网格里的商品。「全部」按销量排（热卖在前）；店内搜索跨全部分类 ——
+ * 他搜「番茄」时不该因为停在「粮油」而搜不到。售罄的不藏（格子上写售罄、没有加号）。
  */
 const listed = computed(() => {
   const all = data.value?.goods ?? [];
@@ -102,10 +99,11 @@ const listed = computed(() => {
   if (k) {
     return all.filter((g) => g.title.toLowerCase().includes(k) || g.subtitle.toLowerCase().includes(k));
   }
-  if (current.value === "@hot") return [...all].sort((a, b) => (b.sales ?? 0) - (a.sales ?? 0));
-  return all.filter((g) => g.categoryNo === current.value);
+  if (cat.value === ALL) return [...all].sort((a, b) => (b.sales ?? 0) - (a.sales ?? 0));
+  return all.filter((g) => g.categoryNo === cat.value);
 });
-const showFrequent = computed(() => !keyword.value.trim() && current.value === "@frequent");
+/** 「我常买」一栏：买过的人才有；搜索时收起，别和搜索结果抢位置 */
+const showFrequent = computed(() => hasFrequent.value && !keyword.value.trim());
 
 function soldOut(g: Goods) {
   return g.skus.every((s) => (s.stock ?? 0) <= 0);
@@ -487,68 +485,72 @@ onShareTimeline(() =>
       <!-- 领券：领了券再挑货 -->
       <biz-coupon-strip v-if="!closed" :merchant-no="entityNo"></biz-coupon-strip>
 
-      <view class="tabs">
-        <sh-tabs :items="tabs" :active="tab" @change="switchTab"></sh-tabs>
+      <!-- 三个页签用分段控件：下面的分类是 chip，两排长得一样就分不出哪排是页、哪排是筛选 -->
+      <view class="tabs sh-row">
+        <text
+          v-for="it in tabs"
+          :key="it.key"
+          class="sh-seg sh-seg--fill"
+          :class="{ 'sh-seg--on': tab === it.key }"
+          @tap="switchTab(it.key)"
+        >{{ it.label }}</text>
       </view>
 
-      <!-- 商品：左分类右列表 -->
-      <view v-if="tab === 'goods'" class="menu">
-        <input v-model="keyword" maxlength="32" class="txt-sub search" :placeholder="$t('store.searchPh')" />
-        <view class="menu__body sh-row">
-          <scroll-view scroll-y class="rail">
-            <text
-              v-for="c in rail"
-              :key="c.key"
-              class="txt-sub rail__item"
-              :class="{ 'is-on txt-bold': !keyword.trim() && current === c.key }"
-              @tap="picked = c.key; keyword = ''"
-            >{{ c.label }}</text>
-          </scroll-view>
+      <!--
+        商品（2026-09-29 用户定：不做左右分栏）：搜索 → 我常买（老客才有，横滑）→ 分类 → 双列网格。
+        双列与资质页同一个件（biz-goods-tile），在一家店里逛不需要每张卡再写一遍店名。
+      -->
+      <view v-if="tab === 'goods'" class="shelf" :class="{ 'is-paused': closed }">
+        <view class="sh-searchbox search">
+          <sh-icon name="search" :size="28" color="var(--sh-sub)"></sh-icon>
+          <input v-model="keyword" maxlength="32" class="txt-sub sh-fill" :placeholder="$t('store.searchPh')" />
+        </view>
 
-          <view class="sh-fill list">
-            <template v-if="showFrequent">
-              <view class="list__head sh-row">
-                <text class="txt-caption txt-quiet sh-fill">{{ $t("store.frequentHint") }}</text>
-                <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="reorder">{{ $t("store.reorder") }}</text>
-              </view>
+        <view v-if="showFrequent" class="sh-block">
+          <view class="sh-block__head">
+            <text class="txt-title sh-fill">{{ $t("store.frequent") }}</text>
+            <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="reorder">{{ $t("store.reorder") }}</text>
+          </view>
+          <scroll-view scroll-x class="freq" :show-scrollbar="false">
+            <view class="freq__row">
               <view
                 v-for="f in frequent"
                 :key="f.skuNo"
-                class="item sh-row"
+                class="freq__card"
                 :class="{ 'is-off': f.invalid || closed }"
+                @tap="gotoGoods(f.goodsNo)"
               >
-                <sh-cover class="item__cover" :src="f.cover" :w="160"></sh-cover>
-                <view class="sh-fill item__main" @tap="gotoGoods(f.goodsNo)">
-                  <text class="txt-sub txt-bold item__title">{{ f.title }}</text>
-                  <text class="txt-caption txt-quiet item__meta">{{
-                    f.invalid ? $t("store.invalid") : $t("store.times", { n: f.times })
-                  }}</text>
-                  <text class="txt-price sh-num item__price">{{ money(f.price) }}</text>
+                <sh-cover class="freq__cover" :src="f.cover" :w="200"></sh-cover>
+                <text class="txt-sub freq__title">{{ f.title }}</text>
+                <text class="txt-caption txt-quiet">{{
+                  f.invalid ? $t("store.invalid") : $t("store.times", { n: f.times })
+                }}</text>
+                <view class="sh-row freq__foot">
+                  <text class="txt-price sh-num sh-fill">{{ money(f.price) }}</text>
+                  <view class="sh-center add sh-hit" @tap.stop="addOne(f)">
+                    <text>＋</text>
+                  </view>
                 </view>
-                <text class="add sh-hit" :class="{ 'is-off': f.invalid || closed }" @tap="addOne(f)">＋</text>
               </view>
-            </template>
+            </view>
+          </scroll-view>
+        </view>
 
-            <template v-else>
-              <view
-                v-for="g in listed"
-                :key="g.goodsNo"
-                class="item sh-row"
-                :class="{ 'is-off': soldOut(g) || closed }"
-              >
-                <sh-cover class="item__cover" :src="g.cover" :w="160"></sh-cover>
-                <view class="sh-fill item__main" @tap="gotoGoods(g.goodsNo)">
-                  <text class="txt-sub txt-bold item__title">{{ g.title }}</text>
-                  <text class="txt-caption txt-quiet item__meta">{{
-                    closed ? $t("shops.paused") : soldOut(g) ? $t("store.soldOut") : g.subtitle
-                  }}</text>
-                  <text class="txt-price sh-num item__price">{{ money(g.price) }}</text>
-                </view>
-                <text class="add sh-hit" :class="{ 'is-off': soldOut(g) || closed }" @tap="addGoods(g, $event)">＋</text>
-              </view>
-              <sh-empty v-if="!listed.length" :text="String($t('store.noGoods'))"></sh-empty>
-            </template>
+        <!-- 分类与网格在同一块白底上：格子直接落在页面灰底上会像是漂着的 -->
+        <view class="sh-block">
+          <view v-if="cats.length > 1 && !keyword.trim()" class="cats">
+            <sh-tabs :items="cats" :active="cat" @change="(k: string) => (cat = k)"></sh-tabs>
           </view>
+          <view class="grid">
+            <biz-goods-tile
+              v-for="g in listed"
+              :key="g.goodsNo"
+              :goods="g"
+              @tap="gotoGoods(g.goodsNo)"
+              @add="addGoods(g, $event)"
+            ></biz-goods-tile>
+          </view>
+          <sh-empty v-if="!listed.length" :text="String($t('store.noGoods'))"></sh-empty>
         </view>
       </view>
 
@@ -656,111 +658,75 @@ onShareTimeline(() =>
   display: inline-block;
   margin-top: 12rpx;
 }
+/* 页签吸顶；分段控件自己有底色，这里只给一条页面底色托住它 */
 .tabs {
   position: sticky;
-  top: 0;
+  /* 吸顶要让开 sh-scaffold 自己画的固定导航栏（高度含状态栏，由脚手架按机型算好传下来） */
+  top: var(--sh-navbar-h, 0px);
   z-index: 2;
-  padding: 8rpx 24rpx;
+  gap: 12rpx;
+  padding: 12rpx 24rpx;
   background: var(--sh-bg);
 }
 .search {
-  height: 72rpx;
-  margin: 8rpx 24rpx 12rpx;
-  padding: 0 24rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
+  margin: 8rpx 24rpx 0;
+}
+.search input {
   color: var(--sh-ink);
 }
-.menu__body {
-  align-items: flex-start;
-}
-/* 左栏：窄一列、浅底；选中项白底 + 主色竖条 */
-.rail {
-  width: 176rpx;
-  flex-shrink: 0;
-  max-height: 70vh;
-  background: var(--sh-faint);
-}
-/* 竖条用起始边框画：常驻 6rpx 透明边，选中时只换颜色 —— 文字不因选中而跳一下。
-   用 border-inline-start 而不是 border-left：阿拉伯语下整条轨道会翻到右侧，
-   写死 left 的话竖条留在左边、与选中项对不上（第五道闸 check-rtl-physical 扫的就是这个）。 */
-.rail__item {
-  display: block;
-  /* 起始侧少 6rpx，让出竖条的宽度；同样用逻辑属性，阿语下跟着翻 */
-  padding-block: 28rpx;
-  padding-inline: 12rpx 16rpx;
-  border-inline-start: 6rpx solid transparent;
-  text-align: center;
-  color: var(--sh-sub);
-}
-/* 选中态的加重走 .txt-bold（模板上加），不在这儿自写 font-weight ——
-   字阶把字号与字重绑死，而 .txt-bold 正是为「状态加重」留的那个修饰类 */
-.rail__item.is-on {
-  border-inline-start-color: var(--sh-primary);
-  background: var(--sh-surface);
-  color: var(--sh-ink);
-}
-.list {
-  min-width: 0;
-  min-height: 60vh;
-  background: var(--sh-surface);
-}
-.list__head {
-  gap: 12rpx;
-  padding: 16rpx 20rpx 4rpx;
-}
-.item {
-  gap: 16rpx;
-  padding: 20rpx;
-}
-.item.is-off .item__cover,
-.item.is-off .item__main {
+/* 暂停营业：整片商品压淡（加购另有拦截与提示） */
+.shelf.is-paused .grid,
+.shelf.is-paused .freq {
   opacity: 0.5;
 }
-.item__cover {
-  width: 128rpx;
-  height: 128rpx;
-  flex-shrink: 0;
+/* 我常买：一栏横滑的小卡，老客三步下单（打开 → 常买 → 结算） */
+.freq {
+  white-space: nowrap;
+}
+.freq__row {
+  display: inline-flex;
+  gap: 16rpx;
+  padding: 0 24rpx 24rpx;
+}
+.freq__card {
+  width: 224rpx;
+  white-space: normal;
+}
+.freq__card.is-off {
+  opacity: 0.5;
+}
+.freq__cover {
+  width: 224rpx;
+  height: 224rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
 }
-.item__main {
-  min-width: 0;
-}
-.item__title {
+.freq__title {
   display: block;
+  margin-top: 12rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.item__meta {
-  display: block;
-  margin-top: 4rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.item__price {
-  display: block;
+.freq__foot {
   margin-top: 8rpx;
 }
 .add {
   width: 52rpx;
   height: 52rpx;
   flex-shrink: 0;
-  align-self: flex-end;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  /* 居中用 flex，不用 line-height 顶高 —— 行高是字阶的一部分，
-     借它做垂直居中等于在这一处偷偷改字阶，而且换个字号就歪 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.add.is-off {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
+.cats {
+  padding: 24rpx 24rpx 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  padding: 16rpx 24rpx 24rpx;
 }
 .info {
   gap: 16rpx;

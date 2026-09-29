@@ -423,25 +423,35 @@ a{color:inherit}
 /* 大卡：标签页 + 分类栏 + 商品 */
 .sp-body{background:var(--sh-card);border-radius:13px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .sp-body .tabs{padding:10px 12px 0;border-bottom:1px solid var(--sh-line);gap:22px}
-.sp-menu{display:flex;flex:1;min-height:0}
-.sp-menu .rail{width:64px;background:var(--sh-bg);display:flex;flex-direction:column;flex:0 0 auto}
-.sp-menu .rail span{padding:10px 4px;font-size:10.5px;color:var(--sh-sub);text-align:center}
-.sp-menu .rail span.on{background:var(--sh-card);color:var(--sh-ink);font-weight:600;box-shadow:inset 2px 0 0 var(--sh-primary)}
-.sp-menu .list{flex:1;min-width:0;padding:8px 10px;display:flex;flex-direction:column;gap:11px}
 .sp-sec{font-size:10.5px;font-weight:600;display:flex;justify-content:space-between}
 .sp-sec small{font-weight:400;color:var(--sh-sub)}
-.sp-it{display:flex;gap:8px}
-.sp-it .th{width:54px;height:54px;border-radius:9px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto}
-.sp-it .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.sp-it .nm{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sp-it .m{font-size:9.5px;color:var(--sh-sub)}
-.sp-it .ln{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
-.sp-it .pr{font-size:13px;font-weight:700}
-.sp-it .pr small{font-size:9.5px;font-weight:600}
-.sp-it .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;line-height:1}
-.sp-it.off{opacity:.5}
-.sp-it.off .add{background:var(--sh-faint);color:var(--sh-disabled)}
+/* 2026-09-29 用户定：门户商品不做左右分栏 —— 页签分段、搜索、我常买横滑、分类 chip、双列格子 */
+.sp-body .tabs.seg{border-bottom:0;gap:6px;padding:10px 10px 0}
+.sp-body .tabs.seg span{flex:1;text-align:center;padding:6px 0;border-radius:9px;background:var(--sh-faint);font-size:11px}
+.sp-body .tabs.seg span.on{background:var(--sh-primary);color:var(--sh-on-primary);font-weight:600}
+.sp-shelf{flex:1;min-height:0;padding:8px 10px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+/* 限高的一栏里子项默认会被压扁（常买与分类曾整行消失），一律不收缩，超出的由外层裁掉 */
+.sp-shelf>*{flex:0 0 auto}
+.sp-search{border-radius:99px;background:var(--sh-bg);padding:6px 12px;font-size:10.5px;color:var(--sh-sub)}
+.sp-freq{display:flex;gap:8px;overflow:hidden}
+.sp-freq .fc{width:74px;flex:0 0 auto;display:flex;flex-direction:column;gap:2px}
+.sp-freq .fc .th{height:74px;border-radius:9px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:24px}
+.sp-freq .fc .nm{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-freq .fc .m{font-size:9px;color:var(--sh-sub)}
+.sp-freq .fc .ln{display:flex;align-items:center;justify-content:space-between}
+.sp-cats{display:flex;gap:6px;overflow:hidden}
+.sp-cats .chip.on{background:var(--sh-primary-tint);color:var(--sh-primary-text);font-weight:600}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sp-tile{display:flex;flex-direction:column;gap:3px}
+.sp-tile .th{aspect-ratio:1;border-radius:9px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:28px}
+.sp-tile .nm{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-tile .ln{display:flex;align-items:center;justify-content:space-between}
+.sp-tile.off .th,.sp-tile.off .nm{opacity:.5}
+.sp-freq .add,.sp-tile .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);display:flex;align-items:center;justify-content:center;font-size:12px}
+.sp-tile.off .add{background:var(--sh-faint);color:var(--sh-disabled)}
+.sp-freq .pr,.sp-tile .pr{font-size:13px;font-weight:700}
+.sp-freq .pr small,.sp-tile .pr small{font-size:9.5px;font-weight:600}
+.sp-shelf.paused .sp-grid{opacity:.5}
 /* 店铺底栏：购物车 + 结算（门户里逛完直接结） */
 .foot .cartsum{flex:1;display:flex;align-items:center;gap:8px;font-size:11px}
 .foot .cartsum b{font-size:14px}

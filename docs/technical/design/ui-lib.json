@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 20,
-        "c-app": 15
+        "c-app": 12
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 342,
-        "c-app": 265
+        "c-app": 263
       }
     },
     {
@@ -438,7 +438,7 @@
       },
       "usage": {
         "b-app": 17,
-        "c-app": 14
+        "c-app": 13
       }
     },
     {
@@ -470,7 +470,7 @@
       },
       "usage": {
         "b-app": 41,
-        "c-app": 39
+        "c-app": 37
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 98,
-        "c-app": 93
+        "c-app": 91
       }
     },
     {
@@ -536,7 +536,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 30
+        "c-app": 31
       }
     },
     {
@@ -558,7 +558,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 17
+        "c-app": 19
       }
     },
     {
@@ -580,7 +580,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -1078,7 +1078,7 @@
       },
       "usage": {
         "b-app": 337,
-        "c-app": 150
+        "c-app": 149
       }
     },
     {
@@ -1386,7 +1386,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -1404,7 +1404,7 @@
       },
       "usage": {
         "b-app": 148,
-        "c-app": 89
+        "c-app": 88
       }
     },
     {
@@ -1420,7 +1420,7 @@
       },
       "usage": {
         "b-app": 18,
-        "c-app": 17
+        "c-app": 16
       }
     },
     {
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 536,
-        "c-app": 194
+        "c-app": 192
       }
     },
     {
@@ -1548,7 +1548,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 5
+        "c-app": 6
       }
     },
     {
@@ -1566,7 +1566,7 @@
       },
       "usage": {
         "b-app": 3,
-        "c-app": 1
+        "c-app": 2
       }
     },
     {
@@ -1602,7 +1602,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 5
+        "c-app": 6
       }
     },
     {
@@ -1782,7 +1782,7 @@
       },
       "usage": {
         "b-app": 1,
-        "c-app": 1
+        "c-app": 2
       }
     },
     {
@@ -2042,7 +2042,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 13,
+        "c-app": 12,
         "lib": 3
       },
       "note": "商品封面",
@@ -2282,7 +2282,7 @@
       ],
       "usage": {
         "b-app": 121,
-        "c-app": 25,
+        "c-app": 26,
         "lib": 13
       },
       "note": "单色图标",
@@ -5274,9 +5274,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 78,
-      "localSelectors": 36,
-      "localCssLines": 173,
+      "libClassHits": 72,
+      "localSelectors": 33,
+      "localCssLines": 142,
       "rolled": []
     },
     {

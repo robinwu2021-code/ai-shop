@@ -3,8 +3,9 @@
  *
  * 钉三件「看起来都对、其实错了也不报错」的事：
  * - 门头写的是**门店名**，不是主体名（主体名只在「经营主体与资质」那一行露面）；
- * - 左栏第一格：买过的人是「我常买」，没买过从「热卖」开始 —— 反了的话老客要多点一下，新客看到一格空的；
- * - 售罄的货**压淡、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页不可加购、给隔壁店。
+ * - 买过的人先看到「我常买」一栏（老客三步下单），没买过的人没有这一栏 —— 不留一个空标题；
+ * - 分类横排、商品双列，**不做左右分栏**（2026-09-29 用户定）；
+ * - 售罄的货**照列、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页压淡、给隔壁店。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
@@ -40,6 +41,7 @@ vi.mock("@dcloudio/uni-app", () => ({
 vi.mock("@/shared/fly", () => ({ flyToCart: vi.fn(), tapPoint: () => ({ x: 0, y: 0 }) }));
 
 import StorePage from "@/pages/store/index.vue";
+import GoodsTile from "@/components/biz/biz-goods-tile.vue";
 
 function aGoods(no: string, over: Partial<Goods> = {}): Goods {
   return {
@@ -76,6 +78,8 @@ const bought: FrequentItem = {
 async function render() {
   const w = mount(StorePage, {
     global: {
+      // 双列格子真实渲染：「售罄照列」的判据要看格子上写了什么
+      components: { "biz-goods-tile": GoodsTile },
       stubs: {
         "sh-scaffold": { template: "<div><slot /></div>" },
         "sh-tabs": true, "sh-icon": true, "sh-cover": true, "sh-empty": true, "sh-sheet": true,
@@ -106,29 +110,39 @@ describe("门店门户", () => {
     expect(w.html()).not.toContain("虹选科技有限公司");
   });
 
-  it("★★★ 买过的人左栏第一格是「我常买」；没买过从「热卖」开始", async () => {
+  it("★★★ 买过的人先看到「我常买」一栏；没买过的人没有这一栏", async () => {
     storeHome.mockResolvedValue(home());
     frequentItems.mockResolvedValue([bought]);
     const old = await render();
-    expect(old.findAll(".rail__item").map((e) => e.text())[0]).toBe("store.frequent");
-    expect(old.find(".rail__item.is-on").text()).toBe("store.frequent");
+    expect(old.find(".freq").exists()).toBe(true);
+    expect(old.findAll(".freq__card")[0]!.text()).toContain("货G1");
 
     frequentItems.mockResolvedValue([]);
     const fresh = await render();
-    const rail = fresh.findAll(".rail__item").map((e) => e.text());
-    expect(rail).not.toContain("store.frequent");
-    expect(rail[0]).toBe("store.hot");
+    expect(fresh.find(".freq").exists(), "没买过就不留一个空标题").toBe(false);
   });
 
-  it("★★★ 售罄的货压淡、不藏", async () => {
+  it("★★★ 不做左右分栏：分类横排（全部 + 店主货架），商品双列", async () => {
     storeHome.mockResolvedValue(home());
     frequentItems.mockResolvedValue([]);
     const w = await render();
-    const items = w.findAll(".item");
-    expect(items, "售罄的那件也要列出来").toHaveLength(2);
-    const off = items.filter((i) => i.classes("is-off"));
-    expect(off).toHaveLength(1);
-    expect(off[0]!.text()).toContain("store.soldOut");
+    expect(w.find(".rail").exists(), "左栏回来了").toBe(false);
+    const tabs = w.findComponent({ name: "sh-tabs" });
+    const items = (tabs.exists() ? tabs.props("items") : w.find(".cats sh-tabs-stub").attributes("items")) as unknown;
+    expect(JSON.stringify(items)).toContain("store.allCats");
+    expect(JSON.stringify(items)).toContain("水果");
+    expect(w.findAll(".grid .tile")).toHaveLength(2);
+  });
+
+  it("★★★ 售罄的货照列、不藏：格子上写售罄，没有加号", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    const tiles = w.findAll(".grid .tile");
+    expect(tiles, "售罄的那件也要列出来").toHaveLength(2);
+    const sold = tiles.filter((t) => t.text().includes("goods.soldOut"));
+    expect(sold).toHaveLength(1);
+    expect(sold[0]!.find(".add").exists()).toBe(false);
   });
 
   it("★★ 暂停营业：整页商品不可加购，并给同品牌的营业店", async () => {
@@ -140,7 +154,7 @@ describe("门店门户", () => {
     } as Partial<StoreHome>));
     frequentItems.mockResolvedValue([]);
     const w = await render();
-    expect(w.findAll(".item").every((i) => i.classes("is-off"))).toBe(true);
+    expect(w.find(".shelf.is-paused").exists(), "整片商品压淡").toBe(true);
     expect(w.find(".paused__go").text()).toContain("虹选鲜果·福田店");
   });
 });

@@ -5206,6 +5206,12 @@
           "ar": "العنوان"
         },
         {
+          "key": "store.allCats",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
           "key": "store.closedTip",
           "zh-CN": "这家店暂停营业了",
           "en": "This store is temporarily closed",
@@ -5236,22 +5242,10 @@
           "ar": "مشترياتي المعتادة"
         },
         {
-          "key": "store.frequentHint",
-          "zh-CN": "买过的都在这",
-          "en": "Everything you've bought here",
-          "ar": "كل ما اشتريته من هنا"
-        },
-        {
           "key": "store.goSibling",
           "zh-CN": "去看看 {name}",
           "en": "Visit {name}",
           "ar": "زيارة {name}"
-        },
-        {
-          "key": "store.hot",
-          "zh-CN": "热卖",
-          "en": "Popular",
-          "ar": "الأكثر مبيعًا"
         },
         {
           "key": "store.hours",
@@ -5348,12 +5342,6 @@
           "zh-CN": "搜索本店商品",
           "en": "Search this shop",
           "ar": "ابحث في منتجات المتجر"
-        },
-        {
-          "key": "store.soldOut",
-          "zh-CN": "今日售罄",
-          "en": "Sold out today",
-          "ar": "نفد اليوم"
         },
         {
           "key": "store.tabGoods",
