@@ -70,6 +70,16 @@ public interface MerchantStoreService {
     StoreProfileVO dropRecentAnnouncement(String merchantNo, String storeNo, String text);
 
     /**
+     * 设置 / 清掉门店背景图（C 端门户顶部那条：设了是照片，没设是主色浅底）。
+     *
+     * <p>直接生效，不走公告那套机审：机审是敏感词表，对图片无从判起；
+     * 图片本身走的是平台的上传通道（与商品图、店铺 logo 同一条），不另开口子。
+     *
+     * @param bannerUrl 空串 = 清掉；非空必须是 http(s) 地址（端上传完图拿到的那个）
+     */
+    StoreProfileVO saveBanner(String merchantNo, String storeNo, String bannerUrl);
+
+    /**
      * 覆盖社区全量替换。审核与店铺设置<b>共用这一处实现</b> ——
      * 「空覆盖 = 对谁都不可见」这条规则只有一份代码，才不会两条路径各写各的。
      */

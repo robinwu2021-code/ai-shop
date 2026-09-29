@@ -227,6 +227,11 @@ export interface StoreProfile {
   latE6?: number | null;
   /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
+  /**
+   * 门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。
+   * 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉
+   */
+  bannerUrl?: string;
 }
 /** 店铺码（C-ST-08 扫码进店的商家侧） */
 export interface StoreQrcode {
@@ -299,6 +304,11 @@ export interface StoreFront {
   latE6?: number | null;
   /** 经度 ×1e6。**全站坐标一律 gcj02** */
   lngE6?: number | null;
+  /**
+   * 门店背景图（店主在 B 端设置）。**设了**：门户顶部是这张照片；**没设**（空）：主色浅底。
+   * 旧后端不发这个字段 —— 当成没设
+   */
+  bannerUrl?: string | null;
 }
 /** 店铺页上的一类。`count` 直接显示，省得买家点进去数 */
 export interface StoreShelf {

@@ -1329,6 +1329,8 @@ export const db = {
     openHours: "06:30–21:00",
     address: "阳光里小区南门 · 张记粮油",
     featured: [] as string[],
+    // 背景图默认没设：C 端门户顶部是主色浅底（设了才是照片）
+    bannerUrl: "",
     // 演示商家是社区生鲜：靠自提点履约，只做谈下来的两个小区
     serviceScope: "COMMUNITY",
     serviceCommunityNos: ["CM001", "CM002"],

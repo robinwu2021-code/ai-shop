@@ -647,7 +647,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         // 过期的公告连时间也不给：那一行整个不该出现，给了时间反而像它还在
                         store.effectiveAnnouncement().isEmpty() ? null : store.getAnnouncementAt(),
                         nvl(store.getOpenHours()), nvl(store.getAddress()),
-                        nvl(store.getStatus()), store.getLatE6(), store.getLngE6()));
+                        nvl(store.getStatus()), store.getLatE6(), store.getLngE6(),
+                        nvl(store.getBannerUrl())));
     }
 
     @Override

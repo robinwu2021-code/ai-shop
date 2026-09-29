@@ -418,6 +418,11 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     @PostMapping("/biz/store")
     public StoreProfileVO saveStore(@RequestBody StoreReq req) {
+        // 背景图随整张表单一起存；不传（老版本 B 端）= 不改，空串 = 清掉
+        if (req.bannerUrl() != null) {
+            storeService.saveBanner(BizContext.requireMerchantNo(),
+                    BizContext.current().currentStoreNo(), req.bannerUrl());
+        }
         return storeService.save(BizContext.requireMerchantNo(),
                 BizContext.current().currentStoreNo(),
                 new MerchantStoreService.SaveCommand(
@@ -796,7 +801,8 @@ public class BizMerchantController {
                            List<String> serviceCommunityNos, String serviceCityCode,
                            String fulfillmentReach,
                            List<MerchantStoreService.AreaCommand> serviceAreas,
-                           Integer latE6, Integer lngE6) {
+                           Integer latE6, Integer lngE6,
+                           String bannerUrl) {
     }
 
     /** 申请单状态 → B 端口径。PENDING 在端上叫 APPLYING（「已提交，等着」）。 */

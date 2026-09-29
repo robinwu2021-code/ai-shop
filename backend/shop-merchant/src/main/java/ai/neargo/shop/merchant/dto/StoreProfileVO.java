@@ -31,7 +31,8 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
                              List<String> featured, String serviceScope,
                              List<String> serviceCommunityNos, String serviceCityCode,
                              String fulfillmentReach, List<ServiceAreaVO> serviceAreas,
-                             Integer latE6, Integer lngE6) {
+                             Integer latE6, Integer lngE6,
+                             String bannerUrl) {
 
     /**
      * 一条覆盖项。

@@ -84,9 +84,10 @@ public record StoreHomeVO(Merchant merchant,
      * @param latE6 门店坐标（gcj02，E6）。<b>可能为 null</b> —— 商家没在地图上标过点。
      *              买家侧据此决定「导航到这里」显不显示：没有坐标时导航按钮点了只会打开一片空白
      */
+    /** @param bannerUrl 门店背景图，店主在 B 端设置。<b>空串 = 没设</b>：门户顶部用主色浅底 */
     public record StoreFront(String announcement, Long announcementAt,
                              String openHours, String address,
-                             Integer latE6, Integer lngE6) {
+                             Integer latE6, Integer lngE6, String bannerUrl) {
     }
 
     /** 门店主页只需要商家的展示信息，不需要完整详情（那是商家详情页的事）。 */

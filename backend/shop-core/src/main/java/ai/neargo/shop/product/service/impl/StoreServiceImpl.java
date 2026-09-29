@@ -80,8 +80,8 @@ public class StoreServiceImpl implements StoreService {
         var frontOpt = merchantPort.storeFront(merchantNo);
         var front = frontOpt
                 .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.announcementAt(),
-                        f.openHours(), f.address(), f.latE6(), f.lngE6()))
-                .orElseGet(() -> new StoreHomeVO.StoreFront("", null, "", "", null, null));
+                        f.openHours(), f.address(), f.latE6(), f.lngE6(), f.bannerUrl()))
+                .orElseGet(() -> new StoreHomeVO.StoreFront("", null, "", "", null, null, ""));
         /*
          * 已停业 = 门店非 ACTIVE（商家自助停用 READONLY / 平台强制下线 SUSPENDED，V96）。
          * 给标志而不是 404：扫码进来的老客要知道是店关了，不是链接坏了。
@@ -108,9 +108,9 @@ public class StoreServiceImpl implements StoreService {
         var goods = goodsOfStore(store, null, null, 1, 200);
         var front = storeDirectory.front(store.storeNo())
                 .map(f -> new StoreHomeVO.StoreFront(f.announcement(), f.announcementAt(),
-                        f.openHours(), f.address(), f.latE6(), f.lngE6()))
+                        f.openHours(), f.address(), f.latE6(), f.lngE6(), f.bannerUrl()))
                 .orElseGet(() -> new StoreHomeVO.StoreFront("", null, store.openHours(), store.address(),
-                        store.latE6(), store.lngE6()));
+                        store.latE6(), store.lngE6(), ""));
         boolean closed = !store.active();
         // 距离只在两边都有坐标时算：Geo.meters 遇空返回 0，不判空会显示「0 米」
         Integer distance = latE6 == null || lngE6 == null || store.latE6() == null || store.lngE6() == null

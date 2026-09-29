@@ -3,9 +3,9 @@
  *
  * 钉三件「看起来都对、其实错了也不报错」的事：
  * - 门头写的是**门店名**，不是主体名（主体名只在「经营主体与资质」那一行露面）；
- * - 买过的人先看到「我常买」一栏（老客三步下单），没买过的人没有这一栏 —— 不留一个空标题；
+ * - 「我常买」一栏 2026-09-29 用户要求去掉 —— 买过的人也不再有这一栏；
  * - 分类横排、商品单列，**不做左右分栏**（2026-09-29 用户定 B 版）；落款行不写店名；
- * - 头图的底只收 http(s) 图 —— emoji 封面当 image 的 src 是一张裂图；
+ * - 顶部那条底：店主设了背景图就是照片，没设就是主色浅底 —— **不再拿商品图凑**；
  * - 售罄的货**照列、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页压淡、给隔壁店。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -111,16 +111,12 @@ describe("门店门户", () => {
     expect(w.html()).not.toContain("虹选科技有限公司");
   });
 
-  it("★★★ 买过的人先看到「我常买」一栏；没买过的人没有这一栏", async () => {
+  it("★★★ 没有「我常买」一栏 —— 买过的人也没有（用户 2026-09-29 要求去掉）", async () => {
     storeHome.mockResolvedValue(home());
     frequentItems.mockResolvedValue([bought]);
-    const old = await render();
-    expect(old.find(".freq").exists()).toBe(true);
-    expect(old.findAll(".freq__card")[0]!.text()).toContain("货G1");
-
-    frequentItems.mockResolvedValue([]);
-    const fresh = await render();
-    expect(fresh.find(".freq").exists(), "没买过就不留一个空标题").toBe(false);
+    const w = await render();
+    expect(w.find(".freq").exists()).toBe(false);
+    expect(frequentItems, "不画就别去取").not.toHaveBeenCalled();
   });
 
   it("★★★ 不做左右分栏：分类横排（全部 + 店主货架），商品单列、行上不写店名", async () => {
@@ -128,10 +124,12 @@ describe("门店门户", () => {
     frequentItems.mockResolvedValue([]);
     const w = await render();
     expect(w.find(".rail").exists(), "左栏回来了").toBe(false);
-    const tabs = w.findComponent({ name: "sh-tabs" });
-    const items = (tabs.exists() ? tabs.props("items") : w.find(".cats sh-tabs-stub").attributes("items")) as unknown;
-    expect(JSON.stringify(items)).toContain("store.allCats");
-    expect(JSON.stringify(items)).toContain("水果");
+    const all = w.findAllComponents({ name: "sh-tabs" });
+    const page = all.find((c) => c.props("line"));
+    const cats = all.find((c) => !c.props("line"));
+    expect(page, "页签是「文字 + 短线」，与下面的分类 chip 分开两种样子").toBeTruthy();
+    expect(JSON.stringify(cats!.props("items"))).toContain("store.allCats");
+    expect(JSON.stringify(cats!.props("items"))).toContain("水果");
     const rows = w.findAll(".list .card");
     expect(rows).toHaveLength(2);
     expect(rows[0]!.text(), "整页都是这一家店，每行再写一遍是噪声").not.toContain("虹选科技有限公司");
@@ -148,22 +146,27 @@ describe("门店门户", () => {
     expect(sold[0]!.find(".add").exists()).toBe(false);
   });
 
-  it("★★★ 头图的底取卖得最好的那件真图；只有 emoji 封面时不给图、退回品牌色", async () => {
+  it("★★★ 设了背景图顶部是照片；没设是主色浅底 —— 不拿商品图凑", async () => {
     storeHome.mockResolvedValue(home({
-      goods: [
-        aGoods("G1", { cover: "https://img.example.com/a.jpg", sales: 3 }),
-        aGoods("G2", { cover: "🍐", sales: 99 }),
-        aGoods("G3", { cover: "https://img.example.com/c.jpg", sales: 50 }),
-      ],
+      store: { announcement: "", openHours: "08:00-20:00", address: "", bannerUrl: "https://img.example.com/b.jpg" },
     } as Partial<StoreHome>));
     frequentItems.mockResolvedValue([]);
     const w = await render();
-    expect(w.find(".hero__img").attributes("src"), "emoji 那件销量最高也不能拿来当图").toContain("c.jpg");
+    expect(w.find(".band").classes()).toContain("has-photo");
+    expect(w.find(".band__img").attributes("src")).toContain("b.jpg");
 
-    storeHome.mockResolvedValue(home());
+    storeHome.mockResolvedValue(home({
+      goods: [aGoods("G1", { cover: "https://img.example.com/a.jpg", sales: 99 })],
+    } as Partial<StoreHome>));
     const plain = await render();
-    expect(plain.find(".hero__img").exists(), "emoji 当 src 是一张裂图").toBe(false);
-    expect(plain.find(".hero").exists()).toBe(true);
+    expect(plain.find(".band").classes(), "没设就是浅底").not.toContain("has-photo");
+    expect(plain.find(".band__img").exists(), "商品有真图也不拿来当背景").toBe(false);
+
+    storeHome.mockResolvedValue(home({
+      store: { announcement: "", openHours: "", address: "", bannerUrl: "🍐" },
+    } as Partial<StoreHome>));
+    const junk = await render();
+    expect(junk.find(".band__img").exists(), "不是 http(s) 的值当 src 是一张裂图").toBe(false);
   });
 
   it("★★ 暂停营业：整页商品不可加购，并给同品牌的营业店", async () => {

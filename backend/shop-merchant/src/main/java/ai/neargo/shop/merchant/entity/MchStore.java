@@ -181,6 +181,12 @@ public class MchStore extends BaseEntity {
     private String featured;
 
     /**
+     * 门店背景图（V368，店主在 B 端设置）。C 端门户顶部：<b>有就是这张照片，空就是主色浅底</b>。
+     * 空串 = 店主清掉了；null = 从没设过 —— 两者读出来都是「没设」。
+     */
+    private String bannerUrl;
+
+    /**
      * 配送半径（米）。默认 3km。
      *
      * <p>挂门店不挂主体：半径是从**这家店门口**量出去的。挂主体的话，

@@ -33,6 +33,8 @@ const props = defineProps<{
    * 值是圆钮直径（px）—— 调用方按微信胶囊的高度量好传进来，与返回键一样大
    */
   imageBox?: number;
+  /** 和 imageBox 一起用：底是浅色（门户没设背景图时的主色浅底）—— 白圆 + 正文色图标 */
+  lightBox?: boolean;
 }>();
 const emit = defineEmits<{ (e: "poster"): void }>();
 
@@ -80,11 +82,11 @@ function toPoster() {
   <view class="shareroot">
   <view
     class="shareact sh-center"
-    :class="{ 'is-compact': compact, 'is-on-image': !!imageBox }"
+    :class="{ 'is-compact': compact, 'is-on-image': !!imageBox, 'is-light': !!imageBox && lightBox }"
     :style="imageBox ? { width: imageBox + 'px', height: imageBox + 'px' } : undefined"
     @tap="onTap"
   >
-    <sh-icon name="share" :size="compact || imageBox ? 32 : 28" :color="imageBox ? 'var(--sh-on-scrim)' : 'var(--sh-ink)'"></sh-icon>
+    <sh-icon name="share" :size="compact || imageBox ? 32 : 28" :color="imageBox && !lightBox ? 'var(--sh-on-scrim)' : 'var(--sh-ink)'"></sh-icon>
     <text v-if="!imageBox" class="txt-caption sh-muted">{{ $t(poster || native ? "share.act" : "share.copy") }}</text>
     <!-- 没有面板时：小程序原生转发按钮盖在整块上，自己不占视觉 -->
     <button v-if="native && !poster" class="shareact__native" open-type="share"></button>
@@ -131,6 +133,9 @@ function toPoster() {
 .shareact.is-on-image {
   border-radius: 9999px;
   background: var(--sh-scrim);
+}
+.shareact.is-light {
+  background: var(--sh-surface);
 }
 .shareact__native {
   position: absolute;

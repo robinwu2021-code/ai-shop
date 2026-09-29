@@ -148,7 +148,8 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
                 ann.isEmpty() ? null : s.getAnnouncementAt(),
                 Objects.requireNonNullElse(s.getOpenHours(), ""),
                 Objects.requireNonNullElse(s.getAddress(), ""),
-                Objects.requireNonNullElse(s.getStatus(), ""), s.getLatE6(), s.getLngE6()));
+                Objects.requireNonNullElse(s.getStatus(), ""), s.getLatE6(), s.getLngE6(),
+                Objects.requireNonNullElse(s.getBannerUrl(), "")));
     }
 
     @Override

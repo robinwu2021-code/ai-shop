@@ -9,7 +9,6 @@ export default {
     done: "完成",
     loading: "加载中…",
     empty: "这里还没有内容",
-    added: "已加入购物车",
     sold: "已售 {n}",
   },
   tab: {
@@ -284,14 +283,6 @@ export default {
     noticeAt: "{s} 更新",
     noticeToday: "今天",
     noticeYesterday: "昨天",
-    frequent: "我常买",
-    reorder: "一键再来一单",
-    reorderAdded: "已加入购物车 {n} 件",
-    reorderDropped: "已下架或无货，没加：{s}",
-    reorderPriceUp: "这些涨价了：{s}",
-    noHistory: "还没在这家买过",
-    times: "买过 {n} 次",
-    invalid: "无货",
     itemInvalid: "这个暂时没货了",
     allCats: "全部",
     searchPh: "搜索本店商品",
@@ -301,7 +292,6 @@ export default {
     notice: "公告",
     pausedNotice: "这家店暂停营业，暂时不能下单。",
     goSibling: "去看看 {name}",
-    distanceTo: "距你 {d}",
     noGoods: "这一类还没有商品",
     noReviews: "还没有人评价这家店",
     hours: "营业时间",
@@ -309,8 +299,6 @@ export default {
     entityInfo: "经营主体与资质",
     faved: "已收藏，可在「我的 → 常去的店」找到",
     unfaved: "已取消收藏",
-    favAct: "收藏",
-    favOn: "已收藏",
     closedTip: "这家店暂停营业了",
   },
   groupHost: {
@@ -960,7 +948,6 @@ export default {
     /** 地址表单里没绑号时的入口：绑完回填到手机号栏 */
     bindPhone: "绑定手机号，自动填入",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */
-    
     /** 定位匹配到的那条：只标出来，点一下就切，不弹窗 */
     /** 地图挂了、用的是库里旧的那条 —— 要说出来，不能让人以为它是刚测的 */
     placeStale: "位置可能不是最新的",
@@ -1000,7 +987,6 @@ export default {
     phone: "手机号",
     region: "省 / 市 / 区",
     regionTitle: "选择省 / 市 / 区",
-    
     regionSelect: "请选择",
     /** 一键导入微信通讯录里的收货地址（只小程序有） */
     fromWx: "微信地址",

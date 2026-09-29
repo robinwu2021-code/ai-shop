@@ -1560,6 +1560,7 @@ CREATE TABLE IF NOT EXISTS mch_store
     ship_carrier VARCHAR(16) DEFAULT NULL,
     ship_weight_g INT(11) DEFAULT NULL,
     slug VARCHAR(32) DEFAULT NULL,
+    banner_url VARCHAR(512) NULL,
     CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),

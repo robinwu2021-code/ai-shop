@@ -1260,6 +1260,7 @@ export default {
       todayAt: "今天",
     },
     openHours: "营业时间",
+    banner: "店铺顶部背景图",
     address: "门店地址",
     qrcode: "店铺码",
     qrcodePending: "小程序码还没生成好，稍后再来看", poster: "海报",

@@ -6,7 +6,7 @@ import java.util.List;
 
 import static ai.neargo.shop.media.MediaRefColumn.of;
 
-/** shop-merchant 把图片地址放在哪些列里 —— 主体 logo 与两类证件。 */
+/** shop-merchant 把图片地址放在哪些列里 —— 主体 logo、两类证件、门店背景图。 */
 @Component
 public class MerchantMediaRefs implements MediaRefSource {
 
@@ -30,6 +30,9 @@ public class MerchantMediaRefs implements MediaRefSource {
                  * 不按 kind 分开扫 —— 按自由文本一起扫，文本抠不出 key 也就匹配不上任何资产。
                  * 分开扫要多一个条件，而条件写错的后果是店招图被回收。
                  */
-                of("mch_store_audit", "content", "店招审核 · 内容", "audit_no"));
+                of("mch_store_audit", "content", "店招审核 · 内容", "audit_no"),
+
+                // 门店背景图（V368）。漏登记的话它会被当成孤儿回收：门户顶部突然变回浅底，店主以为自己没设过
+                of("mch_store", "banner_url", "门店 · 背景图", "store_no"));
     }
 }

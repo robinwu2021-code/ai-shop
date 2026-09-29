@@ -14,6 +14,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { composeAddress, locateWithFeedback, pickOnMap } from "@/utils/geo";
 import { saveBase64Image } from "@/utils/image";
+import { pickImages } from "@shared/ports/media";
 import { useMerchantStore } from "@/stores/merchant";
 import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import type { Poster, ShareKit, StoreProfile, StoreQrcode } from "@shared/types";
@@ -36,7 +37,7 @@ const loaded = ref(false);
 const snapshot = ref("");
 /** 只看这一页管的字段：公告在自己的页里改，它变了不该让这里显示「有修改未保存」 */
 const pick = (p: StoreProfile) => JSON.stringify([
-  p.openHours, p.address, p.addressDetail ?? "", p.latE6 ?? null, p.lngE6 ?? null,
+  p.openHours, p.address, p.addressDetail ?? "", p.latE6 ?? null, p.lngE6 ?? null, p.bannerUrl ?? "",
 ]);
 const dirty = computed(() => loaded.value && pick(form.value) !== snapshot.value);
 
@@ -117,9 +118,32 @@ async function save() {
 }
 
 function discard() {
-  const [openHours = "", address = "", addressDetail = "", latE6 = null, lngE6 = null] =
-    JSON.parse(snapshot.value || "[]") as [string, string, string, number | null, number | null];
-  form.value = { ...form.value, openHours, address, addressDetail, latE6, lngE6 };
+  const [openHours = "", address = "", addressDetail = "", latE6 = null, lngE6 = null, bannerUrl = ""] =
+    JSON.parse(snapshot.value || "[]") as [string, string, string, number | null, number | null, string];
+  form.value = { ...form.value, openHours, address, addressDetail, latE6, lngE6, bannerUrl };
+}
+
+/** 背景图：选一张 → 传上去 → 填进表单。保存仍走底部那一条（与营业时间、地址一起存） */
+const bannerUploading = ref(false);
+async function pickBanner() {
+  if (bannerUploading.value) return;
+  let picked;
+  try {
+    picked = await pickImages(1, ["album", "camera"]);
+  } catch {
+    return; // 取消不是错误
+  }
+  const img = picked[0];
+  if (!img) return;
+  bannerUploading.value = true;
+  try {
+    const { url } = await api.mUploadImage(img.tempPath);
+    form.value = { ...form.value, bannerUrl: url };
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    bannerUploading.value = false;
+  }
 }
 
 /** 已标过点（坐标随门店保存；买家侧导航/排距离靠它） */
@@ -266,6 +290,25 @@ onShow(() => {
           :maxlength="40"
           :placeholder="$t('store.addressDetailPh')"
         />
+      </view>
+
+      <!--
+        顾客打开店铺时顶部那一条：传了是这张照片，没传是主色浅底（2026-09-29 用户定）。
+        宽幅格子，看到的比例接近顾客那边；点图换一张，右上角删掉就回到浅底
+      -->
+      <view class="field">
+        <text class="field__label">{{ $t("store.banner") }}</text>
+        <sh-uploader
+          :list="form.bannerUrl ? [form.bannerUrl] : []"
+          :max="1"
+          :width="400"
+          :height="200"
+          :uploading="bannerUploading"
+          removable
+          @add="pickBanner"
+          @tap-item="pickBanner"
+          @remove="form.bannerUrl = ''"
+        ></sh-uploader>
       </view>
     </view>
 

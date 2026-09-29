@@ -111,7 +111,30 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                         ? PICKUP : merchant.getFulfillmentReach(),
                 areasOf(merchantNo),
                 store == null ? null : store.getLatE6(),
-                store == null ? null : store.getLngE6());
+                store == null ? null : store.getLngE6(),
+                store == null ? "" : nz(store.getBannerUrl()));
+    }
+
+    /** 背景图地址的上限：与列宽（V368，VARCHAR(512)）一致，超了是端上传错了东西 */
+    private static final int BANNER_URL_MAX = 512;
+
+    @Override
+    @Transactional
+    public StoreProfileVO saveBanner(String merchantNo, String storeNo, String bannerUrl) {
+        MchStore store = row(merchantNo, storeNo);
+        if (store == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        String url = bannerUrl == null ? "" : bannerUrl.trim();
+        // 只收 http(s)：别的值（本地临时路径、emoji、半截地址）写进去，买家那边是一张裂图
+        if (!url.isEmpty() && (url.length() > BANNER_URL_MAX
+                || !(url.startsWith("https://") || url.startsWith("http://")))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 清掉写空串而不是 null：updateById 跳过 null 字段，写 null 等于没清
+        store.setBannerUrl(url);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(store));
+        return profile(merchantNo, storeNo);
     }
 
     @Override

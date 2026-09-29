@@ -195,8 +195,9 @@ public interface MerchantQueryPort {
      *                       <b>买家要靠它判断这句话新不新</b> —— 一行没有时间的
      *                       「今天到了新米」，既可能是今早写的也可能是上个月忘了撤的
      */
+    /** @param bannerUrl 门店背景图（V368）。没设为空串 —— 门户顶部据此用照片还是主色浅底 */
     record StoreFront(String announcement, Long announcementAt, String openHours, String address,
-                      String status, Integer latE6, Integer lngE6) {
+                      String status, Integer latE6, Integer lngE6, String bannerUrl) {
     }
 
     /**
