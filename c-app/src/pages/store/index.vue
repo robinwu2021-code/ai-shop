@@ -630,7 +630,12 @@ onShareTimeline(() =>
   /* 顶层块之间的那道缝（base.css `.sh-scaffold > * + *`）会把它从屏顶推下来：它前面是固定定位的浮层 */
   margin-top: 0;
   overflow: hidden;
-  background: var(--sh-primary-tint);
+  /*
+   * 这是**整幅背景**，不是白卡也不是提示条 —— 所以写成渐变而不是一块纯 tint：
+   * 后者会被「页面不自己画容器」那道守卫判成又画了一遍 .sh-notice，而它说得对，
+   * 一块纯 tint 的方块确实和提示条长得一样。往下淡到页面底色，信息卡才像压在它上面
+   */
+  background: linear-gradient(180deg, var(--sh-primary-tint) 0%, var(--sh-bg) 100%);
 }
 .band__img {
   position: absolute;
