@@ -721,8 +721,10 @@ V156 里那张表叫 `msg_scene_channel`，**V162 把 msg_* 全改成了 notify_
 
 ### 10.8 还没做的
 
-- **AC1 只能真机验**：微信里打开小程序 → 店铺页点收藏 → 应弹出订阅授权 →
-  点「允许」后 `notify_subscribe` 多一行（模板 `RpcP4uNQ...`）。
+- ~~**AC1 只能真机验**~~ → **✅ 2026-09-29 12:46 真机验过**：店铺页点收藏 → 弹出授权框 →
+  允许 → `notify_subscribe` 多一行（`accepted=1 quota=1`）→ 上架测试商品 →
+  `quota` 扣成 0、`sys_notify_log` 落 `WXSUB/SENT`、**手机收到「新品开售提醒」**。
+  过程与三层坑见 [TDD-通知与消息推送](./TDD-通知与消息推送.md) §8.6b。
 - **生产 env 要配 `WX_TPL_NEW_GOODS`**，值与 `c-app/.env.production` 的
   `VITE_WX_TPL_NEW_GOODS` 相同（`RpcP4uNQriF7fDw1Jz8oU805jjtPyBzTgL9NrDOlMJ8`）。
   **不配的后果不是「功能没开」而是「用户白点」**：端上照常弹窗、额度照常记下，
