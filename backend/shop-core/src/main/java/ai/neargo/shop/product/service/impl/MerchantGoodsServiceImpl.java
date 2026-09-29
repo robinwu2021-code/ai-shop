@@ -704,7 +704,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         String effectiveCategory = cmd.categoryNo() != null && !cmd.categoryNo().isBlank()
                 ? cmd.categoryNo() : g.getCategoryNo();
-        requireInStore(ai.neargo.shop.auth.BizContext.current().currentStoreNo(), effectiveCategory);
+        requireInStore(merchantNo, ai.neargo.shop.auth.BizContext.current().currentStoreNo(), effectiveCategory);
         /*
          * **双版本（TDD-商品规格与发布 §3.3）：在售商品的编辑只落草稿，线上一个字节不动。**
          *
@@ -1290,9 +1290,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 类目必须在门店经营类目里（TDD-门店经营类目）。
      * <p><b>没有门店上下文时不判</b>（单店老账号、运营代操作）—— 与原来 ensure 的边界相同；
      * 没归类的也不判，那由必填校验管。
-     * <p>报错带上类目名：「本店经营类目里没有「蔬菜」」—— 只说「类目不对」他不知道该去加哪一个。
+     * <p>报错带上<b>当前门店名</b>与类目名，并且分成两个码。原文是「本店经营类目里没有「蔬菜」」——
+     * 「本店」在多门店商家那里指的是<b>他此刻切着的那家</b>，而不是他心里想的那家。
+     * 2026-09-29 在生产上实测到：在 B 店上架的商品，在 A 店的上下文里下架之后再上架被拒，
+     * 提示让他去加类目 —— 照做会把 A 店的经营范围凭空撑大一类，而他真正要做的只是切回 B 店。
+     * 所以先看这一类是不是在<b>兄弟门店</b>下，是就说「切门店」，不是才说「去添加」。
      */
-    private void requireInStore(String storeNo, String categoryNo) {
+    private void requireInStore(String merchantNo, String storeNo, String categoryNo) {
         if (storeNo == null || storeNo.isBlank() || categoryNo == null || categoryNo.isBlank()) {
             return;
         }
@@ -1304,9 +1308,29 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (!categoryService.isActive(categoryNo)) {
             return;
         }
-        if (!storeCategoryPort.categoryNosOf(storeNo).contains(categoryNo)) {
-            throw BizException.of(ErrorCode.GOODS_CATEGORY_NOT_IN_STORE, categoryNameOf(categoryNo));
+        if (storeCategoryPort.categoryNosOf(storeNo).contains(categoryNo)) {
+            return;
         }
+        /*
+         * 到这儿才去查门店名与兄弟门店 —— 这是**失败路径**，每次上架都跑的是上面那一行。
+         * 把这几次查询放在通过的路径上，等于让每一次正常上架替一次出错买单。
+         */
+        String categoryName = categoryNameOf(categoryNo);
+        List<String> siblings = DataScopeContext.executeWithoutScope(() ->
+                merchantPort.storeNos(merchantNo).stream()
+                        .filter(s -> !s.equals(storeNo))
+                        .filter(s -> storeCategoryPort.categoryNosOf(s).contains(categoryNo))
+                        .toList());
+        java.util.List<String> wanted = new java.util.ArrayList<>(siblings);
+        wanted.add(storeNo);
+        Map<String, String> names = DataScopeContext.executeWithoutScope(() -> merchantPort.storeNames(wanted));
+        String here = names.getOrDefault(storeNo, storeNo);
+        if (siblings.isEmpty()) {
+            throw BizException.of(ErrorCode.GOODS_CATEGORY_NOT_IN_STORE, here, categoryName);
+        }
+        throw BizException.of(ErrorCode.GOODS_CATEGORY_IN_OTHER_STORE, here, categoryName,
+                siblings.stream().map(s -> names.getOrDefault(s, s))
+                        .collect(java.util.stream.Collectors.joining("、")));
     }
 
     private String categoryNameOf(String categoryNo) {
@@ -1897,7 +1921,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 反向的口子（类目被撤而商品还在）仍由 StoreCategoryService.replace 堵：底下有商品删不掉。
          */
         if (onSale) {
-            requireInStore(storeNo, g.getCategoryNo());
+            requireInStore(merchantNo, storeNo, g.getCategoryNo());
         }
         /*
          * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。
