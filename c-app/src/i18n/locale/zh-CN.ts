@@ -447,7 +447,6 @@ export default {
      * 报名弹框删掉主体选择后，`merchant.subject.*` 那一份成了孤儿（与这里逐字重复），
      * 已删；要显示主体类型一律走这一份。
      */
-    type: { NATURAL_PERSON: "个人经营者", INDIVIDUAL: "个体工商户", ENTERPRISE: "企业商家" },
   },
   review: {
     titleBare: "评价",
@@ -482,10 +481,9 @@ export default {
     history: "搜索历史",
     clear: "清空",
     goodsTab: "商品 {n}",
-    merchantTab: "商家 {n}",
-    orders: "{n} 单",
+    merchantTab: "店铺 {n}",
     noGoods: "没有匹配的商品",
-    noMerchant: "没有匹配的商家",
+    noMerchant: "没有匹配的店铺",
     nothing: "没有找到「{k}」相关的商品或商家",
   },
   serviceScope: {

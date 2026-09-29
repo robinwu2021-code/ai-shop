@@ -3466,24 +3466,6 @@
           "ar": "إرسال الطلب"
         },
         {
-          "key": "merchant.type.ENTERPRISE",
-          "zh-CN": "企业商家",
-          "en": "Company",
-          "ar": "شركة"
-        },
-        {
-          "key": "merchant.type.INDIVIDUAL",
-          "zh-CN": "个体工商户",
-          "en": "Sole trader",
-          "ar": "تاجر فردي"
-        },
-        {
-          "key": "merchant.type.NATURAL_PERSON",
-          "zh-CN": "个人经营者",
-          "en": "Individual seller",
-          "ar": "بائع فرد"
-        },
-        {
           "key": "message.allRead",
           "zh-CN": "已全部阅读",
           "en": "All read",
@@ -4883,8 +4865,8 @@
         },
         {
           "key": "search.merchantTab",
-          "zh-CN": "商家 {n}",
-          "en": "Shops {n}",
+          "zh-CN": "店铺 {n}",
+          "en": "Stores {n}",
           "ar": "المتاجر {n}"
         },
         {
@@ -4895,8 +4877,8 @@
         },
         {
           "key": "search.noMerchant",
-          "zh-CN": "没有匹配的商家",
-          "en": "No matching shops",
+          "zh-CN": "没有匹配的店铺",
+          "en": "No matching stores",
           "ar": "لا توجد متاجر مطابقة"
         },
         {
@@ -4904,12 +4886,6 @@
           "zh-CN": "没有找到「{k}」相关的商品或商家",
           "en": "Nothing found for \"{k}\"",
           "ar": "لم يُعثر على شيء لـ «{k}»"
-        },
-        {
-          "key": "search.orders",
-          "zh-CN": "{n} 单",
-          "en": "{n} orders",
-          "ar": "{n} طلبًا"
         },
         {
           "key": "search.placeholder",

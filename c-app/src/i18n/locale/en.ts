@@ -397,7 +397,6 @@ export default {
     goodsTab: "Products {n}",
     reviewTab: "Reviews {n}",
     dim: { goods: "Product", service: "Service", speed: "Speed" },
-    type: { NATURAL_PERSON: "Individual seller", INDIVIDUAL: "Sole trader", ENTERPRISE: "Company" },
   },
   review: {
     titleBare: "Reviews",
@@ -429,10 +428,9 @@ export default {
     history: "Recent searches",
     clear: "Clear",
     goodsTab: "Products {n}",
-    merchantTab: "Shops {n}",
-    orders: "{n} orders",
+    merchantTab: "Stores {n}",
     noGoods: "No matching products",
-    noMerchant: "No matching shops",
+    noMerchant: "No matching stores",
     nothing: "Nothing found for \"{k}\"",
   },
   serviceScope: {

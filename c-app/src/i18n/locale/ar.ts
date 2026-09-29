@@ -397,7 +397,6 @@ export default {
     goodsTab: "المنتجات {n}",
     reviewTab: "التقييمات {n}",
     dim: { goods: "المنتج", service: "الخدمة", speed: "السرعة" },
-    type: { NATURAL_PERSON: "بائع فرد", INDIVIDUAL: "تاجر فردي", ENTERPRISE: "شركة" },
   },
   review: {
     titleBare: "التقييمات",
@@ -430,7 +429,6 @@ export default {
     clear: "مسح",
     goodsTab: "المنتجات {n}",
     merchantTab: "المتاجر {n}",
-    orders: "{n} طلبًا",
     noGoods: "لا توجد منتجات مطابقة",
     noMerchant: "لا توجد متاجر مطابقة",
     nothing: "لم يُعثر على شيء لـ «{k}»",

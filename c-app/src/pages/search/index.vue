@@ -1,22 +1,27 @@
 <script setup lang="ts">
-// 搜索：商品 + 商家两个结果域。
+// 搜索：商品 + 门店两个结果域。
 // 两者分 tab 而不是混排 —— 用户搜「理发」既可能想找服务商品，也可能想找那家店，
 // 混排会让两类结果互相挤掉，分开各自完整展示更好用。
+// 店铺结果的单位是**门店**（TDD-C端门店化与门店门户）：同一主体的几家店各一行、叫门店名。
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
+import { useLocationStore } from "@/stores/location";
+import { useUserStore } from "@/stores/user";
 import { GOODS_COVER_FALLBACK, ROUTES, STORAGE } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import type { Goods, Merchant } from "@shared/types";
+import type { Goods, StoreCard } from "@shared/types";
 
 const cart = useCartStore();
+const location = useLocationStore();
+const user = useUserStore();
 
 const keyword = ref("");
 const tab = ref<"goods" | "merchants">("goods");
 const goods = ref<Goods[]>([]);
-const merchants = ref<Merchant[]>([]);
+const merchants = ref<StoreCard[]>([]);
 const searched = ref(false);
 const history = ref<string[]>([]);
 
@@ -54,11 +59,21 @@ async function search(k = keyword.value) {
   pushHistory(q);
   // 两个域并行查，切 tab 时不用再等
   let g, m;
+  const a = location.active;
+  const point = a?.latE6 != null && a?.lngE6 != null ? { latE6: a.latE6, lngE6: a.lngE6 } : {};
   try {
-    [g, m] = await Promise.all([
+    /*
+     * 门店两段合起来搜：「附近」接口会去掉「我的店」已有的（那是店铺页去重用的），
+     * 只查它的话，他常去的那家店恰恰搜不到。所以我的店按名字在端上筛一遍，排在前面。
+     */
+    const [gr, mine, near] = await Promise.all([
       api.goodsList({ keyword: q, size: 50 }),
-      api.merchantList({ keyword: q }),
+      user.isLogin ? api.myStores(point) : Promise.resolve([] as StoreCard[]),
+      api.storeNearby({ ...point, keyword: q, size: 50 }),
     ]);
+    const k2 = q.toLowerCase();
+    g = gr;
+    m = [...mine.filter((s) => s.storeName.toLowerCase().includes(k2)), ...near.records];
     failed.value = false;
   } catch {
     // 搜挂了与「这个词搜不到东西」是两件事：后者该换个词，前者该重试。
@@ -79,8 +94,8 @@ function openGoods(g: Goods) {
   uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
 }
 
-function openMerchant(m: Merchant) {
-  uni.navigateTo({ url: `${ROUTES.merchant}?merchantNo=${m.merchantNo}` });
+function openStore(s: StoreCard) {
+  uni.navigateTo({ url: `${ROUTES.store}?no=${s.storeNo}&from=SEARCH` });
 }
 
 async function add(g: Goods, e: unknown) {
@@ -171,27 +186,12 @@ onLoad((q) => {
       </template>
 
       <template v-else>
-        <view
-          v-for="m in merchants"
-          :key="m.merchantNo"
-          class="mcard"
-          @tap="openMerchant(m)"
-        >
-          <biz-merchant-bar
-            :merchant="m"
-            @tap="openMerchant(m)"
-          ></biz-merchant-bar>
-          <text class="txt-caption mcard__desc">{{ m.desc }}</text>
-          <view class="mcard__meta sh-wrap">
-            <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
-            <text class="sh-chip sh-num">
-              {{ $t("merchant.goodsTab", { n: m.goodsCount }) }}
-            </text>
-            <text class="sh-chip sh-num">{{
-              $t("search.orders", { n: m.salesCount })
-            }}</text>
-          </view>
-        </view>
+        <biz-store-row
+          v-for="s in merchants"
+          :key="s.storeNo"
+          :store="s"
+          @tap="openStore(s)"
+        ></biz-store-row>
         <sh-empty
           bare
           v-if="!merchants.length && !failed"
@@ -244,16 +244,5 @@ onLoad((q) => {
 }
 .hist__item {
   padding: 12rpx 24rpx;
-}
-/* 商家结果在结果块内成行 —— 行与行之间靠内边距分隔，不再各自一张卡 */
-.mcard {
-  padding: 20rpx 24rpx;
-}
-.mcard__desc {
-  display: block;
-  margin-top: 20rpx;
-}
-.mcard__meta {
-  margin-top: 20rpx;
 }
 </style>
