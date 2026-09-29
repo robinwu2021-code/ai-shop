@@ -10286,6 +10286,12 @@
           "ar": "لا يمكنك التحصيل بعد"
         },
         {
+          "key": "home.blocker.payoutAccount",
+          "zh-CN": "货款还打不出去",
+          "en": "Proceeds cannot be paid out",
+          "ar": "لا يمكن تحويل مستحقاتك"
+        },
+        {
           "key": "home.blocker.scope",
           "zh-CN": "顾客尚不可见",
           "en": "Not yet visible to customers",
@@ -10314,6 +10320,12 @@
           "zh-CN": "收款进件未完成。商品可上架，但顾客无法付款。",
           "en": "Payment onboarding is incomplete. Products can be listed, but customers cannot pay.",
           "ar": "لم يكتمل تسجيل التحصيل؛ يمكن عرض البضاعة لكن لا أحد يستطيع الدفع"
+        },
+        {
+          "key": "home.blockerHint.payoutAccount",
+          "zh-CN": "货款按账期打到你的收款账户，现在还没有一张可用的。单子照常成交，钱先记着。",
+          "en": "Proceeds are paid to your bank account on the settlement cycle, and there is no usable account yet. Orders still go through; the money is held.",
+          "ar": "تُحوَّل المستحقات إلى حسابك البنكي حسب دورة التسوية، ولا يوجد حساب صالح بعد. الطلبات تستمر والمبلغ محفوظ لك."
         },
         {
           "key": "home.blockerHint.scope",

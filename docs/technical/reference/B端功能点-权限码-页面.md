@@ -293,7 +293,7 @@
 | 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
 | 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
 | 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
-| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | payout-account |
+| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
 | 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
 | 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
 | 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
