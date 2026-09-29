@@ -330,6 +330,79 @@ class ElecFlowTest {
         assertThat(call(post("/elec/c/rfq"), buyer, "{\"lines\":[]}").get("code").asInt()).isEqualTo(90010);
     }
 
+    // ── 阶梯价与货品口径 ────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("★★★ 阶梯价：表头就是数量档（1-99 / 100+ / 1000+）时逐档收下；买家看到的起价是最便宜那档，并写明从多少起")
+    void priceTiersFromHeaders() throws Exception {
+        String p = prefix();
+        String user = supplier("12600910020", "阶梯电子");
+        String csv = "型号,数量,1-99,100-999,1000+\n" + p + "T1,5000,8.20,7.35,6.85\n";
+        applyCsv(user, csv, "MERGE");
+
+        JsonNode mine = data(get("/elec/b/stock"), user).get(0);
+        assertThat(mine.get("tiers").size()).isEqualTo(3);
+        assertThat(mine.get("tiers").get(0).get("minQty").asLong()).isEqualTo(1L);
+        assertThat(mine.get("tiers").get(0).get("priceE6").asLong()).isEqualTo(8_200_000L);
+        assertThat(mine.get("tiers").get(2).get("minQty").asLong()).isEqualTo(1000L);
+        assertThat(mine.get("priceE6").asLong()).as("冗余出来的是最低档（minQty 最小那档）").isEqualTo(8_200_000L);
+
+        JsonNode market = hits(p + "T1").get(0).get("market");
+        // 最便宜的一档是 6.85（从 1000 起）；加价 8% → 7.398
+        assertThat(market.get("priceFromE6").asLong()).isEqualTo(7_398_000L);
+        assertThat(market.get("priceFromQty").asLong())
+                .as("有了阶梯价就必须说这个价从多少起，否则按 10 片来询的人会觉得被坑").isEqualTo(1000L);
+    }
+
+    @Test
+    @DisplayName("★★★ 货况、包装、交期、货源地各种写法都认得出；买家面只给「有哪些货况」与「有没有现货」")
+    void conditionPackingLead() throws Exception {
+        String p = prefix();
+        String user = supplier("12600910021", "货况电子");
+        String csv = "型号,数量,单价,品质,包装,交期,货源地\n"
+                + p + "C1,500,6.20,全新原装,编带,现货,深圳\n"
+                + p + "C2,800,5.10,原装散新,剪切带,7天,香港\n";
+        applyCsv(user, csv, "MERGE");
+
+        JsonNode mine = data(get("/elec/b/stock").param("keyword", p + "C1"), user).get(0);
+        assertThat(mine.get("cond").asString()).isEqualTo("ORIGINAL");
+        assertThat(mine.get("packing").asString()).isEqualTo("REEL");
+        assertThat(mine.get("leadDays").asInt()).isZero();
+        assertThat(mine.get("region").asString()).isEqualTo("深圳");
+
+        JsonNode m1 = hits(p + "C1").get(0).get("market");
+        assertThat(m1.get("spot").asBoolean()).isTrue();
+        assertThat(m1.get("leadDaysMin").asInt()).isZero();
+        assertThat(m1.get("conds").toString()).contains("ORIGINAL");
+        JsonNode m2 = hits(p + "C2").get(0).get("market");
+        assertThat(m2.get("spot").asBoolean()).as("7 天交期不是现货").isFalse();
+        assertThat(m2.get("leadDaysMin").asInt()).isEqualTo(7);
+        assertThat(m2.get("conds").toString()).contains("LOOSE").doesNotContain("ORIGINAL");
+    }
+
+    @Test
+    @DisplayName("★★★ 美元报价换算成人民币含税再给买家 —— 不换的话 $6 会被当成 ¥6 显示")
+    void foreignCurrencyConverted() throws Exception {
+        String p = prefix();
+        String user = supplier("12600910022", "美元电子");
+        applyCsv(user, "型号,数量,单价,币种\n" + p + "U1,100,1.00,USD\n", "MERGE");
+        long shown = hits(p + "U1").get(0).get("market").get("priceFromE6").asLong();
+        // $1 × 7.1 = ¥7.1，再加 8% 加价 = ¥7.668
+        assertThat(shown).isEqualTo(7_668_000L);
+        assertThat(shown).as("没换算的话会是 ¥1 出头").isGreaterThan(5_000_000L);
+    }
+
+    @Test
+    @DisplayName("★★ 未税价换算成含税再比：同一个数字，未税的那条其实更贵")
+    void untaxedPriceIsConverted() throws Exception {
+        String p = prefix();
+        String user = supplier("12600910023", "未税电子");
+        JsonNode pv = uploadWith(user, "型号,数量,单价\n" + p + "N1,100,10.00\n", "MERGE", false);
+        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), user);
+        // ¥10 未税 → ×1.13 = ¥11.3，再加 8% = ¥12.204
+        assertThat(hits(p + "N1").get(0).get("market").get("priceFromE6").asLong()).isEqualTo(12_204_000L);
+    }
+
     // ── 查询 ────────────────────────────────────────────────────────────────
 
     @Test

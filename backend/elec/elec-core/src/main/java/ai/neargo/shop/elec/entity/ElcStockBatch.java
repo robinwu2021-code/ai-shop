@@ -22,9 +22,14 @@ public class ElcStockBatch extends ElcMutableEntity {
 
     private Boolean taxIncluded;
 
+    private String currency;
+
     private String headers;
 
     private String columnMap;
+
+    /** 阶梯价列 JSON：[[列序号, 从多少起], …] */
+    private String tierCols;
 
     private Integer rowTotal;
 

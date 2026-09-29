@@ -29,6 +29,7 @@ import ai.neargo.shop.elec.mapper.ElecMappers.SourceRow;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
 import ai.neargo.shop.elec.service.ElecRfqService;
 import ai.neargo.shop.elec.support.ElecKeys;
+import ai.neargo.shop.elec.support.ElecValues;
 import ai.neargo.shop.elec.support.Mpn;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -127,6 +128,12 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         rfq.setCompany(ElecSupplierServiceImpl.trimmed(req.company(), 128));
         rfq.setNeedInvoice(ElecSupplierServiceImpl.oneOf(req.needInvoice(), INVOICES, "NONE"));
         rfq.setDcReq(ElecSupplierServiceImpl.oneOf(req.dcReq(), DC_REQS, "ANY"));
+        rfq.setCondReq(ElecSupplierServiceImpl.oneOf(req.condReq(), ElecValues.COND_REQS, "ANY"));
+        rfq.setPackingReq(ElecSupplierServiceImpl.oneOf(req.packingReq(), ElecValues.PACKING_REQS, "ANY"));
+        // 交期要求：0 或负数、超过一年都当没填 —— 「今天就要」在这条链路上不成立
+        rfq.setNeedByDays(req.needByDays() != null && req.needByDays() > 0 && req.needByDays() <= 365
+                ? req.needByDays() : null);
+        rfq.setAllowAlt(Boolean.TRUE.equals(req.allowAlt()));
         rfq.setDeliverCity(ElecSupplierServiceImpl.trimmed(req.deliverCity(), 32));
         rfq.setRemark(ElecSupplierServiceImpl.trimmed(req.remark(), 255));
         rfq.setLineCnt(lines.size());
@@ -262,6 +269,10 @@ public class ElecRfqServiceImpl implements ElecRfqService {
                         .set(ElcRfqLine::getQuoteQty, q == null ? null : q.qty())
                         .set(ElcRfqLine::getQuoteDcYear, q == null ? null : q.dcYear())
                         .set(ElcRfqLine::getQuoteLeadDays, q == null ? null : q.leadDays())
+                        .set(ElcRfqLine::getQuoteCond, q == null ? null
+                                : ElecSupplierServiceImpl.oneOf(q.cond(), ElecValues.CONDITIONS, null))
+                        .set(ElcRfqLine::getQuotePacking, q == null ? null
+                                : ElecSupplierServiceImpl.oneOf(q.packing(), ElecValues.PACKINGS, null))
                         .set(ElcRfqLine::getQuoteNote, q == null ? null
                                 : ElecSupplierServiceImpl.trimmed(q.note(), 128))
                         .set(ElcRfqLine::getUpdatedBy, staffNo));
@@ -353,12 +364,14 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     private static LineQuote quoteOf(ElcRfqLine l) {
         return l.getQuoteE6() == null ? null
                 : new LineQuote(l.getQuoteE6(), l.getQuoteQty(), l.getQuoteDcYear(), l.getQuoteLeadDays(),
-                l.getQuoteNote());
+                l.getQuoteCond(), l.getQuotePacking(), l.getQuoteNote());
     }
 
     private static RfqView view(ElcRfq h, List<ElcRfqLine> lines) {
         return new RfqView(h.getRfqNo(), shownStatus(h), h.getCreatedAt(), h.getLineCnt(), h.getNeedInvoice(),
-                h.getDcReq(), h.getDeliverCity(), h.getCompany(), h.getContactName(), Masks.phone(h.getContactPhone()),
+                h.getDcReq(), h.getCondReq(), h.getPackingReq(), h.getNeedByDays(),
+                Boolean.TRUE.equals(h.getAllowAlt()), h.getDeliverCity(), h.getCompany(), h.getContactName(),
+                Masks.phone(h.getContactPhone()),
                 h.getRemark(), h.getQuotedAt(), h.getQuoteValidUntil(), h.getQuoteNote(), h.getCloseReason(),
                 lines.stream().map(l -> new LineView(l.getLineNo(), l.getPartNo(), l.getMpnRaw(), l.getMfrRaw(),
                         l.getQty(), l.getTargetE6(), quoteOf(l))).toList());
@@ -375,14 +388,16 @@ public class ElecRfqServiceImpl implements ElecRfqService {
                     l.getTargetE6(), quoteOf(l), sources));
         }
         return new OpsRfqView(h.getRfqNo(), shownStatus(h), h.getCreatedAt(), h.getLineCnt(), h.getContactName(),
-                h.getContactPhone(), h.getCompany(), h.getNeedInvoice(), h.getDcReq(), h.getDeliverCity(),
+                h.getContactPhone(), h.getCompany(), h.getNeedInvoice(), h.getDcReq(), h.getCondReq(),
+                h.getPackingReq(), h.getNeedByDays(), Boolean.TRUE.equals(h.getAllowAlt()), h.getDeliverCity(),
                 h.getRemark(), h.getQuotedAt(), h.getQuotedBy(), h.getQuoteValidUntil(), h.getQuoteNote(),
                 h.getBuyerNotifiedAt() != null, h.getCloseReason(), views);
     }
 
     private static OpsSource opsSource(SourceRow s) {
         return new OpsSource(s.getSupplierNo(), s.getCompanyName(), s.getContactPhone(), s.getQty(),
-                s.getDateCode(), s.getPriceE6(), Boolean.TRUE.equals(s.getTaxIncluded()));
+                s.getDateCode(), s.getPriceE6(), s.getCurrency(), Boolean.TRUE.equals(s.getTaxIncluded()),
+                s.getPacking(), s.getCondGrade(), s.getLeadDays(), s.getRegion());
     }
 
     // ── 查询小件 ────────────────────────────────────────────────────────────

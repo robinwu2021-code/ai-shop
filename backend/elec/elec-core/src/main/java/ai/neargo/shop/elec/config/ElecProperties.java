@@ -35,6 +35,31 @@ public class ElecProperties {
     /** 不含税的报价换算成含税参考价用的税率（万分比）。增值税 13% */
     private int vatBp = 1300;
 
+    /**
+     * 外币换人民币的汇率（万分比：10000 = 1.0）。**手工值，不接实时汇率** ——
+     * 参考价本来就只是个量级，接实时汇率会让同一个料号的显示价一天变好几次，
+     * 而买家会拿它来质问报价。真实价以平台报价为准。
+     */
+    private int usdToCnyBp = 71000;
+
+    private int hkdToCnyBp = 9100;
+
+    public int getUsdToCnyBp() {
+        return usdToCnyBp;
+    }
+
+    public void setUsdToCnyBp(int usdToCnyBp) {
+        this.usdToCnyBp = usdToCnyBp;
+    }
+
+    public int getHkdToCnyBp() {
+        return hkdToCnyBp;
+    }
+
+    public void setHkdToCnyBp(int hkdToCnyBp) {
+        this.hkdToCnyBp = hkdToCnyBp;
+    }
+
     /** 一张询价单最多几行 */
     private int rfqMaxLines = 50;
 

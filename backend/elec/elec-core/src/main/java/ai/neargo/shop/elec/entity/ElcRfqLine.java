@@ -32,5 +32,10 @@ public class ElcRfqLine extends ElcMutableEntity {
 
     private Integer quoteLeadDays;
 
+    /** 这个价给的是什么货况。买家要原装而平台报的是散新，必须说出来 */
+    private String quoteCond;
+
+    private String quotePacking;
+
     private String quoteNote;
 }

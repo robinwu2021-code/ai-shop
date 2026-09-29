@@ -134,6 +134,23 @@ public final class Cells {
         return cur == null ? candidate : Math.max(cur, candidate);
     }
 
+    /**
+     * 阶梯价：{@code [{"minQty":1,"e6":1850000},…]}，按 minQty 升序、同一档取先出现的那个。
+     * 只有一档也算阶梯（很多表就只有一列单价）。
+     *
+     * @return 一档都认不出时空列表
+     */
+    public static java.util.List<long[]> tiers(java.util.List<long[]> raw) {
+        java.util.Map<Long, Long> byQty = new java.util.LinkedHashMap<>();
+        for (long[] t : raw) {
+            byQty.putIfAbsent(t[0], t[1]);
+        }
+        return byQty.entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .map(e -> new long[]{e.getKey(), e.getValue()})
+                .toList();
+    }
+
     /** 截断到列宽。null 与空白都当 null */
     public static String text(String raw, int max) {
         if (raw == null) {

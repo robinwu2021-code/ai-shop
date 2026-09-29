@@ -19,6 +19,7 @@ import ai.neargo.shop.elec.support.Cells;
 import ai.neargo.shop.elec.support.Columns;
 import ai.neargo.shop.elec.support.Columns.Field;
 import ai.neargo.shop.elec.support.ElecKeys;
+import ai.neargo.shop.elec.support.ElecValues;
 import ai.neargo.shop.elec.support.Mpn;
 import ai.neargo.shop.elec.support.SheetReader;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -116,6 +117,8 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         b.setFileName(fileName == null ? null : ElecPartCatalog.truncate(fileName, 128));
         b.setMode(MODE_REPLACE.equals(mode) ? MODE_REPLACE : MODE_MERGE);
         b.setTaxIncluded(taxIncluded != null ? taxIncluded : guess.taxHint() == null || guess.taxHint());
+        b.setCurrency("CNY");
+        b.setTierCols(write(guess.tiers().stream().map(c -> List.of(c.col(), c.minQty())).toList()));
         b.setHeaders(write(rows.get(headerRow)));
         b.setColumnMap(write(toWire(map)));
         b.setStatus(ElcStockBatch.STATUS_PARSED);
@@ -137,7 +140,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         for (int i = 0; i < raw.size(); i += CHUNK) {
             rowMapper.insertAll(raw.subList(i, Math.min(raw.size(), i + CHUNK)));
         }
-        Plan plan = plan(b, map, cellsOf(raw));
+        Plan plan = plan(b, map, guess.tiers(), cellsOf(raw));
         fill(b, plan);
         batchMapper.insert(b);
         return preview(b, plan);
@@ -152,7 +155,9 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
             throw BizException.of(ErrorCode.ELEC_UPLOAD_NO_HEADER);
         }
         b.setColumnMap(write(toWire(map)));
-        Plan plan = plan(b, map, cellsOf(rowsOf(batchNo)));
+        // 阶梯价列不跟着改：它是按表头认的，与「这一列是什么字段」是两件事
+        List<Columns.PriceTierCol> tierCols = tierColsOf(b);
+        Plan plan = plan(b, map, tierCols, cellsOf(rowsOf(batchNo)));
         fill(b, plan);
         b.setUpdatedBy(userNo);
         batchMapper.updateById(b);
@@ -166,7 +171,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
     public BatchPreview apply(String userNo, String batchNo) {
         ElcStockBatch b = parsedBatch(userNo, batchNo);
         Map<Field, Integer> map = fromWire(read(b.getColumnMap(), new TypeReference<Map<String, Integer>>() { }));
-        Plan plan = plan(b, map, cellsOf(rowsOf(batchNo)));
+        Plan plan = plan(b, map, tierColsOf(b), cellsOf(rowsOf(batchNo)));
         if (plan.valid.isEmpty()) {
             // 一行能上架的都没有时，全量替换会把他的库存全部下架 —— 这一步必须拦住
             throw BizException.of(ErrorCode.ELEC_BATCH_EMPTY);
@@ -194,8 +199,15 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                 s.setDcYear(p.dcYear);
                 s.setPkg(p.pkg);
                 s.setMoq(p.moq);
+                s.setSpq(p.spq);
+                s.setPriceTiers(tiersJson(p.tiers));
                 s.setPriceE6(p.priceE6);
+                s.setCurrency(p.currency != null ? p.currency : b.getCurrency());
                 s.setTaxIncluded(b.getTaxIncluded());
+                s.setPacking(p.packing);
+                s.setCondGrade(p.cond);
+                s.setLeadDays(p.leadDays);
+                s.setRegion(p.region);
                 s.setValidUntil(validUntil);
                 s.setConfirmedAt(now);
                 s.setStatus(ElcStock.STATUS_ON);
@@ -217,9 +229,26 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                 if (p.moq != null) {
                     cur.setMoq(p.moq);
                 }
+                if (p.spq != null) {
+                    cur.setSpq(p.spq);
+                }
                 if (p.priceE6 != null) {
+                    cur.setPriceTiers(tiersJson(p.tiers));
                     cur.setPriceE6(p.priceE6);
+                    cur.setCurrency(p.currency != null ? p.currency : b.getCurrency());
                     cur.setTaxIncluded(b.getTaxIncluded());
+                }
+                if (p.packing != null) {
+                    cur.setPacking(p.packing);
+                }
+                if (p.cond != null) {
+                    cur.setCondGrade(p.cond);
+                }
+                if (p.leadDays != null) {
+                    cur.setLeadDays(p.leadDays);
+                }
+                if (p.region != null) {
+                    cur.setRegion(p.region);
                 }
                 cur.setValidUntil(validUntil);
                 cur.setConfirmedAt(now);
@@ -255,7 +284,9 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
 
     /** 一行解析的结果。只有 valid 的行会上架 */
     private record Parsed(int row, String mpnRaw, String mpnNorm, String mfrRaw, String lineKey, long qty,
-                          String dateCode, Integer dcYear, String pkg, Integer moq, Long priceE6) {
+                          String dateCode, Integer dcYear, String pkg, Integer moq, Integer spq,
+                          List<long[]> tiers, Long priceE6, String currency, String packing, String cond,
+                          Integer leadDays, String region) {
     }
 
     private static final class Plan {
@@ -271,7 +302,8 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         final List<ElcStock> delist = new ArrayList<>();
     }
 
-    private Plan plan(ElcStockBatch b, Map<Field, Integer> map, List<IndexedCells> rows) {
+    private Plan plan(ElcStockBatch b, Map<Field, Integer> map, List<Columns.PriceTierCol> tierCols,
+                      List<IndexedCells> rows) {
         Plan plan = new Plan();
         Map<String, ElcStock> existing = new HashMap<>();
         for (ElcStock s : stockMapper.selectList(Wrappers.<ElcStock>lambdaQuery()
@@ -304,15 +336,38 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                 problem(plan, r.row, "DUPLICATE", mpnRaw);
                 continue;
             }
+            /*
+             * 阶梯价：先收表头是数量档的那几列（「1-99」「100+」「1000」），
+             * 再把「单价」那一列当成 minQty = 起订量（没写起订量就是 1）的一档。
+             * 两者都没有就是没报价 —— **空 ≠ 0**，没报价的行照样上架，买家看到的是「暂无报价」。
+             */
+            Integer moq = Cells.moq(cell(r.cells, map.get(Field.MOQ)));
+            List<long[]> rawTiers = new ArrayList<>();
+            for (Columns.PriceTierCol tc : tierCols) {
+                Long e6 = Cells.priceE6(cell(r.cells, tc.col()));
+                if (e6 != null) {
+                    rawTiers.add(new long[]{tc.minQty(), e6});
+                }
+            }
+            Long single = Cells.priceE6(cell(r.cells, map.get(Field.PRICE)));
+            if (single != null) {
+                rawTiers.add(new long[]{moq == null ? 1L : moq, single});
+            }
+            List<long[]> tiers = Cells.tiers(rawTiers);
             Parsed p = new Parsed(r.row, mpnRaw, norm, mfrRaw, key, qty, dc, Cells.dcYear(dc),
-                    Cells.text(cell(r.cells, map.get(Field.PACKAGE)), 32),
-                    Cells.moq(cell(r.cells, map.get(Field.MOQ))),
-                    Cells.priceE6(cell(r.cells, map.get(Field.PRICE))));
+                    Cells.text(cell(r.cells, map.get(Field.PACKAGE)), 32), moq,
+                    Cells.moq(cell(r.cells, map.get(Field.SPQ))),
+                    tiers, tiers.isEmpty() ? null : tiers.get(0)[1],
+                    ElecValues.currencyOf(cell(r.cells, map.get(Field.CURRENCY))),
+                    ElecValues.packingOf(cell(r.cells, map.get(Field.PACKING))),
+                    ElecValues.condOf(cell(r.cells, map.get(Field.CONDITION))),
+                    ElecValues.leadDaysOf(cell(r.cells, map.get(Field.LEAD))),
+                    Cells.text(cell(r.cells, map.get(Field.REGION)), 32));
             plan.valid.add(p);
             ElcStock cur = existing.get(key);
             if (cur == null || !ElcStock.STATUS_ON.equals(cur.getStatus())) {
                 plan.toInsert++;
-            } else if (same(cur, p, b.getTaxIncluded())) {
+            } else if (same(cur, p, b)) {
                 plan.unchanged++;
             } else {
                 plan.toUpdate++;
@@ -329,13 +384,19 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
     }
 
     /** 「未变」= 表里写了的每一项都和库里一样（空格子不算变化）。未变的行确认时照样续期 */
-    private static boolean same(ElcStock cur, Parsed p, Boolean tax) {
+    private boolean same(ElcStock cur, Parsed p, ElcStockBatch b) {
         return cur.getQty() == p.qty
                 && (p.dateCode == null || p.dateCode.equals(cur.getDateCode()))
                 && (p.pkg == null || p.pkg.equals(cur.getPkg()))
                 && (p.moq == null || p.moq.equals(cur.getMoq()))
-                && (p.priceE6 == null || (p.priceE6.equals(cur.getPriceE6())
-                && Objects.equals(tax, cur.getTaxIncluded())));
+                && (p.spq == null || p.spq.equals(cur.getSpq()))
+                && (p.packing == null || p.packing.equals(cur.getPacking()))
+                && (p.cond == null || p.cond.equals(cur.getCondGrade()))
+                && (p.leadDays == null || p.leadDays.equals(cur.getLeadDays()))
+                && (p.region == null || p.region.equals(cur.getRegion()))
+                && (p.priceE6 == null || (Objects.equals(tiersJson(p.tiers), cur.getPriceTiers())
+                && Objects.equals(p.currency != null ? p.currency : b.getCurrency(), cur.getCurrency())
+                && Objects.equals(b.getTaxIncluded(), cur.getTaxIncluded())));
     }
 
     private static void problem(Plan plan, int row, String reason, String mpn) {
@@ -454,6 +515,24 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
             }
         });
         return m;
+    }
+
+    /** 存下来的阶梯价列。换列映射时按它重算 —— 重猜一次结果可能不同，而供应商看到的数会变 */
+    private List<Columns.PriceTierCol> tierColsOf(ElcStockBatch b) {
+        if (b.getTierCols() == null || b.getTierCols().isBlank()) {
+            return List.of();
+        }
+        List<List<Number>> raw = read(b.getTierCols(), new TypeReference<List<List<Number>>>() { });
+        return raw.stream().filter(x -> x.size() == 2)
+                .map(x -> new Columns.PriceTierCol(x.get(0).intValue(), x.get(1).longValue())).toList();
+    }
+
+    /** 阶梯价 JSON：[{"minQty":1,"e6":1850000},…]。空列表存 null（「没报价」与「报了个空表」不是一回事） */
+    private String tiersJson(List<long[]> tiers) {
+        if (tiers == null || tiers.isEmpty()) {
+            return null;
+        }
+        return write(tiers.stream().map(t -> Map.of("minQty", t[0], "e6", t[1])).toList());
     }
 
     private String write(Object v) {

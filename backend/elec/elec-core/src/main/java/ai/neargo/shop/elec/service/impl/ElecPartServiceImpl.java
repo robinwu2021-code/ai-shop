@@ -266,6 +266,14 @@ public class ElecPartServiceImpl implements ElecPartService {
         return m == null ? code : (m.getNameCn() != null ? m.getNameCn() : m.getNameEn());
     }
 
+    /** 逗号分隔 → 列表。空的就是空列表（不是 [""]） */
+    private static java.util.List<String> conds(String set) {
+        if (set == null || set.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.Arrays.stream(set.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+    }
+
     /** 投影过期了还没来得及重算（一次读最多重算 200 个）时，宁可显示「暂无库存」也不显示过期的货 */
     private static boolean visible(PartHitRow r) {
         return r.getQtyBand() != null && r.getNextExpiryAt() != null
@@ -275,8 +283,9 @@ public class ElecPartServiceImpl implements ElecPartService {
     static PartHit toHit(PartHitRow r, String match) {
         boolean known = !ElcManufacturer.UNKNOWN.equals(r.getMfrCode());
         String mfr = known ? (r.getMfrNameCn() != null ? r.getMfrNameCn() : r.getMfrNameEn()) : r.getMfrNameRaw();
-        Market m = visible(r) ? new Market(r.getQtyBand(), r.getSourceBand(), r.getPriceFromE6(), r.getDcYearMax())
-                : null;
+        Market m = visible(r) ? new Market(r.getQtyBand(), r.getSourceBand(), r.getPriceFromE6(),
+                r.getPriceFromQty(), r.getDcYearMax(), Boolean.TRUE.equals(r.getSpot()), r.getLeadDaysMin(),
+                conds(r.getCondSet())) : null;
         return new PartHit(r.getPartNo(), r.getMpn(), mfr, known, r.getPkg(), r.getDescription(), m, match);
     }
 }

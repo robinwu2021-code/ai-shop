@@ -30,6 +30,18 @@ public class ElcRfq extends ElcMutableEntity {
 
     private String dcReq;
 
+    /** ANY / ORIGINAL 只要原装原包 / NEW 原装即可 */
+    private String condReq;
+
+    /** ANY / REEL 必须整盘 / CUT_TAPE 可以剪带 */
+    private String packingReq;
+
+    /** 几天内要到货；空 = 不急 */
+    private Integer needByDays;
+
+    /** 能不能用替代/兼容型号 */
+    private Boolean allowAlt;
+
     private String deliverCity;
 
     private String remark;

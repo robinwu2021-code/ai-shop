@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.elec.config.ConditionalOnElec;
 import ai.neargo.shop.elec.config.ElecProperties;
+import ai.neargo.shop.elec.dto.SupplierDtos;
 import ai.neargo.shop.elec.dto.SupplierDtos.RegisterReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.RenewResult;
 import ai.neargo.shop.elec.dto.SupplierDtos.StockView;
@@ -36,6 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -65,11 +67,13 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     private final ElecAlerts alerts;
     private final ElecProperties props;
     private final TransactionTemplate tx;
+    private final tools.jackson.databind.ObjectMapper json;
 
     public ElecSupplierServiceImpl(ElecSupplierAccess access, SupplierMapper supplierMapper,
                                SupplierMemberMapper memberMapper, StockMapper stockMapper,
                                StockBatchMapper batchMapper, ElecMarketService market, ElecAccounts identity,
                                ElecAlerts alerts, ElecProperties props,
+                               tools.jackson.databind.ObjectMapper json,
                                @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.access = access;
         this.supplierMapper = supplierMapper;
@@ -81,6 +85,7 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         this.alerts = alerts;
         this.props = props;
         this.tx = new TransactionTemplate(tm);
+        this.json = json;
     }
 
     @Override
@@ -226,8 +231,10 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         // 不用分页插件（本域工厂没装它）：offset/limit 手写
         q.last("LIMIT " + n + " OFFSET " + (long) (p - 1) * n);
         return stockMapper.selectList(q).stream().map(r -> new StockView(r.getStockNo(), r.getMpnRaw(),
-                r.getMfrRaw(), r.getQty(), r.getDateCode(), r.getPkg(), r.getMoq(), r.getPriceE6(),
-                Boolean.TRUE.equals(r.getTaxIncluded()), r.getValidUntil(),
+                r.getMfrRaw(), r.getQty(), r.getDateCode(), r.getPkg(), r.getMoq(), r.getSpq(),
+                tiersOf(r.getPriceTiers()), r.getPriceE6(), r.getCurrency(),
+                Boolean.TRUE.equals(r.getTaxIncluded()), r.getPacking(), r.getCondGrade(), r.getLeadDays(),
+                r.getRegion(), r.getValidUntil(),
                 r.getValidUntil().isBefore(today) ? "EXPIRED" : ElcStock.STATUS_ON)).toList();
     }
 
@@ -251,6 +258,26 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
                 .eq(ElcStock::getStatus, ElcStock.STATUS_ON));
         market.refresh(rows.stream().map(ElcStock::getPartNo).toList());
         return new RenewResult(n, until);
+    }
+
+    /**
+     * 阶梯价 JSON → 列表。**解不开就当没报价**（返回空列表）：
+     * 一条坏 JSON 不该让供应商整页库存打不开。
+     */
+    private List<SupplierDtos.PriceTier> tiersOf(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return this.json.readValue(json, new tools.jackson.core.type.TypeReference<List<Map<String, Long>>>() { })
+                    .stream()
+                    .filter(m -> m.get("minQty") != null && m.get("e6") != null)
+                    .map(m -> new SupplierDtos.PriceTier(m.get("minQty"), m.get("e6")))
+                    .toList();
+        } catch (RuntimeException e) {
+            log.warn("阶梯价解不开，当没报价处理：{}", e.toString());
+            return List.of();
+        }
     }
 
     private SupplierView view(ElcSupplier s) {

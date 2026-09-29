@@ -1,6 +1,8 @@
 -- ============================================================================
 -- 元器件独立库 · 基线（第一步：料号查询 · 供应商入驻与上传 · 平台询价）
 --
+-- 字段口径见 docs/technical/reference/数据库-元器件.md 的「关键字段」一节。
+--
 -- 这是**另一个数据库**（ai_shop_elec）的第一条迁移，与 ai_shop 的 Flyway 历史互不知情。
 -- 设计见 docs/technical/design/TDD-元器件-数据库设计.md；第一步只建 13 张，
 -- 派单 / 报价 / 加价规则 / 成交跟进等到平台不再手工处理询价时再建。
@@ -157,8 +159,10 @@ CREATE TABLE IF NOT EXISTS elc_stock_batch
     file_name     VARCHAR(128) DEFAULT NULL,
     mode          VARCHAR(16)  NOT NULL DEFAULT 'MERGE' COMMENT 'MERGE 只改表里有的行 / REPLACE 表里没有的下架',
     tax_included  TINYINT      NOT NULL DEFAULT 1 COMMENT '这张表的价格含不含税',
+    currency      CHAR(3)      NOT NULL DEFAULT 'CNY' COMMENT '这张表的默认币种（行里写了币种的以行为准）',
     headers       TEXT         DEFAULT NULL COMMENT '表头一行，JSON 数组',
     column_map    VARCHAR(512) DEFAULT NULL COMMENT '字段 → 列序号，JSON；下次上传默认沿用',
+    tier_cols     VARCHAR(512) DEFAULT NULL COMMENT '阶梯价列 JSON：[[列序号,从多少起],…]。**要存下来** —— 换列映射时按它重算，否则重猜一次结果可能不同',
     row_total     INT          NOT NULL DEFAULT 0,
     row_valid     INT          NOT NULL DEFAULT 0,
     row_invalid   INT          NOT NULL DEFAULT 0,
@@ -205,9 +209,21 @@ CREATE TABLE IF NOT EXISTS elc_stock
     date_code     VARCHAR(16)  DEFAULT NULL COMMENT '原样：2338 / 23+ / 24/25',
     dc_year       SMALLINT     DEFAULT NULL COMMENT '解析出的年份；买家只看得到这个',
     pkg           VARCHAR(32)  DEFAULT NULL COMMENT '供应商写的封装，可能与料号库不同。列名不叫 package，理由同 elc_part',
-    moq           INT          DEFAULT NULL,
-    price_e6      BIGINT       DEFAULT NULL COMMENT '单价，百万分之一元；空 = 没报价',
+    -- ── 报价三件套：阶梯价 · 币种 · 含税 ──
+    -- 元器件报价天生是阶梯的（1 起一个价、100 起一个价、1000 起又一个价）。
+    -- 只存一个价的后果不是「不准」，是**运营拿到询价还得回头问供应商**，
+    -- 而微信群里那条「库里谁有货」就白推了
+    price_tiers   TEXT         DEFAULT NULL COMMENT '阶梯价 JSON：[{"minQty":1,"e6":1850000},{"minQty":1000,"e6":1620000}]，按 minQty 升序',
+    price_e6      BIGINT       DEFAULT NULL COMMENT '阶梯里 minQty 最小的那一档（冗余出来给排序与投影用，不必解 JSON）；空 = 没报价',
+    currency      CHAR(3)      NOT NULL DEFAULT 'CNY' COMMENT 'CNY / USD / HKD。进口料常以美元报价 —— 没有这一列时 USD 会被当成人民币存进去，而这个错很安静',
     tax_included  TINYINT      NOT NULL DEFAULT 1,
+    -- ── 买家最后会拿到什么货：包装 · 货况 · 交期 · 货在哪 ──
+    moq           INT          DEFAULT NULL COMMENT '起订量',
+    spq           INT          DEFAULT NULL COMMENT '最小包装量：买 2000 片可能被迫要一整盘 5000。只有 MOQ 没有 SPQ，报出去的价会被推翻',
+    packing       VARCHAR(16)  DEFAULT NULL COMMENT 'REEL 整盘 / TRAY 托盘 / TUBE 管装 / CUT_TAPE 剪切带 / BULK 散装 / BOX 盒装',
+    cond_grade    VARCHAR(16)  DEFAULT NULL COMMENT 'ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新。**元器件最要命的质量维度，价差好几倍**',
+    lead_days     SMALLINT     DEFAULT NULL COMMENT '交期天数，0 = 现货；空 = 供应商没说。买家筛「只要现货」靠它',
+    region        VARCHAR(32)  DEFAULT NULL COMMENT '货在哪（深圳 / 香港 …）。影响关税与时效，也决定运营先打谁的电话',
     valid_until   DATE         NOT NULL COMMENT '到期即不再计入买家看到的库存',
     confirmed_at  DATETIME     NOT NULL COMMENT '最近一次上传或「仍有货」',
     status        VARCHAR(16)  NOT NULL DEFAULT 'ON' COMMENT 'ON / DELISTED 全量替换时下架',
@@ -232,8 +248,12 @@ CREATE TABLE IF NOT EXISTS elc_part_market
     part_no         VARCHAR(32) NOT NULL,
     qty_band        VARCHAR(8)  NOT NULL COMMENT 'B1 / B100 / B1K / B10K / B100K / B1M',
     source_band     VARCHAR(8)  NOT NULL COMMENT 'ONE / FEW(2-4) / MANY(5+)',
-    price_from_e6   BIGINT      DEFAULT NULL COMMENT '含税参考起价（已按平台规则加价）；空 = 都没报价',
+    price_from_e6   BIGINT      DEFAULT NULL COMMENT '含税参考起价，**统一换算成人民币含税**（已按平台规则加价）；空 = 都没报价',
+    price_from_qty  BIGINT      DEFAULT NULL COMMENT '这个价从多少片起。**有了阶梯价就必须说** —— 只写「¥6.85 起」而不说从 1000 起，买家按 10 片来询会觉得被坑',
     dc_year_max     SMALLINT    DEFAULT NULL,
+    spot            TINYINT     NOT NULL DEFAULT 0 COMMENT '有没有现货（存在 lead_days=0 的行）。买家筛「只看现货」靠它',
+    lead_days_min   SMALLINT    DEFAULT NULL COMMENT '最快交期',
+    cond_set        VARCHAR(64) DEFAULT NULL COMMENT '这个料号有哪些货况，逗号分隔（ORIGINAL,LOOSE）。买家据此判断「有没有原装的」',
     next_expiry_at  DATETIME    NOT NULL COMMENT '最早一行库存到期的时刻；过了就要重算',
     refreshed_at    DATETIME    NOT NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -260,6 +280,11 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     company        VARCHAR(128) DEFAULT NULL,
     need_invoice   VARCHAR(16)  NOT NULL DEFAULT 'NONE' COMMENT 'NONE / VAT_NORMAL 普票 / VAT_SPECIAL 专票',
     dc_req         VARCHAR(8)   NOT NULL DEFAULT 'ANY' COMMENT 'ANY / Y1 一年内 / Y2 两年内',
+    -- 下面四个决定**运营能不能一次报对价**。不问清楚，报价来了买家才说「我要原装的」「我急着要」
+    cond_req       VARCHAR(16)  NOT NULL DEFAULT 'ANY' COMMENT 'ANY 不限 / ORIGINAL 只要原装原包 / NEW 原装即可（原包或散新）',
+    packing_req    VARCHAR(16)  NOT NULL DEFAULT 'ANY' COMMENT 'ANY 不限 / REEL 必须整盘 / CUT_TAPE 可以剪带',
+    need_by_days   SMALLINT     DEFAULT NULL COMMENT '几天内要到货；空 = 不急。急单与常备单的价完全不同',
+    allow_alt      TINYINT      NOT NULL DEFAULT 0 COMMENT '能不能用替代/兼容型号（含国产替代）。很多单子卡在这里，能替代就能成交',
     deliver_city   VARCHAR(32)  DEFAULT NULL,
     remark         VARCHAR(255) DEFAULT NULL,
     line_cnt       INT          NOT NULL DEFAULT 0,
@@ -298,6 +323,8 @@ CREATE TABLE IF NOT EXISTS elc_rfq_line
     quote_qty       BIGINT      DEFAULT NULL COMMENT '可供数量',
     quote_dc_year   SMALLINT    DEFAULT NULL COMMENT '批次年份（买家只看年份）',
     quote_lead_days SMALLINT    DEFAULT NULL COMMENT '交期天数，0 = 现货',
+    quote_cond      VARCHAR(16) DEFAULT NULL COMMENT '这个价给的是什么货况。买家要求原装而平台报的是散新，必须在这里说出来',
+    quote_packing   VARCHAR(16) DEFAULT NULL COMMENT '整盘还是剪带 —— 同一个价，整盘要买满一盘',
     quote_note      VARCHAR(128) DEFAULT NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      VARCHAR(64) DEFAULT NULL,

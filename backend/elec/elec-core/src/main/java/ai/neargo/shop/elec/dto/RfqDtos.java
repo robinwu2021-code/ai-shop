@@ -13,7 +13,14 @@ public final class RfqDtos {
      * @param needInvoice NONE / VAT_NORMAL / VAT_SPECIAL
      * @param dcReq       ANY / Y1 / Y2
      */
-    public record RfqReq(List<LineReq> lines, String needInvoice, String dcReq, String deliverCity,
+    /**
+     * @param condReq     ANY / ORIGINAL 只要原装原包 / NEW 原装即可
+     * @param packingReq  ANY / REEL 必须整盘 / CUT_TAPE 可以剪带
+     * @param needByDays  几天内要到货；空 = 不急。**急单与常备单的价完全不同**
+     * @param allowAlt    能不能用替代/兼容型号（含国产替代）。很多单子卡在这里
+     */
+    public record RfqReq(List<LineReq> lines, String needInvoice, String dcReq, String condReq,
+                         String packingReq, Integer needByDays, Boolean allowAlt, String deliverCity,
                          String company, String contactName, String remark) {
     }
 
@@ -32,7 +39,8 @@ public final class RfqDtos {
      * @param closeReason  NO_SOURCE 暂无货源 / BUYER_CANCELLED / DONE；没结束为 null
      */
     public record RfqView(String rfqNo, String status, LocalDateTime createdAt, int lineCnt,
-                          String needInvoice, String dcReq, String deliverCity, String company,
+                          String needInvoice, String dcReq, String condReq, String packingReq,
+                          Integer needByDays, boolean allowAlt, String deliverCity, String company,
                           String contactName, String contactPhone, String remark,
                           LocalDateTime quotedAt, java.time.LocalDate quoteValidUntil, String quoteNote,
                           String closeReason, List<LineView> lines) {
@@ -50,7 +58,8 @@ public final class RfqDtos {
      * @param dcYear   批次年份
      * @param leadDays 交期天数，0 = 现货
      */
-    public record LineQuote(long priceE6, Long qty, Integer dcYear, Integer leadDays, String note) {
+    public record LineQuote(long priceE6, Long qty, Integer dcYear, Integer leadDays, String cond,
+                           String packing, String note) {
     }
 
     // ── 运营端 ──────────────────────────────────────────────────────────────
@@ -62,7 +71,8 @@ public final class RfqDtos {
      */
     public record OpsRfqView(String rfqNo, String status, LocalDateTime createdAt, int lineCnt,
                              String contactName, String contactPhone, String company, String needInvoice,
-                             String dcReq, String deliverCity, String remark, LocalDateTime quotedAt,
+                             String dcReq, String condReq, String packingReq, Integer needByDays,
+                             boolean allowAlt, String deliverCity, String remark, LocalDateTime quotedAt,
                              String quotedBy, java.time.LocalDate quoteValidUntil, String quoteNote,
                              boolean buyerNotified, String closeReason, List<OpsLineView> lines) {
     }
@@ -72,8 +82,10 @@ public final class RfqDtos {
                               LineQuote quote, List<OpsSource> sources) {
     }
 
+    /** 运营要照着它报价，所以供应商那一行的口径要全：阶梯价的最低档、币种、含税、包装、货况、交期 */
     public record OpsSource(String supplierNo, String companyName, String contactPhone, long qty,
-                            String dateCode, Long priceE6, boolean taxIncluded) {
+                            String dateCode, Long priceE6, String currency, boolean taxIncluded,
+                            String packing, String cond, Integer leadDays, String region) {
     }
 
     /**
@@ -87,7 +99,7 @@ public final class RfqDtos {
 
     /** @param priceE6 含税单价，百万分之一元，必填 */
     public record QuoteLineReq(Integer lineNo, Long priceE6, Long qty, Integer dcYear, Integer leadDays,
-                               String note) {
+                               String cond, String packing, String note) {
     }
 
     /** @param reason NO_SOURCE 暂无货源（会通知买家）/ BUYER_CANCELLED / DONE */

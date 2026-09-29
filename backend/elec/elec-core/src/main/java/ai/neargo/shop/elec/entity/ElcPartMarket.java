@@ -18,9 +18,20 @@ public class ElcPartMarket extends ElcMutableEntity {
 
     private String sourceBand;
 
+    /** 含税参考起价，**统一换算成人民币** */
     private Long priceFromE6;
 
+    /** 这个价从多少片起。有了阶梯价就必须说 —— 只写「¥6.85 起」会让按 10 片来询的人觉得被坑 */
+    private Long priceFromQty;
+
     private Integer dcYearMax;
+
+    private Boolean spot;
+
+    private Integer leadDaysMin;
+
+    /** 这个料号有哪些货况，逗号分隔 */
+    private String condSet;
 
     private java.time.LocalDateTime nextExpiryAt;
 

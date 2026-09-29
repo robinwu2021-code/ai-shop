@@ -153,6 +153,80 @@ class ElecQuoteFlowTest {
         assertThat(d.get("lines").get(0).get("sources").get(0).get("qty").asLong()).isEqualTo(888L);
     }
 
+    @Test
+    @DisplayName("★★★ 买家的四个要求（只要原装 / 必须整盘 / 几天内要 / 能否替代）原样到运营手上")
+    void rfqRequirementsReachOps() throws Exception {
+        String buyer = main.consumer("12600920010");
+        String rfqNo = submit(buyer, """
+                {"lines":[{"mpn":"QT700A","qty":2000}],
+                 "condReq":"ORIGINAL","packingReq":"REEL","needByDays":7,"allowAlt":true,
+                 "needInvoice":"VAT_SPECIAL","dcReq":"Y2"}""");
+        String ops = main.operator(ElecInternal.PERM_RFQ_READ, ElecInternal.PERM_RFQ_QUOTE);
+
+        JsonNode d = data(get("/elec/ops/rfq/" + rfqNo), ops, null);
+        assertThat(d.get("condReq").asString()).isEqualTo("ORIGINAL");
+        assertThat(d.get("packingReq").asString()).isEqualTo("REEL");
+        assertThat(d.get("needByDays").asInt()).as("急单与常备单的价完全不同").isEqualTo(7);
+        assertThat(d.get("allowAlt").asBoolean()).as("能替代就能成交，很多单子卡在这里").isTrue();
+
+        JsonNode mine = data(get("/elec/c/rfq/" + rfqNo), buyer, null);
+        assertThat(mine.get("condReq").asString()).isEqualTo("ORIGINAL");
+        assertThat(mine.get("allowAlt").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 报价要说清给的是什么货：买家要原装、平台只找到散新时，那一行必须标出来")
+    void quoteCarriesConditionAndPacking() throws Exception {
+        String buyer = main.consumer("12600920011");
+        String rfqNo = submit(buyer,
+                "{\"lines\":[{\"mpn\":\"QT800A\",\"qty\":100}],\"condReq\":\"ORIGINAL\"}");
+        String ops = main.operator(ElecInternal.PERM_RFQ_READ, ElecInternal.PERM_RFQ_QUOTE);
+        data(post("/elec/ops/rfq/" + rfqNo + "/quote"), ops, """
+                {"lines":[{"lineNo":1,"priceE6":5000000,"qty":100,"cond":"LOOSE","packing":"CUT_TAPE"}]}""");
+
+        JsonNode quote = data(get("/elec/c/rfq/" + rfqNo), buyer, null).get("lines").get(0).get("quote");
+        assertThat(quote.get("cond").asString()).as("他要的是原装，这里给的是散新 —— 必须说出来").isEqualTo("LOOSE");
+        assertThat(quote.get("packing").asString()).isEqualTo("CUT_TAPE");
+    }
+
+    @Test
+    @DisplayName("★★ 认不出的要求当成「不限」，不当成错误 —— 老版本端上不会传这几个字段")
+    void unknownRequirementsFallBackToAny() throws Exception {
+        String buyer = main.consumer("12600920012");
+        String rfqNo = submit(buyer, "{\"lines\":[{\"mpn\":\"QT900A\",\"qty\":1}],\"condReq\":\"WHATEVER\"}");
+        JsonNode v = data(get("/elec/c/rfq/" + rfqNo), buyer, null);
+        assertThat(v.get("condReq").asString()).isEqualTo("ANY");
+        assertThat(v.get("packingReq").asString()).isEqualTo("ANY");
+        assertThat(v.get("allowAlt").asBoolean()).isFalse();
+        assertThat(absent(v.path("needByDays"))).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 运营端看得到供应商那一行的全口径：币种、含税、包装、货况、交期、货在哪")
+    void opsSourceCarriesFullTerms() throws Exception {
+        String sup = main.consumer("12600920013");
+        data(post("/elec/b/supplier"), sup, "{\"companyName\":\"全口径电子\"}");
+        String csv = "型号,数量,单价,币种,品质,包装,交期,货源地\nQTA10,900,1.20,USD,原装原包,整盘,现货,香港\n";
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .multipart("/elec/b/stock/upload")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "s.csv", "text/csv",
+                                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                        .header("Authorization", "Bearer " + sup))
+                .andReturn().getResponse().getContentAsString();
+        data(post("/elec/b/stock/batch/" + json.readTree(body).get("data").get("batchNo").asString() + "/apply"),
+                sup, null);
+
+        String buyer = main.consumer("12600920014");
+        String rfqNo = submit(buyer, "{\"lines\":[{\"mpn\":\"QTA10\",\"qty\":100}]}");
+        String ops = main.operator(ElecInternal.PERM_RFQ_READ);
+        JsonNode src = data(get("/elec/ops/rfq/" + rfqNo), ops, null).get("lines").get(0).get("sources").get(0);
+        assertThat(src.get("currency").asString()).as("不给币种，运营会照着 1.20 报人民币").isEqualTo("USD");
+        assertThat(src.get("cond").asString()).isEqualTo("ORIGINAL");
+        assertThat(src.get("packing").asString()).isEqualTo("REEL");
+        assertThat(src.get("leadDays").asInt()).isZero();
+        assertThat(src.get("region").asString()).isEqualTo("香港");
+    }
+
     // ── 权限与认令牌 ────────────────────────────────────────────────────────
 
     @Test

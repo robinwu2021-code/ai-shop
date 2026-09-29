@@ -62,7 +62,8 @@ public final class ElecMappers {
                 <script>
                 SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.pkg, p.description,
                        m.name_en AS mfr_name_en, m.name_cn AS mfr_name_cn,
-                       k.qty_band, k.source_band, k.price_from_e6, k.dc_year_max, k.next_expiry_at
+                       k.qty_band, k.source_band, k.price_from_e6, k.price_from_qty, k.dc_year_max,
+                       k.spot, k.lead_days_min, k.cond_set, k.next_expiry_at
                   FROM elc_part p
                   LEFT JOIN elc_part_market k ON k.part_no = p.part_no
                   LEFT JOIN elc_manufacturer m ON m.mfr_code = p.mfr_code
@@ -75,7 +76,8 @@ public final class ElecMappers {
         @Select("""
                 SELECT p.part_no, p.mpn, p.mpn_norm, p.mfr_code, p.mfr_name_raw, p.pkg, p.description,
                        m.name_en AS mfr_name_en, m.name_cn AS mfr_name_cn,
-                       k.qty_band, k.source_band, k.price_from_e6, k.dc_year_max, k.next_expiry_at
+                       k.qty_band, k.source_band, k.price_from_e6, k.price_from_qty, k.dc_year_max,
+                       k.spot, k.lead_days_min, k.cond_set, k.next_expiry_at
                   FROM elc_part p
                   LEFT JOIN elc_part_market k ON k.part_no = p.part_no
                   LEFT JOIN elc_manufacturer m ON m.mfr_code = p.mfr_code
@@ -113,7 +115,11 @@ public final class ElecMappers {
         private String qtyBand;
         private String sourceBand;
         private Long priceFromE6;
+        private Long priceFromQty;
         private Integer dcYearMax;
+        private Boolean spot;
+        private Integer leadDaysMin;
+        private String condSet;
         private LocalDateTime nextExpiryAt;
     }
 
@@ -185,13 +191,16 @@ public final class ElecMappers {
         @Insert("""
                 <script>
                 INSERT INTO elc_stock (stock_no, supplier_no, line_key, part_no, mpn_raw, mfr_raw, mpn_norm, qty,
-                                       date_code, dc_year, pkg, moq, price_e6, tax_included, valid_until,
+                                       date_code, dc_year, pkg, moq, spq, price_tiers, price_e6, currency,
+                                       tax_included, packing, cond_grade, lead_days, region, valid_until,
                                        confirmed_at, status, batch_no, created_by, updated_by)
                 VALUES
                 <foreach collection="rows" item="r" separator=",">
                   (#{r.stockNo}, #{r.supplierNo}, #{r.lineKey}, #{r.partNo}, #{r.mpnRaw}, #{r.mfrRaw}, #{r.mpnNorm},
-                   #{r.qty}, #{r.dateCode}, #{r.dcYear}, #{r.pkg}, #{r.moq}, #{r.priceE6}, #{r.taxIncluded},
-                   #{r.validUntil}, #{r.confirmedAt}, #{r.status}, #{r.batchNo}, #{r.createdBy}, #{r.updatedBy})
+                   #{r.qty}, #{r.dateCode}, #{r.dcYear}, #{r.pkg}, #{r.moq}, #{r.spq}, #{r.priceTiers},
+                   #{r.priceE6}, #{r.currency}, #{r.taxIncluded}, #{r.packing}, #{r.condGrade}, #{r.leadDays},
+                   #{r.region}, #{r.validUntil}, #{r.confirmedAt}, #{r.status}, #{r.batchNo},
+                   #{r.createdBy}, #{r.updatedBy})
                 </foreach>
                 </script>
                 """)
@@ -203,7 +212,8 @@ public final class ElecMappers {
          */
         @Select("""
                 SELECT s.supplier_no, s.company_name, s.contact_phone,
-                       t.qty, t.date_code, t.price_e6, t.tax_included
+                       t.qty, t.date_code, t.price_e6, t.currency, t.tax_included,
+                       t.packing, t.cond_grade, t.lead_days, t.region
                   FROM elc_stock t
                   JOIN elc_supplier s ON s.supplier_no = t.supplier_no
                  WHERE t.part_no = #{partNo}
@@ -226,7 +236,12 @@ public final class ElecMappers {
         private Long qty;
         private String dateCode;
         private Long priceE6;
+        private String currency;
         private Boolean taxIncluded;
+        private String packing;
+        private String condGrade;
+        private Integer leadDays;
+        private String region;
     }
 
     public interface RfqMapper extends BaseMapper<ElcRfq> {

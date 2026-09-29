@@ -52,6 +52,15 @@ public final class PartDtos {
      * @param priceFromE6 含税参考起价，百万分之一元；null = 有货但都没报价
      * @param dcYearMax   最新批次年份
      */
-    public record Market(String qtyBand, String sourceBand, Long priceFromE6, Integer dcYearMax) {
+    /**
+     * @param priceFromE6  含税参考起价（统一换算成人民币）；null = 有货但都没报价
+     * @param priceFromQty 这个价<b>从多少片起</b>。有了阶梯价就必须说 ——
+     *                     只写「¥6.85 起」而不说从 1000 起，按 10 片来询的人会觉得被坑
+     * @param spot         有没有现货
+     * @param leadDaysMin  最快交期
+     * @param conds        这个料号有哪些货况（ORIGINAL / LOOSE / …）
+     */
+    public record Market(String qtyBand, String sourceBand, Long priceFromE6, Long priceFromQty,
+                         Integer dcYearMax, boolean spot, Integer leadDaysMin, List<String> conds) {
     }
 }

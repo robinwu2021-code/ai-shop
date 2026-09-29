@@ -31,12 +31,23 @@ public final class SupplierDtos {
     }
 
     /**
-     * @param priceE6 单价，百万分之一元；null = 没报价
-     * @param status  ON / EXPIRED（到期，端上据此提示续期）
+     * @param tiers    阶梯价，按数量档升序。**元器件报价天生是阶梯的**；只有一档时就一条
+     * @param priceE6  最低档的单价，百万分之一元（= tiers 第一条）；null = 没报价
+     * @param currency CNY / USD / HKD
+     * @param packing  REEL 整盘 / TRAY / TUBE / CUT_TAPE 剪带 / BULK / BOX
+     * @param cond     ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新
+     * @param leadDays 交期天数，0 = 现货；null = 供应商没说（**不是现货**）
+     * @param status   ON / EXPIRED（到期，端上据此提示续期）
      */
     public record StockView(String stockNo, String mpn, String mfr, long qty, String dateCode,
-                            String packageName, Integer moq, Long priceE6, boolean taxIncluded,
+                            String packageName, Integer moq, Integer spq, List<PriceTier> tiers,
+                            Long priceE6, String currency, boolean taxIncluded, String packing,
+                            String cond, Integer leadDays, String region,
                             LocalDate validUntil, String status) {
+    }
+
+    /** @param priceE6 这一档的单价，百万分之一元 */
+    public record PriceTier(long minQty, long priceE6) {
     }
 
     /**

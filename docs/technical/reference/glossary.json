@@ -26120,6 +26120,76 @@
         "module": "elec"
       },
       {
+        "host": "ElecValues",
+        "name": "COND_ORIGINAL",
+        "value": "ORIGINAL",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "COND_LOOSE",
+        "value": "LOOSE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "COND_PULLED",
+        "value": "PULLED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "COND_REFURB",
+        "value": "REFURB",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_REEL",
+        "value": "REEL",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_TRAY",
+        "value": "TRAY",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_TUBE",
+        "value": "TUBE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_CUT_TAPE",
+        "value": "CUT_TAPE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_BULK",
+        "value": "BULK",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecValues",
+        "name": "PACK_BOX",
+        "value": "BOX",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "TestPayGateway",
         "name": "CHANNEL",
         "value": "TEST",
@@ -32693,7 +32763,13 @@
           "DC",
           "PACKAGE",
           "PRICE",
-          "MOQ"
+          "MOQ",
+          "SPQ",
+          "PACKING",
+          "CONDITION",
+          "CURRENCY",
+          "LEAD",
+          "REGION"
         ],
         "zh": "可以映射的字段。",
         "module": "elec"
@@ -33274,6 +33350,122 @@
           "NEARBY"
         ],
         "zh": "判重的依据。"
+      },
+      {
+        "name": "ElecCloseReason",
+        "client": "shared",
+        "values": [
+          "NO_SOURCE",
+          "BUYER_CANCELLED",
+          "DONE"
+        ],
+        "zh": "NO_SOURCE 暂无货源（会通知买家）/ BUYER_CANCELLED 买家不要了 / DONE 已成交"
+      },
+      {
+        "name": "ElecDcReq",
+        "client": "shared",
+        "values": [
+          "ANY",
+          "Y1",
+          "Y2"
+        ],
+        "zh": "ANY 不限 / Y1 一年内 / Y2 两年内"
+      },
+      {
+        "name": "ElecImportMode",
+        "client": "shared",
+        "values": [
+          "MERGE",
+          "REPLACE"
+        ],
+        "zh": "MERGE 只改表里有的行 / REPLACE 表里没有的下架"
+      },
+      {
+        "name": "ElecInvoice",
+        "client": "shared",
+        "values": [
+          "NONE",
+          "VAT_NORMAL",
+          "VAT_SPECIAL"
+        ],
+        "zh": "NONE 不开票 / VAT_NORMAL 普票 / VAT_SPECIAL 专票"
+      },
+      {
+        "name": "ElecLookupMatch",
+        "client": "shared",
+        "values": [
+          "EXACT",
+          "AMBIGUOUS",
+          "PREFIX",
+          "NONE"
+        ],
+        "zh": "AMBIGUOUS = 同一料号多家厂牌、他又没写厂牌。"
+      },
+      {
+        "name": "ElecMatch",
+        "client": "shared",
+        "values": [
+          "EXACT",
+          "PREFIX",
+          "CONTAINS",
+          "NEAR"
+        ],
+        "zh": "怎么命中的。"
+      },
+      {
+        "name": "ElecQtyBand",
+        "client": "shared",
+        "values": [
+          "B1",
+          "B100",
+          "B1K",
+          "B10K",
+          "B100K",
+          "B1M"
+        ],
+        "zh": "买家看到的库存档位。"
+      },
+      {
+        "name": "ElecRfqStatus",
+        "client": "shared",
+        "values": [
+          "SUBMITTED",
+          "QUOTED",
+          "EXPIRED",
+          "ACCEPTED",
+          "CLOSED"
+        ],
+        "zh": "SUBMITTED 待报价 / QUOTED 已报价 / EXPIRED 报价已过期 / ACCEPTED 已接受 / CLOSED 已结束。"
+      },
+      {
+        "name": "ElecSourceBand",
+        "client": "shared",
+        "values": [
+          "ONE",
+          "FEW",
+          "MANY"
+        ],
+        "zh": "有几家有货：1 家 / 2–4 家 / 5 家及以上。"
+      },
+      {
+        "name": "ElecStockStatus",
+        "client": "shared",
+        "values": [
+          "ON",
+          "EXPIRED"
+        ],
+        "zh": "ON 在售 / EXPIRED 到期（端上据此提示续期）"
+      },
+      {
+        "name": "ElecSupplierKind",
+        "client": "shared",
+        "values": [
+          "AGENT",
+          "TRADER",
+          "FACTORY",
+          "OTHER"
+        ],
+        "zh": "AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他"
       },
       {
         "name": "EnrollmentStatus",
@@ -35084,6 +35276,46 @@
       "name": "KINDS",
       "type": "Set<String>",
       "value": "Set.of(\"AGENT\", \"TRADER\", \"FACTORY\", \"OTHER\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecValues",
+      "name": "CONDITIONS",
+      "type": "Set<String>",
+      "value": "Set.of(COND_ORIGINAL, COND_LOOSE, COND_PULLED, COND_REFURB)",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecValues",
+      "name": "PACKINGS",
+      "type": "Set<String>",
+      "value": "Set.of(PACK_REEL, PACK_TRAY, PACK_TUBE, PACK_CUT_TAPE, PACK_BULK, PACK_BOX)",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecValues",
+      "name": "COND_REQS",
+      "type": "Set<String>",
+      "value": "Set.of(\"ANY\", COND_ORIGINAL, \"NEW\")",
+      "zh": "买家的要求：多一个 ANY（不限），少一个 REFURB（没人会指定要翻新件）",
+      "module": "elec"
+    },
+    {
+      "host": "ElecValues",
+      "name": "PACKING_REQS",
+      "type": "Set<String>",
+      "value": "Set.of(\"ANY\", PACK_REEL, PACK_CUT_TAPE)",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecValues",
+      "name": "CURRENCIES",
+      "type": "Set<String>",
+      "value": "Set.of(\"CNY\", \"USD\", \"HKD\")",
       "zh": "",
       "module": "elec"
     },

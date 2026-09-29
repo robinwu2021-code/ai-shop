@@ -93,6 +93,71 @@ class ParsingTest {
     }
 
     @Test
+    @DisplayName("阶梯价列：表头本身是数量档（1-99 / 100+ / ≥1000 / 1K）才算；一列不成阶梯")
+    void tierColumns() {
+        assertThat(Columns.tierQty("1")).isEqualTo(1L);
+        assertThat(Columns.tierQty("100+")).isEqualTo(100L);
+        assertThat(Columns.tierQty("≥1000")).isEqualTo(1000L);
+        assertThat(Columns.tierQty("100-999")).isEqualTo(100L);
+        assertThat(Columns.tierQty("1K起")).isEqualTo(1000L);
+        assertThat(Columns.tierQty("1万")).isEqualTo(10000L);
+        assertThat(Columns.tierQty("单价")).isNull();
+        assertThat(Columns.tierQty("2338")).as("批号长得像数量档，但它会先被认成批次列").isEqualTo(2338L);
+
+        Columns.Guess g = Columns.guess(List.of(List.of("型号", "数量", "1-99", "100-999", "1000+")));
+        assertThat(g.ok()).isTrue();
+        assertThat(g.tiers()).hasSize(3);
+        assertThat(g.tiers().get(0).minQty()).isEqualTo(1L);
+        assertThat(g.tiers().get(2).minQty()).isEqualTo(1000L);
+        assertThat(g.tiers().get(2).col()).isEqualTo(4);
+
+        Columns.Guess one = Columns.guess(List.of(List.of("型号", "数量", "单价")));
+        assertThat(one.tiers()).as("只有一列不成阶梯 —— 孤零零一个「100+」多半是「100 起订」").isEmpty();
+    }
+
+    @Test
+    @DisplayName("货况与包装：供应商表格里的各种写法都认，认不出返回空（**不猜** —— 货况猜错是质量事故）")
+    void condAndPacking() {
+        assertThat(ElecValues.condOf("原装原包")).isEqualTo("ORIGINAL");
+        assertThat(ElecValues.condOf("全新原装")).isEqualTo("ORIGINAL");
+        assertThat(ElecValues.condOf("New Original")).isEqualTo("ORIGINAL");
+        assertThat(ElecValues.condOf("原装散新")).isEqualTo("LOOSE");
+        assertThat(ElecValues.condOf("拆机件")).isEqualTo("PULLED");
+        assertThat(ElecValues.condOf("翻新")).isEqualTo("REFURB");
+        assertThat(ElecValues.condOf("好货")).as("认不出就是空，不许猜").isNull();
+        assertThat(ElecValues.condOf("原装原包/编带")).as("一格里写两样，切开逐段查").isEqualTo("ORIGINAL");
+        assertThat(ElecValues.condOf("原装 编带")).isEqualTo("ORIGINAL");
+        /*
+         * **这一条是消融找出来的**：原来做包含匹配，「非原装」里包含「原装」，
+         * 会被认成 ORIGINAL —— 而货况认错是质量事故，买家收到的是拆机料。
+         * 改成切开逐段精确查之后，它认不出来，落到「没写」由人去看。
+         */
+        assertThat(ElecValues.condOf("非原装")).as("包含匹配会把它认成原装 —— 那是质量事故").isNull();
+
+        assertThat(ElecValues.packingOf("整盘")).isEqualTo("REEL");
+        assertThat(ElecValues.packingOf("编带")).isEqualTo("REEL");
+        assertThat(ElecValues.packingOf("剪切带")).isEqualTo("CUT_TAPE");
+        assertThat(ElecValues.packingOf("管装")).isEqualTo("TUBE");
+        assertThat(ElecValues.packingOf("原装原包/编带")).isEqualTo("REEL");
+    }
+
+    @Test
+    @DisplayName("币种与交期：美元认得出（认不出当人民币会把 ¥ 当成 $）；「没说」不是现货")
+    void currencyAndLead() {
+        assertThat(ElecValues.currencyOf("USD")).isEqualTo("USD");
+        assertThat(ElecValues.currencyOf("美金")).isEqualTo("USD");
+        assertThat(ElecValues.currencyOf("人民币")).isEqualTo("CNY");
+        assertThat(ElecValues.currencyOf("欧元")).isNull();
+
+        assertThat(ElecValues.leadDaysOf("现货")).isZero();
+        assertThat(ElecValues.leadDaysOf("0")).isZero();
+        assertThat(ElecValues.leadDaysOf("7天")).isEqualTo(7);
+        assertThat(ElecValues.leadDaysOf("2周")).isEqualTo(14);
+        assertThat(ElecValues.leadDaysOf("")).as("空 ≠ 现货：当成现货的话买家会按现货下单").isNull();
+        assertThat(ElecValues.leadDaysOf("面议")).isNull();
+    }
+
+    @Test
     @DisplayName("档位：只给档，不给精确数")
     void bands() {
         assertThat(Bands.qty(99)).isEqualTo("B1");
