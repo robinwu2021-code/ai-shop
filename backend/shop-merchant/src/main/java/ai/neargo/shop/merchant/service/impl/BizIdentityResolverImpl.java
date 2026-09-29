@@ -245,28 +245,59 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
                 .collect(Collectors.groupingBy(MchStoreRole::getStoreNo,
                         Collectors.mapping(MchStoreRole::getRole, Collectors.toUnmodifiableSet())));
 
-        // 同上：老板的门店集合是作用域的一部分，解析它时作用域还不存在
+        /*
+         * 同上：老板的门店集合是作用域的一部分，解析它时作用域还不存在。
+         *
+         * <p><b>不按 status 过滤</b>（2026-09-29 改，可见性按门店算-方案 §9）。
+         * 这里原来只装 ACTIVE 的店，而 {@code BizContextFilter} 的规则是
+         * 「请求的门店不在我的集合里就回落到默认店」—— 两条合起来的效果是：
+         * <b>老板一旦停用一家店，就再也进不去那家店</b>。线上实测「虹选鲜果·福田店」
+         * 停用后，它货架上的商品店主用尽办法撤不下来：带 X-Store-No 被静默忽略，
+         * 下架请求落在默认店上，还返回 code 0 —— 一次什么都没做的成功。
+         * 店员分支反而进得去（它从授权表取，从不看状态）。
+         *
+         * <p>营业状态是给买家看的，管理权限是给老板的。停业之后老板正需要进去收尾 ——
+         * 撤货、查历史订单（需求 B-11.12.4 明写「历史订单可查」）、重新开业。
+         * 买家侧的隔离由别处负责：{@code storesSelling} 只算 ACTIVE 门店，
+         * 店铺页给 closed 标志；这里放开的只是上下文切换。
+         *
+         * <p>数据域不受影响：{@code scopeStoreNos()} 对老板返回 null（不限）。
+         */
         Set<String> storeNos = Boolean.TRUE.equals(membership.getIsOwner())
                 ? DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
-                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
-                                .eq(MchStore::getStatus, "ACTIVE"))).stream()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo()))).stream()
                         .map(MchStore::getStoreNo).collect(Collectors.toSet())
                 : roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
                         .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo())).stream()
                         .map(MchStoreRole::getStoreNo).collect(Collectors.toSet());
 
         /*
+         * 放开 storeNos 之后要补的两道边（§9.3 AC3 / AC4）：
+         *   ① 默认门店仍优先落在 ACTIVE 上 —— 否则默认店被停用的商家一登录就站在停业店里；
+         *   ② 自提点核销范围仍按 ACTIVE 门店算 —— 停业店门口那个点不该重新进范围，
+         *      那不是「收尾」，是把店又开了一半。
+         */
+        Set<String> activeStoreNos = DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
+                                .eq(MchStore::getStatus, MchStore.ACTIVE))).stream()
+                .map(MchStore::getStoreNo)
+                .filter(storeNos::contains)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        /*
          * 默认门店：老板取 is_default，店员取他被授权的第一家。
          * 请求带了 X-Store-No 时由 Filter 覆盖 —— 这里只负责「没指定时用哪家」。
          */
+        Set<String> defaultCandidates = activeStoreNos.isEmpty() ? storeNos : activeStoreNos;
         String defaultStore = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getEntityNo, merchant.getEntityNo())
                         .eq(MchStore::getIsDefault, true)).stream()
                 .map(MchStore::getStoreNo)
-                .filter(storeNos::contains)
+                .filter(defaultCandidates::contains)
                 .findFirst()
-                .orElse(storeNos.stream().sorted().findFirst().orElse(null));
+                .orElse(defaultCandidates.stream().sorted().findFirst().orElse(null));
 
         /*
          * 能核销哪些自提点：**按我能管的门店算**，不是按主体（V16 起自提点归属到门店）。
@@ -288,7 +319,7 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * 在此之前，至少不要让顺序本身变成随机数。
          */
         Set<String> pickupNos =
-                new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(storeNos));
+                new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(activeStoreNos));
 
         return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
                 Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore,

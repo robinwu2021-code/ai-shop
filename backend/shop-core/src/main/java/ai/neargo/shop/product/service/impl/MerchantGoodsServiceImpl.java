@@ -1937,10 +1937,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         if (perStore(merchantNo, storeNo, goodsNo)) {
             setStoreOnSale(g, storeNo, onSale);
-            // 主体级 on_sale 是「这件货整体还卖不卖」的总闸：任一门店在售就得是开的，
-            // 否则 storeOnSale 的 && 会把店级的 true 一起吞掉
-            boolean anyOn = onSale || storeGoodsRows(goodsNo).stream()
-                    .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
+            /*
+             * 主体级 on_sale 是「这件货整体还卖不卖」的总闸：任一门店在售就得是开的，
+             * 否则 storeOnSale 的 && 会把店级的 true 一起吞掉。
+             *
+             * **只数 ACTIVE 门店那几行**（2026-09-29，可见性按门店算-方案 §9.2）：
+             * 原来数的是全部门店行，于是把所有营业中的店都下架之后，
+             * 一家**已停业**门店的行仍把总闸顶着 1 —— 商家侧显示全部下架，
+             * 而不带 communityNo 的 C 端列表按主体级 on_sale 出数，商品还在里面列着。
+             * 社区池那条链不受影响（storesSelling 早就只算 ACTIVE），
+             * 所以带社区的真实买家路径本来就看不到；漏的只有这一条。
+             */
+            java.util.Set<String> activeStores =
+                    new java.util.HashSet<>(merchantPort.activeStoreNos(g.getEntityNo()));
+            boolean anyOn = (onSale && activeStores.contains(storeNo))
+                    || storeGoodsRows(goodsNo).stream()
+                            .filter(r -> activeStores.contains(r.getStoreNo()))
+                            .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
             syncPool(g, anyOn);
@@ -2030,6 +2043,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
                         .eq(PrdGoods::getEntityNo, entityNo)));
+        // 与 toggle 同一个口径：主体总闸只由 ACTIVE 门店的行决定（§9.2）。
+        // 查一次放在循环外 —— 主体的门店列表在这个事务里不会变。
+        java.util.Set<String> activeStores =
+                new java.util.HashSet<>(merchantPort.activeStoreNos(entityNo));
         for (PrdGoods g : all) {
             List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = storeGoodsRows(g.getGoodsNo());
             boolean managed = !rows.isEmpty();
@@ -2044,6 +2061,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             setStoreOnSale(g, storeNo, false);
             markPlatformSuspended(g.getGoodsNo(), storeNo, true);
             boolean anyOn = storeGoodsRows(g.getGoodsNo()).stream()
+                    .filter(r -> activeStores.contains(r.getStoreNo()))
                     .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
@@ -2375,6 +2393,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
                 goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
                         .eq(PrdGoods::getEntityNo, entityNo)));
+        // 与 toggle 同一个口径：主体总闸只由 ACTIVE 门店的行决定（§9.2）。
+        // 查一次放在循环外 —— 主体的门店列表在这个事务里不会变。
+        java.util.Set<String> activeStores =
+                new java.util.HashSet<>(merchantPort.activeStoreNos(entityNo));
         for (PrdGoods g : all) {
             // 用主体级总闸，与上下架那条链路同一个判据。下架的走 syncPool(false) —— 
             // 它会把残留的池行撤掉，这正是「范围改小了」要的效果
