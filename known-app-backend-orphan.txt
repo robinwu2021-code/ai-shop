@@ -71,7 +71,6 @@ c-app POST /mp/attribution/report
 c-app POST /mp/group-buy/*/join
 c-app POST /mp/order/*/confirm-receipt
 c-app POST /mp/risk/appeal
-c-app POST /mp/store/*/enter
 c-app POST /mp/store/*/rebuy
 c-app POST /mp/ticket
 c-app POST /mp/user/token/refresh
