@@ -237,6 +237,8 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     deliver_city   VARCHAR(32)  DEFAULT NULL,
     remark         VARCHAR(255) DEFAULT NULL,
     line_cnt       INT          NOT NULL DEFAULT 0,
+    dispatch_cnt   INT          NOT NULL DEFAULT 0,
+    quote_cnt      INT          NOT NULL DEFAULT 0,
     status         VARCHAR(16)  NOT NULL DEFAULT 'SUBMITTED',
     notified_at    DATETIME     DEFAULT NULL,
     quoted_at      DATETIME     DEFAULT NULL,
@@ -278,6 +280,58 @@ CREATE TABLE IF NOT EXISTS elc_rfq_line
     updated_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_elc_rfq_line UNIQUE (rfq_no, line_no)
+);
+
+CREATE TABLE IF NOT EXISTS elc_dispatch
+(
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    dispatch_no    VARCHAR(32)  NOT NULL,
+    rfq_no         VARCHAR(32)  NOT NULL,
+    line_no        INT          NOT NULL,
+    supplier_no    VARCHAR(32)  NOT NULL,
+    via            VARCHAR(16)  NOT NULL DEFAULT 'AUTO_MATCH',
+    status         VARCHAR(16)  NOT NULL DEFAULT 'SENT',
+    decline_reason VARCHAR(16)  DEFAULT NULL,
+    notified_at    DATETIME     DEFAULT NULL,
+    viewed_at      DATETIME     DEFAULT NULL,
+    responded_at   DATETIME     DEFAULT NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by     VARCHAR(64)  DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by     VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_elc_dispatch UNIQUE (dispatch_no),
+    CONSTRAINT uk_elc_dispatch_line UNIQUE (rfq_no, line_no, supplier_no)
+);
+
+CREATE TABLE IF NOT EXISTS elc_quote
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    quote_no      VARCHAR(32)  NOT NULL,
+    dispatch_no   VARCHAR(32)  NOT NULL,
+    rfq_no        VARCHAR(32)  NOT NULL,
+    line_no       INT          NOT NULL,
+    supplier_no   VARCHAR(32)  NOT NULL,
+    price_e6      BIGINT       NOT NULL,
+    currency      CHAR(3)      NOT NULL DEFAULT 'CNY',
+    tax_included  TINYINT      NOT NULL DEFAULT 1,
+    qty_available BIGINT       NOT NULL,
+    date_code     VARCHAR(16)  DEFAULT NULL,
+    dc_year       SMALLINT     DEFAULT NULL,
+    lead_days     SMALLINT     DEFAULT NULL,
+    cond_grade    VARCHAR(16)  DEFAULT NULL,
+    packing       VARCHAR(16)  DEFAULT NULL,
+    moq           INT          DEFAULT NULL,
+    valid_until   DATE         NOT NULL,
+    remark        VARCHAR(255) DEFAULT NULL,
+    status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by    VARCHAR(64)  DEFAULT NULL,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by    VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_elc_quote UNIQUE (quote_no),
+    CONSTRAINT uk_elc_quote_dispatch UNIQUE (dispatch_no)
 );
 
 CREATE TABLE IF NOT EXISTS elc_search_daily

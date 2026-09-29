@@ -37,6 +37,7 @@ const KEY_OWNERS = {
   mfr_code: "elc_manufacturer",
   part_no: "elc_part",
   supplier_no: "elc_supplier",
+  dispatch_no: "elc_dispatch",
   batch_no: "elc_stock_batch",
   rfq_no: "elc_rfq",
 };
@@ -53,8 +54,10 @@ const PURPOSE = {
   elc_stock_batch: "一次上传：列映射、预演出来的四个数（新增/更新/下架/未变）",
   elc_stock_batch_row: "上传原样的每一行。只追加 —— 换列映射时按它重算，不用再传一次文件",
   elc_stock: "供应商库存行。**精确数量与批号只在这张表**，买家读不到",
-  elc_rfq: "询价单 + 平台报价（第一步一单一个报价方：平台）",
-  elc_rfq_line: "询价行 + 这一行的报价。quote_e6 为空 = 这一行没找到货",
+  elc_rfq: "询价单（买家发的求购）+ 平台自己报的那一份",
+  elc_dispatch: "派单：**供应商能看到求购的唯一通道**。他拿到的是 dispatch_no，与买家的 rfq_no 对不上",
+  elc_quote: "供应商报价（他填的原样）。买家看到的是加价并换成代号之后的",
+  elc_rfq_line: "询价行 + 平台对这一行的报价。quote_e6 为空 = 平台没报（供应商可能报了，在 elc_quote）",
   elc_search_daily: "搜索需求日聚合：搜了什么、几次没结果。**不记是谁搜的**",
 };
 

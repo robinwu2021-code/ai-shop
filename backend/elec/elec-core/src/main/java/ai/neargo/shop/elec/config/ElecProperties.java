@@ -64,6 +64,22 @@ public class ElecProperties {
     private int rfqMaxLines = 50;
 
     /**
+     * 每行最多派给几家供应商。
+     *
+     * <p><b>派太多的后果不是吵，是响应率整体塌掉</b>：一条求购派给二十家，
+     * 十九家白填一遍报价，下次就没人填了。
+     */
+    private int dispatchMaxPerLine = 5;
+
+    public int getDispatchMaxPerLine() {
+        return dispatchMaxPerLine;
+    }
+
+    public void setDispatchMaxPerLine(int dispatchMaxPerLine) {
+        this.dispatchMaxPerLine = dispatchMaxPerLine;
+    }
+
+    /**
      * 查料号的限流（每分钟）。料号库存是同行最想爬的数据：游客按 IP 计，登录用户按人计。
      * 正常人工查询一分钟十来次，边打字边提示会多一些，所以给得宽
      */

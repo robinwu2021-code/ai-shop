@@ -27,6 +27,8 @@ import ai.neargo.shop.elec.mapper.ElecMappers.RfqLineMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.SourceRow;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
+import ai.neargo.shop.elec.dto.RfqDtos;
+import ai.neargo.shop.elec.service.ElecDispatchService;
 import ai.neargo.shop.elec.service.ElecRfqService;
 import ai.neargo.shop.elec.support.ElecKeys;
 import ai.neargo.shop.elec.support.ElecValues;
@@ -86,11 +88,12 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     private final ElecAlerts alerts;
     private final ElecBuyerNotifier buyers;
     private final ElecProperties props;
+    private final ElecDispatchService dispatches;
     private final TransactionTemplate tx;
 
     public ElecRfqServiceImpl(RfqMapper rfqMapper, RfqLineMapper lineMapper, PartMapper partMapper,
                               StockMapper stockMapper, ElecAccounts accounts, ElecAlerts alerts,
-                              ElecBuyerNotifier buyers, ElecProperties props,
+                              ElecBuyerNotifier buyers, ElecProperties props, ElecDispatchService dispatches,
                               @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.rfqMapper = rfqMapper;
         this.lineMapper = lineMapper;
@@ -100,6 +103,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         this.alerts = alerts;
         this.buyers = buyers;
         this.props = props;
+        this.dispatches = dispatches;
         this.tx = new TransactionTemplate(tm);
     }
 
@@ -161,6 +165,17 @@ public class ElecRfqServiceImpl implements ElecRfqService {
             rows.forEach(lineMapper::insert);
         });
 
+        /*
+         * 派给库里有这个料号的供应商。**不在上面那个事务里** —— 派单要查库存、要发通知，
+         * 慢且会失败；放进去的话一次通知抖动会让整张询价单回滚，而询价已经是买家按下提交的事实。
+         * 最坏情况是「询价在、没派出去」，运营在企业微信群里照样看得到，可以手工指派。
+         */
+        try {
+            dispatches.dispatch(rfq, rows);
+        } catch (RuntimeException e) {
+            log.warn("派单失败，询价已落库，交给运营手工指派 rfqNo={} {}", rfq.getRfqNo(), e.toString());
+        }
+
         if (alerts.newRfq(alertOf(rfq, rows))) {
             ElcRfq patch = new ElcRfq();
             patch.setId(rfq.getId());
@@ -211,6 +226,25 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         List<ElcRfqLine> lines = linesOf(rfqNo);
         if (!alerts.rfqAccepted(rfqNo, h.getContactName(), h.getContactPhone(), summary(lines))) {
             log.warn("「买家接受报价」没送到企业微信 rfqNo={}", rfqNo);
+        }
+        return view(h, lines);
+    }
+
+    @Override
+    public RfqView acceptOffer(String userNo, String rfqNo, int lineNo, String offerNo) {
+        ElcRfq h = mineOr404(userNo, rfqNo);
+        if (ElcRfq.STATUS_CLOSED.equals(h.getStatus())) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        dispatches.acceptOffer(rfqNo, lineNo, offerNo);
+        List<ElcRfqLine> lines = linesOf(rfqNo);
+        /*
+         * **不把整单改成 ACCEPTED**：一张 BOM 上的行是分别成交的，
+         * 这一行选了不代表别的行也定了。整单状态等运营关单时给。
+         */
+        if (!alerts.rfqAccepted(rfqNo, h.getContactName(), h.getContactPhone(),
+                "第 " + lineNo + " 行：" + summary(lines))) {
+            log.warn("「买家选中报价」没送到企业微信 rfqNo={} line={}", rfqNo, lineNo);
         }
         return view(h, lines);
     }
@@ -367,14 +401,22 @@ public class ElecRfqServiceImpl implements ElecRfqService {
                 l.getQuoteCond(), l.getQuotePacking(), l.getQuoteNote());
     }
 
-    private static RfqView view(ElcRfq h, List<ElcRfqLine> lines) {
-        return new RfqView(h.getRfqNo(), shownStatus(h), h.getCreatedAt(), h.getLineCnt(), h.getNeedInvoice(),
+    private RfqView view(ElcRfq h, List<ElcRfqLine> lines) {
+        Map<Integer, List<RfqDtos.Offer>> offers = dispatches.offersOf(h.getRfqNo(), lines);
+        return view(h, lines, offers);
+    }
+
+    private static RfqView view(ElcRfq h, List<ElcRfqLine> lines, Map<Integer, List<RfqDtos.Offer>> offers) {
+        return new RfqView(h.getRfqNo(), shownStatus(h), h.getCreatedAt(), h.getLineCnt(),
+                h.getDispatchCnt() == null ? 0 : h.getDispatchCnt(),
+                h.getQuoteCnt() == null ? 0 : h.getQuoteCnt(), h.getNeedInvoice(),
                 h.getDcReq(), h.getCondReq(), h.getPackingReq(), h.getNeedByDays(),
                 Boolean.TRUE.equals(h.getAllowAlt()), h.getDeliverCity(), h.getCompany(), h.getContactName(),
                 Masks.phone(h.getContactPhone()),
                 h.getRemark(), h.getQuotedAt(), h.getQuoteValidUntil(), h.getQuoteNote(), h.getCloseReason(),
                 lines.stream().map(l -> new LineView(l.getLineNo(), l.getPartNo(), l.getMpnRaw(), l.getMfrRaw(),
-                        l.getQty(), l.getTargetE6(), quoteOf(l))).toList());
+                        l.getQty(), l.getTargetE6(), quoteOf(l),
+                        offers.getOrDefault(l.getLineNo(), List.of()))).toList());
     }
 
     private OpsRfqView opsView(ElcRfq h, List<ElcRfqLine> lines, boolean withSources) {

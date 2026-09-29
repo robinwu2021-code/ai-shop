@@ -14,6 +14,8 @@ public final class ElecKeys {
     public static final String BATCH = "EB";
     public static final String STOCK = "EK";
     public static final String RFQ = "EQ";
+    public static final String DISPATCH = "ED";
+    public static final String QUOTE = "EO";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

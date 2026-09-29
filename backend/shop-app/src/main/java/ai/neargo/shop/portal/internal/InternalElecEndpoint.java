@@ -140,6 +140,33 @@ public class InternalElecEndpoint {
     }
 
     /**
+     * 通知供应商（有新求购 / 报价被选中）。供应商与买家是同一个账号体系，所以与
+     * {@link #notifyQuoted} 走同一条路：站内信必达，订阅消息是加速通道。
+     *
+     * <p>订阅消息用的是同一个模板（场景 ELEC_QUOTED）：报价结果与求购通知在模板上是同一类
+     * 「服务进度」，没必要为它再报备一个 —— 而多一个模板就多一次授权，供应商多半不会点第二次。
+     */
+    @PostMapping(ElecInternal.NOTIFY_SUPPLIER)
+    public ResponseEntity<ElecInternal.NoticeResult> notifySupplier(
+            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
+            @RequestBody ElecInternal.SupplierNotice n) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        boolean inApp;
+        try {
+            messages.pushTo(MsgMessage.RECEIVER_USER, n.userNo(), MessageService.TRADE, n.title(), n.body(),
+                    "/" + n.page(), n.dedupKey());
+            inApp = true;
+        } catch (RuntimeException e) {
+            inApp = false;
+        }
+        boolean wx = wxSubscribe.elecQuoted(n.userNo(), "-", n.title(),
+                "DISPATCH".equals(n.kind()) ? "有新求购" : "已选中", n.page());
+        return ResponseEntity.ok(new ElecInternal.NoticeResult(inApp, wx));
+    }
+
+    /**
      * 运营在元器件那两个码上的权限，<b>按主系统自己的规则现算</b>（与 {@code PermChecker.can} 同一条路）：
      * 角色现查、权限码按角色现算、认模块通配（{@code elec:*}）。改了角色配置，下一次缓存过期就生效。
      */

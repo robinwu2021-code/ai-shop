@@ -22,4 +22,7 @@ public interface MainSystemApi {
 
     @PostExchange(ElecInternal.NOTIFY_QUOTED)
     ElecInternal.NoticeResult notifyQuoted(@RequestBody ElecInternal.QuotedNotice notice);
+
+    @PostExchange(ElecInternal.NOTIFY_SUPPLIER)
+    ElecInternal.NoticeResult notifySupplier(@RequestBody ElecInternal.SupplierNotice notice);
 }

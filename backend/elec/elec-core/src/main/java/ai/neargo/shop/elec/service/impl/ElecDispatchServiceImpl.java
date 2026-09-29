@@ -1,0 +1,490 @@
+package ai.neargo.shop.elec.service.impl;
+
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.elec.config.ConditionalOnElec;
+import ai.neargo.shop.elec.config.ElecProperties;
+import ai.neargo.shop.elec.dto.RfqDtos.DeclineReq;
+import ai.neargo.shop.elec.dto.RfqDtos.DispatchView;
+import ai.neargo.shop.elec.dto.RfqDtos.Offer;
+import ai.neargo.shop.elec.dto.RfqDtos.SupplierQuote;
+import ai.neargo.shop.elec.dto.RfqDtos.SupplierQuoteReq;
+import ai.neargo.shop.elec.entity.ElcDispatch;
+import ai.neargo.shop.elec.entity.ElcQuote;
+import ai.neargo.shop.elec.entity.ElcRfq;
+import ai.neargo.shop.elec.entity.ElcRfqLine;
+import ai.neargo.shop.elec.entity.ElcStock;
+import ai.neargo.shop.elec.entity.ElcSupplier;
+import ai.neargo.shop.elec.gateway.ElecSupplierNotifier;
+import ai.neargo.shop.elec.mapper.ElecMappers.DispatchMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.DispatchRow;
+import ai.neargo.shop.elec.mapper.ElecMappers.QuoteMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.SupplierMemberMapper;
+import ai.neargo.shop.elec.service.ElecDispatchService;
+import ai.neargo.shop.elec.service.ElecMarketService;
+import ai.neargo.shop.elec.support.ElecKeys;
+import ai.neargo.shop.elec.support.ElecValues;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 求购 → 派单 → 供应商报价 → 买家看到（匿名、已加价）。
+ *
+ * <h2>两个方向的匿名</h2>
+ * <ul>
+ *   <li><b>供应商看不到买家</b>：派单给的是 dispatch_no，查询语句里一个买家字段都不取</li>
+ *   <li><b>买家看不到供应商</b>：报价出去前换成这一行内的代号（报价 A / B / C），
+ *       且代号<b>只在这一行内有意义</b> —— 跨行跨单的 A 不是同一家，否则一对比就能聚出来</li>
+ * </ul>
+ *
+ * <h2>为什么派单不在询价那个事务里</h2>
+ * 派单要查库存、要发通知，慢且会失败。放进去的话，一次通知抖动会让整张询价单回滚 ——
+ * 而询价已经是买家按下提交的事实。分开之后最坏情况是「询价在、没派出去」，
+ * 运营在企业微信群里照样看得到，可以手工指派。
+ */
+@ConditionalOnElec
+@Service
+public class ElecDispatchServiceImpl implements ElecDispatchService {
+
+    private static final Logger log = LoggerFactory.getLogger(ElecDispatchServiceImpl.class);
+
+    /** 买家看到的代号 */
+    private static final String[] LABELS = {"A", "B", "C", "D", "E", "F", "G", "H"};
+
+    private static final int QUOTE_DEFAULT_DAYS = 3;
+    private static final int QUOTE_MAX_DAYS = 30;
+
+    private final DispatchMapper dispatchMapper;
+    private final QuoteMapper quoteMapper;
+    private final StockMapper stockMapper;
+    private final RfqMapper rfqMapper;
+    private final SupplierMemberMapper memberMapper;
+    private final ElecSupplierAccess access;
+    private final ElecSupplierNotifier notifier;
+    private final ElecMarketService market;
+    private final ElecProperties props;
+    private final TransactionTemplate tx;
+
+    public ElecDispatchServiceImpl(DispatchMapper dispatchMapper, QuoteMapper quoteMapper, StockMapper stockMapper,
+                                   RfqMapper rfqMapper, SupplierMemberMapper memberMapper,
+                                   ElecSupplierAccess access, ElecSupplierNotifier notifier,
+                                   ElecMarketService market, ElecProperties props,
+                                   @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
+        this.dispatchMapper = dispatchMapper;
+        this.quoteMapper = quoteMapper;
+        this.stockMapper = stockMapper;
+        this.rfqMapper = rfqMapper;
+        this.memberMapper = memberMapper;
+        this.access = access;
+        this.notifier = notifier;
+        this.market = market;
+        this.props = props;
+        this.tx = new TransactionTemplate(tm);
+    }
+
+    // ── 派单 ────────────────────────────────────────────────────────────────
+
+    @Override
+    public int dispatch(ElcRfq rfq, List<ElcRfqLine> lines) {
+        LocalDate today = LocalDate.now();
+        List<ElcDispatch> rows = new ArrayList<>();
+        Set<String> suppliers = new java.util.LinkedHashSet<>();
+        for (ElcRfqLine line : lines) {
+            if (line.getPartNo() == null) {
+                continue;   // 料号库里没有这个料号：谁有货无从查起，交给运营手工指派
+            }
+            List<ElcStock> stock = stockMapper.selectList(Wrappers.<ElcStock>lambdaQuery()
+                    .eq(ElcStock::getPartNo, line.getPartNo())
+                    .eq(ElcStock::getStatus, ElcStock.STATUS_ON)
+                    .ge(ElcStock::getValidUntil, today));
+            Set<String> hit = new java.util.LinkedHashSet<>();
+            for (ElcStock s : stock) {
+                hit.add(s.getSupplierNo());
+            }
+            /*
+             * **每行派几家有上限**（默认 5）。派太多的后果不是吵，是响应率整体塌掉：
+             * 一条求购派给二十家，十九家白填一遍报价，下次就没人填了。
+             */
+            int n = 0;
+            for (String supplierNo : hit) {
+                if (n++ >= props.getDispatchMaxPerLine()) {
+                    break;
+                }
+                ElcDispatch d = new ElcDispatch();
+                d.setDispatchNo(ElecKeys.next(ElecKeys.DISPATCH));
+                d.setRfqNo(rfq.getRfqNo());
+                d.setLineNo(line.getLineNo());
+                d.setSupplierNo(supplierNo);
+                d.setVia(ElcDispatch.VIA_AUTO);
+                d.setStatus(ElcDispatch.STATUS_SENT);
+                d.setCreatedBy("AUTO");
+                d.setUpdatedBy("AUTO");
+                rows.add(d);
+                suppliers.add(supplierNo);
+            }
+        }
+        if (rows.isEmpty()) {
+            return 0;
+        }
+        insertAll(rows);
+        countBack(rfq.getRfqNo());
+        notifySuppliers(rfq.getRfqNo(), suppliers);
+        return suppliers.size();
+    }
+
+    @Override
+    public int dispatchTo(String rfqNo, int lineNo, List<String> supplierNos, String staffNo) {
+        if (supplierNos == null || supplierNos.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<ElcDispatch> rows = new ArrayList<>();
+        for (String supplierNo : supplierNos) {
+            ElcDispatch d = new ElcDispatch();
+            d.setDispatchNo(ElecKeys.next(ElecKeys.DISPATCH));
+            d.setRfqNo(rfqNo);
+            d.setLineNo(lineNo);
+            d.setSupplierNo(supplierNo);
+            d.setVia(ElcDispatch.VIA_OPS);
+            d.setStatus(ElcDispatch.STATUS_SENT);
+            d.setCreatedBy(staffNo);
+            d.setUpdatedBy(staffNo);
+            rows.add(d);
+        }
+        int n = insertAll(rows);
+        countBack(rfqNo);
+        notifySuppliers(rfqNo, new java.util.LinkedHashSet<>(supplierNos));
+        return n;
+    }
+
+    /**
+     * 逐条插，撞唯一键就跳过。
+     *
+     * <p><b>不用批量插</b>：这里正常就是个位数，而「同一行已经派过这家」是常态
+     * （运营手工补派时多半会包含已经派过的），批量插会让整批一起失败。
+     */
+    private int insertAll(List<ElcDispatch> rows) {
+        int n = 0;
+        for (ElcDispatch d : rows) {
+            try {
+                dispatchMapper.insert(d);
+                n++;
+            } catch (DuplicateKeyException e) {
+                log.debug("这一行已经派过这家，跳过 rfqNo={} line={} supplier={}",
+                        d.getRfqNo(), d.getLineNo(), d.getSupplierNo());
+            }
+        }
+        return n;
+    }
+
+    /** 通知供应商。**一家一条**，不按行发 —— 一张 BOM 派给他五行，他要的是「有新求购」一条 */
+    private void notifySuppliers(String rfqNo, Set<String> suppliers) {
+        for (String supplierNo : suppliers) {
+            String account = memberMapper.selectList(Wrappers.<ai.neargo.shop.elec.entity.ElcSupplierMember>lambdaQuery()
+                            .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getSupplierNo, supplierNo)
+                            .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getStatus, "ACTIVE"))
+                    .stream().findFirst()
+                    .map(ai.neargo.shop.elec.entity.ElcSupplierMember::getAccountRef).orElse(null);
+            if (account == null) {
+                continue;
+            }
+            long cnt = dispatchMapper.selectCount(Wrappers.<ElcDispatch>lambdaQuery()
+                    .eq(ElcDispatch::getRfqNo, rfqNo).eq(ElcDispatch::getSupplierNo, supplierNo));
+            boolean ok;
+            try {
+                ok = notifier.newDispatch(account, supplierNo, (int) cnt);
+            } catch (RuntimeException e) {
+                log.warn("通知供应商失败 supplierNo={} {}", supplierNo, e.toString());
+                ok = false;
+            }
+            if (ok) {
+                ElcDispatch patch = new ElcDispatch();
+                patch.setNotifiedAt(LocalDateTime.now());
+                dispatchMapper.update(patch, Wrappers.<ElcDispatch>lambdaUpdate()
+                        .eq(ElcDispatch::getRfqNo, rfqNo).eq(ElcDispatch::getSupplierNo, supplierNo));
+            } else {
+                log.warn("求购通知没送到供应商 rfqNo={} supplierNo={}（notified_at 为空的就是这些）",
+                        rfqNo, supplierNo);
+            }
+        }
+    }
+
+    /** 回写「派了几家、几家报了价」。列表页要显示，不能每次去数 */
+    private void countBack(String rfqNo) {
+        long dispatched = dispatchMapper.selectList(Wrappers.<ElcDispatch>lambdaQuery()
+                        .eq(ElcDispatch::getRfqNo, rfqNo))
+                .stream().map(ElcDispatch::getSupplierNo).distinct().count();
+        long quoted = quoteMapper.selectList(Wrappers.<ElcQuote>lambdaQuery()
+                        .eq(ElcQuote::getRfqNo, rfqNo).eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE))
+                .stream().map(ElcQuote::getSupplierNo).distinct().count();
+        rfqMapper.update(null, Wrappers.<ElcRfq>lambdaUpdate().eq(ElcRfq::getRfqNo, rfqNo)
+                .set(ElcRfq::getDispatchCnt, (int) dispatched)
+                .set(ElcRfq::getQuoteCnt, (int) quoted));
+    }
+
+    // ── 供应商侧 ────────────────────────────────────────────────────────────
+
+    @Override
+    public List<DispatchView> mine(String userNo, String status, int page, int size) {
+        ElcSupplier s = access.requireActive(userNo);
+        int n = Math.min(50, Math.max(1, size));
+        long offset = (long) (Math.max(1, page) - 1) * n;
+        List<DispatchRow> rows = dispatchMapper.mine(s.getSupplierNo(),
+                status == null || status.isBlank() ? null : status, n, offset);
+        Map<String, ElcQuote> quotes = quotesOf(rows.stream().map(DispatchRow::getDispatchNo).toList());
+        return rows.stream().map(r -> view(r, s.getSupplierNo(), quotes.get(r.getDispatchNo()))).toList();
+    }
+
+    @Override
+    public DispatchView detail(String userNo, String dispatchNo) {
+        ElcSupplier s = access.requireActive(userNo);
+        ElcDispatch d = mineOr404(s.getSupplierNo(), dispatchNo);
+        // 看过了就记一下：响应率的分母是「看到的」，不是「派出去的」
+        if (ElcDispatch.STATUS_SENT.equals(d.getStatus())) {
+            dispatchMapper.update(null, Wrappers.<ElcDispatch>lambdaUpdate()
+                    .eq(ElcDispatch::getId, d.getId()).eq(ElcDispatch::getStatus, ElcDispatch.STATUS_SENT)
+                    .set(ElcDispatch::getStatus, ElcDispatch.STATUS_VIEWED)
+                    .set(ElcDispatch::getViewedAt, LocalDateTime.now()));
+        }
+        DispatchRow row = dispatchMapper.mine(s.getSupplierNo(), null, 100, 0).stream()
+                .filter(x -> x.getDispatchNo().equals(dispatchNo)).findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        return view(row, s.getSupplierNo(), quotesOf(List.of(dispatchNo)).get(dispatchNo));
+    }
+
+    @Override
+    public DispatchView quote(String userNo, String dispatchNo, SupplierQuoteReq req) {
+        ElcSupplier s = access.requireActive(userNo);
+        ElcDispatch d = mineOr404(s.getSupplierNo(), dispatchNo);
+        if (ElcDispatch.STATUS_DECLINED.equals(d.getStatus())) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        if (req == null || req.priceE6() == null || req.priceE6() <= 0
+                || req.qtyAvailable() == null || req.qtyAvailable() <= 0
+                || (req.leadDays() != null && (req.leadDays() < 0 || req.leadDays() > 365))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        int days = req.validDays() == null ? QUOTE_DEFAULT_DAYS
+                : Math.max(1, Math.min(QUOTE_MAX_DAYS, req.validDays()));
+        LocalDateTime now = LocalDateTime.now();
+
+        ElcQuote existing = quoteMapper.selectOne(Wrappers.<ElcQuote>lambdaQuery()
+                .eq(ElcQuote::getDispatchNo, dispatchNo));
+        ElcQuote q = existing != null ? existing : new ElcQuote();
+        if (existing != null && ElcQuote.STATUS_ACCEPTED.equals(existing.getStatus())) {
+            // 买家已经选了这条，不能再改价 —— 改了就是成交价被人单方面变了
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        if (existing == null) {
+            q.setQuoteNo(ElecKeys.next(ElecKeys.QUOTE));
+            q.setDispatchNo(dispatchNo);
+            q.setRfqNo(d.getRfqNo());
+            q.setLineNo(d.getLineNo());
+            q.setSupplierNo(s.getSupplierNo());
+            q.setCreatedBy(userNo);
+        }
+        q.setPriceE6(req.priceE6());
+        q.setCurrency(ElecSupplierServiceImpl.oneOf(ElecValues.upper(req.currency()),
+                ElecValues.CURRENCIES, "CNY"));
+        q.setTaxIncluded(req.taxIncluded() == null || req.taxIncluded());
+        q.setQtyAvailable(req.qtyAvailable());
+        q.setDateCode(ElecSupplierServiceImpl.trimmed(req.dateCode(), 16));
+        q.setDcYear(ai.neargo.shop.elec.support.Cells.dcYear(req.dateCode()));
+        q.setLeadDays(req.leadDays());
+        q.setCondGrade(ElecSupplierServiceImpl.oneOf(req.cond(), ElecValues.CONDITIONS, null));
+        q.setPacking(ElecSupplierServiceImpl.oneOf(req.packing(), ElecValues.PACKINGS, null));
+        q.setMoq(req.moq());
+        q.setValidUntil(LocalDate.now().plusDays(days - 1L));
+        q.setRemark(ElecSupplierServiceImpl.trimmed(req.remark(), 255));
+        q.setStatus(ElcQuote.STATUS_ACTIVE);
+        q.setUpdatedBy(userNo);
+
+        tx.executeWithoutResult(st -> {
+            if (existing == null) {
+                quoteMapper.insert(q);
+            } else {
+                quoteMapper.updateById(q);
+            }
+            dispatchMapper.update(null, Wrappers.<ElcDispatch>lambdaUpdate()
+                    .eq(ElcDispatch::getId, d.getId())
+                    .set(ElcDispatch::getStatus, ElcDispatch.STATUS_QUOTED)
+                    .set(ElcDispatch::getRespondedAt, now)
+                    .set(ElcDispatch::getDeclineReason, null)
+                    .set(ElcDispatch::getUpdatedBy, userNo));
+        });
+        countBack(d.getRfqNo());
+        return detail(userNo, dispatchNo);
+    }
+
+    @Override
+    public DispatchView decline(String userNo, String dispatchNo, DeclineReq req) {
+        ElcSupplier s = access.requireActive(userNo);
+        ElcDispatch d = mineOr404(s.getSupplierNo(), dispatchNo);
+        String reason = ElecSupplierServiceImpl.oneOf(req == null ? null : req.reason(),
+                Set.of("NO_STOCK", "PRICE", "OTHER"), "OTHER");
+        tx.executeWithoutResult(st -> {
+            dispatchMapper.update(null, Wrappers.<ElcDispatch>lambdaUpdate()
+                    .eq(ElcDispatch::getId, d.getId())
+                    .set(ElcDispatch::getStatus, ElcDispatch.STATUS_DECLINED)
+                    .set(ElcDispatch::getDeclineReason, reason)
+                    .set(ElcDispatch::getRespondedAt, LocalDateTime.now())
+                    .set(ElcDispatch::getUpdatedBy, userNo));
+            // 已经报过价又改口说没货：把那条报价撤掉，不然买家还看得到
+            quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate()
+                    .eq(ElcQuote::getDispatchNo, dispatchNo)
+                    .eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
+                    .set(ElcQuote::getStatus, ElcQuote.STATUS_WITHDRAWN)
+                    .set(ElcQuote::getUpdatedBy, userNo));
+        });
+        countBack(d.getRfqNo());
+        return detail(userNo, dispatchNo);
+    }
+
+    // ── 买家侧（匿名、已加价）────────────────────────────────────────────
+
+    @Override
+    public Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines) {
+        LocalDate today = LocalDate.now();
+        List<ElcQuote> quotes = quoteMapper.selectList(Wrappers.<ElcQuote>lambdaQuery()
+                .eq(ElcQuote::getRfqNo, rfqNo)
+                .in(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE, ElcQuote.STATUS_ACCEPTED)
+                .ge(ElcQuote::getValidUntil, today));
+        Map<Integer, List<ElcQuote>> byLine = quotes.stream()
+                .collect(Collectors.groupingBy(ElcQuote::getLineNo));
+        Map<Integer, List<Offer>> out = new LinkedHashMap<>();
+        for (ElcRfqLine line : lines) {
+            List<Offer> offers = new ArrayList<>();
+            if (line.getQuoteE6() != null) {
+                // 平台自己报的那条：已经是对买家的价，不再加价
+                offers.add(new Offer("P" + line.getLineNo(), "平台", line.getQuoteE6(), line.getQuoteQty(),
+                        line.getQuoteDcYear(), line.getQuoteLeadDays(), line.getQuoteCond(),
+                        line.getQuotePacking(), null, line.getQuoteNote(), "PLATFORM"));
+            }
+            List<ElcQuote> mine = byLine.getOrDefault(line.getLineNo(), List.of()).stream()
+                    .sorted(Comparator.comparingLong(q -> toBuyerPrice(q)))
+                    .toList();
+            int i = 0;
+            for (ElcQuote q : mine) {
+                /*
+                 * **代号只在这一行内有意义**：下一行的 A 不是这一行的 A。
+                 * 跨行用同一个代号的话，同一家在整张 BOM 上的报价能被对齐，
+                 * 报几次价、每次差多少都露出来了 —— 那等于把「这家是谁」还原了一半。
+                 */
+                String label = "报价 " + LABELS[Math.min(i, LABELS.length - 1)];
+                i++;
+                offers.add(new Offer(q.getQuoteNo(), label, toBuyerPrice(q), q.getQtyAvailable(),
+                        q.getDcYear(), q.getLeadDays(), q.getCondGrade(), q.getPacking(),
+                        q.getValidUntil(), null, "SUPPLIER"));
+            }
+            out.put(line.getLineNo(), offers);
+        }
+        return out;
+    }
+
+    /** 供应商的价 → 买家看到的价：换成人民币含税，再按平台规则加价 */
+    long toBuyerPrice(ElcQuote q) {
+        return market.withMarkup(market.toCnyWithTax(q.getPriceE6(), q.getCurrency(), q.getTaxIncluded()));
+    }
+
+    @Override
+    public void acceptOffer(String rfqNo, int lineNo, String offerNo) {
+        ElcQuote q = quoteMapper.selectOne(Wrappers.<ElcQuote>lambdaQuery()
+                .eq(ElcQuote::getQuoteNo, offerNo).eq(ElcQuote::getRfqNo, rfqNo)
+                .eq(ElcQuote::getLineNo, lineNo));
+        if (q == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!ElcQuote.STATUS_ACTIVE.equals(q.getStatus())) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        if (q.getValidUntil().isBefore(LocalDate.now())) {
+            throw BizException.of(ErrorCode.ELEC_QUOTE_EXPIRED);
+        }
+        int n = quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate()
+                .eq(ElcQuote::getId, q.getId()).eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
+                .set(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED));
+        if (n == 0) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        String account = memberMapper.selectList(Wrappers.<ai.neargo.shop.elec.entity.ElcSupplierMember>lambdaQuery()
+                        .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getSupplierNo, q.getSupplierNo())
+                        .eq(ai.neargo.shop.elec.entity.ElcSupplierMember::getStatus, "ACTIVE"))
+                .stream().findFirst()
+                .map(ai.neargo.shop.elec.entity.ElcSupplierMember::getAccountRef).orElse(null);
+        if (account != null && !notifier.quoteAccepted(account, q.getQuoteNo(), q.getQtyAvailable())) {
+            log.warn("「你的报价被选中」没送到供应商 quoteNo={}", q.getQuoteNo());
+        }
+    }
+
+    // ── 小件 ────────────────────────────────────────────────────────────────
+
+    private ElcDispatch mineOr404(String supplierNo, String dispatchNo) {
+        ElcDispatch d = dispatchMapper.selectOne(Wrappers.<ElcDispatch>lambdaQuery()
+                .eq(ElcDispatch::getDispatchNo, dispatchNo).eq(ElcDispatch::getSupplierNo, supplierNo));
+        if (d == null) {
+            // 别人的派单号猜中了也是 404：不告诉他这条求购存在
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return d;
+    }
+
+    private Map<String, ElcQuote> quotesOf(List<String> dispatchNos) {
+        if (dispatchNos.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, ElcQuote> out = new HashMap<>();
+        for (ElcQuote q : quoteMapper.selectList(Wrappers.<ElcQuote>lambdaQuery()
+                .in(ElcQuote::getDispatchNo, dispatchNos))) {
+            out.put(q.getDispatchNo(), q);
+        }
+        return out;
+    }
+
+    private DispatchView view(DispatchRow r, String supplierNo, ElcQuote q) {
+        Long inStock = null;
+        List<ElcStock> stock = stockMapper.selectList(Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getSupplierNo, supplierNo)
+                .eq(ElcStock::getMpnNorm, ai.neargo.shop.elec.support.Mpn.norm(r.getMpnRaw()))
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON));
+        if (!stock.isEmpty()) {
+            inStock = stock.stream().mapToLong(ElcStock::getQty).sum();
+        }
+        return new DispatchView(r.getDispatchNo(), r.getStatus(), r.getCreatedAt(), r.getMpnRaw(),
+                r.getMfrRaw(), r.getQty(), r.getTargetE6(), r.getDcReq(), r.getCondReq(), r.getPackingReq(),
+                r.getNeedByDays(), Boolean.TRUE.equals(r.getAllowAlt()), r.getNeedInvoice(),
+                province(r.getDeliverCity()), inStock,
+                q == null ? null : new SupplierQuote(q.getQuoteNo(), q.getPriceE6(), q.getCurrency(),
+                        Boolean.TRUE.equals(q.getTaxIncluded()), q.getQtyAvailable(), q.getDateCode(),
+                        q.getLeadDays(), q.getCondGrade(), q.getPacking(), q.getMoq(), q.getValidUntil(),
+                        q.getRemark(), q.getStatus()));
+    }
+
+    /**
+     * 收货地只给到省。**给到市就能把买家缩小一大截** —— 一个料号、一个数量、一个城市，
+     * 在这个圈子里足够认出是哪家厂在备货。
+     */
+    static String province(String city) {
+        if (city == null || city.isBlank()) {
+            return null;
+        }
+        return ai.neargo.shop.elec.support.Provinces.of(city);
+    }
+}

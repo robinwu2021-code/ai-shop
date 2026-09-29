@@ -22,6 +22,9 @@ public final class ElecInternal {
     /** 询价有结果了：发微信订阅消息 + 站内信给买家 */
     public static final String NOTIFY_QUOTED = "/internal/elec/notify/quoted";
 
+    /** 有新的求购派给这家供应商 / 他的报价被选中了。供应商与买家是同一个账号体系 */
+    public static final String NOTIFY_SUPPLIER = "/internal/elec/notify/supplier";
+
     /** 与 shop-base 的 InternalHttp.TOKEN_HEADER 同值（这里不能引 shop-base，只能写字面量） */
     public static final String TOKEN_HEADER = "X-Internal-Token";
 
@@ -60,6 +63,17 @@ public final class ElecInternal {
      * @param page    点开后落到的小程序页面
      */
     public record QuotedNotice(String userNo, String rfqNo, String result, String summary, String page) {
+    }
+
+    /**
+     * @param kind    DISPATCH 有新求购 / ACCEPTED 报价被选中
+     * @param title   站内信标题
+     * @param body    站内信正文
+     * @param page    点开落到的小程序页面
+     * @param dedupKey 同一件事重复调只留一条
+     */
+    public record SupplierNotice(String userNo, String kind, String title, String body, String page,
+                                 String dedupKey) {
     }
 
     /**

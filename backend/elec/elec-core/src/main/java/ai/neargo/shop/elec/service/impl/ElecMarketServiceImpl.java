@@ -187,7 +187,8 @@ public class ElecMarketServiceImpl implements ElecMarketService {
     }
 
     /** 换算成**人民币含税**：买家面只有这一种口径，不然两条报价没法比 */
-    long toCnyWithTax(long priceE6, String currency, Boolean taxIncluded) {
+    @Override
+    public long toCnyWithTax(long priceE6, String currency, Boolean taxIncluded) {
         long v = priceE6;
         if ("USD".equals(currency)) {
             v = v * props.getUsdToCnyBp() / 10_000;
@@ -201,7 +202,8 @@ public class ElecMarketServiceImpl implements ElecMarketService {
     }
 
     /** 买家看到的是加过价的参考价：按比例加，至少加一个最小值（小单价按比例加出来是 0） */
-    long withMarkup(long priceE6) {
+    @Override
+    public long withMarkup(long priceE6) {
         long add = Math.max(priceE6 * props.getMarkupBp() / 10_000, props.getMarkupMinE6());
         return priceE6 + add;
     }

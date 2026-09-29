@@ -44,9 +44,25 @@ public class ElecRfqController {
         return rfqs.detail(SecurityUtils.currentUserNo(), rfqNo);
     }
 
-    /** 接受平台的报价。只在已报价且没过期时可以；企业微信群收到「买家接受了」 */
+    /** 接受平台的报价（整单）。只在已报价且没过期时可以；企业微信群收到「买家接受了」 */
     @PostMapping("/elec/c/rfq/{rfqNo}/accept")
     public RfqView accept(@PathVariable String rfqNo) {
         return rfqs.accept(SecurityUtils.currentUserNo(), rfqNo);
+    }
+
+    /**
+     * 选中某一行的某一条报价（供应商报的那些）。
+     *
+     * <p><b>按行选</b>而不是整单选：一张 BOM 上不同的行很可能出自不同的供应商，
+     * 强制整单选等于逼买家为了一行放弃另一行更好的价。
+     */
+    @PostMapping("/elec/c/rfq/{rfqNo}/line/{lineNo}/accept")
+    public RfqView acceptOffer(@PathVariable String rfqNo, @PathVariable int lineNo,
+                               @RequestBody AcceptOfferReq req) {
+        return rfqs.acceptOffer(SecurityUtils.currentUserNo(), rfqNo, lineNo, req.offerNo());
+    }
+
+    /** @param offerNo 报价列表里那一条的 offerNo */
+    public record AcceptOfferReq(String offerNo) {
     }
 }

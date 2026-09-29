@@ -27,6 +27,8 @@ public class FakeMainSystem implements MainSystemApi {
     private final Map<String, ElecInternal.Session> tokens = new ConcurrentHashMap<>();
     private final Map<String, String> phones = new ConcurrentHashMap<>();
     private final List<ElecInternal.QuotedNotice> notices = java.util.Collections.synchronizedList(new ArrayList<>());
+    private final List<ElecInternal.SupplierNotice> supplierNotices =
+            java.util.Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger seq = new AtomicInteger();
     final AtomicInteger sessionCalls = new AtomicInteger();
     volatile boolean down;
@@ -62,6 +64,11 @@ public class FakeMainSystem implements MainSystemApi {
         return List.copyOf(notices);
     }
 
+    /** 发给供应商的那些（有新求购 / 报价被选中） */
+    public List<ElecInternal.SupplierNotice> supplierNotices() {
+        return List.copyOf(supplierNotices);
+    }
+
     private String issue(ElecInternal.Session s) {
         String token = (s.realm().equals("OPERATOR") ? "otk_" : "ctk_") + java.util.UUID.randomUUID();
         tokens.put(token, s);
@@ -87,6 +94,13 @@ public class FakeMainSystem implements MainSystemApi {
     public ElecInternal.NoticeResult notifyQuoted(ElecInternal.QuotedNotice notice) {
         failIfDown();
         notices.add(notice);
+        return new ElecInternal.NoticeResult(true, false);
+    }
+
+    @Override
+    public ElecInternal.NoticeResult notifySupplier(ElecInternal.SupplierNotice notice) {
+        failIfDown();
+        supplierNotices.add(notice);
         return new ElecInternal.NoticeResult(true, false);
     }
 

@@ -48,6 +48,12 @@ public class ElcRfq extends ElcMutableEntity {
 
     private Integer lineCnt;
 
+    /** 派给了几家 */
+    private Integer dispatchCnt;
+
+    /** 有几家报了价 */
+    private Integer quoteCnt;
+
     private String status;
 
     private java.time.LocalDateTime notifiedAt;

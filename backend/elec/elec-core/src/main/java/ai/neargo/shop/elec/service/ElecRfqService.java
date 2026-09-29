@@ -25,8 +25,11 @@ public interface ElecRfqService {
 
     RfqView detail(String userNo, String rfqNo);
 
-    /** 买家接受平台报价。只在 QUOTED 且未过期时可以 */
+    /** 买家接受平台报价（整单）。只在 QUOTED 且未过期时可以 */
     RfqView accept(String userNo, String rfqNo);
+
+    /** 买家选中某一行的某一条供应商报价 */
+    RfqView acceptOffer(String userNo, String rfqNo, int lineNo, String offerNo);
 
     // ── 运营端 ──
 

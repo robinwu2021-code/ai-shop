@@ -4,7 +4,7 @@
 -- 字段口径见 docs/technical/reference/数据库-元器件.md 的「关键字段」一节。
 --
 -- 这是**另一个数据库**（ai_shop_elec）的第一条迁移，与 ai_shop 的 Flyway 历史互不知情。
--- 设计见 docs/technical/design/TDD-元器件-数据库设计.md；第一步只建 13 张，
+-- 设计见 docs/technical/design/TDD-元器件-数据库设计.md；15 张，
 -- 派单 / 报价 / 加价规则 / 成交跟进等到平台不再手工处理询价时再建。
 --
 -- 全库通则（逐表不再重复）：
@@ -288,6 +288,8 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     deliver_city   VARCHAR(32)  DEFAULT NULL,
     remark         VARCHAR(255) DEFAULT NULL,
     line_cnt       INT          NOT NULL DEFAULT 0,
+    dispatch_cnt   INT          NOT NULL DEFAULT 0 COMMENT '派给了几家。列表页要显示，不能每次去数',
+    quote_cnt      INT          NOT NULL DEFAULT 0 COMMENT '有几家报了价',
     status         VARCHAR(16)  NOT NULL DEFAULT 'SUBMITTED' COMMENT 'SUBMITTED 待报价 / QUOTED 已报价 / ACCEPTED 买家已接受 / CLOSED 已结束。过期不落库：QUOTED 且过了有效期即显示为过期',
     notified_at    DATETIME     DEFAULT NULL COMMENT '新询价送达企业微信的时间；空 = 没送到',
     quoted_at      DATETIME     DEFAULT NULL,
@@ -333,6 +335,78 @@ CREATE TABLE IF NOT EXISTS elc_rfq_line
     PRIMARY KEY (id),
     UNIQUE KEY uk_elc_rfq_line (rfq_no, line_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='询价行';
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- D2. 派单与供应商报价
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 派单：**供应商能看到求购需求的唯一通道**。
+--
+-- 有它之前，询价只走「平台报价」一条路（运营看着库存手填）。加上它之后两条路并存：
+-- 供应商自己报价（快、价准），平台报价兜底（供应商没响应时）。
+--
+-- **匿名在这张表上落地**：供应商拿到的是 dispatch_no，不是 rfq_no ——
+-- 两边拿不到同一个号，也就对不上。他看得到料号、数量、要求，看不到买家是谁。
+CREATE TABLE IF NOT EXISTS elc_dispatch
+(
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    dispatch_no    VARCHAR(32)  NOT NULL COMMENT '供应商侧用它当单号。不暴露 rfq_no',
+    rfq_no         VARCHAR(32)  NOT NULL,
+    line_no        INT          NOT NULL,
+    supplier_no    VARCHAR(32)  NOT NULL,
+    via            VARCHAR(16)  NOT NULL DEFAULT 'AUTO_MATCH' COMMENT 'AUTO_MATCH 库里有这个料号 / OPS 运营手工指派',
+    status         VARCHAR(16)  NOT NULL DEFAULT 'SENT' COMMENT 'SENT / VIEWED / QUOTED / DECLINED',
+    decline_reason VARCHAR(16)  DEFAULT NULL COMMENT 'NO_STOCK 没货 / PRICE 价格做不了 / OTHER',
+    notified_at    DATETIME     DEFAULT NULL COMMENT '通知送达供应商的时间；空 = 没送到',
+    viewed_at      DATETIME     DEFAULT NULL,
+    responded_at   DATETIME     DEFAULT NULL COMMENT '报价或拒绝的时刻。响应率与响应时长由它算',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by     VARCHAR(64)  DEFAULT NULL,
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by     VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_elc_dispatch (dispatch_no),
+    UNIQUE KEY uk_elc_dispatch_line (rfq_no, line_no, supplier_no),
+    KEY idx_elc_dispatch_supplier (supplier_no, status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='派单：谁收到了这条求购';
+
+
+-- 供应商的报价。一次派单一条，改价覆盖同一条。
+--
+-- **买家看到的不是这张表**：价要按平台规则加价、供应商要匿名化，那一层在服务里做；
+-- 这张表是供应商填的原样。
+CREATE TABLE IF NOT EXISTS elc_quote
+(
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    quote_no      VARCHAR(32)  NOT NULL,
+    dispatch_no   VARCHAR(32)  NOT NULL,
+    rfq_no        VARCHAR(32)  NOT NULL,
+    line_no       INT          NOT NULL,
+    supplier_no   VARCHAR(32)  NOT NULL,
+    price_e6      BIGINT       NOT NULL COMMENT '供应商填的单价，百万分之一元（他的口径，没加价）',
+    currency      CHAR(3)      NOT NULL DEFAULT 'CNY',
+    tax_included  TINYINT      NOT NULL DEFAULT 1,
+    qty_available BIGINT       NOT NULL COMMENT '他能供多少。少于买家要的数量时买家侧要标出来',
+    date_code     VARCHAR(16)  DEFAULT NULL,
+    dc_year       SMALLINT     DEFAULT NULL COMMENT '买家只看年份',
+    lead_days     SMALLINT     DEFAULT NULL COMMENT '0 = 现货',
+    cond_grade    VARCHAR(16)  DEFAULT NULL,
+    packing       VARCHAR(16)  DEFAULT NULL,
+    moq           INT          DEFAULT NULL,
+    valid_until   DATE         NOT NULL COMMENT '报价有效到哪天（含）',
+    remark        VARCHAR(255) DEFAULT NULL COMMENT '**只给平台看**：供应商常在这里写公司名和微信，想绕开平台',
+    status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / WITHDRAWN / ACCEPTED / EXPIRED',
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by    VARCHAR(64)  DEFAULT NULL,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by    VARCHAR(64)  DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_elc_quote (quote_no),
+    UNIQUE KEY uk_elc_quote_dispatch (dispatch_no),
+    KEY idx_elc_quote_line (rfq_no, line_no, status),
+    KEY idx_elc_quote_supplier (supplier_no, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='供应商报价';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────

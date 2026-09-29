@@ -38,7 +38,12 @@ public final class RfqDtos {
      * @param contactPhone 提交时绑定的手机号（掩码）—— 让他知道平台会打哪个号
      * @param closeReason  NO_SOURCE 暂无货源 / BUYER_CANCELLED / DONE；没结束为 null
      */
+    /**
+     * @param dispatchCnt 派给了几家供应商
+     * @param quoteCnt    有几家报了价
+     */
     public record RfqView(String rfqNo, String status, LocalDateTime createdAt, int lineCnt,
+                          int dispatchCnt, int quoteCnt,
                           String needInvoice, String dcReq, String condReq, String packingReq,
                           Integer needByDays, boolean allowAlt, String deliverCity, String company,
                           String contactName, String contactPhone, String remark,
@@ -49,8 +54,12 @@ public final class RfqDtos {
     /**
      * @param quote 平台对这一行的报价；null = 还没报，或报价时这一行没找到货
      */
+    /**
+     * @param quote  平台自己报的那条（运营在后台填的）；null = 平台没报
+     * @param offers 买家能选的全部报价：平台那条 + 供应商报的（已加价、已匿名），按价升序
+     */
     public record LineView(int lineNo, String partNo, String mpn, String mfr, long qty, Long targetE6,
-                           LineQuote quote) {
+                           LineQuote quote, List<Offer> offers) {
     }
 
     /**
@@ -60,6 +69,58 @@ public final class RfqDtos {
      */
     public record LineQuote(long priceE6, Long qty, Integer dcYear, Integer leadDays, String cond,
                            String packing, String note) {
+    }
+
+    /**
+     * 买家看到的一条报价。**没有、也不许加任何供应商字段**。
+     *
+     * @param label    这一行内的代号（报价 A / B / C）。<b>只在这一行内有意义</b> ——
+     *                 跨行、跨单的 A 不是同一家，否则一对比就能把某一家聚出来
+     * @param priceE6  含税单价，已按平台规则加价、换算成人民币
+     * @param qty      他能供多少。少于要的数量时端上要标出来
+     * @param from     PLATFORM 平台报的 / SUPPLIER 供应商报的。端上不显示这个词，
+     *                 只用它决定「接受」之后走哪条跟进流程
+     */
+    public record Offer(String offerNo, String label, long priceE6, Long qty, Integer dcYear,
+                        Integer leadDays, String cond, String packing, java.time.LocalDate validUntil,
+                        String note, String from) {
+    }
+
+    // ── 供应商侧（看得到求购，看不到买家）────────────────────────────────
+
+    /**
+     * 派给这家供应商的一条求购。
+     *
+     * @param dispatchNo 供应商侧的单号。**不是 rfq_no** —— 两边拿不到同一个号
+     * @param status     SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝
+     * @param inStock    他自己库里这个料号还有多少（帮他一眼判断能不能接）；没有为 null
+     */
+    public record DispatchView(String dispatchNo, String status, LocalDateTime createdAt, String mpn,
+                               String mfr, long qty, Long targetE6, String dcReq, String condReq,
+                               String packingReq, Integer needByDays, boolean allowAlt, String needInvoice,
+                               String deliverProvince, Long inStock, SupplierQuote myQuote) {
+    }
+
+    /** 供应商自己填的那条报价（他看得到原样，买家看到的是加价并匿名之后的） */
+    public record SupplierQuote(String quoteNo, long priceE6, String currency, boolean taxIncluded,
+                                long qtyAvailable, String dateCode, Integer leadDays, String cond,
+                                String packing, Integer moq, java.time.LocalDate validUntil, String remark,
+                                String status) {
+    }
+
+    /**
+     * 供应商提交报价。
+     *
+     * @param validDays 报价有效几天（默认 3）
+     * @param remark    只给平台看
+     */
+    public record SupplierQuoteReq(Long priceE6, String currency, Boolean taxIncluded, Long qtyAvailable,
+                                   String dateCode, Integer leadDays, String cond, String packing,
+                                   Integer moq, Integer validDays, String remark) {
+    }
+
+    /** @param reason NO_STOCK 没货 / PRICE 价格做不了 / OTHER */
+    public record DeclineReq(String reason) {
     }
 
     // ── 运营端 ──────────────────────────────────────────────────────────────

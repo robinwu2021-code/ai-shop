@@ -7,6 +7,8 @@ import ai.neargo.shop.elec.entity.ElcPartKey;
 import ai.neargo.shop.elec.entity.ElcPartMarket;
 import ai.neargo.shop.elec.entity.ElcSearchDaily;
 import ai.neargo.shop.elec.entity.ElcRfq;
+import ai.neargo.shop.elec.entity.ElcDispatch;
+import ai.neargo.shop.elec.entity.ElcQuote;
 import ai.neargo.shop.elec.entity.ElcRfqLine;
 import ai.neargo.shop.elec.entity.ElcStock;
 import ai.neargo.shop.elec.entity.ElcStockBatch;
@@ -248,5 +250,55 @@ public final class ElecMappers {
     }
 
     public interface RfqLineMapper extends BaseMapper<ElcRfqLine> {
+    }
+
+    public interface DispatchMapper extends BaseMapper<ElcDispatch> {
+
+        /**
+         * 供应商的待办：派给他、还没响应的。
+         *
+         * <p><b>连着询价行一起查</b>（料号、数量、要求），但**一个买家字段都不取** ——
+         * 买家是谁不在这条 SQL 的输出里，写错了也漏不出去。
+         */
+        @Select("""
+                SELECT d.dispatch_no, d.status, d.created_at,
+                       l.mpn_raw, l.mfr_raw, l.qty, l.target_e6,
+                       r.dc_req, r.cond_req, r.packing_req, r.need_by_days, r.allow_alt, r.need_invoice,
+                       r.deliver_city, r.status AS rfq_status
+                  FROM elc_dispatch d
+                  JOIN elc_rfq_line l ON l.rfq_no = d.rfq_no AND l.line_no = d.line_no
+                  JOIN elc_rfq r ON r.rfq_no = d.rfq_no
+                 WHERE d.supplier_no = #{supplierNo}
+                   <if test="status != null">AND d.status = #{status}</if>
+                 ORDER BY d.id DESC
+                 LIMIT #{limit} OFFSET #{offset}
+                """)
+        @org.apache.ibatis.annotations.Lang(org.apache.ibatis.scripting.xmltags.XMLLanguageDriver.class)
+        List<DispatchRow> mine(@Param("supplierNo") String supplierNo, @Param("status") String status,
+                               @Param("limit") int limit, @Param("offset") long offset);
+    }
+
+    /** 供应商看到的一条待报价。**这里没有买家的任何字段** */
+    @Getter
+    @Setter
+    public static class DispatchRow {
+        private String dispatchNo;
+        private String status;
+        private LocalDateTime createdAt;
+        private String mpnRaw;
+        private String mfrRaw;
+        private Long qty;
+        private Long targetE6;
+        private String dcReq;
+        private String condReq;
+        private String packingReq;
+        private Integer needByDays;
+        private Boolean allowAlt;
+        private String needInvoice;
+        private String deliverCity;
+        private String rfqStatus;
+    }
+
+    public interface QuoteMapper extends BaseMapper<ElcQuote> {
     }
 }

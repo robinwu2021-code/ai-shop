@@ -627,9 +627,63 @@ export const FIELDS = [
     clients: [],
   },
   {
+    concept: "询价的货况要求",
+    field: "elc_rfq.cond_req",
+    backend: { ddl: ["elc_rfq", "cond_req"] },
+    clients: [],
+  },
+  {
+    concept: "询价的包装要求",
+    field: "elc_rfq.packing_req",
+    backend: { ddl: ["elc_rfq", "packing_req"] },
+    clients: [],
+  },
+  {
+    concept: "派单来路（自动匹配 / 运营指派）",
+    field: "elc_dispatch.via",
+    backend: { ddl: ["elc_dispatch", "via"] },
+    clients: [],
+  },
+  {
+    concept: "派单状态",
+    field: "elc_dispatch.status",
+    backend: { ddl: ["elc_dispatch", "status"] },
+    clients: [],
+  },
+  {
+    concept: "供应商拒绝报价的原因",
+    field: "elc_dispatch.decline_reason",
+    backend: { ddl: ["elc_dispatch", "decline_reason"] },
+    clients: [],
+  },
+  {
+    concept: "供应商报价状态",
+    field: "elc_quote.status",
+    backend: { ddl: ["elc_quote", "status"] },
+    clients: [],
+  },
+  {
     concept: "元器件库存行状态",
     field: "elc_stock.status",
     backend: { ddl: ["elc_stock", "status"] },
+    clients: [],
+  },
+  {
+    concept: "库存行的货况",
+    field: "elc_stock.cond_grade",
+    backend: { ddl: ["elc_stock", "cond_grade"] },
+    clients: [],
+  },
+  {
+    concept: "库存行的包装",
+    field: "elc_stock.packing",
+    backend: { ddl: ["elc_stock", "packing"] },
+    clients: [],
+  },
+  {
+    concept: "库存行的报价币种",
+    field: "elc_stock.currency",
+    backend: { ddl: ["elc_stock", "currency"] },
     clients: [],
   },
   {
