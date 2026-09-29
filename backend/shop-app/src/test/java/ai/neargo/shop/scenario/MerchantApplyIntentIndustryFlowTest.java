@@ -33,6 +33,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class MerchantApplyIntentIndustryFlowTest {
 
+    /*
+     * 手机号段 **126001630xx**：一人同时只能有一份进行中的入驻申请
+     * （`uk_apply_active_owner`），所以号段撞了别的类就是 10409 CONFLICT。
+     * 最初用的 126001600xx 与 `QuickStartFlowTest` 一字不差 —— 它的「快速开店」
+     * 会给那个人建一张待补证照的占位单，把 active_owner 占住。
+     * 症状是**单独跑四条全绿、全量跑三条红在「提交入驻」那一步**，
+     * 而报错（CONFLICT）与「行业口径」这件事毫不相干。加号段前先
+     * `grep -rn <前八位> backend/shop-app/src/test/java`。
+     */
+
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired
@@ -80,7 +90,7 @@ class MerchantApplyIntentIndustryFlowTest {
     @Test
     @DisplayName("★★★ 选「其他」时手填的行业要落库，并且运营看得到")
     void industryNoteIsPersistedAndReachesOps() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160001");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "12600163001");
         submit(user, "意向行业店A", "13900010001", "OTHER", "宠物洗护");
 
         JsonNode mine = mine(user);
@@ -92,7 +102,7 @@ class MerchantApplyIntentIndustryFlowTest {
     @Test
     @DisplayName("★★★ 改成具体行业时手填的那句话要清掉 —— 留着就是两个对不上的答案")
     void industryNoteClearedWhenIndustryIsNotOther() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160002");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "12600163002");
         String applyNo = submit(user, "意向行业店B", "13900010002", "OTHER", "汽车美容");
         assertThat(mine(user).get("industryNote").asString()).isEqualTo("汽车美容");
 
@@ -114,7 +124,7 @@ class MerchantApplyIntentIndustryFlowTest {
     @Test
     @DisplayName("★★ 未开放的行业照样收 —— 拦下来就等于又拿准入的尺子量意向")
     void disabledIndustryIsStillAccepted() throws Exception {
-        String user = TestLogin.consumer(mvc(), json, otpStore, "12600160003");
+        String user = TestLogin.consumer(mvc(), json, otpStore, "12600163003");
         submit(user, "意向行业店C", "13900010003", "CATERING", null);
 
         assertThat(mine(user).get("industry").asString())
@@ -156,6 +166,17 @@ class MerchantApplyIntentIndustryFlowTest {
 
     private String submit(String token, String name, String phone, String industry, String note)
             throws Exception {
+        /*
+         * **先断言这个人名下还没有进行中的单**。不断言的话，号段撞了别的测试类时
+         * 下面那句得到的是 10409 CONFLICT —— 一个与「行业口径」毫不相干的错，
+         * 而排查的人会先去翻行业那几行代码。让失败自己说出原因，比省一次请求值。
+         */
+        JsonNode existing = mine(token);
+        assertThat(existing == null || existing.isNull())
+                .as("手机号 %s 名下已有进行中的入驻单 —— 号段撞了别的测试类"
+                        + "（一人只能有一份，见本类头部注释）", phone)
+                .isTrue();
+
         String noteJson = note == null ? "" : ",\"industryNote\":\"" + note + "\"";
         String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
