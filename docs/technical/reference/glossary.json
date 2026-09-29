@@ -16178,6 +16178,12 @@
           "ar": "هذا الفرع"
         },
         {
+          "key": "settle.statusCONFIRMED",
+          "zh-CN": "已对账，待打款",
+          "en": "Reconciled, awaiting payout",
+          "ar": "تمت المطابقة، بانتظار الصرف"
+        },
+        {
           "key": "settle.statusMANUAL",
           "zh-CN": "转人工",
           "en": "Manual review",
@@ -16190,10 +16196,22 @@
           "ar": "دفع نقدي؛ لا تسوية"
         },
         {
+          "key": "settle.statusPAID",
+          "zh-CN": "已打款",
+          "en": "Paid out",
+          "ar": "تم الصرف"
+        },
+        {
           "key": "settle.statusPENDING",
           "zh-CN": "待分账",
           "en": "Pending",
           "ar": "بانتظار التقسيم"
+        },
+        {
+          "key": "settle.statusPENDING_RECON",
+          "zh-CN": "待对账",
+          "en": "Awaiting reconciliation",
+          "ar": "بانتظار المطابقة"
         },
         {
           "key": "settle.statusRETRYING",
@@ -35653,6 +35671,14 @@
       "type": "String",
       "value": "\"/internal/pay/settle-invoices/{invoiceNo}/reject\"",
       "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StlBill",
+      "name": "STATUS_ALL",
+      "type": "java.util.Set<String>",
+      "value": "java.util.Set.of( PENDING_RECON, CONFIRMED, PAID, PENDING, SPLITTING, SPLIT, SPLIT_CONFIRMED, RETRYING, MANUAL, REVERSED, OFFLINE_SETTLED)",
+      "zh": "status 列的全集。",
       "module": "pay/pay-domain"
     },
     {

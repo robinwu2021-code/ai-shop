@@ -116,6 +116,586 @@ components:
         - "serviceHours"
       additionalProperties: false
       description: "冷启动配置（`GET /mp/config/bootstrap`）。\n\n`features` 里 **yml 与运营端那一屏已经在后端合流**，端上只认这一份 —— 有它才谈得上「运营后台改一下开关」对买家侧生效（此前端上一次都没调过这条端点， 拿到的只有编译期常量，改一个开关要重新发版、小程序还要重新提审）。"
+    ElecQtyBand: 
+      type: "string"
+      enum: 
+        - "B1"
+        - "B100"
+        - "B1K"
+        - "B10K"
+        - "B100K"
+        - "B1M"
+      description: "买家看到的库存档位。**有损是故意的**：精确数量加上批号，同行一眼就能认出是谁家的货， 而供应商愿意把库存传上来的前提正是这个。"
+    ElecSourceBand: 
+      type: "string"
+      enum: 
+        - "ONE"
+        - "FEW"
+        - "MANY"
+      description: "有几家有货：1 家 / 2–4 家 / 5 家及以上。端上只说「1 家有货」「多家有货」"
+    ElecMatch: 
+      type: "string"
+      enum: 
+        - "EXACT"
+        - "PREFIX"
+        - "CONTAINS"
+        - "NEAR"
+      description: "怎么命中的。端上把它显示成一句人话（开头一致 / 中段一致 / 相近），不是排名分数"
+    ElecMarket: 
+      type: "object"
+      properties: 
+        qtyBand: 
+          "$ref": "#/components/schemas/ElecQtyBand"
+        sourceBand: 
+          "$ref": "#/components/schemas/ElecSourceBand"
+        priceFromE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "含税参考起价，**百万分之一元**（0402 电阻单价 ¥0.0015，按分存做不出来）。空 = 有货但都没报价"
+        dcYearMax: 
+          type: 
+            - "number"
+            - "null"
+          description: "最新批次年份。**只给年份** —— 精确批号能认出是谁家的货"
+      required: 
+        - "qtyBand"
+        - "sourceBand"
+      additionalProperties: false
+      description: "买家面的库存行情。**没有、也不许加任何供应商字段**"
+    ElecPartHit: 
+      type: "object"
+      properties: 
+        partNo: 
+          type: "string"
+        mpn: 
+          type: "string"
+          description: "原样展示的料号"
+        mfrName: 
+          type: 
+            - "string"
+            - "null"
+          description: "厂牌名；厂牌未确认时是供应商写的原文，可能为空"
+        mfrKnown: 
+          type: "boolean"
+          description: "厂牌是否已确认。false 时端上写「厂牌未确认」"
+        packageName: 
+          type: 
+            - "string"
+            - "null"
+        description: 
+          type: 
+            - "string"
+            - "null"
+        market: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ElecMarket"
+            - type: "null"
+          description: "行情；**空 = 平台库里现在没货**（照样可以询价，那正是询价最有价值的时候）"
+        match: 
+          "$ref": "#/components/schemas/ElecMatch"
+      required: 
+        - "partNo"
+        - "mpn"
+        - "mfrKnown"
+        - "match"
+      additionalProperties: false
+    ElecSearchResult: 
+      type: "object"
+      properties: 
+        keyword: 
+          type: "string"
+          description: "实际拿去搜的料号（规范化之后）"
+        mfrFilter: 
+          type: 
+            - "string"
+            - "null"
+          description: "从输入里认出的厂牌（「TI TPS5433」→ 德州仪器）；没认出为空"
+        nearFrom: 
+          type: 
+            - "string"
+            - "null"
+          description: "结果是**相近**的：原词一条都没命中，退到这个更短的前缀才有结果。 空 = 结果就是原词命中的。端上据此写「没有找到 X，以下是相近的料号」"
+        hits: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecPartHit"
+      required: 
+        - "keyword"
+        - "hits"
+      additionalProperties: false
+    ElecLookupLine: 
+      type: "object"
+      properties: 
+        input: 
+          type: "string"
+          description: "原样一行"
+        mpn: 
+          type: 
+            - "string"
+            - "null"
+          description: "认出的料号原文；空 = 这一行没有像料号的词"
+        qty: 
+          type: 
+            - "number"
+            - "null"
+          description: "同一行里写的数量（「STM32F103C8T6 2000」）；没写为空"
+        match: 
+          "$ref": "#/components/schemas/ElecLookupMatch"
+        hit: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ElecPartHit"
+            - type: "null"
+          description: "最像的那一条（有货的优先）；NONE 时没有"
+        others: 
+          type: "number"
+          description: "除 hit 以外还有几条候选"
+      required: 
+        - "input"
+        - "match"
+        - "others"
+      additionalProperties: false
+      description: "批量查的一行。"
+    ElecLookupMatch: 
+      type: "string"
+      enum: 
+        - "EXACT"
+        - "AMBIGUOUS"
+        - "PREFIX"
+        - "NONE"
+      description: "AMBIGUOUS = 同一料号多家厂牌、他又没写厂牌。**不猜**：猜错了报价整单作废， 而他要到收货那天才知道。"
+    ElecInvoice: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "VAT_NORMAL"
+        - "VAT_SPECIAL"
+      description: "NONE 不开票 / VAT_NORMAL 普票 / VAT_SPECIAL 专票"
+    ElecDcReq: 
+      type: "string"
+      enum: 
+        - "ANY"
+        - "Y1"
+        - "Y2"
+      description: "ANY 不限 / Y1 一年内 / Y2 两年内"
+    ElecRfqStatus: 
+      type: "string"
+      enum: 
+        - "SUBMITTED"
+        - "QUOTED"
+        - "EXPIRED"
+        - "ACCEPTED"
+        - "CLOSED"
+      description: "SUBMITTED 待报价 / QUOTED 已报价 / EXPIRED 报价已过期 / ACCEPTED 已接受 / CLOSED 已结束。\n\n**EXPIRED 不落库**：QUOTED 且过了有效期时后端算出来的，端上照原样显示。"
+    ElecCloseReason: 
+      type: "string"
+      enum: 
+        - "NO_SOURCE"
+        - "BUYER_CANCELLED"
+        - "DONE"
+      description: "NO_SOURCE 暂无货源（会通知买家）/ BUYER_CANCELLED 买家不要了 / DONE 已成交"
+    ElecRfqLineReq: 
+      type: "object"
+      properties: 
+        partNo: 
+          type: "string"
+          description: "从料号详情进来时带上；手输的料号可以没有"
+        mpn: 
+          type: "string"
+        mfr: 
+          type: "string"
+        qty: 
+          type: "number"
+        targetE6: 
+          type: "number"
+          description: "目标单价，百万分之一元"
+      required: 
+        - "mpn"
+        - "qty"
+      additionalProperties: false
+    ElecRfqReq: 
+      type: "object"
+      properties: 
+        lines: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecRfqLineReq"
+        needInvoice: 
+          "$ref": "#/components/schemas/ElecInvoice"
+        dcReq: 
+          "$ref": "#/components/schemas/ElecDcReq"
+        deliverCity: 
+          type: "string"
+        company: 
+          type: "string"
+        contactName: 
+          type: "string"
+        remark: 
+          type: "string"
+      required: 
+        - "lines"
+      additionalProperties: false
+    ElecLineQuote: 
+      type: "object"
+      properties: 
+        priceE6: 
+          type: "number"
+          description: "含税单价，百万分之一元"
+        qty: 
+          type: 
+            - "number"
+            - "null"
+        dcYear: 
+          type: 
+            - "number"
+            - "null"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数，0 = 现货"
+        note: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "priceE6"
+      additionalProperties: false
+      description: "平台对这一行的报价。空 = 还没报，或报价时这一行没找到货"
+    ElecRfqLine: 
+      type: "object"
+      properties: 
+        lineNo: 
+          type: "number"
+        partNo: 
+          type: 
+            - "string"
+            - "null"
+        mpn: 
+          type: "string"
+        mfr: 
+          type: 
+            - "string"
+            - "null"
+        qty: 
+          type: "number"
+        targetE6: 
+          type: 
+            - "number"
+            - "null"
+        quote: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ElecLineQuote"
+            - type: "null"
+      required: 
+        - "lineNo"
+        - "mpn"
+        - "qty"
+      additionalProperties: false
+    ElecRfq: 
+      type: "object"
+      properties: 
+        rfqNo: 
+          type: "string"
+        status: 
+          "$ref": "#/components/schemas/ElecRfqStatus"
+        createdAt: 
+          type: "string"
+        lineCnt: 
+          type: "number"
+        needInvoice: 
+          "$ref": "#/components/schemas/ElecInvoice"
+        dcReq: 
+          "$ref": "#/components/schemas/ElecDcReq"
+        deliverCity: 
+          type: 
+            - "string"
+            - "null"
+        company: 
+          type: 
+            - "string"
+            - "null"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+        contactPhone: 
+          type: "string"
+          description: "提交时绑定的手机号，**掩码** —— 让他知道平台会打哪个号"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+        quotedAt: 
+          type: 
+            - "string"
+            - "null"
+        quoteValidUntil: 
+          type: 
+            - "string"
+            - "null"
+          description: "报价有效到哪天（含）。过了就不能再接受 —— 行情会变，过期的价平台不兑现"
+        quoteNote: 
+          type: 
+            - "string"
+            - "null"
+          description: "平台给买家的说明"
+        closeReason: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ElecCloseReason"
+            - type: "null"
+        lines: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecRfqLine"
+      required: 
+        - "rfqNo"
+        - "status"
+        - "createdAt"
+        - "lineCnt"
+        - "needInvoice"
+        - "dcReq"
+        - "contactPhone"
+        - "lines"
+      additionalProperties: false
+    ElecSupplierKind: 
+      type: "string"
+      enum: 
+        - "AGENT"
+        - "TRADER"
+        - "FACTORY"
+        - "OTHER"
+      description: "AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他"
+    ElecSupplierReq: 
+      type: "object"
+      properties: 
+        companyName: 
+          type: "string"
+        kind: 
+          "$ref": "#/components/schemas/ElecSupplierKind"
+        city: 
+          type: "string"
+        contactName: 
+          type: "string"
+        contactPhone: 
+          type: "string"
+          description: "联系手机可以与登录号不同：老板用自己的号登录，接电话的是业务员"
+      additionalProperties: false
+    ElecSupplier: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "**点一下就成为供应商**，所以公司名可以还没填"
+        kind: 
+          "$ref": "#/components/schemas/ElecSupplierKind"
+        city: 
+          type: 
+            - "string"
+            - "null"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+        contactPhone: 
+          type: "string"
+        maskCode: 
+          type: "string"
+          description: "匿名代号 `S-3F7K`。以后开放身份时买家看到的就是它"
+        status: 
+          type: "string"
+          enum: 
+            - "ACTIVE"
+            - "SUSPENDED"
+        onCount: 
+          type: "number"
+          description: "在售且未到期的库存行数"
+        expiringCount: 
+          type: "number"
+          description: "7 天内到期的在售行数"
+        lastUploadAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次确认上架的时间；从没传过为空"
+        stockTtlDays: 
+          type: "number"
+          description: "库存多少天不更新就不再给买家看 —— 端上用它解释「为什么要定期传」"
+      required: 
+        - "supplierNo"
+        - "kind"
+        - "contactPhone"
+        - "maskCode"
+        - "status"
+        - "onCount"
+        - "expiringCount"
+        - "stockTtlDays"
+      additionalProperties: false
+    ElecStockStatus: 
+      type: "string"
+      enum: 
+        - "ON"
+        - "EXPIRED"
+      description: "ON 在售 / EXPIRED 到期（端上据此提示续期）"
+    ElecStock: 
+      type: "object"
+      properties: 
+        stockNo: 
+          type: "string"
+        mpn: 
+          type: "string"
+        mfr: 
+          type: 
+            - "string"
+            - "null"
+        qty: 
+          type: "number"
+          description: "供应商自己看得到精确数量"
+        dateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "原样批号（2338 / 23+ / 24/25）"
+        packageName: 
+          type: 
+            - "string"
+            - "null"
+        moq: 
+          type: 
+            - "number"
+            - "null"
+        priceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "单价，百万分之一元。空 = 没报价"
+        taxIncluded: 
+          type: "boolean"
+        validUntil: 
+          type: "string"
+          description: "到期日（含）。到了就不再给买家看"
+        status: 
+          "$ref": "#/components/schemas/ElecStockStatus"
+      required: 
+        - "stockNo"
+        - "mpn"
+        - "qty"
+        - "taxIncluded"
+        - "validUntil"
+        - "status"
+      additionalProperties: false
+    ElecImportMode: 
+      type: "string"
+      enum: 
+        - "MERGE"
+        - "REPLACE"
+      description: "MERGE 只改表里有的行 / REPLACE 表里没有的下架"
+    ElecRowProblem: 
+      type: "object"
+      properties: 
+        row: 
+          type: "number"
+          description: "表里的行号，与 Excel 左边的行号一致"
+        reason: 
+          type: "string"
+          enum: 
+            - "MPN_MISSING"
+            - "MPN_INVALID"
+            - "QTY_INVALID"
+            - "DUPLICATE"
+        mpn: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "row"
+        - "reason"
+      additionalProperties: false
+      description: "认不了的行。 MPN_MISSING 没有料号 / MPN_INVALID 不像料号 / QTY_INVALID 数量认不出 / DUPLICATE 与前面的行重复"
+    ElecBatchPreview: 
+      type: "object"
+      properties: 
+        batchNo: 
+          type: "string"
+        fileName: 
+          type: 
+            - "string"
+            - "null"
+        mode: 
+          "$ref": "#/components/schemas/ElecImportMode"
+        taxIncluded: 
+          type: "boolean"
+        headers: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "表头那一行（原样），端上用它画「这几列分别是什么」"
+        columns: 
+          "$ref": "#/components/schemas/Record_string_number"
+          description: "字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ"
+        rowTotal: 
+          type: "number"
+        rowValid: 
+          type: "number"
+        rowInvalid: 
+          type: "number"
+        toInsert: 
+          type: "number"
+        toUpdate: 
+          type: "number"
+        toDelist: 
+          type: "number"
+          description: "全量替换时将下架的行数；增量上传恒为 0"
+        unchanged: 
+          type: "number"
+        problems: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecRowProblem"
+          description: "认不了的行（最多 50 条）"
+        delistSample: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」"
+        status: 
+          type: "string"
+          enum: 
+            - "PARSED"
+            - "APPLIED"
+      required: 
+        - "batchNo"
+        - "mode"
+        - "taxIncluded"
+        - "headers"
+        - "columns"
+        - "rowTotal"
+        - "rowValid"
+        - "rowInvalid"
+        - "toInsert"
+        - "toUpdate"
+        - "toDelist"
+        - "unchanged"
+        - "problems"
+        - "delistSample"
+        - "status"
+      additionalProperties: false
+      description: "上传预览。**预览时一行库存都没动**，确认之后才上架。"
+    ElecRenewResult: 
+      type: "object"
+      properties: 
+        renewed: 
+          type: "number"
+        validUntil: 
+          type: "string"
+      required: 
+        - "renewed"
+        - "validUntil"
+      additionalProperties: false
     PickupRef: 
       type: "object"
       properties: 
@@ -10727,14 +11307,14 @@ components:
       type: "object"
       additionalProperties: 
         type: "boolean"
-    Record_string_string: 
-      type: "object"
-      additionalProperties: 
-        type: "string"
     Record_string_number: 
       type: "object"
       additionalProperties: 
         type: "number"
+    Record_string_string: 
+      type: "object"
+      additionalProperties: 
+        type: "string"
     Partial_Record_MarketId_number: 
       type: "object"
       properties: 
