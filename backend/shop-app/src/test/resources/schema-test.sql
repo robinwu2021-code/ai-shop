@@ -9367,3 +9367,14 @@ WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_FINANCE__TAB_PAYOUT_ACCOUNTS', 'OPS_FINANCE', '供应商收款账户', '应付与发票',
+     '/finance?tab=payout-accounts', 'finance:payout:execute', 'finance:payout:execute',
+     'IMPLEMENTED', 1, 'P-12.1', 'MENU', 55, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_FINANCE__TAB_PAYOUT_ACCOUNTS', 'OPS', NOW(), NOW()),
+    ('FINANCE', 'OPS_FINANCE__TAB_PAYOUT_ACCOUNTS', 'OPS', NOW(), NOW());

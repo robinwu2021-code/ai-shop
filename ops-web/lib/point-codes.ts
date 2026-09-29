@@ -99,6 +99,7 @@ export const POINT_CODES: Record<string, string> = {
   "/finance?tab=withdraw": "OPS_FINANCE__TAB_WITHDRAW",
   "/finance?tab=invoice": "OPS_FINANCE__TAB_INVOICE",
   "/finance?tab=channel-messages": "OPS_FINANCE__TAB_CHANNEL_MESSAGES",
+  "/finance?tab=payout-accounts": "OPS_FINANCE__TAB_PAYOUT_ACCOUNTS",
   "/reviews": "OPS_REVIEW",
   "/reviews?tab=appeals": "OPS_REVIEW__TAB_APPEALS",
   "/reviews?tab=score": "OPS_REVIEW__TAB_SCORE",

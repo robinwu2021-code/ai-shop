@@ -2,7 +2,7 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, PayoutAccountPage, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -39,6 +39,14 @@ export interface FinanceApi {
   payPayable(settleNo: string, paymentRef: string): Promise<Settlement>;
   /** 标记无票供应商：**不进发票流程，但要在应付列表上标出来** —— 让财务付款前就看见 */
   markNoInvoice(settleNo: string, reason: string): Promise<Settlement>;
+
+  // ── 供应商收款账户（V358，ADR-011）。**审核 = 资金重定向**：
+  // 通过之后这个主体下一期的货款就打到这张卡，所以它与登记付款同一个权限码。
+  /** @param status 空 = 全部；审核队列传 PENDING */
+  listPayoutAccounts(q?: { status?: string; entityNo?: string; page?: number; size?: number }):
+    Promise<PayoutAccountPage>;
+  /** 审核。**驳回必须写 remark** —— 后端拒空，且原文回商家 */
+  auditPayoutAccount(accountNo: string, pass: boolean, remark?: string): Promise<PayoutAccount>;
 
   // ── 进项票（供应商开给平台）
   listPurchaseInvoices(q?: { status?: string }): Promise<PurchaseInvoice[]>;

@@ -88,6 +88,37 @@ export const financeMock: FinanceApi = {
       && db.eqHit(q.status, s.status)
       && db.eqHit(q.entityNo, s.merchantNo))),
 
+  /*
+   * 收款账户（V358）。**三档都要有**：待审的能点审核，
+   * 生效中的要能看出「已经有一张在用」，被驳回的要能看到原因 ——
+   * 只造待审那一档的话，「通过之后旧卡会被顶替」这条规则在界面上看不见。
+   */
+  listPayoutAccounts: async (q = {}) => {
+    const all = db.payoutAccounts.filter((a) =>
+      db.eqHit(q.status, a.status) && db.eqHit(q.entityNo, a.entityNo));
+    return wait({ records: all, total: all.length, page: q.page ?? 1, size: q.size ?? 20 });
+  },
+
+  auditPayoutAccount: async (accountNo, pass, remark) => {
+    const a = db.payoutAccounts.find((x) => x.accountNo === accountNo);
+    if (!a) fail("找不到这张收款账户", "Payout account not found");
+    if (a.status !== "PENDING") fail("只有待审核的账户能审", "Only pending accounts can be audited");
+    // 驳回必须写原因 —— 与后端同一套判据，否则按钮亮着、点了报错
+    if (!pass && !remark?.trim()) fail("驳回必须写原因", "A reason is required to reject");
+    if (pass) {
+      // 通过时同主体的旧生效账户被顶替 —— 这条规则要能在 mock 里看出来
+      db.payoutAccounts
+        .filter((x) => x.entityNo === a.entityNo && x.status === "ACTIVE")
+        .forEach((x) => { x.status = "DISABLED"; });
+      a.status = "ACTIVE";
+    } else {
+      a.status = "REJECTED";
+    }
+    a.auditRemark = remark ?? null;
+    a.auditedAt = Date.now();
+    return wait({ ...a });
+  },
+
   confirmPayable: async (settleNo) => {
     const b = mustBill(settleNo);
     // 未对账不能付款 —— 付了一个双方还没认的数

@@ -493,6 +493,38 @@ export interface ChannelMessage {
   createdAt?: number | null;
 }
 
+/**
+ * 供应商收款账户（V358，ADR-011 自营供应商模式）。
+ *
+ * **没有明文账号字段** —— 后端只回掩码。审核这件事本身是资金重定向：
+ * 通过之后这个主体下一期的货款就打到这张卡。
+ */
+export interface PayoutAccount {
+  accountNo: string;
+  entityNo: string;
+  /** PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 */
+  accountType: string;
+  /** 户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒 */
+  accountName: string;
+  /** 账号掩码，只留尾四位 */
+  accountMasked: string;
+  bankName?: string | null;
+  bankBranch?: string | null;
+  /** PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 */
+  status: string;
+  /** 驳回原因，原样回商家 */
+  auditRemark?: string | null;
+  auditedAt?: number | null;
+}
+
+/** 收款账户分页。字段名与后端 PageData 对齐（page 不是 pageNo） */
+export interface PayoutAccountPage {
+  records: PayoutAccount[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 /** 报文分页。`note` 是固定口径，**端上必须显示** */
 export interface ChannelMessagePage {
   records: ChannelMessage[];

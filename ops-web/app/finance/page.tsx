@@ -29,6 +29,7 @@ import { PayChannelTab } from "./pay-channel-tab";
 import { SettleBatchTab } from "./settle-batch-tab";
 import { DebtTab } from "./debt-tab";
 import { ChannelMessageTab } from "./channel-message-tab";
+import { PayoutAccountTab } from "./payout-account-tab";
 import { PointsTab } from "./points-tab";
 import { PointsPolicyTab } from "./points-policy-tab";
 import { PayablesTab } from "./payables-tab";
@@ -51,7 +52,8 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 type Copy = (typeof FINANCE_COPY)["zh"];
 const TAB_KEYS = ["settlements", "settle-batches", "splits", "refund-back", "payables",
   "purchase-invoices", "buyer-invoices", "rates", "pay-channels", "debts",
-  "points", "points-policy", "withdraw", "invoice", "channel-messages"] as const;
+  "points", "points-policy", "withdraw", "invoice", "channel-messages",
+  "payout-accounts"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
   MERCHANT_OWNED: c.trafficMerchantOwned,
@@ -287,6 +289,7 @@ function FinanceInner() {
       {tab === "settle-batches" && <SettleBatchTab c={c} canExecute={canExecute} />}
       {tab === "debts" && <DebtTab c={c} canExecute={canPayout} />}
       {tab === "channel-messages" && <ChannelMessageTab c={c} />}
+      {tab === "payout-accounts" && <PayoutAccountTab c={c} canAudit={canPayout} />}
       {/*
         自营应付那一整条。**后端十个端点早已实现，此前运营端零入口** ——
         而这是今天唯一真能把钱付出去的路（第三方走分账，而分账网关是桩）。

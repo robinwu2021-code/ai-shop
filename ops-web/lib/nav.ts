@@ -394,6 +394,7 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=payables", label: "自营应付账款", perm: "finance:settle:read", group: "应付与发票", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=buyer-invoices", label: "买家开票申请", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
+      { href: "/finance?tab=payout-accounts", label: "供应商收款账户", perm: "finance:payout:execute", group: "应付与发票", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=points", label: "积分资金看板", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=points-policy", label: "积分端开关", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
 

@@ -1,7 +1,7 @@
 import type { SettleBatch, MerchantDebt } from "@/lib/types";
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
-import type { BuyerInvoiceRequest, FeeRuleVersion, PurchaseInvoice, Settlement, SplitLog } from "@/lib/types";
+import type { BuyerInvoiceRequest, FeeRuleVersion, PayoutAccount, PurchaseInvoice, Settlement, SplitLog } from "@/lib/types";
 
 /**
  * 结算单：**一个子订单一张**，与后端 `stl_bill` 同形。
@@ -9,6 +9,36 @@ import type { BuyerInvoiceRequest, FeeRuleVersion, PurchaseInvoice, Settlement, 
  * 此前这里是周期汇总（period / orderCount），而后端从来不是那么结算的 ——
  * 那份 mock 好看但对不上任何真实数据。
  */
+/**
+ * 供应商收款账户（V358，ADR-011）。
+ *
+ * **三档都造**：待审的能点审核，生效中的让「已经有一张在用」看得见，
+ * 被驳回的带着原因 —— 只造待审那一档，「通过之后旧卡被顶替」这条规则
+ * 在页面上就验不到。
+ */
+export const payoutAccounts: PayoutAccount[] = [
+  {
+    accountNo: "PAC20260929000001", entityNo: "E20260801000003",
+    accountType: "CORPORATE", accountName: "深圳市虹选科技有限公司",
+    accountMasked: "****2577", bankName: "浦发银行", bankBranch: "深圳分行",
+    status: "PENDING", auditRemark: null, auditedAt: null,
+  },
+  {
+    accountNo: "PAC20260901000002", entityNo: "E20260801000001",
+    accountType: "CORPORATE", accountName: "深圳市鲜果直供有限公司",
+    accountMasked: "****8812", bankName: "招商银行", bankBranch: "福田支行",
+    status: "ACTIVE", auditRemark: null, auditedAt: 1_788_000_000_000,
+  },
+  {
+    accountNo: "PAC20260820000003", entityNo: "E20260801000002",
+    accountType: "PERSONAL_BANK_CARD", accountName: "李强",
+    accountMasked: "****6630", bankName: "建设银行", bankBranch: null,
+    status: "REJECTED",
+    auditRemark: "户名与营业执照主体名不一致：执照是「深圳市强盛百货商行」，请改用对公账户",
+    auditedAt: 1_787_000_000_000,
+  },
+];
+
 export const settlements: Settlement[] = [
   /*
    * ── 自营应付账款三档。**各档都要有** ──
