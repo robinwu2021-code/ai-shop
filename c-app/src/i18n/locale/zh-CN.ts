@@ -405,6 +405,10 @@ export default {
     },
     applyDoneTitle: "报名已提交",
     applyDoneBody: "平台会尽快与你联系。上架、接单、发货这些经营动作都在「商家版」里完成，建议先装上。",
+    appQrShow: "显示二维码",
+    appQrHide: "收起二维码",
+    // 说清它给谁用：人正拿着这台手机，自己扫不了自己的屏幕
+    appQrHint: "用另一台手机扫，或让旁边的人扫",
     appLinkCopied: "地址已复制，用手机浏览器打开",
     applyFormHint: "填好后运营电话联系你",
     shopName: "店铺名称",

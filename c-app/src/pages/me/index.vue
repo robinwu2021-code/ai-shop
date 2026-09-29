@@ -179,6 +179,17 @@ function gotoVisited() {
 async function applyMerchant() {
   if (applyStatus.value) {
     applyViewVisible.value = true;
+    /*
+     * **查看态也要主数据**：那一屏上的「店铺类型」显示的是行业的**名字**，
+     * 而名字只在主数据里。此前只有打开报名表那条路去拉它，于是直接点进查看态的人
+     * 看到的是裸码 `FRESH` —— 界面没报错、也不空，只是把程序标识符摆给了店主看。
+     * 2026-09-29 在 H5 mock 上截图时撞见的：单测断言的是取名函数本身，
+     * 它拿到空列表时按约定回退成码，那一步是对的；错的是这一屏没把料备齐。
+     *
+     * 不 await：拉到之前先显示码，拉到之后 computed 自己跟着变 ——
+     * 等它会让点开这一屏多一次网络往返的延迟。
+     */
+    void ensureMasterData();
     return;
   }
   await openApplyForm(null);
@@ -202,7 +213,7 @@ async function openApplyForm(from: MerchantApplyStatus | null) {
   if (!mForm.value.contactPhone && user.user?.phone) mForm.value.contactPhone = user.user.phone;
   applyViewVisible.value = false;
   merchantVisible.value = true;
-  if (!master.value) master.value = await api.masterData().catch(() => null);
+  await ensureMasterData();
 }
 
 /** 查看态：报过名的人点进来看到的是自己填过什么、审到哪一步 */
@@ -287,6 +298,18 @@ const mForm = ref({
 
 /** 主数据：行业与主体都从服务端取，微信放开白名单时不用发版 */
 const master = ref<MasterData | null>(null);
+/**
+ * 拉一次主数据。**两条路都要**：打开报名表（渲染行业选项）与直接进查看态（把码翻成名字）。
+ *
+ * <p>只在空时拉。⚠️ 这个判断在 App 上的有效期是**整个进程**（原生壳比一次页面加载活得久，
+ * 见 [[app-process-outlives-one-shot-loads]]）—— 运营那天放开一个新行业，
+ * 没杀过进程的人就看不到它。这里可以接受：它是取值域，而入驻是低频动作；
+ * 真要即时跟上就得改成每次拉，代价是每次点开都多一次往返。
+ * 拉失败留 null：行业那一格退回显示码，比整屏卡住好。
+ */
+async function ensureMasterData() {
+  if (!master.value) master.value = await api.masterData().catch(() => null);
+}
 const industries = computed(() => master.value?.industries ?? []);
 /**
  * 报名这一屏用的是**意向口径**（`intentIndustries`），不是进件口径（`industries`）。
@@ -391,14 +414,6 @@ const appLink = computed(() => {
 
 /** 另一档（本机系统之外那个）。空 = 那一档还没有，整行不显示 */
 const otherAppLink = computed(() => (isIos.value ? config.merchantApp.android : config.merchantApp.ios));
-
-/** 复制当前这一档 */
-function copyAppLink(url: string) {
-  uni.setClipboardData({
-    data: url,
-    success: () => uni.showToast({ title: String(t("merchant.appLinkCopied")), icon: "none" }),
-  });
-}
 
 /** 报名途中卡住时打过来。三端都走得通 —— 小程序上是微信原生的拨号确认 */
 function callSales() {
@@ -604,28 +619,12 @@ onShow(() => {
       <!-- 审核中与已通过都改不了，但要说清为什么，否则他会反复找那个按钮 -->
       <text v-else class="txt-caption intent__locked">{{ $t("merchant.intentLocked") }}</text>
 
-      <view class="getapp">
-        <text class="txt-body getapp__title">{{ $t("merchant.getAppTitle") }}</text>
-        <view class="sh-btn sh-btn--soft getapp__btn" @tap="copyAppLink(appLink)">
-          {{ $t(isIos ? "merchant.getAppIos" : "merchant.getAppAndroid") }}
-        </view>
-        <text v-if="otherAppLink" class="sh-link getapp__other" @tap="copyAppLink(otherAppLink)">
-          {{ $t(isIos ? "merchant.getAppAndroid" : "merchant.getAppIos") }}
-        </text>
-      </view>
+      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" />
     </sh-sheet>
 
     <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
       <text class="txt-body block done__body">{{ $t("merchant.applyDoneBody") }}</text>
-      <view class="getapp">
-        <text class="txt-body getapp__title">{{ $t("merchant.getAppTitle") }}</text>
-        <view class="sh-btn getapp__btn" @tap="copyAppLink(appLink)">
-          {{ $t(isIos ? "merchant.getAppIos" : "merchant.getAppAndroid") }}
-        </view>
-        <text v-if="otherAppLink" class="sh-link getapp__other" @tap="copyAppLink(otherAppLink)">
-          {{ $t(isIos ? "merchant.getAppAndroid" : "merchant.getAppIos") }}
-        </text>
-      </view>
+      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" primary />
       <view class="sh-btn sh-btn--muted done__btn" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
     </sh-sheet>
 
@@ -798,28 +797,6 @@ onShow(() => {
   display: block;
   margin-top: 28rpx;
   text-align: center;
-}
-
-/*
-  下载引导。**字号是 txt-body 不是 txt-caption**（2026-09-29）：
-  这是店主提交完唯一要做的下一步，而此前它和脚注一样小。
-*/
-.getapp {
-  margin-top: 40rpx;
-  padding-top: 28rpx;
-  border-top: var(--sh-hairline);
-  text-align: center;
-}
-.getapp__title {
-  display: block;
-}
-.getapp__btn {
-  margin-top: 16rpx;
-}
-/* 另一档：本机系统之外那个，弱一档摆着 —— 有人在安卓机上给 iPhone 的同事拿链接 */
-.getapp__other {
-  display: block;
-  margin-top: 16rpx;
 }
 
 /* 报名已提交那一屏：说明与两颗按钮之间要有间距 —— `.sh-btn` 自己是 display:block

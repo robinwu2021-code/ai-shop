@@ -45,7 +45,16 @@ describe("商家招募", () => {
   it("★★ 提交入驻之后引导去装商家版 —— 经营动作都在 App 里", () => {
     const me = readFileSync(join(SRC, "pages/me/index.vue"), "utf8");
     expect(me).toContain("appDownloadVisible");
-    expect(me).toContain("merchant.getApp");
+    /*
+     * 文案与复制按钮在 2026-09-29 收进了 biz-app-download（报名表底部与提交完成页
+     * 曾各有一份，加二维码要改两处）。这条断言原本 grep 页面源码里的
+     * `merchant.getApp` —— 抽组件之后它在页面里不存在了，于是**这条用例红了**。
+     * 红得有理由：它盯的是「有没有引导」，而引导确实搬了家。
+     * 所以两头各钉一半：页面要真的挂上那颗组件，组件要真的带着那句文案。
+     */
+    expect(me).toContain("biz-app-download");
+    const dl = readFileSync(join(SRC, "components/biz/biz-app-download.vue"), "utf8");
+    expect(dl).toContain("merchant.getApp");
   });
 
   it("★★★ 界面文案里不出现招商话术 —— 自营类目的包里有它就会被驳回", () => {
