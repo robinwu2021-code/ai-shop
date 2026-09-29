@@ -5230,6 +5230,18 @@
           "ar": "الجهة المشغّلة والتراخيص"
         },
         {
+          "key": "store.favAct",
+          "zh-CN": "收藏",
+          "en": "Save",
+          "ar": "حفظ"
+        },
+        {
+          "key": "store.favOn",
+          "zh-CN": "已收藏",
+          "en": "Saved",
+          "ar": "محفوظ"
+        },
+        {
           "key": "store.faved",
           "zh-CN": "已收藏，可在「我的 → 常去的店」找到",
           "en": "Saved — find it under Me → My shops",
