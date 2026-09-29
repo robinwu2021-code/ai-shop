@@ -147,8 +147,10 @@ components:
       properties: 
         qtyBand: 
           "$ref": "#/components/schemas/ElecQtyBand"
+          description: "数量档位：B1K = 1000 片以上。端上显示成「1k+」，**不是精确库存**"
         sourceBand: 
           "$ref": "#/components/schemas/ElecSourceBand"
+          description: "有几家有货的档位：ONE 一家 / FEW 2–4 家 / MANY 5 家以上。端上只说「1 家」「多家」"
         priceFromE6: 
           type: 
             - "number"
@@ -169,6 +171,7 @@ components:
       properties: 
         partNo: 
           type: "string"
+          description: "料号在本域的业务键。询价、看详情都带它"
         mpn: 
           type: "string"
           description: "原样展示的料号"
@@ -184,10 +187,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "封装，如 LQFP-48 / 0402"
         description: 
           type: 
             - "string"
             - "null"
+          description: "一句话描述（ARM Cortex-M3 MCU，64KB Flash）。第一步多半为空 —— 上传的表里没有这一列"
         market: 
           anyOf: 
             - "$ref": "#/components/schemas/ElecMarket"
@@ -195,6 +200,7 @@ components:
           description: "行情；**空 = 平台库里现在没货**（照样可以询价，那正是询价最有价值的时候）"
         match: 
           "$ref": "#/components/schemas/ElecMatch"
+          description: "**命中方式**（不是匹配度分数）：完全一致 / 开头一致 / 中段一致 / 相近。端上把它显示成一句人话"
       required: 
         - "partNo"
         - "mpn"
@@ -221,6 +227,7 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/ElecPartHit"
+          description: "命中的料号，最多 30 条（边打字提示时 8 条）。按命中方式 → 有没有货 → 库存档位排序"
       required: 
         - "keyword"
         - "hits"
@@ -243,6 +250,7 @@ components:
           description: "同一行里写的数量（「STM32F103C8T6 2000」）；没写为空"
         match: 
           "$ref": "#/components/schemas/ElecLookupMatch"
+          description: "这一行查出来什么：库里正好有 / 多家厂牌要确认 / 只有开头一致的 / 库里没有"
         hit: 
           anyOf: 
             - "$ref": "#/components/schemas/ElecPartHit"
@@ -303,10 +311,13 @@ components:
           description: "从料号详情进来时带上；手输的料号可以没有"
         mpn: 
           type: "string"
+          description: "料号，**原样传**（大小写、横杠后端会规范化）。必填"
         mfr: 
           type: "string"
+          description: "厂牌，选填。写了的话平台只按这家找货"
         qty: 
           type: "number"
+          description: "要几片。必填，上限十亿（再多多半是多敲了几个 0）"
         targetE6: 
           type: "number"
           description: "目标单价，百万分之一元"
@@ -321,18 +332,25 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/ElecRfqLineReq"
+          description: "要询的料号，1～50 行。整张 BOM 就是一次提交"
         needInvoice: 
           "$ref": "#/components/schemas/ElecInvoice"
+          description: "发票要求。**询价时就要问** —— 专票与不开票差 13%，比任何加价率都大"
         dcReq: 
           "$ref": "#/components/schemas/ElecDcReq"
+          description: "批次要求：不限 / 一年内 / 两年内"
         deliverCity: 
           type: "string"
+          description: "收货城市。只用于判断运费与时效；供应商那一侧只看得到省"
         company: 
           type: "string"
+          description: "买家公司名，选填。**供应商看不到**"
         contactName: 
           type: "string"
+          description: "联系人，选填。手机号从登录态取，不在这里传"
         remark: 
           type: "string"
+          description: "给平台的备注（要原装、急用之类）"
       required: 
         - "lines"
       additionalProperties: false
@@ -346,10 +364,12 @@ components:
           type: 
             - "number"
             - "null"
+          description: "平台能供多少；空 = 按要的数量给"
         dcYear: 
           type: 
             - "number"
             - "null"
+          description: "批次年份。**只给年份** —— 精确批号能认出是谁家的货"
         leadDays: 
           type: 
             - "number"
@@ -359,6 +379,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "这一行的说明（可换 CH340C 之类）"
       required: 
         - "priceE6"
       additionalProperties: false
@@ -368,26 +389,33 @@ components:
       properties: 
         lineNo: 
           type: "number"
+          description: "行号，从 1 起。接受某一条报价时按它定位"
         partNo: 
           type: 
             - "string"
             - "null"
+          description: "认到料号库里的哪个料号；认不出为空（照样能询，平台去找）"
         mpn: 
           type: "string"
+          description: "买家输的料号原样"
         mfr: 
           type: 
             - "string"
             - "null"
+          description: "买家写的厂牌原样；没写为空"
         qty: 
           type: "number"
+          description: "要几片"
         targetE6: 
           type: 
             - "number"
             - "null"
+          description: "目标单价，百万分之一元；没写为空"
         quote: 
           anyOf: 
             - "$ref": "#/components/schemas/ElecLineQuote"
             - type: "null"
+          description: "平台对这一行的报价；空 = 还没报，或报价时这一行没找到货"
       required: 
         - "lineNo"
         - "mpn"
@@ -398,28 +426,37 @@ components:
       properties: 
         rfqNo: 
           type: "string"
+          description: "询价单号。买家侧用它；供应商侧用的是另一个号，两边对不上"
         status: 
           "$ref": "#/components/schemas/ElecRfqStatus"
+          description: "待报价 / 已报价 / 报价已过期 / 已接受 / 已结束。**过期不落库**，是后端按有效期算出来的"
         createdAt: 
           type: "string"
+          description: "提交时间"
         lineCnt: 
           type: "number"
+          description: "几行料号"
         needInvoice: 
           "$ref": "#/components/schemas/ElecInvoice"
+          description: "发票要求"
         dcReq: 
           "$ref": "#/components/schemas/ElecDcReq"
+          description: "批次要求"
         deliverCity: 
           type: 
             - "string"
             - "null"
+          description: "收货城市"
         company: 
           type: 
             - "string"
             - "null"
+          description: "买家公司名"
         contactName: 
           type: 
             - "string"
             - "null"
+          description: "联系人"
         contactPhone: 
           type: "string"
           description: "提交时绑定的手机号，**掩码** —— 让他知道平台会打哪个号"
@@ -427,10 +464,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "给平台的备注"
         quotedAt: 
           type: 
             - "string"
             - "null"
+          description: "平台录入报价的时刻；还没报为空"
         quoteValidUntil: 
           type: 
             - "string"
@@ -445,10 +484,12 @@ components:
           anyOf: 
             - "$ref": "#/components/schemas/ElecCloseReason"
             - type: "null"
+          description: "结束原因：暂无货源 / 买家不要了 / 已成交。没结束为空"
         lines: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/ElecRfqLine"
+          description: "逐行的料号、数量与报价"
       required: 
         - "rfqNo"
         - "status"
@@ -472,12 +513,16 @@ components:
       properties: 
         companyName: 
           type: "string"
+          description: "公司名称，选填。**点一下就成为供应商**，这些之后在资料里补"
         kind: 
           "$ref": "#/components/schemas/ElecSupplierKind"
+          description: "类型：代理商 / 贸易商 / 工厂余料 / 其他"
         city: 
           type: "string"
+          description: "所在城市"
         contactName: 
           type: "string"
+          description: "联系人"
         contactPhone: 
           type: "string"
           description: "联系手机可以与登录号不同：老板用自己的号登录，接电话的是业务员"
@@ -487,6 +532,7 @@ components:
       properties: 
         supplierNo: 
           type: "string"
+          description: "供应商号。**买家永远看不到它**"
         companyName: 
           type: 
             - "string"
@@ -494,16 +540,20 @@ components:
           description: "**点一下就成为供应商**，所以公司名可以还没填"
         kind: 
           "$ref": "#/components/schemas/ElecSupplierKind"
+          description: "类型：代理商 / 贸易商 / 工厂余料 / 其他"
         city: 
           type: 
             - "string"
             - "null"
+          description: "所在城市"
         contactName: 
           type: 
             - "string"
             - "null"
+          description: "联系人"
         contactPhone: 
           type: "string"
+          description: "联系手机。可以与登录号不同 —— 老板登录、业务员接电话"
         maskCode: 
           type: "string"
           description: "匿名代号 `S-3F7K`。以后开放身份时买家看到的就是它"
@@ -512,6 +562,7 @@ components:
           enum: 
             - "ACTIVE"
             - "SUSPENDED"
+          description: "ACTIVE 正常 / SUSPENDED 已暂停（暂停后库存不再给买家看）"
         onCount: 
           type: "number"
           description: "在售且未到期的库存行数"
@@ -547,12 +598,15 @@ components:
       properties: 
         stockNo: 
           type: "string"
+          description: "库存行号"
         mpn: 
           type: "string"
+          description: "供应商表里写的料号原样"
         mfr: 
           type: 
             - "string"
             - "null"
+          description: "供应商表里写的厂牌原样"
         qty: 
           type: "number"
           description: "供应商自己看得到精确数量"
@@ -565,10 +619,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "封装"
         moq: 
           type: 
             - "number"
             - "null"
+          description: "起订量"
         priceE6: 
           type: 
             - "number"
@@ -576,11 +632,13 @@ components:
           description: "单价，百万分之一元。空 = 没报价"
         taxIncluded: 
           type: "boolean"
+          description: "价格含不含税。**与币种一起决定这个价的口径**"
         validUntil: 
           type: "string"
           description: "到期日（含）。到了就不再给买家看"
         status: 
           "$ref": "#/components/schemas/ElecStockStatus"
+          description: "ON 在售 / EXPIRED 到期（端上据此提示续期）"
       required: 
         - "stockNo"
         - "mpn"
@@ -608,10 +666,12 @@ components:
             - "MPN_INVALID"
             - "QTY_INVALID"
             - "DUPLICATE"
+          description: "认不了的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复"
         mpn: 
           type: 
             - "string"
             - "null"
+          description: "那一行写的料号原样，帮他在表里找到它"
       required: 
         - "row"
         - "reason"
@@ -622,14 +682,18 @@ components:
       properties: 
         batchNo: 
           type: "string"
+          description: "这次上传的批次号。确认上架、换列映射都带它"
         fileName: 
           type: 
             - "string"
             - "null"
+          description: "上传的文件名"
         mode: 
           "$ref": "#/components/schemas/ElecImportMode"
+          description: "导入方式：只改表里有的 / 表里没有的下架"
         taxIncluded: 
           type: "boolean"
+          description: "这张表的价格含不含税"
         headers: 
           type: "array"
           items: 
@@ -640,19 +704,25 @@ components:
           description: "字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ"
         rowTotal: 
           type: "number"
+          description: "表里一共几行（不含表头）"
         rowValid: 
           type: "number"
+          description: "其中能上架的几行"
         rowInvalid: 
           type: "number"
+          description: "认不了的几行（不是料号、数量读不出、与前面重复）"
         toInsert: 
           type: "number"
+          description: "确认后会新增几行"
         toUpdate: 
           type: "number"
+          description: "确认后会更新几行"
         toDelist: 
           type: "number"
           description: "全量替换时将下架的行数；增量上传恒为 0"
         unchanged: 
           type: "number"
+          description: "与库里完全一样、不会变的几行"
         problems: 
           type: "array"
           items: 
@@ -668,6 +738,7 @@ components:
           enum: 
             - "PARSED"
             - "APPLIED"
+          description: "PARSED 待确认 / APPLIED 已上架"
       required: 
         - "batchNo"
         - "mode"
@@ -691,8 +762,10 @@ components:
       properties: 
         renewed: 
           type: "number"
+          description: "续期了几行"
         validUntil: 
           type: "string"
+          description: "续到哪天（含）"
       required: 
         - "renewed"
         - "validUntil"
