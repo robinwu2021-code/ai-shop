@@ -5020,16 +5020,34 @@
           "ar": "نسخ الرابط"
         },
         {
+          "key": "shops.closedNow",
+          "zh-CN": "休息中",
+          "en": "Closed now",
+          "ar": "مغلق الآن"
+        },
+        {
           "key": "shops.empty",
           "zh-CN": "这个社区还没有商家入驻",
           "en": "No shops in this community yet",
           "ar": "لا توجد متاجر في هذا الحيّ بعد"
         },
         {
+          "key": "shops.mine",
+          "zh-CN": "我的店",
+          "en": "My stores",
+          "ar": "متاجري"
+        },
+        {
+          "key": "shops.mineHint",
+          "zh-CN": "逛过和买过的",
+          "en": "Visited and bought from",
+          "ar": "زرتها أو اشتريت منها"
+        },
+        {
           "key": "shops.nearby",
-          "zh-CN": "附近的店",
-          "en": "Nearby shops",
-          "ar": "متاجر قريبة"
+          "zh-CN": "附近",
+          "en": "Nearby",
+          "ar": "بالقرب منك"
         },
         {
           "key": "shops.newShop",
@@ -5038,28 +5056,46 @@
           "ar": "جديد"
         },
         {
+          "key": "shops.openNow",
+          "zh-CN": "营业中",
+          "en": "Open",
+          "ar": "مفتوح"
+        },
+        {
           "key": "shops.orders",
           "zh-CN": "{n} 单",
           "en": "{n} orders",
           "ar": "{n} طلب"
         },
         {
-          "key": "shops.promoted",
-          "zh-CN": "平台推荐",
-          "en": "Worth a try",
-          "ar": "يستحق التجربة"
+          "key": "shops.paused",
+          "zh-CN": "暂停营业",
+          "en": "Temporarily closed",
+          "ar": "مغلق مؤقتًا"
+        },
+        {
+          "key": "shops.relBought",
+          "zh-CN": "买过 {n} 次",
+          "en": "Bought {n} times",
+          "ar": "اشتريت {n} مرات"
+        },
+        {
+          "key": "shops.relShared",
+          "zh-CN": "朋友分享",
+          "en": "Shared by a friend",
+          "ar": "شاركها صديق"
+        },
+        {
+          "key": "shops.relViewed",
+          "zh-CN": "逛过",
+          "en": "Visited",
+          "ar": "زرتها"
         },
         {
           "key": "shops.title",
           "zh-CN": "店铺",
           "en": "Shops",
           "ar": "المتاجر"
-        },
-        {
-          "key": "shops.visited",
-          "zh-CN": "我买过的",
-          "en": "You've bought here",
-          "ar": "اشتريت من هنا"
         },
         {
           "key": "skin.amber",
@@ -5170,28 +5206,28 @@
           "ar": "العضوية"
         },
         {
-          "key": "store.allCats",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
-          "key": "store.allGoods",
-          "zh-CN": "全部商品",
-          "en": "All products",
-          "ar": "كل المنتجات"
-        },
-        {
-          "key": "store.closed",
-          "zh-CN": "这家店已停业，暂时不能下单",
-          "en": "This shop is closed and cannot take orders",
-          "ar": "هذا المتجر مغلق ولا يستقبل طلبات"
+          "key": "store.address",
+          "zh-CN": "地址",
+          "en": "Address",
+          "ar": "العنوان"
         },
         {
           "key": "store.closedTip",
-          "zh-CN": "这家店已停业",
-          "en": "This shop is closed",
-          "ar": "هذا المتجر مغلق"
+          "zh-CN": "这家店暂停营业了",
+          "en": "This store is temporarily closed",
+          "ar": "هذا المتجر مغلق مؤقتًا"
+        },
+        {
+          "key": "store.distanceTo",
+          "zh-CN": "距你 {d}",
+          "en": "{d} away",
+          "ar": "على بعد {d}"
+        },
+        {
+          "key": "store.entityInfo",
+          "zh-CN": "经营主体与资质",
+          "en": "Business entity & licences",
+          "ar": "الجهة المشغّلة والتراخيص"
         },
         {
           "key": "store.faved",
@@ -5201,21 +5237,33 @@
         },
         {
           "key": "store.frequent",
-          "zh-CN": "我买过的",
-          "en": "Bought before",
-          "ar": "اشتريته سابقًا"
+          "zh-CN": "我常买",
+          "en": "My usuals",
+          "ar": "مشترياتي المعتادة"
         },
         {
-          "key": "store.fulfillHint",
-          "zh-CN": "门店自提免运费；商家配送满 50 元免配送费，3 公里内当天送到。",
-          "en": "Free pickup in store. Delivery is free over 50 within 3 km, same day.",
-          "ar": "الاستلام من المتجر مجاني. التوصيل مجاني فوق ٥٠ ضمن ٣ كم في اليوم نفسه."
+          "key": "store.frequentHint",
+          "zh-CN": "买过的都在这",
+          "en": "Everything you've bought here",
+          "ar": "كل ما اشتريته من هنا"
+        },
+        {
+          "key": "store.goSibling",
+          "zh-CN": "去看看 {name}",
+          "en": "Visit {name}",
+          "ar": "زيارة {name}"
         },
         {
           "key": "store.hot",
-          "zh-CN": "店里在卖",
-          "en": "In this shop",
-          "ar": "متوفر في المتجر"
+          "zh-CN": "热卖",
+          "en": "Popular",
+          "ar": "الأكثر مبيعًا"
+        },
+        {
+          "key": "store.hours",
+          "zh-CN": "营业时间",
+          "en": "Hours",
+          "ar": "ساعات العمل"
         },
         {
           "key": "store.invalid",
@@ -5230,10 +5278,28 @@
           "ar": "نفد حاليًا"
         },
         {
+          "key": "store.noGoods",
+          "zh-CN": "这一类还没有商品",
+          "en": "Nothing in this category yet",
+          "ar": "لا منتجات في هذه الفئة بعد"
+        },
+        {
           "key": "store.noHistory",
           "zh-CN": "还没在这家买过",
           "en": "You have not ordered here yet",
           "ar": "لم تطلب من هنا بعد"
+        },
+        {
+          "key": "store.noReviews",
+          "zh-CN": "还没有人评价这家店",
+          "en": "No reviews for this store yet",
+          "ar": "لا تقييمات لهذا المتجر بعد"
+        },
+        {
+          "key": "store.notice",
+          "zh-CN": "公告",
+          "en": "Notice",
+          "ar": "إعلان"
         },
         {
           "key": "store.noticeAt",
@@ -5254,10 +5320,10 @@
           "ar": "أمس"
         },
         {
-          "key": "store.priceUp",
-          "zh-CN": "上次 {p}",
-          "en": "was {p}",
-          "ar": "كان {p}"
+          "key": "store.pausedNotice",
+          "zh-CN": "这家店暂停营业，暂时不能下单。",
+          "en": "This store is temporarily closed and can't take orders.",
+          "ar": "هذا المتجر مغلق مؤقتًا ولا يستقبل طلبات."
         },
         {
           "key": "store.reorder",
@@ -5288,6 +5354,30 @@
           "zh-CN": "搜索本店商品",
           "en": "Search this shop",
           "ar": "ابحث في منتجات المتجر"
+        },
+        {
+          "key": "store.soldOut",
+          "zh-CN": "今日售罄",
+          "en": "Sold out today",
+          "ar": "نفد اليوم"
+        },
+        {
+          "key": "store.tabGoods",
+          "zh-CN": "商品",
+          "en": "Products",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "store.tabInfo",
+          "zh-CN": "店铺",
+          "en": "Store",
+          "ar": "المتجر"
+        },
+        {
+          "key": "store.tabReviews",
+          "zh-CN": "评价",
+          "en": "Reviews",
+          "ar": "التقييمات"
         },
         {
           "key": "store.times",
@@ -5366,18 +5456,6 @@
           "zh-CN": "去逛逛",
           "en": "Start browsing",
           "ar": "ابدأ التصفح"
-        },
-        {
-          "key": "visited.last",
-          "zh-CN": "最近 {d}",
-          "en": "Last {d}",
-          "ar": "آخر مرة {d}"
-        },
-        {
-          "key": "visited.orders",
-          "zh-CN": "买过 {n} 单",
-          "en": "{n} orders",
-          "ar": "{n} طلبًا"
         },
         {
           "key": "visited.title",

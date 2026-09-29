@@ -1,13 +1,16 @@
 <script setup lang="ts">
-// 门店主页（C-ST-01~10）。**一期主获客路径**：商家把店铺码印在包装袋、发进自己的
-// 客户群，老客扫码直达这里（ADR-004 决策 3）。
+// 门店门户（TDD-C端门店化与门店门户 s03–s07）。**单位是门店** —— 门头是门店名，
+// 主体名只在「店铺」页签最后一行「经营主体与资质」里露面（电商法 §15 要求亮照）。
 //
-// 关键：**这是交易页，不是店铺介绍页**。
-// 粮油副食不是「逛」出来的，复购路径必须压到三步 —— 打开 → 常买 → 下单。
-// 所以登录用户第一屏是「我买过的」，店招和简介往后放；未登录才退化成店铺热销。
+// 仍然是**交易页，不是介绍页**：老客三步下单（打开 → 我常买 → 结算）。左分类右列表是
+// 买菜类门店最熟悉的样子；左栏第一格是「我常买」（买过的人才有），没买过从「热卖」开始。
 //
-// 另一条：**不经过首页与选社区**。老客扫码是来买东西的，中间插一个「请先选择你的社区」
-// 会把人挡在门外 —— 游客可逛，加购时再引导登录。
+// 进这一页的四条路，最后都落到**同一个门户**：
+//   1. 店铺页 / 搜索 / 商品页进店 —— 带 `no`（门店号）与 `from`
+//   2. 分享链接 —— `no` + `from=SHARE` + `inviterNo`
+//   3. 扫印在店里的码 —— 微信把码里的 scene（店铺码）带回来，手上**只有码**
+//   4. 老链接 / 旧版小程序 —— 带 `merchantNo`（主体号），服务端落到默认门店
+// 不经过首页与选社区：扫码的人是来买东西的，游客可逛，加购时再引导登录。
 import { computed, ref } from "vue";
 import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
@@ -16,132 +19,208 @@ import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
+import { useLocationStore } from "@/stores/location";
 import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
+import { rememberStore } from "@/shared/store-choice";
 import { money } from "@shared/utils/money";
+import { distance } from "@shared/utils/format";
 import { hourMinute, isoDate } from "@shared/utils/datetime";
 import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
-import type { FrequentItem, Goods, StoreHome } from "@shared/types";
+import type { FrequentItem, Goods, Review, StoreHome, StoreVisitSource } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const cart = useCartStore();
 const user = useUserStore();
+const location = useLocationStore();
 
-const merchantNo = ref("");
+/** 链接上的编号：门店号（ST…）或老链接的主体号（M…）。取数后换成真正的门店号 */
+const no = ref("");
 const data = ref<StoreHome | null>(null);
 const frequent = ref<FrequentItem[]>([]);
 const keyword = ref("");
 const busy = ref(false);
+/** 这次没取到。**与「这家店不存在」是两件事** —— 拉不到就给重试，不给白屏 */
+const failed = ref(false);
+
+/** 门户的门店号。老链接进来时服务端已落到默认门店，以它回的为准 */
+const storeNo = computed(() => data.value?.portal?.storeNo ?? "");
+const entityNo = computed(() => data.value?.merchant.merchantNo ?? "");
+/** 门头的名字：门店名；主体一家店都没有（portal 为空）时才退回主体名 */
+const storeName = computed(() => data.value?.portal?.storeName ?? data.value?.merchant.name ?? "");
 
 /**
- * 已停业。**扫码进来的老客要知道「店关了」，不是「链接坏了」** ——
- * 所以不做 404，而是盖一条横幅并禁掉加购与再来一单。
+ * 暂停营业（READONLY / 平台下线）。**扫码进来的老客要知道「店暂停了」，不是「链接坏了」** ——
+ * 所以页面照开、商品压淡不可加购，并给同品牌最近的营业店（s07）。
  */
 const closed = computed(() => !!data.value?.closed);
 
-/**
- * 本店货架 —— **店主自己排的顺序、自己改的名字**。
- *
- * <p>此前买家侧一处都用不到它：店主在 B 端「我的类目」里摆哪几类、叫什么、什么顺序，
- * 到了这一页全被拍平成一个「全部商品」的长列表。
- *
- * <p>少于两条不画这一行：一个类目时它是个恒真的开关，占一行却什么都不让人选。
- */
-const shelves = computed(() => data.value?.categories ?? []);
-const showShelves = computed(() => shelves.value.length > 1);
+// ---------------------------------------------------------------- 标签页
 
-/** 当前选中的类目；空 = 全部 */
-const pickedCat = ref("");
+type Tab = "goods" | "reviews" | "info";
+const tab = ref<Tab>("goods");
+const tabs = computed(() => [
+  { key: "goods" as const, label: String(t("store.tabGoods")) },
+  {
+    key: "reviews" as const,
+    label: data.value?.portal?.ratingCount
+      ? `${t("store.tabReviews")} ${data.value.portal.ratingCount}`
+      : String(t("store.tabReviews")),
+  },
+  { key: "info" as const, label: String(t("store.tabInfo")) },
+]);
 
-/**
- * 店内搜索 + 类目筛选（C-ST-06）。
- *
- * <p>两者叠加而不是二选一：买家先点「本地时鲜」再搜「番茄」是最自然的路径，
- * 而互斥的话第二步会把第一步悄悄清掉。
- */
-const goods = computed(() => {
-  let list = data.value?.goods ?? [];
-  if (pickedCat.value) {
-    list = list.filter((g) => g.categoryNo === pickedCat.value);
-  }
-  const k = keyword.value.trim().toLowerCase();
-  if (!k) return list;
-  return list.filter(
-    (g) =>
-      g.title.toLowerCase().includes(k) || g.subtitle.toLowerCase().includes(k),
-  );
-});
+// ---------------------------------------------------------------- 商品：左分类右列表
 
 const hasFrequent = computed(() => frequent.value.some((f) => f.times > 0));
 
-/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `data` 后面，
- *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
-const failed = ref(false);
+/**
+ * 左栏：「我常买」（买过的人才有）→「热卖」→ 店主排的货架。
+ * 货架是店主自己排的顺序、自己起的名字（「本地时鲜」而不是「蔬菜」）。
+ */
+const rail = computed(() => {
+  const out: { key: string; label: string }[] = [];
+  if (hasFrequent.value) out.push({ key: "@frequent", label: String(t("store.frequent")) });
+  out.push({ key: "@hot", label: String(t("store.hot")) });
+  for (const c of data.value?.categories ?? []) out.push({ key: c.categoryNo, label: c.name });
+  return out;
+});
+/** 空 = 还没点过，取左栏第一格（老客是「我常买」，新访客是「热卖」） */
+const picked = ref("");
+const current = computed(() => picked.value || rail.value[0]?.key || "@hot");
 
-async function load() {
-  if (!merchantNo.value) return;
-  let home, freq;
-  try {
-    [home, freq] = await Promise.all([
-      api.storeHome(merchantNo.value, fromParam.value),
-      api.frequentItems(merchantNo.value),
-    ]);
-    failed.value = false;
-  } catch {
-    failed.value = true;
-    return;
+/**
+ * 右栏的商品。店内搜索跨全部分类 —— 他搜「番茄」时不该因为左边停在「粮油」而搜不到。
+ * 「热卖」按销量排；售罄的不藏，压淡（藏起来他会以为这家店没有）。
+ */
+const listed = computed(() => {
+  const all = data.value?.goods ?? [];
+  const k = keyword.value.trim().toLowerCase();
+  if (k) {
+    return all.filter((g) => g.title.toLowerCase().includes(k) || g.subtitle.toLowerCase().includes(k));
   }
-  data.value = home;
-  frequent.value = freq;
-  // 标题给店名。**这一页此前一个标题都没有** —— `pages.json` 里
-  // `navigationBarTitleText` 是空的、没有 `title-key`、也没有动态设置，
-  // 于是顾客扫码进店看到的是应用名「社区好物」，而不是这家店叫什么。
-  // 同类的 `merchant` 页一直是动态设的，只有这一页漏了（2026-09-08 逐页 review 查出）。
-  uni.setNavigationBarTitle({ title: home.merchant.name });
+  if (current.value === "@hot") return [...all].sort((a, b) => (b.sales ?? 0) - (a.sales ?? 0));
+  return all.filter((g) => g.categoryNo === current.value);
+});
+const showFrequent = computed(() => !keyword.value.trim() && current.value === "@frequent");
+
+function soldOut(g: Goods) {
+  return g.skus.every((s) => (s.stock ?? 0) <= 0);
 }
+
+// ---------------------------------------------------------------- 评价（按门店）
+
+const reviews = ref<Review[]>([]);
+const reviewsLoaded = ref(false);
+async function loadReviews() {
+  if (reviewsLoaded.value || !storeNo.value) return;
+  try {
+    reviews.value = await api.reviewList({ storeNo: storeNo.value, size: 20 });
+  } finally {
+    reviewsLoaded.value = true;
+  }
+}
+function switchTab(k: string) {
+  tab.value = k as Tab;
+  if (k === "reviews") void loadReviews();
+}
+
+// ---------------------------------------------------------------- 取数与进店
 
 const fromParam = ref("");
 
-/**
- * 进这一页有两条路：
- *
- * 1. **扫印在店里的码** —— 微信把码里的 scene 原样带回来（就是店铺码），
- *    这时页面手上<b>只有码，没有 merchantNo</b>。
- * 2. 分享链接 / 站内跳转 —— 直接带 merchantNo。
- *
- * <b>第一条此前根本没接</b>：onLoad 只读 merchantNo，扫码进来时它是空的，
- * `load()` 第一行就 return —— 商家印出去的贴纸扫出来是一张**白页**。
- * 而且服务端的扫码埋点与进店归因都挂在 by-code 上，没人调 = 获客看板恒为 0，
- * 看不出是「没人来」还是「没人记」。
- */
+/** 链接上的 from → 「这家店怎么进入他的列表」。认不出的按列表算，不猜成分享 */
+function sourceOf(from: string): StoreVisitSource {
+  switch (from) {
+    case "SHARE":
+      return "SHARE";
+    case "QR":
+    case "SCAN":
+      return "SCAN";
+    case "SEARCH":
+      return "SEARCH";
+    case "GOODS":
+      return "GOODS";
+    default:
+      return "LIST";
+  }
+}
+
+function buyerPoint() {
+  const a = location.active;
+  return a?.latE6 != null && a?.lngE6 != null ? { latE6: a.latE6, lngE6: a.lngE6 } : null;
+}
+
+async function load() {
+  if (!no.value) return;
+  try {
+    const home = await api.storeHome(no.value, fromParam.value);
+    data.value = home;
+    failed.value = false;
+    await afterLoad();
+  } catch {
+    failed.value = true;
+  }
+}
+
+/** 取到门户之后的几件事：标题、记住在逛哪家店、进店记录、我常买 */
+async function afterLoad() {
+  const home = data.value;
+  if (!home) return;
+  uni.setNavigationBarTitle({ title: storeName.value });
+  if (home.portal) {
+    // 结算时这个主体的单优先落到这家店（§2.7）
+    rememberStore(home.merchant.merchantNo, home.portal.storeNo);
+    /*
+     * 进店：记进「我的店」+ 归因。**分享的回报就在这一步**：点开商家分享的门店，
+     * 这家店从此留在他店铺页的「我的店」里。没登录不记（要挂在具体的人身上）；失败不影响看店。
+     */
+    if (user.isLogin) {
+      void api
+        .storeEnter(home.portal.storeNo, {
+          source: sourceOf(fromParam.value),
+          inviterNo: inviterNo.value || undefined,
+          storeCode: storeCode.value || undefined,
+        })
+        .catch(() => undefined);
+    }
+  }
+  frequent.value = await api.frequentItems(storeNo.value || entityNo.value).catch(() => []);
+}
+
+const inviterNo = ref("");
+const storeCode = ref("");
+
 onLoad(async (q) => {
-  // scene 是微信小程序码带回来的参数，可能被 URL 编码过；storeCode 是 H5/普通二维码那条
+  // scene 是微信小程序码带回来的参数，可能被 URL 编码过；storeCode 是 H5 / 普通二维码那条
   const rawScene = (q?.scene as string) || (q?.storeCode as string) || "";
-  const storeCode = rawScene ? safeDecode(rawScene) : "";
+  storeCode.value = rawScene ? safeDecode(rawScene) : "";
 
   // 分享落地页之一：邀请人要在这里接住（登录页只读自己 query 上的那份）
   user.captureInviter(q?.inviterNo);
-  merchantNo.value = (q?.merchantNo as string) || "";
-  // from=QR 表示扫码进店 —— 归因写在服务端，决定订单的 trafficSource 与商家费率档
-  fromParam.value = (q?.from as string) || (storeCode ? "QR" : "");
+  inviterNo.value = (q?.inviterNo as string) || "";
+  no.value = (q?.no as string) || (q?.merchantNo as string) || "";
+  fromParam.value = (q?.from as string) || (storeCode.value ? "QR" : "");
 
   /*
    * 从商家发来的推送点进来（链接带 reach=<这一条的号>）：回写「来了」。
-   * 没登录就不报 —— 服务端要核是不是本人；报不上也不影响进店，吞掉失败。
+   * 没登录就不报 —— 服务端要核是不是本人；报不上也不影响进店。
    */
   const reachNo = (q?.reach as string) || "";
   if (reachNo && user.isLogin) {
     api.reachOpened(reachNo).catch(() => undefined);
   }
 
-  if (storeCode && !merchantNo.value) {
-    const home = await api.storeByCode(storeCode, deviceId());
-    // 主页数据一次就拿回来了，不再多打一次 storeHome
-    data.value = home;
-    merchantNo.value = home.merchant.merchantNo;
-    frequent.value = await api.frequentItems(merchantNo.value);
+  if (storeCode.value && !no.value) {
+    // 扫码：服务端在这条路上记匿名扫码埋点与归因，再回门户 —— 不能换成 storeHome
+    try {
+      data.value = await api.storeByCode(storeCode.value, deviceId());
+      await afterLoad();
+    } catch {
+      failed.value = true;
+    }
     return;
   }
   await load();
@@ -156,10 +235,7 @@ function safeDecode(v: string) {
   }
 }
 
-/**
- * 匿名去重用的设备号。**取不到就不传** —— 传空串会让所有游客算成同一个人，
- * 扫码 UV 恒等于 1，比没有这个数更糟。
- */
+/** 匿名去重用的设备号。**取不到就不传** —— 传空串会让所有游客算成同一个人 */
 function deviceId() {
   try {
     const k = "ng_device_id";
@@ -174,14 +250,19 @@ function deviceId() {
   }
 }
 
-/**
- * 商品卡的加购。**这一页此前没接 `@add`** —— 卡片把事件 emit 出来，没人接，
- * 于是「全部商品」区的 ＋ 点了完全没反应：不是报错，是什么都不发生。
- * 首页、分类、商家页、搜索页四处都接了，只有这里漏了。
- */
+// ---------------------------------------------------------------- 加购与再来一单
+
+function blockedByPause() {
+  // 暂停的店先拦住：让他加完购、到结算才被拒，是把一次失望拖长了三步
+  if (!closed.value) return false;
+  uni.showToast({ title: t("store.closedTip"), icon: "none" });
+  return true;
+}
+
 async function addGoods(g: Goods, e: unknown) {
-  if (closed.value) {
-    uni.showToast({ title: t("store.closedTip"), icon: "none" });
+  if (blockedByPause()) return;
+  if (soldOut(g)) {
+    uni.showToast({ title: t("store.itemInvalid"), icon: "none" });
     return;
   }
   try {
@@ -194,11 +275,7 @@ async function addGoods(g: Goods, e: unknown) {
 }
 
 async function addOne(f: FrequentItem) {
-  // 停业的店先拦住：让他加完购、到结算才被拒，是把一次失望拖长了三步
-  if (closed.value) {
-    uni.showToast({ title: t("store.closedTip"), icon: "none" });
-    return;
-  }
+  if (blockedByPause()) return;
   if (f.invalid) {
     uni.showToast({ title: t("store.itemInvalid"), icon: "none" });
     return;
@@ -207,19 +284,14 @@ async function addOne(f: FrequentItem) {
     await cart.add(f.goodsNo, f.skuNo, 1);
     uni.showToast({ title: t("common.added"), icon: "none" });
   } catch (e) {
-    // 加购会被业务规则拒绝（生鲜过了当日截单、限购、超区…）。
-    // 不接住的话点了没反应，用户只会以为按钮坏了
+    // 加购会被业务规则拒绝（过了截单、限购、超区…）。不接住的话点了没反应
     uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
-/** 一键再来一单：拿最近一笔本店订单整单复制（C-ST-03） */
+/** 一键再来一单：拿最近一笔订单整单复制（C-ST-03） */
 async function reorder() {
-  if (busy.value) return;
-  if (closed.value) {
-    uni.showToast({ title: t("store.closedTip"), icon: "none" });
-    return;
-  }
+  if (busy.value || blockedByPause()) return;
   if (!user.isLogin) {
     uni.navigateTo({ url: ROUTES.login });
     return;
@@ -227,9 +299,7 @@ async function reorder() {
   busy.value = true;
   try {
     const res = await api.orderList({ size: 20 });
-    const last = res.records.find(
-      (o) => o.status !== "CANCELLED" && o.items.some((it) => !it.isGift),
-    );
+    const last = res.records.find((o) => o.status !== "CANCELLED" && o.items.some((it) => !it.isGift));
     if (!last) {
       uni.showToast({ title: t("store.noHistory"), icon: "none" });
       return;
@@ -238,17 +308,9 @@ async function reorder() {
     await cart.load();
     // 丢了什么、涨了什么都要说清楚 —— 静默少加是投诉源头
     const parts = [t("store.reorderAdded", { n: r.added })];
-    if (r.dropped.length)
-      parts.push(t("store.reorderDropped", { s: r.dropped.join("、") }));
-    if (r.priceUp.length)
-      parts.push(t("store.reorderPriceUp", { s: r.priceUp.join("、") }));
-    // `showCancel: false` → `alert: true`（只有一个「知道了」）。
-    // 多行说明照旧靠 `\n`：`sh-confirm` 的 hint 是 `<text>`，换行符原样生效
-    void confirm({
-      title: String(t("store.reorder")),
-      hint: parts.join("\n"),
-      alert: true,
-    });
+    if (r.dropped.length) parts.push(t("store.reorderDropped", { s: r.dropped.join("、") }));
+    if (r.priceUp.length) parts.push(t("store.reorderPriceUp", { s: r.priceUp.join("、") }));
+    void confirm({ title: String(t("store.reorder")), hint: parts.join("\n"), alert: true });
   } finally {
     busy.value = false;
   }
@@ -259,28 +321,15 @@ async function toggleFav() {
     uni.navigateTo({ url: ROUTES.login });
     return;
   }
-  // 读返回的状态字段。此前旧接口回的是「收藏列表」，这里当布尔用 —— 数组恒为真，
-  // 接真后端时点取消也提示「已收藏」（2026-09-19 换到 /mp/favorite/store 时发现）
-  const { favorited: on } = await api.toggleFavoriteStore(merchantNo.value);
+  const { favorited: on } = await api.toggleFavoriteStore(entityNo.value);
   if (data.value) data.value.favorited = on;
-  uni.showToast({
-    title: on ? t("store.faved") : t("store.unfaved"),
-    icon: "none",
-  });
+  uni.showToast({ title: on ? t("store.faved") : t("store.unfaved"), icon: "none" });
   /*
-   * 收藏成功 → 就地收集「新品开售提醒」的订阅授权（TDD-C 端裂变与商家招募 §10）。
-   *
-   * **只在「收藏」时问，取消收藏时不问** —— 刚点了取消还弹订阅，是在追着人要权限。
-   *
-   * **弹窗必须由点击行为触发**，这里就在 tap 的调用栈里，满足微信的要求；
-   * 挪到 onShow 或者定时器里会静默失败（弹不出来，也不报错）。
-   *
-   * **不 await、不拦主流程**：授权与否都不影响收藏本身，
-   * 而 await 会让那句 toast 等在弹窗后面。
+   * 收藏成功 → 就地收集「新品开售提醒」的订阅授权。只在收藏时问；
+   * 弹窗必须由点击触发（这里就在 tap 的调用栈里）；不 await —— 授权与否不影响收藏本身。
    */
   if (on) {
     requestSubscribe([SUBSCRIBE_TMPL.newGoods]).then((r) => {
-      // accepted / rejected 都要上报：后端记下拒绝才不会反复弹（见 push.ts 的注释）
       if (r.accepted.length) void api.subscribeReport(r.accepted, true);
       if (r.rejected.length) void api.subscribeReport(r.rejected, false);
     });
@@ -288,17 +337,54 @@ async function toggleFav() {
 }
 
 function gotoGoods(goodsNo: string) {
-  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${goodsNo}` });
+  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${goodsNo}&storeNo=${storeNo.value}` });
 }
 
-// 分享出去的链接必须带 merchantNo，否则进店归因断掉（ADR-004 §5.4）
-/**
- * 公告的更新时间，人话版。
- *
- * <p>只给到「今天 09:12 / 昨天 / 08-20」这个精度：更细没有意义（老客要判断的是
- * 「这句话还算不算数」），更粗又回到了「不知道是不是上个月的」。
- * 过期的公告服务端连时间都不下发 —— 那一行整个不该出现。
- */
+function gotoSibling() {
+  const s = data.value?.sibling;
+  if (s) uni.redirectTo({ url: `${ROUTES.store}?no=${s.storeNo}&from=LIST` });
+}
+
+/** 经营主体与资质：主体只在这里露面 */
+function gotoEntity() {
+  uni.navigateTo({ url: `${ROUTES.merchant}?merchantNo=${entityNo.value}` });
+}
+
+function navToStore() {
+  const f = data.value?.store;
+  const c = fromE6(f?.latE6, f?.lngE6);
+  if (c) openLocation({ ...c, name: storeName.value, address: f?.address ?? "" });
+}
+
+/** 公告压成一行，点开看全文 */
+function showNotice() {
+  const s = data.value?.store;
+  if (s?.announcement) void confirm({ title: String(t("store.notice")), hint: s.announcement, alert: true });
+}
+
+// ---------------------------------------------------------------- 门头的两行
+
+/** 营业中 / 休息中 / 暂停营业。认不出营业时间就不说开没开 */
+const statusText = computed(() => {
+  const p = data.value?.portal;
+  if (closed.value) return String(t("shops.paused"));
+  if (p?.openNow === true) return String(t("shops.openNow"));
+  if (p?.openNow === false) return String(t("shops.closedNow"));
+  return "";
+});
+
+/** ★ 评分 · 距你 N。没人评过说「新店」，不说「暂无评价」（后者对新店是劝退） */
+const statsText = computed(() => {
+  const p = data.value?.portal;
+  const parts: string[] = [];
+  if (p && p.ratingCount > 0) parts.push(`★ ${p.rating.toFixed(1)}`);
+  else parts.push(String(t("shops.newShop")));
+  const d = p?.distanceM ?? null;
+  if (d != null) parts.push(String(t("store.distanceTo", { d: distance(d) })));
+  return parts.join(" · ");
+});
+
+/** 公告的更新时间：今天 09:12 / 昨天 / 08-20。过期的公告服务端连时间都不给 */
 const noticeAt = computed(() => {
   const at = data.value?.store.announcementAt;
   if (!at) return "";
@@ -309,320 +395,361 @@ const noticeAt = computed(() => {
   return t("store.noticeAt", { s: day.slice(5) });
 });
 
+// ---------------------------------------------------------------- 分享
+
+/**
+ * 分享路径带**门店号**：落地进的是这一家店，不是主体的默认店。
+ * from=SHARE 让落地页把「逛过」记成分享来的 —— 那是给商家的回报。
+ * 按钮与右上角「···」用同一份，否则同一次分享按哪个入口走会算成两种来源。
+ */
+const sharePath = computed(() => `${ROUTES.store}?no=${storeNo.value || no.value}&from=SHARE`);
+const shareTitle = computed(() => {
+  const a = data.value?.store.announcement;
+  return a ? `${storeName.value} · ${a}` : storeName.value;
+});
+
 onShareAppMessage(() =>
   buildShareMessage({
-    title: data.value
-      ? `${data.value.merchant.name} · ${data.value.store.announcement}`
-      : "",
-    // from=SHARE 让落地页知道这是分享进来的，与扫码同样计入商家自带客流
-    path: `${ROUTES.store}?from=SHARE`,
-    merchantNo: merchantNo.value,
+    title: shareTitle.value,
+    path: sharePath.value,
+    merchantNo: entityNo.value,
   }),
 );
 
-/*
- * 分享到朋友圈（§3.2）。「把这家店发到朋友圈」是社区场景里最常发生的分享之一，
- * 而此前这一栏是灰的 —— 全仓没有一处 onShareTimeline。
- *
- * <p>朋友圈落单页模式、只吃 `query`，所以 `from=SHARE` 与归因都要拼进 query，
- * 不能沿用好友那份的 path（给了会被忽略，归因一起丢）。
- */
+/* 朋友圈落单页模式、只吃 query，所以门店号与 from=SHARE 都要拼进 query */
 onShareTimeline(() =>
   buildShareTimeline({
-    title: data.value ? `${data.value.merchant.name} · ${data.value.store.announcement}` : "",
+    title: shareTitle.value,
     path: ROUTES.store,
-    params: "from=SHARE",
-    merchantNo: merchantNo.value,
+    params: `no=${storeNo.value || no.value}&from=SHARE`,
+    merchantNo: entityNo.value,
     inviterNo: user.user?.cUserNo,
   }),
 );
-
-/** 导航到门店。没坐标（商家还没在地图上标点）时按钮本身不渲染 */
-function navToStore() {
-  const f = data.value?.store;
-  const c = fromE6(f?.latE6, f?.lngE6);
-  if (c) openLocation({ ...c, name: data.value?.merchant?.name ?? "", address: f?.address ?? "" });
-}
 </script>
 
 <template>
-  <sh-scaffold :padded="true"
-    :pending="!data"
-    :failed="failed"
-    @retry="load"
-  >
-    <!-- 正文全靠 `data` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
-         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`data` 为空时连外壳都不渲染 ——
-         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+  <sh-scaffold :pending="!data" :failed="failed" @retry="load">
     <template v-if="data">
-      <!--
-        已停业横幅。**放在最上面、盖不住内容** —— 老客扫码进来是冲着这家店来的，
-        要第一眼知道「店关了」而不是翻了半天才发现加不了购。
-      -->
-      <view v-if="closed" class="sh-notice sh-notice--muted closed">
-        <text class="txt-sub">{{ $t("store.closed") }}</text>
-      </view>
-
-      <!-- 店招：登录用户看到的是「常买」优先，这里只占一行 -->
-      <view class="store sh-row">
-        <biz-shop-avatar :name="data.merchant.name" :logo="data.merchant.logo" :self-operated="data.merchant.selfOperated" :size="96"></biz-shop-avatar>
-        <view class="sh-fill">
-          <view class="store__row sh-row">
-            <!-- 自营标（电商法 §37），放店名前 -->
-            <text v-if="data.merchant.selfOperated" class="sh-chip sh-chip--primary">
-              {{ $t("merchant.selfOperated") }}
-            </text>
-            <text class="txt-title">{{ data.merchant.name }}</text>
-            <!-- 认证用盾牌图标，与店铺列表 / 店铺详情同一种（此前是文字 chip，店名被两颗 chip 夹在中间） -->
-            <sh-icon v-if="data.merchant.verified" name="verified" :size="32" color="var(--sh-primary)"></sh-icon>
-          </view>
-          <view class="addr sh-row">
-            <text class="sh-muted sh-fill">
-              {{ data.store.openHours }} · {{ data.store.address }}
-            </text>
-            <text v-if="data.store.latE6 != null" class="sh-btn sh-btn--sm sh-btn--soft addr__nav" @tap="navToStore">
-              {{ $t("community.navigate") }}
-            </text>
-          </view>
-        </view>
-        <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
-          {{ data.favorited ? "★" : "☆" }}
-        </text>
-        <!--
-          分享（§3.2）。**这一页此前连小程序上都只能从右上角「···」转发** ——
-          那个位置没人会去找；H5 上则完全没有出口。而「把这家店发给熟人」
-          恰恰是社区场景里最常发生的分享。
-
-          路径与 `onShareAppMessage` 用**同一份**（带 `from=SHARE`）：
-          两处不一致的话，同一次分享按哪个入口走会算成两种来源。
-        -->
-        <biz-share-act
-          :path="`${ROUTES.store}?from=SHARE`"
-          :inviter-no="user.user?.cUserNo"
-          :merchant-no="data.merchant.merchantNo"
-        ></biz-share-act>
-      </view>
-
-      <!--
-        店铺公告：店主自发，老客一进来就看到。
-        **带更新时间**：一句没有时间的「今天到了新米」，既可能是今早写的、
-        也可能是上个月忘了撤的 —— 分不出来就不会照着它跑一趟，而那正是这行字的用处。
-      -->
-      <view v-if="data.store.announcement" class="txt-sub sh-notice notice">
-        <text>{{ data.store.announcement }}</text>
-        <text v-if="noticeAt" class="txt-caption notice__at">{{ noticeAt }}</text>
-      </view>
-
-      <!-- 领券（优惠券全链路梳理 批 1）：放在公告之后、常买之前 —— 领了券再挑货 -->
-      <biz-coupon-strip :merchant-no="data.merchant.merchantNo"></biz-coupon-strip>
-
-      <!-- 第一屏：我买过的。这是本页存在的理由 -->
-      <view class="sh-block">
-        <sh-section pad :title="String(hasFrequent ? $t('store.frequent') : $t('store.hot'))">
-          <text v-if="hasFrequent" class="sh-btn sh-btn--sm sh-btn--soft" @tap="reorder">{{
-            $t("store.reorder")
-          }}</text>
-        </sh-section>
-
-        <view
-          v-for="f in frequent"
-          :key="f.skuNo"
-          class="freq sh-row"
-          :class="{ 'is-off': f.invalid }"
-        >
-          <sh-cover class="freq__cover" :src="f.cover" :w="200"></sh-cover>
-          <view class="sh-fill" @tap="gotoGoods(f.goodsNo)">
-            <text class="txt-strong freq__title">{{ f.title }}</text>
-            <text class="sh-muted">{{ f.spec }}</text>
-            <view class="freq__tags sh-wrap">
-              <text v-if="f.times > 1" class="sh-chip">{{
-                $t("store.times", { n: f.times })
-              }}</text>
-              <text v-if="f.price > f.lastPrice" class="sh-chip sh-chip--warning">
-                {{ $t("store.priceUp", { p: money(f.lastPrice) }) }}
-              </text>
-              <text v-if="f.invalid" class="sh-chip sh-chip--danger">{{
-                $t("store.invalid")
-              }}</text>
+      <!-- 门头：主色浅底一条，店招卡压在上面（s03） -->
+      <view class="top">
+      <view class="band"></view>
+      <view class="head sh-card">
+        <view class="head__top sh-row">
+          <biz-shop-avatar :name="storeName" :logo="data.merchant.logo" :size="104"></biz-shop-avatar>
+          <view class="sh-fill head__main">
+            <text class="txt-title head__name">{{ storeName }}</text>
+            <view class="head__line sh-row">
+              <text v-if="statusText" class="sh-chip" :class="{ 'sh-chip--primary': !closed }">{{ statusText }}</text>
+              <text v-if="data.store.openHours" class="txt-caption txt-quiet sh-num">{{ data.store.openHours }}</text>
             </view>
           </view>
-          <view class="freq__buy">
-            <text class="txt-price freq__price sh-num">{{ money(f.price) }}</text>
-            <text class="txt-body add sh-hit" @tap="addOne(f)">＋</text>
-          </view>
+          <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
+            {{ data.favorited ? "★" : "☆" }}
+          </text>
+          <biz-share-act
+            :path="sharePath"
+            :inviter-no="user.user?.cUserNo"
+            :merchant-no="entityNo"
+          ></biz-share-act>
         </view>
+        <text class="txt-caption txt-quiet head__stats sh-num">{{ statsText }}</text>
 
-        <!-- 履约说明：超区在店铺页就说清楚，不等到结算 -->
-        <view class="sh-notice sh-notice--muted ship">
-          <text class="sh-muted">{{ $t("store.fulfillHint") }}</text>
+        <!-- 公告压成一行，点开看全文 -->
+        <view v-if="data.store.announcement" class="notice sh-row" @tap="showNotice">
+          <text class="sh-chip sh-chip--warning notice__tag">{{ $t("store.notice") }}</text>
+          <text class="txt-sub sh-fill notice__text">{{ data.store.announcement }}</text>
+          <text v-if="noticeAt" class="txt-caption txt-quiet notice__at">{{ noticeAt }}</text>
+        </view>
+      </view>
+      </view>
+
+      <!-- 暂停营业（s07）：照开、不可加购，给同品牌最近的营业店 -->
+      <view v-if="closed" class="sh-notice sh-notice--muted paused">
+        <text class="txt-sub">{{ $t("store.pausedNotice") }}</text>
+        <text v-if="data.sibling" class="sh-btn sh-btn--sm sh-btn--soft paused__go" @tap="gotoSibling">
+          {{ $t("store.goSibling", { name: data.sibling.storeName }) }}
+        </text>
+      </view>
+
+      <!-- 领券：领了券再挑货 -->
+      <biz-coupon-strip v-if="!closed" :merchant-no="entityNo"></biz-coupon-strip>
+
+      <view class="tabs">
+        <sh-tabs :items="tabs" :active="tab" @change="switchTab"></sh-tabs>
+      </view>
+
+      <!-- 商品：左分类右列表 -->
+      <view v-if="tab === 'goods'" class="menu">
+        <input v-model="keyword" maxlength="32" class="txt-sub search" :placeholder="$t('store.searchPh')" />
+        <view class="menu__body sh-row">
+          <scroll-view scroll-y class="rail">
+            <text
+              v-for="c in rail"
+              :key="c.key"
+              class="txt-sub rail__item"
+              :class="{ 'is-on': !keyword.trim() && current === c.key }"
+              @tap="picked = c.key; keyword = ''"
+            >{{ c.label }}</text>
+          </scroll-view>
+
+          <view class="sh-fill list">
+            <template v-if="showFrequent">
+              <view class="list__head sh-row">
+                <text class="txt-caption txt-quiet sh-fill">{{ $t("store.frequentHint") }}</text>
+                <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="reorder">{{ $t("store.reorder") }}</text>
+              </view>
+              <view
+                v-for="f in frequent"
+                :key="f.skuNo"
+                class="item sh-row"
+                :class="{ 'is-off': f.invalid || closed }"
+              >
+                <sh-cover class="item__cover" :src="f.cover" :w="160"></sh-cover>
+                <view class="sh-fill item__main" @tap="gotoGoods(f.goodsNo)">
+                  <text class="txt-sub txt-bold item__title">{{ f.title }}</text>
+                  <text class="txt-caption txt-quiet item__meta">{{
+                    f.invalid ? $t("store.invalid") : $t("store.times", { n: f.times })
+                  }}</text>
+                  <text class="txt-price sh-num item__price">{{ money(f.price) }}</text>
+                </view>
+                <text class="add sh-hit" :class="{ 'is-off': f.invalid || closed }" @tap="addOne(f)">＋</text>
+              </view>
+            </template>
+
+            <template v-else>
+              <view
+                v-for="g in listed"
+                :key="g.goodsNo"
+                class="item sh-row"
+                :class="{ 'is-off': soldOut(g) || closed }"
+              >
+                <sh-cover class="item__cover" :src="g.cover" :w="160"></sh-cover>
+                <view class="sh-fill item__main" @tap="gotoGoods(g.goodsNo)">
+                  <text class="txt-sub txt-bold item__title">{{ g.title }}</text>
+                  <text class="txt-caption txt-quiet item__meta">{{
+                    closed ? $t("shops.paused") : soldOut(g) ? $t("store.soldOut") : g.subtitle
+                  }}</text>
+                  <text class="txt-price sh-num item__price">{{ money(g.price) }}</text>
+                </view>
+                <text class="add sh-hit" :class="{ 'is-off': soldOut(g) || closed }" @tap="addGoods(g, $event)">＋</text>
+              </view>
+              <sh-empty v-if="!listed.length" :text="String($t('store.noGoods'))"></sh-empty>
+            </template>
+          </view>
         </view>
       </view>
 
-      <!-- 店内搜索 + 全部商品 -->
-      <view class="sh-block">
-        <sh-section pad :title="String($t('store.allGoods'))">
-          <text class="sh-muted sh-num">{{ goods.length }}</text>
-        </sh-section>
-        <input
-          maxlength="32"
-          v-model="keyword"
-          class="txt-sub search"
-          :placeholder="$t('store.searchPh')"
-        />
-
-        <!--
-          类目行：店主排的顺序、店主起的名字。
-          横滚而不是换行 —— 一家店摆七八类是常事，换行会把商品列表推到屏幕外。
-        -->
-        <scroll-view v-if="showShelves" class="cats" scroll-x>
-          <view class="cats__row">
-            <text
-              class="txt-bold sh-chip"
-              :class="{ 'sh-chip--primary': !pickedCat }"
-              @tap="pickedCat = ''"
-            >
-              {{ $t("store.allCats") }}
-            </text>
-            <text
-              v-for="c in shelves"
-              :key="c.categoryNo"
-              class="txt-bold sh-chip"
-              :class="{ 'sh-chip--primary': pickedCat === c.categoryNo }"
-              @tap="pickedCat = pickedCat === c.categoryNo ? '' : c.categoryNo"
-            >
-              {{ c.name }} {{ c.count }}
-            </text>
-          </view>
-        </scroll-view>
-
-        <biz-goods-card
-          v-for="g in goods"
-          :key="g.goodsNo"
-          :goods="g"
-          @tap="gotoGoods(g.goodsNo)"
-          @add="addGoods(g, $event)"
-        ></biz-goods-card>
+      <!-- 评价：这一家门店的，带上评的是哪件货（s05） -->
+      <view v-else-if="tab === 'reviews'" class="sh-block">
+        <biz-review v-for="r in reviews" :key="r.reviewNo" :review="r"></biz-review>
+        <sh-empty v-if="!reviews.length" :pending="!reviewsLoaded" :text="String($t('store.noReviews'))"></sh-empty>
       </view>
-      <!--
-        悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
-        屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
-      -->
+
+      <!-- 店铺（s06）：营业时间、地址（点开导航）、公告全文，最后一行经营主体与资质 -->
+      <view v-else class="sh-block">
+        <view v-if="data.store.openHours" class="info sh-row">
+          <text class="txt-sub txt-quiet info__k">{{ $t("store.hours") }}</text>
+          <text class="txt-sub sh-fill sh-num">{{ data.store.openHours }}</text>
+        </view>
+        <view v-if="data.store.address" class="info sh-row">
+          <text class="txt-sub txt-quiet info__k">{{ $t("store.address") }}</text>
+          <text class="txt-sub sh-fill">{{ data.store.address }}</text>
+          <text v-if="data.store.latE6 != null" class="sh-btn sh-btn--sm sh-btn--soft" @tap="navToStore">
+            {{ $t("community.navigate") }}
+          </text>
+        </view>
+        <view v-if="data.store.announcement" class="info">
+          <text class="txt-sub txt-quiet info__k">{{ $t("store.notice") }}</text>
+          <text class="txt-sub info__full">{{ data.store.announcement }}</text>
+        </view>
+        <view class="info sh-row" @tap="gotoEntity">
+          <text class="txt-sub sh-fill">{{ $t("store.entityInfo") }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
+
+      <!-- 悬浮购物车：加购的落点，也是去结算的入口 -->
       <biz-cart-fab></biz-cart-fab>
-  
     </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-/* 类目行：横滚。两条都要 —— 见 b-app 商品列表里那段同样的注释：
-   uni 的 <text> 自带 pre-line 会盖掉父级 nowrap，flex 子项默认会被压缩而不是溢出滚动 */
-.cats {
-  white-space: nowrap;
-  margin: 12rpx 0 4rpx;
+/* 门头：主色浅底一条，店招卡压上去一半 */
+.band {
+  height: 120rpx;
+  background: var(--sh-primary-tint);
 }
-.cats__row {
-  display: inline-flex;
-  gap: 12rpx;
+/* 底与圆角由 sh-card 给；这里只把它往上压到色条上 */
+.head {
+  position: relative;
+  margin: -80rpx 24rpx 16rpx;
 }
-/*
- * 类目 chip。**此前挂的是 `pb-tag`，而那个类全仓根本没有定义** ——
- * 于是未选中的类目是一行裸文字（没有底色、没有圆角），选中的是一个**直角**绿方块，
- * 而同一屏上「已认证」「买过 3 次」「-25%」全是正经药丸。
- * 判据把它算成「选中态自画」，其实错得更早：连未选中态都没画出来。
- */
-.cats__chip {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.addr {
-  gap: 12rpx;
-}
-
-.addr__nav {
-  flex-shrink: 0;
-}
-.closed {
-  margin-bottom: 16rpx;
-}
-
-.store {
+.head__top {
   gap: 20rpx;
-  padding: 8rpx 0 24rpx;
 }
-
-.store__row {
+.head__main {
+  min-width: 0;
+}
+.head__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.head__line {
   gap: 12rpx;
+  margin-top: 8rpx;
 }
-
+.head__stats {
+  display: block;
+  margin-top: 16rpx;
+}
 .fav {
   font-size: 40rpx;
   color: var(--sh-sub);
 }
 .fav.is-on {
-  /* 星标点亮色，不是告警色 —— 见 base.css 的 --sh-star */
   color: var(--sh-star);
 }
+.notice {
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.notice__tag {
+  flex-shrink: 0;
+}
+.notice__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .notice__at {
+  flex-shrink: 0;
+}
+.paused {
+  margin: 0 24rpx 16rpx;
+}
+.paused__go {
+  display: inline-block;
+  margin-top: 12rpx;
+}
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8rpx 24rpx;
+  background: var(--sh-bg);
+}
+.search {
+  height: 72rpx;
+  margin: 8rpx 24rpx 12rpx;
+  padding: 0 24rpx;
+  border-radius: 9999px;
+  background: var(--sh-surface);
+  color: var(--sh-ink);
+}
+.menu__body {
+  align-items: flex-start;
+}
+/* 左栏：窄一列、浅底；选中项白底 + 主色竖条 */
+.rail {
+  width: 176rpx;
+  flex-shrink: 0;
+  max-height: 70vh;
+  background: var(--sh-faint);
+}
+/* 竖条用左边框画：常驻 6rpx 透明边，选中时只换颜色 —— 文字不因选中而跳一下 */
+.rail__item {
   display: block;
-  margin-top: 8rpx;
-  opacity: 0.75;
+  padding: 28rpx 16rpx 28rpx 12rpx;
+  border-left: 6rpx solid transparent;
+  text-align: center;
+  color: var(--sh-sub);
 }
-/* 排布由 .sh-block__head 给，这里只把右侧的「再来一单 / 计数」推到头 */
-/* 底和圆角由外层 .sh-block 给 —— 常买行在块内成行，不再各自一张卡 */
-.freq {
-  gap: 20rpx;
-  padding: 20rpx 24rpx;
+.rail__item.is-on {
+  border-left-color: var(--sh-primary);
+  background: var(--sh-surface);
+  color: var(--sh-ink);
+  font-weight: 600;
 }
-.freq.is-off {
+.list {
+  min-width: 0;
+  min-height: 60vh;
+  background: var(--sh-surface);
+}
+.list__head {
+  gap: 12rpx;
+  padding: 16rpx 20rpx 4rpx;
+}
+.item {
+  gap: 16rpx;
+  padding: 20rpx;
+}
+.item.is-off .item__cover,
+.item.is-off .item__main {
   opacity: 0.5;
 }
-.freq__cover {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 24rpx;
+.item__cover {
+  width: 128rpx;
+  height: 128rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx;
   background: var(--sh-faint);
-  font-size: 52rpx;
-  text-align: center;
-  line-height: 88rpx;
 }
-
-.freq__title {
-  /* 常买清单的行内商品名 —— 与购物车/订单里的商品行同类，用同一档
-     （这里的 .freq 是**横向行**，不是首页那个同名的横滑窄卡） */
+.item__main {
+  min-width: 0;
+}
+.item__title {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.freq__tags {
-  gap: 8rpx;
+.item__meta {
+  display: block;
+  margin-top: 4rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item__price {
+  display: block;
   margin-top: 8rpx;
-}
-.freq__buy {
-  text-align: end;
-}
-.freq__price {
-  display: block;
 }
 .add {
-  display: inline-block;
-  margin-top: 8rpx;
-  width: 56rpx;
-  height: 56rpx;
+  width: 52rpx;
+  height: 52rpx;
+  flex-shrink: 0;
+  align-self: flex-end;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
   text-align: center;
+  line-height: 52rpx;
 }
-/* 履约说明在常买块内收尾：它解释的就是上面这些东西怎么送到 */
-.ship {
-  margin: 8rpx 24rpx 0;
-}
-/* 搜索框在白块内，底要比块浅一档才看得出是个输入框 */
-.search {
-  height: 80rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
+.add.is-off {
   background: var(--sh-faint);
-  color: var(--sh-ink);
-  margin: 0 24rpx 12rpx;
+  color: var(--sh-sub);
+}
+.info {
+  gap: 16rpx;
+  padding: 24rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.info:first-child {
+  border-top: 0;
+}
+.info__k {
+  flex-shrink: 0;
+  width: 120rpx;
+}
+.info__full {
+  display: block;
+  margin-top: 8rpx;
 }
 </style>

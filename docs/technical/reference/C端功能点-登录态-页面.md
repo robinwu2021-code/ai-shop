@@ -19,11 +19,11 @@
 | 功能点 | 方法 | 路径 | 说明 |
 |---|---|---|---|
 | `myInvoices` | GET | `/mp/invoice/mine` | — |
+| `promotedMerchants` | GET | `/mp/merchant/promoted` | — |
+| `visitedMerchants` | GET | `/mp/merchant/visited` | — |
 | `storeAcode` | GET | `/mp/store/:no/acode` | — |
 | `storeEnter` | POST | `/mp/store/:no/enter` | — |
 | `storeGoods` | GET | `/mp/store/:no/goods` | — |
-| `myStores` | GET | `/mp/store/mine` | — |
-| `storeNearby` | GET | `/mp/store/nearby` | — |
 
 ## 全部功能点
 
@@ -78,14 +78,14 @@
 | `invoiceOfOrder` | `GET /mp/invoice/order/:orderNo` | 是 | order | — |
 | `resolveLocation` | `GET /mp/location/resolve` | 游客 | (stores) | — |
 | `reachOpened` | `POST /mp/member-reach/:reachNo/opened` | 是 | store | — |
-| `merchantList` | `GET /mp/merchant` | 游客 | merchants · search | — |
+| `merchantList` | `GET /mp/merchant` | 游客 | search | — |
 | `merchantDetail` | `GET /mp/merchant/:merchantNo` | 游客 | merchant | — |
 | `merchantAcode` | `GET /mp/merchant/{merchantNo}/acode` | 游客 | (components)/biz | — |
 | `merchantApply` | `POST /mp/merchant/apply` | 是 | me | — |
 | `myMerchantApply` | `GET /mp/merchant/apply` | 是 | me | — |
 | `updateMerchantApply` | `POST /mp/merchant/apply/:applyNo` | 是 | me | — |
-| `promotedMerchants` | `GET /mp/merchant/promoted` | 游客 | merchants | — |
-| `visitedMerchants` | `GET /mp/merchant/visited` | 是 | merchants | — |
+| `promotedMerchants` | `GET /mp/merchant/promoted` | 游客 | **无** | — |
+| `visitedMerchants` | `GET /mp/merchant/visited` | 是 | **无** | — |
 | `messageList` | `GET /mp/message` | 是 | messages | — |
 | `readMessage` | `POST /mp/message/:messageNo/read` | 是 | messages | — |
 | `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
@@ -112,7 +112,7 @@
 | `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
 | `askQuestion` | `POST /mp/question` | 是 | goods | — |
 | `regions` | `GET /mp/regions` | 游客 | (components)/biz · city-pick | — |
-| `reviewList` | `GET /mp/review` | 游客 | goods · merchant | — |
+| `reviewList` | `GET /mp/review` | 游客 | goods · merchant · store | — |
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
 | `storeHome` | `GET /mp/store/:no` | 游客 | store | — |
@@ -121,8 +121,8 @@
 | `frequentItems` | `GET /mp/store/:no/frequent` | 是 | store | — |
 | `storeGoods` | `GET /mp/store/:no/goods` | 游客 | **无** | — |
 | `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
-| `myStores` | `GET /mp/store/mine` | 游客 | **无** | — |
-| `storeNearby` | `GET /mp/store/nearby` | 游客 | **无** | — |
+| `myStores` | `GET /mp/store/mine` | 游客 | merchants | — |
+| `storeNearby` | `GET /mp/store/nearby` | 游客 | merchants | — |
 | `activeAddress` | `GET /mp/user/active-address` | 是 | (stores) | — |
 | `switchActiveAddress` | `POST /mp/user/active-address/:addressId` | 是 | (stores) | — |
 | `addressList` | `GET /mp/user/address` | 是 | (stores) · address · address-edit · order-confirm | — |

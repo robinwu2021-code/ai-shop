@@ -38,7 +38,6 @@ const KNOWN: Record<string, string[]> = {
   "c-app/src/pages/order/index.vue": ["codecard--redeem"],
   "c-app/src/pages/points/index.vue": ["hero__off"],
   "c-app/src/pages/search/index.vue": ["block"],
-  "c-app/src/pages/store/index.vue": ["cats__chip"],
 };
 
 function pages(): string[] {

@@ -38,7 +38,7 @@ function toStoreCard(m: Merchant): StoreCard {
     openHours: m.openHours ?? "",
     address: m.address ?? "",
     // mock 的距离是「离 CM001 多远」，不是离买家 —— 够看排序，不够看真实数字
-    distanceM: m.distance ?? null,
+    distanceM: m.distance || null,
     rating: m.rating,
     ratingCount: m.ratingCount,
   };
@@ -185,7 +185,7 @@ export const merchantMock: Pick<ShopApi,
         openNow: null,
         rating: merchant.rating,
         ratingCount: merchant.ratingCount,
-        distanceM: merchant.distance ?? null,
+        distanceM: merchant.distance || null,
       },
       // mock 一个主体只有一家店，没有「隔壁店」可给
       sibling: null,
@@ -349,7 +349,9 @@ export const merchantMock: Pick<ShopApi,
     const size = q?.size ?? 20;
     const all = (await this.merchantList({ communityNo: q?.communityNo, keyword: q?.keyword }))
       .map(toStoreCard)
-      .filter((c) => !mine.has(c.storeNo));
+      .filter((c) => !mine.has(c.storeNo))
+      // 与后端同一条：有距离的按距离升序，没距离的排后面
+      .sort((a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity));
     return delay({ records: all.slice((page - 1) * size, page * size), total: all.length, page, size });
   },
 

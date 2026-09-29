@@ -15,6 +15,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
+import { storeChoicesFor } from "@/shared/store-choice";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
@@ -571,6 +572,11 @@ const activityChoices = ref<Record<string, string>>({});
  */
 const touched = ref(false);
 
+/** 这一单各主体在逛哪家店（门户里记下的）。在 B 店门户挑的货由 B 店履约（TDD §2.7） */
+function storeChoicesPayload() {
+  return storeChoicesFor(items.value.map((it) => it.merchantNo));
+}
+
 function choicesPayload(): ActivityChoice[] | undefined {
   const e = Object.entries(activityChoices.value);
   return e.length ? e.map(([merchantNo, activityNo]) => ({ merchantNo, activityNo })) : undefined;
@@ -634,6 +640,7 @@ async function refreshAmount() {
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
       activityChoices: choicesPayload(),
+      storeChoices: storeChoicesPayload(),
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
@@ -694,6 +701,8 @@ async function refreshCapability() {
       items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
       fulfillment: fulfillment.value,
       // 不传 pickupNo：由后端按地址逐个商家配（与 preview 同一套规则）
+      // 落哪家店决定能怎么付（门店级当面付开关），所以门店偏好也要带
+      storeChoices: storeChoicesPayload(),
     });
     // 同 refreshAmount：过期响应整份丢掉，否则「改成快递」之后
     // 迟到的自提能力会把当面付那个选项又放回屏幕上
@@ -1028,6 +1037,7 @@ async function submit() {
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       activityChoices: choicesPayload(),
+      storeChoices: storeChoicesPayload(),
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
