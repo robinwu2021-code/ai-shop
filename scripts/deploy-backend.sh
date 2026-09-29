@@ -4,6 +4,7 @@
 #
 # 用法：
 #   scripts/deploy-backend.sh            # 从当前 HEAD 打包并上线
+#   REF=55793a7d1 scripts/deploy-backend.sh   # 发指定提交（与 deploy-frontend.sh 的 REF 同义）
 #   HOST=soukmind-tx scripts/deploy-backend.sh
 #   DRY=1 scripts/deploy-backend.sh      # 只打包与核对，不切软链、不重启
 #   scripts/deploy-backend.sh --rollback # 切回上一版并守到 health=200
@@ -79,9 +80,13 @@ fi
 [ -n "${JAVA_HOME:-}" ] && "$JAVA_HOME/bin/java" -version 2>&1 | grep -q '"21' \
     || die "找不到 JDK 21（父 POM 的 enforcer 要求它）。装好后 export JAVA_HOME 指过去再跑。"
 
-HEAD_SHA="$(git rev-parse --short HEAD)"
-HEAD_MSG="$(git log -1 --format=%s | cut -c1-60)"
-say "本次要上线的是 HEAD = $HEAD_SHA  $HEAD_MSG"
+# **发哪一版**：默认 HEAD。可以用 REF 指定一个更早的提交 —— 这个目录常有几个会话同时提交，
+# HEAD 上躺着别人刚提交、还没决定上线的功能（2026-09-29：要发门店化第二步，而 HEAD 上多了
+# 两笔出款相关的迁移）。发 HEAD 等于替他们决定了上线时间。变量名仍叫 HEAD_SHA，指的是「这次要发的那一版」。
+REF="${REF:-HEAD}"
+HEAD_SHA="$(git rev-parse --short "$REF")"
+HEAD_MSG="$(git log -1 --format=%s "$REF" | cut -c1-60)"
+say "本次要上线的是 ${REF} = $HEAD_SHA  $HEAD_MSG"
 
 # ── ⓪ 闸门验的那份，是不是就是要发的这份 ─────────────────────────────────
 #
@@ -203,7 +208,7 @@ trap cleanup EXIT
 # **不在主工作区打包。** 这个目录常有多个会话同时在改，主工作区里别人未提交的
 # 半成品会被一起烘进 jar 推上线，而 git status 里那些行看起来跟你毫无关系。
 WT="$(mktemp -d)/deploy-head"
-git worktree add -q --detach "$WT" HEAD
+git worktree add -q --detach "$WT" "$HEAD_SHA"
 
 TS="$(date +%Y%m%d-%H%M)"
 # **名字里带上提交号。** 时间戳答不了「线上跑的是哪个提交」——
