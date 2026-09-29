@@ -82,9 +82,13 @@ public class MessageServiceImpl implements MessageService {
             log.warn("skip message without receiver: title={} dedup={}", title, dedupKey);
             return;
         }
+        /*
+         * **查重要连软删的行一起看**（见 MessageMapper#countByDedupKeyIncludingDeleted）：
+         * uk_msg_dedup 是单列唯一键、不含 deleted，而 selectCount 走逻辑删除过滤 ——
+         * 口径不一致时「查重说没用过 → insert → 撞唯一键」，那条事件会无限重投。
+         */
         boolean exists = DataScopeContext.executeWithoutScope(() ->
-                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                        .eq(MsgMessage::getDedupKey, dedupKey))) > 0;
+                messageMapper.countByDedupKeyIncludingDeleted(dedupKey)) > 0;
         if (exists) {
             return;   // 事件重投是正常现象，静默跳过而不是报错
         }
@@ -123,9 +127,9 @@ public class MessageServiceImpl implements MessageService {
             log.info("[quota] 会员消息被日上限拦下 user={} today={}", userNo, today);
             return false;
         }
+        // 同 pushTo：查重要连软删的行一起看，否则撞 uk_msg_dedup
         boolean exists = DataScopeContext.executeWithoutScope(() ->
-                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                        .eq(MsgMessage::getDedupKey, dedupKey))) > 0;
+                messageMapper.countByDedupKeyIncludingDeleted(dedupKey)) > 0;
         if (exists) {
             return false;
         }
@@ -189,9 +193,9 @@ public class MessageServiceImpl implements MessageService {
             return false;
         }
 
+        // 同 pushTo：查重要连软删的行一起看，否则撞 uk_msg_dedup
         boolean exists = DataScopeContext.executeWithoutScope(() ->
-                messageMapper.selectCount(Wrappers.<MsgMessage>lambdaQuery()
-                        .eq(MsgMessage::getDedupKey, dedupKey))) > 0;
+                messageMapper.countByDedupKeyIncludingDeleted(dedupKey)) > 0;
         if (exists) {
             return false;
         }
