@@ -4119,6 +4119,59 @@ components:
         - "inFlightCount"
       additionalProperties: false
       description: "商家收入按状态汇总。\n\n⚠️ **四个数是四种状态，不是四个口袋** —— 它们加起来等于全部结算单。 结算页此前只显示一个「商家实得」，读起来像已到手：商家拿它去对银行流水， 对不上就来找客服，而客服看到的状态也只有一个词。"
+    DailyFlow: 
+      type: "object"
+      properties: 
+        day: 
+          type: "string"
+          description: "yyyy-MM-dd"
+        grossMinor: 
+          type: "number"
+          description: "成交额"
+        refundMinor: 
+          type: "number"
+          description: "退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。"
+        commissionMinor: 
+          type: "number"
+          description: "平台佣金"
+        serviceFeeMinor: 
+          type: "number"
+          description: "履约服务费"
+        netMinor: 
+          type: "number"
+          description: "商家净额。**不含 refund**"
+        billCount: 
+          type: "number"
+          description: "当天笔数。只给金额看不出「一笔大的还是很多笔」"
+      required: 
+        - "day"
+        - "grossMinor"
+        - "refundMinor"
+        - "commissionMinor"
+        - "serviceFeeMinor"
+        - "netMinor"
+        - "billCount"
+      additionalProperties: false
+      description: "每日流水的一天（TDD-供应商结算与双轨资金 §3.3）。\n\n⚠️ **与  {@link  IncomeSummary }  是两个维度**：那四个数按状态分（钱在哪一档）， 这里按天分（哪天挣的）。同一批结算单，两种切法 —— 所以两处的合计必须相等，不等就是有一侧的口径动过。"
+    DailyFlowPage: 
+      type: "object"
+      properties: 
+        days: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/DailyFlow"
+        undatedMinor: 
+          type: "number"
+          description: "没有成交日的存量单合计（早期数据 `accrued_at` 为空）。\n**它们一天都归不进去，而悄悄丢掉等于让钱凭空消失** —— 页面要把这一行说出来， 否则商家把每日流水加起来会发现对不上总览。"
+        undatedCount: 
+          type: "number"
+          description: "这样的单有几张"
+      required: 
+        - "days"
+        - "undatedMinor"
+        - "undatedCount"
+      additionalProperties: false
+      description: "每日流水一页。`days` 按天倒序，**没有流水的那天不占一行**"
     MerchantCapability: 
       type: "object"
       properties: 
@@ -14908,61 +14961,6 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/settle/withdraw": 
-    get: 
-      operationId: "mWithdrawPage"
-      summary: "我的提现"
-      tags: 
-        - "settle"
-      security: 
-        - bearerAuth: []
-      parameters: []
-      responses: 
-        "200": 
-          description: "OK"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/WithdrawPage"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-    post: 
-      operationId: "mApplyWithdraw"
-      summary: "申请提现"
-      tags: 
-        - "settle"
-      security: 
-        - bearerAuth: []
-      parameters: []
-      responses: 
-        "200": 
-          description: "OK"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/WithdrawRecord"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
   "/biz/deposit": 
     get: 
       operationId: "mDeposit"
@@ -17381,6 +17379,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/IncomeSummary"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/settle/daily-flow": 
+    get: 
+      operationId: "mDailyFlow"
+      summary: "每日流水"
+      tags: 
+        - "settle"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/DailyFlowPage"
                 required: 
                   - "code"
                   - "msg"
