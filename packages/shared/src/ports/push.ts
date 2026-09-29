@@ -45,7 +45,24 @@ export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
    * 而支付成功页原本一次要两个。
    */
   const ids = tmplIds.filter((id) => id && !id.startsWith("STUB_"));
-  if (!ids.length) return Promise.resolve({ accepted: [], rejected: [] });
+  if (!ids.length) {
+    /*
+     * **整批被剔光要喊一声。**
+     *
+     * 静默返回空是这条链上最贵的一个盲区：模板号没注入时（开发版/体验版小程序
+     * 走 development 模式，**不加载 `.env.production`**），这里安静地什么都不做 ——
+     * 弹窗不出现、不上报、后端额度恒为 0、没有任何日志。
+     * 一期上线一年一条订阅消息都没发出去，就是被这个静默盖住的：
+     * 开发阶段永远看不到弹窗，于是没人发现这条链从没跑过。
+     *
+     * 模板号现在放在 `c-app/.env`（所有模式都加载），这一句是防它再掉回去。
+     */
+    // #ifdef MP-WEIXIN
+    console.warn("[subscribe] 模板号一个都没配（拿到的是 STUB_*），不会弹订阅授权框。"
+      + " 检查 c-app/.env 里的 VITE_WX_TPL_*，且必须与后端 WX_TPL_* 同值：", tmplIds);
+    // #endif
+    return Promise.resolve({ accepted: [], rejected: [] });
+  }
 
   // #ifdef MP-WEIXIN
   return new Promise((resolve) => {
