@@ -386,16 +386,26 @@ export const orderMock: Pick<MerchantApi,
    */
   async mStatement(period?: string) {
     const lines = [
+      /*
+       * **三行的 net 都要满足 gross − 佣金 − 服务费 + 运费 − 快递费 = net**。
+       * 这一页是凭证，商家会拿它逐笔勾对；mock 自己对不上账的话，
+       * 页面看着正常而恒等式是错的 —— 那种错只有真商家拿计算器按一遍才会发现。
+       *
+       * 三种情形各一行：平台代寄扣掉、商家自寄不扣、非快递单（两列都 0）。
+       */
       { settleNo: "ST-MOCK-1", orderNo: "SO-1001", subOrderNo: "SUB-1001",
         grossMinor: 200_000, commissionMinor: 10_000, serviceFeeMinor: 2_000,
+        freightIncomeMinor: 800, freightCostMinor: 800,
         netMinor: 188_000, commissionRate: 500, status: "PAID", invoiceStatus: "VERIFIED",
         settledAt: 1_756_000_000_000, voucherNo: "BANK-20260820-001" },
       { settleNo: "ST-MOCK-2", orderNo: "SO-1002", subOrderNo: "SUB-1002",
         grossMinor: 150_000, commissionMinor: 7_500, serviceFeeMinor: 1_500,
-        netMinor: 141_000, commissionRate: 500, status: "SPLIT", invoiceStatus: "PENDING",
+        freightIncomeMinor: 800, freightCostMinor: 0,
+        netMinor: 141_800, commissionRate: 500, status: "SPLIT", invoiceStatus: "PENDING",
         settledAt: null, voucherNo: null },
       { settleNo: "ST-MOCK-3", orderNo: "SO-1003", subOrderNo: "SUB-1003",
         grossMinor: 60_000, commissionMinor: 3_000, serviceFeeMinor: 600,
+        freightIncomeMinor: 0, freightCostMinor: 0,
         netMinor: 56_400, commissionRate: 500, status: "PENDING_RECON", invoiceStatus: "PENDING",
         settledAt: null, voucherNo: null },
     ];
@@ -403,7 +413,9 @@ export const orderMock: Pick<MerchantApi,
       period: period ?? "",
       businessMode: "SELF_OPERATED",
       grossMinor: 410_000, commissionMinor: 20_500, serviceFeeMinor: 4_100,
-      netMinor: 385_400, billCount: 3,
+      // 合计也要对得上：1600 代收 − 800 实扣，net 比原来多 800
+      freightIncomeMinor: 1_600, freightCostMinor: 800,
+      netMinor: 386_200, billCount: 3,
       voucherNos: ["BANK-20260820-001"],
       lines,
     };

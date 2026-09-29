@@ -21,6 +21,16 @@ public record StatementVO(String period,
                           long grossMinor,
                           long commissionMinor,
                           long serviceFeeMinor,
+                          /**
+                           * 代收的运费合计（分）。<b>不在 {@link #grossMinor} 里</b>（§9 AC21）。
+                           *
+                           * <p>这两列不给出去的话，这张凭证上
+                           * {@code gross − 佣金 − 服务费 ≠ net} —— 而它存在的全部理由就是
+                           * 「每一行都能与外部账单勾对」。差额无法解释的对账单不是凭证，是麻烦。
+                           */
+                          long freightIncomeMinor,
+                          /** 平台代寄时垫付、从收款里扣回的快递费合计（分）。商家自寄为 0。 */
+                          long freightCostMinor,
                           long netMinor,
                           int billCount,
                           List<String> voucherNos,
@@ -35,6 +45,10 @@ public record StatementVO(String period,
      */
     public record Line(String settleNo, String orderNo, String subOrderNo,
                        long grossMinor, long commissionMinor, long serviceFeeMinor,
+                       /** 这一单代收的运费（分）。非快递单为 0 */
+                       long freightIncomeMinor,
+                       /** 这一单被扣的实付快递费（分）。商家自寄为 0 */
+                       long freightCostMinor,
                        long netMinor, int commissionRate,
                        String status, String invoiceStatus,
                        Long settledAt, String voucherNo) {

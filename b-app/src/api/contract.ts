@@ -251,6 +251,10 @@ export interface Statement {
   grossMinor: number;
   commissionMinor: number;
   serviceFeeMinor: number;
+  /** 代收的运费（分）。**不在 grossMinor 里** —— 不给的话这张凭证 gross−佣金−服务费 ≠ net */
+  freightIncomeMinor: number;
+  /** 平台代寄时垫付、从收款扣回的快递费（分）。商家自寄为 0 */
+  freightCostMinor: number;
   netMinor: number;
   billCount: number;
   /**
@@ -269,6 +273,10 @@ export interface StatementLine {
   grossMinor: number;
   commissionMinor: number;
   serviceFeeMinor: number;
+  /** 代收的运费（分）。**不在 grossMinor 里** —— 不给的话这张凭证 gross−佣金−服务费 ≠ net */
+  freightIncomeMinor: number;
+  /** 平台代寄时垫付、从收款扣回的快递费（分）。商家自寄为 0 */
+  freightCostMinor: number;
   netMinor: number;
   /** 万分比。**逐行给** —— 只给合计的话商家每次都要来问客服 */
   commissionRate: number;

@@ -20,6 +20,17 @@
         <sh-kv between :label="String(t('statement.serviceFee'))">
           <text class="txt-sub sh-num is-danger">-{{ money(data?.serviceFeeMinor ?? 0) }}</text>
         </sh-kv>
+        <!--
+          运费两行**恒显示**，与账单页那边不同：这一页是凭证，商家拿它逐笔勾对银行流水。
+          「这个月没有快递单」本身就是要能看出来的信息，按条件藏掉的话
+          gross − 佣金 − 服务费 ≠ net 而他找不到差在哪。
+        -->
+        <sh-kv between :label="String(t('statement.freightIncome'))">
+          <text class="txt-sub sh-num">+{{ money(data?.freightIncomeMinor ?? 0) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String(t('statement.freightCost'))">
+          <text class="txt-sub sh-num is-danger">-{{ money(data?.freightCostMinor ?? 0) }}</text>
+        </sh-kv>
         <sh-kv between :label="String(t('statement.billCount'))">
           <text class="txt-sub sh-num">{{ t("statement.billCountValue", { n: data?.billCount ?? 0 }) }}</text>
         </sh-kv>
@@ -44,12 +55,21 @@
           <text class="txt-caption sh-num">{{ l.orderNo }}</text>
           <text class="txt-strong sh-num">{{ money(l.netMinor) }}</text>
         </view>
+        <!--
+          这一行是**算式**，不是标签 —— 商家照着它能把 net 算出来。
+          运费那截只在这一单真有快递费时接上：非快递单接两个 ¥0.00 进去，
+          等于给绝大多数行加噪音，而算式本来就成立。
+        -->
         <text class="txt-caption txt-quiet sh-num line__break">{{ t("statement.lineBreak", {
           gross: money(l.grossMinor),
           rate: pct(l.commissionRate),
           commission: money(l.commissionMinor),
           fee: money(l.serviceFeeMinor),
-        }) }}</text>
+        }) }}<text v-if="l.freightIncomeMinor > 0 || l.freightCostMinor > 0">{{
+          t("statement.lineFreight", {
+            income: money(l.freightIncomeMinor),
+            cost: money(l.freightCostMinor),
+          }) }}</text></text>
         <view class="sh-row sh-row--between sh-mt-xs">
           <text class="txt-caption txt-quiet">{{ t(`statement.st_${l.status}`) }}</text>
           <!-- 没有凭证号要看得出来：那一行对不上银行流水 -->
@@ -129,12 +149,14 @@ function exportCsv() {
   const head = [
     t("statement.csvSettleNo"), t("statement.csvOrderNo"), t("statement.gross"),
     t("statement.csvRate"), t("statement.commission"), t("statement.serviceFee"),
+    t("statement.freightIncome"), t("statement.freightCost"),
     t("statement.net"), t("statement.csvStatus"), t("statement.csvVoucher"),
   ].join(",");
   const rows = lines.value.map((l) => [
     l.settleNo, l.orderNo,
     (l.grossMinor / 100).toFixed(2), pct(l.commissionRate),
     (l.commissionMinor / 100).toFixed(2), (l.serviceFeeMinor / 100).toFixed(2),
+    (l.freightIncomeMinor / 100).toFixed(2), (l.freightCostMinor / 100).toFixed(2),
     (l.netMinor / 100).toFixed(2),
     t(`statement.st_${l.status}`),
     // 空凭证号留空格子，不写「无」—— 导进 Excel 后「无」会变成一个要人去筛的值

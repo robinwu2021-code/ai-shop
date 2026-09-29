@@ -1469,6 +1469,7 @@ export default {
     linesTitle: "逐笔明细",
     empty: "这个账期没有结算单",
     lineBreak: "{gross} − 佣金 {commission}（{rate}）− 履约费 {fee}",
+    lineFreight: " + 运费 {income} − 快递费 {cost}",
     noVoucher: "尚无凭证号",
     st_PENDING_RECON: "待对账",
     st_CONFIRMED: "待付款",

@@ -1469,6 +1469,8 @@ public class SettleServiceImpl implements SettleService {
         long gross = 0;
         long commission = 0;
         long serviceFee = 0;
+        long freightIncome = 0;
+        long freightCost = 0;
         long net = 0;
         String mode = null;
         for (StlBill b : bills) {
@@ -1478,16 +1480,20 @@ public class SettleServiceImpl implements SettleService {
             }
             lines.add(new StatementVO.Line(b.getSettleNo(), b.getOrderNo(), b.getSubOrderNo(),
                     nz(b.getGrossMinor()), nz(b.getCommissionMinor()), nz(b.getServiceFeeMinor()),
+                    nz(b.getFreightIncomeMinor()), nz(b.getFreightCostMinor()),
                     nz(b.getNetMinor()), nzi(b.getCommissionRate()),
                     b.getStatus(), b.getInvoiceStatus(),
                     b.getPaidAt() != null ? b.getPaidAt() : b.getSplitAt(), voucher));
             gross += nz(b.getGrossMinor());
             commission += nz(b.getCommissionMinor());
             serviceFee += nz(b.getServiceFeeMinor());
+            freightIncome += nz(b.getFreightIncomeMinor());
+            freightCost += nz(b.getFreightCostMinor());
             net += nz(b.getNetMinor());
             mode = b.getBusinessMode();
         }
-        return new StatementVO(period, merchantNo, mode, gross, commission, serviceFee, net,
+        return new StatementVO(period, merchantNo, mode, gross, commission, serviceFee,
+                freightIncome, freightCost, net,
                 bills.size(), vouchers, lines);
     }
 
