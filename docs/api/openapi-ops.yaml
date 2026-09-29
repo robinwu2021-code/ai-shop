@@ -6519,8 +6519,10 @@ components:
       properties: 
         accountNo: 
           type: "string"
+          description: "平台内部单号，审核时按它定位"
         entityNo: 
           type: "string"
+          description: "供应商主体。**账户挂主体不挂门店** —— 收款是主体的事，门店只是统计维度"
         accountType: 
           type: "string"
           description: "PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公"
@@ -6534,10 +6536,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "开户银行。商家可不填，所以可能为空"
         bankBranch: 
           type: 
             - "string"
             - "null"
+          description: "开户支行。同上，转账时财务据它核对"
         status: 
           type: "string"
           description: "PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替"
@@ -6550,6 +6554,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事"
       required: 
         - "accountNo"
         - "entityNo"

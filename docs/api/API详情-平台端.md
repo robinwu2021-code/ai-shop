@@ -1991,16 +1991,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `accountNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
+| `accountNo` | `string` | 是 | 平台内部单号，审核时按它定位 |
+| `entityNo` | `string` | 是 | 供应商主体。**账户挂主体不挂门店** —— 收款是主体的事，门店只是统计维度 |
 | `accountType` | `string` | 是 | PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 |
 | `accountName` | `string` | 是 | 户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒 |
 | `accountMasked` | `string` | 是 | 账号掩码，只留尾四位 |
-| `bankName` | `string,null` | 否 | — |
-| `bankBranch` | `string,null` | 否 | — |
+| `bankName` | `string,null` | 否 | 开户银行。商家可不填，所以可能为空 |
+| `bankBranch` | `string,null` | 否 | 开户支行。同上，转账时财务据它核对 |
 | `status` | `string` | 是 | PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 |
 | `auditRemark` | `string,null` | 否 | 驳回原因，原样回商家 |
-| `auditedAt` | `number,null` | 否 | — |
+| `auditedAt` | `number,null` | 否 | 审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事 |
 
 
 #### GET `/ops/points/client-policy`
@@ -11380,16 +11380,16 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `accountNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
+| `accountNo` | `string` | 是 | 平台内部单号，审核时按它定位 |
+| `entityNo` | `string` | 是 | 供应商主体。**账户挂主体不挂门店** —— 收款是主体的事，门店只是统计维度 |
 | `accountType` | `string` | 是 | PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 |
 | `accountName` | `string` | 是 | 户名。**必须等于营业执照主体名** —— 后端硬校验，对不上提交就被拒 |
 | `accountMasked` | `string` | 是 | 账号掩码，只留尾四位 |
-| `bankName` | `string,null` | 否 | — |
-| `bankBranch` | `string,null` | 否 | — |
+| `bankName` | `string,null` | 否 | 开户银行。商家可不填，所以可能为空 |
+| `bankBranch` | `string,null` | 否 | 开户支行。同上，转账时财务据它核对 |
 | `status` | `string` | 是 | PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 |
 | `auditRemark` | `string,null` | 否 | 驳回原因，原样回商家 |
-| `auditedAt` | `number,null` | 否 | — |
+| `auditedAt` | `number,null` | 否 | 审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事 |
 
 ### PickupPoint
 

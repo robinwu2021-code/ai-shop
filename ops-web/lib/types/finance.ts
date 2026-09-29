@@ -500,7 +500,9 @@ export interface ChannelMessage {
  * 通过之后这个主体下一期的货款就打到这张卡。
  */
 export interface PayoutAccount {
+  /** 平台内部单号，审核时按它定位 */
   accountNo: string;
+  /** 供应商主体。**账户挂主体不挂门店** —— 收款是主体的事，门店只是统计维度 */
   entityNo: string;
   /** PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 */
   accountType: string;
@@ -508,12 +510,15 @@ export interface PayoutAccount {
   accountName: string;
   /** 账号掩码，只留尾四位 */
   accountMasked: string;
+  /** 开户银行。商家可不填，所以可能为空 */
   bankName?: string | null;
+  /** 开户支行。同上，转账时财务据它核对 */
   bankBranch?: string | null;
   /** PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 */
   status: string;
   /** 驳回原因，原样回商家 */
   auditRemark?: string | null;
+  /** 审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事 */
   auditedAt?: number | null;
 }
 
