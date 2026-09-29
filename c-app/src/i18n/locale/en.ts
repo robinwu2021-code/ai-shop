@@ -368,7 +368,6 @@ export default {
     },
     applyDoneTitle: "Application submitted",
     applyDoneBody: "We will contact you shortly. Listing, orders and shipping all happen in the merchant app — worth installing now.",
-    getApp: "Copy merchant app link",
     appLinkCopied: "Link copied — open it in your phone browser",
     applyFormHint: "We'll call you to confirm the details",
     shopName: "Shop name",

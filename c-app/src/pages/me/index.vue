@@ -377,20 +377,6 @@ function callSales() {
 /** 提交完那一屏：告诉他下一步在 App 里做 */
 const appDownloadVisible = ref(false);
 
-/**
- * 商家版入口：**复制链接**，两端一样。
- *
- * <p>小程序里本来就打不开 APK 下载（微信拦），而这一侧也没有 webview 页 ——
- * 跳一个不存在的页面会静默失败，表现是「点了没反应」。复制出去让他在浏览器打开，
- * 是这两端都真的走得通的那条路（官网首页的安装包提示写的也是这句）。
- */
-function goMerchantApp() {
-  uni.setClipboardData({
-    data: MERCHANT_APP_URL,
-    success: () => uni.showToast({ title: String(t("merchant.appLinkCopied")), icon: "none" }),
-  });
-  appDownloadVisible.value = false;
-}
 
 /*
  * 认一次系统。**放在 onShow 外面只跑一次** —— 设备不会中途变，
