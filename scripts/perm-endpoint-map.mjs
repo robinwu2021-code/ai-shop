@@ -95,6 +95,14 @@ export const RULES = [
    * 或者更糟：将来按矩阵去拆码时把它放宽到只需 settle:read。
    */
   ["GET", /^\/ops\/payables\/payout-list$/, "finance:payout:execute"],
+  /*
+   * 银行流水导入（V363，TDD §10）。**与付款清单导出同一个码** ——
+   * 上传流水是出款岗工作的闭环那一半（导出清单 → 网银付款 → 传回流水对账），
+   * 不是新角色。而且它改的是对账的判据：能决定「银行到底划没划」的人，
+   * 就是能决定付款的人。
+   * 排在下面那条 /ops/payables 通配之前：通配今天是 GET，但别指望它一直是。
+   */
+  ["POST", /^\/ops\/payables\/bank-flows\/import$/, "finance:payout:execute"],
   ["GET", /^\/ops\/payables/, "finance:settle:read"],
   ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],

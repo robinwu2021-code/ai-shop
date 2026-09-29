@@ -549,6 +549,32 @@ export interface PayoutList {
 }
 
 /**
+ * 银行流水导入的结果（TDD-供应商结算与双轨资金 §10）。
+ *
+ * **三个计数分开给，不合成一句「成功 N 条」**：它们对应三种完全不同的处置 ——
+ * 入库的不用管；跳过的说明这份传过了（正常，不是错）；失败的要对着原始文件去看那几行。
+ */
+export interface BankFlowImportResult {
+  /** 文件里认出来的行数 = imported + skipped + failed */
+  total: number;
+  /** 真正入库的 */
+  imported: number;
+  /** 流水号已存在、跳过的。**重复上传是常态，不是错误** */
+  skipped: number;
+  /** 没解析成功的行数 */
+  failed: number;
+  /** 失败明细。`line` 是原始文件里的行号 —— 财务要对着原文件看 */
+  failures: BankFlowImportFailure[];
+}
+
+export interface BankFlowImportFailure {
+  /** 原始文件里的行号（1 起，含表头） */
+  line: number;
+  /** 为什么没认出来。给的是可执行的原因：看不懂的日期 / 金额 / 看不出方向 */
+  reason: string;
+}
+
+/**
  * 结算口径的经营统计一行（TDD-供应商结算与双轨资金 §2.1）。
  *
  * **与门店经营排行不是一回事**：那个读订单（GMV、退款率）、是最近 N 天 Top N；

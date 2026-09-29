@@ -67,6 +67,17 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  * 不过写端点本来就不在 G1 的扫描范围里（G1 只看 GET），所以它们不必登记。
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
+  /*
+   * 供应商收款账户的回捞（ADR-011）。这个方法**同时服务两侧**：
+   * B 端商家看自己的账户（那边的会话里没有运营数据域，直查会 SELECT 不到），
+   * 和 ops 付款清单按主体取「这家的钱打去哪」。
+   * ops 这一侧是**按已授权主键回捞**：entityNo 来自上一步 opsPayables 的结算单列表，
+   * 而 stl_bill 注册了 MERCHANT 锚点、那条主查询已经过域 —— 这一步只按那个主体点查一行，
+   * 不放大任何可见范围。与 toOpsVO 的回捞同一类。
+   */
+  "PayoutAccountServiceImpl#activeAccount":
+    "按已授权的 entityNo 回捞该主体生效中的收款账户；主体来自已过数据域的 opsPayables 结算单列表，"
+    + "不放大可见范围。方法本身要绕域是因为 B 端商家会话里没有运营的数据域",
   "PlatformActivityServiceImpl#opsList":
     "平台活动那一行 entity_no = 'PLATFORM'，不属于任何商家：走 MERCHANT 维度的话，"
     + "只看某些商家的运营连一个平台活动都看不到（整页空白）。边界靠显式 owner = PLATFORM，"

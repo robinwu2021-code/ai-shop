@@ -2,7 +2,9 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal,
+  BankFlowImportResult,
+} from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -55,6 +57,18 @@ export interface FinanceApi {
    * @param entityNo 只导某一家，空则全部
    */
   payoutList(entityNo?: string): Promise<PayoutList>;
+
+  /**
+   * 导入银行流水（TDD §10）。出款对账 B 侧的**数据入口** ——
+   * 在它之前，「银行到底有没有划出这笔」在系统里看不见。
+   *
+   * **传的是文件内容的文本，不是 multipart**：解析在服务端（判据不能放在浏览器里，
+   * 而且银企直连接上时换的是取数那一段）。页面读文件时要兜底 GBK ——
+   * 网银导出的 CSV 常常不是 UTF-8。
+   *
+   * **重复上传不是错误**：已存在的流水号计入 `skipped`，照常 200。
+   */
+  importBankFlows(fileName: string, csv: string): Promise<BankFlowImportResult>;
 
   /** @param dim STORE / ENTITY / PAY_MERCHANT；`from`/`to` 是 yyyy-MM-dd，含两端 */
   listSettleStats(q: { dim: string; from: string; to: string; businessMode?: string }):

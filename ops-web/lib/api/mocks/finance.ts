@@ -204,6 +204,53 @@ export const financeMock: FinanceApi = {
     return wait({ rows, blocked, totalMinor: rows.reduce((n, r) => n + r.amountMinor, 0) });
   },
 
+  /*
+   * 银行流水导入。**mock 也要真的解析**：只回一个「成功 N 条」的假数字，
+   * 页面上那三类结果（入库 / 跳过 / 失败明细）就永远只看得到一类，
+   * 而它们恰恰对应三种完全不同的处置。
+   *
+   * ⚠️ 已导入的流水号存在模块级集合里，**刷新页面就忘了** —— 真后端靠唯一键，
+   * 不会忘。所以「重复上传被跳过」这件事在 mock 里只在一次会话内成立。
+   */
+  importBankFlows: async (fileName, csv) => {
+    const lines = (csv ?? "").replace(/\r\n?/g, "\n").split("\n");
+    const head = lines.findIndex((l) => l.includes("流水号") && (l.includes("金额") || l.includes("发生额")));
+    if (head < 0) {
+      return wait({ total: 1, imported: 0, skipped: 0, failed: 1,
+        failures: [{ line: 0, reason: "找不到表头：至少要有「流水号」和「金额」两列" }] }, 300);
+    }
+    const cols = lines[head].split(",").map((x) => x.replace(/\s/g, ""));
+    const at = (names: string[]) => cols.findIndex((c) => names.some((n) => c.includes(n)));
+    const iNo = at(["流水号", "凭证号"]);
+    const iAmt = at(["金额", "发生额"]);
+    const iDir = at(["借贷", "方向", "收支"]);
+    let imported = 0;
+    let skipped = 0;
+    const failures: { line: number; reason: string }[] = [];
+    for (let i = head + 1; i < lines.length; i++) {
+      const raw = lines[i];
+      if (!raw.trim()) continue;
+      const cells = raw.split(",");
+      const no = (cells[iNo] ?? "").trim();
+      if (!no) continue;   // 页脚合计行
+      const amt = (cells[iAmt] ?? "").replace(/[,¥￥\s]/g, "");
+      if (!amt || Number.isNaN(Number(amt))) {
+        failures.push({ line: i + 1, reason: `看不懂的金额：${cells[iAmt] ?? ""}` });
+        continue;
+      }
+      const dir = (cells[iDir] ?? "").trim();
+      if (!dir && !amt.startsWith("-")) {
+        failures.push({ line: i + 1, reason: "看不出收支方向：借贷标志列是空的，金额也没有负号" });
+        continue;
+      }
+      if (importedFlowNos.has(no)) { skipped++; continue; }
+      importedFlowNos.add(no);
+      imported++;
+    }
+    return wait({ total: imported + skipped + failures.length, imported, skipped,
+      failed: failures.length, failures }, 400);
+  },
+
   confirmPayable: async (settleNo) => {
     const b = mustBill(settleNo);
     // 未对账不能付款 —— 付了一个双方还没认的数
@@ -543,3 +590,6 @@ function withCurrentRate(c: (typeof db.payChannels)[number]) {
       .sort((a, b) => b.effectiveFrom - a.effectiveFrom)[0] ?? null;
   return { ...c, currentRate: pick("*", "*") };
 }
+
+/** mock 里已导入过的流水号。真后端靠 `uk_stl_bank_flow` 唯一键，这里只在一次会话内成立 */
+const importedFlowNos = new Set<string>();

@@ -4,7 +4,9 @@ import type { FinanceApi } from "../contracts/finance";
 import type {
   PurchaseInvoice,
   BuyerInvoiceRequest, Settlement, ClientPointsPolicy,
-  Page, PayoutAccount, PayoutList, SettleStatRow } from "@/lib/types";
+  Page, PayoutAccount, PayoutList, SettleStatRow,
+  BankFlowImportResult,
+} from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
   pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
@@ -29,6 +31,10 @@ export const financeHttp: FinanceApi = {
   // ── 付款清单（带明文账号，后端每次调用写 critical 审计）
   payoutList: (entityNo) =>
     client.get<PayoutList>("/ops/payables/payout-list", entityNo ? { entityNo } : undefined),
+
+  // ── 银行流水导入（V363）。文本贴上来，解析在服务端
+  importBankFlows: (fileName, csv) =>
+    client.post<BankFlowImportResult>("/ops/payables/bank-flows/import", { fileName, csv }),
 
   // ── 进项票
   listPurchaseInvoices: (q) => client.get<PurchaseInvoice[]>("/ops/purchase-invoices", q),

@@ -677,6 +677,14 @@ export const DISMISSED = [
   { key: "pmt_period.period_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "pmt_period.pickup_date", why: "日期格式 YYYY/MM/DD，同上" },
   { key: "pmt_activity.owner", why: "服务端内部的归属标记（MERCHANT / PLATFORM），不下发给任何端 —— 平台活动走单独的端点与类型" },
+  {
+    key: "stl_bank_flow.direction",
+    why: "银行流水的收支方向（OUT / IN），**不下发给任何端**：一期只有导入，"
+      + "运营端拿到的是「入库/跳过/失败」三个计数，没有流水明细页。"
+      + "方向的取值域实际住在 BankFlowCsvParser 里（各家银行的借/贷/支出/收入都归一化成这两个），"
+      + "端上没有对应类型。**将来做流水列表页时改成登记 FIELDS** —— "
+      + "现在为了让闸门有东西可比而造一个没人用的端上类型，是拿假接线换绿",
+  },
   { key: "pmt_activity_rule.kind", why: "自己组合的行类型（CONDITION / BENEFIT），只在服务端读写，端上拿到的是拼好的一句话" },
   {
     key: "geo_place.kind",

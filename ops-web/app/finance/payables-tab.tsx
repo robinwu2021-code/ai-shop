@@ -9,7 +9,7 @@
 // 一整条：待对账 → 确认对账 → 收票（或标无票）→ 登记付款。
 // ⚠️ **票到付款**是硬规则：没有核验过的进项票、也没标过无票供应商的，付不了。
 // 这条闸在后端，界面要做的是**把原因说在前面**，而不是让人点下去吃一个报错。
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { money } from "@/lib/utils";
@@ -20,7 +20,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
 import { SectionHeader } from "@/components/ui/section-header";
 import { exportCsv } from "@/lib/export-csv";
-import type { PayoutBlockedRow, PayoutRow } from "@/lib/types";
+import type { BankFlowImportResult, PayoutBlockedRow, PayoutRow } from "@/lib/types";
 import type { FinanceCopy } from "./copy";
 
 /** 能不能登记付款。**与后端同一套判据** —— 两处不同就会出现「按钮亮着、点了报错」 */
@@ -87,6 +87,42 @@ export function PayablesTab({ c, canEdit, canPay }: {
       }
     } finally {
       setExporting(false);
+    }
+  }
+
+  /*
+   * 银行流水导入（P3）。**这是对账 B 侧的数据入口** —— 没有它，
+   * 「银行到底有没有划出这笔」在系统里永远看不见，而出款对账会一直显示零差异。
+   *
+   * 放在付款清单旁边，是因为它们本来就是同一段工作的两头：
+   * 导出清单 → 去网银付款 → 把流水传回来。
+   */
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<BankFlowImportResult | null>(null);
+  const [readError, setReadError] = useState(false);
+
+  /** 网银导出的 CSV 常常不是 UTF-8。**先按 UTF-8 解，出替换字符就换 GBK 再解一次** */
+  async function readText(file: File): Promise<string> {
+    const buf = await file.arrayBuffer();
+    const utf8 = new TextDecoder("utf-8").decode(buf);
+    if (!utf8.includes("\uFFFD")) return utf8;
+    return new TextDecoder("gbk").decode(buf);
+  }
+
+  async function doImport(file: File) {
+    setImporting(true);
+    setReadError(false);
+    setImported(null);
+    try {
+      const text = await readText(file);
+      setImported(await api.importBankFlows(file.name, text));
+      // 流水进来之后对账轴的结论会变 —— 让那一屏下次打开时重新问
+      qc.invalidateQueries({ queryKey: ["recon-axes"] });
+    } catch {
+      setReadError(true);
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -193,6 +229,20 @@ export function PayablesTab({ c, canEdit, canPay }: {
           <Button size="sm" disabled={exporting} onClick={doExport}>
             {exporting ? c.plExporting : c.plExport}
           </Button>
+          <input
+            ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              // 清掉 value：同一个文件连传两次时 change 才会再触发
+              e.target.value = "";
+              if (f) void doImport(f);
+            }}
+          />
+          <Button size="sm" variant="secondary" disabled={importing}
+            onClick={() => fileRef.current?.click()}>
+            {importing ? c.bfImporting : c.bfImport}
+          </Button>
+          <span className="txt-caption text-muted-foreground">{c.bfHint}</span>
           {blocked !== null && blocked.length === 0 && (
             <span className="txt-caption text-muted-foreground">{c.plNoRows}</span>
           )}
@@ -215,6 +265,39 @@ export function PayablesTab({ c, canEdit, canPay }: {
               </li>
             ))}
           </ul>
+        </HelpNote>
+      )}
+
+      {readError && <HelpNote className="mb-3">{c.bfReadError}</HelpNote>}
+
+      {imported && (
+        <HelpNote className="mb-3">
+          {/*
+            三个计数分开显示，不合成一句「成功 N 条」：
+            入库的不用管、跳过的说明这份传过了（正常）、失败的要对着原文件看那几行。
+          */}
+          <div className="txt-strong">
+            {imported.imported === 0 && imported.failed === 0 && imported.skipped > 0
+              ? c.bfAllSkipped
+              : c.bfResult
+                .replace("{imported}", String(imported.imported))
+                .replace("{skipped}", String(imported.skipped))
+                .replace("{failed}", String(imported.failed))}
+          </div>
+          {imported.failures.length > 0 && (
+            <>
+              <div className="txt-caption text-muted-foreground">
+                {c.bfFailTitle.replace("{n}", String(imported.failures.length))} · {c.bfFailHint}
+              </div>
+              <ul className="mt-1.5">
+                {imported.failures.map((f, i) => (
+                  <li key={`${f.line}-${i}`} className="txt-caption">
+                    {c.bfFailRow.replace("{line}", String(f.line)).replace("{reason}", f.reason)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </HelpNote>
       )}
 
