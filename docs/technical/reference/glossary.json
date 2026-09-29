@@ -25731,6 +25731,13 @@
       "zh": "收藏的店（C-ST-07）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.user.entity"
+    },
+    {
+      "table": "usr_store_view",
+      "class": "UsrStoreView",
+      "zh": "用户逛过的门店（TDD-C端门店化与门店门户）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.user.entity"
     }
   ],
   "dictionaries": {
@@ -30741,6 +30748,41 @@
         "module": "shop-core"
       },
       {
+        "host": "UsrStoreView",
+        "name": "SOURCE_SHARE",
+        "value": "SHARE",
+        "zh": "首次来源：点开了别人的分享",
+        "module": "shop-core"
+      },
+      {
+        "host": "UsrStoreView",
+        "name": "SOURCE_SCAN",
+        "value": "SCAN",
+        "zh": "首次来源：扫店码 / 打开店铺短链",
+        "module": "shop-core"
+      },
+      {
+        "host": "UsrStoreView",
+        "name": "SOURCE_LIST",
+        "value": "LIST",
+        "zh": "首次来源：店铺页的列表",
+        "module": "shop-core"
+      },
+      {
+        "host": "UsrStoreView",
+        "name": "SOURCE_SEARCH",
+        "value": "SEARCH",
+        "zh": "首次来源：搜索结果",
+        "module": "shop-core"
+      },
+      {
+        "host": "UsrStoreView",
+        "name": "SOURCE_GOODS",
+        "value": "GOODS",
+        "zh": "首次来源：商品详情里的「进店」",
+        "module": "shop-core"
+      },
+      {
         "host": "LocationKind",
         "name": "STORE",
         "value": "STORE",
@@ -34334,6 +34376,18 @@
         "zh": "门店状态。"
       },
       {
+        "name": "StoreVisitSource",
+        "client": "shared",
+        "values": [
+          "SHARE",
+          "SCAN",
+          "LIST",
+          "SEARCH",
+          "GOODS"
+        ],
+        "zh": "一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。"
+      },
+      {
         "name": "SubOrderStatus",
         "client": "shared",
         "values": [
@@ -36233,6 +36287,14 @@
       "type": "List<String>",
       "value": "List.of(PHONE, WX_UNIONID, WX_OPENID_MP, WX_OPENID_APP, WX_OPENID_OA, APPLE_SUB)",
       "zh": "认人时的尝试顺序。",
+      "module": "shop-core"
+    },
+    {
+      "host": "UsrStoreView",
+      "name": "SOURCES",
+      "type": "java.util.Set<String>",
+      "value": "java.util.Set.of(SOURCE_SHARE, SOURCE_SCAN, SOURCE_LIST, SOURCE_SEARCH, SOURCE_GOODS)",
+      "zh": "",
       "module": "shop-core"
     },
     {
