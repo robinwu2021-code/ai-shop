@@ -31,18 +31,25 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
--- ⚠️ **这里的种子 INSERT 不是幂等的**，而 H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`
--- —— 库在 Spring context 关掉之后还活着。于是**同一次 mvn 里起第二个 context 时**，
--- sql-init 会把这些 INSERT 再跑一遍，撞主键（最常见的是 sys_industry(id)=1）。
+-- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
 --
--- 症状是别的测试类报「Failed to load ApplicationContext」，与那个类本身毫无关系，
--- 而且**单独跑永远复现不了**（只有一个 context 时不会重放）。
+-- 为什么必须这样：H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`，库在 Spring context
+-- 关掉之后还活着。同一次 mvn 里起第二个 context 时，sql-init 会把这些 INSERT
+-- **再跑一遍** —— 普通 INSERT 会撞主键（最常见的是 sys_industry(id)=1），
+-- 而症状是**别的测试类**报「Failed to load ApplicationContext」，与那个类本身
+-- 毫无关系，且**单独跑永远复现不了**（只有一个 context 时不会重放）。
 --
+-- 这个坑在 2026-09-29 一天内复发两次，第一次被当成「某个类多声明了 profile」
+-- 修掉了症状（改 profile 只是让它排到第一个 context，排序一变就轮到别人）。
+-- 幂等才是根治：谁加什么 annotation 都不再影响它。
+--
+-- H2 2.4.240 + MODE=MySQL 认 `INSERT IGNORE`（实测：重复插入 update count=0，
+-- **保留原值不覆盖**，所以测试中途改过的数据不会被后一个 context 的重放冲掉）。
+--
+-- 仍然值得注意：**多一个 context 就多一次全量重放**，几百条 INSERT 的代价是实打实的。
 -- 什么会多起一个 context：@ActiveProfiles 的组合不同、@TestPropertySource、
 -- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
--- 所以写测试时**只声明真正需要的那些**：照着别的类抄 annotation 之前，
--- 先问「我这个类用得上它吗」。2026-09-29 撞过一次：一个只用 service 的测试
--- 照搬了 ops 端点测试的 @ActiveProfiles({"test","ops"})，挡住了整条分支的 push。
+-- 写测试时只声明真正需要的那些。
 
 """
 
@@ -102,6 +109,10 @@ def main():
             stmt = stmt + ";"
             for old, new in renames.items():
                 stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)
+            # **种子一律写成 INSERT IGNORE** —— 这是这份产物幂等的唯一来源，见 HEADER。
+            # H2 2.4 在 MODE=MySQL 下认这个关键字（实测：重复插入 update count=0，
+            # 且**保留原值不覆盖**，所以测试中途改过的数据不会被重放冲掉）。
+            stmt = re.sub(r"^INSERT\s+INTO\b", "INSERT IGNORE INTO", stmt, count=1, flags=re.I)
             fixed.append(stmt)
         out.append("-- 种子数据\n" + "\n".join(fixed) + "\n")
     out_path.write_text("\n".join(out))
@@ -228,9 +239,12 @@ def replay(sql, tables, order, seeds, renames, altered):
             else:
                 seeds.append(_snapshot(stmt, tables))
         elif low.startswith("insert ignore into"):
-            # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权），
-            # 但 **H2 不认这个 MySQL 关键字**。语义上它就是种子 INSERT，
-            # 所以照种子处理，只是把 IGNORE 去掉再落进测试 schema。
+            # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权）。
+            # 这里先归一成普通 INSERT，**输出时再统一加回 IGNORE**（见下方写文件那段）——
+            # 所有种子走同一条路，不必区分源迁移用的是哪种写法。
+            #
+            # ⚠️ 这里原本写着「H2 不认这个 MySQL 关键字」，**2026-09-29 实测证伪**：
+            # H2 2.4.240 + MODE=MySQL 认得，且重复插入时 update count=0、保留原值。
             stmt_h2 = re.sub(r"^INSERT\s+IGNORE\s+INTO", "INSERT INTO", stmt, flags=re.I)
             if re.search(r"\bselect\b", low):
                 pass

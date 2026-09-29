@@ -2,18 +2,25 @@
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
--- ⚠️ **这里的种子 INSERT 不是幂等的**，而 H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`
--- —— 库在 Spring context 关掉之后还活着。于是**同一次 mvn 里起第二个 context 时**，
--- sql-init 会把这些 INSERT 再跑一遍，撞主键（最常见的是 sys_industry(id)=1）。
+-- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
 --
--- 症状是别的测试类报「Failed to load ApplicationContext」，与那个类本身毫无关系，
--- 而且**单独跑永远复现不了**（只有一个 context 时不会重放）。
+-- 为什么必须这样：H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`，库在 Spring context
+-- 关掉之后还活着。同一次 mvn 里起第二个 context 时，sql-init 会把这些 INSERT
+-- **再跑一遍** —— 普通 INSERT 会撞主键（最常见的是 sys_industry(id)=1），
+-- 而症状是**别的测试类**报「Failed to load ApplicationContext」，与那个类本身
+-- 毫无关系，且**单独跑永远复现不了**（只有一个 context 时不会重放）。
 --
+-- 这个坑在 2026-09-29 一天内复发两次，第一次被当成「某个类多声明了 profile」
+-- 修掉了症状（改 profile 只是让它排到第一个 context，排序一变就轮到别人）。
+-- 幂等才是根治：谁加什么 annotation 都不再影响它。
+--
+-- H2 2.4.240 + MODE=MySQL 认 `INSERT IGNORE`（实测：重复插入 update count=0，
+-- **保留原值不覆盖**，所以测试中途改过的数据不会被后一个 context 的重放冲掉）。
+--
+-- 仍然值得注意：**多一个 context 就多一次全量重放**，几百条 INSERT 的代价是实打实的。
 -- 什么会多起一个 context：@ActiveProfiles 的组合不同、@TestPropertySource、
 -- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
--- 所以写测试时**只声明真正需要的那些**：照着别的类抄 annotation 之前，
--- 先问「我这个类用得上它吗」。2026-09-29 撞过一次：一个只用 service 的测试
--- 照搬了 ops 端点测试的 @ActiveProfiles({"test","ops"})，挡住了整条分支的 push。
+-- 写测试时只声明真正需要的那些。
 
 
 CREATE TABLE IF NOT EXISTS inv_owner
@@ -430,27 +437,27 @@ CREATE TABLE IF NOT EXISTS inv_supplier
 );
 
 -- 种子数据
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'PIECE');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'BAG', '袋', 0, 20 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BAG');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'BOX', '箱', 0, 30 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BOX');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'BOTTLE', '瓶', 0, 40 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'BOTTLE');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PORTION', '份', 0, 50 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'PORTION');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'JIN', '斤', 1, 60 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'JIN');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'KG', '公斤', 1, 70 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'KG');
-INSERT INTO inv_uom (uom_code, name, divisible, sort)
+INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'G', '克', 1, 80 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'G');
