@@ -386,6 +386,7 @@ export const NAV: NavSection[] = [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=splits", label: "分账明细", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/finance?tab=settle-stats", label: "经营统计", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       // E4：队列由售后单的 refundSplitPending 派生（P-6.1 打标记，这里消费）
       { href: "/finance?tab=refund-back", label: "退款回退分账", perm: "finance:settle:execute", group: "分账结算", matrix: "P-12.1", ready: true },
       // 积分资金看板。**是资金表不是营销表** —— 读它的是财务。

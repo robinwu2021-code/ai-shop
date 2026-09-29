@@ -66,6 +66,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   积分端开关: { en: "Points switches" },
   应付与发票: { en: "Payables & invoices" },
   自营应付账款: { en: "Self-operated payables" },
+  经营统计: { en: "Settlement stats" },
   供应商收款账户: { en: "Supplier payout accounts" },
   进项票: { en: "Purchase invoices" },
   买家开票申请: { en: "Buyer invoice requests" },

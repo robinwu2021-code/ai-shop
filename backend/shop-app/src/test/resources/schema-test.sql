@@ -9401,3 +9401,14 @@ INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated
 VALUES
     ('SUPER_ADMIN', 'OPS_FINANCE__TAB_PAYOUT_ACCOUNTS', 'OPS', NOW(), NOW()),
     ('FINANCE', 'OPS_FINANCE__TAB_PAYOUT_ACCOUNTS', 'OPS', NOW(), NOW());
+INSERT INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_FINANCE__TAB_SETTLE_STATS', 'OPS_FINANCE', '经营统计', '分账结算',
+     '/finance?tab=settle-stats', 'finance:settle:read', 'finance:settle:read',
+     'IMPLEMENTED', 1, 'P-12.1', 'MENU', 21, NOW(), NOW());
+INSERT INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_FINANCE__TAB_SETTLE_STATS', 'OPS', NOW(), NOW()),
+    ('FINANCE', 'OPS_FINANCE__TAB_SETTLE_STATS', 'OPS', NOW(), NOW());

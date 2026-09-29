@@ -4,7 +4,7 @@ import type { FinanceApi } from "../contracts/finance";
 import type {
   PurchaseInvoice,
   BuyerInvoiceRequest, Settlement, ClientPointsPolicy,
-  Page, PayoutAccount } from "@/lib/types";
+  Page, PayoutAccount, SettleStatRow } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
   pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
@@ -22,6 +22,9 @@ export const financeHttp: FinanceApi = {
   listPayoutAccounts: (q) => client.get<Page<PayoutAccount>>("/ops/payout-accounts", q),
   auditPayoutAccount: (accountNo, pass, remark) =>
     client.post<PayoutAccount>(`/ops/payout-accounts/${accountNo}/audit`, { pass, remark }),
+
+  // ── 经营统计（结算口径）
+  listSettleStats: (q) => client.get<SettleStatRow[]>("/ops/settle-stats", q),
 
   // ── 进项票
   listPurchaseInvoices: (q) => client.get<PurchaseInvoice[]>("/ops/purchase-invoices", q),

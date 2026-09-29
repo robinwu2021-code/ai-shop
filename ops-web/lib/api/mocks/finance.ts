@@ -4,7 +4,7 @@ import * as db from "@/lib/mock/db";
 import { MAX_TAX_RATE, MIN_WITHDRAW_AMOUNT, WITHDRAW_REVIEW_THRESHOLD } from "@/lib/constants";
 import { WITHDRAW_TRANSITIONS } from "@/lib/types";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
-import { SETTLE_TRANSITIONS, type Settlement } from "@/lib/types";
+import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
 import type { ClientPointsPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
@@ -117,6 +117,41 @@ export const financeMock: FinanceApi = {
     a.auditRemark = remark ?? null;
     a.auditedAt = Date.now();
     return wait({ ...a });
+  },
+
+  /*
+   * 经营统计。**从 db.settlements 现算而不是写死一份** ——
+   * 写死的话，mock 里的统计与 mock 里的结算单对不上，
+   * 而「两个数对不上」正是这一页上线后最可能被报的问题，
+   * 本地却永远复现不了。
+   */
+  listSettleStats: async (q) => {
+    const key = (b: (typeof db.settlements)[number]) =>
+      q.dim === "ENTITY" ? b.merchantNo
+        : q.dim === "PAY_MERCHANT" ? (b.payMerchantNo ?? "__UNASSIGNED__")
+          : (b.storeNo ?? "__UNASSIGNED__");
+    const acc = new Map<string, SettleStatRow>();
+    for (const b of db.settlements) {
+      if (q.businessMode && b.businessMode !== q.businessMode) continue;
+      const k = key(b) ?? "__UNASSIGNED__";
+      const cur = acc.get(k) ?? { dimKey: k, dimName: k, grossMinor: 0, commissionMinor: 0,
+        serviceFeeMinor: 0, channelFeeMinor: 0, netMinor: 0, billCount: 0 };
+      cur.grossMinor += b.grossMinor ?? 0;
+      cur.commissionMinor += b.commissionMinor ?? 0;
+      cur.serviceFeeMinor += b.serviceFeeMinor ?? 0;
+      // 渠道费这一列 **mock 算不出来**：后端的 SettleBillVO 本来就没有暴露它
+      // （它在 StlBill 实体上有，但不进对外契约），所以这里恒 0。
+      // 真后端的统计是直接从 stl_bill 聚合的，有这一列 —— 两边差异仅此一处。
+      cur.channelFeeMinor += 0;
+      cur.netMinor += b.netMinor ?? 0;
+      cur.billCount += 1;
+      acc.set(k, cur);
+    }
+    // 空门店那一行给个能读的名字 —— 与后端同一口径
+    for (const r of acc.values()) {
+      if (r.dimKey === "__UNASSIGNED__") r.dimName = q.dim === "STORE" ? "未分配门店" : "未分配";
+    }
+    return wait([...acc.values()].sort((a, b) => b.netMinor - a.netMinor));
   },
 
   confirmPayable: async (settleNo) => {

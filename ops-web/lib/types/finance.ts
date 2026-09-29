@@ -494,6 +494,31 @@ export interface ChannelMessage {
 }
 
 /**
+ * 结算口径的经营统计一行（TDD-供应商结算与双轨资金 §2.1）。
+ *
+ * **与门店经营排行不是一回事**：那个读订单（GMV、退款率）、是最近 N 天 Top N；
+ * 这里读结算单、按区间全量、三维可切。GMV 没扣佣金与手续费，两个数对不上是正常的。
+ */
+export interface SettleStatRow {
+  /** 维度值：门店号 / 主体号 / 收款商户号。空门店为 __UNASSIGNED__ */
+  dimKey: string;
+  /** 展示名。查不到时回落成 dimKey 本身，**不会是空串** */
+  dimName: string;
+  /** 成交额（分）。**不含退款** —— 结算单上没有退款列，退款走售后与分账回退 */
+  grossMinor: number;
+  /** 平台佣金（分） */
+  commissionMinor: number;
+  /** 服务费（分） */
+  serviceFeeMinor: number;
+  /** 渠道手续费（分） */
+  channelFeeMinor: number;
+  /** 商家净额（分） */
+  netMinor: number;
+  /** 结算单数。只给金额看不出「一笔大的还是很多笔」 */
+  billCount: number;
+}
+
+/**
  * 供应商收款账户（V358，ADR-011 自营供应商模式）。
  *
  * **没有明文账号字段** —— 后端只回掩码。审核这件事本身是资金重定向：

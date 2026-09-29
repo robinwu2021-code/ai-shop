@@ -98,6 +98,11 @@ export const RULES = [
    * 新开一个码要在五处登记，而多一个码就多一处会被落下的地方。
    */
   ["*", /^\/ops\/payout-accounts/, "finance:payout:execute"],
+  /*
+   * 结算口径的经营统计。**与分账明细同一个码**（finance:settle:read）——
+   * 两页都是「看这段时间结算了多少」，没有「能看明细不能看合计」这种岗位。
+   */
+  ["GET", /^\/ops\/settle-stats$/, "finance:settle:read"],
   // 进项票：它决定平台能不能付款，所以核验权与开票权同一个码
   ["GET", /^\/ops\/purchase-invoices/, "finance:invoice:read"],
   ["POST", /^\/ops\/purchase-invoices\//, "finance:invoice:verify"],

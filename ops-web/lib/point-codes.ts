@@ -100,6 +100,7 @@ export const POINT_CODES: Record<string, string> = {
   "/finance?tab=invoice": "OPS_FINANCE__TAB_INVOICE",
   "/finance?tab=channel-messages": "OPS_FINANCE__TAB_CHANNEL_MESSAGES",
   "/finance?tab=payout-accounts": "OPS_FINANCE__TAB_PAYOUT_ACCOUNTS",
+  "/finance?tab=settle-stats": "OPS_FINANCE__TAB_SETTLE_STATS",
   "/reviews": "OPS_REVIEW",
   "/reviews?tab=appeals": "OPS_REVIEW__TAB_APPEALS",
   "/reviews?tab=score": "OPS_REVIEW__TAB_SCORE",

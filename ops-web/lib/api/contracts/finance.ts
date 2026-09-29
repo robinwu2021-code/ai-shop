@@ -2,7 +2,7 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -47,6 +47,11 @@ export interface FinanceApi {
     Promise<Page<PayoutAccount>>;
   /** 审核。**驳回必须写 remark** —— 后端拒空，且原文回商家 */
   auditPayoutAccount(accountNo: string, pass: boolean, remark?: string): Promise<PayoutAccount>;
+
+  // ── 结算口径的经营统计（P-12.1）。三维可切，按成交日区间聚合。
+  /** @param dim STORE / ENTITY / PAY_MERCHANT；`from`/`to` 是 yyyy-MM-dd，含两端 */
+  listSettleStats(q: { dim: string; from: string; to: string; businessMode?: string }):
+    Promise<SettleStatRow[]>;
 
   // ── 进项票（供应商开给平台）
   listPurchaseInvoices(q?: { status?: string }): Promise<PurchaseInvoice[]>;
