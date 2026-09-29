@@ -1864,7 +1864,11 @@ _无字段_
 | `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
-| `netMinor` | `number` | 是 | 实付商家（分） |
+| `freightIncomeMinor` | `number` | 是 | 代收的运费（分）。**不在 grossMinor 里**，所以不进佣金基数。 非快递单为 0。 |
+| `freightCostMinor` | `number` | 是 | 平台实付给快递公司、从商家收款里扣回的快递费（分）。 **只有平台代寄才有**；商家自己填单号发货是他自付，这里是 0。 判据是 `freightShipMode`，不是「这个数是不是 0」—— 平台代寄但还没称重回传时它也是 0。 |
+| `freightShipMode` | `string` | 否 | PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为空 |
+| `freightDiffReason` | `string` | 否 | 实付高于代收时的原因：OVERWEIGHT / REGION_SURCHARGE / OVER_CAP。没有差额时为空 |
+| `netMinor` | `number` | 是 | 实付商家（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费 |
 | `trafficSource` | `string` | 是 | 该单的流量来源，决定适用哪一档费率 |
 | `commissionRate` | `number` | 是 | 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** |
 | `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态，两条轨道各走各的 |
@@ -1902,7 +1906,11 @@ _无字段_
 | `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
-| `netMinor` | `number` | 是 | 实付商家（分） |
+| `freightIncomeMinor` | `number` | 是 | 代收的运费（分）。**不在 grossMinor 里**，所以不进佣金基数。 非快递单为 0。 |
+| `freightCostMinor` | `number` | 是 | 平台实付给快递公司、从商家收款里扣回的快递费（分）。 **只有平台代寄才有**；商家自己填单号发货是他自付，这里是 0。 判据是 `freightShipMode`，不是「这个数是不是 0」—— 平台代寄但还没称重回传时它也是 0。 |
+| `freightShipMode` | `string` | 否 | PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为空 |
+| `freightDiffReason` | `string` | 否 | 实付高于代收时的原因：OVERWEIGHT / REGION_SURCHARGE / OVER_CAP。没有差额时为空 |
+| `netMinor` | `number` | 是 | 实付商家（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费 |
 | `trafficSource` | `string` | 是 | 该单的流量来源，决定适用哪一档费率 |
 | `commissionRate` | `number` | 是 | 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** |
 | `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态，两条轨道各走各的 |
@@ -1940,7 +1948,11 @@ _无字段_
 | `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
-| `netMinor` | `number` | 是 | 实付商家（分） |
+| `freightIncomeMinor` | `number` | 是 | 代收的运费（分）。**不在 grossMinor 里**，所以不进佣金基数。 非快递单为 0。 |
+| `freightCostMinor` | `number` | 是 | 平台实付给快递公司、从商家收款里扣回的快递费（分）。 **只有平台代寄才有**；商家自己填单号发货是他自付，这里是 0。 判据是 `freightShipMode`，不是「这个数是不是 0」—— 平台代寄但还没称重回传时它也是 0。 |
+| `freightShipMode` | `string` | 否 | PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为空 |
+| `freightDiffReason` | `string` | 否 | 实付高于代收时的原因：OVERWEIGHT / REGION_SURCHARGE / OVER_CAP。没有差额时为空 |
+| `netMinor` | `number` | 是 | 实付商家（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费 |
 | `trafficSource` | `string` | 是 | 该单的流量来源，决定适用哪一档费率 |
 | `commissionRate` | `number` | 是 | 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** |
 | `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态，两条轨道各走各的 |
@@ -11992,6 +12004,8 @@ KPI 卡（金额为最小货币单位整数）。
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 服务费（分） |
 | `channelFeeMinor` | `number` | 是 | 渠道手续费（分） |
+| `freightIncomeMinor` | `number` | 是 | 代收的运费（分）。**不在 grossMinor 里** |
+| `freightCostMinor` | `number` | 是 | 平台代付出去的快递费（分）。 与 `freightIncomeMinor` 的差额是**平台自己在快递上的盈亏** —— 这个数此前没有任何地方能看到，而平台一直在垫这笔钱。 |
 | `netMinor` | `number` | 是 | 商家净额（分） |
 | `billCount` | `number` | 是 | 结算单数。只给金额看不出「一笔大的还是很多笔」 |
 
@@ -12006,7 +12020,11 @@ KPI 卡（金额为最小货币单位整数）。
 | `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
-| `netMinor` | `number` | 是 | 实付商家（分） |
+| `freightIncomeMinor` | `number` | 是 | 代收的运费（分）。**不在 grossMinor 里**，所以不进佣金基数。 非快递单为 0。 |
+| `freightCostMinor` | `number` | 是 | 平台实付给快递公司、从商家收款里扣回的快递费（分）。 **只有平台代寄才有**；商家自己填单号发货是他自付，这里是 0。 判据是 `freightShipMode`，不是「这个数是不是 0」—— 平台代寄但还没称重回传时它也是 0。 |
+| `freightShipMode` | `string` | 否 | PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为空 |
+| `freightDiffReason` | `string` | 否 | 实付高于代收时的原因：OVERWEIGHT / REGION_SURCHARGE / OVER_CAP。没有差额时为空 |
+| `netMinor` | `number` | 是 | 实付商家（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费 |
 | `trafficSource` | `string` | 是 | 该单的流量来源，决定适用哪一档费率 |
 | `commissionRate` | `number` | 是 | 本单快照的佣金费率（万分比）。**费率改了历史单不跟着变** |
 | `status` | [`#/definitions/SettleStatus`](#definitionssettlestatus) | 是 | 结算状态，两条轨道各走各的 |

@@ -6697,6 +6697,12 @@ components:
         channelFeeMinor: 
           type: "number"
           description: "渠道手续费（分）"
+        freightIncomeMinor: 
+          type: "number"
+          description: "代收的运费（分）。**不在 grossMinor 里**"
+        freightCostMinor: 
+          type: "number"
+          description: "平台代付出去的快递费（分）。\n\n与 `freightIncomeMinor` 的差额是**平台自己在快递上的盈亏** —— 这个数此前没有任何地方能看到，而平台一直在垫这笔钱。"
         netMinor: 
           type: "number"
           description: "商家净额（分）"
@@ -6710,6 +6716,8 @@ components:
         - "commissionMinor"
         - "serviceFeeMinor"
         - "channelFeeMinor"
+        - "freightIncomeMinor"
+        - "freightCostMinor"
         - "netMinor"
         - "billCount"
       additionalProperties: false
