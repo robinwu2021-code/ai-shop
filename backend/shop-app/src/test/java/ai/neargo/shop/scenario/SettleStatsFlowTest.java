@@ -36,7 +36,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 这是「按快照聚合」那条规则的可证伪判据，不是靠读代码保证的。
  */
 @SpringBootTest
-@ActiveProfiles({"test", "ops"})
+/*
+ * **只要 test，不要 ops。**
+ *
+ * 这个类用的全是没有 @Profile 限制的 bean（service / mapper / cipher），
+ * 不碰任何 ops controller —— 加上 ops 只会多一个 context key，
+ * 而多一个 context 在这套测试里是有代价的：H2 是
+ * `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`，库在 context 关掉之后还活着，
+ * 于是第二个 context 起来时 sql-init 会把 schema-test.sql 的种子再插一遍，
+ * 撞 sys_industry 的主键 —— 症状是「Failed to load ApplicationContext」，
+ * 与这个类本身毫无关系，而且**单独跑永远复现不了**。
+ */
+@ActiveProfiles("test")
 class SettleStatsFlowTest {
 
     /** 本用例专用前缀。**插进去的行必须在 AfterEach 删掉** —— 留下的话，
