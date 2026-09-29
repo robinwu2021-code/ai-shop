@@ -43,6 +43,15 @@ public final class NotifyScene {
      * （2026-09-29 查证，自提零使用）。
      */
     public static final String SUB_ORDER_SHIPPED = "SUB_ORDER_SHIPPED";
+    /**
+     * 拼团成团（C 端，扇出给全团）。
+     *
+     * <p>拼团是唯一「开团人必须离开去等结果」的玩法 —— 他把链接转出去就退出小程序了。
+     * 而这条链此前<b>一条通知都没有</b>（2026-09-29 查证）。
+     */
+    public static final String GROUP_FORMED = "GROUP_FORMED";
+    /** 拼团到期未成团（C 端，扇出给全团）。**钱要退**，比成团更该让人知道。 */
+    public static final String GROUP_FAILED = "GROUP_FAILED";
     /** 售后已退款（C 端） */
     public static final String AFTER_SALE_REFUNDED = "AFTER_SALE_REFUNDED";
     /** 子单已支付 —— 扇出给门店员工（B 端） */
@@ -70,7 +79,7 @@ public final class NotifyScene {
     public static final Set<String> ALL = Set.of(
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
             SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE,
-            SUB_ORDER_SHIPPED);
+            SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED);
 
     /**
      * <b>营销类场景</b> —— 站内信不强制开。

@@ -155,6 +155,8 @@ public class NotificationConsumer implements OutboxConsumer {
                 cPush(scene, userNo, "退款已处理", "退款将原路退回，到账时间以支付渠道为准", link);
             }
             case NotifyScene.NEW_GOODS_ON_SALE -> fanOutToFollowers(event, payload);
+            case NotifyScene.GROUP_FORMED -> fanOutToGroup(event, payload, true);
+            case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端
             case NotifyScene.SUB_ORDER_PAID -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
                     "新订单", "有新的订单待备货，记得按时送到自提点",
@@ -222,6 +224,46 @@ public class NotificationConsumer implements OutboxConsumer {
      * <p><b>dedupKey 必须带 userNo</b>：dedup 唯一索引是全局的，
      * 不带的话第二个收藏者会被当成重投静默丢掉（同 fanOutToStaff 的注释）。
      */
+    /**
+     * 团有结果了 → 扇出给全团。
+     *
+     * <p><b>名单来自事件本身</b>（团规模有界），不另开跨域查询。
+     *
+     * <p><b>dedupKey 必须带 userNo</b>：dedup 唯一索引是全局的，
+     * 不带的话第二个团员会被当成重投静默丢掉（同 {@link #fanOutToStaff}）。
+     */
+    private void fanOutToGroup(SysOutbox event, JsonNode payload, boolean formed) {
+        String scene = event.getEventType();
+        var arr = payload.get("userNos");
+        if (arr == null || !arr.isArray() || arr.isEmpty()) {
+            return;   // 没有名单就没人可通知 —— 不是错误
+        }
+        String title = nz(text(payload, "title"), "拼团");
+        String link = "/pages/group/index?groupNo=" + event.getAggregateId();
+        String msgTitle = formed ? "拼团成功" : "拼团未成团";
+        /*
+         * **未成团那条要把退款说出来**。人关心的不是「没成」，是「我的钱呢」——
+         * 不说的话他会来问客服，而答案本来就该写在通知里。
+         */
+        String body = formed
+                ? "「%s」已成团，等商家发货".formatted(title)
+                : "「%s」人数没凑够，货款将原路退回".formatted(title);
+        boolean inapp = routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_INAPP);
+        for (JsonNode n : arr) {
+            String userNo = n.asString();
+            if (userNo == null || userNo.isBlank()) {
+                continue;
+            }
+            if (inapp) {
+                messageService.push(userNo, MessageService.TRADE, msgTitle, body,
+                        link, event.getEventNo() + ":" + userNo);
+            }
+            cPush(scene, userNo, msgTitle, body, link);
+        }
+        log.info("[notify] 团结果扇出 group={} 结果={} 人数={}",
+                event.getAggregateId(), formed ? "成团" : "未成团", arr.size());
+    }
+
     /** 走到终态的说法，按履约方式分。**不认识的履约方式回落成中性说法**，不要硬套自提。 */
     private static String doneTitleOf(String fulfillment) {
         return switch (fulfillment == null ? "" : fulfillment) {

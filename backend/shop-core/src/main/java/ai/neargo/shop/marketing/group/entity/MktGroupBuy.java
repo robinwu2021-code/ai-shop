@@ -47,6 +47,15 @@ public class MktGroupBuy extends BaseEntity {
     private Integer joinedCount;
 
     private String status;
+
+    /**
+     * 成团/失败通知已发送时间（毫秒）。为空 = 还没发过（V365）。
+     *
+     * <p><b>幂等挂在这一列上，不挂在「状态是 FORMED」上</b>：成团是一条原子 UPDATE，
+     * 每个后付的人都会再走一遍，团照旧是 FORMED —— 挂在状态上的话，
+     * 第 5、第 6 个人付款时会再通知一遍全团。
+     */
+    private Long notifiedAt;
     private Long endAt;
 
     /**

@@ -280,6 +280,7 @@ CREATE TABLE IF NOT EXISTS mkt_group_buy
     pickup_no VARCHAR(64) DEFAULT NULL,
     initiator_user_no VARCHAR(64) DEFAULT NULL,
     activity_no VARCHAR(64) DEFAULT NULL,
+    notified_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_group_no UNIQUE (group_no)
 );
@@ -9455,6 +9456,20 @@ FROM (
     SELECT 'SUB_ORDER_SHIPPED' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
     SELECT 'SUB_ORDER_SHIPPED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
     SELECT 'SUB_ORDER_SHIPPED', 'C_USER', 'WXSUB', 0, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);
+INSERT INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'GROUP_FORMED' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'GROUP_FORMED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FORMED', 'C_USER', 'WXSUB', 0, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FAILED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FAILED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FAILED', 'C_USER', 'WXSUB', 0, 'NORMAL'
 ) t
 WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m

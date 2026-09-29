@@ -40,6 +40,14 @@ public class GroupJoinPortImpl implements GroupJoinPort {
     private final UserQueryPort userPort;
     private final PlatformSwitchPort switchPort;
 
+    /** 团结果的通知出口。**可选** —— 没装总线的环境里它自己会静默返回。 */
+    private ai.neargo.shop.marketing.group.GroupSettleNotifier groupNotifier;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setGroupNotifier(ai.neargo.shop.marketing.group.GroupSettleNotifier n) {
+        this.groupNotifier = n;
+    }
+
     public GroupJoinPortImpl(GroupBuyMapper groupMapper, GroupMemberMapper memberMapper,
                              GroupRulePort rulePort, GoodsQueryPort goodsPort,
                              UserQueryPort userPort, PlatformSwitchPort switchPort) {
@@ -177,7 +185,31 @@ public class GroupJoinPortImpl implements GroupJoinPort {
             log.info("[拼团] 成员已存在 group={} sub={}", groupNo, subOrderNo);
             return PaidOutcome.ALREADY;
         }
+        /*
+         * **成员落库之后才判成团** —— 反过来的话，通知里的名单会少掉刚进来的这个人，
+         * 而他正是让团成的那一个。
+         */
+        notifyIfFormed(groupNo);
         return PaidOutcome.JOINED;
+    }
+
+    /**
+     * 这一笔付款让团成了吗？成了就通知全团。
+     *
+     * <p><b>判据是重新读一次状态</b>：成团发生在上面那条原子 UPDATE 的
+     * {@code CASE WHEN} 里，这里拿不到「有没有翻」的返回值。
+     * 重复通知由 {@code GroupService} 那边的 {@code notified_at} 挡住 ——
+     * 每个后付的人都会走到这里，而只有第一个能把那一列从 NULL 改掉。
+     */
+    private void notifyIfFormed(String groupNo) {
+        MktGroupBuy g = DataScopeContext.executeWithoutScope(() ->
+                groupMapper.selectOne(Wrappers.<MktGroupBuy>lambdaQuery()
+                        .eq(MktGroupBuy::getGroupNo, groupNo).last("limit 1")));
+        if (g != null && MktGroupBuy.FORMED.equals(g.getStatus())) {
+            if (groupNotifier != null) {
+                groupNotifier.settled(groupNo, MktGroupBuy.FORMED);
+            }
+        }
     }
 
     private MktGroupBuy find(String groupNo) {

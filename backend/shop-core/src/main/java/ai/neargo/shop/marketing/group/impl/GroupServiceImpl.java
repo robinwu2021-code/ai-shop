@@ -197,11 +197,23 @@ public class GroupServiceImpl implements GroupService {
      * 显式写 updated_at：补扫按它找近几天失败的团，而条件更新不经过实体的自动填充。
      */
     private boolean fail(String groupNo, List<String> from) {
-        return scoped(() -> groupBuyMapper.update(null, Wrappers.<MktGroupBuy>lambdaUpdate()
+        boolean changed = scoped(() -> groupBuyMapper.update(null, Wrappers.<MktGroupBuy>lambdaUpdate()
                 .set(MktGroupBuy::getStatus, MktGroupBuy.FAILED)
                 .set(MktGroupBuy::getUpdatedAt, java.time.LocalDateTime.now())
                 .eq(MktGroupBuy::getGroupNo, groupNo)
                 .in(MktGroupBuy::getStatus, from))) > 0;
+        if (changed && settleNotifier != null) {
+            settleNotifier.settled(groupNo, MktGroupBuy.FAILED);
+        }
+        return changed;
+    }
+
+    /** 团结果的通知出口。**setter 注入** —— 可选的外接，不改构造器签名。 */
+    private ai.neargo.shop.marketing.group.GroupSettleNotifier settleNotifier;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSettleNotifier(ai.neargo.shop.marketing.group.GroupSettleNotifier n) {
+        this.settleNotifier = n;
     }
 
     /**
