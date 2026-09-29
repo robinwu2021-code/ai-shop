@@ -43,6 +43,33 @@ class ReconFlowTest {
     private ai.neargo.shop.pay.service.ReconService reconService;
 
     @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+
+    /** 本类造的订单：**共享种子，跑完要清** —— 不清的话后面的用例会读到它 */
+    private final java.util.List<String> createdOrders = new java.util.ArrayList<>();
+
+    @org.junit.jupiter.api.AfterEach
+    void dropCreatedOrders() {
+        for (String no : createdOrders) {
+            orderMapper.delete(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                    .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, no));
+        }
+        createdOrders.clear();
+    }
+
+    /** 造一张指定状态的订单，用来模拟「差异记下之后，订单那边后来变成了什么」。 */
+    private void seedOrder(String orderNo, String status) {
+        var o = new ai.neargo.shop.trade.entity.OrdOrder();
+        o.setOrderNo(orderNo);
+        o.setUserNo("U-RECON");
+        o.setStatus(status);
+        o.setPayAmount(9900L);
+        o.setCreatedAt(LocalDateTime.now());
+        orderMapper.insert(o);
+        createdOrders.add(orderNo);
+    }
+
+    @Autowired
     private FakePayQueryPort fakeQuery;
 
     @Autowired
@@ -365,5 +392,56 @@ class ReconFlowTest {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
                         .eq(StlPayment::getPaymentNo, p.getPaymentNo()).last("LIMIT 1")));
+    }
+
+    /**
+     * 差异表此前**只进不出**。2026-09-28 线上那条「通道已支付但补回失败」，
+     * 实际问题当天 14:02 就好了（订单已 PAID），而差异行到第二天还挂着 PENDING ——
+     * 运营翻到它会去查一个早就没事的单，真差异混在里面更难被发现。
+     */
+    @Test
+    @DisplayName("★★★ 差异后来自己好了 → 复查时自动收口，不再挂着占地方")
+    void healedDiffIsSettled() {
+        StlPayment p = stalePayment();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 9900L, "WX-HEAL-1"));
+        paymentRecon.scan(System.currentTimeMillis());
+        assertThat(diffsOf(p.getPaymentNo())).isNotEmpty();
+
+        // 订单那边后来好了（回调到了 / 人工补的）
+        seedOrder(p.getOrderNo(), ai.neargo.shop.trade.entity.OrdOrder.PAID);
+
+        int[] settled = paymentRecon.settlePendingDiffs();
+
+        assertThat(settled[0]).as("一条都没收口 —— 差异表还是只进不出").isGreaterThanOrEqualTo(1);
+        assertThat(diffsOf(p.getPaymentNo()))
+                .filteredOn(d -> StlReconDiff.PLATFORM_ONLY.equals(d.getDiffType()))
+                .allSatisfy(d -> {
+                    assertThat(d.getStatus()).isEqualTo(StlReconDiff.RESOLVED);
+                    assertThat(d.getResolvedBy()).as("要能一眼看出是系统收的，不是某个真人").isEqualTo("SYSTEM");
+                });
+    }
+
+    @Test
+    @DisplayName("★★★ 还没好的差异**留着** —— 自动收口不能把真问题一起抹掉")
+    void unhealedDiffStaysPending() {
+        StlPayment p = stalePayment();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 9900L, "WX-HEAL-2"));
+        paymentRecon.scan(System.currentTimeMillis());
+
+        // 订单被关了：markPaid 会被状态机拒（CANCELLED → PAID 不合法）
+        seedOrder(p.getOrderNo(), ai.neargo.shop.trade.entity.OrdOrder.CANCELLED);
+        String before = diffsOf(p.getPaymentNo()).getFirst().getResolution();
+
+        int[] settled = paymentRecon.settlePendingDiffs();
+
+        assertThat(settled[1]).as("未解决数为 0 —— 那这个计数没在数真东西").isGreaterThanOrEqualTo(1);
+        assertThat(diffsOf(p.getPaymentNo()))
+                .filteredOn(d -> StlReconDiff.PLATFORM_ONLY.equals(d.getDiffType()))
+                .allSatisfy(d -> {
+                    assertThat(d.getStatus()).isEqualTo(StlReconDiff.PENDING);
+                    assertThat(d.getResolution())
+                            .as("每轮覆盖 resolution 的话，「从哪天起一直补不回来」就没了")
+                            .isEqualTo(before);
+                });
     }
 }

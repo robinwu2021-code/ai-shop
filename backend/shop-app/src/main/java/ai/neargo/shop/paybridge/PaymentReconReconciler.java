@@ -59,6 +59,56 @@ public class PaymentReconReconciler {
     /** key = payChannel。见 {@link StuckStateLog} 的类注释。 */
     private final StuckStateLog stuck = new StuckStateLog(RESTATE_EVERY);
 
+    /** 自动核销的操作人。**不要用某个真人的工号** —— 追责时要能一眼看出这是系统干的。 */
+    private static final String SYSTEM_OPERATOR = "SYSTEM";
+
+    /**
+     * 复查还挂着的差异，能收口的当场收口。
+     *
+     * <p><b>为什么要有它</b>：差异表此前**只进不出**。2026-09-28 那条
+     * 「通道已支付但补回失败（ORDER_STATE_ILLEGAL）」，实际问题当天 14:02 就好了
+     * （订单已是 PAID、子单 COMPLETED、流水 SUCCESS），而差异行到第二天还挂着 PENDING。
+     * 运营翻到它会去查一个早就没事的单，而**真差异混在过期差异里更难被发现** ——
+     * 这正是对账表最不该有的毛病。
+     *
+     * <p><b>判据用 {@code markPaid} 的幂等性，不新增只读查询</b>：
+     * 订单已经是 PAID 时它直接返回（见 {@code OrderServiceImpl#markPaid}），
+     * 不合法时照旧抛。于是「能不能收口」与「补回本身」共用同一条路径 ——
+     * 这也是差异行的原意：它记的是「补回失败」，系统理应先自己再试一次，
+     * 而不是一上来就叫人。
+     *
+     * <p><b>只碰带订单号的收款差异</b>。退款轴、渠道账单轴的差异各有各的收口条件，
+     * 拿这条路径去套会把「通道那边没有这笔退款」误判成已解决 —— 那笔钱还在我方这边。
+     *
+     * @return {@code [已收口, 仍未解决]}
+     */
+    public int[] settlePendingDiffs() {
+        int healed = 0;
+        int still = 0;
+        for (ReconService.ReconDiffVO d : recon.diffs(StlReconDiff.PENDING)) {
+            if (d.orderNo() == null || d.orderNo().isBlank()
+                    || !StlReconDiff.PLATFORM_ONLY.equals(d.diffType())) {
+                still++;
+                continue;
+            }
+            try {
+                orderRepair.markPaid(d.orderNo(), d.payChannel(), d.channelTxnNo());
+                recon.decide(d.diffNo(), false,
+                        "自动核销：复查时补回已成立（订单 " + d.orderNo() + "）", SYSTEM_OPERATOR);
+                healed++;
+            } catch (RuntimeException e) {
+                /*
+                 * 还是不行 —— 留着给人看，**不要改 resolution**：
+                 * 每轮覆盖一次的话，差异行上就只剩最后一次的说法，
+                 * 而「从哪天起一直补不回来」才是人要的信息。
+                 */
+                still++;
+                log.debug("[recon] 差异 {} 仍未收口：{}", d.diffNo(), e.toString());
+            }
+        }
+        return new int[]{healed, still};
+    }
+
     public PaymentReconReconciler(ReconService recon, OrderRepairPort orderRepair,
                                   ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger) {
         this.recon = recon;

@@ -69,12 +69,33 @@ public class ReconScanJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
+        /*
+         * **先收口旧差异，再扫新的。**
+         *
+         * 顺序有讲究：先收口的话，本轮 detail 里的「未解决 N 条」就是复查之后的真实数，
+         * 而不是把一条刚刚自己好了的差异也算进去 —— 那正是这段代码要消掉的噪声。
+         */
+        int[] settled = recon.settlePendingDiffs();
+        String diffTail = settled[1] > 0
+                ? " ⚠️ 未解决差异 %d 条（本轮自动收口 %d 条）".formatted(settled[1], settled[0])
+                : (settled[0] > 0 ? " · 自动收口 %d 条".formatted(settled[0]) : "");
+        if (settled[1] > 0) {
+            /*
+             * **未解决差异要 WARN**：差异表此前只进不出、也没有任何出口，
+             * 记进去就没下文。detail 是运营在任务页直接看到的那句话，
+             * 日志这条是给排查的人留的 —— 两处都要有，因为看的是两拨人。
+             */
+            log.warn("[recon] 仍有 {} 条差异未解决（本轮自动收口 {} 条）—— "
+                    + "差异涉及钱，挂着不处理就是资损风险", settled[1], settled[0]);
+        }
+
         PaymentReconReconciler.Result r = recon.scan(System.currentTimeMillis());
         if (r.scanned() == 0) {
             // **detail 保持 null**，不要改成「无可处理项」之类的话。
             // JobSupport 用它区分「跑了但没事」与「跑了并做了事」，
             // 而 J1 这一批的全部价值是行为等价 —— 连写进 sys_job_run.detail 的内容都不能变
-            return JobResult.ok(null);
+            // 没有滞留收款时，detail 只在「差异那边有话要说」时才写
+            return JobResult.ok(diffTail.isEmpty() ? null : diffTail.trim());
         }
         /*
          * 有补回或关单就打 WARN：这两件事都意味着回调链路漏了一笔，
@@ -95,8 +116,8 @@ public class ReconScanJob implements JobHandler {
                 .filter(PaymentReconReconciler.ChannelSlice::allDeferred)
                 .map(sl -> "%s %d 笔全判不了".formatted(sl.payChannel(), sl.scanned()))
                 .collect(java.util.stream.Collectors.joining("；"));
-        return JobResult.ok("自查 %d 笔（补回 %d · 关单 %d · 留待 %d）%s"
+        return JobResult.ok("自查 %d 笔（补回 %d · 关单 %d · 留待 %d）%s%s"
                 .formatted(r.scanned(), r.repaired(), r.closed(), r.deferred(),
-                        blind.isEmpty() ? "" : " ⚠️ " + blind));
+                        blind.isEmpty() ? "" : " ⚠️ " + blind, diffTail));
     }
 }
