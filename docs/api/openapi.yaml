@@ -4541,6 +4541,9 @@ components:
         industry: 
           type: "string"
           description: "行业（`sys_industry.industry`）。\n\n**它决定这家店能不能以小微主体进件** —— 微信的小微白名单是按行业给的， 也是 `points_forced` 默认值的来源。\n\n后端一直在收、库里一直有这一列，但契约没登记、端也没传， 于是 `mch_entity.industry` 恒空：进件时才发现主体类型选错了， 而那时商家已经开完店、上完架。"
+        industryNote: 
+          type: "string"
+          description: "商家**自己写的**行业（V360）。只在 `industry === \"OTHER\"` 时有意义 —— 选了具体行业时后端会置空，留着就是两个对不上的答案。\n\n`sys_industry` 只有七个大类，而意向表要收的正是归不进大类的那些。"
       required: 
         - "name"
         - "contactPhone"
@@ -4554,6 +4557,11 @@ components:
           items: 
             "$ref": "#/components/schemas/MasterDataIndustry"
           description: "可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源"
+        intentIndustries: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MasterDataIntentIndustry"
+          description: "行业的**意向口径**：`industries` 之外还带上这一期尚未开放的那几档。\n\n两个列表量的不是同一件事。`industries` 回答「平台能不能接这类商家」—— 它挂着小微白名单与执照经营范围，进件与审核照它走。这一份回答 「商家能不能表达想做这一类」。**入驻意向那一屏要用这一份**： 一期只开了零售与生活服务两档，按前一把尺渲染的话，想开餐饮的人 只能选「线下零售」，而意向表的价值恰恰在于收集平台还接不了的那些。"
         subjects: 
           type: "array"
           items: 
@@ -4571,6 +4579,7 @@ components:
           description: "**这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。\n\n端上要照它渲染选项，**不要把三档写死**。写死的后果不是「多了个选项」： 一期自营模式关掉了 `PLATFORM`，而 B 端照样把「全平台发货」摆在那里， 商家点下去得到的是「当前不支持这个经营范围」—— 一个必被拒的选项， 而他无从知道自己该选什么。2026-08-11 的端到端实测撞到过。\n\n拿到 EDI 切平台模式时运营在后台放开，端上不发版就跟着变 —— 这正是它下发而不是写死的理由。"
       required: 
         - "industries"
+        - "intentIndustries"
         - "subjects"
         - "channels"
         - "serviceScopes"
@@ -4592,6 +4601,23 @@ components:
         - "industry"
         - "name"
         - "microAllowed"
+      additionalProperties: false
+    MasterDataIntentIndustry: 
+      type: "object"
+      properties: 
+        industry: 
+          type: "string"
+          description: "行业码（`sys_industry.industry`）"
+        name: 
+          type: "string"
+          description: "展示名。取服务端的"
+        open: 
+          type: "boolean"
+          description: "平台这一期是否已开放。\n\n**false 时给一句「这一类还没开放，我们会先记下来」，但不要禁用、不要拦提交** —— 拦了就等于又拿准入的尺子量意向，那正是这个字段存在要解决的问题。"
+      required: 
+        - "industry"
+        - "name"
+        - "open"
       additionalProperties: false
     MasterDataSubject: 
       type: "object"
@@ -5528,6 +5554,9 @@ components:
         industry: 
           type: "string"
           description: "申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换"
+        industryNote: 
+          type: "string"
+          description: "商家自己写的行业（V360）。只在 `industry === \"OTHER\"` 时非空。 驳回回填与「我的意向」那一屏都要用它 —— 不带回来这一格就丢了。"
         asPickupPoint: 
           type: "boolean"
           description: "是否愿意承接自提点（ADR-005）。\n\n**只是意愿，不代表点已建立** —— 建点要谈服务费口径，一期由运营在通过后另行处理。 所以商家勾了这一项、通过后却还没看到履约台，是正常的中间状态而不是故障。"
