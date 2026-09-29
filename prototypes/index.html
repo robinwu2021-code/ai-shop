@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">26 份有效稿子，其中页面稿 16 份、共 207 屏；3 份作废。
+  <p class="sub">26 份有效稿子，其中页面稿 16 份、共 211 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -173,9 +173,9 @@
     <b>元器件：查料号、询价、成为供应商</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">页面稿 · 买家小程序 · 运营端 · 2026-09-29 · 16 屏</div>
-  <p class="pcard__sum">第二版（后端已实现，按实际流程重画）。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。买家：搜料号（中段/带厂牌/相近三种命中，库存只给档位）→ 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价。供应商：点一下就成为供应商（不填表，只确认手机号）→ 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 之后补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。第一版的「供应商自己报价」已作废：第一步供应商看不到询价。十六屏 + 匿名规则表。</p>
-  <div class="screens"><a class="scr" href="elec-rfq.html#e01" title="e01 元器件首页">e01</a><a class="scr" href="elec-rfq.html#e02" title="e02 搜索结果">e02</a><a class="scr" href="elec-rfq.html#e03" title="e03 料号详情">e03</a><a class="scr" href="elec-rfq.html#e04" title="e04 询价">e04</a><a class="scr" href="elec-rfq.html#e05" title="e05 批量查">e05</a><a class="scr" href="elec-rfq.html#e06" title="e06 我的询价">e06</a><a class="scr" href="elec-rfq.html#e07" title="e07 询价详情 · 待报价">e07</a><a class="scr" href="elec-rfq.html#e08" title="e08 微信通知">e08</a><a class="scr" href="elec-rfq.html#e09" title="e09 询价详情 · 已报价">e09</a><a class="scr" href="elec-rfq.html#e10" title="e10 成为供应商">e10</a><a class="scr" href="elec-rfq.html#e11" title="e11 供应商工作台">e11</a><a class="scr" href="elec-rfq.html#e12" title="e12 上传 · 列映射">e12</a><a class="scr" href="elec-rfq.html#e13" title="e13 上架前确认">e13</a><a class="scr" href="elec-rfq.html#e14" title="e14 我的库存">e14</a><a class="scr" href="elec-rfq.html#e15" title="e15 供应商资料">e15</a><a class="scr" href="elec-rfq.html#e16" title="e16 运营端 · 元器件询价">e16</a></div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 运营端 · 2026-09-29 · 20 屏</div>
+  <p class="pcard__sum">第三版。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。买家：c-app 首页一行入口 → 搜料号（开头/中段/相近三种命中，库存只给档位；搜不到给相近料号） → 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价（线下成交）。供应商：入口在元器件首页**页尾**，点一下就成为供应商（不填表，只确认手机号）→ 工作台两态（刚入驻只说怎么传、有库存后顶到期提醒） → 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。二十屏 + 匿名规则表。</p>
+  <div class="screens"><a class="scr" href="elec-rfq.html#e01" title="e01 c-app 首页 · 元器件入口">e01</a><a class="scr" href="elec-rfq.html#e02" title="e02 元器件首页">e02</a><a class="scr" href="elec-rfq.html#e03" title="e03 搜索结果">e03</a><a class="scr" href="elec-rfq.html#e04" title="e04 搜不到 · 相近料号">e04</a><a class="scr" href="elec-rfq.html#e05" title="e05 料号详情">e05</a><a class="scr" href="elec-rfq.html#e06" title="e06 询价">e06</a><a class="scr" href="elec-rfq.html#e07" title="e07 批量查">e07</a><a class="scr" href="elec-rfq.html#e08" title="e08 我的询价">e08</a><a class="scr" href="elec-rfq.html#e09" title="e09 询价详情 · 待报价">e09</a><a class="scr" href="elec-rfq.html#e10" title="e10 通知">e10</a><a class="scr" href="elec-rfq.html#e11" title="e11 询价详情 · 已报价">e11</a><a class="scr" href="elec-rfq.html#e12" title="e12 接受报价">e12</a><a class="scr" href="elec-rfq.html#e13" title="e13 成为供应商">e13</a><a class="scr" href="elec-rfq.html#e14" title="e14 供应商工作台 · 刚成为供应商">e14</a><a class="scr" href="elec-rfq.html#e15" title="e15 供应商工作台 · 有库存之后">e15</a><a class="scr" href="elec-rfq.html#e16" title="e16 上传 · 列映射">e16</a><a class="scr" href="elec-rfq.html#e17" title="e17 上架前确认">e17</a><a class="scr" href="elec-rfq.html#e18" title="e18 我的库存">e18</a><a class="scr" href="elec-rfq.html#e19" title="e19 供应商资料">e19</a><a class="scr" href="elec-rfq.html#e20" title="e20 运营端 · 元器件询价">e20</a></div>
   <div class="pcard__links"><a href="elec-rfq.html">本地稿</a> <a href="https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG">claude.ai</a> <a href="../docs/technical/TDD-元器件-独立服务与第一步.md">TDD-元器件-独立服务与第一步</a> <a href="../docs/technical/reference/数据库-元器件.md">数据库 · 元器件</a></div>
   
 </article>

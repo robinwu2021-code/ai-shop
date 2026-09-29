@@ -19,6 +19,8 @@
 // 加新类型时放进它所属的域文件；不确定放哪，多半说明那个类型的归属本身没想清楚。
 
 export * from "./core";
+// 元器件（独立服务 elec-svc，路径 /elec/**，不是 /mp/**）
+export * from "./elec";
 export * from "./fulfillment";
 export * from "./inventory";
 export * from "./marketing";

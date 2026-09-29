@@ -1834,7 +1834,7 @@
    ],
    "status": "在建",
    "date": "2026-09-29",
-   "summary": "第二版（后端已实现，按实际流程重画）。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。买家：搜料号（中段/带厂牌/相近三种命中，库存只给档位）→ 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价。供应商：点一下就成为供应商（不填表，只确认手机号）→ 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 之后补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。第一版的「供应商自己报价」已作废：第一步供应商看不到询价。十六屏 + 匿名规则表。",
+   "summary": "第三版。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。买家：c-app 首页一行入口 → 搜料号（开头/中段/相近三种命中，库存只给档位；搜不到给相近料号） → 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价（线下成交）。供应商：入口在元器件首页**页尾**，点一下就成为供应商（不填表，只确认手机号）→ 工作台两态（刚入驻只说怎么传、有库存后顶到期提醒） → 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。二十屏 + 匿名规则表。",
    "docs": [
     {
      "label": "TDD-元器件-独立服务与第一步",
@@ -1848,94 +1848,110 @@
    "screens": [
     {
      "id": "e01",
+     "title": "c-app 首页 · 元器件入口",
+     "client": "c-app",
+     "route": "pages/home/index"
+    },
+    {
+     "id": "e02",
      "title": "元器件首页",
      "client": "c-app",
      "route": "pkg-elec/home/index"
     },
     {
-     "id": "e02",
+     "id": "e03",
      "title": "搜索结果",
      "client": "c-app",
      "route": "pkg-elec/search/index"
     },
     {
-     "id": "e03",
+     "id": "e04",
+     "title": "搜不到 · 相近料号"
+    },
+    {
+     "id": "e05",
      "title": "料号详情",
      "client": "c-app",
      "route": "pkg-elec/part/index"
     },
     {
-     "id": "e04",
+     "id": "e06",
      "title": "询价",
      "client": "c-app",
      "route": "pkg-elec/rfq-create/index"
     },
     {
-     "id": "e05",
+     "id": "e07",
      "title": "批量查",
      "client": "c-app",
      "route": "pkg-elec/lookup/index"
     },
     {
-     "id": "e06",
+     "id": "e08",
      "title": "我的询价",
      "client": "c-app",
      "route": "pkg-elec/rfqs/index"
     },
     {
-     "id": "e07",
+     "id": "e09",
      "title": "询价详情 · 待报价",
      "client": "c-app",
      "route": "pkg-elec/rfq/index"
     },
     {
-     "id": "e08",
-     "title": "微信通知"
-    },
-    {
-     "id": "e09",
-     "title": "询价详情 · 已报价",
-     "client": "c-app",
-     "route": "pkg-elec/rfq/index"
-    },
-    {
      "id": "e10",
+     "title": "通知"
+    },
+    {
+     "id": "e11",
+     "title": "询价详情 · 已报价"
+    },
+    {
+     "id": "e12",
+     "title": "接受报价"
+    },
+    {
+     "id": "e13",
      "title": "成为供应商",
      "client": "c-app",
      "route": "pkg-elec/supplier-join/index"
     },
     {
-     "id": "e11",
-     "title": "供应商工作台",
+     "id": "e14",
+     "title": "供应商工作台 · 刚成为供应商",
      "client": "c-app",
      "route": "pkg-elec/supplier/index"
     },
     {
-     "id": "e12",
+     "id": "e15",
+     "title": "供应商工作台 · 有库存之后"
+    },
+    {
+     "id": "e16",
      "title": "上传 · 列映射",
      "client": "c-app",
      "route": "pkg-elec/stock-upload/index"
     },
     {
-     "id": "e13",
+     "id": "e17",
      "title": "上架前确认",
      "client": "c-app",
      "route": "pkg-elec/stock-preview/index"
     },
     {
-     "id": "e14",
+     "id": "e18",
      "title": "我的库存",
      "client": "c-app",
      "route": "pkg-elec/stocks/index"
     },
     {
-     "id": "e15",
+     "id": "e19",
      "title": "供应商资料",
      "client": "c-app",
      "route": "pkg-elec/supplier-profile/index"
     },
     {
-     "id": "e16",
+     "id": "e20",
      "title": "运营端 · 元器件询价",
      "client": "ops-web",
      "route": "/elec/rfq"
