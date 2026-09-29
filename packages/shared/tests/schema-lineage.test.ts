@@ -237,6 +237,11 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  flow_no:
+    "stl_points_pool 的是**积分池流水号**（平台自己发号，记池子的每一次增减）；" +
+    "stl_bank_flow 的是**银行给的流水号**（人工从网银导出，是出款对账的外部判据）。\n" +
+    "  两者的发号方不同、值域也不同，按名字 join 会把一笔积分变动连到一笔银行付款上。\n" +
+    "  与银行流水真正对勾的是 stl_bill.payment_ref —— 那一列才是同一个号。",
   slot_no:
     "mch_appointment_slot 是**预约时段**（到店服务：周三 14:00–15:00 这一格）；" +
     "mkt_content_slot 是**内容位**（运营：首页第一屏那个楼层）。\n" +

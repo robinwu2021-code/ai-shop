@@ -229,8 +229,14 @@ export function PayablesTab({ c, canEdit, canPay }: {
           <Button size="sm" disabled={exporting} onClick={doExport}>
             {exporting ? c.plExporting : c.plExport}
           </Button>
+          {/*
+            隐藏的 file input：点击由旁边那个按钮代发，它自己**永远聚焦不到** ——
+            所以 tabIndex={-1}（键盘不该 Tab 到一个看不见的控件）、aria-hidden，
+            并对焦点环那道闸显式豁免（给它加 focus-ring 是假合规：那个环没人看得见）。
+          */}
           <input
             ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+            tabIndex={-1} aria-hidden="true" data-audit-skip
             onChange={(e) => {
               const f = e.target.files?.[0];
               // 清掉 value：同一个文件连传两次时 change 才会再触发

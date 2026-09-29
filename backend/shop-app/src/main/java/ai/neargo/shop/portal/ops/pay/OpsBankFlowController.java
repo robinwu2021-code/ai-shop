@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.payclient.OpsBankFlowAppService;
 import ai.neargo.shop.payclient.OpsBankFlowAppService.ImportResultVO;
 import ai.neargo.shop.spi.platform.AuditLogPort;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,7 +47,7 @@ public class OpsBankFlowController {
      */
     @PostMapping("/ops/payables/bank-flows/import")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
-    public ImportResultVO importFlows(@RequestBody ImportCmd cmd) {
+    public ImportResultVO importFlows(@Valid @RequestBody ImportCmd cmd) {
         String fileName = cmd.fileName() == null || cmd.fileName().isBlank()
                 ? "(未命名)" : cmd.fileName();
         ImportResultVO vo = app.importCsv(fileName, cmd.csv());
