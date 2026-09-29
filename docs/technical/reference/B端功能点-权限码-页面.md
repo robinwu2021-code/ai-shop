@@ -300,6 +300,7 @@
 | 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
 | 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
 | 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
 | 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
 | 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
 | 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
@@ -307,8 +308,6 @@
 | 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
 | 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
 | 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
-| 我的提现 | GET | `/biz/settle/withdraw` | `mWithdrawPage` | withdraw |
-| 申请提现 | POST | `/biz/settle/withdraw` | `mApplyWithdraw` | withdraw |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
 
 ### `biz:verify`　核销、批量核销、按码搜索
@@ -469,7 +468,6 @@
 | `suppliers` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `verify` | `biz:verify` | `biz:verify` | 老板、店长、店员 | — |
-| `withdraw` | `biz:finance` | `biz:finance` | 老板 | — |
 
 > 「进得来的角色」只按 `denied` 门禁算，**不含页面内部按 `can()` 逐块裁的部分** ——
 > 工作台那种「每个格子跟着自己的权限走」的写法在这张表里会显示为「会撞码」，但它是对的。

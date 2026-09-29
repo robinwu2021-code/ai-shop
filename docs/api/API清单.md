@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 797 个接口**：后端已实现 721（90%）· 前端在调 721
+**合计 796 个接口**：后端已实现 720（90%）· 前端在调 720
 
 ---
 
@@ -261,7 +261,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **277** 个接口 ｜ 后端已实现 **268**（97%）｜ 前端在调 **277**
+共 **276** 个接口 ｜ 后端已实现 **267**（97%）｜ 前端在调 **276**
 
 ### activities（4）
 
@@ -727,12 +727,13 @@
 | GET | `/biz/roles` | 角色列表（预置 + 自定义） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/roles` | 建自定义角色 | — | `MerchantRole` | 🔒 | ✅ | ✅ |
 
-### settle（11）
+### settle（10）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/settle/batch` | 我的账期批次 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/bills` | 结算单列表 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/settle/daily-flow` | 每日流水 | — | `DailyFlowPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/income` | 收入按状态汇总 | — | `IncomeSummary` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/invoice-pending` | 待开票摘要 | — | `PendingInvoice` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/invoice-title` | 平台开票信息 | — | `PlatformInvoiceTitle` | 🔒 | ✅ | ✅ |
@@ -740,8 +741,6 @@
 | POST | `/biz/settle/invoices` | 提交进项票 | — | `PurchaseInvoice` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/rate-card` | 费率卡 | — | `RateCard` | 🔒 | ✅ | ✅ |
 | GET | `/biz/settle/statement` | 对账单 | — | `Statement` | 🔒 | ✅ | ✅ |
-| GET | `/biz/settle/withdraw` | 我的提现 | — | `WithdrawPage` | 🔒 | ✅ | ✅ |
-| POST | `/biz/settle/withdraw` | 申请提现 | — | `WithdrawRecord` | 🔒 | ✅ | ✅ |
 
 ### sku-identity（4）
 

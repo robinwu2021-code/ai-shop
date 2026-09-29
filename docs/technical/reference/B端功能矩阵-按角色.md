@@ -239,13 +239,13 @@
 - `/biz/settle/batch`
 - `/biz/settle/bills`
 - `/biz/settle/bills/{settleNo}`
+- `/biz/settle/daily-flow`
 - `/biz/settle/income`
 - `/biz/settle/invoice-pending`
 - `/biz/settle/invoice-title`
 - `/biz/settle/invoices`
 - `/biz/settle/rate-card`
 - `/biz/settle/statement`
-- `/biz/settle/withdraw`
 
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 

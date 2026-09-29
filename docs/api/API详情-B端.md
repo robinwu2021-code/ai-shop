@@ -5315,6 +5315,23 @@ _无字段_
 类型：[`SettleBill`](#settlebill)\[\]
 
 
+#### GET `/biz/settle/daily-flow`
+
+每日流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`DailyFlowPage`](#dailyflowpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | [`DailyFlow`](#dailyflow)\[\] | 是 | — |
+| `undatedMinor` | `number` | 是 | 没有成交日的存量单合计（早期数据 `accrued_at` 为空）。 **它们一天都归不进去，而悄悄丢掉等于让钱凭空消失** —— 页面要把这一行说出来， 否则商家把每日流水加起来会发现对不上总览。 |
+| `undatedCount` | `number` | 是 | 这样的单有几张 |
+
+
 #### GET `/biz/settle/income`
 
 收入按状态汇总　🔒
@@ -5405,28 +5422,6 @@ _无字段_
 **出参**（`data`）
 
 类型：[`Statement`](#statement)
-
-
-#### GET `/biz/settle/withdraw`
-
-我的提现　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`WithdrawPage`](#withdrawpage)
-
-
-#### POST `/biz/settle/withdraw`
-
-申请提现　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`WithdrawRecord`](#withdrawrecord)
 
 
 ### sku-identity
@@ -7303,6 +7298,30 @@ _无字段_
 - `CNY`
 - `USD`
 - `AED`
+
+### DailyFlow
+
+每日流水的一天（TDD-供应商结算与双轨资金 §3.3）。 ⚠️ **与  {@link  IncomeSummary }  是两个维度**：那四个数按状态分（钱在哪一档）， 这里按天分（哪天挣的）。同一批结算单，两种切法 —— 所以两处的合计必须相等，不等就是有一侧的口径动过。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `day` | `string` | 是 | yyyy-MM-dd |
+| `grossMinor` | `number` | 是 | 成交额 |
+| `refundMinor` | `number` | 是 | 退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。 |
+| `commissionMinor` | `number` | 是 | 平台佣金 |
+| `serviceFeeMinor` | `number` | 是 | 履约服务费 |
+| `netMinor` | `number` | 是 | 商家净额。**不含 refund** |
+| `billCount` | `number` | 是 | 当天笔数。只给金额看不出「一笔大的还是很多笔」 |
+
+### DailyFlowPage
+
+每日流水一页。`days` 按天倒序，**没有流水的那天不占一行**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | [`DailyFlow`](#dailyflow)\[\] | 是 | — |
+| `undatedMinor` | `number` | 是 | 没有成交日的存量单合计（早期数据 `accrued_at` 为空）。 **它们一天都归不进去，而悄悄丢掉等于让钱凭空消失** —— 页面要把这一行说出来， 否则商家把每日流水加起来会发现对不上总览。 |
+| `undatedCount` | `number` | 是 | 这样的单有几张 |
 
 ### DebtTxnType
 
