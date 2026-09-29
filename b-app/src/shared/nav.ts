@@ -37,13 +37,12 @@ export const ROUTES = {
   income: "/pages/income/index",
   settle: "/pages/settle/index",
   /*
-   * 提现与保证金**从结算页进**，不各自在工作台开一道门。
+   * 收款账户与保证金**从结算页进**，不各自在工作台开一道门。
    *
-   * ⚠️ withdraw 此前根本不在这张表里 —— 页面建好了、后端做完了，
-   * 而**没有任何地方能走到它**。那正是「做了一半」最典型的形状：
-   * 后端有测试有守卫全绿，端上一个入口都没有。
+   * ⚠️ 这里原来还有 withdraw（提现）。**入口与后端端点一起撤了**
+   * （ADR-011 · TDD §6 第 4 条）：自营供应商模式下钱按账期打，
+   * 商家要做的是把收款账户填对，不是「申请提现」。
    */
-  withdraw: "/pages/withdraw/index",
   payoutAccount: "/pages/payout-account/index",
   deposit: "/pages/deposit/index",
   invoice: "/pages/invoice/index",

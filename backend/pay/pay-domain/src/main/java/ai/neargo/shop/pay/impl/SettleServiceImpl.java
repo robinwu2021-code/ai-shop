@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import ai.neargo.shop.pay.setting.PaySettingService;
 
 /**
@@ -736,20 +737,78 @@ public class SettleServiceImpl implements SettleService {
          *
          * 空集合在这里**不等于不过滤**：那是越权陷阱，与订单侧同一个判断。
          */
-        boolean scoped = storeNos != null && !storeNos.isEmpty()
-                && storeNos.stream().anyMatch(x -> x != null && !x.isBlank());
-        List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
-                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getEntityNo, merchantNo)
-                        .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
-                                .or().isNull(StlBill::getStoreNo))
-                        .orderByDesc(StlBill::getId)));
+        List<StlBill> bills = billsFor(merchantNo, storeNos);
         // 批次一次查齐再拼：逐单查的话，一屏 20 单就是 20 次往返
         var batches = batchesOf(bills);
         return bills.stream()
                 .map(b -> toVO(b, batches.get(b.getBatchNo())))
                 .toList();
     }
+
+    /**
+     * 商家可见的结算单（原始实体）。**merchantBills 与 dailyFlows 共用这一处谓词** ——
+     * 收窄规则写两遍迟早走岔，而走岔的表现是「每日流水加起来不等于总览」。
+     */
+    private List<StlBill> billsFor(String merchantNo, java.util.Collection<String> storeNos) {
+        boolean scoped = storeNos != null && !storeNos.isEmpty()
+                && storeNos.stream().anyMatch(x -> x != null && !x.isBlank());
+        return DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getEntityNo, merchantNo)
+                        .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
+                                .or().isNull(StlBill::getStoreNo))
+                        .orderByDesc(StlBill::getId)));
+    }
+
+    @Override
+    public SettleService.DailyFlowPageVO dailyFlows(String merchantNo, java.util.Collection<String> storeNos,
+                                      String from, String to) {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        long fromMs = java.time.LocalDate.parse(from).atStartOfDay(zone).toInstant().toEpochMilli();
+        // 上界取「to 那天的最后一毫秒」，不是次日零点 —— 后者会把次日零点整那一笔算进来
+        long toMs = java.time.LocalDate.parse(to).plusDays(1)
+                .atStartOfDay(zone).toInstant().toEpochMilli() - 1;
+
+        Map<String, long[]> acc = new java.util.TreeMap<>(java.util.Comparator.reverseOrder());
+        long undatedMinor = 0;
+        int undatedCount = 0;
+        for (StlBill b : billsFor(merchantNo, storeNos)) {
+            Long at = b.getAccruedAt();
+            if (at == null) {
+                /*
+                 * 没有成交日的存量行：**一天都归不进去**。
+                 * 悄悄丢掉等于让钱凭空消失，所以单独回一个合计让页面说出来
+                 * （与 merchantBills 放行无门店归属的行是同一条规矩）。
+                 * 它与区间无关 —— 没有日期就谈不上在不在区间里。
+                 */
+                undatedMinor += nz(b.getNetMinor());
+                undatedCount++;
+                continue;
+            }
+            if (at < fromMs || at > toMs) {
+                continue;
+            }
+            String day = java.time.Instant.ofEpochMilli(at).atZone(zone).toLocalDate().toString();
+            long[] a = acc.computeIfAbsent(day, k -> new long[6]);
+            if (StlBill.REVERSED.equals(b.getStatus())) {
+                // 退款回退：**只计 refund，不冲减当天的 gross/net** ——
+                // 被退的那笔在它自己成交的那天已经记过，在这里再减一次就是记两遍
+                a[1] += nz(b.getNetMinor());
+            } else {
+                a[0] += nz(b.getGrossMinor());
+                a[2] += nz(b.getCommissionMinor());
+                a[3] += nz(b.getServiceFeeMinor());
+                a[4] += nz(b.getNetMinor());
+            }
+            a[5]++;
+        }
+        List<SettleService.DailyFlowVO> days = acc.entrySet().stream()
+                .map(e -> new SettleService.DailyFlowVO(e.getKey(), e.getValue()[0], e.getValue()[1],
+                        e.getValue()[2], e.getValue()[3], e.getValue()[4], (int) e.getValue()[5]))
+                .toList();
+        return new SettleService.DailyFlowPageVO(days, undatedMinor, undatedCount);
+    }
+
 
     @Override
     public SettleBillVO merchantBill(String merchantNo, String settleNo) {

@@ -3,7 +3,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
 import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
-  WithdrawPage, WithdrawRecord, DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
+  DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PayoutAccount,
   PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
@@ -54,6 +54,7 @@ import type {
   VerifyReq,
 } from "./requests";
 import type {
+  DailyFlowPage,
   IncomeSummary,
   AppointmentSlot,
   BizScope,
@@ -462,7 +463,6 @@ export const httpApi: MerchantApi = {
   mVerifySearch: (keyword) =>
     http.get<PickupOrder[]>(E.mVerifySearch.path, { keyword }),
 
-  mWithdrawPage: () => http.get<WithdrawPage>(E.mWithdrawPage.path),
   mDeposit: () => http.get<DepositAccount>(E.mDeposit.path),
   mDepositTxns: () => http.get<DepositTxn[]>(E.mDepositTxns.path),
   mPendingInvoice: () => http.get<PendingInvoice>(E.mPendingInvoice.path),
@@ -470,8 +470,6 @@ export const httpApi: MerchantApi = {
   mMyInvoices: () => http.get<PurchaseInvoice[]>(E.mMyInvoices.path),
   mStatement: (period) => http.get<Statement>(E.mStatement.path, period ? { period } : undefined),
   mSubmitInvoice: (v) => http.post<PurchaseInvoice>(E.mSubmitInvoice.path, v),
-  mApplyWithdraw: (amountMinor: number) =>
-    http.post<WithdrawRecord>(E.mApplyWithdraw.path, { amountMinor }),
   mPayoutAccounts: () => http.get<PayoutAccount[]>(E.mPayoutAccounts.path),
   mSubmitPayoutAccount: (v) => http.post<PayoutAccount>(E.mSubmitPayoutAccount.path, v),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
@@ -596,6 +594,12 @@ export const httpApi: MerchantApi = {
 
   mIncomeSummary: (allStores) =>
     http.get<IncomeSummary>(E.mIncomeSummary.path, allStores ? { allStores: true } : undefined),
+  mDailyFlow: (q) =>
+    http.get<DailyFlowPage>(E.mDailyFlow.path, {
+      ...(q?.from ? { from: q.from } : {}),
+      ...(q?.to ? { to: q.to } : {}),
+      ...(q?.allStores ? { allStores: true } : {}),
+    }),
   mSettleList: (allStores) =>
     http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),

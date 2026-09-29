@@ -47,6 +47,18 @@ public interface BizSettleAppService {
      */
     SettleService.IncomeSummaryVO income(Boolean allStores);
 
+    /**
+     * 每日流水：<b>「我哪天赚了多少」</b>（TDD §3.3）。
+     *
+     * <p>门店收窄与 {@link #income} 用<b>同一个</b> {@code storeScope(allStores)} ——
+     * 顶部四档与下面这张表必须是同一批单算出来的，否则商家会看到
+     * 「四个数加起来不等于每日流水加起来」，而那种不一致比两处都错更难解释。
+     *
+     * @param from {@code yyyy-MM-dd}，含。为空 = 最近 30 天
+     * @param to   {@code yyyy-MM-dd}，含。为空 = 今天
+     */
+    SettleService.DailyFlowPageVO dailyFlows(String from, String to, Boolean allStores);
+
     /** 我的账期批次：这一批什么时候放、卡在哪。商家问客服最多的就是这个。 */
     List<SettleBatchService.BatchVO> batches();
 
@@ -71,24 +83,5 @@ public interface BizSettleAppService {
     /** 对账单。**这是凭证不是报表** —— 小微没有发票、没有对公流水 */
     StatementVO statement(String period);
 
-    /**
-     * 我能提多少 + 我的提现记录。
-     *
-     * <p>两个数一起给：只给「可提余额」的话，商家看不到上一笔在审的，
-     * 会以为钱少了一截；只给记录的话他得自己算还能提多少。
-     */
-    WithdrawPageVO myWithdraws();
 
-    /** 申请提现。金额单位为分 */
-    ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO applyWithdraw(long amountMinor);
-
-    /**
-     * @param withdrawableMinor 现在能提多少（已到账结算款 − 在途提现）
-     * @param minAmountMinor    单笔下限。**端上要用它禁用按钮**，
-     *                          不然商家点了才知道太少
-     * @param records           历史申请，倒序
-     */
-    record WithdrawPageVO(long withdrawableMinor, long minAmountMinor,
-                          List<ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO> records) {
-    }
 }

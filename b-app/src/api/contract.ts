@@ -5,6 +5,7 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type { PAY_MODE } from "@shared/utils/constants";
 import type {
+  DailyFlowPage,
   IncomeSummary,
   AppointmentSlot,
   Entity,
@@ -362,14 +363,6 @@ export interface DepositTxn {
   createdAt: string;
 }
 
-export interface WithdrawPage {
-  /** 现在能提多少（分）= 已到账结算款 − 在途提现 */
-  withdrawableMinor: number;
-  /** 单笔下限（分）。低于它渠道手续费比本金还贵 */
-  minAmountMinor: number;
-  records: WithdrawRecord[];
-}
-
 /** 收款账户状态。**只有 ACTIVE 能收钱** —— 待审的那张卡收不到这一期的货款 */
 export type PayoutAccountStatus = "PENDING" | "ACTIVE" | "REJECTED" | "DISABLED";
 
@@ -396,19 +389,6 @@ export interface PayoutAccount {
   /** 驳回原因，原样展示给店主 */
   auditRemark: string | null;
   auditedAt: number | null;
-}
-
-export interface WithdrawRecord {
-  withdrawNo: string;
-  /** 分 */
-  amount: number;
-  /** 申请那一刻的可提余额快照 —— 运营据此判断，不是「现在还有多少」 */
-  availableBalance: number;
-  /** PENDING / APPROVED / REJECTED / PAID / FAILED */
-  status: string;
-  appliedAt: string;
-  decidedAt: string | null;
-  remark: string | null;
 }
 
 export interface GoodsGuess {
@@ -1446,7 +1426,6 @@ export interface MerchantApi {
    * <b>三个数一起给</b>：只给可提余额的话，商家看不到上一笔在审的，
    * 会以为钱少了一截；没有下限的话他点了才知道太少。
    */
-  mWithdrawPage(): Promise<WithdrawPage>;
   mDeposit(): Promise<DepositAccount>;
   mDepositTxns(): Promise<DepositTxn[]>;
   mPendingInvoice(): Promise<PendingInvoice>;
@@ -1456,7 +1435,6 @@ export interface MerchantApi {
   mSubmitInvoice(v: { period: string; invoiceNumber: string; invoiceType: string;
     titleName: string; amountMinor: number }): Promise<PurchaseInvoice>;
   /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
-  mApplyWithdraw(amountMinor: number): Promise<WithdrawRecord>;
   /** 我的收款账户（含历史）。倒序，账号只有掩码 */
   mPayoutAccounts(): Promise<PayoutAccount[]>;
   /**
@@ -1776,6 +1754,14 @@ export interface MerchantApi {
   // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
   /** 收入按状态汇总（四个数）。**门店收窄与 mSettleBills 逐字一致** —— 否则总览与明细对不上 */
   mIncomeSummary(allStores?: boolean): Promise<IncomeSummary>;
+
+  /**
+   * 每日流水：**「我哪天赚了多少」**。与 {@link mIncomeSummary} 用同一套门店收窄，
+   * 所以顶部四档与这张表必然对得上。
+   *
+   * @param q `from`/`to` 是 yyyy-MM-dd 含两端；都不传 = 最近 30 天
+   */
+  mDailyFlow(q?: { from?: string; to?: string; allStores?: boolean }): Promise<DailyFlowPage>;
 
   mPointsAccount(): Promise<MerchantPointAccount>;
   /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */

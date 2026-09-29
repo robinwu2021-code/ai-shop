@@ -65,6 +65,25 @@ public class BizSettleController {
     }
 
     /**
+     * 每日流水：<b>「我哪天赚了多少」</b>（TDD §3.3）。
+     *
+     * <p>与 {@code /income} 的分工：那个按状态答「钱在哪一档」，这个按天答「哪天挣的」。
+     * 两处<b>共用同一套门店收窄</b>，所以页面上顶部四档与这张表必然对得上。
+     *
+     * <p>路径用<b>单数</b>：/biz 的资源段一律单数（复数是 /ops 的约定），有守卫盯着。
+     *
+     * @param from {@code yyyy-MM-dd}，含；为空 = 最近 30 天
+     * @param to   {@code yyyy-MM-dd}，含；为空 = 今天
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
+    @GetMapping("/biz/settle/daily-flow")
+    public SettleService.DailyFlowPageVO dailyFlow(@RequestParam(required = false) String from,
+                                                   @RequestParam(required = false) String to,
+                                                   @RequestParam(required = false) Boolean allStores) {
+        return app.dailyFlows(from, to, allStores);
+    }
+
+    /**
      * 我的账期批次：<b>这一批什么时候放、卡在哪</b>。
      *
      * <p>与 {@code /bills} 的分工：那个按单看「这一笔多少钱」，
@@ -174,32 +193,16 @@ public class BizSettleController {
     }
 
 
-    /**
-     * 我的提现：可提余额 + 下限 + 历史记录。
+    /*
+     * ── 提现入口已撤（ADR-011 · TDD §6 第 4 条，2026-09-29）──
      *
-     * <p><b>这条与下面的申请一起，是提现功能的第一次落地</b> ——
-     * 此前提现单在生产代码里从没被创建过，运营端的审批页永远是空的。
-     */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
-    @GetMapping("/biz/settle/withdraw")
-    public ai.neargo.shop.payclient.BizSettleAppService.WithdrawPageVO withdraws() {
-        return app.myWithdraws();
-    }
-
-    /**
-     * 申请提现。
+     * 这里原来有 GET/POST /biz/settle/withdraw：商家申请、平台审批后打款。
+     * **撤掉的是合规问题，不是功能问题**：平台自己决定把钱打给商家
+     * 属于二清（见 ADR-002），而自营供应商模式下钱本来就按账期打 ——
+     * 商家要做的是把收款账户填对（/biz/payout-account），不是「申请提现」。
      *
-     * <p><b>金额单位是分</b>，与全站契约一致（浮点不进钱的接口）。
-     * 三道校验在 service 层：金额下限、可提余额、唯一在途单 ——
-     * 放在这里的话，将来多一个入口（运营代申请）就会漏掉。
+     * 留着接口而只撤界面等于没撤：接口在，就还能被调。
+     * 生产上提现单 0 行，所以现在撤代价最小。
+     * 运营端的审批页仍在（历史单与将来可能的别的来源），但不会再有新申请。
      */
-    @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
-    @PostMapping("/biz/settle/withdraw")
-    public ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO applyWithdraw(@RequestBody ApplyWithdrawReq req) {
-        return app.applyWithdraw(req.amountMinor());
-    }
-
-    /** @param amountMinor 申请金额（分） */
-    public record ApplyWithdrawReq(long amountMinor) {
-    }
 }

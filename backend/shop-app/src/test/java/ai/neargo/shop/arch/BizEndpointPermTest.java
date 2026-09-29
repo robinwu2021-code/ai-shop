@@ -416,9 +416,9 @@ class BizEndpointPermTest {
 
         // ---- 钱 ----
         // 提现（V288 新增）：与结算同一把权限 —— 能看账的才能提钱
-        put("/biz/settle/withdraw", BizPerms.FINANCE);
         put("/biz/settle/bills", BizPerms.FINANCE);
         put("/biz/settle/income", BizPerms.FINANCE);
+        put("/biz/settle/daily-flow", BizPerms.FINANCE);
         put("/biz/settle/bills/{settleNo}", BizPerms.FINANCE);
         put("/biz/settle/rate-card", BizPerms.FINANCE);
         // 进项票是财务的事，与结算单同一档：能看账的人才该经手开票与对账

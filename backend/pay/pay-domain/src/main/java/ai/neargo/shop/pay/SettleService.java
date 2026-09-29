@@ -92,6 +92,50 @@ public interface SettleService {
     IncomeSummaryVO incomeSummary(String merchantNo, java.util.Collection<String> storeNos);
 
     /**
+     * 每日流水：<b>「我哪天赚了多少」</b>（TDD-供应商结算与双轨资金 §3.3）。
+     *
+     * <p>与 {@link #incomeSummary} 的分工：那个答「钱在哪一档」（状态维），
+     * 这个答「哪天挣的」（时间维）。页面上顶部四档仍用 incomeSummary，
+     * <b>不在这里重算一遍</b> —— 两处各算一次必然漂移，而漂移的那天没人会发现。
+     *
+     * <p><b>按成交日（{@code accrued_at}）聚合</b>，与运营端三维统计逐字同一个口径。
+     * 不用 {@code created_at}（补数或重算会让它漂移），也不用
+     * {@code settleable_at}（那答的是「什么时候能结」）。
+     *
+     * @param from {@code yyyy-MM-dd}，含
+     * @param to   {@code yyyy-MM-dd}，含
+     */
+    DailyFlowPageVO dailyFlows(String merchantNo, java.util.Collection<String> storeNos,
+                               String from, String to);
+
+    /**
+     * @param day             {@code yyyy-MM-dd}
+     * @param grossMinor      成交额
+     * @param refundMinor     退掉的（{@code REVERSED} 的净额合计，<b>正数</b>）。
+     *                        结算单上没有退款列，退款走的是回退单 —— 所以这一列的来源
+     *                        与其余几列不同，不是同一张单上的另一个字段
+     * @param netMinor        商家净额。<b>不含 refund</b>：退掉的那笔在它自己那一天已经记过
+     * @param billCount       笔数。只给金额看不出「一笔大的还是很多笔」
+     */
+    record DailyFlowVO(String day, long grossMinor, long refundMinor,
+                       long commissionMinor, long serviceFeeMinor,
+                       long netMinor, int billCount) {
+    }
+
+    /**
+     * @param days          按天倒序（最近的在前）。<b>没有流水的那天不占一行</b> ——
+     *                      补零会让一屏里大半是空行，而商家要找的是「有动静的那几天」
+     * @param undatedMinor  <b>没有成交日的结算单合计</b>（{@code accrued_at} 为空的存量行）。
+     *                      它们一天都归不进去，而**悄悄丢掉等于让钱凭空消失** ——
+     *                      与 merchantBills 放行无门店归属的行是同一条规矩：
+     *                      宁可多一行说明，也不让商家看到一个对不上的总数
+     * @param undatedCount  这样的单有几张
+     */
+    record DailyFlowPageVO(java.util.List<DailyFlowVO> days,
+                           long undatedMinor, int undatedCount) {
+    }
+
+    /**
      * @param receivedMinor  已到账：通道回执确认过的（{@code SPLIT_CONFIRMED} / 自营 {@code PAID}）
      * @param inFlightMinor  已发起，等通道确认（{@code SPLIT}）——
      *                       <b>这一档是本批新拆出来的</b>，此前它混在「已到账」里

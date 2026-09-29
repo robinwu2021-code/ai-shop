@@ -211,7 +211,6 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   // 提现（V288）。**读与写分开两条**：读给出「能提多少 + 下限 + 记录」，
   // 写只接一个金额 —— 让端上没法把「可提余额」当成入参传回去。
-  mWithdrawPage: { method: "GET", path: "/biz/settle/withdraw", auth: true, summary: "我的提现" },
   mDeposit: { method: "GET", path: "/biz/deposit", auth: true, summary: "保证金账户" },
   mDepositTxns: { method: "GET", path: "/biz/deposit/txns", auth: true, summary: "保证金流水" },
   mPendingInvoice: { method: "GET", path: "/biz/settle/invoice-pending", auth: true, summary: "待开票摘要" },
@@ -219,7 +218,6 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mMyInvoices: { method: "GET", path: "/biz/settle/invoices", auth: true, summary: "我提交的票" },
   mStatement: { method: "GET", path: "/biz/settle/statement", auth: true, summary: "对账单" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
-  mApplyWithdraw: { method: "POST", path: "/biz/settle/withdraw", auth: true, summary: "申请提现" },
 
   // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：
   // /biz 约定单数，而「我的收款账户」读的是列表、写的是一张新卡，
@@ -313,6 +311,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
   // 这里只有他自己发分的成本，以及开关。
   mIncomeSummary: { method: "GET", path: "/biz/settle/income", auth: true, summary: "收入按状态汇总" },
+  // 每日流水：与上面那条**同一批结算单的另一种切法**（按天，不按状态）
+  mDailyFlow: { method: "GET", path: "/biz/settle/daily-flow", auth: true, summary: "每日流水" },
 
   mPointsAccount: {
     method: "GET",

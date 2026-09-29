@@ -42,7 +42,6 @@ export const orderMock: Pick<MerchantApi,
   | "mPickupOrders"
   | "mPickingList"
   | "mMarkArrived"
-  | "mWithdrawPage"
   | "mDeposit"
   | "mDepositTxns"
   | "mPendingInvoice"
@@ -50,7 +49,6 @@ export const orderMock: Pick<MerchantApi,
   | "mInvoiceTitle"
   | "mMyInvoices"
   | "mSubmitInvoice"
-  | "mApplyWithdraw"
   | "mPayoutAccounts"
   | "mSubmitPayoutAccount"
   | "mAfterSaleList"
@@ -332,19 +330,6 @@ export const orderMock: Pick<MerchantApi,
   },
 
   // ---------------------------------------------------------------- 售后
-  async mWithdrawPage() {
-    // mock 里给一个「有钱可提、有一笔在审」的状态 —— 两种情况都要能看到
-    return {
-      withdrawableMinor: 128_600,
-      minAmountMinor: 1000,
-      records: [
-        { withdrawNo: "WD-MOCK-2", amount: 50_000, availableBalance: 178_600,
-          status: "PENDING", appliedAt: "2026-09-01 10:20", decidedAt: null, remark: null },
-        { withdrawNo: "WD-MOCK-1", amount: 20_000, availableBalance: 198_600,
-          status: "PAID", appliedAt: "2026-08-20 09:00", decidedAt: "2026-08-21 14:30", remark: null },
-      ],
-    };
-  },
 
   /*
    * mock 给一个**不够**的状态：够的那一半没什么可看的，
@@ -459,10 +444,6 @@ export const orderMock: Pick<MerchantApi,
     };
   },
 
-  async mApplyWithdraw(amountMinor: number) {
-    return { withdrawNo: "WD-MOCK-NEW", amount: amountMinor, availableBalance: 128_600,
-      status: "PENDING", appliedAt: "刚刚", decidedAt: null, remark: null };
-  },
 
   async mPayoutAccounts() {
     // 给「一张在用 + 一张被驳回」两种状态 —— 驳回原因要能在界面上看到，

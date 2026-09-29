@@ -159,16 +159,12 @@ onShow(() => {
     <text class="txt-display">{{ $t("settle.title") }}</text>
 
     <!--
-      两个入口摆在最上面。**它们是「钱去哪了」的另外两半** ——
-      结算单说的是「挣了多少」，提现说的是「怎么拿出来」，
-      保证金说的是「押着多少、还差多少」。三件事商家都要看，
-      而后两件此前<b>没有任何地方能走到</b>。
+      入口摆在最上面。**它们是「钱去哪了」的另外几半** ——
+      结算单说的是「挣了多少」，收款账户说的是「打到哪张卡」，
+      保证金说的是「押着多少、还差多少」。
+      （提现入口已撤：钱按账期打，不走申请，见 ADR-011。）
     -->
     <view class="entries sh-row">
-      <view class="entries__item sh-card" @tap="go(ROUTES.withdraw)">
-        <text class="txt-title">{{ $t("withdraw.title") }}</text>
-        <text class="sh-muted entries__hint">{{ $t("settle.entryWithdraw") }}</text>
-      </view>
       <view class="entries__item sh-card" @tap="go(ROUTES.payoutAccount)">
         <text class="txt-title">{{ $t("payoutAccount.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryPayoutAccount") }}</text>

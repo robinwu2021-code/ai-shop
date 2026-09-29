@@ -4,7 +4,7 @@
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
 import { assertTransition, db, delay, persist, pushMessage } from "@shared/mock/db";
-import type { MyDebt, MySettleBatch, SettleBill, VerifyBatchResult } from "@shared/types";
+import type { DailyFlowPage, MyDebt, MySettleBatch, SettleBill, VerifyBatchResult } from "@shared/types";
 import { SETTLE } from "@shared/utils/constants";
 import {
   AFTER_SALE_MS,
@@ -24,6 +24,7 @@ import type { MerchantApi } from "../contract";
 export const settleMock: Pick<MerchantApi,
   "mRateCard"
   | "mIncomeSummary"
+  | "mDailyFlow"
   | "mSettleList"
   | "mSettleBatches"
   | "mMyDebt"
@@ -68,6 +69,54 @@ export const settleMock: Pick<MerchantApi,
       oldestInFlightAt: inFlight.length
         ? Math.min(...inFlight.map((b) => b.splitAt ?? b.createdAt))
         : null,
+    });
+  },
+
+  /*
+   * 每日流水。**与 mIncomeSummary 一样从 mSettleList 出发**，不另造一套数 ——
+   * 两处口径不同的话，页面上顶部四档与下面这张表就会对不上，
+   * 而那正是这一屏最不该出的错。
+   *
+   * ⚠️ 两处与真后端不同，都是**刻意的**：
+   *   1. 按 `createdAt` 分天，真后端按 `accrued_at`（成交日）。端上的 SettleBill
+   *      没有这一列，mock 只驱动界面，不做口径判据。
+   *   2. **最早那一张算进 undated**，让「没有成交日的存量单」那一行在 mock 下
+   *      也看得见 —— 否则那块界面永远是隐藏的，改坏了也没人发现。
+   */
+  async mDailyFlow(q) {
+    const bills = await this.mSettleList(q?.allStores);
+    const sorted = [...bills].sort((a, b) => a.createdAt - b.createdAt);
+    const undated = sorted.length > 2 ? sorted.slice(0, 1) : [];
+    const dated = sorted.slice(undated.length);
+
+    const from = q?.from ? Date.parse(`${q.from}T00:00:00`) : 0;
+    const to = q?.to ? Date.parse(`${q.to}T23:59:59.999`) : Number.MAX_SAFE_INTEGER;
+
+    const byDay = new Map<string, DailyFlowPage["days"][number]>();
+    for (const b of dated) {
+      if (b.createdAt < from || b.createdAt > to) continue;
+      const d = new Date(b.createdAt);
+      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const row = byDay.get(day) ?? {
+        day, grossMinor: 0, refundMinor: 0, commissionMinor: 0,
+        serviceFeeMinor: 0, netMinor: 0, billCount: 0,
+      };
+      if (b.status === "REVERSED") {
+        // 退款回退只进 refund：被退的那笔在它自己成交那天已经记过
+        row.refundMinor += b.netMinor;
+      } else {
+        row.grossMinor += b.grossMinor;
+        row.commissionMinor += b.commissionMinor;
+        row.serviceFeeMinor += b.serviceFeeMinor;
+        row.netMinor += b.netMinor;
+      }
+      row.billCount += 1;
+      byDay.set(day, row);
+    }
+    return delay({
+      days: [...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : -1)),
+      undatedMinor: undated.reduce((n, b) => n + b.netMinor, 0),
+      undatedCount: undated.length,
     });
   },
 

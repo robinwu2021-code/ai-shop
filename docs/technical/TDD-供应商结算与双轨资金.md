@@ -251,13 +251,22 @@ record DailyFlowVO(String day, long grossMinor, long refundMinor,
                    long commissionMinor, long serviceFeeMinor,
                    long netMinor, int billCount) {}
 
-List<DailyFlowVO> dailyFlows(String from, String to, String storeNo);
+record DailyFlowPageVO(List<DailyFlowVO> days, long undatedMinor, int undatedCount) {}
+
+DailyFlowPageVO dailyFlows(String merchantNo, Collection<String> storeNos,
+                           String from, String to);     // GET /biz/settle/daily-flow
 ```
 
-- **按成交日聚合**（已定，见 §6）
+- **按成交日（`accrued_at`）聚合**（已定，见 §6），与运营端三维统计逐字同一个口径
 - 顶部四档余额**复用 `incomeSummary()`，不重算**——两处各算一次必然漂移，
   而漂移的那天没人会发现
-- `storeNo` 为空 = 全部门店
+- 门店收窄与 `merchantBills` **共用同一处谓词**（`billsFor`），
+  含「放行没有门店归属的存量行」那条实测出来的规则
+- **实现时多出来的一层**：`DailyFlowPageVO` 的 `undatedMinor/Count` ——
+  `accrued_at` 为空的存量单一天都归不进去，而悄悄丢掉等于让钱凭空消失
+  （商家把每天加起来会发现对不上总览）。页面把这一行说出来
+- 退款回退（`REVERSED`）**只进 `refundMinor`，不冲减当天的 gross/net**：
+  被退的那笔在它自己成交的那天已经记过，再减一次就是记两遍
 
 ### 3.4 新活四：付款清单导出 + 银行流水回读
 
@@ -334,7 +343,7 @@ CREATE TABLE IF NOT EXISTS stl_bank_flow (...)  -- 银行流水镜像，字段�
 | 1 | 每日流水按哪个日期聚合 | **成交日** —— 商家心里的"今天赚了多少"是这个 |
 | 2 | 账期档位 | **按供应商分档配置**（`SettleCycles` 已支持按主体配），不是全局一档 |
 | 3 | 无票供应商 | **保留现有机制**（显式标 `NO_INVOICE` + critical 审计），**并在运营端显示无票累计金额** —— 让财务看得见税务敞口。是否收紧为"只做有票供应商"属商务决定，不在本次 |
-| 4 | `POST /biz/settle/withdraw` 与 b-app 提现页 | **撤入口，改为「我的收款」**。生产 0 行，现在改代价最小 |
+| 4 | `POST /biz/settle/withdraw` 与 b-app 提现页 | **撤入口，改为「我的收款」**。生产 0 行，现在改代价最小。**2026-09-29 已执行**：页面、路由、端上契约与后端两个端点一起撤（留着接口只撤界面等于没撤）；运营端审批页仍在，但不会再有新申请 |
 | 5 | 银行流水接入 | **一期人工上传 CSV**；银企直连另立 |
 | 6 | 统计维度 | 门店 / 主体 / 收款商户号**三个都做**，口径见 §2.1 |
 

@@ -514,12 +514,6 @@
       }
     },
     {
-      "path": "pages/withdraw/index",
-      "style": {
-        "navigationBarTitleText": "提现"
-      }
-    },
-    {
       "path": "pages/payout-account/index",
       "style": {
         "navigationBarTitleText": "收款账户"

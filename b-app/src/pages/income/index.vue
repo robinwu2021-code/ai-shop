@@ -12,7 +12,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime, monthDay } from "@shared/utils/datetime";
-import type { IncomeSummary, MyDebt, MySettleBatch } from "@shared/types";
+import type { DailyFlowPage, IncomeSummary, MyDebt, MySettleBatch } from "@shared/types";
 
 const merchant = useMerchantStore();
 const canView = computed(() => merchant.can("biz:finance"));
@@ -33,6 +33,16 @@ const batches = ref<MySettleBatch[]>([]);
  * 给每个人挂一行「欠款 ¥0.00」只会让人以为自己出了什么事。
  */
 const debt = ref<MyDebt | null>(null);
+
+/**
+ * 每日流水：**按成交日**，与上面四档同一批结算单的另一种切法。
+ *
+ * 放在这一页而不是单开一屏：四档答「有多少」，账期答「哪天到」，
+ * 这张表答「哪天挣的」—— 三个问题在同一屏上，商家才对得起来。
+ * 顶部四档仍用 income 那个接口，**这里不重算一遍**：
+ * 两处各算一次必然漂移，而漂移的那天没人会发现。
+ */
+const daily = ref<DailyFlowPage | null>(null);
 
 /**
  * 在途卡了多久。**只给金额的话商家看不出是一笔大的还是很多笔**，
@@ -71,14 +81,17 @@ async function load() {
    * 而收入才是这一页存在的理由。
    */
   try {
-    const [s, b, d] = await Promise.all([
+    const [s, b, d, f] = await Promise.all([
       api.mIncomeSummary(allStores.value),
       api.mSettleBatches().catch(() => []),
       api.mMyDebt().catch(() => null),
+      // 每日流水也单独 catch：它是新接的口子，老后端上 404，不该把收入带走
+      api.mDailyFlow({ allStores: allStores.value }).catch(() => null),
     ]);
     sum.value = s;
     batches.value = b;
     debt.value = d;
+    daily.value = f;
     failed.value = false;
   } catch {
     // 收入那一件没兜底（见上），它挂了整页就没内容 —— 那正是要说出来的时候
@@ -187,6 +200,40 @@ onShow(() => {
     </view>
 
     <!--
+      每日流水。**放在账期之后** —— 先答「有多少」「哪天到」，再答「哪天挣的」。
+      没有流水的那天不占一行：补零会让一屏里大半是空行，
+      而商家要找的是有动静的那几天。
+    -->
+    <view v-if="daily" class="sh-card sh-mt-sm">
+      <text class="txt-title">{{ $t("income.dailyTitle") }}</text>
+      <text class="txt-caption sub sh-muted">{{ $t("income.dailyHint") }}</text>
+
+      <view v-for="d in daily.days" :key="d.day" class="day">
+        <view class="sh-row sh-row--between sh-row--baseline">
+          <text class="sh-num">{{ d.day }}</text>
+          <text class="txt-price sh-num">{{ money(d.netMinor) }}</text>
+        </view>
+        <text class="txt-caption sub sh-muted">
+          {{ $t("income.dailyBills", { n: d.billCount }) }}
+          <!-- 退款只在有的时候出现：常态是没有，挂一行「退 ¥0.00」只会让人以为出了事 -->
+          <text v-if="d.refundMinor > 0">　{{ $t("income.dailyRefund", { a: money(d.refundMinor) }) }}</text>
+        </text>
+      </view>
+
+      <!--
+        没有成交日的存量单。**不能悄悄丢掉** —— 丢了的话商家把每天加起来
+        会发现对不上上面的总览，而那种不一致他只会理解成「平台算错了我的钱」。
+      -->
+      <text v-if="daily.undatedCount > 0" class="txt-caption sub sh-muted">
+        {{ $t("income.dailyUndated", { n: daily.undatedCount, a: money(daily.undatedMinor) }) }}
+      </text>
+
+      <text v-if="!daily.days.length && !daily.undatedCount" class="txt-caption sub sh-muted">
+        {{ $t("income.dailyEmpty") }}
+      </text>
+    </view>
+
+    <!--
       欠款。**余额为 0 时整块不出现** —— 这是绝大多数商家的常态。
       它也不参与上面四档的加减：那四档是「平台要给我的」，这一笔是「我欠平台的」。
     -->
@@ -221,6 +268,9 @@ onShow(() => {
   margin-top: 8rpx;
 }
 .batch {
+  margin-top: 24rpx;
+}
+.day {
   margin-top: 24rpx;
 }
 .batch__chip {
