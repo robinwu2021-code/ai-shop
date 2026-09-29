@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **181** 张表、**282** 条引用关系，分 **16** 个域。
+全库 **186** 张表、**291** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,10 +13,10 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 消费者账号 | `usr_*` | 8 | 13 |
+| 消费者账号 | `usr_*` | 8 | 14 |
 | 商家主体与门店 | `mch_*` | 27 | 12 |
 | 社区与自提点 | `cmt_*` | 3 | 8 |
-| 商品与类目 | `prd_*` | 22 | 8 |
+| 商品与类目 | `prd_*` | 27 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
 | 交易 | `ord_*` | 6 | 8 |
 | 履约 | `ful_*` | 8 | 0 |
@@ -30,7 +30,7 @@
 | 券与活动 | `pmt_*` | 12 | 3 |
 | 系统 | `sys_*` | 26 | 0 |
 
-> `usr` 被 13 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
+> `usr` 被 14 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
@@ -99,7 +99,7 @@
 
 **跨域引用**：`cmt_pickup_point.group_no` → `mkt_group_buy`、`cmt_community_apply.entity_no` → `mch_entity`
 
-### 商品与类目 `prd_*`（22 张）
+### 商品与类目 `prd_*`（27 张）
 
 ![商品与类目表关系](../diagrams/db-prd.svg)
 
@@ -127,8 +127,13 @@
 | `prd_category_pay_mode` | 类目 × 支付方式：没有行即放行，插 allowed=0 才是禁止 |
 | `prd_category_points` | 类目积分规则：平台统一按类目管理，商家不配 |
 | `prd_goods_draft` | 商品草稿：线上照卖旧版，编辑落这里。发布=事务换版+物理删行 |
+| `prd_goods_favorite` | 商品收藏：买家 × 商品 |
+| `prd_entity_category_inv` | 主体按类目设置记不记库存。稀疏：没有行 = 平台默认。行只改不删，唯一键不含 deleted |
+| `prd_sell_rule` | 门店线上可售规则。行只改不删，唯一键不含 deleted |
+| `prd_store_stock_sync` | 门店库存同步开关与期初对齐 |
+| `prd_stock_sync_log` | 进销存 → 商城写回明细 |
 
-**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_community_pool.store_no` → `mch_store`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`、`prd_goods_draft.entity_no` → `mch_entity`
+**跨域引用**：`prd_community_pool.community_no` → `cmt_community`、`prd_community_pool.entity_no` → `mch_entity`、`prd_community_pool.store_no` → `mch_store`、`prd_goods.entity_no` → `mch_entity`、`prd_sku.entity_no` → `mch_entity`、`prd_spec_template.entity_no` → `mch_entity`、`prd_stock_lock.store_no` → `mch_store`、`prd_store_stock.store_no` → `mch_store`、`prd_store_stock.entity_no` → `mch_entity`、`prd_store_goods.store_no` → `mch_store`、`prd_store_goods.entity_no` → `mch_entity`、`prd_store_price.store_no` → `mch_store`、`prd_store_price.entity_no` → `mch_entity`、`prd_topic_goods.entity_no` → `mch_entity`、`prd_spec_dim.entity_no` → `mch_entity`、`prd_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec.entity_no` → `mch_entity`、`prd_merchant_spec_value.entity_no` → `mch_entity`、`prd_merchant_spec_override.merchant_no` → `mch_entity`、`prd_goods_draft.entity_no` → `mch_entity`、`prd_goods_favorite.user_no` → `usr_account`、`prd_entity_category_inv.entity_no` → `mch_entity`、`prd_sell_rule.store_no` → `mch_store`、`prd_store_stock_sync.store_no` → `mch_store`、`prd_store_stock_sync.entity_no` → `mch_entity`、`prd_stock_sync_log.store_no` → `mch_store`
 
 ### 购物车 `trd_*`（2 张）
 
