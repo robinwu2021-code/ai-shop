@@ -23223,6 +23223,78 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
+          "key": "err.elec.batch_empty",
+          "zh-CN": "没有可以上架的行",
+          "en": "There are no rows to list",
+          "ar": "لا توجد صفوف يمكن عرضها"
+        },
+        {
+          "key": "err.elec.batch_expired",
+          "zh-CN": "这次预览已经过期，请重新上传",
+          "en": "This preview has expired. Please upload again",
+          "ar": "انتهت صلاحية هذه المعاينة. يرجى الرفع مجددًا"
+        },
+        {
+          "key": "err.elec.not_supplier",
+          "zh-CN": "你还不是供应商，先完成入驻",
+          "en": "You are not a supplier yet. Please sign up first",
+          "ar": "لست مورّدًا بعد. يرجى التسجيل أولاً"
+        },
+        {
+          "key": "err.elec.phone_required",
+          "zh-CN": "请先绑定手机号，平台需要联系你",
+          "en": "Please link a phone number first so we can contact you",
+          "ar": "يرجى ربط رقم هاتف أولاً حتى نتمكن من التواصل معك"
+        },
+        {
+          "key": "err.elec.quote_expired",
+          "zh-CN": "报价已过期，请重新询价",
+          "en": "This quote has expired. Please request a new quote",
+          "ar": "انتهت صلاحية عرض السعر. يرجى طلب تسعير جديد"
+        },
+        {
+          "key": "err.elec.rfq_lines_invalid",
+          "zh-CN": "询价要有 1 到 {0} 行，每行填料号和数量",
+          "en": "A quote request needs 1 to {0} lines, each with a part number and quantity",
+          "ar": "يجب أن يحتوي طلب التسعير على 1 إلى {0} أسطر، كل سطر برقم قطعة وكمية"
+        },
+        {
+          "key": "err.elec.rfq_state",
+          "zh-CN": "这张询价单现在不能这么操作，请刷新后再看",
+          "en": "This quote request cannot be changed right now. Please refresh and try again",
+          "ar": "لا يمكن تنفيذ هذا الإجراء على طلب التسعير الآن. يرجى التحديث والمحاولة مجددًا"
+        },
+        {
+          "key": "err.elec.supplier_exists",
+          "zh-CN": "你已经是供应商了",
+          "en": "You are already a supplier",
+          "ar": "أنت مورّد بالفعل"
+        },
+        {
+          "key": "err.elec.supplier_suspended",
+          "zh-CN": "供应商账号已暂停，请联系平台",
+          "en": "Your supplier account is suspended. Please contact us",
+          "ar": "حساب المورّد موقوف. يرجى التواصل معنا"
+        },
+        {
+          "key": "err.elec.upload_format",
+          "zh-CN": "只支持 .xlsx 和 .csv。如果是 .xls，请在 Excel 里另存为 .xlsx 再上传",
+          "en": "Only .xlsx and .csv are supported. For .xls files, save as .xlsx in Excel and upload again",
+          "ar": "يُدعم فقط ‎.xlsx و‎.csv. لملفات ‎.xls احفظها بصيغة ‎.xlsx في Excel ثم ارفعها مجددًا"
+        },
+        {
+          "key": "err.elec.upload_no_header",
+          "zh-CN": "表里没找到「型号」和「数量」两列，请检查表头",
+          "en": "Could not find the part number and quantity columns. Please check the header row",
+          "ar": "لم يتم العثور على عمودي رقم القطعة والكمية. يرجى التحقق من صف العناوين"
+        },
+        {
+          "key": "err.elec.upload_too_many_rows",
+          "zh-CN": "一次最多上传 {0} 行，请分成几张表",
+          "en": "Up to {0} rows per upload. Please split the sheet",
+          "ar": "الحد الأقصى {0} صف في كل رفع. يرجى تقسيم الجدول"
+        },
+        {
           "key": "err.express.channel_off",
           "zh-CN": "平台快递代下单还没开通，请先自己叫快递并填写运单号",
           "en": "Courier booking is not available yet. Book a courier yourself and enter the tracking number",
@@ -24384,6 +24456,97 @@
       "zh": "榜单配置。",
       "module": "shop-core",
       "package": "ai.neargo.shop.content.entity"
+    },
+    {
+      "table": "elc_manufacturer",
+      "class": "ElcManufacturer",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_mfr_alias",
+      "class": "ElcMfrAlias",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_part",
+      "class": "ElcPart",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_part_key",
+      "class": "ElcPartKey",
+      "zh": "料号分段键：料号从某个字母/数字交界处起的后缀，让中段也能按前缀索引搜到。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_part_market",
+      "class": "ElcPartMarket",
+      "zh": "买家面的库存投影。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_rfq",
+      "class": "ElcRfq",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_rfq_line",
+      "class": "ElcRfqLine",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_search_daily",
+      "class": "ElcSearchDaily",
+      "zh": "搜索需求日聚合。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_stock",
+      "class": "ElcStock",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_stock_batch",
+      "class": "ElcStockBatch",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_stock_batch_row",
+      "class": "ElcStockBatchRow",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_supplier",
+      "class": "ElcSupplier",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_supplier_member",
+      "class": "ElcSupplierMember",
+      "zh": "",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
     },
     {
       "table": "ful_batch",
@@ -25767,6 +25930,195 @@
   ],
   "dictionaries": {
     "javaConstantGroups": [
+      {
+        "host": "ElcManufacturer",
+        "name": "UNKNOWN",
+        "value": "UNKNOWN",
+        "zh": "厂牌不明时的占位码。",
+        "module": "elec"
+      },
+      {
+        "host": "ElcPart",
+        "name": "SOURCE_UPLOAD",
+        "value": "UPLOAD",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcPart",
+        "name": "STATUS_PENDING",
+        "value": "PENDING",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcPart",
+        "name": "STATUS_MERGED",
+        "value": "MERGED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcRfq",
+        "name": "STATUS_SUBMITTED",
+        "value": "SUBMITTED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcRfq",
+        "name": "STATUS_QUOTED",
+        "value": "QUOTED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcRfq",
+        "name": "STATUS_ACCEPTED",
+        "value": "ACCEPTED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcRfq",
+        "name": "STATUS_CLOSED",
+        "value": "CLOSED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcRfq",
+        "name": "STATUS_EXPIRED",
+        "value": "EXPIRED",
+        "zh": "不落库：QUOTED 且过了报价有效期时，对外显示成它",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStock",
+        "name": "STATUS_ON",
+        "value": "ON",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStock",
+        "name": "STATUS_DELISTED",
+        "value": "DELISTED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_PARSED",
+        "value": "PARSED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_APPLIED",
+        "value": "APPLIED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcSupplier",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcSupplier",
+        "name": "STATUS_SUSPENDED",
+        "value": "SUSPENDED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcSupplierMember",
+        "name": "ROLE_OWNER",
+        "value": "OWNER",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcSupplierMember",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecStockImportServiceImpl",
+        "name": "MODE_MERGE",
+        "value": "MERGE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecStockImportServiceImpl",
+        "name": "MODE_REPLACE",
+        "value": "REPLACE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "ONE",
+        "value": "ONE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "FEW",
+        "value": "FEW",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "MANY",
+        "value": "MANY",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "PART",
+        "value": "EP",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "SUPPLIER",
+        "value": "ES",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "BATCH",
+        "value": "EB",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "STOCK",
+        "value": "EK",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "RFQ",
+        "value": "EQ",
+        "zh": "",
+        "module": "elec"
+      },
       {
         "host": "TestPayGateway",
         "name": "CHANNEL",
@@ -32315,10 +32667,36 @@
           "SPEC_TEMPLATE_DUPLICATE",
           "SPEC_VALUE_NEEDS_QUANTITY",
           "NOTIFY_WX_QUOTA_EMPTY",
-          "NOTIFY_NO_DEVICE"
+          "NOTIFY_NO_DEVICE",
+          "ELEC_PHONE_REQUIRED",
+          "ELEC_NOT_SUPPLIER",
+          "ELEC_SUPPLIER_EXISTS",
+          "ELEC_SUPPLIER_SUSPENDED",
+          "ELEC_UPLOAD_FORMAT",
+          "ELEC_UPLOAD_NO_HEADER",
+          "ELEC_UPLOAD_TOO_MANY_ROWS",
+          "ELEC_BATCH_EXPIRED",
+          "ELEC_BATCH_EMPTY",
+          "ELEC_RFQ_LINES_INVALID",
+          "ELEC_RFQ_STATE",
+          "ELEC_QUOTE_EXPIRED"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
+      },
+      {
+        "name": "Field",
+        "values": [
+          "MPN",
+          "MFR",
+          "QTY",
+          "DC",
+          "PACKAGE",
+          "PRICE",
+          "MOQ"
+        ],
+        "zh": "可以映射的字段。",
+        "module": "elec"
       },
       {
         "name": "JobStatus",
@@ -34629,6 +35007,94 @@
     ]
   },
   "constants": [
+    {
+      "host": "ElecInternal",
+      "name": "SESSION",
+      "type": "String",
+      "value": "\"/internal/elec/session\"",
+      "zh": "认令牌：C 端令牌（ctk_）或运营令牌（otk_）→ 是谁",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "USER",
+      "type": "String",
+      "value": "\"/internal/elec/user/{userNo}\"",
+      "zh": "取一个用户验证过的手机号",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "NOTIFY_QUOTED",
+      "type": "String",
+      "value": "\"/internal/elec/notify/quoted\"",
+      "zh": "询价有结果了：发微信订阅消息 + 站内信给买家",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "TOKEN_HEADER",
+      "type": "String",
+      "value": "\"X-Internal-Token\"",
+      "zh": "与 shop-base 的 InternalHttp.TOKEN_HEADER 同值（这里不能引 shop-base，只能写字面量）",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_RFQ_READ",
+      "type": "String",
+      "value": "\"elec:rfq:read\"",
+      "zh": "运营端两个权限码。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "PERM_RFQ_QUOTE",
+      "type": "String",
+      "value": "\"elec:rfq:quote\"",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecRfqServiceImpl",
+      "name": "INVOICES",
+      "type": "Set<String>",
+      "value": "Set.of(\"NONE\", \"VAT_NORMAL\", \"VAT_SPECIAL\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecRfqServiceImpl",
+      "name": "DC_REQS",
+      "type": "Set<String>",
+      "value": "Set.of(\"ANY\", \"Y1\", \"Y2\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecRfqServiceImpl",
+      "name": "CLOSE_REASONS",
+      "type": "Set<String>",
+      "value": "Set.of(\"NO_SOURCE\", \"BUYER_CANCELLED\", \"DONE\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "ElecSupplierServiceImpl",
+      "name": "KINDS",
+      "type": "Set<String>",
+      "value": "Set.of(\"AGENT\", \"TRADER\", \"FACTORY\", \"OTHER\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "Mpn",
+      "name": "MIN_KEY",
+      "type": "int",
+      "value": "2",
+      "zh": "分段键的最短长度。",
+      "module": "elec"
+    },
     {
       "host": "JobHttpPaths",
       "name": "DECLARATIONS",
