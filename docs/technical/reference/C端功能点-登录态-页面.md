@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**109 个功能点**，其中 **34 个游客可用**；**6 个没有任何页面调用**。
+统计：**109 个功能点**，其中 **34 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -22,7 +22,9 @@
 | `merchantList` | GET | `/mp/merchant` | — |
 | `promotedMerchants` | GET | `/mp/merchant/promoted` | — |
 | `visitedMerchants` | GET | `/mp/merchant/visited` | — |
+| `reorderFrom` | POST | `/mp/order/:orderNo/reorder` | — |
 | `storeEnter` | POST | `/mp/store/:no/enter` | — |
+| `frequentItems` | GET | `/mp/store/:no/frequent` | — |
 | `storeGoods` | GET | `/mp/store/:no/goods` | — |
 
 ## 全部功能点
@@ -95,13 +97,13 @@
 | `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |
 | `setMembershipReach` | `PUT /mp/my-memberships/:entityNo/reach` | 是 | my-memberships | — |
 | `createOrder` | `POST /mp/order` | 是 | order-confirm | — |
-| `orderList` | `GET /mp/order` | 是 | orders · store | — |
+| `orderList` | `GET /mp/order` | 是 | orders | — |
 | `orderDetail` | `GET /mp/order/:orderNo` | 是 | after-sale · order · pay · review-write | — |
 | `applyAfterSale` | `POST /mp/order/:orderNo/after-sale` | 是 | after-sale | — |
 | `cancelOrder` | `POST /mp/order/:orderNo/cancel` | 是 | order · pay | — |
 | `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
 | `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
-| `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | store | — |
+| `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
 | `orderCapability` | `POST /mp/order/capability` | 是 | order-confirm | — |
 | `orderPreview` | `POST /mp/order/preview` | 是 | order-confirm | — |
 | `searchPlaces` | `GET /mp/place/search` | 游客 | address-pick | — |
@@ -118,7 +120,7 @@
 | `storeHome` | `GET /mp/store/:no` | 游客 | store | — |
 | `storeAcode` | `GET /mp/store/:no/acode` | 游客 | (components)/biz | — |
 | `storeEnter` | `POST /mp/store/:no/enter` | 是 | **无** | — |
-| `frequentItems` | `GET /mp/store/:no/frequent` | 是 | store | — |
+| `frequentItems` | `GET /mp/store/:no/frequent` | 是 | **无** | — |
 | `storeGoods` | `GET /mp/store/:no/goods` | 游客 | **无** | — |
 | `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
 | `myStores` | `GET /mp/store/mine` | 游客 | merchants · search | — |

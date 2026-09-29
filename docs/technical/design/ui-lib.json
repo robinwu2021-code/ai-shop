@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 398,
+        "b-app": 399,
         "c-app": 76
       }
     },
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 342,
-        "c-app": 265
+        "c-app": 263
       }
     },
     {
@@ -438,7 +438,7 @@
       },
       "usage": {
         "b-app": 17,
-        "c-app": 13
+        "c-app": 12
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 43,
-        "c-app": 41
+        "c-app": 42
       }
     },
     {
@@ -469,8 +469,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 41,
-        "c-app": 35
+        "b-app": 42,
+        "c-app": 36
       }
     },
     {
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 125,
+        "b-app": 126,
         "c-app": 51
       }
     },
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 100,
-        "c-app": 91
+        "c-app": 89
       }
     },
     {
@@ -536,7 +536,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 32
+        "c-app": 31
       }
     },
     {
@@ -558,7 +558,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 19
+        "c-app": 16
       }
     },
     {
@@ -580,7 +580,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 8
+        "c-app": 7
       }
     },
     {
@@ -706,7 +706,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 33
+        "c-app": 34
       }
     },
     {
@@ -778,7 +778,7 @@
       },
       "usage": {
         "b-app": 14,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -810,7 +810,7 @@
       },
       "usage": {
         "b-app": 177,
-        "c-app": 78
+        "c-app": 77
       }
     },
     {
@@ -904,7 +904,7 @@
       },
       "usage": {
         "b-app": 39,
-        "c-app": 16
+        "c-app": 15
       }
     },
     {
@@ -922,7 +922,7 @@
       },
       "usage": {
         "b-app": 33,
-        "c-app": 14
+        "c-app": 13
       }
     },
     {
@@ -1078,7 +1078,7 @@
       },
       "usage": {
         "b-app": 341,
-        "c-app": 149
+        "c-app": 147
       }
     },
     {
@@ -1142,7 +1142,7 @@
       },
       "usage": {
         "b-app": 148,
-        "c-app": 54
+        "c-app": 53
       }
     },
     {
@@ -1290,7 +1290,7 @@
       },
       "usage": {
         "b-app": 13,
-        "c-app": 6
+        "c-app": 5
       }
     },
     {
@@ -1386,7 +1386,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 37
+        "c-app": 35
       }
     },
     {
@@ -1404,7 +1404,7 @@
       },
       "usage": {
         "b-app": 148,
-        "c-app": 90
+        "c-app": 88
       }
     },
     {
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 19,
         "c-app": 17
       }
     },
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 539,
-        "c-app": 193
+        "c-app": 191
       }
     },
     {
@@ -1548,7 +1548,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 6
+        "c-app": 5
       }
     },
     {
@@ -1566,7 +1566,7 @@
       },
       "usage": {
         "b-app": 3,
-        "c-app": 2
+        "c-app": 1
       }
     },
     {
@@ -1602,7 +1602,7 @@
       },
       "usage": {
         "b-app": 8,
-        "c-app": 6
+        "c-app": 5
       }
     },
     {
@@ -1637,7 +1637,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 42,
+        "b-app": 43,
         "c-app": 0
       }
     },
@@ -1737,7 +1737,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 55,
+        "b-app": 56,
         "c-app": 0
       }
     },
@@ -2042,7 +2042,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 12,
+        "c-app": 11,
         "lib": 3
       },
       "note": "商品封面",
@@ -2282,7 +2282,7 @@
       ],
       "usage": {
         "b-app": 121,
-        "c-app": 27,
+        "c-app": 28,
         "lib": 13
       },
       "note": "单色图标",
@@ -2828,35 +2828,43 @@
       "name": "sh-tabs",
       "file": "packages/ui/src/components/sh-tabs.vue",
       "scope": "跨端",
-      "lines": 60,
+      "lines": 99,
       "props": [
         "items: readonly { key: string",
         "label: string }[]",
-        "active: string"
+        "active: string",
+        "line?: boolean"
       ],
       "usage": {
         "b-app": 16,
-        "c-app": 12,
+        "c-app": 13,
         "lib": 0
       },
       "note": "筛选条",
       "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条",
       "uses": {
-        "tiers": [],
+        "tiers": [
+          "txt-body",
+          "txt-quiet",
+          "txt-strong"
+        ],
         "rawFontSize": [],
         "spacing": [
           12,
-          20
+          20,
+          48
         ],
         "radius": [],
         "deps": []
       },
       "rootClasses": [
-        "sh-chip",
-        "tabs__chip"
+        "tabs",
+        "tabs--line"
       ],
       "rootDecl": {
-        "padding": "12rpx 24rpx"
+        "display": "flex",
+        "gap": "12rpx",
+        "margin-bottom": "var(--sh-gap-tabs, 20rpx)"
       }
     },
     {
@@ -2919,7 +2927,7 @@
         "badge?: string"
       ],
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 2,
         "lib": 0
       },
@@ -4593,10 +4601,11 @@
         "sh-icon",
         "sh-savebar",
         "sh-scaffold",
+        "sh-uploader",
         "biz-store-tag",
         "biz-time-range"
       ],
-      "libClassHits": 45,
+      "libClassHits": 47,
       "localSelectors": 11,
       "localCssLines": 44,
       "rolled": []
@@ -5268,15 +5277,14 @@
       "key": "c-app/store",
       "file": "c-app/src/pages/store/index.vue",
       "components": [
-        "sh-cover",
         "sh-empty",
         "sh-icon",
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 78,
-      "localSelectors": 46,
-      "localCssLines": 229,
+      "libClassHits": 56,
+      "localSelectors": 34,
+      "localCssLines": 154,
       "rolled": []
     },
     {
@@ -5611,8 +5619,8 @@
         "sh-sheet"
       ],
       "libClassHits": 14,
-      "localSelectors": 8,
-      "localCssLines": 41,
+      "localSelectors": 9,
+      "localCssLines": 44,
       "rolled": []
     },
     {

@@ -7488,6 +7488,9 @@ components:
             - "number"
             - "null"
           description: "经度 ×1e6。**全站坐标一律 gcj02**"
+        bannerUrl: 
+          type: "string"
+          description: "门店背景图（C 端门户顶部那一条）。**设了是这张照片，没设（空串）是主色浅底**。 保存时：不传 = 这次不改（老版本 B 端），空串 = 清掉"
       required: 
         - "announcement"
         - "openHours"
@@ -7579,6 +7582,11 @@ components:
             - "number"
             - "null"
           description: "经度 ×1e6。**全站坐标一律 gcj02**"
+        bannerUrl: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店背景图（店主在 B 端设置）。**设了**：门户顶部是这张照片；**没设**（空）：主色浅底。 旧后端不发这个字段 —— 当成没设"
       required: 
         - "announcement"
         - "openHours"
