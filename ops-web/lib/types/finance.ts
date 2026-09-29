@@ -494,6 +494,61 @@ export interface ChannelMessage {
 }
 
 /**
+ * 付款清单的一行（ADR-011 · P2）。财务拿它去网银转账。
+ *
+ * ⚠️ **这是全站唯一带明文账号的响应**。拿到之后立刻写进导出文件，
+ * 不要存进任何全局 state、不要打日志。
+ */
+export interface PayoutRow {
+  /** 供应商主体号 */
+  entityNo: string;
+  /** 商家名。查不到时回落成主体号 */
+  merchantName: string;
+  /** PERSONAL_BANK_CARD 个人银行卡 / CORPORATE 对公 */
+  accountType: string;
+  /** 户名。已经过「必须等于营业执照主体名」的硬校验 */
+  accountName: string;
+  /** **明文账号**。只在这一次响应里存在 */
+  accountNumber: string;
+  /** 开户银行，可能为空 */
+  bankName: string | null;
+  /** 开户支行，可能为空 */
+  bankBranch: string | null;
+  /** 本次该付多少（分） */
+  amountMinor: number;
+  /** 这一行覆盖了几张结算单 */
+  billCount: number;
+  /** 银行附言。**回读银行流水时靠它勾对**，所以不是一句人话 */
+  remark: string;
+  /** 覆盖的结算单号。回填凭证号时按它逐张登记 */
+  settleNos: string[];
+}
+
+/** 本该付、但缺条件的一行。**必须显示** —— 不然财务看不出这一期怎么少了一家 */
+export interface PayoutBlockedRow {
+  /** 供应商主体号 */
+  entityNo: string;
+  /** 商家名 */
+  merchantName: string;
+  /** 这一期因此没付出去多少（分） */
+  amountMinor: number;
+  /** 涉及几张结算单 */
+  billCount: number;
+  /** 为什么没进清单。给的是可执行的原因：缺票 / 未对账 / 无收款账户 */
+  reason: string;
+}
+
+/** 付款清单。`totalMinor` **不含 blocked** —— 那笔钱这次付不出去 */
+export interface PayoutList {
+  /** 可付的 */
+  rows: PayoutRow[];
+  /** 被挡下的 */
+  blocked: PayoutBlockedRow[];
+  /** rows 的合计（分） */
+  totalMinor: number;
+}
+
+/**
  * 结算口径的经营统计一行（TDD-供应商结算与双轨资金 §2.1）。
  *
  * **与门店经营排行不是一回事**：那个读订单（GMV、退款率）、是最近 N 天 Top N；

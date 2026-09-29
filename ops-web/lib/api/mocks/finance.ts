@@ -4,7 +4,7 @@ import * as db from "@/lib/mock/db";
 import { MAX_TAX_RATE, MIN_WITHDRAW_AMOUNT, WITHDRAW_REVIEW_THRESHOLD } from "@/lib/constants";
 import { WITHDRAW_TRANSITIONS } from "@/lib/types";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
-import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow } from "@/lib/types";
+import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow, type PayoutList } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
 import type { ClientPointsPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
@@ -152,6 +152,56 @@ export const financeMock: FinanceApi = {
       if (r.dimKey === "__UNASSIGNED__") r.dimName = q.dim === "STORE" ? "未分配门店" : "未分配";
     }
     return wait([...acc.values()].sort((a, b) => b.netMinor - a.netMinor));
+  },
+
+  /*
+   * 付款清单。**三道闸都要能在 mock 里看见** ——
+   * 只造可付的那批，界面上「blocked 区块」就永远是空的，
+   * 而那一块恰恰是这一页最要紧的信息（财务要知道这一期少付了谁、为什么）。
+   *
+   * mock 的账号是假的明文，与真后端一样带在响应里 —— 端上的处理逻辑要一致：
+   * 拿到即写进导出文件，不进任何 state。
+   */
+  payoutList: async (entityNo) => {
+    const src = db.settlements.filter((b) =>
+      b.businessMode === "SELF_OPERATED" && b.status !== "PAID"
+      && db.eqHit(entityNo, b.merchantNo));
+    const rows: PayoutList["rows"] = [];
+    const blocked: PayoutList["blocked"] = [];
+    const byEntity = new Map<string, typeof src>();
+    for (const b of src) {
+      byEntity.set(b.merchantNo, [...(byEntity.get(b.merchantNo) ?? []), b]);
+    }
+    for (const [ent, bills] of byEntity) {
+      const sum = (xs: typeof bills) => xs.reduce((n, x) => n + (x.netMinor ?? 0), 0);
+      const notConfirmed = bills.filter((b) => b.status !== "CONFIRMED");
+      if (notConfirmed.length) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(notConfirmed),
+          billCount: notConfirmed.length, reason: "还没确认对账" });
+      }
+      const confirmed = bills.filter((b) => b.status === "CONFIRMED");
+      const noInv = confirmed.filter((b) => b.invoiceStatus !== "VERIFIED" && b.invoiceStatus !== "NO_INVOICE");
+      if (noInv.length) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(noInv),
+          billCount: noInv.length, reason: "进项票还没核验，也没标无票供应商" });
+      }
+      const payable = confirmed.filter((b) => b.invoiceStatus === "VERIFIED" || b.invoiceStatus === "NO_INVOICE");
+      if (!payable.length) continue;
+      const acc = db.payoutAccounts.find((a) => a.entityNo === ent && a.status === "ACTIVE");
+      if (!acc) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(payable),
+          billCount: payable.length, reason: "没有生效中的收款账户，钱不知道打给谁" });
+        continue;
+      }
+      rows.push({
+        entityNo: ent, merchantName: acc.accountName, accountType: acc.accountType,
+        accountName: acc.accountName, accountNumber: "6222020000" + ent.slice(-6).padStart(9, "0"),
+        bankName: acc.bankName ?? null, bankBranch: acc.bankBranch ?? null,
+        amountMinor: sum(payable), billCount: payable.length,
+        remark: "货款-" + ent, settleNos: payable.map((b) => b.settleNo),
+      });
+    }
+    return wait({ rows, blocked, totalMinor: rows.reduce((n, r) => n + r.amountMinor, 0) });
   },
 
   confirmPayable: async (settleNo) => {

@@ -48,6 +48,10 @@ shop:
     # 进件与资金都走假网关。**生产默认 false** —— 默认开的话真实现没接上时
     # 会「进件成功」而通道根本没开户，商家第一笔订单才发现收不了钱
     stub: true
+    # 供应商收款账号加密密钥（AES-256，V358 · ADR-011）。测试固定值；
+    # 生产走 SHOP_PAY_PAYOUT_ACCOUNT_KEY —— **不配的话商家提交收款账户会直接抛**
+    # （PayoutAccountCipher 刻意失败即拒，绝不退回明文落库）。
+    payout-account-key: bmVhcmdvLXBheW91dC10ZXN0LWtleS0zMmJ5dGVzISE=
   ops:
     # 初始密码走响应体而不是邮件。**生产默认 mail**。
     #

@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { HelpNote } from "@/components/ui/help-note";
 import { SectionHeader } from "@/components/ui/section-header";
+import { exportCsv } from "@/lib/export-csv";
+import type { PayoutBlockedRow, PayoutRow } from "@/lib/types";
 import type { FinanceCopy } from "./copy";
 
 /** 能不能登记付款。**与后端同一套判据** —— 两处不同就会出现「按钮亮着、点了报错」 */
@@ -52,6 +54,41 @@ export function PayablesTab({ c, canEdit, canPay }: {
     mutationFn: (v: { no: string; ref: string }) => api.payPayable(v.no, v.ref),
     onSuccess: () => { setPaying(null); setRef(""); refresh(); },
   });
+
+  /*
+   * 付款清单（P2）。**blocked 要留在页面上**，不能只弹个 toast ——
+   * 财务处理完缺票/未对账/缺账户之后还要回来对照，一闪而过的提示帮不上忙。
+   */
+  const [blocked, setBlocked] = useState<PayoutBlockedRow[] | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function doExport() {
+    setExporting(true);
+    try {
+      const vo = await api.payoutList();
+      setBlocked(vo.blocked);
+      if (vo.rows.length) {
+        /*
+         * **明文账号只在这一刻存在**：从响应直接进 CSV，不落任何 state。
+         * 上面的 setBlocked 只存被挡下的那些 —— 那里没有账号。
+         */
+        exportCsv<PayoutRow>(c.plFilename, [
+          { header: c.plColEntity, value: (r) => `${r.merchantName}（${r.entityNo}）` },
+          { header: c.plColAccountName, value: (r) => r.accountName },
+          { header: c.plColAccount, value: (r) => r.accountNumber },
+          { header: c.plColBank, value: (r) => r.bankName },
+          { header: c.plColBranch, value: (r) => r.bankBranch },
+          // 金额给纯数字，不带货币符号 —— 这份要导进网银
+          { header: c.plColAmount, value: (r) => (r.amountMinor / 100).toFixed(2) },
+          { header: c.plColBills, value: (r) => r.billCount },
+          { header: c.plColRemark, value: (r) => r.remark },
+          { header: c.plColSettleNos, value: (r) => r.settleNos.join(" ") },
+        ], vo.rows);
+      }
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const rows = list.data ?? [];
   const pending = rows.filter((r) => r.status !== "PAID");
@@ -150,6 +187,36 @@ export function PayablesTab({ c, canEdit, canPay }: {
     <>
       <SectionHeader title={c.pyTitle} summary={c.pySummary.replace("{n}", String(pending.length)).replace("{amount}", money(pendingAmount))} />
       <HelpNote className="mb-3">{c.pyNotice}</HelpNote>
+
+      {canPay && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" disabled={exporting} onClick={doExport}>
+            {exporting ? c.plExporting : c.plExport}
+          </Button>
+          {blocked !== null && blocked.length === 0 && (
+            <span className="txt-caption text-muted-foreground">{c.plNoRows}</span>
+          )}
+        </div>
+      )}
+
+      {blocked !== null && blocked.length > 0 && (
+        <HelpNote className="mb-3">
+          <div className="txt-strong">{c.plBlockedTitle.replace("{n}", String(blocked.length))}</div>
+          <div className="txt-caption text-muted-foreground">{c.plBlockedHint}</div>
+          <ul className="mt-1.5">
+            {blocked.map((b, i) => (
+              <li key={`${b.entityNo}-${i}`} className="txt-caption">
+                {c.plBlockedRow
+                  .replace("{name}", b.merchantName)
+                  .replace("{no}", b.entityNo)
+                  .replace("{amount}", money(b.amountMinor))
+                  .replace("{bills}", String(b.billCount))
+                  .replace("{reason}", b.reason)}
+              </li>
+            ))}
+          </ul>
+        </HelpNote>
+      )}
 
       <div className="mb-3 flex gap-1.5">
         {["", "PENDING_RECON", "CONFIRMED", "PAID"].map((s) => (

@@ -87,6 +87,14 @@ export const RULES = [
    * 而多一个码就多一处会被落下的地方。
    */
   ["GET", /^\/ops\/channel-messages/, "finance:recon:read"],
+  /*
+   * 付款清单导出。**必须排在下面那条 /ops/payables 通配之前** ——
+   * codeOf 是先匹配先返回，排后面的话这条会被算成 settle:read，
+   * 而它的响应里带明文账号、后端判的是 payout:execute。
+   * 两处不一致的后果是权限矩阵说「读就够」而实际点不动，
+   * 或者更糟：将来按矩阵去拆码时把它放宽到只需 settle:read。
+   */
+  ["GET", /^\/ops\/payables\/payout-list$/, "finance:payout:execute"],
   ["GET", /^\/ops\/payables/, "finance:settle:read"],
   ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],
