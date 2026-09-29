@@ -669,7 +669,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "并的方向应当是 ops-web 改用 shared 那个名字（shared 的名字带 Payment 前缀，"
       + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
       + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
-      + "而那正是这张表要挡住的那件事" },,
+      + "而那正是这张表要挡住的那件事" },
 // ── 元器件（独立库 ai_shop_elec，跑在独立进程 elec-svc） ───────────────────────
   //
   // 这一批的 dom 都是 elec：它是**另一个库、另一个进程**，取值与电商那边没有交集，
