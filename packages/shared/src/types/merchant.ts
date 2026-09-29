@@ -427,6 +427,7 @@ export interface DailyFlow {
 
 /** 每日流水一页。`days` 按天倒序，**没有流水的那天不占一行** */
 export interface DailyFlowPage {
+  /** 按天倒序（最近的在前）。**没有流水的那天不占一行** —— 补零会让一屏里大半是空行 */
   days: DailyFlow[];
   /**
    * 没有成交日的存量单合计（早期数据 `accrued_at` 为空）。

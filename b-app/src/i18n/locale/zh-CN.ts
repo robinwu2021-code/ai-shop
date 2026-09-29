@@ -652,7 +652,7 @@ export default {
     dailyBills: "{n} 笔",
     dailyRefund: "退 {a}",
     dailyUndated: "另有 {n} 笔没有成交日期，合计 {a}。这些是早期的单，只能按总额看",
-    dailyEmpty: "这段时间没有流水。有成交后第二天就能在这里看到",
+    dailyEmpty: "这段时间没有流水",
     batchExpire: "{d} 前未处理将自动放行",
     debt: "欠平台",
     debtHint: "退款时货款已经放出的部分，会从后续货款里自动抵扣",
