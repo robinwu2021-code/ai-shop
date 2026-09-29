@@ -77,8 +77,20 @@ export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
           rejected: ids.filter((id) => byTmpl[id] && byTmpl[id] !== "accept"),
         });
       },
-      // 弹窗失败（总开关关闭等）不阻塞主流程，也没有可报的结果
-      fail: () => resolve({ accepted: [], rejected: [] }),
+      /*
+       * 弹窗失败不阻塞主流程，但**要留下痕迹**。
+       *
+       * 真机上最常撞的是 `20004 主开关关闭`（用户在微信「设置 → 订阅消息」里
+       * 把这个小程序关了）与 `20001 参数传空`。静默 resolve 的话，
+       * 表现与「模板号没配」「用户点了拒绝」一模一样 —— 三种完全不同的原因
+       * 收敛成同一个症状「什么都没发生」，排查时无从下手。
+       */
+      fail: (e) => {
+        console.warn("[subscribe] 授权弹窗没能调起：", e?.errCode, e?.errMsg,
+          "（20004=用户关了订阅消息总开关 · 20001=模板号传空 · "
+          + "2.8.2 起必须由点击行为触发）");
+        resolve({ accepted: [], rejected: [] });
+      },
     });
   });
   // #endif
