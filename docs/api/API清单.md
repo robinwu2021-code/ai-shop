@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 792 个接口**：后端已实现 716（90%）· 前端在调 719
+**合计 793 个接口**：后端已实现 715（90%）· 前端在调 719
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **106** 个接口 ｜ 后端已实现 **105**（99%）｜ 前端在调 **106**
+共 **106** 个接口 ｜ 后端已实现 **103**（97%）｜ 前端在调 **106**
 
 ### after-sale（4）
 
@@ -230,8 +230,8 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | — | ✅ | ✅ |
-| GET | `/mp/store/{merchantNo}/frequent` | 常买清单 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | — | ⬜ | ✅ |
+| GET | `/mp/store/{merchantNo}/frequent` | 常买清单 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/mp/store/{no}/enter` | 进店 | `StoreEnterReq` | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/by-code` | 扫码进店 | — | `StoreHome` | — | ✅ | ✅ |
 | GET | `/mp/store/mine` | 我的店：买过的 + 近期逛过的门店 | — | `数组` | — | ✅ | ✅ |
@@ -860,7 +860,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **409** 个接口 ｜ 后端已实现 **343**（84%）｜ 前端在调 **336**
+共 **410** 个接口 ｜ 后端已实现 **344**（84%）｜ 前端在调 **336**
 
 ### aftersale（4）
 
@@ -940,7 +940,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（39）
+### finance（40）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -975,6 +975,7 @@
 | GET | `/ops/settle-batches` | 账期批次列表 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle-batches/{batchNo}/hold` | 继续挂起 | — | `SettleBatch` | — | ✅ | ✅ |
 | POST | `/ops/settle-batches/{batchNo}/release` | 人工放行一批 | — | `SettleBatch` | — | ✅ | ✅ |
+| GET | `/ops/settle-stats` | listSettleStats | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/settle/fee-rules` | 全部费率版本，含历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle/fee-rules` | 新增一个费率版本 | — | `FeeRuleVersion` | — | ✅ | ✅ |
 | GET | `/ops/settle/fee-rules/effective` | 某时刻实际生效的四格费率 | — | `EffectiveFeeRates` | — | ✅ | ✅ |

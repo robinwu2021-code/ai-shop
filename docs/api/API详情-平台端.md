@@ -2286,6 +2286,19 @@ _无字段_
 | `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
 
 
+#### GET `/ops/settle-stats`
+
+listSettleStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SettleStatRow`](#settlestatrow)\[\]
+
+
 #### GET `/ops/settle/fee-rules`
 
 全部费率版本，含历史
@@ -11904,6 +11917,21 @@ KPI 卡（金额为最小货币单位整数）。
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
 | `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+
+### SettleStatRow
+
+结算口径的经营统计一行（TDD-供应商结算与双轨资金 §2.1）。 **与门店经营排行不是一回事**：那个读订单（GMV、退款率）、是最近 N 天 Top N； 这里读结算单、按区间全量、三维可切。GMV 没扣佣金与手续费，两个数对不上是正常的。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `dimKey` | `string` | 是 | 维度值：门店号 / 主体号 / 收款商户号。空门店为 __UNASSIGNED__ |
+| `dimName` | `string` | 是 | 展示名。查不到时回落成 dimKey 本身，**不会是空串** |
+| `grossMinor` | `number` | 是 | 成交额（分）。**不含退款** —— 结算单上没有退款列，退款走售后与分账回退 |
+| `commissionMinor` | `number` | 是 | 平台佣金（分） |
+| `serviceFeeMinor` | `number` | 是 | 服务费（分） |
+| `channelFeeMinor` | `number` | 是 | 渠道手续费（分） |
+| `netMinor` | `number` | 是 | 商家净额（分） |
+| `billCount` | `number` | 是 | 结算单数。只给金额看不出「一笔大的还是很多笔」 |
 
 ### Settlement
 
