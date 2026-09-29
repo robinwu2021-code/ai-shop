@@ -792,7 +792,7 @@ onShareTimeline(() =>
   color: #fff;
 }
 .hero__status {
-  padding: 2rpx 14rpx;
+  padding: 2rpx 12rpx;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
