@@ -520,6 +520,12 @@
       }
     },
     {
+      "path": "pages/payout-account/index",
+      "style": {
+        "navigationBarTitleText": "收款账户"
+      }
+    },
+    {
       "path": "pages/deposit/index",
       "style": {
         "navigationBarTitleText": "保证金"

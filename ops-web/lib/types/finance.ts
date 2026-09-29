@@ -517,14 +517,6 @@ export interface PayoutAccount {
   auditedAt?: number | null;
 }
 
-/** 收款账户分页。字段名与后端 PageData 对齐（page 不是 pageNo） */
-export interface PayoutAccountPage {
-  records: PayoutAccount[];
-  total: number;
-  page: number;
-  size: number;
-}
-
 /** 报文分页。`note` 是固定口径，**端上必须显示** */
 export interface ChannelMessagePage {
   records: ChannelMessage[];

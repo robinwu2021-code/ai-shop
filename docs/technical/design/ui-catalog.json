@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 85,
+      "count": 86,
       "domains": [
         {
           "name": "工作台",
@@ -318,6 +318,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/withdraw/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/payout-account/index",
+              "title": "收款账户",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/payout-account/index"
             },
             {
               "app": "b-app",
@@ -3366,5 +3377,5 @@
       ]
     }
   ],
-  "total": 265
+  "total": 266
 }

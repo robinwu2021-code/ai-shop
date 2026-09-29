@@ -169,6 +169,10 @@ onShow(() => {
         <text class="txt-title">{{ $t("withdraw.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryWithdraw") }}</text>
       </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.payoutAccount)">
+        <text class="txt-title">{{ $t("payoutAccount.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryPayoutAccount") }}</text>
+      </view>
       <view class="entries__item sh-card" @tap="go(ROUTES.deposit)">
         <text class="txt-title">{{ $t("deposit.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryDeposit") }}</text>

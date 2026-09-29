@@ -44,6 +44,7 @@ export const ROUTES = {
    * 后端有测试有守卫全绿，端上一个入口都没有。
    */
   withdraw: "/pages/withdraw/index",
+  payoutAccount: "/pages/payout-account/index",
   deposit: "/pages/deposit/index",
   invoice: "/pages/invoice/index",
   statement: "/pages/statement/index",

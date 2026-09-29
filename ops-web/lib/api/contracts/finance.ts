@@ -2,7 +2,7 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, PayoutAccountPage, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, Settlement, SplitLog, TaxRule, Withdrawal } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
 
 export interface FinanceApi {
@@ -44,7 +44,7 @@ export interface FinanceApi {
   // 通过之后这个主体下一期的货款就打到这张卡，所以它与登记付款同一个权限码。
   /** @param status 空 = 全部；审核队列传 PENDING */
   listPayoutAccounts(q?: { status?: string; entityNo?: string; page?: number; size?: number }):
-    Promise<PayoutAccountPage>;
+    Promise<Page<PayoutAccount>>;
   /** 审核。**驳回必须写 remark** —— 后端拒空，且原文回商家 */
   auditPayoutAccount(accountNo: string, pass: boolean, remark?: string): Promise<PayoutAccount>;
 
