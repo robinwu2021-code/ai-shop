@@ -4128,7 +4128,7 @@ components:
           description: "yyyy-MM-dd"
         grossMinor: 
           type: "number"
-          description: "成交额"
+          description: "成交额（分）。与结算单同口径 —— **不含运费**，运费单列（见 SettleBill.grossMinor）"
         refundMinor: 
           type: "number"
           description: "退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。"
@@ -5040,7 +5040,7 @@ components:
           description: "主体号"
         grossMinor: 
           type: "number"
-          description: "结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家**"
+          description: "结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家**。\n\n**不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，算进基数等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 改口径之前这个数是「货款 + 运费」，按它做过的核对要重来一遍。"
         commissionMinor: 
           type: "number"
           description: "平台佣金（分）"
