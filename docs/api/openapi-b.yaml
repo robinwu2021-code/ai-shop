@@ -507,6 +507,12 @@ components:
         - "FACTORY"
         - "OTHER"
       description: "AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他"
+    ElecSupplierStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "SUSPENDED"
+      description: "供应商状态：ACTIVE 正常 / SUSPENDED 已暂停（暂停后他的库存不再给买家看）"
     ElecSupplierReq: 
       type: "object"
       properties: 
@@ -557,10 +563,7 @@ components:
           type: "string"
           description: "匿名代号 `S-3F7K`。以后开放身份时买家看到的就是它"
         status: 
-          type: "string"
-          enum: 
-            - "ACTIVE"
-            - "SUSPENDED"
+          "$ref": "#/components/schemas/ElecSupplierStatus"
           description: "ACTIVE 正常 / SUSPENDED 已暂停（暂停后库存不再给买家看）"
         onCount: 
           type: "number"
@@ -652,6 +655,14 @@ components:
         - "MERGE"
         - "REPLACE"
       description: "MERGE 只改表里有的行 / REPLACE 表里没有的下架"
+    ElecRowProblemReason: 
+      type: "string"
+      enum: 
+        - "MPN_MISSING"
+        - "MPN_INVALID"
+        - "QTY_INVALID"
+        - "DUPLICATE"
+      description: "认不了的行的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复"
     ElecRowProblem: 
       type: "object"
       properties: 
@@ -659,12 +670,7 @@ components:
           type: "number"
           description: "表里的行号，与 Excel 左边的行号一致"
         reason: 
-          type: "string"
-          enum: 
-            - "MPN_MISSING"
-            - "MPN_INVALID"
-            - "QTY_INVALID"
-            - "DUPLICATE"
+          "$ref": "#/components/schemas/ElecRowProblemReason"
           description: "认不了的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复"
         mpn: 
           type: 
@@ -675,7 +681,12 @@ components:
         - "row"
         - "reason"
       additionalProperties: false
-      description: "认不了的行。 MPN_MISSING 没有料号 / MPN_INVALID 不像料号 / QTY_INVALID 数量认不出 / DUPLICATE 与前面的行重复"
+    ElecBatchStatus: 
+      type: "string"
+      enum: 
+        - "PARSED"
+        - "APPLIED"
+      description: "一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架"
     ElecBatchPreview: 
       type: "object"
       properties: 
@@ -733,10 +744,7 @@ components:
             type: "string"
           description: "将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」"
         status: 
-          type: "string"
-          enum: 
-            - "PARSED"
-            - "APPLIED"
+          "$ref": "#/components/schemas/ElecBatchStatus"
           description: "PARSED 待确认 / APPLIED 已上架"
       required: 
         - "batchNo"
@@ -755,7 +763,6 @@ components:
         - "delistSample"
         - "status"
       additionalProperties: false
-      description: "上传预览。**预览时一行库存都没动**，确认之后才上架。"
     ElecRenewResult: 
       type: "object"
       properties: 

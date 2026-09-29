@@ -26145,6 +26145,27 @@
         "module": "elec"
       },
       {
+        "host": "ElecRfqServiceImpl",
+        "name": "DC_ANY",
+        "value": "ANY",
+        "zh": "批次要求：不限 / 一年内 / 两年内。",
+        "module": "elec"
+      },
+      {
+        "host": "ElecRfqServiceImpl",
+        "name": "DC_Y1",
+        "value": "Y1",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecRfqServiceImpl",
+        "name": "DC_Y2",
+        "value": "Y2",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "ElecStockImportServiceImpl",
         "name": "MODE_MERGE",
         "value": "MERGE",
@@ -26155,6 +26176,48 @@
         "host": "ElecStockImportServiceImpl",
         "name": "MODE_REPLACE",
         "value": "REPLACE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B1",
+        "value": "B1",
+        "zh": "数量档。",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B100",
+        "value": "B100",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B1K",
+        "value": "B1K",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B10K",
+        "value": "B10K",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B100K",
+        "value": "B100K",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "Bands",
+        "name": "B1M",
+        "value": "B1M",
         "zh": "",
         "module": "elec"
       },
@@ -33461,6 +33524,15 @@
         "zh": "判重的依据。"
       },
       {
+        "name": "ElecBatchStatus",
+        "client": "shared",
+        "values": [
+          "PARSED",
+          "APPLIED"
+        ],
+        "zh": "一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架"
+      },
+      {
         "name": "ElecCloseReason",
         "client": "shared",
         "values": [
@@ -33547,6 +33619,17 @@
         "zh": "SUBMITTED 待报价 / QUOTED 已报价 / EXPIRED 报价已过期 / ACCEPTED 已接受 / CLOSED 已结束。"
       },
       {
+        "name": "ElecRowProblemReason",
+        "client": "shared",
+        "values": [
+          "MPN_MISSING",
+          "MPN_INVALID",
+          "QTY_INVALID",
+          "DUPLICATE"
+        ],
+        "zh": "认不了的行的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复"
+      },
+      {
         "name": "ElecSourceBand",
         "client": "shared",
         "values": [
@@ -33575,6 +33658,15 @@
           "OTHER"
         ],
         "zh": "AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他"
+      },
+      {
+        "name": "ElecSupplierStatus",
+        "client": "shared",
+        "values": [
+          "ACTIVE",
+          "SUSPENDED"
+        ],
+        "zh": "供应商状态：ACTIVE 正常 / SUSPENDED 已暂停（暂停后他的库存不再给买家看）"
       },
       {
         "name": "EnrollmentStatus",
@@ -35376,7 +35468,7 @@
       "host": "ElecRfqServiceImpl",
       "name": "DC_REQS",
       "type": "Set<String>",
-      "value": "Set.of(\"ANY\", \"Y1\", \"Y2\")",
+      "value": "Set.of(DC_ANY, DC_Y1, DC_Y2)",
       "zh": "",
       "module": "elec"
     },
