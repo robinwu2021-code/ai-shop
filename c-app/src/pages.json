@@ -357,12 +357,7 @@
       "path": "pages/store/index",
       "style": {
         "navigationBarTitleText": "",
-        "app-plus": {
-          "navigationStyle": "custom"
-        },
-        "h5": {
-          "navigationStyle": "custom"
-        }
+        "navigationStyle": "custom"
       }
     },
     {

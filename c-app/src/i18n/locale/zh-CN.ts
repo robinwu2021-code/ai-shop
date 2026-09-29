@@ -309,6 +309,8 @@ export default {
     entityInfo: "经营主体与资质",
     faved: "已收藏，可在「我的 → 常去的店」找到",
     unfaved: "已取消收藏",
+    favAct: "收藏",
+    favOn: "已收藏",
     closedTip: "这家店暂停营业了",
   },
   groupHost: {

@@ -285,7 +285,7 @@ export default {
     goSibling: "زيارة {name}", distanceTo: "على بعد {d}",
     noGoods: "لا منتجات في هذه الفئة بعد", noReviews: "لا تقييمات لهذا المتجر بعد",
     hours: "ساعات العمل", address: "العنوان", entityInfo: "الجهة المشغّلة والتراخيص",
-    faved: "تم الحفظ؛ تجده في «حسابي ← متاجري»", unfaved: "أُزيل من المحفوظات",
+    faved: "تم الحفظ؛ تجده في «حسابي ← متاجري»", unfaved: "أُزيل من المحفوظات", favAct: "حفظ", favOn: "محفوظ",
     closedTip: "هذا المتجر مغلق مؤقتًا",
  },
   groupHost: {

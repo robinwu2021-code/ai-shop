@@ -285,7 +285,7 @@ export default {
     goSibling: "Visit {name}", distanceTo: "{d} away",
     noGoods: "Nothing in this category yet", noReviews: "No reviews for this store yet",
     hours: "Hours", address: "Address", entityInfo: "Business entity & licences",
-    faved: "Saved — find it under Me → My shops", unfaved: "Removed",
+    faved: "Saved — find it under Me → My shops", unfaved: "Removed", favAct: "Save", favOn: "Saved",
     closedTip: "This store is temporarily closed",
  },
   groupHost: {

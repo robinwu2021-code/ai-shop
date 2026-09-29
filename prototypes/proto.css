@@ -406,20 +406,7 @@ a{color:inherit}
 .sl-h b{font-size:12.5px}
 .sl-h small{font-size:10px;color:var(--sh-sub)}
 /* 门户：门头色带 + 压在上面的店招卡 */
-.scr .sp-cover{margin:-10px -10px 0;height:58px;background:var(--sh-primary-tint);flex:0 0 auto;
-  display:flex;align-items:flex-end;justify-content:flex-end;padding:0 12px 34px;font-size:9.5px;color:var(--sh-primary-text)}
-.sp-hd{background:var(--sh-card);border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:7px;margin-top:-40px;position:relative}
-.sp-hd .top{display:flex;gap:10px;align-items:center}
-.sp-hd .lg{width:44px;height:44px;border-radius:12px;background:var(--sh-primary);color:var(--sh-on-primary);
-  font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.sp-hd .nm{font-size:14.5px;font-weight:700;line-height:1.25}
-.sp-hd .ln{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.5px;color:var(--sh-sub)}
-.sp-hd .ln em{font-style:normal;color:var(--sh-ink);font-weight:600}
-.sp-hd .acts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:0 0 auto}
-.sp-hd .ic{width:28px;height:28px;border-radius:99px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:12px}
 /* 公告：一行，超出省略 */
-.sp-note{background:var(--sh-card);border-radius:13px;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:10.5px}
-.sp-note .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 大卡：标签页 + 分类栏 + 商品 */
 .sp-body{background:var(--sh-card);border-radius:13px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 .sp-body .tabs{padding:10px 12px 0;border-bottom:1px solid var(--sh-line);gap:22px}
@@ -441,17 +428,9 @@ a{color:inherit}
 .sp-freq .fc .ln{display:flex;align-items:center;justify-content:space-between}
 .sp-cats{display:flex;gap:6px;overflow:hidden}
 .sp-cats .chip.on{background:var(--sh-primary-tint);color:var(--sh-primary-text);font-weight:600}
-.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.sp-tile{display:flex;flex-direction:column;gap:3px}
-.sp-tile .th{aspect-ratio:1;border-radius:9px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:28px}
-.sp-tile .nm{font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sp-tile .ln{display:flex;align-items:center;justify-content:space-between}
-.sp-tile.off .th,.sp-tile.off .nm{opacity:.5}
-.sp-freq .add,.sp-tile .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);display:flex;align-items:center;justify-content:center;font-size:12px}
-.sp-tile.off .add{background:var(--sh-faint);color:var(--sh-disabled)}
-.sp-freq .pr,.sp-tile .pr{font-size:13px;font-weight:700}
-.sp-freq .pr small,.sp-tile .pr small{font-size:9.5px;font-weight:600}
-.sp-shelf.paused .sp-grid{opacity:.5}
+.sp-freq .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);display:flex;align-items:center;justify-content:center;font-size:12px}
+.sp-freq .pr{font-size:13px;font-weight:700}
+.sp-freq .pr small{font-size:9.5px;font-weight:600}
 /* 店铺底栏：购物车 + 结算（门户里逛完直接结） */
 .foot .cartsum{flex:1;display:flex;align-items:center;gap:8px;font-size:11px}
 .foot .cartsum b{font-size:14px}
@@ -471,3 +450,43 @@ a{color:inherit}
 .sp-poster .pb .tx .pr{font-size:16px;font-weight:700}
 .sp-poster .qr{width:62px;height:62px;margin:0;flex:0 0 auto}
 .sp-poster .st{font-size:10px;color:var(--sh-sub);padding:0 12px 10px}
+
+/* ── 门户头图（c-store-portal s03/s04/s07/s08，2026-09-29 用户定）：顶到状态栏，
+   底是招牌商品图放大虚化 + 一层品牌色；白字店名。浮层按钮压在图上 ── */
+.scr:has(> .sp-hero){padding-top:0}
+.sp-hero{position:relative;margin:0 -10px;height:176px;flex:0 0 auto;overflow:hidden;color:#fff;
+  background:linear-gradient(160deg,var(--sh-primary),var(--sh-primary-text))}
+.sp-hero .bg{position:absolute;inset:-20px;display:flex;align-items:center;justify-content:center;font-size:190px;filter:blur(22px) saturate(1.4)}
+.sp-hero::before{content:"";position:absolute;inset:0;background:var(--sh-primary);opacity:.38}
+.sp-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28) 0,rgba(0,0,0,0) 36%,rgba(0,0,0,.6) 100%)}
+.sp-hero .ft{position:absolute;left:12px;right:12px;bottom:24px;display:flex;align-items:center;gap:10px;z-index:1}
+.sp-hero .lg{width:44px;height:44px;border-radius:12px;background:#fff;color:var(--sh-primary-text);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex:0 0 auto}
+.sp-hero .mn{flex:1;min-width:0}
+.sp-hero .nm{font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-hero .ln{display:flex;gap:6px;align-items:center;font-size:10px;margin-top:3px;white-space:nowrap;opacity:.92}
+.sp-hero .st{background:var(--sh-primary);color:var(--sh-on-primary);border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:600}
+.sp-hero .st.off{background:rgba(255,255,255,.28)}
+.ph .ov.on-img .fav{margin-left:auto;height:26px;padding:0 9px;border-radius:99px;background:rgba(0,0,0,.34);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center}
+.ph .ov.on-img .sh{width:26px;height:26px;border-radius:99px;background:rgba(0,0,0,.34);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.ph .ov.on-img .sh:first-of-type{margin-left:auto}
+.ph .ov.on-img .fav + .sh{margin-left:0}
+.ph .ov.on-img .mpcap{margin-left:0}
+.sp-hcard{position:relative;margin-top:-26px;background:var(--sh-card);border-radius:13px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sp-hcard .r{display:flex;align-items:center;gap:6px;font-size:10.5px;white-space:nowrap}
+.sp-hcard .r .t{flex:1;overflow:hidden;text-overflow:ellipsis}
+.sp-hcard .r + .r{border-top:1px solid var(--sh-faint);padding-top:8px}
+.sp-hcard .k{color:var(--sh-sub);margin-right:2px}
+.sp-hcard .go{margin-left:auto;color:var(--sh-danger-text);font-weight:600;font-size:10px}
+/* 单列（B 版）：图在左，第二行写截单 / 规格，价格与加号在右下；行上不写店名 */
+.sp-list{display:flex;flex-direction:column;gap:12px}
+.sp-row{display:flex;gap:10px}
+.sp-row .th{width:64px;height:64px;border-radius:10px;background:var(--sh-faint);display:flex;align-items:center;justify-content:center;font-size:27px;flex:0 0 auto}
+.sp-row .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sp-row .nm{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-row .m{font-size:9.5px;color:var(--sh-sub)}
+.sp-row .ln{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.sp-row .pr{font-size:13px;font-weight:700}
+.sp-row .pr small{font-size:9.5px;font-weight:600}
+.sp-row .add{width:20px;height:20px;border-radius:99px;background:var(--sh-primary);color:var(--sh-on-primary);display:flex;align-items:center;justify-content:center;font-size:12px}
+.sp-row.off .th,.sp-row.off .nm{opacity:.5}
+.sp-shelf.paused .sp-list{opacity:.5}

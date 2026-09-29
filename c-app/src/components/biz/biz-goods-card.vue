@@ -12,7 +12,16 @@ import type { GoodsGroupSummary } from "@/shared/home-feed";
  * `group`：这件商品上有进行中的团（首页把团并进商品卡，见 shared/home-feed.ts）。
  * 有它时卡片换成团形态 —— 价格行给团价与单买价，「＋」换成「去拼团」。
  */
-const props = defineProps<{ goods: Goods; countdownText?: string; group?: GoodsGroupSummary }>();
+const props = defineProps<{
+  goods: Goods;
+  countdownText?: string;
+  group?: GoodsGroupSummary;
+  /**
+   * 在门店门户里：落款行不写店名 —— 整页都是这一家店，每行再写一遍是噪声。
+   * 已售照留（「卖得好不好」在店里一样要看）
+   */
+  inStore?: boolean;
+}>();
 // add 必须把原始 tap 事件透传出去 —— 「飞入购物车」动效要用它的落点坐标。
 // 不透传的话页面里的 $event 是 undefined，动效静默失效。
 defineEmits<{ (e: "add", ev: unknown): void; (e: "tap"): void; (e: "join"): void }>();
@@ -106,10 +115,10 @@ const off = computed(() => {
       <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
       <view class="sh-row sh-row--between card__merchant">
         <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
-        <text v-if="goods.merchant.selfOperated" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
+        <text v-if="goods.merchant.selfOperated && !inStore" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
         <!-- 店名前不再放 logo：此前是 `{{ logo || 🏪 }}` 当文字打印 —— 一排卡片全是同一个表情，
              商家真传了图片 logo 还会把地址铺出来。自营与否由前面那个标说清楚 -->
-        <text class="txt-caption txt-quiet sh-fill card__shop">{{ goods.merchant.name }}</text>
+        <text class="txt-caption txt-quiet sh-fill card__shop">{{ inStore ? "" : goods.merchant.name }}</text>
         <!-- 已售 0 不说：零销量是劝退信号（与详情页同一条规矩） -->
         <text v-if="goods.sales > 0" class="txt-caption txt-quiet card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>

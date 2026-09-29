@@ -25,7 +25,7 @@
 | AC8 | 任何入口进门户都记一次「逛过」，含**首次来源**（分享 / 扫码 / 列表 / 搜索 / 商品页）与首次邀请人 | 新表 `usr_store_view`；`POST /mp/store/{no}/enter` 写入 |
 | AC9 | 门户按 `storeNo` 取数；列表、扫码、分享三个入口进**同一个门户**（s03、s04） | `pages/store` 成为唯一门户；`GET /mp/store/{no}` |
 | AC10 | 老链接继续可用：`/mp/store/{merchantNo}`、老分享、老店码解析到默认 ACTIVE 门店 | 编号前缀分派（§2.1） |
-| AC11 | 门户结构：门头 → 店招 → 公告一行 → 领券 → 标签页（商品 / 评价 / 店铺）；商品页签**不做左右分栏**（2026-09-29 用户改定）：搜索 → 老客的「我常买」横滑一栏 → 分类横排 → 双列网格（s03–s07） | `pages/store/index.vue` + `biz-goods-tile`（与资质页同一个双列件） |
+| AC11 | 门户结构：头图（顶到状态栏，店名与营业信息写在图上）→ 公告与领券一张白卡 → 标签页（商品 / 评价 / 店铺）；商品页签**不做左右分栏**（2026-09-29 用户改定，选 B 版）：搜索 → 老客的「我常买」横滑一栏 → 分类横排（往下滑时吸顶）→ 单列列表（s03–s07） | `pages/store/index.vue` + `biz-goods-card`（与首页、搜索同一个单列件，`in-store` 不写店名） |
 | AC12 | 评价按门店（s05） | `/mp/review?storeNo=` |
 | AC13 | 店铺页签有「经营主体与资质」入口；`pages/merchant` 收成资质页（s06） | `pages/merchant` 精简；门户 → 资质页 |
 | AC14 | 分享一个入口，面板两条路：发给朋友 / 生成海报（s08） | `biz-share-act` 改为面板；门户与商品详情共用 |
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS usr_store_view
 
 **跨域端口**：`PurchaseHistoryPort` 加 `purchasedStores(userNo)`（按 `ord_sub_order.store_no` 聚合：单数、最近下单时间）；门店读取走 `spi/user` 现有的门店查询端口，缺什么补什么，不直接读 `mch_*` 表。
 
-**i18n**（三语）：`shops.mine` `shops.nearby` `shops.relBought` `shops.relShared` `shops.relViewed` `shops.paused` `store.tabGoods` `store.tabReviews` `store.tabInfo` `store.frequent` `store.hot` `store.entityInfo` `store.pausedNotice` `store.goNearby` `share.toFriend` `share.poster` `share.sheetTitle`；删 `shops.promoted` `shops.visited` `poster.act`。
+**i18n**（三语）：`shops.mine` `shops.nearby` `shops.relBought` `shops.relShared` `shops.relViewed` `shops.paused` `store.tabGoods` `store.tabReviews` `store.tabInfo` `store.frequent` `store.hot` `store.entityInfo` `store.pausedNotice` `store.goNearby` `share.toFriend` `share.poster` `share.sheetTitle` `store.favAct` `store.favOn`（头图浮层上的「收藏 / 已收藏」）；删 `shops.promoted` `shops.visited` `poster.act`。
 
 **配置**：`shop.mp.my-store.view-keep-days`（默认 30）。
 
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS usr_store_view
 | AC8 | `MyStoreFlowTest` ★ 首次来源只定一次 · 非分享不记分享人 · ★ 不带 source 按 LIST | ✅ |
 | AC9 | `StorePortalFlowTest` ★ §2.7 门户只列本店在售 | ✅ |
 | AC10 | `StorePortalFlowTest` ★ 主体号落默认门店、未知门店号 404 · `MyStoreFlowTest` 种子商家老链接落 ST-M0002 | ✅ |
-| AC11 | `store-portal.test` ★★★ 买过的人先看到「我常买」一栏、没买过没有 · ★★★ 不做左右分栏：分类横排、商品双列 · ★★★ 售罄照列、格子上写售罄没有加号 | ✅ |
+| AC11 | `store-portal.test` ★★★ 买过的人先看到「我常买」一栏、没买过没有 · ★★★ 不做左右分栏：分类横排、商品单列、行上不写店名 · ★★★ 售罄照列、行上写售罄没有加号 · ★★★ 头图的底取卖得最好的那件真图、只有 emoji 时退回品牌色 | ✅ |
 | AC12 | `StorePortalFlowTest` 评价按门店：只回这家店的，老评价不混进来 | ✅ |
 | AC13 | 门户「店铺」页签最后一行「经营主体与资质」→ `pages/merchant` | ⚠️ 资质页未收窄，见偏差 |
 | AC14 | `goods-detail-layout` ★★★ 海报收进分享面板 · ★★ 小程序原生转发在面板里、H5 复制链接 | ✅ |
@@ -262,6 +262,15 @@ CREATE TABLE IF NOT EXISTS usr_store_view
   左右分栏把一小半宽度给了分类名，商品图小、一屏看得少；「我常买」从左栏的一格变成列表前的一栏，老客仍然第一眼看到。
   三个页签改用分段控件（`sh-seg`），与下面的分类 chip 分开两种样子 —— 两排 chip 分不出哪排是页、哪排是筛选。
   原型 s03 / s04 / s07 同步改了（样式在 `proto.css` 的 `sp-shelf` 一组）。
+- **再改（同日，用户在 A 双列 / B 单列 / C 分段三版里选了 B，并要求「优化头部，加背景图，高端一点」）**：
+  - 商品：双列网格 → 单列（`biz-goods-card`，加 `in-store`：落款行不写店名，已售照留）；分类吸在顶部标题条下面。
+    商品这一块的 `sh-block` 放开了 `overflow`：它自带的 `overflow: hidden` 会让 sticky 静默失效。
+  - 头部：页面改沉浸式（`pages.json` 全平台 `navigationStyle: custom`，与商品详情同一套：`ports/capsule` 对齐胶囊，
+    滑过头图变白底标题条）。头图的底取**本店销量最高且有真图（http/https）的商品主图**，放大虚化再压一层品牌色；
+    没有就是品牌色渐变。收藏与分享挪到浮层（`biz-share-act` 加 `image-box`：半透明圆钮）；公告与券收进压在头图下沿的白卡
+    （`biz-coupon-strip` 加 `bare` 与 `count`，一张券都没有且没公告时不画这张卡）。
+  - **店招图（店主自己传的门头照）没做**：门店没有这个字段（审核表里留了 `BANNER` 类型，从没接通）。
+    要加库表列、B 端上传与机审人审，是下一份 TDD；有了之后头图优先用它，虚化商品图退为兜底。
 - **未完成**：
   1. AC13 资质页：`/mp/merchant/{no}` 没有营业执照等资质数据。「亮照」展示什么（执照图 / 信息摘要 / 打码规则）
      是合规决定，**待产品确认**后补后端字段与页面。

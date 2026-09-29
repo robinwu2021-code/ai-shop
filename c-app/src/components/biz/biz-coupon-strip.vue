@@ -18,7 +18,12 @@ import type { Coupon } from "@shared/types";
  *                   等齐了才首次渲染 —— 组件自己晚 200ms 取回来的话，这一行会把整页往下顶一下
  *                   （商品页注释里记着那 61px）。不传则组件自己取。
  */
-const props = defineProps<{ merchantNo: string; preset?: Coupon[] }>();
+/**
+ * @param bare       不自带卡片底：放进别人的卡里当一行（门户头图下的那张白卡）
+ */
+const props = defineProps<{ merchantNo: string; preset?: Coupon[]; bare?: boolean }>();
+/** 取回来几张。调用方据此决定外面那张卡要不要画 —— 一张券都没有时不留一个空框 */
+const emit = defineEmits<{ (e: "count", n: number): void }>();
 
 const { t } = useI18n();
 const coupons = ref<Coupon[]>([]);
@@ -38,6 +43,7 @@ async function load(no: string) {
     coupons.value = [];
   }
 }
+watch(() => coupons.value.length, (n) => emit("count", n), { immediate: true });
 watch(() => [props.merchantNo, props.preset] as const, ([no, preset]) => {
   if (preset) coupons.value = preset;
   else void load(no);
@@ -76,7 +82,7 @@ async function claim(c: Coupon) {
 </script>
 
 <template>
-  <view v-if="coupons.length" class="sh-card block cstrip">
+  <view v-if="coupons.length" class="cstrip" :class="{ 'sh-card block': !bare }">
     <view class="sh-row sh-row--divided cstrip__row" @tap="open = true">
       <text class="txt-sub sh-muted cstrip__label">{{ $t("goods.couponRow") }}</text>
       <view class="sh-fill sh-row cstrip__chips">

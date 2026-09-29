@@ -28,6 +28,11 @@ const props = defineProps<{
   poster?: boolean;
   /** 面板标题，如「分享这家店」 */
   sheetTitle?: string;
+  /**
+   * 压在图上（门户头图的顶部浮层）：半透明深底圆钮 + 白图标，不写字。
+   * 值是圆钮直径（px）—— 调用方按微信胶囊的高度量好传进来，与返回键一样大
+   */
+  imageBox?: number;
 }>();
 const emit = defineEmits<{ (e: "poster"): void }>();
 
@@ -73,9 +78,14 @@ function toPoster() {
   <!-- 单一根节点：小程序里多根组件的宿主节点不稳。面板与按钮是兄弟 —— 放进按钮里的话，
        点面板（包括蒙层关闭）会冒泡到按钮上，关了又立刻打开 -->
   <view class="shareroot">
-  <view class="shareact sh-center" :class="{ 'is-compact': compact }" @tap="onTap">
-    <sh-icon name="share" :size="compact ? 32 : 28" color="var(--sh-ink)"></sh-icon>
-    <text class="txt-caption sh-muted">{{ $t(poster || native ? "share.act" : "share.copy") }}</text>
+  <view
+    class="shareact sh-center"
+    :class="{ 'is-compact': compact, 'is-on-image': !!imageBox }"
+    :style="imageBox ? { width: imageBox + 'px', height: imageBox + 'px' } : undefined"
+    @tap="onTap"
+  >
+    <sh-icon name="share" :size="compact || imageBox ? 32 : 28" :color="imageBox ? '#fff' : 'var(--sh-ink)'"></sh-icon>
+    <text v-if="!imageBox" class="txt-caption sh-muted">{{ $t(poster || native ? "share.act" : "share.copy") }}</text>
     <!-- 没有面板时：小程序原生转发按钮盖在整块上，自己不占视觉 -->
     <button v-if="native && !poster" class="shareact__native" open-type="share"></button>
   </view>
@@ -116,6 +126,11 @@ function toPoster() {
 .shareact.is-compact {
   gap: 2rpx;
   width: 72rpx;
+}
+/* 压在图上：与门户顶部的返回键同一种圆钮，任何颜色的图上都看得清 */
+.shareact.is-on-image {
+  border-radius: 9999px;
+  background: var(--sh-scrim);
 }
 .shareact__native {
   position: absolute;
