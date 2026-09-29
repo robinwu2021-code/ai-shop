@@ -691,10 +691,11 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "批次要求：ANY 不限 / Y1 一年内 / Y2 两年内。后端 ElecRfqServiceImpl.DC_REQS，"
       + "取值单独声明成常量是为了进得了枚举对账的后端词表（两个字符的字面量扫不到）" },
   { decl: "shared:ElecRfqStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["SUBMITTED", "QUOTED", "ACCEPTED"],
+    words: ["SUBMITTED", "QUOTED", "ACCEPTED", "EXPIRED"],
     note: "询价单状态。SUBMITTED/QUOTED/ACCEPTED 不在 L1 词表里：L1 的「待处理/处理中/已完成」"
       + "对询价太粗 —— 买家要分得清「还没人报」和「报了等我选」，这两步的动作完全不同。"
-      + "EXPIRED 与 CLOSED 用的是 L1 的词" },
+      + "EXPIRED 也不在 L1：它不是「关闭」，报价过期之后单子还在、还能再催一轮，"
+      + "用 L1 的 CLOSED 会把「没人要了」和「价放久了」混成一件事。CLOSED 用的是 L1 的词" },
   { decl: "shared:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
     note: "询价关单原因：NO_SOURCE 没找到货 / BUYER_CANCELLED 买家撤 / DONE 成交。"
       + "「没找到货」要与「买家撤了」分开统计 —— 前者是平台的缺货清单，是要补的货源" },
@@ -703,9 +704,11 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     note: "ACTIVE / SUSPENDED，用的是 L1 词表里的词。暂停后他的库存不再进买家面的投影" },
   { decl: "shared:ElecStockStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["ON"],
-    note: "库存行：ON 在售 / EXPIRED 已过期。ON 不在 L1 里 —— 这里的「在售」指"
-      + "**这一行还在有效期内**，与商品的上下架不是一回事，借 L1 的上架词会把两件事混掉" },
+    words: ["ON", "EXPIRED"],
+    note: "库存行：ON 在售 / EXPIRED 已过期。两个词都不在 L1 里 —— 这里的「在售」指"
+      + "**这一行还在有效期内**，与商品的上下架不是一回事，借 L1 的上架词会把两件事混掉；"
+      + "EXPIRED 是「超过 N 天没再确认」，货多半还在，只是不该再给买家看，"
+      + "与 L1 里表示终态的那些词不是一回事（供应商点一下「仍有货」它就回到 ON）" },
   { decl: "shared:ElecImportMode", dom: "elec", shape: "CLASS", verdict: "OK",
     note: "上传库存表的方式：MERGE 只改表里有的 / REPLACE 表里没有的下架。"
       + "**默认 MERGE**：传半截表就把全部库存下架，是这类工具最常见的事故" },
