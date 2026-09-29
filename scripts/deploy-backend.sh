@@ -114,6 +114,16 @@ if [ -f "$GATE_FILE" ]; then
     GATE_WHAT="$(sed -n '2p' "$GATE_FILE")"
     if [ "$GATE_SHA" = "$HEAD_SHA" ]; then
         ok "闸门验的就是这一版（$GATE_SHA）${GATE_WHAT:+ —— $GATE_WHAT}"
+    elif git merge-base --is-ancestor "$HEAD_SHA" "$GATE_SHA" 2>/dev/null; then
+        # REF 发的是闸门那一版的**祖先**：下面 GATE..REF 的 log 恒为空，会误报「没有 backend 改动、
+        # 行为一致」—— 方向反了。闸门验的是更新的那一版，它通过不代表更早的这一版通过
+        # （2026-09-29 发 986da6a83 时，闸门记录是 a65beed13，就打出了那句假话）。
+        if [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
+            say "⚠ 闸门验的是更新的 $GATE_SHA，本次发它的祖先 $HEAD_SHA —— 这一版没被闸门直接验过（ALLOW_GATE_DRIFT=1 放行）"
+        else
+            die "闸门验的是更新的 $GATE_SHA，本次要发的 $HEAD_SHA 是它的祖先 —— 这一版没被闸门直接验过。
+  先跑 scripts/check-head-compiles.sh $HEAD_SHA，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
+        fi
     else
         DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
         if [ -z "$DRIFT" ]; then
