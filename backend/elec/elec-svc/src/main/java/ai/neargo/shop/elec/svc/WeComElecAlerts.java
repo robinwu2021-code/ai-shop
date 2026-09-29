@@ -21,8 +21,9 @@ import java.util.Map;
 /**
  * 企业微信群机器人，本进程自己发（不经主系统）。
  *
- * <p><b>URL 本身就是凭据</b>：只在服务器 env 里（{@code ELEC_WECOM_WEBHOOK}），不进仓库。空 = 不发。
- * 可以与主系统收入驻意向的是同一个群，也可以单独建。
+ * <p><b>URL 本身就是凭据</b>：只在服务器 env 里，不进仓库。空 = 不发。
+ * <b>默认复用主系统那条</b>（{@code SHOP_NOTIFY_WECOM_WEBHOOK}，收入驻意向的那个群）；
+ * 要单独建元器件群就配 {@code ELEC_WECOM_WEBHOOK} 盖过它。
  *
  * <p><b>成败看 body 的 errcode</b>，不看 HTTP 状态：企微永远回 200，
  * 只判状态码的话 key 失效、被限流、内容超长全都会被当成成功。
@@ -43,6 +44,7 @@ public class WeComElecAlerts implements ElecAlerts {
     private final Deque<Instant> sent = new ArrayDeque<>();
 
     public WeComElecAlerts(@Value("${elec.wecom.webhook:}") String webhook, ObjectMapper json) {
+        // 值来自 elec.wecom.webhook，它默认回落到主系统的 SHOP_NOTIFY_WECOM_WEBHOOK（见 application.yml）
         this.webhook = webhook == null ? "" : webhook.trim();
         this.json = json;
     }

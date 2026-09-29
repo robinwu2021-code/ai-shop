@@ -141,6 +141,8 @@ const GENERATORS = [
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
     "backend/shop-inventory/src/main/resources/db/inventory"]],
+  ["scripts/gen-elec-erd.mjs",
+   ["docs/technical/diagrams/db-elec.svg", "docs/technical/reference/数据库-元器件.md"]],
   ["backend/scripts/gen-test-schema.py",
    ["backend/elec/elec-svc/src/test/resources/db/elec-h2/V1__elec_baseline.sql"],
    ["backend/elec/elec-svc/src/test/resources/db/elec-h2/V1__elec_baseline.sql",

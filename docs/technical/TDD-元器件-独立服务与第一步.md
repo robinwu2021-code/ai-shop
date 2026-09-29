@@ -251,8 +251,8 @@ ops-web 加「元器件询价」一页：列表（状态筛选）+ 详情抽屉�
 | 建库 | MySQL 9.7（3307）上建 `ai_shop_elec` 与专用账号；迁移由 elec-svc 启动时自己跑 |
 | systemd | `ai-shop-elec.service`，端口 8085，照 `ai-shop-pay.service` |
 | nginx | `location ^~ /elec/ { proxy_pass http://127.0.0.1:8085; }`，`/internal/elec/` 不对外 |
-| 环境变量 | `ELEC_DB_URL/USER/PASSWORD` · `SHOP_SERVICES_INTERNAL_TOKEN`（两边同值）· `ELEC_WECOM_WEBHOOK` |
-| ★ 企业微信群 | 可以用现在收入驻意向的那个群，也可以新建一个「元器件询价」群，把机器人地址给我 |
+| 环境变量 | `ELEC_DB_URL/USER/PASSWORD`；`SHOP_SERVICES_INTERNAL_TOKEN` 与主系统同值（**生产上已有**，照抄那一行） |
+| 企业微信群 | **不用再配**：默认复用 `SHOP_NOTIFY_WECOM_WEBHOOK`（生产已配，收入驻意向的那个群）。要单独建元器件群再配 `ELEC_WECOM_WEBHOOK` |
 | ★ 订阅消息模板 | 小程序后台 → 订阅消息 → 选一个「报价结果通知」类模板，把模板号给我（端上 `VITE_WX_TPL_ELEC_QUOTED` 与后端同值） |
 | 小程序 | 请求与 uploadFile 合法域名已是 www.hxmall.top，同域不用加 |
 

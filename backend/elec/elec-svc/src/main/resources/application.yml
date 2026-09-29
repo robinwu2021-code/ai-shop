@@ -34,8 +34,11 @@ shop:
 
 elec:
   wecom:
-    # 企业微信群机器人。URL 本身就是凭据，只在服务器 env 里。空 = 不发
-    webhook: ${ELEC_WECOM_WEBHOOK:}
+    # 企业微信群机器人。**默认复用主系统那条**（SHOP_NOTIFY_WECOM_WEBHOOK，生产上已经配着，
+    # 收入驻意向的就是那个群）—— 不用为元器件再要一次地址。
+    # 要单独建一个元器件群时，只配 ELEC_WECOM_WEBHOOK 就会盖过它。
+    # URL 本身就是凭据：只在服务器 env 里，不进仓库。两个都空 = 不发
+    webhook: ${ELEC_WECOM_WEBHOOK:${SHOP_NOTIFY_WECOM_WEBHOOK:}}
 
 logging:
   level:
