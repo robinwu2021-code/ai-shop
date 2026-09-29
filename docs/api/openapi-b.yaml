@@ -7562,6 +7562,97 @@ components:
         - "categories"
         - "favorited"
       additionalProperties: false
+    StoreVisitSource: 
+      type: "string"
+      enum: 
+        - "SHARE"
+        - "SCAN"
+        - "LIST"
+        - "SEARCH"
+        - "GOODS"
+      description: "一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。\n**只在第一次进店时定**，之后从别的入口进来不改 —— 它回答的是「这家店是怎么被发现的」， 分享的效果统计就数 `SHARE` 这一档。"
+    StoreRelation: 
+      type: "object"
+      properties: 
+        orderCount: 
+          type: "number"
+          description: "在这家店成交过几单（已付款口径，取消的不算）"
+        lastOrderAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "最近一次成交时间（毫秒）。没买过为空"
+        lastViewAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "最近一次进店时间（毫秒）。只买过、没有进店记录的老单为空"
+        firstSource: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StoreVisitSource"
+            - type: "null"
+          description: "首次进店来源"
+      required: 
+        - "orderCount"
+      additionalProperties: false
+      description: "买家与这家店的关系（只在「我的店」里有）"
+    StoreCard: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号（`ST…`）。进门户、下单都用它"
+        storeName: 
+          type: "string"
+          description: "门店名。卡片标题就是它，不再拼主体名"
+        entityNo: 
+          type: "string"
+          description: "所属主体。资质页、老接口用"
+        logo: 
+          type: "string"
+          description: "品牌标，取主体的；门店没有自己的标。可能为空串"
+        status: 
+          "$ref": "#/components/schemas/StoreStatus"
+          description: "READONLY 只会出现在「我的店」里（压淡显示），附近不列"
+        openNow: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "此刻营业与否。营业时间写得认不出来时为空 —— 端上不画这个标签，不猜"
+        openHours: 
+          type: "string"
+          description: "营业时间文案，店主自填"
+        address: 
+          type: "string"
+          description: "店铺地址"
+        distanceM: 
+          type: 
+            - "number"
+            - "null"
+          description: "离我多远（米）。没传位置、或门店没标坐标时为空 —— **不是 0**"
+        rating: 
+          type: "number"
+          description: "评分 0–5"
+        ratingCount: 
+          type: "number"
+          description: "评价数。0 表示暂无评价，此时别显示 rating"
+        relation: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StoreRelation"
+            - type: "null"
+          description: "买家与这家店的关系。「附近」里为空"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "entityNo"
+        - "logo"
+        - "status"
+        - "openHours"
+        - "address"
+        - "rating"
+        - "ratingCount"
+      additionalProperties: false
+      description: "C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，不是主体** —— 同一主体下的几家店各是一张卡，标题是门店名。"
     FrequentItem: 
       type: "object"
       properties: 

@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 790 个接口**：后端已实现 714（90%）· 前端在调 717
+**合计 792 个接口**：后端已实现 716（90%）· 前端在调 719
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **104** 个接口 ｜ 后端已实现 **103**（99%）｜ 前端在调 **104**
+共 **106** 个接口 ｜ 后端已实现 **105**（99%）｜ 前端在调 **106**
 
 ### after-sale（4）
 
@@ -226,14 +226,16 @@
 | POST | `/mp/review` | 发表评价 | `CreateReviewReq` | `Review` | 🔒 | ✅ | ✅ |
 | POST | `/mp/review/{reviewNo}/like` | 点赞/取消 | — | `Review` | 🔒 | ✅ | ✅ |
 
-### store（4）
+### store（6）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/store/{merchantNo}` | 门店主页 | — | `StoreHome` | — | ✅ | ✅ |
 | GET | `/mp/store/{merchantNo}/frequent` | 常买清单 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/mp/store/{no}/enter` | 进店 | `StoreEnterReq` | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/store/by-code` | 扫码进店 | — | `StoreHome` | — | ✅ | ✅ |
-| GET | `/mp/store/mine` | 我的常去店 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/store/mine` | 我的店：买过的 + 近期逛过的门店 | — | `数组` | — | ✅ | ✅ |
+| GET | `/mp/store/nearby` | 附近的门店（去掉我的店） | — | `object` | — | ✅ | ✅ |
 
 ### user（15）
 

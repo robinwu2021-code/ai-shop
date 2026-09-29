@@ -188,8 +188,10 @@ class M6aStoreAttributionFlowTest {
 
         mvc().perform(get("/mp/store/mine").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                // 最后扫的那家成为常去店：用户用脚投票，不该由先到先得决定
-                .andExpect(jsonPath("$.data[0].merchantNo").value("M0002"));
+                // 最后扫的那家排在「我的店」第一：用户用脚投票，不该由先到先得决定。
+                // 门店化之后单位是门店 —— 老链接带主体号进来，落到它的默认门店
+                .andExpect(jsonPath("$.data[0].storeNo").value("ST-M0002"))
+                .andExpect(jsonPath("$.data[1].storeNo").value("ST-M0001"));
 
         addToCart(token, "G0003", "SK0004", 1);
         createOrder(token, "m6a-override");
@@ -282,7 +284,7 @@ class M6aStoreAttributionFlowTest {
     }
 
     @Test
-    @DisplayName("收藏本店：出现在「我的常去店」，再点取消")
+    @DisplayName("收藏本店：出现在「我的收藏 · 店铺」，再点取消")
     void favoriteStore() throws Exception {
         String token = login("13100131023");
 
@@ -291,7 +293,8 @@ class M6aStoreAttributionFlowTest {
         mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.favorited").value(true));
-        mvc().perform(get("/mp/store/mine").header("Authorization", "Bearer " + token))
+        // /mp/store/mine 门店化后是「买过的 + 逛过的门店」，不再混入收藏（TDD-C端门店化与门店门户）
+        mvc().perform(get("/mp/favorite/store").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
 
         mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))

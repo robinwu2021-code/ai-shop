@@ -2339,6 +2339,30 @@
 类型：[`FrequentItem`](#frequentitem)\[\]
 
 
+#### POST `/mp/store/{no}/enter`
+
+进店　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`StoreEnterReq`](#storeenterreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`StoreVisitSource`](#storevisitsource) | 否 | 进店入口。只在第一次进这家店时记下，之后不改 |
+| `inviterNo` | `string` | 否 | 分享人。只有 source=SHARE 时才记 |
+| `channel` | `string` | 否 | 渠道（归因用） |
+| `storeCode` | `string` | 否 | 扫到的店码（归因用） |
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/mp/store/by-code`
 
 扫码进店　🔒
@@ -2361,13 +2385,45 @@
 
 #### GET `/mp/store/mine`
 
-我的常去店　🔒
+我的店：买过的 + 近期逛过的门店　🔒
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `latE6` | query | `number` | 否 | — |
+| `lngE6` | query | `number` | 否 | — |
 
 **出参**（`data`）
 
-类型：[`Merchant`](#merchant)\[\]
+类型：[`StoreCard`](#storecard)\[\]
+
+
+#### GET `/mp/store/nearby`
+
+附近的门店（去掉我的店）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `latE6` | query | `number` | 否 | — |
+| `lngE6` | query | `number` | 否 | — |
+| `communityNo` | query | `string` | 否 | 社区单号 |
+| `keyword` | query | `string` | 否 | 搜索关键词 |
+| `page` | query | `number` | 否 | 页码，从 1 起 |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`StoreCard`](#storecard)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### user
@@ -4341,6 +4397,34 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `merchantNo` | `string` | 是 | 码所属的商家。一店一码、生成一次落库复用，所以它就是这张码的身份 |
 | `imageBase64` | `string,null` | 是 | PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 |
 
+### StoreCard
+
+C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，不是主体** —— 同一主体下的几家店各是一张卡，标题是门店名。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号（`ST…`）。进门户、下单都用它 |
+| `storeName` | `string` | 是 | 门店名。卡片标题就是它，不再拼主体名 |
+| `entityNo` | `string` | 是 | 所属主体。资质页、老接口用 |
+| `logo` | `string` | 是 | 品牌标，取主体的；门店没有自己的标。可能为空串 |
+| `status` | [`StoreStatus`](#storestatus) | 是 | READONLY 只会出现在「我的店」里（压淡显示），附近不列 |
+| `openNow` | `boolean,null` | 否 | 此刻营业与否。营业时间写得认不出来时为空 —— 端上不画这个标签，不猜 |
+| `openHours` | `string` | 是 | 营业时间文案，店主自填 |
+| `address` | `string` | 是 | 店铺地址 |
+| `distanceM` | `number,null` | 否 | 离我多远（米）。没传位置、或门店没标坐标时为空 —— **不是 0** |
+| `rating` | `number` | 是 | 评分 0–5 |
+| `ratingCount` | `number` | 是 | 评价数。0 表示暂无评价，此时别显示 rating |
+| `relation` | [`StoreRelation`](#storerelation) \| `null` | 否 | 买家与这家店的关系。「附近」里为空 |
+
+### StoreEnterReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`StoreVisitSource`](#storevisitsource) | 否 | 进店入口。只在第一次进这家店时记下，之后不改 |
+| `inviterNo` | `string` | 否 | 分享人。只有 source=SHARE 时才记 |
+| `channel` | `string` | 否 | 渠道（归因用） |
+| `storeCode` | `string` | 否 | 扫到的店码（归因用） |
+
 ### StoreFront
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -4363,6 +4447,17 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `favorited` | `boolean` | 是 | 我是否收藏了这家店 |
 | `closed` | `boolean` | 否 | 已停业（门店非 ACTIVE：商家自助停用或平台强制下线）。 **是标志而不是 404**：扫码进来的老客要知道「店关了」，不是「链接坏了」。 端上据此盖「已停业」并禁掉加购。 ⚠️ 后端 `StoreHomeVO` 一直在发这个字段，这里此前没声明 —— 于是**扫码进一家已停业的店，看起来与正常营业毫无区别**， 加购、下单一路走到底，最后在库存或下单闸门上撞一个说不清的错误。 |
 
+### StoreRelation
+
+买家与这家店的关系（只在「我的店」里有）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderCount` | `number` | 是 | 在这家店成交过几单（已付款口径，取消的不算） |
+| `lastOrderAt` | `number,null` | 否 | 最近一次成交时间（毫秒）。没买过为空 |
+| `lastViewAt` | `number,null` | 否 | 最近一次进店时间（毫秒）。只买过、没有进店记录的老单为空 |
+| `firstSource` | [`StoreVisitSource`](#storevisitsource) \| `null` | 否 | 首次进店来源 |
+
 ### StoreShelf
 
 店铺页上的一类。`count` 直接显示，省得买家点进去数
@@ -4372,6 +4467,27 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `categoryNo` | `string` | 是 | 类目号 |
 | `name` | `string` | 是 | 名称 |
 | `count` | `number` | 是 | 这一类下有几件在架。直接显示，省得买家点进去数 |
+
+### StoreStatus
+
+门店状态。READONLY = 已停用（不再接新单，已有单照常履约）
+
+枚举取值：
+
+- `ACTIVE`
+- `READONLY`
+
+### StoreVisitSource
+
+一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。 **只在第一次进店时定**，之后从别的入口进来不改 —— 它回答的是「这家店是怎么被发现的」， 分享的效果统计就数 `SHARE` 这一档。
+
+枚举取值：
+
+- `SHARE`
+- `SCAN`
+- `LIST`
+- `SEARCH`
+- `GOODS`
 
 ### TrafficSource
 

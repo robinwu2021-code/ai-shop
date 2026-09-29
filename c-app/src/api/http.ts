@@ -41,6 +41,9 @@ import type {
   SaveAddressReq,
   VerifyPickupReq,
   PointsDeductibleQuery,
+  MyStoresQuery,
+  StoreNearbyQuery,
+  StoreEnterReq,
 } from "./requests";
 import type {
   AfterSale,
@@ -66,6 +69,7 @@ import type {
   Merchant,
   ReorderResult,
   StoreHome,
+  StoreCard,
   Message,
   Order,
   PageQuery,
@@ -256,7 +260,11 @@ export const httpApi: ShopApi = {
   toggleFavoriteGoods: (goodsNo) => call<{ favorited: boolean }>("toggleFavoriteGoods", { goodsNo }),
   favoriteGoods: (page = 1, size = 20) => call<PageResult<Goods>>("favoriteGoods", undefined, { page, size }),
   favoriteStores: () => call<Merchant[]>("favoriteStores"),
-  myStores: () => http.get<Merchant[]>(ENDPOINTS.myStores.path),
+  myStores: (q) => call<StoreCard[]>("myStores", undefined, { ...q } satisfies MyStoresQuery),
+  storeNearby: (q) =>
+    call<PageResult<StoreCard>>("storeNearby", undefined, { ...q } satisfies StoreNearbyQuery),
+  storeEnter: (no, req) =>
+    call<void>("storeEnter", { no }, { ...req } satisfies StoreEnterReq),
 
   merchantDetail: (merchantNo) => call<Merchant>("merchantDetail", { merchantNo }),
   visitedMerchants: () => call<VisitedMerchant[]>("visitedMerchants"),

@@ -1,6 +1,9 @@
 package ai.neargo.shop.portal.mp;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.marketing.attribution.AttributionService;
 import ai.neargo.shop.marketing.attribution.dto.AttributionVO;
 import ai.neargo.shop.product.dto.FrequentItemVO;
@@ -9,7 +12,9 @@ import ai.neargo.shop.product.dto.ReorderResultVO;
 import ai.neargo.shop.product.dto.StoreHomeVO;
 import ai.neargo.shop.product.service.StoreService;
 import ai.neargo.shop.merchant.service.StoreCodeService;
-import ai.neargo.shop.user.dto.StoreBriefVO;
+import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import ai.neargo.shop.user.dto.StoreCardVO;
+import ai.neargo.shop.user.service.MyStoreService;
 import ai.neargo.shop.user.service.StoreFavoriteService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,23 +45,51 @@ public class MpStoreController {
     private final AttributionService attributionService;
     private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
     private final ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService;
+    private final MyStoreService myStoreService;
+    private final StoreDirectoryPort storeDirectory;
 
     public MpStoreController(StoreService storeService, StoreFavoriteService favoriteService,
                              StoreCodeService storeCodeService,
                              AttributionService attributionService,
                              ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService,
-                             ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService) {
+                             ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService,
+                             MyStoreService myStoreService, StoreDirectoryPort storeDirectory) {
         this.storeService = storeService;
         this.favoriteService = favoriteService;
         this.storeCodeService = storeCodeService;
         this.attributionService = attributionService;
         this.storeVisitService = storeVisitService;
         this.appointmentSlotService = appointmentSlotService;
+        this.myStoreService = myStoreService;
+        this.storeDirectory = storeDirectory;
     }
 
+    /**
+     * 我的店：成交过的门店 + 近期逛过的门店，<b>以门店为单位</b>（TDD-C端门店化与门店门户 §2.3）。
+     *
+     * <p>此前这条回的是收藏的<b>主体</b>，而且没有任何页面调用它 —— 收藏另有
+     * {@code /mp/favorite/store}。门店化之后它改回「常去」这层本来的意思。
+     */
     @GetMapping("/mp/store/mine")
-    public List<StoreBriefVO> myStores() {
-        return favoriteService.myStores();
+    public List<StoreCardVO> myStores(@RequestParam(required = false) Integer latE6,
+                                      @RequestParam(required = false) Integer lngE6) {
+        // 游客回空列表而不是 401：店铺页上半截对游客就是空的，下半截「附近」照常
+        return myStoreService.mine(SecurityUtils.currentUserNoOrNull(), latE6, lngE6);
+    }
+
+    /**
+     * 附近的门店：能卖到当前社区、营业中，<b>去掉已在「我的店」里的</b>。
+     * 游客可访问 —— 没登录的人也要能逛到店。有坐标按距离，没坐标按评分。
+     */
+    @GetMapping("/mp/store/nearby")
+    public PageData<StoreCardVO> nearby(@RequestParam(required = false) Integer latE6,
+                                        @RequestParam(required = false) Integer lngE6,
+                                        @RequestParam(required = false) String communityNo,
+                                        @RequestParam(required = false) String keyword,
+                                        @RequestParam(defaultValue = "1") long page,
+                                        @RequestParam(defaultValue = "20") long size) {
+        return myStoreService.nearby(SecurityUtils.currentUserNoOrNull(), latE6, lngE6,
+                communityNo, keyword, page, Math.min(Math.max(size, 1), 50));
     }
 
     /**
@@ -138,13 +171,35 @@ public class MpStoreController {
                 favoriteService.isFavorited(merchantNo));
     }
 
-    /** 进店埋点 + 归因。需要登录 —— 归因必须挂在具体的人身上。 */
-    @PostMapping("/mp/store/{merchantNo}/enter")
-    public AttributionVO enter(@PathVariable String merchantNo, @RequestBody(required = false) EnterReq req) {
-        return attributionService.report(SecurityUtils.currentUserNo(),
-                new AttributionService.Clue(merchantNo,
-                        req == null ? null : req.inviterNo(),
-                        req == null ? null : req.channel()));
+    /**
+     * 进店：归因 + 记进「我的店」。需要登录 —— 两样都必须挂在具体的人身上。
+     *
+     * <p>{@code no} 按前缀分派（{@link StoreDirectoryPort#resolve}）：门店号直接进，
+     * 主体号（老分享、旧版小程序）落到该主体的默认门店。这样老链接进来的人
+     * 也会在「我的店」里留下一家<b>具体的店</b>，而不是一个主体。
+     *
+     * <p>{@code source} 决定这家店「怎么进入他的列表」，只在第一次写入时定；
+     * 不认识的来源按 LIST 记（不猜成分享 —— 分享的计数是给商家看的回报）。
+     */
+    @PostMapping("/mp/store/{no}/enter")
+    public AttributionVO enter(@PathVariable String no, @RequestBody(required = false) EnterReq req) {
+        String userNo = SecurityUtils.currentUserNo();
+        String inviterNo = req == null ? null : req.inviterNo();
+        String channel = req == null ? null : req.channel();
+        var store = storeDirectory.resolve(no);
+        if (store.isEmpty()) {
+            // 主体号解不出门店（主体还没建店、或店全删了）：照旧只记归因 ——
+            // 这是改造前的全部行为，老链接不能因为门店化而从「能进」变成 404
+            if (no.startsWith("M")) {
+                return attributionService.report(userNo, new AttributionService.Clue(no, inviterNo, channel));
+            }
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var s = store.get();
+        myStoreService.recordView(userNo, s.storeNo(), s.entityNo(),
+                req == null ? null : req.source(), inviterNo);
+        return attributionService.report(userNo,
+                new AttributionService.Clue(s.entityNo(), inviterNo, channel, s.storeNo()));
     }
 
     @PostMapping("/mp/attribution/report")
@@ -175,7 +230,10 @@ public class MpStoreController {
     // 收藏本店挪到 MpFavoriteController 的 POST /mp/favorite/store/{merchantNo}：
     // 这里原先回的是「收藏列表」，端上一直当布尔用（数组恒真 —— 点取消也提示已收藏）。
 
-    public record EnterReq(String storeCode, String inviterNo, String channel) {
+    /**
+     * @param source 进店入口：SHARE / SCAN / LIST / SEARCH / GOODS（{@code UsrStoreView.SOURCES}）
+     */
+    public record EnterReq(String storeCode, String inviterNo, String channel, String source) {
     }
 
     public record AttributionReportReq(String merchantNo, String inviterNo, String channel) {

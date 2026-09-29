@@ -291,7 +291,11 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   toggleFavoriteGoods: { method: "POST", path: "/mp/favorite/goods/:goodsNo", auth: true, summary: "收藏 / 取消收藏商品" },
   favoriteGoods: { method: "GET", path: "/mp/favorite/goods", auth: true, summary: "我的收藏 · 商品" },
   favoriteStores: { method: "GET", path: "/mp/favorite/store", auth: true, summary: "我的收藏 · 店铺" },
-  myStores: { method: "GET", path: "/mp/store/mine", auth: true, summary: "我的常去店" },
+  // 我的店 / 附近 / 进店（TDD-C端门店化与门店门户）。**单位是门店，不是主体**
+  myStores: { method: "GET", path: "/mp/store/mine", auth: false, summary: "我的店：买过的 + 近期逛过的门店" },
+  storeNearby: { method: "GET", path: "/mp/store/nearby", auth: false, summary: "附近的门店（去掉我的店）" },
+  // 进店：记进「我的店」+ 归因。`:no` 是门店号（ST…）或主体号（M…，老链接）
+  storeEnter: { method: "POST", path: "/mp/store/:no/enter", auth: true, summary: "进店" },
 
   merchantDetail: {
     method: "GET",

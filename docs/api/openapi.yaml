@@ -7563,6 +7563,97 @@ components:
         - "categories"
         - "favorited"
       additionalProperties: false
+    StoreVisitSource: 
+      type: "string"
+      enum: 
+        - "SHARE"
+        - "SCAN"
+        - "LIST"
+        - "SEARCH"
+        - "GOODS"
+      description: "一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。\n**只在第一次进店时定**，之后从别的入口进来不改 —— 它回答的是「这家店是怎么被发现的」， 分享的效果统计就数 `SHARE` 这一档。"
+    StoreRelation: 
+      type: "object"
+      properties: 
+        orderCount: 
+          type: "number"
+          description: "在这家店成交过几单（已付款口径，取消的不算）"
+        lastOrderAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "最近一次成交时间（毫秒）。没买过为空"
+        lastViewAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "最近一次进店时间（毫秒）。只买过、没有进店记录的老单为空"
+        firstSource: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StoreVisitSource"
+            - type: "null"
+          description: "首次进店来源"
+      required: 
+        - "orderCount"
+      additionalProperties: false
+      description: "买家与这家店的关系（只在「我的店」里有）"
+    StoreCard: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号（`ST…`）。进门户、下单都用它"
+        storeName: 
+          type: "string"
+          description: "门店名。卡片标题就是它，不再拼主体名"
+        entityNo: 
+          type: "string"
+          description: "所属主体。资质页、老接口用"
+        logo: 
+          type: "string"
+          description: "品牌标，取主体的；门店没有自己的标。可能为空串"
+        status: 
+          "$ref": "#/components/schemas/StoreStatus"
+          description: "READONLY 只会出现在「我的店」里（压淡显示），附近不列"
+        openNow: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "此刻营业与否。营业时间写得认不出来时为空 —— 端上不画这个标签，不猜"
+        openHours: 
+          type: "string"
+          description: "营业时间文案，店主自填"
+        address: 
+          type: "string"
+          description: "店铺地址"
+        distanceM: 
+          type: 
+            - "number"
+            - "null"
+          description: "离我多远（米）。没传位置、或门店没标坐标时为空 —— **不是 0**"
+        rating: 
+          type: "number"
+          description: "评分 0–5"
+        ratingCount: 
+          type: "number"
+          description: "评价数。0 表示暂无评价，此时别显示 rating"
+        relation: 
+          anyOf: 
+            - "$ref": "#/components/schemas/StoreRelation"
+            - type: "null"
+          description: "买家与这家店的关系。「附近」里为空"
+      required: 
+        - "storeNo"
+        - "storeName"
+        - "entityNo"
+        - "logo"
+        - "status"
+        - "openHours"
+        - "address"
+        - "rating"
+        - "ratingCount"
+      additionalProperties: false
+      description: "C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，不是主体** —— 同一主体下的几家店各是一张卡，标题是门店名。"
     FrequentItem: 
       type: "object"
       properties: 
@@ -9918,6 +10009,54 @@ components:
           description: "选定的报价。**选定即锁价**，此后下单一律用快照价（ADR-003）"
       required: 
         - "quoteNo"
+      additionalProperties: false
+    MyStoresQuery: 
+      type: "object"
+      properties: 
+        latE6: 
+          type: "number"
+          description: "买家位置（gcj02，E6）。传了卡片上才有距离"
+        lngE6: 
+          type: "number"
+          description: "经度 ×1e6"
+      additionalProperties: false
+    StoreNearbyQuery: 
+      type: "object"
+      properties: 
+        latE6: 
+          type: "number"
+          description: "买家位置（gcj02，E6）。有位置按距离排，没位置按评分排"
+        lngE6: 
+          type: "number"
+          description: "经度 ×1e6"
+        communityNo: 
+          type: "string"
+          description: "只列能卖到这个社区的门店。不传 = 不按社区过滤"
+        keyword: 
+          type: "string"
+          description: "按门店名模糊匹配"
+        page: 
+          type: "number"
+          description: "页码，从 1 起"
+        size: 
+          type: "number"
+          description: "每页条数，最多 50"
+      additionalProperties: false
+    StoreEnterReq: 
+      type: "object"
+      properties: 
+        source: 
+          "$ref": "#/components/schemas/StoreVisitSource"
+          description: "进店入口。只在第一次进这家店时记下，之后不改"
+        inviterNo: 
+          type: "string"
+          description: "分享人。只有 source=SHARE 时才记"
+        channel: 
+          type: "string"
+          description: "渠道（归因用）"
+        storeCode: 
+          type: "string"
+          description: "扫到的店码（归因用）"
       additionalProperties: false
     MerchantListQuery: 
       type: "object"
@@ -12780,12 +12919,23 @@ paths:
   "/mp/store/mine": 
     get: 
       operationId: "myStores"
-      summary: "我的常去店"
+      summary: "我的店：买过的 + 近期逛过的门店"
       tags: 
         - "store"
-      security: 
-        - bearerAuth: []
-      parameters: []
+      security: []
+      parameters: 
+        - name: "latE6"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "买家位置（gcj02，E6）。传了卡片上才有距离"
+        - name: "lngE6"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "经度 ×1e6"
       responses: 
         "200": 
           description: "OK"
@@ -12802,11 +12952,129 @@ paths:
                   data: 
                     type: "array"
                     items: 
-                      "$ref": "#/components/schemas/Merchant"
+                      "$ref": "#/components/schemas/StoreCard"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/store/nearby": 
+    get: 
+      operationId: "storeNearby"
+      summary: "附近的门店（去掉我的店）"
+      tags: 
+        - "store"
+      security: []
+      parameters: 
+        - name: "latE6"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "买家位置（gcj02，E6）。有位置按距离排，没位置按评分排"
+        - name: "lngE6"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "经度 ×1e6"
+        - name: "communityNo"
+          in: "query"
+          required: false
+          schema: 
+            type: "string"
+            description: "只列能卖到这个社区的门店。不传 = 不按社区过滤"
+        - name: "keyword"
+          in: "query"
+          required: false
+          schema: 
+            type: "string"
+            description: "按门店名模糊匹配"
+        - name: "page"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "页码，从 1 起"
+        - name: "size"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+            description: "每页条数，最多 50"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/StoreCard"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/store/{no}/enter": 
+    post: 
+      operationId: "storeEnter"
+      summary: "进店"
+      tags: 
+        - "store"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/StoreEnterReq"
   "/mp/merchant/{merchantNo}": 
     get: 
       operationId: "merchantDetail"

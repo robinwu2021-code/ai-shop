@@ -58,6 +58,11 @@ public final class UserMappers {
     public interface AddressMapper extends BaseMapper<UsrAddress> {
     }
 
+    /** 用户逛过的门店。一人一店一行（{@code uk_store_view_user_store}），覆盖写 */
+    public interface StoreViewMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrStoreView> {
+    }
+
     /**
      * 测试号固定验证码白名单（苹果审核演示账号）。
      *

@@ -130,7 +130,7 @@ class MpEndpointAuthTest {
             // 「我邀到了几个」——没有「我」就没有答案（§3.1）
             "GET /mp/fission",
             "POST /mp/risk/appeal",
-            "POST /mp/store/{merchantNo}/enter",
+            "POST /mp/store/{no}/enter",
             // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）
             "POST /mp/favorite/goods/{goodsNo}",
             "GET /mp/favorite/goods",
@@ -182,6 +182,8 @@ class MpEndpointAuthTest {
             "GET /mp/search/hot",
             "GET /mp/search/suggest",
             "GET /mp/store/mine",
+            // 附近的门店（TDD-C端门店化与门店门户）：没登录的人也要能逛到店
+            "GET /mp/store/nearby",
             "GET /mp/topics",
             "GET /mp/topics/{topicNo}/goods",
             "GET /mp/user/phone/capable",

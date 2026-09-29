@@ -42,6 +42,26 @@ public class PurchaseHistoryPortImpl implements PurchaseHistoryPort {
                 .toList();
     }
 
+    @Override
+    public List<StorePurchase> purchasedStores(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return List.of();
+        }
+        List<OrdSubOrder> subs = subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getUserNo, userNo)
+                .in(OrdSubOrder::getStatus, OrdSubOrder.PAID)
+                .isNotNull(OrdSubOrder::getStoreNo));
+        return subs.stream()
+                .filter(s -> s.getStoreNo() != null && !s.getStoreNo().isBlank())
+                .collect(Collectors.groupingBy(OrdSubOrder::getStoreNo))
+                .entrySet().stream()
+                .map(e -> new StorePurchase(e.getKey(), e.getValue().get(0).getEntityNo(),
+                        e.getValue().size(),
+                        e.getValue().stream().mapToLong(this::createdAtMillis).max().orElse(0L)))
+                .sorted(Comparator.comparingLong(StorePurchase::lastOrderAt).reversed())
+                .toList();
+    }
+
     private long createdAtMillis(OrdSubOrder s) {
         return s.getCreatedAt() == null ? 0L
                 : s.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();

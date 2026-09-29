@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**105 个功能点**，其中 **30 个游客可用**；**2 个没有任何页面调用**。
+统计：**107 个功能点**，其中 **32 个游客可用**；**4 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -19,7 +19,9 @@
 | 功能点 | 方法 | 路径 | 说明 |
 |---|---|---|---|
 | `myInvoices` | GET | `/mp/invoice/mine` | — |
+| `storeEnter` | POST | `/mp/store/:no/enter` | — |
 | `myStores` | GET | `/mp/store/mine` | — |
+| `storeNearby` | GET | `/mp/store/nearby` | — |
 
 ## 全部功能点
 
@@ -113,8 +115,10 @@
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
 | `storeHome` | `GET /mp/store/:merchantNo` | 游客 | store | — |
 | `frequentItems` | `GET /mp/store/:merchantNo/frequent` | 是 | store | — |
+| `storeEnter` | `POST /mp/store/:no/enter` | 是 | **无** | — |
 | `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
-| `myStores` | `GET /mp/store/mine` | 是 | **无** | — |
+| `myStores` | `GET /mp/store/mine` | 游客 | **无** | — |
+| `storeNearby` | `GET /mp/store/nearby` | 游客 | **无** | — |
 | `activeAddress` | `GET /mp/user/active-address` | 是 | (stores) | — |
 | `switchActiveAddress` | `POST /mp/user/active-address/:addressId` | 是 | (stores) | — |
 | `addressList` | `GET /mp/user/address` | 是 | (stores) · address · address-edit · order-confirm | — |

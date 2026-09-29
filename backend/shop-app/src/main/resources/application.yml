@@ -158,6 +158,10 @@ shop:
     # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
     # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
     decide-hours: ${SHOP_PERIOD_DECIDE_HOURS:14}
+  mp:
+    my-store:
+      # 只逛过、没买过的门店在「我的店」里留几天；买过的一直在（TDD-C端门店化与门店门户 §2.3）
+      view-keep-days: 30
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"

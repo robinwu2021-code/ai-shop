@@ -68,6 +68,17 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "门店怎么进入买家的「我的店」",
+    field: "usr_store_view.first_source",
+    backend: {
+      javaConst: "shop-core/src/main/java/ai/neargo/shop/user/entity/UsrStoreView.java",
+      only: ["SHARE", "SCAN", "LIST", "SEARCH", "GOODS"],
+    },
+    clients: [
+      { file: SHARED_TYPES, type: "StoreVisitSource" },
+    ],
+  },
+  {
     concept: "供应商收款账户的状态",
     field: "mch_payout_account.status",
     backend: {

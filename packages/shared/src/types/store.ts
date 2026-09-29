@@ -337,6 +337,56 @@ export interface StoreHome {
    */
   closed?: boolean;
 }
+/**
+ * 一家店怎么进入买家的「我的店」（`usr_store_view.first_source`）。
+ * **只在第一次进店时定**，之后从别的入口进来不改 —— 它回答的是「这家店是怎么被发现的」，
+ * 分享的效果统计就数 `SHARE` 这一档。
+ */
+export type StoreVisitSource = "SHARE" | "SCAN" | "LIST" | "SEARCH" | "GOODS";
+
+/** 买家与这家店的关系（只在「我的店」里有） */
+export interface StoreRelation {
+  /** 在这家店成交过几单（已付款口径，取消的不算） */
+  orderCount: number;
+  /** 最近一次成交时间（毫秒）。没买过为空 */
+  lastOrderAt?: number | null;
+  /** 最近一次进店时间（毫秒）。只买过、没有进店记录的老单为空 */
+  lastViewAt?: number | null;
+  /** 首次进店来源 */
+  firstSource?: StoreVisitSource | null;
+}
+
+/**
+ * C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，不是主体** ——
+ * 同一主体下的几家店各是一张卡，标题是门店名。
+ */
+export interface StoreCard {
+  /** 门店号（`ST…`）。进门户、下单都用它 */
+  storeNo: string;
+  /** 门店名。卡片标题就是它，不再拼主体名 */
+  storeName: string;
+  /** 所属主体。资质页、老接口用 */
+  entityNo: string;
+  /** 品牌标，取主体的；门店没有自己的标。可能为空串 */
+  logo: string;
+  /** READONLY 只会出现在「我的店」里（压淡显示），附近不列 */
+  status: StoreStatus;
+  /** 此刻营业与否。营业时间写得认不出来时为空 —— 端上不画这个标签，不猜 */
+  openNow?: boolean | null;
+  /** 营业时间文案，店主自填 */
+  openHours: string;
+  /** 店铺地址 */
+  address: string;
+  /** 离我多远（米）。没传位置、或门店没标坐标时为空 —— **不是 0** */
+  distanceM?: number | null;
+  /** 评分 0–5 */
+  rating: number;
+  /** 评价数。0 表示暂无评价，此时别显示 rating */
+  ratingCount: number;
+  /** 买家与这家店的关系。「附近」里为空 */
+  relation?: StoreRelation | null;
+}
+
 /** 常买清单的一行（C-ST-02）。按购买频次排序，不是按时间 */
 export interface FrequentItem {
   /** 商品单号 */

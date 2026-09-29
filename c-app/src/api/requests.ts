@@ -13,7 +13,7 @@
 // 为什么不放进 packages/shared：
 //   按 ADR-007 §3 的边界，contract 层不共享 —— B 端有自己的 `/mb/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
-import type { ActivityChoice } from "@shared/types";
+import type { ActivityChoice, StoreVisitSource } from "@shared/types";
 import type {
   AfterSaleType,
   ReviewScores,
@@ -302,6 +302,39 @@ export interface ChooseQuoteReq {
 }
 
 // ---------------------------------------------------------------- 商家 / 评价
+
+export interface MyStoresQuery {
+  /** 买家位置（gcj02，E6）。传了卡片上才有距离 */
+  latE6?: number;
+  /** 经度 ×1e6 */
+  lngE6?: number;
+}
+
+export interface StoreNearbyQuery {
+  /** 买家位置（gcj02，E6）。有位置按距离排，没位置按评分排 */
+  latE6?: number;
+  /** 经度 ×1e6 */
+  lngE6?: number;
+  /** 只列能卖到这个社区的门店。不传 = 不按社区过滤 */
+  communityNo?: string;
+  /** 按门店名模糊匹配 */
+  keyword?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数，最多 50 */
+  size?: number;
+}
+
+export interface StoreEnterReq {
+  /** 进店入口。只在第一次进这家店时记下，之后不改 */
+  source?: StoreVisitSource;
+  /** 分享人。只有 source=SHARE 时才记 */
+  inviterNo?: string;
+  /** 渠道（归因用） */
+  channel?: string;
+  /** 扫到的店码（归因用） */
+  storeCode?: string;
+}
 
 export interface MerchantListQuery {
   /** 搜索关键词，匹配店名 */

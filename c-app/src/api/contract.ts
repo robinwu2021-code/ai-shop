@@ -38,6 +38,7 @@ import type {
   Merchant,
   ReorderResult,
   StoreHome,
+  StoreCard,
   Message,
   PointAccount,
   PointsDeductible,
@@ -149,7 +150,7 @@ export interface CreateOrderReq {
   appointmentSlotNo?: string;
 }
 
-import type { PointsDeductibleQuery } from "./requests";
+import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq } from "./requests";
 
 /** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
 export type PreviewOrderReq = Omit<CreateOrderReq, "idempotencyKey">;
@@ -500,8 +501,18 @@ export interface ShopApi {
   favoriteGoods(page?: number, size?: number): Promise<PageResult<Goods>>;
   /** 我的收藏 · 店铺：只有收藏，不混入常去店 */
   favoriteStores(): Promise<Merchant[]>;
-  /** 我的常去店（首页入口用） */
-  myStores(): Promise<Merchant[]>;
+  /**
+   * 我的店：买过的门店一直在，只逛过的留 30 天。**单位是门店** ——
+   * 同一主体的两家店是两张卡。游客回空数组（不是 401）。
+   */
+  myStores(q?: MyStoresQuery): Promise<StoreCard[]>;
+  /** 附近的门店：能卖到这个社区、营业中，已在「我的店」里的不重复列 */
+  storeNearby(q?: StoreNearbyQuery): Promise<PageResult<StoreCard>>;
+  /**
+   * 进店：把这家店记进「我的店」并写归因。进门户时调一次，失败不影响看店。
+   * @param no 门店号（ST…）；老链接带的主体号（M…）服务端会落到它的默认门店
+   */
+  storeEnter(no: string, req?: StoreEnterReq): Promise<void>;
 
   // ---- 评价
   /**

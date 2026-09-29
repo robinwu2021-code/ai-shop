@@ -11,9 +11,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.merchant.dto.MerchantVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchStore;
-import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -35,7 +33,7 @@ public class MerchantServiceImpl implements MerchantService {
     private static final String ACTIVE = "ACTIVE";
 
     private final MchEntityMapper merchantMapper;
-    private final MchEntityCommunityMapper merchantCommunityMapper;
+    private final EntityReachability reachability;
     private final MchStoreMapper merchantStoreMapper;
     private final PurchaseHistoryPort purchaseHistoryPort;
     private final ObjectMapper json;
@@ -43,10 +41,10 @@ public class MerchantServiceImpl implements MerchantService {
     public MerchantServiceImpl(MchEntityMapper merchantMapper,
                                PurchaseHistoryPort purchaseHistoryPort,
                                ObjectMapper json,
-                               MchEntityCommunityMapper merchantCommunityMapper,
-                               MchStoreMapper merchantStoreMapper) {
+                               MchStoreMapper merchantStoreMapper,
+                               EntityReachability reachability) {
         this.merchantStoreMapper = merchantStoreMapper;
-        this.merchantCommunityMapper = merchantCommunityMapper;
+        this.reachability = reachability;
         this.merchantMapper = merchantMapper;
         this.purchaseHistoryPort = purchaseHistoryPort;
         this.json = json;
@@ -222,24 +220,11 @@ public class MerchantServiceImpl implements MerchantService {
      * 可达性条件（ADR-009）。三档各判各的，<b>不做兜底放行</b> ——
      * 放行等于把配置错误变成「货卖到送不到的地方」。
      */
+    /** 三档服务范围判定，与「附近的门店」共用一份（见 {@link EntityReachability}） */
     private void applyReachable(
             com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MchEntity> w,
             String communityNo) {
-        if (communityNo == null || communityNo.isBlank()) {
-            return;
-        }
-        List<String> reach = DataScopeContext.executeWithoutScope(() ->
-                        merchantCommunityMapper.selectList(Wrappers.<MchEntityCommunity>lambdaQuery()
-                                .eq(MchEntityCommunity::getCommunityNo, communityNo)))
-                .stream().map(MchEntityCommunity::getEntityNo).toList();
-        w.and(q -> {
-            // PLATFORM 无履约半径恒可达；CITY 一期只有一个城市，先不按 city_code 收紧
-            q.in(MchEntity::getServiceScope, List.of("PLATFORM", "CITY"));
-            if (!reach.isEmpty()) {
-                q.or(x -> x.eq(MchEntity::getServiceScope, "COMMUNITY")
-                        .in(MchEntity::getEntityNo, reach));
-            }
-        });
+        reachability.apply(w, communityNo);
     }
 
     private List<String> tags(MchEntity m) {

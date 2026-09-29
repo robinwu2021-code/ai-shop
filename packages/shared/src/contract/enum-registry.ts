@@ -594,6 +594,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "shared:SellRuleScope", dom: "inventory", shape: "CLASS", verdict: "OK",
     note: "线上可售规则的作用范围：本店默认 / 类目 / 商品。取值顺序 商品 › 类目 › 本店默认" },
 
+  { decl: "shared:StoreVisitSource", dom: "core", shape: "CLASS", verdict: "OK",
+    note: "一家店怎么进入买家的「我的店」：分享 / 扫码 / 列表 / 搜索 / 商品页进店。与 usr_store_view.first_source "
+      + "及 UsrStoreView 的五个常量逐字一致。只在首次进店时定 —— 分享的效果统计数的是 SHARE 这一档" },
+
   { decl: "shared:SellRuleType", dom: "inventory", shape: "CLASS", verdict: "OK",
     note: "线上可售规则：全部可售 / 给门店留 N 件 / 放出 P% / 最多放 M 件 / 手动 / 跟随上一级。与后端 PrdSellRule 常量逐字一致；"
       + "跟随上一级单列一档，是因为规则行只改不删（唯一键不含 deleted）" },

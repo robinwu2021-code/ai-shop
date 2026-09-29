@@ -11,6 +11,38 @@ import {
   reaches,
 } from "./_shared";
 import type { ShopApi } from "../contract";
+import type { Merchant, StoreCard, StoreVisitSource } from "@shared/types";
+
+/*
+ * mock 的门店：**一个商家种子 = 一家同名门店**，门店号 `ST` + 商家号。
+ * 真后端一个主体可以有几家店；mock 的种子只到主体这一层，多店的样子在原型里看。
+ * 老链接带主体号（M…）进来，落到这家店 —— 与服务端的前缀分派同一条规则。
+ */
+const STORE_PREFIX = "ST";
+const toStoreNo = (merchantNo: string) => STORE_PREFIX + merchantNo;
+const toMerchantNo = (no: string) => (no.startsWith(STORE_PREFIX) ? no.slice(STORE_PREFIX.length) : no);
+/** 只逛过的门店在「我的店」里留几天。与后端 shop.mp.my-store.view-keep-days 同值 */
+const VIEW_KEEP_MS = 30 * 86_400_000;
+
+/** 进店记录：只在内存里 —— 刷新即清，mock 里「我的店」从空开始正是要看的那一屏 */
+const storeViews = new Map<string, { firstSource: StoreVisitSource; lastAt: number }>();
+
+function toStoreCard(m: Merchant): StoreCard {
+  return {
+    storeNo: toStoreNo(m.merchantNo),
+    storeName: m.name,
+    entityNo: m.merchantNo,
+    logo: m.logo ?? "",
+    status: "ACTIVE",
+    openNow: null,
+    openHours: m.openHours ?? "",
+    address: m.address ?? "",
+    // mock 的距离是「离 CM001 多远」，不是离买家 —— 够看排序，不够看真实数字
+    distanceM: m.distance ?? null,
+    rating: m.rating,
+    ratingCount: m.ratingCount,
+  };
+}
 
 /**
  * mock 的问答库。**种一条已回答的**：端上那段「大家还问」在 mock 下要看得见，
@@ -39,6 +71,8 @@ export const merchantMock: Pick<ShopApi,
   | "toggleFavoriteStore"
   | "favoriteStores"
   | "myStores"
+  | "storeNearby"
+  | "storeEnter"
   | "reviewList"
   | "questionList"
   | "myFission"
@@ -238,7 +272,59 @@ export const merchantMock: Pick<ShopApi,
   },
 
   async myStores() {
-    return delay(db.favoriteStores.map(toMerchant));
+    const since = Date.now() - VIEW_KEEP_MS;
+    // 成交口径：取消的单不算，与后端 OrdSubOrder.PAID 同义
+    const bought = new Map<string, { count: number; last: number }>();
+    for (const o of db.orders) {
+      if (o.status === "CANCELLED" || o.status === "WAIT_PAY") continue;
+      const mnos = new Set(
+        o.items.map((it) => it.merchantNo || toGoods(findGoodsSeed(it.goodsNo)).merchant.merchantNo),
+      );
+      for (const mno of mnos) {
+        const cur = bought.get(mno) ?? { count: 0, last: 0 };
+        bought.set(mno, { count: cur.count + 1, last: Math.max(cur.last, o.createdAt) });
+      }
+    }
+    const mnos = new Set(bought.keys());
+    for (const [storeNo, v] of storeViews) if (v.lastAt >= since) mnos.add(toMerchantNo(storeNo));
+    const list = [...mnos].map((mno) => {
+      const b = bought.get(mno);
+      const v = storeViews.get(toStoreNo(mno));
+      return {
+        ...toStoreCard(toMerchant(mno)),
+        relation: {
+          orderCount: b?.count ?? 0,
+          lastOrderAt: b?.last ?? null,
+          lastViewAt: v?.lastAt ?? null,
+          firstSource: v?.firstSource ?? null,
+        },
+      };
+    });
+    const touch = (c: StoreCard) =>
+      Math.max(c.relation?.lastOrderAt ?? 0, c.relation?.lastViewAt ?? 0);
+    return delay(list.sort((a, b) => touch(b) - touch(a)));
+  },
+
+  async storeNearby(q) {
+    const mine = new Set((await this.myStores()).map((c) => c.storeNo));
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    const all = (await this.merchantList({ communityNo: q?.communityNo, keyword: q?.keyword }))
+      .map(toStoreCard)
+      .filter((c) => !mine.has(c.storeNo));
+    return delay({ records: all.slice((page - 1) * size, page * size), total: all.length, page, size });
+  },
+
+  async storeEnter(no, req) {
+    const storeNo = toStoreNo(toMerchantNo(no));
+    toMerchant(toMerchantNo(no)); // 不存在就抛 —— 与后端 404 同一效果
+    const prev = storeViews.get(storeNo);
+    storeViews.set(storeNo, {
+      // 首次来源只定一次
+      firstSource: prev?.firstSource ?? req?.source ?? "LIST",
+      lastAt: Date.now(),
+    });
+    return delay(undefined);
   },
 
   // ---------------------------------------------------------------- 评价
