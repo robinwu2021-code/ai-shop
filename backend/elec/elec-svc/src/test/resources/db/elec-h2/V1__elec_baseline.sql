@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS elc_supplier
     contact_phone  VARCHAR(32)  NOT NULL,
     mask_code      VARCHAR(8)   NOT NULL,
     status         VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    suspend_reason VARCHAR(255) DEFAULT NULL,
+    suspended_at   DATETIME     DEFAULT NULL,
     notified_at    DATETIME     DEFAULT NULL,
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by     VARCHAR(64)  DEFAULT NULL,

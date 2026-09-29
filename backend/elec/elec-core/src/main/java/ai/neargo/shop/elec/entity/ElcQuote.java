@@ -19,6 +19,8 @@ public class ElcQuote extends ElcMutableEntity {
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
     public static final String STATUS_ACCEPTED = "ACCEPTED";
+    /** 目前没有代码把它写进库：有效期过了的 ACTIVE 在读出时显示成它 */
+    public static final String STATUS_EXPIRED = "EXPIRED";
 
     private String quoteNo;
 

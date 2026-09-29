@@ -7,6 +7,8 @@ import ai.neargo.shop.elec.config.ElecProperties;
 import ai.neargo.shop.elec.dto.RfqDtos.DeclineReq;
 import ai.neargo.shop.elec.dto.RfqDtos.DispatchView;
 import ai.neargo.shop.elec.dto.RfqDtos.Offer;
+import ai.neargo.shop.elec.dto.RfqDtos.OpsOffer;
+import ai.neargo.shop.elec.dto.RfqDtos.OpsQuoteRow;
 import ai.neargo.shop.elec.dto.RfqDtos.SupplierQuote;
 import ai.neargo.shop.elec.dto.RfqDtos.SupplierQuoteReq;
 import ai.neargo.shop.elec.entity.ElcDispatch;
@@ -17,7 +19,10 @@ import ai.neargo.shop.elec.entity.ElcStock;
 import ai.neargo.shop.elec.entity.ElcSupplier;
 import ai.neargo.shop.elec.gateway.ElecSupplierNotifier;
 import ai.neargo.shop.elec.mapper.ElecMappers.DispatchMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.CodeCount;
 import ai.neargo.shop.elec.mapper.ElecMappers.DispatchRow;
+import ai.neargo.shop.elec.mapper.ElecMappers.OpsOfferRow;
+import ai.neargo.shop.elec.mapper.ElecMappers.OpsQuoteRaw;
 import ai.neargo.shop.elec.mapper.ElecMappers.QuoteMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
@@ -38,6 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -432,6 +438,56 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
         if (account != null && !notifier.quoteAccepted(account, q.getQuoteNo(), q.getQtyAvailable())) {
             log.warn("「你的报价被选中」没送到供应商 quoteNo={}", q.getQuoteNo());
         }
+    }
+
+    // ── 运营端 ──────────────────────────────────────────────────────────────
+
+    @Override
+    public Map<Integer, List<OpsOffer>> opsOffersOf(String rfqNo) {
+        Map<Integer, List<OpsOffer>> out = new LinkedHashMap<>();
+        for (OpsOfferRow r : dispatchMapper.opsOffers(rfqNo)) {
+            Long buyerPrice = r.getPriceE6() == null ? null
+                    : market.withMarkup(market.toCnyWithTax(r.getPriceE6(), r.getCurrency(), r.getTaxIncluded()));
+            out.computeIfAbsent(r.getLineNo(), k -> new ArrayList<>()).add(new OpsOffer(r.getDispatchNo(),
+                    r.getSupplierNo(), r.getCompanyName(), r.getContactPhone(), r.getVia(), r.getDispatchStatus(),
+                    r.getDeclineReason(), r.getNotifiedAt(), r.getRespondedAt(), r.getQuoteNo(), r.getPriceE6(),
+                    r.getCurrency(), r.getTaxIncluded(), buyerPrice, r.getQtyAvailable(), r.getDateCode(),
+                    r.getLeadDays(), r.getCondGrade(), r.getPacking(), r.getMoq(), r.getValidUntil(),
+                    r.getRemark(), shownQuoteStatus(r.getQuoteStatus(), r.getValidUntil())));
+        }
+        return out;
+    }
+
+    @Override
+    public Map<String, Integer> respondedCounts(Collection<String> rfqNos) {
+        if (rfqNos.isEmpty()) {
+            return Map.of();
+        }
+        return dispatchMapper.respondedByRfq(rfqNos).stream()
+                .collect(Collectors.toMap(CodeCount::getCode, c -> c.getCnt().intValue()));
+    }
+
+    @Override
+    public List<OpsQuoteRow> opsQuotes(String supplierNo, String status, int page, int size) {
+        int n = Math.min(100, Math.max(1, size));
+        long offset = (long) (Math.max(1, page) - 1) * n;
+        String supplier = supplierNo == null || supplierNo.isBlank() ? null : supplierNo.trim();
+        String st = status == null || status.isBlank() ? null : status;
+        List<OpsQuoteRaw> rows = quoteMapper.opsList(supplier, st, LocalDate.now(), n, offset);
+        return rows.stream().map(r -> new OpsQuoteRow(r.getQuoteNo(), r.getRfqNo(), r.getLineNo(), r.getMpn(),
+                r.getQtyWanted() == null ? 0 : r.getQtyWanted(), r.getSupplierNo(), r.getCompanyName(),
+                r.getPriceE6(), r.getCurrency(), Boolean.TRUE.equals(r.getTaxIncluded()),
+                market.withMarkup(market.toCnyWithTax(r.getPriceE6(), r.getCurrency(), r.getTaxIncluded())),
+                r.getQtyAvailable() == null ? 0 : r.getQtyAvailable(), r.getLeadDays(), r.getValidUntil(),
+                shownQuoteStatus(r.getStatus(), r.getValidUntil()), r.getCreatedAt())).toList();
+    }
+
+    /** 「已过期」不是存下来的状态：有效期过了的 ACTIVE 显示成 EXPIRED。与报价记录的筛选同一个口径 */
+    static String shownQuoteStatus(String status, LocalDate validUntil) {
+        if (ElcQuote.STATUS_ACTIVE.equals(status) && validUntil != null && validUntil.isBefore(LocalDate.now())) {
+            return ElcQuote.STATUS_EXPIRED;
+        }
+        return status;
     }
 
     // ── 小件 ────────────────────────────────────────────────────────────────

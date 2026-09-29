@@ -118,6 +118,8 @@ CREATE TABLE IF NOT EXISTS elc_supplier
     contact_phone  VARCHAR(32)  NOT NULL COMMENT '联系手机，默认是入驻人绑定的号，可改',
     mask_code      VARCHAR(8)   NOT NULL COMMENT '匿名代号 S-XXXX，入驻即生成、永不复用',
     status         VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / SUSPENDED。第一步入驻即可用，平台事后看',
+    suspend_reason VARCHAR(255) DEFAULT NULL COMMENT '运营暂停时写的理由。恢复后保留，下次暂停覆盖',
+    suspended_at   DATETIME     DEFAULT NULL COMMENT '最近一次暂停的时间；从没暂停过为空',
     notified_at    DATETIME     DEFAULT NULL COMMENT '入驻通知送达企业微信的时间；空 = 没送到',
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by     VARCHAR(64)  DEFAULT NULL,

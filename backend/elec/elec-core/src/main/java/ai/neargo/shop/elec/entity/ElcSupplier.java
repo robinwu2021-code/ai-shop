@@ -28,5 +28,10 @@ public class ElcSupplier extends ElcMutableEntity {
 
     private String status;
 
+    /** 运营暂停时写的理由。恢复后保留（下次暂停覆盖）—— 「上次为什么停过」是有用的 */
+    private String suspendReason;
+
+    private java.time.LocalDateTime suspendedAt;
+
     private java.time.LocalDateTime notifiedAt;
 }

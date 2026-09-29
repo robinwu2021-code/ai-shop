@@ -44,4 +44,12 @@ public interface ElecRfqService {
 
     /** 关单。原因是「暂无货源」时也通知买家 */
     OpsRfqView close(String staffNo, String rfqNo, CloseReq req);
+
+    /**
+     * 手工指派：把某一行再派给几家供应商（库里没这个料号、但运营知道谁有）。
+     * 已经派过的自动跳过；暂停中的供应商不能派。只有待报价与已报价的单子可以派。
+     *
+     * @param supplierNos 1–20 家
+     */
+    OpsRfqView opsDispatch(String staffNo, String rfqNo, int lineNo, List<String> supplierNos);
 }

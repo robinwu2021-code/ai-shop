@@ -3,10 +3,13 @@ package ai.neargo.shop.elec.service;
 import ai.neargo.shop.elec.dto.RfqDtos.DeclineReq;
 import ai.neargo.shop.elec.dto.RfqDtos.DispatchView;
 import ai.neargo.shop.elec.dto.RfqDtos.Offer;
+import ai.neargo.shop.elec.dto.RfqDtos.OpsOffer;
+import ai.neargo.shop.elec.dto.RfqDtos.OpsQuoteRow;
 import ai.neargo.shop.elec.dto.RfqDtos.SupplierQuoteReq;
 import ai.neargo.shop.elec.entity.ElcRfq;
 import ai.neargo.shop.elec.entity.ElcRfqLine;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -53,4 +56,19 @@ public interface ElecDispatchService {
 
     /** 买家接受某一条报价：锁价、通知供应商、其余同行报价置为未选中 */
     void acceptOffer(String rfqNo, int lineNo, String offerNo);
+
+    // ── 运营端（真名、原价）────────────────────────────────────────────────
+
+    /** 一张询价单的全部派单及结果，按询价行号分组。与 {@link #offersOf} 是同一件事的平台面 */
+    Map<Integer, List<OpsOffer>> opsOffersOf(String rfqNo);
+
+    /** 一批询价单各自有几家回了话（报价或拒绝，去重） */
+    Map<String, Integer> respondedCounts(Collection<String> rfqNos);
+
+    /**
+     * 报价记录。
+     *
+     * @param status ACTIVE / EXPIRED / WITHDRAWN / ACCEPTED；空 = 全部
+     */
+    List<OpsQuoteRow> opsQuotes(String supplierNo, String status, int page, int size);
 }

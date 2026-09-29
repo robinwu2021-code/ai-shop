@@ -126,27 +126,77 @@ public final class RfqDtos {
     // ── 运营端 ──────────────────────────────────────────────────────────────
 
     /**
-     * 运营看到的询价单：<b>买家的完整联系方式、每行库里谁有货</b>都在这里 —— 运营端是内部面。
+     * 运营看到的询价单：<b>买家的完整联系方式、每行库里谁有货、每家供应商报了什么</b>都在这里 —— 运营端是内部面。
      *
      * @param buyerNotified 结果通知送达了没有（订阅消息或站内信任一送到）
+     * @param dispatchCnt   派给了几家供应商（去重）
+     * @param respondedCnt  其中几家已经回了话（报价或拒绝都算）。与 dispatchCnt 差得多 = 该催了
+     * @param offerCnt      几家报了还有效的价
      */
     public record OpsRfqView(String rfqNo, String status, LocalDateTime createdAt, int lineCnt,
                              String contactName, String contactPhone, String company, String needInvoice,
                              String dcReq, String condReq, String packingReq, Integer needByDays,
                              boolean allowAlt, String deliverCity, String remark, LocalDateTime quotedAt,
                              String quotedBy, java.time.LocalDate quoteValidUntil, String quoteNote,
-                             boolean buyerNotified, String closeReason, List<OpsLineView> lines) {
+                             boolean buyerNotified, String closeReason, int dispatchCnt, int respondedCnt,
+                             int offerCnt, List<OpsLineView> lines) {
     }
 
-    /** @param sources 库里谁有货（列表页不带，详情才带） */
+    /**
+     * @param sources 库里谁有货（列表页不带，详情才带）
+     * @param offers  这一行派给了谁、各自回了什么（列表页不带，详情才带）。<b>真名、原价</b>
+     */
     public record OpsLineView(int lineNo, String partNo, String mpn, String mfr, long qty, Long targetE6,
-                              LineQuote quote, List<OpsSource> sources) {
+                              LineQuote quote, List<OpsSource> sources, List<OpsOffer> offers) {
     }
 
-    /** 运营要照着它报价，所以供应商那一行的口径要全：阶梯价的最低档、币种、含税、包装、货况、交期 */
-    public record OpsSource(String supplierNo, String companyName, String contactPhone, long qty,
-                            String dateCode, Long priceE6, String currency, boolean taxIncluded,
-                            String packing, String cond, Integer leadDays, String region) {
+    /**
+     * 运营要照着它报价，所以供应商那一行的口径要全。
+     *
+     * @param tiers      阶梯价（供应商原样：原币种、原含税口径），按数量升序
+     * @param priceE6    最低数量档的单价（= tiers 第一条）
+     * @param validUntil 这行库存有效到哪天。快到期的价要打折扣看
+     */
+    public record OpsSource(String supplierNo, String companyName, String contactPhone, String stockNo, long qty,
+                            String dateCode, Integer moq, Integer spq, List<SupplierDtos.PriceTier> tiers,
+                            Long priceE6, String currency, boolean taxIncluded, String packing, String cond,
+                            Integer leadDays, String region, java.time.LocalDate validUntil) {
+    }
+
+    /**
+     * 运营看到的一条派单及其结果。与买家看到的 {@link Offer} 是同一件事的两个面：
+     * 这里是<b>真名、供应商原价、备注</b>，那边是代号与加价后的价。
+     *
+     * @param via           AUTO_MATCH 库里有货自动派 / OPS 运营手工指派
+     * @param dispatchStatus SENT 未看 / VIEWED 看了没回 / QUOTED 报了价 / DECLINED 拒了
+     * @param declineReason NO_STOCK / PRICE / OTHER；没拒为空
+     * @param quoteNo       报了价才有；下面的报价字段同理
+     * @param priceE6       供应商填的单价（他的币种与含税口径，没加价）
+     * @param buyerPriceE6  买家看到的价（换成人民币含税、按平台规则加价之后）
+     * @param remark        供应商写给平台的备注 —— <b>买家永远看不到</b>
+     * @param quoteStatus   ACTIVE / WITHDRAWN / ACCEPTED / EXPIRED
+     */
+    public record OpsOffer(String dispatchNo, String supplierNo, String companyName, String contactPhone,
+                           String via, String dispatchStatus, String declineReason, LocalDateTime notifiedAt,
+                           LocalDateTime respondedAt, String quoteNo, Long priceE6, String currency,
+                           Boolean taxIncluded, Long buyerPriceE6, Long qtyAvailable, String dateCode,
+                           Integer leadDays, String cond, String packing, Integer moq,
+                           java.time.LocalDate validUntil, String remark, String quoteStatus) {
+    }
+
+    /** 手工指派：给这一行再派几家（已经派过的自动跳过）。一次最多 20 家 */
+    public record DispatchReq(List<String> supplierNos) {
+    }
+
+    /**
+     * 报价记录的一行：全部供应商报价，按时间倒序。
+     *
+     * @param status ACTIVE / WITHDRAWN / ACCEPTED / EXPIRED（过了有效期的 ACTIVE 显示成 EXPIRED）
+     */
+    public record OpsQuoteRow(String quoteNo, String rfqNo, int lineNo, String mpn, long qtyWanted,
+                              String supplierNo, String companyName, Long priceE6, String currency,
+                              boolean taxIncluded, Long buyerPriceE6, long qtyAvailable, Integer leadDays,
+                              java.time.LocalDate validUntil, String status, LocalDateTime createdAt) {
     }
 
     /**

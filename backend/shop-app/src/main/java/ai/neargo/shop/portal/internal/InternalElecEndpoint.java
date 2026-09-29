@@ -167,7 +167,7 @@ public class InternalElecEndpoint {
     }
 
     /**
-     * 运营在元器件那两个码上的权限，<b>按主系统自己的规则现算</b>（与 {@code PermChecker.can} 同一条路）：
+     * 运营在元器件那几个码（{@link ElecInternal#OPS_PERMS}）上的权限，<b>按主系统自己的规则现算</b>（与 {@code PermChecker.can} 同一条路）：
      * 角色现查、权限码按角色现算、认模块通配（{@code elec:*}）。改了角色配置，下一次缓存过期就生效。
      */
     private List<String> elecPerms(LoginUser u) {
@@ -188,7 +188,7 @@ public class InternalElecEndpoint {
             return List.of();
         }
         List<String> granted = perms;
-        return java.util.stream.Stream.of(ElecInternal.PERM_RFQ_READ, ElecInternal.PERM_RFQ_QUOTE)
+        return ElecInternal.OPS_PERMS.stream()
                 .filter(code -> ai.neargo.common.security.rbac.Permissions.matches(granted, code))
                 .toList();
     }

@@ -1192,7 +1192,13 @@ public enum ErrorCode {
     /** 询价单当前状态不允许这个动作（已接受的不能再报价、已结束的不能接受…） */
     ELEC_RFQ_STATE(90011, "err.elec.rfq_state"),
     /** 报价过了有效期，不能再接受 —— 行情会变，过期的价平台不再兑现 */
-    ELEC_QUOTE_EXPIRED(90012, "err.elec.quote_expired");
+    ELEC_QUOTE_EXPIRED(90012, "err.elec.quote_expired"),
+    ELEC_MFR_EXISTS(90013, "err.elec.mfr_exists"),
+    /**
+     * {0} = 这个写法已经指向的厂牌。<b>不静默改指向</b>：改了等于把已经按旧指向认好的料号全部认错，
+     * 而那些料号不会自己回来改。要改指向得先把旧的认错数据处理掉，那是另一件事。
+     */
+    ELEC_ALIAS_TAKEN(90014, "err.elec.alias_taken");
 
     private final int code;
     private final String msgKey;

@@ -28,9 +28,24 @@ public final class ElecInternal {
     /** 与 shop-base 的 InternalHttp.TOKEN_HEADER 同值（这里不能引 shop-base，只能写字面量） */
     public static final String TOKEN_HEADER = "X-Internal-Token";
 
-    /** 运营端两个权限码。主系统按它自己的规则判，把结果放进 {@link Session#perms} */
+    /** 运营端的权限码。主系统按它自己的规则判，把结果放进 {@link Session#perms} */
     public static final String PERM_RFQ_READ = "elec:rfq:read";
     public static final String PERM_RFQ_QUOTE = "elec:rfq:quote";
+    public static final String PERM_SUPPLIER_READ = "elec:supplier:read";
+    /** 暂停 / 恢复 / 改资料。暂停后他的货不再给买家看 */
+    public static final String PERM_SUPPLIER_MANAGE = "elec:supplier:manage";
+    /** 料号与库存查询：看得到每家的精确库存与电话 */
+    public static final String PERM_PART_READ = "elec:part:read";
+    /** 厂牌与别名维护。加一条别名会改认既有库存 */
+    public static final String PERM_BASE_MANAGE = "elec:base:manage";
+
+    /**
+     * 元器件用得到的全部运营码。主系统<b>只把这张表里的码</b>判给元器件 —— 不把整张权限表交出去；
+     * 新增一个码只改这里，两边自动对齐（此前两个码写死在主系统的过滤里，加码时两处都要记得改）。
+     */
+    public static final java.util.List<String> OPS_PERMS = java.util.List.of(
+            PERM_RFQ_READ, PERM_RFQ_QUOTE, PERM_SUPPLIER_READ, PERM_SUPPLIER_MANAGE, PERM_PART_READ,
+            PERM_BASE_MANAGE);
 
     private ElecInternal() {
     }
@@ -42,7 +57,7 @@ public final class ElecInternal {
      * @param valid    令牌有效。无效时其余字段都为空
      * @param realm    CONSUMER / OPERATOR（商家端令牌一律 valid=false：元器件不接它）
      * @param userNo   C 端是 usr_no，运营端是 staff_no
-     * @param perms    只在运营端有值，且<b>只含元器件的那两个码</b>：主系统判完给结果，不把整张权限表交出去
+     * @param perms    只在运营端有值，且<b>只含 {@link #OPS_PERMS} 里的码</b>：主系统判完给结果，不把整张权限表交出去
      * @param expired  令牌带了但会话过期了（端上据此清 token 重新登录，而不是当成「没登录」）
      */
     public record Session(boolean valid, String realm, String userNo, String nickname, List<String> perms,

@@ -72,12 +72,14 @@ class InternalElecEndpointTest {
     }
 
     @Test
-    @DisplayName("★★★ 运营令牌 → OPERATOR，权限只回元器件那两个码（超管有 *，两个都有）")
+    @DisplayName("★★★ 运营令牌 → OPERATOR，权限只回 OPS_PERMS 里的码（超管有 *，六个都有、一个别的都没有）")
     void operatorTokenCarriesOnlyElecPerms() throws Exception {
         String token = TestLogin.admin(mvc(), json);
         ElecInternal.Session s = session(token, KEY);
         assertThat(s.realm()).isEqualTo("OPERATOR");
-        assertThat(s.perms()).containsExactlyInAnyOrder(ElecInternal.PERM_RFQ_READ, ElecInternal.PERM_RFQ_QUOTE);
+        // 精确相等两头都量：少了 = 新码没带过去（元器件那边一律 403）；多了 = 把主系统的权限表漏给了另一个服务
+        assertThat(s.perms()).containsExactlyInAnyOrderElementsOf(ElecInternal.OPS_PERMS);
+        assertThat(ElecInternal.OPS_PERMS).as("量具本身：六个码").hasSize(6);
     }
 
     @Test

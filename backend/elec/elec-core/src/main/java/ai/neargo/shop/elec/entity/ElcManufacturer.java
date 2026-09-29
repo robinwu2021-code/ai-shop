@@ -12,6 +12,9 @@ public class ElcManufacturer extends ElcMutableEntity {
     /** 厂牌不明时的占位码。它也是一行真数据（种子里有），料号的 mfr_code 永不为空 */
     public static final String UNKNOWN = "UNKNOWN";
 
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_MERGED = "MERGED";
+
     private String mfrCode;
 
     private String nameEn;

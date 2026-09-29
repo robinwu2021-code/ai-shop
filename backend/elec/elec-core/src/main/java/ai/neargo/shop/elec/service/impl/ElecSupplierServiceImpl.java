@@ -4,7 +4,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.elec.config.ConditionalOnElec;
 import ai.neargo.shop.elec.config.ElecProperties;
-import ai.neargo.shop.elec.dto.SupplierDtos;
 import ai.neargo.shop.elec.dto.SupplierDtos.RegisterReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.RenewResult;
 import ai.neargo.shop.elec.dto.SupplierDtos.StockView;
@@ -37,7 +36,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -52,8 +50,8 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
 
     public static final Set<String> KINDS = Set.of("AGENT", "TRADER", "FACTORY", "OTHER");
 
-    /** 「快到期」的提前量：工作台上提醒他续期或重传 */
-    private static final int EXPIRING_DAYS = 7;
+    /** 「快到期」的提前量：工作台上提醒他续期或重传。运营端的「7 天内到期」用同一个数 */
+    static final int EXPIRING_DAYS = 7;
 
     private static final Pattern PHONE = Pattern.compile("^1\\d{10}$");
 
@@ -67,13 +65,12 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     private final ElecAlerts alerts;
     private final ElecProperties props;
     private final TransactionTemplate tx;
-    private final tools.jackson.databind.ObjectMapper json;
+    private final ElecStockViews views;
 
     public ElecSupplierServiceImpl(ElecSupplierAccess access, SupplierMapper supplierMapper,
                                SupplierMemberMapper memberMapper, StockMapper stockMapper,
                                StockBatchMapper batchMapper, ElecMarketService market, ElecAccounts identity,
-                               ElecAlerts alerts, ElecProperties props,
-                               tools.jackson.databind.ObjectMapper json,
+                               ElecAlerts alerts, ElecProperties props, ElecStockViews views,
                                @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.access = access;
         this.supplierMapper = supplierMapper;
@@ -85,7 +82,7 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         this.alerts = alerts;
         this.props = props;
         this.tx = new TransactionTemplate(tm);
-        this.json = json;
+        this.views = views;
     }
 
     @Override
@@ -164,6 +161,16 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     @Transactional(transactionManager = "elecTransactionManager")
     public SupplierView update(String userNo, RegisterReq req) {
         ElcSupplier s = access.requireActive(userNo);
+        applyUpdate(s, req, userNo);
+        supplierMapper.updateById(s);
+        return view(s);
+    }
+
+    /**
+     * 把「补资料」的请求套到供应商上：空字段 = 不改；给了就校验。
+     * 供应商自己改与运营代改<b>同一套校验</b> —— 运营端放宽了，就会出现供应商自己改不回去的数据。
+     */
+    static void applyUpdate(ElcSupplier s, RegisterReq req, String actor) {
         String company = trimmed(req.companyName(), 128);
         if (company != null) {
             if (company.length() < 2) {
@@ -189,9 +196,7 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         if (contact != null) {
             s.setContactName(contact);
         }
-        s.setUpdatedBy(userNo);
-        supplierMapper.updateById(s);
-        return view(s);
+        s.setUpdatedBy(actor);
     }
 
     /** 匿名代号撞了就换一个再插（4 位 32 进制约一百万个，撞三次基本不可能） */
@@ -213,29 +218,9 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
     public List<StockView> stocks(String userNo, String keyword, String filter, int page, int size) {
         ElcSupplier s = access.requireActive(userNo);
         LocalDate today = LocalDate.now();
-        LambdaQueryWrapper<ElcStock> q = Wrappers.<ElcStock>lambdaQuery()
-                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
-                .eq(ElcStock::getStatus, ElcStock.STATUS_ON);
-        String norm = Mpn.norm(keyword);
-        if (!norm.isEmpty()) {
-            q.likeRight(ElcStock::getMpnNorm, norm);
-        }
-        if ("EXPIRING".equals(filter)) {
-            q.ge(ElcStock::getValidUntil, today).le(ElcStock::getValidUntil, today.plusDays(EXPIRING_DAYS));
-        } else if ("EXPIRED".equals(filter)) {
-            q.lt(ElcStock::getValidUntil, today);
-        }
-        q.orderByAsc(ElcStock::getValidUntil).orderByAsc(ElcStock::getMpnNorm);
-        int p = Math.max(1, page);
-        int n = Math.min(100, Math.max(1, size));
-        // 不用分页插件（本域工厂没装它）：offset/limit 手写
-        q.last("LIMIT " + n + " OFFSET " + (long) (p - 1) * n);
-        return stockMapper.selectList(q).stream().map(r -> new StockView(r.getStockNo(), r.getMpnRaw(),
-                r.getMfrRaw(), r.getQty(), r.getDateCode(), r.getPkg(), r.getMoq(), r.getSpq(),
-                tiersOf(r.getPriceTiers()), r.getPriceE6(), r.getCurrency(),
-                Boolean.TRUE.equals(r.getTaxIncluded()), r.getPacking(), r.getCondGrade(), r.getLeadDays(),
-                r.getRegion(), r.getValidUntil(),
-                r.getValidUntil().isBefore(today) ? "EXPIRED" : ElcStock.STATUS_ON)).toList();
+        LambdaQueryWrapper<ElcStock> q = stockQuery(s.getSupplierNo(), keyword, filter, today)
+                .orderByAsc(ElcStock::getValidUntil).orderByAsc(ElcStock::getMpnNorm);
+        return stockMapper.selectList(page(q, page, size)).stream().map(r -> views.view(r, today)).toList();
     }
 
     @Override
@@ -260,26 +245,6 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         return new RenewResult(n, until);
     }
 
-    /**
-     * 阶梯价 JSON → 列表。**解不开就当没报价**（返回空列表）：
-     * 一条坏 JSON 不该让供应商整页库存打不开。
-     */
-    private List<SupplierDtos.PriceTier> tiersOf(String json) {
-        if (json == null || json.isBlank()) {
-            return List.of();
-        }
-        try {
-            return this.json.readValue(json, new tools.jackson.core.type.TypeReference<List<Map<String, Long>>>() { })
-                    .stream()
-                    .filter(m -> m.get("minQty") != null && m.get("e6") != null)
-                    .map(m -> new SupplierDtos.PriceTier(m.get("minQty"), m.get("e6")))
-                    .toList();
-        } catch (RuntimeException e) {
-            log.warn("阶梯价解不开，当没报价处理：{}", e.toString());
-            return List.of();
-        }
-    }
-
     private SupplierView view(ElcSupplier s) {
         LocalDate today = LocalDate.now();
         long on = stockMapper.selectCount(Wrappers.<ElcStock>lambdaQuery()
@@ -298,6 +263,38 @@ public class ElecSupplierServiceImpl implements ElecSupplierService {
         return new SupplierView(s.getSupplierNo(), s.getCompanyName(), s.getKind(), s.getCity(),
                 s.getContactName(), s.getContactPhone(), s.getMaskCode(), s.getStatus(),
                 (int) on, (int) expiring, last == null ? null : last.getAppliedAt(), props.getStockTtlDays());
+    }
+
+    /**
+     * 在售库存的筛选：按料号前缀、到期状态。供应商看自己的、运营看某家的或全部的，同一套条件。
+     *
+     * @param supplierNo 为空 = 不限供应商（运营端的库存行查询）
+     * @param filter     ALL / EXPIRING（7 天内到期）/ EXPIRED；其余当 ALL
+     */
+    static LambdaQueryWrapper<ElcStock> stockQuery(String supplierNo, String keyword, String filter,
+                                                   LocalDate today) {
+        LambdaQueryWrapper<ElcStock> q = Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON);
+        if (supplierNo != null) {
+            q.eq(ElcStock::getSupplierNo, supplierNo);
+        }
+        String norm = Mpn.norm(keyword);
+        if (!norm.isEmpty()) {
+            q.likeRight(ElcStock::getMpnNorm, norm);
+        }
+        if ("EXPIRING".equals(filter)) {
+            q.ge(ElcStock::getValidUntil, today).le(ElcStock::getValidUntil, today.plusDays(EXPIRING_DAYS));
+        } else if ("EXPIRED".equals(filter)) {
+            q.lt(ElcStock::getValidUntil, today);
+        }
+        return q;
+    }
+
+    /** 不用分页插件（本域工厂没装它）：offset/limit 手写。每页最多 100 */
+    static <T> LambdaQueryWrapper<T> page(LambdaQueryWrapper<T> q, int page, int size) {
+        int p = Math.max(1, page);
+        int n = Math.min(100, Math.max(1, size));
+        return q.last("LIMIT " + n + " OFFSET " + (long) (p - 1) * n);
     }
 
     /**

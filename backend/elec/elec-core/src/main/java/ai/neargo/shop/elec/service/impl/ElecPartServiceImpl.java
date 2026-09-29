@@ -121,6 +121,32 @@ public class ElecPartServiceImpl implements ElecPartService {
         return new SearchResult(q.mpnNorm(), mfrName, nearFrom, hits);
     }
 
+    @Override
+    public List<PartMatch> matchParts(String keyword, int limit) {
+        Query.Parsed q = Query.parse(keyword, catalog.aliases());
+        if (q.mpnNorm().length() < Mpn.MIN_KEY) {
+            return List.of();
+        }
+        Map<String, String> cands = candidates(q.mpnNorm(), true);
+        if (cands.isEmpty()) {
+            return List.of();
+        }
+        // 并掉的料号不给：中段命中那一路不按状态过滤（分段键在并掉时会删，这里再守一道）
+        List<ElcPart> parts = partMapper.selectList(Wrappers.<ElcPart>lambdaQuery()
+                .in(ElcPart::getPartNo, cands.keySet())
+                .ne(ElcPart::getStatus, ElcPart.STATUS_MERGED));
+        if (q.mfrCode() != null) {
+            parts.removeIf(p -> !q.mfrCode().equals(p.getMfrCode()));
+        }
+        return parts.stream()
+                .sorted(Comparator.comparingInt((ElcPart p) -> matchRank(cands.get(p.getPartNo())))
+                        .thenComparingInt(p -> p.getMpnNorm().length())
+                        .thenComparing(ElcPart::getMpnNorm))
+                .limit(Math.max(1, limit))
+                .map(p -> new PartMatch(p.getPartNo(), cands.get(p.getPartNo())))
+                .toList();
+    }
+
     /** part_no → 命中档。两路都命中时取更靠前的那一档 */
     private Map<String, String> candidates(String norm, boolean withContains) {
         Map<String, String> out = new LinkedHashMap<>();

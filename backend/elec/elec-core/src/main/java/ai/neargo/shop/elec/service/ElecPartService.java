@@ -20,4 +20,19 @@ public interface ElecPartService {
     List<LookupLine> lookup(String text);
 
     PartHit detail(String partNo);
+
+    /**
+     * 运营端搜料号：与 {@link #search} <b>同一套命中</b>（开头 / 中段 / 「厂牌 + 料号」限定），但
+     * <ul>
+     *   <li><b>不记入搜索需求</b> —— 运营每查一次都算成一次买家需求，「大家在找什么」就被运营自己刷满了</li>
+     *   <li>不做近似退位 —— 运营要的是「库里有没有这个」，猜给他一个相近的反而误事</li>
+     * </ul>
+     *
+     * @return 命中的料号，按命中档（EXACT → PREFIX → CONTAINS）、料号长短排好，最多 limit 条
+     */
+    List<PartMatch> matchParts(String keyword, int limit);
+
+    /** @param match EXACT / PREFIX / CONTAINS */
+    record PartMatch(String partNo, String match) {
+    }
 }

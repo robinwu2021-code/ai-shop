@@ -83,7 +83,7 @@ public class ElecMarketServiceImpl implements ElecMarketService {
                 .eq(ElcStock::getStatus, ElcStock.STATUS_ON)
                 .ge(ElcStock::getValidUntil, today));
         if (!rows.isEmpty()) {
-            // 被暂停的供应商的货不算。第一步没有暂停入口（运营直接改库），但读的一侧先守住
+            // 被暂停的供应商的货不算。运营端暂停一家时就是调这里重算他的全部料号 —— 暂停能生效全靠这一步
             Set<String> active = new HashSet<>();
             supplierMapper.selectList(Wrappers.<ElcSupplier>lambdaQuery()
                             .in(ElcSupplier::getSupplierNo, rows.stream().map(ElcStock::getSupplierNo).toList())

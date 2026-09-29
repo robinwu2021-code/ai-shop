@@ -10,8 +10,8 @@ import ai.neargo.shop.elec.dto.RfqDtos.LineQuote;
 import ai.neargo.shop.elec.dto.RfqDtos.LineReq;
 import ai.neargo.shop.elec.dto.RfqDtos.LineView;
 import ai.neargo.shop.elec.dto.RfqDtos.OpsLineView;
+import ai.neargo.shop.elec.dto.RfqDtos.OpsOffer;
 import ai.neargo.shop.elec.dto.RfqDtos.OpsRfqView;
-import ai.neargo.shop.elec.dto.RfqDtos.OpsSource;
 import ai.neargo.shop.elec.dto.RfqDtos.QuoteLineReq;
 import ai.neargo.shop.elec.dto.RfqDtos.QuoteReq;
 import ai.neargo.shop.elec.dto.RfqDtos.RfqReq;
@@ -19,14 +19,15 @@ import ai.neargo.shop.elec.dto.RfqDtos.RfqView;
 import ai.neargo.shop.elec.entity.ElcPart;
 import ai.neargo.shop.elec.entity.ElcRfq;
 import ai.neargo.shop.elec.entity.ElcRfqLine;
+import ai.neargo.shop.elec.entity.ElcSupplier;
 import ai.neargo.shop.elec.gateway.ElecAccounts;
 import ai.neargo.shop.elec.gateway.ElecAlerts;
 import ai.neargo.shop.elec.gateway.ElecBuyerNotifier;
 import ai.neargo.shop.elec.mapper.ElecMappers.PartMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.RfqLineMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
-import ai.neargo.shop.elec.mapper.ElecMappers.SourceRow;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.SupplierMapper;
 import ai.neargo.shop.elec.dto.RfqDtos;
 import ai.neargo.shop.elec.service.ElecDispatchService;
 import ai.neargo.shop.elec.service.ElecRfqService;
@@ -83,6 +84,9 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     /** 单行数量上限。超了多半是多敲了几个 0 */
     private static final long MAX_QTY = 1_000_000_000L;
 
+    /** 手工指派一次最多几家。与自动派单的每行上限同一个道理：派得越多，每家越不当回事 */
+    static final int OPS_DISPATCH_MAX = 20;
+
     /** 每行最多查几家有货的（群消息里只列 3 家，多查几家是为了「另有 N 家」） */
     private static final int SOURCES_PER_LINE = 10;
 
@@ -99,11 +103,14 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     private final ElecBuyerNotifier buyers;
     private final ElecProperties props;
     private final ElecDispatchService dispatches;
+    private final SupplierMapper supplierMapper;
+    private final ElecStockViews views;
     private final TransactionTemplate tx;
 
     public ElecRfqServiceImpl(RfqMapper rfqMapper, RfqLineMapper lineMapper, PartMapper partMapper,
                               StockMapper stockMapper, ElecAccounts accounts, ElecAlerts alerts,
                               ElecBuyerNotifier buyers, ElecProperties props, ElecDispatchService dispatches,
+                              SupplierMapper supplierMapper, ElecStockViews views,
                               @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.rfqMapper = rfqMapper;
         this.lineMapper = lineMapper;
@@ -114,6 +121,8 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         this.buyers = buyers;
         this.props = props;
         this.dispatches = dispatches;
+        this.supplierMapper = supplierMapper;
+        this.views = views;
         this.tx = new TransactionTemplate(tm);
     }
 
@@ -269,12 +278,46 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         }
         List<ElcRfq> heads = rfqMapper.selectList(page(q, page, size, 100));
         Map<String, List<ElcRfqLine>> lines = linesOf(heads);
-        return heads.stream().map(h -> opsView(h, lines.getOrDefault(h.getRfqNo(), List.of()), false)).toList();
+        Map<String, Integer> responded = dispatches.respondedCounts(heads.stream().map(ElcRfq::getRfqNo).toList());
+        return heads.stream().map(h -> opsView(h, lines.getOrDefault(h.getRfqNo(), List.of()),
+                responded.getOrDefault(h.getRfqNo(), 0), null)).toList();
     }
 
     @Override
     public OpsRfqView opsDetail(String rfqNo) {
-        return opsView(or404(rfqNo), linesOf(rfqNo), true);
+        ElcRfq h = or404(rfqNo);
+        Map<Integer, List<OpsOffer>> offers = dispatches.opsOffersOf(rfqNo);
+        int responded = dispatches.respondedCounts(List.of(rfqNo)).getOrDefault(rfqNo, 0);
+        return opsView(h, linesOf(rfqNo), responded, offers);
+    }
+
+    @Override
+    public OpsRfqView opsDispatch(String staffNo, String rfqNo, int lineNo, List<String> supplierNos) {
+        ElcRfq h = or404(rfqNo);
+        if (!ElcRfq.STATUS_SUBMITTED.equals(h.getStatus()) && !ElcRfq.STATUS_QUOTED.equals(h.getStatus())) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
+        if (linesOf(rfqNo).stream().noneMatch(l -> l.getLineNo() == lineNo)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        List<String> nos = supplierNos == null ? List.of() : supplierNos.stream()
+                .filter(s -> s != null && !s.isBlank()).map(String::trim).distinct().toList();
+        if (nos.isEmpty() || nos.size() > OPS_DISPATCH_MAX) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 派单服务本身不校验供应商（自动派单只会派给库里有货的，那些天然存在），
+         * 手工指派是运营手输的号 —— 输错的、暂停中的都要在这里挡住：
+         * 派给暂停的供应商，他收到通知点进来却报不了价。
+         */
+        long ok = supplierMapper.selectCount(Wrappers.<ElcSupplier>lambdaQuery()
+                .in(ElcSupplier::getSupplierNo, nos)
+                .eq(ElcSupplier::getStatus, ElcSupplier.STATUS_ACTIVE));
+        if (ok != nos.size()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        dispatches.dispatchTo(rfqNo, lineNo, nos, staffNo);
+        return opsDetail(rfqNo);
     }
 
     @Override
@@ -429,27 +472,29 @@ public class ElecRfqServiceImpl implements ElecRfqService {
                         offers.getOrDefault(l.getLineNo(), List.of()))).toList());
     }
 
-    private OpsRfqView opsView(ElcRfq h, List<ElcRfqLine> lines, boolean withSources) {
+    /**
+     * @param offers 为 null = 列表页（不带谁有货、不带派单明细）；详情页传按行分组的派单结果
+     */
+    private OpsRfqView opsView(ElcRfq h, List<ElcRfqLine> lines, int responded,
+                               Map<Integer, List<OpsOffer>> offers) {
+        boolean detail = offers != null;
         LocalDate today = LocalDate.now();
-        List<OpsLineView> views = new ArrayList<>();
+        List<OpsLineView> lineViews = new ArrayList<>();
         for (ElcRfqLine l : lines) {
-            List<OpsSource> sources = !withSources || l.getPartNo() == null ? List.of()
+            var sources = !detail || l.getPartNo() == null ? List.<RfqDtos.OpsSource>of()
                     : stockMapper.sourcesOf(l.getPartNo(), today, SOURCES_PER_LINE).stream()
-                    .map(ElecRfqServiceImpl::opsSource).toList();
-            views.add(new OpsLineView(l.getLineNo(), l.getPartNo(), l.getMpnRaw(), l.getMfrRaw(), l.getQty(),
-                    l.getTargetE6(), quoteOf(l), sources));
+                    .map(views::source).toList();
+            lineViews.add(new OpsLineView(l.getLineNo(), l.getPartNo(), l.getMpnRaw(), l.getMfrRaw(), l.getQty(),
+                    l.getTargetE6(), quoteOf(l), sources,
+                    detail ? offers.getOrDefault(l.getLineNo(), List.of()) : List.of()));
         }
         return new OpsRfqView(h.getRfqNo(), shownStatus(h), h.getCreatedAt(), h.getLineCnt(), h.getContactName(),
                 h.getContactPhone(), h.getCompany(), h.getNeedInvoice(), h.getDcReq(), h.getCondReq(),
                 h.getPackingReq(), h.getNeedByDays(), Boolean.TRUE.equals(h.getAllowAlt()), h.getDeliverCity(),
                 h.getRemark(), h.getQuotedAt(), h.getQuotedBy(), h.getQuoteValidUntil(), h.getQuoteNote(),
-                h.getBuyerNotifiedAt() != null, h.getCloseReason(), views);
-    }
-
-    private static OpsSource opsSource(SourceRow s) {
-        return new OpsSource(s.getSupplierNo(), s.getCompanyName(), s.getContactPhone(), s.getQty(),
-                s.getDateCode(), s.getPriceE6(), s.getCurrency(), Boolean.TRUE.equals(s.getTaxIncluded()),
-                s.getPacking(), s.getCondGrade(), s.getLeadDays(), s.getRegion());
+                h.getBuyerNotifiedAt() != null, h.getCloseReason(),
+                h.getDispatchCnt() == null ? 0 : h.getDispatchCnt(), responded,
+                h.getQuoteCnt() == null ? 0 : h.getQuoteCnt(), lineViews);
     }
 
     // ── 查询小件 ────────────────────────────────────────────────────────────
