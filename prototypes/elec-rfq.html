@@ -9,75 +9,77 @@
 
 <div class="wrap">
 <header class="top">
-  <div class="eyebrow">小程序 · 元器件分包 · 界面原型 · 2026-09-29</div>
-  <h1>元器件：查料号、上传库存、在线询价</h1>
-  <p class="sub">一个将来要独立出去的业务，先作为 c-app 的<b>分包 <code>pkg-elec/</code></b> 跑在同一个小程序里：同一个登录态，
-  同一个人既可以是买家，也可以在「我的」里入驻成供应商。独立那天，分包整个搬成另一个小程序。</p>
-  <p class="sub">全稿守一条约束：<b>一期买家看不到供应商，供应商也看不到买家</b>（L0 · 双向匿名）。
-  买家看到的库存是按料号聚合、数量分档的；报价叫「报价 A / B / C」，价是平台换算后的。
-  将来开放时改档位，界面只换 e03、e07 两屏上的标签。十六屏：买家 e01–e08，供应商 e09–e16。
-  库表见 <a href="../docs/technical/design/TDD-元器件-数据库设计.md">TDD-元器件-数据库设计</a>。</p>
+  <div class="eyebrow">小程序 · 元器件分包 · 界面原型 · 2026-09-29（第二版）</div>
+  <h1>元器件：查料号、询价、成为供应商</h1>
+  <p class="sub">元器件是<b>独立服务</b>（elec-svc），但只有一个小程序：买家与供应商<b>同一个账号</b>，
+  在元器件页点「成为供应商」就成了。后端已实现，这一稿是给它配的界面。</p>
+  <p class="sub"><b>第一步的询价以平台为准</b>：买家提交 → 企业微信群收到（带买家电话、库里谁有货）→
+  运营在后台录入报价 → <b>微信通知买家</b> → 买家接受 → 平台线下成交。
+  供应商这一侧<b>看不到询价</b>，他只管把库存传上来、保持新鲜 —— 这是与第一版最大的不同：
+  那一版让供应商自己报价，等于第一天就要撮合两边的响应速度，而平台还没有货源密度撑住它。</p>
+  <p class="sub">十六屏：买家 e01–e09、供应商 e10–e15、运营 e16。库表见
+  <a href="../docs/technical/reference/数据库-元器件.md">数据库 · 元器件</a>，
+  设计见 <a href="../docs/technical/TDD-元器件-独立服务与第一步.md">TDD-元器件-独立服务与第一步</a>。</p>
 </header>
 
 <section>
-  <div class="sec-head"><span class="sec-num">e01 — e04</span><h2>买家：查料号到发起询价</h2></div>
+  <div class="sec-head"><span class="sec-num">e01 — e03</span><h2>买家：查料号</h2></div>
   <div class="grid">
 
     <figure id="e01">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">元器件</span><span></span></div>
         <div class="scr">
-          <div class="inp">输入料号，如 STM32F103C8T6</div>
+          <div class="inp">料号，可带厂牌与数量</div>
           <div class="tiles">
-            <div class="tile on"><b>BOM 询价</b><span>上传物料清单，整单报价</span></div>
-            <div class="tile"><b>我的询价</b><span>2 单已报价</span></div>
+            <div class="tile on"><b>批量查</b><span>粘一列料号，逐行给结果</span></div>
+            <div class="tile"><b>我的询价</b><span>1 单已报价</span></div>
+          </div>
+          <div class="group">
+            <div class="frow add">＋ 成为供应商</div>
           </div>
           <div class="gt"><span>最近搜过</span><span>清空</span></div>
           <div class="group">
             <div class="frow"><span class="k">STM32F103C8T6</span><span class="v go dim">ST</span></div>
-            <div class="frow"><span class="k">TPS54331DR</span><span class="v go dim">TI</span></div>
-            <div class="frow"><span class="k">CL05B104KO5NNNC</span><span class="v go dim">三星电机</span></div>
+            <div class="frow"><span class="k">TI TPS54331DR</span><span class="v go dim">德州仪器</span></div>
+            <div class="frow"><span class="k">CH340N</span><span class="v go dim">沁恒</span></div>
           </div>
-          <div class="gt"><span>这周询价最多</span><span></span></div>
+          <div class="gt"><span>这周大家在找</span><span></span></div>
           <div class="group">
-            <div class="frow"><span class="k">ESP32-C3-MINI-1</span><span class="v go dim">乐鑫</span></div>
-            <div class="frow"><span class="k">GD32F303RCT6</span><span class="v go dim">兆易创新</span></div>
+            <div class="frow"><span class="k">ESP32-C3-MINI-1</span><span class="v dim">乐鑫</span></div>
+            <div class="frow"><span class="k">GD32F303RCT6</span><span class="v dim">兆易创新</span></div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>e01 元器件首页</b>一个搜索框、两个入口、最近搜过、这周询价最多。入口在 c-app「我的」加一行「元器件询价」。</figcaption>
-      <p class="why">采购进来只干两件事：查一个料号，或者丢一整张 BOM。所以首屏只有这两个动作，不放类目树 —— 做元器件采购的人都知道要什么料号，类目浏览是给不知道的人的。「这周询价最多」来自 elc_demand_daily，同时也是给供应商看的那份热度，一份数据两头用。</p>
+      <figcaption class="cap"><b>e01 元器件首页</b>一个搜索框、两个入口、一行「成为供应商」、最近搜过、这周大家在找。入口在 c-app 首页团购那一行下面。</figcaption>
+      <p class="why">采购进来只干两件事：查一个料号，或者丢一整列料号。「成为供应商」<b>放在首页而不是「我的」里</b>：来查料号的人里就有手上压着库存的贸易商，这一行是唯一能碰到他的地方。占一行、不占一屏 —— 他没库存时这一行只是个说明。「这周大家在找」来自搜索需求日聚合（只记搜了什么，不记谁搜的）。</p>
     </figure>
 
     <figure id="e02">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">搜索结果</span><span></span></div>
         <div class="scr">
-          <div class="inp">STM32F103C8</div>
-          <div class="tabs"><span class="on">全部 4</span><span>有现货</span><span>原装</span></div>
+          <div class="inp">TI f103c8</div>
+          <div class="sum"><span>厂牌：德州仪器</span><span>去掉</span></div>
           <div class="card">
             <div class="hd"><span class="nm">STM32F103C8T6</span><span class="chip ok">现货</span></div>
-            <div class="meta">ST 意法 · LQFP-48 · ARM Cortex-M3 64KB</div>
+            <div class="meta">ST 意法 · LQFP-48 · 开头一致</div>
             <div class="metric"><span>库存 10k+ · 多家有货</span><span>·</span><b class="num">¥6.85 起</b></div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">STM32F103C8T7</span><span class="chip">期货 21 天</span></div>
-            <div class="meta">ST 意法 · LQFP-48 · 工业级</div>
-            <div class="metric"><span>库存 1k+ · 1 家</span><span>·</span><b class="num">¥9.40 起</b></div>
+            <div class="hd"><span class="nm">GD32F103C8T6</span><span class="chip ok">现货</span></div>
+            <div class="meta">兆易创新 · LQFP-48 · <b>中段一致</b></div>
+            <div class="metric"><span>库存 1k+ · 1 家</span><span>·</span><b class="num">¥4.20 起</b></div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">STM32F103C8T6TR</span><span class="chip ok">现货</span></div>
-            <div class="meta">ST 意法 · LQFP-48 · 卷带</div>
-            <div class="metric"><span>库存 1k+ · 多家有货</span><span>·</span><b class="num">¥6.92 起</b></div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">STM32F103C8</span><span class="chip warn">暂无报价</span></div>
-            <div class="meta">厂牌未确认 · 有人在询</div>
+            <div class="hd"><span class="nm">STM32F103CBT6</span><span class="chip">暂无库存</span></div>
+            <div class="meta">ST 意法 · LQFP-48 · 中段一致</div>
+            <div class="metric"><span>可以询价，平台帮你找</span></div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>e02 搜索结果</b>前缀匹配，规范化后比较（大小写、空格、横杠都不影响）。每张卡：料号 / 厂牌封装描述 / 库存分档与参考起价。</figcaption>
-      <p class="why">数量只给档（1k+、10k+），家数只给「1 家 / 多家」：精确库存加上批号和地区，同行一眼就能认出是谁家的货。价是换算后的起价（elc_part_market.price_from_e6），不是某一家的价。没货的料号<b>也要出</b>并能询价 —— 没货正是询价最有价值的时候，平台可以去找货。</p>
+      <figcaption class="cap"><b>e02 搜索结果</b>大小写、空格、横杠都不影响；输入里带厂牌就自动按厂牌过滤（可一键去掉）；只记得中间一截也能搜到。</figcaption>
+      <p class="why">第二行说的是<b>怎么命中的</b>（开头一致 / 中段一致 / 相近），不是排名分数 —— 采购一眼就知道这条是不是他要的那个料号，而分数说明不了任何事。排序：完全一致 → 开头 → 中段，同档里有货的在前、库存档位高的在前。没货的照样列出并能询价，那正是询价最有价值的时候。</p>
     </figure>
 
     <figure id="e03">
@@ -86,30 +88,32 @@
         <div class="scr">
           <div class="pz ink">
             <div class="t">STM32F103C8T6</div>
-            <div class="meta">ST 意法半导体 · LQFP-48 · 在产 · RoHS</div>
-            <div class="meta">ARM Cortex-M3 MCU，64KB Flash，72MHz</div>
+            <div class="meta">ST 意法半导体 · LQFP-48</div>
           </div>
           <div class="stats">
             <div><div class="n">10k+</div><div class="l">库存</div></div>
-            <div><div class="n">现货</div><div class="l">最快交期</div></div>
+            <div><div class="n">多家</div><div class="l">货源</div></div>
             <div><div class="n">2025</div><div class="l">最新批次</div></div>
           </div>
-          <div class="gt"><span>参考价（含税）</span><span>多家有货</span></div>
-          <div class="group">
-            <div class="frow"><span class="k">1+</span><span class="v num">¥8.20</span></div>
-            <div class="frow"><span class="k">100+</span><span class="v num">¥7.35</span></div>
-            <div class="frow"><span class="k">1,000+</span><span class="v num hot">¥6.85</span></div>
+          <div class="gt"><span>参考价（含税）</span><span>平台报价为准</span></div>
+          <div class="pz">
+            <div class="p"><b>¥6.85</b><span class="meta">起</span></div>
+            <div class="meta">实际价格按询价单给，受数量、批次、交期影响</div>
           </div>
-          <div class="group">
-            <div class="frow"><span class="k">货况</span><span class="v">原装原包 · 原装散新</span></div>
-            <div class="frow"><span class="k">规格书</span><span class="v go">PDF 2.1 MB</span></div>
-          </div>
+          <div class="note">找不到要的批次或数量？直接询价，平台帮你找货</div>
         </div>
-        <div class="foot"><div class="btn sec">加入 BOM</div><div class="btn main">询价</div></div>
+        <div class="foot"><div class="btn sec">加入批量查</div><div class="btn main">询价</div></div>
       </div>
-      <figcaption class="cap"><b>e03 料号详情</b>料号信息、行情三格、参考阶梯价、货况与规格书。底栏「询价」直接拉起 e04。</figcaption>
-      <p class="why">写「参考价」而不是「价格」：它是聚合出来的起价，真要买要以报价为准 —— 否则买家拿着 ¥6.85 询 50 片，报回来 ¥8 会觉得被坑。批次只给年份。L1 以后这里多一行「有货的供应商 3 家」，点进去是匿名代号列表；L0 不出现这一行。</p>
+      <figcaption class="cap"><b>e03 料号详情</b>行情三格、参考起价、一句「实际价格按询价单给」。底栏「询价」拉起 e04。</figcaption>
+      <p class="why">数量只给档（10k+）、货源只给「1 家 / 多家」、批次只给年份 —— 精确数量加上批号，同行一眼就能认出这是谁家的货，而供应商愿意把库存传上来的前提正是这个。写「参考价」并在下面说清为什么不是最终价：拿着 ¥6.85 去询 2000 片，报回来 ¥7.2 会觉得被坑，而那只是数量与批次不同。</p>
     </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">e04 — e06</span><h2>买家：询价与批量查</h2></div>
+  <div class="grid">
 
     <figure id="e04">
       <div class="ph c">
@@ -122,187 +126,202 @@
               <div class="frow"><span class="k">数量</span><span class="v in num">2,000</span></div>
               <div class="frow"><span class="k">目标单价</span><span class="v in ph-">选填</span></div>
               <div class="frow"><span class="k">批次</span><span class="v go">两年内</span></div>
-              <div class="frow"><span class="k">货况</span><span class="v go">原装原包</span></div>
               <div class="frow"><span class="k">发票</span><span class="v go">增值税专票</span></div>
               <div class="frow"><span class="k">收货城市</span><span class="v go">深圳</span></div>
             </div>
-            <div class="d">一般 24 小时内收到报价</div>
+            <div class="d">平台一般 24 小时内给报价，微信通知你</div>
             <div class="acts"><div class="btn">提交询价</div></div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>e04 单料号询价</b>半屏面板：数量必填，其余带默认值。发票与收货城市记住上次的。</figcaption>
-      <p class="why">发票放在询价时就问：专票与不开票差 13%，比加价率还大，报价回来口径不一致就没法比。收货城市只用于判断时效，供应商面只看得到省。不收公司名和手机号 —— 登录态已经有人，公司名在「我的询价」首次提交时补一次就够。</p>
+      <figcaption class="cap"><b>e04 询价</b>数量必填，其余带默认值。提交前先要手机号（没绑过的弹绑定），并弹一次微信订阅授权。</figcaption>
+      <p class="why">发票放在询价时就问：专票与不开票差 13%，比任何加价率都大，口径不一致就没法比。<b>手机号闸与订阅授权都在按下「提交」这一刻</b>，不在进页面时 —— 那时他还没产生任何关系，要号是最典型的劝退；而现在他正要平台替他找货，两件事都讲得通。订阅授权一次只够一条，正好覆盖这一单的结果通知。</p>
     </figure>
-
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">e05 — e08</span><h2>买家：BOM 与报价</h2></div>
-  <div class="grid">
 
     <figure id="e05">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">BOM 询价</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">批量查</span><span></span></div>
         <div class="scr">
-          <div class="sum"><span>主控板 V2.xlsx · 21 行</span><span>换文件</span></div>
-          <div class="stats">
-            <div><div class="n">18</div><div class="l">已识别</div></div>
-            <div><div class="n hot">2</div><div class="l">请确认厂牌</div></div>
-            <div><div class="n">1</div><div class="l">料号库没有</div></div>
-          </div>
-          <div class="tabs"><span>全部</span><span class="on">请确认 2</span><span>没有 1</span></div>
+          <div class="inp ph-">从 Excel 里整列复制，一行一个料号（可带厂牌与数量）</div>
+          <div class="stats"><div><div class="n">4</div><div class="l">库里有</div></div>
+            <div><div class="n hot">1</div><div class="l">要确认</div></div>
+            <div><div class="n">1</div><div class="l">库里没有</div></div></div>
           <div class="card">
-            <div class="hd"><span class="nm">AMS1117-3.3</span><span class="chip warn">3 家厂牌</span></div>
-            <div class="meta">第 7 行 · 数量 2,000</div>
-            <div class="metric"><span class="chip act">AMS</span><span class="chip">UMW 友台</span><span class="chip">不限</span></div>
+            <div class="hd"><span class="nm">STM32F103C8T6 × 2000</span><span class="chip ok">现货</span></div>
+            <div class="meta">ST 意法 · 库存 10k+ · ¥6.85 起</div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">0805 10K 1%</span><span class="chip warn">不是料号</span></div>
-            <div class="meta">第 12 行 · 数量 10,000</div>
-            <div class="metric"><span>照原文询价，平台帮你找</span></div>
+            <div class="hd"><span class="nm">AMS1117-3.3 × 5000</span><span class="chip warn">两家厂牌</span></div>
+            <div class="meta">AMS / UMW 友台 —— 点一下选哪家</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">TLV62569DBVR × 300</span><span class="chip">库里没有</span></div>
+            <div class="meta">照样可以询价，平台帮你找</div>
           </div>
         </div>
-        <div class="foot"><span class="meta">21 行 · 预计 24 小时</span><div class="btn">整单询价</div></div>
+        <div class="foot"><span class="meta">已选 5 行</span><div class="btn">一起询价</div></div>
       </div>
-      <figcaption class="cap"><b>e05 BOM 识别结果</b>从微信聊天里选 Excel（wx.chooseMessageFile）。识别完只把要人看的两类摊开：厂牌有歧义、识别不了。</figcaption>
-      <p class="why">工程师的 BOM 大都在微信里转来转去，小程序能直接从聊天记录选文件，这是小程序反而比网页顺手的地方。识别不了的行（写的是参数不是料号）<b>不拦</b>，照原文询 —— 让他改成标准料号，他就不询了。厂牌歧义给三个胶囊一点即选，「不限」是合法答案。</p>
+      <figcaption class="cap"><b>e05 批量查</b>粘一列料号（Excel 里整列复制过来就是这个形状），逐行告诉你库里有没有，勾上的一起询价。</figcaption>
+      <p class="why">采购手里的东西就是一列料号，不是一个。这一屏替掉了第一版的「上传 BOM 文件」：粘贴不用选文件、不用等解析，而且<b>数量能从同一行里读出来</b>（「STM32F103C8T6 2000」）。同一料号两家厂牌时不猜，标出来让他点 —— 猜错了报价整单作废，而他要到收货那天才知道。</p>
     </figure>
 
     <figure id="e06">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">我的询价</span><span></span></div>
         <div class="scr">
-          <div class="tabs"><span class="on">全部</span><span>报价中</span><span>已报价</span><span>已结束</span></div>
+          <div class="tabs"><span class="on">全部</span><span>待报价</span><span>已报价</span><span>已结束</span></div>
           <div class="card">
-            <div class="hd"><span class="nm">主控板 V2 · BOM</span><span class="chip ok">已报价</span></div>
-            <div class="meta">21 行 · 今天 09:12 提交</div>
-            <div class="metric"><div class="bar"><i style="width:81%"></i></div><span>17 / 21 行有报价</span></div>
+            <div class="hd"><span class="nm">STM32F103C8T6 等 3 项</span><span class="chip ok">已报价</span></div>
+            <div class="meta">今天 09:12 · 报价有效至 10 月 2 日</div>
+            <div class="metric"><span>合计 ¥13,440</span></div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">STM32F103C8T6 × 2,000</span><span class="chip ok">已报价</span></div>
-            <div class="meta">昨天 16:40 · 3 个报价 · 最低 ¥6.72</div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">TPS54331DR × 5,000</span><span class="chip">报价中</span></div>
+            <div class="hd"><span class="nm">TPS54331DR × 5,000</span><span class="chip">待报价</span></div>
             <div class="meta">今天 10:05 · 预计明天 10:05 前</div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">LM2596S-5.0 × 300</span><span class="chip dead">已过期</span></div>
-            <div class="meta">9 月 21 日 · 报价已失效，可重新询价</div>
+            <div class="hd"><span class="nm">CH340N × 100</span><span class="chip dead">暂无货源</span></div>
+            <div class="meta">9 月 27 日 · 平台没找到货，可以换个料号再询</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">LM2596S-5.0 × 300</span><span class="chip dead">报价已过期</span></div>
+            <div class="meta">9 月 21 日 · 行情变了，重新询一次</div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>e06 我的询价</b>单料号询价与 BOM 在同一张列表；BOM 卡上一条进度条：多少行已有报价。</figcaption>
-      <p class="why">状态只用三色：已报价绿、报价中灰、已过期虚线。「报价中」写出<b>预计时间</b>而不是只写状态 —— 采购最焦虑的是不知道要等多久。过期不是失败，给出「可重新询价」的出路。</p>
-    </figure>
-
-    <figure id="e07">
-      <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">报价</span><span></span></div>
-        <div class="scr">
-          <div class="group">
-            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v num">× 2,000</span></div>
-            <div class="frow"><span class="k">要求</span><span class="v dim">两年内 · 原装原包 · 专票</span></div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">报价 A</span><b class="num">¥6.72</b></div>
-            <div class="meta">可供 5,000 · 2025 年批次 · 现货 · 原装原包</div>
-            <div class="meta">含税 · 有效至 10 月 3 日 · 合计 ¥13,440</div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">报价 B</span><b class="num">¥6.95</b></div>
-            <div class="meta">可供 2,000 · 2024 年批次 · 现货 · 原装原包</div>
-            <div class="meta">含税 · 有效至 10 月 2 日 · 合计 ¥13,900</div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">报价 C</span><b class="num">¥6.40</b></div>
-            <div class="meta">可供 1,500 · 2025 年批次 · <b>交期 14 天</b> · 原装散新</div>
-            <div class="meta">含税 · 有效至 10 月 5 日 · 不满足数量</div>
-          </div>
-        </div>
-        <div class="foot"><div class="btn sec">再等等</div><div class="btn main">选报价 A</div></div>
-      </div>
-      <figcaption class="cap"><b>e07 报价列表</b>每个报价一张卡：单价、可供量、批次年份、交期、货况、有效期、合计。与要求不符的那一项直接写出来。</figcaption>
-      <p class="why">「报价 A / B / C」是 elc_offer.label 的 L0 值，<b>编号只在这一单内有意义</b>，下一单的 A 不是这一单的 A —— 否则跨单一对比就把某一家聚出来了。L1 时这里换成匿名代号 + 认证星级 + 响应率，L2 换成公司简称，卡的结构不变。不满足的条件（数量不够、有交期、散新）直接写在卡上，不做筛选隐藏：买家可能为了价格接受 14 天交期。</p>
-    </figure>
-
-    <figure id="e08">
-      <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">报价</span><span></span></div>
-        <div class="scr"></div>
-        <div class="mask">
-          <div class="sheet">
-            <div class="h">选定报价 A</div>
-            <div class="group">
-              <div class="frow"><span class="k">单价（含税）</span><span class="v num">¥6.72</span></div>
-              <div class="frow"><span class="k">数量</span><span class="v num">2,000</span></div>
-              <div class="frow"><span class="k">合计</span><span class="v num hot">¥13,440</span></div>
-            </div>
-            <div class="d">价格已锁定到 10 月 3 日。平台专员会在 2 小时内联系你确认合同与交货。</div>
-            <div class="acts"><div class="btn sec">取消</div><div class="btn">确定</div></div>
-          </div>
-        </div>
-      </div>
-      <figcaption class="cap"><b>e08 选定报价</b>确定后写 elc_deal，锁价快照；这一行状态变「已选定」，其余报价保留到过期。</figcaption>
-      <p class="why">一期没有在线交易，所以按钮叫「确定」不叫「下单」，下一步写清楚是<b>人来联系</b>、多久内来。锁价沿用 ADR-003：选定那一刻的价写进快照，之后供应商改价不影响这一单。</p>
+      <figcaption class="cap"><b>e06 我的询价</b>四种状态：待报价（写预计时间）、已报价（写有效期）、暂无货源、报价已过期。</figcaption>
+      <p class="why">「待报价」写<b>预计时间</b>而不是只写状态 —— 采购最焦虑的是不知道要等多久。「暂无货源」是结果不是失败，所以它和「已过期」一样给出下一步（换个料号 / 重新询）。过期不是把单子藏起来：行情变了，平台不再兑现那个价，而这件事要说出来。</p>
     </figure>
 
   </div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">e09 — e12</span><h2>供应商：入驻与上传库存</h2></div>
+  <div class="sec-head"><span class="sec-num">e07 — e09</span><h2>买家：收到报价</h2></div>
   <div class="grid">
+
+    <figure id="e07">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">询价详情</span><span></span></div>
+        <div class="scr">
+          <div class="tl">
+            <div class="st done">今天 09:12　已提交</div>
+            <div class="st now">平台正在找货、核价</div>
+            <div class="st">报价后微信通知你</div>
+          </div>
+          <div class="gt"><span>3 项</span><span>专票 · 两年内 · 深圳</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v num">× 2,000</span></div>
+            <div class="frow"><span class="k">TPS54331DR</span><span class="v num">× 500</span></div>
+            <div class="frow"><span class="k">CH340N</span><span class="v num">× 1,000</span></div>
+          </div>
+          <div class="note">平台会打 138****5210 联系你</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>e07 询价详情 · 待报价</b>三步状态轴、询价内容、平台会打哪个号（掩码）。</figcaption>
+      <p class="why">状态轴只有三步，第三步写明「微信通知你」—— 他就不必守着这一页刷新。手机号<b>掩码显示</b>：他要确认平台打的是不是他常用的那个号，但没必要在屏幕上摊开全号。这一屏没有任何供应商信息，一个字都没有。</p>
+    </figure>
+
+    <figure id="e08">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">服务通知</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">询价有报价了</span><span class="meta">刚刚</span></div>
+            <div class="meta">单号　EQ20260929091201</div>
+            <div class="meta">料号　STM32F103C8T6 等 3 项</div>
+            <div class="meta">结果　已报价</div>
+            <div class="meta">点开查看报价，报价有有效期</div>
+          </div>
+          <div class="note">同一条也进了小程序的消息中心 —— 订阅消息一次授权只够一条，站内信是必达的那份</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>e08 微信通知</b>平台录入报价后立刻发：单号、料号概述、结果、一句提示。点开落到 e09。</figcaption>
+      <p class="why">这是整条链路里<b>唯一一处主动找人的地方</b>，所以它要能一眼看完：是哪一单、什么料号、什么结果。模板是在小程序后台选的（字段名各家模板不同，做成了配置）。站内信同时写一条：订阅消息一次授权只够一条，平台改价再发时多半已经没有额度，那一次由站内信兜住 —— 不然他会以为平台没理他。</p>
+    </figure>
 
     <figure id="e09">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">成为供应商</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">询价详情</span><span></span></div>
         <div class="scr">
-          <div class="sum"><span>身份不公开 · 同行看不到你的名字和库存明细</span><span></span></div>
-          <div class="group">
-            <div class="frow"><span class="k">公司名称</span><span class="v ph-">与营业执照一致</span></div>
-            <div class="frow"><span class="k">信用代码</span><span class="v ph-">18 位</span></div>
-            <div class="frow"><span class="k">营业执照</span><span class="v go">上传</span></div>
-            <div class="frow"><span class="k">类型</span><span class="v go">贸易商</span></div>
-            <div class="frow"><span class="k">所在地</span><span class="v go">深圳 · 福田</span></div>
+          <div class="sum"><span>平台报价 · 有效至 10 月 2 日</span><span>还剩 2 天</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">STM32F103C8T6</span><b class="num">¥6.72</b></div>
+            <div class="meta">× 2,000 · 2025 年批次 · 现货 · 含税</div>
+            <div class="metric"><span>小计 ¥13,440</span></div>
           </div>
-          <div class="group">
-            <div class="frow"><span class="k">联系人</span><span class="v ph-">姓名</span></div>
-            <div class="frow"><span class="k">手机</span><span class="v">138****5210</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">TPS54331DR</span><b class="num">¥3.10</b></div>
+            <div class="meta">× 500 · 2024 年批次 · 交期 7 天 · 含税</div>
+            <div class="metric"><span>小计 ¥1,550</span></div>
           </div>
+          <div class="card">
+            <div class="hd"><span class="nm">CH340N</span><span class="chip warn">没找到货</span></div>
+            <div class="meta">× 1,000 · 这一项平台暂时供不了</div>
+          </div>
+          <div class="note">平台说明：前两项原装现货，含税含运；CH340N 近期断货，可换 CH340C</div>
         </div>
-        <div class="foot"><div class="btn">提交审核</div></div>
+        <div class="foot"><span class="meta">合计 <b class="num">¥14,990</b></span><div class="btn">接受报价</div></div>
       </div>
-      <figcaption class="cap"><b>e09 入驻</b>七项，一屏填完。手机号带出当前登录的号。提交后 elc_supplier.status=PENDING，运营审执照。</figcaption>
-      <p class="why">顶部那一句是<b>一期最大的卖点</b>：贸易商最怕的是库存摊出来被同行比价、客户被挖。所以不写「欢迎入驻」，直接说他最在意的那件事。类型四选一（代理 / 贸易 / 工厂余料 / 其他），影响派单排序，不影响买家看到什么。</p>
+      <figcaption class="cap"><b>e09 询价详情 · 已报价</b>逐行报价、没报的行标出来、平台的一段说明、底栏合计与「接受报价」。</figcaption>
+      <p class="why"><b>没报的那一行要留在原位并写清楚</b>，不能悄悄消失 —— 他要知道这一项是「平台没找到」而不是「我漏填了」，而且这正是他该去换料号的信号。合计只算报了的行。接受之后：价格按接受那一刻锁死，企业微信群里运营收到「买家接受了」，接下来是电话与合同 —— 第一步不在小程序里收钱（元器件 B2B 要开票、账期、合同，那是二期的事）。</p>
     </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">e10 — e12</span><h2>供应商：一点就成，然后传库存</h2></div>
+  <div class="grid">
 
     <figure id="e10">
       <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">元器件</span><span></span></div>
+        <div class="scr"></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">成为供应商</div>
+            <div class="d">把库存传上来，买家搜得到就有询价。<b>身份不公开</b> —— 同行看不到你的名字和库存明细</div>
+            <div class="group">
+              <div class="frow"><span class="k">手机号</span><span class="v">138****5210</span></div>
+            </div>
+            <div class="d">平台用这个号联系你。公司名等之后在资料里补</div>
+            <div class="acts"><div class="btn sec">再想想</div><div class="btn">就用这个号</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>e10 成为供应商</b><b>一点就成</b>：不审核、不填表。唯一的前提是绑过手机号（没绑的先弹绑定），确认后直接进工作台。</figcaption>
+      <p class="why">第一版这里是七项表单（公司名、信用代码、执照、类型、所在地、联系人、手机）。改掉的理由是<b>这一步什么都还没发生</b>：他连自己的货能不能被搜到都不知道，就要先填执照。现在是「确认一个手机号」——平台要打得通他的电话，这是唯一真需要的东西。公司名在他第一次要被买家联系时才有用，那时再补不迟。顶上那句「身份不公开」是贸易商最在意的事，放在按钮正上方。</p>
+    </figure>
+
+    <figure id="e11">
+      <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">供应商工作台</span><span></span></div>
         <div class="scr">
-          <div class="stats">
-            <div><div class="n hot">3</div><div class="l">待报价</div></div>
-            <div><div class="n">1,832</div><div class="l">在售料号</div></div>
-            <div><div class="n">92%</div><div class="l">30 天响应率</div></div>
-          </div>
-          <div class="note">126 行库存 5 天后到期，到期自动下架</div>
+          <div class="note">还没传过库存 —— 传一张表，买家就搜得到你的货</div>
           <div class="tiles">
-            <div class="tile on"><b>上传库存</b><span>Excel / 粘贴</span></div>
-            <div class="tile"><b>我的库存</b><span>1,832 行</span></div>
-            <div class="tile"><b>询价</b><span>3 条待报价</span></div>
-            <div class="tile"><b>需求热度</b><span>本周被搜 4,210 次</span></div>
+            <div class="tile on"><b>上传库存</b><span>Excel / CSV</span></div>
+            <div class="tile"><b>我的库存</b><span>0 行</span></div>
+          </div>
+          <div class="stats">
+            <div><div class="n">0</div><div class="l">在售料号</div></div>
+            <div><div class="n">0</div><div class="l">7 天内到期</div></div>
+            <div><div class="n">—</div><div class="l">上次上传</div></div>
+          </div>
+          <div class="gt"><span>资料</span><span>补全</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">公司名称</span><span class="v ph-">还没填</span></div>
+            <div class="frow"><span class="k">联系手机</span><span class="v">138****5210</span></div>
+            <div class="frow"><span class="k">我的编号</span><span class="v dim">S-3F7K</span></div>
           </div>
         </div>
         <div class="tabbar"><span>首页</span><span class="on">工作台</span><span>我的</span></div>
       </div>
-      <figcaption class="cap"><b>e10 工作台</b>三个数：待报价、在售料号、响应率。一条到期提醒。四个入口。</figcaption>
-      <p class="why">待报价排第一个且用主色：它有截止时间，其余都没有。响应率放在首页是故意的 —— 它决定派单排序，供应商看得见才会在意。到期提醒只在有将到期的库存时出现，点进去是 e13 的「将到期」页签。</p>
+      <figcaption class="cap"><b>e11 供应商工作台 · 刚成为供应商</b>第一屏就是「上传库存」，三个数都是 0，资料那一段提示补全。</figcaption>
+      <p class="why">刚成为供应商时这一屏<b>不能是一片空数字</b>：顶上那句话说清楚下一步是什么，上传占满一个大块。库存传上来之后同一屏变成「在售 1,832 · 7 天内到期 126 · 上次上传 3 天前」，那时最上面那条提醒换成到期提醒。编号 S-3F7K 是他的匿名代号 —— 以后开放身份时买家看到的就是它，现在先让他知道自己有这么个号。</p>
     </figure>
 
-    <figure id="e11">
+    <figure id="e12">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">上传库存</span><span></span></div>
         <div class="scr">
@@ -313,7 +332,7 @@
             <div class="frow"><span class="k">B 品牌</span><span class="v go">厂牌</span></div>
             <div class="frow"><span class="k">C 数量</span><span class="v go">数量</span></div>
             <div class="frow"><span class="k">D 批号</span><span class="v go">批次</span></div>
-            <div class="frow"><span class="k">E 单价</span><span class="v go">单价（1 片起）</span></div>
+            <div class="frow"><span class="k">E 单价</span><span class="v go">单价</span></div>
             <div class="frow"><span class="k">F 备注</span><span class="v go dim">不导入</span></div>
           </div>
           <div class="group">
@@ -323,11 +342,18 @@
         </div>
         <div class="foot"><div class="btn">下一步：预览</div></div>
       </div>
-      <figcaption class="cap"><b>e11 列映射</b>从微信聊天选 Excel；每列猜一个含义，按供应商记住上次的映射。含税一个开关，导入方式二选一。</figcaption>
-      <p class="why">各家 ERP 导出的表头五花八门（型号 / P/N / 料号 / Part No.），猜不准就让他点一下改，<b>改过一次记住</b>（elc_stock_batch.column_map），第二次上传这一屏基本是直接点下一步。「备注」默认不导入：供应商常在备注里写公司名和微信。全量替换的后果在下一屏用数字说清楚，这里不加警告文字。</p>
+      <figcaption class="cap"><b>e12 上传 · 列映射</b>从微信聊天里选 Excel / CSV；每列猜一个含义，按供应商记住上次的映射。含税一个开关，导入方式二选一。</figcaption>
+      <p class="why">各家 ERP 的表头五花八门（型号 / P/N / 料号 / Part No.），猜不准就让他点一下改，<b>改过一次记住</b> —— 第二次上传这一屏基本是直接点下一步。表头不在第一行也认（很多表第一行是公司抬头）。「备注」默认不导入：供应商常在备注里写公司名和微信，那是会泄露身份的一列。</p>
     </figure>
 
-    <figure id="e12">
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">e13 — e15</span><h2>供应商：上架、保鲜、补资料</h2></div>
+  <div class="grid">
+
+    <figure id="e13">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">上架前确认</span><span></span></div>
         <div class="scr">
@@ -337,34 +363,27 @@
             <div><div class="n hot">73</div><div class="l">下架</div></div>
             <div><div class="n">0</div><div class="l">未变</div></div>
           </div>
-          <div class="tabs"><span class="on">下架 73</span><span>待确认 12</span><span>有错 6</span></div>
+          <div class="tabs"><span class="on">下架 73</span><span>认不了 6</span></div>
           <div class="card">
             <div class="hd"><span class="nm">TPS54331DR</span><span class="chip bad">将下架</span></div>
-            <div class="meta">TI · 在售 5,000 · 这次的表里没有</div>
+            <div class="meta">TI · 在售 5,000 · 这次的表里没有这一行</div>
           </div>
           <div class="card">
             <div class="hd"><span class="nm">LM358DR2G</span><span class="chip bad">将下架</span></div>
-            <div class="meta">安森美 · 在售 12,000 · 这次的表里没有</div>
+            <div class="meta">安森美 · 在售 12,000 · 这次的表里没有这一行</div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">0805 贴片电阻</span><span class="chip warn">有错</span></div>
-            <div class="meta">第 88 行 · 不是料号，这一行跳过</div>
+            <div class="hd"><span class="nm">0805 贴片电阻</span><span class="chip warn">认不了</span></div>
+            <div class="meta">第 88 行 · 不像料号，这一行跳过</div>
           </div>
         </div>
         <div class="foot"><div class="btn sec">放弃</div><div class="btn main">确认上架</div></div>
       </div>
-      <figcaption class="cap"><b>e12 上架前确认</b>四个数：新增、更新、下架、未变。有下架时默认打开「下架」页签，逐行列出。确认前库存一行没动。</figcaption>
-      <p class="why">先算后做：这一屏的数都来自 elc_stock_batch 的预演，elc_stock 还没被碰过。全量替换最危险的情况是他传了一张<b>只有半截的表</b> —— 73 行下架标红、默认展开，他一眼就能发现「这不对」。待确认（厂牌有歧义）不挡上架，先按原文上架，运营审完再合并到料号库。</p>
+      <figcaption class="cap"><b>e13 上架前确认</b>四个数：新增、更新、下架、未变。有要下架的就默认停在那一页，逐行列出。<b>确认之前一行库存都没动。</b></figcaption>
+      <p class="why">全量替换最危险的情况是他传了一张<b>只有半截的表</b>（导出时筛过、或者少了一个 sheet）—— 73 行下架标红、默认展开，他一眼就能发现「这不对」。一行有效的都没有时直接拒绝确认，否则一次误操作会把他全部库存下架。空格子表示「不改」不是「清空」：价格那一列空着，保留原价与原来的含税口径。</p>
     </figure>
 
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">e13 — e16</span><h2>供应商：库存、报价、热度</h2></div>
-  <div class="grid">
-
-    <figure id="e13">
+    <figure id="e14">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">我的库存</span><span></span></div>
         <div class="scr">
@@ -372,105 +391,83 @@
           <div class="tabs"><span>在售 1,832</span><span class="on">将到期 126</span><span>已下架</span></div>
           <div class="card">
             <div class="hd"><span class="nm">STM32F103C8T6</span><span class="chip warn">5 天后到期</span></div>
-            <div class="meta">ST · 5,000 · 批号 2338 · 原装原包 · 现货</div>
-            <div class="metric"><span class="num">¥6.20 起 · 含税</span></div>
+            <div class="meta">ST · 5,000 · 批号 2338 · ¥6.20 含税</div>
           </div>
           <div class="card">
             <div class="hd"><span class="nm">GD32F303RCT6</span><span class="chip warn">5 天后到期</span></div>
-            <div class="meta">兆易 · 800 · 批号 24+ · 原装散新 · 现货</div>
-            <div class="metric"><span class="num">¥9.80 起 · 含税</span></div>
+            <div class="meta">兆易 · 800 · 批号 24+ · ¥9.80 含税</div>
           </div>
           <div class="card">
             <div class="hd"><span class="nm">ESP32-C3-MINI-1</span><span class="chip warn">6 天后到期</span></div>
-            <div class="meta">乐鑫 · 2,400 · 批号 2519 · 原装原包 · 现货</div>
-            <div class="metric"><span class="num">¥11.30 起 · 含税</span></div>
+            <div class="meta">乐鑫 · 2,400 · 批号 2519 · ¥11.30 含税</div>
           </div>
         </div>
-        <div class="foot"><div class="btn">126 行仍有货，续期 30 天</div></div>
+        <div class="foot"><div class="btn">这些还有货，续 30 天</div></div>
       </div>
-      <figcaption class="cap"><b>e13 我的库存 · 将到期</b>供应商自己的库存看得到精确数量与批号。底栏一键续期整页。</figcaption>
-      <p class="why">库存会过期是这个业务和普通商城最大的不同：一个月前的现货今天可能已经卖完了，买家询到没货的价，平台信誉就坏了。所以默认 30 天到期、到期下架，但<b>续期要一下就能做完</b>，否则供应商会觉得是在给平台打工。这里的精确数量与批号只在供应商面出现。</p>
-    </figure>
-
-    <figure id="e14">
-      <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">询价</span><span></span></div>
-        <div class="scr">
-          <div class="tabs"><span class="on">待报价 3</span><span>已报价</span><span>已选中</span><span>未选中</span></div>
-          <div class="card">
-            <div class="hd"><span class="nm">STM32F103C8T6 × 2,000</span><span class="chip warn">剩 5 小时</span></div>
-            <div class="meta">两年内 · 原装原包 · 专票 · 广东</div>
-            <div class="metric"><span class="chip act">你有货 5,000</span></div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">TPS54331DR × 5,000</span><span class="chip">剩 21 小时</span></div>
-            <div class="meta">不限批次 · 不限货况 · 不开票 · 江苏</div>
-            <div class="metric"><span class="chip act">你有货 5,000</span></div>
-          </div>
-          <div class="card">
-            <div class="hd"><span class="nm">AMS1117-3.3 × 2,000</span><span class="chip">剩 22 小时</span></div>
-            <div class="meta">厂牌 AMS · 两年内 · 专票 · 广东</div>
-            <div class="metric"><span>你没有登记这个料号 · 平台指派</span></div>
-          </div>
-        </div>
-        <div class="tabbar"><span>首页</span><span class="on">工作台</span><span>我的</span></div>
-      </div>
-      <figcaption class="cap"><b>e14 待报价</b>每条：料号 × 数量、要求、剩余时间、是否是你库里有的。按截止时间排。</figcaption>
-      <p class="why">这里一个买家信息都没有：没有公司、没有城市（只到省）、没有询价单号 —— 卡片的编号是 elc_rfq_dispatch.dispatch_no，不是买家手里的 rfq_no，两边拿不到同一个号。「你有货 5,000」让他知道为什么派给他；第三条是运营手工派的（库里没有），写明，他可以直接回「没有货」。</p>
+      <figcaption class="cap"><b>e14 我的库存 · 将到期</b>供应商自己看得到精确数量与批号。底栏一键续期。</figcaption>
+      <p class="why">库存会过期，是这门生意和普通商城最大的不同：一个月前的现货今天可能已经卖完，买家询到不存在的货，平台的信誉当场就没了。所以默认 30 天到期、到期自动不再展示；但<b>续期要一下就能做完</b>，否则他会觉得是在给平台打工。按钮写「这些还有货」而不是「续期」—— 他要确认的是事实，不是执行一个动作。</p>
     </figure>
 
     <figure id="e15">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">报价</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">供应商资料</span><span></span></div>
         <div class="scr">
+          <div class="note">买家看不到这些 —— 平台联系你、以后开放身份时才用得上</div>
           <div class="group">
-            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v num">× 2,000</span></div>
-            <div class="frow"><span class="k">要求</span><span class="v dim">两年内 · 原装原包 · 专票</span></div>
+            <div class="frow"><span class="k">公司名称</span><span class="v in">深圳某某电子有限公司</span></div>
+            <div class="frow"><span class="k">类型</span><span class="v go">贸易商</span></div>
+            <div class="frow"><span class="k">所在城市</span><span class="v go">深圳</span></div>
           </div>
           <div class="group">
-            <div class="frow"><span class="k">单价（含税）</span><span class="v in num">¥6.20</span></div>
-            <div class="frow"><span class="k">可供数量</span><span class="v in num">5,000</span></div>
-            <div class="frow"><span class="k">批号</span><span class="v in">2338</span></div>
-            <div class="frow"><span class="k">交期</span><span class="v go">现货</span></div>
-            <div class="frow"><span class="k">货况</span><span class="v go">原装原包</span></div>
-            <div class="frow"><span class="k">报价有效</span><span class="v go">5 天</span></div>
+            <div class="frow"><span class="k">联系人</span><span class="v in">王工</span></div>
+            <div class="frow"><span class="k">联系手机</span><span class="v in num">13800005210</span></div>
           </div>
           <div class="group">
-            <div class="frow"><span class="k">给平台的备注</span><span class="v ph-">选填，买家看不到</span></div>
+            <div class="frow"><span class="k">我的编号</span><span class="v dim">S-3F7K</span></div>
           </div>
         </div>
-        <div class="foot"><div class="btn sec">没有货</div><div class="btn main">提交报价</div></div>
+        <div class="foot"><div class="btn">保存</div></div>
       </div>
-      <figcaption class="cap"><b>e15 填报价</b>从库存行带出默认值（单价取对应阶梯、批号、货况），改了就报。「没有货」一下结束这条。</figcaption>
-      <p class="why">默认值从 elc_stock 带出，大多数报价是<b>看一眼点提交</b>。备注写明「买家看不到」—— 他知道了才不会在这里留微信想绕开平台，也让平台看得到他真正想说的（例如「可以再谈」）。「没有货」和提交同样显眼：拒绝也算响应，不回才伤响应率。</p>
+      <figcaption class="cap"><b>e15 补资料</b>公司名、类型、城市、联系人、联系电话。空着的字段不改，随时可以来补。</figcaption>
+      <p class="why">顶上那句先回答他心里的问题：填了这些谁看得到。联系手机可以与登录号不同 —— 老板用自己的号登录，真正接电话的是业务员，第一版把两者绑死是想当然。这一屏<b>没有执照上传</b>：第一步不做认证，真要核验是在第一次成交前由平台人工做，那时他有动力配合。</p>
     </figure>
 
-    <figure id="e16">
-      <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">需求热度</span><span></span></div>
-        <div class="scr">
-          <div class="seg"><span class="on">我有货的</span><span>我没有的</span></div>
-          <div class="funnel">
-            <div class="r"><span>搜索</span><div class="bar"><i style="width:100%"></i></div><b>4,210</b></div>
-            <div class="r"><span>询价</span><div class="bar"><i style="width:21%"></i></div><b>88</b></div>
-            <div class="r"><span>派给你</span><div class="bar"><i style="width:9%"></i></div><b>37</b></div>
-          </div>
-          <div class="gt"><span>本周被搜最多（你有货）</span><span>次数</span></div>
-          <div class="group">
-            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v num">312</span></div>
-            <div class="frow"><span class="k">ESP32-C3-MINI-1</span><span class="v num">207</span></div>
-            <div class="frow"><span class="k">GD32F303RCT6</span><span class="v num">96</span></div>
-          </div>
-          <div class="gt"><span>有人在询、平台缺货</span><span>询价次数</span></div>
-          <div class="group">
-            <div class="frow"><span class="k">TLV62569DBVR</span><span class="v num">14</span></div>
-            <div class="frow"><span class="k">CH340N</span><span class="v num">11</span></div>
-          </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">e16</span><h2>运营：在后台报价</h2></div>
+  <div class="grid">
+
+    <figure id="e16" class="wide">
+      <div class="desk">
+        <div class="side">
+          <b>运营端</b>
+          <span>商家</span><span>商品</span><span>订单</span><span class="on">元器件询价</span><span>内容</span><span>设置</span>
         </div>
-        <div class="tabbar"><span>首页</span><span class="on">工作台</span><span>我的</span></div>
+        <div class="main">
+          <div class="hdr"><b>EQ20260929091201 · 待报价</b><div class="btn">保存并通知买家</div></div>
+          <div class="cols">
+            <table>
+              <tr><th>买家</th><th>电话</th><th>要求</th></tr>
+              <tr><td>某某科技 王工</td><td>13800005210</td><td>专票 · 两年内 · 深圳</td></tr>
+            </table>
+            <table>
+              <tr><th>报价有效</th><th>说明（买家可见）</th></tr>
+              <tr><td>3 天</td><td class="act">原装现货，含税含运</td></tr>
+            </table>
+          </div>
+          <table>
+            <tr><th>料号</th><th>要几个</th><th>目标价</th><th>库里谁有货</th><th>报价（含税）</th><th>可供</th><th>批次</th><th>交期</th></tr>
+            <tr><td>STM32F103C8T6</td><td>2,000</td><td>¥6.50</td><td>深圳甲电子 13900002222：5,000 / DC2338 / ¥6.20</td><td class="act">6.72</td><td>2000</td><td>2025</td><td>现货</td></tr>
+            <tr><td>TPS54331DR</td><td>500</td><td>—</td><td>深圳乙电子 13700003333：1,200 / DC2416 / ¥2.80</td><td class="act">3.10</td><td>500</td><td>2024</td><td>7 天</td></tr>
+            <tr><td>CH340N</td><td>1,000</td><td>—</td><td><b>库里没货</b></td><td class="act">留空 = 没找到</td><td>—</td><td>—</td><td>—</td></tr>
+          </table>
+          <div class="sum"><span>同一条也推到了企业微信群：买家电话、每行要几个、库里谁有货</span><span>关单：暂无货源 / 买家不要了 / 已成交</span></div>
+        </div>
       </div>
-      <figcaption class="cap"><b>e16 需求热度</b>本周：搜索 → 询价 → 派给你 的漏斗；被搜最多的你有货的料号；有人在询但平台缺货的料号。</figcaption>
-      <p class="why">这是劝供应商上传与保持新鲜的<b>最直接的理由</b>：他的货被搜了多少次、平台缺什么货。「平台缺货」那一组是在拉新货源 —— 有这个料号的贸易商看到就会补传。数据只来自 elc_demand_daily 的聚合，不出现任何买家。</p>
+      <figcaption class="cap"><b>e16 运营端 · 元器件询价</b>一张单一屏：买家与电话、逐行填报价、<b>旁边就是库里谁有货</b>（公司、电话、数量、批号、他的价）。保存即微信通知买家。</figcaption>
+      <p class="why">这一屏是第一步的撮合台。「库里谁有货」与报价输入框<b>放在同一行</b>：运营不用切页面去查货源，看着供应商的价直接填对外的价。留空表示这一行没找到货 —— 买家那边会显示成「没找到货」并说清楚。<b>企业微信群里已经有同样一条</b>（新询价进来时就推了），所以运营在手机上先看到、回到电脑上来填，两边看到的是同一份内容。整单都没货时走「关单 · 暂无货源」，买家同样收到通知，不会一直等。</p>
     </figure>
 
   </div>
@@ -479,18 +476,19 @@
 <section>
   <div class="sec-head"><span class="sec-num">规则</span><h2>匿名在每一屏落在哪</h2></div>
   <table class="spec">
-    <tr><th>信息</th><th>买家看到</th><th>供应商看到</th><th>落在哪张表</th></tr>
-    <tr><td>库存数量</td><td>分档：1k+ / 10k+（e02 e03）</td><td>自己的精确数（e13）</td><td>elc_part_market.qty_band / elc_stock.qty</td></tr>
-    <tr><td>有几家有货</td><td>1 家 / 多家</td><td>—</td><td>elc_part_market.source_band</td></tr>
-    <tr><td>批号</td><td>只给年份（e03 e07）</td><td>原样（e13 e15）</td><td>dc_year / date_code</td></tr>
-    <tr><td>报价方</td><td>报价 A / B / C，只在单内有效（e07）</td><td>—</td><td>elc_offer.label（生成时快照）</td></tr>
-    <tr><td>价格</td><td>平台换算后</td><td>自己填的</td><td>elc_offer.unit_e6 / elc_quote.unit_e6</td></tr>
-    <tr><td>买家是谁</td><td>—</td><td>不出现；地区只到省（e14）</td><td>elc_rfq 的买家列不进供应商面</td></tr>
-    <tr><td>单号</td><td>rfq_no</td><td>dispatch_no</td><td>两边拿不到同一个号</td></tr>
-    <tr><td>备注</td><td>—</td><td>自己写的，只给平台</td><td>elc_quote.remark</td></tr>
+    <tr><th>信息</th><th>买家看到</th><th>供应商看到</th><th>运营看到</th></tr>
+    <tr><td>库存数量</td><td>档位：1k+ / 10k+（e02 e03）</td><td>自己的精确数（e14）</td><td>精确数（e16）</td></tr>
+    <tr><td>有几家有货</td><td>1 家 / 多家</td><td>—</td><td>逐家列出</td></tr>
+    <tr><td>批号</td><td>只给年份</td><td>自己的原样</td><td>原样</td></tr>
+    <tr><td>供应商是谁</td><td><b>完全看不到</b></td><td>自己</td><td>公司 + 电话（e16）</td></tr>
+    <tr><td>价格</td><td>平台报的（e09）</td><td>自己填的</td><td>两个都看得到</td></tr>
+    <tr><td>买家是谁</td><td>自己</td><td><b>看不到询价</b></td><td>公司 + 完整电话</td></tr>
+    <tr><td>供应商备注</td><td>—</td><td>自己写的</td><td>看得到</td></tr>
   </table>
+  <p class="sub">第一步定在「双向不可见」：买家看不到供应商，供应商看不到询价。将来开放是调一个档位
+  （平台上限与供应商自愿取较低的那个），界面上换的是 e02 / e09 两屏的标签，结构不动。</p>
 </section>
 
-<footer>真源：prototypes/elec-rfq.html · 登记：prototypes/registry.json · 库表：docs/technical/design/TDD-元器件-数据库设计.md</footer>
+<footer>真源：prototypes/elec-rfq.html · 登记：prototypes/registry.json · 库表：docs/technical/reference/数据库-元器件.md</footer>
 </div>
 </html>

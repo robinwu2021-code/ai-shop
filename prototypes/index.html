@@ -170,13 +170,13 @@
   
 </article><article class="pcard" id="elec-rfq">
   <div class="pcard__hd">
-    <b>元器件：查料号、上传库存、在线询价</b>
+    <b>元器件：查料号、询价、成为供应商</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">页面稿 · 买家小程序 · 2026-09-29 · 16 屏</div>
-  <p class="pcard__sum">将来独立的元器件业务，先做 c-app 分包 pkg-elec/。买家：料号搜索（库存分档、参考起价）→ 单料号 / BOM 询价 → 报价 A/B/C → 选定锁价、人工跟进。供应商（独立主体）：入驻 → 从微信选 Excel 上传、列映射记住 → 上架前预演（新增/更新/下架）→ 到期续期 → 待报价与填报价 → 需求热度。一期 L0 双向匿名。十六屏 + 匿名规则表。</p>
-  <div class="screens"><a class="scr" href="elec-rfq.html#e01" title="e01 元器件首页">e01</a><a class="scr" href="elec-rfq.html#e02" title="e02 搜索结果">e02</a><a class="scr" href="elec-rfq.html#e03" title="e03 料号详情">e03</a><a class="scr" href="elec-rfq.html#e04" title="e04 单料号询价">e04</a><a class="scr" href="elec-rfq.html#e05" title="e05 BOM 识别结果">e05</a><a class="scr" href="elec-rfq.html#e06" title="e06 我的询价">e06</a><a class="scr" href="elec-rfq.html#e07" title="e07 报价列表">e07</a><a class="scr" href="elec-rfq.html#e08" title="e08 选定报价">e08</a><a class="scr" href="elec-rfq.html#e09" title="e09 供应商入驻">e09</a><a class="scr" href="elec-rfq.html#e10" title="e10 供应商工作台">e10</a><a class="scr" href="elec-rfq.html#e11" title="e11 上传库存 · 列映射">e11</a><a class="scr" href="elec-rfq.html#e12" title="e12 上架前确认">e12</a><a class="scr" href="elec-rfq.html#e13" title="e13 我的库存">e13</a><a class="scr" href="elec-rfq.html#e14" title="e14 待报价">e14</a><a class="scr" href="elec-rfq.html#e15" title="e15 填报价">e15</a><a class="scr" href="elec-rfq.html#e16" title="e16 需求热度">e16</a></div>
-  <div class="pcard__links"><a href="elec-rfq.html">本地稿</a> <a href="https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG">claude.ai</a> <a href="../docs/technical/design/TDD-元器件-数据库设计.md">TDD-元器件-数据库设计</a></div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 运营端 · 2026-09-29 · 16 屏</div>
+  <p class="pcard__sum">第二版（后端已实现，按实际流程重画）。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。买家：搜料号（中段/带厂牌/相近三种命中，库存只给档位）→ 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价。供应商：点一下就成为供应商（不填表，只确认手机号）→ 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 之后补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。第一版的「供应商自己报价」已作废：第一步供应商看不到询价。十六屏 + 匿名规则表。</p>
+  <div class="screens"><a class="scr" href="elec-rfq.html#e01" title="e01 元器件首页">e01</a><a class="scr" href="elec-rfq.html#e02" title="e02 搜索结果">e02</a><a class="scr" href="elec-rfq.html#e03" title="e03 料号详情">e03</a><a class="scr" href="elec-rfq.html#e04" title="e04 询价">e04</a><a class="scr" href="elec-rfq.html#e05" title="e05 批量查">e05</a><a class="scr" href="elec-rfq.html#e06" title="e06 我的询价">e06</a><a class="scr" href="elec-rfq.html#e07" title="e07 询价详情 · 待报价">e07</a><a class="scr" href="elec-rfq.html#e08" title="e08 微信通知">e08</a><a class="scr" href="elec-rfq.html#e09" title="e09 询价详情 · 已报价">e09</a><a class="scr" href="elec-rfq.html#e10" title="e10 成为供应商">e10</a><a class="scr" href="elec-rfq.html#e11" title="e11 供应商工作台">e11</a><a class="scr" href="elec-rfq.html#e12" title="e12 上传 · 列映射">e12</a><a class="scr" href="elec-rfq.html#e13" title="e13 上架前确认">e13</a><a class="scr" href="elec-rfq.html#e14" title="e14 我的库存">e14</a><a class="scr" href="elec-rfq.html#e15" title="e15 供应商资料">e15</a><a class="scr" href="elec-rfq.html#e16" title="e16 运营端 · 元器件询价">e16</a></div>
+  <div class="pcard__links"><a href="elec-rfq.html">本地稿</a> <a href="https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG">claude.ai</a> <a href="../docs/technical/TDD-元器件-独立服务与第一步.md">TDD-元器件-独立服务与第一步</a> <a href="../docs/technical/reference/数据库-元器件.md">数据库 · 元器件</a></div>
   
 </article>
   </div>

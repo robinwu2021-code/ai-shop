@@ -1005,7 +1005,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 50,
+      "count": 49,
       "domains": [
         {
           "name": "工作台",
@@ -1383,8 +1383,19 @@
             },
             {
               "app": "c-app",
-              "route": "/pkg-elec/bom/index",
-              "title": "BOM 识别结果",
+              "route": "/pkg-elec/rfq-create/index",
+              "title": "询价",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e04",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
+            },
+            {
+              "app": "c-app",
+              "route": "/pkg-elec/lookup/index",
+              "title": "批量查",
               "domain": "其它",
               "tab": false,
               "status": "原型",
@@ -1406,7 +1417,7 @@
             {
               "app": "c-app",
               "route": "/pkg-elec/rfq/index",
-              "title": "报价列表",
+              "title": "询价详情 · 待报价",
               "domain": "其它",
               "tab": false,
               "status": "原型",
@@ -1416,12 +1427,12 @@
             },
             {
               "app": "c-app",
-              "route": "/pkg-elec/supplier-apply/index",
-              "title": "供应商入驻",
+              "route": "/pkg-elec/supplier-join/index",
+              "title": "成为供应商",
               "domain": "其它",
               "tab": false,
               "status": "原型",
-              "proto": "e09",
+              "proto": "e10",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             },
@@ -1432,18 +1443,18 @@
               "domain": "其它",
               "tab": false,
               "status": "原型",
-              "proto": "e10",
+              "proto": "e11",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             },
             {
               "app": "c-app",
               "route": "/pkg-elec/stock-upload/index",
-              "title": "上传库存 · 列映射",
+              "title": "上传 · 列映射",
               "domain": "其它",
               "tab": false,
               "status": "原型",
-              "proto": "e11",
+              "proto": "e12",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             },
@@ -1454,7 +1465,7 @@
               "domain": "其它",
               "tab": false,
               "status": "原型",
-              "proto": "e12",
+              "proto": "e13",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             },
@@ -1465,40 +1476,18 @@
               "domain": "其它",
               "tab": false,
               "status": "原型",
-              "proto": "e13",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/dispatches/index",
-              "title": "待报价",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
               "proto": "e14",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             },
             {
               "app": "c-app",
-              "route": "/pkg-elec/quote-edit/index",
-              "title": "填报价",
+              "route": "/pkg-elec/supplier-profile/index",
+              "title": "供应商资料",
               "domain": "其它",
               "tab": false,
               "status": "原型",
               "proto": "e15",
-              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
-              "preview": null
-            },
-            {
-              "app": "c-app",
-              "route": "/pkg-elec/demand/index",
-              "title": "需求热度",
-              "domain": "其它",
-              "tab": false,
-              "status": "原型",
-              "proto": "e16",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": null
             }
@@ -1617,7 +1606,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 145,
+      "count": 146,
       "domains": [
         {
           "name": "经营看板",
@@ -3527,6 +3516,22 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:3000/system?tab=scope"
+            }
+          ]
+        },
+        {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/elec/rfq",
+              "title": "运营端 · 元器件询价",
+              "domain": "其它",
+              "tab": false,
+              "status": "原型",
+              "proto": "e16",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": null
             }
           ]
         }
