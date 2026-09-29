@@ -488,7 +488,7 @@ onShareTimeline(() =>
       <view class="topbar" :class="{ 'is-solid': solid }" :style="topbarStyle">
         <view class="topbar__row sh-row" :style="topRowStyle">
           <view class="topbar__btn sh-center sh-hit" :style="btnStyle" @tap="goBack">
-            <sh-icon name="chevronLeft" :size="34" :color="solid ? 'var(--sh-ink)' : '#fff'"></sh-icon>
+            <sh-icon name="chevronLeft" :size="34" :color="solid ? 'var(--sh-ink)' : 'var(--sh-on-scrim)'"></sh-icon>
           </view>
           <text v-if="solid" class="txt-title sh-fill topbar__title">{{ storeName }}</text>
           <template v-else>
@@ -716,7 +716,7 @@ onShareTimeline(() =>
   padding: 0 20rpx;
   border-radius: 9999px;
   background: var(--sh-scrim);
-  color: #fff;
+  color: var(--sh-on-scrim);
   white-space: nowrap;
 }
 /*
@@ -761,7 +761,7 @@ onShareTimeline(() =>
   right: 24rpx;
   bottom: 56rpx;
   gap: 20rpx;
-  color: #fff;
+  color: var(--sh-on-scrim);
 }
 .hero__logo {
   flex-shrink: 0;
@@ -769,7 +769,7 @@ onShareTimeline(() =>
   height: 96rpx;
   overflow: hidden;
   border-radius: 24rpx;
-  background: #fff;
+  background: var(--sh-surface);
 }
 .hero__main {
   min-width: 0;
@@ -779,7 +779,7 @@ onShareTimeline(() =>
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #fff;
+  color: var(--sh-on-scrim);
 }
 .hero__line {
   gap: 12rpx;
@@ -789,7 +789,7 @@ onShareTimeline(() =>
 }
 /* 两个类压过 .txt-caption 自带的次要灰：压在深色图上要白字 */
 .hero__line .hero__meta {
-  color: #fff;
+  color: var(--sh-on-scrim);
 }
 .hero__status {
   padding: 2rpx 12rpx;
@@ -800,8 +800,8 @@ onShareTimeline(() =>
 /* 休息 / 暂停：透明底白描边。深色 scrim 压在已经压暗的图上等于看不见 */
 .hero__status.is-off {
   background: transparent;
-  border: 2rpx solid #fff;
-  color: #fff;
+  border: 2rpx solid var(--sh-on-scrim);
+  color: var(--sh-on-scrim);
 }
 /* 公告与券：一张白卡压在头图下沿上 */
 .head {

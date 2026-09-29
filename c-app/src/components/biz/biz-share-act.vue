@@ -84,7 +84,7 @@ function toPoster() {
     :style="imageBox ? { width: imageBox + 'px', height: imageBox + 'px' } : undefined"
     @tap="onTap"
   >
-    <sh-icon name="share" :size="compact || imageBox ? 32 : 28" :color="imageBox ? '#fff' : 'var(--sh-ink)'"></sh-icon>
+    <sh-icon name="share" :size="compact || imageBox ? 32 : 28" :color="imageBox ? 'var(--sh-on-scrim)' : 'var(--sh-ink)'"></sh-icon>
     <text v-if="!imageBox" class="txt-caption sh-muted">{{ $t(poster || native ? "share.act" : "share.copy") }}</text>
     <!-- 没有面板时：小程序原生转发按钮盖在整块上，自己不占视觉 -->
     <button v-if="native && !poster" class="shareact__native" open-type="share"></button>
