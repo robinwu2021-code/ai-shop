@@ -1953,6 +1953,46 @@ _无字段_
 | `paymentRef` | `string,null` | 否 | 自营：付款凭证号。空 = 尚未付款 |
 
 
+#### POST `/ops/payables/bank-flows/import`
+
+导入银行流水（TDD §10）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`BankFlowImportResult`](#bankflowimportresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | 文件里认出来的行数 = imported + skipped + failed |
+| `imported` | `number` | 是 | 真正入库的 |
+| `skipped` | `number` | 是 | 流水号已存在、跳过的。**重复上传是常态，不是错误** |
+| `failed` | `number` | 是 | 没解析成功的行数 |
+| `failures` | [`#/definitions/BankFlowImportFailure`](#definitionsbankflowimportfailure)\[\] | 是 | 失败明细。`line` 是原始文件里的行号 —— 财务要对着原文件看 |
+
+
+#### GET `/ops/payables/payout-list`
+
+付款清单（P2）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayoutList`](#payoutlist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PayoutRow`](#definitionspayoutrow)\[\] | 是 | 可付的 |
+| `blocked` | [`#/definitions/PayoutBlockedRow`](#definitionspayoutblockedrow)\[\] | 是 | 被挡下的 |
+| `totalMinor` | `number` | 是 | rows 的合计（分） |
+
+
 #### GET `/ops/payout-accounts`
 
 listPayoutAccounts
@@ -9810,6 +9850,18 @@ _无字段_
 | `revoked` | `string`\[\] | 是 | 这次撤掉的码。空数组 = 只加不减 |
 | `affected` | `number` | 是 | 因撤码而下次上架会被拒的在架商品数 |
 
+### BankFlowImportResult
+
+银行流水导入的结果（TDD-供应商结算与双轨资金 §10）。 **三个计数分开给，不合成一句「成功 N 条」**：它们对应三种完全不同的处置 —— 入库的不用管；跳过的说明这份传过了（正常，不是错）；失败的要对着原始文件去看那几行。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `total` | `number` | 是 | 文件里认出来的行数 = imported + skipped + failed |
+| `imported` | `number` | 是 | 真正入库的 |
+| `skipped` | `number` | 是 | 流水号已存在、跳过的。**重复上传是常态，不是错误** |
+| `failed` | `number` | 是 | 没解析成功的行数 |
+| `failures` | [`#/definitions/BankFlowImportFailure`](#definitionsbankflowimportfailure)\[\] | 是 | 失败明细。`line` 是原始文件里的行号 —— 财务要对着原文件看 |
+
 ### BannedWord
 
 平台禁售词（商品①）。商家提审商品时前置校验标题。 <p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、 再被驳回，而商家隔几天才知道要改哪个字。
@@ -11404,6 +11456,16 @@ KPI 卡（金额为最小货币单位整数）。
 | `status` | `string` | 是 | PENDING 待审 / ACTIVE 生效中 / REJECTED 已驳回 / DISABLED 已被新卡顶替 |
 | `auditRemark` | `string,null` | 否 | 驳回原因，原样回商家 |
 | `auditedAt` | `number,null` | 否 | 审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事 |
+
+### PayoutList
+
+付款清单。`totalMinor` **不含 blocked** —— 那笔钱这次付不出去
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PayoutRow`](#definitionspayoutrow)\[\] | 是 | 可付的 |
+| `blocked` | [`#/definitions/PayoutBlockedRow`](#definitionspayoutblockedrow)\[\] | 是 | 被挡下的 |
+| `totalMinor` | `number` | 是 | rows 的合计（分） |
 
 ### PickupPoint
 
