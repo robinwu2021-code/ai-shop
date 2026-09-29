@@ -31,6 +31,17 @@ export interface Column<T> {
   align?: "start" | "end" | "center";
   /** 列宽，直接写 CSS 值（如 "12rem"）。不设则由内容撑开 */
   width?: string;
+  /**
+   * 窄屏下把这一列**钉在行尾**（`< md` 生效，桌面照旧跟着横滚）。
+   *
+   * <p>给操作列用。表格有 `min-w-[56rem]`，手机上一张 9 列的表宽约 1076px 而视口只有
+   * 375 —— 操作列落在最右边看不见的地方，运营要一路横滑到底才点得到「受理/查看」。
+   * 而入驻意向的企微通知点进来落的正是这一页。
+   *
+   * <p>底色走 `bg-inherit` 跟着行走（斑马纹、hover 都不会脱节），
+   * 所以 `TBody` 那边给奇数行补了显式底色 —— 缺了它，滑动时下层文字会透上来。
+   */
+  stickyEnd?: boolean;
 }
 
 export type SortDir = "asc" | "desc";
@@ -153,6 +164,12 @@ export function DataTable<T>({
       (c.align ?? (c.numeric ? "end" : undefined)) === "end" && "text-end",
       (c.align ?? (c.numeric ? "end" : undefined)) === "center" && "text-center",
       c.numeric && "tabular-nums",
+      /*
+       * 窄屏钉在行尾（见 Column.stickyEnd）。`end-0` 是逻辑属性 —— 阿语是 RTL，
+       * 写 `right-0` 的话这一列会钉到错的一边（仓库里那道 check-rtl-physical 盯的就是它）。
+       * `md:static` 让桌面完全回到原样：那一侧本来就不需要钉。
+       */
+      c.stickyEnd && "sticky end-0 z-[1] bg-inherit md:static md:z-auto",
       c.className,
     );
   const colStyle = (c: Column<T>) => (c.width ? { width: c.width } : undefined);

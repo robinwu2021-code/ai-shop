@@ -44,7 +44,13 @@ export function TBody({
   // 内容靠 align-middle 居中即可。要更松/更紧，改 [data-density] 而不是改这里。
   // whitespace-nowrap 是**默认**：密集台账里列一窄就逐字换行（"商家"竖成两个字一行），
   // 行高翻几倍且完全没法扫。要换行的列（长文案/地址）显式传 className="whitespace-normal"。
-  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle", striped && "[&_tr:nth-child(even)]:bg-muted/45", className)} {...props} />;
+  //
+  // **两行底色都要不透明**，窄屏下 `stickyEnd` 列才挡得住下面滚过去的内容：
+  // 它悬在其余单元格之上、用 `bg-inherit` 跟着行走，而 inherit 到 transparent
+  // （原来的奇数行）或半透明（原来的 `bg-muted/45`，实测 alpha 0.45）
+  // 都会让下层文字从那一列里透出来。
+  // 偶数行改用 color-mix 算出**同样的视觉色**但不带 alpha —— 桌面观感一字不变。
+  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle", striped && "[&_tr:nth-child(odd)]:bg-card [&_tr:nth-child(even)]:bg-[color-mix(in_oklab,var(--muted)_45%,var(--card))]", className)} {...props} />;
 }
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return <tr className={cn("transition-colors hover:bg-accent/50", className)} {...props} />;

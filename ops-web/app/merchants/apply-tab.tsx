@@ -141,6 +141,9 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
     { header: c.colCreatedAt, cell: (a) => fmtTime(new Date(a.createdAt).toISOString()) },
     {
       header: c.colActions,
+      // 窄屏钉在行尾：这张表 9 列约 1076px 宽，手机视口 375 —— 不钉的话
+      // 要一路横滑到底才点得到「受理/查看」，而企微的入驻意向通知点进来就是这一页
+      stickyEnd: true,
       cell: (a) => (
         <div className="flex gap-2">
           {canAudit && a.status === "PENDING" && (
