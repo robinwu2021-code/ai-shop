@@ -18,6 +18,7 @@ export const groupMock: Pick<ShopApi,
   | "createReview"
   | "masterData"
   | "merchantApply"
+  | "updateMerchantApply"
   | "myMerchantApply"
 > = {
   // ------------------------------------------------------------ 邻里求团
@@ -205,6 +206,29 @@ export const groupMock: Pick<ShopApi,
       applyNo: nextNo("MA"),
       status: "PENDING",
       createdAt: Date.now(),
+    };
+    persist();
+    return delay({ ...db.merchantApply });
+  },
+
+  async updateMerchantApply(applyNo, payload) {
+    const cur = db.merchantApply;
+    if (!cur || cur.applyNo !== applyNo) throw new Error("没有这份入驻意向");
+    /*
+     * **只有待审核能改**，与真后端同一个判据（APPLY_NOT_EDITABLE）。
+     * mock 不宽于真后端 —— 宽了的话界面在 mock 下过得去、接真接口才报错，
+     * 而那正是 mock 最该提前暴露的东西。
+     */
+    if (cur.status !== "PENDING") throw new Error("这份入驻意向现在改不了，只有待审核时可以修改");
+    db.merchantApply = {
+      ...cur,
+      ...payload,
+      // 清空类的修改要真的清掉 —— 真后端逐字段 set 就是为了这个
+      referrerPhone: payload.referrerPhone,
+      desc: payload.desc ?? "",
+      applyNo: cur.applyNo,
+      status: cur.status,
+      createdAt: cur.createdAt,
     };
     persist();
     return delay({ ...db.merchantApply });

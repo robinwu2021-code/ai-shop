@@ -285,6 +285,12 @@ export const merchantMock: Pick<ShopApi,
       features: { "merchant.apply.mp-visible": true, points: false },
       minAppVer: "1.0.0",
       serviceHours: "09:00-21:00",
+      /*
+       * 商家版 App 的下载地址。**安卓给真地址、iOS 留空** —— 与线上实况一致：
+       * iOS 版还在苹果审核队列里。空的那一档端上不显示，
+       * 而「iOS 那一栏会不会显示」正是这一段要验的（[[default-off-is-the-untested-half]]）。
+       */
+      merchantApp: { android: "https://www.hxmall.top/dl/hxmall-merchant-0.4.98.apk", ios: "" },
     });
   },
 

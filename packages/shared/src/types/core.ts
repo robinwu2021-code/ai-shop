@@ -70,4 +70,14 @@ export interface BootstrapConfig {
   minAppVer: string;
   /** 客服在线时段，形如 `09:00-21:00`。只用于展示，不参与任何判断 */
   serviceHours: string;
+  /**
+   * 商家版 App 的下载地址，按平台各一条。
+   *
+   * **由后端下发，端上不写死域名** —— 写在端上就有两处真源（官网一份、小程序一份），
+   * 而这个项目已经错过一次：商家端链接曾写死成 `shop.example.com`，印了贴纸才发现。
+   *
+   * **空的那一档不显示**，不是显示一个点不开的地址。iOS 版在苹果审核队列里，
+   * 上架前那一档是 TestFlight 公开链接，现在是空的。
+   */
+  merchantApp?: { android: string; ios: string };
 }

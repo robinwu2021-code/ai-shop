@@ -308,6 +308,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   masterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
   merchantApply: { method: "POST", path: "/mp/merchant/apply", auth: true, summary: "商家入驻申请" },
   myMerchantApply: { method: "GET", path: "/mp/merchant/apply", auth: true, summary: "我的入驻申请状态" },
+  updateMerchantApply: { method: "POST", path: "/mp/merchant/apply/:applyNo", auth: true, summary: "改入驻意向（仅待审核）" },
 
   // ---------------------------------------------------------------- 评价
   reviewList: { method: "GET", path: "/mp/review", auth: false, summary: "评价列表" },

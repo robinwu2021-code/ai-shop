@@ -163,11 +163,86 @@ function gotoVisited() {
   uni.switchTab({ url: ROUTES.merchants });
 }
 
+/**
+ * 点开店卡片。
+ *
+ * <p><b>已经报过名的人不该再看到一张空表</b>：此前不管有没有意向单都打开新建表单，
+ * 他填完一遍，提交时才被后端的「一人一份」唯一键拒掉 —— 白填一次，而且看不出为什么。
+ * 有单就进查看态，改不改由那一屏上的状态决定。
+ */
 async function applyMerchant() {
-  // 联系电话默认填他自己的号（本人号码不脱敏）。只填空的：驳回重填或填了一半关掉再开，不盖他写过的
+  if (applyStatus.value) {
+    applyViewVisible.value = true;
+    return;
+  }
+  await openApplyForm(null);
+}
+
+/**
+ * 打开报名表。`from` 非空 = 在已有那份的基础上改（或驳回后重提），预填它的内容。
+ *
+ * <p>联系电话只在空着时兜自己的号（本人号码不脱敏）—— 填了一半关掉再开，不盖他写过的。
+ */
+async function openApplyForm(from: MerchantApplyStatus | null) {
+  if (from) {
+    mForm.value = {
+      name: from.name ?? "",
+      contactPhone: from.contactPhone ?? "",
+      category: from.category ?? "",
+      industry: from.industry ?? "",
+    };
+  }
   if (!mForm.value.contactPhone && user.user?.phone) mForm.value.contactPhone = user.user.phone;
+  applyViewVisible.value = false;
   merchantVisible.value = true;
   if (!master.value) master.value = await api.masterData().catch(() => null);
+}
+
+/** 查看态：报过名的人点进来看到的是自己填过什么、审到哪一步 */
+const applyViewVisible = ref(false);
+
+/**
+ * 查看态上逐行显示的内容。**与报名表一一对应** —— 表里问了什么，这里就回显什么，
+ * 多一行少一行都会让人怀疑「我当时是不是填了别的」。
+ *
+ * <p>行业显示的是名字不是码：`RETAIL` 对店主没有意义。主数据还没拉到时退回码本身，
+ * 不显示空 —— 空格子看着像「这一项没填」。
+ */
+const intentFields = computed(() => {
+  const a = applyStatus.value;
+  if (!a) return [] as { k: string; v: string }[];
+  const industryName = industries.value.find((i) => i.industry === a.industry)?.name || a.industry;
+  return [
+    { k: String(t("merchant.shopName")), v: a.name },
+    { k: String(t("merchant.intentIndustry")), v: industryName },
+    { k: String(t("merchant.intentCategory")), v: a.category },
+    { k: String(t("merchant.phone")), v: a.contactPhone },
+  ].filter((f) => !!f.v);
+});
+
+/**
+ * 正在改的那一份。空 = 这次是新建。
+ *
+ * <p>驳回后重提**走新建**而不是改 —— 后端状态机里 REJECTED 是终态，
+ * 重提是新开一份单（旧单留着作记录）。
+ */
+const editingApplyNo = ref<string | null>(null);
+
+/** 只有待审核能改。运营受理后改了的话，他看的与库里存的不是同一份 */
+const applyEditable = computed(() => applyStatus.value?.status === "PENDING");
+
+/** 驳回后可以重新报一份 */
+const applyRejected = computed(() => applyStatus.value?.status === "REJECTED");
+
+function editApply() {
+  editingApplyNo.value = applyStatus.value?.applyNo ?? null;
+  openApplyForm(applyStatus.value);
+}
+
+function resubmitApply() {
+  // 重提 = 新开一份，但内容从被驳回那份预填 —— 让他改那几处，而不是从头再填一遍
+  editingApplyNo.value = null;
+  openApplyForm(applyStatus.value);
 }
 
 const merchantVisible = ref(false);
@@ -226,13 +301,31 @@ async function submitMerchant() {
    * **只发这四个字段**：其余（主体类型、联系人、简介、推荐人）端上不再问，
    * 展开整个 mForm 的话，删掉的字段会以空串发上去 —— 空串与「没填」在运营端不是一回事。
    */
-  applyStatus.value = await api.merchantApply({
+  const payload = {
     name: mForm.value.name.trim(),
     category: mForm.value.category.trim(),
     industry: mForm.value.industry,
     contactPhone: String(mForm.value.contactPhone ?? "").trim(),
-  });
+  };
+  /*
+   * 改已有那份 vs 新报一份。**驳回后重提走新建** —— 后端状态机里 REJECTED 是终态，
+   * 重提是新开一份单，旧单留着作记录。
+   */
+  applyStatus.value = editingApplyNo.value
+    ? await api.updateMerchantApply(editingApplyNo.value, payload)
+    : await api.merchantApply(payload);
+  const wasEdit = !!editingApplyNo.value;
+  editingApplyNo.value = null;
   merchantVisible.value = false;
+  /*
+   * 改完回查看态，新报完给下载引导。
+   * 改完再弹一次「去装 App」是重复的 —— 他上次提交时已经看过那一屏了。
+   */
+  if (wasEdit) {
+    applyViewVisible.value = true;
+    uni.showToast({ title: String(t("merchant.applyUpdated")), icon: "none" });
+    return;
+  }
   /*
    * 提交成功 → **引导去装商家版 App**（2026-09-28 拍板的后半句）。
    *
@@ -244,6 +337,36 @@ async function submitMerchant() {
    * 让他复制到手机浏览器打开；H5/App 上直接跳。
    */
   appDownloadVisible.value = true;
+}
+
+/**
+ * 这台设备是不是 iOS。**决定默认展开哪一档下载** ——
+ * 让 iPhone 用户先看到安卓包，他会以为没有 iOS 版。
+ *
+ * <p>小程序与 App 上 `platform` 是 ios / android；H5 上是 devtools 之外的值，
+ * 认不出来就按安卓走（安卓包是现在唯一真实存在的那一个）。
+ */
+const isIos = ref(false);
+
+/**
+ * 当前系统那一档的下载地址。**两档都为空时退回官网下载页** ——
+ * 那一页上两个平台都有，永远有东西可给，而不是显示一个空按钮。
+ */
+const appLink = computed(() => {
+  const m = config.merchantApp;
+  const mine = isIos.value ? m.ios : m.android;
+  return mine || m.android || m.ios || MERCHANT_APP_URL;
+});
+
+/** 另一档（本机系统之外那个）。空 = 那一档还没有，整行不显示 */
+const otherAppLink = computed(() => (isIos.value ? config.merchantApp.android : config.merchantApp.ios));
+
+/** 复制当前这一档 */
+function copyAppLink(url: string) {
+  uni.setClipboardData({
+    data: url,
+    success: () => uni.showToast({ title: String(t("merchant.appLinkCopied")), icon: "none" }),
+  });
 }
 
 /** 报名途中卡住时打过来。三端都走得通 —— 小程序上是微信原生的拨号确认 */
@@ -267,6 +390,16 @@ function goMerchantApp() {
     success: () => uni.showToast({ title: String(t("merchant.appLinkCopied")), icon: "none" }),
   });
   appDownloadVisible.value = false;
+}
+
+/*
+ * 认一次系统。**放在 onShow 外面只跑一次** —— 设备不会中途变，
+ * 而 App 的进程比一次页面加载活得久，每次回到这一页都问一遍是白花。
+ */
+try {
+  isIos.value = String(uni.getSystemInfoSync().platform ?? "").toLowerCase() === "ios";
+} catch {
+  // 取不到就按安卓走 —— 安卓包是现在唯一真实存在的那一个
 }
 
 onShow(() => {
@@ -421,9 +554,61 @@ onShow(() => {
       不说这句的话，他提交完会在小程序里找「我的店铺」——
       而那里什么都没有，看起来像是没提交成功。
     -->
+    <!--
+      报过名的人点开店卡片看到的是这一屏：自己填过什么、审到哪一步、还能不能改。
+      **不再是一张空表** —— 此前不管有没有单都开新建表单，他填完一遍才被后端拒。
+    -->
+    <sh-sheet
+      :visible="applyViewVisible"
+      :title="String($t('merchant.intentTitle'))"
+      @close="applyViewVisible = false"
+    >
+      <view class="intent">
+        <view class="intent__row sh-row sh-row--between">
+          <text class="txt-caption intent__k">{{ $t("merchant.intentStatus") }}</text>
+          <text class="txt-body txt-primary">{{ applyStatusText }}</text>
+        </view>
+        <!-- 驳回理由是他下一步动作的全部依据，不写就等于让他猜着改 -->
+        <text v-if="applyRejected && applyStatus?.rejectReason" class="txt-body intent__reason">
+          {{ applyStatus.rejectReason }}
+        </text>
+        <view v-for="f in intentFields" :key="f.k" class="intent__row sh-row sh-row--between">
+          <text class="txt-caption intent__k">{{ f.k }}</text>
+          <text class="txt-body sh-fill intent__v">{{ f.v }}</text>
+        </view>
+      </view>
+
+      <view v-if="applyEditable" class="sh-btn intent__act" @tap="editApply">
+        {{ $t("merchant.intentEdit") }}
+      </view>
+      <view v-else-if="applyRejected" class="sh-btn intent__act" @tap="resubmitApply">
+        {{ $t("merchant.intentResubmit") }}
+      </view>
+      <!-- 审核中与已通过都改不了，但要说清为什么，否则他会反复找那个按钮 -->
+      <text v-else class="txt-caption intent__locked">{{ $t("merchant.intentLocked") }}</text>
+
+      <view class="getapp">
+        <text class="txt-body getapp__title">{{ $t("merchant.getAppTitle") }}</text>
+        <view class="sh-btn sh-btn--soft getapp__btn" @tap="copyAppLink(appLink)">
+          {{ $t(isIos ? "merchant.getAppIos" : "merchant.getAppAndroid") }}
+        </view>
+        <text v-if="otherAppLink" class="sh-link getapp__other" @tap="copyAppLink(otherAppLink)">
+          {{ $t(isIos ? "merchant.getAppAndroid" : "merchant.getAppIos") }}
+        </text>
+      </view>
+    </sh-sheet>
+
     <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
       <text class="txt-body block done__body">{{ $t("merchant.applyDoneBody") }}</text>
-      <view class="sh-btn done__btn" @tap="goMerchantApp">{{ $t("merchant.getApp") }}</view>
+      <view class="getapp">
+        <text class="txt-body getapp__title">{{ $t("merchant.getAppTitle") }}</text>
+        <view class="sh-btn getapp__btn" @tap="copyAppLink(appLink)">
+          {{ $t(isIos ? "merchant.getAppIos" : "merchant.getAppAndroid") }}
+        </view>
+        <text v-if="otherAppLink" class="sh-link getapp__other" @tap="copyAppLink(otherAppLink)">
+          {{ $t(isIos ? "merchant.getAppAndroid" : "merchant.getAppIos") }}
+        </text>
+      </view>
       <view class="sh-btn sh-btn--muted done__btn" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
     </sh-sheet>
 
@@ -551,6 +736,54 @@ onShow(() => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+/* 查看态：标签定宽左列、取值右列，横着读完一条（与门店卡的 facts 同一个形状） */
+.intent__row {
+  margin-top: 16rpx;
+}
+.intent__k {
+  width: 140rpx;
+  flex-shrink: 0;
+}
+.intent__v {
+  text-align: end;
+}
+/* 驳回理由自己占一段：它是下一步动作的依据，挤在行里会被当成一个普通字段 */
+.intent__reason {
+  display: block;
+  margin-top: 16rpx;
+  color: var(--sh-danger);
+}
+.intent__act {
+  margin-top: 28rpx;
+}
+.intent__locked {
+  display: block;
+  margin-top: 28rpx;
+  text-align: center;
+}
+
+/*
+  下载引导。**字号是 txt-body 不是 txt-caption**（2026-09-29）：
+  这是店主提交完唯一要做的下一步，而此前它和脚注一样小。
+*/
+.getapp {
+  margin-top: 40rpx;
+  padding-top: 28rpx;
+  border-top: var(--sh-hairline);
+  text-align: center;
+}
+.getapp__title {
+  display: block;
+}
+.getapp__btn {
+  margin-top: 16rpx;
+}
+/* 另一档：本机系统之外那个，弱一档摆着 —— 有人在安卓机上给 iPhone 的同事拿链接 */
+.getapp__other {
+  display: block;
+  margin-top: 16rpx;
+}
+
 /* 报名已提交那一屏：说明与两颗按钮之间要有间距 —— `.sh-btn` 自己是 display:block
    但不带外边距，而模板上那个 `block` 只是 UnoCSS 的 display 工具类，什么间距都不给。
    此前三件东西是贴死在一起的。 */

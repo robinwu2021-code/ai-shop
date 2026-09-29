@@ -620,4 +620,13 @@ export interface ShopApi {
    * 商家不知道审到哪一步，只能打电话问运营。
    */
   myMerchantApply(): Promise<MerchantApplyStatus | null>;
+
+  /**
+   * 改自己那份**还在等审核**的入驻意向。
+   *
+   * **只有 PENDING 能改**：运营受理后（REVIEWING）锁定，否则他看的与库里存的
+   * 不是同一份；驳回后是重新提交一份新的（后端 REJECTED 是终态）；
+   * 已通过的改意向单也改不到商家档案。三档都返回 `APPLY_NOT_EDITABLE`。
+   */
+  updateMerchantApply(applyNo: string, payload: MerchantApplyReq): Promise<MerchantApplyStatus>;
 }

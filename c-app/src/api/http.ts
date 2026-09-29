@@ -264,6 +264,8 @@ export const httpApi: ShopApi = {
   masterData: () => call<MasterData>("masterData"),
   merchantApply: (payload) =>
     call<MerchantApplyStatus>("merchantApply", undefined, { ...payload } satisfies MerchantApplyReq),
+  updateMerchantApply: (applyNo, payload) =>
+    call<MerchantApplyStatus>("updateMerchantApply", { applyNo }, { ...payload } satisfies MerchantApplyReq),
 
   // ---- 评价
   reviewList: (q) => call<Review[]>("reviewList", undefined, { ...q } satisfies ReviewListQuery),

@@ -13,6 +13,11 @@ export const useConfigStore = defineStore("config", {
   state: () => ({
     /** 平台开关。yml 与运营端那一屏在后端已经合流，端上只认这一份 */
     features: {} as Record<string, boolean>,
+    /**
+     * 商家版 App 的下载地址，按平台各一条（后端下发）。
+     * **空的那一档端上不显示** —— iOS 还在苹果审核队列里，现在就是空的。
+     */
+    merchantApp: { android: "", ios: "" },
     loaded: false,
   }),
 
@@ -38,6 +43,7 @@ export const useConfigStore = defineStore("config", {
       try {
         const c = await api.bootstrapConfig();
         this.features = c?.features ?? {};
+        this.merchantApp = { android: c?.merchantApp?.android ?? "", ios: c?.merchantApp?.ios ?? "" };
         this.loaded = true;
       } catch {
         // 拿不到就保持空表，调用方拿到的是各自的默认值
