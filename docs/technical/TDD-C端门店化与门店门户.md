@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS usr_store_view
   （`requireFulfillmentSupported` / 自送半径）判，与今天从默认店下单是同一套闸 —— 不在落店这一步另判一遍。
 - 第 3、4 档只取 ACTIVE：此前 READONLY 的默认店照样收单（记忆「停用门店没人读」）。
 - **自提点属于一家 READONLY 店**：第 1 档照落，再由状态闸拒 `STORE_PAUSED` —— 货在那家店，换店等于让人白跑。
-- 新错误码 `STORE_PAUSED`（70075，三语）：「这家店暂停营业了，去看看同品牌的其他门店」。
+- 新错误码 `STORE_PAUSED`（20008，三语）：「这家店暂停营业了，去看看同品牌的其他门店」。
 
 **门户商品的在售口径**与 `PrdStoreGoods` 注释一致：某商品没有任何店级行 → 看 `prd_goods.on_sale`；
 有了任意一行 → 只有本店那行 `on_sale=1` 才算在售。**价格仍是主体级**（`PrdStoreGoods` 注释：分店价单独一批做）。

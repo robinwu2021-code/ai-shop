@@ -163,7 +163,23 @@ public interface OrderService {
                                * 或 {@code CampaignPort.CHOICE_NONE}（这家店不参加）。
                                * <b>没出现的店按最优</b>；null / 空 = 全部按最优，与加这个字段之前一致
                                */
-                              java.util.Map<String, String> activityChoices) {
+                              java.util.Map<String, String> activityChoices,
+                              /**
+                               * 顾客在逛哪家店（TDD-C端门店化与门店门户 §2.7）：主体号 → 门店号。
+                               * 在 B 店的门户里挑的货就由 B 店履约。<b>不属于该主体的门店号被忽略</b>；
+                               * null / 空 = 与加这个字段之前逐字相同（自提点 → 默认店 → 最近的服务店）
+                               */
+                              java.util.Map<String, String> storeChoices) {
+
+        /** 不带门店偏好的签名：代客下单与存量调用方 */
+        public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
+                                  String addressId, String couponNo, Long usePoints, String remark,
+                                  Long appointmentAt, String payMode, String payScene,
+                                  String appointmentSlotNo, String groupNo, boolean openGroup,
+                                  java.util.Map<String, String> activityChoices) {
+            this(items, fulfillment, pickupNo, addressId, couponNo, usePoints, remark,
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, activityChoices, null);
+        }
 
         /** 不带活动选择的签名：存量调用方（代客下单、测试）照旧全部按最优 */
         public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
@@ -177,7 +193,7 @@ public interface OrderService {
         /** 换一组活动选择与券（预览里枚举最省组合时用） */
         public CreateOrderCommand withChoices(java.util.Map<String, String> choices, String coupon) {
             return new CreateOrderCommand(items, fulfillment, pickupNo, addressId, coupon, usePoints, remark,
-                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, choices);
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, choices, storeChoices);
         }
 
         /** 不参团的下单（代客下单、测试与存量调用方）。行为与加团字段之前逐字相同 */

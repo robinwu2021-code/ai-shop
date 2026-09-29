@@ -40,6 +40,7 @@ import type {
   StoreHome,
   StoreCard,
   StoreCodeImage,
+  StoreChoice,
   Message,
   PointAccount,
   PointsDeductible,
@@ -127,6 +128,8 @@ export interface CreateOrderReq {
    * 不传 = 全部按最优。选的那个此刻不成立时后端回 40035，不会偷偷换成别的
    */
   activityChoices?: ActivityChoice[];
+  /** 这个主体我在逛哪家店（门户里记下的）。不传 = 自提点所属店 → 默认店 → 最近的服务店 */
+  storeChoices?: StoreChoice[];
   remark?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;

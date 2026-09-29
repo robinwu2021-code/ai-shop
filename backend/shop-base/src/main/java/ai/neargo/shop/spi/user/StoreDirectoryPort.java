@@ -70,6 +70,12 @@ public interface StoreDirectoryPort {
     Optional<MerchantQueryPort.StoreFront> front(String storeNo);
 
     /**
+     * 门店号 → {@code mch_store.status}，<b>不看主体状态</b>（下单落店要的是门店本身开没开）。
+     * 查不到的门店不在结果里；空串状态是历史数据，调用方按营业处理（与门户的 closed 判断同一口径）。
+     */
+    Map<String, String> statuses(Collection<String> storeNos);
+
+    /**
      * @param status    {@link #STORE_ACTIVE} / {@link #STORE_READONLY}
      * @param rating    门店评分 0–5（库里存 ×10）；{@code ratingCount = 0} 表示暂无评价，不是 0 分
      * @param latE6     可空：还没在地图上选过点的门店

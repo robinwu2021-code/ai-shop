@@ -151,6 +151,20 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
                 Objects.requireNonNullElse(s.getStatus(), ""), s.getLatE6(), s.getLngE6()));
     }
 
+    @Override
+    public Map<String, String> statuses(Collection<String> storeNos) {
+        if (storeNos == null || storeNos.isEmpty()) {
+            return Map.of();
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .select(MchStore::getStoreNo, MchStore::getStatus)
+                                .in(MchStore::getStoreNo, storeNos)))
+                .stream()
+                .collect(Collectors.toMap(MchStore::getStoreNo,
+                        s -> Objects.requireNonNullElse(s.getStatus(), ""), (a, b) -> a));
+    }
+
     /** 老链接的落点：默认门店（要 ACTIVE）→ 任一 ACTIVE → 任一门店（门户显示暂停营业） */
     private Optional<StoreCard> frontStoreOf(String entityNo) {
         List<StoreCard> all = storesOf(entityNo);

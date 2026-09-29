@@ -280,6 +280,14 @@ public enum ErrorCode {
      */
     PURCHASE_LIMIT_EXCEEDED(20007, "err.trade.purchase_limit_exceeded"),
 
+    /**
+     * 这单要落的门店暂停营业了（READONLY / 平台下线，TDD-C端门店化与门店门户 §2.7）。
+     *
+     * <p>三种来路：买家在这家店的门户里下单、自提点属于这家店、主体下没有别的营业店可落。
+     * 此前停用的门店照样收单 —— 状态只有 B 端自己看得见。
+     */
+    STORE_PAUSED(20008, "err.trade.store_paused"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

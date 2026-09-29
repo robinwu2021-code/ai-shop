@@ -7631,6 +7631,20 @@ components:
         - "storeName"
       additionalProperties: false
       description: "暂停营业时给的出路：同主体的另一家营业店"
+    StoreChoice: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+          description: "主体号"
+        storeNo: 
+          type: "string"
+          description: "该主体下的门店号"
+      required: 
+        - "merchantNo"
+        - "storeNo"
+      additionalProperties: false
+      description: "下单时「这个主体我在逛哪家店」（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不属于该主体的门店号后端会忽略；指定的店暂停营业时回 `STORE_PAUSED`（20008）。"
     StoreCodeImage: 
       type: "object"
       properties: 

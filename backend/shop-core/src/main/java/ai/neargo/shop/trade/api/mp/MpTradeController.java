@@ -238,9 +238,18 @@ public class MpTradeController {
                                   * 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或不参加。
                                   * 不传 = 全部按最优（存量端上没有这个字段）
                                   */
-                                 List<ActivityChoice> activityChoices) {
+                                 List<ActivityChoice> activityChoices,
+                                 /*
+                                  * 顾客在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
+                                  * 不传 = 与改造前相同（存量端上没有这个字段）
+                                  */
+                                 List<StoreChoice> storeChoices) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
+        }
+
+        /** @param storeNo 该主体下的门店号；不属于这个主体的会被忽略 */
+        public record StoreChoice(String merchantNo, String storeNo) {
         }
 
         /** @param activityNo 活动号，或 "NONE"（这家店不参加活动） */
@@ -257,7 +266,11 @@ public class MpTradeController {
                     activityChoices == null ? null : activityChoices.stream()
                             .filter(c -> c.merchantNo() != null && c.activityNo() != null)
                             .collect(java.util.stream.Collectors.toMap(ActivityChoice::merchantNo,
-                                    ActivityChoice::activityNo, (a, b) -> b)));
+                                    ActivityChoice::activityNo, (a, b) -> b)),
+                    storeChoices == null ? null : storeChoices.stream()
+                            .filter(c -> c.merchantNo() != null && c.storeNo() != null && !c.storeNo().isBlank())
+                            .collect(java.util.stream.Collectors.toMap(StoreChoice::merchantNo,
+                                    StoreChoice::storeNo, (a, b) -> b)));
         }
     }
 }

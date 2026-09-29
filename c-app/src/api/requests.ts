@@ -13,7 +13,7 @@
 // 为什么不放进 packages/shared：
 //   按 ADR-007 §3 的边界，contract 层不共享 —— B 端有自己的 `/mb/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
-import type { ActivityChoice, StoreVisitSource } from "@shared/types";
+import type { ActivityChoice, StoreChoice, StoreVisitSource } from "@shared/types";
 import type {
   AfterSaleType,
   ReviewScores,
@@ -221,6 +221,11 @@ export interface CreateOrderReqBody {
    * 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的
    */
   activityChoices?: ActivityChoice[];
+  /**
+   * 这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
+   * 不传 = 与改造前相同；指定的店暂停营业时回 20008
+   */
+  storeChoices?: StoreChoice[];
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /**

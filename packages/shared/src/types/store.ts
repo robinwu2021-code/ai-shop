@@ -373,6 +373,16 @@ export interface StoreSibling {
   /** 两家店之间的距离（米）。任一家没标坐标时为空 */
   distanceM?: number | null;
 }
+/**
+ * 下单时「这个主体我在逛哪家店」（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
+ * 不属于该主体的门店号后端会忽略；指定的店暂停营业时回 `STORE_PAUSED`（20008）。
+ */
+export interface StoreChoice {
+  /** 主体号 */
+  merchantNo: string;
+  /** 该主体下的门店号 */
+  storeNo: string;
+}
 /** 门店的小程序码（海报用）。一店一码、生成一次落库复用 */
 export interface StoreCodeImage {
   /** 码所属的门店 */

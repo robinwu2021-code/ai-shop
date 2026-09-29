@@ -24285,6 +24285,12 @@
           "ar": "المخزون غير كافٍ لهذه الأصناف: {0}"
         },
         {
+          "key": "err.trade.store_paused",
+          "zh-CN": "这家店暂停营业了，去看看同品牌的其他门店",
+          "en": "This store is temporarily closed — try another store of the same brand",
+          "ar": "هذا المتجر مغلق مؤقتًا — جرّب فرعًا آخر من نفس العلامة التجارية"
+        },
+        {
           "key": "err.unauthorized",
           "zh-CN": "请先登录",
           "en": "Please sign in",
@@ -32025,6 +32031,7 @@
           "OUT_OF_DELIVERY_RANGE",
           "ORDER_STATE_ILLEGAL",
           "PURCHASE_LIMIT_EXCEEDED",
+          "STORE_PAUSED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",

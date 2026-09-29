@@ -156,6 +156,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 门店状态（TDD-C端门店化与门店门户 §2.7）：落店只落营业中的店、落到暂停的店就拒。
+     * setter 注入，理由同 {@link #periodPort}；缺了（切片装配）按「都营业」处理 —— 与加它之前相同。
+     */
+    private ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setStoreDirectory(ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory) {
+        this.storeDirectory = storeDirectory;
+    }
+
+    /** 空串是历史数据，按营业算（与门户的 closed 判断同一口径）；查不到的门店也按营业算，不拿缺失数据拦单 */
+    private static boolean open(Map<String, String> statuses, String storeNo) {
+        String st = statuses.get(storeNo);
+        return st == null || st.isBlank() || ai.neargo.shop.spi.user.StoreDirectoryPort.STORE_ACTIVE.equals(st);
+    }
+
+    private Map<String, String> storeStatuses(java.util.Collection<String> storeNos) {
+        return storeDirectory == null || storeNos.isEmpty() ? Map.of() : storeDirectory.statuses(storeNos);
+    }
+
+    /**
      * 拼团：参团 / 开团接到下单上（TDD-营销域-详细设计 §1.4）。setter 注入，理由同 {@link #periodPort}；
      * 缺了的装配里带团号的单一律拒（BAD_REQUEST），不静默变成普通单。
      */
@@ -530,7 +551,8 @@ public class OrderServiceImpl implements OrderService {
      * 同一套解析，但只要主体号 —— <b>拆单前就要用它取门店价</b>，
      * 而那时 {@link Split} 还没建出来。
      */
-    private Map<String, String> storesOfEntities(CreateOrderCommand cmd, List<String> merchantNos) {
+    // 包内可见：StoreOrderRoutingTest 直接量落店结果 —— OrderVO 不带门店号，从外面看不出单落在哪家店
+    Map<String, String> storesOfEntities(CreateOrderCommand cmd, List<String> merchantNos) {
         Map<String, String> out = new HashMap<>();
         String pickupStoreNo = pickupPort.find(cmd.pickupNo())
                 .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
@@ -551,14 +573,27 @@ public class OrderServiceImpl implements OrderService {
                 .map(ai.neargo.shop.auth.LoginUser::userNo)
                 .flatMap(userPort::communityOf)
                 .orElse(null);
+        Map<String, String> choices = cmd.storeChoices() == null ? Map.of() : cmd.storeChoices();
         for (String merchantNo : merchantNos) {
+            List<String> own = merchantPort.storeNos(merchantNo);
             // 一次订单可以拆给多家商家，自提点只可能属于其中一家（或谁都不属于）
-            boolean mine = pickupStoreNo != null
-                    && merchantPort.storeNos(merchantNo).contains(pickupStoreNo);
+            boolean mine = pickupStoreNo != null && own.contains(pickupStoreNo);
             if (mine) {
+                // 人要去那儿取货，改不了；那家店暂停的话由下面的状态闸拒 —— 换店等于让人白跑
                 out.put(merchantNo, pickupStoreNo);
                 continue;
             }
+            /*
+             * ★ 顾客在逛哪家店（门户，§2.7）：在 B 店门户里挑的货就由 B 店履约。
+             * 不看服务范围 —— 送不送得到由后面的配送闸判，与从默认店下单同一套闸，不在这里另判一遍。
+             * 不属于这个主体的门店号忽略（端上记错了、或是别家的），按下面的老规则落。
+             */
+            String chosen = choices.get(merchantNo);
+            if (chosen != null && own.contains(chosen)) {
+                out.put(merchantNo, chosen);
+                continue;
+            }
+            Map<String, String> statuses = storeStatuses(own);
             /*
              * ★ **默认店服务得了就还用默认店；服务不了才挑别家。**
              *
@@ -579,15 +614,31 @@ public class OrderServiceImpl implements OrderService {
              * 这一批的行为变化面因此缩到只剩那一种情况。
              */
             String defaultStore = merchantPort.defaultStoreNo(merchantNo).orElse(null);
-            if (defaultStore != null && (communityNo == null
+            // 暂停营业的默认店不再接单（§2.7）：此前 READONLY 的默认店照样收单
+            boolean defaultOpen = defaultStore != null && open(statuses, defaultStore);
+            if (defaultOpen && (communityNo == null
                     || merchantPort.reachableCommunities(merchantNo, defaultStore).contains(communityNo))) {
                 out.put(merchantNo, defaultStore);
                 continue;
             }
-            // 默认店服务不了：挑一家真的服务这个社区的（多家都行时取最近，理由见方法注释）
+            // 默认店服务不了（或暂停了）：挑一家真的服务这个社区的营业店（多家都行时取最近，理由见方法注释）
             String served = communityNo == null ? null
-                    : nearestServingStore(merchantNo, communityNo);
+                    : nearestServingStore(merchantNo, communityNo, statuses);
+            if (served == null && !defaultOpen) {
+                // 不知道买家在哪个社区、默认店又暂停了：取任一营业店，按门店号定序 —— 必须确定
+                served = own.stream().filter(st -> open(statuses, st)).sorted().findFirst().orElse(null);
+            }
             out.put(merchantNo, served != null ? served : defaultStore);
+        }
+        /*
+         * 状态闸：落到的店必须营业（AC7）。放在这里而不是 create 里：预览、「这单能怎么付」、
+         * 拆单取门店价都经过这个方法 —— 在这里拒，买家在预览那一步就知道，不会付款时才炸。
+         */
+        Map<String, String> landed = storeStatuses(out.values().stream().filter(java.util.Objects::nonNull).toList());
+        for (String storeNo : out.values()) {
+            if (storeNo != null && !open(landed, storeNo)) {
+                throw BizException.of(ErrorCode.STORE_PAUSED);
+            }
         }
         return out;
     }
@@ -601,12 +652,13 @@ public class OrderServiceImpl implements OrderService {
      * <p>「服务」的判据与可见性同一个出口（{@code reachableCommunities(entityNo, storeNo)}）——
      * 另写一套迟早分岔，而分岔的表现是「他看得见却下不了单」或者反过来。
      */
-    private String nearestServingStore(String merchantNo, String communityNo) {
+    private String nearestServingStore(String merchantNo, String communityNo, Map<String, String> statuses) {
         List<String> stores = merchantPort.storeNos(merchantNo);
         if (stores.isEmpty()) {
             return null;
         }
         List<String> serving = stores.stream()
+                .filter(st -> open(statuses, st))
                 .filter(st -> merchantPort.reachableCommunities(merchantNo, st).contains(communityNo))
                 .toList();
         if (serving.isEmpty()) {

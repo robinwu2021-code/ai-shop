@@ -7632,6 +7632,20 @@ components:
         - "storeName"
       additionalProperties: false
       description: "暂停营业时给的出路：同主体的另一家营业店"
+    StoreChoice: 
+      type: "object"
+      properties: 
+        merchantNo: 
+          type: "string"
+          description: "主体号"
+        storeNo: 
+          type: "string"
+          description: "该主体下的门店号"
+      required: 
+        - "merchantNo"
+        - "storeNo"
+      additionalProperties: false
+      description: "下单时「这个主体我在逛哪家店」（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不属于该主体的门店号后端会忽略；指定的店暂停营业时回 `STORE_PAUSED`（20008）。"
     StoreCodeImage: 
       type: "object"
       properties: 
@@ -9972,6 +9986,11 @@ components:
           items: 
             "$ref": "#/components/schemas/ActivityChoice"
           description: "对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的"
+        storeChoices: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/StoreChoice"
+          description: "这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不传 = 与改造前相同；指定的店暂停营业时回 20008"
         appointmentAt: 
           type: "number"
           description: "APPOINTMENT：预约开始时间戳"
