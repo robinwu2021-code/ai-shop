@@ -14,7 +14,9 @@ import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import { SERVICE_SCOPE } from "@shared/utils/constants";
 import { visibleToBuyers } from "@shared/utils/coverage";
+import { payoutReady } from "@shared/utils/onboarding";
 import type { MerchantStats, MerchantTodo, PaymentApplyment, StockSummary, StoreProfile } from "@shared/types";
+import type { PayoutAccount } from "@/api/contract";
 import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
@@ -80,6 +82,12 @@ const stats = ref<MerchantStats | null>(null);
  * 于是商家上完架等订单，实际卡在其中一条，而**两者都不报错**。
  */
 const payments = ref<PaymentApplyment[]>([]);
+/**
+ * 收款账户。**自营/归集商户拿钱的唯一依据** —— 平台按账期把货款打到这张卡。
+ * 与上面的 `payments`（微信通道进件）是两条互斥的资金路径：
+ * 归集的人不需要二级商户号，需要的是这张卡，而工作台此前只提醒前者。
+ */
+const payoutAccounts = ref<PayoutAccount[]>([]);
 const store = ref<StoreProfile | null>(null);
 
 const canReceive = computed(() => payments.value.some((p) => p.canReceiveMoney));
@@ -122,6 +130,13 @@ const visible = computed(() => {
  *
  * **把权限不足渲染成业务待办是最坏的一种失败**：它不像故障，像是店里真出了事。
  */
+/**
+ * 收款账户办完了没有。**判据走 `payoutReady`（`@shared/utils/onboarding`）**，
+ * 不在这里自己判 —— 与 `visibleToBuyers` 同一条规矩：
+ * 判据散在页面里，两处迟早说不一样的话。
+ */
+const payoutAccountOk = computed(() => payoutReady(payoutAccounts.value));
+
 const blockers = computed(() => {
   const list: { key: string; route: string }[] = [];
   /*
@@ -150,6 +165,21 @@ const blockers = computed(() => {
   }
   if (merchant.can("biz:store") && !visible.value) {
     list.push({ key: "scope", route: ROUTES.storeScope });
+  }
+  /*
+   * **归集商户的钱打不出去 —— 与上面那条互为另一半。**
+   *
+   * 自营/供应商模式下平台按账期把货款打到收款账户（ADR-011），
+   * 没有生效账户的主体不会进付款清单 —— 结算单照样生成、状态照样推进，
+   * 只是那笔钱永远停在「已确认应付」上。商家看不出任何异常，
+   * 因为页面上每一步都是绿的。
+   *
+   * **已经提交待审的不提**：他该做的做完了，剩下的是运营审 ——
+   * 这时候还亮一条，就成了他点不掉的噪音（与 payment 那条的教训相同）。
+   * 被驳回的要提：驳回原因在那一页上，而他得知道要回去重填。
+   */
+  if (merchant.can("biz:finance") && merchant.fundsAggregated && !payoutAccountOk.value) {
+    list.push({ key: "payoutAccount", route: ROUTES.payoutAccount });
   }
   /*
    * 协议待本人补勾（三期）。**排在最后**：上面三条是「生意做不成」，
@@ -323,13 +353,17 @@ async function load() {
    * 后三条是每次进首页都必然 403 的请求 —— 日志里三条噪音、首屏多三个来回，
    * 而它们的结果本来就不会被画出来（`blockers` 与 `stats` 卡片各自判过 `can()`）。
    */
-  [todo.value, stats.value, payments.value, store.value, stockSummary.value] = await Promise.all([
+  [todo.value, stats.value, payments.value, store.value, stockSummary.value,
+    payoutAccounts.value] = await Promise.all([
     api.mTodo().catch(() => null),
     merchant.can("biz:customer") ? api.mStats().catch(() => null) : null,
     merchant.can("biz:finance") ? api.mPayments().catch(() => []) : [],
     merchant.can("biz:store") ? api.mStore().catch(() => null) : null,
     // 没权限的先别发 —— 与上面三条同一条规矩
     merchant.can("biz:stock") ? api.mStockSummary().catch(() => null) : null,
+    // 只有归集商户用得上（非归集的那条路径是通道进件），且老后端上会 404
+    merchant.can("biz:finance") && merchant.fundsAggregated
+      ? api.mPayoutAccounts().catch(() => []) : [],
   ]);
 }
 
