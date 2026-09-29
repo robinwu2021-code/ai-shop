@@ -427,9 +427,64 @@ STORE_PICKUP       （无）          0    ← 自提一单都没有
 **不新增采集点**给「券过期」和「订单自动关闭」——
 它们够不上「用户会离开去等」，为它们多弹一次窗会稀释前面几条的通过率。
 
-### 8.5 注册计划（mp 后台，行政项）
+### 8.4b 再更正一次：发货/送达**不该**由我们发订阅消息
 
-去 **公共模板库 → 一次性订阅** 搜这几个词，挑**字段能填满**的那一个
+拉下公共模板库（1818 条）之后才看清，已选的那两个模板是**特殊的**：
+
+```
+xh2lV45U50Ikkg6bGf1uYQWCiP…  购物（自提）服务动态      content 为空
+xh2lV45U50Ikkg6bGf1uYaKHxpf…  购物（实体物流）服务动态  content 为空
+```
+
+`content` 为空、`getpubtemplatekeywords` 也取不到格 —— 因为它们**不是普通模板**，
+而是微信**交易组件 / 发货信息管理**体系的「服务动态」：
+商家调 `upload_shipping_info` 上报物流，**微信自己给买家推服务通知**，
+既不需要我们调 `subscribeMessage.send`，也**不需要用户点订阅授权**。
+
+所以 §8.4 把「发货/送达」排进支付成功页那 5 个名额是错的 —— 它们根本不占名额。
+
+**而这条链我们早就建好了**：
+
+| 件 | 状态 |
+|---|---|
+| 两个服务动态模板 | ✅ 已选进账号 |
+| `WxShippingGateway` + `StubWxShippingGateway` | ✅ 已实现 |
+| `ship()` / `delivered()` → `notifyShipping()` → `enqueue` | ✅ 已接线（`delivered` 那条是 2026-09-28 补的） |
+| 生产开关 `SHOP_WX_SHIPPING_STUB` | ✅ `false`（真上报） |
+| `trd_shipping_upload` 线上记录 | ❌ **0 行 —— 还没有任何订单走过这条新代码** |
+
+与 §8.1 的 `notify_subscribe 0 行` 是同一个形状：**建好了，没跑过**。
+
+**结论**：发货/送达这一段从「2 天开发」变成「半天验证」。
+B 批的内容随之改为**验证 + 补缺口**，而不是从零接一套订阅消息。
+
+### 8.5 注册计划（**自动**，不去后台点）
+
+**已经不用手工点了** —— `scripts/wx-subscribe-templates.py` 把这件事做成了命令：
+
+```bash
+python3 scripts/wx-subscribe-templates.py categories        # 本账号的类目
+python3 scripts/wx-subscribe-templates.py search 送达        # 按标题搜公共模板库
+python3 scripts/wx-subscribe-templates.py keywords 17993     # 这个模板有哪几格
+python3 scripts/wx-subscribe-templates.py add 17993 1,2,3 "订单送达后通知买家"
+python3 scripts/wx-subscribe-templates.py mine               # 已选进账号的
+```
+
+两个设计要点，都不是可选的：
+
+**① `access_token` 必须走 `stable_token`。** 老的 `cgi-bin/token` 每次调用都签发新 token
+并挤掉旧的 —— 这个脚本一跑就会把**正在跑的后端**的 token 挤掉，
+表现是线上随机 40001，而没有任何东西会指向「刚才有人跑了个脚本」。
+
+**② 只能在生产服务器上跑**（微信对这些接口做 IP 白名单，开发机直连拿到
+`40164 invalid ip ... not in whitelist`）。脚本检测到不在服务器上会**把自己传过去执行**，
+在本机敲同一条命令即可。凭据只在服务器上读，不打印、不接受命令行传入。
+
+**为什么不手工去后台点**：后台点完只留下一个模板号，没人知道当初为什么选它、
+那几格分别映射到哪个业务字段。走脚本的话，`add` 的入参（tid + kidList + 场景说明）
+本身就是决策记录，`search` / `keywords` 的输出可以贴进本文当依据。
+
+搜索时挑**字段能填满**的那一个
 （公共模板字段固定，挑一个有「商品/店铺名称」的，比只有「备注」的强得多；
 字段填不满会被审核打回，或者发出去是一条看不懂的消息）：
 
