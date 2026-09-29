@@ -1,0 +1,43 @@
+# 电子元器件独立服务（elec-svc，:8085）。**第一个直接接用户流量的独立进程** ——
+# 小程序 C 端 /elec/c/**、B 端 /elec/b/**、运营端 /elec/ops/**，经 nginx 同域转发。
+# 安装位置：/etc/systemd/system/ai-shop-elec.service（源文件在仓库 deploy/tencent/systemd/）
+#
+# 它独占库 ai_shop_elec，迁移由自己启动时跑（elc_flyway_history，与主库的历史互不知情）。
+# 向主系统借三样东西（认令牌、取手机号、通知买家），走本机 127.0.0.1:8081 的 /internal/elec/**。
+[Unit]
+Description=ai-shop elec service (electronic components)
+# 依赖跟着数据源走，理由见 ai-shop-pay.service 里那段说明
+After=network.target mysql97.service
+Requires=mysql97.service
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/data/app/ai-shop/elec-svc
+# 库的连接串与密码、内部共享密钥、企业微信群机器人地址都在这个文件里。
+# **它是凭据文件**：属主 deploy、权限 600（root 传完要 chown，见记忆「凭据文件要以服务用户读」）
+EnvironmentFile=/data/app/ai-shop/elec-svc/elec.env
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 日志（测试档）。说明见 ai-shop.service
+Environment=LOGGING_FILE_NAME=/data/log/ai-shop/elec-svc/elec-svc.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=10MB
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=14
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=50MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}
+
+# 堆 768m：它要在内存里解一张两万行的 Excel（比 pay-svc 重，远小于主应用）。
+# 上传上限 5MB，解压后封顶 64MB，两者叠加时 512m 会不够
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms256m -Xmx768m -jar /data/app/ai-shop/elec-svc/elec-svc.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/data/log/ai-shop/elec-svc
+
+[Install]
+WantedBy=multi-user.target

@@ -31,4 +31,18 @@ public class UserIdentityPortImpl implements UserIdentityPort {
                         .orderByDesc(UsrIdentity::getId).last("limit 1")))
                 .map(UsrIdentity::getIdentityValue);
     }
+
+    @Override
+    public Optional<String> phone(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return Optional.empty();
+        }
+        // 只认 PHONE 身份（绑定时写 verified_at），不认 usr_user.phone 那个过渡期双写的旧列
+        return Optional.ofNullable(identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                        .eq(UsrIdentity::getUserNo, userNo)
+                        .eq(UsrIdentity::getIdentityType, IdentityType.PHONE)
+                        .orderByDesc(UsrIdentity::getId).last("limit 1")))
+                .map(UsrIdentity::getIdentityValue)
+                .filter(p -> !p.isBlank());
+    }
 }

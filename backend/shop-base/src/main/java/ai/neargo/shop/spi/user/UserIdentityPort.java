@@ -21,4 +21,15 @@ public interface UserIdentityPort {
      * 调用方据此静默跳过订阅消息通道，**不是错误**。
      */
     Optional<String> wxOpenIdMp(String userNo);
+
+    /**
+     * 用户<b>验证过</b>的手机号（验证码或微信一键绑定的那个），完整号码。
+     *
+     * <p>消费方是元器件域：询价与供应商入驻都要留一个平台能打过去的号，
+     * 而元器件是独立库，读不到 usr_identity。返回完整号码是因为它要写进询价单的快照、
+     * 交给运营打电话 —— 掩不掩码是展示那一侧的决定，不是取数这一侧的。
+     *
+     * <p>没绑过手机号（静默登录建出来的号）返回空 —— 调用方据此让端上弹手机号闸，<b>不是错误</b>。
+     */
+    Optional<String> phone(String userNo);
 }

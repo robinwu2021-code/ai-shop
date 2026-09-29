@@ -1,0 +1,47 @@
+# 电子元器件 · 独立进程。**接用户流量**（经 nginx 的 /elec/**），与 pay-svc、job-worker 不同。
+server:
+  port: ${ELEC_SVC_PORT:8085}
+
+spring:
+  application:
+    name: elec-svc
+  # 库的连接不走 spring.datasource：元器件库由 ElecDataSourceConfig 自己建（连接池名 elec-pool，
+  # 启动时核对拿到的就是它）。Spring Boot 的数据源自动配置见到它就退让
+  flyway:
+    # Boot 自带的 Flyway 关掉：迁移由 ElecDataSourceConfig 自己跑、历史表 elc_flyway_history。
+    # 开着的话它会拿同一个库、默认位置 db/migration 再建一张 flyway_schema_history —— 空跑，但留下垃圾
+    enabled: false
+  servlet:
+    multipart:
+      # 库存表：5MB 的 xlsx 大约四五万行，已超过单次上限（2 万行）
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+shop:
+  elec:
+    enabled: true
+    datasource:
+      # 默认值是开发机用的。生产填 MySQL 9.7（3307）上的 ai_shop_elec
+      url: ${ELEC_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop_elec?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+      username: ${ELEC_DB_USER:}
+      password: ${ELEC_DB_PASSWORD:}
+  services:
+    # 主系统。不经 nginx（它不反代 /internal），走本机
+    targets:
+      PLATFORM: ${ELEC_MAIN_URL:http://127.0.0.1:8081}
+    # 与主系统同值。**没配就一律拒绝**，不是没配就不校验
+    internal-token: ${SHOP_SERVICES_INTERNAL_TOKEN:}
+
+elec:
+  wecom:
+    # 企业微信群机器人。URL 本身就是凭据，只在服务器 env 里。空 = 不发
+    webhook: ${ELEC_WECOM_WEBHOOK:}
+
+logging:
+  level:
+    ai.neargo.shop.elec: INFO
+    com.zaxxer.hikari: WARN
+    com.baomidou.mybatisplus: WARN
+    org.mybatis: WARN
+    org.apache.tomcat: WARN
+    org.apache.catalina: WARN

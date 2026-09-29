@@ -1172,7 +1172,27 @@ public enum ErrorCode {
     /** 该用户没有可用的微信订阅额度，测试会白发（发出去也会被微信以 43101 拒） */
     NOTIFY_WX_QUOTA_EMPTY(80101, "err.notify.wx_quota_empty"),
     /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
-    NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
+    NOTIFY_NO_DEVICE(80102, "err.notify.no_device"),
+
+    // ---- 9xxxx 电子元器件（独立库 ai_shop_elec，将来整个独立出去）----
+    /** 询价与供应商入驻都要先有手机号：平台要打电话跟进。端上据此弹手机号闸 */
+    ELEC_PHONE_REQUIRED(90001, "err.elec.phone_required"),
+    ELEC_NOT_SUPPLIER(90002, "err.elec.not_supplier"),
+    ELEC_SUPPLIER_EXISTS(90003, "err.elec.supplier_exists"),
+    ELEC_SUPPLIER_SUSPENDED(90004, "err.elec.supplier_suspended"),
+    /** 认不了的文件。最常见的是 .xls（二进制格式），文案直接说怎么办 */
+    ELEC_UPLOAD_FORMAT(90005, "err.elec.upload_format"),
+    ELEC_UPLOAD_NO_HEADER(90006, "err.elec.upload_no_header"),
+    /** {0} = 一次最多几行。超了直接拒，不静默截断 —— 截断会让「全量替换」把后半截全下架 */
+    ELEC_UPLOAD_TOO_MANY_ROWS(90007, "err.elec.upload_too_many_rows"),
+    ELEC_BATCH_EXPIRED(90008, "err.elec.batch_expired"),
+    ELEC_BATCH_EMPTY(90009, "err.elec.batch_empty"),
+    /** {0} = 一张询价单最多几行 */
+    ELEC_RFQ_LINES_INVALID(90010, "err.elec.rfq_lines_invalid"),
+    /** 询价单当前状态不允许这个动作（已接受的不能再报价、已结束的不能接受…） */
+    ELEC_RFQ_STATE(90011, "err.elec.rfq_state"),
+    /** 报价过了有效期，不能再接受 —— 行情会变，过期的价平台不再兑现 */
+    ELEC_QUOTE_EXPIRED(90012, "err.elec.quote_expired");
 
     private final int code;
     private final String msgKey;

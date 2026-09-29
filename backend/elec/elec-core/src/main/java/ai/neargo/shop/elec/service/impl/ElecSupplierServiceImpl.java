@@ -1,0 +1,294 @@
+package ai.neargo.shop.elec.service.impl;
+
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.elec.config.ConditionalOnElec;
+import ai.neargo.shop.elec.config.ElecProperties;
+import ai.neargo.shop.elec.dto.SupplierDtos.RegisterReq;
+import ai.neargo.shop.elec.dto.SupplierDtos.RenewResult;
+import ai.neargo.shop.elec.dto.SupplierDtos.StockView;
+import ai.neargo.shop.elec.dto.SupplierDtos.SupplierView;
+import ai.neargo.shop.elec.entity.ElcStock;
+import ai.neargo.shop.elec.entity.ElcStockBatch;
+import ai.neargo.shop.elec.entity.ElcSupplier;
+import ai.neargo.shop.elec.entity.ElcSupplierMember;
+import ai.neargo.shop.elec.mapper.ElecMappers.StockBatchMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.SupplierMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.SupplierMemberMapper;
+import ai.neargo.shop.elec.service.ElecMarketService;
+import ai.neargo.shop.elec.service.ElecSupplierService;
+import ai.neargo.shop.elec.support.ElecKeys;
+import ai.neargo.shop.elec.support.Mpn;
+import ai.neargo.shop.elec.gateway.ElecAlerts;
+import ai.neargo.shop.elec.gateway.ElecAccounts;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+/**
+ * 供应商：入驻即可用（第一步不审核，平台在企业微信里事后看），之后定期上传库存。
+ */
+@ConditionalOnElec
+@Service
+public class ElecSupplierServiceImpl implements ElecSupplierService {
+
+    private static final Logger log = LoggerFactory.getLogger(ElecSupplierServiceImpl.class);
+
+    public static final Set<String> KINDS = Set.of("AGENT", "TRADER", "FACTORY", "OTHER");
+
+    /** 「快到期」的提前量：工作台上提醒他续期或重传 */
+    private static final int EXPIRING_DAYS = 7;
+
+    private static final Pattern PHONE = Pattern.compile("^1\\d{10}$");
+
+    private final ElecSupplierAccess access;
+    private final SupplierMapper supplierMapper;
+    private final SupplierMemberMapper memberMapper;
+    private final StockMapper stockMapper;
+    private final StockBatchMapper batchMapper;
+    private final ElecMarketService market;
+    private final ElecAccounts identity;
+    private final ElecAlerts alerts;
+    private final ElecProperties props;
+    private final TransactionTemplate tx;
+
+    public ElecSupplierServiceImpl(ElecSupplierAccess access, SupplierMapper supplierMapper,
+                               SupplierMemberMapper memberMapper, StockMapper stockMapper,
+                               StockBatchMapper batchMapper, ElecMarketService market, ElecAccounts identity,
+                               ElecAlerts alerts, ElecProperties props,
+                               @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
+        this.access = access;
+        this.supplierMapper = supplierMapper;
+        this.memberMapper = memberMapper;
+        this.stockMapper = stockMapper;
+        this.batchMapper = batchMapper;
+        this.market = market;
+        this.identity = identity;
+        this.alerts = alerts;
+        this.props = props;
+        this.tx = new TransactionTemplate(tm);
+    }
+
+    @Override
+    public SupplierView mine(String userNo) {
+        ElcSupplier s = access.of(userNo);
+        return s == null ? null : view(s);
+    }
+
+    /**
+     * 入驻。<b>事务提交之后才通知</b>：通知失败不能把入驻回滚掉，通知也不能先于数据落库
+     * （群里看到了、库里却没有，运营会以为系统坏了）。
+     */
+    @Override
+    public SupplierView register(String userNo, RegisterReq req) {
+        // 平台要能打给他：没绑手机号先去绑（端上会先弹手机号闸，这里是兜底）
+        String boundPhone = identity.phone(userNo).orElseThrow(() -> BizException.of(ErrorCode.ELEC_PHONE_REQUIRED));
+        String company = trimmed(req.companyName(), 128);
+        if (company != null && company.length() < 2) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String contact = trimmed(req.contactName(), 32);
+        String phone = trimmed(req.contactPhone(), 32);
+        if (phone == null) {
+            phone = boundPhone;
+        } else if (!PHONE.matcher(phone).matches()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String kind = oneOf(req.kind(), KINDS, "TRADER");
+        String contactPhone = phone;
+
+        ElcSupplier created = tx.execute(st -> {
+            if (access.of(userNo) != null) {
+                throw BizException.of(ErrorCode.ELEC_SUPPLIER_EXISTS);
+            }
+            ElcSupplier s = new ElcSupplier();
+            s.setSupplierNo(ElecKeys.next(ElecKeys.SUPPLIER));
+            s.setCompanyName(company);
+            s.setKind(kind);
+            s.setCity(trimmed(req.city(), 32));
+            s.setContactName(contact);
+            s.setContactPhone(contactPhone);
+            s.setStatus(ElcSupplier.STATUS_ACTIVE);
+            s.setCreatedBy(userNo);
+            s.setUpdatedBy(userNo);
+            insertWithMask(s);
+            ElcSupplierMember m = new ElcSupplierMember();
+            m.setSupplierNo(s.getSupplierNo());
+            m.setAccountRef(userNo);
+            m.setRole(ElcSupplierMember.ROLE_OWNER);
+            m.setStatus(ElcSupplierMember.STATUS_ACTIVE);
+            m.setCreatedBy(userNo);
+            m.setUpdatedBy(userNo);
+            try {
+                memberMapper.insert(m);
+            } catch (DuplicateKeyException e) {
+                // 同一个人连点两次：第二次撞 account_ref 唯一键
+                throw BizException.of(ErrorCode.ELEC_SUPPLIER_EXISTS);
+            }
+            return s;
+        });
+
+        boolean sent = alerts.newSupplier(new ElecAlerts.SupplierAlert(created.getSupplierNo(),
+                created.getCompanyName(), created.getKind(), created.getCity(), created.getContactName(),
+                created.getContactPhone()));
+        if (sent) {
+            created.setNotifiedAt(LocalDateTime.now());
+            supplierMapper.updateById(created);
+        } else {
+            log.warn("元器件供应商入驻通知没送到企业微信 supplierNo={}（elc_supplier.notified_at 为空的就是这些）",
+                    created.getSupplierNo());
+        }
+        return view(created);
+    }
+
+    @Override
+    @Transactional(transactionManager = "elecTransactionManager")
+    public SupplierView update(String userNo, RegisterReq req) {
+        ElcSupplier s = access.requireActive(userNo);
+        String company = trimmed(req.companyName(), 128);
+        if (company != null) {
+            if (company.length() < 2) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            s.setCompanyName(company);
+        }
+        String phone = trimmed(req.contactPhone(), 32);
+        if (phone != null) {
+            if (!PHONE.matcher(phone).matches()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            s.setContactPhone(phone);
+        }
+        if (req.kind() != null && KINDS.contains(req.kind())) {
+            s.setKind(req.kind());
+        }
+        String city = trimmed(req.city(), 32);
+        if (city != null) {
+            s.setCity(city);
+        }
+        String contact = trimmed(req.contactName(), 32);
+        if (contact != null) {
+            s.setContactName(contact);
+        }
+        s.setUpdatedBy(userNo);
+        supplierMapper.updateById(s);
+        return view(s);
+    }
+
+    /** 匿名代号撞了就换一个再插（4 位 32 进制约一百万个，撞三次基本不可能） */
+    private void insertWithMask(ElcSupplier s) {
+        for (int i = 0; ; i++) {
+            s.setMaskCode(ElecKeys.maskCode());
+            try {
+                supplierMapper.insert(s);
+                return;
+            } catch (DuplicateKeyException e) {
+                if (i >= 3) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    @Override
+    public List<StockView> stocks(String userNo, String keyword, String filter, int page, int size) {
+        ElcSupplier s = access.requireActive(userNo);
+        LocalDate today = LocalDate.now();
+        LambdaQueryWrapper<ElcStock> q = Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON);
+        String norm = Mpn.norm(keyword);
+        if (!norm.isEmpty()) {
+            q.likeRight(ElcStock::getMpnNorm, norm);
+        }
+        if ("EXPIRING".equals(filter)) {
+            q.ge(ElcStock::getValidUntil, today).le(ElcStock::getValidUntil, today.plusDays(EXPIRING_DAYS));
+        } else if ("EXPIRED".equals(filter)) {
+            q.lt(ElcStock::getValidUntil, today);
+        }
+        q.orderByAsc(ElcStock::getValidUntil).orderByAsc(ElcStock::getMpnNorm);
+        int p = Math.max(1, page);
+        int n = Math.min(100, Math.max(1, size));
+        // 不用分页插件（本域工厂没装它）：offset/limit 手写
+        q.last("LIMIT " + n + " OFFSET " + (long) (p - 1) * n);
+        return stockMapper.selectList(q).stream().map(r -> new StockView(r.getStockNo(), r.getMpnRaw(),
+                r.getMfrRaw(), r.getQty(), r.getDateCode(), r.getPkg(), r.getMoq(), r.getPriceE6(),
+                Boolean.TRUE.equals(r.getTaxIncluded()), r.getValidUntil(),
+                r.getValidUntil().isBefore(today) ? "EXPIRED" : ElcStock.STATUS_ON)).toList();
+    }
+
+    @Override
+    @Transactional(transactionManager = "elecTransactionManager")
+    public RenewResult renew(String userNo) {
+        ElcSupplier s = access.requireActive(userNo);
+        LocalDate until = LocalDate.now().plusDays(props.getStockTtlDays());
+        List<ElcStock> rows = stockMapper.selectList(Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON));
+        if (rows.isEmpty()) {
+            return new RenewResult(0, until);
+        }
+        ElcStock patch = new ElcStock();
+        patch.setValidUntil(until);
+        patch.setConfirmedAt(LocalDateTime.now());
+        patch.setUpdatedBy(userNo);
+        int n = stockMapper.update(patch, Wrappers.<ElcStock>lambdaUpdate()
+                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON));
+        market.refresh(rows.stream().map(ElcStock::getPartNo).toList());
+        return new RenewResult(n, until);
+    }
+
+    private SupplierView view(ElcSupplier s) {
+        LocalDate today = LocalDate.now();
+        long on = stockMapper.selectCount(Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON)
+                .ge(ElcStock::getValidUntil, today));
+        long expiring = stockMapper.selectCount(Wrappers.<ElcStock>lambdaQuery()
+                .eq(ElcStock::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStock::getStatus, ElcStock.STATUS_ON)
+                .ge(ElcStock::getValidUntil, today)
+                .le(ElcStock::getValidUntil, today.plusDays(EXPIRING_DAYS)));
+        ElcStockBatch last = batchMapper.selectOne(Wrappers.<ElcStockBatch>lambdaQuery()
+                .eq(ElcStockBatch::getSupplierNo, s.getSupplierNo())
+                .eq(ElcStockBatch::getStatus, ElcStockBatch.STATUS_APPLIED)
+                .orderByDesc(ElcStockBatch::getId).last("LIMIT 1"));
+        return new SupplierView(s.getSupplierNo(), s.getCompanyName(), s.getKind(), s.getCity(),
+                s.getContactName(), s.getContactPhone(), s.getMaskCode(), s.getStatus(),
+                (int) on, (int) expiring, last == null ? null : last.getAppliedAt(), props.getStockTtlDays());
+    }
+
+    /**
+     * 取值在集合里就用它，否则用默认值。<b>不能直接 {@code Set.of(...).contains(v)}</b>：
+     * 不可变集合对 null 抛 NPE，而这些字段端上都可以不传 —— 不传的老调用方会直接 500。
+     */
+    static String oneOf(String v, Set<String> allowed, String dflt) {
+        return v != null && allowed.contains(v) ? v : dflt;
+    }
+
+    static String trimmed(String v, int max) {
+        if (v == null) {
+            return null;
+        }
+        String s = v.trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        return s.length() > max ? s.substring(0, max) : s;
+    }
+}

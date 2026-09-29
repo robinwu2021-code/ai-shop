@@ -40,6 +40,13 @@ public interface WxSubscribePort {
      * 所以它不是「订阅关系」而是「一次预约」：发完额度归零，用户要再点一次收藏才有下一条。
      */
     String SCENE_NEW_GOODS = "NEW_GOODS";
+    /**
+     * 场景：元器件询价有结果了（平台报价 / 暂无货源）。
+     *
+     * <p><b>一次授权只够一条</b>：买家提交询价时弹一次授权，正好覆盖这张单的结果通知。
+     * 平台改价再发一次时多半已经没有额度 —— 那一次由站内信兜底。
+     */
+    String SCENE_ELEC_QUOTED = "ELEC_QUOTED";
 
     /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
@@ -87,6 +94,17 @@ public interface WxSubscribePort {
      */
     SendResult sendNewGoods(String openId, String goodsTitle, String goodsDesc,
                             long onSaleAt, String page, String tip);
+
+    /**
+     * 元器件询价结果通知。
+     *
+     * @param rfqNo      询价单号
+     * @param summary    料号概述，如「STM32F103C8T6 等 3 项」
+     * @param resultText 结果的人话（「已报价」「暂无货源」），≤5 字 —— 模板里多半是 phrase 类字段
+     * @param tip        提示语；null 用通道的默认话术
+     */
+    SendResult sendElecQuoted(String openId, String rfqNo, String summary, String resultText, String page,
+                              String tip);
 
     class WxSubscribeException extends RuntimeException {
         /** 网络类失败可重试；微信业务码（额度不足、模板被封）重试一万次也是同一个结果。 */

@@ -51,6 +51,8 @@
              与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
              这个是「数据边界不同」：它的表不在 ai_shop 里 -->
         <module>shop-inventory</module>
+        <!-- 电子元器件：独立进程（elec-svc）+ 独立库（ai_shop_elec）。主应用不引它，只给它开 /internal/elec -->
+        <module>elec</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
         <module>shop-channel</module>
         <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->

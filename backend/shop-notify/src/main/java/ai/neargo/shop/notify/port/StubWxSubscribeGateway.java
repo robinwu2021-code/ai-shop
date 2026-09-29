@@ -62,6 +62,12 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
                         + " -> " + page);
     }
 
+    @Override
+    public SendResult sendElecQuoted(String openId, String rfqNo, String summary, String resultText, String page,
+                                     String tip) {
+        return record(openId, SCENE_ELEC_QUOTED, "询价" + rfqNo + " " + summary + " " + resultText + " -> " + page);
+    }
+
     private synchronized SendResult record(String openId, String scene, String summary) {
         sent.addLast(new Sent(openId, scene, summary));
         while (sent.size() > KEEP) {

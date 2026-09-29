@@ -107,25 +107,36 @@ public class WxSubscribeSender {
                 openId -> port.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
     }
 
-    private void send(String userNo, String scene, java.util.function.Consumer<String> call) {
+    /**
+     * 元器件询价有结果了。<b>返回送没送到</b>（另外三个场景不需要这个返回值：它们的事实记录在订单上；
+     * 元器件是独立服务，它据此写自己库里的 buyer_notified_at）。
+     */
+    public boolean elecQuoted(String userNo, String rfqNo, String summary, String resultText, String page) {
+        return send(userNo, WxSubscribePort.SCENE_ELEC_QUOTED,
+                openId -> port.sendElecQuoted(openId, rfqNo, summary, resultText, page, null));
+    }
+
+    private boolean send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {
-            return;   // 场景没配模板：功能未开通，不是错误
+            return false;   // 场景没配模板：功能未开通，不是错误
         }
         var openId = identityPort.wxOpenIdMp(userNo);
         if (openId.isEmpty()) {
-            return;   // 没从小程序登录过，没有可发的地址
+            return false;   // 没从小程序登录过，没有可发的地址
         }
         if (!consumeQuota(userNo, templateId)) {
             log.debug("[wxsub] 无额度跳过 userNo={} scene={}", userNo, scene);
-            return;
+            return false;
         }
         try {
             call.accept(openId.get());
+            return true;
         } catch (RuntimeException e) {
             // 装饰器已留痕 FAILED；这里只保证事件消费不被通道抖动拖进重试
             log.warn("[wxsub] 发送失败（已留痕，不重试）userNo={} scene={}: {}",
                     userNo, scene, e.getMessage());
+            return false;
         }
     }
 

@@ -83,3 +83,7 @@ shop:
     # 固定签名密钥。不配的话每次启动随机生成（生产必须配 SHOP_MEDIA_SIGN_SECRET），
     # 而随机密钥下「签名 URL 能打开」这条断言就无从谈起。
     sign-secret: test-secret-for-media-signing
+
+# 主系统给独立服务（元器件 elec-svc）开的 /internal/elec/** 用这个共享密钥。
+# 生产没配就一律拒绝；测试里配一个，InternalElecEndpointTest 带它、也验不带时被拒
+shop.services.internal-token: test-internal-token

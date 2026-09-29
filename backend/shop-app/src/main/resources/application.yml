@@ -271,6 +271,10 @@ shop:
       # 新品开售提醒（mp 模板 383）。缺它不拦启动，但端上收集的授权会白点：
       # 额度扣得下去、发的时候没有模板号可用
       new-goods: ${WX_TPL_NEW_GOODS:}
+      # 元器件询价结果通知（可选，元器件服务在用）。模板是在 mp 后台自选的，所以字段名也配：
+      # 按「单号,料号概述,结果,提示语」四个位置写模板里的字段名（没有的位置留空，如 "character_string1,thing2,,thing4"）
+      elec-quoted: ${WX_TPL_ELEC_QUOTED:}
+      elec-quoted-fields: ${WX_TPL_ELEC_QUOTED_FIELDS:character_string1,thing2,phrase3,thing4}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。

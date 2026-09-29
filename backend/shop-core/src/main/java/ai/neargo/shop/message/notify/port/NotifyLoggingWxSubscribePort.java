@@ -88,6 +88,13 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
                 () -> delegate.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
     }
 
+    @Override
+    public SendResult sendElecQuoted(String openId, String rfqNo, String summary, String resultText, String page,
+                                     String tip) {
+        return logged(openId, SCENE_ELEC_QUOTED,
+                () -> delegate.sendElecQuoted(openId, rfqNo, summary, resultText, page, tip));
+    }
+
     /**
      * 场景 → **我们自己的**模板号。与 {@code delegate.templateId(scene)} 不同：
      * 那个返回微信侧报备的 id（会随重新报备而变），这个是库里那份可查可改的模板。
@@ -101,6 +108,7 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
         return switch (scene) {
             case WxSubscribePort.SCENE_REFUNDED -> "TPL_WX_REFUNDED";
             case WxSubscribePort.SCENE_NEW_GOODS -> "TPL_WX_NEW_GOODS";
+            case WxSubscribePort.SCENE_ELEC_QUOTED -> "TPL_WX_ELEC_QUOTED";
             default -> "TPL_WX_ARRIVED";
         };
     }

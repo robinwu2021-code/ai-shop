@@ -53,6 +53,16 @@ public class WxSubscribeGateway implements WxSubscribePort {
     private final String tplOrderArrived;
     private final String tplRefunded;
     private final String tplNewGoods;
+    /** 元器件询价结果通知（可选）。模板是用户在 mp 后台自选的，字段名见 {@link #elecQuotedFields} */
+    private final String tplElecQuoted;
+    /**
+     * 元器件模板的四个字段名，按「单号, 料号概述, 结果, 提示语」的顺序。
+     *
+     * <p><b>与另外三个场景不同，这里不写死</b>：那三个模板是已经报备过的，字段名定了；
+     * 这一个要等用户在 mp 后台选定模板才知道长什么样（公共模板库里「报价结果」一类的字段各不相同）。
+     * 配成环境变量，选定模板那天改一个变量，不用发版。字段类型看前缀截断（thing 20 字、phrase 5 字…）
+     */
+    private final String[] elecQuotedFields;
     /** {@code developer} / {@code trial} / {@code formal}。联调时切 trial 免得打扰真实用户。 */
     private final String mpState;
 
@@ -60,12 +70,22 @@ public class WxSubscribeGateway implements WxSubscribePort {
     private volatile String token;
     private volatile long tokenExpireAt;
 
+    /** 不带元器件场景的构造（元器件那个模板是可选的，缺了只是那一个场景关着）。测试直接 new 它 */
+    public WxSubscribeGateway(String host, String appid, String secret, String tplOrderArrived, String tplRefunded,
+                              String tplNewGoods, String mpState, boolean loginStub) {
+        this(host, appid, secret, tplOrderArrived, tplRefunded, tplNewGoods, "", "", mpState, loginStub);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public WxSubscribeGateway(@Value("${shop.wx.host:https://api.weixin.qq.com}") String host,
                               @Value("${shop.wx.appid:}") String appid,
                               @Value("${shop.wx.secret:}") String secret,
                               @Value("${shop.wx.templates.order-arrived:}") String tplOrderArrived,
                               @Value("${shop.wx.templates.refunded:}") String tplRefunded,
                               @Value("${shop.wx.templates.new-goods:}") String tplNewGoods,
+                              @Value("${shop.wx.templates.elec-quoted:}") String tplElecQuoted,
+                              @Value("${shop.wx.templates.elec-quoted-fields:character_string1,thing2,phrase3,thing4}")
+                              String elecQuotedFields,
                               @Value("${shop.wx.mp-state:formal}") String mpState,
                               @Value("${shop.wx.login.stub:true}") boolean loginStub) {
         this.host = host;
@@ -74,6 +94,9 @@ public class WxSubscribeGateway implements WxSubscribePort {
         this.tplOrderArrived = tplOrderArrived;
         this.tplRefunded = tplRefunded;
         this.tplNewGoods = tplNewGoods;
+        this.tplElecQuoted = tplElecQuoted;
+        this.elecQuotedFields = elecQuotedFields == null ? new String[0]
+                : java.util.Arrays.stream(elecQuotedFields.split(",", -1)).map(String::trim).toArray(String[]::new);
         this.mpState = mpState;
         /*
          * 两条通道的开关拆开之后，出现了一个此前不可能存在的组合：登录走桩、订阅消息真发。
@@ -151,6 +174,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
             case SCENE_ORDER_ARRIVED -> tplOrderArrived;
             case SCENE_REFUNDED -> tplRefunded;
             case SCENE_NEW_GOODS -> tplNewGoods;
+            case SCENE_ELEC_QUOTED -> tplElecQuoted;
             default -> null;
         };
     }
@@ -204,6 +228,46 @@ public class WxSubscribeGateway implements WxSubscribePort {
         data.put("thing7", clamp(tip == null || tip.isBlank()
                 ? "想继续收到，回店铺再点一次收藏" : tip, 20));
         return send(openId, tplNewGoods, page, data);
+    }
+
+    @Override
+    public SendResult sendElecQuoted(String openId, String rfqNo, String summary, String resultText, String page,
+                                     String tip) {
+        if (tplElecQuoted == null || tplElecQuoted.isBlank()) {
+            throw new WxSubscribeException(
+                    "元器件询价结果通知未接入（WX_TPL_ELEC_QUOTED 未配）—— 站内信照发", false);
+        }
+        if (elecQuotedFields.length < 4) {
+            throw new WxSubscribeException(
+                    "WX_TPL_ELEC_QUOTED_FIELDS 要按「单号,料号概述,结果,提示语」配四个字段名", false);
+        }
+        String[] values = {rfqNo, summary, resultText,
+                tip == null || tip.isBlank() ? "点开查看报价，报价有有效期" : tip};
+        Map<String, String> data = new LinkedHashMap<>();
+        for (int i = 0; i < 4; i++) {
+            if (!elecQuotedFields[i].isEmpty()) {
+                data.put(elecQuotedFields[i], clampByType(elecQuotedFields[i], values[i]));
+            }
+        }
+        return send(openId, tplElecQuoted, page, data);
+    }
+
+    /** 按微信字段类型截断：thing 20 字、phrase 5 字、character_string 32 位、name 10 字；其余原样 */
+    private static String clampByType(String field, String v) {
+        String s = v == null ? "" : v;
+        if (field.startsWith("thing")) {
+            return clamp(s, 20);
+        }
+        if (field.startsWith("phrase")) {
+            return clamp(s, 5);
+        }
+        if (field.startsWith("character_string")) {
+            return clamp(s, 32);
+        }
+        if (field.startsWith("name")) {
+            return clamp(s, 10);
+        }
+        return s;
     }
 
     /** 微信 {@code date} 类字段的格式。**不要改成 ISO** —— 那种格式微信不认，整条被拒。 */
