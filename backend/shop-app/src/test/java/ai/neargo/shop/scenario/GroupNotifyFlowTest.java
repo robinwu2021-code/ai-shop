@@ -74,6 +74,19 @@ class GroupNotifyFlowTest {
 
     @AfterEach
     void cleanUp() {
+        /*
+         * **先把自己的事件投完，再删数据。**
+         *
+         * 顺序反了会留下一个跨用例的坑：站内信的 delete 是**逻辑删除**，
+         * 而 {@code uk_msg_dedup} 是不带 deleted 的唯一键 —— 删过的行照样占着 dedupKey。
+         * 于是本用例没投完的事件会在**下一个用例**的 drain 里被投递，
+         * 撞上那条还占着的 dedup 行，表现是 outbox 反复 retry。
+         *
+         * 它不在本类里报错，而是把 `sys_outbox.retrying` 顶起来 ——
+         * 真正变红的是别人家的 {@code OpsLinkHealthFlowTest}（它判「投递任务是不是停了」，
+         * 而 retrying 非 0 会先落到 CONSUMER_FAILING）。跨类的假失败就是这么来的。
+         */
+        drain();
         if (group != null) {
             memberMapper.delete(Wrappers.<MktGroupMember>lambdaQuery().eq(MktGroupMember::getGroupNo, group));
             groupMapper.delete(Wrappers.<MktGroupBuy>lambdaQuery().eq(MktGroupBuy::getGroupNo, group));

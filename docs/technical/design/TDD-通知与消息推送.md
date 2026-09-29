@@ -674,7 +674,18 @@ status = CASE WHEN status = 'OPEN' AND joined_count + 1 >= min_count
 
 `GroupNotifyFlowTest` 5/5。消融「幂等」→ `secondCallDoesNotNotifyAgain` 变红。
 
-写测试时踩到一条值得记的：mapper 的 `delete` 是**逻辑删除**，
+写测试时踩到同一个坑的两面，都是「逻辑删除仍占唯一键」：
+
+**其一**：mapper 的 `delete` 是**逻辑删除**，
 而 `uk_group_no` 是**不带 deleted 的**唯一键 —— 清理过的行照样占着号，
 下一个用例插同一个号就撞。那种失败报的是「唯一键冲突」，
 与被测的东西毫无关系，很容易被当成「测试不稳」。改成每个用例一个团号。
+
+**其二**（更隐蔽）：`@AfterEach` 里删站内信之前**必须先把自己的事件投完**。
+顺序反了的话，本用例没投完的事件会在**下一个用例**的 drain 里被投递，
+撞上那条还占着 `uk_msg_dedup` 的逻辑删除行，表现是 outbox 反复 retry。
+
+**它不在本类里报错**：真正变红的是别人家的 `OpsLinkHealthFlowTest` ——
+它判「投递任务是不是停了」，而 `sys_outbox.retrying` 非 0 会先落到
+`CONSUMER_FAILING`，于是断言拿到的是 `CONSUMER_FAILING` 而不是 `DISPATCHER_STALLED`。
+**跨类的假失败就是这么来的**，而错误信息指向的是一个与真因毫无关系的地方。
