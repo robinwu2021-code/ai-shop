@@ -44,8 +44,20 @@ say() { printf '\033[36m›\033[0m %s\n' "$1"; }
 ok()  { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 die() { printf '  \033[31m✗\033[0m %s\n' "$1" >&2; exit 1; }
 
-HEAD_SHA="$(git rev-parse --short HEAD)"
-say "$APP ← HEAD $HEAD_SHA  $(git log -1 --format=%s | cut -c1-46)"
+# 上线哪一版。默认 HEAD；**可以指定一个提交**：
+#
+#   REF=986da6a83 scripts/deploy-frontend.sh c-app
+#
+# 为什么需要它：这个目录常有五六个会话同时提交，HEAD 每隔几分钟就换一次。
+# 「我跑过闸门的那一版」与「此刻的 HEAD」因此不是同一个东西 ——
+# 不给这个开关的话，验完再发之间必然夹着别人刚提交、还没过闸的代码，
+# 而那正是本脚本开头那条「别人的页面被一起推上线」在提交之后的变体。
+# 顺带也挡住「发一个还没推到 origin 的提交」：那样线上跑的代码别人复现不出来。
+REF="${REF:-HEAD}"
+HEAD_SHA="$(git rev-parse --short "$REF")"
+git rev-parse --verify --quiet "$REF^{commit}" >/dev/null || die "REF 不是一个提交：$REF"
+say "$APP ← $HEAD_SHA  $(git log -1 --format=%s "$REF" | cut -c1-46)"
+[ "$REF" = "HEAD" ] || say "（指定了 REF=$REF，不是当前 HEAD $(git rev-parse --short HEAD)）"
 
 # ── 锁（每个前端一把，互不阻塞）────────────────────────────────────────────
 LOCKDIR="$WWW/.deploy-$APP.lock"
@@ -73,7 +85,7 @@ ok "已拿到 $APP 的部署锁"
 #      副本里没缓存、本机又出不去，报的是一串指向 ibm_plex_sans_*.module.css 的
 #      module-not-found，看着像依赖缺失，其实是拉不到字体。
 WT="$(mktemp -d)/fe-head"
-git worktree add -q --detach "$WT" HEAD
+git worktree add -q --detach "$WT" "$REF"
 say "准备依赖（拷不软链）…"
 cp -Rc "$ROOT/node_modules" "$WT/node_modules" 2>/dev/null || cp -R "$ROOT/node_modules" "$WT/node_modules"
 [ -d "$ROOT/$APP/node_modules" ] && { cp -Rc "$ROOT/$APP/node_modules" "$WT/$APP/node_modules" 2>/dev/null \
