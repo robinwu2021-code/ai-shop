@@ -26118,6 +26118,27 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "StlBill",
+        "name": "DIFF_OVERWEIGHT",
+        "value": "OVERWEIGHT",
+        "zh": "实付高于代收：商家填的标称重量不准。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlBill",
+        "name": "DIFF_REGION_SURCHARGE",
+        "value": "REGION_SURCHARGE",
+        "zh": "实付高于代收：收货地在模板的加收地区。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlBill",
+        "name": "DIFF_OVER_CAP",
+        "value": "OVER_CAP",
+        "zh": "实付超过代收的 200% 上限：只扣到上限，差额等人工处理（§9 AC24）。",
+        "module": "pay/pay-domain"
+      },
+      {
         "host": "StlFeeRule",
         "name": "MERCHANT_OWNED",
         "value": "MERCHANT_OWNED",
@@ -27588,6 +27609,20 @@
         "module": "shop-base"
       },
       {
+        "host": "AfterSaleDecided",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "商家驳回。",
+        "module": "shop-base"
+      },
+      {
+        "host": "AfterSaleDecided",
+        "name": "RETURN_WAIT",
+        "value": "RETURN_WAIT",
+        "zh": "同意退货退款，等买家寄回。",
+        "module": "shop-base"
+      },
+      {
         "host": "ServiceName",
         "name": "PLATFORM",
         "value": "PLATFORM",
@@ -28663,6 +28698,20 @@
         "name": "AFTER_SALE_REFUNDED",
         "value": "AFTER_SALE_REFUNDED",
         "zh": "售后已退款（C 端）",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "AFTER_SALE_REJECTED",
+        "value": "AFTER_SALE_REJECTED",
+        "zh": "售后被商家驳回（C 端）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "AFTER_SALE_RETURN_WAIT",
+        "value": "AFTER_SALE_RETURN_WAIT",
+        "zh": "退货退款已同意，等买家寄回（C 端）。",
         "module": "shop-core"
       },
       {
@@ -34951,6 +35000,22 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "StlBill",
+      "name": "PLATFORM_CALL",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_PLATFORM_CALL",
+      "zh": "与 SettleSourcePort.SHIP_PLATFORM_CALL 同值 —— 取值域定义在 spi，这里只是转出口。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "StlBill",
+      "name": "MERCHANT_SELF",
+      "type": "String",
+      "value": "ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_MERCHANT_SELF",
+      "zh": "与 SettleSourcePort.SHIP_MERCHANT_SELF 同值。",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "StlFeeRule",
       "name": "BP_SCALE",
       "type": "int",
@@ -36266,7 +36331,7 @@
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE, SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED)",
+      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE, SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED, AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT)",
       "zh": "全部场景码。",
       "module": "shop-core"
     },
