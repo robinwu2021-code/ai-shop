@@ -89,6 +89,7 @@ export default {
     favDone: "已收藏，可在「我的 → 收藏」查看",
     favUndone: "已取消收藏",
     whyOutOfScope: "当前收货地址不在销售区域（{scope}）",
+    whyOffSale: "商家已下架这件商品",
     changeAddress: "换地址",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "商品",

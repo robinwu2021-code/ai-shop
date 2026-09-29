@@ -272,6 +272,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             applyStoreScopedSale(w, merchantNo, storeNo, "ON_SALE".equals(status));
         } else {
             applyStatus(w, status);
+            /*
+             * ★ **「全部」页签也按门店筛**（2026-09-30）。
+             *
+             * 此前只有「在售/已下架」两个页签按店，「全部」走主体级全量 ——
+             * 于是多门店商家切到哪家店，第一屏都是同一批货：
+             * 鲜果店的列表里列着粮油，粮油店的列表里列着水果。
+             * 证照合并之后尤其明显（四家店并成一个主体，商品池跟着并了）。
+             *
+             * 排除的是「已过审 且 本店未上架」那一批。**审核态三个页签不受影响** ——
+             * DRAFT / PENDING / REJECTED 不在「卖不卖」这一轴上，
+             * 而且正是等店主动手的那一批，按店藏起来等于让他找不到要改的货。
+             *
+             * **上架路径不丢**：本店未上架的货全在「已下架」页签里
+             * （applyStoreScopedSale 的 OFF 分支同时覆盖「有行且 off」与「无行」两支），
+             * 在那儿点「上架」照旧建行。所以不需要新页签、新接口或「加入本店」入口。
+             */
+            if (status == null || status.isBlank()) {
+                excludeOffSaleHere(w, merchantNo, storeNo);
+            }
         }
         // 新建的排在前面：店主刚录完一件商品，第一件事是看它在不在
         w.orderByDesc(PrdGoods::getId);
@@ -335,6 +354,49 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         w.and(q -> q.in(!hit.isEmpty(), PrdGoods::getGoodsNo, hit)
                 .or(x -> x.notIn(PrdGoods::getGoodsNo, managed)
                         .eq(PrdGoods::getOnSale, wantOnSale)));
+    }
+
+    /**
+     * 「全部」页签：把**本店未上架**的已过审商品挡在外面。
+     *
+     * <p>与 {@link #applyStoreScopedSale} 的判据同一套，但只挡「卖不卖」那一轴 ——
+     * 审核中 / 已驳回 / 草稿照常留在列表里，它们是等店主动手的那一批。
+     *
+     * <p><b>「本店未上架」有两种长相，都要认</b>（三态语义，见 {@code storeOnSale}）：
+     * 本店那一行是 {@code on_sale=0}，或者这件货按店管理了而**本店根本没有行**。
+     * 线上（虹选科技，4 店 15 件）两种都存在：香梨只在鲜果两店有行，
+     * 在粮油店没有行；金龙鱼四店都有行，鲜果两店那行是 0。只认一种的话，
+     * 另一种照样会串到别的店的列表里。
+     *
+     * <p>一件都没按店管理的商家整段跳过 —— 那是主体级时代，行为逐字不变。
+     */
+    private void excludeOffSaleHere(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PrdGoods> w,
+            String merchantNo, String storeNo) {
+        if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()) {
+            return;
+        }
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getEntityNo, merchantNo)));
+        if (rows.isEmpty()) {
+            return;
+        }
+        Set<String> managed = rows.stream()
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> onHere = rows.stream()
+                .filter(r -> storeNo.equals(r.getStoreNo()) && Boolean.TRUE.equals(r.getOnSale()))
+                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo)
+                .collect(java.util.stream.Collectors.toSet());
+        managed.removeAll(onHere);
+        if (managed.isEmpty()) {
+            return;
+        }
+        // 审核态优先：只挡已过审的那一批，PENDING/REJECTED/DRAFT 原样留下
+        w.and(q -> q.ne(PrdGoods::getAuditStatus, APPROVED)
+                .or(x -> x.notIn(PrdGoods::getGoodsNo, managed)));
     }
 
     /** 对外的「缺货」筛选值。库里没有这个状态，它是按 SKU 可用量算出来的 */

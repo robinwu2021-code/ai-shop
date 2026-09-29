@@ -86,6 +86,7 @@ export default {
     favDone: "تم الحفظ — تجده في حسابي ← المحفوظات",
     favUndone: "أُزيل من المحفوظات",
     whyOutOfScope: "عنوان التوصيل خارج منطقة البيع ({scope})",
+    whyOffSale: "أوقف البائع عرض هذا المنتج",
     changeAddress: "تغيير العنوان",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "المنتج",

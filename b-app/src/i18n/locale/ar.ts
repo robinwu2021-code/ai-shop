@@ -325,6 +325,8 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     saveAndSubmit: "حفظ وإرسال",
     statusON_SALE: "معروض", statusOFF_SALE: "موقوف", statusPENDING: "قيد المراجعة", statusREJECTED: "مرفوض", statusOUT_OF_STOCK: "نفد المخزون",
     stock: "المخزون", onSale: "عرض", offSale: "إيقاف", edit: "تعديل", empty: "لا توجد منتجات بعد؛ أضف واحداً",
+    offSaleConfirmTitle: "إيقاف عرض هذا المنتج؟",
+    offSaleConfirmHint: "لن يراه زبائن {store} ولن يتمكنوا من شرائه. يمكنك عرضه مجدداً في أي وقت.",
     // ---- النشر بنسختين (V279): تعديل المنتج المعروض يُحفظ كمسودة
     hasDraftRow: "تغييرات غير منشورة · راجعها",
     savedAsDraft: "حُفظت كمسودة — المنتج المعروض لم يتغيّر",

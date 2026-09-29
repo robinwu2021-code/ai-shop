@@ -36,10 +36,15 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
     /** 门店价：取价入口唯一的覆盖层来源 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper;
 
+    /** 门店级上下架：这一列此前在买家链路上**没有任何读者**，见 {@link #storeOffSale} */
+    private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
+
     public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json,
                               ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
+                              ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
                               CampaignPort campaignPort) {
         this.storePriceMapper = storePriceMapper;
+        this.storeGoodsMapper = storeGoodsMapper;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
@@ -99,6 +104,53 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         return out;
     }
 
+    /**
+     * 这一单要落的那家店里，哪些商品是<b>不卖</b>的。
+     *
+     * <p>判据与 {@code MerchantGoodsServiceImpl.storeOnSale} 逐条同款（三态语义）：
+     * <ul>
+     *   <li>这件货一条店级行都没有 → 跟随主体级 {@code prd_goods.on_sale}，不进这个集合
+     *   <li>有了任意一条 → 整体转店级管理，<b>本店那行是 false、或者本店根本没有行</b>，都算不卖
+     * </ul>
+     *
+     * <p><b>为什么两种长相都要认。</b> 线上（虹选科技，4 店 15 件）两种都存在：
+     * 香梨只在鲜果两店有行，在粮油店<b>没有行</b>；金龙鱼四店都有行，
+     * 鲜果两店那行是 {@code on_sale=0}。只认「有行且为 0」的话，
+     * 香梨在粮油店照样能被买走；只认「有没有行」的话，金龙鱼在鲜果店照样能被买走。
+     *
+     * <p>这一列此前在买家链路上<b>没有任何读者</b>：社区池按它算（所以搜不到），
+     * 而详情直链与下单校验读的都是主体总闸 —— 店主在 A 店点了下架，
+     * 货从列表里消失了，分享链接却照样下单成功，且不报任何错。
+     *
+     * @param storeByEntity 主体号 → 这一单在这家主体落的门店号；空表示没有门店上下文，
+     *                      此时返回空集（行为与改造前逐字相同）
+     */
+    private java.util.Set<String> storeOffSale(Map<String, String> storeByEntity, List<String> goodsNos) {
+        if (storeByEntity == null || storeByEntity.isEmpty() || goodsNos.isEmpty()) {
+            return java.util.Set.of();
+        }
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
+        if (rows.isEmpty()) {
+            return java.util.Set.of();
+        }
+        // 先分组：一次遍历同时得到「哪些货按店管理」与「本店哪些在卖」
+        java.util.Set<String> managed = new java.util.HashSet<>();
+        java.util.Set<String> onHere = new java.util.HashSet<>();
+        for (var r : rows) {
+            managed.add(r.getGoodsNo());
+            if (Boolean.TRUE.equals(r.getOnSale())
+                    && r.getStoreNo() != null
+                    && r.getStoreNo().equals(storeByEntity.get(r.getEntityNo()))) {
+                onHere.add(r.getGoodsNo());
+            }
+        }
+        managed.removeAll(onHere);
+        return managed;
+    }
+
     @Override
     public Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity) {
         if (skuNos == null || skuNos.isEmpty()) {
@@ -152,6 +204,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          */
         Map<String, Long> storePrice = storePrices(storeByEntity, skuNos);
 
+        /*
+         * 门店级下架：与门店价同一个覆盖层，但**方向相反** ——
+         * 价格「没有行就用主体价」，上下架「有行的商品，没有本店那行就是不卖」。
+         * 相反是对的：价格取错是白送，上下架取错是把店主已经下掉的货接着卖。
+         */
+        java.util.Set<String> offHere = storeOffSale(storeByEntity, goodsNos);
+
         Map<String, SkuSnapshot> result = new HashMap<>();
         for (PrdSku sku : skus) {
             PrdGoods g = goodsMap.get(sku.getGoodsNo());
@@ -166,7 +225,8 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                             storePrice.getOrDefault(sku.getSkuNo(),
                                     sku.getPrice() == null ? 0L : sku.getPrice())),
                     Math.max(available, 0),
-                    Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus()),
+                    Boolean.TRUE.equals(g.getOnSale()) && "APPROVED".equals(g.getAuditStatus())
+                            && !offHere.contains(sku.getGoodsNo()),
                     readList(g.getFulfillments()),
                     g.getGroupPriceMinor(), g.getGroupMinCount(),
                     g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram()));

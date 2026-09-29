@@ -2122,9 +2122,15 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, String> storeByEntity = storesOfEntities(cmd,
                 snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::merchantNo).distinct().toList());
-        if (!goodsPort.storePrices(storeByEntity, skuNos).isEmpty()) {
-            snapshots = goodsPort.snapshot(skuNos, storeByEntity);
-        }
+        /*
+         * **无条件重算，不再拿「有没有配门店价」当开关**（2026-09-30）。
+         *
+         * 那个 if 原本是省一次查询：不分店定价的商家走不到这一支。
+         * 但快照里除了价格还有 `onSale`，而门店级上下架恰恰只在这一支里才读得到 ——
+         * 于是「A 店把货下架了」对没配门店价的商家<b>完全无效</b>，
+         * 分享链接照样下单成功。省下的那次查询，代价是卖出店主已经下掉的货。
+         */
+        snapshots = goodsPort.snapshot(skuNos, storeByEntity);
 
         List<Line> lines = new ArrayList<>();
         for (CreateOrderCommand.Item item : requested) {

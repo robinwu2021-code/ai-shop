@@ -336,6 +336,9 @@ class StoreScopedVisibilityFlowTest {
     @Autowired
     private ai.neargo.shop.user.mapper.UserMappers.UserMapper userMapper;
 
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+
     // ------------------------------------------------------------ 脚手架
 
     /**
@@ -556,6 +559,171 @@ class StoreScopedVisibilityFlowTest {
         assertThat(buyerSees("CM001", goodsNo))
                 .as("重新启用后要能再被搜到 —— 否则停用一次就等于永久下架")
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 在 A 店下架的货，A 店的买家下不了单 —— prd_store_goods.on_sale 此前在下单链路上没有读者")
+    void goodsOffSaleAtThisStoreCannotBeOrdered() throws Exception {
+        String biz = merchant("12600180012", "两家店卖法不同的商家");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "只有这家店还卖它");
+        TestStoreCategory.open(mvc(), json, biz, storeB, "CAT210");
+
+        /*
+         * 两家店都上架 → 这件货转成「按店管理」，而且主体总闸是开的。
+         * **主体总闸必须留着开**，否则下架 A 店之后主体也跟着关，
+         * 那条旧的主体级判据就能拦住下单，这条用例会变成永远绿的。
+         */
+        String goodsNo = onSaleGoodsAt(biz, storeB, "A 店不卖了的柠檬");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .header("X-Store-No", storeA)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String skuNo = firstSkuNo(goodsNo);
+        String buyer = login("13800180012");
+        addToCart(buyer, goodsNo, skuNo, 1);
+
+        /*
+         * **判据用 preview + storeChoices，不用加购。**
+         * 加购那条路根本不判上下架（`CartServiceImpl.add` 只判「仅活动可售」），
+         * 拿它当判据的话这条用例两边都绿，什么也说明不了。
+         * storeChoices 让「买家要去哪家店」变成用例自己说的事，
+         * 而不是靠自提点或默认社区去猜 —— 猜错了测到的就是另一家店。
+         */
+        assertThat(previewOk(buyer, merchantNo, storeA))
+                .as("前置：A 店还在卖的时候，结算页本来是算得出来的")
+                .isTrue();
+
+        offShelfAt(biz, storeA, goodsNo);
+        assertThat(entityOnSale(goodsNo))
+                .as("前置：B 店还在卖，主体总闸必须仍是开的，否则这条用例测不到门店级那一层")
+                .isTrue();
+
+        /*
+         * ★ 修之前这里是通的：`GoodsQueryPortImpl.snapshot` 的 onSale 只读
+         * `prd_goods.on_sale`（主体总闸），而门店行在下单链路上**没有任何读者**。
+         * 更糟的是，带门店上下文的那一支此前还挂在「有没有配门店价」这个开关后面
+         * （`OrderServiceImpl` 里的 if），不分店定价的商家连那一支都走不到。
+         *
+         * 消融：把 snapshot 里的 `&& !offHere.contains(...)` 去掉，这条必红。
+         */
+        assertThat(previewOk(buyer, merchantNo, storeA))
+                .as("这件货在买家要去的那家店已经下架 —— 结算页不该还算得出来")
+                .isFalse();
+        assertThat(previewOk(buyer, merchantNo, storeB))
+                .as("对照量：B 店还在卖，那边必须仍然通 —— 否则这条用例可能只是把整条路测坏了")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ B 端「全部」页签要按门店筛 —— 此前切哪家店都是同一批货")
+    void allTabIsScopedToCurrentStore() throws Exception {
+        String biz = merchant("12600180013", "两家店卖不同品类的商家");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "第二家店");
+        TestStoreCategory.open(mvc(), json, biz, storeB, "CAT210");
+
+        String onlyAtB = onSaleGoodsAt(biz, storeB, "只有 B 店卖的货");
+        offShelfAt(biz, storeA, onlyAtB);
+
+        assertThat(allTabAt(biz, storeB))
+                .as("B 店在卖它，B 店的「全部」里当然要有")
+                .contains(onlyAtB);
+
+        /*
+         * ★ 修之前这里是包含的：「全部」页签走主体级全量，只有「在售/已下架」按店筛。
+         * 证照合并之后最明显 —— 四家店并成一个主体，鲜果店的列表里列着粮油。
+         *
+         * 消融：把 list() 里的 excludeOffSaleHere 调用去掉，这条必红。
+         */
+        assertThat(allTabAt(biz, storeA))
+                .as("A 店没上架它，A 店的「全部」里不该有")
+                .doesNotContain(onlyAtB);
+
+        // 上架路径不丢：它还在「已下架」页签里，店主能在那儿把它重新上架
+        assertThat(offSaleTabAt(biz, storeA))
+                .as("本店未上架的货要留在「已下架」页签里 —— 否则店主永远上不了架")
+                .contains(onlyAtB);
+    }
+
+    @Test
+    @DisplayName("★★ 审核中/已驳回的货不受门店筛影响 —— 那是等店主动手的一批，藏起来他就找不到了")
+    void pendingGoodsStayInAllTabRegardlessOfStore() throws Exception {
+        String biz = merchant("12600180014", "有待审商品的商家");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "第二家店");
+        TestStoreCategory.open(mvc(), json, biz, storeB, "CAT210");
+
+        // 先让这家商家进入「按店管理」时代：不这么做 excludeOffSaleHere 整段跳过，用例测不到东西
+        String sold = onSaleGoodsAt(biz, storeB, "让商家转成按店管理的货");
+        offShelfAt(biz, storeA, sold);
+
+        String pending = saveGoods(biz, "还在审核里的货");   // 不过审
+        assertThat(allTabAt(biz, storeA))
+                .as("审核中的货在哪家店的「全部」里都要看得见")
+                .contains(pending);
+    }
+
+    /** 「全部」页签（不传 status）在指定门店下看到的货号 */
+    private String allTabAt(String token, String storeNo) throws Exception {
+        return mvc().perform(get("/biz/goods").param("size", "50")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    /** 「已下架」页签 —— 上架入口就在这里，它必须仍然收得住本店未上架的货 */
+    private String offSaleTabAt(String token, String storeNo) throws Exception {
+        return mvc().perform(get("/biz/goods").param("status", "OFF_SALE").param("size", "50")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private String firstSkuNo(String goodsNo) throws Exception {
+        return json.readTree(mvc().perform(get("/mp/goods/" + goodsNo))
+                        .andReturn().getResponse().getContentAsString())
+                .get("data").get("skus").get(0).get("skuNo").asString();
+    }
+
+    private void addToCart(String token, String goodsNo, String skuNo, int qty) throws Exception {
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo
+                                + "\",\"qty\":" + qty + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 结算页算得出来吗 —— 不断言码，回一个布尔，让用例自己说该是什么 */
+    private boolean previewOk(String token, String merchantNo, String storeNo) throws Exception {
+        String body = mvc().perform(post("/mp/order/preview")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"storeChoices\":[{"
+                                + "\"merchantNo\":\"" + merchantNo + "\",\"storeNo\":\"" + storeNo + "\"}]}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt() == 0;
+    }
+
+    private boolean entityOnSale(String goodsNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                Boolean.TRUE.equals(goodsMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)
+                        .last("limit 1")).getOnSale()));
     }
 
     /** 在指定门店下架一件货 —— 用来表达「这家店不卖它」 */

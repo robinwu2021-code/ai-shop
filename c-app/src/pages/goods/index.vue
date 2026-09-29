@@ -168,8 +168,21 @@ const appointmentReady = computed(
   () => !needAppointment.value || (!!slotDate.value && !!slotTime.value),
 );
 const buyable = computed(
-  () => !!sku.value && !soldOut.value && !cutoffPassed.value && appointmentReady.value && !outOfScope.value,
+  () => !!sku.value && !soldOut.value && !cutoffPassed.value && appointmentReady.value
+    && !outOfScope.value && !offSale.value,
 );
+
+/**
+ * 商家把它下架了（2026-09-30）。**只在后端明确说 false 时**拦 —— 与 `deliverable` 同一条规矩。
+ *
+ * 此前这一页**一个字都没读过 `onSale`**：下架的货详情页照常打开，
+ * 两颗按钮照常亮着，加购、下单一路通到底。后端从来都下发了这个字段
+ * （线上实测 `onSale: false`），端上没有任何人看它。
+ *
+ * 不做成 404：买家从历史订单、分享链接点进来要能看到自己买过的东西。
+ * 照常展示、不能下单 —— 这也是「已售罄」那条走的路。
+ */
+const offSale = computed(() => goods.value?.onSale === false);
 
 /**
  * 买不了是**为什么**。空串 = 买得了，或者**已经有别的地方说过了**。
@@ -193,6 +206,7 @@ const outOfScope = computed(() => goods.value?.deliverable === false);
 
 const buyBlockedReason = computed(() => {
   if (!goods.value) return "";
+  if (offSale.value) return String(t("goods.whyOffSale"));
   if (outOfScope.value) return String(t("goods.whyOutOfScope", { scope: saleScopeText.value || "—" }));
   if (activityClosed.value) return String(t("goods.whyActivityOnly"));
   if (!sku.value) return String(t("goods.whyNoSku"));

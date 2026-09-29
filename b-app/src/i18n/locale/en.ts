@@ -325,6 +325,8 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     saveAndSubmit: "Save & submit",
     statusON_SALE: "On sale", statusOFF_SALE: "Off sale", statusPENDING: "In review", statusREJECTED: "Rejected", statusOUT_OF_STOCK: "Out of stock",
     stock: "Stock", onSale: "List", offSale: "Delist", edit: "Edit", empty: "No products yet — add one",
+    offSaleConfirmTitle: "Delist this product?",
+    offSaleConfirmHint: "Customers of {store} will no longer see or be able to buy it. You can list it again any time.",
     // ---- Two-version publishing (V279): edits to a live product save as a draft
     hasDraftRow: "Unpublished changes · review",
     savedAsDraft: "Saved as draft — the live product is unchanged",

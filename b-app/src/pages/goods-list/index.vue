@@ -344,6 +344,23 @@ async function toggle(g: Goods) {
     uni.showToast({ title: t("goods.gateBlocked", { s: need }), icon: "none" });
     return;
   }
+  /*
+   * **下架要确认，上架不用。**两边不是同一件事：上架错了顾客多看见一件货，
+   * 下架错了这件货当场从所有买家眼前消失 —— 而列表里相邻两行的按钮位置一模一样，
+   * 滑动时点错一行没有任何提示。
+   *
+   * 写清楚「这家店」：多门店商家点的是本店那一行，不是全主体下架，
+   * 而按钮上只有「下架」两个字，看不出作用范围。
+   */
+  if (!willBeOnSale) {
+    const go = await confirm({
+      title: String(t("goods.offSaleConfirmTitle")),
+      hint: String(t("goods.offSaleConfirmHint", { store: merchant.currentStore?.name || "—" })),
+      confirmText: String(t("goods.offSale")),
+      danger: true,
+    });
+    if (!go) return;
+  }
   try {
     await api.mToggleGoods(g.goodsNo, willBeOnSale);
     await load();

@@ -86,6 +86,7 @@ export default {
     favDone: "Saved — find it in Me → Saved",
     favUndone: "Removed from saved",
     whyOutOfScope: "Your delivery address is outside the sales area ({scope})",
+    whyOffSale: "The seller has taken this item off the shelf",
     changeAddress: "Change address",
     /** 详情页 v2：滑过主图后顶部的三个锚点，与参数里的销售区域 */
     anchorGoods: "Item",

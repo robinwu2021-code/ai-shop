@@ -418,6 +418,8 @@ export default {
     stock: "库存",
     onSale: "上架",
     offSale: "下架",
+    offSaleConfirmTitle: "把这件商品下架？",
+    offSaleConfirmHint: "下架后 {store} 的顾客看不到、也买不了它。随时可以再上架。",
     edit: "编辑",
     empty: "暂无商品",
     // ---- 双版本发布（V279）：在售编辑落草稿、线上照卖，发布时原子换版
