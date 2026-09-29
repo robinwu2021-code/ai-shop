@@ -11168,6 +11168,12 @@
           "ar": "التسويق"
         },
         {
+          "key": "me.account",
+          "zh-CN": "登录账号",
+          "en": "Account",
+          "ar": "الحساب"
+        },
+        {
           "key": "me.appearance",
           "zh-CN": "外观与语言",
           "en": "Appearance & language",
