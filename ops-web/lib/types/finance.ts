@@ -122,7 +122,24 @@ export interface Settlement {
   commissionMinor: number;
   /** 自提点履约服务费（分） */
   serviceFeeMinor: number;
-  /** 实付商家（分） */
+  /**
+   * 代收的运费（分）。**不在 grossMinor 里**，所以不进佣金基数。
+   * 非快递单为 0。
+   */
+  freightIncomeMinor: number;
+  /**
+   * 平台实付给快递公司、从商家收款里扣回的快递费（分）。
+   *
+   * **只有平台代寄才有**；商家自己填单号发货是他自付，这里是 0。
+   * 判据是 `freightShipMode`，不是「这个数是不是 0」——
+   * 平台代寄但还没称重回传时它也是 0。
+   */
+  freightCostMinor: number;
+  /** PLATFORM_CALL 平台代寄 / MERCHANT_SELF 商家自寄；非快递单为空 */
+  freightShipMode?: string;
+  /** 实付高于代收时的原因：OVERWEIGHT / REGION_SURCHARGE / OVER_CAP。没有差额时为空 */
+  freightDiffReason?: string;
+  /** 实付商家（分）= 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费 */
   netMinor: number;
   /** 该单的流量来源，决定适用哪一档费率 */
   trafficSource: string;

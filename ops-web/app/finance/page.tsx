@@ -137,6 +137,26 @@ function FinanceInner() {
     { header: c.colGross, cell: (s) => money(s.grossMinor), numeric: true },
     { header: c.colPlatformFee, cell: (s) => money(s.commissionMinor), numeric: true },
     { header: c.colServiceFee, cell: (s) => money(s.serviceFeeMinor), numeric: true },
+    {
+      header: c.colFreight,
+      /*
+       * **同样是 ¥0，三件事**：非快递单（这一列该空着）、商家自寄（平台没垫钱）、
+       * 平台代寄但还没称重回传（要扣，数还没回来）。
+       * 只打金额的话运营看到的是同一格，而这三种的处理完全不同 ——
+       * 第三种是要去催快递100 回传的，前两种不用管。
+       */
+      cell: (s) =>
+        !s.freightShipMode ? (
+          "—"
+        ) : s.freightShipMode === "MERCHANT_SELF" ? (
+          <Badge tone="muted">{c.freightSelf}</Badge>
+        ) : s.freightCostMinor > 0 ? (
+          money(s.freightCostMinor)
+        ) : (
+          <Badge tone="warning">{c.freightPending}</Badge>
+        ),
+      numeric: true,
+    },
     { header: c.colNet, cell: (s) => money(s.netMinor), numeric: true },
     {
       header: c.colPayMerchant,

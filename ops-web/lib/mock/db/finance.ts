@@ -41,6 +41,12 @@ export const payoutAccounts: PayoutAccount[] = [
 
 export const settlements: Settlement[] = [
   /*
+   * ── 快递费三种情形也各要有一条 ──
+   * 平台代寄已扣 / 商家自寄（平台不扣）/ 非快递单（该列空着）。
+   * 只造一种的话，列表里那三条分支只走得到一条 ——
+   * 与下面「只造待付款」是同一个理由。
+   * net 已按 gross − 佣金 − 服务费 + 运费 − 快递费 重算，mock 自己要对得上账。
+   *
    * ── 自营应付账款三档。**各档都要有** ──
    * 只造「待付款」的话，「票还没到所以付不了」那条分支永远看不见 ——
    * 而它恰恰是这一页最要紧的规则（票到付款）。与上面造两种小微形态同一个理由。
@@ -48,7 +54,9 @@ export const settlements: Settlement[] = [
   {
     // ① 待对账：还没人认这个数，付不了也收不了票
     settleNo: "ST9101", subOrderNo: "SUB2026082601", orderNo: "SO2026082601", merchantNo: "M801",
-    grossMinor: 128_000, commissionMinor: 6_400, serviceFeeMinor: 1_920, netMinor: 119_680,
+    grossMinor: 128_000, commissionMinor: 6_400, serviceFeeMinor: 1_920,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "PLATFORM_CALL",
+    netMinor: 120480,
     trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
     createdAt: 1_756_166_400_000, storeNo: "ST801", payMerchantNo: null,
     businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
@@ -56,7 +64,9 @@ export const settlements: Settlement[] = [
   {
     // ② 已对账、票还没到 → **点「登记付款」应当被拦**，这一条是这页的主角
     settleNo: "ST9102", subOrderNo: "SUB2026082602", orderNo: "SO2026082602", merchantNo: "M802",
-    grossMinor: 96_000, commissionMinor: 4_800, serviceFeeMinor: 1_440, netMinor: 89_760,
+    grossMinor: 96_000, commissionMinor: 4_800, serviceFeeMinor: 1_440,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "MERCHANT_SELF",
+    netMinor: 90560,
     trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
     createdAt: 1_756_080_000_000, storeNo: "ST802", payMerchantNo: null,
     businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
@@ -65,7 +75,9 @@ export const settlements: Settlement[] = [
     // ③ 无票供应商：不进发票流程，但**要在列表上标出来** ——
     //    让财务在付款前就看见「这笔付出去是不能列支的」，而不是月末报税才发现
     settleNo: "ST9103", subOrderNo: "SUB2026082603", orderNo: "SO2026082603", merchantNo: "M803",
-    grossMinor: 24_000, commissionMinor: 1_200, serviceFeeMinor: 360, netMinor: 22_440,
+    grossMinor: 24_000, commissionMinor: 1_200, serviceFeeMinor: 360,
+    freightIncomeMinor: 0, freightCostMinor: 0, freightShipMode: undefined,
+    netMinor: 22440,
     trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
     createdAt: 1_755_993_600_000, storeNo: "ST803", payMerchantNo: null,
     businessMode: "SELF_OPERATED", invoiceStatus: "NO_INVOICE",
@@ -73,14 +85,18 @@ export const settlements: Settlement[] = [
   {
     // 自带客流 → 佣金 0（R16 建议值）
     settleNo: "ST9001", subOrderNo: "SUB2026080501", orderNo: "SO2026080501", merchantNo: "M903",
-    grossMinor: 1_780, commissionMinor: 0, serviceFeeMinor: 27, netMinor: 1_753,
+    grossMinor: 1_780, commissionMinor: 0, serviceFeeMinor: 27,
+    freightIncomeMinor: 800, freightCostMinor: 800, freightShipMode: "PLATFORM_CALL",
+    netMinor: 1753,
     trafficSource: "MERCHANT_OWNED", commissionRate: 0, status: "PENDING",
     createdAt: 1_754_438_400_000, storeNo: "ST001", payMerchantNo: "PM_M903",
     businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
   },
   {
     settleNo: "ST9002", subOrderNo: "SUB2026080502", orderNo: "SO2026080502", merchantNo: "M902",
-    grossMinor: 3_980, commissionMinor: 199, serviceFeeMinor: 60, netMinor: 3_721,
+    grossMinor: 3_980, commissionMinor: 199, serviceFeeMinor: 60,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "MERCHANT_SELF",
+    netMinor: 4521,
     trafficSource: "PLATFORM", commissionRate: 500, status: "SPLIT",
     createdAt: 1_754_352_000_000, splitAt: 1_754_355_600_000,
     storeNo: "ST002", payMerchantNo: "PM_M902", businessMode: "THIRD_PARTY",
@@ -89,7 +105,9 @@ export const settlements: Settlement[] = [
   {
     // 未报备分账接收方：payMerchantNo 为空，发起分账会被拦
     settleNo: "ST9004", subOrderNo: "SUB2026080504", orderNo: "SO2026080504", merchantNo: "M901",
-    grossMinor: 41_800, commissionMinor: 2_090, serviceFeeMinor: 627, netMinor: 39_083,
+    grossMinor: 41_800, commissionMinor: 2_090, serviceFeeMinor: 627,
+    freightIncomeMinor: 0, freightCostMinor: 0, freightShipMode: undefined,
+    netMinor: 39083,
     trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING",
     createdAt: 1_754_438_400_000, storeNo: null, payMerchantNo: null,
     businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
@@ -97,7 +115,9 @@ export const settlements: Settlement[] = [
   {
     // 自营轨道：走对账→确认→付款，不分账
     settleNo: "ST9006", subOrderNo: "SUB2026080506", orderNo: "SO2026080506", merchantNo: "M905",
-    grossMinor: 12_800, commissionMinor: 640, serviceFeeMinor: 0, netMinor: 12_160,
+    grossMinor: 12_800, commissionMinor: 640, serviceFeeMinor: 0,
+    freightIncomeMinor: 800, freightCostMinor: 800, freightShipMode: "PLATFORM_CALL",
+    netMinor: 12160,
     trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
     createdAt: 1_754_265_600_000, storeNo: "ST005", payMerchantNo: "PM_M905",
     businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
