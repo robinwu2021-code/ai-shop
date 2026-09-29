@@ -742,7 +742,8 @@ onShareTimeline(() =>
 .hero__shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 36%, rgba(0, 0, 0, 0.6) 100%);
+  /* 上沿一点暗托住浮层按钮，下半截压暗托住白字。色只用 scrim（守卫：style 块不写死颜色） */
+  background: linear-gradient(180deg, var(--sh-scrim) 0%, transparent 32%, transparent 46%, var(--sh-scrim) 100%);
 }
 /*
  * 有图时多压一层品牌色：虚化后的图单独看是一团灰绿，压上品牌色才像「这家店的」。
@@ -791,14 +792,15 @@ onShareTimeline(() =>
   color: #fff;
 }
 .hero__status {
-  padding: 2rpx 12rpx;
-  border-radius: 8rpx;
+  padding: 2rpx 14rpx;
+  border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
 }
-/* 休息 / 暂停：浅色半透明底。深色 scrim 压在已经压暗的图上等于看不见 */
+/* 休息 / 暂停：透明底白描边。深色 scrim 压在已经压暗的图上等于看不见 */
 .hero__status.is-off {
-  background: rgba(255, 255, 255, 0.28);
+  background: transparent;
+  border: 2rpx solid #fff;
   color: #fff;
 }
 /* 公告与券：一张白卡压在头图下沿上 */
