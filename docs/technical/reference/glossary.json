@@ -10569,9 +10569,9 @@
         },
         {
           "key": "income.dailyEmpty",
-          "zh-CN": "这段时间没有流水。有成交后第二天就能在这里看到",
-          "en": "No flow in this period. A sale shows up here the next day",
-          "ar": "لا توجد حركة في هذه الفترة. تظهر عملية البيع هنا في اليوم التالي"
+          "zh-CN": "这段时间没有流水",
+          "en": "No flow in this period",
+          "ar": "لا توجد حركة في هذه الفترة"
         },
         {
           "key": "income.dailyHint",
