@@ -1386,7 +1386,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 31
+        "c-app": 33
       }
     },
     {
@@ -5610,18 +5610,10 @@
         "sh-icon",
         "sh-sheet"
       ],
-      "libClassHits": 12,
+      "libClassHits": 14,
       "localSelectors": 7,
-      "localCssLines": 39,
-      "rolled": [
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        }
-      ]
+      "localCssLines": 37,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -5715,16 +5707,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "c-app/biz-share-act"
       ]
     }
   ],

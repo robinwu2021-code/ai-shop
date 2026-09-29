@@ -82,14 +82,14 @@ function toPoster() {
 
   <sh-sheet v-if="poster" :visible="open" :title="sheetTitle || String($t('share.act'))" @close="open = false">
     <view class="opts sh-row">
-      <view class="opt sh-fill" @tap="native ? undefined : copy()">
+      <view class="opt sh-fill sh-center" @tap="native ? undefined : copy()">
         <sh-icon name="share" :size="48" color="var(--sh-primary)"></sh-icon>
         <text class="txt-strong opt__t">{{ $t("share.toFriend") }}</text>
         <text class="txt-caption txt-quiet">{{ $t(native ? "share.toFriendSub" : "share.toFriendSubH5") }}</text>
         <!-- 小程序：转发必须由原生按钮触发，盖在这一块上 -->
         <button v-if="native" class="shareact__native" open-type="share" @tap="open = false"></button>
       </view>
-      <view class="opt sh-fill" @tap="toPoster">
+      <view class="opt sh-fill sh-center" @tap="toPoster">
         <sh-icon name="grid" :size="48" color="var(--sh-primary)"></sh-icon>
         <text class="txt-strong opt__t">{{ $t("share.poster") }}</text>
         <text class="txt-caption txt-quiet">{{ $t("share.posterSub") }}</text>
@@ -130,11 +130,10 @@ function toPoster() {
   gap: 24rpx;
   padding: 8rpx 0 24rpx;
 }
+/* 居中由 .sh-center 给，这里只把它竖过来 */
 .opt {
   position: relative;
-  display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8rpx;
   padding: 32rpx 16rpx;
   border-radius: 24rpx;
