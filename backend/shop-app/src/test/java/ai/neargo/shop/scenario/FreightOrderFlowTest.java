@@ -37,6 +37,7 @@ class FreightOrderFlowTest {
     @Autowired private WebApplicationContext context;
     @Autowired private ObjectMapper json;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.paybridge.SettleGenerationOrchestrator settleOrchestrator;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -67,6 +68,59 @@ class FreightOrderFlowTest {
         String goodsNo = onSaleGoods(merchant("12600390003", "不送西藏的店"), "大米");
         JsonNode created = place("12600390004", goodsNo, "西藏自治区");
         assertThat(created.path("code").asInt()).isEqualTo(20003);
+    }
+
+    @Test
+    @DisplayName("★★★ 运费不进佣金基数 —— 此前平台对代收的运费也抽了佣金（§9 AC21）")
+    void freightIsNotInCommissionBase() throws Exception {
+        String goodsNo = onSaleGoods(merchant("12600390005", "结算运费店"), "面粉");
+        JsonNode created = place("12600390006", goodsNo, "浙江省");
+        assertThat(created.path("code").asInt()).isZero();
+        String payOrderNo = created.path("data").path("payOrderNo").asString();
+
+        pay(payOrderNo);
+        settleOrchestrator.generateForOrder(payOrderNo);
+
+        Map<String, Object> bill = jdbc.queryForMap(
+                "select gross_minor, freight_income_minor, freight_cost_minor, freight_ship_mode"
+                        + " from stl_bill where order_no=?", payOrderNo);
+        long goodsAmount = jdbc.queryForObject(
+                "select goods_amount from ord_sub_order where order_no=?", Long.class, payOrderNo);
+
+        /*
+         * ★ 这一条是整个 A 批的判据。
+         *
+         * 改之前 gross = payAmount(货款 + 运费) + 补贴 + 积分，而
+         * commission = (gross − 通道费) × rate —— 对代收的运费也抽了佣金。
+         * 那笔钱是要转付给快递公司的，不是商家的营业额。
+         */
+        assertThat(((Number) bill.get("gross_minor")).longValue())
+                .as("结算基数应当只装货款 —— 含了运费就是让商家为平台代收的钱付佣金")
+                .isEqualTo(goodsAmount);
+
+        assertThat(((Number) bill.get("freight_income_minor")).longValue())
+                .as("运费要单列出来，否则账单上根本看不到这笔")
+                .isEqualTo(800L);
+
+        /*
+         * 商家自己填单号发货 = 自付，平台一分没出，不扣 —— 扣了就是收两遍。
+         * 判据是 shipMode 而不是「cost 是不是 0」：平台代寄但还没称重回传时 cost 也是 0。
+         */
+        assertThat(bill.get("freight_ship_mode"))
+                .as("没有寄件记录就是商家自己寄的")
+                .isEqualTo("MERCHANT_SELF");
+        assertThat(((Number) bill.get("freight_cost_minor")).longValue())
+                .as("商家自寄，平台没垫钱，不该扣")
+                .isZero();
+    }
+
+    /** 走支付回调把单推到已付款 —— 只调 /pay 的话单还在 WAIT_PAY，结算单生不出来 */
+    private void pay(String payOrderNo) throws Exception {
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
+                                + payOrderNo + "\",\"sign\":\"stub-secret\"}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isOk());
     }
 
     // ── helpers（与 TodoPickupScopeFlowTest 同一套下单脚手架） ─────────────────

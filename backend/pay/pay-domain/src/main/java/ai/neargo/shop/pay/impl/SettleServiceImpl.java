@@ -203,7 +203,19 @@ public class SettleServiceImpl implements SettleService {
              *
              * 商家自己让的利（discountMerchant）不补：那本来就是他出的。
              */
-            long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor();
+            /*
+             * ★ **运费不进基数**（§9 AC21）。
+             *
+             * payAmount = 货款 + 运费（`OrderServiceImpl.Split#payAmount`），
+             * 不减出去的话 commission = (gross - 通道费) × rate 就对**代收的运费**也抽了佣金 ——
+             * 那笔钱是要转付给快递公司的，不是商家的营业额。
+             * 按当前默认模板（首重 ¥8）与 5% 费率，每单多抽 4 分；数目不大，
+             * 但它是结构性的：商家寄得越远亏得越多，而账单上根本看不到这笔。
+             *
+             * 服务费同样按去掉运费之后的基数算 —— 自提点按件收的那档不受影响。
+             */
+            long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor()
+                    - src.freightIncomeMinor();
             long serviceFee = serviceFeeOf(src, gross);
 
             /*
@@ -276,7 +288,50 @@ public class SettleServiceImpl implements SettleService {
              * 承担方为空（还没进件）时**不扣** —— 猜一个方向就是替他做主，
              * 而这个方向上猜错等于少付给他钱。
              */
-            bill.setNetMinor(gross - commission - serviceFee - pointsFee - fee.borneByMerchant());
+            /*
+             * ★ 运费的两笔（§9 AC22/AC23）：
+             *
+             *   + freightIncome  买家付的运费，原样给商家
+             *   − freightCost    平台代寄时垫付的快递费，从收款里扣回
+             *
+             * **只有平台代寄才扣**：商家自己填单号发货是他自己付的钱，平台一分没出，
+             * 扣了就是收两遍。判据取 shipMode 而不是「cost 是不是 0」——
+             * 平台代寄但还没称重回传时 cost 也是 0，那种情况要等回传，不是不扣。
+             *
+             * 平台代寄且不超重时两笔对消，商家实得回到「货款 − 佣金」。
+             */
+            long freightIncome = src.freightIncomeMinor();
+            boolean platformCall = SettleSourcePort.SHIP_PLATFORM_CALL.equals(src.freightShipMode());
+            long freightCostRaw = platformCall ? src.freightCostMinor() : 0L;
+            /*
+             * ★ **倒扣封顶**（§9 AC24）。
+             *
+             * 重量是商家在商品上填的标称值，快递费是按快递公司称出来的实重收的。
+             * 把 5kg 的货填成 100g，实付可能是代收运费的几十倍 —— 不封顶的话
+             * 一单就能把货款扣穿，而这在账面上只是一个变小的 net，没有任何地方会喊。
+             *
+             * 超过「代收运费 + 它的 200%」的部分不自动扣，记 reason 等人工看。
+             * **不改账单状态**：PENDING_RECON 是自营对账用的，第三方商家本来走
+             * PENDING → 自动分账，改状态会静默把这单从分账链路上摘下来 —— 那是
+             * 比多扣钱更难发现的故障。差额由运营在快递费对账页处理（AC29）。
+             *
+             * 代收为 0 时（满额免邮）阈值也是 0：免邮单本就不该由商家承担快递费。
+             */
+            long freightCap = freightIncome * 3;
+            boolean overCap = freightCostRaw > freightCap;
+            long freightCost = overCap ? freightCap : freightCostRaw;
+            bill.setFreightIncomeMinor(freightIncome);
+            bill.setFreightCostMinor(freightCost);
+            bill.setFreightShipMode(src.freightShipMode());
+            bill.setFreightDiffReason(overCap ? StlBill.DIFF_OVER_CAP
+                    : freightCostRaw > freightIncome ? StlBill.DIFF_OVERWEIGHT : null);
+            if (overCap) {
+                log.warn("[freight] 子单 {} 实付快递费 {} 分，超过代收 {} 分的 200% 上限，"
+                                + "只扣 {} 分，差额待人工处理", src.subOrderNo(),
+                        freightCostRaw, freightIncome, freightCap);
+            }
+            bill.setNetMinor(gross - commission - serviceFee - pointsFee - fee.borneByMerchant()
+                    + freightIncome - freightCost);
             bill.setChannelFeeMinor(fee.minor());
             bill.setChannelFeeRate(fee.rateBp());
             bill.setChannelFeeSource(fee.source());
