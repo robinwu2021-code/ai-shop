@@ -260,6 +260,13 @@ public interface OpsService {
                                */
                               String industry,
                               /*
+                               * 商家**自己写的**行业（仅 industry = OTHER 时有值，V360）。
+                               * 意向口径，不参与任何准入判定 —— sys_industry 只有七个大类，
+                               * 归不进大类的那句话丢了，意向表就只剩已知的东西。
+                               * 选了具体行业时实现会置空，见 OpsServiceImpl#normalizeIndustryNote。
+                               */
+                              String industryNote,
+                              /*
                                * **结构化资质**（V79）。与上面的 qualifications 并存：
                                * 那个是纯图片 URL 数组，填不出 mch_qualification 需要的
                                * 类型/证号/有效期 —— 于是审核通过时无从转存，

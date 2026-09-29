@@ -27,6 +27,12 @@ public class MchEntityApply extends BaseEntity {
     public static final String REJECTED = "REJECTED";
 
     /**
+     * 行业的兜底档（{@code sys_industry.industry}）。<b>只有选它时 {@link #industryNote}
+     * 才有意义</b>，所以这个码在两处被引用，不能写成字面量。
+     */
+    public static final String INDUSTRY_OTHER = "OTHER";
+
+    /**
      * 合法迁移。<b>APPROVED 是终态</b> —— 已经建了商家、发了账号，回退没有意义。
      *
      * <p><b>PENDING 可以直接到 APPROVED</b>，不强制先经 REVIEWING：一期运营就几个人，
@@ -143,6 +149,17 @@ public class MchEntityApply extends BaseEntity {
      * 它决定商家<b>可选的主体类型</b> —— 线上业态不能选小微。
      */
     private String industry;
+
+    /**
+     * 商家<b>自己写的</b>行业（仅 {@link #industry} 为 {@code OTHER} 时有值）。
+     *
+     * <p>入驻意向的口径，<b>不参与任何准入判定</b>。它存在的理由是
+     * {@code sys_industry} 只有七个大类，而意向表的价值恰恰在于收集
+     * 「平台还接不了的那些」—— 归不进大类的那句话丢了，这张表就只剩已知的东西。
+     *
+     * <p>选了具体行业时后端置空：留着会让审核的人面对两个对不上的答案。
+     */
+    private String industryNote;
 
     /**
      * 代填人（{@code sys_user.user_no}）。<b>商户自己提交时为 NULL</b>。

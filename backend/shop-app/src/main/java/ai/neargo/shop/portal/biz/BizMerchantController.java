@@ -268,6 +268,8 @@ public class BizMerchantController {
                 req.contactName(), req.contactPhone(), null, req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
+                // 手填行业只在 C 端那一屏问（V360）：进到 b-app 的人已经选过行业了
+                null,
                 req.qualificationItems()));
         return profile();
     }

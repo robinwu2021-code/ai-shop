@@ -99,7 +99,7 @@ class OnBehalfMerchantFlowTest {
                 userNo, name, "ENTERPRISE",
                 "老板", "13900001111", null, "水果", "社区水果店",
                 null, List.of("CMT-OB-1"), List.of("https://example.com/l.jpg"),
-                false, "RETAIL",
+                false, "RETAIL", null,
                 List.of(new OpsService.QualificationItem(
                         "BUSINESS_LICENSE", "91440300MA5XXXXXXX",
                         "https://example.com/l.jpg", null, null)));
@@ -165,7 +165,7 @@ class OnBehalfMerchantFlowTest {
                 owner, "没执照水果店", "ENTERPRISE",
                 "老板", "13900001111", null, "水果", null,
                 null, List.of("CMT-OB-1"), List.of(),
-                false, "RETAIL",
+                false, "RETAIL", null,
                 List.of());   // 非 null 的空表 = 「这个端懂结构化资质」，于是闸门生效
 
         assertThatThrownBy(() -> opsService.createApplyOnBehalf(noLicense, "OPS-BD-3"))

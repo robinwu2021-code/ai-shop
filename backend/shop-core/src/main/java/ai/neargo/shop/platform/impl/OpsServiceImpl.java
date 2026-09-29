@@ -481,6 +481,7 @@ public class OpsServiceImpl implements OpsService {
         apply.setQualificationItems(writeItemsJson(cmd.qualificationItems()));
         apply.setAsPickupPoint(cmd.asPickupPoint());
         apply.setIndustry(cmd.industry());
+        apply.setIndustryNote(normalizeIndustryNote(cmd));
         apply.setStatus(MchEntityApply.PENDING);
         apply.setActiveOwner(cmd.userNo());   // 进行中才占名额，终态时置 NULL
         /*
@@ -739,12 +740,28 @@ public class OpsServiceImpl implements OpsService {
                         .set(MchEntityApply::getCategory, cmd.category())
                         .set(MchEntityApply::getDescription, cmd.description())
                         .set(MchEntityApply::getIndustry, cmd.industry())
+                        .set(MchEntityApply::getIndustryNote, normalizeIndustryNote(cmd))
                         // serviceScope 为空时保持原值：端上这一屏不问它，传空不该把它清掉
                         .set(cmd.serviceScope() != null && !cmd.serviceScope().isBlank(),
                                 MchEntityApply::getServiceScope, cmd.serviceScope())
                         .eq(MchEntityApply::getId, apply.getId())));
 
         audit("MERCHANT_APPLY_UPDATE", applyNo, "商家改了自己的入驻意向（待审核中）");
+    }
+
+    /**
+     * 手填行业的归一化（V360）。
+     *
+     * <p><b>只有 {@code industry = OTHER} 时才留</b>：选了具体行业还留着上一次手填的那句话，
+     * 审核的人会看到两个对不上的答案，而且不知道该信哪个 —— 改一次行业就埋一颗。
+     * 空白串一并收成 null，「填了空格」和「没填」在运营端不该是两种东西。
+     */
+    private static String normalizeIndustryNote(SubmitApplyCommand cmd) {
+        if (!MchEntityApply.INDUSTRY_OTHER.equals(cmd.industry())) {
+            return null;
+        }
+        String note = cmd.industryNote();
+        return note == null || note.isBlank() ? null : note.trim();
     }
 
     @Override
@@ -1312,6 +1329,7 @@ public class OpsServiceImpl implements OpsService {
                 a.getCategory(), a.getDescription(), a.getServiceScope(),
                 readList(a.getCommunityNos()), readList(a.getQualifications()),
                 Boolean.TRUE.equals(a.getAsPickupPoint()), a.getIndustry(),
+                a.getIndustryNote(),
                 a.getStatus(), a.getRejectReason(),
                 a.getCreatedAt() == null ? 0L
                         : a.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),

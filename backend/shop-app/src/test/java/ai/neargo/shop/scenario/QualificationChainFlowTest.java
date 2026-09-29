@@ -136,7 +136,7 @@ class QualificationChainFlowTest {
                 "U" + System.nanoTime() % 100_000_000L, "资质链路测试店", subject,
                 "张三", phone, null, "FRESH_VEG", "测试",
                 "COMMUNITY", List.of("C001"),
-                List.of(), false, "RETAIL", items));
+                List.of(), false, "RETAIL", null, items));
     }
 
     private String approve(String applyNo) {

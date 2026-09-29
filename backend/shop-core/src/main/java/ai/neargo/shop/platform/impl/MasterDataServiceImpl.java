@@ -46,9 +46,17 @@ public class MasterDataServiceImpl implements MasterDataService {
 
     @Override
     public MasterDataVO snapshot() {
-        List<SysIndustry> industries = DataScopeContext.executeWithoutScope(() ->
+        /*
+         * **一次查全量，两个列表从同一份切**（TDD-C端入驻意向-行业口径）。
+         *
+         * 查两次的话，两个列表会来自两个时刻 —— 运营正好在中间点了停用，
+         * 端上就会拿到「进件能选、意向里没有」这种自相矛盾的一对。
+         */
+        List<SysIndustry> allIndustries = DataScopeContext.executeWithoutScope(() ->
                 industryMapper.selectList(Wrappers.<SysIndustry>lambdaQuery()
-                        .eq(SysIndustry::getEnabled, true).orderByAsc(SysIndustry::getSort)));
+                        .orderByAsc(SysIndustry::getSort)));
+        List<SysIndustry> industries = allIndustries.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getEnabled())).toList();
         List<SysLegalForm> subjects = enabledSubjectRows();
         /*
          * 通道走 spi 拿：2026-09-01 通道属性搬进 pay 之后，平台主数据不再直接读那张表
@@ -64,6 +72,13 @@ public class MasterDataServiceImpl implements MasterDataService {
                         // 端上据此禁用「小微」选项，而不是让人填完再被拒
                         Boolean.TRUE.equals(i.getWechatMicroAllowed())
                                 || Boolean.TRUE.equals(i.getAlipayMicroAllowed()))).toList(),
+                /*
+                 * 意向口径：**不按 enabled 过滤**。入驻意向表要收的正是平台还接不了的那些，
+                 * 用准入的尺子量它，想开餐饮的人就只能选「线下零售」。
+                 */
+                allIndustries.stream().map(i -> new MasterDataVO.IntentIndustry(
+                        i.getIndustry(), i.getName(),
+                        Boolean.TRUE.equals(i.getEnabled()))).toList(),
                 subjects.stream().map(s -> new MasterDataVO.Subject(
                         s.getLegalForm(), s.getName(),
                         Boolean.TRUE.equals(s.getNeedLicense()),

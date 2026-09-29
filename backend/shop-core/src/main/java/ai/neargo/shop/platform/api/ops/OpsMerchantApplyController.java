@@ -71,6 +71,8 @@ public class OpsMerchantApplyController {
                 req.contactName(), req.contactPhone(), null, req.category(), req.description(),
                 req.serviceScope(), req.communityNos(), req.qualifications(),
                 Boolean.TRUE.equals(req.asPickupPoint()), req.industry(),
+                // 手填行业传 null：代填的是 BD，他按运营口径直接选了行业码（V360）
+                null,
                 req.qualificationItems()), operator);
         /*
          * 审计里写「进队列待审」而不是「已创建」。

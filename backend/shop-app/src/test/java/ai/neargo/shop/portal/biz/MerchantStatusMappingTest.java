@@ -27,7 +27,7 @@ class MerchantStatusMappingTest {
     private static MerchantApplyVO apply(String status) {
         return new MerchantApplyVO("MA1", "", "老张粮油店", "PERSONAL",
                 "张三", "13800000000", "", "", "COMMUNITY",
-                List.of(), List.of(), false, "GROCERY",
+                List.of(), List.of(), false, "GROCERY", null,
                 status, null, 0L, 0L,
                 // 结构化资质（V79）：本测试只关心状态映射，给空即可
                 List.of(),
@@ -39,7 +39,7 @@ class MerchantStatusMappingTest {
     private static MerchantApplyVO apply(boolean onBehalf, long agreedAt) {
         return new MerchantApplyVO("MA1", "", "老张粮油店", "PERSONAL",
                 "张三", "13800000000", "", "", "COMMUNITY",
-                List.of(), List.of(), false, "GROCERY",
+                List.of(), List.of(), false, "GROCERY", null,
                 "PENDING", null, 0L, 0L, List.of(), onBehalf, agreedAt, null);
     }
 

@@ -295,7 +295,7 @@ public class MpCatalogController {
                 req.contactName(), req.contactPhone(), req.referrerPhone(),
                 req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
-                false, req.industry(), req.qualificationItems()));
+                false, req.industry(), req.industryNote(), req.qualificationItems()));
         return opsService.myApply(SecurityUtils.currentUserNo());
     }
 
@@ -315,7 +315,7 @@ public class MpCatalogController {
                 req.contactName(), req.contactPhone(), req.referrerPhone(),
                 req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
-                false, req.industry(), req.qualificationItems()));
+                false, req.industry(), req.industryNote(), req.qualificationItems()));
         return opsService.myApply(userNo);
     }
 
@@ -343,6 +343,12 @@ public class MpCatalogController {
                            List<String> communityNos, List<String> licenses,
                            /** 行业。**决定可选的主体类型** —— 线上业态不能选小微 */
                            String industry,
+                           /**
+                            * 商家自己写的行业（仅 {@code industry = OTHER} 时有值，V360）。
+                            * 意向口径，不参与准入判定 —— 归不进七个大类的那句话丢了，
+                            * 意向表就只剩已知的东西。
+                            */
+                           String industryNote,
                            /** 结构化资质（V79）。见 B 端 {@code ApplyReq} 的说明 —— 两端同一口径 */
                            List<OpsService.QualificationItem> qualificationItems) {
     }

@@ -53,6 +53,13 @@ public final class OpsVOs {
                                   boolean asPickupPoint,
                                   /** 行业。审核页要看到它 —— 它决定这家店能不能开小微 */
                                   String industry,
+                                  /**
+                                   * 商家<b>自己写的</b>行业（仅 {@code industry = OTHER} 时非空，V360）。
+                                   *
+                                   * <p>审核页必须看到它：意向表收这一句的全部目的就是知道
+                                   * 「他想做的是平台还接不了的哪一类」。不展示等于收了没收。
+                                   */
+                                  String industryNote,
                                   String status, String rejectReason,
                                   long createdAt, long auditedAt,
                                   /**
