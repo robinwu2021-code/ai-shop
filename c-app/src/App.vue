@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { onLaunch } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { guardSinglePageNavigation } from "@/shared/single-page";
 import { configureShell } from "@ai-shop/ui/shell";
 import { ROUTES, TABS, TAB_ROUTES } from "@shared/utils/constants";
 import { initPush } from "@shared/ports/push";
@@ -17,7 +19,11 @@ import { initFonts } from "@shared/ports/font";
 import { USE_MOCK } from "@/api";
 import { restoreDb } from "@shared/mock/db";
 
+const { t } = useI18n();
+
 onLaunch(() => {
+  // 朋友圈单页模式：跳转被微信禁掉且不报错 —— 在壳上一处拦下来明说（见 single-page.ts）
+  guardSinglePageNavigation(() => String(t("share.singlePageBlocked")));
   // 外壳的 C 端特征：购物车角标、飞入小球与它的落点、切语言/市场后要重拉的服务端文案。
   // 组件库对这些一无所知（packages/ui/src/shell.ts）
   const cart = useCartStore();

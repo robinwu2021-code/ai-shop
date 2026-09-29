@@ -39,7 +39,10 @@ vi.mock("@/api", () => ({
     toggleReviewLike: vi.fn(),
   },
 }));
-vi.mock("@shared/ports/share", () => ({
+// 只覆盖「有没有原生转发」；其余（单页模式判定、配图）用真实现 ——
+// 整个模块替身成两个函数的话，购物车里的单页判定是 undefined，加购直接抛错
+vi.mock("@shared/ports/share", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@shared/ports/share")>()),
   buildShareMessage: vi.fn(() => ({})),
   canNativeShare: () => nativeShare.yes,
 }));

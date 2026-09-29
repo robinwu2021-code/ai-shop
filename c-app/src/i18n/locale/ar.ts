@@ -162,6 +162,7 @@ export default {
     saveFailed: "فشل الحفظ — تحقق من إذن الألبوم",
     longPress: "اضغط مطولًا على الصورة للحفظ",
     scanTip: "امسح الرمز للتسوق",
+    toMoments: "مشاركة في اللحظات",
   },
   share: {
     act: "مشاركة",
@@ -174,6 +175,8 @@ export default {
     toFriendSubH5: "انسخ الرابط لإرساله",
     poster: "أنشئ ملصقًا",
     posterSub: "اللحظات · حفظ في الصور",
+    singlePageTip: "فُتح من اللحظات — تصفّح هنا، واضغط «فتح البرنامج المصغّر» في الأسفل للطلب",
+    singlePageBlocked: "اضغط «فتح البرنامج المصغّر» في الأسفل للطلب",
   },
   invite: {
     entryHint: "تمت دعوة {n}",

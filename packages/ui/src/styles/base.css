@@ -1012,6 +1012,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > biz-group-card,
 .sh-scaffold > biz-merchant-bar,
 .sh-scaffold > biz-review,
+.sh-scaffold > biz-single-page-tip,
 .sh-scaffold > biz-sku-row,
 .sh-scaffold > biz-time-range {
   margin-top: var(--sh-gap-block, 20rpx);
@@ -1048,6 +1049,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > biz-group-card:first-child,
 .sh-scaffold > biz-merchant-bar:first-child,
 .sh-scaffold > biz-review:first-child,
+.sh-scaffold > biz-single-page-tip:first-child,
 .sh-scaffold > biz-sku-row:first-child,
 .sh-scaffold > biz-time-range:first-child {
   margin-top: 0;

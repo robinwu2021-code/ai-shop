@@ -2,6 +2,8 @@
 import { defineStore } from "pinia";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
+import { inTimelineSinglePage } from "@shared/ports/share";
+import { singlePageBlockedMessage } from "@/shared/single-page";
 import type { CartItem, FulfillmentType } from "@shared/types";
 
 /** 履约组内的商家段。一段 = 结算后的一笔子订单 */
@@ -296,6 +298,13 @@ export const useCartStore = defineStore("cart", {
     // ---- 服务端 ----------------------------------------------------------
 
     async add(goodsNo: string, skuNo: string, qty = 1) {
+      /*
+       * 朋友圈单页模式里加购必然失败（没有登录态、也去不了登录页）。
+       * 在请求之前就说清楚：调用方都会把 message toast 出来，不用各页各判一遍。
+       */
+      if (inTimelineSinglePage()) {
+        throw new Error(singlePageBlockedMessage());
+      }
       this.items = await api.cartAdd(goodsNo, skuNo, qty);
       /*
        * 刚加进来的这件默认勾上 —— 加购之后就是去结算，中间不该再点一次。

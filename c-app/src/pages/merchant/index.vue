@@ -14,7 +14,7 @@ import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
 
 const { t } = useI18n();
@@ -154,6 +154,7 @@ onShareTimeline(() =>
     title: merchant.value?.name ?? "",
     path: ROUTES.store,
     params: "from=SHARE",
+    imageUrl: shareImageUrl(merchant.value?.logo),
     merchantNo: currentNo.value,
     inviterNo: user.user?.cUserNo,
   }),
@@ -162,6 +163,7 @@ onShareTimeline(() =>
 
 <template>
   <sh-scaffold v-if="merchant">
+    <biz-single-page-tip></biz-single-page-tip>
     <!-- 商家头部：谁（头像 · 自营 · 店名 · 认证）→ 能不能卖给我（范围 + 标签）→ 三个数 -->
     <view class="sh-card head">
       <view class="head__top sh-row">

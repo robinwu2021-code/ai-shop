@@ -27,7 +27,8 @@ import { rememberStore } from "@/shared/store-choice";
 import { money } from "@shared/utils/money";
 import { distance } from "@shared/utils/format";
 import { hourMinute, isoDate } from "@shared/utils/datetime";
-import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
+import { thumb } from "@shared/utils/media-thumb";
 import type { FrequentItem, Goods, Review, StoreHome, StoreVisitSource } from "@shared/types";
 import { confirm } from "@ai-shop/ui/prompt";
 
@@ -424,6 +425,8 @@ onShareTimeline(() =>
     title: shareTitle.value,
     path: ROUTES.store,
     params: `no=${storeNo.value || no.value}&from=SHARE`,
+    // 朋友圈卡片配图：店里第一件在售商品的图，没有就用品牌标
+    imageUrl: shareImageUrl(thumb(data.value?.goods[0]?.cover, 375), data.value?.merchant.logo),
     merchantNo: entityNo.value,
     inviterNo: user.user?.cUserNo,
   }),
@@ -470,6 +473,9 @@ onShareTimeline(() =>
       </view>
       </view>
 
+      <!-- 从朋友圈卡片进来（单页模式）：只能看，下单要点底部「前往小程序」 -->
+      <biz-single-page-tip></biz-single-page-tip>
+
       <!-- 暂停营业（s07）：照开、不可加购，给同品牌最近的营业店 -->
       <view v-if="closed" class="sh-notice sh-notice--muted paused">
         <text class="txt-sub">{{ $t("store.pausedNotice") }}</text>
@@ -494,7 +500,7 @@ onShareTimeline(() =>
               v-for="c in rail"
               :key="c.key"
               class="txt-sub rail__item"
-              :class="{ 'is-on': !keyword.trim() && current === c.key }"
+              :class="{ 'is-on txt-bold': !keyword.trim() && current === c.key }"
               @tap="picked = c.key; keyword = ''"
             >{{ c.label }}</text>
           </scroll-view>
@@ -687,11 +693,12 @@ onShareTimeline(() =>
   text-align: center;
   color: var(--sh-sub);
 }
+/* 选中态的加重走 .txt-bold（模板上加），不在这儿自写 font-weight ——
+   字阶把字号与字重绑死，而 .txt-bold 正是为「状态加重」留的那个修饰类 */
 .rail__item.is-on {
   border-inline-start-color: var(--sh-primary);
   background: var(--sh-surface);
   color: var(--sh-ink);
-  font-weight: 600;
 }
 .list {
   min-width: 0;
@@ -745,8 +752,11 @@ onShareTimeline(() =>
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  text-align: center;
-  line-height: 52rpx;
+  /* 居中用 flex，不用 line-height 顶高 —— 行高是字阶的一部分，
+     借它做垂直居中等于在这一处偷偷改字阶，而且换个字号就歪 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .add.is-off {
   background: var(--sh-faint);

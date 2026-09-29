@@ -166,6 +166,7 @@ export default {
     saveFailed: "保存失败，请检查相册权限",
     longPress: "长按上方图片即可保存",
     scanTip: "扫码进店选购",
+    toMoments: "分享到朋友圈",
   },
   share: {
     act: "分享",
@@ -178,6 +179,8 @@ export default {
     toFriendSubH5: "复制链接，发给朋友",
     poster: "生成海报",
     posterSub: "发朋友圈 · 存相册",
+    singlePageTip: "从朋友圈打开只能先看看，点底部「前往小程序」可以下单",
+    singlePageBlocked: "点底部「前往小程序」再下单",
   },
   invite: {
     /** `{n}` 是已邀请人数 */

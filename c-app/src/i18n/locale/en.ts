@@ -162,6 +162,7 @@ export default {
     saveFailed: "Save failed — check album permission",
     longPress: "Press and hold the image above to save",
     scanTip: "Scan to shop",
+    toMoments: "Share to Moments",
   },
   share: {
     act: "Share",
@@ -174,6 +175,8 @@ export default {
     toFriendSubH5: "Copy the link to send",
     poster: "Make a poster",
     posterSub: "Moments · save to photos",
+    singlePageTip: "Opened from Moments — browse here, tap “Open Mini Program” at the bottom to order",
+    singlePageBlocked: "Tap “Open Mini Program” at the bottom to order",
   },
   invite: {
     entryHint: "{n} invited",

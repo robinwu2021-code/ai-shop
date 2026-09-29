@@ -17,7 +17,7 @@ import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
-import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
+import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -910,6 +910,8 @@ onShareTimeline(() =>
     title: goods.value?.title ?? "",
     path: ROUTES.goods,
     params: sharePath.value.split("?")[1] ?? "",
+    // 朋友圈卡片配商品主图：不给的话是小程序默认图，看不出是哪件货
+    imageUrl: shareImageUrl(thumb(goods.value?.cover, 375)),
     merchantNo: community.pickup?.hostMerchantNo,
     inviterNo: user.user?.cUserNo,
   }),
@@ -1061,6 +1063,8 @@ onShareTimeline(() =>
 
         <!-- 领券。**只在有券时出现**（原型 g01）。销售区域仍在商品参数里 -->
         <!-- 领券（s36）：与店铺页、商家页同一个组件；券由本页预取，首屏只渲染一次 -->
+        <!-- 从朋友圈卡片进来（单页模式）：只能看，下单要点底部「前往小程序」 -->
+        <biz-single-page-tip></biz-single-page-tip>
         <biz-coupon-strip :merchant-no="goods.merchant.merchantNo" :preset="coupons"></biz-coupon-strip>
 
         <!--

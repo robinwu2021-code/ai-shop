@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 20,
-        "c-app": 14
+        "c-app": 15
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 98,
-        "c-app": 92
+        "c-app": 93
       }
     },
     {
@@ -706,7 +706,7 @@
       },
       "usage": {
         "b-app": 28,
-        "c-app": 32
+        "c-app": 33
       }
     },
     {
@@ -742,7 +742,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -810,7 +810,7 @@
       },
       "usage": {
         "b-app": 177,
-        "c-app": 77
+        "c-app": 78
       }
     },
     {
@@ -922,7 +922,7 @@
       },
       "usage": {
         "b-app": 33,
-        "c-app": 13
+        "c-app": 14
       }
     },
     {
@@ -5274,7 +5274,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 77,
+      "libClassHits": 78,
       "localSelectors": 36,
       "localCssLines": 173,
       "rolled": []
@@ -5583,7 +5583,7 @@
       "components": [
         "sh-sheet"
       ],
-      "libClassHits": 7,
+      "libClassHits": 9,
       "localSelectors": 4,
       "localCssLines": 15,
       "rolled": []
@@ -5645,6 +5645,17 @@
       "libClassHits": 11,
       "localSelectors": 6,
       "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-single-page-tip",
+      "key": "c-app/biz-single-page-tip",
+      "file": "c-app/src/components/biz/biz-single-page-tip.vue",
+      "components": [],
+      "libClassHits": 3,
+      "localSelectors": 1,
+      "localCssLines": 3,
       "rolled": []
     },
     {
@@ -5721,7 +5732,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 37,
-    "pages": 149,
+    "pages": 150,
     "gapKinds": 2
   }
 }

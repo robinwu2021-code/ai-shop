@@ -4432,6 +4432,12 @@
           "ar": "ملصق للمشاركة"
         },
         {
+          "key": "poster.toMoments",
+          "zh-CN": "分享到朋友圈",
+          "en": "Share to Moments",
+          "ar": "مشاركة في اللحظات"
+        },
+        {
           "key": "promo.buyNGetM",
           "zh-CN": "买 {n} 送 {m}",
           "en": "Buy {n} get {m}",
@@ -4976,6 +4982,18 @@
           "zh-CN": "分享这家店",
           "en": "Share this store",
           "ar": "شارك هذا المتجر"
+        },
+        {
+          "key": "share.singlePageBlocked",
+          "zh-CN": "点底部「前往小程序」再下单",
+          "en": "Tap “Open Mini Program” at the bottom to order",
+          "ar": "اضغط «فتح البرنامج المصغّر» في الأسفل للطلب"
+        },
+        {
+          "key": "share.singlePageTip",
+          "zh-CN": "从朋友圈打开只能先看看，点底部「前往小程序」可以下单",
+          "en": "Opened from Moments — browse here, tap “Open Mini Program” at the bottom to order",
+          "ar": "فُتح من اللحظات — تصفّح هنا، واضغط «فتح البرنامج المصغّر» في الأسفل للطلب"
         },
         {
           "key": "share.toFriend",

@@ -20,6 +20,7 @@ import { api } from "@/api";
 import { money } from "@shared/utils/format";
 import { thumb } from "@shared/utils/media-thumb";
 import type { Goods } from "@shared/types";
+import { canNativeShare, showShareImage } from "@shared/ports/share";
 
 /**
  * 两种海报：**商品**（商品图 · 名称 · 价格 · 门店名 · 门店码）与**门店**（门户里生成：店名 · 公告 · 门店码）。
@@ -318,6 +319,20 @@ function save() {
   // #endif
 }
 
+/**
+ * 分享到朋友圈（TDD-C端朋友圈分享修补 AC1）。小程序弹微信原生的图片分享菜单：
+ * 发送给朋友 / 分享到朋友圈 / 收藏 / 保存 —— 面板上写着「发朋友圈」，此前实际只能存相册。
+ *
+ * <p>老版本微信没有 `showShareImageMenu` 时退回保存。**用户在菜单里点取消不是失败**，
+ * 不能因此再替他存一张图。
+ */
+function shareToMoments() {
+  showShareImage(imagePath.value, save);
+}
+
+/** 小程序才有原生图片分享菜单；H5 只能长按保存 */
+const canShareImage = canNativeShare();
+
 defineExpose({ open });
 </script>
 
@@ -335,9 +350,14 @@ defineExpose({ open });
     </view>
     <image v-else-if="imagePath" class="poster__img" :src="imagePath" mode="widthFix" show-menu-by-longpress />
 
-    <view v-if="imagePath" class="sh-btn poster__save" @tap="save">
-      {{ $t("poster.save") }}
-    </view>
+    <template v-if="imagePath">
+      <view v-if="canShareImage" class="sh-btn poster__save" @tap="shareToMoments">
+        {{ $t("poster.toMoments") }}
+      </view>
+      <view class="sh-btn poster__save" :class="{ 'sh-btn--soft': canShareImage }" @tap="save">
+        {{ $t("poster.save") }}
+      </view>
+    </template>
   </sh-sheet>
 </template>
 
