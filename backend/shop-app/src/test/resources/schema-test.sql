@@ -4434,6 +4434,32 @@ CREATE TABLE IF NOT EXISTS usr_otp_test_phone
     CONSTRAINT uk_otp_test_phone UNIQUE (phone)
 );
 
+CREATE TABLE IF NOT EXISTS mch_payout_account
+(
+    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+    account_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    account_type VARCHAR(24) NOT NULL,
+    account_name VARCHAR(128) NOT NULL,
+    account_number_enc VARCHAR(512) NOT NULL,
+    account_masked VARCHAR(64) NOT NULL,
+    bank_name VARCHAR(128) DEFAULT NULL,
+    bank_branch VARCHAR(128) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    audit_remark VARCHAR(255) DEFAULT NULL,
+    audited_by VARCHAR(64) DEFAULT NULL,
+    audited_at BIGINT(20) DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT(20) NOT NULL DEFAULT 0,
+    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_payout_account UNIQUE (account_no)
+);
+
 -- 种子数据
 INSERT INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

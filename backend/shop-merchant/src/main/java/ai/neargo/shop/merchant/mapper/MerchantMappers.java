@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
@@ -279,4 +280,14 @@ public final class MerchantMappers {
     /** 主体的增值包订阅（一主体一行）。 */
     public interface EntityPlanMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchEntityPlan> {
     }
+
+    /**
+     * 供应商收款账户（V358，ADR-011）。
+     *
+     * <p>只做单表 CRUD —— 「同一主体只能有一个 ACTIVE」那条约束在 Service，
+     * 不在这里：它要跨行判断并改另一行的状态，放 Mapper 就绕过了状态机。
+     */
+    public interface PayoutAccountMapper extends BaseMapper<MchPayoutAccount> {
+    }
+
 }

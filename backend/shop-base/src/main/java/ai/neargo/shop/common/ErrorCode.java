@@ -137,6 +137,22 @@ public enum ErrorCode {
      * 而这里要说清「为什么现在不能改」—— 运营正在看、已经通过、或者已被驳回
      * （驳回后是重新提交一份，不是改旧的那份）。
      */
+    /*
+     * 供应商收款账户的两条（V358，ADR-011 · TDD-供应商结算与双轨资金 §3.1）。
+     *
+     * **都不复用 BAD_REQUEST**：店主在这两格上的下一步动作完全不同 ——
+     * 户名不符要照营业执照改写法，有单在审要等运营核完再提。
+     * 而「请求参数有误」会让他以为是卡号填错了，去反复检查一个没问题的格子。
+     */
+    /**
+     * 户名与营业执照主体名不一致。
+     *
+     * <p><b>这条是硬校验不是提示</b>：户名对不上时钱付得出去，但这笔支出
+     * 在税上站不住（三流一致）。V23 的进项票注释已经写明同一件事。
+     */
+    PAYOUT_ACCOUNT_NAME_MISMATCH(10468, "err.payout_account.name_mismatch"),
+    /** 已经有一张卡在等运营核。同时挂两张待审的卡，核完不知道该以哪张为准 */
+    PAYOUT_ACCOUNT_PENDING_EXISTS(10469, "err.payout_account.pending_exists"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。

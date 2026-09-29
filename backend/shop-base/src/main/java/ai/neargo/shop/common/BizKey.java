@@ -166,6 +166,13 @@ public final class BizKey {
     public static final String QRCODE_PRINT = "QP";
     /** 快递代下单的取件单（TDD-快递100商家寄件）。作为 thirdOrderId 传给通道，长度要 ≤32 */
     public static final String EXPRESS_PICKUP = "EP";
+    /**
+     * 供应商收款账户（ADR-011 自营供应商模式）。
+     *
+     * <p><b>不复用 {@code WITHDRAW}</b> —— 那个是提现单（一次取钱的动作），
+     * 这个是账户（钱打到哪里）。共用前缀之后「PAC… 是一笔还是一张卡」要靠猜。
+     */
+    public static final String PAYOUT_ACCOUNT = "PAC";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);
