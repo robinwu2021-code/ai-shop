@@ -34957,22 +34957,6 @@
       "module": "pay/pay-domain"
     },
     {
-      "host": "StlBill",
-      "name": "PLATFORM_CALL",
-      "type": "String",
-      "value": "ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_PLATFORM_CALL",
-      "zh": "与 SettleSourcePort.SHIP_PLATFORM_CALL 同值 —— 取值域定义在 spi，这里只是转出口。",
-      "module": "pay/pay-domain"
-    },
-    {
-      "host": "StlBill",
-      "name": "MERCHANT_SELF",
-      "type": "String",
-      "value": "ai.neargo.shop.spi.trade.SettleSourcePort.SHIP_MERCHANT_SELF",
-      "zh": "与 SettleSourcePort.SHIP_MERCHANT_SELF 同值。",
-      "module": "pay/pay-domain"
-    },
-    {
       "host": "StlFeeRule",
       "name": "BP_SCALE",
       "type": "int",
