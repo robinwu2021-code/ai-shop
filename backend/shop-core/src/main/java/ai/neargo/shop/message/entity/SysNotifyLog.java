@@ -29,6 +29,11 @@ public class SysNotifyLog {
     public static final String WXSUB = "WXSUB";
     /** App 推送（个推/uni-push，ADR-018）。target 存掩码后的 clientId。 */
     public static final String PUSH = "PUSH";
+    /**
+     * 群机器人 Webhook（企业微信）。**不是给某个人发的**，所以 target 记的是群标识
+     * 而不是手机号/邮箱 —— 那一列的掩码规则对它没有意义。
+     */
+    public static final String WEBHOOK = "WEBHOOK";
 
     public static final String SENT = "SENT";
     public static final String FAILED = "FAILED";
@@ -41,6 +46,8 @@ public class SysNotifyLog {
     public static final String BIZ_OPS_RESET_PASSWORD = "OPS_RESET_PASSWORD";
     /** 运营端页面上手动触发的测试发送。 */
     public static final String BIZ_TEST = "TEST";
+    /** 新的商家入驻意向 —— 推给运营的那一条 */
+    public static final String BIZ_MERCHANT_APPLY = "MERCHANT_APPLY";
 
     @TableId(type = IdType.AUTO)
     private Long id;

@@ -166,6 +166,11 @@ shop:
   merchant-app:
     android: ${SHOP_MERCHANT_APP_ANDROID:}
     ios: ${SHOP_MERCHANT_APP_IOS:}
+  notify:
+    wecom:
+      # 企业微信群机器人的 Webhook。**URL 本身就是凭据** —— 拿到它的人都能往群里发消息，
+      # 所以只在服务器 env 里，不进仓库。空 = 不发（缺配置时不发半截）。
+      webhook: ${SHOP_NOTIFY_WECOM_WEBHOOK:}
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false

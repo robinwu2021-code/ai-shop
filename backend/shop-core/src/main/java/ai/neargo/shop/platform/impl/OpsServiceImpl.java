@@ -3,6 +3,7 @@ package ai.neargo.shop.platform.impl;
 import ai.neargo.shop.common.ratelimit.RateRule;
 import ai.neargo.shop.common.ratelimit.RateLimiter;
 import ai.neargo.shop.spi.notify.MailPort;
+import ai.neargo.shop.spi.notify.OpsAlertPort;
 import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.ScopeDim;
@@ -91,6 +92,25 @@ public class OpsServiceImpl implements OpsService {
      */
     private final String passwordDelivery;
 
+    /**
+     * 运营告警（新入驻意向）。**走 spi Port 而不是直接用 message 域的 Service** ——
+     * 业务域之间不许互相依赖，跨域只走 spi 的 Port/Event（ArchitectureTest 那一条）。
+     *
+     * <p><b>{@code @Lazy} 不是随手加的</b>：message 域<b>已经</b>通过
+     * {@code AuditLogPort} 依赖了本域（审计要写 sys_audit_log），链路是
+     * {@code MessageServiceImpl → AuditLogPortImpl → OpsServiceImpl}。
+     * 本域再构造期注入 message 侧的实现，这个环就闭合了，整个上下文起不来
+     * （实测：{@code BeanCurrentlyInCreationException}）。
+     *
+     * <p>在<b>新引入依赖的这一端</b>打破它 —— 这条 Port 只在「有人报名了」
+     * 那一刻用一次，晚一点解析毫无代价；而反过来让 message 侧延迟拿审计口，
+     * 影响的是每一条消息。
+     */
+    private final ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort;
+
+    /** 运营端地址的来源。与门店短链共用一个配置，没配就不拼链接 */
+    private final String webBaseUrl;
+
     private static final String MAIL_DELIVERY = "mail";
 
     public OpsServiceImpl(StaffMapper staffMapper, RoleMemberMapper roleMemberMapper,
@@ -107,7 +127,13 @@ public class OpsServiceImpl implements OpsService {
                           PasswordResetTokens resetTokens,
                           RateLimiter resetLimiter,
                           @org.springframework.beans.factory.annotation.Value(
-                                  "${shop.ops.password-delivery:mail}") String passwordDelivery) {
+                                  "${shop.ops.password-delivery:mail}") String passwordDelivery,
+                          @org.springframework.context.annotation.Lazy
+                          ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${shop.web.base-url:}") String webBaseUrl) {
+        this.opsAlertPort = opsAlertPort;
+        this.webBaseUrl = webBaseUrl;
         this.mailPort = mailPort;
         this.mailTemplatePort = mailTemplatePort;
         this.resetTokens = resetTokens;
@@ -481,7 +507,52 @@ public class OpsServiceImpl implements OpsService {
          */
         merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
+        notifyOpsOfNewApply(apply);
         return apply.getApplyNo();
+    }
+
+    /**
+     * 有人报名了，告诉运营。**两条出口、一个触发点**：站内消息（运营端的未读角标）
+     * 与企微群机器人（人不在运营端时也能知道）。
+     *
+     * <p><b>一条都不许把报名挡住</b>：整段包在 try 里，通知失败只落日志。
+     * 报名是商家侧的主流程，为了一条提醒回滚它是本末倒置。
+     *
+     * <p><b>手机号在群消息里掩码</b>：群里可能有不该看全号的人，而运营点进
+     * 运营端就能看到全号 —— 那一侧有权限控制，群里没有。
+     */
+    private void notifyOpsOfNewApply(MchEntityApply apply) {
+        try {
+            /*
+             * **发给所有在用的运营账号**，不按权限码筛：那要连 role → perm 的映射表，
+             * 而「有人报名了」是全员都该知道的事 —— 漏发比多发糟。
+             * 「谁该收」这个决定留在本域，因为只有它知道运营账号表长什么样。
+             */
+            List<String> receivers = DataScopeContext.executeWithoutScope(() ->
+                            staffMapper.selectList(Wrappers.<SysOpsStaff>lambdaQuery()
+                                    .eq(SysOpsStaff::getStatus, "ACTIVE")))
+                    .stream().map(SysOpsStaff::getStaffNo).toList();
+            opsAlertPort.newMerchantApply(
+                    new OpsAlertPort.NewApply(apply.getApplyNo(), apply.getName(),
+                            apply.getIndustry(), apply.getCategory(), apply.getContactPhone()),
+                    receivers, applyReviewLink());
+        } catch (RuntimeException e) {
+            // 通知失败不能影响报名本身。通道那一侧自己会写 sys_notify_log
+            log.warn("新入驻意向的运营通知没发出去 applyNo={} {}", apply.getApplyNo(), e.toString());
+        }
+    }
+
+    /**
+     * 运营端审核台的地址。**域名归后端配置**（{@code shop.web.base-url}）——
+     * 没配就只给一句文字，不拼一个打不开的链接。
+     */
+    private String applyReviewLink() {
+        String base = webBaseUrl == null ? "" : webBaseUrl.replaceAll("/+$", "");
+        return base.isBlank() ? "" : base + "/ops-web/merchants";
+    }
+
+    private static String nvl(String v, String def) {
+        return v == null || v.isBlank() ? def : v;
     }
 
     @Override
