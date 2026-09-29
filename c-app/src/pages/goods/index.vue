@@ -19,7 +19,7 @@ import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage, buildShareTimeline } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
-import { CATEGORY_TYPE, FEATURES, FULFILLMENT, GOODS_SERVICE, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import {
   clearCartAnchor,
@@ -245,18 +245,15 @@ function activityTagText(a: ActivityTag): string {
   return String(t(a.newCustomerOnly ? "promo.newCut" : "promo.cutAny", { n }));
 }
 
-/**
- * 服务承诺码（§3.4）。**后端判的**，端上只负责显示 ——
- * 「极速退款」成不成立取决于售后规则里的金额上限与总开关，而那两样运营随时可调。
- *
- * 不认识的码直接跳过：后端加了新承诺而端上还没发版时，宁可少显示一条，
- * 也不要把 `INSTANT_REFUND` 这样的原始码印给买家看。
- */
-const services = computed(() =>
-  (goods.value?.services ?? []).filter((c): c is keyof typeof GOODS_SERVICE => c in GOODS_SERVICE));
-const svcOpen = ref(false);
 /** 海报组件（§3.2 B3）。点「海报」时才开始画 —— 画布与下载都不该在进页面时发生 */
 const poster = ref<{ open: () => void } | null>(null);
+/** 从哪家门店的门户点进来的（链接上的 storeNo）。空 = 不是从门户来的 */
+const viaStore = ref("");
+/** 分享链接：带上门店号，对方打开后「进店」进的是这一家 */
+const sharePath = computed(() => {
+  const base = `${ROUTES.goods}?goodsNo=${goods.value?.goodsNo ?? ""}`;
+  return viaStore.value ? `${base}&storeNo=${viaStore.value}` : base;
+});
 
 /**
  * 商品参数：商家填的 + **系统已经知道的事实**。
@@ -265,15 +262,20 @@ const poster = ref<{ open: () => void } | null>(null);
  * （买家在同一个地方找「这件货是什么样」）。收进同一个列表之后，
  * 「前几条直出、其余进抽屉」才有统一的口径 —— 否则抽屉里只有一半内容。
  *
- * <p><b>不收 arrivalDesc</b>：方案里本来写着「把它搬上详情页」，而
- * `goods-detail-layout.test.ts` 拦住了 —— 详情页不说配送是 2026-09-19 拍过板的
- * （「送至」「配送」是订单的事）。到货说明属于配送，守卫拦得对，方案那一条作废。
+ * <p><b>不收 arrivalDesc</b>：到货说明属于配送，配送在结算 / 订单页确认
+ * （v4 2026-09-29 再次确认，见 goods-detail-layout.test.ts 头部的三次决定）。
  */
 const facts = computed<Array<{ label: string; value: string }>>(() => {
   const g = goods.value;
   if (!g) return [];
   const out: Array<{ label: string; value: string }> = [];
   for (const p of g.params ?? []) {
+    /*
+     * 商家自己写的「售后说明 / 售后服务」先不出（v4，2026-09-29）：售后要作为一整块重新设计，
+     * 在那之前每家店各写一句，买家看到的是一套半截说法 —— 与平台规则打架时还说不清谁算数。
+     * 按名字认：这一格没有固定维度，是商家自由起的参数名。
+     */
+    if ((p.name || "").includes("售后")) continue;
     out.push({ label: p.name || p.dimNo, value: p.label });
   }
   // 旧的 origin 列：参数里已经有产地就不再重复（两个产地谁也说不清哪个算数）
@@ -319,13 +321,13 @@ const showSku = ref(false);
  * 面板是被哪颗按钮叫出来的。面板底部**只放那一个动作** ——
  * 点的是「加入购物车」，面板里就只有「加入购物车」，不再让人在面板里二选一（原型 g03）。
  */
-type SheetMode = "add" | "buy" | "group" | "pick";
+type SheetMode = "add" | "buy" | "group";
 const sheetMode = ref<SheetMode>("add");
 function openSheet(mode: SheetMode) {
   sheetMode.value = mode;
   showSku.value = true;
 }
-/** 「已选」那一行：规格 · 件数 */
+/** 规格面板里的「已选」：规格 · 件数 */
 const chosenText = computed(() => {
   const spec = (sku.value?.spec || chosen.value.join(" ")).trim();
   // 不分规格的货没有规格名：只说件数，不留一个「 · 1 件」的空头
@@ -333,18 +335,6 @@ const chosenText = computed(() => {
     ? String(t("goods.chosenValue", { spec, n: qty.value }))
     : String(t("goods.chosenQty", { n: qty.value }));
 });
-/*
- * ── v3 选购卡（TDD-C端商品详情页v3 AC2–AC4）──
- * 「已选」答规格与件数；多规格再说一句「共几种」—— 一眼知道还有别的可挑（2026-09-28 用户拍板恢复）。
- */
-const specCount = computed(() => goods.value?.skus.length ?? 0);
-/** 「配送」：这件货怎么拿到。名称用 fulfillment.* 的现成文案，按商品声明的顺序 */
-const shipText = computed(() =>
-  (goods.value?.fulfillments ?? [])
-    .map((f) => String(t(`fulfillment.${f}`)))
-    .join(" · "));
-/** 「配送」第二行：到货说明（生鲜的「次日 17:00 前到店」这一类），没有就不出 */
-const shipSub = computed(() => goods.value?.arrivalDesc?.trim() || "");
 
 /** 好评率：4、5 星之和 / 总数（dist 下标 0 是 1 星）。没人评过时不算 */
 const goodRate = computed(() => {
@@ -606,8 +596,13 @@ function openGoods(goodsNo: string) {
   uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${goodsNo}` });
 }
 
+/**
+ * 「进店」进的是**门户**，不是资质页：从门户点进来的回到那一家；别处来的给主体号，
+ * 服务端落到它的默认营业门店（门店化 §2.1）。主体与资质只在门户「店铺」页签最后一行。
+ */
 function openMerchant() {
-  uni.navigateTo({ url: `${ROUTES.merchant}?merchantNo=${goods.value?.merchant.merchantNo}` });
+  const no = viaStore.value || goods.value?.merchant.merchantNo;
+  if (no) uni.navigateTo({ url: `${ROUTES.store}?no=${no}&from=GOODS` });
 }
 
 async function likeReview(r: Review) {
@@ -884,6 +879,8 @@ onLoad((q) => {
    * 它不会跟过来（首页那条同理，判断收在 store 里共用）。
    */
   user.captureInviter(q?.inviterNo);
+  // 从门户点进来会带门店号：「进店」回到这一家，分享与海报也落到这一家（门店化 AC15）
+  viaStore.value = (q?.storeNo as string) || "";
   const no = (q?.goodsNo as string) || "";
   if (no) load(no);
   timer = setInterval(() => (now.value = Date.now()), 1000);
@@ -894,7 +891,7 @@ onUnmounted(() => clearInterval(timer));
 onShareAppMessage(() =>
   buildShareMessage({
     title: goods.value?.title ?? "",
-    path: `${ROUTES.goods}?goodsNo=${goods.value?.goodsNo ?? ""}`,
+    path: sharePath.value,
     merchantNo: community.pickup?.hostMerchantNo,
     inviterNo: user.user?.cUserNo,
   }),
@@ -912,7 +909,7 @@ onShareTimeline(() =>
   buildShareTimeline({
     title: goods.value?.title ?? "",
     path: ROUTES.goods,
-    params: `goodsNo=${goods.value?.goodsNo ?? ""}`,
+    params: sharePath.value.split("?")[1] ?? "",
     merchantNo: community.pickup?.hostMerchantNo,
     inviterNo: user.user?.cUserNo,
   }),
@@ -1016,25 +1013,18 @@ onShareTimeline(() =>
               <text class="txt-caption" :class="goods.favorited ? 'txt-primary' : 'sh-muted'">{{ $t(goods.favorited ? "goods.favorited" : "goods.favorite") }}</text>
             </view>
             <!--
-              分享（§3.2）。此前这一颗挂在 `nativeShare` 上，而它只在微信小程序为 true ——
-              于是 H5 上这一页没有任何分享入口。换成共用组件：小程序转发、H5 复制链接，
-              **入口始终在**。
+              分享（§3.2；详情页 v4 第一条）：一颗「分享」，点开面板两条路 —— 发给朋友 / 生成海报。
+              此前标题行并排「海报」「分享」两颗：同一件事的两条路并排摆，人不知道点哪个。
+              海报没删，收进面板（朋友圈只吃图片，那条路一个像素都没少）。
             -->
-            <!--
-              海报（§3.2 B3）：朋友圈只吃图片，没有它那条路完全走不了。
-              与「分享」并排 —— 两个动作同一层：一个发给人，一个发到朋友圈。
-            -->
-            <view class="titlerow__act sh-center" @tap="poster?.open()">
-              <!-- 用 scan 而不是 image：图标名拼错不报错、只是不显示（icons.ts 里没有 image），
-                   而海报的用处正是「扫码进店」 -->
-              <sh-icon name="scan" :size="32" color="var(--sh-ink)"></sh-icon>
-              <text class="txt-caption sh-muted">{{ $t("poster.act") }}</text>
-            </view>
             <biz-share-act
               compact
-              :path="`${ROUTES.goods}?goodsNo=${goods.goodsNo}`"
+              poster
+              :sheet-title="String($t('share.sheetGoods'))"
+              :path="sharePath"
               :inviter-no="user.user?.cUserNo"
               :merchant-no="goods.merchant.merchantNo"
+              @poster="poster?.open()"
             ></biz-share-act>
           </view>
 
@@ -1074,34 +1064,10 @@ onShareTimeline(() =>
         <biz-coupon-strip :merchant-no="goods.merchant.merchantNo" :preset="coupons"></biz-coupon-strip>
 
         <!--
-          选购卡（v3 d01 / d02，2026-09-28 用户拍板恢复）：已选 · 配送 · 保障。
-          淘宝京东首屏都有这一块 —— 它回答「买哪个、怎么拿到、有什么保障」。
-          「已选」不追问件数以外的事：多规格时补一句「共 N 种规格可选」。
-          保障（§3.4）**只放可核验的短语**，每一条背后都有一条真的规则；点开是细则。
+          v4（2026-09-29）去掉了「已选 / 配送 / 保障」选购卡：这时他在看货、还没选。
+          已选是替他做决定；配送在结算 / 订单页确认；保障等售后整块重新设计之前先不出半套说法。
+          规格面板只从底栏两颗按钮打开。截单倒计时仍在价格下（它影响「要不要现在买」）。
         -->
-        <view class="sh-card block buycard">
-          <view class="row sh-row" @tap="openSheet('pick')">
-            <text class="txt-sub row__label">{{ $t("goods.rowChosen") }}</text>
-            <view class="sh-fill row__value txt-ink">
-              <text class="txt-sub sh-num">{{ chosenText }}</text>
-              <text v-if="specCount > 1" class="txt-caption sh-muted sh-num">{{ $t("goods.specCount", { n: specCount }) }}</text>
-            </view>
-            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-          </view>
-          <view v-if="shipText" class="row sh-row">
-            <text class="txt-sub row__label">{{ $t("goods.rowShip") }}</text>
-            <view class="sh-fill row__value txt-ink">
-              <text class="txt-sub">{{ shipText }}</text>
-              <text v-if="shipSub" class="txt-caption sh-muted">{{ shipSub }}</text>
-            </view>
-          </view>
-          <view v-if="services.length" class="row sh-row" @tap="svcOpen = true">
-            <text class="txt-sub row__label">{{ $t("goods.rowService") }}</text>
-            <text class="txt-sub sh-fill row__value txt-ink">{{ services.map((c) => $t(`goods.svc${c}`)).join(" · ") }}</text>
-            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-          </view>
-        </view>
-
         <!-- 预约：日期 + 时刻 -->
         <view v-if="needAppointment" class="sh-card block">
           <text class="sh-muted">{{ $t("goods.pickDate") }}</text>
@@ -1359,19 +1325,10 @@ onShareTimeline(() =>
         </view>
 
         <!-- 海报：画布离屏，用户看到的是画完导出的那张图 -->
-        <biz-poster ref="poster" :goods="goods"></biz-poster>
+        <!-- 从门户来的：海报写门店名、用门店码（扫出来进的是这一家） -->
+        <biz-poster ref="poster" :goods="goods" :store="viaStore ? { storeNo: viaStore, storeName: '' } : undefined"></biz-poster>
 
         <!-- 服务承诺细则（§3.4）：承诺写在页面上，细则就得能查到 -->
-        <sh-sheet :visible="svcOpen" :title="String($t('goods.svcTitle'))" @close="svcOpen = false">
-          <view class="sh-cells">
-            <view v-for="c in services" :key="c" class="sh-cell">
-              <text class="txt-body">{{ $t(`goods.svc${c}`) }}</text>
-              <text class="txt-caption sh-muted svc__desc">{{ $t(`goods.svc${c}Desc`) }}</text>
-            </view>
-          </view>
-          <view class="sh-btn sheet__done" @tap="svcOpen = false">{{ $t("goods.couponDone") }}</view>
-        </sh-sheet>
-
         <!-- 全部参数 -->
         <sh-sheet :visible="factsOpen" :title="String($t('goods.paramsTitle'))" @close="factsOpen = false">
           <view class="sh-cells">
@@ -1463,15 +1420,6 @@ onShareTimeline(() =>
             <view v-else-if="sheetMode === 'group' && grp" class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetGroup">
               {{ $t("goods.groupStart", { p: money(grp.groupPrice) }) }}
             </view>
-            <!-- 从「已选」打开：两颗都给（v3），与底栏同样顺序 -->
-            <template v-else-if="sheetMode === 'pick' && !grp">
-              <view class="sh-btn sh-fill actionbar__add" :class="{ 'is-disabled': !buyable }" @tap="sheetAdd($event)">
-                {{ soldOut ? $t("goods.soldOut") : $t("goods.addCart") }}
-              </view>
-              <view class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
-                {{ $t("goods.buyNow") }}
-              </view>
-            </template>
             <view v-else-if="sheetMode === 'buy'" class="sh-btn sh-fill actionbar__buy" :class="{ 'is-disabled': !buyable }" @tap="sheetBuy">
               {{ soldOut ? $t("goods.soldOut") : grp ? $t("goods.buyAlone", { p: money(sku?.price ?? goods.price) }) : $t("goods.buyNow") }}
             </view>
@@ -1797,10 +1745,6 @@ onShareTimeline(() =>
   margin-top: 40rpx;
 }
 
-.svc__desc {
-  display: block;
-  margin-top: 8rpx;
-}
 
 /* 「全部参数」入口：与参数行同一行高，靠 txt-primary 与上面几行区分 */
 .fact--more {
@@ -1842,26 +1786,6 @@ onShareTimeline(() =>
 .price__sold {
   margin-inline-start: auto;
   align-self: center;
-}
-/* 选购卡：已选 / 配送 / 保障，左标签右内容，行间一条细线 */
-.buycard .row {
-  gap: 24rpx;
-  padding: 20rpx 0;
-  align-items: flex-start;
-}
-.buycard .row + .row {
-  border-top: var(--sh-hairline);
-}
-.row__label {
-  flex-shrink: 0;
-  width: 64rpx;
-  color: var(--sh-sub);
-}
-.row__value {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-  min-width: 0;
 }
 /* 评价、问答都空时的那一行 */
 .rvqa-empty {

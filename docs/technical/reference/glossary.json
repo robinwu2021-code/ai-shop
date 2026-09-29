@@ -2170,24 +2170,6 @@
           "ar": "الكمية"
         },
         {
-          "key": "goods.rowChosen",
-          "zh-CN": "已选",
-          "en": "Selected",
-          "ar": "المحدد"
-        },
-        {
-          "key": "goods.rowService",
-          "zh-CN": "保障",
-          "en": "Service",
-          "ar": "الضمان"
-        },
-        {
-          "key": "goods.rowShip",
-          "zh-CN": "配送",
-          "en": "Delivery",
-          "ar": "التوصيل"
-        },
-        {
           "key": "goods.rvqaEmpty",
           "zh-CN": "暂无评价与提问",
           "en": "No reviews or questions yet",
@@ -2242,46 +2224,10 @@
           "ar": "نفدت الكمية"
         },
         {
-          "key": "goods.specCount",
-          "zh-CN": "共 {n} 种规格可选",
-          "en": "{n} options available",
-          "ar": "{n} خيارات متاحة"
-        },
-        {
           "key": "goods.store",
           "zh-CN": "服务门店",
           "en": "Location",
           "ar": "الموقع"
-        },
-        {
-          "key": "goods.svcINSTANT_REFUND",
-          "zh-CN": "极速退款",
-          "en": "Instant refund",
-          "ar": "استرداد فوري"
-        },
-        {
-          "key": "goods.svcINSTANT_REFUNDDesc",
-          "zh-CN": "小额仅退款申请后立即退，不用等商家处理。金额上限由平台设定，超出的按普通售后走。",
-          "en": "Small refund-only claims are paid out immediately, with no wait for the merchant. The cap is set by the platform; anything above it follows the normal after-sales flow.",
-          "ar": "تُدفع طلبات الاسترداد الصغيرة فورًا دون انتظار التاجر. الحد الأقصى يحدده المنصة، وما فوقه يمر بمسار ما بعد البيع المعتاد."
-        },
-        {
-          "key": "goods.svcPICKUP_FREE",
-          "zh-CN": "门店自提免运费",
-          "en": "Free store pickup",
-          "ar": "استلام من المتجر مجانًا"
-        },
-        {
-          "key": "goods.svcPICKUP_FREEDesc",
-          "zh-CN": "到店自提不收运费；选择配送时按商家的运费规则计算。",
-          "en": "Picking up in store costs nothing extra; delivery is charged by the merchant's shipping rules.",
-          "ar": "الاستلام من المتجر بلا رسوم شحن؛ أما التوصيل فيُحتسب وفق قواعد التاجر."
-        },
-        {
-          "key": "goods.svcTitle",
-          "zh-CN": "服务承诺",
-          "en": "Service promises",
-          "ar": "التزامات الخدمة"
         },
         {
           "key": "goods.virtualTag",
@@ -4438,12 +4384,6 @@
           "ar": "تعادل نحو {p}"
         },
         {
-          "key": "poster.act",
-          "zh-CN": "海报",
-          "en": "Poster",
-          "ar": "ملصق"
-        },
-        {
           "key": "poster.drawing",
           "zh-CN": "正在生成…",
           "en": "Generating…",
@@ -5018,6 +4958,48 @@
           "zh-CN": "复制链接",
           "en": "Copy link",
           "ar": "نسخ الرابط"
+        },
+        {
+          "key": "share.poster",
+          "zh-CN": "生成海报",
+          "en": "Make a poster",
+          "ar": "أنشئ ملصقًا"
+        },
+        {
+          "key": "share.posterSub",
+          "zh-CN": "发朋友圈 · 存相册",
+          "en": "Moments · save to photos",
+          "ar": "اللحظات · حفظ في الصور"
+        },
+        {
+          "key": "share.sheetGoods",
+          "zh-CN": "分享这件商品",
+          "en": "Share this item",
+          "ar": "شارك هذا المنتج"
+        },
+        {
+          "key": "share.sheetStore",
+          "zh-CN": "分享这家店",
+          "en": "Share this store",
+          "ar": "شارك هذا المتجر"
+        },
+        {
+          "key": "share.toFriend",
+          "zh-CN": "发给朋友",
+          "en": "Send to a friend",
+          "ar": "أرسل إلى صديق"
+        },
+        {
+          "key": "share.toFriendSub",
+          "zh-CN": "微信聊天",
+          "en": "WeChat chat",
+          "ar": "دردشة WeChat"
+        },
+        {
+          "key": "share.toFriendSubH5",
+          "zh-CN": "复制链接，发给朋友",
+          "en": "Copy the link to send",
+          "ar": "انسخ الرابط لإرساله"
         },
         {
           "key": "shops.closedNow",

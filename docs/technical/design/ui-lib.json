@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 479,
-        "c-app": 79
+        "c-app": 75
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 398,
-        "c-app": 78
+        "c-app": 77
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 340,
-        "c-app": 267
+        "c-app": 265
       }
     },
     {
@@ -394,7 +394,7 @@
       },
       "usage": {
         "b-app": 11,
-        "c-app": 23
+        "c-app": 20
       }
     },
     {
@@ -470,7 +470,7 @@
       },
       "usage": {
         "b-app": 44,
-        "c-app": 37
+        "c-app": 39
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 127,
-        "c-app": 49
+        "c-app": 51
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 98,
-        "c-app": 98
+        "c-app": 92
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 217,
-        "c-app": 85
+        "c-app": 84
       }
     },
     {
@@ -660,7 +660,7 @@
       },
       "usage": {
         "b-app": 157,
-        "c-app": 30
+        "c-app": 29
       }
     },
     {
@@ -684,7 +684,7 @@
       },
       "usage": {
         "b-app": 57,
-        "c-app": 12
+        "c-app": 11
       }
     },
     {
@@ -810,7 +810,7 @@
       },
       "usage": {
         "b-app": 178,
-        "c-app": 81
+        "c-app": 78
       }
     },
     {
@@ -1078,7 +1078,7 @@
       },
       "usage": {
         "b-app": 338,
-        "c-app": 154
+        "c-app": 152
       }
     },
     {
@@ -1386,7 +1386,7 @@
       },
       "usage": {
         "b-app": 27,
-        "c-app": 32
+        "c-app": 31
       }
     },
     {
@@ -1404,7 +1404,7 @@
       },
       "usage": {
         "b-app": 148,
-        "c-app": 92
+        "c-app": 89
       }
     },
     {
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 536,
-        "c-app": 196
+        "c-app": 194
       }
     },
     {
@@ -2282,7 +2282,7 @@
       ],
       "usage": {
         "b-app": 121,
-        "c-app": 26,
+        "c-app": 25,
         "lib": 13
       },
       "note": "单色图标",
@@ -4935,9 +4935,9 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 274,
-      "localSelectors": 82,
-      "localCssLines": 345,
+      "libClassHits": 239,
+      "localSelectors": 77,
+      "localCssLines": 322,
       "rolled": []
     },
     {
@@ -5610,12 +5610,21 @@
       "key": "c-app/biz-share-act",
       "file": "c-app/src/components/biz/biz-share-act.vue",
       "components": [
-        "sh-icon"
+        "sh-icon",
+        "sh-sheet"
       ],
-      "libClassHits": 3,
-      "localSelectors": 3,
-      "localCssLines": 19,
-      "rolled": []
+      "libClassHits": 12,
+      "localSelectors": 7,
+      "localCssLines": 39,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5698,6 +5707,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "c-app/biz-share-act"
       ]
     }
   ],

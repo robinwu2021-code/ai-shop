@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**109 个功能点**，其中 **34 个游客可用**；**6 个没有任何页面调用**。
+统计：**109 个功能点**，其中 **34 个游客可用**；**5 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -21,7 +21,6 @@
 | `myInvoices` | GET | `/mp/invoice/mine` | — |
 | `promotedMerchants` | GET | `/mp/merchant/promoted` | — |
 | `visitedMerchants` | GET | `/mp/merchant/visited` | — |
-| `storeAcode` | GET | `/mp/store/:no/acode` | — |
 | `storeEnter` | POST | `/mp/store/:no/enter` | — |
 | `storeGoods` | GET | `/mp/store/:no/goods` | — |
 
@@ -116,7 +115,7 @@
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
 | `storeHome` | `GET /mp/store/:no` | 游客 | store | — |
-| `storeAcode` | `GET /mp/store/:no/acode` | 游客 | **无** | — |
+| `storeAcode` | `GET /mp/store/:no/acode` | 游客 | (components)/biz | — |
 | `storeEnter` | `POST /mp/store/:no/enter` | 是 | **无** | — |
 | `frequentItems` | `GET /mp/store/:no/frequent` | 是 | store | — |
 | `storeGoods` | `GET /mp/store/:no/goods` | 游客 | **无** | — |

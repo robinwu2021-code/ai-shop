@@ -78,10 +78,6 @@ export default {
   },
   goods: {
     chosenQty: "{n} 件",
-    rowChosen: "已选",
-    rowShip: "配送",
-    rowService: "保障",
-    specCount: "共 {n} 种规格可选",
     goodRate: "好评率 {n}%",
     shopHot: "本店热卖",
     enterShop: "进店逛逛 ›",
@@ -106,11 +102,6 @@ export default {
     chosenValue: "{spec} · {n} 件",
     lowStock: "仅剩 {n} 件",
     paramsTitle: "商品参数",
-    svcTitle: "服务承诺",
-    svcINSTANT_REFUND: "极速退款",
-    svcINSTANT_REFUNDDesc: "小额仅退款申请后立即退，不用等商家处理。金额上限由平台设定，超出的按普通售后走。",
-    svcPICKUP_FREE: "门店自提免运费",
-    svcPICKUP_FREEDesc: "到店自提不收运费；选择配送时按商家的运费规则计算。",
     /** `{n}` 是参数总条数 */
     paramsAll: "全部 {n} 项参数",
     qaTitle: "大家还问",
@@ -167,7 +158,6 @@ export default {
   },
   /** 我的收藏（原型 g08）*/
   poster: {
-    act: "海报",
     title: "分享海报",
     drawing: "正在生成…",
     failed: "海报生成失败，可直接截图分享",
@@ -181,6 +171,13 @@ export default {
     act: "分享",
     copy: "复制链接",
     copied: "链接已复制，发给好友即可",
+    sheetStore: "分享这家店",
+    sheetGoods: "分享这件商品",
+    toFriend: "发给朋友",
+    toFriendSub: "微信聊天",
+    toFriendSubH5: "复制链接，发给朋友",
+    poster: "生成海报",
+    posterSub: "发朋友圈 · 存相册",
   },
   invite: {
     /** `{n}` 是已邀请人数 */

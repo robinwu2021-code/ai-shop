@@ -87,23 +87,16 @@ describe("详情页 · 服务承诺与参数", () => {
     goodsDetail.mockReset();
   });
 
-  it("★★★ 后端给了承诺码才显示 —— 端上不自己算「这个价能不能极速退」", async () => {
-    goodsDetail.mockResolvedValue(aGoods({ services: ["INSTANT_REFUND", "PICKUP_FREE"] }));
+  /*
+   * 「保障」这一行 v4（2026-09-29）去掉了：售后要作为一整块重新设计，在那之前不出半套说法。
+   * 此前这里三条钉的是「给了码才显示、没给不显示、不认识的跳过」—— 显示本身取消之后，
+   * 改钉「给了码也不在详情页出现」。承诺码后端照发（GoodsVO.services），等售后那一块接回来。
+   */
+  it("★★★ v4 后端给了承诺码，详情页也先不出「保障」—— 售后整块重新设计之前", async () => {
+    goodsDetail.mockResolvedValue(aGoods({ services: ["INSTANT_REFUND", "PICKUP_FREE", "SOMETHING_NEW"] }));
     const html = (await render()).html();
-    expect(html).toContain("goods.svcINSTANT_REFUND");
-    expect(html).toContain("goods.svcPICKUP_FREE");
-  });
-
-  it("★★★ 没给码就整条不出 —— 价高于上限时挂着那四个字就是假承诺", async () => {
-    goodsDetail.mockResolvedValue(aGoods({ services: [] }));
-    expect((await render()).html()).not.toContain("goods.svcINSTANT_REFUND");
-  });
-
-  it("★★ 不认识的码跳过，不把原始码印给买家看", async () => {
-    goodsDetail.mockResolvedValue(aGoods({ services: ["SOMETHING_NEW"] }));
-    const html = (await render()).html();
+    expect(html).not.toContain("goods.svc");
     expect(html).not.toContain("SOMETHING_NEW");
-    expect(html).not.toContain("goods.svcSOMETHING_NEW");
   });
 
   it("★★★ 参数超过 4 条时给「全部」入口 —— 剩下的不能就这么丢了", async () => {

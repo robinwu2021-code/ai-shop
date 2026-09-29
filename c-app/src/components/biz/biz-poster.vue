@@ -21,7 +21,21 @@ import { money } from "@shared/utils/format";
 import { thumb } from "@shared/utils/media-thumb";
 import type { Goods } from "@shared/types";
 
-const props = defineProps<{ goods: Goods }>();
+/**
+ * 两种海报：**商品**（商品图 · 名称 · 价格 · 门店名 · 门店码）与**门店**（门户里生成：店名 · 公告 · 门店码）。
+ *
+ * <p>`store` 给了就画门店名、用<b>门店码</b>（TDD-C端门店化与门店门户 s09）：此前画的是主体名、
+ * 码是主体的店铺码 —— 同一主体四家店的海报扫出来都进默认店。没给（旧调用方）退回主体名与主体码。
+ */
+const props = defineProps<{
+  goods?: Goods;
+  store?: { storeNo: string; storeName: string; announcement?: string };
+}>();
+
+/** 店码接口回的门店名 —— 商品页只知道门店号，名字从这里来 */
+let codeStoreName = "";
+/** 海报上写的店名：门店名优先 */
+const shopName = () => props.store?.storeName || codeStoreName || props.goods?.merchant?.name || "";
 
 const { t } = useI18n();
 /*
@@ -100,25 +114,41 @@ async function drawH5() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
 
-  const cover = props.goods.cover ? thumb(props.goods.cover, 750) : "";
-  const img = await loadImage(cover);
-  if (img) {
-    ctx.drawImage(img, 0, 0, W, 220);
+  // 先取码：店名可能要从码的接口里拿（商品页只知道门店号）
+  const acode = await acodeImage();
+  const g = props.goods;
+  if (g) {
+    const cover = g.cover ? thumb(g.cover, 750) : "";
+    const img = await loadImage(cover);
+    if (img) {
+      ctx.drawImage(img, 0, 0, W, 220);
+    }
+
+    ctx.fillStyle = "#8a8f99";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(cut(shopName(), 18), 16, 248);
+
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText(cut(g.title, 14), 16, 274);
+
+    ctx.fillStyle = "#e4393c";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText(money(g.price), 16, 308);
+  } else {
+    // 门店海报：浅色头图 + 大号店名，下一行是公告（没有就不写）
+    ctx.fillStyle = "#e8f5ef";
+    ctx.fillRect(0, 0, W, 220);
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText(cut(shopName(), 12), 16, 124);
+    if (props.store?.announcement) {
+      ctx.fillStyle = "#5c6370";
+      ctx.font = "13px sans-serif";
+      ctx.fillText(cut(props.store.announcement, 20), 16, 256);
+    }
   }
 
-  ctx.fillStyle = "#8a8f99";
-  ctx.font = "12px sans-serif";
-  ctx.fillText(cut(props.goods.merchant?.name ?? "", 18), 16, 248);
-
-  ctx.fillStyle = "#1a1a1a";
-  ctx.font = "bold 16px sans-serif";
-  ctx.fillText(cut(props.goods.title, 14), 16, 274);
-
-  ctx.fillStyle = "#e4393c";
-  ctx.font = "bold 22px sans-serif";
-  ctx.fillText(money(props.goods.price), 16, 308);
-
-  const acode = await acodeImage();
   const acodeImg = acode ? await loadImage(acode) : null;
   if (acodeImg) {
     ctx.drawImage(acodeImg, W - 96, H - 108, 80, 80);
@@ -154,25 +184,39 @@ async function drawMp() {
   ctx.setFillStyle("#ffffff");
   ctx.fillRect(0, 0, W, H);
 
-  const cover = props.goods.cover ? thumb(props.goods.cover, 750) : "";
-  const coverPath = await localPath(cover);
-  if (coverPath) {
-    ctx.drawImage(coverPath, 0, 0, W, 220);
+  const acode = await acodeImage();
+  const g = props.goods;
+  if (g) {
+    const cover = g.cover ? thumb(g.cover, 750) : "";
+    const coverPath = await localPath(cover);
+    if (coverPath) {
+      ctx.drawImage(coverPath, 0, 0, W, 220);
+    }
+
+    ctx.setFillStyle("#8a8f99");
+    ctx.setFontSize(12);
+    ctx.fillText(cut(shopName(), 18), 16, 248);
+
+    ctx.setFillStyle("#1a1a1a");
+    ctx.setFontSize(16);
+    ctx.fillText(cut(g.title, 14), 16, 274);
+
+    ctx.setFillStyle("#e4393c");
+    ctx.setFontSize(22);
+    ctx.fillText(money(g.price), 16, 308);
+  } else {
+    ctx.setFillStyle("#e8f5ef");
+    ctx.fillRect(0, 0, W, 220);
+    ctx.setFillStyle("#1a1a1a");
+    ctx.setFontSize(22);
+    ctx.fillText(cut(shopName(), 12), 16, 124);
+    if (props.store?.announcement) {
+      ctx.setFillStyle("#5c6370");
+      ctx.setFontSize(13);
+      ctx.fillText(cut(props.store.announcement, 20), 16, 256);
+    }
   }
 
-  ctx.setFillStyle("#8a8f99");
-  ctx.setFontSize(12);
-  ctx.fillText(cut(props.goods.merchant?.name ?? "", 18), 16, 248);
-
-  ctx.setFillStyle("#1a1a1a");
-  ctx.setFontSize(16);
-  ctx.fillText(cut(props.goods.title, 14), 16, 274);
-
-  ctx.setFillStyle("#e4393c");
-  ctx.setFontSize(22);
-  ctx.fillText(money(props.goods.price), 16, 308);
-
-  const acode = await acodeImage();
   if (acode) {
     ctx.drawImage(acode, W - 96, H - 108, 80, 80);
   }
@@ -213,11 +257,17 @@ async function localPath(src: string): Promise<string> {
  * 要先写成临时文件 —— 这一步失败就返回空，海报少一个码而已。
  */
 async function acodeImage(): Promise<string> {
-  const merchantNo = props.goods.merchant?.merchantNo;
-  if (!merchantNo) return "";
+  const storeNo = props.store?.storeNo;
+  const merchantNo = props.goods?.merchant?.merchantNo;
   let base64 = "";
   try {
-    base64 = (await api.merchantAcode(merchantNo))?.imageBase64 ?? "";
+    // 门店码优先：扫出来进的是这一家店；没有门店号（旧调用方）才退回主体码
+    if (storeNo) {
+      const r = await api.storeAcode(storeNo);
+      codeStoreName = r?.storeName ?? "";
+      base64 = r?.imageBase64 ?? "";
+    }
+    else if (merchantNo) base64 = (await api.merchantAcode(merchantNo))?.imageBase64 ?? "";
   } catch {
     return "";
   }

@@ -1,6 +1,12 @@
 /**
  * 商品详情页重排（2026-09-19，原型 + 用户逐条拍板）后的几条规矩。
  *
+ * 首屏「已选 / 配送 / 保障」这一块改过三次，**钉的是最新那次**，别改回去：
+ *   2026-09-19 v2 去掉（还没决定买就问件数；配送是订单的事）
+ *   2026-09-28 v3 恢复（参照淘宝京东首屏）
+ *   2026-09-29 v4 再去掉 —— 这时他在看货、还没选：已选是替他做决定，配送在结算 / 订单页确认，
+ *              保障等售后整块重新设计。海报收进分享面板（TDD-C端商品详情页v3 §v4）
+ *
  * 每条都是「说」与「不说」的边界 —— 两个方向都要钉：
  * 该说的没说，买家少一条判断依据；不该说的说了（「已售 0」「暂无评价」「不限购」），
  * 首屏就在反复告诉他「没有」。
@@ -77,6 +83,8 @@ async function render() {
       stubs: {
         "sh-scaffold": { template: "<div><slot /></div>" },
         "sh-actionbar": { template: "<div><slot /></div>" },
+        // 分享面板的内容要真的渲染出来：判据问的是「面板里有没有生成海报 / 原生转发」
+        "sh-sheet": { props: ["visible"], template: "<div v-if=\"visible\"><slot /></div>" },
         "sh-icon": true, "sh-chip": true, "sh-cover": true, "sh-rating": true, "biz-review": true,
       },
       mocks: { $t: (k: string) => k },
@@ -148,29 +156,40 @@ describe("商品详情页重排", () => {
     expect(w.find(".skuhead").exists(), "多规格要先弹面板").toBe(true);
   });
 
-  it("★★★ v3 选购卡：已选、配送（按商品声明的方式）与到货说明都出现（2026-09-28 用户拍板恢复）", async () => {
-    // 2026-09-19 的拍板是「详情页不说配送」；2026-09-28 用户改了决定 —— 这条钉的是新决定
+  it("★★★ v4 首屏没有已选 / 配送 / 保障三行（2026-09-29，第三次决定）", async () => {
     goodsDetail.mockResolvedValue(goods({
       fulfillments: [FULFILLMENT.EXPRESS, FULFILLMENT.PICKUP],
       arrivalDesc: "次日 16 点后可提",
+      services: ["INSTANT_REFUND"],
       saleScope: { unlimited: false, areaNames: ["深圳市"], areaCount: 1 },
     } as Partial<Goods>));
     const w = await render();
-    const labels = w.findAll(".buycard .row__label").map((r) => r.text());
-    expect(labels).toEqual(expect.arrayContaining(["goods.rowChosen", "goods.rowShip"]));
     const html = w.html();
-    expect(html).toContain(`fulfillment.${FULFILLMENT.EXPRESS}`);
-    expect(html).toContain(`fulfillment.${FULFILLMENT.PICKUP}`);
-    expect(html).toContain("次日 16 点后可提");
-    // 销售区域仍在商品参数里，不进选购卡
+    expect(w.find(".buycard").exists(), "选购卡整块不出").toBe(false);
+    for (const k of ["goods.rowChosen", "goods.rowShip", "goods.rowService"]) {
+      expect(html, `${k} 又出现在首屏`).not.toContain(k);
+    }
+    // 到货说明随「配送」一起去掉（配送方式在结算页选）
+    expect(html).not.toContain("次日 16 点后可提");
+    // 销售区域仍在商品参数里
     const params = w.find("#sec-detail").element.nextElementSibling!;
     expect(params.textContent).toContain("goods.scopeLabel");
     expect(params.textContent).toContain("深圳市");
   });
 
-  it("★★★ v3 多规格时「已选」说共几种；单规格不说", async () => {
-    goodsDetail.mockResolvedValue(goods());
-    expect((await render()).html()).not.toContain("goods.specCount");
+  it("★★ v4 商家写的「售后说明」先不出 —— 售后整块重新设计之前不给半套说法", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      params: [
+        { dimNo: "D1", name: "产地", label: "云南" },
+        { dimNo: "D2", name: "售后说明", label: "坏果包赔" },
+      ],
+    } as never));
+    const html = (await render()).html();
+    expect(html).toContain("云南");
+    expect(html).not.toContain("坏果包赔");
+  });
+
+  it("★★★ v4 多规格也不在首屏说共几种 —— 规格面板只从底栏两颗按钮打开", async () => {
     goodsDetail.mockResolvedValue(goods({
       specGroups: [{ name: "重量", options: ["约10斤", "约5斤"] }],
       skus: [
@@ -178,18 +197,24 @@ describe("商品详情页重排", () => {
         { skuNo: "S2", optionValues: ["约5斤"], spec: "约5斤", price: 2800, stock: 100 },
       ] as never,
     }));
-    expect((await render()).html()).toContain("goods.specCount");
+    const w = await render();
+    expect(w.html()).not.toContain("goods.specCount");
+    expect(w.find(".skuhead").exists(), "进页面不该自己弹面板").toBe(false);
+    await barBtn(w, "goods.buyNow").trigger("tap");
+    await w.vm.$nextTick();
+    expect(w.find(".skuhead").exists(), "从底栏打开面板").toBe(true);
   });
 
-  it("★★★ v3 点「已选」弹面板，面板里两颗按钮都在（加购 + 立即购买）", async () => {
+  it("★★★ v4 标题行没有「海报」入口；海报收进分享面板（朋友圈那条路一个像素都没少）", async () => {
     goodsDetail.mockResolvedValue(goods());
     const w = await render();
-    await w.find(".buycard .row").trigger("tap");
+    const html = w.html();
+    expect(html).not.toContain("poster.act");
+    expect(w.findAll(".shareact"), "标题行只剩一颗分享").toHaveLength(1);
+    await w.find(".shareact").trigger("tap");
     await w.vm.$nextTick();
-    const texts = w.findAll(".sheetbar .sh-btn").map((b) => b.text());
-    expect(texts).toHaveLength(2);
-    expect(texts.join()).toContain("goods.addCart");
-    expect(texts.join()).toContain("goods.buyNow");
+    expect(w.html(), "面板里要有「生成海报」").toContain("share.poster");
+    expect(w.html()).toContain("share.toFriend");
   });
 
   it("★★★ v3 底栏：店铺 · 购物车 · 两颗按钮；左上不再有购物车（2026-09-28 用户拍板）", async () => {
@@ -264,11 +289,16 @@ describe("商品详情页重排", () => {
     goodsDetail.mockResolvedValue(goods());
     const h5 = await render();
     expect(h5.find(".shareact").exists(), "H5 上没有任何分享入口").toBe(true);
+    await h5.find(".shareact").trigger("tap");
+    await h5.vm.$nextTick();
     expect(h5.find(".shareact__native").exists(), "H5 画了一颗点了没反应的原生按钮").toBe(false);
+    expect(h5.html(), "H5 的「发给朋友」是复制链接").toContain("share.toFriendSubH5");
 
     nativeShare.yes = true;
     const mp = await render();
-    // v2：分享在标题旁，不在底栏
+    // v4：分享在标题旁；点开面板，「发给朋友」那一块盖着原生转发按钮
+    await mp.find(".shareact").trigger("tap");
+    await mp.vm.$nextTick();
     expect(mp.find(".shareact__native").exists()).toBe(true);
     expect(mp.find(".shareact__native").attributes("open-type")).toBe("share");
   });

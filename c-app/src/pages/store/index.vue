@@ -192,6 +192,8 @@ async function afterLoad() {
 
 const inviterNo = ref("");
 const storeCode = ref("");
+/** 海报组件（面板里点「生成海报」时打开） */
+const poster = ref<{ open: () => void } | null>(null);
 
 onLoad(async (q) => {
   // scene 是微信小程序码带回来的参数，可能被 URL 编码过；storeCode 是 H5 / 普通二维码那条
@@ -447,10 +449,14 @@ onShareTimeline(() =>
           <text class="fav" :class="{ 'is-on': data.favorited }" @tap="toggleFav">
             {{ data.favorited ? "★" : "☆" }}
           </text>
+          <!-- 分享：面板里「发给朋友」/「生成海报」（s08）。链接与海报码都带门店号 -->
           <biz-share-act
             :path="sharePath"
             :inviter-no="user.user?.cUserNo"
             :merchant-no="entityNo"
+            poster
+            :sheet-title="String($t('share.sheetStore'))"
+            @poster="poster?.open()"
           ></biz-share-act>
         </view>
         <text class="txt-caption txt-quiet head__stats sh-num">{{ statsText }}</text>
@@ -571,6 +577,12 @@ onShareTimeline(() =>
 
       <!-- 悬浮购物车：加购的落点，也是去结算的入口 -->
       <biz-cart-fab></biz-cart-fab>
+      <!-- 门店海报：店名 · 公告 · 门店码（s09）。码扫出来进的是这一家店 -->
+      <biz-poster
+        v-if="storeNo"
+        ref="poster"
+        :store="{ storeNo, storeName, announcement: data.store.announcement }"
+      ></biz-poster>
     </template>
   </sh-scaffold>
 </template>
