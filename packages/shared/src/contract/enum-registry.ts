@@ -669,5 +669,51 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "并的方向应当是 ops-web 改用 shared 那个名字（shared 的名字带 Payment 前缀，"
       + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
       + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
-      + "而那正是这张表要挡住的那件事" },
+      + "而那正是这张表要挡住的那件事" },,
+// ── 元器件（独立库 ai_shop_elec，跑在独立进程 elec-svc） ───────────────────────
+  //
+  // 这一批的 dom 都是 elec：它是**另一个库、另一个进程**，取值与电商那边没有交集，
+  // 放进已有的域会让「这个域的枚举有几个」这类统计变成两件事的和。
+  { decl: "shared:ElecQtyBand", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "买家看到的库存数量档（B1/B100/B1K/B10K/B100K/B1M）。**有损是故意的**："
+      + "精确库存加上批号与地区，同行一眼认得出是谁家的货。后端 Bands.qty 是唯一产出处" },
+  { decl: "shared:ElecSourceBand", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "有几家有货的档位（ONE/FEW/MANY）。同样只存档位不存家数，理由同 ElecQtyBand" },
+  { decl: "shared:ElecMatch", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "这条结果是怎么命中的：EXACT 料号一致 / PREFIX 前缀 / CONTAINS 含 / NEAR 近似退位。"
+      + "端上据此决定排序与「你是不是要找」的提示，不是状态" },
+  { decl: "shared:ElecLookupMatch", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "批量查一串料号时每一行的结果：EXACT / AMBIGUOUS 多个候选 / PREFIX / NONE。"
+      + "与 ElecMatch 不同名不同义 —— 那个描述单条结果的来路，这个描述一次查询的结论" },
+  { decl: "shared:ElecInvoice", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "发票要求：不要 / 普票 / 专票。元器件采购多为企业，专票与否直接改报价" },
+  { decl: "shared:ElecDcReq", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "批次要求：ANY 不限 / Y1 一年内 / Y2 两年内。后端 ElecRfqServiceImpl.DC_REQS，"
+      + "取值单独声明成常量是为了进得了枚举对账的后端词表（两个字符的字面量扫不到）" },
+  { decl: "shared:ElecRfqStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    words: ["SUBMITTED", "QUOTED", "ACCEPTED"],
+    note: "询价单状态。SUBMITTED/QUOTED/ACCEPTED 不在 L1 词表里：L1 的「待处理/处理中/已完成」"
+      + "对询价太粗 —— 买家要分得清「还没人报」和「报了等我选」，这两步的动作完全不同。"
+      + "EXPIRED 与 CLOSED 用的是 L1 的词" },
+  { decl: "shared:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "询价关单原因：NO_SOURCE 没找到货 / BUYER_CANCELLED 买家撤 / DONE 成交。"
+      + "「没找到货」要与「买家撤了」分开统计 —— 前者是平台的缺货清单，是要补的货源" },
+  { decl: "shared:ElecSupplierKind", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "供应商类型：代理 / 贸易商 / 原厂 / 其他。买家看不到，只用于平台侧筛选与风控" },
+  { decl: "shared:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    note: "ACTIVE / SUSPENDED，用的是 L1 词表里的词。暂停后他的库存不再进买家面的投影" },
+  { decl: "shared:ElecStockStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    words: ["ON"],
+    note: "库存行：ON 在售 / EXPIRED 已过期。ON 不在 L1 里 —— 这里的「在售」指"
+      + "**这一行还在有效期内**，与商品的上下架不是一回事，借 L1 的上架词会把两件事混掉" },
+  { decl: "shared:ElecImportMode", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "上传库存表的方式：MERGE 只改表里有的 / REPLACE 表里没有的下架。"
+      + "**默认 MERGE**：传半截表就把全部库存下架，是这类工具最常见的事故" },
+  { decl: "shared:ElecRowProblemReason", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "上传时认不了的行的原因。原先内联在 ElecRowProblem.reason 上（D5）—— "
+      + "内联的联合对登记与对账都不可见，提取成具名类型才进得了雷达" },
+  { decl: "shared:ElecBatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
+    words: ["PARSED", "APPLIED"],
+    note: "一次上传：PARSED 预演完待确认 / APPLIED 已上架。两个词都不在 L1 里，"
+      + "而这一步的要害正是「预演过了但一行库存都没动」—— 用 L1 的「处理中/已完成」说不出它" },
 ];

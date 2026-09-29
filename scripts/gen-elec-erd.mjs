@@ -89,8 +89,8 @@ const svg = tableGraph("元器件", list, rels);
 const md = [
   "# 数据库 · 元器件（ai_shop_elec）",
   "",
-  "> 【自动生成，勿手改】`node scripts/gen-elec-erd.mjs`，源是 "
-    + "`backend/elec/elec-core/src/main/resources/db/elec/V*.sql`。",
+  "> 由 `node scripts/gen-elec-erd.mjs` 从 "
+    + "`backend/elec/elec-core/src/main/resources/db/elec/V*.sql` 生成，**请勿手改**。",
   "> 设计与取舍见 [TDD-元器件-独立服务与第一步](../TDD-元器件-独立服务与第一步.md)。",
   "",
   `**另一个库**，与 \`ai_shop\` 零共享表、零跨库 join：${tables.size} 张表、`

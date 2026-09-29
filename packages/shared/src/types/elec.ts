@@ -211,6 +211,9 @@ export interface ElecRfq {
 /** AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他 */
 export type ElecSupplierKind = "AGENT" | "TRADER" | "FACTORY" | "OTHER";
 
+/** 供应商状态：ACTIVE 正常 / SUSPENDED 已暂停（暂停后他的库存不再给买家看） */
+export type ElecSupplierStatus = "ACTIVE" | "SUSPENDED";
+
 export interface ElecSupplierReq {
   /** 公司名称，选填。**点一下就成为供应商**，这些之后在资料里补 */
   companyName?: string;
@@ -240,7 +243,7 @@ export interface ElecSupplier {
   /** 匿名代号 `S-3F7K`。以后开放身份时买家看到的就是它 */
   maskCode: string;
   /** ACTIVE 正常 / SUSPENDED 已暂停（暂停后库存不再给买家看） */
-  status: "ACTIVE" | "SUSPENDED";
+  status: ElecSupplierStatus;
   /** 在售且未到期的库存行数 */
   onCount: number;
   /** 7 天内到期的在售行数 */
@@ -286,11 +289,14 @@ export type ElecImportMode = "MERGE" | "REPLACE";
  * 认不了的行。
  * MPN_MISSING 没有料号 / MPN_INVALID 不像料号 / QTY_INVALID 数量认不出 / DUPLICATE 与前面的行重复
  */
+/** 认不了的行的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复 */
+export type ElecRowProblemReason = "MPN_MISSING" | "MPN_INVALID" | "QTY_INVALID" | "DUPLICATE";
+
 export interface ElecRowProblem {
   /** 表里的行号，与 Excel 左边的行号一致 */
   row: number;
   /** 认不了的原因：没有料号 / 不像料号 / 数量读不出 / 与前面的行重复 */
-  reason: "MPN_MISSING" | "MPN_INVALID" | "QTY_INVALID" | "DUPLICATE";
+  reason: ElecRowProblemReason;
   /** 那一行写的料号原样，帮他在表里找到它 */
   mpn?: string | null;
 }
@@ -298,6 +304,9 @@ export interface ElecRowProblem {
 /**
  * 上传预览。**预览时一行库存都没动**，确认之后才上架。
  */
+/** 一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架 */
+export type ElecBatchStatus = "PARSED" | "APPLIED";
+
 export interface ElecBatchPreview {
   /** 这次上传的批次号。确认上架、换列映射都带它 */
   batchNo: string;
@@ -330,7 +339,7 @@ export interface ElecBatchPreview {
   /** 将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」 */
   delistSample: string[];
   /** PARSED 待确认 / APPLIED 已上架 */
-  status: "PARSED" | "APPLIED";
+  status: ElecBatchStatus;
 }
 
 export interface ElecRenewResult {

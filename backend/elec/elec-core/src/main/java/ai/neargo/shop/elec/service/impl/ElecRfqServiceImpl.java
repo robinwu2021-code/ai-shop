@@ -67,7 +67,17 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     private static final Logger log = LoggerFactory.getLogger(ElecRfqServiceImpl.class);
 
     public static final Set<String> INVOICES = Set.of("NONE", "VAT_NORMAL", "VAT_SPECIAL");
-    public static final Set<String> DC_REQS = Set.of("ANY", "Y1", "Y2");
+    /**
+     * 批次要求：不限 / 一年内 / 两年内。
+     *
+     * <p>两个字符的取值要<b>单独声明成常量</b>才进得了枚举对账的后端词表 ——
+     * 那份扫描要求字面量至少三个字符（否则 "ID" "OK" 会被收进去），
+     * 内联在 Set.of 里的 "Y1" 它看不见，对账会报「端上声明了、后端永远不给」。
+     */
+    public static final String DC_ANY = "ANY";
+    public static final String DC_Y1 = "Y1";
+    public static final String DC_Y2 = "Y2";
+    public static final Set<String> DC_REQS = Set.of(DC_ANY, DC_Y1, DC_Y2);
     public static final Set<String> CLOSE_REASONS = Set.of("NO_SOURCE", "BUYER_CANCELLED", "DONE");
 
     /** 单行数量上限。超了多半是多敲了几个 0 */
@@ -131,7 +141,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         rfq.setContactName(ElecSupplierServiceImpl.trimmed(req.contactName(), 32));
         rfq.setCompany(ElecSupplierServiceImpl.trimmed(req.company(), 128));
         rfq.setNeedInvoice(ElecSupplierServiceImpl.oneOf(req.needInvoice(), INVOICES, "NONE"));
-        rfq.setDcReq(ElecSupplierServiceImpl.oneOf(req.dcReq(), DC_REQS, "ANY"));
+        rfq.setDcReq(ElecSupplierServiceImpl.oneOf(req.dcReq(), DC_REQS, DC_ANY));
         rfq.setCondReq(ElecSupplierServiceImpl.oneOf(req.condReq(), ElecValues.COND_REQS, "ANY"));
         rfq.setPackingReq(ElecSupplierServiceImpl.oneOf(req.packingReq(), ElecValues.PACKING_REQS, "ANY"));
         // 交期要求：0 或负数、超过一年都当没填 —— 「今天就要」在这条链路上不成立
