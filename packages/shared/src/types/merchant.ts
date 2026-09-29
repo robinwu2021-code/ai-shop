@@ -419,7 +419,15 @@ export interface DailyFlow {
   commissionMinor: number;
   /** 履约服务费 */
   serviceFeeMinor: number;
-  /** 商家净额。**不含 refund** */
+  /**
+   * 这一天被扣掉的实付快递费（分）。**只有平台代寄的才有** ——
+   * 商家自寄是他自付，平台没垫钱也没扣。
+   *
+   * 提现入口撤掉之后（ADR-011 §6），商家问「这个月我的钱少在哪」只剩这张表能答。
+   * 而快递费恰好是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。
+   */
+  freightCostMinor: number;
+  /** 商家净额。**不含 refund**，已扣掉 freightCostMinor */
   netMinor: number;
   /** 当天笔数。只给金额看不出「一笔大的还是很多笔」 */
   billCount: number;

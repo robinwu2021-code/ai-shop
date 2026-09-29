@@ -652,6 +652,7 @@ export default {
     dailyHint: "按成交日算。钱哪天到看上面的账期",
     dailyBills: "{n} 笔",
     dailyRefund: "退 {a}",
+    dailyFreight: "快递费 {a}",
     dailyUndated: "另有 {n} 笔没有成交日期，合计 {a}。这些是早期的单，只能按总额看",
     dailyEmpty: "这段时间没有流水",
     batchExpire: "{d} 前未处理将自动放行",

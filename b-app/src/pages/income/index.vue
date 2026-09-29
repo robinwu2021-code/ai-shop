@@ -217,6 +217,12 @@ onShow(() => {
           {{ $t("income.dailyBills", { n: d.billCount }) }}
           <!-- 退款只在有的时候出现：常态是没有，挂一行「退 ¥0.00」只会让人以为出了事 -->
           <text v-if="d.refundMinor > 0">　{{ $t("income.dailyRefund", { a: money(d.refundMinor) }) }}</text>
+          <!--
+            快递费同理：自提与自送的日子恒为 0，天天挂一行「快递费 ¥0.00」是噪音。
+            提现入口撤掉之后，商家问「这个月我的钱少在哪」只剩这张表能答 ——
+            而快递费是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。
+          -->
+          <text v-if="d.freightCostMinor > 0">　{{ $t("income.dailyFreight", { a: money(d.freightCostMinor) }) }}</text>
         </text>
       </view>
 

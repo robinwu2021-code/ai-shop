@@ -844,7 +844,8 @@ public class SettleServiceImpl implements SettleService {
                 continue;
             }
             String day = java.time.Instant.ofEpochMilli(at).atZone(zone).toLocalDate().toString();
-            long[] a = acc.computeIfAbsent(day, k -> new long[6]);
+            // [0]gross [1]refund [2]commission [3]serviceFee [4]freightCost [5]net [6]count
+            long[] a = acc.computeIfAbsent(day, k -> new long[7]);
             if (StlBill.REVERSED.equals(b.getStatus())) {
                 // 退款回退：**只计 refund，不冲减当天的 gross/net** ——
                 // 被退的那笔在它自己成交的那天已经记过，在这里再减一次就是记两遍
@@ -853,13 +854,16 @@ public class SettleServiceImpl implements SettleService {
                 a[0] += nz(b.getGrossMinor());
                 a[2] += nz(b.getCommissionMinor());
                 a[3] += nz(b.getServiceFeeMinor());
-                a[4] += nz(b.getNetMinor());
+                // 商家自寄那些 freight_cost 本来就是 0，不必在这里再判一次 shipMode
+                a[4] += nz(b.getFreightCostMinor());
+                a[5] += nz(b.getNetMinor());
             }
-            a[5]++;
+            a[6]++;
         }
         List<SettleService.DailyFlowVO> days = acc.entrySet().stream()
                 .map(e -> new SettleService.DailyFlowVO(e.getKey(), e.getValue()[0], e.getValue()[1],
-                        e.getValue()[2], e.getValue()[3], e.getValue()[4], (int) e.getValue()[5]))
+                        e.getValue()[2], e.getValue()[3], e.getValue()[4], e.getValue()[5],
+                        (int) e.getValue()[6]))
                 .toList();
         return new SettleService.DailyFlowPageVO(days, undatedMinor, undatedCount);
     }

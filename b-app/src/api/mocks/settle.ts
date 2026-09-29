@@ -99,7 +99,7 @@ export const settleMock: Pick<MerchantApi,
       const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const row = byDay.get(day) ?? {
         day, grossMinor: 0, refundMinor: 0, commissionMinor: 0,
-        serviceFeeMinor: 0, netMinor: 0, billCount: 0,
+        serviceFeeMinor: 0, freightCostMinor: 0, netMinor: 0, billCount: 0,
       };
       if (b.status === "REVERSED") {
         // 退款回退只进 refund：被退的那笔在它自己成交那天已经记过
@@ -108,6 +108,7 @@ export const settleMock: Pick<MerchantApi,
         row.grossMinor += b.grossMinor;
         row.commissionMinor += b.commissionMinor;
         row.serviceFeeMinor += b.serviceFeeMinor;
+        row.freightCostMinor += b.freightCostMinor;
         row.netMinor += b.netMinor;
       }
       row.billCount += 1;

@@ -117,8 +117,17 @@ public interface SettleService {
      * @param netMinor        商家净额。<b>不含 refund</b>：退掉的那笔在它自己那一天已经记过
      * @param billCount       笔数。只给金额看不出「一笔大的还是很多笔」
      */
+    /**
+     * @param freightCostMinor 这一天被扣掉的实付快递费合计（分）。
+     *     <b>只统计平台代寄的</b>：商家自寄是他自付，平台没垫钱也没扣。
+     *
+     *     <p>提现入口撤掉之后（ADR-011 §6），商家问「这个月我的钱少在哪」
+     *     只剩这张表能答。快递费不在这儿说，他就只能逐单点开账单去加 —— 而那笔钱
+     *     恰好是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。
+     */
     record DailyFlowVO(String day, long grossMinor, long refundMinor,
                        long commissionMinor, long serviceFeeMinor,
+                       long freightCostMinor,
                        long netMinor, int billCount) {
     }
 
