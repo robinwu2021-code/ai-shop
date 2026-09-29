@@ -81,6 +81,23 @@ public class StlBill extends BaseEntity {
     public static final String OFFLINE_SETTLED = "OFFLINE_SETTLED";
 
     /**
+     * {@code status} 列的<b>全集</b>。两条链路（自营对账、第三方分账）加线下终态。
+     *
+     * <p>它存在只为一件事：让端上的状态文案能被<b>机器</b>对账。
+     * B 端结算单页写的是 {@code $t(`settle.status${b.status}`)} —— 动态键，
+     * i18n 闸门<b>一个字都看不见</b>，缺词条不报错，只在界面上把键名原样吐出来
+     * （2026-09-29 线上实测：虹选转自营后，三个状态全露成
+     * {@code settle.statusPENDING_RECON}）。守卫 {@code scripts/check-settle-status-i18n.py}
+     * 读的就是这个集合。
+     *
+     * <p><b>新增状态时这里要一起加</b>，否则守卫量不到它，等于没有守卫。
+     */
+    public static final java.util.Set<String> STATUS_ALL = java.util.Set.of(
+            PENDING_RECON, CONFIRMED, PAID,
+            PENDING, SPLITTING, SPLIT, SPLIT_CONFIRMED,
+            RETRYING, MANUAL, REVERSED, OFFLINE_SETTLED);
+
+    /**
      * 通道费率来源：标准档。
      *
      * <p>与「这一列为 null」是两件事：<b>null = 没配过费率</b>（不知道多少），

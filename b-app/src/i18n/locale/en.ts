@@ -1354,6 +1354,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     scopeCurrent: "This store", scopeAll: "All stores",
     statusPENDING: "Pending", statusSPLITTING: "Splitting", statusSPLIT: "Sent, awaiting channel confirmation", statusSPLIT_CONFIRMED: "Received", statusOFFLINE_SETTLED: "Paid on site — no settlement",
     statusRETRYING: "Retrying", statusMANUAL: "Manual review", statusREVERSED: "Reversed",
+    statusPENDING_RECON: "Awaiting reconciliation", statusCONFIRMED: "Reconciled, awaiting payout", statusPAID: "Paid out",
     pendingHint: "⚠️ Commission and fulfilment fee rates are placeholders pending publication. Refunded orders are already deducted.",
   },
   stats: {

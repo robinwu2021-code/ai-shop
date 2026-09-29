@@ -1352,6 +1352,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     scopeCurrent: "هذا الفرع", scopeAll: "كل الفروع",
     statusPENDING: "بانتظار التقسيم", statusSPLITTING: "جارٍ التقسيم", statusSPLIT: "تم الإرسال، بانتظار تأكيد القناة", statusSPLIT_CONFIRMED: "تم الاستلام", statusOFFLINE_SETTLED: "دفع نقدي؛ لا تسوية",
     statusRETRYING: "إعادة المحاولة", statusMANUAL: "مراجعة يدوية", statusREVERSED: "تم الاسترجاع",
+    statusPENDING_RECON: "بانتظار المطابقة", statusCONFIRMED: "تمت المطابقة، بانتظار الصرف", statusPAID: "تم الصرف",
     pendingHint: "⚠️ نسب العمولة ورسوم التنفيذ قيم مؤقتة بانتظار الإعلان. الطلبات المستردة مخصومة بالفعل.",
   },
   stats: {

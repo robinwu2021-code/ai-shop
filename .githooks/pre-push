@@ -132,6 +132,16 @@ if ! gate_run python3 scripts/check-app-backend-orphan.py --check; then
   exit 1
 fi
 
+# **动态键那一片**：结算单页的状态标签写成 `$t(`settle.status${b.status}`)`，
+# 上面那几道 i18n 闸扫的是字面量键，这一整片它们一个字都看不见 ——
+# 缺词条不报错、不回退，直接把键名原样渲染给店主。
+# 2026-09-29 线上实测：虹选合并证照转自营后，结算单上明晃晃写着
+# `settle.statusPENDING_RECON`，而当时 14 道闸全绿。
+# 这道闸换个方向量：从 StlBill.STATUS_ALL 出发，要求每个状态三语都有文案。
+if ! gate_run python3 scripts/check-settle-status-i18n.py; then
+  exit 1
+fi
+
 # 反向那一侧：**后端做了、运营端没有入口**。两个方向都要盯 ——
 # 「画了没后端」在切真后端时会 404，看得见；「做了没入口」不报任何错，
 # 它表现为「这个功能我们做过啊」，而运营点不到。

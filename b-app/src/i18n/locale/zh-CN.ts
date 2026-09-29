@@ -1623,6 +1623,9 @@ export default {
     statusRETRYING: "重试中",
     statusMANUAL: "转人工",
     statusREVERSED: "已回退",
+    statusPENDING_RECON: "待对账",
+    statusCONFIRMED: "已对账，待打款",
+    statusPAID: "已打款",
     pendingHint: "⚠️ 费率与履约服务费口径待平台公示，当前为占位值；退款订单已从应结中扣回。",
   },
   stats: {
