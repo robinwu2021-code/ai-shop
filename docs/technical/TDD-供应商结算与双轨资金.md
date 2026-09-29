@@ -76,7 +76,7 @@
 | 维度 | 字段 | 现状 |
 |---|---|---|
 | 主体 | `stl_bill.entity_no` | ✅ 有字段，ops 可筛 |
-| 门店 | `stl_bill.store_no` | ✅ **有字段**，但无任何聚合接口 |
+| 门店 | `stl_bill.store_no` | ✅ 有字段。⚠️ **订正（2026-09-29）**：并非「无任何聚合接口」—— `DashboardService.storeRanking` 早就有，但它读订单（GMV / 单数 / 退款率）、是最近 N 天的 Top N；结算口径（佣金、服务费、净额）的全量多维聚合确实缺 |
 | 收款商户号 | `stl_bill.pay_merchant_no` | ✅ 有字段，无聚合 |
 | 经营模式 | `business_mode` | ✅ ops 可筛 |
 | 渠道 / 场景 | `pay_channel` / `pay_scene` | ✅ 有字段，无聚合 |
@@ -237,8 +237,9 @@ List<StatRowVO> stats(StatDimension dim, String from, String to,
   展示名查不到时回退显示 `dimKey` 本身，**不要显示空白** ——
   空白会被读成"没有这个门店"，而真相是"这家店已经改名或停用了"。
 - `store_no` 为空归入 `dimKey = "__UNASSIGNED__"`，展示名「未分配门店」（§2.1 规则 2）。
-- 索引：`stl_bill` 现有 `idx_bill_business_mode`，需补
-  `idx_bill_store_day (store_no, settleable_at)` 与 `idx_bill_entity_day (entity_no, settleable_at)`。
+- 索引：⚠️ **订正** —— `stl_bill` 已有 `idx_bill_store` / `idx_bill_pay_merchant` /
+  `idx_bill_business_mode` 单列索引。**一期不加复合索引**：现有数据量下单列索引够用，
+  而多两个索引就是多两个要维护的对象。等有性能证据再加，与「物化留到有证据时」同一条理由。
 - **物化的预留**：当单表聚合慢到影响页面时，加 `stl_daily_stat` 日快照表 +
   每日任务。**不要现在就做** —— 那会引入一个必须与明细保持一致的第二真源，
   而这类不一致在本仓库出过不止一次。
