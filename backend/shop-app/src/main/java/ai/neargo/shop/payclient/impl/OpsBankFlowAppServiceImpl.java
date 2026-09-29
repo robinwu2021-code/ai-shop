@@ -5,6 +5,7 @@ import ai.neargo.shop.payclient.OpsBankFlowAppService;
 import ai.neargo.shop.pay.entity.StlBankFlow;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.recon.BankFlowCsvParser;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.auth.SecurityUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -21,9 +22,11 @@ import java.util.Set;
 public class OpsBankFlowAppServiceImpl implements OpsBankFlowAppService {
 
     private final SettleMappers.BankFlowMapper flows;
+    private final AuditLogPort auditLogPort;
 
-    public OpsBankFlowAppServiceImpl(SettleMappers.BankFlowMapper flows) {
+    public OpsBankFlowAppServiceImpl(SettleMappers.BankFlowMapper flows, AuditLogPort auditLogPort) {
         this.flows = flows;
+        this.auditLogPort = auditLogPort;
     }
 
     @Override
@@ -72,6 +75,19 @@ public class OpsBankFlowAppServiceImpl implements OpsBankFlowAppService {
             imported++;
         }
         int total = imported + skipped + failures.size();
+        /*
+         * **留痕与 importedBy 写在同一处。** 银行流水是对账的判据，判据从哪来必须记下来。
+         * 这段原本在 Controller 里，靠返回值再读一遍三个计数 ——
+         * 而「取了操作人就必须留痕」那道闸扫的是取操作人的这一层，它是对的：
+         * 分两处写，日后有人改了这里的计数口径，审计里那句话会悄悄变成假的。
+         *
+         * 审计里**不记流水内容**：对方户名与账号进审计与进日志是同一类泄露。
+         */
+        auditLogPort.record("BANK_FLOW_IMPORT",
+                fileName == null || fileName.isBlank() ? "(未命名)" : fileName,
+                "导入银行流水：入库 %d 条 · 已存在跳过 %d 条 · 解析失败 %d 条"
+                        .formatted(imported, skipped, failures.size()),
+                true);
         return new ImportResultVO(total, imported, skipped, failures.size(), failures);
     }
 }

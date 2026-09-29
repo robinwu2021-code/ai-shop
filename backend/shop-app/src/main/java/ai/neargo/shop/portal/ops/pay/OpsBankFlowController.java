@@ -3,7 +3,6 @@ package ai.neargo.shop.portal.ops.pay;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.payclient.OpsBankFlowAppService;
 import ai.neargo.shop.payclient.OpsBankFlowAppService.ImportResultVO;
-import ai.neargo.shop.spi.platform.AuditLogPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.context.annotation.Profile;
@@ -30,11 +29,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class OpsBankFlowController {
 
     private final OpsBankFlowAppService app;
-    private final AuditLogPort auditLogPort;
 
-    public OpsBankFlowController(OpsBankFlowAppService app, AuditLogPort auditLogPort) {
+    public OpsBankFlowController(OpsBankFlowAppService app) {
         this.app = app;
-        this.auditLogPort = auditLogPort;
     }
 
     public record ImportCmd(String fileName, @NotBlank String csv) {
@@ -48,13 +45,7 @@ public class OpsBankFlowController {
     @PostMapping("/ops/payables/bank-flows/import")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
     public ImportResultVO importFlows(@Valid @RequestBody ImportCmd cmd) {
-        String fileName = cmd.fileName() == null || cmd.fileName().isBlank()
-                ? "(未命名)" : cmd.fileName();
-        ImportResultVO vo = app.importCsv(fileName, cmd.csv());
-        auditLogPort.record("BANK_FLOW_IMPORT", fileName,
-                "导入银行流水：入库 %d 条 · 已存在跳过 %d 条 · 解析失败 %d 条"
-                        .formatted(vo.imported(), vo.skipped(), vo.failed()),
-                true);
-        return vo;
+        // 审计写在 service 里，与 imported_by 同一处 —— 见那边的注释
+        return app.importCsv(cmd.fileName(), cmd.csv());
     }
 }
