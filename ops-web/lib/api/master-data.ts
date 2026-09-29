@@ -18,6 +18,14 @@ import { useQuery } from "@tanstack/react-query";
 
 export interface MasterDataDTO {
   industries: { industry: string; name: string; microAllowed: boolean }[];
+  /**
+   * 行业的**意向口径**（V360）：`industries` 之外还带上这一期尚未开放的那几档。
+   *
+   * 审核台查名要用它。`industries` 按 `sys_industry.enabled` 过滤过 ——
+   * 而入驻意向里恰恰会出现平台还接不了的行业，用前者查名，
+   * 报了餐饮的那张单在审核台上显示的是裸码 `CATERING`。
+   */
+  intentIndustries?: { industry: string; name: string; open: boolean }[];
   subjects: { subjectType: string; name: string; needLicense: boolean }[];
   channels: { payChannel: string; name: string; enabled: boolean }[];
 }
@@ -51,8 +59,16 @@ export function useMasterData() {
 export function useCodeLabel() {
   const { data } = useMasterData();
   return {
+    /*
+     * **先查意向口径**：入驻意向里会有平台这一期还接不了的行业，
+     * 它们不在 industries 里（那份按 enabled 过滤）。老后端没有这个字段时退回去。
+     */
     industry: (code?: string | null) =>
-      code ? data?.industries.find((i) => i.industry === code)?.name ?? code : "—",
+      code
+        ? data?.intentIndustries?.find((i) => i.industry === code)?.name ??
+          data?.industries.find((i) => i.industry === code)?.name ??
+          code
+        : "—",
     subject: (code?: string | null) =>
       code ? data?.subjects.find((s) => s.subjectType === code)?.name ?? code : "—",
   };

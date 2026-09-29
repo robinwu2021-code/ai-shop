@@ -126,6 +126,17 @@ export const storeMock: Pick<MerchantApi,
         { industry: "BAKERY", name: "烘焙熟食", microAllowed: true },
         { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
       ],
+      /*
+       * 意向口径（V360）。**B 端不读它** —— 能进 b-app 的人已经在走进件，
+       * 该按 industries 的准入口径选。放在这儿只是因为服务端一定会发，
+       * 替身少一个字段就与真接口不是同一个形状了。
+       */
+      intentIndustries: [
+        { industry: "FRESH", name: "生鲜果蔬", open: true },
+        { industry: "GROCERY", name: "粮油日用", open: true },
+        { industry: "BAKERY", name: "烘焙熟食", open: true },
+        { industry: "ONLINE_SERVICE", name: "线上服务", open: true },
+      ],
       subjects: [
         { subjectType: "NATURAL_PERSON" as const, name: "自然人", needLicense: false,
           industryGated: true, settleAccountType: "PERSONAL_BANK_CARD" as const },

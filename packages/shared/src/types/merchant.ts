@@ -741,6 +741,13 @@ export interface MerchantApplyReq {
    * 而那时商家已经开完店、上完架。
    */
   industry?: string;
+  /**
+   * 商家**自己写的**行业（V360）。只在 `industry === "OTHER"` 时有意义 ——
+   * 选了具体行业时后端会置空，留着就是两个对不上的答案。
+   *
+   * `sys_industry` 只有七个大类，而意向表要收的正是归不进大类的那些。
+   */
+  industryNote?: string;
 }
 /**
  * 平台主数据快照（`GET /common/master-data`）。
@@ -753,6 +760,16 @@ export interface MerchantApplyReq {
 export interface MasterData {
   /** 可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源 */
   industries: MasterDataIndustry[];
+  /**
+   * 行业的**意向口径**：`industries` 之外还带上这一期尚未开放的那几档。
+   *
+   * 两个列表量的不是同一件事。`industries` 回答「平台能不能接这类商家」——
+   * 它挂着小微白名单与执照经营范围，进件与审核照它走。这一份回答
+   * 「商家能不能表达想做这一类」。**入驻意向那一屏要用这一份**：
+   * 一期只开了零售与生活服务两档，按前一把尺渲染的话，想开餐饮的人
+   * 只能选「线下零售」，而意向表的价值恰恰在于收集平台还接不了的那些。
+   */
+  intentIndustries: MasterDataIntentIndustry[];
   /** 可选主体类型（法律形态）。决定资质要求与结算账户形态 */
   subjects: MasterDataSubject[];
   /** 可用支付通道与其能力位 */
@@ -777,6 +794,19 @@ export interface MasterDataIndustry {
   name: string;
   /** 该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错 */
   microAllowed: boolean;
+}
+export interface MasterDataIntentIndustry {
+  /** 行业码（`sys_industry.industry`） */
+  industry: string;
+  /** 展示名。取服务端的 */
+  name: string;
+  /**
+   * 平台这一期是否已开放。
+   *
+   * **false 时给一句「这一类还没开放，我们会先记下来」，但不要禁用、不要拦提交** ——
+   * 拦了就等于又拿准入的尺子量意向，那正是这个字段存在要解决的问题。
+   */
+  open: boolean;
 }
 export interface MasterDataSubject {
   /** 主体类型码 */
@@ -1416,6 +1446,11 @@ export interface MerchantApplyStatus {
   qualificationItems?: QualificationItem[];
   /** 申请时选的行业。驳回回填要用它 —— 换个行业可能连主体类型都得跟着换 */
   industry?: string;
+  /**
+   * 商家自己写的行业（V360）。只在 `industry === "OTHER"` 时非空。
+   * 驳回回填与「我的意向」那一屏都要用它 —— 不带回来这一格就丢了。
+   */
+  industryNote?: string;
   /**
    * 是否愿意承接自提点（ADR-005）。
    *

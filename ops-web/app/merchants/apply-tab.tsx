@@ -204,6 +204,14 @@ export function ApplyTab({ c, canAudit }: { c: MerchantsCopy; canAudit: boolean 
                 <Field label={c.colNo}>{current.applyNo}</Field>
                 <Field label={c.applyColSubject}>{label.subject(current.subject)}</Field>
                 <Field label={c.applyColIndustry}>{label.industry(current.industry)}</Field>
+                {/*
+                  商家自述的行业：**只在有值时显示**（选了「其他」才有），
+                  同「推荐人」那一栏的理由 —— 空着一栏比不显示更容易误读成「查不到」。
+                  它是这张意向单里唯一说得出「平台还接不了的是哪一类」的地方。
+                */}
+                {current.industryNote ? (
+                  <Field label={c.applyColIndustryNote}>{current.industryNote}</Field>
+                ) : null}
                 <Field label={c.colContact}>{`${current.contactName} ${current.contactPhone}`}</Field>
                 <Field label={c.applyColCategory}>{current.category}</Field>
                 {/* 推荐人：**只在有值时显示** —— 绝大多数申请没有，空着一栏比不显示更容易误读成「查不到」 */}

@@ -170,6 +170,19 @@ export const groupMock: Pick<ShopApi,
         { industry: "BAKERY", name: "烘焙熟食", microAllowed: true },
         { industry: "ONLINE_SERVICE", name: "线上服务", microAllowed: false },
       ],
+      /*
+       * 意向口径要**比进件口径宽，且带上未开放的那几档**（V360）。
+       * 与前者同一份的话，「这一类还没开放」那句提示与「其他」下的手填框
+       * 在 mock 下一次都不会出现 —— 而那两处是这一屏唯一能交互验的地方。
+       */
+      intentIndustries: [
+        { industry: "FRESH", name: "生鲜果蔬", open: true },
+        { industry: "GROCERY", name: "粮油日用", open: true },
+        { industry: "BAKERY", name: "烘焙熟食", open: true },
+        { industry: "ONLINE_SERVICE", name: "线上服务", open: true },
+        { industry: "CATERING", name: "餐饮", open: false },
+        { industry: "OTHER", name: "其他", open: false },
+      ],
       subjects: [
         { subjectType: "NATURAL_PERSON" as const, name: "自然人", needLicense: false,
           industryGated: true, settleAccountType: "PERSONAL_BANK_CARD" as const },

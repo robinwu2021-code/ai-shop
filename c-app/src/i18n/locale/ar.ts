@@ -377,6 +377,8 @@ export default {
     intentTitle: "طلبي",
     intentStatus: "الحالة",
     intentIndustry: "نوع المتجر",
+    industryNotOpen: "لم يُفتح بعد — سنسجّل رغبتك",
+    industryNote: "اسم النشاط",
     intentCategory: "ماذا تبيع",
     intentEdit: "تعديل",
     intentResubmit: "إعادة الإرسال",

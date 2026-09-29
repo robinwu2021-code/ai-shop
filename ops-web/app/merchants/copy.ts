@@ -4,6 +4,9 @@ import type { PageCopy } from "@/lib/use-copy";
 const zh = {
   // ── 入驻审核（申请单模型，已接真后端）──
   applyColIndustry: "行业",
+  // 商家自己写的那一行（选了「其他」才有）。列头不写「其他」——
+  // 运营要看的是他想做什么，不是他在表单上点了哪个兜底档
+  applyColIndustryNote: "商家自述行业",
   applyColSubject: "主体类型",
   applyColCategory: "主营类目",
   applyColReferrer: "推荐人",
@@ -664,6 +667,7 @@ const zh = {
 
 const en: typeof zh = {
   applyColIndustry: "Industry",
+  applyColIndustryNote: "Stated industry",
   applyColSubject: "Legal form",
   applyColReferrer: "Referrer",
   applyColCategory: "Category",

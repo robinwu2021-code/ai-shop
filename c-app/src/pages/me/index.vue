@@ -17,6 +17,12 @@ import { useLocationStore } from "@/stores/location";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
 import { confirm } from "@ai-shop/ui/prompt";
 import { isPhone } from "@shared/utils/validate";
+import {
+  INDUSTRY_OTHER,
+  industryName as industryNameOf,
+  industryNotOpen as isIndustryNotOpen,
+  industryOptions as industryOptionsOf,
+} from "@/shared/apply-industry";
 
 const { t } = useI18n();
 
@@ -190,6 +196,7 @@ async function openApplyForm(from: MerchantApplyStatus | null) {
       contactPhone: from.contactPhone ?? "",
       category: from.category ?? "",
       industry: from.industry ?? "",
+      industryNote: from.industryNote ?? "",
     };
   }
   if (!mForm.value.contactPhone && user.user?.phone) mForm.value.contactPhone = user.user.phone;
@@ -211,10 +218,15 @@ const applyViewVisible = ref(false);
 const intentFields = computed(() => {
   const a = applyStatus.value;
   if (!a) return [] as { k: string; v: string }[];
-  const industryName = industries.value.find((i) => i.industry === a.industry)?.name || a.industry;
+  /*
+   * 从**意向口径**里找名字：进件口径里没有未开放的那几档，
+   * 报了餐饮的人会在查看态看到裸码「CATERING」。
+   */
+  const industryLabel = industryNameOf(industryOptions.value, a.industry);
+  const industryLine = a.industryNote ? `${industryLabel}· ${a.industryNote}` : industryLabel;
   return [
     { k: String(t("merchant.shopName")), v: a.name },
-    { k: String(t("merchant.intentIndustry")), v: industryName },
+    { k: String(t("merchant.intentIndustry")), v: industryLine },
     { k: String(t("merchant.intentCategory")), v: a.category },
     { k: String(t("merchant.phone")), v: a.contactPhone },
   ].filter((f) => !!f.v);
@@ -257,6 +269,11 @@ const mForm = ref({
    * 于是所有从 C 端入驻的商家 industry 恒空 —— 进件时才发现主体选错了。
    */
   industry: "",
+  /**
+   * 「其他」下自己写的行业（V360）。**只在选了「其他」时问** ——
+   * `sys_industry` 只有七个大类，而意向表要收的正是归不进大类的那些。
+   */
+  industryNote: "",
 });
 
 /**
@@ -271,6 +288,15 @@ const mForm = ref({
 /** 主数据：行业与主体都从服务端取，微信放开白名单时不用发版 */
 const master = ref<MasterData | null>(null);
 const industries = computed(() => master.value?.industries ?? []);
+/**
+ * 报名这一屏用的是**意向口径**（`intentIndustries`），不是进件口径（`industries`）。
+ * 判断在 `@/shared/apply-industry` 里 —— 那三条是纯函数，抽出来才测得动。
+ */
+const industryOptions = computed(() => industryOptionsOf(master.value));
+/** 选中的这一档平台还没开放 —— 给一句话，不禁用、不拦提交 */
+const industryNotOpen = computed(() => isIndustryNotOpen(industryOptions.value, mForm.value.industry));
+/** 选了「其他」才问手填 */
+const industryIsOther = computed(() => mForm.value.industry === INDUSTRY_OTHER);
 
 const mValid = computed(
   () =>
@@ -305,6 +331,11 @@ async function submitMerchant() {
     name: mForm.value.name.trim(),
     category: mForm.value.category.trim(),
     industry: mForm.value.industry,
+    /*
+     * 手填行业只在选了「其他」时发。别的行业下发上去后端也会置空（V360），
+     * 但端上先收口一次 —— 少发一个对不上的值，运营端就少一次「该信哪个」。
+     */
+    industryNote: industryIsOther.value ? mForm.value.industryNote.trim() : undefined,
     contactPhone: String(mForm.value.contactPhone ?? "").trim(),
   };
   /*
@@ -668,7 +699,7 @@ onShow(() => {
         -->
         <view class="types">
           <view
-            v-for="i in industries"
+            v-for="i in industryOptions"
             :key="i.industry"
             class="sh-seg sh-seg--fill"
             :class="{ 'sh-seg--on': mForm.industry === i.industry }"
@@ -677,6 +708,18 @@ onShow(() => {
             {{ i.name }}
           </view>
         </view>
+        <!--
+          **未开放不等于不能报名**：拦下来就等于又拿准入的尺子量意向。
+          这一句是告知，不是错误 —— 所以不用错误色，也不禁用提交按钮。
+        -->
+        <view v-if="industryNotOpen" class="apply__hint">{{ $t("merchant.industryNotOpen") }}</view>
+        <input
+          v-if="industryIsOther"
+          maxlength="24"
+          v-model="mForm.industryNote"
+          class="field__input"
+          :placeholder="$t('merchant.industryNote')"
+        />
 
         <input maxlength="64" v-model="mForm.name" class="field__input" :placeholder="$t('merchant.shopName')" />
         <input maxlength="64" v-model="mForm.category" class="field__input" :placeholder="$t('merchant.category')" />
@@ -721,6 +764,15 @@ onShow(() => {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
+}
+/*
+  「这一类还没开放」。**用 --sh-sub 不用 --sh-danger**：它是告知而不是错误 ——
+  报名照样收（拦下来就等于又拿准入的尺子量意向），用错误色会让人以为自己填错了。
+*/
+.apply__hint {
+  display: block;
+  margin-top: 16rpx;
+  color: var(--sh-sub);
 }
 /* 查看态：标签定宽左列、取值右列，横着读完一条（与门店卡的 facts 同一个形状） */
 .intent__row {
