@@ -29,6 +29,16 @@ public interface PayoutAccountService {
     List<PayoutAccountVO> myAccounts(String entityNo);
 
     /**
+     * 运营端列表。<b>返回 {@code PageData} 而不是裸数组</b> —— 运营端列表页按
+     * {@code {records,total}} 渲染，裸数组会被当成空页：接口 200、数据几十条、
+     * 页面显示「暂无数据」。
+     *
+     * @param status 状态筛选，空则全部
+     */
+    ai.neargo.shop.common.PageData<PayoutAccountVO> list(String status, String entityNo,
+                                                         long page, long size);
+
+    /**
      * 运营审核。
      *
      * <p>通过时把<b>同主体的旧 {@code ACTIVE} 置为 {@code DISABLED}</b> ——

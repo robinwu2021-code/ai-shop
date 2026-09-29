@@ -125,6 +125,17 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 供应商收款账户（V358，ADR-011）。锚点只有 MERCHANT ——
+         * 这张表没有社区/自提点的概念，钱打给谁只跟主体有关。
+         *
+         * ⚠️ 登记之后 **B 端那三条路径必须 executeWithoutScope**：
+         * 商家自己的会话里没有运营的数据域，直查会 SELECT 不到、UPDATE 静默 0 行。
+         * 见 PayoutAccountServiceImpl 里那几处注释。
+         */
+        registry.register("mch_payout_account", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * —— 商家主体与门店（批②，2026-08-14）——
          *
          * **只登记 MERCHANT 一个维度**，COMMUNITY / PICKUP 刻意不登记。

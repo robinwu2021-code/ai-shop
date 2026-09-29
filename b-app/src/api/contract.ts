@@ -370,6 +370,34 @@ export interface WithdrawPage {
   records: WithdrawRecord[];
 }
 
+/** 收款账户状态。**只有 ACTIVE 能收钱** —— 待审的那张卡收不到这一期的货款 */
+export type PayoutAccountStatus = "PENDING" | "ACTIVE" | "REJECTED" | "DISABLED";
+
+/** 收款账户形态。与后端 sys_legal_form.settle_account_type 同值域 */
+export type PayoutAccountType = "PERSONAL_BANK_CARD" | "CORPORATE";
+
+/**
+ * 我的收款账户（ADR-011）。
+ *
+ * <b>没有明文账号字段</b>：后端压根不回传，只给掩码。
+ * 换卡是提交一张新的等运营核，不是原地改账号。
+ */
+export interface PayoutAccount {
+  accountNo: string;
+  entityNo: string;
+  accountType: PayoutAccountType;
+  /** 户名。必须与营业执照主体名一致，否则这笔支出税上站不住 */
+  accountName: string;
+  /** 账号掩码，只留尾四位 */
+  accountMasked: string;
+  bankName: string | null;
+  bankBranch: string | null;
+  status: PayoutAccountStatus;
+  /** 驳回原因，原样展示给店主 */
+  auditRemark: string | null;
+  auditedAt: number | null;
+}
+
 export interface WithdrawRecord {
   withdrawNo: string;
   /** 分 */
@@ -1429,6 +1457,15 @@ export interface MerchantApi {
     titleName: string; amountMinor: number }): Promise<PurchaseInvoice>;
   /** 申请提现。**金额单位是分** —— 与全站契约一致，浮点不进钱的接口 */
   mApplyWithdraw(amountMinor: number): Promise<WithdrawRecord>;
+  /** 我的收款账户（含历史）。倒序，账号只有掩码 */
+  mPayoutAccounts(): Promise<PayoutAccount[]>;
+  /**
+   * 提交收款账户。落库即待审，**不能立刻收钱**。
+   *
+   * `accountNumber` 是明文，只在这一次请求里存在 —— 后端加密后即丢弃，不回传。
+   */
+  mSubmitPayoutAccount(v: { accountType: PayoutAccountType; accountName: string;
+    accountNumber: string; bankName?: string; bankBranch?: string }): Promise<PayoutAccount>;
 
   mAfterSaleList(): Promise<AfterSale[]>;
   /** 同意：仅退款直接退；退货退款要等收货后才退（见 mConfirmReturn） */

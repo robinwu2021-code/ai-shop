@@ -180,6 +180,8 @@ const RESPONSE_TYPES = {
   mOpenStorePayment: "PaymentApplyment",
   mSubmitInvoice: "PurchaseInvoice",
   mWithdrawPage: "WithdrawPage",
+  mPayoutAccounts: "PayoutAccount[]",
+  mSubmitPayoutAccount: "PayoutAccount",
   mCloseAppointmentSlot: "AppointmentSlot",
   mConfirmOfflinePay: "Order",
   mExpressQuotes: "ExpressQuote[]",

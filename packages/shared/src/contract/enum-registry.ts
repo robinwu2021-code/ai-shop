@@ -424,6 +424,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
   { decl: "b-app:HttpMethod", dom: "infra", shape: "CLASS", verdict: "OK",
     note: "HTTP 动词，端内契约描述用。后端零出现 —— 它是协议不是业务枚举" },
+  { decl: "b-app:PayoutAccountStatus", dom: "finance", shape: "STATUS", verdict: "OK",
+    note: "供应商收款账户的状态（V358，ADR-011 自营供应商模式）。与后端 MchPayoutAccount 的常量逐字一致，已登记进 check-enum-fields 的 FIELDS。**只有 ACTIVE 能收钱**：待审的卡收不到这一期货款。DISABLED 是「被新卡顶替」而不是「被停用」——换卡是提交新的等运营核，旧的自动退到这个状态，历史付款仍指向它所以不删行。",
+    words: ["DISABLED"] },
+  { decl: "b-app:PayoutAccountType", dom: "finance", shape: "CLASS", verdict: "OK",
+    note: "收款账户形态（V358）。**与 sys_legal_form.settle_account_type 同值域**，不是另起一套：主体类型决定钱能打到个人卡还是必须对公，两处取值不一致的话，进件过得去而付款打不出。",
+    words: ["PERSONAL_BANK_CARD", "CORPORATE"] },
   { decl: "b-app:ExpressPickupStatus", dom: "trade", shape: "STATUS", verdict: "OK",
     note: "快递代下单取件单的状态（TDD-快递100商家寄件）。与后端 OrdExpressPickup 常量同名同值；只有 B 端用。"
       + "申报四个词：它们是快递取件的环节名（下单 / 接单 / 取件 / 签收），L1 的 PENDING / PROCESSING 分不开"

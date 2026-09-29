@@ -4,6 +4,7 @@ import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
 import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
   WithdrawPage, WithdrawRecord, DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
+  PayoutAccount,
   PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
@@ -471,6 +472,8 @@ export const httpApi: MerchantApi = {
   mSubmitInvoice: (v) => http.post<PurchaseInvoice>(E.mSubmitInvoice.path, v),
   mApplyWithdraw: (amountMinor: number) =>
     http.post<WithdrawRecord>(E.mApplyWithdraw.path, { amountMinor }),
+  mPayoutAccounts: () => http.get<PayoutAccount[]>(E.mPayoutAccounts.path),
+  mSubmitPayoutAccount: (v) => http.post<PayoutAccount>(E.mSubmitPayoutAccount.path, v),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
   mApproveAfterSale: (afterSaleNo, reply) =>
     http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {

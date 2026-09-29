@@ -439,6 +439,19 @@ const ANCHOR_WAIVED: Record<string, string> = {
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
     "mch_entity_plan:COMMUNITY": "增值包订阅属于商家，不属于片区",
   "mch_entity_plan:PICKUP": "同上",
+  /*
+   * ── 2026-09-29 收款账户（V358，ADR-011 自营供应商模式）──
+   *
+   * 「货款打到哪张卡」是主体的事实，片区与自提点上不存在这个事实：
+   * 同一个主体在三个片区卖货，收款账户仍然只有一张。
+   * 冗余一列也补不出来 —— 那会变成「这张卡属于哪个片区」这种无从回答的问题。
+   */
+  "mch_payout_account:COMMUNITY":
+    "收款账户属于主体，不属于片区。**看到空白的是**：配了社区域的运营打开收款账户审核队列。"
+    + "这类运营本来也不该审收款账户 —— 那需要 finance:payout:execute，"
+    + "而社区运营的码表里没有它，于是他连入口都点不开",
+  "mch_payout_account:PICKUP":
+    "同上。自提点运营者不碰货款去向 —— 他管的是到货与核销",
     "ful_batch:COMMUNITY":
     "到货批次挂自提点，不挂片区。**看到空白的是**：配了社区域的运营打开到货批次页。"
     + "自提点与社区是多对一，但表上只有 pickup_no —— 要接得冗余一列 community_no",

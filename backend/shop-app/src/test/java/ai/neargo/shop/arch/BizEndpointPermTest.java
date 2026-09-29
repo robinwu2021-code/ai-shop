@@ -443,6 +443,15 @@ class BizEndpointPermTest {
         put("/biz/deposit", BizPerms.FINANCE);
         put("/biz/deposit/txns", BizPerms.FINANCE);
         /*
+         * 收款账户（ADR-011）。**与结算同权限，不放宽也不收窄**：
+         * 它答的是「货款打到哪张卡」—— 读到的是账户掩码与开户行，
+         * 写进去的是下一期钱的去向，两边都属于钱的事。
+         *
+         * 不单开一个更严的码（比如只给老板）：自营模式下对账、开票、
+         * 收款账户是同一个人在管，拆开只会让他在两个角色之间来回切。
+         */
+        put("/biz/payout-account", BizPerms.FINANCE);
+        /*
          * 增值包（B-11.13）。挂 STORE_ADMIN 而不是更宽的码：这两条答的是
          * 「主体买了什么」，与建店、停用、挂收款号同属主体结构面 ——
          * 而那个码**只在老板手里**（BizPerms 刻意不让它进自定义角色）。

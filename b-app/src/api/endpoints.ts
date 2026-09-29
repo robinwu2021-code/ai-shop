@@ -221,6 +221,12 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
   mApplyWithdraw: { method: "POST", path: "/biz/settle/withdraw", auth: true, summary: "申请提现" },
 
+  // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：
+  // /biz 约定单数，而「我的收款账户」读的是列表、写的是一张新卡，
+  // 语义上都是同一个资源的两面。
+  mPayoutAccounts: { method: "GET", path: "/biz/payout-account", auth: true, summary: "我的收款账户" },
+  mSubmitPayoutAccount: { method: "POST", path: "/biz/payout-account", auth: true, summary: "提交收款账户" },
+
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },
   // 同意与驳回是**两个动词、两条路径**，不是一个布尔参数 ——
   // 与后端一致，也让「谁被调用了」在日志与权限里能分开看

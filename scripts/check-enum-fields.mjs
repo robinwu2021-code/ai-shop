@@ -68,6 +68,28 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "供应商收款账户的状态",
+    field: "mch_payout_account.status",
+    backend: {
+      javaConst: "shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchPayoutAccount.java",
+      only: ["PENDING", "ACTIVE", "REJECTED", "DISABLED"],
+    },
+    clients: [
+      { file: "b-app/src/api/contract.ts", type: "PayoutAccountStatus" },
+    ],
+  },
+  {
+    concept: "供应商收款账户的形态",
+    field: "mch_payout_account.account_type",
+    backend: {
+      javaConst: "shop-merchant/src/main/java/ai/neargo/shop/merchant/entity/MchPayoutAccount.java",
+      only: ["PERSONAL_BANK_CARD", "CORPORATE"],
+    },
+    clients: [
+      { file: "b-app/src/api/contract.ts", type: "PayoutAccountType" },
+    ],
+  },
+  {
     concept: "快递代下单取件单的状态",
     field: "ord_express_pickup.status",
     backend: {

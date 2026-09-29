@@ -51,6 +51,8 @@ export const orderMock: Pick<MerchantApi,
   | "mMyInvoices"
   | "mSubmitInvoice"
   | "mApplyWithdraw"
+  | "mPayoutAccounts"
+  | "mSubmitPayoutAccount"
   | "mAfterSaleList"
   | "mApproveAfterSale"
   | "mRejectAfterSale"
@@ -460,6 +462,32 @@ export const orderMock: Pick<MerchantApi,
   async mApplyWithdraw(amountMinor: number) {
     return { withdrawNo: "WD-MOCK-NEW", amount: amountMinor, availableBalance: 128_600,
       status: "PENDING", appliedAt: "刚刚", decidedAt: null, remark: null };
+  },
+
+  async mPayoutAccounts() {
+    // 给「一张在用 + 一张被驳回」两种状态 —— 驳回原因要能在界面上看到，
+    // 只给一张生效的卡就看不出驳回那条路长什么样
+    return [
+      { accountNo: "PAC-MOCK-2", entityNo: "E-MOCK", accountType: "CORPORATE" as const,
+        accountName: "深圳市虹选科技有限公司", accountMasked: "****2577",
+        bankName: "浦发银行", bankBranch: "深圳分行", status: "ACTIVE" as const,
+        auditRemark: null, auditedAt: 1790000000000 },
+      { accountNo: "PAC-MOCK-1", entityNo: "E-MOCK", accountType: "PERSONAL_BANK_CARD" as const,
+        accountName: "武斌", accountMasked: "****8888",
+        bankName: "招商银行", bankBranch: null, status: "REJECTED" as const,
+        auditRemark: "户名与营业执照主体名不一致，请用对公账户", auditedAt: 1789000000000 },
+    ];
+  },
+
+  async mSubmitPayoutAccount(v: { accountType: "PERSONAL_BANK_CARD" | "CORPORATE";
+    accountName: string; accountNumber: string; bankName?: string; bankBranch?: string }) {
+    // 掩码口径与后端一致（只留尾四位）—— mock 里也要一样，
+    // 否则端上按 mock 调好的展示宽度到真接口就错位
+    const tail = v.accountNumber.length <= 4 ? "****" : "****" + v.accountNumber.slice(-4);
+    return { accountNo: "PAC-MOCK-NEW", entityNo: "E-MOCK", accountType: v.accountType,
+      accountName: v.accountName, accountMasked: tail,
+      bankName: v.bankName ?? null, bankBranch: v.bankBranch ?? null,
+      status: "PENDING" as const, auditRemark: null, auditedAt: null };
   },
 
   async mAfterSaleList() {

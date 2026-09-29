@@ -91,6 +91,13 @@ export const RULES = [
   ["POST", /^\/ops\/payables\/[^/]+\/confirm$/, "finance:settle:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/paid$/, "finance:payout:execute"],
   ["POST", /^\/ops\/payables\/[^/]+\/no-invoice$/, "finance:invoice:verify"],
+  /*
+   * 供应商收款账户（V358，ADR-011）。**与登记付款同一个码** ——
+   * 审核收款账户就是决定下一期的钱打到哪里，和把钱付出去是同一个岗位的一体两面，
+   * 没有「只审账户不付款」或「只付款不审账户」的分工。
+   * 新开一个码要在五处登记，而多一个码就多一处会被落下的地方。
+   */
+  ["*", /^\/ops\/payout-accounts/, "finance:payout:execute"],
   // 进项票：它决定平台能不能付款，所以核验权与开票权同一个码
   ["GET", /^\/ops\/purchase-invoices/, "finance:invoice:read"],
   ["POST", /^\/ops\/purchase-invoices\//, "finance:invoice:verify"],
