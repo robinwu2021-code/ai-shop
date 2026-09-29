@@ -24476,6 +24476,13 @@
       "package": "ai.neargo.shop.content.entity"
     },
     {
+      "table": "elc_dispatch",
+      "class": "ElcDispatch",
+      "zh": "派单：供应商能看到求购需求的唯一通道。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
       "table": "elc_manufacturer",
       "class": "ElcManufacturer",
       "zh": "",
@@ -24507,6 +24514,13 @@
       "table": "elc_part_market",
       "class": "ElcPartMarket",
       "zh": "买家面的库存投影。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_quote",
+      "class": "ElcQuote",
+      "zh": "供应商报价（他填的原样）。",
       "module": "elec",
       "package": "ai.neargo.shop.elec.entity"
     },
@@ -25949,6 +25963,48 @@
   "dictionaries": {
     "javaConstantGroups": [
       {
+        "host": "ElcDispatch",
+        "name": "VIA_AUTO",
+        "value": "AUTO_MATCH",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcDispatch",
+        "name": "VIA_OPS",
+        "value": "OPS",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcDispatch",
+        "name": "STATUS_SENT",
+        "value": "SENT",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcDispatch",
+        "name": "STATUS_VIEWED",
+        "value": "VIEWED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcDispatch",
+        "name": "STATUS_QUOTED",
+        "value": "QUOTED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcDispatch",
+        "name": "STATUS_DECLINED",
+        "value": "DECLINED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "ElcManufacturer",
         "name": "UNKNOWN",
         "value": "UNKNOWN",
@@ -25973,6 +26029,27 @@
         "host": "ElcPart",
         "name": "STATUS_MERGED",
         "value": "MERGED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcQuote",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcQuote",
+        "name": "STATUS_WITHDRAWN",
+        "value": "WITHDRAWN",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcQuote",
+        "name": "STATUS_ACCEPTED",
+        "value": "ACCEPTED",
         "zh": "",
         "module": "elec"
       },
@@ -26134,6 +26211,20 @@
         "host": "ElecKeys",
         "name": "RFQ",
         "value": "EQ",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "DISPATCH",
+        "value": "ED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElecKeys",
+        "name": "QUOTE",
+        "value": "EO",
         "zh": "",
         "module": "elec"
       },
@@ -35239,6 +35330,14 @@
       "type": "String",
       "value": "\"/internal/elec/notify/quoted\"",
       "zh": "询价有结果了：发微信订阅消息 + 站内信给买家",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "NOTIFY_SUPPLIER",
+      "type": "String",
+      "value": "\"/internal/elec/notify/supplier\"",
+      "zh": "有新的求购派给这家供应商 / 他的报价被选中了。",
       "module": "elec"
     },
     {
