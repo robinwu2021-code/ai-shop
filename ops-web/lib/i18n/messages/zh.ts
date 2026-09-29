@@ -11,6 +11,7 @@ export const zh = {
   },
   common: {
     helpNote: "说明",
+    close: "关闭",
     pageSize: "每页条数",
     jumpToPage: "跳转到第几页",
     perPage: "每页 {n} 条",
@@ -100,6 +101,7 @@ export const zh = {
     notImplementedHint: "后端尚未实现，暂时点不动",
     expand: "展开导航", collapse: "收起导航",
     expandPanel: "展开子功能面板", collapsePanel: "收起子功能面板",
+    openMenu: "打开菜单", menu: "导航菜单",
     search: "搜索功能",
     searchPlaceholder: "搜索功能，如「商家档案」",
     searchEmpty: "没有匹配的功能",

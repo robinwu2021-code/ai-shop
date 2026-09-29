@@ -15,6 +15,7 @@ import { LangSwitcher } from "./lang-switcher";
 import { NotifyBell } from "./notify-bell";
 import { CommandPalette, useCommandPalette } from "./command-palette";
 import { ChevronRight, LogOut, PanelLeft, Search } from "lucide-react";
+import { MobileNav } from "./mobile-nav";
 
 // 面包屑：L1 › 分组 › 子功能（URL 反推，标签经 tNav 本地化）。
 // **整条不可点**：它是位置指示器不是导航 —— 每一级在 Rail / SecondaryNav / TabHeader
@@ -90,6 +91,10 @@ export function Header() {
         >
           <PanelLeft className="size-4 rtl:-scale-x-100" />
         </button>
+        {/* 手机上 Rail 与 SecondaryNav 都是 hidden，这一颗是它们唯一的入口 */}
+        <Suspense fallback={null}>
+          <MobileNav />
+        </Suspense>
         <Suspense fallback={null}>
           <Breadcrumb />
         </Suspense>

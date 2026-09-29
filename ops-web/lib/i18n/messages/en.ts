@@ -20,6 +20,7 @@ export const en: Messages = {
   },
   common: {
     helpNote: "What this is",
+    close: "Close",
     pageSize: "Rows per page",
     jumpToPage: "Jump to page",
     perPage: "{n} / page",
@@ -109,6 +110,7 @@ export const en: Messages = {
     notImplementedHint: "Not built yet — cannot be opened",
     expand: "Expand navigation", collapse: "Collapse navigation",
     expandPanel: "Show sub-navigation panel", collapsePanel: "Hide sub-navigation panel",
+    openMenu: "Open menu", menu: "Navigation",
     search: "Search features",
     searchPlaceholder: "Search features, e.g. “Merchant profiles”",
     searchEmpty: "No matching feature",

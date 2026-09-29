@@ -79,6 +79,7 @@
 | `AppShell` | `layout/app-shell.tsx` | 外壳：Rail + 顶栏 + 内容区 |
 | `Rail` | `layout/rail.tsx` | L1 图标栏（18 个业务域） |
 | `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章）；可由顶栏开关收起 |
+| `MobileNav` | `layout/mobile-nav.tsx` | 窄屏（< md）的导航入口：Rail 与 SecondaryNav 在那里是 `hidden`，这颗汉堡把它们装进抽屉；选中后自动收起 |
 | `CommandPalette` / `useCommandPalette` | `layout/command-palette.tsx` | ⌘K 搜索并跳转功能 —— SecondaryNav 可收起的前提 |
 | `PhaseGuard` | `layout/phase-guard.tsx` | 分期门禁：直达未开放功能时的兜底页 |
 | `NotifyBell` | `layout/notify-bell.tsx` | 顶栏铃铛：运营通知收件箱（15s 轮询 + 浏览器桌面横幅） |
