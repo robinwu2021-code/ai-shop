@@ -25993,6 +25993,55 @@
   "dictionaries": {
     "javaConstantGroups": [
       {
+        "host": "ElecInternal",
+        "name": "RESULT_QUOTED",
+        "value": "QUOTED",
+        "zh": "询价结果（QuotedNotice#result）：平台报了价",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "RESULT_NO_SOURCE",
+        "value": "NO_SOURCE",
+        "zh": "平台关单：暂无货源",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "RESULT_OFFER",
+        "value": "OFFER",
+        "zh": "有供应商报了价（首次报价才发，改价不发）",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "RESULT_LINE_NO_OFFER",
+        "value": "LINE_NO_OFFER",
+        "zh": "某一行：收到求购的供应商都回了「没货」，平台也没报",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "KIND_DISPATCH",
+        "value": "DISPATCH",
+        "zh": "通知供应商的事（SupplierNotice#kind）：有新求购",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "KIND_ACCEPTED",
+        "value": "ACCEPTED",
+        "zh": "他的报价被买家选中了",
+        "module": "elec"
+      },
+      {
+        "host": "ElecInternal",
+        "name": "KIND_EXPIRING",
+        "value": "EXPIRING",
+        "zh": "库存快到期了。",
+        "module": "elec"
+      },
+      {
         "host": "ElcDispatch",
         "name": "VIA_AUTO",
         "value": "AUTO_MATCH",
