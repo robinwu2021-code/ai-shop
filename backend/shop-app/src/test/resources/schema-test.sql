@@ -1,6 +1,19 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
+--
+-- ⚠️ **这里的种子 INSERT 不是幂等的**，而 H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`
+-- —— 库在 Spring context 关掉之后还活着。于是**同一次 mvn 里起第二个 context 时**，
+-- sql-init 会把这些 INSERT 再跑一遍，撞主键（最常见的是 sys_industry(id)=1）。
+--
+-- 症状是别的测试类报「Failed to load ApplicationContext」，与那个类本身毫无关系，
+-- 而且**单独跑永远复现不了**（只有一个 context 时不会重放）。
+--
+-- 什么会多起一个 context：@ActiveProfiles 的组合不同、@TestPropertySource、
+-- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
+-- 所以写测试时**只声明真正需要的那些**：照着别的类抄 annotation 之前，
+-- 先问「我这个类用得上它吗」。2026-09-29 撞过一次：一个只用 service 的测试
+-- 照搬了 ops 端点测试的 @ActiveProfiles({"test","ops"})，挡住了整条分支的 push。
 
 
 CREATE TABLE IF NOT EXISTS cmt_community
