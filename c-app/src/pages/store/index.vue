@@ -680,7 +680,9 @@ onShareTimeline(() =>
    写死 left 的话竖条留在左边、与选中项对不上（第五道闸 check-rtl-physical 扫的就是这个）。 */
 .rail__item {
   display: block;
-  padding: 28rpx 16rpx 28rpx 12rpx;
+  /* 起始侧少 6rpx，让出竖条的宽度；同样用逻辑属性，阿语下跟着翻 */
+  padding-block: 28rpx;
+  padding-inline: 12rpx 16rpx;
   border-inline-start: 6rpx solid transparent;
   text-align: center;
   color: var(--sh-sub);
