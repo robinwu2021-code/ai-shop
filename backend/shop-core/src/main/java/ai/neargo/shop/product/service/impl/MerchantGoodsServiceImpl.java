@@ -2536,9 +2536,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 主体下**在架卖这件货**的门店。三态语义见 {@link #syncPool}。
      *
      * <p>只算 ACTIVE 门店：停用的店不该把货带进任何社区。
+     *
+     * <p><b>2026-09-29 之前这句注释是假的</b>：这里调的是 {@code storeNos}，
+     * 它返回主体下的**全部**门店（归属口径，含 READONLY）。于是商家在门店管理里
+     * 停用一家店，那家店的货一行都没从社区池里撤出去 —— 线上实测停用
+     * 「虹选鲜果·福田店」后重算，4 件货 × 2859 个社区一行未少。
+     * 门店状态在整条可见性链路上没有任何读者，这里是它该有的那一个。
      */
     private List<String> storesSelling(PrdGoods g) {
-        List<String> activeStores = merchantPort.storeNos(g.getEntityNo());
+        List<String> activeStores = merchantPort.activeStoreNos(g.getEntityNo());
         if (activeStores.isEmpty()) {
             return List.of();
         }

@@ -501,6 +501,63 @@ class StoreScopedVisibilityFlowTest {
          */
     }
 
+    @Test
+    @DisplayName("★★★ 停用门店，它的货要从社区池里撤出 —— 只改 mch_store.status 对买家完全无效")
+    void suspendingAStoreWithdrawsItsGoodsFromTheCommunityPool() throws Exception {
+        String biz = merchant("12600180010", "会关掉一家店的商家");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String storeA = defaultStoreNo(biz);
+        String storeB = createStore(biz, "要被停用的第二家店");
+        // 新店的经营类目是空的，不开这一项在 B 店上架会被 GOODS_CATEGORY_NOT_IN_STORE 拒
+        TestStoreCategory.open(mvc(), json, biz, storeB, "CAT210");
+
+        /*
+         * 这件货**只在 B 店卖**：A 店那行显式下架。
+         * 不这么做的话 A 店会一直把它带进池里，停用 B 店也看不出差别 ——
+         * 那就变成一条永远绿的用例。
+         */
+        String goodsNo = onSaleGoodsAt(biz, storeB, "只有第二家店卖的柠檬");
+        offShelfAt(biz, storeA, goodsNo);
+
+        assertThat(buyerSees("CM001", goodsNo))
+                .as("前置：B 店在营业，买家应当搜得到")
+                .isTrue();
+
+        // 商家在「门店管理」里把 B 店停用
+        mvc().perform(post("/biz/store/" + storeB + "/status")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("READONLY"));
+
+        /*
+         * ★ 修之前这一行是 false（= 买家还搜得到）。
+         *
+         * 两处缺一不可，**撤掉任意一处这条用例都会红**（做过消融）：
+         *   ① {@code StoreAdminServiceImpl.setStatus} 改完状态要 resyncPools ——
+         *      不重建的话池行原封不动，停用对买家毫无影响；
+         *   ② {@code MerchantGoodsServiceImpl.storesSelling} 要用 activeStoreNos ——
+         *      仍用 storeNos 的话重建一遍会把同样的行再写回来，白重建。
+         *
+         * 线上实测（2026-09-29）：停用「虹选鲜果·福田店」后手工触发重算，
+         * 它的 4 件货 × 2859 个社区一行未少。
+         */
+        assertThat(buyerSees("CM001", goodsNo))
+                .as("B 店已停用，它是唯一在卖这件货的店 —— 买家不该再搜得到")
+                .isFalse();
+
+        // 再启用回来，货要回到池里：停用不是单向门
+        mvc().perform(post("/biz/store/" + storeB + "/status")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(buyerSees("CM001", goodsNo))
+                .as("重新启用后要能再被搜到 —— 否则停用一次就等于永久下架")
+                .isTrue();
+    }
+
     /** 在指定门店下架一件货 —— 用来表达「这家店不卖它」 */
     private void offShelfAt(String token, String storeNo, String goodsNo) throws Exception {
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")

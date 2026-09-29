@@ -39,7 +39,16 @@ const current = computed(() =>
 
 onLoad(async (q) => {
   entry.value = q?.entry === "1";
-  await Promise.all([merchant.ensureStores(), merchant.ensureEntityGroups()]);
+  /*
+   * **每次都重取，不是 ensure**（与门店管理页同一条理由，而这里更强）：
+   * 这一页是切证照的唯一入口，拿旧分组的代价是「选完进了另一张证照的店」。
+   *
+   * `ensure*` 的判据都盖不住证照被合并/停用这件事：`entityGroups` 判的是「非空」，
+   * `ensureStores` 判的是「当前门店在不在列表里」—— 两张证照并成一张时**门店集合根本没变**，
+   * 两个判据都说「新鲜」，于是整段会话都停在合并之前的分组上。
+   * App 进程比一次性加载活得久，H5 刷一下就好，真机上是一直错到杀进程为止。
+   */
+  await Promise.all([merchant.loadStores(), merchant.loadEntityGroups()]);
   picked.value = merchant.storeNo || merchant.usableStores[0]?.storeNo || "";
 });
 

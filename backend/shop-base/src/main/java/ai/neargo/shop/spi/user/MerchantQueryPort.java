@@ -370,7 +370,28 @@ public interface MerchantQueryPort {
     /** 第三方：商家是销售主体，平台收佣金。 */
     String MODE_THIRD_PARTY = "THIRD_PARTY";
 
+    /**
+     * 这个主体名下的**全部**门店，含停用（{@code READONLY}）与平台下线（{@code SUSPENDED}）。
+     *
+     * <p><b>归属校验用它</b>（「这家店是不是我的」）—— 停用的店仍然归他管，
+     * 否则停用之后连重新启用的入口都找不到。可见性链路要的是另一个：
+     * 见 {@link #activeStoreNos}。
+     */
     java.util.List<String> storeNos(String merchantNo);
+
+    /**
+     * 这个主体名下**在营业**的门店（{@code status = ACTIVE}）。
+     *
+     * <p><b>可见性链路必须用它</b>：C 端能不能搜到一件货，真闸门是
+     * {@code prd_community_pool}，而门店状态在那条链路上原本<b>没有任何读者</b> ——
+     * 商家在「门店管理」里停用一家店，货照样留在社区池里卖，
+     * 界面上那家店明明写着「已停用」。（平台强制下线走 {@code StoreShelfPort.platformOffline}
+     * 压货架，所以那一半是对的；商家自助停用漏了，同一个坑只补了一半。）
+     *
+     * <p>2026-09-29 线上实测：停用「虹选鲜果·福田店」后重算社区池，
+     * 它的 4 件货 × 2859 个社区一行未少。
+     */
+    java.util.List<String> activeStoreNos(String merchantNo);
 
     /**
      * 这家主体的**销售范围**，<b>给买家看的那一份</b>。
