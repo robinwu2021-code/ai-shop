@@ -1861,7 +1861,7 @@ _无字段_
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
 | `merchantNo` | `string` | 是 | 结算对象商家 |
-| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
 | `netMinor` | `number` | 是 | 实付商家（分） |
@@ -1899,7 +1899,7 @@ _无字段_
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
 | `merchantNo` | `string` | 是 | 结算对象商家 |
-| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
 | `netMinor` | `number` | 是 | 实付商家（分） |
@@ -1937,7 +1937,7 @@ _无字段_
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
 | `merchantNo` | `string` | 是 | 结算对象商家 |
-| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
 | `netMinor` | `number` | 是 | 实付商家（分） |
@@ -2278,7 +2278,7 @@ _无字段_
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
 | `billCount` | `number` | 是 | 本批单据数 |
-| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** |
 | `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
 | `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
@@ -2316,7 +2316,7 @@ _无字段_
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
 | `billCount` | `number` | 是 | 本批单据数 |
-| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** |
 | `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
 | `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
@@ -11971,7 +11971,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
 | `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
 | `billCount` | `number` | 是 | 本批单据数 |
-| `grossMinor` | `number` | 是 | 本批结算基数合计（分） |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** |
 | `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
 | `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
 | `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
@@ -11988,7 +11988,7 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `dimKey` | `string` | 是 | 维度值：门店号 / 主体号 / 收款商户号。空门店为 __UNASSIGNED__ |
 | `dimName` | `string` | 是 | 展示名。查不到时回落成 dimKey 本身，**不会是空串** |
-| `grossMinor` | `number` | 是 | 成交额（分）。**不含退款** —— 结算单上没有退款列，退款走售后与分账回退 |
+| `grossMinor` | `number` | 是 | 成交额（分）。**不含退款**（退款走售后与分账回退），**也不含运费**（见结算单那份的说明） |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 服务费（分） |
 | `channelFeeMinor` | `number` | 是 | 渠道手续费（分） |
@@ -12003,7 +12003,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `subOrderNo` | `string` | 是 | 对应的子订单，**一条 = 一个子订单** |
 | `orderNo` | `string` | 是 | 所属主单 |
 | `merchantNo` | `string` | 是 | 结算对象商家 |
-| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣 |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 实付 + 平台补贴 + 积分抵扣。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，进了这里等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 口径改之前这个数是「货款 + 运费」，按它做过的报表要重对一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分） |
 | `netMinor` | `number` | 是 | 实付商家（分） |

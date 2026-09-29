@@ -7306,7 +7306,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `day` | `string` | 是 | yyyy-MM-dd |
-| `grossMinor` | `number` | 是 | 成交额 |
+| `grossMinor` | `number` | 是 | 成交额（分）。与结算单同口径 —— **不含运费**，运费单列（见 SettleBill.grossMinor） |
 | `refundMinor` | `number` | 是 | 退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。 |
 | `commissionMinor` | `number` | 是 | 平台佣金 |
 | `serviceFeeMinor` | `number` | 是 | 履约服务费 |
@@ -9435,7 +9435,7 @@ _无字段_
 | `subOrderNo` | `string` | 是 | 对应的子订单号 —— 分账以它为单位 |
 | `orderNo` | `string` | 是 | 所属主单号 |
 | `merchantNo` | `string` | 是 | 主体号 |
-| `grossMinor` | `number` | 是 | 结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家** |
+| `grossMinor` | `number` | 是 | 结算基数（分）= 用户实付 + 平台补贴。**平台出资的优惠要补回给商家**。 **不含运费**（V367 / TDD-快递100商家寄件 §9 AC21，2026-09-29 改的口径）： 运费是代收代付的钱，算进基数等于让商家为平台代收的运费付佣金。 它单列在结算单的 `freight_income_minor`。 改口径之前这个数是「货款 + 运费」，按它做过的核对要重来一遍。 |
 | `commissionMinor` | `number` | 是 | 平台佣金（分） |
 | `serviceFeeMinor` | `number` | 是 | 自提点履约服务费（分）。供货方付、承接方收，两个角色都是自己时账面抵消 |
 | `netMinor` | `number` | 是 | 商家实得（分）= 基数 − 佣金 − 服务费 |
