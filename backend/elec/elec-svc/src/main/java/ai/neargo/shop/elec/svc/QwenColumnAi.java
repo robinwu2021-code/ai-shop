@@ -99,6 +99,7 @@ public class QwenColumnAi implements ElecColumnAi {
                 第一行不一定是表头（上面可能有公司抬头或标题）。
                 请判断：表头在哪一行；下列字段分别在哪一列。表里没有的字段不要写，拿不准的也不要写。
                 备注、说明、联系人、电话、微信、公司名这类列不属于任何字段，不要写。
+                表里没有标题行（第一行就是数据）时 headerRow 写 -1。
                 只输出一个 JSON 对象，形如 {"headerRow":0,"columns":{"MPN":1,"QTY":3}}，不要解释，不要代码块。
                 字段：
                 """);
@@ -138,7 +139,8 @@ public class QwenColumnAi implements ElecColumnAi {
                     m.put(e.getKey(), e.getValue().asInt());
                 }
             }
-            return new Guess(n.path("headerRow").asInt(-1), m);
+            // 漏了 headerRow 不能当成「没有标题行」（-1 是有意义的回答）：记成 -2，认列那边判为无效
+            return new Guess(n.path("headerRow").isIntegralNumber() ? n.path("headerRow").asInt() : -2, m);
         } catch (Exception e) {
             return null;
         }

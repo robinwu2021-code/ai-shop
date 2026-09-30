@@ -31,8 +31,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>表头别名表 —— 本家学到的 &gt; 全局（{@link HeaderAliases}）</li>
  *   <li>大模型 —— 仅当缺料号 / 缺数量 / 缺厂牌 / 两列抢同一字段 / 找不到表头行。<b>只补缺的字段</b>，
  *       别名认出的不让它改：规则认出的是确定的，模型的是概率的，反过来会把一张认得好好的表「纠正」错</li>
- *   <li>手工 —— 仍缺料号或数量：{@code NEED_MAPPING}，供应商在页面上选</li>
+ *   <li>按内容猜 —— 大模型关着、失败，或它也没认全时：看列里的值，像料号的（字母加数字）、
+ *       读得成整数的、能在厂牌别名表里命中的，比例过 60% 就预选上，来源记 CONTENT，端上提示核对</li>
+ *   <li>手工 —— 仍缺料号或数量：{@code NEED_MAPPING}，供应商在页面上看着每列的内容选</li>
  * </ol>
+ *
+ * <p><b>没有标题行的表</b>（第一行就是数据）：{@code headerRow = -1}，从第一行起全是数据。
+ * 判据：一行都没命中别名、且第一行非空行本身就像数据（有像料号的格、也有读得成数量的格）；大模型也可以回 -1。
+ * 不这样判的话，第一行数据会被当成表头静默跳过，而他看到的「列名」是一个料号。
  *
  * <p>大模型给的每个字段都要<b>过内容校验</b>：料号列的样本真的像料号、数量列真的读得成数 ——
  * 一个错的料号列会让整张表作废或错上架，而模型认错时语气和认对时一样笃定。
@@ -46,6 +52,9 @@ public class ColumnResolver {
     public static final String SRC_ALIAS = "ALIAS";
     public static final String SRC_AI = "AI";
     public static final String SRC_MANUAL = "MANUAL";
+    public static final String SRC_CONTENT = "CONTENT";
+    /** 表里没有标题行：从第一行起全是数据 */
+    public static final int NO_HEADER = -1;
 
     /** 给模型看的行数上限（找表头要前 10 行）与其中数据行上限：样本会经公网发出去，能少就少 */
     static final int AI_HEAD_ROWS = 10;
@@ -76,17 +85,19 @@ public class ColumnResolver {
 
     private final HeaderAliases aliases;
     private final ObjectProvider<ElecColumnAi> ai;
+    private final ElecPartCatalog catalog;
 
     private final AtomicInteger failures = new AtomicInteger();
     private volatile Instant openUntil = Instant.EPOCH;
 
-    public ColumnResolver(HeaderAliases aliases, ObjectProvider<ElecColumnAi> ai) {
+    public ColumnResolver(HeaderAliases aliases, ObjectProvider<ElecColumnAi> ai, ElecPartCatalog catalog) {
         this.aliases = aliases;
         this.ai = ai;
+        this.catalog = catalog;
     }
 
     /**
-     * @param headerRow 表头行；{@code NEED_MAPPING} 且一列都认不出时，取第一行非空行给他选
+     * @param headerRow 表头行；{@link #NO_HEADER} = 没有标题行。{@code NEED_MAPPING} 且一列都认不出、第一行也不像数据时，取第一行非空行
      * @param source    字段 → 来源（{@link #SRC_REMEMBERED} …）
      * @param complete  认全了料号与数量
      */
@@ -126,8 +137,8 @@ public class ColumnResolver {
             if (guess != null) {
                 aiUsed = true;
                 int aiHeader = guess.headerRow();
-                boolean aiHeaderOk = aiHeader >= 0 && aiHeader < Math.min(AI_HEAD_ROWS, rows.size())
-                        && !SheetReader.blank(rows.get(aiHeader));
+                boolean aiHeaderOk = aiHeader == NO_HEADER || (aiHeader >= 0
+                        && aiHeader < Math.min(AI_HEAD_ROWS, rows.size()) && !SheetReader.blank(rows.get(aiHeader)));
                 // 别名已经认全料号与数量时信别名的表头行；否则模型给的行合法就改用它，并按新行重认一遍别名
                 if (!g.ok() && aiHeaderOk && aiHeader != headerRow) {
                     headerRow = aiHeader;
@@ -136,15 +147,20 @@ public class ColumnResolver {
                     map.putAll(at.map());
                     source = sourceAll(at.map(), SRC_ALIAS);
                 }
-                if (headerRow >= 0) {
+                if (headerRow >= 0 || aiHeader == NO_HEADER) {
                     merge(rows, headerRow, map, source, guess.columns(), g.conflicts());
                 }
             }
         }
-        // ④ 手工：一列都没认出时，把第一行非空行当表头给他选
-        if (headerRow < 0) {
-            headerRow = firstNonBlank;
+        // 一行都没命中别名、模型也没给表头行：第一行非空行像数据就是没有标题行，否则当它是表头
+        if (headerRow < 0 && !(aiUsed && map.containsKey(Field.MPN))) {
+            headerRow = looksLikeData(rows.get(firstNonBlank)) ? NO_HEADER : firstNonBlank;
         }
+        // ④ 按内容猜还缺的
+        if (!map.containsKey(Field.MPN) || !map.containsKey(Field.QTY) || !map.containsKey(Field.MFR)) {
+            sniff(rows, headerRow, map, source);
+        }
+        // ⑤ 仍缺料号或数量：待选列（端上按列看内容选）
         return finish(rows, headerRow, map, source, aiUsed);
     }
 
@@ -161,16 +177,109 @@ public class ColumnResolver {
 
     private Resolution finish(List<List<String>> rows, int headerRow, Map<Field, Integer> map,
                               Map<Field, String> source, boolean aiUsed) {
-        List<String> header = rows.get(headerRow);
         source.keySet().retainAll(map.keySet());
+        boolean complete = map.containsKey(Field.MPN) && map.containsKey(Field.QTY);
+        if (headerRow < 0) {
+            // 没有标题行：没有「含税」提示，也认不出阶梯价列（那要靠表头上的数量档）
+            return new Resolution(NO_HEADER, map, source, null, List.of(), aiUsed, complete);
+        }
+        List<String> header = rows.get(headerRow);
         return new Resolution(headerRow, map, source, Columns.taxHint(header, map), Columns.tierCols(header, map),
-                aiUsed, map.containsKey(Field.MPN) && map.containsKey(Field.QTY));
+                aiUsed, complete);
+    }
+
+    /**
+     * 按列里的值猜料号、厂牌、数量。<b>判据比大模型的校验更严</b>：这是没人帮忙时的猜测 ——
+     * 料号要字母与数字都有（纯数字的列多半是数量或批号）、数量要读得成整数（单价列的 6.8 不算）、
+     * 厂牌要在厂牌别名表里命中。同一列不给两个字段；备注 / 联系方式类的列不猜。
+     */
+    void sniff(List<List<String>> rows, int headerRow, Map<Field, Integer> map, Map<Field, String> source) {
+        List<String> header = headerRow >= 0 ? rows.get(headerRow) : List.of();
+        int width = widthOf(rows, headerRow);
+        Map<String, String> mfrs = catalog.aliases();
+        for (Field f : List.of(Field.MPN, Field.MFR, Field.QTY)) {
+            if (map.containsKey(f)) {
+                continue;
+            }
+            Set<Integer> taken = new HashSet<>(map.values());
+            int best = -1;
+            double bestRatio = 0;
+            for (int c = 0; c < width; c++) {
+                if (taken.contains(c) || (c < header.size() && HeaderNames.isPrivate(header.get(c)))) {
+                    continue;
+                }
+                double r = ratio(rows, headerRow, c, v -> strictLooksLike(f, v, mfrs));
+                // 并列时取靠左的：常见的表里数量在批号前面
+                if (r > bestRatio) {
+                    best = c;
+                    bestRatio = r;
+                }
+            }
+            if (best >= 0 && bestRatio >= VERIFY_RATIO) {
+                map.put(f, best);
+                source.put(f, SRC_CONTENT);
+            }
+        }
+    }
+
+    private static boolean strictLooksLike(Field f, String v, Map<String, String> mfrs) {
+        return switch (f) {
+            case MPN -> Mpn.looksLikeMpn(Mpn.norm(v)) && Mpn.norm(v).chars().anyMatch(Character::isLetter);
+            case QTY -> Cells.qty(v) != null && (!v.contains(".") || v.matches("(?i).*[KW千万M].*"));
+            case MFR -> mfrs.containsKey(Mpn.mfrNorm(v));
+            default -> false;
+        };
+    }
+
+    /** 一行像不像数据：有像料号的格（字母加数字），也有读得成数量的格 */
+    static boolean looksLikeData(List<String> row) {
+        boolean mpn = false;
+        boolean qty = false;
+        for (String v : row) {
+            if (v == null || v.isBlank()) {
+                continue;
+            }
+            String n = Mpn.norm(v);
+            if (Mpn.looksLikeMpn(n) && n.chars().anyMatch(Character::isLetter)) {
+                mpn = true;
+            } else if (Cells.qty(v.strip()) != null) {
+                qty = true;
+            }
+        }
+        return mpn && qty;
+    }
+
+    /** 表头下（没有表头就从第一行起）≤20 行非空格子里，满足条件的比例 */
+    private static double ratio(List<List<String>> rows, int headerRow, int col,
+                                java.util.function.Predicate<String> p) {
+        int seen = 0;
+        int good = 0;
+        for (int i = headerRow + 1; i < rows.size() && seen < VERIFY_ROWS; i++) {
+            String v = StockSheetParser.cell(rows.get(i), col);
+            if (v == null || v.isBlank()) {
+                continue;
+            }
+            seen++;
+            if (p.test(v.strip())) {
+                good++;
+            }
+        }
+        return seen == 0 ? 0 : (double) good / seen;
+    }
+
+    /** 列数：表头的，或（没有表头时）前几行里最宽的 */
+    static int widthOf(List<List<String>> rows, int headerRow) {
+        int w = headerRow >= 0 ? rows.get(headerRow).size() : 0;
+        for (int i = Math.max(0, headerRow + 1); i < Math.min(rows.size(), headerRow + 1 + VERIFY_ROWS); i++) {
+            w = Math.max(w, rows.get(i).size());
+        }
+        return w;
     }
 
     /** 把模型的结果并进来：只补缺的字段（冲突字段除外）、列不许被两个字段占、每个字段过内容校验 */
     private void merge(List<List<String>> rows, int headerRow, Map<Field, Integer> map, Map<Field, String> source,
                        Map<String, Integer> aiCols, Set<Field> conflicts) {
-        int width = rows.get(headerRow).size();
+        int width = widthOf(rows, headerRow);
         for (Map.Entry<String, Integer> e : aiCols.entrySet()) {
             Field f = fieldOf(e.getKey());
             Integer col = e.getValue();
@@ -188,8 +297,8 @@ public class ColumnResolver {
             if (taken.contains(col)) {
                 continue;
             }
-            if (HeaderNames.isPrivate(StockSheetParser.cell(rows.get(headerRow), col))) {
-                log.info("大模型把「{}」列认成 {}：备注 / 联系方式类的列不采纳", rows.get(headerRow).get(col), f);
+            if (headerRow >= 0 && HeaderNames.isPrivate(StockSheetParser.cell(rows.get(headerRow), col))) {
+                log.info("大模型把第 {} 列认成 {}：备注 / 联系方式类的列不采纳", col, f);
                 continue;
             }
             if (!verify(f, rows, headerRow, col)) {

@@ -167,7 +167,8 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
             throw BizException.of(ErrorCode.ELEC_UPLOAD_NO_HEADER);
         }
         b.setHeaderRow(r.headerRow());
-        b.setHeaders(write(rows.get(r.headerRow())));
+        // 没有标题行时表头存空：端上按列字母显示，也不会拿一行数据去当「记住的映射」
+        b.setHeaders(write(r.headerRow() >= 0 ? rows.get(r.headerRow()) : List.of()));
         b.setColumnMap(write(toWire(r.map())));
         b.setColumnSource(write(toWireSource(r.source())));
         b.setTierCols(write(r.tiers().stream().map(c -> List.of(c.col(), c.minQty())).toList()));
@@ -187,7 +188,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         if (pb != null) {
             cache.put(pb);
         }
-        return preview(b, pb);
+        return withSample(preview(b, pb), sampleOf(rows, r.headerRow()));
     }
 
     /** 一家只留一张待确认：之前待确认的作废（两张并存时确认顺序不同结果就不同，他自己也说不清哪张准） */
@@ -208,13 +209,23 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
 
     @Override
     @Transactional(transactionManager = "elecTransactionManager")
-    public BatchPreview remap(String userNo, String batchNo, Map<String, Integer> columns) {
+    public BatchPreview remap(String userNo, String batchNo, Map<String, Integer> columns, Integer headerRow) {
         ElcStockBatch b = pendingBatch(userNo, batchNo);
         Map<Field, Integer> map = fromWire(columns);
         if (!map.containsKey(Field.MPN) || !map.containsKey(Field.QTY)) {
             throw BizException.of(ErrorCode.ELEC_UPLOAD_NO_HEADER);
         }
         List<List<String>> rows = readRows(b).orElseThrow(() -> BizException.of(ErrorCode.ELEC_BATCH_EXPIRED));
+        if (headerRow != null && !headerRow.equals(b.getHeaderRow())) {
+            // 他改了「哪一行是标题」（或说没有标题行）：表头与阶梯价列按新的一行重认
+            if (headerRow < ColumnResolver.NO_HEADER || headerRow >= Math.min(ColumnResolver.AI_HEAD_ROWS, rows.size())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            List<String> header = headerRow >= 0 ? rows.get(headerRow) : List.of();
+            b.setHeaderRow(headerRow);
+            b.setHeaders(write(header));
+            b.setTierCols(write(Columns.tierCols(header, map).stream().map(c -> List.of(c.col(), c.minQty())).toList()));
+        }
         Map<Field, Integer> before = fromWire(read(b.getColumnMap(), new TypeReference<Map<String, Integer>>() { }));
         Map<Field, String> beforeSource = sourceOf(b);
         b.setColumnMap(write(toWire(map)));
@@ -228,7 +239,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         b.setUpdatedBy(userNo);
         batchMapper.updateById(b);
         cache.put(pb);
-        return preview(b, pb);
+        return withSample(preview(b, pb), sampleOf(rows, b.getHeaderRow()));
     }
 
     // ── 预览里的行 ──────────────────────────────────────────────────────────
@@ -462,7 +473,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         return preview(b, pb);
     }
 
-    /** AI 或手工认出的列，把表头写法记成这家的别名 —— 下次同样写法不用再问大模型 */
+    /** AI、按内容猜或手工认出的列，把表头写法记成这家的别名 —— 下次同样写法不用再问大模型 */
     private void learn(ElcStockBatch b, String userNo) {
         Map<Field, Integer> map = fromWire(read(b.getColumnMap(), new TypeReference<Map<String, Integer>>() { }));
         Map<Field, String> source = sourceOf(b);
@@ -470,7 +481,9 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         Map<Field, String> learnt = new EnumMap<>(Field.class);
         map.forEach((f, col) -> {
             String src = source.get(f);
-            if ((ColumnResolver.SRC_AI.equals(src) || ColumnResolver.SRC_MANUAL.equals(src))
+            // AI / 按内容猜的 / 手工的，都是他看过并确认上架的
+            if ((ColumnResolver.SRC_AI.equals(src) || ColumnResolver.SRC_MANUAL.equals(src)
+                    || ColumnResolver.SRC_CONTENT.equals(src))
                     && col < headers.size() && headers.get(col) != null && !headers.get(col).isBlank()) {
                 learnt.put(f, headers.get(col));
             }
@@ -519,12 +532,14 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
     }
 
     @Override
-    public BatchPreview detail(String userNo, String batchNo) {
+    public BatchPreview detail(String userNo, String batchNo, boolean sample) {
         ElcStockBatch b = own(userNo, batchNo);
-        if (ElcStockBatch.STATUS_PARSED.equals(b.getStatus()) && alive(b)) {
-            return preview(b, pending(b));
+        BatchPreview p = ElcStockBatch.STATUS_PARSED.equals(b.getStatus()) && alive(b) ? preview(b, pending(b)) : stored(b);
+        // 样本只给还能改映射的（待选列 / 待确认）：要读一次原件
+        if (sample && alive(b)) {
+            p = withSample(p, readRows(b).map(rows -> sampleOf(rows, b.getHeaderRow())).orElse(List.of()));
         }
-        return stored(b);
+        return p;
     }
 
     @Override
@@ -534,11 +549,8 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                 : read(b.getHeaders(), new TypeReference<List<String>>() { });
         List<List<String>> out = new ArrayList<>();
         List<String> head = new ArrayList<>(headers);
-        head.add("原行号");
-        head.add("问题");
-        out.add(head);
-        Set<Long> red = new HashSet<>();
         List<IssueRow> rows;
+        Set<Long> red = new HashSet<>();
         if (ElcStockBatch.STATUS_PARSED.equals(b.getStatus()) && alive(b)) {
             rows = pending(b).parsed().rows().stream().filter(r -> !r.issues().isEmpty())
                     .map(r -> new IssueRow(r.row(), r.cells(), r.issues())).toList();
@@ -547,9 +559,20 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
         } else {
             throw BizException.of(ErrorCode.ELEC_BATCH_EXPIRED);
         }
+        // 没有标题行的表：表头一行写列字母，列数取问题行里最宽的（不然整行都被截掉）
+        int width = headers.size();
+        if (headers.isEmpty()) {
+            width = rows.stream().mapToInt(r -> r.cells().size()).max().orElse(0);
+            for (int c = 0; c < width; c++) {
+                head.add(SheetWriter.colName(c));
+            }
+        }
+        head.add("原行号");
+        head.add("问题");
+        out.add(head);
         for (IssueRow r : rows) {
             List<String> line = new ArrayList<>(r.cells());
-            while (line.size() < headers.size()) {
+            while (line.size() < width) {
                 line.add("");
             }
             List<String> texts = new ArrayList<>();
@@ -559,7 +582,7 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                     red.add(SheetWriter.cell(out.size(), x.col()));
                 }
             }
-            line = new ArrayList<>(line.subList(0, Math.max(headers.size(), 0)));
+            line = new ArrayList<>(line.subList(0, width));
             line.add(String.valueOf(r.row()));
             line.add(String.join("；", texts));
             out.add(line);
@@ -719,7 +742,37 @@ public class ElecStockImportServiceImpl implements ElecStockImportService {
                 n(b.getRowTotal()), n(b.getRowValid()), n(b.getRowInvalid()), n(b.getRowWarn()),
                 n(b.getToInsert()), n(b.getToUpdate()), n(b.getToDelist()), n(b.getUnchanged()),
                 counts, issues, problems, sample, pb != null && needDelistConfirm(pb),
-                b.displayStatus(LocalDateTime.now(), ttl()), b.deadline(ttl()), b.getCreatedAt(), b.getAppliedAt());
+                b.displayStatus(LocalDateTime.now(), ttl()), b.deadline(ttl()), b.getCreatedAt(), b.getAppliedAt(),
+                List.of());
+    }
+
+    private static final int SAMPLE_ROWS = 5;
+    private static final int SAMPLE_COLS = 40;
+    private static final int SAMPLE_CHARS = 40;
+
+    /** 表头下（没有表头就从第一行起）前几行非空行的原样内容，每格截断 —— 只给端上认列用 */
+    static List<List<String>> sampleOf(List<List<String>> rows, Integer headerRow) {
+        int from = headerRow == null ? 0 : headerRow + 1;
+        List<List<String>> out = new ArrayList<>();
+        for (int i = Math.max(0, from); i < rows.size() && out.size() < SAMPLE_ROWS; i++) {
+            if (SheetReader.blank(rows.get(i))) {
+                continue;
+            }
+            List<String> cut = new ArrayList<>();
+            for (int c = 0; c < Math.min(SAMPLE_COLS, rows.get(i).size()); c++) {
+                String v = rows.get(i).get(c) == null ? "" : rows.get(i).get(c);
+                cut.add(v.length() > SAMPLE_CHARS ? v.substring(0, SAMPLE_CHARS) : v);
+            }
+            out.add(cut);
+        }
+        return out;
+    }
+
+    private static BatchPreview withSample(BatchPreview p, List<List<String>> sample) {
+        return new BatchPreview(p.batchNo(), p.fileName(), p.mode(), p.taxIncluded(), p.headers(), p.headerRow(),
+                p.columns(), p.columnSource(), p.rowTotal(), p.rowValid(), p.rowInvalid(), p.rowWarn(), p.toInsert(),
+                p.toUpdate(), p.toDelist(), p.unchanged(), p.issueCounts(), p.issues(), p.problems(), p.delistSample(),
+                p.delistConfirm(), p.status(), p.deadline(), p.createdAt(), p.appliedAt(), sample);
     }
 
     private static int n(Integer v) {

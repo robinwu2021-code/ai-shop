@@ -67,6 +67,8 @@ public final class SupplierDtos {
      * @param delistConfirm true = 确认时必须带上此刻的下架数（过了下架护栏的线）
      * @param status        NEED_MAPPING 待指定列 / PARSED 待确认 / APPLIED / CANCELLED / SUPERSEDED / FAILED / EXPIRED
      * @param deadline      待确认的截止时刻；过了要重传
+     * @param sampleRows    表头下（没有表头就从第一行起）的前几行原样内容 —— 列映射页按列摆出来让他认。
+     *                      上传与改映射时总带；详情只在 {@code sample=true} 时带（要读原件）
      */
     public record BatchPreview(String batchNo, String fileName, String mode, boolean taxIncluded,
                                List<String> headers, int headerRow, Map<String, Integer> columns,
@@ -75,7 +77,8 @@ public final class SupplierDtos {
                                int toInsert, int toUpdate, int toDelist, int unchanged,
                                Map<String, Integer> issueCounts, List<Issue> issues, List<RowProblem> problems,
                                List<String> delistSample, boolean delistConfirm, String status,
-                               LocalDateTime deadline, LocalDateTime createdAt, LocalDateTime appliedAt) {
+                               LocalDateTime deadline, LocalDateTime createdAt, LocalDateTime appliedAt,
+                               List<List<String>> sampleRows) {
     }
 
     /**
@@ -125,8 +128,13 @@ public final class SupplierDtos {
     public record ApplyReq(Integer expectDelist) {
     }
 
-    /** 换列映射：字段 → 列序号。必须含 MPN 与 QTY */
-    public record RemapReq(Map<String, Integer> columns) {
+    /**
+     * 换列映射。
+     *
+     * @param columns   字段 → 列序号。必须含 MPN 与 QTY
+     * @param headerRow 表头在第几行（从 0 起）；-1 = 没有标题行（从第一行起全是数据）；不传 = 不改
+     */
+    public record RemapReq(Map<String, Integer> columns, Integer headerRow) {
     }
 
     /** @param renewed 续期了多少行 */

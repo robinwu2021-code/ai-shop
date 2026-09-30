@@ -139,31 +139,86 @@ class ElecUploadFlowTest {
         assertThat(again.get("status").asString()).isEqualTo("PARSED");
         assertThat(again.get("columnSource").get("MPN").asString()).isEqualTo("ALIAS");
 
-        // 别家：没学过，还得问（这次模型不在 → 待指定列）
+        // 别家：没学过，还得问（这次模型不在 → 按内容猜，来源是 CONTENT 而不是 ALIAS）
         String b = supplier("12600980002", "学习乙电子");
         JsonNode other = upload(b, "b.csv", itemMakerStk(prefix()), "MERGE");
         assertThat(ai.calls.get()).isEqualTo(2);
-        assertThat(other.get("status").asString()).isEqualTo("NEED_MAPPING");
+        assertThat(other.get("columnSource").get("MPN").asString()).isEqualTo("CONTENT");
     }
 
     @Test
-    @DisplayName("ac4 ★★★ 大模型不可用：不报错，回待指定列；手工选完照常上架，手工选的也学成本家别名")
-    void ac4_aiDownGivesNeedMapping() throws Exception {
+    @DisplayName("ac4 ★★★ 大模型不可用：不报错，按内容认出料号与数量（来源 CONTENT），并带上样本行")
+    void ac4_aiDownFallsBackToContent() throws Exception {
         String p = prefix();
-        String user = supplier("12600980003", "手工电子");
+        String user = supplier("12600980003", "内容电子");
         JsonNode pv = upload(user, "m.csv", itemMakerStk(p), "MERGE");
+        assertThat(pv.get("status").asString()).isEqualTo("PARSED");
+        assertThat(pv.get("columnSource").get("MPN").asString()).isEqualTo("CONTENT");
+        assertThat(pv.get("columnSource").get("QTY").asString()).isEqualTo("CONTENT");
+        assertThat(pv.get("sampleRows").size()).as("认列页按列摆内容").isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("ac4 ★★★ 内容也猜不出（料号是纯数字）：待选列、带样本行；他手工选完照常上架，手工选的学进去")
+    void ac4_unsniffableGivesNeedMappingThenManual() throws Exception {
+        String user = supplier("12600980018", "手工电子");
+        String p = String.valueOf(90000000 + SEQ.incrementAndGet() * 10);
+        JsonNode pv = upload(user, "m.csv", "料,量\n" + p + "1,100\n" + p + "2,200\n", "MERGE");
         assertThat(pv.get("status").asString()).isEqualTo("NEED_MAPPING");
-        assertThat(pv.get("headers").toString()).contains("Item").contains("Stk");
+        assertThat(pv.get("headers").toString()).contains("料").contains("量");
+        assertThat(pv.get("sampleRows").get(0).toString()).contains(p + "1");
+        JsonNode detail = data(get("/elec/b/stock/batch/" + no(pv)).param("sample", "true"), user, null);
+        assertThat(detail.get("sampleRows").size()).as("从上传记录回来接着选，也看得到内容").isEqualTo(2);
         JsonNode mapped = data(post("/elec/b/stock/batch/" + no(pv) + "/remap"), user,
-                "{\"columns\":{\"MPN\":1,\"MFR\":2,\"QTY\":3,\"DC\":4}}");
+                "{\"columns\":{\"MPN\":0,\"QTY\":1}}");
         assertThat(mapped.get("status").asString()).isEqualTo("PARSED");
         assertThat(mapped.get("columnSource").get("MPN").asString()).isEqualTo("MANUAL");
         assertThat(mapped.get("rowValid").asInt()).isEqualTo(2);
         apply(user, mapped, null);
         assertThat(countStock(p)).isEqualTo(2);
 
-        JsonNode again = upload(user, "m2.csv", "Item,Stk\n" + p + "A9,5\n", "MERGE");
+        JsonNode again = upload(user, "m2.csv", "料,量\n" + p + "9,5\n", "MERGE");
         assertThat(again.get("status").asString()).as("手工选的学进去了").isEqualTo("PARSED");
+    }
+
+    @Test
+    @DisplayName("ac25 ★★★ 文件根本没有标题行：第一行就是数据、不被吃掉；按内容认列；导出问题行的表头写列字母")
+    void ac25_noHeaderFileKeepsFirstRow() throws Exception {
+        String p = prefix();
+        String user = supplier("12600980019", "无表头电子");
+        JsonNode pv = upload(user, "n.csv", p + "A1,ST,2500\n" + p + "A2,TI,10K\n" + p + "A3,TI,abc\n", "MERGE");
+        assertThat(pv.get("status").asString()).isEqualTo("PARSED");
+        assertThat(pv.get("headerRow").asInt()).isEqualTo(-1);
+        assertThat(pv.get("headers").size()).isZero();
+        assertThat(pv.get("rowTotal").asInt()).as("第一行没被当成表头吃掉").isEqualTo(3);
+        assertThat(pv.get("columns").get("MFR").asInt()).isEqualTo(1);
+        assertThat(pv.get("sampleRows").get(0).get(0).asString()).isEqualTo(p + "A1");
+        assertThat(pv.get("issues").get(0).get("row").asInt()).as("行号就是 Excel 左边的行号").isEqualTo(3);
+
+        List<List<String>> x = SheetReader.read(raw(get("/elec/b/stock/batch/" + no(pv) + "/problems"), user)
+                .getContentAsByteArray(), 10);
+        assertThat(x.get(0)).containsExactly("A", "B", "C", "原行号", "问题");
+        assertThat(x.get(1).get(0)).isEqualTo(p + "A3");
+        apply(user, pv, null);
+        assertThat(countStock(p)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("ac26 ★★ 他在页面上改「有没有标题行」：行数跟着变，映射照他选的")
+    void ac26_switchHeaderRow() throws Exception {
+        String p = prefix();
+        String user = supplier("12600980020", "切表头电子");
+        JsonNode pv = upload(user, "s.csv", p + "A1,2500\n" + p + "A2,300\n", "MERGE");
+        assertThat(pv.get("headerRow").asInt()).isEqualTo(-1);
+        JsonNode asHeader = data(post("/elec/b/stock/batch/" + no(pv) + "/remap"), user,
+                "{\"columns\":{\"MPN\":0,\"QTY\":1},\"headerRow\":0}");
+        assertThat(asHeader.get("rowTotal").asInt()).isEqualTo(1);
+        assertThat(asHeader.get("headers").get(0).asString()).isEqualTo(p + "A1");
+        JsonNode back = data(post("/elec/b/stock/batch/" + no(pv) + "/remap"), user,
+                "{\"columns\":{\"MPN\":0,\"QTY\":1},\"headerRow\":-1}");
+        assertThat(back.get("rowTotal").asInt()).isEqualTo(2);
+        assertThat(call(post("/elec/b/stock/batch/" + no(pv) + "/remap"), user,
+                "{\"columns\":{\"MPN\":0,\"QTY\":1},\"headerRow\":-5}").get("code").asInt()).isEqualTo(10400);
     }
 
     // ── 报错 ────────────────────────────────────────────────────────────────

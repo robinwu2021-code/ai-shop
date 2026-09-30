@@ -402,10 +402,10 @@ class ElecOpsFlowTest {
     @Test
     @DisplayName("ac23 ★★★ 学到的别名按写法聚合给运营看；提升为全局之后，别家同样写法直接认得")
     void ac23_promoteLearnedAliasToGlobal() throws Exception {
-        // 一家手工指定「货号」是料号并上架 → 学成他自己的
+        // 一家手工指定「货号」是料号并上架 → 学成他自己的。料号用纯数字：按内容猜要求料号有字母，猜不出，才会到待选列
         String token = main.consumer("12600949102");
         data(post("/elec/b/supplier"), token, "{\"companyName\":\"学写法电子\"}");
-        JsonNode pv = upload(token, "货号,数量\nOPC1X,5\n");
+        JsonNode pv = upload(token, "货号,数量\n90010001,5\n");
         assertThat(pv.get("status").asString()).isEqualTo("NEED_MAPPING");
         data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/remap"), token,
                 "{\"columns\":{\"MPN\":0,\"QTY\":1}}");
@@ -421,16 +421,16 @@ class ElecOpsFlowTest {
         // 别家还不认得
         String other = main.consumer("12600949103");
         data(post("/elec/b/supplier"), other, "{\"companyName\":\"别家电子\"}");
-        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
+        assertThat(upload(other, "货号,数量\n90010002,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
 
         JsonNode g = data(post("/elec/ops/header-alias"), ops, "{\"alias\":\"货号\",\"field\":\"MPN\"}");
         assertThat(g.get("source").asString()).isEqualTo("OPS");
-        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).as("提升后当场生效")
+        assertThat(upload(other, "货号,数量\n90010002,5\n").get("status").asString()).as("提升后当场生效")
                 .isEqualTo("PARSED");
 
         // 停用之后又不认了
         data(put("/elec/ops/header-alias/" + g.get("id").asLong()), ops, "{\"status\":\"DISABLED\"}");
-        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
+        assertThat(upload(other, "货号,数量\n90010002,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
         assertThat(call(post("/elec/ops/header-alias"), ops, "{\"alias\":\"货号\",\"field\":\"NOPE\"}")
                 .get("code").asInt()).isEqualTo(10400);
     }

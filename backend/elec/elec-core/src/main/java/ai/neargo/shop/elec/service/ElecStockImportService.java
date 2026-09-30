@@ -21,8 +21,12 @@ public interface ElecStockImportService {
      */
     BatchPreview upload(String userNo, String fileName, byte[] bytes, String mode, Boolean taxIncluded);
 
-    /** 换列映射后重算预览，不用再传一次文件。也是 NEED_MAPPING 的出口 */
-    BatchPreview remap(String userNo, String batchNo, Map<String, Integer> columns);
+    /**
+     * 换列映射后重算预览，不用再传一次文件。也是 NEED_MAPPING 的出口。
+     *
+     * @param headerRow 表头行；-1 = 没有标题行；null = 不改
+     */
+    BatchPreview remap(String userNo, String batchNo, Map<String, Integer> columns, Integer headerRow);
 
     /**
      * 预览里的行：解析之后的值。
@@ -41,8 +45,12 @@ public interface ElecStockImportService {
     /** 放弃：清掉内存里的数据。原件留在未入库区，等每周清理 */
     BatchPreview cancel(String userNo, String batchNo);
 
-    /** 一次上传的详情：待确认的从内存（或原件重建）读，其余从库读 */
-    BatchPreview detail(String userNo, String batchNo);
+    /**
+     * 一次上传的详情：待确认的从内存（或原件重建）读，其余从库读。
+     *
+     * @param sample 带上前几行原样内容（待选列 / 待确认的才有；要读一次原件）
+     */
+    BatchPreview detail(String userNo, String batchNo, boolean sample);
 
     /** 问题行导出：原表头 + 原行号 + 问题，出错的格标红，全部是文本格 */
     ProblemsFile problems(String userNo, String batchNo);

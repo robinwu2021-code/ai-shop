@@ -41,10 +41,76 @@ class ColumnResolverTest {
         }
     }
 
+    /** 厂牌别名（按内容猜厂牌列用）：不连库 */
+    private static final ElecPartCatalog MFRS = new ElecPartCatalog(null, null, null) {
+        @Override
+        public Map<String, String> aliases() {
+            return Map.of("ST", "ST", "TI", "TI", "MURATA", "MURATA");
+        }
+    };
+
     private static ColumnResolver resolver(FakeAi ai) {
         StaticListableBeanFactory f = new StaticListableBeanFactory();
         f.addBean("ai", ai);
-        return new ColumnResolver(SEED, f.getBeanProvider(ElecColumnAi.class));
+        return new ColumnResolver(SEED, f.getBeanProvider(ElecColumnAi.class), MFRS);
+    }
+
+    /** 没有标题行：第一行就是数据 */
+    private static final List<List<String>> NO_HEADER = List.of(
+            List.of("STM32F103C8T6", "ST", "2500", "2338"),
+            List.of("TPS54331DR", "TI", "10K", "23+"),
+            List.of("GRM188R71H104KA93D", "MURATA", "400000", "24+"));
+
+    @Test
+    @DisplayName("★★★ 文件根本没有标题行：认出来是数据（headerRow=-1，第一行不被吃掉），按内容认出料号、厂牌、数量")
+    void noHeaderFileSniffedByContent() {
+        ColumnResolver.Resolution r = resolver(new FakeAi()).resolve("S1", NO_HEADER, null);
+        assertThat(r.headerRow()).isEqualTo(ColumnResolver.NO_HEADER);
+        assertThat(r.complete()).isTrue();
+        assertThat(r.map()).containsEntry(Field.MPN, 0).containsEntry(Field.MFR, 1).containsEntry(Field.QTY, 2);
+        assertThat(r.source()).containsEntry(Field.MPN, ColumnResolver.SRC_CONTENT);
+    }
+
+    @Test
+    @DisplayName("★★★ 有标题但一个都认不出、大模型也不在：表头照认，列按内容猜，来源 CONTENT 要他核对")
+    void unmatchedHeaderSniffedByContent() {
+        List<List<String>> rows = new java.util.ArrayList<>();
+        rows.add(List.of("X1", "X2", "X3", "X4"));
+        rows.addAll(NO_HEADER);
+        ColumnResolver.Resolution r = resolver(new FakeAi()).resolve("S1", rows, null);
+        assertThat(r.headerRow()).isZero();
+        assertThat(r.complete()).isTrue();
+        assertThat(r.map()).containsEntry(Field.MPN, 0).containsEntry(Field.QTY, 2);
+    }
+
+    @Test
+    @DisplayName("★★ 按内容猜：单价列（6.8）与批号列不会被当成数量，纯数字的列不会被当成料号")
+    void sniffIsStrict() {
+        List<List<String>> rows = List.of(
+                List.of("A", "B", "C"),
+                List.of("6.8", "STM32F103C8T6", "2500"),
+                List.of("1.25", "TPS54331DR", "300"));
+        ColumnResolver.Resolution r = resolver(new FakeAi()).resolve("S1", rows, null);
+        assertThat(r.map()).containsEntry(Field.MPN, 1).containsEntry(Field.QTY, 2);
+    }
+
+    @Test
+    @DisplayName("★★ 大模型说没有标题行（-1）：照此从第一行起当数据")
+    void aiSaysNoHeader() {
+        FakeAi ai = new FakeAi();
+        ai.answer = () -> new ElecColumnAi.Guess(-1, Map.of("MPN", 0, "QTY", 2));
+        ColumnResolver.Resolution r = resolver(ai).resolve("S1", NO_HEADER, null);
+        assertThat(r.headerRow()).isEqualTo(ColumnResolver.NO_HEADER);
+        assertThat(r.source()).containsEntry(Field.MPN, ColumnResolver.SRC_AI);
+    }
+
+    @Test
+    @DisplayName("★★ 内容也猜不出：待选列，表头行取第一行（他在页面上看着每列的内容选）")
+    void nothingSniffableNeedsMapping() {
+        ColumnResolver.Resolution r = resolver(new FakeAi()).resolve("S1",
+                List.of(List.of("备注", "说明"), List.of("随便", "写写")), null);
+        assertThat(r.complete()).isFalse();
+        assertThat(r.headerRow()).isZero();
     }
 
     /** 实测过的那张表（2026-09-30 从生产机问 qwen） */
@@ -88,8 +154,8 @@ class ColumnResolverTest {
         FakeAi ai = new FakeAi();
         ai.answer = () -> new ElecColumnAi.Guess(0, Map.of("MPN", 7, "QTY", 3, "MFR", 2));
         ColumnResolver.Resolution r = resolver(ai).resolve("S1", ITEM_MAKER_STK, null);
-        assertThat(r.map()).doesNotContainKey(Field.MPN).containsEntry(Field.QTY, 3);
-        assertThat(r.complete()).isFalse();
+        assertThat(r.map().get(Field.MPN)).as("模型说的第 7 列（备注）丢掉；按内容补回来的是第 1 列").isEqualTo(1);
+        assertThat(r.source()).containsEntry(Field.MPN, ColumnResolver.SRC_CONTENT).containsEntry(Field.QTY, "AI");
     }
 
     @Test
@@ -109,13 +175,15 @@ class ColumnResolverTest {
     }
 
     @Test
-    @DisplayName("★★★ AC4 大模型不可用：不报错，缺料号数量 → 待指定列；表头行取认出字段最多的那行")
-    void aiDownGivesNeedMapping() {
+    @DisplayName("★★★ AC4 大模型不可用：不报错；按内容补上料号与数量（来源 CONTENT），表头行取认出字段最多的那行")
+    void aiDownFallsBackToContent() {
         FakeAi ai = new FakeAi();
         ColumnResolver.Resolution r = resolver(ai).resolve("S1", ITEM_MAKER_STK, null);
         assertThat(r).isNotNull();
-        assertThat(r.complete()).isFalse();
         assertThat(r.headerRow()).isZero();
+        assertThat(r.complete()).isTrue();
+        assertThat(r.source()).containsEntry(Field.MPN, ColumnResolver.SRC_CONTENT)
+                .containsEntry(Field.QTY, ColumnResolver.SRC_CONTENT);
     }
 
     @Test

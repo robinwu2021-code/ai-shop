@@ -120,7 +120,7 @@ public class ElecSupplierController {
 
     @PostMapping("/elec/b/stock/batch/{batchNo}/remap")
     public BatchPreview remap(@PathVariable String batchNo, @RequestBody RemapReq req) {
-        return imports.remap(SecurityUtils.currentUserNo(), batchNo, req.columns());
+        return imports.remap(SecurityUtils.currentUserNo(), batchNo, req.columns(), req.headerRow());
     }
 
     /**
@@ -154,9 +154,10 @@ public class ElecSupplierController {
         return batches.mine(SecurityUtils.currentUserNo(), page, size);
     }
 
+    /** @param sample 带上前几行原样内容（列映射页用；要读一次原件） */
     @GetMapping("/elec/b/stock/batch/{batchNo}")
-    public BatchPreview batch(@PathVariable String batchNo) {
-        return imports.detail(SecurityUtils.currentUserNo(), batchNo);
+    public BatchPreview batch(@PathVariable String batchNo, @RequestParam(defaultValue = "false") boolean sample) {
+        return imports.detail(SecurityUtils.currentUserNo(), batchNo, sample);
     }
 
     /**
