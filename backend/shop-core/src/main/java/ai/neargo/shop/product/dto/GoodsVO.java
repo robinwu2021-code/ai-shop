@@ -269,6 +269,16 @@ public record GoodsVO(String goodsNo,
                 saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary);
     }
 
+    /**
+     * 换成**这家店**的库存（TDD-C端商品归属门店与库存校验 AC7）。
+     *
+     * <p>不带门店时不调用它 —— 那一支给的是主体总量，与单店时代逐字相同。
+     */
+    public GoodsVO withStoreSkus(List<SkuVO> storeSkus) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, storeSkus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary);
+    }
+
     /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
     public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,

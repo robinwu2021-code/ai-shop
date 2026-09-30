@@ -228,8 +228,9 @@ public class MpCatalogController {
      */
     @GetMapping("/mp/goods/{goodsNo}")
     public GoodsVO goodsDetail(@PathVariable String goodsNo,
-                               @RequestParam(required = false) String communityNo) {
-        return goodsService.detailForBuyer(goodsNo).withViewer(
+                               @RequestParam(required = false) String communityNo,
+                               @RequestParam(required = false) String storeNo) {
+        return goodsService.detailForBuyer(goodsNo, storeNo).withViewer(
                 goodsFavoriteService.isFavorited(goodsNo),
                 goodsService.deliverableTo(goodsNo, communityNo));
     }

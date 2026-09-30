@@ -123,6 +123,60 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 买家看到的库存按门店算 —— 带 storeNo 的详情给的是那家店的数")
+    void buyerSeesStoreStock() throws Exception {
+        String biz = merchant("12600190080", "买家侧门店库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "买家侧·分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        /*
+         * **两家店的数必须不同，且都不等于主体总量 100** —— 三个数各不相同，
+         * 才能证明读的是这家店那一行：只断言「等于 5」的话，
+         * 实现取成主体总量也可能碰巧对（比如有人把总量改成 5）。
+         */
+        assertThat(buyerStock(goodsNo, skuNo, storeA)).isEqualTo(2);
+        assertThat(buyerStock(goodsNo, skuNo, storeB)).isEqualTo(5);
+        assertThat(buyerStock(goodsNo, skuNo, null))
+                .as("不带门店时口径不变 —— 单店商家走的就是这一支（AC8）")
+                .isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("★★★ 没设过库存的门店，买家看到 0 —— 不回退主体总量")
+    void buyerSeesZeroForStoreWithoutRow() throws Exception {
+        String biz = merchant("12600190081", "买家侧·没设库存的店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "买家侧·没设库存的分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+
+        assertThat(buyerStock(goodsNo, skuNo, storeB))
+                .as("回退主体总量的话这里是 100 —— 那等于没设库存的店在页面上无限供应")
+                .isEqualTo(0);
+    }
+
+    /** 买家侧详情里这个 SKU 的库存；`storeNo` 为 null 时不带门店参数 */
+    private int buyerStock(String goodsNo, String skuNo, String storeNo) throws Exception {
+        String url = "/mp/goods/" + goodsNo + (storeNo == null ? "" : "?storeNo=" + storeNo);
+        String body = mvc().perform(get(url)).andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        throw new AssertionError("详情里找不到这个 SKU：" + skuNo);
+    }
+
+    @Test
     @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
     void mainStockWriteLandsWhereTheReadLooks() throws Exception {
         String biz = merchant("12600190040", "写读要同一个数");

@@ -59,14 +59,18 @@ public class GoodsServiceImpl implements GoodsService {
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 门店级上架关系：门户只列本店在售的 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
+    /** 店级库存的唯一一份判据（覆盖层规则）。买家侧详情按它换库存 */
+    private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
     public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
                             ai.neargo.shop.spi.marketing.CampaignPort campaignPort,
                             ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
-                            ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper) {
+                            ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
+                            ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
         this.storeGoodsMapper = storeGoodsMapper;
+        this.storeStockReader = storeStockReader;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
         this.poolMapper = poolMapper;
@@ -345,7 +349,29 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public GoodsVO detailForBuyer(String goodsNo) {
+        return detailForBuyer(goodsNo, null);
+    }
+
+    @Override
+    public GoodsVO detailForBuyer(String goodsNo, String storeNo) {
         GoodsVO v = detail(goodsNo);
+        /*
+         * 库存换成**这家店**的（AC7）。放在最前面：下面几步（directBuyable / 促销 / 服务）
+         * 都可能读 skus，读到主体总量就会按「有货」往下走。
+         *
+         * 覆盖层的回退（没有店级行 → 主体总量）在 StoreStockReader 里，不在这儿再判一次 ——
+         * 判据散成两处的后果，StockPortImpl 的注释里写着：两个数都还是正的，没有任何地方会报错。
+         */
+        if (storeNo != null && !storeNo.isBlank() && v.skus() != null && !v.skus().isEmpty()) {
+            java.util.Map<String, Integer> avail = storeStockReader.available(
+                    v.skus().stream().map(GoodsVO.SkuVO::skuNo).toList(), storeNo);
+            v = v.withStoreSkus(v.skus().stream()
+                    .map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(), s.price(),
+                            s.originPrice(), avail.getOrDefault(s.skuNo(), 0), s.nominalGram(),
+                            s.priceByMarket(), s.storePrice(), s.costPrice(), s.barcode(),
+                            s.merchantSkuCode(), s.saleUnit()))
+                    .toList());
+        }
         v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
         v = v.withSaleGate(directBuyable(v), null);
         v = v.withPromotions(promotionsOf(v.goodsNo()),

@@ -28,6 +28,14 @@ public interface GoodsService {
     GoodsVO detailForBuyer(String goodsNo);
 
     /**
+     * 买家侧详情，**带门店口径**（TDD-C端商品归属门店与库存校验 AC7）。
+     *
+     * @param storeNo 这件货在哪家店看的。空 = 没有门店上下文，与 {@link #detailForBuyer(String)} 等价 ——
+     *                单店商家与「没有店级行」的商品走的都是这一支
+     */
+    GoodsVO detailForBuyer(String goodsNo, String storeNo);
+
+    /**
      * 这件商品卖不卖到这个社区（TDD-C端商品收藏与送达判断 AC5 / AC6）。
      *
      * <p>判据与首页商品池（{@code prd_community_pool}）同一份 —— 首页在这个社区看得到它，
