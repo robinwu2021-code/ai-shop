@@ -5120,6 +5120,30 @@ _无字段_
 类型：[`Region`](#region)\[\]
 
 
+### report
+
+#### GET `/biz/report/daily`
+
+近几日报表　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`DailyReport`](#dailyreport)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | 回看天数（含今天）。只会是 7 / 14 / 30 —— 服务端把别的值落到最近一档 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种，金额跟着它走，不假设人民币 |
+| `totalOrders` | `number` | 是 | 本期合计单量 |
+| `totalGmvMinor` | `number` | 是 | 本期合计成交额（分） |
+| `prevOrders` | `number` | 是 | 上一个等长区间的合计单量，用来算环比 |
+| `prevGmvMinor` | `number` | 是 | 上一个等长区间的合计成交额（分） |
+| `statsThrough` | `string,null` | 是 | 日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 |
+| `rows` | [`DailyReportRow`](#dailyreportrow)\[\] | 是 | 逐日，**从今天往前排** |
+
+
 ### review
 
 #### GET `/biz/review`
@@ -7337,6 +7361,34 @@ _无字段_
 | `days` | [`DailyFlow`](#dailyflow)\[\] | 是 | 按天倒序（最近的在前）。**没有流水的那天不占一行** —— 补零会让一屏里大半是空行 |
 | `undatedMinor` | `number` | 是 | 没有成交日的存量单合计（早期数据 `accrued_at` 为空）。 **它们一天都归不进去，而悄悄丢掉等于让钱凭空消失** —— 页面要把这一行说出来， 否则商家把每日流水加起来会发现对不上总览。 |
 | `undatedCount` | `number` | 是 | 这样的单有几张 |
+
+### DailyReport
+
+近 N 天的逐日与合计（`GET /biz/report/daily`）。 <p>今天那一行是**现算**的，T-1 及以前读日汇总 —— 今天的数还在变， 而日结要到明天凌晨才跑到它。 <p>`prev*` 是**上一个等长区间**的合计，用来算环比。 按 B-13.1 的约定不画折线，趋势就靠这一对数字表达。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | 回看天数（含今天）。只会是 7 / 14 / 30 —— 服务端把别的值落到最近一档 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种，金额跟着它走，不假设人民币 |
+| `totalOrders` | `number` | 是 | 本期合计单量 |
+| `totalGmvMinor` | `number` | 是 | 本期合计成交额（分） |
+| `prevOrders` | `number` | 是 | 上一个等长区间的合计单量，用来算环比 |
+| `prevGmvMinor` | `number` | 是 | 上一个等长区间的合计成交额（分） |
+| `statsThrough` | `string,null` | 是 | 日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 |
+| `rows` | [`DailyReportRow`](#dailyreportrow)\[\] | 是 | 逐日，**从今天往前排** |
+
+### DailyReportRow
+
+「近几日」报表的一行（B 端报表 R1）。 ⚠️ **`complete: false` 不是「那天没单」**，是日结还没算到它 —— 两者在界面上 长得一模一样，所以必须区分显示（否则商家会把「还没统计」读成「那天没生意」）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `date` | `string` | 是 | `yyyy-MM-dd` |
+| `orders` | `number` | 是 | 当天成交单量（口径与工作台一致：已成交的子单） |
+| `gmvMinor` | `number` | 是 | 当天成交额（分） |
+| `refundOrders` | `number` | 是 | 当天**发生**的退款笔数。按退款日归属，不回冲原单那天 |
+| `refundMinor` | `number` | 是 | 当天发生的退款额（分）。与 `gmvMinor` 是两列，不是把成交额减掉 |
+| `complete` | `boolean` | 是 | 这一天的数齐不齐 |
 
 ### DebtTxnType
 

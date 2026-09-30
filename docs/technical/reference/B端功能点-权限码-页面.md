@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 216 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 217 个受控功能点**
 （另有 30 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -24,7 +24,7 @@
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 30 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
-| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 24 | ✅ | ✅ | — | — | — | — |
+| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 25 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
@@ -210,6 +210,7 @@
 | 四层人数与未计入买家 | GET | `/biz/members/stats` | `mMemberStats` | customers |
 | 批量打标 / 去标 | POST | `/biz/members/tags` | `mTagMembers` | member-detail |
 | 批量打/去一个标签（confirm=false 只试算） | POST | `/biz/members/tags/batch` | `mBatchTagMembers` | — |
+| 近几日报表 | GET | `/biz/report/daily` | `mDailyReport` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
@@ -506,6 +507,7 @@
 | 给自建维度改名 | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | `biz:goods` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |
 | 门店可引用的取货点候选 | `/biz/pickup-points/candidates` | `mPickupCandidates` | `biz:store` |
+| 近几日报表 | `/biz/report/daily` | `mDailyReport` | `biz:customer` |
 | 把条码绑到一件 SKU 上（幂等；本店内唯一） | `/biz/sku-identity/barcode` | `mBindBarcode` | `biz:goods` |
 | 存为常用规格 | `/biz/spec-templates` | `mSaveSpecTemplate` | `biz:goods` |
 | 加员工 | `/biz/staff` | `mAddStaff` | `biz:store:admin` |

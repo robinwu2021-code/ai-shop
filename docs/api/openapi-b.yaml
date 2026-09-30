@@ -5286,6 +5286,78 @@ components:
         - "quotable"
       additionalProperties: false
       description: "工作台待办。**数字即入口** —— 商家打开 App 只想知道「有几件事要我做」"
+    DailyReportRow: 
+      type: "object"
+      properties: 
+        date: 
+          type: "string"
+          description: "`yyyy-MM-dd`"
+        orders: 
+          type: "number"
+          description: "当天成交单量（口径与工作台一致：已成交的子单）"
+        gmvMinor: 
+          type: "number"
+          description: "当天成交额（分）"
+        refundOrders: 
+          type: "number"
+          description: "当天**发生**的退款笔数。按退款日归属，不回冲原单那天"
+        refundMinor: 
+          type: "number"
+          description: "当天发生的退款额（分）。与 `gmvMinor` 是两列，不是把成交额减掉"
+        complete: 
+          type: "boolean"
+          description: "这一天的数齐不齐"
+      required: 
+        - "date"
+        - "orders"
+        - "gmvMinor"
+        - "refundOrders"
+        - "refundMinor"
+        - "complete"
+      additionalProperties: false
+      description: "「近几日」报表的一行（B 端报表 R1）。\n\n⚠️ **`complete: false` 不是「那天没单」**，是日结还没算到它 —— 两者在界面上 长得一模一样，所以必须区分显示（否则商家会把「还没统计」读成「那天没生意」）。"
+    DailyReport: 
+      type: "object"
+      properties: 
+        days: 
+          type: "number"
+          description: "回看天数（含今天）。只会是 7 / 14 / 30 —— 服务端把别的值落到最近一档"
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "币种，金额跟着它走，不假设人民币"
+        totalOrders: 
+          type: "number"
+          description: "本期合计单量"
+        totalGmvMinor: 
+          type: "number"
+          description: "本期合计成交额（分）"
+        prevOrders: 
+          type: "number"
+          description: "上一个等长区间的合计单量，用来算环比"
+        prevGmvMinor: 
+          type: "number"
+          description: "上一个等长区间的合计成交额（分）"
+        statsThrough: 
+          type: 
+            - "string"
+            - "null"
+          description: "日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过"
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/DailyReportRow"
+          description: "逐日，**从今天往前排**"
+      required: 
+        - "days"
+        - "currency"
+        - "totalOrders"
+        - "totalGmvMinor"
+        - "prevOrders"
+        - "prevGmvMinor"
+        - "statsThrough"
+        - "rows"
+      additionalProperties: false
+      description: "近 N 天的逐日与合计（`GET /biz/report/daily`）。\n\n<p>今天那一行是**现算**的，T-1 及以前读日汇总 —— 今天的数还在变， 而日结要到明天凌晨才跑到它。\n\n<p>`prev*` 是**上一个等长区间**的合计，用来算环比。 按 B-13.1 的约定不画折线，趋势就靠这一对数字表达。"
     MerchantStats: 
       type: "object"
       properties: 
@@ -12938,6 +13010,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/MerchantStats"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/report/daily": 
+    get: 
+      operationId: "mDailyReport"
+      summary: "近几日报表"
+      tags: 
+        - "report"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/DailyReport"
                 required: 
                   - "code"
                   - "msg"

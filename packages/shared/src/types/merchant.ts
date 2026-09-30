@@ -1263,6 +1263,55 @@ export interface MerchantTodo {
   /** 可报价的求团需求数 */
   quotable: number;
 }
+/**
+ * 「近几日」报表的一行（B 端报表 R1）。
+ *
+ * ⚠️ **`complete: false` 不是「那天没单」**，是日结还没算到它 —— 两者在界面上
+ * 长得一模一样，所以必须区分显示（否则商家会把「还没统计」读成「那天没生意」）。
+ */
+export interface DailyReportRow {
+  /** `yyyy-MM-dd` */
+  date: string;
+  /** 当天成交单量（口径与工作台一致：已成交的子单） */
+  orders: number;
+  /** 当天成交额（分） */
+  gmvMinor: number;
+  /** 当天**发生**的退款笔数。按退款日归属，不回冲原单那天 */
+  refundOrders: number;
+  /** 当天发生的退款额（分）。与 `gmvMinor` 是两列，不是把成交额减掉 */
+  refundMinor: number;
+  /** 这一天的数齐不齐 */
+  complete: boolean;
+}
+
+/**
+ * 近 N 天的逐日与合计（`GET /biz/report/daily`）。
+ *
+ * <p>今天那一行是**现算**的，T-1 及以前读日汇总 —— 今天的数还在变，
+ * 而日结要到明天凌晨才跑到它。
+ *
+ * <p>`prev*` 是**上一个等长区间**的合计，用来算环比。
+ * 按 B-13.1 的约定不画折线，趋势就靠这一对数字表达。
+ */
+export interface DailyReport {
+  /** 回看天数（含今天）。只会是 7 / 14 / 30 —— 服务端把别的值落到最近一档 */
+  days: number;
+  /** 币种，金额跟着它走，不假设人民币 */
+  currency: CurrencyCode;
+  /** 本期合计单量 */
+  totalOrders: number;
+  /** 本期合计成交额（分） */
+  totalGmvMinor: number;
+  /** 上一个等长区间的合计单量，用来算环比 */
+  prevOrders: number;
+  /** 上一个等长区间的合计成交额（分） */
+  prevGmvMinor: number;
+  /** 日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 */
+  statsThrough: string | null;
+  /** 逐日，**从今天往前排** */
+  rows: DailyReportRow[];
+}
+
 export interface MerchantStats {
   /** 今日订单数（自然日，按市场本地时区切分） */
   todayOrders: number;

@@ -5,7 +5,10 @@
 
 import { db, delay, persist } from "@shared/mock/db";
 import { ApiError } from "@shared/net/http-client";
-import type { Order } from "@shared/types";
+import type {
+  DailyReport,
+  Order,
+} from "@shared/types";
 import { currentCurrency } from "@shared/utils/money";
 import {
   MOCK_PLAN_KEY,
@@ -27,6 +30,7 @@ import type { MerchantApi } from "../contract";
 export const dashboardMock: Pick<MerchantApi,
   "mTodo"
   | "mStats"
+  | "mDailyReport"
   | "mMyPlan"
   | "mStartTrial"
   | "mCrossStoreOverview"
@@ -54,6 +58,51 @@ export const dashboardMock: Pick<MerchantApi,
       toReply: db.reviews.filter((r) => r.merchantNo === merchantNo && !r.reply).length,
       quotable: 0, // 求团报价在 M3 批次交付
     });
+  },
+
+  /**
+   * 近几日（R1）。mock 里**没有日结**，所以这里直接按订单逐日算 ——
+   * 与真后端的分界（今天现算、T-1 读汇总）在结果上等价，
+   * 但 `complete` 恒为 true：mock 没有「日结没跑到」这个状态。
+   * 端上的缺口提示要靠真后端验，mock 上看不出来。
+   */
+  async mDailyReport(days?: number) {
+    const n = [7, 14, 30].includes(days ?? 7) ? (days ?? 7) : 7;
+    const merchantNo = db.merchant.merchantNo;
+    const mine = scopedToStore(db.orders.filter(
+      (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED",
+    ));
+    const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const bucket = (from: number, to: number) => mine.filter(
+      (o) => o.createdAt >= from && o.createdAt < to,
+    );
+    const dayMs = 86400000;
+    const todayStart = new Date().setHours(0, 0, 0, 0);
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      const start = todayStart - i * dayMs;
+      const list = bucket(start, start + dayMs);
+      rows.push({
+        date: dayKey(start),
+        orders: list.length,
+        gmvMinor: list.reduce((s, o) => s + o.amount.payableMinor, 0),
+        refundOrders: 0,
+        refundMinor: 0,
+        complete: true,
+      });
+    }
+    const prev = bucket(todayStart - (2 * n - 1) * dayMs, todayStart - (n - 1) * dayMs);
+    return {
+      days: n,
+      // mock 只有人民币；真后端从子单上带出来
+      currency: "CNY",
+      totalOrders: rows.reduce((s, r) => s + r.orders, 0),
+      totalGmvMinor: rows.reduce((s, r) => s + r.gmvMinor, 0),
+      prevOrders: prev.length,
+      prevGmvMinor: prev.reduce((s, o) => s + o.amount.payableMinor, 0),
+      statsThrough: dayKey(todayStart - dayMs),
+      rows,
+    } as DailyReport;
   },
 
   async mStats() {

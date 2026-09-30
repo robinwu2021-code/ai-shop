@@ -30811,6 +30811,20 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdSubOrder",
+        "name": "TRAFFIC_MERCHANT_OWNED",
+        "value": "MERCHANT_OWNED",
+        "zh": "自带客流：费率 0%。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdSubOrder",
+        "name": "TRAFFIC_PLATFORM",
+        "value": "PLATFORM",
+        "zh": "平台客流。",
+        "module": "shop-core"
+      },
+      {
         "host": "TrdShippingUpload",
         "name": "PENDING",
         "value": "PENDING",
@@ -35325,6 +35339,14 @@
       "type": "Set<String>",
       "value": "Set.of(RESERVE, COMMIT, RELEASE, RESTORE, ADJUST)",
       "zh": "全部镜像事件。",
+      "module": "shop-app"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-store\"",
+      "zh": "水位的键。",
       "module": "shop-app"
     },
     {

@@ -71,13 +71,13 @@ public class DailyReportService {
             if (d.equals(today)) {
                 var s = orders.stats(merchantNo, storeNos);
                 // 今天永远是「完整」的：它来自现算，不依赖日结
-                rows.add(new DailyRow(d, s.todayOrders(), s.todayGmvMinor(), 0, 0L, true));
+                rows.add(new DailyRow(d.toString(), s.todayOrders(), s.todayGmvMinor(), 0, 0L, true));
                 continue;
             }
             DailyStoreRow r = rolled.get(d);
             // 日结还没算到这一天 → complete=false。**不是 0，是「还不知道」**
             boolean complete = through != null && !through.isBefore(d);
-            rows.add(new DailyRow(d,
+            rows.add(new DailyRow(d.toString(),
                     r == null ? 0 : r.orders(),
                     r == null ? 0L : r.gmvMinor(),
                     r == null ? 0 : r.refundOrders(),
@@ -95,7 +95,7 @@ public class DailyReportService {
                 rows.stream().mapToLong(DailyRow::gmvMinor).sum(),
                 prev.stream().mapToInt(DailyStoreRow::orders).sum(),
                 prev.stream().mapToLong(DailyStoreRow::gmvMinor).sum(),
-                through,
+                through == null ? null : through.toString(),
                 rows);
     }
 
@@ -116,21 +116,28 @@ public class DailyReportService {
     }
 
     /**
+     * <b>日期一律是 {@code yyyy-MM-dd} 的字符串，不是 {@code LocalDate}。</b>
+     * 本仓库 wire 上的日期都是字符串（{@code arriveDate} 10 处、{@code period}），
+     * 而 {@code LocalDate} 落到 JSON 上长什么样取决于 Jackson 有没有关
+     * {@code WRITE_DATES_AS_TIMESTAMPS} —— 这个仓库没有显式配置，
+     * 不该赌默认行为（赌错了是 {@code [2026,9,30]}，端上按字符串解析会静默拿到空）。
+     *
      * @param statsThrough 日结算到哪一天；{@code null} 表示从没跑过。
      *                     端上据它提示「统计中」，而不是把缺口画成 0
      */
     public record DailyReport(int days, String currency,
                               int totalOrders, long totalGmvMinor,
                               int prevOrders, long prevGmvMinor,
-                              LocalDate statsThrough,
+                              String statsThrough,
                               List<DailyRow> rows) {
     }
 
     /**
+     * @param date     {@code yyyy-MM-dd}
      * @param complete 这一天的数是不是齐的。{@code false} 表示日结还没算到它 ——
      *                 **与「那天没单」不是一回事**，端上要区分显示
      */
-    public record DailyRow(LocalDate date, int orders, long gmvMinor,
+    public record DailyRow(String date, int orders, long gmvMinor,
                            int refundOrders, long refundMinor, boolean complete) {
     }
 

@@ -376,6 +376,7 @@ const RESPONSE_TYPES = {
   mShareKit: "ShareKit",
   mTodo: "MerchantTodo",
   mStats: "MerchantStats",
+  mDailyReport: "DailyReport",
   mCrossStoreOverview: "CrossStoreOverview",
   mCrossStoreCompare: "CrossStoreCompare",
   // 试用返回的是**开通后的新视图**，与读接口同一个类型 ——
