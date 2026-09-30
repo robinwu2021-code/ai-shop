@@ -1,6 +1,6 @@
 # TDD-元器件 · 独立成项目 ai-key
 
-> 2026-09-30 · 状态：**第 1–5 步完成，第 6 步（上线）待你点头**（§五 按推荐拍板；进度与偏差见 §六½）
+> 2026-09-30 · 状态：**第 1–6 步完成，已上线**（2026-09-30 14:50，elec-svc = ai-key `bdafe1a`，小程序体验版 0.1.74）；第 7 步（独立 appid）待将来（§五 按推荐拍板；进度与偏差见 §六½）
 > 档位：2（拆仓库 · 新账号体系 · 跨仓依赖 · 不可逆决策）
 > 需求（用户原话归纳）：
 > ① 元器件搬到 `~/work/ai/ai-key`，作为独立项目；② 基础能力可以依赖 ai-shop；
@@ -149,7 +149,7 @@ ai-shop 的 `InternalElecEndpoint` 相应改为：认运营令牌 · 发短信 �
 | 3 | ✅ 错误码独立：ai-key `d281cc8`（`ElecErrorCode` 18 个码、`ElecException`、`ElecExceptionHandler`；58 处抛出点）· ai-shop 本提交（删 18 个码与三语文案，`ErrorCodeUniqueTest` 加「9xxxx 保留」） | ai-key 全量 81 + 93 绿；消融：去掉处理器 → `ElecChooseFlowTest` 三条 90011 变 10500 |
 | 4 | ✅ 包名 `ai.neargo.shop.elec` → `ai.neargo.key`：ai-key `b97ac36` | ai-key pre-push 全绿（后端 187 · 端上 43）|
 | 5 | ✅ 独立账号：ai-shop `4cef6e62d`（四个内部代办端点）· ai-key `ca7a936`（V5 四张表、`/elec/auth/**`、`ktk_`、订阅额度、存量改写）· `b16fab2`（小程序登录与 `token_elec`）。设计与切换清单在 ai-key 的 `docs/technical/TDD-元器件-独立账号.md` | 本机 MariaDB 临时库冒烟：V1–V5 空库执行、登录全链路（见那篇 §6） |
-| 6 | **要你点头才做** | — |
+| 6 | ✅ 已上线：ai-key `bdafe1a`（V3–V5 同时上）；ai-shop 四个内部端点随 `299b06b77` 已在线；小程序体验版 0.1.74（`b6a5d43de`） | 生产库副本彩排 → 备份 → 发布 → 回读，详见 ai-key 那篇 §7 |
 
 **与方案的偏差**（都比方案保守，记下来免得后人按方案去找）：
 
