@@ -29,7 +29,7 @@ export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
  */
 export const INVENTORY_MIGRATION_DIR = "backend/shop-inventory/src/main/resources/db/inventory";
 
-// 元器件的迁移目录（ai_shop_elec）2026-09-30 随元器件迁到独立项目 ai-key，不再在这里扫。
+// 元器件的迁移目录（ai_shop_elec）2026-09-30 随元器件迁到独立项目 ai-hxkey，不再在这里扫。
 
 /** 每张表都有、不参与任何业务关系的审计列 */
 export const AUDIT = new Set([

@@ -1188,7 +1188,7 @@ public enum ErrorCode {
     NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
-    // 2026-09-30 元器件独立成项目 ai-key，9xxxx 整段搬到 ai-key 的 ElecErrorCode（码值不变，端上按码分流）。
+    // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。
     // 这里再用 9xxxx 会与元器件的码撞车 —— 两个进程各自合法，只有端上按码分流时走错分支。
 
     private final int code;

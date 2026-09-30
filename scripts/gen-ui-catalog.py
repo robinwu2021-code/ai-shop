@@ -6,7 +6,7 @@
   python3 scripts/gen-ui-catalog.py --check    只校验（pre-push 闸门用；不一致就退出 1）
 
 来源都是**代码里已有的真源**，不手工维护第二份：
-  · b-app / c-app → `src/pages.json`（路由 + 导航栏标题 + tabBar）。元器件小程序已迁到 ai-key（2026-09-30），不在这份清单里
+  · b-app / c-app → `src/pages.json`（路由 + 导航栏标题 + tabBar）。元器件小程序已迁到 ai-hxkey（2026-09-30），不在这份清单里
   · ops-web        → `lib/nav.ts`（模块 → 子功能，带权限码与矩阵编号）
   · 原型 → prototypes/registry.json（每一屏挂的端与路由；路由还没建的列成「原型」行）
 

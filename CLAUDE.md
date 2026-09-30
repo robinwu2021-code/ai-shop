@@ -46,7 +46,7 @@ python3 scripts/gen-ui-catalog.py --check  # 只校验（pre-push 会自动跑�
 你确实跑了工具，工具确实没报错。
 
 ```bash
-cd b-app && npx vue-tsc --noEmit    # c-app 同理；两端加起来不到 5 秒（元器件小程序已迁到 ../ai-key）
+cd b-app && npx vue-tsc --noEmit    # c-app 同理；两端加起来不到 5 秒（元器件小程序已迁到 ../ai-hxkey）
 ```
 
 `pre-push` 第九道闸跑的就是它。**挂上去当天就抓到一个已经在 HEAD 里的缺陷**：

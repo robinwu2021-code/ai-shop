@@ -23,7 +23,7 @@ REG = DIR / "registry.json"
 OUT_HTML = DIR / "index.html"
 OUT_MD = ROOT / "docs/technical/design/原型清单.md"
 
-CLIENT_LABEL = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}  # 元器件原型 2026-09-30 随项目迁到 ai-key
+CLIENT_LABEL = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}  # 元器件原型 2026-09-30 随项目迁到 ai-hxkey
 KIND_LABEL = {"pages": "页面稿", "proposal": "方案稿", "canvas": "画布稿"}
 STATUS_TONE = {"已落地": "ok", "在建": "warn", "参考": "", "作废": "dead"}
 

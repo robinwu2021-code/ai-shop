@@ -56,7 +56,7 @@ class TableHasProducerTest {
             "ful_carrier", "mch_admission_policy", "sys_channel_category_rule",
             "sys_function", "sys_function_point", "sys_industry", "sys_legal_form",
             "sys_merchant_plan_def", "sys_pay_channel");
-    // 元器件的 elc_* 表 2026-09-30 随元器件迁到独立项目 ai-key，不在本仓库扫描范围内
+    // 元器件的 elc_* 表 2026-09-30 随元器件迁到独立项目 ai-hxkey，不在本仓库扫描范围内
 
     /**
      * 确实没有生产者的表。key 是表名，value 是<b>为什么</b>。

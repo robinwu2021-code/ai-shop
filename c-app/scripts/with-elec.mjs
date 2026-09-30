@@ -1,10 +1,10 @@
-// 把元器件小程序（独立项目 ai-key 的 app/，原 elec-app/）**临时并进 c-app** 打一包：借虹选好店的登录与域名测一轮。
+// 把元器件小程序（独立项目 ai-hxkey 的 app/，原 elec-app/）**临时并进 c-app** 打一包：借虹选好店的登录与域名测一轮。
 //
 // 元器件是独立工程，将来独立发布（TDD-元器件-小程序独立工程）。测试期它自己的小程序号还没有，
 // 主系统也只认虹选好店的 appid —— 于是先当 c-app 的一个分包进去，「我的」里出一个测试入口。
 //
 // **不改仓库里的任何一个文件的内容**，做法是「构建前拷、构建后还原」：
-//   1. ai-key/app/src 的页面、组件、接口、store 拷进 src/pkg-elec/（gitignore）
+//   1. ai-hxkey/app/src 的页面、组件、接口、store 拷进 src/pkg-elec/（gitignore）
 //      - `@/` 改指 `@/pkg-elec/`（c-app 的 `@/api`、`@/stores/user` 与元器件的同名）
 //      - 去掉 `title-key`：c-app 的词条里没有元器件的标题，小程序上用 pages.json 的原生标题
 //   2. src/pages.json 临时加一个分包 `pkg-elec` 与 `el-*` 的 easycom 规则，构建完还原
@@ -23,8 +23,8 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), "..");
-// 元器件小程序 2026-09-30 迁到独立项目 ai-key，与本仓库并排放在 ~/work/ai/ 下
-const ELEC = join(HERE, "..", "..", "ai-key", "app", "src");
+// 元器件小程序 2026-09-30 迁到独立项目 ai-hxkey，与本仓库并排放在 ~/work/ai/ 下
+const ELEC = join(HERE, "..", "..", "ai-hxkey", "app", "src");
 const PKG = "pkg-elec";
 const OUT = join(HERE, "src", PKG);
 const PAGES_JSON = join(HERE, "src", "pages.json");

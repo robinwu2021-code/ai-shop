@@ -18,7 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 元器件独立账号之后向 ai-shop 借的四件事（ai-key TDD-元器件-独立账号 §2.4）。
+ * 元器件独立账号之后向 ai-shop 借的四件事（ai-hxkey TDD-元器件-独立账号 §2.4）。
  *
  * <p>不起 Spring：要看的是「调了哪个端口、失败时回什么」—— 桩世界里短信与微信都是成功的，
  * 失败那一半在集成测试里走不到。
@@ -49,7 +49,7 @@ class InternalElecBorrowTest {
     }
 
     @Test
-    @DisplayName("★★ 短信：用 ai-key 给的码投递、用途记 ELEC_LOGIN；通道失败回 sent=false 并带上能不能重试")
+    @DisplayName("★★ 短信：用 ai-hxkey 给的码投递、用途记 ELEC_LOGIN；通道失败回 sent=false 并带上能不能重试")
     void smsDeliversGivenCode() {
         assertThat(ep.smsOtp(KEY, new ElecInternal.SmsOtpReq("13800000000", "654321")).getBody())
                 .isEqualTo(new ElecInternal.SmsOtpResult(true, false));

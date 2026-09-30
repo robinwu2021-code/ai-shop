@@ -19,7 +19,7 @@
 // 加新类型时放进它所属的域文件；不确定放哪，多半说明那个类型的归属本身没想清楚。
 
 export * from "./core";
-// 元器件的端上类型已随小程序迁到独立项目 ai-key（app/src/types/elec.ts，2026-09-30）。
+// 元器件的端上类型已随小程序迁到独立项目 ai-hxkey（app/src/types/elec.ts，2026-09-30）。
 // 运营端的元器件类型在 ops-web/lib/types/elec.ts，不在这里
 export * from "./fulfillment";
 export * from "./inventory";

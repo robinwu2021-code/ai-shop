@@ -25,10 +25,10 @@ public final class ElecInternal {
     /** 有新的求购派给这家供应商 / 他的报价被选中了。供应商与买家是同一个账号体系 */
     public static final String NOTIFY_SUPPLIER = "/internal/elec/notify/supplier";
 
-    // ---- 元器件独立账号之后借的四件事（ai-key TDD-元器件-独立账号 §2.4）----
-    // 虹选的 appsecret、短信通道、access_token 都不复制到 ai-key：这四条只做「代办」，不按 usr_no 做任何事。
+    // ---- 元器件独立账号之后借的四件事（ai-hxkey TDD-元器件-独立账号 §2.4）----
+    // 虹选的 appsecret、短信通道、access_token 都不复制到 ai-hxkey：这四条只做「代办」，不按 usr_no 做任何事。
 
-    /** 发登录验证码短信。码由 ai-key 生成与校验，这里只负责投递 */
+    /** 发登录验证码短信。码由 ai-hxkey 生成与校验，这里只负责投递 */
     public static final String SMS_OTP = "/internal/elec/sms/otp";
 
     /** 小程序 wx.login 的 code → (appid, openid)。过渡期借虹选的 appid */
@@ -37,7 +37,7 @@ public final class ElecInternal {
     /** 小程序 getPhoneNumber 的 code → 手机号 */
     public static final String WX_PHONE = "/internal/elec/wx/phone";
 
-    /** 按 openid 发一条元器件订阅消息（模板 ELEC_QUOTED）。<b>不查额度</b>：额度记在 ai-key */
+    /** 按 openid 发一条元器件订阅消息（模板 ELEC_QUOTED）。<b>不查额度</b>：额度记在 ai-hxkey */
     public static final String WX_SEND = "/internal/elec/wx/send";
 
     /** 与 shop-base 的 InternalHttp.TOKEN_HEADER 同值（这里不能引 shop-base，只能写字面量） */

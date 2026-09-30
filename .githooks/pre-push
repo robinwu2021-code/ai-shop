@@ -295,7 +295,7 @@ else
   echo "⚠ 跳过自造件棘轮：ui-lib 生成器在 HEAD 副本里跑不起来"
 fi
 
-# 类型检查（两端 uni-app：b-app / c-app；元器件小程序 2026-09-30 迁到 ai-key，在它自己的 pre-push 里查）。**这一条是被一个真缺陷催出来的**：
+# 类型检查（两端 uni-app：b-app / c-app；元器件小程序 2026-09-30 迁到 ai-hxkey，在它自己的 pre-push 里查）。**这一条是被一个真缺陷催出来的**：
 # 仓库里一直有 `npm run type-check` 脚本，却没挂在任何闸门上，于是
 # `stock-check` 与 `transfer` 把 showModal 换成 confirm() 时留下了 `content:` ——
 # ConfirmOptions 没这个字段，**说明文字被静默丢掉**：盘点看不到差异件数、

@@ -141,7 +141,7 @@ const GENERATORS = [
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
     "backend/shop-inventory/src/main/resources/db/inventory"]],
-  // 元器件的 ER 图与测试库结构两项 2026-09-30 随元器件迁到 ai-key（它自己的 pre-push 里跑）
+  // 元器件的 ER 图与测试库结构两项 2026-09-30 随元器件迁到 ai-hxkey（它自己的 pre-push 里跑）
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");

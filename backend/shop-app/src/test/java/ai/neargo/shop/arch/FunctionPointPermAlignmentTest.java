@@ -138,9 +138,9 @@ class FunctionPointPermAlignmentTest {
         Map<String, String> literal = permLiterals();
         Set<String> out = new TreeSet<>();
         /*
-         * 元器件的六个运营码：**端点在独立项目 ai-key 里**（elec-svc，2026-09-30 迁出），本仓库扫不到它们。
+         * 元器件的六个运营码：**端点在独立项目 ai-hxkey 里**（elec-svc，2026-09-30 迁出），本仓库扫不到它们。
          * 菜单与授权仍登在主系统库里（V370/V371），所以按 ElecInternal 的声明算作「有端点」。
-         * 这六个码是否真的挂在端点上，由 ai-key 的 ElecEndpointAuthTest 与 ElecOpsFlowTest 的权限用例钉着。
+         * 这六个码是否真的挂在端点上，由 ai-hxkey 的 ElecEndpointAuthTest 与 ElecOpsFlowTest 的权限用例钉着。
          */
         out.addAll(elecPermLiterals().values());
         for (Path p : sources()) {

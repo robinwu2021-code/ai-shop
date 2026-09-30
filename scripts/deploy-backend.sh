@@ -24,7 +24,7 @@ HOST="${HOST:-soukmind-tx}"
 #
 #   scripts/deploy-backend.sh            # 主应用（默认，行为与此前逐字一致）
 #   scripts/deploy-backend.sh pay-svc    # 支付域独立进程
-#   （电子元器件 elec-svc 2026-09-30 迁到独立项目 ai-key：在那边用 scripts/deploy.sh 发）
+#   （电子元器件 elec-svc 2026-09-30 迁到独立项目 ai-hxkey：在那边用 scripts/deploy.sh 发）
 APP="${1:-shop-app}"
 case "$APP" in
     shop-app)
@@ -42,7 +42,7 @@ case "$APP" in
         HEALTH="${HEALTH:-http://localhost:8083/internal/pay/fee-rules}"
         HEALTH_OK="${HEALTH_OK:-401}" ;;
     elec-svc)
-        echo "elec-svc 已迁到独立项目 ai-key（2026-09-30）：cd ../ai-key && scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh" >&2
+        echo "elec-svc 已迁到独立项目 ai-hxkey（2026-09-30）：cd ../ai-hxkey && scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh" >&2
         exit 2 ;;
     *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
 esac

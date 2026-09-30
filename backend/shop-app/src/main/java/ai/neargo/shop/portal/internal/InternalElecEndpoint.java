@@ -37,7 +37,7 @@ import java.util.List;
  * <p>元器件是独立进程、独立库，<b>一行主系统的表都不读</b>，它借的东西全在这里。
  * 路径与 record 来自零依赖的 elec-api，elec-svc 的客户端引同一份 —— 漂了编译不过。
  *
- * <p><b>元器件独立账号之后</b>（ai-key TDD-元器件-独立账号），它借的只剩「代办」：发短信、code2Session、取号、
+ * <p><b>元器件独立账号之后</b>（ai-hxkey TDD-元器件-独立账号），它借的只剩「代办」：发短信、code2Session、取号、
  * 按 openid 发订阅 —— 都是虹选的资质与凭据，不复制到第二个地方。按 usr_no 做事的三条（取手机号、两条通知）
  * 留到生产切换完再删：在跑的 elec-svc 还在调，{@code USER} 还要给存量改写用一次。
  *
@@ -214,8 +214,8 @@ public class InternalElecEndpoint {
     }
 
     /**
-     * 发元器件的登录验证码。码是 ai-key 生成的，这里只投递 —— 所以<b>不走 AuthService.sendOtp</b>
-     * （那条会自己生成码、写 ai-shop 的 OtpStore）；限流在 ai-key 那一侧（同一个 OtpSendGuard）。
+     * 发元器件的登录验证码。码是 ai-hxkey 生成的，这里只投递 —— 所以<b>不走 AuthService.sendOtp</b>
+     * （那条会自己生成码、写 ai-shop 的 OtpStore）；限流在 ai-hxkey 那一侧（同一个 OtpSendGuard）。
      * 用途记成 ELEC_LOGIN：发送记录里与虹选自己的登录码分得开。
      */
     @PostMapping(ElecInternal.SMS_OTP)
@@ -278,7 +278,7 @@ public class InternalElecEndpoint {
     }
 
     /**
-     * 按 openid 发一条元器件订阅消息。<b>不查、不扣额度</b>：元器件账号的授权额度记在 ai-key 自己的库里，
+     * 按 openid 发一条元器件订阅消息。<b>不查、不扣额度</b>：元器件账号的授权额度记在 ai-hxkey 自己的库里，
      * 它扣到了才来调；这里再扣一次就是查 ai-shop 的 msg_subscribe —— 那张表里没有元器件账号。
      */
     @PostMapping(ElecInternal.WX_SEND)

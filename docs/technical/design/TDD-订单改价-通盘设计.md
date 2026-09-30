@@ -219,7 +219,7 @@ ALTER TABLE ord_order ADD COLUMN supplement_of VARCHAR(32) NULL
 
 ## 8.1 结论修正（本册的直接目的）
 
-[电子元器件分析册](../元器件-已迁到ai-key.md) §3.1 把"订单成立后能否改价"列为**唯一翻盘条件**，
+[电子元器件分析册](../元器件-已迁到ai-hxkey.md) §3.1 把"订单成立后能否改价"列为**唯一翻盘条件**，
 判"能改 = 要另起一套"。**该判断作废**：
 
 > 改价能力**不推翻**复用结论。它推翻的只是"改价 = 覆盖原值"这个隐含假设 ——
@@ -232,7 +232,7 @@ ALTER TABLE ord_order ADD COLUMN supplement_of VARCHAR(32) NULL
 
 | 文档 | 改什么 |
 |---|---|
-| [电子元器件-需求梳理与方案分析](../元器件-已迁到ai-key.md)（已迁到 ai-key） | §3.1 翻盘条件作废并指向本册；§六 待确认⑥ 关闭 |
+| [电子元器件-需求梳理与方案分析](../元器件-已迁到ai-hxkey.md)（已迁到 ai-hxkey） | §3.1 翻盘条件作废并指向本册；§六 待确认⑥ 关闭 |
 | [订单域V2-设计规格书](./订单域V2-设计规格书.md) · [v2/06](../../v2/06-订单域规格.md) | 新表 `ord_adjustment`；`ord_order` 加 `supplement_of`；不变量补 A1–A7 |
 | [v2/07 状态与取值域](../../v2/07-状态与取值域.md) | 取值域 `AdjustmentKinds` · `AdjustmentReasons` |
 | [v2/09 API 参考](../../v2/09-API参考.md) | 调整端点与补款单 |

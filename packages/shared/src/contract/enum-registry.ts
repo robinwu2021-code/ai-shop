@@ -99,21 +99,21 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   // ── P-19 电子元器件 · 运营端（ops-web/lib/types/elec.ts）。独立服务 elec-svc 的 /elec/ops/** ──
   { decl: "ops-web:ElecRfqStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["SUBMITTED", "QUOTED", "ACCEPTED", "EXPIRED"],
-    note: "与 ai-key 端上的 ElecRfqStatus 同名同值（运营端与买家看的是同一张询价单；端上类型 2026-09-30 随小程序迁到 ai-key）" },
+    note: "与 ai-hxkey 端上的 ElecRfqStatus 同名同值（运营端与买家看的是同一张询价单；端上类型 2026-09-30 随小程序迁到 ai-hxkey）" },
   { decl: "ops-web:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "与 ai-key 端上的 ElecCloseReason 同名同值。运营关单时选" },
+    note: "与 ai-hxkey 端上的 ElecCloseReason 同名同值。运营关单时选" },
   { decl: "ops-web:ElecPriceMode", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "与 ai-key 后端 elc_rfq.price_mode 同值（TDD-元器件-公开求购 D6）。运营按单切换" },
+    note: "与 ai-hxkey 后端 elc_rfq.price_mode 同值（TDD-元器件-公开求购 D6）。运营按单切换" },
   { decl: "ops-web:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    note: "与 ai-key 端上的 ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
+    note: "与 ai-hxkey 端上的 ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
   { decl: "ops-web:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "与 ai-key 端上的 ElecStockFilter 同名同值：查询条件不是状态" },
+    note: "与 ai-hxkey 端上的 ElecStockFilter 同名同值：查询条件不是状态" },
   { decl: "ops-web:ElecDispatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["SENT", "VIEWED", "QUOTED", "DECLINED"],
-    note: "与 ai-key 端上的 ElecDispatchStatus 同名同值。运营端据此看「派了几家、几家回了话」" },
+    note: "与 ai-hxkey 端上的 ElecDispatchStatus 同名同值。运营端据此看「派了几家、几家回了话」" },
   { decl: "ops-web:ElecOpsQuoteStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["WITHDRAWN", "ACCEPTED", "NOT_CHOSEN", "EXPIRED"],
-    note: "运营视图的报价状态。**比 ai-key 端上的 ElecQuoteStatus 多一个 EXPIRED**（OpsQuoteRow：过了有效期的 ACTIVE "
+    note: "运营视图的报价状态。**比 ai-hxkey 端上的 ElecQuoteStatus 多一个 EXPIRED**（OpsQuoteRow：过了有效期的 ACTIVE "
       + "显示成 EXPIRED，不落库）—— 所以不同名，免得被当成同一个东西。NOT_CHOSEN = 这一行成交给了别家" },
   { decl: "ops-web:NotifyFailReason", dom: "message", shape: "CLASS", verdict: "OK",
     note: "CRED/QUOTA/TARGET/NETWORK。**不是 wire 契约**：后端只回自由文本 error，这四类是端上对它的归因分桶（lib/notify-reason.ts），用来把「下一步该做什么」显示给运营。归不出来时返回 null，不硬塞一个兜底类" },
@@ -689,6 +689,6 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
       + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
       + "而那正是这张表要挡住的那件事" },
-// 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-key，登记在那边；
+// 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-hxkey，登记在那边；
   // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。
 ];
