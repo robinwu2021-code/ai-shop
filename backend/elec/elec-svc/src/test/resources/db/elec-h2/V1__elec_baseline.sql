@@ -249,8 +249,6 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     quote_valid_until DATE      DEFAULT NULL,
     quote_note     VARCHAR(255) DEFAULT NULL,
     buyer_notified_at DATETIME  DEFAULT NULL,
-    buyer_seen_quote_id  BIGINT   DEFAULT NULL,
-    buyer_seen_quoted_at DATETIME DEFAULT NULL,
     accepted_at    DATETIME     DEFAULT NULL,
     closed_at      DATETIME     DEFAULT NULL,
     close_reason   VARCHAR(16)  DEFAULT NULL,
@@ -258,6 +256,8 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     created_by     VARCHAR(64)  DEFAULT NULL,
     updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by     VARCHAR(64)  DEFAULT NULL,
+    buyer_seen_quote_id  BIGINT   DEFAULT NULL,
+    buyer_seen_quoted_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_elc_rfq UNIQUE (rfq_no)
 );

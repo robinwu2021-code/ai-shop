@@ -300,8 +300,6 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     quote_valid_until DATE      DEFAULT NULL COMMENT '报价有效到哪天（含）',
     quote_note     VARCHAR(255) DEFAULT NULL COMMENT '平台给买家的说明',
     buyer_notified_at DATETIME  DEFAULT NULL COMMENT '结果通知送达买家的时间（订阅消息或站内信任一送到）；空 = 没送到',
-    buyer_seen_quote_id  BIGINT   DEFAULT NULL COMMENT '买家上次看详情时看到的最大 elc_quote.id。比它大的有效报价 = 新报价（用自增 id 比，不用时间比：报价的 created_at 是库的时钟、quoted_at 是 JVM 的时钟，两边时区不一致时差 8 小时）',
-    buyer_seen_quoted_at DATETIME DEFAULT NULL COMMENT '买家上次看详情时 quoted_at 的原样副本。与当前 quoted_at 不等 = 平台报了新价',
     accepted_at    DATETIME     DEFAULT NULL,
     closed_at      DATETIME     DEFAULT NULL,
     close_reason   VARCHAR(16)  DEFAULT NULL COMMENT 'NO_SOURCE 暂无货源 / BUYER_CANCELLED 买家不要了 / DONE 已成交',
