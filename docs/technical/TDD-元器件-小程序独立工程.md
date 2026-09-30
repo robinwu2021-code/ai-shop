@@ -200,8 +200,9 @@ cd c-app && node scripts/with-elec.mjs release <版本> "<备注>"
 |---|---|---|
 | **独立小程序的 appid 没申请、主系统也不认它** | 静默登录换不出 openid（code 属于另一个 appid）→ 只能靠手机号，而手机号绑定又要先有会话 → **真机上登不进来** | 申请 appid 后，主系统 `shop.wx.appid/secret` 要支持第二个小程序（按来源 appid 选 secret）。**这是上线前的硬前置** |
 | ~~订阅消息模板没选、额度没处上报~~ **2026-09-30 已接** | 在虹选好店加了公共模板 2319「报价更新通知」（`MrMSM7UmyOk8Psdy3u1LmIEcr2y66FTZRLyLDsjsR5k`，字段 `character_string6,thing8,phrase10,thing2` = 单号 · 料号概述 · 结果 · 提示语）；主系统 `WX_TPL_ELEC_QUOTED(_FIELDS)` 已配；端上三处授权共用它并上报 `/mp/message/subscribe` | 独立发布到自己的小程序号时，模板要在那个号上重加（模板号属于小程序号）|
-| 买家选完报价看不出选的是哪条 | `Offer` 没有「已选中」标记，刷新后「已选」消失（本会话内靠端上记着） | 后端 `Offer` 加 `picked` 布尔（一行映射 `ElcQuote.status == ACCEPTED`）|
+| ~~买家选完报价看不出选的是哪条~~ **2026-09-30 已修** | `Offer.picked`（供应商报价 = ACCEPTED；平台那条 = 整单已接受）；**选中的那条不受有效期过滤**。`ElecChooseFlowTest` 两处断言，消融变红 | — |
 | 平台那条报价不能按行选 | `acceptOffer` 只查供应商报价表，传 `P1` 会 404 | 端上已按 `from` 分流：平台报价走整单「接受报价」。要按行接受平台价需后端支持 |
+| ~~业务码只有一行 toast~~ **2026-09-30 已接** | 90001 → 去绑手机号；90002 → 去「成为供应商」；90004 → 说明已暂停，工作台只读（不给上传、续期按钮）| `elec-app/src/shared/errors.ts` |
 | 上传后后端记下的文件名是临时路径名 | 预览与批次记录里认不出是哪张表 | 端上显示选中的名字；后端要记原名需加一个表单字段 `fileName` |
 | 批量查把「0805 10K 1%」切出「1%」当料号 | 照它询价就是一张废单 | 端上规则：同行读出了数量才用切出来的料号，否则按原文询（`lookup/index.vue#askText`）|
 

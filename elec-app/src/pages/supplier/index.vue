@@ -7,6 +7,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api, errMsg, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensureLogin } from "@/shared/auth";
 import { ROUTES, go } from "@/shared/routes";
 import { SUPPLIER_KIND, agoOf, dateOf, qtyOf } from "@/shared/format";
@@ -50,6 +51,8 @@ async function load() {
 
 /** 待回的求购：待报价 + 看过没回。以 /elec/me 为准（与切换条红点同一个口径），拿不到退回只数「待报价」 */
 const pendingCnt = computed(() => me.value?.badges.dispatchPending ?? pending.value.length);
+/** 被暂停：工作台只读（上传、续期都会被后端 90004 拒掉，按钮就别给了） */
+const suspended = computed(() => s.value?.status === "SUSPENDED");
 const fresh = computed(() => !!s.value && !s.value.lastUploadAt && s.value.onCount === 0);
 const stats = computed(() => {
   const x = s.value;
@@ -69,7 +72,7 @@ async function renew() {
     toast(`已续 ${qtyOf(r.renewed)} 行，到 ${dateOf(r.validUntil)}`);
     await load();
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }
@@ -90,7 +93,7 @@ async function renew() {
           <text class="txt-sub">还没传过库存 —— 传一张表，买家就搜得到你的货</text>
         </view>
         <view class="sh-card">
-          <view class="sh-btn" @tap="go(ROUTES.stockUpload)">上传库存</view>
+          <view class="sh-btn" :class="{ 'is-disabled': suspended }" @tap="suspended || go(ROUTES.stockUpload)">上传库存</view>
           <text class="txt-caption sh-muted center">Excel / CSV，列自动认</text>
           <text class="txt-strong how">怎么传</text>
           <view class="step"><text class="num">1</text><text class="txt-sub">从 ERP 导出库存表（xlsx / csv）</text></view>
@@ -108,7 +111,7 @@ async function renew() {
           <sh-stat :items="stats"></sh-stat>
         </view>
         <view class="sh-cells block">
-          <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.stockUpload)">
+          <view v-if="!suspended" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.stockUpload)">
             <text class="txt-body">上传库存</text>
             <text class="txt-caption sh-muted">增量或全量替换 ›</text>
           </view>
@@ -139,7 +142,7 @@ async function renew() {
       </view>
       <text class="txt-caption sh-muted center foot">库存 {{ s.stockTtlDays }} 天不更新就不再给买家看 —— 货会卖掉，旧库存会让买家询到不存在的货</text>
 
-      <sh-actionbar v-if="!fresh && s.expiringCount">
+      <sh-actionbar v-if="!fresh && s.expiringCount && !suspended">
         <view class="sh-btn" :class="{ 'is-disabled': busy }" @tap="renew">
           {{ busy ? "续期中…" : `${qtyOf(s.expiringCount)} 行还有货，续 ${s.stockTtlDays} 天` }}
         </view>

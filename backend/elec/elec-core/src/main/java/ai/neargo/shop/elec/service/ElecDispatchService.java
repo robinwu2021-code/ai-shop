@@ -51,8 +51,9 @@ public interface ElecDispatchService {
      * 买家能看到的报价：按询价行号分组，已加价、已匿名、按价升序。
      *
      * @param platformQuoted 这些行平台自己报过价（那条排在最前，代号写「平台」）
+     * @param platformAccepted 买家接受了平台的整单报价 —— 平台那几条标成已选
      */
-    Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines);
+    Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines, boolean platformAccepted);
 
     /**
      * 买家接受某一条报价：锁价、通知供应商、其余同行报价置为未选中（NOT_CHOSEN）。

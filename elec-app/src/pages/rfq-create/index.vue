@@ -6,7 +6,8 @@
 // 要号是最典型的劝退；而现在他正要平台替他找货，两件事都讲得通。
 import { computed, reactive, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { api, errMsg, toast } from "@/api";
+import { api, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensurePhone } from "@/shared/auth";
 import { askSubscribe } from "@/shared/subscribe";
 import { takeRfqDraft, type DraftLine } from "@/shared/draft";
@@ -120,7 +121,7 @@ async function submit() {
     }
     uni.redirectTo({ url: `${ROUTES.rfq}?rfqNo=${encodeURIComponent(rfq.rfqNo)}&fresh=1` });
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

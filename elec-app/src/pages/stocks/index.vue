@@ -7,6 +7,7 @@
 import { ref } from "vue";
 import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api, errMsg, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensureLogin } from "@/shared/auth";
 import { COND, PACKING, daysLeft, dateOf, leadOf, priceOf, qtyOf } from "@/shared/format";
 import type { ElecStock, ElecStockFilter } from "@shared/types";
@@ -90,7 +91,7 @@ async function renew() {
     toast(`已续 ${qtyOf(r.renewed)} 行，到 ${dateOf(r.validUntil)}`);
     await reload();
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

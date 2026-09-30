@@ -218,6 +218,11 @@ export interface ElecOffer {
   note?: string | null;
   /** 平台报的 / 供应商报的。端上不显示，只决定接受之后走哪条跟进流程 */
   from: ElecOfferFrom;
+  /**
+   * 买家选中的就是这一条（供应商报价：已成交；平台那条：整单已接受）。
+   * **选中的那条不受有效期过滤** —— 过期的价不能再选，但他选过的那一条要一直看得到
+   */
+  picked: boolean;
 }
 
 export interface ElecRfqLine {

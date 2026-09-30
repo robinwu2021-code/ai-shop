@@ -59,6 +59,8 @@ class ElecChooseFlowTest {
 
         JsonNode offers = data(get("/elec/c/rfq/" + rfqNo), buyer, null).get("lines").get(0).get("offers");
         assertThat(offers).hasSize(2);
+        assertThat(offers.get(0).get("picked").asBoolean() || offers.get(1).get("picked").asBoolean())
+                .as("还没选，谁都不是「已选」").isFalse();
         String cheap = offers.get(0).get("offerNo").asString();   // 按买家价升序：A 更便宜
         String dear = offers.get(1).get("offerNo").asString();
         int acceptedBefore = acceptedNotices();
@@ -77,6 +79,9 @@ class ElecChooseFlowTest {
 
         JsonNode after = data(get("/elec/c/rfq/" + rfqNo), buyer, null).get("lines").get(0).get("offers");
         assertThat(after).as("买家那边只剩选中的那一条").hasSize(1);
+        assertThat(after.get(0).get("offerNo").asString()).isEqualTo(cheap);
+        assertThat(after.get(0).get("picked").asBoolean())
+                .as("★★ 刷新之后端上要知道这条是他选的 —— 否则还显示「选这条」，再点就是 90011").isTrue();
     }
 
     @Test
@@ -118,6 +123,11 @@ class ElecChooseFlowTest {
             }
         }
         assertThat(supplierOffer).isNotNull();
+        for (JsonNode o : offers) {
+            assertThat(o.get("picked").asBoolean())
+                    .as("平台整单已接受：平台那条是「已选」，供应商那条不是（%s）", o.get("from").asString())
+                    .isEqualTo("PLATFORM".equals(o.get("from").asString()));
+        }
         assertThat(code(post("/elec/c/rfq/" + rfqNo + "/line/1/accept"), buyer, "{\"offerNo\":\"" + supplierOffer + "\"}"))
                 .isEqualTo(90011);
     }

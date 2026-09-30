@@ -471,7 +471,8 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     }
 
     private RfqView view(ElcRfq h, List<ElcRfqLine> lines) {
-        Map<Integer, List<RfqDtos.Offer>> offers = dispatches.offersOf(h.getRfqNo(), lines);
+        Map<Integer, List<RfqDtos.Offer>> offers = dispatches.offersOf(h.getRfqNo(), lines,
+                ElcRfq.STATUS_ACCEPTED.equals(h.getStatus()));
         return view(h, lines, offers);
     }
 

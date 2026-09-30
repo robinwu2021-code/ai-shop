@@ -24,8 +24,10 @@ const rfq = ref<ElecRfq | null>(null);
 const failed = ref("");
 const confirming = ref(false);
 const busy = ref(false);
-/** 这次会话里选过的报价。**后端的 Offer 还没有「已选中」标记**（TDD 偏差说明），刷新后只能靠它 */
-const picked = ref<Record<number, string>>({});
+/** 这一行成交了没有：以后端的 picked 为准（选中的那条不受有效期过滤，刷新也看得到） */
+function linePicked(l: ElecRfqLine): boolean {
+  return l.offers.some((o) => o.picked);
+}
 
 onLoad((q) => {
   rfqNo.value = q?.rfqNo ? decodeURIComponent(String(q.rfqNo)) : "";
@@ -96,7 +98,6 @@ async function pick(l: ElecRfqLine, o: ElecOffer) {
   busy.value = true;
   try {
     rfq.value = await api.acceptOffer(r.value.rfqNo, l.lineNo, o.offerNo);
-    picked.value = { ...picked.value, [l.lineNo]: o.offerNo };
     toast(`已选${o.label}，平台会联系你`);
   } catch (e) {
     toast(errMsg(e));
@@ -173,7 +174,10 @@ function again() {
           <view v-if="l.quote" class="offer is-platform">
             <view class="sh-row sh-row--between">
               <text class="txt-sub">平台报价</text>
-              <text class="txt-strong">{{ priceOf(l.quote.priceE6) }}</text>
+              <view class="sh-row">
+                <text class="txt-strong">{{ priceOf(l.quote.priceE6) }}</text>
+                <text v-if="l.offers.some((o) => o.from === 'PLATFORM' && o.picked)" class="sh-chip sh-chip--success pick">已接受</text>
+              </view>
             </view>
             <text class="txt-caption sh-muted block">
               {{ [l.quote.qty != null && l.quote.qty < l.qty ? `只能供 ${qtyOf(l.quote.qty)}` : `× ${qtyOf(l.quote.qty ?? l.qty)}`,
@@ -195,8 +199,8 @@ function again() {
               <text class="txt-sub">{{ o.label }}</text>
               <view class="sh-row">
                 <text class="txt-strong">{{ priceOf(o.priceE6) }}</text>
-                <text v-if="picked[l.lineNo] === o.offerNo" class="sh-chip sh-chip--success pick">已选</text>
-                <text v-else-if="canPick && !picked[l.lineNo]" class="sh-btn sh-btn--sm pick" @tap="pick(l, o)">选这条</text>
+                <text v-if="o.picked" class="sh-chip sh-chip--success pick">已选</text>
+                <text v-else-if="canPick && !linePicked(l)" class="sh-btn sh-btn--sm pick" @tap="pick(l, o)">选这条</text>
               </view>
             </view>
             <text class="txt-caption sh-muted block">{{ offerMeta(o, l.qty) }} · 含税</text>

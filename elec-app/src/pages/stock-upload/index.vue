@@ -5,7 +5,8 @@
 // 第二次上传这一屏基本是直接点下一步。选了「全量替换」就在这里先说一句后果，
 // 而不是等他点到下一屏才发现。
 import { computed, ref } from "vue";
-import { api, errMsg, toast } from "@/api";
+import { api, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensureLogin } from "@/shared/auth";
 import { setBatch } from "@/shared/batch";
 import { pickSheet, type PickedFile } from "@/shared/file";
@@ -30,7 +31,7 @@ async function choose() {
   try {
     f = await pickSheet();
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
     return;
   }
   if (!f) return;
@@ -51,7 +52,7 @@ async function upload() {
     columns.value = { ...preview.value.columns };
   } catch (e) {
     preview.value = null;
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }
@@ -99,7 +100,7 @@ async function next() {
     setBatch(out, file.value?.name ?? "");
     go(ROUTES.stockPreview, { batchNo: out.batchNo });
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

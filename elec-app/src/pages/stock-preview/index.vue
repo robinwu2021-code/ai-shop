@@ -6,7 +6,8 @@
 // 一行有效的都没有时直接不给确认，否则一次误操作会把他全部库存下架。
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { api, errMsg, toast } from "@/api";
+import { api, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { batchFileName, getBatch, setBatch } from "@/shared/batch";
 import { ROUTES, backTo } from "@/shared/routes";
 import { ROW_PROBLEM, qtyOf } from "@/shared/format";
@@ -60,7 +61,7 @@ async function apply() {
     toast("已上架");
     setTimeout(() => backTo(ROUTES.supplier), 600);
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

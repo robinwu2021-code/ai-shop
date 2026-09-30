@@ -80,10 +80,12 @@ public final class RfqDtos {
      * @param qty      他能供多少。少于要的数量时端上要标出来
      * @param from     PLATFORM 平台报的 / SUPPLIER 供应商报的。端上不显示这个词，
      *                 只用它决定「接受」之后走哪条跟进流程
+     * @param picked   买家选中的就是这一条（供应商报价：已成交；平台那条：整单已接受）。
+     *                 <b>选中的那条不受有效期过滤</b> —— 过期的价不能再选，但他选过的那一条要一直看得到
      */
     public record Offer(String offerNo, String label, long priceE6, Long qty, Integer dcYear,
                         Integer leadDays, String cond, String packing, java.time.LocalDate validUntil,
-                        String note, String from) {
+                        String note, String from, boolean picked) {
     }
 
     // ── 供应商侧（看得到求购，看不到买家）────────────────────────────────

@@ -5,6 +5,7 @@
 import { reactive, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { api, errMsg, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensureLogin } from "@/shared/auth";
 import { SUPPLIER_KIND } from "@/shared/format";
 import type { ElecSupplier, ElecSupplierKind } from "@shared/types";
@@ -59,7 +60,7 @@ async function save() {
     toast("已保存");
     setTimeout(() => uni.navigateBack(), 500);
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

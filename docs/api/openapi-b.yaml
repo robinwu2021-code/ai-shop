@@ -520,11 +520,15 @@ components:
         from: 
           "$ref": "#/components/schemas/ElecOfferFrom"
           description: "平台报的 / 供应商报的。端上不显示，只决定接受之后走哪条跟进流程"
+        picked: 
+          type: "boolean"
+          description: "买家选中的就是这一条（供应商报价：已成交；平台那条：整单已接受）。\n**选中的那条不受有效期过滤** —— 过期的价不能再选，但他选过的那一条要一直看得到"
       required: 
         - "offerNo"
         - "label"
         - "priceE6"
         - "from"
+        - "picked"
       additionalProperties: false
       description: "买家看到的一条报价。**没有、也不许加任何供应商字段**。"
     ElecRfqLine: 

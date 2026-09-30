@@ -495,12 +495,13 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
     // ── 买家侧（匿名、已加价）────────────────────────────────────────────
 
     @Override
-    public Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines) {
+    public Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines, boolean platformAccepted) {
         LocalDate today = LocalDate.now();
+        // 有效的报价要在有效期内；**选中的那条不看有效期** —— 他选过的价过了期也得看得到
         List<ElcQuote> quotes = quoteMapper.selectList(Wrappers.<ElcQuote>lambdaQuery()
                 .eq(ElcQuote::getRfqNo, rfqNo)
-                .in(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE, ElcQuote.STATUS_ACCEPTED)
-                .ge(ElcQuote::getValidUntil, today));
+                .and(w -> w.eq(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED)
+                        .or(x -> x.eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE).ge(ElcQuote::getValidUntil, today))));
         Map<Integer, List<ElcQuote>> byLine = quotes.stream()
                 .collect(Collectors.groupingBy(ElcQuote::getLineNo));
         Map<Integer, List<Offer>> out = new LinkedHashMap<>();
@@ -510,7 +511,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                 // 平台自己报的那条：已经是对买家的价，不再加价
                 offers.add(new Offer("P" + line.getLineNo(), "平台", line.getQuoteE6(), line.getQuoteQty(),
                         line.getQuoteDcYear(), line.getQuoteLeadDays(), line.getQuoteCond(),
-                        line.getQuotePacking(), null, line.getQuoteNote(), "PLATFORM"));
+                        line.getQuotePacking(), null, line.getQuoteNote(), "PLATFORM", platformAccepted));
             }
             List<ElcQuote> mine = byLine.getOrDefault(line.getLineNo(), List.of()).stream()
                     .sorted(Comparator.comparingLong(q -> toBuyerPrice(q)))
@@ -526,7 +527,7 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                 i++;
                 offers.add(new Offer(q.getQuoteNo(), label, toBuyerPrice(q), q.getQtyAvailable(),
                         q.getDcYear(), q.getLeadDays(), q.getCondGrade(), q.getPacking(),
-                        q.getValidUntil(), null, "SUPPLIER"));
+                        q.getValidUntil(), null, "SUPPLIER", ElcQuote.STATUS_ACCEPTED.equals(q.getStatus())));
             }
             out.put(line.getLineNo(), offers);
         }

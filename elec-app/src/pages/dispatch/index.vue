@@ -7,6 +7,7 @@
 import { computed, reactive, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { api, errMsg, toast } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensureLogin } from "@/shared/auth";
 import { askSubscribe } from "@/shared/subscribe";
 import {
@@ -104,7 +105,7 @@ async function submit() {
     editing.value = false;
     toast("报价已提交，买家选中时通知你");
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }
@@ -119,7 +120,7 @@ async function decline(reason: ElecDeclineReason) {
     declining.value = false;
     toast("已回复平台");
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }

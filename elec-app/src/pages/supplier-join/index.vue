@@ -5,7 +5,8 @@
 // 顶上那句「身份不公开」是贸易商最在意的事，放在按钮正上方。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { api, errMsg, toast } from "@/api";
+import { api } from "@/api";
+import { handleElecError } from "@/shared/errors";
 import { ensurePhone } from "@/shared/auth";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@/shared/routes";
@@ -37,7 +38,7 @@ async function join() {
     await api.joinSupplier();
     uni.redirectTo({ url: ROUTES.supplier });
   } catch (e) {
-    toast(errMsg(e));
+    handleElecError(e);
   } finally {
     busy.value = false;
   }
