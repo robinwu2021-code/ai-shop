@@ -6256,6 +6256,7 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "门店号。点进门户（`pages/store?no=`）与带进详情/加购的就是它"
         storeName: 
           type: "string"
           description: "门店名，如「虹选粮油·深圳测试店」。**不是主体名**"

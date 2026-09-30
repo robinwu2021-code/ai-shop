@@ -7591,7 +7591,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | 门店号。点进门户（`pages/store?no=`）与带进详情/加购的就是它 |
 | `storeName` | `string` | 是 | 门店名，如「虹选粮油·深圳测试店」。**不是主体名** |
 
 ### GrantStoreReq
