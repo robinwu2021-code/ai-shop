@@ -33014,6 +33014,15 @@
         "zh": "派单结果：未看 / 看了没回 / 报了价 / 拒了"
       },
       {
+        "name": "ElecHeaderAliasScope",
+        "client": "ops-web",
+        "values": [
+          "GLOBAL",
+          "LEARNED"
+        ],
+        "zh": "表头写法看哪一份：GLOBAL 全局（种子 + 运营加的）/ LEARNED 各家供应商确认过的（按写法聚合）"
+      },
+      {
         "name": "ElecOpsQuoteStatus",
         "client": "ops-web",
         "values": [

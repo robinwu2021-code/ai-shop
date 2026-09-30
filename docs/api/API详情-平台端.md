@@ -1482,6 +1482,71 @@ getDashboardTrend
 
 ### elec
 
+#### GET `/elec/ops/header-alias`
+
+库存表的表头写法：全局的，或各家学到的（带几家在用） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecHeaderAliasRow`](#elecheaderaliasrow)\[\]
+
+
+#### POST `/elec/ops/header-alias`
+
+加一条全局写法，或把学到的提升为全局（同一写法已有全局的：改成这个字段并启用）
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecHeaderAliasRow`](#elecheaderaliasrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number,null` | 否 | 全局写法的 id（改字段、停用用它）；学到的按写法聚合，没有 id |
+| `aliasNorm` | `string` | 是 | 规范化后的写法（去空白标点、大写） |
+| `aliasRaw` | `string` | 是 | 原文 |
+| `field` | `string` | 是 | 认成的字段：MPN MFR QTY DC PACKAGE PRICE MOQ SPQ PACKING CONDITION CURRENCY LEAD REGION（elec-svc Columns.Field） |
+| `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
+| `status` | `string` | 是 | ACTIVE / DISABLED |
+| `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
+| `updatedAt` | `string,null` | 否 | — |
+
+
+#### PUT `/elec/ops/header-alias/{id}`
+
+改全局写法认成的字段，或停用 / 启用（status：ACTIVE / DISABLED） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecHeaderAliasRow`](#elecheaderaliasrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number,null` | 否 | 全局写法的 id（改字段、停用用它）；学到的按写法聚合，没有 id |
+| `aliasNorm` | `string` | 是 | 规范化后的写法（去空白标点、大写） |
+| `aliasRaw` | `string` | 是 | 原文 |
+| `field` | `string` | 是 | 认成的字段：MPN MFR QTY DC PACKAGE PRICE MOQ SPQ PACKING CONDITION CURRENCY LEAD REGION（elec-svc Columns.Field） |
+| `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
+| `status` | `string` | 是 | ACTIVE / DISABLED |
+| `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
+| `updatedAt` | `string,null` | 否 | — |
+
+
 #### GET `/elec/ops/mfr`
 
 listElecMfrs
@@ -10895,6 +10960,21 @@ KPI 卡（金额为最小货币单位整数）。
 | `source` | `string` | 是 | SEED 初始种子 / OPS 运营加的 |
 | `createdAt` | `string,null` | 否 | 加的时间 |
 | `createdBy` | `string,null` | 否 | 谁加的 |
+
+### ElecHeaderAliasRow
+
+库存表的一个表头写法认成哪个字段（elec-svc `HeaderAliasRow`）。 全局的改了当场生效；学到的是各家自己上传时确认过的，提升后对所有供应商生效。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number,null` | 否 | 全局写法的 id（改字段、停用用它）；学到的按写法聚合，没有 id |
+| `aliasNorm` | `string` | 是 | 规范化后的写法（去空白标点、大写） |
+| `aliasRaw` | `string` | 是 | 原文 |
+| `field` | `string` | 是 | 认成的字段：MPN MFR QTY DC PACKAGE PRICE MOQ SPQ PACKING CONDITION CURRENCY LEAD REGION（elec-svc Columns.Field） |
+| `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
+| `status` | `string` | 是 | ACTIVE / DISABLED |
+| `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
+| `updatedAt` | `string,null` | 否 | — |
 
 ### ElecMfrRow
 

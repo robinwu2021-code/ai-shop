@@ -104,6 +104,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与 ai-hxkey 端上的 ElecCloseReason 同名同值。运营关单时选" },
   { decl: "ops-web:ElecPriceMode", dom: "elec", shape: "CLASS", verdict: "OK",
     note: "与 ai-hxkey 后端 elc_rfq.price_mode 同值（TDD-元器件-公开求购 D6）。运营按单切换" },
+  { decl: "ops-web:ElecHeaderAliasScope", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "与 ai-hxkey elec-svc GET /elec/ops/header-alias 的 scope 参数同值（库存上传二期 AC23）：查询条件不是状态" },
   { decl: "ops-web:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     note: "与 ai-hxkey 端上的 ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
   { decl: "ops-web:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",
