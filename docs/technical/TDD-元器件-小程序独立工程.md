@@ -277,3 +277,5 @@ cd c-app && node scripts/with-elec.mjs release <版本> "<备注>"
 |---|---|
 | 2026-09-30 | 方案给出并开始实现（用户要求「给出计划后直接执行」）|
 | 2026-09-30 | 小程序 16 页已实现，真后端走通 §5；闸门见提交说明 |
+| 2026-09-30 | elec-svc 上线生产（`elec-svc-20260930-0820-ed70ac01f.jar`，库 `ai_shop_elec` 迁移 V1、16 张表）；nginx 加 `/elec/`（备份 `conf-backups/www.hxmall.top.bak-20260930-082124-pre-elec`）；经域名回读 `/elec/c/part` 200、原有 `/mp` `/c/` `/b/` `/ops-web/` 均 200 |
+| 2026-09-30 | 虹选好店体验版 `0.1.71-elec1`（HEAD ed70ac01f 并包，「我的 → 电子元器件（测试）」）；版本号只在发版副本里改，**不提交** |
