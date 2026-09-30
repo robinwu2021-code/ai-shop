@@ -47,7 +47,8 @@ case "$APP" in
         SERVICE="${SERVICE:-ai-shop-elec}"
         # 也没有 actuator。拿**游客可查**的查料号当活口：200 说明容器、过滤链、它自己的库都通了
         # （查料号要读 elc_part_market），比 pay-svc 那条 401 多证明一层库连得上
-        HEALTH="${HEALTH:-http://localhost:8085/elec/c/part?keyword=health}" ;;
+        # suggest=true：联想不计入「搜索需求」统计 —— 不带它，每发一次版就往需求榜里记一条 HEALTH
+        HEALTH="${HEALTH:-http://localhost:8085/elec/c/part?keyword=health&suggest=true}" ;;
     *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc / elec-svc）" >&2; exit 2 ;;
 esac
 HEALTH_OK="${HEALTH_OK:-200}"

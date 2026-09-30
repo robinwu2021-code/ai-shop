@@ -189,6 +189,7 @@ coscli cp cos://hxmall-download-1301656997/b-app/hxmall-merchant-$VER.apk \
 ```bash
 scripts/deploy-backend.sh                 # 后端 shop-app
 scripts/deploy-backend.sh pay-svc         # 支付服务
+scripts/deploy-backend.sh elec-svc        # 电子元器件服务（首次上线先做下面那一节）
 scripts/deploy-frontend.sh <site|ops-web|c-app|b-app>
 backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn package -pl shop-job -am
 ```
@@ -206,6 +207,45 @@ backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn pack
 - **`cp`/`scp` 盖掉在跑的 jar 会让 JVM 挂起或全员掉线**：JVM 按需从 jar 里读类，文件被原地改写后
   读到的是新包的字节。脚本的做法是传一个带时间和 SHA 的新文件、切软链、再重启。
 - **在主工作区构建会带上别人未提交的改动**：这个仓库常有多个会话同时在改。
+
+### 电子元器件 elec-svc 首次上线（一次性）
+
+脚本只管「换包、重启、验活」，下面四件事它不做，**首次要人做一遍**：
+
+1. **建库**（MySQL 9.7，走 socket）：`CREATE DATABASE ai_shop_elec DEFAULT CHARACTER SET utf8mb4;`
+   不写 COLLATE，跟库默认（`utf8mb4_0900_ai_ci`）。给服务账号这一个库的权限。**表不用建**：
+   服务启动时自己跑迁移，历史表是 `elc_flyway_history`，与主库那张互不知情。
+2. **写 `/data/app/ai-shop/elec-svc/elec.env`**（属主 deploy、权限 600 —— root 传完要 chown，否则服务起不来）。
+   要的键（只列键名，值不进仓库）：
+
+   | 键 | 必填 | 说明 |
+   |---|---|---|
+   | `ELEC_DB_URL` | ✅ | `jdbc:mysql://…/ai_shop_elec?…`，与主库同一个实例 |
+   | `ELEC_DB_USER` / `ELEC_DB_PASSWORD` | ✅ | 服务账号 |
+   | `SHOP_SERVICES_INTERNAL_TOKEN` | ✅ | **与主系统 `shop-app.env` 里同值**。没配就一律拒绝 —— 表现是所有要登录的接口 503 |
+   | `SHOP_NOTIFY_WECOM_WEBHOOK` 或 `ELEC_WECOM_WEBHOOK` | ⚠️ | 企业微信群机器人。**两个都不配就一条群消息都不发，且不报错** —— 默认回落的那个变量在主系统的 env 里，独立进程读不到，要复制过来一份（或单独给元器件建群配后者） |
+   | `ELEC_MAIN_URL` | — | 默认 `http://127.0.0.1:8081`，同机不用配 |
+   | `ELEC_PAGE_PREFIX` | — | 通知落地页前缀。并进 c-app 测试期默认 `pkg-elec/pages/`；独立小程序上线时改成 `pages/` |
+   | `ELEC_EXPIRY_REMIND_CRON` | — | 库存到期提醒，默认每天 9 点；设成 `-` 关掉 |
+
+3. **装 systemd 单元与 nginx**：`deploy/tencent/systemd/ai-shop-elec.service` → `/etc/systemd/system/`，
+   `daemon-reload` + `enable`；nginx 的 `location ^~ /elec/` 已在 `www.hxmall.top.conf` 里，`nginx -t` 后 reload
+   （**先 diff 线上那份**：sites-enabled 可能是实体副本，见第 9 节）。
+4. **发包**：`scripts/deploy-backend.sh elec-svc`。它的活口是 `GET /elec/c/part?keyword=health&suggest=true`
+   —— 查料号要读库，200 说明进程、过滤链、库都通了；带 `suggest=true` 是为了不往「搜索需求」统计里记一条 HEALTH。
+
+**上线后验两句**（不需要任何账号）：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://www.hxmall.top/elec/me          # 期望 401（不是 404、不是 502）
+curl -s 'https://www.hxmall.top/elec/c/part?keyword=STM32&suggest=true' | head -c 80 # 期望 {"code":0,...}
+```
+
+401 说明 nginx 转到了 elec-svc 且过滤链在；404 是 nginx 没转；502 是进程没起来。
+（本机 DNS 走内网代理，https 直连线上会假死 —— 这两句要在服务器上打 `localhost:8085`，或走 ssh。）
+
+**2026-09-30 已在本机 MySQL 9.7.2 一次性容器里验过**：空库起服务、迁移一次通过（15 张表 + 历史表，
+没有多出 `flyway_schema_history`），匿名查料号 200、不带令牌 401、主系统不通时 503。
 
 官网构建要读 `site/content/**.md`（正文）与 `brand/logo/mark-red.svg`（页头标识），两者都在仓库里，
 worktree 副本自带；少任一个是构建期直接报错。C 端的 `H5_BASE` 是 `/c/` 不是 `/`，脚本里已写死。
