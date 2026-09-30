@@ -31,10 +31,19 @@ public interface BootstrapConfigService {
      * 小程序一份），而这个项目已经错过一次 —— 商家端链接曾写死成
      * {@code shop.example.com}，商家印了贴纸才发现指向一个不存在的地方。
      *
-     * @param android 安卓包直链；空 = 还没有，端上不显示这一档
-     * @param ios     iOS 地址（上架前是 TestFlight 公开链接）；空 = 同上。
-     *                iOS 版在苹果审核队列里，所以这一档现在就是空的
+     * @param android        安卓包直链；空 = 还没有，端上不显示这一档
+     * @param ios            iOS 地址（上架前是 TestFlight 公开链接）；空 = 同上。
+     *                       iOS 版在苹果审核队列里，所以这一档现在就是空的
+     * @param androidVersion 安卓包的版本号（如 {@code 0.5.21}），从发版脚本写的
+     *                       {@code /dl/latest.json} 读；读不到就是空串，端上不显示版本。
+     *                       <b>不要在别处再写一份</b> —— 此前版本号写死在三处，
+     *                       每处都要手工跟，于是每处都会掉队
      */
-    record MerchantApp(String android, String ios) {
+    record MerchantApp(String android, String ios, String androidVersion) {
+
+        /** 旧调用点用的两参构造：不带版本号 */
+        public MerchantApp(String android, String ios) {
+            this(android, ios, "");
+        }
     }
 }

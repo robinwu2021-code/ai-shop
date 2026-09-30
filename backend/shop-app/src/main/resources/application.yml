@@ -170,6 +170,12 @@ shop:
   merchant-app:
     android: ${SHOP_MERCHANT_APP_ANDROID:}
     ios: ${SHOP_MERCHANT_APP_IOS:}
+    # 版本清单，发版脚本写的（release-bapp-apk.sh 第 3.6 步）。
+    # **它在就以它为准**，上面那两行只是兜底 —— 版本号此前写死在三处，
+    # 每处都要手工跟，于是 env 这处掉了二十多个版本（0.4.98 vs 0.5.21），
+    # 而掉队时下载照样 200、照样装得上，只是功能旧，没有任何信号。
+    # 留空（本机、切片测试）= 不读文件，行为与改造前逐字相同。
+    manifest-file: ${SHOP_MERCHANT_APP_MANIFEST:}
   notify:
     wecom:
       # 企业微信群机器人的 Webhook。**URL 本身就是凭据** —— 拿到它的人都能往群里发消息，

@@ -82,6 +82,20 @@ public class ShopProperties {
         /** iOS：上架前是 TestFlight 公开链接，上架后换 App Store 地址 */
         private String ios = "";
 
+        /**
+         * 版本清单文件，发版脚本写的（{@code /dl/latest.json}）。
+         *
+         * <p><b>它在，这里的 {@link #android} 与版本号就都以它为准</b>；它不在就用上面那两个。
+         *
+         * <p>为什么要有它：版本号此前写死在三处（官网 site.config、服务器 env、人的记性），
+         * 每处都要手工跟，于是每处都会掉队 —— env 那处掉了二十多个版本
+         * （0.4.98 vs 0.5.21），而掉队时**下载照样 200、照样装得上**，只是功能旧，
+         * 没有任何信号。清单让「最新版是哪个」变成可查的一件事，发版即生效。
+         *
+         * <p>留空 = 不读文件，行为与改造前逐字相同（切片测试、本机开发都走这一支）。
+         */
+        private String manifestFile = "";
+
         public String getAndroid() {
             return android;
         }
@@ -96,6 +110,14 @@ public class ShopProperties {
 
         public void setIos(String ios) {
             this.ios = ios;
+        }
+
+        public String getManifestFile() {
+            return manifestFile;
+        }
+
+        public void setManifestFile(String manifestFile) {
+            this.manifestFile = manifestFile;
         }
     }
 }

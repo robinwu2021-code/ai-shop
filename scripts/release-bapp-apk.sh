@@ -8,7 +8,7 @@
 # 用法：
 #   scripts/release-bapp-apk.sh ~/Downloads/虹选商家-0.4.32-159.apk
 #
-# 它做五件事：验包 → 传 COS（版本存档 + latest）→ 传服务器 /dl/ → 重指 latest 软链 → 改 site.config。
+# 它做六件事：验包 → 传 COS → 传服务器 /dl/ → 重指 latest 软链 → 写 latest.json → 改 site.config。
 # **不打包**：离线打包工程在仓库外（见 memory / 《App签名与打包参数》），
 # 各机路径不同，硬写进来只会在别人机器上假失败。
 set -euo pipefail
@@ -89,6 +89,32 @@ ssh "$SSH_HOST" "sudo ln -sfn '$REMOTE' /data/app/ai-shop/web/dl/hxmall-merchant
 L_MD5=$(ssh "$SSH_HOST" "md5sum /data/app/ai-shop/web/dl/hxmall-merchant-latest.apk | cut -d' ' -f1")
 [ "$L_MD5" = "$MD5" ] || { echo "✗ latest 软链取到的不是这一版：$L_MD5"; exit 1; }
 echo "✓ latest 软链 → $REMOTE（md5 回读一致）"
+
+# ── 3.6 版本清单 latest.json：**让「最新版是哪个」变成可查的，而不是抄来抄去** ──
+#
+# 在这之前，版本号写死在三处：官网 site.config、服务器 env、以及人的记性。
+# 每处都要手工跟，于是每处都会掉队 —— env 那处掉了二十多个版本（0.4.98 vs 0.5.21），
+# 而且掉队时**下载照样 200、照样装得上**，只是功能旧，没有任何信号。
+#
+# 现在真源只有这一份：发版写它，后端与官网都读它。发版即生效，
+# 不用改代码、不用改配置、不用重启、不用重新部署官网。
+RELEASED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+SIZE=$(wc -c < "$APK" | tr -d ' ')
+ssh "$SSH_HOST" "sudo tee /data/app/ai-shop/web/dl/latest.json >/dev/null" <<JSON
+{
+  "version": "$VNAME",
+  "versionCode": $VCODE,
+  "url": "https://www.hxmall.top/dl/hxmall-merchant-latest.apk",
+  "file": "$REMOTE",
+  "size": $SIZE,
+  "md5": "$MD5",
+  "releasedAt": "$RELEASED_AT"
+}
+JSON
+# 回读：写进去了不等于取得到（nginx 的 alias、权限、缓存都可能拦在中间）
+J_VER=$(ssh "$SSH_HOST" "curl -sk --resolve www.hxmall.top:443:127.0.0.1 https://www.hxmall.top/dl/latest.json | sed -n 's/.*\"version\": \"\([^\"]*\)\".*/\1/p'")
+[ "$J_VER" = "$VNAME" ] || { echo "✗ latest.json 取回来的版本是「$J_VER」，不是 $VNAME"; exit 1; }
+echo "✓ latest.json → $VNAME（$VCODE），公网取回核对一致"
 
 # ── 4. 官网那一行 ─────────────────────────────────────────────────────
 # **这一步是这个脚本存在的理由。** 前三步不做也看得出来，这一步漏了看不出来。

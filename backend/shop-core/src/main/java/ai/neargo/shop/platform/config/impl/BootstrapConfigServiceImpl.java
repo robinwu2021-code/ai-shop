@@ -16,6 +16,12 @@ import java.util.Map;
 @EnableConfigurationProperties(ShopProperties.class)
 public class BootstrapConfigServiceImpl implements BootstrapConfigService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(BootstrapConfigServiceImpl.class);
+
+    private static final tools.jackson.databind.ObjectMapper MAPPER =
+            new tools.jackson.databind.ObjectMapper();
+
     private final ShopProperties props;
     /**
      * 平台开关（运营端「功能开关」那一屏）。
@@ -57,7 +63,56 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
                 Map.copyOf(features),
                 props.getMinAppVer(),
                 props.getServiceHours(),
-                new MerchantApp(props.getMerchantApp().getAndroid(),
-                        props.getMerchantApp().getIos()));
+                merchantApp());
+    }
+
+    /**
+     * 商家版 App 那一档：**版本清单在就以它为准**。
+     *
+     * <p>清单（{@code /dl/latest.json}）由发版脚本写，是「最新版是哪个」的唯一真源。
+     * 在这之前版本号写死在三处（官网 site.config、服务器 env、人的记性），
+     * 每处都要手工跟，于是每处都会掉队 —— env 那处掉了二十多个版本
+     * （0.4.98 vs 0.5.21），而掉队时下载照样 200、照样装得上，只是功能旧。
+     *
+     * <p><b>读不到就回落到 yml/env 的那两个值，不抛。</b> 清单是为了省掉手工同步，
+     * 不是新增一个「它坏了整个冷启动就挂」的依赖：这条端点是 C 端冷启动的第一跳。
+     */
+    private MerchantApp merchantApp() {
+        String android = props.getMerchantApp().getAndroid();
+        String ios = props.getMerchantApp().getIos();
+        String file = props.getMerchantApp().getManifestFile();
+        if (file == null || file.isBlank()) {
+            return new MerchantApp(android, ios, "");
+        }
+        try {
+            java.nio.file.Path path = java.nio.file.Path.of(file);
+            if (!java.nio.file.Files.isReadable(path)) {
+                log.warn("[app] 版本清单读不到，回落 env：{}", file);
+                return new MerchantApp(android, ios, "");
+            }
+            var node = MAPPER.readTree(java.nio.file.Files.readString(path));
+            String url = text(node, "url");
+            String ver = text(node, "version");
+            /*
+             * **只认完整地址**（清单里写的就是 https://…）。
+             * 半截路径（/dl/…）在小程序里打不开，而它「看起来是有值的」——
+             * 端上不会报错，只是点了没反应。宁可继续用 env 那条旧地址。
+             */
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                android = url;
+            } else if (!url.isBlank()) {
+                log.warn("[app] 版本清单里的 url 不是完整地址，仍用 env：{}", url);
+            }
+            return new MerchantApp(android, ios, ver);
+        } catch (Exception e) {
+            // 清单坏了不该让冷启动挂掉；记一条能查的日志，其余照旧
+            log.warn("[app] 版本清单解析失败，回落 env：{}（{}）", file, e.toString());
+            return new MerchantApp(android, ios, "");
+        }
+    }
+
+    private static String text(tools.jackson.databind.JsonNode node, String field) {
+        var v = node.get(field);
+        return v == null || v.isNull() ? "" : v.asText();
     }
 }
