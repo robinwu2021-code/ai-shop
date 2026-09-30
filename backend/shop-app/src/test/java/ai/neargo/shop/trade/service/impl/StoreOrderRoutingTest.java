@@ -141,11 +141,28 @@ class StoreOrderRoutingTest {
     // ---------------------------------------------------------------- helpers
 
     private String route(Map<String, String> choices) {
+        return route(choices, Map.of());
+    }
+
+    /**
+     * @param items 这一单在 {@link #ENTITY} 名下要发的 SKU → 件数；空 = 不判「在架 ∧ 有货」。
+     *
+     * <p><b>这一类里所有用例都传空</b>，测的是落店的**业务优先级**（自提点 / 门户选择 /
+     * 默认店 / 服务该社区的最近一家），与货无关。「在架 ∧ 有货」那两条判据的用例在
+     * {@code StoreStockFlowTest} 里 —— 那边建得出真实的门店库存与店级上下架，
+     * 而这里用的是种子主体 M0001，往它的共享行上写店级库存会让别的类单独跑绿、全量红
+     * （试过：`uk_store_sku` 撞软删除留下的行，DuplicateKey）。
+     *
+     * <p>留着这个重载而不是删掉：它是 `storesOfEntities` 三参数签名在测试里的唯一入口，
+     * 删了那条签名就一次都没被走过。
+     */
+    private String route(Map<String, String> choices, Map<String, Integer> items) {
         OrderServiceImpl impl = AopTestUtils.getTargetObject(orderService);
         CreateOrderCommand cmd = new CreateOrderCommand(List.of(), "STORE_PICKUP", null, null, null, 0L, null,
                 null, null, null, null, null, false, null, choices);
-        return impl.storesOfEntities(cmd, List.of(ENTITY)).get(ENTITY);
+        return impl.storesOfEntities(cmd, List.of(ENTITY), Map.of(ENTITY, items)).get(ENTITY);
     }
+
 
     private String addStore(String status) {
         MchStore s = new MchStore();
