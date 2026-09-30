@@ -169,6 +169,18 @@ function gotoVisited() {
   uni.switchTab({ url: ROUTES.merchants });
 }
 
+/*
+ * 元器件 · **测试期临时入口**。元器件是独立小程序（elec-app/），上线前借本小程序的
+ * 登录与域名测一轮：c-app/scripts/with-elec.mjs 打的包里带 pkg-elec 分包，并注入 VITE_WITH_ELEC=1；
+ * 平常的构建没有那个分包，这一行也不渲染（否则点进去是一个不存在的页面）。
+ * 元器件独立发布那天连同词条 me.elecEntry 一起删掉（TDD-元器件-小程序独立工程 §2.4）。
+ */
+const WITH_ELEC = import.meta.env.VITE_WITH_ELEC === "1";
+
+function gotoElec() {
+  uni.navigateTo({ url: "/pkg-elec/pages/home/index" });
+}
+
 /**
  * 点开店卡片。
  *
@@ -556,6 +568,9 @@ onShow(() => {
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoVisited">
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
+      </view>
+      <view v-if="WITH_ELEC" class="sh-cell sh-row sh-row--between" @tap="gotoElec">
+        <text class="txt-body cell__label">{{ $t("me.elecEntry") }}</text>
       </view>
     </view>
 

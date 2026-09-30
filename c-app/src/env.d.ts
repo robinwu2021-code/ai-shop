@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_MAP_KEY: string;
   /** 本地存储命名空间（shc / shb）—— 两端同域时也不互串 */
   readonly VITE_APP_NS: string;
+  /** "1" = 这一包并进了元器件分包（c-app/scripts/with-elec.mjs 注入），「我的」里出现测试入口 */
+  readonly VITE_WITH_ELEC?: string;
 }
 
 interface ImportMeta {

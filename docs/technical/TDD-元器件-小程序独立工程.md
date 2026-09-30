@@ -123,6 +123,48 @@ H5 只是调试形态，在那里登不进来是预期的。
 开发期 ops-web 没有代理（`output: "export"`），而 `NEXT_PUBLIC_API_BASE` 指着 8082 ——
 要么加 `NEXT_PUBLIC_ELEC_BASE`，要么 elec-svc 为 3100 开 CORS。建议前者：CORS 是会带进生产配置的口子。
 
+### 2.4 测试期：并进虹选好店（2026-09-30 追加）
+
+元器件自己的小程序号还没有，主系统也只认虹选好店的 appid（§4 第一行）。用户定的测试方式：
+**借虹选好店的登录与域名，在「我的」里给一个临时入口**，测完再独立发布。
+
+| 做法 | 落点 |
+|---|---|
+| 构建时把 elec-app 的页面拷成 c-app 的分包 `pkg-elec`，`@/` 改指 `@/pkg-elec/`，去掉 `title-key` | `c-app/scripts/with-elec.mjs` |
+| `pages.json` 临时加分包与 `el-*` easycom，**构建完还原** —— 仓库里的 c-app 一个字节不变 | 同上 |
+| 元器件的路由前缀可配：独立为空，并包为 `/pkg-elec` | `elec-app/src/shared/routes.ts`（`VITE_ELEC_ROUTE_BASE`）|
+| 「我的」出一行「电子元器件（测试）」，只在 `VITE_WITH_ELEC=1` 的包里渲染 | `c-app/src/pages/me/index.vue` · 词条 `me.elecEntry`（三语）· `c-app/.env` 默认 0 |
+| 元器件登录态的持久化键与 c-app 分开（同进程两个 store 写同一个键会互相覆盖）；令牌仍共用 | `elec-app/src/stores/user.ts` |
+
+发体验版**在干净的 HEAD 副本里跑**（发版脚本从当前目录构建，共享工作区里会带上别人没提交的改动）：
+
+```bash
+git worktree add --detach <tmp>/c-rel HEAD && cd <tmp>/c-rel
+ln -s <repo>/node_modules node_modules && mkdir -p c-app/node_modules/@ai-shop elec-app/node_modules/@ai-shop
+ln -s ../../../packages/ui c-app/node_modules/@ai-shop/ui
+cd c-app && node scripts/with-elec.mjs release <版本> "<备注>"
+```
+
+**独立发布那天要删的**：`me/index.vue` 那一行与 `gotoElec`、词条 `me.elecEntry`、`c-app/.env` 的 `VITE_WITH_ELEC`、
+`with-elec.mjs` 与 `.gitignore` 里那两行。
+
+### 2.5 生产部署 elec-svc（2026-09-30 追加）
+
+照「独立服务与第一步」§3.8 的清单：
+
+| 项 | 做了什么 |
+|---|---|
+| 库 | MySQL 9.7（3307）建 `ai_shop_elec`（utf8mb4_0900_ai_ci）与专用账号 `ai_shop_elec@127.0.0.1/localhost`，只授这一个库 |
+| 配置 | `/data/app/ai-shop/elec-svc/elec.env`（deploy:deploy 600）：库连接、`ELEC_MAIN_URL`，内部令牌与企业微信群地址从主系统配置**按行拷**，密码在服务器上生成，全程不落终端 |
+| 进程 | `deploy/tencent/systemd/ai-shop-elec.service` 装到 `/etc/systemd/system/` 并 enable；日志 `/data/log/ai-shop/elec-svc/` |
+| 发包 | `scripts/deploy-backend.sh elec-svc`（本次加的分支）：健康检查用游客可查的 `GET /elec/c/part`（200 = 容器、过滤链、库都通）；版本回读走 pay-svc 那条「软链 + 进程启动时间」 |
+| nginx | `www.hxmall.top` 用仓库版替换（与线上逐字比过，只差 `/elec/` 那一段），先备份、`nginx -t` 再 reload |
+
+**主系统没有一起发**：线上停在 `02259c97a`，比「派单给供应商」（9af209fc9）还早，所以
+`/internal/elec/notify/supplier`（通知供应商有新求购 / 被选中）线上还没有 —— 调不通只记日志、
+不影响操作本身（`RemoteSupplierNotifier` 返回 false）。认令牌与取手机号两个接口的契约没变，照常可用。
+带上它要连同别的会话这两天的全部主系统改动一起上线，不在这次范围里。
+
 ### 契约变更
 
 - 端点：**无**（全部是已有端点）

@@ -24,6 +24,7 @@ HOST="${HOST:-soukmind-tx}"
 #
 #   scripts/deploy-backend.sh            # 主应用（默认，行为与此前逐字一致）
 #   scripts/deploy-backend.sh pay-svc    # 支付域独立进程
+#   scripts/deploy-backend.sh elec-svc   # 电子元器件独立进程（2026-09-30 起）
 APP="${1:-shop-app}"
 case "$APP" in
     shop-app)
@@ -40,7 +41,14 @@ case "$APP" in
         # 而进程没起是连不上（000）。这两者必须分得开 —— 见 wait_healthy 的注释。
         HEALTH="${HEALTH:-http://localhost:8083/internal/pay/fee-rules}"
         HEALTH_OK="${HEALTH_OK:-401}" ;;
-    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
+    elec-svc)
+        MVN_MODULE="elec/elec-svc"; JAR_IN_REPO="elec/elec-svc/target/elec-svc-0.1.0-SNAPSHOT.jar"
+        REMOTE_DIR="${REMOTE_DIR:-/data/app/ai-shop/elec-svc}"; LINK_NAME="elec-svc.jar"
+        SERVICE="${SERVICE:-ai-shop-elec}"
+        # 也没有 actuator。拿**游客可查**的查料号当活口：200 说明容器、过滤链、它自己的库都通了
+        # （查料号要读 elc_part_market），比 pay-svc 那条 401 多证明一层库连得上
+        HEALTH="${HEALTH:-http://localhost:8085/elec/c/part?keyword=health}" ;;
+    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc / elec-svc）" >&2; exit 2 ;;
 esac
 HEALTH_OK="${HEALTH_OK:-200}"
 LINK="$REMOTE_DIR/$LINK_NAME"
@@ -289,7 +297,8 @@ if wait_healthy; then
     #
     # 对它改用两条能查的事实：软链指向新包 + 进程启动时间在本次部署之后。
     # 那两条合起来同样排除「换了包没重启」与「重启失败跑旧包」。
-    if [ "$APP" = "pay-svc" ]; then
+    # elec-svc 同样没有 actuator，走同一条判据
+    if [ "$APP" != "shop-app" ]; then
         LIVE_JAR="$(ssh "$HOST" "readlink -f '$LINK'")"
         STARTED="$(ssh "$HOST" "sudo ps -eo etimes,args | grep '$LINK_NAME' | grep -v grep | head -1 | awk '{print \$1}'")"
         if [ "$(basename "$LIVE_JAR")" = "$JAR_NAME" ] && [ "${STARTED:-99999}" -lt 300 ]; then

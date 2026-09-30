@@ -301,6 +301,7 @@ export default {
   },
   me: {
     appearance: "المظهر واللغة",
+    elecEntry: "المكونات الإلكترونية (تجريبي)",
     contact: "تواصل مع الدعم",
     myPlace: "موقعي",
     help: "مركز المساعدة",

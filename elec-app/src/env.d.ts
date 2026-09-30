@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_WX_TPL_ELEC_QUOTED: string;
   readonly VITE_WX_TPL_ELEC_DISPATCH: string;
   readonly VITE_WX_TPL_ELEC_PICKED: string;
+  /** 路由前缀。独立发布为空；并进 c-app 测试时是 /pkg-elec（构建脚本注入） */
+  readonly VITE_ELEC_ROUTE_BASE?: string;
 }
 
 interface ImportMeta {

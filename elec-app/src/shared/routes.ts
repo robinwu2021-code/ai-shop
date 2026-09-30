@@ -1,21 +1,27 @@
 // 页面路由。**只在这一处写路径**，页面之间跳转一律引这里。
+//
+// 前缀：独立发布时为空（`/pages/...`）；测试期并进 c-app 当分包时是 `/pkg-elec`
+// （由 c-app/scripts/with-elec.mjs 在构建时注入 VITE_ELEC_ROUTE_BASE）。
+// 页面里不许写死 `/pages/...` —— 并包之后那些跳转会静默失败。
+const BASE = import.meta.env.VITE_ELEC_ROUTE_BASE || "";
+
 export const ROUTES = {
-  home: "/pages/home/index",
-  search: "/pages/search/index",
-  part: "/pages/part/index",
-  lookup: "/pages/lookup/index",
-  rfqCreate: "/pages/rfq-create/index",
-  rfqs: "/pages/rfqs/index",
-  rfq: "/pages/rfq/index",
-  supplierJoin: "/pages/supplier-join/index",
-  supplier: "/pages/supplier/index",
-  stockUpload: "/pages/stock-upload/index",
-  stockPreview: "/pages/stock-preview/index",
-  stocks: "/pages/stocks/index",
-  supplierProfile: "/pages/supplier-profile/index",
-  dispatches: "/pages/dispatches/index",
-  dispatch: "/pages/dispatch/index",
-  login: "/pages/login/index",
+  home: `${BASE}/pages/home/index`,
+  search: `${BASE}/pages/search/index`,
+  part: `${BASE}/pages/part/index`,
+  lookup: `${BASE}/pages/lookup/index`,
+  rfqCreate: `${BASE}/pages/rfq-create/index`,
+  rfqs: `${BASE}/pages/rfqs/index`,
+  rfq: `${BASE}/pages/rfq/index`,
+  supplierJoin: `${BASE}/pages/supplier-join/index`,
+  supplier: `${BASE}/pages/supplier/index`,
+  stockUpload: `${BASE}/pages/stock-upload/index`,
+  stockPreview: `${BASE}/pages/stock-preview/index`,
+  stocks: `${BASE}/pages/stocks/index`,
+  supplierProfile: `${BASE}/pages/supplier-profile/index`,
+  dispatches: `${BASE}/pages/dispatches/index`,
+  dispatch: `${BASE}/pages/dispatch/index`,
+  login: `${BASE}/pages/login/index`,
 } as const;
 
 /** 拼查询串。值为空的键不带 —— 否则会出现 `?partNo=undefined` */

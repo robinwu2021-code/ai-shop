@@ -72,7 +72,9 @@ export const useUserStore = defineStore("elecUser", {
   },
 
   persist: {
-    key: STORAGE.user,
+    // 不与 c-app 的用户 store 共用 STORAGE.user：测试期并进 c-app 时两个 store 同在一个进程里，
+    // 同一个键会互相覆盖（c-app 那份还存着邀请人）。令牌本来就共用 STORAGE.token，那是有意的
+    key: `${STORAGE.user}_elec`,
     pick: ["user"],
   },
 });

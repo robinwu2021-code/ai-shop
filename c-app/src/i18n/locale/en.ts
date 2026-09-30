@@ -301,6 +301,7 @@ export default {
   },
   me: {
     appearance: "Appearance & language",
+    elecEntry: "Electronic components (test)",
     contact: "Contact support",
     myPlace: "My location",
     help: "Help centre",

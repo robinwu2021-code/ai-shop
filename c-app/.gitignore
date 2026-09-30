@@ -12,3 +12,7 @@ tests/e2e/out/
 
 # 环境文件的备份：改地址时顺手留的，不是配置的一部分（曾被一次全量提交扫进库）
 .env*.bak
+
+# 元器件测试期并包（scripts/with-elec.mjs）的中间产物：构建完就还原，残留了也别提交
+src/pkg-elec/
+src/pages.json.with-elec.bak
