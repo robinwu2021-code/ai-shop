@@ -106,12 +106,13 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     private final ElecDispatchService dispatches;
     private final SupplierMapper supplierMapper;
     private final ElecStockViews views;
+    private final ElecSupplierAccess access;
     private final TransactionTemplate tx;
 
     public ElecRfqServiceImpl(RfqMapper rfqMapper, RfqLineMapper lineMapper, PartMapper partMapper,
                               StockMapper stockMapper, ElecAccounts accounts, ElecAlerts alerts,
                               ElecBuyerNotifier buyers, ElecProperties props, ElecDispatchService dispatches,
-                              SupplierMapper supplierMapper, ElecStockViews views,
+                              SupplierMapper supplierMapper, ElecStockViews views, ElecSupplierAccess access,
                               @Qualifier("elecTransactionManager") PlatformTransactionManager tm) {
         this.rfqMapper = rfqMapper;
         this.lineMapper = lineMapper;
@@ -124,6 +125,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         this.dispatches = dispatches;
         this.supplierMapper = supplierMapper;
         this.views = views;
+        this.access = access;
         this.tx = new TransactionTemplate(tm);
     }
 
@@ -311,6 +313,11 @@ public class ElecRfqServiceImpl implements ElecRfqService {
          * 手工指派是运营手输的号 —— 输错的、暂停中的都要在这里挡住：
          * 派给暂停的供应商，他收到通知点进来却报不了价。
          */
+        // 买家本人所在的供应商不能派：运营多半是按电话找的人，没意识到是同一个人
+        ElcSupplier self = access.of(h.getBuyerRef());
+        if (self != null && nos.contains(self.getSupplierNo())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         long ok = supplierMapper.selectCount(Wrappers.<ElcSupplier>lambdaQuery()
                 .in(ElcSupplier::getSupplierNo, nos)
                 .eq(ElcSupplier::getStatus, ElcSupplier.STATUS_ACTIVE));

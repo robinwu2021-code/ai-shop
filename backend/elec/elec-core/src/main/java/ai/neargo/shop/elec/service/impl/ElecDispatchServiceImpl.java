@@ -122,6 +122,12 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
     @Override
     public int dispatch(ElcRfq rfq, List<ElcRfqLine> lines) {
         LocalDate today = LocalDate.now();
+        /*
+         * 买家本人如果也是供应商，自己的求购不派给自己：占掉一个派单名额（每行有上限），
+         * 还能给自己报价、把「几家报了价」撑高。他搜料号时照样看得到自己的货 —— 那是档位，不泄露什么。
+         */
+        ElcSupplier self = access.of(rfq.getBuyerRef());
+        String selfNo = self == null ? null : self.getSupplierNo();
         List<ElcDispatch> rows = new ArrayList<>();
         Set<String> suppliers = new java.util.LinkedHashSet<>();
         for (ElcRfqLine line : lines) {
@@ -134,7 +140,9 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                     .ge(ElcStock::getValidUntil, today));
             Set<String> hit = new java.util.LinkedHashSet<>();
             for (ElcStock s : stock) {
-                hit.add(s.getSupplierNo());
+                if (!s.getSupplierNo().equals(selfNo)) {
+                    hit.add(s.getSupplierNo());
+                }
             }
             /*
              * **每行派几家有上限**（默认 5）。派太多的后果不是吵，是响应率整体塌掉：

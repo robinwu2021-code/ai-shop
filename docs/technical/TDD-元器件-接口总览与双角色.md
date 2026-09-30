@@ -1,6 +1,6 @@
 # TDD-元器件 · 接口总览与双角色（一个账号，买家与供应商两套逻辑）
 
-> 2026-09-30 · 状态：**方案 · 待确认**（§2 是现状，已实现；§4 的三处改动未实现，等确认）
+> 2026-09-30 · 状态：**已实现**（§4.1 除 `rfqNewOffers` 外、§4.2 已实现；§4.3 已定维持共用；`rfqNewOffers` 待定）
 > 档位：1（新增 1 个端点 · 派单规则改一条 · 订阅消息模板待拍板）
 > 前置：[独立服务与第一步](./TDD-元器件-独立服务与第一步.md) · [前端独立与通知矩阵](./TDD-元器件-前端独立与通知矩阵.md) ·
 > [运营端接口](./TDD-元器件-运营端接口.md) · [通知补齐](./TDD-元器件-通知补齐.md) · 响应信封见 [响应格式规范](../api/响应格式规范.md)
@@ -182,7 +182,7 @@ GET /elec/me  （要登录；不要手机号 —— 它要告诉端上「你还�
 
 **不改的**：买家搜料号时照样看得到自己的货（投影是全市场的，只到档位，看到自己的那份没有信息泄露）。
 
-### 4.3 订阅消息额度：两面共用一个模板（待拍板）
+### 4.3 订阅消息额度：两面共用一个模板（**已定：维持共用**，2026-09-30）
 
 现状：买家的「询价有结果」与供应商的「有新求购 / 报价被选中」用的是**同一个订阅模板**（场景 `ELEC_QUOTED`），
 额度按「用户 × 模板」记。对只有一种身份的人没有问题；**两种身份都有的人**，一次授权会被先到的那件事用掉。
@@ -207,17 +207,23 @@ GET /elec/me  （要登录；不要手机号 —— 它要告诉端上「你还�
 
 **待拍板**：
 
-1. §4.3 订阅消息选 A 还是 B（推荐 A）
-2. §4.1 的 `rfqNewOffers` 要不要做（要加一列；不做的话 `/elec/me` 先只给另外两个角标）
+1. ~~§4.3 订阅消息选 A 还是 B~~ → **A，维持共用**（2026-09-30 定）
+2. §4.1 的 `rfqNewOffers` 要不要做（要给 `elc_rfq` 加一列）。**未定**：`/elec/me` 先不带这个字段，
+   以后加上是只增不改，已有调用方不受影响
 
 ---
 
-## 六、对账（§四 实现时填）
+## 六、对账
 
-| AC | 需求 | 落点 | 测试 |
-|---|---|---|---|
-| AC1 | 端上一次调用拿到身份与两面角标 | `GET /elec/me` | |
-| AC2 | `/elec/me` 不带任何一面的内容 | 同上，出参只有计数 | |
-| AC3 | 自己的求购不自动派给自己 | `ElecDispatchServiceImpl#dispatch` | |
-| AC4 | 运营不能把求购指派给买家本人的供应商 | `ElecRfqServiceImpl#opsDispatch` | |
-| AC5 | 被暂停的供应商照样能询价、接受报价（R4 钉住） | 买家面不调 `ElecSupplierAccess` | |
+| AC | 需求 | 落点 | 测试 | 消融 |
+|---|---|---|---|---|
+| AC1 | 端上一次调用拿到身份与两面角标；成为供应商后不用重新登录 | `ElecMeController` · `ElecMeServiceImpl` · `MeDtos` | `ElecRolesFlowTest#ac1_meForPlainBuyer` · `#ac1ac2_meForSupplier` | — |
+| AC2 | `/elec/me` 不带任何一面的内容 | 出参只有 userNo / phoneBound / supplier / badges | `#ac1ac2_meForSupplier`（字段集合精确相等） | — |
+| AC3 | 自己的求购不自动派给自己 | `ElecDispatchServiceImpl#dispatch` 排除 `access.of(buyerRef)` | `#ac3_noSelfDispatch` | 去掉排除 → 红在「自己那一面收不到自己的求购」✅ |
+| AC4 | 运营不能把求购指派给买家本人的供应商 | `ElecRfqServiceImpl#opsDispatch` | `#ac4_opsCannotDispatchToBuyerSelf` | 去掉判断 → 红在第 112 行 ✅ |
+| AC5 | 被暂停的供应商照样能询价、接受报价；供应商角标归零 | 买家面不调 `ElecSupplierAccess`；`ElecMeServiceImpl` 暂停时角标为 0 | `#ac5_suspendedSupplierCanStillBuy` | — |
+
+`mvn -o -pl elec/elec-svc -am test`：10 个类 84 条，0 红。`/elec/me` 的鉴权由 `ElecEndpointAuthTest` 自动覆盖。
+
+**与 §4.1 的偏差**：`badges` 暂不含 `rfqNewOffers`（待定，见 §五）。以后加是只增不改。
+**没改 `packages/shared/src/types/elec.ts`**：前端会话正在改这个文件（工作区里有它未提交的改动），`MeView` 的 TS 类型由前端会话按 §4.1 的形状补。
