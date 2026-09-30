@@ -170,10 +170,10 @@ function gotoVisited() {
 }
 
 /*
- * 元器件 · **测试期临时入口**。元器件是独立小程序（elec-app/），上线前借本小程序的
- * 登录与域名测一轮：c-app/scripts/with-elec.mjs 打的包里带 pkg-elec 分包，并注入 VITE_WITH_ELEC=1；
- * 平常的构建没有那个分包，这一行也不渲染（否则点进去是一个不存在的页面）。
- * 元器件独立发布那天连同词条 me.elecEntry 一起删掉（TDD-元器件-小程序独立工程 §2.4）。
+ * 元器件 · **过渡期入口**（2026-09-30 用户定：「虹选电子」小程序开通前，先从虹选进）。
+ * 元器件是独立项目 ai-hxkey；`npm run release:mp` 走 scripts/with-elec.mjs，打的包里带 pkg-elec 分包并注入
+ * VITE_WITH_ELEC=1。不带分包的构建（dev、H5、`release:mp:plain`）这一行不渲染 —— 否则点进去是一个不存在的页面。
+ * 「虹选电子」独立上线那天连同词条 me.elecEntry、with-elec.mjs 一起删掉（ai-hxkey TDD-元器件-独立成项目 第 7 步）。
  */
 const WITH_ELEC = import.meta.env.VITE_WITH_ELEC === "1";
 
