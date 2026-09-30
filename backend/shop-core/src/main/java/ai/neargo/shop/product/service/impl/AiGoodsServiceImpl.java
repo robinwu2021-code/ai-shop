@@ -28,12 +28,14 @@ public class AiGoodsServiceImpl implements AiGoodsService {
 
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
-    private final StoreStockMapper storeStockMapper;
+    /** 覆盖层规则的唯一一份实现 —— 店级库存怎么算只在它里面 */
+    private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
-    public AiGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, StoreStockMapper storeStockMapper) {
+    public AiGoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
+                              ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
-        this.storeStockMapper = storeStockMapper;
+        this.storeStockReader = storeStockReader;
     }
 
     @Override
@@ -155,26 +157,25 @@ public class AiGoodsServiceImpl implements AiGoodsService {
     }
 
     /**
-     * SKU → 可售库存。没传门店 = SKU 总量；传了门店：该 SKU 有任意店级行就只认本店那一行（没有 = 0），
-     * 一条店级行都没有才回退 SKU 总量 —— 与 {@code PrdStoreStock} 的覆盖层模型同一条规则。
+     * SKU → 可售库存。**规则不在这里，在 {@link StoreStockReader}** ——
+     * 覆盖层（没有店级行 → 主体总量；有了任意一条 → 没行的店视为 0）此前在三处各有一份，
+     * 而 {@code StockPortImpl} 的注释早写着「两处判据不一致会出现半边账，
+     * 而两个数都还是正的，没有任何地方会报错」。2026-09-30 并成一份。
+     *
+     * <p>这里只剩两件本地的事：转成 long（问答那边的行是 long），
+     * 以及**按已经查出来的 SKU 过一遍** —— 读取器按 skuNo 查，
+     * 而这条路的 skus 已经按主体筛过了。
      */
     private Map<String, Long> stock(String merchantNo, String storeNo, Collection<PrdSku> skus) {
+        if (skus.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<String, Integer> avail = storeStockReader.available(
+                skus.stream().map(PrdSku::getSkuNo).toList(), storeNo);
         Map<String, Long> out = new HashMap<>();
         for (PrdSku s : skus) {
-            out.put(s.getSkuNo(), Math.max(0L, nzi(s.getStock()) - nzi(s.getLockedStock())));
+            out.put(s.getSkuNo(), (long) avail.getOrDefault(s.getSkuNo(), 0));
         }
-        if (storeNo == null || storeNo.isBlank() || skus.isEmpty()) {
-            return out;
-        }
-        Map<String, List<PrdStoreStock>> rows = new HashMap<>();
-        for (List<String> chunk : chunks(skus.stream().map(PrdSku::getSkuNo).toList())) {
-            DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectList(
-                            Wrappers.<PrdStoreStock>lambdaQuery().eq(PrdStoreStock::getEntityNo, merchantNo)
-                                    .in(PrdStoreStock::getSkuNo, chunk)))
-                    .forEach(r -> rows.computeIfAbsent(r.getSkuNo(), k -> new ArrayList<>()).add(r));
-        }
-        rows.forEach((sku, list) -> out.put(sku, list.stream().filter(r -> storeNo.equals(r.getStoreNo()))
-                .mapToLong(r -> Math.max(0L, nzi(r.getStock()) - nzi(r.getLockedStock()))).sum()));
         return out;
     }
 

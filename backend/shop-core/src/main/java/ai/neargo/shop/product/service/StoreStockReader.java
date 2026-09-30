@@ -31,8 +31,8 @@ import java.util.Map;
  * {@code StockPortImpl} 自己的注释就写着「两处判据不一致会出现半边账，
  * 而两个数都还是正的，没有任何地方会报错」。
  *
- * <p>⚠️ {@code AiGoodsServiceImpl#stock} 仍是自己那一份（它同时要算主体级批量），
- * 下一批并过来。新代码一律用这里。
+ * <p><b>三份已经合成一份</b>（2026-09-30）：{@code StockPortImpl#sellable}、
+ * {@code AiGoodsServiceImpl#stock}、买家侧详情都走这里。**新代码一律用这里，不要再写第四份。**
  */
 @Component
 public class StoreStockReader {
@@ -61,13 +61,23 @@ public class StoreStockReader {
         return read(skuNos, storeNo, true);
     }
 
+    /**
+     * `IN (...)` 的分块大小。进销存问答会一次问一个商家的**全部** SKU，
+     * 不分块的话 MySQL 的 `max_allowed_packet` 与优化器都会在几千个占位符上翻脸，
+     * 而症状是一条看不懂的 SQL 异常。500 是从 `AiGoodsServiceImpl` 合过来的既有取值。
+     */
+    private static final int CHUNK = 500;
+
     private Map<String, Integer> read(List<String> skuNos, String storeNo, boolean minusLocked) {
         Map<String, Integer> out = new HashMap<>();
         if (skuNos == null || skuNos.isEmpty()) {
             return out;
         }
-        List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
-                skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)));
+        List<PrdSku> skus = new java.util.ArrayList<>();
+        for (List<String> chunk : chunks(skuNos)) {
+            skus.addAll(DataScopeContext.executeWithoutScope(() ->
+                    skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, chunk))));
+        }
         for (PrdSku s : skus) {
             out.put(s.getSkuNo(), Math.max(nz(s.getStock()) - (minusLocked ? nz(s.getLockedStock()) : 0), 0));
         }
@@ -79,9 +89,12 @@ public class StoreStockReader {
          * 「这个 SKU 有没有被按店管理」，只查本店的话分不出
          * 「没按店管理」与「按店管理但本店没设」，而这两者的答案相反（主体总量 vs 0）。
          */
-        List<PrdStoreStock> rows = DataScopeContext.executeWithoutScope(() ->
-                storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
-                        .in(PrdStoreStock::getSkuNo, skuNos)));
+        List<PrdStoreStock> rows = new java.util.ArrayList<>();
+        for (List<String> chunk : chunks(skuNos)) {
+            rows.addAll(DataScopeContext.executeWithoutScope(() ->
+                    storeStockMapper.selectList(Wrappers.<PrdStoreStock>lambdaQuery()
+                            .in(PrdStoreStock::getSkuNo, chunk))));
+        }
         Map<String, Integer> here = new HashMap<>();
         java.util.Set<String> managed = new java.util.HashSet<>();
         for (PrdStoreStock r : rows) {
@@ -116,6 +129,14 @@ public class StoreStockReader {
     /** 单个 SKU 的可售量，语义同 {@link #available(List, String)}。 */
     public int available(String skuNo, String storeNo) {
         return available(List.of(skuNo), storeNo).getOrDefault(skuNo, 0);
+    }
+
+    private static List<List<String>> chunks(List<String> all) {
+        List<List<String>> out = new java.util.ArrayList<>();
+        for (int i = 0; i < all.size(); i += CHUNK) {
+            out.add(all.subList(i, Math.min(all.size(), i + CHUNK)));
+        }
+        return out;
     }
 
     private static int nz(Integer v) {

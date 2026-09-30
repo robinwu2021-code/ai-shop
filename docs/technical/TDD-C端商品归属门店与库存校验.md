@@ -129,7 +129,12 @@
 1. **`StoreStockReader`**（A 批）—— 覆盖层规则原本在 `StockPortImpl` 与
    `AiGoodsServiceImpl` 各有一份，买家侧一份都没有。`StockPortImpl` 自己的注释就写着
    「两处判据不一致会出现半边账，而两个数都还是正的，没有任何地方会报错」。
-   ⚠️ `AiGoodsServiceImpl#stock` 仍是第三份，下一批并过来。
+   **三份已在 2026-09-30 合成一份**：`AiGoodsServiceImpl#stock` 改为委托，
+   只留「转 long」与「按已查出的 SKU 过一遍」两件本地的事，并把它的 `IN` 分块
+   （500 一批，进销存问答会一次问一个商家的全部 SKU）搬进读取器。
+   行为等价由 `AiDataEndpointTest#stockFollowsTheStoreOverrideLayer` 把住 ——
+   分店设了 7、主体总量 10、默认店没设行：三个数互不相等，所以有区分力；
+   消融（把 `storeNo` 传成 `null`）红在 `expected 7 but was 10`。
 
 2. **落店的判据改用「总库存」而不是「可售量」**（B 批）—— 落店解析在一次下单里
    跑好几趟（算价 / 锁库存 / 写子单），可售量在中间那趟之后已经被本单自己锁走了。

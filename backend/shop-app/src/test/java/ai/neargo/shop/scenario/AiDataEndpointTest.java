@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.portal.internal.AiDataEndpoint;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
+import ai.neargo.shop.product.entity.PrdStoreStock;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -65,6 +66,8 @@ class AiDataEndpointTest {
     private ProductMappers.SkuMapper skuMapper;
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
+    @Autowired
+    private ProductMappers.StoreStockMapper storeStockMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -277,6 +280,46 @@ class AiDataEndpointTest {
         assertThat(list.get("items").get(0).get("id").asString()).isEqualTo(goodsNo);
         JsonNode foreignList = call(tenant(get(BASE + "/goods/list"), b.merchantNo, null), null).get("data");
         assertThat(foreignList.get("total").asLong()).isZero();
+    }
+
+    @Test
+    @DisplayName("★ 带门店的问答按覆盖层给库存：设了行的店报它自己那一行，同商户没设行的店回 0 而不是主体总量")
+    void stockFollowsTheStoreOverrideLayer() throws Exception {
+        String btk = merchant("12600177081", "AI取数·店级库存");
+        Ctx c = ctx(btk);
+        String branch = createStore(btk, "AI取数·分店");
+        String goodsNo = "GAIST" + System.nanoTime() % 1_000_000_000L;
+        String skuNo = goods(c, goodsNo, "AI取数·店级库存商品", 500L, 10);
+
+        // 只给分店设店级行 —— 判据是「这个 SKU 有没有行」，不是「这家店有没有行」
+        PrdStoreStock row = new PrdStoreStock();
+        row.setEntityNo(c.merchantNo);
+        row.setStoreNo(branch);
+        row.setSkuNo(skuNo);
+        row.setStock(7);
+        row.setLockedStock(0);
+        storeStockMapper.insert(row);
+
+        assertThat(sku(c.merchantNo, branch, skuNo).get("stock").asLong())
+                .as("设了行的那家店，报它自己那一行（7 ≠ 主体总量 10，所以这条有区分力）").isEqualTo(7);
+        assertThat(sku(c.merchantNo, c.storeNo, skuNo).get("stock").asLong())
+                .as("这个 SKU 已经按店管了，没设行的默认店是 0 —— 回退主体总量会变成事实上的无限供应")
+                .isZero();
+        assertThat(sku(c.merchantNo, null, skuNo).get("stock").asLong())
+                .as("没有门店上下文（单店商家、或整商户口径）仍是主体总量").isEqualTo(10);
+    }
+
+    private JsonNode sku(String merchantNo, String storeNo, String skuNo) throws Exception {
+        return call(tenant(get(BASE + "/goods/sku").param("sku_id", skuNo), merchantNo, storeNo), null).get("data");
+    }
+
+    private String createStore(String token, String name) throws Exception {
+        String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"address\":\"某某路 3 号\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("storeNo").asString();
     }
 
     // ---------------------------------------------------------------- 工具
