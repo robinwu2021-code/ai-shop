@@ -1,6 +1,6 @@
 # TDD-元器件 · 小程序独立工程与目录结构
 
-> 2026-09-30 · 状态：**已实现**（小程序 16 页；运营端菜单是下一批，见 §2.3）
+> 2026-09-30 · 状态：**已实现**（小程序 16 页 · 运营端「元器件」四个子页，3558a156c，见 §2.3）
 > 档位：2（新前端工程 · 跨端 · 取代既有方案的一处决定）
 > 依据：[原型 elec-rfq](../../prototypes/elec-rfq.html) e01–e18 ·
 > [TDD-元器件-前端独立与通知矩阵](./TDD-元器件-前端独立与通知矩阵.md) §1 / §2.2 / §6 ·
@@ -19,7 +19,7 @@
 | AC1 | 后端独立服务、独立目录，与 pay 同构 | `backend/elec/{elec-api,elec-core,elec-svc}`（**已有**，本批不动）|
 | AC2 | 小程序独立：自己的工程、自己的 appid、自己的构建 | `elec-app/`（uni-app + Vue3 + TS，与 c-app 同栈）· `elec-app/src/manifest.json` |
 | AC3 | 与商城共用的只有组件库与类型 | `packages/ui`（sh-*）· `packages/shared/src/types/elec.ts` · 登录借主系统 `/mp/user/*` |
-| AC4 | 运营端同一个 ops-web，「元器件」一个根菜单、四个子项 | §2.3 菜单树 · 权限码沿用运营端接口 TDD 的六个 —— **下一批落地** |
+| AC4 | 运营端同一个 ops-web，「元器件」一个根菜单、四个子项 | §2.3 菜单树 · 权限码沿用运营端接口 TDD 的六个 —— **已落地**（3558a156c · V370）|
 | AC5 | 买家：搜料号 / 相近 / 详情 / 批量查 / 询价 / 我的询价 / 询价详情 / 接受报价 | `pages/{home,search,part,lookup,rfq-create,rfqs,rfq}`（e01–e11）|
 | AC6 | 买家按行选供应商的报价（匿名 A/B/C） | `pages/rfq` 的「选这条」→ `POST /elec/c/rfq/{no}/line/{n}/accept` |
 | AC7 | 供应商：成为供应商 / 工作台两态 / 上传 · 列映射 / 上架前确认 / 我的库存 / 资料 | `pages/{supplier-join,supplier,stock-upload,stock-preview,stocks,supplier-profile}`（e12–e18）|
@@ -67,7 +67,7 @@ elec-app/                          独立小程序（本批新建）
   tests/format.test.ts             金额换算单测
   vite.config.mts                  代理 /elec → 8085、/mp → 8081（.env.local 可改）
 packages/shared/src/types/elec.ts  前后端类型（本批补齐派单 / 报价 / 按行选 / 货况包装）
-ops-web/app/elec/                  运营端「元器件」（下一批，见 2.3）
+ops-web/app/elec/                  运营端「元器件」（见 2.3）
 ```
 
 ### 2.2 小程序页面
@@ -101,7 +101,7 @@ ops-web/app/elec/                  运营端「元器件」（下一批，见 2.
 小程序打开即静默登录（`WX_MINI`）→ 要手机号的那一步再绑号（能一键就一键，否则验证码）。
 H5 只是调试形态，在那里登不进来是预期的。
 
-### 2.3 运营端菜单（下一批）
+### 2.3 运营端菜单（2026-09-30 已实现，3558a156c）
 
 同一个 ops-web，一个根菜单、四个子项，子页走 `?tab=` 深链（静态导出，没有动态路由）：
 
@@ -127,6 +127,15 @@ H5 只是调试形态，在那里登不进来是预期的。
 **要先定的一件事**：ops-web 调 elec-svc 的基址。生产同域（nginx `/elec/` → 8085），留空即可；
 开发期 ops-web 没有代理（`output: "export"`），而 `NEXT_PUBLIC_API_BASE` 指着 8082 ——
 要么加 `NEXT_PUBLIC_ELEC_BASE`，要么 elec-svc 为 3100 开 CORS。建议前者：CORS 是会带进生产配置的口子。
+
+**落地时两样都要**：只加基址，浏览器从 3100 跨源调 8085 照样被拦。最后是
+`http-client` 加第二个基址 `elecClient`（生产留空＝同域）+ elec-svc 的 `elec.dev-cors-origins`
+（`ELEC_DEV_CORS_ORIGINS`，**默认空＝过滤链上根本没有 CORS**，生产不配）。两个方向各一个测试钉住：
+`ElecDevCorsTest`（配了才放行、别的源 403）· `ElecDevCorsOffTest`（默认无 CORS 头）。
+
+实际的登记与 2.3 列的有三处出入：菜单点只授超管（岗位 `ELEC_ADMIN` 与 `permissions.ts` 由后端会话另起 V371）·
+`FunctionPointPermAlignmentTest` 要认 `ElecOpsGuard.require(ElecInternal.PERM_X)`，否则六个码被判「没有端点」·
+第 14 个根菜单让侧栏超过 AC1 的 524px，项高 36 → 34（`py-[7px]`）。
 
 ### 2.4 测试期：并进虹选好店（2026-09-30 追加）
 
@@ -273,7 +282,9 @@ cd c-app && node scripts/with-elec.mjs release <版本> "<备注>"
 2. **登录页不是「手机号 + 验证码登录」**：原先照 c-app 的样子写了，真跑发现主系统不给匿名发码。
    改成两段式（§2.2 登录模型）。
 3. **原型里没有的两屏**（求购、求购详情）按后端 9af209fc9 已有的接口做了；原型待补。
-4. **运营端只到设计**：§2.3。另一个会话的运营端后端 TDD 也明确把 ops-web 页面与菜单登记留给「下一批」。
+4. ~~运营端只到设计~~ **2026-09-30 已实现**（3558a156c）。验收见 §7 同日的「运营端接口对账」一行。
+   **没验的**：运营端页面没有接真后端走 UI —— 共用的 ops-web dev server（3105）是 mock 模式、归别的会话，
+   没另起一个；接口层用下面那套逐字段对账代替，页面交互在 mock 下逐页点过。
 
 ---
 
@@ -285,3 +296,5 @@ cd c-app && node scripts/with-elec.mjs release <版本> "<备注>"
 | 2026-09-30 | 小程序 16 页已实现，真后端走通 §5；闸门见提交说明 |
 | 2026-09-30 | elec-svc 上线生产（`elec-svc-20260930-0820-ed70ac01f.jar`，库 `ai_shop_elec` 迁移 V1、16 张表）；nginx 加 `/elec/`（备份 `conf-backups/www.hxmall.top.bak-20260930-082124-pre-elec`）；经域名回读 `/elec/c/part` 200、原有 `/mp` `/c/` `/b/` `/ops-web/` 均 200 |
 | 2026-09-30 | 虹选好店体验版 `0.1.71-elec1`（HEAD ed70ac01f 并包，「我的 → 电子元器件（测试）」）；版本号只在发版副本里改，**不提交** |
+| 2026-09-30 | 运营端「元器件」上线（ops-web 与 shop-app、elec-svc 同为 ad49091ba；主库 V370 回读：6 个功能点、6 条超管授权）。生产上 `OPS:ST-BD` 调 `/elec/ops/rfq` → 10403（只授了超管，符合预期：判权链 令牌→主系统→ElecOpsGuard 是通的）|
+| 2026-09-30 | **运营端接口对账**：本机起真 elec-svc（ad49091ba 的 jar，临时库），主系统只替 `/internal/elec/**` 四个口（认令牌、给手机号、吞通知）—— 主系统本身在本机 MariaDB 12 上从头迁移到 V298 就挂（`utf8mb4` 默认映射到 uca1400，与生产 MySQL 9.7 不同，与本批无关）。按 `ops-web/lib/api/https/elec.ts` 的路径与参数调全部 21 个接口（两家供应商真上传、买家真询价、手工派单、一家报一家拒、平台逐行报价、关单、暂停/恢复、补别名），响应与 `lib/types/elec.ts` 逐层对：18 个接口类型全覆盖，**0 处缺键 / 0 处非空给 null / 0 个枚举越界 / 0 个多余字段**。消融：往响应副本里删键、置 null、塞非法枚举与多余键 → 四处都报 |
