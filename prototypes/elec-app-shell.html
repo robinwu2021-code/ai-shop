@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>元器件小程序框架</title>
+<!-- 真源在仓库 prototypes/elec-app-shell.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">独立小程序 · 元器件 · 界面原型 · 2026-09-30（框架稿）</div>
+  <h1>元器件：底部四格的整体框架</h1>
+  <p class="sub">这一稿只定<b>骨架</b>：有几格、每格放什么、从哪一格进到哪些二级页。
+  按<b>独立小程序</b>画 —— 四个菜单页是根页面，左上角没有返回键；二级页才有。
+  卡片里的字段、文案、状态细节<b>不在这一稿定</b>，框架确认后逐屏再画。</p>
+  <p class="sub">改动的起因：买家与供应商原先挤在同一页顶上一条「我要买 / 我是供应商」切换条里，
+  两面互相打断，也没有放账号与历史记录的地方。这一版拆成四格：<b>找料</b>（查）· <b>询价</b>（买）·
+  <b>供货</b>（卖）· <b>我的</b>（账号与记录）。页面树见 f07，待你拍板的六件事见最后一节。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">f01 — f05</span><h2>四个菜单页</h2></div>
+  <div class="grid">
+
+    <figure id="f01">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">元器件</span><span></span></div>
+        <div class="scr">
+          <div class="inp">料号，可带厂牌与数量</div>
+          <div class="sum"><span>一次查多个料号</span><span>批量查 ›</span></div>
+          <div class="gt"><span>最近搜过</span></div>
+          <div class="card"><div class="metric"><span class="chip">STM32F103</span><span class="chip">LM358 TI</span><span class="chip">NE555</span></div></div>
+          <div class="gt"><span>最近看过</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v dim">意法半导体</span></div>
+            <div class="frow"><span class="k">LM358DR</span><span class="v dim">德州仪器</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span class="on"><i>⌕</i>找料</span><span><i>☰</i>询价</span><span><i>▣</i>供货<em>1</em></span><span><i>◯</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>f01 找料</b>搜料号、批量查、最近搜过、最近看过。进小程序默认落在这一格。</figcaption>
+      <p class="why">这一格<b>只管找</b>。原先首页上的「我的询价」卡和页尾的「成为供应商」各有了自己的一格，不再挤在这里 —— 来查料号的人第一眼看到的就只有搜索框。</p>
+    </figure>
+
+    <figure id="f02">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">我的询价</span><span></span></div>
+        <div class="scr">
+          <div class="sum"><span>手上有料号清单？直接写下来问价</span><span>新询价 ›</span></div>
+          <div class="tabs line"><span class="on">全部</span><span>待报价</span><span>已报价</span><span>已结束</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">STM32F103C8T6 等 2 项</span><span class="chip act">已报价</span></div>
+            <div class="meta">今天 · 报价 3 天内有效</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">XC7A35T-1CSG324C</span><span class="chip warn">待报价</span></div>
+            <div class="meta">今天 · 预计明天前</div>
+          </div>
+        </div>
+        <div class="tabbar"><span><i>⌕</i>找料</span><span class="on"><i>☰</i>询价</span><span><i>▣</i>供货<em>1</em></span><span><i>◯</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>f02 询价</b>买家这一面：我的询价列表，顶上一行「新询价」。有新报价时这一格亮红点。</figcaption>
+      <p class="why">询价从料号页「询价」按钮发起的多，从这里发起的是手上已经有 BOM 清单的人 —— 所以「新询价」是一行入口，不做成压过列表的大按钮。</p>
+    </figure>
+
+    <figure id="f03">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">供应商工作台</span><span></span></div>
+        <div class="scr">
+          <div class="note">126 行 7 天内到期　<b>还有货，续 30 天 ›</b></div>
+          <div class="stats"><div><div class="n">3,210</div><div class="l">在售料号</div></div><div><div class="n">126</div><div class="l">7 天内到期</div></div><div><div class="n">今天</div><div class="l">上次上传</div></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">上传库存</span><span class="v go dim">增量或全量</span></div>
+            <div class="frow"><span class="k">我的库存</span><span class="v go dim">3,210 行</span></div>
+            <div class="frow"><span class="k">上传记录</span><span class="v go"></span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">求购</span><span class="v go hot">1 条待回</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">资料</span><span class="v go dim">S-KASA</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span><i>⌕</i>找料</span><span><i>☰</i>询价</span><span class="on"><i>▣</i>供货<em>1</em></span><span><i>◯</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>f03 供货 · 已是供应商</b>卖家这一面：到期提醒（带续期）、三格统计、库存三件事、求购、资料。</figcaption>
+      <p class="why">续期原来在底栏，底部菜单上来之后两条叠在一起，挪进到期提醒里 —— 提醒本来就是它出现的理由。红点 = 待回的求购 + 快到期的库存。</p>
+    </figure>
+
+    <figure id="f04">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">供应商工作台</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">手上有库存？传上来</span></div>
+            <div class="meta">1　一点成为供应商，不审核、不填表</div>
+            <div class="meta">2　传 ERP 导出的库存表，列自动认</div>
+            <div class="meta">3　买家搜到你的货，平台把求购派给你</div>
+            <div class="meta">你的公司名不给买家看，买家只看到匿名编号</div>
+            <div class="btn">成为供应商</div>
+          </div>
+        </div>
+        <div class="tabbar"><span><i>⌕</i>找料</span><span><i>☰</i>询价</span><span class="on"><i>▣</i>供货</span><span><i>◯</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>f04 供货 · 还不是供应商</b>同一格的另一态：就地招募，点按钮才去「成为供应商」确认手机号。</figcaption>
+      <p class="why">原先点「成为供应商」是一进来就跳走；现在这一格对谁都在，没成为供应商的人点进来先看到「有什么用」，不被直接推进表单。</p>
+    </figure>
+
+    <figure id="f05">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">我的</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">138****0000</span></div>
+            <div class="metric"><span class="chip">买家</span><span class="chip act">供应商 S-KASA</span></div>
+          </div>
+          <div class="gt"><span>买家</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">我的询价</span><span class="v go hot">1 单有新报价</span></div>
+            <div class="frow"><span class="k">新询价</span><span class="v go"></span></div>
+          </div>
+          <div class="gt"><span>供应商</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">求购</span><span class="v go hot">1 条待回</span></div>
+            <div class="frow"><span class="k">我的库存</span><span class="v go"></span></div>
+            <div class="frow"><span class="k">上传记录</span><span class="v go"></span></div>
+            <div class="frow"><span class="k">供应商资料</span><span class="v go"></span></div>
+          </div>
+          <div class="gt"><span>历史记录</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">看过的料号</span><span class="v go dim">12 个</span></div>
+            <div class="frow"><span class="k">搜过的</span><span class="v go dim">8 条</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span><i>⌕</i>找料</span><span><i>☰</i>询价</span><span><i>▣</i>供货<em>1</em></span><span class="on"><i>◯</i>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>f05 我的</b>账号（两个身份各一枚标签）、买家一组、供应商一组、历史记录一组。</figcaption>
+      <p class="why">两个身份<b>分组写</b>，不混成一张列表：同一个人两样都做，但他每次进来只做其中一样。没成为供应商时，供应商那组只剩一行「成为供应商」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">f06 — f07</span><h2>二级页与页面树</h2></div>
+  <div class="grid">
+
+    <figure id="f06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">历史记录</span><span></span></div>
+        <div class="scr">
+          <div class="tabs line"><span class="on">看过的料号</span><span>搜过的</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">STM32F103C8T6</span><span class="v dim">今天</span></div>
+            <div class="frow"><span class="k">LM358DR</span><span class="v dim">今天</span></div>
+            <div class="frow"><span class="k">AMS1117-3.3</span><span class="v dim">3 天前</span></div>
+          </div>
+          <div class="sum"><span>只记在这台手机上</span><span>清空</span></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>f06 历史记录</b>二级页：有返回键、没有底部菜单。两个页签，清空前确认。</figcaption>
+      <p class="why">只记本机，页脚直说 —— 换了手机就没了，别让人以为丢了数据。询价、求购那些有据可查的记录不在这里，各在自己的页。</p>
+    </figure>
+
+    <figure id="f07">
+      <table class="spec">
+        <tr><th>菜单</th><th>二级页</th></tr>
+        <tr><td>找料</td><td>搜索结果 → 料号详情 → 询价<br>批量查 → 询价</td></tr>
+        <tr><td>询价</td><td>询价详情（逐行看报价、选这条）<br>新询价</td></tr>
+        <tr><td>供货</td><td>上传库存 → 上架前确认<br>我的库存 · 上传记录<br>求购 → 求购详情（报价 / 婉拒）<br>供应商资料 · 成为供应商</td></tr>
+        <tr><td>我的</td><td>历史记录<br>（其余入口指向上面三格里的同一批页）</td></tr>
+      </table>
+      <figcaption class="cap"><b>f07 页面树</b>四格下面挂的二级页。二级页都没有底部菜单，返回回到进来的那一格。</figcaption>
+      <p class="why">二级页一页都没有新增，只是换了挂靠的位置：原先它们挂在首页与工作台下面，现在按「查 / 买 / 卖 / 我」分到四格。新增的只有「我的」与「历史记录」两页。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">待拍板</span><h2>框架里要你定的六件事</h2></div>
+  <table class="spec">
+    <tr><th>问题</th><th>这一稿的选择</th><th>另一种</th></tr>
+    <tr><td>几格</td><td>四格：找料 · 询价 · 供货 · 我的</td><td>三格：找料并进询价（搜索框放在询价页顶上）</td></tr>
+    <tr><td>求购放哪</td><td>供货页里一行，带「N 条待回」</td><td>求购单独成一格（五格），供应商打开就是待回列表</td></tr>
+    <tr><td>新询价入口</td><td>询价页顶上一行 + 我的里一行</td><td>询价页右上角一个「＋」，或找料页一个大按钮</td></tr>
+    <tr><td>供应商进来落在哪</td><td>上次停在供货，下次直接进供货</td><td>永远先落找料</td></tr>
+    <tr><td>历史记录范围</td><td>只记本机：看过的料号、搜过的词</td><td>登录后存云端、换手机还在；或把询价记录也并进来</td></tr>
+    <tr><td>我的里的杂项</td><td>不放客服 / 关于 / 退出登录（测试期账号跟虹选走）</td><td>独立发布时补上这三项</td></tr>
+  </table>
+</section>
+
+<footer>真源：prototypes/elec-app-shell.html · 登记：prototypes/registry.json · 前一版：prototypes/elec-rfq.html（e01 首页、e13/e14 工作台的顶部切换条被本稿取代） · 设计：docs/technical/TDD-元器件-小程序独立工程.md §2.6</footer>
+</div>
+</html>

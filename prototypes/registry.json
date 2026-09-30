@@ -1962,6 +1962,55 @@
     }
    ],
    "artifact": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG"
+  },
+  {
+   "slug": "elec-app-shell",
+   "file": "elec-app-shell.html",
+   "title": "元器件：底部四格的整体框架",
+   "kind": "pages",
+   "clients": [
+    "elec-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-30",
+   "summary": "框架稿，只定骨架。按独立小程序画：底部四格 找料（查）· 询价（买）· 供货（卖）· 我的（账号与记录），取代 elec-rfq 首页与工作台顶上的「我要买 / 我是供应商」切换条。四个菜单页是根页面、没有返回键；二级页都没有底部菜单。新增「我的」与「历史记录」两页，其余二级页只换挂靠位置。七屏 + 待拍板六件事（几格、求购放哪、新询价入口、供应商落点、历史记录范围、我的里的杂项）。",
+   "screens": [
+    {
+     "id": "f01",
+     "title": "找料"
+    },
+    {
+     "id": "f02",
+     "title": "询价"
+    },
+    {
+     "id": "f03",
+     "title": "供货 · 已是供应商"
+    },
+    {
+     "id": "f04",
+     "title": "供货 · 还不是供应商"
+    },
+    {
+     "id": "f05",
+     "title": "我的"
+    },
+    {
+     "id": "f06",
+     "title": "历史记录"
+    },
+    {
+     "id": "f07",
+     "title": "页面树"
+    }
+   ],
+   "docs": [
+    {
+     "label": "TDD-元器件-小程序独立工程",
+     "path": "docs/technical/TDD-元器件-小程序独立工程.md"
+    }
+   ],
+   "artifact": "https://claude.ai/artifact/Buc5iTam6pxfp5M1D8nesL"
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

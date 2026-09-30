@@ -177,6 +177,10 @@ figure.wide{grid-column:span 2}
 .tabbar{flex:0 0 auto;background:var(--sh-card);display:flex;padding:6px 0 10px}
 .tabbar span{flex:1;text-align:center;font-size:10px;color:var(--sh-sub)}
 .tabbar span.on{color:var(--sh-primary-text);font-weight:600}
+/* 底部菜单带图标与红点（2026-09-30 元器件四格）：<span><i>⌕</i>找料<em>3</em></span>；不带 i / em 的老写法不受影响 */
+.tabbar span{position:relative}
+.tabbar span i{display:block;font-style:normal;font-size:15px;line-height:1.25;font-weight:400}
+.tabbar span em{position:absolute;top:-3px;left:calc(50% + 3px);min-width:14px;height:14px;padding:0 4px;border-radius:99px;background:var(--sh-danger);color:#fff;font-size:9px;font-style:normal;font-weight:600;line-height:14px;box-sizing:border-box}
 /* 危险 / 阻断标签：红 tint（「未进件」「已约满」） */
 .chip.bad{background:var(--sh-danger-tint);color:var(--sh-danger-text)}
 /* 行内可编辑数值（盘点 / 报损每行的数量框）：faint 底才看得出能改 */
