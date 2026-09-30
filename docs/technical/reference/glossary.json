@@ -3214,6 +3214,12 @@
           "ar": "عرض الطلبات"
         },
         {
+          "key": "merchant.appLatestVersion",
+          "zh-CN": "最新版本 {v}",
+          "en": "Latest version {v}",
+          "ar": "أحدث إصدار {v}"
+        },
+        {
           "key": "merchant.appLinkCopied",
           "zh-CN": "地址已复制，用手机浏览器打开",
           "en": "Link copied — open it in your phone browser",
@@ -23289,6 +23295,12 @@
           "ar": "انتهت صلاحية هذه المعاينة. يرجى الرفع مجددًا"
         },
         {
+          "key": "err.elec.delist_confirm",
+          "zh-CN": "这次会下架 {0} 行库存，请确认后再上架",
+          "en": "This will delist {0} stock rows. Please confirm before listing",
+          "ar": "سيؤدي هذا إلى سحب {0} صفًا من المخزون. يرجى التأكيد قبل النشر"
+        },
+        {
           "key": "err.elec.mfr_exists",
           "zh-CN": "这个厂牌代码已经有了",
           "en": "This manufacturer code already exists",
@@ -23337,6 +23349,18 @@
           "ar": "حساب المورّد موقوف. يرجى التواصل معنا"
         },
         {
+          "key": "err.elec.upload_daily_limit",
+          "zh-CN": "今天已经上传 {0} 次了，明天再来",
+          "en": "You have uploaded {0} times today. Please try again tomorrow",
+          "ar": "لقد رفعت {0} مرات اليوم. يرجى المحاولة غدًا"
+        },
+        {
+          "key": "err.elec.upload_file_purged",
+          "zh-CN": "原文件已经清理，无法下载",
+          "en": "The original file has been cleaned up and can no longer be downloaded",
+          "ar": "تم حذف الملف الأصلي ولم يعد متاحًا للتنزيل"
+        },
+        {
           "key": "err.elec.upload_format",
           "zh-CN": "只支持 .xlsx 和 .csv。如果是 .xls，请在 Excel 里另存为 .xlsx 再上传",
           "en": "Only .xlsx and .csv are supported. For .xls files, save as .xlsx in Excel and upload again",
@@ -23347,6 +23371,12 @@
           "zh-CN": "表里没找到「型号」和「数量」两列，请检查表头",
           "en": "Could not find the part number and quantity columns. Please check the header row",
           "ar": "لم يتم العثور على عمودي رقم القطعة والكمية. يرجى التحقق من صف العناوين"
+        },
+        {
+          "key": "err.elec.upload_store",
+          "zh-CN": "文件保存失败，请稍后再试",
+          "en": "Could not save the file. Please try again later",
+          "ar": "تعذّر حفظ الملف. يرجى المحاولة لاحقًا"
         },
         {
           "key": "err.elec.upload_too_many_rows",
@@ -24527,6 +24557,13 @@
       "table": "elc_dispatch",
       "class": "ElcDispatch",
       "zh": "派单：供应商能看到求购需求的唯一通道。",
+      "module": "elec",
+      "package": "ai.neargo.shop.elec.entity"
+    },
+    {
+      "table": "elc_header_alias",
+      "class": "ElcHeaderAlias",
+      "zh": "表头别名：哪种写法的表头是哪个字段。",
       "module": "elec",
       "package": "ai.neargo.shop.elec.entity"
     },
@@ -26102,6 +26139,41 @@
         "module": "elec"
       },
       {
+        "host": "ElcHeaderAlias",
+        "name": "SOURCE_SEED",
+        "value": "SEED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcHeaderAlias",
+        "name": "SOURCE_OPS",
+        "value": "OPS",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcHeaderAlias",
+        "name": "SOURCE_LEARNED",
+        "value": "LEARNED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcHeaderAlias",
+        "name": "STATUS_ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcHeaderAlias",
+        "name": "STATUS_DISABLED",
+        "value": "DISABLED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "ElcManufacturer",
         "name": "UNKNOWN",
         "value": "UNKNOWN",
@@ -26243,6 +26315,13 @@
       },
       {
         "host": "ElcStockBatch",
+        "name": "STATUS_NEED_MAPPING",
+        "value": "NEED_MAPPING",
+        "zh": "认不出料号或数量是哪一列，等供应商手工指定（remap 之后转 PARSED）",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
         "name": "STATUS_PARSED",
         "value": "PARSED",
         "zh": "",
@@ -26251,6 +26330,48 @@
       {
         "host": "ElcStockBatch",
         "name": "STATUS_APPLIED",
+        "value": "APPLIED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_CANCELLED",
+        "value": "CANCELLED",
+        "zh": "供应商点了「放弃」",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_SUPERSEDED",
+        "value": "SUPERSEDED",
+        "zh": "同一家又传了一张，这张作废（一家只留一张待确认）",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_FAILED",
+        "value": "FAILED",
+        "zh": "文件读不了 / 找不到表头 / 超行数。",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "STATUS_EXPIRED",
+        "value": "EXPIRED",
+        "zh": "读时算出来的：待确认但已过了有效期。",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "AREA_FAILED",
+        "value": "FAILED",
+        "zh": "原件所在的区：未入库（上传先落这里）/ 已入库（确认上架后移过去）",
+        "module": "elec"
+      },
+      {
+        "host": "ElcStockBatch",
+        "name": "AREA_APPLIED",
         "value": "APPLIED",
         "zh": "",
         "module": "elec"
@@ -26280,6 +26401,34 @@
         "host": "ElcSupplierMember",
         "name": "STATUS_ACTIVE",
         "value": "ACTIVE",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ColumnResolver",
+        "name": "SRC_REMEMBERED",
+        "value": "REMEMBERED",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ColumnResolver",
+        "name": "SRC_ALIAS",
+        "value": "ALIAS",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ColumnResolver",
+        "name": "SRC_AI",
+        "value": "AI",
+        "zh": "",
+        "module": "elec"
+      },
+      {
+        "host": "ColumnResolver",
+        "name": "SRC_MANUAL",
+        "value": "MANUAL",
         "zh": "",
         "module": "elec"
       },
@@ -33063,7 +33212,11 @@
           "ELEC_RFQ_STATE",
           "ELEC_QUOTE_EXPIRED",
           "ELEC_MFR_EXISTS",
-          "ELEC_ALIAS_TAKEN"
+          "ELEC_ALIAS_TAKEN",
+          "ELEC_UPLOAD_DAILY_LIMIT",
+          "ELEC_DELIST_CONFIRM",
+          "ELEC_UPLOAD_STORE",
+          "ELEC_UPLOAD_FILE_PURGED"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
@@ -33669,10 +33822,15 @@
         "name": "ElecBatchStatus",
         "client": "shared",
         "values": [
+          "NEED_MAPPING",
           "PARSED",
-          "APPLIED"
+          "APPLIED",
+          "CANCELLED",
+          "SUPERSEDED",
+          "FAILED",
+          "EXPIRED"
         ],
-        "zh": "一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架"
+        "zh": "一次上传的状态：NEED_MAPPING 待指定列 / PARSED 待确认 / APPLIED 已上架 / CANCELLED 已放弃 / SUPERSEDED 已作废（又传了一张）/ FAILED 解析失败 / EXPIRED 已过期（上传满 1 小时没确认）"
       },
       {
         "name": "ElecCloseReason",
@@ -33693,6 +33851,17 @@
           "DONE"
         ],
         "zh": "NO_SOURCE 暂无货源（会通知买家）/ BUYER_CANCELLED 买家不要了 / DONE 已成交"
+      },
+      {
+        "name": "ElecColumnSource",
+        "client": "shared",
+        "values": [
+          "REMEMBERED",
+          "ALIAS",
+          "AI",
+          "MANUAL"
+        ],
+        "zh": "某个字段是怎么认出来的：REMEMBERED 上次确认过的 / ALIAS 表头写法 / AI 大模型（要他核对）/ MANUAL 他自己选的"
       },
       {
         "name": "ElecCond",
@@ -33787,6 +33956,30 @@
         "zh": "NONE 不开票 / VAT_NORMAL 普票 / VAT_SPECIAL 专票"
       },
       {
+        "name": "ElecIssueCode",
+        "client": "shared",
+        "values": [
+          "MPN_MISSING",
+          "MPN_INVALID",
+          "QTY_INVALID",
+          "QTY_ZERO",
+          "DUPLICATE",
+          "MFR_MISSING",
+          "MFR_UNKNOWN",
+          "DC_UNPARSED"
+        ],
+        "zh": "一处问题的码。"
+      },
+      {
+        "name": "ElecIssueLevel",
+        "client": "shared",
+        "values": [
+          "ERROR",
+          "WARN"
+        ],
+        "zh": "问题的级别：ERROR 这一行不上架 / WARN 照常上架"
+      },
+      {
         "name": "ElecLookupMatch",
         "client": "shared",
         "values": [
@@ -33851,6 +34044,18 @@
           "CUT_TAPE"
         ],
         "zh": "包装要求：ANY 不限 / REEL 必须整盘 / CUT_TAPE 可以剪带"
+      },
+      {
+        "name": "ElecPreviewKind",
+        "client": "shared",
+        "values": [
+          "INSERT",
+          "UPDATE",
+          "UNCHANGED",
+          "DELIST",
+          "PROBLEM"
+        ],
+        "zh": "预览里一行的类别：新增 / 更新 / 未变 / 将下架 / 有问题"
       },
       {
         "name": "ElecQtyBand",
@@ -35809,6 +36014,14 @@
       "module": "elec"
     },
     {
+      "host": "ElcHeaderAlias",
+      "name": "GLOBAL",
+      "type": "String",
+      "value": "\"\"",
+      "zh": "全局别名的 supplier_no。",
+      "module": "elec"
+    },
+    {
       "host": "ElecRfqServiceImpl",
       "name": "INVOICES",
       "type": "Set<String>",
@@ -35881,11 +36094,35 @@
       "module": "elec"
     },
     {
+      "host": "IssueText",
+      "name": "TEXT",
+      "type": "Map<String, String>",
+      "value": "Map.of( \"MPN_MISSING\", \"没有料号\", \"MPN_INVALID\", \"不像料号\", \"QTY_INVALID\", \"数量读不出\", \"DUPLICATE\", \"与第 %s 行重复\", \"MFR_MISSING\", \"没写厂牌\", \"MFR_UNKNOWN\", \"厂牌认不出\", \"QTY_ZERO\", \"数量为 0\", \"DC_UNPARSED\", \"批号读不出年份\")",
+      "zh": "",
+      "module": "elec"
+    },
+    {
       "host": "Mpn",
       "name": "MIN_KEY",
       "type": "int",
       "value": "2",
       "zh": "分段键的最短长度。",
+      "module": "elec"
+    },
+    {
+      "host": "UploadFileStore",
+      "name": "FAILED",
+      "type": "String",
+      "value": "\"failed\"",
+      "zh": "",
+      "module": "elec"
+    },
+    {
+      "host": "UploadFileStore",
+      "name": "APPLIED",
+      "type": "String",
+      "value": "\"applied\"",
+      "zh": "",
       "module": "elec"
     },
     {

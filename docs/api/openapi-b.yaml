@@ -104,6 +104,9 @@ components:
               type: "string"
             ios: 
               type: "string"
+            androidVersion: 
+              type: "string"
+              description: "安卓包的**最新版本号**，后端从发版脚本写的 `/dl/latest.json` 读。\n\n**端上不要再写一份** —— 版本号此前写死在三处（官网 site.config、 服务器 env、人的记性），每处都要手工跟，于是每处都会掉队： 2026-09-30 查出服务器那处停在 0.4.98，而官网已经 0.5.21，差二十多版。 掉队时下载照样 200、照样装得上，只是功能旧，**没有任何信号**。\n\n空串 = 后端也没读到清单，端上就不显示版本号（不显示好过显示一个猜的值）。"
           required: 
             - "android"
             - "ios"
@@ -919,23 +922,86 @@ components:
         - "row"
         - "reason"
       additionalProperties: false
+    ElecIssueCode: 
+      type: "string"
+      enum: 
+        - "MPN_MISSING"
+        - "MPN_INVALID"
+        - "QTY_INVALID"
+        - "QTY_ZERO"
+        - "DUPLICATE"
+        - "MFR_MISSING"
+        - "MFR_UNKNOWN"
+        - "DC_UNPARSED"
+      description: "一处问题的码。前四种是错误（这一行不上架），后三种是警告（照常上架，但列给他看）。 QTY_ZERO 数量为 0：也不上架（0 不是有货），单列一码是为了说清「是 0」而不是「读不出」"
+    ElecIssueLevel: 
+      type: "string"
+      enum: 
+        - "ERROR"
+        - "WARN"
+      description: "问题的级别：ERROR 这一行不上架 / WARN 照常上架"
+    ElecIssue: 
+      type: "object"
+      properties: 
+        row: 
+          type: "number"
+          description: "表里的行号，与 Excel 左边的行号一致"
+        col: 
+          type: "number"
+          description: "列序号（从 0 起，端上显示成字母）；-1 = 整行的问题（与前面的行重复）"
+        header: 
+          type: 
+            - "string"
+            - "null"
+          description: "那一列的表头原文"
+        value: 
+          type: 
+            - "string"
+            - "null"
+          description: "那一格的原值；DUPLICATE 时是先出现的那一行的行号"
+        code: 
+          "$ref": "#/components/schemas/ElecIssueCode"
+          description: "问题码"
+        level: 
+          "$ref": "#/components/schemas/ElecIssueLevel"
+          description: "错误不上架 / 警告照常上架"
+      required: 
+        - "row"
+        - "col"
+        - "code"
+        - "level"
+      additionalProperties: false
+      description: "一处问题，定位到格"
     ElecBatchStatus: 
       type: "string"
       enum: 
+        - "NEED_MAPPING"
         - "PARSED"
         - "APPLIED"
-      description: "一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架"
+        - "CANCELLED"
+        - "SUPERSEDED"
+        - "FAILED"
+        - "EXPIRED"
+      description: "一次上传的状态：NEED_MAPPING 待指定列 / PARSED 待确认 / APPLIED 已上架 / CANCELLED 已放弃 / SUPERSEDED 已作废（又传了一张）/ FAILED 解析失败 / EXPIRED 已过期（上传满 1 小时没确认）"
+    ElecColumnSource: 
+      type: "string"
+      enum: 
+        - "REMEMBERED"
+        - "ALIAS"
+        - "AI"
+        - "MANUAL"
+      description: "某个字段是怎么认出来的：REMEMBERED 上次确认过的 / ALIAS 表头写法 / AI 大模型（要他核对）/ MANUAL 他自己选的"
     ElecBatchPreview: 
       type: "object"
       properties: 
         batchNo: 
           type: "string"
-          description: "这次上传的批次号。确认上架、换列映射都带它"
+          description: "这次上传的批次号。确认上架、换列映射、翻看行、放弃都带它"
         fileName: 
           type: 
             - "string"
             - "null"
-          description: "上传的文件名"
+          description: "上传时选的文件名（原名）"
         mode: 
           "$ref": "#/components/schemas/ElecImportMode"
           description: "导入方式：只改表里有的 / 表里没有的下架"
@@ -947,18 +1013,27 @@ components:
           items: 
             type: "string"
           description: "表头那一行（原样），端上用它画「这几列分别是什么」"
+        headerRow: 
+          type: "number"
+          description: "表头在第几行（从 0 起）；-1 = 一列都没认出"
         columns: 
           "$ref": "#/components/schemas/Record_string_number"
-          description: "字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ"
+          description: "字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ …"
+        columnSource: 
+          "$ref": "#/components/schemas/Record_string_ElecColumnSource"
+          description: "字段 → 怎么认出来的。AI 认的要提示他核对"
         rowTotal: 
           type: "number"
           description: "表里一共几行（不含表头）"
         rowValid: 
           type: "number"
-          description: "其中能上架的几行"
+          description: "其中能上架的几行（含有警告的）"
         rowInvalid: 
           type: "number"
-          description: "认不了的几行（不是料号、数量读不出、与前面重复）"
+          description: "有错误、不上架的几行"
+        rowWarn: 
+          type: "number"
+          description: "有警告、照常上架的几行"
         toInsert: 
           type: "number"
           description: "确认后会新增几行"
@@ -971,36 +1046,256 @@ components:
         unchanged: 
           type: "number"
           description: "与库里完全一样、不会变的几行"
+        issueCounts: 
+          "$ref": "#/components/schemas/Record_string_number"
+          description: "问题码 → 几处"
+        issues: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecIssue"
+          description: "前 100 处问题（定位到格）；全部要翻「有问题」那一类"
         problems: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/ElecRowProblem"
-          description: "认不了的行（最多 50 条）"
+          description: "**过渡字段**：老版本读它（只有错误，一行一条）。新页面读 issues"
         delistSample: 
           type: "array"
           items: 
             type: "string"
           description: "将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」"
+        delistConfirm: 
+          type: "boolean"
+          description: "true = 下架的行数过了线，确认时要带上此刻的下架数"
         status: 
           "$ref": "#/components/schemas/ElecBatchStatus"
-          description: "PARSED 待确认 / APPLIED 已上架"
+          description: "状态"
+        deadline: 
+          type: 
+            - "string"
+            - "null"
+          description: "待确认的截止时刻；过了要重新上传"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "上传时刻"
+        appliedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "确认上架的时刻"
       required: 
         - "batchNo"
         - "mode"
         - "taxIncluded"
         - "headers"
+        - "headerRow"
         - "columns"
+        - "columnSource"
         - "rowTotal"
         - "rowValid"
         - "rowInvalid"
+        - "rowWarn"
         - "toInsert"
         - "toUpdate"
         - "toDelist"
         - "unchanged"
+        - "issueCounts"
+        - "issues"
         - "problems"
         - "delistSample"
+        - "delistConfirm"
         - "status"
       additionalProperties: false
+      description: "上传预览。**预览时一行库存都没动**，确认之后才上架；待确认的数据只在服务器内存里，到 deadline 为止。"
+    ElecPreviewKind: 
+      type: "string"
+      enum: 
+        - "INSERT"
+        - "UPDATE"
+        - "UNCHANGED"
+        - "DELIST"
+        - "PROBLEM"
+      description: "预览里一行的类别：新增 / 更新 / 未变 / 将下架 / 有问题"
+    ElecPreviewRow: 
+      type: "object"
+      properties: 
+        row: 
+          type: "number"
+          description: "表里的行号；将下架的行（表里没有）为 0"
+        kind: 
+          "$ref": "#/components/schemas/ElecPreviewKind"
+          description: "这一行属于哪一类"
+        mpn: 
+          type: 
+            - "string"
+            - "null"
+          description: "料号原样"
+        mfr: 
+          type: 
+            - "string"
+            - "null"
+          description: "厂牌原样"
+        qty: 
+          type: 
+            - "number"
+            - "null"
+          description: "数量"
+        dateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "批号原样"
+        packageName: 
+          type: 
+            - "string"
+            - "null"
+          description: "封装"
+        moq: 
+          type: 
+            - "number"
+            - "null"
+          description: "起订量"
+        spq: 
+          type: 
+            - "number"
+            - "null"
+          description: "最小包装量"
+        tiers: 
+          anyOf: 
+            - type: "array"
+              items: 
+                "$ref": "#/components/schemas/ElecPriceTier"
+            - type: "null"
+          description: "阶梯价"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+          description: "币种"
+        packing: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装方式"
+        cond: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数，0 = 现货"
+        region: 
+          type: 
+            - "string"
+            - "null"
+          description: "货在哪"
+        before: 
+          anyOf: 
+            - "$ref": "#/components/schemas/Record_string_unknown"
+            - type: "null"
+          description: "更新的行：变了的那几个字段的旧值（qty / dateCode / priceE6 …）"
+        issues: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ElecIssue"
+          description: "这一行的问题（警告也在这里）"
+      required: 
+        - "row"
+        - "kind"
+        - "issues"
+      additionalProperties: false
+      description: "预览里的一行：**解析之后**平台读到的值，让他核对「平台是不是这么理解我的表」"
+    ElecBatchSummary: 
+      type: "object"
+      properties: 
+        batchNo: 
+          type: "string"
+          description: "批次号"
+        fileName: 
+          type: 
+            - "string"
+            - "null"
+          description: "上传时选的文件名"
+        mode: 
+          "$ref": "#/components/schemas/ElecImportMode"
+          description: "导入方式"
+        status: 
+          "$ref": "#/components/schemas/ElecBatchStatus"
+          description: "状态"
+        failCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "解析失败的原因（错误码的文案键），如 err.elec.upload_format"
+        rowTotal: 
+          type: "number"
+          description: "表里一共几行"
+        rowValid: 
+          type: "number"
+          description: "能上架的几行"
+        rowInvalid: 
+          type: "number"
+          description: "有错误的几行"
+        rowWarn: 
+          type: "number"
+          description: "有警告的几行"
+        toInsert: 
+          type: "number"
+          description: "新增几行"
+        toUpdate: 
+          type: "number"
+          description: "更新几行"
+        toDelist: 
+          type: "number"
+          description: "下架几行"
+        unchanged: 
+          type: "number"
+          description: "未变几行"
+        aiUsed: 
+          type: "boolean"
+          description: "这次认列问过大模型没有"
+        fileAvailable: 
+          type: "boolean"
+          description: "原件还在不在（被清理之后为 false）"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "上传时刻"
+        appliedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "确认上架的时刻"
+      required: 
+        - "batchNo"
+        - "mode"
+        - "status"
+        - "rowTotal"
+        - "rowValid"
+        - "rowInvalid"
+        - "rowWarn"
+        - "toInsert"
+        - "toUpdate"
+        - "toDelist"
+        - "unchanged"
+        - "aiUsed"
+        - "fileAvailable"
+      additionalProperties: false
+      description: "上传记录的一行"
+    ElecApplyReq: 
+      type: "object"
+      properties: 
+        expectDelist: 
+          type: "number"
+          description: "此刻将下架的行数（预览里的 toDelist）"
+      additionalProperties: false
+      description: "确认上架。过了下架护栏的线时必须带上此刻的下架数"
     ElecRenewResult: 
       type: "object"
       properties: 
@@ -11918,6 +12213,13 @@ components:
       type: "object"
       additionalProperties: 
         type: "number"
+    Record_string_ElecColumnSource: 
+      type: "object"
+      additionalProperties: 
+        "$ref": "#/components/schemas/ElecColumnSource"
+    Record_string_unknown: 
+      type: "object"
+      additionalProperties: {}
     Record_string_string: 
       type: "object"
       additionalProperties: 
