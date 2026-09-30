@@ -150,6 +150,7 @@ ai-shop 的 `InternalElecEndpoint` 相应改为：认运营令牌 · 发短信 �
 | 4 | ✅ 包名 `ai.neargo.shop.elec` → `ai.neargo.key`：ai-hxkey `b97ac36` | ai-hxkey pre-push 全绿（后端 187 · 端上 43）|
 | 5 | ✅ 独立账号：ai-shop `4cef6e62d`（四个内部代办端点）· ai-hxkey `ca7a936`（V5 四张表、`/elec/auth/**`、`ktk_`、订阅额度、存量改写）· `b16fab2`（小程序登录与 `token_elec`）。设计与切换清单在 ai-hxkey 的 `docs/technical/TDD-元器件-独立账号.md` | 本机 MariaDB 临时库冒烟：V1–V5 空库执行、登录全链路（见那篇 §6） |
 | 6 | ✅ 已上线：ai-hxkey `bdafe1a`（V3–V5 同时上）；ai-shop 四个内部端点随 `299b06b77` 已在线；小程序体验版 0.1.74（`b6a5d43de`） | 生产库副本彩排 → 备份 → 发布 → 回读，详见 ai-hxkey 那篇 §7 |
+| 6½ | ✅ 同日追加（用户定：项目名 hxkey）：仓库 github.com/robinwu2021-code/ai-hxkey（本机 `~/work/ai/ai-hxkey`，旧目录改名 `ai-key.retired-20260930`）；包名 `ai.neargo.hxkey`、坐标 `ai.neargo.hxkey:hxkey-parent`（`890698e`）；生产改名：服务 `hxkey`、目录 `/data/app/hxkey`、库 `hxkey`（账号 `hxkey`）、日志 `/data/log/hxkey`（`971cdbe`；15:04:49 切换，停机约 14 秒，逐表行数一致）；每日备份补上 `hxkey`（`d621b68a6`） | 库副本上以 deploy 身份彩排；回读：连接全在 `hxkey` 库、外部入口 200/10400、老供应商账号在；旧服务 disable、旧库留作回滚 |
 
 **与方案的偏差**（都比方案保守，记下来免得后人按方案去找）：
 

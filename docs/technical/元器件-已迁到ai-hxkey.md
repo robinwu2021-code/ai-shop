@@ -24,4 +24,4 @@
 - 运营端：ops-web 的元器件四页、`V370` 菜单、`V371` 岗位授权（[TDD-元器件-运营端岗位授权](./TDD-元器件-运营端岗位授权.md)）、`Perms` 的六个码
 - `ErrorCode` 里的 `9xxxx`：迁移方案第 3 步后删除
 - c-app 的并包脚本 `c-app/scripts/with-elec.mjs`：源路径改指 `../ai-hxkey/app/src`，测试期仍并进虹选打包
-- nginx `location ^~ /elec/`；生产服务名 `ai-shop-elec`、库 `ai_shop_elec` 不改名
+- nginx `location ^~ /elec/`（不变）；生产 2026-09-30 下午改名：服务 `hxkey`、目录 `/data/app/hxkey`、库 `hxkey`（见 `deploy/tencent/README.md` 的「电子元器件 hxkey」）
