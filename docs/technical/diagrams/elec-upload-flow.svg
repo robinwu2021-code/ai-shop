@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 470" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13">
+  <title>元器件库存表上传：存盘、认列、暂存、确认</title>
+  <desc>上传后原件先按日期存盘；认列按「记住的映射、表头别名表、qwen 大模型、手工指定」四级递进；解析结果只放 Ehcache，从上传起最多 1 小时，缓存不在时从磁盘原件重建；确认时加锁、按此刻库存重算、过下架护栏，然后库存行、批次与问题行入库；放弃则删缓存与原件；清理任务按日期目录删除过期原件。</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker>
+  </defs>
+  <rect width="920" height="470" fill="#fff"/>
+  <g stroke="#555" fill="none" stroke-width="1.4" marker-end="url(#a)">
+    <path d="M150,70 L195,70"/>
+    <path d="M345,70 L390,70"/>
+    <path d="M465,110 L465,150"/>
+    <path d="M465,300 L465,330"/>
+    <path d="M540,370 L600,370"/>
+    <path d="M390,370 L320,370"/>
+    <path d="M270,70 L270,290 L385,352" stroke-dasharray="5 4"/>
+    <path d="M540,395 L620,440"/>
+  </g>
+  <!-- 上传 -->
+  <rect x="20" y="45" width="130" height="50" rx="8" fill="#eef4ff" stroke="#4a78c2"/>
+  <text x="85" y="66" text-anchor="middle">供应商上传</text>
+  <text x="85" y="84" text-anchor="middle" font-size="11" fill="#555">xlsx / csv · ≤5MB</text>
+  <!-- 存盘 -->
+  <rect x="195" y="45" width="150" height="50" rx="8" fill="#fff6e5" stroke="#c28a2a"/>
+  <text x="270" y="66" text-anchor="middle">原件存盘</text>
+  <text x="270" y="84" text-anchor="middle" font-size="11" fill="#555">/yyyy-MM-dd/批次号.xlsx</text>
+  <!-- 解析 -->
+  <rect x="390" y="30" width="150" height="80" rx="8" fill="#eef4ff" stroke="#4a78c2"/>
+  <text x="465" y="55" text-anchor="middle">解析 + 限次</text>
+  <text x="465" y="74" text-anchor="middle" font-size="11" fill="#555">行数封顶 · 每日上限</text>
+  <text x="465" y="91" text-anchor="middle" font-size="11" fill="#555">旧的待确认 → 作废</text>
+  <!-- 认列 -->
+  <rect x="340" y="150" width="250" height="150" rx="8" fill="#f1faf1" stroke="#3f9a4a"/>
+  <text x="465" y="172" text-anchor="middle" font-weight="600">认列（逐级，缺什么才往下）</text>
+  <text x="360" y="198">① 记住的映射（表头一字不差）</text>
+  <text x="360" y="222">② 表头别名表：本家学到的 &gt; 全局</text>
+  <text x="360" y="246">③ qwen：表头 + 5 行样本 → 列号</text>
+  <text x="378" y="264" font-size="11" fill="#555">内容校验不过的字段丢掉 · 8 秒超时 · 熔断</text>
+  <text x="360" y="288">④ 仍缺料号或数量 → 待指定列（手工）</text>
+  <!-- 缓存 -->
+  <rect x="390" y="330" width="150" height="80" rx="8" fill="#fbeefb" stroke="#a04aa0"/>
+  <text x="465" y="355" text-anchor="middle">Ehcache 暂存</text>
+  <text x="465" y="374" text-anchor="middle" font-size="11" fill="#555">解析行 · 问题 · 分类</text>
+  <text x="465" y="391" text-anchor="middle" font-size="11" fill="#555">上传起 ≤1 小时</text>
+  <!-- 确认 -->
+  <rect x="600" y="320" width="300" height="100" rx="8" fill="#eef4ff" stroke="#4a78c2"/>
+  <text x="750" y="343" text-anchor="middle" font-weight="600">确认</text>
+  <text x="615" y="366">锁供应商行 → 按此刻库存重算 → 下架护栏</text>
+  <text x="615" y="388">写库存行 · 批次 APPLIED · 问题行</text>
+  <text x="615" y="408">学到的表头写回本家别名 · 清缓存</text>
+  <!-- 放弃/过期 -->
+  <rect x="150" y="340" width="170" height="60" rx="8" fill="#fdeeee" stroke="#c24a4a"/>
+  <text x="235" y="364" text-anchor="middle">放弃 / 作废 / 过期</text>
+  <text x="235" y="384" text-anchor="middle" font-size="11" fill="#555">删缓存（放弃、作废同时删原件）</text>
+  <!-- 重建 -->
+  <text x="282" y="200" font-size="11" fill="#555">缓存不在且未满 1 小时：</text>
+  <text x="282" y="216" font-size="11" fill="#555">按存下的映射重解析原件</text>
+  <!-- 清理 -->
+  <rect x="620" y="425" width="280" height="36" rx="8" fill="#fff6e5" stroke="#c28a2a"/>
+  <text x="760" y="448" text-anchor="middle" font-size="12">清理任务：每天删超过保留天数的日期目录</text>
+  <!-- 前端 -->
+  <rect x="640" y="150" width="260" height="110" rx="8" fill="#fafafa" stroke="#888"/>
+  <text x="770" y="172" text-anchor="middle" font-weight="600">端上预览</text>
+  <text x="655" y="196">新增 / 更新 / 下架 / 未变 / 有问题</text>
+  <text x="655" y="218">问题定位到格：D12（数量）约2千</text>
+  <text x="655" y="240">导出问题行 · 放弃 · 确认</text>
+  <g stroke="#888" fill="none" stroke-width="1.2" stroke-dasharray="3 3"><path d="M540,360 L640,250"/></g>
+</svg>
