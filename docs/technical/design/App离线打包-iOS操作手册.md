@@ -3,7 +3,7 @@
 > 与《App离线打包-操作手册》（Android）同构。**这条链路一半在仓库里、一半在仓库外**，
 > 中间那段没人写就会丢 —— 那篇立档的理由，这篇照样成立。
 >
-> 状态：2026-09-28 首次打通，包已上传 App Store Connect（0.5.0 / 229）。
+> 状态：2026-09-30 第二次打通到 TestFlight（0.5.21 / 254，VALID）。首次是 2026-09-28（0.5.0 / 229）。
 
 ## 1. 仓库外的东西在哪
 
@@ -113,6 +113,67 @@ RUBYOPT="-E UTF-8" ruby -e "\$LOAD_PATH.unshift(*'$GEMS'.split(':').reject(&:emp
 
 ⚠️ 那段 ruby **不能带中文注释**：系统 ruby 默认 US-ASCII，会在**解析阶段**就失败
 （`invalid multibyte char`），一行都不会跑 —— 而它前面的步骤看起来都成功了。
+
+### 2.6 部署目标：Xcode 升级会把「警告」变成「直接失败」
+
+2026-09-30 本机 Xcode 升到 27，`archive` 直接失败（不是警告）：
+
+```
+error: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 13.0,
+but the range of supported deployment target versions is 15.0 to 27.0.x.
+```
+
+§5 里那句「2027-04 才要抬到 15」说的是 **App Store 上传侧**；而 **Xcode 本地构建侧**
+被工具链版本逼得更早 —— Xcode 27 最低只收 15.0。**三处都要抬，漏一处那个 target 照样让 archive 失败**：
+
+```bash
+# ① Podfile
+sed -i '' "s/platform :ios, '13.0'/platform :ios, '15.0'/" Podfile
+# ② app 工程：所有 <15 的（这个模板里有 13.0 也有 6.0）
+sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g; \
+           s/IPHONEOS_DEPLOYMENT_TARGET = 6.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' \
+  HBuilder-Hello.xcodeproj/project.pbxproj
+# ③ 重跑 pod install（Podfile 改了必须重装，它会把大部分 Pods target 设成 15）
+LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --no-repo-update
+# ④ pod install 后仍可能残留个别 pod 自带 13.0（不受 Podfile platform 覆盖）——直接抬掉
+sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' \
+  Pods/Pods.xcodeproj/project.pbxproj
+```
+
+判据：`grep -c 'IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.' <三个 pbxproj>` 全为 0。
+
+### 2.7 ExportOptions.plist：工程里没有，要自己建（重解压会丢）
+
+`xcodebuild -exportArchive` 需要它，而**解压出来的工程根目录没有这个文件**（DCloud 不带）。
+缺了报 `Couldn't load -exportOptionsPlist ... no such file`。内容（值从描述文件本身读，别猜）：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>72TUZXTHY5</string>
+  <key>signingStyle</key><string>manual</string>
+  <key>signingCertificate</key><string>Apple Distribution</string>
+  <key>provisioningProfiles</key>
+  <dict><key>top.hxmall.bapp</key><string>HXMall Merchant AppStore</string></dict>
+  <key>uploadSymbols</key><true/>
+  <key>destination</key><string>export</string>
+</dict></plist>
+```
+
+描述文件的真实字段：`security cms -D -i ~/work/env/apple/HXMall_Merchant_AppStore.mobileprovision`
+里的 `Name`（profile 名）、`TeamIdentifier`、`application-identifier`（去掉 team 前缀是 bundle）。
+`method` 用 `app-store-connect`（Xcode 15+；旧的 `app-store` 仍兼容）。
+
+### 2.8 体检脚本的参数是 .app，不是 .ipa
+
+`verify-ipa.py` 收的是**解压后的 `.app`**，直接喂 .ipa 会报 `NotADirectoryError`：
+
+```bash
+unzip -q <ipa> -d /tmp/unz
+python3 b-app/offline/ios/verify-ipa.py /tmp/unz/Payload/*.app
+```
 
 ## 3. 每次打包（可重复的部分）
 
