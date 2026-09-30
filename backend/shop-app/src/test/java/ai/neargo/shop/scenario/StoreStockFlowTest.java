@@ -251,20 +251,53 @@ class StoreStockFlowTest {
                 .as("A 店下架把 B 店也带下去了").isEqualTo(true);
     }
 
-    /** 列表里这件货在这家店的上架态。null = 未按店管理。 */
+    /**
+     * 列表里这件货在这家店的上架态。null = 未按店管理。
+     *
+     * <p><b>两个页签都找。</b> 2026-09-30 起「全部」页签也按门店筛
+     * （本店未上架的货不进去，它们在「已下架」里），而这个 helper 问的是
+     * 「这件货在这家店是什么状态」—— 那是一件与页签无关的事。
+     * 只查「全部」的话，A 店下架之后它就消失了，helper 抛的是
+     * 「列表里没有这件货」，而用例要断言的其实是 {@code storeOnSale == false}。
+     */
     private Boolean storeOnSaleOf(String token, String storeNo, String goodsNo) throws Exception {
-        String body = mvc().perform(get("/biz/goods")
-                        .header("Authorization", "Bearer " + token)
-                        .header("X-Store-No", storeNo).param("size", "100"))
+        var row = rowIn(token, storeNo, goodsNo, null);
+        if (row == null) {
+            row = rowIn(token, storeNo, goodsNo, "OFF_SALE");
+        }
+        if (row == null) {
+            throw new AssertionError("两个页签里都没有这件货：" + goodsNo);
+        }
+        var v = row.get("storeOnSale");
+        return v == null || v.isNull() ? null : v.asBoolean();
+    }
+
+    /**
+     * 这件货在这个页签里的那一行；不在就回 null。
+     *
+     * <p><b>回的是整行不是字段</b> —— 「没找到」与「字段是 null（未按店管理）」
+     * 是两件事，混成同一个返回值的话，用例里那句
+     * 「一条店级行都没有却给了 false」就再也测不到了。
+     *
+     * @param status null = 「全部」页签
+     */
+    private tools.jackson.databind.JsonNode rowIn(
+            String token, String storeNo, String goodsNo, String status) throws Exception {
+        var req = get("/biz/goods")
+                .header("Authorization", "Bearer " + token)
+                .header("X-Store-No", storeNo).param("size", "100");
+        if (status != null) {
+            req = req.param("status", status);
+        }
+        String body = mvc().perform(req)
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         for (var g : json.readTree(body).get("data").get("records")) {
             if (goodsNo.equals(g.get("goodsNo").asString())) {
-                var v = g.get("storeOnSale");
-                return v == null || v.isNull() ? null : v.asBoolean();
+                return g;
             }
         }
-        throw new AssertionError("列表里没有这件货：" + goodsNo);
+        return null;
     }
 
     private int shownStock(String token, String storeNo, String goodsNo, String skuNo) throws Exception {

@@ -124,6 +124,7 @@ class BizCrossStoreFlowTest {
         String pickupB = seedStorePickup(storeB, "对账分店自提点");
 
         String goodsNo = listedGoods(biz, "对账测试品", 1000, 100);
+        listAt(biz, storeB, goodsNo);
         String skuNo = firstSku(goodsNo);
 
         // A 店两单：1 件 + 3 件 = 4000 分；B 店一单：2 件 = 2000 分。
@@ -346,6 +347,7 @@ class BizCrossStoreFlowTest {
         String pickupB = seedStorePickup(storeB, "授权分店自提点");
 
         String goodsNo = listedGoods(owner, "授权测试品", 1200, 50);
+        listAt(owner, storeB, goodsNo);
         String skuNo = firstSku(goodsNo);
         buyAndPay("13001000050", goodsNo, skuNo, 1, pickupA, "xs-s-a");
         buyAndPay("13001000051", goodsNo, skuNo, 1, pickupB, "xs-s-b");
@@ -491,6 +493,29 @@ class BizCrossStoreFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("payOrderNo").asString();
+    }
+
+    /**
+     * 在**指定门店**也上架一件已经上架的货。
+     *
+     * <p>跨店总览这两条用例都是「两家店卖同一件货」的场景，而
+     * {@code listedGoods} 不带 {@code X-Store-No}，上架落在**默认店**上。
+     * 多门店商家第一次上架会把其他门店的行播成当时的主体级 on_sale，
+     * 也就是 {@code false} —— 分店其实一件都没上架。
+     *
+     * <p>此前买家链路不读门店行，所以到分店自提点照样买得到，
+     * 这个前提缺失一直没被发现；2026-09-30 门店级上下架接进下单校验之后，
+     * 这两条当场红在「下单 10404」上。补的是**场景本来就该有的那一步**，
+     * 不是为了让断言变绿而放宽判据。
+     */
+    private void listAt(String token, String storeNo, String goodsNo) throws Exception {
+        // 新店的经营类目是空的，不开这一项会被 GOODS_CATEGORY_IN_OTHER_STORE(70075) 拒
+        TestStoreCategory.open(mvc(), json, token, storeNo, "CAT210");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
     }
 
     private String listedGoods(String token, String title, long price, int stock) throws Exception {
