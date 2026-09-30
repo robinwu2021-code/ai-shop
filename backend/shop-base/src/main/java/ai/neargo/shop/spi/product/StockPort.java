@@ -98,6 +98,19 @@ public interface StockPort {
     }
 
     /**
+     * 同上，但按**这家店**算（TDD-C端商品归属门店与库存校验 AC6）。
+     *
+     * <p><b>不带门店那一版取的是「最能卖的那家」</b>，注释直言「加购时不知道哪家店履约」——
+     * 门店化之后买家是在某一家店里加的购，那家没货就该当场说，
+     * 而不是拿另一家的库存放行、到下单落店时才发现（那时人已经在结算页了）。
+     *
+     * @param storeNo 买家正在逛的那家店。空 = 没有门店上下文，与 {@link #sellable(String)} 等价
+     */
+    default int sellable(String skuNo, String storeNo) {
+        return sellable(skuNo);
+    }
+
+    /**
      * @param storeNo 这一行在**哪家店**履约，决定扣谁的库存。可空。
      *
      * <p><b>门店放在行上而不是整次调用上</b>：一笔跨商家的订单会拆成多个子单，

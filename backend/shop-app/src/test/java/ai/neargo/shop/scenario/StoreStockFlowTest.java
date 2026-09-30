@@ -230,6 +230,35 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 加购按**你正在逛的那家店**判：A 店没货就当场拒，不拿 B 店的库存放行")
+    void cartAddJudgesTheStoreYouAreBrowsing() throws Exception {
+        String biz = merchant("12600190086", "加购·按店判");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "加购·有货的分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 0);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        String buyer = login("13000190086");
+        /*
+         * **三个答案各不相同**，缺一条都证明不了实现读的是「这家店那一行」：
+         *   A 店 0 → 拒        （旧口径取「最能卖的那家」= 5，会放行）
+         *   B 店 5 → 过
+         *   不带门店 → 过      （旧口径，跨店目录加的购走这一支，AC8）
+         */
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, storeA))
+                .as("A 店一件都没有 —— 拿 B 店的 5 件放行的话，人要到下单才被拒")
+                .isNotEqualTo(0);
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, storeB)).isEqualTo(0);
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, null))
+                .as("不带门店时口径不变 —— 从首页那类跨店目录加的购走这一支")
+                .isEqualTo(0);
+    }
+
+    @Test
     @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
     void mainStockWriteLandsWhereTheReadLooks() throws Exception {
         String biz = merchant("12600190040", "写读要同一个数");
@@ -444,6 +473,17 @@ class StoreStockFlowTest {
     }
 
     /** @return 下单响应的 code，0 = 成功 */
+    /** 加购，返回响应码；`storeNo` 为 null 时不带那个字段 */
+    private int cartAdd(String buyer, String goodsNo, String skuNo, int qty, String storeNo) throws Exception {
+        String store = storeNo == null ? "" : ",\"storeNo\":\"" + storeNo + "\"";
+        String body = mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":"
+                                + qty + store + "}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt();
+    }
+
     /** 门店级上下架：走 X-Store-No 头，与 B 端那条路同一个接口 */
     private void storeToggle(String token, String storeNo, String goodsNo, boolean onSale) throws Exception {
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")

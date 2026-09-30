@@ -33,12 +33,16 @@ public class StockPortImpl implements StockPort {
     private final SkuMapper skuMapper;
     private final StockLockMapper lockMapper;
     private final StoreStockMapper storeStockMapper;
+    /** 店级可售量的唯一一份判据（覆盖层规则）—— 与买家侧详情读的是同一处 */
+    private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
     public StockPortImpl(SkuMapper skuMapper, StockLockMapper lockMapper,
-                         StoreStockMapper storeStockMapper) {
+                         StoreStockMapper storeStockMapper,
+                         ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
         this.skuMapper = skuMapper;
         this.lockMapper = lockMapper;
         this.storeStockMapper = storeStockMapper;
+        this.storeStockReader = storeStockReader;
     }
 
     @Override
@@ -184,6 +188,19 @@ public class StockPortImpl implements StockPort {
      * 见 {@link StockPort#sellable}。<b>每个分支都对应 {@link #lock} 里的一个分支</b>——
      * 改 lock 的判据时这里要一起改，否则加购与下单对同一件货给出不同答案。
      */
+    @Override
+    public int sellable(String skuNo, String storeNo) {
+        if (storeNo != null && !storeNo.isBlank() && hasStoreStock(skuNo)) {
+            /*
+             * 买家就在这家店里加的购 —— 只认这一行。**没有行就是 0**，不回退主体总量：
+             * 回退等于「没设过库存的店无限供应」，与 lock 的判据必须逐字一致
+             * （两处不一致会让加购放行、下单再拒，而那时人已经在结算页了）。
+             */
+            return storeStockReader.available(skuNo, storeNo);
+        }
+        return sellable(skuNo);
+    }
+
     @Override
     public int sellable(String skuNo) {
         if (hasStoreStock(skuNo)) {

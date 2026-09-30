@@ -49,7 +49,7 @@ public class MpTradeController {
 
     @PostMapping("/mp/cart/add")
     public List<CartItemVO> cartAdd(@RequestBody @Valid CartAddReq req) {
-        return cartService.add(req.goodsNo(), req.skuNo(), req.qty());
+        return cartService.add(req.goodsNo(), req.skuNo(), req.qty(), req.storeNo());
     }
 
     @PostMapping("/mp/cart/update")
@@ -196,7 +196,12 @@ public class MpTradeController {
     public record EscalateReq(String appeal) {
     }
 
-    public record CartAddReq(@NotBlank String goodsNo, @NotBlank String skuNo, int qty) {
+    /**
+     * @param storeNo 买家正在逛的那家店（AC6）。**只用于这一刻的库存校验，不落库** ——
+     *                trd_cart_item 上没有 store_no，下单时仍由后端自行落店。
+     *                空 = 没有门店上下文（从首页那类跨店目录加的购），按旧口径判
+     */
+    public record CartAddReq(@NotBlank String goodsNo, @NotBlank String skuNo, int qty, String storeNo) {
     }
 
     public record CartUpdateReq(@NotBlank String skuNo, int qty) {

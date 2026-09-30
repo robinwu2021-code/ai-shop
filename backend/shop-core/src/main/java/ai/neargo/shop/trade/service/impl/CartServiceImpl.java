@@ -45,7 +45,12 @@ public class CartServiceImpl implements CartService {
      * <p>它只是提前告诉你，不占库存。真正的闸门仍是下单时的原子锁定。
      */
     private void requireInStock(String skuNo, int newQty) {
-        int sellable = stockPort.sellable(skuNo);
+        requireInStock(skuNo, newQty, null);
+    }
+
+    /** @param storeNo 买家正在逛的那家店；空 = 没有门店上下文，取「最能卖的那家」（旧口径） */
+    private void requireInStock(String skuNo, int newQty, String storeNo) {
+        int sellable = stockPort.sellable(skuNo, storeNo);
         if (newQty > sellable) {
             throw ai.neargo.shop.common.BizException.of(
                     ai.neargo.shop.common.ErrorCode.STOCK_NOT_ENOUGH);
@@ -162,6 +167,12 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public List<CartItemVO> add(String goodsNo, String skuNo, int qty) {
+        return add(goodsNo, skuNo, qty, null);
+    }
+
+    @Override
+    @Transactional
+    public List<CartItemVO> add(String goodsNo, String skuNo, int qty, String storeNo) {
         /*
          * 仅活动且此刻<b>什么活动都没在跑</b>的货，加购就拒，不等到结账 ——
          * 放进去再标失效也挡得住下单，但顾客会看到「加入成功」紧跟着一行灰掉的货。
@@ -175,7 +186,7 @@ public class CartServiceImpl implements CartService {
         int newQty = (existing == null ? 0 : existing.getQty()) + Math.max(qty, 1);
         requireWithinLimit(snap, skuNo, newQty);
         // 判的是**车内总量**不是这一次加的量：车里已有 3、再加 2 要看 5 够不够
-        requireInStock(skuNo, newQty);
+        requireInStock(skuNo, newQty, storeNo);
         if (existing == null) {
             TrdCartItem row = new TrdCartItem();
             row.setUserNo(SecurityUtils.currentUserNo());
