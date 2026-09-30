@@ -647,6 +647,7 @@ export type SpecTemplateStatus = "ACTIVE" | "ARCHIVED";
 
 /** 提供这件货的门店。只有端上要显示的两项：名字与门店号（点进门户要用） */
 export interface GoodsStoreBrief {
+  /** 门店号。点进门户（`pages/store?no=`）与带进详情/加购的就是它 */
   storeNo: string;
   /** 门店名，如「虹选粮油·深圳测试店」。**不是主体名** */
   storeName: string;
