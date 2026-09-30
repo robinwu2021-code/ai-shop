@@ -6,6 +6,7 @@ import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
+import { goodsUrl } from "@/shared/goods-route";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { CategoryType, Goods } from "@shared/types";
@@ -61,7 +62,7 @@ function switchTab(type: CategoryType) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, g.store?.storeNo);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
@@ -74,7 +75,7 @@ function gotoSearch() {
 }
 
 function openGoods(g: Goods) {
-  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
+  uni.navigateTo({ url: goodsUrl(g) });
 }
 
 onShow(load);

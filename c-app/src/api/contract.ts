@@ -272,13 +272,21 @@ export interface ShopApi {
   // ---- 商品
   goodsList(q: GoodsQuery): Promise<PageResult<Goods>>;
   /** @param communityNo 收货地址推出来的社区；给了才判 `deliverable`（只有模糊定位时别传） */
-  goodsDetail(goodsNo: string, communityNo?: string): Promise<Goods>;
+  /**
+   * @param storeNo 从哪家门店的列表/门户点进来的。**带上它，库存与在架就按那家店算**；
+   *                不带 = 没有门店上下文，给主体口径（与门店化之前相同）
+   */
+  goodsDetail(goodsNo: string, communityNo?: string, storeNo?: string): Promise<Goods>;
   /** 社区集单块（s26）：不是集单商品时为 null。匿名可看 —— 未登录的人也要看得到截单时间才会下单 */
   goodsBatch(goodsNo: string): Promise<GoodsBatch | null>;
 
   // ---- 购物车（服务端购物车；本地 store 做乐观更新）
   cartList(): Promise<CartItem[]>;
-  cartAdd(goodsNo: string, skuNo: string, qty: number): Promise<CartItem[]>;
+  /**
+   * @param storeNo 买家正在逛的那家店。**只用于这一刻的库存校验，不落库** ——
+   *                购物车行上没有门店，下单时由后端自行落店
+   */
+  cartAdd(goodsNo: string, skuNo: string, qty: number, storeNo?: string): Promise<CartItem[]>;
   cartUpdate(skuNo: string, qty: number): Promise<CartItem[]>;
   cartRemove(skuNos: string[]): Promise<CartItem[]>;
 

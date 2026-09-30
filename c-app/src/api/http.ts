@@ -147,14 +147,18 @@ export const httpApi: ShopApi = {
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),
-  goodsDetail: (goodsNo, communityNo) =>
-    call<Goods>("goodsDetail", { goodsNo }, communityNo ? { communityNo } : undefined),
+  goodsDetail: (goodsNo, communityNo, storeNo) =>
+    call<Goods>("goodsDetail", { goodsNo },
+      communityNo || storeNo
+        ? { ...(communityNo ? { communityNo } : {}), ...(storeNo ? { storeNo } : {}) }
+        : undefined),
   goodsBatch: (goodsNo) => call<GoodsBatch | null>("goodsBatch", { goodsNo }),
 
   // ---- 购物车
   cartList: () => call<CartItem[]>("cartList"),
-  cartAdd: (goodsNo, skuNo, qty) =>
-    call<CartItem[]>("cartAdd", undefined, { goodsNo, skuNo, qty } satisfies CartAddReq),
+  cartAdd: (goodsNo, skuNo, qty, storeNo) =>
+    call<CartItem[]>("cartAdd", undefined,
+      { goodsNo, skuNo, qty, ...(storeNo ? { storeNo } : {}) } satisfies CartAddReq),
   cartUpdate: (skuNo, qty) => call<CartItem[]>("cartUpdate", undefined, { skuNo, qty } satisfies CartUpdateReq),
   cartRemove: (skuNos) => call<CartItem[]>("cartRemove", undefined, { skuNos } satisfies CartRemoveReq),
 

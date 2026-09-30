@@ -514,7 +514,13 @@ async function load(goodsNo: string) {
   try {
     // 带上收货地址推出来的社区：后端据此判「卖不卖到你那儿」（原型 g05）。
     // 只有模糊定位时没有社区号 —— 那就不判，只准到区，拿它判会误拦
-    const g = await api.goodsDetail(goodsNo, community.community?.communityNo);
+    /*
+     * **带上门店**：库存与在架按那家店算（TDD-C端商品归属门店与库存校验 AC7）。
+     * 不带的话详情给的是主体总量 —— 页面显示有货、加到车里，
+     * 到下单落店那一步才发现那家店没有，而那时人已经在结算页了。
+     */
+    const g = await api.goodsDetail(goodsNo, community.community?.communityNo,
+      viaStore.value || undefined);
     const [grpNow, allNow, batchNow] = await Promise.all([
       within(groupP, FIRST_SCREEN_WAIT_MS),
       within(couponsP, FIRST_SCREEN_WAIT_MS),
@@ -661,7 +667,7 @@ async function addToCart(e: unknown) {
   const g = goods.value;
   if (!g || !sku.value) return;
   try {
-    await cart.add(g.goodsNo, sku.value.skuNo, qty.value);
+    await cart.add(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {
@@ -677,7 +683,7 @@ async function openGroupBuy() {
   const g = goods.value;
   if (!g || !sku.value || !buyable.value) return;
   try {
-    await cart.add(g.goodsNo, sku.value.skuNo, 1);
+    await cart.add(g.goodsNo, sku.value.skuNo, 1, viaStore.value || undefined);
     uni.navigateTo({
       url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(g)}&skus=${sku.value.skuNo}&openGroup=1`,
     });
@@ -691,7 +697,7 @@ async function buyNow() {
   const g = goods.value;
   if (!g || !sku.value || !buyable.value) return;
   try {
-    await cart.add(g.goodsNo, sku.value.skuNo, qty.value);
+    await cart.add(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
     const f = defaultFulfillment(g);
     const at = needAppointment.value && slotDate.value && slotTime.value
       ? new Date(`${slotDate.value}T${slotTime.value}:00`).getTime()

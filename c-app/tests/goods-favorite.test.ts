@@ -117,9 +117,11 @@ describe("商品详情 · 收藏与送达", () => {
   it("★★ 详情请求带上收货地址推出来的社区号；没有就不带", async () => {
     goodsDetail.mockResolvedValue(goods());
     await render();
-    expect(goodsDetail).toHaveBeenLastCalledWith("G1", undefined);
+    // 第三个参数是门店（2026-09-30 门店化）：这一条钉的是**社区号**那一位，
+    // 写死整串参数的话，以后每加一个可选参数都要改这里
+    expect(goodsDetail).toHaveBeenLastCalledWith("G1", undefined, undefined);
     useCommunityStore().community = { communityNo: "C0001" } as never;
     await render();
-    expect(goodsDetail).toHaveBeenLastCalledWith("G1", "C0001");
+    expect(goodsDetail).toHaveBeenLastCalledWith("G1", "C0001", undefined);
   });
 });

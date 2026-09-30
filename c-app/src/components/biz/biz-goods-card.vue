@@ -65,6 +65,18 @@ const storeSub = computed(() => {
   return sub ? `${sub} · ${sold}` : sold;
 });
 
+/**
+ * 落款印谁 —— **门店优先，没有才退回主体名**（2026-09-30 门店化口径）。
+ *
+ * <p>C 端展示的单位是门店：一个主体名下可以有好几家店，印主体名的话，
+ * 线上那家四店主体（虹选鲜果 / 鲜果·福田 / 粮油 / 粮油·深圳测试）
+ * 在商品流里全都显示「虹选科技有限公司」，而那不是任何一家店的名字。
+ *
+ * <p>退回主体名的三种情况：按主体号查目录、池行没有门店号、老后端。
+ * 三种都与门店化之前逐字相同 —— 少一个名字比显示一个错的名字好。
+ */
+const sellerName = computed(() => props.goods.store?.storeName || props.goods.merchant.name);
+
 const off = computed(() => {
   const o = props.goods.originPrice;
   if (!o || o <= props.goods.price) return 0;
@@ -135,7 +147,7 @@ const off = computed(() => {
         <text v-if="goods.merchant.selfOperated && !inStore" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
         <!-- 店名前不再放 logo：此前是 `{{ logo || 🏪 }}` 当文字打印 —— 一排卡片全是同一个表情，
              商家真传了图片 logo 还会把地址铺出来。自营与否由前面那个标说清楚 -->
-        <text class="txt-caption txt-quiet sh-fill card__shop">{{ inStore ? "" : goods.merchant.name }}</text>
+        <text class="txt-caption txt-quiet sh-fill card__shop">{{ inStore ? "" : sellerName }}</text>
         <!-- 已售 0 不说：零销量是劝退信号（与详情页同一条规矩） -->
         <text v-if="goods.sales > 0" class="txt-caption txt-quiet card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>

@@ -140,7 +140,8 @@ describe("商品详情页重排", () => {
     const w = await render();
     await barBtn(w, "goods.addCart").trigger("tap");
     await w.vm.$nextTick();
-    expect(cartAdd).toHaveBeenCalledWith("G1", "S1", 1);
+    // 第四个参数是门店（2026-09-30 门店化）；这条钉的是「直接加 1 件」，不是参数个数
+    expect(cartAdd).toHaveBeenCalledWith("G1", "S1", 1, undefined);
     expect(w.find(".skuhead").exists(), "单规格不该弹面板").toBe(false);
   });
 

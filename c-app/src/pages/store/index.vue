@@ -298,7 +298,7 @@ async function addGoods(g: Goods, e: unknown) {
     return;
   }
   try {
-    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, storeNo.value || undefined);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {

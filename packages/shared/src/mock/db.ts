@@ -179,6 +179,17 @@ export function toGoods(seed: GoodsSeed): Goods {
   return {
     ...seed,
     merchant: merchantBrief(seed.merchantNo),
+    /*
+     * **提供这件货的门店**（2026-09-30 门店化）。mock 里给一个与主体名**明显不同**的店名 ——
+     * 真后端上默认店的店名恰好等于主体名，替身也那样的话，
+     * 「落款印的是门店还是主体」这件事在 mock 下一眼看不出，
+     * 而那正是这一批要改的东西。
+     */
+    store: {
+      storeNo: `ST${seed.merchantNo}`,
+      storeName: `${pick(merchantSeeds.find((m) => m.merchantNo === seed.merchantNo)?.name
+        ?? merchantSeeds[0]!.name)}·门店`,
+    },
     title: pick(seed.title),
     subtitle: pick(seed.subtitle),
     /*

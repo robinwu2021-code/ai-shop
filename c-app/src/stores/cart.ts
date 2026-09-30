@@ -297,7 +297,12 @@ export const useCartStore = defineStore("cart", {
 
     // ---- 服务端 ----------------------------------------------------------
 
-    async add(goodsNo: string, skuNo: string, qty = 1) {
+    /**
+     * @param storeNo 买家正在逛的那家店。**只用于这一刻的库存校验，不落库** ——
+     *                车行上没有门店，下单时由后端自行落店。
+     *                不带 = 跨店目录里加的购，按主体口径判（与门店化之前相同）
+     */
+    async add(goodsNo: string, skuNo: string, qty = 1, storeNo?: string) {
       /*
        * 朋友圈单页模式里加购必然失败（没有登录态、也去不了登录页）。
        * 在请求之前就说清楚：调用方都会把 message toast 出来，不用各页各判一遍。
@@ -305,7 +310,7 @@ export const useCartStore = defineStore("cart", {
       if (inTimelineSinglePage()) {
         throw new Error(singlePageBlockedMessage());
       }
-      this.items = await api.cartAdd(goodsNo, skuNo, qty);
+      this.items = await api.cartAdd(goodsNo, skuNo, qty, storeNo);
       /*
        * 刚加进来的这件默认勾上 —— 加购之后就是去结算，中间不该再点一次。
        *

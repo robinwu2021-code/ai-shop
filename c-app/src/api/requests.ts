@@ -174,6 +174,14 @@ export interface CartAddReq {
   skuNo: string;
   /** 加购件数，正整数 */
   qty: number;
+  /**
+   * 买家正在逛的那家店（2026-09-30 门店化口径）。
+   *
+   * **只用于这一刻的库存校验，不落库** —— 购物车行上没有门店，
+   * 下单时由后端自行落店（它判「在架 ∧ 有货」）。
+   * 不带 = 没有门店上下文（从首页那类跨店目录加的购），按主体口径判。
+   */
+  storeNo?: string;
 }
 
 export interface CartUpdateReq {

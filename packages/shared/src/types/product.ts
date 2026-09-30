@@ -309,6 +309,19 @@ export interface Goods {
   categoryNo: string;
   /** 所属商家 —— 商品与服务都要展示商家信息 */
   merchant: MerchantBrief;
+  /**
+   * **提供这件货的门店**（V367 之后的门店化口径，2026-09-30）。
+   *
+   * <p>C 端展示的单位是门店不是主体：一个主体名下可以有好几家店，
+   * 落款印 `merchant.name` 的话，线上那家四店主体在商品流里全都显示
+   * 「虹选科技有限公司」。**有它就显示它，没有才退回主体名。**
+   *
+   * <p>取的是「会履约的那家」（后端与下单落店同序），所以显示与履约不会各说各话。
+   *
+   * <p>空的三种情况：按主体号查目录（没有社区上下文）、池行没有门店号、老后端。
+   * 三种都退回主体名，与门店化之前逐字相同。
+   */
+  store?: GoodsStoreBrief;
   /** 本商品的评分与评价数（区别于商家整体评分） */
   rating?: number;
   /** 本商品的评价条数 */
@@ -631,3 +644,10 @@ export interface SpecTemplate {
 }
 /** 规格模板状态。ARCHIVED 归档后不再出现在选择器里，但历史商品的快照照旧 */
 export type SpecTemplateStatus = "ACTIVE" | "ARCHIVED";
+
+/** 提供这件货的门店。只有端上要显示的两项：名字与门店号（点进门户要用） */
+export interface GoodsStoreBrief {
+  storeNo: string;
+  /** 门店名，如「虹选粮油·深圳测试店」。**不是主体名** */
+  storeName: string;
+}

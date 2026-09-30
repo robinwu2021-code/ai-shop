@@ -10,6 +10,7 @@ import { useCartStore } from "@/stores/cart";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import { GOODS_COVER_FALLBACK, ROUTES, STORAGE } from "@shared/utils/constants";
+import { goodsUrl } from "@/shared/goods-route";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { Goods, StoreCard } from "@shared/types";
@@ -91,7 +92,7 @@ async function search(k = keyword.value) {
 }
 
 function openGoods(g: Goods) {
-  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
+  uni.navigateTo({ url: goodsUrl(g) });
 }
 
 function openStore(s: StoreCard) {
@@ -100,7 +101,7 @@ function openStore(s: StoreCard) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, g.store?.storeNo);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
