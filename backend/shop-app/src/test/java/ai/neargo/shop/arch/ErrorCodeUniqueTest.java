@@ -59,4 +59,14 @@ class ErrorCodeUniqueTest {
 
         assertThat(dup).as("这些 message key 重了：\n  " + String.join("\n  ", dup)).isEmpty();
     }
+
+    @Test
+    @DisplayName("★★ 9xxxx 保留给元器件（ai-key 的 ElecErrorCode）—— 本仓库再用就是跨进程撞号，这里的唯一性查不到")
+    void elecRangeIsReserved() {
+        List<String> taken = java.util.Arrays.stream(ErrorCode.values())
+                .filter(e -> e.code() >= 90000 && e.code() <= 99999)
+                .map(e -> e.name() + "(" + e.code() + ")")
+                .toList();
+        assertThat(taken).as("9xxxx 是 ai-key 的号段（元器件 2026-09-30 独立出去时整段带走）：换一个号段").isEmpty();
+    }
 }

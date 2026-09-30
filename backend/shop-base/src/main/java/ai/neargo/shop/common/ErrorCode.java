@@ -1185,44 +1185,11 @@ public enum ErrorCode {
     /** 该用户没有可用的微信订阅额度，测试会白发（发出去也会被微信以 43101 拒） */
     NOTIFY_WX_QUOTA_EMPTY(80101, "err.notify.wx_quota_empty"),
     /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
-    NOTIFY_NO_DEVICE(80102, "err.notify.no_device"),
+    NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
 
-    // ---- 9xxxx 电子元器件（独立库 ai_shop_elec，将来整个独立出去）----
-    /** 询价与供应商入驻都要先有手机号：平台要打电话跟进。端上据此弹手机号闸 */
-    ELEC_PHONE_REQUIRED(90001, "err.elec.phone_required"),
-    ELEC_NOT_SUPPLIER(90002, "err.elec.not_supplier"),
-    ELEC_SUPPLIER_EXISTS(90003, "err.elec.supplier_exists"),
-    ELEC_SUPPLIER_SUSPENDED(90004, "err.elec.supplier_suspended"),
-    /** 认不了的文件。最常见的是 .xls（二进制格式），文案直接说怎么办 */
-    ELEC_UPLOAD_FORMAT(90005, "err.elec.upload_format"),
-    ELEC_UPLOAD_NO_HEADER(90006, "err.elec.upload_no_header"),
-    /** {0} = 一次最多几行。超了直接拒，不静默截断 —— 截断会让「全量替换」把后半截全下架 */
-    ELEC_UPLOAD_TOO_MANY_ROWS(90007, "err.elec.upload_too_many_rows"),
-    ELEC_BATCH_EXPIRED(90008, "err.elec.batch_expired"),
-    ELEC_BATCH_EMPTY(90009, "err.elec.batch_empty"),
-    /** {0} = 一张询价单最多几行 */
-    ELEC_RFQ_LINES_INVALID(90010, "err.elec.rfq_lines_invalid"),
-    /** 询价单当前状态不允许这个动作（已接受的不能再报价、已结束的不能接受…） */
-    ELEC_RFQ_STATE(90011, "err.elec.rfq_state"),
-    /** 报价过了有效期，不能再接受 —— 行情会变，过期的价平台不再兑现 */
-    ELEC_QUOTE_EXPIRED(90012, "err.elec.quote_expired"),
-    ELEC_MFR_EXISTS(90013, "err.elec.mfr_exists"),
-    /**
-     * {0} = 这个写法已经指向的厂牌。<b>不静默改指向</b>：改了等于把已经按旧指向认好的料号全部认错，
-     * 而那些料号不会自己回来改。要改指向得先把旧的认错数据处理掉，那是另一件事。
-     */
-    ELEC_ALIAS_TAKEN(90014, "err.elec.alias_taken"),
-    /** {0} = 每天最多传几次。只数上传：改映射、确认、放弃不算 */
-    ELEC_UPLOAD_DAILY_LIMIT(90015, "err.elec.upload_daily_limit"),
-    /**
-     * {0} = <b>此刻</b>将下架的行数。全量替换过了下架护栏的线时，确认必须带上这个数且与后端重算的一致 ——
-     * 防住半张表把库存清空，也防住「预览之后库存变了，他确认的是一个已经不存在的后果」
-     */
-    ELEC_DELIST_CONFIRM(90016, "err.elec.delist_confirm"),
-    /** 原件写不进盘（盘满、没权限）。不吞：写不进盘就没法从原件重建，预览不可靠 */
-    ELEC_UPLOAD_STORE(90017, "err.elec.upload_store"),
-    /** 原件已被清理任务删掉 */
-    ELEC_UPLOAD_FILE_PURGED(90018, "err.elec.upload_file_purged");
+    // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
+    // 2026-09-30 元器件独立成项目 ai-key，9xxxx 整段搬到 ai-key 的 ElecErrorCode（码值不变，端上按码分流）。
+    // 这里再用 9xxxx 会与元器件的码撞车 —— 两个进程各自合法，只有端上按码分流时走错分支。
 
     private final int code;
     private final String msgKey;
