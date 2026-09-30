@@ -10,9 +10,11 @@ import { api, errMsg, toast } from "@/api";
 import { ensureLogin } from "@/shared/auth";
 import { ROUTES, go } from "@/shared/routes";
 import { SUPPLIER_KIND, agoOf, dateOf, qtyOf } from "@/shared/format";
-import type { ElecDispatch, ElecSupplier } from "@shared/types";
+import { rememberRole } from "@/shared/role";
+import type { ElecDispatch, ElecMe, ElecSupplier } from "@shared/types";
 
 const s = ref<ElecSupplier | null>(null);
+const me = ref<ElecMe | null>(null);
 const pending = ref<ElecDispatch[]>([]);
 const loaded = ref(false);
 const failed = ref("");
@@ -28,10 +30,17 @@ async function load() {
   try {
     s.value = await api.mySupplier();
     if (!s.value) {
+      rememberRole("buyer");
       uni.redirectTo({ url: ROUTES.supplierJoin });
       return;
     }
-    pending.value = await api.myDispatches("SENT", 1, 50).catch(() => []);
+    rememberRole("supplier");
+    const [p, m] = await Promise.all([
+      api.myDispatches("SENT", 1, 50).catch(() => [] as ElecDispatch[]),
+      api.me().catch(() => null),
+    ]);
+    pending.value = p;
+    me.value = m;
   } catch (e) {
     failed.value = errMsg(e);
   } finally {
@@ -39,6 +48,8 @@ async function load() {
   }
 }
 
+/** 待回的求购：待报价 + 看过没回。以 /elec/me 为准（与切换条红点同一个口径），拿不到退回只数「待报价」 */
+const pendingCnt = computed(() => me.value?.badges.dispatchPending ?? pending.value.length);
 const fresh = computed(() => !!s.value && !s.value.lastUploadAt && s.value.onCount === 0);
 const stats = computed(() => {
   const x = s.value;
@@ -67,6 +78,7 @@ async function renew() {
 
 <template>
   <sh-scaffold title-key="title.supplier" :pending="!loaded" :failed="!!failed" :failed-text="failed" @retry="load">
+    <el-role-switch active="supplier" :me="me"></el-role-switch>
     <template v-if="s">
       <view v-if="s.status === 'SUSPENDED'" class="sh-notice sh-notice--danger gap-b">
         <text class="txt-sub">你的供应商身份已被暂停，库存暂时不给买家看。有疑问联系平台</text>
@@ -110,8 +122,8 @@ async function renew() {
       <view class="sh-cells block">
         <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.dispatches)">
           <text class="txt-body">求购</text>
-          <text class="txt-caption" :class="pending.length ? 'txt-primary' : 'sh-muted'">
-            {{ pending.length ? `${pending.length} 条待报价` : "买家要的货派给你" }} ›
+          <text class="txt-caption" :class="pendingCnt ? 'txt-primary' : 'sh-muted'">
+            {{ pendingCnt ? `${pendingCnt} 条待回` : "买家要的货派给你" }} ›
           </text>
         </view>
       </view>

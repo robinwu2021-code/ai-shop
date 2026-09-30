@@ -8,7 +8,7 @@ import { http } from "@shared/net/http-client";
 import type {
   ElecBatchPreview, ElecDeclineReq, ElecDispatch, ElecDispatchStatus, ElecImportMode, ElecLookupLine,
   ElecPartHit, ElecRemapReq, ElecRenewResult, ElecRfq, ElecRfqReq, ElecSearchResult, ElecStock,
-  ElecStockFilter, ElecSupplier, ElecSupplierQuoteReq, ElecSupplierReq, LoginReq, LoginResp, PhoneCapable, User,
+  ElecStockFilter, ElecSupplier, ElecMe, ElecSupplierQuoteReq, ElecSupplierReq, LoginReq, LoginResp, PhoneCapable, User,
 } from "@shared/types";
 
 const enc = encodeURIComponent;
@@ -26,6 +26,9 @@ export const api = {
   /** 订阅授权上报（同意与拒绝都报）：后端据此记额度、并且不再反复弹窗 */
   subscribeReport: (templateIds: string[], accepted: boolean) =>
     http.post<void>("/mp/message/subscribe", { templateIds, accepted }),
+
+  // ── 账号：买家与供应商两面的身份与红点（只有状态与计数，没有任何一面的内容）──
+  me: () => http.get<ElecMe>("/elec/me"),
 
   // ── 买家：料号 ──
   searchParts: (keyword: string, suggest = false) =>

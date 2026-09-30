@@ -2,26 +2,38 @@
 // 元器件首页（原型 e01）。整页就三件事：搜料号、我的询价、成为供应商。
 // **不挂任何商城内容**，也不做「热门料号」—— 第一步没有那些数据，摆上去就是假的。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { ROUTES, go } from "@/shared/routes";
 import { clearSearches, recentSearches, rememberSearch } from "@/shared/recent";
-import type { ElecRfq, ElecSupplier } from "@shared/types";
+import { lastRole, rememberRole } from "@/shared/role";
+import type { ElecMe, ElecRfq } from "@shared/types";
 
 const user = useUserStore();
 const keyword = ref("");
 const recent = ref<string[]>([]);
 const rfqs = ref<ElecRfq[]>([]);
-const supplier = ref<ElecSupplier | null>(null);
+const me = ref<ElecMe | null>(null);
+
+/**
+ * 上次停在供应商那一面、而且确实还是供应商 → 直接去工作台。
+ * 只在**进来那一下**（onLoad）判断，不在 onShow：从工作台切回买家时也会 onShow，那时他就是要看买家这面。
+ */
+onLoad(async () => {
+  if (lastRole() !== "supplier" || !user.isLogin) return;
+  const m = await api.me().catch(() => null);
+  if (m?.supplier) uni.redirectTo({ url: ROUTES.supplier });
+  else rememberRole("buyer");
+});
 
 onShow(async () => {
   recent.value = recentSearches();
   if (!user.isLogin) return;
   // 两样都只是「顺手告诉他一声」，拉不到不打扰：首页的本分是搜料号
-  const [r, s] = await Promise.allSettled([api.myRfqs(1, 20), api.mySupplier()]);
+  const [r, m] = await Promise.allSettled([api.myRfqs(1, 20), api.me()]);
   rfqs.value = r.status === "fulfilled" ? r.value : [];
-  supplier.value = s.status === "fulfilled" ? s.value : null;
+  me.value = m.status === "fulfilled" ? m.value : null;
 });
 
 const quotedCnt = computed(() => rfqs.value.filter((x) => x.status === "QUOTED").length);
@@ -48,6 +60,7 @@ function clearRecent() {
 
 <template>
   <sh-scaffold title-key="title.home">
+    <el-role-switch v-if="user.isLogin" active="buyer" :me="me"></el-role-switch>
     <view class="sh-searchbox">
       <sh-icon name="search" :size="36" color="var(--sh-sub)"></sh-icon>
       <input
@@ -84,21 +97,9 @@ function clearRecent() {
       </view>
     </view>
 
-    <!-- 页尾：来的人十个有九个是买家，招募不能挡在他要找的东西前面；但必须在这一页 -->
-    <view v-if="supplier" class="sh-card block">
-      <view class="sh-row sh-row--between" @tap="go(ROUTES.supplier)">
-        <text class="txt-strong">供应商工作台</text>
-        <view class="sh-row">
-          <text v-if="supplier.expiringCount" class="txt-sub warn">{{ supplier.expiringCount }} 行将到期</text>
-          <sh-icon name="chevronRight" :size="32" color="var(--sh-sub)"></sh-icon>
-        </view>
-      </view>
-      <view class="sh-row sh-row--between row2" @tap="go(ROUTES.dispatches)">
-        <text class="txt-body">求购</text>
-        <sh-icon name="chevronRight" :size="32" color="var(--sh-sub)"></sh-icon>
-      </view>
-    </view>
-    <view v-else class="join">
+    <!-- 页尾：来的人十个有九个是买家，招募不能挡在他要找的东西前面；但必须在这一页。
+         已经是供应商的，顶上的切换条就是去工作台的门，这里不再重复一张卡 -->
+    <view v-if="!me?.supplier" class="join">
       <text class="txt-sub sh-muted">手上有库存？传上来，买家搜得到就有询价</text>
       <view class="sh-btn sh-btn--soft sh-mt-sm" @tap="go(ROUTES.supplierJoin)">成为供应商</view>
     </view>
@@ -118,14 +119,6 @@ function clearRecent() {
 .chips {
   margin-top: 16rpx;
   gap: 16rpx;
-}
-.row2 {
-  margin-top: 24rpx;
-  padding-top: 24rpx;
-  border-top: var(--sh-hairline);
-}
-.warn {
-  color: var(--sh-warning);
 }
 .join {
   margin-top: 64rpx;

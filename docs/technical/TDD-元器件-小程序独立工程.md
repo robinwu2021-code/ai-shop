@@ -91,6 +91,11 @@ ops-web/app/elec/                  运营端「元器件」（下一批，见 2.
 | `pages/dispatch/index` 求购详情 | — | `GET /elec/b/rfq/{no}` · `…/quote` · `…/decline` | 登录 |
 | `pages/login/index` 登录 | — | 主系统 `/mp/user/{login,profile,otp/send,phone/bind,phone/wx,phone/capable}` | — |
 
+**买家 / 供应商切换**（2026-09-30 追加）：同一个账号两面。买家首页与供应商工作台顶上各一条一样的切换条
+「我要买 | 我是供应商」（`components/el-role-switch.vue`，身份与红点取 `GET /elec/me`）；还不是供应商时右边写「成为供应商」，
+成为之后落到工作台。记住上次停在哪一面（本机存储），下次从入口进来直接回那一面。
+切换的栈规则：去供应商压栈、回买家退栈（栈里没有首页才原地换），左上角返回永远回到进来之前那一页（并进虹选时是「我的」）。
+
 **登录模型**（查代码得出，改了原先的设想）：主系统 C 端**没有匿名的验证码登录** ——
 `/mp/user/otp/send` 要已有会话（`MpUserController#sendOtp` 的注释写了为什么）。所以：
 小程序打开即静默登录（`WX_MINI`）→ 要手机号的那一步再绑号（能一键就一键，否则验证码）。

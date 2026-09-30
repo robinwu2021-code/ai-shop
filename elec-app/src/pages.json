@@ -3,7 +3,8 @@
     "autoscan": true,
     "custom": {
       "^sh-(.*)": "@ai-shop/ui/components/sh-$1.vue",
-      "^el-(.*)": "@/components/el-$1.vue"
+      "^el-(.*)": "@/components/el-$1.vue",
+      "^app-(.*)": "@/components/app-$1.vue"
     }
   },
   "pages": [
