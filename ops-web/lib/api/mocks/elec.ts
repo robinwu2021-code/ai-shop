@@ -51,7 +51,7 @@ const rfqs: ElecOpsRfq[] = [
     dispatchCnt: 2, respondedCnt: 1, offerCnt: 1,
     lines: [
       {
-        lineNo: 1, partNo: "EP001", mpn: "STM32F103C8T6", mfr: "ST", qty: 2000, targetE6: 6_500_000, quote: null,
+        lineNo: 1, partNo: "EP001", mpn: "STM32F103C8T6", mfr: "意法半导体 ST", mfrCode: "ST", qty: 2000, targetE6: 6_500_000, quote: null,
         sources: [src({ supplierNo: "SP001", companyName: "深圳甲电子有限公司", qty: 5000, priceE6: 6_200_000 })],
         offers: [{
           dispatchNo: "ED001", supplierNo: "SP001", companyName: "深圳甲电子有限公司", contactPhone: "13900002222",
@@ -62,7 +62,7 @@ const rfqs: ElecOpsRfq[] = [
         }],
       },
       {
-        lineNo: 2, partNo: "EP004", mpn: "TPS54331DR", mfr: "TI", qty: 500, targetE6: null, quote: null,
+        lineNo: 2, partNo: "EP004", mpn: "TPS54331DR", mfr: "某代理写法", qty: 500, targetE6: null, quote: null,
         sources: [src({ supplierNo: "SP001", companyName: "深圳甲电子有限公司", qty: 1200, priceE6: 2_800_000 })],
         offers: [{
           dispatchNo: "ED002", supplierNo: "SP001", companyName: "深圳甲电子有限公司", contactPhone: "13900002222",

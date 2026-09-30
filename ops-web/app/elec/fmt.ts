@@ -32,6 +32,19 @@ export function lead(days: number | null | undefined, c: ElecCopy): string {
   return days === 0 ? c.spot : fill(c.leadDays, { n: days });
 }
 
+/**
+ * 询价行的厂牌：选了编码的显示「德州仪器 TI」（原文里没带编码就补上）；
+ * 只有原文的标「未认出」—— 派单与求购大厅只能拿原文查别名，认不出就不按厂牌匹配，运营该知道。
+ */
+export function lineMfr(l: { mfr?: string | null; mfrCode?: string | null }, c: ElecCopy): string {
+  const raw = l.mfr?.trim() ?? "";
+  if (l.mfrCode) {
+    if (!raw) return l.mfrCode;
+    return raw.toUpperCase().includes(l.mfrCode) ? raw : `${raw} · ${l.mfrCode}`;
+  }
+  return raw ? fill(c.rfqMfrRaw, { m: raw }) : "";
+}
+
 export function qty(n: number | null | undefined): string {
   return n == null ? "—" : n.toLocaleString("en-US");
 }

@@ -147,6 +147,8 @@ export interface ElecOpsLine {
   mpn: string;
   /** 买家写的厂牌 */
   mfr?: string | null;
+  /** 买家从厂牌列表里选的编码（ai-hxkey V6 起）；空 = 没选或自己写的、平台按原文找 */
+  mfrCode?: string | null;
   /** 要几片 */
   qty: number;
   /** 目标单价，百万分之一元 */

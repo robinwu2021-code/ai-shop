@@ -21,7 +21,7 @@ import { notify } from "@/lib/notify";
 import { useCan } from "@/lib/use-can";
 import { fill } from "@/lib/use-copy";
 import type { ElecCopy } from "./copy";
-import { demand, e6Of, lead, price, qty, when } from "./fmt";
+import { demand, e6Of, lead, lineMfr, price, qty, when } from "./fmt";
 import { dispatchStatusMap, quoteStatusMap, rfqStatusMap } from "./status";
 
 export function RfqTab({ c }: { c: ElecCopy }) {
@@ -187,7 +187,7 @@ function RfqDrawer({ c, rfqNo, onClose }: { c: ElecCopy; rfqNo: string; onClose:
             const v = valueOf(l);
             return (
               <DrawerSection key={l.lineNo}
-                title={`${fill(c.rfqLine, { n: l.lineNo })} · ${l.mpn}${l.mfr ? ` (${l.mfr})` : ""} × ${qty(l.qty)}`}
+                title={`${fill(c.rfqLine, { n: l.lineNo })} · ${l.mpn}${lineMfr(l, c) ? ` (${lineMfr(l, c)})` : ""} × ${qty(l.qty)}`}
                 desc={l.targetE6 != null ? fill(c.rfqTarget, { p: price(l.targetE6) }) : undefined}>
                 {l.publicAt && (
                   <Notice tone="info">
