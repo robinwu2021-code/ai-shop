@@ -3,6 +3,7 @@
 // 基础数据（P-19.4）：厂牌与别名。料号认厂牌全靠别名表，这一页是它的增长口。
 // 最上面是「认不出的厂牌」—— 上传时落到 UNKNOWN 的写法按出现次数排，带建议，一点补成别名：
 // **既有库存当场改认**（后端逐行重认、重算投影），补完这一行就从列表消失。
+import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -63,7 +64,23 @@ export function BaseTab({ c }: { c: ElecCopy }) {
   const unknownCols: Column<ElecUnknownMfrRow>[] = [
     { header: c.baseColRaw, cell: (u) => <div className="font-medium">{u.sample}<div className="font-mono txt-caption text-muted-foreground">{u.aliasNorm}</div></div> },
     { header: c.baseColRows, cell: (u) => qty(u.rowCnt), numeric: true },
-    { header: c.baseColSuppliersParts, cell: (u) => `${u.supplierCnt} · ${u.partCnt}` },
+    { header: c.baseColSuppliersParts, cell: (u) => (u.rowCnt ? `${u.supplierCnt} · ${u.partCnt}` : "—") },
+    {
+      // 买家那一侧（询价厂牌选择 §8）：同一种写法两边并成一行，补一次别名两边都认得出
+      header: c.baseColRfq,
+      cell: (u) => u.rfqLineCnt ? (
+        <div>
+          {fill(c.baseRfqLines, { n: u.rfqLineCnt, b: u.buyerCnt })}
+          {u.sampleRfqNo && (
+            <div className="txt-caption">
+              <Link className="focus-ring rounded-chip text-primary-ink hover:underline" href={`/elec?tab=rfq&rfq=${encodeURIComponent(u.sampleRfqNo)}`}>
+                {c.baseSampleRfq}
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : "—",
+    },
     {
       header: c.baseColSuggest,
       cell: (u) => {

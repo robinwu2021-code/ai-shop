@@ -2,7 +2,8 @@
 
 // 询报价（P-19.1）。一张单一屏：买家与电话、逐行填报价，**旁边就是库里谁有货、各家报了什么**
 // （真名、原价、给平台的备注）—— 运营不用在两页之间来回抄。保存即通知买家。
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { ElecCloseReason, ElecOpsLine, ElecOpsQuoteRow, ElecOpsRfq, ElecOpsSource, ElecPriceMode } from "@/lib/types";
@@ -37,7 +38,13 @@ export function RfqTab({ c }: { c: ElecCopy }) {
 
 function Orders({ c }: { c: ElecCopy }) {
   const [status, setStatus] = useState("");
-  const [openNo, setOpenNo] = useState<string | null>(null);
+  // ?rfq=<单号> 直接打开这一单（基础数据页「认不出的厂牌」里点「看最近一单」过来）
+  const sp = useSearchParams();
+  const linked = sp.get("rfq");
+  const [openNo, setOpenNo] = useState<string | null>(linked);
+  useEffect(() => {
+    if (linked) setOpenNo(linked);
+  }, [linked]);
   const statusMap = rfqStatusMap(c);
   const list = useQuery({
     queryKey: ["elec-rfq", status],

@@ -10244,12 +10244,25 @@ components:
             - "string"
             - "null"
           description: "建议厂牌的名字"
+        rfqLineCnt: 
+          type: "number"
+          description: "买家询价里这么写、又没从列表选编码的行数（ai-hxkey 询价厂牌选择 §8）"
+        buyerCnt: 
+          type: "number"
+          description: "几个买家这么写"
+        sampleRfqNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一张这么写的询价单；只在库存里出现过为空"
       required: 
         - "aliasNorm"
         - "sample"
         - "rowCnt"
         - "supplierCnt"
         - "partCnt"
+        - "rfqLineCnt"
+        - "buyerCnt"
       additionalProperties: false
       description: "认不出的厂牌写法（按规范化后的写法聚合）"
     OpsMember: 

@@ -11169,6 +11169,9 @@ KPI 卡（金额为最小货币单位整数）。
 | `partCnt` | `number` | 是 | 涉及几个料号 |
 | `suggestCode` | `string,null` | 否 | 建议的厂牌；没把握为空 |
 | `suggestName` | `string,null` | 否 | 建议厂牌的名字 |
+| `rfqLineCnt` | `number` | 是 | 买家询价里这么写、又没从列表选编码的行数（ai-hxkey 询价厂牌选择 §8） |
+| `buyerCnt` | `number` | 是 | 几个买家这么写 |
+| `sampleRfqNo` | `string,null` | 否 | 最近一张这么写的询价单；只在库存里出现过为空 |
 
 ### FaqEntry
 

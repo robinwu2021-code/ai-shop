@@ -573,4 +573,10 @@ export interface ElecUnknownMfrRow {
   suggestCode?: string | null;
   /** 建议厂牌的名字 */
   suggestName?: string | null;
+  /** 买家询价里这么写、又没从列表选编码的行数（ai-hxkey 询价厂牌选择 §8） */
+  rfqLineCnt: number;
+  /** 几个买家这么写 */
+  buyerCnt: number;
+  /** 最近一张这么写的询价单；只在库存里出现过为空 */
+  sampleRfqNo?: string | null;
 }

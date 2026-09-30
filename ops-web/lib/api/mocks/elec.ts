@@ -135,9 +135,15 @@ const aliases: ElecAliasRow[] = [
   { aliasNorm: "TI", mfrCode: "TI", source: "SEED", createdAt: null, createdBy: null },
 ];
 const unknown: ElecUnknownMfrRow[] = [
-  { aliasNorm: "STMICRO", sample: "ST Micro", rowCnt: 127, supplierCnt: 3, partCnt: 88, suggestCode: "ST", suggestName: "意法半导体" },
-  { aliasNorm: "TEXASINSTRUMENT", sample: "TEXAS INSTRUMENT", rowCnt: 89, supplierCnt: 2, partCnt: 60, suggestCode: "TI", suggestName: "德州仪器" },
-  { aliasNorm: "AMSADVANCED", sample: "AMS Advanced", rowCnt: 12, supplierCnt: 1, partCnt: 1, suggestCode: null, suggestName: null },
+  { aliasNorm: "STMICRO", sample: "ST Micro", rowCnt: 127, supplierCnt: 3, partCnt: 88, suggestCode: "ST", suggestName: "意法半导体",
+    rfqLineCnt: 4, buyerCnt: 2, sampleRfqNo: "ER202609300001" },
+  { aliasNorm: "TEXASINSTRUMENT", sample: "TEXAS INSTRUMENT", rowCnt: 89, supplierCnt: 2, partCnt: 60, suggestCode: "TI", suggestName: "德州仪器",
+    rfqLineCnt: 0, buyerCnt: 0, sampleRfqNo: null },
+  { aliasNorm: "AMSADVANCED", sample: "AMS Advanced", rowCnt: 12, supplierCnt: 1, partCnt: 1, suggestCode: null, suggestName: null,
+    rfqLineCnt: 0, buyerCnt: 0, sampleRfqNo: null },
+  // 只在买家询价里出现过：没有库存行
+  { aliasNorm: "某小厂", sample: "某小厂", rowCnt: 0, supplierCnt: 0, partCnt: 0, suggestCode: null, suggestName: null,
+    rfqLineCnt: 2, buyerCnt: 1, sampleRfqNo: "ER202609300002" },
 ];
 
 // 表头写法：种子、运营加的、一条已停用的；学到的有一条三家在用、值得提升
