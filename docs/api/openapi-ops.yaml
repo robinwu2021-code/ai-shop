@@ -9072,6 +9072,12 @@ components:
         - "BUYER_CANCELLED"
         - "DONE"
       description: "关单原因：暂无货源（会通知买家）/ 买家不要了 / 已成交"
+    ElecPriceMode: 
+      type: "string"
+      enum: 
+        - "MARKUP"
+        - "FORWARD"
+      description: "报价模式：MARKUP 加价（买家看平台价、代号 A/B/C）/ FORWARD 转发（买家看原价、匿名编号 S-XXXX）"
     ElecSupplierStatus: 
       type: "string"
       enum: 
@@ -9265,7 +9271,7 @@ components:
           description: "联系电话"
         via: 
           type: "string"
-          description: "AUTO_MATCH 库里有货自动派 / OPS 运营手工指派"
+          description: "AUTO_MATCH 库里有货自动派 / OPS 运营手工指派 / OPEN 供应商在求购大厅自己认领"
         dispatchStatus: 
           "$ref": "#/definitions/ElecDispatchStatus"
           description: "派单结果"
@@ -9407,6 +9413,11 @@ components:
                 "$ref": "#/definitions/ElecOpsOffer"
             - type: "null"
           description: "派给了谁、各自回了什么。**列表页不带，详情才带**"
+        publicAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "公开成求购的时刻（库里没人有货，自动派单一家都没派出去）；空 = 派出去了"
       required: 
         - "lineNo"
         - "mpn"
@@ -9519,6 +9530,9 @@ components:
           items: 
             "$ref": "#/definitions/ElecOpsLine"
           description: "逐行"
+        priceMode: 
+          "$ref": "#/definitions/ElecPriceMode"
+          description: "这一单的报价模式；老后端不带时按加价"
       required: 
         - "rfqNo"
         - "status"
@@ -12853,6 +12867,44 @@ paths:
     post: 
       operationId: "closeElecRfq"
       summary: "关单"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "rfqNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/rfq/{rfqNo}/price-mode": 
+    put: 
+      operationId: "setElecPriceMode"
+      summary: "改报价模式：已有一行选定报价、或单子已接受 / 关掉时后端回 90011 */"
       tags: 
         - "elec"
       responses: 

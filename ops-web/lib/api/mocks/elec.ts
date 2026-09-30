@@ -72,7 +72,18 @@ const rfqs: ElecOpsRfq[] = [
           remark: null, quoteStatus: null,
         }],
       },
-      { lineNo: 3, partNo: null, mpn: "CH340N", mfr: null, qty: 1000, targetE6: null, quote: null, sources: [], offers: [] },
+      // 库里没人有货 → 公开成求购；一家在大厅里自己认领报了价（via OPEN）
+      {
+        lineNo: 3, partNo: null, mpn: "CH340N", mfr: null, qty: 1000, targetE6: null, quote: null, sources: [],
+        publicAt: "2026-09-30T09:12:04",
+        offers: [{
+          dispatchNo: "ED009", supplierNo: "SP002", companyName: "深圳乙电子", contactPhone: "13700003333",
+          via: "OPEN", dispatchStatus: "QUOTED", declineReason: null, notifiedAt: null,
+          respondedAt: "2026-09-30T10:05:00", quoteNo: "EQT009", priceE6: 1_050_000, currency: "CNY", taxIncluded: true,
+          buyerPriceE6: 1_134_000, qtyAvailable: 1000, dateCode: "2425", leadDays: 2, cond: "NEW", packing: null,
+          moq: null, validUntil: "2026-10-03", remark: null, quoteStatus: "ACTIVE",
+        }],
+      },
     ],
   },
   {
@@ -161,6 +172,12 @@ export const elecMock: ElecApi = {
     const r = rfqOr404(no);
     Object.assign(r, { status: "CLOSED", closeReason: reason });
     return wait(structuredClone(r), 400);
+  },
+  setElecPriceMode: (no, mode) => {
+    const r = rfqOr404(no);
+    if (r.status !== "SUBMITTED" && r.status !== "QUOTED") fail("这张单的状态不能改报价模式", "This RFQ's price mode can't be changed now");
+    r.priceMode = mode;
+    return wait(structuredClone(r), 300);
   },
   dispatchElecLine: (no) => wait(structuredClone(rfqOr404(no)), 400),
   listElecQuotes: (q) => wait(quotes.filter((x) => (!q.supplierNo || x.supplierNo === q.supplierNo) && (!q.status || x.status === q.status))),

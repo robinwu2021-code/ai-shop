@@ -15,6 +15,7 @@ export const elecHttp: ElecApi = {
   quoteElecRfq: (rfqNo, req) => client.post<ElecOpsRfq>(`/elec/ops/rfq/${enc(rfqNo)}/quote`, req),
   closeElecRfq: (rfqNo, reason, note) =>
     client.post<ElecOpsRfq>(`/elec/ops/rfq/${enc(rfqNo)}/close`, { reason, note }),
+  setElecPriceMode: (rfqNo, mode) => client.put<ElecOpsRfq>(`/elec/ops/rfq/${enc(rfqNo)}/price-mode`, { mode }),
   dispatchElecLine: (rfqNo, lineNo, supplierNos) =>
     client.post<ElecOpsRfq>(`/elec/ops/rfq/${enc(rfqNo)}/line/${lineNo}/dispatch`, { supplierNos }),
   listElecQuotes: (q) => client.get<ElecOpsQuoteRow[]>("/elec/ops/quote", { page: 1, size: 50, ...q }),

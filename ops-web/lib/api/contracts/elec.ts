@@ -2,7 +2,7 @@
 // 判权在 elec-svc（ElecOpsGuard 按权限码），这里的方法与后端端点一一对应。
 // 列表一律返回数组（后端是 List，不是分页壳）。
 import type {
-  ElecAliasResult, ElecAliasRow, ElecCloseReason, ElecMfrReq, ElecMfrRow, ElecOpsPartDetail, ElecOpsPartRow,
+  ElecAliasResult, ElecAliasRow, ElecCloseReason, ElecPriceMode, ElecMfrReq, ElecMfrRow, ElecOpsPartDetail, ElecOpsPartRow,
   ElecOpsQuoteRow, ElecOpsRfq, ElecOpsStockRow, ElecOpsSupplierDetail, ElecOpsSupplierRow, ElecQuoteReq,
   ElecStockFilter, ElecStockView, ElecSupplierReq, ElecSupplierStatus, ElecUnknownMfrRow,
 } from "@/lib/types";
@@ -17,6 +17,8 @@ export interface ElecApi {
   quoteElecRfq(rfqNo: string, req: ElecQuoteReq): Promise<ElecOpsRfq>;
   /** 关单。NO_SOURCE 会通知买家「暂无货源」 */
   closeElecRfq(rfqNo: string, reason: ElecCloseReason, note?: string): Promise<ElecOpsRfq>;
+  /** 改报价模式：已有一行选定报价、或单子已接受 / 关掉时后端回 90011 */
+  setElecPriceMode(rfqNo: string, mode: ElecPriceMode): Promise<ElecOpsRfq>;
   /** 手工指派：给这一行再派几家（派过的自动跳过，一次最多 20 家） */
   dispatchElecLine(rfqNo: string, lineNo: number, supplierNos: string[]): Promise<ElecOpsRfq>;
   /** 报价记录：全部供应商报价，按时间倒序 */

@@ -1706,6 +1706,7 @@ _无字段_
 | `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
 | `offerCnt` | `number` | 是 | 几家报了还有效的价 |
 | `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
 
 
 #### POST `/elec/ops/rfq/{rfqNo}/close`
@@ -1751,6 +1752,7 @@ _无字段_
 | `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
 | `offerCnt` | `number` | 是 | 几家报了还有效的价 |
 | `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
 
 
 #### POST `/elec/ops/rfq/{rfqNo}/line/{lineNo}/dispatch`
@@ -1797,6 +1799,53 @@ _无字段_
 | `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
 | `offerCnt` | `number` | 是 | 几家报了还有效的价 |
 | `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
+
+
+#### PUT `/elec/ops/rfq/{rfqNo}/price-mode`
+
+改报价模式：已有一行选定报价、或单子已接受 / 关掉时后端回 90011 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `rfqNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
 
 
 #### POST `/elec/ops/rfq/{rfqNo}/quote`
@@ -1842,6 +1891,7 @@ _无字段_
 | `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
 | `offerCnt` | `number` | 是 | 几家报了还有效的价 |
 | `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
 
 
 #### GET `/elec/ops/stock`
@@ -10944,6 +10994,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
 | `offerCnt` | `number` | 是 | 几家报了还有效的价 |
 | `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+| `priceMode` | [`#/definitions/ElecPriceMode`](#definitionselecpricemode) | 否 | 这一单的报价模式；老后端不带时按加价 |
 
 ### ElecOpsStockRow
 

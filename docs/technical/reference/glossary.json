@@ -33041,6 +33041,15 @@
         "zh": "供应商报价状态。"
       },
       {
+        "name": "ElecPriceMode",
+        "client": "ops-web",
+        "values": [
+          "MARKUP",
+          "FORWARD"
+        ],
+        "zh": "报价模式：MARKUP 加价（买家看平台价、代号 A/B/C）/ FORWARD 转发（买家看原价、匿名编号 S-XXXX）"
+      },
+      {
         "name": "ElecRfqStatus",
         "client": "ops-web",
         "values": [

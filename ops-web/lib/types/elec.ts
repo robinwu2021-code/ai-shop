@@ -10,6 +10,8 @@
 export type ElecRfqStatus = "SUBMITTED" | "QUOTED" | "EXPIRED" | "ACCEPTED" | "CLOSED";
 /** 关单原因：暂无货源（会通知买家）/ 买家不要了 / 已成交 */
 export type ElecCloseReason = "NO_SOURCE" | "BUYER_CANCELLED" | "DONE";
+/** 报价模式：MARKUP 加价（买家看平台价、代号 A/B/C）/ FORWARD 转发（买家看原价、匿名编号 S-XXXX） */
+export type ElecPriceMode = "MARKUP" | "FORWARD";
 /** 供应商状态：暂停后他的货不再给买家看 */
 export type ElecSupplierStatus = "ACTIVE" | "SUSPENDED";
 /** 库存筛选：全部 / 7 天内到期 / 已到期 */
@@ -95,7 +97,7 @@ export interface ElecOpsOffer {
   companyName?: string | null;
   /** 联系电话 */
   contactPhone?: string | null;
-  /** AUTO_MATCH 库里有货自动派 / OPS 运营手工指派 */
+  /** AUTO_MATCH 库里有货自动派 / OPS 运营手工指派 / OPEN 供应商在求购大厅自己认领 */
   via: string;
   /** 派单结果 */
   dispatchStatus: ElecDispatchStatus;
@@ -155,6 +157,8 @@ export interface ElecOpsLine {
   sources?: ElecOpsSource[] | null;
   /** 派给了谁、各自回了什么。**列表页不带，详情才带** */
   offers?: ElecOpsOffer[] | null;
+  /** 公开成求购的时刻（库里没人有货，自动派单一家都没派出去）；空 = 派出去了 */
+  publicAt?: string | null;
 }
 
 /** 运营看到的询价单：买家的完整联系方式、每行库里谁有货、每家报了什么 */
@@ -209,6 +213,8 @@ export interface ElecOpsRfq {
   offerCnt: number;
   /** 逐行 */
   lines: ElecOpsLine[];
+  /** 这一单的报价模式；老后端不带时按加价 */
+  priceMode?: ElecPriceMode;
 }
 
 /** 录入平台报价的一行。没列进来的行 = 没找到货 */

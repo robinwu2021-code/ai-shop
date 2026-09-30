@@ -102,6 +102,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "与 ai-key 端上的 ElecRfqStatus 同名同值（运营端与买家看的是同一张询价单；端上类型 2026-09-30 随小程序迁到 ai-key）" },
   { decl: "ops-web:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
     note: "与 ai-key 端上的 ElecCloseReason 同名同值。运营关单时选" },
+  { decl: "ops-web:ElecPriceMode", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "与 ai-key 后端 elc_rfq.price_mode 同值（TDD-元器件-公开求购 D6）。运营按单切换" },
   { decl: "ops-web:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     note: "与 ai-key 端上的 ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
   { decl: "ops-web:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { ElecCloseReason, ElecOpsLine, ElecOpsQuoteRow, ElecOpsRfq, ElecOpsSource } from "@/lib/types";
+import type { ElecCloseReason, ElecOpsLine, ElecOpsQuoteRow, ElecOpsRfq, ElecOpsSource, ElecPriceMode } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
@@ -120,6 +120,16 @@ function RfqDrawer({ c, rfqNo, onClose }: { c: ElecCopy; rfqNo: string; onClose:
     onError: (e) => notify.error((e as Error).message),
   });
 
+  // 报价模式（TDD-元器件-公开求购 D6）：加价 = 买家看平台价与代号 A/B/C；转发 = 原价与匿名编号，像直连。
+  // 已有一行选定报价就不能再改 —— 成交价已经按旧模式给出去了（后端同样拦，回 90011）
+  const mode: ElecPriceMode = r?.priceMode ?? "MARKUP";
+  const chosen = (r?.lines ?? []).some((l) => (l.offers ?? []).some((o) => o.quoteStatus === "ACCEPTED"));
+  const setMode = useMutation({
+    mutationFn: (m: ElecPriceMode) => api.setElecPriceMode(rfqNo, m),
+    onSuccess: (next, m) => { refresh(next); notify.success(fill(c.rfqModeChanged, { m: m === "FORWARD" ? c.rfqModeFORWARD : c.rfqModeMARKUP })); },
+    onError: (e) => notify.error((e as Error).message),
+  });
+
   const close = (reason: ElecCloseReason) => void confirm({
     title: fill(c.rfqCloseTitle, { no: rfqNo }), desc: c.rfqCloseDesc, danger: reason === "NO_SOURCE",
     action: async () => { refresh(await api.closeElecRfq(rfqNo, reason)); notify.success(c.rfqClosed); },
@@ -154,6 +164,21 @@ function RfqDrawer({ c, rfqNo, onClose }: { c: ElecCopy; rfqNo: string; onClose:
               <Field label={c.rfqColBuyer}>{[r.company, r.contactName, r.contactPhone].filter(Boolean).join(" · ")}</Field>
               <Field label={c.rfqReq}>{demand(r, c) || c.none}</Field>
               <Field label={c.rfqRemark}>{r.remark ?? c.none}</Field>
+              <Field label={c.rfqPriceMode}>
+                <div className="flex items-center gap-2">
+                  {(["MARKUP", "FORWARD"] as const).map((m) => (
+                    <Button key={m} size="sm" variant={mode === m ? "default" : "outline"}
+                      disabled={mode !== m && (!canQuote || !open || chosen || setMode.isPending)}
+                      aria-pressed={mode === m}
+                      onClick={() => mode !== m && setMode.mutate(m)}>
+                      {m === "FORWARD" ? c.rfqModeFORWARD : c.rfqModeMARKUP}
+                    </Button>
+                  ))}
+                </div>
+                <div className="mt-1 txt-caption text-muted-foreground">
+                  {open && chosen ? c.rfqModeLocked : mode === "FORWARD" ? c.rfqModeFORWARDDesc : c.rfqModeMARKUPDesc}
+                </div>
+              </Field>
             </FieldGrid>
             <div className="txt-caption text-muted-foreground">{r.buyerNotified ? c.rfqNotified : c.rfqNotNotified}</div>
           </DrawerSection>
@@ -164,6 +189,11 @@ function RfqDrawer({ c, rfqNo, onClose }: { c: ElecCopy; rfqNo: string; onClose:
               <DrawerSection key={l.lineNo}
                 title={`${fill(c.rfqLine, { n: l.lineNo })} · ${l.mpn}${l.mfr ? ` (${l.mfr})` : ""} × ${qty(l.qty)}`}
                 desc={l.targetE6 != null ? fill(c.rfqTarget, { p: price(l.targetE6) }) : undefined}>
+                {l.publicAt && (
+                  <Notice tone="info">
+                    <span className="font-medium">{c.rfqPublic}</span>{" · "}{fill(c.rfqPublicDesc, { t: when(l.publicAt) })}
+                  </Notice>
+                )}
                 <div className="mb-2 txt-label text-muted-foreground">{c.rfqSources}</div>
                 <div className="mb-3">
                   <DataTable columns={sourceCols} rows={l.sources ?? []} rowKey={(s) => s.stockNo}
@@ -178,10 +208,11 @@ function RfqDrawer({ c, rfqNo, onClose }: { c: ElecCopy; rfqNo: string; onClose:
                       {(l.offers ?? []).map((o) => (
                         <li key={o.dispatchNo}>
                           <span className="font-medium">{o.companyName ?? o.supplierNo}</span>
+                          {o.via === "OPEN" && <> · <span className="text-primary-ink">{c.rfqViaOPEN}</span></>}
                           {" · "}<StatusBadge map={dispatchStatusMap(c)} value={o.dispatchStatus} />
                           {o.priceE6 != null && <> · {price(o.priceE6, o.currency)} {o.taxIncluded ? c.taxIn : c.taxEx} · {fill(c.rfqBuyerPrice, { p: price(o.buyerPriceE6) })} · {qty(o.qtyAvailable)} · {lead(o.leadDays, c)}</>}
                           {o.quoteStatus && <> · <StatusBadge map={quoteStatusMap(c)} value={o.quoteStatus} /></>}
-                          {o.remark && <div className="text-muted-foreground">{fill(c.rfqSupplierRemark, { r: o.remark })}</div>}
+                          {o.remark && <div className="text-muted-foreground">{fill(mode === "FORWARD" ? c.rfqSupplierRemarkFwd : c.rfqSupplierRemark, { r: o.remark })}</div>}
                         </li>
                       ))}
                     </ul>
