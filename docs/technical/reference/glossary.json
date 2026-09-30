@@ -3155,9 +3155,9 @@
         },
         {
           "key": "me.elecEntry",
-          "zh-CN": "电子元器件（测试）",
-          "en": "Electronic components (test)",
-          "ar": "المكونات الإلكترونية (تجريبي)"
+          "zh-CN": "电子元器件",
+          "en": "Electronic components",
+          "ar": "المكونات الإلكترونية"
         },
         {
           "key": "me.help",
@@ -25831,7 +25831,7 @@
         "host": "ElecInternal",
         "name": "RESULT_QUOTED",
         "value": "QUOTED",
-        "zh": "询价结果（QuotedNotice#result）：平台报了价",
+        "zh": "询价结果：平台报了价。",
         "module": "elec"
       },
       {
@@ -25853,27 +25853,6 @@
         "name": "RESULT_LINE_NO_OFFER",
         "value": "LINE_NO_OFFER",
         "zh": "某一行：收到求购的供应商都回了「没货」，平台也没报",
-        "module": "elec"
-      },
-      {
-        "host": "ElecInternal",
-        "name": "KIND_DISPATCH",
-        "value": "DISPATCH",
-        "zh": "通知供应商的事（SupplierNotice#kind）：有新求购",
-        "module": "elec"
-      },
-      {
-        "host": "ElecInternal",
-        "name": "KIND_ACCEPTED",
-        "value": "ACCEPTED",
-        "zh": "他的报价被买家选中了",
-        "module": "elec"
-      },
-      {
-        "host": "ElecInternal",
-        "name": "KIND_EXPIRING",
-        "value": "EXPIRING",
-        "zh": "库存快到期了。",
         "module": "elec"
       },
       {
@@ -34819,30 +34798,6 @@
       "type": "String",
       "value": "\"/internal/elec/session\"",
       "zh": "认令牌：C 端令牌（ctk_）或运营令牌（otk_）→ 是谁",
-      "module": "elec"
-    },
-    {
-      "host": "ElecInternal",
-      "name": "USER",
-      "type": "String",
-      "value": "\"/internal/elec/user/{userNo}\"",
-      "zh": "取一个用户验证过的手机号",
-      "module": "elec"
-    },
-    {
-      "host": "ElecInternal",
-      "name": "NOTIFY_QUOTED",
-      "type": "String",
-      "value": "\"/internal/elec/notify/quoted\"",
-      "zh": "询价有结果了：发微信订阅消息 + 站内信给买家",
-      "module": "elec"
-    },
-    {
-      "host": "ElecInternal",
-      "name": "NOTIFY_SUPPLIER",
-      "type": "String",
-      "value": "\"/internal/elec/notify/supplier\"",
-      "zh": "有新的求购派给这家供应商 / 他的报价被选中了。",
       "module": "elec"
     },
     {
