@@ -136,19 +136,15 @@ class FunctionPointPermAlignmentTest {
     /** 代码里真的有端点在用的权限码（{@code Perms.X} → 字面量）。 */
     private Set<String> permCodesUsedByEndpoints() throws IOException {
         Map<String, String> literal = permLiterals();
-        Map<String, String> elecLiteral = elecPermLiterals();
         Set<String> out = new TreeSet<>();
+        /*
+         * 元器件的六个运营码：**端点在独立项目 ai-key 里**（elec-svc，2026-09-30 迁出），本仓库扫不到它们。
+         * 菜单与授权仍登在主系统库里（V370/V371），所以按 ElecInternal 的声明算作「有端点」。
+         * 这六个码是否真的挂在端点上，由 ai-key 的 ElecEndpointAuthTest 与 ElecOpsFlowTest 的权限用例钉着。
+         */
+        out.addAll(elecPermLiterals().values());
         for (Path p : sources()) {
             String src = Files.readString(p);
-            // 元器件是独立服务（elec-svc），不走 @perm.can：它的运营端点逐个调
-            // ElecOpsGuard.require(ElecInternal.PERM_X)。菜单登在主系统库里，所以两边要在这里对上
-            Matcher em = ELEC_GUARD.matcher(src);
-            while (em.find()) {
-                String lit = elecLiteral.get(em.group(1));
-                if (lit != null) {
-                    out.add(lit);
-                }
-            }
             if (!src.contains("@perm.can")) {
                 continue;
             }
@@ -167,9 +163,6 @@ class FunctionPointPermAlignmentTest {
         }
         return out;
     }
-
-    private static final Pattern ELEC_GUARD =
-            Pattern.compile("ElecOpsGuard\\.require\\(\\s*ElecInternal\\.([A-Z_0-9]+)\\s*\\)");
 
     /** {@code ElecInternal} 的常量名 → 字面量（元器件的六个运营权限码在那里声明） */
     private static Map<String, String> elecPermLiterals() throws IOException {

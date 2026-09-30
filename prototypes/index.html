@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">27 份有效稿子，其中页面稿 17 份、共 218 屏；3 份作废。
+  <p class="sub">25 份有效稿子，其中页面稿 15 份、共 191 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -167,26 +167,6 @@
   <p class="pcard__sum">结算页一行「支付方式」+ 选择面板：在线通道一组、当面付款一组（按履约叫到店付款 / 送货时付款）；底栏按钮随选择变字；App 默认上次使用、本机不可用置灰；只有一种时不出箭头；收银台只做继续支付、只列在线通道。七屏，附规则表，不需改后端。2026-09-28 拍板：列表选择留给 App；小程序线上线下互斥（进件完成走微信，否则按门店「收款方式」走线下），不给选择。</p>
   <div class="screens"><a class="scr" href="c-pay-method.html#p01" title="p01 结算页 · 默认微信">p01</a><a class="scr" href="c-pay-method.html#p02" title="p02 选择面板 · 小程序">p02</a><a class="scr" href="c-pay-method.html#p03" title="p03 选了到店付款">p03</a><a class="scr" href="c-pay-method.html#p04" title="p04 选择面板 · App">p04</a><a class="scr" href="c-pay-method.html#p05" title="p05 结算页 · App">p05</a><a class="scr" href="c-pay-method.html#p06" title="p06 只有一种可选">p06</a><a class="scr" href="c-pay-method.html#p07" title="p07 收银台 · 继续支付">p07</a></div>
   <div class="pcard__links"><a href="c-pay-method.html">本地稿</a> <a href="https://claude.ai/artifact/2BPrUDYJ9hJV39B7uzSasD">claude.ai</a></div>
-  
-</article><article class="pcard" id="elec-rfq">
-  <div class="pcard__hd">
-    <b>元器件：查料号、询价、成为供应商</b>
-    <span class="chip warn">在建</span>
-  </div>
-  <div class="pcard__meta">页面稿 · 元器件小程序 · 运营端 · 2026-09-29 · 20 屏</div>
-  <p class="pcard__sum">第四版。独立服务 elec-svc，一个小程序、买家与供应商同一个账号。**元器件自成一页，不挂商城内容**：首页就三件事 —— 搜料号（可带厂牌与数量，旁边一条批量查）、我的询价、页尾一行成为供应商。买家：搜料号（开头/中段/相近三种命中，库存只给档位；搜不到给相近料号）→ 单料号或批量查 → 询价（要手机号+订阅授权）→ 微信通知 → 逐行看平台报价、没找到货的行留在原位 → 接受锁价（线下成交）。供应商：点一下就成为供应商（不填表，只确认手机号）→ 工作台两态 → 传 Excel、列映射记住、上架前预演（全量替换先列出要下架的）→ 到期一键续期 → 补资料。运营：一屏录入报价，旁边就是库里谁有货，保存即通知买家。十九屏 + 匿名规则表。</p>
-  <div class="screens"><a class="scr" href="elec-rfq.html#e01" title="e01 元器件首页">e01</a><a class="scr" href="elec-rfq.html#e02" title="e02 搜索结果">e02</a><a class="scr" href="elec-rfq.html#e03" title="e03 搜不到 · 相近料号">e03</a><a class="scr" href="elec-rfq.html#e04" title="e04 料号详情">e04</a><a class="scr" href="elec-rfq.html#e05" title="e05 询价">e05</a><a class="scr" href="elec-rfq.html#e06" title="e06 批量查">e06</a><a class="scr" href="elec-rfq.html#e07" title="e07 我的询价">e07</a><a class="scr" href="elec-rfq.html#e08" title="e08 询价详情 · 待报价">e08</a><a class="scr" href="elec-rfq.html#e09" title="e09 通知">e09</a><a class="scr" href="elec-rfq.html#e10" title="e10 询价详情 · 已报价">e10</a><a class="scr" href="elec-rfq.html#e11" title="e11 接受报价">e11</a><a class="scr" href="elec-rfq.html#e12" title="e12 成为供应商">e12</a><a class="scr" href="elec-rfq.html#e13" title="e13 供应商工作台 · 刚成为供应商">e13</a><a class="scr" href="elec-rfq.html#e14" title="e14 供应商工作台 · 有库存之后">e14</a><a class="scr" href="elec-rfq.html#e15" title="e15 上传 · 列映射">e15</a><a class="scr" href="elec-rfq.html#e16" title="e16 上架前确认">e16</a><a class="scr" href="elec-rfq.html#e17" title="e17 我的库存">e17</a><a class="scr" href="elec-rfq.html#e18" title="e18 供应商资料">e18</a><a class="scr" href="elec-rfq.html#e20" title="e20 上传记录">e20</a><a class="scr" href="elec-rfq.html#e19" title="e19 运营端 · 元器件询价">e19</a></div>
-  <div class="pcard__links"><a href="elec-rfq.html">本地稿</a> <a href="https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG">claude.ai</a> <a href="../docs/technical/TDD-元器件-独立服务与第一步.md">TDD-元器件-独立服务与第一步</a> <a href="../docs/technical/reference/数据库-元器件.md">数据库 · 元器件</a> <a href="../docs/technical/TDD-元器件-库存上传二期.md">TDD-元器件-库存上传二期</a></div>
-  
-</article><article class="pcard" id="elec-app-shell">
-  <div class="pcard__hd">
-    <b>元器件：底部四格的整体框架</b>
-    <span class="chip warn">在建</span>
-  </div>
-  <div class="pcard__meta">页面稿 · 元器件小程序 · 2026-09-30 · 7 屏</div>
-  <p class="pcard__sum">框架稿，只定骨架。按独立小程序画：底部四格 找料（查）· 询价（买）· 供货（卖）· 我的（账号与记录），取代 elec-rfq 首页与工作台顶上的「我要买 / 我是供应商」切换条。四个菜单页是根页面、没有返回键；二级页都没有底部菜单。新增「我的」与「历史记录」两页，其余二级页只换挂靠位置。七屏 + 待拍板六件事（几格、求购放哪、新询价入口、供应商落点、历史记录范围、我的里的杂项）。</p>
-  <div class="screens"><a class="scr" href="elec-app-shell.html#f01" title="f01 找料">f01</a><a class="scr" href="elec-app-shell.html#f02" title="f02 询价">f02</a><a class="scr" href="elec-app-shell.html#f03" title="f03 供货 · 已是供应商">f03</a><a class="scr" href="elec-app-shell.html#f04" title="f04 供货 · 还不是供应商">f04</a><a class="scr" href="elec-app-shell.html#f05" title="f05 我的">f05</a><a class="scr" href="elec-app-shell.html#f06" title="f06 历史记录">f06</a><a class="scr" href="elec-app-shell.html#f07" title="f07 页面树">f07</a></div>
-  <div class="pcard__links"><a href="elec-app-shell.html">本地稿</a> <a href="https://claude.ai/artifact/Buc5iTam6pxfp5M1D8nesL">claude.ai</a> <a href="../docs/technical/TDD-元器件-小程序独立工程.md">TDD-元器件-小程序独立工程</a></div>
   
 </article>
   </div>

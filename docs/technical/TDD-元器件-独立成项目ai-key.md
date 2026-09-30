@@ -64,7 +64,7 @@
 | `elc_session` | 令牌（前缀 `ktk_`）。复用 ai-shop `shop-base-auth` 的 `TokenStore` 抽象，落在元器件自己的库里 |
 | `elc_otp` 或内存 | 验证码的「存与校验」在 ai-key；「发短信」借 ai-shop（短信签名与通道是 ai-shop 的资质） |
 
-买家面与供应商面**仍是同一个账号**（需求 ③，与现在的双角色规则一致）：`/elec/c/**` 是买家，`/elec/b/**` 看 `elc_supplier_member` 判是不是供应商。现有的七条双角色规则（[接口总览与双角色](./TDD-元器件-接口总览与双角色.md) §三）不变，只是「账号」从 ai-shop 的 `usr_no` 换成 `account_no`。
+买家面与供应商面**仍是同一个账号**（需求 ③，与现在的双角色规则一致）：`/elec/c/**` 是买家，`/elec/b/**` 看 `elc_supplier_member` 判是不是供应商。现有的七条双角色规则（[接口总览与双角色](../../../ai-key/docs/technical/TDD-元器件-接口总览与双角色.md) §三）不变，只是「账号」从 ai-shop 的 `usr_no` 换成 `account_no`。
 
 ### 3.2 登录
 

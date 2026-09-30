@@ -141,12 +141,7 @@ const GENERATORS = [
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
     "backend/shop-inventory/src/main/resources/db/inventory"]],
-  ["scripts/gen-elec-erd.mjs",
-   ["docs/technical/diagrams/db-elec.svg", "docs/technical/reference/数据库-元器件.md"]],
-  ["backend/scripts/gen-test-schema.py",
-   ["backend/elec/elec-svc/src/test/resources/db/elec-h2/V1__elec_baseline.sql"],
-   ["backend/elec/elec-svc/src/test/resources/db/elec-h2/V1__elec_baseline.sql",
-    "backend/elec/elec-core/src/main/resources/db/elec"]],
+  // 元器件的 ER 图与测试库结构两项 2026-09-30 随元器件迁到 ai-key（它自己的 pre-push 里跑）
 ];
 
 const sha = (p) => (existsSync(p) ? createHash("sha1").update(readFileSync(p)).digest("hex") : "∅");

@@ -99,19 +99,19 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   // ── P-19 电子元器件 · 运营端（ops-web/lib/types/elec.ts）。独立服务 elec-svc 的 /elec/ops/** ──
   { decl: "ops-web:ElecRfqStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["SUBMITTED", "QUOTED", "ACCEPTED", "EXPIRED"],
-    note: "与 shared:ElecRfqStatus 同名同值（运营端与买家看的是同一张询价单）。申报理由见那一条" },
+    note: "与 ai-key 端上的 ElecRfqStatus 同名同值（运营端与买家看的是同一张询价单；端上类型 2026-09-30 随小程序迁到 ai-key）" },
   { decl: "ops-web:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "与 shared:ElecCloseReason 同名同值。运营关单时选" },
+    note: "与 ai-key 端上的 ElecCloseReason 同名同值。运营关单时选" },
   { decl: "ops-web:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    note: "与 shared:ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
+    note: "与 ai-key 端上的 ElecSupplierStatus 同名同值。运营端的暂停 / 恢复就是改它" },
   { decl: "ops-web:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "与 shared:ElecStockFilter 同名同值：查询条件不是状态" },
+    note: "与 ai-key 端上的 ElecStockFilter 同名同值：查询条件不是状态" },
   { decl: "ops-web:ElecDispatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["SENT", "VIEWED", "QUOTED", "DECLINED"],
-    note: "与 shared:ElecDispatchStatus 同名同值。运营端据此看「派了几家、几家回了话」" },
+    note: "与 ai-key 端上的 ElecDispatchStatus 同名同值。运营端据此看「派了几家、几家回了话」" },
   { decl: "ops-web:ElecOpsQuoteStatus", dom: "elec", shape: "STATUS", verdict: "OK",
     words: ["WITHDRAWN", "ACCEPTED", "NOT_CHOSEN", "EXPIRED"],
-    note: "运营视图的报价状态。**比 shared:ElecQuoteStatus 多一个 EXPIRED**（OpsQuoteRow：过了有效期的 ACTIVE "
+    note: "运营视图的报价状态。**比 ai-key 端上的 ElecQuoteStatus 多一个 EXPIRED**（OpsQuoteRow：过了有效期的 ACTIVE "
       + "显示成 EXPIRED，不落库）—— 所以不同名，免得被当成同一个东西。NOT_CHOSEN = 这一行成交给了别家" },
   { decl: "ops-web:NotifyFailReason", dom: "message", shape: "CLASS", verdict: "OK",
     note: "CRED/QUOTA/TARGET/NETWORK。**不是 wire 契约**：后端只回自由文本 error，这四类是端上对它的归因分桶（lib/notify-reason.ts），用来把「下一步该做什么」显示给运营。归不出来时返回 null，不硬塞一个兜底类" },
@@ -687,103 +687,6 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "而 ops-web 这个 Onboarding 在本仓库另有含义——入驻审核链路也叫进件）。"
       + "记 MERGE 不记 OK：写 OK 等于说「两个名字指同一个概念没问题」，"
       + "而那正是这张表要挡住的那件事" },
-// ── 元器件（独立库 ai_shop_elec，跑在独立进程 elec-svc） ───────────────────────
-  //
-  // 这一批的 dom 都是 elec：它是**另一个库、另一个进程**，取值与电商那边没有交集，
-  // 放进已有的域会让「这个域的枚举有几个」这类统计变成两件事的和。
-  { decl: "shared:ElecQtyBand", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "买家看到的库存数量档（B1/B100/B1K/B10K/B100K/B1M）。**有损是故意的**："
-      + "精确库存加上批号与地区，同行一眼认得出是谁家的货。后端 Bands.qty 是唯一产出处" },
-  { decl: "shared:ElecSourceBand", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "有几家有货的档位（ONE/FEW/MANY）。同样只存档位不存家数，理由同 ElecQtyBand" },
-  { decl: "shared:ElecMatch", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "这条结果是怎么命中的：EXACT 料号一致 / PREFIX 前缀 / CONTAINS 含 / NEAR 近似退位。"
-      + "端上据此决定排序与「你是不是要找」的提示，不是状态" },
-  { decl: "shared:ElecLookupMatch", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "批量查一串料号时每一行的结果：EXACT / AMBIGUOUS 多个候选 / PREFIX / NONE。"
-      + "与 ElecMatch 不同名不同义 —— 那个描述单条结果的来路，这个描述一次查询的结论" },
-  { decl: "shared:ElecInvoice", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "发票要求：不要 / 普票 / 专票。元器件采购多为企业，专票与否直接改报价" },
-  { decl: "shared:ElecDcReq", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "批次要求：ANY 不限 / Y1 一年内 / Y2 两年内。后端 ElecRfqServiceImpl.DC_REQS，"
-      + "取值单独声明成常量是为了进得了枚举对账的后端词表（两个字符的字面量扫不到）" },
-  { decl: "shared:ElecRfqStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["SUBMITTED", "QUOTED", "ACCEPTED", "EXPIRED"],
-    note: "询价单状态。SUBMITTED/QUOTED/ACCEPTED 不在 L1 词表里：L1 的「待处理/处理中/已完成」"
-      + "对询价太粗 —— 买家要分得清「还没人报」和「报了等我选」，这两步的动作完全不同。"
-      + "EXPIRED 也不在 L1：它不是「关闭」，报价过期之后单子还在、还能再催一轮，"
-      + "用 L1 的 CLOSED 会把「没人要了」和「价放久了」混成一件事。CLOSED 用的是 L1 的词" },
-  { decl: "shared:ElecCloseReason", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "询价关单原因：NO_SOURCE 没找到货 / BUYER_CANCELLED 买家撤 / DONE 成交。"
-      + "「没找到货」要与「买家撤了」分开统计 —— 前者是平台的缺货清单，是要补的货源" },
-  { decl: "shared:ElecSupplierKind", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "供应商类型：代理 / 贸易商 / 原厂 / 其他。买家看不到，只用于平台侧筛选与风控" },
-  { decl: "shared:ElecSupplierStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    note: "ACTIVE / SUSPENDED，用的是 L1 词表里的词。暂停后他的库存不再进买家面的投影" },
-  { decl: "shared:ElecStockStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["ON", "EXPIRED"],
-    note: "库存行：ON 在售 / EXPIRED 已过期。两个词都不在 L1 里 —— 这里的「在售」指"
-      + "**这一行还在有效期内**，与商品的上下架不是一回事，借 L1 的上架词会把两件事混掉；"
-      + "EXPIRED 是「超过 N 天没再确认」，货多半还在，只是不该再给买家看，"
-      + "与 L1 里表示终态的那些词不是一回事（供应商点一下「仍有货」它就回到 ON）" },
-  { decl: "shared:ElecCond", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "货况：ORIGINAL 原装原包 / LOOSE 原装散新 / PULLED 拆机 / REFURB 翻新。后端 ElecValues.CONDITIONS。"
-      + "价差好几倍，认错比认不出更糟 —— 所以写法 → 码只做精确匹配（ElecValues#lookup）" },
-  { decl: "shared:ElecPacking", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "包装：REEL / TRAY / TUBE / CUT_TAPE / BULK / BOX。后端 ElecValues.PACKINGS" },
-  { decl: "shared:ElecCurrency", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "供应商报价的币种 CNY / USD / HKD（ElecValues.CURRENCIES）。买家面一律换算成人民币含税，"
-      + "只有供应商自己看、自己填时才出现；与全站的市场货币不是一回事（那是按市场定的展示货币）" },
-  { decl: "shared:ElecCondReq", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "买家的货况要求：ANY / ORIGINAL / NEW（ElecValues.COND_REQS）。与 ElecCond 不同名不同义 —— "
-      + "那个描述一批货是什么，这个描述买家要什么：多一个「不限」，少一个「翻新」（没人会指定要翻新件）" },
-  { decl: "shared:ElecPackingReq", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "买家的包装要求：ANY / REEL 必须整盘 / CUT_TAPE 可以剪带（ElecValues.PACKING_REQS）。理由同 ElecCondReq" },
-  { decl: "shared:ElecOfferFrom", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "一条报价是谁报的：PLATFORM / SUPPLIER（RfqDtos.Offer.from）。端上不显示这个词，"
-      + "只决定接受走哪条接口：平台那条走整单接受，供应商的走按行选" },
-  { decl: "shared:ElecStockFilter", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "供应商「我的库存」的筛选：ALL / EXPIRING 7 天内到期 / EXPIRED（ElecSupplierController#stocks 的 filter 参数）。"
-      + "是查询条件不是状态，所以不按 STATUS 登记" },
-  { decl: "shared:ElecDispatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["SENT", "VIEWED", "QUOTED", "DECLINED"],
-    note: "派给供应商的那条求购：SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝（ElcDispatch）。"
-      + "四个都不在 L1 里：它描述的是**一次邀约的回应**，不是单据的处理进度 —— 响应率的分母是「看过」，"
-      + "所以 VIEWED 必须与 SENT 分开；DECLINED 是供应商说没货，不是 L1 的 REJECTED（那是审核驳回）" },
-  { decl: "shared:ElecQuoteStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["WITHDRAWN", "ACCEPTED", "NOT_CHOSEN"],
-    note: "供应商报价：ACTIVE 有效 / WITHDRAWN 撤回 / ACCEPTED 被买家选中 / NOT_CHOSEN 这一行成交给了别家（ElcQuote）。"
-      + "NOT_CHOSEN 不在 L1：L1 的「已关闭 / 已取消」都是这条报价自己的结局，而它说的是「同一行别人赢了」，"
-      + "供应商要据此知道不是自己撤的、也不是过期 —— 借 L1 的词会让他以为是自己这边的事。"
-      + "ACCEPTED 与询价单 ElecRfqStatus 的 ACCEPTED 同词同义（都是买家接受了价）；"
-      + "过期不落库，按 validUntil 算，所以没有 EXPIRED" },
-  { decl: "shared:ElecDeclineReason", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "供应商拒绝求购的原因：NO_STOCK / PRICE / OTHER（RfqDtos.DeclineReq）。"
-      + "「价格做不了」要与「没货」分开：前者是平台加价率与市场价的信号，后者是库存数据旧了" },
-  { decl: "shared:ElecImportMode", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "上传库存表的方式：MERGE 只改表里有的 / REPLACE 表里没有的下架。"
-      + "**默认 MERGE**：传半截表就把全部库存下架，是这类工具最常见的事故" },
-  { decl: "shared:ElecRowProblemReason", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "上传时认不了的行的原因。原先内联在 ElecRowProblem.reason 上（D5）—— "
-      + "内联的联合对登记与对账都不可见，提取成具名类型才进得了雷达" },
-  { decl: "shared:ElecBatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["PARSED", "APPLIED", "NEED_MAPPING", "SUPERSEDED", "EXPIRED"],
-    note: "一次上传：PARSED 预演完待确认 / APPLIED 已上架。两个词都不在 L1 里，"
-      + "而这一步的要害正是「预演过了但一行库存都没动」—— 用 L1 的「处理中/已完成」说不出它。"
-      + "二期加的三个也不在 L1：NEED_MAPPING 是「认不出料号与数量列、等他手工选」—— 不是失败（FAILED 是文件读不了），"
-      + "也不是待确认（还没有可确认的数据）；SUPERSEDED 是「同一家又传了一张、这张作废」，与他自己点放弃的 CANCELLED "
-      + "要分开（记录里他得看得出哪张是自己放弃的）；EXPIRED 是读时算的（上传满 1 小时没确认，库里仍是 PARSED），"
-      + "不落库，所以借不了 L1 的「已关闭」—— 那是一个被执行过的动作" },
-  { decl: "shared:ElecIssueCode", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "上传表里一处问题的码，定位到格（行、列、表头、原值）。前五个是错误（这一行不上架），"
-      + "MFR_MISSING / MFR_UNKNOWN / DC_UNPARSED 是警告（照常上架）。与后端导出表「问题」列的 IssueText.java 同一套码；"
-      + "ElecRowProblemReason 是它的子集，留给老版本小程序的过渡字段 problems 用" },
-  { decl: "shared:ElecIssueLevel", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "问题级别：ERROR 这一行不上架 / WARN 照常上架但列给他看。落库在 elc_stock_batch_row.issue_level" },
-  { decl: "shared:ElecColumnSource", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "某个字段是怎么认出来的：REMEMBERED 上次确认过的表头一字不差 / ALIAS 表头别名表 / AI 大模型 / MANUAL 他自己选的。"
-      + "端上只对 AI 打「请核对」角标。落库在 elc_stock_batch.column_source（JSON）" },
-  { decl: "shared:ElecPreviewKind", dom: "elec", shape: "CLASS", verdict: "OK",
-    note: "上架前确认里一行的类别：INSERT / UPDATE / UNCHANGED / DELIST / PROBLEM。**不落库**：按生成预览那一刻的库存算，"
-      + "确认时后端按此刻重算。PROBLEM 行有错误不上架；有警告的行仍归在它自己的类别里" },
+// 元器件的端上枚举（shared:Elec*）2026-09-30 随小程序迁到独立项目 ai-key，登记在那边；
+  // 这里只留运营端（ops-web:Elec*）的那几条 —— 运营端仍在 ai-shop。
 ];

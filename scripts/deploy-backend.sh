@@ -24,7 +24,7 @@ HOST="${HOST:-soukmind-tx}"
 #
 #   scripts/deploy-backend.sh            # 主应用（默认，行为与此前逐字一致）
 #   scripts/deploy-backend.sh pay-svc    # 支付域独立进程
-#   scripts/deploy-backend.sh elec-svc   # 电子元器件独立进程（2026-09-30 起）
+#   （电子元器件 elec-svc 2026-09-30 迁到独立项目 ai-key：在那边用 scripts/deploy.sh 发）
 APP="${1:-shop-app}"
 case "$APP" in
     shop-app)
@@ -42,14 +42,9 @@ case "$APP" in
         HEALTH="${HEALTH:-http://localhost:8083/internal/pay/fee-rules}"
         HEALTH_OK="${HEALTH_OK:-401}" ;;
     elec-svc)
-        MVN_MODULE="elec/elec-svc"; JAR_IN_REPO="elec/elec-svc/target/elec-svc-0.1.0-SNAPSHOT.jar"
-        REMOTE_DIR="${REMOTE_DIR:-/data/app/ai-shop/elec-svc}"; LINK_NAME="elec-svc.jar"
-        SERVICE="${SERVICE:-ai-shop-elec}"
-        # 也没有 actuator。拿**游客可查**的查料号当活口：200 说明容器、过滤链、它自己的库都通了
-        # （查料号要读 elc_part_market），比 pay-svc 那条 401 多证明一层库连得上
-        # suggest=true：联想不计入「搜索需求」统计 —— 不带它，每发一次版就往需求榜里记一条 HEALTH
-        HEALTH="${HEALTH:-http://localhost:8085/elec/c/part?keyword=health&suggest=true}" ;;
-    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc / elec-svc）" >&2; exit 2 ;;
+        echo "elec-svc 已迁到独立项目 ai-key（2026-09-30）：cd ../ai-key && scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh" >&2
+        exit 2 ;;
+    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
 esac
 HEALTH_OK="${HEALTH_OK:-200}"
 LINK="$REMOTE_DIR/$LINK_NAME"

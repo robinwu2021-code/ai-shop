@@ -219,7 +219,7 @@ coscli cp cos://hxmall-download-1301656997/b-app/hxmall-merchant-$VER.apk \
 ```bash
 scripts/deploy-backend.sh                 # 后端 shop-app
 scripts/deploy-backend.sh pay-svc         # 支付服务
-scripts/deploy-backend.sh elec-svc        # 电子元器件服务（首次上线先做下面那一节）
+# 电子元器件 elec-svc：2026-09-30 迁到独立项目 ai-key，在那边发（cd ../ai-key && scripts/deploy.sh）
 scripts/deploy-frontend.sh <site|ops-web|c-app|b-app>
 backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn package -pl shop-job -am
 ```
@@ -240,6 +240,9 @@ backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn pack
 
 ### 电子元器件 elec-svc 首次上线（一次性）
 
+> 2026-09-30 起元器件是独立项目 **ai-key**：发版用 `ai-key/scripts/deploy.sh`，systemd 单元在 `ai-key/deploy/systemd/`。
+> 下面的首次上线步骤、`elec.env` 的键仍然有效（生产目录、服务名、库名都没改）。
+
 脚本只管「换包、重启、验活」，下面四件事它不做，**首次要人做一遍**：
 
 1. **建库**（MySQL 9.7，走 socket）：`CREATE DATABASE ai_shop_elec DEFAULT CHARACTER SET utf8mb4;`
@@ -258,10 +261,10 @@ backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn pack
    | `ELEC_PAGE_PREFIX` | — | 通知落地页前缀。并进 c-app 测试期默认 `pkg-elec/pages/`；独立小程序上线时改成 `pages/` |
    | `ELEC_EXPIRY_REMIND_CRON` | — | 库存到期提醒，默认每天 9 点；设成 `-` 关掉 |
 
-3. **装 systemd 单元与 nginx**：`deploy/tencent/systemd/ai-shop-elec.service` → `/etc/systemd/system/`，
+3. **装 systemd 单元与 nginx**：`ai-key/deploy/systemd/ai-shop-elec.service`（原 `deploy/tencent/systemd/ai-shop-elec.service`） → `/etc/systemd/system/`，
    `daemon-reload` + `enable`；nginx 的 `location ^~ /elec/` 已在 `www.hxmall.top.conf` 里，`nginx -t` 后 reload
    （**先 diff 线上那份**：sites-enabled 可能是实体副本，见第 9 节）。
-4. **发包**：`scripts/deploy-backend.sh elec-svc`。它的活口是 `GET /elec/c/part?keyword=health&suggest=true`
+4. **发包**：在 ai-key 里 `scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh`。它的活口是 `GET /elec/c/part?keyword=health&suggest=true`
    —— 查料号要读库，200 说明进程、过滤链、库都通了；带 `suggest=true` 是为了不往「搜索需求」统计里记一条 HEALTH。
 
 **上线后验两句**（不需要任何账号）：

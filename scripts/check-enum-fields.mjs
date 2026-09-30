@@ -38,7 +38,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 // DDL 解析只有一份 —— 见 ddl.mjs 的文件头「为什么必须只有一份」
-import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR } from "./lib/ddl.mjs";
+import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 
 /**
  * 重放后的表结构，**惰性 + 只算一次**：`audit()` 会对每条 FIELDS 查一次列注释，
@@ -46,7 +46,7 @@ import { readSchema, MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR 
  */
 let SCHEMA = null;
 function schema() {
-  if (!SCHEMA) SCHEMA = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR]);
+  if (!SCHEMA) SCHEMA = readSchema(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
   return SCHEMA;
 }
 
@@ -566,192 +566,6 @@ export const FIELDS = [
    * ⚠️ **建端上契约那天要回来把 clients 填上**，否则两边的取值会各走各的，
    * 而症状是「按状态筛，筛出来永远是空列表且不报错」。
    */
-  {
-    concept: "厂牌状态",
-    field: "elc_manufacturer.status",
-    backend: { ddl: ["elc_manufacturer", "status"] },
-    clients: [],
-  },
-  {
-    concept: "厂牌别名的来源",
-    field: "elc_mfr_alias.source",
-    backend: { ddl: ["elc_mfr_alias", "source"] },
-    clients: [],
-  },
-  {
-    concept: "料号的来源",
-    field: "elc_part.source",
-    backend: { ddl: ["elc_part", "source"] },
-    clients: [],
-  },
-  {
-    concept: "料号状态",
-    field: "elc_part.status",
-    backend: { ddl: ["elc_part", "status"] },
-    clients: [],
-  },
-  {
-    concept: "买家看到的库存档位",
-    field: "elc_part_market.qty_band",
-    backend: { ddl: ["elc_part_market", "qty_band"] },
-    clients: [],
-  },
-  {
-    concept: "买家看到的货源家数档位",
-    field: "elc_part_market.source_band",
-    backend: { ddl: ["elc_part_market", "source_band"] },
-    clients: [],
-  },
-  {
-    concept: "询价单状态",
-    field: "elc_rfq.status",
-    backend: { ddl: ["elc_rfq", "status"] },
-    clients: [],
-  },
-  {
-    concept: "询价的发票要求",
-    field: "elc_rfq.need_invoice",
-    backend: { ddl: ["elc_rfq", "need_invoice"] },
-    clients: [],
-  },
-  {
-    concept: "询价的批次要求",
-    field: "elc_rfq.dc_req",
-    backend: { ddl: ["elc_rfq", "dc_req"] },
-    clients: [],
-  },
-  {
-    concept: "询价关单原因",
-    field: "elc_rfq.close_reason",
-    backend: { ddl: ["elc_rfq", "close_reason"] },
-    clients: [],
-  },
-  {
-    concept: "询价的货况要求",
-    field: "elc_rfq.cond_req",
-    backend: { ddl: ["elc_rfq", "cond_req"] },
-    clients: [],
-  },
-  {
-    concept: "询价的包装要求",
-    field: "elc_rfq.packing_req",
-    backend: { ddl: ["elc_rfq", "packing_req"] },
-    clients: [],
-  },
-  {
-    concept: "派单来路（自动匹配 / 运营指派）",
-    field: "elc_dispatch.via",
-    backend: { ddl: ["elc_dispatch", "via"] },
-    clients: [],
-  },
-  {
-    concept: "派单状态",
-    field: "elc_dispatch.status",
-    backend: { ddl: ["elc_dispatch", "status"] },
-    clients: [],
-  },
-  {
-    concept: "供应商拒绝报价的原因",
-    field: "elc_dispatch.decline_reason",
-    backend: { ddl: ["elc_dispatch", "decline_reason"] },
-    clients: [],
-  },
-  {
-    concept: "供应商报价状态",
-    field: "elc_quote.status",
-    backend: { ddl: ["elc_quote", "status"] },
-    clients: [],
-  },
-  {
-    concept: "元器件库存行状态",
-    field: "elc_stock.status",
-    backend: { ddl: ["elc_stock", "status"] },
-    clients: [],
-  },
-  {
-    concept: "库存行的货况",
-    field: "elc_stock.cond_grade",
-    backend: { ddl: ["elc_stock", "cond_grade"] },
-    clients: [],
-  },
-  {
-    concept: "库存行的包装",
-    field: "elc_stock.packing",
-    backend: { ddl: ["elc_stock", "packing"] },
-    clients: [],
-  },
-  {
-    concept: "库存行的报价币种",
-    field: "elc_stock.currency",
-    backend: { ddl: ["elc_stock", "currency"] },
-    clients: [],
-  },
-  {
-    concept: "库存上传的导入方式",
-    field: "elc_stock_batch.mode",
-    backend: { ddl: ["elc_stock_batch", "mode"] },
-    clients: [],
-  },
-  {
-    concept: "库存上传批次的状态",
-    field: "elc_stock_batch.status",
-    backend: { ddl: ["elc_stock_batch", "status"] },
-    clients: [],
-  },
-  {
-    concept: "库存上传：字段是怎么认出来的",
-    field: "elc_stock_batch.column_source",
-    backend: { ddl: ["elc_stock_batch", "column_source"] },
-    clients: [],
-  },
-  {
-    concept: "库存上传：原件在哪个区",
-    field: "elc_stock_batch.file_area",
-    backend: { ddl: ["elc_stock_batch", "file_area"] },
-    clients: [],
-  },
-  {
-    concept: "表头别名对应的字段",
-    field: "elc_header_alias.field",
-    backend: { ddl: ["elc_header_alias", "field"] },
-    clients: [],
-  },
-  {
-    concept: "表头别名的来源",
-    field: "elc_header_alias.source",
-    backend: { ddl: ["elc_header_alias", "source"] },
-    clients: [],
-  },
-  {
-    concept: "表头别名的状态",
-    field: "elc_header_alias.status",
-    backend: { ddl: ["elc_header_alias", "status"] },
-    clients: [],
-  },
-  {
-    concept: "元器件供应商类型",
-    field: "elc_supplier.kind",
-    backend: { ddl: ["elc_supplier", "kind"] },
-    clients: [],
-  },
-  {
-    concept: "元器件供应商状态",
-    field: "elc_supplier.status",
-    backend: { ddl: ["elc_supplier", "status"] },
-    clients: [],
-  },
-  {
-    concept: "元器件供应商成员角色",
-    field: "elc_supplier_member.role",
-    backend: { ddl: ["elc_supplier_member", "role"] },
-    clients: [],
-  },
-  {
-    concept: "元器件供应商成员状态",
-    field: "elc_supplier_member.status",
-    backend: { ddl: ["elc_supplier_member", "status"] },
-    clients: [],
-  },
 ];
 
 /**

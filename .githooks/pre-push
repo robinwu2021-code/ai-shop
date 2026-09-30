@@ -295,7 +295,7 @@ else
   echo "⚠ 跳过自造件棘轮：ui-lib 生成器在 HEAD 副本里跑不起来"
 fi
 
-# 类型检查（三端 uni-app：b-app / c-app / elec-app）。**这一条是被一个真缺陷催出来的**：
+# 类型检查（两端 uni-app：b-app / c-app；元器件小程序 2026-09-30 迁到 ai-key，在它自己的 pre-push 里查）。**这一条是被一个真缺陷催出来的**：
 # 仓库里一直有 `npm run type-check` 脚本，却没挂在任何闸门上，于是
 # `stock-check` 与 `transfer` 把 showModal 换成 confirm() 时留下了 `content:` ——
 # ConfirmOptions 没这个字段，**说明文字被静默丢掉**：盘点看不到差异件数、
@@ -307,9 +307,7 @@ fi
 if [ -d "$ROOT/node_modules" ]; then
   ln -sfn "$ROOT/b-app/node_modules" "$GATE_WT/b-app/node_modules" 2>/dev/null
   ln -sfn "$ROOT/c-app/node_modules" "$GATE_WT/c-app/node_modules" 2>/dev/null
-  # elec-app（元器件小程序，独立工程）：依赖都在根 node_modules，自己那份里只有 @ai-shop/ui 软链
-  ln -sfn "$ROOT/elec-app/node_modules" "$GATE_WT/elec-app/node_modules" 2>/dev/null
-  for app in b-app c-app elec-app; do
+  for app in b-app c-app; do
     if ! (cd "$GATE_WT/$app" && npx vue-tsc --noEmit 2>&1); then
       echo "✗ $app 类型检查没过（上面是原始输出）。本机重现："
       echo "    cd $app && npx vue-tsc --noEmit"
@@ -340,8 +338,7 @@ if [ -d "$ROOT/node_modules" ]; then
   # 可跑的」）。第一批只有纯函数（`src/utils` / `src/shared`）：那些是一个值进、
   # 一个值出的业务规则，出错的后果具体（提交载荷少一半、覆盖被后端清掉），
   # 而且不会跟正在进行的 UI 重构撞车 —— c-app 那边正是撞在这上面。
-  # elec-app（2026-09-30 起）：金额是百万分之一元，换算错一位就是报错价 —— 纯函数单测，挂上时全绿
-  for app in c-app b-app elec-app; do
+  for app in c-app b-app; do
     if ! (cd "$GATE_WT/$app" && npm test --silent 2>&1); then
       echo "✗ $app 单元测试没过（上面是原始输出）。本机重现："
       echo "    cd $app && npm test"

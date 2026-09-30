@@ -6,7 +6,7 @@
   python3 scripts/gen-ui-catalog.py --check    只校验（pre-push 闸门用；不一致就退出 1）
 
 来源都是**代码里已有的真源**，不手工维护第二份：
-  · b-app / c-app / elec-app → `src/pages.json`（路由 + 导航栏标题 + tabBar）
+  · b-app / c-app → `src/pages.json`（路由 + 导航栏标题 + tabBar）。元器件小程序已迁到 ai-key（2026-09-30），不在这份清单里
   · ops-web        → `lib/nav.ts`（模块 → 子功能，带权限码与矩阵编号）
   · 原型 → prototypes/registry.json（每一屏挂的端与路由；路由还没建的列成「原型」行）
 
@@ -75,10 +75,6 @@ FALLBACK_TITLES = {
 
 
 def domain_of(path: str, app: str = "") -> str:
-    # 元器件小程序是独立工程，整端就是一个域。它的路由段（search / home…）与商城同名，
-    # 按段名查会被错分进「商品」「工作台」
-    if app == "elec-app":
-        return "元器件"
     seg = path.split("/")[1] if path.startswith("pages/") else path.strip("/")
     for name, prefixes in DOMAINS:
         if seg in prefixes:
@@ -249,13 +245,12 @@ def proto_of(app, path):
 
 # 本机 dev server 端口（mock 模式）。点「预览」直接进那一页，不用自己拼路由
 DEV_ORIGIN = {"b-app": "http://localhost:5175/#", "c-app": "http://localhost:5176/#",
-              "elec-app": "http://localhost:5177/#",
               "ops-web": "http://localhost:3000"}
 
 
 def main() -> None:
     check = "--check" in sys.argv
-    rows = read_uni("b-app") + read_uni("c-app") + read_uni("elec-app") + read_ops()
+    rows = read_uni("b-app") + read_uni("c-app") + read_ops()
     # 登记了路由、页面还没建的屏：列成「原型」行。落地之后它自然从 pages.json / nav.ts 里出现，
     # 这里不用删任何东西 —— 判据是路由存不存在，不是人记不记得
     have = {(r["app"], r["route"]) for r in rows}
@@ -263,7 +258,7 @@ def main() -> None:
               "proto": proto_of(a, r)[0], "protoUrl": proto_of(a, r)[1], "preview": None}
              for a, r, t in PROTO_SCREENS if (a, "/" + r) not in have]
 
-    apps = {"b-app": "商家 App", "c-app": "买家小程序", "elec-app": "元器件小程序", "ops-web": "运营端"}
+    apps = {"b-app": "商家 App", "c-app": "买家小程序", "ops-web": "运营端"}
     catalog: dict = {"apps": [], "total": len(rows)}
     for app, app_label in apps.items():
         mine = [r for r in rows if r["app"] == app]
@@ -413,7 +408,7 @@ footer{margin-top:70px;border-top:1px solid var(--rule);padding-top:16px;
 </header>
 {{BODY}}
 <footer>已实现 = 路由已存在　原型 = 只有设计稿　待建 = 导航里登记了但页面未建<br>
-「原型」跳设计稿对应的那一屏；「预览」跳本机 dev server（b-app 5175 / c-app 5176 / elec-app 5177 / ops-web 3000，需先启动）<br>
+「原型」跳设计稿对应的那一屏；「预览」跳本机 dev server（b-app 5175 / c-app 5176 / ops-web 3000，需先启动）<br>
 清单不手工维护：加了一页而清单没变，说明该重新跑一次生成器</footer>
 </div>
 """

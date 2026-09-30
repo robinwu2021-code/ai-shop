@@ -19,7 +19,7 @@
  * 用法：npm run gen:model-align
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
-import { readColumnNames, MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR } from "./lib/ddl.mjs";
+import { readColumnNames, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
@@ -947,7 +947,7 @@ function assertNoDupKeys(name, src) {
  * 它们会被报成「契约有类型、库里无承载（阻塞）」——**结论正好反了**：
  * 表都建好了，是这个生成器看不见。20 条假阻塞会把真的那几条淹掉。
  */
-const tables = readColumnNames(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR, ELEC_MIGRATION_DIR]);
+const tables = readColumnNames(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
 const cSchemas = { ...readSchemas("docs/api/openapi.yaml"), ...readSchemas("docs/api/openapi-b.yaml") };
 const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 

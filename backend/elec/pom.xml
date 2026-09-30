@@ -13,15 +13,13 @@
 
     <artifactId>elec-modules</artifactId>
     <packaging>pom</packaging>
-    <description>电子元器件两个模块的聚合 pom（目录分组，不是第二个父工程）</description>
+    <description>电子元器件与主系统的内部契约。元器件本体已迁到独立项目 ai-key（2026-09-30）</description>
 
     <!-- 只列模块，不放属性与依赖管理 —— 理由同 job/pom.xml -->
     <modules>
-        <!-- 与主系统的内部契约：零依赖，主应用与 elec-svc 都引 -->
+        <!-- 与主系统的内部契约：零依赖。主应用引它；**ai-key 的 elec-svc 从本机 ~/.m2 引它**。
+             元器件本体（elec-core、elec-svc、小程序）已迁到独立项目 ~/work/ai/ai-key（2026-09-30）。
+             改这里的 record 或路径常量 = 改两个仓库之间的契约：改完 mvn install，再到 ai-key 跑全量测试 -->
         <module>elec-api</module>
-        <!-- 领域：实体、Mapper、服务、控制器、迁移。不认识主系统的任何类 -->
-        <module>elec-core</module>
-        <!-- 独立进程：启动类、安全链、主系统客户端、企业微信发送。主应用不引它 -->
-        <module>elec-svc</module>
     </modules>
 </project>

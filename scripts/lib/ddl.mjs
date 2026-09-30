@@ -29,16 +29,7 @@ export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
  */
 export const INVENTORY_MIGRATION_DIR = "backend/shop-inventory/src/main/resources/db/inventory";
 
-/**
- * 元器件的迁移目录。与进销存同一个形状：**另一个库（ai_shop_elec）、另一条 Flyway 历史**，
- * 迁移号从 V1 重新开始，而且它跑在另一个进程（elec-svc）里。
- *
- * 同样默认不进 `readSchema`：平台侧的生成器只认 ai_shop 那一套。
- * 需要它的是读「全部 Java 实体」的那几条 —— 实体对齐、DDL 可解析、枚举列对账、
- * 词表与模型对齐：它们扫的是整个 backend/，elc_* 的实体在里面，
- * 表却不在 ai_shop 的迁移里，不登记这一条就会被判成「实体多出一堆库里没有的字段」。
- */
-export const ELEC_MIGRATION_DIR = "backend/elec/elec-core/src/main/resources/db/elec";
+// 元器件的迁移目录（ai_shop_elec）2026-09-30 随元器件迁到独立项目 ai-key，不再在这里扫。
 
 /** 每张表都有、不参与任何业务关系的审计列 */
 export const AUDIT = new Set([

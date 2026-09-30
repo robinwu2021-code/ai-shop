@@ -12,9 +12,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-// elec-app 不在 npm workspaces 里（不让它改根 lockfile）：它的依赖全在根 node_modules，
-// 自己的 node_modules 里只需要这一条软链 —— 与另外两端一样，是小程序构建的路径要求
-const APPS = ["c-app", "b-app", "elec-app"];
+// 元器件小程序 2026-09-30 迁到独立项目 ai-key：它的 node_modules 整个软链到本仓库根目录，已含这一条
+const APPS = ["c-app", "b-app"];
 
 for (const app of APPS) {
   const dir = join(ROOT, app, "node_modules", "@ai-shop");
