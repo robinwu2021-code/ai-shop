@@ -3154,6 +3154,12 @@
           "ar": "تأكيد الحذف"
         },
         {
+          "key": "me.elecEntry",
+          "zh-CN": "电子元器件（测试）",
+          "en": "Electronic components (test)",
+          "ar": "المكونات الإلكترونية (تجريبي)"
+        },
+        {
           "key": "me.help",
           "zh-CN": "帮助中心",
           "en": "Help centre",
@@ -23505,6 +23511,12 @@
           "ar": "المنتج قيد المراجعة، يمكن عرضه بعد الموافقة"
         },
         {
+          "key": "err.goods.off_sale",
+          "zh-CN": "这件商品已下架，不能下单",
+          "en": "This item is no longer on sale",
+          "ar": "هذا المنتج لم يعد معروضاً للبيع"
+        },
+        {
           "key": "err.goods.spec_unresolved",
           "zh-CN": "以下规格档位已停用或不存在，请调整商品规格后再上架：{0}",
           "en": "These spec options are archived or missing. Adjust the product before publishing: {0}",
@@ -32977,6 +32989,7 @@
           "GOODS_ACTIVITY_ONLY",
           "GOODS_CATEGORY_NOT_IN_STORE",
           "GOODS_CATEGORY_IN_OTHER_STORE",
+          "GOODS_OFF_SALE",
           "STOCK_SYNC_NOT_ALIGNED",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
