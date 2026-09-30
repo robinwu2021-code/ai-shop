@@ -23,6 +23,9 @@ export const api = {
   bindPhone: (phone: string, code: string) => http.post<User>("/mp/user/phone/bind", { phone, code }),
   bindPhoneByWx: (code: string) => http.post<User>("/mp/user/phone/wx", { code }),
   phoneCapable: () => http.get<PhoneCapable>("/mp/user/phone/capable"),
+  /** 订阅授权上报（同意与拒绝都报）：后端据此记额度、并且不再反复弹窗 */
+  subscribeReport: (templateIds: string[], accepted: boolean) =>
+    http.post<void>("/mp/message/subscribe", { templateIds, accepted }),
 
   // ── 买家：料号 ──
   searchParts: (keyword: string, suggest = false) =>
