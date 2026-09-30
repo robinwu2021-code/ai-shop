@@ -104,14 +104,14 @@ class ParsingTest {
         assertThat(Columns.tierQty("单价")).isNull();
         assertThat(Columns.tierQty("2338")).as("批号长得像数量档，但它会先被认成批次列").isEqualTo(2338L);
 
-        Columns.Guess g = Columns.guess(List.of(List.of("型号", "数量", "1-99", "100-999", "1000+")));
+        Columns.Guess g = Columns.guess(List.of(List.of("型号", "数量", "1-99", "100-999", "1000+")), SeedAliases.map());
         assertThat(g.ok()).isTrue();
         assertThat(g.tiers()).hasSize(3);
         assertThat(g.tiers().get(0).minQty()).isEqualTo(1L);
         assertThat(g.tiers().get(2).minQty()).isEqualTo(1000L);
         assertThat(g.tiers().get(2).col()).isEqualTo(4);
 
-        Columns.Guess one = Columns.guess(List.of(List.of("型号", "数量", "单价")));
+        Columns.Guess one = Columns.guess(List.of(List.of("型号", "数量", "单价")), SeedAliases.map());
         assertThat(one.tiers()).as("只有一列不成阶梯 —— 孤零零一个「100+」多半是「100 起订」").isEmpty();
     }
 
@@ -172,14 +172,14 @@ class ParsingTest {
     void columns() {
         Columns.Guess g = Columns.guess(List.of(
                 List.of("某某电子库存表"),
-                List.of("序号", "P/N", "品牌", "D/C", "库存数量", "未税单价")));
+                List.of("序号", "P/N", "品牌", "D/C", "库存数量", "未税单价")), SeedAliases.map());
         assertThat(g.ok()).isTrue();
         assertThat(g.headerRow()).isEqualTo(1);
         assertThat(g.map().get(Columns.Field.MPN)).isEqualTo(1);
         assertThat(g.map().get(Columns.Field.QTY)).isEqualTo(4);
         assertThat(g.map().get(Columns.Field.DC)).isEqualTo(3);
         assertThat(g.taxHint()).isFalse();
-        assertThat(Columns.guess(List.of(List.of("a", "b"))).ok()).isFalse();
+        assertThat(Columns.guess(List.of(List.of("a", "b")), SeedAliases.map()).ok()).isFalse();
     }
 
     @Test

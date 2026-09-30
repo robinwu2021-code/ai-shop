@@ -51,27 +51,78 @@ public final class SupplierDtos {
     }
 
     /**
-     * 上传预览。<b>预览时一行库存都没动</b>，确认之后才上架。
+     * 上传预览。<b>预览时一行库存都没动</b>，确认之后才上架；待确认的数据只在服务器内存里，从上传起最多
+     * {@code deadline} 为止。
      *
-     * @param headers  表头那一行（原样），端上用它画「这几列分别是什么」
-     * @param columns  字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ
-     * @param toDelist 全量替换时将下架的行数；增量上传恒为 0
-     * @param problems 认不了的行（最多列 50 条）
-     * @param delistSample 将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」
-     * @param status   PARSED 待确认 / APPLIED 已上架
+     * @param headers       表头那一行（原样），端上用它画「这几列分别是什么」
+     * @param headerRow     表头在第几行（从 0 起）；一列都没认出时为 -1
+     * @param columns       字段 → 列序号（从 0 起）
+     * @param columnSource  字段 → REMEMBERED 记住的 / ALIAS 别名表 / AI 大模型 / MANUAL 手工。AI 的端上要提示核对
+     * @param rowWarn       有警告的行数（照常上架）
+     * @param toDelist      全量替换时将下架的行数；增量上传恒为 0
+     * @param issueCounts   问题码 → 处数
+     * @param issues        前 100 处问题（定位到格）；全部走 rows?view=PROBLEM
+     * @param problems      <b>过渡字段</b>：老版本小程序读它（行号 + 原因 + 料号，只有错误级）。新端上读 issues
+     * @param delistSample  将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」
+     * @param delistConfirm true = 确认时必须带上此刻的下架数（过了下架护栏的线）
+     * @param status        NEED_MAPPING 待指定列 / PARSED 待确认 / APPLIED / CANCELLED / SUPERSEDED / FAILED / EXPIRED
+     * @param deadline      待确认的截止时刻；过了要重传
      */
     public record BatchPreview(String batchNo, String fileName, String mode, boolean taxIncluded,
-                               List<String> headers, Map<String, Integer> columns,
-                               int rowTotal, int rowValid, int rowInvalid,
+                               List<String> headers, int headerRow, Map<String, Integer> columns,
+                               Map<String, String> columnSource,
+                               int rowTotal, int rowValid, int rowInvalid, int rowWarn,
                                int toInsert, int toUpdate, int toDelist, int unchanged,
-                               List<RowProblem> problems, List<String> delistSample, String status) {
+                               Map<String, Integer> issueCounts, List<Issue> issues, List<RowProblem> problems,
+                               List<String> delistSample, boolean delistConfirm, String status,
+                               LocalDateTime deadline, LocalDateTime createdAt, LocalDateTime appliedAt) {
     }
 
     /**
+     * 一处问题，定位到格。
+     *
+     * @param row    表里的行号（与 Excel 左边的行号一致）
+     * @param col    列序号（从 0 起，端上显示成字母）；-1 = 整行的问题（如与前面的行重复）
+     * @param header 那一列的表头原文
+     * @param value  那一格的原值（截 64 字符）；DUPLICATE 时是「与第 N 行重复」的 N
+     * @param code   MPN_MISSING / MPN_INVALID / QTY_INVALID / DUPLICATE（ERROR）·
+     *               MFR_MISSING / MFR_UNKNOWN / QTY_ZERO / DC_UNPARSED（WARN）
+     * @param level  ERROR 这一行不上架 / WARN 照常上架
+     */
+    public record Issue(int row, int col, String header, String value, String code, String level) {
+    }
+
+    /**
+     * <b>过渡</b>：老版本小程序的问题行。新端上读 {@link Issue}。
+     *
      * @param row    表里的行号（与 Excel 左边的行号一致）
      * @param reason MPN_MISSING 没有料号 / MPN_INVALID 不像料号 / QTY_INVALID 数量认不出 / DUPLICATE 与前面的行重复
      */
     public record RowProblem(int row, String reason, String mpn) {
+    }
+
+    /**
+     * 预览里的一行：<b>解析之后</b>平台读到的值，让他核对「平台是不是这么理解我的表」。
+     *
+     * @param kind   INSERT 新增 / UPDATE 更新 / UNCHANGED 未变 / DELIST 将下架 / PROBLEM 有错误（不上架）
+     * @param before 更新的行：变了的那几个字段的旧值；其余情况为空
+     * @param issues 这一行的问题（警告也在这里）
+     */
+    public record PreviewRow(int row, String kind, String mpn, String mfr, Long qty, String dateCode,
+                             String packageName, Integer moq, Integer spq, List<PriceTier> tiers, String currency,
+                             String packing, String cond, Integer leadDays, String region,
+                             Map<String, Object> before, List<Issue> issues) {
+    }
+
+    /** 上传记录的一行 */
+    public record BatchSummary(String batchNo, String fileName, String mode, String status, String failCode,
+                               int rowTotal, int rowValid, int rowInvalid, int rowWarn,
+                               int toInsert, int toUpdate, int toDelist, int unchanged, boolean aiUsed,
+                               boolean fileAvailable, LocalDateTime createdAt, LocalDateTime appliedAt) {
+    }
+
+    /** @param expectDelist 此刻将下架的行数；过了下架护栏的线时必须带，且要与后端重算的一致 */
+    public record ApplyReq(Integer expectDelist) {
     }
 
     /** 换列映射：字段 → 列序号。必须含 MPN 与 QTY */

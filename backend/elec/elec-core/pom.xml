@@ -45,6 +45,13 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
+        <!-- 上传预览的暂存（PendingBatchCache）：按「上传起 1 小时」的绝对时刻过期、条数封顶。
+             版本由 Spring Boot BOM 管，classifier 为什么是 jakarta 见 shop-base/pom.xml 里 ehcache 那段注释 -->
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <classifier>jakarta</classifier>
+        </dependency>
     </dependencies>
 
 </project>

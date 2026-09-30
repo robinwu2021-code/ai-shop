@@ -4,14 +4,22 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.elec.config.ConditionalOnElec;
+import ai.neargo.shop.elec.dto.SupplierDtos.ApplyReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.BatchPreview;
+import ai.neargo.shop.elec.dto.SupplierDtos.BatchSummary;
+import ai.neargo.shop.elec.dto.SupplierDtos.PreviewRow;
 import ai.neargo.shop.elec.dto.SupplierDtos.RegisterReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.RemapReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.RenewResult;
 import ai.neargo.shop.elec.dto.SupplierDtos.StockView;
 import ai.neargo.shop.elec.dto.SupplierDtos.SupplierView;
+import ai.neargo.shop.elec.service.ElecStockBatchService;
 import ai.neargo.shop.elec.service.ElecStockImportService;
 import ai.neargo.shop.elec.service.ElecSupplierService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -37,10 +46,13 @@ public class ElecSupplierController {
 
     private final ElecSupplierService suppliers;
     private final ElecStockImportService imports;
+    private final ElecStockBatchService batches;
 
-    public ElecSupplierController(ElecSupplierService suppliers, ElecStockImportService imports) {
+    public ElecSupplierController(ElecSupplierService suppliers, ElecStockImportService imports,
+                                  ElecStockBatchService batches) {
         this.suppliers = suppliers;
         this.imports = imports;
+        this.batches = batches;
     }
 
     /** 我的供应商档案；还没入驻时 data 为 null（不是 404 —— 端上据此显示「成为供应商」） */
@@ -82,11 +94,14 @@ public class ElecSupplierController {
      *
      * @param mode        MERGE 只改表里有的 / REPLACE 表里没有的下架
      * @param taxIncluded 价格含不含税；不传按表头猜（写了「未税」按未税），都没写按含税
+     * @param name        端上选的原文件名。小程序 uploadFile 传上来的是临时路径名，原名要端上单独带；
+     *                    不带（老版本）就用 multipart 里的名字
      */
     @PostMapping("/elec/b/stock/upload")
     public BatchPreview upload(@RequestParam(value = "file", required = false) MultipartFile file,
                                @RequestParam(defaultValue = "MERGE") String mode,
-                               @RequestParam(required = false) Boolean taxIncluded) {
+                               @RequestParam(required = false) Boolean taxIncluded,
+                               @RequestParam(required = false) String name) {
         // 先认人再看文件：file 设成可选，是为了让「没登录」永远先于「没带文件」被说出来 ——
         // 必填的话参数解析在方法之前就 400 了，匿名探测看不出它要不要登录（MpEndpointAuthTest）
         String userNo = SecurityUtils.currentUserNo();
@@ -99,7 +114,8 @@ public class ElecSupplierController {
         } catch (IOException e) {
             throw BizException.of(ErrorCode.ELEC_UPLOAD_FORMAT);
         }
-        return imports.upload(userNo, file.getOriginalFilename(), bytes, mode, taxIncluded);
+        String fileName = name != null && !name.isBlank() ? name : file.getOriginalFilename();
+        return imports.upload(userNo, fileName, bytes, mode, taxIncluded);
     }
 
     @PostMapping("/elec/b/stock/batch/{batchNo}/remap")
@@ -107,8 +123,53 @@ public class ElecSupplierController {
         return imports.remap(SecurityUtils.currentUserNo(), batchNo, req.columns());
     }
 
+    /**
+     * 确认上架。全量替换将下架的行数过了护栏的线（预览里 delistConfirm=true）时，
+     * body 必须带上此刻的下架数 {@code {"expectDelist":N}}；不带或与重算的不一致回 90016（文案带此刻的数）
+     */
     @PostMapping("/elec/b/stock/batch/{batchNo}/apply")
-    public BatchPreview apply(@PathVariable String batchNo) {
-        return imports.apply(SecurityUtils.currentUserNo(), batchNo);
+    public BatchPreview apply(@PathVariable String batchNo, @RequestBody(required = false) ApplyReq req) {
+        return imports.apply(SecurityUtils.currentUserNo(), batchNo, req == null ? null : req.expectDelist());
+    }
+
+    /** @param view INSERT / UPDATE / UNCHANGED / DELIST / PROBLEM */
+    @GetMapping("/elec/b/stock/batch/{batchNo}/rows")
+    public List<PreviewRow> rows(@PathVariable String batchNo,
+                                 @RequestParam(defaultValue = "INSERT") String view,
+                                 @RequestParam(defaultValue = "1") int page,
+                                 @RequestParam(defaultValue = "50") int size) {
+        return imports.rows(SecurityUtils.currentUserNo(), batchNo, view, page, size);
+    }
+
+    /** 放弃这次上传：内存里的数据清掉，原件留着（每周清理） */
+    @DeleteMapping("/elec/b/stock/batch/{batchNo}")
+    public BatchPreview cancel(@PathVariable String batchNo) {
+        return imports.cancel(SecurityUtils.currentUserNo(), batchNo);
+    }
+
+    /** 上传记录，新的在前 */
+    @GetMapping("/elec/b/stock/batch")
+    public List<BatchSummary> batches(@RequestParam(defaultValue = "1") int page,
+                                      @RequestParam(defaultValue = "20") int size) {
+        return batches.mine(SecurityUtils.currentUserNo(), page, size);
+    }
+
+    @GetMapping("/elec/b/stock/batch/{batchNo}")
+    public BatchPreview batch(@PathVariable String batchNo) {
+        return imports.detail(SecurityUtils.currentUserNo(), batchNo);
+    }
+
+    /**
+     * 导出问题行（xlsx）。<b>直接写响应、返回 void</b>：返回 {@code byte[]} 的话会被全局信封包成
+     * {@code {code,msg,data}}，走字节转换器时还会抛类型转换异常。
+     */
+    @GetMapping("/elec/b/stock/batch/{batchNo}/problems")
+    public void problems(@PathVariable String batchNo, HttpServletResponse resp) throws IOException {
+        ElecStockImportService.ProblemsFile f = imports.problems(SecurityUtils.currentUserNo(), batchNo);
+        resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        resp.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(f.name(), StandardCharsets.UTF_8).build().toString());
+        resp.setContentLength(f.bytes().length);
+        resp.getOutputStream().write(f.bytes());
     }
 }

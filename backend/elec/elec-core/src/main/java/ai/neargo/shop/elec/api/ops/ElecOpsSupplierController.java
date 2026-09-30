@@ -5,9 +5,14 @@ import ai.neargo.shop.elec.config.ConditionalOnElec;
 import ai.neargo.shop.elec.dto.OpsDtos.OpsSupplierDetail;
 import ai.neargo.shop.elec.dto.OpsDtos.OpsSupplierRow;
 import ai.neargo.shop.elec.dto.OpsDtos.SuspendReq;
+import ai.neargo.shop.elec.dto.SupplierDtos.BatchSummary;
 import ai.neargo.shop.elec.dto.SupplierDtos.RegisterReq;
 import ai.neargo.shop.elec.dto.SupplierDtos.StockView;
 import ai.neargo.shop.elec.service.ElecOpsSupplierService;
+import ai.neargo.shop.elec.service.ElecStockBatchService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.List;
 
 /**
@@ -28,9 +36,11 @@ import java.util.List;
 public class ElecOpsSupplierController {
 
     private final ElecOpsSupplierService suppliers;
+    private final ElecStockBatchService batches;
 
-    public ElecOpsSupplierController(ElecOpsSupplierService suppliers) {
+    public ElecOpsSupplierController(ElecOpsSupplierService suppliers, ElecStockBatchService batches) {
         this.suppliers = suppliers;
+        this.batches = batches;
     }
 
     /**
@@ -81,5 +91,30 @@ public class ElecOpsSupplierController {
     @PostMapping("/elec/ops/supplier/{supplierNo}/resume")
     public OpsSupplierDetail resume(@PathVariable String supplierNo) {
         return suppliers.resume(ElecOpsGuard.require(ElecInternal.PERM_SUPPLIER_MANAGE), supplierNo);
+    }
+
+    /** 这家的上传记录（含解析失败、放弃、作废的），新的在前 */
+    @GetMapping("/elec/ops/supplier/{supplierNo}/batch")
+    public List<BatchSummary> batches(@PathVariable String supplierNo,
+                                      @RequestParam(defaultValue = "1") int page,
+                                      @RequestParam(defaultValue = "20") int size) {
+        ElecOpsGuard.require(ElecInternal.PERM_SUPPLIER_READ);
+        return batches.ofSupplier(supplierNo, page, size);
+    }
+
+    /**
+     * 下载某次上传的原件，文件名是供应商传上来时的原名（RFC 5987 的 filename*，中文名不乱码）。
+     * 原件已被清理回 90018。直接写响应：返回字节会被全局信封包住
+     */
+    @GetMapping("/elec/ops/supplier/{supplierNo}/batch/{batchNo}/file")
+    public void original(@PathVariable String supplierNo, @PathVariable String batchNo, HttpServletResponse resp)
+            throws IOException {
+        ElecOpsGuard.require(ElecInternal.PERM_SUPPLIER_READ);
+        ElecStockBatchService.OriginalFile f = batches.original(supplierNo, batchNo);
+        resp.setContentType(f.contentType());
+        resp.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(f.name(), StandardCharsets.UTF_8).build().toString());
+        resp.setContentLengthLong(Files.size(f.path()));
+        Files.copy(f.path(), resp.getOutputStream());
     }
 }

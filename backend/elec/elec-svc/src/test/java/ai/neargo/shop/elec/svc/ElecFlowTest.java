@@ -194,7 +194,8 @@ class ElecFlowTest {
         assertThat(pv.get("toDelist").asInt()).isEqualTo(1);
         assertThat(pv.get("delistSample").toString()).contains(p + "R2");
         assertThat(pv.get("toUpdate").asInt()).isEqualTo(1);
-        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), user);
+        assertThat(pv.get("delistConfirm").asBoolean()).as("在售 2 行下架 1 行，过了 30% 的线").isTrue();
+        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), user, "{\"expectDelist\":1}");
 
         JsonNode r2 = hits(p + "R2").get(0);
         assertThat(absent(r2.path("market"))).as("下架了，料号还在但没货").isTrue();
@@ -246,13 +247,15 @@ class ElecFlowTest {
     }
 
     @Test
-    @DisplayName("★★ .xls 与没有表头的表直接说清楚，不是 500")
+    @DisplayName("★★ .xls 直接说清楚（不是 500）；认不出料号与数量列的表不报错，回「待指定列」让他选")
     void unreadableFiles() throws Exception {
         String user = supplier("12600910009", "格式电子");
         byte[] ole = {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1, 0};
         assertThat(uploadRaw(user, "old.xls", ole, "MERGE").get("code").asInt()).isEqualTo(90005);
-        assertThat(uploadRaw(user, "x.csv", "a,b\n1,2\n".getBytes(StandardCharsets.UTF_8), "MERGE")
-                .get("code").asInt()).isEqualTo(90006);
+        JsonNode r = uploadRaw(user, "x.csv", "a,b\n1,2\n".getBytes(StandardCharsets.UTF_8), "MERGE");
+        assertThat(r.get("code").asInt()).isZero();
+        assertThat(r.get("data").get("status").asString()).isEqualTo("NEED_MAPPING");
+        assertThat(r.get("data").get("headers").toString()).contains("a");
     }
 
     @Test
@@ -504,9 +507,11 @@ class ElecFlowTest {
         return user;
     }
 
+    /** 像端上一样确认：预览说要确认下架数（过了护栏的线）时，带上预览里的那个数 */
     private void applyCsv(String user, String csv, String mode) throws Exception {
         JsonNode pv = upload(user, "s.csv", csv.getBytes(StandardCharsets.UTF_8), mode);
-        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), user);
+        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), user,
+                pv.get("delistConfirm").asBoolean() ? "{\"expectDelist\":" + pv.get("toDelist").asInt() + "}" : null);
     }
 
     private JsonNode upload(String user, String name, byte[] bytes, String mode) throws Exception {

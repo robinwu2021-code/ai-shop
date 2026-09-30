@@ -25,6 +25,23 @@ shop:
       url: ${ELEC_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop_elec?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
       username: ${ELEC_DB_USER:}
       password: ${ELEC_DB_PASSWORD:}
+    upload:
+      # 上传原件：failed/（未入库，每周清）与 applied/（已入库，暂不删）两区。
+      # 生产 /data/cache/elec-upload，要预先建好并 chown 给 deploy；写不进去 elec-svc 起不来（启动自检）
+      dir: ${ELEC_UPLOAD_DIR:${java.io.tmpdir}/elec-upload}
+      failed-retention-days: ${ELEC_UPLOAD_FAILED_RETENTION_DAYS:7}
+      # 0 = 不删
+      applied-retention-days: ${ELEC_UPLOAD_APPLIED_RETENTION_DAYS:0}
+      pending-ttl-minutes: ${ELEC_UPLOAD_PENDING_TTL_MINUTES:60}
+      cache-max-batches: ${ELEC_UPLOAD_CACHE_MAX_BATCHES:10}
+      daily-max: ${ELEC_UPLOAD_DAILY_MAX:20}
+      delist-confirm-bp: ${ELEC_UPLOAD_DELIST_CONFIRM_BP:3000}
+    ai:
+      # 大模型认列（cdw 上的 qwen）。默认关；生产 ELEC_AI_BASE_URL=http://cdw.near3.ai:8003/v1、ELEC_AI_ENABLED=true
+      enabled: ${ELEC_AI_ENABLED:false}
+      base-url: ${ELEC_AI_BASE_URL:}
+      model: ${ELEC_AI_MODEL:qwen3.6}
+      timeout-seconds: ${ELEC_AI_TIMEOUT_SECONDS:8}
   services:
     # 主系统。不经 nginx（它不反代 /internal），走本机
     targets:
@@ -40,6 +57,8 @@ elec:
   page-prefix: ${ELEC_PAGE_PREFIX:pkg-elec/pages/}
   # 库存快到期的站内信，每天一次。设成 - 关掉（Spring 的「禁用」写法）
   expiry-remind-cron: ${ELEC_EXPIRY_REMIND_CRON:0 0 9 * * *}
+  # 上传原件清理，每周一次。设成 - 关掉
+  upload-clean-cron: ${ELEC_UPLOAD_CLEAN_CRON:0 30 3 * * MON}
   wecom:
     # 企业微信群机器人。**默认复用主系统那条**（SHOP_NOTIFY_WECOM_WEBHOOK，生产上已经配着，
     # 收入驻意向的就是那个群）—— 不用为元器件再要一次地址。

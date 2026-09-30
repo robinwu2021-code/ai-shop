@@ -24,8 +24,11 @@ public class ElecProperties {
     /** 一次上传最多多少行（不含表头） */
     private int uploadMaxRows = 20000;
 
-    /** 上传预览多久内可以确认上架；过了要重传 —— 预览里的「将下架 N 行」是按那一刻的库存算的 */
-    private int batchTtlHours = 24;
+    /** 库存表上传：暂存、原件、限次、护栏（TDD-元器件-库存上传二期） */
+    private Upload upload = new Upload();
+
+    /** 大模型认列（cdw 上的 qwen，OpenAI 兼容）。默认关：开是一次配置改动 */
+    private Ai ai = new Ai();
 
     /** 买家看到的参考价 = 供应商最低价 × (1 + markupBp/10000)，至少加 markupMinE6 */
     private int markupBp = 800;
@@ -151,12 +154,20 @@ public class ElecProperties {
         this.uploadMaxRows = uploadMaxRows;
     }
 
-    public int getBatchTtlHours() {
-        return batchTtlHours;
+    public Upload getUpload() {
+        return upload;
     }
 
-    public void setBatchTtlHours(int batchTtlHours) {
-        this.batchTtlHours = batchTtlHours;
+    public void setUpload(Upload upload) {
+        this.upload = upload;
+    }
+
+    public Ai getAi() {
+        return ai;
+    }
+
+    public void setAi(Ai ai) {
+        this.ai = ai;
     }
 
     public int getMarkupBp() {
@@ -189,6 +200,133 @@ public class ElecProperties {
 
     public void setRfqMaxLines(int rfqMaxLines) {
         this.rfqMaxLines = rfqMaxLines;
+    }
+
+    /** 上传 */
+    public static class Upload {
+        /** 原件根目录，下面分 failed/（未入库）与 applied/（已入库）两区。生产 /data/cache/elec-upload */
+        private String dir = System.getProperty("java.io.tmpdir") + "/elec-upload";
+
+        /** 未入库区保留天数：每周清理删掉早于这么多天的日期目录 */
+        private int failedRetentionDays = 7;
+
+        /** 已入库区保留天数；<b>0 = 不删</b> */
+        private int appliedRetentionDays = 0;
+
+        /** 预览从上传起多久内可以确认。过了要重传 —— 预览里「将下架 N 行」是按那一刻算的，而数据只在内存里 */
+        private int pendingTtlMinutes = 60;
+
+        /** 内存里最多放几张待确认的表。一张两万行约 12MB；挤出无害，下次访问从原件重建 */
+        private int cacheMaxBatches = 10;
+
+        /** 每家每天上传次数；0 = 不限。只数上传，改映射、确认、放弃不算 */
+        private int dailyMax = 20;
+
+        /** 全量替换将下架 ÷ 在售 ≥ 此万分比时，确认必须带上此刻的下架数；0 = 凡有下架都要带 */
+        private int delistConfirmBp = 3000;
+
+        public String getDir() {
+            return dir;
+        }
+
+        public void setDir(String dir) {
+            this.dir = dir;
+        }
+
+        public int getFailedRetentionDays() {
+            return failedRetentionDays;
+        }
+
+        public void setFailedRetentionDays(int failedRetentionDays) {
+            this.failedRetentionDays = failedRetentionDays;
+        }
+
+        public int getAppliedRetentionDays() {
+            return appliedRetentionDays;
+        }
+
+        public void setAppliedRetentionDays(int appliedRetentionDays) {
+            this.appliedRetentionDays = appliedRetentionDays;
+        }
+
+        public int getPendingTtlMinutes() {
+            return pendingTtlMinutes;
+        }
+
+        public void setPendingTtlMinutes(int pendingTtlMinutes) {
+            this.pendingTtlMinutes = pendingTtlMinutes;
+        }
+
+        public int getCacheMaxBatches() {
+            return cacheMaxBatches;
+        }
+
+        public void setCacheMaxBatches(int cacheMaxBatches) {
+            this.cacheMaxBatches = cacheMaxBatches;
+        }
+
+        public int getDailyMax() {
+            return dailyMax;
+        }
+
+        public void setDailyMax(int dailyMax) {
+            this.dailyMax = dailyMax;
+        }
+
+        public int getDelistConfirmBp() {
+            return delistConfirmBp;
+        }
+
+        public void setDelistConfirmBp(int delistConfirmBp) {
+            this.delistConfirmBp = delistConfirmBp;
+        }
+    }
+
+    /** 大模型认列 */
+    public static class Ai {
+        /** 开关 */
+        private boolean enabled = false;
+
+        /** OpenAI 兼容地址，到 /v1 为止。如 http://cdw.near3.ai:8003/v1 */
+        private String baseUrl = "";
+
+        /** served name */
+        private String model = "qwen3.6";
+
+        /** 超时。超时与失败都走手工指定列，不让上传失败 */
+        private int timeoutSeconds = 8;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+
+        public int getTimeoutSeconds() {
+            return timeoutSeconds;
+        }
+
+        public void setTimeoutSeconds(int timeoutSeconds) {
+            this.timeoutSeconds = timeoutSeconds;
+        }
     }
 
     public static class Datasource {

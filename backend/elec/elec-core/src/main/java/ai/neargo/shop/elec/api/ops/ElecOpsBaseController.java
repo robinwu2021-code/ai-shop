@@ -8,7 +8,11 @@ import ai.neargo.shop.elec.dto.MfrDtos.AliasRow;
 import ai.neargo.shop.elec.dto.MfrDtos.MfrReq;
 import ai.neargo.shop.elec.dto.MfrDtos.MfrRow;
 import ai.neargo.shop.elec.dto.MfrDtos.UnknownMfrRow;
+import ai.neargo.shop.elec.dto.OpsDtos.HeaderAliasReq;
+import ai.neargo.shop.elec.dto.OpsDtos.HeaderAliasRow;
+import ai.neargo.shop.elec.dto.OpsDtos.HeaderAliasUpdate;
 import ai.neargo.shop.elec.service.ElecMfrService;
+import ai.neargo.shop.elec.service.ElecOpsHeaderAliasService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,9 +36,11 @@ import java.util.List;
 public class ElecOpsBaseController {
 
     private final ElecMfrService mfrs;
+    private final ElecOpsHeaderAliasService headerAliases;
 
-    public ElecOpsBaseController(ElecMfrService mfrs) {
+    public ElecOpsBaseController(ElecMfrService mfrs, ElecOpsHeaderAliasService headerAliases) {
         this.mfrs = mfrs;
+        this.headerAliases = headerAliases;
     }
 
     /** @param q 代码 / 英文名 / 中文名包含 */
@@ -74,5 +80,31 @@ public class ElecOpsBaseController {
     public List<UnknownMfrRow> unknown(@RequestParam(defaultValue = "50") int limit) {
         ElecOpsGuard.require(ElecInternal.PERM_BASE_MANAGE);
         return mfrs.unknown(limit);
+    }
+
+    // ── 库存表的表头别名 ────────────────────────────────────────────────────
+
+    /**
+     * @param scope GLOBAL 全局（种子 + 运营加的）/ LEARNED 各家确认过的写法（按写法聚合，带几家在用）
+     */
+    @GetMapping("/elec/ops/header-alias")
+    public List<HeaderAliasRow> headerAliases(@RequestParam(defaultValue = "GLOBAL") String scope,
+                                              @RequestParam(required = false) String keyword,
+                                              @RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "50") int size) {
+        ElecOpsGuard.require(ElecInternal.PERM_BASE_MANAGE);
+        return headerAliases.list(scope, keyword, page, size);
+    }
+
+    /** 加全局别名，或把学到的提升为全局（同一写法已有全局别名时改字段并启用）。当场生效 */
+    @PostMapping("/elec/ops/header-alias")
+    public HeaderAliasRow createHeaderAlias(@RequestBody HeaderAliasReq req) {
+        return headerAliases.createGlobal(ElecOpsGuard.require(ElecInternal.PERM_BASE_MANAGE), req);
+    }
+
+    /** 改全局别名的字段，或停用 / 启用 */
+    @PutMapping("/elec/ops/header-alias/{id}")
+    public HeaderAliasRow updateHeaderAlias(@PathVariable long id, @RequestBody HeaderAliasUpdate req) {
+        return headerAliases.update(ElecOpsGuard.require(ElecInternal.PERM_BASE_MANAGE), id, req);
     }
 }

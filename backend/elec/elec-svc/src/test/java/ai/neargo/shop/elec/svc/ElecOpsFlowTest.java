@@ -6,6 +6,8 @@ import ai.neargo.shop.elec.entity.ElcSearchDaily;
 import ai.neargo.shop.elec.entity.ElcStock;
 import ai.neargo.shop.elec.mapper.ElecMappers.QuoteMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.SearchDailyMapper;
+import ai.neargo.shop.elec.entity.ElcStockBatch;
+import ai.neargo.shop.elec.mapper.ElecMappers.StockBatchMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +27,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +59,8 @@ class ElecOpsFlowTest {
     private QuoteMapper quoteMapper;
     @Autowired
     private SearchDailyMapper dailyMapper;
+    @Autowired
+    private StockBatchMapper batchMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -363,6 +369,86 @@ class ElecOpsFlowTest {
     }
 
     // ── 造数与调用 ──────────────────────────────────────────────────────────
+
+    // ── 上传记录与表头别名（TDD-元器件-库存上传二期）───────────────────────
+
+    @Test
+    @DisplayName("ac19d ac22 ★★★ 运营看某家的上传记录；下载原件带原名；原件清理后回 90018；没权限 401/403")
+    void ac19d_ac22_opsSeesBatchesAndDownloadsOriginal() throws Exception {
+        Sup s = supplier("12600949101", "记录查看电子", "型号,数量\nOPB1X,100\n");
+        String ops = ops();
+        JsonNode list = data(get("/elec/ops/supplier/" + s.no + "/batch"), ops, null);
+        assertThat(list.size()).isEqualTo(1);
+        assertThat(list.get(0).get("status").asString()).isEqualTo("APPLIED");
+        assertThat(list.get(0).get("fileAvailable").asBoolean()).isTrue();
+        String bn = list.get(0).get("batchNo").asString();
+
+        MockHttpServletResponse res = raw(get("/elec/ops/supplier/" + s.no + "/batch/" + bn + "/file"), ops);
+        assertThat(res.getStatus()).isEqualTo(200);
+        assertThat(res.getHeader("Content-Disposition")).contains("filename*=UTF-8''s.csv");
+        assertThat(res.getContentAsString(StandardCharsets.UTF_8)).startsWith("型号,数量");
+
+        batchMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers.<ElcStockBatch>lambdaUpdate()
+                .eq(ElcStockBatch::getBatchNo, bn).set(ElcStockBatch::getFilePurgedAt, LocalDateTime.now()));
+        assertThat(raw(get("/elec/ops/supplier/" + s.no + "/batch/" + bn + "/file"), ops)
+                .getContentAsString()).contains("90018");
+        assertThat(data(get("/elec/ops/supplier/" + s.no + "/batch"), ops, null).get(0).get("fileAvailable")
+                .asBoolean()).isFalse();
+
+        String noPerm = main.operator(ElecInternal.PERM_RFQ_READ);
+        assertThat(call(get("/elec/ops/supplier/" + s.no + "/batch"), noPerm, null).get("code").asInt()).isNotZero();
+    }
+
+    @Test
+    @DisplayName("ac23 ★★★ 学到的别名按写法聚合给运营看；提升为全局之后，别家同样写法直接认得")
+    void ac23_promoteLearnedAliasToGlobal() throws Exception {
+        // 一家手工指定「货号」是料号并上架 → 学成他自己的
+        String token = main.consumer("12600949102");
+        data(post("/elec/b/supplier"), token, "{\"companyName\":\"学写法电子\"}");
+        JsonNode pv = upload(token, "货号,数量\nOPC1X,5\n");
+        assertThat(pv.get("status").asString()).isEqualTo("NEED_MAPPING");
+        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/remap"), token,
+                "{\"columns\":{\"MPN\":0,\"QTY\":1}}");
+        data(post("/elec/b/stock/batch/" + pv.get("batchNo").asString() + "/apply"), token, null);
+
+        String ops = ops();
+        JsonNode learned = data(get("/elec/ops/header-alias").param("scope", "LEARNED").param("keyword", "货号"),
+                ops, null);
+        assertThat(learned.size()).isEqualTo(1);
+        assertThat(learned.get(0).get("field").asString()).isEqualTo("MPN");
+        assertThat(learned.get(0).get("supplierCount").asInt()).isEqualTo(1);
+
+        // 别家还不认得
+        String other = main.consumer("12600949103");
+        data(post("/elec/b/supplier"), other, "{\"companyName\":\"别家电子\"}");
+        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
+
+        JsonNode g = data(post("/elec/ops/header-alias"), ops, "{\"alias\":\"货号\",\"field\":\"MPN\"}");
+        assertThat(g.get("source").asString()).isEqualTo("OPS");
+        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).as("提升后当场生效")
+                .isEqualTo("PARSED");
+
+        // 停用之后又不认了
+        data(put("/elec/ops/header-alias/" + g.get("id").asLong()), ops, "{\"status\":\"DISABLED\"}");
+        assertThat(upload(other, "货号,数量\nOPC2X,5\n").get("status").asString()).isEqualTo("NEED_MAPPING");
+        assertThat(call(post("/elec/ops/header-alias"), ops, "{\"alias\":\"货号\",\"field\":\"NOPE\"}")
+                .get("code").asInt()).isEqualTo(10400);
+    }
+
+    private JsonNode upload(String token, String csv) throws Exception {
+        String body = mvc().perform(multipart("/elec/b/stock/upload")
+                        .file(new MockMultipartFile("file", "a.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8)))
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode r = json.readTree(body);
+        assertThat(r.get("code").asInt()).as(body).isZero();
+        return r.get("data");
+    }
+
+    private MockHttpServletResponse raw(MockHttpServletRequestBuilder req, String token) throws Exception {
+        req.header("Authorization", "Bearer " + token);
+        return mvc().perform(req).andReturn().getResponse();
+    }
 
     private record Sup(String token, String no) {
     }

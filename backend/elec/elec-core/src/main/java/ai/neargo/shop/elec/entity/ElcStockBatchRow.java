@@ -13,5 +13,12 @@ public class ElcStockBatchRow extends ElcEntity {
 
     private Integer rowIdx;
 
+    /** 原样一行，JSON 数组 */
     private String cells;
+
+    /** 这一行的问题，JSON：[{"c":"QTY_INVALID","l":"ERROR","col":3,"v":"约2千"}] */
+    private String issues;
+
+    /** 这一行最重的级别：ERROR / WARN */
+    private String issueLevel;
 }

@@ -1211,7 +1211,18 @@ public enum ErrorCode {
      * {0} = 这个写法已经指向的厂牌。<b>不静默改指向</b>：改了等于把已经按旧指向认好的料号全部认错，
      * 而那些料号不会自己回来改。要改指向得先把旧的认错数据处理掉，那是另一件事。
      */
-    ELEC_ALIAS_TAKEN(90014, "err.elec.alias_taken");
+    ELEC_ALIAS_TAKEN(90014, "err.elec.alias_taken"),
+    /** {0} = 每天最多传几次。只数上传：改映射、确认、放弃不算 */
+    ELEC_UPLOAD_DAILY_LIMIT(90015, "err.elec.upload_daily_limit"),
+    /**
+     * {0} = <b>此刻</b>将下架的行数。全量替换过了下架护栏的线时，确认必须带上这个数且与后端重算的一致 ——
+     * 防住半张表把库存清空，也防住「预览之后库存变了，他确认的是一个已经不存在的后果」
+     */
+    ELEC_DELIST_CONFIRM(90016, "err.elec.delist_confirm"),
+    /** 原件写不进盘（盘满、没权限）。不吞：写不进盘就没法从原件重建，预览不可靠 */
+    ELEC_UPLOAD_STORE(90017, "err.elec.upload_store"),
+    /** 原件已被清理任务删掉 */
+    ELEC_UPLOAD_FILE_PURGED(90018, "err.elec.upload_file_purged");
 
     private final int code;
     private final String msgKey;

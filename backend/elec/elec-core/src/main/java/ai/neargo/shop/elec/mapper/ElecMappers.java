@@ -1,5 +1,6 @@
 package ai.neargo.shop.elec.mapper;
 
+import ai.neargo.shop.elec.entity.ElcHeaderAlias;
 import ai.neargo.shop.elec.entity.ElcManufacturer;
 import ai.neargo.shop.elec.entity.ElcMfrAlias;
 import ai.neargo.shop.elec.entity.ElcPart;
@@ -21,6 +22,7 @@ import lombok.Setter;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -183,6 +185,42 @@ public final class ElecMappers {
     }
 
     public interface SupplierMapper extends BaseMapper<ElcSupplier> {
+
+        /**
+         * 锁住这家供应商的行，直到事务结束。确认上架第一句就调它：同一家两张预览同时确认时，
+         * 第二个在这里等第一个提交，再按提交后的库存重算 —— 结果等于依次执行。
+         * 锁批次行没用：冲突在两个<b>不同</b>批次之间。
+         */
+        @Select("SELECT id FROM elc_supplier WHERE supplier_no = #{supplierNo} FOR UPDATE")
+        Long lockBySupplierNo(@Param("supplierNo") String supplierNo);
+    }
+
+    public interface HeaderAliasMapper extends BaseMapper<ElcHeaderAlias> {
+
+        /** 学到的别名按写法聚合：几家在用、归到哪个字段。运营据此决定要不要提升为全局 */
+        @Select("""
+                <script>
+                SELECT alias_norm, MIN(alias_raw) AS alias_raw, field, COUNT(*) AS supplier_count, MAX(updated_at) AS last_at
+                  FROM elc_header_alias
+                 WHERE source = 'LEARNED' AND status = 'ACTIVE'
+                 <if test="keyword != null and keyword != ''">AND alias_norm LIKE #{keyword}</if>
+                 GROUP BY alias_norm, field
+                 ORDER BY supplier_count DESC, last_at DESC
+                 LIMIT #{limit} OFFSET #{offset}
+                </script>
+                """)
+        List<LearnedAliasRow> learned(@Param("keyword") String keyword, @Param("limit") int limit,
+                                      @Param("offset") int offset);
+    }
+
+    @Getter
+    @Setter
+    public static class LearnedAliasRow {
+        private String aliasNorm;
+        private String aliasRaw;
+        private String field;
+        private Integer supplierCount;
+        private LocalDateTime lastAt;
     }
 
     public interface SupplierMemberMapper extends BaseMapper<ElcSupplierMember> {
@@ -201,6 +239,21 @@ public final class ElecMappers {
                 </script>
                 """)
         List<SupplierLastUpload> lastAppliedBySupplier(@Param("supplierNos") java.util.Collection<String> supplierNos);
+
+        /** 这家从某刻起上传了几次（每日上限用）。解析失败的也算：它同样解析过一整张表 */
+        @Select("SELECT COUNT(*) FROM elc_stock_batch WHERE supplier_no = #{supplierNo} AND created_at >= #{from}")
+        int countSince(@Param("supplierNo") String supplierNo, @Param("from") LocalDateTime from);
+
+        /** 原件被清理任务删掉：按日期目录一次标一批。{@code prefix} 形如 {@code 2026-10-08/} */
+        @Update("""
+                UPDATE elc_stock_batch SET file_purged_at = #{now}
+                 WHERE file_area = #{area} AND file_purged_at IS NULL AND file_path LIKE #{pattern}
+                """)
+        int markPurged(@Param("area") String area, @Param("pattern") String pattern, @Param("now") LocalDateTime now);
+
+        /** 原件换了区。单独一句：移动发生在确认事务提交之后 */
+        @Update("UPDATE elc_stock_batch SET file_area = #{area} WHERE batch_no = #{batchNo}")
+        int setFileArea(@Param("batchNo") String batchNo, @Param("area") String area);
     }
 
     @Getter
@@ -214,9 +267,9 @@ public final class ElecMappers {
 
         @Insert("""
                 <script>
-                INSERT INTO elc_stock_batch_row (batch_no, row_idx, cells, created_by) VALUES
+                INSERT INTO elc_stock_batch_row (batch_no, row_idx, cells, issues, issue_level, created_by) VALUES
                 <foreach collection="rows" item="r" separator=",">
-                  (#{r.batchNo}, #{r.rowIdx}, #{r.cells}, #{r.createdBy})
+                  (#{r.batchNo}, #{r.rowIdx}, #{r.cells}, #{r.issues}, #{r.issueLevel}, #{r.createdBy})
                 </foreach>
                 </script>
                 """)

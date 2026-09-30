@@ -95,4 +95,25 @@ public final class OpsDtos {
     public record OpsStockRow(String supplierNo, String companyName, String supplierStatus, String partNo,
                               StockView stock) {
     }
+
+    // ── 表头别名 ────────────────────────────────────────────────────────────
+
+    /**
+     * 表头别名的一行。
+     *
+     * @param id            全局别名的 id（改字段、停用用它）；学到的别名按写法聚合，没有 id
+     * @param source        SEED / OPS / LEARNED
+     * @param supplierCount 学到的别名：几家在用（据此决定要不要提升为全局）；全局的为 0
+     */
+    public record HeaderAliasRow(Long id, String aliasNorm, String aliasRaw, String field, String source,
+                                 String status, int supplierCount, LocalDateTime updatedAt) {
+    }
+
+    /** 加一条全局别名，或把学到的提升为全局。同一写法已有全局别名时改成这个字段并启用 */
+    public record HeaderAliasReq(String alias, String field) {
+    }
+
+    /** @param status ACTIVE / DISABLED */
+    public record HeaderAliasUpdate(String field, String status) {
+    }
 }
