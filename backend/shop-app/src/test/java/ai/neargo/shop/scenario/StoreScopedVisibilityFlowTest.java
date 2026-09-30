@@ -612,9 +612,11 @@ class StoreScopedVisibilityFlowTest {
          *
          * 消融：把 snapshot 里的 `&& !offHere.contains(...)` 去掉，这条必红。
          */
-        assertThat(previewOk(buyer, merchantNo, storeA))
-                .as("这件货在买家要去的那家店已经下架 —— 结算页不该还算得出来")
-                .isFalse();
+        assertThat(previewCode(buyer, merchantNo, storeA))
+                .as("这件货在买家要去的那家店已经下架 —— 结算页不该还算得出来，"
+                        + "而且要说『已下架』（70076）不是『商品不存在』："
+                        + "买家正看着这件货的详情页，说它不存在他只会反复重试")
+                .isEqualTo(70076);
         assertThat(previewOk(buyer, merchantNo, storeB))
                 .as("对照量：B 店还在卖，那边必须仍然通 —— 否则这条用例可能只是把整条路测坏了")
                 .isTrue();
@@ -707,15 +709,19 @@ class StoreScopedVisibilityFlowTest {
                 .andExpect(jsonPath("$.code").value(0));
     }
 
-    /** 结算页算得出来吗 —— 不断言码，回一个布尔，让用例自己说该是什么 */
     private boolean previewOk(String token, String merchantNo, String storeNo) throws Exception {
+        return previewCode(token, merchantNo, storeNo) == 0;
+    }
+
+    /** 结算页的返回码 —— 回码不回布尔，用例才能断言「因为什么拒的」 */
+    private int previewCode(String token, String merchantNo, String storeNo) throws Exception {
         String body = mvc().perform(post("/mp/order/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"storeChoices\":[{"
                                 + "\"merchantNo\":\"" + merchantNo + "\",\"storeNo\":\"" + storeNo + "\"}]}"))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("code").asInt() == 0;
+        return json.readTree(body).get("code").asInt();
     }
 
     private boolean entityOnSale(String goodsNo) {

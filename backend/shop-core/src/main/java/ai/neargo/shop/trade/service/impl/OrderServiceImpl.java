@@ -2135,8 +2135,18 @@ public class OrderServiceImpl implements OrderService {
         List<Line> lines = new ArrayList<>();
         for (CreateOrderCommand.Item item : requested) {
             GoodsQueryPort.SkuSnapshot s = snapshots.get(item.skuNo());
-            if (s == null || !s.onSale()) {
-                throw BizException.of(ErrorCode.NOT_FOUND);   // 下架商品不允许进入结算
+            /*
+             * **两件事拆开说**：真的没有这个 SKU，和它下架了。
+             * 合成一个 NOT_FOUND 的话，买家正看着这件商品的详情页，
+             * 却被告知「商品不存在」—— 他只会以为系统坏了然后反复重试。
+             * 门店级上下架接进来之后更明显：货在别的门店还在卖，
+             * 页面上一切正常，只有他要去的那家店不卖了。
+             */
+            if (s == null) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            if (!s.onSale()) {
+                throw BizException.of(ErrorCode.GOODS_OFF_SALE);
             }
             lines.add(new Line(s, item.qty()));
         }
