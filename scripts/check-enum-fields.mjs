@@ -699,6 +699,36 @@ export const FIELDS = [
     clients: [],
   },
   {
+    concept: "库存上传：字段是怎么认出来的",
+    field: "elc_stock_batch.column_source",
+    backend: { ddl: ["elc_stock_batch", "column_source"] },
+    clients: [],
+  },
+  {
+    concept: "库存上传：原件在哪个区",
+    field: "elc_stock_batch.file_area",
+    backend: { ddl: ["elc_stock_batch", "file_area"] },
+    clients: [],
+  },
+  {
+    concept: "表头别名对应的字段",
+    field: "elc_header_alias.field",
+    backend: { ddl: ["elc_header_alias", "field"] },
+    clients: [],
+  },
+  {
+    concept: "表头别名的来源",
+    field: "elc_header_alias.source",
+    backend: { ddl: ["elc_header_alias", "source"] },
+    clients: [],
+  },
+  {
+    concept: "表头别名的状态",
+    field: "elc_header_alias.status",
+    backend: { ddl: ["elc_header_alias", "status"] },
+    clients: [],
+  },
+  {
     concept: "元器件供应商类型",
     field: "elc_supplier.kind",
     backend: { ddl: ["elc_supplier", "kind"] },

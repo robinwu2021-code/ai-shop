@@ -767,7 +767,23 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "上传时认不了的行的原因。原先内联在 ElecRowProblem.reason 上（D5）—— "
       + "内联的联合对登记与对账都不可见，提取成具名类型才进得了雷达" },
   { decl: "shared:ElecBatchStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["PARSED", "APPLIED"],
+    words: ["PARSED", "APPLIED", "NEED_MAPPING", "SUPERSEDED", "EXPIRED"],
     note: "一次上传：PARSED 预演完待确认 / APPLIED 已上架。两个词都不在 L1 里，"
-      + "而这一步的要害正是「预演过了但一行库存都没动」—— 用 L1 的「处理中/已完成」说不出它" },
+      + "而这一步的要害正是「预演过了但一行库存都没动」—— 用 L1 的「处理中/已完成」说不出它。"
+      + "二期加的三个也不在 L1：NEED_MAPPING 是「认不出料号与数量列、等他手工选」—— 不是失败（FAILED 是文件读不了），"
+      + "也不是待确认（还没有可确认的数据）；SUPERSEDED 是「同一家又传了一张、这张作废」，与他自己点放弃的 CANCELLED "
+      + "要分开（记录里他得看得出哪张是自己放弃的）；EXPIRED 是读时算的（上传满 1 小时没确认，库里仍是 PARSED），"
+      + "不落库，所以借不了 L1 的「已关闭」—— 那是一个被执行过的动作" },
+  { decl: "shared:ElecIssueCode", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "上传表里一处问题的码，定位到格（行、列、表头、原值）。前五个是错误（这一行不上架），"
+      + "MFR_MISSING / MFR_UNKNOWN / DC_UNPARSED 是警告（照常上架）。与后端导出表「问题」列的 IssueText.java 同一套码；"
+      + "ElecRowProblemReason 是它的子集，留给老版本小程序的过渡字段 problems 用" },
+  { decl: "shared:ElecIssueLevel", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "问题级别：ERROR 这一行不上架 / WARN 照常上架但列给他看。落库在 elc_stock_batch_row.issue_level" },
+  { decl: "shared:ElecColumnSource", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "某个字段是怎么认出来的：REMEMBERED 上次确认过的表头一字不差 / ALIAS 表头别名表 / AI 大模型 / MANUAL 他自己选的。"
+      + "端上只对 AI 打「请核对」角标。落库在 elc_stock_batch.column_source（JSON）" },
+  { decl: "shared:ElecPreviewKind", dom: "elec", shape: "CLASS", verdict: "OK",
+    note: "上架前确认里一行的类别：INSERT / UPDATE / UNCHANGED / DELIST / PROBLEM。**不落库**：按生成预览那一刻的库存算，"
+      + "确认时后端按此刻重算。PROBLEM 行有错误不上架；有警告的行仍归在它自己的类别里" },
 ];
