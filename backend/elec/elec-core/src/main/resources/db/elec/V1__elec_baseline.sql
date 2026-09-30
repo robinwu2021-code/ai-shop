@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS elc_quote
     valid_until   DATE         NOT NULL COMMENT '报价有效到哪天（含）',
     remark        VARCHAR(255) DEFAULT NULL COMMENT '**只给平台看**：供应商常在这里写公司名和微信，想绕开平台',
     buyer_notified_at DATETIME DEFAULT NULL COMMENT '首次报价通知送到买家的时间；空 = 没送到（改价不再通知，也是空）',
-    status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / WITHDRAWN / ACCEPTED / NOT_CHOSEN 这一行成交给了别家 / EXPIRED',
+    status        VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / WITHDRAWN / ACCEPTED / EXPIRED',
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by    VARCHAR(64)  DEFAULT NULL,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
