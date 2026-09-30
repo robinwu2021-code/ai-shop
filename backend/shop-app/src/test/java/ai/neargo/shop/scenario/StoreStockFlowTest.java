@@ -51,6 +51,9 @@ class StoreStockFlowTest {
 
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    /** 判据取子单上的履约门店 —— OrderVO 不带它，从接口外面看不出单落在哪家店 */
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -174,6 +177,56 @@ class StoreStockFlowTest {
             }
         }
         throw new AssertionError("详情里找不到这个 SKU：" + skuNo);
+    }
+
+    @Test
+    @DisplayName("★★★ 默认店没有这件货、分店有：单落到分店 —— 线上 20013 对(社区×商品)正是这个形状")
+    void orderLandsOnTheStoreThatActuallyHasIt() throws Exception {
+        String biz = merchant("12600190082", "落店·默认店没货");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "落店·有货的分店");
+
+        /*
+         * 默认店**显式设 0**：不设的话它是「没有店级行」，按覆盖层语义也是 0，
+         * 但那样分不出「实现读了这一行」还是「实现根本没看店级库存」。
+         * 主体总量仍是 100 —— 老实现照它走，会落在默认店身上。
+         */
+        setStoreStock(biz, storeA, goodsNo, skuNo, 0);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        String orderNo = buyOk("13000190082", goodsNo, skuNo, 1, "rt-1");
+        assertThat(landedStore(orderNo))
+                .as("默认店营业、也服务这个社区，但它没有这件货")
+                .isEqualTo(storeB);
+    }
+
+    @Test
+    @DisplayName("★★★ 默认店有货但**已店级下架**：单落到在架的那家 —— 「在架」这一条没人测过")
+    void orderSkipsStoreThatDoesNotSellIt() throws Exception {
+        String biz = merchant("12600190083", "落店·默认店下架了");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "落店·在架的分店");
+
+        /*
+         * **两家都有货**，差别只在「卖不卖」。这样才能把「在架」这一条单独量出来：
+         * 上一条用例（默认店没货）撤掉闸门也会红，但那是常规锁库存拒的，
+         * 与「在架」无关 —— 实测过，所以换成这一条。
+         */
+        setStoreStock(biz, storeA, goodsNo, skuNo, 5);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        String orderNo = buyOk("13000190085", goodsNo, skuNo, 1, "rt-3");
+        assertThat(landedStore(orderNo))
+                .as("默认店营业、服务这个社区、也有货 —— 只是店主在这家店把它下架了")
+                .isEqualTo(storeB);
     }
 
     @Test
@@ -391,6 +444,41 @@ class StoreStockFlowTest {
     }
 
     /** @return 下单响应的 code，0 = 成功 */
+    /** 门店级上下架：走 X-Store-No 头，与 B 端那条路同一个接口 */
+    private void storeToggle(String token, String storeNo, String goodsNo, boolean onSale) throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"onSale\":" + onSale + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 下单并断言成功，返回订单号 */
+    private String buyOk(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
+        String buyer = login(phone);
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("orderNo").asString();
+    }
+
+    /** 这一单落在哪家门店（子单上的 store_no） */
+    private String landedStore(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                                .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)))
+                .stream().map(ai.neargo.shop.trade.entity.OrdSubOrder::getStoreNo)
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+    }
+
     private int buy(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
         String buyer = login(phone);
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)

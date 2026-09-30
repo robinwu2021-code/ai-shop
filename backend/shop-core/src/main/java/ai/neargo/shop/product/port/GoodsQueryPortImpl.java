@@ -38,17 +38,72 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     /** 门店级上下架：这一列此前在买家链路上**没有任何读者**，见 {@link #storeOffSale} */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
+    /** 店级库存的唯一一份判据（覆盖层规则） */
+    private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
 
     public GoodsQueryPortImpl(SkuMapper skuMapper, GoodsMapper goodsMapper, ObjectMapper json,
                               ai.neargo.shop.product.mapper.ProductMappers.StorePriceMapper storePriceMapper,
                               ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
-                              CampaignPort campaignPort) {
+                              CampaignPort campaignPort,
+                              ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
+        this.storeStockReader = storeStockReader;
         this.storePriceMapper = storePriceMapper;
         this.storeGoodsMapper = storeGoodsMapper;
         this.skuMapper = skuMapper;
         this.goodsMapper = goodsMapper;
         this.json = json;
         this.campaignPort = campaignPort;
+    }
+
+    @Override
+    public java.util.Optional<String> firstStoreThatCanFulfil(
+            String merchantNo, List<String> storeNosInPreference, Map<String, Integer> skuQty) {
+        if (storeNosInPreference == null || storeNosInPreference.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        if (skuQty == null || skuQty.isEmpty()) {
+            // 没有件就没有可判的东西 —— 退回第一顺位，行为与加这道闸之前相同
+            return java.util.Optional.of(storeNosInPreference.get(0));
+        }
+        List<String> skuNos = List.copyOf(skuQty.keySet());
+        // 在架判的是**商品**不是 SKU：店级上下架的粒度是货，一件货下架则它的全部规格都不卖
+        Map<String, String> goodsOfSku = new HashMap<>();
+        for (PrdSku s : DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
+                Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)))) {
+            goodsOfSku.put(s.getSkuNo(), s.getGoodsNo());
+        }
+        for (String storeNo : storeNosInPreference) {
+            if (storeNo == null || storeNo.isBlank()) {
+                continue;
+            }
+            /*
+             * 逐店问两件事。**顺序无所谓、但两件都要问** ——
+             * 只判在架会把单发给一家摆着牌子却没货的店，只判有货会发给一家已经下架的店。
+             */
+            /*
+             * **总库存，不是可售量**：落店解析在一次下单里会跑好几趟，
+             * 而可售量在中间那趟之后已经被本单自己锁走了（见 StoreStockReader#total）。
+             */
+            Map<String, Integer> avail = storeStockReader.total(skuNos, storeNo);
+            java.util.Set<String> offHere = storeOffSale(java.util.Map.of(merchantNo, storeNo),
+                    List.copyOf(new java.util.HashSet<>(goodsOfSku.values())));
+            boolean ok = true;
+            for (Map.Entry<String, Integer> e : skuQty.entrySet()) {
+                String goodsNo = goodsOfSku.get(e.getKey());
+                if (goodsNo != null && offHere.contains(goodsNo)) {
+                    ok = false;
+                    break;
+                }
+                if (avail.getOrDefault(e.getKey(), 0) < nz(e.getValue())) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) {
+                return java.util.Optional.of(storeNo);
+            }
+        }
+        return java.util.Optional.empty();
     }
 
     @Override

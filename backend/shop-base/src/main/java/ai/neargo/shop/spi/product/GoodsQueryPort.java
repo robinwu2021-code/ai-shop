@@ -31,6 +31,31 @@ public interface GoodsQueryPort {
     Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity);
 
     /**
+     * 候选门店里，**第一家能把这批货全部发出去的**（TDD-C端商品归属门店与库存校验 AC4/AC5）。
+     *
+     * <p>「发得出」= 这家店<b>在架卖它</b> ∧ <b>可售量够</b>，两条都按覆盖层语义
+     * （没有店级行 → 主体级；有了任意一条 → 没行的店视为未上架 / 零库存）。
+     *
+     * <p><b>为什么判据要放在 product 而不是 trade</b>：在架与库存都是商品域的状态。
+     * 放到 trade 去拼，就会出现第三份覆盖层实现 —— 而那条规则已经因为有两份，
+     * 在买家侧漏掉过一整条（显示按主体总量、下单按门店扣）。
+     *
+     * <p><b>为什么按「第一家」而不是「最优的一家」</b>：候选顺序由调用方按业务优先级排好
+     * （门户选中的 → 默认店 → 服务该社区的最近一家）。在这里再挑一次「最优」，
+     * 等于把落店规则拆成两处，而订单的 store_no 决定结算归属、门店级活动与跨店报表。
+     *
+     * @param merchantNo           这一组所属主体（落店本来就是按主体算的）
+     * @param storeNosInPreference 候选门店，<b>按优先级排好</b>
+     * @param skuQty               这一单在这个主体下要发的 SKU → 件数
+     * @return 空 = 一家都发不出（调用方据此拒单，不要退回默认店 —— 少卖可恢复，
+     *         把单发给没货的店不可恢复）
+     */
+    default java.util.Optional<String> firstStoreThatCanFulfil(
+            String merchantNo, List<String> storeNosInPreference, Map<String, Integer> skuQty) {
+        return storeNosInPreference.stream().findFirst();
+    }
+
+    /**
      * 这些 SKU 在这些门店有没有单独定过价。<b>只回真正存在的行</b>。
      *
      * <p>给调用方做「要不要按门店口径重算一遍」的预检：绝大多数商家不分店定价，

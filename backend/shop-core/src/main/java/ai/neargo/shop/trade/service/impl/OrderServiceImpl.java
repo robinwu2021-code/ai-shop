@@ -549,7 +549,18 @@ public class OrderServiceImpl implements OrderService {
      * 订单却记在 B 店」—— 那种错不报错，只会在对账时表现成三本账互相对不上。
      */
     private Map<String, String> storesOf(CreateOrderCommand cmd, Split split) {
-        return storesOfEntities(cmd, split.groups.stream().map(Group::merchantNo).toList());
+        /*
+         * **拆单之后才有件**，所以这条路把件带上 —— 落店要判「这家店在架卖它 ∧ 有货」。
+         * 同一个 SKU 在一单里可能出现多行（不同活动），件数要累加，不是覆盖。
+         */
+        Map<String, Map<String, Integer>> itemsByMerchant = new HashMap<>();
+        for (Group g : split.groups) {
+            Map<String, Integer> m = itemsByMerchant.computeIfAbsent(g.merchantNo(), k -> new HashMap<>());
+            for (Line l : g.lines()) {
+                m.merge(l.skuNo(), l.qty(), Integer::sum);
+            }
+        }
+        return storesOfEntities(cmd, split.groups.stream().map(Group::merchantNo).toList(), itemsByMerchant);
     }
 
     /**
@@ -558,6 +569,22 @@ public class OrderServiceImpl implements OrderService {
      */
     // 包内可见：StoreOrderRoutingTest 直接量落店结果 —— OrderVO 不带门店号，从外面看不出单落在哪家店
     Map<String, String> storesOfEntities(CreateOrderCommand cmd, List<String> merchantNos) {
+        return storesOfEntities(cmd, merchantNos, Map.of());
+    }
+
+    /**
+     * 带**件**的落店（TDD-C端商品归属门店与库存校验 AC4/AC5）。
+     *
+     * <p>候选按业务优先级排好之后交给 {@code goodsQueryPort.firstStoreThatCanFulfil}
+     * 挑第一家「在架 ∧ 有货」的。一家都挑不出 → <b>拒单，不退回默认店</b>：
+     * 少卖可恢复，把单发给一家既没上架也没货的店不可恢复（那时候人已经付了钱）。
+     *
+     * @param skuQtyByMerchant 主体号 → 这一单在它名下要发的 SKU 与件数。
+     *                         <b>空 map = 不判</b>（取门店价那条路调用时还没拆出件来，
+     *                         而它只是用来选价格的口径，选错不产生履约后果）
+     */
+    Map<String, String> storesOfEntities(CreateOrderCommand cmd, List<String> merchantNos,
+                                         Map<String, Map<String, Integer>> skuQtyByMerchant) {
         Map<String, String> out = new HashMap<>();
         String pickupStoreNo = pickupPort.find(cmd.pickupNo())
                 .map(ai.neargo.shop.spi.user.PickupQueryPort.PickupBrief::ownerStoreNo)
@@ -583,9 +610,11 @@ public class OrderServiceImpl implements OrderService {
             List<String> own = merchantPort.storeNos(merchantNo);
             // 一次订单可以拆给多家商家，自提点只可能属于其中一家（或谁都不属于）
             boolean mine = pickupStoreNo != null && own.contains(pickupStoreNo);
+            Map<String, Integer> items = skuQtyByMerchant.getOrDefault(merchantNo, Map.of());
             if (mine) {
                 // 人要去那儿取货，改不了；那家店暂停的话由下面的状态闸拒 —— 换店等于让人白跑
-                out.put(merchantNo, pickupStoreNo);
+                // 发不出货同理：**不换店**，当场拒。人到了取不到货比买不成更糟
+                out.put(merchantNo, pickable(merchantNo, List.of(pickupStoreNo), items));
                 continue;
             }
             /*
@@ -595,7 +624,8 @@ public class OrderServiceImpl implements OrderService {
              */
             String chosen = choices.get(merchantNo);
             if (chosen != null && own.contains(chosen)) {
-                out.put(merchantNo, chosen);
+                // 他就是在这家店的门户里挑的货 —— 这家发不出就拒，悄悄换一家等于货不对版
+                out.put(merchantNo, pickable(merchantNo, List.of(chosen), items));
                 continue;
             }
             Map<String, String> statuses = storeStatuses(own);
@@ -621,19 +651,41 @@ public class OrderServiceImpl implements OrderService {
             String defaultStore = merchantPort.defaultStoreNo(merchantNo).orElse(null);
             // 暂停营业的默认店不再接单（§2.7）：此前 READONLY 的默认店照样收单
             boolean defaultOpen = defaultStore != null && open(statuses, defaultStore);
+            /*
+             * **候选按优先级排好，再一次性交给「发得出吗」那道闸**（AC4/AC5）。
+             *
+             * 原先是逐条 if 直接落店，于是「默认店服务得了」就结束了 ——
+             * 而服务得了不等于它摆着这件货、更不等于它有货。线上实测：
+             * 20013 对（社区 × 商品）只因为**非默认店**摆着才可见，那些单会落到
+             * 一家既没上架也没库存的默认店，页面一切正常、闸门全绿。
+             */
+            List<String> candidates = new ArrayList<>();
             if (defaultOpen && (communityNo == null
                     || merchantPort.reachableCommunities(merchantNo, defaultStore).contains(communityNo))) {
-                out.put(merchantNo, defaultStore);
-                continue;
+                candidates.add(defaultStore);
             }
             // 默认店服务不了（或暂停了）：挑一家真的服务这个社区的营业店（多家都行时取最近，理由见方法注释）
             String served = communityNo == null ? null
                     : nearestServingStore(merchantNo, communityNo, statuses);
-            if (served == null && !defaultOpen) {
-                // 不知道买家在哪个社区、默认店又暂停了：取任一营业店，按门店号定序 —— 必须确定
-                served = own.stream().filter(st -> open(statuses, st)).sorted().findFirst().orElse(null);
+            if (served != null) {
+                candidates.add(served);
             }
-            out.put(merchantNo, served != null ? served : defaultStore);
+            /*
+             * 剩下的营业店按门店号定序补在后面。**只有带件时才用得上** ——
+             * 不带件时闸门取第一顺位，与改造前逐字相同（下面那条 assert 就是它）。
+             */
+            if (!items.isEmpty()) {
+                own.stream().filter(st -> open(statuses, st)).sorted()
+                        .filter(st -> !candidates.contains(st)).forEach(candidates::add);
+            } else if (candidates.isEmpty() && !defaultOpen) {
+                // 不知道买家在哪个社区、默认店又暂停了：取任一营业店，按门店号定序 —— 必须确定
+                own.stream().filter(st -> open(statuses, st)).sorted().findFirst()
+                        .ifPresent(candidates::add);
+            }
+            if (candidates.isEmpty()) {
+                candidates.add(defaultStore);
+            }
+            out.put(merchantNo, pickable(merchantNo, candidates, items));
         }
         /*
          * 状态闸：落到的店必须营业（AC7）。放在这里而不是 create 里：预览、「这单能怎么付」、
@@ -646,6 +698,37 @@ public class OrderServiceImpl implements OrderService {
             }
         }
         return out;
+    }
+
+    /**
+     * 候选里第一家「在架 ∧ 有货」的门店；一家都没有 → <b>拒单</b>。
+     *
+     * <p>不带件（{@code items} 空）时退回第一顺位 —— 取门店价那条路就是这么调的，
+     * 它只决定按谁的价算，选错不产生履约后果。
+     *
+     * <p>拒用的是 {@link ErrorCode#STOCK_NOT_ENOUGH}：买家看到「库存不足」，
+     * 而这确实就是「这批货在任何一家发得出的店里都凑不齐」。不新开一个码 ——
+     * 对买家来说「这家店没上架」与「这家店没货」是同一件事：买不到。
+     */
+    private String pickable(String merchantNo, List<String> candidates, Map<String, Integer> items) {
+        List<String> real = candidates.stream()
+                .filter(st -> st != null && !st.isBlank()).distinct().toList();
+        /*
+         * **一个门店都没有 ≠ 一家都发不出。**
+         *
+         * 这家主体名下没有登记门店时，旧代码把 null 落下去、状态闸跳过 null，
+         * 整条按主体级走 —— 那是今天绝大多数商家的样子。把它当成「发不出」去拒，
+         * 等于给所有单店商家加一道他们根本不在的闸：
+         * 实测 StoreStockFlowTest 的两条 AC8 用例当场红在 20001，而它们的库存是够的。
+         */
+        if (real.isEmpty()) {
+            return null;
+        }
+        if (items.isEmpty()) {
+            return real.get(0);
+        }
+        return goodsPort.firstStoreThatCanFulfil(merchantNo, real, items)
+                .orElseThrow(() -> BizException.of(ErrorCode.STOCK_NOT_ENOUGH));
     }
 
     /**
@@ -2120,8 +2203,23 @@ public class OrderServiceImpl implements OrderService {
          * 先按主体价算一遍再决定要不要重算：绝大多数商家不分店定价，
          * 无条件走门店分支等于给每次下单加两条查询。
          */
+        /*
+         * **这里也要带件**（AC4/AC5）。拆单这一步已经按门店判在架与门店价了 ——
+         * 而落店如果按「默认店」算出来，一件只在分店上架的货会在这一步被判成「已下架」，
+         * 回 70076，我加在 storesOf 上的闸根本轮不到跑（实测：默认店下架、分店在架的单）。
+         * 件数从请求/购物车来，与下面锁库存用的是同一批。
+         */
+        Map<String, Map<String, Integer>> itemsByMerchant = new HashMap<>();
+        for (CreateOrderCommand.Item it : requested) {
+            GoodsQueryPort.SkuSnapshot sn = snapshots.get(it.skuNo());
+            if (sn != null) {
+                itemsByMerchant.computeIfAbsent(sn.merchantNo(), k -> new HashMap<>())
+                        .merge(it.skuNo(), it.qty(), Integer::sum);
+            }
+        }
         Map<String, String> storeByEntity = storesOfEntities(cmd,
-                snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::merchantNo).distinct().toList());
+                snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::merchantNo).distinct().toList(),
+                itemsByMerchant);
         /*
          * **无条件重算，不再拿「有没有配门店价」当开关**（2026-09-30）。
          *

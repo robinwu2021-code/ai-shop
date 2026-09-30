@@ -58,6 +58,10 @@ public class StoreStockReader {
      * @param storeNo 空 = 没有门店上下文，全部按主体总量（单店商家走的就是这一支）
      */
     public Map<String, Integer> available(List<String> skuNos, String storeNo) {
+        return read(skuNos, storeNo, true);
+    }
+
+    private Map<String, Integer> read(List<String> skuNos, String storeNo, boolean minusLocked) {
         Map<String, Integer> out = new HashMap<>();
         if (skuNos == null || skuNos.isEmpty()) {
             return out;
@@ -65,7 +69,7 @@ public class StoreStockReader {
         List<PrdSku> skus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)));
         for (PrdSku s : skus) {
-            out.put(s.getSkuNo(), Math.max(nz(s.getStock()) - nz(s.getLockedStock()), 0));
+            out.put(s.getSkuNo(), Math.max(nz(s.getStock()) - (minusLocked ? nz(s.getLockedStock()) : 0), 0));
         }
         if (storeNo == null || storeNo.isBlank()) {
             return out;
@@ -83,13 +87,30 @@ public class StoreStockReader {
         for (PrdStoreStock r : rows) {
             managed.add(r.getSkuNo());
             if (storeNo.equals(r.getStoreNo())) {
-                here.put(r.getSkuNo(), Math.max(nz(r.getStock()) - nz(r.getLockedStock()), 0));
+                here.put(r.getSkuNo(), Math.max(nz(r.getStock()) - (minusLocked ? nz(r.getLockedStock()) : 0), 0));
             }
         }
         for (String skuNo : managed) {
             out.put(skuNo, here.getOrDefault(skuNo, 0));
         }
         return out;
+    }
+
+    /**
+     * 一批 SKU 在这家店的**总库存**（不减已锁定），语义同 {@link #available(List, String)}。
+     *
+     * <p><b>落店用它，不用可售量。</b> 一次下单里落店解析会跑好几趟
+     * （算价、锁库存、写子单三处都要用它，方法注释里写着），
+     * 而可售量在中间那一趟之后已经被**本单自己**锁走了 ——
+     * 拿它当判据的话，第一趟选中的店在第二趟变成「发不出」，
+     * 于是一个库存充足的单被自己的闸拒掉（实测：3 件的货买 2 件，第二趟看到 1）。
+     *
+     * <p>{@code stock} 要到支付确认才减，所以在一次请求内它是稳定的。
+     * 真实可用量的把关留在 {@code StockPort.lock} —— 它本来就只执行一次，
+     * 而且并发下靠条件更新防超卖，比在这里先查一遍可靠。
+     */
+    public Map<String, Integer> total(List<String> skuNos, String storeNo) {
+        return read(skuNos, storeNo, false);
     }
 
     /** 单个 SKU 的可售量，语义同 {@link #available(List, String)}。 */
