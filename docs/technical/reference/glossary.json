@@ -23277,114 +23277,6 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
-          "key": "err.elec.alias_taken",
-          "zh-CN": "这个写法已经对应到厂牌 {0}，不能再指给另一家",
-          "en": "This name is already mapped to manufacturer {0} and cannot be mapped to another one",
-          "ar": "هذا الاسم مرتبط بالفعل بالشركة المصنعة {0} ولا يمكن ربطه بشركة أخرى"
-        },
-        {
-          "key": "err.elec.batch_empty",
-          "zh-CN": "没有可以上架的行",
-          "en": "There are no rows to list",
-          "ar": "لا توجد صفوف يمكن عرضها"
-        },
-        {
-          "key": "err.elec.batch_expired",
-          "zh-CN": "这次预览已经过期，请重新上传",
-          "en": "This preview has expired. Please upload again",
-          "ar": "انتهت صلاحية هذه المعاينة. يرجى الرفع مجددًا"
-        },
-        {
-          "key": "err.elec.delist_confirm",
-          "zh-CN": "这次会下架 {0} 行库存，请确认后再上架",
-          "en": "This will delist {0} stock rows. Please confirm before listing",
-          "ar": "سيؤدي هذا إلى سحب {0} صفًا من المخزون. يرجى التأكيد قبل النشر"
-        },
-        {
-          "key": "err.elec.mfr_exists",
-          "zh-CN": "这个厂牌代码已经有了",
-          "en": "This manufacturer code already exists",
-          "ar": "رمز الشركة المصنعة هذا موجود بالفعل"
-        },
-        {
-          "key": "err.elec.not_supplier",
-          "zh-CN": "你还不是供应商，先完成入驻",
-          "en": "You are not a supplier yet. Please sign up first",
-          "ar": "لست مورّدًا بعد. يرجى التسجيل أولاً"
-        },
-        {
-          "key": "err.elec.phone_required",
-          "zh-CN": "请先绑定手机号，平台需要联系你",
-          "en": "Please link a phone number first so we can contact you",
-          "ar": "يرجى ربط رقم هاتف أولاً حتى نتمكن من التواصل معك"
-        },
-        {
-          "key": "err.elec.quote_expired",
-          "zh-CN": "报价已过期，请重新询价",
-          "en": "This quote has expired. Please request a new quote",
-          "ar": "انتهت صلاحية عرض السعر. يرجى طلب تسعير جديد"
-        },
-        {
-          "key": "err.elec.rfq_lines_invalid",
-          "zh-CN": "询价要有 1 到 {0} 行，每行填料号和数量",
-          "en": "A quote request needs 1 to {0} lines, each with a part number and quantity",
-          "ar": "يجب أن يحتوي طلب التسعير على 1 إلى {0} أسطر، كل سطر برقم قطعة وكمية"
-        },
-        {
-          "key": "err.elec.rfq_state",
-          "zh-CN": "这张询价单现在不能这么操作，请刷新后再看",
-          "en": "This quote request cannot be changed right now. Please refresh and try again",
-          "ar": "لا يمكن تنفيذ هذا الإجراء على طلب التسعير الآن. يرجى التحديث والمحاولة مجددًا"
-        },
-        {
-          "key": "err.elec.supplier_exists",
-          "zh-CN": "你已经是供应商了",
-          "en": "You are already a supplier",
-          "ar": "أنت مورّد بالفعل"
-        },
-        {
-          "key": "err.elec.supplier_suspended",
-          "zh-CN": "供应商账号已暂停，请联系平台",
-          "en": "Your supplier account is suspended. Please contact us",
-          "ar": "حساب المورّد موقوف. يرجى التواصل معنا"
-        },
-        {
-          "key": "err.elec.upload_daily_limit",
-          "zh-CN": "今天已经上传 {0} 次了，明天再来",
-          "en": "You have uploaded {0} times today. Please try again tomorrow",
-          "ar": "لقد رفعت {0} مرات اليوم. يرجى المحاولة غدًا"
-        },
-        {
-          "key": "err.elec.upload_file_purged",
-          "zh-CN": "原文件已经清理，无法下载",
-          "en": "The original file has been cleaned up and can no longer be downloaded",
-          "ar": "تم حذف الملف الأصلي ولم يعد متاحًا للتنزيل"
-        },
-        {
-          "key": "err.elec.upload_format",
-          "zh-CN": "只支持 .xlsx 和 .csv。如果是 .xls，请在 Excel 里另存为 .xlsx 再上传",
-          "en": "Only .xlsx and .csv are supported. For .xls files, save as .xlsx in Excel and upload again",
-          "ar": "يُدعم فقط ‎.xlsx و‎.csv. لملفات ‎.xls احفظها بصيغة ‎.xlsx في Excel ثم ارفعها مجددًا"
-        },
-        {
-          "key": "err.elec.upload_no_header",
-          "zh-CN": "表里没找到「型号」和「数量」两列，请检查表头",
-          "en": "Could not find the part number and quantity columns. Please check the header row",
-          "ar": "لم يتم العثور على عمودي رقم القطعة والكمية. يرجى التحقق من صف العناوين"
-        },
-        {
-          "key": "err.elec.upload_store",
-          "zh-CN": "文件保存失败，请稍后再试",
-          "en": "Could not save the file. Please try again later",
-          "ar": "تعذّر حفظ الملف. يرجى المحاولة لاحقًا"
-        },
-        {
-          "key": "err.elec.upload_too_many_rows",
-          "zh-CN": "一次最多上传 {0} 行，请分成几张表",
-          "en": "Up to {0} rows per upload. Please split the sheet",
-          "ar": "الحد الأقصى {0} صف في كل رفع. يرجى تقسيم الجدول"
-        },
-        {
           "key": "err.express.channel_off",
           "zh-CN": "平台快递代下单还没开通，请先自己叫快递并填写运单号",
           "en": "Courier booking is not available yet. Book a courier yourself and enter the tracking number",
@@ -32533,25 +32425,7 @@
           "SPEC_TEMPLATE_DUPLICATE",
           "SPEC_VALUE_NEEDS_QUANTITY",
           "NOTIFY_WX_QUOTA_EMPTY",
-          "NOTIFY_NO_DEVICE",
-          "ELEC_PHONE_REQUIRED",
-          "ELEC_NOT_SUPPLIER",
-          "ELEC_SUPPLIER_EXISTS",
-          "ELEC_SUPPLIER_SUSPENDED",
-          "ELEC_UPLOAD_FORMAT",
-          "ELEC_UPLOAD_NO_HEADER",
-          "ELEC_UPLOAD_TOO_MANY_ROWS",
-          "ELEC_BATCH_EXPIRED",
-          "ELEC_BATCH_EMPTY",
-          "ELEC_RFQ_LINES_INVALID",
-          "ELEC_RFQ_STATE",
-          "ELEC_QUOTE_EXPIRED",
-          "ELEC_MFR_EXISTS",
-          "ELEC_ALIAS_TAKEN",
-          "ELEC_UPLOAD_DAILY_LIMIT",
-          "ELEC_DELIST_CONFIRM",
-          "ELEC_UPLOAD_STORE",
-          "ELEC_UPLOAD_FILE_PURGED"
+          "NOTIFY_NO_DEVICE"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
