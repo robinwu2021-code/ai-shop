@@ -33670,6 +33670,16 @@
       },
       {
         "name": "ElecCloseReason",
+        "client": "ops-web",
+        "values": [
+          "NO_SOURCE",
+          "BUYER_CANCELLED",
+          "DONE"
+        ],
+        "zh": "关单原因：暂无货源（会通知买家）/ 买家不要了 / 已成交"
+      },
+      {
+        "name": "ElecCloseReason",
         "client": "shared",
         "values": [
           "NO_SOURCE",
@@ -33728,6 +33738,17 @@
           "OTHER"
         ],
         "zh": "拒绝的原因：NO_STOCK 没货 / PRICE 价格做不了 / OTHER 其他"
+      },
+      {
+        "name": "ElecDispatchStatus",
+        "client": "ops-web",
+        "values": [
+          "SENT",
+          "VIEWED",
+          "QUOTED",
+          "DECLINED"
+        ],
+        "zh": "派单结果：未看 / 看了没回 / 报了价 / 拒了"
       },
       {
         "name": "ElecDispatchStatus",
@@ -33791,6 +33812,18 @@
         "zh": "这条报价是谁报的：PLATFORM 平台 / SUPPLIER 供应商。"
       },
       {
+        "name": "ElecOpsQuoteStatus",
+        "client": "ops-web",
+        "values": [
+          "ACTIVE",
+          "WITHDRAWN",
+          "ACCEPTED",
+          "NOT_CHOSEN",
+          "EXPIRED"
+        ],
+        "zh": "供应商报价状态。"
+      },
+      {
         "name": "ElecPacking",
         "client": "shared",
         "values": [
@@ -33839,6 +33872,18 @@
       },
       {
         "name": "ElecRfqStatus",
+        "client": "ops-web",
+        "values": [
+          "SUBMITTED",
+          "QUOTED",
+          "EXPIRED",
+          "ACCEPTED",
+          "CLOSED"
+        ],
+        "zh": "询价单状态。"
+      },
+      {
+        "name": "ElecRfqStatus",
         "client": "shared",
         "values": [
           "SUBMITTED",
@@ -33872,6 +33917,16 @@
       },
       {
         "name": "ElecStockFilter",
+        "client": "ops-web",
+        "values": [
+          "ALL",
+          "EXPIRING",
+          "EXPIRED"
+        ],
+        "zh": "库存筛选：全部 / 7 天内到期 / 已到期"
+      },
+      {
+        "name": "ElecStockFilter",
         "client": "shared",
         "values": [
           "ALL",
@@ -33899,6 +33954,15 @@
           "OTHER"
         ],
         "zh": "AGENT 代理商 / TRADER 贸易商 / FACTORY 工厂余料 / OTHER 其他"
+      },
+      {
+        "name": "ElecSupplierStatus",
+        "client": "ops-web",
+        "values": [
+          "ACTIVE",
+          "SUSPENDED"
+        ],
+        "zh": "供应商状态：暂停后他的货不再给买家看"
       },
       {
         "name": "ElecSupplierStatus",
@@ -37423,6 +37487,54 @@
       "type": "String",
       "value": "\"system:job:manage\"",
       "zh": "开关、改 cron、立即执行。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_RFQ_READ",
+      "type": "String",
+      "value": "\"elec:rfq:read\"",
+      "zh": "元器件询价单：看列表与详情、看报价记录",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_RFQ_QUOTE",
+      "type": "String",
+      "value": "\"elec:rfq:quote\"",
+      "zh": "元器件询价单：录入平台报价、关单、手工指派供应商 —— 报出去的价买家可以当场接受",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_SUPPLIER_READ",
+      "type": "String",
+      "value": "\"elec:supplier:read\"",
+      "zh": "元器件供应商：列表、详情、他的库存（真名、电话、精确数量都在这里）",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_SUPPLIER_MANAGE",
+      "type": "String",
+      "value": "\"elec:supplier:manage\"",
+      "zh": "元器件供应商：暂停 / 恢复 / 改资料。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_PART_READ",
+      "type": "String",
+      "value": "\"elec:part:read\"",
+      "zh": "元器件料号与库存查询：每家的精确库存与电话",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ELEC_BASE_MANAGE",
+      "type": "String",
+      "value": "\"elec:base:manage\"",
+      "zh": "元器件厂牌与别名维护。",
       "module": "shop-base-auth"
     },
     {

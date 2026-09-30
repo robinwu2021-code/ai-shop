@@ -1651,7 +1651,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 146,
+      "count": 151,
       "domains": [
         {
           "name": "经营看板",
@@ -3381,6 +3381,73 @@
           ]
         },
         {
+          "name": "元器件",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/elec",
+              "title": "元器件",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/elec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec",
+              "title": "询报价",
+              "domain": "元器件",
+              "group": "撮合",
+              "matrix": "P-19.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=supplier",
+              "title": "供应商",
+              "domain": "元器件",
+              "group": "货源",
+              "matrix": "P-19.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=supplier"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=part",
+              "title": "料号与库存",
+              "domain": "元器件",
+              "group": "货源",
+              "matrix": "P-19.3",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=part"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=base",
+              "title": "基础数据",
+              "domain": "元器件",
+              "group": "主数据",
+              "matrix": "P-19.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=base"
+            }
+          ]
+        },
+        {
           "name": "平台管理",
           "pages": [
             {
@@ -3583,5 +3650,5 @@
       ]
     }
   ],
-  "total": 283
+  "total": 288
 }

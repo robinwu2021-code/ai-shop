@@ -9502,3 +9502,30 @@ WHERE NOT EXISTS (
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
 UPDATE mch_store SET banner_url = REPLACE(banner_url, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE banner_url LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_ELEC', '元器件', 'OPS', 'Cpu', '/elec', 125, 1, NOW(), NOW());
+INSERT IGNORE INTO sys_function_point
+    (point_code, function_code, name, group_name, href, ui_perm_code, perm_code,
+     backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+VALUES
+    ('OPS_ELEC', 'OPS_ELEC', '询报价', '撮合', '/elec',
+     'elec:rfq:read', 'elec:rfq:read', 'IMPLEMENTED', 1, 'P-19.1', 'MENU', 10, NOW(), NOW()),
+    ('OPS_ELEC__TAB_SUPPLIER', 'OPS_ELEC', '供应商', '货源', '/elec?tab=supplier',
+     'elec:supplier:read', 'elec:supplier:read', 'IMPLEMENTED', 1, 'P-19.2', 'MENU', 20, NOW(), NOW()),
+    ('OPS_ELEC__TAB_PART', 'OPS_ELEC', '料号与库存', '货源', '/elec?tab=part',
+     'elec:part:read', 'elec:part:read', 'IMPLEMENTED', 1, 'P-19.3', 'MENU', 30, NOW(), NOW()),
+    ('OPS_ELEC__TAB_BASE', 'OPS_ELEC', '基础数据', '主数据', '/elec?tab=base',
+     'elec:base:manage', 'elec:base:manage', 'IMPLEMENTED', 1, 'P-19.4', 'MENU', 40, NOW(), NOW()),
+    
+    ('ACT__ELEC_RFQ_QUOTE', 'OPS_ELEC', 'elec:rfq:quote', '页面内操作', NULL,
+     'elec:rfq:quote', 'elec:rfq:quote', 'IMPLEMENTED', 1, NULL, 'ACTION', 910, NOW(), NOW()),
+    ('ACT__ELEC_SUPPLIER_MANAGE', 'OPS_ELEC', 'elec:supplier:manage', '页面内操作', NULL,
+     'elec:supplier:manage', 'elec:supplier:manage', 'IMPLEMENTED', 1, NULL, 'ACTION', 911, NOW(), NOW());
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('SUPER_ADMIN', 'OPS_ELEC', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_ELEC__TAB_PART', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'OPS_ELEC__TAB_BASE', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'ACT__ELEC_RFQ_QUOTE', 'OPS', NOW(), NOW()),
+    ('SUPER_ADMIN', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW());

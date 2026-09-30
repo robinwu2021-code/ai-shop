@@ -33,6 +33,9 @@ shop:
     internal-token: ${SHOP_SERVICES_INTERNAL_TOKEN:}
 
 elec:
+  # 本机开发放行的跨域源（逗号分隔），如 http://localhost:3100（运营端 dev server）。
+  # **生产不配**：同域经 nginx，不需要也不该开跨域 —— 空着链上就没有 CORS 这一段
+  dev-cors-origins: ${ELEC_DEV_CORS_ORIGINS:}
   # 通知点开后落到的页面前缀。并进 c-app 测试时是 pkg-elec/pages/，独立小程序时改成 pages/（见 ElecPages）
   page-prefix: ${ELEC_PAGE_PREFIX:pkg-elec/pages/}
   # 库存快到期的站内信，每天一次。设成 - 关掉（Spring 的「禁用」写法）

@@ -549,6 +549,30 @@ public final class Perms {
      */
     public static final String SYSTEM_JOB_MANAGE = "system:job:manage";
 
+    // ── 电子元器件（独立服务 elec-svc，2026-09-30）──────────────────────────
+    //
+    // **判权不在主系统**：elec-svc 的 ElecOpsGuard 按 ElecInternal 的同名常量判；主系统只在认令牌时
+    // 按角色现算出这六个码的有无、带过去（InternalElecEndpoint）。这里再登一遍，是因为菜单种子、
+    // ops-web 的 perm-map、权限矩阵的生成器都只读本文件 —— 值必须与 ElecInternal 逐字相同。
+
+    /** 元器件询价单：看列表与详情、看报价记录 */
+    public static final String ELEC_RFQ_READ = "elec:rfq:read";
+
+    /** 元器件询价单：录入平台报价、关单、手工指派供应商 —— 报出去的价买家可以当场接受 */
+    public static final String ELEC_RFQ_QUOTE = "elec:rfq:quote";
+
+    /** 元器件供应商：列表、详情、他的库存（真名、电话、精确数量都在这里） */
+    public static final String ELEC_SUPPLIER_READ = "elec:supplier:read";
+
+    /** 元器件供应商：暂停 / 恢复 / 改资料。暂停后他的货当场不再给买家看 */
+    public static final String ELEC_SUPPLIER_MANAGE = "elec:supplier:manage";
+
+    /** 元器件料号与库存查询：每家的精确库存与电话 */
+    public static final String ELEC_PART_READ = "elec:part:read";
+
+    /** 元器件厂牌与别名维护。加一条别名会当场改认既有库存 */
+    public static final String ELEC_BASE_MANAGE = "elec:base:manage";
+
     /**
      * 角色 → 权限码。**对着矩阵 §2.3 的十一个岗位逐条配**。
      *

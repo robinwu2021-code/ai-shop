@@ -142,4 +142,9 @@ export const POINT_CODES: Record<string, string> = {
   "/system?tab=authCode": "OPS_SYSTEM__TAB_AUTHCODE",
   "/system?tab=scope": "OPS_SYSTEM__TAB_SCOPE",
   "/system?tab=testPhone": "OPS_SYSTEM__TAB_TESTPHONE",
+  // P-19 电子元器件（V370）。手工追加 —— 别跑 --emit-point-codes，它会重算整张冻结表
+  "/elec": "OPS_ELEC",
+  "/elec?tab=supplier": "OPS_ELEC__TAB_SUPPLIER",
+  "/elec?tab=part": "OPS_ELEC__TAB_PART",
+  "/elec?tab=base": "OPS_ELEC__TAB_BASE",
 };

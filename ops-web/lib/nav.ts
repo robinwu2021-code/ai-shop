@@ -510,6 +510,19 @@ export const NAV: NavSection[] = [
     ],
   },
 
+  // ── P-19 电子元器件（独立服务 elec-svc）────────────────────────────────
+  // 接口是 /elec/ops/**，**判权在 elec-svc**（ElecOpsGuard）；菜单与授权照常登在主系统库里（V370）。
+  // 四个子页一个路由、?tab= 深链。询报价在第一个：运营每天最常干的是照着「库里谁有货」报价
+  {
+    key: "elec", label: "元器件", icon: "Cpu", modules: ["elec"], href: "/elec",
+    children: [
+      { href: "/elec", label: "询报价", perm: "elec:rfq:read", group: "撮合", matrix: "P-19.1", ready: true },
+      { href: "/elec?tab=supplier", label: "供应商", perm: "elec:supplier:read", group: "货源", matrix: "P-19.2", ready: true },
+      { href: "/elec?tab=part", label: "料号与库存", perm: "elec:part:read", group: "货源", matrix: "P-19.3", ready: true },
+      { href: "/elec?tab=base", label: "基础数据", perm: "elec:base:manage", group: "主数据", matrix: "P-19.4", ready: true },
+    ],
+  },
+
   // ── P-1 账号与权限 ──────────────────────────────────────────────────────
   {
     key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system"], href: "/iam",

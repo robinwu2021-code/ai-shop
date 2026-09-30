@@ -41,7 +41,7 @@ function RailItem({
   );
   // shrink-0：项多时容器溢出滚动，flex 默认会压扁子项（图标变形），必须禁止收缩。
   const base = cn(
-    "group relative flex shrink-0 items-center gap-3 rounded-field py-2 transition-colors",
+    "group relative flex shrink-0 items-center gap-3 rounded-field py-[7px] transition-colors",
     expanded ? "px-3" : "justify-center px-0",
   );
   // 折叠态提示：自绘 Tooltip（components/ui/tooltip.tsx，portal+fixed）。
@@ -124,6 +124,8 @@ export function Rail() {
           可用高只有 524（视口 − Logo 56 − 收起按钮 40），原来的节奏要 536px，差 12px。
           为 12px 再合并一个业务域是拿像素倒推信息架构 —— 收紧自己的间距才是这一层该做的事。
           现在 13×36 + 12×2 + 8 = 500，还剩 24px 余量。
+          2026-09-30 加第 14 个 L1「元器件」时又差 14px（14×36+13×2+8 = 538）：项的上下内边距
+          py-2 → py-[7px]，每项 36 → 34，14×34 + 13×2 + 8 = 510，余 14px。图标与字号不动。
         */}
         <nav ref={scrollRef} className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-1")}>
           {top.map(render)}

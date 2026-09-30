@@ -63,7 +63,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    */
   const LOGO_H = 56;
   const COLLAPSE_BTN_H = 40;
-  const ITEM_H = 36;
+  const ITEM_H = 34;   // 图标 20 + 上下内边距 7×2（rail.tsx 的 py-[7px]）
   const ITEM_GAP = 2;
   const NAV_PAD = 8;
   /** 1366×768 的笔记本，去掉浏览器 chrome 后可视高约 620。这是要放得下的那一档。 */
@@ -135,6 +135,14 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
+    /*
+     * 电子元器件（2026-09-30，P-19）。独立服务 elec-svc 的运营面，新的根菜单。
+     * 只授超管（V370），所以只有超管那一行多出这四条。
+     */
+    "/elec",
+    "/elec?tab=supplier",
+    "/elec?tab=part",
+    "/elec?tab=base",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
@@ -378,6 +386,8 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
     // P-18.5 链路健康：从 P-18.3 对差里**拆出来**的。对差读数据、它读链路 ——
     // 09-02 投递停了六小时，唯一痕迹是对差页上的「待搬 1 个」。
     "P-18.1", "P-18.2", "P-18.3", "P-18.4", "P-18.5",
+    // P-19 电子元器件：独立服务 elec-svc（/elec/ops/**），判权在它那边；菜单仍登在主系统库里
+    "P-19.1", "P-19.2", "P-19.3", "P-19.4",
   ];
 
   const covered = new Set(NAV.flatMap((s) => (s.children ?? []).map((l) => l.matrix).filter(Boolean) as string[]));
@@ -395,7 +405,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs"];
+  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "elec"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);

@@ -201,4 +201,12 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "fulfillment:redeem:read": "fulfillment:redeem:read",
   "risk:rule:read": "risk:rule:read",
   "store:page:read": UNIMPLEMENTED,
+  // P-19 电子元器件（elec-svc 判权，码与 ElecInternal 逐字相同）。**六个都要登** ——
+  // 一个模块在这张表里一条都没有时，canModule 当它对所有人开放
+  "elec:rfq:read": "elec:rfq:read",
+  "elec:rfq:quote": "elec:rfq:quote",
+  "elec:supplier:read": "elec:supplier:read",
+  "elec:supplier:manage": "elec:supplier:manage",
+  "elec:part:read": "elec:part:read",
+  "elec:base:manage": "elec:base:manage",
 };

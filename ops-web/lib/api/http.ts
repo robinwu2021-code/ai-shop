@@ -15,6 +15,7 @@ import { groupHttp } from "./https/group";
 import { productHttp } from "./https/product";
 import { inventoryHttp } from "./https/inventory";
 import { jobHttp } from "./https/job";
+import { elecHttp } from "./https/elec";
 import { financeHttp } from "./https/finance";
 import { iamHttp } from "./https/iam";
 import { growthHttp } from "./https/growth";
@@ -41,6 +42,7 @@ export const HTTP_SLICES = {
   product: productHttp,
   inventory: inventoryHttp,
   job: jobHttp,
+  elec: elecHttp,
   finance: financeHttp,
   iam: iamHttp,
   growth: growthHttp,
@@ -53,5 +55,5 @@ export const HTTP_SLICES = {
 export const httpApi: Api = {
   ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
-  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp,
+  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp, ...elecHttp,
 };

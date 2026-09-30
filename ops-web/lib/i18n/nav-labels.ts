@@ -247,6 +247,15 @@ const OVERLAY: Record<string, Record<string, string>> = {
   审计: { en: "Audit" },
   外观与语言: { en: "Appearance & language" },
   运行配置: { en: "Runtime config" },
+  // P-19 电子元器件：根菜单、四个叶子、三个分组
+  元器件: { en: "Electronic components" },
+  询报价: { en: "RFQs & quotes" },
+  供应商: { en: "Suppliers" },
+  料号与库存: { en: "Parts & stock" },
+  基础数据: { en: "Master data" },
+  撮合: { en: "Matching" },
+  货源: { en: "Sourcing" },
+  主数据: { en: "Reference data" },
 };
 
 export function tNav(label: string, locale: Locale): string {

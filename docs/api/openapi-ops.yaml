@@ -9055,6 +9055,1137 @@ components:
         - "RETRY"
         - "BACKFILL"
       description: "这一轮是被什么触发的。**排障时第一个要看的就是它** —— 同一个任务，定时跑失败和人手动补跑失败，要找的人不是同一个。"
+    ElecRfqStatus: 
+      type: "string"
+      enum: 
+        - "SUBMITTED"
+        - "QUOTED"
+        - "EXPIRED"
+        - "ACCEPTED"
+        - "CLOSED"
+      description: "询价单状态。EXPIRED 不落库，是报价过了有效期时算出来的"
+    ElecCloseReason: 
+      type: "string"
+      enum: 
+        - "NO_SOURCE"
+        - "BUYER_CANCELLED"
+        - "DONE"
+      description: "关单原因：暂无货源（会通知买家）/ 买家不要了 / 已成交"
+    ElecSupplierStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "SUSPENDED"
+      description: "供应商状态：暂停后他的货不再给买家看"
+    ElecStockFilter: 
+      type: "string"
+      enum: 
+        - "ALL"
+        - "EXPIRING"
+        - "EXPIRED"
+      description: "库存筛选：全部 / 7 天内到期 / 已到期"
+    ElecDispatchStatus: 
+      type: "string"
+      enum: 
+        - "SENT"
+        - "VIEWED"
+        - "QUOTED"
+        - "DECLINED"
+      description: "派单结果：未看 / 看了没回 / 报了价 / 拒了"
+    ElecOpsQuoteStatus: 
+      type: "string"
+      enum: 
+        - "ACTIVE"
+        - "WITHDRAWN"
+        - "ACCEPTED"
+        - "NOT_CHOSEN"
+        - "EXPIRED"
+      description: "供应商报价状态。EXPIRED 是 ACTIVE 过了有效期算出来的；NOT_CHOSEN = 这一行成交给了别家"
+    ElecOpsLineQuote: 
+      type: "object"
+      properties: 
+        priceE6: 
+          type: "number"
+          description: "含税单价，百万分之一元"
+        qty: 
+          type: 
+            - "number"
+            - "null"
+          description: "能供多少；空 = 按要的数量"
+        dcYear: 
+          type: 
+            - "number"
+            - "null"
+          description: "批次年份"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数，0 = 现货"
+        cond: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况"
+        packing: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装"
+        note: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一行给买家的说明"
+      required: 
+        - "priceE6"
+      additionalProperties: false
+      description: "平台对这一行的报价（运营录入的，已经是对买家的价）"
+    ElecPriceTier: 
+      type: "object"
+      properties: 
+        minQty: 
+          type: "number"
+          description: "从多少片起"
+        priceE6: 
+          type: "number"
+          description: "这一档单价，百万分之一元"
+      required: 
+        - "minQty"
+        - "priceE6"
+      additionalProperties: false
+      description: "阶梯价的一档"
+    ElecOpsSource: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名（真名）"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系电话"
+        stockNo: 
+          type: "string"
+          description: "库存行号"
+        qty: 
+          type: "number"
+          description: "精确数量"
+        dateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "批号原样"
+        moq: 
+          type: 
+            - "number"
+            - "null"
+          description: "起订量"
+        spq: 
+          type: 
+            - "number"
+            - "null"
+          description: "最小包装量"
+        tiers: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ElecPriceTier"
+          description: "阶梯价，按数量升序"
+        priceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "最低档单价"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+          description: "币种"
+        taxIncluded: 
+          type: "boolean"
+          description: "含不含税"
+        packing: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装"
+        cond: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数"
+        region: 
+          type: 
+            - "string"
+            - "null"
+          description: "货源地"
+        validUntil: 
+          type: 
+            - "string"
+            - "null"
+          description: "这行库存有效到哪天。快到期的价要打折扣看"
+      required: 
+        - "supplierNo"
+        - "stockNo"
+        - "qty"
+        - "tiers"
+        - "taxIncluded"
+      additionalProperties: false
+      description: "库里谁有这个料号的货。运营照着它报价，所以口径要全（供应商原样：原币种、原含税口径）"
+    ElecOpsOffer: 
+      type: "object"
+      properties: 
+        dispatchNo: 
+          type: "string"
+          description: "派单号"
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系电话"
+        via: 
+          type: "string"
+          description: "AUTO_MATCH 库里有货自动派 / OPS 运营手工指派"
+        dispatchStatus: 
+          "$ref": "#/definitions/ElecDispatchStatus"
+          description: "派单结果"
+        declineReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "拒绝原因：NO_STOCK / PRICE / OTHER"
+        notifiedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "通知送到的时间"
+        respondedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "回话的时间"
+        quoteNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "报了价才有"
+        priceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "供应商填的单价（他的币种与含税口径，没加价）"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+          description: "币种"
+        taxIncluded: 
+          type: 
+            - "boolean"
+            - "null"
+          description: "含不含税"
+        buyerPriceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "买家看到的价（换成人民币含税、加价之后）"
+        qtyAvailable: 
+          type: 
+            - "number"
+            - "null"
+          description: "能供多少"
+        dateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "批号"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数"
+        cond: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况"
+        packing: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装"
+        moq: 
+          type: 
+            - "number"
+            - "null"
+          description: "起订量"
+        validUntil: 
+          type: 
+            - "string"
+            - "null"
+          description: "报价有效到哪天"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+          description: "供应商写给平台的备注 —— 买家永远看不到"
+        quoteStatus: 
+          anyOf: 
+            - "$ref": "#/definitions/ElecOpsQuoteStatus"
+            - type: "null"
+          description: "报价状态"
+      required: 
+        - "dispatchNo"
+        - "supplierNo"
+        - "via"
+        - "dispatchStatus"
+      additionalProperties: false
+      description: "这一行派给了谁、各自回了什么。**真名、原价、备注** —— 买家看到的是代号与加价后的价"
+    ElecOpsLine: 
+      type: "object"
+      properties: 
+        lineNo: 
+          type: "number"
+          description: "行号"
+        partNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "认到的料号；认不出为空"
+        mpn: 
+          type: "string"
+          description: "买家写的料号原样"
+        mfr: 
+          type: 
+            - "string"
+            - "null"
+          description: "买家写的厂牌"
+        qty: 
+          type: "number"
+          description: "要几片"
+        targetE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "目标单价，百万分之一元"
+        quote: 
+          anyOf: 
+            - "$ref": "#/definitions/ElecOpsLineQuote"
+            - type: "null"
+          description: "平台的报价"
+        sources: 
+          anyOf: 
+            - type: "array"
+              items: 
+                "$ref": "#/definitions/ElecOpsSource"
+            - type: "null"
+          description: "库里谁有货。**列表页不带，详情才带**"
+        offers: 
+          anyOf: 
+            - type: "array"
+              items: 
+                "$ref": "#/definitions/ElecOpsOffer"
+            - type: "null"
+          description: "派给了谁、各自回了什么。**列表页不带，详情才带**"
+      required: 
+        - "lineNo"
+        - "mpn"
+        - "qty"
+      additionalProperties: false
+      description: "询价单的一行"
+    ElecOpsRfq: 
+      type: "object"
+      properties: 
+        rfqNo: 
+          type: "string"
+          description: "询价单号"
+        status: 
+          "$ref": "#/definitions/ElecRfqStatus"
+          description: "状态"
+        createdAt: 
+          type: "string"
+          description: "提交时间"
+        lineCnt: 
+          type: "number"
+          description: "几行"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系人"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系电话（完整）"
+        company: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司"
+        needInvoice: 
+          type: "string"
+          description: "发票要求：NONE / VAT_NORMAL / VAT_SPECIAL"
+        dcReq: 
+          type: "string"
+          description: "批次要求：ANY / Y1 / Y2"
+        condReq: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况要求"
+        packingReq: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装要求"
+        needByDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "几天内要到货"
+        allowAlt: 
+          type: "boolean"
+          description: "能不能用替代型号"
+        deliverCity: 
+          type: 
+            - "string"
+            - "null"
+          description: "收货城市"
+        remark: 
+          type: 
+            - "string"
+            - "null"
+          description: "备注"
+        quotedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "平台报价的时间"
+        quotedBy: 
+          type: 
+            - "string"
+            - "null"
+          description: "谁报的价"
+        quoteValidUntil: 
+          type: 
+            - "string"
+            - "null"
+          description: "报价有效到哪天"
+        quoteNote: 
+          type: 
+            - "string"
+            - "null"
+          description: "给买家的说明"
+        buyerNotified: 
+          type: "boolean"
+          description: "结果通知送达买家了没有"
+        closeReason: 
+          anyOf: 
+            - "$ref": "#/definitions/ElecCloseReason"
+            - type: "null"
+          description: "关单原因"
+        dispatchCnt: 
+          type: "number"
+          description: "派给了几家（去重）"
+        respondedCnt: 
+          type: "number"
+          description: "其中几家回了话。与派出去的差得多 = 该催了"
+        offerCnt: 
+          type: "number"
+          description: "几家报了还有效的价"
+        lines: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ElecOpsLine"
+          description: "逐行"
+      required: 
+        - "rfqNo"
+        - "status"
+        - "createdAt"
+        - "lineCnt"
+        - "needInvoice"
+        - "dcReq"
+        - "allowAlt"
+        - "buyerNotified"
+        - "dispatchCnt"
+        - "respondedCnt"
+        - "offerCnt"
+        - "lines"
+      additionalProperties: false
+      description: "运营看到的询价单：买家的完整联系方式、每行库里谁有货、每家报了什么"
+    ElecQuoteLineReq: 
+      type: "object"
+      properties: 
+        lineNo: 
+          type: "number"
+          description: "行号"
+        priceE6: 
+          type: "number"
+          description: "含税单价，百万分之一元（必填）"
+        qty: 
+          type: "number"
+          description: "能供多少"
+        dcYear: 
+          type: "number"
+          description: "批次年份"
+        leadDays: 
+          type: "number"
+          description: "交期天数"
+        note: 
+          type: "string"
+          description: "这一行的说明"
+      required: 
+        - "lineNo"
+        - "priceE6"
+      additionalProperties: false
+      description: "录入平台报价的一行。没列进来的行 = 没找到货"
+    ElecQuoteReq: 
+      type: "object"
+      properties: 
+        validDays: 
+          type: "number"
+          description: "报价有效几天（默认 3）"
+        note: 
+          type: "string"
+          description: "给买家的说明（≤255 字）"
+        lines: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ElecQuoteLineReq"
+          description: "报了价的行"
+      required: 
+        - "lines"
+      additionalProperties: false
+      description: "录入平台报价"
+    ElecOpsQuoteRow: 
+      type: "object"
+      properties: 
+        quoteNo: 
+          type: "string"
+          description: "报价号"
+        rfqNo: 
+          type: "string"
+          description: "询价单号"
+        lineNo: 
+          type: "number"
+          description: "行号"
+        mpn: 
+          type: "string"
+          description: "料号"
+        qtyWanted: 
+          type: "number"
+          description: "买家要几片"
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名"
+        priceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "供应商原价"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+          description: "币种"
+        taxIncluded: 
+          type: "boolean"
+          description: "含不含税"
+        buyerPriceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "买家看到的价"
+        qtyAvailable: 
+          type: "number"
+          description: "能供多少"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数"
+        validUntil: 
+          type: 
+            - "string"
+            - "null"
+          description: "有效到哪天"
+        status: 
+          "$ref": "#/definitions/ElecOpsQuoteStatus"
+          description: "状态"
+        createdAt: 
+          type: "string"
+          description: "报价时间"
+      required: 
+        - "quoteNo"
+        - "rfqNo"
+        - "lineNo"
+        - "mpn"
+        - "qtyWanted"
+        - "supplierNo"
+        - "taxIncluded"
+        - "qtyAvailable"
+        - "status"
+        - "createdAt"
+      additionalProperties: false
+      description: "报价记录的一行（全部供应商报价，按时间倒序）"
+    ElecOpsSupplierRow: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名；点一下就成为供应商，所以可能还没填"
+        kind: 
+          type: "string"
+          description: "类型：AGENT / TRADER / FACTORY / OTHER"
+        city: 
+          type: 
+            - "string"
+            - "null"
+          description: "城市"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系人"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系电话"
+        maskCode: 
+          type: "string"
+          description: "匿名代号"
+        status: 
+          "$ref": "#/definitions/ElecSupplierStatus"
+          description: "状态"
+        onCount: 
+          type: "number"
+          description: "在售且未到期的库存行数"
+        expiringCount: 
+          type: "number"
+          description: "其中 7 天内到期的"
+        lastUploadAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次确认上架"
+        createdAt: 
+          type: "string"
+          description: "入驻时间"
+      required: 
+        - "supplierNo"
+        - "kind"
+        - "maskCode"
+        - "status"
+        - "onCount"
+        - "expiringCount"
+        - "createdAt"
+      additionalProperties: false
+      description: "供应商列表的一行"
+    ElecDispatchStats: 
+      type: "object"
+      properties: 
+        days: 
+          type: "number"
+          description: "统计窗口（天）"
+        sent: 
+          type: "number"
+          description: "派了几条"
+        viewed: 
+          type: "number"
+          description: "其中看过的"
+        responded: 
+          type: "number"
+          description: "其中回了话的"
+        quoted: 
+          type: "number"
+          description: "其中报了价的"
+        accepted: 
+          type: "number"
+          description: "报价被买家选中的"
+      required: 
+        - "days"
+        - "sent"
+        - "viewed"
+        - "responded"
+        - "quoted"
+        - "accepted"
+      additionalProperties: false
+      description: "近 30 天派单响应。分母是「看到的」，没看到的不怪他"
+    ElecOpsSupplierDetail: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名"
+        kind: 
+          type: "string"
+          description: "类型"
+        city: 
+          type: 
+            - "string"
+            - "null"
+          description: "城市"
+        contactName: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系人"
+        contactPhone: 
+          type: 
+            - "string"
+            - "null"
+          description: "联系电话"
+        maskCode: 
+          type: "string"
+          description: "匿名代号"
+        status: 
+          "$ref": "#/definitions/ElecSupplierStatus"
+          description: "状态"
+        suspendReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次暂停的理由（恢复后保留）"
+        suspendedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次暂停的时间"
+        onCount: 
+          type: "number"
+          description: "在售且未到期"
+        expiringCount: 
+          type: "number"
+          description: "7 天内到期"
+        expiredCount: 
+          type: "number"
+          description: "在售但已过期（买家看不到）"
+        lastUploadAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次确认上架"
+        registerNotified: 
+          type: "boolean"
+          description: "入驻通知送到企业微信了没有"
+        createdAt: 
+          type: "string"
+          description: "入驻时间"
+        dispatch: 
+          "$ref": "#/definitions/ElecDispatchStats"
+          description: "近 30 天派单响应"
+      required: 
+        - "supplierNo"
+        - "kind"
+        - "maskCode"
+        - "status"
+        - "onCount"
+        - "expiringCount"
+        - "expiredCount"
+        - "registerNotified"
+        - "createdAt"
+        - "dispatch"
+      additionalProperties: false
+      description: "供应商详情"
+    ElecSupplierReq: 
+      type: "object"
+      properties: 
+        companyName: 
+          type: "string"
+          description: "公司名"
+        kind: 
+          type: "string"
+          description: "类型"
+        city: 
+          type: "string"
+          description: "城市"
+        contactName: 
+          type: "string"
+          description: "联系人"
+        contactPhone: 
+          type: "string"
+          description: "联系电话"
+      additionalProperties: false
+      description: "改资料（空字段 = 不改）"
+    ElecStockView: 
+      type: "object"
+      properties: 
+        stockNo: 
+          type: "string"
+          description: "库存行号"
+        mpn: 
+          type: "string"
+          description: "料号原样"
+        mfr: 
+          type: 
+            - "string"
+            - "null"
+          description: "厂牌原样"
+        qty: 
+          type: "number"
+          description: "精确数量"
+        dateCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "批号"
+        packageName: 
+          type: 
+            - "string"
+            - "null"
+          description: "封装"
+        moq: 
+          type: 
+            - "number"
+            - "null"
+          description: "起订量"
+        spq: 
+          type: 
+            - "number"
+            - "null"
+          description: "最小包装量"
+        tiers: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ElecPriceTier"
+          description: "阶梯价"
+        priceE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "最低档单价"
+        currency: 
+          type: 
+            - "string"
+            - "null"
+          description: "币种"
+        taxIncluded: 
+          type: "boolean"
+          description: "含不含税"
+        packing: 
+          type: 
+            - "string"
+            - "null"
+          description: "包装"
+        cond: 
+          type: 
+            - "string"
+            - "null"
+          description: "货况"
+        leadDays: 
+          type: 
+            - "number"
+            - "null"
+          description: "交期天数"
+        region: 
+          type: 
+            - "string"
+            - "null"
+          description: "货源地"
+        validUntil: 
+          type: "string"
+          description: "到期日"
+        status: 
+          type: "string"
+          description: "ON / EXPIRED"
+      required: 
+        - "stockNo"
+        - "mpn"
+        - "qty"
+        - "tiers"
+        - "taxIncluded"
+        - "validUntil"
+        - "status"
+      additionalProperties: false
+      description: "一行库存（供应商原样）"
+    ElecOpsPartRow: 
+      type: "object"
+      properties: 
+        partNo: 
+          type: "string"
+          description: "料号"
+        mpn: 
+          type: "string"
+          description: "料号原样"
+        mfrCode: 
+          type: "string"
+          description: "厂牌代码；UNKNOWN = 认不出"
+        mfrName: 
+          type: 
+            - "string"
+            - "null"
+          description: "厂牌名"
+        mfrNameRaw: 
+          type: 
+            - "string"
+            - "null"
+          description: "厂牌认不出时第一次上传写的原文"
+        pkg: 
+          type: 
+            - "string"
+            - "null"
+          description: "封装"
+        status: 
+          type: "string"
+          description: "ACTIVE / PENDING / MERGED"
+        match: 
+          type: 
+            - "string"
+            - "null"
+          description: "EXACT / PREFIX / CONTAINS"
+        supplierCnt: 
+          type: "number"
+          description: "几家有在售且未到期的库存（精确家数）"
+        totalQty: 
+          type: "number"
+          description: "合计数量（精确）"
+        buyerPriceFromE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "买家看到的起价；没人报价为空"
+      required: 
+        - "partNo"
+        - "mpn"
+        - "mfrCode"
+        - "status"
+        - "supplierCnt"
+        - "totalQty"
+      additionalProperties: false
+      description: "运营搜料号的一行（与买家同一套命中，但不计入搜索需求）"
+    ElecOpsPartDetail: 
+      type: "object"
+      properties: 
+        part: 
+          "$ref": "#/definitions/ElecOpsPartRow"
+          description: "料号"
+        description: 
+          type: 
+            - "string"
+            - "null"
+          description: "描述"
+        qtyBand: 
+          type: 
+            - "string"
+            - "null"
+          description: "买家看到的数量档"
+        sourceBand: 
+          type: 
+            - "string"
+            - "null"
+          description: "买家看到的家数档"
+        sources: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/ElecOpsSource"
+          description: "谁有货：按数量倒序，最多 50 家"
+      required: 
+        - "part"
+        - "sources"
+      additionalProperties: false
+      description: "料号详情：运营报价时最常看的一屏"
+    ElecOpsStockRow: 
+      type: "object"
+      properties: 
+        supplierNo: 
+          type: "string"
+          description: "供应商号"
+        companyName: 
+          type: 
+            - "string"
+            - "null"
+          description: "公司名"
+        supplierStatus: 
+          "$ref": "#/definitions/ElecSupplierStatus"
+          description: "供应商状态"
+        partNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "料号"
+        stock: 
+          "$ref": "#/definitions/ElecStockView"
+          description: "库存本身"
+      required: 
+        - "supplierNo"
+        - "supplierStatus"
+        - "stock"
+      additionalProperties: false
+      description: "库存行查询的一行"
+    ElecMfrRow: 
+      type: "object"
+      properties: 
+        mfrCode: 
+          type: "string"
+          description: "厂牌代码（建了不能改）"
+        nameEn: 
+          type: "string"
+          description: "英文名"
+        nameCn: 
+          type: 
+            - "string"
+            - "null"
+          description: "中文名"
+        status: 
+          type: "string"
+          description: "ACTIVE / MERGED"
+        mergedInto: 
+          type: 
+            - "string"
+            - "null"
+          description: "并入了哪家"
+        aliasCnt: 
+          type: "number"
+          description: "有几种写法指向它"
+        partCnt: 
+          type: "number"
+          description: "挂在它名下的料号数"
+      required: 
+        - "mfrCode"
+        - "nameEn"
+        - "status"
+        - "aliasCnt"
+        - "partCnt"
+      additionalProperties: false
+      description: "厂牌"
+    ElecMfrReq: 
+      type: "object"
+      properties: 
+        mfrCode: 
+          type: "string"
+          description: "厂牌代码，大写字母数字 2–32 位"
+        nameEn: 
+          type: "string"
+          description: "英文名（必填）"
+        nameCn: 
+          type: "string"
+          description: "中文名"
+      required: 
+        - "nameEn"
+      additionalProperties: false
+      description: "加厂牌 / 改名（改名时 mfrCode 以路径为准）"
+    ElecAliasRow: 
+      type: "object"
+      properties: 
+        aliasNorm: 
+          type: "string"
+          description: "规范化后的写法"
+        mfrCode: 
+          type: "string"
+          description: "指向的厂牌"
+        source: 
+          type: "string"
+          description: "SEED 初始种子 / OPS 运营加的"
+        createdAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "加的时间"
+        createdBy: 
+          type: 
+            - "string"
+            - "null"
+          description: "谁加的"
+      required: 
+        - "aliasNorm"
+        - "mfrCode"
+        - "source"
+      additionalProperties: false
+      description: "一条别名"
+    ElecAliasResult: 
+      type: "object"
+      properties: 
+        aliasNorm: 
+          type: "string"
+          description: "规范化后的写法"
+        mfrCode: 
+          type: "string"
+          description: "指向的厂牌"
+        movedRows: 
+          type: "number"
+          description: "从「厂牌不明」改认到这家的库存行数"
+        touchedParts: 
+          type: "number"
+          description: "受影响的料号数"
+      required: 
+        - "aliasNorm"
+        - "mfrCode"
+        - "movedRows"
+        - "touchedParts"
+      additionalProperties: false
+      description: "加别名的结果：加别名会当场改认既有库存"
+    ElecUnknownMfrRow: 
+      type: "object"
+      properties: 
+        aliasNorm: 
+          type: "string"
+          description: "规范化后的写法"
+        sample: 
+          type: "string"
+          description: "出现最多的那个原文"
+        rowCnt: 
+          type: "number"
+          description: "挂着这种写法的在售库存行数"
+        supplierCnt: 
+          type: "number"
+          description: "几家这么写"
+        partCnt: 
+          type: "number"
+          description: "涉及几个料号"
+        suggestCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "建议的厂牌；没把握为空"
+        suggestName: 
+          type: 
+            - "string"
+            - "null"
+          description: "建议厂牌的名字"
+      required: 
+        - "aliasNorm"
+        - "sample"
+        - "rowCnt"
+        - "supplierCnt"
+        - "partCnt"
+      additionalProperties: false
+      description: "认不出的厂牌写法（按规范化后的写法聚合）"
     OpsMember: 
       type: "object"
       properties: 
@@ -11614,6 +12745,704 @@ paths:
                     type: "array"
                     items: 
                       "$ref": "#/components/schemas/StoreRankRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/rfq": 
+    get: 
+      operationId: "listElecRfqs"
+      summary: "询价单列表"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/rfq/{rfqNo}": 
+    get: 
+      operationId: "getElecRfq"
+      summary: "询价单详情：买家完整联系方式、每行库里谁有货、每家报了什么（真名、原价） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "rfqNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/rfq/{rfqNo}/quote": 
+    post: 
+      operationId: "quoteElecRfq"
+      summary: "录入平台报价"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "rfqNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/rfq/{rfqNo}/close": 
+    post: 
+      operationId: "closeElecRfq"
+      summary: "关单"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "rfqNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/rfq/{rfqNo}/line/{lineNo}/dispatch": 
+    post: 
+      operationId: "dispatchElecLine"
+      summary: "手工指派：给这一行再派几家（派过的自动跳过，一次最多 20 家） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsRfq"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "rfqNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "lineNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/quote": 
+    get: 
+      operationId: "listElecQuotes"
+      summary: "报价记录：全部供应商报价，按时间倒序 */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecOpsQuoteRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/supplier": 
+    get: 
+      operationId: "listElecSuppliers"
+      summary: "listElecSuppliers"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecOpsSupplierRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/supplier/{no}": 
+    get: 
+      operationId: "getElecSupplier"
+      summary: "getElecSupplier"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsSupplierDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    put: 
+      operationId: "updateElecSupplier"
+      summary: "改资料（空字段 = 不改） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsSupplierDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/supplier/{no}/stock": 
+    get: 
+      operationId: "listElecSupplierStocks"
+      summary: "他的库存（精确数量、原价） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecStockView"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/supplier/{no}/suspend": 
+    post: 
+      operationId: "suspendElecSupplier"
+      summary: "暂停"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsSupplierDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/supplier/{no}/resume": 
+    post: 
+      operationId: "resumeElecSupplier"
+      summary: "resumeElecSupplier"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsSupplierDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/part": 
+    get: 
+      operationId: "searchElecParts"
+      summary: "料号搜索：与买家同一套命中，但**不计入搜索需求**"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecOpsPartRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/part/{partNo}": 
+    get: 
+      operationId: "getElecPart"
+      summary: "某料号谁有货：运营报价时最常看的一屏 */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsPartDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "partNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/stock": 
+    get: 
+      operationId: "listElecStocks"
+      summary: "listElecStocks"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecOpsStockRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/mfr": 
+    get: 
+      operationId: "listElecMfrs"
+      summary: "listElecMfrs"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecMfrRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "createElecMfr"
+      summary: "加厂牌"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecMfrRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/mfr/{code}": 
+    put: 
+      operationId: "renameElecMfr"
+      summary: "改名（代码建了不能改） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecMfrRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/mfr/{code}/alias": 
+    get: 
+      operationId: "listElecAliases"
+      summary: "listElecAliases"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecAliasRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "addElecAlias"
+      summary: "加别名"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecAliasResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/mfr/unknown": 
+    get: 
+      operationId: "listElecUnknownMfrs"
+      summary: "认不出的厂牌：按出现次数排、带建议 */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecUnknownMfrRow"
                 required: 
                   - "code"
                   - "msg"

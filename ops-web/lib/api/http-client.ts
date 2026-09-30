@@ -24,6 +24,13 @@ function statusKey(status: number): string {
 // - 同源 nginx 反代（生产）：留空 → 走同源 /ops/**；
 // - 跨源本地开发：置后端源 http://localhost:8080。
 const BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+/*
+ * 电子元器件是**独立服务**（elec-svc，/elec/ops/**）。生产上与主系统同域、nginx 分流，留空即可；
+ * 开发期它在另一个端口（默认 8085），而运营端没有开发代理（静态导出），所以要单给一个基址 ——
+ * 同时 elec-svc 要在开发配置里放行 ops-web 的源（ELEC_DEV_CORS_ORIGINS，生产不配 = 不开跨域）。
+ * 令牌、语言、401/403 的处理与主系统完全一样：认令牌的是主系统，elec-svc 只是转问。
+ */
+const ELEC_BASE = process.env.NEXT_PUBLIC_ELEC_BASE || "";
 
 function headers(): Record<string, string> {
   const a = currentAuth();
@@ -95,10 +102,10 @@ function onForbidden(): void {
   void refreshPerms();
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+async function req<T>(base: string, path: string, init?: RequestInit): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(`${BASE}${path}`, { ...init, headers: { ...headers(), ...init?.headers } });
+    r = await fetch(`${base}${path}`, { ...init, headers: { ...headers(), ...init?.headers } });
   } catch {
     throw new ApiError(-1, translate(curLocale(), "error.network")); // 网络层失败
   }
@@ -117,8 +124,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data as T;
 }
 
-export const client = {
-  get: <T>(path: string, q?: object) => req<T>(`${path}${qs(q)}`),
+function makeClient(base: string) {
+  return {
+  get: <T>(path: string, q?: object) => req<T>(base, `${path}${qs(q)}`),
   /**
    * POST。第三个参数是**查询串** —— 后端有一批写操作把参数收在 `@RequestParam` 上
    * 而不是 body（如 `/ops/community-pool/resync?entityNo=`）。
@@ -128,9 +136,18 @@ export const client = {
    * 比不上就报「后端没有这个接口」。**路径要保持字面量**，可变部分交给这里。
    */
   post: <T>(path: string, data?: unknown, q?: object) =>
-    req<T>(`${path}${qs(q)}`, { method: "POST", body: JSON.stringify(data ?? {}) }),
-  put: <T>(path: string, data?: unknown) => req<T>(path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
-};
+    req<T>(base, `${path}${qs(q)}`, { method: "POST", body: JSON.stringify(data ?? {}) }),
+  put: <T>(path: string, data?: unknown) => req<T>(base, path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
+  };
+}
+
+export const client = makeClient(BASE);
+
+/**
+ * 元器件服务（/elec/ops/**）。**导入时改名成 client**（`import { elecClient as client }`）——
+ * openapi-parity 与 gen-openapi 按字面量 `client.` 扫调用，换了名字这些调用就从契约里消失
+ */
+export const elecClient = makeClient(ELEC_BASE);
 
 function qs(q?: object): string {
   if (!q) return "";

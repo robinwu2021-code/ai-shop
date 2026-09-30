@@ -1480,6 +1480,561 @@ getDashboardTrend
 类型：[`MenuFunction`](#menufunction)\[\]
 
 
+### elec
+
+#### GET `/elec/ops/mfr`
+
+listElecMfrs
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecMfrRow`](#elecmfrrow)\[\]
+
+
+#### POST `/elec/ops/mfr`
+
+加厂牌
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecMfrRow`](#elecmfrrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mfrCode` | `string` | 是 | 厂牌代码（建了不能改） |
+| `nameEn` | `string` | 是 | 英文名 |
+| `nameCn` | `string,null` | 否 | 中文名 |
+| `status` | `string` | 是 | ACTIVE / MERGED |
+| `mergedInto` | `string,null` | 否 | 并入了哪家 |
+| `aliasCnt` | `number` | 是 | 有几种写法指向它 |
+| `partCnt` | `number` | 是 | 挂在它名下的料号数 |
+
+
+#### PUT `/elec/ops/mfr/{code}`
+
+改名（代码建了不能改） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecMfrRow`](#elecmfrrow)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mfrCode` | `string` | 是 | 厂牌代码（建了不能改） |
+| `nameEn` | `string` | 是 | 英文名 |
+| `nameCn` | `string,null` | 否 | 中文名 |
+| `status` | `string` | 是 | ACTIVE / MERGED |
+| `mergedInto` | `string,null` | 否 | 并入了哪家 |
+| `aliasCnt` | `number` | 是 | 有几种写法指向它 |
+| `partCnt` | `number` | 是 | 挂在它名下的料号数 |
+
+
+#### GET `/elec/ops/mfr/{code}/alias`
+
+listElecAliases
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
+
+**出参**（`data`）
+
+类型：[`ElecAliasRow`](#elecaliasrow)\[\]
+
+
+#### POST `/elec/ops/mfr/{code}/alias`
+
+加别名
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `code` | path | `string` | 是 | 取货码 / 核销码 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecAliasResult`](#elecaliasresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aliasNorm` | `string` | 是 | 规范化后的写法 |
+| `mfrCode` | `string` | 是 | 指向的厂牌 |
+| `movedRows` | `number` | 是 | 从「厂牌不明」改认到这家的库存行数 |
+| `touchedParts` | `number` | 是 | 受影响的料号数 |
+
+
+#### GET `/elec/ops/mfr/unknown`
+
+认不出的厂牌：按出现次数排、带建议 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecUnknownMfrRow`](#elecunknownmfrrow)\[\]
+
+
+#### GET `/elec/ops/part`
+
+料号搜索：与买家同一套命中，但**不计入搜索需求**
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecOpsPartRow`](#elecopspartrow)\[\]
+
+
+#### GET `/elec/ops/part/{partNo}`
+
+某料号谁有货：运营报价时最常看的一屏 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `partNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ElecOpsPartDetail`](#elecopspartdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `part` | [`#/definitions/ElecOpsPartRow`](#definitionselecopspartrow) | 是 | 料号 |
+| `description` | `string,null` | 否 | 描述 |
+| `qtyBand` | `string,null` | 否 | 买家看到的数量档 |
+| `sourceBand` | `string,null` | 否 | 买家看到的家数档 |
+| `sources` | [`#/definitions/ElecOpsSource`](#definitionselecopssource)\[\] | 是 | 谁有货：按数量倒序，最多 50 家 |
+
+
+#### GET `/elec/ops/quote`
+
+报价记录：全部供应商报价，按时间倒序 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecOpsQuoteRow`](#elecopsquoterow)\[\]
+
+
+#### GET `/elec/ops/rfq`
+
+询价单列表
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)\[\]
+
+
+#### GET `/elec/ops/rfq/{rfqNo}`
+
+询价单详情：买家完整联系方式、每行库里谁有货、每家报了什么（真名、原价） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `rfqNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+
+
+#### POST `/elec/ops/rfq/{rfqNo}/close`
+
+关单
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `rfqNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+
+
+#### POST `/elec/ops/rfq/{rfqNo}/line/{lineNo}/dispatch`
+
+手工指派：给这一行再派几家（派过的自动跳过，一次最多 20 家） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `rfqNo` | path | `string` | 是 | — |
+| `lineNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+
+
+#### POST `/elec/ops/rfq/{rfqNo}/quote`
+
+录入平台报价
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `rfqNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsRfq`](#elecopsrfq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+
+
+#### GET `/elec/ops/stock`
+
+listElecStocks
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecOpsStockRow`](#elecopsstockrow)\[\]
+
+
+#### GET `/elec/ops/supplier`
+
+listElecSuppliers
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierRow`](#elecopssupplierrow)\[\]
+
+
+#### GET `/elec/ops/supplier/{no}`
+
+getElecSupplier
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierDetail`](#elecopssupplierdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+
+#### PUT `/elec/ops/supplier/{no}`
+
+改资料（空字段 = 不改） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierDetail`](#elecopssupplierdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+
+#### POST `/elec/ops/supplier/{no}/resume`
+
+resumeElecSupplier
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierDetail`](#elecopssupplierdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+
+#### GET `/elec/ops/supplier/{no}/stock`
+
+他的库存（精确数量、原价） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：[`ElecStockView`](#elecstockview)\[\]
+
+
+#### POST `/elec/ops/supplier/{no}/suspend`
+
+暂停
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierDetail`](#elecopssupplierdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+
 ### finance
 
 #### GET `/ops/debts/{entityNo}`
@@ -10267,6 +10822,222 @@ KPI 卡（金额为最小货币单位整数）。
 某时刻实际生效的费率表，键为 `${businessMode}\|${trafficSource}`。
 
 类型：`#/definitions/Record<string,number>`
+
+### ElecAliasResult
+
+加别名的结果：加别名会当场改认既有库存
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aliasNorm` | `string` | 是 | 规范化后的写法 |
+| `mfrCode` | `string` | 是 | 指向的厂牌 |
+| `movedRows` | `number` | 是 | 从「厂牌不明」改认到这家的库存行数 |
+| `touchedParts` | `number` | 是 | 受影响的料号数 |
+
+### ElecAliasRow
+
+一条别名
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aliasNorm` | `string` | 是 | 规范化后的写法 |
+| `mfrCode` | `string` | 是 | 指向的厂牌 |
+| `source` | `string` | 是 | SEED 初始种子 / OPS 运营加的 |
+| `createdAt` | `string,null` | 否 | 加的时间 |
+| `createdBy` | `string,null` | 否 | 谁加的 |
+
+### ElecMfrRow
+
+厂牌
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mfrCode` | `string` | 是 | 厂牌代码（建了不能改） |
+| `nameEn` | `string` | 是 | 英文名 |
+| `nameCn` | `string,null` | 否 | 中文名 |
+| `status` | `string` | 是 | ACTIVE / MERGED |
+| `mergedInto` | `string,null` | 否 | 并入了哪家 |
+| `aliasCnt` | `number` | 是 | 有几种写法指向它 |
+| `partCnt` | `number` | 是 | 挂在它名下的料号数 |
+
+### ElecOpsPartDetail
+
+料号详情：运营报价时最常看的一屏
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `part` | [`#/definitions/ElecOpsPartRow`](#definitionselecopspartrow) | 是 | 料号 |
+| `description` | `string,null` | 否 | 描述 |
+| `qtyBand` | `string,null` | 否 | 买家看到的数量档 |
+| `sourceBand` | `string,null` | 否 | 买家看到的家数档 |
+| `sources` | [`#/definitions/ElecOpsSource`](#definitionselecopssource)\[\] | 是 | 谁有货：按数量倒序，最多 50 家 |
+
+### ElecOpsPartRow
+
+运营搜料号的一行（与买家同一套命中，但不计入搜索需求）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `partNo` | `string` | 是 | 料号 |
+| `mpn` | `string` | 是 | 料号原样 |
+| `mfrCode` | `string` | 是 | 厂牌代码；UNKNOWN = 认不出 |
+| `mfrName` | `string,null` | 否 | 厂牌名 |
+| `mfrNameRaw` | `string,null` | 否 | 厂牌认不出时第一次上传写的原文 |
+| `pkg` | `string,null` | 否 | 封装 |
+| `status` | `string` | 是 | ACTIVE / PENDING / MERGED |
+| `match` | `string,null` | 否 | EXACT / PREFIX / CONTAINS |
+| `supplierCnt` | `number` | 是 | 几家有在售且未到期的库存（精确家数） |
+| `totalQty` | `number` | 是 | 合计数量（精确） |
+| `buyerPriceFromE6` | `number,null` | 否 | 买家看到的起价；没人报价为空 |
+
+### ElecOpsQuoteRow
+
+报价记录的一行（全部供应商报价，按时间倒序）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 是 | 报价号 |
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `lineNo` | `number` | 是 | 行号 |
+| `mpn` | `string` | 是 | 料号 |
+| `qtyWanted` | `number` | 是 | 买家要几片 |
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `priceE6` | `number,null` | 否 | 供应商原价 |
+| `currency` | `string,null` | 否 | 币种 |
+| `taxIncluded` | `boolean` | 是 | 含不含税 |
+| `buyerPriceE6` | `number,null` | 否 | 买家看到的价 |
+| `qtyAvailable` | `number` | 是 | 能供多少 |
+| `leadDays` | `number,null` | 否 | 交期天数 |
+| `validUntil` | `string,null` | 否 | 有效到哪天 |
+| `status` | [`#/definitions/ElecOpsQuoteStatus`](#definitionselecopsquotestatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 报价时间 |
+
+### ElecOpsRfq
+
+运营看到的询价单：买家的完整联系方式、每行库里谁有货、每家报了什么
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rfqNo` | `string` | 是 | 询价单号 |
+| `status` | [`#/definitions/ElecRfqStatus`](#definitionselecrfqstatus) | 是 | 状态 |
+| `createdAt` | `string` | 是 | 提交时间 |
+| `lineCnt` | `number` | 是 | 几行 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话（完整） |
+| `company` | `string,null` | 否 | 公司 |
+| `needInvoice` | `string` | 是 | 发票要求：NONE / VAT_NORMAL / VAT_SPECIAL |
+| `dcReq` | `string` | 是 | 批次要求：ANY / Y1 / Y2 |
+| `condReq` | `string,null` | 否 | 货况要求 |
+| `packingReq` | `string,null` | 否 | 包装要求 |
+| `needByDays` | `number,null` | 否 | 几天内要到货 |
+| `allowAlt` | `boolean` | 是 | 能不能用替代型号 |
+| `deliverCity` | `string,null` | 否 | 收货城市 |
+| `remark` | `string,null` | 否 | 备注 |
+| `quotedAt` | `string,null` | 否 | 平台报价的时间 |
+| `quotedBy` | `string,null` | 否 | 谁报的价 |
+| `quoteValidUntil` | `string,null` | 否 | 报价有效到哪天 |
+| `quoteNote` | `string,null` | 否 | 给买家的说明 |
+| `buyerNotified` | `boolean` | 是 | 结果通知送达买家了没有 |
+| `closeReason` | [`#/definitions/ElecCloseReason`](#definitionselecclosereason) \| `null` | 否 | 关单原因 |
+| `dispatchCnt` | `number` | 是 | 派给了几家（去重） |
+| `respondedCnt` | `number` | 是 | 其中几家回了话。与派出去的差得多 = 该催了 |
+| `offerCnt` | `number` | 是 | 几家报了还有效的价 |
+| `lines` | [`#/definitions/ElecOpsLine`](#definitionselecopsline)\[\] | 是 | 逐行 |
+
+### ElecOpsStockRow
+
+库存行查询的一行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `supplierStatus` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 供应商状态 |
+| `partNo` | `string,null` | 否 | 料号 |
+| `stock` | [`#/definitions/ElecStockView`](#definitionselecstockview) | 是 | 库存本身 |
+
+### ElecOpsSupplierDetail
+
+供应商详情
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+### ElecOpsSupplierRow
+
+供应商列表的一行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名；点一下就成为供应商，所以可能还没填 |
+| `kind` | `string` | 是 | 类型：AGENT / TRADER / FACTORY / OTHER |
+| `city` | `string,null` | 否 | 城市 |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `onCount` | `number` | 是 | 在售且未到期的库存行数 |
+| `expiringCount` | `number` | 是 | 其中 7 天内到期的 |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+
+### ElecStockView
+
+一行库存（供应商原样）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stockNo` | `string` | 是 | 库存行号 |
+| `mpn` | `string` | 是 | 料号原样 |
+| `mfr` | `string,null` | 否 | 厂牌原样 |
+| `qty` | `number` | 是 | 精确数量 |
+| `dateCode` | `string,null` | 否 | 批号 |
+| `packageName` | `string,null` | 否 | 封装 |
+| `moq` | `number,null` | 否 | 起订量 |
+| `spq` | `number,null` | 否 | 最小包装量 |
+| `tiers` | [`#/definitions/ElecPriceTier`](#definitionselecpricetier)\[\] | 是 | 阶梯价 |
+| `priceE6` | `number,null` | 否 | 最低档单价 |
+| `currency` | `string,null` | 否 | 币种 |
+| `taxIncluded` | `boolean` | 是 | 含不含税 |
+| `packing` | `string,null` | 否 | 包装 |
+| `cond` | `string,null` | 否 | 货况 |
+| `leadDays` | `number,null` | 否 | 交期天数 |
+| `region` | `string,null` | 否 | 货源地 |
+| `validUntil` | `string` | 是 | 到期日 |
+| `status` | `string` | 是 | ON / EXPIRED |
+
+### ElecUnknownMfrRow
+
+认不出的厂牌写法（按规范化后的写法聚合）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aliasNorm` | `string` | 是 | 规范化后的写法 |
+| `sample` | `string` | 是 | 出现最多的那个原文 |
+| `rowCnt` | `number` | 是 | 挂着这种写法的在售库存行数 |
+| `supplierCnt` | `number` | 是 | 几家这么写 |
+| `partCnt` | `number` | 是 | 涉及几个料号 |
+| `suggestCode` | `string,null` | 否 | 建议的厂牌；没把握为空 |
+| `suggestName` | `string,null` | 否 | 建议厂牌的名字 |
 
 ### FaqEntry
 
