@@ -1,6 +1,6 @@
 package ai.neargo.shop.platform;
 
-import ai.neargo.shop.platform.config.BootstrapConfigService.CustomerService;
+import ai.neargo.shop.platform.config.BootstrapConfigService.KfChannel;
 import ai.neargo.shop.platform.config.ShopProperties;
 import ai.neargo.shop.platform.config.impl.BootstrapConfigServiceImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class CustomerServiceConfigTest {
 
-    private static CustomerService kfOf(String corpId, String url) {
+    private static KfChannel kfOf(String corpId, String url) {
         var props = new ShopProperties();
         props.getCustomerService().setCorpId(corpId);
         props.getCustomerService().setUrl(url);

@@ -40,13 +40,13 @@ public class ShopProperties {
      * <p><b>空就是不发</b>：端上据此回落到 {@code open-type="contact"}，
      * 与 {@link MerchantApp} 那两档同一个口径 —— 缺配置时不发半截。
      */
-    private CustomerService customerService = new CustomerService();
+    private KfChannel customerService = new KfChannel();
 
-    public CustomerService getCustomerService() {
+    public KfChannel getCustomerService() {
         return customerService;
     }
 
-    public void setCustomerService(CustomerService customerService) {
+    public void setCustomerService(KfChannel customerService) {
         this.customerService = customerService;
     }
 
@@ -98,7 +98,8 @@ public class ShopProperties {
      *      没绑的表现是端上 {@code errCode 6}（corpId is not bound to current miniprogram）
      * @see #url   客服接入链接，取自企业微信后台 → 应用管理 → 微信客服 → 客服账号详情
      */
-    public static class CustomerService {
+    // 不叫 CustomerService：以 Service 结尾的具体类型会被 ArchitectureTest.serviceMustBeInterface 当成没拆接口的服务
+    public static class KfChannel {
 
         private String corpId = "";
 

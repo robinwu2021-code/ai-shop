@@ -24,7 +24,7 @@ public interface BootstrapConfigService {
                            String minAppVer,
                            String serviceHours,
                            MerchantApp merchantApp,
-                           CustomerService customerService) {
+                           KfChannel customerService) {
     }
 
     /**
@@ -39,7 +39,8 @@ public interface BootstrapConfigService {
      *               没绑的表现是端上 {@code errCode 6}
      * @param url    客服接入链接（企微后台 → 应用管理 → 微信客服 → 客服账号详情）
      */
-    record CustomerService(String corpId, String url) {
+    // 不叫 CustomerService：以 Service 结尾的具体类型会被 ArchitectureTest.serviceMustBeInterface 当成没拆接口的服务
+    record KfChannel(String corpId, String url) {
     }
 
     /**

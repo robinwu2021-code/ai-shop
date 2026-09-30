@@ -64,7 +64,7 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
                 props.getMinAppVer(),
                 props.getServiceHours(),
                 merchantApp(),
-                new BootstrapConfigService.CustomerService(
+                new BootstrapConfigService.KfChannel(
                         nz(props.getCustomerService().getCorpId()),
                         nz(props.getCustomerService().getUrl())));
     }
