@@ -82,6 +82,36 @@ sudo tail -20 /data/log/ai-shop/ops/backup.log        # 看结果
 脚本源文件在仓库 [backup-to-cos.sh](./backup-to-cos.sh) 与 [cron/ai-shop-backup](cron/ai-shop-backup)，
 改完要重新 install 到 `/data/app/ai-shop/ops/` 与 `/etc/cron.d/`。
 
+## 商家端 App 分发：**两条路，别只更新一条**（2026-09-30）
+
+店主拿到 APK 有两条路，而它们读的是**两处不同的配置**：
+
+| 从哪儿拿 | 读的是 | 谁维护 |
+|---|---|---|
+| 官网下载页 | `site/lib/site.config.ts` 的 `merchantAndroid` | `release-bapp-apk.sh` 改，然后要发官网 |
+| C 端小程序「复制 App 下载地址」 | 服务器 env `SHOP_MERCHANT_APP_ANDROID` → `/mp/config/bootstrap` 的 `merchantApp.android` | **此前没人维护** |
+
+第二条从 2026-08 起一直停在 **0.4.98**，而官网已经发到 0.5.21 ——
+店主从小程序复制地址，下到的是二十多个版本前的包，
+**HTTP 200、下得动、没有任何报错**，只是功能旧。改 env 要重启服务，
+所以每次发版都「下次再说」，于是一次都没改过。
+
+**现在的做法**：env 指一个**不带版本号**的软链
+`https://www.hxmall.top/dl/hxmall-merchant-latest.apk`，
+`release-bapp-apk.sh` 每次发版重指它并回读 md5。
+后端配置一次配好，以后发版不用再动 env、不用重启。
+
+改 env 的那一次要重启并守到 health=200：
+
+```bash
+sudo sed -i 's|^SHOP_MERCHANT_APP_ANDROID=.*|SHOP_MERCHANT_APP_ANDROID=https://www.hxmall.top/dl/hxmall-merchant-latest.apk|' \
+    /data/app/ai-shop/shop-app/shop-app.env
+sudo systemctl restart ai-shop
+curl -s http://localhost:8081/mp/config/bootstrap | grep -o 'hxmall-merchant-[a-z0-9.]*\.apk'
+```
+
+`/dl/` 在 nginx 里是普通 `alias`（`www.hxmall.top:218`），没有 `disable_symlinks`，所以软链可用。
+
 ## 商家端 App 分发（COS `download` 桶）
 
 > 全平台的桶怎么划分、为什么只要三个，见 [cos-buckets.md](./cos-buckets.md)。

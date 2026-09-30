@@ -8,7 +8,7 @@
 # 用法：
 #   scripts/release-bapp-apk.sh ~/Downloads/虹选商家-0.4.32-159.apk
 #
-# 它做四件事：验包 → 传 COS（版本存档 + latest）→ 传服务器 /dl/ → 改 site.config。
+# 它做五件事：验包 → 传 COS（版本存档 + latest）→ 传服务器 /dl/ → 重指 latest 软链 → 改 site.config。
 # **不打包**：离线打包工程在仓库外（见 memory / 《App签名与打包参数》），
 # 各机路径不同，硬写进来只会在别人机器上假失败。
 set -euo pipefail
@@ -74,6 +74,21 @@ scp -q "$APK" "$SSH_HOST:/data/app/ai-shop/web/dl/$REMOTE"
 R_MD5=$(ssh "$SSH_HOST" "md5sum /data/app/ai-shop/web/dl/$REMOTE | cut -d' ' -f1")
 [ "$R_MD5" = "$MD5" ] || { echo "✗ 服务器上的 md5 对不上：$R_MD5"; exit 1; }
 echo "✓ 已传服务器：/dl/$REMOTE"
+
+# ── 3.5 不带版本号的稳定地址 ──────────────────────────────────────────
+#
+# **小程序那条路不读官网的 site.config，读的是后端配置**
+# （`SHOP_MERCHANT_APP_ANDROID` → `/mp/config/bootstrap` 的 merchantApp.android，
+# C 端「复制 App 下载地址」用它）。那个值写在服务器 env 里，改它要重启服务 ——
+# 于是它从 2026-08 起一直停在 **0.4.98**，而官网已经发到 0.5.21。
+# 店主从小程序复制地址，下到的是二十多个版本前的包，**200、下得动、没有任何报错**。
+#
+# 解法是让那个值不再嵌版本号：env 指 latest 这个软链，脚本每次发版重指它。
+# 这样后端配置一次配好，以后发版不用再动 env、不用重启。
+ssh "$SSH_HOST" "sudo ln -sfn '$REMOTE' /data/app/ai-shop/web/dl/hxmall-merchant-latest.apk"
+L_MD5=$(ssh "$SSH_HOST" "md5sum /data/app/ai-shop/web/dl/hxmall-merchant-latest.apk | cut -d' ' -f1")
+[ "$L_MD5" = "$MD5" ] || { echo "✗ latest 软链取到的不是这一版：$L_MD5"; exit 1; }
+echo "✓ latest 软链 → $REMOTE（md5 回读一致）"
 
 # ── 4. 官网那一行 ─────────────────────────────────────────────────────
 # **这一步是这个脚本存在的理由。** 前三步不做也看得出来，这一步漏了看不出来。
