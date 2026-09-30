@@ -1,6 +1,6 @@
 # TDD-元器件 · 库存上传二期（别名表与大模型认列 · 定位到格 · 内存暂存 · 原件存盘 · 护栏与记录）
 
-> 2026-09-30 · 状态：**草稿 v3**（v1 分级报错 / 导出 / 护栏 / 记录 / 限次；v2 加认列、暂存、存盘，改掉「上传即写原样行」；v3 原件两区存放、保留原名）
+> 2026-09-30 · 状态：**已实现（未上线）** · v3（v1 分级报错 / 导出 / 护栏 / 记录 / 限次；v2 加认列、暂存、存盘，改掉「上传即写原样行」；v3 原件两区存放、保留原名）
 > 档位：1（1 张新表 · 2 张表加列 · 10 个新端点 · 2 个端点改入参 · 4 个错误码 · 12 个配置项 · elec-core 加 ehcache 依赖）
 > 依据：[PRD-元器件-库存表上传](../requirements/PRD-元器件-库存表上传.md) §三 AC1–AC24
 > 前置：[独立服务与第一步](./TDD-元器件-独立服务与第一步.md)（上传主链路）· [运营端接口](./TDD-元器件-运营端接口.md)（`ElecOpsGuard`）
@@ -522,79 +522,92 @@ ALTER TABLE elc_stock_batch_row ADD COLUMN issue_level VARCHAR(8)    DEFAULT NUL
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-| AC | 测试方法 | 跑过 | 消融验证 |
+跑法：`mvn -o -pl elec/elec-svc -am test`（elec-core 55 条 + elec-svc 88 条，1 条真连 cdw 默认跳过）；
+`cd elec-app && npm test`（21 条）。**每一行都做过消融**：把实现改回去（或注掉那一句），对应测试变红；还原后 touch 文件。
+
+| AC | 测试方法 | 跑过 | 消融（改了什么 → 结果） |
 |---|---|---|---|
-| AC1 | `ColumnResolverTest#aliasHitSkipsAi` + `HeaderAliasSeedTest#seedEqualsFormerConstants` | | `FakeColumnAi` 记调用次数；别名查询返回空 → 红 |
-| AC2 | `ColumnResolverTest#aiFillsOnlyMissingFields` | | 合并改成「模型覆盖规则」→ 红 |
-| AC3 | `ColumnResolverTest#aiColumnFailingContentCheckIsDropped` | | 注掉 `verify` → 红 |
-| AC4 | `ElecUploadFlowTest#ac4_aiDownGivesNeedMapping` | | 失败时改回抛 `ELEC_UPLOAD_NO_HEADER` → 红 |
-| AC5 | `ElecUploadFlowTest#ac5_confirmedMappingLearnedForThisSupplierOnly` | | `learn` 写成全局 → 红在「别家不受影响」 |
-| AC6 | `ElecUploadFlowTest#ac6_issuesPinpointCellAndCollectAllPerRow` | | 恢复遇错 `continue` → 红 |
-| AC7 | `ElecUploadFlowTest#ac7_warningsListedButStillListed` | | 警告当错误 → 红 |
-| AC8 | `SheetWriterTest#allCellsTextAndErrorCellsRed` + `ElecUploadFlowTest#ac8_exportOnlyProblemRows` | | 写成数字单元格 → 红在「0805」 |
-| AC9 | `ElecUploadFlowTest#ac9_fixedRowsMergeWithoutTouchingOthers` | | 补传用 REPLACE → 红 |
-| AC10 | `ElecUploadFlowTest#ac10_rowsViewReturnsParsedValuesWithBefore` | | `before` 不填 → 红 |
-| AC11 | `ElecUploadFlowTest#ac11_noRowsInDbBeforeApply` | | 恢复上传写原样行 → 红 |
-| AC12 | `ElecUploadFlowTest#ac12_cancelEvictsButKeepsFile` | | 放弃时删了文件 → 红 |
-| AC13 | `ElecUploadFlowTest#ac13_expiresOneHourAfterUpload`（可注入时钟） | | TTL 改成按访问 → 红 |
-| AC14 | `ElecUploadFlowTest#ac14_rebuildFromFileKeepsMappingAndDeadline` | | 重建时 deadline 用 now+ttl → 红；重建调了 `FakeColumnAi` → 红 |
-| AC15 | `ElecUploadFlowTest#ac15_newUploadSupersedesPending` | | 注掉 `supersedePending` → 红 |
-| AC16 AC17 | `ElecUploadFlowTest#ac16_delistOverLineNeedsExpectDelist`、`#ac17_expectDelistComparedWithRecomputed` | | 注掉护栏 / 改成与存下的 `to_delist` 比 → 红 |
-| AC18 | `ElecUploadFlowTest#ac18_concurrentApplySerialized` | | 注掉加锁 → 红（见 §4 H2 一行） |
-| AC19 | `UploadFileStoreTest#pathKeepsNameUnderDateAndSupplier` + `#sanitizesTraversalAndLongNames` + `ElecUploadFlowTest#ac19_applyMovesFileToAppliedArea` | | 净化去掉 → 红在 `../`；提交后不移区 → 红 |
-| AC19a | `ElecUploadFlowTest#ac19a_parseFailureRecordedWithFile` | | 失败记录与上传同一事务 → 红（记录被回滚） |
-| AC19b | `UploadFileStoreTest#purgeOnlyOldFailedDirsByName` | | 清理改按 mtime → 红（测试里 touch 旧目录）；`applied` 也删 → 红 |
-| AC19c | `ElecUploadFlowTest#ac19c_cleanerRehomesAppliedFileLeftInFailed` | | 注掉补移 → 红（已上架原件被删） |
-| AC19d | `ElecOpsFlowTest#ac19d_opsDownloadsOriginalWithName` | | 不带 `filename*` → 红；清理后仍 200 → 红 |
-| AC20 | `ElecUploadFlowTest#ac20_dailyLimitCountsUploadsOnly` | | remap 也计次 → 红 |
-| AC21 | `ElecUploadFlowTest#ac21_historyStatusesAndExportAfterFileCleaned` | | 导出改读原件 → 红（测试里先删原件） |
-| AC22 | `ElecOpsFlowTest#ac22_opsSeesSupplierBatches` | | 去掉鉴权 → 红 |
-| AC23 | `ElecOpsFlowTest#ac23_promoteLearnedAliasToGlobal` | | 提升不写 `supplier_no=''` → 红 |
-| AC24 | `ElecUploadFlowTest#ac24_othersBatchIs404`（详情 / rows / 导出 / 放弃四条） | | `own()` 去掉 supplier_no → 红 |
+| AC1 | `ColumnResolverTest#aliasHitSkipsAi` · `HeaderAliasSeedTest#seedIsConsistent / commonHeaders` | ✅ | —（种子测试读的就是 V3 本身，改种子即红） |
+| AC2 | `ColumnResolverTest#aiFillsOnlyMissingFields` · `ElecUploadFlowTest#ac5_*`（来源 AI） | ✅ | 去掉「别名认出的字段不许模型改」→ 红。**第一次消融没红**：测试里模型指的第 6 列恰好被「列已占用」那道拦住，改成没被占的第 7 列后才测到这一道 |
+| AC3 | `ColumnResolverTest#aiColumnFailingContentCheckIsDropped` · `#numericMfrRejected` | ✅ | 注掉 `verify` → 红 |
+| AC4 | `ColumnResolverTest#aiDownGivesNeedMapping` · `ElecUploadFlowTest#ac4_aiDownGivesNeedMapping` | ✅ | — |
+| AC5 | `ElecUploadFlowTest#ac5_confirmedMappingLearnedForThisSupplierOnly` | ✅ | 学成全局（supplier_no=''）→ 红在「别家不受影响」 |
+| AC6 | `StockSheetParserTest#issuesPinpointCellAndCollectAllPerRow` · `ElecUploadFlowTest#ac6_issuesPinpointCell` | ✅ | 数量判断加 `&& issues.isEmpty()`（遇错即停）→ 红 |
+| AC7 | `StockSheetParserTest#warnings` · `ElecUploadFlowTest#ac6_*`（警告行在售） | ✅ | — |
+| AC8 | `SheetWriterTest#allCellsTextAndErrorCellsRed / emptyErrorCellStillRed` · `ElecUploadFlowTest#ac8_exportThenMergeFix` | ✅ | 写数字格 → 红在 `0805`；空格不标红 → 红 |
+| AC9 | `ElecUploadFlowTest#ac8_exportThenMergeFix`（后半） | ✅ | — |
+| AC10 AC11 | `ElecUploadFlowTest#ac10_rowsViewAndNothingInDbBeforeApply` | ✅ | — |
+| AC12 | `ElecUploadFlowTest#ac12_cancelEvictsButKeepsFile` | ✅ | — |
+| AC13 | `PendingBatchCacheTest#expiresAtDeadlineNotOnAccess` · `ElecUploadFlowTest#ac13_*` | ✅ | 访问续期（getExpiryForAccess 回 60 分钟）→ 红 |
+| AC14 | `PendingBatchCacheTest#evictedEntryRebuildsWithSameDeadline` · `ElecUploadFlowTest#ac14_*` | ✅ | — |
+| AC15 | `ElecUploadFlowTest#ac15_newUploadSupersedesPending` | ✅ | 去掉 `supersedePending` → 红 |
+| AC16 AC17 | `ElecUploadFlowTest#ac16ac17_delistGuardComparesRecomputed` | ✅ | 去掉护栏 → 红；改成与存下的 `to_delist` 比 → 红 |
+| AC18 | `ElecUploadFlowTest#ac18_concurrentApplySerialized`（同一张连点两次，5 轮） | ✅ | 去掉 `lockBySupplierNo` → 红（H2 的 FOR UPDATE 在消融时确实变红，§4 那一行的担心不成立） |
+| AC19 | `UploadFileStoreTest#pathKeepsNameUnderDateAndSupplier / sanitizesTraversalAndLongNames / moveAndLocate` · `ElecUploadFlowTest#ac19_*` | ✅ | 提交后不移区 → 红 |
+| AC19a | `ElecUploadFlowTest#ac19a_parseFailureRecordedWithFile` | ✅ | `REQUIRES_NEW` 改 `REQUIRED` → 红（记录被回滚） |
+| AC19b AC19c | `UploadFileStoreTest#purgeOnlyOldFailedDirsByName` · `ElecUploadFlowTest#ac19bc_housekeeping` | ✅ | 按 mtime 删 → 红；注掉补移 → 红 |
+| AC19d AC22 | `ElecOpsFlowTest#ac19d_ac22_opsSeesBatchesAndDownloadsOriginal` | ✅ | 不带 `filename*` → 红 |
+| AC20 | `ElecUploadFlowTest#ac20_dailyLimitCountsUploadsOnly` | ✅ | 去掉限次 → 红 |
+| AC21 | `ElecUploadFlowTest#ac21_historyStatusesAndExportAfterFileCleaned` | ✅ | 导出改读原件 → 红（测试里先删了原件） |
+| AC23 | `ElecOpsFlowTest#ac23_promoteLearnedAliasToGlobal` | ✅ | 提升后不刷新全局缓存 → 红 |
+| AC24 | `ElecUploadFlowTest#ac24_othersBatchIs404`（详情 / 行 / 导出 / 放弃 / 确认） | ✅ | 取批次不带 supplier_no → 红 |
+| 隐私 | `ColumnResolverTest#privateColumnsNeverTakenFromAi` | ✅ | 采纳备注列 → 红 |
 
-另：`QwenColumnAi` 一条**默认跳过**的真连测试（`ELEC_AI_LIVE_URL` 有值才跑），发 §1 那张表头，断言 MPN=1、QTY=3。
-不进 pre-push（依赖外网）；上线前手工跑一次、贴输出。`elec.ai.enabled=false` 那一半由 AC4 覆盖（默认关的那一半要有测试）。
+**真连 cdw**：`QwenColumnAiTest#live`（`ELEC_AI_LIVE_URL=http://cdw.near3.ai:8003/v1`），本机跑过：877 ms，认出料号、厂牌、数量、批号。
 
----
+**端到端（浏览器 + 真服务）**：2026-09-30 在本机起了 HEAD 编的 elec-svc（真 MariaDB 跑 V1–V3、真连 cdw），
+主系统用一个只实现 4 个内部接口的替身（本机 MariaDB 12 上主系统全量迁移跑不通：`uca1400` 与 `general_ci` 混用，见偏差 14），
+H5 用开发模式构建。走过的：大模型认出抬头下一行的表头（1.09 s）、五类预览与问题定位、导出（打开文件核对：只有问题行、错格标红）、
+确认、全量替换过线弹窗并带 `expectDelist` 确认、上传记录五种状态、原件两区落盘。验证中发现并修了三处（偏差 11–13）。
 
-## §6 执行顺序
+## §6 对账二 · 设计 → 实现
 
-每步一个提交，**每步结束时后端全绿**（`mvn -o -pl elec/elec-svc -am test`），前端步骤另跑 `vue-tsc`。
+| 提交 | 内容 | 文件 |
+|---|---|---|
+| dd2b61fdb | 后端全部 + 测试 + V3 + H2 基线 + 错误码与三语文案 | 58 |
+| 988542046 | elec-app 三页一入口、shared 类型与 http、原型、界面清单 | 19 |
+| 03cbf223f | 生成物 11 份（openapi 两份、词表四份、ui-lib、规范两份、后端分层、API详情-C端） | 11 |
+| 28d734713 | 枚举登记与取值域列登记（pre-push 枚举守卫） | 2 |
+| 85a5b1c1a | 生成物 1 份（中英文对照-实体与字典） | 1 |
+| （本次） | 端到端验证中修的三处 + 本篇 + PRD | — |
+| 16f386f05 | （元器件后端会话代补）ER 生成器登记 `elc_header_alias` 的用途 | — |
 
-| 步 | 内容 | 覆盖 AC | 估时 |
-|---|---|---|---|
-| 0 | 预检：V3 号与 ErrorCode 末号没被占；elec-svc 信封是否放行 `ResponseEntity<byte[]>`；H2 `FOR UPDATE` 能否让并发测试在消融时变红 | — | 0.5 天 |
-| 1 | V3 + 实体 + H2 基线重生成；`HeaderNames` 抽出；`Columns` 改读别名表；种子等价测试 | AC1 | 0.5 天 |
-| 2 | `Issue` 模型：定位到格、一行多处、分级 | AC6 AC7 | 0.5 天 |
-| 3 | `UploadFileStore`（原名、日期/供应商目录、两区）+ 解析失败建批次 + 清理任务（补移）+ 启动自检 | AC19–AC19c | 1 天 |
-| 4 | `PendingBatchCache` + 上传 / remap / rows / cancel / 作废改走缓存；上传不再写行；apply 时写问题行 | AC10–AC15 | 1.5 天 |
-| 5 | 护栏、加锁、限次 | AC16–AC18 AC20 | 0.5 天 |
-| 6 | `ElecColumnAi` + `QwenColumnAi` + `ColumnResolver`（校验、熔断）+ 学习 | AC2–AC5 | 1 天 |
-| 7 | `SheetWriter`、记录列表 / 详情 / 导出、运营三组端点（含下载原件） | AC8 AC9 AC19d AC21–AC24 | 1 天 |
-| 8 | 前端：类型、api、三页一入口；原型与界面清单 | 端上 | 2 天 |
-| 9 | 生成物（openapi、ER、表清单、文档索引）在干净 HEAD 副本里跑；整套 `pre-push` | — | 0.5 天 |
-| 10 | 部署 §2.9；真机三张表走一遍；回填 §5「跑过」与 §7 | — | 0.5 天 |
+与 §2.8 逐行比：
 
-合计约 9.5 个工作日。步 1–7 可以不等前端单独上线：后端对老端上兼容（§1 表）。
-
----
-
-## §7 对账二 · 设计 → 实现（实现完再填）
-
-```
-（待填 git diff --stat）
-```
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了 | `ElecStockBatchService` 只管列表与原件下载；**详情与导出问题行放在 `ElecStockImportService`**（待确认的数据在它手里的缓存里，分开会互相调用） |
+| 同上 | `support/IssueText.java`（导出表「问题」列的人话）、`service/impl/StockSheetParser.java`（逐行解析与定位，从上传服务里拆出来，纯函数可单测）、`service/impl/UploadHousekeeper.java`（清理逻辑放 core 可测，elec-svc 的 `ElecUploadCleaner` 只按时叫它）、`config/ElecUploadConfig.java`（启动自检）、`support/HeaderNames.java` |
+| 同上 | `packages/shared/src/net/http-client.ts` 加 `del` 与 `downloadBinary`；`elec-app/src/shared/file.ts#openSheet`；`scripts/check-enum-fields.mjs` 与 `enum-registry.ts` 的登记 |
+| TDD 列了、实际没动 | `elec-core/…/i18n/elec/messages*.properties` 的「问题码人话」—— 放进了 `IssueText.java`（只有中文，导出给的是供应商、小程序只有中文）；这三份文案包只加了 4 个错误码（ElecMessagesParityTest 要求与主系统逐字一致） |
 
 ### 偏差说明
 
-（待填）
+1. **配置键**：`ElecProperties` 的前缀是 `shop.elec`，所以是 `shop.elec.upload.*` / `shop.elec.ai.*`（不是 §2.6 写的 `elec.upload.*`）；
+   清理 cron 照 `elec.expiry-remind-cron` 的写法是 `elec.upload-clean-cron`。环境变量名不变（`ELEC_UPLOAD_*` / `ELEC_AI_*`，application.yml 里映射）。
+2. **`QTY_ZERO` 是错误不是警告**：`Cells.qty` 本来就把 0 当读不出（0 不算有货，不上架）。PRD 写成「警告、照常上架」与现行规则冲突 ——
+   上架一行数量 0 的货，买家搜得到却没有货。保留现行规则，只把提示从「读不出」换成「数量为 0」。PRD §三 已同步。
+3. **`MFR_MISSING` 只在厂牌列认出来时逐行报**：厂牌列压根没认出的话，逐行报会让每一行都带警告；列映射页上「厂牌」空着已经说明了。
+4. **种子里 `PACKAGING` 只归「包装方式」**：原常量同时列在封装与包装方式下（同一列会被两个字段一起认走）；按行业惯例归包装方式。
+5. **下载两个接口直接写 `HttpServletResponse`、返回 void**：`byte[]` 会被全局信封包成 `ApiResult`，走字节转换器时抛类型转换异常。共享的 `ApiResponseWrapper` 管着主系统，不去改它。
+6. **移区失败只记 ERROR、不发企业微信**：每周清理第一步的补移兜住它，多一个告警通道要改 `ElecAlerts` 的两个实现与测试替身，这一期不值。
+7. **`BatchPreview.problems` 保留为过渡字段**：老版本小程序读它；后端先于端上发时老版本不至于白屏。
+8. **大模型样本是「至多 8 行非空」而不是「5 行数据」**：找表头要看抬头，而表头在第几行事先不知道；8 = 抬头至多 2 行 + 表头 + 5 行数据。
+9. **一家只留一张待确认时，已过期的不改成作废**：记录里它该显示「已过期」。
+10. **`elc_stock` 上没有 `(supplier_no, line_key)` 唯一键** —— AC18 原先设想的是「两张不同的预览并发确认」，一家一张之后那种情况不存在了；
+    真实的并发是**同一张被连点两次**，而不加锁时库存行会被静默插两遍、库不报错。测试按这个场景写。
+11. **（验证中修）空着的错格也标红**：「没有料号」那一格恰恰是空的，原实现跳过空格就没标上。
+12. **（验证中修）备注 / 联系方式类的列，大模型认了也不采纳、也不学成别名**（`HeaderNames.isPrivate`）：真连 qwen 时它把「备注」认成了货况并被学进了别名，
+    而原型 e15 要求备注默认不导入（常写公司名和微信）。供应商手工选仍可以，但不学。提示词里也写明了。
+13. **（验证中修）已放弃 / 作废 / 过期的批次在确认页不再给「有问题」页签与导出**：它们的问题行没有入库，页签有数、列表却是空的，导出点了报错。改为一句「这次没有上架，逐行的数据没有保留」；「数量为 0」的人话不再重复原值。
+14. **验证环境**：本机数据库是 **MariaDB 12.2**，生产是 MySQL 9.7 —— V3 在本机跑通不等于在生产跑通，上线前仍要在生产库副本上跑一遍（§2.9 第 4 步）。
+    本机主系统全量迁移在 MariaDB 12 上因 `uca1400` / `general_ci` 混用起不来，与本篇无关，端到端验证因此用了主系统替身。
 
----
-
-## §8 确认与完成
+## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-09-30 | v1 草稿（分级报错、导出、护栏、记录、限次） |
-| 2026-09-30 | v2 草稿：加入别名表 + qwen 认列、定位到格、Ehcache 暂存、原件存盘；上传不再写原样行。PRD §四 七条待拍板 |
+| 2026-09-30 | v2 草稿：加入别名表 + qwen 认列、定位到格、Ehcache 暂存、原件存盘；上传不再写原样行 |
 | 2026-09-30 | v3：原件保留原名、`日期/供应商号/` 目录、库里对应；分 `failed/` 与 `applied/` 两区，未入库每周清、已入库暂不删；放弃不删原件；解析失败也建批次；运营下载原件 |
+| 2026-09-30 | PRD §四 七条按建议定下；**已实现**（后端 dd2b61fdb、前端 988542046 及其后几条）。闸门：elec-core / elec-svc 全量、elec-app vitest、三端 vue-tsc、Controller 内聚、`check-generated-docs`（26 个生成器）、packages/shared 守卫（在 HEAD 副本里比对 known-guard-failures，无新增）。**未上线**：要按 §2.9 部署，由用户决定何时发 |

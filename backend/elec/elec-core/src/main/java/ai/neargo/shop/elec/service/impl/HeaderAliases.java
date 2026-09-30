@@ -50,7 +50,8 @@ public class HeaderAliases {
      * 把确认过的表头写法记成这家的别名。
      *
      * <p><b>只写本家、不写全局</b>：一家把「规格」当料号，全平台跟着认错。全局要运营提升。
-     * 全局里已经是同一个字段的不重复写；写法太短（不足 2 字符）的不学 —— 「A」「No」这类会误伤别的表。
+     * 全局里已经是同一个字段的不重复写；写法太短（不足 2 字符）的不学 —— 「A」「No」这类会误伤别的表；
+     * 备注 / 联系方式类的写法不学（{@link HeaderNames#isPrivate}）。
      *
      * @param headers 字段 → 那一列的表头原文
      */
@@ -58,7 +59,7 @@ public class HeaderAliases {
         Map<String, Field> g = global();
         for (Map.Entry<Field, String> e : headers.entrySet()) {
             String norm = HeaderNames.norm(e.getValue());
-            if (norm.length() < 2 || e.getKey() == g.get(norm)) {
+            if (norm.length() < 2 || e.getKey() == g.get(norm) || HeaderNames.isPrivate(e.getValue())) {
                 continue;
             }
             ElcHeaderAlias cur = mapper.selectOne(Wrappers.<ElcHeaderAlias>lambdaQuery()

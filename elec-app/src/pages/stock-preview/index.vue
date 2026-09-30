@@ -48,6 +48,8 @@ onLoad(async (q) => {
 });
 
 const pending = computed(() => p.value?.status === "PARSED");
+/** 问题明细只有两种批次有：待确认的在内存里，已上架的在确认时入了库。放弃 / 作废 / 过期的没有 */
+const hasDetail = computed(() => pending.value || p.value?.status === "APPLIED");
 const stats = computed(() => {
   const x = p.value;
   if (!x) return [];
@@ -62,8 +64,8 @@ const tabs = computed(() => {
   const x = p.value;
   if (!x) return [];
   const problems = { key: "PROBLEM", label: `有问题 ${qtyOf(x.rowInvalid + x.rowWarn)}` };
-  // 只读的批次只有问题可看（数据不在内存里了）
-  if (!pending.value) return [problems];
+  // 只读的批次只有问题可看（数据不在内存里了）；没上架的连问题也没留
+  if (!pending.value) return hasDetail.value ? [problems] : [];
   return [
     { key: "INSERT", label: `新增 ${qtyOf(x.toInsert)}` },
     { key: "UPDATE", label: `更新 ${qtyOf(x.toUpdate)}` },
@@ -72,7 +74,7 @@ const tabs = computed(() => {
     problems,
   ];
 });
-const hasProblems = computed(() => !!p.value && p.value.rowInvalid + p.value.rowWarn > 0);
+const hasProblems = computed(() => hasDetail.value && !!p.value && p.value.rowInvalid + p.value.rowWarn > 0);
 const canApply = computed(() => pending.value && !!p.value && p.value.rowValid > 0 && !busy.value);
 const minutesLeft = computed(() => {
   const d = p.value?.deadline;
@@ -214,11 +216,14 @@ function reupload() {
       </view>
 
       <!-- 间距放在外层：调用点的 class 会落到组件根上（mergeVirtualHostAttributes），display 会被改掉 -->
-      <view class="block">
+      <view v-if="tabs.length" class="block">
         <sh-tabs :items="tabs" :active="tab" line @change="onTab"></sh-tabs>
       </view>
 
-      <view v-if="!pending" class="sh-cells">
+      <view v-if="!hasDetail" class="sh-card block">
+        <text class="txt-caption sh-muted">这次没有上架，逐行的数据没有保留</text>
+      </view>
+      <view v-else-if="!pending" class="sh-cells">
         <view v-for="(x, i) in storedIssues" :key="i" class="sh-cell">
           <text class="txt-caption" :class="x.level === 'ERROR' ? 'danger' : 'warn'">{{ issueText(x) }}</text>
         </view>

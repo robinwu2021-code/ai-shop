@@ -6,6 +6,7 @@ import ai.neargo.shop.elec.gateway.ElecColumnAi.FieldSpec;
 import ai.neargo.shop.elec.support.Cells;
 import ai.neargo.shop.elec.support.Columns;
 import ai.neargo.shop.elec.support.Columns.Field;
+import ai.neargo.shop.elec.support.HeaderNames;
 import ai.neargo.shop.elec.support.Mpn;
 import ai.neargo.shop.elec.support.SheetReader;
 import lombok.extern.slf4j.Slf4j;
@@ -185,6 +186,10 @@ public class ColumnResolver {
                 taken.remove(map.get(f));
             }
             if (taken.contains(col)) {
+                continue;
+            }
+            if (HeaderNames.isPrivate(StockSheetParser.cell(rows.get(headerRow), col))) {
+                log.info("大模型把「{}」列认成 {}：备注 / 联系方式类的列不采纳", rows.get(headerRow).get(col), f);
                 continue;
             }
             if (!verify(f, rows, headerRow, col)) {

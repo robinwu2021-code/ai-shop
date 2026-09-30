@@ -78,11 +78,17 @@ public final class SheetWriter {
                 List<String> row = rows.get(r);
                 for (int c = 0; c < row.size(); c++) {
                     String v = row.get(c);
+                    boolean isRed = red.contains(cell(r, c));
                     if (v == null || v.isEmpty()) {
+                        // 空格也要标红：「没有料号」那一格恰恰是空的，而它是最该被看见的那一格
+                        if (isRed) {
+                            sb.append("<c r=\"").append(colName(c)).append(r + 1).append("\" s=\"").append(RED)
+                                    .append("\"/>");
+                        }
                         continue;
                     }
                     sb.append("<c r=\"").append(colName(c)).append(r + 1).append("\" t=\"inlineStr\"");
-                    if (red.contains(cell(r, c))) {
+                    if (isRed) {
                         sb.append(" s=\"").append(RED).append('"');
                     }
                     sb.append("><is><t xml:space=\"preserve\">").append(esc(v)).append("</t></is></c>");

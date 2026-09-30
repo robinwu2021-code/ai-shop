@@ -75,6 +75,10 @@ describe("issueText：问题定位到格", () => {
     expect(issueText({ row: 3, col: 0, header: null, value: "", code: "MPN_MISSING", level: "ERROR" }))
       .toBe("A3没有料号");
   });
+  it("数量为 0：不重复原值", () => {
+    expect(issueText({ row: 7, col: 3, header: "Stk", value: "0", code: "QTY_ZERO", level: "ERROR" }))
+      .toBe("D7（Stk）数量为 0");
+  });
   it("重复行：整行，指向先出现的那一行", () => {
     expect(issueText({ row: 7, col: -1, header: null, value: "3", code: "DUPLICATE", level: "ERROR" }))
       .toBe("第 7 行与第 3 行重复");

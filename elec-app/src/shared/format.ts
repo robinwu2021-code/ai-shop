@@ -159,7 +159,8 @@ export function issueText(x: ElecIssue): string {
   const what = ISSUE[x.code] ?? x.code;
   if (x.code === "DUPLICATE") return `第 ${x.row} 行${what.replace("{0}", String(x.value ?? ""))}`;
   const where = x.col < 0 ? `第 ${x.row} 行` : `${colLetter(x.col)}${x.row}${x.header ? `（${x.header}）` : ""}`;
-  return x.value ? `${where}${what}：${x.value}` : `${where}${what}`;
+  // 数量为 0：原值就是 0，再带一遍是废话
+  return x.value && x.code !== "QTY_ZERO" ? `${where}${what}：${x.value}` : `${where}${what}`;
 }
 
 export const BATCH_STATUS: Record<ElecBatchStatus, string> = {

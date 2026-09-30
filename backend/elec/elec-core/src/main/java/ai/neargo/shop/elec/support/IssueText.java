@@ -31,6 +31,8 @@ public final class IssueText {
         }
         String where = col < 0 ? "第 " + row + " 行"
                 : SheetWriter.colName(col) + row + (header == null || header.isBlank() ? "" : "（" + header.strip() + "）");
-        return value == null || value.isBlank() ? where + what : where + what + "：" + value;
+        // 数量为 0：原值就是 0，再带一遍是废话
+        boolean noValue = value == null || value.isBlank() || "QTY_ZERO".equals(code);
+        return noValue ? where + what : where + what + "：" + value;
     }
 }

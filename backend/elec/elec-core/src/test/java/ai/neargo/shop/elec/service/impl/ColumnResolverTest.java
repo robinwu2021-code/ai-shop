@@ -93,6 +93,15 @@ class ColumnResolverTest {
     }
 
     @Test
+    @DisplayName("★★★ 大模型把「备注」认成货况：备注 / 联系方式类的列不采纳（常写着公司名和微信，导进去身份就漏了）")
+    void privateColumnsNeverTakenFromAi() {
+        FakeAi ai = new FakeAi();
+        ai.answer = () -> new ElecColumnAi.Guess(0, Map.of("MPN", 1, "MFR", 2, "QTY", 3, "CONDITION", 7));
+        ColumnResolver.Resolution r = resolver(ai).resolve("S1", ITEM_MAKER_STK, null);
+        assertThat(r.map()).containsEntry(Field.MPN, 1).doesNotContainKey(Field.CONDITION);
+    }
+
+    @Test
     @DisplayName("★★ 大模型把数量列说成厂牌：厂牌不会是纯数字，拦住")
     void numericMfrRejected() {
         assertThat(ColumnResolver.verify(Field.MFR, ITEM_MAKER_STK, 0, 3)).isFalse();
