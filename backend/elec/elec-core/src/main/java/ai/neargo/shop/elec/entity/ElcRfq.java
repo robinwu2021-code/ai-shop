@@ -68,6 +68,12 @@ public class ElcRfq extends ElcMutableEntity {
 
     private java.time.LocalDateTime buyerNotifiedAt;
 
+    /** 买家上次看详情时看到的最大报价 id；比它大的有效报价就是「新报价」 */
+    private Long buyerSeenQuoteId;
+
+    /** 买家上次看详情时 quotedAt 的原样副本；不等 = 平台报了新价。原样比，不经过时钟 */
+    private java.time.LocalDateTime buyerSeenQuotedAt;
+
     private java.time.LocalDateTime acceptedAt;
 
     private java.time.LocalDateTime closedAt;

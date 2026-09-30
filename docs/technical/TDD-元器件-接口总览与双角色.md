@@ -1,6 +1,6 @@
 # TDD-元器件 · 接口总览与双角色（一个账号，买家与供应商两套逻辑）
 
-> 2026-09-30 · 状态：**已实现**（§4.1 除 `rfqNewOffers` 外、§4.2 已实现；§4.3 已定维持共用；`rfqNewOffers` 待定）
+> 2026-09-30 · 状态：**已实现**（§4.1 含 `rfqNewOffers`、§4.2 已实现；§4.3 已定维持共用）
 > 档位：1（新增 1 个端点 · 派单规则改一条 · 订阅消息模板待拍板）
 > 前置：[独立服务与第一步](./TDD-元器件-独立服务与第一步.md) · [前端独立与通知矩阵](./TDD-元器件-前端独立与通知矩阵.md) ·
 > [运营端接口](./TDD-元器件-运营端接口.md) · [通知补齐](./TDD-元器件-通知补齐.md) · 响应信封见 [响应格式规范](../api/响应格式规范.md)
@@ -168,8 +168,14 @@ GET /elec/me  （要登录；不要手机号 —— 它要告诉端上「你还�
   }
 ```
 
-`rfqNewOffers` 需要知道「买家看过没有」：`elc_rfq` 加一列 `buyer_viewed_at`，`GET /elec/c/rfq/{rfqNo}` 时写入；
-「有新报价」= 最新一条有效供应商报价或平台报价晚于它。
+`rfqNewOffers`（2026-09-30 定：要做）需要知道「买家看过没有」。**不用时间比**：
+供应商报价的 `created_at` 是库的 `CURRENT_TIMESTAMP`，平台报价的 `quoted_at` 是 JVM 的 `now()` ——
+库与 JVM 时区不一致时一比差 8 小时，零报错。改成两个不经时钟的记号，`GET /elec/c/rfq/{rfqNo}` 时写入：
+
+- `elc_rfq.buyer_seen_quote_id`：看到的最大 `elc_quote.id`。有 id 比它大的有效供应商报价 = 新
+- `elc_rfq.buyer_seen_quoted_at`：`quoted_at` 的原样副本。与当前 `quoted_at` 不等 = 平台报了新价
+
+只数还在询价中的单子（SUBMITTED / QUOTED）；供应商**改价**不算新（同一条报价 id 不变），与「改价不打扰买家」一致。
 
 `/elec/b/supplier` **保留**（供应商工作台里要完整档案），只是端上不再拿它判身份。
 
@@ -208,8 +214,7 @@ GET /elec/me  （要登录；不要手机号 —— 它要告诉端上「你还�
 **待拍板**：
 
 1. ~~§4.3 订阅消息选 A 还是 B~~ → **A，维持共用**（2026-09-30 定）
-2. §4.1 的 `rfqNewOffers` 要不要做（要给 `elc_rfq` 加一列）。**未定**：`/elec/me` 先不带这个字段，
-   以后加上是只增不改，已有调用方不受影响
+2. ~~§4.1 的 `rfqNewOffers` 要不要做~~ → **要做**（2026-09-30 定）。判据见 §4.1（不用时间比）
 
 ---
 
@@ -222,8 +227,9 @@ GET /elec/me  （要登录；不要手机号 —— 它要告诉端上「你还�
 | AC3 | 自己的求购不自动派给自己 | `ElecDispatchServiceImpl#dispatch` 排除 `access.of(buyerRef)` | `#ac3_noSelfDispatch` | 去掉排除 → 红在「自己那一面收不到自己的求购」✅ |
 | AC4 | 运营不能把求购指派给买家本人的供应商 | `ElecRfqServiceImpl#opsDispatch` | `#ac4_opsCannotDispatchToBuyerSelf` | 去掉判断 → 红在第 112 行 ✅ |
 | AC5 | 被暂停的供应商照样能询价、接受报价；供应商角标归零 | 买家面不调 `ElecSupplierAccess`；`ElecMeServiceImpl` 暂停时角标为 0 | `#ac5_suspendedSupplierCanStillBuy` | — |
+| AC6 | 「询价有新报价」：来了报价 +1、打开详情清零；改价不算新；第二家与平台报价算新 | `RfqMapper#countNewOffers` · `ElecRfqServiceImpl#markSeen` · `elc_rfq.buyer_seen_quote_id / buyer_seen_quoted_at` | `#ac6_rfqNewOffersBadge` | 看详情不记「已看」→ 红在「打开详情就算看过」✅ |
 
-`mvn -o -pl elec/elec-svc -am test`：10 个类 84 条，0 红。`/elec/me` 的鉴权由 `ElecEndpointAuthTest` 自动覆盖。
+`mvn -o -pl elec/elec-svc -am test`：11 个类 88 条，0 红。`/elec/me` 的鉴权由 `ElecEndpointAuthTest` 自动覆盖。
 
-**与 §4.1 的偏差**：`badges` 暂不含 `rfqNewOffers`（待定，见 §五）。以后加是只增不改。
-**没改 `packages/shared/src/types/elec.ts`**：前端会话正在改这个文件（工作区里有它未提交的改动），`MeView` 的 TS 类型由前端会话按 §4.1 的形状补。
+**与 §4.1 的偏差**：判据不用 `buyer_viewed_at` 比时间，改成两个不经时钟的记号（理由见 §4.1）。
+端上类型 `ElecMe` / `ElecMeSupplier` / `ElecMeBadges` 已补进 `packages/shared/src/types/elec.ts`。

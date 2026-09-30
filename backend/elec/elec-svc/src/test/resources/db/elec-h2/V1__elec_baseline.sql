@@ -249,6 +249,8 @@ CREATE TABLE IF NOT EXISTS elc_rfq
     quote_valid_until DATE      DEFAULT NULL,
     quote_note     VARCHAR(255) DEFAULT NULL,
     buyer_notified_at DATETIME  DEFAULT NULL,
+    buyer_seen_quote_id  BIGINT   DEFAULT NULL,
+    buyer_seen_quoted_at DATETIME DEFAULT NULL,
     accepted_at    DATETIME     DEFAULT NULL,
     closed_at      DATETIME     DEFAULT NULL,
     close_reason   VARCHAR(16)  DEFAULT NULL,

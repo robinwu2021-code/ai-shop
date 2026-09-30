@@ -8,6 +8,7 @@ import ai.neargo.shop.elec.entity.ElcDispatch;
 import ai.neargo.shop.elec.entity.ElcSupplier;
 import ai.neargo.shop.elec.gateway.ElecAccounts;
 import ai.neargo.shop.elec.mapper.ElecMappers.DispatchMapper;
+import ai.neargo.shop.elec.mapper.ElecMappers.RfqMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.StockMapper;
 import ai.neargo.shop.elec.mapper.ElecMappers.SupplierStockStats;
 import ai.neargo.shop.elec.service.ElecMeService;
@@ -29,33 +30,37 @@ public class ElecMeServiceImpl implements ElecMeService {
     private final ElecAccounts accounts;
     private final DispatchMapper dispatchMapper;
     private final StockMapper stockMapper;
+    private final RfqMapper rfqMapper;
 
     public ElecMeServiceImpl(ElecSupplierAccess access, ElecAccounts accounts, DispatchMapper dispatchMapper,
-                             StockMapper stockMapper) {
+                             StockMapper stockMapper, RfqMapper rfqMapper) {
         this.access = access;
         this.accounts = accounts;
         this.dispatchMapper = dispatchMapper;
         this.stockMapper = stockMapper;
+        this.rfqMapper = rfqMapper;
     }
 
     @Override
     public MeView me(String userNo) {
         boolean phone = accounts.phone(userNo).isPresent();
+        LocalDate today = LocalDate.now();
+        int newOffers = (int) rfqMapper.countNewOffers(userNo, today);
         ElcSupplier s = access.of(userNo);
         if (s == null) {
-            return new MeView(userNo, phone, null, new Badges(0, 0));
+            return new MeView(userNo, phone, null, new Badges(newOffers, 0, 0));
         }
         SupplierBrief brief = new SupplierBrief(s.getSupplierNo(), s.getCompanyName(), s.getStatus(), s.getMaskCode());
         if (!ElcSupplier.STATUS_ACTIVE.equals(s.getStatus())) {
-            return new MeView(userNo, phone, brief, new Badges(0, 0));
+            // 暂停只关供应商面：买家那个角标照给
+            return new MeView(userNo, phone, brief, new Badges(newOffers, 0, 0));
         }
         int pending = dispatchMapper.selectCount(Wrappers.<ElcDispatch>lambdaQuery()
                 .eq(ElcDispatch::getSupplierNo, s.getSupplierNo())
                 .in(ElcDispatch::getStatus, ElcDispatch.STATUS_SENT, ElcDispatch.STATUS_VIEWED)).intValue();
-        LocalDate today = LocalDate.now();
         List<SupplierStockStats> st = stockMapper.statsBySupplier(List.of(s.getSupplierNo()), today,
                 today.plusDays(ElecSupplierServiceImpl.EXPIRING_DAYS));
         int expiring = st.isEmpty() ? 0 : st.get(0).getExpiringCnt().intValue();
-        return new MeView(userNo, phone, brief, new Badges(pending, expiring));
+        return new MeView(userNo, phone, brief, new Badges(newOffers, pending, expiring));
     }
 }

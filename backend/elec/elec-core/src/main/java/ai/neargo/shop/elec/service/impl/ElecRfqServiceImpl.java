@@ -220,6 +220,7 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     @Override
     public RfqView detail(String userNo, String rfqNo) {
         ElcRfq h = mineOr404(userNo, rfqNo);
+        markSeen(h);
         return view(h, linesOf(rfqNo));
     }
 
@@ -557,6 +558,22 @@ public class ElecRfqServiceImpl implements ElecRfqService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return h;
+    }
+
+    /**
+     * 买家看了详情：记下他此刻看到了什么（最大报价 id、平台报价时间的原样副本），{@code /elec/me} 的「有新报价」据此算。
+     * 没变就不写 —— 详情页会被反复打开，每次都写是白白的行锁与 updated_at 抖动。
+     */
+    private void markSeen(ElcRfq h) {
+        Long maxId = rfqMapper.maxQuoteId(h.getRfqNo());
+        boolean sameId = java.util.Objects.equals(maxId, h.getBuyerSeenQuoteId());
+        boolean sameQuoted = java.util.Objects.equals(h.getQuotedAt(), h.getBuyerSeenQuotedAt());
+        if (sameId && sameQuoted) {
+            return;
+        }
+        rfqMapper.update(null, Wrappers.<ElcRfq>lambdaUpdate().eq(ElcRfq::getId, h.getId())
+                .set(ElcRfq::getBuyerSeenQuoteId, maxId)
+                .set(ElcRfq::getBuyerSeenQuotedAt, h.getQuotedAt()));
     }
 
     private ElcRfq or404(String rfqNo) {

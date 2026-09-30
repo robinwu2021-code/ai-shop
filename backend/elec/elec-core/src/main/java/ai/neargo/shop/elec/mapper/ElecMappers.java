@@ -402,6 +402,29 @@ public final class ElecMappers {
     }
 
     public interface RfqMapper extends BaseMapper<ElcRfq> {
+
+        /**
+         * 这位买家有几张还在询价中的单子<b>有他没看过的报价</b>。{@code /elec/me} 的角标。
+         *
+         * <p><b>不用时间比</b>：供应商报价的 created_at 是库的时钟、平台的 quoted_at 是 JVM 的时钟，
+         * 两边时区不一致时一比差 8 小时。改用两个不经时钟的记号：自增 id 比大小、quoted_at 原样比相等。
+         * 供应商改价不算新（同一条报价 id 不变）—— 与「改价不打扰买家」一致。
+         */
+        @Select("""
+                SELECT COUNT(*) FROM elc_rfq r
+                 WHERE r.buyer_ref = #{buyerRef} AND r.status IN ('SUBMITTED', 'QUOTED')
+                   AND ((r.quoted_at IS NOT NULL
+                         AND (r.buyer_seen_quoted_at IS NULL OR r.quoted_at <> r.buyer_seen_quoted_at))
+                        OR EXISTS (SELECT 1 FROM elc_quote q
+                                    WHERE q.rfq_no = r.rfq_no AND q.status = 'ACTIVE'
+                                      AND q.valid_until >= #{today}
+                                      AND q.id > COALESCE(r.buyer_seen_quote_id, 0)))
+                """)
+        long countNewOffers(@Param("buyerRef") String buyerRef, @Param("today") java.time.LocalDate today);
+
+        /** 这张单目前最大的报价 id（任何状态）。买家看详情时记下它，之后更大的就是新报价 */
+        @Select("SELECT MAX(id) FROM elc_quote WHERE rfq_no = #{rfqNo}")
+        Long maxQuoteId(@Param("rfqNo") String rfqNo);
     }
 
     public interface RfqLineMapper extends BaseMapper<ElcRfqLine> {

@@ -130,6 +130,43 @@ class ElecRolesFlowTest {
                 .as("暂停中：供应商角标归零，免得点进去碰壁").isZero();
     }
 
+    @Test
+    @DisplayName("AC6 ★★★ 「询价有新报价」：来了报价 +1、打开详情清零；供应商改价不算新；第二家报价、平台报价都算新")
+    void ac6_rfqNewOffersBadge() throws Exception {
+        Sup s1 = supplier("12600960008", "新报价一号电子", "型号,数量\nRLE500,100\n");
+        Sup s2 = supplier("12600960009", "新报价二号电子", "型号,数量\nRLE500,100\n");
+        String buyer = main.consumer("12600960010");
+        String rfqNo = data(post("/elec/c/rfq"), buyer, "{\"lines\":[{\"mpn\":\"RLE500\",\"qty\":10}]}")
+                .get("rfqNo").asString();
+        assertThat(newOffers(buyer)).as("还没人报").isZero();
+
+        String d1 = data(get("/elec/b/rfq"), s1.token, null).get(0).get("dispatchNo").asString();
+        data(post("/elec/b/rfq/" + d1 + "/quote"), s1.token, "{\"priceE6\":1000000,\"qtyAvailable\":10}");
+        assertThat(newOffers(buyer)).isEqualTo(1);
+
+        data(get("/elec/c/rfq/" + rfqNo), buyer, null);
+        assertThat(newOffers(buyer)).as("打开详情就算看过").isZero();
+
+        data(post("/elec/b/rfq/" + d1 + "/quote"), s1.token, "{\"priceE6\":900000,\"qtyAvailable\":10}");
+        assertThat(newOffers(buyer)).as("改价不算新 —— 与「改价不打扰买家」一致").isZero();
+
+        String d2 = data(get("/elec/b/rfq"), s2.token, null).get(0).get("dispatchNo").asString();
+        data(post("/elec/b/rfq/" + d2 + "/quote"), s2.token, "{\"priceE6\":950000,\"qtyAvailable\":10}");
+        assertThat(newOffers(buyer)).as("第二家报价算新").isEqualTo(1);
+        data(get("/elec/c/rfq/" + rfqNo), buyer, null);
+
+        String ops = main.operator(ElecInternal.PERM_RFQ_READ, ElecInternal.PERM_RFQ_QUOTE);
+        data(post("/elec/ops/rfq/" + rfqNo + "/quote"), ops,
+                "{\"validDays\":3,\"lines\":[{\"lineNo\":1,\"priceE6\":880000,\"qty\":10}]}");
+        assertThat(newOffers(buyer)).as("平台报价也算新").isEqualTo(1);
+        data(get("/elec/c/rfq/" + rfqNo), buyer, null);
+        assertThat(newOffers(buyer)).isZero();
+    }
+
+    private int newOffers(String token) throws Exception {
+        return data(get("/elec/me"), token, null).get("badges").get("rfqNewOffers").asInt();
+    }
+
     // ── 造数与调用 ──────────────────────────────────────────────────────────
 
     private record Sup(String token, String no) {

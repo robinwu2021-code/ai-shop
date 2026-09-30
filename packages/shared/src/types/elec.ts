@@ -571,3 +571,42 @@ export interface ElecDeclineReq {
   /** 没货 / 价格做不了 / 其他 */
   reason?: ElecDeclineReason;
 }
+
+// ── 账号：一个登录账号在买家与供应商两面的身份与角标（GET /elec/me）────────────
+
+/**
+ * `GET /elec/me`：端上启动与回到前台时调一次，决定显示「成为供应商」还是「供应商工作台」、两面的红点。
+ * **只有身份与计数，没有任何一面的内容** —— 询价走 `/elec/c/**`，求购与库存走 `/elec/b/**`。
+ */
+export interface ElecMe {
+  /** 主系统的用户号。买家与供应商是同一个 */
+  userNo: string;
+  /** 绑没绑手机号。询价与成为供应商都要先绑（没绑那两个接口回 90001） */
+  phoneBound: boolean;
+  /** 不是供应商为 null —— 显示「成为供应商」；不为 null 显示「供应商工作台」入口 */
+  supplier: ElecMeSupplier | null;
+  /** 两面的红点 */
+  badges: ElecMeBadges;
+}
+
+/** 供应商身份的摘要。完整档案走 `GET /elec/b/supplier` */
+export interface ElecMeSupplier {
+  /** 供应商号 */
+  supplierNo: string;
+  /** 公司名；点一下就成为供应商，所以可能还没填 */
+  companyName?: string | null;
+  /** ACTIVE 正常 / SUSPENDED 已暂停（只关供应商面，买家面照常；工作台进去只读） */
+  status: ElecSupplierStatus;
+  /** 匿名代号 `S-3F7K` */
+  maskCode: string;
+}
+
+/** 红点计数。不是供应商、或被暂停时，供应商那两个恒为 0 */
+export interface ElecMeBadges {
+  /** 买家：还在询价中、有没看过的报价的单子数。打开询价详情即清零；供应商改价不算新 */
+  rfqNewOffers: number;
+  /** 供应商：派给我、还没回话的求购（待报价 + 看过没回） */
+  dispatchPending: number;
+  /** 供应商：7 天内到期的在售库存行数 */
+  stockExpiring: number;
+}

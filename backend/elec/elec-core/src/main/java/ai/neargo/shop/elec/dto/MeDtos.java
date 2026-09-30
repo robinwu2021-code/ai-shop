@@ -27,11 +27,12 @@ public final class MeDtos {
     }
 
     /**
-     * 两面的角标。不是供应商、或供应商被暂停时，供应商那两个恒为 0 —— 他进不去那两个列表，给数字只会让他点进去碰壁。
+     * 两面的角标。买家那一个人人都有；不是供应商、或供应商被暂停时，供应商那两个恒为 0 —— 他进不去那两个列表，给数字只会让他点进去碰壁。
      *
+     * @param rfqNewOffers    买家：还在询价中、有他没看过的报价的单子数（打开详情即算看过；供应商改价不算新）
      * @param dispatchPending 派给我、还没回话的求购（SENT + VIEWED）
      * @param stockExpiring   7 天内到期的在售库存行数（与工作台「快到期」同一个口径）
      */
-    public record Badges(int dispatchPending, int stockExpiring) {
+    public record Badges(int rfqNewOffers, int dispatchPending, int stockExpiring) {
     }
 }
