@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-report</artifactId>
+    <packaging>jar</packaging>
+    <description>报表 · 独立库的持久层（rpt_*，JdbcClient 手写 SQL，自带迁移）</description>
+
+    <!-- ⚠️ **依赖清单是这个模块的设计的一部分**，照 job-store 那份写的，理由相同：
+
+         1. 刻意**不**用 spring-boot-starter-data-jdbc —— 它拖进 spring-data-jdbc /
+            spring-data-relational / spring-data-commons 三个 jar，换来的是 repository 代理。
+            本模块只有 3 张表、十来条 SQL，JdbcClient（spring-jdbc 自带）就够，
+            record + 显式 RowMapper 没有反射。
+
+         2. 刻意**不**引 shop-core —— 报表库是**只写不读业务**的派生库：
+            日结从交易域读、往这里写，而那是**跨域组合**，按 ArchitectureTest 的规矩
+            住在 app 层（「跨域组合必须有地方待，app 层就是那个地方」）。
+            本模块反过来依赖 shop-core 的话，报表就变成了交易域的下游，
+            拆的时候要连着一起搬。
+
+         3. 引 shop-base：本模块要抛 BizException（查询缺 entityNo 时）。
+            与 job-store 不同——它要进 native worker 所以连 shop-base 都不引，
+            而本模块只在 shop-app 里跑，没有那个约束。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- JdbcClient + Hikari + @ConfigurationProperties。**不是** starter-data-jdbc -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <!-- 迁移自己带：独立库不能指望别人帮它跑迁移 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+    </dependencies>
+</project>

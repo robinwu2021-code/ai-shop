@@ -51,6 +51,10 @@
              与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
              这个是「数据边界不同」：它的表不在 ai_shop 里 -->
         <module>shop-inventory</module>
+        <!-- 报表：**独立库（ai_shop_report）+ 只存派生数据**。与进销存同为「数据边界不同」，
+             但多一条：它的数据全部可重建 —— 丢了重跑日结即可，所以不参与任何业务事务。
+             本模块只是持久层；读交易域算汇总那一步是**跨域组合**，按规矩住在 shop-app -->
+        <module>shop-report</module>
         <!-- 电子元器件：独立进程（elec-svc）+ 独立库（ai_shop_elec）。主应用不引它，只给它开 /internal/elec -->
         <module>elec</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
