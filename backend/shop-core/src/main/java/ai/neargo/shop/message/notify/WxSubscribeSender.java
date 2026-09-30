@@ -107,15 +107,6 @@ public class WxSubscribeSender {
                 openId -> port.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
     }
 
-    /**
-     * 元器件询价有结果了。<b>返回送没送到</b>（另外三个场景不需要这个返回值：它们的事实记录在订单上；
-     * 元器件是独立服务，它据此写自己库里的 buyer_notified_at）。
-     */
-    public boolean elecQuoted(String userNo, String rfqNo, String summary, String resultText, String page) {
-        return send(userNo, WxSubscribePort.SCENE_ELEC_QUOTED,
-                openId -> port.sendElecQuoted(openId, rfqNo, summary, resultText, page, null));
-    }
-
     private boolean send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {

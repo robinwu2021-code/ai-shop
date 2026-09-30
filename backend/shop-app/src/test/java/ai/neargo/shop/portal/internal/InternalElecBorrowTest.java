@@ -31,7 +31,7 @@ class InternalElecBorrowTest {
     private final WxAuthPort wxAuth = mock(WxAuthPort.class);
     private final WxPhonePort wxPhone = mock(WxPhonePort.class);
     private final WxSubscribePort wxPort = mock(WxSubscribePort.class);
-    private final InternalElecEndpoint ep = new InternalElecEndpoint(null, null, null, null, null, null,
+    private final InternalElecEndpoint ep = new InternalElecEndpoint(null, null, null,
             sms, wxAuth, wxPhone, wxPort, "wxAPP", KEY);
 
     @Test

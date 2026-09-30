@@ -6,20 +6,14 @@ import ai.neargo.shop.auth.LivePermResolver;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStore;
-import ai.neargo.shop.message.MessageService;
-import ai.neargo.shop.message.entity.MsgMessage;
-import ai.neargo.shop.message.notify.WxSubscribeSender;
 import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.spi.notify.WxSubscribePort;
 import ai.neargo.shop.spi.user.WxAuthPort;
 import ai.neargo.shop.spi.user.WxPhonePort;
-import ai.neargo.shop.spi.user.UserIdentityPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -32,14 +26,12 @@ import java.security.MessageDigest;
 import java.util.List;
 
 /**
- * 主系统给<b>元器件独立服务</b>（elec-svc）开的内部端点：认令牌、取手机号、通知买家。
+ * 主系统给<b>元器件独立服务 hxkey</b>（独立项目 ai-hxkey）开的内部端点：认运营令牌，以及四件「代办」——
+ * 发短信、code2Session、取号、按 openid 发订阅。都是虹选的资质与凭据，不复制到第二个地方。
  *
- * <p>元器件是独立进程、独立库，<b>一行主系统的表都不读</b>，它借的东西全在这里。
- * 路径与 record 来自零依赖的 elec-api，elec-svc 的客户端引同一份 —— 漂了编译不过。
- *
- * <p><b>元器件独立账号之后</b>（ai-hxkey TDD-元器件-独立账号），它借的只剩「代办」：发短信、code2Session、取号、
- * 按 openid 发订阅 —— 都是虹选的资质与凭据，不复制到第二个地方。按 usr_no 做事的三条（取手机号、两条通知）
- * 留到生产切换完再删：在跑的 elec-svc 还在调，{@code USER} 还要给存量改写用一次。
+ * <p>hxkey 是独立进程、独立库、独立账号，<b>一行主系统的表都不读</b>，它借的东西全在这里。
+ * 路径与 record 来自零依赖的 elec-api，hxkey 的客户端引同一份 —— 漂了编译不过。
+ * 按 usr_no 做事的三条（取手机号、两条通知）2026-09-30 独立账号上线后删掉。
  *
  * <p>四条硬要求（照 {@link JobHandlerEndpoint}）：
  * <ol>
@@ -55,11 +47,8 @@ public class InternalElecEndpoint {
     private static final Logger log = LoggerFactory.getLogger(InternalElecEndpoint.class);
 
     private final TokenStore tokenStore;
-    private final UserIdentityPort identity;
     private final ObjectProvider<LiveIdentityResolver> liveIdentity;
     private final ObjectProvider<LivePermResolver> livePerms;
-    private final MessageService messages;
-    private final WxSubscribeSender wxSubscribe;
     private final SmsPort sms;
     private final WxAuthPort wxAuth;
     private final WxPhonePort wxPhone;
@@ -67,19 +56,15 @@ public class InternalElecEndpoint {
     private final String appId;
     private final String token;
 
-    public InternalElecEndpoint(TokenStore tokenStore, UserIdentityPort identity,
+    public InternalElecEndpoint(TokenStore tokenStore,
                                 ObjectProvider<LiveIdentityResolver> liveIdentity,
                                 ObjectProvider<LivePermResolver> livePerms,
-                                MessageService messages, WxSubscribeSender wxSubscribe,
                                 SmsPort sms, WxAuthPort wxAuth, WxPhonePort wxPhone, WxSubscribePort wxPort,
                                 @Value("${shop.wx.appid:}") String appId,
                                 @Value("${shop.services.internal-token:}") String token) {
         this.tokenStore = tokenStore;
-        this.identity = identity;
         this.liveIdentity = liveIdentity;
         this.livePerms = livePerms;
-        this.messages = messages;
-        this.wxSubscribe = wxSubscribe;
         this.sms = sms;
         this.wxAuth = wxAuth;
         this.wxPhone = wxPhone;
@@ -119,98 +104,6 @@ public class InternalElecEndpoint {
                     elecPerms(u), false));
         }
         return ResponseEntity.ok(ElecInternal.Session.invalid(false));
-    }
-
-    /** 验证过的手机号（没绑为 null）。元器件询价与成为供应商都要它 */
-    @GetMapping(ElecInternal.USER)
-    public ResponseEntity<ElecInternal.User> user(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @PathVariable String userNo) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.ok(new ElecInternal.User(userNo, identity.phone(userNo).orElse(null)));
-    }
-
-    /**
-     * 询价有结果了，告诉买家：<b>站内信（必达的记录）+ 微信订阅消息（加速通道）</b>，两条各自独立，
-     * 一条失败不影响另一条。订阅消息没额度、没配模板都是「没发」，不是错误。
-     *
-     * <p>站内信的 dedupKey 带分钟：同一张单一分钟内的重复调用只留一条（元器件那边超时重发时），
-     * 而平台隔了几分钟改价再报，买家会收到第二条 —— 那是一个新的结果。
-     */
-    @PostMapping(ElecInternal.NOTIFY_QUOTED)
-    public ResponseEntity<ElecInternal.NoticeResult> notifyQuoted(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @RequestBody ElecInternal.QuotedNotice n) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String resultText;
-        String title;
-        String body;
-        switch (n.result()) {
-            case ElecInternal.RESULT_NO_SOURCE -> {
-                resultText = "暂无货源";
-                title = "询价暂无货源";
-                body = n.summary() + "：平台暂时没找到货，可以换个料号或稍后再询";
-            }
-            case ElecInternal.RESULT_OFFER -> {
-                resultText = "有新报价";
-                title = "询价有新报价";
-                body = n.summary() + "：有供应商报了价，报价有有效期，请尽快查看";
-            }
-            case ElecInternal.RESULT_LINE_NO_OFFER -> {
-                resultText = "暂无货源";
-                title = "询价有一项暂无货源";
-                body = n.summary() + "：收到求购的供应商都没有现货，平台会继续帮你找";
-            }
-            default -> {
-                resultText = "已报价";
-                title = "询价有报价了";
-                body = n.summary() + "：平台已报价，报价有有效期，请尽快查看";
-            }
-        }
-        boolean inApp;
-        try {
-            messages.pushTo(MsgMessage.RECEIVER_USER, n.userNo(), MessageService.TRADE, title, body,
-                    "/" + n.page(), "ELEC_RFQ:" + n.rfqNo() + ":" + n.result() + ":"
-                            + (System.currentTimeMillis() / 60_000));
-            inApp = true;
-        } catch (RuntimeException e) {
-            inApp = false;
-        }
-        boolean wx = wxSubscribe.elecQuoted(n.userNo(), n.rfqNo(), n.summary(), resultText, n.page());
-        return ResponseEntity.ok(new ElecInternal.NoticeResult(inApp, wx));
-    }
-
-    /**
-     * 通知供应商（有新求购 / 报价被选中 / 库存快到期）。供应商与买家是同一个账号体系，所以与
-     * {@link #notifyQuoted} 走同一条路：站内信必达，订阅消息是加速通道。
-     *
-     * <p>订阅消息用的是同一个模板（场景 ELEC_QUOTED）：报价结果与求购通知在模板上是同一类
-     * 「服务进度」，没必要为它再报备一个 —— 而多一个模板就多一次授权，供应商多半不会点第二次。
-     */
-    @PostMapping(ElecInternal.NOTIFY_SUPPLIER)
-    public ResponseEntity<ElecInternal.NoticeResult> notifySupplier(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @RequestBody ElecInternal.SupplierNotice n) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        boolean inApp;
-        try {
-            messages.pushTo(MsgMessage.RECEIVER_USER, n.userNo(), MessageService.TRADE, n.title(), n.body(),
-                    "/" + n.page(), n.dedupKey());
-            inApp = true;
-        } catch (RuntimeException e) {
-            inApp = false;
-        }
-        // 到期提醒只进站内信：一次授权只够一条订阅消息，额度要留给「有新求购」—— 那一条直接带来生意
-        boolean wx = !ElecInternal.KIND_EXPIRING.equals(n.kind())
-                && wxSubscribe.elecQuoted(n.userNo(), "-", n.title(),
-                ElecInternal.KIND_DISPATCH.equals(n.kind()) ? "有新求购" : "已选中", n.page());
-        return ResponseEntity.ok(new ElecInternal.NoticeResult(inApp, wx));
     }
 
     /**

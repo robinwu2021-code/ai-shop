@@ -3,10 +3,11 @@ package ai.neargo.elec.api;
 import java.util.List;
 
 /**
- * 元器件服务向主系统借的三样东西：认令牌、取手机号、通知买家。
+ * 元器件（独立项目 ai-hxkey，生产服务 hxkey）向 ai-shop 借的东西：认运营令牌，以及发短信、code2Session、
+ * 取号、按 openid 发订阅四件代办。
  *
- * <p><b>元器件一行主系统的表都不读</b>，全部经这三个 {@code /internal/elec/**} 走 HTTP。
- * 将来元器件换成自己的账号体系，只换这三个调用的实现。
+ * <p><b>hxkey 一行 ai-shop 的表都不读</b>，全部经这几个 {@code /internal/elec/**} 走 HTTP。
+ * 按 ai-shop 用户号做事的三条（取手机号、两条通知）随独立账号上线于 2026-09-30 删掉。
  *
  * <p>路径不经 nginx（它不反代 /internal），elec-svc 走 127.0.0.1；鉴权是共享密钥
  * （请求头 {@link #TOKEN_HEADER}，两边都读 {@code shop.services.internal-token}）。
@@ -15,15 +16,6 @@ public final class ElecInternal {
 
     /** 认令牌：C 端令牌（ctk_）或运营令牌（otk_）→ 是谁 */
     public static final String SESSION = "/internal/elec/session";
-
-    /** 取一个用户验证过的手机号 */
-    public static final String USER = "/internal/elec/user/{userNo}";
-
-    /** 询价有结果了：发微信订阅消息 + 站内信给买家 */
-    public static final String NOTIFY_QUOTED = "/internal/elec/notify/quoted";
-
-    /** 有新的求购派给这家供应商 / 他的报价被选中了。供应商与买家是同一个账号体系 */
-    public static final String NOTIFY_SUPPLIER = "/internal/elec/notify/supplier";
 
     // ---- 元器件独立账号之后借的四件事（ai-hxkey TDD-元器件-独立账号 §2.4）----
     // 虹选的 appsecret、短信通道、access_token 都不复制到 ai-hxkey：这四条只做「代办」，不按 usr_no 做任何事。
@@ -112,11 +104,7 @@ public final class ElecInternal {
     public record WxSendResult(boolean sent) {
     }
 
-    /** @param phone 验证过的手机号；没绑为 null */
-    public record User(String userNo, String phone) {
-    }
-
-    /** 询价结果（{@link QuotedNotice#result}）：平台报了价 */
+    /** 询价结果：平台报了价。hxkey 据此选订阅消息里「结果」那一格的人话 */
     public static final String RESULT_QUOTED = "QUOTED";
     /** 平台关单：暂无货源 */
     public static final String RESULT_NO_SOURCE = "NO_SOURCE";
@@ -125,37 +113,4 @@ public final class ElecInternal {
     /** 某一行：收到求购的供应商都回了「没货」，平台也没报 */
     public static final String RESULT_LINE_NO_OFFER = "LINE_NO_OFFER";
 
-    /** 通知供应商的事（{@link SupplierNotice#kind}）：有新求购 */
-    public static final String KIND_DISPATCH = "DISPATCH";
-    /** 他的报价被买家选中了 */
-    public static final String KIND_ACCEPTED = "ACCEPTED";
-    /** 库存快到期了。<b>只进站内信、不发订阅消息</b>：他的授权额度留给「有新求购」 */
-    public static final String KIND_EXPIRING = "EXPIRING";
-
-    /**
-     * @param result  {@link #RESULT_QUOTED} / {@link #RESULT_NO_SOURCE} / {@link #RESULT_OFFER} /
-     *                {@link #RESULT_LINE_NO_OFFER}
-     * @param summary 料号概述，如「STM32F103C8T6 等 3 项」（≤20 字，微信 thing 字段的上限）
-     * @param page    点开后落到的小程序页面
-     */
-    public record QuotedNotice(String userNo, String rfqNo, String result, String summary, String page) {
-    }
-
-    /**
-     * @param kind    {@link #KIND_DISPATCH} / {@link #KIND_ACCEPTED} / {@link #KIND_EXPIRING}
-     * @param title   站内信标题
-     * @param body    站内信正文
-     * @param page    点开落到的小程序页面
-     * @param dedupKey 同一件事重复调只留一条
-     */
-    public record SupplierNotice(String userNo, String kind, String title, String body, String page,
-                                 String dedupKey) {
-    }
-
-    /**
-     * @param inApp 站内信写进去了
-     * @param wx    订阅消息发出去了（没授权额度、没配模板都是 false，不是错误）
-     */
-    public record NoticeResult(boolean inApp, boolean wx) {
-    }
 }

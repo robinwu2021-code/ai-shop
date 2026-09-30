@@ -2,10 +2,7 @@ package ai.neargo.shop.portal.internal;
 
 import ai.neargo.elec.api.ElecInternal;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.message.entity.MsgMessage;
-import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.support.TestLogin;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -43,8 +37,6 @@ class InternalElecEndpointTest {
     private ObjectMapper json;
     @Autowired
     private OtpStore otpStore;
-    @Autowired
-    private MessageMapper messageMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -90,42 +82,6 @@ class InternalElecEndpointTest {
                 .isEqualTo(401);
         assertThat(status(post(ElecInternal.SESSION).contentType(MediaType.APPLICATION_JSON).content(body), "wrong"))
                 .isEqualTo(401);
-        assertThat(status(get("/internal/elec/user/U1"), null)).isEqualTo(401);
-    }
-
-    @Test
-    @DisplayName("★★★ 手机号：验证码登录的有、静默登录的没有（null，元器件据此让端上弹手机号闸）")
-    void phone() throws Exception {
-        String withPhone = TestLogin.consumer(mvc(), json, otpStore, "12600930002");
-        String userNo = session(withPhone, KEY).userNo();
-        ElecInternal.User u = json.readValue(body(get("/internal/elec/user/" + userNo), KEY), ElecInternal.User.class);
-        assertThat(u.phone()).isEqualTo("12600930002");
-
-        String wx = TestLogin.consumerByWechat(mvc(), json, "wx-elec-internal-nophone");
-        String wxUser = session(wx, KEY).userNo();
-        ElecInternal.User none = json.readValue(body(get("/internal/elec/user/" + wxUser), KEY), ElecInternal.User.class);
-        assertThat(none.phone()).isNull();
-    }
-
-    @Test
-    @DisplayName("★★★ 询价有结果：站内信写进买家收件箱（点开落到询价详情）；没订阅额度时微信那条是 false，不是错误")
-    void notifyQuoted() throws Exception {
-        String token = TestLogin.consumer(mvc(), json, otpStore, "12600930003");
-        String userNo = session(token, KEY).userNo();
-        String req = json.writeValueAsString(new ElecInternal.QuotedNotice(userNo, "EQTEST001", "QUOTED",
-                "STM32F103C8T6 等 2 项", "pkg-elec/rfq/index?rfqNo=EQTEST001"));
-        ElecInternal.NoticeResult r = json.readValue(
-                body(post(ElecInternal.NOTIFY_QUOTED).contentType(MediaType.APPLICATION_JSON).content(req), KEY),
-                ElecInternal.NoticeResult.class);
-        assertThat(r.inApp()).isTrue();
-        assertThat(r.wx()).as("测试里没有订阅额度").isFalse();
-
-        List<MsgMessage> inbox = messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
-                .likeRight(MsgMessage::getDedupKey, "ELEC_RFQ:EQTEST001:QUOTED:"));
-        assertThat(inbox).hasSize(1);
-        assertThat(inbox.get(0).getReceiverNo()).isEqualTo(userNo);
-        assertThat(inbox.get(0).getBody()).contains("STM32F103C8T6 等 2 项");
-        assertThat(inbox.get(0).getLink()).isEqualTo("/pkg-elec/rfq/index?rfqNo=EQTEST001");
     }
 
     private ElecInternal.Session session(String token, String key) throws Exception {
