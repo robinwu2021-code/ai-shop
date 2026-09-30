@@ -612,9 +612,8 @@ public class OrderServiceImpl implements OrderService {
             boolean mine = pickupStoreNo != null && own.contains(pickupStoreNo);
             Map<String, Integer> items = skuQtyByMerchant.getOrDefault(merchantNo, Map.of());
             if (mine) {
-                // 人要去那儿取货，改不了；那家店暂停的话由下面的状态闸拒 —— 换店等于让人白跑
-                // 发不出货同理：**不换店**，当场拒。人到了取不到货比买不成更糟
-                out.put(merchantNo, pickable(merchantNo, List.of(pickupStoreNo), items));
+                // 人要去那儿取货，改不了；那家店暂停/下架/没货都由下面几道闸各自拒 —— 换店等于让人白跑
+                out.put(merchantNo, pickupStoreNo);
                 continue;
             }
             /*
@@ -624,8 +623,18 @@ public class OrderServiceImpl implements OrderService {
              */
             String chosen = choices.get(merchantNo);
             if (chosen != null && own.contains(chosen)) {
-                // 他就是在这家店的门户里挑的货 —— 这家发不出就拒，悄悄换一家等于货不对版
-                out.put(merchantNo, pickable(merchantNo, List.of(chosen), items));
+                /*
+                 * 他就是在这家店的门户里挑的货 —— **不换店，也不在这里拒**。
+                 *
+                 * 这一支只有一个候选，闸门在这里只能改变错误码而改变不了结果，
+                 * 而那恰恰会改错：在架与缺货对买家不是同一件事。
+                 * 下游两道闸各自给的码是对的 —— 快照的 onSale 给 70076「已下架」、
+                 * 锁库存给 20001「库存不足」。合并成一个码之后，
+                 * 一个正看着详情页的买家会被告知「库存不足」然后反复重试
+                 * （StoreScopedVisibilityFlowTest#goodsOffSaleAtThisStoreCannotBeOrdered
+                 * 当场把这个错误决定挡了下来）。
+                 */
+                out.put(merchantNo, chosen);
                 continue;
             }
             Map<String, String> statuses = storeStatuses(own);

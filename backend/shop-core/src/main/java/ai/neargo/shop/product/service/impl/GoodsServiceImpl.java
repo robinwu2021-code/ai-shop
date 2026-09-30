@@ -22,6 +22,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -109,6 +110,51 @@ public class GoodsServiceImpl implements GoodsService {
         return poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
                         .in(PrdCommunityPool::getCommunityNo, communityNos)).stream()
                 .map(PrdCommunityPool::getGoodsNo).distinct().toList();
+    }
+
+    /**
+     * 每件货**由哪家门店提供**（TDD-C端商品归属门店与库存校验 AC1/AC2）。
+     *
+     * <p>池行本来就带 `store_no`，口径是「这家店在架卖它 ∧ 这家店可达」——
+     * 一件货两家店都摆着就是两行。此前 {@link #poolGoodsNos} 把它 `distinct()` 掉了，
+     * 于是跨店目录只剩商品号，落款只能印主体名（线上四家店在商品流里都显示
+     * 「虹选科技有限公司」）。
+     *
+     * <p><b>多家都摆着时挑哪家：默认店优先，否则按门店号定序取第一。</b>
+     * 与下单落店的优先级同序 —— 让「显示的那家」按定义等于「会履约的那家」，
+     * 而不是另立一套规则再写对账去守它。定序是必须的：
+     * 靠 Map 迭代顺序的话同一件货刷两次可能显示不同的店。
+     */
+    private Map<String, String> poolStoreOfGoods(String communityNo, String regionCode) {
+        List<String> communityNos;
+        if (communityNo != null && !communityNo.isBlank()) {
+            communityNos = List.of(communityNo);
+        } else if (regionCode != null && !regionCode.isBlank()) {
+            communityNos = communityQueryPort.openCommunityNosUnderRegion(regionCode);
+        } else {
+            return Map.of();
+        }
+        if (communityNos.isEmpty()) {
+            return Map.of();
+        }
+        List<PrdCommunityPool> rows = poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
+                .in(PrdCommunityPool::getCommunityNo, communityNos));
+        Map<String, java.util.TreeSet<String>> byGoods = new HashMap<>();
+        Map<String, String> entityOfGoods = new HashMap<>();
+        for (PrdCommunityPool r : rows) {
+            if (r.getStoreNo() == null || r.getStoreNo().isBlank()) {
+                continue;
+            }
+            byGoods.computeIfAbsent(r.getGoodsNo(), k -> new java.util.TreeSet<>()).add(r.getStoreNo());
+            entityOfGoods.putIfAbsent(r.getGoodsNo(), r.getEntityNo());
+        }
+        Map<String, String> out = new HashMap<>();
+        for (var e : byGoods.entrySet()) {
+            String defaultStore = merchantPort.defaultStoreNo(entityOfGoods.get(e.getKey())).orElse(null);
+            out.put(e.getKey(), defaultStore != null && e.getValue().contains(defaultStore)
+                    ? defaultStore : e.getValue().first());
+        }
+        return out;
     }
 
     @Override
@@ -209,6 +255,17 @@ public class GoodsServiceImpl implements GoodsService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setAfterSaleRulePort(ai.neargo.shop.spi.trade.AfterSaleRulePort afterSaleRulePort) {
         this.afterSaleRulePort = afterSaleRulePort;
+    }
+
+    /**
+     * 门店查名（AC1）。setter 注入、缺了就不挂店名 —— 那时端上退回主体名，
+     * 与改造前逐字相同。切片测试里没有它时，列表的其余部分一字不差。
+     */
+    private ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setStoreDirectory(ai.neargo.shop.spi.user.StoreDirectoryPort storeDirectory) {
+        this.storeDirectory = storeDirectory;
     }
 
     /**
@@ -329,11 +386,51 @@ public class GoodsServiceImpl implements GoodsService {
         // 批量拿一次闪购价，与 promoted()/detailAll() 同一个形状。
         // 此前在 map 里逐行调（List.of(单个)），20 行/页 = 20 次跨域调用
         var flash = campaignPort.flashPrices(nos);
+        /*
+         * 每行挂上**提供这件货的门店**（AC1/AC2）。按主体号查目录时不挂 ——
+         * 那条路没有池、也没有社区上下文，挂不出「哪家店」，端上退回主体名。
+         */
+        Map<String, String> storeOfGoods = q.merchantNo() != null && !q.merchantNo().isBlank()
+                ? Map.of() : poolStoreOfGoods(q.communityNo(), q.regionCode());
+        Map<String, String> storeNames = storeNamesOf(storeOfGoods.values());
         List<GoodsVO> records = page.getRecords().stream()
-                .map(g -> toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()),
-                        flash.get(g.getGoodsNo())))
+                .map(g -> withStoreScope(
+                        toVO(g, skus.getOrDefault(g.getGoodsNo(), List.of()), flash.get(g.getGoodsNo())),
+                        storeOfGoods.get(g.getGoodsNo()), storeNames))
                 .toList();
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    /** 门店号 → 门店名。一次取回，避免每行查一次 */
+    private Map<String, String> storeNamesOf(java.util.Collection<String> storeNos) {
+        if (storeNos.isEmpty() || storeDirectory == null) {
+            return Map.of();
+        }
+        return storeDirectory.cards(List.copyOf(new java.util.HashSet<>(storeNos))).entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().storeName()));
+    }
+
+    /**
+     * 给这一行挂上门店：店名（落款要显示它，不是主体名）+ 该店的库存（售罄判据要按店算）。
+     *
+     * <p>没有门店时原样返回 —— 单店商家与按主体查目录都走这一支，行为逐字不变（AC8）。
+     */
+    private GoodsVO withStoreScope(GoodsVO v, String storeNo, Map<String, String> storeNames) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return v;
+        }
+        GoodsVO out = v.withStore(new GoodsVO.StoreBriefVO(storeNo, storeNames.get(storeNo)));
+        if (out.skus() == null || out.skus().isEmpty()) {
+            return out;
+        }
+        Map<String, Integer> avail = storeStockReader.available(
+                out.skus().stream().map(GoodsVO.SkuVO::skuNo).toList(), storeNo);
+        return out.withStoreSkus(out.skus().stream()
+                .map(sk -> new GoodsVO.SkuVO(sk.skuNo(), sk.optionValues(), sk.spec(), sk.price(),
+                        sk.originPrice(), avail.getOrDefault(sk.skuNo(), 0), sk.nominalGram(),
+                        sk.priceByMarket(), sk.storePrice(), sk.costPrice(), sk.barcode(),
+                        sk.merchantSkuCode(), sk.saleUnit()))
+                .toList());
     }
 
     @Override

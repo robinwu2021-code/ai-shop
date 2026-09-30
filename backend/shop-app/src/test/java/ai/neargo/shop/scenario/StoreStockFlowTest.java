@@ -259,6 +259,39 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 商品流里那一行带的是**提供这件货的门店**，不是主体")
+    void catalogRowCarriesTheStoreThatSellsIt() throws Exception {
+        String biz = merchant("12600190087", "目录·带门店");
+        String goodsNo = listedGoods(biz, 100);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "目录·只有分店在卖");
+
+        /*
+         * **默认店的店名就等于主体名**（建店时取的），所以「storeName ≠ 主体名」分辨不出东西。
+         * 把货只留在分店在架：这样池里只剩分店那一行，
+         * 列表显示分店名才说明它读的是**提供这件货的那家店**，而不是随便挑的默认店。
+         * 这一条同时也是 AC2：显示的那家 = 会履约的那家。
+         */
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        var row = catalogRow(goodsNo);
+        assertThat(row).as("这件货没出现在社区目录里 —— 这条用例没测到该测的东西").isNotNull();
+        /*
+         * **先断言字段在，再取它**：缺字段时 JsonNode.get 返回的是 Java null 而不是 NullNode，
+         * 下一行直接 NPE —— 失败信息变成「Cannot invoke asString()」，不指向真因。
+         * 消融时实测过一次。
+         */
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("列表行没带门店 —— store 字段整个没有").isTrue();
+        assertThat(row.get("store").get("storeName").asString())
+                .as("默认店已经把它下架了，显示默认店（= 主体名）就说明挑错了店")
+                .isEqualTo("目录·只有分店在卖");
+        assertThat(row.get("store").get("storeNo").asString()).isEqualTo(storeB);
+    }
+
+    @Test
     @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
     void mainStockWriteLandsWhereTheReadLooks() throws Exception {
         String biz = merchant("12600190040", "写读要同一个数");
@@ -473,6 +506,18 @@ class StoreStockFlowTest {
     }
 
     /** @return 下单响应的 code，0 = 成功 */
+    /** 社区目录里这件货那一行；没出现时返回 null */
+    private tools.jackson.databind.JsonNode catalogRow(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
+                .andReturn().getResponse().getContentAsString();
+        for (var r : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(r.get("goodsNo").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
     /** 加购，返回响应码；`storeNo` 为 null 时不带那个字段 */
     private int cartAdd(String buyer, String goodsNo, String skuNo, int qty, String storeNo) throws Exception {
         String store = storeNo == null ? "" : ",\"storeNo\":\"" + storeNo + "\"";
