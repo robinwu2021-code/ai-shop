@@ -51,5 +51,17 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
+
+        <!-- 测试用 H2。⚠️ H2 不等于生产库：本仓库记过四处方言差
+             （换行符、行注释、CROSS JOIN、CHECK 约束），而且 H2 会合并重名索引。
+             注：XML 注释里不能出现连续两个减号，所以这里用中文写那两处符号。
+             所以这里只用它验 DAO 的读写语义（先删后写、幂等、越权条件），
+             **建表用测试自己的 schema 而不是跑 V1** —— V1 是 MySQL 语法，
+             拿 H2 跑过不代表生产跑得过，那种「绿」比不测更坏。 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
