@@ -1542,6 +1542,7 @@ components:
         - "RISK"
         - "ANALYST"
         - "TECH_OPS"
+        - "ELEC_ADMIN"
     DashboardKpi: 
       type: "object"
       properties: 

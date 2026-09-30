@@ -22691,6 +22691,12 @@
           "ar": null
         },
         {
+          "key": "role.ELEC_ADMIN",
+          "zh-CN": "元器件负责人",
+          "en": "Components lead",
+          "ar": null
+        },
+        {
           "key": "role.FINANCE",
           "zh-CN": "财务",
           "en": "Finance",
@@ -35228,7 +35234,8 @@
           "FINANCE",
           "RISK",
           "ANALYST",
-          "TECH_OPS"
+          "TECH_OPS",
+          "ELEC_ADMIN"
         ],
         "zh": ""
       },

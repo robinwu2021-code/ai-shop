@@ -347,6 +347,25 @@
     "POST /ops/staffs/me/password",
     "GET /ops/stream"
   ],
+  "ELEC_ADMIN": [
+    "POST /ops/auth/forgot",
+    "POST /ops/auth/login",
+    "GET /ops/auth/me",
+    "POST /ops/auth/reset",
+    "GET /ops/captcha",
+    "GET /ops/dashboard/funnel",
+    "GET /ops/dashboard/kpi",
+    "GET /ops/dashboard/merchants",
+    "GET /ops/dashboard/stores",
+    "GET /ops/dashboard/trend",
+    "GET /ops/menu",
+    "GET /ops/message",
+    "POST /ops/message/{messageNo}/read",
+    "POST /ops/message/read-all",
+    "GET /ops/message/unread-count",
+    "POST /ops/staffs/me/password",
+    "GET /ops/stream"
+  ],
   "FINANCE": [
     "GET /ops/admission/deposits/{merchantNo}",
     "GET /ops/admission/deposits/{merchantNo}/txns",
