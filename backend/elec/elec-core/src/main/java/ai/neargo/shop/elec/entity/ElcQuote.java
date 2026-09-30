@@ -19,6 +19,8 @@ public class ElcQuote extends ElcMutableEntity {
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_WITHDRAWN = "WITHDRAWN";
     public static final String STATUS_ACCEPTED = "ACCEPTED";
+    /** 这一行成交给了别家。只改状态、不推通知：供应商打开求购列表就看得到 */
+    public static final String STATUS_NOT_CHOSEN = "NOT_CHOSEN";
     /** 目前没有代码把它写进库：有效期过了的 ACTIVE 在读出时显示成它 */
     public static final String STATUS_EXPIRED = "EXPIRED";
 

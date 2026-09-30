@@ -734,8 +734,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "四个都不在 L1 里：它描述的是**一次邀约的回应**，不是单据的处理进度 —— 响应率的分母是「看过」，"
       + "所以 VIEWED 必须与 SENT 分开；DECLINED 是供应商说没货，不是 L1 的 REJECTED（那是审核驳回）" },
   { decl: "shared:ElecQuoteStatus", dom: "elec", shape: "STATUS", verdict: "OK",
-    words: ["WITHDRAWN", "ACCEPTED"],
-    note: "供应商报价：ACTIVE 有效 / WITHDRAWN 撤回 / ACCEPTED 被买家选中（ElcQuote）。"
+    words: ["WITHDRAWN", "ACCEPTED", "NOT_CHOSEN"],
+    note: "供应商报价：ACTIVE 有效 / WITHDRAWN 撤回 / ACCEPTED 被买家选中 / NOT_CHOSEN 这一行成交给了别家（ElcQuote）。"
+      + "NOT_CHOSEN 不在 L1：L1 的「已关闭 / 已取消」都是这条报价自己的结局，而它说的是「同一行别人赢了」，"
+      + "供应商要据此知道不是自己撤的、也不是过期 —— 借 L1 的词会让他以为是自己这边的事。"
       + "ACCEPTED 与询价单 ElecRfqStatus 的 ACCEPTED 同词同义（都是买家接受了价）；"
       + "过期不落库，按 validUntil 算，所以没有 EXPIRED" },
   { decl: "shared:ElecDeclineReason", dom: "elec", shape: "CLASS", verdict: "OK",

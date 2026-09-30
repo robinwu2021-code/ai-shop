@@ -54,8 +54,14 @@ public interface ElecDispatchService {
      */
     Map<Integer, List<Offer>> offersOf(String rfqNo, List<ElcRfqLine> lines);
 
-    /** 买家接受某一条报价：锁价、通知供应商、其余同行报价置为未选中 */
+    /**
+     * 买家接受某一条报价：锁价、通知供应商、其余同行报价置为未选中（NOT_CHOSEN）。
+     * <b>一行只能成交一家</b>：这一行已经选过的回 90011。
+     */
     void acceptOffer(String rfqNo, int lineNo, String offerNo);
+
+    /** 这张单里已经选中了供应商报价的行号。平台整单接受前用它判冲突 */
+    java.util.Set<Integer> chosenLines(String rfqNo);
 
     // ── 运营端（真名、原价）────────────────────────────────────────────────
 

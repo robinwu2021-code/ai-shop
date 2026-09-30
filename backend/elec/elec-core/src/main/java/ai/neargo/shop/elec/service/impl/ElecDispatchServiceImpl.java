@@ -306,6 +306,10 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
                 : Math.max(1, Math.min(QUOTE_MAX_DAYS, req.validDays()));
         LocalDateTime now = LocalDateTime.now();
 
+        if (chosenLines(d.getRfqNo()).contains(d.getLineNo())) {
+            // 这一行买家已经选了一家：再报价或改价都没有意义，还会让买家那边的报价列表多出一条「选不了」的
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
         ElcQuote existing = quoteMapper.selectOne(Wrappers.<ElcQuote>lambdaQuery()
                 .eq(ElcQuote::getDispatchNo, dispatchNo));
         ElcQuote q = existing != null ? existing : new ElcQuote();
@@ -548,16 +552,43 @@ public class ElecDispatchServiceImpl implements ElecDispatchService {
         if (q.getValidUntil().isBefore(LocalDate.now())) {
             throw BizException.of(ErrorCode.ELEC_QUOTE_EXPIRED);
         }
-        int n = quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate()
-                .eq(ElcQuote::getId, q.getId()).eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
-                .set(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED));
-        if (n == 0) {
-            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
-        }
+        tx.executeWithoutResult(st -> {
+            /*
+             * 先锁住这一行：对 elc_rfq_line 做一次无害的 UPDATE，拿到行锁。
+             * 两个请求同时选同一行的两家时，第二个会等第一个提交后再往下走，看到「已选过」—— 不靠分布式锁。
+             */
+            lineMapper.update(null, Wrappers.<ElcRfqLine>lambdaUpdate()
+                    .eq(ElcRfqLine::getRfqNo, rfqNo).eq(ElcRfqLine::getLineNo, lineNo)
+                    .set(ElcRfqLine::getUpdatedAt, LocalDateTime.now()));
+            long chosen = quoteMapper.selectCount(Wrappers.<ElcQuote>lambdaQuery()
+                    .eq(ElcQuote::getRfqNo, rfqNo).eq(ElcQuote::getLineNo, lineNo)
+                    .eq(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED));
+            if (chosen > 0) {
+                throw BizException.of(ErrorCode.ELEC_RFQ_STATE);   // 一行只能成交一家
+            }
+            int n = quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate()
+                    .eq(ElcQuote::getId, q.getId()).eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
+                    .set(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED));
+            if (n == 0) {
+                throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+            }
+            // 同一行其余还有效的：未被选中。只改状态不推通知，供应商在求购列表里看得到结果
+            quoteMapper.update(null, Wrappers.<ElcQuote>lambdaUpdate()
+                    .eq(ElcQuote::getRfqNo, rfqNo).eq(ElcQuote::getLineNo, lineNo)
+                    .eq(ElcQuote::getStatus, ElcQuote.STATUS_ACTIVE)
+                    .set(ElcQuote::getStatus, ElcQuote.STATUS_NOT_CHOSEN));
+        });
         String account = access.ownerAccount(q.getSupplierNo());
         if (account != null && !notifier.quoteAccepted(account, q.getQuoteNo(), q.getQtyAvailable())) {
             log.warn("「你的报价被选中」没送到供应商 quoteNo={}", q.getQuoteNo());
         }
+    }
+
+    @Override
+    public Set<Integer> chosenLines(String rfqNo) {
+        return quoteMapper.selectList(Wrappers.<ElcQuote>lambdaQuery()
+                        .eq(ElcQuote::getRfqNo, rfqNo).eq(ElcQuote::getStatus, ElcQuote.STATUS_ACCEPTED))
+                .stream().map(ElcQuote::getLineNo).collect(Collectors.toSet());
     }
 
     // ── 运营端 ──────────────────────────────────────────────────────────────

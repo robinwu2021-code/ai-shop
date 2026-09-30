@@ -232,6 +232,12 @@ public class ElecRfqServiceImpl implements ElecRfqService {
         if (expired(h)) {
             throw BizException.of(ErrorCode.ELEC_QUOTE_EXPIRED);
         }
+        // 平台报过价的行里，有哪一行已经选了供应商报价：同一行不能两边都成交
+        java.util.Set<Integer> chosen = dispatches.chosenLines(rfqNo);
+        if (!chosen.isEmpty() && linesOf(rfqNo).stream()
+                .anyMatch(l -> l.getQuoteE6() != null && chosen.contains(l.getLineNo()))) {
+            throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
+        }
         LocalDateTime now = LocalDateTime.now();
         // 条件更新：两次连点、或运营同时在改价，只有一次能把 QUOTED 变成 ACCEPTED
         ElcRfq patch = new ElcRfq();
@@ -255,7 +261,8 @@ public class ElecRfqServiceImpl implements ElecRfqService {
     @Override
     public RfqView acceptOffer(String userNo, String rfqNo, int lineNo, String offerNo) {
         ElcRfq h = mineOr404(userNo, rfqNo);
-        if (ElcRfq.STATUS_CLOSED.equals(h.getStatus())) {
+        // 已关单的、平台整单报价已接受的，都不能再选供应商报价（后者会让同一行两边都成交）
+        if (ElcRfq.STATUS_CLOSED.equals(h.getStatus()) || ElcRfq.STATUS_ACCEPTED.equals(h.getStatus())) {
             throw BizException.of(ErrorCode.ELEC_RFQ_STATE);
         }
         dispatches.acceptOffer(rfqNo, lineNo, offerNo);

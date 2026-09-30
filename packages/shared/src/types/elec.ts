@@ -465,8 +465,11 @@ export interface ElecRemapReq {
 /** 派单状态：SENT 待报价 / VIEWED 看过 / QUOTED 已报价 / DECLINED 已拒绝 */
 export type ElecDispatchStatus = "SENT" | "VIEWED" | "QUOTED" | "DECLINED";
 
-/** 供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中 */
-export type ElecQuoteStatus = "ACTIVE" | "WITHDRAWN" | "ACCEPTED";
+/**
+ * 供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中 /
+ * NOT_CHOSEN 这一行成交给了别家（一行只成交一家；这之后不能再改价）
+ */
+export type ElecQuoteStatus = "ACTIVE" | "WITHDRAWN" | "ACCEPTED" | "NOT_CHOSEN";
 
 /** 拒绝的原因：NO_STOCK 没货 / PRICE 价格做不了 / OTHER 其他 */
 export type ElecDeclineReason = "NO_STOCK" | "PRICE" | "OTHER";
