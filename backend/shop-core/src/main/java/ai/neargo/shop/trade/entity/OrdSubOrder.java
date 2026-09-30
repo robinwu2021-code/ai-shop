@@ -153,8 +153,20 @@ public class OrdSubOrder extends BaseEntity {
     /** 收货地址快照（省市区 + 详细）。自提单为空 */
     private String receiverAddress;
 
-    /** MERCHANT_OWNED / PLATFORM —— 决定费率档位，下单时固化。 */
+    /**
+     * 客流来源。取值见 {@link #TRAFFIC_MERCHANT_OWNED} / {@link #TRAFFIC_PLATFORM}，
+     * **下单时固化**，决定费率档位（ADR-004 §6）。
+     *
+     * <p>这一列已登记进取值域对账（{@code scripts/check-enum-fields.mjs} 的
+     * {@code ord_sub_order.traffic_source}）—— 端上多一个值就会被点名。
+     */
     private String trafficSource;
+
+    /** 自带客流：费率 0%。**判自带用常量，别写字面量** —— 拼错不报错，只是统计恒为 0。 */
+    public static final String TRAFFIC_MERCHANT_OWNED = "MERCHANT_OWNED";
+
+    /** 平台客流。 */
+    public static final String TRAFFIC_PLATFORM = "PLATFORM";
 
     private Long goodsAmount;
     private Long freightAmount;

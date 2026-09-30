@@ -205,6 +205,41 @@ public interface MerchantOrderService {
     }
 
     /**
+     * 日结用的按「日 × 门店」聚合（TDD-B端报表库与日结 §2.3）。
+     *
+     * <p><b>为什么这个方法在交易域而不是报表模块</b>：它读的是 {@code ord_sub_order}
+     * 与 {@code ord_after_sale}，两张表都归这个域。报表模块只负责把结果存起来，
+     * 把查询搬过去就变成「报表域直接读交易域的表」。
+     *
+     * <p><b>口径与 {@link #stats} 共用 {@code OrdSubOrder.TRANSACTED}</b> ——
+     * 分岔的表现是「总览说 3 单，点进去只有 2 单」，而两边各自都说得通。
+     *
+     * <p><b>成交归下单日，退款归 {@code refundedAt} 那一天</b>，不回冲原单那天：
+     * 回冲的话，昨天截图发群里的数字今天再看会变。
+     *
+     * @param from 含；按下单时间/退款时间落在 [from, to] 里算
+     * @param to   含
+     */
+    java.util.List<DailyAgg> dailyStoreAggregates(java.time.LocalDate from, java.time.LocalDate to);
+
+    /**
+     * 一天一家店的聚合结果。**只有交易域算得出来的部分** ——
+     * 运费成本在结算域，不在这里（见 TDD §2.2）。
+     *
+     * @param attributedOrders 有客流归因的单量。**自带客流占比的分母是它，不是 orders**
+     *                         （见 {@link StatsSummary} 的 javadoc：早于归因上线的
+     *                         历史单不该把商家的比例冲低）
+     */
+    record DailyAgg(java.time.LocalDate statDate, String entityNo, String storeNo,
+                    int orders, long gmvMinor,
+                    int refundOrders, long refundMinor,
+                    int buyers, int newBuyers,
+                    int ownedOrders, long ownedGmvMinor, int attributedOrders,
+                    long commissionMinor, long serviceFeeMinor,
+                    long freightIncomeMinor, long netMinor) {
+    }
+
+    /**
      * 顾客列表（B-11.10）：按买家聚合本店的订单。
      *
      * <p><b>不下发完整手机号</b>（B12）—— 商家需要的是「认得出是谁、他多久没来了」，

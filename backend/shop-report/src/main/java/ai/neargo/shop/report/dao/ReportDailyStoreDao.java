@@ -48,8 +48,8 @@ public class ReportDailyStoreDao {
                     INSERT INTO rpt_daily_store
                       (stat_date, entity_no, store_no, orders, gmv_minor,
                        refund_orders, refund_minor, buyers, new_buyers,
-                       owned_orders, owned_gmv_minor, commission_minor, service_fee_minor,
-                       freight_income_minor, freight_cost_minor, net_minor, currency,
+                       owned_orders, owned_gmv_minor, attributed_orders, commission_minor, service_fee_minor,
+                       freight_income_minor, net_minor, currency,
                        created_at, updated_at)
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     """)
@@ -57,9 +57,9 @@ public class ReportDailyStoreDao {
                     .param(r.orders()).param(r.gmvMinor())
                     .param(r.refundOrders()).param(r.refundMinor())
                     .param(r.buyers()).param(r.newBuyers())
-                    .param(r.ownedOrders()).param(r.ownedGmvMinor())
+                    .param(r.ownedOrders()).param(r.ownedGmvMinor()).param(r.attributedOrders())
                     .param(r.commissionMinor()).param(r.serviceFeeMinor())
-                    .param(r.freightIncomeMinor()).param(r.freightCostMinor())
+                    .param(r.freightIncomeMinor())
                     .param(r.netMinor()).param(r.currency())
                     .param(now).param(now)
                     .update();
@@ -83,8 +83,8 @@ public class ReportDailyStoreDao {
         StringBuilder sql = new StringBuilder("""
                 SELECT stat_date, entity_no, store_no, orders, gmv_minor,
                        refund_orders, refund_minor, buyers, new_buyers,
-                       owned_orders, owned_gmv_minor, commission_minor, service_fee_minor,
-                       freight_income_minor, freight_cost_minor, net_minor, currency
+                       owned_orders, owned_gmv_minor, attributed_orders, commission_minor, service_fee_minor,
+                       freight_income_minor, net_minor, currency
                   FROM rpt_daily_store
                  WHERE entity_no = ? AND stat_date BETWEEN ? AND ?
                 """);
@@ -125,10 +125,10 @@ public class ReportDailyStoreDao {
                 rs.getInt("new_buyers"),
                 rs.getInt("owned_orders"),
                 rs.getLong("owned_gmv_minor"),
+                rs.getInt("attributed_orders"),
                 rs.getLong("commission_minor"),
                 rs.getLong("service_fee_minor"),
                 rs.getLong("freight_income_minor"),
-                rs.getLong("freight_cost_minor"),
                 rs.getLong("net_minor"),
                 rs.getString("currency"));
     }

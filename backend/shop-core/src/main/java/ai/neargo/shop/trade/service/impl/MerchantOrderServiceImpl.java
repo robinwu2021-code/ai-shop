@@ -49,6 +49,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
     private final UserQueryPort userPort;
 
+    /** 日结的退款侧要它：退款按 refundedAt 归属，而那个时间只有售后单上有 */
+    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+
     /**
      * 微信发货信息录入。setter 注入：{@code shop-core} 单独跑测试时没有 paybridge，
      * 缺了不该让整个交易域起不来 —— 但**缺了就不会上报**，见 {@link #ship} 里那句 ERROR。
@@ -74,7 +77,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
                                     ai.neargo.shop.trade.service.OrderService orderService,
-                                    StatusLogMapper statusLogMapper, UserQueryPort userPort) {
+                                    StatusLogMapper statusLogMapper, UserQueryPort userPort,
+                                    ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper) {
+        this.afterSaleMapper = afterSaleMapper;
         this.orderService = orderService;
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
@@ -570,7 +575,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             }
             if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
                 attributed += 1;
-                if ("MERCHANT_OWNED".equals(o.getTrafficSource())) {
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
                     owned += 1;
                 }
             }
@@ -625,7 +630,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             }
             if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
                 c[5] += 1;
-                if ("MERCHANT_OWNED".equals(o.getTrafficSource())) {
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
                     c[4] += 1;
                 }
             }
@@ -731,6 +736,183 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
      * 不豁免的话商家只看得到**他自己买过的单**，卖出去的一单都不算 ——
      * 而工作台不会报错，只是永远显示 0。
      */
+    /**
+     * 日结用的按「日 × 门店」聚合。三段：成交侧、退款侧、首单判定。
+     *
+     * <p><b>全商户一次扫完</b>，不是逐商户调 —— 与 {@link #statsByStore} 同一个理由：
+     * 商户数是这个作业的自变量。
+     */
+    @Override
+    public java.util.List<DailyAgg> dailyStoreAggregates(java.time.LocalDate from,
+                                                         java.time.LocalDate to) {
+        java.time.LocalDateTime fromTs = from.atStartOfDay();
+        // 左闭右开：用 to 的 23:59:59 会漏掉那一秒里的单，而那种漏法只在跨年对账时被发现
+        java.time.LocalDateTime toTs = to.plusDays(1).atStartOfDay();
+
+        // ── ① 成交侧：口径与 stats() 共用 TRANSACTED
+        List<OrdSubOrder> sold = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, fromTs)
+                        .lt(OrdSubOrder::getCreatedAt, toTs)));
+
+        java.util.Map<String, Acc> acc = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : sold) {
+            if (o.getCreatedAt() == null || o.getStoreNo() == null) {
+                continue;
+            }
+            Acc a = acc.computeIfAbsent(key(o.getCreatedAt().toLocalDate(), o.getEntityNo(), o.getStoreNo()),
+                    k -> new Acc(o.getCreatedAt().toLocalDate(), o.getEntityNo(), o.getStoreNo()));
+            a.orders++;
+            a.gmvMinor += nz(o.getPayAmount());
+            a.commissionMinor += nz(o.getCommissionMinor());
+            a.serviceFeeMinor += nz(o.getServiceFeeMinor());
+            a.freightIncomeMinor += nz(o.getFreightAmount());
+            a.netMinor += nz(o.getMerchantRecvMinor());
+            if (o.getUserNo() != null) {
+                a.buyers.add(o.getUserNo());
+            }
+            // 自带客流占比的分母是**有归因的单**，不是全部单（StatsSummary 的 javadoc）
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                a.attributedOrders++;
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
+                    a.ownedOrders++;
+                    a.ownedGmvMinor += nz(o.getPayAmount());
+                }
+            }
+        }
+
+        // ── ② 退款侧：按 refundedAt 那一天归属，**不回冲原单那天**
+        addRefunds(acc, fromTs, toTs);
+
+        // ── ③ 首单判定
+        markNewBuyers(acc);
+
+        return acc.values().stream().map(Acc::toAgg).toList();
+    }
+
+    private static String key(java.time.LocalDate d, String entityNo, String storeNo) {
+        return d + "|" + entityNo + "|" + storeNo;
+    }
+
+    /**
+     * 退款侧：按 {@code refundedAt} 那一天归属，**不回冲原单那天**。
+     *
+     * <p>回冲的后果是：昨天截图发群里的数字，今天再看会变。
+     *
+     * <p>售后单上没有 {@code storeNo}，要回连子单才知道算哪家店的 ——
+     * 所以这里先按 {@code subOrderNo} 批量取子单。
+     */
+    private void addRefunds(java.util.Map<String, Acc> acc,
+                            java.time.LocalDateTime fromTs, java.time.LocalDateTime toTs) {
+        long fromMs = fromTs.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long toMs = toTs.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        List<ai.neargo.shop.trade.entity.OrdAfterSale> refunds =
+                DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(
+                        Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                                .isNotNull(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt)
+                                .ge(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt, fromMs)
+                                .lt(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt, toMs)));
+        if (refunds.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> subNos = refunds.stream()
+                .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<String, OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
+                        subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                                .in(OrdSubOrder::getSubOrderNo, subNos)))
+                .stream().collect(java.util.stream.Collectors.toMap(
+                        OrdSubOrder::getSubOrderNo, x -> x, (x, y) -> x));
+
+        for (ai.neargo.shop.trade.entity.OrdAfterSale r : refunds) {
+            OrdSubOrder sub = subs.get(r.getSubOrderNo());
+            if (sub == null || sub.getStoreNo() == null) {
+                continue;
+            }
+            java.time.LocalDate day = java.time.Instant.ofEpochMilli(r.getRefundedAt())
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            /*
+             * 退款那天这家店**可能一单都没有**（前天的单今天退），
+             * 所以这里要 computeIfAbsent 而不是只往已有的格子里加 ——
+             * 只加已有格子的话，那笔退款会凭空消失，而合计仍然「看起来对」。
+             */
+            Acc a = acc.computeIfAbsent(key(day, sub.getEntityNo(), sub.getStoreNo()),
+                    k -> new Acc(day, sub.getEntityNo(), sub.getStoreNo()));
+            a.refundOrders++;
+            a.refundMinor += nz(r.getRefundMinor());
+        }
+    }
+
+    /**
+     * 首单判定：一个买家在**这家主体**的最早成交日，就是他成为新客的那一天。
+     *
+     * <p>口径是「主体级」不是「门店级」—— 同一个人在同一商户的第二家店下单，
+     * 对商户来说不是新客。落到行上时算在他当天下单的那家店头上。
+     *
+     * <p>只查窗口里出现过的买家，不是全表 —— 数量有界。
+     */
+    private void markNewBuyers(java.util.Map<String, Acc> acc) {
+        java.util.Set<String> users = acc.values().stream()
+                .flatMap(a -> a.buyers.stream()).collect(java.util.stream.Collectors.toSet());
+        if (users.isEmpty()) {
+            return;
+        }
+        java.util.Map<String, java.time.LocalDate> firstDay = new java.util.HashMap<>();
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                        Wrappers.<OrdSubOrder>lambdaQuery()
+                                .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                                .in(OrdSubOrder::getUserNo, users)))
+                .forEach(o -> {
+                    if (o.getCreatedAt() == null || o.getUserNo() == null) {
+                        return;
+                    }
+                    String k = o.getEntityNo() + "|" + o.getUserNo();
+                    java.time.LocalDate d = o.getCreatedAt().toLocalDate();
+                    firstDay.merge(k, d, (x, y) -> x.isBefore(y) ? x : y);
+                });
+        for (Acc a : acc.values()) {
+            for (String u : a.buyers) {
+                if (a.statDate.equals(firstDay.get(a.entityNo + "|" + u))) {
+                    a.newBuyers++;
+                }
+            }
+        }
+    }
+
+    /** 聚合中间态。用可变类而不是不断 new record —— 一天几十万单时那是几十万次拷贝。 */
+    private static final class Acc {
+        final java.time.LocalDate statDate;
+        final String entityNo;
+        final String storeNo;
+        int orders;
+        long gmvMinor;
+        int refundOrders;
+        long refundMinor;
+        final java.util.Set<String> buyers = new java.util.HashSet<>();
+        int newBuyers;
+        int ownedOrders;
+        long ownedGmvMinor;
+        int attributedOrders;
+        long commissionMinor;
+        long serviceFeeMinor;
+        long freightIncomeMinor;
+        long netMinor;
+
+        Acc(java.time.LocalDate statDate, String entityNo, String storeNo) {
+            this.statDate = statDate;
+            this.entityNo = entityNo;
+            this.storeNo = storeNo;
+        }
+
+        DailyAgg toAgg() {
+            return new DailyAgg(statDate, entityNo, storeNo, orders, gmvMinor,
+                    refundOrders, refundMinor, buyers.size(), newBuyers,
+                    ownedOrders, ownedGmvMinor, attributedOrders,
+                    commissionMinor, serviceFeeMinor, freightIncomeMinor, netMinor);
+        }
+    }
+
     private List<OrdSubOrder> scan(String merchantNo, java.util.Collection<String> storeNos,
                                    java.util.function.Consumer<com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrdSubOrder>> extra) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
