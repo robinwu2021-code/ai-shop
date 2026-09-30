@@ -1,6 +1,6 @@
 # TDD-元器件 · 运营端岗位授权
 
-> 2026-09-30 · 状态：**已实现**（未上线：V371 随主系统下次发版执行）
+> 2026-09-30 · 状态：**已上线**（主系统 `5b99fa082`，V371 于 2026-09-30 11:24 在生产执行；发版前闸门对这一版跑过全量 2840 条 0 红）
 > 档位：1（新增岗位 1 个 · 授权 17 条 · 一支迁移 V371）
 > 依据：用户 2026-09-30 两条指示 ——「按以上角色配置」「前期需要一个统一的角色，可以掌控全局」
 > 前置：`V370__ops_elec_menu.sql`（前端会话写：菜单、四个子页、两个操作点，只授超管）·
@@ -85,3 +85,21 @@ V304 说这类可见性「该由人来定」，**用户 2026-09-30 定了：给*
 与 §1 列的登记点一致。设计写的是 16 条授权，实际 17 条（多了元器件负责人的工作台，见 §2）。
 `nav-visibility.baseline.json` **没动**：它是合并前的一次性快照，注释写明不该重新生成；
 `/elec` 的四条路径在 `ADDED_SINCE_MERGE` 里统一豁免，新岗位与既有岗位多出的元器件菜单都不算违规。
+
+## 上线回读（2026-09-30）
+
+只发到 `5b99fa082`：生产那一版（`88a86fb26`）之上后端只多了 V371 这一个提交。HEAD 上另有两个会话的后端提交
+（库存上传二期 `dd2b61fdb` 带元器件 V3、未验证完；动态版本号 `86061a459`），**没有带上线**。
+
+生产库按「岗位 → 功能点 → 权限码」回读，与 §2 逐格一致：
+
+```
+BD          elec:part:read elec:rfq:quote elec:rfq:read elec:supplier:manage elec:supplier:read
+ELEC_ADMIN  dashboard:overview:read elec:base:manage elec:part:read elec:rfq:quote elec:rfq:read elec:supplier:manage elec:supplier:read
+GOODS_OPS   elec:base:manage elec:part:read
+RISK        elec:supplier:manage elec:supplier:read
+SUPPORT     elec:rfq:read
+```
+
+**还要人做的**：在运营端把具体的人分配到「元器件负责人」岗位（要有运营账号的人来点）。
+
