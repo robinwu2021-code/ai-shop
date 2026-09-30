@@ -2,7 +2,7 @@
 // 判权在 elec-svc（ElecOpsGuard 按权限码），这里的方法与后端端点一一对应。
 // 列表一律返回数组（后端是 List，不是分页壳）。
 import type {
-  ElecAliasResult, ElecAliasRow, ElecCloseReason, ElecPriceMode, ElecMfrReq, ElecMfrRow, ElecOpsPartDetail, ElecOpsPartRow,
+  ElecAliasResult, ElecAliasRow, ElecHeaderAliasRow, ElecHeaderAliasScope, ElecCloseReason, ElecPriceMode, ElecMfrReq, ElecMfrRow, ElecOpsPartDetail, ElecOpsPartRow,
   ElecOpsQuoteRow, ElecOpsRfq, ElecOpsStockRow, ElecOpsSupplierDetail, ElecOpsSupplierRow, ElecQuoteReq,
   ElecStockFilter, ElecStockView, ElecSupplierReq, ElecSupplierStatus, ElecUnknownMfrRow,
 } from "@/lib/types";
@@ -53,4 +53,10 @@ export interface ElecApi {
   addElecAlias(mfrCode: string, alias: string): Promise<ElecAliasResult>;
   /** 认不出的厂牌：按出现次数排、带建议 */
   listElecUnknownMfrs(limit?: number): Promise<ElecUnknownMfrRow[]>;
+  /** 库存表的表头写法：全局的，或各家学到的（带几家在用） */
+  listElecHeaderAliases(q: { scope: ElecHeaderAliasScope; keyword?: string; page?: number; size?: number }): Promise<ElecHeaderAliasRow[]>;
+  /** 加一条全局写法，或把学到的提升为全局（同一写法已有全局的：改成这个字段并启用）。当场生效 */
+  createElecHeaderAlias(req: { alias: string; field: string }): Promise<ElecHeaderAliasRow>;
+  /** 改全局写法认成的字段，或停用 / 启用（status：ACTIVE / DISABLED） */
+  updateElecHeaderAlias(id: number, req: { field?: string; status?: string }): Promise<ElecHeaderAliasRow>;
 }

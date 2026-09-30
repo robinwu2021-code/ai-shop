@@ -531,6 +531,31 @@ export interface ElecAliasResult {
   touchedParts: number;
 }
 
+/** 表头写法看哪一份：GLOBAL 全局（种子 + 运营加的）/ LEARNED 各家供应商确认过的（按写法聚合） */
+export type ElecHeaderAliasScope = "GLOBAL" | "LEARNED";
+
+/**
+ * 库存表的一个表头写法认成哪个字段（elec-svc `HeaderAliasRow`）。
+ * 全局的改了当场生效；学到的是各家自己上传时确认过的，提升后对所有供应商生效。
+ */
+export interface ElecHeaderAliasRow {
+  /** 全局写法的 id（改字段、停用用它）；学到的按写法聚合，没有 id */
+  id?: number | null;
+  /** 规范化后的写法（去空白标点、大写） */
+  aliasNorm: string;
+  /** 原文 */
+  aliasRaw: string;
+  /** 认成的字段：MPN MFR QTY DC PACKAGE PRICE MOQ SPQ PACKING CONDITION CURRENCY LEAD REGION（elec-svc Columns.Field） */
+  field: string;
+  /** SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 */
+  source: string;
+  /** ACTIVE / DISABLED */
+  status: string;
+  /** 学到的：几家在用（据此决定要不要提升）；全局的为 0 */
+  supplierCount: number;
+  updatedAt?: string | null;
+}
+
 /** 认不出的厂牌写法（按规范化后的写法聚合） */
 export interface ElecUnknownMfrRow {
   /** 规范化后的写法 */

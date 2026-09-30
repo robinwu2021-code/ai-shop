@@ -10170,6 +10170,51 @@ components:
         - "touchedParts"
       additionalProperties: false
       description: "加别名的结果：加别名会当场改认既有库存"
+    ElecHeaderAliasScope: 
+      type: "string"
+      enum: 
+        - "GLOBAL"
+        - "LEARNED"
+      description: "表头写法看哪一份：GLOBAL 全局（种子 + 运营加的）/ LEARNED 各家供应商确认过的（按写法聚合）"
+    ElecHeaderAliasRow: 
+      type: "object"
+      properties: 
+        id: 
+          type: 
+            - "number"
+            - "null"
+          description: "全局写法的 id（改字段、停用用它）；学到的按写法聚合，没有 id"
+        aliasNorm: 
+          type: "string"
+          description: "规范化后的写法（去空白标点、大写）"
+        aliasRaw: 
+          type: "string"
+          description: "原文"
+        field: 
+          type: "string"
+          description: "认成的字段：MPN MFR QTY DC PACKAGE PRICE MOQ SPQ PACKING CONDITION CURRENCY LEAD REGION（elec-svc Columns.Field）"
+        source: 
+          type: "string"
+          description: "SEED 种子 / OPS 运营加的 / LEARNED 各家学到的"
+        status: 
+          type: "string"
+          description: "ACTIVE / DISABLED"
+        supplierCount: 
+          type: "number"
+          description: "学到的：几家在用（据此决定要不要提升）；全局的为 0"
+        updatedAt: 
+          type: 
+            - "string"
+            - "null"
+      required: 
+        - "aliasNorm"
+        - "aliasRaw"
+        - "field"
+        - "source"
+        - "status"
+        - "supplierCount"
+      additionalProperties: false
+      description: "库存表的一个表头写法认成哪个字段（elec-svc `HeaderAliasRow`）。 全局的改了当场生效；学到的是各家自己上传时确认过的，提升后对所有供应商生效。"
     ElecUnknownMfrRow: 
       type: "object"
       properties: 
@@ -13506,6 +13551,103 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/elec/ops/header-alias": 
+    get: 
+      operationId: "listElecHeaderAliases"
+      summary: "库存表的表头写法：全局的，或各家学到的（带几家在用） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/ElecHeaderAliasRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "createElecHeaderAlias"
+      summary: "加一条全局写法，或把学到的提升为全局（同一写法已有全局的：改成这个字段并启用）"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecHeaderAliasRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/header-alias/{id}": 
+    put: 
+      operationId: "updateElecHeaderAlias"
+      summary: "改全局写法认成的字段，或停用 / 启用（status：ACTIVE / DISABLED） */"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecHeaderAliasRow"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "id"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/points/overview": 
     get: 
       operationId: "pointsOverview"

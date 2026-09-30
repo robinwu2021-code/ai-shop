@@ -1,7 +1,7 @@
 // 电子元器件（P-19）的内存 mock。数据**刻意覆盖几种状态**：待报价 / 已报价 / 已关单的询价，
 // 正常与已暂停的供应商，认不出的厂牌 —— 只放「一切正常」的数据，看不出这几页是干什么的。
 import type {
-  ElecAliasRow, ElecMfrRow, ElecOpsPartRow, ElecOpsQuoteRow, ElecOpsRfq, ElecOpsSource, ElecOpsSupplierDetail,
+  ElecAliasRow, ElecHeaderAliasRow, ElecMfrRow, ElecOpsPartRow, ElecOpsQuoteRow, ElecOpsRfq, ElecOpsSource, ElecOpsSupplierDetail,
   ElecOpsSupplierRow, ElecStockView, ElecUnknownMfrRow,
 } from "@/lib/types";
 import type { ElecApi } from "../contracts/elec";
@@ -140,6 +140,21 @@ const unknown: ElecUnknownMfrRow[] = [
   { aliasNorm: "AMSADVANCED", sample: "AMS Advanced", rowCnt: 12, supplierCnt: 1, partCnt: 1, suggestCode: null, suggestName: null },
 ];
 
+// 表头写法：种子、运营加的、一条已停用的；学到的有一条三家在用、值得提升
+const headerNorm = (s: string) => s.toUpperCase().replace(/[\s\p{P}]+/gu, "");
+const headerAliases: ElecHeaderAliasRow[] = [
+  { id: 1, aliasNorm: "型号", aliasRaw: "型号", field: "MPN", source: "SEED", status: "ACTIVE", supplierCount: 0, updatedAt: "2026-09-20T10:00:00" },
+  { id: 2, aliasNorm: "PARTNUMBER", aliasRaw: "Part Number", field: "MPN", source: "SEED", status: "ACTIVE", supplierCount: 0, updatedAt: "2026-09-20T10:00:00" },
+  { id: 3, aliasNorm: "库存数量", aliasRaw: "库存数量", field: "QTY", source: "SEED", status: "ACTIVE", supplierCount: 0, updatedAt: "2026-09-20T10:00:00" },
+  { id: 4, aliasNorm: "品牌", aliasRaw: "品牌", field: "MFR", source: "SEED", status: "ACTIVE", supplierCount: 0, updatedAt: "2026-09-20T10:00:00" },
+  { id: 5, aliasNorm: "现货量", aliasRaw: "现货量", field: "QTY", source: "OPS", status: "ACTIVE", supplierCount: 0, updatedAt: "2026-09-29T15:12:00" },
+  { id: 6, aliasNorm: "备货", aliasRaw: "备货", field: "LEAD", source: "OPS", status: "DISABLED", supplierCount: 0, updatedAt: "2026-09-29T15:20:00" },
+];
+const learnedAliases: ElecHeaderAliasRow[] = [
+  { id: null, aliasNorm: "物料编码", aliasRaw: "物料编码", field: "MPN", source: "LEARNED", status: "ACTIVE", supplierCount: 3, updatedAt: "2026-09-30T09:12:00" },
+  { id: null, aliasNorm: "可售", aliasRaw: "可售", field: "QTY", source: "LEARNED", status: "ACTIVE", supplierCount: 1, updatedAt: "2026-09-28T17:40:00" },
+];
+
 const quotes: ElecOpsQuoteRow[] = [
   { quoteNo: "EQT001", rfqNo: "EQ20260930091201", lineNo: 1, mpn: "STM32F103C8T6", qtyWanted: 2000, supplierNo: "SP001",
     companyName: "深圳甲电子有限公司", priceE6: 6_300_000, currency: "CNY", taxIncluded: true, buyerPriceE6: 6_804_000,
@@ -245,4 +260,27 @@ export const elecMock: ElecApi = {
     return wait({ aliasNorm: norm, mfrCode: code, movedRows: moved?.rowCnt ?? 0, touchedParts: moved?.partCnt ?? 0 }, 400);
   },
   listElecUnknownMfrs: (limit) => wait(unknown.slice(0, limit ?? 50)),
+  listElecHeaderAliases: (q) => {
+    const kw = q.keyword ? headerNorm(q.keyword) : "";
+    const list = q.scope === "LEARNED" ? learnedAliases : headerAliases;
+    return wait(list.filter((a) => !kw || a.aliasNorm.includes(kw)));
+  },
+  createElecHeaderAlias: (req) => {
+    const norm = headerNorm(req.alias);
+    if (norm.length < 2) fail("写法至少两个字", "At least two characters");
+    let row = headerAliases.find((a) => a.aliasNorm === norm);
+    if (row) {
+      Object.assign(row, { field: req.field, status: "ACTIVE", updatedAt: new Date().toISOString() });
+    } else {
+      row = { id: Math.max(...headerAliases.map((a) => a.id ?? 0)) + 1, aliasNorm: norm, aliasRaw: req.alias.trim(),
+        field: req.field, source: "OPS", status: "ACTIVE", supplierCount: 0, updatedAt: new Date().toISOString() };
+      headerAliases.push(row);
+    }
+    return wait(row, 350);
+  },
+  updateElecHeaderAlias: (id, req) => {
+    const row = headerAliases.find((a) => a.id === id) ?? notFound("表头写法", "header alias", String(id));
+    Object.assign(row, { field: req.field ?? row.field, status: req.status ?? row.status, updatedAt: new Date().toISOString() });
+    return wait(row, 350);
+  },
 };
