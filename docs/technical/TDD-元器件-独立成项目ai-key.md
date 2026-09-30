@@ -1,6 +1,6 @@
 # TDD-元器件 · 独立成项目 ai-key
 
-> 2026-09-30 · 状态：**执行中**（§五 按推荐拍板；第 1、2 步已完成，进度与偏差见 §六½）
+> 2026-09-30 · 状态：**第 1–5 步完成，第 6 步（上线）待你点头**（§五 按推荐拍板；进度与偏差见 §六½）
 > 档位：2（拆仓库 · 新账号体系 · 跨仓依赖 · 不可逆决策）
 > 需求（用户原话归纳）：
 > ① 元器件搬到 `~/work/ai/ai-key`，作为独立项目；② 基础能力可以依赖 ai-shop；
@@ -147,7 +147,8 @@ ai-shop 的 `InternalElecEndpoint` 相应改为：认运营令牌 · 发短信 �
 | 1 | ✅ `~/work/ai/ai-key` 建成，来源 `383494c1b` | ai-key 后端全部测试绿；两支迁移逐字节与来源一致；ai-key 自带 pre-push 与 `scripts/check-head.sh` |
 | 2 | ✅ ai-shop 瘦身：`4b3520325`（删 220 个文件、改登记与守卫）· `2a20d12fb`（八份生成物）· 本提交（断链） | ai-shop 整套 pre-push |
 | 3 | ✅ 错误码独立：ai-key `d281cc8`（`ElecErrorCode` 18 个码、`ElecException`、`ElecExceptionHandler`；58 处抛出点）· ai-shop 本提交（删 18 个码与三语文案，`ErrorCodeUniqueTest` 加「9xxxx 保留」） | ai-key 全量 81 + 93 绿；消融：去掉处理器 → `ElecChooseFlowTest` 三条 90011 变 10500 |
-| 4–5 | 未开始（第 5 步的迁移号从 V5 起：V4 已被「公开求购」占用） | — |
+| 4 | ✅ 包名 `ai.neargo.shop.elec` → `ai.neargo.key`：ai-key `b97ac36` | ai-key pre-push 全绿（后端 187 · 端上 43）|
+| 5 | ✅ 独立账号：ai-shop `4cef6e62d`（四个内部代办端点）· ai-key `ca7a936`（V5 四张表、`/elec/auth/**`、`ktk_`、订阅额度、存量改写）· `b16fab2`（小程序登录与 `token_elec`）。设计与切换清单在 ai-key 的 `docs/technical/TDD-元器件-独立账号.md` | 本机 MariaDB 临时库冒烟：V1–V5 空库执行、登录全链路（见那篇 §6） |
 | 6 | **要你点头才做** | — |
 
 **与方案的偏差**（都比方案保守，记下来免得后人按方案去找）：
@@ -156,6 +157,10 @@ ai-shop 的 `InternalElecEndpoint` 相应改为：认运营令牌 · 发短信 �
 - **岗位授权那篇留在 ai-shop**：`TDD-元器件-运营端岗位授权.md` 讲的是主系统的 V371 与 `Perms`，归 ai-shop；其余元器件文档都已搬走。
 - **错误码文案的对账测试暂时跨仓库读**：ai-key 的 `ElecMessagesParityTest` 读 ai-shop 的 `i18n/`（`AI_SHOP_HOME` 或 `~/work/ai/ai-shop`），第 3 步错误码独立后删。
 - **第 3 步多踩出一处**：`ElecStockImportServiceImpl` 读表失败的 `catch (BizException)` 要一起换成 `ElecException` —— 不换也能编译，只是失败记录静默不写。
+- **第 4 步多踩出一处**：ai-shop 的 `GlobalExceptionHandler` / `ApiResponseWrapper` 限定了 `basePackages = "ai.neargo.shop"`，
+  改包后直接引等于不生效（先不修跑了一遍：106 条里 93 条红）。ai-key 用只换注解范围的子类 `KeyWebAdvice`。
+- **第 5 步的产品退步，要你定**：库存到期提醒原先只进 ai-shop 的站内信；账号分开后元器件账号不在那个收件箱里，
+  这条提醒没有通道了（供应商只剩 `/elec/me` 的角标）。可选：接受；或改走订阅消息（会吃掉「有新求购」的授权额度）。
 - **跨仓库的链接一律写成代码文字**：`../../../ai-key/…` 在本机能点，但 pre-push 在 HEAD 干净副本里判，文档规范守卫会把它当断链。本仓库指向元器件文档的地方统一链到 [元器件-已迁到ai-key](./元器件-已迁到ai-key.md)。
 
 ---
