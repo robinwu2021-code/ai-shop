@@ -73,6 +73,8 @@
 | EXPIRING | 库存快到期了 | 由元器件拼好传过来（`N 行库存 D 天内到期，点「仍有货」一键续期`） | **不发** |
 
 **库表**（改在 `V1__elec_baseline.sql`：尚未在任何库应用过，理由同 [运营端接口](./TDD-元器件-运营端接口.md) §2）：
+> ⚠️ **这句只在写作时（2026-09-30 07:xx）成立**：生产在 08:21 执行了 V1，从那一刻起 V1 **一个字都不能改**（连注释都算进校验和）。之后的新列一律另起 `V2`、`V3`…，见 `ElecAppliedMigrationsFrozenTest`。
+
 
 - `elc_quote.buyer_notified_at DATETIME`：首次报价通知送到买家的时间；空 = 没送到（或改价，不发）
 - `elc_supplier.expiry_reminded_at DATETIME`：最近一次到期提醒的时间

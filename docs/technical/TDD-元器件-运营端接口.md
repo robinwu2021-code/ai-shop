@@ -108,6 +108,8 @@
 **库表**：`elc_supplier` 加 `suspend_reason VARCHAR(255)`、`suspended_at DATETIME`。
 改在 `V1__elec_baseline.sql` 里 —— **该迁移尚未在任何库应用过**（元器件还没部署），加列不产生冻结问题。
 三处同步：迁移 · `ElcSupplier` 实体 · H2 schema（生成）。
+> ⚠️ **这句只在写作时（2026-09-30 07:xx）成立**：生产在 08:21 执行了 V1，从那一刻起 V1 **一个字都不能改**（连注释都算进校验和）。之后的新列一律另起 `V2`、`V3`…，见 `ElecAppliedMigrationsFrozenTest`。
+
 
 **权限码**（`ElecInternal`）：新增 `elec:supplier:read` `elec:supplier:manage` `elec:part:read` `elec:base:manage`；
 六个码收成 `OPS_PERMS` 一张表，主系统按它过滤 —— 新增码只改这一处。
