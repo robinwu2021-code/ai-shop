@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// 我的询价（原型 e07）。五种状态：待报价（写预计时间）、已报价（写有效期）、暂无货源、
+// 我的询价（原型 e07，底部菜单「询价」）。五种状态：待报价（写预计时间）、已报价（写有效期）、暂无货源、
 // 报价已过期、已接受。过期不把单子藏起来：行情变了、平台不再兑现那个价，这件事要说出来。
 import { computed, ref } from "vue";
 import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { api, errMsg } from "@/api";
-import { ensureLogin } from "@/shared/auth";
+import { goLogin, tryLogin } from "@/shared/auth";
 import { ROUTES, go } from "@/shared/routes";
 import { rfqHint, rfqStatusText, rfqTitle, rfqTotal } from "@/shared/rfq";
 import type { ElecRfq } from "@shared/types";
@@ -23,10 +23,11 @@ const page = ref(1);
 const done = ref(false);
 const loaded = ref(false);
 const failed = ref("");
+const guest = ref(false);
 
 onShow(async () => {
-  if (!(await ensureLogin())) return;
-  await reload();
+  guest.value = !(await tryLogin());
+  if (!guest.value) await reload();
 });
 onReachBottom(() => void more());
 
@@ -67,27 +68,48 @@ function chipOf(r: ElecRfq): string {
 </script>
 
 <template>
-  <sh-scaffold title-key="title.rfqs" :pending="!loaded" :failed="!!failed" :failed-text="failed" @retry="reload">
-    <sh-tabs :items="TABS" :active="tab" line @change="tab = $event"></sh-tabs>
-
-    <sh-empty v-if="loaded && !shown.length" text="还没有询价" tip="搜料号，在料号页点「询价」">
-    </sh-empty>
-
-    <view class="sh-cells list">
-      <view v-for="r in shown" :key="r.rfqNo" class="sh-cell" @tap="go(ROUTES.rfq, { rfqNo: r.rfqNo })">
-        <view class="sh-row sh-row--between">
-          <text class="txt-strong sh-num title">{{ rfqTitle(r) }}</text>
-          <text class="sh-chip" :class="chipOf(r)">{{ rfqStatusText(r) }}</text>
-        </view>
-        <text class="txt-caption sh-muted block">{{ rfqHint(r) }}</text>
-        <text v-if="r.status === 'QUOTED' && rfqTotal(r)" class="txt-sub block">合计 ¥{{ rfqTotal(r) }}</text>
-      </view>
+  <!-- 加载中 / 失败不交给 sh-scaffold：那两态它不渲染正文，底部菜单会跟着消失 ——
+       独立发布时这是根页面，没有返回键，失败了就困在这一页 -->
+  <sh-scaffold title-key="title.rfqs">
+    <view v-if="guest" class="guest">
+      <sh-empty text="登录后看你的询价" tip="报价出来会在这里，也会发消息告诉你"></sh-empty>
+      <view class="sh-btn" @tap="goLogin">去登录</view>
     </view>
-    <text v-if="done && list.length > 5" class="txt-caption sh-muted end">没有更多了</text>
+    <sh-empty v-else-if="failed" bare failed :failed-text="failed" @retry="reload"></sh-empty>
+    <template v-else-if="loaded">
+      <view class="sh-row sh-row--between create" @tap="go(ROUTES.rfqCreate)">
+        <text class="txt-sub sh-muted">手上有料号清单？直接写下来问价</text>
+        <text class="sh-link">新询价 ›</text>
+      </view>
+      <sh-tabs :items="TABS" :active="tab" line @change="tab = $event"></sh-tabs>
+
+      <sh-empty v-if="!shown.length" text="还没有询价" tip="搜料号，在料号页点「询价」">
+      </sh-empty>
+
+      <view class="sh-cells list">
+        <view v-for="r in shown" :key="r.rfqNo" class="sh-cell" @tap="go(ROUTES.rfq, { rfqNo: r.rfqNo })">
+          <view class="sh-row sh-row--between">
+            <text class="txt-strong sh-num title">{{ rfqTitle(r) }}</text>
+            <text class="sh-chip" :class="chipOf(r)">{{ rfqStatusText(r) }}</text>
+          </view>
+          <text class="txt-caption sh-muted block">{{ rfqHint(r) }}</text>
+          <text v-if="r.status === 'QUOTED' && rfqTotal(r)" class="txt-sub block">合计 ¥{{ rfqTotal(r) }}</text>
+        </view>
+      </view>
+      <text v-if="done && list.length > 5" class="txt-caption sh-muted end">没有更多了</text>
+    </template>
+
+    <el-tabbar active="rfq"></el-tabbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.guest .sh-btn {
+  margin-top: 24rpx;
+}
+.create {
+  padding: 4rpx 12rpx 20rpx;
+}
 .list {
   margin-top: 16rpx;
 }

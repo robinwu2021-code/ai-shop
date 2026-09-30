@@ -40,5 +40,7 @@ export default {
     dispatches: "求购",
     dispatch: "求购详情",
     login: "登录",
+    me: "我的",
+    history: "历史记录",
   },
 };

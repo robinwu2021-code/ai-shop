@@ -13,6 +13,22 @@ export async function ensureLogin(): Promise<boolean> {
 }
 
 /**
+ * 只试、不跳：已登录或静默登录成功返回 true，否则 false，**不去登录页**。
+ * 给底部菜单的几格用 —— 它们在 onShow 里认人，要是也跳登录页，
+ * 他在登录页按返回回来又是一次 onShow，又被推回去，出不来。页面自己摆一个「去登录」。
+ */
+export async function tryLogin(): Promise<boolean> {
+  const user = useUserStore();
+  if (user.isLogin) return true;
+  return user.silentLogin().catch(() => false);
+}
+
+/** 去登录页，登完回到当前页 */
+export function goLogin(): void {
+  uni.navigateTo({ url: withQuery(ROUTES.login, { redirect: currentRoute() }) });
+}
+
+/**
  * 「这一步要手机号」：询价、成为供应商。平台要打得通这个电话。
  * 资料里没有就先拉一次（静默登录回来的资料可能是旧的），还没有就去绑。
  */

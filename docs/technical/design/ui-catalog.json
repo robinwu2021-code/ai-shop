@@ -1463,7 +1463,7 @@
     {
       "key": "elec-app",
       "label": "元器件小程序",
-      "count": 17,
+      "count": 19,
       "domains": [
         {
           "name": "元器件",
@@ -1643,6 +1643,28 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5177/#/pages/dispatch/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/#/pages/me/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/history/index",
+              "title": "历史记录",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/#/pages/history/index"
             },
             {
               "app": "elec-app",
@@ -3661,5 +3683,5 @@
       ]
     }
   ],
-  "total": 289
+  "total": 291
 }

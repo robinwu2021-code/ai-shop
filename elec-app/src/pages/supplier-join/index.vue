@@ -9,17 +9,18 @@ import { api } from "@/api";
 import { handleElecError } from "@/shared/errors";
 import { ensurePhone } from "@/shared/auth";
 import { useUserStore } from "@/stores/user";
-import { ROUTES } from "@/shared/routes";
+import { ROUTES, backTo } from "@/shared/routes";
 
 const user = useUserStore();
 const busy = ref(false);
 
 onShow(async () => {
   if (!user.isLogin) return;
-  // 已经是供应商就直接去工作台，别让他再点一次「成为」
+  // 已经是供应商就直接去工作台，别让他再点一次「成为」。
+  // 回退到栈里的「供货」而不是再开一页：多半就是从那一格点进来的
   const mine = await api.mySupplier().catch(() => null);
   if (mine) {
-    uni.redirectTo({ url: ROUTES.supplier });
+    backTo(ROUTES.supplier);
     return;
   }
   await user.loadProfile().catch(() => null);
@@ -36,7 +37,7 @@ async function join() {
   busy.value = true;
   try {
     await api.joinSupplier();
-    uni.redirectTo({ url: ROUTES.supplier });
+    backTo(ROUTES.supplier);
   } catch (e) {
     handleElecError(e);
   } finally {

@@ -23,6 +23,8 @@ export const ROUTES = {
   dispatches: `${BASE}/pages/dispatches/index`,
   dispatch: `${BASE}/pages/dispatch/index`,
   login: `${BASE}/pages/login/index`,
+  me: `${BASE}/pages/me/index`,
+  history: `${BASE}/pages/history/index`,
 } as const;
 
 /** 拼查询串。值为空的键不带 —— 否则会出现 `?partNo=undefined` */
@@ -40,13 +42,14 @@ export function go(path: string, q: Record<string, string | number | undefined |
 
 /**
  * 回到栈里的某一页（它 onShow 会自己刷新）；栈里没有它（冷启动落在中间页）才重开。
- * 不一律 reLaunch：那会清掉整个栈，H5 上连回首页的路都没了。
+ * 不用 reLaunch（找不到时也不用）：那会清掉整个栈 —— H5 上连回首页的路都没了，
+ * 并进虹选时连回虹选的路也没了。找不到就原地换成它。
  */
 export function backTo(path: string): void {
   const pages = getCurrentPages() as { route?: string }[];
   const at = pages.map((p) => `/${p.route ?? ""}`).lastIndexOf(path);
   if (at >= 0) uni.navigateBack({ delta: pages.length - 1 - at });
-  else uni.reLaunch({ url: path });
+  else uni.redirectTo({ url: path });
 }
 
 /** 当前页连同参数，登录完要回得来 */

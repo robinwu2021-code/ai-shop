@@ -7,6 +7,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { api, errMsg } from "@/api";
 import { ROUTES, go } from "@/shared/routes";
 import { COND, QTY_BAND, SOURCE_BAND, leadOf, priceOf, qtyOf } from "@/shared/format";
+import { rememberViewed } from "@/shared/recent";
 import type { ElecPartHit } from "@shared/types";
 
 const partNo = ref("");
@@ -22,6 +23,8 @@ async function load() {
   failed.value = "";
   try {
     hit.value = await api.partDetail(partNo.value);
+    const h = hit.value;
+    rememberViewed({ partNo: h.partNo, mpn: h.mpn, mfr: h.mfrKnown ? (h.mfrName ?? "") : "" });
   } catch (e) {
     failed.value = errMsg(e);
   }

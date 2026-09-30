@@ -1,48 +1,37 @@
 <script setup lang="ts">
-// 元器件首页（原型 e01）。整页就三件事：搜料号、我的询价、成为供应商。
+// 找料（原型 e01，底部菜单第一格）。整页只管找：搜料号、批量查、最近搜过、最近看过。
 // **不挂任何商城内容**，也不做「热门料号」—— 第一步没有那些数据，摆上去就是假的。
-import { computed, ref } from "vue";
+// 「我的询价」与「成为供应商」各有一格菜单（询价 / 供货），这里不再重复一张卡。
+import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { ROUTES, go } from "@/shared/routes";
-import { clearSearches, recentSearches, rememberSearch } from "@/shared/recent";
-import { lastRole, rememberRole } from "@/shared/role";
-import type { ElecMe, ElecRfq } from "@shared/types";
+import { clearSearches, recentSearches, rememberSearch, viewedParts, type ViewedPart } from "@/shared/recent";
+import { lastTab, rememberTab, switchTab } from "@/shared/tabs";
+
+const HOME_SEARCHES = 8;
+const HOME_VIEWED = 3;
 
 const user = useUserStore();
 const keyword = ref("");
 const recent = ref<string[]>([]);
-const rfqs = ref<ElecRfq[]>([]);
-const me = ref<ElecMe | null>(null);
+const viewed = ref<ViewedPart[]>([]);
 
 /**
- * 上次停在供应商那一面、而且确实还是供应商 → 直接去工作台。
- * 只在**进来那一下**（onLoad）判断，不在 onShow：从工作台切回买家时也会 onShow，那时他就是要看买家这面。
+ * 上次停在「供货」、而且确实还是供应商 → 直接去供货：供应商进来多半是回去处理求购，
+ * 每次都先落到找料再点一下是白费。只在**进来那一下**（onLoad）判断，从别的格切回找料时不再跳。
  */
 onLoad(async () => {
-  if (lastRole() !== "supplier" || !user.isLogin) return;
+  if (lastTab() !== "supply" || !user.isLogin) return;
   const m = await api.me().catch(() => null);
-  if (m?.supplier) uni.redirectTo({ url: ROUTES.supplier });
-  else rememberRole("buyer");
+  if (m?.supplier) switchTab("supply");
+  else rememberTab("find");
 });
 
-onShow(async () => {
-  recent.value = recentSearches();
-  if (!user.isLogin) return;
-  // 两样都只是「顺手告诉他一声」，拉不到不打扰：首页的本分是搜料号
-  const [r, m] = await Promise.allSettled([api.myRfqs(1, 20), api.me()]);
-  rfqs.value = r.status === "fulfilled" ? r.value : [];
-  me.value = m.status === "fulfilled" ? m.value : null;
-});
-
-const quotedCnt = computed(() => rfqs.value.filter((x) => x.status === "QUOTED").length);
-const pendingCnt = computed(() => rfqs.value.filter((x) => x.status === "SUBMITTED").length);
-const rfqHint = computed(() => {
-  if (!user.isLogin) return "";
-  if (quotedCnt.value) return `${quotedCnt.value} 单已报价`;
-  if (pendingCnt.value) return `${pendingCnt.value} 单待报价`;
-  return rfqs.value.length ? "" : "还没询过价";
+onShow(() => {
+  recent.value = recentSearches().slice(0, HOME_SEARCHES);
+  viewed.value = viewedParts().slice(0, HOME_VIEWED);
 });
 
 function search(k = keyword.value) {
@@ -60,7 +49,6 @@ function clearRecent() {
 
 <template>
   <sh-scaffold title-key="title.home">
-    <el-role-switch v-if="user.isLogin" active="buyer" :me="me"></el-role-switch>
     <view class="sh-searchbox">
       <sh-icon name="search" :size="36" color="var(--sh-sub)"></sh-icon>
       <input
@@ -87,22 +75,20 @@ function clearRecent() {
       </view>
     </view>
 
-    <view class="sh-card block">
-      <view class="sh-row sh-row--between" @tap="go(ROUTES.rfqs)">
-        <text class="txt-strong">我的询价</text>
-        <view class="sh-row">
-          <text v-if="rfqHint" class="txt-sub" :class="quotedCnt ? 'txt-primary' : 'sh-muted'">{{ rfqHint }}</text>
-          <sh-icon name="chevronRight" :size="32" color="var(--sh-sub)"></sh-icon>
+    <view v-if="viewed.length" class="block">
+      <view class="sh-row sh-row--between head">
+        <text class="txt-strong">最近看过</text>
+        <text class="sh-link sh-link--quiet" @tap="go(ROUTES.history, { view: 'viewed' })">全部 ›</text>
+      </view>
+      <view class="sh-cells">
+        <view v-for="p in viewed" :key="p.partNo" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.part, { partNo: p.partNo })">
+          <text class="txt-body sh-num mpn">{{ p.mpn }}</text>
+          <text class="txt-caption sh-muted">{{ p.mfr || "厂牌未确认" }}</text>
         </view>
       </view>
     </view>
 
-    <!-- 页尾：来的人十个有九个是买家，招募不能挡在他要找的东西前面；但必须在这一页。
-         已经是供应商的，顶上的切换条就是去工作台的门，这里不再重复一张卡 -->
-    <view v-if="!me?.supplier" class="join">
-      <text class="txt-sub sh-muted">手上有库存？传上来，买家搜得到就有询价</text>
-      <view class="sh-btn sh-btn--soft sh-mt-sm" @tap="go(ROUTES.supplierJoin)">成为供应商</view>
-    </view>
+    <el-tabbar active="find"></el-tabbar>
   </sh-scaffold>
 </template>
 
@@ -120,8 +106,13 @@ function clearRecent() {
   margin-top: 16rpx;
   gap: 16rpx;
 }
-.join {
-  margin-top: 64rpx;
-  text-align: center;
+.head {
+  padding: 0 12rpx 12rpx;
+}
+.mpn {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+  margin-inline-end: 16rpx;
 }
 </style>
