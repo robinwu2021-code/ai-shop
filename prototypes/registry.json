@@ -2,6 +2,56 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "b-reports",
+   "file": "b-reports.html",
+   "title": "B 端报表：近几日收入 / 按月营收 / 商品 TopN",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-09-30",
+   "summary": "按「一眼 → 近几日 → 按月 → 商品」四层画的报表。入口屏把时间选择（今日/近 7 天/本月）放进经营数据并收四个入口；近几日与按月共用同一骨架（合计在上、逐行在下、末行合计），差别只在行的粒度；商品 TopN 给畅销/滞销两页签 × 件数/销售额/毛利三种排法，行内同时给售价·成本·件数三个数。守 B-13.1 的「不做图表」——趋势一律用环比数字表达。第 5 屏是下钻，它今天走不通：mOrderList 的 PageQuery 只有 page/size，订单列表按时间筛不了，要先给 /biz/order 加 from/to（档位 1）。",
+   "docs": [
+    {
+     "label": "B端报表清单-由浅入深",
+     "path": "docs/requirements/B端报表清单-由浅入深.md"
+    },
+    {
+     "label": "B端功能清单",
+     "path": "docs/requirements/B端功能清单.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "经营数据 · 入口",
+     "client": "b-app",
+     "route": "pages/stats/index"
+    },
+    {
+     "id": "s02",
+     "title": "近几日收入（R1）"
+    },
+    {
+     "id": "s03",
+     "title": "按月营收（R2）"
+    },
+    {
+     "id": "s04",
+     "title": "商品销售 TopN（R3）",
+     "client": "b-app",
+     "route": "pages/stock-report/index"
+    },
+    {
+     "id": "s05",
+     "title": "下钻 · 某天的订单",
+     "client": "b-app",
+     "route": "pages/orders/index"
+    }
+   ]
+  },
+  {
    "slug": "c-store-portal",
    "file": "c-store-portal.html",
    "title": "C 端门店化：店铺页、门店门户、分享、商品详情 v4",

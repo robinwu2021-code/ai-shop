@@ -405,6 +405,9 @@ a{color:inherit}
 .sl-row .rel{font-size:10px;color:var(--sh-primary-text)}
 .sl-row .m{font-size:10px;color:var(--sh-sub)}
 .sl-row .d{flex:0 0 auto;font-size:10px;color:var(--sh-sub);text-align:right}
+/* 报表行右侧的主数字：成交额 / 应结 / 毛利。与 .d（10px 灰字的副信息）不是一回事 ——
+   报表里右边那一列是读者真正在看的东西，压成副信息就白画了。类名跟产品的 .amt 对齐 */
+.sl-row .amt{flex:0 0 auto;text-align:right;font-size:13px;font-weight:600;color:var(--sh-ink);font-variant-numeric:tabular-nums}
 .sl-row.off{opacity:.5}
 .sl-h{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px;margin-bottom:-4px}
 .sl-h b{font-size:12.5px}

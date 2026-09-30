@@ -31,6 +31,37 @@
 | **L2 对比** | 跟谁比、比哪一段？ | 跨店对比 · 对账单 · 月度收发存 | 一个（`days`/`period`/`month`） | ✅ |
 | **L3 明细** | 具体是哪一笔、哪一件？ | 对账明细 · 库存流水 · 客户列表 · 库存余额 | 多条件 + 分页 | ✅ |
 
+### 1.1 报表一览（16 张现有 + 3 张要做）
+
+一张平表，方便点数与查漏。**端点与查询条件逐条核过代码**；「状态」列里
+✅=能用 · 🟡=有但不完整 · ⬜=没有。
+
+| # | 报表 | 层 | 端点 | 查询条件 | 关键字段 | 状态 |
+|---|---|---|---|---|---|---|
+| 1 | 工作台待办 | L0 | `/biz/dashboard/todo` | 无 | 8 字段，显 5 + 2 | ✅ |
+| 2 | 今日 / 本月经营 | L0·L1 | `/biz/dashboard/stats` | 无 | `today/monthOrders` `today/monthGmvMinor` `rating` `ownedTrafficRate` | ✅ |
+| 3 | 库存总览 | L1 | `/biz/inventory/summary` | 无 | `itemCount` `shortageCount` `staleCount` `inTransitCount` `openCountNo` | ✅ |
+| 4 | 跨店总览 | L1 | `/biz/dashboard/cross-store/overview` | 无 | 逐店今日 + 三个待办 | ✅ |
+| 5 | 跨店对比 | L2 | `…/cross-store/compare` | `days` | 逐店 `orders` `gmvMinor` `buyers` `repeatRate` `rating` `outOfStockSkus` | ✅ |
+| 6 | 对账单 | L2 | `/biz/settle/statement` | `period` | 毛 / 佣金 / 服务费 / 运费 ×2 / 应结 / `billCount` / `lines` | ✅ |
+| 7 | 月度收发存 | L2 | `/biz/inventory/report/monthly` | `month` | 期初 / 入 / 出 / 损 / 调 / 期末 / **`balanced`** | ✅ |
+| 8 | 动销排行 | L2 | `/biz/inventory/report/ranking` | `type` `days` `limit` | `qty` `costAmountMinor` | 🟡 §七 |
+| 9 | 对账明细 | L3 | 随 #6 返回 | 跟 `period` | 三个号 + 六笔钱 + `commissionRate` | ✅ |
+| 10 | 库存流水 | L3 | `/biz/inventory/ledger` | `itemId` `docNo` `cursor` `size` | 逐笔出入 | ✅ |
+| 11 | 库存余额 | L3 | `/biz/inventory/balances` | `filter` `locationId` `size` | `onHand` `reserved` `available` `safetyStock` `flags` | ✅ |
+| 12 | 跨店库存 | L3 | `/biz/inventory/cross-store` | `filter` `size` | 逐库位 `onHand` / 安全库存 | ✅ |
+| 13 | 线下销售 | L3 | `/biz/inventory/offline-sales` | `storeNo` `date` | `docNo` `totalQty` + 行 `qty` | ✅ |
+| 14 | 可挑拣 | L3 | `/biz/inventory/pickable` | `q` `size` | 同 #11 | ✅ |
+| 15 | 单据列表 | L3 | `/biz/inventory/documents` | `kind` `no` `size` | `docNo` `status` | ✅ |
+| 16 | 客户与复购 | L3 | `/biz/customers` | 无 | `orderCount` `totalSpentMinor` `daysSinceLast` `silent` `source` | ✅ |
+| **R1** | **近几日收入与订单量** | L1·L2 | — | `days` | 逐日 `orders` `gmvMinor` `netMinor` + 环比 | ⬜ |
+| **R2** | **按月营收与订单** | L2 | 扩 #6 | `from` `to` | 逐月钱 + **订单数** | 🟡 |
+| **R3** | **商品销售 TopN（金额/毛利）** | L2 | 扩 #8 | + `orderBy` | + `salesAmountMinor` → 毛利 | 🟡 |
+
+**数出来的事实**：现有 16 张里，**11 张在 L3**（明细最全），
+而**能选时间段的只有 4 张**（#5 `days`、#6 `period`、#7 `month`、#13 `date`），
+其中三张在进销存域。**经营侧（#1#2#4#16）一个时间参数都没有** —— 这正是 R1 的由来。
+
 **层与层之间要能点进去**（L0 的「待发货 12」点开就是筛好的订单列表）。
 这一点今天在订单侧是通的，在**金额侧不通** —— 见 §六 ⬜1。
 

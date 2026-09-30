@@ -11,14 +11,24 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">25 份有效稿子，其中页面稿 15 份、共 191 屏；3 份作废。
+  <p class="sub">26 份有效稿子，其中页面稿 16 份、共 196 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
 <section>
   <div class="sec-head"><span class="sec-num">01</span><h2>页面稿：每一屏长什么样</h2></div>
   <div class="pgrid">
-<article class="pcard" id="c-store-portal">
+<article class="pcard" id="b-reports">
+  <div class="pcard__hd">
+    <b>B 端报表：近几日收入 / 按月营收 / 商品 TopN</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-09-30 · 5 屏</div>
+  <p class="pcard__sum">按「一眼 → 近几日 → 按月 → 商品」四层画的报表。入口屏把时间选择（今日/近 7 天/本月）放进经营数据并收四个入口；近几日与按月共用同一骨架（合计在上、逐行在下、末行合计），差别只在行的粒度；商品 TopN 给畅销/滞销两页签 × 件数/销售额/毛利三种排法，行内同时给售价·成本·件数三个数。守 B-13.1 的「不做图表」——趋势一律用环比数字表达。第 5 屏是下钻，它今天走不通：mOrderList 的 PageQuery 只有 page/size，订单列表按时间筛不了，要先给 /biz/order 加 from/to（档位 1）。</p>
+  <div class="screens"><a class="scr" href="b-reports.html#s01" title="s01 经营数据 · 入口">s01</a><a class="scr" href="b-reports.html#s02" title="s02 近几日收入（R1）">s02</a><a class="scr" href="b-reports.html#s03" title="s03 按月营收（R2）">s03</a><a class="scr" href="b-reports.html#s04" title="s04 商品销售 TopN（R3）">s04</a><a class="scr" href="b-reports.html#s05" title="s05 下钻 · 某天的订单">s05</a></div>
+  <div class="pcard__links"><a href="b-reports.html">本地稿</a> <a href="../docs/requirements/B端报表清单-由浅入深.md">B端报表清单-由浅入深</a> <a href="../docs/requirements/B端功能清单.md">B端功能清单</a></div>
+  
+</article><article class="pcard" id="c-store-portal">
   <div class="pcard__hd">
     <b>C 端门店化：店铺页、门店门户、分享、商品详情 v4</b>
     <span class="chip warn">在建</span>
