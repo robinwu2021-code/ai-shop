@@ -8,6 +8,7 @@
 // 那是一条会影响审核的入口，被驳回时要能**立刻关掉止血**，而不是等一个新版本。
 import { defineStore } from "pinia";
 import { api } from "@/api";
+import { wxKfConfigured } from "@shared/ports";
 
 export const useConfigStore = defineStore("config", {
   state: () => ({
@@ -23,6 +24,18 @@ export const useConfigStore = defineStore("config", {
      * 而掉队时下载照样 200、照样装得上，只是功能旧。
      */
     merchantApp: { android: "", ios: "", androidVersion: "" },
+    /**
+     * 微信客服的接入参数（后端下发，TDD-微信客服接入）。
+     *
+     * **两个都有才算配好** —— 缺一个就回落到小程序原生的 `open-type="contact"`，
+     * 因为拿半截参数去调 `wx.openCustomerServiceChat` 失败是**静默**的，
+     * 界面上与「压根没配」长得一模一样。
+     *
+     * 它必须随冷启动一起拿到：这个 API 在 iOS 上要求由用户手势**直接**触发，
+     * 点的时候现拉配置会被判「并非点击触发」——而 Android 能过，
+     * 于是这个坑只在 iOS 真机上现形。
+     */
+    customerService: { corpId: "", url: "" },
     loaded: false,
   }),
 
@@ -33,6 +46,12 @@ export const useConfigStore = defineStore("config", {
      * 由调用方按这一条开关的性质决定失败方向。
      */
     flag: (s) => (key: string, def = false) => (key in s.features ? s.features[key]! : def),
+
+    /**
+     * 微信客服配齐了没有。判断本身在 `@shared/ports/kf` 里 ——
+     * 「两个都要有」这条规则只该有一处实现，端上与将来的 B 端共用同一把尺。
+     */
+    wxKfReady: (s) => wxKfConfigured(s.customerService),
   },
 
   actions: {
@@ -53,6 +72,10 @@ export const useConfigStore = defineStore("config", {
           ios: c?.merchantApp?.ios ?? "",
           // 后端从版本清单读的。取不到就是空串 —— 那时不显示版本号，而不是显示一个猜的值
           androidVersion: c?.merchantApp?.androidVersion ?? "",
+        };
+        this.customerService = {
+          corpId: c?.customerService?.corpId ?? "",
+          url: c?.customerService?.url ?? "",
         };
         this.loaded = true;
       } catch {

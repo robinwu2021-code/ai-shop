@@ -33,6 +33,23 @@ public class ShopProperties {
      */
     private MerchantApp merchantApp = new MerchantApp();
 
+    /**
+     * 微信客服（企业微信那款）的接入参数。<b>不是凭据</b> —— 客服链接本来就要发给买家看，
+     * 放 env 只为分环境，与群机器人那条 webhook 的理由不同（那条 URL 本身就是凭据）。
+     *
+     * <p><b>空就是不发</b>：端上据此回落到 {@code open-type="contact"}，
+     * 与 {@link MerchantApp} 那两档同一个口径 —— 缺配置时不发半截。
+     */
+    private CustomerService customerService = new CustomerService();
+
+    public CustomerService getCustomerService() {
+        return customerService;
+    }
+
+    public void setCustomerService(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+
     public String getDefaultSkin() {
         return defaultSkin;
     }
@@ -74,6 +91,36 @@ public class ShopProperties {
     }
 
     /** 商家版 App 的下载地址。两档都可能为空 —— 空 = 这一档还没有，端上不显示 */
+    /**
+     * 微信客服接入参数（TDD-微信客服接入 §4.2）。
+     *
+     * @see #corpId 企业微信 CorpID。<b>必须与小程序绑定</b>，只是同主体还不够 ——
+     *      没绑的表现是端上 {@code errCode 6}（corpId is not bound to current miniprogram）
+     * @see #url   客服接入链接，取自企业微信后台 → 应用管理 → 微信客服 → 客服账号详情
+     */
+    public static class CustomerService {
+
+        private String corpId = "";
+
+        private String url = "";
+
+        public String getCorpId() {
+            return corpId;
+        }
+
+        public void setCorpId(String corpId) {
+            this.corpId = corpId;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+    }
+
     public static class MerchantApp {
 
         /** 安卓包直链（官网 /dl/ 下那个 apk） */

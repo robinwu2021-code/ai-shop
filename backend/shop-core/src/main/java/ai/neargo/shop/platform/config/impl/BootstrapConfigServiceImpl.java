@@ -63,7 +63,15 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
                 Map.copyOf(features),
                 props.getMinAppVer(),
                 props.getServiceHours(),
-                merchantApp());
+                merchantApp(),
+                new BootstrapConfigService.CustomerService(
+                        nz(props.getCustomerService().getCorpId()),
+                        nz(props.getCustomerService().getUrl())));
+    }
+
+    /** 缺配置时发空串而不是 null —— 端上按「空 = 回落」判，null 会让那个判断多一种写法 */
+    private static String nz(String s) {
+        return s == null ? "" : s.trim();
     }
 
     /**

@@ -16,12 +16,30 @@ public interface BootstrapConfigService {
      * @param minAppVer    最低可用端版本，低于此值端侧强更
      * @param serviceHours 客服在线时段（展示用）
      * @param merchantApp  商家版 App 的下载地址，按平台各一条；<b>空的那一档端上不显示</b>
+     * @param customerService 微信客服的接入参数；<b>任一为空端上就回落</b>到
+     *                        {@code open-type="contact"}（TDD-微信客服接入 §4.1）
      */
     record BootstrapConfig(String defaultSkin,
                            java.util.Map<String, Boolean> features,
                            String minAppVer,
                            String serviceHours,
-                           MerchantApp merchantApp) {
+                           MerchantApp merchantApp,
+                           CustomerService customerService) {
+    }
+
+    /**
+     * 微信客服（企业微信那款）的接入参数。
+     *
+     * <p><b>为什么随冷启动一起下发，而不是点的时候现拉</b>：
+     * {@code wx.openCustomerServiceChat} 在 iOS 上必须由用户手势<u>直接</u>触发 ——
+     * 先 await 再调会被判「并非点击触发」而失败，Android 却能过。
+     * 所以这两个值必须在点击之前就躺在端上。
+     *
+     * @param corpId 企业微信 CorpID。<b>同主体还不够，必须在小程序后台绑过</b>；
+     *               没绑的表现是端上 {@code errCode 6}
+     * @param url    客服接入链接（企微后台 → 应用管理 → 微信客服 → 客服账号详情）
+     */
+    record CustomerService(String corpId, String url) {
     }
 
     /**

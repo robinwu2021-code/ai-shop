@@ -165,6 +165,14 @@ shop:
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
+  # 微信客服（企业微信那款）。**任一为空端上就回落**到小程序原生的 open-type="contact"。
+  # 这两个值不是凭据 —— 客服链接本来就要发给买家看，放 env 只为分环境。
+  #   corp-id：企业微信 CorpID。**同主体还不够，必须在小程序后台绑过**，
+  #            没绑的表现是端上 errCode 6，而界面上看着就是「点了没反应」。
+  #   url    ：企微后台 → 应用管理 → 微信客服 → 客服账号详情 → 接入链接
+  customer-service:
+    corp-id: ${SHOP_KF_CORP_ID:}
+    url: ${SHOP_KF_URL:}
   # 商家版 App 的下载地址，按平台各一条。**空的那一档端上不显示**（不发点不开的地址）。
   # iOS 现在是空的：那一版还在苹果审核队列里，上架前先放 TestFlight 公开链接。
   merchant-app:

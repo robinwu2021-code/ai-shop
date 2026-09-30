@@ -9,4 +9,5 @@ export * from "./clipboard";
 export * from "./location";
 export * from "./media";
 export * from "./push";
+export * from "./kf";
 export * from "./storefront";

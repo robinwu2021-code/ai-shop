@@ -5,7 +5,7 @@ import type { MasterData, MerchantApplyStatus, MyFission } from "@shared/types";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
-import { merchantApplyVisible } from "@shared/ports";
+import { merchantApplyVisible, openWxCustomerService } from "@shared/ports";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { useConfigStore } from "@/stores/config";
@@ -134,6 +134,25 @@ const fission = ref<MyFission | null>(null);
  * 其余端显示邮箱 —— 画一颗点了没反应的按钮比没有按钮更糟。
  */
 const nativeContact = canNativeShare();
+
+/**
+ * 配齐了就走**微信客服**（企业微信那款），否则退回小程序原生客服会话。
+ * 判据是 store 的 `wxKfReady`：`corpId` 与 `url` **两个都要有** ——
+ * 半截参数调过去失败是静默的，界面上与「压根没配」一模一样。
+ */
+const wxKf = computed(() => nativeContact && config.wxKfReady);
+
+/**
+ * 打开微信客服。**整段必须同步** —— 这个 API 在 iOS 上要求由用户手势直接触发，
+ * 中间插一次 await（比如现拉配置）就会被判「并非点击触发」而失败；
+ * Android 却能过，于是那样写的代码只在 iOS 真机上才现形。
+ * 配置是冷启动就拿到的，所以这里点开即用。
+ */
+function openWxKf() {
+  openWxCustomerService(config.customerService, () => {
+    uni.showToast({ title: String(t("me.contactFailed")), icon: "none" });
+  });
+}
 /** 平台邮箱。与官网页脚同一个地址，改了两处都要改（官网在 site.config.ts） */
 const PLATFORM_EMAIL = "hello@hxmall.top";
 
@@ -648,8 +667,10 @@ onShow(() => {
       <!--
         联系客服（TDD-C 端裂变与商家招募 §4.1）。
 
-        <p>**小程序上用微信原生的客服会话**（`open-type="contact"`）：不需要后端，
-        点开直接进微信客服。这也是这一屏在小程序里唯一能做的对外联络 ——
+        <p>**优先走微信客服**（企业微信那款，`wx.openCustomerServiceChat`）——
+        会话落在企业微信里，能分配、有存档。参数由冷启动的 bootstrap 下发，
+        没配齐就退回小程序原生的客服会话（`open-type="contact"`）。
+        这也是这一屏在小程序里唯一能做的对外联络 ——
         招商、入驻、商家申请那一类按类目红线不能出现（自营类目的包里有它会被判平台型经营
         而驳回），而「联系客服」是任何小程序都该有的。
 
@@ -660,7 +681,9 @@ onShow(() => {
         <text class="txt-body cell__label">{{ $t("me.contact") }}</text>
         <!-- 小程序上原生客服按钮自己会说话，不再加一句解释；H5 上显示邮箱 —— 那是信息不是解释 -->
         <text v-if="!nativeContact" class="txt-caption cell__value">{{ PLATFORM_EMAIL }}</text>
-        <button v-if="nativeContact" class="contact__btn" open-type="contact"></button>
+        <!-- 配齐了走微信客服（会话落在企业微信里）；没配齐退回小程序原生客服会话 -->
+        <view v-else-if="wxKf" class="contact__btn" @tap="openWxKf"></view>
+        <button v-else class="contact__btn" open-type="contact"></button>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="themeVisible = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>

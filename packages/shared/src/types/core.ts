@@ -94,4 +94,24 @@ export interface BootstrapConfig {
      */
     androidVersion?: string;
   };
+  /**
+   * 微信客服（企业微信那款）的接入参数，给 `wx.openCustomerServiceChat` 用。
+   *
+   * **两个都有才算配好**：缺一个端上就回落到小程序原生的 `open-type="contact"`。
+   * 拿半截参数去调那个 API，失败是**静默**的 —— 界面上与「压根没配」一模一样，
+   * 所以回落要整体判，不能一个一个判。
+   *
+   * **为什么随冷启动发，而不是点的时候现拉**：那个 API 在 iOS 上要求由用户手势
+   * **直接**触发，先 `await` 再调会被判「并非点击触发」；Android 却能过，
+   * 于是这个坑只在 iOS 真机上现形。值必须在点击之前就在端上。
+   */
+  customerService?: {
+    /**
+     * 企业微信 CorpID。**同主体还不够，必须在小程序后台绑过** ——
+     * 没绑的表现是 `errCode 6`，而界面上看着仍然只是「点了没反应」。
+     */
+    corpId: string;
+    /** 客服接入链接（企微后台 → 应用管理 → 微信客服 → 客服账号详情） */
+    url: string;
+  };
 }

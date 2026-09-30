@@ -330,6 +330,7 @@ export default {
     // 元器件测试期的临时入口（只在并包构建里出现），独立发布时删
     elecEntry: "电子元器件",
     contact: "联系客服",
+    contactFailed: "客服暂时打不开，请稍后再试",
     myPlace: "我的位置",
     help: "帮助中心",
     version: "版本",
