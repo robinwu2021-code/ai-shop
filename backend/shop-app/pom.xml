@@ -61,6 +61,14 @@
             <artifactId>shop-inventory</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 报表：独立库的持久层。日结「读交易域、写报表库」是跨域组合，
+             按 ArchitectureTest 的规矩住在本模块（reportbridge 包），
+             所以引它的是 shop-app，而不是 shop-report 反过来引 shop-core -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-report</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 元器件是独立进程（elec-svc），主应用**不引它的代码**，只引零依赖的内部契约：
              给它开的 /internal/elec/** 与它那一侧的客户端用同一份路径与 record -->
         <dependency>
