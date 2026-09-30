@@ -25,6 +25,21 @@ public final class ElecInternal {
     /** 有新的求购派给这家供应商 / 他的报价被选中了。供应商与买家是同一个账号体系 */
     public static final String NOTIFY_SUPPLIER = "/internal/elec/notify/supplier";
 
+    // ---- 元器件独立账号之后借的四件事（ai-key TDD-元器件-独立账号 §2.4）----
+    // 虹选的 appsecret、短信通道、access_token 都不复制到 ai-key：这四条只做「代办」，不按 usr_no 做任何事。
+
+    /** 发登录验证码短信。码由 ai-key 生成与校验，这里只负责投递 */
+    public static final String SMS_OTP = "/internal/elec/sms/otp";
+
+    /** 小程序 wx.login 的 code → (appid, openid)。过渡期借虹选的 appid */
+    public static final String WX_SESSION = "/internal/elec/wx/session";
+
+    /** 小程序 getPhoneNumber 的 code → 手机号 */
+    public static final String WX_PHONE = "/internal/elec/wx/phone";
+
+    /** 按 openid 发一条元器件订阅消息（模板 ELEC_QUOTED）。<b>不查额度</b>：额度记在 ai-key */
+    public static final String WX_SEND = "/internal/elec/wx/send";
+
     /** 与 shop-base 的 InternalHttp.TOKEN_HEADER 同值（这里不能引 shop-base，只能写字面量） */
     public static final String TOKEN_HEADER = "X-Internal-Token";
 
@@ -66,6 +81,35 @@ public final class ElecInternal {
         public static Session invalid(boolean expired) {
             return new Session(false, null, null, null, List.of(), expired);
         }
+    }
+
+    public record SmsOtpReq(String phone, String code) {
+    }
+
+    /** @param retryable 通道说「重试可能成功」（限流、网络）；false = 这个号发不了 */
+    public record SmsOtpResult(boolean sent, boolean retryable) {
+    }
+
+    public record WxCodeReq(String code) {
+    }
+
+    /** @param ok false = code 无效、过期或微信不可达（其余字段为空）；unionId 没绑开放平台时为空 */
+    public record WxSession(boolean ok, String appId, String openId, String unionId) {
+    }
+
+    /** @param ok false = 取号失败（小程序没认证、code 过期） */
+    public record WxPhone(boolean ok, String phone) {
+    }
+
+    /**
+     * @param resultText 「已报价 / 有新报价 / 暂无货源 / 有新求购 / 已选中」（≤5 字，微信 phrase 字段）
+     * @param summary    ≤20 字（thing 字段）
+     */
+    public record WxSendReq(String openId, String rfqNo, String summary, String resultText, String page) {
+    }
+
+    /** @param sent 发出去了。没配模板、微信拒了都是 false，不是错误 */
+    public record WxSendResult(boolean sent) {
     }
 
     /** @param phone 验证过的手机号；没绑为 null */

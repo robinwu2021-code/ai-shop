@@ -9,6 +9,10 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.notify.WxSubscribeSender;
+import ai.neargo.shop.spi.notify.SmsPort;
+import ai.neargo.shop.spi.notify.WxSubscribePort;
+import ai.neargo.shop.spi.user.WxAuthPort;
+import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.spi.user.UserIdentityPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +24,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,6 +36,10 @@ import java.util.List;
  *
  * <p>元器件是独立进程、独立库，<b>一行主系统的表都不读</b>，它借的东西全在这里。
  * 路径与 record 来自零依赖的 elec-api，elec-svc 的客户端引同一份 —— 漂了编译不过。
+ *
+ * <p><b>元器件独立账号之后</b>（ai-key TDD-元器件-独立账号），它借的只剩「代办」：发短信、code2Session、取号、
+ * 按 openid 发订阅 —— 都是虹选的资质与凭据，不复制到第二个地方。按 usr_no 做事的三条（取手机号、两条通知）
+ * 留到生产切换完再删：在跑的 elec-svc 还在调，{@code USER} 还要给存量改写用一次。
  *
  * <p>四条硬要求（照 {@link JobHandlerEndpoint}）：
  * <ol>
@@ -42,18 +52,27 @@ import java.util.List;
 @RestController
 public class InternalElecEndpoint {
 
+    private static final Logger log = LoggerFactory.getLogger(InternalElecEndpoint.class);
+
     private final TokenStore tokenStore;
     private final UserIdentityPort identity;
     private final ObjectProvider<LiveIdentityResolver> liveIdentity;
     private final ObjectProvider<LivePermResolver> livePerms;
     private final MessageService messages;
     private final WxSubscribeSender wxSubscribe;
+    private final SmsPort sms;
+    private final WxAuthPort wxAuth;
+    private final WxPhonePort wxPhone;
+    private final WxSubscribePort wxPort;
+    private final String appId;
     private final String token;
 
     public InternalElecEndpoint(TokenStore tokenStore, UserIdentityPort identity,
                                 ObjectProvider<LiveIdentityResolver> liveIdentity,
                                 ObjectProvider<LivePermResolver> livePerms,
                                 MessageService messages, WxSubscribeSender wxSubscribe,
+                                SmsPort sms, WxAuthPort wxAuth, WxPhonePort wxPhone, WxSubscribePort wxPort,
+                                @Value("${shop.wx.appid:}") String appId,
                                 @Value("${shop.services.internal-token:}") String token) {
         this.tokenStore = tokenStore;
         this.identity = identity;
@@ -61,6 +80,11 @@ public class InternalElecEndpoint {
         this.livePerms = livePerms;
         this.messages = messages;
         this.wxSubscribe = wxSubscribe;
+        this.sms = sms;
+        this.wxAuth = wxAuth;
+        this.wxPhone = wxPhone;
+        this.wxPort = wxPort;
+        this.appId = appId;
         this.token = token;
     }
 
@@ -187,6 +211,94 @@ public class InternalElecEndpoint {
                 && wxSubscribe.elecQuoted(n.userNo(), "-", n.title(),
                 ElecInternal.KIND_DISPATCH.equals(n.kind()) ? "有新求购" : "已选中", n.page());
         return ResponseEntity.ok(new ElecInternal.NoticeResult(inApp, wx));
+    }
+
+    /**
+     * 发元器件的登录验证码。码是 ai-key 生成的，这里只投递 —— 所以<b>不走 AuthService.sendOtp</b>
+     * （那条会自己生成码、写 ai-shop 的 OtpStore）；限流在 ai-key 那一侧（同一个 OtpSendGuard）。
+     * 用途记成 ELEC_LOGIN：发送记录里与虹选自己的登录码分得开。
+     */
+    @PostMapping(ElecInternal.SMS_OTP)
+    public ResponseEntity<ElecInternal.SmsOtpResult> smsOtp(
+            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
+            @RequestBody ElecInternal.SmsOtpReq req) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (req == null || req.phone() == null || req.code() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            sms.sendOtp(req.phone(), req.code(), "ELEC_LOGIN", null);
+            return ResponseEntity.ok(new ElecInternal.SmsOtpResult(true, false));
+        } catch (SmsPort.SmsException e) {
+            log.warn("[elec] 验证码短信没发出去 retryable={} {}", e.retryable(), e.getMessage());
+            return ResponseEntity.ok(new ElecInternal.SmsOtpResult(false, e.retryable()));
+        }
+    }
+
+    /** wx.login 的 code → (appid, openid)。code 无效或微信不可达回 ok=false，不抛：那是「这次没认出来」，不是故障 */
+    @PostMapping(ElecInternal.WX_SESSION)
+    public ResponseEntity<ElecInternal.WxSession> wxSession(
+            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
+            @RequestBody ElecInternal.WxCodeReq req) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (req == null || req.code() == null || req.code().isBlank()) {
+            return ResponseEntity.ok(new ElecInternal.WxSession(false, null, null, null));
+        }
+        try {
+            WxAuthPort.WxSession s = wxAuth.codeToSession(req.code());
+            return ResponseEntity.ok(new ElecInternal.WxSession(true, appId, s.openId(), s.unionId()));
+        } catch (WxAuthPort.WxAuthException e) {
+            log.info("[elec] code2Session 没成：{}", e.getMessage());
+            return ResponseEntity.ok(new ElecInternal.WxSession(false, null, null, null));
+        }
+    }
+
+    /** getPhoneNumber 的 code → 手机号。没开通（小程序未认证）或取号失败回 ok=false */
+    @PostMapping(ElecInternal.WX_PHONE)
+    public ResponseEntity<ElecInternal.WxPhone> wxPhone(
+            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
+            @RequestBody ElecInternal.WxCodeReq req) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (req == null || req.code() == null || req.code().isBlank() || !wxPhone.enabled()) {
+            return ResponseEntity.ok(new ElecInternal.WxPhone(false, null));
+        }
+        try {
+            String phone = wxPhone.phoneOf(req.code());
+            return ResponseEntity.ok(new ElecInternal.WxPhone(phone != null && !phone.isBlank(), phone));
+        } catch (RuntimeException e) {
+            log.info("[elec] 一键取号没成：{}", e.getMessage());
+            return ResponseEntity.ok(new ElecInternal.WxPhone(false, null));
+        }
+    }
+
+    /**
+     * 按 openid 发一条元器件订阅消息。<b>不查、不扣额度</b>：元器件账号的授权额度记在 ai-key 自己的库里，
+     * 它扣到了才来调；这里再扣一次就是查 ai-shop 的 msg_subscribe —— 那张表里没有元器件账号。
+     */
+    @PostMapping(ElecInternal.WX_SEND)
+    public ResponseEntity<ElecInternal.WxSendResult> wxSend(
+            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
+            @RequestBody ElecInternal.WxSendReq req) {
+        if (!authorized(given)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String tpl = wxPort.templateId(WxSubscribePort.SCENE_ELEC_QUOTED);
+        if (req == null || req.openId() == null || req.openId().isBlank() || tpl == null || tpl.isBlank()) {
+            return ResponseEntity.ok(new ElecInternal.WxSendResult(false));
+        }
+        try {
+            wxPort.sendElecQuoted(req.openId(), req.rfqNo(), req.summary(), req.resultText(), req.page(), null);
+            return ResponseEntity.ok(new ElecInternal.WxSendResult(true));
+        } catch (RuntimeException e) {
+            log.warn("[elec] 订阅消息没发出去：{}", e.getMessage());
+            return ResponseEntity.ok(new ElecInternal.WxSendResult(false));
+        }
     }
 
     /**

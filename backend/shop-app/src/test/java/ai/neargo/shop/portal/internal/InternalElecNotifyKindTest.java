@@ -26,7 +26,7 @@ class InternalElecNotifyKindTest {
 
     private final MessageService messages = mock(MessageService.class);
     private final WxSubscribeSender wx = mock(WxSubscribeSender.class);
-    private final InternalElecEndpoint ep = new InternalElecEndpoint(null, null, null, null, messages, wx, KEY);
+    private final InternalElecEndpoint ep = new InternalElecEndpoint(null, null, null, null, messages, wx, null, null, null, null, "", KEY);
 
     @Test
     @DisplayName("★★★ 库存快到期只进站内信、不碰订阅消息 —— 供应商的授权额度要留给「有新求购」")
@@ -58,7 +58,7 @@ class InternalElecNotifyKindTest {
 
     private String titleOf(String result) {
         MessageService m = mock(MessageService.class);
-        InternalElecEndpoint e = new InternalElecEndpoint(null, null, null, null, m, wx, KEY);
+        InternalElecEndpoint e = new InternalElecEndpoint(null, null, null, null, m, wx, null, null, null, null, "", KEY);
         e.notifyQuoted(KEY, new ElecInternal.QuotedNotice("U3", "R1", result, "LM358", "pkg-elec/pages/rfq/index?rfqNo=R1"));
         var title = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(m).pushTo(anyString(), eq("U3"), anyString(), title.capture(), anyString(), anyString(), anyString());
