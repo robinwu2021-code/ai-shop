@@ -233,6 +233,9 @@ class BizEndpointPermTest {
         // 能不能看是这个码管的，**买没买是能力位管的**，两道门正交（见控制器注释）
         put("/biz/cross-store/overview", BizPerms.CUSTOMER);
         put("/biz/cross-store/compare", BizPerms.CUSTOMER);
+        // 报表（R1 近几日）：与 /biz/dashboard/stats 同一类经营数据，同一个码。
+        // **不新造码** —— 这里没有新的授权语义：能看经营数据的人就该看得到它的历史。
+        put("/biz/report/daily", BizPerms.CUSTOMER);
 
         // ---- 商品：改库存与改价是两件事 ----
         put("/biz/goods", BizPerms.STOCK);
