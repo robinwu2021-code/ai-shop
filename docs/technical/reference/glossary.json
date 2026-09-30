@@ -26174,6 +26174,13 @@
       },
       {
         "host": "ElcQuote",
+        "name": "STATUS_NOT_CHOSEN",
+        "value": "NOT_CHOSEN",
+        "zh": "这一行成交给了别家。",
+        "module": "elec"
+      },
+      {
+        "host": "ElcQuote",
         "name": "STATUS_EXPIRED",
         "value": "EXPIRED",
         "zh": "目前没有代码把它写进库：有效期过了的 ACTIVE 在读出时显示成它",
@@ -33825,9 +33832,10 @@
         "values": [
           "ACTIVE",
           "WITHDRAWN",
-          "ACCEPTED"
+          "ACCEPTED",
+          "NOT_CHOSEN"
         ],
-        "zh": "供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中"
+        "zh": "供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中 / NOT_CHOSEN 这一行成交给了别家（一行只成交一家。"
       },
       {
         "name": "ElecRfqStatus",
