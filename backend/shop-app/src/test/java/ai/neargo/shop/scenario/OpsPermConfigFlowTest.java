@@ -62,7 +62,7 @@ class OpsPermConfigFlowTest {
     void dbConfigMatchesHardcoded() throws Exception {
         String admin = opsLogin("admin", "admin123");
         for (String role : List.of("MERCHANT_BD", "PRODUCT_OPS", "CS", "CAMPAIGN_OPS",
-                "COMMUNITY_OPS", "AUDITOR", "FINANCE", "RISK", "ANALYST", "TECH_OPS")) {
+                "COMMUNITY_OPS", "AUDITOR", "FINANCE", "RISK", "ANALYST", "TECH_OPS", "ELEC_ADMIN")) {
             Set<String> fromDb = permCodesOf(admin, role);
             Set<String> fromCode = new HashSet<>(Perms.of(List.of(role)));
             assertThat(fromDb)

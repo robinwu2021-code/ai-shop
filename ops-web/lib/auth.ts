@@ -18,7 +18,8 @@ export type Role =
   | "FINANCE" // 财务/结算
   | "RISK" // 风控
   | "ANALYST" // 数据分析
-  | "TECH_OPS"; // 技术运维
+  | "TECH_OPS" // 技术运维
+  | "ELEC_ADMIN"; // 元器件负责人（V371：元器件六个码全给，前期一人掌控元器件后台）
 
 export const AUTH_STORAGE_KEY = "shop-ops-auth";
 

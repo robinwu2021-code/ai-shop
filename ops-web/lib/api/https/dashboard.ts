@@ -48,6 +48,8 @@ const BACKEND_ROLE: Record<string, Role> = {
   RISK: "RISK",
   ANALYST: "ANALYST",
   TECH_OPS: "TECH_OPS",
+  // 元器件负责人（V371，2026-09-30），两边同名
+  ELEC_ADMIN: "ELEC_ADMIN",
 };
 
 /**

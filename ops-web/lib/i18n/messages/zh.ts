@@ -82,6 +82,7 @@ export const zh = {
     RISK: "风控",
     ANALYST: "数据分析",
     TECH_OPS: "技术运维",
+    ELEC_ADMIN: "元器件负责人",
   },
   lang: { label: "语言", zh: "中文" },
   archive: {

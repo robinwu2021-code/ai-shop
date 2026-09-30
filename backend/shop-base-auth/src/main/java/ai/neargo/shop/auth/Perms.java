@@ -631,7 +631,9 @@ public final class Perms {
                     MERCHANT_VERIFY_GRANT, ORDER_READ, STORE_PAGE_AUDIT,
                     // 只读：商家质疑「这单是我带来的」时 BD 要查得到链路，
                     // 但改优先级 = 改一批商家的佣金档，那是增长运营的事
-                    GROWTH_ATTRIBUTION_READ)),
+                    GROWTH_ATTRIBUTION_READ,
+                    // 元器件（V371）：撮合报价、找货源、管理供应商
+                    ELEC_RFQ_READ, ELEC_RFQ_QUOTE, ELEC_SUPPLIER_READ, ELEC_SUPPLIER_MANAGE, ELEC_PART_READ)),
 
             Map.entry("GOODS_OPS", List.of(AFTERSALE_REFUND_READ,
                     MEMBER_MEMBER_READ, MEMBER_PERSON_READ,
@@ -649,14 +651,18 @@ public final class Perms {
                     // 商品运营会在上线那一刻静默失去进销存，而没有任何东西会说
                     INVENTORY_STOCK_READ, INVENTORY_CREDENTIAL_READ,
                     PRODUCT_STD_READ, PRODUCT_STD_UPDATE,
-                    PRODUCT_TOPIC_READ, PRODUCT_TOPIC_UPDATE)),
+                    PRODUCT_TOPIC_READ, PRODUCT_TOPIC_UPDATE,
+                    // 元器件（V371）：厂牌与别名是主数据，本来归商品运营
+                    ELEC_PART_READ, ELEC_BASE_MANAGE)),
 
             Map.entry("SUPPORT", List.of(AFTERSALE_REFUND_APPROVE, AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_HANDLE, AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     DASHBOARD_OVERVIEW_READ, MESSAGE_TEMPLATE_READ, MESSAGE_TEMPLATE_UPDATE,
                     MESSAGE_TICKET_HANDLE, MESSAGE_TICKET_READ, ORDER_MODIFY, ORDER_PROXY,
                     ORDER_READ, REVIEW_AUDIT, REVIEW_READ, REVIEW_SCORE_READ,
-                    REVIEW_SCORE_UPDATE)),
+                    REVIEW_SCORE_UPDATE,
+                    // 元器件（V371）：接买家电话时查询价进度，只看
+                    ELEC_RFQ_READ)),
 
             Map.entry("CAMPAIGN_OPS", List.of(AFTERSALE_REFUND_READ,
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
@@ -731,7 +737,9 @@ public final class Perms {
             Map.entry("RISK", List.of(AFTERSALE_REFUND_READ, AFTERSALE_TICKET_READ,
                     DASHBOARD_OVERVIEW_READ, ORDER_READ,
                     RISK_EVENT_READ, RISK_EVENT_HANDLE, RISK_BLACKLIST_READ,
-                    RISK_BLACKLIST_UPDATE, RISK_RULE_READ, RISK_RULE_UPDATE)),
+                    RISK_BLACKLIST_UPDATE, RISK_RULE_READ, RISK_RULE_UPDATE,
+                    // 元器件（V371）：暂停不守信的供应商是风控动作
+                    ELEC_SUPPLIER_READ, ELEC_SUPPLIER_MANAGE)),
 
             /*
              * 数据分析：矩阵写明**只读脱敏**。故意不给 ORDER_READ ——
@@ -754,7 +762,13 @@ public final class Perms {
                     // 定时任务归技术运维：出事时来看的是它，能停的也该是它。
                     // **只给 TECH_OPS 与超管** —— 停一个任务的后果是业务级的
                     // （关掉关单，库存从那一刻起不再释放），不该顺手落在别的岗位手里
-                    SYSTEM_JOB_READ, SYSTEM_JOB_MANAGE)));
+                    SYSTEM_JOB_READ, SYSTEM_JOB_MANAGE)),
+            // 元器件负责人（V371，2026-09-30）：元器件六个码全给，前期由一个人掌控元器件后台全局。
+            // **不用 elec:* 通配**：授权按功能点逐条登记、PermSeedParity 逐码比 —— 元器件以后加新码时要补在这里。
+            // 另给工作台：人人能看，否则登录后首页是空的（看得见平台 GMV，用户 2026-09-30 定了给）。
+            // 除此之外电商一块不碰（那是超管）
+            Map.entry("ELEC_ADMIN", List.of(DASHBOARD_OVERVIEW_READ, ELEC_RFQ_READ, ELEC_RFQ_QUOTE,
+                    ELEC_SUPPLIER_READ, ELEC_SUPPLIER_MANAGE, ELEC_PART_READ, ELEC_BASE_MANAGE)));
 
     private Perms() {
     }

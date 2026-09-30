@@ -91,6 +91,7 @@ export const en: Messages = {
     RISK: "Risk",
     ANALYST: "Analyst",
     TECH_OPS: "Tech ops",
+    ELEC_ADMIN: "Components lead",
   },
   lang: { label: "Language", zh: "Chinese" },
   archive: {

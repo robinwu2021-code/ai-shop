@@ -21,6 +21,8 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "order:order:read",
     "content:material:read",
     "system:param:read",
+    // 元器件（V371）
+    "elec:part:read", "elec:base:manage",
   ],
 
   // 活动运营：券、满减、限时、拼团、新人礼、皮肤下发
@@ -52,6 +54,8 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "group:demand:read", "group:demand:assign",
     "community:community:read",
     "product:sku:read",
+    // 元器件（V371）
+    "elec:rfq:read", "elec:rfq:quote", "elec:supplier:read", "elec:supplier:manage", "elec:part:read",
   ],
 
   // 审核员：商品、评价、内容、凭证、图片审核（只看待审队列，无封禁权）
@@ -73,6 +77,8 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "review:review:read",
     "merchant:merchant:read",
     "fulfillment:redeem:read",
+    // 元器件（V371）
+    "elec:rfq:read",
   ],
 
   // 财务/结算：分账、结算单、提现、发票、个税代扣（唯一持有打款/分账码的角色）
@@ -93,6 +99,8 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "order:order:read",
     "merchant:merchant:read", "merchant:merchant:ban",
     "community:pickup:read",
+    // 元器件（V371）
+    "elec:supplier:read", "elec:supplier:manage",
   ],
 
   // 数据分析：只读脱敏，无任何写权
@@ -113,6 +121,12 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "message:template:read", "message:template:update",
     "order:pay:read", "order:pay:repair",
     "growth:attribution:read",
+  ],
+
+  // 元器件负责人（V371）：元器件后台全部（询报价、供应商、料号与库存、基础数据）+ 工作台，电商其余不碰
+  ELEC_ADMIN: [
+    "dashboard:overview:read",
+    "elec:*",
   ],
 };
 
@@ -196,20 +210,21 @@ export function canModule(perms: string[] | undefined, module: string): boolean 
  */
 export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   SUPER_ADMIN: ["*"],
-  MERCHANT_BD: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "group:demand:assign", "group:demand:read", "growth:attribution:read", "merchant:apply:audit", "merchant:apply:onbehalf", "merchant:category:grant", "merchant:category:read", "merchant:fulfillment:update", "merchant:merchant:ban", "merchant:merchant:nudge", "merchant:merchant:read", "merchant:mode:read", "merchant:mode:update", "merchant:verify:grant", "order:order:read", "store:page:audit"],
+  MERCHANT_BD: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "elec:part:read", "elec:rfq:quote", "elec:rfq:read", "elec:supplier:manage", "elec:supplier:read", "group:demand:assign", "group:demand:read", "growth:attribution:read", "merchant:apply:audit", "merchant:apply:onbehalf", "merchant:category:grant", "merchant:category:read", "merchant:fulfillment:update", "merchant:merchant:ban", "merchant:merchant:nudge", "merchant:merchant:read", "merchant:mode:read", "merchant:mode:update", "merchant:verify:grant", "order:order:read", "store:page:audit"],
   // member:*（P8）：**看名单与人档，不含看完整号与合并** ——
   // 后四位够他判断「这个人是谁家的会员」；还原成真实号码是申诉处置的事
-  PRODUCT_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "group:campaign:audit", "group:campaign:read", "inventory:credential:read", "inventory:stock:read", "marketing:campaign:read", "marketing:campaign:update", "marketing:coupon:issue", "marketing:coupon:read", "marketing:coupon:update", "marketing:slot:read", "member:member:read", "member:person:read", "order:order:read", "product:category:read", "product:category:update", "product:sku:audit", "product:sku:read", "product:spec:read", "product:spec:update", "product:std:read", "product:std:update", "product:topic:read", "product:topic:update"],
-  CS: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:handle", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "message:template:read", "message:template:update", "message:ticket:handle", "message:ticket:read", "order:order:modify", "order:order:proxy", "order:order:read", "review:review:audit", "review:review:read", "review:score:read", "review:score:update"],
+  PRODUCT_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "elec:base:manage", "elec:part:read", "group:campaign:audit", "group:campaign:read", "inventory:credential:read", "inventory:stock:read", "marketing:campaign:read", "marketing:campaign:update", "marketing:coupon:issue", "marketing:coupon:read", "marketing:coupon:update", "marketing:slot:read", "member:member:read", "member:person:read", "order:order:read", "product:category:read", "product:category:update", "product:sku:audit", "product:sku:read", "product:spec:read", "product:spec:update", "product:std:read", "product:std:update", "product:topic:read", "product:topic:update"],
+  CS: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:handle", "aftersale:ticket:read", "community:community:read", "dashboard:overview:read", "elec:rfq:read", "message:template:read", "message:template:update", "message:ticket:handle", "message:ticket:read", "order:order:modify", "order:order:proxy", "order:order:read", "review:review:audit", "review:review:read", "review:score:read", "review:score:update"],
   CAMPAIGN_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "group:campaign:audit", "group:campaign:read", "growth:attribution:read", "growth:attribution:update", "growth:fission:read", "growth:fission:update", "marketing:campaign:read", "marketing:campaign:update", "marketing:coupon:issue", "marketing:coupon:read", "marketing:coupon:update", "marketing:slot:read", "marketing:slot:update", "order:order:read"],
   COMMUNITY_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "community:community:update", "community:pickup:read", "community:pickup:update", "community:region:read", "community:region:update", "dashboard:overview:read", "fulfillment:batch:read", "fulfillment:logistics:read", "fulfillment:redeem:read", "fulfillment:rule:update", "order:order:read", "system:industry:read", "system:industry:update"],
   AUDITOR: ["community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "inventory:credential:read", "inventory:stock:read", "product:sku:audit", "product:sku:read", "review:review:audit", "review:review:read", "review:score:read", "review:score:update"],
   FINANCE: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "finance:invoice:read", "finance:invoice:verify", "finance:payout:execute", "finance:rate:read", "finance:rate:update", "finance:recon:read", "finance:recon:resolve", "finance:settle:execute", "finance:settle:read", "finance:withdraw:approve", "merchant:admission:read", "merchant:admission:update", "order:order:read"],
-  RISK: ["aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "order:order:read", "risk:blacklist:read", "risk:blacklist:update", "risk:event:handle", "risk:event:read", "risk:rule:read", "risk:rule:update"],
+  RISK: ["aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "elec:supplier:manage", "elec:supplier:read", "order:order:read", "risk:blacklist:read", "risk:blacklist:update", "risk:event:handle", "risk:event:read", "risk:rule:read", "risk:rule:update"],
   ANALYST: ["community:community:read"],
   TECH_OPS: ["iam:audit:read", "system:param:read", "system:param:update", "system:theme:read", "system:theme:update",
     "system:media:read", "system:media:purge",
     "system:job:read", "system:job:manage"],
+  ELEC_ADMIN: ["dashboard:overview:read", "elec:base:manage", "elec:part:read", "elec:rfq:quote", "elec:rfq:read", "elec:supplier:manage", "elec:supplier:read"],
 };
 
 /** 这个角色实际拿到的后端权限码。没有登录态时用它推算 */
@@ -255,6 +270,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   RISK: "风控",
   ANALYST: "数据分析",
   TECH_OPS: "技术运维",
+  ELEC_ADMIN: "元器件负责人",
 };
 
 /** 高危权限码：矩阵 §2.3「高危权限」列。发布前要能一眼数清谁持有它们。 */

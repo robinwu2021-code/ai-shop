@@ -9529,3 +9529,24 @@ VALUES
     ('SUPER_ADMIN', 'OPS_ELEC__TAB_BASE', 'OPS', NOW(), NOW()),
     ('SUPER_ADMIN', 'ACT__ELEC_RFQ_QUOTE', 'OPS', NOW(), NOW()),
     ('SUPER_ADMIN', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW());
+INSERT IGNORE INTO sys_role (role_code, name, end_code, builtin, wildcard, sort, created_at, updated_at)
+VALUES ('ELEC_ADMIN', '元器件负责人', 'OPS', 1, 0, 115, NOW(), NOW());
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+VALUES
+    ('ELEC_ADMIN', 'OPS_ELEC', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'ACT__ELEC_RFQ_QUOTE', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'OPS_ELEC__TAB_PART', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'OPS_ELEC__TAB_BASE', 'OPS', NOW(), NOW()),
+    ('ELEC_ADMIN', 'ACT__DASHBOARD_OVERVIEW_READ', 'OPS', NOW(), NOW()),
+    ('BD', 'OPS_ELEC', 'OPS', NOW(), NOW()),
+    ('BD', 'ACT__ELEC_RFQ_QUOTE', 'OPS', NOW(), NOW()),
+    ('BD', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
+    ('BD', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW()),
+    ('BD', 'OPS_ELEC__TAB_PART', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS', 'OPS_ELEC__TAB_BASE', 'OPS', NOW(), NOW()),
+    ('GOODS_OPS', 'OPS_ELEC__TAB_PART', 'OPS', NOW(), NOW()),
+    ('RISK', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
+    ('RISK', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW()),
+    ('SUPPORT', 'OPS_ELEC', 'OPS', NOW(), NOW());
