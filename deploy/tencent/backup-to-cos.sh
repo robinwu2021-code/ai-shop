@@ -37,7 +37,9 @@ mkdir -p "$LOCAL"
 # 预留、出入库流水）与 ai_shop_job（任务定义与运行历史）**一份备份都没有**。
 # 那是切库之前就存在的洞，不是切库引入的；但切完之后它们是确确实实的生产依赖，
 # 丢了就是丢了，而且 COS 上连个能回滚的文件都找不到。
-DBS="${DBS:-ai_shop ai_shop_inv ai_shop_job}"
+# **hxkey 是第四个**（2026-09-30 补）：电子元器件的库（独立项目 ai-hxkey，同一个 MySQL 9.7 实例）。
+# 它 09-30 上午以 ai_shop_elec 的名字上线，当天下午改名为 hxkey —— 这中间一份每日备份都没有，同一个洞第二次。
+DBS="${DBS:-ai_shop ai_shop_inv ai_shop_job hxkey}"
 
 MYCLI="/opt/mysql/current/bin/mysql --defaults-file=/etc/mysql97/my.cnf -uroot -N -B"
 TOTAL=0
