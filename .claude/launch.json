@@ -31,7 +31,7 @@
       "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
         "-lc",
-        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true --shop.job.enabled=true --shop.job.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_job?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.job.datasource.username=shop --shop.job.datasource.password=shop --shop.job.internal-token=local-dev-only'"
+        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true --shop.job.enabled=true --shop.job.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_job?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.job.datasource.username=shop --shop.job.datasource.password=shop --shop.job.internal-token=local-dev-only --shop.report.enabled=true --shop.report.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_report?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.report.datasource.username=shop --shop.report.datasource.password=shop'"
       ],
       "cwd": "backend",
       "port": 8082,
