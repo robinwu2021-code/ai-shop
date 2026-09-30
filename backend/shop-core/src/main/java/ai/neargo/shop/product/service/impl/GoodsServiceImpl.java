@@ -390,8 +390,27 @@ public class GoodsServiceImpl implements GoodsService {
          * 每行挂上**提供这件货的门店**（AC1/AC2）。按主体号查目录时不挂 ——
          * 那条路没有池、也没有社区上下文，挂不出「哪家店」，端上退回主体名。
          */
-        Map<String, String> storeOfGoods = q.merchantNo() != null && !q.merchantNo().isBlank()
+        Map<String, String> byPool = q.merchantNo() != null && !q.merchantNo().isBlank()
                 ? Map.of() : poolStoreOfGoods(q.communityNo(), q.regionCode());
+        /*
+         * ★ **没有位置时的兜底：按「在架卖它的门店」反查，唯一才填**（2026-09-30）。
+         *
+         * 上面那条走社区池，而池行的键是社区 —— 不给 communityNo 也不给 regionCode 时
+         * 它必然返回空，端上只能回落主体名。线上实测：首页（传了社区）显示
+         * 「虹选粮油·深圳测试店」，而搜索页显示「虹选科技有限公司」，同一件货两个说法。
+         *
+         * **搜索页不传社区是有意的**（那是「主动找特定商家」，不该被送达范围筛掉），
+         * 所以不能靠端上补参数解决：要分开的是两件被绑在一起的事 ——
+         * 「按哪个社区筛」与「这一行来自哪家店」。
+         *
+         * **唯一才填**：两家店都在架卖它时，没有社区就说不清买家会落到哪家，
+         * 硬挑一家会让落款与真正履约的店对不上（下单落店另有自己的判据）。
+         * 说不清就不说，端上回落主体名 —— 那是诚实的默认值。
+         */
+        final Map<String, String> storeOfGoods =
+                byPool.isEmpty() && (q.merchantNo() == null || q.merchantNo().isBlank())
+                        ? soleSellingStoreOf(nos)
+                        : byPool;
         Map<String, String> storeNames = storeNamesOf(storeOfGoods.values());
         List<GoodsVO> records = page.getRecords().stream()
                 .map(g -> withStoreScope(
@@ -415,6 +434,36 @@ public class GoodsServiceImpl implements GoodsService {
      *
      * <p>没有门店时原样返回 —— 单店商家与按主体查目录都走这一支，行为逐字不变（AC8）。
      */
+    /**
+     * 每件货**唯一**在架卖它的那家门店；不唯一或一条店级行都没有的不进结果。
+     *
+     * <p>三态语义（与 {@code MerchantGoodsServiceImpl.storeOnSale} 同一套）：
+     * 一条店级行都没有 = 还没按店管理，主体下每家店都算在卖 —— 那也是「说不清哪家」，
+     * 所以同样不填。只认「有行、且恰好一家在架」这一种。
+     */
+    private Map<String, String> soleSellingStoreOf(List<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return Map.of();
+        }
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNos)));
+        Map<String, java.util.Set<String>> selling = new HashMap<>();
+        for (var r : rows) {
+            if (Boolean.TRUE.equals(r.getOnSale()) && r.getStoreNo() != null && !r.getStoreNo().isBlank()) {
+                selling.computeIfAbsent(r.getGoodsNo(), k -> new java.util.LinkedHashSet<>()).add(r.getStoreNo());
+            }
+        }
+        Map<String, String> out = new HashMap<>();
+        for (var e : selling.entrySet()) {
+            if (e.getValue().size() == 1) {
+                out.put(e.getKey(), e.getValue().iterator().next());
+            }
+        }
+        return out;
+    }
+
     private GoodsVO withStoreScope(GoodsVO v, String storeNo, Map<String, String> storeNames) {
         if (storeNo == null || storeNo.isBlank()) {
             return v;

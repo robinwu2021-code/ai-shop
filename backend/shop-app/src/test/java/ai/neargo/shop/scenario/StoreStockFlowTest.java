@@ -292,6 +292,60 @@ class StoreStockFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 没有社区上下文时也要带门店 —— 搜索页此前显示的是主体名")
+    void catalogRowCarriesStoreEvenWithoutCommunity() throws Exception {
+        String biz = merchant("12600190091", "目录·无社区也带门店");
+        String goodsNo = listedGoods(biz, 100);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "无社区·只有分店在卖");
+
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        /*
+         * ★ 不传 communityNo、也不传 regionCode —— **搜索页就是这么调的**，
+         * 而且那是有意的：搜索是「主动找特定商家」，不该被送达范围筛掉
+         * （见 c-app 分类页里的那句注释）。
+         *
+         * 修之前这一行的 store 是 null：门店从社区池反查，而池行的键是社区，
+         * 两个参数都不给就查不到任何池行。线上实测同一件货两个说法 ——
+         * 首页「虹选粮油·深圳测试店」，搜索页「虹选科技有限公司」。
+         *
+         * 消融：去掉 soleSellingStoreOf 那一支，这条必红。
+         */
+        var row = rowOfNoScope(goodsNo);
+        assertThat(row).as("这件货没出现在不带位置的目录里 —— 这条用例没测到该测的东西").isNotNull();
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("不带位置时列表行没带门店 —— 买家看到的是主体名").isTrue();
+        assertThat(row.get("store").get("storeName").asString()).isEqualTo("无社区·只有分店在卖");
+    }
+
+    @Test
+    @DisplayName("★★ 两家店都在卖、又没有社区时**不猜** —— 落款回落主体名比指错店好")
+    void catalogRowLeavesStoreBlankWhenTwoStoresSellIt() throws Exception {
+        String biz = merchant("12600190092", "目录·两家都在卖");
+        String goodsNo = listedGoods(biz, 100);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "两家都在卖·分店");
+
+        // 两家都在架 —— 没有社区就说不清买家会落到哪家
+        storeToggle(biz, storeA, goodsNo, true);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        var row = rowOfNoScope(goodsNo);
+        assertThat(row).as("这件货没出现在不带位置的目录里").isNotNull();
+        /*
+         * 硬挑一家会让落款与真正履约的那家对不上（下单落店另有自己的判据）。
+         * 说不清就不说，端上回落主体名 —— 那是诚实的默认值。
+         */
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("两家都在卖却挑了一家：落款会与真正发货的店对不上")
+                .isFalse();
+    }
+
+    @Test
     @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
     void mainStockWriteLandsWhereTheReadLooks() throws Exception {
         String biz = merchant("12600190040", "写读要同一个数");
@@ -509,6 +563,18 @@ class StoreStockFlowTest {
     /** 社区目录里这件货那一行；没出现时返回 null */
     private tools.jackson.databind.JsonNode catalogRow(String goodsNo) throws Exception {
         String body = mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
+                .andReturn().getResponse().getContentAsString();
+        for (var r : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(r.get("goodsNo").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /** 商品流里这一行，**不带任何位置参数** —— 搜索页就是这么调的 */
+    private tools.jackson.databind.JsonNode rowOfNoScope(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods").param("size", "50"))
                 .andReturn().getResponse().getContentAsString();
         for (var r : json.readTree(body).get("data").get("records")) {
             if (goodsNo.equals(r.get("goodsNo").asString())) {
