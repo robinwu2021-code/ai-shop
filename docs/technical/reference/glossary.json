@@ -26433,6 +26433,13 @@
         "module": "elec"
       },
       {
+        "host": "ColumnResolver",
+        "name": "SRC_CONTENT",
+        "value": "CONTENT",
+        "zh": "",
+        "module": "elec"
+      },
+      {
         "host": "ElecRfqServiceImpl",
         "name": "DC_ANY",
         "value": "ANY",
@@ -36019,6 +36026,14 @@
       "type": "String",
       "value": "\"\"",
       "zh": "全局别名的 supplier_no。",
+      "module": "elec"
+    },
+    {
+      "host": "ColumnResolver",
+      "name": "NO_HEADER",
+      "type": "int",
+      "value": "-1",
+      "zh": "表里没有标题行：从第一行起全是数据",
       "module": "elec"
     },
     {
