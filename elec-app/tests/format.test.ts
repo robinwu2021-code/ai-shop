@@ -1,7 +1,7 @@
 // 金额是**百万分之一元**（0402 电阻 ¥0.0015，按分存做不出来）。
 // 输入框里的元 → E6、E6 → 显示，任何一边错一位，报出去的就是十倍的价。
 import { describe, expect, it } from "vitest";
-import { colLetter, e6Of, priceOf, subtotalOf, yuanOf } from "../src/shared/format";
+import { ISSUE, colLetter, e6Of, issueText, priceOf, subtotalOf, yuanOf } from "../src/shared/format";
 
 describe("e6Of：输入框里的元 → 百万分之一元", () => {
   it("整数、两位、六位小数都按位换算，不走浮点", () => {
@@ -63,5 +63,24 @@ describe("colLetter：列序号 → Excel 列字母", () => {
     expect(colLetter(25)).toBe("Z");
     expect(colLetter(26)).toBe("AA");
     expect(colLetter(27)).toBe("AB");
+  });
+});
+
+describe("issueText：问题定位到格", () => {
+  it("有列：列字母 + 行号 + 表头 + 原值", () => {
+    expect(issueText({ row: 12, col: 3, header: "数量", value: "约2千", code: "QTY_INVALID", level: "ERROR" }))
+      .toBe("D12（数量）数量读不出：约2千");
+  });
+  it("没有原值就不带冒号；没有表头就不带括号", () => {
+    expect(issueText({ row: 3, col: 0, header: null, value: "", code: "MPN_MISSING", level: "ERROR" }))
+      .toBe("A3没有料号");
+  });
+  it("重复行：整行，指向先出现的那一行", () => {
+    expect(issueText({ row: 7, col: -1, header: null, value: "3", code: "DUPLICATE", level: "ERROR" }))
+      .toBe("第 7 行与第 3 行重复");
+  });
+  it("与后端导出表的「问题」列同一套码（IssueText.java）", () => {
+    expect(Object.keys(ISSUE).sort()).toEqual(["DC_UNPARSED", "DUPLICATE", "MFR_MISSING", "MFR_UNKNOWN",
+      "MPN_INVALID", "MPN_MISSING", "QTY_INVALID", "QTY_ZERO"]);
   });
 });

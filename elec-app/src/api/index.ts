@@ -6,7 +6,7 @@
 // 类型逐字对着后端 record（packages/shared/src/types/elec.ts 的抬头写了对照位置）。
 import { http } from "@shared/net/http-client";
 import type {
-  ElecBatchPreview, ElecDeclineReq, ElecDispatch, ElecDispatchStatus, ElecImportMode, ElecLookupLine,
+  ElecApplyReq, ElecBatchPreview, ElecBatchSummary, ElecDeclineReq, ElecPreviewKind, ElecPreviewRow, ElecDispatch, ElecDispatchStatus, ElecImportMode, ElecLookupLine,
   ElecPartHit, ElecRemapReq, ElecRenewResult, ElecRfq, ElecRfqReq, ElecSearchResult, ElecStock,
   ElecStockFilter, ElecSupplier, ElecMe, ElecSupplierQuoteReq, ElecSupplierReq, LoginReq, LoginResp, PhoneCapable, User,
 } from "@shared/types";
@@ -51,15 +51,29 @@ export const api = {
   myStocks: (q: { keyword?: string; filter?: ElecStockFilter; page?: number; size?: number }) =>
     http.get<ElecStock[]>("/elec/b/stock", q),
   renewStocks: () => http.post<ElecRenewResult>("/elec/b/stock/renew"),
-  /** 表单字段是字符串（multipart）；后端按 @RequestParam 读 mode 与 taxIncluded */
-  uploadStock: (filePath: string, mode: ElecImportMode, taxIncluded?: boolean) =>
+  /**
+   * 表单字段是字符串（multipart）；后端按 @RequestParam 读 mode、taxIncluded、name。
+   * name 是他选的原文件名 —— uploadFile 传上去的是临时路径名，不带的话上传记录里全是 tmp_xxx
+   */
+  uploadStock: (filePath: string, mode: ElecImportMode, taxIncluded?: boolean, name?: string) =>
     http.uploadFile<ElecBatchPreview>("/elec/b/stock/upload", filePath, {
       mode,
       ...(taxIncluded === undefined ? {} : { taxIncluded: String(taxIncluded) }),
+      ...(name ? { name } : {}),
     }),
   remapBatch: (batchNo: string, req: ElecRemapReq) =>
     http.post<ElecBatchPreview>(`/elec/b/stock/batch/${enc(batchNo)}/remap`, req),
-  applyBatch: (batchNo: string) => http.post<ElecBatchPreview>(`/elec/b/stock/batch/${enc(batchNo)}/apply`),
+  /** 过了下架护栏的线（预览里 delistConfirm）时要带上此刻的下架数 */
+  applyBatch: (batchNo: string, req?: ElecApplyReq) =>
+    http.post<ElecBatchPreview>(`/elec/b/stock/batch/${enc(batchNo)}/apply`, req ?? {}),
+  batchRows: (batchNo: string, view: ElecPreviewKind, page = 1, size = 50) =>
+    http.get<ElecPreviewRow[]>(`/elec/b/stock/batch/${enc(batchNo)}/rows`, { view, page, size }),
+  /** 放弃这次上传（内存里的数据清掉） */
+  cancelBatch: (batchNo: string) => http.del<ElecBatchPreview>(`/elec/b/stock/batch/${enc(batchNo)}`),
+  myBatches: (page = 1, size = 20) => http.get<ElecBatchSummary[]>("/elec/b/stock/batch", { page, size }),
+  batchDetail: (batchNo: string) => http.get<ElecBatchPreview>(`/elec/b/stock/batch/${enc(batchNo)}`),
+  /** 问题行 xlsx 的字节；打开交给 shared/file#openSheet */
+  batchProblems: (batchNo: string) => http.downloadBinary(`/elec/b/stock/batch/${enc(batchNo)}/problems`),
 
   // ── 供应商：求购与报价 ──
   myDispatches: (status?: ElecDispatchStatus, page = 1, size = 20) =>

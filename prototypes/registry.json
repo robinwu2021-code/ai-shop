@@ -1843,6 +1843,10 @@
     {
      "label": "数据库 · 元器件",
      "path": "docs/technical/reference/数据库-元器件.md"
+    },
+    {
+     "label": "TDD-元器件-库存上传二期",
+     "path": "docs/technical/TDD-元器件-库存上传二期.md"
     }
    ],
    "screens": [
@@ -1943,6 +1947,12 @@
      "title": "供应商资料",
      "client": "elec-app",
      "route": "pages/supplier-profile/index"
+    },
+    {
+     "id": "e20",
+     "title": "上传记录",
+     "client": "elec-app",
+     "route": "pages/stock-batches/index"
     },
     {
      "id": "e19",

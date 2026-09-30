@@ -1,5 +1,5 @@
-// 上传预览在「上传 · 列映射」与「上架前确认」两页之间交接。后端没有「按批次号取预览」的读接口，
-// 所以放内存：丢了（冷启动）就回上传页重传一次 —— 预览时一行库存都没动，重传没有代价。
+// 上传预览在「上传 · 列映射」与「上架前确认」两页之间交接：放内存省一次请求。
+// 丢了（冷启动、从上传记录进来）确认页就按批次号去后端取（/elec/b/stock/batch/{no}）。
 import type { ElecBatchPreview } from "@shared/types";
 
 let current: ElecBatchPreview | null = null;

@@ -141,6 +141,18 @@
       }
     },
     {
+      "path": "pages/stock-batches/index",
+      "style": {
+        "navigationBarTitleText": "上传记录",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/stocks/index",
       "style": {
         "navigationBarTitleText": "我的库存",

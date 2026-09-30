@@ -416,7 +416,7 @@
           <div class="gt"><span>这几列分别是什么</span><span>已按上次记住</span></div>
           <div class="group">
             <div class="frow"><span class="k">A 型号</span><span class="v go">料号</span></div>
-            <div class="frow"><span class="k">B 品牌</span><span class="v go">厂牌</span></div>
+            <div class="frow"><span class="k">B Maker<br><span class="chip warn">AI 识别，请核对</span></span><span class="v go">厂牌</span></div>
             <div class="frow"><span class="k">C 数量</span><span class="v go">数量</span></div>
             <div class="frow"><span class="k">D 批号</span><span class="v go">批次</span></div>
             <div class="frow"><span class="k">E 单价</span><span class="v go">单价</span></div>
@@ -430,7 +430,7 @@
         </div>
         <div class="foot"><div class="btn">下一步：预览</div></div>
       </div>
-      <figcaption class="cap"><b>e15 上传 · 列映射</b>从微信聊天里选 Excel / CSV；每列猜一个含义，按供应商记住上次的映射。含税一个开关，导入方式二选一。</figcaption>
+      <figcaption class="cap"><b>e15 上传 · 列映射</b>从微信聊天里选 Excel / CSV；每列猜一个含义，按供应商记住上次的映射。含税一个开关，导入方式二选一。表头写法别名表里没有时问大模型，它认的列打「AI 识别，请核对」；都认不出时标题换成「选一下料号和数量是哪一列」。</figcaption>
       <p class="why">各家 ERP 的表头五花八门（型号 / P/N / 料号 / Part No.），猜不准就让他点一下改，<b>改过一次记住</b> —— 第二次上传这一屏基本是直接点下一步。表头不在第一行也认（很多表第一行是公司抬头）。「备注」默认不导入：供应商常在备注里写公司名和微信，那是会泄露身份的一列。选了全量替换就在这里先说一句后果，而不是等他点到下一屏才发现。</p>
     </figure>
 
@@ -438,7 +438,7 @@
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">e16 — e18</span><h2>供应商：上架、保鲜、补资料</h2></div>
+  <div class="sec-head"><span class="sec-num">e16 — e18 · e20</span><h2>供应商：上架、保鲜、补资料、上传记录</h2></div>
   <div class="grid">
 
     <figure id="e16">
@@ -451,7 +451,7 @@
             <div><div class="n hot">73</div><div class="l">下架</div></div>
             <div><div class="n">0</div><div class="l">未变</div></div>
           </div>
-          <div class="tabs"><span class="on">下架 73</span><span>认不了 6</span></div>
+          <div class="tabs"><span>新增 214</span><span>更新 1,618</span><span class="on">下架 73</span><span>未变 0</span><span>有问题 9</span></div>
           <div class="card">
             <div class="hd"><span class="nm">TPS54331DR</span><span class="chip bad">将下架</span></div>
             <div class="meta">TI · 在售 5,000 · 这次的表里没有这一行</div>
@@ -461,13 +461,18 @@
             <div class="meta">安森美 · 在售 12,000 · 这次的表里没有这一行</div>
           </div>
           <div class="card">
-            <div class="hd"><span class="nm">0805 贴片电阻</span><span class="chip warn">认不了</span></div>
-            <div class="meta">第 88 行 · 不像料号，这一行跳过</div>
+            <div class="hd"><span class="nm">0805 贴片电阻</span><span class="chip bad">不上架</span></div>
+            <div class="meta">A88（型号）不像料号：0805 贴片电阻</div>
           </div>
+          <div class="card">
+            <div class="hd"><span class="nm">STM32F103C8T6</span><span class="chip warn">提醒</span></div>
+            <div class="meta">B91（品牌）厂牌认不出：STMICR · 照常上架</div>
+          </div>
+          <div class="note">导出有问题的行（Excel）· 58 分钟内有效</div>
         </div>
         <div class="foot"><div class="btn sec">放弃</div><div class="btn main">确认上架</div></div>
       </div>
-      <figcaption class="cap"><b>e16 上架前确认</b>四个数：新增、更新、下架、未变。有要下架的就默认停在那一页，逐行列出。<b>确认之前一行库存都没动。</b></figcaption>
+      <figcaption class="cap"><b>e16 上架前确认</b>四个数与五个页签：新增、更新（带旧值）、下架、未变、有问题。列的是<b>解析之后</b>的值；问题定位到格（A88），错误不上架、提醒照常上架。有要下架的就默认停在那一页。<b>确认之前一行库存都没动</b>，数据只在服务器内存里，上传起一小时内有效。</figcaption>
       <p class="why">全量替换最危险的情况是他传了一张<b>只有半截的表</b>（导出时筛过、或者少了一个 sheet）—— 73 行下架标红、默认展开，他一眼就能发现「这不对」。一行有效的都没有时直接拒绝确认，否则一次误操作会把他全部库存下架。空格子表示「不改」不是「清空」：价格那一列空着，保留原价与原来的含税口径。</p>
     </figure>
 
@@ -523,6 +528,33 @@
       </div>
       <figcaption class="cap"><b>e18 补资料</b>公司名、类型、城市、联系人、联系电话。空着的字段不改，随时可以来补。</figcaption>
       <p class="why">顶上那句先回答他心里的问题：填了这些谁看得到。联系手机可以与登录号不同 —— 老板用自己的号登录，真正接电话的是业务员。这一屏<b>没有执照上传</b>：第一步不做认证，真要核验是在第一次成交前由平台人工做，那时他有动力配合。底下那句是给以后留的门：开放身份不会悄悄发生。</p>
+    </figure>
+
+    <figure id="e20">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">上传记录</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">库存1008.xlsx</span><span class="chip warn">待确认</span></div>
+            <div class="meta">10-08 09:12 · 全量替换 · 1,905 行</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">库存0929.xlsx</span><span class="chip">已上架</span></div>
+            <div class="meta">09-29 17:40 · 增量 · 新增 214 · 更新 1,618 · 下架 0</div>
+            <div class="meta">6 行没上架 · 3 行有提醒　<b>导出</b>　<b>补传</b></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">老库存.xls</span><span class="chip bad">解析失败</span></div>
+            <div class="meta">09-28 11:03 · 文件格式不支持，另存为 .xlsx 再传</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">库存0925.csv</span><span class="chip">已放弃</span></div>
+            <div class="meta">09-25 15:20 · 增量 · 320 行</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>e20 上传记录</b>每一次上传都在：已上架、待确认、已放弃、已作废、已过期、解析失败。显示他选的原文件名。点一条进上架前确认（待确认的可以接着确认，其余只读）。</figcaption>
+      <p class="why">以前传完就没了，他问「我上周传的是哪张表」平台答不上来。有问题行的记录<b>当场能导出、改完按增量补传</b> —— 已上架的不动，只补修好的那几行。解析失败也留一条：他知道那次没成、为什么没成。</p>
     </figure>
 
   </div>

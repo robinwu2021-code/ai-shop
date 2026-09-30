@@ -1463,7 +1463,7 @@
     {
       "key": "elec-app",
       "label": "元器件小程序",
-      "count": 16,
+      "count": 17,
       "domains": [
         {
           "name": "元器件",
@@ -1588,6 +1588,17 @@
               "proto": "e16",
               "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
               "preview": "http://localhost:5177/#/pages/stock-preview/index"
+            },
+            {
+              "app": "elec-app",
+              "route": "/pages/stock-batches/index",
+              "title": "上传记录",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": "e20",
+              "protoUrl": "https://claude.ai/artifact/CRXD4btowJTHVCkyi3WykG",
+              "preview": "http://localhost:5177/#/pages/stock-batches/index"
             },
             {
               "app": "elec-app",
@@ -3650,5 +3661,5 @@
       ]
     }
   ],
-  "total": 288
+  "total": 289
 }

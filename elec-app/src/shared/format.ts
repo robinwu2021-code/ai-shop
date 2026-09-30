@@ -3,7 +3,8 @@
 import type {
   ElecCond, ElecCondReq, ElecDcReq, ElecInvoice, ElecPacking, ElecPackingReq, ElecQtyBand,
   ElecSourceBand, ElecMatch, ElecRfqStatus, ElecCloseReason, ElecDispatchStatus, ElecSupplierKind,
-  ElecCurrency, ElecRowProblemReason, ElecDeclineReason,
+  ElecCurrency, ElecRowProblemReason, ElecDeclineReason, ElecIssue, ElecIssueCode, ElecBatchStatus,
+  ElecColumnSource,
 } from "@shared/types";
 
 const E6 = 1_000_000;
@@ -145,6 +146,30 @@ export const SUPPLIER_KIND: Record<ElecSupplierKind, string> = {
 
 export const ROW_PROBLEM: Record<ElecRowProblemReason, string> = {
   MPN_MISSING: "没有料号", MPN_INVALID: "不像料号", QTY_INVALID: "数量读不出", DUPLICATE: "与前面的行重复",
+};
+
+/** 问题码 → 人话。与后端导出表里的「问题」列同一套（IssueText.java） */
+export const ISSUE: Record<ElecIssueCode, string> = {
+  MPN_MISSING: "没有料号", MPN_INVALID: "不像料号", QTY_INVALID: "数量读不出", QTY_ZERO: "数量为 0",
+  DUPLICATE: "与第 {0} 行重复", MFR_MISSING: "没写厂牌", MFR_UNKNOWN: "厂牌认不出", DC_UNPARSED: "批号读不出年份",
+};
+
+/** 一处问题的人话，定位到格：「D12（数量）读不出：约2千」「第 7 行与第 3 行重复」 */
+export function issueText(x: ElecIssue): string {
+  const what = ISSUE[x.code] ?? x.code;
+  if (x.code === "DUPLICATE") return `第 ${x.row} 行${what.replace("{0}", String(x.value ?? ""))}`;
+  const where = x.col < 0 ? `第 ${x.row} 行` : `${colLetter(x.col)}${x.row}${x.header ? `（${x.header}）` : ""}`;
+  return x.value ? `${where}${what}：${x.value}` : `${where}${what}`;
+}
+
+export const BATCH_STATUS: Record<ElecBatchStatus, string> = {
+  NEED_MAPPING: "待选列", PARSED: "待确认", APPLIED: "已上架", CANCELLED: "已放弃",
+  SUPERSEDED: "已作废", FAILED: "解析失败", EXPIRED: "已过期",
+};
+
+/** 字段来源的角标。只有 AI 认的需要他核对，别的不打扰 */
+export const COLUMN_SOURCE: Record<ElecColumnSource, string> = {
+  REMEMBERED: "上次", ALIAS: "", AI: "AI 识别，请核对", MANUAL: "",
 };
 
 /** 上传表的列含义（字段码 → 人话）。顺序就是列映射里的展示顺序 */

@@ -11,7 +11,7 @@ import { ensureLogin } from "@/shared/auth";
 import { setBatch } from "@/shared/batch";
 import { pickSheet, type PickedFile } from "@/shared/file";
 import { ROUTES, go } from "@/shared/routes";
-import { COLUMN_FIELDS, colLetter, qtyOf } from "@/shared/format";
+import { COLUMN_FIELDS, COLUMN_SOURCE, colLetter, qtyOf } from "@/shared/format";
 import type { ElecBatchPreview, ElecImportMode } from "@shared/types";
 
 /** 后端 multipart 上限 5MB（elec-svc application.yml） */
@@ -48,7 +48,7 @@ async function upload() {
   if (!file.value) return;
   busy.value = true;
   try {
-    preview.value = await api.uploadStock(file.value.path, mode.value, taxIncluded.value);
+    preview.value = await api.uploadStock(file.value.path, mode.value, taxIncluded.value, file.value.name);
     columns.value = { ...preview.value.columns };
   } catch (e) {
     preview.value = null;
@@ -82,6 +82,14 @@ function onPick(key: string, e: { detail: { value: number | string } }) {
   columns.value = next;
 }
 
+/** 这一列是大模型认的、且他还没动过：提示核对 */
+function aiTag(key: string): string {
+  const p = preview.value;
+  if (!p || p.columnSource?.[key] !== "AI" || columns.value[key] !== p.columns[key]) return "";
+  return COLUMN_SOURCE.AI;
+}
+const needMapping = computed(() => preview.value?.status === "NEED_MAPPING");
+
 const changed = computed(() => JSON.stringify(columns.value) !== JSON.stringify(preview.value?.columns ?? {}));
 const missing = computed(() => COLUMN_FIELDS.filter((f) => f.required && columns.value[f.key] === undefined).map((f) => f.label));
 
@@ -94,7 +102,9 @@ async function next() {
   }
   busy.value = true;
   try {
-    const out = changed.value ? await api.remapBatch(p.batchNo, { columns: columns.value }) : p;
+    // 待选列的批次必须提交一次映射才会解析；其余没改就不必再算一遍
+    const out = changed.value || p.status === "NEED_MAPPING"
+      ? await api.remapBatch(p.batchNo, { columns: columns.value }) : p;
     preview.value = out;
     columns.value = { ...out.columns };
     setBatch(out, file.value?.name ?? "");
@@ -140,13 +150,16 @@ async function next() {
 
     <view v-if="preview" class="sh-card block">
       <view class="sh-row sh-row--between">
-        <text class="txt-strong">这几列分别是什么</text>
-        <text class="txt-caption sh-muted">猜错了点一下改</text>
+        <text class="txt-strong">{{ needMapping ? "选一下料号和数量是哪一列" : "这几列分别是什么" }}</text>
+        <text v-if="!needMapping" class="txt-caption sh-muted">猜错了点一下改</text>
       </view>
       <picker v-for="f in COLUMN_FIELDS" :key="f.key" mode="selector" :range="options" :value="indexOf(f.key)"
         @change="onPick(f.key, $event)">
         <view class="sh-row sh-row--between map">
-          <text class="txt-sub">{{ f.label }}<text v-if="f.required" class="warn"> *</text></text>
+          <view class="grow">
+            <text class="txt-sub">{{ f.label }}<text v-if="f.required" class="warn"> *</text></text>
+            <text v-if="aiTag(f.key)" class="txt-caption ai">{{ aiTag(f.key) }}</text>
+          </view>
           <text class="txt-sub" :class="columns[f.key] === undefined ? 'sh-muted' : 'txt-ink'">
             {{ options[indexOf(f.key)] }} ▾
           </text>
@@ -188,6 +201,10 @@ async function next() {
   margin-top: 28rpx;
 }
 .warn {
+  color: var(--sh-warning);
+}
+.ai {
+  display: block;
   color: var(--sh-warning);
 }
 .map {

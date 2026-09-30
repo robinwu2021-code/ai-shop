@@ -35,6 +35,7 @@ export default {
     stockUpload: "上传库存",
     stockPreview: "上架前确认",
     stocks: "我的库存",
+    stockBatches: "上传记录",
     supplierProfile: "供应商资料",
     dispatches: "求购",
     dispatch: "求购详情",

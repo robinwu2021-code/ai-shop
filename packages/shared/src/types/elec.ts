@@ -412,15 +412,49 @@ export interface ElecRowProblem {
 }
 
 /**
- * 上传预览。**预览时一行库存都没动**，确认之后才上架。
+ * 一处问题的码。前四种是错误（这一行不上架），后三种是警告（照常上架，但列给他看）。
+ * QTY_ZERO 数量为 0：也不上架（0 不是有货），单列一码是为了说清「是 0」而不是「读不出」
  */
-/** 一次上传的状态：PARSED 预演完待确认 / APPLIED 已上架 */
-export type ElecBatchStatus = "PARSED" | "APPLIED";
+export type ElecIssueCode =
+  | "MPN_MISSING" | "MPN_INVALID" | "QTY_INVALID" | "QTY_ZERO" | "DUPLICATE"
+  | "MFR_MISSING" | "MFR_UNKNOWN" | "DC_UNPARSED";
 
+/** 问题的级别：ERROR 这一行不上架 / WARN 照常上架 */
+export type ElecIssueLevel = "ERROR" | "WARN";
+
+/** 一处问题，定位到格 */
+export interface ElecIssue {
+  /** 表里的行号，与 Excel 左边的行号一致 */
+  row: number;
+  /** 列序号（从 0 起，端上显示成字母）；-1 = 整行的问题（与前面的行重复） */
+  col: number;
+  /** 那一列的表头原文 */
+  header?: string | null;
+  /** 那一格的原值；DUPLICATE 时是先出现的那一行的行号 */
+  value?: string | null;
+  /** 问题码 */
+  code: ElecIssueCode;
+  /** 错误不上架 / 警告照常上架 */
+  level: ElecIssueLevel;
+}
+
+/**
+ * 一次上传的状态：NEED_MAPPING 待指定列 / PARSED 待确认 / APPLIED 已上架 / CANCELLED 已放弃 /
+ * SUPERSEDED 已作废（又传了一张）/ FAILED 解析失败 / EXPIRED 已过期（上传满 1 小时没确认）
+ */
+export type ElecBatchStatus =
+  | "NEED_MAPPING" | "PARSED" | "APPLIED" | "CANCELLED" | "SUPERSEDED" | "FAILED" | "EXPIRED";
+
+/** 某个字段是怎么认出来的：REMEMBERED 上次确认过的 / ALIAS 表头写法 / AI 大模型（要他核对）/ MANUAL 他自己选的 */
+export type ElecColumnSource = "REMEMBERED" | "ALIAS" | "AI" | "MANUAL";
+
+/**
+ * 上传预览。**预览时一行库存都没动**，确认之后才上架；待确认的数据只在服务器内存里，到 deadline 为止。
+ */
 export interface ElecBatchPreview {
-  /** 这次上传的批次号。确认上架、换列映射都带它 */
+  /** 这次上传的批次号。确认上架、换列映射、翻看行、放弃都带它 */
   batchNo: string;
-  /** 上传的文件名 */
+  /** 上传时选的文件名（原名） */
   fileName?: string | null;
   /** 导入方式：只改表里有的 / 表里没有的下架 */
   mode: ElecImportMode;
@@ -428,14 +462,20 @@ export interface ElecBatchPreview {
   taxIncluded: boolean;
   /** 表头那一行（原样），端上用它画「这几列分别是什么」 */
   headers: string[];
-  /** 字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ */
+  /** 表头在第几行（从 0 起）；-1 = 一列都没认出 */
+  headerRow: number;
+  /** 字段 → 列序号（从 0 起）：MPN / MFR / QTY / DC / PACKAGE / PRICE / MOQ … */
   columns: Record<string, number>;
+  /** 字段 → 怎么认出来的。AI 认的要提示他核对 */
+  columnSource: Record<string, ElecColumnSource>;
   /** 表里一共几行（不含表头） */
   rowTotal: number;
-  /** 其中能上架的几行 */
+  /** 其中能上架的几行（含有警告的） */
   rowValid: number;
-  /** 认不了的几行（不是料号、数量读不出、与前面重复） */
+  /** 有错误、不上架的几行 */
   rowInvalid: number;
+  /** 有警告、照常上架的几行 */
+  rowWarn: number;
   /** 确认后会新增几行 */
   toInsert: number;
   /** 确认后会更新几行 */
@@ -444,12 +484,109 @@ export interface ElecBatchPreview {
   toDelist: number;
   /** 与库里完全一样、不会变的几行 */
   unchanged: number;
-  /** 认不了的行（最多 50 条） */
+  /** 问题码 → 几处 */
+  issueCounts: Record<string, number>;
+  /** 前 100 处问题（定位到格）；全部要翻「有问题」那一类 */
+  issues: ElecIssue[];
+  /** **过渡字段**：老版本读它（只有错误，一行一条）。新页面读 issues */
   problems: ElecRowProblem[];
   /** 将下架的料号，最多 20 个 —— 让他一眼看出「这不对，表只传了半截」 */
   delistSample: string[];
-  /** PARSED 待确认 / APPLIED 已上架 */
+  /** true = 下架的行数过了线，确认时要带上此刻的下架数 */
+  delistConfirm: boolean;
+  /** 状态 */
   status: ElecBatchStatus;
+  /** 待确认的截止时刻；过了要重新上传 */
+  deadline?: string | null;
+  /** 上传时刻 */
+  createdAt?: string | null;
+  /** 确认上架的时刻 */
+  appliedAt?: string | null;
+}
+
+/** 预览里一行的类别：新增 / 更新 / 未变 / 将下架 / 有问题 */
+export type ElecPreviewKind = "INSERT" | "UPDATE" | "UNCHANGED" | "DELIST" | "PROBLEM";
+
+/** 预览里的一行：**解析之后**平台读到的值，让他核对「平台是不是这么理解我的表」 */
+export interface ElecPreviewRow {
+  /** 表里的行号；将下架的行（表里没有）为 0 */
+  row: number;
+  /** 这一行属于哪一类 */
+  kind: ElecPreviewKind;
+  /** 料号原样 */
+  mpn?: string | null;
+  /** 厂牌原样 */
+  mfr?: string | null;
+  /** 数量 */
+  qty?: number | null;
+  /** 批号原样 */
+  dateCode?: string | null;
+  /** 封装 */
+  packageName?: string | null;
+  /** 起订量 */
+  moq?: number | null;
+  /** 最小包装量 */
+  spq?: number | null;
+  /** 阶梯价 */
+  tiers?: ElecPriceTier[] | null;
+  /** 币种 */
+  currency?: string | null;
+  /** 包装方式 */
+  packing?: string | null;
+  /** 货况 */
+  cond?: string | null;
+  /** 交期天数，0 = 现货 */
+  leadDays?: number | null;
+  /** 货在哪 */
+  region?: string | null;
+  /** 更新的行：变了的那几个字段的旧值（qty / dateCode / priceE6 …） */
+  before?: Record<string, unknown> | null;
+  /** 这一行的问题（警告也在这里） */
+  issues: ElecIssue[];
+}
+
+/** 上传记录的一行 */
+export interface ElecBatchSummary {
+  /** 批次号 */
+  batchNo: string;
+  /** 上传时选的文件名 */
+  fileName?: string | null;
+  /** 导入方式 */
+  mode: ElecImportMode;
+  /** 状态 */
+  status: ElecBatchStatus;
+  /** 解析失败的原因（错误码的文案键），如 err.elec.upload_format */
+  failCode?: string | null;
+  /** 表里一共几行 */
+  rowTotal: number;
+  /** 能上架的几行 */
+  rowValid: number;
+  /** 有错误的几行 */
+  rowInvalid: number;
+  /** 有警告的几行 */
+  rowWarn: number;
+  /** 新增几行 */
+  toInsert: number;
+  /** 更新几行 */
+  toUpdate: number;
+  /** 下架几行 */
+  toDelist: number;
+  /** 未变几行 */
+  unchanged: number;
+  /** 这次认列问过大模型没有 */
+  aiUsed: boolean;
+  /** 原件还在不在（被清理之后为 false） */
+  fileAvailable: boolean;
+  /** 上传时刻 */
+  createdAt?: string | null;
+  /** 确认上架的时刻 */
+  appliedAt?: string | null;
+}
+
+/** 确认上架。过了下架护栏的线时必须带上此刻的下架数 */
+export interface ElecApplyReq {
+  /** 此刻将下架的行数（预览里的 toDelist） */
+  expectDelist?: number;
 }
 
 export interface ElecRenewResult {

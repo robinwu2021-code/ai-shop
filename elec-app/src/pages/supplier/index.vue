@@ -119,6 +119,10 @@ async function renew() {
             <text class="txt-body">我的库存</text>
             <text class="txt-caption sh-muted">{{ qtyOf(s.onCount) }} 行 ›</text>
           </view>
+          <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.stockBatches)">
+            <text class="txt-body">上传记录</text>
+            <text class="txt-caption sh-muted">›</text>
+          </view>
         </view>
       </template>
 

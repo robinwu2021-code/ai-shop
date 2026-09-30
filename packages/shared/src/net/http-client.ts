@@ -16,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-type Method = "GET" | "POST" | "PUT";
+type Method = "GET" | "POST" | "PUT" | "DELETE";
 
 /**
  * 登录失效时做什么 —— **由各端在 App 壳上注册一次**。
@@ -215,13 +215,63 @@ export function uploadFile<T>(
   });
 }
 
+/**
+ * 下载二进制（导出的 xlsx 之类），带登录态。
+ *
+ * <p><b>不用 uni.downloadFile</b>：小程序要为它另配一份「downloadFile 合法域名」，而 request 的域名早就配好了。
+ * 后端出错时回的是 200 + JSON 包体（业务码），不是文件 —— 所以看头两个字节：不是 {@code PK}（zip）就当错误解析。
+ */
+export function downloadBinary(path: string, params?: object): Promise<ArrayBuffer> {
+  const token = uni.getStorageSync(STORAGE.token) as string;
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: `${BASE}${path}`,
+      method: "GET",
+      data: pruneUndefined(params),
+      responseType: "arraybuffer",
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success(res) {
+        if (res.statusCode === 401) {
+          uni.removeStorageSync(STORAGE.token);
+          reject(new ApiError(401, "登录已失效，请重新登录"));
+          return;
+        }
+        const buf = res.data as ArrayBuffer;
+        const head = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+        if (head.length === 2 && head[0] === 0x50 && head[1] === 0x4b) {
+          resolve(buf);
+          return;
+        }
+        try {
+          const body = JSON.parse(utf8(new Uint8Array(buf))) as Result<unknown>;
+          reject(new ApiError(body.code ?? -1, body.msg || "下载失败"));
+        } catch {
+          reject(new ApiError(-1, "下载失败"));
+        }
+      },
+      fail(err) {
+        reject(new ApiError(-1, err.errMsg || "网络异常"));
+      },
+    });
+  });
+}
+
+/** 小程序低版本基础库没有 TextDecoder；错误包体很小，手解 UTF-8 就够 */
+function utf8(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += "%" + (bytes[i] ?? 0).toString(16).padStart(2, "0");
+  return decodeURIComponent(s);
+}
+
 export const http = {
   // 入参用 object 而非 Record<string, unknown>：契约里的 payload 是具名接口
   // （LoginReq / GoodsDraft…），具名接口没有索引签名，用 Record 会在每个调用点报错。
   get: <T>(path: string, params?: object) => request<T>("GET", path, params),
   post: <T>(path: string, data?: object) => request<T>("POST", path, data),
   put: <T>(path: string, data?: object) => request<T>("PUT", path, data),
+  del: <T>(path: string, data?: object) => request<T>("DELETE", path, data),
   uploadFile,
+  downloadBinary,
 };
 
 /** 幂等 key：下单等写操作必带，防重复提交 */

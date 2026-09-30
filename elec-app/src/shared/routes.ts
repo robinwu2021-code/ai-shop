@@ -18,6 +18,7 @@ export const ROUTES = {
   stockUpload: `${BASE}/pages/stock-upload/index`,
   stockPreview: `${BASE}/pages/stock-preview/index`,
   stocks: `${BASE}/pages/stocks/index`,
+  stockBatches: `${BASE}/pages/stock-batches/index`,
   supplierProfile: `${BASE}/pages/supplier-profile/index`,
   dispatches: `${BASE}/pages/dispatches/index`,
   dispatch: `${BASE}/pages/dispatch/index`,
