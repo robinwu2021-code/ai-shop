@@ -1034,7 +1034,8 @@ components:
         - "ACTIVE"
         - "WITHDRAWN"
         - "ACCEPTED"
-      description: "供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中"
+        - "NOT_CHOSEN"
+      description: "供应商报价的状态：ACTIVE 有效 / WITHDRAWN 已撤回 / ACCEPTED 被买家选中 / NOT_CHOSEN 这一行成交给了别家（一行只成交一家；这之后不能再改价）"
     ElecDeclineReason: 
       type: "string"
       enum: 
