@@ -34838,6 +34838,38 @@
     },
     {
       "host": "ElecInternal",
+      "name": "SMS_OTP",
+      "type": "String",
+      "value": "\"/internal/elec/sms/otp\"",
+      "zh": "发登录验证码短信。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "WX_SESSION",
+      "type": "String",
+      "value": "\"/internal/elec/wx/session\"",
+      "zh": "小程序 wx.login 的 code → (appid, openid)。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "WX_PHONE",
+      "type": "String",
+      "value": "\"/internal/elec/wx/phone\"",
+      "zh": "小程序 getPhoneNumber 的 code → 手机号",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
+      "name": "WX_SEND",
+      "type": "String",
+      "value": "\"/internal/elec/wx/send\"",
+      "zh": "按 openid 发一条元器件订阅消息（模板 ELEC_QUOTED）。",
+      "module": "elec"
+    },
+    {
+      "host": "ElecInternal",
       "name": "TOKEN_HEADER",
       "type": "String",
       "value": "\"X-Internal-Token\"",
