@@ -59,6 +59,7 @@ const PURPOSE = {
   elc_quote: "供应商报价（他填的原样）。买家看到的是加价并换成代号之后的",
   elc_rfq_line: "询价行 + 平台对这一行的报价。quote_e6 为空 = 平台没报（供应商可能报了，在 elc_quote）",
   elc_search_daily: "搜索需求日聚合：搜了什么、几次没结果。**不记是谁搜的**",
+  elc_header_alias: "表头别名：哪种写法的表头是哪个字段。supplier_no 为空串 = 全局；供应商确认过的写法记成他自己的，下次不用再问大模型",
 };
 
 const rels = [];
