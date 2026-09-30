@@ -295,7 +295,8 @@ class StoreStockFlowTest {
     @DisplayName("★★★ 没有社区上下文时也要带门店 —— 搜索页此前显示的是主体名")
     void catalogRowCarriesStoreEvenWithoutCommunity() throws Exception {
         String biz = merchant("12600190091", "目录·无社区也带门店");
-        String goodsNo = listedGoods(biz, 100);
+        String title = "无社区带门店的货";
+        String goodsNo = listedGoods(biz, 100, title);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "无社区·只有分店在卖");
@@ -314,7 +315,7 @@ class StoreStockFlowTest {
          *
          * 消融：去掉 soleSellingStoreOf 那一支，这条必红。
          */
-        var row = rowOfNoScope(goodsNo);
+        var row = rowOfNoScope(goodsNo, title);
         assertThat(row).as("这件货没出现在不带位置的目录里 —— 这条用例没测到该测的东西").isNotNull();
         assertThat(row.has("store") && !row.get("store").isNull())
                 .as("不带位置时列表行没带门店 —— 买家看到的是主体名").isTrue();
@@ -325,7 +326,8 @@ class StoreStockFlowTest {
     @DisplayName("★★ 两家店都在卖、又没有社区时**不猜** —— 落款回落主体名比指错店好")
     void catalogRowLeavesStoreBlankWhenTwoStoresSellIt() throws Exception {
         String biz = merchant("12600190092", "目录·两家都在卖");
-        String goodsNo = listedGoods(biz, 100);
+        String title = "两家都在卖的货";
+        String goodsNo = listedGoods(biz, 100, title);
         String storeA = defaultStoreNo(biz);
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "两家都在卖·分店");
@@ -334,7 +336,7 @@ class StoreStockFlowTest {
         storeToggle(biz, storeA, goodsNo, true);
         storeToggle(biz, storeB, goodsNo, true);
 
-        var row = rowOfNoScope(goodsNo);
+        var row = rowOfNoScope(goodsNo, title);
         assertThat(row).as("这件货没出现在不带位置的目录里").isNotNull();
         /*
          * 硬挑一家会让落款与真正履约的那家对不上（下单落店另有自己的判据）。
@@ -572,9 +574,16 @@ class StoreStockFlowTest {
         return null;
     }
 
-    /** 商品流里这一行，**不带任何位置参数** —— 搜索页就是这么调的 */
-    private tools.jackson.databind.JsonNode rowOfNoScope(String goodsNo) throws Exception {
-        String body = mvc().perform(get("/mp/goods").param("size", "50"))
+    /**
+     * 商品流里这一行，**不带任何位置参数** —— 搜索页就是这么调的。
+     *
+     * <p>用 keyword 精确定位，不靠「拉 50 条碰运气」：不带位置就是全量目录，
+     * 全量跑时库里商品多，翻页翻不到刚建的那件。
+     * <b>不能改用 merchantNo 过滤</b> —— 带它时后端故意不挂门店，
+     * 那样这条用例就永远测不到要测的东西。
+     */
+    private tools.jackson.databind.JsonNode rowOfNoScope(String goodsNo, String keyword) throws Exception {
+        String body = mvc().perform(get("/mp/goods").param("keyword", keyword).param("size", "50"))
                 .andReturn().getResponse().getContentAsString();
         for (var r : json.readTree(body).get("data").get("records")) {
             if (goodsNo.equals(r.get("goodsNo").asString())) {
@@ -644,10 +653,23 @@ class StoreStockFlowTest {
     }
 
     private String listedGoods(String token, int stock) throws Exception {
+        return listedGoods(token, stock, "门店库存测试品");
+    }
+
+    /**
+     * 同上，但**标题自己起**。
+     *
+     * <p>给「要在不带位置的全量目录里找到自己那件货」的用例用：那条路不能按
+     * {@code merchantNo} 过滤（带它时后端故意不挂门店），只能靠 keyword，
+     * 而这个类里所有货默认同名「门店库存测试品」——
+     * 全量跑时库里商品多，50 条一页里排不到刚建的那件，
+     * 报错是「这件货没出现在目录里」，看着像功能坏了，其实是用例定位不到。
+     */
+    private String listedGoods(String token, int stock, String title) throws Exception {
         TestStoreCategory.open(mvc(), json, token, "CAT210");
         String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"门店库存测试品\",\"type\":\"NORMAL\","
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"type\":\"NORMAL\","
                                 + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
