@@ -68,9 +68,22 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         List<String> skuNos = List.copyOf(skuQty.keySet());
         // 在架判的是**商品**不是 SKU：店级上下架的粒度是货，一件货下架则它的全部规格都不卖
         Map<String, String> goodsOfSku = new HashMap<>();
+        /*
+         * **开着预售的主体级 SKU 不按现货判**（P-3.3.1）：预售的意思就是「现在没现货也能卖」，
+         * StockPort.lock 现货不够会回落到额度。这里只按现货判，纯预售的货（现货 0）一家店都选不出，
+         * 当场 20001 —— 额度成了摆设。只认「开着」不认「还剩几件」，理由与用总库存相同：
+         * 落店一单跑好几趟，额度在中间那趟已被本单自己占掉；够不够由 lockPresale 的条件更新把关。
+         * 按店管的 SKU 不回落（lock 也不回落：给没设库存的店叠主体额度等于开后门），所以照旧按店判。
+         */
+        java.util.Set<String> presaleOpen = new java.util.HashSet<>();
+        LocalDateTime now = LocalDateTime.now();
         for (PrdSku s : DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
                 Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)))) {
             goodsOfSku.put(s.getSkuNo(), s.getGoodsNo());
+            if (nz(s.getPresaleQuota()) > 0 && (s.getCutoffAt() == null || s.getCutoffAt().isAfter(now))
+                    && !storeStockReader.managedByStore(s.getSkuNo())) {
+                presaleOpen.add(s.getSkuNo());
+            }
         }
         for (String storeNo : storeNosInPreference) {
             if (storeNo == null || storeNo.isBlank()) {
@@ -94,7 +107,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                     ok = false;
                     break;
                 }
-                if (avail.getOrDefault(e.getKey(), 0) < nz(e.getValue())) {
+                if (avail.getOrDefault(e.getKey(), 0) < nz(e.getValue()) && !presaleOpen.contains(e.getKey())) {
                     ok = false;
                     break;
                 }
