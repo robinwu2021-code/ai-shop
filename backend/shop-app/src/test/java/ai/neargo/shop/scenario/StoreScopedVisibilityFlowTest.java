@@ -339,6 +339,9 @@ class StoreScopedVisibilityFlowTest {
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreCategoryMapper storeCategoryMapper;
+
     // ------------------------------------------------------------ 脚手架
 
     /**
@@ -730,6 +733,83 @@ class StoreScopedVisibilityFlowTest {
                         .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
                         .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)
                         .last("limit 1")).getOnSale()));
+    }
+
+    @Test
+    @DisplayName("★★★ 在粮油店下架一件粮油，不该把它播进只卖水果的那家店 —— 而且是在架的")
+    void seedingDoesNotPushGoodsIntoStoresThatDoNotSellThatCategory() throws Exception {
+        String biz = merchant("12600180015", "两家店两个业态的商家");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String grain = defaultStoreNo(biz);          // 只经营 CAT210
+
+        /*
+         * **顺序就是这条用例的全部。** 先上架、再开新店、最后下架 ——
+         * 这正是证照合并的形状：门店是**后来**才进这个主体的。
+         *
+         * 第一版我把开店写在上架前面，于是第一次上架那一下就把两家店的行都建了，
+         * 后面的 toggle 因为「已经有行」直接跳过播种 —— 被测的那一段根本没跑，
+         * 而断言照样绿。消融（把 sells 改回 current）没红才发现。
+         */
+        String goodsNo = onSaleGoodsAt(biz, grain, "只有粮油店卖的小麦粉");
+        assertThat(entityOnSale(goodsNo)).as("前置：主体总闸要开着，否则测不到播种那一步").isTrue();
+
+        String fruit = createStore(biz, "只卖水果的那家");
+        /*
+         * **要「换成」不要「加上」。**新建门店会继承主体已有的经营类目
+         * （实测：新店的类目里带着 CAT210，还挂着 goodsCount=1）。
+         * 追加一个 CAT120 的话，这家店在系统看来是既卖纸品又卖水果，
+         * 于是判据通过，被测的那一段照样不生效 —— 又是一条假绿。
+         *
+         * 线上那家「虹选鲜果」是证照合并时搬过来的，保留着自己原来的类目，
+         * 只有水果。这里用全量替换造出同一个形状。
+         */
+        dropStoreCategory(fruit, "CAT210");
+        TestStoreCategory.open(mvc(), json, biz, fruit, "CAT120");
+
+        // 店主在粮油店把它下架 —— 这一下才会给「还没有行」的那家新店播种
+        offShelfAt(biz, grain, goodsNo);
+
+        /*
+         * ★ 修之前：播种把**其他所有门店**都固化成当时的主体级 on_sale（= true），
+         * 于是这件粮油以「在架」的身份出现在只卖水果的那家店里。
+         *
+         * 线上实测（2026-09-30 06:57，虹选科技）：店主在「虹选粮油」下架一件小麦粉，
+         * 「虹选鲜果」与「虹选鲜果·福田店」各被插了一行 on_sale=1，
+         * 打开鲜果店的商品列表，头四条全是小麦粉。
+         *
+         * 消融：把 seed.setOnSale(sells) 改回 setOnSale(current)，这条必红。
+         */
+        assertThat(allTabAt(biz, fruit))
+                .as("只卖水果的那家店不经营这一类 —— 播种不该把它塞进去，更不该是在架的")
+                .doesNotContain(goodsNo);
+
+        // 对照量：粮油店自己仍看得到它（在「已下架」里），否则可能只是把整条路测坏了
+        assertThat(offSaleTabAt(biz, grain))
+                .as("粮油店把它下架了，它要留在粮油店的「已下架」里 —— 那是重新上架的入口")
+                .contains(goodsNo);
+    }
+
+    /**
+     * 直接删掉一家门店的某个经营类目。
+     *
+     * <p><b>为什么绕过 /biz 接口</b>：走接口会被 {@code STORE_CATEGORY_IN_USE}(80008) 拒 ——
+     * 这一类底下有商品就撤不掉，那道闸是对的。但这里要造的状态**本来就不是通过接口达成的**：
+     * 线上那家「虹选鲜果」是证照合并时从另一个主体搬过来的，保留着自己原来的类目，
+     * 从来没经营过粮油。合并没有走「新建门店」这条路，所以也没有继承。
+     *
+     * <p>新建门店会继承主体已有的全部经营类目并自动在卖那些货（实测：新店的类目里
+     * 带着 CAT210，goodsCount=1）。对单业态商家那是对的 —— 开分店当然卖一样的货。
+     * 这条用例要的是合并之后那种**一个主体两个业态**的形状。
+     */
+    private void dropStoreCategory(String storeNo, String categoryNo) {
+        int n = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeCategoryMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchStoreCategory>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStoreCategory::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStoreCategory::getCategoryNo, categoryNo)));
+        assertThat(n).as("没删掉 %s 的 %s —— 这条用例的前提就不成立了", storeNo, categoryNo).isPositive();
     }
 
     /** 在指定门店下架一件货 —— 用来表达「这家店不卖它」 */

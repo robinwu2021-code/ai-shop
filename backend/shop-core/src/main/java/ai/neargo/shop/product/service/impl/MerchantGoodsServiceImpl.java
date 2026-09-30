@@ -2256,6 +2256,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      *
      * <p>单店商家恒为 false，行为与改造前逐字相同。
      */
+    /**
+     * 这家门店卖不卖这一类。**判据与上架那道闸同一条**（{@link #requireInStore}）。
+     *
+     * <p>空集 = 放行：一个经营类目都没配的门店是「还没配」，不是「什么都不经营」。
+     * 全判成不卖的话，新建的店在配好类目之前会把主体已有的货全挡在外面。
+     */
+    private boolean sellsHere(String storeNo, String categoryNo) {
+        if (categoryNo == null || categoryNo.isBlank()) {
+            return true;
+        }
+        var cats = storeCategoryPort.categoryNosOf(storeNo);
+        return cats.isEmpty() || cats.contains(categoryNo);
+    }
+
     private boolean perStore(String merchantNo, String storeNo, String goodsNo) {
         if (storeNo == null || storeNo.isBlank()) {
             return false;
@@ -2299,12 +2313,34 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (other.equals(storeNo) || seeded.contains(other)) {
                 continue;
             }
+            /*
+             * ★ **只把「在卖它的店」固化成在架，不经营这个类目的店一律 false**（2026-09-30）。
+             *
+             * 上面那句 `current` 是主体总闸，它的语义是「任一门店在卖」——
+             * 拿它当「所有门店都在卖」用，在**单主体单业态**时碰巧成立，
+             * 证照合并之后就不成立了：四家店并进一个主体，两家卖水果、两家卖粮油，
+             * 而总闸对它们一视同仁。
+             *
+             * 线上实测（2026-09-30 06:57）：店主在「虹选粮油」把一件小麦粉下架，
+             * 这一段就给「虹选鲜果」「虹选鲜果·福田店」各插了一行 **on_sale=1** ——
+             * 一个下架动作，把粮油播进了两家水果店，而且是在架的。
+             * 店主打开鲜果店的商品列表，头四条全是小麦粉。
+             *
+             * 判据用门店经营类目，与上架那道闸（{@link #requireInStore}）**同一条**：
+             * 那里拒绝「在不经营这一类的店上架」，这里就不该替他播一条在架的行进去。
+             * 两处口径不一致的话，播种等于绕过了那道闸。
+             *
+             * 门店一个经营类目都没配时按**放行**处理（`isEmpty()`）：那是「还没配」，
+             * 不是「什么都不经营」—— 新建的店还没来得及配，一律播 false 会让
+             * 「主体在架、新店什么都看不到」，而那与转店级管理这件事无关。
+             */
+            boolean sells = current && sellsHere(other, g.getCategoryNo());
             ai.neargo.shop.product.entity.PrdStoreGoods seed =
                     new ai.neargo.shop.product.entity.PrdStoreGoods();
             seed.setStoreNo(other);
             seed.setGoodsNo(g.getGoodsNo());
             seed.setEntityNo(g.getEntityNo());
-            seed.setOnSale(current);
+            seed.setOnSale(sells);
             try {
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(seed));
             } catch (org.springframework.dao.DuplicateKeyException e) {
