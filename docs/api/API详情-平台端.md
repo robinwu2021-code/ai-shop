@@ -1516,7 +1516,7 @@ _无字段_
 | `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
 | `status` | `string` | 是 | ACTIVE / DISABLED |
 | `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
-| `updatedAt` | `string,null` | 否 | — |
+| `updatedAt` | `string,null` | 否 | 全局的：最后一次改动；学到的：最近一次有供应商这么写 |
 
 
 #### PUT `/elec/ops/header-alias/{id}`
@@ -1544,7 +1544,7 @@ _无字段_
 | `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
 | `status` | `string` | 是 | ACTIVE / DISABLED |
 | `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
-| `updatedAt` | `string,null` | 否 | — |
+| `updatedAt` | `string,null` | 否 | 全局的：最后一次改动；学到的：最近一次有供应商这么写 |
 
 
 #### GET `/elec/ops/mfr`
@@ -10974,7 +10974,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `source` | `string` | 是 | SEED 种子 / OPS 运营加的 / LEARNED 各家学到的 |
 | `status` | `string` | 是 | ACTIVE / DISABLED |
 | `supplierCount` | `number` | 是 | 学到的：几家在用（据此决定要不要提升）；全局的为 0 |
-| `updatedAt` | `string,null` | 否 | — |
+| `updatedAt` | `string,null` | 否 | 全局的：最后一次改动；学到的：最近一次有供应商这么写 |
 
 ### ElecMfrRow
 

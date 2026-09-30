@@ -42,8 +42,11 @@ function paths(file: string): string[] {
   return [...s.slice(i).matchAll(/^ {2}"?(\/[^"\s:]+)"?:\s*$/gm)].map((m) => m[1]);
 }
 
-/** 看着像复数吗。`ss` 结尾（address / business）不算 */
-const looksPlural = (seg: string) => /^[a-z][a-z-]*s$/.test(seg) && !seg.endsWith("ss");
+/**
+ * 看着像复数吗。`ss` 结尾（address / business）不算；`alias` 结尾（header-alias）也不算 ——
+ * 它是单数，复数是 aliases。2026-09-30 `/elec/ops/header-alias/{id}` 被误判成复数
+ */
+const looksPlural = (seg: string) => /^[a-z][a-z-]*s$/.test(seg) && !seg.endsWith("ss") && !seg.endsWith("alias");
 
 /** 「资源段 + {id}」的所有出现，连同它该是单数还是复数 */
 function offenders(): string[] {

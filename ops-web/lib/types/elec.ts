@@ -553,6 +553,7 @@ export interface ElecHeaderAliasRow {
   status: string;
   /** 学到的：几家在用（据此决定要不要提升）；全局的为 0 */
   supplierCount: number;
+  /** 全局的：最后一次改动；学到的：最近一次有供应商这么写 */
   updatedAt?: string | null;
 }
 

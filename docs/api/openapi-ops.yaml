@@ -10206,6 +10206,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "全局的：最后一次改动；学到的：最近一次有供应商这么写"
       required: 
         - "aliasNorm"
         - "aliasRaw"
