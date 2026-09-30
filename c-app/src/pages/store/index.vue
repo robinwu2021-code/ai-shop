@@ -739,8 +739,16 @@ onShareTimeline(() =>
 .shelf.is-paused .list {
   opacity: 0.5;
 }
+/*
+ * **左右不留 padding**：页边距已经由 `sh-scaffold.is-padded`（28rpx）给过了，
+ * 这里再加 4rpx，商品卡就比同一页的头卡、货架、分类各缩进 2px ——
+ * 一条对不齐的竖边，从上往下扫的时候很明显。
+ *
+ * 那 4rpx 是双列网格时代的残留：`.grid` 当年写的是 `16rpx 24rpx 24rpx`，
+ * 换成单列后只剩一列，卡片自己就该贴着页边距走。
+ */
 .list {
-  padding: 0 4rpx 16rpx;
+  padding-bottom: 16rpx;
 }
 .pane {
   padding-top: 8rpx;

@@ -8,6 +8,7 @@
  * - 顶部那条底：店主设了背景图就是照片，没设就是主色浅底 —— **不再拿商品图凑**；
  * - 售罄的货**照列、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页压淡、给隔壁店。
  */
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
@@ -101,6 +102,29 @@ describe("门店门户", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+  });
+
+  it("★★ 商品列表不自己加左右边距 —— 加了就比同页其它块各缩进 2px", () => {
+    /*
+     * 页边距由 `sh-scaffold.is-padded`（28rpx）统一给。`.list` 再加一层
+     * 左右 padding，商品卡就比头卡、货架、分类各缩进 2px，
+     * 从上往下扫的时候是一条对不齐的竖边。
+     *
+     * 线上量过（375 屏）：head / shelf / list 都是 14px，而商品卡是 16px；
+     * 把 `.list` 的 padding-inline 去掉，卡片回到 14px。
+     *
+     * **用读源码断言而不是量布局**：jsdom 不做真实布局，
+     * getBoundingClientRect 全是 0，量不出这 2px。这是个折中 ——
+     * 它拦得住「有人又给 .list 加回左右 padding」，拦不住别的元素引入同样的偏移。
+     */
+    const src = readFileSync(`${process.cwd()}/src/pages/store/index.vue`, "utf8");
+    const rule = /\n\.list\s*\{([^}]*)\}/.exec(src);
+    expect(rule, "没找到 .list 的样式规则 —— 选择器改名了？先修这条断言再说").toBeTruthy();
+
+    // 横向的写法有四种：padding 简写、padding-inline、padding-left、padding-right
+    const offenders = (rule![1].match(/padding(?:-inline|-left|-right)?\s*:[^;]*/g) ?? [])
+      .filter((d) => !/^padding-(top|bottom)\b/.test(d.trim()));
+    expect(offenders, `.list 不该有左右边距，却写了：${offenders.join(" / ")}`).toEqual([]);
   });
 
   it("★★★ 门头写门店名，页面上不出现主体名", async () => {
