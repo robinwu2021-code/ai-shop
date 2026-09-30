@@ -3118,6 +3118,12 @@
           "ar": "تواصل مع الدعم"
         },
         {
+          "key": "me.contactFailed",
+          "zh-CN": "客服暂时打不开，请稍后再试",
+          "en": "Support chat is unavailable right now — try again later",
+          "ar": "الدردشة مع الدعم غير متاحة الآن — حاول لاحقًا"
+        },
+        {
           "key": "me.deregister",
           "zh-CN": "注销账号",
           "en": "Delete account",
