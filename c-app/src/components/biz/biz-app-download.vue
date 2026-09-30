@@ -25,6 +25,13 @@ const props = defineProps<{
   /** 当前系统是不是 iOS，决定两行文案谁在上 */
   ios: boolean;
   /**
+   * 安卓包的版本号（后端从版本清单读的）。空 = 不显示这一行。
+   *
+   * **只对安卓那一档有意义**：iOS 还没上架，那一档是 TestFlight 链接。
+   * 不显示好过显示一个猜的值 —— 版本号写错比没有更糟，店主会照着它判断要不要更新。
+   */
+  version?: string;
+  /**
    * 主按钮用实心还是弱一档。**提交完成那一屏给 true** ——
    * 那里「去装 App」是唯一的下一步；报名表底部它只是附带说明，
    * 实心会和「提交报名」抢，而那一屏真正要人点的是提交。
@@ -61,6 +68,11 @@ function copy(url: string) {
     </view>
     <text v-if="props.otherLink" class="sh-link getapp__other" @tap="copy(props.otherLink)">
       {{ $t(props.ios ? "merchant.getAppAndroid" : "merchant.getAppIos") }}
+    </text>
+
+    <!-- 最新版本号：让店主一眼看出手上那版是不是旧的。后端从版本清单取，端上不写死 -->
+    <text v-if="!props.ios && props.version" class="txt-caption getapp__ver">
+      {{ $t("merchant.appLatestVersion", { v: props.version }) }}
     </text>
 
     <text class="sh-link getapp__qrtoggle" @tap="qrVisible = !qrVisible">
@@ -109,6 +121,12 @@ function copy(url: string) {
 .getapp__other {
   display: block;
   margin-top: 16rpx;
+}
+/* 最新版本号：弱一档，摆在按钮下面 —— 它是参考信息，不是要人点的东西 */
+.getapp__ver {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--sh-sub);
 }
 .getapp__qrtoggle {
   display: block;

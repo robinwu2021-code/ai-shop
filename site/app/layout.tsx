@@ -67,13 +67,40 @@ export const metadata: Metadata = {
  */
 const LEGACY_HASH_REDIRECT = `if(location.pathname==="/"&&location.hash.indexOf("#/pages/")===0){location.replace("/c/"+location.hash)}`;
 
+/**
+ * 安卓包的版本号与地址，**页面加载后从版本清单取**。
+ *
+ * <p>在这之前，「最新版是哪个」写死在三处：这个站的 site.config、服务器 env、
+ * 以及人的记性。每处都要手工跟，于是每处都会掉队 —— 2026-09-30 查出 env 那处
+ * 停在 0.4.98，而这里已经是 0.5.21，差了二十多个版本。而掉队时下载照样 200、
+ * 照样装得上，只是功能旧，**没有任何信号**。
+ *
+ * <p>清单（{@code /dl/latest.json}）由发版脚本写，是唯一真源。这样发一版 APK
+ * 不用再改这个站、不用重新构建部署它。
+ *
+ * <p><b>取不到就什么都不做</b> —— 构建时插进去的那个值仍在页面上，
+ * 只是可能旧一版。比让按钮变空白好。
+ *
+ * <p>内联脚本而不是客户端组件：官网除了换色演示没有交互，
+ * 首屏 JS 有预算（constraints.test.ts 盯着 "use client" 只许有一个）。
+ * 这段几百字节，不进 React bundle。
+ */
+const LATEST_APK = `(function(){try{fetch(${JSON.stringify(site.download.manifest)},{cache:"no-store"})
+.then(function(r){return r.json()}).then(function(j){if(!j||!j.version)return;
+document.querySelectorAll("[data-apk-version]").forEach(function(e){e.textContent=j.version});
+if(j.url)document.querySelectorAll("a[data-apk-latest]").forEach(function(a){a.href=j.url})})
+.catch(function(){})}catch(e){}})()`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" className={`${figtree.variable} ${instrument.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LEGACY_HASH_REDIRECT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <script dangerouslySetInnerHTML={{ __html: LATEST_APK }} />
+      </body>
     </html>
   );
 }

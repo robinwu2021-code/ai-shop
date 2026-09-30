@@ -372,6 +372,7 @@ export default {
     appQrHide: "إخفاء رمز QR",
     appQrHint: "امسحه بهاتف آخر، أو دع من بجوارك يمسحه",
     appLinkCopied: "تم نسخ الرابط — افتحه في متصفح هاتفك",
+    appLatestVersion: "أحدث إصدار {v}",
     applyFormHint: "سنتصل بك لتأكيد البيانات",
     shopName: "اسم المتجر",
     category: "ماذا تبيع، مثل: فواكه، بقالة",

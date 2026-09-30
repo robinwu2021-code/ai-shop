@@ -79,5 +79,19 @@ export interface BootstrapConfig {
    * **空的那一档不显示**，不是显示一个点不开的地址。iOS 版在苹果审核队列里，
    * 上架前那一档是 TestFlight 公开链接，现在是空的。
    */
-  merchantApp?: { android: string; ios: string };
+  merchantApp?: {
+    android: string;
+    ios: string;
+    /**
+     * 安卓包的**最新版本号**，后端从发版脚本写的 `/dl/latest.json` 读。
+     *
+     * **端上不要再写一份** —— 版本号此前写死在三处（官网 site.config、
+     * 服务器 env、人的记性），每处都要手工跟，于是每处都会掉队：
+     * 2026-09-30 查出服务器那处停在 0.4.98，而官网已经 0.5.21，差二十多版。
+     * 掉队时下载照样 200、照样装得上，只是功能旧，**没有任何信号**。
+     *
+     * 空串 = 后端也没读到清单，端上就不显示版本号（不显示好过显示一个猜的值）。
+     */
+    androidVersion?: string;
+  };
 }

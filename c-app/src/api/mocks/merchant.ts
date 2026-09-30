@@ -418,7 +418,15 @@ export const merchantMock: Pick<ShopApi,
        * iOS 版还在苹果审核队列里。空的那一档端上不显示，
        * 而「iOS 那一栏会不会显示」正是这一段要验的（[[default-off-is-the-untested-half]]）。
        */
-      merchantApp: { android: "https://www.hxmall.top/dl/hxmall-merchant-0.4.98.apk", ios: "" },
+      merchantApp: {
+        // 带版本号的真实文件名 —— 线上清单下发的就是这个形状（不是 latest 软链，
+        // 固定文件名会被浏览器与 CDN 缓存着当新包给出去）
+        android: "https://www.hxmall.top/dl/hxmall-merchant-0.5.21.apk",
+        ios: "",
+        // 后端从版本清单读的。**给非空值**：空串那一支是「后端也没读到」，
+        // 而 mock 要验的是正常那一屏长什么样
+        androidVersion: "0.5.21",
+      },
     });
   },
 

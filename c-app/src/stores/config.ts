@@ -16,8 +16,13 @@ export const useConfigStore = defineStore("config", {
     /**
      * 商家版 App 的下载地址，按平台各一条（后端下发）。
      * **空的那一档端上不显示** —— iOS 还在苹果审核队列里，现在就是空的。
+     *
+     * `androidVersion` 是后端从版本清单（`/dl/latest.json`）读的最新版本号。
+     * **不要在端上再写一份** —— 版本号此前写死在三处，每处都要手工跟，
+     * 于是每处都会掉队：服务器那处停在 0.4.98，而官网已经 0.5.21，
+     * 而掉队时下载照样 200、照样装得上，只是功能旧。
      */
-    merchantApp: { android: "", ios: "" },
+    merchantApp: { android: "", ios: "", androidVersion: "" },
     loaded: false,
   }),
 
@@ -43,7 +48,12 @@ export const useConfigStore = defineStore("config", {
       try {
         const c = await api.bootstrapConfig();
         this.features = c?.features ?? {};
-        this.merchantApp = { android: c?.merchantApp?.android ?? "", ios: c?.merchantApp?.ios ?? "" };
+        this.merchantApp = {
+          android: c?.merchantApp?.android ?? "",
+          ios: c?.merchantApp?.ios ?? "",
+          // 后端从版本清单读的。取不到就是空串 —— 那时不显示版本号，而不是显示一个猜的值
+          androidVersion: c?.merchantApp?.androidVersion ?? "",
+        };
         this.loaded = true;
       } catch {
         // 拿不到就保持空表，调用方拿到的是各自的默认值

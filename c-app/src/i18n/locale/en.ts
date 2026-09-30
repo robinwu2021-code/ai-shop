@@ -372,6 +372,7 @@ export default {
     appQrHide: "Hide QR code",
     appQrHint: "Scan with another phone, or let someone next to you scan it",
     appLinkCopied: "Link copied — open it in your phone browser",
+    appLatestVersion: "Latest version {v}",
     applyFormHint: "We'll call you to confirm the details",
     shopName: "Shop name",
     category: "What you sell, e.g. fruit, groceries",

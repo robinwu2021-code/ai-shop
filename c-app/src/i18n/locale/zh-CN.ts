@@ -404,6 +404,7 @@ export default {
     // 说清它给谁用：人正拿着这台手机，自己扫不了自己的屏幕
     appQrHint: "用另一台手机扫，或让旁边的人扫",
     appLinkCopied: "地址已复制，用手机浏览器打开",
+    appLatestVersion: "最新版本 {v}",
     applyFormHint: "填好后运营电话联系你",
     shopName: "店铺名称",
     // 「主营类目」是内部说法。报名的人心里问的是「我卖什么」—— 那就写卖什么

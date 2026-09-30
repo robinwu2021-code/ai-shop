@@ -93,6 +93,34 @@ class MerchantAppManifestTest {
     }
 
     @Test
+    @DisplayName("★★★ 清单下发的地址要带版本号 —— 固定文件名会被缓存着当新包给出去")
+    void manifestUrlCarriesVersion() throws Exception {
+        Path f = tmp.resolve("latest.json");
+        Files.writeString(f, """
+                {"version":"0.5.21",
+                 "url":"https://www.hxmall.top/dl/hxmall-merchant-0.5.21.apk"}
+                """);
+
+        var app = appOf(propsWith("https://example.test/a.apk", "", f.toString()));
+
+        /*
+         * 这一条钉的是**发版脚本写清单的方式**，不是这段 Java 的分支。
+         *
+         * 第一版我让清单指 `hxmall-merchant-latest.apk`（那个软链），
+         * site 的 constraints.test.ts 当场拦下来，理由写得很清楚：
+         * 「文件名要带版本，否则覆盖同名文件时，浏览器与 CDN 会把旧包
+         * 缓存着当新包给出去」。软链名字固定而内容会变，正好踩中。
+         *
+         * 分工是：**动态由清单负责，防缓存由文件名负责**。
+         * latest 软链仍留着，给读不到清单的那条兜底路径用。
+         */
+        assertThat(app.android())
+                .as("清单里的地址要指带版本号的真实文件，不是 latest 软链")
+                .matches(".*hxmall-merchant-\\d+\\.\\d+\\.\\d+\\.apk$");
+        assertThat(app.android()).contains(app.androidVersion());
+    }
+
+    @Test
     @DisplayName("★★ 清单里是半截路径就不认 —— 小程序打不开，而端上看不出它是坏的")
     void relativeUrlIsRejected() throws Exception {
         Path f = tmp.resolve("rel.json");

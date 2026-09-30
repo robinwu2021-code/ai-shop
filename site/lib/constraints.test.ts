@@ -147,20 +147,39 @@ describe("site.config 的空占位", () => {
    * 那次是两个字段一起陈，这条守卫拦的是「改了一个忘了另一个」——
    * `scripts/release-bapp-apk.sh` 两个一起写，手改才会漏。
    */
-  it("★★ 下载链接里的版本号要与 merchantAndroidVersion 一致", () => {
+  it("★★ 下载链接与版本号：要么都带版本且一致，要么走清单（2026-09-30 改）", () => {
     const href = site.download.merchantAndroid;
     const ver = site.download.merchantAndroidVersion;
     if (!href) return; // 还没上架，空是允许的（在上面那份清单里）
     const inHref = /(\d+\.\d+\.\d+)/.exec(href)?.[1];
+
+    /*
+     * **两条合法的路，判据不同。**
+     *
+     * ① 链接带版本号（老做法）：那它必须与页面上写的一致，否则
+     *    按钮写新版本、下到旧包，而且不报错。
+     *
+     * ② 链接是不带版本号的软链（现在这条）：版本号由 `/dl/latest.json`
+     *    在页面加载后替换（layout.tsx 的 LATEST_APK）。这条路要求 manifest 配着 ——
+     *    没配的话按钮上那个版本号永远是构建时的，又回到手工跟的老路。
+     *
+     * **防缓存这件事没有放松**：清单里的 url 指的是带版本号的真实文件，
+     * 软链只是读不到清单时的兜底。原来的顾虑（固定文件名会被浏览器与 CDN
+     * 缓存着当新包给出去）由那一层挡着 —— 判据挪到了后端
+     * （MerchantAppManifestTest），不是删掉了。
+     */
+    if (inHref) {
+      expect(
+        inHref,
+        `链接指的是 ${inHref}，而页面上写着 ${ver} —— 按钮写新版本、下到旧包，不报错`,
+      ).toBe(ver);
+      return;
+    }
     expect(
-      inHref,
-      `下载链接 ${href} 里读不出版本号 —— 文件名要带版本（hxmall-merchant-X.Y.Z.apk），\n` +
-        "否则覆盖同名文件时，浏览器与 CDN 会把旧包缓存着当新包给出去",
+      site.download.manifest,
+      `下载链接 ${href} 不带版本号，那就得有版本清单来动态替换 —— ` +
+        "两样都没有的话，页面上那个版本号只会停在构建那一刻",
     ).toBeTruthy();
-    expect(
-      inHref,
-      `链接指的是 ${inHref}，而页面上写着 ${ver} —— 按钮写新版本、下到旧包，不报错`,
-    ).toBe(ver);
   });
 
   it("空字段全部在已知清单里", () => {

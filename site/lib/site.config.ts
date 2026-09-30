@@ -104,9 +104,21 @@ export const site = {
      * 所以备案下来、自定义域名绑好之后，这里换成 `latest.apk` 的直链即可，
      * 包不用重传、页面不用改。
      */
-    merchantAndroid: "/dl/hxmall-merchant-0.5.21.apk",
-    /** 商家端安卓包的版本号，跟着链接一起改 —— 页面上要让人看得出下的是哪一版 */
+    /**
+     * 商家端安卓包。**不带版本号** —— 它是一个软链，发版脚本每次重指到新包。
+     *
+     * 带版本号的那些年：这一行、服务器 env、人的记性，三处各写一份，
+     * 每处都要手工跟，于是每处都会掉队（env 那处停在 0.4.98，这里已经 0.5.21）。
+     */
+    merchantAndroid: "/dl/hxmall-merchant-latest.apk",
+    /**
+     * 构建那一刻的版本号，**只是兜底**：页面加载后会从 {@link manifest} 取真的那个
+     * （layout.tsx 的 LATEST_APK，更新所有 `[data-apk-version]`）。
+     * 清单取不到时这个值仍在页面上 —— 可能旧一版，比空白好。
+     */
     merchantAndroidVersion: "0.5.21",
+    /** 版本清单，发版脚本写的（release-bapp-apk.sh 第 3.6 步）。「最新版是哪个」的唯一真源 */
+    manifest: "/dl/latest.json",
   },
 } as const;
 

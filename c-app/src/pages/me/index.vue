@@ -634,12 +634,12 @@ onShow(() => {
       <!-- 审核中与已通过都改不了，但要说清为什么，否则他会反复找那个按钮 -->
       <text v-else class="txt-caption intent__locked">{{ $t("merchant.intentLocked") }}</text>
 
-      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" />
+      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" :version="config.merchantApp.androidVersion" />
     </sh-sheet>
 
     <sh-sheet :visible="appDownloadVisible" :title="String($t('merchant.applyDoneTitle'))" @close="appDownloadVisible = false">
       <text class="txt-body block done__body">{{ $t("merchant.applyDoneBody") }}</text>
-      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" primary />
+      <biz-app-download :link="appLink" :other-link="otherAppLink" :ios="isIos" :version="config.merchantApp.androidVersion" primary />
       <view class="sh-btn sh-btn--muted done__btn" @tap="appDownloadVisible = false">{{ $t("common.later") }}</view>
     </sh-sheet>
 

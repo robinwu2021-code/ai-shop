@@ -1,4 +1,5 @@
 import type { Section } from "@/lib/content";
+import { site } from "@/lib/site.config";
 import { Markdown, inline } from "@/lib/markdown";
 import { Capabilities } from "@/components/plans/capabilities";
 import { SkinShowcase } from "@/components/home/skin-showcase";
@@ -102,13 +103,31 @@ function Actions({ s, invert = false }: { s: Section; invert?: boolean }) {
           : primary
             ? "bg-brand text-white hover:bg-brand-deep"
             : "border border-line hover:bg-panel";
+        /*
+         * 安卓包那颗按钮：**版本号要能在页面加载后被换掉**。
+         *
+         * 构建时插进去的版本号只是兜底 —— 真的那个在版本清单里
+         * （layout.tsx 的 LATEST_APK 会 fetch 它）。所以把版本号单独包一层，
+         * 让脚本只改那一段，而不是去猜按钮里哪一截是版本号。
+         *
+         * 判据是**链接指向那个不带版本号的软链**，不是按 label 猜 ——
+         * label 是内容文件里写的，改一次文案这里就会静默失配。
+         */
+        const latestApk = href === site.download.merchantAndroid;
+        const dot = latestApk ? label.lastIndexOf(" · ") : -1;
         return (
           <a
             key={label}
             href={href}
+            {...(latestApk ? { "data-apk-latest": "" } : {})}
             className={`inline-flex min-h-11 items-center rounded-full px-6 text-[15px] font-semibold transition-colors ${cls}`}
           >
-            {label}
+            {dot < 0 ? label : (
+              <>
+                {label.slice(0, dot + 3)}
+                <span data-apk-version>{label.slice(dot + 3)}</span>
+              </>
+            )}
           </a>
         );
       })}

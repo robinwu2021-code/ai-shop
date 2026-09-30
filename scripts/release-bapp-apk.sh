@@ -98,13 +98,19 @@ echo "✓ latest 软链 → $REMOTE（md5 回读一致）"
 #
 # 现在真源只有这一份：发版写它，后端与官网都读它。发版即生效，
 # 不用改代码、不用改配置、不用重启、不用重新部署官网。
+#
+# **清单里的 url 指带版本号的那个文件，不指 latest 软链。**
+# 软链名字固定而内容会变，浏览器与 CDN 会把旧包缓存着当新包给出去
+# （site 的 constraints.test.ts 早就写着这一条，我第一版正好踩中）。
+# 动态由清单负责，防缓存由文件名负责 —— 两件事分开。
+# latest 软链仍然留着：给读不到清单的那条兜底路径用。
 RELEASED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 SIZE=$(wc -c < "$APK" | tr -d ' ')
 ssh "$SSH_HOST" "sudo tee /data/app/ai-shop/web/dl/latest.json >/dev/null" <<JSON
 {
   "version": "$VNAME",
   "versionCode": $VCODE,
-  "url": "https://www.hxmall.top/dl/hxmall-merchant-latest.apk",
+  "url": "https://www.hxmall.top/dl/$REMOTE",
   "file": "$REMOTE",
   "size": $SIZE,
   "md5": "$MD5",
