@@ -6,6 +6,8 @@
 
 - 上游功能点：[B端功能清单](B端功能清单.md) B-2 工作台 · B-11 客户 · B-13.1 经营数据 · B-14.9 跨店 · 进销存报表
 - 真源：`b-app/src/api/endpoints.ts`（路径）· `contract.ts`（查询条件）· `shared/src/types`（字段）
+- 后端落地方案：[TDD-B端报表库与日结](../technical/design/TDD-B端报表库与日结.md)（独立报表库 + 每日汇总）
+- 界面：[原型 b-reports](../../prototypes/b-reports.html)
 
 ---
 
@@ -56,7 +58,7 @@
 | 16 | 客户与复购 | L3 | `/biz/customers` | 无 | `orderCount` `totalSpentMinor` `daysSinceLast` `silent` `source` | ✅ |
 | **R1** | **近几日收入与订单量** | L1·L2 | — | `days` | 逐日 `orders` `gmvMinor` `netMinor` + 环比 | ⬜ |
 | **R2** | **按月营收与订单** | L2 | 扩 #6 | `from` `to` | 逐月钱 + **订单数** | 🟡 |
-| **R3** | **商品销售 TopN（金额/毛利）** | L2 | 扩 #8 | + `orderBy` | + `salesAmountMinor` → 毛利 | 🟡 |
+| **R3** | **商品销售 TopN（金额）** | L2 | **新（交易域）** | `days` `orderBy` `limit` | `goodsNo` `title` `qty` `amountMinor` | ⬜ |
 
 **数出来的事实**：现有 16 张里，**11 张在 L3**（明细最全），
 而**能选时间段的只有 4 张**（#5 `days`、#6 `period`、#7 `month`、#13 `date`），
@@ -307,6 +309,15 @@
 
 **后端已有 `/biz/inventory/report/ranking`，支持 `type` + `days` + `limit`**，
 返回 `RankVO(itemId, name, specText, qty, costAmountMinor)`。
+
+> ⚠️ **2026-09-30 更正：R3 不是「给这个端点加一个销售额」。**
+> 那个端点聚合的是 `inv_ledger`（出库流水），而它的列只有
+> `qty_delta` / `unit_cost_minor` —— **有成本没有售价**。加售价要往库存流水加列，
+> 而且是让进销存域去回答交易域的问题。
+>
+> **售价本来就在交易域现成**：`ord_item` 有 `goods_no / title / spec / price / qty / amount`。
+> 所以两张榜并存，各答各的 —— 动销/滞销（进销存，件数与成本）
+> 与商品销售（交易，钱）。设计见 [TDD-B端报表库与日结](../technical/design/TDD-B端报表库与日结.md)。
 
 缺的与对不上的，三条都核过：
 
