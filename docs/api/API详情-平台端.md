@@ -2007,6 +2007,7 @@ getElecSupplier
 | `companyName` | `string,null` | 否 | 公司名 |
 | `kind` | `string` | 是 | 类型 |
 | `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
 | `contactName` | `string,null` | 否 | 联系人 |
 | `contactPhone` | `string,null` | 否 | 联系电话 |
 | `maskCode` | `string` | 是 | 匿名代号 |
@@ -2044,6 +2045,7 @@ _无字段_
 | `companyName` | `string,null` | 否 | 公司名 |
 | `kind` | `string` | 是 | 类型 |
 | `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
 | `contactName` | `string,null` | 否 | 联系人 |
 | `contactPhone` | `string,null` | 否 | 联系电话 |
 | `maskCode` | `string` | 是 | 匿名代号 |
@@ -2081,6 +2083,7 @@ _无字段_
 | `companyName` | `string,null` | 否 | 公司名 |
 | `kind` | `string` | 是 | 类型 |
 | `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
 | `contactName` | `string,null` | 否 | 联系人 |
 | `contactPhone` | `string,null` | 否 | 联系电话 |
 | `maskCode` | `string` | 是 | 匿名代号 |
@@ -2135,6 +2138,7 @@ _无字段_
 | `companyName` | `string,null` | 否 | 公司名 |
 | `kind` | `string` | 是 | 类型 |
 | `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
 | `contactName` | `string,null` | 否 | 联系人 |
 | `contactPhone` | `string,null` | 否 | 联系电话 |
 | `maskCode` | `string` | 是 | 匿名代号 |
@@ -11098,6 +11102,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `companyName` | `string,null` | 否 | 公司名 |
 | `kind` | `string` | 是 | 类型 |
 | `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
 | `contactName` | `string,null` | 否 | 联系人 |
 | `contactPhone` | `string,null` | 否 | 联系电话 |
 | `maskCode` | `string` | 是 | 匿名代号 |
