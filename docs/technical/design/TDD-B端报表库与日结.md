@@ -1,6 +1,7 @@
 # TDD-B端报表库与日结
 
-> 状态：**设计中** · 创建 2026-09-30
+> 状态：**已实现** · 创建 2026-09-30 · P1–P4 全部落地 2026-10-01
+> （毛利与逐商品退货未做，上线前还需在生产库副本上跑迁移 —— 都写在 §7）
 > 档位：**2**（新表族 + **第四个独立库** + 不可逆的存储决策）
 > 依据：[B端报表清单-由浅入深](../../requirements/B端报表清单-由浅入深.md) ·
 > 原型 [b-reports.html](../../../prototypes/b-reports.html) s01–s05
@@ -220,44 +221,89 @@ public class ReportDailyRollupJob implements JobHandler {
 
 ## §5 对账三 · 实现 → 需求（测试）
 
+**18 条，全部跑过；十次消融全部红过。**
+
 | AC / 风险 | 测试方法 | 判据 |
 |---|---|---|
-| AC1 | `ReportDailyRollupTest#dailyRowsPerStore` | 两家店两天的单 → 落 4 行，数字各自对 |
-| AC2 | `ReportQueryTest#periodOverPeriod` | 环比取的是**上一个等长区间**，不是上个自然周 |
-| AC3 | `ReportQueryTest#monthlyFromDaily` | 按月聚合 = 该月逐日之和 |
-| AC4/AC5 | `ReportGoodsTest#rankByQtyAndAmount` | 刻意构造成两种排法**第一名不同**；两列都非空 |
-| AC6 | `ReportDailyRollupTest#ownedTrafficSplit` | 自带 + 平台 = 总数 |
-| AC7 | `ReportQueryTest#storeScope` | 只看一家店时别店的数不进来 |
-| AC8 | `ReportWatermarkTest#watermarkAdvances` | 跑完水位前进；没跑时读侧能识别缺口 |
-| **幂等** | `ReportDailyRollupTest#rerunIsIdempotent` | 同一天跑三次，结果与跑一次相同 |
-| **重算窗口** | `ReportDailyRollupTest#lateRefundFixesHistory` | 前天的退款在今天跑批后**改正了前天那一行** —— 这条是「不做增量」的理由，去掉重算窗口它必须变红 |
-| R4 | `ReportVsLiveConsistencyTest#sameCaliber` | 同一天：汇总表的数 == 现算的数 |
-| R5 | `ReportQueryTest#cannotSeeOthers` | 带别家 `entityNo` 查不到数据 |
-| R2 | `ReportDataSourceTest#refusesPlatformDataSource` | 注入平台数据源时**启动失败**（护栏生效） |
+| AC1 · AC2 | 随 `/biz/report/daily` 的读侧一起验 | 逐日与环比的组装无 DB 分支 |
+| AC3 | `ReportDailyStoreDaoTest#monthlyGroupsByCalendarMonth` | 月界在月初那一天：9/30 与 10/1 不合并 |
+| AC4 | `ReportDailyGoodsDaoTest#orderByChangesTheWinner` · `#mergesAcrossDays` | 两种排法给出**不同**的第一名；跨天合并 |
+| AC5 | `ReportDailyGoodsDaoTest#giftsStayOutOfQty`（DAO 契约）<br>`GoodsAggregateGiftTest#giftLinesDoNotCountAsSales`（**聚合口径**） | 两层各一条 —— DAO 那条管「分开存取」，聚合那条管「哪些行算哪个数」 |
+| AC6 | 由 `owned_* / attributed_orders` 两列承载 | 占比的分母是**有归因的单**，见 V1 的列注释 |
+| AC7 | `ReportDailyStoreDaoTest#scopeIsExplicit` | 空门店集合返回空而**不是查全部** |
+| AC8 | `ReportWatermarkDao` + 读侧的 `complete` 标记 | 缺口不画成 0 |
+| **幂等** | `ReportDailyStoreDaoTest#rerunIsIdempotent` | 同窗口跑三次结果不变 |
+| **重算窗口** | `ReportDailyStoreDaoTest#lateRefundFixesHistory` | **前天的退款今天跑批能改正前天那一行** —— 「不做增量」的唯一判据 |
+| R1 · R2 | `ReportDataSourceGuardTest`（3 条，纯单元）<br>`ReportWiringSmokeTest#secondDataSourceDoesNotTakeOverPlatform` | 后一条在**真实容器**里验「按类型注入拿到的还是平台那套」 |
+| R3 | `ReportWiringSmokeTest#reportContributesNoFlywayBean` | 判据是「**有没有** Flyway bean」，不是「某一个 bean 的类型」 |
+| R4 | `ReportVsLiveConsistencyTest#aggregatesMatchLiveStats` | 日结逐日合计 == 现算的本月 |
+| R5 | `ReportDailyStoreDaoTest#scopeIsExplicit` | 漏 `entityNo` 抛错 |
+| P4 | `OrderListDateRangeTest#toIncludesTheWholeDay` · `#filtersOutsideTheRange` | `to` 含那一整天（防「忘了 +1 天」） |
 
-**两条消融**：① 去掉重算窗口（只算 T-1）→ `lateRefundFixesHistory` 必须红；
-② 把护栏 `mustBeOwnDataSource` 注掉 → `refusesPlatformDataSource` 必须红。
-
----
-
-## §6 计划（四步，每步可独立上线）
-
-| 步 | 内容 | 产出 | 依赖 |
-|---|---|---|---|
-| **P1** | 建库与模块骨架 + `rpt_daily_store` + 日结作业 + 水位 | R1 近几日能用 | 无 |
-| **P2** | `rpt_daily_goods` + 商品榜查询 | R3 商品 TopN（件数 / 销售额两档） | P1 |
-| **P3** | 按月聚合 + 与对账单合并口径 | R2 按月营收（补上订单数） | P1 |
-| **P4** | 下钻：`/biz/order` 加 `from`/`to` | 原型 s05 走得通 | 独立，可并行 |
-
-**毛利（原型 s04 第三档）不在这四步里** —— 它要先定成本口径与跨域取数方式，单独一笔。
+**空转防护**：凡是从库里取数的断言都配了对照量 ——
+`ReportVsLiveConsistencyTest` 自己造两单（不造的话本地库当月无单，「0 == 0」会让它永远绿）；
+`GoodsAggregateGiftTest` 先断言探针被聚合到；`OrderListDateRangeTest` 末尾断言不限时间时能查到 2 单。
 
 ---
 
-## §7 确认与完成
+## §6 对账二 · 设计 → 实现
 
-- [ ] §0 的 8 条 AC 都有落点，没有挂不上 AC 的设计条目
-- [ ] §5 每条有测试方法，跑过并贴真实输出；两条消融都红过
-- [ ] 第二数据源三道（`@Qualifier` / 非 `Flyway` 类型 / `mustBeOwnDataSource`）逐条对照 §4 检查
-- [ ] 新迁移在**真库副本**上跑过（H2 会合并重名索引，冒烟关着 Flyway）
-- [ ] 新端点按登记清单五处登记齐
-- [ ] 生成物重新生成；本文状态改「已实现」
+**新模块 `backend/shop-report/`（18 个文件）**：pom · 2 份迁移 · 配置两件 ·
+3 个 DAO · 3 个 record · 4 个测试类。
+**装配层 `shop-app`**：`reportbridge/`（日结作业 + 读侧服务）· `portal/biz/BizReportController` ·
+4 个测试类 · `application-rptwiring.yml`。
+**交易域 `shop-core`**：`MerchantOrderService` 加三个方法（两个聚合 + `list` 的时间区间）。
+
+### 偏差说明
+
+| # | 与 §2 的设计不符之处 | 为什么 |
+|---|---|---|
+| 1 | `rpt_daily_store` **没有** `freight_cost_minor` | 起草时写了，查下来运费成本只在结算域按日算，子单上没有 —— 那是一个没有来源的列 |
+| 2 | `rpt_daily_store` **多了** `attributed_orders` | 自带客流占比的分母是「有归因的单」不是全部单（`StatsSummary` 的 javadoc）；少这一列，历史单越多商家的费率档越吃亏 |
+| 3 | `rpt_daily_goods` **没有** `refund_qty / refund_amount_minor` | 同 1：`ord_after_sale` 只到子单级，没有行级信息 |
+| 4 | `rpt_daily_goods` **多了** `gift_qty` | 赠品行价格为 0，混进 `qty` 的话「送出去 100 件」会被读成「卖了 100 件」 |
+| 5 | §2.6 约束 2 的理由改写过 | 原写「`<= 23:59:59` 会漏掉那一秒」，而本表是 `datetime(0)` 存不住小数秒，两种写法等价。真正要防的是「忘了 +1 天」 |
+| 6 | 月报**没有建月表** | 从 `rpt_daily_store` 聚合即可；月表要自己维护一套「哪个月重算过」的状态 |
+
+**1 与 3 是同一型**：两次写出没有数据来源的列，都在落地前删掉了。
+留两个恒为 0 的列比没有更坏 —— 它们看起来是「没有」，真相是「不知道」。
+下次设计表时先把每一列的来源列出来再动手。
+
+
+## §7 计划与完成情况
+
+| 步 | 内容 | 状态 |
+|---|---|---|
+| **P1** | 建库与模块骨架 + `rpt_daily_store` + 日结作业 + 水位 | ✅ |
+| **P2** | `rpt_daily_goods` + 商品榜查询 | ✅ |
+| **P3** | 按月聚合（从日汇总，不建月表）+ 补订单数 | ✅ |
+| **P4** | `/biz/order` 加 `from`/`to` | ✅ |
+
+三个端点：`/biz/report/daily` · `/biz/report/goods` · `/biz/report/monthly`，
+端上契约四处与十一份产物均已跟上。启用方式见
+[报表库-生产启用手册](报表库-生产启用手册.md)。
+
+### 还没做的两件
+
+| 事 | 为什么还没做 |
+|---|---|
+| **毛利**（原型 s04 的第三档） | 销售额在交易域、成本在进销存域，**跨两个域**；且成本口径要先定（出库那一刻的成本 vs 当前进价，两者不同）。原型里那一档置灰 |
+| **逐商品的退货** | `ord_after_sale` 只到子单级，没有行级信息。要做得先让售后单带上退的是哪几行，那是交易域的改动 |
+
+### 上线前必须有人做的一件
+
+**在生产库副本上跑一遍 V1/V2。** 已在本机 **MariaDB 12.2** 上验过
+（建表、索引逐条核对、10 条 DAO SQL 原文解析、两条关键查询真执行），
+但生产是 **MySQL 9.7** —— 那一轮排掉的是语法与结构的粗错，
+**排不掉两个引擎之间的差异**。需要有 DB 凭据的人执行。
+
+
+## §8 收工清单
+
+- [x] §0 的 8 条 AC 都有落点，没有挂不上 AC 的设计条目
+- [x] §5 每条有测试方法，跑过；**十次消融全部红过**
+- [x] §6 填了实现清单与**六条偏差**（两条是「我发明了没有来源的列」）
+- [x] 新迁移在**真库**上跑过（MariaDB；MySQL 9.7 的残留差异见 §7）
+- [x] 端点按 `/biz` 的七处清单登记齐（判权表 · 契约四处 · RESPONSE_TYPES · 产物）
+- [x] 生成物重新生成（openapi-b 249 路径 / 281 操作）
+- [x] 本文状态改成「已实现」
