@@ -16,7 +16,7 @@ const src = (o: Partial<ElecOpsSource> & Pick<ElecOpsSource, "supplierNo" | "com
 
 const suppliers: ElecOpsSupplierDetail[] = [
   {
-    supplierNo: "SP001", companyName: "深圳甲电子有限公司", kind: "TRADER", city: "深圳", contactName: "王工",
+    supplierNo: "SP001", companyName: "深圳甲电子有限公司", kind: "TRADER", city: "深圳", address: "深圳市南山区科技园 1 栋 801", contactName: "王工",
     contactPhone: "13900002222", maskCode: "S-3F7K", status: "ACTIVE", suspendReason: null, suspendedAt: null,
     onCount: 1832, expiringCount: 126, expiredCount: 40, lastUploadAt: "2026-09-27T10:02:00",
     registerNotified: true, createdAt: "2026-09-20T09:00:00",

@@ -337,6 +337,8 @@ export interface ElecOpsSupplierDetail {
   kind: string;
   /** 城市 */
   city?: string | null;
+  /** 详细地址（供应商入驻/资料页填，比城市细） */
+  address?: string | null;
   /** 联系人 */
   contactName?: string | null;
   /** 联系电话 */
@@ -373,6 +375,8 @@ export interface ElecSupplierReq {
   kind?: string;
   /** 城市 */
   city?: string;
+  /** 详细地址 */
+  address?: string;
   /** 联系人 */
   contactName?: string;
   /** 联系电话 */

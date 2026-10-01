@@ -9781,6 +9781,11 @@ components:
             - "string"
             - "null"
           description: "城市"
+        address: 
+          type: 
+            - "string"
+            - "null"
+          description: "详细地址（供应商入驻/资料页填，比城市细）"
         contactName: 
           type: 
             - "string"
@@ -9855,6 +9860,9 @@ components:
         city: 
           type: "string"
           description: "城市"
+        address: 
+          type: "string"
+          description: "详细地址"
         contactName: 
           type: "string"
           description: "联系人"

@@ -99,6 +99,7 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
       companyName: String(form.companyName ?? "") || undefined,
       kind: String(form.kind ?? "") || undefined,
       city: String(form.city ?? "") || undefined,
+      address: String(form.address ?? "") || undefined,
       contactName: String(form.contactName ?? "") || undefined,
       contactPhone: String(form.contactPhone ?? "") || undefined,
     }),
@@ -110,6 +111,7 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
     { key: "companyName", label: c.fCompany, maxLength: 60 },
     { key: "kind", label: c.fKind, type: "select", options: KINDS.map((k) => ({ value: k, label: kindLabel(k, c) })) },
     { key: "city", label: c.fCity, maxLength: 20 },
+    { key: "address", label: c.fAddress, maxLength: 120 },
     { key: "contactName", label: c.fContact, maxLength: 20 },
     { key: "contactPhone", label: c.fPhone, pattern: { re: "^1\\d{10}$", msg: c.fPhone } },
   ];
@@ -131,7 +133,7 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
   const footer = d && canManage ? (
     <div className="flex gap-2">
       <Button variant="outline" onClick={() => {
-        setForm({ companyName: d.companyName ?? "", kind: d.kind, city: d.city ?? "", contactName: d.contactName ?? "", contactPhone: d.contactPhone ?? "" });
+        setForm({ companyName: d.companyName ?? "", kind: d.kind, city: d.city ?? "", address: d.address ?? "", contactName: d.contactName ?? "", contactPhone: d.contactPhone ?? "" });
         setEdit(true);
       }}>{c.supEdit}</Button>
       <div className="flex-1" />
@@ -163,6 +165,7 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
               <Field label={c.supMaskCode}><span className="font-mono">{d.maskCode}</span></Field>
               <Field label={c.supColKind}>{[kindLabel(d.kind, c), d.city].filter(Boolean).join(" · ")}</Field>
               <Field label={c.supColContact}>{[d.contactName, d.contactPhone].filter(Boolean).join(" · ")}</Field>
+              <Field label={c.fAddress}>{d.address || c.none}</Field>
               <Field label={c.supColOn}>{qty(d.onCount)}</Field>
               <Field label={c.supColExpiring}>{qty(d.expiringCount)}</Field>
               <Field label={c.supExpired}>{qty(d.expiredCount)}</Field>
