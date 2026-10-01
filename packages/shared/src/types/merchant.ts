@@ -1264,6 +1264,46 @@ export interface MerchantTodo {
   quotable: number;
 }
 /**
+ * 商品销售榜的一行（B 端报表 R3）。
+ *
+ * ⚠️ **`qty` 不含赠品**，赠出量在 `giftQty`。合在一起的话「送出去 100 件」
+ * 会被读成「卖了 100 件」—— 数字看着很好、决策全错，而且不报错。
+ */
+export interface GoodsRankRow {
+  /** 商品号。按**商品**汇总，不按 SKU —— SKU 维度是二期 */
+  goodsNo: string;
+  /** 商品名。**是落表那一刻的快照**，不是当前值 —— 那张报表描述的是那几天 */
+  title: string | null;
+  /** 规格快照 */
+  spec: string | null;
+  /** 卖出件数，**不含赠品** */
+  qty: number;
+  /** 销售额（分） */
+  amountMinor: number;
+  /** 赠出件数（买赠活动送的，价格为 0） */
+  giftQty: number;
+}
+
+/**
+ * 商品销售榜（`GET /biz/report/goods`）。
+ *
+ * <p>**不含今天**：榜单看的是一段时间的趋势，少今天一天不改变结论，
+ * 而「今天哪个商品卖得最好」要扫当天全部订单行，代价与收益不匹配。
+ */
+export interface GoodsRank {
+  /** 回看天数（7 / 14 / 30） */
+  days: number;
+  /** 排序口径：`qty` 件数 / `amount` 销售额 */
+  orderBy: string;
+  /** 币种 */
+  currency: CurrencyCode;
+  /** 商品日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 */
+  statsThrough: string | null;
+  /** 已按 `orderBy` 倒序 */
+  rows: GoodsRankRow[];
+}
+
+/**
  * 「近几日」报表的一行（B 端报表 R1）。
  *
  * ⚠️ **`complete: false` 不是「那天没单」**，是日结还没算到它 —— 两者在界面上

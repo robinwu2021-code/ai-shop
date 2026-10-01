@@ -84,6 +84,7 @@ import type {
   GeoTip,
   Goods,
   GoodsInvMode,
+  GoodsRank,
   GroupBuy,
   GroupPickupOption,
   GroupRequest,
@@ -308,6 +309,7 @@ export const httpApi: MerchantApi = {
   mTodo: () => http.get<MerchantTodo>(E.mTodo.path),
   mStats: () => http.get<MerchantStats>(E.mStats.path),
   mDailyReport: (days) => http.get<DailyReport>(E.mDailyReport.path, days ? { days } : undefined),
+  mGoodsRank: (q) => http.get<GoodsRank>(E.mGoodsRank.path, q),
 
   mCrossStoreOverview: () => http.get<CrossStoreOverview>(E.mCrossStoreOverview.path),
   /*

@@ -42,6 +42,7 @@ import type {
   Goods,
   GoodsInvMode,
   GoodsParam,
+  GoodsRank,
   GoodsStatus,
   GroupBuy,
   GroupPickupOption,
@@ -1063,6 +1064,13 @@ export interface MerchantApi {
    * **不是「那天没单」** —— 两者在界面上长得一模一样。
    */
   mDailyReport(days?: number): Promise<DailyReport>;
+
+  /**
+   * 商品销售榜（R3）。`orderBy` 只认 `qty` / `amount`，别的落到件数。
+   *
+   * ⚠️ 行里的 `qty` **不含赠品**，赠出量在 `giftQty` —— 两个数要分开显示。
+   */
+  mGoodsRank(q?: { days?: number; orderBy?: string; limit?: number }): Promise<GoodsRank>;
 
   // ---- 跨店总览与对比（B-11.12.5 / 11.12.6，增值包 P2）
   /**

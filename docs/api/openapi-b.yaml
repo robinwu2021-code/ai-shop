@@ -5286,6 +5286,70 @@ components:
         - "quotable"
       additionalProperties: false
       description: "工作台待办。**数字即入口** —— 商家打开 App 只想知道「有几件事要我做」"
+    GoodsRankRow: 
+      type: "object"
+      properties: 
+        goodsNo: 
+          type: "string"
+          description: "商品号。按**商品**汇总，不按 SKU —— SKU 维度是二期"
+        title: 
+          type: 
+            - "string"
+            - "null"
+          description: "商品名。**是落表那一刻的快照**，不是当前值 —— 那张报表描述的是那几天"
+        spec: 
+          type: 
+            - "string"
+            - "null"
+          description: "规格快照"
+        qty: 
+          type: "number"
+          description: "卖出件数，**不含赠品**"
+        amountMinor: 
+          type: "number"
+          description: "销售额（分）"
+        giftQty: 
+          type: "number"
+          description: "赠出件数（买赠活动送的，价格为 0）"
+      required: 
+        - "goodsNo"
+        - "title"
+        - "spec"
+        - "qty"
+        - "amountMinor"
+        - "giftQty"
+      additionalProperties: false
+      description: "商品销售榜的一行（B 端报表 R3）。\n\n⚠️ **`qty` 不含赠品**，赠出量在 `giftQty`。合在一起的话「送出去 100 件」 会被读成「卖了 100 件」—— 数字看着很好、决策全错，而且不报错。"
+    GoodsRank: 
+      type: "object"
+      properties: 
+        days: 
+          type: "number"
+          description: "回看天数（7 / 14 / 30）"
+        orderBy: 
+          type: "string"
+          description: "排序口径：`qty` 件数 / `amount` 销售额"
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "币种"
+        statsThrough: 
+          type: 
+            - "string"
+            - "null"
+          description: "商品日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过"
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/GoodsRankRow"
+          description: "已按 `orderBy` 倒序"
+      required: 
+        - "days"
+        - "orderBy"
+        - "currency"
+        - "statsThrough"
+        - "rows"
+      additionalProperties: false
+      description: "商品销售榜（`GET /biz/report/goods`）。\n\n<p>**不含今天**：榜单看的是一段时间的趋势，少今天一天不改变结论， 而「今天哪个商品卖得最好」要扫当天全部订单行，代价与收益不匹配。"
     DailyReportRow: 
       type: "object"
       properties: 
@@ -13038,6 +13102,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/DailyReport"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/report/goods": 
+    get: 
+      operationId: "mGoodsRank"
+      summary: "商品销售榜"
+      tags: 
+        - "report"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsRank"
                 required: 
                   - "code"
                   - "msg"

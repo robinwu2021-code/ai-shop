@@ -5144,6 +5144,25 @@ _无字段_
 | `rows` | [`DailyReportRow`](#dailyreportrow)\[\] | 是 | 逐日，**从今天往前排** |
 
 
+#### GET `/biz/report/goods`
+
+商品销售榜　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`GoodsRank`](#goodsrank)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | 回看天数（7 / 14 / 30） |
+| `orderBy` | `string` | 是 | 排序口径：`qty` 件数 / `amount` 销售额 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种 |
+| `statsThrough` | `string,null` | 是 | 商品日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 |
+| `rows` | [`GoodsRankRow`](#goodsrankrow)\[\] | 是 | 已按 `orderBy` 倒序 |
+
+
 ### review
 
 #### GET `/biz/review`
@@ -7624,6 +7643,31 @@ _无字段_
 | `valueNo` | `string` | 否 | 平台值编号。量纲型没有 |
 | `code` | `string` | 否 | 平台值编码，跨店可比 |
 | `label` | `string` | 是 | 展示文案 |
+
+### GoodsRank
+
+商品销售榜（`GET /biz/report/goods`）。 <p>**不含今天**：榜单看的是一段时间的趋势，少今天一天不改变结论， 而「今天哪个商品卖得最好」要扫当天全部订单行，代价与收益不匹配。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `days` | `number` | 是 | 回看天数（7 / 14 / 30） |
+| `orderBy` | `string` | 是 | 排序口径：`qty` 件数 / `amount` 销售额 |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种 |
+| `statsThrough` | `string,null` | 是 | 商品日结算到哪一天（`yyyy-MM-dd`）；`null` 表示从没跑过 |
+| `rows` | [`GoodsRankRow`](#goodsrankrow)\[\] | 是 | 已按 `orderBy` 倒序 |
+
+### GoodsRankRow
+
+商品销售榜的一行（B 端报表 R3）。 ⚠️ **`qty` 不含赠品**，赠出量在 `giftQty`。合在一起的话「送出去 100 件」 会被读成「卖了 100 件」—— 数字看着很好、决策全错，而且不报错。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品号。按**商品**汇总，不按 SKU —— SKU 维度是二期 |
+| `title` | `string,null` | 是 | 商品名。**是落表那一刻的快照**，不是当前值 —— 那张报表描述的是那几天 |
+| `spec` | `string,null` | 是 | 规格快照 |
+| `qty` | `number` | 是 | 卖出件数，**不含赠品** |
+| `amountMinor` | `number` | 是 | 销售额（分） |
+| `giftQty` | `number` | 是 | 赠出件数（买赠活动送的，价格为 0） |
 
 ### GoodsStatus
 

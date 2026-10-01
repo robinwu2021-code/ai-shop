@@ -7,6 +7,7 @@ import { db, delay, persist } from "@shared/mock/db";
 import { ApiError } from "@shared/net/http-client";
 import type {
   DailyReport,
+  GoodsRank,
   Order,
 } from "@shared/types";
 import { currentCurrency } from "@shared/utils/money";
@@ -31,6 +32,7 @@ export const dashboardMock: Pick<MerchantApi,
   "mTodo"
   | "mStats"
   | "mDailyReport"
+  | "mGoodsRank"
   | "mMyPlan"
   | "mStartTrial"
   | "mCrossStoreOverview"
@@ -103,6 +105,52 @@ export const dashboardMock: Pick<MerchantApi,
       statsThrough: dayKey(todayStart - dayMs),
       rows,
     } as DailyReport;
+  },
+
+  /**
+   * 商品销售榜（R3）。mock 从订单行直接算 —— 没有日结那一层。
+   *
+   * ⚠️ 与真后端一样**赠品不进 qty**：混进去的话「送出去 100 件」会被读成
+   * 「卖了 100 件」。mock 里若没有赠品行，这条分支在 mock 上看不出来，要靠真后端验。
+   */
+  async mGoodsRank(q?: { days?: number; orderBy?: string; limit?: number }) {
+    const days = [7, 14, 30].includes(q?.days ?? 30) ? (q?.days ?? 30) : 30;
+    const merchantNo = db.merchant.merchantNo;
+    const dayMs = 86400000;
+    const todayStart = new Date().setHours(0, 0, 0, 0);
+    // 不含今天 —— 与真后端同一口径
+    const to = todayStart;
+    const from = todayStart - (days - 1) * dayMs;
+    const mine = scopedToStore(db.orders.filter(
+      (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED"
+        && o.createdAt >= from && o.createdAt < to,
+    ));
+    const acc = new Map<string, { title: string; spec: string; qty: number; amountMinor: number; giftQty: number }>();
+    for (const o of mine) {
+      for (const it of o.items ?? []) {
+        const k = it.goodsNo ?? it.skuNo ?? "";
+        if (!k) continue;
+        const cur = acc.get(k) ?? { title: it.title ?? "", spec: it.spec ?? "", qty: 0, amountMinor: 0, giftQty: 0 };
+        if (it.isGift) cur.giftQty += it.qty ?? 0;
+        else {
+          cur.qty += it.qty ?? 0;
+          cur.amountMinor += (it.price ?? 0) * (it.qty ?? 0);
+        }
+        acc.set(k, cur);
+      }
+    }
+    const byAmount = (q?.orderBy ?? "qty") === "amount";
+    const rows = [...acc.entries()]
+      .map(([goodsNo, v]) => ({ goodsNo, title: v.title, spec: v.spec, qty: v.qty, amountMinor: v.amountMinor, giftQty: v.giftQty }))
+      .sort((a, b) => (byAmount ? b.amountMinor - a.amountMinor : b.qty - a.qty))
+      .slice(0, Math.min(Math.max(q?.limit ?? 10, 1), 50));
+    return {
+      days,
+      orderBy: byAmount ? "amount" : "qty",
+      currency: "CNY",
+      statsThrough: new Date(todayStart - dayMs).toISOString().slice(0, 10),
+      rows,
+    } as GoodsRank;
   },
 
   async mStats() {

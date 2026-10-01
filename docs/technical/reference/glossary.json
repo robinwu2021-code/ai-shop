@@ -32489,6 +32489,15 @@
         "module": "pay/pay-channel"
       },
       {
+        "name": "OrderBy",
+        "values": [
+          "QTY",
+          "AMOUNT"
+        ],
+        "zh": "榜单的排序口径。",
+        "module": "shop-report"
+      },
+      {
         "name": "PaidOutcome",
         "values": [
           "JOINED",
@@ -35347,6 +35356,14 @@
       "type": "String",
       "value": "\"daily-store\"",
       "zh": "水位的键。",
+      "module": "shop-app"
+    },
+    {
+      "host": "ReportDailyRollupJob",
+      "name": "GOODS_WATERMARK_KEY",
+      "type": "String",
+      "value": "\"daily-goods\"",
+      "zh": "商品日汇总的水位。",
       "module": "shop-app"
     },
     {
