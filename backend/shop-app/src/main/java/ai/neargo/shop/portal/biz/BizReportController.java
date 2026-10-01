@@ -52,6 +52,25 @@ public class BizReportController {
         return reports.recent(merchantNo, ctx.currentStoreScope(), normalize(days));
     }
 
+    /**
+     * 商品销售榜（R3）：近几天按件数或销售额排的前 N 个商品。
+     *
+     * <p><b>件数不含赠品</b>，赠出量单列 —— 混在一起的话「送出去 100 件」
+     * 会被读成「卖了 100 件」，而那种失真不报错、只让决策变歪。
+     *
+     * <p><b>不含今天</b>：榜单看的是一段时间的趋势，少今天一天不改变结论，
+     * 而「今天哪个商品卖得最好」要扫当天全部订单行，代价与收益不匹配。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/report/goods")
+    public DailyReportService.GoodsRank goods(@RequestParam(defaultValue = "30") int days,
+                                              @RequestParam(defaultValue = "qty") String orderBy,
+                                              @RequestParam(defaultValue = "10") int limit) {
+        BizContext ctx = BizContext.current();
+        String merchantNo = BizContext.requireMerchantNo();
+        return reports.goodsRank(merchantNo, ctx.currentStoreScope(), normalize(days), orderBy, limit);
+    }
+
     /** 落到最近的合法档。传 9 给 7、传 999 给 30 —— 不报错，因为这不是用户填的字段。 */
     private static int normalize(int days) {
         int best = ALLOWED_DAYS[0];

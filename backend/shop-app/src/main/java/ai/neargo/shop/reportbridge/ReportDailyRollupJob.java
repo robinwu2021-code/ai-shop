@@ -9,8 +9,10 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.report.config.ReportStoreProperties;
+import ai.neargo.shop.report.dao.ReportDailyGoodsDao;
 import ai.neargo.shop.report.dao.ReportDailyStoreDao;
 import ai.neargo.shop.report.dao.ReportWatermarkDao;
+import ai.neargo.shop.report.dto.DailyGoodsRow;
 import ai.neargo.shop.report.dto.DailyStoreRow;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -44,19 +46,25 @@ public class ReportDailyRollupJob implements JobHandler {
     /** 水位的键。读侧靠它判断「昨天到底算过没有」。 */
     public static final String WATERMARK_KEY = "daily-store";
 
+    /** 商品日汇总的水位。**与门店那条分开记** —— 两段分别成功，一段失败不该让另一段看起来也没跑。 */
+    public static final String GOODS_WATERMARK_KEY = "daily-goods";
+
     private final MerchantOrderService orders;
     private final ReportDailyStoreDao dailyStoreDao;
+    private final ReportDailyGoodsDao dailyGoodsDao;
     private final ReportWatermarkDao watermarkDao;
     private final ReportStoreProperties props;
     private final JobSupport jobs;
 
     public ReportDailyRollupJob(MerchantOrderService orders,
                                 ReportDailyStoreDao dailyStoreDao,
+                                ReportDailyGoodsDao dailyGoodsDao,
                                 ReportWatermarkDao watermarkDao,
                                 ReportStoreProperties props,
                                 JobSupport jobs) {
         this.orders = orders;
         this.dailyStoreDao = dailyStoreDao;
+        this.dailyGoodsDao = dailyGoodsDao;
         this.watermarkDao = watermarkDao;
         this.props = props;
         this.jobs = jobs;
@@ -99,7 +107,21 @@ public class ReportDailyRollupJob implements JobHandler {
             long ms = (System.nanoTime() - started) / 1_000_000;
             // 跑成功了才推水位 —— 水位的含义是「算到这儿了」，不是「试过了」
             watermarkDao.advance(WATERMARK_KEY, to, written, ms);
-            String detail = "窗口 " + from + " → " + to + "，写入 " + written + " 行，耗时 " + ms + " ms";
+
+            /*
+             * 商品那段在门店之后跑，**水位分开记**。
+             * 合用一条的话，商品这段失败时门店那段的「算到哪天」也会跟着不可信 ——
+             * 而读侧正是靠水位区分「那天没单」与「那天没跑批」。
+             */
+            long goodsStarted = System.nanoTime();
+            List<DailyGoodsRow> goodsRows = orders.dailyGoodsAggregates(from, to).stream()
+                    .map(ReportDailyRollupJob::toGoodsRow).toList();
+            int goodsWritten = dailyGoodsDao.replaceWindow(from, to, goodsRows);
+            long goodsMs = (System.nanoTime() - goodsStarted) / 1_000_000;
+            watermarkDao.advance(GOODS_WATERMARK_KEY, to, goodsWritten, goodsMs);
+
+            String detail = "窗口 " + from + " → " + to + "，门店 " + written + " 行 / "
+                    + ms + " ms，商品 " + goodsWritten + " 行 / " + goodsMs + " ms";
             log.info("[report-daily-rollup] {}", detail);
             return JobResult.ok(detail);
         } catch (RuntimeException e) {
@@ -119,6 +141,11 @@ public class ReportDailyRollupJob implements JobHandler {
                 a.freightIncomeMinor(), a.netMinor(),
                 // 币种跟着商户走，本期只有人民币；多币种时从子单上带出来
                 "CNY");
+    }
+
+    private static DailyGoodsRow toGoodsRow(MerchantOrderService.GoodsAgg a) {
+        return new DailyGoodsRow(a.statDate(), a.entityNo(), a.storeNo(), a.goodsNo(),
+                a.title(), a.spec(), a.categoryNo(), a.qty(), a.amountMinor(), a.giftQty());
     }
 
     @Bean

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -53,14 +55,34 @@ final class ReportDaoTestSupport {
                 .replaceAll("(?i)\\)\\s*ENGINE=\\w+[^;]*;", ");");
     }
 
+    /**
+     * 读 {@code db/report} 下**全部**迁移，按文件名排序后拼起来。
+     *
+     * <p>⚠️ 起初这里写死了 {@code V1__report_baseline.sql}。加 V2 那天，
+     * 测试库里就没有新表 —— 报错是一条 <i>bad SQL grammar</i>，
+     * 而它指向的是用到新表的那个测试，不是「你少读了一个迁移」。
+     * 与手抄一份 schema 是同一种漂移，只是换了个形态。
+     */
     private static String read() {
         // 从 target/classes 之外读源文件：测试跑在模块根目录下
-        Path p = Path.of("src/main/resources/db/report/V1__report_baseline.sql");
-        try {
-            return Files.readString(p, StandardCharsets.UTF_8);
+        Path dir = Path.of("src/main/resources/db/report");
+        try (var files = Files.list(dir)) {
+            List<Path> migrations = files
+                    .filter(f -> f.getFileName().toString().endsWith(".sql"))
+                    .sorted(Comparator.comparing(f -> f.getFileName().toString()))
+                    .toList();
+            if (migrations.isEmpty()) {
+                throw new IllegalStateException("db/report 下一个迁移都没有 —— "
+                        + "读不到就不能假装建好了");
+            }
+            StringBuilder sb = new StringBuilder();
+            for (Path m : migrations) {
+                sb.append(Files.readString(m, StandardCharsets.UTF_8)).append("\n;\n");
+            }
+            return sb.toString();
         } catch (IOException e) {
-            throw new IllegalStateException("读不到 V1 迁移（" + p.toAbsolutePath()
-                    + "）—— 测试库的建表语句以它为准，读不到就不能假装建好了", e);
+            throw new IllegalStateException("读不到迁移目录（" + dir.toAbsolutePath()
+                    + "）—— 测试库的建表语句以它为准", e);
         }
     }
 }

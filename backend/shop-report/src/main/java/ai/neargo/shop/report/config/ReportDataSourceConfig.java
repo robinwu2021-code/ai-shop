@@ -113,6 +113,11 @@ public class ReportDataSourceConfig {
     }
 
     @Bean
+    ai.neargo.shop.report.dao.ReportDailyGoodsDao reportDailyGoodsDao(JdbcClient reportJdbcClient) {
+        return new ai.neargo.shop.report.dao.ReportDailyGoodsDao(reportJdbcClient);
+    }
+
+    @Bean
     ai.neargo.shop.report.dao.ReportWatermarkDao reportWatermarkDao(JdbcClient reportJdbcClient) {
         return new ai.neargo.shop.report.dao.ReportWatermarkDao(reportJdbcClient);
     }

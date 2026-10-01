@@ -230,6 +230,26 @@ public interface MerchantOrderService {
      *                         （见 {@link StatsSummary} 的 javadoc：早于归因上线的
      *                         历史单不该把商家的比例冲低）
      */
+    /**
+     * 日结用的按「日 × 门店 × 商品」聚合（P2）。
+     *
+     * <p>读 {@code ord_item} 连 {@code ord_sub_order}，口径与
+     * {@link #dailyStoreAggregates} 共用同一个 {@code TRANSACTED} 与同一条时间轴。
+     */
+    java.util.List<GoodsAgg> dailyGoodsAggregates(java.time.LocalDate from, java.time.LocalDate to);
+
+    /**
+     * 一天一家店一个商品的聚合。
+     *
+     * @param qty     卖出件数，**不含赠品** —— 赠品行价格为 0，混进来的话
+     *                「送出去 100 件」会被读成「卖了 100 件」
+     * @param giftQty 赠出件数，单独一列，每个数只说一件事
+     */
+    record GoodsAgg(java.time.LocalDate statDate, String entityNo, String storeNo,
+                    String goodsNo, String title, String spec, String categoryNo,
+                    int qty, long amountMinor, int giftQty) {
+    }
+
     record DailyAgg(java.time.LocalDate statDate, String entityNo, String storeNo,
                     int orders, long gmvMinor,
                     int refundOrders, long refundMinor,

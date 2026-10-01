@@ -880,6 +880,91 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         }
     }
 
+    /**
+     * 按「日 × 门店 × 商品」聚合。两段：先拿窗口里的成交子单，再按子单号取行。
+     *
+     * <p><b>口径与 {@link #dailyStoreAggregates} 共用</b>同一个 {@code TRANSACTED}
+     * 与同一条时间轴 —— 两张报表的合计对不上时，第一个被怀疑的就是这里。
+     */
+    @Override
+    public java.util.List<GoodsAgg> dailyGoodsAggregates(java.time.LocalDate from,
+                                                         java.time.LocalDate to) {
+        java.time.LocalDateTime fromTs = from.atStartOfDay();
+        java.time.LocalDateTime toTs = to.plusDays(1).atStartOfDay();
+
+        List<OrdSubOrder> sold = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, fromTs)
+                        .lt(OrdSubOrder::getCreatedAt, toTs)));
+        if (sold.isEmpty()) {
+            return List.of();
+        }
+        java.util.Map<String, OrdSubOrder> subs = sold.stream()
+                .filter(o -> o.getSubOrderNo() != null && o.getStoreNo() != null && o.getCreatedAt() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        OrdSubOrder::getSubOrderNo, x -> x, (x, y) -> x));
+        if (subs.isEmpty()) {
+            return List.of();
+        }
+
+        List<ai.neargo.shop.trade.entity.OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(Wrappers.<ai.neargo.shop.trade.entity.OrdItem>lambdaQuery()
+                        .in(ai.neargo.shop.trade.entity.OrdItem::getSubOrderNo, subs.keySet())));
+
+        java.util.Map<String, GoodsAcc> acc = new java.util.LinkedHashMap<>();
+        for (ai.neargo.shop.trade.entity.OrdItem it : items) {
+            OrdSubOrder sub = subs.get(it.getSubOrderNo());
+            if (sub == null || it.getGoodsNo() == null) {
+                continue;
+            }
+            java.time.LocalDate day = sub.getCreatedAt().toLocalDate();
+            String k = day + "|" + sub.getEntityNo() + "|" + sub.getStoreNo() + "|" + it.getGoodsNo();
+            GoodsAcc a = acc.computeIfAbsent(k, x -> new GoodsAcc(day, sub.getEntityNo(),
+                    sub.getStoreNo(), it.getGoodsNo()));
+            // 名字取**最后看到的那一个**：同一个商品跨天可能改过名，取哪个都行但要有定论
+            a.title = it.getTitle();
+            a.spec = it.getSpec();
+            a.categoryNo = it.getCategoryNo();
+            int q = it.getQty() == null ? 0 : it.getQty();
+            if (Boolean.TRUE.equals(it.getIsGift())) {
+                // 赠品行价格为 0（见 OrderVO.isGift 的注释）。**不进 qty** ——
+                // 否则「送出去 100 件」会被读成「卖了 100 件」，而数字看着很好
+                a.giftQty += q;
+            } else {
+                a.qty += q;
+                a.amountMinor += nz(it.getAmount());
+            }
+        }
+        return acc.values().stream().map(GoodsAcc::toAgg).toList();
+    }
+
+    /** 商品聚合的中间态。 */
+    private static final class GoodsAcc {
+        final java.time.LocalDate statDate;
+        final String entityNo;
+        final String storeNo;
+        final String goodsNo;
+        String title;
+        String spec;
+        String categoryNo;
+        int qty;
+        long amountMinor;
+        int giftQty;
+
+        GoodsAcc(java.time.LocalDate statDate, String entityNo, String storeNo, String goodsNo) {
+            this.statDate = statDate;
+            this.entityNo = entityNo;
+            this.storeNo = storeNo;
+            this.goodsNo = goodsNo;
+        }
+
+        GoodsAgg toAgg() {
+            return new GoodsAgg(statDate, entityNo, storeNo, goodsNo,
+                    title, spec, categoryNo, qty, amountMinor, giftQty);
+        }
+    }
+
     /** 聚合中间态。用可变类而不是不断 new record —— 一天几十万单时那是几十万次拷贝。 */
     private static final class Acc {
         final java.time.LocalDate statDate;

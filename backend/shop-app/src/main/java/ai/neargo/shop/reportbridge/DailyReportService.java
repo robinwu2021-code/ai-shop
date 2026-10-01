@@ -9,8 +9,10 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import ai.neargo.shop.report.dao.ReportDailyGoodsDao;
 import ai.neargo.shop.report.dao.ReportDailyStoreDao;
 import ai.neargo.shop.report.dao.ReportWatermarkDao;
+import ai.neargo.shop.report.dto.DailyGoodsRow;
 import ai.neargo.shop.report.dto.DailyStoreRow;
 import ai.neargo.shop.report.dto.Watermark;
 import ai.neargo.shop.trade.service.MerchantOrderService;
@@ -37,13 +39,16 @@ import org.springframework.stereotype.Service;
 public class DailyReportService {
 
     private final ReportDailyStoreDao dailyStoreDao;
+    private final ReportDailyGoodsDao dailyGoodsDao;
     private final ReportWatermarkDao watermarkDao;
     private final MerchantOrderService orders;
 
     public DailyReportService(ReportDailyStoreDao dailyStoreDao,
+                              ReportDailyGoodsDao dailyGoodsDao,
                               ReportWatermarkDao watermarkDao,
                               MerchantOrderService orders) {
         this.dailyStoreDao = dailyStoreDao;
+        this.dailyGoodsDao = dailyGoodsDao;
         this.watermarkDao = watermarkDao;
         this.orders = orders;
     }
@@ -97,6 +102,46 @@ public class DailyReportService {
                 prev.stream().mapToLong(DailyStoreRow::gmvMinor).sum(),
                 through == null ? null : through.toString(),
                 rows);
+    }
+
+    /**
+     * 商品销售榜（R3）。
+     *
+     * <p><b>只读汇总，不含今天</b> —— 与「近几日」那条不同：那边今天的数字还能现算出来，
+     * 而「今天哪个商品卖得最好」要扫当天全部订单行，代价与收益不匹配。
+     * 榜单看的是一段时间的趋势，少今天一天不改变结论。
+     *
+     * @param orderBy 只认件数与销售额；别的值落到件数
+     */
+    public GoodsRank goodsRank(String merchantNo, Collection<String> storeNos,
+                               int days, String orderBy, int limit) {
+        LocalDate to = LocalDate.now().minusDays(1);
+        LocalDate from = to.minusDays(days - 1L);
+        ReportDailyGoodsDao.OrderBy by = "amount".equalsIgnoreCase(orderBy)
+                ? ReportDailyGoodsDao.OrderBy.AMOUNT
+                : ReportDailyGoodsDao.OrderBy.QTY;
+        List<DailyGoodsRow> rows = dailyGoodsDao.rank(merchantNo, storeNos, from, to, by,
+                Math.min(Math.max(limit, 1), 50));
+        String through = watermarkDao.find(ReportDailyRollupJob.GOODS_WATERMARK_KEY)
+                .map(Watermark::lastStatDate).map(LocalDate::toString).orElse(null);
+        return new GoodsRank(days, by.name().toLowerCase(), "CNY", through,
+                rows.stream().map(r -> new GoodsRankRow(r.goodsNo(), r.title(), r.spec(),
+                        r.qty(), r.amountMinor(), r.giftQty())).toList());
+    }
+
+    /**
+     * @param statsThrough 商品日结算到哪一天（{@code yyyy-MM-dd}）；{@code null} 表示从没跑过
+     */
+    public record GoodsRank(int days, String orderBy, String currency,
+                            String statsThrough, List<GoodsRankRow> rows) {
+    }
+
+    /**
+     * @param qty     卖出件数，**不含赠品**
+     * @param giftQty 赠出件数。与 {@code qty} 分开 —— 「送出去 100 件」不是「卖了 100 件」
+     */
+    public record GoodsRankRow(String goodsNo, String title, String spec,
+                               int qty, long amountMinor, int giftQty) {
     }
 
     /** 同一天多家店时按天合并 —— 查询层决定合不合并，表里不落合计行。 */
