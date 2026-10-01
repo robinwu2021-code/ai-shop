@@ -1,0 +1,27 @@
+# 报表装配冒烟（ReportWiringSmokeTest）的独立内存库。
+#
+# **为什么要另一套**：那个类带自己的属性（shop.report.* 一组），
+# 于是它是**另一个 Spring 上下文**。默认的 `jdbc:h2:mem:shop` 是进程内共享的一个库，
+# 第二个上下文起来时会把 schema-test.sql 在同一个库上再跑一遍 ——
+# 撞 mch_admission_policy 的唯一索引（那句 UPDATE legal_form 'MICRO' → 'NATURAL_PERSON'），
+# 整个上下文起不来；**单独跑这个类是绿的，三个类一起跑全红**。
+# 与 application-aidata.yml / -openapi.yml / -estatecache.yml 同一个原因、同一个解法：
+# 换库名，各起各的。
+#
+# 排在 @ActiveProfiles 的最后一位才能盖住默认的 url。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_rptwiring;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+shop:
+  inventory:
+    datasource:
+      url: jdbc:h2:mem:inv_rptwiring;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+  report:
+    enabled: true
+    # 本测试验的是**装配**不是建表，所以关掉迁移：V1/V2 是 MySQL 语法，
+    # 拿 H2 跑过也不代表生产跑得过（那种「绿」比不测更坏）
+    flyway-enabled: false
+    datasource:
+      url: jdbc:h2:mem:rpt_wiring;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+      username: sa
+      password: ""

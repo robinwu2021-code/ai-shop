@@ -34,14 +34,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>报表库指向 H2 且关掉迁移 —— 本测试验的是<b>装配</b>，不是建表。
  * V1 能不能在生产跑，只有真库副本上跑过才算数。
  */
-@SpringBootTest(properties = {
-        "shop.report.enabled=true",
-        "shop.report.flyway-enabled=false",
-        "shop.report.datasource.url=jdbc:h2:mem:rpt_wiring_smoke;MODE=MySQL;DB_CLOSE_DELAY=-1",
-        "shop.report.datasource.username=sa",
-        "shop.report.datasource.password=",
-})
-@ActiveProfiles("test")
+@SpringBootTest
+// "rptwiring" 放最后：**独立内存库**，见 application-rptwiring.yml。
+// 本类带自己的 shop.report.* 一组属性 → 另一个 Spring 上下文 →
+// 第二个上下文会在共享库上重跑 schema-test.sql，撞 mch_admission_policy 的唯一索引。
+// 单独跑这个类是绿的，与别的 @SpringBootTest 一起跑全红 —— 换库名各起各的。
+@ActiveProfiles({"test", "rptwiring"})
 class ReportWiringSmokeTest {
 
     @Autowired
