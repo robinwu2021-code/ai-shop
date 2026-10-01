@@ -104,6 +104,72 @@ public class ReportDailyStoreDao {
         return spec.query(ReportDailyStoreDao::map).list();
     }
 
+    /**
+     * 按月聚合（R2）。**从日汇总算出来，不另建一张月表** ——
+     * 月表要自己维护一套「哪个月重算过」的状态，而它能表达的东西日表全都有。
+     *
+     * <p><b>用 {@code YEAR()/MONTH()} 而不是 {@code DATE_FORMAT}</b>：
+     * 后者在 H2 上不可靠，而本仓库记过四处 H2 与生产库的方言差 ——
+     * 测试绿不代表生产对。年月在 Java 侧拼成 {@code yyyy-MM}。
+     *
+     * @param from 含，当月 1 号
+     * @param to   含，当月任意一天（内部按月份比，不按日）
+     */
+    public List<MonthlyRow> monthlyRange(String entityNo, Collection<String> storeNos,
+                                         LocalDate from, LocalDate to) {
+        requireEntity(entityNo);
+        if (storeNos != null && storeNos.isEmpty()) {
+            return List.of();
+        }
+        StringBuilder sql = new StringBuilder("""
+                SELECT YEAR(stat_date) AS y, MONTH(stat_date) AS m,
+                       SUM(orders) AS orders, SUM(gmv_minor) AS gmv_minor,
+                       SUM(refund_orders) AS refund_orders, SUM(refund_minor) AS refund_minor,
+                       SUM(commission_minor) AS commission_minor,
+                       SUM(service_fee_minor) AS service_fee_minor,
+                       SUM(freight_income_minor) AS freight_income_minor,
+                       SUM(net_minor) AS net_minor
+                  FROM rpt_daily_store
+                 WHERE entity_no = ? AND stat_date BETWEEN ? AND ?
+                """);
+        if (storeNos != null) {
+            sql.append(" AND store_no IN (")
+                    .append(String.join(",", storeNos.stream().map(x -> "?").toList()))
+                    .append(")");
+        }
+        sql.append(" GROUP BY YEAR(stat_date), MONTH(stat_date) ORDER BY y DESC, m DESC");
+        JdbcClient.StatementSpec spec = jdbc.sql(sql.toString())
+                .param(entityNo).param(from).param(to);
+        if (storeNos != null) {
+            for (String s : storeNos) {
+                spec = spec.param(s);
+            }
+        }
+        return spec.query(ReportDailyStoreDao::mapMonthly).list();
+    }
+
+    /**
+     * 一个月一行。
+     *
+     * @param month   {@code yyyy-MM}
+     * @param orders  **订单数**。这正是 {@code Statement} 答不了的那一个 ——
+     *                它只有 {@code billCount}（结算笔数），与「这个月多少单」不是一回事
+     */
+    public record MonthlyRow(String month, int orders, long gmvMinor,
+                             int refundOrders, long refundMinor,
+                             long commissionMinor, long serviceFeeMinor,
+                             long freightIncomeMinor, long netMinor) {
+    }
+
+    private static MonthlyRow mapMonthly(ResultSet rs, int rowNum) throws SQLException {
+        return new MonthlyRow(
+                String.format("%04d-%02d", rs.getInt("y"), rs.getInt("m")),
+                rs.getInt("orders"), rs.getLong("gmv_minor"),
+                rs.getInt("refund_orders"), rs.getLong("refund_minor"),
+                rs.getLong("commission_minor"), rs.getLong("service_fee_minor"),
+                rs.getLong("freight_income_minor"), rs.getLong("net_minor"));
+    }
+
     private static void requireEntity(String entityNo) {
         if (entityNo == null || entityNo.isBlank()) {
             // 本库没有行级数据域，少这一句就是「谁都能查全部」

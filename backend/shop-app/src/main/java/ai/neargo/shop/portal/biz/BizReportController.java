@@ -53,6 +53,22 @@ public class BizReportController {
     }
 
     /**
+     * 按月营收（R2）：逐月的单量与钱，默认回看 6 个月。
+     *
+     * <p><b>本月那一行多半是不全的</b> —— 日结只算到 T-1，今天的单还没进去。
+     * 端上要按 {@code statsThrough} 提示，别让商家把半个月当成整月去比。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
+    @GetMapping("/biz/report/monthly")
+    public DailyReportService.MonthlyReport monthly(@RequestParam(defaultValue = "6") int months) {
+        BizContext ctx = BizContext.current();
+        String merchantNo = BizContext.requireMerchantNo();
+        // 1~24 个月：再长的话一次要扫两年的日行，而商家看的是趋势不是账本
+        int m = Math.min(Math.max(months, 1), 24);
+        return reports.monthly(merchantNo, ctx.currentStoreScope(), m);
+    }
+
+    /**
      * 商品销售榜（R3）：近几天按件数或销售额排的前 N 个商品。
      *
      * <p><b>件数不含赠品</b>，赠出量单列 —— 混在一起的话「送出去 100 件」

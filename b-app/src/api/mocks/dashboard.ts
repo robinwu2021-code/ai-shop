@@ -8,6 +8,7 @@ import { ApiError } from "@shared/net/http-client";
 import type {
   DailyReport,
   GoodsRank,
+  MonthlyReport,
   Order,
 } from "@shared/types";
 import { currentCurrency } from "@shared/utils/money";
@@ -33,6 +34,7 @@ export const dashboardMock: Pick<MerchantApi,
   | "mStats"
   | "mDailyReport"
   | "mGoodsRank"
+  | "mMonthlyReport"
   | "mMyPlan"
   | "mStartTrial"
   | "mCrossStoreOverview"
@@ -151,6 +153,54 @@ export const dashboardMock: Pick<MerchantApi,
       statsThrough: new Date(todayStart - dayMs).toISOString().slice(0, 10),
       rows,
     } as GoodsRank;
+  },
+
+  /**
+   * 按月营收（R2）。mock 从订单直接按月分组 —— 没有日结那一层。
+   *
+   * ⚠️ 真后端的「本月那一行多半不全」（日结只算到 T-1）在 mock 上**看不出来**：
+   * 这里把今天的单也算进了本月。那条提示要靠真后端验。
+   */
+  async mMonthlyReport(months?: number) {
+    const n = Math.min(Math.max(months ?? 6, 1), 24);
+    const merchantNo = db.merchant.merchantNo;
+    const mine = scopedToStore(db.orders.filter(
+      (o) => belongsToMerchant(o, merchantNo) && o.status !== "CANCELLED",
+    ));
+    const now = new Date();
+    const keyOf = (ms: number) => {
+      const d = new Date(ms);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    };
+    const wanted: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      wanted.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    const rows = wanted.map((month) => {
+      const list = mine.filter((o) => keyOf(o.createdAt) === month);
+      const gmv = list.reduce((s, o) => s + o.amount.payableMinor, 0);
+      return {
+        month,
+        orders: list.length,
+        gmvMinor: gmv,
+        refundOrders: 0,
+        refundMinor: 0,
+        // mock 不算费率，只把结构摆出来；真后端从子单上带
+        commissionMinor: 0,
+        serviceFeeMinor: 0,
+        freightIncomeMinor: 0,
+        netMinor: gmv,
+      };
+    });
+    return {
+      months: n,
+      currency: "CNY",
+      statsThrough: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+      totalOrders: rows.reduce((s, r) => s + r.orders, 0),
+      totalNetMinor: rows.reduce((s, r) => s + r.netMinor, 0),
+      rows,
+    } as MonthlyReport;
   },
 
   async mStats() {

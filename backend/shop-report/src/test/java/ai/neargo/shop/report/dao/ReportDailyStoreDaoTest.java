@@ -86,6 +86,31 @@ class ReportDailyStoreDaoTest {
                 .extracting(DailyStoreRow::entityNo).containsOnly("E1");
     }
 
+    @Test
+    @DisplayName("★★★ 按月聚合：跨月要分开，同月要合并 —— 边界在月初那一天")
+    void monthlyGroupsByCalendarMonth() {
+        ReportDailyStoreDao dao = dao("monthly");
+        LocalDate sep30 = LocalDate.of(2026, 9, 30);
+        LocalDate oct01 = LocalDate.of(2026, 10, 1);
+        LocalDate oct02 = LocalDate.of(2026, 10, 2);
+        dao.replaceWindow(sep30, oct02, List.of(
+                row(sep30, 10, 1000, 0, 0),
+                row(oct01, 3, 300, 0, 0),
+                row(oct02, 4, 400, 1, 50)));
+
+        List<ReportDailyStoreDao.MonthlyRow> rows =
+                dao.monthlyRange("E1", null, sep30, oct02);
+
+        // 倒序：新的月在前
+        assertThat(rows).extracting(ReportDailyStoreDao.MonthlyRow::month)
+                .containsExactly("2026-10", "2026-09");
+        // 9/30 与 10/1 只差一天，但**不能合在一起** —— 月界在月初那一天
+        assertThat(rows.get(0).orders()).isEqualTo(7);
+        assertThat(rows.get(0).gmvMinor()).isEqualTo(700);
+        assertThat(rows.get(0).refundMinor()).isEqualTo(50);
+        assertThat(rows.get(1).orders()).isEqualTo(10);
+    }
+
     private static DailyStoreRow one(ReportDailyStoreDao dao, LocalDate d) {
         List<DailyStoreRow> rows = dao.findRange("E1", null, d, d);
         assertThat(rows).as("期望 %s 只有一行", d).hasSize(1);

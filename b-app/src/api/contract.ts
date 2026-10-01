@@ -84,6 +84,7 @@ import type {
   MerchantStats,
   MerchantTodo,
   Message,
+  MonthlyReport,
   MyDebt,
   MyQualifications,
   MySettleBatch,
@@ -1071,6 +1072,14 @@ export interface MerchantApi {
    * ⚠️ 行里的 `qty` **不含赠品**，赠出量在 `giftQty` —— 两个数要分开显示。
    */
   mGoodsRank(q?: { days?: number; orderBy?: string; limit?: number }): Promise<GoodsRank>;
+
+  /**
+   * 按月营收（R2），默认回看 6 个月。
+   *
+   * ⚠️ **本月那一行多半不全** —— 日结只算到 T-1，今天的单还没进去。
+   * 端上要按 `statsThrough` 提示，别让商家把半个月当整月去比。
+   */
+  mMonthlyReport(months?: number): Promise<MonthlyReport>;
 
   // ---- 跨店总览与对比（B-11.12.5 / 11.12.6，增值包 P2）
   /**

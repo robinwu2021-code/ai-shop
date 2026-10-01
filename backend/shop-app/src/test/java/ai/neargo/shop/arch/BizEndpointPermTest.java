@@ -237,6 +237,7 @@ class BizEndpointPermTest {
         // **不新造码** —— 这里没有新的授权语义：能看经营数据的人就该看得到它的历史。
         put("/biz/report/daily", BizPerms.CUSTOMER);
         put("/biz/report/goods", BizPerms.CUSTOMER);
+        put("/biz/report/monthly", BizPerms.CUSTOMER);
 
         // ---- 商品：改库存与改价是两件事 ----
         put("/biz/goods", BizPerms.STOCK);

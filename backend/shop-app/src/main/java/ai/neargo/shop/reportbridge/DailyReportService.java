@@ -105,6 +105,39 @@ public class DailyReportService {
     }
 
     /**
+     * 按月营收（R2）。**从日汇总聚合**，不读对账单。
+     *
+     * <p>与 {@code /biz/settle/statement} 的分工：那一个是<b>单期对账</b>，
+     * 逐笔能还原到订单号，是争议时说得清的那份；这一个是<b>跨月趋势</b>，
+     * 回答「这几个月走势怎么样」，并补上对账单答不了的<b>订单数</b>
+     * （{@code Statement} 只有 billCount，那是结算笔数）。
+     *
+     * @param months 回看几个月（含本月）
+     */
+    public MonthlyReport monthly(String merchantNo, Collection<String> storeNos, int months) {
+        LocalDate today = LocalDate.now();
+        LocalDate to = today;
+        LocalDate from = today.withDayOfMonth(1).minusMonths(months - 1L);
+        List<ReportDailyStoreDao.MonthlyRow> rows =
+                dailyStoreDao.monthlyRange(merchantNo, storeNos, from, to);
+        String through = watermarkDao.find(ReportDailyRollupJob.WATERMARK_KEY)
+                .map(Watermark::lastStatDate).map(LocalDate::toString).orElse(null);
+        return new MonthlyReport(months, "CNY", through,
+                rows.stream().mapToInt(ReportDailyStoreDao.MonthlyRow::orders).sum(),
+                rows.stream().mapToLong(ReportDailyStoreDao.MonthlyRow::netMinor).sum(),
+                rows);
+    }
+
+    /**
+     * @param statsThrough 日结算到哪一天；**本月那一行多半是不全的** ——
+     *                     日结只算到 T-1，今天的单还没进去
+     */
+    public record MonthlyReport(int months, String currency, String statsThrough,
+                                int totalOrders, long totalNetMinor,
+                                List<ReportDailyStoreDao.MonthlyRow> rows) {
+    }
+
+    /**
      * 商品销售榜（R3）。
      *
      * <p><b>只读汇总，不含今天</b> —— 与「近几日」那条不同：那边今天的数字还能现算出来，

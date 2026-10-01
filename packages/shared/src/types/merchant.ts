@@ -1264,6 +1264,54 @@ export interface MerchantTodo {
   quotable: number;
 }
 /**
+ * 按月营收的一行（B 端报表 R2）。
+ *
+ * ⚠️ **`orders` 正是对账单答不了的那一个** —— `Statement` 只有 `billCount`
+ * （结算笔数），与「这个月多少单」不是一回事。
+ */
+export interface MonthlyReportRow {
+  /** `yyyy-MM` */
+  month: string;
+  /** 成交单量 */
+  orders: number;
+  /** 成交额（分） */
+  gmvMinor: number;
+  /** 当月**发生**的退款笔数（按退款日归属，不回冲原单那月） */
+  refundOrders: number;
+  /** 当月发生的退款额（分） */
+  refundMinor: number;
+  /** 佣金（分） */
+  commissionMinor: number;
+  /** 履约服务费（分） */
+  serviceFeeMinor: number;
+  /** 运费收入（分） */
+  freightIncomeMinor: number;
+  /** 应结（分） */
+  netMinor: number;
+}
+
+/**
+ * 按月营收（`GET /biz/report/monthly`）。
+ *
+ * <p>与对账单的分工：那一个是**单期对账**，逐笔能还原到订单号，是争议时说得清的那份；
+ * 这一个是**跨月趋势**，并补上对账单答不了的订单数。
+ */
+export interface MonthlyReport {
+  /** 回看几个月（含本月） */
+  months: number;
+  /** 币种 */
+  currency: CurrencyCode;
+  /** 日结算到哪一天（`yyyy-MM-dd`）。**本月那一行多半不全** —— 日结只算到 T-1 */
+  statsThrough: string | null;
+  /** 区间合计单量 */
+  totalOrders: number;
+  /** 区间合计应结（分） */
+  totalNetMinor: number;
+  /** 逐月，**新的月在前** */
+  rows: MonthlyReportRow[];
+}
+
+/**
  * 商品销售榜的一行（B 端报表 R3）。
  *
  * ⚠️ **`qty` 不含赠品**，赠出量在 `giftQty`。合在一起的话「送出去 100 件」

@@ -378,6 +378,7 @@ const RESPONSE_TYPES = {
   mStats: "MerchantStats",
   mDailyReport: "DailyReport",
   mGoodsRank: "GoodsRank",
+  mMonthlyReport: "MonthlyReport",
   mCrossStoreOverview: "CrossStoreOverview",
   mCrossStoreCompare: "CrossStoreCompare",
   // 试用返回的是**开通后的新视图**，与读接口同一个类型 ——

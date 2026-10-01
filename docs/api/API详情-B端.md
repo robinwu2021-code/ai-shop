@@ -5163,6 +5163,26 @@ _无字段_
 | `rows` | [`GoodsRankRow`](#goodsrankrow)\[\] | 是 | 已按 `orderBy` 倒序 |
 
 
+#### GET `/biz/report/monthly`
+
+按月营收　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MonthlyReport`](#monthlyreport)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `months` | `number` | 是 | 回看几个月（含本月） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种 |
+| `statsThrough` | `string,null` | 是 | 日结算到哪一天（`yyyy-MM-dd`）。**本月那一行多半不全** —— 日结只算到 T-1 |
+| `totalOrders` | `number` | 是 | 区间合计单量 |
+| `totalNetMinor` | `number` | 是 | 区间合计应结（分） |
+| `rows` | [`MonthlyReportRow`](#monthlyreportrow)\[\] | 是 | 逐月，**新的月在前** |
+
+
 ### review
 
 #### GET `/biz/review`
@@ -8503,6 +8523,35 @@ _无字段_
 - `TRADE`
 - `MARKETING`
 - `SYSTEM`
+
+### MonthlyReport
+
+按月营收（`GET /biz/report/monthly`）。 <p>与对账单的分工：那一个是**单期对账**，逐笔能还原到订单号，是争议时说得清的那份； 这一个是**跨月趋势**，并补上对账单答不了的订单数。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `months` | `number` | 是 | 回看几个月（含本月） |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | 币种 |
+| `statsThrough` | `string,null` | 是 | 日结算到哪一天（`yyyy-MM-dd`）。**本月那一行多半不全** —— 日结只算到 T-1 |
+| `totalOrders` | `number` | 是 | 区间合计单量 |
+| `totalNetMinor` | `number` | 是 | 区间合计应结（分） |
+| `rows` | [`MonthlyReportRow`](#monthlyreportrow)\[\] | 是 | 逐月，**新的月在前** |
+
+### MonthlyReportRow
+
+按月营收的一行（B 端报表 R2）。 ⚠️ **`orders` 正是对账单答不了的那一个** —— `Statement` 只有 `billCount` （结算笔数），与「这个月多少单」不是一回事。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `month` | `string` | 是 | `yyyy-MM` |
+| `orders` | `number` | 是 | 成交单量 |
+| `gmvMinor` | `number` | 是 | 成交额（分） |
+| `refundOrders` | `number` | 是 | 当月**发生**的退款笔数（按退款日归属，不回冲原单那月） |
+| `refundMinor` | `number` | 是 | 当月发生的退款额（分） |
+| `commissionMinor` | `number` | 是 | 佣金（分） |
+| `serviceFeeMinor` | `number` | 是 | 履约服务费（分） |
+| `freightIncomeMinor` | `number` | 是 | 运费收入（分） |
+| `netMinor` | `number` | 是 | 应结（分） |
 
 ### MyDebt
 

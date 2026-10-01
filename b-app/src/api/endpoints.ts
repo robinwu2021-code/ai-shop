@@ -114,6 +114,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStats: { method: "GET", path: "/biz/dashboard/stats", auth: true, summary: "经营数据" },
   mDailyReport: { method: "GET", path: "/biz/report/daily", auth: true, summary: "近几日报表" },
   mGoodsRank: { method: "GET", path: "/biz/report/goods", auth: true, summary: "商品销售榜" },
+  mMonthlyReport: { method: "GET", path: "/biz/report/monthly", auth: true, summary: "按月营收" },
 
   // 跨店总览与对比（B-11.12.5 / 11.12.6）。权限与 /biz/dashboard/stats 同一档
   // （biz:customer，后端没有另造 biz:cross-store 码），另有一道能力位门禁：

@@ -5286,6 +5286,82 @@ components:
         - "quotable"
       additionalProperties: false
       description: "工作台待办。**数字即入口** —— 商家打开 App 只想知道「有几件事要我做」"
+    MonthlyReportRow: 
+      type: "object"
+      properties: 
+        month: 
+          type: "string"
+          description: "`yyyy-MM`"
+        orders: 
+          type: "number"
+          description: "成交单量"
+        gmvMinor: 
+          type: "number"
+          description: "成交额（分）"
+        refundOrders: 
+          type: "number"
+          description: "当月**发生**的退款笔数（按退款日归属，不回冲原单那月）"
+        refundMinor: 
+          type: "number"
+          description: "当月发生的退款额（分）"
+        commissionMinor: 
+          type: "number"
+          description: "佣金（分）"
+        serviceFeeMinor: 
+          type: "number"
+          description: "履约服务费（分）"
+        freightIncomeMinor: 
+          type: "number"
+          description: "运费收入（分）"
+        netMinor: 
+          type: "number"
+          description: "应结（分）"
+      required: 
+        - "month"
+        - "orders"
+        - "gmvMinor"
+        - "refundOrders"
+        - "refundMinor"
+        - "commissionMinor"
+        - "serviceFeeMinor"
+        - "freightIncomeMinor"
+        - "netMinor"
+      additionalProperties: false
+      description: "按月营收的一行（B 端报表 R2）。\n\n⚠️ **`orders` 正是对账单答不了的那一个** —— `Statement` 只有 `billCount` （结算笔数），与「这个月多少单」不是一回事。"
+    MonthlyReport: 
+      type: "object"
+      properties: 
+        months: 
+          type: "number"
+          description: "回看几个月（含本月）"
+        currency: 
+          "$ref": "#/components/schemas/CurrencyCode"
+          description: "币种"
+        statsThrough: 
+          type: 
+            - "string"
+            - "null"
+          description: "日结算到哪一天（`yyyy-MM-dd`）。**本月那一行多半不全** —— 日结只算到 T-1"
+        totalOrders: 
+          type: "number"
+          description: "区间合计单量"
+        totalNetMinor: 
+          type: "number"
+          description: "区间合计应结（分）"
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/MonthlyReportRow"
+          description: "逐月，**新的月在前**"
+      required: 
+        - "months"
+        - "currency"
+        - "statsThrough"
+        - "totalOrders"
+        - "totalNetMinor"
+        - "rows"
+      additionalProperties: false
+      description: "按月营收（`GET /biz/report/monthly`）。\n\n<p>与对账单的分工：那一个是**单期对账**，逐笔能还原到订单号，是争议时说得清的那份； 这一个是**跨月趋势**，并补上对账单答不了的订单数。"
     GoodsRankRow: 
       type: "object"
       properties: 
@@ -13130,6 +13206,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/GoodsRank"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/report/monthly": 
+    get: 
+      operationId: "mMonthlyReport"
+      summary: "按月营收"
+      tags: 
+        - "report"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/MonthlyReport"
                 required: 
                   - "code"
                   - "msg"

@@ -121,6 +121,7 @@ import type {
   MerchantStats,
   MerchantTodo,
   Message,
+  MonthlyReport,
   MyDebt,
   MyQualifications,
   MySettleBatch,
@@ -310,6 +311,7 @@ export const httpApi: MerchantApi = {
   mStats: () => http.get<MerchantStats>(E.mStats.path),
   mDailyReport: (days) => http.get<DailyReport>(E.mDailyReport.path, days ? { days } : undefined),
   mGoodsRank: (q) => http.get<GoodsRank>(E.mGoodsRank.path, q),
+  mMonthlyReport: (months) => http.get<MonthlyReport>(E.mMonthlyReport.path, months ? { months } : undefined),
 
   mCrossStoreOverview: () => http.get<CrossStoreOverview>(E.mCrossStoreOverview.path),
   /*
