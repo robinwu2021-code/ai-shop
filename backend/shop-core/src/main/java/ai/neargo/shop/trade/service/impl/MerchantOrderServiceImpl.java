@@ -331,7 +331,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     public PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
-                                  String status, List<String> fulfillments, long page, long size) {
+                                  String status, List<String> fulfillments,
+                                  java.time.LocalDate from, java.time.LocalDate to,
+                                  long page, long size) {
         var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
         /*
          * 门店过滤。**结算键 entity_no 仍然保留** —— 两个键各管各的：
@@ -347,6 +349,20 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 return PageData.of(List.of(), 0, page, size);
             }
             w.in(OrdSubOrder::getStoreNo, storeNos);
+        }
+        /*
+         * 时间区间（P4）。**按下单时间筛，与报表同一条时间轴** ——
+         * 换成支付时间或更新时间的话，从报表点进来的单数就对不上，
+         * 而两边各自都说得通，那是口径分岔里最难查的形状。
+         *
+         * `to` 的含义是「**含那一整天**」，所以取 < to+1 天 00:00，
+         * 不是 <= to 23:59:59 —— 后者会漏掉那一秒里的单。
+         */
+        if (from != null) {
+            w.ge(OrdSubOrder::getCreatedAt, from.atStartOfDay());
+        }
+        if (to != null) {
+            w.lt(OrdSubOrder::getCreatedAt, to.plusDays(1).atStartOfDay());
         }
         /*
          * 按**展示状态**筛。端上传来的是 PAID / SHIPPED / ARRIVED 这类词

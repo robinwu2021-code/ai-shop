@@ -68,6 +68,28 @@ export const orderMock: Pick<MerchantApi,
       const want = new Set(q.fulfillments);
       list = list.filter((o) => want.has(o.fulfillment));
     }
+    /*
+     * 时间区间（P4）。**替身也要按同一条时间轴筛，也要拒绝非法日期** ——
+     * 吞掉这两个参数的话，mock 下从报表点进来一路通畅且「看起来筛过了」，
+     * 而真后端要么筛出另一批、要么直接报错。同本文件 mShip 那条注释的理由。
+     *
+     * `to` **含那一整天**：取 < 次日零点，与后端逐字一致。
+     */
+    const dayStart = (raw: string, name: string) => {
+      const ms = Date.parse(`${raw}T00:00:00`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(ms)) {
+        throw new Error(`${name} 要是 yyyy-MM-dd，收到的是「${raw}」`);
+      }
+      return ms;
+    };
+    if (q.from) {
+      const from = dayStart(q.from, "from");
+      list = list.filter((o) => o.createdAt >= from);
+    }
+    if (q.to) {
+      const to = dayStart(q.to, "to") + 86400000;
+      list = list.filter((o) => o.createdAt < to);
+    }
     return delay(paginate(list, q.page, q.size));
   },
 

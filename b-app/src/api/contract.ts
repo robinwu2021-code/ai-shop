@@ -1389,8 +1389,22 @@ export interface MerchantApi {
    *  类型这里仍声明为 `Order` —— 收窄成联合类型会让每个用到订单的页面都要分支，
    *  而只有配送页会遇到裁剪档。**用到金额的地方按字段有无渲染**，别按角色判。 */
   /** `status` 与 `fulfillments` 正交，见 c-app 的 orderList 注释 */
+  /**
+   * 商家订单列表。
+   *
+   * <p>`from` / `to` 是 `yyyy-MM-dd`，**含两端**，按**下单时间**筛 ——
+   * 与报表同一条时间轴，否则从报表点进来的单数对不上。
+   * 非法日期服务端会报错而**不是静默忽略**：忽略的话拿到的是没筛过的全量列表，
+   * 而调用方以为那就是那一天的单。
+   */
   mOrderList(
-    q: PageQuery & { status?: OrderStatus; fulfillments?: string[]; allStores?: boolean },
+    q: PageQuery & {
+      status?: OrderStatus;
+      fulfillments?: string[];
+      allStores?: boolean;
+      from?: string;
+      to?: string;
+    },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
   /** 快递发货：回填运单号 */

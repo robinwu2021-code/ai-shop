@@ -305,18 +305,18 @@ class OfflinePayFlowTest {
          * b-app 的「确认收款」按钮只认 WAIT_OFFLINE_PAY，店主永远点不到；
          * 「待收款」页签传的 WAIT_OFFLINE_PAY 又不被 toStored 认识，退化成「不过滤」，列出全部订单。
          */
-        var pending = merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, 1, 200).records();
+        var pending = merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, null, null, 1, 200).records();
         assertThat(pending).extracting(OrderVO::orderNo).contains(sub);
         assertThat(pending).extracting(OrderVO::status)
                 .as("「待收款」页签里只能是待收款的单，不是全部")
                 .containsOnly("WAIT_OFFLINE_PAY");
-        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_PAY", null, 1, 200).records())
+        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_PAY", null, null, null, 1, 200).records())
                 .extracting(OrderVO::orderNo)
                 .as("待付款是等买家线上付的，货到付款单不该混进去")
                 .doesNotContain(sub);
 
         confirm(bizToken(), sub).andExpect(jsonPath("$.code").value(0));
-        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, 1, 200).records())
+        assertThat(merchantOrderService.list(SEED_ENTITY, null, "WAIT_OFFLINE_PAY", null, null, null, 1, 200).records())
                 .extracting(OrderVO::orderNo).doesNotContain(sub);
     }
 

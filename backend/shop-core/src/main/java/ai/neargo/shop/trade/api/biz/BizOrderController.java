@@ -43,6 +43,8 @@ public class BizOrderController {
     public PageData<?> orders(@RequestParam(required = false) String status,
                               @RequestParam(required = false) java.util.List<String> fulfillments,
                               @RequestParam(required = false) Boolean allStores,
+                              @RequestParam(required = false) String from,
+                              @RequestParam(required = false) String to,
                               @RequestParam(defaultValue = "1") long page,
                               @RequestParam(defaultValue = "10") long size) {
         /*
@@ -59,8 +61,28 @@ public class BizOrderController {
                 ? ctx.allowedStoresOrAll()
                 : java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo());
         PageData<OrderVO> full = merchantOrderService.list(ctx.requireMerchantNo(), storeNos,
-                status, fulfillments, page, Math.min(size, 50));
+                status, fulfillments, parseDay(from, "from"), parseDay(to, "to"),
+                page, Math.min(size, 50));
         return ctx.courierOnlyOrderView() ? narrow(full) : full;
+    }
+
+    /**
+     * 解析 {@code yyyy-MM-dd}。
+     *
+     * <p><b>非法日期要报错，不要静默忽略</b> —— 忽略的话调用方拿到的是一个
+     * <b>没筛过的全量列表</b>，而他以为那就是那一天的单。
+     * 从报表点进来时这意味着「本月 3 万」对应的那一页其实是全部订单。
+     */
+    private static java.time.LocalDate parseDay(String raw, String name) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return java.time.LocalDate.parse(raw.trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    name + " 要是 yyyy-MM-dd，收到的是「" + raw + "」", e);
+        }
     }
 
     /** 整页裁到配送员那一档。分页元信息原样带过去 —— 裁的是每一行，不是这一页有几行。 */

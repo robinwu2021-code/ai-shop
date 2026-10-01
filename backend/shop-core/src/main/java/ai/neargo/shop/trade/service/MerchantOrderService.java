@@ -50,8 +50,17 @@ public interface MerchantOrderService {
      *                     商家的「待核销」= {@code FULFILLING} + 自提/到店核销类，
      *                     「已发货」= {@code FULFILLING} + 配送类
      */
+    /**
+     * @param from 起始日（含，{@code yyyy-MM-dd}）；{@code null} = 不限。
+     *             <b>按下单时间筛，与报表同一条时间轴</b> —— 换成支付时间或更新时间，
+     *             从报表点进来的单数就对不上，而两边各自都说得通
+     * @param to   截止日（<b>含那一整天</b>）；{@code null} = 不限。
+     *             实现上取 {@code < to+1 天 00:00}，不是 {@code <= 23:59:59} ——
+     *             后者会漏掉那一秒里的单
+     */
     PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
                            String status, java.util.List<String> fulfillments,
+                           java.time.LocalDate from, java.time.LocalDate to,
                            long page, long size);
 
     /**
