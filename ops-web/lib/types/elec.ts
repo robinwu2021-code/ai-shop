@@ -13,7 +13,7 @@ export type ElecCloseReason = "NO_SOURCE" | "BUYER_CANCELLED" | "DONE";
 /** 报价模式：MARKUP 加价（买家看平台价、代号 A/B/C）/ FORWARD 转发（买家看原价、匿名编号 S-XXXX） */
 export type ElecPriceMode = "MARKUP" | "FORWARD";
 /** 供应商状态：暂停后他的货不再给买家看 */
-export type ElecSupplierStatus = "ACTIVE" | "SUSPENDED";
+export type ElecSupplierStatus = "PENDING" | "ACTIVE" | "SUSPENDED";
 /** 库存筛选：全部 / 7 天内到期 / 已到期 */
 export type ElecStockFilter = "ALL" | "EXPIRING" | "EXPIRED";
 /** 派单结果：未看 / 看了没回 / 报了价 / 拒了 */

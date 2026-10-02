@@ -44,7 +44,7 @@ export function SupplierTab({ c }: { c: ElecCopy }) {
 
   const list = useQuery({
     queryKey: ["elec-sup", kw, status],
-    queryFn: () => api.listElecSuppliers({ keyword: kw || undefined, status: (status || undefined) as "ACTIVE" | "SUSPENDED" | undefined }),
+    queryFn: () => api.listElecSuppliers({ keyword: kw || undefined, status: (status || undefined) as "PENDING" | "ACTIVE" | "SUSPENDED" | undefined }),
   });
 
   const columns: Column<ElecOpsSupplierRow>[] = [
@@ -129,6 +129,14 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
       notify.error((e as Error).message);
     }
   };
+  const approve = async () => {
+    try {
+      refresh(await api.approveElecSupplier(supplierNo));
+      notify.success(c.supApproved);
+    } catch (e) {
+      notify.error((e as Error).message);
+    }
+  };
 
   const footer = d && canManage ? (
     <div className="flex gap-2">
@@ -137,9 +145,16 @@ function SupplierDrawer({ c, supplierNo, canManage, onClose }: {
         setEdit(true);
       }}>{c.supEdit}</Button>
       <div className="flex-1" />
-      {d.status === "ACTIVE"
-        ? <Button variant="destructive" onClick={suspend}>{c.supSuspend}</Button>
-        : <Button onClick={() => void resume()}>{c.supResume}</Button>}
+      {d.status === "PENDING" ? (
+        <>
+          <Button variant="destructive" onClick={suspend}>{c.supReject}</Button>
+          <Button onClick={() => void approve()}>{c.supApprove}</Button>
+        </>
+      ) : d.status === "ACTIVE" ? (
+        <Button variant="destructive" onClick={suspend}>{c.supSuspend}</Button>
+      ) : (
+        <Button onClick={() => void resume()}>{c.supResume}</Button>
+      )}
     </div>
   ) : undefined;
 

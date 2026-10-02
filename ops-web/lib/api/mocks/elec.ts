@@ -35,6 +35,13 @@ const suppliers: ElecOpsSupplierDetail[] = [
     expiredCount: 0, lastUploadAt: null, registerNotified: false, createdAt: "2026-09-30T08:00:00",
     dispatch: { days: 30, sent: 0, viewed: 0, responded: 0, quoted: 0, accepted: 0 },
   },
+  {
+    supplierNo: "SP004", companyName: "深圳丁电子", kind: "TRADER", city: "深圳", contactName: "赵工",
+    contactPhone: "13500005555", maskCode: "S-P4ND", status: "PENDING", suspendReason: null, suspendedAt: null,
+    onCount: 12, expiringCount: 0, expiredCount: 0, lastUploadAt: "2026-10-02T09:00:00",
+    registerNotified: false, createdAt: "2026-10-02T08:30:00",
+    dispatch: { days: 30, sent: 0, viewed: 0, responded: 0, quoted: 0, accepted: 0 },
+  },
 ];
 const rowOf = (d: ElecOpsSupplierDetail): ElecOpsSupplierRow => ({
   supplierNo: d.supplierNo, companyName: d.companyName, kind: d.kind, city: d.city, contactName: d.contactName,
@@ -227,6 +234,11 @@ export const elecMock: ElecApi = {
   resumeElecSupplier: (no) => {
     const s = supOr404(no);
     s.status = "ACTIVE";
+    return wait(structuredClone(s), 400);
+  },
+  approveElecSupplier: (no) => {
+    const s = supOr404(no);
+    if (s.status === "PENDING") s.status = "ACTIVE";
     return wait(structuredClone(s), 400);
   },
 

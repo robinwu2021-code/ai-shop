@@ -28,6 +28,7 @@ export const elecHttp: ElecApi = {
   suspendElecSupplier: (no, reason) =>
     client.post<ElecOpsSupplierDetail>(`/elec/ops/supplier/${enc(no)}/suspend`, { reason }),
   resumeElecSupplier: (no) => client.post<ElecOpsSupplierDetail>(`/elec/ops/supplier/${enc(no)}/resume`, {}),
+  approveElecSupplier: (no) => client.post<ElecOpsSupplierDetail>(`/elec/ops/supplier/${enc(no)}/approve`, {}),
 
   searchElecParts: (q) => client.get<ElecOpsPartRow[]>("/elec/ops/part", { q }),
   getElecPart: (partNo) => client.get<ElecOpsPartDetail>(`/elec/ops/part/${enc(partNo)}`),

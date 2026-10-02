@@ -12,6 +12,7 @@ export const rfqStatusMap = (c: ElecCopy): StatusMap<ElecRfqStatus> => ({
 });
 
 export const supplierStatusMap = (c: ElecCopy): StatusMap<ElecSupplierStatus> => ({
+  PENDING: { label: c.supPENDING, tone: "warning" },
   ACTIVE: { label: c.supACTIVE, tone: "success" },
   SUSPENDED: { label: c.supSUSPENDED, tone: "danger" },
 });

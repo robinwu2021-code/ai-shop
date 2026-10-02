@@ -34,6 +34,7 @@ export interface ElecApi {
   /** 暂停。**他的货当场不再给买家看**；理由至少 2 个字，只给平台看 */
   suspendElecSupplier(supplierNo: string, reason: string): Promise<ElecOpsSupplierDetail>;
   resumeElecSupplier(supplierNo: string): Promise<ElecOpsSupplierDetail>;
+  approveElecSupplier(supplierNo: string): Promise<ElecOpsSupplierDetail>;
 
   // ── 料号与库存（elec:part:read）──
   /** 料号搜索：与买家同一套命中，但**不计入搜索需求**。最多 50 条 */
