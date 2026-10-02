@@ -9081,6 +9081,7 @@ components:
     ElecSupplierStatus: 
       type: "string"
       enum: 
+        - "PENDING"
         - "ACTIVE"
         - "SUSPENDED"
       description: "供应商状态：暂停后他的货不再给买家看"
@@ -13255,6 +13256,44 @@ paths:
     post: 
       operationId: "resumeElecSupplier"
       summary: "resumeElecSupplier"
+      tags: 
+        - "elec"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ElecOpsSupplierDetail"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "no"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/elec/ops/supplier/{no}/approve": 
+    post: 
+      operationId: "approveElecSupplier"
+      summary: "approveElecSupplier"
       tags: 
         - "elec"
       responses: 
