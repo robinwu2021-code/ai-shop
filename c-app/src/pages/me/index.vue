@@ -188,18 +188,6 @@ function gotoVisited() {
   uni.switchTab({ url: ROUTES.merchants });
 }
 
-/*
- * 元器件 · **过渡期入口**（2026-09-30 用户定：「虹选电子」小程序开通前，先从虹选进）。
- * 元器件是独立项目 ai-hxkey；`npm run release:mp` 走 scripts/with-elec.mjs，打的包里带 pkg-elec 分包并注入
- * VITE_WITH_ELEC=1。不带分包的构建（dev、H5、`release:mp:plain`）这一行不渲染 —— 否则点进去是一个不存在的页面。
- * 「虹选电子」独立上线那天连同词条 me.elecEntry、with-elec.mjs 一起删掉（ai-hxkey TDD-元器件-独立成项目 第 7 步）。
- */
-const WITH_ELEC = import.meta.env.VITE_WITH_ELEC === "1";
-
-function gotoElec() {
-  uni.navigateTo({ url: "/pkg-elec/pages/home/index" });
-}
-
 /**
  * 点开店卡片。
  *
@@ -587,9 +575,6 @@ onShow(() => {
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoVisited">
         <text class="txt-body cell__label">{{ $t("visited.title") }}</text>
-      </view>
-      <view v-if="WITH_ELEC" class="sh-cell sh-row sh-row--between" @tap="gotoElec">
-        <text class="txt-body cell__label">{{ $t("me.elecEntry") }}</text>
       </view>
     </view>
 

@@ -301,7 +301,6 @@ export default {
   },
   me: {
     appearance: "Appearance & language",
-    elecEntry: "Electronic components",
     contact: "Contact support",
     contactFailed: "Support chat is unavailable right now — try again later",
     myPlace: "My location",

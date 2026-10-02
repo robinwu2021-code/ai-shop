@@ -301,7 +301,6 @@ export default {
   },
   me: {
     appearance: "المظهر واللغة",
-    elecEntry: "المكونات الإلكترونية",
     contact: "تواصل مع الدعم",
     contactFailed: "الدردشة مع الدعم غير متاحة الآن — حاول لاحقًا",
     myPlace: "موقعي",
