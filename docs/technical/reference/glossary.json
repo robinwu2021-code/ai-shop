@@ -33092,6 +33092,7 @@
         "name": "ElecSupplierStatus",
         "client": "ops-web",
         "values": [
+          "PENDING",
           "ACTIVE",
           "SUSPENDED"
         ],

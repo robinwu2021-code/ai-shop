@@ -2061,6 +2061,44 @@ _无字段_
 | `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
 
 
+#### POST `/elec/ops/supplier/{no}/approve`
+
+approveElecSupplier
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`ElecOpsSupplierDetail`](#elecopssupplierdetail)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `supplierNo` | `string` | 是 | 供应商号 |
+| `companyName` | `string,null` | 否 | 公司名 |
+| `kind` | `string` | 是 | 类型 |
+| `city` | `string,null` | 否 | 城市 |
+| `address` | `string,null` | 否 | 详细地址（供应商入驻/资料页填，比城市细） |
+| `contactName` | `string,null` | 否 | 联系人 |
+| `contactPhone` | `string,null` | 否 | 联系电话 |
+| `maskCode` | `string` | 是 | 匿名代号 |
+| `status` | [`#/definitions/ElecSupplierStatus`](#definitionselecsupplierstatus) | 是 | 状态 |
+| `suspendReason` | `string,null` | 否 | 最近一次暂停的理由（恢复后保留） |
+| `suspendedAt` | `string,null` | 否 | 最近一次暂停的时间 |
+| `onCount` | `number` | 是 | 在售且未到期 |
+| `expiringCount` | `number` | 是 | 7 天内到期 |
+| `expiredCount` | `number` | 是 | 在售但已过期（买家看不到） |
+| `lastUploadAt` | `string,null` | 否 | 最近一次确认上架 |
+| `registerNotified` | `boolean` | 是 | 入驻通知送到企业微信了没有 |
+| `createdAt` | `string` | 是 | 入驻时间 |
+| `dispatch` | [`#/definitions/ElecDispatchStats`](#definitionselecdispatchstats) | 是 | 近 30 天派单响应 |
+
+
 #### POST `/elec/ops/supplier/{no}/resume`
 
 resumeElecSupplier
