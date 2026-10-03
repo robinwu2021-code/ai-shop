@@ -1,0 +1,327 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商家端界面原型</title>
+<!-- 真源在仓库 prototypes/merchant-ui-v1.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端原型 · 2026-08-26</div>
+  <h1>商家端界面原型</h1>
+  <p class="sub">十屏，按商家一天里真会走的顺序排：<b>开门看待办 → 收订单 → 收钱 → 看收入</b>。标「缺」的是今天没有页面的，标「已落地」的是本批刚做完、原型补记在此。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>工作台与订单</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">小林果蔬 · 文三路店</span><span></span></div>
+        <div class="scr">
+          <div class="note">收款账户还没开通，现在成交的订单<b>结不了款</b>　去开通 ›</div>
+          <div class="pz">
+            <div class="meta">今日成交 · 08-26</div>
+            <div class="p"><b class="num">¥1,240.00</b></div>
+            <div class="meta num">18 单 · 较昨日 +12%</div>
+          </div>
+          <div class="gt">待办</div>
+          <div class="group">
+            <div class="frow"><span>待收款</span><span class="v"><span class="chip ok">3</span></span></div>
+            <div class="frow"><span>待发货</span><span class="v"><span class="chip">12</span></span></div>
+            <div class="frow"><span>待核销</span><span class="v"><span class="chip">5</span></span></div>
+            <div class="frow"><span>售后处理</span><span class="v"><span class="chip warn">1</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="tabs" style="flex:1;justify-content:space-around;gap:0"><span class="on">工作台</span><span>订单</span><span>商品</span><span>我的</span></div></div>
+      </div>
+      <figcaption class="cap"><b>01 工作台</b>缺一条提示</figcaption>
+      <p class="why"><b>顶部那条红条是整条链上最大的盲区。</b>审核通过 ≠ 能收到钱 —— 今天商家能建店、能上架、能被下单，而收款号解析不到时结算单留空、钱欠着，他<b>一路上收不到任何提示</b>。判据用进件状态，不用审核状态。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">订单</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">待收款 3</span><span>待发货 12</span><span>已发货</span><span>待核销</span><span>售后</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">王女士</span><span class="chip ok">待当面收款</span></div>
+            <div class="meta">上门保洁 3 小时 · 明天 09:00</div>
+            <div class="metric"><span>应收</span><span class="num" style="color:var(--sh-ink)">¥168.00</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">李先生</span><span class="chip ok">待当面收款</span></div>
+            <div class="meta">门店自提 · 今天 15:30 前</div>
+            <div class="metric"><span>应收</span><span class="num" style="color:var(--sh-ink)">¥42.00</span><span>已抵 ¥8</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">赵先生</span><span class="chip ok">待当面收款</span></div>
+            <div class="meta">商家自送 · 今天 18:00 前</div>
+            <div class="metric"><span>应收</span><span class="num" style="color:var(--sh-ink)">¥96.00</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="tabs" style="flex:1;justify-content:space-around;gap:0"><span>工作台</span><span class="on">订单</span><span>商品</span><span>我的</span></div></div>
+      </div>
+      <figcaption class="cap"><b>02 订单列表</b>已落地</figcaption>
+      <p class="why"><b>待收款排在待发货前面。</b>那一组的动作是「把货交出去」，这一组是「把钱收进来」—— 混在一起，店员会照着列表先发后收。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr"></div>
+        <div class="mask"><div class="sheet">
+          <div class="h">确认已当面收到货款</div>
+          <div class="big"><div class="l">应收金额</div><div class="n num">¥42.00</div></div>
+          <div class="d" style="color:var(--sh-primary-text)">已用积分抵扣 ¥8.00，顾客只需支付上方金额</div>
+          <div class="d">平台不代收此款 —— 钱由顾客直接付给你，平台只记录这一次确认</div>
+          <div class="acts"><div class="btn sec">还没收到</div><div class="btn">确认收款</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>03 确认收款</b>已落地</figcaption>
+      <p class="why">三样缺一不可：<b>大字应收</b>（照它收不是照原价）、<b>已抵扣多少</b>（少了它顾客积分白花）、<b>平台不代收</b>（出纠纷时双方无分歧）。这是整条链上唯一一处钱落到人当面执行的地方。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">预约排期</span><span></span></div>
+        <div class="scr">
+          <div class="gt">开一个时段</div>
+          <div class="group">
+            <div class="frow"><span class="k">开始</span><span class="v go">明天 09:00</span></div>
+            <div class="frow"><span class="k">时长</span><span class="v num">1 小时</span></div>
+            <div class="frow"><span class="k">名额</span><span class="v num">名额 3</span></div>
+          </div>
+          <div class="btn">开出时段</div>
+          <div class="note">开出后只能停约、不能改名额 —— 调小会让已约上的单变成超卖</div>
+          <div class="card">
+            <div class="hd"><span class="nm num">08-27 09:00</span><span class="chip ok">剩 2</span></div>
+            <div class="metric"><span class="num">已约 1 / 共 3</span><span style="margin-left:auto;color:var(--sh-primary-text)">停约</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">08-27 14:00</span><span class="chip warn">已约满</span></div>
+            <div class="meta num">已约 1 / 共 1</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">08-28 09:00</span><span class="chip">已停约</span></div>
+            <div class="meta num">已约 2 / 共 3 · 已约的单不受影响</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>04 预约排期</b>已落地</figcaption>
+      <p class="why">连约满的和停掉的一起列。只给「还能约的」，店主看不出「这周没人约」是<b>没开时段</b>还是<b>开的都满了</b> —— 两件事该做的动作正好相反。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05 — 06</span><h2>积分（接口三个都在，今天零页面）</h2></div>
+  <p class="why">/biz/points/account · /biz/points/records · /biz/points/toggle 都已实现，商家侧没有任何出口。</p>
+  <div class="grid" style="margin-top:22px">
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">积分</span><span></span></div>
+        <div class="scr">
+          <div class="pz">
+            <div class="meta">本期发分服务费</div>
+            <div class="p"><b class="num">¥126.40</b></div>
+            <div class="meta num">2026-08 · 结算时从货款里扣</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k" style="color:var(--sh-ink);font-weight:600">本店积分</span><span class="sw on"></span></div>
+          </div>
+          <div class="card">
+            <div class="meta">开启后顾客在你这消费可得积分，你按发放额付服务费</div>
+            <div class="meta">关闭只影响将来：已发出的分仍然有效，已扣的服务费不退</div>
+          </div>
+          <div class="gt">发放规则 · <span class="chip">平台统一</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">生鲜蔬果</span><span class="v num">千分之五</span></div>
+            <div class="frow"><span class="k">粮油调味</span><span class="v num">千分之二</span></div>
+            <div class="frow"><span class="k">上门服务</span><span class="v num">定额 1 元</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 积分成本</b>缺</figcaption>
+      <p class="why"><b>开关与成本必须在同一屏。</b>积分开关是「商家自己开」的，而他看不到自己发分花了多少钱 —— 让人在看不到代价的情况下做决定，这个要求不合理。商家<b>不感知积分抵扣</b>（按订单全额收款），所以这里只有「我发分花了多少」。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发分明细</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span class="on">2026-08</span><span>07</span><span>06</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SUB…826001</span><span class="num" style="font-weight:600">¥1.20</span></div>
+            <div class="meta num">发放 120 分 · 08-26 14:22</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SUB…826007</span><span class="num" style="font-weight:600">¥0.80</span></div>
+            <div class="meta num">发放 80 分 · 08-26 16:05</div>
+          </div>
+          <div class="card" style="background:var(--sh-warning-tint)">
+            <div class="hd"><span class="nm num">SUB…826011</span><span class="chip warn">未发放</span></div>
+            <div class="meta">当面付款的订单不发放积分</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SUB…825044</span><span class="num" style="font-weight:600">¥2.40</span></div>
+            <div class="meta num">发放 240 分 · 08-25 11:08</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>06 发分明细</b>缺</figcaption>
+      <p class="why">最后那种「未发放」要<b>写出原因</b>。线下单不发分是本批新加的规则（那笔费用金收不到）—— 不写的话，商家问「为什么这单没发」没人答得上来。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07 — 10</span><h2>收入与账户</h2></div>
+  <p class="why"><b>这一组刻意不叫「提现」，也不画申请按钮。</b>ADR-002 定的是<b>分账</b>：钱进平台商户号后冻结待分，由微信直接划给商家，平台从头到尾没有资金支配权。而「商家申请提现 → 平台审批 → 平台打款」是那条决策里被明确排除的形态（<b>二次清算</b>，无牌照不可做）。所以 B 端该给的是<b>「我的钱到哪一步了」</b>。</p>
+  <div class="grid" style="margin-top:22px">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的收入</span><span></span></div>
+        <div class="scr">
+          <div class="pz">
+            <div class="meta">已到账（本月）</div>
+            <div class="p"><b class="num">¥3,420.00</b></div>
+            <div class="meta">直接划入你的收款账户，平台不经手</div>
+          </div>
+          <div class="card" style="background:var(--sh-warning-tint)">
+            <div class="hd"><span class="meta">已发起，等通道确认</span><span class="num" style="font-weight:600">¥880.00</span></div>
+            <div class="meta num">12 笔 · 最早一笔 08-24 发起</div>
+            <div class="metric"><span class="bar"><i style="width:38%"></i></span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">待结算</span><span class="num" style="font-weight:600">¥1,260.00</span></div>
+            <div class="meta">售后期结束后自动结算</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="meta">当面收款</span><span class="num" style="font-weight:600">¥560.00</span></div>
+            <div class="meta">这部分你已经收到了，无需结算</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 我的收入</b>缺</figcaption>
+      <p class="why"><b>四个数是四种状态，不是四个口袋。</b>今天结算页只显示一个「商家实得」，读起来像已到手 —— 商家拿它对银行流水对不上就找客服，而客服看到的状态也只有一个。</p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">收款账户</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">微信支付</span><span class="chip ok">已开通</span></div>
+            <div class="metric"><span>主体类型</span><span style="margin-left:auto;color:var(--sh-ink)">小微商户</span></div>
+            <div class="metric"><span>商户号</span><span class="num" style="margin-left:auto;color:var(--sh-ink)">16·····892</span></div>
+            <div class="meta">钱由微信直接划到这里</div>
+          </div>
+          <div class="card" style="background:var(--sh-primary-tint)">
+            <div class="hd"><span class="nm">支付宝</span><span class="chip warn">未进件</span></div>
+            <div class="meta" style="color:var(--sh-primary-text)">买家用支付宝下的单目前<b>无法结算给你</b></div>
+          </div>
+          <div class="btn">去进件</div>
+          <div class="gt">小微商户的限制</div>
+          <div class="card"><div class="meta">没有 H5 与 App 支付方式 —— 顾客在这两个端下单时，购物车里只要有你的货，整单就只能用小程序支付</div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 收款账户</b>缺</figcaption>
+      <p class="why">进件状态是<b>能不能收到钱的前提</b>，不是设置项。没进件的通道要说清后果，而不是显示一个灰色的「未开通」。三档主体的差异也要摆出来 —— 商家不知道选错的代价。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">结算单 SB…824003</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">订单金额</span><span class="v num">¥100.00</span></div>
+            <div class="frow"><span class="k">平台佣金 5%</span><span class="v num">−¥5.00</span></div>
+            <div class="frow"><span class="k">发分服务费</span><span class="v num">−¥1.20</span></div>
+            <div class="frow"><span class="k" style="color:var(--sh-ink);font-weight:600">你应得</span><span class="v num hot">¥93.80</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k"><span class="chip ok">●</span> 已计提</span><span class="v num">08-24 10:02</span></div>
+            <div class="frow"><span class="k"><span class="chip ok">●</span> 已发起划转</span><span class="v num">08-26 03:00</span></div>
+            <div class="frow"><span class="k"><span class="chip">○</span> 等通道确认到账</span><span class="v"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>09 一笔钱的去向</b>缺</figcaption>
+      <p class="why">三行时间轴回答的是「<b>卡在哪一步</b>」。只给一个终态的话，商家问「钱呢」时客服也只能说「已结算」，而那正是他不信的那句话。</p>
+    </figure>
+
+    <figure id="s10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">结算单</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部</span><span>已到账</span><span>等确认</span><span>待结算</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SB…826011</span><span class="chip">当面收款</span></div>
+            <div class="metric"><span class="num" style="font-weight:700;color:var(--sh-ink)">¥42.00</span><span style="margin-left:auto">无需结算</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SB…824003</span><span class="chip warn">等通道确认</span></div>
+            <div class="metric"><span class="num" style="font-weight:700;color:var(--sh-ink)">¥93.80</span><span class="num" style="margin-left:auto">08-26 发起</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">SB…823007</span><span class="chip ok">已到账</span></div>
+            <div class="metric"><span class="num" style="font-weight:700;color:var(--sh-ink)">¥212.50</span><span class="num" style="margin-left:auto">08-25 到账</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>10 结算单列表</b>已有，需改措辞</figcaption>
+      <p class="why">现有页面只有一个终态。<b>措辞不是文案问题</b> —— 「已结算」让商家去对银行流水，对不上就来问；而后端那个状态本身今天同时表示「指令已发出」和「钱已到」，底下还是桩。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">对照</span><h2>平台端功能清单 · 与现状对齐</h2></div>
+  <p class="why">数据取自两个跑出来的判据，不是清点：scripts/check-ops-contract.mjs（运营端调了而后端没有）与反向扫描（后端有而运营端没出口）。</p>
+  <div class="tw" style="margin-top:22px"><table class="spec">
+    <tr><th>口径</th><th>数</th><th>说明</th></tr>
+    <tr><td>后端 /ops 端点</td><td>326</td><td>扫 @XxxMapping 得到</td></tr>
+    <tr><td>运营端有调用</td><td>308</td><td>94%</td></tr>
+    <tr><td><b>后端有、运营端无出口</b></td><td>18</td><td><b>13 条集中在结算与资金</b>，见下</td></tr>
+    <tr><td>运营端调了、后端没有</td><td>18</td><td>已登记在 known-mock-endpoints.txt，闸门盯着只降不升</td></tr>
+  </table></div>
+  <div class="tw" style="margin-top:22px"><table class="spec">
+    <tr><th>无出口的后端能力</th><th>是什么</th><th>影响</th></tr>
+    <tr><td>/ops/payables ×4</td><td>自营应付账款：列表 / 确认对账 / 标无票 / 标已付</td><td>自营供应商的钱怎么付，运营端<b>无处操作</b></td></tr>
+    <tr><td>/ops/purchase-invoices ×3</td><td>进项票：列表 / 核验 / 驳回</td><td>票到付款那道闸没有界面</td></tr>
+    <tr><td>/ops/invoice-requests ×3</td><td>销项开票申请：列表 / 已开 / 驳回</td><td>商家申请开票后无人处理</td></tr>
+    <tr><td>/ops/finance/invoice-title ×2</td><td>开票抬头</td><td>配置无入口</td></tr>
+    <tr><td>/ops/payments/recon-coverage</td><td><b>对账覆盖范围说明</b></td><td>「今天没有差异」是句假话 —— 而说明它的接口没被调</td></tr>
+    <tr><td>/ops/scene-channel ×2</td><td>场景 × 通道触达配置</td><td>另一条线，非本域</td></tr>
+    <tr><td>/ops/order</td><td>订单总览</td><td>运营端走的是别的入口</td></tr>
+    <tr><td>/ops/community-pool/resync</td><td>社区池重算</td><td>非本域</td></tr>
+    <tr><td>/ops/admission/pay-quota/*</td><td>收款额度调整</td><td>额度用尽时改不了</td></tr>
+  </table></div>
+  <p class="why" style="margin-top:22px"><b>对齐结论：缺的不是功能，是出口。</b>整条<b>自营应付 + 发票</b>链路后端做完了（10 个端点），运营端一个入口都没有 —— 而这条链是今天<b>唯一真的能把钱付给供应商</b>的路（第三方那条是桩）。换句话说：平台今天付得出去的那条路，<b>只能靠人直接调接口</b>。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">顺序</span><h2>建议顺序</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>#</th><th>事项</th><th>为什么排这儿</th></tr>
+    <tr><td>1</td><td><b>S01 那条红条</b></td><td>一条判据（进件状态），覆盖整条链最大的盲区，改动最小</td></tr>
+    <tr><td>2</td><td><b>运营端应付与发票入口</b></td><td>后端 10 个端点现成，是今天唯一能真付钱的路</td></tr>
+    <tr><td>3</td><td><b>S05 / S06 积分两屏</b></td><td>接口现成，让「商家自己开积分」这个决定有依据</td></tr>
+    <tr><td>4</td><td><b>S07 / S09 / S10 收入与措辞</b></td><td>依赖 SPLIT 语义拆分，见 TDD</td></tr>
+    <tr><td>5</td><td><b>对账覆盖范围上页面</b></td><td>接口在，一行调用的事</td></tr>
+  </table></div>
+  <p class="why" style="margin-top:22px">前五项都不依赖 B7（分账参数书面口径）。分账接通拿不到口径不要开工。</p>
+</section>
+
+<footer>
+  真源：prototypes/merchant-ui-v1.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c">ea3b41e2</a> · 相关文档：ADR-002（分账）· 商家资金 TDD · scripts/check-ops-contract.mjs · known-mock-endpoints.txt<br>
+  屏号 S01–S10 登记在 scripts/gen-ui-catalog.py 的 PROTO_ANCHORS，三端界面清单里点「原型」直接跳到对应那一屏。落地后从 PROTOTYPES 删掉，它会自动从 pages.json 出现。
+</footer>
+</div>
+</html>

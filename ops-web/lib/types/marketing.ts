@@ -2,7 +2,26 @@
 // 金额一律最小货币单位（分），与全局契约一致。
 import type { Archivable } from "./common";
 
-export type CouponType = "FULL_CUT" | "DISCOUNT" | "NEWCOMER" | "TARGETED";
+/**
+ * 券类型。**与 `mkt_coupon.type` 的库列注释逐字一致**（`FULL_CUT 满减 / DISCOUNT 折扣`）。
+ *
+ * ⚠️ **2026-09-09：这里原来还有 `NEWCOMER` / `TARGETED`，已删。**
+ * 三条都指向同一个结论：库列只允许两个值；`discountFor` 从未处理过它们
+ * （下面那条注释原本就写着「没有折扣算法撑着，建券表单不给选」）；
+ * 而 `TARGETED` 在后端根本是**另一个字段**的值 —— `PmtCoupon.ISSUE_TARGETED`
+ * 是发放方式（issueMode），不是券类型。
+ *
+ * 留着的代价不是多两个枚举值：它们有三语标签、有 mock 数据、
+ * 界面上还有「按券类型筛选」——**筛「新人」永远是空列表，而且不报错**。
+ */
+export type CouponType = "FULL_CUT" | "DISCOUNT";
+
+/**
+ * 建券表单能建的类型子集。删掉 NEWCOMER/TARGETED 之后它与 {@link CouponType} 相等，
+ * 保留是因为**这两个概念本来就会分开**：将来若有「能显示不能建」的类型，
+ * 分歧会回到这里，而不是又一次靠注释提醒。
+ */
+export type CouponBuildableType = "FULL_CUT" | "DISCOUNT";
 
 /** DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券已发出去的仍然有效）。 */
 export type CouponStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -27,23 +46,75 @@ export interface Coupon extends Archivable {
   value: number;
   /** 使用门槛，0 表示无门槛 */
   threshold: number;
-  /** 生效开始时间 */
-  validFrom: string;
-  /** 生效结束时间 */
-  validTo: string;
+  /** 生效开始时间（毫秒时间戳，后端全域口径） */
+  validFrom: number;
+  /** 生效结束时间（毫秒时间戳） */
+  validTo: number;
   /**
    * 预算（分）。**已发放金额不得超过它** —— 这是唯一挡住"发着发着超支"的地方，
    * 且必须在服务端校验：客服也持有发券权限（矩阵 §2.3 补偿券）。
+   *
+   * `0` = 不限。存量券全是这样：加预算列的迁移不改变已在跑的券的行为。
+   *
+   * 服务端的校验在领券那条 UPDATE 里与张数一起判（原子），
+   * 见 `CouponMappers.tryReceive`。⚠️ 折扣券挡不住 —— 它的实际支出
+   * 取决于用券那一单的金额，发放时算不出来。
    */
   budget: number;
-  /** 已发放金额（分） */
+  /** 已发放金额（分）= 已领张数 × 面额。折扣券算不出来，恒为 0 */
   issuedAmount: number;
   /** 已发放张数 */
   issued: number;
   /** 已核销张数（P-7.1.4 效果） */
   redeemed: number;
-  /** 创建时间 */
-  createdAt: string;
+  /** 创建时间（毫秒时间戳） */
+  createdAt: number;
+  /**
+   * 发行量。**建券时敞口 = totalCount × 单张最大优惠**（TDD-营销预算前置），
+   * 是预算前置校验的另一半——只有它和面额/封顶一起，敞口才算得出来。
+   */
+  totalCount: number;
+  /** 每人限领张数 */
+  perUserLimit: number;
+  /**
+   * 折扣券封顶（分）。仅 `type=DISCOUNT` 有意义，其余类型恒为 0。
+   * **建券时必填 >0**——0 = 不封顶已取消，敞口在建券那一刻就必须算得出来。
+   * 与 `value`（折扣万分比）分开：一个决定打几折，一个决定最多减多少。
+   */
+  maxDiscountMinor: number;
+}
+
+/**
+ * 建券 / 改券入参（TDD-营销预算前置）。只建平台券——`funder` 不开放。
+ *
+ * 与 `Coupon`（读模型）分开是因为写侧要按类型拆开的原始字段（`faceMinor`/
+ * `discountRate`/`maxDiscountMinor`），读侧的 `value` 是按类型合并展示的那个数。
+ */
+export interface CouponSaveReq {
+  /** 为空 = 新建 */
+  couponNo?: string;
+  /** 名称 */
+  name: string;
+  /** 类型 */
+  type: CouponBuildableType;
+  /** FULL_CUT 必填 */
+  faceMinor?: number;
+  /** DISCOUNT 必填，万分比 */
+  discountRate?: number;
+  /** DISCOUNT 必填 >0 —— 取消「0=不封顶」 */
+  maxDiscountMinor?: number;
+  /** 用券门槛（分）。0 = 无门槛 */
+  threshold?: number;
+  /** 总发行量。空 = 不限量 */
+  totalCount: number;
+  /** 每人最多领几张 */
+  perUserLimit?: number;
+  /** 0 或不填 = 不限；非零时必须 ≥ 敞口，否则服务端拒绝 */
+  budget?: number;
+  /** 生效时刻 */
+  validFrom: number;
+  /** 失效时刻 */
+  validTo: number;
 }
 
 /** 发放对象类型（P-7.1.2 发放留痕）。 */
@@ -70,18 +141,47 @@ export interface CouponIssue {
   createdAt: string;
 }
 
-export type CampaignType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
-export type CampaignStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
+/**
+ * 平台营销场次的类型。
+ *
+ * <p>此前叫 `CampaignType`，与 shared 的 `CampaignType`（店铺级活动）**同名不同义**。
+ * 当时的处理是写一段注释说明「别对齐」—— 那不够：读代码的人没有义务先知道
+ * 自己在哪一层。规范定的是「一个词只能指一个领域概念」，由更窄的一方加限定词，
+ * 所以这里改名为 `PlatformSlotType`（见 docs/requirements/项目词典.md §D2）。
+ *
+ * ⚠️ 它与后端的 `mkt_campaign` 是两个不同的领域对象：
+ *   · 后端 / b-app 的 `Campaign` 是**店铺级活动**（`entity_no NOT NULL`，不跨店），
+ *     取值 COUPON / FULL_CUT / FLASH / BUY_GIFT，由商家自己建
+ *   · 这里的 `Campaign` 是**平台投放的营销场次**（带 `position`，秒杀场按位置分组做
+ *     重叠校验），由运营建，后端还没有这个对象
+ *
+ * 枚举对账工具会报这几个值「后端没有」——那是对的，但结论不是「改名对齐」，
+ * 而是「这块后端还没实现」。真按后端那套改，等于把两个概念合并成一个。
+ */
+export type PlatformSlotType = "FLASH" | "SECKILL" | "FULL_REDUCE" | "GIFT" | "NEWCOMER";
+export type PlatformSlotStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "ENDED";
 
-export interface Campaign extends Archivable {
+/**
+ * 平台投放的营销场次。
+ *
+ * ⚠️ **后端还没有这个对象，当前没有任何页面在用它**。
+ * 它连同 {@link PlatformSlotType} / {@link PlatformSlotStatus} 一起留在这里，
+ * 是因为这块 UI 已经设计完了（位置、场次重叠校验），等产品决定要不要建后端对象。
+ *
+ * 「营销活动 · 活动」那个 tab 现在渲染的是 {@link MerchantCampaign} ——
+ * 商家自建的店铺活动，那是 `/ops/campaigns` 真正返回的东西。
+ * 两者曾经共用这一个类型，表现是**类型列一半中文一半原始枚举码**：
+ * `FLASH` 恰好两套都有所以译得出来，`FULL_CUT`/`COUPON`/`BUY_GIFT` 译不出来。
+ */
+export interface PlatformSlot extends Archivable {
   /** 活动单号 */
   campaignNo: string;
   /** 活动名 */
   name: string;
   /** 活动类型 */
-  type: CampaignType;
+  type: PlatformSlotType;
   /** 活动状态 */
-  status: CampaignStatus;
+  status: PlatformSlotStatus;
   /** 开始时间 */
   startAt: string;
   /** 结束时间。须晚于 startAt */
@@ -93,6 +193,37 @@ export interface Campaign extends Archivable {
   /** 创建时间 */
   createdAt: string;
 }
+
+/**
+ * **商家自建的店铺活动**（`GET /ops/campaigns` 真正返回的东西）。
+ *
+ * <p>平台对它只有治理权：看得见、能停、能归档，**不能建也不能改内容** ——
+ * 那是商家自己的经营决定（矩阵 §2.3「平台停券与停活动」）。
+ *
+ * <p>字段对齐后端 `CampaignVO`。与 {@link PlatformSlot} 是两个领域对象，
+ * 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。
+ */
+export interface MerchantCampaign extends Archivable {
+  /** 活动号。跨端唯一，平台治理与商家自己看到的是同一个 */
+  campaignNo: string;
+  /** 所属商家（主体号）。平台视角要按它归堆 */
+  merchantNo: string;
+  /** 活动名，商家自己填的。C 端会原样展示，平台治理时也按它认人 */
+  name: string;
+  /** COUPON / FULL_CUT / FLASH / BUY_GIFT —— 商家能建的四种 */
+  type: MerchantCampaignType;
+  /** RUNNING / ENDED / PAUSED */
+  status: string;
+  /** 开始时间（毫秒时间戳） */
+  startAt: number;
+  /** 结束时间（毫秒时间戳） */
+  endAt: number;
+  /** 参与的商品号。**列表上只显示条数**，明细进详情看 */
+  goodsNos?: string[] | null;
+}
+
+/** 商家能建的活动类型。与 shared 的 `CampaignType` 同源（b-app 建的就是它） */
+export type MerchantCampaignType = "COUPON" | "FULL_CUT" | "FLASH" | "BUY_GIFT";
 
 export type SlotKind = "HOME_FLOOR" | "BANNER" | "CHANNEL";
 
@@ -112,6 +243,35 @@ export interface ContentSlot extends Archivable {
   /** 下线时间 */
   offlineAt: string;
   /** 是否启用。关掉即刻不再展示，不等下线时间 */
+  enabled: boolean;
+  /**
+   * 楼层里的商品，**有序** —— 数组顺序就是首页里的展示顺序。
+   *
+   * 只有 `HOME_FLOOR` 有内容：BANNER 要「图 + 跳转目标」、CHANNEL 要频道页，
+   * 而 C 端两样都还没有，没有承接位就定不了那个模型。后端对这两种一律存空。
+   */
+  goodsNos: string[];
+}
+
+/** 建 / 改内容位。 */
+export interface SlotSaveReq {
+  /** 为空 = 新建（与建券同一个约定） */
+  slotNo?: string;
+  /** 运营自己认的名字，不出现在 C 端 */
+  title: string;
+  /** 形态。只有 `HOME_FLOOR` 带商品，另两种后端一律存空 */
+  kind: SlotKind;
+  /** 同一 kind 内的展示顺序，小的在前 */
+  sort: number;
+  /** 投放社区；空 = 全部社区 */
+  communityNos: string[];
+  /** 楼层里的商品，**有序**。货号不存在时后端拒收，不会静默丢掉 */
+  goodsNos: string[];
+  /** 上线时间（ISO） */
+  onlineAt: string;
+  /** 下线时间（ISO），必须晚于上线 */
+  offlineAt: string;
+  /** 启用。关掉即刻不再展示，不等下线时间 */
   enabled: boolean;
 }
 

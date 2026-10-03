@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,13 +30,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class M2CatalogFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -69,7 +71,7 @@ class M2CatalogFlowTest {
     @Test
     @DisplayName("按类目筛选商品")
     void filterGoodsByCategory() throws Exception {
-        mvc().perform(get("/mp/goods").param("categoryNo", "CAT001"))
+        mvc().perform(get("/mp/goods").param("categoryNo", "CAT210"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(org.hamcrest.Matchers.greaterThan(0)));
 
@@ -192,6 +194,24 @@ class M2CatalogFlowTest {
 
         mvc().perform(get("/mp/merchant/M-NOT-EXIST"))
                 .andExpect(jsonPath("$.code").value(10404));
+
+        /*
+         * **登录着再看一遍。** 上面那两条是游客视角 —— 而游客身上没有数据域，
+         * 于是数据域这一层在这条用例里从头到尾没被触发过。
+         *
+         * 这不是洁癖：`mch_entity` 只登记了 MERCHANT 维度，而 C 端会话的维度是
+         * SELF（`LoginUser` 里写死的 `DataScopeSpec.of(SELF, {userNo})`）。
+         * 锚点找不到时拦截器是 **fail-closed**，拼出来的是 `1=0` ——
+         * 也就是说，**登录用户点开店铺页会拿到「数据不存在」，游客反而看得到**。
+         * 这条断言就是冲着那个方向去的。
+         */
+        String token = login("13500135009");
+        mvc().perform(get("/mp/merchant/M0001").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
+        mvc().perform(get("/mp/merchant/M0001/score").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.rating").isNumber());
     }
 
     @Test
@@ -262,13 +282,6 @@ class M2CatalogFlowTest {
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
 }

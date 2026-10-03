@@ -1,0 +1,234 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存 · 库存页重排</title>
+<!-- 真源在仓库 prototypes/inventory-rearrange.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 进销存 · 界面原型 · 2026-08-28 · 依据：《B 端功能与流程》第四节</div>
+  <h1>进销存：七格并排，是把九件事摊成了一层</h1>
+  <p class="sub">九屏都已上线、彼此也走得通了。剩下的问题不在功能，在<b>排布</b>：库存页那七个入口等大、等色、并排，而它们的使用频率差两个数量级。四屏。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">诊断</span><h2>三个问题，按影响面排</h2></div>
+  <p class="sub" style="margin-bottom:18px">都不是缺功能。每一条都跑得通，只是商家得先知道该找哪一格。</p>
+  <div class="tw"><table class="spec">
+    <tr><th>#</th><th>问题</th><th>说明</th></tr>
+    <tr><td>1</td><td>七格等大等色</td><td>「看」每天几十次，「配库位」一辈子一次，而它们在屏幕上一样大、一样重。商家每次进来都要在七个同样的格子里找那一个。</td></tr>
+    <tr><td>2</td><td>工作台那三个快捷是写死的</td><td>永远是「进货 · 盘点 · 单据」。哪怕此刻有三批货在途等着收、有一张盘点单还开着，它也不会变 —— 而那才是他现在要做的事。</td></tr>
+    <tr><td>3</td><td>「在途」没有位置</td><td>调拨发出后货既不在 A 也不在 B。库存页三个数（在售 / 缺货 / 滞销）里没有它，只有翻单据才看得到 —— 而它是唯一一个<b>有人在等</b>的状态。</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">原则</span><h2>按他要做的事排，不按功能排</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>频率</th><th>做什么</th><th>怎么排</th></tr>
+    <tr><td>看 · 每天多次</td><td>现在有多少、哪件断了、哪件压着、哪批在路上。</td><td><b>四个数放最上面，都可点</b>，点进去就是筛好的列表。</td></tr>
+    <tr><td>记 · 每天 1–3 次</td><td>进货、盘点、报损、调拨。</td><td>四个写动作<b>描边加重</b>，一行放下，是这一屏的主角。</td></tr>
+    <tr><td>查 · 每周／每月</td><td>单据、报表。</td><td><b>收成一行文字链接</b> —— 需要时找得到，不需要时不占视觉重量。</td></tr>
+    <tr><td>配 · 一次性</td><td>库位。</td><td><b>与「查」同一行</b>，最右。它只在开店和加仓时用一次。</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>原型：四屏</h2></div>
+  <p class="sub" style="margin-bottom:22px">「为什么」注是与现状的差异。</p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">工作台</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">进销存</span><span class="v go hot">全部</span></div>
+            <div class="stats" style="grid-template-columns:repeat(4,1fr);padding:6px 0">
+              <div><div class="n num">204</div><div class="l">在售</div></div>
+              <div><div class="n num" style="color:var(--sh-primary-text)">6</div><div class="l">缺货</div></div>
+              <div><div class="n num">12</div><div class="l">滞销</div></div>
+              <div><div class="n num" style="color:var(--sh-warning-text)">3</div><div class="l">在途</div></div>
+            </div>
+            <div class="hd" style="justify-content:flex-start;gap:14px;border-top:1px solid var(--sh-line);padding-top:6px">
+              <span class="v hot">收货 3</span><span class="v hot">继续盘点</span><span class="v hot">进货</span>
+            </div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="nm">今日</span><span class="v go"></span></div>
+            <div class="frow"><span class="k">订单</span><span class="v num">5</span></div>
+            <div class="frow"><span class="k">成交额</span><span class="v num">¥234.20</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 工作台</b>进销存卡：四个数 + 一行随状态变的快捷。</figcaption>
+      <p class="why"><b>快捷随状态变。</b>有在途 → 收货；有开着的盘点单 → 继续盘点；都没有才退回「进货 · 盘点 · 单据」。最多三个。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存</span><span></span></div>
+        <div class="scr">
+          <div class="stats" style="grid-template-columns:repeat(4,1fr);padding-bottom:0">
+            <div><div class="n num">204</div><div class="l">在售</div></div>
+            <div><div class="n num" style="color:var(--sh-primary-text)">6</div><div class="l">缺货</div></div>
+            <div><div class="n num">12</div><div class="l">滞销</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">3</div><div class="l">在途</div></div>
+            <div class="frow" style="grid-column:1/-1;justify-content:space-around;margin-top:8px;padding:0 12px"><span class="v hot">单据</span><span class="v hot">报表</span><span class="v hot">库位</span></div>
+          </div>
+          <div class="tabs"><span>要处理 6</span><span class="on">全部</span><span>有预留</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">五常大米 · 10斤装</span><span class="nm num">120</span></div>
+            <div class="hd meta"><span>实存 120　预留 0</span><span>可用</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">小米 · 2斤装</span><span class="nm num" style="color:var(--sh-primary-text)">0</span></div>
+            <div class="hd meta"><span class="chip">已售罄</span><span>可用</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">陈醋 · 500ml</span><span class="nm num">24</span></div>
+            <div class="hd meta"><span class="chip warn">94 天未动</span><span>可用</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">进货</div><div class="btn sec">盘点</div><div class="btn sec">报损</div><div class="btn sec">调拨</div></div>
+      </div>
+      <figcaption class="cap"><b>02 库存</b>一张卡装四个数与三个去处；筛选贴着列表；四个写动作贴底。</figcaption>
+      <p class="why"><b>四个写动作移到贴底悬浮条</b>（库里的 <code>sh-actionbar</code>，进货／盘点／报损／调拨四页自己就在用它）——「看」占满整屏，「记」落在拇指处。上方一张卡装四个数与三个去处；筛选贴着列表。原来四个数与四个动作都是等大白卡，读起来是一个八格网格。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">库存明细</span><span></span></div>
+        <div class="scr">
+          <div class="nm">五常大米 10斤装 · 10斤装</div>
+          <div class="stats">
+            <div><div class="n num">120</div><div class="l">实存</div></div>
+            <div><div class="n num" style="color:var(--sh-warning-text)">0</div><div class="l">预留</div></div>
+            <div><div class="n num">120</div><div class="l">可用</div></div>
+          </div>
+          <div class="card"><div class="meta">条码 —　货号 —　单位 件</div></div>
+          <div class="group">
+            <div class="frow"><span class="nm">按库位</span></div>
+            <div class="frow"><span class="k">默认库位</span><span class="v num">120</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="nm">变动明细</span><span class="meta">点一行看那张单</span></div>
+            <div class="frow"><span>期初</span><span class="v num" style="color:var(--sh-success-text)">+120</span></div>
+            <div class="frow"><span class="meta num" style="color:var(--sh-primary-text)">IN20260827…3861</span><span class="v num meta">0 → 120</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">盘这一件</div></div>
+      </div>
+      <figcaption class="cap"><b>03 库存明细</b>三个数、按库位、变动明细；主按钮「盘这一件」。</figcaption>
+      <p class="why"><b>「差异原因」那张卡撤掉。</b>它现在常驻在页面上，而只有点了「盘这一件」才用得到 —— 挪进弹层，这一屏少一整张卡。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">在途</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="meta">从库存页「在途 3」点进来，等同于单据筛 <span style="color:var(--sh-primary-text)">调拨 · 在途</span></div></div>
+          <div class="card">
+            <div class="hd"><span class="nm">城西仓 → 文三路店</span><span class="chip warn">在途</span></div>
+            <div class="hd"><span class="meta num">TRF-24082507 · 08-26 07:30</span><span class="num" style="color:var(--sh-success-text)">+20</span></div>
+            <div class="meta" style="border-top:1px solid var(--sh-line);padding-top:5px">这张单动了这些货</div>
+            <div class="hd"><span>东北大米 · 5斤装</span><span class="num" style="color:var(--sh-success-text)">+20 ›</span></div>
+            <div class="meta" style="text-align:center;color:var(--sh-primary-text);font-weight:600">确认收到</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">城西仓 → 古墩路店</span><span class="chip warn">在途</span></div>
+            <div class="hd"><span class="meta num">TRF-24082504 · 08-25 19:10</span><span class="num" style="color:var(--sh-success-text)">+8</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>04 在途</b>单据页带筛选参数进来；收货动作在这一屏。</figcaption>
+      <p class="why"><b>在途是唯一「有人在等」的状态。</b>收货动作直接放在这一屏，不必先进调拨页再找单号。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">流程</span><h2>一件货从建出来到卖掉，中间经过谁</h2></div>
+  <p class="sub" style="margin-bottom:18px">粗线是货真正动的那条路；虚线是事件，异步、不阻塞下单。</p>
+  <figure>
+    <svg viewBox="0 0 860 300" role="img" style="display:block;max-width:900px;width:100%;height:auto"
+      aria-label="商品建 SKU 后经事件投影成物料，进货过账加库存，买家下单由平台扣减并经 outbox 双写到进销存，录错则作废写反向流水">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 4 L0 8 z" fill="var(--muted)"/></marker>
+        <marker id="ar-p" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 L10 4 L0 8 z" fill="var(--sh-primary)"/></marker>
+      </defs>
+      <g fill="none" stroke="var(--ink)" stroke-width="1.4">
+        <rect x="8" y="26" width="126" height="46" rx="9"/>
+        <rect x="8" y="116" width="126" height="46" rx="9"/>
+        <rect x="222" y="71" width="126" height="46" rx="9"/>
+        <rect x="436" y="26" width="140" height="46" rx="9"/>
+        <rect x="436" y="116" width="140" height="46" rx="9"/>
+        <rect x="664" y="71" width="150" height="46" rx="9"/>
+        <rect x="222" y="206" width="126" height="46" rx="9"/>
+        <rect x="436" y="206" width="140" height="46" rx="9"/>
+      </g>
+      <g font-size="13" fill="var(--ink)" text-anchor="middle">
+        <text x="71" y="54">商品页建 SKU</text>
+        <text x="71" y="144">买家下单付款</text>
+        <text x="285" y="99">进货 · 过账</text>
+        <text x="506" y="54">inv_item 物料</text>
+        <text x="506" y="144">平台扣库存</text>
+        <text x="739" y="92">进销存台账</text>
+        <text x="739" y="110" font-size="11">余额 + 流水</text>
+        <text x="285" y="234">录错了</text>
+        <text x="506" y="228">作废</text>
+        <text x="506" y="246" font-size="11">写反向流水</text>
+      </g>
+      <g stroke="var(--muted)" stroke-width="1.3" fill="none" marker-end="url(#ar)">
+        <path d="M134 49 L430 49" stroke-dasharray="5 4"/>
+        <path d="M576 49 L620 49 L620 82 L658 82"/>
+        <path d="M134 139 L430 139"/>
+        <path d="M576 139 L620 139 L620 106 L658 106" stroke-dasharray="5 4"/>
+        <path d="M348 229 L430 229"/>
+        <path d="M576 229 L640 229 L640 118 L658 118"/>
+      </g>
+      <path d="M348 94 L620 94 L658 94" fill="none" stroke="var(--sh-primary)" stroke-width="2.2" marker-end="url(#ar-p)"/>
+      <g font-size="10.5" fill="var(--muted)" text-anchor="middle">
+        <text x="282" y="42">SKU_UPSERTED 事件 · 投影建账</text>
+        <text x="282" y="132">真相源仍是平台</text>
+        <text x="620" y="169">outbox 双写 · 5 秒一轮</text>
+      </g>
+    </svg>
+    <figcaption class="cap">两条虚线是这套设计的关键：<b style="display:inline">建品上账</b>与<b style="display:inline">销售出库</b>都不需要商家做任何事，也都不该拖慢他手上的操作。中间那条粗线（进货 → 台账）才是他每天真正在按的。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">差异</span><h2>要改的六处</h2></div>
+  <div class="tw"><table class="spec">
+    <thead><tr><th>屏</th><th>改什么</th><th>代价</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>库存</td><td>七格 → 三层（四个数 / 四个写动作 / 一行小字）</td><td>中</td><td><span class="chip warn">重排</span></td></tr>
+      <tr><td>库存</td><td>加第四个数「在途」，点进去筛调拨在途</td><td>小</td><td><span class="chip warn">新</span></td></tr>
+      <tr><td>工作台</td><td>三个快捷随状态变（收货 / 继续盘点 / 进货）</td><td>小</td><td><span class="chip warn">新</span></td></tr>
+      <tr><td>在途</td><td>收货动作直接放在这一屏</td><td>小</td><td><span class="chip warn">新</span></td></tr>
+      <tr><td>库存明细</td><td>「差异原因」卡撤下，挪进「盘这一件」的弹层</td><td>小</td><td><span class="chip warn">重排</span></td></tr>
+      <tr><td>全部</td><td>三条回边、挑货件、作废入口</td><td>—</td><td><span class="chip ok">已上线</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="why" style="margin-top:18px">没有一处新增页面 —— 「在途」是单据页带筛选参数进来的，与「只看某张单」同一个机制。所以界面清单不变。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">范围</span><h2>明确不做的</h2></div>
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:900px">
+    <p class="why"><b>不给进销存单独一个底部 tab</b>　底部四格是「工作台 / 订单 / 商品 / 我的」，那是<b>身份</b>不是功能。进销存再重要也是工作台下的一个域，给它一格会挤掉一个身份。</p>
+    <p class="why"><b>不做「改单」</b>　端点有，入口故意没有。单据不可修改 —— 改单据等于改历史，而历史正是这些表存在的理由。录错走作废重录。</p>
+    <p class="why"><b>不在这一轮碰报表</b>　线上那家店本月 0 销售流水，动销/滞销榜是空的。在空数据上排版会排出一个只在空态好看的界面。</p>
+  </div>
+</section>
+
+<footer>
+  真源：prototypes/inventory-rearrange.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/9b9c2865-931b-48d1-91cb-42a9d5d86ace">claude.ai/code/artifact/9b9c2865-…</a><br>
+  相关文档：docs/technical/design/进销存-B端功能与流程.md（第四节） · 前一稿：prototypes/inventory-nine-v0.html
+</footer>
+</div>
+</html>

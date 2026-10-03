@@ -1,36 +1,314 @@
-// 端能力：触达。小程序=订阅消息（一次性授权，必须在关键节点收集）；App=推送通道。
-// 一期 App 为 P1，先接应用内消息，厂商通道二期。
-
-/** 小程序订阅消息模板 id（真实 id 由运营端下发，此处为占位常量） */
-export const SUBSCRIBE_TMPL = {
-  arrived: "TMPL_ARRIVED",
-  shipped: "TMPL_SHIPPED",
-  afterSale: "TMPL_AFTER_SALE",
-  groupBuy: "TMPL_GROUP_BUY",
-} as const;
+// 端能力：触达。小程序=订阅消息（一次性授权，必须在关键节点收集）；
+// App=推送通道（uni-push 2.0，底座是个推，免费档起步 —— ADR-018）。
 
 /**
- * 在关键节点收集订阅授权（下单成功页、开团页）。
- * 小程序限制：必须由用户点击行为触发，且是一次性授权。
+ * 小程序订阅消息模板 id。
+ *
+ * <p>默认值与后端桩（StubWxSubscribeGateway）的记账键一致 —— 桩世界里前端收集、
+ * 后端扣减用同一套假模板号，链路闭环可测。上线前两端各配真实模板号：
+ * 这里走 VITE_WX_TPL_*，后端走 shop.wx.templates.*，**两边必须是同一个 id**，
+ * 否则前端攒的额度后端查不到，一条都发不出。
  */
-export function requestSubscribe(tmplIds: string[]): Promise<boolean> {
+export const SUBSCRIBE_TMPL = {
+  arrived: (import.meta.env?.VITE_WX_TPL_ARRIVED as string) || "STUB_TPL_ORDER_ARRIVED",
+  refunded: (import.meta.env?.VITE_WX_TPL_REFUNDED as string) || "STUB_TPL_REFUNDED",
+  /**
+   * 新品开售提醒。**在收藏店铺那一刻收集** —— 一次授权只够一条，
+   * 所以它是「一次预约」而不是「订阅关系」：发完就没了，用户要再点一次收藏。
+   */
+  newGoods: (import.meta.env?.VITE_WX_TPL_NEW_GOODS as string) || "STUB_TPL_NEW_GOODS",
+} as const;
+
+export interface SubscribeResult {
+  /** 用户点了「允许」的模板（每个 = 后端一次发送额度） */
+  accepted: string[];
+  /** 点了「拒绝」的模板（也要上报：后端记下来才不会反复弹窗） */
+  rejected: string[];
+}
+
+/**
+ * 在关键节点收集订阅授权（支付成功页、开团页）。
+ * 小程序限制：必须由用户点击行为触发，且是一次性授权（一次「允许」只够发一条）。
+ *
+ * <p><b>只收集，不上报</b> —— 上报走各端自己的 api 层（shared 不依赖任何一端的 http），
+ * 调用方拿到结果后必须把 accepted / rejected 各报一次 `/mp/message/subscribe`。
+ */
+export function requestSubscribe(tmplIds: string[]): Promise<SubscribeResult> {
+  /*
+   * **把没配的模板号剔掉再问。**
+   *
+   * 未配置时这里是 `STUB_TPL_*` 那样的占位串。微信对 tmplIds 是**整批校验**的：
+   * 里面混一个不存在的号，整次调用直接 fail —— 连同批里合法的那个也拿不到授权。
+   * 症状是「用户从没见过授权弹窗，后端配额恒为 0，而两端各自看都配好了」。
+   *
+   * 这在退款模板缺席时是必然发生的：本小程序的公共模板库里没有那一类，
+   * 而支付成功页原本一次要两个。
+   */
+  const ids = tmplIds.filter((id) => id && !id.startsWith("STUB_"));
+  if (!ids.length) {
+    /*
+     * **整批被剔光要喊一声。**
+     *
+     * 静默返回空是这条链上最贵的一个盲区：模板号没注入时（开发版/体验版小程序
+     * 走 development 模式，**不加载 `.env.production`**），这里安静地什么都不做 ——
+     * 弹窗不出现、不上报、后端额度恒为 0、没有任何日志。
+     * 一期上线一年一条订阅消息都没发出去，就是被这个静默盖住的：
+     * 开发阶段永远看不到弹窗，于是没人发现这条链从没跑过。
+     *
+     * 模板号现在放在 `c-app/.env`（所有模式都加载），这一句是防它再掉回去。
+     */
+    // #ifdef MP-WEIXIN
+    console.warn("[subscribe] 模板号一个都没配（拿到的是 STUB_*），不会弹订阅授权框。"
+      + " 检查 c-app/.env 里的 VITE_WX_TPL_*，且必须与后端 WX_TPL_* 同值：", tmplIds);
+    // #endif
+    return Promise.resolve({ accepted: [], rejected: [] });
+  }
+
   // #ifdef MP-WEIXIN
   return new Promise((resolve) => {
     uni.requestSubscribeMessage({
-      tmplIds,
-      success: () => resolve(true),
-      fail: () => resolve(false), // 拒绝不阻塞主流程
+      tmplIds: ids,
+      success: (res) => {
+        // 微信按模板逐个给结果：'accept' / 'reject' / 'ban'（被封禁的当拒绝处理）。
+        // 类型声明里没有按模板名的索引签名，实际响应有 —— 以运行时形状为准
+        const byTmpl = res as unknown as Record<string, string>;
+        resolve({
+          accepted: ids.filter((id) => byTmpl[id] === "accept"),
+          rejected: ids.filter((id) => byTmpl[id] && byTmpl[id] !== "accept"),
+        });
+      },
+      /*
+       * 弹窗失败不阻塞主流程，但**要留下痕迹**。
+       *
+       * 真机上最常撞的是 `20004 主开关关闭`（用户在微信「设置 → 订阅消息」里
+       * 把这个小程序关了）与 `20001 参数传空`。静默 resolve 的话，
+       * 表现与「模板号没配」「用户点了拒绝」一模一样 —— 三种完全不同的原因
+       * 收敛成同一个症状「什么都没发生」，排查时无从下手。
+       */
+      fail: (e) => {
+        console.warn("[subscribe] 授权弹窗没能调起：", e?.errCode, e?.errMsg,
+          "（20004=用户关了订阅消息总开关 · 20001=模板号传空 · "
+          + "2.8.2 起必须由点击行为触发）");
+        resolve({ accepted: [], rejected: [] });
+      },
     });
   });
   // #endif
 
   // #ifndef MP-WEIXIN
-  return Promise.resolve(false);
+  // H5/App 没有订阅消息这回事；App 的推送走 initPush
+  return Promise.resolve({ accepted: [], rejected: [] });
   // #endif
 }
 
-export function initPush(): void {
+/** 后端 notify_push_token.platform 的取值。**与后端 MsgPushToken 的常量逐字一致**。 */
+export type PushPlatform = "APP_ANDROID" | "APP_IOS";
+
+/**
+ * 推送供应商。**与后端 PushProvider 逐字一致**。
+ * uni-push 打包的底座是个推，故恒 GETUI；将来海外包直连 FCM、iOS 直连 APNs 时，
+ * 那些构建各自上报 "FCM" / "APNS"（后端 PushRouter 据此分发）。
+ */
+export type PushProvider = "GETUI" | "FCM" | "APNS";
+
+export interface PushDevice {
+  platform: PushPlatform;
+  /** 供应商。uni-push 底座即个推，恒 "GETUI"。 */
+  provider: PushProvider;
+  /** 供应商设备标识（个推 cid / FCM token / APNs token） */
+  clientId: string;
+}
+
+/**
+ * 取本机推送标识。**只在 App 构建下有值**（H5/小程序返回 null）。
+ *
+ * <p>拿到之后由各端上报 `/mp/push-token` 或 `/biz/push-token` —— 同 requestSubscribe，
+ * shared 只负责取端能力，不碰任何一端的 http。
+ *
+ * <p>失败返回 null 而不是抛：推送是加速通道，取不到 clientId 不该让登录流程失败，
+ * 用户照样能在消息中心看到全部通知。
+ */
+export function getPushDevice(): Promise<PushDevice | null> {
   // #ifdef APP-PLUS
-  // 二期：APNs / FCM / 厂商通道注册
+  /*
+   * **个推原生直连**（不走 `uni.getPushClientId`——那是 uni-push/DCloud，要实名认证开通，
+   * 我们没开通，register 会 errorCode 1）。改用 `plus.android` 反射直接调个推 SDK：
+   * `PushManager.initialize()` + 轮询 `getClientid()`。cid 由离线包里的
+   * `top.hxmall.bapp.GetuiIntentService.onReceiveClientId` 接住，SDK 侧同步可取。
+   * appid/appkey/appsecret 走 AndroidManifest 的 PUSH_* meta。
+   */
+  return new Promise((resolve) => {
+    const plusApi = (globalThis as unknown as {
+      plus?: {
+        android?: {
+          importClass: (n: string) => { getInstance: () => Record<string, (...a: unknown[]) => unknown> };
+          runtimeMainActivity: () => { getApplicationContext: () => unknown };
+        };
+        ios?: { importClass: (n: string) => Record<string, (...a: unknown[]) => unknown> };
+      };
+    }).plus;
+    const android = plusApi?.android;
+
+    /*
+     * **iOS 分支**。与安卓同构 —— 安卓反射 `com.igexin.sdk.PushManager`，
+     * iOS 反射个推的 `GeTuiSdk` 类方法 `+[GeTuiSdk clientId]`。
+     *
+     * <p>SDK 的启动不在这里：离线工程里 `Push-Getui` 模块会按 Info.plist 的
+     * `getui.{appid,appkey,appsecret}` 自动 `startSdkWithAppId:`，所以这里只取 cid。
+     * 那三个值由 `b-app/offline/ios/sync-info-plist.py` 写入并回读断言
+     * （DCloud 自己那段有短路 bug，只写 appid）。
+     *
+     * <p><b>不补这一支的后果</b>：包里有个推 SDK、也向个推注册了，
+     * 但 cid 永远不上报给我们后端 —— 后端因此**无法定向推给这台设备**。
+     * 表现不是报错，是「推送一条也收不到」，而证书、通道、配置查下来样样正常。
+     */
+    if (!android && plusApi?.ios) {
+      const ios = plusApi.ios;
+      let iosTries = 0;
+      const iosTick = () => {
+        let cid = "";
+        try {
+          const GeTuiSdk = ios.importClass("GeTuiSdk");
+          cid = ((GeTuiSdk?.clientId as (() => string) | undefined)?.() as string) || "";
+        } catch {
+          cid = "";
+        }
+        if (cid) {
+          resolve({ platform: "APP_IOS", provider: "GETUI", clientId: cid });
+          return;
+        }
+        // 与安卓同一条节奏：约 15s 拿不到就放弃，推送是加速通道，不阻塞登录
+        if (++iosTries >= 30) {
+          resolve(null);
+          return;
+        }
+        setTimeout(iosTick, 500);
+      };
+      iosTick();
+      return;
+    }
+
+    if (!android) {
+      resolve(null);
+      return;
+    }
+    try {
+      const PushManager = android.importClass("com.igexin.sdk.PushManager");
+      const pm = PushManager.getInstance();
+      const ctx = android.runtimeMainActivity().getApplicationContext();
+      // initialize 幂等：确保个推已起（cid 是注册成功后异步下发的）
+      (pm.initialize as (c: unknown) => void)(ctx);
+      let tries = 0;
+      const tick = () => {
+        let cid = "";
+        try {
+          cid = ((pm.getClientid as (c: unknown) => string)(ctx) as string) || "";
+        } catch {
+          cid = "";
+        }
+        if (cid) {
+          resolve({
+            platform: uni.getSystemInfoSync().platform === "ios" ? "APP_IOS" : "APP_ANDROID",
+            provider: "GETUI",
+            clientId: cid,
+          });
+          return;
+        }
+        // 个推注册约 2~5s 出 cid；轮询到 ~15s 拿不到就放弃（推送是加速通道，不阻塞登录）
+        if (++tries >= 30) {
+          resolve(null);
+          return;
+        }
+        setTimeout(tick, 500);
+      };
+      tick();
+    } catch {
+      resolve(null);
+    }
+  });
+  // #endif
+
+  // #ifndef APP-PLUS
+  // H5 / 小程序没有推送通道（走站内信与订阅消息）。推送只在原生 App 构建里有。
+  return Promise.resolve(null);
   // #endif
 }
+
+/**
+ * 注册推送点击的落点路由。App 启动时调一次。
+ *
+ * <p>后端在 payload 里放 `{"link":"/pages/..."}`（见 GetuiPushGateway）——
+ * **点击必须能落到那一页**：一条「新订单」推送点开却停在首页，
+ * 和没推没有区别，商家还得自己去翻订单列表。
+ *
+ * @param navigate 由各端注入（两端的路由栈与 tab 页判定不同）
+ */
+export function initPush(navigate: (link: string) => void): void {
+  /*
+   * **不再调 `uni.onPushMessage`** —— 那是 uni-push/DCloud 的 API，我们已切成个推原生直连、
+   * 移除了 DCloud push 模块，再调它会弹「push 没有安装」。
+   *
+   * 通知点击的深链路由统一走全局 `__onPushClick`：
+   * - 个推原生直连（离线包）：`GetuiIntentService.onNotificationMessageClicked` 取出
+   *   payload.link，用 evaluateJavascript 调 `window.__onPushClick(link)`；
+   * - WebView 壳（android-shell）：原生 PushBridge 同样调它；
+   * - 普通浏览器：没人调，挂着无害。
+   */
+  (globalThis as unknown as { __onPushClick?: (link: string) => void }).__onPushClick = (
+    link: string,
+  ) => {
+    if (link) navigate(link);
+  };
+
+  // #ifdef APP-PLUS
+  /*
+   * **申请通知权限**（Android 13+ / targetSdk 33 起必须运行时申请 POST_NOTIFICATIONS）。
+   *
+   * 这一步以前是 DCloud push 模块替我们做的；改成个推原生直连、移除那个模块之后
+   * **没人再申请它** —— 症状极具迷惑性：个推回 `successed_online`、
+   * `onNotificationMessageArrived` 也进了，但系统把通知**静默丢弃**
+   * （`dumpsys notification` 里 numEnqueuedByApp=3 / numPostedByApp=0，
+   * appops 显示 POST_NOTIFICATION: ignore），用户一条也看不到。
+   */
+  const plusAndroid = (globalThis as unknown as {
+    plus?: {
+      android?: {
+        requestPermissions?: (
+          list: string[],
+          success: (r: unknown) => void,
+          fail: (e: unknown) => void,
+        ) => void;
+        importClass?: (n: string) => Record<string, (...a: unknown[]) => unknown> | undefined;
+      };
+    };
+  }).plus?.android;
+  try {
+    plusAndroid?.requestPermissions?.(
+      ["android.permission.POST_NOTIFICATIONS"],
+      () => {},
+      () => {},
+    );
+  } catch {
+    // 低版本 Android 没有这个权限、或非 App 环境：无需申请，静默跳过
+  }
+
+  /*
+   * 消费「用户点了通知」留下的深链。原生侧（GetuiIntentService.onNotificationMessageClicked）
+   * 把 link 存进静态字段，这里取走 —— **点击常伴随冷启动**，那时 webview 还没建好，
+   * 让原生直接回调 JS 必丢，所以改成 JS 起来后主动取。
+   * onShow 也取一次：通知点击时应用可能只是从后台唤到前台。
+   */
+  const takePendingLink = () => {
+    try {
+      const svc = plusAndroid?.importClass?.("top.hxmall.bapp.GetuiIntentService");
+      const link = svc?.takePendingLink?.() as string | undefined;
+      if (link) navigate(link);
+    } catch {
+      // 非本离线包（如自定义基座）里没有这个类：忽略
+    }
+  };
+  takePendingLink();
+  uni.onAppShow?.(takePendingLink);
+  // #endif
+}
+

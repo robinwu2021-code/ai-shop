@@ -81,7 +81,7 @@ describe("解禁申诉裁决", () => {
 
   it("接受申诉 = 解除拉黑，但记录保留（留痕不是删除）", async () => {
     const b = await riskMock.decideBlacklistAppeal("BL9002", true, "核实为帮家人注册，非工作室");
-    expect(b.appealStatus).toBe("ACCEPTED");
+    expect(b.appealStatus).toBe("UPHELD");
     expect(b.active).toBe(false);
     expect(blacklists.some((x) => x.blackNo === "BL9002")).toBe(true);
   });

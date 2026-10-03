@@ -8,20 +8,104 @@ export const ROUTES = {
   login: "/pages/login/index",
   apply: "/pages/apply/index",
   goodsEdit: "/pages/goods-edit/index",
+  goodsPublish: "/pages/goods-publish/index",
   order: "/pages/order/index",
   verify: "/pages/verify/index",
   picking: "/pages/picking/index",
   delivery: "/pages/delivery/index",
   store: "/pages/store/index",
+  storeNotice: "/pages/store-notice/index",
+  shipSettings: "/pages/ship-settings/index",
+  storeScope: "/pages/store-scope/index",
+  storePick: "/pages/store-pick/index",
+  payment: "/pages/payment/index",
+  stores: "/pages/stores/index",
+  storeCategories: "/pages/store-categories/index",
+  mySpecs: "/pages/my-specs/index",
+  skuIdentity: "/pages/sku-identity/index",
+  qualifications: "/pages/qualifications/index",
+  entities: "/pages/entities/index",
+  entityDetail: "/pages/entity-detail/index",
+  staff: "/pages/staff/index",
+  staffDetail: "/pages/staff-detail/index",
+  roleDetail: "/pages/role-detail/index",
   afterSale: "/pages/after-sale/index",
+  messages: "/pages/messages/index",
   reviews: "/pages/reviews/index",
   quotes: "/pages/quotes/index",
   groups: "/pages/groups/index",
+  income: "/pages/income/index",
   settle: "/pages/settle/index",
+  /*
+   * 收款账户与保证金**从结算页进**，不各自在工作台开一道门。
+   *
+   * ⚠️ 这里原来还有 withdraw（提现）。**入口与后端端点一起撤了**
+   * （ADR-011 · TDD §6 第 4 条）：自营供应商模式下钱按账期打，
+   * 商家要做的是把收款账户填对，不是「申请提现」。
+   */
+  payoutAccount: "/pages/payout-account/index",
+  deposit: "/pages/deposit/index",
+  invoice: "/pages/invoice/index",
+  statement: "/pages/statement/index",
   stats: "/pages/stats/index",
+  crossStore: "/pages/cross-store/index",
+  plan: "/pages/plan/index",
   customers: "/pages/customers/index",
+  // 会员标签与定向营销：标签详情（m08）、人群详情（m11）、发消息（m18）
+  memberTag: "/pages/member-tag/index",
+  memberSegment: "/pages/member-segment/index",
+  memberReach: "/pages/member-reach/index",
+  // 发出去的（m19）与一次触达的效果（m20）：入口在营销首页
+  reachTasks: "/pages/reach-tasks/index",
+  reachTask: "/pages/reach-task/index",
+  activities: "/pages/activities/index",
+  coupons: "/pages/coupons/index",
+  // 券：详情（s15）、新建（s13/s14）、发放选人群（s18）、发放结果与记录（s16）
+  coupon: "/pages/coupon/index",
+  couponEdit: "/pages/coupon-edit/index",
+  couponSend: "/pages/coupon-send/index",
+  couponIssues: "/pages/coupon-issues/index",
   marketing: "/pages/marketing/index",
+  // 社区集单：期列表与一期。入口在营销页，不在工作台（ADR-024）
+  periods: "/pages/periods/index",
+  period: "/pages/period/index",
+  // 拼团：团详情（s10）与开团（s34）。团列表是上面的 groups
+  group: "/pages/group/index",
+  groupOpen: "/pages/group-open/index",
+  activityEdit: "/pages/activity-edit/index",
+  // 平台活动（s27）与报名（s28）：入口在营销首页
+  platformActivities: "/pages/platform-activities/index",
+  platformApply: "/pages/platform-activity-apply/index",
+
+  // ── 进销存（P-18）。**库存页是这一块的枢纽** ——
+  // 工作台只开一道门到它，其余五屏从它里面进。
+  // 每屏各在工作台/我的上摆一个入口的话，就回到「同一件事三个门，人记不住走哪个」
+  stock: "/pages/stock/index",
+  stockDetail: "/pages/stock-detail/index",
+  stockCross: "/pages/stock-cross/index",
+  stockCheck: "/pages/stock-check/index",
+  purchaseEdit: "/pages/purchase-edit/index",
+  stockDocs: "/pages/stock-docs/index",
+  stockOut: "/pages/stock-out/index",
+  transfer: "/pages/transfer/index",
+  stockReport: "/pages/stock-report/index",
+  locations: "/pages/locations/index",
+  suppliers: "/pages/suppliers/index",
+  stockSettings: "/pages/stock-settings/index",
+  stockAlign: "/pages/stock-align/index",
+  offlineSale: "/pages/offline-sale/index",
 } as const;
+
+/**
+ * tab 页路径集合。**推送落点判断要用它**：tab 页只能 switchTab 打开，
+ * 用 navigateTo 会静默失败（点了没反应），而「新订单」的落点正是 tab 页。
+ */
+export const TAB_ROUTES: ReadonlySet<string> = new Set([
+  ROUTES.home,
+  ROUTES.orders,
+  ROUTES.goods,
+  ROUTES.me,
+]);
 
 export const TABS = [
   { key: "home", route: ROUTES.home, icon: "home", iconOn: "homeFilled", labelKey: "tab.home" },

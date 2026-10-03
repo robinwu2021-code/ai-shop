@@ -6,20 +6,21 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { chooseImages } from "@shared/ports/media";
-import { ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const REASONS: AfterSaleReason[] = [
-  "MISSING",
-  "DAMAGED",
-  "QUALITY",
-  "WRONG_ITEM",
-  "NOT_ARRIVED",
-  "OTHER",
-];
+/**
+ * 售后原因**取自后端**（`/mp/after-sale/reasons`），不再在端上硬编码。
+ *
+ * 此前这里写死了一份六个码的清单，而后端那份是七条且内容不同 ——
+ * 两份各自漂移，运营改后端的，端上纹丝不动。
+ * 拿不到时退回一份最小清单：售后入口不该因为一个列表接口挂掉而打不开。
+ */
+const FALLBACK: AfterSaleReason[] = ["DAMAGED", "MISSING", "QUALITY", "OTHER"];
+const REASONS = ref<AfterSaleReason[]>(FALLBACK);
 
 const order = ref<Order | null>(null);
 /**
@@ -36,20 +37,35 @@ const images = ref<string[]>([]);
 const submitting = ref(false);
 const submitted = ref(false);
 
-/** 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现 */
+/**
+ * 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现。
+ *
+ * **判定来自后端**（`Order.instantRefundEligible`）。此前这里拿
+ * `TRADE_RULES.instantRefundMaxMinor` 比金额，那份常量是 ¥50、后端阈值是 ¥100 ——
+ * 差了一倍；而且常量表达不了规则里的另两半：总开关，和「下单 N 小时内」。
+ * 于是这句提示说的和后端做的，从来不是同一个判断。
+ */
 // 只对仅退款成立：要退货的，货还没回来就秒退等于白送
 const instantRefund = computed(
-  () =>
-    !!order.value &&
-    type.value === "REFUND_ONLY" &&
-    (order.value.amount.paidMinor || order.value.amount.payableMinor) <=
-      TRADE_RULES.instantRefundMaxMinor,
+  () => type.value === "REFUND_ONLY" && order.value?.instantRefundEligible === true,
 );
 
 const canSubmit = computed(() => !!reason.value && !submitting.value);
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `order` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function pickImages() {
@@ -67,12 +83,14 @@ async function submit() {
   submitting.value = true;
   try {
     const label = String(t(`afterSale.reason.${reason.value}`));
-    order.value = await api.applyAfterSale(
+    // 返回的是售后单，不是订单 —— 赋给 order 会把这一页的商品与金额清空
+    await api.applyAfterSale(
       o.orderNo,
       detail.value ? `${label}：${detail.value}` : label,
       images.value,
       type.value,
     );
+    await load(o.orderNo);
     submitted.value = true;
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -86,124 +104,124 @@ function gotoOrder() {
 }
 
 onLoad((q) => {
+  // 原因清单由后端给；失败不挡住页面（FALLBACK 兜底）
+  api.afterSaleReasons().then((r) => {
+    if (r?.length) REASONS.value = r;
+  }).catch(() => undefined);
   const no = (q?.orderNo as string) || "";
   if (no) load(no);
 });
 </script>
 
 <template>
-  <sh-scaffold v-if="order" title-key="afterSale.title">
-    <!-- 已提交：展示进度 -->
-    <template v-if="submitted">
-      <view class="sh-card done">
-        <text class="done__icon">✓</text>
-        <text class="done__title">
-          {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
-        </text>
-        <text class="done__hint">
-          {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
-        </text>
-      </view>
-
-      <view class="sh-card block">
-        <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node">
-          <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
-          <text class="node__label">{{ n.label }}</text>
+  <sh-scaffold title-key="afterSale.title"
+    :pending="!order"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `order` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="order">
+      <!-- 已提交：展示进度 -->
+      <template v-if="submitted">
+        <view class="sh-card done">
+          <text class="done__icon">✓</text>
+          <text class="txt-title done__title">
+            {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
+          </text>
+          <text class="txt-caption done__hint">
+            {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
+          </text>
         </view>
-      </view>
 
-      <view class="sh-btn block" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-    </template>
+        <view class="sh-card block">
+          <view v-for="(n, i) in order.timeline.slice(-3)" :key="i" class="node sh-row">
+            <view class="node__dot" :class="{ 'is-last': i === order.timeline.slice(-3).length - 1 }" />
+            <text class="txt-caption node__label txt-ink">{{ n.label }}</text>
+          </view>
+        </view>
 
-    <!-- 申请表单 -->
-    <template v-else>
-      <view class="sh-card">
-        <biz-sku-row
-          v-for="(it, i) in order.items.filter((x) => !x.isGift)"
-          :key="i"
-          :cover="it.cover"
-          :title="it.title"
-          :spec="it.spec"
-        >
-          <template #right>
-            <text class="row__price sh-num">{{ money(it.price) }}</text>
-          </template>
-        </biz-sku-row>
-      </view>
+        <view class="sh-btn block" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
+      </template>
 
-      <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.pickType") }}</text>
-        <view class="types">
-          <view
-            v-for="tp in TYPES"
-            :key="tp"
-            class="type"
-            :class="{ 'is-on': type === tp }"
-            @tap="type = tp"
+      <!-- 申请表单 -->
+      <template v-else>
+        <view class="sh-card">
+          <biz-sku-row
+            v-for="(it, i) in order.items.filter((x) => !x.isGift)"
+            :key="i"
+            :cover="it.cover"
+            :title="it.title"
+            :spec="it.spec"
           >
-            <text class="type__t">{{ typeText(tp) }}</text>
-            <text class="type__d">{{ typeText(tp, "Desc") }}</text>
+            <template #right>
+              <text class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
+            </template>
+          </biz-sku-row>
+        </view>
+
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.pickType") }}</text>
+          <view class="types">
+            <sh-option
+              v-for="tp in TYPES"
+              :key="tp"
+              class="type"
+              :selected="type === tp"
+              @tap="type = tp"
+            >
+              <text class="txt-strong type__t">{{ typeText(tp) }}</text>
+              <text class="txt-caption type__d">{{ typeText(tp, "Desc") }}</text>
+            </sh-option>
           </view>
         </view>
-      </view>
 
-      <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.pickReason") }}</text>
-        <view class="reasons">
-          <view
-            v-for="r in REASONS"
-            :key="r"
-            class="reason"
-            :class="{ 'is-on': reason === r }"
-            @tap="reason = r"
-          >
-            {{ $t(`afterSale.reason.${r}`) }}
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
+          <view class="reasons sh-wrap">
+            <view
+              v-for="r in REASONS"
+              :key="r"
+              class="sh-seg"
+              :class="{ 'sh-seg--on': reason === r }"
+              @tap="reason = r"
+            >
+              {{ $t(`afterSale.reason.${r}`) }}
+            </view>
           </view>
         </view>
-      </view>
 
-      <view class="sh-card block">
-        <text class="sh-h2">{{ $t("afterSale.detail") }}</text>
-        <textarea
-          v-model="detail"
-          class="ta"
-          :placeholder="$t('afterSale.detailPh')"
-          maxlength="200"
-        />
+        <view class="sh-card block">
+          <text class="txt-title">{{ $t("afterSale.detail") }}</text>
+          <textarea
+            v-model="detail"
+            class="field__area ta"
+            :placeholder="$t('afterSale.detailPh')"
+            maxlength="200"
+          />
 
-        <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
-        <view class="imgs">
-          <view v-for="(img, i) in images" :key="i" class="img">
-            <image class="img__i" :src="img" mode="aspectFill" />
-          </view>
-          <view v-if="images.length < 3" class="img img--add" @tap="pickImages">
-            <text class="img__plus">＋</text>
-          </view>
+          <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
+          <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
         </view>
-      </view>
 
-      <view v-if="instantRefund" class="sh-card block notice">
-        <text class="notice__text">{{ $t("afterSale.instant") }}</text>
-      </view>
-
-      <view class="actionbar">
-        <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
-          {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
+        <view v-if="instantRefund" class="sh-card block notice">
+          <text class="txt-caption notice__text txt-primary">{{ $t("afterSale.instant") }}</text>
         </view>
-      </view>
-      <view class="spacer" />
+
+        <sh-actionbar :pad="180">
+          <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
+            {{ submitting ? $t("confirm.submitting") : $t("afterSale.submit") }}
+          </view>
+        </sh-actionbar>
+      </template>
+  
     </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.block {
-  margin-top: 20rpx;
-}
 .row__price {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   flex-shrink: 0;
 }
 .types {
@@ -211,96 +229,39 @@ onLoad((q) => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+/* 描边 + 说明文字那一档由 sh-option 给，这里只管等分 */
 .type {
   flex: 1;
-  padding: 22rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  border: 2rpx solid transparent;
-}
-.type.is-on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
 }
 .type__t {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .type__d {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
   margin-top: 8rpx;
 }
 .reasons {
-  display: flex;
-  flex-wrap: wrap;
   gap: 16rpx;
   margin-top: 24rpx;
 }
-.reason {
-  padding: 20rpx 30rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  color: var(--sh-ink);
-  font-size: 26rpx;
-}
-.reason.is-on {
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-weight: 600;
-}
+/* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
-  width: 100%;
-  box-sizing: border-box;
   min-height: 160rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 24rpx;
-  font-size: 26rpx;
-  color: var(--sh-ink);
   margin-top: 20rpx;
 }
 .imglabel {
   display: block;
   margin-top: 28rpx;
 }
+/* 只留这一段与页面版面有关的外边距 —— 格子本身（尺寸 / 圆角 / 底色 / 「＋」）
+   全在 `sh-uploader` 里。两页此前的 `.img` 一族**逐字节相同**：
+   160rpx 方格、24rpx 圆角、faint 底、48rpx 的 `＋` 字符。
+   顺带把那个 `＋` 换成真图标 —— 字符跟着字体走，三端字形不一样。 */
 .imgs {
-  display: flex;
-  gap: 16rpx;
   margin-top: 16rpx;
-}
-.img {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  overflow: hidden;
-}
-.img__i {
-  width: 100%;
-  height: 100%;
-}
-.img--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.img__plus {
-  font-size: 48rpx;
-  color: var(--sh-sub);
-  line-height: 1;
 }
 .notice {
   background: var(--sh-primary-tint);
-}
-.notice__text {
-  font-size: 24rpx;
-  color: var(--sh-primary);
-  line-height: 1.6;
 }
 .done {
   text-align: center;
@@ -321,21 +282,13 @@ onLoad((q) => {
 }
 .done__title {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   margin-top: 24rpx;
 }
 .done__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
 }
 .node {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 12rpx 0;
 }
@@ -348,20 +301,5 @@ onLoad((q) => {
 }
 .node__dot.is-last {
   background: var(--sh-primary);
-}
-.node__label {
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.is-disabled {
-  opacity: 0.45;
-}
-.spacer {
-  height: 180rpx;
 }
 </style>

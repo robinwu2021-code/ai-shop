@@ -13,7 +13,9 @@
 // 为什么不放进 packages/shared：
 //   按 ADR-007 §3 的边界，contract 层不共享 —— B 端有自己的 `/mb/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
+import type { ActivityChoice, StoreChoice, StoreVisitSource } from "@shared/types";
 import type {
+  AfterSaleType,
   ReviewScores,
   AfterSaleReason,
   CategoryType,
@@ -27,7 +29,12 @@ import type {
  * `Extract<MerchantType,("COMPANY"|"INDIVIDUAL")>`，不符合 OpenAPI 的组件命名规则。
  * 契约类型要能干净地映射成 DTO 名，所以这里写成直白的联合。
  */
-export type MerchantApplyType = "COMPANY" | "INDIVIDUAL";
+/*
+ * 这里曾有一个 `MerchantApplyType = "COMPANY" | "INDIVIDUAL"` ——
+ * 商家主体类型的**第四套说法**（权威码是 shared 的 MerchantSubject：
+ * MICRO / INDIVIDUAL / ENTERPRISE，且 COMPANY 是已废弃的旧值）。
+ * 一个概念此前有五处声明三套取值，见 docs/technical/枚举领域清单.md §2.3。
+ */
 
 // ---------------------------------------------------------------- 用户
 
@@ -45,11 +52,29 @@ export interface LoginReqBody {
   merchantNo?: string;
 }
 
+/** 绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释 */
+export interface BindPhoneReq {
+  /** 手机号 */
+  phone: string;
+  /** 短信/微信下发的验证码 */
+  code: string;
+}
+
+/** 微信一键授权：端上只拿得到 code，换号在后端做 */
+export interface WxPhoneReq {
+  /** 短信/微信下发的验证码 */
+  code: string;
+}
+
 export interface BindCommunityReq {
   /** 要绑定的社区。**商品可见范围依赖它**，绑错了首页就是别的小区的货 */
   communityNo: string;
-  /** 默认自提点，须属于该社区 */
-  pickupNo: string;
+  /**
+   * 自提点。**可空** —— 买家选的是地址，聚落由地址坐标推出来；
+   * 自提点是履约期的事，下单那一刻由后端按规则匹配
+   * （见 TDD-C端位置选择-地址取代自提点）。传了仍须属于该社区。
+   */
+  pickupNo?: string;
 }
 
 // ---------------------------------------------------------------- 地址簿
@@ -61,14 +86,34 @@ export interface SaveAddressReq {
   name: string;
   /** 收货人手机号 */
   phone: string;
-  /** 省市区 */
+  /** 省市区，拼好给人看的一串 */
   region: string;
-  /** 详细地址（街道门牌） */
+  /**
+   * 省 / 市 / 区县，分开的三个。后端 `SaveAddressReq` 一直收这三个字段，
+   * 端上一直没发 —— 于是 `usr_address` 那三列永远是 null（见 `Address` 的注释）
+   */
+  province?: string | null;
+  /** 市 */
+  city?: string | null;
+  /** 区/县 */
+  district?: string | null;
+  /** 详细地址：**地址主体**（小区 / 写字楼），选点页给的那一段 */
   detail: string;
+  /**
+   * 门牌号（楼号-单元-室），V319 从 `detail` 里分出来。
+   *
+   * **端上必填、后端不必填**：后端要着 `@NotBlank` 的话，还没更新的老版本 App
+   * （它压根不发这个字段）连「改个手机号」都保存不了。
+   */
+  houseNo?: string | null;
   /** 设为默认。置 true 会把原默认地址改为 false */
   isDefault: boolean;
   /** 标签：家 / 公司 / 其他 */
   tag?: string;
+  /** 地图选点给的坐标（gcj02，E6）；不传 = 不改 */
+  latE6?: number | null;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
+  lngE6?: number | null;
 }
 
 // ---------------------------------------------------------------- 社区 / 商品（query）
@@ -95,6 +140,13 @@ export interface GoodsListQuery {
   keyword?: string;
   /** 按社区过滤 —— **决定这个小区的人能看到哪些商家的货**。不传则按当前绑定社区 */
   communityNo?: string;
+  /**
+   * 模糊定位时的兜底筛选（区县码）。`communityNo` 在时它不参与 —— 精确的结论压过粗的。
+   *
+   * **两个都不传才是不筛**，而端上不该走到那儿：那样拿回来的是全平台的货，
+   * 而用户会把它当成「我这儿能买到的」。
+   */
+  regionCode?: string;
 }
 
 export interface PromotedMerchantsQuery {
@@ -107,6 +159,8 @@ export interface PromotedMerchantsQuery {
 export interface PromotedGoodsQuery {
   /** 按社区取推荐。不传则按当前绑定社区 */
   communityNo?: string;
+  /** 模糊定位时的兜底筛选（区县码）。与 GoodsQuery 同一条规矩 */
+  regionCode?: string;
   /** 取几条，默认由服务端定 */
   size?: number;
 }
@@ -120,6 +174,14 @@ export interface CartAddReq {
   skuNo: string;
   /** 加购件数，正整数 */
   qty: number;
+  /**
+   * 买家正在逛的那家店（2026-09-30 门店化口径）。
+   *
+   * **只用于这一刻的库存校验，不落库** —— 购物车行上没有门店，
+   * 下单时由后端自行落店（它判「在架 ∧ 有货」）。
+   * 不带 = 没有门店上下文（从首页那类跨店目录加的购），按主体口径判。
+   */
+  storeNo?: string;
 }
 
 export interface CartUpdateReq {
@@ -158,10 +220,35 @@ export interface CreateOrderReqBody {
   usePoints?: number;
   /** 买家留言 */
   remark?: string;
-  /** 参团下单时传团单号。**后端 CreateOrderReq 目前不认这个字段**，接上去会静默变成普通单 */
+  /** 参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。与 openGroup 二选一 */
   groupNo?: string;
+  /** 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
+  openGroup?: boolean;
+  /**
+   * 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。
+   * 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的
+   */
+  activityChoices?: ActivityChoice[];
+  /**
+   * 这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
+   * 不传 = 与改造前相同；指定的店暂停营业时回 20008
+   */
+  storeChoices?: StoreChoice[];
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
+  /**
+   * 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段，
+   * 不能因为补了它就让老版本下不了单。
+   *
+   * 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算，
+   * 而后端在 create 里会**再判一次**：端上不该是唯一的闸。
+   */
+  payMode?: string;
+  /**
+   * APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 ——
+   * 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。
+   */
+  appointmentSlotNo?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;
 }
@@ -177,7 +264,7 @@ export interface OrderListQuery {
 
 export interface AfterSaleReq {
   /** 仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个 */
-  type?: "REFUND_ONLY" | "RETURN_REFUND";
+  type?: AfterSaleType;
   /** 已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交） */
   reason: string;
   /** 举证图。破损/少件类售后没有图基本判不了 */
@@ -191,11 +278,6 @@ export interface AfterSaleReq {
 export interface GroupBuyListQuery {
   /** 按自提点过滤 —— **成团单位就是自提点**。不传则按当前绑定的自提点 */
   pickupNo?: string;
-}
-
-export interface JoinGroupBuyReq {
-  /** 参团件数，正整数 */
-  qty: number;
 }
 
 export interface CreateGroupBuyReq {
@@ -234,6 +316,50 @@ export interface ChooseQuoteReq {
 
 // ---------------------------------------------------------------- 商家 / 评价
 
+export interface MyStoresQuery {
+  /** 买家位置（gcj02，E6）。传了卡片上才有距离 */
+  latE6?: number;
+  /** 经度 ×1e6 */
+  lngE6?: number;
+}
+
+export interface StoreNearbyQuery {
+  /** 买家位置（gcj02，E6）。有位置按距离排，没位置按评分排 */
+  latE6?: number;
+  /** 经度 ×1e6 */
+  lngE6?: number;
+  /** 只列能卖到这个社区的门店。不传 = 不按社区过滤 */
+  communityNo?: string;
+  /** 按门店名模糊匹配 */
+  keyword?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数，最多 50 */
+  size?: number;
+}
+
+export interface StoreGoodsQuery {
+  /** 货架类目（取自门户的 `categories`） */
+  categoryNo?: string;
+  /** 店内搜索，匹配标题与副标题 */
+  keyword?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数，最多 50 */
+  size?: number;
+}
+
+export interface StoreEnterReq {
+  /** 进店入口。只在第一次进这家店时记下，之后不改 */
+  source?: StoreVisitSource;
+  /** 分享人。只有 source=SHARE 时才记 */
+  inviterNo?: string;
+  /** 渠道（归因用） */
+  channel?: string;
+  /** 扫到的店码（归因用） */
+  storeCode?: string;
+}
+
 export interface MerchantListQuery {
   /** 搜索关键词，匹配店名 */
   keyword?: string;
@@ -241,26 +367,23 @@ export interface MerchantListQuery {
   communityNo?: string;
 }
 
-export interface MerchantApplyReq {
-  /** 拟用店铺名 */
-  name: string;
-  /** 主体类型 */
-  type: MerchantApplyType;
-  /** 联系人姓名 */
-  contact: string;
-  /** 联系手机号 */
-  phone: string;
-  /** 主营类目 */
-  category: string;
-  /** 店铺简介 */
-  desc: string;
-}
+/*
+ * 入驻申请的 wire 契约在**共享层**（`@shared/types` 的 `MerchantApplyReq`，9 个字段）。
+ *
+ * 这里曾经另写了一份同名类型（6 个字段），于是 C 端与 B 端提交的是**两种不同的东西** ——
+ * 而两边打的是同一个业务、最终落同一张表。C 端填的资质图与结算账户类型无处安放，
+ * B 端填的又比后端认识的多。这正是「四方口径不一致」的根因。
+ *
+ * 现在统一到共享层那份：一处定义，三端与后端共用。
+ */
 
 export interface ReviewListQuery {
   /** 只看某商品的评价 */
   goodsNo?: string;
   /** 只看某商家的评价。与 goodsNo 二选一，都不传则报错 */
   merchantNo?: string;
+  /** 只看某门店的评价（门户的评价页签）。老评价没有门店号，不会出现在结果里 */
+  storeNo?: string;
 }
 
 export interface CreateReviewReq {
@@ -295,4 +418,18 @@ export interface VerifyPickupReq {
 export interface MarkArrivedReq {
   /** 要标记到货的订单。**批量**：一次到货通常是一整批，逐单调用会把通知发成 N 条 */
   orderNos: string[];
+}
+
+// ---------------------------------------------------------------- 积分
+
+export interface PointsDeductibleQuery {
+  /** 试算哪个商家的单 —— 开关是按商家判的，不同店结果不同 */
+  merchantNo: string;
+  /** 券后金额（分）。抵扣上限按它算，**运费不参与** */
+  payableMinor: number;
+  /**
+   * 支付方式（`PAY_MODE`）。线下能否用积分由平台一个开关控制 ——
+   * 不传的话试算按线上算，而下单时按真实支付方式算，两处会给出不同的数。
+   */
+  payMode?: string;
 }

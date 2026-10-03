@@ -5,11 +5,8 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabSearch: "订单检索",
   exceptionReadOnlyWhat: "异常单队列",
   proxyReadOnlyWhat: "代客下单与取消",
-  tabException: "异常单处理",
-  tabProxy: "代客下单/取消",
   exceptionNotice: "这是订单卡在某个状态超时的队列，实时算出来的 —— 单子一推进它就自己消失，不需要「标记已处理」。阈值按状态分别给：待支付 15 分钟就该关单，而「已送达待自提」放一天很正常。",
   searchException: "搜子订单号 / 商家 / 下单人",
   filterKind: "按成因筛选",
@@ -32,7 +29,7 @@ const zh = {
   remarkPlaceholder: "例：骑手已送达，系统漏回传",
   noHistory: "这单还没有人工干预过。",
   toastIntervened: "已改状态，原因已留痕",
-  proxyNotice: "客服代用户下单或取消。代客下单落到「待支付」而不是已支付 —— 钱必须由用户自己付；一次只能下一个商家的货，跨商家请分开下单。",
+  proxyNotice: "客服代顾客下单或取消。「单落在顾客名下」（先按手机后四位找到本人），钱由他自己付：线下付是当面付给商家，线上付是他在小程序里付。券和积分不代用，地址不代填。一次只能下一个商家的货。",
   proxyCreateTitle: "代客下单",
   fieldBuyer: "下单人",
   fieldCommunity: "社区",
@@ -51,8 +48,41 @@ const zh = {
   fieldProxyReason: "代下原因",
   proxyReasonPlaceholder: "例：用户电话下单，不会用小程序",
   proxyReasonHint: "代客下单绕过了用户自主下单，得留下为什么。",
+
+  // ── 代客下单：先有人，才有单
+  fieldCustomer: "顾客",
+  phoneTailPlaceholder: "手机后四位",
+  customerPickHint: "输入手机后四位找到本人 —— 单要落在他名下，他才看得到、付得了",
+  /** `{tail}` 是手机后四位，`{entity}` 是他在哪家店的会员 */
+  customerCandidate: "尾号 {tail} · {entity}",
+  /** `{tail}` 是手机后四位 */
+  customerPicked: "已选：尾号 {tail}",
+  customerNotFound: "没找到 —— 这个号还没在平台上留下过记录",
+  customerNoAccount: "未绑账号",
+  customerNoAccountHint: "这个人还没绑账号 —— 填完整手机号就行，下面会按这个号给他建一个。",
+  fieldFullPhone: "完整手机号",
+  fullPhonePlaceholder: "11 位手机号",
+  fullPhoneHint: "没装过小程序的顾客走这条：按这个号给他建账号。他日后用同一个号登录，就能看到这张单并付款。",
+  fulfillProxyHint: "只能到点自取。要送货得顾客自己在小程序里下单 —— 收货地址得他自己选",
+  fieldPayMode: "支付方式",
+  payModeOffline: "线下付（当面付给商家）",
+  payModeOnline: "线上付（顾客自己在小程序里付）",
+  payModeOfflineHint: "落「待线下付」，商家当面收款后自己确认。要商家开了线下收款才能选",
+  payModeOnlineHint: "落「待支付」，顾客要在关单时限内自己付掉，否则会自动关单",
   proxyTotal: "合计 {amount}",
-  btnProxyCreate: "生成待支付订单",
+  btnProxyCreate: "代客下单",
+
+  // ── 代客限额（M6）：留痕回答「谁干的」，闸门回答「能干多大」
+  save: "保存",
+  limitTitle: "代客限额",
+  /** `{amount}` 单笔上限，`{n}` 每人每天笔数 */
+  limitSummary: "单笔不超过 {amount} · 每人每天不超过 {n} 笔",
+  limitEdit: "改限额",
+  limitAmount: "单笔上限（元）",
+  limitPerDay: "每人每天（笔）",
+  limitHint: "超了不是不让做 —— 让顾客自己下单那条路本来就通。改限额要「系统参数」权限，客服不能给自己松绑。",
+  toastLimitSaved: "已保存限额",
+  cancel: "取消",
   toastProxyCreated: "已生成 {no}，待用户支付",
   actionProxyCancel: "代客取消",
   cancelTitle: "代客取消 {no}",
@@ -68,9 +98,6 @@ const zh = {
   toastCloseSaved: "关单策略已保存",
   secDecide: "处置",
   actionPick: "请选择处置方式",
-  tabPay: "支付流水核对",
-  tabRepair: "掉单补偿",
-  tabClose: "关单策略",
 
   payReadOnlyWhat: "支付对账与掉单处置",
   payReadOnlyNote: "不能处置差异或改关单策略",
@@ -135,6 +162,8 @@ const zh = {
   searchPlaceholder: "搜索订单号 / 商家 / 买家",
   filterStatus: "按状态筛选",
   filterStatusAll: "全部状态",
+  storeFilterChip: "只看门店 {no}",
+  storeFilterClear: "看全部门店",
   filterFulfill: "按履约方式筛选",
   filterFulfillAll: "全部履约方式",
   empty: "没有符合条件的订单。一期交易闭环（M1-1）尚未打通时，这里只有 mock 数据。",
@@ -164,14 +193,26 @@ const zh = {
   drawerParent: "父单 {no}",
   loading: "加载中…",
   noSiblings: "无 —— 本次结算只涉及一个商家",
+
+  // ── 四轴对账总览 ──
+  axesTitle: "对账覆盖",
+  axesSubtitle: "四条轴各跑一轮",
+  axesLoading: "正在跑四条轴…",
+  axesBroken: "{axes} 今天没跑成 —— 「这一类差异今天没有人在看」。它与「零差异」在页面上长得一样，含义完全相反。",
+  axisName_PAYMENT: "收款",
+  axisName_SPLIT: "分账",
+  axisName_PAYOUT: "出款",
+  axisName_POINTS_POOL: "积分池",
+  axisFailed: "没跑成",
+  axisClean: "无新差异",
+  axisOpened: "新增 {n} 条",
+  axisCounts: "扫 {scanned} · 自动收口 {resolved} · 判不了 {deferred}",
+
 };
 
 const en: typeof zh = {
-  tabSearch: "Order search",
   exceptionReadOnlyWhat: "the exception queue",
   proxyReadOnlyWhat: "proxy ordering and cancellation",
-  tabException: "Exception orders",
-  tabProxy: "Order on behalf",
   exceptionNotice: "This queue holds orders stuck in a state past its limit. It is computed live — an order leaves the moment it moves on, so there is no “mark as handled”. Limits are per state: an unpaid order should close after 15 minutes, while “arrived, awaiting pickup” sitting for a day is normal.",
   searchException: "Search sub-order no. / merchant / customer",
   filterKind: "Filter by cause",
@@ -194,7 +235,7 @@ const en: typeof zh = {
   remarkPlaceholder: "e.g. Courier delivered it; the system missed the callback",
   noHistory: "No one has intervened on this order yet.",
   toastIntervened: "State changed — the reason is recorded",
-  proxyNotice: "Place or cancel an order on a customer’s behalf. A proxy order lands as “awaiting payment”, never as paid — the customer pays for it. One order covers one merchant only; split across merchants means separate orders.",
+  proxyNotice: "Place or cancel an order for a customer. The order lands in their name (find them by the last 4 digits of their phone) and they pay for it — in person to the merchant, or in the app. Coupons, points and addresses are never filled in for them. One order covers one merchant only.",
   proxyCreateTitle: "Place a proxy order",
   fieldBuyer: "Customer",
   fieldCommunity: "Community",
@@ -213,8 +254,41 @@ const en: typeof zh = {
   fieldProxyReason: "Why place it for them",
   proxyReasonPlaceholder: "e.g. Ordered by phone; cannot use the mini program",
   proxyReasonHint: "A proxy order bypasses the customer ordering for themselves, so the reason has to be on record.",
+
+  // ── Proxy ordering: find the person first
+  fieldCustomer: "Customer",
+  phoneTailPlaceholder: "Last 4 digits",
+  customerPickHint: "Find them by the last 4 digits — the order has to be theirs, or they cannot see or pay it",
+  /** `{tail}` is the phone tail, `{entity}` the merchant they are a member of */
+  customerCandidate: "…{tail} · {entity}",
+  /** `{tail}` is the phone tail */
+  customerPicked: "Chosen: …{tail}",
+  customerNotFound: "No match — this number has no record on the platform yet",
+  customerNoAccount: "no account",
+  customerNoAccountHint: "No account yet — just type their full phone number below and one gets created for them.",
+  fieldFullPhone: "Full phone number",
+  fullPhonePlaceholder: "11 digits",
+  fullPhoneHint: "For customers who have never used the app: an account is created for this number. When they later sign in with it, this order is waiting for them.",
+  fulfillProxyHint: "Pickup only. Delivery has to be placed by the customer — they pick the address themselves",
+  fieldPayMode: "Payment",
+  payModeOffline: "In person (pay the merchant)",
+  payModeOnline: "In the app (the customer pays)",
+  payModeOfflineHint: "Lands as awaiting in-person payment; the merchant confirms after collecting. Only if they accept in-person payment",
+  payModeOnlineHint: "Lands as awaiting payment; the customer has to pay before the order times out",
   proxyTotal: "Total {amount}",
-  btnProxyCreate: "Create an unpaid order",
+  btnProxyCreate: "Place the order",
+
+  // ── Proxy limits (M6)
+  save: "Save",
+  limitTitle: "Proxy limits",
+  /** `{amount}` per-order cap, `{n}` orders per day */
+  limitSummary: "Up to {amount} per order · {n} orders per person per day",
+  limitEdit: "Change",
+  limitAmount: "Per order (¥)",
+  limitPerDay: "Per person per day",
+  limitHint: "Hitting the cap does not block the sale — the customer can still place it themselves. Changing these needs the system-parameter permission, so agents cannot raise their own ceiling.",
+  toastLimitSaved: "Limits saved",
+  cancel: "Cancel",
   toastProxyCreated: "{no} created — awaiting the customer’s payment",
   actionProxyCancel: "Cancel for customer",
   cancelTitle: "Cancel {no} for the customer",
@@ -230,9 +304,6 @@ const en: typeof zh = {
   toastCloseSaved: "Auto-close rules saved",
   secDecide: "Resolution",
   actionPick: "Choose how to handle it",
-  tabPay: "Payment reconciliation",
-  tabRepair: "Dropped-order recovery",
-  tabClose: "Auto-close rules",
 
   payReadOnlyWhat: "payment reconciliation & dropped-order handling",
   payReadOnlyNote: "cannot resolve differences or change the auto-close rules",
@@ -296,6 +367,8 @@ const en: typeof zh = {
   searchPlaceholder: "Search order no. / merchant / buyer",
   filterStatus: "Filter by status",
   filterStatusAll: "All statuses",
+  storeFilterChip: "Store {no} only",
+  storeFilterClear: "All stores",
   filterFulfill: "Filter by fulfillment",
   filterFulfillAll: "All fulfillment types",
   empty: "No orders match these filters. Until the phase-1 transaction loop (M1-1) is wired up, this page only holds mock data.",
@@ -325,6 +398,20 @@ const en: typeof zh = {
   drawerParent: "Parent order {no}",
   loading: "Loading…",
   noSiblings: "None — this checkout involved a single merchant",
+
+  axesTitle: "Reconciliation coverage",
+  axesSubtitle: "one pass per axis",
+  axesLoading: "Running all four axes…",
+  axesBroken: "{axes} did not run today — 「nobody is watching this class of difference right now」. It looks identical to «no differences» on this page but means the opposite.",
+  axisName_PAYMENT: "Collection",
+  axisName_SPLIT: "Split",
+  axisName_PAYOUT: "Payout",
+  axisName_POINTS_POOL: "Points pool",
+  axisFailed: "Did not run",
+  axisClean: "No new differences",
+  axisOpened: "{n} new",
+  axisCounts: "{scanned} scanned · {resolved} auto-closed · {deferred} undecidable",
+
 };
 
 export const ORDERS_COPY: PageCopy<typeof zh> = { zh, en };

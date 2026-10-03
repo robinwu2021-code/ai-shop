@@ -1,22 +1,28 @@
 <script setup lang="ts">
-// 搜索：商品 + 商家两个结果域。
+// 搜索：商品 + 门店两个结果域。
 // 两者分 tab 而不是混排 —— 用户搜「理发」既可能想找服务商品，也可能想找那家店，
 // 混排会让两类结果互相挤掉，分开各自完整展示更好用。
+// 店铺结果的单位是**门店**（TDD-C端门店化与门店门户）：同一主体的几家店各一行、叫门店名。
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
+import { useLocationStore } from "@/stores/location";
+import { useUserStore } from "@/stores/user";
 import { GOODS_COVER_FALLBACK, ROUTES, STORAGE } from "@shared/utils/constants";
-import { firstSku } from "@shared/utils/goods";
+import { goodsUrl } from "@/shared/goods-route";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import type { Goods, Merchant } from "@shared/types";
+import type { Goods, StoreCard } from "@shared/types";
 
 const cart = useCartStore();
+const location = useLocationStore();
+const user = useUserStore();
 
 const keyword = ref("");
 const tab = ref<"goods" | "merchants">("goods");
 const goods = ref<Goods[]>([]);
-const merchants = ref<Merchant[]>([]);
+const merchants = ref<StoreCard[]>([]);
 const searched = ref(false);
 const history = ref<string[]>([]);
 
@@ -44,16 +50,39 @@ function clearHistory() {
   uni.removeStorageSync(STORAGE.searchHistory);
 }
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function search(k = keyword.value) {
   const q = k.trim();
   if (!q) return;
   keyword.value = q;
   pushHistory(q);
   // 两个域并行查，切 tab 时不用再等
-  const [g, m] = await Promise.all([
-    api.goodsList({ keyword: q, size: 50 }),
-    api.merchantList({ keyword: q }),
-  ]);
+  let g, m;
+  const a = location.active;
+  const point = a?.latE6 != null && a?.lngE6 != null ? { latE6: a.latE6, lngE6: a.lngE6 } : {};
+  try {
+    /*
+     * 门店两段合起来搜：「附近」接口会去掉「我的店」已有的（那是店铺页去重用的），
+     * 只查它的话，他常去的那家店恰恰搜不到。所以我的店按名字在端上筛一遍，排在前面。
+     */
+    const [gr, mine, near] = await Promise.all([
+      api.goodsList({ keyword: q, size: 50 }),
+      user.isLogin ? api.myStores(point) : Promise.resolve([] as StoreCard[]),
+      api.storeNearby({ ...point, keyword: q, size: 50 }),
+    ]);
+    const k2 = q.toLowerCase();
+    g = gr;
+    m = [...mine.filter((s) => s.storeName.toLowerCase().includes(k2)), ...near.records];
+    failed.value = false;
+  } catch {
+    // 搜挂了与「这个词搜不到东西」是两件事：后者该换个词，前者该重试。
+    // 此前两者都显示「没有找到相关商品」，而用户会以为自己搜错了
+    failed.value = true;
+    searched.value = true;
+    return;
+  }
   goods.value = g.records;
   merchants.value = m;
   searched.value = true;
@@ -63,16 +92,16 @@ async function search(k = keyword.value) {
 }
 
 function openGoods(g: Goods) {
-  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
+  uni.navigateTo({ url: goodsUrl(g) });
 }
 
-function openMerchant(m: Merchant) {
-  uni.navigateTo({ url: `${ROUTES.merchant}?merchantNo=${m.merchantNo}` });
+function openStore(s: StoreCard) {
+  uni.navigateTo({ url: `${ROUTES.store}?no=${s.storeNo}&from=SEARCH` });
 }
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, g.store?.storeNo);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
@@ -90,31 +119,32 @@ onLoad((q) => {
 <template>
   <sh-scaffold title-key="search.title">
     <!-- 搜索框 -->
-    <view class="searchbar">
+    <view class="searchbar sh-row">
       <input
+        maxlength="32"
         v-model="keyword"
-        class="searchbar__input"
+        class="txt-body searchbar__input sh-fill"
         :placeholder="$t('search.placeholder')"
         confirm-type="search"
         focus
         @confirm="search()"
       />
-      <view class="searchbar__btn" @tap="search()">{{ $t("search.go") }}</view>
+      <view class="txt-strong searchbar__btn" @tap="search()">{{ $t("search.go") }}</view>
     </view>
 
     <!-- 搜索历史 -->
     <view v-if="!searched && history.length" class="sh-block">
       <view class="sh-block__head hist__head">
         <text class="sh-muted">{{ $t("search.history") }}</text>
-        <text class="hist__clear" @tap="clearHistory">{{
+        <text class="sh-link hist__clear" @tap="clearHistory">{{
           $t("search.clear")
         }}</text>
       </view>
-      <view class="hist__list">
+      <view class="hist__list sh-wrap">
         <text
           v-for="h in history"
           :key="h"
-          class="sh-chip hist__item"
+          class="txt-caption sh-chip hist__item"
           @tap="search(h)"
         >
           {{ h }}
@@ -151,36 +181,21 @@ onLoad((q) => {
         ></biz-goods-card>
         <sh-empty
           bare
-          v-if="!goods.length"
+          v-if="!goods.length && !failed"
           :text="$t('search.noGoods')"
         ></sh-empty>
       </template>
 
       <template v-else>
-        <view
-          v-for="m in merchants"
-          :key="m.merchantNo"
-          class="mcard"
-          @tap="openMerchant(m)"
-        >
-          <biz-merchant-bar
-            :merchant="m"
-            @tap="openMerchant(m)"
-          ></biz-merchant-bar>
-          <text class="mcard__desc">{{ m.desc }}</text>
-          <view class="mcard__meta">
-            <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
-            <text class="sh-chip sh-num">
-              {{ $t("merchant.goodsTab", { n: m.goodsCount }) }}
-            </text>
-            <text class="sh-chip sh-num">{{
-              $t("search.orders", { n: m.salesCount })
-            }}</text>
-          </view>
-        </view>
+        <biz-store-row
+          v-for="s in merchants"
+          :key="s.storeNo"
+          :store="s"
+          @tap="openStore(s)"
+        ></biz-store-row>
         <sh-empty
           bare
-          v-if="!merchants.length"
+          v-if="!merchants.length && !failed"
           :text="$t('search.noMerchant')"
         ></sh-empty>
       </template>
@@ -188,26 +203,24 @@ onLoad((q) => {
       <sh-empty
         bare
         v-if="empty"
+          :failed="failed"
+          @retry="() => search()"
         :text="$t('search.nothing', { k: keyword })"
       ></sh-empty>
     </view>
+    <!--
+      悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
+      屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
+    -->
+    <biz-cart-fab></biz-cart-fab>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.searchbar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .searchbar__input {
-  flex: 1;
-  min-width: 0;
   background: var(--sh-surface);
   border-radius: 9999px;
   padding: 24rpx 32rpx;
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .searchbar__btn {
   flex: 0 0 auto;
@@ -215,8 +228,6 @@ onLoad((q) => {
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
 }
 .block {
   margin-top: 24rpx;
@@ -226,37 +237,13 @@ onLoad((q) => {
   align-items: center;
   justify-content: space-between;
 }
-.hist__clear {
-  font-size: 24rpx;
-  color: var(--sh-primary);
-}
 .hist__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
+  gap: 16rpx;
   /* 块本身只管上下留白，横向由内容自己给 */
-  padding: 0 26rpx;
+  padding: 0 24rpx;
   margin-top: 20rpx;
 }
 .hist__item {
-  padding: 12rpx 26rpx;
-  font-size: 24rpx;
-}
-/* 商家结果在结果块内成行 —— 行与行之间靠内边距分隔，不再各自一张卡 */
-.mcard {
-  padding: 20rpx 26rpx;
-}
-.mcard__desc {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 20rpx;
-}
-.mcard__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 20rpx;
+  padding: 12rpx 24rpx;
 }
 </style>

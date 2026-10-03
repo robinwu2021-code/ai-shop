@@ -12,17 +12,19 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { fmtTime } from "@/lib/utils";
 import type { Carrier, Shipment, ShipmentStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import type { FulfillmentCopy } from "./copy";
 
 const useShipStatusMap = (c: FulfillmentCopy): StatusMap<ShipmentStatus> => ({
@@ -47,8 +49,7 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [carrier, setCarrier] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Shipment | null>(null);
   const [form, setForm] = useState({ waybillNo: "", reason: "" });
 
@@ -67,8 +68,8 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const open = (s: Shipment) => { setCurrent(s); setForm({ waybillNo: s.waybillNo, reason: "" }); };
 
   const columns: Column<Shipment>[] = [
-    { header: c.colShipmentNo, cell: (s) => s.shipmentNo, numeric: true, align: "start" },
-    { header: c.colOrderNo, cell: (s) => s.orderNo, numeric: true, align: "start" },
+    { header: c.colShipmentNo, cell: (s) => <IdCell value={s.shipmentNo} />, numeric: true, align: "start" },
+    { header: c.colOrderNo, cell: (s) => <IdCell value={s.orderNo} />, numeric: true, align: "start" },
     { header: c.colCarrier, cell: (s) => <StatusBadge map={carrierMap} value={s.carrier} /> },
     { header: c.colWaybill, cell: (s) => s.waybillNo, numeric: true, align: "start" },
     { header: c.colShipStatus, cell: (s) => <StatusBadge map={statusMap} value={s.status} /> },
@@ -85,20 +86,24 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.expressNotice}</Notice>
+      <HelpNote className="mb-3">{c.expressNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchShipment}>
         <FilterSelect aria-label={c.filterCarrier} value={carrier} onChange={(v) => { setCarrier(v); setPage(1); }}
           options={carrierMap} allLabel={c.filterCarrierAll} />
         <FilterSelect aria-label={c.filterShipStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterShipStatusAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(s) => s.shipmentNo}
         empty={c.emptyShipment}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

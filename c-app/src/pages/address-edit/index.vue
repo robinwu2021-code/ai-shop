@@ -1,0 +1,137 @@
+<script setup lang="ts">
+/**
+ * 新建 / 编辑收货地址 —— **整页，不是弹层**。
+ *
+ * <p>此前这张表长在收货地址页的弹层里：7 个字段 + 3 条提示塞进一个高度受限的
+ * 抽屉，用户看不到「还要填多少」。而下单页要用它时只能靠 `?new=1` 去把那个
+ * 弹层打开 —— 于是「新建地址」有两个入口形态，两处的行为迟早会分叉。
+ *
+ * <p>这一页只做三件事：把要编辑的那条取回来、装上表单、存完回去。
+ * 表单本身在 `biz-address-form` 里，只有一份。
+ */
+import { ref } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import { api } from "@/api";
+import type { Address } from "@shared/types";
+import { pickedPlace } from "@/shared/address-pick";
+import type { PlacePick } from "@/shared/address-pick";
+
+/** 编辑模式要改的那一条。null = 新建 */
+const address = ref<Address | null>(null);
+/** 新建模式的预填（从选点页交回来的地点，或调用方带过来的坐标） */
+const place = ref<PlacePick | null>(null);
+/** 这是他的第一条地址吗 —— 决定要不要默认勾上「设为默认」 */
+const first = ref(false);
+/**
+ * 取回来了没有。**编辑模式下必须等** —— 不等的话表单会先用空草稿初始化一次，
+ * 而 `biz-address-form` 的草稿只在创建时读一次 props，
+ * 于是用户看到的是一张空表，他会以为这条地址的内容丢了。
+ */
+const ready = ref(false);
+/**
+ * 这一次没取到。**与「这是新建」是两件事** ——
+ * 不分开的话，编辑时网络抖一下他就会拿到一张空白的「新建」表单，
+ * 而页面上没有任何痕迹：他会以为这条地址的内容丢了。
+ */
+const failed = ref(false);
+
+/** query 里的中文是编过的（见 onLoad 里那段）。解不开就用原样，别让整页白屏 */
+function decodeQuery(v?: string): string {
+  if (!v) return "";
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
+
+function onSaved() {
+  uni.navigateBack();
+}
+
+/** 要编辑的那一条的 id；新建时为空 */
+const editingId = ref("");
+
+async function load() {
+  failed.value = false;
+  let list: Address[];
+  try {
+    list = await api.addressList();
+  } catch {
+    // **编辑模式下这是致命的**：拿不到那一条就不能假装在新建
+    failed.value = !!editingId.value;
+    ready.value = true;
+    return;
+  }
+  first.value = !list.length;
+  if (editingId.value) {
+    address.value = list.find((a) => a.addressId === editingId.value) ?? null;
+    failed.value = !address.value;
+  }
+  ready.value = true;
+}
+
+onLoad(async (q?: Record<string, string>) => {
+  editingId.value = q?.addressId ?? "";
+  if (q?.latE6 && q?.lngE6) {
+    /*
+     * 带着坐标进来的（「把当前位置存成收货地址」那条路）。
+     * **坐标是这条路的全部收获** —— 少了它，存下来的又是一条推不出聚落、
+     * 判不了自送半径、导航打不开的地址，而界面上看不出区别。
+     */
+    /*
+     * **要解码。** 发起方用 `encodeURIComponent` 把地名拼进 query
+     * （不编的话「路 1 号」里的空格与 `#` 会把 query 截断），
+     * 而 uni 的 `onLoad` **不会自动解回来** —— 少这一步，用户看到的是
+     * 「%E5%98%89%E9%80%B8%E8%8A%B1%E5%9B%AD」这样一串，
+     * 真机上报上来的「乱码」就是它。
+     *
+     * `decodeURIComponent` 对残缺的百分号序列会抛，所以兜一下 ——
+     * 解不开就用原样，宁可显示得难看，也别让整页白屏。
+     */
+    const region = decodeQuery(q.region);
+    place.value = {
+      kind: "place",
+      name: region,
+      region,
+      province: "", city: "", district: "",
+      latE6: Number(q.latE6), lngE6: Number(q.lngE6),
+    };
+  }
+  await load();
+});
+
+/**
+ * 从选点页回来：**选中的地点要立刻落进表单**。
+ *
+ * <p>三种回法要分开：交回地点 → 预填；交回 manual → 保持现状（他自己打）；
+ * 什么都没交回（点了系统返回）→ **什么都不做**。
+ * 把第三种也当成「选了」的话，用户每次退出选点页都会被清一次表单。
+ */
+onShow(() => {
+  const p = pickedPlace.take();
+  if (p?.kind === "place") {
+    place.value = p;
+    address.value = null;
+    // 换一次 key 让表单按新的预填重建 —— 草稿只在创建时读 props
+    formKey.value += 1;
+  }
+});
+
+const formKey = ref(0);
+</script>
+
+<template>
+  <sh-scaffold :title-key="address ? 'address.edit' : 'address.add'">
+    <!-- 没取到 ≠ 新建：说出来，并给一条回去的路 -->
+    <sh-empty v-if="ready && failed" line failed @retry="load"></sh-empty>
+    <biz-address-form
+      v-else-if="ready"
+      :key="formKey"
+      :address="address"
+      :place="place"
+      :first="first"
+      @saved="onSaved"
+    ></biz-address-form>
+  </sh-scaffold>
+</template>

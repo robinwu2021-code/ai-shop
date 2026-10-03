@@ -1,0 +1,121 @@
+package ai.neargo.shop.promotion.dto;
+
+import java.util.List;
+
+/** 券的 B 端视图与入参（P4）。 */
+public final class CouponVOs {
+
+    private CouponVOs() {
+    }
+
+    /**
+     * 建券 / 改券。
+     *
+     * @param couponNo   空 = 新建；非空 = 改这一张
+     * @param scopeRefs  {@code scopeType} 为 STORE/CATEGORY/GOODS 时的号列表
+     * @param totalCount 发行量。<b>只有定向发放允许留空</b>（不限）——
+     *                   领券中心的券不限量等于把敞口交给运气
+     */
+    public record CouponSaveCmd(String couponNo, String title, String benefitMode,
+                                Long benefitValue, Long benefitCapMinor, String benefitRef,
+                                Long minAmountMinor, Integer minQty,
+                                String scopeType, List<String> scopeRefs, String scopeDesc,
+                                String validityMode, Long startAt, Long endAt, Integer validDays,
+                                String issueMode, String redeemMode, Integer timesTotal,
+                                Integer totalCount, Integer perUserLimit, Long budgetMinor) {
+    }
+
+    /**
+     * @param maxExposureMinor 最大敞口 = 发行量 × 单张最大优惠。
+     *                         <b>建券页要显示它</b> —— 商家填「1000 张 × 20 元」时
+     *                         心里想的是「发 1000 张」，不是「最多赔两万」
+     * @param usedTimes  已核销次数（下单抵扣与到店核销都算，已回退的不算）。次卡按次、其余一张一次
+     * @param spentMinor 已支出（分）：核销时实际减掉的钱之和，已回退的不算
+     */
+    public record CouponVO(String couponNo, String title, String benefitMode, Long benefitValue,
+                           Long benefitCapMinor, String benefitRef,
+                           Long minAmountMinor, Integer minQty,
+                           String scopeType, List<String> scopeRefs, String scopeDesc,
+                           String validityMode, Long startAt, Long endAt, Integer validDays,
+                           String issueMode, String redeemMode, Integer timesTotal,
+                           Integer totalCount, Integer receivedCount, Integer perUserLimit,
+                           Long budgetMinor, Long maxExposureMinor, String status,
+                           int usedTimes, long spentMinor) {
+    }
+
+    /**
+     * 买家券包里的一张（C 端，P6）。
+     *
+     * @param redeemCode 到店出示的码。<b>只有 {@code STORE_CODE} 券有</b> ——
+     *                   下单抵扣的券没有码，给它显示一个码会让顾客拿着手机去店里问
+     * @param remaining  次卡还剩几次。一次性券是 1 或 0
+     * @param usableNow  现在能不能用（没过期、没用完、券没被暂停）
+     */
+    public record MyCouponVO(String userCouponNo, String couponNo, String title,
+                             String benefitText, String entityNo, String redeemMode,
+                             String redeemCode, Long minAmountMinor,
+                             int timesTotal, int timesUsed, int remaining,
+                             long expireAt, String status, boolean usableNow,
+                             /** 发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空 */
+                             String merchantName,
+                             /** 适用范围一句话（「全店」「指定商品」）；由端上按 scopeType 说，这里给原值 */
+                             String scopeType) {
+    }
+
+    /**
+     * 一次发放的结果。
+     *
+     * @param skipped     跳过多少人。<b>它必须显示出来</b> ——
+     *                    商家选了 37 个人、实发 25 张，只说「发放成功」的话，
+     *                    他会以为发出去 37 张，直到某个顾客说没收到
+     * @param skipReasons 每一类跳过多少：{@code ALREADY_HAS}（已达每人上限）、
+     *                    {@code UNREACHABLE}（线索会员/已退订/还没注册）、
+     *                    {@code SOLD_OUT}（券发完了）
+     * @param audiences   发给了哪些受众项（按标签 / 分层 / 人群，取或）。旧批次只有 segmentNo，这里为空 ——
+     *                    此前按标签发的批次在发放记录里会显示成「全部会员」，因为那一页只认 segmentNo
+     * @param usedCount   这一批里用过的张数（至少核销一次）。券不推送、没有「来了」，效果按已用算（原型 m19）
+     * @param usedAmountMinor 这一批人发放后用这张券省下的钱（分，已撤销的不算）。
+     *                    <b>发放接口返回时两者为 0</b>：刚发出去，还没人用
+     */
+    public record CouponIssueVO(String issueNo, String couponNo, String segmentNo,
+                                int planned, int issued, int skipped,
+                                List<SkipReason> skipReasons, long amountMinor,
+                                String operatorNo, long issuedAt,
+                                List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
+                                int usedCount, long usedAmountMinor) {
+
+        public record SkipReason(String reason, int count) {
+        }
+    }
+
+    /**
+     * 顾客能看到、能领的一张券（领券中心 / 商品页 / 店铺页）。<b>只有下单可抵扣的现金券与折扣券</b> ——
+     * 兑换券、包邮券下单时减不了钱，C 端那套 {@code Coupon} 形状也表达不了它们。
+     *
+     * @param validDays 领取后 N 天有效（相对有效期）；绝对有效期时为 null，看 startAt / endAt
+     * @param received  这个人已经领满了（按每人限领算）
+     */
+    public record CustomerCoupon(String couponNo, String title, String benefitMode,
+                                 long benefitValue, long capMinor, long minAmountMinor,
+                                 String entityNo, String funder, long startAt, long endAt,
+                                 Integer validDays, int remain, boolean received, String status) {
+
+        /** 与下单算价同一个实现（{@link ai.neargo.shop.promotion.entity.PmtCoupon#discountFor}） */
+        public long discountFor(long base) {
+            var c = new ai.neargo.shop.promotion.entity.PmtCoupon();
+            c.setBenefitMode(benefitMode);
+            c.setBenefitValue(benefitValue);
+            c.setBenefitCapMinor(capMinor);
+            return c.discountFor(base);
+        }
+    }
+
+    /**
+     * 顾客手里的一张券（下单可抵扣的那种）。
+     *
+     * @param expireAt 到期时刻（领取时就算好落库的那个）
+     */
+    public record HeldCoupon(String userCouponNo, CustomerCoupon coupon, String status,
+                             boolean usableNow, long receivedAt, Long usedAt, long expireAt) {
+    }
+}

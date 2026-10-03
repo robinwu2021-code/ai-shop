@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionIntercepto
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,8 +23,51 @@ import java.util.List;
  * —— 表现为「总数 100 条但只能翻 3 页」，且不报错。
  */
 @Configuration
+/*
+ * ⚠️ **进销存的 Mapper 必须排除在外**。
+ *
+ * 这个扫描是按 `ai.neargo.shop` 全包扫的，而 `ai.neargo.shop.inventory` 走的是
+ * **另一个数据源**（见 InventoryDataSourceConfig）。不排除的话，inv_* 的 Mapper 会被
+ * 注册到平台的 SqlSessionFactory 上 —— 于是查 inv_stock_balance 打到 ai_shop 库，
+ * 报的是「表不存在」，而排查方向会指向迁移没跑，不会指向数据源接错。
+ *
+ * 两头夹：这里排除，那边按 inventory.mapper 包显式绑到 invSqlSessionFactory。
+ * 少任何一头都只在跑到那一行时才炸。
+ */
 @MapperScan(basePackages = "ai.neargo.shop",
-        markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class)
+        markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,
+        // **工厂点名**：两个 SqlSessionFactory 并存时，不点名就按类型挑，
+        // 挑到进销存那个（刻意不装拦截器）的表现是运行到某一行才炸。
+        // 见 PlatformDataSourceConfig 的类注释。
+        sqlSessionFactoryRef = "sqlSessionFactory",
+        /*
+         * 两个域走各自的 SqlSessionFactory，所以都要从全局扫描里排除：
+         *   inventory —— 另一个库（InventoryDataSourceConfig）
+         *   pay       —— 同一个库但**独立的事务管理器**（PayDataSourceConfig），
+         *                目的是让跨域事务在物理上写不出来
+         *
+         * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
+         * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
+         * 库是同一个，查询照常能跑，只是事务隔离静默失效，
+         * 而那要等拆库那天才炸。
+         */
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay)\\..*"))
+/*
+ * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
+ *
+ * 上面那个用 markerInterface 限定只扫 BaseMapper 的子接口 —— 这是对的，
+ * 它挡住了把随便一个接口当 Mapper 注册。但归档那种**不绑单一实体**的
+ * Mapper（ai.neargo.shop.archive.ArchiveMapper，表名由调用方给）没法继承 BaseMapper，
+ * 于是会被漏掉，表现是启动时 NoSuchBeanDefinitionException —— 编译期一点征兆都没有。
+ *
+ * 按 @Mapper 注解扫，范围收在 archive 包内：不放开到全局，
+ * 免得又把「谁都能当 Mapper」这条口子开回来。
+ */
+@MapperScan(basePackages = {"ai.neargo.shop.archive", "ai.neargo.shop.media"},
+        annotationClass = org.apache.ibatis.annotations.Mapper.class,
+        sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
 
     @Bean

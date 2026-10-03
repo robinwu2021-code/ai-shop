@@ -1,0 +1,53 @@
+# 测试用内存库：S0 验证契约、装配与越权防线，不验证 MySQL 方言。
+# 真正的 SQL 兼容性由集成测试对 MySQL 跑（Flyway 脚本本来就是 MySQL 语法）。
+#
+# **为什么它从 testcfg 里拆了出来**：
+# testcfg 原本同时管两件正交的事 —— 「用哪个库」和「测试行为开关」（桩网关 / 种子 / 门店额度）。
+# E2E 要后者、绝不要前者：它的整个存在意义就是跑**真 MariaDB**。
+# 而 profile 组成员的优先级高于组名（`e2e: testcfg,…` 展开后 testcfg 排在 e2e 之后），
+# 于是这份 H2 配置会把 application-e2e.yml 的真库连接和 flyway 开关一起盖掉 ——
+# 症状是 E2E 启动时报「没有 Flyway bean」，看上去像依赖缺失，
+# 实际是**整套 E2E 悄悄跑在了内存库上**。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false     # V1__baseline.sql 是 MySQL 语法，H2 下不跑；测试建表见 schema-test.sql
+  sql:
+    init:
+      mode: always
+      # 第二份是**测试专用的补充种子**（开测试渠道），不进迁移 —— 见文件头注释
+      schema-locations: classpath:schema-test.sql,classpath:schema-test-extra.sql
+
+# ── 进销存独立库 ────────────────────────────────────────────────────────
+# 它是**另一个数据源**，所以要另一个内存库；名字不同（inv ≠ shop），
+# 这一点本身就是「两个库真的分开了」的验证：跨库 join 在这里会直接失败，
+# 而不是像同库那样悄悄成功。
+#
+# Flyway 关掉，理由与上面那条一样（V1 是 MySQL 语法）；
+# 建表走 INIT=RUNSCRIPT —— 它在连接建立那一刻执行，
+# 早于任何 Mapper 用到它，不必再排 bean 的先后。
+# 进销存独立库：**另一个内存库**（inv ≠ shop）。
+# 这一点本身就是「两个库真的分开了」的验证 —— 跨库 join 在这里会直接失败，
+# 而不是像同库那样悄悄成功。
+#
+# 打开它的前提是平台侧的 DataSource / SqlSessionFactory / TransactionManager
+# **已经被 PlatformDataSourceConfig 显式接管**（三处自动配置都是
+# @ConditionalOnMissingBean，第二个数据源一出现就整体退让）。
+#
+# **Flyway 照常跑，只是换一份 H2 等价脚本**（db/inventory-h2，由 gen-test-schema.py
+# 从 db/inventory 重放生成）。这样测试走的是**真实的建表路径**，而不是绕过它。
+#
+# 试过 `INIT=RUNSCRIPT FROM 'classpath:…'`：H2 2.4 上它**静默建 0 张表**，
+# 不报错也不建表 —— 单独跑一个 JDBC 连接验过。别再用它。
+shop:
+  inventory:
+    enabled: true
+    flyway-locations: classpath:db/inventory-h2
+    datasource:
+      url: jdbc:h2:mem:inv;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+      username: sa
+      password: ""

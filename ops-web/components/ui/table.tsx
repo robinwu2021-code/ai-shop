@@ -15,23 +15,70 @@ export function Table({ className, ...props }: React.HTMLAttributes<HTMLTableEle
 export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
   // 表头 = 一条色块（bg-muted），代替下划线。
   // - whitespace-nowrap：表头是短词，折行会让整张表变高；列窄了应该横向滚动（Table 已有 overflow-x-auto）
+  // - text-left 用 `:not(.text-end):not(.text-center)` 圈住：**后代选择器会压过列自己身上的
+  //   对齐类**（`.thead th` 是 0,2,1，`.text-end` 是 0,1,0）。没有这个 :not 时，
+  //   DataTable 的 `numeric` 只对行体生效，表头全部靠左 —— 于是「条数」「实存」这类列
+  //   列名与数字各靠一边，扫描时视线要来回跳，而 data-table.tsx 的注释里写的
+  //   「表头跟着一起右对齐」一直是**没兑现**的。全站的数值列都中招，不止某一页。
   // - sticky：滚过一屏后列名不能消失。**底色必须不透明**，否则内容会从表头下面透出来
   // - 高度走 --row-h：此前硬写 h-11，与行体的 --row-h 打架，密度切换对列表页近乎无效
-  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted [&_th]:h-[var(--row-h)] [&_th]:whitespace-nowrap [&_th]:px-3.5 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground", className)} {...props} />;
+  // - `[&_th]:text-xs` 是**唯一没能上字阶的一处**，不是漏了：Tailwind 只给自己的
+  //   工具类生成任意变体，`[&_th]:txt-caption` 一条规则都不生成 —— 类名在 DOM 上、
+  //   样式不存在，表头会静默退回继承的 14px（2026-09-09 换过一次，当场量到 12→14px）。
+  //   要上档得把表头排版写进 globals.css 的 @layer components，那是另一件事。
+  return <thead className={cn("sticky top-0 z-[var(--z-sticky)] bg-muted", className)} {...props} />;
 }
-export function TBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+export function TBody({
+  className, striped = true, ...props
+}: React.HTMLAttributes<HTMLTableSectionElement> & {
+  /**
+   * 隔行浅色块。**行底色本身带语义时要关掉它**（如平台类目树用底色区分一级/二级）：
+   * zebra 是 `tbody tr:nth-child(even)`（特异度 0,2,1），比行上的 `bg-*` 工具类
+   * （0,1,0）更强 —— 于是同一种状态的行**奇偶各一个颜色**，看着像随机的。
+   * 用 `!important` 压过去也能赢，但那是让两条规则继续打架，只不过换我方赢。
+   */
+  striped?: boolean;
+}) {
   // 无行线，隔行浅色块（zebra）分隔。
   // 垂直内边距故意为 0：行高由 --row-h 决定，`py-3` 会与之打架（实际行高变成 max(两者)），
   // 内容靠 align-middle 居中即可。要更松/更紧，改 [data-density] 而不是改这里。
   // whitespace-nowrap 是**默认**：密集台账里列一窄就逐字换行（"商家"竖成两个字一行），
   // 行高翻几倍且完全没法扫。要换行的列（长文案/地址）显式传 className="whitespace-normal"。
-  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle [&_tr:nth-child(even)]:bg-muted/45", className)} {...props} />;
+  //
+  // **两行底色都要不透明**，窄屏下 `stickyEnd` 列才挡得住下面滚过去的内容：
+  // 它悬在其余单元格之上、用 `bg-inherit` 跟着行走，而 inherit 到 transparent
+  // （原来的奇数行）或半透明（原来的 `bg-muted/45`，实测 alpha 0.45）
+  // 都会让下层文字从那一列里透出来。
+  // 偶数行改用 color-mix 算出**同样的视觉色**但不带 alpha —— 桌面观感一字不变。
+  return <tbody className={cn("[&_td]:h-[var(--row-h)] [&_td]:whitespace-nowrap [&_td]:px-3.5 [&_td]:py-0 [&_td]:align-middle", striped && "[&_tr:nth-child(odd)]:bg-card [&_tr:nth-child(even)]:bg-[color-mix(in_oklab,var(--muted)_45%,var(--card))]", className)} {...props} />;
 }
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return <tr className={cn("transition-colors hover:bg-accent/50", className)} {...props} />;
 }
+/**
+ * 表头单元格。**排版长在这里，不长在 `<thead>` 的 `[&_th]:` 变体上。**
+ *
+ * 原先是一串 `[&_th]:text-xs [&_th]:font-medium …` 挂在 THead 上。那样写有个死角：
+ * 任意变体**只能套 Tailwind 自己的工具类** —— 把 `[&_th]:text-xs` 换成
+ * `[&_th]:txt-caption` 会**一条 CSS 规则都不生成**（`txt-caption` 是 globals.css 里
+ * 手写的类，Tailwind 不认），类名照样在 DOM 上、样式不存在，
+ * 表头静默退回继承的 14px（2026-09-09 换过一次，当场量到 12→14px）。
+ * 于是它成了组件层唯一上不了字阶的一处。
+ *
+ * 挪到这里之后档位就是普通用法，没有那个限制。`text-left` 放基础档，
+ * 调用点传 `text-end` / `text-center` 由 `cn()`（tailwind-merge）正常覆盖 ——
+ * 比原先那个 `[&_th:not(.text-end):not(.text-center)]` 选择器也好读。
+ */
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={className} {...props} />;
+  return (
+    <th
+      className={cn(
+        "h-[var(--row-h)] whitespace-nowrap px-3.5 text-left align-middle txt-caption text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={className} {...props} />;

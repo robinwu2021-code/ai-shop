@@ -13,6 +13,7 @@ export const fulfillmentHttp: FulfillmentApi = {
   updateWaybill: (v) => client.post(`/ops/shipments/${v.shipmentNo}/waybill`, v),
   listFreightTemplates: (q) => client.get("/ops/freight-templates", q),
   saveFreightTemplate: (v) => client.post("/ops/freight-templates", v),
+  draftFreightTemplate: (v) => client.post("/ops/freight-templates/draft", v),
   archiveFreightTemplate: (templateNo) => client.post(`/ops/freight-templates/${templateNo}/archive`),
   unarchiveFreightTemplate: (templateNo) => client.post(`/ops/freight-templates/${templateNo}/unarchive`),
   listCarriers: () => client.get("/ops/fulfillment/carriers"),

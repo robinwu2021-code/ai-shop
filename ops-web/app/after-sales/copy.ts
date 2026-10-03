@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabTickets: "售后工单",
-  tabIntervene: "平台介入",
-  tabFastRefund: "极速退规则",
 
   liabMerchant: "供货商家",
   liabMerchantHint: "商品本身的问题：坏果、少发、货不对板",
@@ -14,7 +11,7 @@ const zh = {
   liabPlatformHint: "规则或系统问题：超时未配送、价格展示错误",
 
   toastDecided: "已裁决，退款待资金域执行",
-  toastRuleSaved: "极速退规则已保存",
+  toastRuleSaved: "售后规则已保存",
 
   colAsNo: "售后单号",
   colOrderNo: "订单号",
@@ -34,7 +31,7 @@ const zh = {
   readOnlyWhat: "售后裁决",
   readOnlyNote: "不能介入、裁决或判定责任",
   interveneNotice:
-    "平台介入队列：商家与用户谈不拢时才到这里。裁决要同时给出「责任方」与「三方赔付比例」—— 矩阵 M4（出资方比例）尚未拍板，当前默认值只是填单起点，以实际判定为准。",
+    "平台介入队列：商家与用户谈不拢时才到这里。裁决要给出「支不支持退款」与「责任方」—— 矩阵 M4（出资方比例）尚未拍板，暂不支持按比例分摊，先落责任、金额仍是申请时那笔。",
   kpiIntervene: "平台介入待裁决",
   kpiInterveneSub: "用户在等结果",
   kpiInterveneNone: "无积压",
@@ -49,10 +46,10 @@ const zh = {
   emptyIntervene: "没有需要平台介入的争议。这是好事 —— 说明商家自己把问题解决了。",
   emptyTickets: "没有符合条件的售后单。清空筛选，或换个状态看看。",
 
-  ruleTitle: "极速退阈值",
-  ruleReadOnlyWhat: "极速退阈值配置",
-  ruleReadOnlyNote: "不能修改金额上限与时限",
-  ruleNotice: "满足阈值的小额售后由系统自动通过，不占人工。阈值给大了是白送钱，给小了客服会被小额工单淹没。",
+  ruleTitle: "售后规则",
+  ruleReadOnlyWhat: "售后规则配置",
+  ruleReadOnlyNote: "不能修改金额上限与各环节时限",
+  ruleNotice: "满足阈值的小额售后由系统自动通过，不占人工。阈值给大了是白送钱，给小了客服会被小额工单淹没。下面的时限决定沉默的一方多久之后由系统替他做决定 —— 买家在商品页看到的「极速退款」就是靠它兑现的。",
   ariaEnableFastRefund: "启用极速退",
   enabled: "已启用",
   disabled: "已停用",
@@ -60,6 +57,16 @@ const zh = {
   fieldWithinHours: "下单后可用时限（小时）",
   /** `{n}` 是最小小时数 */
   hoursHint: "至少 {n} 小时：填 0 等于关掉极速退，但开关还显示「已启用」，比停用更难排查。",
+
+  slaTitle: "各环节时限",
+  fieldReplyHours: "商家响应时限（小时）",
+  replyHint: "超过这个时长商家还没处理，系统替他同意并退款。填得过短等于替商家认赔，过长则买家一直在等。",
+  fieldShipBackDays: "买家寄回时限（天）",
+  shipBackHint: "商家同意退货后，买家逾期未寄出就关闭本次申请 —— 他可以重新申请。",
+  fieldConfirmHours: "商家确认收货时限（小时）",
+  confirmHint: "买家已寄回而商家迟迟不确认，超时由系统退款。",
+  fieldInterveneWorkDays: "平台介入承诺时限（工作日）",
+  interveneHint: "只用于展示与超期提醒，不会自动裁决 —— 钱的判定要有人看过材料。",
 
   /** `{no}` 是订单号 */
   drawerOrder: "订单 {no}",
@@ -71,31 +78,22 @@ const zh = {
   none: "无",
   fieldReason: "申请原因",
   secDecide: "平台裁决",
-  secDecideDesc: "退款金额、责任方与出资比例三项互相牵连，请一起确认",
-  fieldRefundAmount: "同意退款金额（元）",
-  refundAmountHint: "不得超过订单实付 —— 超了会被服务端拒绝。",
+  secDecideDesc: "退不退款与责任方互相牵连，请一起确认",
+  fieldRefund: "裁决结果",
+  refundYes: "支持退款",
+  refundNo: "维持商家决定",
+  refundAmountNote: "退款金额就是申请时的这笔，裁决不改金额",
   fieldLiability: "责任方",
-  sharePlatform: "平台出资",
-  shareMerchant: "供货商家",
-  sharePickup: "自提点",
-  /** `{sum}` 合计，`{total}` 要求值 */
-  shareSum: "赔付比例合计：{sum}% / {total}%",
-  shareSumBad: "（不等于 100% 无法提交）",
   fieldVerdict: "裁决说明",
   verdictPlaceholder: "用户与商家都会看到：写清楚依据了哪条规则、为什么这么判",
 
   secResult: "裁决结果",
   liabilityUndecided: "尚未判定",
-  fieldShare: "赔付比例",
-  /** `{p}` 平台、`{m}` 商家、`{k}` 自提点 */
-  shareText: "平台 {p}% · 商家 {m}% · 自提点 {k}%",
-  refundSplitPending: "退款回退分账（E4）依赖资金域 P-12，尚未接入 —— 这笔退款已判定但分账尚未回退，接入后需按标记补跑。",
+  refundDecided: "支持退款",
+  refundRejected: "维持商家决定",
 };
 
 const en: typeof zh = {
-  tabTickets: "After-sales tickets",
-  tabIntervene: "Platform review",
-  tabFastRefund: "Instant-refund rules",
 
   liabMerchant: "Supplying merchant",
   liabMerchantHint: "A problem with the goods themselves: spoiled produce, short shipment, wrong item",
@@ -105,7 +103,7 @@ const en: typeof zh = {
   liabPlatformHint: "A rule or system problem: missed delivery window, wrong price shown",
 
   toastDecided: "Decided — the refund now awaits execution in Settlement",
-  toastRuleSaved: "Instant-refund rules saved",
+  toastRuleSaved: "After-sales rules saved",
 
   colAsNo: "After-sales no.",
   colOrderNo: "Order no.",
@@ -125,7 +123,7 @@ const en: typeof zh = {
   readOnlyWhat: "after-sales adjudication",
   readOnlyNote: "cannot intervene, decide or assign liability",
   interveneNotice:
-    "The platform review queue: cases land here only when merchant and customer cannot agree. A decision must give both the liable party and the three-way split — matrix item M4 (who pays what) is not settled, so the defaults are only a starting point for the form, not a ruling.",
+    "The platform review queue: cases land here only when merchant and customer cannot agree. A decision must give both whether to refund and the liable party — matrix item M4 (who pays what) is not settled, so funding splits aren't supported yet; the amount stays whatever was originally claimed.",
   kpiIntervene: "Awaiting platform decision",
   kpiInterveneSub: "Customers are waiting",
   kpiInterveneNone: "Nothing queued",
@@ -140,11 +138,11 @@ const en: typeof zh = {
   emptyIntervene: "No disputes need platform review. That is good news — the merchants sorted it out themselves.",
   emptyTickets: "No after-sales tickets match these filters. Clear them, or try another status.",
 
-  ruleTitle: "Instant-refund thresholds",
-  ruleReadOnlyWhat: "instant-refund threshold settings",
-  ruleReadOnlyNote: "cannot change the amount cap or the time limit",
+  ruleTitle: "After-sales rules",
+  ruleReadOnlyWhat: "after-sales rule settings",
+  ruleReadOnlyNote: "cannot change the amount cap or any time limit",
   ruleNotice:
-    "Small claims under the threshold are approved automatically and never reach a human. Set it too high and you give money away; set it too low and support drowns in tiny tickets.",
+    "Small claims under the threshold are approved automatically and never reach a human. Set it too high and you give money away; set it too low and support drowns in tiny tickets. The time limits below decide how long a silent party has before the system decides for them — they are what makes the “instant refund” promise on the product page real.",
   ariaEnableFastRefund: "Enable instant refunds",
   enabled: "Enabled",
   disabled: "Disabled",
@@ -152,6 +150,20 @@ const en: typeof zh = {
   fieldWithinHours: "Available within (hours of ordering)",
   hoursHint:
     "At least {n} hours. Setting 0 switches instant refunds off while the toggle still reads “Enabled” — harder to diagnose than simply disabling it.",
+
+  slaTitle: "Time limits",
+  fieldReplyHours: "Merchant response (hours)",
+  replyHint:
+    "If the merchant has not acted within this window, the system approves and refunds on their behalf. Too short and you decide against the merchant for them; too long and the customer keeps waiting.",
+  fieldShipBackDays: "Customer ships back within (days)",
+  shipBackHint:
+    "After the merchant agrees to a return, the claim is closed if nothing is shipped in time — the customer can file again.",
+  fieldConfirmHours: "Merchant confirms receipt (hours)",
+  confirmHint:
+    "The customer has shipped the goods back and the merchant is not confirming; the system refunds once this expires.",
+  fieldInterveneWorkDays: "Platform review pledge (working days)",
+  interveneHint:
+    "Display and overdue alerts only — never an automatic decision. Money questions need a human who has read the evidence.",
 
   drawerOrder: "Order {no}",
   btnConfirmDecide: "Confirm decision",
@@ -161,24 +173,19 @@ const en: typeof zh = {
   none: "None",
   fieldReason: "Reason given",
   secDecide: "Platform decision",
-  secDecideDesc: "Refund amount, liable party and funding split are interdependent — settle them together",
-  fieldRefundAmount: "Refund approved (CNY)",
-  refundAmountHint: "Cannot exceed what was actually paid — the server rejects anything higher.",
+  secDecideDesc: "Whether to refund and the liable party are interdependent — settle them together",
+  fieldRefund: "Decision",
+  refundYes: "Support the refund",
+  refundNo: "Uphold the merchant's decision",
+  refundAmountNote: "The refund is whatever was originally claimed — a decision doesn't change the amount",
   fieldLiability: "Liable party",
-  sharePlatform: "Platform pays",
-  shareMerchant: "Supplying merchant",
-  sharePickup: "Pickup point",
-  shareSum: "Split total: {sum}% / {total}%",
-  shareSumBad: " (must equal 100% to submit)",
   fieldVerdict: "Decision note",
   verdictPlaceholder: "Both customer and merchant see this: state which rule applied and why you decided this way",
 
   secResult: "Decision",
   liabilityUndecided: "Not yet decided",
-  fieldShare: "Funding split",
-  shareText: "Platform {p}% · merchant {m}% · pickup point {k}%",
-  refundSplitPending:
-    "Refund split reversal (E4) depends on Settlement (P-12), which is not wired up yet — this refund is decided but the split has not been reversed; once connected it must be replayed from this flag.",
+  refundDecided: "Refund supported",
+  refundRejected: "Merchant's decision upheld",
 };
 
 export const AFTER_SALES_COPY: PageCopy<typeof zh> = { zh, en };

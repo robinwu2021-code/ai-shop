@@ -1,0 +1,293 @@
+package ai.neargo.shop.merchant.mapper;
+
+import ai.neargo.shop.merchant.entity.MchAccount;
+import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchEntityCommunity;
+import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.entity.MchQualification;
+import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchStoreRole;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
+
+/**
+ * merchant 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
+ * Mapper 只做单表 CRUD 与条件组合，跨表聚合放 Service —— 一旦 Mapper 里出现业务分支，
+ * 数据域拦截器与状态机就会被绕过。
+ *
+ * <p>原先这六个接口与 user 的四个同住 {@code UserMappers}。合在一起的直接后果是：
+ * 任何拿到 {@code UserMappers} 的类都顺手能读写商家表，边界靠自觉——
+ * 事实上 {@code CommunityServiceImpl} 与 {@code StoreFavoriteServiceImpl} 都这么做了。
+ */
+public final class MerchantMappers {
+
+    private MerchantMappers() {
+    }
+
+    public interface MchEntityMapper extends BaseMapper<MchEntity> {
+    }
+
+    /**
+     * 预约时段。<b>占位与释放只走这里的两条带条件 UPDATE</b>，不要用 Wrapper 或
+     * {@code updateById} —— 那两条路都是「先查再改」，并发下必然超约。
+     * 与库存锁定（{@code SkuMapper.lockStock}）是同一套手法。
+     */
+    public interface AppointmentSlotMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchAppointmentSlot> {
+
+        /**
+         * 抢一个名额。
+         *
+         * <p>条件全写在 WHERE 里：<b>时段属于这家店</b>、还没约满、可约、没被逻辑删。
+         *
+         * <p>{@code store_no} 这一条是**越权闸不是筛选**：时段编号由端上传，
+         * 不比对归属的话，买家可以拿别家店的时段号来下单 ——
+         * 占的是别人的名额，而那家店的师傅那天根本不知道有这一单。
+         * <b>返回 0 不等于「满了」</b> —— 也可能是停约或这一行压根不存在，
+         * 所以调用方要区分「行不存在/已停约」（80015）与「已约满」（80014）：
+         * 前者要让买家换一个时段，后者要让他换一个时间，两句话不一样。
+         *
+         * @return 影响行数；1 = 抢到，0 = 没抢到
+         */
+        @Update("""
+                UPDATE mch_appointment_slot SET booked = booked + 1, version = version + 1
+                WHERE slot_no = #{slotNo} AND store_no = #{storeNo} AND deleted = 0
+                  AND status = 'OPEN' AND booked < capacity
+                """)
+        int tryBook(@Param("slotNo") String slotNo, @Param("storeNo") String storeNo);
+
+        /**
+         * 还一个名额。
+         *
+         * <p>{@code booked > 0} 是防线不是装饰：少了它，一次重复释放就能把
+         * booked 减成负数，此后这个时段能卖出比 capacity 更多的单，
+         * <b>而且不会有任何报错</b>。与 {@code SkuMapper.releaseStock} 的
+         * {@code locked_stock >= qty} 同一个位置、同一个理由。
+         *
+         * <p><b>停约的时段照样能还</b>（WHERE 里不判 status）：商家停约之后，
+         * 那些已经约进来的单取消时还得把名额退回去，否则数字永远对不上。
+         */
+        @Update("""
+                UPDATE mch_appointment_slot SET booked = booked - 1, version = version + 1
+                WHERE slot_no = #{slotNo} AND deleted = 0 AND booked > 0
+                """)
+        int release(@Param("slotNo") String slotNo);
+    }
+
+    /** 商家覆盖的社区：C 端「本社区可见商家」的反查索引所在。 */
+    public interface MchEntityCommunityMapper extends BaseMapper<MchEntityCommunity> {
+
+        /**
+         * 复活一条被逻辑删掉的覆盖关系。
+         *
+         * <p>与 {@code MchStoreRoleMapper.revive} 是同一个坑的同一种解法 ——
+         * 那边的注释里就写着「这个坑在<b>商家社区表</b>、商品社区池上各踩过一次」，
+         * 而商家社区表这一处一直没修。2026-08-11 的 E2E 把它撞出来了：
+         * 商家把经营范围从「仅本社区（阳光花园）」改成「全市」再改回来，
+         * 保存直接 500 —— {@code uk_entity_community(entity_no, community_no)}
+         * <b>不含 deleted</b>，逻辑删掉的那行还占着索引位，insert 撞唯一键。
+         *
+         * <p>商家看到的是「系统开小差了，请稍后再试」，而他做的只是把范围改回去。
+         *
+         * <p>必须手写 SQL：MyBatis-Plus 的 {@code @TableLogic} 会给所有查询与更新
+         * 自动追加 {@code deleted = 0}，用 Wrapper 根本够不到这一行。
+         *
+         * @return 影响行数；0 表示压根没有这一行（该走 insert）
+         */
+        @Update("""
+                UPDATE mch_entity_community SET deleted = 0, version = version + 1
+                WHERE entity_no = #{entityNo} AND community_no = #{communityNo} AND deleted = 1
+                """)
+        int revive(@Param("entityNo") String entityNo, @Param("communityNo") String communityNo);
+    }
+
+    /**
+     * 商家地理覆盖项（ADR-013）。**物理删除**，不走 MyBatis-Plus 的逻辑删除 ——
+     * 见 {@link ai.neargo.shop.merchant.entity.MchServiceArea} 的说明。
+     */
+    public interface ServiceAreaMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchServiceArea> {
+
+        /**
+         * 物理删掉一条覆盖项。
+         *
+         * <p>必须手写：{@code @TableLogic} 会把 {@code delete()} 变成
+         * {@code UPDATE ... SET deleted = 1}，而那正是本仓库踩过四次的坑 ——
+         * 墓碑行占着 {@code uk_service_area}，「移除之后又加回同一条」直接撞键。
+         */
+        @org.apache.ibatis.annotations.Delete("""
+                DELETE FROM mch_service_area
+                WHERE entity_no = #{entityNo} AND level = #{level} AND ref_code = #{refCode}
+                """)
+        int hardDelete(@Param("entityNo") String entityNo, @Param("level") String level,
+                       @Param("refCode") String refCode);
+    }
+
+    /**
+     * 门店送货方式（方案 v4）。物理删除同 {@link ServiceAreaMapper} ——
+     * 但注意日常「关一路」是 {@code enabled=0} 不是删行，删行只发生在门店被删时。
+     */
+    public interface FulfillmentChannelMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> {
+    }
+
+    /** 自提路 × 取货点（P1 启用）。 */
+    public interface ChannelPickupMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelPickup> {
+
+        /**
+         * **物理删**这一店这一路的取货点引用。不用 {@code delete(wrapper)}：实体继承了带 deleted 的基类，
+         * 全局逻辑删会把它改写成 UPDATE deleted=1 —— 留下墓碑行，而唯一键里没有 deleted，
+         * 同一个点再存一次就撞键（2026-09-28 生产上商家原样再存一次送货方式即 500）。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM mch_channel_pickup WHERE store_no = #{storeNo} AND channel = #{channel}")
+        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
+    }
+
+    /** SUBSET 收窄（P2 启用）。 */
+    public interface ChannelAreaMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
+
+        /** **物理删**这一店这一路的范围子集引用。理由同 {@link ChannelPickupMapper#purge} */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM mch_channel_area WHERE store_no = #{storeNo} AND channel = #{channel}")
+        int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
+    }
+
+    /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */
+    public interface AdmissionPolicyMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchAdmissionPolicy> {
+    }
+
+    public interface DebtMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebt> {
+    }
+
+    public interface DebtTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDebtTxn> {
+    }
+
+    public interface DepositMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDeposit> {
+    }
+
+    public interface DepositTxnMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchDepositTxn> {
+    }
+
+    public interface QualificationMapper extends BaseMapper<MchQualification> {
+    }
+
+    /** 门店（mch_store）。V44 起一主体可有多行。 */
+    /**
+     * 门店经营类目。**声明语义不是覆盖语义** —— 见
+     * {@link ai.neargo.shop.merchant.entity.MchStoreCategory} 的类注释。
+     */
+    public interface MchStoreCategoryMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreCategory> {
+
+        /**
+         * 把一条**被逻辑删除的**经营类目复活。
+         *
+         * <p>撤类目走的是逻辑删除（{@code deleted=1}），而唯一键
+         * {@code uk_store_category (store_no, category_no)} <b>不含这一列</b> ——
+         * 那一行还占着位置。所以「移出再加回来」不能 INSERT，会撞唯一键，
+         * 端上只看到一句「系统开小差了」（2026-09-20 线上真实发生）。
+         *
+         * <p>不写成 {@code selectList} + {@code updateById}：逻辑删除的行选不出来
+         * （MyBatis-Plus 自动加 {@code deleted=0}），绕开它要关全局配置。
+         *
+         * @return 影响行数；0 = 这家店压根没有过这个类目，调用方去 INSERT
+         */
+        @Update("""
+                UPDATE mch_store_category
+                   SET deleted = 0, enabled = 1, sort = #{sort}, display_name = #{displayName},
+                       entity_no = #{entityNo}, updated_at = NOW(), version = version + 1
+                 WHERE store_no = #{storeNo} AND category_no = #{categoryNo} AND deleted = 1
+                """)
+        int revive(@Param("storeNo") String storeNo, @Param("categoryNo") String categoryNo,
+                   @Param("entityNo") String entityNo, @Param("displayName") String displayName,
+                   @Param("sort") int sort);
+    }
+
+    public interface MchStoreMapper extends BaseMapper<MchStore> {
+    }
+
+    /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
+    public interface MchAccountMapper extends BaseMapper<MchAccount> {
+    }
+
+    /** 子账号在各门店的角色（每店一个角色）。 */
+    public interface MchStoreRoleMapper extends BaseMapper<MchStoreRole> {
+
+        /**
+         * 复活一条被逻辑删的授权。
+         *
+         * <p><b>撤销授权是逻辑删，而 {@code uk_store_role} 不含 deleted 列</b> ——
+         * 所以「撤销再授予同一个角色」时直接 insert 必然撞唯一键，
+         * 表现为授权接口 500，而老板看到的只是「系统开小差」。
+         *
+         * <p>这个坑在商家社区表、商品社区池上各踩过一次，这是第三次 ——
+         * <b>凡是「逻辑删 + 业务唯一键」的组合都有它</b>，
+         * 而它只在「删了再加回来」这条路径上出现，日常测试很难走到。
+         *
+         * @return 影响行数；0 表示压根没有这一行（该走 insert）
+         */
+        @Update("""
+                UPDATE mch_store_role SET deleted = 0, version = version + 1
+                WHERE mch_account_no = #{accountNo} AND store_no = #{storeNo}
+                  AND role = #{role} AND deleted = 1
+                """)
+        int revive(@Param("accountNo") String accountNo, @Param("storeNo") String storeNo,
+                   @Param("role") String role);
+    }
+
+    /**
+     * 商家角色（V71）：6 个预置（{@code entity_no='*'}）+ 商家自定义。
+     *
+     * <p>⚠️ 查询一律 {@code entity_no IN (当前商家, '*')} —— 少了 `'*'` 预置角色全没，
+     * 少了当前商家自定义角色全没，两种漏法都表现为「权限突然变少」。
+     */
+    public interface MchRoleMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchRole> {
+    }
+
+    /**
+     * 员工与授权的操作日志（B-11.10.3）。**只写不改** ——
+     * 审计记录被更新过就不再是审计记录。
+     */
+    public interface MchStaffLogMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchStaffLog> {
+    }
+
+    /** 商家支付进件：每通道一条。分账回调只带 sub_mchid，靠 idx_mp_sub_mchid 反查商家。 */
+    public interface MchPaymentMapper extends BaseMapper<MchPaymentMerchant> {
+    }
+
+    /** 类目授权码主数据。 */
+    public interface SysAuthCodeMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysAuthCode> {
+    }
+
+    /** 违规与处置记录。 */
+    public interface ViolationMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchViolation> {
+    }
+
+    /** 店招与公告的人审队列。 */
+    public interface StoreAuditMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchStoreAudit> {
+    }
+
+    /** 增值包档位定义（平台配置，运营可调）。 */
+    public interface PlanDefMapper extends BaseMapper<ai.neargo.shop.merchant.entity.SysMerchantPlanDef> {
+    }
+
+    /** 主体的增值包订阅（一主体一行）。 */
+    public interface EntityPlanMapper extends BaseMapper<ai.neargo.shop.merchant.entity.MchEntityPlan> {
+    }
+
+    /**
+     * 供应商收款账户（V358，ADR-011）。
+     *
+     * <p>只做单表 CRUD —— 「同一主体只能有一个 ACTIVE」那条约束在 Service，
+     * 不在这里：它要跨行判断并改另一行的状态，放 Mapper 就绕过了状态机。
+     */
+    public interface PayoutAccountMapper extends BaseMapper<MchPayoutAccount> {
+    }
+
+}

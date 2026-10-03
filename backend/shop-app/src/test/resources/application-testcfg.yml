@@ -1,0 +1,89 @@
+# 共享的**测试行为**配置：桩网关、种子数据、放开的额度阈值。
+#
+# 这里**不含数据源** —— 用哪个库由另一个 profile 决定（H2 见 application-h2db.yml，
+# 真库见 application-e2e.yml）。两件事拆开，E2E 才能复用这些开关而不被拖回内存库。
+spring:
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+shop:
+  # 人档手机号的 pepper 与 AES 密钥。
+  #
+  # **测试必须配上**，否则 `PhoneCrypto.encrypt` 返回 null、密文一直是空的 ——
+  # 于是所有「不给完整手机号」的断言都在一个**根本没有手机号可泄露**的环境里跑，
+  # 它们永远是绿的，也永远守不住任何东西（把脱敏改成明文返回，用例照样绿）。
+  # 这两个值只用于测试，与生产无关；生产的在服务器 .env 里，配了就不能换。
+  person:
+    phone-pepper: test-pepper-do-not-use-in-prod
+    phone-key: YWktc2hvcC10ZXN0LWtleS0zMmJ5dGVzLSEhYWFhYSE=
+  web:
+    # 对外域名。**生产默认空** —— 空时 StoreLinkService 返回 null，端上只显示
+    # 小程序码、不显示链接（宁可少一样东西，也不发一个点不开的链接给商家去印）。
+    #
+    # 测试里必须配上，否则「分享文案带得出可点链接」那条断言退化成
+    # 「文案不带链接也算过」—— 闸门还在，但没人守着它了。
+    # 反方向（没配就不发假链接）由 StoreLinkServiceTest 单独钉，不用第二个 Spring 上下文。
+    base-url: https://m.neargo.ai
+  auth:
+    token-store: memory
+  notify:
+    # 商家渠道凭据加密密钥（AES-256，N5）。测试固定值；生产走 SHOP_NOTIFY_CRED_KEY。
+    cred-key: bmVhcmdvLW5vdGlmeS10ZXN0LWtleS0zMmJ5dGVzISE=
+  after-sale:
+    # 显式设阈值，让用例的「命中/不命中」一眼可读，不依赖生产缺省值
+    instant-threshold-minor: 5000
+  seed:
+    # 测试库必须有数据才能验证「逛」的链路；生产默认 false
+    enabled: true
+  store:
+    # 门店额度开到 3 跑用例。**生产默认 1**（= 与单店时代行为一致），
+    # 用默认值的话「超额被拒」之外的分支一条都走不到。
+    #
+    # 放在这里而不是用 @TestPropertySource：后者会造出第二个 Spring 上下文，
+    # 而 H2 是同一个内存库 —— 建表脚本跑第二遍，整套测试成片挂在主键冲突上。
+    max-per-entity: 3
+  pay:
+    # 进件与资金都走假网关。**生产默认 false** —— 默认开的话真实现没接上时
+    # 会「进件成功」而通道根本没开户，商家第一笔订单才发现收不了钱
+    stub: true
+    # 供应商收款账号加密密钥（AES-256，V358 · ADR-011）。测试固定值；
+    # 生产走 SHOP_PAY_PAYOUT_ACCOUNT_KEY —— **不配的话商家提交收款账户会直接抛**
+    # （PayoutAccountCipher 刻意失败即拒，绝不退回明文落库）。
+    payout-account-key: bmVhcmdvLXBheW91dC10ZXN0LWtleS0zMmJ5dGVzISE=
+  ops:
+    # 初始密码走响应体而不是邮件。**生产默认 mail**。
+    #
+    # 整套用例建完账号要立刻用初始密码登录（验角色、验权限、验首登改密），
+    # 走邮件的话密码只在邮件正文里，测试得去解析邮件体才能拿到——脆且与被测行为无关。
+    #
+    # 「mail 模式下响应体里没有明文」这条**不是没测**：
+    # OpsPasswordDeliveryFlowTest 用默认值单独跑，它是这次改造的核心断言。
+    password-delivery: response
+  otp:
+    # 发码限流关掉。**生产默认 true**。
+    #
+    # 关它是因为「登录」是几乎每条旅程的第一步：整套用例反复给同一个手机号发码，
+    # 开着的话 60 秒间隔闸会把第二条之后全部拦掉 —— 实测 374 个错，
+    # 且报出来的是 `NoSuchElement`（peek 不到码），看着像测试数据问题，
+    # 与限流毫无关联，很难查。
+    #
+    # 三道闸本身由 OtpRateLimitFlowTest 单独验：它用 @SpringBootTest(properties=…)
+    # 把开关打开并把阈值调小，是唯一一处真的跑闸的地方。
+    rate-limit: false
+  upload:
+    # 上传落在 target 下而不是默认的 ./data/uploads —— 后者会往仓库里写文件。
+    #
+    # 放在这里而不是各测试类上的 @DynamicPropertySource：理由与本文件开头那条一样，
+    # 而且是刚踩过的 —— 两个媒体测试类各声明一份动态属性，就造出了第二个上下文，
+    # 于是 H2（同一个内存库）被重复播种，整批测试挂在 sys_industry 主键冲突上。
+    dir: target/test-uploads
+  media:
+    # 固定签名密钥。不配的话每次启动随机生成（生产必须配 SHOP_MEDIA_SIGN_SECRET），
+    # 而随机密钥下「签名 URL 能打开」这条断言就无从谈起。
+    sign-secret: test-secret-for-media-signing
+
+# 主系统给独立服务（元器件 elec-svc）开的 /internal/elec/** 用这个共享密钥。
+# 生产没配就一律拒绝；测试里配一个，InternalElecEndpointTest 带它、也验不带时被拒
+shop.services.internal-token: test-internal-token

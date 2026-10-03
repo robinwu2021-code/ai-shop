@@ -1,5 +1,10 @@
 # 组件分层与清单
 
+> **数字在别处**：组件有多少个、各自多少调用点、字阶用得怎么样、闸门有哪几条 ——
+> 都在 [`docs/technical/design/规范-运营端.md`](../../docs/technical/design/规范-运营端.md)，
+> 由 `scripts/gen-ops-ui-spec.py` 从代码里数出来，挂在 `check-generated-docs` 上。
+> **这份只写「为什么这么定」**：判据、边界、踩过的坑。手写的数字会陈，手写的判断不会。
+
 三层，不要混。判断标准是**依赖方向**：下层不许知道上层的存在。
 
 | 层 | 位置 | 判据 | 可以依赖 |
@@ -17,7 +22,8 @@
 | 组件 | 文件 | 说明 |
 |---|---|---|
 | `Button` | `ui/button.tsx` | |
-| `Input` / `Select` | `ui/input.tsx` | 裸控件。**筛选下拉请用组合件 `FilterSelect`** |
+| `Input` / `Select` | `ui/input.tsx` | 裸控件。**筛选下拉请用组合件 `FilterSelect`，文本筛选用 `TextFilter`** |
+| `useDebouncedPush` | `ui/input.tsx` | 受控输入 + 防抖对外通知（`SearchBox` 与 `TextFilter` 共用这一份） |
 | `DateInput` | `ui/date-input.tsx` | |
 | `Badge` | `ui/badge.tsx` | 导出 `BadgeTone` —— **全站色调联合的唯一真源** |
 | `Card` / `CardHeader` / `CardContent` / `CardTitle` | `ui/card.tsx` | |
@@ -26,7 +32,8 @@
 | `segmentedTrackClass` / `segmentedItemClass` | `ui/segmented.ts` | 分段控件（灰槽+全圆+白色药丸）的 className 拼装，供 `Tabs` 与 `TabHeader` 共用；两者场景不同（内容切换 vs URL 导航）不合并组件，只共享形状 |
 | `Progress` | `ui/progress.tsx` | |
 | `Notice` | `ui/notice.tsx` | 页内灰底提示条。权限降级用业务件 `ReadOnlyNotice` |
-| `StatCard` / `StatRow` / `EmptyState` / `Skeleton` / `PageTitle` / `Pagination` / `PAGE_SIZES` | `ui/misc.tsx` | `StatRow` 是 KPI 卡片行；`Pagination` 传 `onSize` 才出「每页条数」 |
+| `HelpNote` | `ui/help-note.tsx` | **默认收起**的说明块。常驻的「这一页是什么」用它，别用 `Notice` 占着一行 |
+| `StatCard` / `StatRow` / `EmptyState` / `ErrorState` / `Skeleton` / `PageTitle` / `Pagination` / `PAGE_SIZES` | `ui/misc.tsx` | `StatRow` 是 KPI 卡片行；`Pagination` 传 `onSize` 才出「每页条数」。**`ErrorState` 与 `EmptyState` 是两件，不许合** —— 出错渲染成「没有数据」，运营会去改筛选而不是报障 |
 | `Tooltip` | `ui/tooltip.tsx` | |
 | `Checkbox` / `CheckboxField` | `ui/checkbox.tsx` | 三态（含半选）。`DataTable` 的行选择用它 |
 | `RadioGroup` / `RadioGroupItem` / `Radio` | `ui/radio-group.tsx` | 选项 ≤4 且需全部可见时用它，别用下拉 |
@@ -41,7 +48,9 @@
 
 | 组件 | 文件 | 说明 |
 |---|---|---|
-| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式 |
+| `DataTable` | `ui/data-table.tsx` | 列表页表格：列配置 + 加载/空态 + 行选择/展开/排序/行样式。入参具名导出为 `DataTableProps` |
+| `PagedTable` | `ui/paged-table.tsx` | **分页列表就用它**：`DataTable` + `Pagination` 绑同一份 `query`。rows / loading / error / onRetry / total 由 `query` 接出，`onSize` 是**必填** —— 漏了编译不过，不必再靠正则去追 |
+| `SectionHeader` | `ui/section-header.tsx` | 页内小节标题（标题 + 右侧概要 + 说明行）。收编前 13 处 `<h3>` 长出五种写法，其中两处写的 `txt-h3` **是个不存在的类** |
 | `FormDrawer` | `ui/form-drawer.tsx` | 配置化编辑抽屉（`FieldDef[]` → 表单 + 校验 + 分区 + 联动） |
 | `Drawer` / `DrawerSection` / `FieldGrid` / `Field` | `ui/drawer.tsx` | 右侧抽屉 + 分段 + 两列栅格 + **详情行**（`Field` 全站唯一一份，见下） |
 | `ConfigCard` | `ui/config-card.tsx` | 配置卡片：标题 + 说明 + 内容 + 保存按钮 + 「上次修改」页脚。**配置页一律用它**，别再手拼页脚 |
@@ -51,6 +60,7 @@
 | `MultiSelect` | `ui/multi-select.tsx` | |
 | `StatusBadge` / `StatusMap` / `statusOptions` | `ui/status-badge.tsx` | 「枚举 → 徽标」的渲染与类型。**映射表本身留在页面** |
 | `FilterSelect` | `ui/filter-select.tsx` | 列表页筛选下拉；传 `StatusMap` 时选项自动派生。挂了 `toChip` → 选中态自动进筛选回显 |
+| `TextFilter` | `ui/filter-select.tsx` | 列表页**文本**筛选框。工具栏里要按编号/关键字实时筛就用它 —— 自带防抖（值进 `queryKey` 时，裸 `Input` 是每敲一个字符一次请求）与 `toChip`。带查询按钮的表单不算筛选，那种照旧用裸 `Input` |
 | `FilterChip` / `chipsFrom` | `ui/filter-chip.ts` | 「生效中的筛选」chip 的登记契约。**新增筛选控件时必须挂 `toChip`**，否则它的选中态不会出现在回显里（`design-tokens.test.ts` 挡） |
 | `Tree` | `ui/tree.tsx` | 层级树（类目树 / 权限树），可勾选（半选态复用 `Checkbox` 原语） |
 | `Timeline` | `ui/timeline.tsx` | 审计时间线（时间 + 操作人 + 前后值 + 说明） |
@@ -61,16 +71,20 @@
 | 组件 | 文件 | 说明 |
 |---|---|---|
 | `MerchantStatusBadge` / `OrderStatusBadge` / `VerifiedBadge` | `status.tsx` | 域内固定枚举的徽标，文案走 i18n |
-| `useFulfillTypeMap` / `useTrafficSourceMap` | `status.tsx` | 履约方式 / 流量来源的映射表（同时喂 `StatusBadge` 与 `FilterSelect`） |
+| `useFulfillmentTypeMap` / `useTrafficSourceMap` | `status.tsx` | 履约方式 / 流量来源的映射表（同时喂 `StatusBadge` 与 `FilterSelect`） |
 | `useMerchantTierLabel` | `status.tsx` | 商家主体分层文案 |
 | `ReadOnlyNotice` | `read-only-notice.tsx` | 权限降级提示，句式统一 |
 | `ShowArchivedToggle` / `ArchiveActions` / `ArchivedAt` / `archivedRowClass` / `archiveConfirm` | `archive.tsx` | G1 软删除的页面侧统一件 |
 | `Providers` | `providers.tsx` | React Query / 主题 / toast 的挂载点 |
 | `AppShell` | `layout/app-shell.tsx` | 外壳：Rail + 顶栏 + 内容区 |
 | `Rail` | `layout/rail.tsx` | L1 图标栏（18 个业务域） |
-| `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章） |
+| `SecondaryNav` | `layout/secondary-nav.tsx` | L2 分组 + L3 子功能（含待建灰显与分期徽章）；可由顶栏开关收起 |
+| `MobileNav` | `layout/mobile-nav.tsx` | 窄屏（< md）的导航入口：Rail 与 SecondaryNav 在那里是 `hidden`，这颗汉堡把它们装进抽屉；选中后自动收起 |
+| `CommandPalette` / `useCommandPalette` | `layout/command-palette.tsx` | ⌘K 搜索并跳转功能 —— SecondaryNav 可收起的前提 |
 | `PhaseGuard` | `layout/phase-guard.tsx` | 分期门禁：直达未开放功能时的兜底页 |
+| `NotifyBell` | `layout/notify-bell.tsx` | 顶栏铃铛：运营通知收件箱（15s 轮询 + 浏览器桌面横幅） |
 | `ThemeSwitcher` | `layout/theme-switcher.tsx` | 顶栏皮肤切换（五套） |
+| `ScrollHint` / `useScrollHint` | `layout/scroll-hint.tsx` | 导航溢出提示。Rail 与 L2 面板**一直都能滚**，缺的是「下面还有」这件事的可见性 —— macOS 的覆盖式滚动条静止时不渲染，而 Rail 是 56px 宽的纯图标条，21 个域在 720px 以下必有几个落在折线以下 |
 | `LangSwitcher` | `layout/lang-switcher.tsx` | 顶栏**中 / EN** 语言切换 |
 
 ### `components/status.tsx` 的归位
@@ -146,6 +160,7 @@
 | `useEditableConfig(data, toForm)` | `lib/use-editable-config.ts` | 配置表单的 `form ?? 派生` 模式。`patch/set` **内部就是函数式更新**，写不出 stale closure |
 | `useCopy(COPY)` | `lib/use-copy.ts` | 页面正文的中英对照。文案表按页就近放 `app/xxx/copy.ts`，不塞进全站 catalog |
 | `useCan()` | `lib/use-can.ts` | 权限判定（`can` / `canModule` / `scopeOf` 的 React 侧入口） |
+| `useOpsStream(event, onData)` | `lib/use-ops-stream.ts` | 订阅服务端推送。**整页共用一条连接**（内部引用计数）—— 每个组件各开一条的话，后端看到的在线数是「打开的组件数」而不是「打开的人数」，而那个数会拿去判负载 |
 
 这四个都有守卫盯着（`lib/design-tokens.test.ts`），绕开就会红。
 
@@ -156,10 +171,18 @@ TabHeader（页头，单 tab 也走它，传 desc）
   ReadOnlyNotice（无权限时）
   Notice（这一屏的前提/风险，用 tone 分档）
   Toolbar（搜索 + 筛选槽；筛选回显 chip 自动出）
-  DataTable（列表；空态要写清「为什么空、下一步做什么」）
-  Pagination（一页一个，绑 activeList = 当前 tab 的查询）
+  PagedTable（分页列表：DataTable + Pagination 绑同一个 query）
+    └ 不分页的配置表用 DataTable，自己接 error/onRetry
   Drawer / ConfigCard（详情或配置）
 ```
+
+**分页列表一律走 `PagedTable`。** 它从 `query` 里接出 rows / loading / error /
+onRetry / total 五项，`onSize` 是必填 —— 这几项此前靠各页手拼，一次盘点里
+122 个 `DataTable` 调用点有 33 处漏了其中至少一项（15 处四项全缺），
+而组件早在 2026-08-06 就有错误态了。**修在库里没修到调用点，界面上等于没修。**
+
+例外只有一种：多 tab 页面共用**一个**分页器（`total` 绑 `activeList`）——
+表在 tab 的条件分支里、分页器在外面，那种结构 `PagedTable` 装不下，保持现状。
 
 几条已被守卫锁住的硬约定：
 
@@ -181,6 +204,21 @@ TabHeader（页头，单 tab 也走它，传 desc）
 
 **颜色一律用 token**（`--*-tint` / `--*-ink` / 语义色），不要写死 hex。见 `app/globals.css` 顶部注释，
 由 `lib/design-tokens.test.ts` 拦截（组件层与页面层基线都是 0）。
+
+**字号一律用七档**（`txt-display/title/heading/body/strong/label/caption`），
+不写 `text-sm` 也不写 `text-[13px]`。页面层基线 0；组件层还有 25 处没收，
+那一层的字号多半是控件自身的形态（按钮、徽标、表头），要连形态一起定。
+
+⚠️ **写了一个不存在的类，浏览器不会报错，只是什么都不做。**这一档最难发现，
+一次盘点查到 12 处：`txt-h3`（七档里没有，两个小节标题一直按正文 14px/400 渲染）、
+`txt-body-strong`（新员工初始密码那块 `<code>`，一个要照着念的字符串）、
+`border-card-border` / `border-warning-line` / `text-destructive-text` /
+`border-line` / `bg-surface` / `bg-surface-2` / `text-fg-2` / `text-danger`
+（Tailwind 4 只为 `@theme` 里注册过的 `--color-*` 生成类，这些一个都没注册）。
+现在有两条闸门分别盯 `txt-*` 与语义色 utility。
+
+同理**别把两个字阶挂在同一个元素上**（`txt-strong text-lg`）：两个都设 font-size、
+都是单类选择器，谁赢只由样式表先后决定。
 
 **焦点环只写 `focus-ring` 一个类**（`app/globals.css` 的 `@utility`）。
 不要再手写 `focus-visible:ring-2 focus-visible:ring-ring …` 那一串 ——

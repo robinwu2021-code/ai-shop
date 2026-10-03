@@ -1,0 +1,115 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+/** 判之前剥注释：解释规则的那句话自己也要能通过规则 */
+function code(rel: string): string {
+  return readFileSync(resolve(__dirname, "..", rel), "utf-8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+
+/**
+ * 「当前生效位置」与「默认收货地址」**必须是两件事**。
+ *
+ * <p>它们常常是同一条记录，所以合成一个字段/一个按钮是极自然的省事写法 ——
+ * 而合了之后，给父母下单的人就没法表达「切到父母家看货、但收货人还是我」。
+ * 这类错误不会报错、不会崩，只会让一小撮用户的订单寄错地方。
+ *
+ * <p>用读源码的方式守：真正要防的是**有人把这两个动作接到一起**，
+ * 那是一处结构性的改动，源码里看得见。
+ */
+describe("生效位置 ≠ 默认收货地址", () => {
+  it("★★★ 切换生效位置的那条路，不许顺手改默认", () => {
+    const store = code("src/stores/location.ts");
+    expect(store, "location store 里出现 setDefaultAddress = 两个动作被接到了一起")
+      .not.toContain("setDefaultAddress");
+    expect(store).not.toContain("isDefault");
+  });
+
+  it("★★★ 地址页要有**两个**独立的动作按钮", () => {
+    const page = code("src/pages/address/index.vue");
+    expect(page, "「设为当前位置」").toContain("useHere");
+    expect(page, "「设为默认」").toContain("setDefault");
+    // 两个 handler 各自独立：任何一个调到另一个，就是把它们合并了
+    expect(page).not.toMatch(/function useHere[\s\S]{0,200}setDefaultAddress/);
+    expect(page).not.toMatch(/function setDefault[\s\S]{0,200}switchTo/);
+  });
+
+
+  it("★★★ 点顶栏**永远**去地址页 —— 他要切位置，不是挑代收点", () => {
+    const home = code("src/pages/home/index.vue");
+    /*
+     * 顶栏显示的是「我在哪」（家/公司），点它的心智就是「换个地方」。
+     * 这条曾经是错的：顶栏已经显示「公司」，点开却是选社区页。
+     *
+     * ⚠️ 上一版这里还留着一个分叉：「一个位置都没有时去选社区页」。
+     * 那一页在 §M3 删了（买家不再挑自提点），而新用户在地址页一样定得下位置 ——
+     * 那儿有「用当前位置」与地图选点。**分叉没了，断言也不该再写着它。**
+     */
+    expect(home).toContain("ROUTES.address");
+    expect(home, "选社区页已删，不该再有任何入口指着它").not.toContain("ROUTES.community");
+  });
+
+  it("★★ 生效位置没有坐标时，不许清掉现有归属", () => {
+    const store = code("src/stores/location.ts");
+    /*
+     * 微信地址簿导入的地址不带经纬度（chooseAddress 只给文字）。
+     * 那种位置照样是有效收货地址，只是推不出社区 —— 清掉的话
+     * 用户会发现「换了个地址，商品全没了」。
+     */
+    expect(store).toMatch(/latE6 == null \|\| a\.lngE6 == null\) return/);
+  });
+});
+
+/**
+ * 切位置之后，车里买不到的东西**要说出来**。
+ *
+ * <p>后端一直在标（下架、售罄），而购物车页此前一处都没展示 —— 于是货悄悄不算数：
+ * 合计里没有它、结算时它不在单里，而用户看到它好端端躺在车里，
+ * 只会以为是系统算错了。
+ *
+ * <p>⚠️ **这三条原先钉的是 `invalidReason`，而后端从来没有发过那个名字。**
+ * 后端 `CartItemVO` 发的一直是 `invalid: boolean` + `available: int`
+ *（见 TDD-购物车与下单优化 §1 缺陷 D）。也就是说：断言钉着一个**永远没有数据**的字段，
+ * 它是绿的，而它要守的那件事一天都没成立过 —— 页面确实写了那段模板，
+ * 只是那段模板既拿不到数据、又因为 `groups` 只遍历有效件而根本渲染不到。
+ *
+ * <p>所以下面改的是**字段名**，三条断言的强度一条不减：
+ * 仍然要求「说出原因」「不可售不许还能加减数量」「不许替用户批量清理」。
+ * 真正的行为回归位在 `cart-page.test.ts` —— 那边把页面挂起来看它渲染出什么。
+ */
+describe("购物车：不可售要说出来，但不许替用户删", () => {
+  const page = code("src/pages/cart/index.vue");
+  const store = code("src/stores/cart.ts");
+
+  it("★★★ 不可售的行要显示原因", () => {
+    // 原因由端上按 invalid / available 组装本地化文案，不是后端发一句中文
+    expect(page, "页面必须用后端真在发的那个字段").toContain("invalid");
+    expect(page, "两种原因要分开说：下架 / 售罄").toContain("cart.invalidOffShelf");
+    expect(page).toContain("cart.invalidSoldOut");
+  });
+
+  it("★★★ 售罄也算不可售 —— 只判下架的话，售罄件会一路走到下单才被库存拒", () => {
+    expect(store).toMatch(/available === 0/);
+  });
+
+  it("★★★ 不可售时不许还能加减数量 —— 加了也结不掉，只会让人更困惑", () => {
+    // 步进器只画在有效件那一段里；失效件走的是另一段模板（invalidItems）。
+    // 切片要**两头都掐住** —— 只掐开头的话会一路切到 <style>，
+    // 而那里必然有 .stepper，于是这条断言变成恒红（第一次跑就撞了）
+    expect(page).toContain("cart.invalidItems");
+    const from = page.indexOf("cart.invalidItems");
+    const to = page.indexOf("cart.loaded", from);
+    expect(to, "失效区之后应当紧跟空态那一段").toBeGreaterThan(from);
+    expect(page.slice(from, to), "失效区里不许出现步进器").not.toContain("stepper");
+  });
+
+  it("★★★ 不许自动清空 —— 那是用户的东西，删不删由他决定", () => {
+    // 允许「点一下删这一件」与编辑态里他自己勾出来的批量删；
+    // 不允许出现「把不可售的一次性扫掉」这种替他做主的调用
+    expect(page).not.toMatch(/removeAllInvalid|clearInvalid/);
+    expect(page).not.toMatch(/invalidItems[^\n]*\.map[\s\S]{0,80}remove/);
+  });
+});

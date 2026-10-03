@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,13 +34,14 @@ class ConsumerOrderFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
     private ai.neargo.shop.event.SysOutboxMapper outboxMapper;
@@ -92,7 +94,8 @@ class ConsumerOrderFlowTest {
 
         mvc().perform(get("/mp/order/" + orderNo + "/pay-result").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.status").value("PAID"))
-                .andExpect(jsonPath("$.data.subOrders[0].status").value("WAIT_FULFILL"))
+                // 端上看到的是**展示状态**：库里的 WAIT_FULFILL 对买家就是「已付款、等发货」
+                .andExpect(jsonPath("$.data.subOrders[0].status").value("PAID"))
                 .andExpect(jsonPath("$.data.subOrders[0].verifyCode").isNotEmpty())
                 // 归因在下单时固化（S2 恒为 PLATFORM，S4 接店铺码后才有 MERCHANT_OWNED）
                 .andExpect(jsonPath("$.data.subOrders[0].trafficSource").value("PLATFORM"));
@@ -159,7 +162,7 @@ class ConsumerOrderFlowTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"改主意\"}"));
 
         // 迟到的支付回调：状态机拒绝 CANCELLED → PAID
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"TX-late\",\"sign\":\""
                                 + STUB_SECRET + "\"}"))
                 .andExpect(jsonPath("$.code").value(20004));
@@ -187,7 +190,7 @@ class ConsumerOrderFlowTest {
         addToCart(token, "G0002", "SK0003", 1);
         String orderNo = createOrder(token, "idem-badsign");
 
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"X\",\"sign\":\"wrong\"}"));
 
         mvc().perform(get("/mp/order/" + orderNo).header("Authorization", "Bearer " + token))
@@ -216,7 +219,7 @@ class ConsumerOrderFlowTest {
     }
 
     private void payCallback(String orderNo, String txId) throws Exception {
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + txId
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());
@@ -242,13 +245,6 @@ class ConsumerOrderFlowTest {
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
 }

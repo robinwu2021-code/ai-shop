@@ -19,10 +19,20 @@ beforeEach(() => {
 describe("异常单队列（P-4.1.4）", () => {
   it("是实时算出来的视图 —— 订单一推进，它就不在队列里了", async () => {
     const before = await orderMock.listExceptionOrders({ size: 100 });
-    const stuck = before.records.find((e) => e.order.status === "DELIVERING");
+    // 状态用 FULFILLING，不是 SHIPPED —— 后者在状态模型统一那次就删掉了
+    // （它是「状态 × 履约方式」冒充状态）。下面那段注释当时改了，这一行漏了，
+    // 于是 find 永远返回 undefined，用例红在「样本里应有一条卡在配送中的单」上，
+    // 读起来像是**种子少了一条**，而种子一直是对的。
+    const stuck = before.records.find((e) => e.order.status === "FULFILLING");
     expect(stuck, "样本里应有一条卡在配送中的单").toBeTruthy();
 
-    await orderMock.interveneOrder({ orderNo: stuck!.order.orderNo, to: "ARRIVED", remark: "骑手已送达，系统漏回传" });
+    /*
+     * 配送单的「已送达」就是 COMPLETED。
+     * 曾经这里写的是 SHIPPED → ARRIVED —— 那是旧模型把配送与自提串成一条线的产物；
+     * 后端里两者是**同一个库状态**（FULFILLING），只按履约方式展示成不同的词，
+     * 从一个改到另一个等于改履约方式，不是推进状态。
+     */
+    await orderMock.interveneOrder({ orderNo: stuck!.order.orderNo, to: "COMPLETED", remark: "骑手已送达，系统漏回传" });
 
     const after = await orderMock.listExceptionOrders({ size: 100 });
     expect(after.records.some((e) => e.order.orderNo === stuck!.order.orderNo)).toBe(false);
@@ -38,13 +48,13 @@ describe("异常单队列（P-4.1.4）", () => {
     for (const e of r.records) {
       expect(e.stuckMinutes).toBeGreaterThan(STUCK_MINUTES[e.order.status]);
     }
-    // 样本里 PREPARING 那条只卡了 30 分钟（阈值 120），不该在队列里
+    // 样本里 PAID 那条只卡了 30 分钟（阈值 120），不该在队列里
     expect(r.records.some((e) => e.order.orderNo === "SO2026080502")).toBe(false);
   });
 
   it("待支付超时归为 PAY_TIMEOUT 而不是 STUCK —— 那是关单任务的问题，处置方式不同", async () => {
     const r = await orderMock.listExceptionOrders({ size: 100 });
-    const pending = r.records.find((e) => e.order.status === "PENDING_PAY");
+    const pending = r.records.find((e) => e.order.status === "WAIT_PAY");
     expect(pending?.kind).toBe("PAY_TIMEOUT");
   });
 
@@ -59,7 +69,7 @@ describe("人工干预（P-4.1.4）", () => {
   it("**人工也要走状态机** —— 绕过去等于这套状态机不存在", async () => {
     // 已送达不能直接回到备货中
     await expect(
-      orderMock.interveneOrder({ orderNo: "SO2026080501", to: "PREPARING", remark: "回退一下" }),
+      orderMock.interveneOrder({ orderNo: "SO2026080501", to: "PAID", remark: "回退一下" }),
     ).rejects.toThrow(/不允许从/);
   });
 
@@ -72,7 +82,9 @@ describe("人工干预（P-4.1.4）", () => {
   it("留痕记下 from/to/操作人", async () => {
     await orderMock.interveneOrder({ orderNo: "SO2026080501", to: "COMPLETED", remark: "用户已取货，自提点漏扫码" });
     const log = await orderMock.listOrderInterventions("SO2026080501");
-    expect(log[0]).toMatchObject({ from: "ARRIVED", to: "COMPLETED", operator: "admin" });
+    // from 是 FULFILLING：自提的「已到点」与配送的「已发货」在库里是同一个状态，
+    // ARRIVED 只是自提这一侧的展示词，早已不是状态值
+    expect(log[0]).toMatchObject({ from: "FULFILLING", to: "COMPLETED", operator: "admin" });
   });
 });
 
@@ -95,17 +107,44 @@ describe("代客取消（P-4.1.5）", () => {
 });
 
 describe("代客下单（P-4.1.5）", () => {
+  // userNo 与 mock 人档里的映射一致（getOpsPerson 给 "U-" + personNo）
   const base = {
-    buyerNickname: "小满", communityNo: "C001", merchantNo: "M903",
-    fulfillType: "PICKUP_STORE" as const, reason: "用户电话下单，不会用小程序",
+    userNo: "U-PS-1001", merchantNo: "M903",
+    fulfillType: "STORE_PICKUP" as const, payMode: "ONLINE" as const,
+    reason: "用户电话下单，不会用小程序", idempotencyKey: "IDEM-TEST",
   };
 
-  it("落到待支付而不是已支付 —— **代客下单不代付款**", async () => {
+  it("线上付落到待支付而不是已支付 —— **代客下单不代付款**", async () => {
     const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
     const o = await orderMock.createProxyOrder({ ...base, items: [{ skuNo: sku.skuNo, qty: 1 }] });
-    expect(o.status).toBe("PENDING_PAY");
+    expect(o.status).toBe("WAIT_PAY");
     expect(o.paidAt).toBeNull();
     expect(o.payAmount).toBe(sku.prices.CN);
+  });
+
+  it("线下付落到待线下付 —— 钱当面给商家，平台不碰这笔钱", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    const o = await orderMock.createProxyOrder({
+      ...base, payMode: "OFFLINE", items: [{ skuNo: sku.skuNo, qty: 1 }],
+    });
+    expect(o.status).toBe("WAIT_OFFLINE_PAY");
+    expect(o.paidAt).toBeNull();
+  });
+
+  it("★ 没有顾客就下不了单 —— 那样的订单没有主人，他看不到也付不了", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    await expect(
+      orderMock.createProxyOrder({ ...base, userNo: "", items: [{ skuNo: sku.skuNo, qty: 1 }] }),
+    ).rejects.toThrow(/顾客/);
+  });
+
+  it("★ 快递下不了 —— 客服不该替顾客填地址，也没法当面核对", async () => {
+    const sku = skus.find((s) => s.merchantNo === "M903" && s.status === "ON_SALE")!;
+    await expect(
+      orderMock.createProxyOrder({
+        ...base, fulfillType: "EXPRESS", items: [{ skuNo: sku.skuNo, qty: 1 }],
+      }),
+    ).rejects.toThrow(/自取/);
   });
 
   it("跨商家要报错 —— 全站按商家拆单，混着下会拆出对不上的单", async () => {

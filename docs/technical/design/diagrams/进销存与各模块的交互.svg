@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>进销存与其他模块的交互面：一共只有六条</title><desc>中间是进销存独立领域与独立库。交易域走预留协议同步调用，是唯一的写路径入口；商品域与商家域单向投影档案进来，成本价是唯一的反向写回；运营端只读；触达域只收事件。结算域与风控域完全不交互。虚线是只读或只留痕，不改库存。</desc>
+<defs>
+<marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="pk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#6E86A8" stroke-width="1.7" stroke-linecap="round"/></marker>
+<style>
+.bx{fill:#FFFFFF;stroke:#D5DBE3;stroke-width:1.2}
+.bo{fill:#F3F6FA;stroke:#C8D0DA;stroke-width:1.2;stroke-dasharray:5 3}
+.bk{fill:#FFFDF6;stroke:#D9C89A;stroke-width:2}
+.n{font-size:13px;font-weight:600;fill:#161A21}
+.nb{font-size:15px;font-weight:700;fill:#161A21}
+.s{font-size:10.5px;fill:#5A6472}
+.band{font-size:11px;fill:#7B8695}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.ark{stroke:#6E86A8;stroke-width:1.9;fill:none}
+.ard{stroke:#A9B2BE;stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+.l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#FFFFFF;stroke-width:4;stroke-linejoin:round}
+.lk{font-size:11px;font-weight:700;fill:#3E5877;paint-order:stroke;stroke:#FFFFFF;stroke-width:4;stroke-linejoin:round}
+.x{font-size:15px;font-weight:700;fill:#A9535A}
+.sep{stroke:#E6EAEF;stroke-width:1}
+</style></defs>
+
+<text class="band" x="24" y="26">粗线 = 同步强一致的写路径　细实线 = 单向投影或事件　虚线 = 只读 / 只留痕，不改库存</text>
+
+<rect class="bk" x="370" y="196" width="230" height="150" rx="10"/>
+<text class="nb" x="386" y="228">进销存</text>
+<text class="s" x="386" y="250">shop-inventory</text>
+<text class="s" x="386" y="270">独立库 inv_*　17 张表</text>
+<text class="s" x="386" y="292">零跨库 join · 零外键</text>
+<text class="s" x="386" y="314">只认 ownerId / itemId /</text>
+<text class="s" x="386" y="332">locationId 三个内部标识</text>
+
+<rect class="bx" x="40" y="60" width="240" height="80" rx="8"/>
+<text class="n" x="54" y="84">交易 trade</text>
+<text class="s" x="54" y="104">下单 / 支付 / 退款</text>
+<text class="s" x="54" y="122">今天 StockPort 的唯一调用方</text>
+
+<rect class="bx" x="690" y="60" width="240" height="80" rx="8"/>
+<text class="n" x="704" y="84">商品 product</text>
+<text class="s" x="704" y="104">SPU / SKU / 规格 / 门店选品</text>
+<text class="s" x="704" y="122">可售判定要读结存</text>
+
+<rect class="bx" x="24" y="252" width="200" height="72" rx="8"/>
+<text class="n" x="38" y="276">商家 merchant</text>
+<text class="s" x="38" y="296">主体 / 门店</text>
+<text class="s" x="38" y="314">投影成业主 / 库位</text>
+
+<rect class="bo" x="740" y="252" width="196" height="72" rx="8"/>
+<text class="n" x="754" y="276">运营 platform</text>
+<text class="s" x="754" y="296">对差 / 台账 / 健康度</text>
+<text class="s" x="754" y="314">三个端点全只读</text>
+
+<rect class="bo" x="40" y="428" width="240" height="76" rx="8"/>
+<text class="n" x="54" y="452">履约 fulfillment</text>
+<text class="s" x="54" y="472">自提点上报缺件</text>
+<text class="s" x="54" y="490">只留痕，不自动改库存</text>
+
+<rect class="bx" x="690" y="428" width="240" height="76" rx="8"/>
+<text class="n" x="704" y="452">触达 message / notify</text>
+<text class="s" x="704" y="472">缺货预警 · 低库存通知</text>
+<text class="s" x="704" y="490">只收事件，不反向调</text>
+
+<rect class="bo" x="378" y="420" width="214" height="76" rx="8"/>
+<text class="n" x="392" y="444">端口 portal（BFF）</text>
+<text class="s" x="392" y="464">鉴权 · 审计 · 数据域</text>
+<text class="s" x="392" y="482">三样都不进领域</text>
+
+<rect class="bo" x="368" y="52" width="236" height="72" rx="8"/>
+<text class="x" x="382" y="76">✕　结算 settle · 风控 risk</text>
+<text class="s" x="382" y="96">完全不交互。成本进毛利报表，</text>
+<text class="s" x="382" y="114">走的是进销存自己的账，不是结算的</text>
+
+<path class="ark" marker-end="url(#pk)" d="M170 140 L170 240 L370 240"/>
+<text class="lk" x="182" y="200">预留协议</text>
+<text class="l" x="182" y="218">reserve/commit/release/restore</text>
+
+<path class="ar" marker-end="url(#pa)" d="M810 140 L810 176 L600 176 L600 232"/>
+<text class="l" x="612" y="170">档案投影 →</text>
+<path class="ar" marker-end="url(#pa)" d="M600 262 L660 262 L660 150 L810 150" opacity="0"/>
+<path class="ar" marker-end="url(#pa)" d="M600 268 L648 268 L648 128 L690 128"/>
+<text class="l" x="656" y="290">← cost_price 唯一反向</text>
+<path class="ard" marker-end="url(#pa)" d="M690 100 L640 100 L640 210 L600 210"/>
+<text class="l" x="612" y="204">结存只读</text>
+
+<path class="ar" marker-end="url(#pa)" d="M224 288 L370 288"/>
+<text class="l" x="240" y="282">业主 / 库位投影 →</text>
+
+<path class="ard" marker-end="url(#pa)" d="M740 288 L600 288"/>
+<text class="l" x="726" y="282" text-anchor="end">← 只读</text>
+
+<path class="ard" d="M160 428 L160 380 L340 380 L340 346"/>
+<text class="l" x="172" y="374">缺件线索（人工决定要不要盘）</text>
+
+<path class="ar" marker-end="url(#pa)" d="M560 346 L560 380 L740 380 L740 428"/>
+<text class="l" x="572" y="374">事件 →</text>
+
+<path class="ard" marker-end="url(#pa)" d="M470 420 L470 346"/>
+<text class="l" x="480" y="392">调用经它</text>
+
+<line class="sep" x1="24" y1="522" x2="936" y2="522"/>
+<text class="band" x="24" y="544">交互面一共六条，全部收在这张图里。任何第七条都要先改这份契约 —— 直接读对方的表不算交互，算越界。</text>
+</svg>

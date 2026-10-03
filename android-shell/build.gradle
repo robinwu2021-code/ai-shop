@@ -1,0 +1,4 @@
+// 顶层：只声明插件版本，实际应用在 :app
+plugins {
+    id "com.android.application" version "8.7.3" apply false
+}

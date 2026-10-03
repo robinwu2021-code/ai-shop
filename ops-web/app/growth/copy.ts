@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabRule: "归因规则",
-  tabTraces: "归因链路",
-  tabFission: "裂变活动",
 
   srcStoreCode: "店铺码",
   srcInviter: "邀请人",
@@ -88,9 +85,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabRule: "Attribution rules",
-  tabTraces: "Attribution traces",
-  tabFission: "Referral campaigns",
 
   srcStoreCode: "Store code",
   srcInviter: "Inviter",

@@ -9,50 +9,79 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
 import type { MerchantStats } from "@shared/types";
 
+const merchant = useMerchantStore();
 const stats = ref<MerchantStats | null>(null);
 
 const ownedPct = computed(() =>
   stats.value ? Math.round(stats.value.ownedTrafficRate * 100) : 0,
 );
 
+/** 这次没取到。**与「这儿本来就没有」是两件事** —— 整页内容都挂在拉来的数据后面，
+ *  拉不到就是一个只有标题栏的空白页。交给 `sh-scaffold` 的 `failed` 说出来 */
+const failed = ref(false);
+
 async function load() {
-  stats.value = await api.mStats();
+  try {
+    stats.value = await api.mStats();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  // 门店数决定要不要给跨店入口 —— 深链进来时 stores 还是空的。
+  // 它自己兜底：跨店入口出不来是少一个口子，而上面那份数据是这一页的全部
+  await merchant.ensureStores().catch(() => null);
+}
+
+/**
+ * 跨店对比。**入口在这里而不是门店管理**：那一页答的是「此刻切到哪家、这家怎么管」，
+ * 卡上给的是今天的数；「近 30 天哪家更好」与本店这几组数字是同一类问题，
+ * 摆在一起才有可比性。两处都放的话，商家会在同一屏里读到今天和近 30 天两个数，
+ * 而它们看起来互相矛盾。
+ */
+function goCompare() {
+  uni.navigateTo({ url: ROUTES.crossStore });
 }
 
 onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="stats.title">
-    <text class="sh-h1">{{ $t("stats.title") }}</text>
-
+  <!-- 经营数据属于客户资产（`biz:customer`）；「我的」页的入口已判过，这里给深链兜底 -->
+  <sh-scaffold title-key="stats.title" :denied="!merchant.can('biz:customer')"
+    :failed="failed"
+    @retry="load"
+  >
+    <!-- 这一页整页走 mStats，与工作台是同一个数 —— 不标出来，切了店会以为数字自己变了 -->
+    <biz-store-tag readonly></biz-store-tag>
     <template v-if="stats">
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("stats.today") }}</text>
+        <text class="txt-title">{{ $t("stats.today") }}</text>
         <view class="pair">
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ stats.todayOrders }}</text>
+            <text class="txt-display pair__v sh-num">{{ stats.todayOrders }}</text>
             <text class="sh-muted">{{ $t("stats.orders") }}</text>
           </view>
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
+            <text class="txt-display pair__v sh-num">{{ money(stats.todayGmvMinor, stats.currency) }}</text>
             <text class="sh-muted">{{ $t("stats.gmv") }}</text>
           </view>
         </view>
       </view>
 
       <view class="sh-card block">
-        <text class="sh-h2">{{ $t("stats.month") }}</text>
+        <text class="txt-title">{{ $t("stats.month") }}</text>
         <view class="pair">
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ stats.monthOrders }}</text>
+            <text class="txt-display pair__v sh-num">{{ stats.monthOrders }}</text>
             <text class="sh-muted">{{ $t("stats.orders") }}</text>
           </view>
           <view class="pair__i">
-            <text class="pair__v sh-num">{{ money(stats.monthGmvMinor, stats.currency) }}</text>
+            <text class="txt-display pair__v sh-num">{{ money(stats.monthGmvMinor, stats.currency) }}</text>
             <text class="sh-muted">{{ $t("stats.gmv") }}</text>
           </view>
         </view>
@@ -60,9 +89,9 @@ onShow(load);
 
       <!-- 自带客流：这个平台特有的经营指标，直接对应费率 -->
       <view class="sh-card owned">
-        <view class="owned__row">
-          <text class="sh-h2">{{ $t("stats.ownedTraffic") }}</text>
-          <text class="owned__v sh-num">{{ ownedPct }}%</text>
+        <view class="owned__row sh-row sh-row--between sh-row--baseline">
+          <text class="txt-title">{{ $t("stats.ownedTraffic") }}</text>
+          <text class="txt-hero owned__v sh-num txt-primary">{{ ownedPct }}%</text>
         </view>
         <view class="bar">
           <view class="bar__fill" :style="{ width: `${ownedPct}%` }"></view>
@@ -71,47 +100,37 @@ onShow(load);
       </view>
 
       <view class="sh-card block">
-        <view class="rate">
-          <text class="sh-h2">{{ $t("stats.rating") }}</text>
-          <sh-rating :value="stats.rating"></sh-rating>
+        <view class="rate sh-row sh-row--between">
+          <text class="txt-title">{{ $t("stats.rating") }}</text>
+          <!-- 零评价时不画星：给商家看一个凭空的 5.0，他会以为真有人评过 -->
+          <sh-rating v-if="stats.ratingCount > 0" :value="stats.rating"></sh-rating>
         </view>
         <text class="sh-muted">{{ $t("stats.ratingBasis", { n: stats.ratingCount }) }}</text>
       </view>
     </template>
+    <!-- 多店才有「比」这回事。一家店时这一行是纯噪音 -->
+    <view v-if="merchant.multiStore" class="sh-card cmp sh-row sh-row--between" @tap="goCompare">
+      <text class="txt-title">{{ $t("stats.compareEntry") }}</text>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+    </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.block {
-  margin-top: 24rpx;
-}
+/* 跨店入口：与上面几张数据卡同宽同缘，排在最后 —— 先看本店，再想到比 */
+
 .pair {
   display: flex;
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .pair__i {
   flex: 1;
 }
 .pair__v {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.2;
 }
 .owned {
-  margin-top: 24rpx;
   background: var(--sh-primary-tint);
-}
-.owned__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.owned__v {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-primary);
 }
 .bar {
   height: 16rpx;
@@ -124,16 +143,12 @@ onShow(load);
   height: 100%;
   border-radius: 9999px;
   background: var(--sh-primary);
-  transition: width 0.3s ease;
+  transition: width var(--sh-t-base) ease;
 }
 .hint {
   display: block;
-  line-height: 1.6;
 }
 .rate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 12rpx;
 }
 </style>

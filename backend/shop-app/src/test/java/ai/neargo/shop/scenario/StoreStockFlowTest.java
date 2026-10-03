@@ -1,0 +1,731 @@
+package ai.neargo.shop.scenario;
+
+import ai.neargo.shop.support.TestStoreCategory;
+import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.TestPlan;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.ObjectMapper;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 门店级库存。
+ *
+ * <p>此前 `prd_sku` 的唯一键是 (entity_no, sku_no, market)，**没有门店维度** ——
+ * 一家主体开第二家店之后，A 店卖光了 B 店也显示无货；顾客在 A 店下单却从
+ * 「全公司总量」扣，而货其实在 B 店。**自提场景下这是直接的履约事故**。
+ *
+ * <p>这个文件守三件事，按重要性排：
+ * <ol>
+ *   <li><b>单店行为逐字不变</b> —— 现在所有真实商家都是单店，
+ *       任何一次多门店改造让单店行为变了，都是拿全量用户给一个还没人用的功能试错
+ *   <li>启用分店库存后，两家店的数真的分得开
+ *   <li><b>没设过库存的店卖不出去</b>（视为 0，不是回退到主体总量）——
+ *       回退会让没设的店变成无限供应，比不分店更危险
+ * </ol>
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+class StoreStockFlowTest {
+
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
+    private WebApplicationContext context;
+
+    @Autowired
+    private ObjectMapper json;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+    /** 判据取子单上的履约门店 —— OrderVO 不带它，从接口外面看不出单落在哪家店 */
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+
+    private MockMvc mvc() {
+        return MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .build();
+    }
+
+    @Test
+    @DisplayName("★ 单店商家：一条门店库存行都没有 → 走主体总量，行为与改造前逐字相同")
+    void singleStoreBehaviourUnchanged() throws Exception {
+        String biz = merchant("12600190001", "单店库存店");
+        String goodsNo = listedGoods(biz, 3);
+        String skuNo = firstSku(goodsNo);
+
+        // 买 2 件成功，剩 1 件
+        assertThat(buy("13000190001", goodsNo, skuNo, 2, "ss-1")).isEqualTo(0);
+        // 再买 2 件 → 库存不足
+        assertThat(buy("13000190002", goodsNo, skuNo, 2, "ss-2")).isNotEqualTo(0);
+        // 买 1 件仍然可以
+        assertThat(buy("13000190003", goodsNo, skuNo, 1, "ss-3")).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("★ 启用分店库存后，A 店卖光不影响 B 店的数")
+    void storesHaveIndependentStock() throws Exception {
+        String biz = merchant("12600190010", "双店库存·总店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        // 多门店是 PRO 才有的能力 —— 这家商家买了包，所以它开得出第二家店
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "双店库存·分店");
+
+        // 两家店各设 1 件。**一旦设了，这个 SKU 就整体转为按店管理**
+        setStoreStock(biz, storeA, goodsNo, skuNo, 1);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 1);
+
+        // 默认店（A）买 1 件成功，再买就没了
+        assertThat(buy("13000190011", goodsNo, skuNo, 1, "ss-a1")).isEqualTo(0);
+        assertThat(buy("13000190012", goodsNo, skuNo, 1, "ss-a2")).isNotEqualTo(0);
+
+        /*
+         * B 店的 1 件还在 —— 主体总量是 100，若还按总量扣，上一步不会失败。
+         * 上一步失败本身就证明了「扣的是 A 店的数」。
+         */
+        assertThat(storeStock(biz, storeB, skuNo)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★ 没设过库存的门店卖不出去 —— 视为 0，不是回退到主体总量")
+    void storeWithoutStockRowSellsNothing() throws Exception {
+        String biz = merchant("12600190020", "只给一家店设库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        createStore(biz, "没设库存的分店");
+
+        // 只给默认店设 2 件；分店一条行都没有
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+
+        // 默认店照常卖
+        assertThat(buy("13000190021", goodsNo, skuNo, 2, "ss-b1")).isEqualTo(0);
+        /*
+         * 再买就没了 —— 关键在这里：主体总量还有 100，
+         * 若实现写成「这家店没有行就回退总量」，这一步会成功，
+         * 而那意味着**没设库存的店等于无限供应**。
+         */
+        assertThat(buy("13000190022", goodsNo, skuNo, 1, "ss-b2")).isNotEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("★★★ 买家看到的库存按门店算 —— 带 storeNo 的详情给的是那家店的数")
+    void buyerSeesStoreStock() throws Exception {
+        String biz = merchant("12600190080", "买家侧门店库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "买家侧·分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        /*
+         * **两家店的数必须不同，且都不等于主体总量 100** —— 三个数各不相同，
+         * 才能证明读的是这家店那一行：只断言「等于 5」的话，
+         * 实现取成主体总量也可能碰巧对（比如有人把总量改成 5）。
+         */
+        assertThat(buyerStock(goodsNo, skuNo, storeA)).isEqualTo(2);
+        assertThat(buyerStock(goodsNo, skuNo, storeB)).isEqualTo(5);
+        assertThat(buyerStock(goodsNo, skuNo, null))
+                .as("不带门店时口径不变 —— 单店商家走的就是这一支（AC8）")
+                .isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("★★★ 没设过库存的门店，买家看到 0 —— 不回退主体总量")
+    void buyerSeesZeroForStoreWithoutRow() throws Exception {
+        String biz = merchant("12600190081", "买家侧·没设库存的店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "买家侧·没设库存的分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 2);
+
+        assertThat(buyerStock(goodsNo, skuNo, storeB))
+                .as("回退主体总量的话这里是 100 —— 那等于没设库存的店在页面上无限供应")
+                .isEqualTo(0);
+    }
+
+    /** 买家侧详情里这个 SKU 的库存；`storeNo` 为 null 时不带门店参数 */
+    private int buyerStock(String goodsNo, String skuNo, String storeNo) throws Exception {
+        String url = "/mp/goods/" + goodsNo + (storeNo == null ? "" : "?storeNo=" + storeNo);
+        String body = mvc().perform(get(url)).andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        throw new AssertionError("详情里找不到这个 SKU：" + skuNo);
+    }
+
+    @Test
+    @DisplayName("★★★ 默认店没有这件货、分店有：单落到分店 —— 线上 20013 对(社区×商品)正是这个形状")
+    void orderLandsOnTheStoreThatActuallyHasIt() throws Exception {
+        String biz = merchant("12600190082", "落店·默认店没货");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "落店·有货的分店");
+
+        /*
+         * 默认店**显式设 0**：不设的话它是「没有店级行」，按覆盖层语义也是 0，
+         * 但那样分不出「实现读了这一行」还是「实现根本没看店级库存」。
+         * 主体总量仍是 100 —— 老实现照它走，会落在默认店身上。
+         */
+        setStoreStock(biz, storeA, goodsNo, skuNo, 0);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        String orderNo = buyOk("13000190082", goodsNo, skuNo, 1, "rt-1");
+        assertThat(landedStore(orderNo))
+                .as("默认店营业、也服务这个社区，但它没有这件货")
+                .isEqualTo(storeB);
+    }
+
+    @Test
+    @DisplayName("★★★ 默认店有货但**已店级下架**：单落到在架的那家 —— 「在架」这一条没人测过")
+    void orderSkipsStoreThatDoesNotSellIt() throws Exception {
+        String biz = merchant("12600190083", "落店·默认店下架了");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "落店·在架的分店");
+
+        /*
+         * **两家都有货**，差别只在「卖不卖」。这样才能把「在架」这一条单独量出来：
+         * 上一条用例（默认店没货）撤掉闸门也会红，但那是常规锁库存拒的，
+         * 与「在架」无关 —— 实测过，所以换成这一条。
+         */
+        setStoreStock(biz, storeA, goodsNo, skuNo, 5);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        String orderNo = buyOk("13000190085", goodsNo, skuNo, 1, "rt-3");
+        assertThat(landedStore(orderNo))
+                .as("默认店营业、服务这个社区、也有货 —— 只是店主在这家店把它下架了")
+                .isEqualTo(storeB);
+    }
+
+    @Test
+    @DisplayName("★★★ 加购按**你正在逛的那家店**判：A 店没货就当场拒，不拿 B 店的库存放行")
+    void cartAddJudgesTheStoreYouAreBrowsing() throws Exception {
+        String biz = merchant("12600190086", "加购·按店判");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "加购·有货的分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 0);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 5);
+
+        String buyer = login("13000190086");
+        /*
+         * **三个答案各不相同**，缺一条都证明不了实现读的是「这家店那一行」：
+         *   A 店 0 → 拒        （旧口径取「最能卖的那家」= 5，会放行）
+         *   B 店 5 → 过
+         *   不带门店 → 过      （旧口径，跨店目录加的购走这一支，AC8）
+         */
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, storeA))
+                .as("A 店一件都没有 —— 拿 B 店的 5 件放行的话，人要到下单才被拒")
+                .isNotEqualTo(0);
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, storeB)).isEqualTo(0);
+        assertThat(cartAdd(buyer, goodsNo, skuNo, 1, null))
+                .as("不带门店时口径不变 —— 从首页那类跨店目录加的购走这一支")
+                .isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("★★★ 商品流里那一行带的是**提供这件货的门店**，不是主体")
+    void catalogRowCarriesTheStoreThatSellsIt() throws Exception {
+        String biz = merchant("12600190087", "目录·带门店");
+        String goodsNo = listedGoods(biz, 100);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "目录·只有分店在卖");
+
+        /*
+         * **默认店的店名就等于主体名**（建店时取的），所以「storeName ≠ 主体名」分辨不出东西。
+         * 把货只留在分店在架：这样池里只剩分店那一行，
+         * 列表显示分店名才说明它读的是**提供这件货的那家店**，而不是随便挑的默认店。
+         * 这一条同时也是 AC2：显示的那家 = 会履约的那家。
+         */
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        var row = catalogRow(goodsNo);
+        assertThat(row).as("这件货没出现在社区目录里 —— 这条用例没测到该测的东西").isNotNull();
+        /*
+         * **先断言字段在，再取它**：缺字段时 JsonNode.get 返回的是 Java null 而不是 NullNode，
+         * 下一行直接 NPE —— 失败信息变成「Cannot invoke asString()」，不指向真因。
+         * 消融时实测过一次。
+         */
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("列表行没带门店 —— store 字段整个没有").isTrue();
+        assertThat(row.get("store").get("storeName").asString())
+                .as("默认店已经把它下架了，显示默认店（= 主体名）就说明挑错了店")
+                .isEqualTo("目录·只有分店在卖");
+        assertThat(row.get("store").get("storeNo").asString()).isEqualTo(storeB);
+    }
+
+    @Test
+    @DisplayName("★★★ 没有社区上下文时也要带门店 —— 搜索页此前显示的是主体名")
+    void catalogRowCarriesStoreEvenWithoutCommunity() throws Exception {
+        String biz = merchant("12600190091", "目录·无社区也带门店");
+        String title = "无社区带门店的货";
+        String goodsNo = listedGoods(biz, 100, title);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "无社区·只有分店在卖");
+
+        storeToggle(biz, storeA, goodsNo, false);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        /*
+         * ★ 不传 communityNo、也不传 regionCode —— **搜索页就是这么调的**，
+         * 而且那是有意的：搜索是「主动找特定商家」，不该被送达范围筛掉
+         * （见 c-app 分类页里的那句注释）。
+         *
+         * 修之前这一行的 store 是 null：门店从社区池反查，而池行的键是社区，
+         * 两个参数都不给就查不到任何池行。线上实测同一件货两个说法 ——
+         * 首页「虹选粮油·深圳测试店」，搜索页「虹选科技有限公司」。
+         *
+         * 消融：去掉 soleSellingStoreOf 那一支，这条必红。
+         */
+        var row = rowOfNoScope(goodsNo, title);
+        assertThat(row).as("这件货没出现在不带位置的目录里 —— 这条用例没测到该测的东西").isNotNull();
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("不带位置时列表行没带门店 —— 买家看到的是主体名").isTrue();
+        assertThat(row.get("store").get("storeName").asString()).isEqualTo("无社区·只有分店在卖");
+    }
+
+    @Test
+    @DisplayName("★★ 两家店都在卖、又没有社区时**不猜** —— 落款回落主体名比指错店好")
+    void catalogRowLeavesStoreBlankWhenTwoStoresSellIt() throws Exception {
+        String biz = merchant("12600190092", "目录·两家都在卖");
+        String title = "两家都在卖的货";
+        String goodsNo = listedGoods(biz, 100, title);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "两家都在卖·分店");
+
+        // 两家都在架 —— 没有社区就说不清买家会落到哪家
+        storeToggle(biz, storeA, goodsNo, true);
+        storeToggle(biz, storeB, goodsNo, true);
+
+        var row = rowOfNoScope(goodsNo, title);
+        assertThat(row).as("这件货没出现在不带位置的目录里").isNotNull();
+        /*
+         * 硬挑一家会让落款与真正履约的那家对不上（下单落店另有自己的判据）。
+         * 说不清就不说，端上回落主体名 —— 那是诚实的默认值。
+         */
+        assertThat(row.has("store") && !row.get("store").isNull())
+                .as("两家都在卖却挑了一家：落款会与真正发货的店对不上")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("★★ 已按店管理的 SKU，用主体级改库存**不能是空操作** —— 写要落到读的地方")
+    void mainStockWriteLandsWhereTheReadLooks() throws Exception {
+        String biz = merchant("12600190040", "写读要同一个数");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+
+        // 设一次分店库存 → 这个 SKU 整体转为按店管理，读取口径也跟着换
+        setStoreStock(biz, storeA, goodsNo, skuNo, 33);
+        assertThat(merchantSeesStock(biz, goodsNo, skuNo)).isEqualTo(33);
+
+        /*
+         * 关键一步：走**主体级**那条端点。
+         *
+         * 修之前它写的是主体总量，而页面读的是分店那份 ——
+         * `code=0`、页面数字纹丝不动、没有任何提示。
+         * 商家会以为自己改过了，实际货架上的数还是旧的。
+         */
+        setMainStock(biz, goodsNo, skuNo, 99);
+        assertThat(merchantSeesStock(biz, goodsNo, skuNo))
+                .as("主体级改库存返回成功却什么都没变 —— 「不报错、不生效」比报错更贵")
+                .isEqualTo(99);
+
+        // 落点必须是当前门店那一行，不是新造一份主体总量
+        assertThat(storeStock(biz, storeA, skuNo)).isEqualTo(99);
+    }
+
+    /** 主体级改库存（`/stock`）—— b-app 单店模式走的就是它 */
+    private void setMainStock(String token, String goodsNo, String skuNo, int stock)
+            throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/stock").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"" + skuNo + "\",\"stock\":" + stock + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 商家在商品详情里看到的那个数（= 当前门店口径） */
+    private int merchantSeesStock(String token, String goodsNo, String skuNo) throws Exception {
+        String body = mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        return -1;
+    }
+
+    @Test
+    @DisplayName("★ 商家看到的库存 = 当前门店的数，不是主体总量")
+    void merchantSeesCurrentStoreStock() throws Exception {
+        String biz = merchant("12600190030", "看得见分店库存");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "看得见·分店");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 7);
+        setStoreStock(biz, storeB, goodsNo, skuNo, 3);
+
+        /*
+         * 主体总量是 100。若商品页仍显示 100，商家会以为还有货 ——
+         * 而下单时按门店扣，第 8 单就会失败。
+         * **「商家看到的数」与「下单扣的数」必须同一个口径**，
+         * 两处不一致的症状是「页面显示有货、下单说库存不足」，最难查的那类。
+         */
+        assertThat(shownStock(biz, storeA, goodsNo, skuNo)).isEqualTo(7);
+        assertThat(shownStock(biz, storeB, goodsNo, skuNo)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("没设过库存的门店显示 0 —— 与下单侧同一口径，不回退主体总量")
+    void storeWithoutRowShowsZero() throws Exception {
+        String biz = merchant("12600190040", "只设一家店");
+        String goodsNo = listedGoods(biz, 100);
+        String skuNo = firstSku(goodsNo);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "没设的那家");
+
+        setStoreStock(biz, storeA, goodsNo, skuNo, 5);
+
+        assertThat(shownStock(biz, storeA, goodsNo, skuNo)).isEqualTo(5);
+        // 不是 100 —— 显示总量会让商家以为这家店有货，而下单必然失败
+        assertThat(shownStock(biz, storeB, goodsNo, skuNo)).isZero();
+    }
+
+    // ---------------------------------------------------------------- 装配
+
+    /** B 端商品详情里这个 SKU 显示的可售量 */
+    /**
+     * <b>下架完，列表要跟着变。</b>
+     *
+     * <p>上下架早就按门店落行了（{@code MerchantGoodsServiceImpl#toggle}），
+     * 而商品列表一直回显**主体级** {@code onSale} —— 主体的 on_sale 是「任一门店在售就为真」
+     * 的总闸，所以 A 店下架后它仍是 true，<b>刷新后那件货还写着「在售」</b>。
+     * 店长会以为没点上，然后再点一次（第二次点的是「上架」，等于又开回去）。
+     *
+     * <p>可证伪：把 BizGoodsController 传的 storeNo 换成 null，第二个断言立刻变红。
+     */
+    @Test
+    @DisplayName("★★ A 店下架后，A 店的列表显示「本店未上架」，而 B 店不受影响")
+    void listShowsPerStoreOnSale() throws Exception {
+        String biz = merchant("12600190070", "分店上下架回显");
+        String goodsNo = listedGoods(biz, 50);
+        String storeA = defaultStoreNo(biz);
+        TestPlan.grantPro(mvc(), json, planMapper, biz);
+        String storeB = createStore(biz, "回显·分店");
+
+        // 未按店管理时：storeOnSale 为空（跟随主体级），不是 false
+        assertThat(storeOnSaleOf(biz, storeA, goodsNo))
+                .as("一条店级行都没有却给了 false —— 会被读成「本店未上架」").isNull();
+
+        // A 店下架（落的是门店行；主体 on_sale 因为 B 店还在卖而保持 true）
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .header("X-Store-No", storeA)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(storeOnSaleOf(biz, storeA, goodsNo))
+                .as("★ A 店下架完，A 店的列表还写着在售 —— 店长会以为没点上").isEqualTo(false);
+        assertThat(storeOnSaleOf(biz, storeB, goodsNo))
+                .as("A 店下架把 B 店也带下去了").isEqualTo(true);
+    }
+
+    /**
+     * 列表里这件货在这家店的上架态。null = 未按店管理。
+     *
+     * <p><b>两个页签都找。</b> 2026-09-30 起「全部」页签也按门店筛
+     * （本店未上架的货不进去，它们在「已下架」里），而这个 helper 问的是
+     * 「这件货在这家店是什么状态」—— 那是一件与页签无关的事。
+     * 只查「全部」的话，A 店下架之后它就消失了，helper 抛的是
+     * 「列表里没有这件货」，而用例要断言的其实是 {@code storeOnSale == false}。
+     */
+    private Boolean storeOnSaleOf(String token, String storeNo, String goodsNo) throws Exception {
+        var row = rowIn(token, storeNo, goodsNo, null);
+        if (row == null) {
+            row = rowIn(token, storeNo, goodsNo, "OFF_SALE");
+        }
+        if (row == null) {
+            throw new AssertionError("两个页签里都没有这件货：" + goodsNo);
+        }
+        var v = row.get("storeOnSale");
+        return v == null || v.isNull() ? null : v.asBoolean();
+    }
+
+    /**
+     * 这件货在这个页签里的那一行；不在就回 null。
+     *
+     * <p><b>回的是整行不是字段</b> —— 「没找到」与「字段是 null（未按店管理）」
+     * 是两件事，混成同一个返回值的话，用例里那句
+     * 「一条店级行都没有却给了 false」就再也测不到了。
+     *
+     * @param status null = 「全部」页签
+     */
+    private tools.jackson.databind.JsonNode rowIn(
+            String token, String storeNo, String goodsNo, String status) throws Exception {
+        var req = get("/biz/goods")
+                .header("Authorization", "Bearer " + token)
+                .header("X-Store-No", storeNo).param("size", "100");
+        if (status != null) {
+            req = req.param("status", status);
+        }
+        String body = mvc().perform(req)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (var g : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(g.get("goodsNo").asString())) {
+                return g;
+            }
+        }
+        return null;
+    }
+
+    private int shownStock(String token, String storeNo, String goodsNo, String skuNo) throws Exception {
+        String body = mvc().perform(get("/biz/goods/" + goodsNo)
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        for (var sku : json.readTree(body).get("data").get("skus")) {
+            if (skuNo.equals(sku.get("skuNo").asString())) {
+                return sku.get("stock").asInt();
+            }
+        }
+        return -1;
+    }
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper storeStockMapper;
+
+    private int storeStock(String bizToken, String storeNo, String skuNo) {
+        var row = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeStockMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdStoreStock>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getStoreNo, storeNo)
+                        .eq(ai.neargo.shop.product.entity.PrdStoreStock::getSkuNo, skuNo)));
+        return row == null ? -1 : row.getStock();
+    }
+
+    private void setStoreStock(String token, String storeNo, String goodsNo, String skuNo, int stock)
+            throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/store-stock")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"skuNo\":\"" + skuNo + "\",\"stock\":" + stock + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** @return 下单响应的 code，0 = 成功 */
+    /** 社区目录里这件货那一行；没出现时返回 null */
+    private tools.jackson.databind.JsonNode catalogRow(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
+                .andReturn().getResponse().getContentAsString();
+        for (var r : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(r.get("goodsNo").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 商品流里这一行，**不带任何位置参数** —— 搜索页就是这么调的。
+     *
+     * <p>用 keyword 精确定位，不靠「拉 50 条碰运气」：不带位置就是全量目录，
+     * 全量跑时库里商品多，翻页翻不到刚建的那件。
+     * <b>不能改用 merchantNo 过滤</b> —— 带它时后端故意不挂门店，
+     * 那样这条用例就永远测不到要测的东西。
+     */
+    private tools.jackson.databind.JsonNode rowOfNoScope(String goodsNo, String keyword) throws Exception {
+        String body = mvc().perform(get("/mp/goods").param("keyword", keyword).param("size", "50"))
+                .andReturn().getResponse().getContentAsString();
+        for (var r : json.readTree(body).get("data").get("records")) {
+            if (goodsNo.equals(r.get("goodsNo").asString())) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    /** 加购，返回响应码；`storeNo` 为 null 时不带那个字段 */
+    private int cartAdd(String buyer, String goodsNo, String skuNo, int qty, String storeNo) throws Exception {
+        String store = storeNo == null ? "" : ",\"storeNo\":\"" + storeNo + "\"";
+        String body = mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":"
+                                + qty + store + "}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt();
+    }
+
+    /** 门店级上下架：走 X-Store-No 头，与 B 端那条路同一个接口 */
+    private void storeToggle(String token, String storeNo, String goodsNo, boolean onSale) throws Exception {
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"onSale\":" + onSale + "}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 下单并断言成功，返回订单号 */
+    private String buyOk(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
+        String buyer = login(phone);
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("orderNo").asString();
+    }
+
+    /** 这一单落在哪家门店（子单上的 store_no） */
+    private String landedStore(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                                .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)))
+                .stream().map(ai.neargo.shop.trade.entity.OrdSubOrder::getStoreNo)
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+    }
+
+    private int buy(String phone, String goodsNo, String skuNo, int qty, String idem) throws Exception {
+        String buyer = login(phone);
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + buyer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":" + qty + "}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
+                        .header("Idempotency-Key", idem)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("code").asInt();
+    }
+
+    private String listedGoods(String token, int stock) throws Exception {
+        return listedGoods(token, stock, "门店库存测试品");
+    }
+
+    /**
+     * 同上，但**标题自己起**。
+     *
+     * <p>给「要在不带位置的全量目录里找到自己那件货」的用例用：那条路不能按
+     * {@code merchantNo} 过滤（带它时后端故意不挂门店），只能靠 keyword，
+     * 而这个类里所有货默认同名「门店库存测试品」——
+     * 全量跑时库里商品多，50 条一页里排不到刚建的那件，
+     * 报错是「这件货没出现在目录里」，看着像功能坏了，其实是用例定位不到。
+     */
+    private String listedGoods(String token, int stock, String title) throws Exception {
+        TestStoreCategory.open(mvc(), json, token, "CAT210");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":1000,\"stock\":" + stock + "}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                .header("Authorization", "Bearer " + opsLogin())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
+        return goodsNo;
+    }
+
+    private String firstSku(String goodsNo) throws Exception {
+        String body = mvc().perform(get("/mp/goods/" + goodsNo)).andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("skus").get(0).get("skuNo").asString();
+    }
+
+    private String defaultStoreNo(String token) throws Exception {
+        String body = mvc().perform(get("/biz/store/list").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get(0).get("storeNo").asString();
+    }
+
+    private String createStore(String token, String name) throws Exception {
+        String body = mvc().perform(post("/biz/store/create").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"address\":\"某某路 3 号\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("storeNo").asString();
+    }
+
+    private String merchant(String phone, String name) throws Exception {
+        String user = login(phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                .header("Authorization", "Bearer " + opsLogin())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+    }
+
+    private String opsLogin() throws Exception {
+        return TestLogin.admin(mvc(), json);
+    }
+
+    private String login(String phone) throws Exception {
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
+    }
+}

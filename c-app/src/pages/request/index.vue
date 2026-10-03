@@ -25,9 +25,24 @@ const isInitiator = computed(
   () => !!request.value && request.value.initiatorNickname === user.user?.nickname,
 );
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(requestNo: string) {
-  request.value = await api.requestDetail(requestNo);
-  uni.setNavigationBarTitle({ title: request.value.title });
+  currentNo.value = requestNo;
+  try {
+    request.value = await api.requestDetail(requestNo);
+    uni.setNavigationBarTitle({ title: request.value.title });
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function toggle() {
@@ -93,90 +108,100 @@ onShareAppMessage(() => {
   <sh-scaffold v-if="request">
     <!-- 需求本身 -->
     <view class="sh-card">
-      <view class="head">
+      <view class="head sh-row">
         <text class="head__avatar">{{ request.initiatorAvatar }}</text>
-        <view class="head__main">
-          <text class="sh-h2">{{ request.title }}</text>
-          <text class="head__by">
+        <view class="sh-fill">
+          <text class="txt-title">{{ request.title }}</text>
+          <text class="txt-caption head__by">
             {{ $t("groups.startedBy", { name: request.initiatorNickname }) }} ·
             {{ request.pickupName }}
           </text>
         </view>
       </view>
 
-      <text class="desc">{{ request.desc }}</text>
+      <text class="txt-sub desc">{{ request.desc }}</text>
 
       <view v-if="request.images.length" class="imgs">
-        <view v-for="(img, i) in request.images" :key="i" class="img">{{ img }}</view>
+        <view v-for="(img, i) in request.images" :key="i" class="img sh-center">{{ img }}</view>
       </view>
 
       <view class="facts">
-        <view class="fact">
-          <text class="fact__k">{{ $t("request.expect") }}</text>
-          <text class="fact__v sh-num">{{ request.expectQty }}</text>
+        <view class="fact sh-row sh-row--between sh-row--top">
+          <text class="txt-caption">{{ $t("request.expect") }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ request.expectQty }}</text>
         </view>
-        <view v-if="request.budgetMinor" class="fact">
-          <text class="fact__k">{{ $t("request.budget") }}</text>
-          <text class="fact__v sh-num">{{ money(request.budgetMinor) }}</text>
+        <view v-if="request.budgetMinor" class="fact sh-row sh-row--between sh-row--top">
+          <text class="txt-caption">{{ $t("request.budget") }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ money(request.budgetMinor) }}</text>
         </view>
-        <view class="fact">
-          <text class="fact__k">{{ $t("request.deadline") }}</text>
-          <text class="fact__v sh-num">{{ isoDate(request.expireAt) }}</text>
+        <view class="fact sh-row sh-row--between sh-row--top">
+          <text class="txt-caption">{{ $t("request.deadline") }}</text>
+          <text class="txt-caption fact__v sh-num txt-ink">{{ isoDate(request.expireAt) }}</text>
         </view>
       </view>
     </view>
 
     <!-- 意向邻居。这里必须说清楚「+1 不是下单」 -->
     <view class="sh-card block">
-      <text class="sh-h2">{{ $t("request.neighbours", { n: request.interestedCount }) }}</text>
+      <text class="txt-title">{{ $t("request.neighbours", { n: request.interestedCount }) }}</text>
       <text class="sh-muted nothint">{{ $t("request.notOrder") }}</text>
-      <view class="members">
-        <view v-for="(n, i) in request.neighbours" :key="i" class="member">
-          <text class="member__a">{{ n.avatar }}</text>
-          <text class="member__n">{{ n.nickname }}</text>
+      <view class="members sh-wrap">
+        <view v-for="(n, i) in request.neighbours" :key="i" class="member sh-row">
+          <text class="txt-sub">{{ n.avatar }}</text>
+          <text class="txt-caption member__n txt-ink">{{ n.nickname }}</text>
         </view>
       </view>
     </view>
 
     <!-- 商家报价：按价格从低到高 -->
     <view class="sh-card block">
-      <text class="sh-h2">{{ $t("request.quotes", { n: request.quotes.length }) }}</text>
+      <text class="txt-title">{{ $t("request.quotes", { n: request.quotes.length }) }}</text>
       <text class="sh-muted nothint">{{ $t("request.quoteHint") }}</text>
 
       <view v-for="(q, i) in request.quotes" :key="q.quoteNo" class="quote" :class="{ 'is-chosen': q.chosen }">
-        <view class="quote__head">
-          <text class="quote__logo">{{ q.merchant.logo }}</text>
-          <view class="quote__who">
-            <view class="quote__name-row">
-              <text class="quote__name">{{ q.merchant.name }}</text>
-              <text v-if="i === 0 && request.quotes.length > 1" class="sh-chip sh-chip--primary tiny">
+        <view class="quote__head sh-row">
+          <biz-shop-avatar :name="q.merchant.name" :logo="q.merchant.logo" :self-operated="q.merchant.selfOperated" :size="68"></biz-shop-avatar>
+          <view class="sh-fill">
+            <view class="quote__name-row sh-wrap">
+              <text class="txt-strong quote__name">{{ q.merchant.name }}</text>
+              <text v-if="i === 0 && request.quotes.length > 1" class="txt-caption sh-chip sh-chip--primary tiny">
                 {{ $t("request.lowest") }}
               </text>
-              <text v-if="q.chosen" class="sh-chip sh-chip--primary tiny">
+              <text v-if="q.chosen" class="txt-caption sh-chip sh-chip--primary tiny">
                 {{ $t("request.chosenTag") }}
               </text>
               <!-- 改过价就公示：不审核，但谁涨价谁被看见 -->
               <text
                 v-if="lastRaise(q) !== null"
-                class="sh-chip sh-chip--warning tiny sh-num"
+                class="txt-caption sh-chip sh-chip--warning tiny sh-num"
               >
                 {{ $t("request.wasPriced", { p: money(lastRaise(q)!) }) }}
               </text>
               <text
                 v-if="q.merchant.breachCount > 0"
-                class="sh-chip sh-chip--danger tiny sh-num"
+                class="txt-caption sh-chip sh-chip--danger tiny sh-num"
               >
                 {{ $t("request.breach", { n: q.merchant.breachCount }) }}
               </text>
             </view>
-            <sh-rating :value="q.merchant.rating" :size="22"></sh-rating>
+            <!--
+              **没人评过就别显示分数。** 后端对零评价的商家回 `rating: 5.0`，
+              裸显示出来就是「五星好评」—— 而它其实只是个默认值。
+              商家报价这一屏正是买家挑人的地方，一个假的满分会直接影响他选谁。
+            -->
+            <sh-rating
+              v-if="q.merchant.ratingCount > 0"
+              :value="q.merchant.rating"
+              :size="22"
+            ></sh-rating>
+            <text v-else class="txt-caption">{{ $t("merchant.noRating") }}</text>
           </view>
-          <text class="quote__price sh-num">{{ money(q.priceMinor) }}</text>
+          <text class="txt-price quote__price sh-num">{{ money(q.priceMinor) }}</text>
         </view>
 
-        <text class="quote__desc">{{ q.desc }}</text>
+        <text class="txt-caption quote__desc">{{ q.desc }}</text>
 
-        <view class="quote__meta">
+        <view class="quote__meta sh-wrap">
           <text class="sh-chip sh-num">{{ $t("request.minCount", { n: q.minCount }) }}</text>
           <text v-if="shortBy(q) > 0" class="sh-chip sh-chip--warning sh-num">
             {{ $t("request.shortBy", { n: shortBy(q) }) }}
@@ -187,37 +212,37 @@ onShareAppMessage(() => {
         </view>
 
         <view
-          v-if="isInitiator && !q.chosen && request.status !== 'MATCHED'"
-          class="sh-btn sh-btn--soft quote__btn"
+          v-if="isInitiator && !q.chosen && request.status !== 'LOCKED'"
+          class="txt-sub sh-btn sh-btn--soft quote__btn"
           @tap="choose(q)"
         >
           {{ $t("request.choose") }}
         </view>
       </view>
 
-      <sh-empty bare v-if="!request.quotes.length" :text='$t("request.noQuote")'></sh-empty>
+      <sh-empty bare v-if="!request.quotes.length" :pending="!loaded" :failed="failed" @retry='() => load(currentNo)' :text='$t("request.noQuote")'></sh-empty>
 
       <!-- 防加价说明：机制要让用户看见才有用，藏起来等于没有 -->
-      <view class="antihike">
-        <text class="antihike__text">{{ $t("request.antiHike") }}</text>
+      <view class="sh-notice sh-notice--muted antihike">
+        <text class="txt-caption">{{ $t("request.antiHike") }}</text>
       </view>
     </view>
 
     <!-- 已选定报价：+1 的邻居各自二次确认 -->
-    <view v-if="request.status === 'MATCHED'" class="sh-card block matched">
-      <text class="sh-h2">{{ $t("request.matchedTitle") }}</text>
+    <view v-if="request.status === 'LOCKED'" class="sh-card block matched">
+      <text class="txt-title">{{ $t("request.matchedTitle") }}</text>
       <text class="sh-muted nothint">{{ $t("request.matchedHint") }}</text>
-      <view class="matched__row">
-        <text class="matched__price sh-num">{{ money(request.lockedPriceMinor ?? 0) }}</text>
+      <view class="matched__row sh-row">
+        <text class="txt-hero sh-num">{{ money(request.lockedPriceMinor ?? 0) }}</text>
         <text class="sh-chip sh-chip--primary sh-num">
           {{ $t("request.confirmedCount", { n: request.confirmedCount ?? 0, t: request.interestedCount }) }}
         </text>
       </view>
     </view>
 
-    <view class="actionbar">
+    <sh-actionbar :pad="180">
       <view
-        v-if="request.status === 'MATCHED'"
+        v-if="request.status === 'LOCKED'"
         class="sh-btn"
         :class="{ 'is-disabled': request.confirmed }"
         @tap="confirm"
@@ -232,16 +257,13 @@ onShareAppMessage(() => {
       >
         {{ request.interested ? $t("request.joined") : $t("request.join") }}
       </view>
-    </view>
-    <view class="spacer" />
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .head {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .head__avatar {
   width: 84rpx;
@@ -253,21 +275,14 @@ onShareAppMessage(() => {
   font-size: 40rpx;
   flex-shrink: 0;
 }
-.head__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .head__by {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
 .desc {
   display: block;
-  font-size: 26rpx;
   color: var(--sh-ink);
-  line-height: 1.65;
   margin-top: 24rpx;
 }
 .imgs {
@@ -280,97 +295,48 @@ onShareAppMessage(() => {
   height: 150rpx;
   border-radius: 24rpx;
   background: var(--sh-faint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 48rpx;
 }
 .facts {
   margin-top: 24rpx;
 }
 .fact {
-  display: flex;
-  justify-content: space-between;
   padding: 12rpx 0;
 }
-.fact__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.fact__v {
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
-.block {
-  margin-top: 20rpx;
-}
+
 .nothint {
   display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 .members {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
+  gap: 16rpx;
   margin-top: 24rpx;
 }
 .member {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
+  gap: 8rpx;
   background: var(--sh-faint);
   border-radius: 9999px;
   padding: 12rpx 24rpx;
 }
-.member__a {
-  font-size: 26rpx;
-}
-.member__n {
-  font-size: 24rpx;
-  color: var(--sh-ink);
-}
+
 .quote {
   margin-top: 24rpx;
   background: var(--sh-faint);
   border-radius: 32rpx;
-  padding: 26rpx;
+  padding: 28rpx;
 }
 .quote.is-chosen {
   background: var(--sh-primary-tint);
 }
-.quote__head {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-}
-.quote__logo {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 24rpx;
-  background: var(--sh-surface);
-  text-align: center;
-  line-height: 68rpx;
-  font-size: 34rpx;
-  flex-shrink: 0;
-}
-.quote__who {
-  flex: 1;
-  min-width: 0;
-}
+
 /* 标签多的时候让它们换行，而不是把商家名挤成「邻…」——
    名字是这里最该看清的信息，标签可以下一行 */
 .quote__name-row {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8rpx;
   margin-bottom: 8rpx;
 }
 .quote__name {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   /* 名字整体优先占位，不参与压缩 */
   flex: 0 0 auto;
   max-width: 100%;
@@ -379,66 +345,30 @@ onShareAppMessage(() => {
   white-space: nowrap;
 }
 .tiny {
-  padding: 4rpx 14rpx;
-  font-size: 24rpx;
+  padding: 4rpx 16rpx;
   flex-shrink: 0;
 }
 .quote__price {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
   flex-shrink: 0;
 }
 .quote__desc {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
 .quote__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
 .quote__btn {
-  margin-top: 22rpx;
+  margin-top: 24rpx;
   padding-top: 20rpx;
   padding-bottom: 20rpx;
-  font-size: 26rpx;
 }
 .antihike {
   margin-top: 24rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 22rpx 26rpx;
 }
-.antihike__text {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.7;
-}
+
 .matched__row {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-top: 24rpx;
-}
-.matched__price {
-  font-size: 48rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
-.is-disabled {
-  opacity: 0.45;
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.spacer {
-  height: 180rpx;
 }
 </style>

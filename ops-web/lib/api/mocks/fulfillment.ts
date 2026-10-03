@@ -1,10 +1,17 @@
 // 覆盖范围：履约调度（P-5.1）。
+import type { OutOfRangeRule } from "@/lib/types";
 import * as db from "@/lib/mock/db";
 import { MIN_FIRST_WEIGHT_GRAM, MIN_OVERDUE_GRACE_HOURS } from "@/lib/constants";
 import { BATCH_TRANSITIONS } from "@/lib/types";
 import type { FulfillmentApi } from "../contracts/fulfillment";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+/** 与后端 ExpressCompanies 同名（微信 delivery_name） */
+const CARRIER_NAMES: Record<string, string> = {
+  ZTO: "中通快递", YTO: "圆通速递", YD: "韵达速递", STO: "申通快递",
+  JTSD: "极兔速递", JD: "京东快递", DBL: "德邦快递", EMS: "EMS",
+};
 
 export const fulfillmentMock: FulfillmentApi = {
   listArrivalBatches: (q = {}) =>
@@ -25,15 +32,15 @@ export const fulfillmentMock: FulfillmentApi = {
   },
 
   // 分拣只看**已签收**批次：没签收就分拣，等于把责任判定的依据跳过去了
+  // 与后端 PageData 同形 —— 裸数组正是「mock 绿、真后端 data.map 崩」那一类
   listSorting: async (q = {}) => {
     const signed = new Set(db.batches.filter((b) => b.status === "SIGNED").map((b) => b.pickupNo));
-    return wait(
-      db.sorting.filter((r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)),
-    );
+    return wait(db.paginate(db.sorting, q.page, q.size,
+      (r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)));
   },
 
   listRedeemStats: async (q = {}) =>
-    wait(db.redeemStats.filter((r) => db.eqHit(q.pickupNo, r.pickupNo))),
+    wait(db.paginate(db.redeemStats, q.page, q.size, (r) => db.eqHit(q.pickupNo, r.pickupNo))),
 
   getOverdueRule: async () => wait(db.overdueRule),
 
@@ -80,7 +87,8 @@ export const fulfillmentMock: FulfillmentApi = {
     return wait(sh, 350);
   },
 
-  listFreightTemplates: async (q = {}) => wait(db.freightTemplates.filter((t) => db.liveHit(t, q.showArchived))),
+  listFreightTemplates: async (q = {}) =>
+    wait(db.paginate(db.freightTemplates, undefined, 100, (t) => db.liveHit(t, q.showArchived))),
 
   saveFreightTemplate: async (v) => {
     if (!v.name.trim()) fail("模板名称不能为空", "The template name cannot be empty");
@@ -113,6 +121,35 @@ export const fulfillmentMock: FulfillmentApi = {
       () => db.nextNo("FT", db.freightTemplates, 900, "templateNo"),
     );
     return wait(saved, 400);
+  },
+
+  // 模板名里的快递公司名（后端取 ExpressCompanies#nameOf）；替身只认快递100 那八家
+  // 替身按「多数省份一个价、偏远几档加价」造报价，推导规则与后端 FreightDraftServiceImpl#build 同一套
+  draftFreightTemplate: async (v) => {
+    if (!v.origin.trim()) fail("请填发货地址", "Enter the ship-from address");
+    if (v.firstWeightGram < MIN_FIRST_WEIGHT_GRAM) {
+      fail(`首重不得少于 ${MIN_FIRST_WEIGHT_GRAM} 克`, `The first weight cannot be under ${MIN_FIRST_WEIGHT_GRAM} g`);
+    }
+    const far: Record<string, [number, number]> = { 新疆: [2000, 1500], 西藏: [2500, 1800], 青海: [1200, 600], 海南: [1000, 300] };
+    const regions = ["北京", "天津", "河北", "山西", "内蒙古", "辽宁", "吉林", "黑龙江", "上海", "江苏", "浙江", "安徽",
+      "福建", "江西", "山东", "河南", "湖北", "湖南", "广东", "广西", "海南", "重庆", "四川", "贵州", "云南", "西藏",
+      "陕西", "甘肃", "青海", "宁夏", "新疆"];
+    const rows = regions.map((region) => {
+      const [f, a] = far[region] ?? [600, 200];
+      return { region, firstFee: region === "西藏" ? null : f, addFee: region === "西藏" ? null : a };
+    });
+    const baseFirst = 600;
+    const baseAdd = 200;
+    const outOfRange = rows.flatMap((r): OutOfRangeRule[] => {
+      if (r.firstFee === null) return [{ region: r.region, action: "REJECT", surcharge: 0 }];
+      const extra = Math.max(0, r.firstFee - baseFirst) + Math.max(0, (r.addFee ?? 0) - baseAdd);
+      return extra > 0 ? [{ region: r.region, action: "SURCHARGE", surcharge: extra }] : [];
+    });
+    const city = v.origin.replace(/^(.*?(省|自治区))/, "").replace(/(市).*$/, "$1") || v.origin;
+    return wait({
+      name: `${city}发 · ${CARRIER_NAMES[v.carrier] ?? v.carrier}`, firstWeightGram: v.firstWeightGram, firstFee: baseFirst,
+      addWeightGram: v.addWeightGram, addFee: baseAdd, outOfRange, rows, unquoted: 1,
+    }, 800);
   },
 
   archiveFreightTemplate: async (templateNo) => {

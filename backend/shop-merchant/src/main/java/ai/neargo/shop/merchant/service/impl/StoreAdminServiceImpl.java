@@ -1,0 +1,349 @@
+package ai.neargo.shop.merchant.service.impl;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.merchant.dto.StoreVO;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
+import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
+import ai.neargo.shop.merchant.StoreSlugs;
+import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchStoreRole;
+import ai.neargo.shop.merchant.service.StoreAdminService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * 门店管理。写侧此前完全空白 —— 表、实体、门店号生成规则都齐了，
+ * 但除了「激活时建一家默认店」没有任何代码能再建第二家。
+ */
+@Service
+public class StoreAdminServiceImpl implements StoreAdminService {
+
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(StoreAdminServiceImpl.class);
+
+    private final MchStoreMapper storeMapper;
+    private final MchStoreRoleMapper roleMapper;
+    private final MchPaymentMapper paymentMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
+
+    /**
+     * 门店额度的来源（V150 起）。
+     *
+     * <p>此前是一个全局配置 `shop.store.max-per-entity` —— 对所有商家同一个数，
+     * 运营调一次影响所有人。现在按主体的订阅档位给（FREE 1 / PRO 3 / CHAIN 10）。
+     * 那个配置仍然存在，但降级为**订阅行还不存在时的兜底**，判断在
+     * {@link ai.neargo.shop.merchant.service.MerchantPlanService} 里。
+     */
+    private final ai.neargo.shop.merchant.service.MerchantPlanService planService;
+
+    /** 对外链接（V357）：域名只在这一层读配置，端上不拼 */
+    private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
+
+    /**
+     * 停用 / 启用门店要跟着重建社区池 —— 门店状态改完，C 端可见性才真的跟着变。
+     *
+     * <p><b>ObjectProvider 而不是直接注入</b>：直接注入构成真实的构造环
+     * （merchant → StoreShelfPort → MerchantGoodsService → GoodsService → 回 merchant），
+     * Spring 默认禁止循环引用，上下文起不来。手法与 {@code MerchantStoreServiceImpl} 一致。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
+
+    public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+                                 MchPaymentMapper paymentMapper,
+                                 ai.neargo.shop.merchant.service.MerchantPlanService planService,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
+                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
+                                 org.springframework.beans.factory.ObjectProvider<
+                                         ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort) {
+        this.storeShelfPort = storeShelfPort;
+        this.entityMapper = entityMapper;
+        this.storeMapper = storeMapper;
+        this.roleMapper = roleMapper;
+        this.paymentMapper = paymentMapper;
+        this.planService = planService;
+        this.storeLinkService = storeLinkService;
+    }
+
+    @Override
+    public List<StoreVO> list(String merchantNo) {
+        List<MchStore> stores = stores(merchantNo);
+        Set<String> payReady = activePayMerchantNos(merchantNo);
+        Map<String, Long> staffCount = DataScopeContext.executeWithoutScope(() ->
+                        roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
+                                .in(MchStoreRole::getStoreNo,
+                                        stores.isEmpty() ? List.of("") : stores.stream().map(MchStore::getStoreNo).toList())))
+                .stream().collect(Collectors.groupingBy(MchStoreRole::getStoreNo, Collectors.counting()));
+        return stores.stream().map(s -> toVO(s, payReady, staffCount)).toList();
+    }
+
+    @Override
+    @Transactional
+    public StoreVO create(String merchantNo, String name, String address) {
+        if (name == null || name.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 超额直接拒。**不要"建了再说、超了不给用"** ——
+         * 那样商家会看到一家建出来却打不开的店，比拒绝更难解释。
+         *
+         * 额度来自**这个主体的订阅档位**（V150），不再是全局配置。
+         * planService 会锁住订阅行 —— 并发建店时「各自数一下都合法」会双双通过。
+         *
+         * **只数 ACTIVE**：商家自己停掉一家再开一家是合理的。
+         * 这对存量是零行为变化 —— 默认店不能停用（见 setStatus），
+         * 而单店商家的唯一一家就是默认店，所以他的 ACTIVE 数恒等于总数。
+         */
+        planService.requireStoreQuota(merchantNo,
+                () -> (int) stores(merchantNo).stream()
+                        .filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
+        // 数完之后才读列表：第一家店要自动成为默认店，这个判断不能用加锁前的快照
+        List<MchStore> existing = stores(merchantNo);
+
+        MchStore s = new MchStore();
+        s.setEntityNo(merchantNo);
+        s.setStoreNo(BizKey.next(BizKey.STORE));
+        s.setName(name);
+        s.setAddress(address);
+        // 第一家店自动成为默认店；之后新建的都不是 —— 默认标的转移是显式动作
+        s.setIsDefault(existing.isEmpty());
+        s.setStatus(MchStore.ACTIVE);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
+        return toVO(s, activePayMerchantNos(merchantNo), Map.of());
+    }
+
+    @Override
+    @Transactional
+    public StoreVO rename(String merchantNo, String storeNo, String name, String address) {
+        MchStore s = require(merchantNo, storeNo);
+        if (name != null && !name.isBlank()) {
+            s.setName(name);
+        }
+        if (address != null) {
+            s.setAddress(address);
+        }
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
+        return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO setSlug(String merchantNo, String storeNo, String rawSlug) {
+        MchStore s = require(merchantNo, storeNo);
+        String slug = StoreSlugs.normalize(rawSlug);
+        StoreSlugs.require(slug);
+
+        if (slug != null) {
+            /*
+             * 先查是为了给出人话错误（「这个代码被占用了，换一个」）；
+             * **真正兜底的是 uk_mch_store_slug** —— 先查后写必然有竞态。
+             * 排除自己：把代码改成原来那个值不该被当成撞车。
+             */
+            MchStore taken = DataScopeContext.executeWithoutScope(() ->
+                    storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getSlug, slug).last("limit 1")));
+            if (taken != null && !storeNo.equals(taken.getStoreNo())) {
+                throw BizException.of(ErrorCode.STORE_SLUG_TAKEN);
+            }
+        }
+
+        /*
+         * **清空必须走 UpdateWrapper 显式 set，不能用 updateById。**
+         * MyBatis-Plus 默认跳过 null 字段，于是「把代码删掉」那一句 set 根本不会生成 ——
+         * 店主点了保存、接口返回成功、页面回读还是老代码，没有任何报错。
+         * （同一个坑记在 [[mybatis-plus-skips-nulls]]：insert 也跳，
+         * 「这列没有默认值」往往就是传进来是 null。）
+         */
+        DataScopeContext.executeWithoutScope(() -> storeMapper.update(null,
+                Wrappers.<MchStore>lambdaUpdate()
+                        .set(MchStore::getSlug, slug)
+                        .eq(MchStore::getId, s.getId())));
+        s.setSlug(slug);
+        return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO setStatus(String merchantNo, String storeNo, boolean active) {
+        MchStore s = require(merchantNo, storeNo);
+        /*
+         * 平台强制下线（SUSPENDED）商家不能自救：解除只能由平台做（V96）。
+         * 不拦的话，处置就是「商家点两下启用」能绕开的东西。
+         */
+        if (MchStore.SUSPENDED.equals(s.getStatus())) {
+            throw BizException.of(ErrorCode.STORE_SUSPENDED_BY_PLATFORM);
+        }
+        /*
+         * 默认店不能停用：主体必须恰好有一家默认店，停掉之后
+         * 「这个主体的店在哪」没有答案 —— 下单兜底、门店码、分享都依赖它。
+         */
+        if (!active && Boolean.TRUE.equals(s.getIsDefault())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        s.setStatus(active ? MchStore.ACTIVE : MchStore.READONLY);
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
+        /*
+         * ★ 状态改完要重建社区池 —— 否则这次停用对买家**完全无效**。
+         *
+         * C 端可见性的真闸门是 {@code prd_community_pool}，而在 2026-09-29 之前
+         * 门店状态在那条链路上没有任何读者：停用一家店，它的货照样留在池里卖，
+         * 商家在门店管理里看到的却是「已停用」。线上实测停用「虹选鲜果·福田店」后，
+         * 它的 4 件货 × 2859 个社区一行未少。
+         *
+         * 平台强制下线（SUSPENDED）走 {@code StoreShelfPort.platformOffline} 压货架，
+         * 那一半一直是对的 —— 同一个坑只补了一半，商家自助停用这一半漏了。
+         *
+         * 配套的另一半在 {@code MerchantGoodsServiceImpl.storesSelling}：
+         * 它改用 {@code activeStoreNos}，停用的店才不会再被算成「在架卖这件货」。
+         * 只做这里不做那里的话，重建一遍池行会原样再写回来。
+         *
+         * <b>失败不阻塞</b>：状态已经改成功了，池重建失败最多是可见性晚一步
+         * （商家下次上下架会自愈），让它把停用回滚掉是更坏的结果 —— 与范围保存同一条约定。
+         */
+        try {
+            storeShelfPort.getObject().resyncPools(merchantNo);
+        } catch (RuntimeException e) {
+            log.warn("[store] 门店 {} 状态改为 {} 后重建社区池失败，可见性会晚一步自愈",
+                    storeNo, s.getStatus(), e);
+        }
+        return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO setDefault(String merchantNo, String storeNo) {
+        MchStore target = require(merchantNo, storeNo);
+        // 停用的店不能当默认店：默认店是「找不到具体门店时去哪」的答案，
+        // 而这个答案不能是一家已经关门的店
+        if (!MchStore.ACTIVE.equals(target.getStatus())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        DataScopeContext.executeWithoutScope(() -> {
+            for (MchStore s : stores(merchantNo)) {
+                boolean want = s.getStoreNo().equals(storeNo);
+                if (Boolean.TRUE.equals(s.getIsDefault()) != want) {
+                    s.setIsDefault(want);
+                    storeMapper.updateById(s);
+                }
+            }
+            return null;
+        });
+        target.setIsDefault(true);
+        return toVO(target, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO setPayment(String merchantNo, String storeNo, String payMerchantNo) {
+        MchStore s = require(merchantNo, storeNo);
+
+        if (payMerchantNo != null && !payMerchantNo.isBlank()) {
+            /*
+             * 只在**本主体已 ACTIVE 的收款号**里挑。
+             *   别的主体的号 → 钱会打到别人的执照名下
+             *   还没开好的号 → 换过去之后下一单就收不了款
+             * 两种都不是「配置错了」能形容的后果，所以拦在这里而不是提示一下。
+             */
+            if (!activePayMerchantNos(merchantNo).contains(payMerchantNo)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            s.setPayMerchantNo(payMerchantNo);
+        } else {
+            // 传空是合法操作：回到「用主体的默认收款号」，不是清空错误
+            s.setPayMerchantNo(null);
+        }
+        // 留痕：它改变的是钱的去向，出问题时要能回答「什么时候换的」
+        s.setPaymentChangedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
+        return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
+    }
+
+    // ------------------------------------------------------------------ 内部
+
+    private List<MchStore> stores(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getEntityNo, merchantNo)
+                        .orderByDesc(MchStore::getIsDefault)
+                        .orderByAsc(MchStore::getId)));
+    }
+
+    /** 越权保护：门店号对不上主体一律 404，**不要 403** —— 403 等于确认这个号存在。 */
+    private MchStore require(String merchantNo, String storeNo) {
+        return stores(merchantNo).stream()
+                .filter(s -> s.getStoreNo().equals(storeNo))
+                .findFirst()
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    private Set<String> activePayMerchantNos(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
+                .stream()
+                .map(MchPaymentMerchant::getPayMerchantNo)
+                .filter(x -> x != null && !x.isBlank())
+                .collect(Collectors.toSet());
+    }
+
+    private Map<String, Long> staffCountOf(String storeNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                        roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
+                                .eq(MchStoreRole::getStoreNo, storeNo)))
+                .stream().collect(Collectors.groupingBy(MchStoreRole::getStoreNo, Collectors.counting()));
+    }
+
+    private StoreVO toVO(MchStore s, Set<String> activePay, Map<String, Long> staffCount) {
+        /*
+         * payReady 的口径：
+         *   挂了收款号 → 那个号得是 ACTIVE
+         *   没挂       → 主体有任意一个 ACTIVE 的号就行（用默认那个）
+         * 端上照这个布尔显示，别自己去比 —— 比错的表现是"显示能收钱但收不了"。
+         */
+        boolean payReady = s.getPayMerchantNo() == null || s.getPayMerchantNo().isBlank()
+                ? !activePay.isEmpty()
+                : activePay.contains(s.getPayMerchantNo());
+        return new StoreVO(s.getStoreNo(), s.getName(), s.getAddress(),
+                Boolean.TRUE.equals(s.getIsDefault()), s.getStatus(),
+                s.getPayMerchantNo(), payReady,
+                staffCount.getOrDefault(s.getStoreNo(), 0L).intValue(),
+                Boolean.TRUE.equals(s.getPlanSuspended()),
+                s.getRating() == null ? 0 : s.getRating(),
+                s.getRatingCount() == null ? 0 : s.getRatingCount(),
+                s.getBusinessMode(),
+                entitySelfOperated(s.getEntityNo()),
+                s.getSlug(),
+                /*
+                 * 链接里用门店代码，没设过就回落店铺码 —— 与 StoreCodeService.linkCodeOf
+                 * 同一个口径。这里不调它是为了少一次查库：这一行本来就在手上。
+                 */
+                storeLinkService.linkOf(
+                        s.getSlug() != null && !s.getSlug().isBlank() ? s.getSlug() : s.getStoreCode(),
+                        null));
+    }
+
+    /** 主体是不是平台自营（V329）。与 StoreCategoryServiceImpl 免资质同一个判据 */
+    private boolean entitySelfOperated(String entityNo) {
+        if (entityNo == null || entityNo.isBlank()) {
+            return false;
+        }
+        var e = DataScopeContext.executeWithoutScope(() -> entityMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, entityNo)
+                        .last("limit 1")));
+        return e != null && Integer.valueOf(1).equals(e.getSelfOperated());
+    }
+}

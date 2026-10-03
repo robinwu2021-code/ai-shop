@@ -13,19 +13,20 @@ import { useEditableConfig } from "@/lib/use-editable-config";
 import { fmtTime, money } from "@/lib/utils";
 import { MAX_TAX_RATE, MINOR_UNIT } from "@/lib/constants";
 import type { InvoiceRequest, InvoiceStatus } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import type { FinanceCopy } from "./copy";
 
@@ -35,13 +36,12 @@ const useInvoiceStatusMap = (c: FinanceCopy): StatusMap<InvoiceStatus> => ({
   REJECTED: { label: c.ivRejected, tone: "muted" },
 });
 
-export function InvoiceTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean }) {
+export function InvoiceTab({ c, canEdit, canWrite }: { c: FinanceCopy; canEdit: boolean; canWrite: boolean }) {
   const qc = useQueryClient();
   const statusMap = useInvoiceStatusMap(c);
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<InvoiceRequest | null>(null);
   const [serialNo, setSerialNo] = useState("");
   const [reason, setReason] = useState("");
@@ -58,6 +58,17 @@ export function InvoiceTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
   const reject = useMutation({
     mutationFn: () => api.rejectInvoice({ invoiceNo: current!.invoiceNo, reason }),
     onSuccess: () => { done(); notify.success(c.toastIvRejected); },
+  });
+
+  const titleQ = useQuery({ queryKey: ["invoice-title"], queryFn: () => api.getInvoiceTitle() });
+  const { form: titleForm, set: setTitleField, reset: resetTitle } =
+    useEditableConfig(titleQ.data, (d) => ({ ...d }));
+  const saveTitle = useMutation({
+    mutationFn: () => api.saveInvoiceTitle(titleForm!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["invoice-title"] }); resetTitle();
+      notify.success(c.toastItSaved);
+    },
   });
 
   const { form: taxForm, set: setTaxField, reset: resetTax } = useEditableConfig(taxQ.data, (d) => ({
@@ -103,40 +114,89 @@ export function InvoiceTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
 
   return (
     <>
-      <Notice className="mb-3">{c.invoiceNotice}</Notice>
+      <HelpNote className="mb-3">{c.invoiceNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchInvoice}>
         <FilterSelect aria-label={c.filterIvStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }}
           options={statusMap} allLabel={c.filterIvStatusAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(i) => i.invoiceNo}
         empty={c.emptyInvoice}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
+
+      {titleForm && (
+        <ConfigCard
+          className="mt-6"
+          title={c.itTitle}
+          readOnly={!canWrite && <ReadOnlyNotice what={c.itTitle} perm="finance:invoice:verify" className="mb-3" />}
+          notice={c.itNotice}
+          onSave={() => saveTitle.mutate()}
+          saving={saveTitle.isPending}
+          canSave={canWrite}
+        >
+          {/*
+            五项全空 = 还没配过（后端默认就是全空，不编假数据）。
+            显式说一句，否则一屏空输入框读起来像「加载失败」。
+          */}
+          {!titleQ.data?.companyName && !titleQ.data?.taxNo && (
+            <p className="txt-caption text-muted-foreground">{c.itUnset}</p>
+          )}
+          <div className="space-y-1">
+            <Label htmlFor="it-company" required>{c.itCompany}</Label>
+            <Input id="it-company" className="w-full" disabled={!canWrite}
+              value={titleForm.companyName} onChange={(e) => setTitleField("companyName", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="it-tax-no" required>{c.itTaxNo}</Label>
+            <Input id="it-tax-no" className="w-full" disabled={!canWrite}
+              value={titleForm.taxNo} onChange={(e) => setTitleField("taxNo", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="it-address">{c.itAddress}</Label>
+            <Input id="it-address" className="w-full" disabled={!canWrite}
+              value={titleForm.address} onChange={(e) => setTitleField("address", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="it-phone">{c.itPhone}</Label>
+            <Input id="it-phone" className="w-full" disabled={!canWrite}
+              value={titleForm.phone} onChange={(e) => setTitleField("phone", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="it-bank">{c.itBank}</Label>
+            <Input id="it-bank" className="w-full" disabled={!canWrite}
+              value={titleForm.bankAccount} onChange={(e) => setTitleField("bankAccount", e.target.value)} />
+          </div>
+        </ConfigCard>
+      )}
 
       {taxForm && (
         <ConfigCard
           className="mt-6"
           title={c.taxTitle}
-          readOnly={!canEdit && <ReadOnlyNotice what={c.taxReadOnlyWhat} perm="finance:invoice:read" className="mb-3" />}
+          readOnly={!canWrite && <ReadOnlyNotice what={c.taxReadOnlyWhat} perm="finance:invoice:verify" className="mb-3" />}
           notice={c.taxNotice}
           onSave={() => saveTax.mutate()}
           saving={saveTax.isPending}
-          canSave={canEdit}
+          canSave={canWrite}
           updatedAt={taxQ.data?.updatedAt}
           updatedBy={taxQ.data?.updatedBy}
         >
           <div className="space-y-1">
             <Label htmlFor="tax-threshold" required>{c.fieldThreshold}</Label>
-            <Input id="tax-threshold" className="w-full" disabled={!canEdit} value={taxForm.threshold}
+            <Input id="tax-threshold" className="w-full" disabled={!canWrite} value={taxForm.threshold}
               onChange={(e) => setTaxField("threshold", e.target.value)} />
             <p className="txt-caption text-muted-foreground">{c.thresholdHint}</p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="tax-rate" required>{c.fieldTaxRate}</Label>
-            <Input id="tax-rate" className="w-full" disabled={!canEdit} value={taxForm.rate}
+            <Input id="tax-rate" className="w-full" disabled={!canWrite} value={taxForm.rate}
               onChange={(e) => setTaxField("rate", e.target.value)} />
             <p className="txt-caption text-muted-foreground">{fill(c.taxRateHint, { n: MAX_TAX_RATE / 100 })}</p>
           </div>
@@ -171,8 +231,8 @@ export function InvoiceTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean })
                 <Field className="mb-3" label={c.colIvAmount}>{money(current.amount)}</Field>
                 <Field className="mb-3" label={c.colSettled}>{money(current.settledAmount)}</Field>
               </FieldGrid>
-              {overSettled && <p className="txt-caption text-danger">{c.warnOverSettled}</p>}
-              {missingTaxNo && <p className="txt-caption text-danger">{c.warnMissingTaxNo}</p>}
+              {overSettled && <p className="txt-caption text-destructive">{c.warnOverSettled}</p>}
+              {missingTaxNo && <p className="txt-caption text-destructive">{c.warnMissingTaxNo}</p>}
             </DrawerSection>
 
             {pending && (

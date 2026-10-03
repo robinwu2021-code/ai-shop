@@ -1,353 +1,133 @@
 <script setup lang="ts">
-// 营销活动（B-11.8）。四类活动一套模型：店铺券 / 满减 / 限时特价 / 买赠。
-//
-// 为什么合成一个页面而不是四个：它们在数据上只差「触发条件 + 优惠方式」。
-// 各做一套的结果是四份几乎一样的增删改查，以及四份互不知情的叠加规则 ——
-// 而叠加恰恰是最容易算错、也最容易被用户拿来薅的地方。
-//
-// 三条护栏（都在 mock/后端强制，不靠页面自觉）：
-//   · 店铺券必须设发放总量 —— 不设上限等于开着口子发钱
-//   · 限时特价必须选商品 —— 全店改价那叫调价，走商品编辑
-//   · 已结束的活动不能复活、不能改 —— 时段已过，打开只会立刻又结束
-import { computed, ref } from "vue";
+/*
+ * 营销入口（原型 s01 · TDD-营销域-详细设计 §3.2）。
+ *
+ * 顶部两个数回答「营销花了多少、带来多少」；下面每一行是一个去处，右侧一句现状。
+ * **只有需要处理的用黄标**（集单待处理、团差人、求团待报价）—— 其余是数字，
+ * 满屏黄标等于没有黄标。
+ *
+ * 集单排在团前：它每天一期、每天要看；团是偶尔做一次的拉新（ADR-024）。
+ * 数字全部现算（`/biz/marketing/summary`），不存计数。
+ */
+import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { money, toMinor } from "@shared/utils/money";
-import { monthDay } from "@shared/utils/datetime";
-import type { CampaignType, Goods, MarketingCampaign } from "@shared/types";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
+import { money } from "@shared/utils/money";
+import type { MarketingSummary } from "@shared/types";
 
-const { t } = useI18n();
-
-const TYPES: CampaignType[] = ["COUPON", "FULL_CUT", "FLASH", "BUY_GIFT"];
-const DAY = 86400_000;
-
-const list = ref<MarketingCampaign[]>([]);
-const goods = ref<Goods[]>([]);
-const editing = ref(false);
-const saving = ref(false);
-
-const form = ref({
-  campaignNo: "",
-  type: "FULL_CUT" as CampaignType,
-  name: "",
-  days: "7",
-  threshold: "",
-  discount: "",
-  flashPrice: "",
-  buyN: "2",
-  giftM: "1",
-  totalCount: "100",
-  goodsNos: [] as string[],
-});
-
-/** 每类活动只显示自己用得上的字段 —— 一个表单塞满 8 个输入框没人填得完 */
-const need = computed(() => ({
-  threshold: form.value.type === "COUPON" || form.value.type === "FULL_CUT",
-  discount: form.value.type === "COUPON" || form.value.type === "FULL_CUT",
-  flashPrice: form.value.type === "FLASH",
-  buyGift: form.value.type === "BUY_GIFT",
-  total: form.value.type === "COUPON",
-  goods: form.value.type === "FLASH" || form.value.type === "BUY_GIFT",
-}));
+const merchant = useMerchantStore();
+const sum = ref<MarketingSummary | null>(null);
+const failed = ref(false);
 
 async function load() {
-  const [cs, gs] = await Promise.all([api.mCampaignList(), api.mGoodsList({ size: 100 })]);
-  list.value = cs;
-  goods.value = gs.records;
-}
-
-function startNew() {
-  editing.value = true;
-  form.value = {
-    campaignNo: "",
-    type: "FULL_CUT",
-    name: "",
-    days: "7",
-    threshold: "",
-    discount: "",
-    flashPrice: "",
-    buyN: "2",
-    giftM: "1",
-    totalCount: "100",
-    goodsNos: [],
-  };
-}
-
-function toggleGoods(goodsNo: string) {
-  const i = form.value.goodsNos.indexOf(goodsNo);
-  if (i >= 0) form.value.goodsNos.splice(i, 1);
-  else form.value.goodsNos.push(goodsNo);
-}
-
-async function save() {
-  if (!form.value.name.trim()) {
-    uni.showToast({ title: t("marketing.needName"), icon: "none" });
-    return;
-  }
-  if (saving.value) return;
-  saving.value = true;
   try {
-    const startAt = Date.now();
-    await api.mSaveCampaign({
-      campaignNo: form.value.campaignNo || undefined,
-      type: form.value.type,
-      name: form.value.name.trim(),
-      startAt,
-      endAt: startAt + (Number(form.value.days) || 1) * DAY,
-      thresholdMinor: need.value.threshold ? toMinor(form.value.threshold || "0") : undefined,
-      discountMinor: need.value.discount ? toMinor(form.value.discount || "0") : undefined,
-      flashPriceMinor: need.value.flashPrice ? toMinor(form.value.flashPrice || "0") : undefined,
-      buyN: need.value.buyGift ? Number(form.value.buyN) : undefined,
-      giftM: need.value.buyGift ? Number(form.value.giftM) : undefined,
-      totalCount: need.value.total ? Number(form.value.totalCount) : undefined,
-      goodsNos: form.value.goodsNos,
-    });
-    editing.value = false;
-    uni.showToast({ title: t("common.saved"), icon: "none" });
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    saving.value = false;
+    sum.value = await api.mMarketingSummary();
+    failed.value = false;
+  } catch {
+    failed.value = true;
   }
 }
 
-async function toggle(c: MarketingCampaign) {
-  try {
-    await api.mToggleCampaign(c.campaignNo, c.status !== "RUNNING");
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
+function hhmm(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-/** 一句话说清这个活动是什么，比让店主自己看四个字段强 */
-function summary(c: MarketingCampaign): string {
-  if (c.type === "COUPON") {
-    return t("marketing.sumCoupon", {
-      a: money(c.thresholdMinor ?? 0),
-      b: money(c.discountMinor ?? 0),
-    });
-  }
-  if (c.type === "FULL_CUT") {
-    return t("marketing.sumFullCut", {
-      a: money(c.thresholdMinor ?? 0),
-      b: money(c.discountMinor ?? 0),
-    });
-  }
-  if (c.type === "FLASH") {
-    return t("marketing.sumFlash", { a: money(c.flashPriceMinor ?? 0), n: c.goodsNos.length });
-  }
-  return t("marketing.sumBuyGift", { n: c.buyN ?? 0, m: c.giftM ?? 0 });
+function go(url: string) {
+  uni.navigateTo({ url });
 }
 
-onShow(load);
+onShow(async () => {
+  // 判权要先有门店与角色：冷启动直接进这一页时它们还没到
+  await merchant.ensureStores().catch(() => null);
+  if (merchant.can("biz:campaign")) void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="marketing.title">
-    <view class="head">
-      <text class="sh-h1">{{ $t("marketing.title") }}</text>
-      <text v-if="!editing" class="link" @tap="startNew">{{ $t("marketing.create") }}</text>
+  <sh-scaffold title-key="marketing.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
+    <!-- 与工作台「今日」同一块读数（sh-stat panel） -->
+    <view v-if="sum" class="sh-card">
+      <sh-stat panel :items="[
+        { value: money(sum.monthDiscountMinor), label: String($t('marketing.monthDiscount')) },
+        { value: sum.monthOrders, label: String($t('marketing.monthOrders')) },
+      ]"></sh-stat>
     </view>
 
-    <!-- 新建表单 -->
-    <view v-if="editing" class="sh-card mt">
-      <view class="field">
-        <text class="field__label">{{ $t("marketing.type") }}</text>
-        <view class="chips">
-          <text
-            v-for="ty in TYPES"
-            :key="ty"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': form.type === ty }"
-            @tap="form.type = ty"
-          >
-            {{ $t(`marketing.type${ty}`) }}
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.activities)">
+        <text class="txt-body">{{ $t("marketing.activities") }}</text>
+        <view class="sh-row">
+          <text v-if="sum" class="sh-muted sh-num">{{ $t("marketing.running", { n: sum.activityRunning }) }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.coupons)">
+        <text class="txt-body">{{ $t("marketing.coupons") }}</text>
+        <view class="sh-row">
+          <text v-if="sum" class="sh-muted sh-num">{{ $t("marketing.issuing", { n: sum.couponIssuing }) }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.periods)">
+        <text class="txt-body">{{ $t("marketing.periods") }}</text>
+        <view class="sh-row">
+          <text v-if="sum && sum.periodsShort" class="sh-chip sh-chip--warning">
+            {{ $t("marketing.periodsShort", { n: sum.periodsShort }) }}
           </text>
-        </view>
-        <text class="sh-muted hint">{{ $t(`marketing.desc${form.type}`) }}</text>
-      </view>
-
-      <view class="field">
-        <text class="field__label">{{ $t("marketing.name") }}</text>
-        <input v-model="form.name" class="field__input" :placeholder="$t('marketing.namePh')" />
-      </view>
-
-      <view class="field">
-        <text class="field__label">{{ $t("marketing.days") }}</text>
-        <input v-model="form.days" class="field__input sh-num" type="number" />
-      </view>
-
-      <view v-if="need.threshold" class="field">
-        <text class="field__label">{{ $t("marketing.threshold") }}</text>
-        <input v-model="form.threshold" class="field__input sh-num" type="digit" />
-      </view>
-      <view v-if="need.discount" class="field">
-        <text class="field__label">{{ $t("marketing.discount") }}</text>
-        <input v-model="form.discount" class="field__input sh-num" type="digit" />
-      </view>
-      <view v-if="need.flashPrice" class="field">
-        <text class="field__label">{{ $t("marketing.flashPrice") }}</text>
-        <input v-model="form.flashPrice" class="field__input sh-num" type="digit" />
-      </view>
-      <view v-if="need.buyGift" class="field">
-        <text class="field__label">{{ $t("marketing.buyGift") }}</text>
-        <view class="row">
-          <input v-model="form.buyN" class="field__input sh-num flex1" type="number" />
-          <text class="sh-muted">{{ $t("marketing.buyGiftMid") }}</text>
-          <input v-model="form.giftM" class="field__input sh-num flex1" type="number" />
-        </view>
-      </view>
-      <view v-if="need.total" class="field">
-        <text class="field__label">{{ $t("marketing.totalCount") }}</text>
-        <input v-model="form.totalCount" class="field__input sh-num" type="number" />
-        <text class="sh-muted hint">{{ $t("marketing.totalHint") }}</text>
-      </view>
-
-      <view v-if="need.goods" class="field">
-        <text class="field__label">{{ $t("marketing.goods") }}</text>
-        <view class="chips">
-          <text
-            v-for="g in goods"
-            :key="g.goodsNo"
-            class="sh-chip"
-            :class="{ 'sh-chip--primary': form.goodsNos.includes(g.goodsNo) }"
-            @tap="toggleGoods(g.goodsNo)"
-          >
-            {{ g.title }}
+          <text v-else-if="sum && sum.periodTodayCutoffAt" class="sh-muted sh-num">
+            {{ $t("marketing.periodToday", { n: sum.periodTodayQty, t: hhmm(sum.periodTodayCutoffAt) }) }}
           </text>
+          <text v-else-if="sum" class="sh-muted">{{ $t("marketing.periodNone") }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
-
-      <view class="btns">
-        <text class="btn btn--ghost" @tap="editing = false">{{ $t("common.cancel") }}</text>
-        <text class="btn" @tap="save">{{ $t("common.save") }}</text>
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.groups)">
+        <text class="txt-body">{{ $t("marketing.groups") }}</text>
+        <view class="sh-row">
+          <text v-if="sum && sum.groupsShort" class="sh-chip sh-chip--warning">
+            {{ $t("marketing.groupsShort", { n: sum.groupsShort }) }}
+          </text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
+      <!--
+        会员（名单 → 标签 / 人群 / 发消息）。**此前整个 App 没有一处链进会员页** ——
+        会员、标签详情、人群详情、给会员发消息四页只在彼此之间互链，上线两批、真机上才发现点不到。
+        会员是 biz:customer，营销页是 biz:campaign：没有会员权限的人不显示这一行，免得点进去是「无权访问」。
+      -->
+      <view v-if="merchant.can('biz:customer')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.customers)">
+        <text class="txt-body">{{ $t("marketing.members") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!-- 发出去的（原型 s01 加的一行 → m19）：消息与券的效果回看 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.reachTasks)">
+        <text class="txt-body">{{ $t("marketing.reachTasks") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
-    <!-- 活动列表 -->
-    <sh-empty v-if="!list.length && !editing" :text='$t("marketing.empty")'></sh-empty>
-
-    <view v-for="c in list" :key="c.campaignNo" class="sh-card item">
-      <view class="item__head">
-        <text class="item__name">{{ c.name }}</text>
-        <text
-          class="sh-chip"
-          :class="{
-            'sh-chip--primary': c.status === 'RUNNING',
-            'sh-chip--warning': c.status === 'PAUSED',
-          }"
-        >
-          {{ $t(`marketing.status${c.status}`) }}
-        </text>
+    <view class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.platformActivities)">
+        <text class="txt-body">{{ $t("marketing.platform") }}</text>
+        <view class="sh-row">
+          <text v-if="sum && sum.enrollable" class="txt-body sh-muted sh-num">
+            {{ $t("marketing.enrollable", { n: sum.enrollable }) }}
+          </text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
       </view>
-      <text class="sh-muted item__sum">{{ summary(c) }}</text>
-      <view class="item__meta">
-        <text class="sh-muted sh-num">{{ monthDay(c.startAt) }} – {{ monthDay(c.endAt) }}</text>
-        <text v-if="c.type === 'COUPON'" class="sh-muted sh-num">
-          {{ $t("marketing.taken", { a: c.takenCount ?? 0, b: c.totalCount ?? 0 }) }}
-        </text>
-        <text class="sh-muted sh-num">{{ $t("marketing.used", { n: c.usedCount }) }}</text>
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.quotes)">
+        <text class="txt-body">{{ $t("marketing.quotes") }}</text>
+        <view class="sh-row">
+          <text v-if="sum && sum.quotesPending" class="sh-chip sh-chip--warning">
+            {{ $t("marketing.quotesPending", { n: sum.quotesPending }) }}
+          </text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
       </view>
-      <text v-if="c.status !== 'ENDED'" class="link act" @tap="toggle(c)">
-        {{ c.status === "RUNNING" ? $t("marketing.pause") : $t("marketing.resume") }}
-      </text>
     </view>
-
-    <text class="tip">{{ $t("marketing.stackHint") }}</text>
   </sh-scaffold>
 </template>
-
-<style scoped>
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.mt {
-  margin-top: 24rpx;
-}
-.link {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-primary);
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-.flex1 {
-  flex: 1;
-}
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-.chips .sh-chip {
-  font-size: 24rpx;
-  padding: 14rpx 24rpx;
-}
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  line-height: 1.6;
-}
-.btns {
-  display: flex;
-  gap: 16rpx;
-}
-.btn {
-  flex: 1;
-  text-align: center;
-  padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
-}
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
-.item {
-  margin-top: 14rpx;
-}
-.item__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
-.item__name {
-  flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
-.item__sum {
-  display: block;
-  margin-top: 10rpx;
-}
-.item__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20rpx;
-  margin-top: 16rpx;
-}
-.act {
-  display: inline-block;
-  margin-top: 20rpx;
-}
-.tip {
-  display: block;
-  margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-}
-</style>

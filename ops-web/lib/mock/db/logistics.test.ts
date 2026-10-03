@@ -120,7 +120,7 @@ describe("运费模板与超区（P-5.2.3）", () => {
     expect(freightTemplates.length).toBe(before + 1);
     expect(t.updatedBy).toBe("admin");
     // 真落库：重新读一次能找到（伪实现会在这里露馅）
-    expect((await fulfillmentMock.listFreightTemplates()).some((x) => x.templateNo === t.templateNo)).toBe(true);
+    expect((await fulfillmentMock.listFreightTemplates()).records.some((x) => x.templateNo === t.templateNo)).toBe(true);
   });
 
   it("改已有模板是更新而不是新增", async () => {
@@ -140,13 +140,13 @@ describe("运费模板与超区（P-5.2.3）", () => {
     const t = freightTemplates.find((x) => !x.isDefault)!;
     await fulfillmentMock.archiveFreightTemplate(t.templateNo);
 
-    const live = await fulfillmentMock.listFreightTemplates();
+    const live = (await fulfillmentMock.listFreightTemplates()).records;
     expect(live.some((x) => x.templateNo === t.templateNo)).toBe(false);
 
-    const all = await fulfillmentMock.listFreightTemplates({ showArchived: true });
+    const all = (await fulfillmentMock.listFreightTemplates({ showArchived: true })).records;
     expect(all.some((x) => x.templateNo === t.templateNo)).toBe(true);
 
     await fulfillmentMock.unarchiveFreightTemplate(t.templateNo);
-    expect((await fulfillmentMock.listFreightTemplates()).some((x) => x.templateNo === t.templateNo)).toBe(true);
+    expect((await fulfillmentMock.listFreightTemplates()).records.some((x) => x.templateNo === t.templateNo)).toBe(true);
   });
 });

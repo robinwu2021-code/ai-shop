@@ -9,21 +9,40 @@ import { currentLang } from "@shared/utils/locale";
 import { currentCurrency } from "@shared/utils/money";
 import { isoDate, todayAtLocal } from "@shared/utils/datetime";
 import type {
+  CouponIssueBatch,
+  MyMembership,
+  StoreActivity,
+  Member,
+  MerchantCoupon,
+  MemberSegment,
+  InvoiceRequest,
   OrderItem,
+  Region,
   ServiceScope,
   MerchantApplyReq,
+  MerchantApplyStatus,
   SpecTemplate,
   PickupPoint,
   DeliveryRule,
   MarketingCampaign,
   MerchantProfile,
+  MerchantStaff,
+  StaffLog,
+  MerchantRole,
+  PaymentApplyment,
+  Entity,
+  Qualification,
+  Store,
+  StoreCategory,
   StoreProfile,
   Address,
   Message,
   PointRecord,
+  AppointmentDaySlots,
   AppointmentSlot,
   CartItem,
   Community,
+  CommunityApply,
   Coupon,
   CurrencyCode,
   Goods,
@@ -92,8 +111,8 @@ function todayCutoff(): number {
 }
 
 /** 未来 N 天的预约时段 */
-function buildSlots(times: string[]): AppointmentSlot[] {
-  const out: AppointmentSlot[] = [];
+function buildSlots(times: string[]): AppointmentDaySlots[] {
+  const out: AppointmentDaySlots[] = [];
   for (let i = 1; i <= TRADE_RULES.appointmentWindowDays; i += 1) {
     out.push({
       date: isoDate(Date.now() + i * DAY),
@@ -160,8 +179,26 @@ export function toGoods(seed: GoodsSeed): Goods {
   return {
     ...seed,
     merchant: merchantBrief(seed.merchantNo),
+    /*
+     * **提供这件货的门店**（2026-09-30 门店化）。mock 里给一个与主体名**明显不同**的店名 ——
+     * 真后端上默认店的店名恰好等于主体名，替身也那样的话，
+     * 「落款印的是门店还是主体」这件事在 mock 下一眼看不出，
+     * 而那正是这一批要改的东西。
+     */
+    store: {
+      storeNo: `ST${seed.merchantNo}`,
+      storeName: `${pick(merchantSeeds.find((m) => m.merchantNo === seed.merchantNo)?.name
+        ?? merchantSeeds[0]!.name)}·门店`,
+    },
     title: pick(seed.title),
     subtitle: pick(seed.subtitle),
+    /*
+     * 三语原文照发 —— **mock 也要给**：编辑页拿不到它就只能回填当前语言那一格，
+     * 而保存是整份覆盖，于是「用中文改一次，英文与阿语就没了」。
+     * mock 里不给的话，这个故障只会在连真后端时出现。
+     */
+    titleI18n: { ...seed.title },
+    subtitleI18n: { ...seed.subtitle },
     price: priceIn(seed.priceByMarket, seed.price)!,
     // 划线价是**派生展示值**（用来标折扣），不是定价，跟着实售价按汇率走即可
     originPrice: seed.originPrice ? Math.round(seed.originPrice * FX[currentCurrency()]) : undefined,
@@ -219,6 +256,11 @@ interface MerchantSeed {
   openHours?: string;
   joinedAt: number;
   tags: I18nText[];
+  /**
+   * 已停业。**扫码进店的老客最需要看见的就是这一条** ——
+   * 不给这个字段的话 mock 侧恒为 false，「已停业」那条分支永远走不到。
+   */
+  closed?: boolean;
 }
 
 const merchantSeeds: MerchantSeed[] = [
@@ -231,7 +273,9 @@ const merchantSeeds: MerchantSeed[] = [
     distanceFromCM001: 0,
     name: t("邻里优选自营", "Neighbourly Select", "نيبرلي المختارة"),
     logo: "🏪",
-    type: "PLATFORM",
+    // 「平台自营」不是主体类型（ADR-010）—— 自营的主体也是个企业。
+  // 一期没有真实自营商家，演示数据按企业处理
+  type: "ENTERPRISE",
     desc: t(
       "平台自营，日用百货与卡券由平台直采直供",
       "Platform-operated. Household goods and cards sourced directly.",
@@ -275,7 +319,7 @@ const merchantSeeds: MerchantSeed[] = [
     breachCount: 1,
     name: t("邻里家政", "Neighbourly Home Care", "خدمات الجوار المنزلية"),
     logo: "🧰",
-    type: "COMPANY",
+    type: "ENTERPRISE",
     desc: t(
       "持证家政团队，家电清洗与保洁上门服务",
       "Certified home-care team. Appliance cleaning and housekeeping.",
@@ -312,20 +356,39 @@ const merchantSeeds: MerchantSeed[] = [
   },
 ];
 
+/** 评分的时间半衰期（天）。**必须与后端 `RATING_HALF_LIFE_DAYS` 一致** */
+const RATING_HALF_LIFE_DAYS = 180;
+
 /**
- * 商家评分 = 消费者评价均分 × 0.8 + 订单量得分 × 0.2。
- * 只按评价算的话，新商家一条五星就能顶满；把订单量按对数折算进来，
- * 让「卖得多且评价好」才拿得到高分，也避免刷单少量评价就冲顶。
- * ⚠️ 真实权重要业务定，这里是可跑通的占位算法 —— 见 TDD 待办。
+ * 商家评分 = 已通过审核的评价的**按时间加权均分**（B4，2026-08-14 拍板）。
+ * 与后端 `ReviewServiceImpl.aggregate()` 同一口径 —— 公式变了要两处一起改，
+ * 否则 mock 下一个分、真机上另一个分，联调时会去查「为什么评分算错了」，
+ * 而两边都没错，只是各写各的（这里此前就发生过一次：mock 实现了
+ * 「均分 ×0.8 + 订单量对数 ×0.2」，而后端从来没有实现过它）。
+ *
+ * <b>权重 = 0.5 ^ (天数 / 180)</b>：半年前的一条评价只顶今天一条的一半。
+ * 理由见后端那份注释 —— 纯算术平均下，一家店的分是它历史的平均而不是
+ * 它现在的样子；老店换了人、变了品质，分也几乎不动。
+ *
+ * **条数不加权**（`ratingCount` 是原始条数）：「126 条评价」是一个事实，
+ * 把它也衰减成「87.3 条」没有任何人能理解。
+ *
+ * 没有评价时返回 **0 分 0 条**，不是凭空给 4.8：端上按 `ratingCount === 0`
+ * 显示「暂无评价」—— 一家没人评过的店和一家 0 分的店，对买家是相反的信号。
  */
 function computeRating(merchantNo: string): { rating: number; ratingCount: number } {
   const rs = db.reviews.filter((r) => r.merchantNo === merchantNo);
-  const seed = merchantSeeds.find((m) => m.merchantNo === merchantNo);
-  if (!rs.length) return { rating: seed?.verified ? 4.8 : 4.5, ratingCount: 0 };
-  const avg = rs.reduce((s, r) => s + r.rating, 0) / rs.length;
-  const volume = Math.min(1, Math.log10((seed?.salesCount ?? 0) + 1) / 4); // 万单封顶
-  const score = avg * 0.8 + (3 + volume * 2) * 0.2;
-  return { rating: Math.round(Math.min(5, score) * 10) / 10, ratingCount: rs.length };
+  if (!rs.length) return { rating: 0, ratingCount: 0 };
+  const now = Date.now();
+  let weighted = 0;
+  let weights = 0;
+  for (const r of rs) {
+    const days = Math.max(0, (now - r.createdAt) / 86_400_000);
+    const w = Math.pow(0.5, days / RATING_HALF_LIFE_DAYS);
+    weighted += w * r.rating;
+    weights += w;
+  }
+  return { rating: Math.round((weighted / weights) * 10) / 10, ratingCount: rs.length };
 }
 
 export function merchantBrief(merchantNo: string): MerchantBrief {
@@ -335,6 +398,7 @@ export function merchantBrief(merchantNo: string): MerchantBrief {
     name: pick(seed.name),
     logo: seed.logo,
     rating: computeRating(seed.merchantNo).rating,
+    ratingCount: computeRating(seed.merchantNo).ratingCount,
     verified: seed.verified,
     breachCount: seed.breachCount,
   };
@@ -356,6 +420,8 @@ export function toMerchant(merchantNo: string): Merchant {
     ratingCount,
     salesCount: seed.salesCount,
     goodsCount: goodsSeeds.filter((g) => g.merchantNo === merchantNo).length,
+    // 收藏人数：mock 里没有跨用户的收藏表，给 0 —— 0 时端上不显示，与真后端「还没人收藏」表现一致
+    favoriteCount: 0,
     address: seed.address ? pick(seed.address) : undefined,
     openHours: seed.openHours,
     joinedAt: seed.joinedAt,
@@ -383,6 +449,12 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 生鲜
   {
     goodsNo: "G001",
+    /* 商品参数：买家详情页的「事实区」要显示它 —— 种子里不给的话那一段永远是空的，
+       而人是照着 mock 判断功能做没做的 */
+    params: [
+      { dimNo: "SD_ORIGIN_F", name: "产地", code: "ORGCN", label: "山东" },
+      { dimNo: "SD_SHELF_LIFE", name: "保质期", code: "SL7D", label: "7 天" },
+    ],
     points: 30,
     merchantNo: "M002",
     title: t("山东烟台红富士苹果", "Yantai Fuji Apples", "تفاح فوجي من يانتاي"),
@@ -390,7 +462,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🍎",
     images: ["🍎"],
     type: CATEGORY_TYPE.FRESH,
-    categoryNo: "C_FRUIT",
+    categoryNo: "CAT120",
     price: 2980,
     originPrice: 3980,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.DELIVERY],
@@ -418,7 +490,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🥬",
     images: ["🥬"],
     type: CATEGORY_TYPE.FRESH,
-    categoryNo: "C_VEG",
+    categoryNo: "CAT110",
     price: 1280,
     // 邻里自提：这条链路（ADR-005）此前**没有任何种子商品支持**，
     // 于是「送到发起人家里」整条分支从未被验证过 —— 由 mock-coverage 体检查出。
@@ -443,8 +515,8 @@ const goodsSeeds: GoodsSeed[] = [
     subtitle: t("低泡易漂 · 两种香型", "Low suds · two scents", "رغوة قليلة · رائحتان"),
     cover: "🧴",
     images: ["🧴"],
-    type: CATEGORY_TYPE.GOODS,
-    categoryNo: "C_CLEAN",
+    type: CATEGORY_TYPE.NORMAL,
+    categoryNo: "CAT210",
     price: 2990,
     originPrice: 3990,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.EXPRESS],
@@ -473,8 +545,8 @@ const goodsSeeds: GoodsSeed[] = [
     subtitle: t("整箱 24 包 · 家庭装", "Case of 24 · family pack", "كرتون ٢٤ · عبوة عائلية"),
     cover: "🧻",
     images: ["🧻"],
-    type: CATEGORY_TYPE.GOODS,
-    categoryNo: "C_PAPER",
+    type: CATEGORY_TYPE.NORMAL,
+    categoryNo: "CAT210",
     price: 3990,
     originPrice: 5990,
     fulfillments: [FULFILLMENT.PICKUP, FULFILLMENT.EXPRESS],
@@ -499,7 +571,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "❄️",
     images: ["❄️"],
     type: CATEGORY_TYPE.SERVICE,
-    categoryNo: "C_HOME",
+    categoryNo: "CAT310",
     price: 12800,
     originPrice: 19800,
     fulfillments: [FULFILLMENT.APPOINTMENT],
@@ -525,7 +597,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "💈",
     images: ["💈"],
     type: CATEGORY_TYPE.SERVICE,
-    categoryNo: "C_BEAUTY",
+    categoryNo: "CAT340",
     price: 2900,
     originPrice: 5800,
     fulfillments: [FULFILLMENT.STORE_VERIFY],
@@ -547,7 +619,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🎬",
     images: ["🎬"],
     type: CATEGORY_TYPE.VIRTUAL,
-    categoryNo: "C_DIGITAL",
+    categoryNo: "",
     price: 1500,
     originPrice: 2500,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -577,7 +649,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "💳",
     images: ["💳"],
     type: CATEGORY_TYPE.CARD,
-    categoryNo: "C_CARD",
+    categoryNo: "",
     price: 20000,
     originPrice: 22000,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -597,7 +669,7 @@ const goodsSeeds: GoodsSeed[] = [
     cover: "🎟️",
     images: ["🎟️"],
     type: CATEGORY_TYPE.CARD,
-    categoryNo: "C_CARD",
+    categoryNo: "",
     price: 11900,
     originPrice: 14500,
     fulfillments: [FULFILLMENT.INSTANT],
@@ -627,16 +699,51 @@ interface CommunitySeed {
   communityNo: string;
   /** 所属城市。全市范围的商家靠它判定可达 */
   cityCode: string;
+  /** 所属街道/镇（9 位）。商家「按街道看聚落」靠它分组 */
+  regionCode?: string;
+  /** ESTATE 小区 / VILLAGE 村 / BUILDING 楼栋 */
+  kind?: string;
+  /** 楼栋挂的小区/园区。为空 = 顶层聚落 */
+  parentNo?: string;
   name: I18nText;
   address: I18nText;
   distance: number;
   pickups: PickupSeed[];
 }
 
+/**
+ * 区划树。**只给一条路径挖到底**（浙江 → 杭州 → 西湖/上城 → 街道），
+ * 其余省份只到市级 —— mock 要证明的是「逐级能点下去、到叶子会停」，
+ * 不是复刻 4.4 万行国标数据。真实数据在 sys_region（V31 灌的）。
+ */
+const regionSeeds: Region[] = [
+  { regionCode: "33", level: "PROVINCE", name: "浙江省", enabled: true, hasChild: true },
+  { regionCode: "31", level: "PROVINCE", name: "上海市", enabled: true, hasChild: true },
+  { regionCode: "3301", parentCode: "33", level: "CITY", name: "杭州市", enabled: true, hasChild: true },
+  { regionCode: "3302", parentCode: "33", level: "CITY", name: "宁波市", enabled: true, hasChild: false },
+  { regionCode: "3101", parentCode: "31", level: "CITY", name: "上海市市辖区", enabled: true, hasChild: false },
+  { regionCode: "330106", parentCode: "3301", level: "DISTRICT", name: "西湖区", enabled: true, hasChild: true },
+  { regionCode: "330102", parentCode: "3301", level: "DISTRICT", name: "上城区", enabled: true, hasChild: false },
+  { regionCode: "330106001", parentCode: "330106", level: "STREET", name: "北山街道", enabled: true, hasChild: true },
+  { regionCode: "330106002", parentCode: "330106", level: "STREET", name: "西溪街道", enabled: true, hasChild: false },
+  /*
+   * 村级（第五级）。**mock 必须有这一层**，否则「按村圈经营范围」与
+   * 「补录缺失的村」两个功能在 mock 上都走不到 —— 而 mock 是这个仓库
+   * 唯一能不连后端跑完整交互的地方。
+   *
+   * 只给北山街道配（它的 hasChild 因此是 true），西溪街道故意留空：
+   * 那正是「这一层是空的，商家要补录」的场景，得能演出来。
+   */
+  { regionCode: "330106001001", parentCode: "330106001", level: "VILLAGE", name: "上保社区", enabled: true, hasChild: false, source: "OFFICIAL" },
+  { regionCode: "330106001002", parentCode: "330106001", level: "VILLAGE", name: "宝石社区", enabled: true, hasChild: false, source: "OFFICIAL" },
+];
+
 const communitySeeds: CommunitySeed[] = [
   {
     communityNo: "CM001",
     cityCode: "330100",
+    regionCode: "330106001",
+    kind: "ESTATE",
     name: t("阳光里小区", "Sunnyside Gardens", "حدائق صني سايد"),
     address: t("杭州市西湖区文三路 100 号", "100 Wensan Rd, West Lake", "١٠٠ شارع ونسان، ويست ليك"),
     distance: 320,
@@ -665,9 +772,40 @@ const communitySeeds: CommunitySeed[] = [
       },
     ],
   },
+  /*
+   * **两栋楼，不是一栋。**
+   *
+   * 只放一栋的话，「排除 3 幢」之后整个小区看起来就剩一条纳入项，
+   * 分辨不出「排除只作用在那一栋」还是「把小区一起去掉了」——
+   * 而那两种实现在界面上长得一模一样。
+   */
+  {
+    communityNo: "CM001B3",
+    cityCode: "330100",
+    regionCode: "330106001",
+    kind: "BUILDING",
+    parentNo: "CM001",
+    name: t("阳光里 3 幢", "Sunnyside Block 3", "صني سايد مبنى ٣"),
+    address: t("阳光里小区 3 幢", "Block 3, Sunnyside", "مبنى ٣، صني سايد"),
+    distance: 300,
+    pickups: [],
+  },
+  {
+    communityNo: "CM001B5",
+    cityCode: "330100",
+    regionCode: "330106001",
+    kind: "BUILDING",
+    parentNo: "CM001",
+    name: t("阳光里 5 幢", "Sunnyside Block 5", "صني سايد مبنى ٥"),
+    address: t("阳光里小区 5 幢", "Block 5, Sunnyside", "مبنى ٥، صني سايد"),
+    distance: 340,
+    pickups: [],
+  },
   {
     communityNo: "CM002",
     cityCode: "330100",
+    regionCode: "330106001",
+    kind: "ESTATE",
     name: t("翠苑一区", "Greenpark One", "غرين بارك ١"),
     address: t("杭州市西湖区翠苑街道", "Cuiyuan St, West Lake", "شارع تسوييوان، ويست ليك"),
     distance: 1250,
@@ -687,10 +825,18 @@ const communitySeeds: CommunitySeed[] = [
   },
 ];
 
+/** 全部聚落 = 代码里的种子 + 运行时开通的。**所有读取都要走它**，否则新开的那条在这一处看不见 */
+export function allCommunitySeeds(): CommunitySeed[] {
+  return [...db.communitySeeds, ...db.communityOpened];
+}
+
 export function toCommunity(seed: CommunitySeed): Community {
   return {
     communityNo: seed.communityNo,
     cityCode: seed.cityCode,
+    regionCode: seed.regionCode,
+    kind: seed.kind,
+    parentNo: seed.parentNo,
     name: pick(seed.name),
     address: pick(seed.address),
     distance: seed.distance,
@@ -708,27 +854,62 @@ export function toCommunity(seed: CommunitySeed): Community {
   };
 }
 
-const couponSeeds: (Omit<Coupon, "name" | "scopeDesc"> & {
-  name: I18nText;
+const couponSeeds: (Omit<Coupon, "title" | "scopeDesc"> & {
+  title: I18nText;
   scopeDesc: I18nText;
 })[] = [
   {
     couponNo: "CP001",
-    name: t("新人首单券", "First order voucher", "قسيمة أول طلب"),
+    title: t("新人首单券", "First order voucher", "قسيمة أول طلب"),
+    type: "FULL_CUT",
+    faceMinor: 500,
+    discountRate: 0,
     thresholdMinor: 0,
-    discountMinor: 500,
-    expireAt: Date.now() + 7 * DAY,
+    maxDiscountMinor: 0,
+    funder: "PLATFORM",
+    merchantNo: "",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 7 * DAY,
+    remain: 100,
     received: false,
+    status: "ACTIVE",
     scopeDesc: t("全场可用", "Valid storewide", "صالحة على كل المتجر"),
   },
   {
     couponNo: "CP002",
-    name: t("生鲜满减", "Fresh discount", "خصم الطازج"),
+    title: t("生鲜满减", "Fresh discount", "خصم الطازج"),
+    type: "FULL_CUT",
+    faceMinor: 800,
+    discountRate: 0,
     thresholdMinor: 5000,
-    discountMinor: 800,
-    expireAt: Date.now() + 3 * DAY,
+    maxDiscountMinor: 0,
+    funder: "MERCHANT",
+    merchantNo: "M0002",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 3 * DAY,
+    remain: 50,
     received: false,
+    status: "ACTIVE",
     scopeDesc: t("限生鲜水果", "Fresh & fruit only", "الطازج والفواكه فقط"),
+  },
+  {
+    // **留一张折扣券**：契约此前只有一个 discountMinor，折扣券根本表达不了，
+    // 而 mock 里一张都没有 —— 于是那个缺陷在 mock 下永远撞不上
+    couponNo: "CP003",
+    title: t("粮油八五折", "15% off staples", "خصم 15% على السلع"),
+    type: "DISCOUNT",
+    faceMinor: 0,
+    discountRate: 8500,
+    thresholdMinor: 3000,
+    maxDiscountMinor: 1500,
+    funder: "MERCHANT",
+    merchantNo: "M0001",
+    startAt: Date.now() - DAY,
+    endAt: Date.now() + 5 * DAY,
+    remain: 20,
+    received: false,
+    status: "ACTIVE",
+    scopeDesc: t("限老张粮油店", "Zhang's grocery only", "متجر زhang فقط"),
   },
 ];
 
@@ -798,6 +979,30 @@ const reviewSeeds: Review[] = [
  * （items / status / createdAt），其余按 Order 的必填给出合理值。
  * daysAgo 让三笔单有先后，好验证「同频次时按最近购买排」。
  */
+/**
+ * 一笔<b>待付款</b>订单。
+ *
+ * <p>此前 mock 里一条都没有 —— 于是<b>收银台的待付款态在 mock 下根本打不开</b>：
+ * 所有种子单都是已完成，页面直接渲染成「支付成功」。
+ * 而收银台是 C 端最重要的页面之一，它的支付方式选择、倒计时、
+ * 「换一种方式重付」全都只在待付款态下才出现。
+ *
+ * <p>2026-09-02 接支付方式列表（C-1）时撞到：改完想在浏览器里看一眼，
+ * 造不出一笔待付款单。<b>看不见的东西没人会去看它对不对。</b>
+ */
+function pendingOrder(
+  orderNo: string,
+  rows: [goodsNo: string, skuNo: string, price: number, qty: number][],
+): Order {
+  const o = histOrder(orderNo, 0, rows);
+  o.status = "WAIT_PAY";
+  // 15 分钟后过期 —— 倒计时与「已超时」两态都要能在 mock 下看到
+  o.payDeadlineAt = Date.now() + 15 * 60 * 1000;
+  o.amount.paidMinor = 0;
+  o.timeline = [{ status: "WAIT_PAY", label: "已下单，待支付", at: o.createdAt }];
+  return o;
+}
+
 function histOrder(
   orderNo: string,
   daysAgo: number,
@@ -823,7 +1028,7 @@ function histOrder(
   return {
     orderNo,
     status: "COMPLETED",
-    fulfillment: "PICKUP",
+    fulfillment: "STORE_PICKUP",
     items,
     amount: {
       goodsMinor,
@@ -841,6 +1046,14 @@ function histOrder(
     timeline: [{ status: "COMPLETED", label: "已完成", at }],
     merchantNo: items[0]!.merchantNo,
   };
+}
+
+/**
+ * mock 里的日志行：比下发给端上的 {@link StaffLog} 多一个 `targetAccountNo` ——
+ * 「只看某个人的」要按它筛，而下发时不需要（端上已经知道自己点的是谁）。
+ */
+export interface StaffLogRow extends StaffLog {
+  targetAccountNo: string;
 }
 
 export const db = {
@@ -862,27 +1075,720 @@ export const db = {
     name: "",
     logo: "🏪",
     status: "NONE",
-    subject: "PERSONAL",
+    subject: "NATURAL_PERSON",
     tier: "SMALL",
     phone: "",
     isPickupPoint: false,
   } as MerchantProfile,
 
+  /**
+   * 商品发布草稿（双版本，V279）：goodsNo → 上次保存的编辑 payload。
+   *
+   * <p>**在售商品的编辑落在这里、种子不动** —— 与真后端 `prd_goods_draft`
+   * 同一条规矩：线上照卖旧版，发布时才换版。payload 形状是 b-app 的
+   * `GoodsDraft`（编辑缓冲、非契约），这里存 unknown、由 B 端 mock 自己收。
+   * C 端永远不读它 —— 买家看到的只有种子（= 线上版）。
+   */
+  goodsDrafts: {} as Record<string, unknown>,
+
+  /**
+   * 手工录入的线索会员（P2）。
+   *
+   * <p>与订单聚合出来的那批分开存：那批是**派生**的（订单一变就重算），
+   * 这批是**录进来的事实**，不能被重算冲掉。
+   */
+  memberLeads: [] as Member[],
+
+  /** 商家自己建的标签。`SYS` 的那两个是演示用，界面上应当是只读的 */
+  memberTags: [
+    { tagNo: "MT-SYS-1", name: "沉睡", tagType: "SYS", status: "ACTIVE" },
+    { tagNo: "MT-1", name: "爱囤货", tagType: "MCH", status: "ACTIVE" },
+    { tagNo: "MT-2", name: "不要辣", tagType: "MCH", status: "ACTIVE" },
+  ] as Array<{ tagNo: string; name: string; tagType: string; status: string }>,
+
+  /**
+   * 会员号 → 标签号。**存号不存文本**，与真库同一条规矩：改名不动这里。
+   *
+   * <p>种两条不是为了好看：空的话每个标签都是「0 人」，
+   * 而**多标签取交集**（选两个是「都要满足」）在演示里就一次也演不出来 ——
+   * 这里 MB-MOCK-2 两个标签都有，筛「爱囤货」得 2 人、再加「不要辣」得 1 人。
+   */
+  memberTagRel: {
+    "MB-MOCK-1": ["MT-1"],
+    "MB-MOCK-2": ["MT-1", "MT-2"],
+  } as Record<string, string[]>,
+
+  /** 会员经营口径（P3）。默认按主体 —— 多数商家只有一家店，那也是对的默认 */
+  memberSetting: {
+    memberScope: "ENTITY", autoJoinOnOrder: true,
+    sleepDays: 60, loyalD90Orders: 6, regularD90Orders: 2,
+    levelComputedAt: null as number | null,
+  },
+
+  /**
+   * 存下来的人群（P3）。**只存条件不存名单** ——
+   * mock 也照这条规矩来，否则演示里那份名单会比真库"稳"，把 bug 藏住。
+   */
+  memberSegments: [] as MemberSegment[],
+
+  /**
+   * 商家自己建的券（P4）。种一张现成的：空列表的演示看不出
+   * 「发行量 / 已领 / 最大敞口」这三个数之间的关系，而那正是这一页要说清的事。
+   */
+  merchantCoupons: [
+    {
+      couponNo: "PC-DEMO-1",
+      title: "老客回归 · 满 30 减 5",
+      benefitMode: "CASH",
+      benefitValue: 500,
+      benefitCapMinor: null,
+      benefitRef: null,
+      minAmountMinor: 3000,
+      minQty: null,
+      scopeType: "ALL",
+      scopeRefs: [],
+      scopeDesc: null,
+      validityMode: "RELATIVE",
+      startAt: null,
+      endAt: null,
+      validDays: 7,
+      issueMode: "TARGETED",
+      redeemMode: "ORDER",
+      timesTotal: 1,
+      totalCount: 200,
+      receivedCount: 0,
+      perUserLimit: 1,
+      budgetMinor: 100000,
+      maxExposureMinor: 100000,
+      status: "ACTIVE",
+      usedTimes: 0,
+      spentMinor: 0,
+    },
+    {
+      couponNo: "PC-DEMO-2",
+      title: "豆浆五杯卡 · 到店出示",
+      benefitMode: "GIFT",
+      benefitValue: 0,
+      benefitCapMinor: null,
+      benefitRef: "豆浆 1 杯",
+      minAmountMinor: null,
+      minQty: null,
+      scopeType: "ALL",
+      scopeRefs: [],
+      scopeDesc: null,
+      validityMode: "RELATIVE",
+      startAt: null,
+      endAt: null,
+      validDays: 30,
+      issueMode: "TARGETED",
+      // 到店核销：**不参与下单抵扣**，一张券两条路一定会被用两次
+      redeemMode: "STORE_CODE",
+      timesTotal: 5,
+      totalCount: 100,
+      receivedCount: 1,
+      perUserLimit: 1,
+      budgetMinor: null,
+      maxExposureMinor: 0,
+      status: "ACTIVE",
+      usedTimes: 2,
+      spentMinor: 0,
+    },
+  ] as MerchantCoupon[],
+
+  /**
+   * 商家活动（P5 新模型）。种三条演示**四分组**与**敞口**：
+   * 一条在跑的满减、一条周期特价（今天不一定在时段里）、一条到量结束的。
+   */
+  storeActivities: [
+    {
+      activityNo: "PT-DEMO-1",
+      name: "满 50 减 5",
+      goal: "BASKET",
+      storeNo: null,
+      triggerType: "AMOUNT",
+      triggerAmountMinor: 5000,
+      triggerQty: null,
+      benefitType: "CUT",
+      benefitAmountMinor: 500,
+      benefitQty: null,
+      benefitRef: null,
+      scheduleType: "ALWAYS_ON",
+      startAt: null,
+      endAt: null,
+      scheduleRule: null,
+      quota: 200,
+      quotaUsed: 37,
+      quotaLeft: 163,
+      budgetMinor: null,
+      budgetUsedMinor: 18500,
+      maxExposureMinor: 100000,
+      audiences: [],
+      goodsNos: [],
+      status: "RUNNING",
+      endedReason: null,
+      liveNow: true,
+    },
+    {
+      activityNo: "PT-DEMO-2",
+      name: "周三蔬菜特价",
+      goal: "CLEAR",
+      storeNo: null,
+      triggerType: "GOODS",
+      triggerAmountMinor: null,
+      triggerQty: null,
+      benefitType: "PRICE",
+      benefitAmountMinor: 990,
+      benefitQty: null,
+      benefitRef: null,
+      scheduleType: "RECURRING",
+      startAt: null,
+      endAt: null,
+      scheduleRule: "{\"weekdays\":[3],\"from\":\"08:00\",\"to\":\"20:00\"}",
+      quota: 50,
+      quotaUsed: 12,
+      quotaLeft: 38,
+      budgetMinor: null,
+      budgetUsedMinor: 0,
+      maxExposureMinor: 0,
+      audiences: [],
+      goodsNos: ["G1001"],
+      status: "RUNNING",
+      // 周期活动在非时段里 status 仍是 RUNNING —— 商家问的是「现在减不减」
+      endedReason: null,
+      liveNow: false,
+    },
+    {
+      activityNo: "PT-DEMO-3",
+      name: "新客立减 3 元",
+      goal: "ACQUIRE",
+      storeNo: null,
+      triggerType: "AMOUNT",
+      triggerAmountMinor: 1000,
+      triggerQty: null,
+      benefitType: "CUT",
+      benefitAmountMinor: 300,
+      benefitQty: null,
+      benefitRef: null,
+      scheduleType: "ONE_OFF",
+      startAt: Date.now() - 20 * 86400_000,
+      endAt: Date.now() - 2 * 86400_000,
+      scheduleRule: null,
+      quota: 100,
+      quotaUsed: 100,
+      quotaLeft: 0,
+      budgetMinor: null,
+      budgetUsedMinor: 30000,
+      maxExposureMinor: 30000,
+      audiences: [{ type: "NON_MEMBER", value: "*" }],
+      goodsNos: [],
+      status: "ENDED",
+      endedReason: "QUOTA",
+      liveNow: false,
+    },
+  ] as StoreActivity[],
+
+  /**
+   * 触达频次闸：场景 → (会员号 → 上次发送时刻)。
+   *
+   * <p>按场景分开存，与真库同一条规矩：公告与唤回不共用一档 ——
+   * 一周三条公告让人烦，一周唤回三次让人拉黑。
+   */
+  /**
+   * 我（买家）是哪几家店的会员（P7）。**两家：一家开着消息、一家已关** ——
+   * 只种一家的话，看不出这个开关是每家一个的。
+   */
+  myMemberships: [
+    {
+      entityNo: "M001",
+      entityName: "张记生鲜",
+      level: "REGULAR",
+      orderCount: 6,
+      totalSpentMinor: 27270,
+      reachOptOut: false,
+      joinedAt: Date.now() - 60 * 86400_000,
+    },
+    {
+      entityNo: "M002",
+      entityName: "老张粮油店",
+      level: "NEW",
+      orderCount: 1,
+      totalSpentMinor: 1280,
+      reachOptOut: true,
+      joinedAt: Date.now() - 9 * 86400_000,
+    },
+  ] as MyMembership[],
+
+  reachSentAt: {} as Record<string, Record<string, number>>,
+
+  /** 到店核销：券号 → 已核几次。次卡演示要看得见「还剩几次」 */
+  couponRedeemed: {} as Record<string, number>,
+  /** 券号 → 上次核销时刻。3 秒连点窗口靠它 */
+  couponRedeemedAt: {} as Record<string, number>,
+
+  /** 发放批次。**跳过明细存在这里** —— 结果页要能说出「12 跳过：9 人已达上限」 */
+  couponIssues: [] as CouponIssueBatch[],
+
+  /** 用户券：mock 里只用来算「每人限领」与已领张数 */
+  couponHolders: {} as Record<string, string[]>,
+
   /** 店铺门面（店主可改的部分）。C 端门店主页读的就是它 */
   store: {
     announcement: "今天到了新米和土鸡蛋，来早的挑得好",
+    // 演示数据给「今天早上」：这一行在 C 端要显示成「今天 07:20 更新」，
+    // 而 mock 里给一个死日期的话，明天再看就成了「08-24 更新」—— 演示会自己变旧
+    announcementAt: todayAtLocal("07:20"),
     openHours: "06:30–21:00",
     address: "阳光里小区南门 · 张记粮油",
     featured: [] as string[],
+    // 背景图默认没设：C 端门户顶部是主色浅底（设了才是照片）
+    bannerUrl: "",
     // 演示商家是社区生鲜：靠自提点履约，只做谈下来的两个小区
     serviceScope: "COMMUNITY",
     serviceCommunityNos: ["CM001", "CM002"],
+    // 新模型（ADR-013）：同一件事的新写法 —— 两个小区，加上整个西湖区试水上门单。
+    // 刻意配成**跨粒度**，因为这正是老三档表达不了、也最容易在端上写错的形状
+    fulfillmentReach: "PICKUP",
+    serviceAreas: [
+      { level: "COMMUNITY", refCode: "CM001", name: "阳光里小区" },
+      { level: "COMMUNITY", refCode: "CM002", name: "翠苑一区" },
+      { level: "DISTRICT", refCode: "330106", name: "浙江省 / 杭州市 / 西湖区" },
+    ],
   } as StoreProfile,
+
+  /**
+   * 门店。**默认只有一家**（= FREE 档），与生产默认额度一致 ——
+   * mock 里塞三家的话，「只能开一家」这条最常被触发的限制在开发期永远看不到。
+   */
+  stores: [
+    {
+      storeNo: "ST-MOCK-1",
+      name: "张记粮油",
+      address: "阳光里小区南门 · 张记粮油",
+      isDefault: true,
+      status: "ACTIVE",
+      payReady: true,
+      staffCount: 1,
+      /*
+       * **刻意不给 slug**：「还没设过门店代码」才是生产常态（V357 不回填），
+       * 链接回落系统发的店铺码 —— 那一串读不出是谁家的店，正是这个功能要解决的问题。
+       * 设过代码的那一态在 mSetStoreSlug 里现场产生，不在种子里预置。
+       */
+      shareUrl: "https://www.hxmall.top/s/V9VTDW",
+    },
+  ] as Store[],
+
+  /** 门店额度。改这个数就能在 mock 下体验 PRO/CHAIN 档 */
+  storeQuota: 1,
+
+  /**
+   * **第二张证照**（多证照）—— 老板的第二门生意。
+   *
+   * <p>没有它的话，「按证照分组的门店选择器」「证照与账户」这两页在 mock 下
+   * 永远只有一组、一条，等于看不出它们和旧界面的区别 —— 而那个区别正是要验的东西。
+   *
+   * <p>刻意配成 `PENDING_LICENSE`（待补证照）：这是新老板最常见的处境，
+   * 也是唯一能同时验到「状态徽标」「去补执照」两条界面分支的状态。
+   * 想验「两张都正常营业」把 status 改成 ACTIVE 即可。
+   */
+  secondEntity: {
+    entityNo: "M-MOCK-2",
+    name: "张记水果",
+    status: "PENDING_LICENSE",
+    verified: false,
+    storeCount: 1,
+    isPrimary: false,
+    canManage: true,
+  } as Entity,
+
+  /**
+   * 第二张证照的证件。**与 `myQualifications` 分开存**：资质是挂在证照上的，
+   * 不是挂在账号上。共用一份的话，「在证照详情页看的是第二张、传上去却落到第一张」
+   * 这个最要命的错在 mock 下永远看不出来 —— 而那正是 entityNo 这个参数要防的事。
+   */
+  secondEntityQualifications: [] as Qualification[],
+
+  /** 第二张证照下的门店。与 `stores` 分开存 —— 它们不在同一张执照下 */
+  secondEntityStores: [
+    {
+      storeNo: "ST-MOCK-E2-1",
+      name: "张记水果 · 文一路店",
+      address: "文一路 128 号",
+      isDefault: true,
+      status: "ACTIVE",
+      payReady: false,
+      staffCount: 0,
+    },
+  ] as Store[],
+
+  /**
+   * 门店货架（TDD-品类约束全链路 §三）。按 storeNo 分组。
+   *
+   * <p>**只摆了无门槛的那两类**：CAT110 蔬菜要 FRESH_VEG，而 mock 商家没那张证 ——
+   * 种子里塞上它的话，「没证摆不上」这条最要紧的拒绝在开发期永远看不到。
+   */
+  storeCategories: {
+    "ST-MOCK-1": [
+      { categoryNo: "CAT210", name: "纸品清洁", platformName: "纸品清洁", sort: 0,
+        goodsCount: 2, onSaleCount: 2, pendingCount: 0 },
+      // 3 件里 2 件在卖、1 件待审 —— 让 mock 上就能看出这三个数不是同一个数
+      { categoryNo: "CAT130", name: "米面粮油", platformName: "预包装食品", displayName: "米面粮油",
+        sort: 1, goodsCount: 3, onSaleCount: 2, pendingCount: 1 },
+      /*
+       * **服务类目也要有一个。**建品页的服务段（服务时长、核销门店）只在服务类目下出现，
+       * 而 mock 店里一个服务类目都没有 —— 那一段在 mock 上永远走不到，
+       * 于是它的版面只能靠真机验（2026-09-20 就是这么漏掉「两个输入框叠在一起」的）。
+       */
+      { categoryNo: "CAT310", name: "家政保洁", platformName: "家政保洁", sort: 2,
+        goodsCount: 0, onSaleCount: 0, pendingCount: 0 },
+    ],
+  } as Record<string, StoreCategory[]>,
+
+  /** 员工。第一条是老板 —— 列表第一眼要能看出谁是老板 */
+  staff: [
+    {
+      mchAccountNo: "SF-MOCK-OWNER",
+      displayName: "张老板",
+      loginPhone: "13800008000",
+      isOwner: true,
+      status: "ACTIVE",
+      roles: [],
+    },
+  ] as MerchantStaff[],
+
+  /**
+   * 员工与授权的变更记录（B-11.10.3）。**初始为空** ——
+   * 编几条假记录会让「这个功能有没有真的在写」变得看不出来：
+   * 演示数据和真实产生的记录长得一模一样。
+   */
+  staffLogs: [] as StaffLogRow[],
+
+  /**
+   * 角色（V71）：6 个预置 + 商家自定义。
+   *
+   * **预置这份与后端 V71 的 seed 逐条相同** —— 编一份不一样的，
+   * 开发期看到的角色能力就与真实的不同，而这正是最不该分岔的地方。
+   */
+  roles: [
+    { roleCode: "OWNER", name: "老板", builtin: true, perms: ["*"], permLabels: ["全部"], usedBy: 0 },
+    {
+      roleCode: "MANAGER", name: "店长", builtin: true,
+      perms: ["biz:receive", "biz:verify", "biz:ship", "biz:order:view", "biz:stock",
+        "biz:goods", "biz:campaign", "biz:review", "biz:aftersale", "biz:customer", "biz:store"],
+      permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "CLERK", name: "店员", builtin: true,
+      perms: ["biz:receive", "biz:verify", "biz:ship", "biz:order:view", "biz:stock"],
+      permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "PICKER", name: "理货员", builtin: true,
+      perms: ["biz:receive", "biz:stock"], permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "COURIER", name: "配送员", builtin: true,
+      perms: ["biz:ship", "biz:order:view"], permLabels: [], usedBy: 0,
+    },
+    {
+      roleCode: "CS", name: "客服", builtin: true,
+      perms: ["biz:review", "biz:aftersale", "biz:order:view"], permLabels: [], usedBy: 0,
+    },
+  ] as MerchantRole[],
+
+  /**
+   * 权限码 → 中文。**真实环境由后端随角色列表下发**（BizPerms.LABELS），
+   * mock 里放一份是为了让 `permLabels` 有值 —— 页面一个字都不抄。
+   */
+  permLabels: {
+    "biz:receive": "到货登记与分拣",
+    "biz:verify": "核销取货",
+    "biz:ship": "发货与标记送达",
+    "biz:order:view": "看订单与金额",
+    "biz:stock": "改库存",
+    "biz:goods": "建商品、改价、上下架",
+    "biz:campaign": "营销活动与报价",
+    "biz:review": "回评价、差评申诉",
+    "biz:aftersale": "处理售后",
+    "biz:customer": "顾客列表与经营数据",
+    "biz:store": "店铺装修与配送规则",
+    "biz:store:admin": "建店、停用、挂收款号、管员工",
+    "biz:finance": "结算账单与收款进件",
+  } as Record<string, string>,
+
+  /**
+   * 收款进件。**默认停在 APPLYING** —— 演示环境也要能看到「店开了但还收不了钱」这个状态，
+   * 它是真实世界里最常见的一种，做成 ACTIVE 就把这段界面藏起来了。
+   */
+  payment: {
+    payChannel: "WECHAT",
+    channelName: "微信支付",
+    applyStatus: "APPLYING",
+    canReceiveMoney: false,
+    missing: ["settleAccount"],
+    /*
+     * **入驻通过时建的占位：APPLYING 但没发给通道过。**
+     * 这正是新商家进来看到的那一屏，也是端上要把它显示成
+     * 「待补资料」而不是「审核中」的那一种（见 PaymentApplyment.submitted）。
+     */
+    submitted: false,
+    appliedAt: 0,
+  } as PaymentApplyment,
+
+  /**
+   * 门店级进件。**多门店商家才会有** —— 它与上面那条是同一个通道的两行，
+   * 而 storeNo 是唯一分得开它们的东西。
+   *
+   * 给一条**已开通**的：门店级进件存在的全部意义是「这家店的钱打进它自己的账户」，
+   * 而只造 APPLYING 的话「已开通之后长什么样」这件事就没人看过。
+   */
+  storePayment: {
+    payChannel: "WECHAT",
+    channelName: "微信支付",
+    applyStatus: "ACTIVE",
+    canReceiveMoney: true,
+    missing: [],
+    submitted: true,
+    appliedAt: 1_755_000_000_000,
+    activatedAt: 1_755_200_000_000,
+    storeNo: "ST-MOCK-1",
+  } as PaymentApplyment,
+
+  /**
+   * 类目树。**编号与后端 V4__category_tree.sql、ops-web 的 mock 完全一致** ——
+   * 三处对不上时的症状是「mock 上跑得通、连真库就找不到类目」，而三处各自都自洽，
+   * 谁也不报错。
+   *
+   * ⚠️ 与 `CATEGORY_TYPE`（五品类）**不是两个并列的维度**：节点上的 `template` 就是形态，
+   * 商品的 `type` 由所选类目派生（见 `TEMPLATE_TO_TYPE`）。这棵树另外决定归类与经营准入。
+   *
+   * <p>`template` 每个节点都要写且**必须与父节点一致** —— 真库那边由
+   * `CategoryServiceImpl.save()` 强制继承，mock 这边只能靠种子写对。
+   */
+  categories: [
+    // ⚠️ 卡券（CAT400）与虚拟商品（CAT500）**已归档**（V176）：它们是「有类目、没链路」——
+    // 后端没有任何 CARD/VIRTUAL 分支，履约候选给的是实物那四种。
+    // mock 里同样不出现，否则开发期选得到、真环境选不到。
+    {
+      categoryNo: "CAT100", template: "FRESH", parentNo: null, level: 1, name: "食品生鲜", icon: "", sort: 10,
+      children: [
+        { categoryNo: "CAT110", template: "FRESH", parentNo: "CAT100", level: 2, name: "蔬菜", icon: "", sort: 10, requiredCode: "FRESH_VEG", qualifications: ["营业执照（食用农产品）"], children: [] },
+        { categoryNo: "CAT120", template: "FRESH", parentNo: "CAT100", level: 2, name: "水果", icon: "", sort: 20, requiredCode: "FRESH_FRUIT", qualifications: ["营业执照（食用农产品）"], children: [] },
+        // ⚠️ 预包装食品/酒类/茶叶是 STANDARD（→ NORMAL），不是 FRESH ——
+        // 品类看的是二级自己的 template。写成 FRESH 会让一箱啤酒要求填截单时间
+        { categoryNo: "CAT130", template: "STANDARD", parentNo: "CAT100", level: 2, name: "预包装食品", icon: "", sort: 30, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT150", template: "STANDARD", parentNo: "CAT100", level: 2, name: "酒类", icon: "", sort: 50, requiredCode: "ALCOHOL", qualifications: ["食品经营许可证（含酒类）"], children: [] },
+        { categoryNo: "CAT160", template: "STANDARD", parentNo: "CAT100", level: 2, name: "茶叶", icon: "", sort: 60, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT170", template: "FRESH", parentNo: "CAT100", level: 2, name: "肉禽蛋", icon: "", sort: 70, requiredCode: "FRESH_MEAT", qualifications: ["食品经营许可证"], children: [] },
+        { categoryNo: "CAT180", template: "FRESH", parentNo: "CAT100", level: 2, name: "乳制品", icon: "", sort: 80, requiredCode: "FRESH_DAIRY", qualifications: ["食品经营许可证"], children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT200", template: "STANDARD", parentNo: null, level: 1, name: "日用百货", icon: "", sort: 20,
+      children: [
+        { categoryNo: "CAT210", template: "STANDARD", parentNo: "CAT200", level: 2, name: "纸品清洁", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT220", template: "STANDARD", parentNo: "CAT200", level: 2, name: "家居用品", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT230", template: "STANDARD", parentNo: "CAT200", level: 2, name: "个护化妆", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT250", template: "STANDARD", parentNo: "CAT200", level: 2, name: "母婴用品", icon: "", sort: 50, children: [] },
+        { categoryNo: "CAT260", template: "STANDARD", parentNo: "CAT200", level: 2, name: "宠物用品", icon: "", sort: 60, children: [] },
+        // 门槛挂在「宠物食品」而不是「宠物用品」上，否则卖猫爬架的也被拦
+        { categoryNo: "CAT270", template: "STANDARD", parentNo: "CAT200", level: 2, name: "宠物食品", icon: "", sort: 70, requiredCode: "PET_FOOD", qualifications: ["饲料和饲料添加剂经营备案"], children: [] },
+        { categoryNo: "CAT280", template: "STANDARD", parentNo: "CAT200", level: 2, name: "文具玩具", icon: "", sort: 80, children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT300", template: "SERVICE", parentNo: null, level: 1, name: "生活服务", icon: "", sort: 30,
+      children: [
+        { categoryNo: "CAT310", template: "SERVICE", parentNo: "CAT300", level: 2, name: "家政保洁", icon: "", sort: 10, requiredCode: "HOUSEKEEPING", children: [] },
+        { categoryNo: "CAT330", template: "SERVICE", parentNo: "CAT300", level: 2, name: "洗衣洗鞋", icon: "", sort: 30, children: [] },
+        { categoryNo: "CAT340", template: "SERVICE", parentNo: "CAT300", level: 2, name: "美容美发", icon: "", sort: 40, children: [] },
+        { categoryNo: "CAT350", template: "SERVICE", parentNo: "CAT300", level: 2, name: "宠物洗护", icon: "", sort: 50, children: [] },
+        { categoryNo: "CAT360", template: "SERVICE", parentNo: "CAT300", level: 2, name: "跑腿代办", icon: "", sort: 60, children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT600", template: "STANDARD", parentNo: null, level: 1, name: "电子产品", icon: "", sort: 60,
+      children: [
+        { categoryNo: "CAT610", template: "STANDARD", parentNo: "CAT600", level: 2, name: "手机数码", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT620", template: "STANDARD", parentNo: "CAT600", level: 2, name: "家用电器", icon: "", sort: 20, children: [] },
+        { categoryNo: "CAT630", template: "STANDARD", parentNo: "CAT600", level: 2, name: "配件耗材", icon: "", sort: 30, children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT700", template: "STANDARD", parentNo: null, level: 1, name: "食品饮料", icon: "", sort: 70,
+      children: [
+        { categoryNo: "CAT710", template: "STANDARD", parentNo: "CAT700", level: 2, name: "粮油调味", icon: "", sort: 10, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT720", template: "STANDARD", parentNo: "CAT700", level: 2, name: "休闲零食", icon: "", sort: 20, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT730", template: "STANDARD", parentNo: "CAT700", level: 2, name: "饮料冲调", icon: "", sort: 30, requiredCode: "PACKAGED_FOOD", qualifications: ["仅销售预包装食品备案"], children: [] },
+        { categoryNo: "CAT740", template: "STANDARD", parentNo: "CAT700", level: 2, name: "烘焙面点", icon: "", sort: 40, requiredCode: "FOOD", qualifications: ["食品经营许可证"], children: [] },
+        { categoryNo: "CAT750", template: "STANDARD", parentNo: "CAT700", level: 2, name: "婴幼儿食品", icon: "", sort: 50, requiredCode: "INFANT_FORMULA", qualifications: ["婴幼儿配方乳粉销售备案"], children: [] },
+      ],
+    },
+    {
+      categoryNo: "CAT800", template: "STANDARD", parentNo: null, level: 1, name: "鲜花绿植", icon: "", sort: 80,
+      children: [
+        { categoryNo: "CAT810", template: "STANDARD", parentNo: "CAT800", level: 2, name: "鲜花", icon: "", sort: 10, children: [] },
+        { categoryNo: "CAT820", template: "STANDARD", parentNo: "CAT800", level: 2, name: "绿植盆栽", icon: "", sort: 20, children: [] },
+      ],
+    },
+  ],
+
+  /**
+   * 平台标准品（TDD-标准品库）。**编号与真库 V166 的种子保持一致** ——
+   * 前后端 mock 与真库对得上，联调时不用在两套编号之间换算。
+   *
+   * <p>只给一小批：够验证「搜到 → 填充 → 建品」这条链而已。真正决定这个功能
+   * 成不成的是覆盖率，而覆盖率靠运营手录，不是 mock 能替代的。
+   */
+  spuStds: [
+    {
+      stdNo: "STD1001", categoryNo: "CAT110", title: "本地菠菜", subtitle: "当季叶菜",
+      keywords: "菠菜 波斯菜 叶菜", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "重量", options: ["500g", "1斤", "2斤"], optionCodes: ["W500G", "W1JIN", "W2JIN"] }],
+    },
+    {
+      stdNo: "STD1011", categoryNo: "CAT110", title: "土豆", subtitle: "根茎菜",
+      keywords: "土豆 马铃薯 洋芋", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "重量", options: ["1斤", "2斤", "5斤"], optionCodes: ["W1JIN", "W2JIN", "W5JIN"] }],
+    },
+    {
+      stdNo: "STD2001", categoryNo: "CAT210", title: "抽纸", subtitle: "家用抽取式面巾纸",
+      keywords: "抽纸 面巾纸 纸巾", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "规格", options: ["3包", "6包", "12包"], optionCodes: ["B3", "B6", "B12"] }],
+    },
+    {
+      stdNo: "STD2004", categoryNo: "CAT210", title: "洗衣液", subtitle: "衣物清洁",
+      keywords: "洗衣液 洗涤剂", status: "ACTIVE", refCount: 0,
+      specGroups: [{ name: "规格", options: ["1L", "2L", "3L"], optionCodes: ["V1L", "V2L", "V3L"] }],
+    },
+  ],
 
   /**
    * 规格模板。平台预置的按类目给，商家存的常用模板追加在后面。
    * 平台模板的 code 是**跨商家统一**的 —— 这正是它能做聚合而自由输入不能的原因。
    */
+  /**
+   * 商家自己传的资质。**样本刻意只有一条已传、还没换来授权的证** ——
+   * 那正是「我的资质」这一页要说清楚的状态：传了 ≠ 解锁了，授权是平台看过证之后的动作。
+   */
+  myQualifications: [
+    {
+      qualNo: "QL0001",
+      qualType: "BUSINESS_LICENSE",
+      qualName: "营业执照",
+      qualNumber: "91330106MA2xxxxxxx",
+      imageUrl: "",
+      expireAt: null,
+      status: "VALID",
+    },
+  ] as Array<import("../types").Qualification>,
+
+  /*
+   * **商品参数**（usage_type=PROP）。与 specTemplates 分开存，
+   * 与后端分成 /biz/spec-templates 与 /biz/spec-props 两条端点同构 ——
+   * 混在一张表里靠字段过滤的话，端上漏过滤一次就把「产地」建成规格了，
+   * 而那正是这一期要消灭的东西。
+   *
+   * 线上 V196 给蔬菜/水果配的 PROP 是产地与保质期。
+   */
+  /*
+   * 显式标类型：字面量推断出来的是「这几条的联合」，
+   * 而商家自建的参数（scope=MERCHANT、没有 categoryNo）塞不进去。
+   * specTemplates 那边同理 —— 它本来就是 SpecTemplate[]。
+   */
+  specProps: [
+    {
+      templateNo: "SD_ORIGIN",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    {
+      templateNo: "SD_SHELF_LIFE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "保质期",
+      options: [
+        { code: "SL3D", label: "3 天" },
+        { code: "SL7D", label: "7 天" },
+      ],
+    },
+    {
+      templateNo: "SD_ORIGIN_F",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    /* 演示会话那家店的货架是纸品清洁与米面粮油 —— 不给它们配参数的话，
+       打开「商品参数」那一栏是空的，看着像功能没做 */
+    {
+      templateNo: "SD_ORIGIN_G",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      name: "产地",
+      options: [
+        { code: "ORGLOCAL", label: "本地" },
+        { code: "ORGCN", label: "国产" },
+        { code: "ORGIMP", label: "进口" },
+      ],
+    },
+    {
+      templateNo: "SD_SHELF_LIFE_G",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      name: "保质期",
+      options: [
+        { code: "SL6M", label: "6 个月" },
+        { code: "SL12M", label: "12 个月" },
+      ],
+    },
+    {
+      templateNo: "SD_MATERIAL_P",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT210",
+      name: "材质",
+      options: [
+        { code: "M_WOOD", label: "原木浆" },
+        { code: "M_MIX", label: "混合浆" },
+      ],
+    },
+    {
+      templateNo: "SD_MATERIAL",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      name: "材质",
+      options: [
+        { code: "M_METAL", label: "金属" },
+        { code: "M_PLASTIC", label: "塑料" },
+      ],
+    },
+    {
+      /* 量纲型：平台不枚举值，让商家自己填 —— 端上要渲染成输入框而不是一排 chip */
+      templateNo: "SD_POWER",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      name: "功率",
+      options: [],
+    },
+  ] as SpecTemplate[],
+
   specTemplates: [
     {
       templateNo: "ST_FRESH_WEIGHT",
@@ -911,7 +1817,7 @@ export const db = {
     {
       templateNo: "ST_GOODS_PACK",
       scope: "PLATFORM" as const,
-      categoryType: CATEGORY_TYPE.GOODS,
+      categoryType: CATEGORY_TYPE.NORMAL,
       name: "包装",
       options: [
         { code: "P_BAG", label: "袋装" },
@@ -923,7 +1829,7 @@ export const db = {
     {
       templateNo: "ST_GOODS_SCENT",
       scope: "PLATFORM" as const,
-      categoryType: CATEGORY_TYPE.GOODS,
+      categoryType: CATEGORY_TYPE.NORMAL,
       name: "香型",
       options: [
         { code: "S_LAV", label: "薰衣草" },
@@ -942,19 +1848,214 @@ export const db = {
         { code: "D_120", label: "120 分钟" },
       ],
     },
+    /*
+     * 类目级模板（`categoryNo` 不为空）。**mock 必须有这一层**，
+     * 否则「类目级顶掉同名兜底」这条逻辑在 mock 上永远走不到，
+     * 而它恰恰是这个功能的全部价值所在。
+     *
+     * 这里只放三条代表性的，覆盖三种情形：
+     *   · 顶替（休闲零食「重量」顶掉普通实物的「规格」是同名才顶，这里用同名演示）
+     *   · 纯新增（手机数码「存储」，兜底里没有这个维度）
+     *   · 换品类（宠物洗护「体型」，服务类兜底是时长/人数）
+     */
+    /*
+     * 常用类目的绑定。**线上 30 个在用的二级类目一个不缺地配着**（实测 0 缺口），
+     * mock 只配两三个的话，多数类目在这里看着像「平台没配规格」——
+     * 与线上正相反，而人是照着 mock 判断功能做没做的。
+     */
+    {
+      templateNo: "ST_CAT110_WEIGHT",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      primary: true,
+      name: "重量",
+      options: [
+        { code: "W500G", label: "500g" },
+        { code: "W1JIN", label: "1 斤" },
+        { code: "W2JIN", label: "2 斤" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_WEIGHT",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      primary: true,
+      name: "重量",
+      options: [
+        { code: "W1JIN", label: "1 斤" },
+        { code: "W2JIN", label: "2 斤" },
+        { code: "W5JIN", label: "5 斤" },
+      ],
+    },
+    /*
+     * 蔬菜与水果的**其余销售维度**。线上 V196 给 CAT110 绑的是
+     * 重量(主) / 包装 / 等级 / 产地 / 保质期 五条，mock 只配主维度那一条的话，
+     * 建品页看着像「这一类只能按一种方式分」—— 与线上正相反，
+     * 而人是照着 mock 判断功能做没做的。
+     * （产地与保质期是 usage_type=PROP，不分 SKU，等商品参数那一期再进 mock。）
+     */
+    {
+      templateNo: "ST_CAT110_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "包装",
+      options: [
+        { code: "PBULK", label: "散装" },
+        { code: "PBAG", label: "袋装" },
+        { code: "PBOX", label: "盒装" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT110_GRADE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT110",
+      name: "等级",
+      options: [
+        { code: "GRD1", label: "普通" },
+        { code: "GRD2", label: "精选" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_GRADE",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "等级",
+      options: [
+        { code: "G_STD", label: "标准果" },
+        { code: "G_BIG", label: "大果" },
+        { code: "G_GIFT", label: "礼盒装" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT120_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.FRESH,
+      categoryNo: "CAT120",
+      name: "包装",
+      options: [
+        { code: "PBULK", label: "散装" },
+        { code: "PBOX", label: "盒装" },
+        { code: "PGIFT", label: "礼盒装" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT210_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT210",
+      primary: true,
+      name: "规格",
+      options: [
+        { code: "P_10", label: "10 卷" },
+        { code: "P_20", label: "20 卷" },
+        { code: "P_30", label: "30 卷" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT130_NET",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT130",
+      primary: true,
+      name: "净含量",
+      options: [
+        { code: "N5JIN", label: "5 斤" },
+        { code: "N10JIN", label: "10 斤" },
+        { code: "N25JIN", label: "25 斤" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT610_STOR",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      // 主维度：建品选完类目自动预填的就是它（对应 prd_category_spec.is_primary）
+      primary: true,
+      name: "存储",
+      options: [
+        { code: "S64G", label: "64G" },
+        { code: "S128G", label: "128G" },
+        { code: "S256G", label: "256G" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT610_PACK",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.NORMAL,
+      categoryNo: "CAT610",
+      // 与兜底的「包装」同名 —— 用来验「同名顶替」这条：
+      // 手机数码不该被推荐「袋装 / 瓶装 / 罐装」
+      name: "包装",
+      options: [
+        { code: "PBOX", label: "盒装" },
+        { code: "PGIFT", label: "礼盒" },
+      ],
+    },
+    {
+      templateNo: "ST_CAT350_PET",
+      scope: "PLATFORM" as const,
+      categoryType: CATEGORY_TYPE.SERVICE,
+      categoryNo: "CAT350",
+      name: "体型",
+      options: [
+        { code: "PETS", label: "小型犬" },
+        { code: "PETM", label: "中型犬" },
+        { code: "PETL", label: "大型犬" },
+        { code: "PETCAT", label: "猫" },
+      ],
+    },
   ] as SpecTemplate[],
 
   /**
-   * 上一次提交的入驻申请。**驳回后要能改了再交** ——
-   * 不存草稿的话，商家被驳回只能从头重填一遍，而驳回往往只是缺一张执照。
+   * 上一次提交的入驻申请（内容 + 审核进度，**一条记录**）。
+   *
+   * <p>曾经拆成「内容」与「状态」两份存。拆开的结果是 B 端草稿回显读一份、
+   * C 端进度查询读另一份，两份各自更新 —— 而后端 `usr_merchant_apply` 只有一行。
+   * 于是同一次提交在两个端上能显示成两件事，mock 也就不再是后端的替身。
+   *
+   * <p>驳回后要能改了再交：整份带回来，因为驳回往往只是缺一张执照。
    */
-  merchantApply: null as MerchantApplyReq | null,
+  merchantApply: null as MerchantApplyStatus | null,
 
   /** 我收藏的店（C-ST-07「常去的店」） */
   favoriteStores: [] as string[],
+  /** 我收藏的商品，最近收藏在前（TDD-C端商品收藏与送达判断） */
+  favoriteGoods: [] as string[],
 
   /** 商家配的营销活动（B-11.8） */
   campaigns: [] as MarketingCampaign[],
+
+  /**
+   * 门店预约时段。**种子给两个档**：一个还有余量、一个已经约满 ——
+   * 排期页最要紧的是「满了的长什么样」，全是空档的话那条分支永远看不见。
+   */
+  appointmentSlots: [
+    {
+      slotNo: "APS-SEED-1",
+      storeNo: "ST0001",
+      startAt: Date.now() + 86_400_000,
+      endAt: Date.now() + 86_400_000 + 3_600_000,
+      capacity: 3,
+      booked: 1,
+      remaining: 2,
+      status: "OPEN",
+    },
+    {
+      slotNo: "APS-SEED-2",
+      storeNo: "ST0001",
+      startAt: Date.now() + 90_000_000,
+      endAt: Date.now() + 90_000_000 + 3_600_000,
+      capacity: 1,
+      booked: 1,
+      remaining: 0,
+      status: "OPEN",
+    },
+  ] as AppointmentSlot[],
 
   /** 商家自送规则（按当前登录商家，一期单商家够用） */
   deliveryRule: {
@@ -967,8 +2068,42 @@ export const db = {
   goodsSeeds,
   merchantSeeds,
   communitySeeds,
+  /**
+   * **运行时开通出来的聚落**（商家在选择器里点地图小区/官方村直接加入的那些）。
+   *
+   * 为什么不能塞进 `communitySeeds`：那份是纯种子，在 TRANSIENT_KEYS 里 —— 刷新即回到代码里的样子。
+   * 而经营范围（`store.serviceAreas`）是**存的**，于是刷新之后范围里挂着一个查不到的社区号，
+   * 界面上表现为一条没有名字的范围，商家删不掉也看不懂。分成两份，这一份跟着落盘。
+   */
+  communityOpened: [] as CommunitySeed[],
+  regionSeeds,
+  /**
+   * 提报单。**一条已驳回的样本**：只有待审的话，B 端「被驳回长什么样」
+   * 在开发期永远看不到 —— 而那正是最需要设计的一屏（理由要显眼、要能改了再提）。
+   */
+  communityApplies: [
+    {
+      applyNo: "CA20260810001",
+      merchantNo: "M002",
+      merchantName: "阿明果蔬合作社",
+      name: "锦绣花园",
+      address: "文三路 200 号",
+      status: "REJECTED",
+      reason: "这个小区已经在平台上，叫「翠苑一区」，直接勾选即可",
+      submittedAt: 1786000000000,
+    },
+  ] as CommunityApply[],
   couponSeeds,
   reviews: reviewSeeds,
+
+  /**
+   * 开票申请（ADR-017 §3.4 条件 2）。
+   *
+   * **种成空数组是有意的**：这条链路的第一屏是「还没申请过」——
+   * 种一条已开具的进去，那个入口在 mock 下永远走不到，
+   * 而它恰恰是唯一一个消费者会主动点的地方。
+   */
+  invoiceRequests: [] as InvoiceRequest[],
 
   addresses: [
     {
@@ -976,7 +2111,9 @@ export const db = {
       name: "张先生",
       phone: "13800138000",
       region: "浙江省 杭州市 西湖区",
-      detail: "阳光里小区 3 幢 2 单元 601",
+      // V319 之后这两个是分开的：主体来自选点（带坐标），门牌只能手打
+      detail: "阳光里小区",
+      houseNo: "3 幢 2 单元 601",
       isDefault: true,
       tag: "家",
     },
@@ -1014,6 +2151,8 @@ export const db = {
    * 好检验排序走的是**次数**而不是时间。
    */
   orders: [
+    // 待付款单放在最前面：进「我的订单」第一眼就能看到，收银台才有得可点
+    pendingOrder("SO900", [["G002", "G002S1", 1280, 1]]),
     histOrder("SO901", 26, [["G002", "G002S1", 1280, 1]]),
     histOrder("SO902", 19, [
       ["G002", "G002S1", 1280, 1],
@@ -1042,7 +2181,7 @@ export const db = {
       images: ["🛏️", "📏"],
       expectQty: 1,
       budgetMinor: 80000,
-      status: "QUOTING",
+      status: "QUOTED",
       interestedCount: 6,
       interested: false,
       neighbours: [
@@ -1092,7 +2231,7 @@ export const db = {
       desc: "学校发的不够换洗，想再买一套备用。同校家长一起报个数，量够了找厂家做。",
       images: ["👕"],
       expectQty: 2,
-      status: "OPEN",
+      status: "COLLECTING",
       interestedCount: 3,
       interested: false,
       neighbours: [
@@ -1116,8 +2255,8 @@ export const db = {
       initiatorAvatar: "👩",
       createdAt: Date.now() - 3 * 3600_000,
       members: [
-        { avatar: "👩", nickname: "王姐", qty: 1 },
-        { avatar: "🧑", nickname: "老陈", qty: 2 },
+        { avatar: "👩", nickname: "王姐" },
+        { avatar: "🧑", nickname: "老陈" },
       ],
       joined: false,
     },
@@ -1305,8 +2444,12 @@ interface GroupSeed {
   initiatorNickname: string;
   initiatorAvatar: string;
   createdAt: number;
-  members: { avatar: string; nickname: string; qty: number }[];
+  members: { avatar: string; nickname: string }[];
   joined: boolean;
+  /** 商家散团 / 平台中止 / 到期未成。mock 里只有散团会写它 */
+  failed?: boolean;
+  /** 开团依据的拼团活动名（团详情「活动」那一行） */
+  activityName?: string;
 }
 
 /**
@@ -1333,6 +2476,8 @@ export function buildGroupBuy(seed: GroupSeed): GroupBuy {
 
   return {
     groupNo: seed.groupNo,
+    // 与后端同一口径：够人数即 FORMED，否则仍在 OPEN（mock 里没有平台中止）
+    status: seed.failed ? "FAILED" : reached ? "FORMED" : "OPEN",
     goodsNo: seed.goodsNo,
     title: goods.title,
     cover: goods.cover,
@@ -1353,6 +2498,7 @@ export function buildGroupBuy(seed: GroupSeed): GroupBuy {
     joined: seed.joined,
     neighborPickup: seed.neighborPickup,
     isOwner: !!seed.ownedByMe,
+    activityName: seed.activityName ?? null,
     // 送到发起人家时，取货点名与地址走临时点，不再指向门店
     ...(seed.neighborPickup
       ? { pickupNo: seed.neighborPickup.pickupNo, pickupName: seed.neighborPickup.name }
@@ -1442,15 +2588,33 @@ export function pointBalance(ledger: PointRecord[]): number {
   return ledger.reduce((s, r) => s + r.points, 0);
 }
 
-/** 订单状态机 —— 非法迁移直接抛错 */
+/**
+ * 订单状态机 —— 非法迁移直接抛错。
+ *
+ * 没有 `REFUNDING`：那是**售后单**的状态，不是订单的。
+ * 订单在售后期间保持它原本的状态（已完成的单照样能申请售后），
+ * 退款真正到账才迁到 `REFUNDED`。
+ * 做成订单状态就会强迫「已完成」和「退款中」二选一，而两者本就并存。
+ */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
-  PAID: ["PREPARING", "COMPLETED", "REFUNDING", "CANCELLED"],
-  PREPARING: ["ARRIVED", "SHIPPED", "REFUNDING"],
-  ARRIVED: ["COMPLETED", "REFUNDING"],
-  SHIPPED: ["COMPLETED", "REFUNDING"],
-  COMPLETED: ["REFUNDING"],
-  REFUNDING: ["REFUNDED", "COMPLETED"],
+  // 没有回到 WAIT_PAY 的边：改主意想线上付要重新下单，
+  // 否则「收没收到钱」有两个真源（商家确认 与 支付回调），而它们可能同时到达
+  WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
+  /*
+   * **付款之后只有一个「正在履约」**。
+   *
+   * 早先这里是 ARRIVED（已到自提点）与 SHIPPED（已发货）两个并列状态 ——
+   * 那是把「怎么送」编进了状态名，于是每加一种履约方式就得加一个状态
+   * （到店核销、上门预约、即时达各来一个），三端、状态机、统计口径都要各补一遍。
+   *
+   * 现在状态只说「进行到哪一步」，**送法由 fulfillment 表达**，
+   * 「去自提点取」还是「在路上」由 orderView(status, fulfillment, info) 决定
+   * （见 strategies/order-view.ts）。
+   */
+  PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
+  FULFILLING: ["COMPLETED", "REFUNDED"],
+  COMPLETED: ["REFUNDED"],
   REFUNDED: [],
   CANCELLED: [],
 };

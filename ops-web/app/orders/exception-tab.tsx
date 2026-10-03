@@ -15,19 +15,21 @@ import { fill } from "@/lib/use-copy";
 import { fmtTime, money } from "@/lib/utils";
 import { ORDER_TRANSITIONS } from "@/lib/types";
 import type { ExceptionKind, OrderException, OrderStatus } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import { OrderStatusBadge, useOrderStatusMap } from "@/components/status";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import type { OrdersCopy } from "./copy";
 
 /** 异常成因 → 徽标。两类的处置方式不同：一类推状态，一类去查关单任务。 */
@@ -42,8 +44,7 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
   const statusMap = useOrderStatusMap();
   const [keyword, setKeyword] = useState("");
   const [kind, setKind] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<OrderException | null>(null);
   const [form, setForm] = useState<{ to: OrderStatus | ""; remark: string }>({ to: "", remark: "" });
 
@@ -67,7 +68,7 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
   });
 
   const columns: Column<OrderException>[] = [
-    { header: c.colSubOrderNo, cell: (e) => e.order.orderNo, numeric: true, align: "start" },
+    { header: c.colSubOrderNo, cell: (e) => <IdCell value={e.order.orderNo} />, numeric: true, align: "start" },
     { header: c.colKind, cell: (e) => <StatusBadge map={kindMap} value={e.kind} /> },
     { header: c.colStatus, cell: (e) => <OrderStatusBadge value={e.order.status} /> },
     {
@@ -96,18 +97,22 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
 
   return (
     <>
-      <Notice className="mb-3">{c.exceptionNotice}</Notice>
+      <HelpNote className="mb-3">{c.exceptionNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchException}>
         <FilterSelect aria-label={c.filterKind} value={kind} onChange={(v) => { setKind(v); setPage(1); }}
           options={kindMap} allLabel={c.filterKindAll} />
       </Toolbar>
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(e) => e.order.orderNo}
         empty={c.emptyException}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}

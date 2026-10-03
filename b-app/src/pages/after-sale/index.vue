@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 售后处理（B-11.5）。
 //
 // 设计要点：**驳回必须填理由**。同意是一键的，驳回不是 —— 用户拿不到理由就只能
@@ -12,11 +15,33 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
-import type { Order } from "@shared/types";
+import type { AfterSale, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const list = ref<Order[]>([]);
+/** 「整单退款，将同时退回用户的券「满 30 减 5」、200 积分，并收回赠送的 50 积分」 */
+function impactText(r: Row): string {
+  const i = r.as.impact;
+  if (!i) return "";
+  const parts: string[] = [];
+  if (i.couponTitle) parts.push(String(t("afterSale.impactCoupon", { name: i.couponTitle })));
+  if (i.pointsReturn) parts.push(String(t("afterSale.impactPoints", { n: i.pointsReturn })));
+  const head = parts.length ? String(t("afterSale.impactReturn", { what: parts.join("、") })) : "";
+  const tail = i.pointsRevoke ? String(t("afterSale.impactRevoke", { n: i.pointsRevoke })) : "";
+  return [head, tail].filter(Boolean).join("；");
+}
+
+/**
+ * 一行 = 一张售后单 + 它所属的订单。
+ *
+ * **两者必须分开取**：`/biz/after-sale` 返回的是售后单（后端 AfterSaleVO），
+ * 而这一页要展示的买家、商品、金额都在订单上。此前这里把售后列表直接
+ * 当成 `Order[]` 用 —— 类型对不上，且列表本身还是按一个不存在的订单状态
+ * (`REFUNDING`) 筛的，所以真实环境下这一页恒为空。
+ */
+type Row = { as: AfterSale; order?: Order };
+
+const list = ref<Row[]>([]);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
@@ -26,20 +51,36 @@ const busy = ref(false);
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
  * 缺就按「待处理的仅退款」看待 —— 宁可多给商家一次处理机会，也不能让单子卡在页面上没有任何按钮。
  */
-const asStatus = (o: Order) => o.afterSale?.status ?? "PENDING";
-const asType = (o: Order) => o.afterSale?.type ?? "REFUND_ONLY";
+const asStatus = (r: Row) => r.as.status;
+const asType = (r: Row) => r.as.type;
+
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
 
 async function load() {
-  rejecting.value = "";
-  reason.value = "";
-  list.value = await api.mAfterSaleList();
+  try {
+    rejecting.value = "";
+    reason.value = "";
+    const [afterSales, orders] = await Promise.all([
+      api.mAfterSaleList(),
+      api.mOrderList({ size: 50 }),
+    ]);
+    const byNo = new Map(orders.records.map((o) => [o.orderNo, o]));
+    list.value = afterSales.map((as) => ({ as, order: byNo.get(as.subOrderNo) }));
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
-async function agree(o: Order) {
+async function agree(r: Row) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mApproveAfterSale(o.afterSale!.afterSaleNo, "");
+    await api.mApproveAfterSale(r.as.afterSaleNo, "");
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -53,11 +94,11 @@ async function agree(o: Order) {
  * 确认收到退货 → 随即退款（B-7.3）。
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
-async function confirmReturn(o: Order) {
+async function confirmReturn(r: Row) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mConfirmReturn(o.afterSale!.afterSaleNo);
+    await api.mConfirmReturn(r.as.afterSaleNo);
     uni.showToast({ title: t("afterSale.refunded"), icon: "none" });
     await load();
   } catch (e) {
@@ -67,7 +108,7 @@ async function confirmReturn(o: Order) {
   }
 }
 
-async function reject(o: Order) {
+async function reject(r: Row) {
   if (!reason.value.trim()) {
     uni.showToast({ title: t("afterSale.needReason"), icon: "none" });
     return;
@@ -75,7 +116,7 @@ async function reject(o: Order) {
   if (busy.value) return;
   busy.value = true;
   try {
-    await api.mRejectAfterSale(o.afterSale!.afterSaleNo, reason.value.trim());
+    await api.mRejectAfterSale(r.as.afterSaleNo, reason.value.trim());
     uni.showToast({ title: t("afterSale.rejected"), icon: "none" });
     await load();
   } catch (e) {
@@ -89,86 +130,115 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="afterSale.title">
-    <text class="sh-h1">{{ $t("afterSale.title") }}</text>
+  <sh-scaffold title-key="afterSale.title" :denied="!merchant.can('biz:aftersale')">
+    <text class="txt-display">{{ $t("afterSale.title") }}</text>
 
-    <sh-empty v-if="!list.length" :text='$t("afterSale.empty")'></sh-empty>
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
 
-    <view v-for="o in list" :key="o.orderNo" class="sh-card item">
-      <view class="item__head">
-        <text class="item__buyer">{{ o.buyerNickname || "—" }}</text>
-        <text class="sh-muted">{{ datetime(o.createdAt) }}</text>
+    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
+      <view class="item__head sh-row sh-row--between sh-row--baseline">
+        <text class="txt-body">{{ r.order?.buyerNickname || "—" }}</text>
+        <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
       </view>
-      <view class="item__tags">
-        <text class="sh-chip">{{ $t(`afterSale.type${asType(o)}`) }}</text>
-        <text class="sh-muted sh-num item__no">{{ o.orderNo }}</text>
+      <view class="item__tags sh-row">
+        <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
+        <text class="txt-caption sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
       </view>
-      <text v-if="o.afterSale?.reason" class="sh-muted reason">
-        {{ $t("afterSale.buyerReason") }}{{ o.afterSale.reason }}
+      <text v-if="r.as.reason" class="sh-muted reason">
+        {{ $t("afterSale.buyerReason") }}{{ r.as.reason }}
       </text>
 
-      <view class="goods">
-        <text v-for="it in o.items" :key="it.skuNo" class="sh-chip">
+      <view class="goods sh-wrap">
+        <text v-for="it in r.order?.items || []" :key="it.skuNo" class="sh-chip">
           {{ it.title }} ×{{ it.qty }}
         </text>
       </view>
 
-      <view class="item__amount">
+      <!-- 金额取**售后单自己的** refundMinor，不是订单的应付：
+           一张子订单可以只退其中一件，也可以先后发起多次。
+           也因此不再挂 `v-if="r.order"` —— 订单没匹配上时，
+           退款金额这一行照样该出现，那是这一页最要紧的一个数。 -->
+      <view class="item__amount sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
-        <text class="sh-num amount">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
+        <text class="txt-price sh-num is-danger">
+          {{ money(r.as.refundMinor, r.order?.amount.currency) }}
+        </text>
       </view>
 
-      <template v-if="rejecting === o.orderNo">
+      <template v-if="rejecting === r.as.afterSaleNo">
         <textarea
           v-model="reason"
           class="field__area"
           :placeholder="$t('afterSale.reasonPh')"
           maxlength="80"
         />
-        <view class="btns">
-          <text class="btn btn--ghost" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn btn--danger" @tap="reject(o)">{{ $t("afterSale.confirmReject") }}</text>
+        <view class="btns sh-row">
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--danger-solid txt-strong btn" @tap="reject(r)">{{ $t("afterSale.confirmReject") }}</text>
         </view>
       </template>
 
-      <!-- 按售后状态给动作：待处理才谈同意/驳回，已寄回才谈确认收货 -->
-      <view v-else-if="asStatus(o) === 'PENDING'" class="btns">
-        <text class="btn btn--ghost" @tap="rejecting = o.orderNo">{{ $t("afterSale.reject") }}</text>
-        <text class="btn" @tap="agree(o)">
-          {{ asType(o) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
+      <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
+           同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
+      <!--
+        **同意之前说清会一并退回什么**（待办设计 P2c）。整单最后一笔才有；
+        券若是本店发的，退回等于少收一次核销 —— 要在点下去之前看见。
+      -->
+      <text v-if="impactText(r)" class="txt-caption sh-muted impact">{{ impactText(r) }}</text>
+      <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
+        <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
+          {{ $t("afterSale.reject") }}
+        </text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="agree(r)">
+          {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'AGREED'" class="waiting">
+      <view
+        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND' && !r.as.returnExpressNo"
+        class="waiting"
+      >
         <text class="sh-muted">{{ $t("afterSale.waitReturn") }}</text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'RETURNING'" class="btns">
-        <view class="express">
+      <view
+        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND'"
+        class="btns sh-row"
+      >
+        <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
-          <text class="sh-num">{{ o.afterSale?.returnExpressNo }}</text>
+          <text class="sh-num">{{ r.as.returnExpressNo }}</text>
         </view>
-        <text class="btn" @tap="confirmReturn(o)">{{ $t("afterSale.confirmReceived") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmReturn(r)">
+          {{ $t("afterSale.confirmReceived") }}
+        </text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'REJECTED'" class="waiting">
+      <!-- 已退款也要说一句。此前这一支没有分支，卡片下方是**一片空白** ——
+           而空白与「还没轮到我处理」长得一模一样。
+           极速退单独说：那类单商家可见不可拒，不说清楚会以为是自己漏点了。 -->
+      <view v-else-if="asStatus(r) === 'REFUNDED'" class="waiting">
+        <text class="sh-muted">
+          {{ r.as.instant ? $t("afterSale.instantHint") : $t("afterSale.doneHint") }}
+        </text>
+      </view>
+
+      <view v-else-if="asStatus(r) === 'REJECTED'" class="waiting">
         <text class="sh-muted">{{ $t("afterSale.rejectedHint") }}</text>
       </view>
 
-      <view v-else-if="asStatus(o) === 'DISPUTED'" class="waiting">
+      <view v-else-if="asStatus(r) === 'ARBITRATING'" class="waiting">
         <text class="sh-chip sh-chip--warning">{{ $t("afterSale.disputed") }}</text>
-        <text class="sh-muted mt">{{ $t("afterSale.disputedHint") }}</text>
+        <text class="sh-muted sh-mt-xs blk">{{ $t("afterSale.disputedHint") }}</text>
       </view>
     </view>
 
-    <text v-if="list.length" class="tip">{{ $t("afterSale.hint") }}</text>
+    <text v-if="list.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .item__tags {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
 }
 .reason {
@@ -178,78 +248,66 @@ onShow(load);
 .waiting {
   margin-top: 20rpx;
 }
+/*
+ * 标签与单号**各占一行**。`<text>` 是行内元素，两个挨着写会连成一串，
+ * 而这一格只有半屏宽 —— 断行落在「退货运单 / 号SF7788990011」上，
+ * 把「运单号」三个字劈成两半。标签本身不许断（nowrap），
+ * 单号可断（运单号比这一格宽是常态）。
+ */
 .express {
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
-.mt {
+.express > text:first-child {
+  white-space: nowrap;
+}
+.express > text:last-child {
+  word-break: break-all;
+}
+.blk {
   display: block;
-  margin-top: 10rpx;
 }
 
-.item {
-  margin-top: 14rpx;
-}
-.item__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.item__buyer {
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
 .item__no {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
 }
 .goods {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 20rpx 0;
 }
 .item__amount {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   padding: 20rpx 0;
 }
-.amount {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: var(--sh-danger);
-}
+/*
+ * `align-items: center` 不是排版偏好，是**药丸按钮的前提**：
+ * 默认的 stretch 会把按钮拉到与同行最高的那格一样高（运单号那格是两行），
+ * 而 `border-radius: 9999px` 在被拉高的盒子上不再是药丸，是椭圆。
+ */
 .btns {
-  display: flex;
-  gap: 16rpx;
   margin-top: 20rpx;
 }
 .btn {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
+  padding: 24rpx 0;
 }
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
+/*
+ * 与运单号同行的那个按钮**按文字宽度收**，不跟着 `flex: 1` 平分。
+ * 平分的结果是两边都只有半屏：按钮把「确认收到退货并退款」九个字撑满，
+ * 运单号那边被挤到剩不下一行，20 位的单号折成两截。
+ * 一行里一个是可变信息、一个是固定文案时，该收的是文案那一侧。
+ */
+.btn--auto {
+  flex: 0 0 auto;
+  padding-inline: 24rpx;
 }
-.btn--danger {
-  background: var(--sh-danger);
-  color: #fff;
-}
+
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
+}
+.impact {
+  display: block;
+  margin-top: 12rpx;
 }
 </style>

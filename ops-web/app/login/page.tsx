@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, type Role } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Drawer } from "@/components/ui/drawer";
+import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 
 // 顺序 = 需求矩阵 §2.3 的角色表顺序，便于逐行对照。
 const ROLES: Role[] = [
@@ -24,27 +27,51 @@ const DEMO_SCOPE: Partial<Record<Role, { merchantNo?: string; communityNo?: stri
   COMMUNITY_OPS: { communityNo: "C001" },
 };
 
-// MVP 登录（mock）：选角色 + 用户名即可进入。接后端后换真实凭据（STAFF 池 Bearer + RBAC）。
+/*
+ * 登录：用户名 + 密码，**角色由后端返回**。
+ *
+ * 这里此前是「选角色即进入」的 mock 登录 —— 在 mock 上没问题，但一旦指向真实后端
+ * 就是两件错事：一是后端要的是 {username, password}，收到 {username, role} 直接拒；
+ * 二是**让用户自己挑角色**，那是把权限交给被鉴权的一方。
+ * 真实后端只认凭据，角色来自 STAFF 账号自身。
+ */
 export default function LoginPage() {
+  return <Suspense><LoginForm /></Suspense>;
+}
+
+function LoginForm() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const { t } = useI18n();
-  const [username, setUsername] = useState("admin");
-  const [role, setRole] = useState<Role>("SUPER_ADMIN");
+  const params = useSearchParams();
+  const [username, setUsername] = useState(params.get("u") ?? "admin");
+  const [password, setPassword] = useState(params.get("p") ?? "");
+  const [forgot, setForgot] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const didAutoLogin = useRef(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // ?u=admin&p=xxx → 自动提交一次（测试用）
+  useEffect(() => {
+    const u = params.get("u");
+    const p = params.get("p");
+    if (u && p && !didAutoLogin.current) {
+      didAutoLogin.current = true;
+      doLogin(u, p);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function doLogin(u: string, p: string) {
     setBusy(true);
     setErr("");
     try {
-      // 换后端 token（mock 模式返回 mock token）；**后端据 token 里的角色鉴权**
-      const r = await api.login(username, role, DEMO_SCOPE[role]);
+      const r = await api.login(u, p);
       login({
         username: r.username,
         role: r.role,
         token: r.token,
+        perms: r.perms,
         merchantNo: r.merchantNo,
         communityNo: r.communityNo,
       });
@@ -56,36 +83,140 @@ export default function LoginPage() {
     }
   }
 
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    await doLogin(username, password);
+  }
+
   return (
     <div className="flex h-screen items-center justify-center bg-muted/30">
       <Card className="w-[360px]">
         <CardHeader>
-          <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary text-sm font-medium text-primary-foreground">
+          <div className="mb-1 flex size-9 items-center justify-center rounded-field bg-primary txt-strong text-primary-foreground">
             邻
           </div>
           <CardTitle>{t("common.appTitle")}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t("login.subtitle")}</p>
+          <p className="txt-body text-muted-foreground">{t("login.subtitle")}</p>
         </CardHeader>
         <CardContent>
           <form className="space-y-3" onSubmit={submit}>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("login.username")}</label>
+              <label className="txt-body text-muted-foreground">{t("login.username")}</label>
               <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("login.username")} />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("login.role")}</label>
-              <Select className="w-full" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                {ROLES.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
-              </Select>
+              <label className="txt-body text-muted-foreground">{t("login.password")}</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("login.password")}
+              />
             </div>
-            {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 text-sm text-destructive">{err}</div>}
+            {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
             <Button className="w-full" type="submit" disabled={busy}>
               {busy ? t("common.loading") : t("login.submit")}
             </Button>
-            <p className="txt-caption text-muted-foreground">{t("login.hint")}</p>
           </form>
+
+          {/*
+            忘记密码。这条路径此前完全不存在 —— 后端只有登录与改自己的密码，
+            运营忘了密码只能找人改库。放在登录按钮下面而不是藏进菜单：
+            需要它的人此刻正被挡在门外，看不到任何菜单。
+          */}
+          <button type="button" onClick={() => setForgot(true)}
+                  className="focus-ring mt-3 w-full txt-caption text-muted-foreground hover:text-foreground">
+            {t("login.forgot")}
+          </button>
         </CardContent>
       </Card>
+
+      <ForgotDialog open={forgot} onClose={() => setForgot(false)} />
     </div>
+  );
+}
+
+/**
+ * 忘记密码 → 收码 → 设新密码，两步在同一个抽屉里完成。
+ *
+ * 不做成两个页面：重置码在邮件里，用户要在邮箱与浏览器之间切一次，
+ * 中间再穿一次页面跳转，很容易丢掉上下文（尤其手机上）。
+ */
+function ForgotDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n();
+  const [step, setStep] = useState<"ask" | "reset">("ask");
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  const close = () => { setStep("ask"); setToken(""); setPwd(""); setMsg(""); setErr(""); onClose(); };
+
+  const sendCode = async () => {
+    setBusy(true); setErr("");
+    try {
+      await api.forgotPassword(email.trim());
+      // **无论账号存不存在都是这句** —— 与后端同口径，端上不要自作主张去区分
+      setMsg(t("login.forgotSent"));
+      setStep("reset");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally { setBusy(false); }
+  };
+
+  const doReset = async () => {
+    setBusy(true); setErr("");
+    try {
+      await api.resetPassword(token.trim(), pwd);
+      setMsg(t("login.resetDone"));
+      setStep("ask");
+      setToken(""); setPwd("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Drawer open={open} onOpenChange={(o) => !o && close()}
+            title={t("login.forgotTitle")} desc={t("login.forgotDesc")}>
+      <div className="space-y-4">
+        <Notice tone="info">{t("login.forgotNote")}</Notice>
+
+        <div className="space-y-1">
+          <Label>{t("login.username")}</Label>
+          <Input value={email} onChange={(e) => setEmail(e.target.value)}
+                 placeholder="name@neargo.ai" disabled={step === "reset"} />
+        </div>
+
+        {step === "ask" ? (
+          <Button className="w-full" disabled={!email.trim() || busy} onClick={sendCode}>
+            {t("login.forgotSend")}
+          </Button>
+        ) : (
+          <>
+            <div className="space-y-1">
+              <Label>{t("login.resetToken")}</Label>
+              <Input value={token} onChange={(e) => setToken(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("login.resetNew")}</Label>
+              <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)}
+                     placeholder={t("login.resetNewHint")} />
+            </div>
+            <Button className="w-full" disabled={!token.trim() || pwd.length < 8 || busy}
+                    onClick={doReset}>
+              {t("login.resetSubmit")}
+            </Button>
+          </>
+        )}
+
+        {msg && <Notice tone="info">{msg}</Notice>}
+        {err && <Notice tone="danger">{err}</Notice>}
+      </div>
+    </Drawer>
   );
 }

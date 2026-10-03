@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>shop-base</artifactId>
+    <packaging>jar</packaging>
+    <description>地基：横切基础设施（common · auth · event · idem）+ 跨域契约（spi 的 Port/DTO/Event）</description>
+
+    <!--
+      由 shop-common 与 shop-spi 合并而来（模块优化实施步骤 S6）。
+
+      合并前担心的是「spi 是纯接口、零依赖，合进来会让契约能引用基础设施类型」——
+      核对后发现 **shop-spi 本来就依赖 shop-common**（Port 的事件契约直接 import
+      ai.neargo.shop.event.DomainEvent）。那条编译期保证从来不存在，
+      合并因此不损失任何东西，只少一个 pom。
+
+      包结构保持不变：common / auth / event / idem 是基础设施，spi 是跨域契约，
+      两者的边界仍由 ArchitectureTest 的 commonMustNotDependOnDomains 与
+      portInterfacesOnlyInSpi 看着。
+    -->
+    <dependencies>
+        <!--
+            事务编排（AfterCommit 用 TransactionSynchronizationManager）。
+            **这一条以前是别的依赖传递带进来的**，瘦身之后才显出来 ——
+            而那正是「传递依赖会掩盖真实需要」的一个小样本。
+            spring-tx 本身不带 MyBatis、不带 web，留在内核里是干净的。
+        -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+
+        <!-- 服务间调用：@HttpExchange + RestClient 的传输零件（TDD-服务间调用换HTTP-Interface）。
+             它只带 spring-web —— 不带 Tomcat、不带 Servlet API，地基不因此变重 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>svc-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- neargo L1 纯库（IdGenerator/ErrorCode 等），不含 autoconfig -->
+        <dependency>
+            <groupId>ai.neargo</groupId>
+            <artifactId>neargo-common-core</artifactId>
+        </dependency>
+        <!-- 复用 neargo RBAC（@perm/PermissionCarrier/Permissions）。
+             其 SecurityAutoConfiguration/SessionStoreAutoConfiguration 在 app 层 exclude 掉（TDD-backend §2.1-3）。 -->
+                <!-- 复用 neargo 数据权限引擎（scope 包）：DataScopeSpec/Context/Handler/TableRegistry。
+             其 DataAutoConfiguration 同样在 app 层 exclude。 -->
+        
+        <!--
+            **这里刻意没有 mybatis-plus，也没有 web / security / neargo-common-data。** 它搬到 shop-store-mybatis 去了。
+
+            此前它是编译依赖，于是「想用 ErrorCode」和「必须把 MyBatis 装进 classpath」
+            被绑成了一件事 —— 而本模块 159 个文件里有 113 个连 org.springframework
+            都没有。为了躲那 22 个绑 MyBatis 的，job 与将来的 pay 把 71% 的零框架代码
+            也一起躲掉了，代价是错误码各写一套（而错误码是三端契约的一部分）。
+
+            加回来之前先想清楚：**判据不是「用没用到」而是「进没进 classpath」**，
+            那正是 AOT 的判据，也是 ADR-021 §3.5 担心的那件「没有任何报错」的事。
+        -->
+
+                        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        
+        <!--
+            ShedLock：定时任务的分布式锁。放在 shop-base 而不是 shop-app，
+            因为 @SchedulerLock 标在各域自己的 Job 上（shop-merchant / shop-settle），
+            注解要在它们的编译期可见；**锁的实现（JdbcTemplate provider）在 shop-app**，
+            那里才知道连的是哪个库 —— 域模块不该知道。
+            版本在 backend/pom.xml 的 dependencyManagement（Boot BOM 不管它），这里不写。
+        -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+        </dependency>
+
+        <!-- 定时任务契约（JobHandler / JobDeclaration）。**零依赖**，
+             加在这里等于让每个域都能实现它，而不必各自引一遍。
+             它不引 Spring 也不引任何东西，所以不会污染任何使用方 —— 这正是当初
+             把它单独开成一个模块、而不是塞进本模块的理由 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>job-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--
+            Ehcache 3：会话的**单机持久化**形态（shop.auth.token-store=ehcache）。
+
+            版本由 Spring Boot BOM 管（4.0.7 → 3.11.1），这里与父 POM 都不写。
+            此前这里钉着 3.12.0，但在 shop-app 里从未生效 —— 根工程继承的 BOM 会覆盖
+            传递依赖声明的版本，fat jar 与线上装的一直是 3.11.1；2026-09-06 撤掉，
+            让模块测试与发布物跑同一个版本。要偏离 BOM，去 backend/pom.xml 用 ehcache3.version
+            覆盖并写明原因，别在这里写版本。
+
+            classifier=jakarta（本注释是这条约定唯一的家，shop-auth-store 与 CacheConfig 都指到这里）：
+            BOM 对 org.ehcache:ehcache 同时管着「无 classifier」与「jakarta」两条，同一个版本。
+            两种包都用 javax.cache（JCache 1.1 没有 jakarta 命名空间），区别只在 XML 配置
+            那一层的 JAXB（jakarta.xml.bind vs javax.xml.bind）。本仓库只用编程式
+            CacheManagerBuilder，两种包都能跑；选 jakarta 是与 Boot 4 的 Jakarta 栈保持一致，
+            而不是此前写在这里的「默认包装配不起来、报 NoClassDefFoundError: javax/cache」——
+            那句话没有任何一次真实报错支撑（2026-09-06 复核）。
+            引用方必须写 classifier：BOM 那两条按 g:a:type:classifier 匹配，不写就静默落到
+            无 classifier 的那条（版本相同、JAXB 走 javax），构建照样绿。
+        -->
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <classifier>jakarta</classifier>
+        </dependency>
+    </dependencies>
+
+</project>

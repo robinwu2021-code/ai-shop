@@ -1,0 +1,453 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>会员与营销 · 界面原型</title>
+<!-- 真源在仓库 prototypes/member-marketing-v1.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · C 端小程序 · 界面原型 v1</div>
+  <h1>会员与营销</h1>
+  <p class="sub">十七屏，覆盖会员的入会、筛选、标签、口径，与营销的活动、券、发放、核销。
+  手机屏内的颜色、圆角、字号取自项目自己的设计令牌（<code>--sh-primary #E1251B</code>），
+  不是另起一套。每屏下方那行黄字，是这一屏为什么长成这样。</p>
+  <p class="sub" style="margin-top:12px">每一屏都有锚点（<code>#s01</code>…<code>#s17</code>），
+  <a href="https://claude.ai/code/artifact/7438f613-7e28-4093-b244-bd80fb13aaa5">三端界面清单</a>
+  里点「原型」会直接跳到对应那一屏。</p>
+  <p class="eyebrow" style="margin-top:22px;text-transform:none;letter-spacing:0">红 = 主操作与需要注意的数字 · 灰底胶囊 = 状态 · 黄字 = 设计理由，不是界面文案</p>
+</header>
+
+<!-- ══════════ 会员 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 07</span><h2>会员</h2></div>
+  <p class="sub">入口在「我的」，不在工作台：营销是今天要做的事，会员是一周看一次的经营资产；
+  塞进工作台会挤掉高频入口。</p>
+
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">我的</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">张记粮油</span><span class="chip">切换</span></div>
+            <div class="meta">老板 · 3 家门店</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>门店管理</span><span class="v go">张记粮油</span></div>
+            <div class="frow"><span>会员</span><span class="v go num">141 人</span></div>
+            <div class="frow"><span>经营数据</span><span class="v go"></span></div>
+            <div class="frow"><span>套餐</span><span class="v go">成长版</span></div>
+            <div class="frow"><span>结算</span><span class="v go"></span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta" style="flex:1;text-align:center">▤<br>工作台</span><span class="meta" style="flex:1;text-align:center">▦<br>订单</span><span class="meta" style="flex:1;text-align:center">▣<br>商品</span><span class="meta" style="flex:1;text-align:center;color:var(--sh-primary-text);font-weight:600">◉<br>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>01 入口</b>「会员」一行带人数，不进去也知道有多少。</figcaption>
+      <p class="why">人数放在入口上，是为了让他偶尔瞥一眼就发现「怎么少了」——而不是等到发券时才发现。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">会员</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">全部门店 ▾</span><span>⚙ 口径</span></div>
+          <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+            <div><div class="n num">38</div><div class="l">新客</div></div>
+            <div><div class="n num">62</div><div class="l">常客</div></div>
+            <div><div class="n num">17</div><div class="l">熟客</div></div>
+            <div><div class="n num" style="color:var(--sh-primary-text)">24</div><div class="l">沉睡</div></div>
+          </div>
+          <div class="meta num" style="padding:0 4px">本月新增 12 · 可触达 118</div>
+          <div class="note">另有 3 位买家未绑手机号，未计入会员 ›</div>
+          <div class="group"><div class="frow"><span class="k">🔍 输入完整手机号查找</span></div></div>
+          <div class="card">
+            <div class="hd"><span class="nm num">张阿姨 ···1234</span><span class="chip warn">沉睡</span></div>
+            <div class="meta num">近90天 0 单 · 上次 68 天前 · 来自分享</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm num">李师傅 ···8802</span><span class="chip">熟客</span></div>
+            <div class="meta num">近90天 9 单 · 上次 2 天前 · 扫码进店</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>02 会员总览</b>四个数字即入口，沉睡置顶。</figcaption>
+      <p class="why">「未计入」那条横幅先说差额。商家一定会拿订单数和会员数对，对不上时他的第一反应是数据丢了。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">筛选</span><span></span></div>
+        <div class="scr">
+          <div class="gt">来源</div>
+          <div class="group">
+            <div class="pickrow on"><span>分享</span></div>
+            <div class="pickrow"><span>扫码</span></div>
+            <div class="pickrow"><span>录入</span></div>
+            <div class="pickrow"><span>下单</span></div>
+          </div>
+          <div class="gt">标签</div>
+          <div class="group">
+            <div class="pickrow on"><span>爱囤货</span></div>
+            <div class="pickrow"><span>不要辣</span></div>
+            <div class="pickrow"><span>只要土鸡蛋</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">末次下单</span><span class="v go num">60 天以前</span></div>
+            <div class="frow"><span class="k">累计消费</span><span class="v go ph-">不限</span></div>
+          </div>
+          <div class="sum" style="display:flex;justify-content:space-between"><b class="num">命中 37 人</b><span>存为人群 ›</span></div>
+        </div>
+        <div class="foot"><div class="btn sec">打标</div><div class="btn sec">发券</div><div class="btn main">发消息</div></div>
+      </div>
+      <figcaption class="cap"><b>03 筛选 → 人群</b>筛完给「命中 37 人」，三个动作都作用在这 37 人上。</figcaption>
+      <p class="why">人群存的是条件不是名单。名单每天在变，发之前会当场重算——按两周前的快照发券是错的。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张阿姨</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm num">···1234</span><span class="chip warn">沉睡</span></div>
+            <div class="meta num">加入 2026-03-12 · 首次进店 南门店</div>
+            <div><span class="chip">爱囤货</span> <span class="chip">不要辣</span> <span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋</span></div>
+          </div>
+          <div class="gt">各店往来</div>
+          <div class="group">
+            <div class="frow"><span class="k">南门店</span><span class="v num">18 单 / ¥1,420</span></div>
+            <div class="frow"><span class="k">总店</span><span class="v num">5 单 / ¥422</span></div>
+          </div>
+          <div class="gt">来源轨迹</div>
+          <div class="group">
+            <div class="frow"><span class="k num">03-12 分享</span><span class="v">李姐转发</span></div>
+            <div class="frow"><span class="k num">05-02 扫码</span><span class="v">总店门口码</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">发一张券</div><div class="btn main">发条消息</div></div>
+      </div>
+      <figcaption class="cap"><b>04 会员详情</b>各店往来 + 来源轨迹。</figcaption>
+      <p class="why">「谁发的链接」要写出来。只记「来自分享」，分享激励就没法结算，商家也不知道该谢谁。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">添加会员</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">手机号</span><span class="v num">138 0013 8000</span></div>
+            <div class="frow"><span class="k">备注</span><span class="v">三单元，晚上来</span></div>
+            <div class="frow"><span class="k">标签</span><span class="v"><span class="chip ok">爱囤货</span> <span class="chip">＋</span></span></div>
+          </div>
+          <div class="note">他还不是平台用户时，这条记为「线索」：<b>不会收到任何消息</b>，
+            等他自己注册后自动认领，你现在写的备注和标签都会留着。</div>
+        </div>
+        <div class="foot"><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>05 手工录入</b>合规提示在保存之前，不在保存之后。</figcaption>
+      <p class="why">录入手机号不等于拿到推送许可。这句话要在他按下保存前看到，否则他会以为发不出去是功能坏了。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">标签</span><span></span></div>
+        <div class="scr">
+          <div class="gt">系统标签（按口径自动算，不可改）</div>
+          <div class="group">
+            <div class="frow"><span>新客</span><span class="v num">38</span></div>
+            <div class="frow"><span>常客</span><span class="v num">62</span></div>
+            <div class="frow"><span>熟客</span><span class="v num">17</span></div>
+            <div class="frow"><span>沉睡</span><span class="v num">24</span></div>
+          </div>
+          <div class="gt">我的标签</div>
+          <div class="group">
+            <div class="frow"><span>爱囤货 <span class="meta num">41 人</span></span><span class="v go">改名 · 合并</span></div>
+            <div class="frow"><span>囤货党 <span class="meta num">12 人</span></span><span class="v go">改名 · 合并</span></div>
+            <div class="frow add">新建</div>
+          </div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">把「囤货党」并入「爱囤货」</div>
+          <div class="d">12 人会改成「爱囤货」，其中 5 人两个标签都有，合并后只保留一个。
+            引用了「囤货党」的 1 个活动会自动改为「爱囤货」。<b>合并不可撤销。</b></div>
+          <div class="acts"><div class="btn sec">取消</div><div class="btn danger-solid">确认合并</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>06 标签与合并</b>合并前先算影响面。</figcaption>
+      <p class="why">关系行存的是标签号不是文字，所以改名一行不动、历史统计不断；合并才是不可逆的那个动作。</p>
+    </figure>
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">会员设置</span><span></span></div>
+        <div class="scr">
+          <div class="gt">经营口径</div>
+          <div class="group">
+            <div class="pickrow on"><span>按主体</span><span class="c">三家店共用一份会员名单</span></div>
+            <div class="pickrow"><span>按门店</span><span class="c">各店各算各的。适合门店相距较远</span></div>
+          </div>
+          <div class="note">切换后「新客」的含义会变：在别的店买过、这家没买过的人，
+            会算作这家店的新客。<b>随时可以切回来，数据不会丢。</b></div>
+          <div class="group"><div class="frow"><span>下单自动入会</span><span class="sw on"></span></div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 会员口径</b>开关只改展示与分层，不改存储。</figcaption>
+      <p class="why">只给开关没人敢点。把「新客含义会变」和「随时可切回」写出来，他才会去试。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ 营销 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">08 — 14</span><h2>营销：活动与券</h2></div>
+  <p class="sub">活动是规则、券是资产。四类玩法在新模型里只是「触发 × 优惠」的取值组合，
+  界面因此按<b>目的</b>组织，而不是按类型。</p>
+
+  <div class="grid">
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">营销</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span class="on">活动</span><span>券</span></div>
+          <div class="tabs"><span class="on">进行中</span><span>长期</span><span>周期</span><span>已结束</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">周三特价</span><span class="chip ok">每周三</span></div>
+            <div class="meta">南门店 · 8:00–20:00</div>
+            <div class="metric"><span class="bar"><i style="width:63%"></i></span><span class="num">限量 63 / 100</span></div>
+            <div class="frow"><span class="k">带来</span><span class="v num">41 单 · ¥2,180</span></div>
+            <div class="frow"><span class="k">其中</span><span class="v num">新客 12 · 唤回 5</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">新客立减 5 元</span><span class="chip warn">长期 · 未设限</span></div>
+            <div class="meta">全部门店 · 受众：非本店会员</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">＋ 新建活动</div></div>
+      </div>
+      <figcaption class="cap"><b>08 活动列表</b>长期与周期单独分组，效果直接长在行上。</figcaption>
+      <p class="why">「长期 + 未设限」标黄：没有结束时间又没有上限，就是一个没人管的永久敞口。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建活动</span><span></span></div>
+        <div class="scr">
+          <div class="prog"><div class="t"><b>① 目的</b><span>— ② 参数 — ③ 给谁 — ④ 预览</span></div><div class="bar"><i style="width:25%"></i></div></div>
+          <div class="group">
+            <div class="pickrow"><span>拉新客</span><span class="c">给没买过的人一张小额券</span></div>
+            <div class="pickrow"><span>唤回老客</span><span class="c">给沉睡的人一张大额券</span></div>
+            <div class="pickrow on"><span>清库存</span><span class="c">限时特价 + 限量</span></div>
+            <div class="pickrow"><span>提客单</span><span class="c">满 X 减 Y</span></div>
+          </div>
+          <div class="sum">选目的只是帮你预填参数。存进去的还是四类活动之一，你随时可以改。</div>
+        </div>
+        <div class="foot"><div class="btn main">下一步</div></div>
+      </div>
+      <figcaption class="cap"><b>09 新建 · 第一步</b>先问目的，再问参数。</figcaption>
+      <p class="why">店主脑子里是「这批菜今天必须清掉」，不是「限时特价」。让他自己翻译，翻译错了活动就白做。</p>
+    </figure>
+
+    <figure id="s10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建活动</span><span></span></div>
+        <div class="scr">
+          <div class="prog"><div class="t"><span>① 目的 — ② 参数 — </span><b>③ 给谁</b><span> — ④ 预览</span></div><div class="bar"><i style="width:75%"></i></div></div>
+          <div class="group">
+            <div class="pickrow"><span>所有人</span><span class="c">选择</span></div>
+            <div class="pickrow on"><span>沉睡会员</span><span class="c num">24 人</span></div>
+            <div class="pickrow"><span>熟客</span><span class="c num">17 人</span></div>
+            <div class="frow"><span class="k">按标签…</span><span class="v go"></span></div>
+          </div>
+          <div class="gt">预览</div>
+          <div class="group">
+            <div class="frow"><span class="k num">每周三 8:00–20:00</span><span class="v num">限量 100 件</span></div>
+            <div class="frow"><span class="k">覆盖</span><span class="v num">24 人</span></div>
+            <div class="frow"><span class="k">这批商品</span><span class="v">已在「周三特价」里</span></div>
+          </div>
+          <div class="note">同类活动取最优，实际生效的可能是另一个。要不要先看看那个活动？</div>
+        </div>
+        <div class="foot"><div class="btn main">发布</div></div>
+      </div>
+      <figcaption class="cap"><b>10 新建 · 给谁 + 预览</b>覆盖 0 人时不让发布。</figcaption>
+      <p class="why">冲突提示放在发布前。「同类取最优」这条规则今天只写在文档里，商家看不见。</p>
+    </figure>
+
+    <figure id="s11">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">券</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span>活动</span><span class="on">券</span></div>
+          <div class="tabs"><span class="on">在发</span><span>已停</span><span>已结束</span></div>
+          <div class="card">
+            <div class="hd"><span class="nm">满 50 减 5</span><span class="chip">现金 ¥5</span></div>
+            <div class="meta">全店 · 领取后 7 天有效</div>
+            <div class="frow"><span class="k num">领 128 / 200</span><span class="v num">已用 76</span></div>
+            <div class="frow"><span class="v go">停发</span><span class="v go hot">发放</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">豆浆次卡</span><span class="chip">兑换 ×5</span></div>
+            <div class="meta">南门店 · 到店核销</div>
+            <div class="frow"><span class="k num">发出 30 张</span><span class="v num">已核销 62 次</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>11 券列表</b>次卡看核销次数，不看张数。</figcaption>
+      <p class="why">「停发」旁边要写「已领走的 128 张不受影响」——券是用户的资产，这是最容易被误解的一处。</p>
+    </figure>
+
+    <figure id="s12">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建券</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">名称</span><span class="v">满 50 减 5</span></div>
+            <div class="frow"><span class="k">权益</span><span class="v">现金 ¥5</span></div>
+            <div class="frow"><span class="k">类型</span><span class="v"><span class="chip ok">现金</span> <span class="chip">折扣</span> <span class="chip">兑换</span> <span class="chip">免运费</span></span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">门槛</span><span class="v num">满 ¥50</span></div>
+            <div class="frow"><span class="k">范围</span><span class="v">全店</span></div>
+            <div class="frow"><span class="k">有效期</span><span class="v num">领取后 7 天</span></div>
+            <div class="frow"><span class="k">发放</span><span class="v">定向发给人群</span></div>
+            <div class="frow"><span class="k">核销</span><span class="v">下单抵扣</span></div>
+          </div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span class="num">200 张 × ¥5</span><b class="num">最大支出 ¥1,000</b></div>
+        </div>
+        <div class="foot"><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>12 新建券</b>五段：权益 / 门槛 / 范围 / 有效期 / 发放与核销。</figcaption>
+      <p class="why">敞口在按下保存那一刻就该是确定的。折扣券必须填封顶，否则一笔大单能减掉一千五。</p>
+    </figure>
+
+    <figure id="s13">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">发放结果</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">满 50 减 5</div>
+            <div class="meta">发给「南门店沉睡老客」</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span>已发出</span><span class="v hot num">25 人</span></div>
+            <div class="frow"><span>跳过</span><span class="v go num">12 人</span></div>
+            <div class="frow"><span class="k num">7 天内已收到过消息</span><span class="v num">9</span></div>
+            <div class="frow"><span class="k">线索会员（未绑手机号）</span><span class="v num">2</span></div>
+            <div class="frow"><span class="k">已关闭本店消息</span><span class="v num">1</span></div>
+          </div>
+          <div class="group"><div class="frow"><span class="k">本次最大支出</span><span class="v num">¥125</span></div></div>
+        </div>
+        <div class="foot"><div class="btn sec">完成</div></div>
+      </div>
+      <figcaption class="cap"><b>13 发放结果</b>逐条说明为什么跳过。</figcaption>
+      <p class="why">不静默少发。少发而不说，商家会以为功能坏了，然后反复发——那才是真正烧掉通知权限的路径。</p>
+    </figure>
+
+    <figure id="s14">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">核销</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span>取货核销</span><span class="on">券核销</span></div>
+          <div class="group"><div class="frow"><span class="k">扫码，或输入 8 位券码</span></div></div>
+          <div class="card">
+            <div class="hd"><span class="nm">豆浆次卡</span><span class="chip ok">还剩 3 次</span></div>
+            <div class="meta num">张阿姨 ···1234 · 南门店</div>
+            <div class="meta num">有效期至 09-30</div>
+          </div>
+          <div class="note">确认后<b>不可撤销</b>——东西已经给出去了。要退只能重新发一张。</div>
+        </div>
+        <div class="foot"><div class="btn main">确认核销（扣一次）</div></div>
+      </div>
+      <figcaption class="cap"><b>14 券核销</b>与取货核销同一页，两个 tab。</figcaption>
+      <p class="why">店员本来就站在收银台前，复用他每天在用的那一页，不新增培训成本。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ══════════ C 端 ══════════ -->
+<section>
+  <div class="sec-head"><span class="sec-num">15 — 17</span><h2>C 端：买家看到的部分</h2></div>
+  <p class="sub">会员必须有已验证手机号，所以「加入会员」会分岔到一次授权；
+  但下单流程一次都不弹——交易页上任何额外弹层都是流失。</p>
+
+  <div class="grid">
+
+    <figure id="s15">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张记粮油</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">张记粮油</span><span class="chip">★ 4.9</span></div>
+            <div class="meta">阳光里小区南门 · 06:30–21:00</div>
+          </div>
+          <div class="sum">今天到了新米和土鸡蛋，来早的挑得好　<b class="num">今天 07:20 更新</b></div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span><b>加入会员</b><br>成为会员看得到专属价与专属券</span><span>›</span></div>
+          <div class="gt">我买过的</div>
+          <div class="group">
+            <div class="frow"><span class="k">东北大米 10 斤</span><span class="v num">¥49.9</span></div>
+            <div class="frow"><span class="k">土鸡蛋 20 枚</span><span class="v num">¥26.8</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>15 店铺页 · 未加入</b>公告带更新时间。</figcaption>
+      <p class="why">一句没有时间的「今天到了新米」，可能是今早写的也可能是上个月忘了撤。分不出来，老客就不会跑这一趟。</p>
+    </figure>
+
+    <figure id="s16">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">张记粮油</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="hd"><span class="nm">张记粮油</span><span class="chip">★ 4.9</span></div></div>
+          <div class="sum" style="display:flex;justify-content:space-between"><span><b>常客</b><br>你的券 2 张</span><span class="num">近 90 天 4 单<br>›</span></div>
+          <div class="group">
+            <div class="frow"><span>接收这家店的消息</span><span class="sw on"></span></div>
+            <div class="frow"><span class="k">关掉后这家店不会再给你发消息</span></div>
+          </div>
+        </div>
+        <div class="mask"><div class="sheet">
+          <div class="h">使用手机号加入</div>
+          <div class="d">会员权益与专属券需要手机号识别你。</div>
+          <div class="btn">微信手机号一键授权</div>
+          <div class="acts"><div class="btn sec">用验证码</div><div class="btn sec">以后再说</div></div>
+        </div></div>
+      </div>
+      <figcaption class="cap"><b>16 加入 · 手机号授权</b>退订开关就放在会员卡上。</figcaption>
+      <p class="why">「以后再说」照常能逛能下单，同一家店 7 天内不再弹。退订入口不藏进设置里——藏起来的结果是他直接关掉系统通知。</p>
+    </figure>
+
+    <figure id="s17">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">我的券</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">可用 3</span><span>已用</span><span>过期</span></div>
+          <div class="pz">
+            <div class="p"><b>¥5</b><span class="chip warn" style="margin-left:auto">7 天后过期</span></div>
+            <div class="meta">满 50 减 5 · 张记粮油 · 全店可用</div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">🥛 豆浆次卡</span><span class="chip ok">还剩 3 / 5 次</span></div>
+            <div class="meta num">南门店 · 到店出示 · 有效期至 09-30</div>
+            <div class="code">8 4 2 1 5 9 3 7</div>
+            <div class="qr"></div>
+            <div class="meta" style="text-align:center">出示给店员，核销后自动扣一次</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>17 券包 · 次卡出示</b>次卡就是一张能核销 N 次的券。</figcaption>
+      <p class="why">次卡不新建表，只在券上多两列（总次数、已用次数）。储值卡不做——那是预收资金，不是券。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>
+  真源：prototypes/member-marketing-v1.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15">https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15</a><br>
+  相关文档：docs/requirements/会员体系与活动联动-需求.md ／ docs/technical/design/营销域-活动统一模型.md（活动体系 · 产品方案）／ docs/technical/design/TDD-券与活动模型.md ／
+  docs/technical/design/TDD-会员与营销-表结构与对象模型.md（19 张表）／ docs/technical/design/TDD-会员与营销-数据库与UI.md<br>
+  未画：运营端（Web，不是 App）的会员总览 · 券与活动的归属视图 · 触达监控 · 人档冲突处置<br>
+  s02–s07 已由 member-loop.html 的 m01–m09、m21 取代（登记表里标 supersededBy）
+</footer>
+</div>
+</html>

@@ -19,63 +19,18 @@
  * 用法：npm run gen:model-align
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readColumnNames, MIGRATION_DIR, INVENTORY_MIGRATION_DIR } from "./lib/ddl.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migration");
+
 const OUT = join(ROOT, "docs/api/领域模型对齐清单.md");
 
 // ---------------------------------------------------------------- 库
-/** 解析 Flyway 迁移的 DDL。产物是自家写的，形状可控，不引 SQL parser。 */
-function readTables() {
-  const out = new Map();
-  if (!existsSync(MIGRATION_DIR)) return out;
-  // **按版本号数字排序**，不是字典序 —— 字典序会把 V10 排在 V2 前面，
-  // 而 ALTER 是有先后的：先 RENAME 再按旧名找列，结果就全错了。
-  const files = readdirSync(MIGRATION_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort((a, b) => (parseInt(a.slice(1), 10) || 0) - (parseInt(b.slice(1), 10) || 0));
-  const sql = files.map((f) => readFileSync(join(MIGRATION_DIR, f), "utf8")).join("\n");
-
-  for (const m of sql.matchAll(
-    /CREATE TABLE(?: IF NOT EXISTS)? (\w+)\s*\(([\s\S]*?)\n\)\s*ENGINE([^;]*);/g,
-  )) {
-    const [, name, body, tail] = m;
-    const cols = [];
-    for (const raw of body.split("\n")) {
-      const line = raw.trim();
-      const c = line.match(
-        /^(\w+)\s+(BIGINT|VARCHAR|INT|TINYINT|SMALLINT|DATETIME|TIMESTAMP|TEXT|DECIMAL|JSON|CHAR|DOUBLE)/i,
-      );
-      // KEY / UNIQUE KEY / PRIMARY KEY 也能匹配上首个 \w+，排掉
-      if (c && !/^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i.test(c[1])) cols.push(c[1]);
-    }
-    out.set(name, { cols, comment: tail.match(/COMMENT\s*=?\s*'([^']*)'/)?.[1] ?? "" });
-  }
-
-  // ---- ALTER：只看 CREATE TABLE 会得出**已被后续迁移修正过的**旧结构。
-  // 真实踩到过：`ord_sub_order.pickup_code` 在 V6 改名成 `verify_code`，
-  // 而报告照旧说「契约的 verifyCode 与库列 pickup_code 命名不一致」—— 早就一致了。
-  // 反向更危险：漏看 ADD COLUMN 会把已有的列报成缺失，照着补一遍就是重复加列。
-  for (const m of sql.matchAll(
-    /ALTER TABLE\s+(\w+)\s+(ADD COLUMN|RENAME COLUMN|DROP COLUMN)\s+(\w+)(?:\s+TO\s+(\w+))?/gi,
-  )) {
-    const [, table, opRaw, col, newName] = m;
-    const t = out.get(table);
-    if (!t) continue;
-    const op = opRaw.toUpperCase();
-    if (op === "ADD COLUMN") {
-      if (!t.cols.includes(col)) t.cols.push(col);
-    } else if (op === "DROP COLUMN") {
-      t.cols = t.cols.filter((c) => c !== col);
-    } else if (op === "RENAME COLUMN" && newName) {
-      t.cols = t.cols.map((c) => (c === col ? newName : c));
-    }
-  }
-  return out;
-}
+// DDL 解析在 scripts/lib/ddl.mjs —— 这里曾经自己写过一份，于是
+// DROP TABLE 与 MODIFY COLUMN 两个缺陷只在 gen-erd 里修好，本脚本一直错着。
 
 // ---------------------------------------------------------------- 契约
 function readSchemas(file) {
@@ -97,6 +52,10 @@ const snake = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
  * 而不是在这里悄悄抹平。抹平之后，下一个人会以为两边本来就一致。
  */
 const COLUMN_ALIAS = {
+  // 积分账户：库里省了过去分词（total_earn/total_use），契约用 totalEarned/totalUsed。
+  // 点名而不抹平 —— 抹平之后下一个人会以为两边本来就一致
+  totalEarned: "total_earn",
+  totalUsed: "total_use",
   // 金额：ord_* 用 `xxx_amount`，mkt_*/stl_* 用 `xxx_minor`，契约统一 `xxxMinor`
   goodsMinor: "goods_amount",
   freightMinor: "freight_amount",
@@ -122,6 +81,18 @@ const COLUMN_ALIAS = {
   billNo: "settle_no",
   read: "is_read",
   addressId: "address_id",
+  /*
+   * 商家主体那次域重命名的下游：72 张表用 `entity_no`，契约仍叫 `merchantNo`。
+   * **不是抹平差异**，是记下同一件事的两个名字 —— 此前这 9 个字段被逐条报成
+   * 「契约有、库里没有列（阻塞）」，而它们一个都不缺，只是名字换过。
+   * 真正的阻塞项因此被淹在里面没人看见。
+   *
+   * <p>放全局是安全的：匹配顺序是**直接列名优先、别名兜底**，
+   * 所以仍在用旧列名 `merchant_no` 的那 4 张表（sys_ops_staff / mch_deposit /
+   * mch_deposit_txn / prd_merchant_spec_override）照旧走直接匹配，不会被覆盖。
+   */
+  merchantNo: "entity_no",
+  merchantName: "entity_name",
 };
 
 /**
@@ -136,7 +107,21 @@ const TYPE_ALIAS = {
   Coupon: { name: "title", discountMinor: "face_minor", expireAt: "end_at" },
   Goods: { desc: "description" },
   MerchantApplyReq: { subject: "merchant_type", phone: "contact_phone" },
+  // 入驻申请单的两条：subject 是主体档位（库里叫 legal_form），
+  // licenses 是结构化资质项（V79 起用 qualification_items，旧的 qualifications 是纯文本）
+  MerchantApplyStatus: { subject: "legal_form", licenses: "qualification_items" },
+  // 「商家类型」= 主体档位。契约的 MerchantType 就是 MerchantSubject 的别名
+  Merchant: { type: "legal_form" },
+  MerchantBrief: { type: "legal_form" },
   Quote: { minCount: "min_qty", desc: "note", priceMinor: "unit_price_minor" },
+  // 进货/出库单在库里是两张表，单号列各叫各的；契约收成一个 StockDocument
+  StockDocument: { docNo: "inbound_no" },
+  MemberSegment: { rule: "rule_json" },
+  CouponIssueBatch: { planned: "planned_count", issued: "issued_count", skipped: "skipped_count" },
+  StoreActivity: { maxExposureMinor: "budget_minor" },
+  OrderReceiver: { name: "receiver_name", phone: "receiver_phone", address: "receiver_address" },
+  QualificationItem: { type: "qual_type", code: "qual_number", issuer: "qual_name" },
+  MerchantCoupon: { maxExposureMinor: "budget_minor" },
   QuoteRevision: { priceMinor: "to_price_minor" },
 };
 
@@ -146,9 +131,105 @@ const TYPE_ALIAS = {
  */
 const RELATION = {
   Community: { pickups: "cmt_pickup_point" },
+  // ── 2026-08-30 第二轮定性 ──
+  CartItem: {
+    merchantNo: "经 goods_no join prd_goods.entity_no —— 购物车行只存 sku，"
+      + "归属靠商品带出来。**这是有意的**：商品换了主体，历史购物车行不该跟着变",
+    merchantName: "同上，join prd_goods.store_name",
+  },
+  Sku: {
+    storePrice: "prd_store_price.price —— 门店价单独一张表。"
+      + "没设过价的店按主体价卖（与门店库存的回退方向相反：没设库存按 0 卖）",
+  },
+  AfterSale: { timeline: "ord_status_log —— 售后的状态流转与订单共用一张日志表" },
+  SpecTemplate: {
+    primary: "prd_category_spec.is_primary —— **主维度是「类目 × 模板」这条绑定的属性**，"
+      + "不是模板自身的属性：同一个模板绑到不同类目上，是不是主维度可以不一样",
+  },
   Category: { children: "prd_category 自关联（parent_no）" },
+  // ── 2026-08-30 第三批带出来的 join ──
+  UserCoupon: { coupon: "join mkt_coupon —— 券模板快照，一张券和它的模板是两个对象" },
+  MerchantCoupon: { scopeRefs: "pmt_coupon_scope —— 限定到哪些商品/类目的多行" },
+  MyDebt: { txns: "mch_debt_txn —— 欠款账户上不存流水，流水是另一张表的多行" },
+  PickupOrder: { items: "ord_item —— 履约台要点清件数" },
+  GroupPickupOrder: { items: "ord_item" },
+  MyStoreCoupon: {
+    title: "join pmt_coupon.title —— 券包行只存 coupon_no",
+    redeemMode: "join pmt_coupon.redeem_mode",
+    minAmountMinor: "join pmt_coupon.min_amount_minor",
+    timesTotal: "join pmt_coupon.times_total",
+  },
+  AuthCodeInfo: {
+    categoryNames: "由**应用层**拼 —— 商家域不读商品域的类目（见 CategoryUsagePort）。"
+      + "商家看的是「食品经营许可证能解锁：肉禽蛋、乳制品、熟食卤味」，不是三个码",
+  },
+  PickupCandidate: { communityName: "join cmt_community.name" },
+  CouponRedeemView: {
+    title: "join pmt_coupon.title —— 券包行只存 coupon_no",
+    phoneTail: "join usr_person.phone_tail —— 店员要认得出是谁的券，但只给后四位",
+  },
+  StoreFulfillmentChannel: {
+    pickups: "mch_channel_pickup —— 这条渠道挂了哪些自提点",
+    areaNos: "mch_channel_area —— 覆盖到哪些区划",
+  },
+  StoreFulfillment: { channels: "mch_fulfillment_channel 的多行（一个门店多条渠道）" },
+  MerchantStaff: { roles: "mch_store_role —— 一人可在多店多角色，权限取并集" },
+  MerchantPlan: {
+    planName: "join sys_merchant_plan_def.name —— **订阅行只存 plan_code**："
+      + "运营改了档位显示名，已卖出去的订阅要跟着变",
+    tiers: "sys_merchant_plan_def 全表 —— 升级页要摆出所有档位",
+    trialTier: "join sys_merchant_plan_def（试用档）",
+    trialDays: "join sys_merchant_plan_def.trial_days",
+  },
+  StoreActivity: { audiences: "pmt_activity_audience", goodsNos: "pmt_activity_goods" },
+  MerchantSpecDim: { values: "prd_spec_value 的多行" },
+  StoreCategory: {
+    platformName: "join prd_category.name —— 平台类目的原名。"
+      + "**与 display_name 分开**：商家改了叫法之后，运营仍要认得出这是哪个平台类目",
+  },
+  StoreRole: { storeName: "join mch_store.announcement/name" },
+  StaffLog: {
+    actor: "join mch_account（actor_account_no）—— 日志只存账号，名字会改",
+    targetName: "join mch_account（target_account_no）",
+    storeName: "join mch_store（store_no）",
+  },
+  ServiceArea: { name: "join sys_region.name（ref_code）—— 区划名不落列，地名会变" },
+  CommunityApply: {
+    merchantName: "join mch_entity.name",
+    regionPath: "由 sys_region 逐级上溯拼出来",
+  },
+  Member: {
+    phoneTail: "join usr_person.phone_tail —— **会员挂人档**，号码不在会员表里。"
+      + "永远只有后四位：需要完整号的只有平台申诉处置，那条路要理由与审计",
+  },
+  // ── 进销存：名字与明细都在别的表 ──
+  StockBalance: {
+    name: "join inv_item.name —— 余额表只存 item_id。**这是有意的**：货品改名不该重写余额行",
+    specText: "join inv_item.spec_text",
+    baseUom: "join inv_item.base_uom",
+  },
+  StockItemDetail: {
+    barcode: "inv_item_ref 里 ref_system=BARCODE 的那条 —— **一个物料可以有多个条码**"
+      + "（换包装还是同一件货），所以它是引用表的一行而不是 inv_item 上的一列。"
+      + "商家货号（ERP）走同一张表的另一个 ref_system",
+    onHand: "join inv_stock_balance.on_hand（按 location 汇总）",
+    reserved: "join inv_stock_balance.reserved",
+    byLocation: "inv_stock_balance 按库位的多行",
+  },
+  StockLedgerRow: { itemName: "join inv_item.name" },
+  StockCount: { lines: "inv_stock_count_line" },
+  StockCountLine: {
+    name: "join inv_item.name",
+    specText: "join inv_item.spec_text",
+    baseUom: "join inv_item.base_uom",
+  },
+  StockTransfer: {
+    fromLocationName: "join inv_location.name（from_location_id）",
+    toLocationName: "join inv_location.name（to_location_id）",
+    lines: "调拨明细 —— 调拨走的是「发货出库单 + 收货进货单」两张单的行，不另存一份",
+  },
   Goods: {
-    merchant: "usr_merchant",
+    merchant: "mch_entity",
     skus: "prd_sku",
     groupBuy: "mkt_group_buy",
     promotions: "营销活动在商品上的投影",
@@ -167,11 +248,16 @@ const RELATION = {
     idempotencyKey: "sys_idempotent（幂等键是基础设施表，不挂业务单）",
     currency: "ord_order.currency —— 一次支付一个币种，落在主订单上",
   },
-  GroupBuy: { merchant: "usr_merchant", members: "mkt_group_member", neighborPickup: "cmt_pickup_point" },
+  GroupBuy: { merchant: "mch_entity", members: "mkt_group_member", neighborPickup: "cmt_pickup_point" },
   GroupRequest: { quotes: "mkt_quote", neighbours: "mkt_request_interest" },
-  Quote: { merchant: "usr_merchant", revisions: "mkt_quote_revision" },
+  Quote: { merchant: "mch_entity", revisions: "mkt_quote_revision" },
   Review: { appeal: "rvw_appeal", scores: "本表的 score_* 三列" },
-  Merchant: { serviceCommunityNos: "usr_merchant_community" },
+  Merchant: {
+    serviceCommunityNos: "mch_entity_community",
+    address: "mch_store.address —— **主体没有地址，门店才有**。一个主体可以有多家店，"
+      + "契约上这一格给的是「主营门店」的地址",
+    openHours: "mch_store.open_hours —— 同上，营业时间挂门店",
+  },
 };
 
 /**
@@ -180,14 +266,43 @@ const RELATION = {
  * 落成列就必然有过期的那一刻。
  */
 const DERIVED = {
-  Community: { distance: "按用户当前位置实时算" },
+  PointAccount: {
+    // 库里是 (user_no, market) 一行的余额缓存；过期与待生效时点都要查批次
+    expiringSoon: "扫 pts_user_ledger 的 EARN 行按 expire_at 算，不落列",
+    expiringAt: "同上，取最近一批的到期时间",
+    pendingActivateAt: "取最近一批未生效 EARN 行的 available_at，不落列",
+  },
+  AppointmentSlot: { remaining: "capacity - booked —— 不落列，落了就要和每一次下单占位保持一致" },
+  Community: {
+    distance: "按用户当前位置实时算",
+    originName: "origin_code 经区划字典取名（masterDataPort.regionNames）——"
+      + "**只存码不存名**：地名会变，存了名字就会有两份说法",
+    rural: "kind === VILLAGE。端上要的是个布尔（走不走农村那套文案与类目），"
+      + "库里存的是聚落类型，多一种聚落时布尔就不够用了",
+  },
+  MerchantBrief: { selfOperated: "同 Merchant.selfOperated" },
+  Sku: {
+    priceByMarket: "prd_sku 按 (goods_no, market) 是**多行**，聚成 map 下发。"
+      + "只在商家侧下发：编辑页按市场逐格填而保存是整份覆盖，"
+      + "拿不到整张表就只能回填当前市场那一格，于是改一次标题其余市场的价就被删了",
+  },
+  Category: {
+    qualifications: "requiredCode 经资质字典取名。**展示用，不是校验依据**"
+      + "（判据是 required_code）—— 但商家要看的恰恰是这一句人话",
+  },
   Pickup: {
     distance: "按用户当前位置实时算",
     hostMerchantNo: "由 owner_ref 解析（type=STORE 时指向 merchant_no）",
-    hostName: "join usr_merchant",
-    hostAvatar: "join usr_merchant",
+    hostName: "join mch_entity",
+    hostAvatar: "join mch_entity",
   },
-  Goods: { price: "SKU 最低价（表注释已写明价格不在本表）", originPrice: "同上" },
+  Goods: {
+    price: "SKU 最低价（表注释已写明价格不在本表）",
+    originPrice: "同上",
+    status: "on_sale + audit_status + pending_on_sale 三列合出来的展示态 ——"
+      + "**库里不能合**：审核与上架是两条线，合了「驳回」和「下架」就共用取值",
+    hasDraft: "prd_goods_draft 有没有行（不比内容 —— 保存时内容相同即删行）",
+  },
   CartItem: {
     title: "join prd_goods（购物车只存 goods_no/sku_no —— 加购到结算之间商品会改，存快照反而给用户看的是旧价）",
     cover: "join prd_goods",
@@ -200,6 +315,8 @@ const DERIVED = {
     giftLabel: "由买赠活动实时算",
   },
   Order: {
+    receiver: "receiver_name / receiver_phone / receiver_address 三列聚成对象",
+    subOrders: "本表自身。契约的 Order 是子单，主单视角下这一格是同主单的兄弟行",
     pickupName: "join cmt_pickup_point",
     redeemCode:
       "与 verifyCode 同列（verify_code）—— V6 注释写明「自提码/核销码/兑换码三态共用一个字段」。" +
@@ -219,12 +336,15 @@ const DERIVED = {
   GroupRequest: {
     pickupName: "join cmt_pickup_point",
     interested: "按当前用户查 mkt_request_interest",
-    initiatorNickname: "join usr_user（表存 owner_id）",
-    initiatorAvatar: "join usr_user",
+    initiatorNickname: "join usr_account（表存 owner_id）",
+    initiatorAvatar: "join usr_account",
     confirmedCount: "按 mkt_request_interest 的确认态计数",
     confirmed: "按当前用户算",
   },
-  Coupon: { received: "按当前用户查 mkt_user_coupon" },
+  Coupon: {
+    received: "按当前用户查 mkt_user_coupon",
+    remain: "total_count - received_count，不落列 —— 落了就要和领取动作保持一致",
+  },
   Quote: { locked: "由 chosen 推导 —— 选定即锁价（ADR-003），不需要独立列" },
   PickupPoint: {
     ownerType: "由 owner_ref 前缀解析（表把「谁承接」压成一列）",
@@ -232,8 +352,116 @@ const DERIVED = {
   },
   Merchant: {
     distance: "按用户当前社区实时算",
+    selfOperated: "mch_store.business_mode === SELF_OPERATED（MerchantQueryPort.MODE_SELF_OPERATED）"
+      + "—— 销售主体是谁挂在**门店**上，不在主体上",
     scores: "表已拆成 score_goods / score_service / score_speed 三列，契约收成一个对象",
   },
+  Supplier: {
+    fromPlatform: "platform_supplier_no 非空 —— 平台带下来的供应商与自己录的，"
+      + "商家能改的字段不一样",
+  },
+  StockBalance: {
+    available: "on_hand - reserved。**不落列**：落了就要和每一次预占保持一致，"
+      + "而预占是高频写，多一列就多一处会对不上的地方",
+    flags: "按健康规则实时判（负库存 / 零库存仍在架 / 长期未动销）",
+  },
+  StockItemDetail: { available: "同 StockBalance.available" },
+  StockDocument: {
+    kind: "由来源表决定：inv_inbound_order → IN，inv_outbound_order → OUT。"
+      + "**库里不存这一列** —— 存了就会出现「在进货单表里 kind=OUT」这种自相矛盾的行",
+    subtitle: "展示用的一句话（供应商名 / 用途 / 来源单号），按单据类型拼",
+  },
+  StockTransfer: { totalQty: "按明细行汇总" },
+  StoreFulfillmentChannel: {
+    denied: "由准入矩阵实时判（S 轴 × T 轴）—— 不是配置，是「这个主体准不准用这条渠道」",
+    locked: "由运营处置状态判 —— 锁着时商家侧置灰不可自行打开",
+    templateNo: "运费模板在 ful_freight_template，渠道行只存引用（此处未落列，走另一条查询）",
+  },
+  MasterDataIndustry: { microAllowed: "由准入矩阵判：小微在这个行业准不准做" },
+  PaymentApplyment: {
+    channelName: "pay_channel 的显示名，字典取",
+    canReceiveMoney: "apply_status=ACTIVE 且有 sub_mchid —— **两个条件缺一不可**，"
+      + "进件过了但没拿到子商户号照样收不了钱",
+    subMchidMasked: "sub_mchid 打码后下发 —— 完整值只在服务端用",
+    missing: "按当前主体档位倒推还差哪几份材料",
+    submitted: "channel_apply_no 非空",
+  },
+  MerchantRole: {
+    permLabels: "权限码的人话名，字典取 —— **别拿 code 给店主看**",
+    usedBy: "按 mch_store_role 计数：这个角色有几个人在用。删角色前要知道影响面",
+  },
+  MerchantPlan: {
+    storeUsed: "按 mch_store 计数",
+    staffUsed: "按 mch_account 计数",
+    suspendedStores: "超配额被压下的门店 —— 降档时按规则算出来，不落列",
+  },
+  PlanTier: { current: "与当前订阅的 plan_code 比 —— **随会话变**，不是档位定义的属性" },
+  StoreActivity: {
+    quotaLeft: "quota - quota_used",
+    liveNow: "按 status 与时间窗实时判 —— 落列就要有人定时刷，刷不动时页面会说谎",
+  },
+  CouponIssueBatch: { skipReasons: "skip_detail 里的明细聚成分类计数" },
+  MerchantSpecDim: {
+    valueCount: "按 prd_spec_value 计数",
+    usedCount: "**按规格组名统计**用在几件商品上 —— 存量商品的快照里只有名字没有维度编号",
+    dimUsed: "已建维度数",
+    dimQuota: "配额上限，按档位取",
+    valueQuota: "同上",
+  },
+  CouponRedeemView: {
+    benefitText: "「减 3 元」「8.5 折」这种人话，由券模板的 benefit_mode/benefit_value 拼",
+    timesTotal: "券模板上的可核次数",
+    remaining: "timesTotal - times_used。**次卡看的就是这个数** —— 店员扫完直接扣的话，"
+      + "扫错一张没有回头路（线下核销不可撤销）",
+    redeemable: "按过期/用尽/撤销/门店不符/券已停用五种情况实时判",
+    reason: "不能核销时的原因码，与 redeemable 同一次判定给出",
+  },
+  PickupCandidate: { ownerStoreNo: "由 owner_ref 解析（type=STORE 时指向门店）" },
+  MyDebtTxn: { at: "created_at —— 流水的「发生时刻」就是落库时刻，不另存一列" },
+  RegionNode: { hasChild: "按 parent_code 反查有没有下级 —— 落列的话每次增删下级都要回写父级" },
+  RegionOption: {
+    cityCode: "由 region_code 上溯到市级",
+    cityName: "同上，取市级节点的 name",
+    communityCount: "按 cmt_community 计数：这个区有几个已开通社区。**它就是这份选项的判据** ——"
+      + "为 0 的区不出现在「我能在哪儿取货」里",
+  },
+  PickupOrder: { buyerPhoneTail: "receiver_phone 的后四位 —— 履约台认人够用，不给完整号" },
+  MyStoreCoupon: {
+    benefitText: "由券模板的 benefit_mode/benefit_value 拼成人话",
+    remaining: "times_total - times_used。**次卡的全部意义就在这个数**",
+    usableNow: "按时间窗、门槛、剩余次数实时判",
+  },
+  SpuStd: { categoryName: "join prd_category.name" },
+  UserCoupon: {
+    usableNow: "按券模板的时间窗与门槛实时判 —— **不落列**：落了就要有人定时刷，"
+      + "而刷不动的那一刻用户看到的是一张「可用」的过期券",
+  },
+  StoreCategory: {
+    name: "display_name（商家自己的叫法）—— 没设过时回落平台类目名",
+    goodsCount: "按 prd_goods 计数",
+    onSaleCount: "按 prd_goods.on_sale 计数",
+    pendingCount: "按 prd_goods.audit_status 计数",
+  },
+  Entity: {
+    storeCount: "按 mch_store 计数",
+    isPrimary: "当前登录人在这个主体下是不是主账号 —— **随会话变**，不是主体的属性",
+    canManage: "由当前会话的角色判，同上",
+  },
+  Store: {
+    payReady: "由 mch_payment_merchant 的进件状态判 —— 门店能不能收钱不是门店表的事",
+    staffCount: "按 mch_account 计数",
+  },
+  StaffLog: { at: "created_at —— 日志的「发生时刻」就是落库时刻，不另存一列" },
+  Region: {
+    hasChild: "按 parent_code 反查有没有下级 —— 落列的话每次增删下级都要回写父级",
+    pending: "audit_status 是待审 —— 提报上来的村/小区要审，字典里的不用",
+  },
+  MemberTag: { count: "按 mbr_member_tag 计数 —— 标签定义表上不落用量，打标是高频写" },
+  SpecOverride: {
+    label: "label_override，没设过时回落平台维度名",
+    values: "prd_merchant_spec_override 按 (category_no, dim_no) 的多行聚成数组",
+  },
+  Member: { daysSinceLast: "按 last_order_at 与今天实时算" },
   Address: { region: "表已拆成 province / city / district 三列，契约拼成一个字符串" },
 };
 
@@ -286,6 +514,14 @@ const AUDIT_COLS = new Set([
  * `note` 写的是**这条映射为什么不是显然的** —— 一一对应的不用写。
  */
 const ENTITY_MAP = {
+  MerchantApplyStatus: {
+    table: "mch_entity_apply",
+    note: "入驻**审核**生命周期。与 `mch_entity.status`（**经营**状态：ACTIVE/SUSPENDED）是两条线 —— 审核发生在商家还不存在时，封禁发生在商家已存在后，混成一个枚举两件事迟早互相踩",
+  },
+  PointAccount: {
+    table: "pts_user_account",
+    note: "用户积分账户。`balance` 只放**能花的**分，未过售后期的在 `pending_balance`（V25）—— 合成一个数的话用户看到 500 却只能用 400，无法解释",
+  },
   // ── 交易
   Order: {
     table: "ord_sub_order",
@@ -300,11 +536,11 @@ const ENTITY_MAP = {
   Sku: { table: "prd_sku" },
   Category: { table: "prd_category" },
   // ── 用户与商家
-  User: { table: "usr_user" },
+  User: { table: "usr_account" },
   Address: { table: "usr_address" },
-  Merchant: { table: "usr_merchant" },
-  MerchantBrief: { table: "usr_merchant", note: "同表的投影，商品卡上只带这几个字段" },
-  MerchantApplyReq: { table: "usr_merchant_apply" },
+  Merchant: { table: "mch_entity" },
+  MerchantBrief: { table: "mch_entity", note: "同表的投影，商品卡上只带这几个字段" },
+  MerchantApplyReq: { table: "mch_entity_apply" },
   // ── 社区与自提
   Community: { table: "cmt_community" },
   Pickup: { table: "cmt_pickup_point" },
@@ -321,11 +557,167 @@ const ENTITY_MAP = {
   Coupon: { table: "mkt_coupon" },
   MarketingCampaign: { table: "mkt_campaign", note: "四类活动统一一张表：它们只差「触发条件 + 优惠方式」" },
   SpecTemplate: { table: "prd_spec_template" },
+
+  // ── 2026-08-30 补映射：表一直都在，只是这里没写 ──
+  //
+  // 没写的后果不是「少一条记录」，是被归进「契约有类型、库里无承载」那一类，
+  // **字段级比对根本不启动** —— 清单看着在管，实际一个字段都没比。
+  MerchantStaff: {
+    table: "mch_account",
+    note: "商家账号。**契约里叫 mchAccountNo 不叫 staffNo** —— staffNo 被平台运营占着，"
+      + "两者是不同的人（sys_ops_staff 才是运营）",
+  },
+  MerchantRole: { table: "mch_role", note: "商家自定义角色。mch_store_role 是「谁在哪家店是什么角色」的授权行" },
+  MerchantPlan: {
+    table: "mch_entity_plan",
+    note: "**订阅行**（这家店买了哪一档、什么时候到期）。档位的定义在 sys_merchant_plan_def"
+      + " —— 两者分开是因为改档位定义不该改已卖出去的订阅",
+  },
+  PlanTier: { table: "sys_merchant_plan_def", note: "档位定义（配额与能力开关），见 MerchantPlan" },
+  MemberSetting: { table: "mbr_setting" },
+  AppointmentSlot: {
+    table: "mch_appointment_slot",
+    note: "**闸 C 第一次跑就抓到的存量错**：它此前登记在 VIEW_TYPES 里写着"
+      + "「由容量配置实时算」—— 那句话在建表之前是对的，V 表建起来之后没人回来改，"
+      + "于是这个实体从报告里消失了，字段比对一次没跑过。列与契约几乎一一对应",
+  },
+  MemberSegment: { table: "mbr_segment" },
+  MemberStoreStat: {
+    table: "mbr_member_store",
+    note: "他在某一家门店的往来。**单店主体没有这一段** —— 只有一家店时"
+      + "「按店拆」和「总数」是同一个数，多摆一遍只会让人以为哪里对不上",
+  },
+
+  StoreActivity: { table: "pmt_activity" },
+  MerchantSpecDim: { table: "prd_spec_dim" },
+  MasterDataIndustry: { table: "sys_industry" },
+  StoreFulfillment: { table: "mch_fulfillment_channel" },
+  StoreFulfillmentChannel: { table: "mch_fulfillment_channel", note: "同表的单行投影" },
+  PaymentApplyment: {
+    table: "mch_payment_merchant",
+    note: "收款进件。**第一版我映到了 `pmt_apply`** —— 名字像，其实是促销域的核销记录"
+      + "（pmt_ = promotion），12 个字段全对不上。字段级比对当场把这个错映射抓了出来，"
+      + "而在它之前这个实体根本没被比过",
+  },
+  CouponIssueBatch: { table: "pmt_coupon_issue" },
+
+  // ── 2026-08-30 第五批：有表，只是名字对不上 ──
+  //
+  // 判据一律取自**类型自己的注释或后端代码**，不是表名像 —— 今天两次映错都是看名字。
+  // 每条后面括号里是出处。
+  MerchantCoupon: {
+    table: "pmt_coupon",
+    note: "商家自己的券（新模型）。类型注释直接写着 `pmt_coupon`，并说明"
+      + "「`Coupon` 这个名字已经被老模型 mkt_coupon 占着，两者字段形状完全不同」",
+  },
+  MyStoreCoupon: {
+    table: "pmt_user_coupon",
+    note: "买家券包里商家发的那一张（新模型）。注释写「与老的 UserCoupon 并存到 P9，"
+      + "不能合并 —— 老形状里没有 redeemCode 也没有次卡的 remaining」",
+  },
+  CouponRedeemView: { table: "pmt_user_coupon", note: "到店核销「先看后核」里看的那一步，同表投影" },
+  MemberSourceItem: { table: "mbr_member_source" },
+  PickupRef: {
+    table: "cmt_pickup_point",
+    note: "门店引用的取货点。注释写「status 来自 cmt_pickup_point」",
+  },
+  PickupCandidate: { table: "cmt_pickup_point", note: "同表的筛选结果（范围内常驻点 + 本店自建点）" },
+  PickupOrder: {
+    table: "ord_sub_order",
+    note: "自提点履约台上的一单。注释写「**不是 Order**，字段按履约必需裁到最小」——"
+      + "裁剪投影仍是同一张表。此前端上把它当 Order 用，按 status 过滤过滤不出东西",
+  },
+  GroupPickupOrder: {
+    table: "ord_sub_order",
+    note: "本团待取的一单（发起人视角）。注释写「**不是 Order**」—— 契约此前把这条链路"
+      + "声明成返回 Order，而后端一直返回这个形状，页面读 orderNo 拿到 undefined",
+  },
+  OrderReceiver: {
+    table: "ord_sub_order",
+    note: "收件人。注释写「下单时固化在子订单上，**不是用户当前的地址簿条目**」",
+  },
+  RegionNode: {
+    table: "sys_region",
+    note: "「我家在哪儿」—— **没开通的区也要能选**。与 RegionOption 是同表的两种投影，"
+      + "注释写明「是两个问题的答案，不要混用」",
+  },
+  RegionOption: { table: "sys_region", note: "「我能在哪儿取货」—— 只列有已开通社区的区，见 RegionNode" },
+  QualificationItem: { table: "mch_qualification", note: "一份资质证件，结构化资质（V79）的一项" },
+  AuthCodeInfo: {
+    table: "sys_auth_code",
+    note: "门槛码字典的一条。`categoryNames` 由**应用层**拼 —— 商家域不读商品域的类目"
+      + "（见 CategoryUsagePort 的说明）",
+  },
+  MasterDataChannel: { table: "sys_pay_channel" },
+
+  SpuStd: { table: "prd_spu_std" },
+  InvoiceRequest: { table: "ord_invoice_request" },
+  UserCoupon: {
+    table: "mkt_user_coupon",
+    note: "**映射到老模型是有意的**：契约描述的就是老模型（`Coupon` 的字段别名"
+      + "指向 mkt_coupon 的 face_minor/discount_rate）。后端 P4 已搬到 pmt_*"
+      + "（V232 回填，pmt 用量 72 处 vs mkt 42 处），**契约还没跟上** —— "
+      + "这是一条真欠账，但改映射会凭空造出一批假缺口，要连契约一起改，属独立一批",
+  },
+  Qualification: { table: "mch_qualification" },
+  StoreCategory: { table: "mch_store_category" },
+  Entity: { table: "mch_entity", note: "运营端叫 Entity，C/B 端契约叫 Merchant —— 同一张表两个名字" },
+  Store: { table: "mch_store" },
+  StoreRole: { table: "mch_store_role" },
+  StaffLog: { table: "mch_staff_log" },
+  ServiceArea: { table: "mch_service_area" },
+  CommunityApply: { table: "cmt_community_apply" },
+  Region: { table: "sys_region" },
+  Member: { table: "mbr_member", note: "会员挂**人档**不挂账号（person_no）—— 换手机号不换会员" },
+  MemberTag: {
+    table: "mbr_tag",
+    note: "**标签的定义表**。`mbr_member_tag` 是「谁被打了哪个标」的关联表 —— "
+      + "第一版我映到了后者，于是 name/status 全被报成缺列",
+  },
+  SpecOverride: {
+    table: "prd_merchant_spec_override",
+    note: "**仍在用旧列名 merchant_no** —— 全局别名 merchantNo→entity_no 不影响它，"
+      + "匹配是直接列名优先",
+  },
+
+  // ── 2026-08-30 进销存这一批 ──
+  //
+  // 这些实体的表在**第二个库**（backend/shop-inventory/.../db/inventory），
+  // 而本文件此前只读平台那一条 Flyway 历史 —— 于是整个域被报成
+  // 「契约有类型、库里无承载（阻塞）」，**结论正好反了**：表都建好了。
+  // 20 条假阻塞把真的那几条淹掉，这正是这份清单最怕的形状。
+  StockBalance: { table: "inv_stock_balance" },
+  StockItemDetail: { table: "inv_item", note: "货品档 + 当前余额的投影" },
+  StockLedgerRow: { table: "inv_ledger" },
+  StockDocument: {
+    table: "inv_inbound_order",
+    note: "进货/出库单在库里是**两张表**（inv_inbound_order / inv_outbound_order），"
+      + "契约收成一个 StockDocument 靠 docKind 区分 —— 单据字段两边一致，分表是为了各自的行表",
+  },
+  StockCount: { table: "inv_stock_count" },
+  StockCountLine: { table: "inv_stock_count_line" },
+  StockTransfer: { table: "inv_transfer_order" },
+  StockLocation: { table: "inv_location" },
+  Supplier: { table: "inv_supplier" },
+  Carrier: {
+    table: "ful_carrier",
+    note: "**承运方归履约域维护，进销存只读** —— 跨库不能外键，"
+      + "所以调拨单存的是业务键 carrier，名字由端上回传快照",
+  },
   UserCard: { table: "mkt_user_coupon", note: "卡包与券共表：储值卡/次卡在 mkt_user_coupon 上用类型区分" },
   // ── 结算
   SettleBill: { table: "stl_bill" },
+  SettleBatch: { table: "stl_settle_batch" },
+  MySettleBatch: {
+    table: "stl_settle_batch",
+    note: "B 端视角的同一张表。**字段是平台端 SettleBatch 的子集** —— 商家看不到 decidedBy / decideRemark / reconScope 这些内部处置痕迹，但看得到 blockedReason（那句话本来就是写给他的）",
+  },
+  MerchantDebt: { table: "mch_debt" },
+  MyDebt: { table: "mch_debt", note: "B 端视角的同一张表" },
+  DebtTxn: { table: "mch_debt_txn" },
+  MyDebtTxn: { table: "mch_debt_txn", note: "B 端视角的同一张表" },
   // ── 消息
-  Message: { table: "msg_message" },
+  Message: { table: "notify_message" },
 };
 
 /**
@@ -334,7 +726,105 @@ const ENTITY_MAP = {
  * 而真正缺表的那几个就没人看见了。
  */
 const VIEW_TYPES = {
-  StoreHome: "usr_merchant + prd_goods + usr_store_favorite",
+  // ── 2026-08-30 第三步：剩下的 41 个逐条写清由哪些表拼 ──
+  //
+  // 分成两类，两类的「为什么没有表」理由不同：
+  //   · **动作的返回值**：它描述的是一次调用的结果，不是一个持久的对象。
+  //     落表的是那次动作的日志/流水，形状与它无关。
+  //   · **聚合视图**：由多张表拼出来，落成表就要有人保持一致，而那份一致
+  //     迟早会对不上 —— 报告里每一条「不落列」的理由都写在具体那一条上。
+
+  // 一、端能力与外部服务的返回值（不经过库）
+  GeoReverseResult: "高德逆地理的返回，后端代理转发 —— **不落库**：地名与门牌会变，"
+    + "存下来就会有两份说法。没配 Web 服务 key 时返回空，端上当没有这个功能",
+  GeoTip: "高德 inputtips 的返回，同上。提报小区时按名搜 POI，选中就带上坐标 ——"
+    + "否则坐标只能是「提交那一刻商家站的地方」，多半不在那个小区里",
+  PhoneCapable: "微信一键取手机号当前可不可用。**由后端说了算**：它取决于小程序认证状态"
+    + "与通道开关，端上判不出来；写死在端上的话，认证下来之后还要再发一次版",
+  Poster: "封面图/店名/价格/小程序码合成的一张 PNG，服务端现合成后 base64 返回",
+
+  // 二、试算与预览（还没发生的事，没有落库的对象）
+  FulfillmentImpactItem: "关掉某条履约路会影响到的商品 —— 处置**之前**的预览，"
+    + "由 prd_goods.fulfillments 与门店渠道配置现算",
+  OrderPreview: "下单前的试算。后端返的是完整 OrderVO，契约只声明端上要用的那部分 ——"
+    + "声明全套会让每次后端加字段都得改端上类型",
+  ReachPlan: "群发试算：命中多少人、其中能真收到的有多少、其余为什么发不出。"
+    + "**skips 必须显示**：商家选了 30 个人实发 8 个，只说「发送成功」他会以为 30 个都收到了",
+  MemberSegmentPreview: "人群试算（mbr_member + 规则）。两个数都要显示 —— 只显示 count 的话，"
+    + "商家在人群页看到 120、发放页发出 96，会以为发漏了",
+  MemberMergePreview: "合并标签的影响面（mbr_member_tag 的计数）。**先给商家看再让他按** —— 合并不可逆",
+  SkuIdentityReport: "商品编码批量导入的试算/结果。四个数各回答一件事 ——"
+    + "少了「没变化」那一格，商家会把「改了 3 行」读成「另外 197 行失败了」",
+
+  // 三、动作的结果（落库的是流水，不是这个形状）
+  VerifyResult: "核销结果。⚠️ **失败也是 HTTP 200 + code:0**，靠 success 判 ——"
+    + "b-app 此前只看有没有抛异常，于是任何一次失败都走进成功分支，界面说「核销成功」而货没核掉",
+  ReachResult: "群发执行结果（落库的是 mbr_reach_log 的多行）",
+  CouponRedeemResult: "核销结果。`duplicated` 为真 = 店员连点了两下（3 秒窗口内），"
+    + "不是第二次核销 —— 报错会让他以为没成功，于是再按一次",
+  SpecValueAdded: "新加规格取值的返回值。命名是为了它能进契约 ——"
+    + "匿名结构在规格生成器那边引用不到，只能落成一个空 object",
+  StockCountFilled: "盘点填数的入参/回执（写进 inv_stock_count_line）",
+
+  // 四、跨表聚合
+  RegionSearchResult: "sys_region + cmt_community + 村表的跨级搜索结果 ——"
+    + "区划命中带从省到父级的路径，聚落命中带所在街道路径",
+  AppointmentDaySlots: "mch_appointment_slot 按天分组的**展示结构**。"
+    + "与 AppointmentSlot 不是一回事：那个是排期的一行（有 slotNo，下单占的是它）",
+  GoodsParam: "prd_goods.params + prd_spec_value —— `valueNo` 是平台值池里的编号，"
+    + "有它才参与筛选与跨店比较；量纲型（功率、净重）平台不枚举值，那时只有 label",
+  IncomeSummary: "stl_bill 按状态分组求和。⚠️ **四个数是四种状态，不是四个口袋** ——"
+    + "它们加起来等于全部结算单。此前只显示一个「商家实得」，读起来像已到手",
+  MyQualifications: "mch_qualification + sys_auth_code + prd_category 三份数据合成",
+  MasterData: "sys_industry + 主体档位 + sys_pay_channel 的快照。**合成一个响应**是因为"
+    + "它们在同一屏上被同时用到（选行业 → 过滤可选主体 → 主体决定要不要传执照），"
+    + "分三次请求会出现「行业回来了、主体还没回来」的中间态，那时表单不知道该不该禁用",
+  MasterDataSubject: "主体档位一项。**库里没有 sys_subject 表** —— 档位是写死在代码里的风险规范"
+    + "（见 AdmissionPortImpl 的准入矩阵注释：改它意味着平台愿意承担的责任变了，"
+    + "该走代码评审而不是后台表单）",
+  EntityStores: "mch_entity + mch_store 按证照分组。**分组而不是拍平**：两家店同名是常事"
+    + "（「文三路店」在两张执照下各有一家），拍平之后点哪个都不知道进了哪张证照，"
+    + "而进错的表现是「商品怎么全没了」",
+  StoreFront: "mch_store 的买家可见子集（公告/营业时间/地址/坐标）",
+  StoreShelf: "mch_store_category + prd_goods 计数。count 直接显示，省得买家点进去数",
+  StoreCategorySpecs: "mch_store_category + prd_spec_dim + prd_spec_value ——"
+    + "按货架类目给而不是给平台全部通用维度：一家只卖蔬菜和肉的店，看到「尺码」「口径」是纯噪音",
+  MemberStats: "mbr_member 按分层计数 + 两个提醒数。`unlinkedBuyers` 要显示在页面顶部 ——"
+    + "商家一定会拿订单数与会员数对，对不上时他的第一反应是数据丢了，先说比等他问强",
+  MyMembership: "mbr_member + mch_entity（C 端视角）。这一页是发消息功能的前提："
+    + "顾客要能看到**谁在给他发消息**并且能关掉",
+  ActivityConflict: "pmt_activity_goods 的冲突查询结果：这件商品已经在另一个还在跑的活动里",
+  CrossStoreRow: "mch_store + ord_sub_order 的按店聚合。**没有单的门店也占一行（全零）** ——"
+    + "一家今天还没开张的店从总览里不见了，店主的第一反应是「我的店呢」。零是一个答案，缺席不是",
+  CrossStoreOverview: "CrossStoreRow 的集合。**只有门店维度的三项待办** —— 待核销与待分拣"
+    + "后端刻意不给：那两个数是**自提点**维度且不限商家（一个自提点承接多家商家的货）",
+  CrossStoreCompareRow: "同 CrossStoreRow，窗口内的销售额/订单/复购/缺货。"
+    + "⚠️ 这里没有评分，它在 CrossStoreCompare 上，是主体级的",
+  CrossStoreCompare: "CrossStoreCompareRow 的集合 + 主体级评分",
+  StockSummary: "inv_stock_balance + inv_item 的三个数（货品数/缺货/滞销）+ 未完盘点单号。"
+    + "`openCountNo` 给「继续盘点」跳转用 —— 不带的话那一页会开一张**新的**盘点单，"
+    + "而按钮上写着「继续」",
+  StockLedgerPage: "inv_ledger 的一页 + 游标。**游标由服务端给**，前端不要自己拿最后一行的 id 推",
+  StockMonthly: "inv_daily_snapshot 按月汇总。界面上要能看出 期初 + 进 − 销 − 损 ± 调 = 期末",
+  StockRank: "inv_daily_snapshot 的排序结果。⚠️ `qty` 两种榜含义不同：动销榜是**销量**，"
+    + "滞销榜是**库存量** —— 同一个字段两种意思不是好设计，但那是后端已有的形状",
+
+  // 五、随会话变的能力视图（落表就错了：它们不是对象的属性，是「此刻这个人能做什么」）
+  BizScope: "mch_account + mch_store_role + mch_entity_plan 的合成：**我在当前门店能做什么**。"
+    + "切门店由 X-Store-No 决定 —— 角色跟着门店走，同一个人可能在 A 店是店长、B 店是店员",
+  CheckoutCapability: "mch_payment_merchant + 准入矩阵：这一车货能不能开票、能用哪些支付方式、"
+    + "额度还够不够。与 OrderPreview 分开是有意的：preview 答「多少钱」，这个答「付得了吗」——"
+    + "三件事的共同后果都是**付款那一刻才炸**",
+  MerchantCapability: "同上，按商家拆开的一行",
+  PermOption: "权限码字典的一项。**不能让端上「把预置角色的权限并起来」当选项**："
+    + "那个并集少一条 —— biz:finance 只有老板有，于是后端明明收这个码，界面上却勾不到，"
+    + "看起来像功能没做",
+
+  MemberDetail:
+    "mbr_member + mbr_member_store + mbr_member_source + mbr_tag —— **四份数据的合成**，"
+    + "四个字段全是嵌套对象。我一度把它当成 mbr_member 的投影，闸 B 当场报"
+    + "「4 个字段只对上 0 个」，判得对：投影会共享列名，合成不会",
+  StoreHome: "mch_entity + prd_goods + usr_store_favorite",
   MerchantTodo: "ord_sub_order + ord_after_sale + mkt_request 的计数",
   MerchantStats: "ord_sub_order 的聚合",
   FrequentItem: "ord_item 按 (user_no, sku_no) 的频次聚合",
@@ -343,16 +833,22 @@ const VIEW_TYPES = {
   PickupOverview: "ord_sub_order + ful_verify_log 的计数",
   VerifyBatchResult: "批量核销的返回值，非实体",
   RateCard: "费率配置，当前在 stl_bill.commission_rate 落快照",
-  PointAccount: "积分账户（一期未建表，见下方缺口）",
-  StoreProfile: "usr_merchant 的店主可编辑子集",
+  PointsDeductible:
+    "结算页试算的**返回值，非实体**：由 pts_user_account.balance + 抵扣上限 + 四级开关实时算出",
+  MerchantPointsRecord:
+    "stl_bill 中 points_fee_minor > 0 的行的投影。**不是表** —— " +
+    "商家的发分服务费按单计提在结算单上，没有单独的积分账（V34 删了 pts_merchant_ledger）",
+  MerchantPointAccount:
+    "pts_merchant_ledger 按 (merchant_no, period) 聚合 + 四级开关判定。" +
+    "**不是表**：商家侧看的是钱与开关，不是余额（预付费模型，V22/V28）",
+  StoreProfile: "mch_entity 的店主可编辑子集",
   MerchantProfile:
-    "B 端登录态，跨四张表：usr_merchant（主体）+ usr_user（手机号，经 owner_user_no）" +
-    " + usr_merchant_apply（驳回原因）+ cmt_pickup_point（是否承接自提点）",
+    "B 端登录态，跨四张表：mch_entity（主体）+ usr_account（手机号，经 owner_user_no）" +
+    " + mch_entity_apply（驳回原因）+ cmt_pickup_point（是否承接自提点）",
   StoreQrcode: "由 merchant_no 实时生成，不存",
   ShareKit: "由服务端按语言/市场实时生成，不存",
   MerchantCustomer: "ord_sub_order 按 (merchant_no, user_no) 的聚合",
-  VisitedMerchant: "usr_merchant + ord_sub_order 的聚合",
-  AppointmentSlot: "服务类商品的可约时段，由容量配置实时算",
+  VisitedMerchant: "mch_entity + ord_sub_order 的聚合",
   SpecGroup: "prd_goods.spec_groups JSON 列内的结构",
   SpecOption: "prd_goods.spec_groups JSON 列内的结构",
   Promotion: "营销活动在商品上的投影",
@@ -407,8 +903,8 @@ const THEMES = [
     why:
       "邻里购物最硬的约束是**商家有服务半径**：隔壁区的生鲜店送不到我的自提点。" +
       "`serviceScope` 决定这家店的货在 C 端能被谁看到，选错不是展示问题而是下单后提不了货。" +
-      "库里 `usr_merchant` 没有任何范围字段 —— 可见性过滤没有依据。",
-    action: "usr_merchant 补 service_scope / service_city_code，另建 usr_merchant_community 关联表",
+      "库里 `mch_entity` 没有任何范围字段 —— 可见性过滤没有依据。",
+    action: "mch_entity 补 service_scope / service_city_code，另建 mch_entity_community 关联表",
   },
   {
     title: "订单履约字段缺失（与已知契约漂移互为佐证）",
@@ -442,7 +938,16 @@ function assertNoDupKeys(name, src) {
 }
 
 // ---------------------------------------------------------------- 比对
-const tables = readTables();
+/*
+ * **两条 Flyway 历史都要读**。`INVENTORY_MIGRATION_DIR` 默认不进 `readSchema`，
+ * 那个默认对平台侧生成器（ER 图、表清单）是对的 —— 混进去会让它们凭空多出十几张表。
+ *
+ * 但本文件映射的是**契约实体**，而契约里有整整一批进销存实体
+ * （StockBalance / StockLedgerRow / Supplier / Carrier …）。不读第二个目录，
+ * 它们会被报成「契约有类型、库里无承载（阻塞）」——**结论正好反了**：
+ * 表都建好了，是这个生成器看不见。20 条假阻塞会把真的那几条淹掉。
+ */
+const tables = readColumnNames(ROOT, [MIGRATION_DIR, INVENTORY_MIGRATION_DIR]);
 const cSchemas = { ...readSchemas("docs/api/openapi.yaml"), ...readSchemas("docs/api/openapi-b.yaml") };
 const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 
@@ -450,7 +955,7 @@ const opsSchemas = readSchemas("docs/api/openapi-ops.yaml");
 const isDto = (n) => /(Req|ReqBody|Query|Draft|Config|Rule|Texts)$/.test(n);
 const isMapped = (n) => /^(Partial[_<])?Record[_<]/.test(n);
 
-const findings = { missingCol: [], noTable: [], aliasUsed: [], internalOnly: [] };
+const findings = { missingCol: [], noTable: [], aliasUsed: [], internalOnly: [], suspectMap: [] };
 
 function compare(typeName, schema) {
   if (STRUCTURAL[typeName]) return null; // 单独成节，见「结构不匹配」
@@ -458,8 +963,22 @@ function compare(typeName, schema) {
   if (!map) return null;
   const t = tables.get(map.table);
   if (!t) {
-    findings.noTable.push({ type: typeName, reason: `映射到 \`${map.table}\`，但库里没有这张表` });
-    return null;
+    /*
+     * ── 闸 A：**当场炸，不写进报告** ──
+     *
+     * 上一版这里是往 noTable 里推一行，于是它混进「契约有类型、库里无承载」那一节，
+     * 看着像一条已知欠账。四个表名（usr_user / usr_merchant / usr_merchant_apply /
+     * msg_message）就是这么活下来的，而且**带着五个类型一起空转** ——
+     * 指向不存在的表时字段级比对根本不启动，清单却看着有在管。
+     *
+     * 一条指向不存在的表的映射不是欠账，是这张表本身错了。表被改名/删掉是常事，
+     * 改的人不会想到来更新这里 —— 所以要让下一次生成当场失败，而不是安静降级。
+     */
+    throw new Error(
+      `ENTITY_MAP.${typeName} 指向 \`${map.table}\`，但库里没有这张表。\n`
+      + "  表被改名或删掉了？去迁移里找 RENAME TO / DROP TABLE，把映射改到现名。\n"
+      + "  **别把它删掉了事** —— 删了这个类型就落进「库里无承载」，字段比对同样不跑。",
+    );
   }
   const cols = new Set(t.cols);
   const rows = [];
@@ -487,6 +1006,37 @@ function compare(typeName, schema) {
     }
     rows.push({ field, col: null, kind: "missing" });
     findings.missingCol.push({ type: typeName, table: map.table, field });
+  }
+  /*
+   * ── 闸 B：**命中率过低 = 这条映射多半错了，而不是这张表缺列** ──
+   *
+   * 两种形状在上一版里被渲染成同一句「缺这些列」：
+   *   · 这张表确实少一两列        → 真欠账，该补列或改契约
+   *   · 映射挂到了另一张表        → 一串假缺口，照着做会去给不相干的表加列
+   *
+   * 今天两次都是后者，而且都是**按名字猜**的：
+   *   PaymentApplyment → pmt_apply（名字像收款进件，其实 pmt_ 是促销域的核销记录），12 个字段全不匹配
+   *   MemberTag        → mbr_member_tag（打标关联行，标签定义在 mbr_tag），3 个字段全不匹配
+   * 两次都是靠肉眼看出「怎么一个都对不上」才发现的。判据其实很粗：
+   * 一张表不会同时少掉大半个类型的字段。
+   *
+   * 阈值取「匹配（含别名/关联/推导）不足一半，且缺失多于 3 条」——
+   * 字段少的类型不触发，因为 2/3 不匹配也可能是真的。
+   *
+   * <p><b>它有个边界，别指望它兜底</b>：字段一旦被登记进 RELATION/DERIVED 就算命中，
+   * 于是**先映错、再把一堆字段登记成 join**，这道闸就不响了。
+   * 验过：把 PaymentApplyment 改回错的 `pmt_apply`，因为那些字段事后已经定性，它一声不吭。
+   *
+   * <p>所以它守的是「**新加一条映射、字段还没定性**」那一刻 —— 恰好是需要它的时刻，
+   * 也是今天两次映错发生的时刻。事后再改映射得靠人自己重新看一遍字段。
+   */
+  const matched = rows.filter((r) => r.kind !== "missing").length;
+  const missing = rows.length - matched;
+  if (missing > 3 && matched * 2 < rows.length) {
+    findings.suspectMap.push({
+      type: typeName, table: map.table, matched, total: rows.length,
+      missing: rows.filter((r) => r.kind === "missing").map((r) => r.field),
+    });
   }
   return { map, table: t, rows };
 }
@@ -695,6 +1245,55 @@ for (const t of unmappedTables.sort()) {
   md.push(`| \`${t}\` | ${tables.get(t).comment || "—"} |`);
 }
 md.push("");
+
+/*
+ * ── 闸 B（续）与闸 C：**写文件之前拦下来** ──
+ *
+ * 放在渲染之后是有意的：报告已经拼好，但不落盘 —— 否则一份带着错映射的清单
+ * 会先被提交，再被人拿去对齐。
+ */
+if (findings.suspectMap.length) {
+  const lines = findings.suspectMap.map(
+    (x) => `  ${x.type} → \`${x.table}\`：${x.total} 个字段只对上 ${x.matched} 个\n`
+      + `      对不上的：${x.missing.join(" ")}`,
+  );
+  throw new Error(
+    "这些映射**多半是错的**（不是这张表缺列）：\n" + lines.join("\n") + "\n\n"
+    + "  一张表不会同时少掉大半个类型的字段。先确认这个类型真的落在这张表上 ——\n"
+    + "  判据要来自**类型自己的注释或后端代码**，不是表名像。\n"
+    + "  确实是真缺口（整块功能没建列）的，把它挪进 NO_TABLE 并写清影响与处置。",
+  );
+}
+
+/*
+ * ── 闸 C：登记成聚合视图/无表的，若存在同名候选表，必须说明为什么不是它 ──
+ *
+ * 这一条挡的是最隐蔽的一种错：**登记成视图之后，那个类型就从报告里彻底消失** ——
+ * 不红、不列、没人复核。相比之下「没映射」至少还在阻塞清单里红着。
+ * 把一个有表的实体登记成视图，等于给它发了一张永久免检条子。
+ *
+ * 判据只用最保守的一条：类型名转 snake 之后，有表以它结尾（`MerchantCoupon`
+ * → `pmt_coupon`）。命中就要求 note 里提到那张表名 —— 写一句「不是它，因为…」即可，
+ * 不是禁止登记为视图。
+ */
+{
+  const tableNames = [...tables.keys()];
+  const bad = [];
+  for (const [name, desc] of Object.entries(VIEW_TYPES)) {
+    const s2 = snake(name);
+    const cand = tableNames.filter((t) => t.endsWith("_" + s2) || t === s2);
+    const text = String(desc);
+    const unexplained = cand.filter((t) => !text.includes(t));
+    if (unexplained.length) bad.push(`  ${name}：库里有 ${unexplained.join(" / ")}，而登记为聚合视图`);
+  }
+  if (bad.length) {
+    throw new Error(
+      "这些类型登记成了聚合视图，但库里存在同名表：\n" + bad.join("\n") + "\n\n"
+      + "  **登记成视图之后它会从报告里消失** —— 不红、不列、没人再复核。\n"
+      + "  要么改成 ENTITY_MAP 映射，要么在说明里点名那张表并写清为什么不是它。",
+    );
+  }
+}
 
 writeFileSync(OUT, md.join("\n"));
 console.log(`✅ ${OUT}`);

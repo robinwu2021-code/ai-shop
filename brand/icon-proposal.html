@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>图标体系方案 · 虹选</title></head><body><style>
+:root{--red:#E1251B;--ink:#17181A;--muted:#63676E;--line:#E5E7EA;--panel:#F5F6F8;--bright:#FF5A4D;
+--sans:"Figtree","PingFang SC","Noto Sans SC",system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding:0 clamp(20px,5vw,48px)}
+h1,h2{margin:0;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:var(--panel);padding:1px 6px;border-radius:5px}
+a{color:var(--red)}
+header{background:var(--red);color:#fff;padding:clamp(36px,6vw,60px) 0 clamp(30px,5vw,48px)}
+header .k{font-size:12px;letter-spacing:.22em;text-transform:uppercase;opacity:.82}
+header h1{font-size:clamp(26px,4vw,42px);margin-top:12px}
+header p{margin-top:14px;max-width:62ch;color:rgba(255,255,255,.88)}
+header code{background:rgba(255,255,255,.18);color:#fff}
+section{padding:clamp(36px,5vw,60px) 0;border-bottom:1px solid var(--line)}
+.k2{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+h2{font-size:clamp(20px,2.6vw,28px)}
+.lede{color:var(--muted);max-width:66ch;margin-top:12px}
+.grid{display:grid;gap:18px;margin-top:26px}
+.g3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:760px){.g3{grid-template-columns:1fr}}
+.stage{border:1px solid var(--line);border-radius:14px;background:var(--panel);display:grid;place-items:center;padding:24px;min-height:160px}
+.cap{font-size:12px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5}
+.cap b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border:1px solid var(--line);margin-top:22px}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--panel);padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.chg{color:var(--red);font-weight:700}
+.scroll{overflow-x:auto}
+/* 矩阵表：落点那一列是长路径，不给最小宽度的话它会把「容器」挤成一个字一行。
+   宽度不够时让整张表横向滚动，而不是把每一列都压扁。 */
+table.matrix{min-width:940px;table-layout:fixed}
+table.matrix td:nth-child(1),table.matrix td:nth-child(3){white-space:nowrap}
+table.matrix col.c-use{width:13%}table.matrix col.c-tier{width:6%}
+table.matrix col.c-box{width:10%}table.matrix col.c-size{width:12%}
+table.matrix col.c-path{width:34%}table.matrix col.c-st{width:6%}
+table.matrix col.c-note{width:19%}
+table.matrix code{word-break:break-all;font-size:12px;line-height:1.5}
+.row{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.note{background:var(--panel);border-left:3px solid var(--red);padding:14px 18px;margin-top:22px;font-size:14.5px}
+pre{background:var(--panel);border-radius:12px;padding:16px 18px;overflow-x:auto;font-size:13.5px;margin-top:20px}
+pre code{background:none;padding:0}
+footer{padding:32px 0 52px;color:var(--muted);font-size:13px}
+</style><header><div class="wrap">
+      <div class="k">Icon system · 完整方案</div>
+      <h1>图标体系：几何定档 + 需求矩阵</h1>
+      <p>几何已定：HX 字高 <b>0.30</b>、弧线宽 <b>0.44</b>、<b>arc_flat 0.65</b>、
+      H 横画 <b>0.38</b>（旧版 G4 的高横，取回来）。
+      压扁是母题级改动，<b>凡是有弧的地方都跟着扁</b> —— HX 方章、虹 方章、虹选字标三处，
+      否则同一个品牌里会同时存在正半圆和扁圆两种「虹」。
+      容器四态、禁止事项、色值见 <code style="background:rgba(255,255,255,.18);color:#fff">brand/spec.html</code>，本页不重复。</p>
+    </div></header><section><div class="wrap">
+      <div class="k2">01 — Geometry locked</div>
+      <h2>四档，一个弧形</h2>
+      <p class="lede">规范 §02 本来就是分档的（H / HX / 虹 各给各的值），本轮只是把定下的
+      字高、弧宽与扁平度填进去。共用参数不动：圆角 0.275、笔画 0.267、弧描边 0.05、
+      字弧间距 0.04、H 宽高比 0.80、安全区 0.25。</p>
+      <div class="scroll"><table>
+        <thead><tr><th>档</th><th>字高 /边长</th><th>弧线宽 /边长</th><th>arc_flat</th><th>横画高度</th><th>说明</th></tr></thead>
+        <tbody><tr><td><b>H</b></td><td class="n">0.64</td><td class="n">—</td><td class="n">—</td><td class="n">0.38</td><td>无弧线（素材里就没有）</td></tr><tr><td><b>HX</b></td><td class="n">0.3</td><td class="n">0.44</td><td class="n">0.65</td><td class="n">0.38</td><td>候选 A；里面那个 H 同样高横</td></tr><tr><td><b>虹</b></td><td class="n">0.46</td><td class="n">0.4</td><td class="n">0.65</td><td class="n">—</td><td>汉字，无横画参数</td></tr><tr><td><b>虹选</b></td><td class="n">0.38</td><td class="n">0.38</td><td class="n">0.65</td><td class="n">—</td><td>双字方章：两字紧排，弧仍只压「虹」</td></tr><tr><td><b>虹选字标</b></td><td class="n">1.0</td><td class="n">1.0</td><td class="n">0.65</td><td class="n">—</td><td>横向字标：弧宽 = 1.00 × 字高，只压在「虹」上</td></tr></tbody></table></div>
+      <div class="grid g3">
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M27.33 20.16L46.47 20.16L46.47 37.83L65.53 37.83L65.53 20.16L84.67 20.16L84.67 91.84L65.53 91.84L65.53 56.97L46.47 56.97L46.47 91.84L27.33 91.84Z" fill="#FFFFFF"/></svg></div><div class="cap"><b>H</b> · 字高 0.64、无弧线<br>头像 / favicon / 通知栏</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FFFFFF" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap"><b>HX</b> · 0.30 / 0.44 / 扁 0.65<br>App 图标、站点主标</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M36.4 33.6A19.6 12.74 0 0 1 75.6 33.6" fill="none" stroke="#FFFFFF" stroke-width="5.6"/><text x="56.0" y="89.6" text-anchor="middle" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="51.52" fill="#FFFFFF">虹</text></svg></div><div class="cap"><b>虹</b> · 单字方章<br>弧宽 0.40、同步压扁</div></div>
+      </div>
+      <div class="grid g3" style="margin-top:18px">
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M15.12 42.87A18.48 12.01 0 0 1 52.08 42.87" fill="none" stroke="#FFFFFF" stroke-width="5.6"/><text x="12.32" y="83.95" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="42.56" letter-spacing="2.24" fill="#FFFFFF">虹选</text></svg></div><div class="cap"><b>虹选 · 甲</b> · 弧只压「虹」<br>守规范 §04，弧仍是「虹」的字义符号</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M28.22 45.89A27.78 18.05 0 0 1 83.78 45.89" fill="none" stroke="#FFFFFF" stroke-width="5.6"/><text x="12.32" y="86.97" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="42.56" letter-spacing="2.24" fill="#FFFFFF">虹选</text></svg></div><div class="cap"><b>虹选 · 乙</b> · 弧横跨两字<br>与 HX 方章同构，弧宽 = 0.70 × 字组宽</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FFFFFF" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap">HX · 对照<br>弧宽 = 0.70 × 字组宽</div></div>
+      </div>
+      <div class="grid g3" style="margin-top:18px">
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><circle cx="56.0" cy="56.0" r="56.0" fill="#E1251B"/><path d="M28.22 45.89A27.78 18.05 0 0 1 83.78 45.89" fill="none" stroke="#FFFFFF" stroke-width="5.6"/><text x="12.32" y="86.97" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="42.56" letter-spacing="2.24" fill="#FFFFFF">虹选</text></svg></div><div class="cap">乙 · 圆章<br>小程序端会自动裁圆</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#FFFFFF"/><path d="M28.22 45.89A27.78 18.05 0 0 1 83.78 45.89" fill="none" stroke="#E1251B" stroke-width="5.6"/><text x="12.32" y="86.97" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="42.56" letter-spacing="2.24" fill="#E1251B">虹选</text></svg></div><div class="cap">乙 · 透明底红字<br>包装、单据、门头</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#17181A"/><path d="M28.22 45.89A27.78 18.05 0 0 1 83.78 45.89" fill="none" stroke="#FF5A4D" stroke-width="5.6"/><text x="12.32" y="86.97" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="42.56" letter-spacing="2.24" fill="#FFFFFF">虹选</text></svg></div><div class="cap">乙 · 墨底 + 亮红弧<br>母品牌物料</div></div>
+      </div>
+      <div class="grid g3" style="margin-top:18px">
+        <div><div class="stage"><svg viewBox="0 0 163.2 85.43" width="163.2" height="85.43"><path d="M0.96 16.31A21.96 14.27 0 0 1 44.88 16.31" fill="none" stroke="#E1251B" stroke-width="4.08"/><text x="0" y="69.11" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="48" letter-spacing="4.8" fill="#17181A">虹选</text><text x="0.96" y="83.51" font-family="Figtree, sans-serif" font-weight="600" font-size="12.48" letter-spacing="3.74" fill="#63676E">HX MALL</text></svg></div><div class="cap"><b>虹选</b> · 核心字标</div></div>
+        <div><div class="stage"><svg viewBox="0 0 391.6 78.31" width="391.6" height="78.31"><path d="M0.88 14.95A20.13 13.08 0 0 1 41.14 14.95" fill="none" stroke="#E1251B" stroke-width="3.74"/><text x="0" y="63.35" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="44" letter-spacing="4.4" fill="#17181A">虹选 · 好物</text><text x="0.88" y="76.55" font-family="Figtree, sans-serif" font-weight="600" font-size="11.44" letter-spacing="3.43" fill="#63676E">HX MALL</text></svg></div><div class="cap"><b>虹选 · 好物</b> · 加词后弧不变宽</div></div>
+        <div><div class="stage"><svg viewBox="0 0 246.4 78.31" width="246.4" height="78.31"><path d="M0.88 14.95A20.13 13.08 0 0 1 41.14 14.95" fill="none" stroke="#E1251B" stroke-width="3.74"/><text x="0" y="63.35" font-family="Noto Sans SC, Source Han Sans SC, PingFang SC, sans-serif" font-weight="700" font-size="44" letter-spacing="4.4" fill="#17181A">虹选科技</text><text x="0.88" y="76.55" font-family="Figtree, sans-serif" font-weight="600" font-size="11.44" letter-spacing="3.43" fill="#63676E">HX TECH</text></svg></div><div class="cap"><b>虹选科技</b> · 母品牌</div></div>
+      </div>
+      <div class="note"><b>字标那道弧只压在「虹」上。</b>弧宽 = 1.00 × 字高，
+      左端与「虹」左边缘对齐；加「好物」之后<b>不变宽</b> —— 它是「虹」的字义符号，
+      不是整个词的装饰（规范 §04）。这条最容易被排版的人改错。</div>
+    </div></section><section><div class="wrap">
+      <div class="k2">02 — H bar</div>
+      <h2>已定：H 横画提到 0.38</h2>
+      <p class="lede">旧版（虹橙 · G4）把横画提到 <b>38%</b>，<code>build.py</code> 里注释写着
+      「这是这版唯一的造型动作，也是它区别于随便一个 H 的地方」。换代到弧线 + HX 之后
+      这个动作丢了 —— 现在 <code>_h_at()</code> 把横画写死在正中。本节把它取回来，做成参数
+      <code>bar</code>（横画中心高度 ÷ 字高，从顶算起），并<b>定在旧版的 0.38</b>。
+      <b>单独的 H 与 HX 里的那个 H 用同一个值</b> —— 规范 §02 的字形规则是「H、X 同源」，
+      两处 H 长得不一样就等于有两套字形。下面三版留作对照。</p>
+      <div class="grid g3"><div><div class="stage"><div style="display:flex;gap:14px;align-items:center"><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M23.42 17.28L39.83 17.28L39.83 39.8L56.17 39.8L56.17 17.28L72.58 17.28L72.58 78.72L56.17 78.72L56.17 56.2L39.83 56.2L39.83 78.72L23.42 78.72Z" fill="#FFFFFF"/></svg><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M29.28 38.96A18.72 12.17 0 0 1 66.72 38.96" fill="none" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="butt"/><path d="M21.12 42.8L28.8 42.8L28.8 53.36L36.47 53.36L36.47 42.8L44.16 42.8L44.16 71.6L36.47 71.6L36.47 61.05L28.8 61.05L28.8 71.6L21.12 71.6Z" fill="#FFFFFF"/><path d="M48.84 45.21L71.88 74.01L77.89 69.2L54.85 40.4ZM71.88 40.4L48.84 69.2L54.85 74.01L77.89 45.21Z" fill="#FFFFFF"/></svg></div></div><div class="cap"><b>现行 · 居中</b> · 横高 0.5<br>换代后的样子，横画在正中</div></div><div><div class="stage"><div style="display:flex;gap:14px;align-items:center"><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M23.42 17.28L39.83 17.28L39.83 36.11L56.17 36.11L56.17 17.28L72.58 17.28L72.58 78.72L56.17 78.72L56.17 52.52L39.83 52.52L39.83 78.72L23.42 78.72Z" fill="#FFFFFF"/></svg><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M29.28 38.96A18.72 12.17 0 0 1 66.72 38.96" fill="none" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="butt"/><path d="M21.12 42.8L28.8 42.8L28.8 51.63L36.47 51.63L36.47 42.8L44.16 42.8L44.16 71.6L36.47 71.6L36.47 59.32L28.8 59.32L28.8 71.6L21.12 71.6Z" fill="#FFFFFF"/><path d="M48.84 45.21L71.88 74.01L77.89 69.2L54.85 40.4ZM71.88 40.4L48.84 69.2L54.85 74.01L77.89 45.21Z" fill="#FFFFFF"/></svg></div></div><div class="cap"><b>高横 0.44</b> · 横高 0.44<br>折中：提一点，仍接近 X 的交点</div></div><div><div class="stage"><div style="display:flex;gap:14px;align-items:center"><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M23.42 17.28L39.83 17.28L39.83 32.42L56.17 32.42L56.17 17.28L72.58 17.28L72.58 78.72L56.17 78.72L56.17 48.83L39.83 48.83L39.83 78.72L23.42 78.72Z" fill="#FFFFFF"/></svg><svg viewBox="0 0 96 96" width="96" height="96"><rect width="96" height="96" rx="26.4" fill="#E1251B"/><path d="M29.28 38.96A18.72 12.17 0 0 1 66.72 38.96" fill="none" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="butt"/><path d="M21.12 42.8L28.8 42.8L28.8 49.9L36.47 49.9L36.47 42.8L44.16 42.8L44.16 71.6L36.47 71.6L36.47 57.59L28.8 57.59L28.8 71.6L21.12 71.6Z" fill="#FFFFFF"/><path d="M48.84 45.21L71.88 74.01L77.89 69.2L54.85 40.4ZM71.88 40.4L48.84 69.2L54.85 74.01L77.89 45.21Z" fill="#FFFFFF"/></svg></div></div><div class="cap"><b>高横 0.38 ✓ 已定</b> · 横高 0.38<br>旧版 G4 的比例，造型动作最明显</div></div></div>
+      <div class="note"><b>一个跑不掉的取舍：X 的交点永远在正中。</b>
+      X 是两条角到角的对角线，交点位置是几何决定的，提不上去。H 的横一提，
+      H 的横与 X 的交点就不在同一条水平线上 —— 上面每一格都是「单独 H + HX」并排，
+      就是为了让这条错位看得见。<br><br>
+      要不要为此把 X 也改成上小下大的不对称形，是另一个决定；
+      规范 §02 现在写的是「X 按 H 的参数反推：同笔画宽、同字高、同切口角度」，
+      没说交点位置，所以保持角到角<b>不算违反规范</b>。</div>
+    </div></section><section><div class="wrap">
+      <div class="k2">03 — Two apps</div>
+      <h2>C 端与 B 端</h2>
+      <p class="lede">同一套几何，靠底色区分。下面左二是规范 §4.5 的原方案（B 端深板岩 + 亮红弧），
+      右一是 build.py 里 08-19 覆盖后的现状（B 端也用红）。<b>这一项仍待你定</b>，
+      与本轮几何调整无关。</p>
+      <div class="grid g3">
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FFFFFF" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap"><b>C 端</b> · 红底白 HX<br>消费端，暖</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#242B33"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FF5A4D" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap"><b>B 端 · 方案</b> · 深板岩 + 亮红弧<br>桌面上一眼分得开</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#E1251B"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FFFFFF" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap"><b>B 端 · 现状</b> · 也是红底<br>与 C 端仅靠桌面名区分</div></div>
+      </div>
+      <div class="grid g3" style="margin-top:18px">
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#17181A"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#FF5A4D" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#FFFFFF"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#FFFFFF"/></svg></div><div class="cap">母品牌 HX TECH · 墨底 + 亮红弧<br>合同、资质、对公署名</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#FFFFFF"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#E1251B" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#E1251B"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#E1251B"/></svg></div><div class="cap">反白 · 深底物料用</div></div>
+        <div><div class="stage"><svg viewBox="0 0 112 112" width="112" height="112"><rect width="112" height="112" rx="30.8" fill="#FFFFFF"/><path d="M34.16 45.46A21.84 14.2 0 0 1 77.84 45.46" fill="none" stroke="#000" stroke-width="5.6" stroke-linecap="butt"/><path d="M24.63 49.94L33.61 49.94L33.61 58.22L42.54 58.22L42.54 49.94L51.51 49.94L51.51 83.54L42.54 83.54L42.54 67.19L33.61 67.19L33.61 83.54L24.63 83.54Z" fill="#000"/><path d="M56.98 52.74L83.86 86.34L90.87 80.74L63.99 47.14ZM83.86 47.14L56.98 80.74L63.99 86.34L90.87 52.74Z" fill="#000"/></svg></div><div class="cap">商标申报黑白稿 · 文字须转轮廓</div></div>
+      </div>
+    </div></section><section><div class="wrap">
+      <div class="k2">04 — Matrix</div>
+      <h2>对照矩阵：43 项，现有 22，缺 21</h2>
+
+      <h3 style="margin-top:26px;font-size:16px">本轮定下的参数</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>参数</th><th>取值</th><th>依据</th></tr></thead>
+        <tbody><tr><td>HX 字高</td><td class="n"><b>0.30 × 边长</b></td><td>候选 A。原 0.26 时字只比弧高一点点，远看是「一顶帽子下面有点东西」</td></tr><tr><td>HX 弧线宽</td><td class="n"><b>0.44 × 边长</b></td><td>候选 A，比原 0.50 收窄</td></tr><tr><td>arc_flat</td><td class="n"><b>0.65</b></td><td>竖半径 ÷ 横半径。横向不变、纵向省 31%；再扁到 0.50 就读成一条横线</td></tr><tr><td>H 横画高度</td><td class="n"><b>0.38</b></td><td>旧版 G4 的比例取回来。单独 H 与 HX 里的 H 用同一个值 —— 两处 H 不同就是两套字形</td></tr><tr><td>H 字高</td><td class="n"><b>0.64 × 边长</b></td><td>规范 §02 原有值，build.py 一直没实现</td></tr><tr><td>H 弧线</td><td class="n"><b>无</b></td><td>素材 h-square.svg / h-circle.svg 里本来就没有弧</td></tr><tr><td>虹 弧线宽</td><td class="n"><b>0.40 × 边长</b></td><td>规范 §02 原有值，弧同步压扁</td></tr><tr><td>虹选 双字方章</td><td class="n"><b>字高 0.38、字距 0.02</b></td><td>排布照搬 HX：弧 / 间距 / 字，整组按墨迹高居中</td></tr><tr><td>虹选字标 弧宽</td><td class="n"><b>1.00 × 字高</b></td><td>只压「虹」，加「好物」后不变宽</td></tr></tbody></table></div>
+
+      <h3 style="margin-top:30px;font-size:16px">仍未定的两项 —— 它们决定下面若干行的取值</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>待定</th><th>选项</th><th>关键取舍</th></tr></thead>
+        <tbody><tr><td class="chg">B 端图标底色</td><td>红底白 HX（现状） / 深板岩 + 亮红弧（规范 §4.5）</td><td>两端都用红，桌面上只能靠名字区分；商家手机上两个 App 都装是常态</td></tr><tr><td class="chg">虹选双字方章的弧</td><td>甲：只压「虹」 / 乙：横跨两字（HX 布局）</td><td>选乙要同时改写规范 §04 —— 否则方章与横向字标两种规则并存</td></tr></tbody></table></div>
+
+      <p class="lede" style="margin-top:30px">下面按端组织。「现状」列不是手写的 ——
+      每一行都去文件系统上查过，清单和实际脱节是这类表格最常见的死法。</p>
+      <h3 style="margin-top:32px;font-size:16px">C 端 · 虹选好物（消费者） <span style="color:var(--muted);font-weight:400">· 7/13</span></h3><p class="cap" style="text-align:left;margin:4px 0 0">配色：红底 + 白 HX + 白弧</p><div class="scroll"><table class="matrix"><colgroup><col class="c-use"><col class="c-tier"><col class="c-box"><col class="c-size"><col class="c-path"><col class="c-st"><col class="c-note"></colgroup><thead><tr><th>场景</th><th>档</th><th>容器 / 配色</th><th>尺寸</th><th>落点</th><th>现状</th><th>备注</th></tr></thead><tbody><tr><td>App 图标 · iOS</td><td class="n">HX</td><td>满幅方章</td><td class="n">1024²</td><td><code>brand/ios/AppIcon-c.appiconset/icon-1024.png</code></td><td>有</td><td>不得带 alpha</td></tr><tr><td>App 图标 · Android 前景</td><td class="n">HX</td><td>矢量前景</td><td class="n">108dp</td><td><code>android-shell/app/src/consumer/res/drawable/ic_launcher_foreground.xml</code></td><td>有</td><td>内容缩到安全圆 72</td></tr><tr><td>App 图标 · Android 背景</td><td class="n">—</td><td>纯色红</td><td class="n">—</td><td><code>android-shell/app/src/consumer/res/values/ic_launcher_background.xml</code></td><td>有</td><td>—</td></tr><tr><td>App 图标 · 位图兜底</td><td class="n">HX</td><td>满幅方章</td><td class="n">48–192 五档</td><td><code>android-shell/app/src/consumer/res/mipmap-xxxhdpi/ic_launcher.png</code></td><td>有</td><td>方形 + 圆形各一套</td></tr><tr><td>Play 商店图</td><td class="n">HX</td><td>满幅方章</td><td class="n">512²</td><td><code>brand/store/play-c-512.png</code></td><td>有</td><td>—</td></tr><tr><td>启动页 · Android 12+</td><td class="n">HX</td><td>居中 + 红底</td><td class="n">288dp 图层</td><td><code>android-shell/app/src/main/res/values-v31/themes.xml</code></td><td class="chg">缺</td><td>缺则冷启动白屏</td></tr><tr><td>启动页 · Android 旧版</td><td class="n">HX</td><td>居中 + 红底</td><td class="n">—</td><td><code>android-shell/app/src/main/res/drawable/splash.xml</code></td><td class="chg">缺</td><td>layer-list</td></tr><tr><td>启动页 · iOS</td><td class="n">HX</td><td>居中 + 红底</td><td class="n">—</td><td><code>（Capacitor 工程内）</code></td><td class="chg">缺</td><td>storyboard</td></tr><tr><td>通知栏图标</td><td class="n">H</td><td>单色白、无弧</td><td class="n">76 / 48</td><td><code>android-shell/app/src/main/res/drawable/ic_notification.xml</code></td><td class="chg">缺</td><td>16px 要能辨</td></tr><tr><td>H5 favicon</td><td class="n">H</td><td>圆章</td><td class="n">svg + 32</td><td><code>c-app/public/favicon.svg</code></td><td>有</td><td>—</td></tr><tr><td>H5 触屏图标</td><td class="n">HX</td><td>满幅方章</td><td class="n">180 / 192 / 512</td><td><code>c-app/public/apple-touch-icon.png</code></td><td>有</td><td>—</td></tr><tr><td>小程序 · 方形</td><td class="n">HX</td><td>满幅方章</td><td class="n">144²</td><td><code>brand/store/mp-c-hx-144.png</code></td><td class="chg">缺</td><td>微信端自动裁圆</td></tr><tr><td>小程序 · 中文版</td><td class="n">虹选</td><td>双字方章</td><td class="n">144²</td><td><code>brand/store/mp-c-cn-144.png</code></td><td class="chg">缺</td><td>甲/乙待定</td></tr></tbody></table></div><h3 style="margin-top:32px;font-size:16px">B 端 · 虹选商家 <span style="color:var(--muted);font-weight:400">· 7/10</span></h3><p class="cap" style="text-align:left;margin:4px 0 0">配色：底色待定：红 or 深板岩 + 亮红弧</p><div class="scroll"><table class="matrix"><colgroup><col class="c-use"><col class="c-tier"><col class="c-box"><col class="c-size"><col class="c-path"><col class="c-st"><col class="c-note"></colgroup><thead><tr><th>场景</th><th>档</th><th>容器 / 配色</th><th>尺寸</th><th>落点</th><th>现状</th><th>备注</th></tr></thead><tbody><tr><td>App 图标 · iOS</td><td class="n">HX</td><td>满幅方章</td><td class="n">1024²</td><td><code>brand/ios/AppIcon-b.appiconset/icon-1024.png</code></td><td>有</td><td>不得带 alpha</td></tr><tr><td>App 图标 · Android 前景</td><td class="n">HX</td><td>矢量前景</td><td class="n">108dp</td><td><code>android-shell/app/src/merchant/res/drawable/ic_launcher_foreground.xml</code></td><td>有</td><td>—</td></tr><tr><td>App 图标 · Android 背景</td><td class="n">—</td><td>纯色（待定）</td><td class="n">—</td><td><code>android-shell/app/src/merchant/res/values/ic_launcher_background.xml</code></td><td>有</td><td>见上方待定项 1</td></tr><tr><td>App 图标 · 位图兜底</td><td class="n">HX</td><td>满幅方章</td><td class="n">48–192 五档</td><td><code>android-shell/app/src/merchant/res/mipmap-xxxhdpi/ic_launcher.png</code></td><td>有</td><td>—</td></tr><tr><td>Play 商店图</td><td class="n">HX</td><td>满幅方章</td><td class="n">512²</td><td><code>brand/store/play-b-512.png</code></td><td>有</td><td>—</td></tr><tr><td>启动页 · Android 12+</td><td class="n">HX</td><td>居中 + 底色</td><td class="n">288dp 图层</td><td><code>android-shell/app/src/main/res/values-v31/themes.xml</code></td><td class="chg">缺</td><td>与 C 端共用 main，需按 flavor 覆盖</td></tr><tr><td>通知栏图标</td><td class="n">H</td><td>单色白、无弧</td><td class="n">76 / 48</td><td><code>android-shell/app/src/main/res/drawable/ic_notification.xml</code></td><td class="chg">缺</td><td>两端共用</td></tr><tr><td>H5 favicon</td><td class="n">H</td><td>圆章</td><td class="n">svg + 32</td><td><code>b-app/public/favicon.svg</code></td><td>有</td><td>—</td></tr><tr><td>H5 触屏图标</td><td class="n">HX</td><td>满幅方章</td><td class="n">180 / 192 / 512</td><td><code>b-app/public/apple-touch-icon.png</code></td><td>有</td><td>—</td></tr><tr><td>小程序 · 方形</td><td class="n">HX</td><td>满幅方章</td><td class="n">144²</td><td><code>brand/store/mp-b-hx-144.png</code></td><td class="chg">缺</td><td>—</td></tr></tbody></table></div><h3 style="margin-top:32px;font-size:16px">运营端 · ops-web <span style="color:var(--muted);font-weight:400">· 3/3</span></h3><p class="cap" style="text-align:left;margin:4px 0 0">配色：沿用 B 端那副冷静的脸</p><div class="scroll"><table class="matrix"><colgroup><col class="c-use"><col class="c-tier"><col class="c-box"><col class="c-size"><col class="c-path"><col class="c-st"><col class="c-note"></colgroup><thead><tr><th>场景</th><th>档</th><th>容器 / 配色</th><th>尺寸</th><th>落点</th><th>现状</th><th>备注</th></tr></thead><tbody><tr><td>favicon</td><td class="n">H</td><td>圆章</td><td class="n">svg + 32</td><td><code>ops-web/public/favicon.svg</code></td><td>有</td><td>内部工具，不进商店</td></tr><tr><td>触屏图标</td><td class="n">HX</td><td>满幅方章</td><td class="n">180 / 192 / 512</td><td><code>ops-web/public/apple-touch-icon.png</code></td><td>有</td><td>—</td></tr><tr><td>左上角标识</td><td class="n">HX + 字标</td><td>方章 + 虹选 · 好物</td><td class="n">组件</td><td><code>ops-web/components/</code></td><td>有</td><td>品牌红只出现在这里、登录页与页脚</td></tr></tbody></table></div><h3 style="margin-top:32px;font-size:16px">Web 官网 · hxmall.top <span style="color:var(--muted);font-weight:400">· 1/7</span></h3><p class="cap" style="text-align:left;margin:4px 0 0">配色：白底 + 红方章</p><div class="scroll"><table class="matrix"><colgroup><col class="c-use"><col class="c-tier"><col class="c-box"><col class="c-size"><col class="c-path"><col class="c-st"><col class="c-note"></colgroup><thead><tr><th>场景</th><th>档</th><th>容器 / 配色</th><th>尺寸</th><th>落点</th><th>现状</th><th>备注</th></tr></thead><tbody><tr><td>页眉标识</td><td class="n">HX + 字标</td><td>方章 + 虹选 · 好物</td><td class="n">组件</td><td><code>site/components/brand/logo.tsx</code></td><td>有</td><td>已按新几何实现</td></tr><tr><td>favicon</td><td class="n">H</td><td>圆章</td><td class="n">svg + 32</td><td><code>site/public/favicon.svg</code></td><td class="chg">缺</td><td>官网新建</td></tr><tr><td>触屏图标</td><td class="n">HX</td><td>满幅方章</td><td class="n">180 / 192 / 512</td><td><code>site/public/apple-touch-icon.png</code></td><td class="chg">缺</td><td>—</td></tr><tr><td>favicon.ico</td><td class="n">H</td><td>圆章</td><td class="n">16 + 32 + 48</td><td><code>site/public/favicon.ico</code></td><td class="chg">缺</td><td>老浏览器与聚合器只认 ico</td></tr><tr><td>webmanifest</td><td class="n">—</td><td>—</td><td class="n">—</td><td><code>site/public/site.webmanifest</code></td><td class="chg">缺</td><td>安卓「添加到桌面」</td></tr><tr><td>微信分享缩略图</td><td class="n">HX</td><td>满幅方章</td><td class="n">300²</td><td><code>site/public/share-300.png</code></td><td class="chg">缺</td><td>微信只取正方形</td></tr><tr><td>OG 卡片</td><td class="n">字标</td><td>横版 + 白底</td><td class="n">1200×630</td><td><code>site/public/og.png</code></td><td class="chg">缺</td><td>被分享时的大图</td></tr></tbody></table></div><h3 style="margin-top:32px;font-size:16px">母品牌与物料 · hxtech.top <span style="color:var(--muted);font-weight:400">· 4/10</span></h3><p class="cap" style="text-align:left;margin:4px 0 0">配色：墨底 + 亮红弧</p><div class="scroll"><table class="matrix"><colgroup><col class="c-use"><col class="c-tier"><col class="c-box"><col class="c-size"><col class="c-path"><col class="c-st"><col class="c-note"></colgroup><thead><tr><th>场景</th><th>档</th><th>容器 / 配色</th><th>尺寸</th><th>落点</th><th>现状</th><th>备注</th></tr></thead><tbody><tr><td>虹选科技方章</td><td class="n">HX</td><td>墨底 + 亮红弧</td><td class="n">矢量</td><td><code>brand/logo/icon-tech.svg</code></td><td class="chg">缺</td><td>合同、资质、对公署名</td></tr><tr><td>主色字标</td><td class="n">HX</td><td>透明底</td><td class="n">矢量</td><td><code>brand/logo/mark-red.svg</code></td><td>有</td><td>—</td></tr><tr><td>墨色字标</td><td class="n">HX</td><td>透明底</td><td class="n">矢量</td><td><code>brand/logo/mark-ink.svg</code></td><td>有</td><td>单色稿</td></tr><tr><td>反白字标</td><td class="n">HX</td><td>透明底</td><td class="n">矢量</td><td><code>brand/logo/mark-reverse.svg</code></td><td>有</td><td>深底用</td></tr><tr><td>旧版橙字标</td><td class="n">旧 H</td><td>透明底</td><td class="n">矢量</td><td><code>brand/logo/mark-orange.svg</code></td><td>有</td><td><b>换代后应删</b></td></tr><tr><td>虹选</td><td class="n">虹选字标</td><td>横向字标</td><td class="n">矢量</td><td><code>brand/logo/wordmark-hongxuan.svg</code></td><td class="chg">缺</td><td>hxmall 素材里有，未入库</td></tr><tr><td>虹选 · 好物</td><td class="n">虹选字标</td><td>横向字标</td><td class="n">矢量</td><td><code>brand/logo/wordmark-hongxuan-haowu.svg</code></td><td class="chg">缺</td><td>同上</td></tr><tr><td>虹选科技</td><td class="n">虹选字标</td><td>横向字标</td><td class="n">矢量</td><td><code>brand/logo/wordmark-hongxuan-tech.svg</code></td><td class="chg">缺</td><td>母品牌</td></tr><tr><td>域名字标</td><td class="n">—</td><td>文字</td><td class="n">矢量</td><td><code>brand/logo/domain-hxmall.svg</code></td><td class="chg">缺</td><td>hxmall.top / hxtech.top</td></tr><tr><td>商标申报稿</td><td class="n">H / HX / 虹选</td><td>黑白 + 反白</td><td class="n">JPG ≥400px</td><td><code>brand/trademark/</code></td><td class="chg">缺</td><td>文字须转轮廓</td></tr></tbody></table></div>
+      <div class="note"><b>缺的那些里，优先级最高的是启动页。</b>
+      现在 <code>android-shell</code> 的 theme 还是 <code>Theme.AppCompat.NoActionBar</code>，
+      没有任何 splash 资源 —— 冷启动就是白屏，这是用户第一眼看到的东西。<br><br>
+      字标那四个 SVG（虹选 / 虹选 · 好物 / 虹选科技 / 域名）<b>不用重画</b>，
+      hxmall 素材里已经有了，转轮廓后入库即可。</div>
+    </div></section><section><div class="wrap">
+      <div class="k2">05 — How to adopt</div>
+      <h2>落地顺序</h2>
+      <p class="lede">顺序不能反：先让实现追上规范的分档，再落数值，再同步规范文本，最后重跑。
+      反过来做的话新字高只对 HX 生效，H 档还是又矮又带弧，产物「改了一半」很难查。</p>
+      <pre><code>1. build.py：GEO 拆分档
+   TIERS = {
+       "H":  dict(glyph_h=0.64, arc_w=None),   # 无弧线，垂直居中
+       "HX": dict(glyph_h=0.30, arc_w=0.44),
+       "虹": dict(glyph_h=0.46, arc_w=0.40),
+   }
+   glyph_body() 按 letters 取档；H 档跳过弧线
+   _h_at()：cy = (T+B)/2 → cy = T + (B-T) * 0.38  # 横画高度，见 §02
+            旧版 legacy_H() 本来就是这么写的（BAR_RATIO=0.38），等于把那一行搬回新几何
+
+2. arc_path()：A r r → A rx ry，ry = arc_flat × rx
+   arc_h：r + aw/2 → ry + aw/2      # 管纵向占位，漏了整组居中就偏
+   BASE 增加 arc_flat = 0.65、bar = 0.38
+
+3. 补 §03 里缺的产出：启动页 4 项、小程序 3 项、通知图标 1 项、
+   site/ favicon 一套、ico / webmanifest / 分享图 / OG、字标 SVG 入库
+
+4. 同步 brand/spec.html §02 参数表与「母题」那一条
+   「半圆弧，圆心角 180°」→ 扁圆弧 + arc_flat；它是真源，不同步就又出现两套值
+
+5. python3 brand/build.py</code></pre>
+      <div class="note"><b>本页仍未改任何产物。</b>C 端 / B 端的底色区分（§02）是独立待定项 ——
+      定了它再一起重跑，避免图标连改两轮。规范全文见 <a href="spec.html">brand/spec.html</a>。</div>
+    </div></section><footer><div class="wrap">
+      图标体系方案 · 由 brand/propose-icons.py 生成，勿手改 · 规范真源 brand/spec.html
+    </div></footer></body></html>

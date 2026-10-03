@@ -1,0 +1,612 @@
+package ai.neargo.shop.user.service.impl;
+
+import ai.neargo.shop.spi.notify.SmsPort;
+import ai.neargo.shop.common.ratelimit.OtpSendGuard;
+import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.OtpTestPhoneService;
+import ai.neargo.shop.common.OtpStore;
+
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.TokenStore;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.user.dto.UserVO;
+import ai.neargo.shop.user.IdentityType;
+import ai.neargo.shop.user.entity.UsrAccount;
+import ai.neargo.shop.user.entity.UsrIdentity;
+import ai.neargo.shop.user.mapper.UserMappers.IdentityMapper;
+import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 登录建户实现。
+ *
+ * <p><b>身份统一（S2）</b>：凭证不再平铺在 {@code usr_account} 的列上，而是
+ * {@code usr_identity} 一人多条。登录时把本次能拿到的<b>全部</b>凭证按强度依次去找人
+ * （手机号优先），命中后把新出现的凭证补登到同一个人名下——识别能力越用越强。
+ *
+ * <p>旧结构的问题不是不够优雅，是**存不下事实**：单列唯一键意味着一个账号只能有一个
+ * openid，而微信 openid 按应用隔离，同一个人在小程序和 App 里是两个值。
+ *
+ * <p><b>渠道接入状态</b>：微信 {@code code2Session} 已走 {@code WxAuthPort}
+ * （TDD-通知与消息推送 §一期）—— 桩默认开启（openId=code，即接入前的既有行为），
+ * 配上 {@code shop.wx.stub=false} + appid/secret 后换回真 openid 与 unionid。
+ * Apple 的 identityToken 校验仍未接，当前按「principal 即稳定标识」建户。
+ * {@code getPhoneNumber} 的手机号凭证等小程序端上报流程建好后补第三条。
+ */
+@Service
+public class AuthServiceImpl implements AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    /** 密码最短长度。与端上的校验保持一致；服务端也判，因为端上那道挡不住直接打接口的人 */
+    private static final int PWD_MIN_LEN = 6;
+    /**
+     * 密码尝试限流：同一手机号 15 分钟内最多 10 次。
+     *
+     * <p>比发码限流宽一点（那条是 60 秒一次）—— 密码是人自己记的，输错很常见，
+     * 卡太死会把真用户挡在门外；但 10 次/15 分钟足以让在线撞库变得没有意义。
+     */
+    private static final ai.neargo.shop.common.ratelimit.RateRule PWD_TRY_RULE =
+            new ai.neargo.shop.common.ratelimit.RateRule(
+                    "pwd-login", java.time.Duration.ofMinutes(15), 10);
+
+    private final UserMapper userMapper;
+    private final IdentityMapper identityMapper;
+    private final TokenStore tokenStore;
+    private final OtpStore otpStore;
+    private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
+    private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
+
+    /**
+     * 固定验证码（**只给本地联调与 E2E**）。
+     *
+     * <p>为什么需要它：进程外的测试拿不到随机码 —— 日志抓码不可靠（缓冲、轮转、并发混叠），
+     * 而「登录」是每一条旅程的第一步，拿不到码等于一条都跑不了。
+     *
+     * <p><b>三条护栏</b>：
+     * <ul>
+     *   <li>默认空 = 真随机，什么都不打开</li>
+     *   <li>一旦设了值，启动时打 WARN —— 它必须在日志里显眼到不可能被带上生产</li>
+     *   <li>它不绕过校验，只是让码可预测：验证码该过期还是过期、该消费还是消费</li>
+     * </ul>
+     */
+    private final String fixedOtp;
+    private final OtpTestPhoneService testPhoneService;
+
+    private final OtpSendGuard sendGuard;
+    private final SmsPort smsPort;
+    private final ai.neargo.shop.spi.user.WxAuthPort wxAuthPort;
+    /** 平台人档（P0）。登录成功后把账号绑到「这个自然人」上 —— 会员挂的是它，不是账号 */
+    private final ai.neargo.shop.user.service.PersonService personService;
+
+    private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
+
+    public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
+                           TokenStore tokenStore, OtpStore otpStore,
+                           OtpSendGuard sendGuard,
+                           SmsPort smsPort,
+                           ai.neargo.shop.spi.user.WxAuthPort wxAuthPort,
+                           ai.neargo.shop.auth.PasswordHasher passwordHasher,
+                           ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter,
+                           ai.neargo.shop.user.service.PersonService personService,
+                           @org.springframework.beans.factory.annotation.Value(
+                                   "${shop.auth.otp.fixed:}") String fixedOtp,
+                           ai.neargo.shop.spi.marketing.FissionPort fissionPort,
+                           OtpTestPhoneService testPhoneService) {
+        this.userMapper = userMapper;
+        this.identityMapper = identityMapper;
+        this.tokenStore = tokenStore;
+        this.otpStore = otpStore;
+        this.sendGuard = sendGuard;
+        this.smsPort = smsPort;
+        this.wxAuthPort = wxAuthPort;
+        this.passwordHasher = passwordHasher;
+        this.rateLimiter = rateLimiter;
+        this.personService = personService;
+        this.fixedOtp = fixedOtp;
+        this.fissionPort = fissionPort;
+        this.testPhoneService = testPhoneService;
+        if (usingFixedOtp()) {
+            /*
+             * ERROR 而不是 WARN：这条要在日志里**一眼扎出来**。
+             * WARN 在启动刷屏里是背景噪音，而这条说的是「此刻任何人都能登进任何账号」。
+             */
+            log.error("[DANGEROUS] shop.auth.otp.fixed 已开启（{}）—— "
+                    + "任何人都能用这个码登录任意手机号，且不再发真实短信。"
+                    + "**生产环境绝不能出现这条日志**（prod profile 下会直接拒绝启动）", fixedOtp);
+        }
+    }
+
+    @Override
+    public void sendOtp(String phone) {
+        sendOtp(phone, null);
+    }
+
+    /**
+     * @param senderKey 发起人（C 端传当前账号号）。见 {@link ai.neargo.shop.common.ratelimit.OtpSendGuard}
+     */
+    @Override
+    public void sendOtp(String phone, String senderKey) {
+        /*
+         * **闸在生成码之前**：放在之后的话，被拒的那次仍然会把上一条有效码冲掉 ——
+         * 用户手里那条还没用的码突然失效，而他看到的是「操作太频繁」，
+         * 两件事对不上，只会让他再点一次。
+         */
+        sendGuard.check(phone, senderKey);
+
+        if (usingFixedOtp()) {
+            /*
+             * 预设码**不走短信通道**。走的话有两个代价：真实通道下每次自动化测试
+             * 都在烧短信费，而且给人发一条「你的验证码是 123456」的真短信 ——
+             * 那个码谁都知道，等于把它做成了一把公开的钥匙。
+             */
+            otpStore.save(phone, fixedOtp);
+            log.warn("[otp] 预设验证码已下发给 {}（未发短信）", mask(phone));
+            return;
+        }
+        /*
+         * 测试号白名单（TDD-测试号固定验证码）。**位置有讲究**：
+         *
+         *   · 在 sendGuard 之后 —— 白名单号不该绕过限流。绕过的话，那个号就是一条
+         *     免费的、无限次的发码通道，而它的码是公开可猜的。
+         *   · 在生成随机码之前 —— 放在之后的话，随机码会先写进 OtpStore，
+         *     把上一条固定码冲掉，然后再被固定码覆盖回去。中间那一瞬正确的码是哪个，
+         *     取决于两次 save 的顺序，而两次 save 之间任何一次 verify 都会失败。
+         *   · **不调 smsPort** —— 这是它与「把码写进库再捞出来」那个方案的关键差别：
+         *     后者只改了存码那半句，短信照样会发给一个真实号段的陌生人。
+         *
+         * 与上面的 usingFixedOtp() 的差别只有一处，但是关键的一处：
+         * **作用域从「任意手机号」收窄到「列表里的号」**。
+         */
+        var fixed = testPhoneService.fixedCodeFor(phone);
+        if (fixed.isPresent()) {
+            otpStore.save(phone, fixed.get());
+            log.warn("[otp] 测试号白名单命中 {}，已下发固定验证码（未发短信）", mask(phone));
+            return;
+        }
+        String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
+        otpStore.save(phone, code);
+        smsPort.sendOtp(phone, code);
+    }
+
+    /** 预设验证码是否开着。空/未配 = 关 —— 默认必须是关的那一侧 */
+    private boolean usingFixedOtp() {
+        return fixedOtp != null && !fixedOtp.isBlank();
+    }
+
+    /** 日志里的手机号一律打码：日志会被收集、被转发，它不该成为一份号码库 */
+    /** 这个账号已验证的手机号。微信登录没授权手机号时为 null —— 那时他没有人档 */
+    private String phoneOf(String userNo) {
+        UsrIdentity id = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PHONE)
+                .last("limit 1"));
+        return id == null ? null : id.getIdentityValue();
+    }
+
+    private static String mask(String phone) {
+        return phone == null || phone.length() < 11
+                ? "***"
+                : phone.substring(0, 3) + "****" + phone.substring(7);
+    }
+
+    @Override
+    public LoginResult refresh(String currentToken) {
+        var session = tokenStore.get(currentToken)
+                .orElseThrow(ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException::new);
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, session.user().userNo()).last("limit 1"));
+        if (user == null) {
+            throw new ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException();
+        }
+        String fresh = tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.consumer(user.getUserNo(), user.getNickname())));
+        tokenStore.revoke(currentToken);   // 轮换：旧的立即作废
+        return new LoginResult(fresh, UserVO.of(user));
+    }
+
+    @Override
+    public void logout(String currentToken) {
+        tokenStore.revoke(currentToken);
+    }
+
+    @Override
+    @Transactional
+    public LoginResult login(LoginCommand cmd) {
+        /*
+         * 密码登录**单独一条路，不进 findOrCreate** —— 那个方法的语义是「登录即注册」，
+         * 找不到人就建户。密码走它的话，输错手机号会**当场给他开一个空账号**，
+         * 而用户看到的是「登录成功，但我的店没了」。
+         */
+        UsrAccount user = GRANT_PASSWORD.equals(cmd.grantType())
+                ? loginByPassword(cmd)
+                : findOrCreate(resolveCredentials(cmd), cmd);
+
+        if ("BANNED".equals(user.getStatus())) {
+            throw BizException.of(ErrorCode.RISK_BLOCKED);
+        }
+
+        /*
+         * 平台人档（P0）：登录成功之后把账号绑到「这个自然人」上。
+         *
+         * <p><b>失败一律不阻塞登录</b>。绑人档是登录的副作用，不是他此刻要做的事；
+         * 为一个他没发起的动作把他关在门外，是拿会员关系的完整性去换可用性。
+         * 手机号已绑别的账号时也只跳过并告警（见 PersonService.bindOnLogin 的说明）——
+         * 要让用户知道冲突的是他<b>主动</b>绑号那条路，走 bindPhone。
+         *
+         * <p>微信登录没授权手机号时 {@code phoneOf} 取不到号，这里什么也不做 ——
+         * 他照常能逛能下单，只是还不能成为任何商家的会员。
+         */
+        try {
+            personService.bindOnLogin(user.getUserNo(), phoneOf(user.getUserNo()));
+        } catch (RuntimeException e) {
+            log.warn("[person] 登录时绑定人档失败 user={}", user.getUserNo(), e);
+        }
+
+        String token = tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.consumer(user.getUserNo(), user.getNickname())));
+        return new LoginResult(token, UserVO.of(user));
+    }
+
+    /**
+     * 手机号 + 密码登录。
+     *
+     * <p><b>只认人，不建户</b>（理由见 {@link AuthService#GRANT_PASSWORD}）。
+     * 三步：手机号找人 → 取他的 PASSWORD 凭证 → 比对哈希。
+     *
+     * <p><b>防撞库</b>：按手机号限流。密码登录与验证码登录的风险形状不同 ——
+     * 验证码那条路攻击者要先收到短信，而这条只要有个号码就能无限试。
+     * 限流键带 {@code pwd:} 前缀，与发码限流各算各的：
+     * 共用一个键的话，一次撞库会把真用户的发码额度也耗光。
+     */
+    private UsrAccount loginByPassword(LoginCommand cmd) {
+        String phone = cmd.principal() == null ? "" : cmd.principal().trim();
+        String raw = cmd.credential() == null ? "" : cmd.credential();
+        if (phone.isBlank() || raw.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        ai.neargo.shop.common.ratelimit.RateLimiter.Decision d =
+                rateLimiter.tryAcquire("pwd:login:" + phone, PWD_TRY_RULE);
+        if (!d.allowed()) {
+            log.warn("[auth] 密码登录触发限流 phone={} —— 撞库的典型形状", mask(phone));
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
+
+        UsrIdentity phoneId = findIdentity(new Credential(IdentityType.PHONE, phone, null));
+        if (phoneId == null) {
+            // 查无此人也报 10456：分开说等于送一个账号探测接口（见 ErrorCode 注释）
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        UsrIdentity pwd = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, phoneId.getUserNo())
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
+                .last("limit 1"));
+        if (pwd == null) {
+            throw BizException.of(ErrorCode.PASSWORD_NOT_SET);
+        }
+        if (!passwordHasher.matches(raw, pwd.getIdentityValue())) {
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        /*
+         * 密码算法升级（如 bcrypt 轮数提高）时就地重写一次 —— 与运营端同一套做法。
+         * 不做的话老用户的哈希永远停在旧强度上，而他们恰恰是存在最久的那批账号。
+         */
+        if (passwordHasher.needsUpgrade(pwd.getIdentityValue())) {
+            pwd.setIdentityValue(passwordHasher.encode(raw));
+            identityMapper.updateById(pwd);
+        }
+        // 登录成功清掉失败计数：否则真用户输错几次再输对，仍会被之前的计数挡住
+        rateLimiter.reset("pwd:login:" + phone);
+
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, phoneId.getUserNo()).last("limit 1"));
+        if (user == null) {
+            // 凭证在、账号没了：数据不一致，不能当成「密码错」糊弄过去
+            log.error("[auth] usr_identity 指向的 user_no={} 在 usr_account 里不存在", phoneId.getUserNo());
+            throw BizException.of(ErrorCode.PASSWORD_INVALID);
+        }
+        return user;
+    }
+
+    /**
+     * 设置 / 修改登录密码。<b>调用方必须已经登录</b>（当前会话即授权）。
+     *
+     * <p>没有「旧密码」这一步：能走到这里说明他此刻已经通过验证码或微信登录了，
+     * 那比旧密码更强。要求旧密码只会把「忘了密码」变成死路 ——
+     * 而重设密码的正路本来就是「用验证码登录进来再设」。
+     */
+    @Override
+    @Transactional
+    public void setPassword(String userNo, String rawPassword) {
+        String raw = rawPassword == null ? "" : rawPassword;
+        // 长度下限在服务端也要判：端上的校验挡不住直接打接口的人
+        if (raw.length() < PWD_MIN_LEN) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        UsrIdentity existing = identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)
+                .last("limit 1"));
+        String hash = passwordHasher.encode(raw);
+        if (existing != null) {
+            existing.setIdentityValue(hash);
+            existing.setVerifiedAt(LocalDateTime.now());
+            identityMapper.updateById(existing);
+            return;
+        }
+        UsrIdentity row = new UsrIdentity();
+        row.setUserNo(userNo);
+        row.setIdentityType(IdentityType.PASSWORD);
+        row.setIdentityValue(hash);
+        row.setVerifiedAt(LocalDateTime.now());
+        identityMapper.insert(row);
+    }
+
+    @Override
+    public boolean hasPassword(String userNo) {
+        return identityMapper.selectCount(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PASSWORD)) > 0;
+    }
+
+    /**
+     * 授权凭据 → <b>本次能拿到的全部凭证</b>。三种登录方式的差异只在这一个方法里。
+     *
+     * <p>返回列表而不是单个：这是与旧实现最本质的区别。旧版每次只拿一个凭证、
+     * 只按那一个查，于是同一个人换个入口就变成新账号。
+     */
+    @Override
+    @Transactional
+    public String ensureAccountByPhone(String phone) {
+        if (phone == null || !phone.matches("\\d{11}")) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 复用登录那条 findOrCreate：**同一个手机号日后登录时必须命中同一个账号**，
+         * 否则客服建的号与他自己登出来的号是两个人，那张单他永远看不到。
+         * 另起一套建户逻辑迟早分岔，而分岔的表现正是这个。
+         */
+        UsrAccount user = findOrCreate(
+                List.of(new Credential(IdentityType.PHONE, phone, null)),
+                new LoginCommand(GRANT_PHONE_OTP, phone, null, null, null, null));
+        /*
+         * 人档同样在这里绑 —— 与登录一致，失败不阻塞（绑人档是副作用，
+         * 不该让「下不了单」成为它的后果）。
+         */
+        try {
+            personService.bindOnLogin(user.getUserNo(), phone);
+        } catch (RuntimeException e) {
+            log.warn("[person] 代客建号时绑定人档失败 user={}", user.getUserNo(), e);
+        }
+        return user.getUserNo();
+    }
+
+    private List<Credential> resolveCredentials(LoginCommand cmd) {
+        return switch (cmd.grantType() == null ? "" : cmd.grantType()) {
+            // 两个标签一个分支：WX_MINI 是端上对同一件事的叫法（见 AuthService 常量注释）
+            case GRANT_WECHAT_MP, GRANT_WX_MINI -> {
+                /*
+                 * code2Session 走 WxAuthPort（S4，安全整改方案 §6.5）：
+                 * 桩实现返回 openId = code（接入前的既有行为），真实通道换回真 openid 与
+                 * unionid。剩下的第三条凭证（getPhoneNumber 的手机号）等小程序端上报，
+                 * 走 GRANT_PHONE_OTP 之外的新授权类型时再加。
+                 */
+                ai.neargo.shop.spi.user.WxAuthPort.WxSession session;
+                try {
+                    session = wxAuthPort.codeToSession(cmd.principal());
+                } catch (ai.neargo.shop.spi.user.WxAuthPort.WxAuthException e) {
+                    // code 无效/已用过是端上重复提交的形状，给 400 而不是 500 ——
+                    // 500 会让端上重试同一个 code，而它重试一万次也是无效
+                    log.warn("[auth] code2Session 失败: {}", e.getMessage());
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                List<Credential> creds = new ArrayList<>();
+                if (session.unionId() != null) {
+                    // unionid 排前面：它跨应用稳定，识别强度高于按应用隔离的 openid
+                    creds.add(new Credential(IdentityType.WX_UNIONID, session.unionId(), "MP"));
+                }
+                creds.add(new Credential(IdentityType.WX_OPENID_MP, session.openId(), "MP"));
+                yield creds;
+            }
+            case GRANT_PHONE_OTP -> {
+                verifyOtp(cmd.principal(), cmd.credential());
+                yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
+            }
+            case GRANT_APPLE ->
+                // TODO(S4) 校验 identityToken 签名后取 sub。
+                // Apple 永远给不出手机号，所以真接通后这里之后要接一道「强制绑定手机号」
+                    List.of(new Credential(IdentityType.APPLE_SUB, cmd.principal(), "APP"));
+            default -> throw BizException.of(ErrorCode.BAD_REQUEST);
+        };
+    }
+
+    private void verifyOtp(String phone, String code) {
+        if (!otpStore.verifyAndConsume(phone, code)) {
+            // **不是 10400**：那句「请求参数有误」让用户去检查自己传了什么，
+            // 而他要做的只是再看一眼短信、或者重新要一个码
+            throw BizException.of(ErrorCode.OTP_INVALID);
+        }
+    }
+
+    /**
+     * 按识别强度依次找人；找不到才建户；无论哪种，都把本次新出现的凭证登记上去。
+     */
+    private UsrAccount findOrCreate(List<Credential> credentials, LoginCommand cmd) {
+        String userNo = resolveUserNo(credentials);
+
+        UsrAccount user;
+        if (userNo != null) {
+            user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                    .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+            if (user == null) {
+                /*
+                 * 凭证指向一个不存在的人。正常不会发生（外键关系由 user_no 维系），
+                 * 但一旦发生，**不能静默建新号** —— 那会让一个人的历史订单彻底失联，
+                 * 且没有任何报错。宁可让这次登录失败，让人来查。
+                 */
+                log.error("凭证 {} 指向不存在的用户 {}，登录中止", credentials.getFirst().type(), userNo);
+                throw BizException.of(ErrorCode.INTERNAL_ERROR);
+            }
+            // 从店铺码进来的老用户：刷新常去店，归因由 marketing 域按优先级裁决（S5）
+            if (cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
+                user.setEntityNo(cmd.merchantNo());
+                userMapper.updateById(user);
+            }
+        } else {
+            user = createAccount(cmd);
+        }
+
+        registerNewCredentials(user, credentials);
+        return user;
+    }
+
+    /**
+     * 按 {@link IdentityType#RESOLVE_ORDER} 依次查，命中即认定。
+     *
+     * <p><b>这段的多凭证分支目前没有测试覆盖，也覆盖不了</b>：三种 grant 各自只产出
+     * 一条凭证（{@code code2Session} 未接），所以这个循环眼下与「取唯一那条」等价——
+     * 把它改成 {@code credentials.getFirst()}，全部身份用例仍然全绿（已实测）。
+     *
+     * <p>不因此简化成单条，是因为一旦 S4 接通小程序，一次
+     * {@code wx.login} + {@code getPhoneNumber} 会同时给出 openid、unionid、手机号，
+     * 顺序立刻变成实质规则：手机号命中就是同一个人，openid 命中只是同一应用的回访。
+     * 那时补上多凭证用例，这里不用改。
+     *
+     * @return 命中的 user_no；全部未命中返回 {@code null}
+     */
+    private String resolveUserNo(List<Credential> credentials) {
+        for (String type : IdentityType.RESOLVE_ORDER) {
+            for (Credential c : credentials) {
+                if (!type.equals(c.type())) {
+                    continue;
+                }
+                UsrIdentity hit = findIdentity(c);
+                if (hit != null) {
+                    return hit.getUserNo();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 补登本次新出现的凭证。
+     *
+     * <p>典型场景：小程序老用户首次在 App 登录，命中手机号认出是同一个人，
+     * 于是把 App 的 openid 补一行挂到他名下。下次他从 App 静默登录就能直接认出。
+     *
+     * <p><b>冲突检测</b>：若某条凭证已属于另一个人，<b>不自动合并</b>。合并要迁移订单、
+     * 积分、卡包、优惠券、地址，横跨五个域，合错了难回滚（安全整改方案 §6.7）。
+     * 一期只做「检测 + 阻止 + 留痕」，真正的合并流程等有实际需求再建——
+     * 但检测必须有，否则冲突会以「手机号已被占用」这种让用户莫名其妙的形式暴露。
+     */
+    private void registerNewCredentials(UsrAccount user, List<Credential> credentials) {
+        for (Credential c : credentials) {
+            UsrIdentity existing = findIdentity(c);
+            if (existing != null) {
+                if (!existing.getUserNo().equals(user.getUserNo())) {
+                    log.warn("凭证冲突：{} 已属于 {}，本次登录的是 {}。不自动合并",
+                            c.type(), existing.getUserNo(), user.getUserNo());
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                continue;
+            }
+            UsrIdentity row = new UsrIdentity();
+            row.setUserNo(user.getUserNo());
+            row.setIdentityType(c.type());
+            row.setIdentityValue(c.value());
+            row.setChannel(c.channel());
+            row.setVerifiedAt(LocalDateTime.now());
+            identityMapper.insert(row);
+
+            syncLegacyColumn(user, c);
+        }
+    }
+
+    /**
+     * 过渡期双写 {@code usr_account} 的旧凭证列。
+     *
+     * <p>迁移只加不删（V3），旧列还在、旧的唯一键也还在。不双写的话，新建的账号在旧列上
+     * 是空的，而任何还在读旧列的代码（以及人工排查时的 SQL）都会看到一个「没有手机号的用户」。
+     *
+     * <p>确认 {@code usr_identity} 与旧列一致后，删列与这个方法一起去掉。
+     */
+    private void syncLegacyColumn(UsrAccount user, Credential c) {
+        switch (c.type()) {
+            case IdentityType.PHONE -> user.setPhone(c.value());
+            case IdentityType.WX_OPENID_MP -> user.setOpenid(c.value());
+            case IdentityType.WX_UNIONID -> user.setUnionid(c.value());
+            case IdentityType.APPLE_SUB -> user.setAppleSub(c.value());
+            default -> {
+                // WX_OPENID_APP / WX_OPENID_OA 在旧结构里**根本没有对应的列** ——
+                // 这正是必须拆表的原因，不是遗漏
+                return;
+            }
+        }
+        userMapper.updateById(user);
+    }
+
+    private UsrIdentity findIdentity(Credential c) {
+        return identityMapper.selectOne(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getIdentityType, c.type())
+                .eq(UsrIdentity::getIdentityValue, c.value())
+                .last("limit 1"));
+    }
+
+    private UsrAccount createAccount(LoginCommand cmd) {
+        UsrAccount user = new UsrAccount();
+        user.setUserNo(BizKey.next(BizKey.USER));
+        user.setNickname("邻居" + user.getUserNo().substring(user.getUserNo().length() - 4));
+        user.setAvatar("");
+        user.setStatus("NORMAL");
+        user.setEntityNo(cmd.merchantNo());
+        userMapper.insert(user);
+        /*
+         * ★ 邀请落台账。**只在这里调** —— 这一支才是「新账号」；
+         * 老用户再次登录不算邀请，否则同一个人靠反复登录就能把邀请数刷上去。
+         *
+         * <p>`cmd.inviterNo()` 此前**被接收后直接丢掉**：LoginReq 一直带着它、
+         * 端上一直在传，而这个类里一次都没用过 —— 于是裂变台账一行都没有，
+         * 运营端「邀请有礼」的两列恒为 0。
+         *
+         * <p>只传手机号**后四位**（B12：完整号码永远不出 UserQueryPort）。
+         */
+        /*
+         * deviceId 传 null：`LoginCommand` 里**没有这个字段**，端上也没在传。
+         * 不在这里发明一个 —— 新客判定会因此只用 PHONE 因子，
+         * 而那正是「配了哪些因子就用哪些」的正确降级：宁可少判一个维度，
+         * 不可拿一个编出来的值去判。要用 DEVICE 因子，得先让端上把设备号送上来。
+         */
+        fissionPort.onRegister(cmd.inviterNo(), user.getUserNo(), null, phoneTailOf(cmd));
+        return user;
+    }
+
+    /** 手机号后四位；不是手机号登录时为 null。**完整号码不外传** */
+    private static String phoneTailOf(LoginCommand cmd) {
+        String p = cmd.principal();
+        return p == null || p.length() < 4 ? null : p.substring(p.length() - 4);
+    }
+
+    /**
+     * 一条登录凭证。
+     *
+     * @param type    见 {@link IdentityType}
+     * @param value   凭证值
+     * @param channel 来源留痕：MP / APP / H5。手机号 OTP 可能来自任意端，允许为空
+     */
+    private record Credential(String type, String value, String channel) {
+    }
+}

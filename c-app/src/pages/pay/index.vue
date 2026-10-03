@@ -9,19 +9,52 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { requestPayment } from "@shared/ports/payment";
+import { codeLabelKey } from "@shared/strategies/order-view";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
+import type { PayMethodItem, PayMethodList } from "@/api/contract";
+import { confirm } from "@ai-shop/ui/prompt";
+import { clearCheckoutKey } from "@/shared/checkout-key";
 
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
 const paying = ref(false);
+/** 可用支付方式。null = 还没拉到 */
+const methodList = ref<PayMethodList | null>(null);
+/** 用户选中的通道。默认第一个可用的 */
+const chosen = ref<string>("");
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
+
+/** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
+const codeLabel = computed(() =>
+  codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
+);
+
+/**
+ * 能不能点「去支付」。
+ *
+ * <b>拉不到列表、或者商家还没进件（configured=false）时照常放行</b> ——
+ * 只有「确实配过、而一种都不可用」才拦。两者都是空列表，
+ * 而端上要做的事正好相反。
+ */
+const canPay = computed(() => {
+  const list = methodList.value;
+  if (!list || !list.configured) return true;
+  return list.methods.some((m) => m.available);
+});
+
+/** 拦住时要说明原因，别只给一个灰按钮 */
+const blockedReason = computed(() => {
+  const list = methodList.value;
+  if (!list || !list.configured || list.methods.some((m) => m.available)) return "";
+  return String(t("pay.noUsableMethod"));
+});
 const expired = computed(
   () =>
     !!order.value?.payDeadlineAt &&
@@ -40,8 +73,39 @@ const doneHintKey = computed(() => {
   return "pay.doneGeneric";
 });
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `order` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    failed.value = false;
+  } catch {
+    failed.value = true;
+    return;
+  }
+  if (order.value?.status === "WAIT_PAY") {
+    await loadMethods(orderNo);
+  }
+}
+
+/** 拉可用支付方式，并把默认选中放在第一个可用的上 */
+async function loadMethods(orderNo: string) {
+  try {
+    const list = await api.payMethods(orderNo);
+    methodList.value = list;
+    chosen.value = list.methods.find((m) => m.available)?.payChannel ?? "";
+  } catch {
+    /*
+     * 拉不到就当作「未配置」放行 —— 与后端 configured=false 同一条口径。
+     * 拦住的话，一次网络抖动会让用户付不了一个完全正常的单。
+     */
+    methodList.value = null;
+  }
 }
 
 async function pay() {
@@ -49,18 +113,83 @@ async function pay() {
   if (!o || paying.value || expired.value) return;
   paying.value = true;
   try {
-    // 真实链路：后端下单拿支付参数 → 唤起 → 回查。这里 mock 直接推进状态
-    const res = await requestPayment({});
-    if (res.cancelled) {
-      uni.showToast({ title: String(t("pay.cancelled")), icon: "none" });
+    /*
+     * **顺序：先向后端下单拿真参数，再唤起收银台。**
+     *
+     * 此前是反的 —— 先 requestPayment({}) 唤起（传的是空对象），
+     * 再调 payOrder。那样端上唤起的是一个没有任何通道参数的收银台，
+     * 而 mock 下它「成功」了，于是这条链看起来是通的。
+     * 真通道上它一定失败，且失败在用户面前。
+     */
+    const init = await api.payOrder(o.orderNo, chosen.value || undefined);
+
+    /*
+     * **应付 0 元：后端已经结清了，不要唤起收银台。**
+     *
+     * 优惠/券/积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款。
+     * 拿一组空参数去 requestPayment 的话，通道会回一个参数错 ——
+     * 用户看到的是「下单成功却付不了」，而这单其实已经付掉了。
+     *
+     * 判 `settled` 不判 `payChannel === "FREE"`：通道名是后端的实现细节，
+     * 将来多一个免支付的来源就要改这里。见 TDD-零元订单支付 §4.2。
+     */
+    if (init.settled) {
+      order.value = await api.orderDetail(o.orderNo);
+      if (paid.value) clearCheckoutKey();
+      uni.showToast({ title: String(t("pay.freeSettled")), icon: "none" });
       return;
     }
-    await api.payOrder(o.orderNo);
+
+    // 参数原样透传：不同通道字段完全不同，端上不该翻译成一套「统一格式」
+    const res = await requestPayment(init.payParams);
+    if (res.cancelled) {
+      uni.showToast({ title: String(t("pay.cancelled")), icon: "none" });
+      // 取消不是失败：单还在，用户可以换一种方式再来（后端会换新的商户单号）
+      return;
+    }
+    if (!res.invoked) {
+      /*
+       * **唤起失败要把通道的原话说出来。**
+       *
+       * 此前这里什么都不做，直接往下走 —— 于是「微信根本没弹出来」与
+       * 「弹出来了但没付」在界面上长得一模一样，都是回到订单页。
+       * 而微信在这一步说的是很具体的话（未开通支付、appid 不匹配、签名错），
+       * 那句话是排查这条链唯一的输入。
+       */
+      // 走库里的 sh-confirm 而不是 uni.showModal：系统弹框在四个端上长相各不相同
+      // （小程序是微信的样式、H5 是浏览器的），而这一句是排查支付链路唯一的输入，
+      // 不该由平台决定它长什么样。`alert` = 只有一个「知道了」，对应 showCancel: false。
+      // ⚠️ 说明文字的字段名是 `hint` 不是 `content` —— ConfirmOptions 没有 content，
+      // 写错不报错，那句通道原话会被静默丢掉（CLAUDE.md 记过同一个坑）。
+      void confirm({
+        title: String(t("pay.invokeFailedTitle")),
+        hint: res.failReason || String(t("pay.invokeFailedUnknown")),
+        alert: true,
+      });
+      return;
+    }
     // 以回查为准，不用端侧返回值判成功
     order.value = await api.orderDetail(o.orderNo);
+    // 付掉了：结算页的幂等键作废。不清的话，紧接着再买一份一模一样的会被回放成这张已付的单
+    if (paid.value) clearCheckoutKey();
 
-    // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机
-    void requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.shipped]);
+    // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机。
+    // 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
+    const subscribed = requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
+      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+    });
+
+    /*
+     * **团单付完直接落在自己的团页**（原型 p04）：倒计时、人头、一颗「邀请邻居来拼」。
+     * 落在订单页的话，开团的人不知道下一步该干什么 —— 而团成不成正取决于他转不转发。
+     * 先等订阅授权框走完再跳：那个框必须挂在这一次点击上，页面一换它就弹不出来。
+     */
+    const groupNo = paid.value ? groupNoOf(order.value) : "";
+    if (groupNo) {
+      await subscribed.catch(() => {});
+      uni.redirectTo({ url: `${ROUTES.group}?groupNo=${groupNo}&paid=1` });
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -71,17 +200,29 @@ async function pay() {
 async function cancel() {
   const o = order.value;
   if (!o) return;
-  const ok = await new Promise<boolean>((resolve) => {
-    uni.showModal({
-      title: String(t("pay.cancelTitle")),
-      content: String(t("pay.cancelTip")),
-      success: (r) => resolve(!!r.confirm),
-      fail: () => resolve(false),
-    });
-  });
+  const ok = await confirm({ title: String(t("pay.cancelTitle")), hint: String(t("pay.cancelTip")) });
   if (!ok) return;
-  await api.cancelOrder(o.orderNo);
+  /*
+   * **失败要说话，而且要留在原地。**
+   *
+   * 此前这里是裸的 `await api.cancelOrder(...)` 接一句跳转：取消被后端拒时
+   * （单已经支付成功、状态机不允许迁移、网络断了），既不跳转也不提示 ——
+   * 用户点了「取消订单」、确认了一次，然后什么都没发生。
+   * 同一个动作在订单详情页是接住并 toast 的，两处写法不一致。
+   */
+  try {
+    await api.cancelOrder(o.orderNo);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    return;
+  }
   uni.redirectTo({ url: `${ROUTES.orders}` });
+}
+
+/** 这笔支付里参团的那一单的团号。支付视角下团号挂在子单上 */
+function groupNoOf(o: typeof order.value): string {
+  if (!o) return "";
+  return o.groupNo || o.subOrders?.find((x) => x.groupNo)?.groupNo || "";
 }
 
 function gotoOrder() {
@@ -94,7 +235,27 @@ function gotoHome() {
 
 onLoad((q) => {
   const no = (q?.orderNo as string) || "";
-  if (no) load(no);
+  /*
+   * **`auto=1`：下单页刚提交完，直接把微信支付拉起来**（执行计划 B3，原型 k02）。
+   *
+   * 此前首次下单要点两次：提交 → 落到这一页 → 再点「立即支付」。第二次点击
+   * 不提供任何信息，纯粹是一道多出来的手续。
+   *
+   * <p><b>为什么是「这一页自动触发」而不是「下单页自己拉起」</b>：
+   * 支付这一步有一堆分支 —— 0 元已结清、用户取消、唤起失败要把通道原话说出来、
+   * 付完要收订阅授权、团单要落团页、幂等键要作废。把它们复制到下单页去，
+   * 两处迟早分岔，而分岔的是钱的路。所以逻辑只留一份，下单页只是带个参数过来。
+   *
+   * 用户看到的是：点一次「立即支付」，微信面板直接弹出来；
+   * 取消或失败时退回的正是这一页（单已经建好、倒计时在走）。
+   */
+  if (no) {
+    void load(no).then(() => {
+      if (q?.auto === "1" && order.value?.status === "WAIT_PAY") {
+        void pay();
+      }
+    });
+  }
   timer = setInterval(() => (now.value = Date.now()), 1000);
 });
 
@@ -102,66 +263,124 @@ onUnmounted(() => clearInterval(timer));
 </script>
 
 <template>
-  <sh-scaffold v-if="order" title-key="pay.title">
-    <!-- 待支付 -->
-    <template v-if="!paid">
-      <view class="sh-card hero">
-        <text class="hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
-        <text class="hero__label">{{ $t("pay.payable") }}</text>
-        <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
-          <text class="cd__text sh-num">
-            {{ expired
-              ? $t("pay.expired")
-              : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
-          </text>
-        </view>
-      </view>
+  <sh-scaffold title-key="pay.title"
+    :pending="!order"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `order` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="order">
+        <!-- 待支付 -->
+        <template v-if="!paid">
+          <view class="sh-card hero">
+            <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
+            <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>
+            <!--
+              这次付款覆盖哪几笔单。**只有跨商家时才出现** —— 单商家时它等于把
+              总额又抄了一遍，是噪音。
+              放在金额下面而不是折叠起来：用户在这一屏要回答的是「我付的是什么」，
+              而拆单是这个问题里最容易意外的那部分。
+            -->
+            <view v-if="(order.subOrders?.length ?? 0) > 1" class="subs">
+              <text class="txt-caption subs__title">{{ $t("pay.covers", { n: order.subOrders!.length }) }}</text>
+              <view v-for="s in order.subOrders" :key="s.orderNo" class="subs__row sh-row sh-row--between">
+                <text class="txt-sub subs__name txt-ink">{{ s.merchantName }}</text>
+                <text class="txt-sub sh-num">{{ money(s.amount.payableMinor) }}</text>
+              </view>
+            </view>
 
-      <view class="sh-card block">
-        <view class="method is-on">
-          <text class="method__icon">💚</text>
-          <text class="method__name">{{ $t("pay.wechat") }}</text>
-          <text class="method__tick">✓</text>
-        </view>
-      </view>
+            <view v-if="order.payDeadlineAt" class="cd" :class="{ 'is-expired': expired }">
+              <text class="txt-bold cd__text sh-num is-warning">
+                {{ expired
+                  ? $t("pay.expired")
+                  : $t("pay.remain", { t: countdown(order.payDeadlineAt - now) }) }}
+              </text>
+            </view>
+          </view>
 
-      <view class="actionbar">
-        <view class="sh-btn" :class="{ 'is-disabled': paying || expired }" @tap="pay">
-          {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
-        </view>
-        <text class="cancel" @tap="cancel">{{ $t("pay.cancel") }}</text>
-      </view>
+          <view class="sh-card block">
+            <!--
+              支付方式来自后端算好的交集，不再写死「微信支付」。
+              不可用的也列出来并显示原因 —— 过滤掉的话用户会问
+              「为什么别人有支付宝我没有」，而客服答不上来。
+            -->
+            <view
+              v-for="m in methodList?.methods ?? []"
+              :key="m.payChannel"
+              class="method sh-row"
+              :class="{ 'is-on': m.payChannel === chosen, 'is-off': !m.available }"
+              @tap="m.available && (chosen = m.payChannel)"
+            >
+              <text class="method__icon">{{ m.payChannel === "ALIPAY" ? "💙" : "💚" }}</text>
+              <view class="method__body">
+                <text class="txt-strong method__name">{{ m.name || m.payChannel }}</text>
+                <text v-if="!m.available && m.unavailableReason" class="txt-caption txt-quiet">
+                  {{ m.unavailableReason }}
+                </text>
+              </view>
+              <text v-if="m.payChannel === chosen" class="txt-body method__tick txt-primary">✓</text>
+            </view>
+
+            <!-- 列表为空时的两种情况，文案不同：未进件是「照常可付」，无可用是「付不了」 -->
+            <view v-if="!(methodList?.methods ?? []).length" class="method sh-row">
+              <text class="txt-body method__name">{{ $t("pay.methodFallback") }}</text>
+            </view>
+          </view>
+
+          <text v-if="blockedReason" class="txt-caption block-reason">{{ blockedReason }}</text>
+
+          <sh-actionbar class="bar-center" :pad="220">
+            <view class="sh-btn" :class="{ 'is-disabled': paying || expired || !canPay }" @tap="pay">
+              {{ paying ? $t("pay.paying") : $t("pay.payNow") }}
+            </view>
+            <text class="sh-link sh-link--quiet cancel sh-hit" @tap="cancel">{{ $t("pay.cancel") }}</text>
+          </sh-actionbar>
+        </template>
+
+        <!-- 支付完成 -->
+        <template v-else>
+          <view class="sh-card done">
+            <text class="done__icon">✓</text>
+            <text class="txt-display done__title">{{ $t("pay.done") }}</text>
+            <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
+
+            <!-- 各类码共用一个字段，**标签按品类与履约方式变**（见 order 页同处说明） -->
+            <!--
+              兑换码换一档色：它与「到店核销码」的用法不同（一个自己去兑，一个给店员看），
+              底色是唯一的区分。**这一档此前写了没接** —— `.code--redeem` 与
+              `.code--redeem .code__label` 两条规则都在，模板里一次都没挂过，
+              于是虚拟商品的兑换码一直和核销码长得一样。2026-09-06 接上。
+            -->
+            <view
+              v-if="order.verifyCode"
+              class="sh-notice code"
+              :class="{ 'sh-notice--warning': codeLabel === 'pay.redeemCode' }"
+            >
+              <text class="txt-caption code__label">{{ $t(codeLabel) }}</text>
+              <text class="txt-hero code__v sh-num">{{ order.verifyCode }}</text>
+            </view>
+          </view>
+
+          <sh-actionbar class="bar-center" :pad="220">
+            <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
+            <text class="sh-link sh-link--quiet cancel sh-hit" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
+          </sh-actionbar>
+        </template>
+  
+  
     </template>
-
-    <!-- 支付完成 -->
-    <template v-else>
-      <view class="sh-card done">
-        <text class="done__icon">✓</text>
-        <text class="done__title">{{ $t("pay.done") }}</text>
-        <text class="done__hint">{{ $t(doneHintKey) }}</text>
-
-        <!-- 各类码：自提码 / 核销码 / 兑换码 -->
-        <view v-if="order.verifyCode" class="code">
-          <text class="code__label">{{ $t("pay.verifyCode") }}</text>
-          <text class="code__v sh-num">{{ order.verifyCode }}</text>
-        </view>
-        <view v-if="order.redeemCode" class="code code--redeem">
-          <text class="code__label">{{ $t("pay.redeemCode") }}</text>
-          <text class="code__v sh-num">{{ order.redeemCode }}</text>
-        </view>
-      </view>
-
-      <view class="actionbar">
-        <view class="sh-btn" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</view>
-        <text class="cancel" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
-      </view>
-    </template>
-
-    <view class="spacer" />
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 条里除了按钮还有一行说明/取消，居中对齐 —— 定位归 `sh-actionbar`，
+   这一条是这一页自己的排布。收编时它一度被连着定位一起删掉了。 */
+.bar-center {
+  text-align: center;
+}
+
 .hero {
   text-align: center;
   padding-top: 56rpx;
@@ -169,16 +388,24 @@ onUnmounted(() => clearInterval(timer));
 }
 .hero__amount {
   display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
 }
 .hero__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 12rpx;
 }
+.subs {
+  margin-top: 32rpx;
+  padding-top: 24rpx;
+  border-top: var(--sh-hairline);
+}
+.subs__title {
+  display: block;
+  margin-bottom: 12rpx;
+}
+.subs__row {
+  padding: 8rpx 0;
+}
+
 .cd {
   display: inline-block;
   margin-top: 28rpx;
@@ -189,20 +416,10 @@ onUnmounted(() => clearInterval(timer));
 .cd.is-expired {
   background: var(--sh-danger-tint);
 }
-.cd__text {
-  font-size: 24rpx;
-  color: var(--sh-warning);
-  font-weight: 600;
-}
 .cd.is-expired .cd__text {
   color: var(--sh-danger);
 }
-.block {
-  margin-top: 20rpx;
-}
 .method {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   padding: 24rpx;
   border-radius: 24rpx;
@@ -214,16 +431,29 @@ onUnmounted(() => clearInterval(timer));
 .method__icon {
   font-size: 40rpx;
 }
+/*
+ * 名称与「为什么不可用」竖排。
+ *
+ * 挤在一行的话读起来是「支付宝本单中有店铺尚未开通这种收款方式」——
+ * 一句话，而它其实是两条信息。截图里一眼就看出来了。
+ */
+.method__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4rpx;
+}
 .method__name {
   flex: 1;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-  font-weight: 600;
 }
-.method__tick {
-  font-size: 30rpx;
-  color: var(--sh-primary);
-  font-weight: 400;
+/* 不可用的整块压暗，让「能点的是哪个」不用读文字就看得出来 */
+.method.is-off {
+  opacity: 0.55;
+}
+.block-reason {
+  display: block;
+  padding: 0 32rpx;
+  color: var(--sh-warning);
 }
 .done {
   text-align: center;
@@ -244,59 +474,29 @@ onUnmounted(() => clearInterval(timer));
 }
 .done__title {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   margin-top: 28rpx;
 }
 .done__hint {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 16rpx;
 }
 .code {
   margin-top: 36rpx;
-  background: var(--sh-primary-tint);
-  border-radius: 32rpx;
-  padding: 28rpx;
-}
-.code--redeem {
-  background: var(--sh-warning-tint);
 }
 .code__label {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
-.code--redeem .code__label {
+.sh-notice--warning .code__label {
   color: var(--sh-warning);
 }
 .code__v {
   display: block;
-  font-size: 48rpx;
-  font-weight: 600;
   letter-spacing: 6rpx;
-  color: var(--sh-ink);
   margin-top: 12rpx;
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  text-align: center;
 }
 .cancel {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 24rpx;
-}
-.is-disabled {
-  opacity: 0.45;
-}
-.spacer {
-  height: 220rpx;
 }
 </style>

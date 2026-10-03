@@ -14,15 +14,68 @@
 //   ADR-007 §3 的边界：contract 层不共享。B 端有自己的 `/biz/**` 入参，
 //   放一起会诱导两端互相复用不该复用的东西。
 import type {
+  ArrivalIssueKind,
   CampaignDraft,
+  SettleAccountType,
+  StaffRole,
   DeliveryRule,
   GoodsStatus,
   GrantType,
   MerchantApplyReq,
   OrderStatus,
+  GoodsParam,
   StoreProfile,
+  SaleMode,
 } from "@shared/types";
 import type { GoodsDraft } from "./contract";
+
+// ---------------------------------------------------------------- 预约排期
+
+/** 开一个时段。容量必须 ≥ 1 —— 0 等于开了个约不上的档，而它在列表里看着正常 */
+export interface AppointmentSlotOpenReq {
+  /** 开始时刻（毫秒） */
+  startAt: number;
+  /** 结束时刻（毫秒） */
+  endAt: number;
+  /** 这一档能约几个人 */
+  capacity: number;
+}
+
+// ---------------------------------------------------------------- 门店送货方式（方案 v4）
+
+export interface StoreFulfillmentSaveReq {
+  /** 全量：四路各一条。channel 值域 = 商家可配四路，服务端在写入口拦越界 */
+  channels: Array<{
+    channel: string;
+    enabled: boolean;
+    /** 仅 EXPRESS：运费模板号，空 = 平台默认 */
+    templateNo?: string | null;
+    /** 仅 NEIGHBOR_PICKUP：取货点引用，全量替换；不传 = 不改 */
+    pickupNos?: string[];
+    /** P2：ALL / SUBSET；不传 = 不改 */
+    scopeMode?: string;
+    /** P2：SUBSET 时适用的范围项 area_no，全量替换 */
+    areaNos?: string[];
+  }>;
+}
+
+/** 商家自建自提点（P1）。坐标必填：没坐标的点买家用定位永远找不到 */
+export interface PickupSelfBuildReq {
+  /** 门店号 */
+  storeNo: string;
+  /** 名称 */
+  name: string;
+  /** 地址 */
+  address: string;
+  /** 纬度 ×1e6，同上 */
+  latE6: number;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
+  lngE6: number;
+  /** 营业时间，人读的一行字 */
+  openHours?: string;
+  /** 不传 = 按坐标就近归到已开通社区 */
+  communityNo?: string;
+}
 
 // ---------------------------------------------------------------- 账号与入驻
 
@@ -33,6 +86,14 @@ export interface MerchantLoginReqBody {
   principal: string;
   /** `PHONE_OTP`: 验证码 */
   credential?: string;
+  /**
+   * 是否勾选了用户协议与隐私政策 —— 注册的合规前置，服务端要留痕。
+   *
+   * 登录页一直在发（`{ ...req }` 把 `LoginReq.agreed` 带了出去），
+   * **漏的是这里没声明**，于是生成的 OpenAPI 里没有它，而后端 `LoginReq` 有。
+   * 这类漏声明比漏发更难发现：联调时一切正常，直到有人照着 spec 写另一个客户端。
+   */
+  agreed?: boolean;
 }
 
 /** 入驻申请。字段与共享层的 `MerchantApplyReq` 一致，这里只是给契约一个稳定的 DTO 名 */
@@ -54,11 +115,92 @@ export interface GoodsListQuery {
   page?: number;
   /** 每页条数 */
   size?: number;
-  /** 按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE */
-  status?: GoodsStatus;
+  /**
+   * 按商品状态过滤。B 端能看到全部状态，C 端只看得到 ON_SALE。
+   *
+   * <p>`OUT_OF_STOCK` **不是 `GoodsStatus` 的一员**：库里没有这个状态列，
+   * 它按「所有 SKU 可用量都 ≤ 0」算出来，且与在售**不互斥**
+   * —— 一件在售商品照样能全规格断货。B-4.1 一直写着这一筛，代码里此前没有。
+   */
+  status?: GoodsStatus | "OUT_OF_STOCK";
+  /**
+   * 按标题模糊搜。**服务层一直支持，端点此前写死传 null** ——
+   * 于是商品页没有搜索，而商品一多这一页就只能靠滚。
+   */
+  keyword?: string;
+  /**
+   * 按类目筛（通常是二级）。与 `keyword` 是同一种遗漏：服务层一直支持，
+   * 端点写死传 null。类目变必填之后，按类目找货是商家的主路径。
+   */
+  categoryNo?: string;
 }
 
-export type SaveGoodsReqBody = GoodsDraft;
+/**
+ * 保存商品的**线上格式**，与页面用的 {@link GoodsDraft} 不同形状。
+ *
+ * <p>后端要的是「基准语言的那一份 + 三语 map」两个字段，而不是一个三语对象。
+ * 此前这里直接 `= GoodsDraft`，于是端上把 `title` 当对象发过去，
+ * 后端反序列化直接抛 —— **b-app 保存商品在真实后端上一次都没成功过**，
+ * 而 mock 上完全正常，所以没人发现。拍平在 `http.ts` 里做，页面不受影响。
+ */
+export interface SaveGoodsReqBody {
+  /** 商品单号。新建时不传，编辑时必传 */
+  goodsNo?: string;
+  /** 基准语言（zh-CN）的标题。后端按 Accept-Language 下发时的兜底 */
+  title: string;
+  /** 基准语言（zh-CN）的副标题/卖点 */
+  subtitle: string;
+  /** 标题的三语原文，键是 Lang。缺译的语言按 R9 回落展示中文 */
+  titleI18n: Record<string, string>;
+  /** 副标题的三语原文，同上 */
+  subtitleI18n: Record<string, string>;
+  /**
+   * 类目单号。**必填，且是唯一的分类输入** ——
+   * 商品形态（生鲜要截单、服务不发货、iOS 可售规则）由它派生，请求体里不再有 `type`。
+   */
+  categoryNo: string;
+  /** 封面图 URL（来自 mUploadImage）。漏传的话 C 端列表里是一块留白，且不报错 */
+  cover?: string;
+  /** 详情轮播图 */
+  images?: string[];
+  /** 详情区长图。**空数组也要发** —— 与 images 同一口径，不发就删不掉 */
+  detailImages?: string[];
+  /** 图文详情正文（纯文本）。**空串也要发** —— 后端「不传 = 不改」，删光了不发就删不掉 */
+  detail?: string;
+  /**
+   * 商品参数（产地/保质期/材质…）。**整份覆盖，空数组也要发**。
+   *
+   * <p>此前这个字段**契约里没有、http.ts 也没发** —— 而编辑页一直在收集它
+   * （`goods-edit` 里那一栏和 `paramValues` 都在）。于是商家填完保存，
+   * 参数原地消失，且不报错：后端把 `params == null` 当「不改」，
+   * 所以旧值还在、新填的进不去、想删的删不掉。
+   */
+  params?: GoodsParam[];
+  /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
+  specGroups: GoodsDraft["specGroups"];
+  /** 支持的履约方式；不传 = 不改（新建默认四种全支持） */
+  fulfillments?: string[];
+  /** SKU 列表。单规格商品也有且仅有一条 */
+  skus: GoodsDraft["skus"];
+  /** 每人限购，0 = 不限。不传 = 不改 */
+  limitPerUser?: number;
+  /** 生鲜段：截单 / 到货描述 / 是否按实称 / 产地。不传 = 不改 */
+  fresh?: GoodsDraft["fresh"];
+  /** 服务段：时长 / 可核销门店。不传 = 不改 */
+  service?: GoodsDraft["service"];
+  /** 拼团档：起团人数 + 团价，要么都给要么都不给 */
+  groupBuy?: GoodsDraft["groupBuy"];
+  /**
+   * 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode
+   * **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。
+   */
+  stdNo?: string;
+  /**
+   * 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 ——
+   * 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。
+   */
+  saleMode?: SaleMode;
+}
 
 export interface ToggleGoodsReq {
   /** 目标状态：true 上架、false 下架。下架后详情页仍可访问但不可下单 */
@@ -77,14 +219,52 @@ export interface UploadImageReq {
   tempPath: string;
 }
 
+/**
+ * 自动生成图文详情。**主图可选** —— 没图时模型只按文字写，
+ * 写出来更泛，但总比让商家对着空白框强。
+ */
+/**
+ * 「自动生成」一次往返的结果：详情正文 + 替商家挑好的商品参数。
+ *
+ * <p>两件事同一个端点，因为商家点的是同一个按钮；新开一条 /biz 端点要在七处登记，
+ * 为一个附带结果不值当。
+ */
+export interface DescribeGoodsRes {
+  /** 空串 = 没生成出来。不是错误，提示一句即可 */
+  detail: string;
+  /**
+   * 按**这一类目的参数模板**挑的值，可能为空数组。
+   *
+   * <p>是挑不是写：候选由平台的类目模板给定，模型只能在里面选，后端返回前还会逐个核验。
+   * <b>同样是草稿</b> —— 端上摆成待确认，商家点了才落到表单里。
+   */
+  params: Array<{ dimNo: string; name: string; code: string; label: string }>;
+}
+
+export interface DescribeGoodsReq {
+  /** 图片地址 */
+  imageUrl?: string;
+  /** 商品名。必须有，否则模型只能瞎编 */
+  title: string;
+  /** 副标题 */
+  subtitle?: string;
+  /** 类目号 */
+  categoryNo?: string;
+}
+
 export interface RecognizeGoodsReq {
   /** 待识别的商品图 URL（先走 upload/image 拿到）。返回识别出的标题与类目建议 */
   imageUrl: string;
 }
 
 export interface SpecTemplatesQuery {
-  /** 按类目过滤平台模板；不传则返回全部 + 商家自存 */
+  /** 按**品类**过滤平台模板（兜底那一层）；不传则返回全部 + 商家自存 */
   categoryType?: string;
+  /**
+   * 已选**类目**。传了才拿得到类目级模板 —— 那是「专门给这一类的」那批，
+   * 且会用同名规格组顶掉品类兜底。
+   */
+  categoryNo?: string;
 }
 
 export interface SaveSpecTemplateReq {
@@ -92,6 +272,18 @@ export interface SaveSpecTemplateReq {
   name: string;
   /** 可选值列表。存成商家自己的模板（scope=MERCHANT），不影响平台模板 */
   options: string[];
+}
+
+// ---------------------------------------------------------------- 跨店对比
+
+export interface CrossStoreCompareQuery {
+  /**
+   * 回看天数（含今天）。不传 = 30。
+   *
+   * 后端会夹在 1–365 并在返回体的 `days` 里回显 —— **窗口按回显的那个画**，
+   * 不要照着自己发出去的值写「近 N 天」：传 99999 时两个数会对不上。
+   */
+  days?: number;
 }
 
 // ---------------------------------------------------------------- 订单与履约
@@ -103,11 +295,57 @@ export interface OrderListQuery {
   size?: number;
   /** 按订单状态过滤，不传为全部 */
   status?: OrderStatus;
+  /**
+   * 看全部门店的单，不传/false 只看**当前门店**。
+   *
+   * ⚠️ 后端一直支持这个参数，端上从没传过 —— 于是订单页恒等于「当前门店」，
+   * 而界面上既没有门店名也没有切换入口，多门店老板会以为自己看到的是全部。
+   *
+   * 「全部」对老板和店员**不是一回事**：老板的全部是主体名下所有店，
+   * 店员的全部只是他被授权的那几家。这个区分在后端（allowedStoresOrAll），
+   * 端上只管传不传。
+   */
+  allStores?: boolean;
+}
+
+/** 改门店发货设置（`mSaveShipSetting`）。**空串 = 改回默认**（门店名 / 店主手机 / 门店地址） */
+export interface SaveShipSettingReq {
+  /** 寄件人，≤64 字。空 = 门店名 */
+  senderName: string;
+  /** 寄件电话：手机或座机，数字与短横 7–20 位。空 = 店主登录手机 */
+  senderPhone: string;
+  /** 寄件地址，带省市区的整条，≤255 字。空 = 门店地址 */
+  address: string;
+  /** 默认快递公司，微信 delivery_id。空 = 不预选 */
+  carrier: string;
+  /** 默认包裹重量（克），100–30000。null = 不预填 */
+  weightG: number | null;
+}
+
+/** 快递报价（`mExpressQuotes`，GET 查询参数）。重量公斤，0.1–30 */
+export interface ExpressQuotesQuery {
+  /** 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 */
+  weightKg: number;
+}
+
+/** 叫快递（`mBookExpress`）。重量公斤，0.1–30 */
+export interface BookExpressReq {
+  /** 微信 delivery_id */
+  carrier: string;
+  /** 申报重量（公斤），0.1–30。快递员上门称重后以计费重量为准 */
+  weightKg: number;
 }
 
 export interface ShipReq {
   /** 快递单号。填了即视为已发货，订单流转到 SHIPPED */
   expressNo: string;
+  /**
+   * 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。
+   *
+   * **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227），
+   * 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。
+   */
+  expressCompany: string;
 }
 
 export type SaveDeliveryRuleReqBody = DeliveryRule;
@@ -115,6 +353,13 @@ export type SaveDeliveryRuleReqBody = DeliveryRule;
 export interface MarkArrivedReq {
   /** 批量：一次到货通常是一整批，逐单调用会让通知发成 N 条 */
   orderNos: string[];
+  /**
+   * 给哪个自提点登记；**不传 = 当前门店的那个点**。
+   *
+   * 一个商家两家店两个点是常态（自提点归属到门店之后）。不传且当前门店没有点时
+   * 后端会拒 —— 而不是悄悄登记到另一个点上。
+   */
+  pickupNo?: string;
 }
 
 export interface VerifyReq {
@@ -141,7 +386,9 @@ export interface ReportShortageReq {
   /** 出问题的 SKU */
   skuNo: string;
   /** 问题类型：少件 / 破损。两者的售后责任判定不同 */
-  kind: "SHORTAGE" | "DAMAGE";
+  kind: ArrivalIssueKind;
+  /** 缺/坏了几件。此前端上不收集这个数，后端落库恒为 1，分拣汇总的短缺数字从设计上就是错的 */
+  qty: number;
   /** 情况说明。承接方填，供货方与平台据此定责 */
   note: string;
 }
@@ -162,6 +409,24 @@ export interface HandleAfterSaleReq {
 export interface CreateGroupReq {
   /** 要开团的商品，必须是本店已上架商品 */
   goodsNo: string;
+  /** 页面上选的拼团活动；与这件货此刻所在的活动对不上时后端拒 */
+  activityNo?: string;
+  /** 成团范围（自提点）；不传 = 不限点 */
+  pickupNo?: string;
+}
+
+/** 报名平台活动（s28 下半「报名信息」） */
+export interface EnrollReq {
+  /** 报名的货：必须是自己的、在售的 */
+  goodsNos: string[];
+  /** 报多少份 */
+  quota: number;
+}
+
+/** 散团 */
+export interface DissolveGroupReq {
+  /** 散团原因，写进参团买家的退款记录；可空 */
+  reason?: string;
 }
 
 /**
@@ -201,4 +466,198 @@ export type SaveCampaignReqBody = CampaignDraft;
 export interface ToggleCampaignReq {
   /** 目标状态：true 启动、false 暂停。暂停不影响已领取的券 */
   running: boolean;
+}
+
+// ---------------------------------------------------------------- 积分
+
+export interface PointsRecordQuery {
+  /** 账期 `YYYYMM`，不传为当期 */
+  period?: string;
+  /** 页码，从 1 起 */
+  page?: number;
+  /** 每页条数 */
+  size?: number;
+}
+
+export interface TogglePointsReq {
+  /** 目标状态。**关闭只影响将来** —— 已发出的分仍有效，已扣的服务费不退 */
+  enabled: boolean;
+}
+
+/**
+ * 提交收款进件。
+ *
+ * @property settleAccount 结算账号**明文**。只在这一次请求里存在 ——
+ *   服务端转给通道后只留掩码，任何回显都是掩码（ADR-002 §5）。
+ *   端上也不要缓存它：表单提交完就清空。
+ */
+export interface SubmitPaymentReq {
+  /** 给哪个通道进件，如 WECHAT */
+  payChannel: string;
+  /** 结算账户形态。不传时后端按法律形态取默认（小微打个人、其余对公） */
+  settleAccountType?: SettleAccountType;
+  /** 结算账号明文。见上方说明：**不落库、不进日志、不回显** */
+  settleAccount: string;
+  /** 资质图地址。小微免传，个体户与企业必传 */
+  licenses?: string[];
+  /** 进件联系人。通道核对资料时联系他，不一定等于登录人 */
+  contactName?: string;
+  /** 进件联系电话 */
+  contactPhone?: string;
+  /**
+   * 为**哪家门店**进件；不传 = 主体级默认号（单店永远走这条）。
+   *
+   * 传它就是在走「分开结算」：微信侧一个商户号只能绑一个结算账户，
+   * 两家店各收各的钱，就得进件两次拿两个号。
+   */
+  storeNo?: string;
+  /** 给哪张证照进件，可空 = 当前证照。多证照的老板在证照详情页进来时会带上它 */
+  entityNo?: string;
+}
+
+/** 新建/改名门店。门面其余部分（公告/营业时间/主推）走 SaveStoreReqBody */
+/**
+ * 从地图上选中的点直接开通聚落 —— 商家侧没有「提报/等审核」这一步了。
+ * 重复由后端三道闸挡（村码 / 同街道归一名 / 坐标 150 米内），撞上返回既有那条。
+ */
+export interface OpenFromMapReq {
+  /** 名称 */
+  name: string;
+  /** 地址 */
+  address?: string;
+  /** 纬度 ×1e6，同上 */
+  latE6: number;
+  /** 经度 ×1e6。**全站坐标一律 gcj02** */
+  lngE6: number;
+  /** 端上已知的街道码（9 位），只在服务端逆地理不可用时兜底 */
+  streetCode?: string;
+}
+
+export interface StoreEditReq {
+  /** 门店名 */
+  name: string;
+  /** 门店地址 */
+  address?: string;
+  /**
+   * 这家店摆哪些货架（**只有新建时有意义**，改名时后端忽略）。
+   *
+   * <p><b>不传 = 复制默认店的</b>：多门店商家开分店卖的多半是同一批货，
+   * 从零勾选是纯负担。一个都没有也合法 —— 建品时会自动加入。
+   */
+  categoryNos?: string[];
+  /**
+   * 这家店挂在哪张证照下（多证照）。
+   *
+   * <p><b>不传 = 当前证照</b>，与单证照时代一模一样 —— 只有一张证照的账号
+   * 端上整个不渲染这一步。传了别人的证照号后端直接 403，不会静默落到当前这张。
+   *
+   * <p>注意**额度按证照算**：挂到另一张证照下时撞的是那张的门店额度，
+   * 而不是当前这张的。这是应该的，额度是那张证照买的。
+   */
+  entityNo?: string;
+}
+
+/** 停用/启用（门店与员工共用同一个形状） */
+export interface SetActiveReq {
+  /** true 启用 / false 停用 */
+  active: boolean;
+}
+
+/** 换门店收款号。**不传或传空 = 回到主体默认号**，这是合法操作不是清空错误 */
+export interface SetStorePaymentReq {
+  /** 目标收款商户号。只能是本主体已开通的号；空 = 回到主体默认号 */
+  payMerchantNo?: string;
+}
+
+/**
+ * 设门店代码（V357）—— 对外链接 `hxmall.top/s/<代码>` 里露出来的那一段。
+ *
+ * **空串 = 清掉它**（链接回落系统发的店铺码），不是「不改」。
+ * 所以这个字段是必填的 string 而不是可选 —— 可选会让「清掉」与「没传」长得一样，
+ * 而后端对这两种情况的处理不同。
+ */
+export interface SetStoreSlugReq {
+  /** 门店代码。小写字母/数字/连字符，3-32 位，首尾不是连字符；空串 = 清掉 */
+  slug: string;
+}
+
+/** 加员工。只要手机号 —— 不发密码、不建 C 端账号 */
+export interface AddStaffReq {
+  /** 员工手机号（11 位）。**它就是登录号** —— 员工用它 + 验证码进 B 端 */
+  loginPhone: string;
+  /**
+   * 备注名（如「小张」）。选填但强烈建议 ——
+   * 不填的话列表与审计里都只有一串脱敏尾号，三个人以后就分不清谁是谁。
+   */
+  displayName?: string;
+}
+
+/**
+ * 授予或撤销**一个**门店角色。
+ *
+ * **增量式，不是覆盖式**：这一次只动 `role` 这一个角色，不碰他在这家店的其他角色。
+ * 覆盖式在多角色下是错的 —— 老板想「再加一个配送员」，结果把「店员」冲掉了。
+ */
+export interface GrantStoreReq {
+  /** 授权到哪家店。只能是本主体的门店 */
+  storeNo: string;
+  /** 要授予/撤销的那一个角色 */
+  role: StaffRole;
+  /** true 授予（默认）、false 撤销。撤到一个不剩 = 从这家店移除他 */
+  granted?: boolean;
+}
+
+/** 员工登录。与商家登录同形状，但打的是另一个端点、解析出的是另一套身份 */
+export interface StaffLoginReq {
+  /** 员工的登录手机号（老板在员工管理里加的那个） */
+  phone: string;
+  /** 短信验证码 */
+  code: string;
+}
+
+// ── 进销存单据的请求体 ──────────────────────────────────────────────────
+// 对着 `BizStockDocController` 的 record 抄。`occurredAt` 是**发生日期**
+// 而不是录入时间：昨天进的货今天补录，账要落在昨天。
+
+import type { StockLineReq } from "@shared/types";
+
+export interface StockInboundReq {
+  /** PURCHASE 采购 / RETURN 退货 / TRANSFER_IN 调拨入 / COUNT_GAIN 盘盈 / OTHER */
+  sourceType: string;
+  /** 供应商**随手填的一行字，不建档案** —— 小店的供应商是微信里那个人 */
+  supplierName?: string;
+  /** 业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天 */
+  occurredAt?: string;
+  /** 备注 */
+  remark?: string;
+  /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
+  lines: StockLineReq[];
+}
+
+export interface StockOutboundReq {
+  /** SALE 销售 / TRANSFER_OUT 调拨出 / SCRAP 报损 / COUNT_LOSS 盘亏 / INTERNAL 领用 /
+   *  RETURN_SUPPLIER 退供应商 / OTHER。
+   *  **SALE 不接受手工创建** —— 否则商家能凭空造销量 */
+  purpose: string;
+  /** SCRAP 必填：BROKEN 损坏 / EXPIRED 过期 / GIFT 赠送 / OTHER。**枚举不是自由文本** */
+  reasonCode?: string;
+  /**
+   * 去向类型：`SUPPLIER`。**空 = 没有去向**（报损就是没有去向的那一种）。
+   *
+   * 与 `reasonCode` 是两个维度：那个答「为什么出」，这个答「出给谁」。
+   * 合成一个的话，「这个月报损多少」与「这个月退货多少」在报表上再也分不开。
+   */
+  targetType?: string;
+  /**
+   * 去向对象编号；`SUPPLIER` 时是 `supplierNo`。`RETURN_SUPPLIER` 必填。
+   *
+   * **名字不用传** —— 服务端查了写快照。端上传的话，供应商改个名就能让历史单据说谎。
+   */
+  targetNo?: string;
+  /** 业务发生时刻。**不是录入时刻** —— 昨天进的货今天补录，账要落在昨天 */
+  occurredAt?: string;
+  /** 备注 */
+  remark?: string;
+  /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
+  lines: StockLineReq[];
 }

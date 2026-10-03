@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { CONTENTS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -23,25 +23,21 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { AuditTab } from "./audit-tab";
 import { RankTab } from "./rank-tab";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { HelpNote } from "@/components/ui/help-note";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof CONTENTS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "materials", label: c.tabMaterials },
-  { key: "audit", label: c.tabAudit },
-  { key: "rank", label: c.tabRank },
-];
+const TAB_KEYS = ["materials", "audit", "rank"] as const;
 
 const KIND_OPTIONS = (c: Copy): { value: MaterialKind; label: string }[] => [
   { value: "COPY", label: c.kindCopy },
@@ -62,7 +58,7 @@ export default function ContentsPage() {
 
 function ContentsInner() {
   const c = useCopy(CONTENTS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/contents", TAB_KEYS);
   const kindOptions = KIND_OPTIONS(c);
   const scopeOptions = SCOPE_OPTIONS(c);
   const qc = useQueryClient();
@@ -180,7 +176,7 @@ function ContentsInner() {
       <>
       {!canEdit && <ReadOnlyNotice what={c.readOnlyWhat} perm="content:material:update" note={c.readOnlyNote} className="mb-3" />}
 
-      <Notice className="mb-3">{c.notice}</Notice>
+      <HelpNote className="mb-3">{c.notice}</HelpNote>
 
       <Toolbar
         search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }}
@@ -192,14 +188,18 @@ function ContentsInner() {
         <FilterSelect aria-label={c.filterScope} value={scope} onChange={(v) => { setScope(v); setPage(1); }} options={scopeMap} allLabel={c.filterScopeAll} />
       </Toolbar>
 
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.materialNo}
         empty={c.empty}
         emptyAction={canEdit ? <Button size="sm" onClick={openNew}>{c.addLabel}</Button> : undefined}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       </>
       )}
 

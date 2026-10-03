@@ -12,29 +12,41 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { Merchant } from "@/lib/types";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { usePaging } from "@/lib/use-paging";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Pagination } from "@/components/ui/misc";
 import { Toolbar } from "@/components/ui/toolbar";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
 import type { MerchantsCopy } from "./copy";
 
-/** 两个 tab 共用：只有过审商家才谈得上授权与认证标。 */
+/**
+ * 两个 tab 共用：只有过审商家才谈得上授权与认证标。
+ *
+ * ★ 这里筛的是**商家经营状态**（`MerchantStatus` = ACTIVE/SUSPENDED/FROZEN），
+ * 不是申请单状态（`ApplyStatus` 才有 APPROVED）。此前写的是 `"APPROVED"` ——
+ * 后端 `w.eq(MchEntity::getStatus, "APPROVED")` 恒匹配零行，
+ * 于是类目授权与认证标两个 tab **列表永远是空的，而且不报错**；
+ * mock 里每个商家也都是 ACTIVE，`eqHit("APPROVED","ACTIVE")` 同样为假，
+ * 所以本地也看不出来 —— 两侧一起瞎，是这个缺陷活到今天的原因。
+ *
+ * 取 ACTIVE 与后端的准入一致：`setVerified` 明确只给 ACTIVE 的商家授标。
+ */
 function useApprovedMerchants(keyword: string, page: number, size: number) {
-  const q = { keyword, status: "APPROVED", page, size };
+  const q = { keyword, status: "ACTIVE", page, size };
   return useQuery({ queryKey: ["merchants", q], queryFn: () => api.listMerchants(q) });
 }
 
 export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean }) {
   const qc = useQueryClient();
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [reason, setReason] = useState("");
@@ -44,12 +56,23 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
 
   const save = useMutation({
     mutationFn: () => api.setMerchantAuthCodes({ merchantNo: current!.merchantNo, codes, reason }),
-    onSuccess: () => {
+    onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["merchants"] });
       setCurrent(null);
-      notify.success(c.toastAuthSaved);
+      /*
+       * 撤了码且有在架商品受影响时，提示要**带上那个数**。
+       * 一句「已保存」会让运营以为这次改动只影响未来 —— 而那些货下次上架就会被拒。
+       */
+      if (r.affected > 0) {
+        notify.info(fill(c.toastAuthRevoked, { n: r.affected }));
+      } else {
+        notify.success(c.toastAuthSaved);
+      }
     },
   });
+
+  /** 这次会撤掉哪些码 —— 在按下保存**之前**就要说清楚 */
+  const willRevoke = (current?.categoryCodes ?? []).filter((x) => !codes.includes(x));
 
   const open = (m: Merchant) => { setCurrent(m); setCodes([...m.categoryCodes]); setReason(""); };
   const nameOf = (code: string) => authCodes.data?.find((a) => a.code === code)?.name ?? code;
@@ -57,7 +80,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colAuthCodes,
       cell: (m) => (
@@ -69,7 +92,7 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
     {
       header: c.colQualifications,
       cell: (m) =>
-        m.qualifications.length
+        m.qualifications?.length
           ? m.qualifications.join("、")
           : <span className="text-muted-foreground">{c.noQualification}</span>,
     },
@@ -83,15 +106,19 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
 
   return (
     <>
-      <Notice className="mb-3">{c.categoryNotice}</Notice>
+      <HelpNote className="mb-3">{c.categoryNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.emptyApproved}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}
@@ -104,16 +131,48 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
           <div>
             <DrawerSection first title={c.secQualification}>
               <p className="txt-body">
-                {current.qualifications.length ? current.qualifications.join("、") : c.noQualification}
+                {current.qualifications?.length ? current.qualifications.join("、") : c.noQualification}
               </p>
               <p className="mt-1 txt-caption text-muted-foreground">{c.qualificationHint}</p>
             </DrawerSection>
 
             <DrawerSection title={c.secAuthCodes}>
+              {/*
+                按证一键勾选：把「这家店传了什么证」与「该授哪些码」对上。
+                此前这件事只能靠人逐条比对文案 —— 而没人比过，线上一条授权都没有。
+                **只勾不保存**：授权仍旧要人按下保存，这一步省的是逐个打勾，不是那个决定。
+              */}
+              {canGrant && (current.qualifications?.length ?? 0) > 0 && (
+                <div className="mb-3">
+                  <Button size="sm" variant="secondary" onClick={() => {
+                    const held = new Set(current.qualifications ?? []);
+                    const unlocked = (authCodes.data ?? [])
+                      .filter((a) => !a.requiredQualification || held.has(a.requiredQualification))
+                      .map((a) => a.code);
+                    // 并集而不是替换：他可能已经手工勾了几个不靠证的码
+                    setCodes((p) => Array.from(new Set([...p, ...unlocked])));
+                  }}>
+                    {c.grantByQual}
+                  </Button>
+                  <p className="mt-1 txt-caption text-muted-foreground">{c.grantByQualHint}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 {authCodes.data?.map((a) => {
-                  // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次
-                  const blocked = !!a.requiredQualification && !current.qualifications.includes(a.requiredQualification);
+                  // 缺资质的直接禁掉：勾上再保存报错，等于让人白点一次。
+                  // `?? []` 不是防御性冗余：后端此前不下发 qualifications，
+                  // 少了它这一行会在真接口下抛 TypeError（见 types/merchant.ts 的注）。
+                  //
+                  // **平台自营主体不受这条限制**：它的证件就是平台自己的证件，
+                  // 逐个主体再登记一遍，登出来的既没人核验、也与平台的真实执照无关，
+                  // 只是为了把这个框点开（2026-09-16 建虹选鲜果时就是这么干的，
+                  // 补出来那条营业执照编号是空的 —— 半截记录比没有更坏）。
+                  // 判据只能是 selfOperated，**不能是 fundsMode**：归集同时盖着代销，
+                  // 拿它判会顺手放开所有代销商户，而且不报错。
+                  const blocked =
+                    !!a.requiredQualification &&
+                    !current.selfOperated &&
+                    !(current.qualifications ?? []).includes(a.requiredQualification);
                   return (
                     <label key={a.code} className="flex items-start gap-2">
                       <Checkbox
@@ -135,6 +194,11 @@ export function CategoryTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boole
                   );
                 })}
               </div>
+              {willRevoke.length > 0 && (
+                <Notice tone="warning" className="mt-3">
+                  {fill(c.authRevokeWarn, { s: willRevoke.map(nameOf).join("、") })}
+                </Notice>
+              )}
               <p className="mt-3 txt-caption text-muted-foreground">{c.authCodesHint}</p>
             </DrawerSection>
 
@@ -154,8 +218,7 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
   const qc = useQueryClient();
   const { confirm, dialog } = useConfirm();
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
 
   const list = useApprovedMerchants(keyword, page, size);
   const setVerified = useMutation({
@@ -169,7 +232,7 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colVerified,
       cell: (m) => (m.verified ? <Badge tone="success">{c.badgeVerified}</Badge> : <span className="text-muted-foreground">{c.badgeUnverified}</span>),
@@ -207,15 +270,19 @@ export function VerifyTab({ c, canGrant }: { c: MerchantsCopy; canGrant: boolean
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</Notice>
+      <HelpNote className="mb-3">{fill(c.verifyNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.emptyApproved}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       {dialog}
     </>
   );
@@ -226,7 +293,7 @@ export function MerchantBrief({ c, m }: { c: MerchantsCopy; m: Merchant }) {
   return (
     <FieldGrid>
       <Field className="mb-3" label={c.colNo}>{m.merchantNo}</Field>
-      <Field className="mb-3" label={c.colCommunity}>{m.communityName}</Field>
+      <Field className="mb-3" label={c.colCommunity}>{m.communityNos.join("、")}</Field>
       <Field className="mb-3" label={c.colVerified}>{m.verified ? c.badgeVerified : c.badgeUnverified}</Field>
       <Field className="mb-3" label={c.colBreach}>{fill(c.breachTimes, { n: m.breachCount })}</Field>
     </FieldGrid>

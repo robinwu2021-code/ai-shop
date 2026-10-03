@@ -1,0 +1,53 @@
+# 定时任务调度器 —— 独立进程的默认配置。
+#
+# **库连接与密钥不写在这里**，从环境变量注入（见下面每一处的 ${} 默认值）。
+# 这份文件进仓库，凭据不进仓库。
+spring:
+  application:
+    name: ai-job-worker
+  # 不是 Web 应用：没有人调 worker，运营端直读 job 库。见 JobApplication 的类注释
+  main:
+    web-application-type: none
+
+shop:
+  job:
+    # store 模块的开关。worker 没有库就没有意义，所以这里默认开 —— 与业务侧相反
+    enabled: true
+    datasource:
+      url: ${JOB_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_shop_job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+      username: ${JOB_DB_USER:ai_shop_job}
+      password: ${JOB_DB_PASSWORD:}
+      max-pool-size: 5
+    worker:
+      instance: ${JOB_WORKER_INSTANCE:job-1}
+      # 新任务首次进库一律为「停」，等运营在页面上一个一个打开。
+      #
+      # **默认 true，而不是 false。** 默认值决定的是「没人想起这件事」时会发生什么：
+      # 默认 false 的话，一次发版新增几个任务，它们会按代码里的 cron 自己跑起来，
+      # 而没有任何人做过「开」这个决定。2026-08-28 就是这么发生的 ——
+      # job.env 里写了 JOB_WORKER_START_DISABLED=true，但这里没有占位符引用它
+      # （Spring 认的是 SHOP_JOB_WORKER_START_DISABLED），于是那一行等于注释，
+      # 新任务照样带着 enabled=1 进来。
+      start-disabled: ${JOB_WORKER_START_DISABLED:true}
+      poll-interval: 30s
+      pool-size: 4
+      # **不走公网域名**：这条调用是内网的，不该经过 nginx。
+      # 生产上填内部名称（platform.svc.internal，见 ADR-023）——
+      # 名称而不是 IP，是为了换机器那天只改一处 /etc/hosts。
+      # 这里的默认值是**开发机**用的：开发机没有也不该有 .internal 映射。
+      # 也不该受公网证书与备案的影响
+      targets:
+        PLATFORM: ${JOB_TARGET_PLATFORM:http://127.0.0.1:8081}
+      token: ${JOB_TOKEN:}
+      log-retention-days: 30
+
+logging:
+  level:
+    ai.neargo.job: INFO
+    # 框架噪音降到 WARN（日志方案 §7）。logger 名取自线上实际打印的那些，
+    # 见 shop-app/application.yml 里同一段的说明
+    com.zaxxer.hikari: WARN
+    com.baomidou.mybatisplus: WARN
+    org.mybatis: WARN
+    org.apache.tomcat: WARN
+    org.apache.catalina: WARN

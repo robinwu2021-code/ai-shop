@@ -226,7 +226,7 @@ export function FormDrawer({
       {segments.map((seg, si) => (
         <div key={seg.section ?? `seg${si}`} className={cn(seg.section && si > 0 && "mt-1")}>
           {seg.section && (
-            <div className="mb-2 pt-1 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="mb-2 pt-1 txt-caption font-semibold uppercase tracking-wide text-muted-foreground">
               {seg.section}
             </div>
           )}

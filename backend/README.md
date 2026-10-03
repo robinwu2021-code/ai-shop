@@ -52,4 +52,18 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -f backend/pom.xml -pl shop-app spring-boot:run
 ```
 
-需要 MySQL（`ai_shop` 库）；不需要 Redis（`shop.auth.token-store` 默认 `memory`，**生产必须改 `redis`**）。
+需要 MySQL（`ai_shop` 库）；不需要 Redis。
+
+会话存储 `shop.auth.token-store` 三选一，**分界线只有一条：部署几个副本**：
+
+| 值 | 活过重启 | 多副本共享 | 外部依赖 | 用在哪 |
+|---|:--:|:--:|---|---|
+| `memory`（默认） | ✗ | ✗ | 无 | 测试、临时调试 |
+| `ehcache` | ✓ | ✗ | 无（本地磁盘） | 本地开发、**单实例生产** |
+| `redis` | ✓ | ✓ | Redis | **多副本生产** |
+
+一个副本 → `ehcache` 就够，省一个中间件；两个及以上 → **必须** `redis`，
+否则同一个人被负载均衡打到另一个实例上就是未登录，而这个症状是**间歇性**的，最难查。
+
+`ehcache` 的磁盘目录（`shop.auth.ehcache.dir`，默认 `./data/sessions`）
+**每个实例必须独占** —— Ehcache 会对它加文件锁，两个实例指同一个目录时后启动的起不来。

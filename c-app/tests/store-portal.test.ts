@@ -1,0 +1,220 @@
+/**
+ * 门店门户（TDD-C端门店化与门店门户 s03–s07，AC1 / AC7 / AC11）。
+ *
+ * 钉三件「看起来都对、其实错了也不报错」的事：
+ * - 门头写的是**门店名**，不是主体名（主体名只在「经营主体与资质」那一行露面）；
+ * - 「我常买」一栏 2026-09-29 用户要求去掉 —— 买过的人也不再有这一栏；
+ * - 分类横排、商品单列，**不做左右分栏**（2026-09-29 用户定 B 版）；落款行不写店名；
+ * - 顶部那条底：店主设了背景图就是照片，没设就是主色浅底 —— **不再拿商品图凑**；
+ * - 售罄的货**照列、不藏** —— 藏起来他会以为这家店没有这件货；暂停营业的店整页压淡、给隔壁店。
+ */
+import { readFileSync } from "node:fs";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
+import type { FrequentItem, Goods, StoreHome } from "@shared/types";
+
+const storeHome = vi.fn();
+const frequentItems = vi.fn();
+
+vi.mock("@/api", () => ({
+  api: {
+    storeHome: (...a: unknown[]) => storeHome(...a),
+    frequentItems: (...a: unknown[]) => frequentItems(...a),
+    storeEnter: vi.fn(() => Promise.resolve()),
+    storeByCode: vi.fn(),
+    reviewList: vi.fn(() => Promise.resolve([])),
+    reachOpened: vi.fn(() => Promise.resolve()),
+    cartList: vi.fn(() => Promise.resolve([])),
+    couponList: vi.fn(() => Promise.resolve([])),
+  },
+}));
+vi.mock("@shared/ports/share", () => ({
+  buildShareMessage: vi.fn(() => ({})),
+  buildShareTimeline: vi.fn(() => ({})),
+  canNativeShare: () => false,
+  withAttribution: (p: string) => p,
+}));
+vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
+vi.mock("@dcloudio/uni-app", () => ({
+  onLoad: (cb: (q: Record<string, string>) => unknown) => cb({ no: "ST1", from: "LIST" }),
+  onShow: vi.fn(), onShareAppMessage: vi.fn(), onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
+}));
+vi.mock("@/shared/fly", () => ({ flyToCart: vi.fn(), tapPoint: () => ({ x: 0, y: 0 }) }));
+
+import StorePage from "@/pages/store/index.vue";
+import GoodsCard from "@/components/biz/biz-goods-card.vue";
+
+function aGoods(no: string, over: Partial<Goods> = {}): Goods {
+  return {
+    goodsNo: no, title: `货${no}`, subtitle: "", cover: "🍐", type: "GOODS", price: 1000, sales: 1,
+    categoryNo: "C1", onSale: true, fulfillments: [], specGroups: [], promotions: [], params: [],
+    skus: [{ skuNo: `${no}-S`, optionValues: [], spec: "", price: 1000, stock: 10 }],
+    merchant: { merchantNo: "M1", name: "虹选科技有限公司", logo: "", rating: 0, ratingCount: 0, verified: true },
+    ...over,
+  } as unknown as Goods;
+}
+
+function home(over: Partial<StoreHome> = {}): StoreHome {
+  return {
+    merchant: { merchantNo: "M1", name: "虹选科技有限公司", logo: "", rating: 0, ratingCount: 0, verified: true },
+    store: { announcement: "", openHours: "08:00-20:00", address: "景田北街 12 号" },
+    goods: [aGoods("G1"), aGoods("G2", { skus: [{ skuNo: "G2-S", optionValues: [], spec: "", price: 1000, stock: 0 }] } as never)],
+    categories: [{ categoryNo: "C1", name: "水果", count: 2 }],
+    favorited: false,
+    closed: false,
+    portal: {
+      storeNo: "ST1", storeName: "虹选鲜果·福田店", status: "ACTIVE", isDefault: false,
+      openNow: true, rating: 4.9, ratingCount: 12, distanceM: 320,
+    },
+    sibling: null,
+    ...over,
+  } as unknown as StoreHome;
+}
+
+const bought: FrequentItem = {
+  goodsNo: "G1", skuNo: "G1-S", title: "货G1", cover: "", spec: "", price: 1000, lastPrice: 1000,
+  times: 3, lastAt: 1, invalid: false,
+} as FrequentItem;
+
+async function render() {
+  const w = mount(StorePage, {
+    global: {
+      // 单列行真实渲染：「售罄照列」「不写店名」的判据要看行上写了什么
+      components: { "biz-goods-card": GoodsCard },
+      stubs: {
+        "sh-scaffold": { template: "<div><slot /></div>" },
+        "sh-tabs": true, "sh-icon": true, "sh-cover": true, "sh-empty": true, "sh-sheet": true,
+        "biz-shop-avatar": true, "biz-share-act": true, "biz-coupon-strip": true, "biz-cart-fab": true,
+        "biz-poster": true, "biz-review": true, "scroll-view": { template: "<div><slot /></div>" },
+      },
+      mocks: { $t: (k: string, a?: Record<string, unknown>) => (a?.name ? `${k}:${a.name}` : k) },
+    },
+  });
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+    await w.vm.$nextTick();
+  }
+  return w;
+}
+
+describe("门店门户", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it("★★ 商品列表不自己加左右边距 —— 加了就比同页其它块各缩进 2px", () => {
+    /*
+     * 页边距由 `sh-scaffold.is-padded`（28rpx）统一给。`.list` 再加一层
+     * 左右 padding，商品卡就比头卡、货架、分类各缩进 2px，
+     * 从上往下扫的时候是一条对不齐的竖边。
+     *
+     * 线上量过（375 屏）：head / shelf / list 都是 14px，而商品卡是 16px；
+     * 把 `.list` 的 padding-inline 去掉，卡片回到 14px。
+     *
+     * **用读源码断言而不是量布局**：jsdom 不做真实布局，
+     * getBoundingClientRect 全是 0，量不出这 2px。这是个折中 ——
+     * 它拦得住「有人又给 .list 加回左右 padding」，拦不住别的元素引入同样的偏移。
+     */
+    const src = readFileSync(`${process.cwd()}/src/pages/store/index.vue`, "utf8");
+    const rule = /\n\.list\s*\{([^}]*)\}/.exec(src);
+    expect(rule, "没找到 .list 的样式规则 —— 选择器改名了？先修这条断言再说").toBeTruthy();
+
+    // 横向的写法有四种：padding 简写、padding-inline、padding-left、padding-right
+    const offenders = (rule![1].match(/padding(?:-inline|-left|-right)?\s*:[^;]*/g) ?? [])
+      .filter((d) => !/^padding-(top|bottom)\b/.test(d.trim()));
+    expect(offenders, `.list 不该有左右边距，却写了：${offenders.join(" / ")}`).toEqual([]);
+  });
+
+  it("★★★ 门头写门店名，页面上不出现主体名", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.find(".head__name").text()).toBe("虹选鲜果·福田店");
+    expect(w.html()).not.toContain("虹选科技有限公司");
+  });
+
+  it("★★★ 没有「我常买」一栏 —— 买过的人也没有（用户 2026-09-29 要求去掉）", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([bought]);
+    const w = await render();
+    expect(w.find(".freq").exists()).toBe(false);
+    expect(frequentItems, "不画就别去取").not.toHaveBeenCalled();
+  });
+
+  it("★★★ 不做左右分栏：分类横排（全部 + 店主货架），商品单列、行上不写店名", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.find(".rail").exists(), "左栏回来了").toBe(false);
+    const all = w.findAllComponents({ name: "sh-tabs" });
+    const page = all.find((c) => c.props("line"));
+    const cats = all.find((c) => !c.props("line"));
+    expect(page, "页签是「文字 + 短线」，与下面的分类 chip 分开两种样子").toBeTruthy();
+    expect(JSON.stringify(cats!.props("items"))).toContain("store.allCats");
+    expect(JSON.stringify(cats!.props("items"))).toContain("水果");
+    const rows = w.findAll(".list .card");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.text(), "整页都是这一家店，每行再写一遍是噪声").not.toContain("虹选科技有限公司");
+  });
+
+  it("★★★ 售罄的货照列、不藏：行上写售罄，没有加号", async () => {
+    storeHome.mockResolvedValue(home());
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    const rows = w.findAll(".list .card");
+    expect(rows, "售罄的那件也要列出来").toHaveLength(2);
+    const sold = rows.filter((t) => t.text().includes("goods.soldOut"));
+    expect(sold).toHaveLength(1);
+    expect(sold[0]!.find(".add").exists()).toBe(false);
+  });
+
+  it("★★★ 设了背景图顶部是照片；没设是主色浅底 —— 不拿商品图凑", async () => {
+    storeHome.mockResolvedValue(home({
+      store: { announcement: "", openHours: "08:00-20:00", address: "", bannerUrl: "https://img.example.com/b.jpg" },
+    } as Partial<StoreHome>));
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.find(".band").classes()).toContain("has-photo");
+    expect(w.find(".band__img").attributes("src")).toContain("b.jpg");
+
+    storeHome.mockResolvedValue(home({
+      goods: [aGoods("G1", { cover: "https://img.example.com/a.jpg", sales: 99 })],
+    } as Partial<StoreHome>));
+    const plain = await render();
+    expect(plain.find(".band").classes(), "没设就是浅底").not.toContain("has-photo");
+    expect(plain.find(".band__img").exists(), "商品有真图也不拿来当背景").toBe(false);
+
+    storeHome.mockResolvedValue(home({
+      store: { announcement: "", openHours: "", address: "", bannerUrl: "🍐" },
+    } as Partial<StoreHome>));
+    const junk = await render();
+    expect(junk.find(".band__img").exists(), "不是 http(s) 的值当 src 是一张裂图").toBe(false);
+  });
+
+  it("★★ 店内的行不写店名，也不为一个销量吊一整行 —— 销量并进第二行", async () => {
+    storeHome.mockResolvedValue(home({
+      goods: [aGoods("G1", { subtitle: "脆甜多汁", sales: 1240 } as Partial<Goods>)],
+    } as Partial<StoreHome>));
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    const row = w.find(".list .card");
+    expect(row.find(".card__merchant").exists(), "只剩销量的落款行是一行空版面").toBe(false);
+    expect(row.find(".card__sub").text()).toContain("脆甜多汁");
+    expect(row.find(".card__sub").text()).toContain("common.sold");
+  });
+
+  it("★★ 暂停营业：整页商品不可加购，并给同品牌的营业店", async () => {
+    storeHome.mockResolvedValue(home({
+      closed: true,
+      portal: { storeNo: "ST1", storeName: "虹选鲜果·车公庙店", status: "READONLY", isDefault: false,
+        openNow: null, rating: 0, ratingCount: 0, distanceM: null },
+      sibling: { storeNo: "ST2", storeName: "虹选鲜果·福田店", distanceM: 2400 },
+    } as Partial<StoreHome>));
+    frequentItems.mockResolvedValue([]);
+    const w = await render();
+    expect(w.find(".shelf.is-paused").exists(), "整片商品压淡").toBe(true);
+    expect(w.find(".paused__go").text()).toContain("虹选鲜果·福田店");
+  });
+});

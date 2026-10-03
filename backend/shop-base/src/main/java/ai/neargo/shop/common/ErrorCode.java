@@ -1,0 +1,1209 @@
+package ai.neargo.shop.common;
+
+/**
+ * 错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。段位不是装饰：C 端 http-client 按段决定
+ * 「弹 toast / 跳登录 / 跳申诉页」，改段等于改前端行为。
+ *
+ * <p>{@code msgKey} 指向 {@code i18n/messages*.properties}，响应文案由 {@link Messages} 按
+ * {@code Accept-Language} 渲染 —— 后端不出中文硬编码文案。
+ */
+public enum ErrorCode {
+
+    // ---- 1xxxx 通用 ----
+    BAD_REQUEST(10400, "err.bad_request"),
+    UNAUTHORIZED(10401, "err.unauthorized"),
+    /*
+     * 令牌带了、但会话已经不在（过期或被吊销）。
+     *
+     * **与 10401「未登录」分开**，理由与发码限流那两条一样：端上要做的事不同。
+     *   · 未登录  → 引导去登录页，这是常态（游客逛店）
+     *   · 已过期  → 说「登录已过期，请重新登录」，并**清掉本地那份 token**
+     *
+     * 此前两者都是**空响应体的 401**，端上分不出来 —— 而 B 端联调抓到的原缺陷
+     * 正是把过期说成了「没权限」：一个让人去重登，一个让人去找老板要权限，
+     * 下一步动作完全相反。
+     */
+    TOKEN_EXPIRED(10402, "err.token_expired"),
+    FORBIDDEN(10403, "err.forbidden"),
+    NOT_FOUND(10404, "err.not_found"),
+    CONFLICT(10409, "err.conflict"),
+    TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
+    /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
+    GEO_UNAVAILABLE(10503, "err.geo.unavailable"),
+
+    /*
+     * 发码限流的两条。**分成两个码而不是共用 10429**：端上要做的事完全不同 ——
+     * 间隔闸能给出「还要等几秒」，端上据此做倒计时按钮；
+     * 当日上限则是「今天别再试了」，显示倒计时反而是骗人。
+     * 共用一个码时端上只能都说「操作太频繁，请稍后再试」，
+     * 而对撞上日上限的人来说，「稍后」是错的。
+     */
+    OTP_TOO_FREQUENT(10450, "err.otp.too_frequent"),
+
+    OTP_DAILY_LIMIT(10451, "err.otp.daily_limit"),
+
+    /** 图形验证码错误或已过期。保护「测试发送」那个能指定任意收件人的接口 */
+    CAPTCHA_INVALID(10452, "err.captcha.invalid"),
+
+    /**
+     * 密码重置码无效或已过期。
+     *
+     * <p>**与「参数有误」分开**：用户点的是邮件里的链接，参数是系统给的，
+     * 说「参数有误」会让他去检查自己没填过的东西。这里要说的是「重新申请一次」。
+     */
+    RESET_TOKEN_INVALID(10453, "err.reset_token.invalid"),
+
+    /**
+     * 验证码连续输错太多次，暂时锁定。
+     *
+     * <p>**与「验证码错误」分开**：还能再试与已经锁了，用户要做的事完全不同 ——
+     * 前者是再看一眼短信，后者是等，或者去换一条路。
+     * 共用一个码时他会一直重试，而每一次重试都在延长锁定。
+     */
+    OTP_LOCKED(10454, "err.otp.locked"),
+
+    /**
+     * 验证码不对，或者已经过期。
+     *
+     * <p>**这条以前不存在** —— 验证码错走的是 10400「请求参数有误」，
+     * 而 10400 的意思是「你传的东西不对，去检查一下参数」。用户看到的是
+     * 「请求无效」这种技术腔的话，他不知道下一步该干什么。
+     * 上面 {@link #OTP_LOCKED} 的注释已经写了「与『验证码错误』分开」——
+     * 那句话在等的就是这个码。
+     *
+     * <p>模拟器上实测到的原文是英文的 "Invalid request"：后端按系统语言回英文，
+     * 而页面其余文案是端上 i18n 的中文，**同一屏两种语言**。
+     */
+    OTP_INVALID(10455, "err.otp.invalid"),
+
+    /**
+     * 这个手机号<b>已经绑在你自己账号上了</b>。
+     *
+     * <p>单独一个码，是为了让发码那一步能提前拦住 —— 已经绑好的号再发一次验证码，
+     * 用户走完一整套流程只会得到「你已经绑过了」，而那条短信是白发的。
+     *
+     * <p><b>只在「属于当前账号」时用它。</b>号码属于**别人**时必须照常发码 ——
+     * 那是用户自证所有权的唯一手段（自证之后才谈得上接管），
+     * 而且「发不发」这个差别会变成一个枚举预言机：
+     * 任何人都能靠它免费问出「这个号在你们这儿注册过没有」。
+     */
+    PHONE_ALREADY_BOUND(10458, "err.phone.already_bound"),
+    /**
+     * 收货人手机号格式不对（V333）。
+     *
+     * <p><b>不复用 BAD_REQUEST</b>：那条的文案是「请求参数有误」，
+     * 用户看了会去改别的格子。而这里要说清是哪一格、以及为什么 ——
+     * 判据按国家不同（大陆 11 位、海外 3–20 位），泛话会让他反复试。
+     */
+    ADDRESS_PHONE_FORMAT(10460, "err.address.phone_format"),
+
+    /*
+     * 测试号固定验证码白名单的四条护栏（TDD-测试号固定验证码 §2）。
+     *
+     * **一条都不复用 BAD_REQUEST**：这四种情况下运营的下一步动作各不相同，
+     * 而「请求参数有误」会让他去改手机号那一格 —— 其中三次那一格是对的。
+     * 尤其第一条：它不是输错，是**这个号不该被录**，改格子改不出结果。
+     */
+    /**
+     * 这个手机号<b>已经有账号了</b>，不许录进白名单。
+     *
+     * <p>这是整套护栏里最关键的一条。演示账号的用法是「先录白名单 → 再注册」，
+     * 录的时候那个号不存在；而要拿别人的店，那个号一定已经存在。
+     * 有这条，拿到权限码的人也登不进任何现有商家。
+     */
+    OTP_TEST_PHONE_EXISTS_ACCOUNT(10461, "err.otp.test_phone_exists_account"),
+    /** 启用中的测试号已达上限。上限存在的理由是防止这张表长成一个通用后门 */
+    OTP_TEST_PHONE_LIMIT(10462, "err.otp.test_phone_limit"),
+    /** 固定验证码太短。下限与 {@code PWD_MIN_LEN} 同档 —— 拦的是「1234」这种 */
+    OTP_TEST_PHONE_CODE_TOO_SHORT(10463, "err.otp.test_phone_code_too_short"),
+    /** 手机号格式不对（大陆 11 位）。白名单只用于自家演示号，不需要海外号段 */
+    OTP_TEST_PHONE_FORMAT(10464, "err.otp.test_phone_format"),
+
+    /*
+     * 门店代码的两条（V357，TDD-店铺码与分享 §3.6）。
+     *
+     * **都不复用 BAD_REQUEST / CONFLICT**：店主在这一格上的下一步动作不同 ——
+     * 格式不对要按规则改写法，被占用要换一个名字。而「请求参数有误」会让他
+     * 以为是别的格子填错了，「资源冲突」他根本读不懂。
+     */
+    /** 门店代码格式不合，或撞了保留词。判据在 {@code StoreSlugs} */
+    STORE_SLUG_INVALID(10465, "err.store.slug_invalid"),
+    /** 这个门店代码已经被别家店用了。它是对外链接的一段，必须全平台唯一 */
+    STORE_SLUG_TAKEN(10466, "err.store.slug_taken"),
+    /**
+     * 这份入驻意向现在改不了（只有「待审核」能改）。
+     *
+     * <p><b>不复用 CONFLICT</b>：那条文案是「资源冲突」，店主读不懂，
+     * 而这里要说清「为什么现在不能改」—— 运营正在看、已经通过、或者已被驳回
+     * （驳回后是重新提交一份，不是改旧的那份）。
+     */
+    /*
+     * 供应商收款账户的两条（V358，ADR-011 · TDD-供应商结算与双轨资金 §3.1）。
+     *
+     * **都不复用 BAD_REQUEST**：店主在这两格上的下一步动作完全不同 ——
+     * 户名不符要照营业执照改写法，有单在审要等运营核完再提。
+     * 而「请求参数有误」会让他以为是卡号填错了，去反复检查一个没问题的格子。
+     */
+    /**
+     * 户名与营业执照主体名不一致。
+     *
+     * <p><b>这条是硬校验不是提示</b>：户名对不上时钱付得出去，但这笔支出
+     * 在税上站不住（三流一致）。V23 的进项票注释已经写明同一件事。
+     */
+    PAYOUT_ACCOUNT_NAME_MISMATCH(10468, "err.payout_account.name_mismatch"),
+    /** 已经有一张卡在等运营核。同时挂两张待审的卡，核完不知道该以哪张为准 */
+    PAYOUT_ACCOUNT_PENDING_EXISTS(10469, "err.payout_account.pending_exists"),
+    APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
+    /**
+     * 手机号或密码不对。
+     *
+     * <p><b>刻意不区分「查无此人」与「密码错」</b>：分开说等于给撞库的人一个
+     * 免费的账号探测接口——他能用它把哪些手机号注册过筛一遍。
+     * 对真用户来说这两种情况的下一步动作也一样（换个号试，或去用验证码登录）。
+     */
+    PASSWORD_INVALID(10456, "err.password.invalid"),
+    /**
+     * 这个账号<b>还没设过密码</b>。
+     *
+     * <p>与 10456 分开是因为下一步动作不同：这条要引导他「先用验证码登录，
+     * 再去设密码」。而这条不泄露账号是否存在——只有确实存在、且确实没设过密码
+     * 的人才会看到它，撞库者拿它探测不到新信息（存在但设过密码的返回 10456）。
+     */
+    PASSWORD_NOT_SET(10457, "err.password.not_set"),
+    /**
+     * 这条路**还没通**，不是参数错了。
+     *
+     * <p>与 10400 分开的理由：10400 让人去检查自己传了什么，而这里怎么改参数都没用。
+     * 典型场景是入口先于能力落地 —— 界面上摆着四个选项，后端只实现了一个，
+     * 剩下三个必须说「还没做」而不是「你填错了」。
+     */
+    NOT_IMPLEMENTED(10501, "err.not_implemented"),
+
+    /*
+     * 员工管理的三条闸。分成三个码而不是共用 10400：
+     * 「参数不对」与「你不能对自己做这件事」是完全不同的两回事，
+     * 而运营看到的提示决定他下一步怎么办。
+     */
+    /** 不能停用/降级自己 —— 把自己锁在门外之后只能去库里手改 */
+    STAFF_SELF_OPERATION(10420, "err.staff.self_operation"),
+    /** 角色码在 Perms.ROLE_PERMS 里没有配置：写进去会造出一个 perms 为空的账号 */
+    STAFF_ROLE_UNKNOWN(10421, "err.staff.role_unknown"),
+
+    /** 登录名已被占用。**与「密码错」分开**：这是建号时的校验，不涉及登录探测 */
+    STAFF_USERNAME_TAKEN(10423, "err.staff.username_taken"),
+
+    /** 新建员工的登录名必须是邮箱。存量账号（admin/bd 这类短用户名）不受影响，只对新建生效 */
+    STAFF_USERNAME_NOT_EMAIL(10424, "err.staff.username_not_email"),
+    /** 给全量角色配数据域：存下来会让人以为限制生效了，而实际没有 */
+    STAFF_SCOPE_ON_FULL_ACCESS(10422, "err.staff.scope_on_full_access"),
+
+    /*
+     * 内容治理（P-15.2）。分成六个码而不是共用 10400：
+     * 审核员看到的提示决定他下一步怎么办 —— 「批量里有风险内容」和「参数不对」
+     * 要采取的行动完全不同（前者是去逐条看，后者是检查自己传了什么）。
+     */
+    /** 驳回/下架/隐藏没写原因。原因**原样回作者**，不写等于让人猜 */
+    REASON_REQUIRED(10430, "err.content.reason_required"),
+    /** 批量通过的单子里含命中风险词的内容。**整批拒绝而不是跳过** —— 静默跳过会让人以为全过了 */
+    CONTENT_RISK_IN_BATCH(10431, "err.content.risk_in_batch"),
+    /** 非法的状态流转。PASSED→OFFLINE 是单独一条路，不能退回待审 */
+    CONTENT_BAD_TRANSITION(10432, "err.content.bad_transition"),
+    /** 已回答的问题不能再答 —— 要改先隐藏，让改动本身留下痕迹 */
+    CONTENT_ALREADY_ANSWERED(10433, "err.content.already_answered"),
+    /** 人工榜条目数超过容量 */
+    CONTENT_RANKING_OVERSIZE(10434, "err.content.ranking_oversize"),
+    /** 人工榜里有不在售的商品：用户点进去是空页 */
+    CONTENT_RANKING_SKU_OFFLINE(10435, "err.content.ranking_sku_offline"),
+    /** 非人工榜带了条目：传了就是调用方理解错了 */
+    CONTENT_RANKING_MANUAL_ONLY(10436, "err.content.ranking_manual_only"),
+    /** 限定投放范围却没有投放对象：保存成功却谁都看不到 */
+    CONTENT_SCOPE_REFS_REQUIRED(10437, "err.content.scope_refs_required"),
+
+    /** 上架一条没有答案的 FAQ：用户点进去只看到空白，比没有这一条更糟 */
+    FAQ_ANSWER_REQUIRED(10459, "err.content.faq_answer_required"),
+
+    /** 预置角色是 Perms.java 的镜像，改了会与回落表分叉 */
+    PERM_BUILTIN_ROLE_READONLY(10440, "err.perm.builtin_role_readonly"),
+    /** 还有人在用的角色不能删：删了他们能登录但什么都点不动，且看不出原因 */
+    PERM_ROLE_IN_USE(10441, "err.perm.role_in_use"),
+    /** 角色码格式不对。它是授权的键（sys_role_point / sys_role_member 都指着它），
+     *  不能随便塞任意字符——大写字母开头，只能有大写字母/数字/下划线 */
+    PERM_ROLE_CODE_INVALID(10442, "err.perm.role_code_invalid"),
+    INTERNAL_ERROR(10500, "err.internal"),
+
+    // ---- 2xxxx 交易 ----
+    STOCK_NOT_ENOUGH(20001, "err.trade.stock_not_enough"),
+
+    /**
+     * 缺货的**具体是哪几件**（进销存的预留与过账用）。
+     *
+     * <p>不给 {@link #STOCK_NOT_ENOUGH} 的文案加 {@code {0}}：那个码还有一个无参抛出点
+     * （下单时的整单校验），加了之后那一处会渲染出字面的 {@code {0}}。
+     *
+     * <p>参数是逗号分隔的货号。少了它，商家在盘点里看到「库存不足」却不知道
+     * 六件货里是哪一件，只能一件件试。
+     */
+    STOCK_SHORT_ITEMS(20005, "err.trade.stock_short_items"),
+
+    /**
+     * 已经有一张盘点单开着，不许再开第二张。
+     *
+     * <p><b>为什么必须拦</b>：开单那一刻把每件货的账面数快照下来，之后照常卖。
+     * 两张单锁的是<b>两个时刻</b>的数 —— 先开那张过账时，会把这中间卖掉的量
+     * 当成盘亏再扣一遍，<b>账朝一个方向错，而且不报错</b>。
+     *
+     * <p><b>不复用 {@link #CONFLICT}</b>：那个码这一族里已经表示「已过账／已作废」。
+     * 两件事挤同一个码，端上就没法把「去继续那一张」这条路指出来。
+     *
+     * <p>参数是<b>那张开着的单号</b>。不给的话商家只知道「有一张」，
+     * 却不知道是哪一张 —— 而首页只显示最近的那一张，先开的那张翻单据才找得到。
+     */
+    COUNT_ALREADY_OPEN(20006, "err.trade.count_already_open"),
+    PRICE_CHANGED(20002, "err.trade.price_changed"),
+    /**
+     * 收货地址超出这家店的自送半径（下单时拦）。
+     *
+     * <p><b>这个码定义了很久却一直没有消费方</b> —— 与它要表达的那条规则一样：
+     * `mch_store.delivery_radius_m` 有存有取，但全仓没有一处拿它算过距离。
+     * 商家以为自己限定了配送范围，实际多远的单都会进来，等他准备送货才发现送不到，
+     * 那时钱已经收了。判定只在**门店与收货地址两边都有坐标**时生效（见 OrderServiceImpl）。
+     */
+    OUT_OF_DELIVERY_RANGE(20003, "err.trade.out_of_delivery_range"),
+    ORDER_STATE_ILLEGAL(20004, "err.trade.order_state_illegal"),
+
+    /**
+     * 超出每人限购（待办设计 P1）。
+     *
+     * <p>参数是<b>这件货还能买几件</b>（0 = 一件都不能再买了）。
+     * 口径：该用户在这件商品上、子单不是已取消 / 已退款的行数量之和，终身累计。
+     * 不复用 {@link #STOCK_NOT_ENOUGH}：用户看到「库存不足」会以为等补货就能买，而这一条补货也没用。
+     */
+    PURCHASE_LIMIT_EXCEEDED(20007, "err.trade.purchase_limit_exceeded"),
+
+    /**
+     * 这单要落的门店暂停营业了（READONLY / 平台下线，TDD-C端门店化与门店门户 §2.7）。
+     *
+     * <p>三种来路：买家在这家店的门户里下单、自提点属于这家店、主体下没有别的营业店可落。
+     * 此前停用的门店照样收单 —— 状态只有 B 端自己看得见。
+     */
+    STORE_PAUSED(20008, "err.trade.store_paused"),
+
+    // ---- 3xxxx 履约 ----
+    ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
+    NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),
+    ORDER_REFUNDED(30003, "err.fulfillment.order_refunded"),
+
+    /*
+     * 履约调度与物流（P-5.1 / P-5.2）。**每一条都对应运营端一个不同的下一步动作** ——
+     * 共用 10400「参数有误」的话，运营看到的永远是同一句话，而他要做的事完全不同：
+     * 改一个数字、换一家运力、还是先去把在途单跑完。
+     */
+
+    /** 批次跳步（没发车就到货、没到货就签收）。责任判定的依据会被跳过去 */
+    BATCH_TRANSITION_ILLEGAL(30004, "err.fulfillment.batch_transition_illegal"),
+
+    /** 逾期宽限期不足 1 小时。**到点即作废必产生客诉**，宽限期是规则不是建议 */
+    OVERDUE_GRACE_TOO_SHORT(30005, "err.fulfillment.overdue_grace_too_short"),
+
+    /** 已签收的快递单不许改运单号 —— 等于把一条已完成的轨迹指向别处 */
+    WAYBILL_LOCKED(30006, "err.fulfillment.waybill_locked"),
+
+    /** 同一承运商下运单号重复 —— 会把两单的轨迹搅在一起 */
+    WAYBILL_DUPLICATED(30007, "err.fulfillment.waybill_duplicated"),
+
+    /** 默认运费模板不能归档 —— 归档之后新商家没有模板可用 */
+    FREIGHT_DEFAULT_LOCKED(30008, "err.fulfillment.freight_default_locked"),
+
+    /** 运力优先级重复 —— 同优先级时选哪家取决于查询顺序，那是隐性行为 */
+    CARRIER_PRIORITY_TAKEN(30009, "err.fulfillment.carrier_priority_taken"),
+
+    /** 没配接入密钥不能启用 —— 启用后下单当场失败，比不启用更糟 */
+    CARRIER_KEY_MISSING(30010, "err.fulfillment.carrier_key_missing"),
+
+    /** 还有在途快递单，停用后那些单的轨迹拉不回来 */
+    CARRIER_HAS_IN_FLIGHT(30011, "err.fulfillment.carrier_has_in_flight"),
+
+    /** 不能停掉最后一家启用的运力 —— 全停之后快递单无处可下 */
+    CARRIER_LAST_ENABLED(30012, "err.fulfillment.carrier_last_enabled"),
+
+    // ---- 4xxxx 营销 ----
+    COUPON_SOLD_OUT(40001, "err.marketing.coupon_sold_out"),
+    COUPON_NOT_APPLICABLE(40002, "err.marketing.coupon_not_applicable"),
+    /** 折扣券建券/改券时必须封顶——取消「0 = 不封顶」，见 TDD-营销预算前置 */
+    COUPON_DISCOUNT_CAP_REQUIRED(40003, "err.marketing.coupon_discount_cap_required"),
+    /** 发行量必须 >0——不限量券的敞口同样算不出来 */
+    COUPON_TOTAL_COUNT_REQUIRED(40004, "err.marketing.coupon_total_count_required"),
+    /** 预算低于「发行量 × 单张最大优惠」——不接受一个从第一天起就不可能满足的预算 */
+    COUPON_BUDGET_BELOW_EXPOSURE(40005, "err.marketing.coupon_budget_below_exposure"),
+
+    /*
+     * 增长与归因（P-9）。**归因规则决定商家付多少佣金**（ADR-004 §6），
+     * 所以这几条不复用 BAD_REQUEST：「请求参数有误」会让运营去改别的字段，
+     * 而问题在优先级表的完整性上——那是个看起来填了、其实只填了一半的框。
+     */
+    /** 归因优先级不是全序（三个来源有重复或有遗漏）——半张表在冲突时会随机裁决 */
+    ATTRIBUTION_PRIORITY_INVALID(40006, "err.marketing.attribution_priority_invalid"),
+    /** 归因窗口期越界（1–90 天）。0 天等于关掉归因，而页面上看不出来 */
+    ATTRIBUTION_WINDOW_INVALID(40007, "err.marketing.attribution_window_invalid"),
+    /** 新客判定一个因子都没选 = 所有人都是新客，新人券会被无限领 */
+    ATTRIBUTION_FACTOR_REQUIRED(40008, "err.marketing.attribution_factor_required"),
+    /** 邀请有礼只能发券（ADR-004：去团长化后不存在现金激励） */
+    FISSION_REWARD_MUST_BE_COUPON(40009, "err.marketing.fission_reward_must_be_coupon"),
+    /** 两边都是 0 张 = 一个不发奖的裂变活动，或者张数为负 */
+    FISSION_REWARD_COUNT_INVALID(40010, "err.marketing.fission_reward_count_invalid"),
+
+    /*
+     * 券的新模型（P4）。这几条都堵在**建券**那一步 ——
+     * 沿用营销预算前置的结论：能在落库时算清的敞口，不留到核销那一刻去追。
+     */
+    /** 折扣填成了百分数（88）而不是万分比（8800）。差 100 倍，而两个数看着都像对的 */
+    COUPON_RATE_INVALID(40011, "err.marketing.coupon_rate_invalid"),
+    /**
+     * 下单抵扣的券不支持按类目/商品限定范围。
+     *
+     * <p>算价拿到的只有「哪个商家、多少钱」，没有商品明细 —— 放行的话，
+     * 写着「仅限粮油」的券买猫粮照样能用，而商家会认为是算错了钱。
+     * 到店核销的券不走算价，不受这条限制。
+     */
+    COUPON_SCOPE_UNSUPPORTED(40012, "err.marketing.coupon_scope_unsupported"),
+    /** 发行量改到低于已领张数 = 人为造出一个「已经超发了」的状态，没有补救动作 */
+    COUPON_TOTAL_BELOW_ISSUED(40013, "err.marketing.coupon_total_below_issued"),
+    /** 券已暂停或已结束，发不出去。与「发完了」分开：那个换一张券也没用 */
+    COUPON_NOT_ACTIVE(40014, "err.marketing.coupon_not_active"),
+    /** 本批敞口超出剩余预算。**整批拒绝，不部分发放** —— 部分发放留下的中间态说不清 */
+    COUPON_BUDGET_EXCEEDED(40015, "err.marketing.coupon_budget_exceeded"),
+
+    /** 核销码在这家店查不到。**不区分「不存在」与「是别家的」** —— 区分了就成了枚举工具 */
+    COUPON_CODE_NOT_FOUND(40016, "err.marketing.coupon_code_not_found"),
+    /**
+     * 这一次核销没抢到（带条件的 UPDATE 影响 0 行）。
+     *
+     * <p>两个店员同时扫同一张码时只有一条能改到行。让另一条明确失败，
+     * 而不是让它以为成功 —— 一张 5 次的次卡被扣 1 次却核销了两杯，
+     * 这种错在对账时看起来只是「数字对不上」。
+     */
+    COUPON_REDEEM_CONFLICT(40017, "err.marketing.coupon_redeem_conflict"),
+
+    /*
+     * 活动的新模型（P5）。同样堵在**建活动**那一步 ——
+     * 活动一旦跑起来，钱是一单一单流出去的，没有「事后收紧」这个动作。
+     */
+    /** 长期活动没有限量也没有预算 = 永久敞口。商家想的是「一直有这个优惠」，不是「无论花多少」 */
+    ACTIVITY_ALWAYS_ON_NEEDS_CAP(40018, "err.marketing.activity_always_on_needs_cap"),
+    /** 改单价 / 送商品必须限量：单次成本由商品决定，不设上限时卖得越好亏得越多 */
+    ACTIVITY_QUOTA_REQUIRED(40019, "err.marketing.activity_quota_required"),
+    /** 改单价 / 送商品必须选商品。全店改价那叫调价，走商品编辑 */
+    ACTIVITY_GOODS_REQUIRED(40020, "err.marketing.activity_goods_required"),
+    /** 周期规则读不出来。**不能当成全天生效** —— 那不是商家的本意 */
+    ACTIVITY_RECURRING_RULE_INVALID(40021, "err.marketing.activity_recurring_rule_invalid"),
+    /** 限量改到低于已用。与券的发行量同理：人为造出一个「已经超发了」的状态 */
+    ACTIVITY_QUOTA_BELOW_USED(40022, "err.marketing.activity_quota_below_used"),
+    /**
+     * 已结束的活动不能改、也不能复活。
+     *
+     * <p>时段已过、限量已用，复活只会让它立刻又结束一次，而 {@code ended_reason}
+     * 会被覆盖成新的 —— 商家再也查不到当初为什么停。
+     */
+    ACTIVITY_ENDED_IMMUTABLE(40023, "err.marketing.activity_ended_immutable"),
+
+    /*
+     * 社区集单（TDD-营销-活动统一模型与集单 §2.2）。
+     */
+    /** 集单已截单，买家不能再撤单 —— 商家已经按这一期的量去采购了 */
+    PERIOD_CUT_OFF(40024, "err.marketing.period_cut_off"),
+    /** 对不在那个状态的期做了动作：提前截单只能对收单中的期，处理只能对未达起订量的期 */
+    PERIOD_STATE_CONFLICT(40025, "err.marketing.period_state_conflict"),
+    /** 一张子单里有两个不同集单活动的货：一单只能挂一期，否则其中一期的汇总会少掉这几件 */
+    PERIOD_MIXED(40026, "err.marketing.period_mixed"),
+    /** 这一期的份数已满 */
+    PERIOD_FULL(40027, "err.marketing.period_full"),
+    /** 预售中的商品不能加进集单：两套截单与到货口径叠在一件货上，买家看到的是两个日子 */
+    GOODS_IN_PRESALE(40028, "err.marketing.goods_in_presale"),
+    /**
+     * 开始了的活动改了规则（门槛、优惠、商品、人群、排期……）。只能改结束时间与上限（A6）：
+     * 已有订单按旧规则算过价，改规则会让同一活动有两种价
+     */
+    ACTIVITY_RULE_LOCKED(40029, "err.marketing.activity_rule_locked"),
+    /** 参团时团已成、已散或已过期 —— 下单那一刻判，付款前买家就知道 */
+    GROUP_CLOSED(40030, "err.marketing.group_closed"),
+    /**
+     * 旧版 C 端还在调「直接参团」。参团改成了带团号下单、付款才算成员，
+     * 老接口不再落成员行 —— 返回这一条让旧版本提示升级，而不是静默成功。
+     */
+    GROUP_JOIN_NEEDS_UPGRADE(40033, "err.marketing.group_join_needs_upgrade"),
+
+    /**
+     * 常驻 + 无门槛 + 直减的活动保存前要商家确认一次（待办设计 P7）。
+     *
+     * <p><b>不是拒绝，是提醒</b>：B 端收到这个码就弹「每单减 ¥10，最多 100 单（共 ¥1000）」，
+     * 商家点确认后带 {@code riskConfirmed=true} 重提。这类组合等于每一单都白送，
+     * 直到限量用完 —— 线上「abc」就是这样。开关 {@code marketing.always-on-cut.confirm} 关掉则不问。
+     */
+    ACTIVITY_RISK_UNCONFIRMED(40034, "err.marketing.activity_risk_unconfirmed"),
+
+    /**
+     * 顾客在下单页选的活动这一刻不成立了（结束了、配额刚用完、门槛不够了）。
+     *
+     * <p>优惠券全链路梳理 批 2 · B4：<b>不静默换成别的活动</b> —— 他明确选了这一个，
+     * 悄悄换掉等于替他做决定，金额也会和他确认过的不一样。端上收到就重新预览、让他重选。
+     */
+    ACTIVITY_CHOICE_UNAVAILABLE(40035, "err.marketing.activity_choice_unavailable"),
+    /** 报名不成：过了报名截止，或不满足报名门槛（评分、违规、类目） */
+    ENROLLMENT_CLOSED(40031, "err.marketing.enrollment_closed"),
+    /**
+     * 通过这份报名会超出平台预算。占预算是一条带条件的 UPDATE：
+     * 两个运营同时点通过，后到的那个在这里被拒，而不是事后发现预算超了
+     */
+    ENROLLMENT_OVER_BUDGET(40032, "err.marketing.enrollment_over_budget"),
+
+    // ---- 5xxxx 资金 ----
+    SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
+    SPLIT_EXPIRED(50002, "err.settle.split_expired"),
+
+    /**
+     * 提现单状态不允许该动作（P-12.2.1）。
+     *
+     * <p>不复用 {@code CONFLICT}：财务看到「操作冲突」不知道该做什么，
+     * 看到「这张单已经审过了」就知道该去刷新列表 —— 而重复审批一笔提现，
+     * 后果是同一笔钱被批两次。
+     */
+    WITHDRAW_STATE_ILLEGAL(50003, "err.settle.withdraw_state_illegal"),
+    /** 申请金额超过<b>申请时</b>的可提余额快照。用快照而不是实时值，见 StlWithdraw。 */
+    WITHDRAW_OVER_BALANCE(50004, "err.settle.withdraw_over_balance"),
+    /** 低于单笔下限 —— 渠道手续费比本金还贵。 */
+    WITHDRAW_BELOW_MIN(50005, "err.settle.withdraw_below_min"),
+    /** 超过复核阈值却没写复核说明。大额是最容易被冒用的口子。 */
+    WITHDRAW_REVIEW_NOTE_REQUIRED(50006, "err.settle.withdraw_review_note_required"),
+    /**
+     * 商家处于封禁中，不放行提现。
+     *
+     * <p>解封是另一条链路上的决定（P-11.1.4），在这里绕过去等于让处置形同虚设 ——
+     * 而处置期间恰恰是最该冻住资金的时候。单独一个码，财务才知道该去找谁解封。
+     */
+    WITHDRAW_MERCHANT_BANNED(50010, "err.settle.withdraw_merchant_banned"),
+
+    /** 上一笔提现还没走完。**排在余额校验之前**：先说清「在处理中」，别让他以为钱不见了 */
+    WITHDRAW_PENDING_EXISTS(50011, "err.settle.withdraw_pending_exists"),
+
+    /**
+     * 申请额超过当前可提。与 {@link #WITHDRAW_OVER_BALANCE}(50004) 分开：
+     * 那条是运营复核时的再校验（无参），这条是商家申请时的，**要把可提多少说出来** ——
+     * 只说「超了」，他的下一步是反复试数。
+     */
+    WITHDRAW_OVER_WITHDRAWABLE(50012, "err.settle.withdraw_over_withdrawable"),
+    /**
+     * 开票金额超过该周期已结算金额。
+     *
+     * <p>单独一个码而不是 BAD_REQUEST：超出的那部分<b>没有真实交易对应，就是虚开</b>，
+     * 而运营看到「参数有误」只会去改金额再试一次。
+     */
+    INVOICE_OVER_SETTLED(50007, "err.settle.invoice_over_settled"),
+    /** 企业抬头缺纳税人识别号 —— 开出来对方也入不了账。 */
+    INVOICE_TAX_NO_REQUIRED(50008, "err.settle.invoice_tax_no_required"),
+    /** 个税税率超过硬上限（45%）。超过一定是配置错误，而它会扣光每一笔提现。 */
+    TAX_RATE_TOO_HIGH(50009, "err.settle.tax_rate_too_high"),
+
+    // ---- 6xxxx 风控 ----
+    RISK_BLOCKED(60001, "err.risk.blocked"),
+
+    /*
+     * 风控处置（P-16.2）。这几条都不复用 BAD_REQUEST：运营是在一个**队列**上工作，
+     * 「请求参数有误」在队列场景里最没用——他要知道的是「这单已经被同事处理了」
+     * 还是「我少写了结论」，而这两件事的下一步动作完全不同。
+     */
+    /** 事件已被处置（多半是同事先动了手）。端上据此提示刷新列表 */
+    RISK_EVENT_HANDLED(60002, "err.risk.event_handled"),
+    /** 处置结论必填。**排除也要写理由**——下次同一主体再命中时，得知道上次为什么放过 */
+    RISK_VERDICT_REQUIRED(60003, "err.risk.verdict_required"),
+    /** 拉黑原因必填：申诉时被拉黑者要能看到自己因为什么被拉黑 */
+    BLACKLIST_REASON_REQUIRED(60004, "err.risk.blacklist_reason_required"),
+    /** 到期时间必填且必须在未来。无期限拉黑没有申诉出口，是产品事故不是风控严格 */
+    BLACKLIST_UNTIL_REQUIRED(60005, "err.risk.blacklist_until_required"),
+    /** 该对象已在生效中的黑名单里——重复拉黑会让「解禁」变成要点两次的迷题 */
+    BLACKLIST_DUPLICATE(60006, "err.risk.blacklist_duplicate"),
+    /** 该记录没有待裁决的申诉 */
+    BLACKLIST_NO_APPEAL(60007, "err.risk.blacklist_no_appeal"),
+    /** 触发阈值必须 &gt; 0——0 等于全量拦截，而页面上它只是一个普通数字 */
+    RISK_THRESHOLD_INVALID(60008, "err.risk.threshold_invalid"),
+
+    // ---- 7xxxx 商家与通道准入 ----
+    /**
+     * 该行业不能用这个主体类型进件（微信小微白名单按行业给，线上业态不支持）。
+     *
+     * <p>单独一个码而不是复用 BAD_REQUEST：端上要据此把「换个主体」这条出路
+     * 直接说出来，而通用的「请求参数有误」什么也没告诉商家。
+     */
+    INDUSTRY_SUBJECT_NOT_ALLOWED(70001, "err.merchant.industry_subject_not_allowed"),
+
+    /**
+     * 商家没有经营该类目所需的授权（{@code prd_category.required_code} 不在
+     * {@code mch_entity.category_codes} 里）。
+     *
+     * <p>单独一个码：端上要把**缺哪张资质**说出来并给出申请入口，
+     * 通用的「请求参数有误」会让商家反复改商品信息，而问题根本不在商品上。
+     */
+    CATEGORY_NOT_AUTHORIZED(70002, "err.merchant.category_not_authorized"),
+
+    /**
+     * 商品未过审就想上架。
+     *
+     * <p>此前这里复用的是 {@link #ORDER_STATE_ILLEGAL}（「订单状态不允许该操作」）——
+     * **交易域的码用在商品规则上**。商家点「上架」看到「订单状态不允许该操作」，
+     * 他手上一张订单都没有，无从知道自己该等审核。
+     *
+     * <p>讽刺的是紧挨着的 {@link #CATEGORY_NOT_AUTHORIZED} 注释里正好写着这个道理：
+     * 「通用的错误会让商家反复改商品信息，而问题根本不在商品上」——
+     * 道理想明白了、用在了类目那处，漏了上一处。
+     */
+    GOODS_NOT_APPROVED(70003, "err.goods.not_approved"),
+    /** 资质已过期，不能上架需要资质的类目。与「未获批类目」是两回事 */
+    QUALIFICATION_EXPIRED(70007, "err.merchant.qualification_expired"),
+    /*
+     * 以下四个是弱主体（S3）的准入闸门。分成四个码而不是共用一个「准入不通过」：
+     * 商家看到「被拦了」却不知道拦在哪一条，就只能猜着改，而这四条的解法完全不同 ——
+     * 补钱 / 换品类 / 拆单 / 等明天。
+     */
+    DEPOSIT_INSUFFICIENT(70008, "err.merchant.deposit_insufficient"),
+    CATEGORY_BANNED(70009, "err.merchant.category_banned"),
+    ORDER_LIMIT_EXCEEDED(70010, "err.merchant.order_limit_exceeded"),
+    DAILY_LIMIT_EXCEEDED(70011, "err.merchant.daily_limit_exceeded"),
+    /*
+     * 切第三方模式但这家店没有可用收款号。单独一个码：不校验的后果不是报错而是
+     * **静默欠款** —— 订单照常成交、账单照常生成，只是钱卡在平台侧下不去，
+     * 等发现时已经积了一批单。通用的「请求参数有误」说不出这件事。
+     */
+    PAY_MERCHANT_REQUIRED(70012, "err.merchant.pay_merchant_required"),
+    /*
+     * 用户选的履约方式该商品不支持。单独一个码：端上要能把「这件商品只支持到店自提」
+     * 说出来 —— 通用的「请求参数有误」会让用户反复重试同一个动作。
+     */
+    FULFILLMENT_NOT_SUPPORTED(70013, "err.trade.fulfillment_not_supported"),
+    /*
+     * 快递 / 自送单缺收货地址。**单独一个码**：端上要把人送到地址簿去，
+     * 而通用的「请求参数有误」只会让他在结算页上反复点提交。
+     *
+     * 这条闸此前不存在 —— 于是不带 addressId 的快递单能一路下成功，
+     * 商家侧看到「收货人：—」，货发不出去，而全程没有任何异常
+     * （2026-08-15 e2e 实测：库里 55 张快递单，有收货人的 0 张）。
+     */
+    RECEIVER_REQUIRED(70014, "err.trade.receiver_required"),
+    /*
+     * 这个权限码**不能授给自定义角色**（目前只有 `biz:store:admin` 与裸 `*`）。
+     *
+     * **与 70006 分开**：70006 说的是「你的角色不够」，而这里请求的人是老板，
+     * 他有权建角色 —— 被拒的是那个码本身。共用一个码的表现是
+     * 「店主被告知『让店主给你加个角色』」，而他就是店主。
+     */
+    ROLE_PERM_NOT_ASSIGNABLE(70015, "err.biz.role_perm_not_assignable"),
+    /*
+     * 自提单缺自提点。**与 70014「缺收货地址」是同一形状的另一半** ——
+     * 送到人手上的要地址，去点上取的要点，两者都是「履约必需的信息」。
+     *
+     * 这条闸此前不存在，而缺了它**不会在下单时报错**：单能下、能付，
+     * 之后每一步都失败且原因都指错 ——
+     *   到货登记 → 空列表（像是「没有这单」）
+     *   核销     → NOT_THIS_PICKUP（像是「顾客走错店了」，店员会让他去别的点，
+     *              而那单根本不属于任何自提点）
+     * 2026-08-17 B 端第二轮实测抓到。
+     */
+    PICKUP_POINT_REQUIRED(70025, "err.trade.pickup_point_required"),
+    /*
+     * 买家选的自提点不在这家店配置的取货点里（P1）。
+     *
+     * **与 70025 分开**：那条是「没选点」，这条是「选了一个店不送的点」——
+     * 前者端上要弹选点器，后者要把这家店可用的点列出来让他换。
+     * 店里没配过取货点（存量）不触发：空集 = 兼容期不限。
+     */
+    PICKUP_POINT_NOT_SERVED(70029, "err.trade.pickup_point_not_served"),
+    /** 自建取货点归不到任何社区：没定位到、经营范围也空。要他先框一个小区，而不是一句「参数有误」 */
+    PICKUP_COMMUNITY_REQUIRED(70030, "err.community.pickup_community_required"),
+    /**
+     * 这家商家在买家所在那一带<b>一个可用自提点都没有</b>（{@code {0}} = 商家名）。
+     *
+     * <p>与 {@link #PICKUP_POINT_REQUIRED} 不是一回事：那条是「你还没选点」，
+     * 而自提点已经改成下单时自动匹配，买家没有可选的东西。这条说的是
+     * <b>配不出来</b>，且**只挡这一家** —— 其余商家照常成单。
+     * 点名是必须的：车里有三家店时，只说「没有可用取货点」的话，
+     * 他不知道该换履约方式还是该把哪件商品拿出来。
+     */
+    PICKUP_POINT_NONE_FOR_MERCHANT(70064, "err.trade.pickup_point_none_for_merchant"),
+    /** 这一路被运营锁了：商家改不了开关。置灰的按钮点不到，这条只挡绕过界面的请求 */
+    CHANNEL_LOCKED(70031, "err.merchant.channel_locked"),
+    /*
+     * 送货方式写入口的四条硬规则，各给一个码。此前全是 BAD_REQUEST ——
+     * 商家开「门店自取」看到「请求参数有误」，不知道是门店没填地址（真机实测）。
+     */
+    STORE_ADDRESS_REQUIRED(70032, "err.merchant.store_address_required"),
+    PICKUP_LANDING_REQUIRED(70033, "err.merchant.pickup_landing_required"),
+    FULFILLMENT_NONE_ENABLED(70034, "err.merchant.fulfillment_none_enabled"),
+    SUBSET_AREAS_REQUIRED(70035, "err.merchant.subset_areas_required"),
+    /** 地址地理编码解析不到门牌/小区级（G1）。只在地图能力开通时才会抛 */
+    ADDRESS_UNRESOLVED(70036, "err.geo.address_unresolved"),
+
+    /**
+     * 一个账号持有的证照（经营主体）数量到上限了。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED} 分成两个码：那个是「这张证照下的店太多」，
+     * 解法是升档或停用一家；这个是「你名下的证照太多」，解法是<b>没有</b> ——
+     * 它是一道防滥用的硬闸（防止把平台当批量注册工具），要升只能找平台单独开。
+     * 共用一个码的话，商家会照着「去看套餐」的提示点进去，而那里没有他要的东西。
+     */
+    ENTITY_QUOTA_EXCEEDED(70037, "err.merchant.entity_quota_exceeded"),
+    /*
+     * 微信手机号快速验证没给出号码（通道未开、未认证、或本次换取失败）。
+     *
+     * **单独一个码，且明确报错、不静默回落到验证码表单**：
+     * 用户点了「微信一键获取」却看到验证码表单，会以为自己点错了 ——
+     * 而真正发生的是那条通道没通。端上据此说「这次没拿到，用验证码试试」并**自己切换**。
+     */
+    WX_PHONE_UNAVAILABLE(70027, "err.user.wx_phone_unavailable"),
+    /*
+     * 还有没走完的订单/售后，不能注销。
+     *
+     * **单独一个码**：端上要把他送到订单列表去，而不是笼统说一句「操作失败」——
+     * 他需要知道是哪几单挡着，以及去哪儿看。
+     */
+    DEREGISTER_HAS_OPEN_ORDERS(70028, "err.user.deregister_has_open_orders"),
+
+    /**
+     * 这个手机号已经绑在**另一个**账号的人档上（{@code usr_person}）。
+     *
+     * <p><b>为什么不自动合并</b>：合并两个已注册账号会连带迁走订单、积分、券的归属。
+     * 允许它自动发生，等于「知道你手机号就能把你的账号并过来」——
+     * 那是账号接管的标准路径。所以这里一律拒绝，走人工申诉。
+     *
+     * <p>与 {@code PASSWORD_INVALID} 不同：那条刻意不区分「查无此人」与「密码错」，
+     * 这条**必须说清楚**，否则用户面对一个绑不上的手机号完全无从下手。
+     */
+    PERSON_PHONE_TAKEN(70038, "err.user.person_phone_taken"),
+
+    /**
+     * 地址簿满了。
+     *
+     * <p><b>单独一个码而不是复用 BAD_REQUEST</b>：端上收到它要说的是
+     * 「删一条再加」，而 BAD_REQUEST 对应的话术是「请求参数有误」——
+     * 后者会让用户去反复检查自己填的字，而他填的每一个字都是对的。
+     *
+     * <p>上限本身在端上就拦了（按钮会置灰）。这条是第二道：
+     * 还没更新的老版本 App 不知道有这回事，而地址簿无限长之后
+     * 结算页那个选地址的列表就没法用了。
+     */
+    ADDRESS_LIMIT_EXCEEDED(70048, "err.user.address_limit_exceeded"),
+
+    /*
+     * ── 社区与聚落的九条（70049–70057）──
+     *
+     * 这九处此前一律抛 BAD_REQUEST / CONFLICT / NOT_FOUND 并把中文原因当参数传，
+     * 而那三条通用文案都没有占位符 —— 参数被 MessageFormat 静默丢掉，
+     * 运营看到的是「请求参数有误」，而写代码的人以为那句话已经到了对方眼前。
+     * 通用码的文案不能加占位符（它们还有一堆无参抛出点），所以逐条开码。
+     * 中文文案是从调用点原样搬过来的，没有重写。
+     */
+
+    /** 同名聚落已开通：运营在提报里看到的下一步是「去列表勾选」，不是「再报一次」 */
+    COMMUNITY_ALREADY_OPEN(70049, "err.community.already_open"),
+
+    /** 同一个商家把同一个小区报了两次，前一条还挂在待处理 */
+    COMMUNITY_APPLY_DUPLICATE(70050, "err.community.apply_duplicate"),
+
+    /**
+     * 挂了一个不存在的区划码。
+     *
+     * <p>不复用 {@code NOT_FOUND}：那句「数据不存在」不说是哪个数据，
+     * 而这里唯一有用的信息就是那串码 —— 挂错的区划不报错，只会让这个聚落
+     * 在任何「按区覆盖」里都出不来，而运营看着界面上明明填着值。
+     */
+    COMMUNITY_REGION_NOT_FOUND(70051, "err.community.region_not_found"),
+
+    /** 聚落挂粗了（挂到区县而不是街道/镇）：比它细的经营范围从此永远匹配不到 */
+    COMMUNITY_REGION_NOT_STREET(70052, "err.community.region_not_street"),
+
+    /**
+     * 压根没填区划。与 {@link #COMMUNITY_REGION_NOT_STREET} 分开：那条要把填错的码回显出来，
+     * 这条没有码可回显 —— 合成一条的话，「当前：」后面会跟一个空白。
+     */
+    COMMUNITY_REGION_REQUIRED(70058, "err.community.region_required"),
+
+    /** 这个村已经开过聚落。与 {@link #COMMUNITY_ALREADY_OPEN} 分开：那条按名字撞，这条按来源村撞 */
+    COMMUNITY_ORIGIN_ALREADY_OPEN(70053, "err.community.origin_already_open"),
+
+    /** 归属只做两层：再深一层会让可见性的展开变成递归，一条自指的坏数据就能挂住整棵树 */
+    COMMUNITY_PARENT_TOO_DEEP(70054, "err.community.parent_too_deep"),
+
+    /** 父级聚落自己还没有街道：楼从父级继承街道，父级空着建出来的楼一样是错的 */
+    COMMUNITY_PARENT_NO_STREET(70055, "err.community.parent_no_street"),
+
+    /** 这个坐标反查不到街道。给的出路是换个点或从行政区划里选，不是「参数有误」 */
+    COMMUNITY_STREET_UNRESOLVED(70056, "err.community.street_unresolved"),
+
+    /** 传了一个后端不认识的支付通道名。回显那个名字，否则运营不知道自己填错在哪 */
+    PAY_CHANNEL_UNKNOWN(70059, "err.pay.channel_unknown"),
+
+    /** 行业码查无此项。不复用 NOT_FOUND：那句「数据不存在」不说是哪个行业 */
+    INDUSTRY_NOT_FOUND(70060, "err.industry.not_found"),
+
+    /**
+     * 把经营范围白名单清空了。
+     *
+     * <p>不拦的话所有商家保存门店都会被拒，而他们看到的是「当前不支持这个经营范围」——
+     * 商家会以为是自己选错了，把档位挨个试一遍，每次都被拒。
+     */
+    SERVICE_SCOPE_EMPTY(70061, "err.merchant.service_scope_empty"),
+
+    /** 资质授权码查无此项，回显那串码 */
+    AUTH_CODE_NOT_FOUND(70062, "err.merchant.auth_code_not_found"),
+
+    /**
+     * 停用一个还被类目要求着的授权码。
+     *
+     * <p>此前这里抛的是 {@code CATEGORY_IN_USE}(80002)，而那条文案说的是
+     * 「类目下还有商品或子类目」—— 与本情形不是一回事，运营看到的提示指向错误的对象。
+     */
+    AUTH_CODE_IN_USE(70063, "err.merchant.auth_code_in_use"),
+
+    /**
+     * 商家从地图提报的地点已收下，等运营核对。
+     *
+     * <p>这是一条**成功路径上的拒绝**：单子建了、人没加进去。
+     * 不静默建一个 CLOSED 聚落 —— 那会让商家在列表里看见一个永远没有订单的地方。
+     */
+    COMMUNITY_APPLY_SUBMITTED(70057, "err.community.apply_submitted"),
+
+    /**
+     * 要成为会员，先得有一个已验证的手机号。
+     *
+     * <p><b>这不是校验失败，是一次引导</b>：端上收到它就弹一次手机号授权
+     * （小程序里是一次点击），而不是弹一句红色报错。
+     *
+     * <p>会员必须有手机号这条准入规则换来的是：商家先录号、他后来才注册时，
+     * 两边指向同一份人档，转正只是一次 UPDATE —— 不需要合并任何会员关系。
+     */
+    MEMBER_PHONE_REQUIRED(70039, "err.member.phone_required"),
+
+    /** 标签超限：每店最多多少个标签、每人最多几个。口径在 sys_setting，代码里只有 key */
+    MEMBER_TAG_LIMIT(70040, "err.member.tag_limit"),
+
+    /**
+     * 系统标签是只读的。
+     *
+     * <p><b>它的名字就是口径</b>（「沉睡」= 60 天没来）—— 允许改名或手动打，
+     * 两个商家对同一个词就会有两种理解，而按它筛出来的人群从此不可比。
+     */
+    MEMBER_TAG_SYSTEM_READONLY(70041, "err.member.tag_system_readonly"),
+
+    /** 人群数量超限。攒到几百个的时候，商家自己也认不出哪个是哪个 */
+    MEMBER_SEGMENT_LIMIT(70042, "err.member.segment_limit"),
+
+    /** 人群不存在（多半是刚被另一个店员删了） */
+    MEMBER_SEGMENT_NOT_FOUND(70043, "err.member.segment_not_found"),
+
+    /**
+     * 人群条件读不出来。
+     *
+     * <p>宁可让这一次发放失败，也不当成空条件 —— 空条件会命中<b>全部会员</b>，
+     * 而那是发券场景里最贵的一个默认值。坏掉的人群一定是我们自己改字段改出来的。
+     */
+    MEMBER_SEGMENT_BROKEN(70044, "err.member.segment_broken"),
+
+    /** 发券 / 发消息没说发给谁。<b>不当成「全部会员」</b> —— 那是这两个场景里最贵的一个默认值 */
+    MEMBER_AUDIENCE_REQUIRED(70065, "err.member.audience_required"),
+
+    /**
+     * 活动的受众此刻一个人都没有（AC-10）。
+     *
+     * <p>发布了也没人享受得到，而商家会以为活动在跑、只是没人来 —— 他会去调价格，而不是去改人群。
+     */
+    MEMBER_AUDIENCE_EMPTY(70066, "err.member.audience_empty"),
+    /**
+     * 这件货只在活动里卖（{@code sale_mode = ACTIVITY_ONLY}），而此刻没有能走普通下单的活动
+     * （集单 / 特价 / 买赠）—— 最常见的是只有拼团在跑、顾客点了单买，或活动已结束。
+     *
+     * <p><b>不复用 NOT_FOUND</b>：顾客看到「商品不存在」会以为链接坏了，
+     * 而这件货明明就在详情页上。说清「要走活动买」，他才知道去点开团。
+     */
+    GOODS_ACTIVITY_ONLY(70067, "err.goods.activity_only"),
+    /**
+     * 商品的类目不在当前门店的经营类目里（TDD-门店经营类目）。保存、上架时判。
+     *
+     * <p>带两个参数：<b>当前门店名</b>、类目名。类目名是为了让他知道该去加哪一个；
+     * 门店名是 2026-09-29 补的 —— 原文「本店经营类目里没有「X」」里的「本店」
+     * 在多门店商家那里指的是<b>他正切着的那家</b>，而不是他心里想的那家，
+     * 于是他会去加类目，而真正该做的是切门店。见 {@link #GOODS_CATEGORY_IN_OTHER_STORE}。
+     */
+    GOODS_CATEGORY_NOT_IN_STORE(70068, "err.goods.category_not_in_store"),
+
+    /**
+     * 同上，但这个类目<b>在这家商家的另一家门店下</b>（TDD-门店经营类目）。
+     *
+     * <p>与 70068 分开，是因为两者的出路完全相反：那边是「去加类目」，
+     * 这边是「切门店」。合成一个码的时候，多门店商家把在 B 店上架的老商品
+     * 在 A 店的上下文里下架，再上架就被拒 —— 提示让他去 A 店加类目，
+     * 照做会把 A 店的经营范围撑大一类，而他真正要做的只是切回 B 店。
+     *
+     * <p>三个参数：当前门店名、类目名、经营这一类的门店（多家用「、」连）。
+     */
+    GOODS_CATEGORY_IN_OTHER_STORE(70075, "err.goods.category_in_other_store"),
+
+    /**
+     * 这件货已下架，进不了结算（2026-09-30）。
+     *
+     * <p><b>专用码，不复用 NOT_FOUND。</b> 此前这里抛的是「商品不存在」，
+     * 而买家正看着这件商品的详情页 —— 说它不存在，他只会以为是系统坏了，
+     * 然后反复重试。门店级上下架接进下单校验之后更明显：
+     * 货在别的门店还在卖，页面上一切正常，只有他要去的那家店不卖了。
+     *
+     * <p>不区分「主体下架」与「这家店不卖」两种情形：对买家来说后续动作一样
+     * （换一件，或换一家店），而分开说要先解释平台的门店模型。
+     */
+    GOODS_OFF_SALE(70076, "err.goods.off_sale"),
+
+    /**
+     * 这家店还没做期初对齐，不能打开库存同步（TDD-商品纳入进销存开关 §7）。
+     * 带着两本账的旧差额开写回，第一天线上就不对。
+     */
+    STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
+
+    /*
+     * 快递代下单（TDD-快递100商家寄件）。
+     *
+     * 70070 与 70073 分开：前者是平台还没开通（商家怎么改都没用，去手填运单号），
+     * 后者是快递公司这一单不接（换一家、改重量可能就行）。合成一个码，商家会一直换快递公司试。
+     */
+    EXPRESS_CHANNEL_OFF(70070, "err.express.channel_off"),
+    EXPRESS_PICKUP_EXISTS(70071, "err.express.pickup_exists"),
+    EXPRESS_SENDER_INCOMPLETE(70072, "err.express.sender_incomplete"),
+    EXPRESS_PROVIDER_REJECTED(70073, "err.express.provider_rejected"),
+    EXPRESS_NOT_CANCELLABLE(70074, "err.express.not_cancellable"),
+
+    /**
+     * 这个支付通道还没接通 —— <b>不是他填错了什么</b>。
+     *
+     * <p>此前这里是 {@link #BAD_REQUEST}：商家把结算账号、执照照片、联系人一整张表填完，
+     * 点提交，得到一句「请求参数有误」。他会回去反复改那几个字段 ——
+     * 而无论怎么改都一样被拒，因为这个环境里根本没有装配任何
+     * {@code PayApplymentGateway} 实现（唯一那个是 stub，`shop.pay.stub` 默认关）。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED}、{@link #STORE_ADDRESS_REQUIRED} 同一个理由：
+     * <b>把「你改不了的事」说成「你填错了」，是这套系统里最贵的一类错误提示</b> ——
+     * 它让人一直试，而每一次试都不可能成功。
+     */
+    PAY_CHANNEL_UNAVAILABLE(70045, "err.pay.channel_unavailable"),
+    /*
+     * 代客下单的两条限额（M6）。**与 10400 分开**：参数有误是他填错了，
+     * 而这两条是「填得都对，但这一单不该由你代下」——
+     * 合成一个码的话，客服会回头去改金额与商品，越改越糟。
+     *
+     * <p>两条也彼此分开：一条的出路是「让顾客自己下」，
+     * 另一条是「今天到量了，明天再说 / 找人调限额」，不是同一件事。
+     */
+    PROXY_ORDER_AMOUNT_LIMIT(70046, "err.trade.proxy_amount_limit"),
+    PROXY_ORDER_DAILY_LIMIT(70047, "err.trade.proxy_daily_limit"),
+    /*
+     * 准入矩阵拒绝了这个 (主体档位 × 履约方式) 组合。与 70013 分开：
+     * 那个是「这件商品不支持这种送法」（换一种即可），
+     * 这个是「这家店不允许用这种送法」（换商品也没用）——
+     * 合成一个码，商家会一直换商品试。
+     */
+    // 2026-08-17 从 70014 挪来：那个号已被 RECEIVER_REQUIRED 占着，
+    // 两者撞号意味着「没选地址」与「这家店不能用这种送法」在端上分不开 ——
+    // 前者要把人送去地址簿，后者要让他换一家买。ErrorCodeUniqueTest 守这条
+    FULFILLMENT_TIER_DENIED(70024, "err.trade.fulfillment_tier_denied"),
+    /*
+     * 该商家的收款额度已用尽。单独一个码，因为它对三方的解法都不同：
+     * 买家该换一家买、商家该去升主体、运营该去核对额度口径。
+     * 不拦的话它会在付款那一刻表现为通道侧的「支付失败」——
+     * 那时候平台既解释不清，也补救不了。
+     */
+    MERCHANT_QUOTA_EXHAUSTED(70019, "err.trade.merchant_quota_exhausted"),
+
+    /**
+     * 进项票未核验通过，不允许登记付款（**票到付款**）。
+     *
+     * <p>不复用 CONFLICT 的理由与 GOODS_NOT_APPROVED 一样：财务看到「操作冲突」
+     * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
+     */
+    INVOICE_REQUIRED(70026, "err.settle.invoice_required"),
+    /** 发票金额与应付合计不符。多半是周期选错或漏了几单 */
+    INVOICE_AMOUNT_MISMATCH(70016, "err.settle.invoice_amount_mismatch"),
+    /** 开票方名称与供应商主体名不一致 —— 三流不一致会被认定虚开风险 */
+    INVOICE_TITLE_MISMATCH(70017, "err.settle.invoice_title_mismatch"),
+
+    /**
+     * 多规格商品不支持商品级限时特价。
+     *
+     * <p>此前返回通用的 BAD_REQUEST（「请求参数有误」），商家只会反复改价格与时间，
+     * 而问题在于「这件商品有两个规格，而活动价只有一个」。
+     * 单独一个码，端上才能把这句话说出来。
+     */
+    FLASH_MULTI_SKU_UNSUPPORTED(70004, "err.goods.flash_multi_sku"),
+    /**
+     * 这类活动不支持限定门店。
+     *
+     * <p>只有满减能限定门店：它在**算价时**生效，那时顾客已经选好自提点，
+     * 「货从哪家店出」是确定的。限时特价与买赠改的是**商品页的展示**
+     * （活动价、赠品标），而顾客浏览商品时还没选自提点 ——
+     * 允许限定门店就会出现「页面 ¥9.90、下单 ¥12.80」。
+     *
+     * <p>与「多规格特价被拒」同一个处理：宁可当场说清楚，
+     * 也不要让商家建一个悄悄不生效、或悄悄按错价卖的活动。
+     */
+    CAMPAIGN_STORE_UNSUPPORTED(70005, "err.campaign.store_unsupported"),
+    /**
+     * 这个角色不能做这件事（B 端）。
+     *
+     * <p><b>与通用的 {@link #FORBIDDEN} 分开</b>，两个理由：
+     * <ol>
+     *   <li><b>给的话不一样</b>：通用「没有操作权限」会让店员去找店主要权限，
+     *       而店主在界面上根本找不到「给店员开结算权限」这个开关 ——
+     *       设计上就没有。要说的是「结算只有店主能看」。</li>
+     *   <li><b>排查时分得开</b>：B 端还有一类 403 来自作用域
+     *       （这家店没有自提点、这单不属于本店）。两者撞同一个码时，
+     *       「权限没配对」和「数据不在范围里」在日志里长得一模一样 ——
+     *       实测就是靠这个码把它们分开的。</li>
+     * </ol>
+     */
+    BIZ_ROLE_FORBIDDEN(70006, "err.biz.role_forbidden"),
+
+    /**
+     * 经营范围不是合法取值，或这一期没开放这一档（{@code sys_setting} 的
+     * {@code merchant.service-scope-enabled}）。
+     *
+     * <p>单独一个码而不是复用 BAD_REQUEST：这两种情况商家都无从自己发现 ——
+     * 通用的「请求参数有误」会让他去改地址、改营业时间，而问题在那个下拉框上。
+     * 端上据此把「当前只开放本社区与全市」直接说出来。
+     */
+    SERVICE_SCOPE_NOT_ALLOWED(70018, "err.merchant.service_scope_not_allowed"),
+
+    /**
+     * 门店数量已到套餐上限。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：那句「请求参数有误」把一个<b>额度问题</b>
+     * 说成了<b>输入问题</b> —— 商家会回去反复改门店名，而无论怎么改都一样被拒。
+     * 他要做的是升套餐（或先停用一家），这两件事之间没有任何关系。
+     */
+    STORE_QUOTA_EXCEEDED(70020, "err.merchant.store_quota_exceeded"),
+
+    /**
+     * 门店被平台强制下线，商家的启停操作一律拒绝。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：商家看到「请求参数有误」会反复重试启用按钮，
+     * 而他该做的是联系平台申诉 —— 解除只能由平台做，这正是强制下线与
+     * 自主停用（READONLY）分成两个值的原因。
+     */
+    STORE_SUSPENDED_BY_PLATFORM(70021, "err.merchant.store_suspended_by_platform"),
+
+    /**
+     * 子账号数量已达套餐上限（P-11.2）。
+     *
+     * <p>与 {@link #STORE_QUOTA_EXCEEDED} 分成两个码而不是共用一个「额度不足」：
+     * 两者的解法不同 —— 一个是停用一家旧店或升档，一个是停用一个旧账号或升档，
+     * 而商家看到的提示决定他下一步做什么。
+     *
+     * <p>三个参数是**现在几个、上限几个、当前档位** —— 只说「额度不足」，
+     * 他的下一步是打客服电话。
+     */
+    STAFF_QUOTA_EXCEEDED(70022, "err.merchant.staff_quota_exceeded"),
+
+    /**
+     * 当前档位没有这项能力位（一期只有 {@code cross_store_stats}，B-11.12.5/6）。
+     *
+     * <p><b>明确拒绝，不返回空数据</b>：跨店总览返回一个空列表，商家看到的是
+     * 「我明明有两家店，这一页却什么都没有」—— 他会当成故障去找客服，
+     * 而这本该是一次升档的机会。空数据把「你还没买这个」说成了「它坏了」。
+     *
+     * <p>唯一的参数是<b>当前档位</b>：只说「无权访问」，商家不知道自己差在哪、
+     * 也不知道升到哪一档才有。与 {@link #BIZ_ROLE_FORBIDDEN}(70006) 分开 ——
+     * 那个是「你这个角色不能看」（解法是找老板授权），
+     * 这个是「这家店还没买这个包」（解法是升档），两者的下一步动作完全不同。
+     */
+    PLAN_CAPABILITY_REQUIRED(70023, "err.merchant.plan_capability_required"),
+
+    // ---- 8xxxx 类目维护 ----
+    /** 类目最多两级（V168 由三级收敛）—— 端上的选择器只渲染两层，更深的节点查得到、选不到。 */
+    CATEGORY_TOO_DEEP(80001, "err.category.too_deep"),
+    /** 下面还挂着商品或未归档的子类目 —— 直接归档会让那些商品挂在一个不存在的类目上。 */
+    CATEGORY_IN_USE(80002, "err.category.in_use"),
+    /** 父类目已归档，恢复它会造出一个挂在已删父节点下的孤儿。 */
+    CATEGORY_PARENT_ARCHIVED(80003, "err.category.parent_archived"),
+    /**
+     * 建品时传了一个查无此项的类目编号。
+     *
+     * <p>不复用 {@code BAD_REQUEST}，也**不兜底成默认类目**：类目现在是唯一的分类输入，
+     * 商品形态由它派生（生鲜要截单、服务不发货）。兜底等于把一条错误数据
+     * 静默转成一条合法数据 —— 商家以为自己建的是生鲜，而库里那件货是日用品。
+     */
+    CATEGORY_NOT_FOUND(80007, "err.category.not_found"),
+    /**
+     * 删一个底下还有商品的门店经营类目。
+     *
+     * <p>不拦的话那些商品会挂在一个这家店已经不存在的货架上：店铺页里就此消失，
+     * 而商家在商品列表里还看得到它们 —— 两个页面对同一批货给出相反的答案。
+     */
+    STORE_CATEGORY_IN_USE(80008, "err.store_category.in_use"),
+    /**
+     * 启用一个**没配规格**的二级类目。
+     *
+     * <p>不拦的话商家一往里放货，建品页因为一个维度都取不到而掉回老模板的品类兜底 ——
+     * 组名叫「规格」、存进去没有 templateNo，于是那批货的值编号永远盖不上，
+     * 跨店比价、按规格排序、聚合统计全都对它们失效。**而这一切没有任何报错**：
+     * 建品成功、页面正常，只是那一列 code 从来没存在过。
+     *
+     * <p>线上 198 件历史商品里 197 件就是这么来的，V229 花了一整支迁移去回填，
+     * 还有 92 件至今回填不了。所以这里选择**当场拒绝**而不是给个可以点掉的提醒：
+     * 提醒挡不住「先启用、回头再配」，而回头往往就是几个月。
+     */
+    CATEGORY_HAS_NO_SPEC(80010, "err.category.has_no_spec"),
+    /**
+     * 所选支付方式这件商品不支持。
+     *
+     * <p>可用性是**四层取交集**（类目 → 主体资质 → 门店 → 商品），任何一层说不行就是不行。
+     * 不复用 {@code BAD_REQUEST}：商家看到「参数有误」会去查报文格式，
+     * 而真正的原因是某一层没放行 —— 方向完全反了。
+     */
+    PAY_MODE_NOT_SUPPORTED(80011, "err.pay_mode.not_supported"),
+    /**
+     * 主体没有有效资质，不能线下收款。
+     *
+     * <p><b>判据是「此刻有一张未过期的证」，不是「入驻时批过」。</b>
+     * MchQualification 的类注释里记着同一个坑的另一半：上架校验读的是审核时写死的
+     * {@code category_codes}，**证过期了那串编码不会变**，商家照样上架、平台收不到信号。
+     *
+     * <p>也不能依赖 {@code status=EXPIRED}：置这个状态的是定时任务，
+     * 而**生产只跑 api,ops 两个 profile，没有 worker，定时任务根本不跑**。
+     */
+    OFFLINE_PAY_NOT_QUALIFIED(80012, "err.offline_pay.not_qualified"),
+    /**
+     * 线下支付不能用平台券。
+     *
+     * <p>券要按**出资方**拆：商家券可以用（商家自己少收，与积分同理，平台不介入）；
+     * 平台券不行 —— 平台要把补贴的钱给商家，而线下**没有资金流可补**，
+     * 硬发就是平台白送且无处对账。区分依据现成：{@code ord_sub_order} 上早就分了
+     * {@code discount_platform} / {@code discount_merchant} 两列。
+     */
+    PLATFORM_COUPON_OFFLINE_FORBIDDEN(80013, "err.coupon.platform_offline_forbidden"),
+    /**
+     * 这个时段已经约满。
+     *
+     * <p>由**带条件的 UPDATE**（{@code WHERE booked < capacity}）影响 0 行触发 ——
+     * 不是「先查再改」，后者在并发下必然超约。与到店核销扣次数、库存锁定同一个做法。
+     */
+    APPOINTMENT_SLOT_FULL(80014, "err.appointment.slot_full"),
+    /** 这个时段未开放或已停约。与「约满」分开：一个是没名额了，一个是根本不开。 */
+    APPOINTMENT_SLOT_UNAVAILABLE(80015, "err.appointment.slot_unavailable"),
+
+    /**
+     * 停用/归档一个还有商品在用的规格值或维度。
+     *
+     * <p>不拦的话是静默降级：商家下次保存那件商品，resolveValueNos 查不到
+     * 已停用的值（valuesOf 只取 ACTIVE），option_value_nos 对应位落 null ——
+     * 跨店聚合从此漏掉这件商品，而界面上什么都看不出来。
+     * 消息带件数（{0}），让操作的人知道要先清场多少件。
+     */
+    SPEC_IN_USE(80016, "err.spec.in_use"),
+
+    /**
+     * 上架编译点：草稿引用的规格档位已停用/合并/不存在。
+     * {0} 是点名清单 —— 一次报全，不让商家改一个撞一个。
+     */
+    GOODS_SPEC_UNRESOLVED(80017, "err.goods.spec_unresolved"),
+
+    /*
+     * ── 建品规则的四条（80019–80022，规则默认全关，见 ProductPolicy）──
+     * 四条都是「拦在进审核队列之前，当场说清该改什么」，所以每条都要说出**具体的那个数/那个词**，
+     * 而不是一句「请求参数有误」。
+     */
+
+    /** 提审时主图为空 */
+    GOODS_COVER_REQUIRED(80019, "err.goods.cover_required"),
+
+    /** 标题短于平台下限，参数是下限字数 */
+    GOODS_TITLE_TOO_SHORT(80020, "err.goods.title_too_short"),
+
+    /** 标题超过平台上限，参数是上限字数 */
+    GOODS_TITLE_TOO_LONG(80021, "err.goods.title_too_long"),
+
+    /** 标题命中禁售词，参数是命中的那个词 */
+    GOODS_TITLE_BANNED_WORD(80022, "err.goods.title_banned_word"),
+
+    /**
+     * 标题命中禁售词，且词表里给了原因（参数：词、原因）。
+     *
+     * <p>与上一条分成两个码而不是拼一个可选后缀：词表的「原因」是可空字段，
+     * 拼空串会在英文与阿语里留下一个吊着的标点。
+     */
+    GOODS_TITLE_BANNED_WORD_REASON(80023, "err.goods.title_banned_word_reason"),
+
+    /** 草稿基于的线上版本已被别人改过（多端编辑/运营强改）。拒并引导先看差异，不静默覆盖 */
+    GOODS_DRAFT_STALE(80018, "err.goods.draft_stale"),
+
+    /**
+     * 截单时间不早于到货时间（P-3.3.2）。
+     *
+     * <p>不复用 {@code BAD_REQUEST}：运营看到「参数有误」会去检查数字格式，
+     * 而错的是两个时间的**先后**。截单晚于到货 = 货都到了还在收单，
+     * 那批订单没有对应的采购，最后只能挨个退。
+     */
+    PRESALE_CUTOFF_AFTER_ARRIVAL(80004, "err.presale.cutoff_after_arrival"),
+
+    /**
+     * 平台规格模板的选项缺 {@code code}（P-3.4 / B-4.5）。
+     *
+     * <p>这是平台模板存在的**唯一理由**：自由文本下三家店会把同一件事写成
+     * 「5 斤」「五斤」「2.5kg」，聚合、比价、搜索全部对不上。
+     * 一个没有 code 的平台模板与商家手输的没有区别，它只让人**以为**规格统一了。
+     */
+    SPEC_TEMPLATE_CODE_REQUIRED(80005, "err.spec_template.code_required"),
+
+    /**
+     * 同一品类下模板重名，或同一模板里两个选项的 code 相同。
+     *
+     * <p>前者会让商家的下拉里出现两个「重量」，选哪个都对不上；
+     * 后者会让「500g」和「1kg」在聚合时并成同一个规格 —— 而那正是 code 要防的事。
+     */
+    SPEC_TEMPLATE_DUPLICATE(80006, "err.spec_template.duplicate"),
+
+    /**
+     * 量纲维度（QUANT）下新加的档位里抽不出数量。
+     *
+     * <p><b>不复用 BAD_REQUEST</b>：商家看到「请求参数有误」只会以为系统坏了，
+     * 而他要做的其实很具体 —— 把数量写进文案里（「大袋」→「750g」）。
+     * 服务端本来就会从文案里抽数字（「750g」「1.5kg」都认），
+     * 抽不出来才走到这里，所以这句话必须说清该怎么写。
+     *
+     * <p>没有归一量的值在一个专门用来归一的库里就是一个字符串：
+     * 排不了序，也比不了价。
+     */
+    SPEC_VALUE_NEEDS_QUANTITY(80009, "err.spec_value.needs_quantity"),
+
+    /*
+     * 触达通道的模拟发送（P-14.1 / TDD-运营端触达中心 §5）。
+     *
+     * <p>**不复用 BAD_REQUEST**：运营看到「请求参数有误」会去改输入框里的 userNo，
+     * 而这两种情况下 userNo 是对的 —— 问题在那个用户的状态上，且各自的下一步动作不同：
+     * 一个要换测试账号，一个要让那个人先装 App 登录一次。
+     */
+    /** 该用户没有可用的微信订阅额度，测试会白发（发出去也会被微信以 43101 拒） */
+    NOTIFY_WX_QUOTA_EMPTY(80101, "err.notify.wx_quota_empty"),
+    /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
+    NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
+
+    // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
+    // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。
+    // 这里再用 9xxxx 会与元器件的码撞车 —— 两个进程各自合法，只有端上按码分流时走错分支。
+
+    private final int code;
+    private final String msgKey;
+
+    ErrorCode(int code, String msgKey) {
+        this.code = code;
+        this.msgKey = msgKey;
+    }
+
+    public int code() {
+        return code;
+    }
+
+    public String msgKey() {
+        return msgKey;
+    }
+}

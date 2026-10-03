@@ -3,31 +3,113 @@
 //    分账、售后、结算全部以子订单为单位。列表展示的就是子订单。
 
 /** 履约方式（ADR-005：自提点分 STORE / NEIGHBOR 两类）。 */
-export type FulfillType = "PICKUP_STORE" | "PICKUP_NEIGHBOR" | "MERCHANT_DELIVERY" | "EXPRESS" | "SERVICE";
+/**
+ * 履约方式。**取值与后端 `ord_sub_order.fulfillment` 一致**。
+ *
+ * ⚠️ 这里曾经写成 `PICKUP_STORE` / `PICKUP_NEIGHBOR` —— 同一个概念、词序反了，
+ * 于是按它筛后端一条也匹配不上。ops-web 只跑 mock，所以从没被真实响应打脸过。
+ */
+export type FulfillmentType =
+  | "STORE_PICKUP"
+  | "NEIGHBOR_PICKUP"
+  | "MERCHANT_DELIVERY"
+  | "EXPRESS"
+  /**
+   * 到店核销（SERVICE 商品）。2026-08-17 接通。
+   * 此前这里叫 `SERVICE`：同一个概念的第二个名字，且后端两个都不下发。
+   */
+  | "STORE_VERIFY"
+  /** 上门预约（SERVICE 商品）。2026-08-17 接通，带预约时段与上门地址 */
+  | "APPOINTMENT";
 
-/** 流量来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。 */
-export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM" | "INVITE" | "CHANNEL";
+/**
+ * 客流来源（矩阵 P-12.1.7 按 trafficSource 分档计费）。**与 `ord_sub_order.traffic_source` 的库列注释逐字一致**
+ * （`MERCHANT_OWNED 自带客流 / PLATFORM 平台客流`，下单时固化）。
+ *
+ * ⚠️ **2026-09-10：这里原来还有 `INVITE` / `CHANNEL`，已删。**
+ * 后端那一列只有两个值、下单时固化；shared 的同名类型也只有两个；
+ * 而 ops-web **自己已经在绕开这个宽类型** —— `finance.ts` 专门定义了
+ * `FeeTrafficSource`，注释写着「只有两档，比订单上的 TrafficSource
+ * （还有 INVITE / CHANNEL）窄」。多出来的那两个更像归因来源
+ * （本端另有 `AttrSource = STORE_CODE | INVITER | CHANNEL`），是两个域串了。
+ *
+ * 留着的代价与券类型那次一样：它有标签、有 mock 数据、订单列表按它画徽章 ——
+ * 对着真后端永远不会出现，而开发机上看着一切正常。
+ */
+export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
 
+/**
+ * 订单状态。**抽象状态，与履约方式无关**，三端同一套。
+ *
+ * ⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。
+ * 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 ——
+ * 而 ops-web 只跑 mock，所以三套并存了很久没人发现。
+ *
+ * ⚠️ 后来又有过 `SHIPPED` / `ARRIVED` 两个值。它们**不是状态**，
+ * 是「状态 × 履约方式」的组合冒充状态 —— 代价是每加一种履约就要加一批状态。
+ * 现在下发抽象状态 + 履约方式，显示成什么由展示层决定
+ * （见《订单状态-统一整理》与 shared 的 `orderView`）。
+ */
 export type OrderStatus =
-  | "PENDING_PAY"
+  | "WAIT_PAY"
+  /**
+   * 等商家当面收款（线下支付）。**库里没有这个子单状态** ——
+   * 线下单的子单停在 WAIT_PAY，这是后端下发口径上由主单推出的值。
+   * 运营看订单列表要能一眼分出「还没付钱」和「等当面收钱」：
+   * 后者催不了款，只能催商家去收。
+   */
+  | "WAIT_OFFLINE_PAY"
+  /** 已付款，交付方还没行动。库里那一列存的是 WAIT_FULFILL */
   | "PAID"
-  | "PREPARING"
-  | "DELIVERING"
-  | "ARRIVED"
+  /** 交付方已行动，等交接完成。自提说「已到点」、快递说「已发货」，同一个状态 */
+  | "FULFILLING"
   | "COMPLETED"
   | "CANCELLED"
-  | "AFTER_SALE";
+  | "REFUNDED";
 
+/**
+ * 允许的人工干预迁移。与后端 `OrderStateMachine` 的子单图同源 ——
+ * 运营能改到哪，最终由后端说了算；这份表只是让界面**提前**把不可能的选项灰掉，
+ * 而不是让人点下去再吃一个报错。
+ *
+ * 没有「售后中」这个态：售后是挂在订单上的**另一张单**，不是订单本身的状态。
+ * 把它做成状态，订单就会在「售后中」和真实状态之间二选一，而两者其实并存。
+ */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  PENDING_PAY: ["PAID", "CANCELLED"],
-  PAID: ["PREPARING", "CANCELLED", "AFTER_SALE"],
-  PREPARING: ["DELIVERING", "ARRIVED", "AFTER_SALE"],
-  DELIVERING: ["ARRIVED", "AFTER_SALE"],
-  ARRIVED: ["COMPLETED", "AFTER_SALE"],
-  COMPLETED: ["AFTER_SALE"],
+  WAIT_PAY: ["PAID", "CANCELLED"],
+  // 与后端 OrderStateMachine 一致：**没有回到 WAIT_PAY 的边**。
+  // 改主意想线上付要重新下单，否则「收没收到钱」有两个真源
+  WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
+  PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
+  FULFILLING: ["COMPLETED", "REFUNDED"],
+  COMPLETED: ["REFUNDED"],
   CANCELLED: [],
-  AFTER_SALE: ["COMPLETED"],
+  REFUNDED: [],
 };
+
+/**
+ * 支付方式。**与后端 `PayModes` 逐字一致**：
+ * `ONLINE` 钱经平台走分账；`OFFLINE` 买家当面付给商家，平台不碰这笔钱
+ * （因此不进分账、不抽佣，平台券也不能用）。
+ */
+export type PayMode = "ONLINE" | "OFFLINE";
+
+/**
+ * 代客下单的限额（M6：客服代客操作的权限边界与金额阈值）。
+ *
+ * <p>此前只有留痕没有闸门：客服能替任何人下任意金额的单，事后查得到、当时拦不住。
+ * 留痕回答「谁干的」，闸门回答「能干多大」—— 两件事。
+ */
+export interface ProxyLimit {
+  /** 单笔上限（分）。按订单**实际应付额**判，不按商品估算 */
+  maxAmountMinor: number;
+  /** 每个客服每天最多几笔。按自然日算 */
+  maxPerDay: number;
+  /** 最后修改时间 */
+  updatedAt: string | null;
+  /** 最后修改人 */
+  updatedBy: string | null;
+}
 
 export interface OrderItem {
   /** SKU 单号 */
@@ -58,7 +140,7 @@ export interface Order {
   /** 自提点编号；配送/快递单为空 */
   pickupNo?: string;
   /** 履约方式 */
-  fulfillType: FulfillType;
+  fulfillType: FulfillmentType;
   /** 流量来源。**决定平台费率档**（P-12.1.7） */
   trafficSource: TrafficSource;
   /** 买家昵称 */

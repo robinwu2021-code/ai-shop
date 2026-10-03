@@ -1,0 +1,5728 @@
+{
+  "generatedFrom": [
+    "packages/shared/src/design/tokens.ts",
+    "packages/shared/src/design/icons.ts",
+    "packages/ui/src/styles/base.css",
+    "b-app/src/App.vue",
+    "packages/ui/src/components/*.vue",
+    "b-app/src/components/**/*.vue"
+  ],
+  "canvas": {
+    "base": "375pt",
+    "rpxToPx": 0.5,
+    "skin": "brand"
+  },
+  "tokens": {
+    "radius": {
+      "sm": {
+        "rpx": "16rpx",
+        "px": "8px"
+      },
+      "md": {
+        "rpx": "24rpx",
+        "px": "12px"
+      },
+      "lg": {
+        "rpx": "32rpx",
+        "px": "16px"
+      },
+      "xl": {
+        "rpx": "44rpx",
+        "px": "22px"
+      },
+      "full": {
+        "rpx": "9999px",
+        "px": "9999px"
+      }
+    },
+    "spacing": {
+      "hair": {
+        "rpx": "4rpx",
+        "px": "2px"
+      },
+      "xxs": {
+        "rpx": "8rpx",
+        "px": "4px"
+      },
+      "xs": {
+        "rpx": "12rpx",
+        "px": "6px"
+      },
+      "sm": {
+        "rpx": "16rpx",
+        "px": "8px"
+      },
+      "s": {
+        "rpx": "20rpx",
+        "px": "10px"
+      },
+      "md": {
+        "rpx": "24rpx",
+        "px": "12px"
+      },
+      "m": {
+        "rpx": "28rpx",
+        "px": "14px"
+      },
+      "lg": {
+        "rpx": "32rpx",
+        "px": "16px"
+      },
+      "l": {
+        "rpx": "40rpx",
+        "px": "20px"
+      },
+      "xl": {
+        "rpx": "48rpx",
+        "px": "24px"
+      },
+      "xxl": {
+        "rpx": "64rpx",
+        "px": "32px"
+      }
+    },
+    "skins": [
+      {
+        "id": "brand",
+        "color": "#E1251B"
+      },
+      {
+        "id": "fresh",
+        "color": "#00B578"
+      },
+      {
+        "id": "promo",
+        "color": "#D24600"
+      },
+      {
+        "id": "blue",
+        "color": "#2C69FF"
+      },
+      {
+        "id": "mono",
+        "color": "#18181B"
+      },
+      {
+        "id": "crimson",
+        "color": "#D6303A"
+      },
+      {
+        "id": "amber",
+        "color": "#A46911"
+      },
+      {
+        "id": "teal",
+        "color": "#008484"
+      },
+      {
+        "id": "violet",
+        "color": "#7A4CE0"
+      }
+    ],
+    "semantic": {},
+    "constants": {
+      "--sh-tabbar-h": "124rpx",
+      "--sh-shadow-up": "0 -6rpx 20rpx rgba(10, 12, 16, 0.08)",
+      "--sh-shadow-float": "0 8rpx 24rpx rgba(10, 12, 16, 0.16)"
+    },
+    "skinVars": {
+      "light": {
+        "--sh-primary": "#E1251B",
+        "--sh-primary-tint": "rgba(225, 37, 27, 0.12)",
+        "--sh-primary-text": "#B31710",
+        "--sh-on-primary": "#FFFFFF",
+        "--sh-bg": "#ECEDEF",
+        "--sh-surface": "#FFFFFF",
+        "--sh-elev": "#FFFFFF",
+        "--sh-ink": "#17181A",
+        "--sh-sub": "#63676E",
+        "--sh-faint": "#E4E5E8",
+        "--sh-line": "#DCDEE2"
+      },
+      "dark": {
+        "--sh-primary": "#FF5A4D",
+        "--sh-primary-tint": "rgba(255, 90, 77, 0.2)",
+        "--sh-primary-text": "#FF5A4D",
+        "--sh-on-primary": "#14161A",
+        "--sh-bg": "#000000",
+        "--sh-surface": "#161719",
+        "--sh-elev": "#1D2023",
+        "--sh-ink": "#F3F4F6",
+        "--sh-sub": "#9AA1AC",
+        "--sh-faint": "#23262B",
+        "--sh-line": "#2E3036"
+      }
+    },
+    "type": [
+      {
+        "class": ".txt-mega",
+        "size": "60rpx",
+        "px": "30px",
+        "weight": "700",
+        "lineHeight": "1.1"
+      },
+      {
+        "class": ".txt-hero",
+        "size": "48rpx",
+        "px": "24px",
+        "weight": "700",
+        "lineHeight": "1.15"
+      },
+      {
+        "class": ".txt-display",
+        "size": "40rpx",
+        "px": "20px",
+        "weight": "700",
+        "lineHeight": "1.2"
+      },
+      {
+        "class": ".txt-price",
+        "size": "34rpx",
+        "px": "17px",
+        "weight": "700",
+        "lineHeight": "1.3"
+      },
+      {
+        "class": ".txt-title",
+        "size": "34rpx",
+        "px": "17px",
+        "weight": "600",
+        "lineHeight": "1.3"
+      },
+      {
+        "class": ".txt-strong",
+        "size": "28rpx",
+        "px": "14px",
+        "weight": "600",
+        "lineHeight": "1.4"
+      },
+      {
+        "class": ".txt-body",
+        "size": "28rpx",
+        "px": "14px",
+        "weight": "400",
+        "lineHeight": "1.5"
+      },
+      {
+        "class": ".txt-sub",
+        "size": "26rpx",
+        "px": "13px",
+        "weight": "400",
+        "lineHeight": "1.5"
+      },
+      {
+        "class": ".txt-caption",
+        "size": "24rpx",
+        "px": "12px",
+        "weight": "400",
+        "lineHeight": "1.4"
+      }
+    ],
+    "density": {
+      "c": {
+        "--sh-pad-card": "32rpx",
+        "--sh-pad-page": "28rpx",
+        "--sh-pad-empty": "72rpx",
+        "--sh-gap-tabs": "20rpx",
+        "--sh-fs-sub": "26rpx"
+      },
+      "b": {
+        "--sh-pad-card": "24rpx",
+        "--sh-pad-page": "24rpx",
+        "--sh-pad-empty": "48rpx",
+        "--sh-gap-tabs": "16rpx",
+        "--sh-fs-sub": "24rpx"
+      },
+      "field": {
+        "margin-top": "20rpx"
+      }
+    }
+  },
+  "blocks": [
+    {
+      "class": ".sh-muted",
+      "group": "字阶",
+      "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)",
+        "font-size": "var(--sh-fs-sub, 26rpx)",
+        "font-weight": "400",
+        "line-height": "1.5"
+      },
+      "px": {
+        "color": "var(--sh-sub)",
+        "font-size": "var(--sh-fs-sub, 13px)",
+        "font-weight": "400",
+        "line-height": "1.5"
+      },
+      "usage": {
+        "b-app": 483,
+        "c-app": 75
+      }
+    },
+    {
+      "class": ".txt-body",
+      "group": "字阶",
+      "when": "正文",
+      "avoid": "—",
+      "decl": {
+        "font-size": "28rpx",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "14px",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 399,
+        "c-app": 76
+      }
+    },
+    {
+      "class": ".txt-bold",
+      "group": "字阶",
+      "when": "只加粗、不改字号",
+      "avoid": "价格用 .txt-price（那一档才是 700）",
+      "decl": {
+        "font-weight": "600"
+      },
+      "px": {
+        "font-weight": "600"
+      },
+      "usage": {
+        "b-app": 20,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".txt-caption",
+      "group": "字阶",
+      "when": "最弱一档：单位、脚注",
+      "avoid": "低于这一档就读不清了，不要再小",
+      "decl": {
+        "font-size": "24rpx",
+        "font-weight": "400",
+        "line-height": "1.4",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "font-size": "12px",
+        "font-weight": "400",
+        "line-height": "1.4",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 342,
+        "c-app": 264
+      }
+    },
+    {
+      "class": ".txt-display",
+      "group": "字阶",
+      "when": "区块级大数",
+      "avoid": "—",
+      "decl": {
+        "font-size": "40rpx",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "20px",
+        "font-weight": "700",
+        "line-height": "1.2",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 37,
+        "c-app": 7
+      }
+    },
+    {
+      "class": ".txt-faint",
+      "group": "字阶",
+      "when": "改成最弱色。**只给一种语义：零值**",
+      "avoid": "只是次要用 .txt-quiet",
+      "decl": {
+        "color": "var(--sh-faint)"
+      },
+      "px": {
+        "color": "var(--sh-faint)"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-hero",
+      "group": "字阶",
+      "when": "整页只有一个的大数（详情页主价、评分）",
+      "avoid": "—",
+      "decl": {
+        "font-size": "48rpx",
+        "font-weight": "700",
+        "line-height": "1.15",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "24px",
+        "font-weight": "700",
+        "line-height": "1.15",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".txt-ink",
+      "group": "字阶",
+      "when": "改成主文字色（默认色不对时才需要）",
+      "avoid": "整段正文用 .txt-body",
+      "decl": {
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 11,
+        "c-app": 20
+      }
+    },
+    {
+      "class": ".txt-mega",
+      "group": "字阶",
+      "when": "**收款台那一档**：商家照着它收钱、对账，隔着柜台一米要读准",
+      "avoid": "只是「想大一点」用 .txt-hero",
+      "decl": {
+        "font-size": "60rpx",
+        "font-weight": "700",
+        "line-height": "1.1",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "30px",
+        "font-weight": "700",
+        "line-height": "1.1",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 7,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".txt-price",
+      "group": "字阶",
+      "when": "列表里的价格：与标题同字号，靠字重顶出来",
+      "avoid": "非价格不要用 700",
+      "decl": {
+        "font-size": "34rpx",
+        "font-weight": "700",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "17px",
+        "font-weight": "700",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 17,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".txt-primary",
+      "group": "字阶",
+      "when": "改成主色：可点的字、强调的数",
+      "avoid": "整块可点的用 .sh-btn",
+      "decl": {
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 43,
+        "c-app": 42
+      }
+    },
+    {
+      "class": ".txt-quiet",
+      "group": "字阶",
+      "when": "改成次要色：说明、旁注",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 42,
+        "c-app": 36
+      }
+    },
+    {
+      "class": ".txt-strong",
+      "group": "字阶",
+      "when": "需要比正文重一档的行",
+      "avoid": "—",
+      "decl": {
+        "font-size": "28rpx",
+        "font-weight": "600",
+        "line-height": "1.4",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "14px",
+        "font-weight": "600",
+        "line-height": "1.4",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 126,
+        "c-app": 51
+      }
+    },
+    {
+      "class": ".txt-sub",
+      "group": "字阶",
+      "when": "次要信息",
+      "avoid": "B 端次要文字走 .sh-muted（字号跟密度变量）",
+      "decl": {
+        "font-size": "26rpx",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "font-size": "13px",
+        "font-weight": "400",
+        "line-height": "1.5",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 100,
+        "c-app": 89
+      }
+    },
+    {
+      "class": ".txt-title",
+      "group": "字阶",
+      "when": "区块标题",
+      "avoid": "—",
+      "decl": {
+        "font-size": "34rpx",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "font-size": "17px",
+        "font-weight": "600",
+        "line-height": "1.3",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 118,
+        "c-app": 31
+      }
+    },
+    {
+      "class": ".sh-block",
+      "group": "容器",
+      "when": "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道",
+      "avoid": "只有内容没有标题时用 .sh-card",
+      "decl": {
+        "background": "var(--sh-surface)",
+        "border-radius": "32rpx",
+        "padding": "24rpx 0",
+        "overflow": "hidden"
+      },
+      "px": {
+        "background": "var(--sh-surface)",
+        "border-radius": "16px",
+        "padding": "12px 0",
+        "overflow": "hidden"
+      },
+      "usage": {
+        "b-app": 9,
+        "c-app": 16
+      }
+    },
+    {
+      "class": ".sh-block__head",
+      "group": "容器",
+      "when": "块内标题行（横向留白 26rpx，列表行仍通铺到边）",
+      "avoid": "—",
+      "decl": {
+        "display": "flex",
+        "align-items": "baseline",
+        "gap": "16rpx",
+        "padding": "0 24rpx 16rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "baseline",
+        "gap": "8px",
+        "padding": "0 12px 8px"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 7
+      }
+    },
+    {
+      "class": ".sh-block__head--tabs",
+      "group": "容器",
+      "when": "块头里放页签时用：去掉下内边距，让页签贴住内容",
+      "avoid": "—",
+      "decl": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "px": {
+        "display": "block",
+        "padding-bottom": "0"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-card",
+      "group": "容器",
+      "when": "一条内容一张卡：列表行、表单分区、统计块",
+      "avoid": "块内还要分小节时用 .sh-block",
+      "decl": {
+        "background": "var(--sh-surface)",
+        "border-radius": "32rpx",
+        "padding": "var(--sh-pad-card, 32rpx)"
+      },
+      "px": {
+        "background": "var(--sh-surface)",
+        "border-radius": "16px",
+        "padding": "var(--sh-pad-card, 16px)"
+      },
+      "usage": {
+        "b-app": 214,
+        "c-app": 84
+      }
+    },
+    {
+      "class": ".sh-card__head",
+      "group": "容器",
+      "when": "卡内第一行：标题在左、动作在右，与下面内容隔一档",
+      "avoid": "块（.sh-block）里的标题行用 .sh-block__head",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "gap": "16rpx",
+        "margin-bottom": "20rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "gap": "8px",
+        "margin-bottom": "10px"
+      },
+      "usage": {
+        "b-app": 21,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-cell",
+      "group": "容器",
+      "when": ".sh-cells 里的一行，内边距跟着 --sh-pad-page 走",
+      "avoid": "别单独用，它没有底色",
+      "decl": {
+        "background": "var(--sh-surface)",
+        "padding": "24rpx var(--sh-pad-page, 28rpx)"
+      },
+      "px": {
+        "background": "var(--sh-surface)",
+        "padding": "12px var(--sh-pad-page, 14px)"
+      },
+      "usage": {
+        "b-app": 157,
+        "c-app": 29
+      }
+    },
+    {
+      "class": ".sh-cells",
+      "group": "容器",
+      "when": "一组设置项/入口挤在一块白底上，行间只留 2rpx 缝",
+      "avoid": "行与行要分开成卡的用 .sh-card",
+      "decl": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "2rpx",
+        "border-radius": "24rpx",
+        "overflow": "hidden"
+      },
+      "px": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "1px",
+        "border-radius": "12px",
+        "overflow": "hidden"
+      },
+      "usage": {
+        "b-app": 57,
+        "c-app": 11
+      }
+    },
+    {
+      "class": ".sh-notice",
+      "group": "容器",
+      "when": "一段话压在语义色 tint 底上：主色档（说明、进行中）",
+      "avoid": "可点的用 .sh-btn，短标签用 .sh-chip",
+      "decl": {
+        "padding": "20rpx 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "padding": "10px 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 28,
+        "c-app": 34
+      }
+    },
+    {
+      "class": ".sh-notice--danger",
+      "group": "容器",
+      "when": "提示条的**出错**档：驳回、失败、被停用",
+      "avoid": "只是提醒用 --warning",
+      "decl": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "px": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 6
+      }
+    },
+    {
+      "class": ".sh-notice--muted",
+      "group": "容器",
+      "when": "提示条的**中性**档：没有语义，只是这段话与正文分开",
+      "avoid": "有语义就挑上面四档",
+      "decl": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 8
+      }
+    },
+    {
+      "class": ".sh-notice--success",
+      "group": "容器",
+      "when": "提示条的**完成**档：通过、已结算",
+      "avoid": "进行中用主色档",
+      "decl": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "px": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-notice--warning",
+      "group": "容器",
+      "when": "提示条的**提醒**档：要注意但还没出错",
+      "avoid": "已经出错用 --danger",
+      "decl": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 14,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".sh-btn",
+      "group": "按钮",
+      "when": "一屏一个主操作，实心胶囊",
+      "avoid": "并排两个主按钮时次要那个降成 --soft",
+      "decl": {
+        "display": "block",
+        "text-align": "center",
+        "padding": "32rpx 0",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-size": "28rpx",
+        "font-weight": "600",
+        "line-height": "1.4"
+      },
+      "px": {
+        "display": "block",
+        "text-align": "center",
+        "padding": "16px 0",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-size": "14px",
+        "font-weight": "600",
+        "line-height": "1.4"
+      },
+      "usage": {
+        "b-app": 177,
+        "c-app": 77
+      }
+    },
+    {
+      "class": ".sh-btn--danger",
+      "group": "按钮",
+      "when": "危险操作：**描边 + 墨字**，靠形态与主按钮区分",
+      "avoid": "红实心留给二次确认",
+      "decl": {
+        "background": "transparent",
+        "color": "var(--sh-ink)",
+        "border": "2rpx solid var(--sh-danger)",
+        "padding": "28rpx 0"
+      },
+      "px": {
+        "background": "transparent",
+        "color": "var(--sh-ink)",
+        "border": "1px solid var(--sh-danger)",
+        "padding": "14px 0"
+      },
+      "usage": {
+        "b-app": 9,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-btn--danger-solid",
+      "group": "按钮",
+      "when": "二次确认弹层里的最终一击",
+      "avoid": "页面上不要用 —— 会与主按钮撞色",
+      "decl": {
+        "background": "var(--sh-danger)",
+        "color": "#fff"
+      },
+      "px": {
+        "background": "var(--sh-danger)",
+        "color": "#fff"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-btn--md",
+      "group": "按钮",
+      "when": "中间档：**贴底操作条里的按钮**（stock 的进货/报损/更多）。44px，压在可点下限上",
+      "avoid": "它对比的是别的页面的贴底主按钮，不是文字 —— 一行文字动作里的主操作仍用 --sm",
+      "decl": {
+        "padding": "24rpx 28rpx",
+        "font-size": "28rpx"
+      },
+      "px": {
+        "padding": "12px 14px",
+        "font-size": "14px"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-btn--muted",
+      "group": "按钮",
+      "when": "不强调的操作（取消、稍后）",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 56,
+        "c-app": 7
+      }
+    },
+    {
+      "class": ".sh-btn--sm",
+      "group": "按钮",
+      "when": "小一号：**放在一行文字动作里当主操作**（stores 的「切到这家」）",
+      "avoid": "整屏的主操作用默认尺寸",
+      "decl": {
+        "padding": "12rpx 28rpx",
+        "font-size": "26rpx"
+      },
+      "px": {
+        "padding": "6px 14px",
+        "font-size": "13px"
+      },
+      "usage": {
+        "b-app": 39,
+        "c-app": 15
+      }
+    },
+    {
+      "class": ".sh-btn--soft",
+      "group": "按钮",
+      "when": "次要操作：tint 底 + 主色字",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 33,
+        "c-app": 13
+      }
+    },
+    {
+      "class": ".sh-dialog__act",
+      "group": "按钮",
+      "when": "对话框底部的一格动作，等宽平分",
+      "avoid": "别在别处用，它没有底色",
+      "decl": {
+        "flex": "1",
+        "padding": "24rpx 0",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "padding": "12px 0",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-link",
+      "group": "按钮",
+      "when": "文字动作：列表行尾的「改名 / 停用」、卡里的「展开 / 去管理」",
+      "avoid": "它不是按钮 —— 要底色就用 .sh-btn--soft",
+      "decl": {
+        "color": "var(--sh-primary-text)",
+        "font-size": "24rpx",
+        "font-weight": "400"
+      },
+      "px": {
+        "color": "var(--sh-primary-text)",
+        "font-size": "12px",
+        "font-weight": "400"
+      },
+      "usage": {
+        "b-app": 57,
+        "c-app": 14
+      }
+    },
+    {
+      "class": ".sh-link--quiet",
+      "group": "按钮",
+      "when": "压成灰：「收起」这类不该抢眼的",
+      "avoid": "—",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 9,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-link--warn",
+      "group": "按钮",
+      "when": "要当心的文字动作（申诉、撤回）",
+      "avoid": "真危险的操作用 .sh-btn--danger",
+      "decl": {
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-hint",
+      "group": "排版",
+      "when": "紧跟在某一行下面的一句小字说明（block + 上缝 8rpx）",
+      "avoid": "整段独立的说明用 .sh-muted",
+      "decl": {
+        "display": "block",
+        "margin-top": "8rpx",
+        "font-size": "24rpx",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "px": {
+        "display": "block",
+        "margin-top": "4px",
+        "font-size": "12px",
+        "color": "var(--sh-sub)",
+        "line-height": "1.5"
+      },
+      "usage": {
+        "b-app": 112,
+        "c-app": 13
+      }
+    },
+    {
+      "class": ".sh-void",
+      "group": "排版",
+      "when": "划掉：这个东西不再有效（作废、被移出、旧值）。**不带字号** —— 它挂在原本就有大小的字上",
+      "avoid": "折扣前的价用 .sh-was",
+      "decl": {
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "px": {
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-was",
+      "group": "排版",
+      "when": "划线原价：折扣前的价。自带 caption 字号与次要色",
+      "avoid": "「不再有效」用 .sh-void",
+      "decl": {
+        "font-size": "24rpx",
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "px": {
+        "font-size": "12px",
+        "color": "var(--sh-sub)",
+        "text-decoration": "line-through"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 5
+      }
+    },
+    {
+      "class": ".sh-num",
+      "group": "数字",
+      "when": "金额、结存、差异、百分比 —— 等宽且 RTL 下强制 LTR",
+      "avoid": "非数字不要加",
+      "decl": {
+        "font-variant-numeric": "tabular-nums",
+        "font-feature-settings": "\"tnum\" 1",
+        "direction": "ltr",
+        "unicode-bidi": "isolate"
+      },
+      "px": {
+        "font-variant-numeric": "tabular-nums",
+        "font-feature-settings": "\"tnum\" 1",
+        "direction": "ltr",
+        "unicode-bidi": "isolate"
+      },
+      "usage": {
+        "b-app": 341,
+        "c-app": 147
+      }
+    },
+    {
+      "class": ".sh-badge-count",
+      "group": "标签",
+      "when": "红底白字的计数小圆点：未读数、购物车件数",
+      "avoid": "不带数字的红点另说",
+      "decl": {
+        "min-width": "32rpx",
+        "height": "32rpx",
+        "padding": "0 8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-danger)",
+        "color": "#fff",
+        "font-size": "24rpx",
+        "font-weight": "600",
+        "line-height": "32rpx",
+        "text-align": "center"
+      },
+      "px": {
+        "min-width": "16px",
+        "height": "16px",
+        "padding": "0 4px",
+        "border-radius": "9999px",
+        "background": "var(--sh-danger)",
+        "color": "#fff",
+        "font-size": "12px",
+        "font-weight": "600",
+        "line-height": "16px",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-chip",
+      "group": "标签",
+      "when": "状态、分类、筛选项。tint 色块，不描边",
+      "avoid": "可点的主操作用 .sh-btn",
+      "decl": {
+        "display": "inline-block",
+        "padding": "8rpx 20rpx",
+        "border-radius": "9999px",
+        "font-size": "24rpx",
+        "font-weight": "400",
+        "line-height": "1.3",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "display": "inline-block",
+        "padding": "4px 10px",
+        "border-radius": "9999px",
+        "font-size": "12px",
+        "font-weight": "400",
+        "line-height": "1.3",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 148,
+        "c-app": 53
+      }
+    },
+    {
+      "class": ".sh-chip--danger",
+      "group": "标签",
+      "when": "已经出错或被拒",
+      "avoid": "危险**操作**用 .sh-btn--danger",
+      "decl": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "px": {
+        "background": "var(--sh-danger-tint)",
+        "color": "var(--sh-danger)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 12
+      }
+    },
+    {
+      "class": ".sh-chip--dashed",
+      "group": "标签",
+      "when": "**候选**：点一下当场加进来",
+      "avoid": "点了还要再填一屏的是入口，用 `sh-add`",
+      "decl": {
+        "background": "transparent",
+        "border": "2rpx dashed var(--sh-primary)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "transparent",
+        "border": "1px dashed var(--sh-primary)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 7,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-chip--dashed-quiet",
+      "group": "标签",
+      "when": "压一档的候选（跨类目通用的那些）",
+      "avoid": "—",
+      "decl": {
+        "border-color": "var(--sh-line)",
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "border-color": "var(--sh-line)",
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-chip--icon",
+      "group": "标签",
+      "when": "里面带图标的 chip（选中的勾、可删的 ✕）",
+      "avoid": "纯文字用 .sh-chip",
+      "decl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "8rpx"
+      },
+      "px": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "4px"
+      },
+      "usage": {
+        "b-app": 8,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-chip--primary",
+      "group": "标签",
+      "when": "选中态 / 与主色相关的状态",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "px": {
+        "background": "var(--sh-primary-tint)",
+        "color": "var(--sh-primary-text)"
+      },
+      "usage": {
+        "b-app": 67,
+        "c-app": 25
+      }
+    },
+    {
+      "class": ".sh-chip--solid",
+      "group": "标签",
+      "when": "实心主色 chip：当前选中的那一个",
+      "avoid": "未选中用 .sh-chip",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-chip--success",
+      "group": "标签",
+      "when": "进行中 / 已成功（活动进行中、集单已成）—— 状态标签的绿档",
+      "avoid": "别用来表达「可点」：那是主色的活",
+      "decl": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "px": {
+        "background": "var(--sh-success-tint)",
+        "color": "var(--sh-success)"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-chip--warning",
+      "group": "标签",
+      "when": "要留意但还不算错（待审、将过期）",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "px": {
+        "background": "var(--sh-warning-tint)",
+        "color": "var(--sh-warning)"
+      },
+      "usage": {
+        "b-app": 13,
+        "c-app": 5
+      }
+    },
+    {
+      "class": ".sh-grip",
+      "group": "浮层",
+      "when": "面板顶上那道短横 —— 在说「这是浮上来的一层，下面还有页面」",
+      "avoid": "它不可点，别挂手势",
+      "decl": {
+        "width": "72rpx",
+        "height": "8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "margin": "0 auto 28rpx"
+      },
+      "px": {
+        "width": "36px",
+        "height": "4px",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "margin": "0 auto 14px"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mask",
+      "group": "浮层",
+      "when": "浮层的遮罩：铺满、压 scrim 色。点它＝取消",
+      "avoid": "整屏的容器不是它，是件自己的 fixed 层",
+      "decl": {
+        "position": "absolute",
+        "inset": "0",
+        "background": "var(--sh-scrim)"
+      },
+      "px": {
+        "position": "absolute",
+        "inset": "0",
+        "background": "var(--sh-scrim)"
+      },
+      "usage": {
+        "b-app": 4,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-panel",
+      "group": "浮层",
+      "when": "贴底弹上来的面板：44rpx 上圆角、surface 底、自带安全区",
+      "avoid": "居中的对话框用 sh-dialog",
+      "decl": {
+        "position": "absolute",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "box-sizing": "border-box",
+        "--sh-panel-pad-x": "36rpx",
+        "background": "var(--sh-surface)",
+        "border-radius": "44rpx 44rpx 0 0",
+        "padding": "24rpx var(--sh-panel-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px))"
+      },
+      "px": {
+        "position": "absolute",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "box-sizing": "border-box",
+        "--sh-panel-pad-x": "18px",
+        "background": "var(--sh-surface)",
+        "border-radius": "22px 22px 0 0",
+        "padding": "12px var(--sh-panel-pad-x) calc(24px + env(safe-area-inset-bottom, 0px))"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-center",
+      "group": "行与列",
+      "when": "内容摆正中间的方块",
+      "avoid": "只要横向居中用 text-align",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "center"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "center"
+      },
+      "usage": {
+        "b-app": 27,
+        "c-app": 35
+      }
+    },
+    {
+      "class": ".sh-fill",
+      "group": "行与列",
+      "when": "占满剩余宽度并允许被压缩（`flex:1;min-width:0`）",
+      "avoid": "定宽的那一侧别挂",
+      "decl": {
+        "flex": "1",
+        "min-width": "0"
+      },
+      "px": {
+        "flex": "1",
+        "min-width": "0"
+      },
+      "usage": {
+        "b-app": 148,
+        "c-app": 88
+      }
+    },
+    {
+      "class": ".sh-hit",
+      "group": "行与列",
+      "when": "把点按面积撑到 88rpx 以上，而不改变它看上去的大小",
+      "avoid": "本来就够大的别挂",
+      "decl": {
+        "position": "relative"
+      },
+      "px": {
+        "position": "relative"
+      },
+      "usage": {
+        "b-app": 19,
+        "c-app": 17
+      }
+    },
+    {
+      "class": ".sh-row",
+      "group": "行与列",
+      "when": "一行之内的横排：图标 + 文字 + 右侧值，纵向居中，缝 16rpx",
+      "avoid": "会折行的一堆用 .sh-wrap",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "16rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "8px"
+      },
+      "usage": {
+        "b-app": 539,
+        "c-app": 191
+      }
+    },
+    {
+      "class": ".sh-row--baseline",
+      "group": "行与列",
+      "when": "两端对齐但按**基线**：左右字号不同时用它，两段字才坐在同一条线上",
+      "avoid": "字号一样就别加，center 更稳",
+      "decl": {
+        "align-items": "baseline"
+      },
+      "px": {
+        "align-items": "baseline"
+      },
+      "usage": {
+        "b-app": 33,
+        "c-app": 9
+      }
+    },
+    {
+      "class": ".sh-row--between",
+      "group": "行与列",
+      "when": "左右两端对齐，且左右**字号一样**",
+      "avoid": "字号不一样再叠 .sh-row--baseline",
+      "decl": {
+        "justify-content": "space-between"
+      },
+      "px": {
+        "justify-content": "space-between"
+      },
+      "usage": {
+        "b-app": 311,
+        "c-app": 94
+      }
+    },
+    {
+      "class": ".sh-row--divided",
+      "group": "行与列",
+      "when": "连排的行之间画一道发丝线（第一行不画）",
+      "avoid": "行与行之间要留白的用 .sh-cells",
+      "decl": {
+        "padding": "16rpx 0"
+      },
+      "px": {
+        "padding": "8px 0"
+      },
+      "usage": {
+        "b-app": 17,
+        "c-app": 7
+      }
+    },
+    {
+      "class": ".sh-row--top",
+      "group": "行与列",
+      "when": "两端对齐但顶对齐：右边的值会折成两行时用",
+      "avoid": "单行值用 .sh-row--between",
+      "decl": {
+        "align-items": "flex-start"
+      },
+      "px": {
+        "align-items": "flex-start"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 26
+      }
+    },
+    {
+      "class": ".sh-scrollx",
+      "group": "行与列",
+      "when": "横向滚动一排（隐藏滚动条）",
+      "avoid": "会折行的用 .sh-wrap",
+      "decl": {
+        "overflow-x": "auto",
+        "scrollbar-width": "none",
+        "-ms-overflow-style": "none"
+      },
+      "px": {
+        "overflow-x": "auto",
+        "scrollbar-width": "none",
+        "-ms-overflow-style": "none"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-seg",
+      "group": "行与列",
+      "when": "分段/筛选里的一格：弱色底、选中翻主色",
+      "avoid": "整块可选的卡用 sh-option",
+      "decl": {
+        "padding": "20rpx 28rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "26rpx"
+      },
+      "px": {
+        "padding": "10px 14px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "color": "var(--sh-ink)",
+        "font-size": "13px"
+      },
+      "usage": {
+        "b-app": 8,
+        "c-app": 5
+      }
+    },
+    {
+      "class": ".sh-seg--fill",
+      "group": "行与列",
+      "when": "分段格平分整行宽度",
+      "avoid": "个数不定时别用，会挤扁",
+      "decl": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "px": {
+        "flex": "1",
+        "text-align": "center"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-seg--off",
+      "group": "行与列",
+      "when": "分段格的不可选态：压暗且不响应",
+      "avoid": "—",
+      "decl": {
+        "opacity": "0.35"
+      },
+      "px": {
+        "opacity": "0.35"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-seg--on",
+      "group": "行与列",
+      "when": "分段格的选中态",
+      "avoid": "—",
+      "decl": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "px": {
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "font-weight": "600"
+      },
+      "usage": {
+        "b-app": 8,
+        "c-app": 5
+      }
+    },
+    {
+      "class": ".sh-wrap",
+      "group": "行与列",
+      "when": "会折行的一堆：标签组、筛选 chip 组、一排动作，缝 12rpx",
+      "avoid": "一行装得下的横排用 .sh-row",
+      "decl": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "gap": "12rpx"
+      },
+      "px": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "gap": "6px"
+      },
+      "usage": {
+        "b-app": 47,
+        "c-app": 17
+      }
+    },
+    {
+      "class": ".field",
+      "group": "表单",
+      "when": "字段之间的间距（B 端专有）",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "20rpx"
+      },
+      "px": {
+        "margin-top": "10px"
+      },
+      "usage": {
+        "b-app": 43,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".field__area",
+      "group": "表单",
+      "when": "多行输入",
+      "avoid": "—",
+      "decl": {
+        "width": "100%",
+        "box-sizing": "border-box",
+        "height": "140rpx",
+        "padding": "20rpx 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "font-size": "28rpx",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "width": "100%",
+        "box-sizing": "border-box",
+        "height": "70px",
+        "padding": "10px 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "font-size": "14px",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 6,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".field__head",
+      "group": "表单",
+      "when": "名目那一行（名目 + 右侧的计数或动作）",
+      "avoid": "—",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "12rpx"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "margin-bottom": "6px"
+      },
+      "usage": {
+        "b-app": 5,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".field__input",
+      "group": "表单",
+      "when": "单行输入",
+      "avoid": "—",
+      "decl": {
+        "height": "88rpx",
+        "padding": "0 24rpx",
+        "border-radius": "24rpx",
+        "background": "var(--sh-faint)",
+        "font-size": "28rpx",
+        "color": "var(--sh-ink)"
+      },
+      "px": {
+        "height": "44px",
+        "padding": "0 12px",
+        "border-radius": "12px",
+        "background": "var(--sh-faint)",
+        "font-size": "14px",
+        "color": "var(--sh-ink)"
+      },
+      "usage": {
+        "b-app": 70,
+        "c-app": 23
+      }
+    },
+    {
+      "class": ".field__label",
+      "group": "表单",
+      "when": "字段标签",
+      "avoid": "—",
+      "decl": {
+        "display": "block",
+        "font-size": "26rpx",
+        "color": "var(--sh-sub)",
+        "margin-bottom": "12rpx"
+      },
+      "px": {
+        "display": "block",
+        "font-size": "13px",
+        "color": "var(--sh-sub)",
+        "margin-bottom": "6px"
+      },
+      "usage": {
+        "b-app": 56,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-ph",
+      "group": "表单",
+      "when": "占位文字色。**必须显式给**：三端默认占位色各不相同",
+      "avoid": "要配 placeholder-style 一起用",
+      "decl": {
+        "color": "var(--sh-sub)"
+      },
+      "px": {
+        "color": "var(--sh-sub)"
+      },
+      "usage": {
+        "b-app": 2,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-searchbox",
+      "group": "表单",
+      "when": "搜索框，以及「点一下跳到搜索页」的假输入框。胶囊、88rpx 高",
+      "avoid": "真要收字的用 .field__input",
+      "decl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "12rpx",
+        "min-height": "88rpx",
+        "padding": "0 28rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-surface)"
+      },
+      "px": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "6px",
+        "min-height": "44px",
+        "padding": "0 14px",
+        "border-radius": "9999px",
+        "background": "var(--sh-surface)"
+      },
+      "usage": {
+        "b-app": 1,
+        "c-app": 2
+      }
+    },
+    {
+      "class": ".sh-mb-md",
+      "group": "间距",
+      "when": "下边距 28rpx",
+      "avoid": "同上",
+      "decl": {
+        "margin-bottom": "28rpx"
+      },
+      "px": {
+        "margin-bottom": "14px"
+      },
+      "usage": {
+        "b-app": 3,
+        "c-app": 0
+      }
+    },
+    {
+      "class": ".sh-mb-sm",
+      "group": "间距",
+      "when": "下边距 16rpx",
+      "avoid": "能用上边距就别用下边距 —— 两边都挂会叠",
+      "decl": {
+        "margin-bottom": "16rpx"
+      },
+      "px": {
+        "margin-bottom": "8px"
+      },
+      "usage": {
+        "b-app": 25,
+        "c-app": 1
+      }
+    },
+    {
+      "class": ".sh-mt-md",
+      "group": "间距",
+      "when": "上边距 28rpx：一个小节结束、另一个开始",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "28rpx"
+      },
+      "px": {
+        "margin-top": "14px"
+      },
+      "usage": {
+        "b-app": 13,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-mt-sm",
+      "group": "间距",
+      "when": "上边距 16rpx：同一组里两件东西之间",
+      "avoid": "—",
+      "decl": {
+        "margin-top": "16rpx"
+      },
+      "px": {
+        "margin-top": "8px"
+      },
+      "usage": {
+        "b-app": 98,
+        "c-app": 3
+      }
+    },
+    {
+      "class": ".sh-mt-xs",
+      "group": "间距",
+      "when": "上边距 8rpx：紧跟着上一行的小字",
+      "avoid": "块与块之间归 --sh-gap-block",
+      "decl": {
+        "margin-top": "8rpx"
+      },
+      "px": {
+        "margin-top": "4px"
+      },
+      "usage": {
+        "b-app": 18,
+        "c-app": 0
+      }
+    }
+  ],
+  "components": [
+    {
+      "name": "sh-actionbar",
+      "file": "packages/ui/src/components/sh-actionbar.vue",
+      "scope": "跨端",
+      "lines": 192,
+      "props": [
+        "pill?: \"plain\" | \"lead\"",
+        "tabbar?: boolean",
+        "pad?: number",
+        "dock?: boolean"
+      ],
+      "usage": {
+        "b-app": 34,
+        "c-app": 13,
+        "lib": 0
+      },
+      "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
+      "why": "—",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          24,
+          28
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "ab__pad"
+      ],
+      "rootDecl": {
+        "padding-bottom": "env(safe-area-inset-bottom, 0px)",
+        "box-sizing": "content-box"
+      }
+    },
+    {
+      "name": "sh-add",
+      "file": "packages/ui/src/components/sh-add.vue",
+      "scope": "跨端",
+      "lines": 113,
+      "props": [
+        "text: string",
+        "activeText?: string",
+        "active?: boolean",
+        "small?: boolean",
+        "flat?: boolean"
+      ],
+      "usage": {
+        "b-app": 11,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "＋ 加一项按钮",
+      "why": "收编自 goods-edit 与 my-specs 里**逐字节相同**的 `.btn-add`。`active` 是展开态：同一个按钮管开合",
+      "uses": {
+        "tiers": [
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          2,
+          4,
+          8,
+          16,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "add",
+        "sh-center"
+      ],
+      "rootDecl": {
+        "gap": "8rpx",
+        "box-sizing": "border-box",
+        "padding": "24rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary-tint)"
+      }
+    },
+    {
+      "name": "sh-check",
+      "file": "packages/ui/src/components/sh-check.vue",
+      "scope": "跨端",
+      "lines": 62,
+      "props": [
+        "modelValue: boolean",
+        "round?: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 8,
+        "c-app": 5,
+        "lib": 0
+      },
+      "note": "勾选框 / 单选点",
+      "why": "四页各画一个、**四种尺寸**（28/36/44/44）。勾用 `check` 图标 —— 那个图标是这次一起补进 icons.ts 的",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [
+          16
+        ],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "sh-center",
+        "ck"
+      ],
+      "rootDecl": {
+        "flex": "none",
+        "width": "44rpx",
+        "height": "44rpx",
+        "border-radius": "16rpx",
+        "border": "2rpx solid var(--sh-line)",
+        "background": "transparent"
+      }
+    },
+    {
+      "name": "sh-confirm",
+      "file": "packages/ui/src/components/sh-confirm.vue",
+      "scope": "跨端",
+      "lines": 37,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "确认弹层的壳",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": [
+          "sh-dialog"
+        ]
+      },
+      "rootClasses": [
+        "txt-sub",
+        "cf__hint"
+      ],
+      "rootDecl": {
+        "display": "block",
+        "margin-top": "12rpx",
+        "color": "var(--sh-sub)"
+      }
+    },
+    {
+      "name": "sh-cover",
+      "file": "packages/ui/src/components/sh-cover.vue",
+      "scope": "跨端",
+      "lines": 106,
+      "props": [
+        "src?: string",
+        "mode?: CoverMode",
+        "w?: ThumbWidth"
+      ],
+      "usage": {
+        "b-app": 5,
+        "c-app": 11,
+        "lib": 3
+      },
+      "note": "商品封面",
+      "why": "`cover` 字段二义：种子是 emoji、商家上传后是 COS URL。14 处渲染点都没分流过",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-center",
+        "cover"
+      ],
+      "rootDecl": {
+        "overflow": "hidden",
+        "flex-shrink": "0",
+        "border-radius": "24rpx"
+      }
+    },
+    {
+      "name": "sh-dialog",
+      "file": "packages/ui/src/components/sh-dialog.vue",
+      "scope": "跨端",
+      "lines": 78,
+      "props": [
+        "visible: boolean",
+        "title?: string",
+        "maskClosable?: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "居中对话框的外壳：遮罩 + 居中面板 + 可选标题 + 内容插槽 + 可选动作条",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          32,
+          40
+        ],
+        "radius": [
+          32
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-center",
+        "dlg"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-dialog)"
+      }
+    },
+    {
+      "name": "sh-empty",
+      "file": "packages/ui/src/components/sh-empty.vue",
+      "scope": "跨端",
+      "lines": 183,
+      "props": [
+        "text?: string",
+        "tip?: string",
+        "compact?: boolean",
+        "bare?: boolean",
+        "pending?: boolean",
+        "line?: boolean",
+        "failed?: boolean",
+        "failedText?: string"
+      ],
+      "usage": {
+        "b-app": 61,
+        "c-app": 35,
+        "lib": 1
+      },
+      "note": "空态",
+      "why": "抽出来不是因为重复，是**观感会漂**：曾在 27 个页面各写一份，padding 在 60/80/100rpx 之间随手取",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-quiet"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          28,
+          72
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "empty"
+      ],
+      "rootDecl": {
+        "text-align": "center",
+        "padding": "var(--sh-pad-empty, 72rpx) 24rpx"
+      }
+    },
+    {
+      "name": "sh-fab",
+      "file": "packages/ui/src/components/sh-fab.vue",
+      "scope": "跨端",
+      "lines": 42,
+      "props": [
+        "text: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "悬浮新建按钮",
+      "why": "贴右下角压在列表上。**只有一个调用点仍然收进来** —— 收的不是重复，是那一行 `bottom` 里的知识：抬到 tabBar 上方一指宽，否则想点新建却切了页",
+      "uses": {
+        "tiers": [
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          20
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "txt-strong",
+        "fab"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset-inline-end": "32rpx",
+        "bottom": "calc(var(--sh-tabbar-h, 124rpx) + 60rpx + env(safe-area-inset-bottom, 0px))",
+        "z-index": "var(--sh-z-fab)",
+        "padding": "20rpx 36rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "white-space": "nowrap",
+        "box-shadow": "var(--sh-shadow-float)"
+      }
+    },
+    {
+      "name": "sh-go",
+      "file": "packages/ui/src/components/sh-go.vue",
+      "scope": "跨端",
+      "lines": 58,
+      "props": [
+        "text?: string",
+        "quiet?: boolean"
+      ],
+      "usage": {
+        "b-app": 20,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-caption"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          4
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "go"
+      ],
+      "rootDecl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "4rpx"
+      }
+    },
+    {
+      "name": "sh-icon-btn",
+      "file": "packages/ui/src/components/sh-icon-btn.vue",
+      "scope": "跨端",
+      "lines": 65,
+      "props": [
+        "name: IconName",
+        "size?: number",
+        "box?: number",
+        "color?: string"
+      ],
+      "usage": {
+        "b-app": 10,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "图标按钮",
+      "why": "行尾的删除、弹层右上角的关闭、列表行上的编辑。收编的是**「文字当图标」**这件事 —— 两端曾有 11 处文字 ✕/×，其中 `store-scope` 用的还是 `×`(U+00D7)",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "sh-center",
+        "ib"
+      ],
+      "rootDecl": {
+        "flex": "none"
+      }
+    },
+    {
+      "name": "sh-icon",
+      "file": "packages/ui/src/components/sh-icon.vue",
+      "scope": "跨端",
+      "lines": 65,
+      "props": [
+        "name: IconName",
+        "size?: number",
+        "color?: string"
+      ],
+      "usage": {
+        "b-app": 121,
+        "c-app": 28,
+        "lib": 13
+      },
+      "note": "单色图标",
+      "why": "内联 SVG 转 CSS mask，颜色吃 var(--sh-*) —— 换肤零成本。**不用 emoji**：各系统字形不一且是彩色的",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "icon"
+      ],
+      "rootDecl": {
+        "display": "inline-block",
+        "flex-shrink": "0",
+        "-webkit-mask-repeat": "no-repeat",
+        "mask-repeat": "no-repeat",
+        "-webkit-mask-position": "center",
+        "mask-position": "center",
+        "-webkit-mask-size": "contain",
+        "mask-size": "contain"
+      }
+    },
+    {
+      "name": "sh-kv",
+      "file": "packages/ui/src/components/sh-kv.vue",
+      "scope": "跨端",
+      "lines": 67,
+      "props": [
+        "label: string",
+        "between?: boolean",
+        "keyWidth?: number",
+        "divided?: boolean"
+      ],
+      "usage": {
+        "b-app": 52,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "键值行：左边一个名目，右边它的值",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-row",
+        "kv"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "sh-option",
+      "file": "packages/ui/src/components/sh-option.vue",
+      "scope": "跨端",
+      "lines": 56,
+      "props": [
+        "selected?: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 5,
+        "c-app": 1,
+        "lib": 0
+      },
+      "note": "选项卡片",
+      "why": "整块可选，比 chip 重比按钮轻 —— 每个选项里通常还有一行说明",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          20
+        ],
+        "radius": [
+          16
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "opt"
+      ],
+      "rootDecl": {
+        "padding": "20rpx",
+        "border-radius": "16rpx",
+        "border": "2rpx solid var(--sh-line)",
+        "background": "transparent"
+      }
+    },
+    {
+      "name": "sh-pick",
+      "file": "packages/ui/src/components/sh-pick.vue",
+      "scope": "跨端",
+      "lines": 56,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "「选一项」弹层的壳",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "pick__row"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between",
+        "min-height": "88rpx",
+        "padding": "8rpx 0"
+      }
+    },
+    {
+      "name": "sh-prompt",
+      "file": "packages/ui/src/components/sh-prompt.vue",
+      "scope": "跨端",
+      "lines": 79,
+      "props": [],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "输入弹层的壳",
+      "why": "页面不摆它 —— 只 `await prompt({...})`。由 sh-scaffold 无条件渲染，因为那段业务代码未必知道自己所在的页面摆没摆过弹层",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "pr"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-dialog)"
+      }
+    },
+    {
+      "name": "sh-rating",
+      "file": "packages/ui/src/components/sh-rating.vue",
+      "scope": "跨端",
+      "lines": 57,
+      "props": [
+        "value: number",
+        "size?: number",
+        "showValue?: boolean"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 3,
+        "lib": 0
+      },
+      "note": "评分",
+      "why": "底层灰星 + 上层主色星按百分比裁切 —— 半星图标只能表达 0.5 粒度，4.3 会被抹成 4.5",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          12
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "rating"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "gap": "12rpx"
+      }
+    },
+    {
+      "name": "sh-savebar",
+      "file": "packages/ui/src/components/sh-savebar.vue",
+      "scope": "跨端",
+      "lines": 76,
+      "props": [
+        "visible: boolean",
+        "text: string",
+        "discardText: string",
+        "saveText: string"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "底部未保存条",
+      "why": "收编自 store 与 store-scope 里**逐字节相同**的 `.savebar`。自带流内占位 —— 收编前两页都被它盖住了最后一段内容",
+      "uses": {
+        "tiers": [
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "bar__pad"
+      ],
+      "rootDecl": {
+        "height": "calc(140rpx + env(safe-area-inset-bottom, 0px))"
+      }
+    },
+    {
+      "name": "sh-scaffold",
+      "file": "packages/ui/src/components/sh-scaffold.vue",
+      "scope": "跨端",
+      "lines": 347,
+      "props": [
+        "padded?: boolean",
+        "titleKey?: string",
+        "titleSuffix?: string",
+        "tab?: string",
+        "denied?: boolean",
+        "deniedText?: string",
+        "failed?: boolean",
+        "failedText?: string",
+        "pending?: boolean",
+        "immersive?: boolean"
+      ],
+      "usage": {
+        "b-app": 84,
+        "c-app": 39,
+        "lib": 1
+      },
+      "note": "页面外壳",
+      "why": "**每页根元素必须是它** —— 否则小程序端换肤 / RTL / 三语标题全不生效",
+      "uses": {
+        "tiers": [
+          "txt-sub",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          28,
+          40,
+          88,
+          124,
+          160
+        ],
+        "radius": [],
+        "deps": [
+          "sh-confirm",
+          "sh-empty",
+          "sh-icon",
+          "sh-pick",
+          "sh-prompt",
+          "sh-scaffold",
+          "sh-tabbar"
+        ]
+      },
+      "rootClasses": [
+        "sh-root",
+        "sh-frame"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "sh-section",
+      "file": "packages/ui/src/components/sh-section.vue",
+      "scope": "跨端",
+      "lines": 49,
+      "props": [
+        "title: string",
+        "pad?: boolean"
+      ],
+      "usage": {
+        "b-app": 22,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "卡内标题行",
+      "why": "收编自 goods-edit 与 sku-identity **逐字节相同**的 `.sec`（8 处调用点）。右侧动作直接进插槽，**不套壳** —— `.sec` 是 space-between，多一层就把「三个孩子摊开」变成「两组左右分」",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          24
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sec"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "align-items": "center",
+        "justify-content": "space-between"
+      }
+    },
+    {
+      "name": "sh-sheet",
+      "file": "packages/ui/src/components/sh-sheet.vue",
+      "scope": "跨端",
+      "lines": 169,
+      "props": [
+        "visible: boolean",
+        "title: string",
+        "hint?: string",
+        "stacked?: boolean",
+        "flush?: boolean"
+      ],
+      "usage": {
+        "b-app": 22,
+        "c-app": 11,
+        "lib": 1
+      },
+      "note": "底部弹层",
+      "why": "不用 uni.showModal（字不归我们管）、不做页内展开（会把下文顶走）",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          36
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon-btn"
+        ]
+      },
+      "rootClasses": [
+        "sheet"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-sheet)"
+      }
+    },
+    {
+      "name": "sh-stat",
+      "file": "packages/ui/src/components/sh-stat.vue",
+      "scope": "跨端",
+      "lines": 131,
+      "props": [
+        "items: readonly StatItem[]",
+        "boxed?: boolean",
+        "panel?: boolean",
+        "active?: string"
+      ],
+      "usage": {
+        "b-app": 14,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "数字格",
+      "why": "几个大数一排，每格一句小标签。收编自 5 页 4 种档位（44/700 · 40/700 · 40/600 · 32/600）",
+      "uses": {
+        "tiers": [
+          "txt-display"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          20
+        ],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "st"
+      ],
+      "rootDecl": {
+        "display": "grid",
+        "gap": "12rpx"
+      }
+    },
+    {
+      "name": "sh-stepper",
+      "file": "packages/ui/src/components/sh-stepper.vue",
+      "scope": "跨端",
+      "lines": 111,
+      "props": [
+        "modelValue: number",
+        "min?: number",
+        "max?: number",
+        "editable?: boolean"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 4,
+        "lib": 0
+      },
+      "note": "数量步进器：减 · 数 · 加，装在一枚弱色药丸里",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "stepper",
+        "sh-row"
+      ],
+      "rootDecl": {
+        "flex": "none",
+        "gap": "8rpx",
+        "padding": "8rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)"
+      }
+    },
+    {
+      "name": "sh-switch",
+      "file": "packages/ui/src/components/sh-switch.vue",
+      "scope": "跨端",
+      "lines": 80,
+      "props": [
+        "modelValue: boolean",
+        "disabled?: boolean"
+      ],
+      "usage": {
+        "b-app": 10,
+        "c-app": 2,
+        "lib": 0
+      },
+      "note": "开关",
+      "why": "三页各画一个，**三个数没有一个对得上**（宽 84/88、圆角 胶囊/24rpx、位移 40/42/46）。全 B 端零处原生 `&lt;switch&gt;`",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sw"
+      ],
+      "rootDecl": {
+        "position": "relative",
+        "flex": "none",
+        "width": "88rpx",
+        "height": "48rpx",
+        "border-radius": "9999px",
+        "background": "var(--sh-faint)",
+        "transition": "background var(--sh-t-fast) ease"
+      }
+    },
+    {
+      "name": "sh-tabbar",
+      "file": "packages/ui/src/components/sh-tabbar.vue",
+      "scope": "跨端",
+      "lines": 146,
+      "props": [
+        "active: string"
+      ],
+      "usage": {
+        "b-app": 0,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "自定义底部菜单",
+      "why": "原生 tabBar 字号锁死、不吃 CSS 变量、不吃 i18n，三件事自定义之后自然解决",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "tabbar"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "left": "0",
+        "right": "0",
+        "bottom": "0",
+        "max-width": "var(--sh-app-max)",
+        "margin": "0 auto",
+        "z-index": "var(--sh-z-tabbar)",
+        "display": "flex",
+        "background": "var(--sh-surface)",
+        "border-top": "var(--sh-hairline)",
+        "box-shadow": "var(--sh-shadow-up)",
+        "padding": "16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px))"
+      }
+    },
+    {
+      "name": "sh-tabs",
+      "file": "packages/ui/src/components/sh-tabs.vue",
+      "scope": "跨端",
+      "lines": 99,
+      "props": [
+        "items: readonly { key: string",
+        "label: string }[]",
+        "active: string",
+        "line?: boolean"
+      ],
+      "usage": {
+        "b-app": 16,
+        "c-app": 13,
+        "lib": 0
+      },
+      "note": "筛选条",
+      "why": "抽之前两端有两套实现（chip 横排 / 方块），同一个产品里两种筛选条",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-quiet",
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          20,
+          48
+        ],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "tabs",
+        "tabs--line"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "gap": "12rpx",
+        "margin-bottom": "var(--sh-gap-tabs, 20rpx)"
+      }
+    },
+    {
+      "name": "sh-theme-sheet",
+      "file": "packages/ui/src/components/sh-theme-sheet.vue",
+      "scope": "跨端",
+      "lines": 233,
+      "props": [
+        "visible: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 1,
+        "lib": 0
+      },
+      "note": "外观面板",
+      "why": "9 套皮肤 × 明暗 × 语言，选中即时全局生效",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-sub",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          16,
+          24,
+          32,
+          44,
+          52
+        ],
+        "radius": [
+          24
+        ],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "sheet"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "var(--sh-z-sheet)"
+      }
+    },
+    {
+      "name": "sh-uploader",
+      "file": "packages/ui/src/components/sh-uploader.vue",
+      "scope": "跨端",
+      "lines": 134,
+      "props": [
+        "list: readonly string[]",
+        "max?: number",
+        "width?: number",
+        "height?: number",
+        "uploading?: boolean",
+        "removable?: boolean",
+        "badge?: string"
+      ],
+      "usage": {
+        "b-app": 5,
+        "c-app": 2,
+        "lib": 0
+      },
+      "note": "图片格",
+      "why": "已传的缩略图排一行，末尾一个「＋」。收编自 apply / payment / qualifications / goods-edit 四份",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-display"
+        ],
+        "rawFontSize": [
+          48
+        ],
+        "spacing": [
+          2,
+          12
+        ],
+        "radius": [
+          16
+        ],
+        "deps": [
+          "sh-cover",
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "sh-wrap",
+        "up"
+      ],
+      "rootDecl": {
+        "margin-top": "12rpx"
+      }
+    },
+    {
+      "name": "app-overlay",
+      "file": "b-app/src/components/app-overlay.vue",
+      "scope": "B 端",
+      "lines": 9,
+      "props": [],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 1
+      },
+      "note": "应用常驻层",
+      "why": "B 端是空壳，但**不能删** —— sh-scaffold 无条件渲染它",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-audience-picker",
+      "file": "b-app/src/components/biz/biz-audience-picker.vue",
+      "scope": "B 端",
+      "lines": 233,
+      "props": [
+        "visible: boolean",
+        "modelValue: AudienceItem[]",
+        "forActivity?: boolean",
+        "scene?: string"
+      ],
+      "usage": {
+        "b-app": 3,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "选人面板（原型 m12 / m13）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-primary",
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "sh-cells"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-batch-tag-sheet",
+      "file": "b-app/src/components/biz/biz-batch-tag-sheet.vue",
+      "scope": "B 端",
+      "lines": 139,
+      "props": [
+        "visible: boolean",
+        "memberNos?: string[]",
+        "rule?: MemberSegmentRule",
+        "scopeStoreNo?: string",
+        "count: number"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "批量打 / 去一个标签（原型 m06；名单「对这批人」与效果页「下单的人打标签」两处用）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-primary"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "sh-cells"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-category-sheet",
+      "file": "b-app/src/components/biz/biz-category-sheet.vue",
+      "scope": "B 端",
+      "lines": 124,
+      "props": [
+        "visible: boolean",
+        "storeNo: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "调整经营类目 —— 经营类目页与建商品页共用的底部面板（TDD-门店经营类目 §4.2）",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-ink",
+          "txt-sub",
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-option",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "sh-mt-md"
+      ],
+      "rootDecl": {}
+    },
+    {
+      "name": "biz-item-picker",
+      "file": "b-app/src/components/biz/biz-item-picker.vue",
+      "scope": "B 端",
+      "lines": 290,
+      "props": [
+        "visible: boolean",
+        "title: string",
+        "items: StockBalance[]",
+        "picked?: string[]",
+        "qtyLabel?: (b: StockBalance) => string",
+        "failed?: boolean",
+        "autoScan?: boolean"
+      ],
+      "usage": {
+        "b-app": 4,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "挑货 —— 开单时选货那一步，进货 / 报损 / 调拨三处共用",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          20
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "field__input",
+        "pick__search"
+      ],
+      "rootDecl": {
+        "margin-bottom": "12rpx"
+      }
+    },
+    {
+      "name": "biz-pickup-sheet",
+      "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
+      "scope": "B 端",
+      "lines": 269,
+      "props": [
+        "visible: boolean",
+        "storeNo: string",
+        "selected: string[]"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "自提点选择弹层",
+      "why": "自带 mask 与 panel，**没走 sh-sheet**",
+      "uses": {
+        "tiers": [
+          "txt-caption",
+          "txt-primary",
+          "txt-quiet",
+          "txt-strong",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          4,
+          8,
+          12,
+          16,
+          20,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "biz-time-range",
+          "sh-check",
+          "sh-icon",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "txt-caption",
+        "hint"
+      ],
+      "rootDecl": {
+        "display": "block",
+        "padding": "8rpx 32rpx",
+        "color": "var(--sh-sub)"
+      }
+    },
+    {
+      "name": "biz-region-picker",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "scope": "B 端",
+      "lines": 1543,
+      "props": [
+        "visible: boolean",
+        "areas: ServiceArea[]"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "经营范围选择器",
+      "why": "省市区 / 小区 / 村三级 + 提报。全项目最大的单文件组件",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-bold",
+          "txt-caption",
+          "txt-ink",
+          "txt-primary",
+          "txt-quiet",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          2,
+          4,
+          8,
+          12,
+          16,
+          20,
+          24,
+          28
+        ],
+        "radius": [
+          16,
+          24
+        ],
+        "deps": [
+          "sh-check",
+          "sh-icon",
+          "sh-icon-btn",
+          "sh-sheet",
+          "sh-tabs"
+        ]
+      },
+      "rootClasses": [
+        "sh-row",
+        "sheet__sel"
+      ],
+      "rootDecl": {
+        "gap": "8rpx"
+      }
+    },
+    {
+      "name": "biz-store-tag",
+      "file": "b-app/src/components/biz/biz-store-tag.vue",
+      "scope": "B 端",
+      "lines": 102,
+      "props": [
+        "readonly?: boolean"
+      ],
+      "usage": {
+        "b-app": 8,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "当前门店胶囊",
+      "why": "可点 = 门店管理入口；readonly = 只说清这屏属于哪家店",
+      "uses": {
+        "tiers": [
+          "txt-bold",
+          "txt-ink",
+          "txt-sub"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          16
+        ],
+        "radius": [],
+        "deps": [
+          "sh-go",
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "sh-chip",
+        "tag"
+      ],
+      "rootDecl": {
+        "display": "inline-flex",
+        "align-items": "center",
+        "gap": "12rpx",
+        "margin-bottom": "16rpx"
+      }
+    },
+    {
+      "name": "biz-supplier-picker",
+      "file": "b-app/src/components/biz/biz-supplier-picker.vue",
+      "scope": "B 端",
+      "lines": 127,
+      "props": [
+        "visible: boolean",
+        "items: Supplier[]",
+        "picked?: string",
+        "busy?: boolean"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "挑供应商 —— 开进货单时选「这批货从哪来」",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-primary"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          16,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "sh-empty",
+          "sh-sheet"
+        ]
+      },
+      "rootClasses": [
+        "field__input",
+        "sup__search"
+      ],
+      "rootDecl": {
+        "margin-bottom": "12rpx"
+      }
+    },
+    {
+      "name": "biz-time-range",
+      "file": "b-app/src/components/biz/biz-time-range.vue",
+      "scope": "B 端",
+      "lines": 75,
+      "props": [
+        "modelValue: string",
+        "clearable?: boolean"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "时段输入",
+      "why": "不让人手敲 —— 手敲的结果是全角横线、少个冒号、写成「6点半到9点」",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-quiet"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          12,
+          24
+        ],
+        "radius": [
+          24
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-row",
+        "tr"
+      ],
+      "rootDecl": {
+        "gap": "12rpx"
+      }
+    }
+  ],
+  "pages": [
+    {
+      "app": "b-app",
+      "page": "activities",
+      "key": "b-app/activities",
+      "file": "b-app/src/pages/activities/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 16,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "activity-edit",
+      "key": "b-app/activity-edit",
+      "file": "b-app/src/pages/activity-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-stat",
+        "biz-audience-picker"
+      ],
+      "libClassHits": 461,
+      "localSelectors": 12,
+      "localCssLines": 42,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "after-sale",
+      "key": "b-app/after-sale",
+      "file": "b-app/src/pages/after-sale/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 57,
+      "localSelectors": 15,
+      "localCssLines": 53,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "apply",
+      "key": "b-app/apply",
+      "file": "b-app/src/pages/apply/index.vue",
+      "components": [
+        "sh-add",
+        "sh-check",
+        "sh-empty",
+        "sh-icon",
+        "sh-option",
+        "sh-scaffold",
+        "sh-section",
+        "sh-switch",
+        "sh-uploader"
+      ],
+      "libClassHits": 113,
+      "localSelectors": 26,
+      "localCssLines": 82,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "coupon",
+      "key": "b-app/coupon",
+      "file": "b-app/src/pages/coupon/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 54,
+      "localSelectors": 3,
+      "localCssLines": 11,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "coupon-edit",
+      "key": "b-app/coupon-edit",
+      "file": "b-app/src/pages/coupon-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 193,
+      "localSelectors": 10,
+      "localCssLines": 33,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "coupon-issues",
+      "key": "b-app/coupon-issues",
+      "file": "b-app/src/pages/coupon-issues/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 32,
+      "localSelectors": 6,
+      "localCssLines": 24,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "coupon-send",
+      "key": "b-app/coupon-send",
+      "file": "b-app/src/pages/coupon-send/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-icon",
+        "sh-scaffold",
+        "biz-audience-picker"
+      ],
+      "libClassHits": 49,
+      "localSelectors": 4,
+      "localCssLines": 14,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "coupons",
+      "key": "b-app/coupons",
+      "file": "b-app/src/pages/coupons/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "cross-store",
+      "key": "b-app/cross-store",
+      "file": "b-app/src/pages/cross-store/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-rating",
+        "sh-scaffold"
+      ],
+      "libClassHits": 55,
+      "localSelectors": 28,
+      "localCssLines": 98,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "customers",
+      "key": "b-app/customers",
+      "file": "b-app/src/pages/customers/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat",
+        "biz-batch-tag-sheet"
+      ],
+      "libClassHits": 43,
+      "localSelectors": 6,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "delivery",
+      "key": "b-app/delivery",
+      "file": "b-app/src/pages/delivery/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "biz-store-tag"
+      ],
+      "libClassHits": 48,
+      "localSelectors": 8,
+      "localCssLines": 25,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "deposit",
+      "key": "b-app/deposit",
+      "file": "b-app/src/pages/deposit/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 41,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "entities",
+      "key": "b-app/entities",
+      "file": "b-app/src/pages/entities/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 11,
+      "localCssLines": 41,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "entity-detail",
+      "key": "b-app/entity-detail",
+      "file": "b-app/src/pages/entity-detail/index.vue",
+      "components": [
+        "sh-go",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 8,
+      "localCssLines": 31,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "goods-edit",
+      "key": "b-app/goods-edit",
+      "file": "b-app/src/pages/goods-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-add",
+        "sh-cover",
+        "sh-go",
+        "sh-icon-btn",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section",
+        "sh-sheet",
+        "sh-switch",
+        "sh-uploader"
+      ],
+      "libClassHits": 341,
+      "localSelectors": 73,
+      "localCssLines": 316,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "goods-list",
+      "key": "b-app/goods-list",
+      "file": "b-app/src/pages/goods-list/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-empty",
+        "sh-fab",
+        "sh-icon-btn",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 53,
+      "localSelectors": 20,
+      "localCssLines": 86,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "goods-publish",
+      "key": "b-app/goods-publish",
+      "file": "b-app/src/pages/goods-publish/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 7,
+      "localCssLines": 24,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "group",
+      "key": "b-app/group",
+      "file": "b-app/src/pages/group/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 44,
+      "localSelectors": 7,
+      "localCssLines": 34,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "group-open",
+      "key": "b-app/group-open",
+      "file": "b-app/src/pages/group-open/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 70,
+      "localSelectors": 3,
+      "localCssLines": 11,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "groups",
+      "key": "b-app/groups",
+      "file": "b-app/src/pages/groups/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "home",
+      "key": "b-app/home",
+      "file": "b-app/src/pages/home/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat",
+        "biz-store-tag"
+      ],
+      "libClassHits": 50,
+      "localSelectors": 20,
+      "localCssLines": 84,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "income",
+      "key": "b-app/income",
+      "file": "b-app/src/pages/income/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 93,
+      "localSelectors": 7,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "invoice",
+      "key": "b-app/invoice",
+      "file": "b-app/src/pages/invoice/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 52,
+      "localSelectors": 3,
+      "localCssLines": 11,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "locations",
+      "key": "b-app/locations",
+      "file": "b-app/src/pages/locations/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 14,
+      "localSelectors": 7,
+      "localCssLines": 22,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "login",
+      "key": "b-app/login",
+      "file": "b-app/src/pages/login/index.vue",
+      "components": [
+        "sh-check",
+        "sh-scaffold"
+      ],
+      "libClassHits": 31,
+      "localSelectors": 18,
+      "localCssLines": 71,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "marketing",
+      "key": "b-app/marketing",
+      "file": "b-app/src/pages/marketing/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 57,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "me",
+      "key": "b-app/me",
+      "file": "b-app/src/pages/me/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold",
+        "sh-theme-sheet"
+      ],
+      "libClassHits": 81,
+      "localSelectors": 8,
+      "localCssLines": 34,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-add",
+      "key": "b-app/member-add",
+      "file": "b-app/src/pages/member-add/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 5,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-detail",
+      "key": "b-app/member-detail",
+      "file": "b-app/src/pages/member-detail/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 65,
+      "localSelectors": 7,
+      "localCssLines": 26,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-reach",
+      "key": "b-app/member-reach",
+      "file": "b-app/src/pages/member-reach/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat",
+        "biz-audience-picker"
+      ],
+      "libClassHits": 40,
+      "localSelectors": 6,
+      "localCssLines": 23,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-segment",
+      "key": "b-app/member-segment",
+      "file": "b-app/src/pages/member-segment/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-segments",
+      "key": "b-app/member-segments",
+      "file": "b-app/src/pages/member-segments/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 3,
+      "localCssLines": 13,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-settings",
+      "key": "b-app/member-settings",
+      "file": "b-app/src/pages/member-settings/index.vue",
+      "components": [
+        "sh-kv",
+        "sh-option",
+        "sh-scaffold",
+        "sh-switch"
+      ],
+      "libClassHits": 31,
+      "localSelectors": 4,
+      "localCssLines": 17,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-tag",
+      "key": "b-app/member-tag",
+      "file": "b-app/src/pages/member-tag/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 2,
+      "localCssLines": 8,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "member-tags",
+      "key": "b-app/member-tags",
+      "file": "b-app/src/pages/member-tags/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 24,
+      "localSelectors": 3,
+      "localCssLines": 12,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "messages",
+      "key": "b-app/messages",
+      "file": "b-app/src/pages/messages/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 9,
+      "localCssLines": 37,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "my-specs",
+      "key": "b-app/my-specs",
+      "file": "b-app/src/pages/my-specs/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-icon-btn",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-section",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 64,
+      "localSelectors": 43,
+      "localCssLines": 157,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "offline-sale",
+      "key": "b-app/offline-sale",
+      "file": "b-app/src/pages/offline-sale/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-add",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-section",
+        "biz-item-picker",
+        "biz-store-tag"
+      ],
+      "libClassHits": 37,
+      "localSelectors": 6,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "order",
+      "key": "b-app/order",
+      "file": "b-app/src/pages/order/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-dialog",
+        "sh-go",
+        "sh-scaffold"
+      ],
+      "libClassHits": 156,
+      "localSelectors": 19,
+      "localCssLines": 77,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "orders",
+      "key": "b-app/orders",
+      "file": "b-app/src/pages/orders/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 18,
+      "localSelectors": 5,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "payment",
+      "key": "b-app/payment",
+      "file": "b-app/src/pages/payment/index.vue",
+      "components": [
+        "sh-kv",
+        "sh-scaffold",
+        "sh-uploader"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 19,
+      "localCssLines": 66,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "payout-account",
+      "key": "b-app/payout-account",
+      "file": "b-app/src/pages/payout-account/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 43,
+      "localSelectors": 6,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "period",
+      "key": "b-app/period",
+      "file": "b-app/src/pages/period/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 48,
+      "localSelectors": 5,
+      "localCssLines": 20,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "periods",
+      "key": "b-app/periods",
+      "file": "b-app/src/pages/periods/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 16,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "picking",
+      "key": "b-app/picking",
+      "file": "b-app/src/pages/picking/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-cover",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 30,
+      "localSelectors": 7,
+      "localCssLines": 28,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "plan",
+      "key": "b-app/plan",
+      "file": "b-app/src/pages/plan/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 9,
+      "localCssLines": 36,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "platform-activities",
+      "key": "b-app/platform-activities",
+      "file": "b-app/src/pages/platform-activities/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 9,
+      "localSelectors": 1,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "platform-activity-apply",
+      "key": "b-app/platform-activity-apply",
+      "file": "b-app/src/pages/platform-activity-apply/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet"
+      ],
+      "libClassHits": 90,
+      "localSelectors": 5,
+      "localCssLines": 18,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "points",
+      "key": "b-app/points",
+      "file": "b-app/src/pages/points/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-switch"
+      ],
+      "libClassHits": 27,
+      "localSelectors": 3,
+      "localCssLines": 13,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "points-records",
+      "key": "b-app/points-records",
+      "file": "b-app/src/pages/points-records/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 22,
+      "localSelectors": 2,
+      "localCssLines": 2,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "purchase-edit",
+      "key": "b-app/purchase-edit",
+      "file": "b-app/src/pages/purchase-edit/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-add",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "biz-item-picker",
+        "biz-supplier-picker"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 12,
+      "localCssLines": 46,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "qualifications",
+      "key": "b-app/qualifications",
+      "file": "b-app/src/pages/qualifications/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-uploader"
+      ],
+      "libClassHits": 54,
+      "localSelectors": 12,
+      "localCssLines": 44,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "quotes",
+      "key": "b-app/quotes",
+      "file": "b-app/src/pages/quotes/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 14,
+      "localCssLines": 57,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "reach-task",
+      "key": "b-app/reach-task",
+      "file": "b-app/src/pages/reach-task/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-section",
+        "biz-batch-tag-sheet"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 11,
+      "localCssLines": 45,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "reach-tasks",
+      "key": "b-app/reach-tasks",
+      "file": "b-app/src/pages/reach-tasks/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 4,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "reviews",
+      "key": "b-app/reviews",
+      "file": "b-app/src/pages/reviews/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-rating",
+        "sh-scaffold"
+      ],
+      "libClassHits": 44,
+      "localSelectors": 17,
+      "localCssLines": 81,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "role-detail",
+      "key": "b-app/role-detail",
+      "file": "b-app/src/pages/role-detail/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 23,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "schedule",
+      "key": "b-app/schedule",
+      "file": "b-app/src/pages/schedule/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 36,
+      "localSelectors": 3,
+      "localCssLines": 12,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "settle",
+      "key": "b-app/settle",
+      "file": "b-app/src/pages/settle/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 109,
+      "localSelectors": 14,
+      "localCssLines": 51,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "ship-settings",
+      "key": "b-app/ship-settings",
+      "file": "b-app/src/pages/ship-settings/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-savebar",
+        "sh-scaffold",
+        "biz-store-tag"
+      ],
+      "libClassHits": 74,
+      "localSelectors": 3,
+      "localCssLines": 10,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "sku-identity",
+      "key": "b-app/sku-identity",
+      "file": "b-app/src/pages/sku-identity/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-stat"
+      ],
+      "libClassHits": 37,
+      "localSelectors": 10,
+      "localCssLines": 32,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "staff",
+      "key": "b-app/staff",
+      "file": "b-app/src/pages/staff/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 60,
+      "localSelectors": 8,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "staff-detail",
+      "key": "b-app/staff-detail",
+      "file": "b-app/src/pages/staff-detail/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 6,
+      "localCssLines": 20,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "statement",
+      "key": "b-app/statement",
+      "file": "b-app/src/pages/statement/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 45,
+      "localSelectors": 2,
+      "localCssLines": 8,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stats",
+      "key": "b-app/stats",
+      "file": "b-app/src/pages/stats/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-rating",
+        "sh-scaffold",
+        "biz-store-tag"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 8,
+      "localCssLines": 32,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock",
+      "key": "b-app/stock",
+      "file": "b-app/src/pages/stock/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-go",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-stat",
+        "sh-tabs"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 20,
+      "localCssLines": 78,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-align",
+      "key": "b-app/stock-align",
+      "file": "b-app/src/pages/stock-align/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 17,
+      "localSelectors": 1,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-check",
+      "key": "b-app/stock-check",
+      "file": "b-app/src/pages/stock-check/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 57,
+      "localSelectors": 8,
+      "localCssLines": 29,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-cross",
+      "key": "b-app/stock-cross",
+      "file": "b-app/src/pages/stock-cross/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 6,
+      "localCssLines": 23,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-detail",
+      "key": "b-app/stock-detail",
+      "file": "b-app/src/pages/stock-detail/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section",
+        "sh-stat"
+      ],
+      "libClassHits": 26,
+      "localSelectors": 11,
+      "localCssLines": 42,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-docs",
+      "key": "b-app/stock-docs",
+      "file": "b-app/src/pages/stock-docs/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 25,
+      "localSelectors": 11,
+      "localCssLines": 43,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-out",
+      "key": "b-app/stock-out",
+      "file": "b-app/src/pages/stock-out/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-add",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "biz-item-picker",
+        "biz-store-tag"
+      ],
+      "libClassHits": 33,
+      "localSelectors": 9,
+      "localCssLines": 37,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-report",
+      "key": "b-app/stock-report",
+      "file": "b-app/src/pages/stock-report/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-section"
+      ],
+      "libClassHits": 31,
+      "localSelectors": 8,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-settings",
+      "key": "b-app/stock-settings",
+      "file": "b-app/src/pages/stock-settings/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-go",
+        "sh-scaffold",
+        "sh-section",
+        "sh-switch"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 3,
+      "localCssLines": 14,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "store",
+      "key": "b-app/store",
+      "file": "b-app/src/pages/store/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-savebar",
+        "sh-scaffold",
+        "sh-uploader",
+        "biz-store-tag",
+        "biz-time-range"
+      ],
+      "libClassHits": 47,
+      "localSelectors": 11,
+      "localCssLines": 44,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "store-categories",
+      "key": "b-app/store-categories",
+      "file": "b-app/src/pages/store-categories/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-switch",
+        "biz-category-sheet"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 5,
+      "localCssLines": 17,
+      "rolled": [
+        {
+          "id": "optcard",
+          "label": "选项卡片",
+          "lib": null,
+          "rule": "名册：store-categories .opt（逐处核过）",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "app": "b-app",
+      "page": "store-notice",
+      "key": "b-app/store-notice",
+      "file": "b-app/src/pages/store-notice/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-icon-btn",
+        "sh-scaffold"
+      ],
+      "libClassHits": 29,
+      "localSelectors": 13,
+      "localCssLines": 49,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "store-pick",
+      "key": "b-app/store-pick",
+      "file": "b-app/src/pages/store-pick/index.vue",
+      "components": [
+        "sh-check",
+        "sh-scaffold"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 10,
+      "localCssLines": 34,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "store-scope",
+      "key": "b-app/store-scope",
+      "file": "b-app/src/pages/store-scope/index.vue",
+      "components": [
+        "sh-check",
+        "sh-go",
+        "sh-icon-btn",
+        "sh-icon",
+        "sh-savebar",
+        "sh-scaffold",
+        "sh-switch",
+        "biz-pickup-sheet",
+        "biz-region-picker",
+        "biz-store-tag"
+      ],
+      "libClassHits": 100,
+      "localSelectors": 26,
+      "localCssLines": 100,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stores",
+      "key": "b-app/stores",
+      "file": "b-app/src/pages/stores/index.vue",
+      "components": [
+        "sh-option",
+        "sh-scaffold"
+      ],
+      "libClassHits": 74,
+      "localSelectors": 24,
+      "localCssLines": 92,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "suppliers",
+      "key": "b-app/suppliers",
+      "file": "b-app/src/pages/suppliers/index.vue",
+      "components": [
+        "sh-add",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 2,
+      "localCssLines": 8,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "transfer",
+      "key": "b-app/transfer",
+      "file": "b-app/src/pages/transfer/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-add",
+        "sh-empty",
+        "sh-go",
+        "sh-icon",
+        "sh-kv",
+        "sh-scaffold",
+        "sh-sheet",
+        "biz-item-picker"
+      ],
+      "libClassHits": 64,
+      "localSelectors": 20,
+      "localCssLines": 80,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "verify",
+      "key": "b-app/verify",
+      "file": "b-app/src/pages/verify/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 118,
+      "localSelectors": 31,
+      "localCssLines": 112,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "address",
+      "key": "c-app/address",
+      "file": "c-app/src/pages/address/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 1,
+      "localSelectors": 1,
+      "localCssLines": 5,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "address-edit",
+      "key": "c-app/address-edit",
+      "file": "c-app/src/pages/address-edit/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "address-pick",
+      "key": "c-app/address-pick",
+      "file": "c-app/src/pages/address-pick/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 53,
+      "localSelectors": 14,
+      "localCssLines": 48,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "after-sale",
+      "key": "c-app/after-sale",
+      "file": "c-app/src/pages/after-sale/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-option",
+        "sh-scaffold",
+        "sh-uploader"
+      ],
+      "libClassHits": 28,
+      "localSelectors": 17,
+      "localCssLines": 75,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "cards",
+      "key": "c-app/cards",
+      "file": "c-app/src/pages/cards/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 17,
+      "localSelectors": 7,
+      "localCssLines": 35,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "cart",
+      "key": "c-app/cart",
+      "file": "c-app/src/pages/cart/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-stepper"
+      ],
+      "libClassHits": 68,
+      "localSelectors": 20,
+      "localCssLines": 79,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "category",
+      "key": "c-app/category",
+      "file": "c-app/src/pages/category/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 1,
+      "localCssLines": 3,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "city-pick",
+      "key": "c-app/city-pick",
+      "file": "c-app/src/pages/city-pick/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 21,
+      "localSelectors": 4,
+      "localCssLines": 13,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "coupon-code",
+      "key": "c-app/coupon-code",
+      "file": "c-app/src/pages/coupon-code/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 4,
+      "localCssLines": 16,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "coupons",
+      "key": "c-app/coupons",
+      "file": "c-app/src/pages/coupons/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 1,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "favorites",
+      "key": "c-app/favorites",
+      "file": "c-app/src/pages/favorites/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 2,
+      "localCssLines": 7,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "goods",
+      "key": "c-app/goods",
+      "file": "c-app/src/pages/goods/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-cover",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-stepper"
+      ],
+      "libClassHits": 239,
+      "localSelectors": 77,
+      "localCssLines": 322,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "group",
+      "key": "c-app/group",
+      "file": "c-app/src/pages/group/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-cover",
+        "sh-scaffold"
+      ],
+      "libClassHits": 69,
+      "localSelectors": 16,
+      "localCssLines": 66,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "group-host",
+      "key": "c-app/group-host",
+      "file": "c-app/src/pages/group-host/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 39,
+      "localSelectors": 14,
+      "localCssLines": 48,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "groups",
+      "key": "c-app/groups",
+      "file": "c-app/src/pages/groups/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-check",
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 36,
+      "localSelectors": 17,
+      "localCssLines": 64,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "home",
+      "key": "c-app/home",
+      "file": "c-app/src/pages/home/index.vue",
+      "components": [
+        "sh-cover",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 37,
+      "localSelectors": 15,
+      "localCssLines": 77,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "invite",
+      "key": "c-app/invite",
+      "file": "c-app/src/pages/invite/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 27,
+      "localSelectors": 7,
+      "localCssLines": 26,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "legal",
+      "key": "c-app/legal",
+      "file": "c-app/src/pages/legal/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 4,
+      "localSelectors": 5,
+      "localCssLines": 17,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "login",
+      "key": "c-app/login",
+      "file": "c-app/src/pages/login/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 22,
+      "localSelectors": 14,
+      "localCssLines": 57,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "me",
+      "key": "c-app/me",
+      "file": "c-app/src/pages/me/index.vue",
+      "components": [
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-theme-sheet"
+      ],
+      "libClassHits": 128,
+      "localSelectors": 25,
+      "localCssLines": 105,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "merchant",
+      "key": "c-app/merchant",
+      "file": "c-app/src/pages/merchant/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 30,
+      "localSelectors": 14,
+      "localCssLines": 60,
+      "rolled": [
+        {
+          "id": "stat",
+          "label": "统计数字格",
+          "lib": null,
+          "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
+          "gap": true
+        }
+      ]
+    },
+    {
+      "app": "c-app",
+      "page": "merchants",
+      "key": "c-app/merchants",
+      "file": "c-app/src/pages/merchants/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 10,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "messages",
+      "key": "c-app/messages",
+      "file": "c-app/src/pages/messages/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 13,
+      "localSelectors": 10,
+      "localCssLines": 43,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "my-groups",
+      "key": "c-app/my-groups",
+      "file": "c-app/src/pages/my-groups/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "my-memberships",
+      "key": "c-app/my-memberships",
+      "file": "c-app/src/pages/my-memberships/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 4,
+      "localCssLines": 14,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "order",
+      "key": "c-app/order",
+      "file": "c-app/src/pages/order/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 153,
+      "localSelectors": 34,
+      "localCssLines": 135,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "order-confirm",
+      "key": "c-app/order-confirm",
+      "file": "c-app/src/pages/order-confirm/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-sheet",
+        "sh-stepper",
+        "sh-switch"
+      ],
+      "libClassHits": 179,
+      "localSelectors": 27,
+      "localCssLines": 107,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "orders",
+      "key": "c-app/orders",
+      "file": "c-app/src/pages/orders/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 43,
+      "localSelectors": 16,
+      "localCssLines": 58,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "pay",
+      "key": "c-app/pay",
+      "file": "c-app/src/pages/pay/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold"
+      ],
+      "libClassHits": 39,
+      "localSelectors": 26,
+      "localCssLines": 113,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "points",
+      "key": "c-app/points",
+      "file": "c-app/src/pages/points/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 35,
+      "localSelectors": 19,
+      "localCssLines": 75,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "request",
+      "key": "c-app/request",
+      "file": "c-app/src/pages/request/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-empty",
+        "sh-rating",
+        "sh-scaffold"
+      ],
+      "libClassHits": 91,
+      "localSelectors": 22,
+      "localCssLines": 101,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "request-create",
+      "key": "c-app/request-create",
+      "file": "c-app/src/pages/request-create/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold",
+        "sh-stepper"
+      ],
+      "libClassHits": 19,
+      "localSelectors": 6,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "review-write",
+      "key": "c-app/review-write",
+      "file": "c-app/src/pages/review-write/index.vue",
+      "components": [
+        "sh-actionbar",
+        "sh-scaffold",
+        "sh-uploader"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 12,
+      "localCssLines": 44,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "search",
+      "key": "c-app/search",
+      "file": "c-app/src/pages/search/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 14,
+      "localSelectors": 6,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "store",
+      "key": "c-app/store",
+      "file": "c-app/src/pages/store/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-scaffold",
+        "sh-tabs"
+      ],
+      "libClassHits": 56,
+      "localSelectors": 34,
+      "localCssLines": 154,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "app-overlay",
+      "key": "b-app/app-overlay",
+      "file": "b-app/src/components/app-overlay.vue",
+      "components": [],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-audience-picker",
+      "key": "b-app/biz-audience-picker",
+      "file": "b-app/src/components/biz/biz-audience-picker.vue",
+      "components": [
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 72,
+      "localSelectors": 5,
+      "localCssLines": 20,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-batch-tag-sheet",
+      "key": "b-app/biz-batch-tag-sheet",
+      "file": "b-app/src/components/biz/biz-batch-tag-sheet.vue",
+      "components": [
+        "sh-empty",
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 30,
+      "localSelectors": 5,
+      "localCssLines": 18,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-category-sheet",
+      "key": "b-app/biz-category-sheet",
+      "file": "b-app/src/components/biz/biz-category-sheet.vue",
+      "components": [
+        "sh-option",
+        "sh-sheet"
+      ],
+      "libClassHits": 8,
+      "localSelectors": 2,
+      "localCssLines": 7,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-item-picker",
+      "key": "b-app/biz-item-picker",
+      "file": "b-app/src/components/biz/biz-item-picker.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 8,
+      "localCssLines": 29,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-pickup-sheet",
+      "key": "b-app/biz-pickup-sheet",
+      "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
+      "components": [
+        "sh-check",
+        "sh-icon",
+        "sh-sheet",
+        "biz-time-range"
+      ],
+      "libClassHits": 34,
+      "localSelectors": 13,
+      "localCssLines": 52,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-region-picker",
+      "key": "b-app/biz-region-picker",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "components": [
+        "sh-check",
+        "sh-icon-btn",
+        "sh-icon",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 49,
+      "localSelectors": 31,
+      "localCssLines": 146,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-store-tag",
+      "key": "b-app/biz-store-tag",
+      "file": "b-app/src/components/biz/biz-store-tag.vue",
+      "components": [
+        "sh-go",
+        "sh-icon"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 3,
+      "localCssLines": 13,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-supplier-picker",
+      "key": "b-app/biz-supplier-picker",
+      "file": "b-app/src/components/biz/biz-supplier-picker.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet"
+      ],
+      "libClassHits": 8,
+      "localSelectors": 3,
+      "localCssLines": 10,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "biz-time-range",
+      "key": "b-app/biz-time-range",
+      "file": "b-app/src/components/biz/biz-time-range.vue",
+      "components": [],
+      "libClassHits": 9,
+      "localSelectors": 5,
+      "localCssLines": 22,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "app-overlay",
+      "key": "c-app/app-overlay",
+      "file": "c-app/src/components/app-overlay.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 1,
+      "localSelectors": 2,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-address-card",
+      "key": "c-app/biz-address-card",
+      "file": "c-app/src/components/biz/biz-address-card.vue",
+      "components": [],
+      "libClassHits": 35,
+      "localSelectors": 9,
+      "localCssLines": 34,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-address-form",
+      "key": "c-app/biz-address-form",
+      "file": "c-app/src/components/biz/biz-address-form.vue",
+      "components": [
+        "sh-switch"
+      ],
+      "libClassHits": 52,
+      "localSelectors": 18,
+      "localCssLines": 65,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-address-region",
+      "key": "c-app/biz-address-region",
+      "file": "c-app/src/components/biz/biz-address-region.vue",
+      "components": [
+        "sh-empty",
+        "sh-sheet",
+        "sh-tabs"
+      ],
+      "libClassHits": 4,
+      "localSelectors": 3,
+      "localCssLines": 16,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-app-download",
+      "key": "c-app/biz-app-download",
+      "file": "c-app/src/components/biz/biz-app-download.vue",
+      "components": [],
+      "libClassHits": 7,
+      "localSelectors": 11,
+      "localCssLines": 49,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-cart-fab",
+      "key": "c-app/biz-cart-fab",
+      "file": "c-app/src/components/biz/biz-cart-fab.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 3,
+      "localSelectors": 3,
+      "localCssLines": 22,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-coupon-strip",
+      "key": "c-app/biz-coupon-strip",
+      "file": "c-app/src/components/biz/biz-coupon-strip.vue",
+      "components": [
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 23,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-goods-card",
+      "key": "c-app/biz-goods-card",
+      "file": "c-app/src/components/biz/biz-goods-card.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 18,
+      "localCssLines": 87,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-goods-tile",
+      "key": "c-app/biz-goods-tile",
+      "file": "c-app/src/components/biz/biz-goods-tile.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 12,
+      "localSelectors": 9,
+      "localCssLines": 46,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-group-card",
+      "key": "c-app/biz-group-card",
+      "file": "c-app/src/components/biz/biz-group-card.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 29,
+      "localSelectors": 14,
+      "localCssLines": 72,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-merchant-bar",
+      "key": "c-app/biz-merchant-bar",
+      "file": "c-app/src/components/biz/biz-merchant-bar.vue",
+      "components": [
+        "sh-icon",
+        "sh-rating"
+      ],
+      "libClassHits": 7,
+      "localSelectors": 5,
+      "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-place-bar",
+      "key": "c-app/biz-place-bar",
+      "file": "c-app/src/components/biz/biz-place-bar.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 16,
+      "localSelectors": 6,
+      "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-poster",
+      "key": "c-app/biz-poster",
+      "file": "c-app/src/components/biz/biz-poster.vue",
+      "components": [
+        "sh-sheet"
+      ],
+      "libClassHits": 9,
+      "localSelectors": 4,
+      "localCssLines": 15,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-review",
+      "key": "c-app/biz-review",
+      "file": "c-app/src/components/biz/biz-review.vue",
+      "components": [
+        "sh-rating"
+      ],
+      "libClassHits": 25,
+      "localSelectors": 15,
+      "localCssLines": 72,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-share-act",
+      "key": "c-app/biz-share-act",
+      "file": "c-app/src/components/biz/biz-share-act.vue",
+      "components": [
+        "sh-icon",
+        "sh-sheet"
+      ],
+      "libClassHits": 14,
+      "localSelectors": 9,
+      "localCssLines": 44,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-shop-avatar",
+      "key": "c-app/biz-shop-avatar",
+      "file": "c-app/src/components/biz/biz-shop-avatar.vue",
+      "components": [],
+      "libClassHits": 3,
+      "localSelectors": 2,
+      "localCssLines": 9,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-shop-row",
+      "key": "c-app/biz-shop-row",
+      "file": "c-app/src/components/biz/biz-shop-row.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 11,
+      "localSelectors": 6,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-single-page-tip",
+      "key": "c-app/biz-single-page-tip",
+      "file": "c-app/src/components/biz/biz-single-page-tip.vue",
+      "components": [],
+      "libClassHits": 3,
+      "localSelectors": 1,
+      "localCssLines": 3,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-sku-row",
+      "key": "c-app/biz-sku-row",
+      "file": "c-app/src/components/biz/biz-sku-row.vue",
+      "components": [
+        "sh-cover"
+      ],
+      "libClassHits": 5,
+      "localSelectors": 6,
+      "localCssLines": 27,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-store-row",
+      "key": "c-app/biz-store-row",
+      "file": "c-app/src/components/biz/biz-store-row.vue",
+      "components": [],
+      "libClassHits": 9,
+      "localSelectors": 7,
+      "localCssLines": 26,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "phone-gate",
+      "key": "c-app/phone-gate",
+      "file": "c-app/src/components/phone-gate.vue",
+      "components": [
+        "sh-sheet"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 8,
+      "localCssLines": 29,
+      "rolled": []
+    }
+  ],
+  "gaps": [
+    {
+      "id": "optcard",
+      "label": "选项卡片",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：store-categories .opt（逐处核过）",
+      "pages": [
+        "b-app/store-categories"
+      ]
+    },
+    {
+      "id": "stat",
+      "label": "统计数字格",
+      "lib": null,
+      "gap": true,
+      "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
+      "pages": [
+        "c-app/merchant"
+      ]
+    }
+  ],
+  "counts": {
+    "tokens": 16,
+    "blocks": 81,
+    "components": 37,
+    "pages": 150,
+    "gapKinds": 2
+  }
+}

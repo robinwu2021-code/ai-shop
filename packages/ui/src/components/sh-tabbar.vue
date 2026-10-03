@@ -10,6 +10,7 @@
 import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useShell } from "../shell";
+import { hideNativeTabBar } from "@shared/ports/tabbar";
 import type { IconName } from "@shared/design/icons";
 
 const props = defineProps<{ active: string }>();
@@ -35,6 +36,8 @@ function go(key: string, route: string) {
 }
 
 function ready() {
+  // App 端：藏掉没被 custom:true 藏住的原生 tabBar，否则与本组件叠成两排
+  hideNativeTabBar();
   nextTick(() => shell.onTabbarReady?.(instance?.proxy));
 }
 
@@ -69,11 +72,11 @@ watch(
         :class="[tab.anchorClass, { 'is-bouncing': bouncing && shell.pulse?.value === tab.key }]"
       >
         <sh-icon :name="tab.iconName" :size="46"></sh-icon>
-        <text v-if="tab.badge" class="tabbar__badge sh-num">
+        <text v-if="tab.badge" class="sh-badge-count tabbar__badge sh-num">
           {{ tab.badge > 99 ? "99+" : tab.badge }}
         </text>
       </view>
-      <text class="tabbar__label">{{ $t(tab.labelKey) }}</text>
+      <text class="txt-body tabbar__label">{{ $t(tab.labelKey) }}</text>
     </view>
   </view>
 </template>
@@ -87,30 +90,43 @@ watch(
   /* 宽屏下跟着应用框走，不贴到 1920px 两端 —— 变量由 App.vue 定义，窄屏为 100% */
   max-width: var(--sh-app-max);
   margin: 0 auto;
-  z-index: 90;
+  z-index: var(--sh-z-tabbar);
   display: flex;
   background: var(--sh-surface);
-  padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
+  /*
+   * **与主区域的分界要看得见。** 白色的 tabbar 压在浅灰页面上时，
+   * 两者只差一点点明度 —— 滚动到底部时列表卡片像是溢出到了菜单里。
+   * 一条 hairline 加一层很浅的上投影：静止时是分界，滚动时是「页面在它下面走」。
+   *
+   * ⚠️ **「很浅」此前是假的**：写的是 `0 -6rpx 20rpx var(--sh-scrim)`，
+   * 而 scrim 是**蒙层色**（45% 的黑，它的活是压暗弹层背后的整屏）——
+   * 于是菜单顶上顶着一条又黑又宽的灰带，比它要分界的那条 hairline 抢眼得多。
+   * 现在走 `--sh-shadow-up`（8%）。分界主要靠 hairline，投影只补一点纵深。
+   */
+  border-top: var(--sh-hairline);
+  box-shadow: var(--sh-shadow-up);
+  padding: 16rpx 0;
+  padding: 16rpx 0 calc(16rpx + env(safe-area-inset-bottom, 0px));
 }
 .tabbar__item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 0;
+  gap: 8rpx;
+  padding: 8rpx 0;
   color: var(--sh-sub);
-  transition: color 0.18s ease;
+  transition: color var(--sh-t-fast) ease;
 }
 .tabbar__item.is-on {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .tabbar__icon-wrap {
   position: relative;
   line-height: 0;
 }
 .tabbar__icon-wrap.is-bouncing {
-  animation: shCartBounce 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: shCartBounce var(--sh-t-slow) var(--sh-ease-spring);
 }
 @keyframes shCartBounce {
   0% { transform: scale(1); }
@@ -119,24 +135,12 @@ watch(
 }
 /* 字号 28rpx —— 原生 tabBar 固定在 ~20rpx，这是本次要解决的问题 */
 .tabbar__label {
-  font-size: 28rpx;
-  font-weight: 400;
 }
 .tabbar__item.is-on .tabbar__label {
-  font-weight: 400;
 }
 .tabbar__badge {
   position: absolute;
   top: -8rpx;
   inset-inline-start: 26rpx;
-  min-width: 32rpx;
-  height: 32rpx;
-  padding: 0 8rpx;
-  border-radius: 9999px;
-  background: var(--sh-danger);
-  color: #fff;
-  font-size: 24rpx;
-  line-height: 32rpx;
-  text-align: center;
 }
 </style>

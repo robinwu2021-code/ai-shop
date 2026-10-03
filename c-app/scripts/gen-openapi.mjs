@@ -38,7 +38,7 @@ const body = epSrc.slice(
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -46,11 +46,20 @@ while ((m = re.exec(body))) {
 
 // ---------------------------------------------------------------- 2. 类型 → JSON Schema
 //
-// ⚠️ 用 createSchema("*") 只会抽出「被别的类型引用到」的定义 —— requests.ts 里的接口
-// 彼此不互相引用，于是一个都抽不出来（踩过：24 个请求类型只出了 5 个被 import 的枚举）。
-// 所以改成**按名逐个生成**，把每次的 definitions 合并起来。
-function collect(file, typeNames) {
-  const gen = createGenerator({
+// ⚠️ 曾经这里写着「createSchema("*") 抽不出 requests.ts 里的接口，只出了 5 个」——
+// 那是**没有 expose: "all"** 时的行为。加上它之后两种调法量过：68 个定义一个不差，
+// 所以两份都走 createSchema("*")。
+//
+// <p>而共享类型那份反过来：**逐个名字解不开跨文件的引用** —— 解不开就 catch 掉、
+// 跳过，不报错。那正是把 `packages/shared/src/types` 钉死在一个 5139 行文件里的原因
+// （2026-09-03 实测：拆成 13 个文件后 b 端契约静默少 39 个 schema）。
+// 所以它走 {@link collectAll}，与平台端 `ops-web/scripts/gen-openapi.mjs` 同一种调法。
+function collectAll(file) {
+  return generatorFor(file).createSchema("*").definitions ?? {};
+}
+
+function generatorFor(file) {
+  return createGenerator({
     path: file,
     tsconfig: path.resolve(root, "tsconfig.json"),
     type: "*",
@@ -59,32 +68,9 @@ function collect(file, typeNames) {
     topRef: true,
     additionalProperties: false,
   });
-  const out = {};
-  for (const name of typeNames) {
-    try {
-      const s = gen.createSchema(name);
-      Object.assign(out, s.definitions ?? {});
-    } catch {
-      // 该名字不是一个可导出的类型（如泛型别名），跳过 —— 由调用方决定要不要报错
-    }
-  }
-  return out;
 }
 
-/** 从源码里抠出所有 `export interface X` / `export type X` 的名字 */
-function exportedTypeNames(file) {
-  const src = fs.readFileSync(file, "utf8");
-  const names = [];
-  const re = /^export\s+(?:interface|type)\s+(\w+)/gm;
-  let x;
-  while ((x = re.exec(src))) names.push(x[1]);
-  return names;
-}
-
-const respNames = exportedTypeNames(typesFile);
-const reqNames = exportedTypeNames(reqFile);
-
-let schemas = { ...collect(typesFile, respNames), ...collect(reqFile, reqNames) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
 
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
@@ -134,25 +120,63 @@ const RESPONSE_TYPES = {
   frequentItems: "FrequentItem[]",
   groupPickupOrders: "Order[]",
   myHostedGroups: "GroupBuy[]",
-  myStores: "Merchant[]",
+  myJoinedGroups: "GroupBuy[]",
+  myStores: "StoreCard[]",
+  storeNearby: "PageResult<StoreCard>",
+  // 进店回的是归因结果，端上不读（契约写 void）；用 object 兜底，与 toggleFavoriteStore 同一处理
+  storeEnter: "object",
+  payMethods: "PayMethodList",
   promotedGoods: "Goods[]",
   promotedMerchants: "Merchant[]",
   raiseDispute: "Order",
   reorderFrom: "ReorderResult",
   storeHome: "StoreHome",
+  storeGoods: "PageResult<Goods>",
+  storeAcode: "StoreCodeImage",
+  storeByCode: "StoreHome",
   // boolean 没有对应 schema，用 object 兜底并在此说明，避免下次又有人以为是漏配
   toggleFavoriteStore: "object",
+  // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）。切换回 { favorited } —— 与 toggleFavoriteStore 同一形状
+  toggleFavoriteGoods: "object",
+  favoriteGoods: "PageResult<Goods>",
+  favoriteStores: "Merchant[]",
   verifyGroupPickup: "Order",
+  // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
+  // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
+  // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
+  orderPreview: "OrderPreview",
+  orderCapability: "CheckoutCapability",
+  afterSaleReasons: "AfterSaleReason[]",
+  afterSaleList: "AfterSale[]",
+  logout: "void",
+  sendOtp: "void",
   login: "LoginResp",
   profile: "User",
   bindCommunity: "User",
+  deregister: "void",
+  bindPhone: "User",
+  bindPhoneByWx: "User",
+  phoneCapable: "PhoneCapable",
+  allCommunities: "Community[]",
+  communityDetail: "Community",
+  openRegions: "RegionOption[]",
+  regions: "RegionNode[]",
+  // fb230e7b 加了这两个端点却没登记 —— 漏配的后果是静默产出 data:{type:"object"}，
+  // spec 看着完整而 DTO 是空壳，后端照着实现得自己猜返回什么。
+  // 类型直接取自 c-app/src/api/http.ts 里那两行的泛型参数。
+  activeAddress: "Address",
+  switchActiveAddress: "Address",
   addressList: "Address[]",
   saveAddress: "Address[]",
   removeAddress: "Address[]",
   setDefaultAddress: "Address[]",
   nearbyCommunities: "Community[]",
+  resolveLocation: "LocationContext",
+  searchPlaces: "PlaceSearchHit[]",
   goodsList: "PageResult<Goods>",
   goodsDetail: "Goods",
+  goodsBatch: "GoodsBatch",
+  goodsGroup: "GoodsGroup",
   cartList: "CartItem[]",
   cartAdd: "CartItem[]",
   cartUpdate: "CartItem[]",
@@ -164,10 +188,11 @@ const RESPONSE_TYPES = {
   cancelOrder: "Order",
   applyAfterSale: "Order",
   couponList: "Coupon[]",
+  myCoupons: "UserCoupon[]",
+  couponBest: "CouponBestResult",
   receiveCoupon: "Coupon",
   groupBuyList: "GroupBuy[]",
   groupBuyDetail: "GroupBuy",
-  joinGroupBuy: "GroupBuy",
   createGroupBuy: "GroupBuy",
   requestList: "GroupRequest[]",
   requestDetail: "GroupRequest",
@@ -178,24 +203,63 @@ const RESPONSE_TYPES = {
   merchantList: "Merchant[]",
   merchantDetail: "Merchant",
   visitedMerchants: "VisitedMerchant[]",
-  merchantApply: "object",
+  myMerchantApply: "MerchantApplyStatus",
+  masterData: "MasterData",
+  merchantApply: "MerchantApplyStatus",
+  updateMerchantApply: "MerchantApplyStatus",
   reviewList: "Review[]",
+  bootstrapConfig: "BootstrapConfig",
+  myFission: "MyFission",
+  merchantAcode: "StoreAcode",
+  questionList: "Question[]",
+  askQuestion: "Question",
   createReview: "Review",
   toggleReviewLike: "Review",
   pointAccount: "PointAccount",
   pointRecords: "PointRecord[]",
-  merchantPointAccount: "PointAccount",
-  merchantPointRecords: "PointRecord[]",
+  pointsDeductible: "PointsDeductible",
   myCards: "UserCard[]",
   messageList: "Message[]",
   readMessage: "Message[]",
   readAllMessages: "Message[]",
+
+  /*
+   * 发票（P-12.3，财务缺口那一轮补的三条）与推送订阅。
+   * 这六条一直没登记，而**漏一条整份 spec 就不生成** —— check:api 因此全仓中断，
+   * 连带别的域的契约校验也跑不了。类型逐字取自 contract.ts 的签名。
+   *
+   * invoiceOfOrder 的返回是 `InvoiceRequest | null`：**没申请过返回 null 是常态**，
+   * 所以 schema 用同一个组件（统一信封的 data 本来就可以是 null）。
+   */
+  applyInvoice: "InvoiceRequest",
+  myInvoices: "InvoiceRequest[]",
+  invoiceOfOrder: "InvoiceRequest",
+  unreadMessages: "number",
+  subscribeReport: "void",
+  registerPushToken: "void",
+  unregisterPushToken: "void",
+
+  /*
+   * 会员与门店券（P-13）。**同一个坑第二次踩**：上面那段刚记完「漏一条整份 spec
+   * 就不生成」，这两条又是加了契约没登记 —— 于是 `openapi.yaml` 从那天起
+   * 一次都没再生成过，而没有任何东西会报：这个生成器**不在
+   * check-generated-docs 的名单里**，闸门看不见它。
+   *
+   * 真正的修法是把它挂上闸门（本次一并做），光补这两行下次还会有第三次。
+   */
+  myStoreCoupons: "MyStoreCoupon[]",
+  myMemberships: "MyMembership[]",
+  // 这条是 **PUT**，此前抽取正则只认 GET|POST，它压根没进过 spec
+  setMembershipReach: "void",
+  reachOpened: "ReachOpened",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
   login: "LoginReqBody",
   bindCommunity: "BindCommunityReq",
+  bindPhone: "BindPhoneReq",
+  bindPhoneByWx: "WxPhoneReq",
   saveAddress: "SaveAddressReq",
   nearbyCommunities: "NearbyQuery",
   goodsList: "GoodsListQuery",
@@ -208,13 +272,17 @@ const REQUEST_TYPES = {
   promotedMerchants: "PromotedMerchantsQuery",
   applyAfterSale: "AfterSaleReq",
   groupBuyList: "GroupBuyListQuery",
-  joinGroupBuy: "JoinGroupBuyReq",
   createGroupBuy: "CreateGroupBuyReq",
   requestList: "RequestListQuery",
   createRequest: "CreateRequestReq",
   chooseQuote: "ChooseQuoteReq",
   merchantList: "MerchantListQuery",
+  myStores: "MyStoresQuery",
+  storeNearby: "StoreNearbyQuery",
+  storeEnter: "StoreEnterReq",
+  storeGoods: "StoreGoodsQuery",
   merchantApply: "MerchantApplyReq",
+  updateMerchantApply: "MerchantApplyReq",
   reviewList: "ReviewListQuery",
   createReview: "CreateReviewReq",
 };
@@ -244,8 +312,25 @@ function queryParams(typeName) {
   }));
 }
 
+/**
+ * 契约里的**标量**返回类型。与 b-app 的生成器同一张表。
+ *
+ * 没有它，`"void"` / `"number"` 会落到最后一行生成
+ * `$ref: #/components/schemas/void` —— 指向不存在组件的悬空引用。
+ * 校验器多半不报（$ref 解析是懒的），而拿这份 spec 生成客户端的人会得到一个
+ * 编译不过的类型名。
+ */
+const SCALARS = {
+  void: { description: "无返回体（data 恒为 null）", nullable: true },
+  number: { type: "number" },
+  integer: { type: "integer" },
+  string: { type: "string" },
+  boolean: { type: "boolean" },
+};
+
 function dataSchema(typeExpr) {
   if (!typeExpr || typeExpr === "object") return { type: "object" };
+  if (SCALARS[typeExpr]) return { ...SCALARS[typeExpr] };
   const arr = typeExpr.match(/^(\w+)\[\]$/);
   if (arr) return { type: "array", items: { $ref: `#/components/schemas/${arr[1]}` } };
   const page = typeExpr.match(/^PageResult<(\w+)>$/);
@@ -343,7 +428,10 @@ for (const [key, ep] of Object.entries(endpoints)) {
     },
   };
 
-  if (ep.method === "POST" && reqType) {
+  // PUT 与 POST 一样带 body。**此前抽取正则只认 GET|POST**，
+  // 于是所有 PUT 端点（b-app 9 条、c-app 1 条）**静默不进 spec** ——
+  // 规格看着完整，少的那几条谁也不会发现（同 endpoints 表那次「注释夹在中间」的坑）
+  if ((ep.method === "POST" || ep.method === "PUT") && reqType) {
     op.requestBody = {
       required: true,
       content: {

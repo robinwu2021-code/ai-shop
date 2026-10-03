@@ -1,24 +1,42 @@
 {
   "name": "邻里商家",
-  "appid": "",
+  "appid": "__UNI__59E912D",
   "description": "邻里购物平台 B 端（商家端）",
-  "versionName": "0.1.0",
-  "versionCode": "100",
+  "versionName": "0.5.21",
+  "versionCode": "254",
   "transformPx": false,
   "app-plus": {
     "usingComponents": true,
     "nvueStyleCompiler": "uni-app",
     "compilerVersion": 3,
+    "//geolocation": "App 端定位与地图走高德（离线包已带 AMap3DMap + map-amap/geolocation-amap/weex_amap aar）。运行时按这里的 sdkConfigs 选提供方；真实 key 不写在这——离线包读的是原生 AndroidManifest 的 com.amap.api.v2.apikey，由 b-app/offline/amap-key.gradle 从 b-app/.env.local 的 AMAP_KEY_ANDROID 注入（注入逻辑在仓库里，离线工程只有一行 apply from——它上次就是写在仓库外才丢的）。历史坑：声明 system 时只给 wgs84；不声明则运行时按高德→百度试、SDK 缺失时 logcat 只有一行 `AMapGeoManager exception`、uni.getLocation 静默失败。",
+    "modules": { "Geolocation": {}, "Maps": {} },
     "distribute": {
-      "android": { "permissions": [] },
-      "ios": {},
-      "sdkConfigs": {}
+      "//packagename": "三端同一个标识（安卓包名 / iOS BundleId / 鸿蒙 bundleName）。上架后不可改",
+      "android": { "packagename": "top.hxmall.bapp", "permissions": [] },
+      "ios": { "bundleId": "top.hxmall.bapp" },
+      "sdkConfigs": {
+        "geolocation": { "amap": { "__platform__": ["android", "ios"], "appkey_android": "", "appkey_ios": "" } },
+        "maps": { "amap": { "appkey_android": "", "appkey_ios": "" } },
+        "//push": "推送改用『个推原生 SDK 直连』，**不声明 uni-push 模块** —— 声明了 DCloud 运行时就会要求 native 带 push 模块，否则启动弹『打包时未添加push模块』。个推集成落在离线包侧：GetuiIntentService 接 cid + AndroidManifest 的 PUSH_* meta，前端经 plus.android 调 PushManager 取 cid（见 packages/shared/src/ports/push.ts）。",
+        "//why": "uni-push 2.0 要 DCloud 实名认证开通，未开通时 register 报 errorCode 1；直连绕开这层，只认个推控制台的 appid+包名。"
+      }
     }
   },
   "mp-weixin": {
     "appid": "",
     "setting": { "urlCheck": false, "minified": true },
     "usingComponents": true,
+    /* 调用点传给组件的 class **要落到组件根上**，不能只落在宿主节点上。
+       两端的节点树形状不同：H5 里 `<script setup>` 组件没有宿主，`<sh-cover class="hero__emoji">`
+       编译出来就是它自己的根，页面那条 `.hero__emoji { width/height/border-radius }` 直接生效；
+       小程序里宿主是**真节点**，class 停在宿主上，组件根一条都吃不到 ——
+       于是全站 13 个封面在小程序上**尺寸由 image 的默认值决定、圆角丢失**，
+       而 H5 与原型上都是对的。这一个开关让两端一致（编译产物里可以看到组件根变成
+       `class="{{['cover','data-v-…', virtualHostClass]}}"`）。
+       ⚠️ 代价：class 会**同时**留在宿主上。所以调用点不要再往组件上挂
+       padding / border —— 那会被吃两遍。2026-09-06 打开时把两端 5 处这样的覆盖撤了。 */
+    "mergeVirtualHostAttributes": true,
     "permission": {
       "scope.userLocation": {
         "desc": "用于设置门店位置与自送范围"

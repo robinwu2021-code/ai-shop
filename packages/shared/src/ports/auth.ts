@@ -1,9 +1,14 @@
 // 端能力：登录与注册。
 //
 // 各端可用的方式不同：
-//   小程序：微信一键取手机号（最快，一次授权直接拿到号）· 手机号 OTP（兜底）
+//   小程序：微信静默登录（拿 openid）· 手机号 OTP（兜底）
 //   App   ：手机号 OTP · 微信开放平台 · Apple（iOS 上架硬要求：接了第三方登录就必须提供 Apple）
 //   H5    ：手机号 OTP
+//
+// **小程序为什么是静默登录而不是「一键取手机号」**（TDD-小程序登录打通 §3.1）：
+// 后者要 `<button open-type="getPhoneNumber">` 的 encryptedData 由服务端解密，
+// 而那个接口很可能要求微信认证 —— 一期不认证。静默登录不需要任何资质，
+// 且它拿到的 openid 正是**微信支付 JSAPI 下单的必填参数**，先拿到就不用回头改登录。
 //
 // **页面不写 `#ifdef`**（规范约束）：页面只问 `loginMethods()` 当前端能用哪几种，
 // 拿到的每一项都带同签名的 `acquire()`，业务层照调即可。
@@ -57,17 +62,78 @@ const phoneOtp: LoginMethod = {
   },
 };
 
-const wxPhone: LoginMethod = {
-  id: "WX_PHONE",
-  labelKey: "login.byWxPhone",
+/**
+ * 手机号 + 密码。**只在 B 端出现**（见 {@link loginMethods}）。
+ *
+ * <p>与 {@link phoneOtp} 共用「手机号 + 一个副凭证」的表单形态，所以 `needsPhone` 同样是
+ * true —— 页面那一格填的是密码而不是验证码，由页面按当前方式换输入框与文案。
+ *
+ * <p><b>它不建户</b>：后端对这条路查无此人也报「手机号或密码不对」，不会像其它方式
+ * 那样「登录即注册」。所以它不能是 `primary` —— 新商家第一次来必须走验证码那条。
+ */
+const password: LoginMethod = {
+  id: "PASSWORD",
+  labelKey: "login.byPassword",
+  primary: false,
+  needsPhone: true,
+  async acquire(phone, pwd) {
+    if (!phone) throw new Error("请输入手机号");
+    return { grantType: "PASSWORD", principal: phone, credential: pwd };
+  },
+};
+
+/**
+ * 小程序静默登录：`wx.login` 的 code 交给服务端换 openid/unionid。
+ *
+ * 拿不到手机号 —— 这是它与 {@link wxPhone} 的全部差别。需要手机号的场景
+ * （下单联系人、商家账号主标识）走绑定流程另说，不是登录这一步的事。
+ */
+/**
+ * 小程序**打开即登录**：不需要任何点击。
+ *
+ * <p>只在小程序端有意义 —— `wx.login` 拿到的 code 换 openid，
+ * 微信侧不需要用户确认，所以「静默」是名副其实的，不是绕过授权。
+ * 其它端返回 null：H5/App 没有这种能力，那里必须由用户主动登录。
+ *
+ * <p><b>失败要静默</b>：网络不好、微信侧抽风都会让它失败，
+ * 而这只是一次「顺手把身份认出来」的尝试 —— 失败了他照样能逛，
+ * 到需要身份的那一步再走正常登录。为此报个错弹窗是本末倒置。
+ */
+export async function silentLoginPayload(): Promise<
+  { grantType: string; principal: string } | null
+> {
+  // #ifdef MP-WEIXIN
+  try {
+    const code = await wxLoginCode();
+    return code ? { grantType: "WX_MINI", principal: code } : null;
+  } catch {
+    return null;
+  }
+  // #endif
+  // eslint-disable-next-line no-unreachable
+  return null;
+}
+
+const wxMini: LoginMethod = {
+  id: "WX_MINI",
+  labelKey: "login.byWxMini",
   primary: true,
   needsPhone: false,
   async acquire() {
-    // 真实实现：<button open-type="getPhoneNumber"> 拿 encryptedData，服务端解密出手机号。
-    // 这里取 login code，服务端凭它 + 前端回传的加密串完成绑定。
-    return { grantType: "WX_PHONE", principal: await wxLoginCode() };
+    return { grantType: "WX_MINI", principal: await wxLoginCode() };
   },
 };
+
+/*
+ * 这里曾有一个 `wxPhone`（`WX_PHONE`，小程序一键取手机号）作为小程序首选。
+ * 它**从来没有真正工作过**：`acquire()` 只取了 login code，而一键取手机号要的是
+ * `<button open-type="getPhoneNumber">` 的 encryptedData 由服务端解密；
+ * 后端也没有 `WX_PHONE` 分支，请求进去直接 400。
+ *
+ * 不改成「补齐 WX_PHONE」而是换成静默登录，是因为该接口的前置是微信认证，
+ * 而一期不认证。`GrantType` 里保留 `WX_PHONE` 取值不动 —— 它是将来的路，
+ * 挂账记在 tests/enum-alignment.test.ts。
+ */
 
 const wxOpen: LoginMethod = {
   id: "WX_OPEN",
@@ -93,28 +159,37 @@ const apple: LoginMethod = {
  * 当前端可用的登录方式，按推荐顺序。
  *
  * ⚠️ Apple 只在 iOS 出现 —— 安卓包里放一个 Apple 登录按钮是审核与体验双输。
+ *
+ * @param opts.withPassword 是否提供密码登录。**这一项是 app 的选择，不是端的能力** ——
+ *   密码只有 B 端有（商家高频开合），C 端不传就没有。所以它做成参数而不是
+ *   `#ifdef`：条件编译分的是运行平台，而这里分的是哪一个 app。
  */
-export function loginMethods(): LoginMethod[] {
+export function loginMethods(opts?: { withPassword?: boolean }): LoginMethod[] {
+  const pwd = opts?.withPassword ? [password] : [];
+
   // #ifdef MP-WEIXIN
-  return [wxPhone, phoneOtp];
+  return [wxMini, phoneOtp, ...pwd];
   // #endif
 
   // #ifdef APP-PLUS
   // eslint-disable-next-line no-unreachable
-  const list: LoginMethod[] = [phoneOtp, wxOpen];
+  const list: LoginMethod[] = [phoneOtp, ...pwd, wxOpen];
   if (uni.getSystemInfoSync().platform === "ios") list.push(apple);
   return list;
   // #endif
 
   // #ifndef MP-WEIXIN || APP-PLUS
   // eslint-disable-next-line no-unreachable
-  return [phoneOtp];
+  return [phoneOtp, ...pwd];
   // #endif
 }
 
-/** 兼容旧调用：取当前端的首选方式 */
-export async function acquireCredential(phone?: string, otp?: string): Promise<Credential> {
-  const [first] = loginMethods();
-  if (!first) throw new Error("当前端没有可用的登录方式");
-  return first.acquire(phone, otp);
-}
+/*
+ * 这里曾有一个 `acquireCredential(phone, otp)`「取首选方式」的兼容壳。
+ * 它是 c-app 登录页此前唯一的入口，而**那个页面写死渲染手机号表单**——
+ * 于是小程序上取到的首选是微信登录，用户填的手机号与验证码被静默丢弃，
+ * 界面显示的与实际发出的不是一回事。
+ *
+ * 删掉它是为了让这种错配不可能再发生：页面只能通过 `loginMethods()` 拿方式，
+ * 拿到什么就得渲染什么。
+ */

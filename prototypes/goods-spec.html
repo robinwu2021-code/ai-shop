@@ -1,0 +1,168 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>规格原型</title>
+<!-- 真源在仓库 prototypes/goods-spec.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 · 建品 / 规格</div>
+  <h1>规格原型</h1>
+  <p class="sub">同一段界面要装下「菠菜就是菠菜」和「颜色 × 存储 × 版本」。
+  下面六屏是收敛之后的样子，每屏下方写的是它守着的那条规矩。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">原则</span><h2>四条</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><td>一</td><td>默认只带出一个规格 —— 其余摆出来让他点，不自动加。</td></tr>
+    <tr><td>二</td><td>这一页只做<b>减法</b>：改名、加档位、加规格，统统回「商品规格」。</td></tr>
+    <tr><td>三</td><td>加一维要多填几行，<b>当场说出来</b>。</td></tr>
+    <tr><td>四</td><td>展不展开记在<b>这个类目</b>上 —— 他上次怎么做的，就是这次的默认。</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">18 — 23</span><h2>建品页的规格段，与「商品规格」</h2></div>
+  <div class="grid">
+
+    <figure id="s18">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品 · 蔬菜</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">规格</span></div>
+            <div class="frow"><span class="v go hot">添加规格</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">价格</span></div>
+            <div class="frow"><span class="k">售价</span><span class="v"></span></div>
+            <div class="frow"><span class="k">库存</span><span class="v"></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>18 不分规格的货：整块收起</b>
+        社区店大半的货没有规格 —— 菠菜就是菠菜，称重卖。对这些货，「规格组」「最多 3 组」这些词一个都不成立，却在旧版里占着屏幕最显眼的一段。<br>
+        收起之后只剩一句问话，下面直接是价格和库存 —— 一个价、一个库存，填完就走。</figcaption>
+      <p class="why">他点或不点，就是答案 —— 不必判断他是专业还是业余，而且判断错了的代价只是多点一次。</p>
+    </figure>
+
+    <figure id="s19">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品 · 蔬菜</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">规格</span><span class="meta"><span style="color:var(--sh-primary-text)">＋ 规格</span>　收起</span></div>
+            <div class="hd"><span class="nm">重量</span><span class="meta">✕</span></div>
+            <div><span class="chip">500g</span> <span class="chip">1 斤</span> <span class="chip">2 斤</span></div>
+            <div class="meta">这一类还能按 <span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 包装</span> <span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 等级</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>19 默认只带出一个</b>
+        平台给蔬菜配了三条销售维度（重量 / 包装 / 等级），<strong>自动带出来的只有主维度那一个</strong>，档位是本店在「商品规格」里确认过的那几档。<br>
+        其余两条摆在末尾一行，一点成组。<strong>藏在两层菜单后面的话，商家会以为这一类只能按一种方式分</strong> —— 那等于平台配置白做了。</figcaption>
+      <p class="why">摆出来让他点，不自动加 —— 三条全自动带出来，每件菜都变成一堆 SKU，那是帮倒忙。</p>
+    </figure>
+
+    <figure id="s20">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">规格名只读 · 档位是开关</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">重量</span><span class="meta">✕</span></div>
+            <div><span class="chip">500g</span> <span class="chip" style="background:transparent;outline:1px dashed var(--sh-sub);outline-offset:-1px"><s>1 斤</s></span> <span class="chip">2 斤</span> <span class="chip" style="background:transparent;outline:1px dashed var(--sh-sub);outline-offset:-1px"><s>5 斤</s></span></div>
+            <div class="meta num">本店有 4 档，这件货有 2 档</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>20 只做减法，删掉能点回来</b>
+        <strong>规格名是只读的</strong>：它来自「商品规格」，在这儿改，同一个名字在不同商品上写法就不一了，谁也说不清哪个算数。<br>
+        档位是一排开关：本店有的全列出来，这件货没有的点掉。关掉的走<strong>虚线描边 + 删除线</strong> —— 实线灰底像是被禁用了，他不会再去点。<br>
+        点回来是<strong>恢复，不是新造</strong>，而且回到原位（按规格库顺序，不按点击先后）。最后一档点不动。</figcaption>
+      <p class="why">手输的值没有编号 —— 三家店的「500g」「五百克」「0.5kg」永远聚不到一起，而这正是平台养规格库的全部理由。</p>
+    </figure>
+
+    <figure id="s21">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品 · 手机数码</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">规格</span><span class="meta"><span style="color:var(--sh-primary-text)">＋ 规格</span>　收起</span></div>
+            <div class="sum num">3 × 2 = 6 个规格</div>
+            <div class="hd"><span class="nm">存储</span><span class="meta">✕</span></div>
+            <div><span class="chip">64G</span> <span class="chip">128G</span> <span class="chip">256G</span></div>
+            <div class="hd"><span class="nm">包装</span><span class="meta">✕</span></div>
+            <div><span class="chip">盒装</span> <span class="chip">礼盒</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">价格</span></div>
+            <div class="frow"><span class="k">64G 盒装</span><span class="v"></span></div>
+            <div class="frow"><span class="k">64G 礼盒</span><span class="v"></span></div>
+            <div class="frow"><span class="k">128G 盒装</span><span class="v"></span></div>
+            <div class="meta">还有 3 行</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>21 代价当场可见</b>
+        加第二维时，顶上出现 <strong>「3 × 2 = 6 个规格」</strong>。旧版从不提这件事 —— 商家加完才发现底下要填一屏，而那时他已经填了一半。<br>
+        只在两个维度起才显示：一个维度时「3 个档位 = 3 行」是自明的，写出来是噪声。</figcaption>
+      <p class="why">加一维不是加一行，是<strong>相乘</strong>。这句话必须在他动手之前出现，不是之后。</p>
+    </figure>
+
+    <figure id="s22">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">可选的摆在下面 · 不新增</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">存储</span><span class="meta">✕</span></div>
+            <div><span class="chip">64G</span> <span class="chip">128G</span> <span class="chip">256G</span></div>
+            <div class="meta"><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 包装</span> <span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 版本</span> <span style="color:var(--sh-primary-text)">更多 (4)</span></div>
+            <div class="frow"><span class="k">去「商品规格」新增</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>22 没有选择面板，也没有「自定义」</b>
+        旧版点「＋ 规格」弹出一个面板，里面还有一条「＋ 自定义规格」。<strong>这一页现在只用，不造</strong> —— 面板整个去掉，可选的直接排在规格组下面，点一下就用上。<br>
+        本类目的排前面（平台已替这一类答过「该按什么分」）；通用与自建的收在<strong>「更多」</strong>后面 —— 它们的判据是「值的含义跨类目一致」，不是「哪些类目该用它」，摆在眼前多半不对题（手机数码下面并排摆着口味、尺码）。<br>
+        最后一行压到最轻：<strong>去「商品规格」新增</strong>。多数人用不到。</figcaption>
+      <p class="why">同名即同一件事 —— 已经在用的、以及两个列表里重名的，都不再出现。</p>
+    </figure>
+
+    <figure id="s23">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">商品规格</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="hd"><span class="nm">蔬菜</span><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">＋ 加规格</span></div>
+            <div class="hd"><span><span class="meta">⠿</span>　<span class="nm">重量</span></span><span class="meta">⚙　✕</span></div>
+            <div class="meta">500g · 1 斤 · 2 斤 · 5 斤</div>
+            <div class="hd"><span><span class="meta">⠿</span>　<span class="nm">包装</span>　<span class="chip">本店</span></span><span class="meta">⚙　✕</span></div>
+            <div class="meta">散装 · 袋装</div>
+            <div class="frow"><span class="k">恢复平台默认</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>23 新增的唯一入口</b>
+        按类目组织。每一行是这一类要用的规格：<strong>拖动排序、改本店叫法、增删档位</strong>，平台没有的可以自己建（带「本店」标记，不参与跨店比价）。<br>
+        这里改一次<strong>全店通用</strong>，建品页拿到的就是改过之后的。建品页则只回答「这一件货有哪几档」。</figcaption>
+      <p class="why">两页各答一个问题：这里答「本店卖什么规格」，建品页答「这件货有哪几档」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">未画</span><h2>还没做的：商品参数</h2></div>
+  <p class="sub">平台给蔬菜还配了「产地」「保质期」两条 —— 它们是 <code>usage_type=PROP</code>，
+  只描述、不分 SKU、不影响价格。建品页目前<strong>没有装它们的容器</strong>，
+  于是这两条永远到不了商家手上；而生鲜表单里另有一个「产地」输入框与之重复。
+  这一块在设计文档的 P3。</p>
+</section>
+
+<footer>
+  真源：prototypes/goods-spec.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e">https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e</a><br>
+  相关文档：docs/requirements/PRD-商品规格与发布.md ／ docs/technical/TDD-商品规格与发布.md ／ docs/technical/design/TDD-规格与SKU模型.md ／ docs/requirements/SKU与规格库-V2对齐页.md
+</footer>
+</div>
+</html>

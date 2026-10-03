@@ -5,6 +5,40 @@ spring:
   application:
     name: shop-app
 
+  servlet:
+    multipart:
+      # **必须与 BizUploadController.MAX_BYTES 一致**。
+      # 这里原先一个字都没写 —— 于是走 Spring 默认的 1MB，而控制器里那个 5MB 的
+      # 判断**根本够不着**：1.85MB 的图在进方法之前就被容器拦掉，返回一个
+      # **空包体的 413**（端上会把它显示成「响应格式不符合契约」，一个字都没说到大小）。
+      #
+      # 走 App 相册这条路暂时撞不上：`pickImages` 的 `sizeType: compressed`
+      # 会把 4000×3000/3.6MB 压成 1440×1080/约 700KB（实测）。但那是**端上的实现细节**，
+      # 换个端、关掉压缩、或走别的上传入口，这个 1MB 就立刻生效 ——
+      # 而两个数不一致这件事本身没有任何症状，只有撞上的人才知道。
+      max-file-size: 5MB
+      # 比单文件略大：多出来的是 multipart 的边界与表单字段（bizType）本身
+      max-request-size: 6MB
+
+  profiles:
+    group:
+      # 测试要同时验三端的接口，所以 test/e2e 同时装 api 与 ops 两套面。
+      # 用 profile group 而不是在 20 个测试类上各加 @ActiveProfiles("test","api","ops")：
+      # 「测试环境包含哪些面」是一个部署问题，不该由每个测试类各自声明一遍。
+      #
+      # testcfg 是共享的**测试行为**配置（桩网关 + 种子数据 + 放开的额度），与「装哪几个面」正交——
+      # 拆开才能让 ops-only 复用同一份配置却只装运营面。
+      #
+      # h2db（内存库）单独一档，**e2e 不带它**：E2E 的全部意义就是跑真 MariaDB。
+      # 带上的话，组成员优先级高于组名，H2 会把 application-e2e.yml 的真库连接盖掉，
+      # 而报出来的错是「没有 Flyway bean」—— 看着像依赖问题，实际是跑错了库。
+      test: h2db,testcfg,api,ops
+      e2e: testcfg,api,ops
+      # 只装运营面：给部署隔离的守卫测试用（DeploymentProfileTest）。
+      # 它要证明的恰恰是「C/B 端的面不会同时存在」，所以不能复用 test。
+      # opsdb 必须排在 h2db 之后才能盖住它的 url。
+      ops-only: h2db,testcfg,ops,opsdb
+
   # 只启用 neargo 的 RBAC(@perm) 与 DataScope 引擎；它自带的会话/安全/数据自动配置与本项目
   # 自持的双池会话链冲突，必须精确排除（TDD-backend §2.1-3）。
   autoconfigure:
@@ -56,12 +90,391 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  category:
+    gate:
+      # 类目资质闸门是否真的拦人。**暂时 false —— 只展示、不限制**（2026-08-23）。
+      #
+      # 受理入口刚铺（B 端「我的资质」传证 + 运营端「按已传的证勾选」授码），
+      # 存量商家的 category_codes 还在补。这时候闸门拦住的不是无证经营，
+      # 是平台自己还没建好的那条路：线上 267 件商品落在带门槛的类目下，
+      # 开着闸它们一件都上不了架。
+      #
+      # 判据照跑、命中打 WARN（「[类目闸] 放行未授权上架」），那是开闸前估影响面的依据。
+      # 打开时**必须同时**把 b-app 的 ENFORCE_CATEGORY_GATE 打开，见 b-app/src/shared/flags.ts。
+      enforce: ${SHOP_CATEGORY_GATE_ENFORCE:false}
+  # 图片/媒体存储：local = 本地磁盘（默认，兜底）；cos = 腾讯云对象存储（生产）。
+  media:
+    provider: ${SHOP_MEDIA_PROVIDER:local}
+    # 公开图出口（ADR-026）。库里只存规范地址（= shop.cos.domain，生产 https://img.hxmall.top）。
+    #   server = 经应用服务器：客户端拿到的就是规范地址（默认，零开销）
+    #   direct = 经图片服务器：接口响应里的规范前缀换成 direct-base-url（如 https://cdn.hxmall.top），
+    #            请求体里的 direct 前缀换回规范地址再入库。direct 下 direct-base-url 为空则拒绝启动。
+    delivery: ${SHOP_MEDIA_DELIVERY:server}
+    direct-base-url: ${SHOP_MEDIA_DIRECT_BASE_URL:}
+  # 腾讯云 COS。provider=cos 时必填（缺任一项直接起不来）。密钥走 env，不入库不入镜像。
+  # 逆地理编码（店铺地址「定位」按钮）。腾讯位置服务 WebService key；空 = 功能关闭，端上藏按钮
+  geo:
+    # 高德 Web 服务 key（后端代理，密钥不落端）。空 = 地图能力关闭：定位取地址按钮隐藏、地址校验跳过
+    amap-key: ${AMAP_WEB_KEY:}
+  cos:
+    secret-id: ${COS_SECRET_ID:}
+    secret-key: ${COS_SECRET_KEY:}
+    region: ${COS_REGION:}
+    bucket: ${COS_BUCKET:}
+    # 公开图的**规范地址**前缀（入库的就是它）；留空用 COS 默认域名。生产：https://img.hxmall.top
+    domain: ${COS_DOMAIN:}
+    # 私有图签名地址对外的前缀；留空用 COS 默认域名。生产：https://www.hxmall.top/cos-private
+    # （nginx 转发时把 Host 设回桶域名，签名才对得上）
+    private-base-url: ${COS_PRIVATE_BASE_URL:}
   auth:
-    # memory=本地零依赖；生产必须 redis，否则多实例部署换实例即掉线
+    # 密钥票据免登录（ADR-027）：自动化测试用。默认关，关着时 /common/auth/automation 返回 404。
+    # 线上只放公钥；私钥在本机仓库外。开着而公钥或白名单为空则拒绝启动。
+    # subjects 形如 B:<user_no>,OPS:<staff_no>，只有这些账号能用票据登录，权限与其正常登录相同。
+    automation:
+      enabled: ${SHOP_AUTOMATION_ENABLED:false}
+      public-key: ${SHOP_AUTOMATION_PUBLIC_KEY:}
+      subjects: ${SHOP_AUTOMATION_SUBJECTS:}
+    # memory / ehcache / redis，取舍见 TokenStoreConfig 的类注释。
+    #   memory  = 零依赖但**重启即全员掉线**，只适合测试
+    #   ehcache = 零依赖 + 本地磁盘持久化，**单实例部署用它**
+    #   redis   = 多副本部署的唯一选项（会话要跨实例共享）
     token-store: ${SHOP_TOKEN_STORE:memory}
+    ehcache:
+      # 每个实例独占一个目录：Ehcache 会加文件锁，两个实例指同一个目录时后启动的起不来
+      dir: ${SHOP_SESSION_DIR:./data/sessions}
+      disk-mb: ${SHOP_SESSION_DISK_MB:64}
+    otp:
+      # 预设验证码：**测试环境专用**。设了之后 /biz/auth/otp/send 与 /mp/user/otp/send
+      # 一律下发这个码，且**不再调短信通道**（省钱，也免得真给人发一条固定码的短信）。
+      #
+      # 空 = 关（默认）。开着时任何人都能用这个码登录**任意手机号** ——
+      # 自动化 e2e 需要它（真机收不到码，也不该为跑测试去接短信平台），
+      # 但它同时是一把可以登进任何人账号的万能钥匙。
+      #
+      # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
+      # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
+      fixed: ${SHOP_OTP_FIXED:}
+  period:
+    # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
+    # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
+    decide-hours: ${SHOP_PERIOD_DECIDE_HOURS:14}
+  mp:
+    my-store:
+      # 只逛过、没买过的门店在「我的店」里留几天；买过的一直在（TDD-C端门店化与门店门户 §2.3）
+      view-keep-days: 30
   default-skin: fresh
   min-app-ver: 1.0.0
   service-hours: "09:00-21:00"
+  # 微信客服（企业微信那款）。**任一为空端上就回落**到小程序原生的 open-type="contact"。
+  # 这两个值不是凭据 —— 客服链接本来就要发给买家看，放 env 只为分环境。
+  #   corp-id：企业微信 CorpID。**同主体还不够，必须在小程序后台绑过**，
+  #            没绑的表现是端上 errCode 6，而界面上看着就是「点了没反应」。
+  #   url    ：企微后台 → 应用管理 → 微信客服 → 客服账号详情 → 接入链接
+  customer-service:
+    corp-id: ${SHOP_KF_CORP_ID:}
+    url: ${SHOP_KF_URL:}
+  # 商家版 App 的下载地址，按平台各一条。**空的那一档端上不显示**（不发点不开的地址）。
+  # iOS 现在是空的：那一版还在苹果审核队列里，上架前先放 TestFlight 公开链接。
+  merchant-app:
+    android: ${SHOP_MERCHANT_APP_ANDROID:}
+    ios: ${SHOP_MERCHANT_APP_IOS:}
+    # 版本清单，发版脚本写的（release-bapp-apk.sh 第 3.6 步）。
+    # **它在就以它为准**，上面那两行只是兜底 —— 版本号此前写死在三处，
+    # 每处都要手工跟，于是 env 这处掉了二十多个版本（0.4.98 vs 0.5.21），
+    # 而掉队时下载照样 200、照样装得上，只是功能旧，没有任何信号。
+    # 留空（本机、切片测试）= 不读文件，行为与改造前逐字相同。
+    manifest-file: ${SHOP_MERCHANT_APP_MANIFEST:}
+  notify:
+    wecom:
+      # 企业微信群机器人的 Webhook。**URL 本身就是凭据** —— 拿到它的人都能往群里发消息，
+      # 所以只在服务器 env 里，不进仓库。空 = 不发（缺配置时不发半截）。
+      webhook: ${SHOP_NOTIFY_WECOM_WEBHOOK:}
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false
+
+  # 短信与邮件。**密钥一律走环境变量**，不写进这个文件、不进代码库。
+  # 本地模板见 backend/.env.local.example。
+  sms:
+    # 桩：只打日志不真发。**默认 true，与支付相反** ——
+    # 支付默认 stub=false 是因为「假装支付成功」是资金事故；短信反过来：
+    # 默认发真短信意味着本地跑一次测试就在花钱，还会真骚扰到测试手机号。
+    #
+    # ⚠️ 改成 false 之前必须确认发码限流开着（shop.otp.rate-limit，默认 true）——
+    # /mp/user/otp/send 是公网未鉴权端点，没限流 = 谁都能循环调着烧短信费。
+    stub: ${SHOP_SMS_STUB:true}
+    ali:
+      endpoint: ${ALI_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+      sign: ${ALI_SMS_SIGN:}
+      access-key-id: ${ALI_SMS_AK:}
+      access-key-secret: ${ALI_SMS_SK:}
+      templates:
+        # 阿里云后台报备通过的验证码模板号。缺它一条也发不出去，所以启动即校验
+        otp: ${ALI_SMS_TPL_OTP:}
+  mail:
+    stub: ${SHOP_MAIL_STUB:true}
+    host: ${MAIL_HOST:smtp.office365.com}
+    port: ${MAIL_PORT:587}
+    protocols: ${MAIL_PROTOCOLS:TLSv1.2}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    # **必须与 username 一致**，除非在 M365 后台授了「发送为」权限：
+    # 实测认证会成功而投递被拒（554 SendAsDenied）
+    from: ${MAIL_FROM:}
+
+  # 对外可访问的 Web 域名（分享链接、店铺码落地页）。
+  #
+  # **没配就不发链接**（StoreLinkService 返回 null），而不是发一个占位域名 ——
+  # 这里原本在两个控制器里各写死一遍 `https://shop.example.com/s/<code>`，
+  # 商家复制出去的链接与印在包装袋上的码全都指向一个不存在的地方，
+  # 而那两个功能点在清单上都标着「已实现」。备案下来后填上即可。
+  web:
+    base-url: ${SHOP_WEB_BASE_URL:}
+
+  # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
+  #
+  # **两条通道各有各的开关**，`stub` 是它们共同的默认值：
+  #   shop.wx.stub            总开关 —— 不单独配时两条都跟它走
+  #   shop.wx.login.stub      登录（code2Session）。只要 appid + secret
+  #   shop.wx.subscribe.stub  订阅消息。还要 mp 后台**报备过的两个模板号**
+  #
+  # 为什么拆：**两条通道的接入前置不一样**。登录拿到 appid/secret 就能通，
+  # 订阅消息要先在 mp 后台报备模板。合成一个开关时，想先把登录接通会被
+  # 订阅消息的 fail-fast 拦在启动阶段 —— 这不是配置错误，是开关粒度不够。
+  #
+  # **但反方向仍然禁止**：登录走桩（库里存的是假 openid）而订阅消息真发，
+  # 会缝合出一个「发给不存在的人」的世界。这个组合由 WxSubscribeGateway
+  # 的构造器直接拒绝，不是靠人记得别这么配。
+  wx:
+    # ⚠️ **`shop.wx` 在这个文件里只能有一处。** 738bd4b2 另起了一个 `wx:` 放
+    # push.token，两个同级同名键让 SnakeYAML 直接拒绝解析整份配置 ——
+    # 后果不是「那一项没生效」，是**整个 Spring 上下文起不来**，
+    # 于是每一个 @SpringBootTest 都在 0.00 秒失败、报错也不指向 YAML。
+    # 这里把它并了回来，注释按原样保留。
+    push:
+      # 「消息推送」的令牌（后台 → 开发管理 → 消息推送）。**凭证，不进代码库。**
+      # 与它成对的 EncodingAESKey 同理 —— 当前只用明文/兼容模式，暂不需要解密，
+      # 真要解密时再加 shop.wx.push.aes-key，同样从环境变量来。
+      #
+      # 空 = 拒绝校验。**不放行**：放行等于任何人都能冒充微信给我们推事件，
+      # 而那些事件将来会驱动结算与发货状态。
+      token: ${WX_PUSH_TOKEN:}
+    stub: ${SHOP_WX_STUB:true}
+    login:
+      stub: ${SHOP_WX_LOGIN_STUB:${SHOP_WX_STUB:true}}
+    subscribe:
+      stub: ${SHOP_WX_SUBSCRIBE_STUB:${SHOP_WX_STUB:true}}
+    # 小程序码（wxacode.getUnlimited）。只要 appid+secret，不需要模板号也不需要备案域名
+    acode:
+      stub: ${SHOP_WX_ACODE_STUB:${SHOP_WX_STUB:true}}
+      # 小程序**还没发布过任何版本**时必须 false，否则微信校验 page 是否存在于已发布版本
+      check-path: ${SHOP_WX_ACODE_CHECK_PATH:false}
+    # 手机号快速验证（phonenumber.getPhoneNumber）。**要已认证 + 非个人主体，且按次计费** ——
+    # 所以它默认关着，而验证码那条路必须一直在（端上按 /mp/user/phone/capable 决定显示哪个）
+    phone:
+      stub: ${SHOP_WX_PHONE_STUB:${SHOP_WX_STUB:true}}
+    appid: ${WX_APPID:}
+    secret: ${WX_SECRET:}
+    # developer / trial / formal。联调切 trial，免得打扰真实用户
+    mp-state: ${WX_MP_STATE:formal}
+    templates:
+      # mp 后台报备通过的模板号。**必须与端上 VITE_WX_TPL_* 同值** ——
+      # 不同值的话前端攒的订阅额度后端查不到，一条也发不出去
+      order-arrived: ${WX_TPL_ORDER_ARRIVED:}
+      refunded: ${WX_TPL_REFUNDED:}
+      # 新品开售提醒（mp 模板 383）。缺它不拦启动，但端上收集的授权会白点：
+      # 额度扣得下去、发的时候没有模板号可用
+      new-goods: ${WX_TPL_NEW_GOODS:}
+      # 元器件询价结果通知（可选，元器件服务在用）。模板是在 mp 后台自选的，所以字段名也配：
+      # 按「单号,料号概述,结果,提示语」四个位置写模板里的字段名（没有的位置留空，如 "character_string1,thing2,,thing4"）
+      elec-quoted: ${WX_TPL_ELEC_QUOTED:}
+      elec-quoted-fields: ${WX_TPL_ELEC_QUOTED_FIELDS:character_string1,thing2,phrase3,thing4}
+
+  # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
+  # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。
+  push:
+    # 桩默认 true，理由同短信且更强：推送会在夜里把人吵醒
+    stub: ${SHOP_PUSH_STUB:true}
+    getui:
+      app-id: ${GETUI_APP_ID:}
+      app-key: ${GETUI_APP_KEY:}
+      master-secret: ${GETUI_MASTER_SECRET:}
+
+  # 快递代下单（快递100 商家寄件，ADR-028 · TDD-快递100商家寄件）。
+  # 桩默认 true，且桩**不装成功**：商家点「叫快递」会被告知「还没开通」，而不是等一个不会来的快递员。
+  # 凭据在快递100 企业后台（授权 key / secret），salt 是我们自己定的回调签名盐；**都不进代码库**。
+  express:
+    kuaidi100:
+      stub: ${SHOP_EXPRESS_KUAIDI100_STUB:true}
+      # 正式 / 测试两个地址都常驻，**用哪个由运营端功能开关「快递测试模式」(express.test-mode) 定**，
+      # 按取件单落库（取消要回同一个环境）。测试环境下单不产生真实取件、不扣费；
+      # 各阶段状态在「寄件测试平台」testapi.kuaidilab.com 里手动推
+      host: ${KUAIDI100_HOST:https://poll.kuaidi100.com}
+      sandbox-host: ${KUAIDI100_SANDBOX_HOST:http://e-test.kuaidilab.com/api}
+      key: ${KUAIDI100_KEY:}
+      secret: ${KUAIDI100_SECRET:}
+      salt: ${KUAIDI100_SALT:}
+      callback-url: ${KUAIDI100_CALLBACK_URL:https://www.hxmall.top/callback/express/kuaidi100}
+
+  # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
+  #
+  # 为什么要能配：改一次频率此前要改代码、过一遍构建再发一次版 ——
+  # 而需要改频率的时刻恰恰是**出事的时候**（对账扫描要临时调密、
+  # 某个任务把库压垮了要临时调稀）。那个时刻发版是最不该做的事。
+  #
+  # 每条都带着原值作为默认值：不配任何环境变量时行为与此前**逐字节一致**。
+  # 停掉某个任务用 `-` （Spring 的 disabled 标记），不要设成一个永不触发的表达式 ——
+  # 后者在日志里看不出是「停了」还是「配错了」。
+  job:
+    outbox:
+      # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
+      cron: ${SHOP_JOB_OUTBOX_CRON:*/5 * * * * *}
+    order-auto-close:
+      # 一分钟一轮：关单晚一分钟，库存就多占一分钟。
+      # **配置时长本身在 /orders?tab=close**，不在这里 —— 这条只管「多久扫一次」，
+      # 「多久算超时」是运营配的业务参数，两者不是一回事
+      cron: ${SHOP_JOB_ORDER_AUTO_CLOSE_CRON:0 * * * * *}
+    group-expire:
+      # 一分钟一轮：团过了截止还挂着「还差 N 人」，买家会一直等
+      cron: ${SHOP_JOB_GROUP_EXPIRE_CRON:15 * * * * *}
+    member-level-recompute:
+      # 每天一次：分层按「多少天没来」算，时间本身就会改变它，没有事件能触发。
+      # 放在凌晨 3 点 —— 商家早上打开会员页看到的是今天的数
+      cron: ${SHOP_JOB_MEMBER_LEVEL_RECOMPUTE_CRON:0 0 3 * * *}
+    period-cutoff:
+      # 一分钟一轮：集单到点截单、未达起订量的期超时自动取消并退款。
+      # 截单归属看订单时间与 cutoff_at，不看这个任务跑到没有 —— 晚一分钟扫到不改变谁属于哪一期
+      cron: ${SHOP_JOB_PERIOD_CUTOFF_CRON:30 * * * * *}
+    points-activate:
+      cron: ${SHOP_JOB_POINTS_ACTIVATE_CRON:0 5 0 * * *}
+    points-expire:
+      cron: ${SHOP_JOB_POINTS_EXPIRE_CRON:0 20 0 * * *}
+    points-identity:
+      # **必须排在上面两条之后** —— 它查的恒等式两边正是那两条要改的。
+      # 调整这三条的先后时要一起调，否则查到的是正在变化的快照，报出来的失衡是假的
+      cron: ${SHOP_JOB_POINTS_IDENTITY_CRON:0 40 0 * * *}
+    qualification-expiry:
+      cron: ${SHOP_JOB_QUALIFICATION_EXPIRY_CRON:0 10 3 * * *}
+    recon-scan:
+      # 调密之前先看 lockAtMostFor（PT9M）—— 间隔小于它时，卡住的那轮会挡住下一轮
+      cron: ${SHOP_JOB_RECON_SCAN_CRON:0 */10 * * * *}
+
+  # 发码限流（安全整改方案 §2.2 的三道闸）。**生产必须开着**
+  otp:
+    rate-limit: ${SHOP_OTP_RATE_LIMIT:true}
+    interval-seconds: ${SHOP_OTP_INTERVAL_SECONDS:60}
+    daily-per-phone: ${SHOP_OTP_DAILY_PER_PHONE:10}
+    hourly-per-ip: ${SHOP_OTP_HOURLY_PER_IP:20}
+
+  # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
+  pay:
+    # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
+    # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
+    stub: ${SHOP_PAY_STUB:false}
+    wechat:
+      # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
+      # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty
+      # 认为「键存在」即成立 —— 于是网关会带着空凭据启动，直到第一次调用才失败
+      enabled: ${WX_PAY_ENABLED:false}
+      # 接入方式。direct = 普通直连商户号（钱进平台商户号，ADR-017 路径 A「归集」）；
+      # ecommerce = 电商收付通服务商（二级商户 + 分账，路径 B）。
+      # **两套是不同的产品，不是同一套的两种配置**：直连商户号调 /v3/ecommerce/*
+      # 返回 NO_AUTH，而那个错误看起来像凭据配错。
+      # 两个网关按这个键互斥装配，同时装上会在启动时被 PayGatewayRouter 拦下。
+      mode: ${WX_PAY_MODE:direct}
+      # ⚠️ 下面这几个键名**必须与代码里的 @Value 逐字一致**。
+      # @Value 不做 relaxed binding —— 2026-09-04 之前这里写的是 mch-id /
+      # api-v3-key，而代码读的是 mchid / apiv3-key：配了等于没配，
+      # 且没有任何地方会报错（回调验签会因为空密钥全部失败，看起来像密钥配错了）。
+      mchid: ${WX_MCHID:}
+      # 小程序 appid。**必须与商户号在商户平台里绑定过**，
+      # 否则下单返回 APPID_MCHID_NOT_MATCH —— 这一条改代码解决不了。
+      #
+      # **刻意与 shop.wx.appid 共用同一个 WX_APPID**，不另起变量：
+      # JSAPI 下单的 appid 必须就是登录/订阅消息用的那个小程序。
+      # 拆成两个变量的话，改了一个忘了另一个，症状是下单
+      # APPID_MCHID_NOT_MATCH，而排查会去查商户平台的绑定关系 —— 查不出来。
+      appid: ${WX_APPID:}
+      # 商户 API 证书序列号
+      serial-no: ${WX_SERIAL_NO:}
+      # 商户私钥（apiclient_key.pem，PKCS#8）。两种给法二选一，**优先内容**：
+      # 容器里挂文件方便就用 path，走密钥管理注入就用内容
+      private-key: ${WX_PRIVATE_KEY:}
+      private-key-path: ${WX_PRIVATE_KEY_PATH:}
+      # APIv3 密钥（32 位）。回调解密用。商户平台设完自己留一份，不给看第二次
+      apiv3-key: ${WX_APIV3_KEY:}
+      # 微信支付公钥（2025 年后新商户默认发这个，不再是平台证书）。
+      # 验回调签名与验应答签名都用它。**不配 = 不验签**，启动时会打一条 WARN
+      platform-public-key: ${WX_PLATFORM_PUBLIC_KEY:}
+      platform-public-key-path: ${WX_PLATFORM_PUBLIC_KEY_PATH:}
+      # 支付结果回调。必须 HTTPS 且公网可达；不配则拒绝下单
+      # （发出去也收不到通知，那笔单会停在 PENDING 只能等对账日）
+      notify-url: ${WX_NOTIFY_URL:}
+    alipay:
+      enabled: ${ALIPAY_PAY_ENABLED:false}
+      app-id: ${ALIPAY_APP_ID:}
+      private-key-path: ${ALIPAY_PRIVATE_KEY_PATH:}
+      public-key-path: ${ALIPAY_PUBLIC_KEY_PATH:}
+      # 平台自己的收款账号：补差时作为出资方（trans_out）。
+      # 不配的话补差会明确失败，而不是静默补 0
+      platform-account: ${ALIPAY_PLATFORM_ACCOUNT:}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 三种起法（模块优化实施步骤 S8 / diagrams/deploy-topology.svg）
+#
+# 同一个 shop.jar，只差 --spring.profiles.active，代码零分叉：
+#   api    公网 · 承载 C 端与 B 端 · 多实例可水平扩
+#   ops    内网 · 只有运营面 · 1–2 实例
+#   worker 无 HTTP · 独占定时任务与 Outbox 派发
+#
+# 隔离不是靠安全链，是靠**路由不存在**：Controller 各自带 @Profile，
+# 以 ops 起时 /mp/** 返回 404 而不是 401。少一条链只是少一层过滤器，
+# 少一个路由才是少一个攻击面。
+#
+# 不设默认 profile 是有意的：忘了指定就起不出完整的服务，
+# 比默认起成 api（把运营面也带上公网）安全得多。
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── 日志级别：框架噪音降到 WARN ───────────────────────────────────────────────
+# 依据：[日志方案 §7 应用日志内容规范]。此前**这个服务一条 logging 配置都没有** ——
+# 而它正是 2026-09-14 写出 41.6G 的那个。
+#
+# 名字不是猜的，是从线上 `shop-app.log` 里实际打印的 logger 取的（524 行的一次取样）：
+#   com.zaxxer.hikari.HikariDataSource / .pool.HikariPool        80 行（框架噪音里最大的一块）
+#   c.b.m.e.s.MybatisSqlSessionFactoryBean                        8 行
+#   org.apache.tomcat / catalina                                  0 行（现在不吵，配着是防将来）
+#
+# **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
+# 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
+logging:
+  level:
+    com.zaxxer.hikari: WARN
+    com.baomidou.mybatisplus: WARN
+    org.mybatis: WARN
+    org.apache.tomcat: WARN
+    org.apache.catalina: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: api
+
+---
+spring:
+  config:
+    activate:
+      on-profile: ops
+server:
+  # 与 api 不同端口：即使误挂到公网，也不会撞上已开放的 8080
+  port: 8081
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker
+  main:
+    # 不起 HTTP。批量任务与 API 抢同一个线程池与连接池时，
+    # 结算跑一轮能把下单接口拖到超时——而这种拖慢在监控上看起来像「数据库慢」
+    web-application-type: none

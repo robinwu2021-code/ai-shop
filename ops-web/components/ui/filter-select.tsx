@@ -7,7 +7,7 @@
 // 没有对应映射表的（如按平台/国家筛）传 options 数组，形态与 FieldDef.options 一致。
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Select } from "./input";
+import { Input, Select, useDebouncedPush } from "./input";
 import { statusOptions, type StatusMap } from "./status-badge";
 import type { FilterChip } from "./filter-chip";
 
@@ -51,6 +51,14 @@ export function FilterSelect<K extends string>({
  * "Filter by status" → "status"），**两种语言的模式都要剥** —— 页面文案英文化之后
  * 只剥中文的那版会让 chip 变成 "Filter by status: Paid"，比不带前缀更糟。
  */
+/** 两种语言的模式都要剥，见上。`TextFilter` 用的是同一份 —— 前缀风格必须一致。 */
+const chipName = (ariaLabel?: string) =>
+  (ariaLabel ?? "")
+    .replace(/^按/, "")
+    .replace(/筛选$/, "")
+    .replace(/^Filter by\s+/i, "")
+    .trim() || undefined;
+
 FilterSelect.toChip = (p: Parameters<typeof FilterSelect>[0]): FilterChip | null => {
   // 置灰时不出 chip：点了清不掉的 chip 比没有更让人困惑
   if (!p.value || p.disabled) return null;
@@ -58,13 +66,53 @@ FilterSelect.toChip = (p: Parameters<typeof FilterSelect>[0]): FilterChip | null
     ? (p.options as readonly FilterOption[])
     : statusOptions(p.options as StatusMap<string>);
   return {
-    name:
-      (p["aria-label"] ?? "")
-        .replace(/^按/, "")
-        .replace(/筛选$/, "")
-        .replace(/^Filter by\s+/i, "")
-        .trim() || undefined,
+    name: chipName(p["aria-label"]),
     label: list.find((o) => o.value === p.value)?.label ?? p.value,
+    clear: () => p.onChange(""),
+  };
+};
+
+/**
+ * 文本筛选框（组合层）：`Input` + 防抖 + 筛选回显。
+ *
+ * **为什么要有它**：工具栏里直接塞一个裸 `<Input>` 当筛选，会同时丢两样东西 ——
+ *   · 它没有 `toChip`，选中态**不出现在筛选回显里**。用户以为没筛，
+ *     然后对着少掉的数据找半天（`filter-chip.ts` 开头写的就是这件事）；
+ *   · 它没有防抖，值又直接进 `queryKey` —— 每敲一个字符一次请求。
+ *
+ * 2026-09-09 全量扫出 2 处这样的裸 `<Input>`（门店治理按商家号筛、
+ * 财务欠款按主体筛）。另外 8 处工具栏里的 `<Input>` 都带提交按钮或回车提交，
+ * 属于「查询表单」而不是实时筛选，不在此列 —— 那些要求出 chip 是假阳性。
+ */
+export function TextFilter({
+  value, onChange, placeholder, className, disabled, "aria-label": ariaLabel,
+}: {
+  value: string;
+  /** 已防抖：每次停手 300ms 才通知一次，回车与清空立即通知 */
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  /** chip 前缀由它剥出来（「按商家筛选」→「商家」），与 FilterSelect 同一套规则 */
+  "aria-label"?: string;
+}) {
+  const { local, push } = useDebouncedPush(value, onChange);
+  return (
+    <Input
+      className={cn(className)} aria-label={ariaLabel} placeholder={placeholder}
+      disabled={disabled} value={local}
+      onChange={(e) => push(e.target.value)}
+      onKeyDown={(e) => { if (e.key === "Enter") push(local, true); }}
+    />
+  );
+}
+
+TextFilter.toChip = (p: Parameters<typeof TextFilter>[0]): FilterChip | null => {
+  if (!p.value || p.disabled) return null;
+  return {
+    name: chipName(p["aria-label"]),
+    // 文本筛选没有 options，值本身就是可读文案
+    label: p.value,
     clear: () => p.onChange(""),
   };
 };

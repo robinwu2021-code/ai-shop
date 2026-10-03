@@ -1,0 +1,189 @@
+package ai.neargo.shop.common;
+
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * 业务键生成：{@code 前缀 + yyyyMMddHHmmss + 4 位序 + 3 位随机}。
+ *
+ * <p>为什么不用 UUID：业务键会被人念（客服问「您的订单号是」）、会被打印在取货码小票上、
+ * 会按时间排序做运营查询。UUID 三样都不占。
+ *
+ * <p>为什么带随机位：单机自增序在多实例部署下会撞号；随机位把碰撞概率压到可忽略，
+ * 真撞了也有唯一索引兜底（业务键在库里一律建 UNIQUE）。
+ */
+public final class BizKey {
+
+    /** 前缀是语义的一部分：看到 {@code SUB} 就知道这是子订单，不用去查表。 */
+    public static final String ORDER = "SO";
+    public static final String SUB_ORDER = "SUB";
+    public static final String AFTER_SALE = "AS";
+    /** 预约时段（{@code mch_appointment_slot}）。门店的服务容量，不是商品的 */
+    public static final String APPOINTMENT_SLOT = "APS";
+    public static final String USER = "U";
+    /**
+     * 平台人档（{@code usr_person}）。
+     *
+     * <p><b>与 {@link #USER} 分开是有意的</b>：账号要注册才有，人档不用 ——
+     * 商家录进来的手机号，本人可能还没在平台出现过。会员挂在人档上，不挂账号上。
+     */
+    public static final String PERSON = "PS";
+    /** 会员：一个人 × 一家主体的关系。与 PERSON 分开 —— 一份人档可以是好几家店的会员 */
+    public static final String MEMBER = "MB";
+    /** 会员来源明细。每一次来源一行 */
+    public static final String MEMBER_SOURCE = "MS";
+    /** 会员标签。号不可变，名字可改 —— 关系表存的是它 */
+    public static final String MEMBER_TAG = "MT";
+    /** 人群：一组筛选条件。发券、活动受众、触达共用它，避免同一群人算出三个数 */
+    public static final String MEMBER_SEGMENT = "SG";
+    /** 券模板（新模型 pmt_coupon）。与老 mkt_coupon 的号分开 —— 两套表并存期间要一眼看出是哪一套 */
+    public static final String PROMO_COUPON = "PC";
+    /** 用户券（新模型）。发到某个人手上的那一张 */
+    public static final String PROMO_USER_COUPON = "PU";
+    /** 发放批次：一次定向发券 */
+    public static final String PROMO_ISSUE = "PI";
+    /** 优惠发生记录：一单命中了什么、一张券被用了第几次 */
+    public static final String PROMO_APPLY = "PA";
+    /** 活动（新模型 pmt_activity）。与老 mkt_campaign 的号分开 */
+    public static final String PROMO_ACTIVITY = "PT";
+    /** 集单的一期（pmt_period） */
+    public static final String PROMO_PERIOD = "PD";
+    /** 平台活动报名单（pmt_enrollment） */
+    public static final String PROMO_ENROLLMENT = "PE";
+    /** 触达记录：谁在什么时候被发过什么 */
+    public static final String REACH = "RC";
+    /** 内容位（首页楼层/轮播/频道）。与预约时段 APS 分开：那是时间段，这是版位 */
+    public static final String CONTENT_SLOT = "SL";
+    public static final String ADDRESS = "AD";
+    public static final String TICKET = "TK";
+    public static final String MESSAGE = "MSG";
+    public static final String MERCHANT = "M";
+    public static final String MERCHANT_APPLY = "MA";
+    public static final String STAFF = "ST";
+    public static final String PICKUP_POINT = "PP";
+    /** 社区（小区/网格）。运营开的点，或商家提报审过之后建出来的 */
+    public static final String COMMUNITY = "C";
+    /** 商家提报的新社区（ADR-013 阶段三） */
+    public static final String COMMUNITY_APPLY = "CA";
+    public static final String GOODS = "G";
+    public static final String SKU = "SK";
+    public static final String SPEC_TEMPLATE = "SPT";
+    /** 平台标准品（TDD-标准品库）。种子用的是 STD1xxx/STD2xxx，新建走这个前缀 */
+    public static final String SPU_STD = "STD";
+    /** 主题分类（陈列）。与活动的 CP 分开：摆到一起 ≠ 降价 */
+    public static final String TOPIC = "TP";
+    public static final String STORE = "ST";
+    public static final String MERCHANT_STAFF = "SF";
+    public static final String GROUP_BUY = "GB";
+    public static final String GROUP_REQUEST = "GR";
+    public static final String QUOTE = "Q";
+    public static final String COUPON = "CP";
+    /** 营销活动。与 COUPON 分开：一个活动可以发出成千上万张券，两者不是一回事 */
+    public static final String CAMPAIGN = "CM";
+    public static final String REVIEW = "RV";
+    public static final String APPEAL = "AP";
+    public static final String SETTLE_BILL = "STL";
+    /** 账期批次。一个主体一个通道一个账期一批 */
+    public static final String SETTLE_BATCH = "STB";
+    /** 开票申请（平台开给消费者）。与 STL 的采购发票是两回事：那是进项，这是销项 */
+    public static final String INVOICE_REQUEST = "INV";
+    /** 费率规则版本 */
+    public static final String FEE_RULE = "FR";
+    /** 收款流水（stl_payment）。与结算单 STL 分开：那是「该给商家多少」，这是「用户付了多少」 */
+    public static final String PAYMENT = "PY";
+    /** 商家提现单（stl_withdraw）。V288 起商家可申请，此前这张表从没被写过 */
+    public static final String WITHDRAW = "WD";
+    /** 渠道报文（stl_channel_message，V286）。发送与回调共用一个前缀 —— 靠 msg_type 分 */
+    public static final String CHANNEL_MESSAGE = "CM";
+    public static final String EVENT = "EVT";
+    /** 短信/邮件发送记录 */
+    public static final String NOTIFY_LOG = "NL";
+    /** 平台营销广播推送任务（N6） */
+    public static final String PUSH_TASK = "NPT";
+    /**
+     * 类目。运营新建的类目走这个前缀；种子里那批（CAT100…CAT400）是手写的主数据，
+     * 编号与 ops-web 的 mock 对齐，联调时不用在两套编号之间换算。
+     */
+    public static final String CATEGORY = "CAT";
+    /** 违规处置记录 */
+    public static final String VIOLATION = "VL";
+    /** 店招/公告人审单 */
+    public static final String STORE_AUDIT = "SA";
+    /** 商家的一条地理覆盖项（ADR-013） */
+    public static final String SERVICE_AREA = "SVA";
+
+    /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
+    public static final String PAY_MERCHANT = "PM";
+    /** 对账差异单 */
+    public static final String RECON_DIFF = "RD";
+    /** 资金风控影子期日志 */
+    public static final String RISK_SHADOW = "RSK";
+    /** 保证金流水 */
+    public static final String DEPOSIT_TXN = "DP";
+    /** 欠款流水。与保证金流水分开：两者方向相反，混号会让对账时分不清 */
+    public static final String DEBT_TXN = "DBT";
+    /** 积分流水 */
+    public static final String POINTS_LEDGER = "PL";
+    /** 积分资金池流水 */
+    public static final String POINTS_POOL = "PP";
+    /** 榜单 */
+    public static final String RANKING = "RK";
+    /** 运营素材 */
+    public static final String MATERIAL = "MT";
+    /** 商品问答（买家在商品页提问，运营在后台回答） */
+    public static final String QUESTION = "QA";
+    /** 员工与授权的操作日志（B-11.10.3） */
+    public static final String STAFF_LOG = "SL";
+    /** 商家自定义角色（V71）。预置角色的码是 OWNER/MANAGER… 这类词，不走这里 */
+    public static final String MERCHANT_ROLE = "R";
+
+    /** 到货批次（P-5.1.1）。一个自提点一天一批，配车信息挂在它上面 */
+    public static final String ARRIVAL_BATCH = "BAT";
+    /**
+     * 快递运单记录（P-5.2.1）。<b>不是快递单号</b> —— 那个由承运商给，存在 waybill_no。
+     * 分成两个键是因为换单号时运单记录必须还是同一条，否则轨迹会断
+     */
+    public static final String SHIPMENT = "SH";
+    /** 运费模板（P-5.2.3） */
+    public static final String FREIGHT_TEMPLATE = "FT";
+
+    /**
+     * 风险事件（P-16.2）。<b>不复用 {@link #EVENT}</b> —— 那个是 Outbox 的领域事件，
+     * 两者是完全不同的东西，共用前缀之后「EVT... 是哪种事件」要靠猜
+     */
+    public static final String RISK_EVENT = "RE";
+    /** 黑名单记录（P-16.2.4） */
+    public static final String BLACKLIST = "BL";
+    /** 归因链路（P-9.1.3）。运营端按它检索一次归因判定 */
+    public static final String ATTRIBUTION_TRACE = "AT";
+    /** 裂变活动（P-9.2.1） */
+    public static final String FISSION = "FS";
+    /** 门店访问埋点。扫码落地即记，**匿名也记** —— 获客漏斗的第一层靠它 */
+    public static final String STORE_VISIT = "VS";
+    /** 店铺码印刷量登记。线下事实，运营录入 */
+    public static final String QRCODE_PRINT = "QP";
+    /** 快递代下单的取件单（TDD-快递100商家寄件）。作为 thirdOrderId 传给通道，长度要 ≤32 */
+    public static final String EXPRESS_PICKUP = "EP";
+    /**
+     * 供应商收款账户（ADR-011 自营供应商模式）。
+     *
+     * <p><b>不复用 {@code WITHDRAW}</b> —— 那个是提现单（一次取钱的动作），
+     * 这个是账户（钱打到哪里）。共用前缀之后「PAC… 是一笔还是一张卡」要靠猜。
+     */
+    public static final String PAYOUT_ACCOUNT = "PAC";
+
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final AtomicInteger SEQ = new AtomicInteger(0);
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    private BizKey() {
+    }
+
+    public static String next(String prefix) {
+        int seq = Math.floorMod(SEQ.getAndIncrement(), 10000);
+        int rand = RANDOM.nextInt(1000);
+        return "%s%s%04d%03d".formatted(prefix, LocalDateTime.now().format(FMT), seq, rand);
+    }
+}

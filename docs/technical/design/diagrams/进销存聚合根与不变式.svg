@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>进销存限界上下文：五个聚合根与六条不变式</title><desc>上方是上下文之外的系统（平台交易域、平台商品档案、客户自有 OMS、商家 ERP），它们只能穿过防腐层进来。中间是五个聚合根：物料 Item、库位 Location、库存余额 StockBalance、单据 Document、预留 Reservation，以及不可变的流水 StockLedgerEntry。下方列出六条必须永远成立的不变式。</desc>
+<defs>
+<marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="pk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#6E86A8" stroke-width="1.6" stroke-linecap="round"/></marker>
+<style>
+.bx{fill:#FFFFFF;stroke:#D5DBE3;stroke-width:1.2}
+.bo{fill:#F3F6FA;stroke:#C8D0DA;stroke-width:1.2;stroke-dasharray:4 3}
+.bk{fill:#FFFFFF;stroke:#6E86A8;stroke-width:2}
+.bn{fill:#FFFDF6;stroke:#D9C89A;stroke-width:1.4}
+.acl{fill:#EEF2F8;stroke:#A8B8CE;stroke-width:1.3}
+.n{font-size:13px;font-weight:600;fill:#161A21}
+.nb{font-size:14px;font-weight:700;fill:#16324F}
+.s{font-size:10.5px;fill:#5A6472}
+.band{font-size:11px;fill:#7B8695;letter-spacing:.06em}
+.tag{font-size:9.5px;font-weight:700;fill:#6E86A8}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.ark{stroke:#6E86A8;stroke-width:1.6;fill:none}
+.l{font-size:10px;fill:#5A6472;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}
+.lk{font-size:10px;fill:#3E5877;font-weight:600;paint-order:stroke;stroke:#FFFFFF;stroke-width:3.5;stroke-linejoin:round}
+.inv{font-size:11px;fill:#3A4351}
+.invn{font-size:11px;font-weight:700;fill:#16324F}
+.sep{stroke:#E6EAEF;stroke-width:1}
+</style></defs>
+
+<text class="band" x="30" y="26">上下文之外 —— 它们都不在这个领域里，只能穿过防腐层进来</text>
+<rect class="bo" x="30" y="36" width="210" height="44" rx="7"/>
+<text class="n" x="42" y="56">平台交易域</text><text class="s" x="42" y="72">下单 / 支付 / 退款</text>
+<rect class="bo" x="256" y="36" width="210" height="44" rx="7"/>
+<text class="n" x="268" y="56">平台商品档案</text><text class="s" x="268" y="72">prd_goods / prd_sku</text>
+<rect class="bo" x="482" y="36" width="210" height="44" rx="7"/>
+<text class="n" x="494" y="56">客户自有 OMS</text><text class="s" x="494" y="72">独立交付时的调用方</text>
+<rect class="bo" x="708" y="36" width="222" height="44" rx="7"/>
+<text class="n" x="720" y="56">商家 ERP / 收银秤</text><text class="s" x="720" y="72">按 external_ref 找货</text>
+
+<rect class="acl" x="30" y="96" width="900" height="34" rx="7"/>
+<text class="nb" x="44" y="118">防腐层 · 唯一知道外部存在的一层　（预留协议 · 单据接口 · 档案同步）　独立交付时整层不部署</text>
+
+<rect class="bx" x="30" y="160" width="270" height="96" rx="8"/>
+<text class="tag" x="288" y="178" text-anchor="end">聚合根</text>
+<text class="n" x="42" y="184">Item　物料</text>
+<text class="s" x="42" y="204">item_id · name · uom · source(OWN/SYNCED)</text>
+<text class="s" x="42" y="222">external_refs[]：AISHOP / ERP / BARCODE</text>
+<text class="s" x="42" y="242">不叫 SKU —— 原料、包材、五金件也要计数</text>
+
+<rect class="bx" x="660" y="160" width="270" height="96" rx="8"/>
+<text class="tag" x="918" y="178" text-anchor="end">聚合根</text>
+<text class="n" x="672" y="184">Location　库位</text>
+<text class="s" x="672" y="204">kind = STORE / WAREHOUSE / TRANSIT / VIRTUAL</text>
+<text class="s" x="672" y="222">source_location：这个点从哪里发货</text>
+<text class="s" x="672" y="242">在途也是库位 —— 于是总量任意时刻守恒</text>
+
+<rect class="bk" x="330" y="152" width="300" height="112" rx="8"/>
+<text class="tag" x="618" y="172" text-anchor="end">★ 核心聚合根</text>
+<text class="nb" x="344" y="180">StockBalance　库存余额</text>
+<text class="s" x="344" y="202">身份 = (Owner, Item, Location)</text>
+<text class="s" x="344" y="222">on_hand 实存 · reserved 预留</text>
+<text class="s" x="344" y="242">available = on_hand − reserved</text>
+<text class="s" x="344" y="258">唯一允许并发条件更新的对象</text>
+
+<rect class="bn" x="30" y="320" width="270" height="96" rx="8"/>
+<text class="tag" x="288" y="338" text-anchor="end">聚合根族</text>
+<text class="n" x="42" y="344">Document　单据</text>
+<text class="s" x="42" y="364">进货 / 出库 / 盘点 / 调拨 / 调整报损</text>
+<text class="s" x="42" y="382">DRAFT → POSTED → VOIDED</text>
+<text class="s" x="42" y="402">过账是唯一改变 on_hand 的动作</text>
+
+<rect class="bn" x="660" y="320" width="270" height="96" rx="8"/>
+<text class="tag" x="918" y="338" text-anchor="end">聚合根</text>
+<text class="n" x="672" y="344">Reservation　预留</text>
+<text class="s" x="672" y="364">HELD → COMMITTED / RELEASED / EXPIRED</text>
+<text class="s" x="672" y="382">expires_at：调用方可能永远不回来</text>
+<text class="s" x="672" y="402">同步强一致，但只在本领域的库里</text>
+
+<rect class="bn" x="330" y="320" width="300" height="96" rx="8"/>
+<text class="n" x="344" y="344">StockLedgerEntry　流水</text>
+<text class="s" x="344" y="364">不可变 · 只追加 · 带 balance_after</text>
+<text class="s" x="344" y="382">与余额变动 1:1，多一行少一行都是错</text>
+<text class="s" x="344" y="402">作废单据写反向行，不改原行</text>
+
+<path class="ar" marker-end="url(#pa)" d="M300 208 L330 208"/>
+<text class="l" x="303" y="200">身份</text>
+<path class="ar" marker-end="url(#pa)" d="M660 208 L630 208"/>
+<text class="l" x="640" y="200" text-anchor="end">身份</text>
+<path class="ark" marker-end="url(#pk)" d="M175 320 L175 296 L330 296 L330 250"/>
+<text class="lk" x="186" y="290">post 过账</text>
+<path class="ark" marker-end="url(#pk)" d="M785 320 L785 296 L630 296 L630 250"/>
+<text class="lk" x="774" y="290" text-anchor="end">hold / commit</text>
+<path class="ark" marker-end="url(#pk)" d="M480 264 L480 320"/>
+<text class="lk" x="490" y="296">1:1</text>
+
+<line class="sep" x1="30" y1="444" x2="930" y2="444"/>
+<text class="band" x="30" y="468">六条不变式 —— 任意时刻都必须成立，守卫逐条对应</text>
+<text class="inv" x="30" y="494"><tspan class="invn">I1</tspan>　available = on_hand − reserved ≥ 0。这一条就是「不超卖」，它只需要在本领域自己的库里成立。</text>
+<text class="inv" x="30" y="518"><tspan class="invn">I2</tspan>　余额每一次变动，必有且仅有一行流水。多一行是重复过账，少一行是有人绕过了领域。</text>
+<text class="inv" x="30" y="542"><tspan class="invn">I3</tspan>　流水不可变。单据可作废，但作废写反向流水 —— 改历史与擦历史都不允许。</text>
+<text class="inv" x="30" y="566"><tspan class="invn">I4</tspan>　调拨中的量落在 TRANSIT 库位上，因此 Σ on_hand 任意时刻守恒，包括「货在路上」的那几天。</text>
+<text class="inv" x="30" y="590"><tspan class="invn">I5</tspan>　预留只改 reserved，不改 on_hand；commit 才把量从 reserved 转成出库。没付钱的单不进销量。</text>
+<text class="inv" x="30" y="614"><tspan class="invn">I6</tspan>　external_ref 在 (owner, system) 内唯一。它是与外部世界唯一的钩子，重复即歧义。</text>
+</svg>

@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { FULFILLMENT_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { MIN_OVERDUE_GRACE_HOURS } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -30,22 +30,15 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { HelpNote } from "@/components/ui/help-note";
+import { StatRow, StatCard, IdCell } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof FULFILLMENT_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "batches", label: c.tabBatches },
-  { key: "sorting", label: c.tabSorting },
-  { key: "redeem", label: c.tabRedeem },
-  { key: "express", label: c.tabExpress },
-  { key: "freight", label: c.tabFreight },
-  { key: "carrier", label: c.tabCarrier },
-  { key: "overdue", label: c.tabOverdue },
-];
+const TAB_KEYS = ["batches", "sorting", "redeem", "express", "freight", "carrier", "overdue"] as const;
 
 /** 批次的下一步：状态机只允许一条路（见 lib/types/fulfillment.ts）。 */
 const NEXT_STATUS: Partial<Record<BatchStatus, { to: BatchStatus; labelKey: keyof Copy }>> = {
@@ -65,7 +58,7 @@ export default function FulfillmentPage() {
 
 function FulfillmentInner() {
   const c = useCopy(FULFILLMENT_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/fulfillment", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
 
@@ -132,7 +125,7 @@ function FulfillmentInner() {
   });
 
   const batchColumns: Column<ArrivalBatch>[] = [
-    { header: c.colBatchNo, cell: (b) => b.batchNo, numeric: true, align: "start" },
+    { header: c.colBatchNo, cell: (b) => <IdCell value={b.batchNo} />, numeric: true, align: "start" },
     { header: c.colPickup, cell: (b) => b.pickupName },
     { header: c.colCommunity, cell: (b) => b.communityName },
     { header: c.colPlanArrive, cell: (b) => fmtTime(b.planArriveAt) },
@@ -183,6 +176,9 @@ function FulfillmentInner() {
     {
       header: c.colRate,
       width: "12rem",
+      // 这一格是「进度条 + 百分比」的组合件，不是一个数。显式 start：
+      // 右对齐会把进度条推到列尾，几行之间的条首对不齐，反而读不出高低
+      align: "start",
       cell: (r) => (
         <div className="flex items-center gap-2">
           <Progress value={Math.round(r.rate * 100)} total={100} showText={false} className="w-24" />
@@ -192,41 +188,42 @@ function FulfillmentInner() {
     },
   ];
 
-  const totalPending = (redeem.data ?? []).reduce((n, r) => n + r.pending, 0);
-  const totalOverdue = (redeem.data ?? []).reduce((n, r) => n + r.overdue, 0);
+  const totalPending = (redeem.data?.records ?? []).reduce((n, r) => n + r.pending, 0);
+  const totalOverdue = (redeem.data?.records ?? []).reduce((n, r) => n + r.overdue, 0);
 
   return (
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      <Notice className="mb-3">
+      <HelpNote className="mb-3">
         {c.notice}
-      </Notice>
+      </HelpNote>
 
       {tab === "batches" && (
         <>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder}>
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={batchStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
-          <DataTable
-            columns={batchColumns}
-            rows={batches.data?.records}
+          <PagedTable
+            query={batches}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
             loading={batches.isLoading}
-            error={batches.error}
-            onRetry={() => batches.refetch()}
+            columns={batchColumns}
             rowKey={(b) => b.batchNo}
             empty={c.emptyBatches}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={batches.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
       {tab === "sorting" && (
         <>
-          <Notice className="mb-3">{c.sortingNotice}</Notice>
+          <HelpNote className="mb-3">{c.sortingNotice}</HelpNote>
           <DataTable
             columns={sortingColumns}
-            rows={sorting.data}
+            rows={sorting.data?.records}
             loading={sorting.isLoading}
             error={sorting.error}
             onRetry={() => sorting.refetch()}
@@ -241,11 +238,11 @@ function FulfillmentInner() {
           <StatRow>
             <StatCard label={c.kpiPending} value={totalPending} sub={c.kpiPendingSub} />
             <StatCard label={c.kpiOverdue} value={totalOverdue} sub={totalOverdue > 0 ? c.kpiOverdueSub : c.kpiOverdueNone} tone={totalOverdue > 0 ? "down" : undefined} />
-            <StatCard label={c.kpiPickups} value={(redeem.data ?? []).length} />
+            <StatCard label={c.kpiPickups} value={(redeem.data?.records ?? []).length} />
           </StatRow>
           <DataTable
             columns={redeemColumns}
-            rows={redeem.data}
+            rows={redeem.data?.records}
             loading={redeem.isLoading}
             error={redeem.error}
             onRetry={() => redeem.refetch()}

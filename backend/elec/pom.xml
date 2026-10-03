@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>elec-modules</artifactId>
+    <packaging>pom</packaging>
+    <description>电子元器件与主系统的内部契约。元器件本体已迁到独立项目 ai-hxkey（2026-09-30）</description>
+
+    <!-- 只列模块，不放属性与依赖管理 —— 理由同 job/pom.xml -->
+    <modules>
+        <!-- 与主系统的内部契约：零依赖。主应用引它；**ai-hxkey 的 elec-svc 从本机 ~/.m2 引它**。
+             元器件本体（elec-core、elec-svc、小程序）已迁到独立项目 ~/work/ai/ai-hxkey（2026-09-30）。
+             改这里的 record 或路径常量 = 改两个仓库之间的契约：改完 mvn install，再到 ai-hxkey 跑全量测试 -->
+        <module>elec-api</module>
+    </modules>
+</project>

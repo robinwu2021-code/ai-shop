@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════════════════
+   hxmall.top 官网 · 设计 token（Tailwind v4 CSS-first）
+
+   色值真源是 brand/tokens.json（由 brand/build.py 生成）。这里是它的第二处声明 ——
+   两处必须一致，由 lib/tokens.test.ts 断言。**不许在组件里出现第四个红。**
+   规范全文见 brand/spec.html 与 docs/technical/design/视觉设计方案-全项目.md。
+
+   @theme 里的每个键都会变成工具类：
+     --color-brand   → bg-brand / text-brand / border-brand
+     --font-display  → font-display
+     --radius-card   → rounded-card
+   ════════════════════════════════════════════════════════════════════════ */
+@theme {
+  /* —— 色 —— 后面的数字是实测对比度，改值前先看 brand/spec.html §01 —— */
+  --color-brand: #e1251b; /* 主色 · 压白字 4.69 AA */
+  --color-brand-deep: #b31710; /* 浅底上的红字 / hover · 白底 6.89 */
+  --color-brand-bright: #ff5a4d; /* 深色区块里的主色 · 压墨底 5.66 */
+  --color-ink: #17181a; /* 正文 / 深底 · 压白 17.77 */
+  --color-muted: #63676e; /* 副行 · 白底 5.68 */
+  --color-panel: #f5f6f8; /* 区块底 */
+  --color-line: #e5e7ea; /* 分隔线 */
+  --color-line-strong: #d4d7dd; /* 深一档的线：压在 panel 上时 line 几乎看不见 */
+  --color-tint: #fdeceb; /* 主色浅底，上面的字用 brand-deep（6.03）*/
+
+  /* —— 字 ——
+     拉丁走 Figtree / Instrument Serif（next/font），中文走**自托管子集** HX SC。
+     ⚠️ 中文不走 next/font —— CJK 家族在它的字体数据里查无此项（ops-web 实测过，
+     加了等于没加且肉眼看不出来）。所以子集由 scripts/subset-fonts.mjs 自己做，
+     挂在 prebuild 上，字符集从 content/ 与 tsx 里实算，改文案不会漏字。
+     系统栈仍留在后面兜底：字体没加载出来时不该是方框。
+     中文大字刻意不加粗：一上 Bold 就从「生活服务」变成「促销横幅」。 */
+  --font-sans:
+    var(--font-figtree), "HX SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui,
+    sans-serif;
+  --font-display:
+    var(--font-instrument), "HX SC", "PingFang SC", "Noto Sans SC", Georgia, serif;
+
+  /* —— 尺 —— */
+  --radius-card: 14px;
+}
+
+/* 自托管中文子集（scripts/subset-fonts.mjs 生成，795 字 × 两档字重 ≈ 105 KB/档）。
+   `font-display: swap`：中文首屏宁可先用系统字体顶上，也不要空白等下载。
+   `unicode-range` 只声明中文区段 —— 拉丁由 Figtree 出，浏览器不会为一个英文单词去下中文字体。 */
+@font-face {
+  font-family: "HX SC";
+  src: url("/fonts/hx-sc-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+2014, U+2018-201D, U+2026, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF;
+}
+
+/* 600 单独一档：只出 400 让浏览器合成粗体，中文小字号下会糊 */
+@font-face {
+  font-family: "HX SC";
+  src: url("/fonts/hx-sc-600.woff2") format("woff2");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+2014, U+2018-201D, U+2026, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF;
+}
+
+/* 页面边距：clamp 一条顶掉四个断点，窄屏 20px、宽屏 64px */
+@utility edge {
+  padding-inline: clamp(20px, 5vw, 64px);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-tint);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+  }
+}

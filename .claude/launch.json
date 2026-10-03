@@ -1,38 +1,137 @@
 {
   "version": "0.0.1",
+  "_comment": [
+    "本项目的**唯一一套** dev server。多个会话共用，不要另起端口。",
+    "",
+    "端口是各端 .env 定死的，不是随便选的：",
+    "  · 后端 8081 —— c-app / b-app / ops-web 三端的 API_BASE 都指它，且**直连不走 vite 代理**",
+    "  · ops-web 3100 —— 后端 SecurityConfig 的 CORS 白名单只认它",
+    "所以 autoPort 一律关：换了端口，页面上每个列表都是「网络异常」，",
+    "而控制台里只有一条被浏览器拦掉的预检，很难看出根因。",
+    "",
+    "查端口占用用 `lsof -nP -iTCP:PORT -sTCP:LISTEN`。",
+    "别用 `lsof -ti :PORT` —— 它把**出站连接**也算进来（微信连腾讯的 :8080 就会被误判成占用）。"
+  ],
   "configurations": [
     {
-      "name": "c-app-h5",
-      "runtimeExecutable": "npm",
+      "_comment": "后端。**先 source backend/.env.local 与 .env.sms.local**（两个文件自己都写着这个用法）—— 不 source 的话 AK/SK/appsecret 一个都进不了进程，而症状是「通道体检说凭据全空」，看不出是没配还是没加载。短信单独一个文件是因为 .env.local 会被并行会话重写，2026-08-14 短信密钥就是那样丢的。必须带 --spring.profiles.active：/mp/** 与 /biz/** 的控制器都标了 @Profile（S8 部署隔离，一个 jar 三种起法）。不带 profile 起出来的实例**一个业务控制器都不注册**，症状是任意路径（包括不存在的）都返回 401 而非 404 —— 看不出是「没登录」还是「没这个端点」。api 同时提供 /mp 与 /biz；要跑运营端接口换成 ops。",
+      "name": "backend",
+      "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
-        "run",
-        "dev:h5"
+        "-lc",
+        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8081 --spring.profiles.active=api --shop.seed.enabled=true'"
+      ],
+      "cwd": "backend",
+      "port": 8081,
+      "autoPort": false
+    },
+    {
+      "_comment": "运营端后端。与 backend 是**两个实例**：/ops/** 的控制器标了 @Profile(\"ops\")，与 api 互斥，一个实例只能是其中一种。ops-web 的 .env.local 里 NEXT_PUBLIC_API_BASE 指的就是 8082 —— 不起它，运营端所有列表都是 ERR_CONNECTION_REFUSED，而控制台看不出是「后端没起」还是「起错 profile」。带上 shop.job.* 是因为 OpsJobController 挂着 @ConditionalOnProperty(shop.job.enabled)：不配的话「定时任务」那一页的每个接口都是 404，而菜单还在，看上去像页面写坏了。库用本地 ai_shop_job，表由 shop-app 自己的 Flyway 建。",
+      "name": "backend-ops",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "set -a; . ./.env.local 2>/dev/null; for f in .env.*.local; do [ -f \"$f\" ] && . \"./$f\"; done; set +a; JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -o -f shop-app/pom.xml spring-boot:run -Dspring-boot.run.arguments='--server.port=8082 --spring.profiles.active=ops --shop.seed.enabled=true --shop.job.enabled=true --shop.job.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_job?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.job.datasource.username=shop --shop.job.datasource.password=shop --shop.job.internal-token=local-dev-only --shop.report.enabled=true --shop.report.datasource.url=jdbc:mysql://127.0.0.1:3306/ai_shop_report?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8 --shop.report.datasource.username=shop --shop.report.datasource.password=shop'"
+      ],
+      "cwd": "backend",
+      "port": 8082,
+      "autoPort": false
+    },
+    {
+      "_comment": "运营端。ops 侧的接口在后端的 ops profile 下，与 api 互斥 —— 同时要 /mp 和 /ops 就得起两个后端实例（换 --server.port 与 profile），别改这里。",
+      "name": "ops-web",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3100 npm run dev"
+      ],
+      "cwd": "ops-web",
+      "port": 3100,
+      "autoPort": false
+    },
+    {
+      "_comment": "mock 数据跑运营端：**改完界面自己看一遍**用的入口。与 ops-web（3100，连 8082）分开的理由和 c-app-mock 一样 —— .env.local 里写死 NEXT_PUBLIC_USE_MOCK=0，同一个端口起不了两份。这里靠 shell 环境变量压过 .env.local（Next 的优先级如此），所以不必去改那个被并行会话共用的文件。CORS 白名单只认 3100 这条限制在这儿不适用：mock 模式一个请求都不发。",
+      "name": "ops-web-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3105 NEXT_PUBLIC_USE_MOCK=1 NEXT_PUBLIC_API_BASE= npm run dev"
+      ],
+      "cwd": "ops-web",
+      "port": 3105,
+      "autoPort": false
+    },
+    {
+      "_comment": "hxmall.top 官网。纯静态、不连后端 —— 起它只为看页面，后端起没起都不影响。端口挑 3200 是为了与 ops-web 的 3100 隔开一档。",
+      "name": "site",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=3200 npm run dev"
+      ],
+      "cwd": "site",
+      "port": 3200,
+      "autoPort": false
+    },
+    {
+      "_comment": "C 端 H5。连 8081（见 c-app/.env 的 VITE_API_BASE）。",
+      "name": "c-app-h5",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5173 npm run dev:h5"
       ],
       "cwd": "c-app",
       "port": 5173,
-      "autoPort": true
+      "autoPort": false
     },
     {
+      "_comment": "B 端 H5。连 8081（见 b-app/.env）。",
       "name": "b-app-h5",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
-        "run",
-        "dev:h5"
+        "-lc",
+        "PORT=5174 npm run dev:h5"
       ],
       "cwd": "b-app",
-      "port": 5273,
+      "port": 5174,
+      "autoPort": false
+    },
+    {
+      "_comment": "mock 数据跑 C 端：验证页面行为用，不依赖后端起没起。与 c-app-h5（5173，连 8081）分开，因为两者的 VITE_USE_MOCK 不同，同一个端口起不了两份。 **mock 入口的 autoPort 开着，与上面那条通则相反 —— 理由在这里**：关掉 autoPort 是因为「换了端口每个列表都是网络异常」，而这条只对**连后端**的入口成立。mock 模式 `VITE_USE_MOCK=1` + `VITE_API_BASE=` 一个请求都不发，端口是几无所谓。而关着它的代价是实打实的：多个会话并行时，第二个人**连页面都打不开**，于是「改完自己看一遍」这条规矩在最需要它的时候（有人正在改同一处）失效。2026-09-06 因此翻开 —— 那天两个会话都在改 UI，后来的那个验不了自己刚改的弹层。⚠️ **真正定端口的是 vite 自己的回退，不是 autoPort**：`PORT=` 写死在 runtimeArgs 里，工具分配的端口进不去，vite 看到占用就顺着往上找一个（实测 5175 占用时它落在 5176）。所以起完**去 preview_logs 里读那一行 `dev server running at`**，别信工具报的那个数。",
+      "name": "c-app-mock",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "PORT=5178 VITE_USE_MOCK=1 VITE_API_BASE= npm run dev:h5"
+      ],
+      "cwd": "c-app",
+      "port": 5178,
       "autoPort": true
     },
     {
-      "name": "ops-web",
-      "runtimeExecutable": "npm",
+      "_comment": "mock 数据跑 B 端：验证页面行为用，不依赖后端起没起。真机联调用 b-app-h5。 **mock 入口的 autoPort 开着，与上面那条通则相反 —— 理由在这里**：关掉 autoPort 是因为「换了端口每个列表都是网络异常」，而这条只对**连后端**的入口成立。mock 模式 `VITE_USE_MOCK=1` + `VITE_API_BASE=` 一个请求都不发，端口是几无所谓。而关着它的代价是实打实的：多个会话并行时，第二个人**连页面都打不开**，于是「改完自己看一遍」这条规矩在最需要它的时候（有人正在改同一处）失效。2026-09-06 因此翻开 —— 那天两个会话都在改 UI，后来的那个验不了自己刚改的弹层。⚠️ **真正定端口的是 vite 自己的回退，不是 autoPort**：`PORT=` 写死在 runtimeArgs 里，工具分配的端口进不去，vite 看到占用就顺着往上找一个（实测 5175 占用时它落在 5176）。所以起完**去 preview_logs 里读那一行 `dev server running at`**，别信工具报的那个数。",
+      "name": "b-app-mock",
+      "runtimeExecutable": "/bin/zsh",
       "runtimeArgs": [
-        "run",
-        "dev"
+        "-lc",
+        "PORT=5175 VITE_USE_MOCK=1 VITE_API_BASE= npm run dev:h5"
       ],
-      "cwd": "ops-web",
-      "port": 3000,
+      "cwd": "b-app",
+      "port": 5175,
       "autoPort": true
+    },
+    {
+      "name": "prototypes",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8790",
+        "-d",
+        "prototypes"
+      ],
+      "port": 8790
     }
   ]
 }

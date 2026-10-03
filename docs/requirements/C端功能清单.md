@@ -4,7 +4,7 @@
 > 每条都标了**逻辑**——判断条件、状态迁移、边界与「为什么这么定」。
 > 文档与代码冲突时以代码为准，并回来改这里；ID 保持稳定，删除的功能保留一行墓碑。
 
-对照：[项目词典](项目词典.md) ｜ [平台端功能清单](平台端功能清单.md) ｜ [B 端功能清单](B端功能清单.md) ｜ [三端需求矩阵](需求矩阵-三端.md) ｜ [C 端技术设计](../technical/TDD-c-app.md)
+对照：[项目词典](项目词典.md) ｜ [平台端功能清单](平台端功能清单.md) ｜ [B 端功能清单](B端功能清单.md) ｜ [三端需求矩阵](需求矩阵-三端.md) ｜ [C 端技术设计](../technical/design/TDD-c-app.md)
 
 ---
 
@@ -27,7 +27,10 @@
 
 ---
 
-## 二、功能清单（按业务域，60 个契约方法）
+## 二、功能清单（按业务域，74 个契约方法）
+
+> 2026-08-17 核对：契约从 60 涨到 74，**发票域整个漏了**，通知授权与推送也没登记。
+> 下面补齐；同时发现两个「声明了但端上没人调」的契约，记在 §四。
 
 ### C-CM 社区与自提点
 
@@ -93,15 +96,25 @@
 
 > **订单状态机**（非法迁移直接抛错，mock 与后端同一张表）：
 > ```
-> WAIT_PAY  → PAID | CANCELLED
-> PAID      → PREPARING | COMPLETED | REFUNDING | CANCELLED
-> PREPARING → ARRIVED | SHIPPED | REFUNDING
-> ARRIVED   → COMPLETED | REFUNDING
-> SHIPPED   → COMPLETED | REFUNDING
-> COMPLETED → REFUNDING
-> REFUNDING → REFUNDED | COMPLETED
+> WAIT_PAY         → PAID | CANCELLED
+> WAIT_OFFLINE_PAY → PAID | CANCELLED
+> PAID             → FULFILLING | COMPLETED | REFUNDED | CANCELLED
+> FULFILLING       → COMPLETED | REFUNDED
+> COMPLETED        → REFUNDED
 > REFUNDED / CANCELLED → 终态
 > ```
+>
+> ⚠️ **2026-09-09 更正**：此前这张表写的是
+> `PAID → PREPARING → ARRIVED | SHIPPED`，四个词都不在 `OrderStatus` 里。
+> ① `PREPARING`（备货中）是 mock 早期多出来的一步，后端付款后直接 `PAID`；
+> ② `ARRIVED`/`SHIPPED` 把**怎么送**编进了状态名 —— 每加一种履约方式就要加一个状态，
+> 现已合并为单一的 `FULFILLING`，送法由 `fulfillment` 表达
+> （`orderView(status, fulfillment, info)`，见 `strategies/order-view.ts`）；
+> ③ `REFUNDING` 是**售后单**的状态不是订单的 —— 一个已完成的订单可以同时挂着处理中的
+> 售后单，做成订单状态就强迫二选一。订单只在退款到账时迁到 `REFUNDED`。
+>
+> 真源：`packages/shared/src/mock/db.ts` 的 `TRANSITIONS`（线级）。
+> **别拿 `OrderStateMachine` 比** —— 那是库级的主单/子单两台机，词表本就不同。
 
 ### C-FF 履约
 
@@ -139,16 +152,50 @@
 | C-AS-02 | 凭证上传 | 最多 3 张 | — |
 | C-AS-03 | 极速退款 | 小额自动通过（阈值见[规则表](需求矩阵-三端.md#七之二交易规则常量唯一事实源)，平台端 P-6.1 可调），**仅对「仅退款」成立**——货没回来就秒退等于白送 | — |
 | C-AS-04 | 售后进度 | 状态时间线 + **下一步动作**（填运单号 / 申请平台介入） | `orderDetail` |
-| C-AS-05 | 填退货运单号 | 仅 `AGREED` 可填，填完转 `RETURNING` | `fillReturnExpress` |
-| C-AS-06 | 申请平台介入 | 仅 `REJECTED` 可上升，转 `DISPUTED`。**驳回不改订单状态**，否则用户以为售后结束了 | `raiseDispute` |
+| C-AS-05 | 填退货运单号 | **没有状态门禁**：任何自己的售后单都能填，只写 `expressCompany` / `expressNo` 两个字段，**不改状态**（退货物流是字段不是状态 —— 有没有寄回看字段有没有值） | `fillReturnExpress` |
+| C-AS-06 | 申请平台介入 | 仅 `REJECTED` 可上升，转 `ARBITRATING`。**驳回不改订单状态**，否则用户以为售后结束了 | `raiseDispute` |
 | C-AS-07 | 生鲜坏果包赔 | 走同一条售后，原因选「品质问题」+ 传图；申请时限自**核销起算**（见[规则表](需求矩阵-三端.md#七之二交易规则常量唯一事实源)） | `applyAfterSale` |
 
 > **寻址方式**：`fillReturnExpress` / `raiseDispute` 收的是 `afterSaleNo` 而不是 `orderNo`——
 > 售后是独立资源，一笔订单可能有多次售后。
 >
-> **售后状态机**：`PENDING → AGREED → RETURNING → RECEIVED → DONE`（退货退款）；
-> `PENDING → DONE`（仅退款直退）；`PENDING → REJECTED → DISPUTED`（争议）。
+> **售后状态机**（2026-09-06 更正，见下方说明）：
+>
+> ```
+> APPLIED ─┬─→ REFUNDING ──→ REFUNDED        退货退款：同意后等寄回，确认收货才实际退款
+>          ├─→ REFUNDED                       仅退款：同意即退
+>          ├─→ REJECTED ──→ ARBITRATING ──→ REFUNDING / REFUNDED / CLOSED
+>          └─→ CLOSED                         用户撤销或超时关闭
+> ```
+>
+> 终态：`REFUNDED` / `CLOSED`。真源是 `OrderStateMachine.AFTER_SALE` 与
+> `OrdAfterSale` 的常量，词汇定义见[项目词典 §6](项目词典.md#6-after-sales--售后)。
+>
+> ⚠️ **本节此前写的是另一套六态机**（`PENDING → AGREED → RETURNING → RECEIVED → DONE`、
+> `REJECTED → DISPUTED`）。那套词**在整个代码库里 0 处** —— 它是 C/B 两端早期各自
+> 补细出来的流程词，与后端只有 `REJECTED` 一个重合，后果是售后详情页的状态永远落进
+> 兜底分支、「填退货单号」按钮永远不出现（它 gate 在一个后端不会下发的 `AGREED` 上）。
+> 代码与[项目词典](项目词典.md#6-after-sales--售后)当时都改过来了，**只有这份功能清单
+> 停在旧那套**，而它恰恰是实现与验收时会去读的那份。
+>
 > 退款三件事必须一起做：改状态 + 回收已得积分 + 退还已用积分（`settleRefund()`）。
+
+### C-IV 发票（**2026-08-17 补登**）
+
+| 编号 | 功能 | 逻辑 | 契约 |
+|---|---|---|---|
+| C-IV-01 | 申请开票 | 入口在**订单详情**，不是独立页。抬头类型 + 抬头 + 邮箱三项 | `applyInvoice` |
+| C-IV-02 | 开票状态回显 | 没申请过返回 `null` **而不是报错**——那是常态不是错误 | `invoiceOfOrder` |
+| C-IV-03 | 驳回后可重申 | 入口的显示条件是「没申请过 **或** 状态为 `REJECTED`」；其余状态下按钮不出现 | `applyInvoice` |
+
+### C-NT 通知授权（**2026-08-17 补登**）
+
+| 编号 | 功能 | 逻辑 | 契约 |
+|---|---|---|---|
+| C-NT-01 | 订阅消息授权上报 | 在**支付页**要授权（那是用户最愿意点「允许」的时刻），授权后上报攒额度 | `subscribeReport` |
+| C-NT-02 | 推送 token 注册 | App 端登录后注册、登出时注销 | `registerPushToken` `unregisterPushToken` |
+| C-NT-03 | 未读数 | 「我的」页红点。**未登录不该拉**（曾经未登录也在拉，显示「已全部阅读」） | `unreadMessages` |
+| C-NT-04 | 全部已读 | 消息页一键清红点 | `readAllMessages` |
 
 ### C-RV 评价
 
@@ -162,7 +209,7 @@
 
 | 编号 | 功能 | 逻辑 | 契约 |
 |---|---|---|---|
-| C-AC-01 | 登录 | 手机号验证码 / 微信一键（按端可用性由 `ports/auth` 决定） | `login` |
+| C-AC-01 | 登录 | 小程序：**微信静默登录**（`WX_MINI`，拿 openid）主 + 手机号 OTP 兜底；H5/App：手机号 OTP。可用性由 `ports/auth` 的 `loginMethods()` 决定，**页面按它返回什么就渲染什么** | `login` `sendOtp` |
 | C-AC-02 | 收货地址 | 增删改、设默认 | `addressList` 等 4 个 |
 | C-AC-03 | 平台积分 | 下单得、退款回收 | `pointAccount` `pointRecords` |
 | C-AC-04 | **商家积分** | 各商家独立账户——它是复购激励，跨店通用就成了平台补贴 | `merchantPointAccount` |
@@ -208,9 +255,26 @@
 **未做**：换货（一期用「退货重下」代替）、商家协助代发起售后。
 **未定口径**：跨商家优惠摊分、售后责任归属与赔付出资方（M4）。
 
-## 五、真实性边界
+**声明了但端上没人调**（2026-08-17 扫出，两条都不报错、也不会被 `check:api` 抓到）：
 
-前端**全部跑 mock**（`VITE_USE_MOCK=1`）：状态机在 mock 层强制、数据落盘可重开读回，但支付是假的、图片是 emoji 占位、推荐算法是固定顺序。上线前必做的清单见[待完成功能清单](待完成功能清单.md)。
+| 契约 | 情况 |
+|---|---|
+| `myInvoices` | 「我的发票」列表页没做。开票入口只在订单详情里，用户开完票就找不到了 |
+| `pointsDeductible` | 「本单最多可抵多少积分」的试算。结算页现在没调，抵扣上限没在界面上兑现 |
+
+## 五、真实性边界（2026-08-17 更新）
+
+**不再是全 mock**。`c-app/.env` 现在 `VITE_USE_MOCK=0`，走真实后端。逐条现状：
+
+| 链路 | 现状 |
+|---|---|
+| 微信登录 | ✅ **真通道**。`code2Session` 已接（`WxAuthGateway`），库里落真 openid |
+| 手机号 OTP | ⚠️ 短信走桩（`shop.sms.stub` 默认 true）。验证码不真发，本地联调用 `shop.auth.otp.fixed` |
+| **支付** | ❌ **桩**。`OrderServiceImpl` 返回 `"stub_" + orderNo`，唤不起收银台 |
+| 订阅消息 | ⚠️ 桩。要 mp 后台报备的两个模板号才能切真（`shop.wx.subscribe.stub`） |
+| 图片 | emoji 占位；上传落本地磁盘，多实例部署会读不到 |
+
+上线前必做的清单见[待完成功能清单](待完成功能清单.md)；小程序侧另见[小程序上线指南](../technical/design/小程序上线指南.md)。
 
 ---
 

@@ -1,0 +1,21 @@
+# 契约与后端**返回信封**对不上的端点 —— 只准变短，不准变长。
+#
+# 判据在 packages/shared/tests/ops-envelope-parity.test.ts。
+#
+# 为什么单独立一道闸：这类缺陷 **mock 挡不住**。契约怎么声明，mock 就怎么返，
+# 于是本地全绿；只有切到真后端那一刻才炸，而炸的形态是
+# `data.map is not a function` —— 整块列表消失，不像「少了个字段」那么好认。
+#
+# 2026-09-02 实测撞到两次：
+#   · /ops/merchants/violations 后端返 PageData、契约声明 Violation[]，
+#     信用档案抽屉与违规处置列表在真后端下整块崩掉（bedad524）。
+#   · /ops/categories 更早就有人撞过，但当时是在 http 层加 `.then(r => r.records)`
+#     解包绕过 —— 契约仍写着数组，下一个照契约写页面的人照样会踩。
+#
+# **contract 侧声明 void 不算不一致**：那是「我不读响应体」的正当声明，
+# 与后端返什么无关（lockChannel / refreshOnboarding / saveMarketRate 都是有意为之）。
+#
+# ── 立此闸时有 7 条存量，2026-09-02 全部修完，现在是空的。 ──
+#
+# 空了之后这道闸就是**必须全绿**：新加的端点信封对不上，加的人当场会红。
+# 要再往这里加行之前先想清楚 —— 它记录的是「已知会在生产崩的页面」，不是待办。

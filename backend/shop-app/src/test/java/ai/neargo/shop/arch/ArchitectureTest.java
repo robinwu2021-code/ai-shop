@@ -16,15 +16,64 @@ import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 模块边界与分层规则（TDD-backend §4.2 / §3.1）。**违反即构建失败**。
  *
  * <p>这些规则不是风格偏好：powerbank 的经验是，模块边界一旦靠自觉维护，
- * 三个月后就会出现「拆不动的单体」——每个 svc 都直接 import 了别的 svc 的实体。
+ * 三个月后就会出现「拆不动的单体」——每个域都直接 import 了别的域的实体。
+ *
+ * <p><b>2026-08 模块合并之后，这些规则判的是「包」不是「Maven 模块」</b>：
+ * 13 个模块并成了 6 个（{@code shop-base/core/merchant/settle/channel/app}），
+ * 但包名一个没动 —— 于是「域之间不得互相依赖」照样成立，一条规则都不用改。
+ * 这也正是当初按包写规则、而不是按模块写的原因。
  */
 class ArchitectureTest {
+
+    /**
+     * 业务域清单 —— 这份名单是下面多条规则的**共同依据**，必须只有一份。
+     *
+     * <p>此前它被抄写了三遍（域间依赖、common 反向依赖、Service 接口化各一份），
+     * 三份已经开始漂：加一个域要记得改三处，漏掉哪处，哪条规则就对新域失效，
+     * 而且**不会有任何报错**——规则只是悄悄地少管一个域。
+     *
+     * <p>{@code merchant} 与 {@code community} 现在还嵌在 {@code shop.user} 下（见
+     * 模块优化实施步骤 S3/S4），此刻匹配不到任何类。**提前登记是有意的**：
+     * 等它们迁出来的那一刻，边界规则立即生效，不需要谁记得回来补名单。
+     */
+    private static final String[] DOMAINS = {
+            "user", "merchant", "community", "product", "trade",
+            "fulfillment", "marketing",
+            // pay：支付域（原 settle）。2026-08-31 C2b 改名 ——
+            // 它将来是独立服务，包名先行一步，模块目录也搬到了 backend/pay/
+            "pay", "message", "platform",
+            // member：会员（人 × 主体的关系，mbr_*）。**方向是单向的** ——
+            // 营销问会员「他是不是熟客」，会员不问营销；登记进来这条方向才有东西守着
+            "member",
+            // promotion：券与活动的新模型（pmt_*）。与老 marketing 包是**替换关系**，
+            // P9 之前两套表并存 —— 正因为并存，这个包更要被域间规则管着：
+            // 它一旦直接 import 老包的实体，「切回旧实现」那条回退路就不再干净
+            "promotion",
+            // content：内容与素材（帖子/问答/榜单/素材库）。有自己的表（cnt_*），
+            // 所以是业务域而不是基础设施 —— 登记进来它才受域间依赖规则约束
+            "content",
+            // risk：风控（风险事件/黑名单/拦截规则，V120）。同样有自己的表（risk_*），
+            // 是业务域。**这条是被本测试自己抓出来的** —— 风控域落地时建了新顶层包
+            // 却没登记，于是它有半天时间不受域间依赖规则约束：那期间任何一处
+            // 跨域直连（比如直接读 ord_sub_order 而不走 Port）都不会被拦下来
+            "risk",
+            // inventory：进销存（inv_*，**独立库、独立数据源**）。登记进来的分量比别的域更重 ——
+            // 它的表不在 ai_shop 里，一旦哪个域直接 import 了它的实体或 Mapper，
+            // 那不只是耦合，是**跨库直连**：编译得过、启动得起来，跑到那一行才炸。
+            // 唯一合法的入口是 shop-base 里的 Port。
+            "inventory"};
+
+    /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
+    private static String[] domainPackages() {
+        return java.util.Arrays.stream(DOMAINS).map(d -> "ai.neargo.shop." + d + "..").toArray(String[]::new);
+    }
 
     private static JavaClasses classes;
 
@@ -36,21 +85,111 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("svc 模块之间不得互相依赖，跨域只走 shop-spi 的 Port/Event")
-    void svcModulesMustNotDependOnEachOther() {
-        String[] domains = {"user", "product", "trade", "fulfillment", "marketing", "settle", "message", "platform"};
-        for (String from : domains) {
-            for (String to : domains) {
+    @DisplayName("★★★ 任何 @Bean 都不得返回 Flyway —— 那会把平台的全部迁移悄悄关掉")
+    void noBeanMayExposeFlyway() {
+        /*
+         * Spring Boot 的 FlywayAutoConfiguration 挂着
+         * @ConditionalOnMissingBean(Flyway.class)：容器里只要出现**任何一个**
+         * Flyway bean，它就整体退让。于是「打开第二个库」这件事会顺带
+         * **关掉平台自己的全部数据库迁移** —— 而且零报错：
+         * 库停在打开那一天的版本，之后每次发版都以为迁移跑过了。
+         *
+         * 2026-08-27 本机 A/B 实测：同一个 jar，关进销存则平台 Flyway 应用 29 个
+         * 迁移到 V267；开进销存则平台 Flyway 一次都没跑，库停在 V230。
+         *
+         * 第二个库要跑自己的迁移，就在 @Bean 里 migrate() 完返回一个**别的类型**
+         * 当凭证（InventoryDataSourceConfig.InvMigrated / JobStoreConfig.JobMigrated），
+         * 顺序照样靠参数依赖表达。
+         */
+        JavaClasses everything = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages("ai.neargo");
+        noMethods().that()
+                .areAnnotatedWith("org.springframework.context.annotation.Bean")
+                .should().haveRawReturnType("org.flywaydb.core.Flyway")
+                .because("暴露 Flyway bean 会让 Spring Boot 的 FlywayAutoConfiguration 整体退让，"
+                        + "平台迁移从此一次都不跑，且不会有任何报错")
+                .check(everything);
+    }
+
+    @Test
+    @DisplayName("业务域之间不得互相依赖，跨域只走 spi 包的 Port/Event")
+    void svcModulesMustNotDependOnEachOther() throws java.io.IOException {
+        /*
+         * ── 2026-08-30：从「一红到底」改成棘轮 ───────────────────────────────
+         *
+         * 原来是逐对 `rule.check()`，**第一对失败就抛**。于是：
+         *   · 看不到清单有多长 —— 报出来的永远只有字典序最靠前的那一对；
+         *   · 修好一对不会变绿，只会换一个名字继续红（今天修掉 trade→product，
+         *     立刻露出 member→user 9 处），修的人得不到任何正反馈；
+         *   · 而最贵的一条：**它常年红着，于是新的跨域依赖混进来时没有任何信号**。
+         *     `OrderServiceImpl` 直接注入 `product.service.PayModeService` 就是这么进来的。
+         *
+         * 恒红的闸门是噪声掩体，与没有闸门相比还额外骗人。所以改成：
+         * 收齐**所有**域对的违例 → 与冻结清单比 → 只拦新增，并且**陈行也要报**
+         * （修好了不删，那处依赖就永远免检 —— 与 known-* 那几个棘轮同一规矩）。
+         */
+        java.util.List<String> now = new java.util.ArrayList<>();
+        for (String from : DOMAINS) {
+            for (String to : DOMAINS) {
                 if (from.equals(to)) {
                     continue;
                 }
                 ArchRule rule = noClasses().that().resideInAPackage("ai.neargo.shop." + from + "..")
                         .should().dependOnClassesThat().resideInAPackage("ai.neargo.shop." + to + "..")
                         .allowEmptyShould(true)
-                        .because("svc-" + from + " 依赖 svc-" + to + " 会让模块无法独立拆分；改用 shop-spi 的 Port 或 Event");
-                rule.check(classes);
+                        .because(from + " 域依赖 " + to + " 域会让它们无法独立拆分；改用 spi 包的 Port 或 Event");
+                for (String d : rule.evaluate(classes).getFailureReport().getDetails()) {
+                    now.add(from + " -> " + to + "  " + stripSourceLocation(d));
+                }
             }
         }
+        java.util.List<String> current = now.stream().distinct().sorted().toList();
+
+        java.util.List<String> frozen = readBaseline(DOMAIN_DEPS_BASELINE);
+
+        java.util.List<String> added = current.stream().filter(x -> !frozen.contains(x)).toList();
+        java.util.List<String> stale = frozen.stream().filter(x -> !current.contains(x)).toList();
+
+        assertThat(added)
+                .as("**新增的跨域依赖**。跨域只走 spi 包的 Port 或 Event —— "
+                        + "直接注入另一个域的 Service 会让两个域长在一起，而且不报错。\n"
+                        + "  修法见 spi/product/PayModePort（trade→product 那条就是这么解的）：\n"
+                        + "  在 spi 里开一条最小能力，实现放本域的 .port 包里做薄转发。\n"
+                        + "  清单：" + DOMAIN_DEPS_BASELINE)
+                .isEmpty();
+
+        assertThat(stale)
+                .as("清单里这些依赖**已经不存在了，但没人删**。留着等于给那处依赖发了一张"
+                        + "永久免检的条子 —— 下次它以别的形式回来时不会有人知道。\n"
+                        + "  从 " + DOMAIN_DEPS_BASELINE + " 里删掉这些行。")
+                .isEmpty();
+    }
+
+    /** 冻结清单：**只许变短**。 */
+    private static final java.nio.file.Path DOMAIN_DEPS_BASELINE =
+            java.nio.file.Path.of("..", "known-domain-deps.txt");
+
+    /**
+     * 去掉 {@code in (Foo.java:123)} 这个尾巴。
+     *
+     * <p>不去掉的话，清单会被行号钉死：在被引用的文件里插一行注释就会让整条
+     * 「已知」失配，于是变成一条新增违例。**棘轮的键必须对无关改动免疫**，
+     * 否则它会因为噪声而被人整批重新生成，而重新生成就等于清零。
+     */
+    private static String stripSourceLocation(String detail) {
+        int i = detail.lastIndexOf(" in (");
+        return i < 0 ? detail : detail.substring(0, i);
+    }
+
+    private static java.util.List<String> readBaseline(java.nio.file.Path p) throws java.io.IOException {
+        if (!java.nio.file.Files.exists(p)) {
+            return java.util.List.of();
+        }
+        return java.nio.file.Files.readAllLines(p).stream()
+                .map(String::trim)
+                .filter(l -> !l.isEmpty() && !l.startsWith("#"))
+                .toList();
     }
 
     /**
@@ -98,23 +237,44 @@ class ArchitectureTest {
     @Test
     @DisplayName("common 不得依赖任何业务域")
     void commonMustNotDependOnDomains() {
+        String[] forbidden = java.util.stream.Stream
+                .concat(java.util.Arrays.stream(domainPackages()), java.util.stream.Stream.of("ai.neargo.shop.portal.."))
+                .toArray(String[]::new);
         noClasses().that().resideInAPackage("ai.neargo.shop.common..")
                 .or().resideInAPackage("ai.neargo.shop.auth..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "ai.neargo.shop.user..", "ai.neargo.shop.product..", "ai.neargo.shop.trade..",
-                        "ai.neargo.shop.fulfillment..", "ai.neargo.shop.marketing..", "ai.neargo.shop.settle..",
-                        "ai.neargo.shop.message..", "ai.neargo.shop.platform..", "ai.neargo.shop.portal..")
-                .because("common 是横切基础设施；依赖业务域会让每个 svc 被迫依赖 app")
+                .should().dependOnClassesThat().resideInAnyPackage(forbidden)
+                .because("common 是横切基础设施；依赖业务域会让每个域被迫依赖 app")
                 .check(classes);
     }
 
+    /**
+     * Controller 的两个合法落点（S7 垂直切片后）。
+     *
+     * <p>原规则是「只能住在 shop-app/portal」，理由写的是「Controller 散进业务域会让域
+     * 绑死 web 层，拆分时无法只搬领域逻辑」。这条理由恰恰是反的：把某个域的 API 面
+     * 留在 app 里，拆微服务时才要**同时**搬两个工程，而且得先从 23 个 Controller 里
+     * 认出哪几个属于这个域。域绑 web 层的真正风险是**领域逻辑读 request**，
+     * 那由 {@link #domainsMustNotTouchWebRuntime()} 挡着，与 Controller 放哪无关。
+     *
+     * <p>两个落点各有明确职责：
+     * <ul>
+     *   <li>{@code ..<域>.api..} —— 只用到<b>本域</b>服务的 API 面。跟着域走，一起搬</li>
+     *   <li>{@code shop.portal..} —— <b>跨域组合</b>的 API 面（BFF）。它按定义就属于
+     *       装配层：一个接口要同时用商家和商品，这个组合关系不属于其中任何一个域</li>
+     * </ul>
+     *
+     * <p>「shop-app 里 Controller 数量为 0」曾被写进 S7 的验收标准，那条是错的：
+     * 23 个里有 5 个真正跨域（{@code MpCatalogController} 触及 4 个域），
+     * 把它们塞进任一个域都会立刻违反域间依赖规则。跨域组合必须有地方待，
+     * app 层就是那个地方。
+     */
     @Test
-    @DisplayName("Controller 只能住在 shop-app/portal 下")
-    void controllersOnlyInPortal() {
+    @DisplayName("Controller 只能住在域的 api 包或 app 的 portal 包")
+    void controllersInDomainApiOrPortal() {
         classes().that().haveSimpleNameEndingWith("Controller")
-                .should().resideInAPackage("ai.neargo.shop.portal..")
+                .should().resideInAnyPackage("ai.neargo.shop.portal..", "..api..")
                 .allowEmptyShould(true)
-                .because("Controller 散进 svc 会让 svc 绑死 web 层，微服务拆分时无法只搬领域逻辑")
+                .because("单域 API 面跟着域走（拆微服务时一起搬）；跨域组合留在 app 层")
                 .check(classes);
     }
 
@@ -123,10 +283,7 @@ class ArchitectureTest {
     void serviceMustBeInterface() {
         // 只约束业务域：common 里的横切服务（IdempotencyService 等）没有多实现的可能，
         // 强行拆接口只会多一层无意义的间接
-        classes().that().resideInAnyPackage(
-                        "ai.neargo.shop.user..", "ai.neargo.shop.product..", "ai.neargo.shop.trade..",
-                        "ai.neargo.shop.fulfillment..", "ai.neargo.shop.marketing..", "ai.neargo.shop.settle..",
-                        "ai.neargo.shop.message..", "ai.neargo.shop.platform..")
+        classes().that().resideInAnyPackage(domainPackages())
                 .and().haveSimpleNameEndingWith("Service").and().areNotInterfaces()
                 .should().haveSimpleNameEndingWith("ServiceImpl")
                 .allowEmptyShould(true)
@@ -144,7 +301,7 @@ class ArchitectureTest {
          *
          * **两个落点不是不一致，是两种东西**：
          *   .impl —— Service 的实现。接口就在隔壁包，靠子包把两者分开
-         *   .port —— Port 的实现。接口在 shop-spi **另一个 Maven 模块**里，
+         *   .port —— Port 的实现。接口在 spi 包里（合并后与 common 同在 shop-base），
          *            分离度本就高于 .impl；这里的包名标的是「这是给别的域用的出口」，
          *            而不是「这是某个本地接口的实现」。
          * 混在一起（Port 实现塞进 service/impl）会让人以为它是本域 Service 的一部分，
@@ -182,6 +339,250 @@ class ArchitectureTest {
                 .should().dependOnClassesThat().haveSimpleNameEndingWith("Mapper")
                 .allowEmptyShould(true)
                 .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
+                .check(classes);
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // 以下四条为模块合并前补齐（模块优化实施步骤 S1），**现在是唯一的边界**。
+    //
+    // 合并之前，域之间不能互相依赖是 **Maven 强制**的：依赖不在 pom 里，编译期就过不去。
+    // 2026-08 七个域合并进 shop-core 之后，**那道屏障已经消失** ——
+    // 现在 core 内部任意两个域之间 import 一下就能编过，拦住它的只剩这几条规则。
+    //
+    // 当时坚持「先补规则、再动结构」，就是为了不留下一段边界无人看管的空窗期。
+    // ───────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("领域层不得依赖 app 层（portal / config）")
+    void domainsMustNotDependOnAppLayer() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "ai.neargo.shop.portal..", "ai.neargo.shop.config..")
+                .allowEmptyShould(true)
+                .because("依赖方向必须单向朝下：app 装配领域，领域不认识 app。"
+                        + "反向依赖会让领域代码搬不走——微服务拆分时它会把整个启动模块一起拖过去")
+                .check(classes);
+    }
+
+    @Test
+    @DisplayName("领域层不得出现 Web 运行时类型（HttpServletRequest 等）")
+    void domainsMustNotTouchWebRuntime() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "jakarta.servlet..", "org.springframework.web.context..",
+                        "org.springframework.web.servlet..")
+                .allowEmptyShould(true)
+                .because("领域逻辑一旦读 request，就只能在 HTTP 线程里跑——"
+                        + "定时任务（worker profile）和事件消费都调不动它。"
+                        + "S7 把 Controller 搬进业务工程后，这条是防止 web 语义渗进领域的唯一屏障")
+                .check(classes);
+    }
+
+    @Test
+    @DisplayName("Port 接口只能定义在 spi 包")
+    void portInterfacesOnlyInSpi() {
+        classes().that().haveSimpleNameEndingWith("Port").and().areInterfaces()
+                .should().resideInAPackage("ai.neargo.shop.spi..")
+                .allowEmptyShould(true)
+                .because("Port 是跨域契约。定义在某个域里，等于让调用方 import 那个域——"
+                        + "本来要解耦，结果反而建立了依赖")
+                .check(classes);
+    }
+
+    @Test
+    @DisplayName("领域层不得直接依赖通道实现（只认 spi 包的网关接口）")
+    void domainsMustNotTouchChannel() {
+        noClasses().that().resideInAnyPackage(domainPackages())
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("ai.neargo.shop.channel..", "ai.neargo.shop.notify.port..")
+                .allowEmptyShould(true)
+                .because("微信/支付宝的报文格式与「这笔钱怎么分」无关；短信/推送的供应商 SDK 与「发什么」无关。"
+                        + "领域层一旦 import 具体网关（channel 的支付适配 / notify 的触达网关），"
+                        + "换通道就要改业务代码，而 ops 部署（不含支付通道）会连编译都过不去")
+                .check(classes);
+    }
+
+    /**
+     * 顶层包白名单 —— 堵的是 {@link #DOMAINS} 名单本身的漏洞。
+     *
+     * <p>域间依赖规则是**按名单**两两检查的，这意味着：不在名单里的顶层包
+     * **不受任何约束**。有人建一个 {@code ai.neargo.shop.coupon}，它可以随意
+     * import trade 的实体、被 product 反向依赖，而所有规则**全绿**。
+     *
+     * <p>合并成 shop-core 之后这个漏洞会变得容易触发——新建一个包不再需要
+     * 建 Maven 模块、不需要改根 pom，就是新建一个目录而已，没有任何一步会
+     * 提醒作者「你在开一个新域」。这条规则就是那个提醒。
+     */
+    @Test
+    @DisplayName("★★ 一期占位哈希只准出现在 PasswordHasher 里 —— 它不能再被用来存新密码")
+    void legacyPasswordHashIsContained() throws Exception {
+        /*
+         * 那个哈希是 `Integer.toHexString(("shop$" + raw).hashCode())`：
+         * 32 位、无盐、零计算成本 —— 基本等价于明文。
+         * 它保留下来的唯一理由是**验证存量**，让老账号还能登录并就地升级。
+         *
+         * 守卫盯的是「别处又照着写一遍」：新功能最容易的做法就是抄旁边那行。
+         * 测试自己要造存量数据，所以测试目录不算。
+         */
+        List<String> offenders = new ArrayList<>();
+        Path root = Path.of("..").toAbsolutePath().normalize();
+        try (var paths = Files.walk(root)) {
+            for (Path f : paths.filter(x -> x.toString().endsWith(".java"))
+                    .filter(x -> x.toString().contains("/src/main/")).toList()) {
+                if (f.getFileName().toString().equals("PasswordHasher.java")) {
+                    continue;
+                }
+                if (Files.readString(f).contains("\"shop$\"")) {
+                    offenders.add(root.relativize(f).toString());
+                }
+            }
+        }
+        assertThat(offenders)
+                .as("这些文件里出现了一期占位哈希的盐串。它只准留在 PasswordHasher 内部做存量验证 —— "
+                        + "拿它存新密码等于把密码明文放进库")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("顶层包必须登记：新开一个域，要同时登记进 DOMAINS 名单")
+    void topLevelPackagesMustBeRegistered() {
+        // 非业务域的顶层包：横切基础设施与装配层，各有专门规则管，不进 DOMAINS
+        List<String> infra = List.of("common", "spi", "auth", "event", "idem", "portal", "config", "arch",
+                // payclient：controller 与支付域之间的那一层（app service）。
+                // **不是业务域**：它没有自己的表，做的是「解析数据域 → 校验 → 调支付域 → 拼 VO」。
+                // 支付域拆分后 controller 只做 HTTP 的事，业务动作落在这里；
+                // 见 TDD-支付域-双形态部署与装配 §三.3b。
+                "payclient",
+                // channel：外部通道适配（支付/进件/登录凭证）。不是业务域——
+                // 它没有自己的表，只把外部协议翻译成 spi 的接口。见 domainsMustNotTouchChannel。
+                "channel",
+                // notify：触达中台的通道适配（短信/邮件/微信订阅/聚合推送/平台直连推送）。
+                // 与 channel 同构——不是业务域，只把各家推送/短信协议翻译成 spi.notify 的接口。
+                // 编排（谁该收到）仍在 message 域；这里只管「怎么发出去」。见 domainsMustNotTouchChannel。
+                "notify",
+                // archive：运营端归档（软删除）。**同样不是业务域** ——
+                // 它没有自己的表，只往别人的表上盖一个 archived_at，
+                // 表名由调用方的枚举给。四个域的这段逻辑逐字相同，
+                // 各写一遍必然漂移，而漂移的表现是「某个域归档了但列表还显示」。
+                "archive",
+                // job：定时任务的统一外壳与运行记录（JobSupport / sys_job_run）。
+                // **不是业务域** —— 它不认识任何一个域的语义，只负责「计时、记录、兜住异常」。
+                // 它有自己的表（sys_job_run），但那是运维记录不是业务数据：
+                // 删光它不影响任何业务，只是从此答不出「这个任务跑没跑过」。
+                "job",
+                // media：图片资产记账（sys_media_asset）。**不是业务域** ——
+                // 它不认识商品也不认识证件，只回答「这个 key 占多少字节、还有没有人引用」。
+                // 与 job 同构：有自己的表，但那是账不是业务数据。
+                // 上传写它、扫描改它、运营端读它，三方分属不同模块，所以它必须住在地基里。
+                "media",
+                // invbridge：进销存的**防腐桥**。它是唯一被允许同时认识两边的东西 ——
+                // 读平台的 prd_sku / prd_store_stock，写进销存的物料与余额。
+                //
+                // **不是业务域**：它没有自己的表，也没有自己的规则，只做搬运与对差。
+                // 放进 inventory 会让那个域反过来依赖平台（独立交付时整段编不过），
+                // 放进 product 会让商品域知道进销存的存在。装配层是它唯一正确的位置 ——
+                // 单独一个顶层包，就是为了让「谁能同时碰两边」这件事一眼看得出来。
+                "invbridge",
+                // sessionjob：会话与登录日志的清理任务。它是**鉴权基础设施**，不是业务域 ——
+                // 只碰 usr_session/mch_session/ops_session 与三张登录日志表，
+                // 一张业务表都不认识
+                "sessionjob",
+                // paybridge：支付域与订单域之间的**跨域巡检**（不变式 I8）。
+                // 与 invbridge 同一个理由：它必须同时认识两边 ——
+                // 拉支付域的成功流水，比订单状态，不一致就补一次 markPaid。
+                //
+                // **不是业务域**：没有自己的表，也没有自己的规则。
+                // 放进 pay 会让支付域依赖主应用可用（而「回调直接进 pay」的初衷正是不要这个依赖），
+                // 放进 trade 会让订单域知道支付域的内部账。装配层是它唯一正确的位置。
+                "paybridge",
+                // report：报表库的持久层（rpt_*，**第四个独立库**）。
+                // **不是业务域**：它存的全是**派生数据** —— 每一行都能由平台库重算出来，
+                // 删光它不影响任何业务，只是从此答不出「上周怎么样」。与 job / media 同构：
+                // 有自己的表，但那是账不是业务数据。
+                // 它也**不认识任何业务概念**：算汇总那一步在 reportbridge，本包只负责读写。
+                "report",
+                // reportbridge：日结的**跨域组合** —— 读交易域（ord_sub_order / ord_after_sale）、
+                // 写报表库。与 invbridge / paybridge 同一个理由：它必须同时认识两边。
+                //
+                // **不是业务域**：没有自己的表，也没有自己的规则。
+                // 放进 trade 会让订单域知道报表库的存在；放进 report 会让那个派生库
+                // 反过来依赖交易域，拆的时候要连着搬。装配层是它唯一正确的位置。
+                "reportbridge",
+                // svc：进程之间怎么找到对方、怎么调（ServiceLocator + InternalHttp）。
+                // **不是业务域**：它不认识任何业务概念，只认识「服务名 → 地址」。
+                // 三个进程共用一份，所以住在 shop-base 里；见 ADR-023。
+                "svc");
+        List<String> known = new ArrayList<>(infra);
+        known.addAll(List.of(DOMAINS));
+
+        List<String> unregistered = classes.stream()
+                .map(c -> c.getPackageName())
+                .filter(p -> p.startsWith("ai.neargo.shop."))
+                .map(p -> p.substring("ai.neargo.shop.".length()).split("\\.")[0])
+                .distinct()
+                .filter(top -> !known.contains(top))
+                .sorted()
+                .toList();
+
+        assertThat(unregistered)
+                .as("这些顶层包没在 DOMAINS 或基础设施名单里，因此**不受域间依赖规则约束**。"
+                        + "若是新业务域，加进 DOMAINS；若是基础设施，加进本测试的 infra 名单")
+                .isEmpty();
+    }
+
+    /**
+     * 每个 {@code @Scheduled} 都必须带 {@code @SchedulerLock}。
+     *
+     * <p><b>这条守的是「加第二个 worker 实例的那一天」。</b>
+     * 定时任务已经被 {@code @Profile("worker")} 挡住了「api 实例也在跑」这一层，
+     * 但那个闸挡不住 worker 自己起两份 —— 而扩容是运维在容量吃紧时做的动作，
+     * 不会回来问代码准备好没有。
+     *
+     * <p>漏一个的后果不是报错，是**重复执行**：
+     * 资质到期任务会给同一个商家发两遍下架通知（商家以为出了两次问题）、
+     * 积分转正会一个成功一个全程回滚（日志里的「转正 0 条」和
+     * 「今天确实没有到点的」长得一模一样）。
+     * <b>幂等守的是正确性，锁守的是可观测性</b>，两者都要。
+     *
+     * <p>所以这条不能靠人记得 —— 加任务的人正在想的是业务，不是部署形态。
+     */
+    @Test
+    @DisplayName("★★★ 每个 @Scheduled 都要有 @SchedulerLock —— 漏一个，扩容那天就重复执行")
+    void everyScheduledMethodMustBeLocked() {
+        List<String> unlocked = classes.stream()
+                .flatMap(c -> c.getMethods().stream())
+                .filter(m -> m.isAnnotatedWith(org.springframework.scheduling.annotation.Scheduled.class))
+                .filter(m -> !m.isAnnotatedWith(net.javacrumbs.shedlock.spring.annotation.SchedulerLock.class))
+                .map(m -> m.getOwner().getSimpleName() + "#" + m.getName())
+                .sorted()
+                .toList();
+
+        assertThat(unlocked)
+                .as("这些定时任务没有分布式锁。worker 起两个实例时它们会各跑一遍。\n"
+                        + "  加 @SchedulerLock(name=..., lockAtLeastFor=..., lockAtMostFor=...)：\n"
+                        + "  · name 每个任务独立 —— 共用一把锁会让后一个被静默跳过\n"
+                        + "  · lockAtMostFor 要小于调度间隔，否则卡死时整条链停摆")
+                .isEmpty();
+    }
+
+    /**
+     * 会员分层重算只算分层，<b>不触达</b>（PRD-会员标签与定向营销 AC-7）。
+     *
+     * <p>「分层变了顺手发条唤回」看起来很自然，而它意味着一次口径调整（运营把沉睡从 60 天改成 30 天）
+     * 会在凌晨给全平台几万人各推一条消息 —— 没有商家点过发送，频次闸也拦不住第一条。
+     * 先断言类存在：规则写错类名时 {@code noClasses()} 会对空集恒绿。
+     */
+    @Test
+    @DisplayName("★★ 会员分层重算不得依赖推送与触达 —— 改口径不能变成全平台群发")
+    void memberLevelServiceMustNotTouchReach() {
+        String impl = "ai.neargo.shop.member.service.impl.MemberLevelServiceImpl";
+        assertThat(classes.contain(impl)).as("类名写错会让下面的规则对空集恒绿").isTrue();
+        noClasses().that().haveFullyQualifiedName(impl)
+                .or().haveFullyQualifiedName("ai.neargo.shop.member.job.MemberLevelRecomputeJob")
+                .should().dependOnClassesThat().resideInAnyPackage("ai.neargo.shop.spi.notify..")
+                .orShould().dependOnClassesThat().haveSimpleNameStartingWith("MbrReach")
+                .orShould().dependOnClassesThat().haveSimpleNameStartingWith("MemberReach")
+                .because("分层是事实，发不发消息是商家的决定")
                 .check(classes);
     }
 }

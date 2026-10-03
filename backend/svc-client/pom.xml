@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>svc-client</artifactId>
+    <packaging>jar</packaging>
+    <description>服务间调用的传输零件：@HttpExchange 代理 + RestClient（HTTP/1.1 · 令牌头 · 五种失败分类）</description>
+
+    <!--
+      **只依赖 spring-web，而且不能多。** 两边都要用它：
+        · shop-base（shop-app → pay-svc）
+        · job-worker（job-worker → shop-app）—— 它不能依赖 shop-base（会把 MyBatis 拖进 classpath），
+          所以这些零件不能放在 shop-base 里，只能单独成模块。
+      spring-web 单独一个 jar 不带 Servlet API，Boot 不会因此把 worker 判成 web 应用、起端口。
+
+      包名 ai.neargo.svc.client **刻意不带 shop**：job 是独立交付的，不该 import 一个 shop 包。
+      这个模块也不认识任何配置键与请求头名 —— 那些由调用方通过 ServiceClientSpec 传进来。
+      见 docs/technical/design/TDD-服务间调用换HTTP-Interface.md
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- JSON 编解码由调用方的 classpath 决定（两边都有 Jackson 3）；这里只为测试「真的解出对象」 -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

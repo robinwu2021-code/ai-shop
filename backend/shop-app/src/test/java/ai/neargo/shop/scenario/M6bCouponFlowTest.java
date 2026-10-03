@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -36,13 +37,14 @@ class M6bCouponFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
     private CouponMapper couponMapper;
@@ -212,6 +214,18 @@ class M6bCouponFlowTest {
         assertThat(data.get("unusable").size()).isEqualTo(1);
         assertThat(data.get("unusable").get(0).get("userCouponNo").asString()).isEqualTo(tooHigh);
         assertThat(data.get("unusable").get(0).get("reason").asString()).contains("门槛");
+        /*
+         * ★ **原因要给码与差额，不能只给中文句子**（2026-09-21，执行计划 B1）。
+         *
+         * 那句中文是硬编码的，而且写的是「还差 35060 <b>分</b>」—— 买家心里的单位是元，
+         * 英文与阿语用户还会看到中文。端上按 code 出文案、用 gapMinor 自己格式化，
+         * 所以这两样缺一不可。reason 仍然保留：老版本小程序还在读它。
+         */
+        JsonNode why = data.get("unusable").get(0);
+        assertThat(why.get("code").asString())
+                .as("不给码，端上只能把后端拼的中文原样贴上去").isEqualTo("BELOW_THRESHOLD");
+        assertThat(why.get("gapMinor").asLong())
+                .as("差额要给数：50000 门槛 − 14940 商品额").isEqualTo(50000L - 14940L);
         assertThat(small).isNotBlank();
     }
 
@@ -392,7 +406,7 @@ class M6bCouponFlowTest {
         c.setThresholdMinor(threshold);
         c.setMaxDiscountMinor(0L);
         c.setFunder(funder);
-        c.setMerchantNo(merchantNo);
+        c.setEntityNo(merchantNo);
         c.setTotalCount(total);
         c.setReceivedCount(0);
         c.setPerUserLimit(perUser);
@@ -410,13 +424,407 @@ class M6bCouponFlowTest {
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
+    }
+
+    // ---------------------------------------------------------------- 平台营销治理（P-7.1）
+
+    @Test
+    @DisplayName("★ 平台暂停券：从领券中心消失，且领取被拒")
+    void opsPauseStopsCoupon() throws Exception {
+        String couponNo = platformCoupon("面额写错的券", 100000L, 100L);
+        String user = login("13500135090");
+
+        // 停之前：能看到、能领
+        assertThat(couponCenter(user)).contains(couponNo);
+
+        String goods = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"面额 1000 元超过商品价，疑似录错\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("PAUSED"));
+
+        // 停之后：领券中心看不到，硬领也领不到 —— 只改一个没人看的字段不算止损
+        assertThat(couponCenter(user)).doesNotContain(couponNo);
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + user))
+                .andExpect(jsonPath("$.code").value(40001));   // COUPON_SOLD_OUT
+    }
+
+    @Test
+    @DisplayName("暂停不影响已领到手的券 —— 那是用户已有的权益")
+    void pauseDoesNotRevokeIssued() throws Exception {
+        String couponNo = platformCoupon("先领后停", 1000L, 5000L);
+        String user = login("13500135091");
+        receive(user, couponNo);
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"停发\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String mine = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + user))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine)
+                .as("平台单方面作废已发的券会引发比「多发几张」严重得多的纠纷")
+                .contains(couponNo);
+    }
+
+    @Test
+    @DisplayName("理由必填；非法状态被拒；无 marketing:govern 停不了")
+    void statusGuards() throws Exception {
+        String couponNo = platformCoupon("守卫测试", 500L, 1000L);
+        String goods = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DELETED\",\"reason\":\"乱传状态\"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/status")
+                        .header("Authorization", "Bearer " + opsLogin("bd", "bd123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PAUSED\",\"reason\":\"我不该能停\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    @Test
+    @DisplayName("★★★ 超预算的领取被拒 —— 此前界面承诺了这道闸门，而它根本不存在")
+    void budgetStopsIssuing() throws Exception {
+        /*
+         * TDD-营销预算前置：预算不再是运行时的闸，是建券时的一次性断言。
+         * 「发着发着超支」这件事被挡在了建券这一步 —— 敞口 = totalCount × faceMinor，
+         * 预算填得比敞口低，建券当场拒绝；填得等于敞口，正好放行。
+         *
+         * 面额 500 分、发行 3 张 → 敞口 1500。预算 1200（< 1500）必须被拒。
+         */
+        String opsToken = opsLogin("goods", "goods123");
+        String badBody = """
+                {"title":"预算不够","type":"FULL_CUT","faceMinor":500,"totalCount":3,
+                 "budgetMinor":1200,"startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(badBody))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE.code()));
+
+        // 预算 = 敞口（1500）：边界值必须放行，且发满 3 张之后第 4 张按张数闸拒绝
+        String okBody = """
+                {"title":"预算刚好","type":"FULL_CUT","faceMinor":500,"totalCount":3,
+                 "budgetMinor":1500,"startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        String created = mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(okBody))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String couponNo = json.readTree(created).get("data").get("couponNo").asString();
+
+        receiveOk(couponNo, "13600360001");
+        receiveOk(couponNo, "13600360002");
+        receiveOk(couponNo, "13600360003");
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + login("13600360004")))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.COUPON_SOLD_OUT.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 折扣券建券必须封顶——0=不封顶已取消，敞口算不出来就直接拒绝")
+    void discountCouponMustCapAtCreation() throws Exception {
+        String opsToken = opsLogin("goods", "goods123");
+        String noCap = """
+                {"title":"不封顶折扣","type":"DISCOUNT","discountRate":8500,"totalCount":10,
+                 "startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(noCap))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_DISCOUNT_CAP_REQUIRED.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 建券发行量必须 >0——不限量券的敞口同样算不出来")
+    void totalCountMustBePositiveAtCreation() throws Exception {
+        String opsToken = opsLogin("goods", "goods123");
+        String zeroTotal = """
+                {"title":"不限量","type":"FULL_CUT","faceMinor":500,"totalCount":0,
+                 "startAt":%d,"endAt":%d}
+                """.formatted(System.currentTimeMillis(), System.currentTimeMillis() + 86_400_000L);
+        mvc().perform(post("/ops/coupons").header("Authorization", "Bearer " + opsToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(zeroTotal))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_TOTAL_COUNT_REQUIRED.code()));
+    }
+
+    @Test
+    @DisplayName("★★ 预算 0 = 不限 —— 存量券一张都没配过，迁移不该改变它们的行为")
+    void zeroBudgetMeansUnlimited() throws Exception {
+        // 张数上限 100，预算不设 —— 与加这一列之前完全一致
+        String couponNo = platformCoupon("不限预算", 5000L, 0L);
+        receiveOk(couponNo, "13600360010");
+        receiveOk(couponNo, "13600360011");
+    }
+
+    @Test
+    @DisplayName("★★ 运营列表给的是治理视图：预算、已发、已核销，而不是「我领没领」")
+    void opsListCarriesGovernanceFields() throws Exception {
+        String couponNo = budgetedCoupon("治理视图", 500L, 100_000L);
+        receiveOk(couponNo, "13600360020");
+
+        String body = mvc().perform(get("/ops/coupons")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123")))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var row = java.util.stream.StreamSupport
+                .stream(json.readTree(body).get("data").get("records").spliterator(), false)
+                .filter(n -> couponNo.equals(n.get("couponNo").asString()))
+                .findFirst().orElseThrow();
+
+        // 字段名对齐 ops-web 的 Coupon —— 对不上的表现是页面渲染出 undefined
+        assertThat(row.get("name").asString()).isEqualTo("治理视图");
+        assertThat(row.get("budget").asLong()).isEqualTo(100_000L);
+        assertThat(row.get("issued").asInt()).isEqualTo(1);
+        assertThat(row.get("issuedAmount").asLong()).isEqualTo(500L);
+        assertThat(row.get("redeemed").asInt()).isZero();
+        // C 端那两个字段不该出现在治理视图里 —— 「我领没领」对运营没有意义
+        assertThat(row.has("received")).isFalse();
+        assertThat(row.has("remain")).isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 运营改得了预算 —— 此前列、闸门、进度条都有，唯独没有这个端点")
+    void opsCanSetBudget() throws Exception {
+        String couponNo = budgetedCoupon("可改预算", 500L, 0L);
+        String ops = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":100000}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.budget").value(100000));
+
+        // 改完立刻生效：闸门读的是同一列
+        receiveOk(couponNo, "13600360030");
+    }
+
+    @Test
+    @DisplayName("★★ 预算改不到已发放金额以下 —— 那是人为造出一个「已超支」")
+    void budgetCannotGoBelowIssued() throws Exception {
+        String couponNo = budgetedCoupon("已发出去了", 500L, 100_000L);
+        receiveOk(couponNo, "13600360040");
+        receiveOk(couponNo, "13600360041");   // 已发 1000 分
+
+        String ops = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":500}"))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.CONFLICT.code()));
+
+        /*
+         * 0 是显式的「不限」，不受这条约束 —— 把闸门整个撤掉是合法操作，
+         * 而「撤掉闸门」与「把闸门设到已经越过的位置」是两回事：
+         * 前者是决定不管了，后者是造出一个没有任何补救动作的状态。
+         */
+        mvc().perform(post("/ops/coupons/" + couponNo + "/budget")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"budget\":0}"))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 客服发补偿券：真发到人手里，且留痕")
+    void issueToSingleUser() throws Exception {
+        String couponNo = budgetedCoupon("补偿券", 500L, 100_000L);
+        String userToken = login("13600360100");
+        String userNo = userNoOf(userToken);
+        String ops = opsLogin("goods", "goods123");
+
+        String body = mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"海棠（售后补偿）\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":1}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.count").value(1))
+                .andExpect(jsonPath("$.data.amount").value(500))
+                .andReturn().getResponse().getContentAsString();
+        // 操作人必须留痕 —— 客服也持有发券权限，没有它「谁发的」查不出来
+        assertThat(json.readTree(body).get("data").get("operator").asString()).isNotBlank();
+
+        // 真发到手里：用户自己的券包里看得到
+        String mine = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + userToken))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mine).contains(couponNo);
+
+        // 发放记录列表要读得到 —— 没有消费方的留痕等于没留
+        String issues = mvc().perform(get("/ops/coupon-issues")
+                        .header("Authorization", "Bearer " + ops).param("couponNo", couponNo))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(issues).contains("海棠（售后补偿）");
+    }
+
+    @Test
+    @DisplayName("★★★ 超预算整批拒绝，不部分发放 —— 页面上那句话必须是真的")
+    void issueRejectedWholeBatchOnBudget() throws Exception {
+        // 预算 1200 分、面额 500 → 只够 2 张
+        String couponNo = budgetedCoupon("预算 12 元", 500L, 1200L, 99);
+        String userNo = userNoOf(login("13600360110"));
+        String ops = opsLogin("goods", "goods123");
+
+        /*
+         * 一次要 3 张。**部分发放比整批拒绝坏得多**：
+         * 运营以为发了 3 张，实际 2 张，而没有任何提示。
+         */
+        mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"批量\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":3}"))
+                .andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.CONFLICT.code()));
+
+        // 一张都不该发出去
+        String issues = mvc().perform(get("/ops/coupon-issues")
+                        .header("Authorization", "Bearer " + ops).param("couponNo", couponNo))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(issues).get("data").get("total").asInt()).isZero();
+    }
+
+    @Test
+    @DisplayName("★★ 另外三种目标返回「还没做完」而不是「参数有误」")
+    void batchTargetsSayNotImplemented() throws Exception {
+        String couponNo = budgetedCoupon("批量发", 500L, 0L);
+        String ops = opsLogin("goods", "goods123");
+
+        /*
+         * 10501 而不是 10400：怎么改参数都没用，问题在于这条路还没通。
+         * 报 10400 会让运营一直去检查自己填了什么。
+         */
+        for (String t : new String[]{"ALL", "NEW_USER", "COMMUNITY"}) {
+            mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                            .header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"target\":\"" + t + "\",\"targetDesc\":\"锦绣花园\",\"count\":10}"))
+                    .andExpect(jsonPath("$.code")
+                            .value(ai.neargo.shop.common.ErrorCode.NOT_IMPLEMENTED.code()));
+        }
+    }
+
+    @Test
+    @DisplayName("★★ 主动发放绕不开限领 —— 客服连发五张「限领一张」的券应当被拒")
+    void issueRespectsPerUserLimit() throws Exception {
+        String couponNo = budgetedCoupon("限领一张", 500L, 0L);
+        String userNo = userNoOf(login("13600360120"));
+        String ops = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/coupons/" + couponNo + "/issue")
+                        .header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target\":\"SINGLE_USER\",\"targetDesc\":\"x\","
+                                + "\"userNo\":\"" + userNo + "\",\"count\":5}"))
+                .andExpect(jsonPath("$.code")
+                        .value(ai.neargo.shop.common.ErrorCode.COUPON_SOLD_OUT.code()));
+    }
+
+    private String userNoOf(String token) throws Exception {
+        String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("userNo").asString();
+    }
+
+    @Test
+    @DisplayName("★★★ 折扣券真的打折 —— 而且最优券选得出它")
+    void discountCouponActuallyDiscounts() throws Exception {
+        String token = login("13600360200");
+        // 8500 = 八五折（**万分比**，与 ops-web 展示口径一致）
+        String couponNo = discountCoupon("八五折", 8500, 0L);
+        receive(token, couponNo);
+        addToCart(token, "G0002", "SK0003", 1);
+
+        /*
+         * 两件事一起验：
+         *   ① 折扣真的算出来了 —— 此前 best() 只看 faceMinor，
+         *      而折扣券的面额是 0，于是**最优券永远不推荐折扣券**
+         *   ② 口径是万分比 —— 按百分数算的话 (100-8500) 是负数，优惠为负等于加价
+         */
+        String body = mvc().perform(post("/mp/coupon/best")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        long best = json.readTree(body).get("data").get("discountMinor").asLong();
+        assertThat(best)
+                .as("八五折必须减出正数，且不能是 0（0 = 根本没认出这是折扣券）")
+                .isPositive();
+    }
+
+    /** 折扣券。rate 是**万分比**：8500 = 八五折 */
+    private String discountCoupon(String title, int rate, long cap) {
+        long now = System.currentTimeMillis();
+        MktCoupon c = new MktCoupon();
+        c.setCouponNo("CP-D-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        c.setTitle(title);
+        c.setType(MktCoupon.DISCOUNT);
+        c.setFaceMinor(0L);
+        c.setDiscountRate(rate);
+        c.setThresholdMinor(0L);
+        c.setMaxDiscountMinor(cap);
+        c.setFunder("PLATFORM");
+        c.setTotalCount(100);
+        c.setReceivedCount(0);
+        c.setPerUserLimit(1);
+        c.setStartAt(now - 86_400_000L);
+        c.setEndAt(now + 86_400_000L);
+        c.setStatus("ACTIVE");
+        couponMapper.insert(c);
+        return c.getCouponNo();
+    }
+
+    private void receiveOk(String couponNo, String phone) throws Exception {
+        mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + login(phone)))
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    /** 带预算的平台券。张数给足，确保被拒时拒的是预算而不是张数 */
+    private String budgetedCoupon(String title, long face, long budget) {
+        return budgetedCoupon(title, face, budget, 1);
+    }
+
+    /**
+     * @param perUser 每人限领。**要测预算就得把它放开** —— 否则先撞上限领，
+     *                两者共用 40001，测试会绿得莫名其妙（我第一版就是这样）
+     */
+    private String budgetedCoupon(String title, long face, long budget, int perUser) {
+        String couponNo = insertCoupon(title, face, 0L, "PLATFORM", null, 9999, perUser, false);
+        MktCoupon c = couponMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<MktCoupon>lambdaQuery().eq(MktCoupon::getCouponNo, couponNo).last("limit 1"));
+        c.setBudgetMinor(budget);
+        couponMapper.updateById(c);
+        return couponNo;
+    }
+
+    private String couponCenter(String token) throws Exception {
+        return mvc().perform(get("/mp/coupon").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private String opsLogin(String username, String password) throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+
 }

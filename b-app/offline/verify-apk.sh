@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+#
+# 离线包产物体检：拿新打的 APK 和**上一个已知能用的包**逐项对。
+#
+# 为什么不是「构建成功就行」：这条链路上出过的每一次事故，构建都是成功的 ——
+#   · 重解压 DCloud SDK，高德 key 的注入被覆盖没了 → 界面全对，只有定位报错误码 7；
+#   · 重解压还会静默清掉应用名与图标 → 装上叫「HBuilder」，图标是默认小机器人；
+#   · assets 换了但 dex 没换/换错，`unzip -l` 看不出来（库在不在要数 dex 里的类）。
+# 三种都要装到手机上、点到那个功能，才会被发现。
+#
+# ⚠️ 全篇不用 `grep -q` / `grep -m1` / `head -1` 接在长命令后面：它们命中即关管道，
+# 上游 apkanalyzer/aapt2 吃到 SIGPIPE，在 `set -o pipefail` 下整条脚本以 141 退出,
+# 而输出看起来像「跑到第一项就正常结束了」—— 写这个脚本时连踩两次。
+# 一律先把输出存进变量，再用 awk 单进程挑行。
+#
+# 用法：
+#   b-app/offline/verify-apk.sh <新包> [旧包]
+# 不给旧包就只做绝对检查（key / 应用名 / 版本号），不做对比。
+set -euo pipefail
+
+NEW=${1:?用法: verify-apk.sh <新包.apk> [旧包.apk]}
+OLD=${2:-}
+CMDLINE=/opt/homebrew/share/android-commandlinetools
+APKAN="$CMDLINE/cmdline-tools/latest/bin/apkanalyzer"
+AAPT=$(ls "$CMDLINE"/build-tools/*/aapt2 | tail -1)
+fail=0
+ok()  { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+bad() { printf '  \033[31m✗\033[0m %s\n' "$1"; fail=1; }
+
+echo "== 绝对检查（不依赖旧包）"
+MANIFEST=$("$APKAN" manifest print "$NEW")
+BADGING=$("$AAPT" dump badging "$NEW")
+
+# 1. 高德 key。**这一条是这个脚本存在的理由。**
+KEYVAL=$(printf '%s\n' "$MANIFEST" | awk '/com\.amap\.api\.v2\.apikey/{f=1} f&&/android:value=/{print; exit}')
+if [ -z "$KEYVAL" ]; then
+  bad "manifest 里没有 com.amap.api.v2.apikey —— 定位会报错误码 7"
+elif printf '%s' "$KEYVAL" | grep -c 'value=""' >/dev/null 2>&1 && [ "${KEYVAL#*value=\"\"}" != "$KEYVAL" ]; then
+  bad "高德 key 是空的：$KEYVAL"
+elif [ "${KEYVAL#*\$\{}" != "$KEYVAL" ]; then
+  bad "高德 key 的占位符没被替换：$KEYVAL"
+else
+  # 只报长度与尾号：这个脚本的输出会贴进工单和会话记录，key 不该跟着走
+  k=$(printf '%s' "$KEYVAL" | sed 's/.*android:value="\([^"]*\)".*/\1/')
+  ok "高德 key 已注入（${#k} 位，尾号 ${k: -4}）"
+fi
+
+# 1b. 相机权限。**扫码要用它，而它极容易缺**：离线工程的 AndroidManifest 在仓库外，
+# 重解压 DCloud SDK 会把那行清掉，而症状看着完全不像「少了个权限」——
+# 扫码页正常打开、黑屏、写一句「未获得相机权限」，像是用户自己拒了授权。
+# 实际是根本没声明：授权框不会弹，`adb shell pm grant` 也授不上
+#（不能授一个未声明的权限），于是怎么点都没用。
+#
+# 2026-09-02 就是这么发出去一个坏包的：扫码入口进了 0.4.42，而权限没进，
+# 真机上 100% 用不了 —— H5 上没有这个概念，mock 更看不见。
+if printf '%s\n' "$MANIFEST" | grep -q 'android.permission.CAMERA'; then
+  ok "相机权限已声明（扫码要用）"
+else
+  bad "manifest 里没有 android.permission.CAMERA —— 扫码页会黑屏并写「未获得相机权限」，
+     而那看着像用户拒了授权。把下面这行粘回离线工程的 AndroidManifest：
+       <uses-permission android:name=\"android.permission.CAMERA\" />"
+fi
+
+# 2. 应用名。重解压后会退回 SDK 自带的名字，而界面上看不出来
+label=$(printf '%s\n' "$BADGING" | awk -F"'" '/^application-label:/{print $2; exit}')
+if [ "$label" = "虹选商家" ]; then ok "应用名：$label"; else bad "应用名是「$label」，应为「虹选商家」"; fi
+
+# 3. 版本号 —— **两处必须一致**，这一条此前只是把 badging 打印出来，没有比对
+#
+# APK manifest 的 versionCode 与包内 www/manifest.json 的 version.code 是**两个来源**：
+#   · 前者来自离线工程的 build.gradle，系统用它判断能不能覆盖安装；
+#   · 后者来自 b-app/src/manifest.json，DCloud 运行时用它判断要不要重新解压 www。
+# 只抬前者就会打出一个**静默坏包**：装得上、系统里版本号是新的、零报错，
+# 而运行时沿用手机上已解压的旧 www —— 新代码根本没上去。
+#
+# 2026-08-28 真机上抓到过一个：APK=159/0.4.32，包内 www=158/0.4.31。
+# 它已经装在测试机上跑了两个多小时，三边都没看出来（版本号显示的是新的）。
+# 那次是靠「设备上的 APK 与本地同名包 md5 不同」顺藤摸出来的，不是靠这个脚本 ——
+# 所以把这一条从「打印」改成「断言」。
+printf '%s\n' "$BADGING" | awk '/^package:/{print "  · " $0; exit}'
+
+apk_vc=$(printf '%s\n' "$BADGING" | awk -F"'" '/^package:/{for(i=1;i<=NF;i++) if($(i)~/versionCode=$/){print $(i+1); exit}}')
+www_json=$(unzip -p "$NEW" 'assets/apps/*/www/manifest.json' 2>/dev/null || true)
+if [ -z "$www_json" ]; then
+  bad "包里找不到 www/manifest.json —— assets 没打进去？"
+else
+  www_vc=$(printf '%s' "$www_json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",{}).get("code",""))' 2>/dev/null || true)
+  if [ -z "$www_vc" ]; then
+    bad "www/manifest.json 里读不到 version.code"
+  elif [ "$apk_vc" != "$www_vc" ]; then
+    bad "versionCode 两处不一致：APK manifest=$apk_vc，包内 www=$www_vc
+       → 装上去系统显示 $apk_vc，实际跑的是 $www_vc 那一版的页面代码。
+       两处都要抬：离线工程 build.gradle 的 versionCode，和 b-app/src/manifest.json"
+  else
+    ok "versionCode 两处一致（$apk_vc）"
+  fi
+fi
+
+if [ -z "$OLD" ]; then
+  echo
+  if [ $fail = 0 ]; then echo "绝对检查通过（没给旧包，未做对比）"; else echo "有失败项 —— 别发这个包"; fi
+  exit $fail
+fi
+
+echo "== 与旧包对比：$(basename "$OLD")"
+
+# 4. 原生库。整族丢失一定看得出
+if diff -q <(unzip -l "$OLD" | awk '/\.so$/{print $4}' | sort) \
+           <(unzip -l "$NEW" | awk '/\.so$/{print $4}' | sort) >/dev/null; then
+  ok ".so 清单一致"
+else
+  bad ".so 清单变了："
+  diff <(unzip -l "$OLD" | awk '/\.so$/{print $4}' | sort) \
+       <(unzip -l "$NEW" | awk '/\.so$/{print $4}' | sort) | head -6 || true
+fi
+
+# 5. 启动图标
+#
+# ⚠️ **这一条此前恒绿，一个字节都没量到。** 它按文件名筛
+# `res/.*icon.*\.(png|webp|xml)`，而 release 包的资源名是**混淆过的**
+# （启动图标叫 `res/9T.png`），两边都筛出 0 个文件 —— diff 两个空列表当然一致。
+# 2026-09-11 换图标时发现：图标真的换了，而它照样报「一致」。
+#
+# 现在问 aapt 要 `application: icon=`，那是**运行时真正用的那一个**，
+# 再比它的字节。名字混淆不混淆都不影响。
+#
+# 判据方向也反过来了：图标**本来就该偶尔变**（换 logo），所以「变了」不是失败，
+# 是要打印出来让人看一眼；真正该失败的是**取不到图标**——那意味着包里没图标，
+# 而那种包装上去是个小机器人。
+NEW_IC=$("$AAPT" dump badging "$NEW" 2>/dev/null | grep -oE "icon='[^']*'" | head -1 | sed "s/icon='//;s/'//" || true)
+if [ -z "$NEW_IC" ]; then
+  bad "取不到启动图标 —— 这种包装上去图标是系统默认的小机器人"
+  # ⚠️ 上面那行 `|| true` 不是随手加的：脚本开头是 set -euo pipefail，
+  # 而 grep 无匹配退出 1 —— 于是「取不到图标」这件事会让**整条赋值失败、脚本当场
+  # 静默中止**，这个分支一个字也打不出来。写完消融验的时候才发现：
+  # 注入一个必然不匹配的 grep，脚本在 .so 那条之后就没声了，退出码 1、没有任何提示。
+  # **一个防御分支若在它该触发的那一刻不可达，等于没写。**
+else
+  NEW_IC_MD5=$(unzip -p "$NEW" "$NEW_IC" 2>/dev/null | md5 -q || true)
+  OLD_IC=$("$AAPT" dump badging "$OLD" 2>/dev/null | grep -oE "icon='[^']*'" | head -1 | sed "s/icon='//;s/'//" || true)
+  OLD_IC_MD5=$(unzip -p "$OLD" "$OLD_IC" 2>/dev/null | md5 -q || true)
+  if [ "$NEW_IC_MD5" = "$OLD_IC_MD5" ]; then
+    ok "启动图标与旧包一致（$NEW_IC）"
+  else
+    ok "启动图标**变了**：$OLD_IC_MD5 → $NEW_IC_MD5（有意换过就对，没换过要查）"
+  fi
+fi
+
+# 6. dex 里的四个关键 SDK。**数类，不数文件** —— aar 在不在只有 dex 看得出
+DEX_OLD=$("$APKAN" dex packages "$OLD" 2>/dev/null || true)
+DEX_NEW=$("$APKAN" dex packages "$NEW" 2>/dev/null || true)
+for pkg in com.igexin com.tencent.mm.opensdk com.amap.api io.dcloud; do
+  a=$(printf '%s\n' "$DEX_OLD" | grep -c "$pkg" || true)
+  b=$(printf '%s\n' "$DEX_NEW" | grep -c "$pkg" || true)
+  if [ "$a" = "$b" ]; then ok "$pkg：$b 项（与旧包同）"; else bad "$pkg：旧 $a → 新 $b"; fi
+done
+
+echo
+if [ $fail = 0 ]; then echo "全部通过"; else echo "有失败项 —— 别发这个包"; fi
+exit $fail

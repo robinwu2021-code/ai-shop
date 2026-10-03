@@ -1,7 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,16 +36,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class M6cGroupFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
-    private MerchantMapper merchantMapper;
+    private MchEntityMapper merchantMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -70,7 +72,37 @@ class M6cGroupFlowTest {
         JsonNode data = requestDetail(owner, requestNo);
         assertThat(data.get("status").asString()).isEqualTo("LOCKED");
         // 锁定的是快照价，不是报价表里的当前价 —— 否则「不审核」等于让商家随时改价
-        assertThat(data.get("chosenQuote").get("unitPriceMinor").asLong()).isEqualTo(19900L);
+        assertThat(data.get("chosenQuote").get("priceMinor").asLong()).isEqualTo(19900L);
+    }
+
+    @Test
+    @DisplayName("★★ 锁价后：`/quote` 拒、`/revise` 放 —— **两个入口口径不同是有意的**")
+    void quoteAndReviseDifferAfterLock() throws Exception {
+        String owner = login("12900129021");
+        String requestNo = createRequest(owner, "求团：折叠梯");
+        String biz = loginAsOwnerOf("M0001", "12900129022");
+        String quoteNo = quote(biz, requestNo, 8800L, 3, 7);
+        choose(owner, requestNo, quoteNo);
+
+        /*
+         * **这条测试存在的理由是防止「顺手统一」** —— 我就差点这么干过。
+         *
+         * 两个入口做的是同一件事（改价），对「已锁价」的判断却相反：
+         *   · quote(requestNo)：直接拒。这张需求单已经选定了别人／已关闭，
+         *     再收报价「只会让商家以为还有机会」。
+         *   · revise(quoteNo)：放行。锁价保护的是**成交快照**（chosenQuote 里的价），
+         *     而这张报价对**后续**邻居仍然有效 —— 见 chosenQuoteLocksPrice。
+         *
+         * 看起来像不一致，实际是两个问题的两个答案。谁要统一它们，
+         * 先让这条红一次，然后回答：统一之后上面那两句话哪一句不再成立。
+         */
+        mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitPriceMinor\":9900,\"minQty\":3,\"validDays\":7}"))
+                .andExpect(jsonPath("$.code").value(20004));
+
+        revise(biz, quoteNo, 9900L);   // 同一件事，这条路放行
     }
 
     @Test
@@ -109,8 +141,14 @@ class M6cGroupFlowTest {
 
             JsonNode quotes = quotes(owner, requestNo);
             // 用户在选报价时就要看到「这家毁过约」，而不是事后投诉
-            assertThat(quotes.get(0).get("breachCount").asInt()).isEqualTo(2);
-            assertThat(quotes.get(0).get("merchantRating").asDouble()).isGreaterThan(0);
+            assertThat(quotes.get(0).get("merchant").get("breachCount").asInt()).isEqualTo(2);
+            /*
+             * 评分与评价数都要下发。**不断言「大于 0」** ——
+             * 评分改成派生之后，一家还没人评过的店就是 0 分 0 条，那是真话；
+             * 端上按 ratingCount 显示「暂无评价」，而不是挂一排空星当差评店。
+             */
+            assertThat(quotes.get(0).get("merchant").has("rating")).isTrue();
+            assertThat(quotes.get(0).get("merchant").get("ratingCount").asInt()).isZero();
         } finally {
             setBreachCount("M0002", 0);
         }
@@ -129,13 +167,19 @@ class M6cGroupFlowTest {
 
         JsonNode data = requestDetail(owner, requestNo);
         assertThat(data.get("status").asString()).isEqualTo("QUOTED");
-        assertThat(data.get("quoteCount").asInt()).isEqualTo(2);
+        /*
+         * **报价跟着详情一起下发**（契约 `GroupRequest.quotes`）。
+         * 原先这里只有一个 `quoteCount`，两端的页面却都要列报价 ——
+         * 于是 `request.quotes.length` 读到 undefined，整页当场崩掉。
+         */
+        assertThat(data.get("quotes").size()).as("报价要跟着详情一起给").isEqualTo(2);
+        assertThat(data.get("quotes").get(0).get("merchant").get("name").asString()).isNotEmpty();
 
         JsonNode quotes = quotes(owner, requestNo);
         assertThat(quotes).hasSize(2);
         // 报价按单价升序：用户第一眼看到的应该是最便宜的
-        assertThat(quotes.get(0).get("unitPriceMinor").asLong()).isEqualTo(2800L);
-        assertThat(quotes.get(0).get("minQty").asInt()).isEqualTo(20);
+        assertThat(quotes.get(0).get("priceMinor").asLong()).isEqualTo(2800L);
+        assertThat(quotes.get(0).get("minCount").asInt()).isEqualTo(20);
     }
 
     @Test
@@ -148,7 +192,7 @@ class M6cGroupFlowTest {
         mvc().perform(post("/mp/group-request/" + requestNo + "/interest")
                         .header("Authorization", "Bearer " + neighbor))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.interestCount").value(1))
+                .andExpect(jsonPath("$.data.interestedCount").value(1))
                 .andExpect(jsonPath("$.data.interested").value(true));
 
         // 邻居没有任何订单 —— +1 只是表达「我也想要」
@@ -158,7 +202,7 @@ class M6cGroupFlowTest {
         // 再点一次取消
         mvc().perform(post("/mp/group-request/" + requestNo + "/interest")
                         .header("Authorization", "Bearer " + neighbor))
-                .andExpect(jsonPath("$.data.interestCount").value(0))
+                .andExpect(jsonPath("$.data.interestedCount").value(0))
                 .andExpect(jsonPath("$.data.interested").value(false));
     }
 
@@ -243,7 +287,8 @@ class M6cGroupFlowTest {
     void normalUserCannotQuote() throws Exception {
         String owner = login("12900129028");
         String requestNo = createRequest(owner, "求团：雨伞");
-        String normal = login("12900129029");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String normal = TestLogin.merchantOwner(mvc(), json, otpStore, "12900129029");
 
         mvc().perform(post("/biz/group-request/" + requestNo + "/quote")
                         .header("Authorization", "Bearer " + normal)
@@ -255,31 +300,21 @@ class M6cGroupFlowTest {
     // ---------------------------------------------------------------- 商家团
 
     @Test
-    @DisplayName("参团：人数累加；够起团人数即成团")
-    void joinGroupBuyUntilFormed() throws Exception {
+    @DisplayName("★★ 旧版「直接参团」不再落成员：返回请升级，团的人数不变")
+    void legacyJoinAsksToUpgrade() throws Exception {
         String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
 
+        /*
+         * 参团已改成带团号下单、付款成功才算成员（TDD-营销域-详细设计 §1.4）。
+         * 旧接口若还静默落成员：没付钱的人会让「还差 N 人」变少，团到期时也没有钱可退 ——
+         * 那正是这次要堵上的缺口。付款落成员的正向路径见 GroupOrderFlowTest。
+         */
         String a = login("12900129030");
         mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.joinedCount").value(1))
-                .andExpect(jsonPath("$.data.status").value("OPEN"));
-
-        String b = login("12900129031");
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + b))
-                .andExpect(jsonPath("$.data.joinedCount").value(2))
-                .andExpect(jsonPath("$.data.status").value("FORMED"));
-    }
-
-    @Test
-    @DisplayName("同一个人不能重复参团（否则「还差 N 人」会被一个人刷满）")
-    void cannotJoinTwice() throws Exception {
-        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 5);
-        String a = login("12900129032");
-
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a));
-        mvc().perform(post("/mp/group-buy/" + groupNo + "/join").header("Authorization", "Bearer " + a))
-                .andExpect(jsonPath("$.code").value(10409));
+                .andExpect(jsonPath("$.code").value(40033));
+        mvc().perform(get("/mp/group-buy/" + groupNo))
+                .andExpect(jsonPath("$.data.joinedCount").value(0))
+                .andExpect(jsonPath("$.data.members.length()").value(0));
     }
 
     @Test
@@ -293,7 +328,33 @@ class M6cGroupFlowTest {
         mvc().perform(get("/mp/group-buy/" + groupNo))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.groupNo").value(groupNo))
-                .andExpect(jsonPath("$.data.merchantName").isNotEmpty());
+                .andExpect(jsonPath("$.data.merchant.name").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("★★★ 团卡片上的数字必须都是真的 —— 否则买家看到的是「¥NaN · 还差 人成团」")
+    void groupCardCarriesEveryNumberThePageShows() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 3980L, 3);
+
+        JsonNode g = json.readTree(mvc().perform(get("/mp/group-buy/" + groupNo))
+                        .andExpect(jsonPath("$.code").value(0))
+                        .andReturn().getResponse().getContentAsString()).get("data");
+
+        /*
+         * 这些字段少一个，页面上就是一个 NaN —— 而 NaN 不报错，它只是让人看不懂。
+         * 实测过的形态：「¥NaN.NaN」「还差 [空] 人成团」「NaN:NaN:NaN」，
+         * 三个页面（B 端团列表、C 端团列表、C 端团详情）上一个正确数字都没有 ——
+         * 团开了等于没开，而接口一路 200。
+         */
+        assertThat(g.get("groupPrice").asLong()).isEqualTo(3980L);
+        assertThat(g.get("basePrice").asLong()).isGreaterThan(3980L);
+        assertThat(g.get("expireAt").asLong()).isGreaterThan(0L);
+        assertThat(g.get("need").asInt()).as("还差几人由后端算，端上不要自己减").isEqualTo(3);
+        assertThat(g.get("reached").asBoolean()).isFalse();
+        assertThat(g.get("members").isArray()).isTrue();
+        assertThat(g.get("merchant").get("name").asString()).isNotEmpty();
+        // status 不能省成 reached：被平台中止的团人数可能已经够了
+        assertThat(g.get("status").asString()).isEqualTo("OPEN");
     }
 
     // ---------------------------------------------------------------- helpers
@@ -305,7 +366,7 @@ class M6cGroupFlowTest {
         var g = new ai.neargo.shop.marketing.group.entity.MktGroupBuy();
         g.setGroupNo("GB-" + java.util.UUID.randomUUID().toString().substring(0, 8));
         g.setGoodsNo(goodsNo);
-        g.setMerchantNo(merchantNo);
+        g.setEntityNo(merchantNo);
         g.setTitle("团购商品");
         g.setCover("");
         g.setGroupPriceMinor(price);
@@ -319,8 +380,8 @@ class M6cGroupFlowTest {
     }
 
     private void setBreachCount(String merchantNo, int count) {
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setBreachCount(count);
         merchantMapper.updateById(m);
     }
@@ -381,21 +442,242 @@ class M6cGroupFlowTest {
         String token = login(phone);
         String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setOwnerUserNo(json.readTree(body).get("data").get("userNo").asString());
+        // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
+        grantOwner(m.getEntityNo(), json.readTree(body).get("data").get("userNo").asString());
         merchantMapper.updateById(m);
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
+    }
+    /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
+    private void grantOwner(String merchantNo, String userNo) {
+        var existing = merchantStaffMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .last("limit 1"));
+        if (existing != null) {
+            existing.setUserNo(userNo);
+            merchantStaffMapper.updateById(existing);
+            return;
+        }
+        var st = new ai.neargo.shop.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-T-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
+        merchantStaffMapper.insert(st);
+    }
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
+
+
+    // ---------------------------------------------------------------- 平台报价治理（P-8.2）
+
+    @Test
+    @DisplayName("★ 平台判毁约：报价置 BREACH，且毁约次数公示到报价卡上")
+    void breachMarksQuoteAndMerchantCredit() throws Exception {
+        String owner = login("13700137101");
+        String requestNo = createRequest(owner, "毁约测试");
+        String biz = loginAsOwnerOf("M0001", "13700137102");
+        String quoteNo = quote(biz, requestNo, 15000L, 3, 7);
+
+        int before = quoteCard(requestNo, quoteNo).get("merchant").get("breachCount").asInt();
+
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"接单后拒不发货，聊天记录见工单 TK1\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("BREACH"));
+
+        // 毁约的报价从用户的报价列表里消失 —— 它按 status=ACTIVE 取，
+        // 一条已判毁约的报价不该还挂在那里等人选
+        assertThat(quoteNos(requestNo)).doesNotContain(quoteNo);
+
+        /*
+         * 毁约次数公示在**该商家后续的报价卡**上（ADR-003）。
+         * 判定必须真的影响到用户看得见的东西，否则这个功能只是改了一个没人看的状态字段。
+         */
+        String requestNo2 = createRequest(owner, "毁约后的下一单");
+        String quoteNo2 = quote(biz, requestNo2, 16000L, 3, 7);
+        assertThat(quoteCard(requestNo2, quoteNo2).get("merchant").get("breachCount").asInt())
+                .as("判毁约必须计入 breach_count，并出现在这家店后面的报价上")
+                .isEqualTo(before + 1);
+    }
+
+    @Test
+    @DisplayName("重复判毁约不叠加违规记录（幂等）")
+    void breachIsIdempotent() throws Exception {
+        String owner = login("13700137103");
+        String requestNo = createRequest(owner, "幂等毁约");
+        String biz = loginAsOwnerOf("M0002", "13700137104");
+        String quoteNo = quote(biz, requestNo, 12000L, 2, 7);
+        String bd = opsLogin("bd", "bd123");
+
+        for (int i = 0; i < 2; i++) {
+            mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                            .header("Authorization", "Bearer " + bd)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"detail\":\"重复判定\"}"))
+                    .andExpect(jsonPath("$.code").value(0));
+        }
+        String requestNo2 = createRequest(owner, "幂等毁约后的下一单");
+        String quoteNo2 = quote(biz, requestNo2, 12500L, 2, 7);
+        assertThat(quoteCard(requestNo2, quoteNo2).get("merchant").get("breachCount").asInt())
+                .as("判两次只该算一次 —— 否则运营手抖点两下，商家白背一次违规").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("毁约理由必填：没有事实的处置在申诉时站不住")
+    void breachNeedsDetail() throws Exception {
+        String owner = login("13700137105");
+        String requestNo = createRequest(owner, "空理由");
+        String biz = loginAsOwnerOf("M0001", "13700137106");
+        String quoteNo = quote(biz, requestNo, 9900L, 1, 7);
+        String bd = opsLogin("bd", "bd123");
+
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"   \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
+    @DisplayName("平台改价与商家改价进同一份价格历史")
+    void opsPriceGoesToSameHistory() throws Exception {
+        String owner = login("13700137107");
+        String requestNo = createRequest(owner, "平台改价");
+        String biz = loginAsOwnerOf("M0001", "13700137108");
+        String quoteNo = quote(biz, requestNo, 10000L, 1, 7);
+        revise(biz, quoteNo, 11000L);           // 商家自己改一次
+
+        String bd = opsLogin("bd", "bd123");
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/price")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"unitPriceMinor\":10500,\"reason\":\"商家把 105 打成 1050\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        // 用户看到的是同一份历史：平台改的那一笔不该长得不一样，也不该看不见
+        assertThat(json.readTree(mvc().perform(get("/mp/group-request/" + requestNo + "/price-history"))
+                .andReturn().getResponse().getContentAsString()).get("data").size())
+                .as("商家改一次 + 平台改一次 = 两条历史").isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("没有 quote:govern 的角色判不了毁约（客服不是招商）")
+    void supportCannotMarkBreach() throws Exception {
+        String owner = login("13700137109");
+        String requestNo = createRequest(owner, "越权毁约");
+        String biz = loginAsOwnerOf("M0001", "13700137110");
+        String quoteNo = quote(biz, requestNo, 8800L, 1, 7);
+
+        mvc().perform(post("/ops/quotes/" + quoteNo + "/breach")
+                        .header("Authorization", "Bearer " + opsLogin("support", "support123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"detail\":\"我不该能判\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    /** C 端报价列表里的单号（只含 ACTIVE） */
+    private java.util.List<String> quoteNos(String requestNo) throws Exception {
+        String body = mvc().perform(get("/mp/group-request/" + requestNo + "/quotes"))
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> out = new java.util.ArrayList<>();
+        json.readTree(body).get("data").forEach(n -> out.add(n.get("quoteNo").asString()));
+        return out;
+    }
+
+    /** 报价卡：C 端看到的那份（含公示的毁约次数） */
+    private tools.jackson.databind.JsonNode quoteCard(String requestNo, String quoteNo)
+            throws Exception {
+        String body = mvc().perform(get("/mp/group-request/" + requestNo + "/quotes"))
+                .andReturn().getResponse().getContentAsString();
+        for (var n : json.readTree(body).get("data")) {
+            if (quoteNo.equals(n.get("quoteNo").asString())) {
+                return n;
+            }
+        }
+        throw new AssertionError("报价卡上找不到 " + quoteNo);
+    }
+
+    private String opsLogin(String username, String password) throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+
+
+    // ---------------------------------------------------------------- 平台拼团治理（P-8.1）
+
+    @Test
+    @DisplayName("★ 平台中止违规团：团置 FAILED，且从 C 端在售列表消失")
+    void opsAbortsGroup() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 3);
+
+        String goods = opsLogin("goods", "goods123");
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"团购价高于原价，涉嫌虚假优惠\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+
+        // 中止必须影响用户看得见的东西 —— 只改一个没人看的状态字段不算干预
+        String list = mvc().perform(get("/mp/group-buy")).andReturn().getResponse().getContentAsString();
+        assertThat(list).as("中止后的团不该还挂在 C 端等人参加").doesNotContain(groupNo);
+    }
+
+    @Test
+    @DisplayName("已成团的不许中止：那一刻用户已付钱、商家已备货，要退得走售后")
+    void formedGroupCannotBeAborted() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 2);
+        // 成团的正向路径（付款落成员）在 GroupOrderFlowTest；这里只要一个已成团的团
+        groupBuyMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.marketing.group.entity.MktGroupBuy>lambdaUpdate()
+                .set(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getStatus, "FORMED")
+                .set(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getJoinedCount, 2)
+                .eq(ai.neargo.shop.marketing.group.entity.MktGroupBuy::getGroupNo, groupNo));
+
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"想中止已成团的\"}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
+
+    @Test
+    @DisplayName("中止理由必填；无 marketing:govern 的角色中止不了")
+    void abortNeedsReasonAndPermission() throws Exception {
+        String groupNo = openGroupBuy("M0001", "G0001", 4500L, 3);
+        String goods = opsLogin("goods", "goods123");
+
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + goods)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"  \"}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
+        // BD 管招商不管商品价格，中止团不是他的活
+        mvc().perform(post("/ops/groups/" + groupNo + "/abort")
+                        .header("Authorization", "Bearer " + opsLogin("bd", "bd123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"我不该能中止\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
 }

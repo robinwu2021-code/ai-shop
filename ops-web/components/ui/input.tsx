@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { SEARCH_DEBOUNCE_MS } from "@/lib/constants";
 
 /** 错误态环。`Textarea` 与 `FormDrawer` 共用同一份写法，改这里两处一起变。 */
 export const ERR_RING = "ring-2 ring-[var(--destructive)]";
@@ -54,3 +55,34 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ),
 );
 Select.displayName = "Select";
+
+/**
+ * 受控输入 + 防抖对外通知。**筛选类输入框都该走它。**
+ *
+ * 为什么必须防抖：值一旦进了 `queryKey`，每敲一个字符就是一次请求 ——
+ * 「商家」两个字在本地实测 300ms 内连发数次，接了真后端就是几倍的无谓查询，
+ * 而且回包乱序时列表会闪。本地 state 立刻回显（输入不卡顿），只把**对外的通知**押后。
+ *
+ * 这段逻辑此前只长在 `Toolbar` 私有的 `SearchBox` 里，于是页面往工具栏里塞一个裸
+ * `<Input>` 当筛选时，既没有防抖、也没有筛选回显 —— 两个缺陷一起来。
+ *
+ * 返回的 `push(v, immediate)`：`immediate` 用于回车与清空
+ * —— 用户已经明确表达「就现在」，不该再等 300ms。
+ */
+export function useDebouncedPush(value: string, onChange: (v: string) => void) {
+  const [local, setLocal] = React.useState(value);
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 外部改了值（切 tab 清空、点 chip 的 ×）要同步回来，否则框里还留着旧词
+  React.useEffect(() => { setLocal(value); }, [value]);
+  React.useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const push = React.useCallback((v: string, immediate = false) => {
+    setLocal(v);
+    if (timer.current) clearTimeout(timer.current);
+    if (immediate) { onChange(v); return; }
+    timer.current = setTimeout(() => onChange(v), SEARCH_DEBOUNCE_MS);
+  }, [onChange]);
+
+  return { local, push };
+}

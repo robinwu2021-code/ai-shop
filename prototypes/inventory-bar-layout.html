@@ -1,0 +1,95 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>库存页贴底条排法</title>
+<!-- 真源在仓库 prototypes/inventory-bar-layout.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.prose{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.prose p{margin:0}
+.cap .pick{color:var(--note);font-weight:600;margin-inline-start:8px}
+figure.pick .ph{outline:2px solid var(--note);outline-offset:5px}
+.cap .metrics{display:block;margin-top:6px}
+/* 只画贴底那一段：手机框不撑满整屏 */
+.ph.strip{aspect-ratio:auto}
+.ph.strip .scr{flex:0 0 auto;padding-bottom:26px}
+.foot .btn.sq{flex:0 0 32px;width:32px}
+.foot .btn.fixed{flex:0 0 auto;padding-inline:14px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 方案稿 · 2026-09-17</div>
+  <h1>库存页贴底条：三个按钮怎么排</h1>
+  <p class="sub">高度已经从 30px 调到 44px（压在可点下限上）。剩下的是左右比例——这一版给四种排法，挑一个我再改代码。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">量</span><h2>现状</h2></div>
+  <p class="why"><b>「按钮左右不协调」</b>——现状是：左边一枚实心红，中间一枚浅红，右边一枚灰的、还窄一截。三种底色、三种宽度，一行里没有一条线是对齐的。</p>
+  <div class="tw" style="margin-top:18px"><table class="spec">
+    <tr><th>量到的</th><th>现状</th><th>说明</th></tr>
+    <tr><td>按钮高</td><td class="num">44px</td><td>已调好，四种排法都不再动它</td></tr>
+    <tr><td>宽度</td><td class="num"><b>121 / 121 / 73</b></td><td>前两个等分，「更多」窄一截</td></tr>
+    <tr><td>底色</td><td><b>实心 / 浅红 / 灰</b></td><td>一行三种，权重读不出层次</td></tr>
+    <tr><td>面板高</td><td class="num">60px</td><td>越高挡掉的列表越多，这是它当初被做矮的原因</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>四种排法</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec fixed">更多 ⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>01 A · 现状</b>「更多」是开另一段的口子、不是第三个动作——这个判断是对的，但把它做成<strong>一枚窄一点的文字胶囊</strong>，读出来仍是「第三个按钮，只是小一号」。
+        <span class="metrics sec-num">flex: 1 / 1 / none　·　三种底色</span></figcaption>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec">更多 ⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>02 B · 三格等分</b>宽度齐了，但「更多」被抬成了和两个写动作<strong>平起平坐</strong>的第三格——而它并不会写任何数据。左右是齐了，语义反而更糊。
+        <span class="metrics sec-num">flex: 1 / 1 / 1　·　三种底色</span></figcaption>
+    </figure>
+
+    <figure id="s03" class="pick">
+      <div class="ph strip">
+        <div class="scr"><div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div></div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div><div class="btn sec sq">⌃</div></div>
+      </div>
+      <figcaption class="cap"><b>03 C · 两动作等分 ＋ 圆形展开<span class="pick">推荐</span></b>两个真动作严格等分、左右对称；「更多」缩成一枚 44×44 的圆，<strong>形状就说明了它是另一类东西</strong>——不是第三个动作，是把抽屉拉开。代码里原本的意图第一次被看出来了。
+        <span class="metrics sec-num">flex: 1 / 1 / 44×44　·　两种底色 ＋ 一枚灰圆</span></figcaption>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph strip">
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">库存</span><span class="v go hot">更多操作</span></div></div>
+          <div class="card" style="align-items:center"><span class="meta">没有需要处理的商品</span></div>
+        </div>
+        <div class="foot"><div class="btn">＋ 进货</div><div class="btn sec" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">－ 报损</div></div>
+      </div>
+      <figcaption class="cap"><b>04 D · 「更多」上移</b>贴底条只剩两枚、绝对对称，最干净。代价是<strong>多一个落点</strong>：「更多」搬到卡片头，手指要跨半个屏幕去够——而它原本就在拇指区里。
+        <span class="metrics sec-num">flex: 1 / 1　·　两种底色　·　多一处入口</span></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">结论</span><h2>为什么推荐 C</h2></div>
+  <div class="prose">
+    <p><b>为什么推荐 C</b>：现状的毛病不是「宽度不一样」，是<b>三个东西被画成了同一类</b>。B 把宽度抹平，等于把语义也抹平了；D 语义最清楚，但把一个高频动作挪出了拇指区。</p>
+    <p>C 保留了原本的判断（更多 ≠ 第三个动作），只是改用<b>形状</b>而不是<b>宽度</b>去说它——与库里「危险操作靠形态而不是靠颜色区分」是同一条原则。</p>
+  </div>
+</section>
+
+<footer>真源：prototypes/inventory-bar-layout.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/WEu9WUhTodCofWMqKiZ8iw">https://claude.ai/artifact/WEu9WUhTodCofWMqKiZ8iw</a> · 相关文档：prototypes/inventory-bar-entries.html（下一稿：放几个入口）</footer>
+</div>
+</html>

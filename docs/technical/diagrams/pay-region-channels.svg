@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="760" viewBox="0 0 1040 760" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>多区域支付通道：市场 · 通道 · 支付方式 · 币种的关系与两条筛选链</title>
+<desc>市场决定币种；通道与市场是多对多，聚合网关一个通道下挂多个支付方式；费率版本按市场与主体形态分档。B 端筛的是「商家能进件哪些通道」，判据是通道启用状态、markets 是否含商家经营区域、该主体形态有没有费率档；C 端筛的是「买家看到哪些按钮」，判据是商家已开通的通道、该市场开放的支付方式、端上能力。两条链判据不同，不能合并。今天两处 enabledChannels 都传 null，等于没筛；stl_bill 没有币种列，多币种下 SUM 会把不同币种加在一起且不报错。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.em{font-weight:700;fill:#161A21}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.mk{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.ch{fill:#EEF4FC;stroke:#7FA2CC;stroke-width:1.4}
+.me{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.2}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.3}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+</style></defs>
+
+<text class="b" x="24" y="26">① 四者的关系 —— 币种挂在市场上，不挂在通道上</text>
+
+<rect class="mk" x="24" y="38" width="228" height="150" rx="8"/>
+<text class="n" x="40" y="58">市场 market</text>
+<text class="t" x="40" y="77">CN 中国大陆　CNY</text>
+<text class="t" x="40" y="94">TW 中国台湾　TWD</text>
+<text class="t" x="40" y="111">AE 阿联酋　AED　　SA 沙特　SAR</text>
+<text class="t" x="40" y="128">SG · MY · TH · ID · VN · PH</text>
+<text class="t" x="40" y="149">配置在 sys_setting 的 platform.markets</text>
+<text class="t" x="40" y="166">MarketVO(code, name, currency,</text>
+<text class="t" x="40" y="181">　timezone, rate) · 今天只有 CN 一条</text>
+
+<rect class="ch" x="284" y="38" width="300" height="150" rx="8"/>
+<text class="n" x="300" y="58">通道 channel　sys_pay_channel</text>
+<text class="t" x="300" y="77">判据：谁给我出账单、谁跟我清算</text>
+<text class="t" x="300" y="98">DIRECT　　　微信 · 支付宝 · LINE Pay · VNPay</text>
+<text class="t" x="300" y="115">AGGREGATOR　Xendit · 2C2P · PayTabs · HyperPay</text>
+<text class="t" x="300" y="136">markets 是一列 JSON：一个通道可覆盖多个市场</text>
+<text class="t" x="300" y="153">（Stripe / Checkout 就是这种）</text>
+<text class="t" x="300" y="174">费率版本按 市场 × 主体形态 分档</text>
+
+<rect class="me" x="616" y="38" width="400" height="150" rx="8"/>
+<text class="n" x="632" y="58">支付方式 method　pay_methods（JSON 数组）</text>
+<text class="t" x="632" y="77">买家在收银台看到的那个按钮</text>
+<text class="t" x="632" y="98">XENDIT → QRIS · GoPay · OVO · DANA · VA</text>
+<text class="t" x="632" y="115">HYPERPAY → mada · 卡 · Apple Pay · STC Pay</text>
+<text class="t" x="632" y="132">ECPAY → 信用卡 · ATM 轉帳 · 超商代碼</text>
+<text class="t" x="632" y="156">mada / GCash / OVO 不是通道，是方式 ——</text>
+<text class="t" x="632" y="173">建成通道会得到一份永远没有账单的进件</text>
+
+<path class="ar" marker-end="url(#ar)" d="M252 100 L284 100"/>
+<path class="ar" marker-end="url(#ar)" d="M584 100 L616 100"/>
+
+<line x1="24" y1="210" x2="1016" y2="210" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="236">② 两条筛选链 —— 判据不同，不能合并</text>
+
+<rect class="zone" x="24" y="248" width="488" height="238" rx="8"/>
+<text class="zt" x="38" y="268">B 端 · 商家能进件哪些通道</text>
+
+<rect class="box" x="42" y="278" width="452" height="34" rx="6"/>
+<text class="t" x="56" y="299">sys_pay_channel.enabled = 1</text>
+
+<rect class="warn" x="42" y="322" width="452" height="52" rx="6"/>
+<text class="t" x="56" y="342">∩　markets ∋ mch_entity.market_code</text>
+<text class="t" x="56" y="362">两处 enabledChannels 今天传的是 null —— 等于没筛</text>
+
+<rect class="box" x="42" y="384" width="452" height="34" rx="6"/>
+<text class="t" x="56" y="405">∩　该主体形态在这个通道有费率档</text>
+
+<rect class="box" x="42" y="428" width="452" height="46" rx="6"/>
+<text class="n" x="56" y="448">= 收款设置页里可进件的渠道</text>
+<text class="t" x="56" y="465">返回空列表是合法结果 —— 不要兜一个默认通道</text>
+
+<path class="ar" marker-end="url(#ar)" d="M268 312 L268 320"/>
+<path class="ar" marker-end="url(#ar)" d="M268 374 L268 382"/>
+<path class="ar" marker-end="url(#ar)" d="M268 418 L268 426"/>
+
+<rect class="zone" x="528" y="248" width="488" height="238" rx="8"/>
+<text class="zt" x="542" y="268">C 端 · 买家看到哪些按钮</text>
+
+<rect class="box" x="546" y="278" width="452" height="34" rx="6"/>
+<text class="t" x="560" y="299">商家已进件且状态 = OPENED 的通道</text>
+
+<rect class="box" x="546" y="322" width="452" height="52" rx="6"/>
+<text class="t" x="560" y="342">∩　该通道在本市场开放的 pay_methods</text>
+<text class="t" x="560" y="362">同一个 Xendit，在 ID 给 QRIS，在 PH 给 GCash</text>
+
+<rect class="box" x="546" y="384" width="452" height="34" rx="6"/>
+<text class="t" x="560" y="405">∩　端上能力（iOS 才有 Apple Pay、微信内才有 JSAPI）</text>
+
+<rect class="box" x="546" y="428" width="452" height="46" rx="6"/>
+<text class="n" x="560" y="448">= 收银台上的按钮</text>
+<text class="t" x="560" y="465">以商家经营区域为准，不按买家所在地 —— 见图下第 2 条</text>
+
+<path class="ar" marker-end="url(#ar)" d="M772 312 L772 320"/>
+<path class="ar" marker-end="url(#ar)" d="M772 374 L772 382"/>
+<path class="ar" marker-end="url(#ar)" d="M772 418 L772 426"/>
+
+<line x1="24" y1="508" x2="1016" y2="508" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="534">③ 挡在前面的一条 —— 与多区域无关，单币种下也是欠账</text>
+
+<rect class="warn" x="24" y="546" width="992" height="98" rx="8"/>
+<text class="n" x="40" y="566">stl_bill 与 stl_settle_batch 没有 currency 列</text>
+<text class="t" x="40" y="586">ord_order 有 · stl_payment 有 · pts_user_ledger 有 · stl_points_pool 有 —— 唯独按金额聚合的那两张没有。</text>
+<text class="t" x="40" y="606">多币种一上来，SUM(net_minor) 会把 12000 TWD 与 12000 CNY 加成 24000。不报错、不告警，报表上就是一个大数。</text>
+<text class="t" x="40" y="626">而批次总额、放款指令、对账差异都是照那个数生成的 —— 错误一旦落库就追不回来。必须赶在第一个非 CNY 市场上线之前补。</text>
+
+<text class="l" x="24" y="676">1　币种挂在市场上，不挂在通道上：跨市场通道（Stripe / Checkout）的结算币种随市场变，只放在 sys_pay_channel 上会给出错的答案。</text>
+<text class="l" x="24" y="696">2　按买家 IP / 手机号归属地选通道，会让同一笔订单在不同人手里走不同通道，对账时无法解释，合规上也要谨慎得多 —— 本期不做。</text>
+<text class="l" x="24" y="716">3　内置渠道一律 enabled=0：渠道要签约才能用；内置一堆开着的，商家会看到一屏他签不下来的通道，而每一个都能点进去提交进件。</text>
+<text class="l" x="24" y="736">4　清单是「预置什么」，不是「已经能用什么」—— 每一条都还要走签约 → 密钥 → 沙箱联调 → 开关。</text>
+</svg>

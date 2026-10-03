@@ -1,19 +1,161 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
-import type { Community, Page, PickupPoint, PickupStatus } from "@/lib/types";
-import type { CommunityQ, PickupQ } from "../query";
+import type {
+  Community, CommunityApply, CommunityDuplicate, CommunityImportResult, CoverageDistribution,
+  CoverageHealth, FenceImpact, GeoPlacePage,
+  NearbyCommunity, Page, PickupPoint, PickupStatus,
+  Region, RegionSuggestion,
+} from "@/lib/types";
+import type { PickupDraft } from "@/lib/types";
+import type { CommunityApplyQ, CommunityQ, PickupQ } from "../query";
 
 export interface CommunityApi {
+  /**
+   * 坐标健康度（P-2.1）。**位置模块所有分析的分母** ——
+   * 没标点的门店让自送半径失效、没坐标的地址推不出聚落。
+   * 分母写错的分析比没有分析更危险：它会让运营去撤一个其实有人的片区的商家。
+   */
+  coverageHealth(): Promise<CoverageHealth>;
+
+  /**
+   * 位置分布（P-2.1）。**`unattributable` 与 `rows` 并列，不是脚注** ——
+   * 端上要把它画得同样显眼，否则「缺数据」会被读成「缺需求」。
+   */
+  coverageDistribution(): Promise<CoverageDistribution>;
+
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
   /** 开城/停城（P-2.1.2）。停城不影响已有订单，只是 C 端不再展示。 */
   setCommunityOpen(communityNo: string, opened: boolean): Promise<Community>;
+  /**
+   * 把某个区划前缀下、**地图导入**的聚落批量开城。
+   *
+   * <p>批量导入进来的默认是关着的（导入与放出来分两步）。放之前要先确认
+   * 商家的经营范围铺到了这个区 —— 没铺的话买家会被匹配到自家小区、
+   * 然后看到一屏空货架，比匹配到远处那个有货的还糟。
+   *
+   * <p>只动 `source=MAP` 的：运营手建、商家提报的各有各的开关时机。
+   */
+  openMapCommunities(regionPrefix: string): Promise<{ opened: number }>;
   /** 覆盖围栏半径，米（P-2.1.3）。 */
   setCommunityFence(communityNo: string, fenceRadius: number): Promise<Community>;
+  /**
+   * 改围栏之前先看影响：这个半径会圈进来多少条收货地址。
+   * **只读，不写库** —— 运营要在按下保存之前知道后果。
+   */
+  fenceImpact(communityNo: string, radiusM?: number): Promise<FenceImpact>;
+  /**
+   * 建一栋楼。**街道从父级继承**，所以没有 regionCode 参数 ——
+   * 两处各填一次就会有不一致的那一天，而「楼挂的街道和它所在小区不是同一个」
+   * 会让它在按街道覆盖里归到别人那儿，没有任何人会发现。
+   */
+  createBuilding(draft: { name: string; address?: string; parentNo: string;
+                          latE6?: number; lngE6?: number }): Promise<Community>;
+  /**
+   * 把社区挂到行政区划下（ADR-013）。**建议挂到街道级** ——
+   * 挂区县也能用，但那样「按街道覆盖」就退化成了「按区覆盖」。
+   *
+   * @param regionCode 传空表示清空归属
+   */
+  setCommunityRegion(communityNo: string, regionCode: string): Promise<Community>;
+
+  // ── 商家提报的新社区（ADR-013 阶段三）──────────────────────────
+
+  /**
+   * 提报队列。默认只看待审 —— 这是个队列，历史是次要视图。
+   *
+   * 它补的是一条死路：商家开在平台还没开的小区里，覆盖项只能从已有社区里勾，
+   * 而「让平台加一个小区」此前没有任何入口。
+   */
+  listCommunityApplies(q?: CommunityApplyQ): Promise<Page<CommunityApply>>;
+  /**
+   * 裁决。**通过就当场建出这个社区**，驳回必须写原因（原样回给商家）。
+   *
+   * @param regionCode 运营最终认定的区划，空则沿用商家填的。
+   *                   不挂的话这个新社区在任何「按区覆盖」里都出不来
+   */
+  decideCommunityApply(applyNo: string, pass: boolean,
+                       opts?: { regionCode?: string; reason?: string }): Promise<CommunityApply>;
+
+  // ── 行政区划（ADR-013）─────────────────────────────────────────
+
+  /**
+   * 某区划的直接下级。`parent` 为空取省级。
+   *
+   * **逐级查，不给整棵树**：四级共 44703 行、1.6 MB。挑一个街道只需沿
+   * 「省 → 市 → 区 → 街道」走四次、每次几十条；给整棵树的话每开一次页面
+   * 都要传一遍全国，而其中 99.9% 用不到。
+   */
+  listRegions(parent?: string, enabledOnly?: boolean): Promise<Region[]>;
+
+  /**
+   * 区划人工维护（新增 / 停用 / 改名）。
+   *
+   * <p>官方数据停更（统计局 2024-10 起），真实发生的区划调整只能手工补。
+   * enabled 此前上线两年没有任何写入口 ——「开城开关」从来没有开关。
+   */
+  createRegion(parent: string, name: string): Promise<Region>;
+  /** 停用只影响新选择，存量商家的范围不动；不级联 */
+  toggleRegion(code: string, enabled: boolean): Promise<Region>;
+  /** 改名不动码，存量引用不受影响 */
+  renameRegion(code: string, name: string): Promise<Region>;
+  /** 从省到自身的整条链路。给选择器回显用 —— 端上不该自己按码长切片 */
+  regionPath(code: string): Promise<Region[]>;
+  /**
+   * 按提报单的地址与坐标推断该挂哪个街道。**推不出来返回空数组，不是错误** ——
+   * 端上据此决定显不显示「建议」那一行，退回手选。
+   */
+  resolveRegion(q: { address?: string; latE6?: number | null; lngE6?: number | null }): Promise<RegionSuggestion[]>;
+  /** 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */
+  communitiesNear(latE6: number, lngE6: number, radiusM?: number): Promise<NearbyCommunity[]>;
+  /**
+   * 疑似重复的聚落两两清单。
+   *
+   * **from-map 上线之后才真正需要**：商家点一条地图地点就直接建档，建档时的查重只在当场比一次，
+   * 而改名、补坐标、误挂到隔壁街道都会让两条事后才撞上 —— 撞上不报错，
+   * 表现为「商家甲选了 A、乙选了 B，买家在 B 里搜不到甲的货」。
+   */
+  /**
+   * 固定地址库这一屏。
+   *
+   * **`mapStatus` 是这里最要紧的一个字段**：熔断与额度是后端进程内的状态，
+   * 端上（买家那边）只看得到「地名标没标陈旧」—— 这儿是**唯一**能提前发现
+   * 「地图快不行了」的地方。
+   */
+  listGeoPlaces(q?: { kind?: string; minHits?: number; limit?: number }): Promise<GeoPlacePage>;
+
+  /**
+   * 把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED）。
+   *
+   * **这是「逐步完善到系统中」那件事的落点**：升级之后这些地方走的是聚落
+   * 那条更靠前的路，从此不再依赖地图，也就不怕额度、不怕对方挂掉。
+   *
+   * `dryRun` 默认 true —— 一次动几百行的接口，默认值要在安全那一边。
+   */
+  promoteGeoPlaces(req: { regionCode: string; minHits?: number; dryRun?: boolean }):
+    Promise<CommunityImportResult>;
+
+  duplicateCommunities(limit?: number): Promise<CommunityDuplicate[]>;
+  /** 合并：把 fromNo 并进 intoNo。经营范围、货架等「以后还会用」的引用一并改写 */
+  mergeCommunities(fromNo: string, intoNo: string): Promise<Community>;
   archiveCommunity(communityNo: string): Promise<Community>;
   unarchiveCommunity(communityNo: string): Promise<Community>;
 
   listPickups(q?: PickupQ): Promise<Page<PickupPoint>>;
+  /**
+   * 建自提点。
+   *
+   * **此前全平台没有任何创建路径** —— 运营端只有列表/停启/费率，商家不能申请、
+   * 邻居不能报名。社区自提是平台的核心履约方式，却无法录入一个点。
+   *
+   * `ownerRef` 是多态的：STORE 传门店号、NEIGHBOR 传用户号、PLATFORM 传空。
+   */
+  createPickup(draft: PickupDraft): Promise<PickupPoint>;
   /** 启停与迁移（P-2.2.2），非法迁移抛错。 */
   setPickupStatus(pickupNo: string, status: PickupStatus): Promise<PickupPoint>;
+  /**
+   * 裁决商家自建的自提点（P1）：PENDING → ACTIVE / REJECTED。
+   * 驳回必须带理由 —— 它原样回给商家，不写他只会原样再提一次。
+   */
+  decidePickup(pickupNo: string, pass: boolean, reason?: string): Promise<PickupPoint>;
   /** 履约服务费费率，万分比（P-2.2.4）。⚠️ 仅 STORE 可配，NEIGHBOR 零报酬（ADR-005 §4）。 */
   setPickupServiceFee(pickupNo: string, serviceFeeRate: number): Promise<PickupPoint>;
   /** 疑似职业化的临时自提点（P-2.2.5）：近 30 天承接次数 ≥ 阈值。 */

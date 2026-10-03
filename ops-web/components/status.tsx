@@ -6,13 +6,13 @@
 // 只有「全站通用、映射固定」的枚举放这里；某一页专有的状态映射表留在那一页
 // （见 components/README.md「状态映射表放哪」）。
 import type {
-  MerchantStatus, MerchantTier, OrderStatus, FulfillType, TrafficSource,
-  PickupType, PickupStatus, BatchStatus, StoreAuditStatus,
-  CouponType, CouponStatus, CampaignType, CampaignStatus, SlotKind,
+  MerchantStatus, MerchantTier, OrderStatus, FulfillmentType, TrafficSource,
+  PickupPointType, PickupStatus, BatchStatus, StoreAuditStatus,
+  CouponType, CouponStatus, MerchantCampaignType, PlatformSlotType, PlatformSlotStatus, SlotKind,
   ReviewStatus, AppealStatus, RiskFlag,
   AfterSaleType, AfterSaleStatus, GroupStatus, DemandStatus,
   CategoryTemplate, SkuStatus, SettleStatus, AttrSource, RiskType, RiskStatus, BlacklistAppealStatus,
-  PushStatus, TicketStatus, MaterialKind, MaterialScope,
+  TicketStatus, MaterialKind, MaterialScope,
 } from "@/lib/types";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,9 @@ import { useI18n } from "@/lib/i18n";
 export function useMerchantStatusMap(): StatusMap<MerchantStatus> {
   const { t } = useI18n();
   return {
-    DRAFT: { label: t("merchantStatus.DRAFT"), tone: "muted" },
-    SUBMITTED: { label: t("merchantStatus.SUBMITTED"), tone: "warning" },
-    REVIEWING: { label: t("merchantStatus.REVIEWING"), tone: "info" },
-    APPROVED: { label: t("merchantStatus.APPROVED"), tone: "success" },
-    REJECTED: { label: t("merchantStatus.REJECTED"), tone: "danger" },
+    ACTIVE: { label: t("merchantStatus.ACTIVE"), tone: "success" },
     SUSPENDED: { label: t("merchantStatus.SUSPENDED"), tone: "danger" },
+    FROZEN: { label: t("merchantStatus.FROZEN"), tone: "warning" },
   };
 }
 
@@ -41,14 +38,15 @@ export function MerchantStatusBadge({ value }: { value: MerchantStatus }) {
 export function useOrderStatusMap(): StatusMap<OrderStatus> {
   const { t } = useI18n();
   return {
-    PENDING_PAY: { label: t("orderStatus.PENDING_PAY"), tone: "warning" },
+    WAIT_PAY: { label: t("orderStatus.WAIT_PAY"), tone: "warning" },
+    WAIT_OFFLINE_PAY: { label: t("orderStatus.WAIT_OFFLINE_PAY"), tone: "warning" },
     PAID: { label: t("orderStatus.PAID"), tone: "info" },
-    PREPARING: { label: t("orderStatus.PREPARING"), tone: "info" },
-    DELIVERING: { label: t("orderStatus.DELIVERING"), tone: "info" },
-    ARRIVED: { label: t("orderStatus.ARRIVED"), tone: "warning" },
+    // 运营端看的是全局态势，不区分自提/配送 —— 那是买卖双方各自关心的事。
+    // 要区分时按 fulfillment 展开，不要再拆状态（见《订单状态-统一整理》）
+    FULFILLING: { label: t("orderStatus.FULFILLING"), tone: "info" },
     COMPLETED: { label: t("orderStatus.COMPLETED"), tone: "success" },
     CANCELLED: { label: t("orderStatus.CANCELLED"), tone: "muted" },
-    AFTER_SALE: { label: t("orderStatus.AFTER_SALE"), tone: "danger" },
+    REFUNDED: { label: t("orderStatus.REFUNDED"), tone: "danger" },
   };
 }
 
@@ -57,14 +55,15 @@ export function OrderStatusBadge({ value }: { value: OrderStatus }) {
 }
 
 /** 履约方式：不是状态而是分类，用中性徽标，不参与"好/坏"的颜色语义。 */
-export function useFulfillTypeMap(): StatusMap<FulfillType> {
+export function useFulfillmentTypeMap(): StatusMap<FulfillmentType> {
   const { t } = useI18n();
   return {
-    PICKUP_STORE: { label: t("fulfillType.PICKUP_STORE"), tone: "muted" },
-    PICKUP_NEIGHBOR: { label: t("fulfillType.PICKUP_NEIGHBOR"), tone: "muted" },
-    MERCHANT_DELIVERY: { label: t("fulfillType.MERCHANT_DELIVERY"), tone: "muted" },
-    EXPRESS: { label: t("fulfillType.EXPRESS"), tone: "muted" },
-    SERVICE: { label: t("fulfillType.SERVICE"), tone: "muted" },
+    STORE_PICKUP: { label: t("fulfillmentType.STORE_PICKUP"), tone: "muted" },
+    NEIGHBOR_PICKUP: { label: t("fulfillmentType.NEIGHBOR_PICKUP"), tone: "muted" },
+    MERCHANT_DELIVERY: { label: t("fulfillmentType.MERCHANT_DELIVERY"), tone: "muted" },
+    EXPRESS: { label: t("fulfillmentType.EXPRESS"), tone: "muted" },
+    STORE_VERIFY: { label: t("fulfillmentType.STORE_VERIFY"), tone: "muted" },
+    APPOINTMENT: { label: t("fulfillmentType.APPOINTMENT"), tone: "muted" },
   };
 }
 
@@ -78,14 +77,19 @@ export function useTrafficSourceMap(): StatusMap<TrafficSource> {
   return {
     MERCHANT_OWNED: { label: t("trafficSource.MERCHANT_OWNED"), tone: "success" },
     PLATFORM: { label: t("trafficSource.PLATFORM"), tone: "info" },
-    INVITE: { label: t("trafficSource.INVITE"), tone: "muted" },
-    CHANNEL: { label: t("trafficSource.CHANNEL"), tone: "muted" },
   };
 }
 
-export function useMerchantTierLabel(): (tier: MerchantTier) => string {
+/**
+ * 商家分层的展示名。
+ *
+ * <p>分层（P-11.1.6）是**预留字段，后端目前一条都不写** —— 拿不到值时给一个短横，
+ * 而不是把 `merchantTier.null` 这样的 i18n 键原样打到表格里。
+ * 键名漏到界面上，看起来像系统坏了，实际只是这个字段还没启用。
+ */
+export function useMerchantTierLabel(): (tier?: MerchantTier | null) => string {
   const { t } = useI18n();
-  return (tier) => t(`merchantTier.${tier}`);
+  return (tier) => (tier ? t(`merchantTier.${tier}`) : "-");
 }
 
 /** 认证标（P-11.1.2）。未认证不出徽标 —— 满屏"未认证"是噪音，认证才是信息。 */
@@ -99,23 +103,26 @@ export function VerifiedBadge({ verified }: { verified: boolean }) {
  * 自提点类型（ADR-005）。两类点的规则完全不同，列表里必须一眼分得出来：
  * STORE 收服务费、承接全部订单；NEIGHBOR 零报酬、只服务单个团。
  */
-export function usePickupTypeMap(): StatusMap<PickupType> {
+export function usePickupPointTypeMap(): StatusMap<PickupPointType> {
   const { t } = useI18n();
   return {
-    STORE: { label: t("pickupType.STORE"), tone: "info" },
-    NEIGHBOR: { label: t("pickupType.NEIGHBOR"), tone: "outline" },
+    STORE: { label: t("pickupPointType.STORE"), tone: "info" },
+    PLATFORM: { label: t("pickupPointType.PLATFORM"), tone: "warning" },
+    NEIGHBOR: { label: t("pickupPointType.NEIGHBOR"), tone: "outline" },
   };
 }
-export function PickupTypeBadge({ value }: { value: PickupType }) {
-  return <StatusBadge map={usePickupTypeMap()} value={value} />;
+export function PickupPointTypeBadge({ value }: { value: PickupPointType }) {
+  return <StatusBadge map={usePickupPointTypeMap()} value={value} />;
 }
 
 export function usePickupStatusMap(): StatusMap<PickupStatus> {
   const { t } = useI18n();
   return {
+    PENDING: { label: t("pickupStatus.PENDING"), tone: "warning" },
     ACTIVE: { label: t("pickupStatus.ACTIVE"), tone: "success" },
     MIGRATING: { label: t("pickupStatus.MIGRATING"), tone: "warning" },
     SUSPENDED: { label: t("pickupStatus.SUSPENDED"), tone: "muted" },
+    REJECTED: { label: t("pickupStatus.REJECTED"), tone: "muted" },
   };
 }
 export function PickupStatusBadge({ value }: { value: PickupStatus }) {
@@ -154,8 +161,6 @@ export function useCouponTypeMap(): StatusMap<CouponType> {
   return {
     FULL_CUT: { label: t("couponType.FULL_CUT"), tone: "muted" },
     DISCOUNT: { label: t("couponType.DISCOUNT"), tone: "muted" },
-    NEWCOMER: { label: t("couponType.NEWCOMER"), tone: "info" },
-    TARGETED: { label: t("couponType.TARGETED"), tone: "muted" },
   };
 }
 
@@ -173,28 +178,55 @@ export function CouponStatusBadge({ value }: { value: CouponStatus }) {
   return <StatusBadge map={useCouponStatusMap()} value={value} />;
 }
 
-export function useCampaignTypeMap(): StatusMap<CampaignType> {
+/**
+ * **商家自建活动**的类型（`/ops/campaigns` 真正返回的取值）。
+ *
+ * 与 {@link usePlatformSlotTypeMap} 是两套 —— 后者是平台投放场次，后端还没有那个对象。
+ * 曾经共用一套的表现是：`FLASH` 恰好两边都有所以译得出来，
+ * `FULL_CUT` / `COUPON` / `BUY_GIFT` 译不出来，**原始枚举码直接打给用户**。
+ */
+export function useMerchantCampaignTypeMap(): StatusMap<MerchantCampaignType> {
   const { t } = useI18n();
   return {
-    SECKILL: { label: t("campaignType.SECKILL"), tone: "danger" },
-    FLASH: { label: t("campaignType.FLASH"), tone: "warning" },
-    FULL_REDUCE: { label: t("campaignType.FULL_REDUCE"), tone: "muted" },
-    GIFT: { label: t("campaignType.GIFT"), tone: "muted" },
-    NEWCOMER: { label: t("campaignType.NEWCOMER"), tone: "info" },
+    COUPON: { label: t("merchantCampaignType.COUPON"), tone: "info" },
+    FULL_CUT: { label: t("merchantCampaignType.FULL_CUT"), tone: "muted" },
+    FLASH: { label: t("merchantCampaignType.FLASH"), tone: "warning" },
+    BUY_GIFT: { label: t("merchantCampaignType.BUY_GIFT"), tone: "muted" },
   };
 }
 
-export function useCampaignStatusMap(): StatusMap<CampaignStatus> {
+/** 商家活动状态。停用是平台唯一能改的那一个 */
+export function useMerchantCampaignStatusMap(): StatusMap<string> {
   const { t } = useI18n();
   return {
-    DRAFT: { label: t("campaignStatus.DRAFT"), tone: "muted" },
-    SCHEDULED: { label: t("campaignStatus.SCHEDULED"), tone: "info" },
-    RUNNING: { label: t("campaignStatus.RUNNING"), tone: "success" },
-    ENDED: { label: t("campaignStatus.ENDED"), tone: "muted" },
+    RUNNING: { label: t("merchantCampaignStatus.RUNNING"), tone: "success" },
+    PAUSED: { label: t("merchantCampaignStatus.PAUSED"), tone: "danger" },
+    ENDED: { label: t("merchantCampaignStatus.ENDED"), tone: "muted" },
   };
 }
-export function CampaignStatusBadge({ value }: { value: CampaignStatus }) {
-  return <StatusBadge map={useCampaignStatusMap()} value={value} />;
+
+export function usePlatformSlotTypeMap(): StatusMap<PlatformSlotType> {
+  const { t } = useI18n();
+  return {
+    SECKILL: { label: t("platformSlotType.SECKILL"), tone: "danger" },
+    FLASH: { label: t("platformSlotType.FLASH"), tone: "warning" },
+    FULL_REDUCE: { label: t("platformSlotType.FULL_REDUCE"), tone: "muted" },
+    GIFT: { label: t("platformSlotType.GIFT"), tone: "muted" },
+    NEWCOMER: { label: t("platformSlotType.NEWCOMER"), tone: "info" },
+  };
+}
+
+export function usePlatformSlotStatusMap(): StatusMap<PlatformSlotStatus> {
+  const { t } = useI18n();
+  return {
+    DRAFT: { label: t("platformSlotStatus.DRAFT"), tone: "muted" },
+    SCHEDULED: { label: t("platformSlotStatus.SCHEDULED"), tone: "info" },
+    RUNNING: { label: t("platformSlotStatus.RUNNING"), tone: "success" },
+    ENDED: { label: t("platformSlotStatus.ENDED"), tone: "muted" },
+  };
+}
+export function PlatformSlotStatusBadge({ value }: { value: PlatformSlotStatus }) {
+  return <StatusBadge map={usePlatformSlotStatusMap()} value={value} />;
 }
 
 export function useSlotKindMap(): StatusMap<SlotKind> {
@@ -224,7 +256,7 @@ export function useAppealStatusMap(): StatusMap<AppealStatus> {
   return {
     PENDING: { label: t("appealStatus.PENDING"), tone: "warning" },
     UPHELD: { label: t("appealStatus.UPHELD"), tone: "info" },
-    DISMISSED: { label: t("appealStatus.DISMISSED"), tone: "muted" },
+    REJECTED: { label: t("appealStatus.REJECTED"), tone: "muted" },
   };
 }
 export function AppealStatusBadge({ value }: { value: AppealStatus }) {
@@ -256,16 +288,15 @@ export function useAfterSaleTypeMap(): StatusMap<AfterSaleType> {
 }
 
 /**
- * 键序 = 处理流程顺序。PLATFORM_INTERVENE 用 danger **不是因为它更糟**，
+ * 键序 = 处理流程顺序。ARBITRATING 用 danger **不是因为它更糟**，
  * 而是它意味着「用户和商家谈崩了、有人在等平台表态」——列表里必须最先被看到。
  */
 export function useAfterSaleStatusMap(): StatusMap<AfterSaleStatus> {
   const { t } = useI18n();
   return {
     APPLIED: { label: t("afterSaleStatus.APPLIED"), tone: "warning" },
-    MERCHANT_HANDLING: { label: t("afterSaleStatus.MERCHANT_HANDLING"), tone: "info" },
-    PLATFORM_INTERVENE: { label: t("afterSaleStatus.PLATFORM_INTERVENE"), tone: "danger" },
-    AGREED: { label: t("afterSaleStatus.AGREED"), tone: "info" },
+    REFUNDING: { label: t("afterSaleStatus.REFUNDING"), tone: "info" },
+    ARBITRATING: { label: t("afterSaleStatus.ARBITRATING"), tone: "danger" },
     REJECTED: { label: t("afterSaleStatus.REJECTED"), tone: "muted" },
     REFUNDED: { label: t("afterSaleStatus.REFUNDED"), tone: "success" },
     CLOSED: { label: t("afterSaleStatus.CLOSED"), tone: "muted" },
@@ -279,10 +310,11 @@ export function AfterSaleStatusBadge({ value }: { value: AfterSaleStatus }) {
 export function useGroupStatusMap(): StatusMap<GroupStatus> {
   const { t } = useI18n();
   return {
-    PENDING_AUDIT: { label: t("groupStatus.PENDING_AUDIT"), tone: "warning" },
-    RUNNING: { label: t("groupStatus.RUNNING"), tone: "info" },
-    SUCCESS: { label: t("groupStatus.SUCCESS"), tone: "success" },
+    PENDING: { label: t("groupStatus.PENDING"), tone: "warning" },
+    OPEN: { label: t("groupStatus.OPEN"), tone: "info" },
+    FORMED: { label: t("groupStatus.FORMED"), tone: "success" },
     FAILED: { label: t("groupStatus.FAILED"), tone: "muted" },
+    CLOSED: { label: t("groupStatus.CLOSED"), tone: "muted" },
   };
 }
 export function GroupStatusBadge({ value }: { value: GroupStatus }) {
@@ -341,9 +373,19 @@ export function useSettleStatusMap(): StatusMap<SettleStatus> {
   return {
     PENDING: { label: t("settleStatus.PENDING"), tone: "warning" },
     SPLITTING: { label: t("settleStatus.SPLITTING"), tone: "info" },
-    SPLIT: { label: t("settleStatus.SPLIT"), tone: "success" },
-    FAILED: { label: t("settleStatus.FAILED"), tone: "danger" },
-    FROZEN_BACK: { label: t("settleStatus.FROZEN_BACK"), tone: "muted" },
+    // ⚠️ SPLIT 从 success 降成 info：它**不表示钱到了**，只表示指令发出去了。
+    // 用绿色的话，运营扫一眼列表会以为这些单都结清了 —— 而底下还是桩。
+    SPLIT: { label: t("settleStatus.SPLIT"), tone: "info" },
+    SPLIT_CONFIRMED: { label: t("settleStatus.SPLIT_CONFIRMED"), tone: "success" },
+    // 线下单用中性色：它是**正常终态**而不是成就 —— 平台压根没经手这笔钱
+    OFFLINE_SETTLED: { label: t("settleStatus.OFFLINE_SETTLED"), tone: "muted" },
+    RETRYING: { label: t("settleStatus.RETRYING"), tone: "warning" },
+    MANUAL: { label: t("settleStatus.MANUAL"), tone: "danger" },
+    REVERSED: { label: t("settleStatus.REVERSED"), tone: "muted" },
+    // 自营轨道：对账 → 确认 → 付款，与分账那条互不相通
+    PENDING_RECON: { label: t("settleStatus.PENDING_RECON"), tone: "warning" },
+    CONFIRMED: { label: t("settleStatus.CONFIRMED"), tone: "info" },
+    PAID: { label: t("settleStatus.PAID"), tone: "success" },
   };
 }
 export function SettleStatusBadge({ value }: { value: SettleStatus }) {
@@ -370,11 +412,11 @@ export function useRiskTypeMap(): StatusMap<RiskType> {
   };
 }
 
-/** OPEN 用 warning：它表示"还没人看"，不是"已确认有问题"。 */
+/** PENDING 用 warning：它表示"还没人看"，不是"已确认有问题"。 */
 export function useRiskStatusMap(): StatusMap<RiskStatus> {
   const { t } = useI18n();
   return {
-    OPEN: { label: t("riskStatus.OPEN"), tone: "warning" },
+    PENDING: { label: t("riskStatus.PENDING"), tone: "warning" },
     CONFIRMED: { label: t("riskStatus.CONFIRMED"), tone: "danger" },
     DISMISSED: { label: t("riskStatus.DISMISSED"), tone: "muted" },
   };
@@ -388,27 +430,17 @@ export function useBlacklistAppealMap(): StatusMap<BlacklistAppealStatus> {
   return {
     NONE: { label: t("blacklistAppeal.NONE"), tone: "muted" },
     PENDING: { label: t("blacklistAppeal.PENDING"), tone: "warning" },
-    ACCEPTED: { label: t("blacklistAppeal.ACCEPTED"), tone: "success" },
+    UPHELD: { label: t("blacklistAppeal.UPHELD"), tone: "success" },
     REJECTED: { label: t("blacklistAppeal.REJECTED"), tone: "muted" },
   };
 }
 
 // ── 消息与客服（P-14）/ 素材（P-15）──────────────────────────────────────
-export function usePushStatusMap(): StatusMap<PushStatus> {
-  const { t } = useI18n();
-  return {
-    DRAFT: { label: t("pushStatus.DRAFT"), tone: "muted" },
-    SCHEDULED: { label: t("pushStatus.SCHEDULED"), tone: "info" },
-    SENT: { label: t("pushStatus.SENT"), tone: "success" },
-    CANCELLED: { label: t("pushStatus.CANCELLED"), tone: "muted" },
-  };
-}
-
-/** OPEN 用 warning：未分派的工单是"有人在等"，不是中性状态。 */
+/** PENDING 用 warning：未分派的工单是"有人在等"，不是中性状态。 */
 export function useTicketStatusMap(): StatusMap<TicketStatus> {
   const { t } = useI18n();
   return {
-    OPEN: { label: t("ticketStatus.OPEN"), tone: "warning" },
+    PENDING: { label: t("ticketStatus.PENDING"), tone: "warning" },
     ASSIGNED: { label: t("ticketStatus.ASSIGNED"), tone: "info" },
     RESOLVED: { label: t("ticketStatus.RESOLVED"), tone: "success" },
     CLOSED: { label: t("ticketStatus.CLOSED"), tone: "muted" },
