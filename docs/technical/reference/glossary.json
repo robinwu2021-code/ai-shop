@@ -3160,12 +3160,6 @@
           "ar": "تأكيد الحذف"
         },
         {
-          "key": "me.elecEntry",
-          "zh-CN": "电子元器件",
-          "en": "Electronic components",
-          "ar": "المكونات الإلكترونية"
-        },
-        {
           "key": "me.help",
           "zh-CN": "帮助中心",
           "en": "Help centre",
