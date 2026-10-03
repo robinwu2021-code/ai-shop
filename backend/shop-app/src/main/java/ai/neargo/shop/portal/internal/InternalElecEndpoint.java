@@ -7,9 +7,6 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.spi.notify.SmsPort;
-import ai.neargo.shop.spi.notify.WxSubscribePort;
-import ai.neargo.shop.spi.user.WxAuthPort;
-import ai.neargo.shop.spi.user.WxPhonePort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -50,26 +47,17 @@ public class InternalElecEndpoint {
     private final ObjectProvider<LiveIdentityResolver> liveIdentity;
     private final ObjectProvider<LivePermResolver> livePerms;
     private final SmsPort sms;
-    private final WxAuthPort wxAuth;
-    private final WxPhonePort wxPhone;
-    private final WxSubscribePort wxPort;
-    private final String appId;
     private final String token;
 
     public InternalElecEndpoint(TokenStore tokenStore,
                                 ObjectProvider<LiveIdentityResolver> liveIdentity,
                                 ObjectProvider<LivePermResolver> livePerms,
-                                SmsPort sms, WxAuthPort wxAuth, WxPhonePort wxPhone, WxSubscribePort wxPort,
-                                @Value("${shop.wx.appid:}") String appId,
+                                SmsPort sms,
                                 @Value("${shop.services.internal-token:}") String token) {
         this.tokenStore = tokenStore;
         this.liveIdentity = liveIdentity;
         this.livePerms = livePerms;
         this.sms = sms;
-        this.wxAuth = wxAuth;
-        this.wxPhone = wxPhone;
-        this.wxPort = wxPort;
-        this.appId = appId;
         this.token = token;
     }
 
@@ -127,70 +115,6 @@ public class InternalElecEndpoint {
         } catch (SmsPort.SmsException e) {
             log.warn("[elec] 验证码短信没发出去 retryable={} {}", e.retryable(), e.getMessage());
             return ResponseEntity.ok(new ElecInternal.SmsOtpResult(false, e.retryable()));
-        }
-    }
-
-    /** wx.login 的 code → (appid, openid)。code 无效或微信不可达回 ok=false，不抛：那是「这次没认出来」，不是故障 */
-    @PostMapping(ElecInternal.WX_SESSION)
-    public ResponseEntity<ElecInternal.WxSession> wxSession(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @RequestBody ElecInternal.WxCodeReq req) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        if (req == null || req.code() == null || req.code().isBlank()) {
-            return ResponseEntity.ok(new ElecInternal.WxSession(false, null, null, null));
-        }
-        try {
-            WxAuthPort.WxSession s = wxAuth.codeToSession(req.code());
-            return ResponseEntity.ok(new ElecInternal.WxSession(true, appId, s.openId(), s.unionId()));
-        } catch (WxAuthPort.WxAuthException e) {
-            log.info("[elec] code2Session 没成：{}", e.getMessage());
-            return ResponseEntity.ok(new ElecInternal.WxSession(false, null, null, null));
-        }
-    }
-
-    /** getPhoneNumber 的 code → 手机号。没开通（小程序未认证）或取号失败回 ok=false */
-    @PostMapping(ElecInternal.WX_PHONE)
-    public ResponseEntity<ElecInternal.WxPhone> wxPhone(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @RequestBody ElecInternal.WxCodeReq req) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        if (req == null || req.code() == null || req.code().isBlank() || !wxPhone.enabled()) {
-            return ResponseEntity.ok(new ElecInternal.WxPhone(false, null));
-        }
-        try {
-            String phone = wxPhone.phoneOf(req.code());
-            return ResponseEntity.ok(new ElecInternal.WxPhone(phone != null && !phone.isBlank(), phone));
-        } catch (RuntimeException e) {
-            log.info("[elec] 一键取号没成：{}", e.getMessage());
-            return ResponseEntity.ok(new ElecInternal.WxPhone(false, null));
-        }
-    }
-
-    /**
-     * 按 openid 发一条元器件订阅消息。<b>不查、不扣额度</b>：元器件账号的授权额度记在 ai-hxkey 自己的库里，
-     * 它扣到了才来调；这里再扣一次就是查 ai-shop 的 msg_subscribe —— 那张表里没有元器件账号。
-     */
-    @PostMapping(ElecInternal.WX_SEND)
-    public ResponseEntity<ElecInternal.WxSendResult> wxSend(
-            @RequestHeader(value = ElecInternal.TOKEN_HEADER, required = false) String given,
-            @RequestBody ElecInternal.WxSendReq req) {
-        if (!authorized(given)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String tpl = wxPort.templateId(WxSubscribePort.SCENE_ELEC_QUOTED);
-        if (req == null || req.openId() == null || req.openId().isBlank() || tpl == null || tpl.isBlank()) {
-            return ResponseEntity.ok(new ElecInternal.WxSendResult(false));
-        }
-        try {
-            wxPort.sendElecQuoted(req.openId(), req.rfqNo(), req.summary(), req.resultText(), req.page(), null);
-            return ResponseEntity.ok(new ElecInternal.WxSendResult(true));
-        } catch (RuntimeException e) {
-            log.warn("[elec] 订阅消息没发出去：{}", e.getMessage());
-            return ResponseEntity.ok(new ElecInternal.WxSendResult(false));
         }
     }
 
