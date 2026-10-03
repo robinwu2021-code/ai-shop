@@ -19,7 +19,7 @@
 | 账号 | 买家与供应商都是 **ai-shop 的 C 端账号**：登录走 `/mp/user/*`，令牌 `ctk_` 由主系统认（`/internal/elec/session`），`elc_rfq.buyer_ref` / `elc_supplier_member.account_ref` 存的是 ai-shop 的 `usr_no` | **自己的账号体系**（需求 ③），见 §三 |
 | 通知 | 站内信进 ai-shop 的收件箱；订阅消息由主系统按 `usr_no` 找 openid、用虹选的 access_token 发 | 站内信不再借（账号分开后那个收件箱看不见）；订阅消息按 (appid, openid) 发，过渡期借 ai-shop 的通道 |
 | 前端 | `elec-app` 依赖 `@ai-shop/ui`（组件）与 `packages/shared`（类型、请求客户端、登录/持久化/订阅授权封装） | 组件库继续依赖（需求 ②）；元器件自己的类型与登录封装搬进 ai-hxkey |
-| 小程序 | 测试期并进虹选（`c-app/src/pkg-elec` 软链到 `elec-app/src`，`scripts/with-elec.mjs`） | 过渡期照旧并进虹选；有了独立 appid 后停止并包（需求 ④） |
+| 小程序 | 测试期并进虹选（`c-app/src/pkg-elec` 软链到 `elec-app/src`，`scripts/with-elec.mjs`） | ✅ **2026-10-03 已停止并包**（需求 ④）：`release:mp` 改为不并包，`with-elec` 降级为 `release:mp:with-elec` 仅供临时联调（见 ai-hxkey TDD-元器件-退役pkg-elec并收敛单小程序） |
 | 运营端 | ops-web 的「元器件」菜单与四个子页，V370/V371 的菜单与岗位授权，运营令牌由主系统认 | **全部留在 ai-shop**（需求 ⑤） |
 | 部署 | `deploy-backend.sh` 的 elec-svc 分支、`ai-shop-elec.service`、nginx `location ^~ /elec/`、库 `ai_shop_elec` | 部署脚本搬进 ai-hxkey；服务名、库名、nginx 路由**不改** |
 | 闸门 | ai-shop 的 pre-push 里跑元器件测试、ER 生成器、`elc_*` 枚举对账、`Elec*` 枚举登记 | ai-shop 去掉这些；ai-hxkey 建自己的 pre-push |
