@@ -105,8 +105,17 @@ class MediaHostMigrationTest {
         List<String> exercised = new ArrayList<>();
 
         for (MediaRefColumn c : registry()) {
+            /*
+             * keyColumn 不保证只对应一行：ord_item 一个 sub_order_no 有多件。
+             * 直接 LIMIT 1 再按它去 queryForObject，碰上「这一单有两件」就抛 IncorrectResultSize，
+             * 而这取决于本测试之前哪条用例往同一张 H2 库里插过多件单 —— 表现成与本测试无关的随机串台
+             * （报表用例落多件单后，全量里它恰好排在前面就红）。所以挑一个只对应一行的键。
+             * 都对应多行时跳过该列（与这张表为空时同样处理），下面的 exercised ≥ 5 仍兜得住。
+             */
             List<Object> keys = jdbc.queryForList(
-                    "SELECT " + c.keyColumn() + " FROM " + c.table() + " LIMIT 1", Object.class);
+                    "SELECT " + c.keyColumn() + " FROM " + c.table()
+                            + " GROUP BY " + c.keyColumn() + " HAVING COUNT(*) = 1"
+                            + " ORDER BY " + c.keyColumn() + " LIMIT 1", Object.class);
             if (keys.isEmpty()) {
                 continue;
             }
