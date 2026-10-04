@@ -165,17 +165,19 @@ describe("详情页 · 推荐位（§3.4 批 4）", () => {
     goodsList.mockReset();
   });
 
-  it("★★★ 同店在售里**不含当前这件** —— 推荐自己是这类模块最常见的错", async () => {
+  it("★★★ 推荐位暂关（RECO_ENABLED=false，2026-10-04 用户要求）：有同店在售也不渲染", async () => {
+    // 关的原因：商品普遍还没传主图（cover 空），本店热卖/看了又看的缩略图是一排裂图，比没有更糟。
+    // 等商品有真图（img.hxmall.top 域名）把 RECO_ENABLED 改回 true 时，
+    // 恢复原断言「同店在售含『另一件』、不含当前『就是这件』」——改回 true 后这条会红，提醒恢复。
     goodsDetail.mockResolvedValue(aGoods());
     goodsList.mockResolvedValue({
       records: [aGoods({ goodsNo: "G1", title: "就是这件" }), aGoods({ goodsNo: "G2", title: "另一件" })],
       total: 2,
     });
     const html = (await render()).html();
-    // v3：同店的挂在店铺卡下「本店热卖」（AC7）
-    expect(html).toContain("goods.shopHot");
-    expect(html).toContain("另一件");
-    expect(html).not.toContain("就是这件");
+    expect(html).not.toContain("goods.shopHot");
+    expect(html).not.toContain("goods.lookMore");
+    expect(html).not.toContain("另一件");
   });
 
   it("★★ 取不到就整段不出 —— 不留一个空标题", async () => {

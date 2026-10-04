@@ -58,6 +58,13 @@ const REVIEW_FILTERS: ReviewFilter[] = ["ALL", "IMAGE", "GOOD", "BAD"];
  * 而「这家店还卖什么」本身就是买家在详情页最常有的下一个问题。
  */
 const recommends = ref<Goods[]>([]);
+/**
+ * 「本店热卖」「看了又看」总开关（2026-10-04 用户要求先关）。
+ * 直接原因：这两块的缩略图是 thumb(r.cover)，而线上商品普遍还没传主图（cover 为空），
+ * 出来的是一排裂图 —— 比没有推荐区更糟。等商品有真图（img.hxmall.top 域名）再改回 true。
+ * 关掉时连推荐数据一起不拉（省两个 goodsList 请求），顶部「推荐」锚点也一并隐藏。
+ */
+const RECO_ENABLED = false;
 /** 「大家还问」：只有已回答的会下发 —— 一排没人答的问题比没有问答区更糟 */
 const questions = ref<Question[]>([]);
 const asking = ref(false);
@@ -596,6 +603,10 @@ async function askQuestion() {
  * 不能因为它把整页的失败态点亮（领券条同一条取舍）。
  */
 async function loadRecommends(g: Goods) {
+  if (!RECO_ENABLED) {
+    recommends.value = [];
+    return;
+  }
   try {
     const page = await api.goodsList({ merchantNo: g.merchant.merchantNo, size: 10 });
     let list = (page.records ?? []).filter((x) => x.goodsNo !== g.goodsNo);
@@ -817,6 +828,8 @@ const ANCHORS = [
 ] as const;
 type AnchorKey = (typeof ANCHORS)[number]["key"];
 const activeAnchor = ref<AnchorKey>("top");
+/** 顶部锚点栏实际显示的那几个：推荐区关掉时（RECO_ENABLED=false）不留一个点了滚到空处的「推荐」 */
+const shownAnchors = computed(() => ANCHORS.filter((a) => a.key !== "recommend" || RECO_ENABLED));
 /** 各段的绝对上沿（px）。页面渲染完量一次；滚动时拿它判当前在哪一段 */
 const anchorTops = ref<Record<string, number>>({});
 
@@ -962,7 +975,7 @@ onShareTimeline(() =>
             </view>
             <view v-if="solid" class="sh-fill sh-row topbar__anchors">
               <text
-                v-for="a in ANCHORS"
+                v-for="a in shownAnchors"
                 :key="a.key"
                 class="txt-body topbar__anchor"
                 :class="activeAnchor === a.key ? 'is-on' : 'txt-quiet'"
