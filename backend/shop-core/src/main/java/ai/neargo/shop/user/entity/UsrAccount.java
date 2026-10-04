@@ -45,6 +45,20 @@ public class UsrAccount extends BaseEntity {
      */
     private String activeAddressId;
 
+    // ---- 最后已知位置（L2，TDD-虹选鲜果运营落地 §1）。被动定位探得，与 communityNo 不互相覆盖 ----
+    /** 最后已知位置纬度 e6（精确） */
+    private Integer lastLatE6;
+    /** 最后已知位置经度 e6 */
+    private Integer lastLngE6;
+    /** 最后已知区县码 */
+    private String lastRegionCode;
+    /** 最后已知小区/楼盘名 */
+    private String lastPlace;
+    /** 落进的开放聚落；没落进为空。**不覆盖主动绑定的 communityNo** */
+    private String lastCommunityNo;
+    /** 最后定位时刻，给写回节流与时效判断 */
+    private java.time.LocalDateTime lastLocatedAt;
+
     /** 常去店（进店归因，C-ST-09/10）。 */
     private String entityNo;
 
