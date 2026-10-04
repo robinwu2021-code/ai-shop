@@ -502,32 +502,14 @@ public class GoodsServiceImpl implements GoodsService {
     public GoodsVO detailForBuyer(String goodsNo, String storeNo) {
         GoodsVO v = detail(goodsNo);
         /*
-         * 库存换成**这家店**的（AC7）。放在最前面：下面几步（directBuyable / 促销 / 服务）
-         * 都可能读 skus，读到主体总量就会按「有货」往下走。
-         *
-         * 覆盖层的回退（没有店级行 → 主体总量）在 StoreStockReader 里，不在这儿再判一次 ——
-         * 判据散成两处的后果，StockPortImpl 的注释里写着：两个数都还是正的，没有任何地方会报错。
+         * **库存只在调用方真正传了 storeNo 时才换**（AC8：不带门店时给主体总量，口径不变 ——
+         * 单店商家、从首页推荐进来的都走这一支）。换库存与下面「解析门店名」是两件事，别绑在一起：
+         * 绑一起的话不带 storeNo 也会把库存换成解析门店的，StoreStockFlowTest.buyerSeesStoreStock 立刻红。
+         * 放最前：directBuyable / 促销要读 skus，读到主体总量会按「有货」往下走。
          */
-        /*
-         * 这件货由**哪家门店**卖给这位买家（2026-10-04 用户：「每个商品都关联门店，不论从哪进来」）。
-         * 口径与 list、与下单落店同序，解析不出才回落主体名（诚实默认，不编一个门店）：
-         *   ① 调用方带了 storeNo（从门户进）→ 用它
-         *   ② 否则商品只有一家店在售 → 那家
-         *   ③ 否则取主体默认营业店
-         * 拿到门店号后 withStoreScope 一次填好 store（门店名）+ 库存 —— 此前这里只手写了换库存、
-         * 从不填 store，于是店铺卡恒显主体名「虹选科技有限公司」。列表路径一直是对的，详情漏了这一步。
-         */
-        String resolvedStore = storeNo;
-        if (resolvedStore == null || resolvedStore.isBlank()) {
-            resolvedStore = soleSellingStoreOf(List.of(v.goodsNo())).get(v.goodsNo());
-        }
-        if ((resolvedStore == null || resolvedStore.isBlank()) && v.merchant() != null) {
-            resolvedStore = merchantPort.defaultStoreNo(v.merchant().merchantNo()).orElse(null);
-        }
-        // 库存换成这家店的，放最前（directBuyable / 促销要读 skus，读到主体总量会按「有货」往下走）
-        if (resolvedStore != null && !resolvedStore.isBlank() && v.skus() != null && !v.skus().isEmpty()) {
+        if (storeNo != null && !storeNo.isBlank() && v.skus() != null && !v.skus().isEmpty()) {
             java.util.Map<String, Integer> avail = storeStockReader.available(
-                    v.skus().stream().map(GoodsVO.SkuVO::skuNo).toList(), resolvedStore);
+                    v.skus().stream().map(GoodsVO.SkuVO::skuNo).toList(), storeNo);
             v = v.withStoreSkus(v.skus().stream()
                     .map(s -> new GoodsVO.SkuVO(s.skuNo(), s.optionValues(), s.spec(), s.price(),
                             s.originPrice(), avail.getOrDefault(s.skuNo(), 0), s.nominalGram(),
@@ -548,10 +530,24 @@ public class GoodsServiceImpl implements GoodsService {
             v = v.withReviewSummary(reviewService.summary(v.goodsNo(), null));
         }
         /*
-         * **门店名放最后填**：上面 withSaleScope 重建 GoodsVO 时会把 store 置回 null，
-         * 先填就被它清掉了（店铺卡于是恒显主体名）。这也是为什么 list 路径没这个坑 ——
-         * 它的 withStoreScope 是整条链的最后一步。
+         * 这件货由**哪家门店**卖给这位买家（2026-10-04 用户：「每个商品都关联门店，不论从哪进来」）。
+         * 口径与 list、与下单落店同序，解析不出才回落主体名（诚实默认，不编一个门店）：
+         *   ① 调用方带了 storeNo（从门户进）→ 用它
+         *   ② 否则商品只有一家店在售 → 那家
+         *   ③ 否则取主体默认营业店
+         * 此前详情从不填 store，店铺卡恒显主体名「虹选科技有限公司」。列表路径一直对，详情漏了这一步。
+         *
+         * **放最后填**：上面 withSaleScope 重建 GoodsVO 时会把 store 置回 null，先填就被清掉了
+         *（这也是为什么 list 路径没这个坑 —— 它的 withStoreScope 是整条链的最后一步）。
+         * 只填门店名，不碰库存（库存口径见上面 AC8）。
          */
+        String resolvedStore = storeNo;
+        if (resolvedStore == null || resolvedStore.isBlank()) {
+            resolvedStore = soleSellingStoreOf(List.of(v.goodsNo())).get(v.goodsNo());
+        }
+        if ((resolvedStore == null || resolvedStore.isBlank()) && v.merchant() != null) {
+            resolvedStore = merchantPort.defaultStoreNo(v.merchant().merchantNo()).orElse(null);
+        }
         if (resolvedStore != null && !resolvedStore.isBlank()) {
             v = v.withStore(new GoodsVO.StoreBriefVO(resolvedStore,
                     storeNamesOf(List.of(resolvedStore)).get(resolvedStore)));
