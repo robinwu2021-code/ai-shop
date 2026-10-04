@@ -40,6 +40,12 @@ export const STORAGE = {
   market: `${NS}_market`,
   community: `${NS}_community`,
   /**
+   * C 端「上次定位到的位置」（地名/区县/粗坐标/时刻）。**存本地**做 L0 冷启动缓存：
+   * 重开 App 先秒显上次地名，再后台按 TTL 刷 —— 不存的话首屏空着、还要等一次定位授权框。
+   * 只存 `here` 与 `coarseRegion` 这两样驱动顶栏的；pickedByUser / transient* 是会话态，不存。
+   */
+  location: `${NS}_location`,
+  /**
    * B 端「当前门店」。**存本地**而不是每次问服务端：
    * 它是会话上下文，切一次要在整个 App 里生效，重开也要还在原来那家店 ——
    * 每次回落默认店的话，多门店老板每天早上都要重选一次。

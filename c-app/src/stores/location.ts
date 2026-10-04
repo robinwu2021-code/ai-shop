@@ -11,6 +11,7 @@ import { getLocationDetailed } from "@shared/ports/location";
 import { useCommunityStore } from "./community";
 import type { Address, ResolvedPlace } from "@shared/types";
 import { metersBetweenE6 } from "@shared/utils/geo";
+import { STORAGE } from "@shared/utils/constants";
 
 /** 定位要多近才算「匹配到了这条地址」。再远就是「附近碰巧存过一个地址」 */
 const MATCH_NEAR_M = 1000;
@@ -470,5 +471,20 @@ export const useLocationStore = defineStore("location", {
       // 有坐标但一个聚落都没落进（新城区）—— 也算没换成，调用方同样要说一句
       return false;
     },
+  },
+
+  /**
+   * L0 冷启动缓存（TDD-虹选鲜果运营落地 §1）：重开 App 先秒显上次位置，再后台刷。
+   *
+   * **只存 `here` 与 `coarseRegion`** —— 驱动顶栏那两样。其余刻意不存：
+   * `pickedByUser` / `transientAt` / `transientName` 是会话态（它们的注释各自说明了），
+   * `active` / `list` 跟着会话或服务端走。
+   *
+   * 冷启动恢复 `here` 后，顶栏立即读到上次地名；首页加载仍会调 `ensureHere()`，
+   * 持久的 `at` 过了 TTL 就重新定位、顶栏届时更新 —— 旧名字只在刷新到来前顶着，不空屏。
+   */
+  persist: {
+    key: STORAGE.location,
+    pick: ["here", "coarseRegion"],
   },
 });

@@ -62,12 +62,17 @@
   测试：`PlaceResolverHotCacheTest`（①第二次不读库 ②stale 不缓存，各带消融）；
   `PlaceResolveChainTest` 补 `clearHotCache()` 做跨用例隔离（同 `breaker.reset()`）。
 
-**② L0 端上内存持久化 —— 冷启动秒显（纯端上 + 一个持久化 key）**
+**② L0 端上内存持久化 —— 冷启动秒显（已实现 2026-10-04）**
 - `here`（place/region/粗坐标/at）落本地（走 `@shared/ports/persist`）。
 - 冷启动：先读持久层 → 顶栏**立即**显示上次地名（标「可能不是最新」）→ 后台 `ensureHere` 按 TTL 刷 → 变了再更新。
   首屏不白、授权框只在首次或过期时弹。
 - 「重新定位」(`force`) 清三处：内存 + 持久层 + 下游（既有 force 扩到持久层）。
 - 隐私：只存地名/区县/粗坐标，与现有内存层同口径；私密模式/清缓存丢了就重新定位，不崩（try/catch 包读写）。
+
+  **已实现**：location store 加 `persist: { key: STORAGE.location, pick: ["here","coarseRegion"] }`，
+  走既有 `uniPersistStorage`（uni.getStorageSync，三端一致）。冷启动恢复 `here` → 顶栏立即读到上次地名；
+  首页仍调 `ensureHere()`，持久的 `at` 过 TTL 就重定位、届时更新。
+  **偏差**：持久恢复的地名暂不额外标「可能不是最新」（刷新秒级到来），stale 标记留到需要时再加。
 
 **③ L2 写回用户基础信息表 —— 已知用户免重解析 + 运营看分布（动库表，最重）**
 - resolve 命中后，**异步 + 节流**把「最后已知位置」写回 `usr_account`：
