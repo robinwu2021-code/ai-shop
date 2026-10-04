@@ -448,11 +448,16 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
      * 商家看到的收件人。**脱敏口径分两档**：
      *
      * <ul>
-     *   <li><b>商家自送</b>（{@code MERCHANT_DELIVERY}）→ <b>完整手机号</b>。
-     *       送到楼下找不到人就得打电话，给后四位等于让人站在原地干瞪眼。
-     *       2026-08-12 产品确认放开这一档</li>
-     *   <li>其余履约方式 → 后四位。B12 的原判断不变：商家不需要能打给每一个买家，
-     *       需要联系时走平台客服通道</li>
+     *   <li><b>商家要亲自把货送达的两种履约 → 完整手机号</b>：
+     *     <ul>
+     *       <li>商家自送（{@code MERCHANT_DELIVERY}）—— 送到楼下找不到人就得打电话
+     *           （2026-08-12 产品确认）；</li>
+     *       <li>快递（{@code EXPRESS}）—— 商家（或其供应商）要填运单、快递员要联系收件人
+     *           （2026-10-04 产品确认放开：给后四位，运单填不了、快递员找不到人）。</li>
+     *     </ul>
+     *   </li>
+     *   <li>其余履约方式（到店核销 / 预约等）→ 后四位。B12 的原判断不变：
+     *       这些不需要商家把货送出去，要联系走平台客服通道。</li>
      * </ul>
      *
      * <p><b>判断写在这里而不是 VO 上</b>：VO 只是形状，「谁能看到多少」是装配时的决定。
@@ -463,9 +468,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             return null;
         }
         String phone = s.getReceiverPhone();
-        boolean selfDelivery = MERCHANT_DELIVERY.equals(s.getFulfillment());
+        // 自送与快递都要商家把货送达买家手上，都给全号；其余走平台客服
+        boolean needsContact = MERCHANT_DELIVERY.equals(s.getFulfillment())
+                || EXPRESS.equals(s.getFulfillment());
         return new OrderVO.Receiver(s.getReceiverName(),
-                selfDelivery ? phone : tail(phone), s.getReceiverAddress());
+                needsContact ? phone : tail(phone), s.getReceiverAddress());
     }
 
     private static String tail(String phone) {

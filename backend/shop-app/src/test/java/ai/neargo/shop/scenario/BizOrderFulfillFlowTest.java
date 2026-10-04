@@ -113,6 +113,23 @@ class BizOrderFulfillFlowTest {
         assertThat(detail).contains("YT123");
     }
 
+    @Test
+    @DisplayName("★★★ 快递单：商家看到收件人**完整手机号**（要填运单、快递员要联系，2026-10-04 放开）")
+    void expressShowsFullReceiverPhone() throws Exception {
+        // prepare() 建的就是 EXPRESS 单，收件人电话 13600180013（见 placeExpressOrder）
+        Ctx c = prepare("12600129007", "快递全号店", "12600129008");
+
+        String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
+                        .header("Authorization", "Bearer " + c.merchantToken))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(detail)
+                .as("快递单商家要填运单、快递员要联系收件人 —— 给后四位等于填不了、找不到人")
+                .contains("13600180013")
+                .as("不能再是打码的那份")
+                .doesNotContain("****0013");
+    }
+
     private org.springframework.test.web.servlet.ResultActions ship(Ctx c, String expressNo)
             throws Exception {
         return mvc().perform(post("/biz/order/" + c.subOrderNo + "/ship")
