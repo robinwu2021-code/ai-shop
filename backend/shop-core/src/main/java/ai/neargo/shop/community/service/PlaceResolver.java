@@ -83,14 +83,44 @@ public class PlaceResolver {
             },
             new ThreadPoolExecutor.DiscardPolicy());
 
+    /**
+     * L1.5 内存热缓存（TDD-虹选鲜果运营落地 §1）：挡住 {@code geo_place} 的**读洪峰**。
+     *
+     * <p>首页每次进都 resolve 一次，热点格子（同一栋楼多人）本可连 DB 都不读。
+     * 这层只缓存**新鲜命中**，TTL 短（分钟级）—— {@code geo_place} 自己有
+     * {@code freshDays} 回刷，这层不负责"保鲜"，只负责"少读"，TTL 短才不会盖住回刷。
+     *
+     * <p><b>hit_count 不丢</b>：命中内存仍记一次（后台原子自增，见 {@link #safeTouchByKey}）。
+     * hit_count 喂的是手动升聚落的排序，丢了会扭曲排序，所以不能因为走了内存就不记。
+     * 把它放后台：单行自增很便宜，但不该占着首页那一跳。
+     */
+    private record Hot(Place place, long at) {
+    }
+
+    private final int hotMax;
+    private final long hotTtlMs;
+    private final java.util.Map<String, Hot> hot;
+
     public PlaceResolver(GeoPlaceMapper placeMapper, GeoPort geoPort, MapBreaker breaker,
                          @Value("${shop.geo.place-precision:8}") int precision,
-                         @Value("${shop.geo.place-fresh-days:30}") int freshDays) {
+                         @Value("${shop.geo.place-fresh-days:30}") int freshDays,
+                         @Value("${shop.geo.hot-max:10000}") int hotMax,
+                         @Value("${shop.geo.hot-ttl-ms:300000}") long hotTtlMs) {
         this.placeMapper = placeMapper;
         this.geoPort = geoPort;
         this.breaker = breaker;
         this.precision = precision;
         this.freshDays = freshDays;
+        this.hotMax = hotMax;
+        this.hotTtlMs = hotTtlMs;
+        // accessOrder=true → LRU；满了丢最久没用的那个。get/put 的并发由 synchronizedMap 兜住
+        this.hot = java.util.Collections.synchronizedMap(
+                new java.util.LinkedHashMap<String, Hot>(256, 0.75f, true) {
+                    @Override
+                    protected boolean removeEldestEntry(java.util.Map.Entry<String, Hot> e) {
+                        return size() > PlaceResolver.this.hotMax;
+                    }
+                });
     }
 
     /**
@@ -111,14 +141,24 @@ public class PlaceResolver {
 
     private Optional<Place> resolveInner(int latE6, int lngE6) {
         String key = Geohash.encode(latE6, lngE6, precision);
+
+        // L1.5：内存命中就不读 geo_place。hit_count 仍记一次，但走后台，不占这一跳。
+        Hot h = hot.get(key);
+        if (h != null && System.currentTimeMillis() - h.at() < hotTtlMs) {
+            refresher.execute(() -> safeTouchByKey(key));
+            return Optional.of(h.place());
+        }
+
         GeoPlace row = placeMapper.selectOne(Wrappers.<GeoPlace>lambdaQuery()
                 .eq(GeoPlace::getGeoKey, key).last("limit 1"));
 
         if (row != null) {
             touch(row);
             if (fresh(row)) {
-                return Optional.of(new Place(row.getName(), row.getAddress(), row.getKind(),
-                        SOURCE_PLACE_DB, false));
+                Place p = new Place(row.getName(), row.getAddress(), row.getKind(),
+                        SOURCE_PLACE_DB, false);
+                hot.put(key, new Hot(p, System.currentTimeMillis()));   // 只缓存新鲜的
+                return Optional.of(p);
             }
             /*
              * 超期。**先把旧的用上**，刷新丢到后台。
@@ -140,6 +180,11 @@ public class PlaceResolver {
         if (mapUsable()) {
             Optional<Place> fromMap = askMap(key, latE6, lngE6);
             if (fromMap.isPresent()) {
+                // 入缓存时 source 归一成 PLACE_DB：后续内存命中=没打地图=等同于用我们自己的数据。
+                // 本次返回仍是 MAP（它确实刚打了一次地图）。
+                Place cached = new Place(fromMap.get().name(), fromMap.get().address(),
+                        fromMap.get().kind(), SOURCE_PLACE_DB, false);
+                hot.put(key, new Hot(cached, System.currentTimeMillis()));
                 return fromMap;
             }
         }
@@ -244,5 +289,26 @@ public class PlaceResolver {
         patch.setHitCount((row.getHitCount() == null ? 0 : row.getHitCount()) + 1);
         patch.setLastHitAt(LocalDateTime.now());
         placeMapper.updateById(patch);
+    }
+
+    /** 内存命中时记一次 hit_count：按 geo_key 原子自增，拿不到当前值也不需要。后台调，吞异常 */
+    private void safeTouchByKey(String key) {
+        try {
+            placeMapper.update(null, Wrappers.<GeoPlace>lambdaUpdate()
+                    .setSql("hit_count = hit_count + 1")
+                    .set(GeoPlace::getLastHitAt, LocalDateTime.now())
+                    .eq(GeoPlace::getGeoKey, key));
+        } catch (RuntimeException e) {
+            LOG.warn("hit_count 自增失败（内存命中路径），这一次不记: {}", e.toString());
+        }
+    }
+
+    /**
+     * 清空 L1.5 内存热缓存。**仅供测试**：这层是进程级单例，跨用例共享
+     * （与 {@code MapBreaker} 同一个理由）—— 上一个用例缓存的格子会让下一个
+     * 断言「该读库 / 该打地图」的用例短路。生产里没有谁该调它。
+     */
+    public void clearHotCache() {
+        hot.clear();
     }
 }

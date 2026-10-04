@@ -76,6 +76,8 @@ class PlaceResolveChainTest {
     @Autowired
     private MapBreaker breaker;
     @Autowired
+    private ai.neargo.shop.community.service.PlaceResolver placeResolver;
+    @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /**
@@ -128,6 +130,9 @@ class PlaceResolveChainTest {
          * 而报错指向的是它自己（单独跑绿、在类里跑红）。
          */
         breaker.reset();
+        // L1.5 内存热缓存也是跨用例共享的单例，同 breaker：不清的话上一个用例
+        // 缓存的格子会让下一个断言「第二次该读库 / 地图该被调」的用例短路
+        placeResolver.clearHotCache();
     }
 
     @Test
@@ -222,6 +227,9 @@ class PlaceResolveChainTest {
         when(geoPort.available()).thenReturn(false);   // 地图挂了
         reset(geoPort);
         when(geoPort.available()).thenReturn(false);
+        // L1.5 内存里还留着第一次的新鲜副本（TTL 内会盖住"行已陈旧"）——
+        // 生产里这条陈旧路径在内存条目过期后才走到，这里清一次模拟 TTL 过期
+        placeResolver.clearHotCache();
 
         JsonNode place = resolve(LAT, LNG).get("place");
         assertThat(place.get("source").asString()).isEqualTo("PLACE_DB_STALE");

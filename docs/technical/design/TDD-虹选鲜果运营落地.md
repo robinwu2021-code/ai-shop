@@ -47,13 +47,20 @@
 
 ### 要补的三件（按风险从低到高）
 
-**① L1.5 服务端内存热缓存 —— 挡住 DB 读洪峰（纯服务端、零契约变更）**
+**① L1.5 服务端内存热缓存 —— 挡住 DB 读洪峰（已实现 2026-10-04）**
 - `PlaceResolver` 读 `geo_place` 前加一个**进程级 LRU**：`geohash → Place`。
 - 容量有界（如 1 万格子）、**TTL 短（分钟级）**。因为 `geo_place` 自己有 30 天过期回刷，
   这层只省重复 DB 读、**不省高德**（那是 L1 的职责）；TTL 短是为了不盖住 L1 的后台回刷结果。
 - **只缓存命中且新鲜的**（`SOURCE_MAP`/`PLACE_DB` 且非 stale）；`stale`/不可用的不进内存，
   让它们继续走 L1 的回刷。
 - 不上 Redis：本工程没有，热点集中在少数格子，单机 LRU 够；多实例各存一份也无妨（内容一致）。
+
+  **已实现**：`PlaceResolver` 加 `geohash→Place` 的 LRU（`shop.geo.hot-max:10000` / `hot-ttl-ms:300000`，走 @Value 默认不进 yml，同 place-precision）。
+  内存命中跳过 `selectOne`；`hit_count` 仍记（后台原子自增 `hit_count+1`，单行写放后台线程不占首页那一跳）。
+  map 结果入缓存时 source 归一成 `PLACE_DB`（走内存=没打地图=用我们自己的数据），本次返回仍是 `MAP`。
+  只缓存**新鲜**命中，stale 不进。
+  测试：`PlaceResolverHotCacheTest`（①第二次不读库 ②stale 不缓存，各带消融）；
+  `PlaceResolveChainTest` 补 `clearHotCache()` 做跨用例隔离（同 `breaker.reset()`）。
 
 **② L0 端上内存持久化 —— 冷启动秒显（纯端上 + 一个持久化 key）**
 - `here`（place/region/粗坐标/at）落本地（走 `@shared/ports/persist`）。
