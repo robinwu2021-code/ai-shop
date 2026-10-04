@@ -1180,7 +1180,7 @@ onShareTimeline(() =>
 
         <!-- 商家。挪到配送与规格之后：先定「买不买」，再看「谁在卖」。没人评过时不说「暂无评价」 -->
         <view class="sh-card block shop">
-          <biz-merchant-bar :merchant="goods.merchant" quiet-no-rating @tap="openMerchant"></biz-merchant-bar>
+          <biz-merchant-bar :merchant="goods.merchant" :store-name="goods.store?.storeName" quiet-no-rating @tap="openMerchant"></biz-merchant-bar>
           <!-- 本店热卖（v3 d04）：推荐里同店的前 3 件。没有同店在售就只留商家条 -->
           <template v-if="shopHot.length">
             <view class="sh-row sh-row--between shop__head" @tap="openMerchant">

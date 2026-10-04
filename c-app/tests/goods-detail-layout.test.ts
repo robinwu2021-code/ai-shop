@@ -314,4 +314,15 @@ describe("商品详情页重排", () => {
     const quiet = mount(MerchantBar, { props: { merchant: m as never, quietNoRating: true }, global: { mocks: { $t: (k: string) => k }, stubs: { "sh-rating": true } } });
     expect(quiet.html()).not.toContain("merchant.noRating");
   });
+
+  it("★★★ 店铺卡优先显示门店名，没给才回落主体名 —— 买家不该看到主体名「虹选科技有限公司」", () => {
+    const m = { merchantNo: "M1", name: "虹选科技有限公司", logo: "🏪", rating: 0, ratingCount: 0, verified: false };
+    const g = { mocks: { $t: (k: string) => k }, stubs: { "sh-rating": true, "biz-shop-avatar": true } };
+    const withStore = mount(MerchantBar, { props: { merchant: m as never, storeName: "虹选鲜果·福田店" }, global: g });
+    expect(withStore.find(".bar__name").text()).toBe("虹选鲜果·福田店");
+    expect(withStore.html()).not.toContain("虹选科技有限公司");
+    // 没有门店名（商品一家店都没在售）才回落主体名 —— 那是诚实的默认
+    const fallback = mount(MerchantBar, { props: { merchant: m as never }, global: g });
+    expect(fallback.find(".bar__name").text()).toBe("虹选科技有限公司");
+  });
 });

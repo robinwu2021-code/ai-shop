@@ -1,20 +1,32 @@
 <script setup lang="ts">
-// 商品/服务上的商家信息条。点进商家详情。
+// 商品/服务上的商家信息条。点进商家详情（或门店门户）。
+import { computed } from "vue";
 import type { MerchantBrief } from "@shared/types";
 
 /**
  * @param quietNoRating 没人评过时**什么都不说**（默认会说「暂无评价」）。
  *   商品详情页用：那里商家条挪到了下半页，一行「暂无评价」只是在说「没有」，
  *   对新店是劝退。商家列表 / 搜索页不传，照旧显示 —— 在那里横向比较时它有意义。
+ * @param storeName 这件货由哪家**门店**卖（后端按商品归属门店解析）。
+ *   给了就显门店名，没给才回落 `merchant.name`（主体名）——
+ *   买家看到的是「虹选鲜果·福田店」而不是「虹选科技有限公司」。主体名只在资质入口露面。
  */
-defineProps<{ merchant: MerchantBrief; goodsCount?: number; quietNoRating?: boolean }>();
+const props = defineProps<{
+  merchant: MerchantBrief;
+  goodsCount?: number;
+  quietNoRating?: boolean;
+  storeName?: string;
+}>();
 defineEmits<{ (e: "tap"): void }>();
+
+/** 优先门店名，回落主体名 */
+const displayName = computed(() => props.storeName || props.merchant.name);
 </script>
 
 <template>
   <view class="sh-row bar" @tap.stop="$emit('tap')">
     <biz-shop-avatar
-      :name="merchant.name"
+      :name="displayName"
       :logo="merchant.logo"
       :self-operated="merchant.selfOperated"
       :size="80"
@@ -29,7 +41,7 @@ defineEmits<{ (e: "tap"): void }>();
         <text v-if="merchant.selfOperated" class="sh-chip sh-chip--primary bar__self">
           {{ $t("merchant.selfOperated") }}
         </text>
-        <text class="txt-strong bar__name">{{ merchant.name }}</text>
+        <text class="txt-strong bar__name">{{ displayName }}</text>
         <!-- 认证用盾牌图标，与店铺列表 / 店铺详情同一种 —— 文字 chip 与前面的「自营」chip 把店名夹在中间 -->
         <sh-icon v-if="merchant.verified" name="verified" :size="28" color="var(--sh-primary)"></sh-icon>
       </view>
