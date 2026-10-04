@@ -53,6 +53,7 @@ public class MpCatalogController {
     private final ai.neargo.shop.merchant.service.StoreCodeService storeCodeService;
     /** 商家页那个「N 人收藏」（§8.2 批 2）。现算，主体表上没有这一列 */
     private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
+    private final ai.neargo.shop.user.service.UserLocationService userLocationService;
 
     public MpCatalogController(CommunityService communityService, GoodsService goodsService,
                                MerchantService merchantService, CategoryService categoryService,
@@ -60,7 +61,8 @@ public class MpCatalogController {
                                ai.neargo.shop.platform.RegionService regionService,
                                ai.neargo.shop.product.service.GoodsFavoriteService goodsFavoriteService,
                                ai.neargo.shop.merchant.service.StoreCodeService storeCodeService,
-                               ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService) {
+                               ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService,
+                               ai.neargo.shop.user.service.UserLocationService userLocationService) {
         this.communityService = communityService;
         this.goodsService = goodsService;
         this.merchantService = merchantService;
@@ -70,6 +72,7 @@ public class MpCatalogController {
         this.regionService = regionService;
         this.storeCodeService = storeCodeService;
         this.storeFavoriteService = storeFavoriteService;
+        this.userLocationService = userLocationService;
     }
 
     @GetMapping("/mp/community/nearby")
@@ -92,7 +95,20 @@ public class MpCatalogController {
             @RequestParam(required = false) Integer latE6,
             @RequestParam(required = false) Integer lngE6,
             @RequestParam(required = false, defaultValue = "false") boolean coarse) {
-        return communityService.resolve(latE6, lngE6, coarse);
+        CommunityService.LocationVO vo = communityService.resolve(latE6, lngE6, coarse);
+        /*
+         * 顺手记一下这个（登录）用户的「最后已知位置」（L2，TDD §1）。
+         * **模糊定位不写**（coarse=true 不够精确到小区）；匿名不写（没有用户可写）。
+         * 异步 + 节流在 service 里，这里只负责把该传的传过去。
+         */
+        if (!coarse && latE6 != null && lngE6 != null) {
+            String userNo = ai.neargo.shop.auth.SecurityUtils.currentUserNoOrNull();
+            if (userNo != null) {
+                userLocationService.recordLastLocation(userNo, latE6, lngE6, vo.regionCode(),
+                        vo.place() != null ? vo.place().name() : null, vo.innermostNo());
+            }
+        }
+        return vo;
     }
 
     /**
