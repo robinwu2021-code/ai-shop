@@ -549,8 +549,11 @@ public class GoodsServiceImpl implements GoodsService {
             resolvedStore = merchantPort.defaultStoreNo(v.merchant().merchantNo()).orElse(null);
         }
         if (resolvedStore != null && !resolvedStore.isBlank()) {
+            // 取名用 merchantPort.storeNames（直接读 mch_store.name），不用 storeNamesOf ——
+            // 后者走 storeDirectory.cards，按「可达」过滤，不在开放社区的店（如演示店）拿回来是空名，
+            // 前端 storeName 为空就回落主体名，等于没修。storeNames 对任何门店号都给名。
             v = v.withStore(new GoodsVO.StoreBriefVO(resolvedStore,
-                    storeNamesOf(List.of(resolvedStore)).get(resolvedStore)));
+                    merchantPort.storeNames(List.of(resolvedStore)).get(resolvedStore)));
         }
         return v;
     }
