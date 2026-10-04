@@ -74,7 +74,7 @@
   首页仍调 `ensureHere()`，持久的 `at` 过 TTL 就重定位、届时更新。
   **偏差**：持久恢复的地名暂不额外标「可能不是最新」（刷新秒级到来），stale 标记留到需要时再加。
 
-**③ L2 写回用户基础信息表 —— 已知用户免重解析 + 运营看分布（动库表，最重）**
+**③ L2 写回用户基础信息表 —— 已知用户免重解析 + 运营看分布（已实现 2026-10-04）**
 - resolve 命中后，**异步 + 节流**把「最后已知位置」写回 `usr_account`：
   新增 `last_lat_e6` / `last_lng_e6` / `last_region_code` / `last_place` / `last_located_at`。
   （加列三处：迁移 + 实体 + `schema-test.sql`，见 [[migration-needs-entity-field]]）
@@ -92,15 +92,25 @@
   写回要有**配置开关**可整体关（出问题能一键停）。
 - 异步：复用 `PlaceResolver` 已有的后台线程池模式（单线程 + 有界队列 + 满了丢），不开全局 `@EnableAsync`。
 
-**④ 首页进入即定位到小区并作为当前位置（展示口径，L0/L1/L2 的消费端）**
-- 现状：`ensureHere()` 每次进首页都调（5min TTL），但它解析出的小区**只驱动顶栏**；
-  商品列表用的是 `community.community?.communityNo`（**主动绑定**的聚落）或粗区县。
-  于是**新用户进首页，顶栏有小区名、商品却按区县拉** —— 没「定位到小区」。
-- 改法：进首页 resolve 到小区级后，**若落进一个开放聚落且用户没有显式绑定别的**，
-  就用这个聚落作为**当前位置**（顶栏显示小区名 + 商品按该聚落拉），并持久化（L0）+ 写回（L2）。
-  - 显式绑定仍是**覆盖**：用户手选过别的聚落，以它为准，不被自动定位顶掉。
-  - 落不进任何开放聚落（偏远/未开通）→ 维持现有「退区县 + 未开通引导」。
-  - 这是**用「被动探得的 last_*」补「主动绑定 community_no」的空窗**，两者优先级：显式绑定 > 自动定位 > 区县。
+  **已实现**：
+  - **L2a 库表**（迁移 V372 + 实体 UsrAccount + schema-test，SchemaDrift/MapperSmoke 全绿）：
+    usr_account 加 `last_lat_e6/lng_e6/region_code/place/community_no/located_at`，全可空。
+  - **L2b 写回**：`UserLocationService` 异步+节流（移动 >500m 或距上次 >30min 才写，@Value 默认）。
+    `/mp/location/resolve` 命中后，登录且非模糊定位才写。**patch 只设 last_*，community_no 留 null
+    → MyBatis-Plus 跳 null 不动那列**（不覆盖主动绑定）。`UserLocationServiceTest` 3/3 带消融。
+  - **L2c 首页口径**：见 ④ —— 早已是现有行为，无需改。
+  - **偏差**：运营端"看他人 last_* 要权限+留痕 / 对外不带"这条是**口径约定**，
+    目前没有读 last_* 的接口（运营看分布的页面还没做），等做那个页面时落实权限+脱敏。
+
+**④ 首页进入即定位到小区并作为当前位置（**已是现有行为，更正**）**
+- 初稿误判为缺口（以为"resolved 小区只驱动顶栏、商品按区县拉"）。**追到 `ensureCoarseRegion` 后发现早就做了**：
+  没有显式绑定时，它 resolve 出 `ctx.innermostNo ?? ctx.nearestNo`（落进围栏的、或够得着的最近开放聚落）
+  就 `community.bind(c)`，首页随后读的 `communityNo` 就是这个自动定位的聚落，商品按它拉 —— 不是区县。
+- 优先级也对：`ensureCoarseRegion` 开头 `if (community.community) ... return null` —— **有显式绑定就早退、不重定位**。
+- 落不进任何开放聚落（偏远/未开通）→ 退区县 + 空态要位置。
+- **已有测试**：`c-app/tests/coarse-location-fallback.test.ts`（M6 绑最近聚落、归属在 ensureCoarseRegion 之后读、无条件调用）。
+- 所以 L2c **无需改代码**。L2b 的 `last_*` 与这条不冲突：auto-bind 写的是 `community_no`（会持久、会被显式绑定覆盖），
+  `last_*` 是用户**此刻实际在哪**（旅行中与绑定聚落会分叉），给运营看分布与"最后已知"兜底 —— 两列各管各的。
 
 ### 顺序与理由
 ① 纯服务端、零契约、立竿见影、风险最低 → ② 纯端上体验提升 → ③ 动库表 + 隐私口径，要 TDD + 消融，最重。
