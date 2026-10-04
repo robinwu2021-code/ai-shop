@@ -83,6 +83,23 @@ class GoodsDetailStoreNameTest {
         assertThat(data.get("store").get("storeName").asString()).isEqualTo("无号测试·甲店");
     }
 
+    @Test
+    @DisplayName("★★★ 买家登录后查详情：门店名仍要有（数据域不能把取名查询过滤成空）")
+    void detailWithBuyerTokenStillHasStoreName() throws Exception {
+        String biz = merchant("12600190003", "带登录科技有限公司");
+        String storeA = defaultStoreNo(biz);
+        renameStore(storeA, "带登录测试·甲店");
+        String goodsNo = onSaleGoodsAt(biz, storeA, "只在甲店卖的抽纸 C");
+
+        // **关键：带 C 端消费者 token**。匿名查看不出问题（无数据域），
+        // 一带登录 token 就触发请求线程的数据域，而取名若没 executeWithoutScope 会被过滤成 null。
+        String buyer = TestLogin.consumer(mvc(), json, otpStore, "12600190099");
+        JsonNode data = data(get("/mp/goods/" + goodsNo).header("Authorization", "Bearer " + buyer));
+        assertThat(data.get("store").isNull()).as("带 token 也要填上 store").isFalse();
+        assertThat(data.get("store").get("storeName").asString())
+                .as("数据域不能把门店名过滤成空").isEqualTo("带登录测试·甲店");
+    }
+
     // ---- helpers（照 StoreScopedVisibilityFlowTest 的模式，独立一份，不动那个共享文件） ----
 
     private JsonNode data(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req)

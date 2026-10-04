@@ -549,11 +549,14 @@ public class GoodsServiceImpl implements GoodsService {
             resolvedStore = merchantPort.defaultStoreNo(v.merchant().merchantNo()).orElse(null);
         }
         if (resolvedStore != null && !resolvedStore.isBlank()) {
-            // 取名用 merchantPort.storeNames（直接读 mch_store.name），不用 storeNamesOf ——
-            // 后者走 storeDirectory.cards，按「可达」过滤，不在开放社区的店（如演示店）拿回来是空名，
-            // 前端 storeName 为空就回落主体名，等于没修。storeNames 对任何门店号都给名。
-            v = v.withStore(new GoodsVO.StoreBriefVO(resolvedStore,
-                    merchantPort.storeNames(List.of(resolvedStore)).get(resolvedStore)));
+            // 取名用 merchantPort.storeNames（直接读 mch_store.name），不用 storeNamesOf（走 cards、按可达过滤）。
+            // **必须 executeWithoutScope**：买家登录后请求线程带了数据域，而 storeNames 故意不解域，
+            // 门店名查询会被域过滤成空 —— 匿名请求看不出问题，一带 C 端 token 就 storeName=null，
+            // 前端回落主体名。买家查商品详情要显示任意门店名，不该受数据域限制。
+            final String rs = resolvedStore;
+            String name = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                    () -> merchantPort.storeNames(List.of(rs)).get(rs));
+            v = v.withStore(new GoodsVO.StoreBriefVO(rs, name));
         }
         return v;
     }
