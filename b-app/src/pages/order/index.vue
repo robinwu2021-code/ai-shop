@@ -11,6 +11,7 @@ import { ROUTES } from "@/shared/nav";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
+import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -109,6 +110,18 @@ async function load(orderNo: string) {
     // 界面上一个字都不说，整页停在空白
     failed.value = true;
   }
+}
+
+/**
+ * 复制订单信息发给供应商（§5）。纯端上拼装，数据就是详情已有的，不另查。
+ * 供应商要的是拣货发货要素，**不含售价** —— 拼装口径见 buildOrderCopyText。
+ */
+function copyForSupplier() {
+  if (!order.value) return;
+  uni.setClipboardData({
+    data: buildOrderCopyText(order.value, t),
+    success: () => uni.showToast({ title: t("order.copied"), icon: "none" }),
+  });
 }
 
 async function ship() {
@@ -318,6 +331,10 @@ onLoad((q) => {
             </text>
             <text class="txt-caption recv__addr">{{ order.receiver.address }}</text>
           </view>
+        </view>
+        <!-- 复制订单信息发给供应商（§5）。放在订单信息卡尾：拣货要的就是这张卡上的东西 -->
+        <view class="sh-btn sh-btn--sm sh-btn--muted sh-mt-sm" @tap="copyForSupplier">
+          {{ $t("order.copyToSupplier") }}
         </view>
       </view>
 

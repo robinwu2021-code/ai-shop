@@ -489,6 +489,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     delivered: "تم التوصيل", detail: "التفاصيل", empty: "لا طلبات بعد",
     trafficMERCHANT_OWNED: "عميلك", trafficPLATFORM: "من المنصة",
     items: "المنتجات", shipped: "تم الشحن", deliveredDone: "تم وضع علامة التوصيل",
+    copyToSupplier: "نسخ الطلب", copied: "تم النسخ — الصقه للمورّد", copyAddr: "العنوان", copyGift: "هدية",
     offlinePay: "تأكيد الاستلام", offlinePayTitle: "تأكيد استلام المبلغ", offlineDue: "المبلغ المستحق", offlineDeducted: "تم خصم {v} بالنقاط؛ حصّل المبلغ أعلاه فقط", offlineNotCustodied: "المنصة لا تحتفظ بهذا المبلغ؛ يدفع العميل لك مباشرة، ونحن نسجّل هذا التأكيد فقط", offlinePaid: "تم تأكيد الاستلام", offlineCancel: "لم يُستلم بعد",
   },
 

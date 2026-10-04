@@ -489,6 +489,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     delivered: "Delivered", detail: "Detail", empty: "No orders yet",
     trafficMERCHANT_OWNED: "Own customer", trafficPLATFORM: "Platform",
     items: "Items", shipped: "Shipped", deliveredDone: "Marked delivered",
+    copyToSupplier: "Copy order", copied: "Copied — paste to your supplier", copyAddr: "Address", copyGift: "Gift",
     offlinePay: "Confirm payment", offlinePayTitle: "Confirm payment received", offlineDue: "Amount due", offlineDeducted: "{v} already covered by points — collect only the amount above", offlineNotCustodied: "The platform does not hold this payment. The customer pays the merchant directly; the platform only records this confirmation.", offlinePaid: "Payment confirmed", offlineCancel: "Not yet received",
   },
 
