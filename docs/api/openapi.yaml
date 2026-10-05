@@ -4283,6 +4283,9 @@ components:
         phone: 
           type: "string"
           description: "登录手机号，也是商家账号的主标识"
+        displayName: 
+          type: "string"
+          description: "当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」"
         isPickupPoint: 
           type: "boolean"
           description: "是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005）"

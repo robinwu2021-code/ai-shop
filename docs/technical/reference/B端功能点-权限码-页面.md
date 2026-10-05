@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 219 个受控功能点**
-（另有 30 个登录即可、1 个「任一权限即可」）。
+统计：**13 个权限码 × 6 个角色 × 220 个受控功能点**
+（另有 31 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -22,7 +22,7 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 30 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 31 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
@@ -115,6 +115,7 @@
 | 提交审核（草稿→待审） | POST | `/biz/goods/:goodsNo/submit` | `mSubmitGoods` | goods-edit、goods-list |
 | 上下架 | POST | `/biz/goods/:goodsNo/toggle` | `mToggleGoods` | goods-list |
 | 自动生成图文详情 | POST | `/biz/goods/describe` | `mDescribeGoods` | goods-edit |
+| 文字识别商品信息 | POST | `/biz/goods/parse-text` | `mParseText` | goods-edit |
 | 拍照识别商品 | POST | `/biz/goods/recognize` | `mRecognizeGoods` | goods-edit |
 | 新建/编辑商品 | POST | `/biz/goods/save` | `mSaveGoods` | goods-edit |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | PUT | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | — |
@@ -536,6 +537,7 @@
 | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） |
 | `/biz/merchant/agreement/accept` | 本人同意商家服务协议 |
 | `/biz/merchant/apply` | 提交入驻申请 |
+| `/biz/merchant/display-name` | 改用户名 |
 | `/biz/merchant/profile` | 商家资料 |
 | `/biz/merchant/quick-start` | 无证照快速开店 |
 | `/biz/message` | 商家消息列表 |

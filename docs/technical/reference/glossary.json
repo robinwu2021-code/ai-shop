@@ -9410,6 +9410,12 @@
           "ar": "تمت إضافة {n} / {m}"
         },
         {
+          "key": "goods.importZip",
+          "zh-CN": "导入压缩包",
+          "en": "Import .zip",
+          "ar": "استيراد .zip"
+        },
+        {
           "key": "goods.invOnHand",
           "zh-CN": "进销存 {n}",
           "en": "Inventory {n}",
@@ -9630,6 +9636,102 @@
           "zh-CN": "暂无参数，可新建",
           "en": "No parameters yet; you can add one",
           "ar": "لا توجد خصائص بعد؛ يمكنك إضافة واحدة"
+        },
+        {
+          "key": "goods.parseApplied",
+          "zh-CN": "已采纳",
+          "en": "Applied",
+          "ar": "تم التطبيق"
+        },
+        {
+          "key": "goods.parseApply",
+          "zh-CN": "采纳选中项",
+          "en": "Apply selected",
+          "ar": "تطبيق المحدد"
+        },
+        {
+          "key": "goods.parseBtn",
+          "zh-CN": "识别",
+          "en": "Recognize",
+          "ar": "تعرّف"
+        },
+        {
+          "key": "goods.parseConfirmTitle",
+          "zh-CN": "识别结果(请确认)",
+          "en": "Recognized (please confirm)",
+          "ar": "النتيجة (يرجى التأكيد)"
+        },
+        {
+          "key": "goods.parseEmpty",
+          "zh-CN": "先粘一段商品文字",
+          "en": "Paste some product text first",
+          "ar": "الصق نص المنتج أولاً"
+        },
+        {
+          "key": "goods.parseExpress",
+          "zh-CN": "快递",
+          "en": "Courier",
+          "ar": "الشحن"
+        },
+        {
+          "key": "goods.parseFail",
+          "zh-CN": "识别失败,请重试",
+          "en": "Failed, try again",
+          "ar": "فشل، أعد المحاولة"
+        },
+        {
+          "key": "goods.parseManualHint",
+          "zh-CN": "价格与规格请对照上面手动填入,避免识别误差",
+          "en": "Fill price and spec manually against the above to avoid recognition errors",
+          "ar": "املأ السعر والمواصفة يدويًا"
+        },
+        {
+          "key": "goods.parseNoShip",
+          "zh-CN": "不发货区域",
+          "en": "No-ship area",
+          "ar": "منطقة بلا شحن"
+        },
+        {
+          "key": "goods.parseNoShipHint",
+          "zh-CN": "只作提示,请到运费模板里设置,不会自动改",
+          "en": "For reference only — set it in the freight template, not changed automatically",
+          "ar": "للاطلاع فقط — اضبطها في قالب الشحن"
+        },
+        {
+          "key": "goods.parseNone",
+          "zh-CN": "没认出来,请手动填",
+          "en": "Nothing recognized, fill manually",
+          "ar": "لم يُتعرّف، املأ يدويًا"
+        },
+        {
+          "key": "goods.parsePh",
+          "zh-CN": "粘贴商品文字，如:规格 单果140g+;净重4.5斤装10元;圆通快递,新疆西藏海南不发货",
+          "en": "Paste product text, e.g. 140g per fruit; 4.5 jin 10 yuan; SF Express, not shipping to Xinjiang",
+          "ar": "الصق نص المنتج"
+        },
+        {
+          "key": "goods.parsePrice",
+          "zh-CN": "价格",
+          "en": "Price",
+          "ar": "السعر"
+        },
+        {
+          "key": "goods.parseTitle",
+          "zh-CN": "文字识别(快速录入)",
+          "en": "Text recognition",
+          "ar": "التعرف على النص"
+        },
+        {
+          "key": "goods.parseWeight",
+          "zh-CN": "规格/净重",
+          "en": "Spec / weight",
+          "ar": "المواصفة/الوزن"
+        },
+        {
+          "key": "goods.parsing",
+          "zh-CN": "识别中…",
+          "en": "Recognizing…",
+          "ar": "جارٍ…"
         },
         {
           "key": "goods.payAfterSave",
@@ -10074,6 +10176,12 @@
           "zh-CN": "按实称结算",
           "en": "Settle by actual weight",
           "ar": "التسوية بالوزن الفعلي"
+        },
+        {
+          "key": "goods.zipTxtFound",
+          "zh-CN": "压缩包里有商品文字，已带入识别框",
+          "en": "Text found in the zip, added to the box",
+          "ar": "عُثر على نص في الملف، أُضيف إلى الحقل"
         },
         {
           "key": "group.activity",
@@ -11616,6 +11724,30 @@
           "zh-CN": "切换",
           "en": "Switch",
           "ar": "تبديل"
+        },
+        {
+          "key": "me.username",
+          "zh-CN": "用户名",
+          "en": "Username",
+          "ar": "اسم المستخدم"
+        },
+        {
+          "key": "me.usernamePh",
+          "zh-CN": "起个名字，1–20 字",
+          "en": "Pick a name, 1–20 chars",
+          "ar": "اختر اسمًا، 1–20 حرفًا"
+        },
+        {
+          "key": "me.usernameSaved",
+          "zh-CN": "用户名已更新",
+          "en": "Username updated",
+          "ar": "تم تحديث اسم المستخدم"
+        },
+        {
+          "key": "me.usernameUnset",
+          "zh-CN": "未设置",
+          "en": "Not set",
+          "ar": "غير محدد"
         },
         {
           "key": "me.version",
