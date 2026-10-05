@@ -758,6 +758,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     notAuthorized: "You are not credentialed for this category. Add it under “My licences” first.",
   },
   stores: {
+    viewEntity: "View entity",
     underEntity: "Under which licence",
     quotaOnThatEntity: "The store quota follows the selected credential and is checked on save.",
     underEntityHint: "The store quota follows the credential it is filed under. Re-filing is not supported after creation.",

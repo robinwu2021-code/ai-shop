@@ -2,6 +2,17 @@
 import { useMerchantStore } from "@/stores/merchant";
 
 const merchant = useMerchantStore();
+
+/**
+ * 查看当前主体（证照/档案）。门店管理这一页此前只能切门店，看不到自己名下这张证照是什么 ——
+ * 而「切到哪家店干活」和「我这张执照办到哪了」是两件事。带当前 merchantNo（就是主体号）去，
+ * entity-detail 不用先切到某家店就能开。
+ */
+function viewEntity() {
+  const no = merchant.profile?.merchantNo;
+  if (!no) return;
+  uni.navigateTo({ url: `${ROUTES.entityDetail}?entityNo=${no}` });
+}
 // 门店管理（M6）。
 //
 // 与「店铺设置」的分工：那一页管**一家店的门面**（公告/营业时间/地址/主推），
@@ -344,6 +355,17 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       一段时间里谁更好是另一类问题，在「经营数据 › 跨店对比」——
       同一屏里既摆今天又摆近 30 天，两个数会被读成互相矛盾。
     -->
+    <!--
+      查看主体入口（门店管理只能切门店，看不到名下这张证照）。放在门店列表之上：
+      它答的是「我是谁」，门店卡答的是「各家怎么样」，前者是后者的归属。
+    -->
+    <view v-if="merchant.profile?.merchantNo" class="sh-card st-entity sh-row sh-row--between" @tap="viewEntity">
+      <view class="sh-fill">
+        <text class="txt-body st-entity__label">{{ $t("stores.viewEntity") }}</text>
+        <text class="txt-caption sh-muted st-entity__name">{{ merchant.profile?.name }}</text>
+      </view>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+    </view>
     <view
       v-for="s in rows"
       :key="s.storeNo"
@@ -566,6 +588,13 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </template>
 
 <style scoped>
+.st-entity {
+  margin-bottom: 20rpx;
+}
+.st-entity__name {
+  display: block;
+  margin-top: 4rpx;
+}
 .picks {
   margin-top: 12rpx;
 }

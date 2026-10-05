@@ -938,6 +938,7 @@ export default {
     notAuthorized: "缺少经营这一类的资质，去「资质证照」里补齐后再添加",
   },
   stores: {
+    viewEntity: "查看主体",
     underEntity: "挂在哪张证照下",
     quotaOnThatEntity: "门店额度按所选证照计算，保存时校验。",
     underEntityHint: "门店额度按证照计算：挂在哪张证照下，即占用该证照的额度。创建后暂不支持改挂。",
