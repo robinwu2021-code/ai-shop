@@ -1417,6 +1417,13 @@ export interface MerchantStats {
   ratingCount: number;
   /** 自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6） */
   ownedTrafficRate: number;
+  /**
+   * 近 7 天到访**次数**（PV，§6）。扫码进店的次数，**主体级**聚合名下全部门店。
+   * 单店商家 = 门店级；多店看到的是合计。
+   */
+  visitPv7d: number;
+  /** 近 7 天到访**人数**（UV）。user 回落 device 去重 */
+  visitUv7d: number;
 }
 /**
  * 跨店总览的一行 —— 一家门店的今日 / 本月 / 三项待办（B-11.12.5）。

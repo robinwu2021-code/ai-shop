@@ -231,7 +231,14 @@ B 端订单页**没有复制/导出**。`Order` 已含导出所需字段（单�
 ### 缺口 / 本期方案
 1. **商品浏览记录**（岔口 A 若选"含商品"）：C 端进商品详情时上报 `goodsNo`，
    落 `mkt_store_visit`（加 `goods_no` 维度）或新表。去重按 (user, goods, 日) 防刷。
-2. **B 端展示**：B-app 加「到访/浏览」页：本店近 N 天到访 UV/PV、
+2. **B 端展示**：✅ **增量1已实现（2026-10-05）** —— 工作台「今日」卡下加一行
+   「近 7 天到访 N 人 · M 次」（主体级 PV/UV，读 mkt_store_visit）。
+   走**扩展 `/biz/dashboard/stats`**（StatsVO 加 visitPv7d/visitUv7d），不开新 /biz 端点（省七处登记）。
+   B 端查带域表 mkt_store_visit 走 executeWithoutScope + 显式按 entityNo 过滤。
+   测试 `BizDashboardAndReviewFlowTest.dashboardShowsRecentVisits`（PV2/UV1）带消融。
+   **后续**：独立「到访明细」页（谁、何时、是否下单）、按门店拆分 —— 留待需要时。
+   原「B-app 加页」那条改为：
+   本店近 N 天到访 UV/PV、
    明细（时间、来源渠道、是否下单）—— 读 `mkt_store_visit`，作用域限本店（`executeWithoutScope` 带店过滤）。
 3. **运营端展示**：在既有获客聚合上加**下钻**（点某商家 → 逐条到访明细），
    复用 `OpsStoreAcquisitionController` 加一个 detail 端点。

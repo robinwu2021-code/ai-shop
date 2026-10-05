@@ -43,17 +43,20 @@ public class BizDashboardController {
     private final StoreCodeService storeCodeService;
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
     private final PosterService posterService;
+    private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
 
     public BizDashboardController(MerchantOrderService orderService, AfterSaleService afterSaleService,
                                   ReviewService reviewService, GroupService groupService,
                                   MerchantQueryPort merchantPort, MerchantStoreService storeService,
                                   StoreCodeService storeCodeService,
                                   ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                                  PosterService posterService) {
+                                  PosterService posterService,
+                                  ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService) {
         this.storeService = storeService;
         this.storeCodeService = storeCodeService;
         this.storeLinkService = storeLinkService;
         this.posterService = posterService;
+        this.storeVisitService = storeVisitService;
         this.orderService = orderService;
         this.afterSaleService = afterSaleService;
         this.reviewService = reviewService;
@@ -109,8 +112,12 @@ public class BizDashboardController {
          */
         var brief = merchantPort.find(merchantNo);
         double rating = brief.map(MerchantQueryPort.MerchantBrief::rating).orElse(0d);
+        // 近 7 天到访（§6）。主体级，聚合名下全部门店 —— 单店商家即门店级。
+        long since7d = System.currentTimeMillis() - 7L * 24 * 3600 * 1000;
+        var visits = storeVisitService.recentVisits(merchantNo, since7d);
         return new StatsVO(s.todayOrders(), s.todayGmvMinor(), s.monthOrders(), s.monthGmvMinor(),
-                "CNY", rating, reviewService.list(null, merchantNo).size(), s.ownedTrafficRate());
+                "CNY", rating, reviewService.list(null, merchantNo).size(), s.ownedTrafficRate(),
+                visits.pv(), visits.uv());
     }
 
     // ---------------------------------------------------------------- 顾客与门店配置
@@ -232,6 +239,7 @@ public class BizDashboardController {
      * @param ownedTrafficRate 自带客流占比 0–1，决定费率档（ADR-004 §6）
      */
     public record StatsVO(int todayOrders, long todayGmvMinor, int monthOrders, long monthGmvMinor,
-                          String currency, double rating, int ratingCount, double ownedTrafficRate) {
+                          String currency, double rating, int ratingCount, double ownedTrafficRate,
+                          long visitPv7d, long visitUv7d) {
     }
 }

@@ -1363,7 +1363,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
   stats: {
     compareEntry: "Compare stores",
     title: "Business data", today: "Today", month: "This month", orders: "Orders", gmv: "GMV",
-    rating: "Rating", ratingBasis: "{n} reviews",
+    rating: "Rating", ratingBasis: "{n} reviews", visits7d: "{uv} visitors · {pv} visits (7d)",
     ownedTraffic: "Own-customer share",
     ownedHint: "Share of orders arriving via the shop code or a share. The higher the share, the lower the commission.",
   },

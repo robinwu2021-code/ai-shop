@@ -478,6 +478,10 @@ onShow(load);
             { value: stats.rating || '—', label: String($t('home.rating')) },
           ]"
         ></sh-stat>
+        <!-- 近 7 天到访（§6 浏览记录在 B 端露出）。与「今日」不同口径（7 天），单独一行标清楚 -->
+        <text class="txt-caption sh-muted visits7d">
+          {{ $t("home.visits7d", { uv: stats.visitUv7d, pv: stats.visitPv7d }) }}
+        </text>
       </view>
 
       <!--

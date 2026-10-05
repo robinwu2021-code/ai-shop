@@ -205,6 +205,7 @@ export default {
     orders: "订单",
     gmv: "成交额",
     rating: "评分",
+    visits7d: "近 7 天到访 {uv} 人 · {pv} 次",
     ownedTraffic: "自带客流",
     fulfillEntry: "核销分拣",
     storeEntry: "店铺设置",

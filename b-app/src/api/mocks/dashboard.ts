@@ -224,6 +224,9 @@ export const dashboardMock: Pick<MerchantApi,
       rating: rs.length ? Number((rs.reduce((s, r) => s + r.rating, 0) / rs.length).toFixed(1)) : 0,
       ratingCount: rs.length,
       ownedTrafficRate: mine.length ? owned / mine.length : 0,
+      // 近 7 天到访（§6）—— mock 给个真实点的数，别用 0（0 与「没人来」长得一样）
+      visitPv7d: 48,
+      visitUv7d: 31,
     });
   },
 

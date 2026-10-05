@@ -39,6 +39,9 @@ class BizDashboardAndReviewFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private ai.neargo.shop.marketing.visit.mapper.VisitMappers.StoreVisitMapper visitMapper;
+
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -870,6 +873,40 @@ class BizDashboardAndReviewFlowTest {
                         .header("Authorization", "Bearer " + goodsOps)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    @DisplayName("★★★ 工作台显示本店近 7 天到访（PV/UV）—— §6 浏览记录在 B 端露出")
+    void dashboardShowsRecentVisits() throws Exception {
+        String token = merchant("12600141055", "到访看板测试店");
+        String merchantNo = json.readTree(mvc().perform(get("/biz/merchant/profile")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString())
+                .get("data").get("merchantNo").asString();
+
+        // 同一个设备扫两次：PV=2、UV=1（user 回落 device 去重）
+        long now = System.currentTimeMillis();
+        insertVisit(merchantNo, "DEV-DASH", now);
+        insertVisit(merchantNo, "DEV-DASH", now - 3600_000);
+
+        JsonNode st = json.readTree(mvc().perform(get("/biz/dashboard/stats")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString()).get("data");
+
+        assertThat(st.get("visitPv7d").asLong()).as("两次扫码 = PV 2").isEqualTo(2);
+        assertThat(st.get("visitUv7d").asLong()).as("同一设备 = UV 1").isEqualTo(1);
+    }
+
+    /** 直接落一行到访（mkt_store_visit 是带域表，插入要绕域，与 service.record 同一个口径） */
+    private void insertVisit(String entityNo, String deviceId, long at) {
+        var row = new ai.neargo.shop.marketing.visit.entity.MktStoreVisit();
+        row.setVisitNo("VISIT-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        row.setEntityNo(entityNo);
+        row.setDeviceId(deviceId);
+        row.setAt(at);
+        row.setCreatedAt(java.time.LocalDateTime.now());   // NOT NULL 无默认，auto-fill 在直插时不一定触发
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> visitMapper.insert(row));
     }
 
     private String merchant(String phone, String name) throws Exception {

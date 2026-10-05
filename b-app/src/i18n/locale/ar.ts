@@ -1361,7 +1361,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
   stats: {
     compareEntry: "مقارنة الفروع",
     title: "بيانات الأعمال", today: "اليوم", month: "هذا الشهر", orders: "الطلبات", gmv: "المبيعات",
-    rating: "تقييم المتجر", ratingBasis: "{n} تقييمًا",
+    rating: "تقييم المتجر", ratingBasis: "{n} تقييمًا", visits7d: "{uv} زائرًا · {pv} زيارة (7 أيام)",
     ownedTraffic: "نسبة عملائك الخاصين",
     ownedHint: "نسبة الطلبات القادمة من رمز متجرك أو مشاركاتك. كلما ارتفعت قلّت عمولتك.",
   },

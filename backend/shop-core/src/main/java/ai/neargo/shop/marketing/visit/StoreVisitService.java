@@ -24,6 +24,20 @@ public interface StoreVisitService {
     void record(Visit visit);
 
     /**
+     * 一个主体近来的到访量（给 B 端自己的看板，§6）。
+     *
+     * <p><b>主体级</b>：聚合这家商家名下全部门店的扫码到访。单店商家 = 门店级；
+     * 多店商家看到的是合计（门店级拆分留给后续，先给一个能看的数）。
+     *
+     * @param sinceMs 起点时刻（毫秒），如「7 天前」
+     */
+    VisitStat recentVisits(String entityNo, long sinceMs);
+
+    /** @param pv 到访次数 @param uv 到访人数（user 回落 device 去重） */
+    record VisitStat(long pv, long uv) {
+    }
+
+    /**
      * 获客漏斗，按主体聚合。
      *
      * @param from 起（毫秒，含）。<b>必填</b> —— 不给区间就是「有史以来」，

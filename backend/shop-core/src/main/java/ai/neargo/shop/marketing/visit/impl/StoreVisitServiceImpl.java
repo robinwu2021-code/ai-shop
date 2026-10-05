@@ -171,6 +171,25 @@ public class StoreVisitServiceImpl implements StoreVisitService {
     }
 
     @Override
+    public VisitStat recentVisits(String entityNo, long sinceMs) {
+        if (entityNo == null || entityNo.isBlank()) {
+            return new VisitStat(0, 0);
+        }
+        /*
+         * **executeWithoutScope + 显式按 entityNo 过滤**：mkt_store_visit 是 MERCHANT/entity_no
+         * 维度，而 B 端会话的数据域锚在别处，带着域读会把自己的数过滤成空（biz-write-needs-scope-bypass）。
+         * 只查传进来的这个 entityNo，没有越权面。
+         */
+        return DataScopeContext.executeWithoutScope(() -> {
+            long pv = visitMapper.selectCount(Wrappers.<MktStoreVisit>lambdaQuery()
+                    .eq(MktStoreVisit::getEntityNo, entityNo)
+                    .ge(MktStoreVisit::getAt, sinceMs));
+            long uv = visitMapper.countUvSince(entityNo, sinceMs);
+            return new VisitStat(pv, uv);
+        });
+    }
+
+    @Override
     public Funnel platformFunnel(long from, long to) {
         long scan = 0;
         for (Grp g : scanGroups(from, to)) {
