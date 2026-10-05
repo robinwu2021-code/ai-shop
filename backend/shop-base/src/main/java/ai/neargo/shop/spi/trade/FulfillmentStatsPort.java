@@ -2,6 +2,7 @@ package ai.neargo.shop.spi.trade;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * trade → fulfillment：<b>平台侧履约看板的全部数字</b>（P-5.1.1 / 5.1.2 / 5.1.3 / 5.2.1）。
@@ -84,4 +85,14 @@ public interface FulfillmentStatsPort {
     record ExpressOrder(String subOrderNo, String expressNo, String status,
                         String receiver, String region, long createdAt) {
     }
+
+    /**
+     * 子单号 → 门店号。<b>轨迹轮询按门店路由</b>到不同承运商 provider
+     * （TDD-圆通物流直连 §4.2：按门店切换物流路径，默认圆通）。
+     *
+     * <p>{@code ful_shipment} 只快照了承运商，没存门店；而「用哪个 provider 查」由门店定
+     * （同一家 YTO，A 店走直连账号、B 店走聚合）。所以轮询时回到子单上把门店解出来。
+     * 查不到门店的子单不在返回里，路由会落到默认 provider。
+     */
+    Map<String, String> storesOf(Collection<String> subOrderNos);
 }

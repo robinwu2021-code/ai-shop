@@ -17,6 +17,9 @@ import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.FreightTemplateMappe
 import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.ShipmentMapper;
 import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.ShipmentTraceMapper;
 import ai.neargo.shop.fulfillment.service.LogisticsService;
+import ai.neargo.shop.spi.logistics.LogisticsTracePort;
+import ai.neargo.shop.spi.logistics.TraceResult;
+import ai.neargo.shop.spi.logistics.TraceStatus;
 import ai.neargo.shop.spi.trade.FulfillmentStatsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -44,21 +48,32 @@ public class LogisticsServiceImpl implements LogisticsService {
     private static final Set<String> IN_FLIGHT =
             Set.of(FulShipment.CREATED, FulShipment.PICKED_UP, FulShipment.IN_TRANSIT);
 
+    /**
+     * 轮询要刷的状态。<b>比 {@link #IN_FLIGHT} 多一个 {@code EXCEPTION}</b>：
+     * 疑难件不是终态（可能之后又派送成功），不继续刷它就永远卡在异常、等不到签收。
+     * 只有 {@code DELIVERED} 移出轮询。
+     */
+    private static final Set<String> POLL_STATES =
+            Set.of(FulShipment.CREATED, FulShipment.PICKED_UP, FulShipment.IN_TRANSIT, FulShipment.EXCEPTION);
+
     private final ShipmentMapper shipmentMapper;
     private final ShipmentTraceMapper traceMapper;
     private final FreightTemplateMapper templateMapper;
     private final CarrierMapper carrierMapper;
     private final FulfillmentStatsPort statsPort;
+    private final LogisticsTracePort tracePort;
     private final ObjectMapper json;
 
     public LogisticsServiceImpl(ShipmentMapper shipmentMapper, ShipmentTraceMapper traceMapper,
                                 FreightTemplateMapper templateMapper, CarrierMapper carrierMapper,
-                                FulfillmentStatsPort statsPort, ObjectMapper json) {
+                                FulfillmentStatsPort statsPort, LogisticsTracePort tracePort,
+                                ObjectMapper json) {
         this.shipmentMapper = shipmentMapper;
         this.traceMapper = traceMapper;
         this.templateMapper = templateMapper;
         this.carrierMapper = carrierMapper;
         this.statsPort = statsPort;
+        this.tracePort = tracePort;
         this.json = json;
     }
 
@@ -228,6 +243,110 @@ public class LogisticsServiceImpl implements LogisticsService {
         DataScopeContext.executeWithoutScope(() -> traceMapper.insert(t));
 
         return toVO(s, tracesOf(shipmentNo));
+    }
+
+    // ---------------------------------------------------------------- 轨迹轮询（Y3）
+
+    @Override
+    @Transactional
+    public TraceRefreshResult refreshInTransitTraces(int limit) {
+        // 扫在途运单（有单号的）。最久没刷的优先 —— updateById 会顺带把 updated_at 当「上次刷新」推上去
+        List<FulShipment> rows = DataScopeContext.executeWithoutScope(() ->
+                shipmentMapper.selectList(Wrappers.<FulShipment>lambdaQuery()
+                        .in(FulShipment::getStatus, POLL_STATES)
+                        .isNotNull(FulShipment::getWaybillNo)
+                        .ne(FulShipment::getWaybillNo, "")
+                        .orderByAsc(FulShipment::getUpdatedAt)
+                        .last("limit " + Math.max(1, limit))));
+        if (rows.isEmpty()) {
+            return new TraceRefreshResult(0, 0, 0, 0, 0);
+        }
+        Map<String, String> stores = statsPort.storesOf(
+                rows.stream().map(FulShipment::getSubOrderNo).toList());
+
+        int queried = 0;
+        int appended = 0;
+        int advanced = 0;
+        int delivered = 0;
+        for (FulShipment s : rows) {
+            // 门店没解出来 → 传 null，路由落到默认 provider（圆通）
+            Optional<TraceResult> hit = tracePort.trace(
+                    stores.get(s.getSubOrderNo()), s.getCarrier(), s.getWaybillNo());
+            if (hit.isEmpty()) {
+                // 缺凭据 / 查不到：**不编造推进**（ADR-005 §5 的原话），本单保持原样
+                continue;
+            }
+            queried++;
+            TraceResult tr = hit.get();
+
+            int added = appendNodes(s.getShipmentNo(), tr.nodes());
+            if (added > 0) {
+                appended++;
+            }
+
+            String next = mapStatus(tr.status(), s.getStatus());
+            boolean statusChanged = next != null && !next.equals(s.getStatus());
+            if (statusChanged) {
+                s.setStatus(next);
+                advanced++;
+                if (FulShipment.DELIVERED.equals(next)) {
+                    delivered++;
+                }
+            }
+            // 查到了就回写一次：既落状态变更，也把 updated_at 当「上次刷新」推上去，
+            // 让下一轮轮到别的单（按 updated_at 升序取）。查不到的单不回写，下一轮优先再试
+            FulShipment toSave = s;
+            DataScopeContext.executeWithoutScope(() -> shipmentMapper.updateById(toSave));
+        }
+        return new TraceRefreshResult(rows.size(), queried, appended, advanced, delivered);
+    }
+
+    /**
+     * 追加新轨迹节点，<b>按（时刻+文案）去重</b>（append-only，承运商会重复回传已有节点）。
+     * 返回实际新插入的条数。
+     */
+    private int appendNodes(String shipmentNo, List<TraceResult.TraceNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return 0;
+        }
+        Set<String> seen = tracesOf(shipmentNo).stream()
+                .map(t -> t.getAt() + "|" + (t.getText() == null ? "" : t.getText()))
+                .collect(java.util.stream.Collectors.toSet());
+        int added = 0;
+        for (TraceResult.TraceNode n : nodes) {
+            String key = n.at() + "|" + (n.info() == null ? "" : n.info());
+            if (!seen.add(key)) {
+                continue;
+            }
+            FulShipmentTrace t = new FulShipmentTrace();
+            t.setShipmentNo(shipmentNo);
+            t.setAt(n.at());
+            t.setText(n.info());
+            t.setLocation(n.location());
+            // 轨迹表不继承 BaseEntity：created_at 是 NOT NULL，没有别处替它填（见 updateWaybill 的同款注释）
+            t.setTenantNo("MAIN");
+            t.setCreatedAt(LocalDateTime.now());
+            DataScopeContext.executeWithoutScope(() -> traceMapper.insert(t));
+            added++;
+        }
+        return added;
+    }
+
+    /**
+     * 统一轨迹状态 → 运单状态。{@code UNKNOWN} 不动当前状态（查不到明确状态别倒退）。
+     * 承运商原始码 → {@code TraceStatus} 的映射在各 provider 内做，这里只认统一枚举。
+     */
+    private static String mapStatus(TraceStatus st, String current) {
+        if (st == null) {
+            return current;
+        }
+        return switch (st) {
+            case PICKED -> FulShipment.PICKED_UP;
+            case IN_TRANSIT -> FulShipment.IN_TRANSIT;
+            case SIGNED -> FulShipment.DELIVERED;
+            case EXCEPTION -> FulShipment.EXCEPTION;
+            case UNKNOWN -> current;
+        };
     }
 
     // ---------------------------------------------------------------- 运费模板

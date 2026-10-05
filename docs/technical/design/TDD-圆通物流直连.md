@@ -104,7 +104,7 @@ Port 对外只给统一状态 —— 端上永不见承运商原始码（与收�
 |---|---|---|
 | **Y1** ✅ | `TraceProvider`/`LogisticsTracePort`(spi) + `LogisticsTraceRouter`（**按门店**路由/回落）+ `StubTraceProvider` + 路由配置，单测 4+消融 | 否（stub） |
 | **Y2** ✅ | `YtoTraceProvider`（签名/HttpClient）+ 路由配 YTO→yto，单测（签名对、stub 可测） | 否（签名/映射用 stub 测；真查要你凭据） |
-| **Y3** | `trd_logistics_trace` 迁移 + 轮询 Job（在途单→缓存，cache-aside） | **是**（生产真查要圆通凭据 + IP 白名单） |
+| **Y3** ✅ | ~~`trd_logistics_trace`~~ **复用 `ful_shipment`/`ful_shipment_trace`** + 轮询 Job（在途→真轨迹，按门店路由） | 真查**是**（圆通凭据+IP 白名单）；代码/测试走 stub |
 | **Y4** | C 端 / B 端订单详情显示轨迹 | 否（读缓存） |
 
 > Y1–Y2 不要凭据就能做完（架构 + 圆通 provider + 测试全走 stub/样例签名）。真正等你圆通账号的是 **Y3 上生产**那一刻。
@@ -115,6 +115,31 @@ Port 对外只给统一状态 —— 端上永不见承运商原始码（与收�
 - 改 `shop-app/.../application.yml`：加 `shop.express.yto.{app-key,secret,host,trace-method,trace-version}`，全部 env 兜底、默认空。
 - **路由接 yto 不需改码**：`YtoTraceProvider` 作为 `@Component` 自动进 `List<TraceProvider>`，把 `SHOP_EXPRESS_TRACE_DEFAULT=yto`（或 `store-route` 单店指 yto）即生效。
 - ⚠️ 响应字段名（`result.traces[].{opCode,opTime,opName,city}`）按文档写，**Y3 拿到真账号对一条真实响应校准**，校准点集中在 `parse()` 一处。
+
+**Y3 实现对账（2026-10-05）——⚠️ 对设计的重大偏差，先看这里：**
+
+设计原定**新建 `trd_logistics_trace`**。落地时发现仓库里早有一对现成表
+`ful_shipment`（运单）+ `ful_shipment_trace`（轨迹节点，V132 建，TDD-快递100商家寄件 §9），
+状态模型 `CREATED/PICKED_UP/IN_TRANSIT/DELIVERED/EXCEPTION`、`carrier` 含 YTO ——
+正是缓存该有的样子，运营端运单列表也在用。**再建一张就是同一个东西的第三份实现。**
+故改为**复用这对表**：
+
+- **不新建表、不加迁移** → 撞号风险归零，也不再是第三份实现。
+- 新增 `FulfillmentStatsPort.storesOf(子单号)`（`ful_shipment` 没存门店，轮询要按门店路由回子单取）。
+- `LogisticsService.refreshInTransitTraces(limit)`：扫在途 `ful_shipment`（含 `EXCEPTION`，它不是终态）、
+  按门店经 `LogisticsTracePort` 查、真实节点**追加**进 `ful_shipment_trace`（按时刻+文案去重）、据签收推进状态。
+  缺凭据查不到时**不编造推进**（守住 ADR-005 §5「编假轨迹比没有更糟」那条原则）。
+- 新增 worker 任务 `LogisticsTracePollingJob`（30 分钟一轮，`shop.job.enabled` 下才装）。
+- 单测 `LogisticsTraceRefreshTest` 4 例（追加+推进、去重、缺 provider 不写、UNKNOWN 不动），**消融**：
+  `SIGNED→DELIVERED` 改掉 → 1 红。
+
+**与 ADR-005 §5 的关系**：那条记的是「一期只做快递+商家自送、不接承运商**回调/骑手系统**」。
+Y3 接的是**轨迹查询**这一半（轮询、只读、不编推进、不是骑手系统），方向与 ADR 的顾虑不冲突；
+真正的回调推送仍留给你账号能开订阅推送那天（§9）。
+
+**顺带修 Y1 的一处**：`LogisticsTraceRouter` 实现了 `LogisticsTracePort` 却不在 `..port..` 包，
+`ArchitectureTest.implsMustLiveInDedicatedPackage` 会红（Y1 提交在上次全量闸门之后，没被跑到）。
+已挪进 `channel.express.trace.port`。
 
 ## 7 将来怎么并入别的方式（本架构的验收）
 - **某店改走快递100 聚合**：加 `Kuaidi100TraceProvider` + 在 `store-route` 给那家店配 `kuaidi100`；其余门店仍默认圆通。

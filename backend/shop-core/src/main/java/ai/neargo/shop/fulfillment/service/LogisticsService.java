@@ -74,6 +74,29 @@ public interface LogisticsService {
     CarrierConfigVO setCarrierEnabled(String carrier, boolean enabled, String operatorNo);
 
     /**
+     * 轮询在途运单的<b>真实承运商轨迹</b>（TDD-圆通物流直连 Y3）。
+     *
+     * <p>这里补上的正是 {@link LogisticsServiceImpl} 头部与 ADR-005 §5 当初推迟的那块 ——
+     * 「一期不接承运商 API」。接法不改前面的任何写路径：
+     * 扫在途 {@code ful_shipment}（含疑难件，它不是终态）、按<b>门店</b>路由到 provider
+     * （默认圆通，缺凭据/查不到就跳过本单，不编造推进）、把真实节点<b>追加</b>进
+     * {@code ful_shipment_trace}（按时刻+文案去重）、据签收推进运单状态。已签收的移出轮询。
+     *
+     * @param limit 一轮最多刷多少单，按「最久没刷的优先」
+     */
+    TraceRefreshResult refreshInTransitTraces(int limit);
+
+    /**
+     * @param scanned   本轮扫到的在途单数
+     * @param queried   provider 真查到轨迹的单数（缺凭据时恒 0 —— 这<b>不是</b>「跑成功了」）
+     * @param appended  追加了新轨迹节点的单数
+     * @param advanced  运单状态被推进的单数
+     * @param delivered 其中推进到「已签收」的单数（移出轮询）
+     */
+    record TraceRefreshResult(int scanned, int queried, int appended, int advanced, int delivered) {
+    }
+
+    /**
      * 保存运费模板的入参。
      *
      * @param outOfRange 超区规则。同一区域只能有一条 —— 配两条时命中哪条取决于顺序
