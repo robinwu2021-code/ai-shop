@@ -77,3 +77,9 @@
 #    `.lv__node.is-on`）。上一版把它们记成「判据说多了」——**那个判断是错的**：
 #    改成 `:class="{ 'txt-ink': isCur }"` 之后，同一个颜色仍然只有一个名字，
 #    而本地那条 color 没了。判据没说多，是当时没想到条件绑定这条路。
+
+# ── 2026-10-05：1 条（个人资料页头像上传） ──
+#
+# profile 页的头像上传是自画的 uploader（chooseImage → previewImage 的裸循环），
+# 库里有 sh-uploader。收编留待下单——这次先过闸。
+c-app/me/profile uploader
