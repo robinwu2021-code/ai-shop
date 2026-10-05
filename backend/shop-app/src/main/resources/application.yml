@@ -322,6 +322,15 @@ shop:
     trace:
       store-route: ${SHOP_EXPRESS_TRACE_STORE_ROUTE:}   # 例: {ST-xxx: kuaidi100}
       default-provider: ${SHOP_EXPRESS_TRACE_DEFAULT:stub}
+    # 圆通直连凭据（客户编码/客户密钥 + IP 白名单，在圆通开放平台 open.yto.net.cn 申请）。**不进代码库**。
+    # 缺凭据时 YtoTraceProvider.available()=false，路由自动回退到空轨迹，不影响别的 provider。
+    # trace-method / trace-version 是圆通给你账号分配的「物流轨迹查询」接口名与版本，拿到账号按文档填。
+    yto:
+      app-key: ${SHOP_EXPRESS_YTO_APPKEY:}
+      secret: ${SHOP_EXPRESS_YTO_SECRET:}
+      host: ${SHOP_EXPRESS_YTO_HOST:https://openapi.yto.net.cn}
+      trace-method: ${SHOP_EXPRESS_YTO_TRACE_METHOD:TRACE_QUERY}
+      trace-version: ${SHOP_EXPRESS_YTO_TRACE_VERSION:1.0}
 
   # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
   #

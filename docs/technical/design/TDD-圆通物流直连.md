@@ -103,11 +103,18 @@ Port 对外只给统一状态 —— 端上永不见承运商原始码（与收�
 | 批 | 内容 | 要凭据？ |
 |---|---|---|
 | **Y1** ✅ | `TraceProvider`/`LogisticsTracePort`(spi) + `LogisticsTraceRouter`（**按门店**路由/回落）+ `StubTraceProvider` + 路由配置，单测 4+消融 | 否（stub） |
-| **Y2** | `YtoTraceProvider`（签名/HttpClient）+ 路由配 YTO→yto，单测（签名对、stub 可测） | 否（签名/映射用 stub 测；真查要你凭据） |
+| **Y2** ✅ | `YtoTraceProvider`（签名/HttpClient）+ 路由配 YTO→yto，单测（签名对、stub 可测） | 否（签名/映射用 stub 测；真查要你凭据） |
 | **Y3** | `trd_logistics_trace` 迁移 + 轮询 Job（在途单→缓存，cache-aside） | **是**（生产真查要圆通凭据 + IP 白名单） |
 | **Y4** | C 端 / B 端订单详情显示轨迹 | 否（读缓存） |
 
 > Y1–Y2 不要凭据就能做完（架构 + 圆通 provider + 测试全走 stub/样例签名）。真正等你圆通账号的是 **Y3 上生产**那一刻。
+
+**Y2 实现对账（2026-10-05）** —— `git diff --stat`：
+- 新增 `shop-channel/.../express/trace/YtoTraceProvider.java`：`@Component implements TraceProvider`，`name()=yto`、`covers()=YTO`、`available()=凭据非空（缺则 false 不抛，路由回落）`；签名 `Base64(MD5bytes(param+method+v+密钥))`（**与快递100 的十六进制大写不是一套**）、状态映射、响应解析都是 `static` 可测方法。
+- 新增 `YtoTraceProviderTest.java`：5 用例（签名=Base64 非十六进制且解出 16 字节、签名确定性、状态映射、解析倒序取最新、空轨迹=UNKNOWN）。**消融**：签名改十六进制 → 1 红。
+- 改 `shop-app/.../application.yml`：加 `shop.express.yto.{app-key,secret,host,trace-method,trace-version}`，全部 env 兜底、默认空。
+- **路由接 yto 不需改码**：`YtoTraceProvider` 作为 `@Component` 自动进 `List<TraceProvider>`，把 `SHOP_EXPRESS_TRACE_DEFAULT=yto`（或 `store-route` 单店指 yto）即生效。
+- ⚠️ 响应字段名（`result.traces[].{opCode,opTime,opName,city}`）按文档写，**Y3 拿到真账号对一条真实响应校准**，校准点集中在 `parse()` 一处。
 
 ## 7 将来怎么并入别的方式（本架构的验收）
 - **某店改走快递100 聚合**：加 `Kuaidi100TraceProvider` + 在 `store-route` 给那家店配 `kuaidi100`；其余门店仍默认圆通。
