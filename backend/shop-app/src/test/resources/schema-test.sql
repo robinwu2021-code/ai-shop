@@ -9556,3 +9556,6 @@ VALUES
     ('RISK', 'OPS_ELEC__TAB_SUPPLIER', 'OPS', NOW(), NOW()),
     ('RISK', 'ACT__ELEC_SUPPLIER_MANAGE', 'OPS', NOW(), NOW()),
     ('SUPPORT', 'OPS_ELEC', 'OPS', NOW(), NOW());
+UPDATE notify_scene_channel
+SET enabled = 0
+WHERE scene_code = 'AFTER_SALE_REFUNDED' AND audience = 'C_USER' AND channel = 'WXSUB';
