@@ -691,6 +691,7 @@ import type {
   EnrollReq,
   DescribeGoodsReq,
   DescribeGoodsRes,
+  GoodsTextParse,
   PickupSelfBuildReq,
   PointsRecordQuery,
   StaffLoginReq,
@@ -1243,6 +1244,8 @@ export interface MerchantApi {
    * 一键写进详情等于替商家做了他没做过的承诺。
    */
   mDescribeGoods(req: DescribeGoodsReq): Promise<DescribeGoodsRes>;
+  /** 从一段文字识别商品信息（规则+LLM）。全部是草稿，弹框确认后才落表单 */
+  mParseText(text: string, categoryNo?: string): Promise<GoodsTextParse>;
 
   // ---- 类目（B-11.3.1）
   /**

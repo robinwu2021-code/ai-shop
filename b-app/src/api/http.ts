@@ -17,6 +17,8 @@ import type {
   CrossStoreCompareQuery,
   DescribeGoodsReq,
   DescribeGoodsRes,
+  GoodsTextParse,
+  ParseTextReq,
   DissolveGroupReq,
   EnrollReq,
   ExpressQuotesQuery,
@@ -419,6 +421,8 @@ export const httpApi: MerchantApi = {
 
   mDescribeGoods: (req) =>
     http.post<DescribeGoodsRes>(E.mDescribeGoods.path, req satisfies DescribeGoodsReq),
+  mParseText: (text, categoryNo) =>
+    http.post<GoodsTextParse>(E.mParseText.path, { text, categoryNo } satisfies ParseTextReq),
 
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
   mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),

@@ -71,3 +71,22 @@ export async function importZipMedia(): Promise<ZipMedia> {
   const paths = await decompress(zip);
   return classifyZip(paths);
 }
+
+/** 读解压出的 txt 文本内容（商品文字）。App 用 plus.io；读失败返回 undefined。 */
+export function readTextFile(path: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    // #ifdef APP-PLUS
+    plus.io.resolveLocalFileSystemURL(path, (entry: any) => {
+      entry.file((file: any) => {
+        const reader = new plus.io.FileReader();
+        reader.onloadend = (e: any) => resolve(typeof e.target.result === "string" ? e.target.result : undefined);
+        reader.onerror = () => resolve(undefined);
+        reader.readAsText(file, "utf-8");
+      }, () => resolve(undefined));
+    }, () => resolve(undefined));
+    // #endif
+    // #ifndef APP-PLUS
+    resolve(undefined);
+    // #endif
+  });
+}

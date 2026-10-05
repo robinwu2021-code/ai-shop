@@ -29,6 +29,7 @@ import { buildSpecOverride } from "@/utils/spec-override";
 import { ROUTES } from "@/shared/nav";
 import { SHOW_CATEGORY_GATE, SHOW_FRESH_FIELDS } from "@/shared/flags";
 import type { GoodsGuess, PayMode, StoreFreightTemplate } from "@/api/contract";
+import type { GoodsTextParse } from "@/api/requests";
 import { CATEGORY_TYPE, FULFILLMENT, MARKETS, PAY_MODE, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { money, toMajor, toMinor } from "@shared/utils/money";
@@ -687,11 +688,61 @@ const generating = ref(false);
  * <p>**覆盖前先问**：他可能已经写了几行，一键抹掉没有撤销。
  */
 async function onImportZip() {
-  // 导入压缩包：批量填图。带回的 txt 先回填到文字识别框（文字识别那条链后续接）
+  // 导入压缩包：批量填图。带回的 txt 回填到文字识别框
   const txt = await importFromZip();
   if (txt) {
+    // 已有内容不静默覆盖 —— 空则填，非空则追加（商家自己写的那段留着）
+    parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
     uni.showToast({ title: String(t("goods.zipTxtFound")), icon: "none" });
   }
+}
+
+// ── 文字识别（规则+LLM；弹框逐项确认）
+const parseInput = ref("");
+const parsing = ref(false);
+const parsed = ref<GoodsTextParse | null>(null);
+const showParsed = ref(false);
+const takeCarrier = ref(true);
+
+function yuan(minor: number): string {
+  return (minor / 100).toFixed(2);
+}
+
+async function onParseText() {
+  if (!parseInput.value.trim()) {
+    uni.showToast({ title: String(t("goods.parseEmpty")), icon: "none" });
+    return;
+  }
+  parsing.value = true;
+  try {
+    const r = await api.mParseText(parseInput.value, categoryNo.value || undefined);
+    if (!r.confidence) {
+      uni.showToast({ title: String(t("goods.parseNone")), icon: "none" });
+      return;
+    }
+    parsed.value = r;
+    takeCarrier.value = r.fulfillment.includes(FULFILLMENT.EXPRESS);
+    showParsed.value = true;
+  } catch {
+    uni.showToast({ title: String(t("goods.parseFail")), icon: "none" });
+  } finally {
+    parsing.value = false;
+  }
+}
+
+/**
+ * 采纳识别结果。**P1 只自动落快递**（低风险）——价格/重量/区域只展示：
+ * 价格要落到具体 SKU、规格要建规格组，自动做容易错且难察觉；区域跨整店，更不能自动改。
+ * 让商家看着识别结果自己填，比替他填错好（识别是草稿，见 PRD §七）。
+ */
+function applyParsed() {
+  const p = parsed.value;
+  if (p && takeCarrier.value && p.fulfillment.includes(FULFILLMENT.EXPRESS)
+      && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
+    fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
+  }
+  showParsed.value = false;
+  uni.showToast({ title: String(t("goods.parseApplied")), icon: "none" });
 }
 
 async function genDetail() {
@@ -2535,6 +2586,50 @@ async function save(thenSubmit = false) {
         </view>
       </view>
     </sh-actionbar>
+    <!-- 文字识别：粘一段商品文字，识别成草稿，弹框逐项确认（#ifdef 两端都给，解压才 App 专有） -->
+    <view class="field">
+      <view class="field__head">
+        <text class="txt-strong field__label">{{ $t("goods.parseTitle") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onParseText">
+          {{ parsing ? $t("goods.parsing") : $t("goods.parseBtn") }}
+        </text>
+      </view>
+      <textarea
+        v-model="parseInput"
+        class="field__area field__area--grow"
+        :placeholder="$t('goods.parsePh')"
+        :maxlength="2000"
+        auto-height
+      />
+    </view>
+
+    <sh-sheet :visible="showParsed" :title="String($t('goods.parseConfirmTitle'))" @close="showParsed = false">
+      <view class="sh-cells">
+        <view v-if="parsed && parsed.pricesMinor.length" class="sh-cell">
+          <text class="sh-muted">{{ $t("goods.parsePrice") }}</text>
+          <text class="txt-body">{{ parsed.pricesMinor.map(yuan).join("、") }} 元</text>
+        </view>
+        <view v-if="parsed && parsed.weights.length" class="sh-cell">
+          <text class="sh-muted">{{ $t("goods.parseWeight") }}</text>
+          <text class="txt-body">{{ parsed.weights.join("、") }}</text>
+        </view>
+        <view v-if="parsed && parsed.carriers.length" class="sh-cell sh-row sh-row--between">
+          <view>
+            <text class="sh-muted">{{ $t("goods.parseExpress") }}</text>
+            <text class="txt-body">{{ parsed.carriers.join("、") }}</text>
+          </view>
+          <sh-check v-model="takeCarrier" />
+        </view>
+        <view v-if="parsed && parsed.excludeRegionText" class="sh-cell">
+          <text class="sh-muted">{{ $t("goods.parseNoShip") }}</text>
+          <text class="txt-body">{{ parsed.excludeRegionText }}</text>
+          <text class="sh-muted parse__hint">{{ $t("goods.parseNoShipHint") }}</text>
+        </view>
+        <text class="sh-muted parse__hint">{{ $t("goods.parseManualHint") }}</text>
+      </view>
+      <view class="sh-btn parse__apply" @tap="applyParsed">{{ $t("goods.parseApply") }}</view>
+    </sh-sheet>
+
   </sh-scaffold>
 </template>
 

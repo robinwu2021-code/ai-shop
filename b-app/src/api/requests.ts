@@ -241,6 +241,30 @@ export interface DescribeGoodsRes {
   params: Array<{ dimNo: string; name: string; code: string; label: string }>;
 }
 
+export interface GoodsTextParse {
+  /** 规格维度草稿（LLM 归类，P1 空） */
+  specs: { name: string; options: string[] }[];
+  /** 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule */
+  params: { dimNo: string; name: string; label: string; source: string; confidence: number }[];
+  /** 抽到的价（分）。带「元/￥」才算 */
+  pricesMinor: number[];
+  /** 重量/净重候选原文（4.5斤/140g） */
+  weights: string[];
+  /** 承运商（顺丰/圆通…） */
+  carriers: string[];
+  /** 履约方式。有快递→["EXPRESS"]（对齐 FULFILLMENT） */
+  fulfillment: string[];
+  /** 不发货区域文本，可空。**只回文本，不改运费模板** */
+  excludeRegionText: string | null;
+  /** 1=识别出了东西，0=没认出来 */
+  confidence: number;
+}
+
+export interface ParseTextReq {
+  text: string;
+  categoryNo?: string;
+}
+
 export interface DescribeGoodsReq {
   /** 图片地址 */
   imageUrl?: string;

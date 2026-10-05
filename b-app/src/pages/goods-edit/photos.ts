@@ -12,7 +12,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
-import { importZipMedia } from "@/ports/zip-import";
+import { importZipMedia, readTextFile } from "@/ports/zip-import";
 import { pick } from "@ai-shop/ui/prompt";
 import type { GoodsGuess } from "@/api/contract";
 
@@ -258,7 +258,7 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
     } finally {
       uploading.value = false;
     }
-    return media.txt;
+    return media.txt ? await readTextFile(media.txt) : undefined;
   }
 
   return {

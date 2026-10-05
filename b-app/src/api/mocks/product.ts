@@ -44,6 +44,7 @@ export const productMock: Pick<MerchantApi,
   | "mUploadImage"
   | "mRecognizeGoods"
   | "mDescribeGoods"
+  | "mParseText"
   | "mSpuStdSearch"
   | "mCategoryTree"
   | "mSpecTemplates"
@@ -554,6 +555,28 @@ export const productMock: Pick<MerchantApi,
    * 包括**没填标题时应当拒绝**这一档 —— 真实实现里模型没有名字只能瞎编，
    * 所以那一档在服务端也是拒绝，不该只在真机上才发现。
    */
+  async mParseText(text) {
+    // mock 用最小正则演示，真解析在后端（规则+LLM）。够让弹框确认链路在 mock 下点得通
+    const prices = [...text.matchAll(/(\d+(?:\.\d+)?)\s*元/g)].map((m) => Math.round(Number(m[1]) * 100));
+    const weights = [...text.matchAll(/\d+(?:\.\d+)?\s*(?:kg|千克|g|克|斤|两)/gi)].map((m) => m[0].replace(/\s+/g, ""));
+    const carriers = ["顺丰", "圆通", "中通", "申通", "韵达", "京东", "德邦"].filter((c) => text.includes(c) && /快递|发货|物流/.test(text));
+    const noShip = /不发货|不包邮|不发|除外|不配送/.exec(text);
+    let region: string | null = null;
+    if (noShip) {
+      const win = text.slice(Math.max(0, noShip.index - 40), noShip.index);
+      const hit = ["新疆", "西藏", "海南", "青海", "内蒙古"].filter((r) => win.includes(r));
+      region = hit.length ? hit.join(" ") : null;
+    }
+    const hit = prices.length || weights.length || carriers.length || region;
+    return delay({
+      specs: [], params: [],
+      pricesMinor: prices, weights, carriers,
+      fulfillment: carriers.length ? ["EXPRESS"] : [],
+      excludeRegionText: region,
+      confidence: hit ? 1 : 0,
+    }, 300);
+  },
+
   async mDescribeGoods(req) {
     if (!req.title?.trim()) return delay({ detail: "", params: [] }, 300);
     const lines = [
