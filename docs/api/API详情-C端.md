@@ -4471,8 +4471,8 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `status` | [`ShipmentStatus`](#shipmentstatus) | 是 | — |
-| `nodes` | [`ShipmentTraceNode`](#shipmenttracenode)\[\] | 是 | — |
+| `status` | [`ShipmentStatus`](#shipmentstatus) | 是 | 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 |
+| `nodes` | [`ShipmentTraceNode`](#shipmenttracenode)\[\] | 是 | 轨迹节点，按时间倒序（最新在前，页面从上往下读） |
 
 ### ShipmentTraceNode
 
@@ -4480,9 +4480,9 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `at` | `number` | 是 | — |
-| `text` | `string` | 是 | — |
-| `location` | `string` | 否 | — |
+| `at` | `number` | 是 | 扫描时刻（毫秒时间戳） |
+| `text` | `string` | 是 | 节点描述，原样来自承运商（如「【深圳市】已揽收」），不翻译 |
+| `location` | `string` | 否 | 所在城市/网点，承运商没给时省略 |
 
 ### Sku
 

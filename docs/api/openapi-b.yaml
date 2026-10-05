@@ -9729,10 +9729,12 @@ components:
       properties: 
         status: 
           "$ref": "#/components/schemas/ShipmentStatus"
+          description: "运单当前状态（最新一档），用于订单详情顶部的物流状态标签"
         nodes: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/ShipmentTraceNode"
+          description: "轨迹节点，按时间倒序（最新在前，页面从上往下读）"
       required: 
         - "status"
         - "nodes"
@@ -9752,10 +9754,13 @@ components:
       properties: 
         at: 
           type: "number"
+          description: "扫描时刻（毫秒时间戳）"
         text: 
           type: "string"
+          description: "节点描述，原样来自承运商（如「【深圳市】已揽收」），不翻译"
         location: 
           type: "string"
+          description: "所在城市/网点，承运商没给时省略"
       required: 
         - "at"
         - "text"
