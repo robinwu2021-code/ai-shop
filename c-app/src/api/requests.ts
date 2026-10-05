@@ -60,6 +60,31 @@ export interface BindPhoneReq {
   code: string;
 }
 
+/**
+ * 改昵称 / 头像（C-AC-08）。
+ *
+ * <p><b>两个字段都可选，而「不传」的含义是「这次不改」，不是「清空」</b> ——
+ * 端上只提交用户真改了的那一个。与地址那几个可选字段同一个口径
+ * （见 SaveAddressReq 里关于旧版 App 不发新字段的那段）。
+ */
+export interface UpdateProfileReq {
+  /** 1–20 个字。空白与超长由后端拒 —— 端上的 maxlength 挡不住直接打接口的人 */
+  nickname?: string;
+  /** 公开可访问的头像地址。一般不手填，由 uploadAvatar 那条端点落 */
+  avatar?: string;
+}
+
+/**
+ * 设置 / 修改登录密码（C-AC-08）。
+ *
+ * <p><b>没有「旧密码」字段，是故意的</b>：能调到这条说明当前会话已经通过
+ * 验证码或微信登录了，那比旧密码更强。要旧密码只会把「忘了密码」变成死路。
+ */
+export interface SetPasswordReq {
+  /** 至少 6 位。下限由后端的 PWD_MIN_LEN 判，不在端上重复写一个数 */
+  password: string;
+}
+
 /** 微信一键授权：端上只拿得到 code，换号在后端做 */
 export interface WxPhoneReq {
   /** 短信/微信下发的验证码 */

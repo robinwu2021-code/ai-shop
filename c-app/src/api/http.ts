@@ -19,6 +19,8 @@ import type {
   AfterSaleReq,
   BindCommunityReq,
   BindPhoneReq,
+  SetPasswordReq,
+  UpdateProfileReq,
   WxPhoneReq,
   CartAddReq,
   CartRemoveReq,
@@ -115,11 +117,15 @@ export const httpApi: ShopApi = {
   sendOtp: (phone: string) => call<void>("sendOtp", undefined, { phone }),
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
   profile: () => call<User>("profile"),
-  updateProfile: (req) => call<User>("updateProfile", undefined, req),
+  // 展开成字面量再 satisfies —— 与 login 同一个写法：
+  // call() 收的是 Record<string, unknown>，而具名接口没有索引签名
+  updateProfile: (req) =>
+    call<User>("updateProfile", undefined, { ...req } satisfies UpdateProfileReq),
   // 真上传字节（multipart），不是把本地临时路径当 JSON 发 —— 后端要 MultipartFile
   uploadAvatar: (tempPath) =>
     http.uploadFile<User>(ENDPOINTS.uploadAvatar.path, tempPath),
-  setPassword: (password) => call<void>("setPassword", undefined, { password }),
+  setPassword: (password) =>
+    call<void>("setPassword", undefined, { password } satisfies SetPasswordReq),
   passwordState: () => call<PasswordState>("passwordState"),
   logout: () => call<void>("logout"),
   bindPhone: (phone, code) =>

@@ -152,6 +152,12 @@ const RESPONSE_TYPES = {
   sendOtp: "void",
   login: "LoginResp",
   profile: "User",
+  // C-AC-08 个人资料。改资料与传头像都回**整个 User** ——
+  // 一个端点做完整件事（存字节 + 落到账号），端上拿到就能直接用
+  updateProfile: "User",
+  uploadAvatar: "User",
+  setPassword: "void",
+  passwordState: "PasswordState",
   bindCommunity: "User",
   deregister: "void",
   bindPhone: "User",
@@ -259,6 +265,8 @@ const REQUEST_TYPES = {
   login: "LoginReqBody",
   bindCommunity: "BindCommunityReq",
   bindPhone: "BindPhoneReq",
+  updateProfile: "UpdateProfileReq",
+  setPassword: "SetPasswordReq",
   bindPhoneByWx: "WxPhoneReq",
   saveAddress: "SaveAddressReq",
   nearbyCommunities: "NearbyQuery",

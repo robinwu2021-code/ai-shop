@@ -9816,6 +9816,9 @@ components:
         nickname: 
           type: "string"
           description: "昵称。微信授权取来的，用户可改"
+        nicknameSet: 
+          type: "boolean"
+          description: "昵称是**用户自己设的**吗。false = 还是建户时的占位名。\n\n<p>为什么需要这个布尔而不是在端上比字符串：判据的来源必须和后端写进去的 那个默认值是同一个（后端的 {@code UsrAccount.DEFAULT_NICKNAME}）。 端上自己比一遍的话，默认值一改，所有人的「设置昵称」入口静默消失。\n\n<p>线上实况（2026-10-05）：23 个账号 23 个都是 false —— 还没有人设过昵称。"
         avatar: 
           type: "string"
           description: "头像 URL"
@@ -9834,6 +9837,7 @@ components:
       required: 
         - "cUserNo"
         - "nickname"
+        - "nicknameSet"
         - "avatar"
         - "phone"
       additionalProperties: false
@@ -9847,6 +9851,20 @@ components:
         - "capable"
       additionalProperties: false
       description: "微信一键取手机号当前可不可用。\n\n<p>由后端说了算：它取决于小程序认证状态与通道开关，端上判不出来。 写死在端上的话，认证下来之后还要再发一次版。"
+    PasswordState: 
+      type: "object"
+      properties: 
+        hasPassword: 
+          type: "boolean"
+          description: "设过密码没有"
+        canSet: 
+          type: "boolean"
+          description: "现在能不能设 —— 等价于「绑了手机号没有」。\n\n<p>由后端说了算，与  {@link  PhoneCapable }  同一个口径：判据是 {@code usr_identity} 里有没有 PHONE 凭证，端上查不到。\n\n<p>为什么它是个前置条件：密码登录按手机号找人，没号的话这条密码 永远登不进来（线上已经有一条这样的死数据）。"
+      required: 
+        - "hasPassword"
+        - "canSet"
+      additionalProperties: false
+      description: "登录密码的状态。\n\n<p>两个布尔各管一件事，不要合成一个： {@link  hasPassword }  决定**按钮文案** （「设置密码」还是「修改密码」）， {@link  canSet }  决定**整行能不能点**。 合成一个的话，没绑手机号的人会看到「设置密码」、点进去填完再被拒。"
     PointRecordType: 
       type: "string"
       enum: 
@@ -10128,6 +10146,27 @@ components:
         - "code"
       additionalProperties: false
       description: "绑定手机号（验证码）。号码要以**字符串**传 —— 见 phone-gate.vue 里那段注释"
+    UpdateProfileReq: 
+      type: "object"
+      properties: 
+        nickname: 
+          type: "string"
+          description: "1–20 个字。空白与超长由后端拒 —— 端上的 maxlength 挡不住直接打接口的人"
+        avatar: 
+          type: "string"
+          description: "公开可访问的头像地址。一般不手填，由 uploadAvatar 那条端点落"
+      additionalProperties: false
+      description: "改昵称 / 头像（C-AC-08）。\n\n<p><b>两个字段都可选，而「不传」的含义是「这次不改」，不是「清空」</b> —— 端上只提交用户真改了的那一个。与地址那几个可选字段同一个口径 （见 SaveAddressReq 里关于旧版 App 不发新字段的那段）。"
+    SetPasswordReq: 
+      type: "object"
+      properties: 
+        password: 
+          type: "string"
+          description: "至少 6 位。下限由后端的 PWD_MIN_LEN 判，不在端上重复写一个数"
+      required: 
+        - "password"
+      additionalProperties: false
+      description: "设置 / 修改登录密码（C-AC-08）。\n\n<p><b>没有「旧密码」字段，是故意的</b>：能调到这条说明当前会话已经通过 验证码或微信登录了，那比旧密码更强。要旧密码只会把「忘了密码」变成死路。"
     WxPhoneReq: 
       type: "object"
       properties: 
@@ -10766,6 +10805,129 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/User"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    post: 
+      operationId: "updateProfile"
+      summary: "改昵称 / 头像"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/User"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/UpdateProfileReq"
+  "/mp/user/avatar": 
+    post: 
+      operationId: "uploadAvatar"
+      summary: "上传头像并落到账号上"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/User"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/user/password": 
+    post: 
+      operationId: "setPassword"
+      summary: "设置 / 修改登录密码"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/SetPasswordReq"
+    get: 
+      operationId: "passwordState"
+      summary: "密码状态（设过没有 / 现在能不能设）"
+      tags: 
+        - "user"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PasswordState"
                 required: 
                   - "code"
                   - "msg"

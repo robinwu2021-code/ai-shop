@@ -155,7 +155,8 @@ export interface CreateOrderReq {
   appointmentSlotNo?: string;
 }
 
-import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery } from "./requests";
+import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery,
+  UpdateProfileReq } from "./requests";
 
 /** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
 export type PreviewOrderReq = Omit<CreateOrderReq, "idempotencyKey">;
@@ -182,7 +183,7 @@ export interface ShopApi {
    * <p>昵称的空白与超长由后端拦（1–20 字）。端上的 maxlength 挡不住直接打接口的人，
    * 而空白此前是**静默忽略**：接口 200、界面说「已保存」，名字一个字没变。
    */
-  updateProfile(req: { nickname?: string; avatar?: string }): Promise<User>;
+  updateProfile(req: UpdateProfileReq): Promise<User>;
 
   /**
    * 传头像。收的是 `chooseAvatar` 给的**临时文件路径**，走 multipart 发字节。
