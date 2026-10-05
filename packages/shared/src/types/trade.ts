@@ -550,14 +550,19 @@ export type ShipmentStatus =
 
 /** 物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读） */
 export interface ShipmentTrace {
+  /** 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 */
   status: ShipmentStatus;
+  /** 轨迹节点，按时间倒序（最新在前，页面从上往下读） */
   nodes: ShipmentTraceNode[];
 }
 
 /** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */
 export interface ShipmentTraceNode {
+  /** 扫描时刻（毫秒时间戳） */
   at: number;
+  /** 节点描述，原样来自承运商（如「【深圳市】已揽收」），不翻译 */
   text: string;
+  /** 所在城市/网点，承运商没给时省略 */
   location?: string;
 }
 
