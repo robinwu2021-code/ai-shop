@@ -1709,6 +1709,7 @@
 | `openGroup` | `boolean` | 否 | 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 |
 | `activityChoices` | [`ActivityChoice`](#activitychoice)\[\] | 否 | 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的 |
 | `storeChoices` | [`StoreChoice`](#storechoice)\[\] | 否 | 这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不传 = 与改造前相同；指定的店暂停营业时回 20008 |
+| `addressChoices` | `object`（见下）\[\] | 否 | 逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `payMode` | `string` | 否 | 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段， 不能因为补了它就让老版本下不了单。 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算， 而后端在 create 里会**再判一次**：端上不该是唯一的闸。 |
 | `appointmentSlotNo` | `string` | 否 | APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 —— 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。 |
@@ -1721,6 +1722,13 @@
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `skuNo` | `string` | 是 | SKU 单号 |
 | `qty` | `number` | 是 | 件数 |
+
+`addressChoices[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `addressId` | `string` | 是 | — |
 
 **出参**（`data`）
 
@@ -3302,6 +3310,7 @@
 | `openGroup` | `boolean` | 否 | 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 |
 | `activityChoices` | [`ActivityChoice`](#activitychoice)\[\] | 否 | 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的 |
 | `storeChoices` | [`StoreChoice`](#storechoice)\[\] | 否 | 这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不传 = 与改造前相同；指定的店暂停营业时回 20008 |
+| `addressChoices` | `object`（见下）\[\] | 否 | 逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `payMode` | `string` | 否 | 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段， 不能因为补了它就让老版本下不了单。 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算， 而后端在 create 里会**再判一次**：端上不该是唯一的闸。 |
 | `appointmentSlotNo` | `string` | 否 | APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 —— 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。 |
@@ -3314,6 +3323,13 @@
 | `goodsNo` | `string` | 是 | 商品单号 |
 | `skuNo` | `string` | 是 | SKU 单号 |
 | `qty` | `number` | 是 | 件数 |
+
+`addressChoices[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `addressId` | `string` | 是 | — |
 
 ### CreateRequestReq
 
