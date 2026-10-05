@@ -10416,6 +10416,20 @@ components:
           items: 
             "$ref": "#/components/schemas/StoreChoice"
           description: "这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不传 = 与改造前相同；指定的店暂停营业时回 20008"
+        addressChoices: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              merchantNo: 
+                type: "string"
+              addressId: 
+                type: "string"
+            required: 
+              - "merchantNo"
+              - "addressId"
+            additionalProperties: false
+          description: "逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId"
         appointmentAt: 
           type: "number"
           description: "APPOINTMENT：预约开始时间戳"
