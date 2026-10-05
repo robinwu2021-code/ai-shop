@@ -11,8 +11,10 @@ export interface ZipMedia {
   txt?: string;
 }
 
-const MAIN_DIR = /(^|\/)(主图|main)\//i;
-const DETAIL_DIR = /(^|\/)(详情|detail)\//i;
+// 目录名**包含**关键词即可（不是精确相等）：真实压缩包里详情目录叫「详情页」、
+// 主图目录可能叫「主图片」，精确匹配会漏。段内不含 / 保证只认目录名这一段。
+const MAIN_DIR = /(^|\/)[^/]*(主图|main)[^/]*\//i;
+const DETAIL_DIR = /(^|\/)[^/]*(详情|detail)[^/]*\//i;
 const IMAGE = /\.(jpe?g|png|webp|gif)$/i;
 
 /**
