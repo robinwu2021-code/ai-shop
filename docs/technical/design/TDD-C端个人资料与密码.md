@@ -1,6 +1,6 @@
 # TDD-C端个人资料与密码
 
-状态：草稿
+状态：已实现
 关联需求：docs/requirements/C端功能清单.md §C-AC-08
 创建：2026-10-05 · 最后更新：2026-10-05
 档位：1（动了端点 · `pages.json` · i18n 词条 · `SysMediaAsset` 类型常量）
@@ -183,14 +183,19 @@ boolean nicknameSet
 
 | AC | 测试方法 | 跑过 | 消融 |
 |---|---|---|---|
-| AC1 | `AuthServiceTest#新账号默认昵称不带编号` | | 改回「邻居」拼接 → 红 |
-| AC2 | `UserVOTest#默认昵称算未设置` + `#用户自己设的算已设置` | | `nicknameSet` 恒 true → 红 |
-| AC3 | `UserServiceTest#昵称空白被拒` `#昵称超20字被拒` | | 去掉判据 → 红 |
-| AC4 | `MpAvatarUploadTest#上传后落到账号上` `#超2MB被拒` `#非图片被拒` | | 去掉 bizType 白名单 → 红 |
-| AC5 | `MpUserPasswordTest#设密码后可用它登录` | | 端点不写库 → 红 |
-| AC6 | `MpUserPasswordTest#没绑手机号时拒绝设密码` | | 去掉 `assertPasswordSettable` → 红 |
-| AC7 | `MpUserPasswordTest#hasPassword随设置变化` | | 恒返回 false → 红 |
-| AC8 | `packages/shared` vitest `auth#登录页带密码方式` | | 调用点去掉 `withPassword` → 红 |
+| AC1 | `ProfileAndPasswordTest#defaultNicknameHasNoSerialAndIsNotBlank`<br>`#createAccountWritesTheDefaultNickname` | ✅ 9/9 | 消融 1：昵称改回「邻居」拼接 → 只红 `createAccountWrites…` ✅ |
+| AC2 | `ProfileAndPasswordTest#nicknameSetDistinguishesPlaceholderFromRealName` | ✅ | 消融 2：`nicknameSet` 恒 true → 红 ✅ |
+| AC3 | `#blankNicknameIsRejectedNotIgnored`<br>`#overlongNicknameIsRejectedAtTheBoundary`<br>`#nullNicknameStillMeansNoChange` | ✅ | 消融 3：去掉长度与空白判据 → 红 2 条 ✅ |
+| AC4 | `ProfileEndpointsFlowTest#avatarUploadLandsOnTheAccount`<br>`#nonImageBytesRejected`<br>`#missingFileRejected` | ✅ 7/7 | 消融 6：存字节但不写库 → 红 ✅<br>消融 7：去掉 magic number 那一道 → 红 ✅ |
+| AC5 | `ProfileEndpointsFlowTest#passwordCanActuallySignYouIn`<br>`#oldPasswordStopsWorkingAfterChange` | ✅ | 消融 8：改密码变成空操作 → 红 ✅ |
+| AC6 | `ProfileAndPasswordTest#passwordNotSettableWithoutPhone`<br>`#passwordSettableOncePhoneBound`<br>`#phoneJudgementReadsIdentityNotLegacyColumn`<br>`ProfileEndpointsFlowTest#wechatOnlyUserCannotSetPassword` | ✅ | 消融 4a：整道闸去掉 → 红 2 条（放行那条仍绿）✅<br>消融 4b：恒拒 → 只红放行那条 ✅ |
+| AC7 | `ProfileEndpointsFlowTest#passwordStateTracksReality` | ✅ | 含在消融 8 的那一轮里；`canSet` 由 4a/4b 两向钉住 ✅ |
+| AC8 | `c-app/tests/login-password-method.test.ts`（4 条） | ✅ 4/4 | 消融 5a：撤掉 `withPassword` → 红 ✅<br>消融 5b：`filter` 改回 `find` → 红 ✅ |
+
+另加一道**鉴权实弹**：`MpEndpointAuthTest`（7 条，+1）把三条新端点放进
+`REQUIRES_LOGIN` 并真的不带令牌打一遍。为做到这一点，两条 POST 的参数校验
+挪到了方法体里、放在取当前用户之后 —— `@Valid` 跑在方法体之前，
+匿名探测只能拿到 10400，那样就只能塞进 `UNDETERMINED`，而那个桶上有棘轮。
 
 **AC6 的消融要特别验。** 它是「拒绝型」判据，最容易写成恒绿 ——
 先让测试在**有手机号**的账号上跑一遍确认它会通过，再在无手机号的账号上确认它被拒。
@@ -205,17 +210,103 @@ MockMvc 装不上。这条用 `RANDOM_PORT` 起真实上下文：设密码 → �
 
 ## §6 对账二 · 设计 → 实现
 
-（实现完贴 `git diff --stat` 的文件清单，与 §2 模块设计逐行比）
+`git diff --stat ce9f3f4d7^..HEAD`（只列代码，文档产物另见下）：
+
+| 文件 | 行 | 与 §2 模块设计 |
+|---|---|---|
+| `shop-core/.../user/entity/UsrAccount.java` | +15 | ✅ 计划内（`DEFAULT_NICKNAME`） |
+| `shop-core/.../user/service/impl/AuthServiceImpl.java` | +1/−1 | ✅ |
+| `shop-core/.../user/dto/UserVO.java` | +23 | ✅ |
+| `shop-core/.../user/service/UserService.java` | +17 | ✅ |
+| `shop-core/.../user/service/impl/UserServiceImpl.java` | +37 | ✅ |
+| `shop-core/.../user/api/mp/MpUserController.java` | +66 | ✅ |
+| `shop-base/.../common/ErrorCode.java` | +13 | ✅ |
+| `shop-store-mybatis/.../media/SysMediaAsset.java` | +23 | ✅（`AVATAR`，**外加 `USER_SCOPE`**，见偏差 2） |
+| `shop-app/.../portal/mp/MpAvatarController.java` | 新增 | ✅ |
+| `shop-store-mybatis/.../media/ImageProbe.java` | 新增 130 | **偏差 3** |
+| `shop-store-mybatis/.../media/MediaUploadService.java` | 新增 82 | **偏差 4** |
+| `shop-channel/.../BizUploadController.java` | +141/−140 | **偏差 3/4 的连带**（纯改走共用实现） |
+| `c-app/src/pages/me/profile/index.vue` | 新增 263 | ✅ |
+| `c-app/src/pages/me/index.vue` | +50 | ✅ |
+| `c-app/src/pages/login/index.vue` | +83 | ✅（AC8） |
+| `c-app/src/api/{endpoints,contract,http,requests}.ts` | +110 | ✅（**requests.ts 是偏差 5**） |
+| `c-app/src/api/mocks/user.ts` | +51 | ✅ |
+| `c-app/src/i18n/locale/*.ts` | +78 | ✅ |
+| `c-app/src/pages.json` | +12 | ✅ |
+| `packages/shared/src/types/user.ts` | +42 | ✅（**`userNo` 是偏差 6**） |
+| `packages/shared/src/ports/media.ts` | +9 | ✅（`MAX_AVATAR_BYTES`） |
+| `packages/shared/src/utils/constants/index.ts` | +2 | ✅（`ROUTES.profile`） |
+| `packages/shared/src/mock/db.ts` | +14 | ✅ |
+| `c-app/scripts/gen-openapi.mjs` | +8 | ✅（`RESPONSE_TYPES` 登记） |
+| 测试 3 份 | +351 | ✅ |
+
+**计划了却没动的**：无。
+**计划外的文件**：`ImageProbe` / `MediaUploadService` / `BizUploadController` /
+`requests.ts` / `User.userNo` —— 逐条在 §7。
+
+生成产物 18 份（四阶漂移，逐轮跑到 `check-generated-docs` 全绿）：
+openapi ×3 · API 清单/详情 · 术语三份 + glossary.json · UI 规范三份 + ui-lib.json ·
+后端分层 · 三端权限矩阵 · C 端功能点 · 后端验收清单 · README · 三端对齐 · ui-catalog。
 
 ---
 
 ## §7 偏差说明
 
-（实现中出现的与本设计不一致之处写在这里，先改文档再改代码）
-
-1. `nicknameSet` 用「与默认值比较」而不是加一列 `nickname_set`。
+1. **`nicknameSet` 用「与默认值比较」而不是加一列 `nickname_set`。**
    代价：用户真把自己命名为「微信用户」时会被判成未设置。
    接受的理由：这个名字本身就是占位名，重名概率极低；而加一列要写迁移、
    补实体、补 `schema-test.sql` 三处，为一个展示态的边角情况不值。
-   缓解：默认值与判据共用 `UsrAccount.DEFAULT_NICKNAME` 一个常量，
-   避免「改了默认值、判据静默失效」。
+   缓解：默认值与判据共用 `UsrAccount.DEFAULT_NICKNAME` 一个常量。
+
+2. **多加了 `SysMediaAsset.USER_SCOPE` 哨兵。** §2 只说要加 `AVATAR`。
+   做的时候才发现 `entity_no` / `store_no` 都是 `NOT NULL`，而头像不属于
+   任何经营主体与门店。把 `userNo` 塞进其中一个的话，运营端存储页会把一个买家
+   显示成一家门店，而「各店之和 = 真实字节」这个本来对得上的账会多出一堆假门店。
+   于是两列都用 `_USER`，具体是谁记在 `uploaded_by`。
+   **已知残留**：`ops-web/app/system/storage-tab.tsx` 只给 `_ENTITY` 配了标签，
+   `_USER` 会原样显示。不在本档范围内（它要动运营端的词条与类型），
+   但有了头像之后那一页会出现这一档，**记在这里**。
+
+3. **提了 `ImageProbe`（计划外）。** §2 原打算在新 controller 里复用
+   `BizUploadController` 的判据，而那两个方法是 `private static`。
+   抄第二份的后果是 magic number 那张表会漂：一端补了格式另一端没补，
+   症状是「同一张图换个入口就说格式不对」，而没人会想到去比两份常量表。
+   纯搬移，一个字节没改（它们是纯函数，不读配置、不碰上下文）。
+
+4. **提了 `MediaUploadService`（计划外）。** 起因是 `ArchitectureTest` 的
+   「`portal..` 下的 controller 不许碰 `*Mapper`」—— 头像端点住在 `portal/mp`，
+   本来就不能自己记账。顺带把「记账 → 落盘 → 改 ACTIVE」与**刻意不用事务**
+   收敛成一份：抄第二份时最容易丢的恰恰是后者，而丢了它的症状是查不出来的孤儿文件。
+   B 端那条上传改走同一个 service（`MediaUploadFlowTest` 等 16 条绿）。
+
+5. **两个请求体提成具名类型。** §2 写的是内联对象 `{nickname?, avatar?}`。
+   `gen-openapi.mjs` 要求具名类型才生成 `requestBody`，否则入参被静默丢掉。
+
+6. **`User.userNo` 一并补进契约（计划外，但是个真缺口）。**
+   `UserVO` 从 C1 双写那天起就在发它，而共享 `User` 只声明了 `cUserNo` ——
+   这个字段到端上就被丢掉了，不报错、界面也看不出来。
+   AC4 新增的 `uploadAvatar` 让 `biz-contract-fields` 棘轮第一次看见 `UserVO`，
+   才暴露出来。**补字段而不是抬基线**：`UserVO` 自己的注释说的迁移方向就是统一到
+   `userNo`。（先查清是哪个方法引入的，没有不明不白地动棘轮。）
+
+7. **昵称改用仓库既有的 `prompt()`，没有用微信的 `<input type="nickname">`。**
+   §2 写的是后者。改用前者的理由：它是全端一套路径，而 `type="nickname"`
+   只在小程序上有，混用等于一个字段两条代码路径。
+   代价：小程序用户不能一键填入自己的微信昵称，要手打。
+   这是**可加的增量**，不是返工 —— 加它只是在小程序分支上多一个控件。
+
+8. **「省空间」那条规则没有适用。** 记忆里的约定是只在进销存页省空间，
+   其余页面不主动改版面。本页按普通 `sh-cells` 列表排。
+
+---
+
+## §8 没做的事（明确不在本档范围）
+
+- **违规昵称 / 头像的运营端处置面**：三端对齐里已判为「兜 · P-13.1 · 🕐」。
+  查过 `/ops/` 下没有任何相关端点，ops-web 内容审核只收评价/内容/问答。
+- **头像审核**：`sys_media_asset` 有状态机，接审核是独立一档。
+- **`page-block-spacing` 守卫只扫 `b-app/src/pages/*/index.vue`**，
+  c-app 的页面不在它的扫描面内。扩到 c-app 会立刻点亮一批存量页，
+  而一道从第一天起就红的闸门等于没有闸门 —— 单独一档再说。
+- **存量昵称不批量改名**：平台替用户改名是越界。线上 23 个账号会在
+  「我的」头部看到「去设置昵称」这个入口，由他们自己决定。
