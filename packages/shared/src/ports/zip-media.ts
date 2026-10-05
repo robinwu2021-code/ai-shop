@@ -26,7 +26,7 @@ export function sortByNumber(names: string[]): string[] {
   const num = (s: string): number => {
     const base = s.slice(s.lastIndexOf("/") + 1);
     const m = base.match(/(\d+)/);
-    return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+    return m?.[1] ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
   };
   return [...names].sort((a, b) => num(a) - num(b) || a.localeCompare(b));
 }
