@@ -10528,8 +10528,8 @@
         {
           "key": "home.visits7d",
           "zh-CN": "近 7 天到访 {uv} 人 · {pv} 次",
-          "en": null,
-          "ar": null
+          "en": "{uv} visitors · {pv} visits in 7 days",
+          "ar": "{uv} زائر · {pv} زيارة خلال 7 أيام"
         },
         {
           "key": "income.batchBills",
