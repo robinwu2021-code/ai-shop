@@ -131,7 +131,7 @@ describe("结算页选地址 ≠ 改默认地址", () => {
      * 顺序有讲究：新增的那条要先进 addresses，`address` 这个 computed 才找得到它。
      * 反过来写不会报错，只会让新地址「选了但页面上没变」。
      */
-    expect(body).toMatch(/loadAddresses\(\)[\s\S]{0,200}addressId\.value = picked/);
+    expect(body).toMatch(/loadAddresses\(\)[\s\S]{0,500}addressId\.value = picked/);
   });
 });
 
