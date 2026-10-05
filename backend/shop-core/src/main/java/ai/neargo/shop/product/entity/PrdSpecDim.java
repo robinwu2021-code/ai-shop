@@ -26,6 +26,15 @@ public class PrdSpecDim extends BaseEntity {
     public static final String ENUM = "ENUM";
     /** 数值 + 单位（重量、容量、时长）。这类维度的值必须有 numericValue，否则排不了序 */
     public static final String QUANT = "QUANT";
+    /**
+     * 自由文本：值几乎每件唯一（配料、厂名厂址、生产许可证、执行标准），<b>不入平台值池</b>。
+     *
+     * <p>入池只会堆满永不复用的唯一串，而养 {@code prd_spec_value} 的唯一理由是跨店聚合 ——
+     * 唯一串聚不起来。所以 TEXT 维度不配 {@code prd_spec_value}，它的值只作为快照落在
+     * {@code prd_goods.params[].label}（保存链路按 label 存、不校验 valueNo，故天然成立）。
+     * 端上据 {@code valueType=TEXT} 渲染文本输入而非选值 chip。
+     */
+    public static final String TEXT = "TEXT";
 
     /** 销售规格：参与 SKU 笛卡尔积，每个组合各有价与库存 */
     public static final String SALE = "SALE";

@@ -9626,6 +9626,12 @@
           "ar": "تعذّر تحميل قيم المنصة"
         },
         {
+          "key": "goods.paramTextPlaceholder",
+          "zh-CN": "填写内容",
+          "en": "Enter text",
+          "ar": "أدخل النص"
+        },
+        {
           "key": "goods.params",
           "zh-CN": "商品参数",
           "en": "Product details",
@@ -30036,6 +30042,13 @@
         "name": "QUANT",
         "value": "QUANT",
         "zh": "数值 + 单位（重量、容量、时长）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdSpecDim",
+        "name": "TEXT",
+        "value": "TEXT",
+        "zh": "自由文本：值几乎每件唯一（配料、厂名厂址、生产许可证、执行标准），不入平台值池。",
         "module": "shop-core"
       },
       {

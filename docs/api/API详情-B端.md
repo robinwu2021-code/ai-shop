@@ -5642,6 +5642,7 @@ _无字段_
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |
@@ -5726,6 +5727,7 @@ _无字段_
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |
@@ -9801,6 +9803,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | `string`\[\] | 是 | 该维度的可选值 |
 | `optionCodes` | `string` \| `any`\[\] | 否 | 与 options 一一对应的模板编码。来自平台模板的有值，手输/改过的为空。 **一期只存不用** —— 但不存的话，二期做规格聚合要刷全部历史商品。 |
 | `templateNo` | `string` | 否 | 该规格组来自哪个平台模板。手输的为空 |
@@ -9823,6 +9826,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
+| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |

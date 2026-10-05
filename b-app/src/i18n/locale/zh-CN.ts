@@ -510,6 +510,7 @@ export default {
     paramInUse: "已经能选的",
     paramFillOwn: "新建可选值",
     paramFillPh: "请输入可选值",
+    paramTextPlaceholder: "填写内容",
     save: "保存",
     moreOther: "更多 ({n})",
     moreFold: "收起",

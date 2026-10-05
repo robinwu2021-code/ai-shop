@@ -627,6 +627,13 @@ export interface SpecTemplate {
   categoryNo?: string;
   /** 规格维度名，如「重量」「香型」 */
   name: string;
+  /**
+   * 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。
+   *
+   * <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入，
+   * 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。
+   */
+  valueType?: "ENUM" | "QUANT" | "TEXT";
   /** 该维度的可选项 */
   options: SpecOption[];
   /** scope=MERCHANT 时归属的商家 */

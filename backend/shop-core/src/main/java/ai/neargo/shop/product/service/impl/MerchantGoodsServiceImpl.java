@@ -3628,7 +3628,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 老 prd_spec_template 里的模板（商家自存 + 品类兜底）没有主维度这个概念 ——
         // 主维度是类目绑定上的判据，这条路根本不经过绑定表
         return new SpecTemplateVO(t.getTemplateNo(), t.getScope(), t.getCategoryType(),
-                t.getCategoryNo(), t.getName(), options, t.getEntityNo(), false);
+                t.getCategoryNo(), t.getName(), options, t.getEntityNo(), false, null);
     }
 
     private String writeSpecGroups(List<SpecGroup> groups) {

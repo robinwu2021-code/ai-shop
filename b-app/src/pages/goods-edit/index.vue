@@ -988,6 +988,7 @@ const {
   addingParam, newParam, addingValueFor, newParamValue,
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
+  isTextDim, setParamText,
 } = useGoodsParams(categoryNo);
 
 // ── 七、批量填充 ──────────────────────────────────────────────────────────
@@ -2192,6 +2193,20 @@ async function save(thenSubmit = false) {
       <view v-for="d in propDims" :key="d.templateNo" class="param">
         <text class="txt-sub param__k">{{ d.name }}</text>
         <!--
+          **TEXT 维度（配料 / 厂名厂址 / SC / 执行标准）直接填一行字**，不走选值 chip。
+          这几项每件商品几乎唯一，枚举它们只会污染平台值池 —— 填的字直接成为 label、
+          不入池（见 params.ts#setParamText）。单位靠 maxlength 放宽到 120：
+          配料表与厂址都比产地长。
+        -->
+        <input
+          v-if="isTextDim(d)"
+          maxlength="120"
+          class="txt-body param__text"
+          :value="paramValues[d.templateNo]?.label || ''"
+          :placeholder="String($t('goods.paramTextPlaceholder'))"
+          @input="setParamText(d, String(($event as any).detail.value))"
+        />
+        <!--
           **「＋ 加值」永远在**，不是只在一个候选都没有的时候才出现。
           平台给这一类配的那几个值是起点不是上限：产地列着本地/国产/进口，
           而他这批菜就是云南来的。上一版只在空列表时给入口 ——
@@ -2203,7 +2218,7 @@ async function save(thenSubmit = false) {
           <p>填的东西**落进规格库拿编号**（见 confirmParamValue），
           不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
         -->
-        <view class="param__opts sh-wrap">
+        <view v-else class="param__opts sh-wrap">
           <text
             v-for="o in d.options"
             :key="o.code || o.label"

@@ -520,7 +520,9 @@ public class BizGoodsController {
                         .map(v -> new ai.neargo.shop.product.dto.SpecTemplateVO.Option(v.code(), v.label()))
                         .toList(),
                 // 自建维度不是主维度：主维度是类目绑定上的判据，商家自建的没有绑定
-                BizContext.requireMerchantNo(), false);
+                BizContext.requireMerchantNo(), false,
+                // 自建维度走枚举 chip（端上照旧选值）—— TEXT 是平台合规维度的专属性质
+                ai.neargo.shop.product.entity.PrdSpecDim.ENUM);
     }
 
     /** @param code 平台值有码，自有值暂时没有（提升为平台值时才发） */

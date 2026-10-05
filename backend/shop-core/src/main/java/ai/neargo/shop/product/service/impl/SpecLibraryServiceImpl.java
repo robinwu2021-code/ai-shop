@@ -213,7 +213,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
                     // 本店叫法优先 —— 只换展示，dimNo 不变，跨店聚合照常
                     ov.dimLabel(dim.getDimNo(), dim.getName()),
-                    options, null, Boolean.TRUE.equals(b.getIsPrimary())));
+                    options, null, Boolean.TRUE.equals(b.getIsPrimary()), dim.getValueType()));
         }
         /*
          * **他自己加进来的规格**：类目没绑，但他在「我的规格」里加了。
@@ -260,7 +260,8 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             out.add(new SpecTemplateVO(dim.getDimNo(), dim.getScope(),
                     categoryService.categoryTypeOf(categoryNo), categoryNo,
                     ov.dimLabel(dim.getDimNo(), dim.getName()), options,
-                    PrdSpecDim.MERCHANT.equals(dim.getScope()) ? merchantNo : null, false));
+                    PrdSpecDim.MERCHANT.equals(dim.getScope()) ? merchantNo : null, false,
+                    dim.getValueType()));
         }
 
         /*
@@ -450,7 +451,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
             }
             // categoryNo 传 null：它不是「这一类目的」，端上靠这个分组
             out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.PLATFORM, null, null,
-                    dim.getName(), options, null, false));
+                    dim.getName(), options, null, false, dim.getValueType()));
             seen.add(dim.getDimNo());
         }
 
@@ -470,7 +471,7 @@ public class SpecLibraryServiceImpl implements SpecLibraryService {
                 continue;
             }
             out.add(new SpecTemplateVO(dim.getDimNo(), PrdSpecDim.MERCHANT, null, null,
-                    dim.getName(), optionsOf(merchantNo, dim, List.of()), merchantNo, false));
+                    dim.getName(), optionsOf(merchantNo, dim, List.of()), merchantNo, false, dim.getValueType()));
         }
         return out;
     }

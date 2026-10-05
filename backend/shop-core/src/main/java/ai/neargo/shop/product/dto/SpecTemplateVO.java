@@ -27,7 +27,15 @@ public record SpecTemplateVO(String templateNo, String scope, String categoryTyp
                               * 排序规则一改，端上跟着错，而症状是「自动建出来的是包装不是重量」，
                               * 没有任何一处会报错。判据在哪就从哪下发。
                               */
-                             boolean primary) {
+                             boolean primary,
+                             /**
+                              * 取值类型 ENUM / QUANT / TEXT；<b>null 视同 ENUM</b>（legacy 模板那条路没有）。
+                              *
+                              * <p>端上靠它分流录入方式：TEXT 渲染文本输入框、值直接成为 label 不入平台值池；
+                              * ENUM/QUANT 照旧走选值。不下发的话 TEXT 维度在建品页只能当 chip 选 ——
+                              * 而它一个候选值都没有，于是看起来「平台没配」，合规字段无处可填。
+                              */
+                             String valueType) {
 
     /** @param code 来自平台模板的有值，手输的没有。一期只存不用，二期做规格聚合要靠它 */
     public record Option(String code, String label) {

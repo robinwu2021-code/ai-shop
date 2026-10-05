@@ -226,6 +226,31 @@ export function useGoodsParams(categoryNo: Ref<string>) {
     return n;
   }
 
+  /**
+   * **TEXT 维度**：配料 / 厂名厂址 / 生产许可证 / 执行标准这类每件商品几乎唯一的字段。
+   *
+   * <p>它们不走值池——入池只会堆满永不复用的唯一串，而养值池的理由是跨店聚合，
+   * 唯一串聚不起来（后端 `PrdSpecDim.TEXT` 的注释写着同一条）。所以这里**不调
+   * `mAddSpecValue`、不拿 code**，填的字直接成为参数 label，保存时整存进
+   * `prd_goods.params[].label`（后端保存链路按 label 存、不校验 valueNo）。
+   */
+  function isTextDim(dim: SpecTemplate): boolean {
+    return dim.valueType === "TEXT";
+  }
+
+  /** TEXT 维度填一行字：空字符串 = 删掉这一项（与 chip 再点一次取消同一口径）。 */
+  function setParamText(dim: SpecTemplate, text: string) {
+    const label = (text ?? "").trim();
+    const next = { ...paramValues.value };
+    if (!label) {
+      delete next[dim.templateNo];
+    } else {
+      // 不带 code：TEXT 维度不入池，code 留空正是「这是快照、不是库里一档」的标记
+      next[dim.templateNo] = { dimNo: dim.templateNo, name: dim.name, label };
+    }
+    paramValues.value = next;
+  }
+
   /** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
   function pickParam(dim: SpecTemplate, o: SpecOption) {
     const cur = paramValues.value[dim.templateNo];
@@ -254,5 +279,6 @@ export function useGoodsParams(categoryNo: Ref<string>) {
     addingParam, newParam, addingValueFor, newParamValue,
     paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
     paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
+    isTextDim, setParamText,
   };
 }
