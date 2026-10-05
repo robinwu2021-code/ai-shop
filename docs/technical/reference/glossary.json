@@ -32573,6 +32573,18 @@
         "module": "shop-app"
       },
       {
+        "name": "TraceStatus",
+        "values": [
+          "PICKED",
+          "IN_TRANSIT",
+          "SIGNED",
+          "EXCEPTION",
+          "UNKNOWN"
+        ],
+        "zh": "统一的物流状态（TDD-圆通物流直连 §5）。",
+        "module": "shop-base"
+      },
+      {
         "name": "TriggerType",
         "values": [
           "CRON",
