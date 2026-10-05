@@ -388,6 +388,11 @@ export default {
     orPhone: "或用手机号登录",
     phone: "手机号",
     otp: "验证码",
+    // 换一种方式那一行的文案（C-AC-08）。labelKey 来自 ports/auth 的策略，
+    // 这两条此前策略里指着、而 c-app 的词条里没有 —— 密码方式一直没被渲染过，所以没露出来
+    byPhone: "用手机验证码登录",
+    byPassword: "用密码登录",
+    passwordPlaceholder: "登录密码",
     submit: "登录 / 注册",
     submitting: "登录中…",
     success: "登录成功",

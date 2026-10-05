@@ -8,20 +8,53 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { loginMethods, type LoginMethod } from "@shared/ports/auth";
+import type { GrantType } from "@shared/types";
 import { api } from "@/api";
 import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const user = useUserStore();
 const phone = ref("");
+/**
+ * 那一格填的东西。
+ *
+ * <p>验证码与密码**共用一个 ref**，而切换方式时要清空 ——
+ * 不清的话用户填了验证码再切到密码，输入框里那 6 位数字会被当成密码提交，
+ * 而他看到的只是「密码错误」。
+ */
 const otp = ref("");
 const loading = ref(false);
 
-const methods = loginMethods();
+/*
+ * `withPassword: true` 打开密码登录（C-AC-08）。
+ *
+ * <p><b>这个开关此前没人打开</b>：后端的密码登录（GRANT_PASSWORD、
+ * usr_identity 的 PASSWORD 凭证、按手机号限流防撞库）整条链早就通了，
+ * 而这一行调的是不带参的 loginMethods() —— 于是密码方式压根不在返回列表里。
+ * 「能设密码」而「设了登不进来」就是一个没人读的配置屏。
+ */
+const methods = loginMethods({ withPassword: true });
 /** 免输入的快捷方式（微信）。小程序上有，H5 上为空数组 */
 const quickMethods = computed(() => methods.filter((m) => !m.needsPhone));
-/** 手机号 OTP：全端都有，小程序上是兜底 */
-const phoneMethod = computed(() => methods.find((m) => m.needsPhone));
+/**
+ * 要手机号的方式 —— 验证码与密码**都是**。
+ *
+ * <p>此前这里是 `.find()`，只认一个。那时列表里也只有一个，所以看不出问题；
+ * 一旦多出密码方式，`.find()` 会静默只渲染第一个，而页面上没有任何痕迹
+ * （这正是 ports/auth 里「页面按它返回什么就渲染什么」要防的那件事）。
+ */
+const phoneMethods = computed(() => methods.filter((m) => m.needsPhone));
+/** 当前选中的那一种。默认第一个 —— 验证码永远在前，它不需要先设过什么 */
+const phoneKind = ref<GrantType | "">("");
+const phoneMethod = computed(
+  () => phoneMethods.value.find((m) => m.id === phoneKind.value) ?? phoneMethods.value[0],
+);
+/** 另一种（用来渲染「改用…登录」那一行）。只有一种时为 undefined */
+const otherMethod = computed(
+  () => phoneMethods.value.find((m) => m.id !== phoneMethod.value?.id),
+);
+/** 当前这一格填的是密码还是验证码 —— 决定输入框类型、文案、要不要「发送」按钮 */
+const byPassword = computed(() => phoneMethod.value?.id === "PASSWORD");
 
 /**
  * 手机号表单展不展开。
@@ -120,6 +153,17 @@ function goBackAfterLogin() {
   uni.navigateBack();
 }
 
+/**
+ * 换一种方式（验证码 ↔ 密码）。
+ *
+ * <p>**切换时清掉那一格**：不清的话用户填的 6 位验证码会被当成密码提交，
+ * 而他看到的只是「密码错误」—— 一句与真实原因毫无关系的话。
+ */
+function switchPhoneKind(to: LoginMethod) {
+  phoneKind.value = to.id;
+  otp.value = "";
+}
+
 async function doLogin(method: LoginMethod) {
   // 只有要手机号的方式才校验手机号 —— 微信登录不需要，此前的写法会拦住它
   if (method.needsPhone && !isPhone(phone.value)) {
@@ -186,7 +230,12 @@ async function doLogin(method: LoginMethod) {
           :placeholder="$t('login.phone')"
           maxlength="11"
         />
-        <view class="otp-row sh-row">
+        <!--
+          验证码与密码共用这一格，但**不是同一个输入框**：
+          v-if 分开写而不是把 type / maxlength 绑成表达式 —— 后者在小程序上
+          切 type 时不重建节点，已输入的值会留在里面（而那正好是要清掉的东西）。
+        -->
+        <view v-if="!byPassword" class="otp-row sh-row">
           <input
             v-model="otp"
             class="txt-body login__field sh-fill"
@@ -198,6 +247,22 @@ async function doLogin(method: LoginMethod) {
             {{ left > 0 ? $t("login.resend", { s: left }) : $t("login.sendOtp") }}
           </text>
         </view>
+        <input
+          v-else
+          v-model="otp"
+          class="txt-body login__field"
+          password
+          :placeholder="$t('login.passwordPlaceholder')"
+          maxlength="32"
+        />
+      </view>
+
+      <!--
+        换一种方式。只有一种时整行不渲染 —— 「切换」在只有一个选项时
+        是一行每次都要看一眼、而永远点不出任何变化的字。
+      -->
+      <view v-if="otherMethod" class="switch2" @tap="switchPhoneKind(otherMethod)">
+        <text class="txt-sub switch__text txt-primary">{{ $t(otherMethod.labelKey) }}</text>
       </view>
 
       <view class="sh-btn submit" :class="{ 'is-loading': loading }" @tap="doLogin(phoneMethod)">
@@ -239,6 +304,16 @@ async function doLogin(method: LoginMethod) {
 
 .switch {
   margin: 32rpx 0 8rpx;
+  padding: 16rpx;
+  text-align: center;
+}
+
+/*
+ * 「换一种方式」那一行。比上面那个 .switch 的上边距小一半 ——
+ * 它紧跟在表单下面，属于同一组；.switch 隔开的是两种登录入口。
+ */
+.switch2 {
+  margin: 16rpx 0 0;
   padding: 16rpx;
   text-align: center;
 }

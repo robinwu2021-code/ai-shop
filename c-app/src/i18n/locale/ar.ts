@@ -358,6 +358,11 @@ export default {
     orPhone: "أو استخدم رقم جوالك",
     phone: "رقم الجوال",
     otp: "رمز التحقق",
+    // 换一种方式那一行的文案（C-AC-08）。labelKey 来自 ports/auth 的策略，
+    // 这两条此前策略里指着、而 c-app 的词条里没有 —— 密码方式一直没被渲染过，所以没露出来
+    byPhone: "الدخول برمز التحقق",
+    byPassword: "الدخول بكلمة المرور",
+    passwordPlaceholder: "كلمة المرور",
     submit: "تسجيل الدخول",
     submitting: "جارٍ تسجيل الدخول…",
     success: "تم تسجيل الدخول",
