@@ -9578,6 +9578,9 @@ components:
             - "number"
             - "null"
           description: "社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。"
+        trace: 
+          "$ref": "#/components/schemas/ShipmentTrace"
+          description: "物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。"
       required: 
         - "orderNo"
         - "status"
@@ -9722,6 +9725,43 @@ components:
         - "pointsRevoke"
       additionalProperties: false
       description: "整单退款会一并退回的券与积分（后端 `AfterSaleVO.RefundImpact`）"
+    ShipmentTrace: 
+      type: "object"
+      properties: 
+        status: 
+          "$ref": "#/components/schemas/ShipmentStatus"
+        nodes: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ShipmentTraceNode"
+      required: 
+        - "status"
+        - "nodes"
+      additionalProperties: false
+      description: "物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）"
+    ShipmentStatus: 
+      type: "string"
+      enum: 
+        - "CREATED"
+        - "PICKED_UP"
+        - "IN_TRANSIT"
+        - "DELIVERED"
+        - "EXCEPTION"
+      description: "运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功"
+    ShipmentTraceNode: 
+      type: "object"
+      properties: 
+        at: 
+          type: "number"
+        text: 
+          type: "string"
+        location: 
+          type: "string"
+      required: 
+        - "at"
+        - "text"
+      additionalProperties: false
+      description: "一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有"
     GoodsBatch: 
       type: "object"
       properties: 

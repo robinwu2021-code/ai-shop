@@ -3856,6 +3856,12 @@
           "ar": "تفاصيل الطلب"
         },
         {
+          "key": "order.trace",
+          "zh-CN": "物流轨迹",
+          "en": "Tracking",
+          "ar": "تتبع الشحنة"
+        },
+        {
           "key": "order.weighAdjust",
           "zh-CN": "称重差价",
           "en": "Weight adjustment",
@@ -13452,6 +13458,12 @@
           "zh-CN": "订单",
           "en": "Orders",
           "ar": "الطلبات"
+        },
+        {
+          "key": "order.trace",
+          "zh-CN": "物流轨迹",
+          "en": "Tracking",
+          "ar": "تتبع الشحنة"
         },
         {
           "key": "order.trafficMERCHANT_OWNED",
@@ -34581,6 +34593,18 @@
           "EXCEPTION"
         ],
         "zh": "快递状态。"
+      },
+      {
+        "name": "ShipmentStatus",
+        "client": "shared",
+        "values": [
+          "CREATED",
+          "PICKED_UP",
+          "IN_TRANSIT",
+          "DELIVERED",
+          "EXCEPTION"
+        ],
+        "zh": "运单状态（与后端 `ful_shipment` 一致）。"
       },
       {
         "name": "SkinGroup",
