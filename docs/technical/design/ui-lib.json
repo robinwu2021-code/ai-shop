@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 400,
-        "c-app": 76
+        "c-app": 81
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 346,
-        "c-app": 267
+        "c-app": 273
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 43,
-        "c-app": 42
+        "c-app": 45
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 100,
-        "c-app": 89
+        "c-app": 90
       }
     },
     {
@@ -660,7 +660,7 @@
       },
       "usage": {
         "b-app": 158,
-        "c-app": 29
+        "c-app": 33
       }
     },
     {
@@ -684,7 +684,7 @@
       },
       "usage": {
         "b-app": 57,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -1018,7 +1018,7 @@
       },
       "usage": {
         "b-app": 112,
-        "c-app": 13
+        "c-app": 14
       }
     },
     {
@@ -1404,7 +1404,7 @@
       },
       "usage": {
         "b-app": 149,
-        "c-app": 88
+        "c-app": 89
       }
     },
     {
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 542,
-        "c-app": 192
+        "c-app": 200
       }
     },
     {
@@ -1472,7 +1472,7 @@
       },
       "usage": {
         "b-app": 313,
-        "c-app": 94
+        "c-app": 98
       }
     },
     {
@@ -2208,7 +2208,7 @@
       ],
       "usage": {
         "b-app": 20,
-        "c-app": 0,
+        "c-app": 3,
         "lib": 0
       },
       "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
@@ -2544,7 +2544,7 @@
       ],
       "usage": {
         "b-app": 84,
-        "c-app": 39,
+        "c-app": 40,
         "lib": 1
       },
       "note": "页面外壳",
@@ -5032,9 +5032,9 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 22,
-      "localSelectors": 14,
-      "localCssLines": 57,
+      "libClassHits": 25,
+      "localSelectors": 15,
+      "localCssLines": 62,
       "rolled": []
     },
     {
@@ -5048,9 +5048,31 @@
         "sh-theme-sheet"
       ],
       "libClassHits": 128,
-      "localSelectors": 25,
-      "localCssLines": 105,
+      "localSelectors": 26,
+      "localCssLines": 110,
       "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "me/profile",
+      "key": "c-app/me/profile",
+      "file": "c-app/src/pages/me/profile/index.vue",
+      "components": [
+        "sh-go",
+        "sh-scaffold"
+      ],
+      "libClassHits": 31,
+      "localSelectors": 5,
+      "localCssLines": 22,
+      "rolled": [
+        {
+          "id": "uploader",
+          "label": "图片上传格",
+          "lib": "sh-uploader",
+          "rule": "pickImages\\(|chooseImages\\(",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5716,13 +5738,23 @@
       "pages": [
         "c-app/merchant"
       ]
+    },
+    {
+      "id": "uploader",
+      "label": "图片上传格",
+      "lib": "sh-uploader",
+      "gap": false,
+      "rule": "pickImages\\(|chooseImages\\(",
+      "pages": [
+        "c-app/me/profile"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
     "blocks": 81,
     "components": 37,
-    "pages": 150,
+    "pages": 151,
     "gapKinds": 2
   }
 }

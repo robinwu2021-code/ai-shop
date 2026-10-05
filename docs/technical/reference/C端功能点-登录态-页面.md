@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**109 个功能点**，其中 **34 个游客可用**；**8 个没有任何页面调用**。
+统计：**113 个功能点**，其中 **34 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -131,12 +131,16 @@
 | `saveAddress` | `POST /mp/user/address` | 是 | (components)/biz | — |
 | `removeAddress` | `POST /mp/user/address/:addressId/archive` | 是 | address | — |
 | `setDefaultAddress` | `POST /mp/user/address/:addressId/default` | 是 | address | — |
+| `uploadAvatar` | `POST /mp/user/avatar` | 是 | me/profile | — |
 | `bindCommunity` | `POST /mp/user/community` | 是 | (stores) | — |
 | `deregister` | `POST /mp/user/deregister` | 是 | me | — |
 | `login` | `POST /mp/user/login` | 游客 | (stores) | — |
 | `logout` | `POST /mp/user/logout` | 是 | (stores) | — |
 | `sendOtp` | `POST /mp/user/otp/send` | 是 | (components) · login | — |
+| `setPassword` | `POST /mp/user/password` | 是 | me/profile | — |
+| `passwordState` | `GET /mp/user/password` | 是 | me/profile | — |
 | `bindPhone` | `POST /mp/user/phone/bind` | 是 | (components) | — |
 | `phoneCapable` | `GET /mp/user/phone/capable` | 游客 | (components) | — |
 | `bindPhoneByWx` | `POST /mp/user/phone/wx` | 是 | (components) | — |
 | `profile` | `GET /mp/user/profile` | 是 | (stores) | — |
+| `updateProfile` | `POST /mp/user/profile` | 是 | me/profile | — |

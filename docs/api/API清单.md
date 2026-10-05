@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 799 个接口**：后端已实现 723（90%）· 前端在调 723
+**合计 803 个接口**：后端已实现 727（91%）· 前端在调 727
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **108** 个接口 ｜ 后端已实现 **107**（99%）｜ 前端在调 **108**
+共 **112** 个接口 ｜ 后端已实现 **111**（99%）｜ 前端在调 **112**
 
 ### after-sale（4）
 
@@ -239,7 +239,7 @@
 | GET | `/mp/store/mine` | 我的店：买过的 + 近期逛过的门店 | — | `数组` | — | ✅ | ✅ |
 | GET | `/mp/store/nearby` | 附近的门店（去掉我的店） | — | `object` | — | ✅ | ✅ |
 
-### user（15）
+### user（19）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -249,15 +249,19 @@
 | POST | `/mp/user/address` | 新增/编辑地址 | `SaveAddressReq` | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/address/{addressId}/archive` | 删除地址（软删除） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/address/{addressId}/default` | 设为默认地址 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/avatar` | 上传头像并落到账号上 | — | `User` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/community` | 绑定社区自提点 | `BindCommunityReq` | `User` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/deregister` | 注销账号（匿名化 + 解绑凭证，交易记录留存） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/login` | 登录建户 | `LoginReqBody` | `LoginResp` | — | ✅ | ✅ |
 | POST | `/mp/user/logout` | 登出（作废服务端会话） | — | — | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/otp/send` | 发送验证码 | — | — | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/password` | 设置 / 修改登录密码 | `SetPasswordReq` | — | 🔒 | ✅ | ✅ |
+| GET | `/mp/user/password` | 密码状态（设过没有 / 现在能不能设） | — | `PasswordState` | 🔒 | ✅ | ✅ |
 | POST | `/mp/user/phone/bind` | 绑定手机号（验证码） | `BindPhoneReq` | `User` | 🔒 | ✅ | ✅ |
 | GET | `/mp/user/phone/capable` | 一键授权当前可不可用（游客可读） | — | `PhoneCapable` | — | ✅ | ✅ |
 | POST | `/mp/user/phone/wx` | 微信一键授权绑定手机号 | `WxPhoneReq` | `User` | 🔒 | ✅ | ✅ |
 | GET | `/mp/user/profile` | 我的资料 | — | `User` | 🔒 | ✅ | ✅ |
+| POST | `/mp/user/profile` | 改昵称 / 头像 | `UpdateProfileReq` | `User` | 🔒 | ✅ | ✅ |
 
 ## B 端 `/biz/**` · b-app（商家）
 

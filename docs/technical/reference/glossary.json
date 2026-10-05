@@ -2992,6 +2992,18 @@
           "ar": "تصفّح فقط"
         },
         {
+          "key": "login.byPassword",
+          "zh-CN": "用密码登录",
+          "en": "Sign in with a password",
+          "ar": "الدخول بكلمة المرور"
+        },
+        {
+          "key": "login.byPhone",
+          "zh-CN": "用手机验证码登录",
+          "en": "Sign in with a code",
+          "ar": "الدخول برمز التحقق"
+        },
+        {
           "key": "login.byWxMini",
           "zh-CN": "微信一键登录",
           "en": "Continue with WeChat",
@@ -3020,6 +3032,12 @@
           "zh-CN": "验证码已发送",
           "en": "Code sent",
           "ar": "أُرسل الرمز"
+        },
+        {
+          "key": "login.passwordPlaceholder",
+          "zh-CN": "登录密码",
+          "en": "Password",
+          "ar": "كلمة المرور"
         },
         {
           "key": "login.phone",
@@ -4454,6 +4472,108 @@
           "zh-CN": "分享到朋友圈",
           "en": "Share to Moments",
           "ar": "مشاركة في اللحظات"
+        },
+        {
+          "key": "profile.avatar",
+          "zh-CN": "头像",
+          "en": "Avatar",
+          "ar": "الصورة"
+        },
+        {
+          "key": "profile.avatarTooBig",
+          "zh-CN": "这张图太大了，换一张",
+          "en": "That image is too large. Pick another one.",
+          "ar": "هذه الصورة كبيرة جدًا. اختر صورة أخرى."
+        },
+        {
+          "key": "profile.failed",
+          "zh-CN": "没保存成功，再试一次",
+          "en": "Couldn't save. Please try again.",
+          "ar": "لم يتم الحفظ. حاول مرة أخرى."
+        },
+        {
+          "key": "profile.nickname",
+          "zh-CN": "昵称",
+          "en": "Name",
+          "ar": "الاسم"
+        },
+        {
+          "key": "profile.nicknameCta",
+          "zh-CN": "去设置昵称",
+          "en": "Set your name",
+          "ar": "عيّن اسمك"
+        },
+        {
+          "key": "profile.nicknameEmpty",
+          "zh-CN": "昵称不能为空",
+          "en": "Name cannot be empty",
+          "ar": "لا يمكن أن يكون الاسم فارغًا"
+        },
+        {
+          "key": "profile.nicknamePlaceholder",
+          "zh-CN": "1–20 个字",
+          "en": "1–20 characters",
+          "ar": "من 1 إلى 20 حرفًا"
+        },
+        {
+          "key": "profile.nicknameUnset",
+          "zh-CN": "去设置",
+          "en": "Set",
+          "ar": "تعيين"
+        },
+        {
+          "key": "profile.password",
+          "zh-CN": "登录密码",
+          "en": "Password",
+          "ar": "كلمة المرور"
+        },
+        {
+          "key": "profile.passwordEdit",
+          "zh-CN": "修改",
+          "en": "Change",
+          "ar": "تغيير"
+        },
+        {
+          "key": "profile.passwordNeedPhone",
+          "zh-CN": "先绑定手机号才能设置登录密码",
+          "en": "Link a phone number first — password sign-in uses it as your account",
+          "ar": "اربط رقم هاتف أولاً — تسجيل الدخول بكلمة المرور يستخدمه كحسابك"
+        },
+        {
+          "key": "profile.passwordPlaceholder",
+          "zh-CN": "至少 6 位",
+          "en": "At least 6 characters",
+          "ar": "6 أحرف على الأقل"
+        },
+        {
+          "key": "profile.passwordSet",
+          "zh-CN": "去设置",
+          "en": "Set",
+          "ar": "تعيين"
+        },
+        {
+          "key": "profile.passwordSharedHint",
+          "zh-CN": "登录密码在商家端登录时也用它 —— 在哪一端改都是改同一个。",
+          "en": "The same password signs you in on the merchant app. Changing it in either place changes both.",
+          "ar": "نفس كلمة المرور تُستخدم لتسجيل الدخول في تطبيق التاجر. تغييرها في أي مكان يغيّرها في كليهما."
+        },
+        {
+          "key": "profile.phone",
+          "zh-CN": "手机号",
+          "en": "Phone",
+          "ar": "رقم الهاتف"
+        },
+        {
+          "key": "profile.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "profile.title",
+          "zh-CN": "个人资料",
+          "en": "Profile",
+          "ar": "الملف الشخصي"
         },
         {
           "key": "promo.buyNGetM",
@@ -24021,6 +24141,12 @@
           "ar": "لم تُعيَّن كلمة مرور لهذا الحساب — سجّل الدخول برمز أولًا ثم عيّنها من صفحة حسابي"
         },
         {
+          "key": "err.password.phone_required",
+          "zh-CN": "先绑定手机号才能设置登录密码 —— 密码登录要用手机号作为账号",
+          "en": "Link a phone number first. Password sign-in uses your phone number as the account.",
+          "ar": "اربط رقم هاتف أولاً. تسجيل الدخول بكلمة المرور يستخدم رقم هاتفك كحساب."
+        },
+        {
           "key": "err.pay.channel_unavailable",
           "zh-CN": "收款通道还没接通，请联系平台开通后再提交（不是你填的资料有问题）",
           "en": "Payouts are not connected yet — contact the platform. Nothing is wrong with what you filled in.",
@@ -32162,6 +32288,13 @@
         "module": "shop-store-mybatis"
       },
       {
+        "host": "SysMediaAsset",
+        "name": "AVATAR",
+        "value": "AVATAR",
+        "zh": "C 端用户头像，公开读（C-AC-08）。",
+        "module": "shop-store-mybatis"
+      },
+      {
         "host": "SysMediaPurgeBatch",
         "name": "QUEUED",
         "value": "QUEUED",
@@ -32260,6 +32393,7 @@
           "OTP_LOCKED",
           "OTP_INVALID",
           "PHONE_ALREADY_BOUND",
+          "PHONE_REQUIRED_FOR_PASSWORD",
           "ADDRESS_PHONE_FORMAT",
           "OTP_TEST_PHONE_EXISTS_ACCOUNT",
           "OTP_TEST_PHONE_LIMIT",
@@ -34251,7 +34385,8 @@
           "/pages/home/index",
           "/pages/category/index",
           "/pages/cart/index",
-          "/pages/me/index"
+          "/pages/me/index",
+          "/pages/me/profile/index"
         ],
         "zh": ""
       },
@@ -36858,6 +36993,14 @@
       "module": "shop-core"
     },
     {
+      "host": "UsrAccount",
+      "name": "DEFAULT_NICKNAME",
+      "type": "String",
+      "value": "\"微信用户\"",
+      "zh": "建户时给的占位昵称。",
+      "module": "shop-core"
+    },
+    {
       "host": "UsrStoreView",
       "name": "SOURCES",
       "type": "java.util.Set<String>",
@@ -36978,11 +37121,27 @@
       "module": "shop-store-mybatis"
     },
     {
+      "host": "ImageProbe",
+      "name": "ALLOWED_EXT",
+      "type": "Set<String>",
+      "value": "Set.of(\"jpg\", \"jpeg\", \"png\", \"webp\", \"gif\")",
+      "zh": "允许的后缀。",
+      "module": "shop-store-mybatis"
+    },
+    {
       "host": "SysMediaAsset",
       "name": "ENTITY_SCOPE",
       "type": "String",
       "value": "\"_ENTITY\"",
       "zh": "storeNo 的哨兵值：这份资产属于经营主体，不属于任何一家门店。",
+      "module": "shop-store-mybatis"
+    },
+    {
+      "host": "SysMediaAsset",
+      "name": "USER_SCOPE",
+      "type": "String",
+      "value": "\"_USER\"",
+      "zh": "entityNo 与 storeNo 的哨兵值：这份资产属于一个 C 端用户， 不属于任何经营主体，也不属于任何门店。",
       "module": "shop-store-mybatis"
     }
   ],
