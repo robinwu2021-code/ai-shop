@@ -275,6 +275,8 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     expiringIn: "ينتهي خلال {n} يومًا",
   },
   goods: {
+    importZip: "استيراد .zip",
+    zipTxtFound: "عُثر على نص في الملف، أُضيف إلى الحقل",
     saleMode: "طريقة البيع",
     saleNormal: "بيع عادي",
     saleActivityOnly: "للعروض فقط",

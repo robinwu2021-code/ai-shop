@@ -356,6 +356,8 @@ export default {
     expiringIn: "{n} 天后到期",
   },
   goods: {
+    importZip: "导入压缩包",
+    zipTxtFound: "压缩包里有商品文字，已带入识别框",
     saleMode: "销售方式",
     saleNormal: "正常售卖",
     saleActivityOnly: "仅活动",

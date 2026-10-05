@@ -275,6 +275,8 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     expiringIn: "expires in {n} days",
   },
   goods: {
+    importZip: "Import .zip",
+    zipTxtFound: "Text found in the zip, added to the box",
     saleMode: "Sales",
     saleNormal: "Regular",
     saleActivityOnly: "Promo only",

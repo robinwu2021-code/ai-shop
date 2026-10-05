@@ -558,7 +558,7 @@ const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
  */
 const {
   cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
-  addImages, removePhoto, setCoverAt, tapPhoto,
+  addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
   addDetailImages, removeDetailImage, moveDetailImage, recognizeInto,
 } = useGoodsPhotos((guess) => applyGuess(guess));
 
@@ -686,6 +686,14 @@ const generating = ref(false);
  *
  * <p>**覆盖前先问**：他可能已经写了几行，一键抹掉没有撤销。
  */
+async function onImportZip() {
+  // 导入压缩包：批量填图。带回的 txt 先回填到文字识别框（文字识别那条链后续接）
+  const txt = await importFromZip();
+  if (txt) {
+    uni.showToast({ title: String(t("goods.zipTxtFound")), icon: "none" });
+  }
+}
+
 async function genDetail() {
   if (generating.value) return;
   if (!title.value["zh-CN"].trim()) {
@@ -1442,6 +1450,11 @@ async function save(thenSubmit = false) {
           <text class="sh-muted imgs__n">
             {{ $t("goods.imagesCount", { n: photos.length, m: PHOTO_LIMIT }) }}
           </text>
+          <!-- #ifdef APP-PLUS -->
+          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onImportZip">
+            {{ $t("goods.importZip") }}
+          </text>
+          <!-- #endif -->
         </view>
         <sh-uploader
           :list="photos"

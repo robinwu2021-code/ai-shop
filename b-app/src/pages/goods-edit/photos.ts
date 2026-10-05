@@ -12,6 +12,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
+import { importZipMedia } from "@/ports/zip-import";
 import { pick } from "@ai-shop/ui/prompt";
 import type { GoodsGuess } from "@/api/contract";
 
@@ -218,9 +219,51 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
     await onGuess(guess);
   }
 
+  /**
+   * 从压缩包批量导入：主图进 images（首张=封面），详情进 detailImages，各按序号。
+   * 超过上限（7/10）截断并提示。解压/分类已在 zip-import + zip-media 处理好，
+   * 这里只负责逐张上传——走的还是 mUploadImage，后端一条校验都不绕。
+   * 返回带回的 txt 本地路径（没有则 undefined），文字识别那条链由页面处理。
+   */
+  async function importFromZip(): Promise<string | undefined> {
+    if (uploading.value) return undefined;
+    let media: Awaited<ReturnType<typeof importZipMedia>>;
+    try {
+      media = await importZipMedia();
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg !== "已取消") uni.showToast({ title: msg || "导入失败", icon: "none" });
+      return undefined;
+    }
+    uploading.value = true;
+    try {
+      const mainRoom = PHOTO_LIMIT - photos.value.length;
+      for (const path of media.main.slice(0, Math.max(0, mainRoom))) {
+        try {
+          const { url } = await api.mUploadImage(path);
+          images.value = [...images.value, url];
+          if (!cover.value) cover.value = url;
+        } catch { /* 单张失败跳过，不中断整批 */ }
+      }
+      const detailRoom = DETAIL_IMAGE_LIMIT - detailImages.value.length;
+      for (const path of media.detail.slice(0, Math.max(0, detailRoom))) {
+        try {
+          const { url } = await api.mUploadImage(path);
+          detailImages.value = [...detailImages.value, url];
+        } catch { /* 跳过 */ }
+      }
+      if (media.main.length > mainRoom || media.detail.length > detailRoom) {
+        uni.showToast({ title: t("goods.imageLimit", { n: PHOTO_LIMIT }), icon: "none" });
+      }
+    } finally {
+      uploading.value = false;
+    }
+    return media.txt;
+  }
+
   return {
     cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
-    addImages, removePhoto, setCoverAt, tapPhoto,
+    addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
     addDetailImages, removeDetailImage, moveDetailImage, recognizeInto,
   };
 }
