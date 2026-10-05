@@ -259,6 +259,8 @@ export interface CreateOrderReqBody {
    * 不传 = 与改造前相同；指定的店暂停营业时回 20008
    */
   storeChoices?: StoreChoice[];
+  /** 逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId */
+  addressChoices?: { merchantNo: string; addressId: string }[];
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /**

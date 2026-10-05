@@ -588,9 +588,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 </template>
 
 <style scoped>
-.st-entity {
-  margin-bottom: 20rpx;
-}
 .st-entity__name {
   display: block;
   margin-top: 4rpx;
