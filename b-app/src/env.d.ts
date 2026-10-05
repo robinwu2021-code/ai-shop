@@ -16,3 +16,6 @@ declare module "*.vue" {
   const component: DefineComponent<{}, {}, any>;
   export default component;
 }
+
+/** vite define 注入的构建版本号（versionName · 构建时刻），见 vite.config.mts */
+declare const __BUILD_VERSION__: string;

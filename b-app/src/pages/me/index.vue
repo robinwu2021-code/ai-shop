@@ -14,6 +14,8 @@ import { prompt } from "@ai-shop/ui/prompt";
 const { t } = useI18n();
 const merchant = useMerchantStore();
 const sheetOpen = ref(false);
+/** 构建版本号（vite define 注入，versionName · 构建时刻）：回答「装的是不是刚传的那一版」。见 vite.config.mts */
+const buildVersion = __BUILD_VERSION__;
 const plan = ref<MerchantPlan | null>(null);
 
 /** 额度用完：这一行的数字转警示色 —— 它是升档的第一次提示，也是最自然的那一次 */
@@ -330,6 +332,14 @@ onShow(() => {
       <view class="sh-cell sh-row sh-row--between" @tap="later">
         <text class="txt-body cell__label">{{ $t("me.help") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!--
+        版本信息。不可点、无箭头 —— 它是信息不是入口。带构建时刻是为了回答联调时
+        反复出现的那个问题：「我手上这份是不是刚传的那一版」。见 vite.config.mts。
+      -->
+      <view class="sh-cell sh-row sh-row--between">
+        <text class="txt-body cell__label">{{ $t("me.version") }}</text>
+        <text class="txt-caption cell__value sh-num">{{ buildVersion }}</text>
       </view>
     </view>
 

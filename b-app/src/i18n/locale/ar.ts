@@ -2131,6 +2131,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     staff: "الموظفون",
     income: "الدخل",
     settle: "كشف التسوية", stats: "بيانات الأعمال", help: "مساعدة التجار", logout: "تسجيل الخروج",
+    version: "الإصدار",
     notLogin: "غير مسجّل", notLoginHint: "سجّل الدخول لإدارة متجرك",
     loggedOut: "تم تسجيل الخروج",
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",

@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import uniModule from "@dcloudio/vite-plugin-uni";
 import UnoCSS from "unocss/vite";
@@ -7,7 +8,24 @@ import UnoCSS from "unocss/vite";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const uni = ((uniModule as any).default ?? uniModule) as () => any;
 
+/*
+ * 构建版本号：**versionName + 构建时刻**，注入成 `__BUILD_VERSION__`，显示在「我的」页尾。
+ * 与 c-app 同构：只用 versionName 的话忘了改就恒不变，而这个数存在的意义是回答
+ * 「我手上这份是不是刚传的那一版」——带上构建时刻每次都不同，答错不了。真源是 manifest.json。
+ */
+const MANIFEST = fileURLToPath(new URL("./src/manifest.json", import.meta.url));
+const VERSION_NAME =
+  /"versionName"\s*:\s*"([^"]+)"/.exec(readFileSync(MANIFEST, "utf8"))?.[1] ?? "0.0.0";
+// 北京时间 MMDD-HHmm：构建机时区不定，按 UTC+8 自己算
+const D = new Date(Date.now() + 8 * 3600 * 1000);
+const pad = (n: number) => String(n).padStart(2, "0");
+const BUILD_STAMP =
+  `${pad(D.getUTCMonth() + 1)}${pad(D.getUTCDate())}-${pad(D.getUTCHours())}${pad(D.getUTCMinutes())}`;
+
 export default defineConfig({
+  define: {
+    __BUILD_VERSION__: JSON.stringify(`${VERSION_NAME} · ${BUILD_STAMP}`),
+  },
   // 两端各自独立部署在自己的域名根路径下（ADR-008 §5）。
   // 这个开关只为「非要挂在某个子路径下」的场景保留 —— 但**别再用它把两端合到同一域名**：
   // 同源会让两端共用 localStorage（登录态、皮肤、mock 数据库全串在一起）
