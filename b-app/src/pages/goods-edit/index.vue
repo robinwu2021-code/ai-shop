@@ -40,7 +40,6 @@ import { confirm, pick, prompt } from "@ai-shop/ui/prompt";
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-
 /**
  * 多语言 / 多市场的**展示开关**（2026-08-20）。
  *
@@ -55,10 +54,8 @@ const MULTI_LANG_UI = false;
 const MULTI_MARKET_UI = false;
 
 
-
 // ── 一、货号与标准品 ────────────────────────────────────────────────────────
 //    从平台标准品填充，或自己起一个货号
-
 
 const goodsNo = ref("");
 /**
@@ -148,10 +145,8 @@ function detachStd() {
   stdTitle.value = "";
 }
 
-
 /** 勾了本店没开通的送货方式（后端 `FULFILLMENT_NOT_SUPPORTED`）。出路是去开通，不是改这一页 */
 const FULFILLMENT_NOT_SUPPORTED = 70013;
-
 
 
 /**
@@ -653,7 +648,6 @@ const {
   await Promise.all([loadTemplates(), loadPickableDims(), loadProps()]);
 });
 
-
 // ── 五、规格与详情生成 ──────────────────────────────────────────────────
 //    规格本身在 `./spec-groups.ts`，这里只留「正在回填」与图文详情生成
 /**
@@ -694,86 +688,63 @@ async function onImportZip() {
     // 已有内容不静默覆盖 —— 空则填，非空则追加（商家自己写的那段留着）
     parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
   }
-  // 导入后自动识别一次：封面已就位 → LLM 认名称/描述/参数，文字 → 价格/快递
-  if (cover.value || parseInput.value.trim()) {
+  // 导入后自动识别封面(LLM 认名称/描述/参数)；txt 回填进输入框会触发边输边识别
+  if (cover.value) {
     void runRecognize(false);
   }
 }
 
-// ── 一键识别（快速录入）：封面图走 LLM(名称/描述/参数) + 文字走规则(价格/快递/区域)
+// ── 快速录入：图片走 LLM(名称/描述/参数) + 文字边输边识别(价格/快递)
 const parseInput = ref("");
-const parsing = ref(false);
-const recognized = ref(false);   // 识别过没有 → 按钮「识别」/「重新识别」
-const parsed = ref<GoodsTextParse | null>(null);
-const showParsed = ref(false);
-const takeCarrier = ref(true);
-const takePrice = ref(true);
+const parsing = ref(false);        // 图片识别中(按钮转圈)
+const recognized = ref(false);     // 图片识别过没有 → 「识别」/「重新识别」
+const parsed = ref<GoodsTextParse | null>(null);   // 文字最近一次识别结果，屏上提示用
 
 function yuan(minor: number): string {
   return (minor / 100).toFixed(2);
 }
 
 /**
- * 一键识别。封面图有就调 LLM 认名称/类目/描述/参数（复用已部署的 recognize/describe），
- * 文字框有内容就按规则抽价格/快递/区域。名称/描述这类**非破坏性**地填（force=重新识别时覆盖）；
- * 价格/快递/区域进确认框——价格是钱，要商家过目（见 PRD §七）。
+ * 图片识别（LLM）：封面 → 名称/副标题/类目/详情/参数。**只填识别到的，没识别到的不动**。
+ * @param force 重新识别：覆盖已填的名称/副标题/详情
  */
 async function runRecognize(force = false) {
-  const hasCover = !!cover.value;
-  const hasText = !!parseInput.value.trim();
-  if (!hasCover && !hasText) {
-    uni.showToast({ title: String(t("goods.recognizeNeed")), icon: "none" });
+  if (!cover.value) {
+    uni.showToast({ title: String(t("goods.recognizeNeedImg")), icon: "none" });
     return;
   }
   parsing.value = true;
   try {
-    // 1) 封面图 → 名称/副标题/类目（LLM）
-    if (hasCover) {
-      const guess = await api.mRecognizeGoods(cover.value).catch(() => null);
-      if (guess && guess.confidence > 0) {
-        if (guess.title && (force || !title.value["zh-CN"].trim())) {
-          title.value = { ...title.value, "zh-CN": guess.title };
-          lang.value = "zh-CN";
-        }
-        if (guess.subtitle && (force || !subtitle.value["zh-CN"].trim())) {
-          subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
-        }
-        if (!categoryNo.value && guess.categoryNo && inStore(guess.categoryNo)) {
-          const path = findPath(categoryTree.value, guess.categoryNo);
-          if (path.length > 1 || (path.length === 1 && !path[0]?.children?.length)) {
-            await select(path);
-          }
-        }
+    const guess = await api.mRecognizeGoods(cover.value).catch(() => null);
+    if (guess && guess.confidence > 0) {
+      if (guess.title && (force || !title.value["zh-CN"].trim())) {
+        title.value = { ...title.value, "zh-CN": guess.title };
+        lang.value = "zh-CN";
       }
-      // 2) 封面图 → 详情正文 + 商品参数（LLM）
-      const d = await api.mDescribeGoods({
-        imageUrl: cover.value,
-        title: title.value["zh-CN"].trim(),
-        subtitle: subtitle.value["zh-CN"].trim() || undefined,
-        categoryNo: categoryNo.value || undefined,
-      }).catch(() => null);
-      if (d) {
-        applyParamPicks(d.params ?? []);
-        if (d.detail.trim() && (force || !detail.value.trim())) {
-          detail.value = d.detail;
+      if (guess.subtitle && (force || !subtitle.value["zh-CN"].trim())) {
+        subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
+      }
+      if (!categoryNo.value && guess.categoryNo && inStore(guess.categoryNo)) {
+        const path = findPath(categoryTree.value, guess.categoryNo);
+        if (path.length > 1 || (path.length === 1 && !path[0]?.children?.length)) {
+          await select(path);
         }
       }
     }
-    // 3) 文字 → 价格/快递/区域（规则），进确认框
-    if (hasText) {
-      const r = await api.mParseText(parseInput.value, categoryNo.value || undefined).catch(() => null);
-      if (r && r.confidence) {
-        parsed.value = r;
-        takeCarrier.value = r.fulfillment.includes(FULFILLMENT.EXPRESS);
-        takePrice.value = r.pricesMinor.length > 0;
-        showParsed.value = true;
+    const d = await api.mDescribeGoods({
+      imageUrl: cover.value,
+      title: title.value["zh-CN"].trim(),
+      subtitle: subtitle.value["zh-CN"].trim() || undefined,
+      categoryNo: categoryNo.value || undefined,
+    }).catch(() => null);
+    if (d) {
+      applyParamPicks(d.params ?? []);
+      if (d.detail.trim() && (force || !detail.value.trim())) {
+        detail.value = d.detail;
       }
     }
     recognized.value = true;
-    // 没有要确认的文字项时，给个「识别完成」的回执（图片那几项已直接填上）
-    if (!showParsed.value) {
-      uni.showToast({ title: String(t("goods.recognizeDone")), icon: "none" });
-    }
+    uni.showToast({ title: String(t("goods.recognizeDone")), icon: "none" });
   } catch {
     uni.showToast({ title: String(t("goods.parseFail")), icon: "none" });
   } finally {
@@ -782,23 +753,46 @@ async function runRecognize(force = false) {
 }
 
 /**
- * 采纳文字识别的价格/快递。价格落到第一个 SKU 行（无规格时就一行）——
- * 商家在确认框里过目过才落（价格是钱）；区域只提示，不自动改运费模板。
+ * 文字识别（规则）：边输边识别，**自动更新识别到的属性，没识别到的不动**。
+ * 价格落第一个 SKU 行、快递加进履约；区域只记下来在屏上提示（跨整店，不自动改运费模板）。
  */
-function applyParsed() {
-  const p = parsed.value;
-  if (p) {
-    if (takeCarrier.value && p.fulfillment.includes(FULFILLMENT.EXPRESS)
-        && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
-      fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
-    }
-    if (takePrice.value && p.pricesMinor.length && rows.value.length) {
-      rows.value[0]!.priceMajor.CNY = yuan(p.pricesMinor[0]!);
+async function applyTextParse() {
+  const text = parseInput.value.trim();
+  if (!text) {
+    parsed.value = null;
+    return;
+  }
+  const r = await api.mParseText(text, categoryNo.value || undefined).catch(() => null);
+  if (!r) return;
+  parsed.value = r.confidence ? r : null;
+  if (!r.confidence) return;
+
+  const changed: string[] = [];
+  if (r.fulfillment.includes(FULFILLMENT.EXPRESS) && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
+    fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
+    changed.push(String(t("goods.parseExpress")));
+  }
+  if (r.pricesMinor.length && rows.value[0]) {
+    const next = yuan(r.pricesMinor[0]!);
+    if (rows.value[0].priceMajor.CNY !== next) {
+      rows.value[0].priceMajor.CNY = next;
+      changed.push(String(t("goods.parsePrice")));
     }
   }
-  showParsed.value = false;
-  uni.showToast({ title: String(t("goods.parseApplied")), icon: "none" });
+  if (changed.length) {
+    uni.showToast({ title: String(t("goods.updatedFields", { f: changed.join("、") })), icon: "none" });
+  }
 }
+
+/*
+ * 边输边识别：停手 800ms 跑一次，持续通过文字调整商品属性（用户明确要的交互）。
+ * 文字规则很便宜（服务端正则），防抖到位就不费。图片 LLM 贵，只在导入/重新识别时跑。
+ */
+let textTimer: ReturnType<typeof setTimeout> | null = null;
+watch(parseInput, () => {
+  if (textTimer) clearTimeout(textTimer);
+  textTimer = setTimeout(() => { void applyTextParse(); }, 800);
+});
 
 async function genDetail() {
   if (generating.value) return;
@@ -843,7 +837,6 @@ async function genDetail() {
     generating.value = false;
   }
 }
-
 
 
 const isEdit = computed(() => !!goodsNo.value);
@@ -940,7 +933,6 @@ const unpricedMarkets = computed(() =>
  * 有下发、就是没有写入路径，与这轮修的其余几处是同一个形状。
  */
 
-
 /**
  * 把识别结果**当成表单的默认值填进去** —— 与「新建门店时带出上次的地址」同一性质。
  *
@@ -987,7 +979,6 @@ async function applyGuess(guess: GoodsGuess) {
 }
 
 
-
 /*
  * 商品参数（产地 / 材质这一类）—— 整块在 `./params.ts`。
  * 它只按类目取候选，所以只需要把 `categoryNo` 传进去。
@@ -998,7 +989,6 @@ const {
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
 } = useGoodsParams(categoryNo);
-
 
 // ── 七、批量填充 ──────────────────────────────────────────────────────────
 //    价与库存拆成两个动作，理由见 applyBulkPrice
@@ -1555,6 +1545,14 @@ async function save(thenSubmit = false) {
         :maxlength="2000"
         auto-height
       />
+      <!-- 识别到什么，就地显示(边输边更新)；没识别到就不显示那一项 -->
+      <view v-if="parsed" class="quick__got">
+        <text v-if="parsed.pricesMinor.length" class="quick__tag">{{ $t("goods.parsePrice") }} {{ yuan(parsed.pricesMinor[0] ?? 0) }}元</text>
+        <text v-if="parsed.weights.length" class="quick__tag">{{ parsed.weights.join(" ") }}</text>
+        <text v-if="parsed.carriers.length" class="quick__tag">{{ parsed.carriers.join(" ") }}</text>
+        <text v-if="parsed.excludeRegionText" class="quick__tag quick__tag--warn">{{ $t("goods.parseNoShip") }}:{{ parsed.excludeRegionText }}</text>
+      </view>
+      <text v-if="parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
     </view>
 
     <view class="sh-card">
@@ -2666,35 +2664,6 @@ async function save(thenSubmit = false) {
         </view>
       </view>
     </sh-actionbar>
-    <sh-sheet :visible="showParsed" :title="String($t('goods.parseConfirmTitle'))" @close="showParsed = false">
-      <view class="sh-cells">
-        <view v-if="parsed && parsed.pricesMinor.length" class="sh-cell sh-row sh-row--between">
-          <view>
-            <text class="sh-muted">{{ $t("goods.parsePrice") }}</text>
-            <text class="txt-body">{{ yuan(parsed.pricesMinor[0] ?? 0) }} 元（填入第一个价格）</text>
-          </view>
-          <sh-check v-model="takePrice" />
-        </view>
-        <view v-if="parsed && parsed.weights.length" class="sh-cell">
-          <text class="sh-muted">{{ $t("goods.parseWeight") }}</text>
-          <text class="txt-body">{{ parsed.weights.join("、") }}</text>
-        </view>
-        <view v-if="parsed && parsed.carriers.length" class="sh-cell sh-row sh-row--between">
-          <view>
-            <text class="sh-muted">{{ $t("goods.parseExpress") }}</text>
-            <text class="txt-body">{{ parsed.carriers.join("、") }}</text>
-          </view>
-          <sh-check v-model="takeCarrier" />
-        </view>
-        <view v-if="parsed && parsed.excludeRegionText" class="sh-cell">
-          <text class="sh-muted">{{ $t("goods.parseNoShip") }}</text>
-          <text class="txt-body">{{ parsed.excludeRegionText }}</text>
-          <text class="sh-muted parse__hint">{{ $t("goods.parseNoShipHint") }}</text>
-        </view>
-        <text class="sh-muted parse__hint">{{ $t("goods.parseManualHint") }}</text>
-      </view>
-      <view class="sh-btn parse__apply" @tap="applyParsed">{{ $t("goods.parseApply") }}</view>
-    </sh-sheet>
 
   </sh-scaffold>
 </template>
@@ -2772,7 +2741,6 @@ async function save(thenSubmit = false) {
   border-radius: 16rpx;
   background: var(--sh-faint);
 }
-
 
 /* 专业商家的入口：与切换器同一行右侧，压到最轻 */
 /*
@@ -3208,4 +3176,15 @@ async function save(thenSubmit = false) {
   display: block;
   margin-top: 8rpx;
 }
+
+.quick__hint { display: block; margin-top: 8rpx; }
+.quick__got { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.quick__tag {
+  font-size: 24rpx;
+  color: var(--sh-primary-text, #b25);
+  background: var(--sh-primary-tint, #fdeef0);
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+}
+.quick__tag--warn { color: var(--sh-warning, #a60); background: var(--sh-warning-tint, #fff4e5); }
 </style>
