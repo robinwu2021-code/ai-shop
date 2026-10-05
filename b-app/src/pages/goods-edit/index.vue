@@ -693,36 +693,87 @@ async function onImportZip() {
   if (txt) {
     // 已有内容不静默覆盖 —— 空则填，非空则追加（商家自己写的那段留着）
     parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
-    uni.showToast({ title: String(t("goods.zipTxtFound")), icon: "none" });
+  }
+  // 导入后自动识别一次：封面已就位 → LLM 认名称/描述/参数，文字 → 价格/快递
+  if (cover.value || parseInput.value.trim()) {
+    void runRecognize(false);
   }
 }
 
-// ── 文字识别（规则+LLM；弹框逐项确认）
+// ── 一键识别（快速录入）：封面图走 LLM(名称/描述/参数) + 文字走规则(价格/快递/区域)
 const parseInput = ref("");
 const parsing = ref(false);
+const recognized = ref(false);   // 识别过没有 → 按钮「识别」/「重新识别」
 const parsed = ref<GoodsTextParse | null>(null);
 const showParsed = ref(false);
 const takeCarrier = ref(true);
+const takePrice = ref(true);
 
 function yuan(minor: number): string {
   return (minor / 100).toFixed(2);
 }
 
-async function onParseText() {
-  if (!parseInput.value.trim()) {
-    uni.showToast({ title: String(t("goods.parseEmpty")), icon: "none" });
+/**
+ * 一键识别。封面图有就调 LLM 认名称/类目/描述/参数（复用已部署的 recognize/describe），
+ * 文字框有内容就按规则抽价格/快递/区域。名称/描述这类**非破坏性**地填（force=重新识别时覆盖）；
+ * 价格/快递/区域进确认框——价格是钱，要商家过目（见 PRD §七）。
+ */
+async function runRecognize(force = false) {
+  const hasCover = !!cover.value;
+  const hasText = !!parseInput.value.trim();
+  if (!hasCover && !hasText) {
+    uni.showToast({ title: String(t("goods.recognizeNeed")), icon: "none" });
     return;
   }
   parsing.value = true;
   try {
-    const r = await api.mParseText(parseInput.value, categoryNo.value || undefined);
-    if (!r.confidence) {
-      uni.showToast({ title: String(t("goods.parseNone")), icon: "none" });
-      return;
+    // 1) 封面图 → 名称/副标题/类目（LLM）
+    if (hasCover) {
+      const guess = await api.mRecognizeGoods(cover.value).catch(() => null);
+      if (guess && guess.confidence > 0) {
+        if (guess.title && (force || !title.value["zh-CN"].trim())) {
+          title.value = { ...title.value, "zh-CN": guess.title };
+          lang.value = "zh-CN";
+        }
+        if (guess.subtitle && (force || !subtitle.value["zh-CN"].trim())) {
+          subtitle.value = { ...subtitle.value, "zh-CN": guess.subtitle };
+        }
+        if (!categoryNo.value && guess.categoryNo && inStore(guess.categoryNo)) {
+          const path = findPath(categoryTree.value, guess.categoryNo);
+          if (path.length > 1 || (path.length === 1 && !path[0]?.children?.length)) {
+            await select(path);
+          }
+        }
+      }
+      // 2) 封面图 → 详情正文 + 商品参数（LLM）
+      const d = await api.mDescribeGoods({
+        imageUrl: cover.value,
+        title: title.value["zh-CN"].trim(),
+        subtitle: subtitle.value["zh-CN"].trim() || undefined,
+        categoryNo: categoryNo.value || undefined,
+      }).catch(() => null);
+      if (d) {
+        applyParamPicks(d.params ?? []);
+        if (d.detail.trim() && (force || !detail.value.trim())) {
+          detail.value = d.detail;
+        }
+      }
     }
-    parsed.value = r;
-    takeCarrier.value = r.fulfillment.includes(FULFILLMENT.EXPRESS);
-    showParsed.value = true;
+    // 3) 文字 → 价格/快递/区域（规则），进确认框
+    if (hasText) {
+      const r = await api.mParseText(parseInput.value, categoryNo.value || undefined).catch(() => null);
+      if (r && r.confidence) {
+        parsed.value = r;
+        takeCarrier.value = r.fulfillment.includes(FULFILLMENT.EXPRESS);
+        takePrice.value = r.pricesMinor.length > 0;
+        showParsed.value = true;
+      }
+    }
+    recognized.value = true;
+    // 没有要确认的文字项时，给个「识别完成」的回执（图片那几项已直接填上）
+    if (!showParsed.value) {
+      uni.showToast({ title: String(t("goods.recognizeDone")), icon: "none" });
+    }
   } catch {
     uni.showToast({ title: String(t("goods.parseFail")), icon: "none" });
   } finally {
@@ -731,15 +782,19 @@ async function onParseText() {
 }
 
 /**
- * 采纳识别结果。**P1 只自动落快递**（低风险）——价格/重量/区域只展示：
- * 价格要落到具体 SKU、规格要建规格组，自动做容易错且难察觉；区域跨整店，更不能自动改。
- * 让商家看着识别结果自己填，比替他填错好（识别是草稿，见 PRD §七）。
+ * 采纳文字识别的价格/快递。价格落到第一个 SKU 行（无规格时就一行）——
+ * 商家在确认框里过目过才落（价格是钱）；区域只提示，不自动改运费模板。
  */
 function applyParsed() {
   const p = parsed.value;
-  if (p && takeCarrier.value && p.fulfillment.includes(FULFILLMENT.EXPRESS)
-      && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
-    fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
+  if (p) {
+    if (takeCarrier.value && p.fulfillment.includes(FULFILLMENT.EXPRESS)
+        && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
+      fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
+    }
+    if (takePrice.value && p.pricesMinor.length && rows.value.length) {
+      rows.value[0]!.priceMajor.CNY = yuan(p.pricesMinor[0]!);
+    }
   }
   showParsed.value = false;
   uni.showToast({ title: String(t("goods.parseApplied")), icon: "none" });
@@ -1477,6 +1532,31 @@ async function save(thenSubmit = false) {
     <view v-if="!hydrating && !isDraft && !editingDraft && !draftFailed" class="sh-notice sh-notice--warning draft-banner">
       <text class="txt-caption">{{ $t(wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}</text>
     </view>
+    <!--
+      快速录入：粘商品文字 / 导入压缩包后，一键识别名称·描述·参数·价格。
+      放在最前 —— 它是录入的起点，图片与文字都从这里喂进去。
+    -->
+    <view class="sh-card quick">
+      <view class="field__head">
+        <text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text>
+        <text
+          class="sh-btn sh-btn--sm sh-btn--soft sh-hit"
+          :class="{ 'is-loading': parsing }"
+          @tap="runRecognize(recognized)"
+        >
+          {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
+        </text>
+      </view>
+      <text class="sh-muted quick__hint">{{ $t("goods.quickHint") }}</text>
+      <textarea
+        v-model="parseInput"
+        class="field__area field__area--grow"
+        :placeholder="$t('goods.parsePh')"
+        :maxlength="2000"
+        auto-height
+      />
+    </view>
+
     <view class="sh-card">
       <!--
         分区标题。此前**整页只有规格卡与 SKU 卡有标题**，前面 11 个字段组挤在
@@ -2586,28 +2666,14 @@ async function save(thenSubmit = false) {
         </view>
       </view>
     </sh-actionbar>
-    <!-- 文字识别：粘一段商品文字，识别成草稿，弹框逐项确认（#ifdef 两端都给，解压才 App 专有） -->
-    <view class="field">
-      <view class="field__head">
-        <text class="txt-strong field__label">{{ $t("goods.parseTitle") }}</text>
-        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onParseText">
-          {{ parsing ? $t("goods.parsing") : $t("goods.parseBtn") }}
-        </text>
-      </view>
-      <textarea
-        v-model="parseInput"
-        class="field__area field__area--grow"
-        :placeholder="$t('goods.parsePh')"
-        :maxlength="2000"
-        auto-height
-      />
-    </view>
-
     <sh-sheet :visible="showParsed" :title="String($t('goods.parseConfirmTitle'))" @close="showParsed = false">
       <view class="sh-cells">
-        <view v-if="parsed && parsed.pricesMinor.length" class="sh-cell">
-          <text class="sh-muted">{{ $t("goods.parsePrice") }}</text>
-          <text class="txt-body">{{ parsed.pricesMinor.map(yuan).join("、") }} 元</text>
+        <view v-if="parsed && parsed.pricesMinor.length" class="sh-cell sh-row sh-row--between">
+          <view>
+            <text class="sh-muted">{{ $t("goods.parsePrice") }}</text>
+            <text class="txt-body">{{ yuan(parsed.pricesMinor[0] ?? 0) }} 元（填入第一个价格）</text>
+          </view>
+          <sh-check v-model="takePrice" />
         </view>
         <view v-if="parsed && parsed.weights.length" class="sh-cell">
           <text class="sh-muted">{{ $t("goods.parseWeight") }}</text>
