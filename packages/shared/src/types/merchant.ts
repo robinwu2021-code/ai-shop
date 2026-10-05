@@ -537,6 +537,8 @@ export interface MerchantProfile {
   tier: MerchantTier;
   /** 登录手机号，也是商家账号的主标识 */
   phone: string;
+  /** 当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」 */
+  displayName?: string;
   /** 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） */
   isPickupPoint: boolean;
   /** 承接的自提点单号。`isPickupPoint=true` 时有值 */

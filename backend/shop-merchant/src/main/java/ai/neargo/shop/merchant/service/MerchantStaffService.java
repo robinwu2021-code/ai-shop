@@ -46,6 +46,12 @@ public interface MerchantStaffService {
      */
     String loginPhoneOf(String principal);
 
+    /** 当前登录账号的显示名（用户名）。空串 = 没设过。按 principal 自查，不受数据域约束。 */
+    String displayNameOf(String principal);
+
+    /** 改当前登录账号的显示名（用户名）。空白或超长则拒。店员改的是自己那一行，不碰别人。 */
+    void renameSelf(String principal, String displayName);
+
     // ---------------------------------------------------------------- 员工管理（B-11.10）
 
     /** 本主体的员工列表（含已停用的）。停用的也要看得见 —— 看不见的话没人能把他重新启用。 */

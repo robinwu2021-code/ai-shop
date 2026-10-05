@@ -126,6 +126,19 @@ public class BizMerchantController {
     }
 
     /**
+     * 改当前登录账号的显示名（用户名，§账号管理）。改的是「我自己」那一行——
+     * 店员改自己的、店主改自己的，按 principal 定位，不碰别人。空白/超长后端拒。
+     */
+    @PostMapping("/biz/merchant/display-name")
+    public void setDisplayName(@RequestBody DisplayNameReq req) {
+        staffService.renameSelf(SecurityUtils.currentUserNo(), req.displayName());
+    }
+
+    /** @param displayName 新显示名（1–20 字，HTTPS 传输） */
+    public record DisplayNameReq(String displayName) {
+    }
+
+    /**
      * 展示用手机号 —— 取<b>你登录时用的那个身份</b>的号。
      *
      * <p>原先无条件走 {@code userService.profile()}，而那个方法查不到 {@code usr_account}
@@ -168,6 +181,7 @@ public class BizMerchantController {
     }
 
     private MerchantProfileVO build(String userNo, BizContext ctx, String phone) {
+        String displayName = staffService.displayNameOf(userNo);
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
         MerchantApplyVO apply = opsService.myApply(userNo);
         // 自提点作用域与商家作用域正交（一家店可以不做自提点），所以读作用域而不是查商家
@@ -188,7 +202,7 @@ public class BizMerchantController {
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
                     agreementPending(apply),
-                    0);   // 还没进件，店都没有，谈不上收藏
+                    0, displayName);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
                 account.merchantNo(), account.name(), account.logo(),
@@ -197,7 +211,7 @@ public class BizMerchantController {
                 null, account.industry(), account.description(),
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
                 agreementPending(apply),
-                storeFavoriteService.countByMerchant(account.merchantNo()));
+                storeFavoriteService.countByMerchant(account.merchantNo()), displayName);
     }
 
     /**
@@ -916,6 +930,8 @@ public class BizMerchantController {
                                      * <p>现算（`countByMerchant` 内部绕数据域）：没有哪张表在维护这个数。
                                      * 还没进件的那一支恒 0 —— 那时店都还没有。
                                      */
-                                    int favoriteCount) {
+                                    int favoriteCount,
+                                    /** 当前登录账号的显示名（用户名，§账号管理）。空=没设过，端上显示「未设置」 */
+                                    String displayName) {
     }
 }

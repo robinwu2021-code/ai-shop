@@ -55,7 +55,7 @@ class BizEndpointPermTest {
             "/biz/auth/password",
             // 入驻链路：申请人此刻还没有 merchantNo，一律 403 的话被驳回的人
             // 就永远看不到驳回原因，闭环在这里断掉
-            "/biz/merchant/apply", "/biz/merchant/profile",
+            "/biz/merchant/apply", "/biz/merchant/profile", "/biz/merchant/display-name",
             /*
              * 补勾《商家服务协议》（三期）。与上面同一条理由，而且更硬：
              * **这个人多半是运营代他进件时凭手机号建出来的账号** ——

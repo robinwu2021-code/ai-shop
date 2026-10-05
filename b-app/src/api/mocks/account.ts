@@ -14,6 +14,7 @@ export const accountMock: Pick<MerchantApi,
   "mLogin"
   | "mSendOtp"
   | "mSetPassword"
+  | "mSetDisplayName"
   | "mHasPassword"
   | "mStaffLogin"
   | "mProfile"
@@ -47,6 +48,14 @@ export const accountMock: Pick<MerchantApi,
   async mSetPassword(password: string) {
     if (password.length < 6) throw new Error("密码至少 6 位");
     mockState.password = password;
+    await delay(undefined);
+  },
+
+  async mSetDisplayName(displayName: string) {
+    const name = displayName.trim();
+    if (!name || name.length > 20) throw new Error("用户名 1–20 字");
+    db.merchant.displayName = name;
+    persist();
     await delay(undefined);
   },
 

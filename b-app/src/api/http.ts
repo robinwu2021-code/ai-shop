@@ -186,6 +186,7 @@ import type {
 export const httpApi: MerchantApi = {
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),
+  mSetDisplayName: (displayName) => http.post<void>(E.mSetDisplayName.path, { displayName }),
   mHasPassword: () => http.get<{ hasPassword: boolean }>(E.mHasPassword.path),
   mLogin: (req: LoginReq) =>
     http.post<MerchantLoginResp>(E.mLogin.path, { ...req } satisfies MerchantLoginReqBody),

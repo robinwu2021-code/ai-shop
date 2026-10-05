@@ -328,6 +328,7 @@ const RESPONSE_TYPES = {
   mSendOtp: "void",
   // 密码登录（并行改动带进来的两条）：设置只回成功与否，查询回一个布尔壳
   mSetPassword: "void",
+  mSetDisplayName: "void",
   mHasPassword: "HasPasswordResp",
   mLogin: "MerchantLoginResp",
   mStaffLogin: "MerchantLoginResp",

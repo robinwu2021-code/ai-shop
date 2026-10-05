@@ -2120,6 +2120,10 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
   me: {
     switchStore: "تبديل",
     account: "الحساب",
+    username: "اسم المستخدم",
+    usernameUnset: "غير محدد",
+    usernamePh: "اختر اسمًا، 1–20 حرفًا",
+    usernameSaved: "تم تحديث اسم المستخدم",
     password: "كلمة مرور الدخول",
     passwordSet: "تغيير",
     passwordUnset: "تعيين",

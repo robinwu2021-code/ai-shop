@@ -129,6 +129,44 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
         return staff == null || staff.getLoginPhone() == null ? "" : staff.getLoginPhone();
     }
 
+    /** 按 principal 定位「当前这个人」的 mch_account（user_no 或 mch_account_no 两条路径都认）。 */
+    private MchAccount currentAccount(String principal) {
+        if (principal == null || principal.isBlank()) {
+            return null;
+        }
+        return DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
+                        .and(q -> q.eq(MchAccount::getUserNo, principal)
+                                .or().eq(MchAccount::getMchAccountNo, principal))
+                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                        .orderByDesc(MchAccount::getIsPrimary)
+                        .orderByAsc(MchAccount::getId)
+                        .last("limit 1")));
+    }
+
+    @Override
+    public String displayNameOf(String principal) {
+        MchAccount a = currentAccount(principal);
+        return a == null || a.getDisplayName() == null ? "" : a.getDisplayName();
+    }
+
+    @Override
+    @Transactional
+    public void renameSelf(String principal, String displayName) {
+        String name = displayName == null ? "" : displayName.trim();
+        // 显示名不是登录凭证，但它会出现在订单/审计里：空的没意义，超长会撑破列表
+        if (name.isEmpty() || name.length() > 20) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MchAccount a = currentAccount(principal);
+        if (a == null) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        a.setDisplayName(name);
+        MchAccount toSave = a;
+        DataScopeContext.executeWithoutScope(() -> staffMapper.updateById(toSave));
+    }
+
     // ---------------------------------------------------------------- 员工管理
 
     @Override

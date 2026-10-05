@@ -752,6 +752,8 @@ export interface MerchantApi {
    * （要旧密码会把「忘了密码」变成死路，而重设的正路本来就是「验证码登录进来再设」）。
    */
   mSetPassword(password: string): Promise<void>;
+  /** 改当前登录账号的显示名（用户名，1–20 字）。店员改自己的、店主改自己的 */
+  mSetDisplayName(displayName: string): Promise<void>;
 
   /** 我设过密码没有 —— 决定「我的」页里显示「设置密码」还是「修改密码」 */
   mHasPassword(): Promise<{ hasPassword: boolean }>;

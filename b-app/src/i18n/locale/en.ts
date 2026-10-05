@@ -2122,6 +2122,10 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
   me: {
     switchStore: "Switch",
     account: "Account",
+    username: "Username",
+    usernameUnset: "Not set",
+    usernamePh: "Pick a name, 1–20 chars",
+    usernameSaved: "Username updated",
     password: "Login password",
     passwordSet: "Change",
     passwordUnset: "Set up",

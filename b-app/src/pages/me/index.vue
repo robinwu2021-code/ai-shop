@@ -143,6 +143,21 @@ async function editPassword() {
   }
 }
 
+async function editDisplayName() {
+  const name = (await prompt({
+    title: String(t("me.username")),
+    placeholder: String(t("me.usernamePh")),
+  })) ?? "";
+  if (!name.trim()) return;
+  try {
+    await api.mSetDisplayName(name.trim());
+    await merchant.loadProfile();
+    uni.showToast({ title: t("me.usernameSaved"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 async function logout() {
   // 解绑要在清令牌**之前** —— 之后就没有可用的令牌了。
   // 门店共用一台手机换班时，上一班的人不该继续收到这家店的订单推送
@@ -311,6 +326,12 @@ onShow(() => {
       <!-- 登录账号：这一页此前没有一处告诉店主「我是用哪个号登进来的」——
            多店 / 多人时他分不清此刻是哪个身份，改密码、找回都无从对起。
            只读展示登录手机号；第三方登录没有手机号时留空提示去补绑（补绑入口在登录页）。 -->
+      <!-- 用户名（显示名）：改的是「我自己」那一行。店员/店主都能改各自的 -->
+      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="editDisplayName">
+        <text class="txt-body cell__label">{{ $t("me.username") }}</text>
+        <text class="txt-caption cell__value">{{ merchant.profile?.displayName || $t("me.usernameUnset") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between">
         <text class="txt-body cell__label">{{ $t("me.account") }}</text>
         <text class="txt-caption cell__value sh-num">{{ merchant.profile?.phone || "—" }}</text>
