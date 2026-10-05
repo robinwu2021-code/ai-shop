@@ -165,6 +165,22 @@
 
 ---
 
+### 3.5 确认（2026-10-05，B5，无代码改动）
+
+逐条核过代码 + 跑过回归，**发货链路已完整、已测、虹选鲜果已开自送**：
+
+- **自送（MERCHANT_DELIVERY）= 线下发货**：店主点「已送达」(`mDelivered`)。这是**单动作**，
+  内部同时触发「开始配送」通知（`SubOrderShipped`，无单号）+ 完成 + 微信发货上报
+  —— 自送没有 `ship()` 那一步，`delivered()` 是它唯一的入队机会（见 MerchantOrderServiceImpl 注释）。
+- **快递（EXPRESS）**：填运单号「发货」(`mShip`) → FULFILLING + 微信上报。收件人全号（本轮 9917cd00c 放开）。
+- **线上配置**：虹选鲜果主店（`ST…4159`）`MERCHANT_DELIVERY=1`、`EXPRESS=1`（自提关）—— 线下发货已开通。
+- **回归**：`ShipNotifyFlowTest`(5)、`BizOrderFulfillFlowTest`(14)、`WxShippingUploadFlowTest`(10)、
+  `StoreFulfillmentFlowTest`(18) 共 47 条全绿。
+
+**一处留给你拍的口径**：自送是**单步**（点一次「已送达」就从 FULFILLING 直接完成）。
+若同城配送要「发货（交给跑腿）」与「已送达」**两步**分开，那是订单状态模型的改动（加一个在途态），
+不在本轮 —— 现在生鲜当天送，单步够用。要两步的话说一声，另起。
+
 ## 4 收款
 
 ### 现状（已查）
