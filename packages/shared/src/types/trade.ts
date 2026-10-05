@@ -532,6 +532,33 @@ export interface Order {
    * 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。
    */
   cancellableUntil?: number | null;
+  /**
+   * 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** ——
+   * 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。
+   * 轨迹来自承运商、经缓存，不是平台编的。
+   */
+  trace?: ShipmentTrace;
+}
+
+/** 运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */
+export type ShipmentStatus =
+  | "CREATED"
+  | "PICKED_UP"
+  | "IN_TRANSIT"
+  | "DELIVERED"
+  | "EXCEPTION";
+
+/** 物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读） */
+export interface ShipmentTrace {
+  status: ShipmentStatus;
+  nodes: ShipmentTraceNode[];
+}
+
+/** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */
+export interface ShipmentTraceNode {
+  at: number;
+  text: string;
+  location?: string;
 }
 
 /** 商品详情的社区集单块（原型 s26）。不是集单商品时接口返回 null */

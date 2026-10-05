@@ -492,7 +492,14 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
      * 而它是 `OrderVO` 的有意子集：预览顶层没有快递这回事（快递号逐个子单发），
      * 和已在基线里的 `OrderPreview.expressNo` 完全同类。不是新账。
      */
-    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 30 };
+    /*
+     * ⚠️ **2026-10-05 从 30 抬到 31，抬的同样不是欠账**：`OrderVO` 加了
+     * `trace`（物流轨迹，TDD-圆通物流直连 Y4）。端上**接了** —— 接在 `Order.trace` 上，
+     * C 端/B 端订单详情显示承运商轨迹时间线。多欠的这一条是 `OrderPreview.trace` 顶层，
+     * 而预览顶层没有轨迹这回事（轨迹只在订单详情、快递履约时查），
+     * 与已在基线里的 `OrderPreview.expressNo` 完全同类。不是新账。
+     */
+    const BASELINE: Record<string, number> = { "b-app": 31, "c-app": 31 };
     expect(
       dropped.size,
       `${app}：后端在发、契约没接的字段共 ${dropped.size} 个（基线 ${BASELINE[app]}）——\n`

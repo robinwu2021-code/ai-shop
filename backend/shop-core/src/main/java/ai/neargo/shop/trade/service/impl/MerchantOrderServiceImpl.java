@@ -4,6 +4,7 @@ import ai.neargo.shop.trade.service.MerchantOrderService;
 import ai.neargo.shop.spi.user.UserQueryPort;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.common.BizException;
@@ -48,6 +49,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final ai.neargo.shop.trade.service.OrderService orderService;
     /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
     private final UserQueryPort userPort;
+    private final ShipmentTraceQueryPort shipmentTracePort;
 
     /** 日结的退款侧要它：退款按 refundedAt 归属，而那个时间只有售后单上有 */
     private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
@@ -78,7 +80,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                                     ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
                                     ai.neargo.shop.trade.service.OrderService orderService,
                                     StatusLogMapper statusLogMapper, UserQueryPort userPort,
-                                    ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper) {
+                                    ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                                    ShipmentTraceQueryPort shipmentTracePort) {
         this.afterSaleMapper = afterSaleMapper;
         this.orderService = orderService;
         this.subOrderMapper = subOrderMapper;
@@ -86,6 +89,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         this.statusLogMapper = statusLogMapper;
         this.orderMapper = orderMapper;
         this.userPort = userPort;
+        this.shipmentTracePort = shipmentTracePort;
     }
 
     @Override
@@ -94,7 +98,24 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         // 已取消 / 已退款：券与积分的去向（P3）—— 商家客服接到「我的券呢」时要看得到
         // 优惠明细（批 3 · B8）：此前 B 端详情只有应付，商家看不到这单减了什么、谁出的钱
         return toVO(sub).withDiscountLines(orderService.discountLinesOf(sub))
-                .withReturned(orderService.returnedOf(sub));
+                .withReturned(orderService.returnedOf(sub))
+                .withTrace(traceOf(sub));
+    }
+
+
+    /**
+     * 这张子单的物流轨迹（Y4）。<b>只对快递履约、已回填单号</b>的子单查缓存；其余返回 null，
+     * {@code withTrace(null)} 即不展示。只读缓存，不触发承运商查询（那是轮询 Job 的事）。
+     */
+    private OrderVO.Trace traceOf(OrdSubOrder sub) {
+        if (!OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        return shipmentTracePort.traceOf(sub.getSubOrderNo())
+                .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
+                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location())).toList()))
+                .orElse(null);
     }
 
     @Override

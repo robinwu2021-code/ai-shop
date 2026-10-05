@@ -332,6 +332,19 @@ onLoad((q) => {
             <text class="txt-caption recv__addr">{{ order.receiver.address }}</text>
           </view>
         </view>
+        <!--
+          物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点才显示；没有就整块不出现。
+          轨迹来自承运商、经缓存，不是平台编的（没凭据查不到时为空，不显示空标题）。
+        -->
+        <view v-if="order.trace && order.trace.nodes.length" class="line line--wrap sh-row sh-row--between">
+          <text class="sh-muted">{{ $t("order.trace") }}</text>
+          <view class="otrace sh-fill">
+            <view v-for="(n, i) in order.trace.nodes" :key="i" class="otrace__node sh-row sh-row--top">
+              <text class="txt-caption sh-muted otrace__at sh-num">{{ datetime(n.at) }}</text>
+              <text class="txt-caption otrace__text">{{ n.text }}<text v-if="n.location" class="sh-muted"> · {{ n.location }}</text></text>
+            </view>
+          </view>
+        </view>
         <!-- 复制订单信息发给供应商（§5）。放在订单信息卡尾：拣货要的就是这张卡上的东西 -->
         <view class="sh-btn sh-btn--sm sh-btn--muted sh-mt-sm" @tap="copyForSupplier">
           {{ $t("order.copyToSupplier") }}
@@ -569,6 +582,22 @@ onLoad((q) => {
 }
 .recv {
   text-align: end;
+}
+.otrace {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.otrace__node {
+  gap: 16rpx;
+}
+.otrace__at {
+  flex-shrink: 0;
+}
+.otrace__text {
+  flex: 1;
+  text-align: start;
+  color: var(--sh-ink);
 }
 .recv__who {
   display: block;

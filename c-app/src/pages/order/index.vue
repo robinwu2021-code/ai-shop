@@ -515,6 +515,19 @@ onShow(load);
         <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
         <text class="txt-caption fact__v sh-num">{{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}</text>
       </view>
+      <!--
+        物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点时才显示；没有就整块不出现
+        （而不是显示一个空的「物流轨迹」标题）—— 没发货 / 承运商还没回传时，空标题比不显示更让人以为出了错。
+      -->
+      <view v-if="order.trace && order.trace.nodes.length" class="fact fact--col">
+        <text class="txt-caption fact__k">{{ $t("order.trace") }}</text>
+        <view class="otrace">
+          <view v-for="(n, i) in order.trace.nodes" :key="i" class="otrace__node sh-row sh-row--top">
+            <text class="txt-caption sh-muted otrace__at sh-num">{{ datetime(n.at) }}</text>
+            <text class="txt-caption otrace__text">{{ n.text }}<text v-if="n.location" class="sh-muted"> · {{ n.location }}</text></text>
+          </view>
+        </view>
+      </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
@@ -723,6 +736,26 @@ onShow(load);
 .fact__v {
   color: var(--sh-ink);
   text-align: end;
+}
+.fact--col {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.otrace {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.otrace__node {
+  gap: 16rpx;
+}
+.otrace__at {
+  flex-shrink: 0;
+}
+.otrace__text {
+  flex: 1;
+  color: var(--sh-ink);
 }
 .ops {
   gap: 16rpx;

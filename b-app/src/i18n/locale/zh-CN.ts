@@ -603,6 +603,7 @@ export default {
     receiver: "收件人",
     ship: "发货",
     expressNo: "运单号",
+    trace: "物流轨迹",
     pickCarrier: "请选择快递公司",
     expressBook: "叫快递上门",
     expressSandbox: "测试",

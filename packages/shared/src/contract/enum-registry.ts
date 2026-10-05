@@ -183,6 +183,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "此前端上没有这个具名类型，履约台把子单当主单用，"
       + "按主单的 ARRIVED 过滤 —— 真实后端发的是 WAIT_FULFILL，列表因此恒空",
     words: ["WAIT_PAY", "WAIT_FULFILL", "FULFILLING", "COMPLETED", "REFUNDED"] },
+  { decl: "shared:ShipmentStatus", dom: "fulfillment", shape: "STATUS", verdict: "OK",
+    note: "运单状态，与后端 ful_shipment 一致（TDD-圆通物流直连 Y4）。"
+      + "承运商轨迹推导出来的状态，订单详情据此显示物流进度。"
+      + "五个都是物流领域特有词、L1 表里没有对应：CREATED 建单未揽、PICKED_UP 已揽、"
+      + "IN_TRANSIT 运输中、DELIVERED 已签收、EXCEPTION 疑难件（非终态，可能之后又派成）",
+    words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
   { decl: "shared:GoodsStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "与 ops-web SkuStatus 重叠，P4 待确认状态挂 SPU 还是 SKU。"
       + "AUDITING→PENDING **2026-08-12 真正归一**：此前只归在端上，"

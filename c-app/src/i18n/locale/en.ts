@@ -753,6 +753,7 @@ export default {
     pickup: "Pickup point",
     appointment: "Appointment",
     express: "Tracking no.",
+    trace: "Tracking",
     orderNo: "Order no.",
     next: {
       WAIT_PAY: "The seller starts preparing after payment; unpaid orders close automatically",

@@ -28,6 +28,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
@@ -82,6 +83,7 @@ public class OrderServiceImpl implements OrderService {
      * </ul>
      */
     private final CloseRuleService closeRuleService;
+    private final ShipmentTraceQueryPort shipmentTracePort;
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -292,7 +294,8 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.AdmissionPort admissionPort,
                             ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
                             ai.neargo.shop.spi.user.PersonPort personPort,
-                            CloseRuleService closeRuleService) {
+                            CloseRuleService closeRuleService,
+                            ShipmentTraceQueryPort shipmentTracePort) {
         this.payModeService = payModeService;
         this.appointmentSlotPort = appointmentSlotPort;
         this.reviewQueryPort = reviewQueryPort;
@@ -302,6 +305,7 @@ public class OrderServiceImpl implements OrderService {
         this.subOrderMapper = subOrderMapper;
         this.admissionPort = admissionPort;
         this.closeRuleService = closeRuleService;
+        this.shipmentTracePort = shipmentTracePort;
         this.itemMapper = itemMapper;
         this.cartMapper = cartMapper;
         this.goodsPort = goodsPort;
@@ -1894,6 +1898,8 @@ public class OrderServiceImpl implements OrderService {
             }
             // 已取消 / 已退款：券与积分去了哪（P3）。只在详情、只在这两个状态查
             vo = vo.withReturned(returnedOf(sub));
+            // 物流轨迹（Y4）：快递单读缓存；非快递/无单号/缓存空时 traceOf 返回 null
+            vo = vo.withTrace(traceOf(sub));
             if (sub.getPeriodNo() != null) {
                 // 集单（s37）：提货日与「截单前可取消」。已截单、已退款的不再给可取消时刻
                 Long until = periodPort == null || OrdSubOrder.REFUNDED.equals(sub.getStatus())
@@ -1904,6 +1910,21 @@ public class OrderServiceImpl implements OrderService {
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         return payView(order, subOrders(orderNo));
+    }
+
+    /**
+     * 这张子单的物流轨迹（Y4）。只对快递履约、已回填单号的子单查缓存；其余 null（不展示）。
+     * 只读缓存，不触发承运商查询（那是轮询 Job 的事）。
+     */
+    private OrderVO.Trace traceOf(OrdSubOrder sub) {
+        if (!OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        return shipmentTracePort.traceOf(sub.getSubOrderNo())
+                .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
+                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location())).toList()))
+                .orElse(null);
     }
 
     /** 自提类履约，给展示状态的反向过滤用（SHIPPED 与 ARRIVED 在库里是同一个状态）。 */
