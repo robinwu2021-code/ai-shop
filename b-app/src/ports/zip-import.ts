@@ -7,30 +7,28 @@ import { classifyZip, type ZipMedia } from "@shared/ports/zip-media";
 // plus 是 App 运行时注入的全局，类型未在 @dcloudio 里导出，这里按 any 用
 declare const plus: any;
 
-/** 选一个 .zip 文件，返回它的本地路径。用户取消时 reject。 */
+/** 选一个 .zip 文件，返回它在应用缓存里的绝对路径。用户取消时 reject。 */
 function pickZip(): Promise<string> {
   return new Promise((resolve, reject) => {
-    // uni.chooseFile 在 App 上会调起系统文件选择器；不同机型/系统的返回要真机核。
-    // 取消走 fail（errMsg 带 cancel），上层据此静默。
-    const api = (uni as unknown as {
-      chooseFile?: (o: Record<string, unknown>) => void;
-    }).chooseFile;
-    if (typeof api !== "function") {
-      reject(new Error("当前环境不支持选择文件，压缩包导入请在 App 内使用"));
+    // #ifdef APP-PLUS
+    // uni.chooseFile 在 App 运行时不存在，走原生插件（SAF 选文件 + 复制到缓存，见
+    // 离线工程 ZipPickerModule）。requireNativePlugin 拿不到说明基座没打进这个模块。
+    const zp = uni.requireNativePlugin("ZipPicker") as
+      | { chooseZip: (cb: (res: { path?: string; cancel?: boolean; error?: string }) => void) => void }
+      | undefined;
+    if (!zp || typeof zp.chooseZip !== "function") {
+      reject(new Error("当前基座不含文件选择插件，请用含 ZipPicker 的包"));
       return;
     }
-    api({
-      count: 1,
-      extension: [".zip"],
-      success: (res: { tempFilePaths?: string[]; tempFiles?: { path: string }[] }) => {
-        const path = res.tempFilePaths?.[0] ?? res.tempFiles?.[0]?.path;
-        if (path) resolve(path);
-        else reject(new Error("没拿到文件"));
-      },
-      fail: (e: { errMsg?: string }) => reject(
-        new Error(e.errMsg?.includes("cancel") ? "已取消" : (e.errMsg || "选择失败")),
-      ),
+    zp.chooseZip((res) => {
+      if (res.cancel) reject(new Error("已取消"));
+      else if (res.path) resolve(res.path);
+      else reject(new Error(res.error || "没拿到文件"));
     });
+    // #endif
+    // #ifndef APP-PLUS
+    reject(new Error("压缩包导入目前只支持 App"));
+    // #endif
   });
 }
 
@@ -39,8 +37,10 @@ function decompress(zipPath: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     // #ifdef APP-PLUS
     const target = "_doc/goods-zip-" + Date.now() + "/";
+    // 绝对文件路径要加 file:// 前缀，plus.zip 才认（_doc/_www 这类相对 URL 才不用）
+    const src = zipPath.startsWith("/") ? "file://" + zipPath : zipPath;
     plus.zip.decompress(
-      zipPath,
+      src,
       target,
       () => plus.io.resolveLocalFileSystemURL(target, (entry: any) => {
         const out: string[] = [];
