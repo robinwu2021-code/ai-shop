@@ -316,11 +316,11 @@ shop:
       salt: ${KUAIDI100_SALT:}
       callback-url: ${KUAIDI100_CALLBACK_URL:https://www.hxmall.top/callback/express/kuaidi100}
     # 物流轨迹路由（TDD-圆通物流直连 §4.2）。**按门店切换物流路径，默认圆通。**
-    # store-route：门店号 → 用哪个 provider 查轨迹；没列的门店用 default-provider。
     # 默认圆通：Y2 圆通直连接上后把 SHOP_EXPRESS_TRACE_DEFAULT 设成 yto（开发期 stub，空轨迹不白屏）。
-    # 某店要走别的路径（将来接了聚合）就在 store-route 里给它单配。门店级配置将来挪到门店设置（运行时可切）。
+    # 门店级覆盖（某店走聚合等）按 Map 写在 store-route 下（`ST-xxx: kuaidi100`），默认不配＝全部走 default-provider。
+    #   —— 不给 store-route 挂 ${ENV:} 占位：它是 Map，空串绑不进 Map 会让 TraceRoutingProperties 起不来（整个 context 挂）。
+    #      要按门店配就在这里（或环境覆盖文件里）写成真正的 YAML 映射。门店级配置将来挪到门店设置（运行时可切）。
     trace:
-      store-route: ${SHOP_EXPRESS_TRACE_STORE_ROUTE:}   # 例: {ST-xxx: kuaidi100}
       default-provider: ${SHOP_EXPRESS_TRACE_DEFAULT:stub}
     # 圆通直连凭据（客户编码/客户密钥 + IP 白名单，在圆通开放平台 open.yto.net.cn 申请）。**不进代码库**。
     # 缺凭据时 YtoTraceProvider.available()=false，路由自动回退到空轨迹，不影响别的 provider。
