@@ -48,6 +48,13 @@ public final class GoodsTextRuleParser {
             "广西", "海南", "四川", "贵州", "云南", "西藏", "陕西", "甘肃", "青海", "宁夏",
             "新疆", "台湾", "香港", "澳门");
 
+    /**
+     * 承运商要有**快递语境**才算 —— 否则「今天天气」里的「天天」会被当成天天快递。
+     * 公司名多是普通词的子串（天天/京东/邮政），光 contains 必误命中。
+     */
+    private static final Pattern EXPRESS_CTX = Pattern.compile(
+            "快递|速运|物流|发货|包邮|到付|配送|寄|运费|单号");
+
     /** 「不发货」的几种说法。命中其一，才去它前面找地名——否则「新疆哈密瓜」里的新疆会被误收。 */
     private static final Pattern NO_SHIP = Pattern.compile("不发货|不包邮|不发|除外|不配送");
 
@@ -89,11 +96,18 @@ public final class GoodsTextRuleParser {
         // LinkedHashSet：去重但保留出现顺序，商家读起来是他写的那个次序
         List<String> out = new ArrayList<>();
         for (String c : CARRIERS) {
-            if (text.contains(c)) {
+            int i = text.indexOf(c);
+            if (i < 0) {
+                continue;
+            }
+            // 承运商词前后 5 字窗口里要有快递语境（快递/发货/物流…），否则是巧合的子串
+            int from = Math.max(0, i - 5);
+            int to = Math.min(text.length(), i + c.length() + 5);
+            if (EXPRESS_CTX.matcher(text.substring(from, to)).find()) {
                 out.add(c);
             }
         }
-        // 按在文本中出现的先后排——商家读到的是他写的那个次序，不是词表的次序
+        // 按在文本中出现的先后排——商家读到的是他写的那个次序
         out.sort((a, b) -> Integer.compare(text.indexOf(a), text.indexOf(b)));
         return out;
     }

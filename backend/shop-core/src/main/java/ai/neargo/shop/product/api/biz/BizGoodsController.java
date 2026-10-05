@@ -632,6 +632,40 @@ public class BizGoodsController {
     }
 
     /**
+     * 从一段自由文字识别商品信息（C-AC 快速录入 · AC5/AC6）。
+     *
+     * <p><b>P1 只跑规则层</b>：价格、重量、快递、不发货区域这几类确定性字段，
+     * 正则一抓一个准。规格的语义归类（「单果140g+」算哪个维度）要 LLM，是 P2。
+     *
+     * <p><b>规则抽到的字段永不丢</b>——这就是「LLM 兜底」的真正形态：接上 LLM 之后
+     * 它只补 {@code specs}/{@code params} 的语义归类，而价格以规则正则为准，
+     * LLM 不得改写（价格错是真金白银）。所以这个端点从 P1 到 P2 契约形状不变，
+     * P1 只是 specs/params 恒空。
+     *
+     * <p>全部是**草稿**：端上摆成待确认清单，商家逐项勾了才落表单
+     * （与 describe/recognize 同口径，见 GoodsTextParseVO 注释）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/parse-text")
+    public GoodsTextParseVO parseText(@RequestBody ParseTextReq req) {
+        var rule = ai.neargo.shop.product.service.GoodsTextRuleParser.parse(req.text());
+        // 有承运商 = 走快递。值对齐 packages/shared 的 FULFILLMENT.EXPRESS（端上据此勾履约）
+        List<String> fulfillment = rule.carriers().isEmpty()
+                ? List.of() : List.of("EXPRESS");
+        // 空列表拼出来是空串，统一成 null —— 端上判「有没有不发货区域」只看一个条件
+        String region = rule.excludeRegions().isEmpty()
+                ? null : String.join(" ", rule.excludeRegions());
+        // 规则是确定的：抽到任何一类就算「识别出了东西」，置信满格；全空则 0，端上提示没认出来。
+        // 这个数不是概率，是「规则命中与否」——LLM 接上后 specs/params 会带各自的 confidence
+        boolean hit = !rule.pricesMinor().isEmpty() || !rule.weights().isEmpty()
+                || !rule.carriers().isEmpty() || region != null;
+        return new GoodsTextParseVO(
+                List.of(), List.of(),
+                rule.pricesMinor(), rule.weights(), rule.carriers(),
+                fulfillment, region, hit ? 1d : 0d);
+    }
+
+    /**
      * 顺带把**商品参数**也挑好（§2.B）。
      *
      * <p><b>挂在同一个端点上而不是另开一个</b>：商家点的是同一个「自动生成」按钮，
@@ -782,6 +816,41 @@ public class BizGoodsController {
     }
 
     public record OptionReq(String code, String label) {
+    }
+
+    public record ParseTextReq(String text, String categoryNo) {
+    }
+
+    /**
+     * 文字识别结果。**对齐 b-app 契约 GoodsTextParse**（镜像关系，改名端上解析就失败）。
+     *
+     * <p>全部是草稿。P1 规则层只填 pricesMinor / weights / carriers / fulfillment /
+     * excludeRegionText；specs / params 要 LLM 语义归类，P1 恒空、P2 填 —— 字段先占住，
+     * 契约形状不随分期变。
+     *
+     * @param pricesMinor       抽到的价（分）。带「元/￥」的数字才算
+     * @param weights           重量/净重候选（原文，如「4.5斤」「140g」），规格值候选
+     * @param carriers          承运商（顺丰/圆通…），给运费模板用
+     * @param fulfillment       履约方式。有快递→["EXPRESS"]（对齐 shared FULFILLMENT）
+     * @param excludeRegionText 不发货区域文本，可空。**只回文本**——不自动改运费模板
+     * @param confidence        1=规则抽到了东西，0=没认出来
+     */
+    public record GoodsTextParseVO(List<SpecDraft> specs,
+                                   List<ParamDraft> params,
+                                   List<Long> pricesMinor,
+                                   List<String> weights,
+                                   List<String> carriers,
+                                   List<String> fulfillment,
+                                   String excludeRegionText,
+                                   double confidence) {
+        /** 规格维度草稿（LLM 归类，P1 空）。 */
+        public record SpecDraft(String name, List<String> options) {
+        }
+
+        /** 参数草稿（LLM 从类目模板里挑，P1 空）。source=llm/rule */
+        public record ParamDraft(String dimNo, String name, String label,
+                                 String source, double confidence) {
+        }
     }
 
     public record RecognizeReq(String imageUrl) {
