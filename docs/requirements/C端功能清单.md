@@ -216,6 +216,7 @@
 | C-AC-05 | 卡包 | 储值卡、次卡 | `myCards` |
 | C-AC-06 | 站内消息 | 交易类消息必须能点回订单 | `messageList` `readMessage` |
 | C-AC-07 | 商家入驻入口 | C 端引流到 B 端 | `merchantApply` |
+| C-AC-08 | **个人资料** | 头像、昵称、登录密码。昵称默认值是平台给的占位名（线上 23/23 全是），所以「还没设过」必须在界面上可见、且可点；密码与 B 端是**同一条凭证**（`usr_identity.PASSWORD`，按 `user_no` 一行），店主在哪一端改都是改同一个；而密码登录要按 PHONE 凭证找人，**没绑手机号就设不了密码** | `updateProfile` `uploadAvatar` `setPassword` `hasPassword` |
 
 ### C-UI 外观与国际化
 

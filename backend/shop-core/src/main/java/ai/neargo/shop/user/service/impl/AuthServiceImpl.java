@@ -569,7 +569,7 @@ public class AuthServiceImpl implements AuthService {
     private UsrAccount createAccount(LoginCommand cmd) {
         UsrAccount user = new UsrAccount();
         user.setUserNo(BizKey.next(BizKey.USER));
-        user.setNickname("邻居" + user.getUserNo().substring(user.getUserNo().length() - 4));
+        user.setNickname(UsrAccount.DEFAULT_NICKNAME);
         user.setAvatar("");
         user.setStatus("NORMAL");
         user.setEntityNo(cmd.merchantNo());

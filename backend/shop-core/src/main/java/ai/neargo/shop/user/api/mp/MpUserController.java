@@ -182,6 +182,72 @@ public class MpUserController {
         return userService.updateProfile(req.nickname(), req.avatar());
     }
 
+    // ---------------------------------------------------------------- 登录密码
+
+    /**
+     * 设置 / 修改登录密码（C-AC-08）。**要求已登录** —— 当前会话即授权，不收旧密码
+     * （理由见 {@code AuthService#setPassword}：要旧密码会把「忘了密码」变成死路，
+     * 而重设密码的正路本来就是「用验证码或微信登录进来再设」）。
+     *
+     * <p><b>先过 {@code assertPasswordSettable}</b>：没绑手机号的话这条密码
+     * 永远登不进来（密码登录按 PHONE 凭证找人）。线上已有一条这样的死数据。
+     *
+     * <p><b>这个密码与 B 端是同一条凭证</b>：{@code usr_identity.PASSWORD} 按
+     * {@code user_no} 存一行，而 {@code mch_account} 挂在同一个 {@code user_no} 上 ——
+     * 店主在这里改了密码，他的 B 端 App 登录密码跟着变。这是对的（同一个自然人
+     * 同一个密码），但端上必须把这句话显示出来，否则他下次登不进 B 端会以为是故障。
+     *
+     * <p>不复用 {@code /biz/auth/password}：ADR-007 的前缀纪律之外，更实际的原因是
+     * 两端的鉴权链与限流策略将来会分开。
+     */
+    @PostMapping("/password")
+    public void setPassword(@RequestBody(required = false) PasswordReq req) {
+        /*
+         * **先取当前用户，再看参数** —— 而且这里刻意不用 `@Valid`。
+         *
+         * `@Valid` 跑在方法体之前：一个匿名请求带着空密码打进来，回的是
+         * 「参数有误」而不是 401。那个 10400 看起来像挡住了，挡的却是参数不是身份，
+         * 于是 MpEndpointAuthTest 的实弹探测永远打不到鉴权，这条端点只能进
+         * UNDETERMINED 桶 —— 而那个桶是待办不是许可。
+         *
+         * 长度下限由 AuthService#setPassword 判（PWD_MIN_LEN），不在这儿重复一遍：
+         * 两处各写一个数，改了一处就是一道静默失效的闸。
+         */
+        String userNo = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        userService.assertPasswordSettable();
+        authService.setPassword(userNo, req == null ? null : req.password());
+    }
+
+    /**
+     * 我设过密码没有 —— 端上据此显示「设置密码」还是「修改密码」。
+     *
+     * <p>{@code canSet} 是另一件事：没绑手机号时整行要置灰并说明原因，
+     * 而不是让他点进去填完再被拒。**让后端说了算**，与 {@code /phone/capable} 同一个口径 ——
+     * 判据（PHONE 凭证存不存在）在端上查不到。
+     */
+    @GetMapping("/password")
+    public PasswordStateResp passwordState() {
+        String userNo = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        boolean canSet = true;
+        try {
+            userService.assertPasswordSettable();
+        } catch (BizException e) {
+            canSet = false;
+        }
+        return new PasswordStateResp(authService.hasPassword(userNo), canSet);
+    }
+
+    /**
+     * @param hasPassword 设过密码没有 —— 决定按钮文案
+     * @param canSet      现在能不能设（已绑手机号）—— 决定整行是否可点
+     */
+    public record PasswordStateResp(boolean hasPassword, boolean canSet) {
+    }
+
+    /** 不带 {@code @NotBlank}：判据在方法体里，理由见 {@link #setPassword} */
+    public record PasswordReq(String password) {
+    }
+
     // ---------------------------------------------------------------- 当前生效位置
 
     /**

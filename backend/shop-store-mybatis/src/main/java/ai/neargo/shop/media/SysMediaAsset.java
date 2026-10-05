@@ -47,6 +47,13 @@ public class SysMediaAsset {
     public static final String QUAL = "QUAL";
     /** 售后凭证，私有读。 */
     public static final String AFTERSALE = "AFTERSALE";
+    /**
+     * C 端用户头像，<b>公开读</b>（C-AC-08）。
+     *
+     * <p>公开读是因为它要出现在别人眼前：参团邻居墙、评价列表、B 端订单里的买家。
+     * 走签名 URL 的话那些列表每次渲染都要为每个头像签一次名。
+     */
+    public static final String AVATAR = "AVATAR";
 
     /**
      * {@link #storeNo} 的哨兵值：<b>这份资产属于经营主体，不属于任何一家门店</b>。
@@ -62,6 +69,20 @@ public class SysMediaAsset {
      * 运营端把这一档渲染成「主体级」，不挂在任何门店下。
      */
     public static final String ENTITY_SCOPE = "_ENTITY";
+
+    /**
+     * {@link #entityNo} 与 {@link #storeNo} 的哨兵值：<b>这份资产属于一个 C 端用户，
+     * 不属于任何经营主体，也不属于任何门店</b>。头像（{@link #AVATAR}）是目前唯一这一类。
+     *
+     * <p><b>两个字段都用它，而不是把 userNo 塞进其中一个。</b>
+     * {@code entityNo} / {@code storeNo} 的下游含义是「哪个商家、哪家店占了这些字节」——
+     * 运营端的存储页就是按这两列分组渲染的。把 userNo 塞进去，那一页会把一个买家
+     * 显示成一家门店，而「各店之和 = 真实字节」这个本来对得上的账也会多出一堆假门店。
+     *
+     * <p>具体是谁的头像记在 {@link #uploadedBy} 里 —— 它本来就是「谁传的」。
+     * 于是头像在存储页上自成一档，不污染任何商家的占用，而要查某个人的头像仍然查得到。
+     */
+    public static final String USER_SCOPE = "_USER";
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -83,7 +104,7 @@ public class SysMediaAsset {
      */
     private String storeNo;
 
-    /** {@link #GOODS} / {@link #QUAL} / {@link #AFTERSALE}。决定公开读还是签名读。 */
+    /** {@link #GOODS} / {@link #QUAL} / {@link #AFTERSALE} / {@link #AVATAR}。决定公开读还是签名读。 */
     private String bizType;
 
     private Long bytes;

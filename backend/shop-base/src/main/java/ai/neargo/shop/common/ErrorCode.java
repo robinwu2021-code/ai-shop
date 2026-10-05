@@ -89,6 +89,19 @@ public enum ErrorCode {
      */
     PHONE_ALREADY_BOUND(10458, "err.phone.already_bound"),
     /**
+     * 要设登录密码，但这个账号还没绑手机号（C-AC-08）。
+     *
+     * <p><b>不复用 BAD_REQUEST</b>：那条说「请求参数有误」，而用户填的密码
+     * 完全没问题 —— 他会去反复改密码，而缺的是另一件事。
+     *
+     * <p>也不复用 PASSWORD_NOT_SET：那条的主语是「登录时发现他没设过密码」，
+     * 这条的主语是「设置时发现他没有手机号」。两条给用户的下一步动作不同。
+     *
+     * <p>为什么拦住：密码登录按 PHONE 凭证找人，没有手机号的话这条密码
+     * 永远登不进来（线上已有一条这样的死数据，见 TDD-C端个人资料与密码 §1）。
+     */
+    PHONE_REQUIRED_FOR_PASSWORD(10504, "err.password.phone_required"),
+    /**
      * 收货人手机号格式不对（V333）。
      *
      * <p><b>不复用 BAD_REQUEST</b>：那条的文案是「请求参数有误」，

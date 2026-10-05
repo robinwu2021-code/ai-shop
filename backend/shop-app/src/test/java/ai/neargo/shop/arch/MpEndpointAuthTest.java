@@ -144,6 +144,17 @@ class MpEndpointAuthTest {
             "POST /mp/user/address/{addressId}/default",
             "POST /mp/user/deregister",
             "POST /mp/user/profile",
+            /*
+             * C-AC-08 个人资料三条，**都是实弹验证的 401**。
+             *
+             * 为了做到这一点，这两条 POST 的参数校验刻意放在方法体里、放在取当前用户
+             * 之后 —— `@Valid` 与 multipart 的缺参校验跑在方法体之前，
+             * 那样匿名探测拿到的是 10400 而不是 401，只能塞进 UNDETERMINED，
+             * 而那个桶是待办不是许可（它上面有棘轮，不许变长）。
+             */
+            "POST /mp/user/avatar",
+            "POST /mp/user/password",
+            "GET /mp/user/password",
             "");
 
     /** 匿名访问回成功。游客可看。 */
@@ -556,5 +567,42 @@ class MpEndpointAuthTest {
                     .contains("10400")
                     .doesNotContain("10500");
         }
+    }
+
+    @Test
+    @DisplayName("★★★ C-AC-08 带合法载荷时，头像上传与设密码对匿名一律 401")
+    void avatarAndPasswordRejectAnonymousWithValidPayload() throws Exception {
+        /*
+         * 这两条端点在 UNDETERMINED 桶里，不是因为它们免检，是因为**探测打不到鉴权**：
+         * `@Valid` 与 multipart 的缺参校验跑在过滤器之后、方法体之前，
+         * 于是空载荷的探测拿到的是 10400 而不是 401。
+         *
+         * 那个 10400 很容易被读成「挡住了」。它确实挡住了这一次请求，
+         * 但挡的是参数不是身份 —— 一个**不取当前用户**的实现在空载荷探测下
+         * 同样回 10400，而它是匿名可调的。所以这里带着合法载荷再打一遍。
+         */
+        String pwd = mvc().perform(MockMvcRequestBuilders.post("/mp/user/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"a-long-enough-password\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(pwd)
+                .as("匿名设密码必须 401（10401），而不是真的去给谁设了一个密码")
+                .contains("10401");
+
+        String avatar = mvc().perform(MockMvcRequestBuilders.multipart("/mp/user/avatar")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "a.png", "image/png", pngBytes())))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(avatar)
+                .as("匿名传头像必须 401（10401），而不是把字节存下来")
+                .contains("10401");
+    }
+
+    /** 一个最小的合法 PNG 头 —— 要过 ImageProbe 的 magic number，不然 400 又挡在鉴权前。 */
+    private static byte[] pngBytes() {
+        byte[] b = new byte[64];
+        byte[] magic = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        System.arraycopy(magic, 0, b, 0, magic.length);
+        return b;
     }
 }

@@ -190,14 +190,47 @@ public class UserServiceImpl implements UserService {
     public UserVO updateProfile(String nickname, String avatar) {
         UsrAccount user = currentUser();
         // 传 null 表示「不改这个字段」，而不是「清空」——端上只提交改动的那个
-        if (nickname != null && !nickname.isBlank()) {
-            user.setNickname(nickname);
+        if (nickname != null) {
+            /*
+             * **传了就校验，不再静默忽略空白。**
+             *
+             * 原来是 `nickname != null && !nickname.isBlank()` —— 用户把昵称清空、
+             * 点保存，接口返回 200、界面提示「已保存」，而名字一个字都没变。
+             * 他会以为是自己手滑，再试一次，再成功一次。
+             *
+             * 长度上限同样要在服务端判：端上的 maxlength 挡不住直接打接口的人
+             * （与 setPassword 的 PWD_MIN_LEN 同一个口径）。
+             */
+            String trimmed = nickname.trim();
+            if (trimmed.isEmpty() || trimmed.length() > NICKNAME_MAX_LEN) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            user.setNickname(trimmed);
         }
         if (avatar != null) {
             user.setAvatar(avatar);
         }
         userMapper.updateById(user);
         return UserVO.of(user);
+    }
+
+    /**
+     * 见 {@link UserService#assertPasswordSettable()}。
+     *
+     * <p>查的是 {@code usr_identity} 的 PHONE 凭证，**不是 {@code usr_account.phone}**：
+     * 后者是过渡期的旧列，由 {@code syncLegacyColumn} 单向同步，
+     * 而登录那条路认的是前者。拿旧列当判据的话，两者一旦不一致，
+     * 这道闸就会放过一个登不进来的人 —— 而那正是它要挡的事。
+     */
+    @Override
+    public void assertPasswordSettable() {
+        String userNo = currentUser().getUserNo();
+        Long bound = identityMapper.selectCount(Wrappers.<UsrIdentity>lambdaQuery()
+                .eq(UsrIdentity::getUserNo, userNo)
+                .eq(UsrIdentity::getIdentityType, IdentityType.PHONE));
+        if (bound == null || bound == 0) {
+            throw BizException.of(ErrorCode.PHONE_REQUIRED_FOR_PASSWORD);
+        }
     }
 
     @Override

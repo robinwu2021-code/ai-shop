@@ -21,6 +21,21 @@ import lombok.Setter;
 @TableName("usr_account")
 public class UsrAccount extends BaseEntity {
 
+    /**
+     * 建户时给的占位昵称。
+     *
+     * <p><b>它同时是「这个人还没设过昵称」的判据</b>（见 {@code UserVO#nicknameSet}）——
+     * 默认值与判据必须是同一个来源，否则改了默认值、判据就静默失效，
+     * 而界面上看不出任何异常：所有人的「设置昵称」入口一起消失。
+     *
+     * <p>为什么不是空串：{@code nickname} 被 B 端订单列表、参团邻居墙、履约查询
+     * 三处当买家展示名用，留空会让那三处一起变空。
+     *
+     * <p>为什么不带编号：原来是 {@code "邻居" + userNo 后四位}。那串数字对用户
+     * 没有任何意义，却长得像个真名字 —— 于是没人意识到自己可以改。
+     */
+    public static final String DEFAULT_NICKNAME = "微信用户";
+
     private String userNo;
     private String nickname;
     private String avatar;

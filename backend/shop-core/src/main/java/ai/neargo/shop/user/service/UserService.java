@@ -24,8 +24,25 @@ public interface UserService {
      */
     UserVO bindCommunity(String communityNo, String pickupNo);
 
+    /** 昵称长度上限。够写一个名字，又短到放得进一行列表 */
+    int NICKNAME_MAX_LEN = 20;
+
     /** 修改昵称/头像。传 null 的字段不动。 */
     UserVO updateProfile(String nickname, String avatar);
+
+    /**
+     * 设密码的前置判定：**必须已经绑了手机号**，否则抛
+     * {@code PHONE_REQUIRED_FOR_PASSWORD}。
+     *
+     * <p>理由不是风控，是那条密码根本用不上：{@code AuthServiceImpl#loginByPassword}
+     * 的第一步是按 PHONE 凭证找人，没有手机号就没有 {@code principal} 可填，
+     * 登录表单那一格填什么都查不到这个账号。
+     *
+     * <p>这不是假想的 —— 线上已经有一条这样的数据：一个账号既没有 PHONE 也没有
+     * WX_OPENID_MP，却有 PASSWORD 凭证，那个密码永远登不进来
+     * （见 TDD-C端个人资料与密码 §1）。
+     */
+    void assertPasswordSettable();
 
     /**
      * 绑定手机号（C-AC-04）。**绑定后两种标识指向同一账号** ——
