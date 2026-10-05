@@ -20768,6 +20768,12 @@
           "ar": "حصة الفروع تتبع الرخصة؛ الفرع يستهلك حصة تلك الرخصة. لا يمكن نقله لاحقًا حاليًا."
         },
         {
+          "key": "stores.viewEntity",
+          "zh-CN": "查看主体",
+          "en": "View entity",
+          "ar": "عرض الكيان"
+        },
+        {
           "key": "supplier.createAs",
           "zh-CN": "建为「{name}」",
           "en": "Create “{name}”",

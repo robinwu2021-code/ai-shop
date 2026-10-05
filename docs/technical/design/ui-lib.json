@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 487,
+        "b-app": 488,
         "c-app": 77
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 400,
+        "b-app": 401,
         "c-app": 81
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 346,
+        "b-app": 347,
         "c-app": 273
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 214,
+        "b-app": 215,
         "c-app": 84
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 149,
+        "b-app": 150,
         "c-app": 89
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 542,
+        "b-app": 543,
         "c-app": 200
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 313,
+        "b-app": 314,
         "c-app": 98
       }
     },
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 121,
+        "b-app": 122,
         "c-app": 28,
         "lib": 13
       },
@@ -4692,12 +4692,13 @@
       "key": "b-app/stores",
       "file": "b-app/src/pages/stores/index.vue",
       "components": [
+        "sh-icon",
         "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 74,
-      "localSelectors": 24,
-      "localCssLines": 92,
+      "libClassHits": 81,
+      "localSelectors": 26,
+      "localCssLines": 99,
       "rolled": []
     },
     {
