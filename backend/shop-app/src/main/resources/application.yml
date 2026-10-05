@@ -315,6 +315,13 @@ shop:
       secret: ${KUAIDI100_SECRET:}
       salt: ${KUAIDI100_SALT:}
       callback-url: ${KUAIDI100_CALLBACK_URL:https://www.hxmall.top/callback/express/kuaidi100}
+    # 物流轨迹路由（TDD-圆通物流直连 §4.2）。**按门店切换物流路径，默认圆通。**
+    # store-route：门店号 → 用哪个 provider 查轨迹；没列的门店用 default-provider。
+    # 默认圆通：Y2 圆通直连接上后把 SHOP_EXPRESS_TRACE_DEFAULT 设成 yto（开发期 stub，空轨迹不白屏）。
+    # 某店要走别的路径（将来接了聚合）就在 store-route 里给它单配。门店级配置将来挪到门店设置（运行时可切）。
+    trace:
+      store-route: ${SHOP_EXPRESS_TRACE_STORE_ROUTE:}   # 例: {ST-xxx: kuaidi100}
+      default-provider: ${SHOP_EXPRESS_TRACE_DEFAULT:stub}
 
   # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
   #
