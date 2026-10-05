@@ -43,6 +43,7 @@ const fulfillment = ref<FulfillmentType>(FULFILLMENT.PICKUP);
 const items = ref<CartItem[]>([]);
 const addresses = ref<Address[]>([]);
 const addressId = ref("");
+const addressOverrides = ref<Record<string, string>>({});
 /** 我领到的券（`/mp/coupon/mine`）。不是领券中心那批 —— 见 onMounted */
 const coupons = ref<UserCoupon[]>([]);
 const couponNo = ref("");
@@ -215,6 +216,13 @@ const gifts = computed(() => items.value.filter((it) => (it.giftQty ?? 0) > 0));
  * 各写一份的话，购物车说两家、确认页说一家，而用户只会记住后一个。
  */
 const merchantSegments = computed(() => segmentByMerchant(items.value));
+
+function addressFor(merchantNo: string): string {
+  return addressOverrides.value[merchantNo] ?? addressId.value;
+}
+function addressObjFor(merchantNo: string): Address | undefined {
+  return addresses.value.find((a) => a.addressId === addressFor(merchantNo));
+}
 
 /**
  * 每一行还能买几件（skuNo → 上限）。**来自预览** —— 只有后端算得准
@@ -582,6 +590,15 @@ function choicesPayload(): ActivityChoice[] | undefined {
   return e.length ? e.map(([merchantNo, activityNo]) => ({ merchantNo, activityNo })) : undefined;
 }
 
+function addressChoicesPayload() {
+  const entries = Object.entries(addressOverrides.value).filter(
+    ([, v]) => v && v !== addressId.value,
+  );
+  return entries.length
+    ? entries.map(([merchantNo, addressId]) => ({ merchantNo, addressId }))
+    : undefined;
+}
+
 /**
  * 把系统建议的组合套上去。套了返回 true（券号或活动选择变了，watch 会再问一次价）。
  * 建议与当前选择无关（后端从头枚举），所以套一次之后下一次预览给的还是同一组，不会来回跳。
@@ -633,6 +650,7 @@ async function refreshAmount() {
       fulfillment: fulfillment.value,
       // **不传 pickupNo**：点由后端配。传一个端上挑的，等于让数组顺序决定佣金归谁
       addressId: needAddress.value ? addressId.value : undefined,
+      addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
@@ -945,7 +963,15 @@ function backToCart() {
   uni.switchTab({ url: ROUTES.cart });
 }
 
+const pickingForMerchant = ref("");
+
 function gotoAddress() {
+  pickingForMerchant.value = "";
+  uni.navigateTo({ url: `${ROUTES.address}?picking=1` });
+}
+
+function gotoAddressFor(merchantNo: string) {
+  pickingForMerchant.value = merchantNo;
   uni.navigateTo({ url: `${ROUTES.address}?picking=1` });
 }
 
@@ -1033,6 +1059,7 @@ async function submit() {
       fulfillment: fulfillment.value,
       // 同上：点由后端配
       addressId: needAddress.value ? addressId.value : undefined,
+      addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
@@ -1118,7 +1145,14 @@ onShow(async () => {
   const picked = pickedAddress.take();
   await loadAddresses();
   // 放在 load 之后：新增的那条要先进 addresses，`address` 这个 computed 才找得到它
-  if (picked) addressId.value = picked;
+  if (picked) {
+    if (pickingForMerchant.value) {
+      addressOverrides.value = { ...addressOverrides.value, [pickingForMerchant.value]: picked };
+      pickingForMerchant.value = "";
+    } else {
+      addressId.value = picked;
+    }
+  }
 });
 
 onMounted(async () => {
@@ -1289,6 +1323,19 @@ onMounted(async () => {
       <template v-for="m in merchantSegments" :key="m.merchantNo">
         <view v-if="merchantSegments.length > 1" class="seg">
           <text class="txt-strong">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
+        </view>
+        <view
+          v-if="needAddress && merchantSegments.length > 1"
+          class="seg__recv"
+          @tap="gotoAddressFor(m.merchantNo)"
+        >
+          <biz-address-card
+            v-if="addressObjFor(m.merchantNo)"
+            :address="addressObjFor(m.merchantNo)!"
+            bare
+            :more="String($t('confirm.change'))"
+          ></biz-address-card>
+          <text v-else class="txt-body recv__empty-text">{{ $t("confirm.pickAddress") }}</text>
         </view>
 
         <biz-sku-row
@@ -1606,6 +1653,10 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   margin: 24rpx 0 8rpx;
+}
+.seg__recv {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid var(--sh-line);
 }
 
 .splitnote {

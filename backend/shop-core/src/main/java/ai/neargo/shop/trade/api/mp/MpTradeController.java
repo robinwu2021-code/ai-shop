@@ -248,7 +248,12 @@ public class MpTradeController {
                                   * 顾客在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
                                   * 不传 = 与改造前相同（存量端上没有这个字段）
                                   */
-                                 List<StoreChoice> storeChoices) {
+                                 List<StoreChoice> storeChoices,
+                                 /*
+                                  * 逐商家收货地址覆盖（TDD-多地址下单）：每家店送到哪个地址。
+                                  * 不传 = 全部用 addressId（存量端上没有这个字段）
+                                  */
+                                 List<AddressChoice> addressChoices) {
 
         public record Item(String goodsNo, String skuNo, int qty) {
         }
@@ -259,6 +264,10 @@ public class MpTradeController {
 
         /** @param activityNo 活动号，或 "NONE"（这家店不参加活动） */
         public record ActivityChoice(String merchantNo, String activityNo) {
+        }
+
+        /** @param addressId 该商家的货送到哪个地址；不出现 = 用全局 addressId */
+        public record AddressChoice(String merchantNo, String addressId) {
         }
 
         OrderService.CreateOrderCommand toCommand(String payScene) {
@@ -275,7 +284,11 @@ public class MpTradeController {
                     storeChoices == null ? null : storeChoices.stream()
                             .filter(c -> c.merchantNo() != null && c.storeNo() != null && !c.storeNo().isBlank())
                             .collect(java.util.stream.Collectors.toMap(StoreChoice::merchantNo,
-                                    StoreChoice::storeNo, (a, b) -> b)));
+                                    StoreChoice::storeNo, (a, b) -> b)),
+                    addressChoices == null ? null : addressChoices.stream()
+                            .filter(c -> c.merchantNo() != null && c.addressId() != null && !c.addressId().isBlank())
+                            .collect(java.util.stream.Collectors.toMap(AddressChoice::merchantNo,
+                                    AddressChoice::addressId, (a, b) -> b)));
         }
     }
 }

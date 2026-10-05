@@ -190,7 +190,25 @@ public interface OrderService {
                                * 在 B 店的门户里挑的货就由 B 店履约。<b>不属于该主体的门店号被忽略</b>；
                                * null / 空 = 与加这个字段之前逐字相同（自提点 → 默认店 → 最近的服务店）
                                */
-                              java.util.Map<String, String> storeChoices) {
+                              java.util.Map<String, String> storeChoices,
+                              /**
+                               * 逐商家收货地址覆盖（TDD-多地址下单）：商家号 → addressId。
+                               * 没出现的商家用全局 {@code addressId}；
+                               * null / 空 = 全部用全局地址，与加这个字段之前逐字相同
+                               */
+                              java.util.Map<String, String> addressChoices) {
+
+        /** 不带地址覆盖的签名：存量调用方 */
+        public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
+                                  String addressId, String couponNo, Long usePoints, String remark,
+                                  Long appointmentAt, String payMode, String payScene,
+                                  String appointmentSlotNo, String groupNo, boolean openGroup,
+                                  java.util.Map<String, String> activityChoices,
+                                  java.util.Map<String, String> storeChoices) {
+            this(items, fulfillment, pickupNo, addressId, couponNo, usePoints, remark,
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup,
+                    activityChoices, storeChoices, null);
+        }
 
         /** 不带门店偏好的签名：代客下单与存量调用方 */
         public CreateOrderCommand(List<Item> items, String fulfillment, String pickupNo,
@@ -214,7 +232,8 @@ public interface OrderService {
         /** 换一组活动选择与券（预览里枚举最省组合时用） */
         public CreateOrderCommand withChoices(java.util.Map<String, String> choices, String coupon) {
             return new CreateOrderCommand(items, fulfillment, pickupNo, addressId, coupon, usePoints, remark,
-                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, choices, storeChoices);
+                    appointmentAt, payMode, payScene, appointmentSlotNo, groupNo, openGroup, choices, storeChoices,
+                    addressChoices);
         }
 
         /** 不参团的下单（代客下单、测试与存量调用方）。行为与加团字段之前逐字相同 */
@@ -224,6 +243,15 @@ public interface OrderService {
                                   String appointmentSlotNo) {
             this(items, fulfillment, pickupNo, addressId, couponNo, usePoints, remark,
                     appointmentAt, payMode, payScene, appointmentSlotNo, null, false);
+        }
+
+        /** 取该商家的收货地址：有逐商家覆盖就用覆盖，否则用全局 addressId */
+        public String addressFor(String merchantNo) {
+            if (addressChoices != null) {
+                String override = addressChoices.get(merchantNo);
+                if (override != null && !override.isBlank()) return override;
+            }
+            return addressId;
         }
 
         /** 这张单要不要走团：参团或开团 */

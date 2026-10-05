@@ -131,6 +131,8 @@ export interface CreateOrderReq {
   activityChoices?: ActivityChoice[];
   /** 这个主体我在逛哪家店（门户里记下的）。不传 = 自提点所属店 → 默认店 → 最近的服务店 */
   storeChoices?: StoreChoice[];
+  /** 逐商家收货地址覆盖（TDD-多地址下单）：每家店送到哪个地址。不传 = 全部用 addressId */
+  addressChoices?: { merchantNo: string; addressId: string }[];
   remark?: string;
   /** 幂等 key，防重复提交 */
   idempotencyKey: string;

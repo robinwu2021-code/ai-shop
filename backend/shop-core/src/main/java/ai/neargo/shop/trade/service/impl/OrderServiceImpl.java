@@ -1368,7 +1368,8 @@ public class OrderServiceImpl implements OrderService {
             sub.setPickupName(brief.map(p -> p.name()).orElse(null));
             sub.setPickupOwnerRef(brief.map(p -> p.ownerRef()).orElse(null));
             sub.setPickupOwnerStoreNo(brief.map(p -> p.ownerStoreNo()).orElse(null));
-            sub.setAddressId(cmd.addressId());
+            String subAddr = cmd.addressFor(g.merchantNo);
+            sub.setAddressId(subAddr);
             /*
              * 收件人快照（V69）：与上面的 pickupName 同一个理由 ——
              * usr_address 可改可删，买家下完单改成新家，商家看到的就跟着变了，
@@ -1378,7 +1379,7 @@ public class OrderServiceImpl implements OrderService {
              * 快递/自送单万一取不到，宁可让商家看到「地址：—」去问一句，
              * 也不该把已经付过钱的单挡在这里。
              */
-            userPort.receiverOf(userNo, cmd.addressId()).ifPresent(r -> {
+            userPort.receiverOf(userNo, subAddr).ifPresent(r -> {
                 sub.setReceiverName(r.name());
                 sub.setReceiverPhone(r.phone());
                 sub.setReceiverAddress(r.address());
@@ -2356,11 +2357,12 @@ public class OrderServiceImpl implements OrderService {
         if (!Fulfillments.EXPRESS.equals(cmd.fulfillment()) || freightPort == null) {
             return Map.of();
         }
-        String address = cmd.addressId() == null || cmd.addressId().isBlank() || userNo == null ? ""
-                : userPort.receiverOf(userNo, cmd.addressId())
-                        .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
         Map<String, FreightPort.Quote> out = new LinkedHashMap<>();
         for (Group g : split.groups) {
+            String addr = cmd.addressFor(g.merchantNo());
+            String address = addr == null || addr.isBlank() || userNo == null ? ""
+                    : userPort.receiverOf(userNo, addr)
+                            .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
             int weighed = 0;
             int unweighed = 0;
             for (Line l : g.lines()) {
@@ -2831,22 +2833,21 @@ public class OrderServiceImpl implements OrderService {
      */
     private List<String> outOfRangeMerchants(CreateOrderCommand cmd, Split split, String userNo) {
         List<String> out = new ArrayList<>();
-        if (!Fulfillments.MERCHANT_DELIVERY.equals(cmd.fulfillment())
-                || cmd.addressId() == null || cmd.addressId().isBlank()) {
-            return out;
-        }
-        var receiver = userPort.receiverOf(userNo, cmd.addressId()).orElse(null);
-        if (receiver == null || receiver.latE6() == null || receiver.lngE6() == null) {
+        if (!Fulfillments.MERCHANT_DELIVERY.equals(cmd.fulfillment())) {
             return out;
         }
         /*
-         * 逐商家判：购物车跨商家时会拆成多张子单，各家的圆心与半径都不同。
+         * 逐商家判：购物车跨商家时会拆成多张子单，各家的圆心与半径都不同，
+         * 且多地址模式下各家的收货地址也可能不同。
          * 只要有一家送不到，这一单就下不成 —— 让他先拆开或换送货方式，
          * 比下成之后由那一家单独退款要好解释。
          */
-        // 圆心按这一单落在的那家店 —— 多门店商家的非默认店此前一律拿默认店的圆心判，永远送不到
         Map<String, String> stores = storesOf(cmd, split);
         for (var g : split.groups) {
+            String addr = cmd.addressFor(g.merchantNo);
+            if (addr == null || addr.isBlank()) continue;
+            var receiver = userPort.receiverOf(userNo, addr).orElse(null);
+            if (receiver == null || receiver.latE6() == null || receiver.lngE6() == null) continue;
             var origin = merchantPort.deliveryOrigin(g.merchantNo(), stores.get(g.merchantNo())).orElse(null);
             if (origin == null || origin.radiusM() <= 0) {
                 continue;
