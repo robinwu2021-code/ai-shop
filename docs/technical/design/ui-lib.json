@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 399,
+        "b-app": 400,
         "c-app": 76
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 345,
+        "b-app": 346,
         "c-app": 267
       }
     },
@@ -659,7 +659,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 157,
+        "b-app": 158,
         "c-app": 29
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 342,
+        "b-app": 343,
         "c-app": 148
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 541,
+        "b-app": 542,
         "c-app": 192
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 312,
+        "b-app": 313,
         "c-app": 94
       }
     },
@@ -3839,7 +3839,7 @@
         "sh-scaffold",
         "sh-theme-sheet"
       ],
-      "libClassHits": 81,
+      "libClassHits": 87,
       "localSelectors": 8,
       "localCssLines": 34,
       "rolled": []

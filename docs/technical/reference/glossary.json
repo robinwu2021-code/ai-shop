@@ -11498,6 +11498,12 @@
           "ar": "تبديل"
         },
         {
+          "key": "me.version",
+          "zh-CN": "版本",
+          "en": "Version",
+          "ar": "الإصدار"
+        },
+        {
           "key": "memberAdd.leadHint",
           "zh-CN": "顾客尚未注册平台账号时，此条记为「线索」：不会收到任何消息；顾客注册后自动认领，此处填写的备注与标签均会保留。",
           "en": "Before the customer has a platform account this is saved as a lead: no messages are sent. It is claimed automatically once they register, and the notes and tags entered here are kept.",
