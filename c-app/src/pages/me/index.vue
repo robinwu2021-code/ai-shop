@@ -103,6 +103,25 @@ async function onDeregister() {
 }
 
 /** 位置就是地址 —— 选社区自提点那一页已经删了（买家不再挑点） */
+function gotoProfile() {
+  uni.navigateTo({ url: ROUTES.profile });
+}
+
+/** 头像是个能喂给 <image> 的地址吗。存量里还有 emoji 与空值 */
+function isImageUrl(v?: string): boolean {
+  return !!v && (v.startsWith("http") || v.startsWith("/"));
+}
+
+/**
+ * 头部显示的名字。
+ *
+ * <p>还没设过昵称时显示的是「去设置昵称」而不是那个占位名 ——
+ * 占位名看起来就是个真名字，那正是以前没人改昵称的原因（线上 23/23 都是它）。
+ */
+const displayName = computed(() =>
+  user.user?.nicknameSet ? user.user?.nickname : String(t("profile.nicknameCta")),
+);
+
 function gotoCommunity() {
   uni.navigateTo({ url: ROUTES.address });
 }
@@ -479,11 +498,26 @@ onShow(() => {
 
 <template>
   <sh-scaffold title-key="tab.me" tab="me">
-    <view class="sh-card head sh-row" @tap="!user.isLogin && gotoLogin()">
-      <text class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
+    <!--
+      登录后点这张卡进个人资料页（C-AC-08）。
+      **此前登录后整张卡点了没反应** —— 而每个人的名字都是建户时给的占位名
+      （线上 23/23），也就是说这个平台上没有任何人改过昵称：不是没人想改，是没有入口。
+    -->
+    <view class="sh-card head sh-row" @tap="user.isLogin ? gotoProfile() : gotoLogin()">
+      <!--
+        头像可能是 URL、emoji 或空。三种都要显示得出来 ——
+        把一个 emoji 喂给 <image> 的结果是一个碎图标，而不是一张头像。
+      -->
+      <image
+        v-if="isImageUrl(user.user?.avatar)"
+        class="head__avatar head__avatar--img"
+        :src="user.user?.avatar"
+        mode="aspectFill"
+      />
+      <text v-else class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
       <view class="sh-fill">
         <text class="txt-title head__name">
-          {{ user.isLogin ? user.user?.nickname : $t("me.login") }}
+          {{ user.isLogin ? displayName : $t("me.login") }}
         </text>
         <!--
           静默登录之后**有账号但没手机号**是常态，此时旧写法显示的是一片空白 ——
@@ -866,6 +900,16 @@ onShow(() => {
   line-height: 104rpx;
   font-size: 52rpx;
   flex-shrink: 0;
+}
+
+/*
+ * 真头像那一支：盖掉上面那三条给文字用的属性。
+ * 不盖的话 line-height 会把图往下推，而 <image> 的默认尺寸会盖过 width/height。
+ */
+.head__avatar--img {
+  line-height: 0;
+  font-size: 0;
+  background: transparent;
 }
 
 .head__name {

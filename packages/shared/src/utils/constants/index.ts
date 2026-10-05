@@ -697,6 +697,8 @@ export const ROUTES = {
   category: "/pages/category/index",
   cart: "/pages/cart/index",
   me: "/pages/me/index",
+  /** 个人资料（C-AC-08）：头像 / 昵称 / 手机号 / 登录密码 */
+  profile: "/pages/me/profile/index",
 } as const;
 
 /** 底部菜单 —— 自定义 tabBar（原生 tabBar 字号锁死且不吃 CSS 变量）。

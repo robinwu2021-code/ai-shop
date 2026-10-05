@@ -299,6 +299,27 @@ export default {
     timeSlotPh: "Preferred delivery time",
     addressPrivacy: "Only the building shows before the group fills; the full address appears to members after payment.",
   },
+  // 个人资料（C-AC-08）
+  profile: {
+    title: "Profile",
+    avatar: "Avatar",
+    avatarTooBig: "That image is too large. Pick another one.",
+    nickname: "Name",
+    nicknameUnset: "Set",
+    // 「我的」页头部那一行用它 —— 比「去设置」长一点，因为那儿没有「昵称」这个标签
+    nicknameCta: "Set your name",
+    nicknamePlaceholder: "1–20 characters",
+    nicknameEmpty: "Name cannot be empty",
+    phone: "Phone",
+    password: "Password",
+    passwordSet: "Set",
+    passwordEdit: "Change",
+    passwordPlaceholder: "At least 6 characters",
+    passwordNeedPhone: "Link a phone number first — password sign-in uses it as your account",
+    passwordSharedHint: "The same password signs you in on the merchant app. Changing it in either place changes both.",
+    saved: "Saved",
+    failed: "Couldn't save. Please try again.",
+  },
   me: {
     appearance: "Appearance & language",
     contact: "Contact support",

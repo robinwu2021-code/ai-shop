@@ -1005,7 +1005,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 36,
+      "count": 37,
       "domains": [
         {
           "name": "工作台",
@@ -1145,6 +1145,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/me/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/me/profile/index",
+              "title": "个人资料",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/me/profile/index"
             },
             {
               "app": "c-app",
@@ -3446,5 +3457,5 @@
       ]
     }
   ],
-  "total": 271
+  "total": 272
 }

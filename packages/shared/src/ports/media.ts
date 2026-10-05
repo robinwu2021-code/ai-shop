@@ -14,6 +14,15 @@
  */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+/**
+ * 头像单张的上限。**必须与后端 `MpAvatarController.MAX_BYTES` 一致** ——
+ * 同一个坑的另一侧（见上一条）。
+ *
+ * <p>比商品图紧一档：头像显示出来只有几十个 px 见方，
+ * 一张 4MB 的直出照片存下来，99.9% 的字节从来没有被任何一个像素用到过。
+ */
+export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
 export type ImageSource = "camera" | "album";
 
 export interface PickedImage {

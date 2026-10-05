@@ -19,6 +19,16 @@ export interface User {
   cUserNo: string;
   /** 昵称。微信授权取来的，用户可改 */
   nickname: string;
+  /**
+   * 昵称是**用户自己设的**吗。false = 还是建户时的占位名。
+   *
+   * <p>为什么需要这个布尔而不是在端上比字符串：判据的来源必须和后端写进去的
+   * 那个默认值是同一个（后端的 {@code UsrAccount.DEFAULT_NICKNAME}）。
+   * 端上自己比一遍的话，默认值一改，所有人的「设置昵称」入口静默消失。
+   *
+   * <p>线上实况（2026-10-05）：23 个账号 23 个都是 false —— 还没有人设过昵称。
+   */
+  nicknameSet: boolean;
   /** 头像 URL */
   avatar: string;
   /** 手机号。已脱敏（中间四位星号），完整号码不下发到端上 */
@@ -45,6 +55,27 @@ export interface User {
 export interface PhoneCapable {
   /** true = 显示「微信一键获取」；false = 显示手机号 + 验证码 */
   capable: boolean;
+}
+/**
+ * 登录密码的状态。
+ *
+ * <p>两个布尔各管一件事，不要合成一个：{@link hasPassword} 决定**按钮文案**
+ * （「设置密码」还是「修改密码」），{@link canSet} 决定**整行能不能点**。
+ * 合成一个的话，没绑手机号的人会看到「设置密码」、点进去填完再被拒。
+ */
+export interface PasswordState {
+  /** 设过密码没有 */
+  hasPassword: boolean;
+  /**
+   * 现在能不能设 —— 等价于「绑了手机号没有」。
+   *
+   * <p>由后端说了算，与 {@link PhoneCapable} 同一个口径：判据是
+   * {@code usr_identity} 里有没有 PHONE 凭证，端上查不到。
+   *
+   * <p>为什么它是个前置条件：密码登录按手机号找人，没号的话这条密码
+   * 永远登不进来（线上已经有一条这样的死数据）。
+   */
+  canSet: boolean;
 }
 // ---------------------------------------------------------------- 积分
 //

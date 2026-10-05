@@ -42,6 +42,39 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   sendOtp: { method: "POST", path: "/mp/user/otp/send", auth: true, summary: "发送验证码" },
   login: { method: "POST", path: "/mp/user/login", auth: false, summary: "登录建户" },
   profile: { method: "GET", path: "/mp/user/profile", auth: true, summary: "我的资料" },
+  /*
+   * C-AC-08 个人资料。后端 POST /mp/user/profile 一直存在，而这张表里以前一条都没有
+   * —— 端上无从调用，于是「改昵称」这件事在界面上根本不存在。
+   */
+  updateProfile: {
+    method: "POST",
+    path: "/mp/user/profile",
+    auth: true,
+    summary: "改昵称 / 头像",
+  },
+  // 真上传字节（multipart），不是把本地临时路径当 JSON 发。
+  // 这条**当场把头像落到账号上**并回整个 User —— 分成「传图拿 url」+「再存一次」
+  // 两步的话，中间那步失败就是「提示上传成功而头像没变」
+  uploadAvatar: {
+    method: "POST",
+    path: "/mp/user/avatar",
+    auth: true,
+    summary: "上传头像并落到账号上",
+  },
+  setPassword: {
+    method: "POST",
+    path: "/mp/user/password",
+    auth: true,
+    summary: "设置 / 修改登录密码",
+  },
+  // 回 hasPassword（按钮显示「设置」还是「修改」）与 canSet（没绑手机号时整行不可点）。
+  // canSet 让后端说了算，与 phone/capable 同一个口径 —— 判据端上查不到
+  passwordState: {
+    method: "GET",
+    path: "/mp/user/password",
+    auth: true,
+    summary: "密码状态（设过没有 / 现在能不能设）",
+  },
   logout: { method: "POST", path: "/mp/user/logout", auth: true, summary: "登出（作废服务端会话）" },
   bindPhone: {
     method: "POST",

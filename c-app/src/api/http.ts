@@ -6,6 +6,7 @@ import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
+  PasswordState,
   PhoneCapable,
   Question,
   MyFission,
@@ -114,6 +115,12 @@ export const httpApi: ShopApi = {
   sendOtp: (phone: string) => call<void>("sendOtp", undefined, { phone }),
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
   profile: () => call<User>("profile"),
+  updateProfile: (req) => call<User>("updateProfile", undefined, req),
+  // 真上传字节（multipart），不是把本地临时路径当 JSON 发 —— 后端要 MultipartFile
+  uploadAvatar: (tempPath) =>
+    http.uploadFile<User>(ENDPOINTS.uploadAvatar.path, tempPath),
+  setPassword: (password) => call<void>("setPassword", undefined, { password }),
+  passwordState: () => call<PasswordState>("passwordState"),
   logout: () => call<void>("logout"),
   bindPhone: (phone, code) =>
     call<User>("bindPhone", undefined, { phone, code } satisfies BindPhoneReq),

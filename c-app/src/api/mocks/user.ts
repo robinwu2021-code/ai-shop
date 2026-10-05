@@ -18,6 +18,10 @@ export const userMock: Pick<ShopApi,
   | "sendOtp"
   | "login"
   | "profile"
+  | "updateProfile"
+  | "uploadAvatar"
+  | "setPassword"
+  | "passwordState"
   | "logout"
   | "deregister"
   | "bindPhone"
@@ -68,6 +72,53 @@ export const userMock: Pick<ShopApi,
 
   async profile() {
     return delay({ ...db.user });
+  },
+
+  // ---------------------------------------------------------------- 个人资料（C-AC-08）
+
+  async updateProfile(req) {
+    /*
+     * 判据与后端同口径：**传 undefined 不动，传空白则拒**。
+     *
+     * 替身在这里宽容一点就会盖住真缺陷 —— 后端的空白此前是静默忽略
+     * （200 + 「已保存」而名字没变），如果 mock 也静默忽略，
+     * 端上那条「保存后名字要真的变了」的用例在 mock 下永远绿。
+     */
+    if (req.nickname !== undefined) {
+      const trimmed = req.nickname.trim();
+      if (!trimmed || trimmed.length > 20) throw new Error("昵称要 1–20 个字");
+      db.user.nickname = trimmed;
+      db.user.nicknameSet = true;
+    }
+    if (req.avatar !== undefined) db.user.avatar = req.avatar;
+    persist();
+    return delay({ ...db.user });
+  },
+
+  async uploadAvatar(tempPath) {
+    // 替身存不了字节，直接把临时路径当成头像地址 ——
+    // 真实环境里后端回的是公开 URL，形状一致（都是个能喂给 <image> 的串）
+    db.user.avatar = tempPath;
+    persist();
+    return delay({ ...db.user });
+  },
+
+  async setPassword(password) {
+    // 先判「能不能设」再判密码本身：顺序与后端一致。
+    // 反过来的话，没绑手机号的人会先看到「密码太短」这种无关的话
+    if (!db.user.phone) throw new Error("先绑定手机号才能设置登录密码");
+    if (!password || password.length < 6) throw new Error("密码至少 6 位");
+    db.userHasPassword = true;
+    persist();
+    return delay(undefined as void);
+  },
+
+  async passwordState() {
+    return delay({
+      hasPassword: Boolean(db.userHasPassword),
+      // canSet 等价于「绑了手机号没有」—— 与后端查 PHONE 凭证同一个含义
+      canSet: Boolean(db.user.phone),
+    });
   },
 
   /** mock 下没有服务端会话可作废，直接放行。真实环境由后端 revoke 令牌 */

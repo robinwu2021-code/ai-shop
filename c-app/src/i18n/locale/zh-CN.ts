@@ -325,6 +325,27 @@ export default {
     timeSlotPh: "期望送达时间",
     addressPrivacy: "成团前只显示到楼栋，付款后才对参团邻居展示完整门牌。",
   },
+  // 个人资料（C-AC-08）
+  profile: {
+    title: "个人资料",
+    avatar: "头像",
+    avatarTooBig: "这张图太大了，换一张",
+    nickname: "昵称",
+    nicknameUnset: "去设置",
+    // 「我的」页头部那一行用它 —— 比「去设置」长一点，因为那儿没有「昵称」这个标签
+    nicknameCta: "去设置昵称",
+    nicknamePlaceholder: "1–20 个字",
+    nicknameEmpty: "昵称不能为空",
+    phone: "手机号",
+    password: "登录密码",
+    passwordSet: "去设置",
+    passwordEdit: "修改",
+    passwordPlaceholder: "至少 6 位",
+    passwordNeedPhone: "先绑定手机号才能设置登录密码",
+    passwordSharedHint: "登录密码在商家端登录时也用它 —— 在哪一端改都是改同一个。",
+    saved: "已保存",
+    failed: "没保存成功，再试一次",
+  },
   me: {
     appearance: "外观与语言",
     contact: "联系客服",

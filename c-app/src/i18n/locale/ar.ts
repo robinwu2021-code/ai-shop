@@ -299,6 +299,27 @@ export default {
     timeSlotPh: "وقت التوصيل المفضل",
     addressPrivacy: "يظهر المبنى فقط قبل اكتمال العدد، ويظهر العنوان الكامل للأعضاء بعد الدفع.",
   },
+  // 个人资料（C-AC-08）
+  profile: {
+    title: "الملف الشخصي",
+    avatar: "الصورة",
+    avatarTooBig: "هذه الصورة كبيرة جدًا. اختر صورة أخرى.",
+    nickname: "الاسم",
+    nicknameUnset: "تعيين",
+    // 「我的」页头部那一行用它 —— 比「去设置」长一点，因为那儿没有「昵称」这个标签
+    nicknameCta: "عيّن اسمك",
+    nicknamePlaceholder: "من 1 إلى 20 حرفًا",
+    nicknameEmpty: "لا يمكن أن يكون الاسم فارغًا",
+    phone: "رقم الهاتف",
+    password: "كلمة المرور",
+    passwordSet: "تعيين",
+    passwordEdit: "تغيير",
+    passwordPlaceholder: "6 أحرف على الأقل",
+    passwordNeedPhone: "اربط رقم هاتف أولاً — تسجيل الدخول بكلمة المرور يستخدمه كحسابك",
+    passwordSharedHint: "نفس كلمة المرور تُستخدم لتسجيل الدخول في تطبيق التاجر. تغييرها في أي مكان يغيّرها في كليهما.",
+    saved: "تم الحفظ",
+    failed: "لم يتم الحفظ. حاول مرة أخرى.",
+  },
   me: {
     appearance: "المظهر واللغة",
     contact: "تواصل مع الدعم",

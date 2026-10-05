@@ -58,6 +58,18 @@
       }
     },
     {
+      "path": "pages/me/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人资料",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/goods/index",
       "style": {
         "navigationBarTitleText": "",

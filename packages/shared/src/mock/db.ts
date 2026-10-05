@@ -1060,9 +1060,23 @@ export const db = {
   user: {
     cUserNo: "CU10001",
     nickname: "邻居小张",
+    // true：这个替身账号的昵称是「自己设过的」。
+    // 想在 mock 下看「设置昵称 ›」那个入口，把它改成 false
+    nicknameSet: true,
     avatar: "🙂",
     phone: "13800138000",
   } as User,
+
+  /**
+   * C 端这个账号设过登录密码没有（C-AC-08）。
+   *
+   * <p>单独一个字段而不是放进 {@code db.user}：{@code User} 是**下发给端上的**
+   * 形状，而「设过密码没有」走的是独立的 passwordState 端点 ——
+   * 塞进 User 会让替身的形状比真接口多一个字段，而那正是替身盖住缺陷的方式。
+   *
+   * <p>初始 false：替身账号走的是验证码登录，还没设过密码。
+   */
+  userHasPassword: false,
 
   /**
    * B 端当前登录的商家。

@@ -52,6 +52,7 @@ import type {
   CategoryType,
   FulfillmentType,
   ReviewScores,
+  PasswordState,
   PhoneCapable,
   RegionNode,
   RegionOption,
@@ -173,6 +174,41 @@ export interface ShopApi {
   sendOtp(phone: string): Promise<void>;
   login(req: LoginReq): Promise<LoginResp>;
   profile(): Promise<User>;
+
+  /**
+   * 改昵称 / 头像。**传 undefined 的字段不动**，不是清空 ——
+   * 端上只提交用户真改了的那一个。
+   *
+   * <p>昵称的空白与超长由后端拦（1–20 字）。端上的 maxlength 挡不住直接打接口的人，
+   * 而空白此前是**静默忽略**：接口 200、界面说「已保存」，名字一个字没变。
+   */
+  updateProfile(req: { nickname?: string; avatar?: string }): Promise<User>;
+
+  /**
+   * 传头像。收的是 `chooseAvatar` 给的**临时文件路径**，走 multipart 发字节。
+   *
+   * 一个端点做完整件事（存字节 + 落到账号），所以直接回新的 `User` ——
+   * 分成「传图拿 url」+「再存一次」两步的话，中间那步失败就是
+   * 「提示上传成功而头像没变」。
+   *
+   * 小程序侧域名要进 uploadFile 合法域名白名单；App 无此限制。
+   */
+  uploadAvatar(tempPath: string): Promise<User>;
+
+  /**
+   * 设置 / 修改登录密码。**不收旧密码** —— 当前会话即授权
+   * （要旧密码会把「忘了密码」变成死路，而重设的正路本来就是用验证码登进来再设）。
+   *
+   * **这个密码与商家端是同一条凭证**：店主在这里改了，他的 B 端 App
+   * 登录密码跟着变。界面上必须把这句话显示出来。
+   *
+   * 没绑手机号时后端报 10504 —— 密码登录按手机号找人，没号的话这条密码
+   * 永远登不进来。所以入口要先看 `passwordState()` 的 canSet。
+   */
+  setPassword(password: string): Promise<void>;
+
+  /** 设过密码没有（决定按钮文案）、现在能不能设（没绑手机号时整行不可点） */
+  passwordState(): Promise<PasswordState>;
 
   /**
    * 登出：**必须调后端**，不能只清本地 token。
