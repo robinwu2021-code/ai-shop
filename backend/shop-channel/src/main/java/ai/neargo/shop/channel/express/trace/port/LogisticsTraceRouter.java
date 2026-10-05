@@ -1,5 +1,6 @@
-package ai.neargo.shop.channel.express.trace;
+package ai.neargo.shop.channel.express.trace.port;
 
+import ai.neargo.shop.channel.express.trace.TraceRoutingProperties;
 import ai.neargo.shop.spi.logistics.LogisticsTracePort;
 import ai.neargo.shop.spi.logistics.TraceProvider;
 import ai.neargo.shop.spi.logistics.TraceResult;
