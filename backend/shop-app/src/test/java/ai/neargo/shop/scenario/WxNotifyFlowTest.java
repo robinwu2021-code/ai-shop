@@ -234,24 +234,25 @@ class WxNotifyFlowTest {
     }
 
     @Test
-    @DisplayName("退款完成 → 订阅消息（金额已格式化）")
-    void refundSendsSubscribeMessage() throws Exception {
+    @DisplayName("★ 退款完成 → 只发站内信，**不发微信订阅**（V373 关掉：公共库无退款模板，线上一直空转）")
+    void refundGoesInappOnlyNoSubscribe() throws Exception {
         String openId = "wx-open-refund-1";
         String token = ai.neargo.shop.support.TestLogin.consumerByWechat(mvc(), json, openId);
         String userNo = profileUserNo(token);
 
+        // 即使买家授权过退款模板，也不该发 —— notify_scene_channel 里 AFTER_SALE_REFUNDED/WXSUB 已关
         subscribe(token, TPL_REFUNDED, true);
 
-        // 售后全流程另有 M6 覆盖；这里从事件切入，验证「事件 → 订阅消息」这一段
         eventBus.publish(new OrderEvents.AfterSaleRefunded("AS-WXN-1", "SO-WXN-1", userNo, 1250L));
         dispatcher.dispatchPending();
 
+        // 站内信照发
         assertThat(find(messages(token), "退款已处理")).isNotNull();
+        // **订阅消息不发**：退款的微信触达由微信支付自己推到账消息，不靠我们的订阅
+        //（通道机制本身仍对称、可用，见 refundTipIsCustomisableToo；这里守的是"默认不发"）
         List<StubWxSubscribeGateway.Sent> sent = wxStub.sent().stream()
                 .filter(s -> openId.equals(s.openId())).toList();
-        assertThat(sent).hasSize(1);
-        assertThat(sent.getFirst().scene()).isEqualTo("REFUNDED");
-        assertThat(sent.getFirst().summary()).contains("12.50元");
+        assertThat(sent).as("退款 WXSUB 已关，不该有订阅消息发出").isEmpty();
     }
 
     @Test
