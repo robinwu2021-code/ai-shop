@@ -1032,6 +1032,8 @@ _无字段_
 | `rating` | `number` | 是 | 店铺综合评分，0–5 |
 | `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `ownedTrafficRate` | `number` | 是 | 自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6） |
+| `visitPv7d` | `number` | 是 | 近 7 天到访**次数**（PV，§6）。扫码进店的次数，**主体级**聚合名下全部门店。 单店商家 = 门店级；多店看到的是合计。 |
+| `visitUv7d` | `number` | 是 | 近 7 天到访**人数**（UV）。user 回落 device 去重 |
 
 
 #### GET `/biz/dashboard/todo`
@@ -8454,6 +8456,8 @@ _无字段_
 | `rating` | `number` | 是 | 店铺综合评分，0–5 |
 | `ratingCount` | `number` | 是 | 参与评分的评价条数 |
 | `ownedTrafficRate` | `number` | 是 | 自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6） |
+| `visitPv7d` | `number` | 是 | 近 7 天到访**次数**（PV，§6）。扫码进店的次数，**主体级**聚合名下全部门店。 单店商家 = 门店级；多店看到的是合计。 |
+| `visitUv7d` | `number` | 是 | 近 7 天到访**人数**（UV）。user 回落 device 去重 |
 
 ### MerchantStatus
 

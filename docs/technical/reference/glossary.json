@@ -10526,6 +10526,12 @@
           "ar": "اليوم"
         },
         {
+          "key": "home.visits7d",
+          "zh-CN": "近 7 天到访 {uv} 人 · {pv} 次",
+          "en": null,
+          "ar": null
+        },
+        {
           "key": "income.batchBills",
           "zh-CN": "{n} 笔",
           "en": "{n} bills",

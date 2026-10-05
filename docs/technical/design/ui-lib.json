@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 483,
+        "b-app": 484,
         "c-app": 75
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 342,
+        "b-app": 343,
         "c-app": 264
       }
     },
@@ -3748,7 +3748,7 @@
         "sh-stat",
         "biz-store-tag"
       ],
-      "libClassHits": 50,
+      "libClassHits": 52,
       "localSelectors": 20,
       "localCssLines": 84,
       "rolled": []

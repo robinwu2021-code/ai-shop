@@ -5526,6 +5526,12 @@ components:
         ownedTrafficRate: 
           type: "number"
           description: "自带客流占比（trafficSource=MERCHANT_OWNED），决定费率档（ADR-004 §6）"
+        visitPv7d: 
+          type: "number"
+          description: "近 7 天到访**次数**（PV，§6）。扫码进店的次数，**主体级**聚合名下全部门店。 单店商家 = 门店级；多店看到的是合计。"
+        visitUv7d: 
+          type: "number"
+          description: "近 7 天到访**人数**（UV）。user 回落 device 去重"
       required: 
         - "todayOrders"
         - "todayGmvMinor"
@@ -5535,6 +5541,8 @@ components:
         - "rating"
         - "ratingCount"
         - "ownedTrafficRate"
+        - "visitPv7d"
+        - "visitUv7d"
       additionalProperties: false
     CrossStoreRow: 
       type: "object"
