@@ -153,6 +153,19 @@ public class PrdGoods extends BaseEntity {
      */
     private String params;
 
+    /**
+     * <b>限购地区</b>（设计-发布与销售地区优化 #3）：这件货<b>不卖到</b>哪些省。
+     *
+     * <p>JSON 省级 regionCode 数组，如 {@code ["65","54"]}（新疆/西藏）。语义固定为**排除**：
+     * 默认全国可售，列表里的省不可售。用码不用省名——运费模板那套用省名 {@code startsWith}
+     * 是老债，这一列直接对齐 {@code sys_region.region_code} 的省级两位码，下单时按收货地址
+     * 解析出的 regionCode 取前两位匹配，稳过字符串前缀。空/null = 全国可售。
+     *
+     * <p>与运费模板 {@code out_of_range}（整店快递运费/拒单）分层：这一列管「这件货不卖到哪」，
+     * 两道在下单拦截处都过、任一命中即拒。
+     */
+    private String restrictedRegions;
+
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

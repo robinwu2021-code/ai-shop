@@ -385,7 +385,12 @@ public interface MerchantGoodsService {
                         * 销售方式（V340）：NORMAL / ACTIVITY_ONLY。<b>不传 = 不改</b>（新建默认 NORMAL）。
                         * 在售商品改它与改价同一套：存草稿、发布后生效 —— 草稿存的就是这整份指令。
                         */
-                       String saleMode) {
+                       String saleMode,
+                       /**
+                        * 限购地区（#3）：这件货<b>不卖到</b>哪些省，省级 regionCode 列表（如 {@code ["65","54"]}）。
+                        * 排除语义:默认全国可售、列表内不可售。<b>不传 = 不改，传空数组 = 清空（恢复全国）</b>。
+                        */
+                       List<String> restrictedRegions) {
     }
 
     /**

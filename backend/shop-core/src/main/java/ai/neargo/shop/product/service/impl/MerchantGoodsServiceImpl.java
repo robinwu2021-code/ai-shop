@@ -905,6 +905,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     .toList();
             g.setParams(kept.isEmpty() ? null : writeJson(kept));
         }
+        /*
+         * 限购地区（#3）。**不传 = 不改，传空数组 = 清空（恢复全国可售）** —— 与 params 同一口径。
+         * 存省级 regionCode 的 JSON 数组；排除语义，下单时按收货地址省级码拦截（见 OrderServiceImpl）。
+         */
+        if (cmd.restrictedRegions() != null) {
+            g.setRestrictedRegions(
+                    cmd.restrictedRegions().isEmpty() ? null : writeJson(cmd.restrictedRegions()));
+        }
         if (cmd.detailImages() != null) {
             g.setDetailImages(cmd.detailImages().isEmpty() ? null : writeJson(cmd.detailImages()));
         }
@@ -1042,7 +1050,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 std.categoryNo(),
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
-                cmd.detail(), cmd.detailImages(), cmd.params(), cmd.saleMode());
+                cmd.detail(), cmd.detailImages(), cmd.params(), cmd.saleMode(),
+                cmd.restrictedRegions());
     }
 
     /**
@@ -2189,7 +2198,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 null,
                 // 商家侧不标销售范围：店主知道自己的经营范围，那是他在门店设置里配的
                 null,
-                base.saleMode(), null, null, null, null);
+                base.saleMode(), null, null, null, null, base.restrictedRegions());
     }
 
     /**
@@ -3501,7 +3510,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 storeOnSale,
                 // 同上：销售范围是买家页的一行话，商家侧在门店设置里看
                 null,
-                base.saleMode(), null, null, null, null);
+                base.saleMode(), null, null, null, null, base.restrictedRegions());
     }
 
     /**

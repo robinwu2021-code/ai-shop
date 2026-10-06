@@ -152,7 +152,7 @@ public class BizGoodsController {
                         .map(x -> new MerchantGoodsService.GoodsParam(
                                 x.dimNo(), x.name(), x.valueNo(), x.code(), x.label()))
                         .toList(),
-                req.saleMode()));
+                req.saleMode(), req.restrictedRegions()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -763,7 +763,11 @@ public class BizGoodsController {
                                /** 商品参数（产地/保质期/材质…）。不传 = 不改，传空数组 = 清空 */
                                List<GoodsParamReq> params,
                                /** 销售方式：NORMAL 正常售卖 / ACTIVITY_ONLY 仅活动。不传 = 不改 */
-                               String saleMode) {
+                               String saleMode,
+                               /**
+                                * 限购地区（#3）：不卖到的省级 regionCode 列表。不传 = 不改，传空数组 = 清空（全国）。
+                                */
+                               List<String> restrictedRegions) {
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

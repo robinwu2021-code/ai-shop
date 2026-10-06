@@ -197,6 +197,6 @@ class FulfillmentDomainFlowTest {
                 fulfillments,
                 // 限购 / 生鲜 / 服务 / 拼团四段都不传 = 不改；stdNo 不传 = 自建品，
                 // detail / detailImages / params / saleMode 不传 = 不改 —— 本组只测履约方式
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
     }
 }

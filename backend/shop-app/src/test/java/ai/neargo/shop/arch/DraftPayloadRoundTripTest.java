@@ -45,7 +45,8 @@ class DraftPayloadRoundTripTest {
                 null, List.of(sku),
                 List.of("EXPRESS"),
                 5,          // limitPerUser 每人限购
-                null, null, null, null, null, null, null, "NORMAL");
+                null, null, null, null, null, null, null, "NORMAL",
+                List.of("65", "54"));   // restrictedRegions 限购地区（#3）
 
         String payload = json.writeValueAsString(cmd);
         SaveCommand back = json.readValue(payload, SaveCommand.class);
@@ -55,5 +56,6 @@ class DraftPayloadRoundTripTest {
         assertThat(back.skus().get(0).originPrice()).as("划线价必须 round-trip 回来").isEqualTo(2999L);
         assertThat(back.skus().get(0).price()).isEqualTo(1999L);
         assertThat(back.skus().get(0).stock()).isEqualTo(10);
+        assertThat(back.restrictedRegions()).as("限购地区也要 round-trip").containsExactly("65", "54");
     }
 }

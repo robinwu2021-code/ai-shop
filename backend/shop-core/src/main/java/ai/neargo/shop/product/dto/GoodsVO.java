@@ -194,7 +194,13 @@ public record GoodsVO(String goodsNo,
                        * <p>空 = 没有门店上下文（按主体号查目录、或池行没有门店号）。
                        * 与 {@link #storeName} 不是一回事 —— 那个是 SERVICE 商品由商家手填的「可核销门店」。
                        */
-                      StoreBriefVO store) {
+                      StoreBriefVO store,
+                      /**
+                       * 限购地区（#3）：这件货<b>不卖到</b>的省级 regionCode 列表（如 {@code ["65","54"]}）。
+                       * 两端都下发——B 端编辑页据此回显反选器勾选态；C 端详情据省级码解析出省名、
+                       * 显示「不发货地区」。空 = 全国可售。排除语义，下单按收货地址省级码拦截。
+                       */
+                      List<String> restrictedRegions) {
 
     /** 买 N 送 M。与契约 {@code Promotion} 同形 */
     public record PromotionVO(String type, int buyN, int giftM) {
@@ -247,8 +253,9 @@ public record GoodsVO(String goodsNo,
                    Boolean directBuyable,
                    Boolean activityLive,
                    Boolean favorited,
-                   Boolean deliverable) {
-        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null, null, null, null);
+                   Boolean deliverable,
+                   List<String> restrictedRegions) {
+        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null, null, null, null, restrictedRegions);
     }
 
     /** 极速退款 —— 受售后规则的金额上限与总开关约束，逐件判 */
@@ -260,26 +267,26 @@ public record GoodsVO(String goodsNo,
     public GoodsVO withServices(List<String> services) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
                 saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags,
-                services == null || services.isEmpty() ? null : services, reviewSummary, store);
+                services == null || services.isEmpty() ? null : services, reviewSummary, store, restrictedRegions);
     }
 
     /** 挂上评分概览（只在买家详情）。没有评价时给 null，端上据此显示空态 */
     public GoodsVO withReviewSummary(ai.neargo.shop.product.review.ReviewService.ReviewSummaryVO s) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
                 saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags,
-                services, s, store);
+                services, s, store, restrictedRegions);
     }
 
     /** 挂上促销与活动标签（只在买家详情） */
     public GoodsVO withPromotions(List<PromotionVO> promotions, List<ActivityTagVO> activityTags) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions);
     }
 
     /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
     public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions);
     }
 
     /**
@@ -289,19 +296,19 @@ public record GoodsVO(String goodsNo,
      */
     public GoodsVO withStoreSkus(List<SkuVO> storeSkus) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, storeSkus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions);
     }
 
     /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
     public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions);
     }
 
     /** 挂上提供这件货的门店（只在买家出口填） */
     public GoodsVO withStore(StoreBriefVO s) {
         return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
-                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, s);
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, s, restrictedRegions);
     }
 
     /**

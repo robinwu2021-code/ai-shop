@@ -784,7 +784,8 @@ public class GoodsServiceImpl implements GoodsService {
                 null,
                 saleModeOf(g),
                 // directBuyable 只有详情页要（见 withSaleGate），activityLive 是 B 端列表的
-                null, null, null, null);
+                null, null, null, null,
+                readList(g.getRestrictedRegions()));
     }
 
     /**
@@ -810,7 +811,7 @@ public class GoodsServiceImpl implements GoodsService {
                 v.onSale(), v.status(), v.titleI18n(), v.subtitleI18n(), v.stdNo(),
                 v.auditReason(), v.groupBuy(), v.params(), v.hasDraft(), v.storeOnSale(),
                 new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()),
-                v.saleMode(), v.directBuyable(), v.activityLive(), null, null);
+                v.saleMode(), v.directBuyable(), v.activityLive(), null, null, v.restrictedRegions());
     }
 
     /**
