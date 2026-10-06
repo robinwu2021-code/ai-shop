@@ -535,7 +535,7 @@ a{color:inherit}
 .inbar{background:var(--sh-card);border-radius:999px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--sh-sub)}
 .inbar b{color:var(--sh-ink);font-weight:600}
 .inbar .r{margin-left:auto;color:var(--sh-primary-text);font-weight:600}
-/* 勾选确认清单 */
+/* 勾选确认清单。.ck 对标产品组件 sh-check（勾选框/单选点），.crow 对标 sh-cells 的一行 */
 .ck{width:14px;height:14px;border-radius:4px;outline:1px solid var(--sh-sub);outline-offset:-1px;flex:none;position:relative;margin-top:2px}
 .ck.on{background:var(--sh-primary);outline-color:var(--sh-primary)}
 .ck.on::after{content:"✓";position:absolute;inset:0;color:var(--sh-on-primary);font-size:10px;line-height:14px;text-align:center}
@@ -546,7 +546,7 @@ a{color:inherit}
 .crow .v{font-size:12px;font-weight:600}
 .crow .src{display:block;font-size:10px;color:var(--sh-sub);font-weight:400;margin-top:2px}
 .crow.low .v{color:var(--sh-warning-text)}
-.crow .tag{font-size:9px;border-radius:5px;padding:1px 4px;font-weight:600;margin-left:5px}
+.crow .tag{font-size:10px;border-radius:5px;padding:1px 4px;font-weight:600;margin-left:5px}
 .crow .tag.add{background:var(--sh-success-tint);color:var(--sh-success-text)}
 .crow .tag.upd{background:var(--sh-warning-tint);color:var(--sh-warning-text)}
 .crow .tag.del{background:var(--sh-faint);color:var(--sh-sub)}
@@ -554,13 +554,13 @@ a{color:inherit}
 .diff .old{color:var(--sh-sub);text-decoration:line-through;font-weight:400}
 .diff .arw{color:var(--sh-sub);font-size:10px}
 .diff .new{font-weight:600;color:var(--sh-primary-text)}
-.pin{font-size:9px;background:var(--sh-primary-tint);color:var(--sh-primary-text);border-radius:5px;padding:1px 4px;margin-left:5px;font-weight:600}
+.pin{font-size:10px;background:var(--sh-primary-tint);color:var(--sh-primary-text);border-radius:5px;padding:1px 4px;margin-left:5px;font-weight:600}
 /* 压缩包图位：序号 · 缩略 · 文件名 · 拖动把手 */
 .slot{display:flex;align-items:center;gap:8px;min-height:40px;border-top:1px solid var(--sh-line)}
 .slot:first-child{border-top:0}
 .slot .n{font-size:10px;color:var(--sh-sub);width:34px;flex:none}
 .slot .img{width:32px;height:32px;border-radius:8px;font-size:13px;flex:none}
 .slot .nm{font-size:11px;flex:1;min-width:0}
-.slot .nm em{font-style:normal;display:block;font-size:9.5px;color:var(--sh-sub)}
+.slot .nm em{font-style:normal;display:block;font-size:10px;color:var(--sh-sub)}
 .slot .drag{color:var(--sh-sub);font-size:13px;flex:none}
 .slot.warn .nm em{color:var(--sh-warning-text)}
