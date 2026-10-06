@@ -403,6 +403,7 @@ const RESPONSE_TYPES = {
   // 不是页面的 GoodsDraft —— 无草稿时 data 为 null，由信封表达（同 mApplyDraft）
   mGoodsDraft: "SaveGoodsReqBody",
   mPublishPreview: "PublishPreview",
+  mGoodsRevisions: "GoodsRevision[]",
   mPublishGoods: "Goods",
   mDiscardGoodsDraft: "Goods",
   mSaveGoods: "Goods",

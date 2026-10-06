@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 494,
+        "b-app": 491,
         "c-app": 77
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 348,
+        "b-app": 352,
         "c-app": 273
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 126,
         "c-app": 51
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 100,
+        "b-app": 102,
         "c-app": 90
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 119,
         "c-app": 31
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 215,
+        "b-app": 216,
         "c-app": 84
       }
     },
@@ -659,7 +659,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 163,
+        "b-app": 159,
         "c-app": 33
       }
     },
@@ -683,7 +683,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 58,
+        "b-app": 57,
         "c-app": 12
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 181,
+        "b-app": 187,
         "c-app": 77
       }
     },
@@ -903,7 +903,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 42,
+        "b-app": 49,
         "c-app": 15
       }
     },
@@ -921,7 +921,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 35,
+        "b-app": 37,
         "c-app": 13
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 60,
         "c-app": 14
       }
     },
@@ -977,7 +977,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 11,
         "c-app": 2
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 148,
+        "b-app": 149,
         "c-app": 53
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 68,
         "c-app": 25
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 150,
+        "b-app": 154,
         "c-app": 89
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 21,
+        "b-app": 25,
         "c-app": 17
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 545,
+        "b-app": 550,
         "c-app": 200
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 316,
+        "b-app": 315,
         "c-app": 98
       }
     },
@@ -1621,7 +1621,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 47,
+        "b-app": 48,
         "c-app": 17
       }
     },
@@ -1637,7 +1637,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 44,
+        "b-app": 43,
         "c-app": 0
       }
     },
@@ -1737,7 +1737,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 56,
         "c-app": 0
       }
     },
@@ -1964,7 +1964,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 8,
         "c-app": 5,
         "lib": 0
       },
@@ -2207,7 +2207,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 20,
+        "b-app": 21,
         "c-app": 3,
         "lib": 0
       },
@@ -2320,7 +2320,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 52,
+        "b-app": 53,
         "c-app": 0,
         "lib": 0
       },
@@ -2629,7 +2629,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 23,
+        "b-app": 24,
         "c-app": 11,
         "lib": 1
       },
@@ -3637,7 +3637,6 @@
       "components": [
         "sh-actionbar",
         "sh-add",
-        "sh-check",
         "sh-cover",
         "sh-go",
         "sh-icon-btn",
@@ -3649,10 +3648,25 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 372,
-      "localSelectors": 73,
-      "localCssLines": 316,
-      "rolled": []
+      "libClassHits": 404,
+      "localSelectors": 86,
+      "localCssLines": 361,
+      "rolled": [
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        },
+        {
+          "id": "fill",
+          "label": "占满剩余自写",
+          "lib": ".sh-fill",
+          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5739,6 +5753,26 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "b-app/goods-edit"
+      ]
+    },
+    {
+      "id": "fill",
+      "label": "占满剩余自写",
+      "lib": ".sh-fill",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+      "pages": [
+        "b-app/goods-edit"
       ]
     },
     {

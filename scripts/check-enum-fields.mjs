@@ -555,6 +555,27 @@ export const FIELDS = [
       { file: "ops-web/lib/types/finance.ts", type: "SettleBatchStatus" },
     ],
   },
+  {
+    concept: "商品提交历史里一个版本的状态",
+    field: "prd_goods_revision.status",
+    backend: { ddl: ["prd_goods_revision", "status"] },
+    clients: [
+      /*
+       * **clients 暂时是空的**，不是 DISMISSED：b-app 的 `GoodsRevision.status`
+       * 现在还是 `string`，没收成具名联合类型（历史页是 C2 的事）。
+       * 建页那天要回来把它填上 —— 否则两边取值各走各的，而症状是
+       * 「按状态筛，筛出来永远是空列表且不报错」。
+       */
+    ],
+  },
+  {
+    concept: "商品提交历史里一个版本怎么录的",
+    field: "prd_goods_revision.entry_source",
+    backend: { ddl: ["prd_goods_revision", "entry_source"] },
+    clients: [
+      // 同上：`GoodsRevision.entrySource` 还是 string，建历史页那天收窄
+    ],
+  },
   /*
    * ── 元器件（独立服务 elec-svc · 独立库 ai_shop_elec）──
    *

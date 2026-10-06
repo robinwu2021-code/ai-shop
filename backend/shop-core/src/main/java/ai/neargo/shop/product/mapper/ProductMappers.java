@@ -133,6 +133,19 @@ public final class ProductMappers {
         int purge(@org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
     }
 
+    public interface GoodsRevisionMapper
+            extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsRevision> {
+
+        /**
+         * 下一个版本号。**用 MAX+1 而不是 count+1**：行不会删，但逻辑删过的行
+         * count 不到，而 uk_goods_revision(goods_no, revision_no) 照样挡 ——
+         * count 的写法会在第一次逻辑删之后开始撞唯一键。
+         */
+        @org.apache.ibatis.annotations.Select(
+                "SELECT COALESCE(MAX(revision_no), 0) + 1 FROM prd_goods_revision WHERE goods_no = #{goodsNo}")
+        int nextRevisionNo(@org.apache.ibatis.annotations.Param("goodsNo") String goodsNo);
+    }
+
     public interface SkuMapper extends BaseMapper<PrdSku> {
 
         /**

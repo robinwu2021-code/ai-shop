@@ -390,7 +390,15 @@ public interface MerchantGoodsService {
                         * 限购地区（#3）：这件货<b>不卖到</b>哪些省，省级 regionCode 列表（如 {@code ["65","54"]}）。
                         * 排除语义:默认全国可售、列表内不可售。<b>不传 = 不改，传空数组 = 清空（恢复全国）</b>。
                         */
-                       List<String> restrictedRegions) {
+                       List<String> restrictedRegions,
+                       /**
+                        * 这一版<b>怎么录的</b>：MANUAL 手填 / QUICK_TEXT 快速录入 /
+                        * ZIP 压缩包 / IMAGE 图片识别。<b>不传 = MANUAL</b>。
+                        *
+                        * <p>只进提交历史，不影响任何业务判断 —— 它是识别与历史的接缝：
+                        * 三个月后问「这批参数哪来的」，答案在这一列。
+                        */
+                       String entrySource) {
     }
 
     /**

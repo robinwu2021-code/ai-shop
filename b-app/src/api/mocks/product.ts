@@ -3,7 +3,7 @@
 // 从 `api/mock.ts`（5240 行 / 228 个接口）按域拆出来；实现一个字没改。
 // 合并在 `mocks/index.ts`，那里的类型标注保证**一个接口都不能少**。
 
-import type { GoodsDraft, PayMode, PublishPreview } from "../contract";
+import type { GoodsDraft, GoodsRevision, PayMode, PublishPreview } from "../contract";
 import { db, delay, findGoodsSeed, nextNo, paginate, persist, pick, toGoods } from "@shared/mock/db";
 import type { CategoryType, CurrencyCode, Goods, MarketId, SpecTemplate } from "@shared/types";
 import { CATEGORY_TYPE, MARKETS, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
@@ -37,6 +37,7 @@ export const productMock: Pick<MerchantApi,
   | "mSubmitGoods"
   | "mGoodsDraft"
   | "mPublishPreview"
+  | "mGoodsRevisions"
   | "mPublishGoods"
   | "mDiscardGoodsDraft"
   | "mSavePresale"
@@ -437,6 +438,31 @@ export const productMock: Pick<MerchantApi,
   async mGoodsDraft(goodsNo) {
     // 无草稿回 null 是常态（编辑页转而读线上），与真后端同一口径
     return delay((db.goodsDrafts[goodsNo] as GoodsDraft | undefined) ?? null);
+  },
+
+  async mGoodsRevisions(goodsNo) {
+    /*
+     * mock 只演形状：四种状态各一行,让历史页有东西可渲染。
+     * **ONLINE 故意不是最新那一版** —— 页面最容易出的错就是把「最新」当成「线上在售」。
+     */
+    const draft = db.goodsDrafts[goodsNo] as GoodsDraft | undefined;
+    const rows: GoodsRevision[] = [
+      { revisionNo: 3, status: "ONLINE", entrySource: "MANUAL",
+        changeSummary: "商品名称、商品图", savedBy: "李四", savedAt: "2026-10-05 09:12",
+        publishedBy: "李四", publishedAt: "2026-10-05 09:15", rejectReason: null },
+      { revisionNo: 2, status: "SUPERSEDED", entrySource: "ZIP",
+        changeSummary: "售价", savedBy: "张三", savedAt: "2026-09-28 16:40",
+        publishedBy: "张三", publishedAt: "2026-09-28 16:41", rejectReason: null },
+      { revisionNo: 1, status: "REJECTED", entrySource: "MANUAL",
+        changeSummary: "商品图", savedBy: "张三", savedAt: "2026-09-20 11:03",
+        publishedBy: null, publishedAt: null, rejectReason: "主图含其他平台水印" },
+    ];
+    if (draft) {
+      rows.unshift({ revisionNo: 4, status: "DRAFT", entrySource: "QUICK_TEXT",
+        changeSummary: "售价、每人限购、限购地区", savedBy: "张三", savedAt: "2026-10-06 14:20",
+        publishedBy: null, publishedAt: null, rejectReason: null });
+    }
+    return delay(rows);
   },
 
   async mPublishPreview(goodsNo) {

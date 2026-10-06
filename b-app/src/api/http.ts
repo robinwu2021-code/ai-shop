@@ -3,6 +3,7 @@
 import { http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS as E } from "./endpoints";
 import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateList, GoodsDraft, GoodsGuess, MerchantApi, PublishPreview,
+  GoodsRevision,
   DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PayoutAccount,
   PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate } from "./contract";
@@ -400,6 +401,8 @@ export const httpApi: MerchantApi = {
   },
   mPublishPreview: (goodsNo) =>
     http.get<PublishPreview>(buildPath(E.mPublishPreview.path, { goodsNo })),
+  mGoodsRevisions: (goodsNo) =>
+    http.get<GoodsRevision[]>(buildPath(E.mGoodsRevisions.path, { goodsNo })),
   // confirmVersion 不传就不发 body：后端 @RequestBody(required=false)，正常发布无需确认
   mPublishGoods: (goodsNo, confirmVersion) =>
     http.post<Goods>(buildPath(E.mPublishGoods.path, { goodsNo }),

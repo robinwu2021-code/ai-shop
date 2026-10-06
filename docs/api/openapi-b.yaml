@@ -13991,6 +13991,41 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/goods/{goodsNo}/revisions": 
+    get: 
+      operationId: "mGoodsRevisions"
+      summary: "提交历史（每一版：谁存、怎么录、改了哪几项、何时发布）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/GoodsRevision"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/goods/{goodsNo}/draft/discard": 
     post: 
       operationId: "mDiscardGoodsDraft"

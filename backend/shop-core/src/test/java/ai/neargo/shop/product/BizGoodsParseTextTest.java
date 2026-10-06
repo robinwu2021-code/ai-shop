@@ -28,7 +28,8 @@ class BizGoodsParseTextTest {
                 mock(ai.neargo.shop.product.service.CategoryService.class),
                 mock(ai.neargo.shop.spi.product.GoodsVisionPort.class),
                 mock(ai.neargo.shop.product.service.SpuStdService.class),
-                mock(ai.neargo.shop.product.service.SpecLibraryService.class));
+                mock(ai.neargo.shop.product.service.SpecLibraryService.class),
+                mock(ai.neargo.shop.product.service.GoodsRevisionService.class));
     }
 
     @Test
@@ -84,7 +85,8 @@ class BizGoodsParseTextTest {
                 mock(ai.neargo.shop.product.service.CategoryService.class),
                 vision,
                 mock(ai.neargo.shop.product.service.SpuStdService.class),
-                mock(ai.neargo.shop.product.service.SpecLibraryService.class));
+                mock(ai.neargo.shop.product.service.SpecLibraryService.class),
+                mock(ai.neargo.shop.product.service.GoodsRevisionService.class));
 
         var vo = controller.parseText(new BizGoodsController.ParseTextReq(
                 "规格：\n单果140g+\n净重4.5斤装10元\n圆通快递，新疆西藏海南不发货", null));

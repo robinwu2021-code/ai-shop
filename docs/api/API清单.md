@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 803 个接口**：后端已实现 727（91%）· 前端在调 727
+**合计 806 个接口**：后端已实现 730（91%）· 前端在调 730
 
 ---
 
@@ -265,7 +265,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **279** 个接口 ｜ 后端已实现 **270**（97%）｜ 前端在调 **279**
+共 **282** 个接口 ｜ 后端已实现 **273**（97%）｜ 前端在调 **282**
 
 ### activities（4）
 
@@ -420,7 +420,7 @@
 | GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### goods（19）
+### goods（21）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -434,6 +434,7 @@
 | POST | `/biz/goods/{goodsNo}/presale` | 改截单与到货说明 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/publish` | 发布草稿（原子换版；冲突后带 confirmVersion） | — | `Goods` | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/{goodsNo}/publish-preview` | 发布预览（字段级差异） | — | `PublishPreview` | 🔒 | ✅ | ✅ |
+| GET | `/biz/goods/{goodsNo}/revisions` | 提交历史（每一版：谁存、怎么录、改了哪几项、何时发布） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/stock` | 改库存 | `SaveStockReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/store-price` | 改当前门店售价 | — | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/{goodsNo}/store-stock` | 改当前门店库存 | — | `Goods` | 🔒 | ✅ | ✅ |
@@ -441,6 +442,7 @@
 | POST | `/biz/goods/{goodsNo}/toggle` | 上下架 | `ToggleGoodsReq` | `Goods` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/describe` | 自动生成图文详情 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/goods/inv-mode` | 几件商品记不记库存（列表标签、编辑页那一行） | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/parse-text` | 文字识别商品信息 | `ParseTextReq` | `GoodsTextParse` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
 
@@ -565,7 +567,7 @@
 | POST | `/biz/members/tags` | 批量打标 / 去标 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/members/tags/batch` | 批量打/去一个标签（confirm=false 只试算） | — | `BatchTagResult` | 🔒 | ✅ | ✅ |
 
-### merchant（11）
+### merchant（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -573,6 +575,7 @@
 | POST | `/biz/merchant/apply` | 提交入驻申请 | `MerchantApplyReqBody` | `MerchantProfile` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/apply` | 上次入驻申请 | — | `MerchantApplyReq` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/debt` | 我的欠款与流水 | — | `MyDebt` | 🔒 | ✅ | ✅ |
+| POST | `/biz/merchant/display-name` | 改用户名 | — | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/pay-channel` | 本店能开的收款通道（含没开的） | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/merchant/payment` | 收款进件状态 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/merchant/payment` | 补交资料并提交进件 | `SubmitPaymentReq` | `PaymentApplyment` | 🔒 | ✅ | ✅ |

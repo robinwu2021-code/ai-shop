@@ -1684,6 +1684,21 @@ _无字段_
 类型：[`PublishPreview`](#publishpreview)
 
 
+#### GET `/biz/goods/{goodsNo}/revisions`
+
+提交历史（每一版：谁存、怎么录、改了哪几项、何时发布）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+
+**出参**（`data`）
+
+类型：[`GoodsRevision`](#goodsrevision)\[\]
+
+
 #### POST `/biz/goods/{goodsNo}/stock`
 
 改库存　🔒

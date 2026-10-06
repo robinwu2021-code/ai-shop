@@ -152,6 +152,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mGoodsDraft: { method: "GET", path: "/biz/goods/:goodsNo/draft", auth: true, summary: "读草稿（编辑页回填）" },
   mPublishPreview: { method: "GET", path: "/biz/goods/:goodsNo/publish-preview", auth: true, summary: "发布预览（字段级差异）" },
   mPublishGoods: { method: "POST", path: "/biz/goods/:goodsNo/publish", auth: true, summary: "发布草稿（原子换版；冲突后带 confirmVersion）" },
+  // 提交历史（AC11）：发布不留痕是此前查不到「发过什么」的根因
+  mGoodsRevisions: { method: "GET", path: "/biz/goods/:goodsNo/revisions", auth: true, summary: "提交历史（每一版：谁存、怎么录、改了哪几项、何时发布）" },
   mDiscardGoodsDraft: { method: "POST", path: "/biz/goods/:goodsNo/draft/discard", auth: true, summary: "放弃草稿（线上不动，幂等）" },
   // 只改截单，**不触发重审** —— 走 save 的话生鲜商家改一次截单等于停一天生意
   mSavePresale: { method: "POST", path: "/biz/goods/:goodsNo/presale", auth: true, summary: "改截单与到货说明" },

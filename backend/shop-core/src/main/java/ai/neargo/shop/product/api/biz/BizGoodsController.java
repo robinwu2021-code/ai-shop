@@ -34,6 +34,7 @@ public class BizGoodsController {
     private final MerchantGoodsService goodsService;
     /** 规格库：商家自定义规格落在这里（V195 的 MERCHANT 覆盖层） */
     private final ai.neargo.shop.product.service.SpecLibraryService specLibrary;
+    private final ai.neargo.shop.product.service.GoodsRevisionService revisionService;
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     private final ai.neargo.shop.spi.product.GoodsVisionPort vision;
     private final ai.neargo.shop.product.service.SpuStdService spuStdService;
@@ -42,7 +43,9 @@ public class BizGoodsController {
                               ai.neargo.shop.product.service.CategoryService categoryService,
                               ai.neargo.shop.spi.product.GoodsVisionPort vision,
                               ai.neargo.shop.product.service.SpuStdService spuStdService,
-                              ai.neargo.shop.product.service.SpecLibraryService specLibrary) {
+                              ai.neargo.shop.product.service.SpecLibraryService specLibrary,
+                              ai.neargo.shop.product.service.GoodsRevisionService revisionService) {
+        this.revisionService = revisionService;
         this.specLibrary = specLibrary;
         this.goodsService = goodsService;
         this.categoryService = categoryService;
@@ -152,7 +155,7 @@ public class BizGoodsController {
                         .map(x -> new MerchantGoodsService.GoodsParam(
                                 x.dimNo(), x.name(), x.valueNo(), x.code(), x.label()))
                         .toList(),
-                req.saleMode(), req.restrictedRegions()));
+                req.saleMode(), req.restrictedRegions(), req.entrySource()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -226,6 +229,22 @@ public class BizGoodsController {
     @GetMapping("/biz/goods/{goodsNo}/publish-preview")
     public ai.neargo.shop.product.dto.PublishPreviewVO publishPreview(@PathVariable String goodsNo) {
         return goodsService.publishPreview(BizContext.requireMerchantNo(), goodsNo);
+    }
+
+    /**
+     * 提交历史：这件货的每一版 —— 何时存、谁存、怎么录的、改了哪几项、何时发布、谁发的。
+     *
+     * <p>发布预览回的是「当前草稿 vs 此刻线上」<b>一份</b>差异，发布完草稿行就被物理删掉。
+     * 于是此前发完只剩线上那一份，查不到「发过什么」—— 连发布冲突时
+     * 「线上在你保存之后变过」也说不出是谁改的。这个端点补的就是那条轴。
+     *
+     * <p>不分页：一件商品的版本数以十计，而「线上在售那一版不一定是最新那一版」
+     * 要一眼找得到 —— 分页会把它翻到第二页去。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/goods/{goodsNo}/revisions")
+    public List<ai.neargo.shop.product.dto.GoodsRevisionVO> revisions(@PathVariable String goodsNo) {
+        return revisionService.list(BizContext.requireMerchantNo(), goodsNo);
     }
 
     /**
@@ -805,7 +824,12 @@ public class BizGoodsController {
                                /**
                                 * 限购地区（#3）：不卖到的省级 regionCode 列表。不传 = 不改，传空数组 = 清空（全国）。
                                 */
-                               List<String> restrictedRegions) {
+                               List<String> restrictedRegions,
+                               /**
+                                * 这一版怎么录的：MANUAL / QUICK_TEXT / ZIP / IMAGE。不传 = MANUAL。
+                                * 只进提交历史，不影响任何业务判断。
+                                */
+                               String entrySource) {
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

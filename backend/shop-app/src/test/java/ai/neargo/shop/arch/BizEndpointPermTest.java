@@ -250,6 +250,7 @@ class BizEndpointPermTest {
         put("/biz/goods/{goodsNo}/submit", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/publish", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/publish-preview", BizPerms.GOODS);
+        put("/biz/goods/{goodsNo}/revisions", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/draft", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/draft/discard", BizPerms.GOODS);
         put("/biz/goods/{goodsNo}/presale", BizPerms.GOODS);

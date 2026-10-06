@@ -103,6 +103,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private static final ThreadLocal<Boolean> PUBLISHING = new ThreadLocal<>();
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final ObjectMapper json;
+    /** 提交历史。写入点三处（保存 / 发布 / 驳回），各一行 —— 见 GoodsRevisionService */
+    private final ai.neargo.shop.product.service.GoodsRevisionService revisions;
 
     private final ai.neargo.shop.product.service.CategoryService categoryService;
     /** 标准品：引用建品时用它把类目与 optionCode 拉回权威值 */
@@ -155,6 +157,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                                     ai.neargo.shop.product.service.InvManagedService invManaged,
                                     org.springframework.beans.factory.ObjectProvider<
                                             ai.neargo.shop.spi.product.OnlineQuotaPort> quotaPort,
+                                    ai.neargo.shop.product.service.GoodsRevisionService revisions,
                                     ObjectMapper json) {
         this.quotaPort = quotaPort;
         this.marketPort = marketPort;
@@ -180,6 +183,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.skuMapper = skuMapper;
         this.templateMapper = templateMapper;
         this.goodsService = goodsService;
+        this.revisions = revisions;
         this.json = json;
     }
 
@@ -957,6 +961,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         publishSkuUpserted(merchantNo, g,
                 saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
+        /*
+         * 记一笔。**放在这里是因为它是单点**：下面三个 return（换版收尾 / 免审直通 /
+         * 强制下架）都在它后面经过，挨个 return 前面写一遍迟早漏一条，
+         * 而漏掉的后果是静默的 —— 历史少一版，没人会报错。
+         *
+         * PUBLISHING 非空 = 这次是发布在回放草稿，历史那一行已经存在，不能再记一笔。
+         */
+        if (PUBLISHING.get() == null) {
+            revisions.recordSave(g.getGoodsNo(), g.getEntityNo(), writeJson(cmd),
+                    summarize(g, cmd), cmd.entrySource());
+        }
         // 经营类目的校验已提到方法开头（草稿分支之前），这里不再「自动加进货架」—— 见 requireInStore
         /*
          * 免审直通（goods.audit=off）：编辑已过审商品那条路（stayDraft=false，
@@ -1051,7 +1066,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
                 cmd.detail(), cmd.detailImages(), cmd.params(), cmd.saleMode(),
-                cmd.restrictedRegions());
+                cmd.restrictedRegions(), cmd.entrySource());
     }
 
     /**
@@ -1101,6 +1116,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             PrdGoodsDraft upd = row;
             DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(upd));
         }
+        /*
+         * 记一笔提交历史。**与草稿行并列写，不是从草稿行推出来的** ——
+         * 草稿行发布就被物理删掉，历史要留。changeSummary 用现成的差异计算，
+         * 这里只取标签：它是给人看的摘要，不是结构化 diff（diff 随时能重算）。
+         */
+        revisions.recordSave(live.getGoodsNo(), live.getEntityNo(), payload,
+                summarize(live, cmd), cmd.entrySource());
         // 线上不动，回的是线上版 —— 端上编辑页读草稿另有入口（发布链路那一步）
         return toVO(live);
     }
@@ -1264,6 +1286,45 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             diffRow(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
         }
         return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale, live.getVersion());
+    }
+
+    /**
+     * 「改了哪几项」—— 落进提交历史的摘要，顿号连接的字段标签。
+     *
+     * <p><b>比发布预览浅</b>：这里不烘焙规格（{@code bakeSpecs} 要查库、要解档位），
+     * 因为摘要是给人扫一眼的，而烘焙的代价要落在每一次保存上 ——
+     * 边输边识别加上自动存草稿，那会变成每打几个字查一遍规格库。
+     * 真正的差异在发布预览那一步算，随时能按两份 payload 重算。
+     *
+     * <p>新建商品回 null：第一版没有「改了哪几项」，硬写一句「新建」
+     * 会让列表里每件货的第一行都长一样，不如空着。
+     */
+    private String summarize(PrdGoods live, SaveCommand cmd) {
+        if (live.getGoodsNo() == null || cmd.goodsNo() == null || cmd.goodsNo().isBlank()) {
+            return null;
+        }
+        List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows = new java.util.ArrayList<>();
+        diffRow(rows, "title", "商品名称", live.getTitle(), cmd.title());
+        diffRow(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
+        diffRow(rows, "cover", "商品图", live.getCover(), cmd.cover());
+        diffRow(rows, "category", "主营类目", live.getCategoryNo(), cmd.categoryNo());
+        diffRow(rows, "saleMode", "销售方式", live.getSaleMode(), cmd.saleMode());
+        diffRow(rows, "detail", "图文详情", live.getDetail(), cmd.detail());
+        diffRow(rows, "limit", "每人限购",
+                live.getLimitPerUser() == null ? null : String.valueOf(live.getLimitPerUser()),
+                cmd.limitPerUser() == null ? null : String.valueOf(cmd.limitPerUser()));
+        diffRow(rows, "restricted", "限购地区",
+                live.getRestrictedRegions(),
+                cmd.restrictedRegions() == null ? live.getRestrictedRegions() : writeJson(cmd.restrictedRegions()));
+        diffRow(rows, "params", "商品参数", renderParams(live.getParams()),
+                cmd.params() == null ? renderParams(live.getParams()) : renderParams(writeJson(cmd.params())));
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return rows.stream()
+                .map(ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow::label)
+                .distinct()
+                .collect(java.util.stream.Collectors.joining("、"));
     }
 
     private static void diffRow(List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows,

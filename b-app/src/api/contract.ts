@@ -661,6 +661,30 @@ export interface GoodsDraft {
  * 会漏掉「文案将随规格库刷新」这类变化（商家没碰规格，预览也要显示
  * 「小罐 → 迷你罐」），而那正是发布前最该看见的。
  */
+/**
+ * 商品的一个提交版本（AC11）。
+ *
+ * <p>**故意没有差异字段**：两份 payload 的差异要在服务端算，而现有的差异计算比的是
+ * 「线上实体 vs 提交体」。留一组恒空的字段比没有字段更糟 —— 页面会照着它排版，
+ * 然后永远显示空白。
+ */
+export interface GoodsRevision {
+  revisionNo: number;
+  /** DRAFT 未发布 / ONLINE 线上在售 / SUPERSEDED 已被替换 / REJECTED 已驳回。
+   *  **ONLINE 不一定是 revisionNo 最大的那一版** —— 这是最容易看错的一点 */
+  status: string;
+  /** MANUAL 手填 / QUICK_TEXT 快速录入 / ZIP 压缩包 / IMAGE 图片识别 */
+  entrySource: string;
+  /** 「改了哪几项」的摘要，给人看，不是结构化 diff。首版为 null */
+  changeSummary: string | null;
+  savedBy: string | null;
+  savedAt: string | null;
+  /** 发布人。与保存人常常不是同一个 */
+  publishedBy: string | null;
+  publishedAt: string | null;
+  rejectReason: string | null;
+}
+
 export interface PublishPreview {
   /** 逐字段差异。空 = 草稿与线上一致（发布不会改变任何东西） */
   changes: PublishDiffRow[];
@@ -1199,6 +1223,15 @@ export interface MerchantApi {
    * 发布确认页用它展示「本次发布将改变……」清单；`blocked` 非空时禁用发布。
    */
   mPublishPreview(goodsNo: string): Promise<PublishPreview>;
+
+  /**
+   * 提交历史：这件货的每一版。新的在前。
+   *
+   * <p>发布预览回的是「当前草稿 vs 此刻线上」**一份**差异，发布完草稿行就被删掉。
+   * 此前发完只剩线上那一份，查不到「发过什么」—— 连冲突时「线上在你保存之后变过」
+   * 也说不出是谁改的。不分页：版本数以十计，而「线上在售那一版」要一眼找得到。
+   */
+  mGoodsRevisions(goodsNo: string): Promise<GoodsRevision[]>;
   /**
    * 发布草稿。审核关：**原子换版**，买家看到的从整份旧版直接变整份新版，
    * 没有「先下架再上架」的真空期；审核开：提交待审，**线上继续卖旧版**。

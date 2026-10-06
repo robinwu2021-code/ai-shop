@@ -4540,6 +4540,31 @@ CREATE TABLE IF NOT EXISTS stl_bank_flow
     CONSTRAINT uk_stl_bank_flow UNIQUE (flow_no)
 );
 
+CREATE TABLE IF NOT EXISTS prd_goods_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    goods_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    revision_no INT NOT NULL,
+    base_revision INT DEFAULT NULL,
+    payload TEXT NOT NULL,
+    change_summary VARCHAR(500) DEFAULT NULL,
+    entry_source VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+    reject_reason VARCHAR(255) DEFAULT NULL,
+    published_by VARCHAR(64) DEFAULT NULL,
+    published_at DATETIME DEFAULT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_goods_revision UNIQUE (goods_no, revision_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

@@ -9033,9 +9033,9 @@
         },
         {
           "key": "goods.detailEmptyHint",
-          "zh-CN": "还没写图文详情 —— 买家在详情页看不到任何介绍",
-          "en": "No description yet — buyers will see nothing on the product page",
-          "ar": "لا يوجد وصف بعد — لن يرى المشتري أي تفاصيل"
+          "zh-CN": "买家在详情页看不到介绍",
+          "en": "Buyers will see no description",
+          "ar": "لن يرى المشتري أي وصف"
         },
         {
           "key": "goods.detailImages",
@@ -9081,9 +9081,9 @@
         },
         {
           "key": "goods.draftBanner",
-          "zh-CN": "正在编辑草稿，线上仍在售旧版",
-          "en": "You are editing a draft; buyers still see the old version",
-          "ar": "أنت تعدّل مسودة؛ ما زال المشترون يرون النسخة القديمة"
+          "zh-CN": "草稿未发布 · 线上在售旧版",
+          "en": "Draft not published · buyers see the old version",
+          "ar": "مسودة غير منشورة · يرى المشترون النسخة القديمة"
         },
         {
           "key": "goods.draftLoadFailedHint",
@@ -9219,9 +9219,9 @@
         },
         {
           "key": "goods.freightEstUnweighed",
-          "zh-CN": "未填重量，按首重计：买家快递运费约 {v}",
-          "en": "No weight set, charged at first weight: buyer pays about {v} shipping",
-          "ar": "لا وزن محدد، يُحسب بالوزن الأول: يدفع المشتري شحنًا بحوالي {v}"
+          "zh-CN": "按首重计，运费约 {v}",
+          "en": "Charged at first weight, about {v}",
+          "ar": "يُحسب بالوزن الأول، حوالي {v}"
         },
         {
           "key": "goods.freshSection",
@@ -9273,9 +9273,9 @@
         },
         {
           "key": "goods.fulfillmentRejectedHint",
-          "zh-CN": "刚刚这一路已经不在本店的开通名单里了（可能在别处被关掉）。去开通后再提交，或换一条已开通的。",
-          "en": "It is no longer in this store's enabled list (it may have been turned off elsewhere). Enable it and submit again, or pick one that is enabled.",
-          "ar": "لم تعد ضمن قائمة المتجر المفعّلة (ربما أُوقفت من مكان آخر). فعّلها ثم أعد الإرسال، أو اختر طريقة مفعّلة."
+          "zh-CN": "本店已关闭这条配送方式。去开通，或改选其他方式",
+          "en": "This store has disabled this delivery method. Enable it, or pick another.",
+          "ar": "أوقف هذا المتجر طريقة التوصيل هذه. فعّلها أو اختر طريقة أخرى."
         },
         {
           "key": "goods.fulfillmentType.APPOINTMENT",
@@ -9333,9 +9333,9 @@
         },
         {
           "key": "goods.gateMissing",
-          "zh-CN": "本类目需要{s}，当前账号尚未取得该授权。可先保存草稿，补齐资质后再上架",
-          "en": "This category needs {s}, which you have not been granted — save a draft and list it once approved",
-          "ar": "تتطلب هذه الفئة {s} ولم يُمنح لك بعد؛ احفظ مسودة وانشرها بعد الموافقة"
+          "zh-CN": "本类目需要{s}。可先存草稿，补齐后上架",
+          "en": "This category needs {s}. Save a draft and list it once approved.",
+          "ar": "تتطلب هذه الفئة {s}. احفظ مسودة وانشرها بعد الموافقة."
         },
         {
           "key": "goods.gateRow",
@@ -9375,9 +9375,9 @@
         },
         {
           "key": "goods.genDetailOverwrite",
-          "zh-CN": "已有内容，生成后会被替换。继续？",
-          "en": "This will replace what you have written. Continue?",
-          "ar": "سيحل هذا محل ما كتبته. المتابعة؟"
+          "zh-CN": "已有内容将被替换",
+          "en": "This will replace what you have written",
+          "ar": "سيحل هذا محل ما كتبته"
         },
         {
           "key": "goods.genDetailing",
@@ -9465,9 +9465,9 @@
         },
         {
           "key": "goods.limitPerUserHint",
-          "zh-CN": "不填为不限。按每位顾客累计计算，已取消、已退款的订单不计入",
-          "en": "Leave blank for no limit. Counted per customer over all orders; cancelled and refunded orders are excluded",
-          "ar": "اتركه فارغًا لعدم التقييد. يُحتسب لكل عميل عبر جميع الطلبات، ولا تُحتسب الطلبات الملغاة أو المستردة"
+          "zh-CN": "按顾客累计计算，不含已取消与已退款",
+          "en": "Counted per customer; cancelled and refunded orders excluded",
+          "ar": "يُحتسب لكل عميل، دون الطلبات الملغاة أو المستردة"
         },
         {
           "key": "goods.manageSpecs",
@@ -9531,9 +9531,9 @@
         },
         {
           "key": "goods.noStoreCategory",
-          "zh-CN": "本店还没有经营类目。去「工作台 → 经营类目」添加后再建商品",
-          "en": "This store has no categories yet. Add one under Workbench → Store categories, then create the product.",
-          "ar": "لا توجد فئات لهذا المتجر بعد. أضفها من «لوحة العمل ← فئات المتجر» ثم أنشئ المنتج."
+          "zh-CN": "本店还没有经营类目",
+          "en": "This store has no business categories yet",
+          "ar": "لا توجد فئات أعمال لهذا المتجر بعد"
         },
         {
           "key": "goods.nominalGram",
@@ -9579,9 +9579,9 @@
         },
         {
           "key": "goods.originPriceInvalid",
-          "zh-CN": "划线价要高于售价，否则会标出「涨价」的折扣",
-          "en": "List price must exceed the selling price, otherwise the tag shows a price increase",
-          "ar": "يجب أن يزيد السعر قبل الخصم عن سعر البيع وإلا ستظهر البطاقة كزيادة سعر"
+          "zh-CN": "划线价需高于售价",
+          "en": "List price must exceed the selling price",
+          "ar": "يجب أن يزيد السعر قبل الخصم عن سعر البيع"
         },
         {
           "key": "goods.paramAllAdded",
@@ -9650,36 +9650,6 @@
           "ar": "لا توجد خصائص بعد؛ يمكنك إضافة واحدة"
         },
         {
-          "key": "goods.parseApplied",
-          "zh-CN": "已采纳",
-          "en": "Applied",
-          "ar": "تم التطبيق"
-        },
-        {
-          "key": "goods.parseApply",
-          "zh-CN": "采纳选中项",
-          "en": "Apply selected",
-          "ar": "تطبيق المحدد"
-        },
-        {
-          "key": "goods.parseBtn",
-          "zh-CN": "识别",
-          "en": "Recognize",
-          "ar": "تعرّف"
-        },
-        {
-          "key": "goods.parseConfirmTitle",
-          "zh-CN": "识别结果(请确认)",
-          "en": "Recognized (please confirm)",
-          "ar": "النتيجة (يرجى التأكيد)"
-        },
-        {
-          "key": "goods.parseEmpty",
-          "zh-CN": "先粘一段商品文字",
-          "en": "Paste some product text first",
-          "ar": "الصق نص المنتج أولاً"
-        },
-        {
           "key": "goods.parseExpress",
           "zh-CN": "快递",
           "en": "Courier",
@@ -9692,12 +9662,6 @@
           "ar": "فشل، أعد المحاولة"
         },
         {
-          "key": "goods.parseManualHint",
-          "zh-CN": "价格与规格请对照上面手动填入,避免识别误差",
-          "en": "Fill price and spec manually against the above to avoid recognition errors",
-          "ar": "املأ السعر والمواصفة يدويًا"
-        },
-        {
           "key": "goods.parseNoShip",
           "zh-CN": "不发货区域",
           "en": "No-ship area",
@@ -9705,21 +9669,21 @@
         },
         {
           "key": "goods.parseNoShipHint",
-          "zh-CN": "只作提示,请到运费模板里设置,不会自动改",
-          "en": "For reference only — set it in the freight template, not changed automatically",
-          "ar": "للاطلاع فقط — اضبطها في قالب الشحن"
+          "zh-CN": "已填入限购地区。运费仍需在运费模板设置",
+          "en": "Filled into restricted areas. Shipping fees still need setting in the freight template.",
+          "ar": "أُدرجت في المناطق المقيدة. لا يزال يجب ضبط الشحن في قالب الشحن."
         },
         {
-          "key": "goods.parseNone",
-          "zh-CN": "没认出来,请手动填",
-          "en": "Nothing recognized, fill manually",
-          "ar": "لم يُتعرّف، املأ يدويًا"
+          "key": "goods.parseParams",
+          "zh-CN": "参数",
+          "en": "parameters",
+          "ar": "المعايير"
         },
         {
           "key": "goods.parsePh",
-          "zh-CN": "粘贴商品文字，如:规格 单果140g+;净重4.5斤装10元;圆通快递,新疆西藏海南不发货",
-          "en": "Paste product text, e.g. 140g per fruit; 4.5 jin 10 yuan; SF Express, not shipping to Xinjiang",
-          "ar": "الصق نص المنتج"
+          "zh-CN": "粘贴商品文字，自动识别名称、价格、规格、参数、限购地区",
+          "en": "Paste the product text — name, price, specs, parameters and restricted areas are recognized",
+          "ar": "الصق نص المنتج — يُتعرّف على الاسم والسعر والمواصفات والمعايير والمناطق المقيدة"
         },
         {
           "key": "goods.parsePrice",
@@ -9728,16 +9692,70 @@
           "ar": "السعر"
         },
         {
-          "key": "goods.parseTitle",
-          "zh-CN": "文字识别(快速录入)",
-          "en": "Text recognition",
-          "ar": "التعرف على النص"
+          "key": "goods.parsePriceBulk",
+          "zh-CN": "价格（已填进统一价格）",
+          "en": "price (into the bulk field)",
+          "ar": "السعر (في حقل التعميم)"
+        },
+        {
+          "key": "goods.parseRegions",
+          "zh-CN": "限购地区",
+          "en": "restricted areas",
+          "ar": "المناطق المقيدة"
+        },
+        {
+          "key": "goods.parseReviewHint",
+          "zh-CN": "已经填进表单了，可以直接改，或一键退回",
+          "en": "Already written into the form — edit directly, or roll it all back",
+          "ar": "أُدرجت في النموذج — عدّلها مباشرة أو تراجع عن الكل"
+        },
+        {
+          "key": "goods.parseReviewTitle",
+          "zh-CN": "这次识别填了什么",
+          "en": "What recognition filled in",
+          "ar": "ما أدخله التعرّف"
+        },
+        {
+          "key": "goods.parseSpecApply",
+          "zh-CN": "加进规格",
+          "en": "Add to specs",
+          "ar": "أضف إلى المواصفات"
+        },
+        {
+          "key": "goods.parseSpecDone",
+          "zh-CN": "已加 {n} 个规格维度",
+          "en": "{n} spec dimension(s) added",
+          "ar": "أُضيفت {n} من أبعاد المواصفات"
+        },
+        {
+          "key": "goods.parseSpecFound",
+          "zh-CN": "识别到规格",
+          "en": "Specs found",
+          "ar": "مواصفات مكتشفة"
+        },
+        {
+          "key": "goods.parseUndo",
+          "zh-CN": "撤销",
+          "en": "Undo",
+          "ar": "تراجع"
+        },
+        {
+          "key": "goods.parseUndone",
+          "zh-CN": "已退回识别之前",
+          "en": "Rolled back to before recognition",
+          "ar": "أُعيد إلى ما قبل التعرّف"
+        },
+        {
+          "key": "goods.parseUpdatedN",
+          "zh-CN": "已更新 {n} 项，看一遍",
+          "en": "{n} field(s) updated — review",
+          "ar": "تم تحديث {n} حقلاً — راجعها"
         },
         {
           "key": "goods.parseWeight",
-          "zh-CN": "规格/净重",
-          "en": "Spec / weight",
-          "ar": "المواصفة/الوزن"
+          "zh-CN": "标称重量",
+          "en": "weight",
+          "ar": "الوزن"
         },
         {
           "key": "goods.parsing",
@@ -9759,9 +9777,9 @@
         },
         {
           "key": "goods.payOfflineHint",
-          "zh-CN": "买家下单时可选择当面付款；门店需已开启线下收款",
-          "en": "Buyers can choose to pay in person; the store must have offline payment enabled",
-          "ar": "يمكن للمشتري الدفع شخصيًا؛ يجب أن يكون الدفع دون اتصال مفعّلًا في المتجر"
+          "zh-CN": "买家可选当面付款。需门店已开启线下收款",
+          "en": "Buyers can pay in person. Requires offline payment enabled for the store.",
+          "ar": "يمكن للمشتري الدفع شخصيًا. يتطلب تفعيل الدفع دون اتصال في المتجر."
         },
         {
           "key": "goods.photos",
@@ -9866,10 +9884,40 @@
           "ar": "أُرسلت للمراجعة؛ تبقى النسخة القديمة معروضة حتى الموافقة"
         },
         {
+          "key": "goods.quickEntry",
+          "zh-CN": "快速录入",
+          "en": "Quick entry",
+          "ar": "إدخال سريع"
+        },
+        {
+          "key": "goods.reRecognize",
+          "zh-CN": "重识图片",
+          "en": "Re-recognize image",
+          "ar": "إعادة التعرّف على الصورة"
+        },
+        {
           "key": "goods.recentCats",
           "zh-CN": "最近用过",
           "en": "Recently used",
           "ar": "المستخدمة مؤخراً"
+        },
+        {
+          "key": "goods.recognize",
+          "zh-CN": "识别图片",
+          "en": "Recognize image",
+          "ar": "تعرّف على الصورة"
+        },
+        {
+          "key": "goods.recognizeDone",
+          "zh-CN": "已识别并填入",
+          "en": "Recognized and filled",
+          "ar": "تم التعرّف والتعبئة"
+        },
+        {
+          "key": "goods.recognizeNeedImg",
+          "zh-CN": "先导入或添加商品图",
+          "en": "Add a product image first",
+          "ar": "أضف صورة المنتج أولاً"
         },
         {
           "key": "goods.removeParam",
@@ -9891,9 +9939,9 @@
         },
         {
           "key": "goods.restrictedHint",
-          "zh-CN": "勾中的省不发货，默认全国可售。下单时按收货地址拦截。",
-          "en": "Checked provinces are not shipped to; nationwide by default. Enforced by delivery address at checkout.",
-          "ar": "المحافظات المحددة لا يُشحن إليها؛ جميع المناطق افتراضياً. يُطبَّق حسب عنوان التسليم عند الدفع."
+          "zh-CN": "勾中的省不发货，下单时按收货地址拦截",
+          "en": "Checked provinces are not shipped to; enforced by delivery address",
+          "ar": "المحافظات المحددة لا يُشحن إليها؛ يُطبَّق حسب عنوان التسليم"
         },
         {
           "key": "goods.restrictedLabel",
@@ -9987,9 +10035,9 @@
         },
         {
           "key": "goods.savedDraftHint",
-          "zh-CN": "线上买家看到的仍是旧版。发布后才会更新为这次的改动。",
-          "en": "Buyers still see the old version. Publish to make these changes live.",
-          "ar": "لا يزال المشترون يرون النسخة القديمة. انشر لتصبح هذه التغييرات مرئية."
+          "zh-CN": "买家看到的仍是旧版",
+          "en": "Buyers still see the old version",
+          "ar": "ما زال المشترون يرون النسخة القديمة"
         },
         {
           "key": "goods.savedDraftTitle",
@@ -10202,6 +10250,12 @@
           "ar": "المنتجات"
         },
         {
+          "key": "goods.toStoreCategories",
+          "zh-CN": "去添加",
+          "en": "Add",
+          "ar": "إضافة"
+        },
+        {
           "key": "goods.toStoreScope",
           "zh-CN": "去开启",
           "en": "Enable",
@@ -10227,9 +10281,15 @@
         },
         {
           "key": "goods.untranslated",
-          "zh-CN": "{s} 未填，将显示中文。商品名不做机器翻译",
-          "en": "{s} empty — Chinese will be shown. Product names are not machine translated",
-          "ar": "{s} فارغ؛ ستظهر الصينية. أسماء المنتجات لا تُترجم آلياً"
+          "zh-CN": "{s} 未填，将显示中文",
+          "en": "{s} empty — Chinese will be shown",
+          "ar": "{s} فارغ؛ ستظهر الصينية"
+        },
+        {
+          "key": "goods.updatedFields",
+          "zh-CN": "已更新:{f}",
+          "en": "Updated: {f}",
+          "ar": "تم التحديث: {f}"
         },
         {
           "key": "goods.verifyStore",
@@ -10239,9 +10299,9 @@
         },
         {
           "key": "goods.verifyStoreHint",
-          "zh-CN": "顾客到这家店核销。只能选本主体的门店 —— 手打的名字对不上，核销那天才会发现",
-          "en": "Customers redeem at this store. Only your own stores can be chosen — a hand-typed name that does not match only surfaces on the day of redemption.",
-          "ar": "يستبدل العميل في هذا المتجر. يمكن اختيار متاجرك فقط — الاسم المكتوب يدوياً لا يظهر خطؤه إلا يوم الاستبدال."
+          "zh-CN": "只能选本主体的门店",
+          "en": "Only your own stores can be chosen",
+          "ar": "يمكن اختيار متاجرك فقط"
         },
         {
           "key": "goods.verifyStorePick",
@@ -25703,6 +25763,13 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_goods_revision",
+      "class": "PrdGoodsRevision",
+      "zh": "商品提交历史：一次保存一行快照（TDD-商品编辑页-录入落点与发布历史 §5.1）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_merchant_spec",
       "class": "PrdMerchantSpec",
       "zh": "商家常用维度。",
@@ -30029,6 +30096,62 @@
         "name": "SUBMITTED",
         "value": "SUBMITTED",
         "zh": "已提交待审（审核开关开着时）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "DRAFT",
+        "value": "DRAFT",
+        "zh": "未发布。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "ONLINE",
+        "value": "ONLINE",
+        "zh": "线上在售的那一版。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SUPERSEDED",
+        "value": "SUPERSEDED",
+        "zh": "曾经上过线，已被后来的版本替换",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "审核驳回。",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SRC_MANUAL",
+        "value": "MANUAL",
+        "zh": "手填",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SRC_QUICK_TEXT",
+        "value": "QUICK_TEXT",
+        "zh": "快速录入（粘贴文字）",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SRC_ZIP",
+        "value": "ZIP",
+        "zh": "压缩包导入",
+        "module": "shop-core"
+      },
+      {
+        "host": "PrdGoodsRevision",
+        "name": "SRC_IMAGE",
+        "value": "IMAGE",
+        "zh": "图片识别",
         "module": "shop-core"
       },
       {
@@ -35915,6 +36038,14 @@
       "type": "String",
       "value": "\"^\\\\+?\\\\d{3,20}$\"",
       "zh": "海外号码的**宽判据**：3–20 位数字（可带一个前导 +）。",
+      "module": "shop-base"
+    },
+    {
+      "host": "Provinces",
+      "name": "NAME_BY_CODE",
+      "type": "Map<String, String>",
+      "value": "buildMap()",
+      "zh": "regionCode（两位）→ 省名。",
       "module": "shop-base"
     },
     {

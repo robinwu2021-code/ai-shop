@@ -46,7 +46,8 @@ class DraftPayloadRoundTripTest {
                 List.of("EXPRESS"),
                 5,          // limitPerUser 每人限购
                 null, null, null, null, null, null, null, "NORMAL",
-                List.of("65", "54"));   // restrictedRegions 限购地区（#3）
+                List.of("65", "54"),    // restrictedRegions 限购地区（#3）
+                "QUICK_TEXT");          // entrySource 这一版怎么录的
 
         String payload = json.writeValueAsString(cmd);
         SaveCommand back = json.readValue(payload, SaveCommand.class);
