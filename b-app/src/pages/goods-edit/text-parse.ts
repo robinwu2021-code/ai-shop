@@ -28,6 +28,12 @@ export interface TextParseTarget {
   groupNames: string[];
 }
 
+/** 复核面上的一行：哪一格 · 填了什么。`labelKey` 是 i18n 键，解析在调用方 */
+export interface ParseItem {
+  labelKey: string;
+  value: string;
+}
+
 /** 要改什么。每个字段都是「有值才改」，`undefined` = 这一项不动 */
 export interface TextParsePlan {
   /** 履约里加 EXPRESS */
@@ -44,6 +50,8 @@ export interface TextParsePlan {
   specPicks: { name: string; options: string[] }[];
   /** 改了哪几项，i18n key 的后缀（给 toast 用） */
   changed: string[];
+  /** 复核面要列的行（与 `changed` 同序，多带一个值） */
+  items: ParseItem[];
 }
 
 /**
@@ -93,12 +101,13 @@ function yuan(minor: number): string {
  * </ul>
  */
 export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextParsePlan {
-  const plan: TextParsePlan = { addExpress: false, specPicks: [], changed: [] };
+  const plan: TextParsePlan = { addExpress: false, specPicks: [], changed: [], items: [] };
   if (!r.confidence) return plan;
 
   if (r.fulfillment.includes("EXPRESS")) {
     plan.addExpress = true;
     plan.changed.push("parseExpress");
+    plan.items.push({ labelKey: "goods.fulfillment", value: r.carriers[0] ?? "" });
   }
 
   if (r.pricesMinor.length) {
@@ -107,10 +116,12 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
       if (cur.bulkPrice !== next) {
         plan.bulkPrice = next;
         plan.changed.push("parsePriceBulk");
+        plan.items.push({ labelKey: "goods.bulkPrice", value: next });
       }
     } else if (cur.rows[0] && cur.rows[0].priceMajor[cur.market] !== next) {
       plan.rowPrice = next;
       plan.changed.push("parsePrice");
+      plan.items.push({ labelKey: "goods.parsePrice", value: next });
     }
   }
 
@@ -118,6 +129,7 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
   if (grams && cur.rows.some((row) => !row.nominalGram.trim())) {
     plan.nominalGram = String(grams);
     plan.changed.push("parseWeight");
+    plan.items.push({ labelKey: "goods.nominalGram", value: String(grams) });
   }
 
   /*
@@ -128,10 +140,32 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
   if (more.length) {
     plan.restrictedRegions = [...cur.restrictedRegions, ...more];
     plan.changed.push("parseRegions");
+    plan.items.push({ labelKey: "goods.restrictedLabel", value: more.join(" ") });
   }
 
   plan.specPicks = (r.specs ?? [])
     .filter((sp) => sp.options.length && !cur.groupNames.includes(sp.name));
 
   return plan;
+}
+
+/**
+ * 合出这次识别的**撤销点**。
+ *
+ * <p>**一串连续识别只有一个撤销点。** 边输边识别停手就跑一次，商家贴一段话能跑好几遍；
+ * 撤销要退回的是「我贴这段话之前」，不是「上一次防抖之前」。所以已经有撤销点时
+ * **只往 items 里追加**，快照保持第一次那份；没有撤销点、这次又确实改了东西，
+ * 才拿当前快照建一个。
+ *
+ * <p>这次什么都没改就回原值（可能是 `null`）—— 不要凭「识别跑过」就建撤销点，
+ * 那会让「撤销」把更早的一次识别也一起退掉。
+ */
+export function mergeUndo<T extends object, I>(
+  prev: (T & { items: I[] }) | null,
+  snapshot: T,
+  items: I[],
+): (T & { items: I[] }) | null {
+  if (!items.length) return prev;
+  if (prev) return { ...prev, items: [...prev.items, ...items] };
+  return { ...snapshot, items };
 }

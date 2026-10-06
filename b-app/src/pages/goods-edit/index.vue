@@ -14,7 +14,7 @@ import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { planTextParse } from "./text-parse";
+import { mergeUndo, planTextParse } from "./text-parse";
 import { useMerchantStore } from "@/stores/merchant";
 import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
@@ -811,6 +811,41 @@ const PARSE_LABEL: Record<string, string> = {
 const specPicks = ref<{ name: string; options: string[] }[]>([]);
 
 /**
+ * 识别的撤销点。**存的是快照，不是逐字段的反向操作** ——
+ * `applyParamPicks` 一次可能写进好几个维度、`rows` 整个数组被换掉，
+ * 逐字段反着写回去要维护一份镜像逻辑，而镜像逻辑错了没人会发现。
+ *
+ * <p>**一串连续识别只有一个撤销点**：边输边识别停手就跑一次，商家打一段话
+ * 能跑好几遍。快照在「识别前第一次有改动」时拍下，之后只往 `items` 里追加 ——
+ * 撤销要退回的是「我贴这段话之前」，不是「上一次防抖之前」。
+ */
+const parseUndo = ref<{
+  fulfillments: string[];
+  bulkPrice: string;
+  rows: typeof rows.value;
+  restrictedRegions: string[];
+  paramValues: typeof paramValues.value;
+  items: { label: string; value: string }[];
+} | null>(null);
+
+/** 复核面开着没有 */
+const reviewOpen = ref(false);
+
+/** 撤销这次识别填进去的一切，退回到贴文字之前 */
+function undoParse() {
+  const u = parseUndo.value;
+  if (!u) return;
+  fulfillments.value = [...u.fulfillments];
+  bulk.value.price = u.bulkPrice;
+  rows.value = u.rows;
+  restrictedRegions.value = [...u.restrictedRegions];
+  paramValues.value = u.paramValues;
+  parseUndo.value = null;
+  reviewOpen.value = false;
+  uni.showToast({ title: String(t("goods.parseUndone")), icon: "none" });
+}
+
+/**
  * 文字识别（规则 + LLM）：边输边识别，**只填空着的，不覆盖已填的**。
  *
  * <p>落点怎么算在 `./text-parse.ts`（纯函数、有测试）。这里只做两件事：
@@ -826,12 +861,26 @@ async function applyTextParse() {
   if (!text) {
     parsed.value = null;
     specPicks.value = [];
+    parseUndo.value = null;
     return;
   }
   const r = await api.mParseText(text, categoryNo.value || undefined).catch(() => null);
   if (!r) return;
   parsed.value = r.confidence ? r : null;
   if (!r.confidence) return;
+
+  /*
+   * 快照要在**改之前**拍，而且一串连续识别只拍一次（`parseUndo` 为空时）。
+   * `rows` 要连 `priceMajor` 一起拷：那是个对象，浅拷会让撤销改不回来。
+   */
+  const snapshot = {
+    fulfillments: [...fulfillments.value],
+    bulkPrice: bulk.value.price,
+    rows: rows.value.map((row) => ({ ...row, priceMajor: { ...row.priceMajor } })),
+    restrictedRegions: [...restrictedRegions.value],
+    paramValues: { ...paramValues.value },
+  };
+  const paramsBefore = { ...paramValues.value };
 
   const plan = planTextParse(r, {
     multi: multi.value,
@@ -857,8 +906,17 @@ async function applyTextParse() {
   specPicks.value = plan.specPicks;
 
   const changed = [...plan.changed];
+  const items = plan.items.map((it) => ({ label: String(t(it.labelKey)), value: it.value }));
   // 参数走图片识别同一个函数 —— 同一个后端结果，两条路不该两种待遇
-  if (applyParamPicks(r.params ?? [])) changed.push("parseParams");
+  if (applyParamPicks(r.params ?? [])) {
+    changed.push("parseParams");
+    // 复核面要列出**具体填了哪几个参数**，所以按「之前没有、现在有」反查
+    for (const [dimNo, v] of Object.entries(paramValues.value)) {
+      if (!paramsBefore[dimNo] && v) items.push({ label: v.name ?? dimNo, value: v.label ?? "" });
+    }
+  }
+  // 「一串连续识别只有一个撤销点」的规则在 text-parse.ts，有测试
+  parseUndo.value = mergeUndo(parseUndo.value, snapshot, items);
   if (changed.length) {
     /*
      * **字面量键，不要写成 `t(`goods.${k}`)`。** 端上的 i18n 闸门扫的是字面量：
@@ -1696,6 +1754,18 @@ async function save(thenSubmit = false) {
         识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
         列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
       -->
+      <!--
+        自动填之后的出口:左边可点开复核面逐项看,右边一下退回贴文字之前。
+        **不做前置确认页** —— 边输边识别每打几个字就要弹一次,两种交互不可能共存。
+      -->
+      <view v-if="parseUndo" class="sh-row quick__specs">
+        <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
+          {{ $t("goods.parseUpdatedN", { n: parseUndo.items.length }) }}
+        </text>
+        <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="undoParse">
+          {{ $t("goods.parseUndo") }}
+        </text>
+      </view>
       <view v-if="specPicks.length" class="sh-row quick__specs">
         <text class="txt-caption sh-muted sh-fill">
           {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
@@ -2783,6 +2853,27 @@ async function save(thenSubmit = false) {
     </view>
 
     <!-- 限购地区省份多选（反选）：勾中的省不发货，全不选 = 全国 -->
+    <!-- 复核面:只读 + 一键撤销。它是事后看的,不挡路 -->
+    <sh-sheet
+      :visible="reviewOpen"
+      :title="$t('goods.parseReviewTitle')"
+      :hint="$t('goods.parseReviewHint')"
+      @close="reviewOpen = false"
+    >
+      <sh-kv
+        v-for="(it, i) in parseUndo?.items ?? []"
+        :key="`${it.label}-${i}`"
+        :label="it.label"
+        divided
+      >
+        <text class="txt-body">{{ it.value || "—" }}</text>
+      </sh-kv>
+      <view class="build sh-row">
+        <text class="sh-btn sh-btn--sm sh-btn--ghost" @tap="undoParse">{{ $t("goods.parseUndo") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="reviewOpen = false">{{ $t("goods.restrictedDone") }}</text>
+      </view>
+    </sh-sheet>
+
     <sh-sheet
       :visible="restrictedSheet"
       :title="$t('goods.restrictedTitle')"

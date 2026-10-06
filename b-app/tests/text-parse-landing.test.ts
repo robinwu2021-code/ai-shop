@@ -7,7 +7,7 @@
  * **plan 里那个字段的值**。
  */
 import { describe, expect, it } from "vitest";
-import { gramsOf, planTextParse, type TextParseTarget } from "@/pages/goods-edit/text-parse";
+import { gramsOf, mergeUndo, planTextParse, type TextParseTarget } from "@/pages/goods-edit/text-parse";
 import type { GoodsTextParse } from "@/api/requests";
 
 /** 后端回包。默认什么都没认出来，各条测试只放自己关心的那几项 */
@@ -172,5 +172,51 @@ describe("用户给的那段原文，端到端一次", () => {
     expect(p.restrictedRegions).toEqual(["65", "54", "46"]);
     expect(p.specPicks).toHaveLength(1);
     expect(p.changed).toEqual(["parseExpress", "parsePrice", "parseWeight", "parseRegions"]);
+  });
+});
+
+describe("AC5 撤销点：一串连续识别只有一个", () => {
+  const snap = (price: string) => ({ bulkPrice: price });
+  const item = (v: string) => [{ labelKey: "goods.parsePrice", value: v }];
+
+  it("★★★ 第一次有改动 → 快照是识别之前那份", () => {
+    const u = mergeUndo(null, snap("识别前"), item("10.00"));
+    expect(u).toEqual({ bulkPrice: "识别前", items: item("10.00") });
+  });
+
+  it("★★★ 再识别一次 → 快照仍是第一次那份，items 累加", () => {
+    const first = mergeUndo(null, snap("识别前"), item("10.00"))!;
+    const second = mergeUndo(first, snap("10.00"), item("12.80"));
+    // 撤销要退回「我贴这段话之前」，不是「上一次防抖之前」
+    expect(second!.bulkPrice).toBe("识别前");
+    expect(second!.items).toHaveLength(2);
+  });
+
+  it("这次什么都没改 → 原值返回，不新建撤销点", () => {
+    expect(mergeUndo(null, snap("识别前"), [])).toBeNull();
+    const first = mergeUndo(null, snap("识别前"), item("10.00"))!;
+    expect(mergeUndo(first, snap("10.00"), [])).toBe(first);
+  });
+});
+
+describe("复核面要列出具体填了什么", () => {
+  it("每一项带字段名与填进去的值", () => {
+    const p = planTextParse(
+      parsed({ pricesMinor: [1000], weights: ["4.5斤"], restrictedRegions: ["65"] }),
+      target(),
+    );
+    expect(p.items).toEqual([
+      { labelKey: "goods.parsePrice", value: "10.00" },
+      { labelKey: "goods.nominalGram", value: "2250" },
+      { labelKey: "goods.restrictedLabel", value: "65" },
+    ]);
+  });
+
+  it("items 与 changed 同长 —— 少一条就是复核面漏了一项", () => {
+    const p = planTextParse(
+      parsed({ pricesMinor: [1000], fulfillment: ["EXPRESS"], restrictedRegions: ["65"] }),
+      target(),
+    );
+    expect(p.items).toHaveLength(p.changed.length);
   });
 });
