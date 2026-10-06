@@ -213,17 +213,52 @@ export function useGoodsParams(categoryNo: Ref<string>) {
    *
    * @returns 实际填进去几项 —— 调用方据此决定提示什么
    */
-  function applyParamPicks(picks: Array<{ dimNo: string; code: string; label: string }>): number {
+  function applyParamPicks(
+    picks: Array<{ dimNo: string; name?: string; code?: string; label: string }>,
+  ): number {
     let n = 0;
     for (const p of picks) {
+      // 已经有值的不动：一键覆盖掉商家自己选的没有撤销（理由同上）
+      if (!p || !p.label || paramValues.value[p.dimNo]) continue;
       const dim = propDims.value.find((d) => d.templateNo === p.dimNo);
-      if (!dim || paramValues.value[p.dimNo]) continue;
-      const o = (dim.options ?? []).find((x) => (x.code ?? x.label) === (p.code ?? p.label));
-      if (!o) continue;
-      pickParam(dim, o);
+      const o = dim && (dim.options ?? []).find((x) => (x.code ?? x.label) === (p.code ?? p.label));
+      if (dim && o) {
+        // 模板维度、且识别值就是平台候选之一 → 走带 code 的那条，参与跨店聚合
+        pickParam(dim, o);
+      } else {
+        /*
+         * **识别到的参数/值可以不在本类目模板里**（TDD-商品录入优化5项 AC4）。
+         * 「这袋面 2.5kg」而类目模板的重量没配 2.5kg 这档、甚至没绑重量 —— 旧版两道过滤
+         * （维度要在 propDims、值要在 options）会把它**静默丢掉**,于是识别得越准、落得越少。
+         * 模板是推荐不是上限（与 pickableProps 同一理念）。落为自由参数:label 为准、
+         * 维度名优先用识别带回的 name（后端给的是 GoodsParam），没有再退回本地 dim 名或 dimNo。
+         * 无候选 code 的就不带 code —— 与 TEXT 维度同一形状（快照,不入池）。
+         */
+        paramValues.value = {
+          ...paramValues.value,
+          [p.dimNo]: {
+            dimNo: p.dimNo,
+            name: p.name || dim?.name || p.dimNo,
+            ...(p.code ? { code: p.code } : {}),
+            label: p.label,
+          },
+        };
+      }
       n++;
     }
     return n;
+  }
+
+  /**
+   * **删一项参数**（TDD-商品录入优化5项 AC1）。任何类型都能删，
+   * 包括从历史商品载入、但维度已不在当前类目模板里的「孤儿参数」——
+   * 那种在界面上没有 chip 可以再点一次取消，只能靠这个显式删除点。
+   */
+  function removeParam(dimNo: string) {
+    if (!paramValues.value[dimNo]) return;
+    const next = { ...paramValues.value };
+    delete next[dimNo];
+    paramValues.value = next;
   }
 
   /**
@@ -279,6 +314,6 @@ export function useGoodsParams(categoryNo: Ref<string>) {
     addingParam, newParam, addingValueFor, newParamValue,
     paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
     paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
-    isTextDim, setParamText,
+    isTextDim, setParamText, removeParam,
   };
 }

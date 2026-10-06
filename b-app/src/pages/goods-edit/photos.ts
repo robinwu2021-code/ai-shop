@@ -204,6 +204,22 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
   }
 
   /**
+   * 详情图**拖拽排序**（TDD-商品录入优化5项 AC2）：从 from 位拖到 to 位。
+   *
+   * <p>与箭头版 {@link moveDetailImage} 并存——箭头是兜底（小程序里拖拽与页面滚动的
+   * 手势冲突是老问题,见上面那段）；拖拽走的是 my-specs 那套纯 touch 实现(useRowDrag)。
+   * 这里只负责「落位」这一步,手势识别在页面上。
+   */
+  function reorderDetailImage(from: number, to: number) {
+    const list = [...detailImages.value];
+    if (from < 0 || from >= list.length || to < 0 || to >= list.length || from === to) return;
+    const [row] = list.splice(from, 1);
+    if (!row) return;
+    list.splice(to, 0, row);
+    detailImages.value = list;
+  }
+
+  /**
    * 看图填字段。**填不进去的一律变成候选，不丢弃。**
    *
    * 此前有两条静默丢弃的路径，店主都看不到识别到了什么：
@@ -264,6 +280,6 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
   return {
     cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
     addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
-    addDetailImages, removeDetailImage, moveDetailImage, recognizeInto,
+    addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
   };
 }

@@ -1,10 +1,11 @@
 /**
  * 「自动生成」顺带挑好的商品参数，落到表单里那一步（§2.B）。
  *
- * <p>两条判据都是**保护商家已有输入**与**不让编造的值落进来**：
- * 模型挑的是草稿，而草稿最容易犯的两个错就是「盖掉人已经选好的」和「选一个不存在的值」。
- * 后端返回前已经核验过一遍，端上再拦一次 —— 因为端上的模板是另取的一份（loadProps），
- * 两边可能差着一个类目。
+ * <p>核心判据是**保护商家已有输入**：模型挑的是草稿，最该拦的是「盖掉人已经选好的」。
+ * 2026-10-06（AC4）起**放开了模板/候选过滤**——识别到的参数即使不在本类目模板里
+ * （如「重量 2.5kg」「原产地 云南昭通」）也作自由参数落下,label 为准;模板是推荐不是上限。
+ * 它落的是**可删**的草稿（AC1 的 removeParam 兜底）,且识别全程绝不自动上架,所以
+ * 「宁可多落、让商家删」好过「识别得准却静默丢掉」。
  */
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
@@ -51,13 +52,44 @@ describe("自动生成挑好的参数", () => {
     expect(p.paramValues.value.SD_TASTE.label).toBe("清甜");
   });
 
-  it("★★★ 不在候选里的值丢掉 —— 模型编一个「冷鲜」出来，看起来像正常选项", () => {
+  it("★★★ 识别值不在模板/候选里 → 作自由参数落下，不再丢弃（AC4）", () => {
+    // 行为变更:旧版把「维度不在模板」「值不在候选」两类都丢掉,于是识别得越准落得越少。
+    // 现在模板是推荐不是上限——「这袋面 2.5kg」「原产地 云南昭通」都该落下(可删,见 AC1)。
     const p = setup();
     const n = p.applyParamPicks([
-      { dimNo: "SD_STORE_COND", code: "STGICE", label: "冷鲜" },
-      { dimNo: "SD_NOPE", code: "X", label: "某值" },
+      { dimNo: "SD_STORE_COND", code: "STGICE", label: "冷鲜" }, // 模板维度,但值不在候选
+      { dimNo: "SD_WEIGHT", name: "重量", label: "2.5kg" },      // 维度根本不在本类目模板
     ]);
+    expect(n).toBe(2);
+    // 模板维度、非候选值:落 label,带回传的 code
+    expect(p.paramValues.value.SD_STORE_COND.label).toBe("冷鲜");
+    expect(p.paramValues.value.SD_STORE_COND.code).toBe("STGICE");
+    // 非模板维度:用识别带回的 name 命名,label 为准,无 code
+    expect(p.paramValues.value.SD_WEIGHT.label).toBe("2.5kg");
+    expect(p.paramValues.value.SD_WEIGHT.name).toBe("重量");
+    expect(p.paramValues.value.SD_WEIGHT.code).toBeUndefined();
+  });
+
+  it("★★ 已填的仍不被识别覆盖 —— 放开过滤不等于放开覆盖", () => {
+    const p = setup();
+    p.paramValues.value = {
+      SD_WEIGHT: { dimNo: "SD_WEIGHT", name: "重量", label: "1kg" },
+    } as typeof p.paramValues.value;
+    const n = p.applyParamPicks([{ dimNo: "SD_WEIGHT", name: "重量", label: "2.5kg" }]);
     expect(n).toBe(0);
+    expect(p.paramValues.value.SD_WEIGHT.label, "商家已填的不动").toBe("1kg");
+  });
+
+  it("★★ removeParam 删一项,含不在模板里的孤儿参数（AC1）", () => {
+    const p = setup();
+    p.paramValues.value = {
+      SD_TASTE: { dimNo: "SD_TASTE", name: "口感风味", code: "TSTSWEET", label: "清甜" },
+      SD_WEIGHT: { dimNo: "SD_WEIGHT", name: "重量", label: "2.5kg" }, // 孤儿:不在 DIMS 里
+    } as typeof p.paramValues.value;
+    p.removeParam("SD_WEIGHT");
+    expect(p.paramValues.value.SD_WEIGHT, "孤儿参数也能删").toBeUndefined();
+    expect(p.paramValues.value.SD_TASTE.label, "没点的不动").toBe("清甜");
+    p.removeParam("SD_TASTE");
     expect(Object.keys(p.paramValues.value)).toHaveLength(0);
   });
 

@@ -9621,3 +9621,24 @@ VALUES
   ('CAT750', 'SD_MANUFACTURER', 'PROP', 0, 0, 90,  'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT750', 'SD_LICENSE_SC',   'PROP', 0, 0, 100, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT750', 'SD_STANDARD',     'PROP', 0, 0, 110, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT IGNORE INTO prd_spec_dim
+  (dim_no, code, name, value_type, unit, usage_type, universal, scope, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('SD_ORIGIN_DETAIL', 'ORIGIN_DETAIL', '原产地', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 205, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT IGNORE INTO prd_category_spec
+  (category_no, dim_no, usage_type, is_primary, required, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('CAT110', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT130', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT160', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT710', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT720', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT730', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT740', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT750', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');

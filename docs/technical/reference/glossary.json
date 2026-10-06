@@ -9854,6 +9854,12 @@
           "ar": "المستخدمة مؤخراً"
         },
         {
+          "key": "goods.removeParam",
+          "zh-CN": "删除",
+          "en": "Remove",
+          "ar": "حذف"
+        },
+        {
           "key": "goods.saleActivityOnly",
           "zh-CN": "仅活动",
           "en": "Promo only",

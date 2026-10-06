@@ -88,4 +88,23 @@ class SpecLibraryPropDimsTest {
                 .contains("SD_BRAND", "SD_NET_CONTENT", "SD_INGREDIENTS",
                         "SD_MANUFACTURER", "SD_LICENSE_SC", "SD_STANDARD");
     }
+
+    @Test
+    @DisplayName("★★ 精确产地 SD_ORIGIN_DETAIL 为 TEXT，绑生鲜(CAT120)带出（优化5项 AC3）")
+    void originDetailDimSeededAndBound() {
+        PrdSpecDim d = dim("SD_ORIGIN_DETAIL");
+        assertThat(d).as("原产地维度应已种").isNotNull();
+        assertThat(d.getValueType())
+                .as("精确产地走 TEXT（省市区级几乎每件唯一，入池只污染）").isEqualTo(PrdSpecDim.TEXT);
+
+        // CAT120 水果：V375 绑了精确产地（与粗粒度 SD_ORIGIN 两层并存）
+        List<SpecTemplateVO> props = specLibraryService.propsForCategory("M_SEED_TEST", "CAT120");
+        SpecTemplateVO detail = props.stream()
+                .filter(p -> "SD_ORIGIN_DETAIL".equals(p.templateNo())).findFirst().orElse(null);
+        assertThat(detail).as("CAT120 应带出精确产地").isNotNull();
+        assertThat(detail.valueType()).isEqualTo(PrdSpecDim.TEXT);
+        // 粗粒度产地仍在：两层并存，不是替换
+        assertThat(props).extracting(SpecTemplateVO::templateNo)
+                .as("粗产地 SD_ORIGIN 不被替换").contains("SD_ORIGIN");
+    }
 }

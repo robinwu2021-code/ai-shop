@@ -10,7 +10,7 @@
 //   3. **批量设价/设库存**。8 个 SKU 一个个填是劝退的，多数店主其实只想「都设成 12 块」。
 //
 // 价格用主单位输入、最小单位存储 —— 店主输 12.5，存 1250。
-import { computed, ref, watch } from "vue";
+import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -19,6 +19,7 @@ import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
 import { useCategoryPicker } from "./category";
 import { useGoodsParams } from "./params";
+import { useRowDrag } from "../my-specs/drag-sort";
 import { useSpecGroups } from "./spec-groups";
 import type { Row } from "./price-rows";
 import type { GoodsInvMode, InvMode, SellRule } from "@shared/types";
@@ -555,8 +556,26 @@ const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
 const {
   cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
   addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
-  addDetailImages, removeDetailImage, moveDetailImage, recognizeInto,
+  addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
 } = useGoodsPhotos((guess) => applyGuess(guess));
+
+/*
+ * **详情图拖拽排序**（TDD-商品录入优化5项 AC2）。复用 my-specs 那套纯 touch 拖拽
+ * （`useRowDrag`，专为绕开小程序 movable-view 与滚动打架而写），key 用下标字符串。
+ * 箭头版 `moveDetailImage` 保留作兜底：手势在三端表现不一时,点两下箭头永远能到位。
+ * HOLD_MS 长按才进拖动,所以行内的箭头/删除按钮照常点。
+ */
+const dimgInstance = getCurrentInstance();
+const {
+  dragFrom: dimgDragFrom, dragTo: dimgDragTo, shift: dimgShift,
+  onStart: dimgDragStart, onMove: dimgDragMove, onEnd: dimgDragEnd,
+} = useRowDrag(
+  dimgInstance,
+  ".dimgs__row",
+  (key) => Number(key),
+  () => detailImages.value.length,
+  (fromKey, to) => reorderDetailImage(Number(fromKey), to),
+);
 
 /**
  * 这件货走快递（TDD-快递100商家寄件 §8）：买家按平台运费模板、按规格重量付运费 ——
@@ -988,8 +1007,20 @@ const {
   addingParam, newParam, addingValueFor, newParamValue,
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
-  isTextDim, setParamText,
+  isTextDim, setParamText, removeParam,
 } = useGoodsParams(categoryNo);
+
+/*
+ * **孤儿参数**（TDD-商品录入优化5项 AC1）：商品身上有、但其维度已不在当前类目模板里。
+ * 换了类目、维度被归档、或识别落下的非模板项（AC4）都会这样 —— 它们在上面的
+ * `v-for="d in propDims"` 里没有对应行,于是看不见也删不掉。这里把它们单列出来,
+ * 用参数自带的 name 快照显示（不依赖 propDims）,只给看与删。
+ */
+const orphanParams = computed(() =>
+  Object.values(paramValues.value).filter(
+    (p) => p && !propDims.value.some((d) => d.templateNo === p.dimNo),
+  ),
+);
 
 // ── 七、批量填充 ──────────────────────────────────────────────────────────
 //    价与库存拆成两个动作，理由见 applyBulkPrice
@@ -1758,7 +1789,16 @@ async function save(thenSubmit = false) {
           </text>
         </view>
         <view class="dimgs">
-          <view v-for="(img, i) in detailImages" :key="img + i" class="dimgs__row sh-row">
+          <view
+            v-for="(img, i) in detailImages"
+            :key="img + i"
+            class="dimgs__row sh-row"
+            :class="{ 'dimgs__row--drag': dimgDragFrom === String(i), 'dimgs__row--to': dimgDragTo === i && dimgDragFrom !== null }"
+            :style="dimgDragFrom === String(i) ? { transform: `translateY(${dimgShift}px)`, zIndex: 2 } : ''"
+            @touchstart="dimgDragStart(String(i), $event)"
+            @touchmove.stop.prevent="dimgDragMove($event)"
+            @touchend="dimgDragEnd"
+          >
             <sh-cover class="dimgs__img" :src="img" :w="200"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
             <view class="dimgs__ops">
@@ -2228,6 +2268,24 @@ async function save(thenSubmit = false) {
           >{{ o.label }}</text>
           <sh-add small :text="String($t('goods.paramFill'))" @tap="openParamValue(d)"></sh-add>
         </view>
+        <!-- 已填的才给删除点（AC1）：清掉这一项,与 TEXT 清空输入框同一口径 -->
+        <text
+          v-if="paramValues[d.templateNo]"
+          class="txt-caption sh-link sh-link--quiet param__del"
+          @tap="removeParam(d.templateNo)"
+        >{{ $t("goods.removeParam") }}</text>
+      </view>
+      <!--
+        孤儿参数（AC1）：维度已不在本类目模板里的存量/识别落项。只读显示 + 删除 ——
+        它没有本类目的候选 chip 可点,留着它唯一能做的就是看和删。
+      -->
+      <view v-for="p in orphanParams" :key="p.dimNo" class="param">
+        <text class="txt-sub param__k">{{ p.name || p.dimNo }}</text>
+        <text class="txt-body param__orphanv">{{ p.label }}</text>
+        <text
+          class="txt-caption sh-link sh-link--quiet param__del"
+          @tap="removeParam(p.dimNo)"
+        >{{ $t("goods.removeParam") }}</text>
       </view>
       <text class="txt-caption sh-link sh-link--quiet more__manage" @tap="gotoMySpecs">
         {{ $t("goods.manageSpecs") }}
@@ -2816,6 +2874,33 @@ async function save(thenSubmit = false) {
 
 .param__opts {
   flex: 1;
+}
+.param__del {
+  flex: none;
+  padding-top: 8rpx;
+}
+.param__text {
+  flex: 1;
+  min-width: 0;
+}
+.param__orphanv {
+  flex: 1;
+  padding-top: 4rpx;
+  color: var(--sh-sub);
+  word-break: break-all;
+}
+/* 详情图拖拽中的那一行:浮起来 + 让位行的顶边提示落点（AC2）。
+   手势识别在 useRowDrag,这里只做视觉反馈,没有它拖拽照样能用 */
+.dimgs__row {
+  transition: transform 0.12s ease;
+}
+.dimgs__row--drag {
+  opacity: 0.9;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.18);
+  transition: none;
+}
+.dimgs__row--to {
+  border-top: 4rpx solid var(--sh-primary);
 }
 
 /*
