@@ -9812,10 +9812,22 @@
           "ar": "سيغيّر هذا النشر ما يلي"
         },
         {
+          "key": "goods.publishLater",
+          "zh-CN": "稍后发布",
+          "en": "Publish later",
+          "ar": "انشر لاحقًا"
+        },
+        {
           "key": "goods.publishNoChange",
           "zh-CN": "草稿与线上一致，发布不会改变任何内容",
           "en": "The draft matches the live version — publishing changes nothing",
           "ar": "المسودة مطابقة للنسخة المعروضة — النشر لن يغيّر شيئاً"
+        },
+        {
+          "key": "goods.publishNow",
+          "zh-CN": "立即发布",
+          "en": "Publish now",
+          "ar": "انشر الآن"
         },
         {
           "key": "goods.publishStale",
@@ -9924,6 +9936,18 @@
           "zh-CN": "已保存为草稿，线上商品未变",
           "en": "Saved as draft — the live product is unchanged",
           "ar": "حُفظت كمسودة — المنتج المعروض لم يتغيّر"
+        },
+        {
+          "key": "goods.savedDraftHint",
+          "zh-CN": "线上买家看到的仍是旧版。发布后才会更新为这次的改动。",
+          "en": "Buyers still see the old version. Publish to make these changes live.",
+          "ar": "لا يزال المشترون يرون النسخة القديمة. انشر لتصبح هذه التغييرات مرئية."
+        },
+        {
+          "key": "goods.savedDraftTitle",
+          "zh-CN": "已保存为草稿",
+          "en": "Saved as draft",
+          "ar": "حُفظت كمسودة"
         },
         {
           "key": "goods.searchPh",

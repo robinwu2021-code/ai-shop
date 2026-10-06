@@ -1163,8 +1163,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return null;
         }
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(draft.getPayload(), SaveCommand.class);
+            return json.readValue(draft.getPayload(), SaveCommand.class);
         } catch (Exception e) {
             // 按没有草稿处理：让商家从线上版重新编辑。warn 点名，别静默
             log.warn("[草稿] payload 解析失败，按无草稿返回：goods={}", goodsNo, e);
@@ -1212,8 +1211,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private ai.neargo.shop.product.dto.PublishPreviewVO buildPreview(PrdGoods live, PrdGoodsDraft draft) {
         SaveCommand cmd;
         try {
-            cmd = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(draft.getPayload(), SaveCommand.class);
+            cmd = json.readValue(draft.getPayload(), SaveCommand.class);
         } catch (Exception e) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1321,8 +1319,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft) {
         SaveCommand cmd;
         try {
-            cmd = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(draft.getPayload(), SaveCommand.class);
+            cmd = json.readValue(draft.getPayload(), SaveCommand.class);
         } catch (Exception e) {
             log.warn("[换版] 草稿 payload 解析失败：goods={}", draft.getGoodsNo(), e);
             throw BizException.of(ErrorCode.BAD_REQUEST);

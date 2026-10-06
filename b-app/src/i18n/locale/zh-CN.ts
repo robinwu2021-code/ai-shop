@@ -442,6 +442,10 @@ export default {
     // ---- 双版本发布（V279）：在售编辑落草稿、线上照卖，发布时原子换版
     hasDraftRow: "有未发布修改 · 查看差异",
     savedAsDraft: "已保存为草稿，线上商品未变",
+    savedDraftTitle: "已保存为草稿",
+    savedDraftHint: "线上买家看到的仍是旧版。发布后才会更新为这次的改动。",
+    publishNow: "立即发布",
+    publishLater: "稍后发布",
     draftBanner: "正在编辑草稿，线上仍在售旧版",
     viewDiff: "查看差异",
     publishTitle: "发布修改",

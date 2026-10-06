@@ -1485,11 +1485,31 @@ async function save(thenSubmit = false) {
      * 在售商品的保存**落的是草稿**（双版本）——「已保存」会让人以为线上已经变了，
      * 而线上一个字节没动。提示语必须说清这一点，发布入口在列表徽标与差异页上。
      */
+    /*
+     * **在售商品存的是草稿，线上没变** —— 此前只弹一条 1.2 秒的 toast 就自动返回，
+     * 商家改完以为生效了，其实草稿搁着没发布（#1/#2 的同一个根）。改成一张要手动选的
+     * 确认：把「立即发布」摆在眼前，一点就进差异确认页发出去，不用回列表找徽标。
+     */
+    if (wasOnSale.value && !thenSubmit) {
+      if (
+        await confirm({
+          title: String(t("goods.savedDraftTitle")),
+          hint: String(t("goods.savedDraftHint")),
+          confirmText: String(t("goods.publishNow")),
+          cancelText: String(t("goods.publishLater")),
+        })
+      ) {
+        toPublishPage();
+      } else {
+        uni.navigateBack();
+      }
+      return;
+    }
     uni.showToast({
-      title: t(thenSubmit ? "goods.submitted" : wasOnSale.value ? "goods.savedAsDraft" : "common.saved"),
+      title: t(thenSubmit ? "goods.submitted" : "common.saved"),
       icon: "none",
     });
-    setTimeout(() => uni.navigateBack(), wasOnSale.value && !thenSubmit ? 1200 : 600);
+    setTimeout(() => uni.navigateBack(), 600);
   } catch (e) {
     /*
      * 后端对「勾了本店没开的送货方式」是**硬拒**（70013，方案 v4 的上架校验）。
