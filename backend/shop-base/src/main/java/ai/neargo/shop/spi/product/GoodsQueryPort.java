@@ -96,6 +96,14 @@ public interface GoodsQueryPort {
     java.util.Set<String> presaleGoods(java.util.Collection<String> goodsNos);
 
     /**
+     * 这几件商品各自的<b>限购地区</b>（#3/#4①）：不卖到的省级 regionCode 集合。
+     *
+     * <p>只回**有限购**的那些货（{@code restricted_regions} 非空）；全国可售的不进结果。
+     * 下单时用它对收货地址省级码做拦截（{@code OrderServiceImpl} 里命中即拒）。
+     */
+    Map<String, java.util.Set<String>> restrictedProvincesOf(java.util.Collection<String> goodsNos);
+
+    /**
      * 待审商品的积压情况 —— <b>数量与最久等待，一起给</b>。
      *
      * <p>只给数量答不出该做什么：「194 件待审」既可能是今天涌进来的一批，

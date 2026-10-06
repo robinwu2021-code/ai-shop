@@ -123,6 +123,22 @@ class FreightOrderFlowTest {
                         .status().isOk());
     }
 
+    @Test
+    @DisplayName("★★★ 商品级限购地区（#3/#4①）：收货地址省在 restricted_regions 里 → 下单拒(20003)")
+    void restrictedRegionBlocksCreate() throws Exception {
+        String goodsNo = onSaleGoods(merchant("12600390021", "不卖新疆的店"), "坚果");
+        // 这件货限购新疆（省级码 65）—— 与运费模板无关，走商品级 restricted_regions
+        jdbc.update("update prd_goods set restricted_regions=? where goods_no=?", "[\"65\"]", goodsNo);
+
+        // 收货地址在新疆 → 命中限购，拒单（运费模板里新疆只是 SURCHARGE 不拒，这道才拦得住）
+        JsonNode blocked = place("12600390022", goodsNo, "新疆维吾尔自治区");
+        assertThat(blocked.path("code").asInt()).as("新疆被该商品限购，应拒").isEqualTo(20003);
+
+        // 收货地址在浙江（不在限购名单）→ 放行
+        JsonNode ok = place("12600390023", goodsNo, "浙江省");
+        assertThat(ok.path("code").asInt()).as("浙江不在限购名单，应放行").isZero();
+    }
+
     // ── helpers（与 TodoPickupScopeFlowTest 同一套下单脚手架） ─────────────────
 
     private JsonNode place(String phone, String goodsNo, String province) throws Exception {

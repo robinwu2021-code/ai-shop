@@ -373,6 +373,24 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 .stream().map(PrdSku::getGoodsNo).collect(java.util.stream.Collectors.toSet());
     }
 
+    @Override
+    public Map<String, java.util.Set<String>> restrictedProvincesOf(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, java.util.Set<String>> out = new java.util.HashMap<>();
+        for (PrdGoods g : DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .in(PrdGoods::getGoodsNo, goodsNos)
+                        .isNotNull(PrdGoods::getRestrictedRegions)))) {
+            List<String> codes = readList(g.getRestrictedRegions());
+            if (!codes.isEmpty()) {
+                out.put(g.getGoodsNo(), new java.util.HashSet<>(codes));
+            }
+        }
+        return out;
+    }
+
     private List<String> readList(String jsonArray) {
         if (jsonArray == null || jsonArray.isBlank()) {
             return List.of();
