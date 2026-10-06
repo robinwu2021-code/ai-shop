@@ -256,7 +256,20 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * EXCLUDE **不看 status**：缩小自己的范围不需要审核，
          * 而让一条待审的排除「暂时不生效」等于在审核期内把他不想服务的地方照样露出去。
          */
-        if (expressOn) {
+        /*
+         * 快递能送全国，但**商家框了销售范围就尊重框选**（#4②）。
+         *
+         * <p>此前这里无条件返回「全部开放社区 − EXCLUDE」——于是一个框了「龙华」却开着快递的
+         * 商家，货照样全市可见（销售区域与可见性在此分叉）。而框选是「卖给谁」，快递只是
+         * 「怎么送」，两者正交：框了就按框选圈定可见，没框（无 ACTIVE INCLUDE 行）才回落全国。
+         * 落到下面与自送同一段 {@code reachOf}（按 INCLUDE 展开 − EXCLUDE），并经门店 SUBSET 裁剪。
+         *
+         * <p>存量影响：只「全国 − EXCLUDE」（有 EXCLUDE、无 INCLUDE）的商家 hasActiveInclude=false，
+         * 行为逐字不变；受影响的只有「框了 INCLUDE 又开快递」的那些——而那正是要修的分叉。
+         */
+        boolean hasActiveInclude = allAreas.stream().anyMatch(a ->
+                AREA_ACTIVE.equals(a.getStatus()) && !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()));
+        if (expressOn && !hasActiveInclude) {
             return minusExcluded(communityQueryPort.openCommunityNos(), allAreas);
         }
 

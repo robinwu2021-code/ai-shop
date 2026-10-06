@@ -113,13 +113,20 @@ class ServiceAreaFlowTest {
 
     @Test
     @DisplayName("★ 原 PLATFORM → SHIPPING：全部开放社区，且不必逐个勾")
-    void shippingIgnoresAreas() {
-        String m = merchant("SHIPPING");
-        // 就算勾了一个社区也不收窄 —— 快递没有履约半径，
-        // 逐个勾的话新开城的社区永远进不了这份手工清单
-        area(m, "COMMUNITY", community("330106002"));
+    void shippingRespectsAreas() {
+        // #4②:快递也**尊重框选**。框选是「卖给谁」、快递只是「怎么送」,两者正交。
+        // 此前这里断言「快递忽略框选、全市可见」—— 那正是「框了龙华却全市可见」的分叉,现已修。
+        String framed = merchant("SHIPPING");
+        String c = community("330106002");
+        area(framed, "COMMUNITY", c);   // 开着快递、又框了一个社区
+        assertThat(merchantQuery.reachableCommunities(framed))
+                .as("框了一个社区 → 快递也只服务那个社区")
+                .containsExactly(c);
 
-        assertThat(merchantQuery.reachableCommunities(m))
+        // 没框（无 INCLUDE 行）的快递商家仍是全国 —— 回落行为逐字不变
+        String nationwide = merchant("SHIPPING");
+        assertThat(merchantQuery.reachableCommunities(nationwide))
+                .as("开快递、没框任何范围 → 仍全部开放社区")
                 .containsExactlyInAnyOrderElementsOf(communityQuery.openCommunityNos());
     }
 
