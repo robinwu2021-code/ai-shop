@@ -12,7 +12,7 @@
   <div class="eyebrow">B 端 App · 界面原型 · 2026-10-06 · pages/goods-edit · pages/goods-publish</div>
   <h1>商品编辑页：快速录入 · 发布历史</h1>
   <p class="sub">照<b>现在代码里真实的卡与字段</b>画（<code>b-app/src/pages/goods-edit/index.vue</code> 3380 行、<code>goods-publish/index.vue</code>），文案一律抄 <code>i18n/locale/zh-CN.ts</code> 的词条。先用三屏把整页<b>完整</b>铺开当基线，再画这版要加的两件事。页面骨架、卡的顺序、字段布局<b>一处不动</b>。十五屏。</p>
-  <p class="sub">承接 <a href="https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj">商品两页的微调</a>（已落地）· <a href="https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e">规格原型</a>（已落地）· prompt 方案见 <code>docs/technical/design/识别-prompt方案.md</code>。</p>
+  <p class="sub">承接 <a href="https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj">商品两页的微调</a>（已落地）· <a href="https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e">规格原型</a>（已落地）· prompt 方案见 <code>docs/technical/design/识别-prompt方案.md</code>，落地方案见 <code>docs/technical/design/TDD-商品编辑页-录入落点与发布历史.md</code>（含 18 条文案审计与「不改坏」的回归清单）。</p>
 </header>
 
 <section>
@@ -20,7 +20,7 @@
   <p class="sec-note">两件要加的功能都不是从零开始 —— 读代码才看清这一点，所以先把现状写下来，免得把已有的东西当成新需求。</p>
   <div class="tw"><table class="spec">
     <tr><th>能力</th><th>现在的实现</th><th>缺口</th></tr>
-    <tr><td>快速录入</td><td><b>已经是整张卡</b>：第一张卡 <code>goods.quickEntry</code>，卡内多行输入（<code>parsePh</code> 带例子）+「一键识别」+ 右上「导入压缩包」。后端 <code>/biz/goods/parse-text</code> 规则 + LLM 都已上线</td><td>识别完<b>只在卡里亮四枚 chip</b>（价格 / 重量 / 快递 / 不发货区域），<b>一个字都不落进下面的表单</b>。商家看完还得自己再填一遍</td></tr>
+    <tr><td>快速录入</td><td><b>已经是整张卡</b>，而且是<b>两条链路</b>：文字<b>边输边识别</b>（停手 800ms 自动跑 <code>parse-text</code>，自动填快递 + 第一个 SKU 的售价，toast 报「已更新：价格、快递」）；「一键识别」按钮<b>只认图</b>（没封面图直接提示），填名称 / 副标题 / 类目 / 详情 / 参数</td><td><code>parse-text</code> <b>回七项，端上只落两项</b>：参数 · 规格 · 重量 · <b>限购地区</b>全都不落 —— 限购地区只亮成一枚 chip，看着像生效了，其实断在端上。两个叫法都是「识别」，文案却在教「然后一键识别」这个不存在的步骤</td></tr>
     <tr><td>发布差异</td><td><b>已有独立页</b> <code>goods-publish</code>：服务端 <code>mPublishPreview</code> 烘焙后算差异，一行一个字段「线上 → 发布后」，带 stale 冲突横幅与「放弃这份修改」</td><td>差异只有<b>「当前草稿 vs 此刻线上」一份</b>。发过什么、什么时候发的、谁发的、改了哪几项，发布完就查不到了</td></tr>
     <tr><td>草稿提示</td><td><code>sh-notice--warning</code> 三态：<code>draftBanner</code>「正在编辑草稿，线上仍在售旧版」+「查看差异」/ <code>saveTipOnSale</code> / <code>saveTip</code></td><td>没有版本号，也没有通往历史的入口</td></tr>
   </table></div>
@@ -177,23 +177,37 @@
           <div class="card">
             <div class="hd"><div class="nm">快速录入</div><span class="chip">导入压缩包</span></div>
             <div class="ta has">规格：<br>单果140g+<br>净重4.5斤装10元<br>圆通快递，新疆西藏海南不发货</div>
-            <div class="frow add"><span class="chip pri">重新识别</span></div>
+            <div class="frow add"><span class="chip pri">一键识别</span></div>
             <div class="frow"><span class="v">
               <span class="chip ok">价格 10元</span><span class="chip ok">4.5斤</span>
               <span class="chip ok">圆通</span><span class="chip warn">不发货区域：新疆 西藏 海南</span></span></div>
             <div class="meta">只作提示，请到运费模板里设置，不会自动改</div>
           </div>
           <div class="card">
-            <div class="nm">基本信息</div>
-            <div class="gt">商品名称</div>
-            <div class="ta">请输入</div>
+            <div class="nm">类目与配送</div>
+            <div class="gt">配送方式 *</div>
+            <div class="tiles"><span class="tile"><b>门店自提</b></span><span class="tile on"><b>快递配送</b><span>已自动勾上</span></span></div>
           </div>
-          <div class="meta" style="text-align:center">↓ 下面全是空的</div>
+          <div class="card">
+            <div class="nm">价格</div>
+            <div class="frow"><span class="k">4.5 斤</span><span class="v num">¥ 10.00</span></div>
+            <div class="meta">已自动填入第一行</div>
+          </div>
+          <div class="card">
+            <div class="nm">商品参数</div>
+            <div class="frow"><span class="k">净含量</span><span class="v">填写内容</span></div>
+            <div class="frow"><span class="k">单果重量</span><span class="v">—— 没有这一项</span></div>
+          </div>
+          <div class="card">
+            <div class="nm">库存</div>
+            <div class="frow"><span class="k">限购地区</span><span class="v go">全国可售</span></div>
+          </div>
+          <div class="toast">已更新：价格、快递</div>
         </div>
         <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>04 现在的识别结果</b>四枚 chip 亮在卡里，<b>表单依然全空</b>。单果 140g+ 根本没出现 —— 它是参数，规则层不做语义归类。</figcaption>
-      <p class="why">这屏是整件事的起点：功能看着像做完了（识别确实跑了、也确实认出了东西），<b>但它停在「告诉你我认出了什么」，没走到「替你填好」</b>。商家的下一步动作和没识别时一模一样。</p>
+      <figcaption class="cap"><b>04 现状（实测 HEAD，不是猜的）</b>边输边识别<b>已经在自动填</b>：快递勾上了、第一行售价填了、toast 报了改了哪两项。<b>但参数 · 规格 · 重量 · 限购地区四项全没落</b> —— 限购地区只亮成那枚警告色 chip。</figcaption>
+      <p class="why">这屏是整件事的起点，也是我自己判错过的地方：功能不是「没做」，是<b>落了一半</b>。最要紧的是限购地区 —— chip 亮着、文案还写着「只作提示，不会自动改」，于是「文字里写了不发货区域，商品页没更新」这个报障，看起来像后端没认出来，<b>实际是端上少写一行赋值</b>。</p>
     </figure>
 
     <figure id="s05">
@@ -229,11 +243,11 @@
 
     <figure id="s06">
       <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">确认识别结果</span><span>全不选</span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">这次更新了什么</span><span>关闭</span></div>
         <div class="scr">
           <div class="card">
-            <div class="nm">认出 8 项 · 已勾 7 项</div>
-            <div class="meta">拿不准的默认不勾。每条写明它落到哪张卡的哪一行。</div>
+            <div class="nm">已更新 7 项 · 另有 1 项没填</div>
+            <div class="meta">已经填进表单了。每条写明落到哪张卡的哪一行，拿不准的没填。单项可撤销。</div>
           </div>
           <div class="card">
             <div class="crow"><span class="ck on"></span><span class="k">商品名称</span><span class="b">
@@ -255,10 +269,10 @@
           </div>
           <div class="note">下单时按收货地址拦截 —— 这不是运费模板，运费仍需自己设。</div>
         </div>
-        <div class="foot"><div class="btn sec">都不要</div><div class="btn main">填进表单（7）</div></div>
+        <div class="foot"><div class="btn sec">全部撤销</div><div class="btn main">知道了</div></div>
       </div>
-      <figcaption class="cap"><b>06 确认层 · 首次占满一屏</b>每行三样：字段 · 值 · <b>原文片段 + 落点</b>。拿不准的默认不勾、整行压暗。按钮带数字。</figcaption>
-      <p class="why">「落到哪张卡的哪一行」必须写出来：这一页有九张卡，商家点完确认要能自己去核对。<b>「平台未收录，将新建」也得先说</b>——它会往这个商家的参数库里加一条，不是临时填个值。<code>applyParamPicks</code> 后端已经放开了这条路。</p>
+      <figcaption class="cap"><b>06 复核面 · 不是前置确认页</b>每行三样：字段 · 值 · <b>原文片段 + 落点</b>。值<b>已经填进去了</b>，这一面是事后复核与撤销 —— 点卡内「已更新 7 项」才展开，<b>不挡路</b>。</figcaption>
+      <p class="why">原型第一版把它画成了<b>前置确认页</b>（识别完先勾选再填入）—— 那会推翻已经上线的「边输边识别·持续自动填」，每打几个字弹一次确认，两种交互不可能共存。<b>改成事后可撤</b>：自动填照旧，把「它改了什么」和「改错了怎么退」补上。「落到哪张卡的哪一行」必须写出来：这一页有九张卡，商家得能自己去核对；「平台未收录，将新建」也得先说 —— 它会往这个商家的参数库里加一条。</p>
     </figure>
 
     <figure id="s07">
@@ -553,8 +567,8 @@
   <div class="sec-head"><span class="sec-num">六</span><h2>落地要补什么</h2></div>
   <div class="tw"><table class="spec">
     <tr><th>屏</th><th>已经有的</th><th>要补的</th></tr>
-    <tr><td>04 — 05</td><td><code>/biz/goods/parse-text</code>（规则 + LLM，已上线）· 快速录入卡与 chip 展示</td><td>两段进度；chip 区换成「去确认」的出口</td></tr>
-    <tr><td><b>06</b></td><td><code>GoodsTextParseVO</code> 已带 params / specs / restrictedRegions / confidence · <code>applyParamPicks</code> 已放开「识别值可不在模板」</td><td><b>确认页本身</b>：勾选、原文片段、落点文案、只写入勾中项。<b>这是最大的一块</b></td></tr>
+    <tr><td>04 — 05</td><td><code>/biz/goods/parse-text</code> 回七项 · <code>applyTextParse</code> 已落两项（快递 / 首行售价）并有 toast</td><td><b>补另五项的落点</b>：参数（复用 <code>applyParamPicks</code>）· 规格 · 标称重量 · <b>限购地区</b> · 多规格价格改走「统一填入」。两段进度</td></tr>
+    <tr><td><b>06</b></td><td><code>GoodsTextParseVO</code> 已带 params / specs / restrictedRegions / confidence · <code>applyParamPicks</code> 已放开「识别值可不在模板」</td><td><b>撤销与复核面</b>：记下这次的 patch（field/before/after）、卡内一行「已更新 N 项 · 撤销」、展开的只读清单。<b>不做前置确认页</b> —— 它会推翻已上线的边输边识别</td></tr>
     <tr><td>07</td><td>各字段的写入通路都在（<code>SaveCommand</code>）</td><td>字段级的来源标记（哪些值是识别来的），随草稿 payload 一起存</td></tr>
     <tr><td>08 — 09</td><td>—</td><td>变更集语义（add / update / remove + evidence）；单字段重识别的作用域参数</td></tr>
     <tr><td>10</td><td><code>classifyZip</code>（目录名 + 文件名数字排序）· <code>GoodsVisionPort.extractText</code></td><td>分不准时调模型的兜底；图位确认页</td></tr>

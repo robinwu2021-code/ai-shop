@@ -1887,6 +1887,10 @@
       "summary": "照 b-app/src/pages/goods-edit/index.vue(3380 行)与 goods-publish/index.vue 的真实卡序与字段整页画，文案抄 i18n/locale/zh-CN.ts。先用三屏把整页完整铺开当基线(快速录入 → 基本信息 → 图文详情 → 类目与配送 → 规格 → 商品参数 → 价格 → 库存 → 商品编码 + 贴底 sh-actionbar)，骨架与字段布局一处不动。只加两件事:① 快速录入卡本来就有多行输入与一键识别，缺的是出口——识别结果现在只亮四枚 chip、一个字都不落表单;补确认层(逐项勾选、带原文片段并写明落到哪张卡的哪一行，拿不准的默认不勾)、落回后在原行挂 tint「识别」标、再贴一段走弹层只给变更、长按单字段重认、压缩包图位确认。② 新增发布历史:现有 goods-publish 已把「草稿 vs 此刻线上」的差异做全(含 stale 冲突与带版发布)，缺的是可回溯的轴——时间轴一版一节(版本/保存时间与人/录入方式/发布时间与人/改了哪几项/四种状态)、某版详情给两份差异(对比前一版与对比此刻线上)并「以这一版建草稿」、冲突时点名是谁改的与会覆盖哪一项。末节分清两件事的分量:快速录入缺一个确认页(后端基本齐)，发布历史缺存储(新表 prd_goods_revision)，差异沿用现成的 PublishPreviewVO.DiffRow。",
       "docs": [
         {
+          "label": "TDD-商品编辑页-录入落点与发布历史（本原型的落地方案）",
+          "path": "docs/technical/design/TDD-商品编辑页-录入落点与发布历史.md"
+        },
+        {
           "label": "识别-prompt方案（ZIP 图位 / 自然语言参数抽取）",
           "path": "docs/technical/design/识别-prompt方案.md"
         },
@@ -1920,7 +1924,7 @@
         },
         {
           "id": "s04",
-          "title": "现状 · 识别结果只亮 chip，表单仍空",
+          "title": "现状实测 · 已自动填两项，另五项不落",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },
@@ -1932,7 +1936,7 @@
         },
         {
           "id": "s06",
-          "title": "确认层 · 逐项勾选并写明落点",
+          "title": "复核面 · 事后可撤，不挡路",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },
