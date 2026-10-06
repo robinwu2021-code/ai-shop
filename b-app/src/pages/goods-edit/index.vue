@@ -870,6 +870,11 @@ async function applyTextParse() {
   }
 }
 
+/** 去「经营类目」加类目。本店一个类目都没有时建不了商品 —— 给路，不给路径文字 */
+function toStoreCategories() {
+  uni.navigateTo({ url: ROUTES.storeCategories });
+}
+
 /** 把识别到的规格维度加进规格卡。**只在这里加** —— 自动加会换掉已填的价格行结构 */
 function applySpecPicks() {
   const picks = specPicks.value.filter((sp) => !groups.value.some((g) => g.name === sp.name));
@@ -1672,7 +1677,6 @@ async function save(thenSubmit = false) {
           {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
         </text>
       </view>
-      <text class="sh-muted quick__hint">{{ $t("goods.quickHint") }}</text>
       <textarea
         v-model="parseInput"
         class="field__area field__area--grow"
@@ -1968,7 +1972,13 @@ async function save(thenSubmit = false) {
               {{ c.name }}
             </text>
           </view>
-          <text v-if="!storeOptions.length" class="txt-caption sh-muted cat-lv__t">{{ $t("goods.noStoreCategory") }}</text>
+          <!-- 路径别写进文案（「去工作台 → 经营类目」）：那是让人手动导航。给一颗按钮 -->
+          <view v-if="!storeOptions.length" class="sh-row cat-lv__none">
+            <text class="txt-caption sh-muted sh-fill">{{ $t("goods.noStoreCategory") }}</text>
+            <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="toStoreCategories">
+              {{ $t("goods.toStoreCategories") }}
+            </text>
+          </view>
         </view>
         <template v-else>
           <!--
@@ -3436,6 +3446,7 @@ async function save(thenSubmit = false) {
 .quick__hint { display: block; margin-top: 8rpx; }
 .quick__got { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
 .quick__specs { margin-top: 12rpx; gap: 16rpx; }
+.cat-lv__none { gap: 16rpx; margin-top: 8rpx; }
 .quick__tag {
   font-size: 24rpx;
   color: var(--sh-primary-text, #b25);
