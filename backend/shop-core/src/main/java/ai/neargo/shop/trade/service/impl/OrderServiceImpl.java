@@ -2382,7 +2382,7 @@ public class OrderServiceImpl implements OrderService {
             }
             String address = userPort.receiverOf(userNo, addr)
                     .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
-            String provinceCode = ai.neargo.shop.platform.Provinces.provinceCodeOf(address);
+            String provinceCode = ai.neargo.shop.common.Provinces.provinceCodeOf(address);
             if (provinceCode == null) {
                 continue;   // 认不出省：放行（与 freight 的省名前缀同一套，认不出就不拦）
             }

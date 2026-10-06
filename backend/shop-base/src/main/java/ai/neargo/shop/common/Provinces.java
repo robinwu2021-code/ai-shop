@@ -1,4 +1,4 @@
-package ai.neargo.shop.platform;
+package ai.neargo.shop.common;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -7,7 +7,8 @@ import java.util.Map;
  * 省级 regionCode ↔ 省名（GB/T 2260 国标两位码，34 个省级单位）。
  *
  * <p>给「限购地区」拦截用（#3/#4①）：下单时把收货地址按省名前缀匹配出省级码，
- * 与商品 {@code restricted_regions} 存的两位码比。
+ * 与商品 {@code restricted_regions} 存的两位码比。放在 {@code common}（shop-base）里，
+ * 让 trade / merchant / product 各域都能用而不构成 svc 跨域依赖（ArchitectureTest）。
  *
  * <p><b>为什么硬编码、不读 sys_region</b>：① 省级码是国标、固定不变；
  * ② 测试库（H2）<b>不灌 sys_region</b>（它靠 Java 迁移从 CSV 载，不进 schema-test.sql），
