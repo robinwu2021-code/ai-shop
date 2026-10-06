@@ -1,6 +1,6 @@
 # TDD-商品编辑页：录入落点 · 文案收敛 · 发布历史
 
-状态：**A1 / B1 已实现**（2026-10-07）· B2 与 C 期待做
+状态：**A1 / A2 / B1 / B2 / C1 已实现**（2026-10-07）· C2（历史页）与 AC12/AC13 待做
 关联：
 - 原型 [商品编辑页 · 快速录入与发布历史](https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd)（`prototypes/goods-edit-input-first.html`，15 屏）
 - [TDD-商品快速录入.md](TDD-商品快速录入.md)（AC1–14 的基座，本文是它的 AC11 落地决定）
@@ -389,11 +389,64 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 
 ---
 
-## §12 还没做的
+## §12 增量实现记录（A2 / B2 / C1）
+
+| 批 | commit | 内容 | 测试 / 消融 |
+|---|---|---|---|
+| **A2** | `1905d5a63` | 删 `quickHint`；`parsePh` 只说字段名；`noStoreCategory` 压到 9 字 + 「去添加」按钮 | i18n 闸门「用了但没有」仍 0 |
+| **B2** | `83cca5eac` | AC5 撤销与复核面。卡内一行「已更新 N 项，看一遍 · 撤销」+ `sh-sheet` 只读清单 | 26 条（全量 99）。消融 `mergeUndo` 的「快照保持第一次那份」→ 1 条红 |
+| **C1** | 本批 | AC11：V377 `prd_goods_revision` + `GoodsRevisionService` 三个写入点 + `GET /biz/goods/{no}/revisions` + `entrySource` | `GoodsRevisionFlowTest` 6 条（真 H2）。消融「上一版翻 SUPERSEDED」→ 1 条红 |
+
+### B2 的两个设计选择
+
+- **快照式撤销，不做逐字段反向写。** `applyParamPicks` 一次可能写进好几个维度、
+  `rows` 整个数组被换掉；逐字段反着写回去要维护一份镜像逻辑，而镜像逻辑错了没人会发现。
+  快照连 `priceMajor` 一起拷 —— 那是个对象，浅拷会让撤销改不回来。
+- **一串连续识别只有一个撤销点。** 撤销要退回的是「我贴这段话之前」，不是
+  「上一次防抖之前」。这条规则抽成 `mergeUndo` 才有测试看得见。
+
+### C1 的边界
+
+`GoodsRevisionVO` **故意没有差异字段**：AC12 的两份差异要比较两份 payload，
+而现有的差异计算比的是「线上实体 vs SaveCommand」，还依赖
+`MerchantGoodsServiceImpl` 里的私有渲染器。留一组恒空的字段比没有字段更糟 ——
+端上会照着它排版，然后永远显示空白。
+
+---
+
+## §13 还没做的
 
 | 项 | 内容 |
 |---|---|
-| **A2** | 删 `quickHint`、`noStoreCategory` 配按钮、`parsePh` 改成只说字段名 |
-| **B2** | AC5 撤销与复核面（`lastPatch` + 卡内「已更新 N 项 · 撤销」+ 只读清单） |
-| **C** | 发布历史：新表 `prd_goods_revision` + 三个端点 + 历史页 + `overwrites` |
-| 真机验 | §6.4 要求的改前改后截图对比，**未做** —— A1/B1 都没动布局，但这不等于验过了 |
+| **C2** | b-app 历史页（`pages/goods-revisions`）+ 导航「历史」入口 + 草稿横幅补版本号 + `pages.json` / 界面清单 / 原型锚点。mock 已就位（四种状态各一行，**ONLINE 故意不是最新那一版**） |
+| **AC12** | 某一版详情 + 两份差异 +「以这一版建草稿」。前置：把 `renderGroups` / `renderParams` / `diffRow` 从 `MerchantGoodsServiceImpl` 搬出来 |
+| **AC13** | 发布预览加 `overwrites[]`（线上比我的基版多出来、而我这一版会覆盖掉的项） |
+| 驳回接线 | `recordRejected` 已写好但**审核驳回那条路还没调它** —— 审核回调在另一处，单独一批 |
+| 枚举收窄 | `GoodsRevision.status` / `entrySource` 端上还是 `string`，`check-enum-fields` 的 `clients` 暂空。建历史页那天收成具名联合类型并回填 |
+| 真机验 | §6.4 要求的改前改后截图对比，**仍未做** |
+
+---
+
+## §14 闸门与基线（每批都量一次）
+
+| 闸门 | 基线（动手前） | C1 之后 |
+|---|---|---|
+| `check-i18n-orphan` 用了但没有 | **1**（`goods.done`，我自己的 `ef81c2d97`） | **0** ✓ |
+| `check-i18n-orphan` 新增孤儿 | 2（`zipTxtFound` / `savedAsDraft`，别人的） | 2，未动 |
+| `check-generated-docs` | 从没跑过（pre-push 在 i18n 那道就停了）；在 HEAD 副本上实测 **10 份脏** | **24 个生成器全绿** ✓ |
+| `check-enum-fields` | 登记 48 字段 | 登记 50，两侧取值域一致 ✓ |
+| `check-sql-portability` | 已知欠账 53 | 没有新增方言依赖 ✓ |
+| `ArchitectureTest` | 16 绿 | 16 绿 ✓ |
+| `BizEndpointPermTest` | 4 绿 | 4 绿 ✓ |
+| `vue-tsc`（b-app） | 0 | 0 ✓ |
+| `vitest`（b-app） | 73 / 17 文件 | **99 / 18 文件** ✓ |
+
+**整套 pre-push 仍然 exit 1**，挂在那 2 条别人的孤儿词条上 —— 与动手前一字不差。
+基线本来就是红的，而且红在这次要用的那道闸上：先存基线这一步不是形式，
+不然我自己的失败会被那条已有的红掩盖。
+
+> 两处需要说明的「顺手」：`check-generated-docs` 那 10 份基线脏的产物，查过归属
+> 多是我前几批没重跑文档（parse-text 端点、我改的词条、我写的 TDD），夹着一条
+> 别人**已提交**的端点与 UI 库件的改动 —— 源码都在 HEAD 里，产物只是在追上它，
+> 所以一并补了。别人**未提交**的那几份（`shop-auth-store` 两个测试、
+> `ConfigServiceLocator`、`进销存-界面清单.md`、`db-*.svg`、ER 图）一个都没碰。
