@@ -94,6 +94,7 @@ export default {
     anchorDetail: "Details",
     anchorRecommend: "More",
     scopeLabel: "Sold in",
+    restrictedLabel: "Not shipped to",
     saveAmount: "Save {p}",
     chosen: "Selected",
     chosenValue: "{spec} · {n} pcs",

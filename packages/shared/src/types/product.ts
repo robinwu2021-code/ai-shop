@@ -401,6 +401,12 @@ export interface Goods {
   points?: number;
   /** 每人限购，0 = 不限 */
   limitPerUser: number;
+  /**
+   * 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。
+   * 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器,
+   * C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。
+   */
+  restrictedRegions?: string[];
   /** 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 */
   onSale: boolean;
   /**

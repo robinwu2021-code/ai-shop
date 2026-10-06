@@ -97,6 +97,7 @@ export default {
     anchorDetail: "详情",
     anchorRecommend: "推荐",
     scopeLabel: "销售区域",
+    restrictedLabel: "不发货地区",
     saveAmount: "省 {p}",
     chosen: "已选",
     chosenValue: "{spec} · {n} 件",

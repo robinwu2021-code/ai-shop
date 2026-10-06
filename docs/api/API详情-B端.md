@@ -1307,6 +1307,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1443,6 +1444,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1568,6 +1570,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1643,6 +1646,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1740,6 +1744,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1815,6 +1820,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1890,6 +1896,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1965,6 +1972,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -2046,6 +2054,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -2204,6 +2213,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -7635,6 +7645,7 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |

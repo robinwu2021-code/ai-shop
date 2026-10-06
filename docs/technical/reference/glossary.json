@@ -2164,6 +2164,12 @@
           "ar": "الكمية"
         },
         {
+          "key": "goods.restrictedLabel",
+          "zh-CN": "不发货地区",
+          "en": "Not shipped to",
+          "ar": "لا يُشحن إلى"
+        },
+        {
           "key": "goods.rvqaEmpty",
           "zh-CN": "暂无评价与提问",
           "en": "No reviews or questions yet",
@@ -9870,6 +9876,48 @@
           "zh-CN": "删除",
           "en": "Remove",
           "ar": "حذف"
+        },
+        {
+          "key": "goods.restrictedClear",
+          "zh-CN": "恢复全国",
+          "en": "Reset to nationwide",
+          "ar": "استعادة جميع المناطق"
+        },
+        {
+          "key": "goods.restrictedDone",
+          "zh-CN": "完成",
+          "en": "Done",
+          "ar": "تم"
+        },
+        {
+          "key": "goods.restrictedHint",
+          "zh-CN": "勾中的省不发货，默认全国可售。下单时按收货地址拦截。",
+          "en": "Checked provinces are not shipped to; nationwide by default. Enforced by delivery address at checkout.",
+          "ar": "المحافظات المحددة لا يُشحن إليها؛ جميع المناطق افتراضياً. يُطبَّق حسب عنوان التسليم عند الدفع."
+        },
+        {
+          "key": "goods.restrictedLabel",
+          "zh-CN": "限购地区",
+          "en": "Restricted regions",
+          "ar": "مناطق محظورة"
+        },
+        {
+          "key": "goods.restrictedNone",
+          "zh-CN": "全国",
+          "en": "Nationwide",
+          "ar": "جميع المناطق"
+        },
+        {
+          "key": "goods.restrictedSome",
+          "zh-CN": "全国，排除 {s} 共 {n} 省",
+          "en": "Nationwide except {s} ({n})",
+          "ar": "الكل عدا {s} ({n})"
+        },
+        {
+          "key": "goods.restrictedTitle",
+          "zh-CN": "设置限购地区",
+          "en": "Set restricted regions",
+          "ar": "تحديد المناطق المحظورة"
         },
         {
           "key": "goods.saleActivityOnly",

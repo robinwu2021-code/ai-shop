@@ -589,6 +589,13 @@ export default {
     invOnHand: "进销存 {n}",
     invView: "查看",
     limitNone: "不限",
+    restrictedLabel: "限购地区",
+    restrictedNone: "全国",
+    restrictedSome: "全国，排除 {s} 共 {n} 省",
+    restrictedTitle: "设置限购地区",
+    restrictedHint: "勾中的省不发货，默认全国可售。下单时按收货地址拦截。",
+    restrictedClear: "恢复全国",
+    restrictedDone: "完成",
     unitPiece: "件",
   },
 

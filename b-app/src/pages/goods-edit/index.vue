@@ -33,6 +33,7 @@ import type { GoodsGuess, PayMode, StoreFreightTemplate } from "@/api/contract";
 import type { GoodsTextParse } from "@/api/requests";
 import { CATEGORY_TYPE, FULFILLMENT, MARKETS, PAY_MODE, TEMPLATE_TO_TYPE } from "@shared/utils/constants";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
+import { PROVINCES_WITH_CODE, provinceNamesByCodes } from "@shared/utils/region";
 import { money, toMajor, toMinor } from "@shared/utils/money";
 import { estimateFreight } from "@shared/utils/freight";
 import type { Category, CategoryType, CurrencyCode, Goods, MarketId, I18nText, GoodsParam, SaleMode, SpecOption, SpecTemplate, SpuStd, StoreCategory } from "@shared/types";
@@ -316,6 +317,28 @@ function toStoreScope() {
 
 /** 每人限购，0/空 = 不限 */
 const limitPerUser = ref("");
+
+/**
+ * **限购地区**（#3）：这件货不卖到的省（省级 regionCode）。反选语义：默认全国可售，
+ * 勾中的省不可售。省清单是国标固定的 34 个（`PROVINCES_WITH_CODE`），不走区划往返。
+ */
+const restrictedRegions = ref<string[]>([]);
+const restrictedSheet = ref(false);
+/** 回显文案：空 = 全国；有则「全国，排除 新疆、西藏…」 */
+const restrictedText = computed(() => {
+  if (!restrictedRegions.value.length) return String(t("goods.restrictedNone"));
+  const names = provinceNamesByCodes(restrictedRegions.value);
+  const head = names.slice(0, 3).join("、");
+  return String(t("goods.restrictedSome", {
+    s: names.length > 3 ? `${head}…` : head,
+    n: names.length,
+  }));
+});
+function toggleRestricted(code: string) {
+  const i = restrictedRegions.value.indexOf(code);
+  if (i >= 0) restrictedRegions.value = restrictedRegions.value.filter((c) => c !== code);
+  else restrictedRegions.value = [...restrictedRegions.value, code];
+}
 
 /**
  * 生鲜段与服务段。**按形态显示** —— 形态由类目带出，所以选完类目字段区就跟着换。
@@ -1211,6 +1234,7 @@ onLoad(async (q) => {
    */
   fulfillments.value = (g.fulfillments ?? []).slice(0, 1);
   limitPerUser.value = g.limitPerUser ? String(g.limitPerUser) : "";
+  restrictedRegions.value = g.restrictedRegions ? [...g.restrictedRegions] : [];
   fresh.value = {
     cutoffAt: g.cutoffAt ? new Date(g.cutoffAt).toISOString().slice(0, 16) : "",
     arrivalDesc: g.arrivalDesc ?? "",
@@ -1294,6 +1318,9 @@ function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>,
   if (d.fulfillments !== undefined) fulfillments.value = d.fulfillments.slice(0, 1);
   if (d.limitPerUser !== undefined) {
     limitPerUser.value = d.limitPerUser ? String(d.limitPerUser) : "";
+  }
+  if (d.restrictedRegions !== undefined) {
+    restrictedRegions.value = d.restrictedRegions ? [...d.restrictedRegions] : [];
   }
   if (d.fresh) {
     fresh.value = {
@@ -1395,6 +1422,8 @@ async function save(thenSubmit = false) {
       // （一种履约都不支持的商品谁也买不了），而这正是我们要的报错
       fulfillments: fulfillments.value,
       limitPerUser: Number(limitPerUser.value) || 0,
+      // 限购地区（#3）：整份覆盖——传空数组 = 清空恢复全国，与 params 同一口径
+      restrictedRegions: restrictedRegions.value,
       // 生鲜段与服务段只在对应形态下提交：一件大米带上「服务时长 90 分钟」
       // 不会报错，但它会出现在服务类的详情模板里
       /*
@@ -2665,7 +2694,39 @@ async function save(thenSubmit = false) {
         />
         <text class="txt-sub sh-muted unit">{{ unitText }}</text>
       </view>
+
+      <!--
+        限购地区（#3）：反选——默认全国可售，点进去勾「不卖到哪些省」。
+        与运费模板(整店快递)分层:这一行管「这件货不卖到哪」,下单按收货地址省级码拦。
+      -->
+      <view class="pr sh-row pr--sep" @tap="restrictedSheet = true">
+        <text class="txt-sub pr__k sh-fill">{{ $t("goods.restrictedLabel") }}</text>
+        <text class="txt-body pr__restv" :class="{ 'sh-muted': !restrictedRegions.length }">{{ restrictedText }}</text>
+        <sh-go></sh-go>
+      </view>
     </view>
+
+    <!-- 限购地区省份多选（反选）：勾中的省不发货，全不选 = 全国 -->
+    <sh-sheet
+      :visible="restrictedSheet"
+      :title="$t('goods.restrictedTitle')"
+      :hint="$t('goods.restrictedHint')"
+      @close="restrictedSheet = false"
+    >
+      <view class="param__opts sh-wrap">
+        <text
+          v-for="p in PROVINCES_WITH_CODE"
+          :key="p.code"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': restrictedRegions.includes(p.code) }"
+          @tap="toggleRestricted(p.code)"
+        >{{ p.name }}</text>
+      </view>
+      <view class="build sh-row">
+        <text class="sh-btn sh-btn--sm sh-btn--ghost" @tap="restrictedRegions = []">{{ $t("goods.restrictedClear") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("goods.done") }}</text>
+      </view>
+    </sh-sheet>
 
     <!--
       **商品编码：自成一段，不塞进价格卡。**
@@ -3051,6 +3112,15 @@ async function save(thenSubmit = false) {
 }
 .pr__k {
   /* 标签吃掉剩余宽度，控件一律贴右 —— 一列数字对齐比标签对齐重要 */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 限购地区回显：贴右、最多占一半宽，长了省略（省清单在弹层里点） */
+.pr__restv {
+  flex: none;
+  max-width: 52%;
+  text-align: right;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

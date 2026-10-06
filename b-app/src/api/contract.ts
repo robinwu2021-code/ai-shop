@@ -588,6 +588,11 @@ export interface GoodsDraft {
    * 这些一项也不进 —— 买家不用挑，只是看。
    */
   params?: GoodsParam[];
+  /**
+   * 限购地区（#3）：不卖到的省级 regionCode 列表。不传 = 不改，传空数组 = 清空（全国）。
+   * 排除语义:默认全国可售、列表内不可售。
+   */
+  restrictedRegions?: string[];
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */

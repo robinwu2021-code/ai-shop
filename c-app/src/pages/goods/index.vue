@@ -21,6 +21,7 @@ import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/po
 import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
+import { provinceNamesByCodes } from "@shared/utils/region";
 import {
   clearCartAnchor,
   flyState,
@@ -308,6 +309,13 @@ const facts = computed<Array<{ label: string; value: string }>>(() => {
   }
   if (saleScopeText.value) {
     out.push({ label: String(t("goods.scopeLabel")), value: saleScopeText.value });
+  }
+  // 限购地区（#3）：这件货不卖到的省。排除语义,省级码→省名。空则整行不出
+  if (g.restrictedRegions?.length) {
+    out.push({
+      label: String(t("goods.restrictedLabel")),
+      value: provinceNamesByCodes(g.restrictedRegions).join("、"),
+    });
   }
   if (g.limitPerUser) {
     out.push({ label: String(t("goods.limitLabel")), value: String(t("goods.limit", { n: g.limitPerUser })) });

@@ -154,3 +154,35 @@ export function joinRegion(p: RegionPartsLike): string {
 export function isCompleteRegion(p: RegionPartsLike): boolean {
   return !!(p.province?.trim() && p.district?.trim());
 }
+
+/**
+ * 省级 regionCode → 省名（GB/T 2260 国标两位码，34 个省级单位）。
+ *
+ * <p>给「限购地区」（#3）两端共用：B 端反选器列出全部省供勾选，C 端详情把
+ * 商品的 `restrictedRegions`（省级码数组）解析成省名显示「不发货地区」。
+ * 省级码是国标、固定不变（与 `sys_region` 省级同源），硬编码安全、免一次区划往返。
+ */
+export const PROVINCE_NAME_BY_CODE: Readonly<Record<string, string>> = {
+  "11": "北京市", "12": "天津市", "13": "河北省", "14": "山西省", "15": "内蒙古自治区",
+  "21": "辽宁省", "22": "吉林省", "23": "黑龙江省",
+  "31": "上海市", "32": "江苏省", "33": "浙江省", "34": "安徽省", "35": "福建省",
+  "36": "江西省", "37": "山东省",
+  "41": "河南省", "42": "湖北省", "43": "湖南省", "44": "广东省", "45": "广西壮族自治区", "46": "海南省",
+  "50": "重庆市", "51": "四川省", "52": "贵州省", "53": "云南省", "54": "西藏自治区",
+  "61": "陕西省", "62": "甘肃省", "63": "青海省", "64": "宁夏回族自治区", "65": "新疆维吾尔自治区",
+  "71": "台湾省", "81": "香港特别行政区", "82": "澳门特别行政区",
+};
+
+/** 全部省级单位，按上表顺序 —— B 端限购地区反选器的候选清单。 */
+export const PROVINCES_WITH_CODE: ReadonlyArray<{ code: string; name: string }> =
+  Object.entries(PROVINCE_NAME_BY_CODE).map(([code, name]) => ({ code, name }));
+
+/**
+ * 省级码数组 → 省名数组（给展示用）。
+ * **取收货地址 regionCode 的前两位判省**，所以这里也只认两位省级码；
+ * 认不出的码原样回传（宁可显示一个码，也不要静默丢掉一条限购）。
+ */
+export function provinceNamesByCodes(codes?: string[] | null): string[] {
+  if (!codes || !codes.length) return [];
+  return codes.map((c) => PROVINCE_NAME_BY_CODE[String(c).slice(0, 2)] ?? String(c));
+}

@@ -94,6 +94,7 @@ export default {
     anchorDetail: "التفاصيل",
     anchorRecommend: "المزيد",
     scopeLabel: "مناطق البيع",
+    restrictedLabel: "لا يُشحن إلى",
     saveAmount: "وفّر {p}",
     chosen: "المحدد",
     chosenValue: "{spec} · {n} قطعة",

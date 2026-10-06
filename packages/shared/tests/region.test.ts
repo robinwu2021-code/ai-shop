@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCompleteRegion, joinRegion, splitRegion } from "../src/utils/region";
+import { isCompleteRegion, joinRegion, splitRegion, provinceNamesByCodes, PROVINCES_WITH_CODE } from "../src/utils/region";
 
 /**
  * 价值全在**反例**与**边角**：正例（浙江省杭州市西湖区）任何写法都能过，
@@ -112,5 +112,23 @@ describe("isCompleteRegion", () => {
 
   it("不设区的地级市缺 district，判为不完整 —— 让人再确认一次", () => {
     expect(isCompleteRegion(splitRegion("广东省东莞市南城街道"))).toBe(false);
+  });
+});
+
+describe("限购地区省名（#3）", () => {
+  it("省级码 → 省名（排除语义展示用）", () => {
+    expect(provinceNamesByCodes(["65", "54"])).toEqual(["新疆维吾尔自治区", "西藏自治区"]);
+  });
+  it("取 regionCode 前两位判省（更细的码也归到省）", () => {
+    expect(provinceNamesByCodes(["330106"])).toEqual(["浙江省"]);
+  });
+  it("空/认不出：空数组返回空，未知码原样回传（宁可露码也不静默丢限购）", () => {
+    expect(provinceNamesByCodes([])).toEqual([]);
+    expect(provinceNamesByCodes(null)).toEqual([]);
+    expect(provinceNamesByCodes(["99"])).toEqual(["99"]);
+  });
+  it("PROVINCES_WITH_CODE 覆盖 34 个省级单位，含新疆/西藏", () => {
+    expect(PROVINCES_WITH_CODE).toHaveLength(34);
+    expect(PROVINCES_WITH_CODE.find((p) => p.code === "65")?.name).toBe("新疆维吾尔自治区");
   });
 });
