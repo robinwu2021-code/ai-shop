@@ -1876,7 +1876,7 @@
     {
       "slug": "goods-edit-input-first",
       "file": "goods-edit-input-first.html",
-      "title": "商品编辑页：快速识别录入 · 提交历史（骨架不动）",
+      "title": "商品编辑页：快速录入 · 发布历史（整页，骨架不动）",
       "kind": "pages",
       "clients": [
         "b-app"
@@ -1884,7 +1884,7 @@
       "status": "在建",
       "date": "2026-10-06",
       "artifact": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
-      "summary": "在现有 pages/goods-edit/index 上只加不改:八张卡的顺序与展开方式、商品参数卡的 chip 排布、价格/库存/规格/编码各卡、底部保存条全照旧。① 把本来就在第一位的「快速录入」卡撑开成输入区(多行文字框 + 相册/拍照/压缩包 + 识别),识别结果先进确认层(首次页内占满一屏、带原文片段并写明落到哪张卡;追加/改口在弹框只给变更),被识别填过的字段挂 tint 小标、长按可单字段重认;压缩包按目录名与文件名数字分图位、分不准的标黄可拖动。② 新增**提交历史**:导航右侧入口 → 逐版列表(版本/提交时间/提交人/改了哪几项/发布时间,状态 tint 标:待发布·线上·已被替换·被驳回)→ 某版的字段级变更(左旧右新,并写明每条来自手填还是快速录入的哪句原话)→ 就地发布,并发时把「会被你覆盖掉的项」摆出来再让人决定。末节列出落地缺口:提交历史需新表 prd_goods_revision,差异沿用现成的 PublishPreviewVO.DiffRow。",
+      "summary": "照 b-app/src/pages/goods-edit/index.vue(3380 行)与 goods-publish/index.vue 的真实卡序与字段整页画，文案抄 i18n/locale/zh-CN.ts。先用三屏把整页完整铺开当基线(快速录入 → 基本信息 → 图文详情 → 类目与配送 → 规格 → 商品参数 → 价格 → 库存 → 商品编码 + 贴底 sh-actionbar)，骨架与字段布局一处不动。只加两件事:① 快速录入卡本来就有多行输入与一键识别，缺的是出口——识别结果现在只亮四枚 chip、一个字都不落表单;补确认层(逐项勾选、带原文片段并写明落到哪张卡的哪一行，拿不准的默认不勾)、落回后在原行挂 tint「识别」标、再贴一段走弹层只给变更、长按单字段重认、压缩包图位确认。② 新增发布历史:现有 goods-publish 已把「草稿 vs 此刻线上」的差异做全(含 stale 冲突与带版发布)，缺的是可回溯的轴——时间轴一版一节(版本/保存时间与人/录入方式/发布时间与人/改了哪几项/四种状态)、某版详情给两份差异(对比前一版与对比此刻线上)并「以这一版建草稿」、冲突时点名是谁改的与会覆盖哪一项。末节分清两件事的分量:快速录入缺一个确认页(后端基本齐)，发布历史缺存储(新表 prd_goods_revision)，差异沿用现成的 PublishPreviewVO.DiffRow。",
       "docs": [
         {
           "label": "识别-prompt方案（ZIP 图位 / 自然语言参数抽取）",
@@ -1902,59 +1902,93 @@
       "screens": [
         {
           "id": "s01",
-          "title": "现在 · 快速录入是一行入口",
+          "title": "整页 1/3 · 快速录入 / 基本信息 / 图文详情",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },
         {
           "id": "s02",
-          "title": "这版 · 同一张卡撑开成输入区",
+          "title": "整页 2/3 · 类目与配送 / 规格 / 商品参数",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },
         {
           "id": "s03",
-          "title": "识别中 · 不挡表单"
+          "title": "整页 3/3 · 价格 / 库存 / 商品编码",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s04",
-          "title": "首次识别 · 页内确认"
+          "title": "现状 · 识别结果只亮 chip，表单仍空",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s05",
-          "title": "落回原来的表单(挂识别标)"
+          "title": "识别中 · 规则与语义两段进度",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s06",
-          "title": "再贴一段 · 弹框只给变更"
+          "title": "确认层 · 逐项勾选并写明落点",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s07",
-          "title": "局部更新 · 单字段重认"
+          "title": "落回原来的行 · 挂「识别」标",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s08",
-          "title": "压缩包 · 图位确认"
+          "title": "再贴一段 · 弹层只给变更",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
         },
         {
           "id": "s09",
-          "title": "提交历史 · 入口与未发布提示",
+          "title": "局部更新 · 单字段三条路",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },
         {
           "id": "s10",
-          "title": "提交历史 · 逐版列表",
+          "title": "导入压缩包 · 图位确认",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
+        },
+        {
+          "id": "s11",
+          "title": "入口 · 草稿横幅补版本号 + 导航「历史」",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
+        },
+        {
+          "id": "s12",
+          "title": "发布确认页（现状，一处不动）",
           "client": "b-app",
           "route": "pages/goods-publish/index"
         },
         {
-          "id": "s11",
-          "title": "某一版的字段级变更"
+          "id": "s13",
+          "title": "发布历史 · 一条轴",
+          "client": "b-app",
+          "route": "pages/goods-publish/index"
         },
         {
-          "id": "s12",
-          "title": "发布 · 线上被别人动过"
+          "id": "s14",
+          "title": "某一版详情 · 两份差异 + 以这版建草稿",
+          "client": "b-app",
+          "route": "pages/goods-publish/index"
+        },
+        {
+          "id": "s15",
+          "title": "冲突 · 是谁改的 + 会覆盖哪一项",
+          "client": "b-app",
+          "route": "pages/goods-publish/index"
         }
       ]
     }

@@ -124,8 +124,8 @@
               "domain": "商品",
               "tab": false,
               "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
               "preview": "http://localhost:5175/#/pages/goods-publish/index"
             },
             {

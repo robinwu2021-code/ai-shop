@@ -564,3 +564,11 @@ a{color:inherit}
 .slot .nm em{font-style:normal;display:block;font-size:10px;color:var(--sh-sub)}
 .slot .drag{color:var(--sh-sub);font-size:13px;flex:none}
 .slot.warn .nm em{color:var(--sh-warning-text)}
+
+/* 页内按钮行（不是贴底 actionbar）：goods-publish 把两颗按钮放在滚动区里，
+   .btn 本身没有宽度，裸放进 flex 行会挤成两坨字 —— 这里给它 flex。2026-10-06 */
+.btnrow{display:flex;gap:8px;padding:0 2px}
+.btnrow .btn{flex:1}.btnrow .btn.main{flex:2}
+/* 时间轴一节的内容块：.tl .st 是 flex 行（圆点 + 内容），内容必须收在一个子元素里 */
+.tl .st .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.tl .st .bd b{font-size:12px;font-weight:600;color:var(--sh-ink)}
