@@ -1,6 +1,6 @@
 # TDD-商品编辑页：录入落点 · 文案收敛 · 发布历史
 
-状态：草稿（待确认）
+状态：**A1 / B1 已实现**（2026-10-07）· B2 与 C 期待做
 关联：
 - 原型 [商品编辑页 · 快速录入与发布历史](https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd)（`prototypes/goods-edit-input-first.html`，15 屏）
 - [TDD-商品快速录入.md](TDD-商品快速录入.md)（AC1–14 的基座，本文是它的 AC11 落地决定）
@@ -305,17 +305,95 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 
 ---
 
-## §9 对账二 · 设计 → 实现（实现时填）
+## §9 对账二 · 设计 → 实现
 
-实现完把 `git diff --stat` 的文件清单贴回这里，与 §4 / §5 / §6.1 的白名单逐行比。
+### A1（commit `5b4ea3f30`）
 
-## §10 对账三 · 实现 → 需求（测试，实现时填）
+```
+ b-app/src/i18n/locale/ar.ts          | 30 +++++++++---------------
+ b-app/src/i18n/locale/en.ts          | 30 +++++++++---------------
+ b-app/src/i18n/locale/zh-CN.ts       | 30 +++++++++---------------
+ b-app/src/pages/goods-edit/index.vue |  2 +-
+```
 
-每条 AC 一个测试方法名 + 真实输出 + 消融结果。
+与 §6.1 白名单逐行比：45 行 = 15 个键 × 3 语言的**值**；`index.vue` 那 1 行是 key 修正。
+**模板侧零改动** —— `git diff -U0` 的增删只有那一行。✓
+
+### B1（commit `920af4037`）
+
+```
+ b-app/src/i18n/locale/{ar,en,zh-CN}.ts   |  9 +-   （各新增 7 键 + 改 1 值）
+ b-app/src/pages/goods-edit/index.vue     | 91 +++  （script 79 增 / 模板 1 块）
+ b-app/src/pages/goods-edit/text-parse.ts | 137 ++  （新）
+ b-app/tests/text-parse-landing.test.ts   | 176 ++  （新）
+```
+
+**偏差一处（已在 §11 记）**：§4.1 写的是「`applyTextParse` 里一气算完」，
+实现把落点算法抽成了 `text-parse.ts` 的纯函数。原因见 §11。
+模板侧只多了白名单允许的「卡内新增一行」（`quick__specs`），卡序与字段布局零改动。✓
+
+---
+
+## §10 对账三 · 实现 → 需求
+
+`b-app/tests/text-parse-landing.test.ts` · 21 条 · `npx vitest run` 全量 **94 passed (18 files)**
+（加这一份之前是 73 条 / 17 个文件 —— 总数涨了才算真的跑了）。
+
+| AC | 测试方法 | 消融 |
+|---|---|---|
+| AC1 限购地区落进商品 | `★★★ 省码写进 restrictedRegions（这条红过一次：值一直没落）`<br>`取并集，不覆盖商家手选的`<br>`没有新省要加时整项不动（undefined，不是空数组）` | 撤掉 `plan.restrictedRegions` 那三行 → **3 条红**（含端到端那条），撤回后 21 绿 |
+| AC2 参数文字路径也填 | 复用 `applyParamPicks`，由既有 `tests/param-picks.test.ts` 覆盖；本份只断言 `changed` 里有 `parseParams` | 不单独消融（落点函数未变，仅调用点新增） |
+| AC3 规格只列不自动加 | `★★★ 回 specPicks 等人点`<br>`已经有同名维度的不再列`<br>`没有档位的维度不列` | — |
+| AC4 重量落标称重量 | `★★★ 取最大的那个`<br>`所有行都已填重量时不动`<br>`%s → %i 克`（5 组）<br>`认不出单位就丢掉，不猜` | 把 `Math.max` 改成「只取第一个」 → **2 条红**，撤回后绿 |
+| AC6 多规格价格不直落 | `★★★ 多规格 → 写进「统一价格」`<br>`单规格 → 直落第一行`<br>`价格没变就不报「已更新」` | 把 `if (cur.multi)` 改成 `if (false)` → **1 条红**，撤回后绿 |
+| — | `承运商不落任何字段` · `confidence=0 时一个字段都不动` | 守住两条「有意不做」 |
+
+消融的文件每次都 `touch` 过 —— `mv .bak` 搬回旧 mtime 的话，vitest 会一直跑消融的那份。
+
+### 闸门
+
+| 闸门 | 基线（动手前） | 现在 |
+|---|---|---|
+| `check-i18n-orphan` 用了但没有 | **1**（`goods.done`） | **0** ✓ |
+| `check-i18n-orphan` 新增孤儿 | 2（`zipTxtFound` / `savedAsDraft`，来自 `91327868e` / `c8396643d`，**不是我的**） | 2，未动 |
+| `vue-tsc --noEmit`（b-app） | 0 | 0 ✓ |
+| `vitest run`（b-app） | 73 / 17 文件 | 94 / 18 文件 ✓ |
+
+> 基线本来就是红的，而且红在这次要用的那道闸上 —— 先存基线再动手这一步不是形式：
+> 不然我自己的失败会被那条已有的红掩盖。
+
+---
 
 ## §11 偏差说明
 
-（实现与本文不一致时写在这里，不要悄悄改代码）
+1. **AC3 从「自动加规格维度」改成「列出来等人点」。**
+   加一个维度会把价格/库存从一行变成 N 行。在边输边识别下自动做，等于在商家
+   打字途中换掉他已经填好的行结构 —— `applyParamPicks` 那套「只填空着的」在这里
+   不成立：维度不是一个值，它改的是表格的形状。改成在快速录入卡里列一行
+   「识别到规格：重量 · 加进规格」，点了才调 `applySpecPicks` + `rebuild()`。
 
-- **已记一条**：原型 04 屏画的「识别结果一个字都不落表单」与 HEAD 不符 —— 文字识别实际会自动填
-  快递与第一个 SKU 的售价。原型已按本文 §1.2 的落点矩阵更正。
+2. **落点算法抽成 `text-parse.ts` 的纯函数**，而非 §4.1 写的「在 `applyTextParse`
+   里一气算完」。b-app 的 `vitest.config.mts` 不装 vue 插件、没有 DOM，只收
+   `tests/` 下的纯函数 —— 逻辑留在 `.vue` 里的话，AC1–AC6 **一条测试都看不见**，
+   而 AC1 恰恰是「值没落、chip 亮着」这种只能靠断言值才抓得到的缺陷。
+
+3. **A1 实际改了 15 条、不是 18 条。** §3 审计表的 18 行里：2 条（`parsePh`、
+   `parseNoShipHint`）按 §7 的顺序约束随 B 期改（`parseNoShipHint` 已随 B1 改成
+   「已填入限购地区。运费仍需在运费模板设置」，`parsePh` 待 B2）、1 条
+   （`quickHint` 删键）与 `noStoreCategory` 配按钮属 A2，未做。
+
+4. **顺带修了一个方案里没写的真缺陷**：限购地区弹层那颗按钮写
+   `$t("goods.done")`，而词条叫 `restrictedDone` —— 键不存在，店主看到的是
+   字面量「goods.done」。它就是基线里「用了但没有 1」那一条，来自我自己的
+   `ef81c2d97`。
+
+---
+
+## §12 还没做的
+
+| 项 | 内容 |
+|---|---|
+| **A2** | 删 `quickHint`、`noStoreCategory` 配按钮、`parsePh` 改成只说字段名 |
+| **B2** | AC5 撤销与复核面（`lastPatch` + 卡内「已更新 N 项 · 撤销」+ 只读清单） |
+| **C** | 发布历史：新表 `prd_goods_revision` + 三个端点 + 历史页 + `overwrites` |
+| 真机验 | §6.4 要求的改前改后截图对比，**未做** —— A1/B1 都没动布局，但这不等于验过了 |
