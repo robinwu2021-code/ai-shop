@@ -2724,7 +2724,7 @@ async function save(thenSubmit = false) {
       </view>
       <view class="build sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--ghost" @tap="restrictedRegions = []">{{ $t("goods.restrictedClear") }}</text>
-        <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("goods.done") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("goods.restrictedDone") }}</text>
       </view>
     </sh-sheet>
 
