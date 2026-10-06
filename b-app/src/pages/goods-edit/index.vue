@@ -14,6 +14,7 @@ import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { planTextParse } from "./text-parse";
 import { useMerchantStore } from "@/stores/merchant";
 import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
@@ -795,13 +796,36 @@ async function runRecognize(force = false) {
 }
 
 /**
- * 文字识别（规则）：边输边识别，**自动更新识别到的属性，没识别到的不动**。
- * 价格落第一个 SKU 行、快递加进履约；区域只记下来在屏上提示（跨整店，不自动改运费模板）。
+ * `plan.changed` 里的标识 → i18n 键。**一律写成字面量** —— 见 `applyTextParse` 里的注释。
+ */
+const PARSE_LABEL: Record<string, string> = {
+  parseExpress: "goods.parseExpress",
+  parsePrice: "goods.parsePrice",
+  parsePriceBulk: "goods.parsePriceBulk",
+  parseWeight: "goods.parseWeight",
+  parseRegions: "goods.parseRegions",
+  parseParams: "goods.parseParams",
+};
+
+/** 识别到、但**还没**加进规格的维度。只列出来等人点，不自动加（理由见 `text-parse.ts`） */
+const specPicks = ref<{ name: string; options: string[] }[]>([]);
+
+/**
+ * 文字识别（规则 + LLM）：边输边识别，**只填空着的，不覆盖已填的**。
+ *
+ * <p>落点怎么算在 `./text-parse.ts`（纯函数、有测试）。这里只做两件事：
+ * 调它拿一份 plan，然后一行一行照 plan 写。
+ *
+ * <p>此前只落两项（快递、第一行售价），而 `parse-text` 回七项 —— 参数、
+ * 标称重量、限购地区全丢在半路。**限购地区最要命**：它亮成一枚 chip，
+ * 看着像生效了，于是「文字里写了不发货区域、商品页没更新」这个报障的根因
+ * 一直被当成后端没认出来，实际是端上少一行赋值。
  */
 async function applyTextParse() {
   const text = parseInput.value.trim();
   if (!text) {
     parsed.value = null;
+    specPicks.value = [];
     return;
   }
   const r = await api.mParseText(text, categoryNo.value || undefined).catch(() => null);
@@ -809,21 +833,51 @@ async function applyTextParse() {
   parsed.value = r.confidence ? r : null;
   if (!r.confidence) return;
 
-  const changed: string[] = [];
-  if (r.fulfillment.includes(FULFILLMENT.EXPRESS) && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
+  const plan = planTextParse(r, {
+    multi: multi.value,
+    bulkPrice: bulk.value.price,
+    rows: rows.value.map((row) => ({ priceMajor: row.priceMajor, nominalGram: row.nominalGram })),
+    market: market.value,
+    restrictedRegions: restrictedRegions.value,
+    groupNames: groups.value.map((g) => g.name),
+  });
+
+  if (plan.addExpress && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
     fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
-    changed.push(String(t("goods.parseExpress")));
   }
-  if (r.pricesMinor.length && rows.value[0]) {
-    const next = yuan(r.pricesMinor[0]!);
-    if (rows.value[0].priceMajor.CNY !== next) {
-      rows.value[0].priceMajor.CNY = next;
-      changed.push(String(t("goods.parsePrice")));
-    }
+  if (plan.bulkPrice !== undefined) bulk.value.price = plan.bulkPrice;
+  if (plan.rowPrice !== undefined && rows.value[0]) {
+    rows.value[0]!.priceMajor = { ...rows.value[0]!.priceMajor, [market.value]: plan.rowPrice };
   }
+  if (plan.nominalGram !== undefined) {
+    rows.value = rows.value.map((row) =>
+      row.nominalGram.trim() ? row : { ...row, nominalGram: plan.nominalGram! });
+  }
+  if (plan.restrictedRegions !== undefined) restrictedRegions.value = plan.restrictedRegions;
+  specPicks.value = plan.specPicks;
+
+  const changed = [...plan.changed];
+  // 参数走图片识别同一个函数 —— 同一个后端结果，两条路不该两种待遇
+  if (applyParamPicks(r.params ?? [])) changed.push("parseParams");
   if (changed.length) {
-    uni.showToast({ title: String(t("goods.updatedFields", { f: changed.join("、") })), icon: "none" });
+    /*
+     * **字面量键，不要写成 `t(`goods.${k}`)`。** 端上的 i18n 闸门扫的是字面量：
+     * 一个动态键不但让这几条词条被当成孤儿，还会把整个 `goods.` 命名空间
+     * 从对账里豁免掉（前缀只有一段）。缺词条的后果是界面上直接露出键名。
+     */
+    const f = changed.map((k) => String(t(PARSE_LABEL[k] ?? k))).join("、");
+    uni.showToast({ title: String(t("goods.updatedFields", { f })), icon: "none" });
   }
+}
+
+/** 把识别到的规格维度加进规格卡。**只在这里加** —— 自动加会换掉已填的价格行结构 */
+function applySpecPicks() {
+  const picks = specPicks.value.filter((sp) => !groups.value.some((g) => g.name === sp.name));
+  if (!picks.length) return;
+  groups.value = [...groups.value, ...picks.map((sp) => ({ name: sp.name, options: [...sp.options] }))];
+  rebuild();
+  specPicks.value = [];
+  uni.showToast({ title: String(t("goods.parseSpecDone", { n: picks.length })), icon: "none" });
 }
 
 /*
@@ -1634,6 +1688,18 @@ async function save(thenSubmit = false) {
         <text v-if="parsed.excludeRegionText" class="quick__tag quick__tag--warn">{{ $t("goods.parseNoShip") }}:{{ parsed.excludeRegionText }}</text>
       </view>
       <text v-if="parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
+      <!--
+        识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
+        列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
+      -->
+      <view v-if="specPicks.length" class="sh-row quick__specs">
+        <text class="txt-caption sh-muted sh-fill">
+          {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
+        </text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applySpecPicks">
+          {{ $t("goods.parseSpecApply") }}
+        </text>
+      </view>
     </view>
 
     <view class="sh-card">
@@ -3369,6 +3435,7 @@ async function save(thenSubmit = false) {
 
 .quick__hint { display: block; margin-top: 8rpx; }
 .quick__got { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.quick__specs { margin-top: 12rpx; gap: 16rpx; }
 .quick__tag {
   font-size: 24rpx;
   color: var(--sh-primary-text, #b25);
