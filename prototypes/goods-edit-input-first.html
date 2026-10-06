@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商品录入 · 输入占主位</title>
+<!-- 真源在仓库 prototypes/goods-edit-input-first.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 界面原型 · 2026-10-06</div>
+  <h1>商品录入：输入占主位</h1>
+  <p class="sub">一件货最少要做几下：<b>贴一段话或丢几张图 → 勾一遍 → 保存</b>。所以把「输入」搬到首屏主位，表单退到后面；识别结果只当草稿，<b>首次识别在页内确认</b>（那时识别就是主任务），<b>追加与改口在弹框确认</b>（不把人赶出表单）。支持多次输入、只给变更、单字段重识别。七屏。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">一</span><h2>改的是什么</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>位置</th><th>现在</th><th>这次</th><th>为什么</th></tr>
+    <tr><td>新建首屏</td><td>先选类目，再一页卡往下填（名称 / 图 / 价 / 库存 / 规格…）</td><td><b>一个输入区占主位</b>：一段文字 + 加图 + 压缩包，一颗「识别并填表」</td><td>商家手里本来就有一段群消息和几张图，让他先交出来，比先问他类目更省事</td></tr>
+    <tr><td>识别结果</td><td>文字边输边静默改属性，图识别直接覆盖名称 / 详情</td><td>一律先进<b>勾选清单</b>：字段 · 值 · 原文片段；确认后才落表单</td><td>错填比不填贵，而商家不易察觉——价格、限购这类更是</td></tr>
+    <tr><td>确认在哪</td><td>（没有确认层）</td><td><b>首次在页内</b>（主任务）；<b>追加 / 改口在弹框</b>（局部更新，不离开表单）</td><td>首次识别时页面上还没别的东西，占满一屏最省；填到一半时弹框才不丢上下文</td></tr>
+    <tr><td>再补一句</td><td>要退回去重新识别，结果整段重来</td><td>识别后输入区收成<b>常驻一条细输入条</b>，随时补话 / 加图</td><td>商家是想起来一点说一点，不是一次说全</td></tr>
+    <tr><td>第二次识别</td><td>整份结果重算，覆盖已填</td><td><b>只给变更</b>：新增 / 旧值→新值 / 删除，没提到的字段不动</td><td>「改成12.8元」只该动价，不该把他手填的库存冲掉</td></tr>
+    <tr><td>某一项错了</td><td>只能手删重填，或整段重识别</td><td>点那一行 →「<b>重识别这一项</b> / 粘一段只认它 / 手填」</td><td>一个字段错了不必整段重来</td></tr>
+    <tr><td>压缩包图</td><td>按目录名分主图 / 详情，分不出就全当主图</td><td>分不出时才问模型，结果仍进<b>图位确认</b>，可拖动改位置</td><td>规则能办的不花钱；图位错了商家一眼看得见，给他改的手把</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">二 · 01 — 03</span><h2>第一次录入：输入 → 识别 → 页内确认</h2></div>
+  <p class="sec-note">这三屏是主线。注意第 1 屏上<b>没有任何表单</b>：类目、价格、库存都不在这儿问，它们是识别之后的结果，或者是确认完之后补的。</p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
+        <div class="scr">
+          <div class="inzone">
+            <div class="h">把商品信息交给我 <em>文字 / 图 / 压缩包，有啥给啥</em></div>
+            <div class="ta">粘一段群里的描述，或者说一句——<br>例：阿克苏冰糖心苹果 单果140g+ 净重4.5斤装10元 圆通快递，新疆西藏海南不发货</div>
+            <div class="pics">
+              <span class="add">＋</span><span class="add">📷</span><span class="add">🗂</span>
+              <span class="meta" style="align-self:center">相册 · 拍照 · 压缩包</span>
+            </div>
+          </div>
+          <div class="gt">也可以不识别，自己填</div>
+          <div class="group">
+            <div class="frow"><span class="k">手动填写</span><span class="v">展开 ›</span></div>
+          </div>
+          <div class="meta">识别只是草稿，确认之后才会填进表单。</div>
+        </div>
+        <div class="foot"><div class="btn main">识别并填表</div></div>
+      </div>
+      <figcaption class="cap"><b>01 新建 · 输入占主位</b>首屏只有一件事：交出手里的东西。文字区可空、图可空，但不能都空（按钮置灰）。</figcaption>
+      <p class="why">把「手动填写」折成一行而不是删掉：有人就是来改一个价的，不该被识别流程绑住。它在输入区<b>下面</b>——顺序即建议。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">识别中</span><span></span></div>
+        <div class="scr">
+          <div class="inzone">
+            <div class="h">正在认 <em>可以先去别处，认完会提示</em></div>
+            <div class="prog">
+              <div class="t"><span>图片上传</span><b>3 / 8</b></div>
+              <div class="bar"><i style="width:38%"></i></div>
+            </div>
+            <div class="prog">
+              <div class="t"><span>文字解析</span><b>进行中</b></div>
+              <div class="bar"><i style="width:64%"></i></div>
+            </div>
+          </div>
+          <div class="note">价格、快递、不发货地区这几项由规则抽，模型挂了也不会丢。</div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div></div>
+      </div>
+      <figcaption class="cap"><b>02 识别中</b>图逐张传、文字同时解析。两条进度分开——商家最常问的是「我的图传上去了没有」。</figcaption>
+      <p class="why">写明「规则抽的那几项不会丢」：模型不可达是常态，不说清楚的话一次超时就会让人以为整条路不能用。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认识别结果</span><span>全不选</span></div>
+        <div class="scr">
+          <div class="gt">认出 7 项 · 已勾 5 项（拿不准的默认不勾）</div>
+          <div class="group">
+            <div class="crow"><span class="ck on"></span><span class="k">商品名</span><span class="b">
+              <span class="v">阿克苏冰糖心苹果 4.5斤装</span><span class="src">「阿克苏冰糖心苹果」</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">售价</span><span class="b">
+              <span class="v">¥10.00</span><span class="src">「净重4.5斤装10元」· 规则抽</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">净重</span><span class="b">
+              <span class="v">4.5 斤（2250 g）</span><span class="src">「净重4.5斤」</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">单果重量</span><span class="b">
+              <span class="v">140g+ <span class="tag add">新参数</span></span><span class="src">「单果140g+」· 系统没有这一项，按自由参数存</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">发货</span><span class="b">
+              <span class="v">快递 · 圆通</span><span class="src">「圆通快递」</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">不发货</span><span class="b">
+              <span class="v">新疆 · 西藏 · 海南</span><span class="src">「新疆西藏海南不发货」</span></span></div>
+            <div class="crow low"><span class="ck"></span><span class="k">类目</span><span class="b">
+              <span class="v">水果 › 苹果（拿不准）</span><span class="src">没有明说，按商品名猜的</span></span></div>
+          </div>
+          <div class="note">还缺一样：这件货有多少库存？</div>
+        </div>
+        <div class="foot"><div class="btn sec">都不要</div><div class="btn main">填进表单（5）</div></div>
+      </div>
+      <figcaption class="cap"><b>03 页内确认清单</b>每行三样：字段 · 值 · <b>原文片段</b>。把握不足的（这儿是类目）默认不勾、字转警告色。</figcaption>
+      <p class="why">原文片段是这一屏的关键：商家要能一眼看出这个值是从他哪句话来的，才敢按「填进表单」。按钮上带数字（5），让他知道这一下会动几项。模型拿不准的事做成一行追问，答完就是下一次输入。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">三 · 04 — 06</span><h2>多次输入 · 只给变更 · 局部重识别</h2></div>
+  <p class="sec-note">确认完就进表单，但输入<b>不退场</b>：它收成页顶一条细条，随时能再说一句。第二次起只给变更，弹框确认，不把人赶出表单。</p>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span>预览</span></div>
+        <div class="scr">
+          <div class="inbar"><b>再说一句</b> / 加图 <span class="r">＋</span></div>
+          <div class="pics">
+            <span class="img">🍎</span><span class="img">🍎</span><span class="img">🍎</span><span class="img">🍎</span><span class="add">＋</span>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">商品名</span><span class="v">阿克苏冰糖心苹果 4.5斤装 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">类目</span><span class="v">水果 › 苹果 ›</span></div>
+            <div class="frow"><span class="k">售价</span><span class="v">¥10.00 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">库存</span><span class="v">待填</span></div>
+            <div class="frow"><span class="k">商品参数</span><span class="v">3 项 <span class="pin">识别</span> ›</span></div>
+            <div class="frow"><span class="k">不发货地区</span><span class="v">3 省 <span class="pin">识别</span> ›</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>04 表单态 · 输入条常驻</b>识别来的字段挂一枚「识别」小标；没认出来的（库存）留「待填」。</figcaption>
+      <p class="why">小标不是装饰：商家回头看这页时要分得清「这是我填的」和「这是机器猜的」——后者他会多看一眼，而那正是我们想要的。输入条留在页顶而不是沉到底部：补话是随时发生的，不是最后一步。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span>预览</span></div>
+        <div class="scr">
+          <div class="inbar"><b>是阿克苏冰糖心苹果，改成12.8元，海南也能发，每人限购2箱</b></div>
+          <div class="group">
+            <div class="frow"><span class="k">商品名</span><span class="v">阿克苏冰糖心苹果 4.5斤装</span></div>
+            <div class="frow"><span class="k">售价</span><span class="v">¥10.00</span></div>
+          </div>
+        </div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">这次变了 4 项</div>
+            <div class="d">只列有变化的，别的一个字不动</div>
+            <div class="group">
+              <div class="crow"><span class="ck on"></span><span class="k">售价</span><span class="b">
+                <span class="diff"><span class="old">¥10.00</span><span class="arw">→</span><span class="new">¥12.80</span><span class="tag upd">改</span></span>
+                <span class="src">「改成12.8元」</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">不发货</span><span class="b">
+                <span class="diff"><span class="old">海南</span><span class="arw">→</span><span class="new">去掉</span><span class="tag del">删</span></span>
+                <span class="src">「海南也能发」· 仍不发 新疆 · 西藏</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">限购</span><span class="b">
+                <span class="v">每人 2 箱 <span class="tag add">新</span></span><span class="src">「每人限购2箱」</span></span></div>
+              <div class="crow low"><span class="ck"></span><span class="k">产地</span><span class="b">
+                <span class="v">新疆阿克苏 <span class="tag add">新</span></span><span class="src">从「阿克苏」推的，不确定</span></span></div>
+            </div>
+            <div class="acts"><div class="btn sec">先不改</div><div class="btn main">应用（3）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 追加一句 · 弹框只给变更</b>改口走「旧值 → 新值」，撤回走删除线，新增挂「新」。没提到的字段不出现。</figcaption>
+      <p class="why">这一屏回答「多次输入会不会把我前面填的冲掉」：答案是只动列出来的那几行。用弹框而不是整页：他正在表单里，整页跳走会丢掉刚填到一半的库存。推断出来的产地（他只说了「阿克苏」）默认不勾——推断和抄录不是一回事。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span>预览</span></div>
+        <div class="scr">
+          <div class="inbar"><b>再说一句</b> / 加图 <span class="r">＋</span></div>
+          <div class="group">
+            <div class="frow"><span class="k">售价</span><span class="v">¥12.80 <span class="pin">识别</span></span></div>
+          </div>
+        </div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">售价</div>
+            <div class="d">现在是 ¥12.80，来自「改成12.8元」</div>
+            <div class="group">
+              <div class="pickrow"><span>重新认这一项</span><span class="c">从原文再抽一次</span></div>
+              <div class="pickrow"><span>粘一段，只认价格</span><span class="c">别的字段不动</span></div>
+              <div class="pickrow on"><span>手动填</span><span class="c">自己说了算</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">关掉</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>06 局部更新 · 单字段</b>点任一带「识别」小标的行，就地给三条路：重认这一项 / 粘一段只认它 / 手填。</figcaption>
+      <p class="why">没有这一屏，商家发现价格错了只有两条路：手改（那识别就白跑了）或整段重识别（把对的也冲了）。「只认价格」是把识别的作用域缩到一个字段——作用域能缩小，人才敢用它。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">四 · 07</span><h2>压缩包：目录结构 → 图位</h2></div>
+  <div class="grid">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">压缩包导入</span><span>重新分</span></div>
+        <div class="scr">
+          <div class="gt">主图 4 张 · 详情 2 张 · 文字 1 份（按目录名分的）</div>
+          <div class="group">
+            <div class="slot"><span class="n">主图1</span><span class="img">🍎</span><span class="nm">封面.jpg<em>文件名带「封面」，放第一位 = 封面</em></span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">主图2</span><span class="img">🍎</span><span class="nm">主图片/1.jpg</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">主图3</span><span class="img">🍎</span><span class="nm">主图片/2.jpg</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">主图4</span><span class="img">🍎</span><span class="nm">主图片/10.jpg<em>按文件名里的数字排，2 在 10 前面</em></span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">详情1</span><span class="img">🖼</span><span class="nm">图文介绍/详情1.png</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">详情2</span><span class="img">🖼</span><span class="nm">图文介绍/详情2.png</span><span class="drag">⣿</span></div>
+            <div class="slot warn"><span class="n">待定</span><span class="img">❓</span><span class="nm">其他/场景图.jpg<em>目录名不认识，先放主图末位——拖走它</em></span><span class="drag">⣿</span></div>
+          </div>
+          <div class="meta">文案.txt 已读出，一并送去识别。__MACOSX 等系统文件已忽略。</div>
+        </div>
+        <div class="foot"><div class="btn sec">只导图</div><div class="btn main">确认图位并识别</div></div>
+      </div>
+      <figcaption class="cap"><b>07 图位确认</b>逐行给出「这张图去哪个位置、为什么」。拿不准的那张标黄、留在末位，给拖动把手。</figcaption>
+      <p class="why">分目录这件事规则能办（主图 / 详情 / main / detail 这类词 + 文件名数字排序），只有目录名不认识时才问模型——这一屏是模型与规则共用的出口。把「为什么放这儿」写在行里：图位错了是商家一眼能看出来的那类错，前提是我们告诉他依据。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/goods-edit-input-first.html · 登记：prototypes/registry.json · prompt 方案：docs/technical/design/识别-prompt方案.md</footer>
+</div>
+</html>

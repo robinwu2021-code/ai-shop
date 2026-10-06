@@ -516,3 +516,51 @@ a{color:inherit}
 .tabs.line span{padding:9px 0 8px;color:var(--sh-sub);font-size:12px;position:relative}
 .tabs.line span.on{color:var(--sh-ink);font-weight:600}
 .tabs.line span.on::after{content:"";position:absolute;left:50%;bottom:0;width:16px;height:2.5px;border-radius:2px;background:var(--sh-primary);transform:translateX(-50%)}
+
+/* ── 2026-10-06 商品录入「输入占主位」（goods-edit-input-first）────────────────
+ * 输入主位 .inzone（内含多行输入 .ta 与图条 .pics）、勾选确认行 .ck + .crow、
+ * 新旧对照 .diff、来源小标 .pin、压缩包图位 .slot。
+ * 命名与产品类名对齐（落地时 .crow → sh-cells 的一行 + sh-check）。 */
+.inzone{background:var(--sh-card);border-radius:13px;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+.inzone .h{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600}
+.inzone .h em{font-style:normal;font-size:10px;color:var(--sh-sub);font-weight:400}
+.ta{background:var(--sh-bg);border-radius:10px;padding:9px 10px;color:var(--sh-disabled);font-size:11px;min-height:56px;line-height:1.55}
+.ta.has{color:var(--sh-ink)}
+.ta b{font-weight:600}
+.pics{display:flex;gap:6px;flex-wrap:wrap}
+.pics .img{width:42px;height:42px;border-radius:9px;font-size:16px;flex:none}
+.pics .add{width:42px;height:42px;border-radius:9px;background:var(--sh-faint);color:var(--sh-sub);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+/* 一行可点的细输入条（识别完之后输入区收成这一条，仍在页顶） */
+.inbar{background:var(--sh-card);border-radius:999px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--sh-sub)}
+.inbar b{color:var(--sh-ink);font-weight:600}
+.inbar .r{margin-left:auto;color:var(--sh-primary-text);font-weight:600}
+/* 勾选确认清单 */
+.ck{width:14px;height:14px;border-radius:4px;outline:1px solid var(--sh-sub);outline-offset:-1px;flex:none;position:relative;margin-top:2px}
+.ck.on{background:var(--sh-primary);outline-color:var(--sh-primary)}
+.ck.on::after{content:"✓";position:absolute;inset:0;color:var(--sh-on-primary);font-size:10px;line-height:14px;text-align:center}
+.crow{display:flex;align-items:flex-start;gap:8px;border-top:1px solid var(--sh-line);padding:7px 0}
+.crow:first-child{border-top:0}
+.crow .k{font-size:11px;color:var(--sh-sub);width:58px;flex:none;padding-top:1px}
+.crow .b{flex:1;min-width:0}
+.crow .v{font-size:12px;font-weight:600}
+.crow .src{display:block;font-size:10px;color:var(--sh-sub);font-weight:400;margin-top:2px}
+.crow.low .v{color:var(--sh-warning-text)}
+.crow .tag{font-size:9px;border-radius:5px;padding:1px 4px;font-weight:600;margin-left:5px}
+.crow .tag.add{background:var(--sh-success-tint);color:var(--sh-success-text)}
+.crow .tag.upd{background:var(--sh-warning-tint);color:var(--sh-warning-text)}
+.crow .tag.del{background:var(--sh-faint);color:var(--sh-sub)}
+.diff{display:flex;align-items:baseline;gap:5px;font-size:12px;flex-wrap:wrap}
+.diff .old{color:var(--sh-sub);text-decoration:line-through;font-weight:400}
+.diff .arw{color:var(--sh-sub);font-size:10px}
+.diff .new{font-weight:600;color:var(--sh-primary-text)}
+.pin{font-size:9px;background:var(--sh-primary-tint);color:var(--sh-primary-text);border-radius:5px;padding:1px 4px;margin-left:5px;font-weight:600}
+/* 压缩包图位：序号 · 缩略 · 文件名 · 拖动把手 */
+.slot{display:flex;align-items:center;gap:8px;min-height:40px;border-top:1px solid var(--sh-line)}
+.slot:first-child{border-top:0}
+.slot .n{font-size:10px;color:var(--sh-sub);width:34px;flex:none}
+.slot .img{width:32px;height:32px;border-radius:8px;font-size:13px;flex:none}
+.slot .nm{font-size:11px;flex:1;min-width:0}
+.slot .nm em{font-style:normal;display:block;font-size:9.5px;color:var(--sh-sub)}
+.slot .drag{color:var(--sh-sub);font-size:13px;flex:none}
+.slot.warn .nm em{color:var(--sh-warning-text)}

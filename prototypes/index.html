@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">26 份有效稿子，其中页面稿 16 份、共 196 屏；3 份作废。
+  <p class="sub">27 份有效稿子，其中页面稿 17 份、共 203 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -177,6 +177,16 @@
   <p class="pcard__sum">结算页一行「支付方式」+ 选择面板：在线通道一组、当面付款一组（按履约叫到店付款 / 送货时付款）；底栏按钮随选择变字；App 默认上次使用、本机不可用置灰；只有一种时不出箭头；收银台只做继续支付、只列在线通道。七屏，附规则表，不需改后端。2026-09-28 拍板：列表选择留给 App；小程序线上线下互斥（进件完成走微信，否则按门店「收款方式」走线下），不给选择。</p>
   <div class="screens"><a class="scr" href="c-pay-method.html#p01" title="p01 结算页 · 默认微信">p01</a><a class="scr" href="c-pay-method.html#p02" title="p02 选择面板 · 小程序">p02</a><a class="scr" href="c-pay-method.html#p03" title="p03 选了到店付款">p03</a><a class="scr" href="c-pay-method.html#p04" title="p04 选择面板 · App">p04</a><a class="scr" href="c-pay-method.html#p05" title="p05 结算页 · App">p05</a><a class="scr" href="c-pay-method.html#p06" title="p06 只有一种可选">p06</a><a class="scr" href="c-pay-method.html#p07" title="p07 收银台 · 继续支付">p07</a></div>
   <div class="pcard__links"><a href="c-pay-method.html">本地稿</a> <a href="https://claude.ai/artifact/2BPrUDYJ9hJV39B7uzSasD">claude.ai</a></div>
+  
+</article><article class="pcard" id="goods-edit-input-first">
+  <div class="pcard__hd">
+    <b>商品录入：输入占主位（识别 → 确认 → 多次更新）</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-10-06 · 7 屏</div>
+  <p class="pcard__sum">按「最少做几下」重画新建/编辑商品：首屏只有一个输入区占主位（一段文字 + 加图 + 压缩包），类目价格库存都不在这儿问；识别结果一律先进勾选清单（字段 · 值 · 原文片段），首次识别在页内确认（那时它就是主任务），追加与改口在弹框确认（不把人赶出表单）。识别后输入区收成页顶常驻细条，随时补话加图；第二次起只给变更（新增 / 旧值→新值 / 删除），没提到的字段不动；点带「识别」小标的行可对单字段重认或只认它。压缩包按目录名与文件名数字分图位，分不出才问模型，结果仍进图位确认、可拖动改位置。</p>
+  <div class="screens"><a class="scr" href="goods-edit-input-first.html#s01" title="s01 新建 · 输入占主位">s01</a><a class="scr" href="goods-edit-input-first.html#s02" title="s02 识别中 · 两条进度">s02</a><a class="scr" href="goods-edit-input-first.html#s03" title="s03 页内确认清单（首次）">s03</a><a class="scr" href="goods-edit-input-first.html#s04" title="s04 表单态 · 输入条常驻">s04</a><a class="scr" href="goods-edit-input-first.html#s05" title="s05 追加一句 · 弹框只给变更">s05</a><a class="scr" href="goods-edit-input-first.html#s06" title="s06 局部更新 · 单字段重识别">s06</a><a class="scr" href="goods-edit-input-first.html#s07" title="s07 压缩包 · 图位确认">s07</a></div>
+  <div class="pcard__links"><a href="goods-edit-input-first.html">本地稿</a> <a href="https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd">claude.ai</a> <a href="../docs/technical/design/识别-prompt方案.md">识别-prompt方案（ZIP 图位 / 自然语言参数抽取）</a> <a href="../docs/technical/design/TDD-商品快速录入.md">TDD-商品快速录入</a> <a href="../docs/technical/design/TDD-商品录入优化5项.md">TDD-商品录入优化5项</a></div>
   
 </article>
   </div>
