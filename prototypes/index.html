@@ -180,12 +180,12 @@
   
 </article><article class="pcard" id="goods-edit-input-first">
   <div class="pcard__hd">
-    <b>商品编辑页：输入占主位（整页 · 图与参数 · 两种确认）</b>
+    <b>商品编辑页：加一层快速识别录入（骨架不动）</b>
     <span class="chip warn">在建</span>
   </div>
   <div class="pcard__meta">页面稿 · 商家 App · 2026-10-06 · 8 屏</div>
-  <p class="pcard__sum">重画 pages/goods-edit/index 整页。八张卡一个没删,只改三件事:输入搬到页顶主位(新建时展开成文字+加图+压缩包,编辑时收成一条细条)、填过的卡收成一行摘要并直接显值(价格 ¥12.80 / 限购 2 件 / 全国排除 2 省)、页顶一条待填条提前说清还差什么。商品图卡主图与详情图分段带位次、可拖排、压缩包分不准的标黄留末位;商品参数卡把「点 chip 选」与「要打字」分两段,识别来的挂小标并带原文、可改可删。识别结果一律先确认再落:首次在页内占满一屏,追加/改口在弹框只给变更(新增 / 旧值→新值 / 删除),没提到的字段不动。</p>
-  <div class="screens"><a class="scr" href="goods-edit-input-first.html#s01" title="s01 现在 · 八卡全展开">s01</a><a class="scr" href="goods-edit-input-first.html#s02" title="s02 这版 · 新建首屏(输入占主位)">s02</a><a class="scr" href="goods-edit-input-first.html#s03" title="s03 编辑页全貌 · 上半">s03</a><a class="scr" href="goods-edit-input-first.html#s04" title="s04 编辑页全貌 · 下半">s04</a><a class="scr" href="goods-edit-input-first.html#s05" title="s05 商品图卡(分段 · 位次 · 拖排)">s05</a><a class="scr" href="goods-edit-input-first.html#s06" title="s06 商品参数卡(选 / 填两段)">s06</a><a class="scr" href="goods-edit-input-first.html#s07" title="s07 首次识别 · 页内确认">s07</a><a class="scr" href="goods-edit-input-first.html#s08" title="s08 追加改口 · 弹框只给变更">s08</a></div>
+  <p class="pcard__sum">在现有 pages/goods-edit/index 上**只加不改**:八张卡的顺序与展开方式、商品参数卡的chip 排布、价格/库存/规格/编码各卡、底部保存条,全部照旧。唯一动的是本来就在第一位的「快速录入」卡——由一行入口撑开成输入区(多行文字框 + 相册/拍照/压缩包 + 识别),识别完收回成一行入口。新增:识别结果先进确认层(首次在页内占满一屏、带原文片段并写明落到哪张卡;追加/改口在弹框只给变更:新增 / 旧值→新值 / 删除,没提到的字段不动),被识别填过的字段挂一枚「识别」小标(只多一个标,不改行结构),长按该行可单字段重认 / 只认它 / 手填;压缩包按目录名与文件名数字分图位,分不准的标黄留末位可拖动。</p>
+  <div class="screens"><a class="scr" href="goods-edit-input-first.html#s01" title="s01 现在 · 快速录入是一行入口">s01</a><a class="scr" href="goods-edit-input-first.html#s02" title="s02 这版 · 同一张卡撑开成输入区">s02</a><a class="scr" href="goods-edit-input-first.html#s03" title="s03 识别中 · 不挡表单">s03</a><a class="scr" href="goods-edit-input-first.html#s04" title="s04 首次识别 · 页内确认">s04</a><a class="scr" href="goods-edit-input-first.html#s05" title="s05 落回原来的表单(挂识别小标)">s05</a><a class="scr" href="goods-edit-input-first.html#s06" title="s06 再贴一段 · 弹框只给变更">s06</a><a class="scr" href="goods-edit-input-first.html#s07" title="s07 局部更新 · 单字段重认">s07</a><a class="scr" href="goods-edit-input-first.html#s08" title="s08 压缩包 · 图位确认">s08</a></div>
   <div class="pcard__links"><a href="goods-edit-input-first.html">本地稿</a> <a href="https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd">claude.ai</a> <a href="../docs/technical/design/识别-prompt方案.md">识别-prompt方案（ZIP 图位 / 自然语言参数抽取）</a> <a href="../docs/technical/design/TDD-商品快速录入.md">TDD-商品快速录入</a> <a href="../docs/technical/design/TDD-商品录入优化5项.md">TDD-商品录入优化5项</a></div>
   
 </article>

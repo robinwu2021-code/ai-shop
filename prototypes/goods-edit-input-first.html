@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>商品编辑页 · 输入占主位</title>
+<title>商品编辑页 · 快速识别录入</title>
 <!-- 真源在仓库 prototypes/goods-edit-input-first.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="proto.css">
@@ -10,27 +10,28 @@
 <div class="wrap">
 <header class="top">
   <div class="eyebrow">B 端 App · 界面原型 · 2026-10-06 · pages/goods-edit/index</div>
-  <h1>商品编辑页：输入占主位</h1>
-  <p class="sub">同一页现在有八张卡（快速录入 / 基本信息 / 类目与配送 / 规格 / 商品参数 / 价格 / 库存 / 商品编码），全展开往下排，填一件货要滚三四屏。这版只改三件事：<b>输入搬到页顶主位</b>、<b>填过的卡收成一行摘要</b>、<b>识别结果一律先确认再落</b>（首次在页内、追加在弹框）。八屏。</p>
+  <h1>商品编辑页：加一层快速识别录入</h1>
+  <p class="sub"><b>页面骨架与参数布局一律不动</b>：八张卡（快速录入 / 基本信息 / 类目与配送 / 规格 / 商品参数 / 价格 / 库存 / 商品编码）的顺序、每张卡里的行、参数区的 chip 排布，全照现在。这版只做一件事：把<b>本来就在第一位</b>的「快速录入」那一行撑开成能用的输入区（文字 + 加图 + 压缩包 → LLM 识别），并给识别结果配上确认层。八屏。</p>
 </header>
 
 <section>
-  <div class="sec-head"><span class="sec-num">一</span><h2>改的是什么</h2></div>
+  <div class="sec-head"><span class="sec-num">一</span><h2>动了什么、没动什么</h2></div>
   <div class="tw"><table class="spec">
-    <tr><th>位置</th><th>现在</th><th>这版</th><th>为什么</th></tr>
-    <tr><td>页顶</td><td>「快速录入」是第一张卡里的一行小字入口</td><td><b>输入区占主位</b>：新建时展开（文字 + 加图 + 压缩包），编辑时收成一条细条</td><td>商家手里本来就有一段群消息和几张图，先收下它比先问他类目省事</td></tr>
-    <tr><td>八张卡</td><td>全部展开往下排，填一件货滚三四屏</td><td>填过的卡<b>收成一行摘要</b>（价格 ¥12.80 · 库存 200 · 限购 2），点开才展开</td><td>编辑一件在售商品时，大多数卡他只是路过，不该每次都铺开</td></tr>
-    <tr><td>还差什么</td><td>只有点保存时才被挡下来，提示在底部一闪</td><td>页顶一条<b>待填条</b>：还差 2 项 · 库存 · 类目，点一下跳到那张卡</td><td>把「还不能保存」提前到进页面就看得见，而不是按了保存才知道</td></tr>
-    <tr><td>商品图</td><td>图在第二张卡里，只能一张张加</td><td>三个入口并排（相册 / 拍照 / 压缩包），长按拖排，首张标「封面」</td><td>压缩包是真实场景（供应商给的图包），拖排是因为详情长图的顺序就是展示顺序</td></tr>
-    <tr><td>商品参数</td><td>第五张卡，只能一项项点开选</td><td>识别落的项挂「识别」小标；标准参数点 chip、自由文本直接填、每条可删</td><td>参数是最常被识别出来的一类，也是最需要让人一眼看出「这是机器填的」的一类</td></tr>
-    <tr><td>识别结果</td><td>文字边输边静默改属性，图识别直接覆盖名称 / 详情</td><td>先进<b>勾选确认</b>：字段 · 值 · 原文片段。首次在页内，追加 / 改口在弹框</td><td>错填比不填贵，而商家不易察觉——价格、限购这类更是</td></tr>
-    <tr><td>再补一句</td><td>要退回去重新识别，整段重来，覆盖已填</td><td>细条常驻页顶；第二次起<b>只给变更</b>（新增 / 旧值→新值 / 删除），没提到的不动</td><td>「改成12.8元」只该动价，不该把他手填的库存冲掉</td></tr>
+    <tr><th></th><th>位置</th><th>这版</th></tr>
+    <tr><td><b>没动</b></td><td>八张卡的顺序与展开方式</td><td>一字不改：基本信息 → 类目与配送 → 规格 → 商品参数 → 价格 → 库存 → 商品编码，仍是全展开往下排</td></tr>
+    <tr><td><b>没动</b></td><td>商品参数卡的布局</td><td>仍是「一行一个维度 · 一排 chip · ＋加值」，TEXT 维度仍是一行输入框；<b>加参数</b>仍在标题行右边</td></tr>
+    <tr><td><b>没动</b></td><td>价格 / 库存 / 规格 / 编码各卡</td><td>行、控件、顺序都照旧</td></tr>
+    <tr><td><b>没动</b></td><td>底部保存条</td><td>仍是「存草稿 / 保存」（在售商品保存后弹「立即发布」那套也不变）</td></tr>
+    <tr><td>动</td><td>第一张卡「快速录入」</td><td>由一行入口 → <b>撑开成输入区</b>：多行文字框 + 相册 / 拍照 / 压缩包 + 一颗「识别」。位置没变，还是第一张</td></tr>
+    <tr><td>加</td><td>识别之后</td><td><b>确认层</b>：首次在页内占满一屏，追加 / 改口在弹框只给变更。确认前一个字不落表单</td></tr>
+    <tr><td>加</td><td>被识别填过的字段</td><td>值后面挂一枚「识别」小标（只多一个标，不改行的结构）</td></tr>
+    <tr><td>加</td><td>压缩包导图</td><td>按目录名与文件名数字分主图 / 详情，分不准的进<b>图位确认</b>可拖动</td></tr>
   </table></div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">二 · 01 — 02</span><h2>整页：现在 vs 这版</h2></div>
-  <p class="sec-note">左边是现在的编辑页（八张卡全展开）；右边是这版的首屏（新建态）。页里的节一个没删，只是<b>换了顺序与展开程度</b>。</p>
+  <div class="sec-head"><span class="sec-num">二 · 01 — 02</span><h2>第一张卡：从一行入口到输入区</h2></div>
+  <p class="sec-note">左右两屏除了第一张卡，<b>其余完全一样</b>——这正是这版的全部改动范围。</p>
   <div class="grid">
 
     <figure id="s01">
@@ -51,13 +52,11 @@
             <div class="frow"><span class="k">主营类目</span><span class="v">请选择 ›</span></div>
             <div class="frow"><span class="k">配送方式</span><span class="v">未选</span></div>
           </div>
-          <div class="gt">规格</div>
-          <div class="group"><div class="frow"><span class="k">规格</span><span class="v">＋ 添加</span></div></div>
         </div>
-        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>01 现在 · 第一屏</b>八张卡的前三张。「快速录入」是第一行一个入口；真正能动的全是空表单。后面还有参数 / 价格 / 库存 / 编码四张，要再滚两屏。</figcaption>
-      <p class="why">问题不在哪一行长得不好，在于<b>第一屏没有回答「我现在该做什么」</b>：十来个空格子一字排开，而商家手里其实有现成的一段话和一包图。</p>
+      <figcaption class="cap"><b>01 现在</b>「快速录入」是第一张卡里的一行入口，点进去是另一页。下面的卡与行就是现在的样子。</figcaption>
+      <p class="why">它的位置本来就对——第一张卡、第一行。问题只是<b>它看不出能干什么</b>：一行「粘文字 / 导压缩包 ›」，要点进去才知道里面是什么，于是大多数人直接略过它去填下面的空格子。</p>
     </figure>
 
     <figure id="s02">
@@ -65,160 +64,71 @@
         <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
         <div class="scr">
           <div class="inzone">
-            <div class="h">把商品信息交给我 <em>文字 / 图 / 压缩包，有啥给啥</em></div>
+            <div class="h">快速录入 <em>贴一段话 / 加几张图，自动填下面</em></div>
             <div class="ta">粘一段群里的描述，或者说一句——<br>例：阿克苏冰糖心苹果 单果140g+ 净重4.5斤装10元 圆通快递，新疆西藏海南不发货</div>
             <div class="pics">
               <span class="add">🖼</span><span class="add">📷</span><span class="add">🗂</span>
               <span class="meta" style="align-self:center">相册 · 拍照 · 压缩包</span>
+              <span class="btn" style="margin-left:auto;padding-inline:14px">识别</span>
             </div>
           </div>
-          <div class="gt">也可以不识别，自己填</div>
+          <div class="gt">基本信息</div>
           <div class="group">
-            <div class="frow"><span class="k">基本信息</span><span class="v">商品图 · 名称 · 详情 ›</span></div>
-            <div class="frow"><span class="k">类目与配送</span><span class="v">未填 ›</span></div>
-            <div class="frow"><span class="k">规格 · 价格 · 库存</span><span class="v">未填 ›</span></div>
-            <div class="frow"><span class="k">商品参数</span><span class="v">未填 ›</span></div>
+            <div class="frow"><span class="k">商品图</span><span class="v">＋ 添加</span></div>
+            <div class="frow"><span class="k">商品名</span><span class="v">请输入</span></div>
+            <div class="frow"><span class="k">副标题</span><span class="v">选填</span></div>
+            <div class="frow"><span class="k">销售方式</span><span class="v">正常售卖</span></div>
+            <div class="frow"><span class="k">图文详情</span><span class="v">去编辑 ›</span></div>
+          </div>
+          <div class="gt">类目与配送</div>
+          <div class="group">
+            <div class="frow"><span class="k">主营类目</span><span class="v">请选择 ›</span></div>
+            <div class="frow"><span class="k">配送方式</span><span class="v">未选</span></div>
           </div>
         </div>
-        <div class="foot"><div class="btn main">识别并填表</div></div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>02 这版 · 新建首屏</b>输入区占主位，八张卡收成四行入口排在下面——它们还在，只是不再占第一屏。</figcaption>
-      <p class="why">「自己填」没有被删，只是让位：顺序即建议。按钮在底部单独一颗（不是「取消 / 保存」），因为这一屏唯一要做的事就是识别。</p>
+      <figcaption class="cap"><b>02 这版</b>同一张卡撑开成输入区：多行文字框 + 相册 / 拍照 / 压缩包 + 「识别」。<b>下面每一张卡、每一行都没动</b>。</figcaption>
+      <p class="why">不新开页、不挪位置：输入区就长在它原来那张卡里。撑开是为了<b>让人看得见能往里放什么</b>——一个有占位例子的文字框，比一行「粘文字 ›」有用得多。空着时不挡路（它只有三行高），填好了点「识别」。</p>
     </figure>
 
   </div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">三 · 03 — 04</span><h2>这版的编辑页全貌（编辑一件在售商品）</h2></div>
-  <p class="sec-note">识别确认完、或者打开一件已有商品时的样子。上下两屏拼起来是整页：<b>细输入条 → 待填条 → 商品图 → 其余七节的摘要行 → 保存条</b>。</p>
+  <div class="sec-head"><span class="sec-num">三 · 03 — 05</span><h2>识别 → 确认 → 落进原来的表单</h2></div>
+  <p class="sec-note">确认之前一个字都不落表单。确认之后，值落回<b>原来那些行</b>，只多一枚「识别」小标。</p>
   <div class="grid">
 
     <figure id="s03">
       <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span>预览</span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
         <div class="scr">
-          <div class="inbar"><b>再说一句</b> / 加图 <span class="r">＋</span></div>
-          <div class="note">还差 2 项才能上架：库存 · 主营类目（点一下跳过去）</div>
-          <div class="gt">商品图 · 首张是封面</div>
-          <div class="pics">
-            <span class="img">🍎</span><span class="img">🍎</span><span class="img">🍎</span><span class="img">🍎</span><span class="add">＋</span>
+          <div class="inzone">
+            <div class="h">正在认 <em>认完会把结果列给你确认</em></div>
+            <div class="prog">
+              <div class="t"><span>图片上传</span><b>3 / 8</b></div>
+              <div class="bar"><i style="width:38%"></i></div>
+            </div>
+            <div class="prog">
+              <div class="t"><span>文字解析</span><b>进行中</b></div>
+              <div class="bar"><i style="width:64%"></i></div>
+            </div>
           </div>
+          <div class="note">价格、快递、不发货地区这几项由规则抽，模型挂了也不会丢。</div>
           <div class="gt">基本信息</div>
           <div class="group">
-            <div class="frow"><span class="k">商品名</span><span class="v">阿克苏冰糖心苹果 4.5斤装 <span class="pin">识别</span></span></div>
-            <div class="frow"><span class="k">副标题</span><span class="v">选填</span></div>
-            <div class="frow"><span class="k">销售方式</span><span class="v">正常售卖</span></div>
-            <div class="frow"><span class="k">图文详情</span><span class="v">6 张长图 ›</span></div>
+            <div class="frow"><span class="k">商品图</span><span class="v">＋ 添加</span></div>
+            <div class="frow"><span class="k">商品名</span><span class="v">请输入</span></div>
           </div>
         </div>
         <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>03 编辑页 · 上半</b>输入收成一条细条留在页顶；待填条列出还缺什么；商品图直接铺在页上（不折叠），其余按节走摘要行。</figcaption>
-      <p class="why">只有商品图不折叠：图是唯一「看一眼就知道对不对」的东西，收起来等于每次都要点开确认。<b>待填条</b>把「还不能上架」提前到进页面就看得见——此前这件事只在按下保存那一刻才说。</p>
+      <figcaption class="cap"><b>03 识别中</b>两条进度分开：图在传、文字在解析。下面的表单照常可填——不挡着他先写商品名。</figcaption>
+      <p class="why">不做遮罩、不锁页面：识别慢的时候（图多、模型排队）把人晾在一个转圈上，比让他继续填要糟。写明「规则抽的那几项不会丢」——模型不可达是常态，不说清楚一次超时就会让人以为这条路不能用。</p>
     </figure>
 
     <figure id="s04">
-      <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span>预览</span></div>
-        <div class="scr">
-          <div class="gt">类目与配送</div>
-          <div class="group">
-            <div class="frow"><span class="k">主营类目</span><span class="v">待选 ›</span></div>
-            <div class="frow"><span class="k">配送方式</span><span class="v">快递 <span class="pin">识别</span> ›</span></div>
-          </div>
-          <div class="gt">规格 · 价格 · 库存</div>
-          <div class="group">
-            <div class="frow"><span class="k">规格</span><span class="v">单规格 ›</span></div>
-            <div class="frow"><span class="k">价格</span><span class="v">¥12.80 <span class="pin">识别</span> ›</span></div>
-            <div class="frow"><span class="k">库存</span><span class="v">待填 ›</span></div>
-            <div class="frow"><span class="k">每人限购</span><span class="v">2 件 <span class="pin">识别</span> ›</span></div>
-            <div class="frow"><span class="k">限购地区</span><span class="v">全国，排除 2 省 <span class="pin">识别</span> ›</span></div>
-          </div>
-          <div class="gt">商品参数</div>
-          <div class="group">
-            <div class="frow"><span class="k">商品参数</span><span class="v">4 项 <span class="pin">识别</span> ›</span></div>
-          </div>
-          <div class="gt">商品编码</div>
-          <div class="group">
-            <div class="frow"><span class="k">条码 / 货号</span><span class="v">未填 ›</span></div>
-          </div>
-        </div>
-        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
-      </div>
-      <figcaption class="cap"><b>04 编辑页 · 下半</b>剩下五节各一行摘要：有值的直接显值（¥12.80 / 2 件 / 全国，排除 2 省），没值的写「待填」。识别来的挂小标。</figcaption>
-      <p class="why">摘要行写<b>值</b>而不是「已填写」：商家来编辑页十次有八次是来核对一个数的，让他不点开就看得见。整页从三四屏压到两屏以内。</p>
-    </figure>
-
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">四 · 05 — 06</span><h2>两张最常动的卡：商品图 · 商品参数</h2></div>
-  <div class="grid">
-
-    <figure id="s05">
-      <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">商品图</span><span>完成</span></div>
-        <div class="scr">
-          <div class="gt">主图 4 张 · 首张是封面 · 长按拖动换位</div>
-          <div class="group">
-            <div class="slot"><span class="n">封面</span><span class="img">🍎</span><span class="nm">封面.jpg</span><span class="drag">⣿</span></div>
-            <div class="slot"><span class="n">2</span><span class="img">🍎</span><span class="nm">主图片/1.jpg</span><span class="drag">⣿</span></div>
-            <div class="slot"><span class="n">3</span><span class="img">🍎</span><span class="nm">主图片/2.jpg</span><span class="drag">⣿</span></div>
-            <div class="slot warn"><span class="n">4</span><span class="img">❓</span><span class="nm">其他/场景图.jpg<em>压缩包里目录名不认识，先放这儿——拖走它</em></span><span class="drag">⣿</span></div>
-          </div>
-          <div class="gt">详情长图 2 张 · 顺序就是展示顺序</div>
-          <div class="group">
-            <div class="slot"><span class="n">1</span><span class="img">🖼</span><span class="nm">图文介绍/详情1.png</span><span class="drag">⣿</span></div>
-            <div class="slot"><span class="n">2</span><span class="img">🖼</span><span class="nm">图文介绍/详情2.png</span><span class="drag">⣿</span></div>
-          </div>
-          <div class="pics"><span class="add">🖼</span><span class="add">📷</span><span class="add">🗂</span>
-            <span class="meta" style="align-self:center">相册 · 拍照 · 压缩包</span></div>
-        </div>
-        <div class="foot"><div class="btn main">完成</div></div>
-      </div>
-      <figcaption class="cap"><b>05 商品图卡</b>主图与详情图分两段，各自带位次；压缩包导进来时分不准的那张标黄留末位，给拖动把手。三个入口并排在底。</figcaption>
-      <p class="why">位次写在行首（封面 / 2 / 3）而不是靠拖拽后自己数：详情长图错一张，整页读起来都不对，而这种错只有把序号摆出来才看得见。</p>
-    </figure>
-
-    <figure id="s06">
-      <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">商品参数</span><span>完成</span></div>
-        <div class="scr">
-          <div class="gt">这一类的标准参数 · 点一下选</div>
-          <div class="group">
-            <div class="frow"><span class="k">产地</span><span class="v"><span class="chip act">本地</span><span class="chip">国产</span><span class="chip">进口</span></span></div>
-            <div class="frow"><span class="k">口感</span><span class="v"><span class="chip act">清甜</span><span class="chip">脆爽</span><span class="chip">多汁</span></span></div>
-            <div class="frow"><span class="k">储存</span><span class="v"><span class="chip">常温</span><span class="chip act">冷藏</span></span></div>
-          </div>
-          <div class="gt">填字的参数</div>
-          <div class="group">
-            <div class="crow"><span class="k">净重</span><span class="b"><span class="v">4.5 斤 <span class="pin">识别</span></span>
-              <span class="src">「净重4.5斤」· 点这行可改 / 删</span></span></div>
-            <div class="crow"><span class="k">原产地</span><span class="b"><span class="v">新疆阿克苏 <span class="pin">识别</span></span>
-              <span class="src">「阿克苏」</span></span></div>
-            <div class="crow"><span class="k">单果重量</span><span class="b"><span class="v">140g+ <span class="tag add">自由参数</span></span>
-              <span class="src">系统没有这一项，按自由参数存</span></span></div>
-            <div class="crow"><span class="k">配料</span><span class="b"><span class="v">未填</span></span></div>
-          </div>
-          <div class="group"><div class="frow"><span class="k">＋ 加一项参数</span><span class="v">›</span></div></div>
-        </div>
-        <div class="foot"><div class="btn main">完成</div></div>
-      </div>
-      <figcaption class="cap"><b>06 商品参数卡</b>分两段：枚举型（产地 / 口感 / 储存）点 chip 选；填字型（净重 / 原产地 / 配料）直接写。识别来的挂小标并带原文，每行可改可删。</figcaption>
-      <p class="why">把「点一下选」和「要打字」分开，是因为这两件事的手感完全不同：混在一起时商家会在一堆 chip 中间找那个能打字的格子。<b>自由参数</b>单独标出来——它不进跨店聚合，标出来他才知道为什么这项搜不到。</p>
-    </figure>
-
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">五 · 07 — 08</span><h2>识别结果怎么落：页内确认 vs 弹框确认</h2></div>
-  <p class="sec-note">同一份清单，两种场合两种落法。判据只有一条：<b>此刻识别是不是他正在做的主要事情</b>。</p>
-  <div class="grid">
-
-    <figure id="s07">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">确认识别结果</span><span>全不选</span></div>
         <div class="scr">
@@ -229,31 +139,74 @@
             <div class="crow"><span class="ck on"></span><span class="k">价格</span><span class="b">
               <span class="v">¥10.00</span><span class="src">「净重4.5斤装10元」· 规则抽</span></span></div>
             <div class="crow"><span class="ck on"></span><span class="k">净重</span><span class="b">
-              <span class="v">4.5 斤（2250 g）</span><span class="src">「净重4.5斤」</span></span></div>
+              <span class="v">4.5 斤（2250 g）</span><span class="src">「净重4.5斤」· 落到 商品参数</span></span></div>
             <div class="crow"><span class="ck on"></span><span class="k">单果重量</span><span class="b">
-              <span class="v">140g+ <span class="tag add">自由参数</span></span><span class="src">「单果140g+」</span></span></div>
-            <div class="crow"><span class="ck on"></span><span class="k">配送</span><span class="b">
+              <span class="v">140g+ <span class="tag add">自由参数</span></span><span class="src">「单果140g+」· 系统没这一项，按自由参数存</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k">配送方式</span><span class="b">
               <span class="v">快递 · 圆通</span><span class="src">「圆通快递」</span></span></div>
             <div class="crow"><span class="ck on"></span><span class="k">限购地区</span><span class="b">
               <span class="v">全国，排除 新疆 · 西藏 · 海南</span><span class="src">「新疆西藏海南不发货」</span></span></div>
-            <div class="crow low"><span class="ck"></span><span class="k">类目</span><span class="b">
+            <div class="crow low"><span class="ck"></span><span class="k">主营类目</span><span class="b">
               <span class="v">水果 › 苹果（拿不准）</span><span class="src">没有明说，按商品名猜的</span></span></div>
           </div>
           <div class="note">还缺一样：这件货有多少库存？</div>
         </div>
         <div class="foot"><div class="btn sec">都不要</div><div class="btn main">填进表单（6）</div></div>
       </div>
-      <figcaption class="cap"><b>07 首次识别 · 页内确认</b>占满一屏，每行三样：字段 · 值 · <b>原文片段</b>。把握不足的（类目）默认不勾、字转警告色。</figcaption>
-      <p class="why">首次识别时页面上还没有别的东西，占满一屏最省事。原文片段是这一屏的关键：商家要能一眼看出这个值是从他哪句话来的，才敢按「填进表单」。按钮上带数字（6），让他知道这一下会动几项。</p>
+      <figcaption class="cap"><b>04 首次识别 · 页内确认</b>每行三样：字段 · 值 · <b>原文片段</b>，并写明它会落到哪张卡。拿不准的（类目）默认不勾、字转警告色。</figcaption>
+      <p class="why">首次识别时表单还是空的，占满一屏最省事。<b>原文片段</b>是这屏的关键：商家要能一眼看出这个值是从他哪句话来的，才敢按「填进表单」。按钮上带数字（6），让他知道这一下会动几项。模型拿不准的事做成一行追问，答完就是下一次输入。</p>
     </figure>
 
-    <figure id="s08">
+    <figure id="s05">
       <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span>预览</span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
         <div class="scr">
-          <div class="inbar"><b>是阿克苏冰糖心苹果，改成12.8元，海南也能发，每人限购2箱</b></div>
+          <div class="group"><div class="frow"><span class="k">快速录入</span><span class="v">再贴一段 / 再加图 ›</span></div></div>
+          <div class="gt">基本信息</div>
+          <div class="group">
+            <div class="frow"><span class="k">商品图</span><span class="v">4 张</span></div>
+            <div class="frow"><span class="k">商品名</span><span class="v">阿克苏冰糖心苹果 4.5斤装 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">副标题</span><span class="v">选填</span></div>
+            <div class="frow"><span class="k">销售方式</span><span class="v">正常售卖</span></div>
+            <div class="frow"><span class="k">图文详情</span><span class="v">去编辑 ›</span></div>
+          </div>
+          <div class="gt">类目与配送</div>
+          <div class="group">
+            <div class="frow"><span class="k">主营类目</span><span class="v">请选择 ›</span></div>
+            <div class="frow"><span class="k">配送方式</span><span class="v">快递 <span class="pin">识别</span></span></div>
+          </div>
+          <div class="gt">商品参数</div>
+          <div class="group">
+            <div class="frow"><span class="k">产地</span><span class="v"><span class="chip">本地</span><span class="chip">国产</span><span class="chip">进口</span></span></div>
+            <div class="frow"><span class="k">净重</span><span class="v">4.5 斤 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">单果重量</span><span class="v">140g+ <span class="pin">识别</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">存草稿</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>05 落回原来的表单</b>值回到它本来该在的行上；第一张卡收回成一行入口（「再贴一段 / 再加图」）。参数卡的 chip 排布一字未改，识别来的那两项就是普通的行加一枚小标。</figcaption>
+      <p class="why">小标不是装饰：商家回头看这页时要分得清「这是我填的」和「这是机器猜的」——后者他会多看一眼，而那正是我们要的。第一张卡收回去，是因为识别完它就不再是主角了，但入口一直在。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">四 · 06 — 07</span><h2>多次输入 · 局部更新</h2></div>
+  <p class="sec-note">商家是想起来一点说一点。第二次起<b>只给变更</b>，并且用弹框——他正在表单里，不该被赶出去。</p>
+  <div class="grid">
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">快速录入</span><span class="v">改成12.8元，海南也能发，限购2箱</span></div></div>
+          <div class="gt">基本信息</div>
           <div class="group">
             <div class="frow"><span class="k">商品名</span><span class="v">阿克苏冰糖心苹果 4.5斤装</span></div>
+          </div>
+          <div class="gt">价格 · 库存</div>
+          <div class="group">
             <div class="frow"><span class="k">价格</span><span class="v">¥10.00</span></div>
             <div class="frow"><span class="k">库存</span><span class="v">200</span></div>
           </div>
@@ -270,7 +223,7 @@
                 <span class="diff"><span class="old">海南</span><span class="arw">→</span><span class="new">去掉</span><span class="tag del">删</span></span>
                 <span class="src">「海南也能发」· 仍排除 新疆 · 西藏</span></span></div>
               <div class="crow"><span class="ck on"></span><span class="k">每人限购</span><span class="b">
-                <span class="v">2 箱 <span class="tag add">新</span></span><span class="src">「每人限购2箱」</span></span></div>
+                <span class="v">2 箱 <span class="tag add">新</span></span><span class="src">「限购2箱」</span></span></div>
               <div class="crow low"><span class="ck"></span><span class="k">产地</span><span class="b">
                 <span class="v">新疆阿克苏 <span class="tag add">新</span></span><span class="src">从「阿克苏」推的，不确定</span></span></div>
             </div>
@@ -278,8 +231,64 @@
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>08 追加 / 改口 · 弹框确认</b>他正在表单里，弹框浮在上面：只列变更（新增 / 旧值→新值 / 删除），底下的库存 200 一个字不动。</figcaption>
-      <p class="why">用弹框而不是整页：整页跳走会丢掉刚填到一半的东西。<b>只给变更</b>回答了「多次输入会不会把我前面填的冲掉」——答案是只动列出来的那几行。推断出来的产地（他只说了「阿克苏」）默认不勾：推断和抄录不是一回事。点任一带「识别」小标的行还能单独重认那一项。</p>
+      <figcaption class="cap"><b>06 再贴一段 · 弹框只给变更</b>新增挂「新」、改口走「旧值 → 新值」、撤回走删除线。底下手填的库存 200 一个字不动。</figcaption>
+      <p class="why">这屏回答「多次识别会不会把我前面填的冲掉」：只动列出来的那几行。用弹框而不是整页，是因为他正填到一半，整页跳走会丢上下文。推断出来的产地（他只说了「阿克苏」）默认不勾——推断和抄录不是一回事。</p>
+    </figure>
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">新建商品</span><span></span></div>
+        <div class="scr">
+          <div class="gt">价格 · 库存</div>
+          <div class="group">
+            <div class="frow"><span class="k">价格</span><span class="v">¥12.80 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">库存</span><span class="v">200</span></div>
+          </div>
+        </div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">价格</div>
+            <div class="d">现在是 ¥12.80，来自「改成12.8元」</div>
+            <div class="group">
+              <div class="pickrow"><span>重新认这一项</span><span class="c">从原文再抽一次</span></div>
+              <div class="pickrow"><span>贴一段，只认价格</span><span class="c">别的字段不动</span></div>
+              <div class="pickrow on"><span>手动填</span><span class="c">自己说了算</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">关掉</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 局部更新 · 单字段</b>长按任一带「识别」小标的行，给三条路：重认这一项 / 贴一段只认它 / 手填。</figcaption>
+      <p class="why">没有这屏，发现价格错了只有两条路：手改（识别白跑）或整段重识别（把对的也冲了）。「只认价格」是把识别的作用域缩到一个字段——<b>作用域能缩小，人才敢用它</b>。用长按而不是点击：点击仍然是原来的编辑行为，不抢它。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">五 · 08</span><h2>压缩包：目录结构 → 图位</h2></div>
+  <div class="grid">
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">压缩包导入</span><span>重新分</span></div>
+        <div class="scr">
+          <div class="gt">主图 4 张 · 详情 2 张 · 文字 1 份（按目录名分的）</div>
+          <div class="group">
+            <div class="slot"><span class="n">封面</span><span class="img">🍎</span><span class="nm">封面.jpg<em>文件名带「封面」，放第一位</em></span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">2</span><span class="img">🍎</span><span class="nm">主图片/1.jpg</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">3</span><span class="img">🍎</span><span class="nm">主图片/2.jpg</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">4</span><span class="img">🍎</span><span class="nm">主图片/10.jpg<em>按文件名里的数字排，2 在 10 前面</em></span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">详情1</span><span class="img">🖼</span><span class="nm">图文介绍/详情1.png</span><span class="drag">⣿</span></div>
+            <div class="slot"><span class="n">详情2</span><span class="img">🖼</span><span class="nm">图文介绍/详情2.png</span><span class="drag">⣿</span></div>
+            <div class="slot warn"><span class="n">待定</span><span class="img">❓</span><span class="nm">其他/场景图.jpg<em>目录名不认识，先放主图末位——拖走它</em></span><span class="drag">⣿</span></div>
+          </div>
+          <div class="meta">文案.txt 已读出，一并送去识别。__MACOSX 等系统文件已忽略。</div>
+        </div>
+        <div class="foot"><div class="btn sec">只导图</div><div class="btn main">确认图位并识别</div></div>
+      </div>
+      <figcaption class="cap"><b>08 图位确认</b>逐行写明「这张去哪个位置、为什么」。拿不准的标黄留末位，给拖动把手。确认后图落进<b>原来的商品图那一行</b>。</figcaption>
+      <p class="why">分目录这件事规则能办（主图 / 详情 / main / detail 这类词 + 文件名数字排序），只有目录名不认识时才问模型。把依据写在行里：图位错了是商家一眼能看出来的那类错，前提是我们告诉他凭什么这么分。</p>
     </figure>
 
   </div>
