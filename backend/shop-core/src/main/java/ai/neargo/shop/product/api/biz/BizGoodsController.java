@@ -651,20 +651,58 @@ public class BizGoodsController {
     @PostMapping("/biz/goods/parse-text")
     public GoodsTextParseVO parseText(@RequestBody ParseTextReq req) {
         var rule = ai.neargo.shop.product.service.GoodsTextRuleParser.parse(req.text());
+        /*
+         * **文字也走 LLM**：规则稳定抽确定字段（价格/快递/省），LLM 补参数归类
+         * （「单果140g+」→单果重量、「净重4.5斤」→净重）与省名识别。**价格以规则为准**
+         * （真金白银不交给概率，TDD §3）；LLM 不可用就退回纯规则，一行不丢。
+         */
+        var extract = vision.extractText(req.text());
+
         // 有承运商 = 走快递。值对齐 packages/shared 的 FULFILLMENT.EXPRESS（端上据此勾履约）
         List<String> fulfillment = rule.carriers().isEmpty()
                 ? List.of() : List.of("EXPRESS");
         // 空列表拼出来是空串，统一成 null —— 端上判「有没有不发货区域」只看一个条件
         String region = rule.excludeRegions().isEmpty()
                 ? null : String.join(" ", rule.excludeRegions());
-        // 规则是确定的：抽到任何一类就算「识别出了东西」，置信满格；全空则 0，端上提示没认出来。
-        // 这个数不是概率，是「规则命中与否」——LLM 接上后 specs/params 会带各自的 confidence
+
+        // LLM 抽到的参数：作自由参数草稿（dimNo 用属性名当键，端上 applyParamPicks 据此落；
+        // 不在类目模板也落，见 params.ts 的 #4 放开）。规则层不做归类，所以 params 全来自 LLM。
+        List<GoodsTextParseVO.ParamDraft> params = new java.util.ArrayList<>();
+        if (extract != null) {
+            for (var p : extract.params()) {
+                params.add(new GoodsTextParseVO.ParamDraft(
+                        p.name(), p.name(), p.value(), "llm", extract.confidence()));
+            }
+        }
+
+        /*
+         * **不发货/限购地区 → 省级码**（接 #3 restricted_regions）。规则的省名 ∪ LLM 的省名,
+         * 各自映射成国标两位码、去重。端上在确认层(#5a)确认后落进商品 restricted_regions;
+         * excludeRegionText 仍保留（经营范围/运费模板那条只跳转,守 AC9）。
+         */
+        java.util.LinkedHashSet<String> regionCodes = new java.util.LinkedHashSet<>();
+        for (String name : rule.excludeRegions()) {
+            String code = ai.neargo.shop.common.Provinces.codeOfName(name);
+            if (code != null) {
+                regionCodes.add(code);
+            }
+        }
+        if (extract != null) {
+            for (String name : extract.provinces()) {
+                String code = ai.neargo.shop.common.Provinces.codeOfName(name);
+                if (code != null) {
+                    regionCodes.add(code);
+                }
+            }
+        }
+
         boolean hit = !rule.pricesMinor().isEmpty() || !rule.weights().isEmpty()
-                || !rule.carriers().isEmpty() || region != null;
+                || !rule.carriers().isEmpty() || region != null || !params.isEmpty() || !regionCodes.isEmpty();
+        double confidence = hit ? 1d : (extract != null ? extract.confidence() : 0d);
         return new GoodsTextParseVO(
-                List.of(), List.of(),
+                List.of(), params,
                 rule.pricesMinor(), rule.weights(), rule.carriers(),
-                fulfillment, region, hit ? 1d : 0d);
+                fulfillment, region, new java.util.ArrayList<>(regionCodes), confidence);
     }
 
     /**
@@ -848,6 +886,12 @@ public class BizGoodsController {
                                    List<String> carriers,
                                    List<String> fulfillment,
                                    String excludeRegionText,
+                                   /**
+                                    * 不发货/限购地区 → 省级 regionCode（#3/#4①）。规则省名 ∪ LLM 省名映射去重。
+                                    * 端上在确认层确认后落进商品 {@code restricted_regions};与只跳转的
+                                    * {@code excludeRegionText}（运费模板/经营范围那条，守 AC9）并存、互不替代。
+                                    */
+                                   List<String> restrictedRegions,
                                    double confidence) {
         /** 规格维度草稿（LLM 归类，P1 空）。 */
         public record SpecDraft(String name, List<String> options) {

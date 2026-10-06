@@ -59,4 +59,28 @@ public final class Provinces {
         }
         return null;
     }
+
+    /**
+     * 省名 → 省级两位码；认不出返回 {@code null}。
+     *
+     * <p>给识别用（LLM 回的是省名）：**全名、简称都认**——先精确匹配，再按互为前缀兜底
+     * （「新疆」↔「新疆维吾尔自治区」、「内蒙」↔「内蒙古自治区」都能对上）。
+     */
+    public static String codeOfName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String n = name.trim();
+        for (Map.Entry<String, String> e : NAME_BY_CODE.entrySet()) {
+            if (e.getValue().equals(n)) {
+                return e.getKey();
+            }
+        }
+        for (Map.Entry<String, String> e : NAME_BY_CODE.entrySet()) {
+            if (e.getValue().startsWith(n) || n.startsWith(e.getValue())) {
+                return e.getKey();
+            }
+        }
+        return null;
+    }
 }

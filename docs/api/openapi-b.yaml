@@ -10581,7 +10581,12 @@ components:
           type: 
             - "string"
             - "null"
-          description: "不发货区域文本，可空。**只回文本，不改运费模板**"
+          description: "不发货区域文本，可空。**只回文本，不改运费模板**（经营范围那条跳转用）"
+        restrictedRegions: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "不发货/限购地区 → 省级 regionCode（#3/#4①）。规则省名 ∪ LLM 省名映射去重。 确认层确认后落进商品 restrictedRegions（反选器同一字段）。与 excludeRegionText 并存。"
         confidence: 
           type: "number"
           description: "1=识别出了东西，0=没认出来"
@@ -10593,6 +10598,7 @@ components:
         - "carriers"
         - "fulfillment"
         - "excludeRegionText"
+        - "restrictedRegions"
         - "confidence"
       additionalProperties: false
     ParseTextReq: 

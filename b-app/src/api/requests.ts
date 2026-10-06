@@ -254,8 +254,13 @@ export interface GoodsTextParse {
   carriers: string[];
   /** 履约方式。有快递→["EXPRESS"]（对齐 FULFILLMENT） */
   fulfillment: string[];
-  /** 不发货区域文本，可空。**只回文本，不改运费模板** */
+  /** 不发货区域文本，可空。**只回文本，不改运费模板**（经营范围那条跳转用） */
   excludeRegionText: string | null;
+  /**
+   * 不发货/限购地区 → 省级 regionCode（#3/#4①）。规则省名 ∪ LLM 省名映射去重。
+   * 确认层确认后落进商品 restrictedRegions（反选器同一字段）。与 excludeRegionText 并存。
+   */
+  restrictedRegions: string[];
   /** 1=识别出了东西，0=没认出来 */
   confidence: number;
 }

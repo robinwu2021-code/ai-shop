@@ -567,12 +567,20 @@ export const productMock: Pick<MerchantApi,
       const hit = ["新疆", "西藏", "海南", "青海", "内蒙古"].filter((r) => win.includes(r));
       region = hit.length ? hit.join(" ") : null;
     }
+    // 省名→省级码(演示用最小映射,真映射在后端 Provinces)
+    const codeByName: Record<string, string> = {
+      新疆: "65", 西藏: "54", 海南: "46", 青海: "63", 内蒙古: "15",
+    };
+    const restrictedRegions = region
+      ? region.split(" ").map((n) => codeByName[n]).filter((c): c is string => !!c)
+      : [];
     const hit = prices.length || weights.length || carriers.length || region;
     return delay({
       specs: [], params: [],
       pricesMinor: prices, weights, carriers,
       fulfillment: carriers.length ? ["EXPRESS"] : [],
       excludeRegionText: region,
+      restrictedRegions,
       confidence: hit ? 1 : 0,
     }, 300);
   },

@@ -2099,6 +2099,53 @@ _无字段_
 类型：[`GoodsInvMode`](#goodsinvmode)\[\]
 
 
+#### POST `/biz/goods/parse-text`
+
+文字识别商品信息　🔒
+
+**入参**
+
+请求体：[`ParseTextReq`](#parsetextreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `text` | `string` | 是 | — |
+| `categoryNo` | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`GoodsTextParse`](#goodstextparse)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `specs` | `object`（见下）\[\] | 是 | 规格维度草稿（LLM 归类，P1 空） |
+| `params` | `object`（见下）\[\] | 是 | 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule |
+| `pricesMinor` | `number`\[\] | 是 | 抽到的价（分）。带「元/￥」才算 |
+| `weights` | `string`\[\] | 是 | 重量/净重候选原文（4.5斤/140g） |
+| `carriers` | `string`\[\] | 是 | 承运商（顺丰/圆通…） |
+| `fulfillment` | `string`\[\] | 是 | 履约方式。有快递→["EXPRESS"]（对齐 FULFILLMENT） |
+| `excludeRegionText` | `string,null` | 是 | 不发货区域文本，可空。**只回文本，不改运费模板**（经营范围那条跳转用） |
+| `restrictedRegions` | `string`\[\] | 是 | 不发货/限购地区 → 省级 regionCode（#3/#4①）。规则省名 ∪ LLM 省名映射去重。 确认层确认后落进商品 restrictedRegions（反选器同一字段）。与 excludeRegionText 并存。 |
+| `confidence` | `number` | 是 | 1=识别出了东西，0=没认出来 |
+
+`specs[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+
+`params[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `dimNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `source` | `string` | 是 | — |
+| `confidence` | `number` | 是 | — |
+
+
 #### POST `/biz/goods/recognize`
 
 拍照识别商品　🔒
@@ -3686,6 +3733,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型 |
 | `tier` | [`MerchantTier`](#merchanttier) | 是 | 商家分层。一期恒为 SMALL |
 | `phone` | `string` | 是 | 登录手机号，也是商家账号的主标识 |
+| `displayName` | `string` | 否 | 当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」 |
 | `isPickupPoint` | `boolean` | 是 | 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） |
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
@@ -3738,6 +3786,17 @@ _无字段_
 |---|---|:---:|---|
 | `balanceMinor` | `number` | 是 | 当前欠款（分）。**0 = 没有欠款，整块不显示** —— 绝大多数商家从没欠过 |
 | `txns` | [`MyDebtTxn`](#mydebttxn)\[\] | 是 | 流水，时间倒序。**余额从流水推得出来**，对不上时信流水 |
+
+
+#### POST `/biz/merchant/display-name`
+
+改用户名　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
 
 
 #### GET `/biz/merchant/pay-channel`
@@ -3886,6 +3945,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型 |
 | `tier` | [`MerchantTier`](#merchanttier) | 是 | 商家分层。一期恒为 SMALL |
 | `phone` | `string` | 是 | 登录手机号，也是商家账号的主标识 |
+| `displayName` | `string` | 否 | 当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」 |
 | `isPickupPoint` | `boolean` | 是 | 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） |
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
@@ -3914,6 +3974,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型 |
 | `tier` | [`MerchantTier`](#merchanttier) | 是 | 商家分层。一期恒为 SMALL |
 | `phone` | `string` | 是 | 登录手机号，也是商家账号的主标识 |
+| `displayName` | `string` | 否 | 当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」 |
 | `isPickupPoint` | `boolean` | 是 | 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） |
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
@@ -7734,6 +7795,37 @@ _无字段_
 | `storeNo` | `string` | 是 | 门店号。点进门户（`pages/store?no=`）与带进详情/加购的就是它 |
 | `storeName` | `string` | 是 | 门店名，如「虹选粮油·深圳测试店」。**不是主体名** |
 
+### GoodsTextParse
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `specs` | `object`（见下）\[\] | 是 | 规格维度草稿（LLM 归类，P1 空） |
+| `params` | `object`（见下）\[\] | 是 | 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule |
+| `pricesMinor` | `number`\[\] | 是 | 抽到的价（分）。带「元/￥」才算 |
+| `weights` | `string`\[\] | 是 | 重量/净重候选原文（4.5斤/140g） |
+| `carriers` | `string`\[\] | 是 | 承运商（顺丰/圆通…） |
+| `fulfillment` | `string`\[\] | 是 | 履约方式。有快递→["EXPRESS"]（对齐 FULFILLMENT） |
+| `excludeRegionText` | `string,null` | 是 | 不发货区域文本，可空。**只回文本，不改运费模板**（经营范围那条跳转用） |
+| `restrictedRegions` | `string`\[\] | 是 | 不发货/限购地区 → 省级 regionCode（#3/#4①）。规则省名 ∪ LLM 省名映射去重。 确认层确认后落进商品 restrictedRegions（反选器同一字段）。与 excludeRegionText 并存。 |
+| `confidence` | `number` | 是 | 1=识别出了东西，0=没认出来 |
+
+`specs[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | — |
+| `options` | `string`\[\] | 是 | — |
+
+`params[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `dimNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `source` | `string` | 是 | — |
+| `confidence` | `number` | 是 | — |
+
 ### GrantStoreReq
 
 授予或撤销**一个**门店角色。 **增量式，不是覆盖式**：这一次只动 `role` 这一个角色，不碰他在这家店的其他角色。 覆盖式在多角色下是错的 —— 老板想「再加一个配送员」，结果把「店员」冲掉了。
@@ -8416,6 +8508,7 @@ _无字段_
 | `subject` | [`MerchantSubject`](#merchantsubject) | 是 | 主体类型 |
 | `tier` | [`MerchantTier`](#merchanttier) | 是 | 商家分层。一期恒为 SMALL |
 | `phone` | `string` | 是 | 登录手机号，也是商家账号的主标识 |
+| `displayName` | `string` | 否 | 当前登录账号的显示名（用户名）。空=没设过，端上显示「未设置」 |
 | `isPickupPoint` | `boolean` | 是 | 是否承接自提点 —— 决定 B 端是否出现「履约台」入口（ADR-005） |
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
@@ -8766,6 +8859,13 @@ _无字段_
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 流转到的状态 |
 | `label` | `string` | 是 | 展示文案，如「已到货，请到自提点取货」。后端下发已本地化 |
 | `at` | `number` | 是 | 发生时间 |
+
+### ParseTextReq
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `text` | `string` | 是 | — |
+| `categoryNo` | `string` | 否 | — |
 
 ### Partial_Record_MarketId_number
 
@@ -9814,7 +9914,6 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
-| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | `string`\[\] | 是 | 该维度的可选值 |
 | `optionCodes` | `string` \| `any`\[\] | 否 | 与 options 一一对应的模板编码。来自平台模板的有值，手输/改过的为空。 **一期只存不用** —— 但不存的话，二期做规格聚合要刷全部历史商品。 |
 | `templateNo` | `string` | 否 | 该规格组来自哪个平台模板。手输的为空 |

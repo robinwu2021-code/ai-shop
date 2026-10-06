@@ -154,6 +154,121 @@ public class GoodsVisionGateway implements GoodsVisionPort {
     }
 
     /**
+     * 从一段商品文字里抽结构化信息（「文字也走 LLM」）。纯文字,无图;只要 JSON。
+     *
+     * <p>与 {@link #recognize} 同一个 client、同一条「必须关 thinking」的教训。
+     * token 给到 500:参数+省份连写时 JSON 会比图片识别长。失败一律 null,调用方退回纯规则。
+     */
+    @Override
+    public ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract extractText(String text) {
+        if (!isEnabled() || text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            var body = Map.of(
+                    "model", model,
+                    "max_tokens", 500,
+                    "temperature", 0.1,
+                    "chat_template_kwargs", Map.of("enable_thinking", false),
+                    "messages", List.of(Map.of(
+                            "role", "user",
+                            "content", textPrompt() + "\n\n商品文字：\n" + text)));
+            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .header("Content-Type", "application/json");
+            if (!apiKey.isBlank()) {
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            var resp = http.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                log.warn("文字识别失败：HTTP {} {}", resp.statusCode(), abbreviate(resp.body()));
+                return null;
+            }
+            String content = json.readTree(resp.body())
+                    .path("choices").path(0).path("message").path("content").asText("");
+            return parseExtract(content);
+        } catch (Exception e) {
+            log.warn("文字识别异常：{}", e.toString());
+            return null;
+        }
+    }
+
+    /** 文字抽取提示词（见 docs/technical/design 的识别 prompt 方案）。 */
+    private String textPrompt() {
+        return """
+                你是社区团购的商品信息抽取助手。给你一段商家随手写的商品文字,把结构化信息抽出来,
+                只输出一个 JSON 对象,不要解释、不要代码块、不要编造。
+
+                字段与规则:
+                - name: 商品名(没有明确品名就留空串)。
+                - params: 数组,每项 {"name":属性名,"value":属性值}。常见属性名:单果重量、净重、规格、产地、等级、口感、品牌、保质期、配料。
+                  **单果重量 与 净重 是两回事**:单果/单个/每颗 说的是一颗(如"单果140g+"→单果重量=140g+);
+                  净重/净含量/装 说的是整件(如"净重4.5斤装"→净重=4.5斤)。两者都有就各记一条,绝不合并。
+                  只记明确写了的,没写的属性不要出现,不要编产地/品牌/保质期。
+                - priceYuan: 数字,售价(元)。价格常和分量连写(如"4.5斤装10元"=4.5斤卖10元),把价格单独拆出来,分量留在净重。没有就 null。
+                - fulfillment: 数组,取值只能 "EXPRESS"(快递)/"MERCHANT_DELIVERY"(自送)/"STORE_PICKUP"(自提)。出现 快递/发货/包邮/圆通/中通/顺丰/韵达/申通/邮政 等→加 "EXPRESS"。没提给空数组。
+                - courier: 承运快递公司(圆通/顺丰…),没提留空串。
+                - provinces: 数组,**不发货/不包邮/不卖**到的省,元素是省全名(如"新疆维吾尔自治区")。
+                  "新疆西藏海南不发货"这种多省连写要逐个拆开补全:新疆→新疆维吾尔自治区、西藏→西藏自治区、海南→海南省、内蒙→内蒙古自治区、广西→广西壮族自治区、宁夏→宁夏回族自治区。
+                  只收"不发货/不包邮/不卖/除…外"这类排除语义的省,正常销售地区不要进来。没有给空数组。
+                - confidence: 0到1的小数。
+
+                拿不准的字段一律留空/空数组/null,留空是合法答案,不要为了填满而猜。
+
+                示例输入:
+                规格：单果140g+ 净重4.5斤装10元 圆通快递，新疆西藏海南不发货
+                示例输出:
+                {"name":"","params":[{"name":"单果重量","value":"140g+"},{"name":"净重","value":"4.5斤"}],"priceYuan":10,"fulfillment":["EXPRESS"],"courier":"圆通","provinces":["新疆维吾尔自治区","西藏自治区","海南省"],"confidence":0.9}""";
+    }
+
+    /** 解析文字抽取的 JSON（容忍 ``` 代码块，同 {@link #parse}）。 */
+    private ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract parseExtract(String content) {
+        String s = content == null ? "" : content.trim();
+        int start = s.indexOf('{');
+        int end = s.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            log.warn("文字识别：返回体里没有 JSON —— {}", abbreviate(content));
+            return null;
+        }
+        try {
+            var node = json.readTree(s.substring(start, end + 1));
+            var params = new java.util.ArrayList<ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV>();
+            for (var p : node.path("params")) {
+                String name = p.path("name").asText("").trim();
+                String value = p.path("value").asText("").trim();
+                if (!name.isEmpty() && !value.isEmpty()) {
+                    params.add(new ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV(name, value));
+                }
+            }
+            var fulfillment = new java.util.ArrayList<String>();
+            for (var fnode : node.path("fulfillment")) {
+                String v = fnode.asText("").trim();
+                if (!v.isEmpty()) {
+                    fulfillment.add(v);
+                }
+            }
+            var provinces = new java.util.ArrayList<String>();
+            for (var pr : node.path("provinces")) {
+                String v = pr.asText("").trim();
+                if (!v.isEmpty()) {
+                    provinces.add(v);
+                }
+            }
+            Double priceYuan = node.hasNonNull("priceYuan") && node.path("priceYuan").isNumber()
+                    ? node.path("priceYuan").asDouble() : null;
+            return new ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract(
+                    node.path("name").asText("").trim(), params, priceYuan,
+                    fulfillment, node.path("courier").asText("").trim(),
+                    provinces, node.path("confidence").asDouble(0d));
+        } catch (Exception e) {
+            log.warn("文字识别：JSON 解析失败 —— {}", abbreviate(content));
+            return null;
+        }
+    }
+
+    /**
      * 生成图文详情正文。
      *
      * <p>与 {@link #recognize} 共用同一个 client 与同一条「必须关 thinking」的教训，

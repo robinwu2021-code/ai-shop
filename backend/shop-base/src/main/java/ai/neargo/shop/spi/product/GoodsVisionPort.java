@@ -73,4 +73,30 @@ public interface GoodsVisionPort {
                                               String category, Map<String, java.util.List<String>> candidates) {
         return Map.of();
     }
+
+    /**
+     * 从一段商家随手写的**商品文字**里抽结构化信息（「文字也走 LLM」）。
+     *
+     * <p>与规则解析器（{@code GoodsTextRuleParser}）互补：规则稳定抽确定字段（价格/快递/省），
+     * LLM 补**参数归类**（「单果140g+」→单果重量、「净重4.5斤」→净重）与省名识别。
+     * 价格仍以规则为准（真金白银不交给概率）；冲突规则压 LLM。
+     *
+     * <p>失败/未启用一律返回 {@code null}，调用方退回纯规则。
+     */
+    default TextExtract extractText(String text) {
+        return null;
+    }
+
+    /**
+     * 文字抽取结果。{@code provinces} 是「不发货/限购」到的**省名**（调用方用
+     * {@code Provinces.codeOfName} 映射成省级码）；{@code priceYuan} 可空（规则没抽到时才用）。
+     */
+    record TextExtract(String name, java.util.List<ParamKV> params, Double priceYuan,
+                       java.util.List<String> fulfillment, String courier,
+                       java.util.List<String> provinces, double confidence) {
+    }
+
+    /** 一条抽出来的参数：属性名 + 值（如 单果重量 / 140g+）。 */
+    record ParamKV(String name, String value) {
+    }
 }
