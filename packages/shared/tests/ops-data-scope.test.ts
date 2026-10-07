@@ -1250,6 +1250,16 @@ describe("运营端数据域接入", () => {
       "归因留痕。**注意：它确实有一条 ops 读**（/ops/attribution-traces）—— "
       + "我先前判成「全仓只有写」是错的，G4 把它揪了出来。"
       + "但归因链路的意义就是跨商家看「这个人是谁带来的」，按商家裁会把链路截断",
+
+    /*
+     * 2026-10-07 · 商品提交历史（V377）。运营端只有一条路读它：
+     * GET /ops/goods/{goodsNo}/draft-preview → draftPreviewForOps → buildPreview →
+     * revisions.onlineSnapshot / pendingBaseSnapshot，**两处都只按 goodsNo 取**。
+     */
+    prd_goods_revision:
+      "按已授权主键回捞明细：draftPreviewForOps 先 requireByNoInScope(goodsNo) 过 prd_goods 的数据域，"
+      + "域外的商品在那一步就 404，走不到读历史这一步；之后只按这个 goodsNo 取「线上那版 / 待审基版」两行。"
+      + "历史是商品的附属，归属跟着商品走，单独登记只会让同一件商品的两张表各裁一遍",
   };
 
   it("★★★ G4 ops 查询读到的表要么登记数据域，要么写明为什么不该登记", () => {
