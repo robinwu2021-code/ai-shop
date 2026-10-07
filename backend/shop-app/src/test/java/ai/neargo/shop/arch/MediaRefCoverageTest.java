@@ -63,7 +63,10 @@ class MediaRefCoverageTest {
                     + "「地图选点回填」—— 说的是这一串从哪来，不是说它装着一张图",
             "msg_template.content", "通知模板正文，含 {占位符} 的纯文本；列名 content 命中的是"
                     + "「长文本列」那半条启发式，不是图片",
-            "msg_ticket.content", "工单正文，用户打字写的一段话。同上，命中的是列名不是内容");
+            "msg_ticket.content", "工单正文，用户打字写的一段话。同上，命中的是列名不是内容",
+            "prd_goods_revision.entry_source", "录入方式枚举（MANUAL/QUICK_TEXT/ZIP/IMAGE，16 字符）。"
+                    + "命中的是注释里那句「IMAGE 图片识别」—— 那是在解释枚举含义，"
+                    + "不是说这一列装着图片地址");
 
     private static final Pattern CREATE_TABLE =
             Pattern.compile("CREATE TABLE(?:\\s+IF NOT EXISTS)?\\s+([a-z_]+)", Pattern.CASE_INSENSITIVE);
