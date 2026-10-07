@@ -2112,7 +2112,7 @@
         },
         {
           "id": "s17",
-          "title": "最新 F：点块调整值与参数",
+          "title": "最新 F：点块打开参数列表（相近在前·可搜）",
           "client": "b-app",
           "route": "pages/goods-edit/index"
         },

@@ -614,3 +614,7 @@ a{color:inherit}
 .vrow.off .val,.vrow.off .par{opacity:.45}
 .pchip .sw{color:var(--sh-primary-text)}
 .pchip .sw::after{content:" ⇄"}
+/* 参数列表（goods-quick-entry s17）：胶囊搜索框 + 通栏行 */
+.search{background:var(--sh-bg);border-radius:999px;padding:8px 12px;color:var(--sh-disabled);font-size:11px}
+.plist .frow{min-height:34px}
+.frow .k.ink{color:var(--sh-ink)}
