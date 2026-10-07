@@ -678,6 +678,28 @@ public class BizGoodsController {
     }
 
     /**
+     * 本品类的标准参数清单（给模型的「只能往这里落」）。
+     *
+     * <p>用 {@code BizContext.current()} 而不是 {@code requireMerchantNo()}：清单取不到时
+     * 应该退回自由抽取，而不是让整次识别 403 —— 识别是辅助，不该因为它挡住录入。
+     * 商家号只用来带上他自建的维度；取不到就只用平台的。
+     */
+    private List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> paramHints(String categoryNo) {
+        if (categoryNo == null || categoryNo.isBlank()) {
+            return List.of();
+        }
+        try {
+            return specLibrary.propsForCategory(BizContext.current().merchantNo(), categoryNo).stream()
+                    .map(t -> new ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint(
+                            t.templateNo(), t.name(), t.valueType()))
+                    .toList();
+        } catch (RuntimeException e) {
+            // 清单拿不到不该让识别失败 —— 退回自由抽取，与没有类目时一样
+            return List.of();
+        }
+    }
+
+    /**
      * 从一段自由文字识别商品信息（C-AC 快速录入 · AC5/AC6）。
      *
      * <p><b>P1 只跑规则层</b>：价格、重量、快递、不发货区域这几类确定性字段，
@@ -700,7 +722,13 @@ public class BizGoodsController {
          * （「单果140g+」→单果重量、「净重4.5斤」→净重）与省名识别。**价格以规则为准**
          * （真金白银不交给概率，TDD §3）；LLM 不可用就退回纯规则，一行不丢。
          */
-        var extract = vision.extractText(req.text());
+        /*
+         * **先知道是什么东西，再抽**（TDD-商品快速录入-品类感知与逐项确认 §7 第 2 条）。
+         * 有类目就把这个品类的标准参数清单交给模型 —— 它的任务是把输入**映射**到这些参数上，
+         * 不是自己起名。没有类目时清单为空，模型照旧自由抽取（落成自由参数，与此前一致）。
+         */
+        List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints = paramHints(req.categoryNo());
+        var extract = vision.extractText(req.text(), hints);
 
         // 有承运商 = 走快递。值对齐 packages/shared 的 FULFILLMENT.EXPRESS（端上据此勾履约）
         List<String> fulfillment = rule.carriers().isEmpty()
@@ -709,13 +737,19 @@ public class BizGoodsController {
         String region = rule.excludeRegions().isEmpty()
                 ? null : String.join(" ", rule.excludeRegions());
 
-        // LLM 抽到的参数：作自由参数草稿（dimNo 用属性名当键，端上 applyParamPicks 据此落；
-        // 不在类目模板也落，见 params.ts 的 #4 放开）。规则层不做归类，所以 params 全来自 LLM。
+        /*
+         * LLM 抽到的参数 → **核对到本品类的标准参数**（ParamMapping）。
+         *
+         * 此前这里直接拿属性名当 dimNo 转发 —— 生产草稿里于是出现 {dimNo:"净重"} 这种
+         * 游离参数：写进去了，却不是这个商品的「净含量」。现在对上了就用标准维度号与标准名称，
+         * 端上 applyParamPicks 按维度号落到那一行；对不上的仍作自由参数，什么都不丢。
+         */
         List<GoodsTextParseVO.ParamDraft> params = new java.util.ArrayList<>();
         if (extract != null) {
             for (var p : extract.params()) {
+                var r = ai.neargo.shop.product.dto.ParamMapping.resolve(p, hints);
                 params.add(new GoodsTextParseVO.ParamDraft(
-                        p.name(), p.name(), p.value(), "llm", extract.confidence()));
+                        r.dimNo(), r.name(), p.value(), "llm", extract.confidence()));
             }
         }
 

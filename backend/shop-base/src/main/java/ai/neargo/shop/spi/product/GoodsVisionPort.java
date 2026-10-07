@@ -88,6 +88,29 @@ public interface GoodsVisionPort {
     }
 
     /**
+     * 按**品类的标准参数清单**抽（TDD-商品快速录入-品类感知与逐项确认 §7 第 2 条）。
+     *
+     * <p>同一个「140g」，苹果是单果重量、手机壳是重量、洗衣液是净含量 —— 落点取决于它是什么。
+     * 不给清单的话模型只能自由发挥属性名（「净重」），而这个品类的标准参数叫「净含量」，
+     * 两边对不上，识别出来的值就成了一条游离的自由参数：写进去了，却不是这个商品的那个参数。
+     *
+     * <p>默认实现退回不带清单的那个 —— 老实现与测试替身不用改。
+     *
+     * @param hints 本品类可落的标准参数；空 = 不知道品类，退回自由抽取
+     */
+    default TextExtract extractText(String text, java.util.List<ParamHint> hints) {
+        return extractText(text);
+    }
+
+    /**
+     * 一个标准参数：维度号 + 名称 + 值类型。给模型的「只能往这里落」清单里的一行。
+     *
+     * @param valueType ENUM / QUANT / TEXT；模型据此知道值该怎么写，可空
+     */
+    record ParamHint(String dimNo, String name, String valueType) {
+    }
+
+    /**
      * 文字抽取结果。{@code provinces} 是「不发货/限购」到的**省名**（调用方用
      * {@code Provinces.codeOfName} 映射成省级码）；{@code priceYuan} 可空（规则没抽到时才用）。
      */
@@ -96,7 +119,16 @@ public interface GoodsVisionPort {
                        java.util.List<String> provinces, double confidence) {
     }
 
-    /** 一条抽出来的参数：属性名 + 值（如 单果重量 / 140g+）。 */
-    record ParamKV(String name, String value) {
+    /**
+     * 一条抽出来的参数：属性名 + 值（如 单果重量 / 140g+），以及模型选中的**标准维度号**。
+     *
+     * @param dimNo 模型从清单里选的维度号；没给清单、或模型没选，为 null。
+     *              **不可直接信** —— 调用方要核对它确实在清单里（模型会编）
+     */
+    record ParamKV(String name, String value, String dimNo) {
+        /** 不带维度号的那种（没给清单时的旧形状）。保留它，既有调用点一行不改 */
+        public ParamKV(String name, String value) {
+            this(name, value, null);
+        }
     }
 }

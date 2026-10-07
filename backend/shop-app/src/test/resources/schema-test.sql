@@ -9668,3 +9668,24 @@ VALUES
   ('CAT730', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT740', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT750', 'SD_ORIGIN_DETAIL', 'PROP', 0, 0, 205, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT IGNORE INTO prd_spec_dim
+  (dim_no, code, name, value_type, unit, usage_type, universal, scope, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('SD_UNIT_WEIGHT',  'UNIT_WEIGHT',  '单果重量', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 180, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SD_GROSS_WEIGHT', 'GROSS_WEIGHT', '毛重',     'TEXT', NULL, 'PROP', 0, 'PLATFORM', 190, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+INSERT IGNORE INTO prd_category_spec
+  (category_no, dim_no, usage_type, is_primary, required, sort, status,
+   tenant_no, created_at, created_by, updated_at, updated_by)
+VALUES
+  ('CAT120', 'SD_UNIT_WEIGHT',  'PROP', 0, 0, 180, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_NET_CONTENT',  'PROP', 0, 0, 185, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_GROSS_WEIGHT', 'PROP', 0, 0, 190, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_UNIT_WEIGHT',  'PROP', 0, 0, 180, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_NET_CONTENT',  'PROP', 0, 0, 185, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_GROSS_WEIGHT', 'PROP', 0, 0, 190, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_UNIT_WEIGHT',  'PROP', 0, 0, 180, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_NET_CONTENT',  'PROP', 0, 0, 185, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_GROSS_WEIGHT', 'PROP', 0, 0, 190, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');

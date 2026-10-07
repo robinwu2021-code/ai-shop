@@ -161,6 +161,12 @@ public class GoodsVisionGateway implements GoodsVisionPort {
      */
     @Override
     public ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract extractText(String text) {
+        return extractText(text, java.util.List.of());
+    }
+
+    @Override
+    public ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract extractText(
+            String text, java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints) {
         if (!isEnabled() || text == null || text.isBlank()) {
             return null;
         }
@@ -172,7 +178,7 @@ public class GoodsVisionGateway implements GoodsVisionPort {
                     "chat_template_kwargs", Map.of("enable_thinking", false),
                     "messages", List.of(Map.of(
                             "role", "user",
-                            "content", textPrompt() + "\n\n商品文字：\n" + text)));
+                            "content", textPrompt(hints) + "\n\n商品文字：\n" + text)));
             var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .header("Content-Type", "application/json");
@@ -195,8 +201,45 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         }
     }
 
-    /** 文字抽取提示词（见 docs/technical/design 的识别 prompt 方案）。 */
-    private String textPrompt() {
+    /**
+     * 文字抽取提示词（见 docs/technical/design 的识别 prompt 方案）。
+     *
+     * <p>给了清单就多一段「标准参数」：**模型的任务是映射，不是发明**。
+     * 没有这一段时模型会自由起名 —— 「净重」—— 而这个品类的标准参数叫「净含量」，
+     * 识别出来的值于是成了一条游离的自由参数（2026-10-07 在生产草稿里实测到）。
+     */
+    private String textPrompt(java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints) {
+        return baseTextPrompt() + hintSection(hints);
+    }
+
+    /**
+     * 「只能往这里落」那一段。每行一个标准参数：维度号 · 名称 · 值类型。
+     * 清单为空（不知道品类）时不加这一段，模型照旧自由抽取。
+     */
+    private static String hintSection(java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamHint> hints) {
+        if (hints == null || hints.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("""
+
+
+                【这个商品的标准参数】params 里的每一项**必须**从下表选，"dimNo" 原样照抄表里的维度号，
+                "name" 写表里的名称（不要用原文的叫法）。原文说「净重」而表里叫「净含量」，就落「净含量」。
+                表里没有对应项的，"dimNo" 留空串，name 写原文叫法 —— 不要硬塞进一个意思不同的参数。
+                """);
+        for (var h : hints) {
+            sb.append("- ").append(h.dimNo()).append(" · ").append(h.name());
+            if (h.valueType() != null && !h.valueType().isBlank()) {
+                sb.append(" · ").append(h.valueType());
+            }
+            sb.append('\n');
+        }
+        sb.append("""
+                此时 params 每项写成 {"dimNo":维度号,"name":名称,"value":值}。""");
+        return sb.toString();
+    }
+
+    private String baseTextPrompt() {
         return """
                 你是社区团购的商品信息抽取助手。给你一段商家随手写的商品文字,把结构化信息抽出来,
                 只输出一个 JSON 对象,不要解释、不要代码块、不要编造。
@@ -238,8 +281,11 @@ public class GoodsVisionGateway implements GoodsVisionPort {
             for (var p : node.path("params")) {
                 String name = p.path("name").asText("").trim();
                 String value = p.path("value").asText("").trim();
+                // 模型选的维度号。空串当没选 —— 调用方还要再核一次它确实在清单里（模型会编）
+                String dimNo = p.path("dimNo").asText("").trim();
                 if (!name.isEmpty() && !value.isEmpty()) {
-                    params.add(new ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV(name, value));
+                    params.add(new ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV(
+                            name, value, dimNo.isEmpty() ? null : dimNo));
                 }
             }
             var fulfillment = new java.util.ArrayList<String>();
