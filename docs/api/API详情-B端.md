@@ -2335,6 +2335,22 @@ _无字段_
 | `price` | `number` | 是 | — |
 
 
+#### POST `/biz/goods/zip-import`
+
+压缩包服务端解压（小程序端没有本地解压能力）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ZipImported`](#zipimported)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | — |
+| `texts` | [`Record_string_string`](#record_string_string) | 是 | — |
+
+
 #### POST `/biz/goods/zip-plan`
 
 压缩包文件归到主图/详情/文案（模型为主、目录规则兜底）　🔒
@@ -10701,6 +10717,26 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `deliverDesc` | `string` | 是 | 发放说明，如「支付后 1 分钟内短信发码」 |
+
+### ZipImported
+
+服务端解压结果（小程序端专用——那一端没有 plus.zip）。 <p>`texts` 是包里的 txt：端上没有本地文件可读，内容只能随清单一起带回来。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | — |
+| `texts` | [`Record_string_string`](#record_string_string) | 是 | — |
+
+### ZipImportedFile
+
+服务端解压回来的一张图：已经过校验、落进媒体库，端上不用再逐张传
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `path` | `string` | 是 | 包里的相对路径（目录名、文件名就是模型分类的主要线索） |
+| `width` | `number` | 否 | 图片宽，px；txt 或读不到时不传 |
+| `height` | `number` | 否 | 图片高，px；长图（高明显大于宽）倾向详情 |
+| `url` | `string` | 是 | 媒体库里的稳定相对路径。有它就直接用，不要再 mUploadImage |
 
 ### ZipPick
 

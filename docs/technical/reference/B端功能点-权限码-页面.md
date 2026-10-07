@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 224 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 225 个受控功能点**
 （另有 31 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,7 +22,7 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 35 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
@@ -121,6 +121,7 @@
 | 文字识别商品信息 | POST | `/biz/goods/parse-text` | `mParseText` | goods-edit |
 | 拍照识别商品 | POST | `/biz/goods/recognize` | `mRecognizeGoods` | goods-edit |
 | 新建/编辑商品 | POST | `/biz/goods/save` | `mSaveGoods` | goods-edit |
+| 压缩包服务端解压（小程序端没有本地解压能力） | POST | `/biz/goods/zip-import` | `mZipImport` | — |
 | 压缩包文件归到主图/详情/文案（模型为主、目录规则兜底） | POST | `/biz/goods/zip-plan` | `mZipPlan` | goods-edit |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | PUT | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | — |
 | 我建的规格维度（含用量与配额） | GET | `/biz/my-spec-dims` | `mMySpecDims` | my-specs |
@@ -508,6 +509,7 @@
 | 地图上选中的小区直接开通 | `/biz/communities/from-map` | `mOpenCommunityFromMap` | `biz:store` |
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
+| 压缩包服务端解压（小程序端没有本地解压能力） | `/biz/goods/zip-import` | `mZipImport` | `biz:goods` |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |

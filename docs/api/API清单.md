@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 808 个接口**：后端已实现 732（91%）· 前端在调 732
+**合计 809 个接口**：后端已实现 733（91%）· 前端在调 733
 
 ---
 
@@ -265,7 +265,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **285** 个接口 ｜ 后端已实现 **276**（97%）｜ 前端在调 **285**
+共 **286** 个接口 ｜ 后端已实现 **277**（97%）｜ 前端在调 **286**
 
 ### activities（4）
 
@@ -420,7 +420,7 @@
 | GET | `/biz/geo/reverse` | 坐标转地址（门店地址定位） | — | `GeoReverseResult` | 🔒 | ✅ | ✅ |
 | GET | `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） | — | `数组` | 🔒 | ✅ | ✅ |
 
-### goods（24）
+### goods（25）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -447,6 +447,7 @@
 | POST | `/biz/goods/parse-text` | 文字识别商品信息 | `ParseTextReq` | `GoodsTextParse` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/recognize` | 拍照识别商品 | `RecognizeGoodsReq` | `GoodsGuess` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/save` | 新建/编辑商品 | `SaveGoodsReqBody` | `Goods` | 🔒 | ✅ | ✅ |
+| POST | `/biz/goods/zip-import` | 压缩包服务端解压（小程序端没有本地解压能力） | — | `ZipImported` | 🔒 | ✅ | ✅ |
 | POST | `/biz/goods/zip-plan` | 压缩包文件归到主图/详情/文案（模型为主、目录规则兜底） | `ZipPlanReq` | `ZipPlan` | 🔒 | ✅ | ✅ |
 
 ### group（3）
