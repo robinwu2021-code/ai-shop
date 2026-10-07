@@ -1980,13 +1980,13 @@
           "id": "s13",
           "title": "发布历史 · 一条轴",
           "client": "b-app",
-          "route": "pages/goods-publish/index"
+          "route": "pages/goods-revisions/index"
         },
         {
           "id": "s14",
           "title": "某一版详情 · 两份差异 + 以这版建草稿",
           "client": "b-app",
-          "route": "pages/goods-publish/index"
+          "route": "pages/goods-revisions/index"
         },
         {
           "id": "s15",

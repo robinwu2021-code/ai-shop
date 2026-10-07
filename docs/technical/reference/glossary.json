@@ -9086,6 +9086,12 @@
           "ar": "مسودة غير منشورة · يرى المشترون النسخة القديمة"
         },
         {
+          "key": "goods.draftBannerV",
+          "zh-CN": "草稿 v{n} 未发布 · 线上在售 v{m}",
+          "en": "Draft v{n} unpublished · v{m} live",
+          "ar": "المسودة {n} غير منشورة · الإصدار {m} معروض"
+        },
+        {
           "key": "goods.draftLoadFailedHint",
           "zh-CN": "上次存的草稿没读到，现在编辑的是线上版；发布会覆盖掉草稿",
           "en": "Could not read your saved draft — you are editing the live version, and publishing will overwrite the draft",
@@ -9966,6 +9972,114 @@
           "zh-CN": "设置限购地区",
           "en": "Set restricted regions",
           "ar": "تحديد المناطق المحظورة"
+        },
+        {
+          "key": "goods.revChanged",
+          "zh-CN": "改了：{s}",
+          "en": "Changed: {s}",
+          "ar": "تغيّر: {s}"
+        },
+        {
+          "key": "goods.revChangedNone",
+          "zh-CN": "首版",
+          "en": "First version",
+          "ar": "الإصدار الأول"
+        },
+        {
+          "key": "goods.revCount",
+          "zh-CN": "共 {n} 版",
+          "en": "{n} versions",
+          "ar": "{n} إصدارات"
+        },
+        {
+          "key": "goods.revEmpty",
+          "zh-CN": "这件商品还没有提交记录",
+          "en": "No submissions yet for this product",
+          "ar": "لا توجد إصدارات لهذا المنتج بعد"
+        },
+        {
+          "key": "goods.revHistory",
+          "zh-CN": "历史",
+          "en": "History",
+          "ar": "السجل"
+        },
+        {
+          "key": "goods.revOnlineNone",
+          "zh-CN": "还没有发布过",
+          "en": "Never published",
+          "ar": "لم يُنشر بعد"
+        },
+        {
+          "key": "goods.revOnlineNow",
+          "zh-CN": "线上在售 v{n}",
+          "en": "v{n} live",
+          "ar": "الإصدار {n} معروض"
+        },
+        {
+          "key": "goods.revPublished",
+          "zh-CN": "发布 {t} · {by}",
+          "en": "Published {t} · {by}",
+          "ar": "نُشر {t} · {by}"
+        },
+        {
+          "key": "goods.revSaved",
+          "zh-CN": "保存 {t} · {by}",
+          "en": "Saved {t} · {by}",
+          "ar": "حُفظ {t} · {by}"
+        },
+        {
+          "key": "goods.revSrcIMAGE",
+          "zh-CN": "图片识别",
+          "en": "Image recognition",
+          "ar": "تعرّف على الصورة"
+        },
+        {
+          "key": "goods.revSrcMANUAL",
+          "zh-CN": "手填",
+          "en": "Manual",
+          "ar": "يدوي"
+        },
+        {
+          "key": "goods.revSrcQUICK_TEXT",
+          "zh-CN": "快速录入",
+          "en": "Quick entry",
+          "ar": "إدخال سريع"
+        },
+        {
+          "key": "goods.revSrcZIP",
+          "zh-CN": "压缩包",
+          "en": "Zip import",
+          "ar": "ملف مضغوط"
+        },
+        {
+          "key": "goods.revStatusDRAFT",
+          "zh-CN": "待发布",
+          "en": "Unpublished",
+          "ar": "غير منشور"
+        },
+        {
+          "key": "goods.revStatusONLINE",
+          "zh-CN": "线上在售",
+          "en": "Live",
+          "ar": "معروض"
+        },
+        {
+          "key": "goods.revStatusREJECTED",
+          "zh-CN": "已驳回",
+          "en": "Rejected",
+          "ar": "مرفوض"
+        },
+        {
+          "key": "goods.revStatusSUPERSEDED",
+          "zh-CN": "已被替换",
+          "en": "Superseded",
+          "ar": "مُستبدل"
+        },
+        {
+          "key": "goods.revTitle",
+          "zh-CN": "提交历史",
+          "en": "Submission history",
+          "ar": "سجل الإصدارات"
         },
         {
           "key": "goods.saleActivityOnly",
@@ -33769,6 +33883,28 @@
         "zh": "服务承诺码（`Goods.services`）。"
       },
       {
+        "name": "GoodsEntrySource",
+        "client": "b-app",
+        "values": [
+          "MANUAL",
+          "QUICK_TEXT",
+          "ZIP",
+          "IMAGE"
+        ],
+        "zh": "这一版怎么录的。"
+      },
+      {
+        "name": "GoodsRevisionStatus",
+        "client": "b-app",
+        "values": [
+          "DRAFT",
+          "ONLINE",
+          "SUPERSEDED",
+          "REJECTED"
+        ],
+        "zh": "一个提交版本的状态。"
+      },
+      {
         "name": "GoodsStatus",
         "client": "shared",
         "values": [
@@ -34629,6 +34765,7 @@
           "/pages/apply/index",
           "/pages/goods-edit/index",
           "/pages/goods-publish/index",
+          "/pages/goods-revisions/index",
           "/pages/order/index",
           "/pages/verify/index",
           "/pages/picking/index",

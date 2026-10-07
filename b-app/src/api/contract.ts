@@ -668,13 +668,19 @@ export interface GoodsDraft {
  * 「线上实体 vs 提交体」。留一组恒空的字段比没有字段更糟 —— 页面会照着它排版，
  * 然后永远显示空白。
  */
+/**
+ * 一个提交版本的状态。**ONLINE 不一定是 revisionNo 最大的那一版** ——
+ * 这是这张列表最容易看错的一点（「最新」≠「买家此刻看到的」）。
+ */
+export type GoodsRevisionStatus = "DRAFT" | "ONLINE" | "SUPERSEDED" | "REJECTED";
+
+/** 这一版怎么录的。与后端 `prd_goods_revision.entry_source` 同一套取值 */
+export type GoodsEntrySource = "MANUAL" | "QUICK_TEXT" | "ZIP" | "IMAGE";
+
 export interface GoodsRevision {
   revisionNo: number;
-  /** DRAFT 未发布 / ONLINE 线上在售 / SUPERSEDED 已被替换 / REJECTED 已驳回。
-   *  **ONLINE 不一定是 revisionNo 最大的那一版** —— 这是最容易看错的一点 */
-  status: string;
-  /** MANUAL 手填 / QUICK_TEXT 快速录入 / ZIP 压缩包 / IMAGE 图片识别 */
-  entrySource: string;
+  status: GoodsRevisionStatus;
+  entrySource: GoodsEntrySource;
   /** 「改了哪几项」的摘要，给人看，不是结构化 diff。首版为 null */
   changeSummary: string | null;
   savedBy: string | null;

@@ -928,6 +928,29 @@ async function applyTextParse() {
   }
 }
 
+/**
+ * 横幅上的版本号。**线上在售那一版不取最新那一行** —— 存了草稿还没发布时，
+ * 最新那版买家看不到；取 ONLINE 那一行才是「买家此刻看到的」。
+ * 取不到（历史商品没有提交记录）回 null，横幅退回不带号的文案。
+ */
+const draftVersions = ref<{ n: number; m: number } | null>(null);
+
+async function loadRevisionVersions() {
+  if (!goodsNo.value) return;
+  const rows = await api.mGoodsRevisions(goodsNo.value).catch(() => null);
+  if (!rows) return;
+  const draft = rows.find((r) => r.status === "DRAFT");
+  const online = rows.find((r) => r.status === "ONLINE");
+  draftVersions.value = draft && online
+    ? { n: draft.revisionNo, m: online.revisionNo }
+    : null;
+}
+
+/** 去提交历史 */
+function toRevisions() {
+  uni.navigateTo({ url: `${ROUTES.goodsRevisions}?goodsNo=${goodsNo.value}` });
+}
+
 /** 去「经营类目」加类目。本店一个类目都没有时建不了商品 —— 给路，不给路径文字 */
 function toStoreCategories() {
   uni.navigateTo({ url: ROUTES.storeCategories });
@@ -1410,6 +1433,9 @@ onLoad(async (q) => {
  */
 function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>, g: Goods) {
   editingDraft.value = true;
+  // 横幅要写「草稿 vN 未发布 · 线上在售 vM」。**不 await** —— 两个版本号晚一拍到
+  // 比让回填等一次往返好：横幅拿不到号时自己退回不带号的文案
+  void loadRevisionVersions();
   title.value = { ...title.value, ...d.title };
   subtitle.value = { ...subtitle.value, ...d.subtitle };
   if (d.detail !== undefined) detail.value = d.detail;
@@ -1707,7 +1733,17 @@ async function save(thenSubmit = false) {
     </view>
 
     <view v-if="editingDraft" class="sh-notice sh-notice--warning draft-banner sh-row">
-      <text class="txt-caption sh-fill">{{ $t("goods.draftBanner") }}</text>
+      <!--
+        **带上版本号**：「有未发布改动」说不清差在哪一步,而商家改完以为生效了
+        是真实发生过的事。拿不到版本号（历史商品没有提交记录）就退回原文案 ——
+        宁可少说一句,不要显示 v0。
+      -->
+      <text class="txt-caption sh-fill">{{ draftVersions
+        ? $t("goods.draftBannerV", draftVersions)
+        : $t("goods.draftBanner") }}</text>
+      <text class="sh-link sh-link--warn draft-banner__link" @tap="toRevisions">
+        {{ $t("goods.revHistory") }}
+      </text>
       <text class="sh-link sh-link--warn draft-banner__link" @tap="toPublishPage">
         {{ $t("goods.viewDiff") }}
       </text>
@@ -1718,7 +1754,11 @@ async function save(thenSubmit = false) {
       有草稿横幅时也不出：那一条说的就是这件事，页顶不该说两遍。
     -->
     <view v-if="!hydrating && !isDraft && !editingDraft && !draftFailed" class="sh-notice sh-notice--warning draft-banner">
-      <text class="txt-caption">{{ $t(wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}</text>
+      <text class="txt-caption sh-fill">{{ $t(wasOnSale ? "goods.saveTipOnSale" : "goods.saveTip") }}</text>
+      <!-- 在售、暂时没草稿是常态,历史入口在这一条上才真的常被用到 -->
+      <text v-if="isEdit" class="sh-link sh-link--warn draft-banner__link" @tap="toRevisions">
+        {{ $t("goods.revHistory") }}
+      </text>
     </view>
     <!--
       快速录入：粘商品文字 / 导入压缩包后，一键识别名称·描述·参数·价格。

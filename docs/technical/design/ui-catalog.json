@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 85,
+      "count": 86,
       "domains": [
         {
           "name": "工作台",
@@ -253,6 +253,17 @@
         {
           "name": "其它",
           "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-revisions/index",
+              "title": "提交历史",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s13",
+              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
+              "preview": "http://localhost:5175/#/pages/goods-revisions/index"
+            },
             {
               "app": "b-app",
               "route": "/pages/schedule/index",
@@ -3457,5 +3468,5 @@
       ]
     }
   ],
-  "total": 272
+  "total": 273
 }

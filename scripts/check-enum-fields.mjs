@@ -560,12 +560,7 @@ export const FIELDS = [
     field: "prd_goods_revision.status",
     backend: { ddl: ["prd_goods_revision", "status"] },
     clients: [
-      /*
-       * **clients 暂时是空的**，不是 DISMISSED：b-app 的 `GoodsRevision.status`
-       * 现在还是 `string`，没收成具名联合类型（历史页是 C2 的事）。
-       * 建页那天要回来把它填上 —— 否则两边取值各走各的，而症状是
-       * 「按状态筛，筛出来永远是空列表且不报错」。
-       */
+      { file: "b-app/src/api/contract.ts", type: "GoodsRevisionStatus" },
     ],
   },
   {
@@ -573,7 +568,7 @@ export const FIELDS = [
     field: "prd_goods_revision.entry_source",
     backend: { ddl: ["prd_goods_revision", "entry_source"] },
     clients: [
-      // 同上：`GoodsRevision.entrySource` 还是 string，建历史页那天收窄
+      { file: "b-app/src/api/contract.ts", type: "GoodsEntrySource" },
     ],
   },
   /*

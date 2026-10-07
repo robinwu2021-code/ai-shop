@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 491,
+        "b-app": 494,
         "c-app": 77
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 352,
+        "b-app": 357,
         "c-app": 273
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 126,
+        "b-app": 128,
         "c-app": 51
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 102,
+        "b-app": 104,
         "c-app": 90
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 216,
+        "b-app": 220,
         "c-app": 84
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 60,
+        "b-app": 62,
         "c-app": 14
       }
     },
@@ -993,7 +993,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 2,
+        "b-app": 4,
         "c-app": 0
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 343,
+        "b-app": 344,
         "c-app": 148
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 149,
+        "b-app": 150,
         "c-app": 53
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 154,
+        "b-app": 155,
         "c-app": 89
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 550,
+        "b-app": 551,
         "c-app": 200
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 315,
+        "b-app": 316,
         "c-app": 98
       }
     },
@@ -2543,7 +2543,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 84,
+        "b-app": 85,
         "c-app": 40,
         "lib": 1
       },
@@ -3648,7 +3648,7 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 404,
+      "libClassHits": 409,
       "localSelectors": 86,
       "localCssLines": 361,
       "rolled": [
@@ -3700,6 +3700,19 @@
       "libClassHits": 34,
       "localSelectors": 7,
       "localCssLines": 24,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "goods-revisions",
+      "key": "b-app/goods-revisions",
+      "file": "b-app/src/pages/goods-revisions/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 2,
+      "localCssLines": 8,
       "rolled": []
     },
     {
@@ -5790,7 +5803,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 37,
-    "pages": 151,
+    "pages": 152,
     "gapKinds": 2
   }
 }

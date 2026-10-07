@@ -9,6 +9,7 @@ export const ROUTES = {
   apply: "/pages/apply/index",
   goodsEdit: "/pages/goods-edit/index",
   goodsPublish: "/pages/goods-publish/index",
+  goodsRevisions: "/pages/goods-revisions/index",
   order: "/pages/order/index",
   verify: "/pages/verify/index",
   picking: "/pages/picking/index",
