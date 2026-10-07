@@ -1,6 +1,6 @@
 # TDD-生鲜参数补品种与发货地
 
-状态：草稿
+状态：**已实现**（2026-10-07）
 档位：1（动库表 —— 新增 2 个 `prd_spec_dim` 维度 + 类目绑定；不新建表、不加端点、不加权限码）
 关联需求：[TDD-C端商品详情页·内容丰富度](design/TDD-C端商品详情页-内容丰富度.md) §2.C「平台类目参数模板补齐」（2026-09-27 已确认，本轮主力）
 用户 2026-10-07：「产地到县市，补充包装，水果品种，发货地」
@@ -124,10 +124,23 @@ VALUES
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1 | `FreshVarietyShipFromDimTest#水果类目能查到品种维度` | 待填 | 删掉 VARIETY 那行 INSERT → 变红 |
-| AC2 | `FreshVarietyShipFromDimTest#水果类目能查到发货地维度` | 待填 | 删掉 SHIP_FROM 那行 → 变红 |
-| AC3 | `FreshVarietyShipFromDimTest#两个新维度都不是通用维度` | 待填 | 改成 universal=1 → 变红 |
-| AC4 | `FreshVarietyShipFromDimTest#不改动类目原有的主维度` | 待填 | 改成 is_primary=1 → 变红 |
+| AC1 | `FreshVarietyShipFromDimTest#varietyDimIsBoundToFreshCategories` | ✅ | 种子里 `SD_VARIETY` 改名 → 变红 ✅ |
+| AC2 | `FreshVarietyShipFromDimTest#shipFromDimIsBoundToFreshCategories` | ✅ | 同上（同一次消融一并红） ✅ |
+| AC3 | `FreshVarietyShipFromDimTest#newDimsAreNotUniversal` | ✅ | `universal` 改 1 → 精准红在这一条 ✅ |
+| AC4 | `FreshVarietyShipFromDimTest#newBindingsAreNotPrimary` | ✅ | `is_primary` 改 1 → 精准红在这一条 ✅ |
+
+```
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.48 s
+BUILD SUCCESS   （MVN_EXIT=0）
+
+消融一（种子里 SD_VARIETY 改名）：
+  Tests run: 4, Failures: 1, Errors: 1   BUILD FAILURE（MVN_EXIT=1）
+消融二（universal=1 且 is_primary=1）：
+  Tests run: 4, Failures: 2             BUILD FAILURE（MVN_EXIT=1）
+  [SD_VARIETY 是生鲜语境的字段，universal 必须是 0]
+  [SD_VARIETY 在 CAT110 上必须是 is_primary=0…]
+还原后重跑：4/4 绿
+```
 
 **判据查类目维度的下发结果，不查 SQL 文本。** 查文本的话，迁移写对了但没被执行
 （比如号撞了被跳过）照样绿 —— 那正是这道测试要拦的。
@@ -135,15 +148,39 @@ VALUES
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
 ```
-[待填：git diff --stat]
+ .../V379__fresh_variety_ship_from_dim.sql          |  49 ++++++++++
+ .../shop/scenario/FreshVarietyShipFromDimTest.java | 103 +++++++++++++++++++++
+ .../shop-app/src/test/resources/schema-test.sql    |  22 +++++
+ 3 files changed, 174 insertions(+)
 ```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了：`schema-test.sql` | 见下方偏差说明 |
+| TDD 列了、实际没动的文件 | 无 |
 
 ### 偏差说明
 
-[待填]
+**§2 写的「只有一个迁移文件」是错的 —— 实际是两处种子。**
+
+写方案时我认定「不加列、不改实体，所以不触发『加列是三处』」。
+前半句对（确实没加列），结论错：**测试库走 `schema-test.sql`，不跑 Flyway**
+（`SpecLibraryCoverageTest` 的类注释写着这条）。只写迁移的话，
+`FreshVarietyShipFromDimTest` 在测试库里一个维度都查不到，四条全红 ——
+而那会被误读成「迁移写错了」。
+
+所以种子要在**迁移与 `schema-test.sql` 两处各来一份**，且必须一致。
+落地时加了一道机械比对（归一化空白后 diff 两处的 INSERT 行），
+结果：内容一致，只有对齐空格不同。
+
+这条和记忆里「加列是三处（迁移+实体+schema-test.sql）」是同一个坑的另一面：
+**不加列也可能要动 schema-test.sql** —— 判据不是「有没有加列」，
+而是「测试要不要查到这份数据」。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-07 | 草稿，待确认 |
+| 2026-10-07 | 用户确认，开始实现 |
+| 2026-10-07 | 已实现。`FreshVarietyShipFromDimTest` 4/4 绿、两次消融各自变红；两处种子机械比对一致。<br>闸门：`mvn -pl shop-app -am test -Dtest=FreshVarietyShipFromDimTest`（扫 shop-app 测试源码）。<br>**整套 pre-push 未跑完** —— 当时生成物闸门被并行会话的未提交改动挡着（见下）。 |
