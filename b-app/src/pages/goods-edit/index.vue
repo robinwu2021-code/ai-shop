@@ -725,21 +725,31 @@ const generating = ref(false);
  * <p>**覆盖前先问**：他可能已经写了几行，一键抹掉没有撤销。
  */
 async function onImportZip() {
-  // 导入压缩包：批量填图。带回的 txt 回填到文字识别框
+  // 导入压缩包：批量填图
   const txt = await importFromZip();
   markEntry("ZIP");
-  if (txt) {
-    // 已有内容不静默覆盖 —— 空则填，非空则追加（商家自己写的那段留着）
-    parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
-  }
-  // 导入后自动识别封面(LLM 认名称/描述/参数)；txt 回填进输入框会触发边输边识别
-  if (cover.value) {
-    void runRecognize(false);
-  }
+  /*
+   * **两件事都不再自动做**（AC1/AC5）：
+   *   - 带回的 txt 不灌进文字框 —— 放进 zipText，在图片档给一行「导入到文字识别」
+   *   - 不自动跑图片识别 —— 切到图片档，按钮就在那儿，等人点
+   * 此前两件都是自动的：一次导入同时触发两路识别，结果混在一起，分不清哪个是哪边来的。
+   */
+  if (txt) zipText.value = txt;
+  quickMode.value = "image";
 }
 
-// ── 快速录入：图片走 LLM(名称/描述/参数) + 文字边输边识别(价格/快递)
+// ── 快速录入：图片与文字两档，**各自点按钮识别、互不触发**（AC1/AC5）
 const parseInput = ref("");
+/**
+ * 快速录入卡的两档：文字 / 图片（AC5）。**两边互不触发** —— 识别文字不跑图片识别，
+ * 识别图片不往文字框里写东西。此前它们挤在一张卡、共用一个按钮位，
+ * 导一个压缩包会同时往文字框灌字、又自动跑图片识别，商家分不清哪个结果是哪边来的。
+ */
+const quickMode = ref<"text" | "image">("text");
+/** 文字识别中（按钮转圈）。与图片的 `parsing` 分开 —— 两边各自有自己的忙 */
+const textParsing = ref(false);
+/** 压缩包里带回来的文字，**等人点「导入到文字识别」才进文字框** */
+const zipText = ref("");
 const parsing = ref(false);        // 图片识别中(按钮转圈)
 const recognized = ref(false);     // 图片识别过没有 → 「识别」/「重新识别」
 const parsed = ref<GoodsTextParse | null>(null);   // 文字最近一次识别结果，屏上提示用
@@ -804,7 +814,6 @@ const PARSE_LABEL: Record<string, string> = {
   parseExpress: "goods.parseExpress",
   parsePrice: "goods.parsePrice",
   parsePriceBulk: "goods.parsePriceBulk",
-  parseWeight: "goods.parseWeight",
   parseRegions: "goods.parseRegions",
   parseParams: "goods.parseParams",
 };
@@ -834,9 +843,9 @@ const specPicks = ref<{ name: string; options: string[] }[]>([]);
  * `applyParamPicks` 一次可能写进好几个维度、`rows` 整个数组被换掉，
  * 逐字段反着写回去要维护一份镜像逻辑，而镜像逻辑错了没人会发现。
  *
- * <p>**一串连续识别只有一个撤销点**：边输边识别停手就跑一次，商家打一段话
- * 能跑好几遍。快照在「识别前第一次有改动」时拍下，之后只往 `items` 里追加 ——
- * 撤销要退回的是「我贴这段话之前」，不是「上一次防抖之前」。
+ * <p>**一串连续识别只有一个撤销点**：商家常是识别一次、改几个字、再点一次。
+ * 快照在「识别前第一次有改动」时拍下，之后只往 `items` 里追加 ——
+ * 撤销要退回的是「我第一次识别之前」，不是「上一次点识别之前」。
  */
 const parseUndo = ref<{
   fulfillments: string[];
@@ -867,7 +876,8 @@ function undoParse() {
 }
 
 /**
- * 文字识别（规则 + LLM）：边输边识别，**只填空着的，不覆盖已填的**。
+ * 文字识别（规则 + LLM）：**点「识别文字」才跑**，只填空着的，不覆盖已填的。
+ * 返回这次填进去了几项（0 = 什么都没认出来，-1 = 请求失败）—— 点了没反应比报错更糟。
  *
  * <p>落点怎么算在 `./text-parse.ts`（纯函数、有测试）。这里只做两件事：
  * 调它拿一份 plan，然后一行一行照 plan 写。
@@ -877,18 +887,21 @@ function undoParse() {
  * 看着像生效了，于是「文字里写了不发货区域、商品页没更新」这个报障的根因
  * 一直被当成后端没认出来，实际是端上少一行赋值。
  */
-async function applyTextParse() {
+async function applyTextParse(): Promise<number> {
   const text = parseInput.value.trim();
   if (!text) {
     parsed.value = null;
     specPicks.value = [];
     parseUndo.value = null;
-    return;
+    return 0;
   }
   const r = await api.mParseText(text, categoryNo.value || undefined).catch(() => null);
-  if (!r) return;
+  if (!r) {
+    uni.showToast({ title: String(t("goods.parseFail")), icon: "none" });
+    return -1;
+  }
   parsed.value = r.confidence ? r : null;
-  if (!r.confidence) return;
+  if (!r.confidence) return 0;
 
   /*
    * 快照要在**改之前**拍，而且一串连续识别只拍一次（`parseUndo` 为空时）。
@@ -906,7 +919,7 @@ async function applyTextParse() {
   const plan = planTextParse(r, {
     multi: multi.value,
     bulkPrice: bulk.value.price,
-    rows: rows.value.map((row) => ({ priceMajor: row.priceMajor, nominalGram: row.nominalGram })),
+    rows: rows.value.map((row) => ({ priceMajor: row.priceMajor })),
     market: market.value,
     restrictedRegions: restrictedRegions.value,
     groupNames: groups.value.map((g) => g.name),
@@ -918,10 +931,6 @@ async function applyTextParse() {
   if (plan.bulkPrice !== undefined) bulk.value.price = plan.bulkPrice;
   if (plan.rowPrice !== undefined && rows.value[0]) {
     rows.value[0]!.priceMajor = { ...rows.value[0]!.priceMajor, [market.value]: plan.rowPrice };
-  }
-  if (plan.nominalGram !== undefined) {
-    rows.value = rows.value.map((row) =>
-      row.nominalGram.trim() ? row : { ...row, nominalGram: plan.nominalGram! });
   }
   if (plan.restrictedRegions !== undefined) restrictedRegions.value = plan.restrictedRegions;
   specPicks.value = plan.specPicks;
@@ -958,6 +967,7 @@ async function applyTextParse() {
     const f = changed.map((k) => String(t(PARSE_LABEL[k] ?? k))).join("、");
     uni.showToast({ title: String(t("goods.updatedFields", { f })), icon: "none" });
   }
+  return changed.length + specPicks.value.length;
 }
 
 /**
@@ -999,14 +1009,33 @@ function applySpecPicks() {
 }
 
 /*
- * 边输边识别：停手 800ms 跑一次，持续通过文字调整商品属性（用户明确要的交互）。
- * 文字规则很便宜（服务端正则），防抖到位就不费。图片 LLM 贵，只在导入/重新识别时跑。
+ * **点击识别，不边输边识别**（TDD-商品快速录入-品类感知与逐项确认 AC1）。
+ *
+ * <p>此前这里是一个 `watch(parseInput)`，停手 800ms 自动跑 —— `48565fc5a` 当时按用户的
+ * 要求做的。2026-10-07 用户改了主意：粘贴之后要点一下才识别。**这是决策变更，不是误改**。
+ *
+ * <p>点击触发还带来一个好处：上一轮放弃「先确认再填入」的唯一理由
+ * （边输边识别下每打几个字就弹一次）随之消失，P2 的逐项确认区由此成立。
  */
-let textTimer: ReturnType<typeof setTimeout> | null = null;
-watch(parseInput, () => {
-  if (textTimer) clearTimeout(textTimer);
-  textTimer = setTimeout(() => { void applyTextParse(); }, 800);
-});
+async function recognizeText() {
+  if (textParsing.value || !parseInput.value.trim()) return;
+  textParsing.value = true;
+  try {
+    const n = await applyTextParse();
+    // 点了没反应比报错更糟 —— 什么都没认出来也要说一声
+    if (n === 0) uni.showToast({ title: String(t("goods.parseNothing")), icon: "none" });
+  } finally {
+    textParsing.value = false;
+  }
+}
+
+/** 压缩包里带的文字，**放到文字档、不识别** —— 等人点（AC1/AC5） */
+function importZipText() {
+  if (!zipText.value) return;
+  parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${zipText.value}` : zipText.value;
+  zipText.value = "";
+  quickMode.value = "text";
+}
 
 async function genDetail() {
   if (generating.value) return;
@@ -1796,59 +1825,101 @@ async function save(thenSubmit = false) {
       </text>
     </view>
     <!--
-      快速录入：粘商品文字 / 导入压缩包后，一键识别名称·描述·参数·价格。
-      放在最前 —— 它是录入的起点，图片与文字都从这里喂进去。
+      快速录入：**文字 / 图片两档，各自输入、各自点按钮识别、互不触发**
+      （TDD-商品快速录入-品类感知与逐项确认 AC1/AC5）。仍是第一张卡、卡序不变 ——
+      两档切换留在卡里，页面骨架不动。
     -->
     <view class="sh-card quick">
-      <view class="field__head">
-        <text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text>
+      <text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text>
+      <view class="segs quick__tabs">
         <text
-          class="sh-btn sh-btn--sm sh-btn--soft sh-hit"
-          :class="{ 'is-loading': parsing }"
-          @tap="runRecognize(recognized)"
-        >
-          {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
-        </text>
+          class="sh-seg sh-seg--fill"
+          :class="{ 'sh-seg--on': quickMode === 'text' }"
+          @tap="quickMode = 'text'"
+        >{{ $t("goods.quickTabText") }}</text>
+        <text
+          class="sh-seg sh-seg--fill"
+          :class="{ 'sh-seg--on': quickMode === 'image' }"
+          @tap="quickMode = 'image'"
+        >{{ $t("goods.quickTabImage") }}</text>
       </view>
-      <textarea
-        v-model="parseInput"
-        class="field__area field__area--grow"
-        :placeholder="$t('goods.parsePh')"
-        :maxlength="2000"
-        auto-height
-      />
-      <!-- 识别到什么，就地显示(边输边更新)；没识别到就不显示那一项 -->
-      <view v-if="parsed" class="quick__got">
-        <text v-if="parsed.pricesMinor.length" class="quick__tag">{{ $t("goods.parsePrice") }} {{ yuan(parsed.pricesMinor[0] ?? 0) }}元</text>
-        <text v-if="parsed.weights.length" class="quick__tag">{{ parsed.weights.join(" ") }}</text>
-        <text v-if="parsed.carriers.length" class="quick__tag">{{ parsed.carriers.join(" ") }}</text>
-        <text v-if="parsed.excludeRegionText" class="quick__tag quick__tag--warn">{{ $t("goods.parseNoShip") }}:{{ parsed.excludeRegionText }}</text>
-      </view>
-      <text v-if="parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
-      <!--
-        识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
-        列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
-      -->
-      <!--
-        自动填之后的出口:左边可点开复核面逐项看,右边一下退回贴文字之前。
-        **不做前置确认页** —— 边输边识别每打几个字就要弹一次,两种交互不可能共存。
-      -->
-      <view v-if="parseUndo" class="sh-row quick__specs">
-        <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
-          {{ $t("goods.parseUpdatedN", { n: parseUndo.items.length }) }}
-        </text>
-        <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="undoParse">
-          {{ $t("goods.parseUndo") }}
-        </text>
-      </view>
-      <view v-if="specPicks.length" class="sh-row quick__specs">
-        <text class="txt-caption sh-muted sh-fill">
-          {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
-        </text>
-        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applySpecPicks">
-          {{ $t("goods.parseSpecApply") }}
-        </text>
-      </view>
+
+      <!-- ── 文字档 ── -->
+      <template v-if="quickMode === 'text'">
+        <textarea
+          v-model="parseInput"
+          class="field__area field__area--grow"
+          :placeholder="$t('goods.parsePh')"
+          :maxlength="2000"
+          auto-height
+        />
+        <!-- 粘贴之后点这里才识别 —— 不再边输边识别（AC1） -->
+        <view class="sh-row quick__act">
+          <text
+            class="sh-btn sh-btn--sm sh-hit"
+            :class="{ 'is-disabled': !parseInput.trim() || textParsing, 'is-loading': textParsing }"
+            @tap="recognizeText"
+          >
+            {{ textParsing ? $t("goods.parsing") : $t("goods.recognizeText") }}
+          </text>
+        </view>
+        <!--
+          **一个识别出来的东西一枚 chip**（AC2）。此前重量是 `weights.join(" ")`
+          拼进一枚 —— 「140g 4.5斤」看着像一个东西，而它们是单果重与净重两件事。
+        -->
+        <view v-if="parsed" class="quick__got">
+          <text v-if="parsed.pricesMinor.length" class="quick__tag">{{ $t("goods.parsePrice") }} {{ yuan(parsed.pricesMinor[0] ?? 0) }}元</text>
+          <text v-for="w in parsed.weights" :key="`w-${w}`" class="quick__tag">{{ w }}</text>
+          <text v-for="c in parsed.carriers" :key="`c-${c}`" class="quick__tag">{{ c }}</text>
+          <text v-if="parsed.excludeRegionText" class="quick__tag quick__tag--warn">{{ $t("goods.parseNoShip") }}:{{ parsed.excludeRegionText }}</text>
+        </view>
+        <text v-if="parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
+        <!-- 填进去之后的出口：左边点开复核面逐项看，右边一下退回识别之前 -->
+        <view v-if="parseUndo" class="sh-row quick__specs">
+          <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
+            {{ $t("goods.parseUpdatedN", { n: parseUndo.items.length }) }}
+          </text>
+          <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="undoParse">
+            {{ $t("goods.parseUndo") }}
+          </text>
+        </view>
+        <!--
+          识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
+          列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
+        -->
+        <view v-if="specPicks.length" class="sh-row quick__specs">
+          <text class="txt-caption sh-muted sh-fill">
+            {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
+          </text>
+          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applySpecPicks">
+            {{ $t("goods.parseSpecApply") }}
+          </text>
+        </view>
+      </template>
+
+      <!-- ── 图片档：认主图。不往文字框里写东西 ── -->
+      <template v-else>
+        <text v-if="!cover" class="sh-muted quick__hint">{{ $t("goods.recognizeNeedImg") }}</text>
+        <view class="sh-row quick__act">
+          <text
+            class="sh-btn sh-btn--sm sh-hit"
+            :class="{ 'is-disabled': !cover || parsing, 'is-loading': parsing }"
+            @tap="runRecognize(recognized)"
+          >
+            {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
+          </text>
+        </view>
+        <!--
+          压缩包里带了文字：**给一个去处，不替他决定** —— 点了才切到文字档并填进去，
+          填进去也不识别，等他在文字档里再点一次。
+        -->
+        <view v-if="zipText" class="sh-row quick__specs">
+          <text class="txt-caption sh-muted sh-fill">{{ $t("goods.zipTextFound") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="importZipText">
+            {{ $t("goods.zipTextImport") }}
+          </text>
+        </view>
+      </template>
     </view>
 
     <view class="sh-card">
@@ -3612,6 +3683,8 @@ async function save(thenSubmit = false) {
 .quick__hint { display: block; margin-top: 8rpx; }
 .quick__got { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
 .quick__specs { margin-top: 12rpx; gap: 16rpx; }
+.quick__tabs { margin-top: 16rpx; margin-bottom: 16rpx; }
+.quick__act { justify-content: flex-end; margin-top: 12rpx; }
 .cat-lv__none { gap: 16rpx; margin-top: 8rpx; }
 .quick__tag {
   font-size: 24rpx;

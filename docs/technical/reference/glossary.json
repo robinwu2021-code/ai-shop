@@ -9680,6 +9680,12 @@
           "ar": "أُدرجت في المناطق المقيدة. لا يزال يجب ضبط الشحن في قالب الشحن."
         },
         {
+          "key": "goods.parseNothing",
+          "zh-CN": "没认出可填的内容",
+          "en": "Nothing recognizable to fill in",
+          "ar": "لم يُتعرّف على شيء يمكن إدخاله"
+        },
+        {
           "key": "goods.parseParams",
           "zh-CN": "参数",
           "en": "parameters",
@@ -9687,9 +9693,9 @@
         },
         {
           "key": "goods.parsePh",
-          "zh-CN": "粘贴商品文字，自动识别名称、价格、规格、参数、限购地区",
-          "en": "Paste the product text — name, price, specs, parameters and restricted areas are recognized",
-          "ar": "الصق نص المنتج — يُتعرّف على الاسم والسعر والمواصفات والمعايير والمناطق المقيدة"
+          "zh-CN": "粘贴商品文字，可识别名称、价格、规格、参数、限购地区",
+          "en": "Paste the product text — name, price, specs, parameters and restricted areas can be recognized",
+          "ar": "الصق نص المنتج — يمكن التعرّف على الاسم والسعر والمواصفات والمعايير والمناطق المقيدة"
         },
         {
           "key": "goods.parsePrice",
@@ -9756,12 +9762,6 @@
           "zh-CN": "已更新 {n} 项，看一遍",
           "en": "{n} field(s) updated — review",
           "ar": "تم تحديث {n} حقلاً — راجعها"
-        },
-        {
-          "key": "goods.parseWeight",
-          "zh-CN": "标称重量",
-          "en": "weight",
-          "ar": "الوزن"
         },
         {
           "key": "goods.parsing",
@@ -9914,6 +9914,18 @@
           "ar": "إدخال سريع"
         },
         {
+          "key": "goods.quickTabImage",
+          "zh-CN": "图片",
+          "en": "Image",
+          "ar": "صورة"
+        },
+        {
+          "key": "goods.quickTabText",
+          "zh-CN": "文字",
+          "en": "Text",
+          "ar": "نص"
+        },
+        {
           "key": "goods.reRecognize",
           "zh-CN": "重识图片",
           "en": "Re-recognize image",
@@ -9942,6 +9954,12 @@
           "zh-CN": "先导入或添加商品图",
           "en": "Add a product image first",
           "ar": "أضف صورة المنتج أولاً"
+        },
+        {
+          "key": "goods.recognizeText",
+          "zh-CN": "识别文字",
+          "en": "Recognize text",
+          "ar": "تعرّف على النص"
         },
         {
           "key": "goods.removeParam",
@@ -10494,6 +10512,18 @@
           "zh-CN": "按实称结算",
           "en": "Settle by actual weight",
           "ar": "التسوية بالوزن الفعلي"
+        },
+        {
+          "key": "goods.zipTextFound",
+          "zh-CN": "压缩包里有一段文字",
+          "en": "The zip contains some text",
+          "ar": "يحتوي الملف المضغوط على نص"
+        },
+        {
+          "key": "goods.zipTextImport",
+          "zh-CN": "导入到文字识别",
+          "en": "Send to text",
+          "ar": "أرسل إلى النص"
         },
         {
           "key": "goods.zipTxtFound",

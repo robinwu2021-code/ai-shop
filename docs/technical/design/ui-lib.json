@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 500,
+        "b-app": 502,
         "c-app": 77
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 367,
+        "b-app": 368,
         "c-app": 273
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 188,
+        "b-app": 190,
         "c-app": 77
       }
     },
@@ -903,7 +903,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 51,
         "c-app": 15
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 156,
+        "b-app": 157,
         "c-app": 89
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 25,
+        "b-app": 27,
         "c-app": 17
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 554,
+        "b-app": 557,
         "c-app": 200
       }
     },
@@ -1547,7 +1547,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 10,
         "c-app": 5
       }
     },
@@ -1565,7 +1565,7 @@
         "text-align": "center"
       },
       "usage": {
-        "b-app": 3,
+        "b-app": 5,
         "c-app": 1
       }
     },
@@ -1601,7 +1601,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 10,
         "c-app": 5
       }
     },
@@ -1689,7 +1689,7 @@
         "margin-bottom": "6px"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -3648,9 +3648,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 409,
-      "localSelectors": 86,
-      "localCssLines": 361,
+      "libClassHits": 427,
+      "localSelectors": 88,
+      "localCssLines": 363,
       "rolled": [
         {
           "id": "wraprow",

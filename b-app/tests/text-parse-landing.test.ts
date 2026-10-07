@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  entryAfterUndo, gramsOf, mergeUndo, planTextParse, raiseEntry, type TextParseTarget,
+  entryAfterUndo, mergeUndo, planTextParse, raiseEntry, type TextParseTarget,
 } from "@/pages/goods-edit/text-parse";
 import type { GoodsTextParse } from "@/api/requests";
 
@@ -27,7 +27,7 @@ function target(over: Partial<TextParseTarget> = {}): TextParseTarget {
   return {
     multi: false,
     bulkPrice: "",
-    rows: [{ priceMajor: {}, nominalGram: "" }],
+    rows: [{ priceMajor: {} }],
     market: "CNY",
     restrictedRegions: [],
     groupNames: [],
@@ -74,35 +74,20 @@ describe("AC6 多规格时价格不直落第一行", () => {
   });
 
   it("价格没变就不报「已更新」—— 边输边识别会反复跑同一段文字", () => {
-    const p = planTextParse(parsed({ pricesMinor: [1000] }), target({ rows: [{ priceMajor: { CNY: "10.00" }, nominalGram: "" }] }));
+    const p = planTextParse(parsed({ pricesMinor: [1000] }), target({ rows: [{ priceMajor: { CNY: "10.00" } }] }));
     expect(p.rowPrice).toBeUndefined();
     expect(p.changed).not.toContain("parsePrice");
   });
 });
 
-describe("AC4 重量落进标称重量", () => {
-  it("★★★ 取最大的那个 —— 寄走的是 4.5 斤的箱子，不是 140g 的果子", () => {
+describe("不再从重量猜标称重量（修上一轮 B1 的错）", () => {
+  it("★★★ 有重量也不出标称重量落点 —— 分不出净重/毛重就不猜", () => {
+    // 标称重量用来估运费，运费该按毛重算；「净重 4.5 斤」是净重。
+    // 此前取最大值填进去，运费会估低且没有任何提示。
     const p = planTextParse(parsed({ weights: ["140g+", "4.5斤"] }), target());
-    expect(p.nominalGram).toBe("2250");
-    expect(p.changed).toContain("parseWeight");
-  });
-
-  it("所有行都已填重量时不动", () => {
-    const p = planTextParse(
-      parsed({ weights: ["4.5斤"] }),
-      target({ rows: [{ priceMajor: {}, nominalGram: "500" }] }),
-    );
-    expect(p.nominalGram).toBeUndefined();
-  });
-
-  it.each([
-    ["4.5斤", 2250], ["2kg", 2000], ["1公斤", 1000], ["140g", 140], ["500克", 500],
-  ])("%s → %i 克", (text, grams) => {
-    expect(gramsOf([text])).toBe(grams);
-  });
-
-  it("认不出单位就丢掉，不猜", () => {
-    expect(gramsOf(["大号", "若干"])).toBeNull();
+    expect(Object.keys(p)).not.toContain("nominalGram");
+    expect(p.changed).not.toContain("parseWeight");
+    expect(p.items.map((i) => i.labelKey)).not.toContain("goods.nominalGram");
   });
 });
 
@@ -164,7 +149,7 @@ describe("保留现状的两条", () => {
 
 describe("用户给的那段原文，端到端一次", () => {
   // 「规格：单果140g+ / 净重4.5斤装10元 / 圆通快递，新疆西藏海南不发货」
-  it("★★★ 价 10 元 · 快递 · 2250 克 · 三个省，一次到位", () => {
+  it("★★★ 价 10 元 · 快递 · 三个省，一次到位；重量不猜", () => {
     const p = planTextParse(
       parsed({
         pricesMinor: [1000],
@@ -179,10 +164,10 @@ describe("用户给的那段原文，端到端一次", () => {
     );
     expect(p.rowPrice).toBe("10.00");
     expect(p.addExpress).toBe(true);
-    expect(p.nominalGram).toBe("2250");
     expect(p.restrictedRegions).toEqual(["65", "54", "46"]);
     expect(p.specPicks).toHaveLength(1);
-    expect(p.changed).toEqual(["parseExpress", "parsePrice", "parseWeight", "parseRegions"]);
+    // 重量不再落标称重量 —— 四项变三项（P3 前分不出角色就不猜）
+    expect(p.changed).toEqual(["parseExpress", "parsePrice", "parseRegions"]);
   });
 });
 
@@ -218,7 +203,7 @@ describe("复核面要列出具体填了什么", () => {
     );
     expect(p.items).toEqual([
       { labelKey: "goods.parsePrice", value: "10.00" },
-      { labelKey: "goods.nominalGram", value: "2250" },
+      // 重量不再出现在这里（不猜标称重量）
       // kind=regions:展示层要把省码换成省名 —— 表单上那一行写的就是省名,
       // 复核面直接印「65」的话,同一个值在同一屏上有两种说法
       { labelKey: "goods.restrictedLabel", value: "65", kind: "regions" },

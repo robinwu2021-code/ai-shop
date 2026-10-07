@@ -18,8 +18,8 @@ export interface TextParseTarget {
   multi: boolean;
   /** 「统一价格」输入框现在的值 */
   bulkPrice: string;
-  /** SKU 行：只看价与标称重量这两格 */
-  rows: { priceMajor: Record<string, string>; nominalGram: string }[];
+  /** SKU 行：只看价这一格 */
+  rows: { priceMajor: Record<string, string> }[];
   /** 当前市场（价存在 priceMajor[market] 下） */
   market: string;
   /** 商家已经勾上的限购省码 */
@@ -49,8 +49,6 @@ export interface TextParsePlan {
   bulkPrice?: string;
   /** 单规格：直落第一行 */
   rowPrice?: string;
-  /** 标称重量（克），填进所有**空着**的行 */
-  nominalGram?: string;
   /** 限购省码的**并集**结果。`undefined` = 没有新的省要加 */
   restrictedRegions?: string[];
   /** 识别到、但还没加进规格的维度。**只列出来等人点** */
@@ -61,25 +59,18 @@ export interface TextParsePlan {
   items: ParseItem[];
 }
 
-/**
- * 原文里的重量候选（「4.5斤」「140g+」）→ 标称重量的克数。
+/*
+ * **不再从重量猜标称重量**（TDD-商品快速录入-品类感知与逐项确认 §1）。
  *
- * <p>一段话里常有两个重量：净重和单果重。标称重量是**包裹重**（算运费用的），
- * 所以取其中**最大**的那个 —— 4.5 斤的箱子里装着 140g 的果子，寄走的是箱子。
- * 认不出单位的直接丢掉，不猜。
+ * <p>此前这里有一个 `gramsOf()`：把原文里所有重量取**最大**的那个填进 SKU 的标称重量，
+ * 理由是「寄走的是 4.5 斤的箱子，不是 140g 的果子」。那个推理只对了一半 ——
+ * 标称重量用来估**运费**，运费该按**毛重**（带箱）算，而「净重 4.5 斤」是净重。
+ * 填进去运费会估低，而且界面上没有任何提示。
+ *
+ * <p>rule 层回来的 `weights` 是一串**没有角色**的原文（「140g+」「4.5斤」），
+ * 分不出哪个是单果重、哪个是净重、哪个是毛重。分不出就不猜 ——
+ * 角色要等品类的标准核心参数来定（P3）。
  */
-export function gramsOf(weights: string[]): number | null {
-  // kg 要排在 g 前面：「4.5kg」里也有一个 g
-  const units: [RegExp, number][] = [[/kg|千克|公斤/i, 1000], [/斤/, 500], [/g|克/i, 1]];
-  let max = 0;
-  for (const w of weights) {
-    const num = Number((w.match(/[\d.]+/) ?? [])[0]);
-    if (!num) continue;
-    const u = units.find(([re]) => re.test(w));
-    if (u) max = Math.max(max, Math.round(num * u[1]));
-  }
-  return max || null;
-}
 
 /** 分 → 元，两位小数。与页面上其它处同一种写法 */
 function yuan(minor: number): string {
@@ -137,12 +128,6 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
     }
   }
 
-  const grams = gramsOf(r.weights);
-  if (grams && cur.rows.some((row) => !row.nominalGram.trim())) {
-    plan.nominalGram = String(grams);
-    plan.changed.push("parseWeight");
-    plan.items.push({ labelKey: "goods.nominalGram", value: String(grams) });
-  }
 
   /*
    * 限购地区取**并集**，不覆盖商家手选的：识别只会让范围更保守，
@@ -164,8 +149,8 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
 /**
  * 合出这次识别的**撤销点**。
  *
- * <p>**一串连续识别只有一个撤销点。** 边输边识别停手就跑一次，商家贴一段话能跑好几遍；
- * 撤销要退回的是「我贴这段话之前」，不是「上一次防抖之前」。所以已经有撤销点时
+ * <p>**一串连续识别只有一个撤销点。** 商家常是识别一次、改几个字、再点一次；
+ * 撤销要退回的是「我第一次识别之前」，不是「上一次点识别之前」。所以已经有撤销点时
  * **只往 items 里追加**，快照保持第一次那份；没有撤销点、这次又确实改了东西，
  * 才拿当前快照建一个。
  *
