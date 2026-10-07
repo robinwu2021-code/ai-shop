@@ -2746,11 +2746,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
         }
 
+        /*
+         * **没有要新插的行就别算距离**（2026-10-07）。
+         *
+         * `distancesFor` 要把这些社区的坐标全查出来 —— 线上是 23656 个，而它每件货算一次。
+         * 「改了设置但这件货的池没变」是最常见的那种：16 件货全走到这里，各查一遍两万多行坐标，
+         * 算完一个都用不上。保存送货方式那 20 秒的大头就在这儿。
+         *
+         * 真要插行时照旧算（那是新工作，省不掉），并且**按需算一次**：
+         * 同一趟里多件货要插时，坐标走 `coordsCache` 不重复查。
+         */
+        List<Map.Entry<String, String>> toAdd = want.entrySet().stream()
+                .filter(e -> !have.contains(e.getKey()))
+                .toList();
+        if (toAdd.isEmpty()) {
+            return;
+        }
         Map<String, Integer> distances = distancesFor(want.values(), sellingStores);
-        for (Map.Entry<String, String> e : want.entrySet()) {
-            if (have.contains(e.getKey())) {
-                continue;
-            }
+        for (Map.Entry<String, String> e : toAdd) {
             String communityNo = e.getValue();
             String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
             /*
