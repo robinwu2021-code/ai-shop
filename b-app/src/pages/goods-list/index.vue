@@ -326,7 +326,37 @@ function switchTab(key: GoodsStatus | "") {
   void load();
 }
 
+/**
+ * 正在上下架的那件货的货号。
+ *
+ * <p><b>不是布尔值</b> —— 列表里几十行，一个全局布尔值说不出是哪一行在动。
+ * 空串 = 没有在飞的请求。
+ *
+ * <p><b>只允许一件在飞，而且是全列表级的。</b>这个请求在服务端要撤掉上万条社区池行
+ * （线上一个社区两万三），2026-10-07 实测一次门店级下架 47.5 秒 —— 而按钮既不置灰、
+ * 也不转圈，店主看到的是「点了没反应」，于是再点。叠起来就是几个长事务抢同一批行，
+ * 而连接池只有 10 条（当天 17:37 的 `HikariPool-1 ... active=10, waiting=5`）。
+ *
+ * <p>撤池改成批量之后快了，但端上这道闸不该因此省掉：它挡的是「慢」这件事本身，
+ * 不是某一次具体有多慢。
+ */
+const toggling = ref("");
+
+/**
+ * 这一行的主动作此刻按不动。
+ *
+ * <p>**压暗全部上下架按钮，不只压在飞的那一行** —— 只压一行的话，点别的行是
+ * 静默无反应，而那正是要修的症状。其他主动作（提交审核）不受影响，它不走这条链路。
+ */
+function toggleBlocked(g: Goods) {
+  if (!toggling.value) return false;
+  const a = primaryOf(g);
+  return a === "onSale" || a === "offSale";
+}
+
 async function toggle(g: Goods) {
+  // 已经有一件在飞就直接丢弃这一下 —— 连点两次会开出两个长事务抢同一批池行
+  if (toggling.value) return;
   /*
    * 上架前先在端上说清楚。**只拦上架，不拦下架** ——
    * 缺资质的商品要能下架（它可能是资质过期前上的架）。
@@ -361,11 +391,15 @@ async function toggle(g: Goods) {
     });
     if (!go) return;
   }
+  toggling.value = g.goodsNo;
   try {
     await api.mToggleGoods(g.goodsNo, willBeOnSale);
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    // finally 而不是 try 末尾：请求失败时不清的话，这一行的按钮永久按不动了
+    toggling.value = "";
   }
 }
 
@@ -892,9 +926,15 @@ onShow(() => {
           系统面板在四个端上长相各不相同（statement 页的注释里记着同一条）。
         -->
         <view class="row__btns sh-row">
+          <!--
+            上下架在飞时压暗**所有**上下架按钮。`is-disabled` 是库里的约定类
+            （base.css，压暗 0.45）—— 这里只需要它的「看得出按不动」，
+            不响应那一半由 `toggle()` 开头那道闸管。
+          -->
           <text
             v-if="primaryOf(g)"
             class="sh-btn sh-btn--sm sh-hit sh-btn--soft"
+            :class="{ 'is-disabled': toggleBlocked(g) }"
             @tap="runPrimary(g)"
           >{{ primaryLabel(g) }}</text>
           <text v-if="merchant.can('biz:stock')" class="sh-btn sh-btn--sm sh-hit sh-btn--muted" @tap="editStock(g)">
