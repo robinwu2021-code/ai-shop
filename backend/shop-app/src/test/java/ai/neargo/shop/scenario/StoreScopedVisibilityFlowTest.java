@@ -791,6 +791,55 @@ class StoreScopedVisibilityFlowTest {
                 .contains(goodsNo);
     }
 
+    @Test
+    @DisplayName("★★★ 整件下架要把池行清空，再上架要回来 —— 此前这一支一条用例都没看着")
+    void offSaleEmptiesThePoolAndOnSaleBringsItBack() throws Exception {
+        /*
+         * **这条用例钉的是池本身，不是「买家搜不到」。**
+         *
+         * 2026-10-07 做过消融：把 {@code syncPool} 的「下架 = 从所有池里撤出」整段注掉，
+         * 113 条池相关场景用例**一条都没红**（StoreScopedVisibility / StoreGoods /
+         * OpsProductGovern / OpsStoreGovern / QuickStart / ServiceArea × 2 /
+         * CoarseLocationRegionPool / SuspendedStoreWindDown / GoodsSaleScope /
+         * ConsumerBrowse，M9b 的「下架后立刻消失」也是绿的）。
+         *
+         * 原因是 C 端每一条读商品的查询都自带主体总闸
+         * （{@code GoodsServiceImpl} 里六处 {@code on_sale=true AND audit_status=APPROVED}），
+         * 池只是个范围筛选视图 —— 主体一关，池里留不留行买家都看不见。
+         * 所以凡是从买家侧断言的用例，对「撤没撤池」这件事天生不敏感。
+         *
+         * 把撤池改成一条批量 UPDATE（原先是逐行 deleteById）之后，这一支必须有人看着：
+         * 写错 WHERE 子句的表现是池行一行不少，而买家侧照旧什么都看不到。
+         */
+        String biz = merchant("12600180030", "要把池清空再填回去的店");
+        String merchantNo = merchantNoOf(biz);
+        String storeNo = defaultStoreNo(biz);
+        String goodsNo = onSaleGoods(biz, "上架下架再上架的抽纸");
+
+        assertThat(poolRows(merchantNo, goodsNo))
+                .as("对照量要非零，否则下面在比两个空集")
+                .isNotEmpty();
+        var before = poolRows(merchantNo, goodsNo);
+
+        offShelfAt(biz, storeNo, goodsNo);
+
+        assertThat(poolRows(merchantNo, goodsNo))
+                .as("下架后池里还有行 —— 撤池那条语句的 WHERE 写错了，而买家侧看不出任何差别")
+                .isEmpty();
+
+        // 再上架：撤池必须是**逻辑删**，否则 revive 救不回来，而 uk_community_goods_store
+        // 不含 deleted 列 —— 直接 insert 会撞唯一键，表现为上架接口 500
+        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
+                        .header("Authorization", "Bearer " + biz)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertThat(poolRows(merchantNo, goodsNo))
+                .as("重新上架后池要回到原样 —— 回不来就等于下架一次永久不可见")
+                .containsExactlyInAnyOrderElementsOf(before);
+    }
+
     /**
      * 直接删掉一家门店的某个经营类目。
      *

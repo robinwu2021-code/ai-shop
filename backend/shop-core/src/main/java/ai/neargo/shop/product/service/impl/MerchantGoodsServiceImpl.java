@@ -2695,18 +2695,40 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                           Map<String, List<PrdCommunityPool>> poolOfGoods) {
         publishOnSaleChanged(g, onSale);
         publishNewGoodsOnce(g, onSale);
+        if (!onSale) {
+            /*
+             * 下架 = 从所有池里撤出。
+             *
+             * ⚠️ **这里原来写着「留在池里的话 C 端还能搜到，点进去才发现买不了」——
+             * 那句话是错的**（2026-10-07 消融证伪）：把这一整段注掉，113 条池相关场景用例
+             * 一条都没红。C 端每条读商品的查询都自带主体总闸（{@code GoodsServiceImpl} 里
+             * 六处 {@code on_sale=true AND audit_status=APPROVED}），池只是范围筛选视图，
+             * 主体一关，池里留不留行买家都看不见。
+             *
+             * 这一支现在的真实理由只有两条：① 池是派生索引，留着下架货的行会让运营端的
+             * 池统计虚高；② 逻辑删的行正是「下架再上架」靠 {@code revive} 复活的那些。
+             * 判据钉在 {@code StoreScopedVisibilityFlowTest
+             * .offSaleEmptiesThePoolAndOnSaleBringsItBack} —— 它直接断言池行，不走买家侧。
+             *
+             * **一条 UPDATE，不是逐行，也不先把行读出来。**原先是
+             * `selectList(goods_no=?)` 再 `for (row) deleteById(row.getId())` ——
+             * 一行一次往返，而这张表线上 52 万行、`goods_no` 上没有索引
+             * （`uk_community_goods_store` 以 `community_no` 开头，用不上），
+             * 那次 selectList 本身就是一次全表扫。
+             *
+             * 要删的集合恰好等于「这件货的全部池行」，而那正是一个 WHERE 子句 ——
+             * 读出来只是为了拿 id，再把 id 一个个发回去。
+             */
+            DataScopeContext.executeWithoutScope(() -> poolMapper.delete(
+                    Wrappers.<PrdCommunityPool>lambdaQuery()
+                            .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
+            return;
+        }
         List<PrdCommunityPool> existing = poolOfGoods != null
                 ? poolOfGoods.getOrDefault(g.getGoodsNo(), List.of())
                 : DataScopeContext.executeWithoutScope(() ->
                         poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
                                 .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
-        if (!onSale) {
-            // 下架 = 从所有池里撤出。留在池里的话 C 端还能搜到，点进去才发现买不了
-            for (PrdCommunityPool row : existing) {
-                DataScopeContext.executeWithoutScope(() -> poolMapper.deleteById(row.getId()));
-            }
-            return;
-        }
 
         // 想要的 (社区, 门店) 组合
         Map<String, String> want = new LinkedHashMap<>();   // key = 社区|门店
@@ -2738,13 +2760,25 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 差集增删，不是「先全删再全插」：唯一键含 (community_no, goods_no, store_no)
         // 而删除是逻辑删 —— 删完再插同一组会撞键
         Set<String> have = new java.util.HashSet<>();
+        List<Long> stale = new java.util.ArrayList<>();
         for (PrdCommunityPool row : existing) {
             String key = row.getCommunityNo() + "|" + nz(row.getStoreNo());
             have.add(key);
             if (!want.containsKey(key)) {
-                DataScopeContext.executeWithoutScope(() -> poolMapper.deleteById(row.getId()));
+                stale.add(row.getId());
             }
         }
+        /*
+         * **先攒齐再分批删，不在循环里逐行发。**
+         *
+         * 差集的大小不是「改了几件货」，是「撤掉多少个 (社区,门店) 组合」——
+         * 线上一个社区两万三，所以一次门店级下架的差集是**万级**。
+         * 2026-10-07 实测：多门店主体在一家店下架一件货，差集 47312 行，
+         * 逐行 deleteById 用时 **47.5 秒**，端上（uni 默认 60 秒超时）等于点了没反应，
+         * 而连接池只有 10 条、长事务一直占着 —— 当天 17:37 的
+         * `HikariPool-1 ... total=10, active=10, waiting=5` 就是这么来的。
+         */
+        withdrawRows(stale);
 
         /*
          * **没有要新插的行就别算距离**（2026-10-07）。
@@ -2783,6 +2817,45 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             row.setSortWeight(distances.getOrDefault(communityNo + "|" + storeNo, UNKNOWN_DISTANCE_M));
             DataScopeContext.executeWithoutScope(() -> poolMapper.insert(row));
         }
+    }
+
+    /**
+     * 一条 IN 里塞多少个 id。
+     *
+     * <p>不是「越大越好」：整条 UPDATE 的 SQL 文本要进 `max_allowed_packet`，
+     * 而 MyBatis 的参数映射也是按个数展开的。一千个 id 的语句约 20KB，
+     * 万级差集也就十几条语句 —— 再往上换不来可观的收益，只是把单条语句做大。
+     */
+    private static final int POOL_WITHDRAW_CHUNK = 1000;
+
+    /**
+     * 逻辑删一批池行（按物理主键）。<b>分批 IN，不逐行</b>，理由见调用点。
+     *
+     * <p>语义与原先的 {@code deleteById(id)} 逐行调用逐字相同：
+     * {@code @TableLogic} 对 {@code deleteByIds} 同样生效，生成的是
+     * {@code UPDATE ... SET deleted=1 WHERE id IN (...) AND deleted=0}，
+     * 一条也不会误删别人的行（id 是这件货自己的池行读出来的）。
+     */
+    private void withdrawRows(List<Long> ids) {
+        for (List<Long> batch : batches(ids, POOL_WITHDRAW_CHUNK)) {
+            DataScopeContext.executeWithoutScope(() -> poolMapper.deleteByIds(batch));
+        }
+    }
+
+    /**
+     * 切成每批至多 {@code size} 个。
+     *
+     * <p><b>单独拎成纯函数是为了能被单测照着边界打</b>（0 / 1 / size−1 / size / size+1）。
+     * 分批循环唯一会出错的地方就是那个边界，而错法是**静默少删几行** ——
+     * 落到业务上是「下架了但某些社区还看得见这件货」，没有任何报错，
+     * 而既有的场景用例撤的都是几十行，一条也跨不过这个边界，它们永远绿。
+     */
+    static <T> List<List<T>> batches(List<T> all, int size) {
+        List<List<T>> out = new java.util.ArrayList<>();
+        for (int i = 0; i < all.size(); i += size) {
+            out.add(List.copyOf(all.subList(i, Math.min(all.size(), i + size))));
+        }
+        return out;
     }
 
     /**
