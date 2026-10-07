@@ -37,9 +37,16 @@ class OrphanModuleTest {
     /** 仓库根（本测试的工作目录是 {@code backend/shop-app}） */
     private static final Path REPO = Paths.get("").toAbsolutePath().getParent().getParent();
 
-    /** 不参与 Maven 构建、但**允许**存在 Java 文件的地方 */
+    /**
+     * 不参与 Maven 构建、但**允许**存在 Java 文件的地方。
+     *
+     * <p>{@code native-plugins}（2026-10-07）：B 端 App 的 Android 原生插件源码，与 {@code android-shell}
+     * 同一类 —— 由 Gradle 编，不归 Maven。它曾经只是「留档」、要人记得放回仓库外的离线工程，
+     * 正是本测试要防的副本；现在 {@code b-app/offline/build-apk.sh} 每次打包先从这里同步过去，
+     * 仓库这份就是被编译的那份，不会再分叉。
+     */
     private static final List<String> ALLOWED = List.of(
-            "node_modules", "target", ".git", "android-shell", "dist");
+            "node_modules", "target", ".git", "android-shell", "dist", "native-plugins");
 
     @Test
     @DisplayName("★★ Maven 之外不得有 Java 源码目录 —— 不参与构建的代码不会有任何东西提醒你它已经过时")

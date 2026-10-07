@@ -110,6 +110,26 @@ ok "keystore 在"
 [ -d "$JDK" ] || die "JDK 不在：$JDK（用 JAVA_HOME 指一个 17）"
 ok "JDK：$JDK"
 
+# ── ⓪b 原生插件：以仓库里那份为真源 ─────────────────────────────────────
+# ZipPicker（App 选 .zip）的源码在 b-app/offline/native-plugins/，离线工程在仓库外。
+# 此前仓库里那份是「留档」、靠人记得放回去 —— 不参与构建的副本会静静跟真身分叉，
+# OrphanModuleTest 正是为这个立的。改成每次打包都从仓库同步过去：仓库这份就是被编译的那份。
+say "⓪b 原生插件"
+PLUGIN_SRC="$ROOT/b-app/offline/native-plugins/ZipPicker"
+PLUGIN_JAVA="$OFFLINE_PROJECT/simpleDemo/src/main/java/top/hxmall/bapp/plugin/ZipPickerModule.java"
+PLUGIN_JSON="$OFFLINE_PROJECT/simpleDemo/src/main/assets/dcloud_uniplugins.json"
+for pair in "ZipPickerModule.java:$PLUGIN_JAVA" "dcloud_uniplugins.json:$PLUGIN_JSON"; do
+    src="$PLUGIN_SRC/${pair%%:*}"; dst="${pair#*:}"
+    [ -f "$src" ] || die "仓库里没有 $src"
+    if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+        ok "${pair%%:*} 与仓库一致"
+    else
+        mkdir -p "$(dirname "$dst")" && cp "$src" "$dst"
+        cmp -s "$src" "$dst" || die "同步 ${pair%%:*} 失败：$dst"
+        ok "${pair%%:*} 已从仓库同步到离线工程"
+    fi
+done
+
 # ── ① 版本号：以仓库里那份为单一真源 ────────────────────────────────────
 # 手册 §1 要求两处一起抬，而「要改两处」本身就是漏改的来源。
 # 这里让 b-app/src/manifest.json（**在仓库里、可提交、可 review**）当唯一真源，
