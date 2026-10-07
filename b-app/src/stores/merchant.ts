@@ -256,7 +256,7 @@ export const useMerchantStore = defineStore("merchant", {
       const saved = (uni.getStorageSync(STORAGE.storeNo) as string) || "";
       const keep = usable.some((s) => s.storeNo === saved) ? saved : "";
       this.storePicked = !!keep;
-      this.switchStore(keep || usable.find((s) => s.isDefault)?.storeNo || usable[0]?.storeNo || "");
+      void this.switchStore(keep || usable.find((s) => s.isDefault)?.storeNo || usable[0]?.storeNo || "");
       return this.stores;
     },
 
@@ -281,10 +281,13 @@ export const useMerchantStore = defineStore("merchant", {
       return this.groupsLoading;
     },
 
-    /** 人在选店页点了一家：记下来，进 App 不再追问 */
+    /**
+     * 人在选店页点了一家：记下来，进 App 不再追问。
+     * <b>把 switchStore 的 Promise 透出去</b>——调用方要在「切完了」时才落地/提示。
+     */
     pickStore(storeNo: string) {
       this.storePicked = true;
-      this.switchStore(storeNo);
+      return this.switchStore(storeNo);
     },
 
     switchStore(storeNo: string) {
@@ -304,17 +307,28 @@ export const useMerchantStore = defineStore("merchant", {
       this.storeNo = storeNo;
       if (storeNo) uni.setStorageSync(STORAGE.storeNo, storeNo);
       else uni.removeStorageSync(STORAGE.storeNo);
-      // 角色跟着门店走 —— 换了店就要重新问「我在这家店能做什么」
-      void this.loadScope();
+      /*
+       * **返回一个在「切完了」时才 resolve 的 Promise。**
+       *
+       * 切店的真正工作是异步的：至少一次 `loadScope`（换店要重问权限），跨证照时再加
+       * 门店列表与资料两次重拉。此前这里全是 `void`（发了就不管），于是调用方
+       * `pickStore` 一调完就立刻 `reLaunch` / 弹「已切换」—— **那个「完成」信号发在真正
+       * 完成之前**，落地页还在拿旧店的数据渲染，店主看到的是「点了，但好像没换过去」。
+       *
+       * 收敛成一个可 await 的 Promise：调用方在它 resolve 前显示「切换中…」，
+       * resolve 后再落地 / 提示。各项仍是尽力而为（loadScope 自带 try/catch，
+       * 另两项带 .catch），所以 `allSettled` 不会因为一次网络抖动把切店卡死。
+       */
+      const tasks: Promise<unknown>[] = [this.loadScope()];
       if (crossEntity) {
-        // 资料也要重拉：店名、状态（待补证照 / 营业中）都是**按证照**的
-        //
-        // 这两个都是尽力而为，失败不拦人切店。**但失败不能就此了结** ——
-        // 列表停在上一张证照的代价是「我的」头部静默退回主体名（见 ensureStores
-        // 的注释）。兜底在那里：它的新判据会发现当前门店不在列表里，下一次调用重拉。
-        void api.mStoreList().then((rows) => { this.stores = rows; }).catch(() => {});
-        void this.loadProfile().catch(() => {});
+        // 资料也要重拉：店名、状态（待补证照 / 营业中）都是**按证照**的。
+        // 失败不拦人切店，但也不能就此了结 —— 列表停在上一张证照的代价是「我的」
+        // 头部静默退回主体名（见 ensureStores）。兜底在那里：下次调用发现当前门店
+        // 不在列表里会重拉。
+        tasks.push(api.mStoreList().then((rows) => { this.stores = rows; }).catch(() => {}));
+        tasks.push(this.loadProfile().catch(() => {}));
       }
+      return Promise.allSettled(tasks).then(() => undefined);
     },
 
     /**
@@ -461,7 +475,7 @@ export const useMerchantStore = defineStore("merchant", {
       this.perms = [];
       this.staffRoles = [];
       this.storePicked = false;
-      this.switchStore("");
+      void this.switchStore("");
       uni.removeStorageSync(STORAGE.token);
     },
   },

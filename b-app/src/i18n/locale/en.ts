@@ -2223,6 +2223,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     last: "Last chosen",
     closed: "Closed · unavailable",
     enter: "Enter",
+    switching: "Switching…",
     crossHint: "Totals across stores: Stores › Cross-store overview",
     current: "Current store",
     entityPending: "License pending",

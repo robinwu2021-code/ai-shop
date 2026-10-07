@@ -17,6 +17,8 @@ const merchant = useMerchantStore();
 /** 进 App 的那一次：选完去工作台；从「我的」进来的：选完回上一页 */
 const entry = ref(false);
 const picked = ref("");
+/** 正在切店：亮着「切换中…」时挡住重复点「进入」 */
+const switching = ref(false);
 
 /**
  * 按证照分组。**选一家门店同时定了两件事**：用哪张证照、进哪家店 ——
@@ -65,9 +67,27 @@ function choose(storeNo: string, status: string) {
   picked.value = storeNo;
 }
 
-function confirm() {
-  if (!picked.value) return;
-  merchant.pickStore(picked.value);
+async function confirm() {
+  if (!picked.value || switching.value) return;
+  /*
+   * **切店要让人看见过程，也要让人落到已经切过去的那一屏。**
+   *
+   * 此前这里 `pickStore` 一调就立刻 reLaunch —— 而切店的异步工作（loadScope，
+   * 跨证照时还有门店列表与资料重拉）那时还没完成，落地页拿旧店数据先渲染一帧，
+   * 店主的感受是「点了，但好像没换过去」。
+   *
+   * 现在：先亮「切换中…」（mask 挡住重复点），await 到真的切完，再落地 ——
+   * 落地那一屏（工作台标题「工作台 · 新店名」/「我的」头部）已经是新店，
+   * 那就是「切过去了」最直接的回馈。
+   */
+  switching.value = true;
+  uni.showLoading({ title: String(t("storePick.switching")), mask: true });
+  try {
+    await merchant.pickStore(picked.value);
+  } finally {
+    uni.hideLoading();
+    switching.value = false;
+  }
   if (entry.value) {
     // reLaunch：这一页不该留在栈里，返回键不应回到「选择门店」
     uni.reLaunch({ url: ROUTES.home });

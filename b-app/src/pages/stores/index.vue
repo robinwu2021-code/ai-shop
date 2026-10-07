@@ -48,6 +48,8 @@ const busy = ref(false);
 
 /** 新建表单：默认收起 —— 大多数商家只有一家店，天天看到一个空表单是噪音 */
 const adding = ref(false);
+/** 正在切店：亮着「切换中…」时挡住重复点另一家 */
+const switching = ref(false);
 const form = ref({ name: "", address: "" });
 /**
  * 这家店挂在哪张证照下（02 屏）。
@@ -256,8 +258,22 @@ function goPlan() {
  * 切到这家店。**留在本页**而不是跳走：切完常常还要顺手看这家的收款号、
  * 员工数对不对。工作台等页面回来时按 onShow 重取，拿到的就是新店的数字。
  */
-function switchTo(s: Store) {
-  merchant.pickStore(s.storeNo);
+async function switchTo(s: Store) {
+  if (switching.value) return;
+  /*
+   * 先亮「切换中…」，await 到真的切完，再弹「已切换至 XX」。
+   * 此前是 pickStore 发出去就立刻弹成功 —— 而切店的异步工作（loadScope 等）
+   * 还没回来，本页的收款号/员工数那一瞬还是旧店的，提示却说已经切好了。
+   * 留在本页（不跳走）：切完常常还要顺手看这家的设置对不对。
+   */
+  switching.value = true;
+  uni.showLoading({ title: String(t("storePick.switching")), mask: true });
+  try {
+    await merchant.pickStore(s.storeNo);
+  } finally {
+    uni.hideLoading();
+    switching.value = false;
+  }
   uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "none" });
 }
 
