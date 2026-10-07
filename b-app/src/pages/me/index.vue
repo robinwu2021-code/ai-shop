@@ -228,8 +228,15 @@ onShow(() => {
       这一组回答的是「账号维度」的事（身份），与头部那一格的「门店维度」（在哪家店）分开。
       只有这一组带标题：它是店主明确要找的东西，给它一个名字才找得到。
     -->
-    <text v-if="merchant.isLogin" class="txt-title sec">{{ $t("me.accountSection") }}</text>
-    <view v-if="merchant.isLogin" class="sh-cells">
+    <!--
+      标题 + 分组包在一个顶层块里（而不是两个并排的顶层块）：
+      顶层块的纵向间距由外壳统一给，页面不许在顶层块上自己写 margin
+      （page-block-spacing 守卫）。包起来之后 `.acct__label` 是内层块，
+      才能用 margin 把标题贴紧它下面那一组。
+    -->
+    <view v-if="merchant.isLogin">
+      <text class="txt-title acct__label">{{ $t("me.accountSection") }}</text>
+      <view class="sh-cells">
       <!-- 用户名（显示名）：改的是「我自己」那一行。店员/店主都能改各自的 -->
       <view class="sh-cell sh-row sh-row--between" @tap="editDisplayName">
         <text class="txt-body cell__label">{{ $t("me.username") }}</text>
@@ -251,6 +258,7 @@ onShow(() => {
           {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
       </view>
     </view>
 
@@ -387,10 +395,12 @@ onShow(() => {
 </template>
 
 <style scoped>
-/* 卡外分组小标题（同「我的套餐」页那条 .sec）：只管组与组之间的留白，不起壳 */
-.sec {
+/* 分组小标题：它在「账户信息」那个顶层包裹块的内部，不是顶层块本身 ——
+   所以可以用 margin 把标题贴紧它下面那一组（顶层块的间距仍由外壳给）。
+   只留下边距：上边距那一截由外壳的块间距提供。 */
+.acct__label {
   display: block;
-  margin: 28rpx 0 12rpx;
+  margin-bottom: 12rpx;
 }
 .head {
   gap: 24rpx;

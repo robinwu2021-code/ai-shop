@@ -319,6 +319,13 @@ const ownedRate = computed(() =>
 );
 
 async function load() {
+  /*
+   * 门店列表要尽早拉：标题栏的「工作台 · 门店名」读 `merchant.multiStore / currentStore`，
+   * 而这两个都从 `stores` 算 —— 不拉的话冷启动那一帧标题缺那一截（下面 loadStores
+   * 还会再同步一次当前门店，这里只是让标题别等到那一步）。
+   * 用 ensureStores（拉一次就够）而不是 loadStores：标题只要列表在，不需要每次重取。
+   */
+  void merchant.ensureStores();
   if (!merchant.profile) profileState.value = "pending";
   try {
     await merchant.loadProfile();
