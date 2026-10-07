@@ -12128,6 +12128,12 @@
           "ar": "الحساب"
         },
         {
+          "key": "me.accountSection",
+          "zh-CN": "账户信息",
+          "en": "Account Info",
+          "ar": "معلومات الحساب"
+        },
+        {
           "key": "me.appearance",
           "zh-CN": "外观与语言",
           "en": "Appearance & language",
@@ -21234,6 +21240,12 @@
           "zh-CN": "切换",
           "en": "Switch",
           "ar": "تبديل"
+        },
+        {
+          "key": "storePick.switching",
+          "zh-CN": "切换中…",
+          "en": "Switching…",
+          "ar": "جارٍ التبديل…"
         },
         {
           "key": "storePick.title",

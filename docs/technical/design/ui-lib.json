@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 119,
+        "b-app": 120,
         "c-app": 32
       }
     },
@@ -683,7 +683,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 58,
         "c-app": 12
       }
     },
@@ -3271,7 +3271,7 @@
         "readonly?: boolean"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 7,
         "c-app": 0,
         "lib": 0
       },
@@ -3776,8 +3776,7 @@
         "sh-go",
         "sh-icon",
         "sh-scaffold",
-        "sh-stat",
-        "biz-store-tag"
+        "sh-stat"
       ],
       "libClassHits": 52,
       "localSelectors": 20,
@@ -3870,9 +3869,9 @@
         "sh-scaffold",
         "sh-theme-sheet"
       ],
-      "libClassHits": 92,
-      "localSelectors": 8,
-      "localCssLines": 34,
+      "libClassHits": 94,
+      "localSelectors": 9,
+      "localCssLines": 38,
       "rolled": []
     },
     {
