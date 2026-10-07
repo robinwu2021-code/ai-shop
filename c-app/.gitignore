@@ -19,3 +19,4 @@ src/pages.json.with-elec.bak
 # B 端轻量运营并包（scripts/with-biz.mjs）的中间产物：同理，构建完还原，残留了也别提交
 src/pkg-biz/
 src/pages.json.with-biz.bak
+src/App.vue.with-biz.bak

@@ -38,11 +38,26 @@ const PKG = "pkg-biz";
 const OUT = join(HERE, "src", PKG);
 const PAGES_JSON = join(HERE, "src", "pages.json");
 const BACKUP = `${PAGES_JSON}.with-biz.bak`;
+const APP_VUE = join(HERE, "src", "App.vue");
+const APP_BACKUP = `${APP_VUE}.with-biz.bak`;
 
-/** 四屏 + 登录。登录页复用 b-app 已测流程；_entry 无令牌时跳它。 */
-const PAGE_SLUGS = ["orders", "order", "verify", "goods-list", "after-sale", "login"];
-/** 整目录拷（未被 6 页引用到的文件不会被编译，无害）。i18n 拷来给 local scope 当 messages。 */
-const COPY_DIRS = ["api", "stores", "shared", "utils", "i18n"];
+/**
+ * **全量并包**：b-app 的每一页都进小程序（2026-10-07 起，此前只收四屏轻量运营）。
+ *
+ * 页面清单直接取 b-app/pages.json —— 不再手工维护一份子集，否则 b-app 新增页面时
+ * 这里会悄悄落下（而症状是「新页面在 App 里有、小程序里 navigateTo 没反应」）。
+ */
+const PAGE_SLUGS = JSON.parse(readFileSync(join(B, "pages.json"), "utf8")).pages
+    .map((p) => p.path.replace(/^pages\//, "").replace(/\/index$/, ""));
+/**
+ * 整目录拷：b-app/src 下**除 pages 外的全部**目录（pages 另走 PAGE_SLUGS）。
+ *
+ * 不写死清单 —— 写死的话 b-app 新增一个顶层目录就会悄悄落下，
+ * 而症状是构建期 `Cannot find module` 指向某个页面（2026-10-07 漏了 ports/ 就是这样）。
+ */
+const COPY_DIRS = readdirSync(B, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== "pages")
+    .map((e) => e.name);
 
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
@@ -94,12 +109,17 @@ function rewriteRoutes() {
   if (!existsSync(nav)) throw new Error("没拷到 shared/nav.ts，ROUTES 改写无从下手");
   const included = new Set(PAGE_SLUGS);
   const src = readFileSync(nav, "utf8");
+  const missing = [];
   const out = src.replace(/"\/pages\/([a-z0-9-]+)\/index"/g, (_m, slug) => {
     if (included.has(slug)) return `"/${PKG}/pages/${slug}/index"`;
-    // home 作为「登录后落点」指向运营首页，其余重量页统一落占位页
-    if (slug === "home") return `"/${PKG}/_entry/index"`;
+    // 全量并包后这里本该是空的。真出现了说明 ROUTES 指向一个 pages.json 里没有的页
+    // （b-app 自己也会 navigateTo 失败），落占位页兜底并在构建日志里点名。
+    missing.push(slug);
     return `"/${PKG}/_app-only/index"`;
   });
+  if (missing.length) {
+    console.log(`  ⚠ ROUTES 指向了 pages.json 里没有的页，已落占位页：${[...new Set(missing)].join(", ")}`);
+  }
   writeFileSync(nav, out);
 }
 
@@ -200,12 +220,6 @@ function generated() {
     `const m = useMerchantStore();\n` +
     `/** loading | ready | not-merchant | need-c-login */\n` +
     `const state = ref("loading");\n` +
-    `const ENTRIES = [\n` +
-    `  { t: "订单", d: "查看与处理今天的订单", url: ROUTES.orders },\n` +
-    `  { t: "核销", d: "提货 / 核验码核销自提单", url: ROUTES.verify },\n` +
-    `  { t: "商品上下架", d: "商品列表与上架开关", url: ROUTES.goods },\n` +
-    `  { t: "售后", d: "处理退款与售后申请", url: ROUTES.afterSale },\n` +
-    `];\n` +
     `/**\n` +
     ` * 后端两个码对应端上两条不同的出路，别合并：\n` +
     ` *   10470 NOT_A_MERCHANT            → 真不是商家，引导「去开店」\n` +
@@ -230,7 +244,7 @@ function generated() {
     `}\n` +
     `onShow(async () => {\n` +
     `  await m.restore();\n` +
-    `  if (m.isLogin) { state.value = "ready"; return; }   // 已有商家会话，直接用\n` +
+    `  if (m.isLogin) { uni.reLaunch({ url: ROUTES.home }); return; }   // 已有商家会话，直接进\n` +
     `  const ctk = uni.getStorageSync(C_STORAGE.token) as string;\n` +
     `  if (!ctk) { state.value = "need-c-login"; return; }\n` +
     `  const r = await exchange(ctk);\n` +
@@ -241,24 +255,16 @@ function generated() {
     `  }\n` +
     `  uni.setStorageSync(BIZ_STORAGE.token, r.token);\n` +
     `  await m.restore();\n` +
-    `  state.value = m.isLogin ? "ready" : "not-merchant";\n` +
+    `  if (!m.isLogin) { state.value = "not-merchant"; return; }\n` +
+    `  // 全量并包：换到令牌就直接进 b 端工作台，之后完全是 b-app 自己的导航\n` +
+    `  uni.reLaunch({ url: ROUTES.home });\n` +
     `});\n` +
-    `function go(url: string) { uni.navigateTo({ url }); }\n` +
     `/** 去入驻：c-app「我的」里有「我也想开店」。它是 tab 页，只能 switchTab */\n` +
     `function goApply() { uni.switchTab({ url: "/pages/me/index" }); }\n` +
     `</script>\n\n` +
     `<template>\n` +
     `  <sh-scaffold title="商家运营">\n` +
-    `    <view v-if="state === 'ready'" class="be">\n` +
-    `      <view v-for="e in ENTRIES" :key="e.url" class="be__cell sh-row sh-row--between" @tap="go(e.url)">\n` +
-    `        <view class="be__txt">\n` +
-    `          <text class="be__t">{{ e.t }}</text>\n` +
-    `          <text class="be__d">{{ e.d }}</text>\n` +
-    `        </view>\n` +
-    `        <sh-icon name="chevronRight" :size="36" />\n` +
-    `      </view>\n` +
-    `    </view>\n` +
-    `    <view v-else-if="state === 'need-phone'" class="be__hint">\n` +
+    `    <view v-if="state === 'need-phone'" class="be__hint">\n` +
     `      <text class="be__t">先绑手机号</text>\n` +
     `      <text class="be__d">店里给你开的账号认的是手机号。在「我的」绑好之后，回来就能直接进。</text>\n` +
     `      <view class="sh-btn sh-btn--primary be__btn" @tap="goApply">去绑手机号</view>\n` +
@@ -289,7 +295,9 @@ function generated() {
 
 function prepare() {
   if (!existsSync(B)) throw new Error(`找不到 b-app 源码：${B}`);
-  if (existsSync(BACKUP)) throw new Error(`上一次没还原干净（${BACKUP} 还在）：先跑 restore`);
+  for (const b of [BACKUP, APP_BACKUP]) {
+    if (existsSync(b)) throw new Error(`上一次没还原干净（${b} 还在）：先跑 restore`);
+  }
   rmSync(OUT, { recursive: true, force: true });
 
   // 1) 拷整目录 + 6 个页面目录
@@ -328,7 +336,52 @@ function prepare() {
     { path: "_entry/index", style: customBar },
     { path: "_app-only/index", style: customBar },
   ];
+  /*
+   * **给 c-app 的 App.vue 注入 tabsFor**：shell 是进程级单例，而这一包里同时住着
+   * 买家页面和商家页面，一套 tabs 必然有一端是错的 —— 商家工作台底下会长出「购物车」，
+   * 点了还跳去买家页。按路径分：/pkg-biz 开头用 b-app 的 TABS，其余保持原样。
+   * 构建前改、构建后还原（同 pages.json）。
+   */
+  const appRaw = readFileSync(APP_VUE, "utf8");
+  writeFileSync(APP_BACKUP, appRaw);
+  if (!appRaw.includes("configureShell({")) {
+    throw new Error("c-app/src/App.vue 里找不到 configureShell({ —— 注入点变了，tabsFor 没接上");
+  }
+  const appOut = appRaw
+    .replace(/(import\s*\{\s*configureShell\s*\}[^\n]*\n)/,
+             `$1import { TABS as __BIZ_TABS } from "@/${PKG}/shared/nav";\n`)
+    .replace(/configureShell\(\{\n/,
+             `configureShell({\n    // with-biz 注入：商家分包的页面用 b-app 自己的底部菜单\n`
+             + `    tabsFor: (p: string) => (p.startsWith("/${PKG}/") ? __BIZ_TABS : undefined),\n`);
+  if (appOut === appRaw) {
+    throw new Error("tabsFor 注入没生效（正则没命中）—— 商家页面会显示买家菜单");
+  }
+  writeFileSync(APP_VUE, appOut);
+
   app.subPackages = [...(app.subPackages ?? []), { root: PKG, pages }];
+  /*
+   * **biz-* 自定义组件要配 easycom**（15 个 b-app 页面在模板里直接写 <biz-xxx>）。
+   * 不配的话编译期不报错、运行时那个节点整块不渲染 —— 页面打得开，只是少一片。
+   * c-app 自己也有 `^biz-(.*)` 规则（指向它自己的 components），所以这里不能覆盖它：
+   * 用更具体的前缀 `^biz-` 没法区分两端，改成把 b-app 的组件按**全名**逐个登记。
+   */
+  const bizDir = join(OUT, "components", "biz");
+  if (existsSync(bizDir)) {
+    const mine = {};
+    for (const f of readdirSync(bizDir)) {
+      if (!f.endsWith(".vue")) continue;
+      const name = f.replace(/\.vue$/, "");
+      mine[`^${name}$`] = `@/${PKG}/components/biz/${name}.vue`;
+    }
+    /*
+     * **顺序要紧**：c-app 自己有一条 `^biz-(.*)` 通配规则，指向它自己的 components。
+     * easycom 按配置顺序取第一个命中的，通配排在前面的话 `<biz-pickup-sheet>` 会被
+     * 解析到 c-app 那个不存在的路径 —— 编译期不报错，运行时那一片整块不渲染。
+     * 所以把这 9 条全名精确规则插到最前面。（两端组件名无重名，查过。）
+     */
+    app.easycom = app.easycom ?? {};
+    app.easycom.custom = { ...mine, ...(app.easycom.custom ?? {}) };
+  }
   writeFileSync(PAGES_JSON, JSON.stringify(app, null, 2) + "\n");
   console.log(`✓ 并包：${pages.length} 页 → ${PKG}/，改写 ${changed} 个文件`);
 }
@@ -337,6 +390,11 @@ function restore() {
   if (existsSync(BACKUP)) {
     writeFileSync(PAGES_JSON, readFileSync(BACKUP, "utf8"));
     rmSync(BACKUP);
+  }
+  // App.vue 的 tabsFor 注入同样要还原 —— 它是 c-app 的提交源码，留下去就脏了工作区
+  if (existsSync(APP_BACKUP)) {
+    writeFileSync(APP_VUE, readFileSync(APP_BACKUP, "utf8"));
+    rmSync(APP_BACKUP);
   }
   rmSync(OUT, { recursive: true, force: true });
   console.log("✓ 已还原 pages.json，删掉 src/pkg-biz");

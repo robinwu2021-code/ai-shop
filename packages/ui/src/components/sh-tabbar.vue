@@ -20,8 +20,23 @@ const instance = getCurrentInstance();
 /** 落点反馈的弹跳。B 端没配 pulse，这里永远是 false */
 const bouncing = ref(false);
 
+/**
+ * 当前页面路径。给 {@link ShellConfig.tabsFor} 用 —— 一个小程序里装了两个端时，
+ * 菜单该显示哪一套只能由「现在站在哪个页面」决定。
+ * 取不到（极早期、或非 uni 环境）就回落到空串，tabsFor 自己会兜底。
+ */
+function currentPath(): string {
+  try {
+    const stack = getCurrentPages();
+    const top = stack[stack.length - 1] as { route?: string } | undefined;
+    return top?.route ? "/" + top.route : "";
+  } catch {
+    return "";
+  }
+}
+
 const tabs = computed(() =>
-  shell.tabs.map((t) => ({
+  (shell.tabsFor?.(currentPath()) ?? shell.tabs).map((t) => ({
     ...t,
     iconName: (props.active === t.key ? t.iconOn : t.icon) as IconName,
     badge: shell.badge?.(t.key) || 0,

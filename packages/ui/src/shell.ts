@@ -29,6 +29,16 @@ export interface ShellConfig {
   /** 底部菜单项。C 端是消费者视角、B 端是商家视角，两套导航没有共用的意义 */
   tabs: readonly ShellTab[];
   /**
+   * 按**当前页面路径**挑一套菜单。返回空就回落到 {@link #tabs}。
+   *
+   * <p>为「一个小程序里装两个端」而开（c-app 把 b-app 全量并成 `pkg-biz` 分包）：
+   * shell 是进程级单例，而那时一个进程里同时住着买家页面和商家页面，
+   * <b>一套 tabs 必然有一端是错的</b> —— 商家工作台底下会长出「购物车」，点了还跳去买家页。
+   *
+   * <p>不配这一项时行为与此前逐字一致（原生 App 的两端各自独立进程，用不上它）。
+   */
+  tabsFor?: (path: string) => readonly ShellTab[] | undefined;
+  /**
    * 该端的默认皮肤。不传则用色板里的 `DEFAULT_SKIN`。
    *
    * <p>B 端传 `brand`（品牌红）而 C 端不传 —— 默认皮肤是**端的选择**，
