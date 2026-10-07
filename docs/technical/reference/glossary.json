@@ -24747,6 +24747,12 @@
           "ar": "حدد بنداً واحداً على الأقل عند حصر النطاق"
         },
         {
+          "key": "err.not_a_merchant",
+          "zh-CN": "你还不是商家，先申请开店再来",
+          "en": "You are not a merchant yet. Apply to open a shop first.",
+          "ar": "لست تاجرًا بعد. قدّم طلبًا لفتح متجر أولًا."
+        },
+        {
           "key": "err.not_found",
           "zh-CN": "数据不存在",
           "en": "Not found",
@@ -33218,6 +33224,7 @@
           "STORE_SLUG_TAKEN",
           "PAYOUT_ACCOUNT_NAME_MISMATCH",
           "PAYOUT_ACCOUNT_PENDING_EXISTS",
+          "NOT_A_MERCHANT",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
