@@ -51,24 +51,12 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     /** 对外链接（V357）：域名只在这一层读配置，端上不拼 */
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
 
-    /**
-     * 停用 / 启用门店要跟着重建社区池 —— 门店状态改完，C 端可见性才真的跟着变。
-     *
-     * <p><b>ObjectProvider 而不是直接注入</b>：直接注入构成真实的构造环
-     * （merchant → StoreShelfPort → MerchantGoodsService → GoodsService → 回 merchant），
-     * Spring 默认禁止循环引用，上下文起不来。手法与 {@code MerchantStoreServiceImpl} 一致。
-     */
-    private final org.springframework.beans.factory.ObjectProvider<
-            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
 
     public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
-                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                                 org.springframework.beans.factory.ObjectProvider<
-                                         ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort) {
-        this.storeShelfPort = storeShelfPort;
+                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
@@ -195,29 +183,11 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         s.setStatus(active ? MchStore.ACTIVE : MchStore.READONLY);
         DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
         /*
-         * ★ 状态改完要重建社区池 —— 否则这次停用对买家**完全无效**。
+         * 门店状态只写这一行。买家侧在查询时只认 ACTIVE 门店（方案-商品可见性改查询时关联 R2），
+         * 停用的店它的货当场不可见、恢复当场可见 —— 不再有「池里还留着」这回事。
          *
-         * C 端可见性的真闸门是 {@code prd_community_pool}，而在 2026-09-29 之前
-         * 门店状态在那条链路上没有任何读者：停用一家店，它的货照样留在池里卖，
-         * 商家在门店管理里看到的却是「已停用」。线上实测停用「虹选鲜果·福田店」后，
-         * 它的 4 件货 × 2859 个社区一行未少。
-         *
-         * 平台强制下线（SUSPENDED）走 {@code StoreShelfPort.platformOffline} 压货架，
-         * 那一半一直是对的 —— 同一个坑只补了一半，商家自助停用这一半漏了。
-         *
-         * 配套的另一半在 {@code MerchantGoodsServiceImpl.storesSelling}：
-         * 它改用 {@code activeStoreNos}，停用的店才不会再被算成「在架卖这件货」。
-         * 只做这里不做那里的话，重建一遍池行会原样再写回来。
-         *
-         * <b>失败不阻塞</b>：状态已经改成功了，池重建失败最多是可见性晚一步
-         * （商家下次上下架会自愈），让它把停用回滚掉是更坏的结果 —— 与范围保存同一条约定。
+         * 平台强制下线（SUSPENDED）另走 {@code StoreShelfPort.platformOffline} 压店级货架，那是真源。
          */
-        try {
-            storeShelfPort.getObject().resyncPools(merchantNo);
-        } catch (RuntimeException e) {
-            log.warn("[store] 门店 {} 状态改为 {} 后重建社区池失败，可见性会晚一步自愈",
-                    storeNo, s.getStatus(), e);
-        }
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }
 

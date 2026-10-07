@@ -33,7 +33,7 @@ public interface MerchantQueryPort {
     /**
      * 这家店的货<b>能出现在哪些社区</b>（ADR-009，已按 {@code service_scope} 展开）。
      *
-     * <p>product 域上架商品时要按这个范围写社区池。放在 Port 上而不是让 product
+     * <p>「送不送得到」的规则只有一份（ReachRule），在 merchant 域。放在 Port 上而不是让 product
      * 自己去读 {@code mch_entity_community}：三档范围的展开规则属于 user 域，
      * 两处各实现一遍的结果是「商家页能搜到这家店、商品页却搜不到它的货」。
      *
@@ -53,6 +53,40 @@ public interface MerchantQueryPort {
      * @return 空表示这家店对谁都不可见
      */
     java.util.List<String> reachableCommunities(String merchantNo, String storeNo);
+
+    /**
+     * 这家店送不送得到<b>这一个</b>小区 —— 与 {@code reachableCommunities(merchantNo, storeNo).contains(communityNo)}
+     * 同一个答案，但不把范围展开成两万多个小区再 contains（下单落店每单每店都要问一次）。
+     *
+     * <p>与 {@link #reachableCommunities(String, String)} 同一个判定（{@code ReachRule}），同样只看主体是否 ACTIVE，
+     * <b>不看门店状态</b>：门店开没开门由调用方自己判。
+     */
+    boolean serves(String merchantNo, String storeNo, String communityNo);
+
+    /**
+     * <b>反查</b>：哪些主体的哪些门店服务这个小区（方案-商品可见性改查询时关联 §2.2）。
+     *
+     * <p>买家每次只问一个小区，所以从小区出发判几十家店，而不是把每家店的范围展开成两万多个小区。
+     * 只含 ACTIVE 主体下的 ACTIVE 门店；判定与 {@link #serves} 同一个（ReachRule）。
+     *
+     * @return 主体号 → 门店号集合；没有人服务时为空 map
+     */
+    java.util.Map<String, java.util.Set<String>> servingStores(String communityNo);
+
+    /** 同 {@link #servingStores}，按区划：<b>区里任一开放小区</b>服务得到就算。空前缀返回空 map */
+    java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode);
+
+    /**
+     * 每家 ACTIVE 门店的可达小区（运营端「供给分布」按门店聚合用）。
+     *
+     * @param storeNo 门店号
+     * @param communityNos 它送得到的小区
+     */
+    record StoreCoverage(String entityNo, String storeNo, java.util.List<String> communityNos) {
+    }
+
+    /** 全平台 ACTIVE 主体下每家 ACTIVE 门店的可达小区。只在运营打开那一屏时调用 */
+    java.util.List<StoreCoverage> storeCoverage();
 
     /**
      * <b>范围预览</b>：这一组范围行（还没保存）会覆盖到哪些聚落。
@@ -222,10 +256,18 @@ public interface MerchantQueryPort {
     java.util.Set<String> allowedPickupNos(String merchantNo);
 
     /**
-     * 按买家所在社区裁剪后的门店可用送货方式（P2 范围子集）：
-     * enabled 且未被运营锁路，且（scope=ALL 或 社区 ∈ 子集展开）。
-     * communityNo 为空时等同 {@link #enabledFulfillments}（子集无从判，按不限）。
-     * 空集约定同 {@link #enabledFulfillments}：没配过 = 兼容期不限。
+     * 这家店在买家所在小区<b>能选的</b>送货方式：开着、没被运营锁路、且这一路送得到这个小区。
+     *
+     * <p>「送得到」与可见性同一个判定（{@code ReachRule}，方案-商品可见性改查询时关联 §2.3）——
+     * 此前这里另写了一份子集匹配：小区不含楼栋、不减 EXCLUDE、「全部」那一路不看主体框选，
+     * 于是会出现「看得见、结算说不送」或者反过来。唯一的差别：自提选「全部」时不看买家小区
+     * （自提的地理约束在取货点上）。
+     *
+     * <p>communityNo 为空时等同 {@link #enabledFulfillments}（无从判，按不限）。
+     *
+     * <p>⚠️ <b>返回空集有两种含义，调用方必须分开</b>：没配过（{@link #enabledFulfillments} 也是空，兼容期放行）
+     * 与「配过、但没有一路送得到这里」（必须拒）。只看本方法的空集会把后者当成前者放行 ——
+     * 先问 {@link #enabledFulfillments} 有没有配过，再看本方法含不含所选的那一路。
      */
     java.util.Set<String> enabledFulfillmentsFor(String merchantNo, String storeNo, String communityNo);
 
@@ -383,14 +425,11 @@ public interface MerchantQueryPort {
     /**
      * 这个主体名下**在营业**的门店（{@code status = ACTIVE}）。
      *
-     * <p><b>可见性链路必须用它</b>：C 端能不能搜到一件货，真闸门是
-     * {@code prd_community_pool}，而门店状态在那条链路上原本<b>没有任何读者</b> ——
-     * 商家在「门店管理」里停用一家店，货照样留在社区池里卖，
-     * 界面上那家店明明写着「已停用」。（平台强制下线走 {@code StoreShelfPort.platformOffline}
-     * 压货架，所以那一半是对的；商家自助停用漏了，同一个坑只补了一半。）
+     * <p>停用的店不该把货带给任何买家。买家侧可见性现在由 {@link #servingStores} 在查询时
+     * 只认 ACTIVE 门店；这个方法留给商品域判「主体总闸」等仍按主体算的地方。
      *
-     * <p>2026-09-29 线上实测：停用「虹选鲜果·福田店」后重算社区池，
-     * 它的 4 件货 × 2859 个社区一行未少。
+     * <p>2026-09-29 线上实测（当时还靠社区池）：停用「虹选鲜果·福田店」后重算社区池，
+     * 它的 4 件货 × 2859 个社区一行未少 —— 门店状态那时在可见性链路上没有任何读者。
      */
     java.util.List<String> activeStoreNos(String merchantNo);
 

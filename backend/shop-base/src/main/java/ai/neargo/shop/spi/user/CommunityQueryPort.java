@@ -55,6 +55,27 @@ public interface CommunityQueryPort {
     java.util.List<String> openChildCommunityNos(java.util.Collection<String> parentNos);
 
     /**
+     * 判定「某家店送不送得到这个小区」所需的小区信息（方案-商品可见性改查询时关联 §2.3）。
+     *
+     * <p>有了这三项，「送不送得到」就能对**一个**小区直接判，而不必先把范围展开成两万多个小区再 contains。
+     *
+     * @param regionCode 国标区划码，按前缀匹配 STREET / DISTRICT / CITY 级范围；可空
+     * @param parentNo   楼栋的上级小区；不是楼栋时为空
+     * @param open       {@code status=OPEN}
+     */
+    record CommunityRef(String communityNo, String regionCode, String parentNo, boolean open) {
+    }
+
+    /** 全部开放小区。展开「全部开放小区」类范围时的候选全集 */
+    java.util.List<CommunityRef> openCommunityRefs();
+
+    /** 按号批量取（**不限开放**：范围里直接点名的小区不检查是否开放）。查不到的不在结果里 */
+    java.util.Map<String, CommunityRef> communityRefs(java.util.Collection<String> communityNos);
+
+    /** 区划前缀下的开放小区。空前缀返回空集，理由同 {@link #openCommunityNosUnderRegion} */
+    java.util.List<CommunityRef> openCommunityRefsUnderRegion(String regionPrefix);
+
+    /**
      * 这些聚落里有多少条<b>能定位的</b>收货地址。
      *
      * <p>归属走的是 C 端那条唯一的判定（围栏 + 层级优先于距离），不另算一遍 ——
@@ -109,7 +130,7 @@ public interface CommunityQueryPort {
     java.util.Map<String, String> pickupNames(java.util.Collection<String> pickupNos);
 
     /**
-     * 这些社区的坐标（gcj02, E6）。<b>建社区池时用来算「哪家店离这儿最近」。</b>
+     * 这些社区的坐标（gcj02, E6）。<b>下单兜底落店时用来算「哪家店离这儿最近」。</b>
      *
      * <p>批量取而不是逐个查：一次上架要给几十个社区建池行，逐个查就是几十次往返。
      *

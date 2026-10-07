@@ -39,8 +39,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     private static final String ACTIVE = "ACTIVE";
     /** 履约能力（ADR-013）。值域与 mch_entity.fulfillment_reach 一致 */
-    private static final String PICKUP = "PICKUP";
-    private static final String SHIPPING = "SHIPPING";
     private static final String AREA_ACTIVE = "ACTIVE";
     private static final String AREA_COMMUNITY = "COMMUNITY";
     /** 评分存整数（50 = 5.0 分），避免浮点入库 */
@@ -71,7 +69,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.service.impl.StoreSenderResolver senderResolver;
     private final ai.neargo.shop.merchant.service.MerchantAuthCodeService authCodeService;
     /*
-     * 保证金与欠款用 ObjectProvider 懒取，与上面的 storeShelfPort 同一个理由：
+     * 保证金与欠款用 ObjectProvider 懒取：
      * DebtServiceImpl 依赖 AdmissionService，而准入那一侧又要问商家主档 ——
      * 构造期直接注入会绕成环，而环的报错信息（BeanCurrentlyInCreation）
      * 完全看不出是这两个类。
@@ -88,29 +86,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
-    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
+    /** 「送不送得到」的配置读取；判定本身在 {@link ai.neargo.shop.merchant.reach.ReachRule} */
+    private final ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader;
 
-    /**
-     * 主体激活 / 经营范围保存会改变**可达社区**，而 C 端可见性读的是 product 域的社区池。
-     *
-     * <p><b>为什么是 ObjectProvider 而不是直接注入</b>：直接注入会构成一个真实的构造环 ——
-     * merchant 域 → StoreShelfPort → MerchantGoodsService → GoodsService → 回到 merchant 域
-     * （商品要问「这家店可达哪些社区」）。Spring 默认禁止循环引用，整个上下文起不来。
-     *
-     * <p>环本身说明这两个域是双向的：可见性这件事，一半的事实在 merchant（谁可达哪儿），
-     * 一半在 product（哪件货在架）。真正拆开要引一层事件，那是更大的一次改动；
-     * 在此之前用延迟取代替，与 {@code SecurityConfig} 取 BizIdentityResolver 同一手法。
-     */
-    private final org.springframework.beans.factory.ObjectProvider<
-            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
-                            org.springframework.beans.factory.ObjectProvider<
-                                    ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                             ai.neargo.shop.merchant.service.impl.StoreSenderResolver senderResolver,
@@ -124,7 +108,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.FulfillmentChannelMapper fulfillmentChannelMapper,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
                             ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
-                            ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper,
+                            ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader,
                             org.springframework.beans.factory.ObjectProvider<
                                     ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
                             org.springframework.beans.factory.ObjectProvider<
@@ -134,7 +118,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
         this.channelPickupMapper = channelPickupMapper;
         this.pickupQueryPort = pickupQueryPort;
-        this.channelAreaMapper = channelAreaMapper;
+        this.reachLoader = reachLoader;
         this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
@@ -145,7 +129,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.storeMapper = storeMapper;
         this.senderResolver = senderResolver;
         this.masterDataPort = masterDataPort;
-        this.storeShelfPort = storeShelfPort;
         this.communityQueryPort = communityQueryPort;
         this.merchantCommunityMapper = merchantCommunityMapper;
         this.serviceAreaMapper = serviceAreaMapper;
@@ -175,161 +158,132 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     /**
-     * 按<b>门店</b>算可达（可见性按门店算 · 第 1 步）。
+     * 按<b>门店</b>算可达：开放小区里，这家店任一开着的送货方式送得到的那些。
      *
-     * <p>与主体口径的唯一差别是把 {@code enabledFulfillments} 的门店参数喂上 ——
-     * 那个参数**本来就在**，只是可见性这条路一直传 null（「任何一家门店送得到
-     * 就算整个主体可达」）。多门店之后那个口径会让 A 店的货出现在只有 B 店服务的社区里，
-     * 见「可见性按门店算-方案」§2.1。
+     * <p>「送不送得到」只有一个判定 {@link ai.neargo.shop.merchant.reach.ReachRule}，
+     * 这里只负责给候选（方案-商品可见性改查询时关联 §2.3）。此前这里自己展开范围、
+     * 把一家店所有 SUBSET 路取并集整店一起裁，与结算时逐路判的那一份在四种情形下答案不同。
      *
-     * <p>{@code storeNo} 为空时退回主体并集 —— 商家详情页那类「这家商家覆盖哪儿」
-     * 的问题仍然是主体级的，不该被这次改造波及。
-     *
-     * <p><b>今天这两条路的结果是相等的</b>：线上没有任何门店配过 {@code scope_mode=SUBSET}
-     * （2026-08-25 查生产：SUBSET 0 条、{@code mch_channel_area} 0 行），
-     * 全部走 ALL 分支 = 主体全足迹。这正是它能安全上线的原因。
+     * <p>{@code storeNo} 为空 = 主体口径（各店开着的路取并集、一律按「全部」）——
+     * 商家详情页那类「这家商家覆盖哪儿」是主体级的问题。
      */
     @Override
     public List<String> reachableCommunities(String merchantNo, String storeNo) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        MchEntity m = activeEntity(merchantNo);
         if (m == null) {
             return List.of();
         }
-        /*
-         * **没激活的主体对谁都不可见。**
-         *
-         * 此前这里只算「履约能力 × 地理覆盖」，完全不看主体状态 —— 于是进件还没走完、
-         * 甚至还没交证照的商家，货照样进社区池、照样被买家搜到、照样能走到下单，
-         * 只在最后付款那一步失败。首页那句「商品能上架，但顾客付不了钱」描述的正是这个状态。
-         *
-         * 放开「无证照先开店」（PENDING_LICENSE 占位主体）之后这个洞会被放大成
-         * 「谁都能建一家能卖货的店」，所以闸门必须在这里补上 —— 而正因为可见性当初
-         * 收敛到了这一个出口，补它只要这一个 if，调用方一行不动。
-         *
-         * ⚠️ 这一行同时会挡掉所有非 ACTIVE 的存量主体。2026-08-25 上线前查过生产库：
-         * 6 个主体全部 ACTIVE，无人受影响；将来若新增别的中间态，要重查一遍再发布，
-         * 否则就是一次没有任何通知的批量下架。
-         */
-        if (!ACTIVE.equals(m.getStatus())) {
-            return List.of();
+        return expandReach(reachLoader.load(m, storeNo));
+    }
+
+    @Override
+    public boolean serves(String merchantNo, String storeNo, String communityNo) {
+        if (communityNo == null || communityNo.isBlank()) {
+            return false;
         }
-        /*
-         * ADR-013 阶段二：履约能力 × 地理覆盖，两者正交。
-         *
-         * **这个方法是可见性的唯一出口** —— 上架写社区池、商家详情可达性、履约都只认它。
-         * 正因为当初收敛到了这一处，换模型才只用改这里，调用方一行不动。
-         *
-         * 方案 v4：履约能力从 fulfillment_reach 单值换成 channel 集合（主体级并集 ——
-         * 可见性是主体级的，任何一家门店送得到就算可达）。语义映射保持迁移前后行为一致：
-         *   EXPRESS ∈ 集合            → 原 SHIPPING：全部开放社区
-         *   范围空 + MERCHANT_DELIVERY → 原 ONSITE 的「没框 = 不限」
-         *   范围空 + 只有自提           → 原 PICKUP 的「没框 = 谁也看不到」
-         * 集合为空 = 该主体还没迁移到 channel 模型，回落旧列 —— 只读兼容期的约定，
-         * 删列那一版一并删掉这个回落。
-         */
-        java.util.Set<String> channels = enabledFulfillments(merchantNo, storeNo);
-        boolean expressOn;
-        boolean deliveryOn;
-        boolean legacy = channels.isEmpty();
-        if (legacy) {
-            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
-            expressOn = SHIPPING.equals(reach);
-            deliveryOn = !PICKUP.equals(reach) && !SHIPPING.equals(reach);
-        } else {
-            expressOn = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
-            deliveryOn = channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
+        MchEntity m = activeEntity(merchantNo);
+        return m != null && ai.neargo.shop.merchant.reach.ReachRule.covers(
+                reachLoader.load(m, storeNo), communityRef(communityNo));
+    }
+
+    @Override
+    public java.util.Map<String, java.util.Set<String>> servingStores(String communityNo) {
+        if (communityNo == null || communityNo.isBlank()) {
+            return java.util.Map.of();
         }
-
-        // 快递没有履约半径，不该被要求逐个勾社区 —— 那既是无谓劳动，
-        // 也会在新开城时漏掉（新社区不会自动出现在别人手工勾的清单里）
-        List<MchServiceArea> allAreas = DataScopeContext.executeWithoutScope(() ->
-                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
-                        .eq(MchServiceArea::getEntityNo, merchantNo)));
-
-        /*
-         * **EXCLUDE 减在最后，对每一条 include 分支一视同仁** —— 含这里的「快递=全部开放社区」
-         * 与下面 fallback 的「自送没框=不限」。只在「逐条展开」那一支减的话，
-         * 快递商家会**排除不掉任何地方**，而他在 B 端明明看到「已排除」。
-         *
-         * EXCLUDE **不看 status**：缩小自己的范围不需要审核，
-         * 而让一条待审的排除「暂时不生效」等于在审核期内把他不想服务的地方照样露出去。
-         */
-        /*
-         * 快递能送全国，但**商家框了销售范围就尊重框选**（#4②）。
-         *
-         * <p>此前这里无条件返回「全部开放社区 − EXCLUDE」——于是一个框了「龙华」却开着快递的
-         * 商家，货照样全市可见（销售区域与可见性在此分叉）。而框选是「卖给谁」，快递只是
-         * 「怎么送」，两者正交：框了就按框选圈定可见，没框（无 ACTIVE INCLUDE 行）才回落全国。
-         * 落到下面与自送同一段 {@code reachOf}（按 INCLUDE 展开 − EXCLUDE），并经门店 SUBSET 裁剪。
-         *
-         * <p>存量影响：只「全国 − EXCLUDE」（有 EXCLUDE、无 INCLUDE）的商家 hasActiveInclude=false，
-         * 行为逐字不变；受影响的只有「框了 INCLUDE 又开快递」的那些——而那正是要修的分叉。
-         */
-        boolean hasActiveInclude = allAreas.stream().anyMatch(a ->
-                AREA_ACTIVE.equals(a.getStatus()) && !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()));
-        if (expressOn && !hasActiveInclude) {
-            return minusExcluded(communityQueryPort.openCommunityNos(), allAreas);
-        }
-
-        List<MchServiceArea> areas = DataScopeContext.executeWithoutScope(() ->
-                serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
-                        .eq(MchServiceArea::getEntityNo, merchantNo)
-                        .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
-        // 下面那段「一组范围行 → 可达集合」被范围预览共用，见 reachOf
-
-        /*
-         * 指定了门店时，把主体足迹裁剪成**这家店真正覆盖的那几块**。
-         *
-         * 裁剪只对 {@code scope_mode=SUBSET} 的路生效；ALL（默认，也是今天线上全部）
-         * 表示「这家店这一路覆盖主体的全部足迹」，裁剪后与不裁剪相等。
-         *
-         * <p><b>子集是按「路」配的，而可达是「任一路送得到就算」</b> ——
-         * 所以这里取的是该店所有 SUBSET 路的**并集**，再与主体足迹取交。
-         * 取交而不是直接用子集：{@code mch_channel_area} 引的是 {@code area_no}，
-         * 而主体足迹可能已经改小了（改经营范围时那些子集行不会跟着删），
-         * 不取交的话会算出主体已经不覆盖的地方。
-         */
-        if (storeNo != null && !storeNo.isBlank() && !areas.isEmpty()) {
-            java.util.Set<String> subsetAreaNos = storeSubsetAreaNos(merchantNo, storeNo);
-            if (subsetAreaNos != null) {
-                areas = areas.stream()
-                        .filter(a -> subsetAreaNos.contains(a.getAreaNo()))
-                        .toList();
+        var ref = communityRef(communityNo);
+        java.util.Map<String, java.util.Set<String>> out = new java.util.LinkedHashMap<>();
+        for (var reach : reachLoader.allServing()) {
+            if (ai.neargo.shop.merchant.reach.ReachRule.covers(reach, ref)) {
+                out.computeIfAbsent(reach.entityNo(), k -> new java.util.LinkedHashSet<>()).add(reach.storeNo());
             }
         }
+        return out;
+    }
 
-        /*
-         * **判据是 includes 不是 areas —— 这是最容易写反的一处。**
-         *
-         * 一个开了自送、只写了「EXCLUDE 3 幢」的商家，语义是
-         * 「我上门送、不限范围，但不送 3 幢」，应当得到「全部开放社区 − 3 幢」。
-         * 沿用 `areas.isEmpty()` 的话，他会因为「有 area 行」而跳过下面这个 fallback、
-         * 展开出空集 —— **变成谁也看不到，结果正好相反，且不报错**。
-         */
-        return reachOf(areas, allAreas, deliveryOn);
+    @Override
+    public java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return java.util.Map.of();
+        }
+        var refs = communityQueryPort.openCommunityRefsUnderRegion(regionCode);
+        if (refs.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, java.util.Set<String>> out = new java.util.LinkedHashMap<>();
+        for (var reach : reachLoader.allServing()) {
+            // 命中一个就够：问的是「这个区里有没有它送得到的地方」
+            for (var ref : refs) {
+                if (ai.neargo.shop.merchant.reach.ReachRule.covers(reach, ref)) {
+                    out.computeIfAbsent(reach.entityNo(), k -> new java.util.LinkedHashSet<>()).add(reach.storeNo());
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.List<StoreCoverage> storeCoverage() {
+        java.util.List<StoreCoverage> out = new java.util.ArrayList<>();
+        var open = communityQueryPort.openCommunityRefs();
+        for (var reach : reachLoader.allServing()) {
+            out.add(new StoreCoverage(reach.entityNo(), reach.storeNo(), expandReach(reach, open)));
+        }
+        return out;
+    }
+
+    /**
+     * <b>没激活的主体对谁都不可见</b>（含无证照先开店的 {@code PENDING_LICENSE}）。
+     * 进件没走完的商家，货不该被买家搜到、更不该走到下单 —— 闸门只在这一处，调用方一行不动。
+     */
+    private MchEntity activeEntity(String merchantNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return null;
+        }
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        return m != null && ACTIVE.equals(m.getStatus()) ? m : null;
+    }
+
+    /**
+     * 正向展开：候选 = 全部开放小区 ∪ 范围里直接点名的小区（它们可能没开放，不在开放全集里），
+     * 逐个过 {@code ReachRule.covers}。规则只有那一份，这里只负责给候选。
+     */
+    private List<String> expandReach(ai.neargo.shop.merchant.reach.ReachRule.StoreReach reach) {
+        return expandReach(reach, communityQueryPort.openCommunityRefs());
+    }
+
+    private List<String> expandReach(ai.neargo.shop.merchant.reach.ReachRule.StoreReach reach,
+                                     List<ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef> open) {
+        List<ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef> candidates = new java.util.ArrayList<>(open);
+        java.util.Set<String> named = new java.util.LinkedHashSet<>(
+                ai.neargo.shop.merchant.reach.ReachRule.namedCommunities(reach));
+        candidates.forEach(c -> named.remove(c.communityNo()));
+        if (!named.isEmpty()) {
+            var found = communityQueryPort.communityRefs(named);
+            for (String no : named) {
+                // 点名了一个库里查不到的小区号：照旧算它（与 serves 的兜底同一口径），判定只剩「点名」这一条能命中
+                candidates.add(found.getOrDefault(no,
+                        new ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef(no, null, null, false)));
+            }
+        }
+        return ai.neargo.shop.merchant.reach.ReachRule.reachable(reach, candidates);
+    }
+
+    /** 查不到的小区按「未开放、无区划、无上级」判 —— 只剩「范围里直接点名它」这一条能命中，与展开口径一致 */
+    private ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef communityRef(String communityNo) {
+        return communityQueryPort.communityRefs(List.of(communityNo)).getOrDefault(communityNo,
+                new ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef(communityNo, null, null, false));
     }
 
     @Override
     public List<String> previewReachable(String merchantNo, List<String[]> areas) {
-        MchEntity m = DataScopeContext.executeWithoutScope(() ->
-                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
-                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
-        if (m == null || !ACTIVE.equals(m.getStatus())) {
-            // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
+        // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
+        MchEntity m = activeEntity(merchantNo);
+        if (m == null) {
             return List.of();
-        }
-        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
-        boolean expressOn;
-        boolean deliveryOn;
-        if (channels.isEmpty()) {
-            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
-            expressOn = SHIPPING.equals(reach);
-            deliveryOn = !PICKUP.equals(reach) && !SHIPPING.equals(reach);
-        } else {
-            expressOn = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
-            deliveryOn = channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
         }
         /*
          * 端上传来的那一份**当场变成范围行**（不落库）。status 一律按 ACTIVE：
@@ -348,126 +302,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                     return r;
                 })
                 .toList();
-        if (expressOn) {
-            return minusExcluded(communityQueryPort.openCommunityNos(), rows);
-        }
-        return reachOf(rows, rows, deliveryOn);
-    }
-
-    /**
-     * 一组范围行 + 履约能力 → 可达聚落集合。
-     *
-     * <p><b>抽出来是为了让「范围预览」走同一段代码</b>（B 端保存前问
-     * 「改成这样会覆盖到哪儿」）。预览另算一遍的话，两个数字都「算对了」，
-     * 只是算的不是同一件事 —— 而商家会照着预览做决定，
-     * 等到保存之后才发现覆盖到的不是他看到的那些。判据只能有一份。
-     *
-     * @param areas    参与判定的范围行（存量口径已按 status 过滤；预览口径是端上传来的那一份）
-     * @param allAreas 用来做减法的全部行（<b>不看 status</b>：缩小范围不需要审核）
-     */
-    private List<String> reachOf(List<MchServiceArea> areas, List<MchServiceArea> allAreas, boolean deliveryOn) {
-        List<MchServiceArea> includes = areas.stream()
-                .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
-                .toList();
-
-        if (includes.isEmpty()) {
-            /*
-             * **「没框范围」的含义由履约能力决定**（ADR-013 §6.2）——
-             * 这是从三档枚举迁过来时保持行为不变的关键一格：
-             *
-             *   只有自提          没框就是没有落点 → 谁也看不到
-             *                    （原 PICKUP / scope=COMMUNITY 却没配社区，写入口也一直拦着）
-             *   开了商家自送      上门没有落点约束，没框 = 不限 → 全部开放社区
-             *                    （原 ONSITE / scope=CITY 就是这个结果）
-             *
-             * 两者反过来都会出事：把自提的空当成「不限」，一家没配社区的菜摊
-             * 会突然铺满全平台；把自送的空当成「谁也看不到」，存量的上门商家
-             * 在迁移当天集体从 C 端消失 —— 而且都不报错。
-             */
-            return deliveryOn
-                    ? minusExcluded(communityQueryPort.openCommunityNos(), allAreas)
-                    : List.of();
-        }
-
-        return minusExcluded(expand(includes), allAreas);
-    }
-
-    /**
-     * 把一组范围项展开成聚落集合。**INCLUDE 与 EXCLUDE 共用这一个函数** ——
-     * 排除一个园区就排除它的全部楼栋，与纳入一个园区就纳入它的全部楼栋是同一件事。
-     * 写成两套的下场是有一天它们不一样了，而没有任何测试会发现。
-     */
-    private java.util.LinkedHashSet<String> expand(List<MchServiceArea> items) {
-        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        java.util.List<String> parents = new java.util.ArrayList<>();
-        for (MchServiceArea a : items) {
-            if (AREA_COMMUNITY.equals(a.getLevel())) {
-                out.add(a.getRefCode());
-                // 它可能是小区/园区 —— 子楼栋一起纳入（楼栋自己没有子级，只查一层）
-                parents.add(a.getRefCode());
-            } else {
-                /*
-                 * 街道 / 区县 / 城市都走前缀展开：国标码是层级的，
-                 * 330106 命中 330106（挂到区）与 330106002（挂到街道）两种归属。
-                 * 楼栋因为冗余存了 region_code，天然被这一支包含。
-                 */
-                out.addAll(communityQueryPort.openCommunityNosUnderRegion(a.getRefCode()));
-            }
-        }
-        if (!parents.isEmpty()) {
-            out.addAll(communityQueryPort.openChildCommunityNos(parents));
-        }
-        return out;
-    }
-
-    /**
-     * 减去 EXCLUDE 展开出来的那些。**EXCLUDE 优先于 INCLUDE。**
-     *
-     * <p>而更好的做法是在**输入端**就不让矛盾发生（B 端勾了排除就把对应的 include 去掉）——
-     * 从输入端消除比从判定端消除诚实，后者要求用户记住这条优先级。
-     * 这里的优先级是最后一道，不是给用户看的规则。
-     */
-    private List<String> minusExcluded(java.util.Collection<String> base, List<MchServiceArea> allAreas) {
-        List<MchServiceArea> excludes = allAreas.stream()
-                .filter(a -> MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
-                .toList();
-        if (excludes.isEmpty()) {
-            return List.copyOf(base);
-        }
-        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(base);
-        out.removeAll(expand(excludes));
-        return List.copyOf(out);
-    }
-
-    /**
-     * 这家店通过 {@code scope_mode=SUBSET} 声明覆盖的 {@code area_no} 并集。
-     *
-     * @return {@code null} 表示这家店<b>没有任何 SUBSET 路</b>（全 ALL 或没配）——
-     *         此时不裁剪，用主体全足迹。<b>空集与 null 必须分开</b>：
-     *         空集是「配了 SUBSET 但一块都没勾」（他确实什么都不送），
-     *         而 null 是「没在做子集这件事」。混成一个的话，
-     *         今天线上每一家店（都没配 SUBSET）都会被算成「一块都不覆盖」——
-     *         全平台商品当场从 C 端消失
-     */
-    private java.util.Set<String> storeSubsetAreaNos(String merchantNo, String storeNo) {
-        List<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> subsetRows =
-                DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getScopeMode, "SUBSET")));
-        if (subsetRows.isEmpty()) {
-            return null;
-        }
-        java.util.Set<String> channels = subsetRows.stream()
-                .map(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getChannel)
-                .collect(java.util.stream.Collectors.toSet());
-        return DataScopeContext.executeWithoutScope(() -> channelAreaMapper.selectList(
-                        Wrappers.<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, storeNo)
-                                .in(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, channels)))
-                .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo)
-                .collect(java.util.stream.Collectors.toSet());
+        /*
+         * 与保存后的可达同一个判定（ReachRule）。此前这里开着快递就直接「全部开放 − 排除」、
+         * 不看框选 —— 而保存后的可达早已改成「快递也尊重框选」（#4②），
+         * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
+         */
+        return expandReach(reachLoader.preview(m, rows));
     }
 
     @Override
@@ -515,46 +355,26 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (enabled.isEmpty() || communityNo == null || communityNo.isBlank()) {
             return enabled;
         }
-        List<ai.neargo.shop.merchant.entity.MchFulfillmentChannel> rows =
-                DataScopeContext.executeWithoutScope(() -> fulfillmentChannelMapper.selectList(
-                        com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                .<ai.neargo.shop.merchant.entity.MchFulfillmentChannel>lambdaQuery()
-                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getEntityNo, merchantNo)
-                                .eq(storeNo != null && !storeNo.isBlank(),
-                                        ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getStoreNo, storeNo)
-                                .eq(ai.neargo.shop.merchant.entity.MchFulfillmentChannel::getScopeMode, "SUBSET")));
-        if (rows.isEmpty()) {
-            return enabled;
+        MchEntity m = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
+        if (m == null) {
+            return java.util.Set.of();
         }
-        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(enabled);
-        for (var row : rows) {
-            if (!out.contains(row.getChannel())) {
-                continue;
-            }
-            // 子集展开与可见性同一套规则：COMMUNITY 直选 + 区划前缀展开
-            List<String> areaNos = DataScopeContext.executeWithoutScope(() -> channelAreaMapper.selectList(
-                            com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                    .<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
-                                    .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getStoreNo, row.getStoreNo())
-                                    .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getChannel, row.getChannel())))
-                    .stream().map(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo).toList();
-            boolean hit = false;
-            if (!areaNos.isEmpty()) {
-                List<MchServiceArea> areas = DataScopeContext.executeWithoutScope(() ->
-                        serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
-                                .in(MchServiceArea::getAreaNo, areaNos)
-                                .eq(MchServiceArea::getStatus, AREA_ACTIVE)));
-                for (MchServiceArea a : areas) {
-                    if (AREA_COMMUNITY.equals(a.getLevel())
-                            ? communityNo.equals(a.getRefCode())
-                            : communityQueryPort.openCommunityNosUnderRegion(a.getRefCode()).contains(communityNo)) {
-                        hit = true;
-                        break;
-                    }
-                }
-            }
-            if (!hit) {
-                out.remove(row.getChannel());
+        /*
+         * 逐路判「这一路送不送得到买家的小区」，与可见性同一个判定（ReachRule）。
+         *
+         * 此前这里另写了一份：只对 SUBSET 那几路判、且小区不含楼栋、不减 EXCLUDE；
+         * 「全部」那几路一律放行、不看主体框选 —— 于是「看得见、结算说不送」或者反过来。
+         * 主体状态不在这里判：那是另一道闸，这里只回答「送不送得到」。
+         */
+        var reach = reachLoader.load(m, storeNo);
+        var ref = communityRef(communityNo);
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        for (var route : reach.routes()) {
+            if (enabled.contains(route.channel())
+                    && ai.neargo.shop.merchant.reach.ReachRule.selectable(reach, route, ref)) {
+                out.add(route.channel());
             }
         }
         return out;
@@ -776,31 +596,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return new SaleScope(false, java.util.List.of(), 0);
         }
         /*
-         * ★ **快递压过框过的范围** —— 与 {@link #reachableCommunities} 的 `expressOn`
-         * 分支同一条判据：那边开了快递就 `return minusExcluded(openCommunityNos(), …)`，
-         * **根本不看 `areas`**。所以这里也必须先判它，再去看 INCLUDE。
+         * 判据与可见性同一个（ReachRule）：**框了 INCLUDE 就按框选列地名，快递也一样**（#4②）。
          *
-         * <p>2026-09-29 之前这一段是反的：有 INCLUDE 就直接列地名、不看履约路。
-         * 于是「框了深圳市 + 盐湖区、又开了快递」的商家，实际可达是**全部开放社区**，
-         * 买家详情页却写着「销售区域：深圳市、盐湖区」—— <b>显示比实际小</b>。
-         * 买家在第三个区明明搜得到、买得到，点进去却看见一句「这儿不在范围内」。
-         *
-         * <p>本方法下面那段注释一直写着「判据与 reachableCommunities 同一段，不另写一遍：
-         * 另写的那份迟早与可见性分叉」—— 它只在**空 INCLUDE** 那个分支兑现了，
-         * 有 INCLUDE 时走不到，恰恰就是它警告的那种分叉。
-         *
-         * <p>暂时不显形只是因为开放社区恰好都落在框过的两个区里（2026-09-29 线上：
-         * 4403 深圳 2784 + 1408 运城 75 = 2859，与池里的数对得上）；开放第三个区就显形。
+         * 2026-09-29 那一版写的是「开了快递就不限、根本不看框选」—— 当时可见性确实如此；
+         * 后来可见性改成「快递也尊重框选」，这里没跟上：框了「深圳市 + 盐湖区」又开快递的商家，
+         * 买家详情页写着「不限地区」，而他在第三个区根本搜不到这件货。
+         * 现在两处调同一个判定，不会再一处改了另一处没改。
          */
-        java.util.Set<String> expressChannels = enabledFulfillments(merchantNo, null);
-        boolean expressOn = expressChannels.isEmpty()
-                ? SHIPPING.equals(m.getFulfillmentReach())
-                : expressChannels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS);
-        if (expressOn) {
-            // 与空 INCLUDE 分支同样的处理：EXCLUDE 在这个三字段的 VO 里表达不了，
-            // 那一段本来就不精确，这里不新增一种不精确的说法。
-            return new SaleScope(true, java.util.List.of(), 0);
-        }
         List<MchServiceArea> includes = DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)
@@ -823,16 +625,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 不另写一遍：另写的那份迟早与可见性分叉，届时页面上写着「不限地区」
          * 而这件商品在买家那儿根本搜不到。
          */
-        java.util.Set<String> channels = enabledFulfillments(merchantNo, null);
-        boolean unlimited;
-        if (channels.isEmpty()) {
-            String reach = m.getFulfillmentReach() == null ? PICKUP : m.getFulfillmentReach();
-            unlimited = !PICKUP.equals(reach);
-        } else {
-            unlimited = channels.contains(ai.neargo.shop.common.Fulfillments.EXPRESS)
-                    || channels.contains(ai.neargo.shop.common.Fulfillments.MERCHANT_DELIVERY);
-        }
-        return new SaleScope(unlimited, java.util.List.of(), 0);
+        return new SaleScope(ai.neargo.shop.merchant.reach.ReachRule.unlimited(reachLoader.load(m, null)),
+                java.util.List.of(), 0);
     }
 
     /**
@@ -1225,20 +1019,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
             /*
-             * ★ **补证照通过这一支尤其要重建社区池。**
-             *
-             * 无证照开店的商家在 PENDING_LICENSE 期间就把商品录好、上架了 ——
-             * 而那时 reachableCommunities 返回空（可见性闸门），所以池里一行都没有。
-             * 现在主体转 ACTIVE、可达社区有了，但**池不会自己变**：
-             * 它只在商品上下架时重建。
-             *
-             * 少了这一句，他补齐证照、审核通过之后那批货**仍然对买家不可见**，
-             * 而商家侧显示「在售」—— 要他把每件商品重新上下架一遍才好，
-             * 却没有任何地方告诉他要这么做。
-             * （门店与证照-产品方案里写着「补证照审核通过后，同一批商品立刻对买家可见」，
-             *   这一句就是那句话的实现。）
+             * 补证照通过 = 主体转 ACTIVE。无证照期间录好、上架的货，买家侧在查询时按主体状态现算，
+             * 通过之后紧接着的那一次请求就看得到（门店与证照-产品方案「补证照审核通过后，同一批商品立刻对买家可见」）。
              */
-            storeShelfPort.getObject().resyncPools(existing.getEntityNo());
             return existing.getEntityNo();
         }
 

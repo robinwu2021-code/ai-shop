@@ -112,6 +112,45 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     }
 
     @Override
+    public java.util.List<CommunityRef> openCommunityRefs() {
+        return refs(Wrappers.<CmtCommunity>lambdaQuery().eq(CmtCommunity::getStatus, OPEN));
+    }
+
+    @Override
+    public java.util.Map<String, CommunityRef> communityRefs(java.util.Collection<String> communityNos) {
+        if (communityNos == null || communityNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, CommunityRef> out = new java.util.HashMap<>();
+        for (CommunityRef r : refs(Wrappers.<CmtCommunity>lambdaQuery()
+                .in(CmtCommunity::getCommunityNo, communityNos))) {
+            out.put(r.communityNo(), r);
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.List<CommunityRef> openCommunityRefsUnderRegion(String regionPrefix) {
+        if (regionPrefix == null || regionPrefix.isBlank()) {
+            return java.util.List.of();
+        }
+        return refs(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, OPEN)
+                .likeRight(CmtCommunity::getRegionCode, regionPrefix));
+    }
+
+    /** 只取判定要用的四列 —— 全量开放小区两万多行，整行读进来是白搬坐标和围栏 */
+    private java.util.List<CommunityRef> refs(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CmtCommunity> w) {
+        w.select(CmtCommunity::getCommunityNo, CmtCommunity::getRegionCode,
+                CmtCommunity::getParentNo, CmtCommunity::getStatus);
+        return DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(w)).stream()
+                .map(c -> new CommunityRef(c.getCommunityNo(), c.getRegionCode(), c.getParentNo(),
+                        OPEN.equals(c.getStatus())))
+                .toList();
+    }
+
+    @Override
     public java.util.Map<String, int[]> coordsOfCommunities(
             java.util.Collection<String> communityNos) {
         if (communityNos == null || communityNos.isEmpty()) {

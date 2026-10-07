@@ -4,7 +4,7 @@ package ai.neargo.shop.spi.user;
  * 聚落被合并时，**把还会再用的引用改写到目标聚落**。
  *
  * <p>为什么需要这个口子：合并这件事发生在 community 域，而「谁引用了这个聚落」
- * 散在 merchant 与 product 两个域里（经营范围、商家社区池、商品社区池、渠道覆盖）。
+ * 散在 merchant 等几个域里（经营范围、商家社区表、渠道覆盖）。
  * community 域不能直接读写别人的表（域边界，ArchUnit 守着），所以反过来 ——
  * 由各域自己实现这个口子，community 只说「这两个号并了」。
  *

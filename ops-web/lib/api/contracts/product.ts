@@ -22,17 +22,6 @@ export interface ProductApi {
    * 无草稿（新建提审等老链路）返回 `null`，那是常态：审的是内容本身。
    */
   goodsDraftPreview(goodsNo: string): Promise<GoodsDraftPreview | null>;
-  /**
-   * 重建社区池（「这件商品出现在哪些社区」的派生索引）。
-   *
-   * <p>不传 `entityNo` = 全量。**返回重建了几件商品** —— 那个数是这个动作
-   * 唯一能证明自己干了活的东西，界面必须显示它：否则点完一片安静，
-   * 分不出「跑了但没有需要改的」和「压根没跑」。
-   *
-   * <p>什么时候用（后端注释里写的两种）：改了可见性口径之后；
-   * 商家报「我明明上架了，买家搜不到」而经营范围看着没问题时。
-   */
-  resyncCommunityPool(entityNo?: string): Promise<number>;
 
   // ── 标准品库（TDD-标准品库）—— **已接真后端** `/ops/spu-std`
 

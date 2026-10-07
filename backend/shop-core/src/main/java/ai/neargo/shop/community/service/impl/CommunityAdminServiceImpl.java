@@ -66,8 +66,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
     /** 围栏影响预览要数收货地址。跨域，走 port */
     private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
-    /** 分布表的供给侧 = 社区池（买家真搜得到的），不是「谁框了这儿」 */
-    private final ai.neargo.shop.spi.product.CommunityPoolStatsPort poolStatsPort;
+    /** 分布表的供给侧 = 买家真搜得到的（与买家列表同一个判定），不是「谁框了这儿」 */
+    private final ai.neargo.shop.spi.product.SupplyStatsPort supplyStatsPort;
     /**
      * 归属判定复用它（围栏 + 层级优先于距离）。
      * <b>延迟取</b>：同域的两个服务互相引用，直接注入会绕成环。
@@ -86,7 +86,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                                              .CommunityApplyMapper applyMapper,
                                      ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                                      ai.neargo.shop.spi.user.UserQueryPort userQueryPort,
-                                     ai.neargo.shop.spi.product.CommunityPoolStatsPort poolStatsPort,
+                                     ai.neargo.shop.spi.product.SupplyStatsPort supplyStatsPort,
                                      org.springframework.beans.factory.ObjectProvider<
                                              ai.neargo.shop.community.service.CommunityService> communityService,
                                      ai.neargo.shop.spi.platform.GeoPort geoPort,
@@ -106,7 +106,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         this.applyMapper = applyMapper;
         this.merchantQueryPort = merchantQueryPort;
         this.userQueryPort = userQueryPort;
-        this.poolStatsPort = poolStatsPort;
+        this.supplyStatsPort = supplyStatsPort;
         this.communityService = communityService;
         this.placeMapper = placeMapper;
         this.mapBreaker = mapBreaker;
@@ -732,7 +732,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         var communities = DataScopeContext.executeWithoutScope(() ->
                 communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()));
         var open = communities.stream().filter(c -> OPEN.equals(c.getStatus())).toList();
-        var pool = poolStatsPort.byCommunity();
+        var pool = supplyStatsPort.byCommunity();
         var points = userQueryPort.addressPoints();
         var health = userQueryPort.addressCoordHealth();
         var storeHealth = merchantQueryPort.storeCoordHealth();
@@ -762,7 +762,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                     // 池里没有这个聚落 = 那儿一件货都搜不到，补 0；
                     // 「没有这一行」与「这一行是 0」在数据层分开，在这儿才合并
                     var st = pool.getOrDefault(c.getCommunityNo(),
-                            new ai.neargo.shop.spi.product.CommunityPoolStatsPort.PoolStat(0, 0));
+                            new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0));
                     return new DistributionVO.DistributionRow(
                             c.getCommunityNo(), c.getName(),
                             c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),

@@ -154,6 +154,17 @@ public final class MerchantMappers {
         @org.apache.ibatis.annotations.Delete(
                 "DELETE FROM mch_channel_area WHERE store_no = #{storeNo} AND channel = #{channel}")
         int purge(@Param("storeNo") String storeNo, @Param("channel") String channel);
+
+        /**
+         * **物理删**引用了这些范围项的全部子集行（任何门店、任何一路）。
+         * 主体删掉一条范围时同事务调用 —— 不删的话子集指向一个不存在的 area_no，
+         * 商家界面上还显示「仅 1 项」，而那一项早就不在了。
+         */
+        @org.apache.ibatis.annotations.Delete({"<script>",
+                "DELETE FROM mch_channel_area WHERE area_no IN",
+                "<foreach collection='areaNos' item='a' open='(' separator=',' close=')'>#{a}</foreach>",
+                "</script>"})
+        int purgeAreas(@Param("areaNos") java.util.Collection<String> areaNos);
     }
 
     /** 商家资质。按 expire_at 扫到期，所以那一列有索引。 */

@@ -13,13 +13,11 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.GoodsDiffs;
 import ai.neargo.shop.product.dto.GoodsVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
-import ai.neargo.shop.product.entity.PrdCommunityPool;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdGoodsDraft;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStoreStock;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
-import ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SpecTemplateMapper;
@@ -82,10 +80,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     private final SkuMapper skuMapper;
     private final SpecTemplateMapper templateMapper;
     private final GoodsService goodsService;
-    private final CommunityPoolMapper poolMapper;
     private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
-    /** 建池时算「哪家店离这个社区最近」要它给社区坐标 */
-    private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 平台开关（V209）—— 类目闸门开不开由运营在界面上定，不再是一条配置 */
     private final ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
     /** 禁售词。走 SPI 不直连 platform 的表 —— product 与 platform 是兄弟模块 */
@@ -138,9 +133,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     public MerchantGoodsServiceImpl(ai.neargo.shop.spi.product.StockPort stockPort,
                                     GoodsMapper goodsMapper, SkuMapper skuMapper,
                                     SpecTemplateMapper templateMapper,
-                                    GoodsService goodsService, CommunityPoolMapper poolMapper,
+                                    GoodsService goodsService,
                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
-                                    ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                                     ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort,
                                     ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
                                     ai.neargo.shop.spi.platform.ProductPolicyPort productPolicy,
@@ -171,9 +165,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.storeGoodsMapper = storeGoodsMapper;
         this.categoryService = categoryService;
         this.spuStdService = spuStdService;
-        this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
-        this.communityQueryPort = communityQueryPort;
         this.switchPort = switchPort;
         this.bannedWords = bannedWords;
         this.productPolicy = productPolicy;
@@ -993,7 +985,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             g.setAuditStatus(APPROVED);
             g.setPendingOnSale(false);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+            onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
         if (!stayDraft && !auditRequired()) {
@@ -1005,11 +997,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             g.setPendingOnSale(false);
             log.info("[免审] goods.audit=off，保存即过审：goods={} merchant={}", g.getGoodsNo(), merchantNo);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+            onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
         // 改动后强制下架，池要跟着撤 —— 否则改成别的东西之后，旧条目还挂在买家的社区列表里
-        syncPool(g, false);
+        onSaleSideEffects(g, false);
         return toVO(g);
     }
 
@@ -2067,8 +2059,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 原来数的是全部门店行，于是把所有营业中的店都下架之后，
              * 一家**已停业**门店的行仍把总闸顶着 1 —— 商家侧显示全部下架，
              * 而不带 communityNo 的 C 端列表按主体级 on_sale 出数，商品还在里面列着。
-             * 社区池那条链不受影响（storesSelling 早就只算 ACTIVE），
-             * 所以带社区的真实买家路径本来就看不到；漏的只有这一条。
+             * 带社区的买家查询在查询时只认 ACTIVE 门店（GoodsVisibility），本来就看不到；
+             * 漏的只有这一条。
              */
             java.util.Set<String> activeStores =
                     new java.util.HashSet<>(merchantPort.activeStoreNos(g.getEntityNo()));
@@ -2078,13 +2070,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-            syncPool(g, anyOn);
+            onSaleSideEffects(g, anyOn);
             return toVO(g);
         }
 
         g.setOnSale(onSale);
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-        syncPool(g, onSale);
+        onSaleSideEffects(g, onSale);
         return toVO(g);
     }
 
@@ -2123,7 +2115,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.updateById(row));
             }
         }
-        syncPool(g, false);
+        onSaleSideEffects(g, false);
         return toVOWithoutStoreContext(g);
     }
 
@@ -2155,7 +2147,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         // 撤池：只改 on_sale 不撤池的话，被压下的商品在 C 端还搜得到 ——
         // 处置没有落到买家看得见的地方，就等于没处置
-        syncPool(g, false);
+        onSaleSideEffects(g, false);
         return toVOWithoutStoreContext(g);
     }
 
@@ -2187,7 +2179,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-            syncPool(g, anyOn);
+            onSaleSideEffects(g, anyOn);
         }
     }
 
@@ -2220,7 +2212,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.setOnSale(true);
                 DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
             }
-            syncPool(g, true);
+            onSaleSideEffects(g, true);
         }
     }
 
@@ -2415,6 +2407,56 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         writeStoreOnSale(g, storeNo, onSale);
     }
 
+    /**
+     * 多门店主体的货，第一次上架时把<b>店级行播齐</b>。
+     *
+     * <p><b>零行只应属于「主体级时代」的存量商家。</b>而店级行此前只有一个写入点
+     * （{@link #setStoreOnSale}），它只被 {@code toggle} 调用 —— 让一件货变成在架的
+     * 另外三条路（免审直通、换版收尾、过审兑现）一条都不播行。于是**多门店改造之后
+     * 新建的每一件货都是零行**，直到有人手动点一次上下架。
+     *
+     * <p>零行被三个读者当成「未按店管理，跟随主体」：{@code excludeOffSaleHere}
+     * 与 {@code applyStoreScopedSale}（B 端两类页签）、以及买家侧的 {@code GoodsVisibility}。
+     * 前两个是「每家店的列表里都列着它」，第三个是**买家真能买到**。
+     *
+     * <p>线上实测（2026-10-07，虹选科技 4 店 16 件货）：10-05 建的那件柿子是唯一的零行货，
+     * 于是它出现在只卖粮油（CAT710）的那家店的商品列表里，当时的社区池也在三家店各 23656 行
+     * —— 粮油店的服务范围里，买家真的买得到柿子。
+     *
+     * <p><b>判据用门店经营类目，与上架那道闸（{@link #requireInStore}）同一条</b>，
+     * 也与 {@link #setStoreOnSale} 的播种逐字相同：两处口径不一致的话，
+     * 播种就等于绕过了那道闸。建品时 {@code save()} 已经校验过「只能在卖这个类目的店里建」，
+     * 所以至少建品那家店必为 true。
+     *
+     * <p><b>单店主体一行都不播</b>：那时零行就是「跟随主体」，三个读者的行为逐字不变。
+     *
+     * <p>挂在上下架的唯一汇聚点上，而不是三个入口上：
+     * 逐个入口去加必漏一个，而漏掉的那个会静默地产生一件串店的货。
+     */
+    private void seedStoreRowsIfMissing(PrdGoods g) {
+        List<String> stores = merchantPort.storeNos(g.getEntityNo());
+        if (stores.size() <= 1) {
+            return;
+        }
+        if (!storeGoodsRows(g.getGoodsNo()).isEmpty()) {
+            return;
+        }
+        for (String storeNo : stores) {
+            ai.neargo.shop.product.entity.PrdStoreGoods seed =
+                    new ai.neargo.shop.product.entity.PrdStoreGoods();
+            seed.setStoreNo(storeNo);
+            seed.setGoodsNo(g.getGoodsNo());
+            seed.setEntityNo(g.getEntityNo());
+            seed.setOnSale(sellsHere(storeNo, g.getCategoryNo()));
+            try {
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.insert(seed));
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 与 setStoreOnSale 的播种同一条：并发下别人刚播过，值一样，不是错误
+                log.debug("[goods] 门店行已被并发播种，跳过：store={} goods={}", storeNo, g.getGoodsNo());
+            }
+        }
+    }
+
     private void writeStoreOnSale(PrdGoods g, String storeNo, boolean onSale) {
         ai.neargo.shop.product.entity.PrdStoreGoods row =
                 DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectOne(
@@ -2532,114 +2574,28 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     /**
-     * 同步社区池。<b>上架的真正含义是「进哪些社区的池」</b> ——
-     * C 端按社区查商品读的就是 {@code prd_community_pool}，不是 {@code on_sale}。
+     * 上下架（含审核结果、平台压下、店级开关、保存商品）之后要做的两件事：
+     * 告诉进销存这件货还卖不卖、首次开售通知收藏者。
      *
-     * <p>不做这一步的后果与入驻那个缺口一模一样：商家点了上架、列表里显示"在售"、
-     * 而买家<b>在任何地方都搜不到这件货</b>，且没有任何报错。
-     * 上一次是商家没进社区，这一次是商品没进池 —— 同一个形状的故障。
+     * <p><b>不再写任何派生数据。</b>此前这里叫 syncPool，还要按「门店 × 可达小区」重写社区池（线上 53 万行），
+     * 一次上架要插两万多行、一次保存设置要重算整个主体；漏了重算的地方就静默错着。
+     * 现在买家能不能看到这件货，在查询时按商品、店级货架与门店范围现算（方案-商品可见性改查询时关联）。
      *
-     * <p>范围来自 {@link MerchantQueryPort#reachableCommunities}（ADR-009 三档已展开），
-     * 不是 product 域自己去读商家的社区表：那样两处口径迟早分岔。
+     * <p>十几个上下架入口都汇到这里 —— 逐个入口去发事件必漏一个。
      */
-    @Override
-    @Transactional
-    public int resyncCommunityPools(String entityNo) {
-        if (entityNo == null || entityNo.isBlank()) {
-            return 0;
+    private void onSaleSideEffects(PrdGoods g, boolean onSale) {
+        if (onSale) {
+            // 多门店主体的货第一次上架时把店级行播齐（见 seedStoreRowsIfMissing）—— 店级行是真源，不是派生
+            seedStoreRowsIfMissing(g);
         }
-        List<PrdGoods> all = DataScopeContext.executeWithoutScope(() ->
-                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
-                        .eq(PrdGoods::getEntityNo, entityNo)));
-        // 与 toggle 同一个口径：主体总闸只由 ACTIVE 门店的行决定（§9.2）。
-        // 查一次放在循环外 —— 主体的门店列表在这个事务里不会变。
-        java.util.Set<String> activeStores =
-                new java.util.HashSet<>(merchantPort.activeStoreNos(entityNo));
-        /*
-         * **「这家店能送到哪些小区」整趟只算一次**（2026-10-07）。
-         *
-         * 它只取决于 (主体, 门店)，与是哪件货无关，而此前每件货每家店各算一次 ——
-         * 生产上 16 件货 × 23656 个开放小区，一次「开/关自送」要把这张表重读十几遍：
-         * 保存送货方式实测 24~27 秒，而读只要 0.3 秒。
-         */
-        Map<String, List<String>> reachCache = new java.util.HashMap<>();
-        /*
-         * **池行一次读完**（2026-10-07）：逐件去查是 16 次往返、每次把这件货的两万多行
-         * 读进对象。整趟按主体一次取回来，在内存里按商品号分组。
-         */
-        List<String> goodsNos = all.stream().map(PrdGoods::getGoodsNo).filter(java.util.Objects::nonNull).toList();
-        Map<String, List<PrdCommunityPool>> poolOfGoods = goodsNos.isEmpty()
-                ? new java.util.HashMap<>()
-                : DataScopeContext.executeWithoutScope(() ->
-                        poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                                .in(PrdCommunityPool::getGoodsNo, goodsNos)))
-                        .stream().collect(java.util.stream.Collectors.groupingBy(PrdCommunityPool::getGoodsNo));
-        for (PrdGoods g : all) {
-            // 用主体级总闸，与上下架那条链路同一个判据。下架的走 syncPool(false) —— 
-            // 它会把残留的池行撤掉，这正是「范围改小了」要的效果
-            syncPool(g, Boolean.TRUE.equals(g.getOnSale()), reachCache, poolOfGoods);
-        }
-        return all.size();
+        publishOnSaleChanged(g, onSale);
+        publishNewGoodsOnce(g, onSale);
     }
 
-    @Override
-    public int resyncAllCommunityPools() {
-        List<String> entityNos = DataScopeContext.executeWithoutScope(() ->
-                        goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
-                                .select(PrdGoods::getEntityNo)))
-                .stream().map(PrdGoods::getEntityNo)
-                .filter(no -> no != null && !no.isBlank())
-                .distinct().toList();
-        int n = 0;
-        for (String entityNo : entityNos) {
-            n += resyncCommunityPools(entityNo);
-        }
-        log.info("[pool] 全量重建社区池：{} 个主体 / {} 件商品", entityNos.size(), n);
-        return n;
-    }
-
-    /**
-     * 算不出距离时写进 {@code sort_weight} 的数。
-     *
-     * <p><b>不能写 0</b>：0 会让缺坐标的门店排到最前面，恰好与「就近展示」相反。
-     * 取一个比地球上任何两点距离都大的数，缺坐标的店自然排到最后。
-     */
-    private static final int UNKNOWN_DISTANCE_M = 99_999_999;
-
-    /**
-     * 重建这件货的社区池。<b>按门店算</b>（可见性按门店算 · 第 3 步）。
-     *
-     * <p>口径：
-     * <pre>
-     * 货 G 在社区 C 可见  ⟺  ∃ 门店 S：S 在架卖 G  ∧  S 可达 C
-     * </pre>
-     *
-     * <p>改造之前这里算的是「主体可达 × 商品在架」，两个问题：
-     * <ul>
-     *   <li>A 店的货会出现在只有 B 店服务的社区里（可达取的是主体并集）</li>
-     *   <li>{@code prd_store_goods}（门店选品）在整条可见性链路上一个读者都没有</li>
-     * </ul>
-     *
-     * <p><b>「这家店卖不卖」沿用三态语义</b>（与 {@code prd_store_stock} 逐字一致）：
-     * 一条店级行都没有 → 主体下所有 ACTIVE 门店都算在架；有了任意一条 → 转店级管理，
-     * 没有行的店视为未上架。改成「没有行就不卖」的话，存量商家（全部没有店级行）
-     * 会在切口径当天从 C 端集体消失。
-     */
-    /**
-     * 把上架状态送给进销存 —— 那边靠它在挑货弹层里标出「已下架」。
-     *
-     * <p><b>挂在 syncPool 里而不是各个入口</b>：上下架有十个调用点
-     *（手动、平台强制下架、审核通过、店级开关、批量……），逐个发必漏一个，
-     * 而漏掉的那个会让物料上的标记停在上一个状态 —— <b>那比没有标记更坏</b>。
-     * syncPool 是十处的唯一汇聚点，语义也正好是「这件货整体还卖不卖变了」。
-     *
-     * <p>没有 SKU 就不发：进销存那边认的是 skuNo，一条都没有的话这个事件
-     * 没有任何落点，发出去只是让 outbox 多一行永远没人消费的记录。
-     */
     /**
      * 首次开售 → 通知该店收藏者（TDD-C 端裂变与商家招募 §10）。
      *
-     * <p><b>挂在 {@code syncPool} 上而不是挂在五处 {@code setOnSale(true)} 上</b>：
+     * <p><b>挂在 {@link #onSaleSideEffects} 上而不是挂在五处 {@code setOnSale(true)} 上</b>：
      * 那五处（以及以后的第六处）最终都会走到这里，而它们里面多数是「下架后重新上架」。
      * 逐处去加的话，新加调用点的人不会知道还要带上这件事。
      *
@@ -2664,6 +2620,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.getGoodsNo(), g.getEntityNo(), g.getTitle(), g.getSubtitle(), now));
     }
 
+    /**
+     * 把上架状态送给进销存 —— 那边靠它在挑货弹层里标出「已下架」。
+     *
+     * <p>没有 SKU 就不发：进销存那边认的是 skuNo，一条都没有的话这个事件
+     * 没有任何落点，发出去只是让 outbox 多一行永远没人消费的记录。
+     */
     private void publishOnSaleChanged(PrdGoods g, boolean onSale) {
         List<String> skuNos = DataScopeContext.executeWithoutScope(() ->
                         skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
@@ -2679,280 +2641,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         events.publish(new ai.neargo.shop.spi.product.ProductEvents.GoodsOnSaleChanged(
                 g.getGoodsNo(), g.getEntityNo(), onSale, skuNos));
-    }
-
-    private void syncPool(PrdGoods g, boolean onSale) {
-        syncPool(g, onSale, null, null);
-    }
-
-    /**
-     * @param reachCache 整趟共用的「门店 → 可达社区」。单件上下架传 null（只算一次，缓存没意义）；
-     *                   全量重建传一个 map —— 每件货都重算一遍是这条链路最大的那块开销
-     * @param poolOfGoods 整趟一次读完的池行（商品号 → 它的池行）。同样只给全量重建用：
-     *                   逐件去查是 16 次往返、每次两万多行
-     */
-    private void syncPool(PrdGoods g, boolean onSale, Map<String, List<String>> reachCache,
-                          Map<String, List<PrdCommunityPool>> poolOfGoods) {
-        publishOnSaleChanged(g, onSale);
-        publishNewGoodsOnce(g, onSale);
-        if (!onSale) {
-            /*
-             * 下架 = 从所有池里撤出。
-             *
-             * ⚠️ **这里原来写着「留在池里的话 C 端还能搜到，点进去才发现买不了」——
-             * 那句话是错的**（2026-10-07 消融证伪）：把这一整段注掉，113 条池相关场景用例
-             * 一条都没红。C 端每条读商品的查询都自带主体总闸（{@code GoodsServiceImpl} 里
-             * 六处 {@code on_sale=true AND audit_status=APPROVED}），池只是范围筛选视图，
-             * 主体一关，池里留不留行买家都看不见。
-             *
-             * 这一支现在的真实理由只有两条：① 池是派生索引，留着下架货的行会让运营端的
-             * 池统计虚高；② 逻辑删的行正是「下架再上架」靠 {@code revive} 复活的那些。
-             * 判据钉在 {@code StoreScopedVisibilityFlowTest
-             * .offSaleEmptiesThePoolAndOnSaleBringsItBack} —— 它直接断言池行，不走买家侧。
-             *
-             * **一条 UPDATE，不是逐行，也不先把行读出来。**原先是
-             * `selectList(goods_no=?)` 再 `for (row) deleteById(row.getId())` ——
-             * 一行一次往返，而这张表线上 52 万行、`goods_no` 上没有索引
-             * （`uk_community_goods_store` 以 `community_no` 开头，用不上），
-             * 那次 selectList 本身就是一次全表扫。
-             *
-             * 要删的集合恰好等于「这件货的全部池行」，而那正是一个 WHERE 子句 ——
-             * 读出来只是为了拿 id，再把 id 一个个发回去。
-             */
-            DataScopeContext.executeWithoutScope(() -> poolMapper.delete(
-                    Wrappers.<PrdCommunityPool>lambdaQuery()
-                            .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
-            return;
-        }
-        List<PrdCommunityPool> existing = poolOfGoods != null
-                ? poolOfGoods.getOrDefault(g.getGoodsNo(), List.of())
-                : DataScopeContext.executeWithoutScope(() ->
-                        poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                                .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
-
-        // 想要的 (社区, 门店) 组合
-        Map<String, String> want = new LinkedHashMap<>();   // key = 社区|门店
-        List<String> sellingStores = storesSelling(g);
-        for (String storeNo : sellingStores) {
-            List<String> reach = reachCache == null
-                    ? merchantPort.reachableCommunities(g.getEntityNo(), storeNo)
-                    : reachCache.computeIfAbsent(storeNo,
-                            x -> merchantPort.reachableCommunities(g.getEntityNo(), x));
-            for (String communityNo : reach) {
-                want.put(communityNo + "|" + storeNo, communityNo);
-            }
-        }
-
-        /*
-         * **空集要喊出来。**上架 + 一个 (社区,门店) 都没有 = 商品从所有池里撤出，
-         * 而商家侧仍显示「在售」—— 买家在任何地方都搜不到，且不报任何错。
-         *
-         * 空集本身是合法语义（PICKUP 没框范围 = 没有落点），所以不在这里拦，
-         * 但它 99% 是配置缺失而不是本意。日志是运营能看见这件事的唯一通道。
-         */
-        if (want.isEmpty()) {
-            log.warn("[pool] 商家 {} 上架 {} 但没有任何「门店 × 可达社区」组合 —— "
-                            + "商品对所有买家不可见。多半是没配经营范围（PICKUP 必须框范围），"
-                            + "也可能是所有门店都没把它摆上货架（在架门店 {} 家）",
-                    g.getEntityNo(), g.getGoodsNo(), sellingStores.size());
-        }
-
-        // 差集增删，不是「先全删再全插」：唯一键含 (community_no, goods_no, store_no)
-        // 而删除是逻辑删 —— 删完再插同一组会撞键
-        Set<String> have = new java.util.HashSet<>();
-        List<Long> stale = new java.util.ArrayList<>();
-        for (PrdCommunityPool row : existing) {
-            String key = row.getCommunityNo() + "|" + nz(row.getStoreNo());
-            have.add(key);
-            if (!want.containsKey(key)) {
-                stale.add(row.getId());
-            }
-        }
-        /*
-         * **先攒齐再分批删，不在循环里逐行发。**
-         *
-         * 差集的大小不是「改了几件货」，是「撤掉多少个 (社区,门店) 组合」——
-         * 线上一个社区两万三，所以一次门店级下架的差集是**万级**。
-         * 2026-10-07 实测：多门店主体在一家店下架一件货，差集 47312 行，
-         * 逐行 deleteById 用时 **47.5 秒**，端上（uni 默认 60 秒超时）等于点了没反应，
-         * 而连接池只有 10 条、长事务一直占着 —— 当天 17:37 的
-         * `HikariPool-1 ... total=10, active=10, waiting=5` 就是这么来的。
-         */
-        withdrawRows(stale);
-
-        /*
-         * **没有要新插的行就别算距离**（2026-10-07）。
-         *
-         * `distancesFor` 要把这些社区的坐标全查出来 —— 线上是 23656 个，而它每件货算一次。
-         * 「改了设置但这件货的池没变」是最常见的那种：16 件货全走到这里，各查一遍两万多行坐标，
-         * 算完一个都用不上。保存送货方式那 20 秒的大头就在这儿。
-         *
-         * 真要插行时照旧算（那是新工作，省不掉），并且**按需算一次**：
-         * 同一趟里多件货要插时，坐标走 `coordsCache` 不重复查。
-         */
-        List<Map.Entry<String, String>> toAdd = want.entrySet().stream()
-                .filter(e -> !have.contains(e.getKey()))
-                .toList();
-        if (toAdd.isEmpty()) {
-            return;
-        }
-        Map<String, Integer> distances = distancesFor(want.values(), sellingStores);
-        /*
-         * **「先试复活一下」改成「先问清楚哪些是删过的」。**
-         *
-         * 复活是必须的：下架是逻辑删，而 `uk_community_goods_store` 不含 deleted 列 ——
-         * 直接 insert 必然撞唯一键，表现为上架接口 500，商家看到的是「系统开小差」。
-         *
-         * 但原先的做法是**逐行去试**：每一行先发一条 UPDATE，没中再发一条 INSERT。
-         * 线上一个社区两万三，于是「下架再上架」= 23656 次往返。
-         * 2026-10-07 实测 **29.1 秒**（那一次全是复活、零新建，所以基本都花在这儿）。
-         *
-         * 现在一次把「被删掉的 (社区,门店)」全读出来，按门店分组整批复活，
-         * 剩下的才是真·新建。读一次 + 每店几条 UPDATE，代替两万多次往返。
-         */
-        Set<String> deletedKeys = DataScopeContext.executeWithoutScope(() ->
-                        poolMapper.deletedPairs(g.getGoodsNo())).stream()
-                .map(r -> r.communityNo() + "|" + nz(r.storeNo()))
-                .collect(java.util.stream.Collectors.toSet());
-        Map<String, List<String>> reviveByStore = new LinkedHashMap<>();
-        List<Map.Entry<String, String>> toInsert = new java.util.ArrayList<>();
-        for (Map.Entry<String, String> e : toAdd) {
-            if (deletedKeys.contains(e.getKey())) {
-                String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
-                reviveByStore.computeIfAbsent(storeNo, k -> new java.util.ArrayList<>()).add(e.getValue());
-            } else {
-                toInsert.add(e);
-            }
-        }
-        for (Map.Entry<String, List<String>> en : reviveByStore.entrySet()) {
-            for (List<String> batch : batches(en.getValue(), POOL_BATCH_CHUNK)) {
-                DataScopeContext.executeWithoutScope(() ->
-                        poolMapper.reviveMany(g.getGoodsNo(), en.getKey(), batch));
-            }
-        }
-        for (Map.Entry<String, String> e : toInsert) {
-            String communityNo = e.getValue();
-            String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
-            PrdCommunityPool row = new PrdCommunityPool();
-            row.setCommunityNo(communityNo);
-            row.setGoodsNo(g.getGoodsNo());
-            row.setEntityNo(g.getEntityNo());
-            row.setStoreNo(storeNo);
-            // 就近展示：一件货被两家店摆着、都服务这个社区时，C 端按这个数升序取第一条
-            row.setSortWeight(distances.getOrDefault(communityNo + "|" + storeNo, UNKNOWN_DISTANCE_M));
-            DataScopeContext.executeWithoutScope(() -> poolMapper.insert(row));
-        }
-    }
-
-    /**
-     * 一条 IN 里塞多少个值（撤行按 id，复活按社区号）。
-     *
-     * <p>不是「越大越好」：整条 UPDATE 的 SQL 文本要进 `max_allowed_packet`，
-     * 而 MyBatis 的参数映射也是按个数展开的。一千个 id 的语句约 20KB，
-     * 万级差集也就十几条语句 —— 再往上换不来可观的收益，只是把单条语句做大。
-     */
-    private static final int POOL_BATCH_CHUNK = 1000;
-
-    /**
-     * 逻辑删一批池行（按物理主键）。<b>分批 IN，不逐行</b>，理由见调用点。
-     *
-     * <p>语义与原先的 {@code deleteById(id)} 逐行调用逐字相同：
-     * {@code @TableLogic} 对 {@code deleteByIds} 同样生效，生成的是
-     * {@code UPDATE ... SET deleted=1 WHERE id IN (...) AND deleted=0}，
-     * 一条也不会误删别人的行（id 是这件货自己的池行读出来的）。
-     */
-    private void withdrawRows(List<Long> ids) {
-        for (List<Long> batch : batches(ids, POOL_BATCH_CHUNK)) {
-            DataScopeContext.executeWithoutScope(() -> poolMapper.deleteByIds(batch));
-        }
-    }
-
-    /**
-     * 切成每批至多 {@code size} 个。
-     *
-     * <p><b>单独拎成纯函数是为了能被单测照着边界打</b>（0 / 1 / size−1 / size / size+1）。
-     * 分批循环唯一会出错的地方就是那个边界，而错法是**静默少删几行** ——
-     * 落到业务上是「下架了但某些社区还看得见这件货」，没有任何报错，
-     * 而既有的场景用例撤的都是几十行，一条也跨不过这个边界，它们永远绿。
-     */
-    static <T> List<List<T>> batches(List<T> all, int size) {
-        List<List<T>> out = new java.util.ArrayList<>();
-        for (int i = 0; i < all.size(); i += size) {
-            out.add(List.copyOf(all.subList(i, Math.min(all.size(), i + size))));
-        }
-        return out;
-    }
-
-    /**
-     * 主体下**在架卖这件货**的门店。三态语义见 {@link #syncPool}。
-     *
-     * <p>只算 ACTIVE 门店：停用的店不该把货带进任何社区。
-     *
-     * <p><b>2026-09-29 之前这句注释是假的</b>：这里调的是 {@code storeNos}，
-     * 它返回主体下的**全部**门店（归属口径，含 READONLY）。于是商家在门店管理里
-     * 停用一家店，那家店的货一行都没从社区池里撤出去 —— 线上实测停用
-     * 「虹选鲜果·福田店」后重算，4 件货 × 2859 个社区一行未少。
-     * 门店状态在整条可见性链路上没有任何读者，这里是它该有的那一个。
-     */
-    private List<String> storesSelling(PrdGoods g) {
-        List<String> activeStores = merchantPort.activeStoreNos(g.getEntityNo());
-        if (activeStores.isEmpty()) {
-            return List.of();
-        }
-        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows = storeGoodsRows(g.getGoodsNo());
-        if (rows.isEmpty()) {
-            // 一条店级行都没有 → 走主体总闸，所有门店都算在架（存量商家全在这一支）
-            return activeStores;
-        }
-        Set<String> on = rows.stream()
-                .filter(r -> Boolean.TRUE.equals(r.getOnSale()))
-                .map(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo)
-                .collect(java.util.stream.Collectors.toSet());
-        return activeStores.stream().filter(on::contains).toList();
-    }
-
-    /**
-     * 每个 (社区, 门店) 的直线距离（米）。<b>批量取坐标</b> ——
-     * 一次上架要建几十行，逐个查就是几十次往返。
-     *
-     * <p>任一端没标过点就不进结果，调用方回落到 {@link #UNKNOWN_DISTANCE_M}。
-     */
-    private Map<String, Integer> distancesFor(java.util.Collection<String> communityNos,
-                                              List<String> storeNos) {
-        if (communityNos.isEmpty() || storeNos.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, int[]> cc = communityQueryPort.coordsOfCommunities(new java.util.HashSet<>(communityNos));
-        Map<String, int[]> sc = merchantPort.coordsOfStores(storeNos);
-        Map<String, Integer> out = new java.util.HashMap<>();
-        for (Map.Entry<String, int[]> c : cc.entrySet()) {
-            for (Map.Entry<String, int[]> st : sc.entrySet()) {
-                out.put(c.getKey() + "|" + st.getKey(),
-                        distanceMeters(c.getValue(), st.getValue()));
-            }
-        }
-        return out;
-    }
-
-    /**
-     * 两点直线距离（米），球面近似。
-     *
-     * <p>**只用来排序，不展示给人**，所以不必上 Haversine 的精度 ——
-     * 但也不能用平面欧氏：经度一度的实际长度随纬度收缩，
-     * 不乘 cos(lat) 的话南北向会被系统性地算短。
-     */
-    private static int distanceMeters(int[] a, int[] b) {
-        double latA = a[0] / 1e6;
-        double latB = b[0] / 1e6;
-        double dLat = (latA - latB) * 111_320.0;
-        double dLng = (a[1] - b[1]) / 1e6 * 111_320.0
-                * Math.cos(Math.toRadians((latA + latB) / 2));
-        double d = Math.sqrt(dLat * dLat + dLng * dLng);
-        return d >= UNKNOWN_DISTANCE_M ? UNKNOWN_DISTANCE_M - 1 : (int) Math.round(d);
-    }
-
-    private static String nz(String s) {
-        return s == null ? "" : s;
     }
 
     @Override
@@ -3111,7 +2799,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 log.info("[免审] goods.audit=off，提交即过审上架：goods={} merchant={}",
                         g.getGoodsNo(), merchantNo);
                 DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-                syncPool(g, true);
+                onSaleSideEffects(g, true);
                 return toVO(g);
             }
             g.setAuditStatus(AUDITING);
@@ -3302,7 +2990,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 旧原因留着会被当成「还有问题没改完」
         g.setAuditReason(approved ? null : reason.trim());
         if (!approved) {
-            // 驳回同时强制下架**并撤出社区池**：只改 on_sale 不撤池的话，
+            // 驳回同时强制下架：只改审核状态不下架的话，
             // 被驳回的商品在 C 端还搜得到 —— 审核结论没有落到买家看得见的地方
             g.setOnSale(false);
             // 历史里也记一笔:「为什么被驳回」是商家回头最想看的那一行,
@@ -3365,7 +3053,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 用完清零：留着的话下一次审核会把一个过期的意向再兑现一遍
         g.setPendingOnSale(false);
         DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
-        syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+        onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
         return toVO(g);
     }
 

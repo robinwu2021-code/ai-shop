@@ -40,7 +40,7 @@ public class MktContentSlot extends BaseEntity {
     /** 同 kind 内展示顺序，小的在前。列名避开 `sort`（MariaDB/H2 保留字判定不一致）。 */
     private Integer sortNo;
 
-    /** JSON 数组；**空 = 全部社区**。与商品社区池同一口径：池外的货用户看得到也买不到。 */
+    /** JSON 数组；**空 = 全部社区**。投不到的社区，用户看得到也点不进对应的货。 */
     private String communityNos;
 
     /** JSON 数组，<b>有序</b> —— 数组顺序就是楼层里的展示顺序。 */

@@ -684,25 +684,6 @@ CREATE TABLE IF NOT EXISTS prd_category
     CONSTRAINT uk_category_no UNIQUE (category_no)
 );
 
-CREATE TABLE IF NOT EXISTS prd_community_pool
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    community_no VARCHAR(64) NOT NULL,
-    goods_no VARCHAR(64) NOT NULL,
-    entity_no VARCHAR(64) NOT NULL,
-    sort_weight INT(11) NOT NULL DEFAULT 0,
-    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
-    created_at DATETIME NOT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME NOT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
-    store_no VARCHAR(64) DEFAULT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_community_goods_store UNIQUE (community_no, goods_no, store_no)
-);
-
 CREATE TABLE IF NOT EXISTS prd_goods
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

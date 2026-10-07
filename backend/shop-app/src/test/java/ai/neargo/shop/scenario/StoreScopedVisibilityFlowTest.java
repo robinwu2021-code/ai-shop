@@ -30,11 +30,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>与 {@code StoreFulfillmentFlowTest} 里那几条的分工：那些断的是
  * {@code reachableCommunities} 这个**端口**给出什么，这里断的是
- * <b>买家在 C 端到底搜不搜得到</b> —— 中间还隔着社区池、上架总闸、审核状态。
+ * <b>买家在 C 端到底搜不搜得到</b> —— 中间还隔着店级货架、上架总闸、审核状态。
  *
- * <p>为什么必须分开验：端口对了而池没跟着重建，症状是「商家侧显示在售、
+ * <p>为什么必须分开验：端口对了而买家那一步没跟上，症状是「商家侧显示在售、
  * 买家哪儿都搜不到」，两边都不报错。这个仓库 2026-08-25 一天之内踩过两次
- * （补证照通过、改经营范围），两次都是端口对、池不对。
+ * （补证照通过、改经营范围）—— 当时买家读的是社区池，两次都是端口对、池不对。
+ * 现在买家侧查询时现算（方案-商品可见性改查询时关联），这里照样从买家那一侧验。
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -113,7 +114,7 @@ class StoreScopedVisibilityFlowTest {
         offShelfAt(biz, storeB, goodsNo);
 
         /*
-         * ★ 本类的核心断言。改造之前可见性取主体并集，这件货会同时进 CM001 与 CM002 的池 ——
+         * ★ 本类的核心断言。按主体并集算的话，这件货会同时出现在 CM001 与 CM002 ——
          * CM002 的买家搜到它、下了单，而 A 店根本不送 CM002、B 店也没有这件货。
          */
         assertThat(buyerSees("CM001", goodsNo)).as("A 店服务的社区里当然要看得到").isTrue();
@@ -200,45 +201,16 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 运营端一次性重建：把池删空之后，跑一次就该全回来")
-    void opsResyncRebuildsEverything() throws Exception {
-        String biz = merchant("12600180002", "要重建池的店");
-        String merchantNo = merchantNoOf(biz);
-        String goodsNo = onSaleGoods(biz, "重建前就在卖的抽纸");
-        assertThat(buyerSees("CM001", goodsNo)).isTrue();
-
-        /*
-         * 模拟「派生索引与事实脱节」：直接把池清掉。
-         * 这正是那两次回归的形状 —— 事实（商品在架、门店可达）没变，而索引没了。
-         */
-        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                poolMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getEntityNo, merchantNo)));
-        assertThat(buyerSees("CM001", goodsNo)).as("先确认真的搜不到了").isFalse();
-
-        mvc().perform(post("/ops/community-pool/resync")
-                        .header("Authorization", "Bearer " + opsLogin("goods", "goods123"))
-                        .param("entityNo", merchantNo))
-                .andExpect(jsonPath("$.code").value(0));
-
-        assertThat(buyerSees("CM001", goodsNo))
-                .as("跑完重建就该全回来 —— 这是运维手上唯一的兜底")
-                .isTrue();
-    }
-
-    @Test
-    @DisplayName("★★★ 池 = 可达集合，一个社区一行 —— 楼栋与排除落地之后仍然对得上")
-    void poolMatchesReachableExactly() throws Exception {
+    @DisplayName("★★★ 现算的可见集合 = 可达集合 —— 楼栋与排除落地之后仍然对得上")
+    void visibilityMatchesReachableExactly() throws Exception {
         /*
          * **B 端算出来的和 C 端看到的必须是同一件事。**
          *
-         * 池是派生索引，reachableCommunities 是事实。楼栋展开进来之后，
-         * 「框了小区，又单独框了里面那栋楼」会让同一个聚落从两条路各进来一次 ——
-         * 去重由展开那一步负责（判据在 ServiceAreaExcludeFlowTest —— 池写入
-         * 自己会吞掉重复，放在这儿断言是断不出来的，消融过）；
-         * 而 EXCLUDE 那一条如果只减了聚落没减它的楼，B 端显示「已排除」、
-         * C 端站在楼下照样看得到，说的和做的对不上，且不报任何错。
+         * 直接量「这件货在哪些小区送得到」（GoodsService.deliverableTo，与列表同一个判定），
+         * 不走 /mp/goods 列表 —— 列表还自带主体总闸（on_sale ∧ 过审），
+         * 从列表断言对「可见性这一步算没算对」天生不敏感（2026-10-07 消融过：113 条用例一条都没红）。
+         *
+         * EXCLUDE 那一条如果只减了小区没减它的楼，B 端显示「已排除」、C 端站在楼下照样看得到。
          */
         String estate = openCommunityWithCoords("SVC-EST", 30_010_000, 120_010_000);
         String keep = openBuildingUnder("SVC-BLD-KEEP", estate);
@@ -260,50 +232,16 @@ class StoreScopedVisibilityFlowTest {
         var reach = merchantQuery.reachableCommunities(merchantNo);
         assertThat(reach).contains(estate, keep).doesNotContain(drop);
 
-        var rows = poolRows(merchantNo, goodsNo);
-        assertThat(rows)
-                .as("池里的社区集合与可达集合对不上 = 两条路各算各的，而买家只看得见池")
+        var candidates = new java.util.LinkedHashSet<>(reach);
+        candidates.add(drop);
+        var deliverable = candidates.stream()
+                .filter(c -> Boolean.TRUE.equals(goodsService.deliverableTo(goodsNo, c)))
+                .toList();
+        assertThat(deliverable)
+                .as("现算的可见集合与可达集合对不上 = 两条路各算各的")
                 .containsExactlyInAnyOrderElementsOf(reach);
         assertThat(buyerSees(drop, goodsNo)).as("排除掉的楼里不该看得到").isFalse();
         assertThat(buyerSees(keep, goodsNo)).as("没排除的楼里要看得到").isTrue();
-    }
-
-    @Test
-    @DisplayName("★★★ 重建幂等：连跑两次，池不多不少")
-    void resyncIsIdempotent() throws Exception {
-        /*
-         * 重建是上线后要手工跑一遍的动作（V321 的说明），运维多点一次是常态。
-         * 不幂等的症状不是报错，是池行翻倍 —— 而翻倍之后首页重复、
-         * 「这个社区有几家在卖」那类计数也跟着错，没人会想到是点了两次重建。
-         */
-        String biz = merchant("12600180015", "要连跑两次重建的店");
-        String merchantNo = merchantNoOf(biz);
-        String goodsNo = onSaleGoods(biz, "重建两次的抽纸");
-        String ops = "Bearer " + opsLogin("goods", "goods123");
-
-        mvc().perform(post("/ops/community-pool/resync").header("Authorization", ops)
-                .param("entityNo", merchantNo)).andExpect(jsonPath("$.code").value(0));
-        var once = poolRows(merchantNo, goodsNo);
-
-        mvc().perform(post("/ops/community-pool/resync").header("Authorization", ops)
-                .param("entityNo", merchantNo)).andExpect(jsonPath("$.code").value(0));
-
-        assertThat(poolRows(merchantNo, goodsNo))
-                .as("第二次重建改变了池 = 不幂等，运维多点一次就把数据点坏了")
-                .containsExactlyInAnyOrderElementsOf(once);
-        assertThat(once).as("对照量本身要非零，否则这条用例在比两个空集").isNotEmpty();
-    }
-
-    /** 池里这件货落在哪些社区。**带出重复行** —— 去重与否正是被测的东西 */
-    private List<String> poolRows(String merchantNo, String goodsNo) {
-        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                poolMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                                .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
-                                .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getEntityNo, merchantNo)
-                                .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getGoodsNo, goodsNo))
-                        .stream()
-                        .map(ai.neargo.shop.product.entity.PrdCommunityPool::getCommunityNo)
-                        .toList());
     }
 
     /** 楼栋：与小区同点，只是多了一个 parentNo —— 归属是声明的，不靠围栏几何 */
@@ -322,7 +260,19 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
+    private ai.neargo.shop.product.service.GoodsService goodsService;
+
+    @Autowired
+    private ai.neargo.shop.product.service.impl.GoodsVisibility visibility;
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Autowired
+    private ai.neargo.shop.event.SysOutboxMapper outboxMapper;
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
 
     @Autowired
     private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
@@ -352,6 +302,21 @@ class StoreScopedVisibilityFlowTest {
      * 买家的社区必须先设：挑店那一步正是按它找「谁服务这儿」。
      */
     private String orderedStoreNo(String bizToken, String buyerPhone, String communityNo) throws Exception {
+        String body = placeDeliveryOrder(bizToken, buyerPhone, communityNo);
+        var data = json.readTree(body).get("data");
+        assertThat(data).as("下单没成功：%s", body).isNotNull();
+        assertThat(data.get("orderNo")).as("下单响应里没有 orderNo：%s", body).isNotNull();
+        String orderNo = data.get("orderNo").asString();
+        var subs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)));
+        assertThat(subs).as("下单了却没有子单？orderNo=%s", orderNo).isNotEmpty();
+        return subs.get(0).getStoreNo();
+    }
+
+    /** 这家商家上一件新货，买家（住在 communityNo）用商家自送下一单。返回响应原文，成败由调用方判 */
+    private String placeDeliveryOrder(String bizToken, String buyerPhone, String communityNo) throws Exception {
         String goodsNo = onSaleGoods(bizToken, "定门店用的抽纸 " + buyerPhone);
         String buyer = login(buyerPhone);
         /*
@@ -399,20 +364,7 @@ class StoreScopedVisibilityFlowTest {
                                 + "\"items\":[{\"goodsNo\":\""
                                 + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}]}"))
                 .andReturn().getResponse().getContentAsString();
-        var data = json.readTree(body).get("data");
-        assertThat(data).as("下单没成功：%s", body).isNotNull();
-        assertThat(data.get("orderNo")).as("下单响应里没有 orderNo：%s", body).isNotNull();
-        String orderNo = data.get("orderNo").asString();
-        /*
-         * **直接查子单表**：OrderVO 不含 storeNo（C 端本来就不该看到从哪家店发货），
-         * 而「单落在哪家店」正是这条用例要断的事实。
-         */
-        var subs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
-                        .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)));
-        assertThat(subs).as("下单了却没有子单？orderNo=%s", orderNo).isNotEmpty();
-        return subs.get(0).getStoreNo();
+        return body;
     }
 
     /** 建一个开放中的社区并给上坐标 —— 距离要算得出来，社区这一端也得有点 */
@@ -508,8 +460,8 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 停用门店，它的货要从社区池里撤出 —— 只改 mch_store.status 对买家完全无效")
-    void suspendingAStoreWithdrawsItsGoodsFromTheCommunityPool() throws Exception {
+    @DisplayName("★★★ 停用门店，它的货买家当场看不到 —— 再启用当场回来")
+    void suspendingAStoreHidesItsGoodsFromBuyers() throws Exception {
         String biz = merchant("12600180010", "会关掉一家店的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
@@ -521,7 +473,7 @@ class StoreScopedVisibilityFlowTest {
 
         /*
          * 这件货**只在 B 店卖**：A 店那行显式下架。
-         * 不这么做的话 A 店会一直把它带进池里，停用 B 店也看不出差别 ——
+         * 不这么做的话 A 店会一直让买家看得到它，停用 B 店也看不出差别 ——
          * 那就变成一条永远绿的用例。
          */
         String goodsNo = onSaleGoodsAt(biz, storeB, "只有第二家店卖的柠檬");
@@ -539,22 +491,17 @@ class StoreScopedVisibilityFlowTest {
                 .andExpect(jsonPath("$.data.status").value("READONLY"));
 
         /*
-         * ★ 修之前这一行是 false（= 买家还搜得到）。
+         * 停用只写 mch_store.status 一行；买家侧在查询时只认 ACTIVE 门店（StoreReachLoader.allServing）。
+         * 撤掉那一个过滤，这条用例就红（消融判据）。
          *
-         * 两处缺一不可，**撤掉任意一处这条用例都会红**（做过消融）：
-         *   ① {@code StoreAdminServiceImpl.setStatus} 改完状态要 resyncPools ——
-         *      不重建的话池行原封不动，停用对买家毫无影响；
-         *   ② {@code MerchantGoodsServiceImpl.storesSelling} 要用 activeStoreNos ——
-         *      仍用 storeNos 的话重建一遍会把同样的行再写回来，白重建。
-         *
-         * 线上实测（2026-09-29）：停用「虹选鲜果·福田店」后手工触发重算，
-         * 它的 4 件货 × 2859 个社区一行未少。
+         * 历史：2026-09-29 线上停用「虹选鲜果·福田店」后，它的 4 件货 × 2859 个社区一行未从社区池撤出 ——
+         * 那时门店状态在可见性链路上没有任何读者。
          */
         assertThat(buyerSees("CM001", goodsNo))
                 .as("B 店已停用，它是唯一在卖这件货的店 —— 买家不该再搜得到")
                 .isFalse();
 
-        // 再启用回来，货要回到池里：停用不是单向门
+        // 再启用回来，货要当场回来：停用不是单向门
         mvc().perform(post("/biz/store/" + storeB + "/status")
                         .header("Authorization", "Bearer " + biz)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"active\":true}"))
@@ -792,52 +739,205 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 整件下架要把池行清空，再上架要回来 —— 此前这一支一条用例都没看着")
-    void offSaleEmptiesThePoolAndOnSaleBringsItBack() throws Exception {
+    @DisplayName("★★ 配过送货方式、但没有一路送得到买家的小区 → 结算拒绝，不能当成「没配过」放行")
+    void orderRejectedWhenNoRouteReachesBuyer() throws Exception {
         /*
-         * **这条用例钉的是池本身，不是「买家搜不到」。**
-         *
-         * 2026-10-07 做过消融：把 {@code syncPool} 的「下架 = 从所有池里撤出」整段注掉，
-         * 113 条池相关场景用例**一条都没红**（StoreScopedVisibility / StoreGoods /
-         * OpsProductGovern / OpsStoreGovern / QuickStart / ServiceArea × 2 /
-         * CoarseLocationRegionPool / SuspendedStoreWindDown / GoodsSaleScope /
-         * ConsumerBrowse，M9b 的「下架后立刻消失」也是绿的）。
-         *
-         * 原因是 C 端每一条读商品的查询都自带主体总闸
-         * （{@code GoodsServiceImpl} 里六处 {@code on_sale=true AND audit_status=APPROVED}），
-         * 池只是个范围筛选视图 —— 主体一关，池里留不留行买家都看不见。
-         * 所以凡是从买家侧断言的用例，对「撤没撤池」这件事天生不敏感。
-         *
-         * 把撤池改成一条批量 UPDATE（原先是逐行 deleteById）之后，这一支必须有人看着：
-         * 写错 WHERE 子句的表现是池行一行不少，而买家侧照旧什么都看不到。
+         * 此前结算校验只问一个集合：「这家店在买家小区能选哪几路」。某一路选了子集、买家又不在子集里时，
+         * 它把那一路裁掉；全裁光就返回空集 —— 而空集在那里约定的是「没配过、兼容期放行」，
+         * 于是商家明明没框的地方照样下得了单。现在先问「配过没有」，再问「所选那一路送不送得到」。
          */
-        String biz = merchant("12600180030", "要把池清空再填回去的店");
+        String in = openCommunityWithCoords("SVC-SUB-IN", 30_020_000, 120_020_000);
+        String out = openCommunityWithCoords("SVC-SUB-OUT", 30_030_000, 120_030_000);
+        String biz = merchant("12600180033", "自送只送一个小区", in);
         String merchantNo = merchantNoOf(biz);
+        String store = defaultStoreNo(biz);
+        storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("COMMUNITY", in),
+                        new MerchantStoreService.AreaCommand("COMMUNITY", out)), null, null));
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaNoOf(merchantNo, in)))));
+
+        String body = placeDeliveryOrder(biz, "12600180034", out);
+        assertThat(json.readTree(body).get("code").asInt())
+                .as("自送只送 %s，住在 %s 的买家下自送单必须被拒：%s", in, out, body)
+                .isEqualTo(ai.neargo.shop.common.ErrorCode.FULFILLMENT_NOT_SUPPORTED.code());
+    }
+
+    @Test
+    @DisplayName("★★ 保存送货方式不再顺带给每件货发「上下架变化」—— 设置只改它自己那一行")
+    void savingFulfillmentEmitsNoOnSaleEvents() throws Exception {
+        /*
+         * 此前每保存一次设置都要重建整个主体的社区池，而重建走的是上下架那条链 ——
+         * 主体下每件货都多发一条 GOODS_ON_SALE_CHANGED（上下架状态其实没变），进销存白收一遍。
+         */
+        String biz = merchant("12600180042", "存送货方式的店");
+        String merchantNo = merchantNoOf(biz);
+        String store = defaultStoreNo(biz);
+        String goodsNo = onSaleGoods(biz, "存设置时不该被打扰的纸巾");
+        long before = onSaleEvents(goodsNo);
+        assertThat(before).as("对照量：上架那一下本来就该发一条").isPositive();
+
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+
+        assertThat(onSaleEvents(goodsNo)).as("保存送货方式不该给商品发上下架事件").isEqualTo(before);
+        assertThat(buyerSees("CM001", goodsNo)).as("货照样看得到").isTrue();
+    }
+
+    private long onSaleEvents(String goodsNo) {
+        return outboxMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.event.SysOutbox>lambdaQuery()
+                .eq(ai.neargo.shop.event.SysOutbox::getEventType, "GOODS_ON_SALE_CHANGED")
+                .like(ai.neargo.shop.event.SysOutbox::getPayload, goodsNo));
+    }
+
+    @Test
+    @DisplayName("★★★ 主体被处置停业，它的货买家当场看不到 —— 不用任何人去重建什么")
+    void suspendedEntityGoodsVanishImmediately() throws Exception {
+        /*
+         * 此前这是个漏洞：处置停业只改 mch_entity.status，社区池没人重建，
+         * 而 C 端列表只看商品自己的 on_sale 与审核 —— 停业商家的货照样被搜到，下单时才被拦。
+         * 现在买家侧在查询时只认 ACTIVE 主体（R1），状态一改，下一次查询就对。
+         */
+        String biz = merchant("12600180041", "会被处置停业的商家");
+        String merchantNo = merchantNoOf(biz);
+        String goodsNo = onSaleGoods(biz, "停业前在卖的纸巾");
+        assertThat(visibility.goodsNos("CM001", null)).as("前置：营业中看得到").contains(goodsNo);
+
+        governService.recordViolation(merchantNo, null, "SERVICE", "SUSPEND", "测试：处置停业", "OPS-TEST");
+
+        assertThat(visibility.goodsNos("CM001", null)).as("主体停业后现算结果里不该有它").doesNotContain(goodsNo);
+        assertThat(buyerSees("CM001", goodsNo)).as("买家列表也不该有它").isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 下架后现算结果里就没有它，再上架就回来 —— 直接量可见性这一步，不经过列表的总闸")
+    void offSaleLeavesVisibilityAndOnSaleBringsItBack() throws Exception {
+        /*
+         * **这条用例量的是可见性那一步本身（GoodsVisibility），不是「买家搜不到」。**
+         *
+         * 2026-10-07 消融过（当时还是社区池）：把「下架撤池」整段注掉，113 条池相关场景用例一条都没红 ——
+         * C 端每条读商品的查询都自带主体总闸（on_sale ∧ 过审），从买家侧断言对「可见性算没算对」天生不敏感。
+         * 换成查询时现算之后盲区还在同一个位置，所以这里直接量现算的结果。
+         * 消融判据：把 GoodsVisibility 里「只取在架的」那个条件去掉，这条必须红。
+         */
+        String biz = merchant("12600180030", "下架再上架的店");
         String storeNo = defaultStoreNo(biz);
         String goodsNo = onSaleGoods(biz, "上架下架再上架的抽纸");
 
-        assertThat(poolRows(merchantNo, goodsNo))
-                .as("对照量要非零，否则下面在比两个空集")
-                .isNotEmpty();
-        var before = poolRows(merchantNo, goodsNo);
+        assertThat(visibility.goodsNos("CM001", null)).as("前置：在架时现算结果里有它").contains(goodsNo);
 
         offShelfAt(biz, storeNo, goodsNo);
+        assertThat(visibility.goodsNos("CM001", null)).as("下架后现算结果里还有它").doesNotContain(goodsNo);
+        assertThat(visibility.deliverable(goodsNo, "CM001")).as("下架后详情还说送得到").isFalse();
 
-        assertThat(poolRows(merchantNo, goodsNo))
-                .as("下架后池里还有行 —— 撤池那条语句的 WHERE 写错了，而买家侧看不出任何差别")
-                .isEmpty();
-
-        // 再上架：撤池必须是**逻辑删**，否则 revive 救不回来，而 uk_community_goods_store
-        // 不含 deleted 列 —— 直接 insert 会撞唯一键，表现为上架接口 500
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                         .header("Authorization", "Bearer " + biz)
                         .header("X-Store-No", storeNo)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
                 .andExpect(jsonPath("$.code").value(0));
 
-        assertThat(poolRows(merchantNo, goodsNo))
-                .as("重新上架后池要回到原样 —— 回不来就等于下架一次永久不可见")
-                .containsExactlyInAnyOrderElementsOf(before);
+        assertThat(visibility.goodsNos("CM001", null))
+                .as("重新上架后要回来 —— 回不来就等于下架一次永久不可见")
+                .contains(goodsNo);
+    }
+
+    @Test
+    @DisplayName("★★★ 新建的货过审上架就要有店级行 —— 不播的话它会出现在不卖这一类的那家店里")
+    void newGoodsOfMultiStoreMerchantGetsStoreRows() throws Exception {
+        /*
+         * **零行只应属于「主体级时代」的存量商家。**
+         *
+         * 店级行此前只有一个写入点（setStoreOnSale），而它只被 toggle 调用 ——
+         * 让一件货变成在架的另外三条路（免审直通 / 换版收尾 / 过审兑现）一条都不播行。
+         * 于是多门店改造之后**新建的每一件货都是零行**，直到有人手动点一次上下架。
+         *
+         * 零行被当成「未按店管理，跟随主体」，后果有两层：
+         *   · B 端：每家店的商品列表里都列着它；
+         *   · C 端：买家在不经营这一类的那家店的服务范围里**真能买到**。
+         *
+         * 线上实测（2026-10-07，虹选科技 4 店 16 件货）：10-05 建的那件柿子是唯一的零行货，
+         * 于是它出现在只卖粮油（CAT710）的店的列表里，社区池也在三家店各 23656 行。
+         *
+         * ⚠️ **这条路不能走 onSaleGoodsAt** —— 它点的是 toggle，而 toggle 里的
+         * setStoreOnSale 本来就会播种，走它等于绕开被测的那一段，又是一条假绿。
+         * 这里走真实的新品路径：建品 → 提交审核（记下「我要卖它」）→ 运营过审兑现。
+         */
+        String biz = merchant("12600180031", "两业态的多门店商家·新品");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+
+        String grain = defaultStoreNo(biz);              // 只经营 CAT210
+        /*
+         * **先给粮油店开 CAT210，再开新店 —— 顺序不能倒。**
+         * 新店继承的是「开店那一刻主体已有的经营类目」。倒过来的话（第一版就是）
+         * 粮油店此时还没有 CAT210（saveGoods 要到下面才开它），新店继承到的是空集，
+         * 于是 dropStoreCategory 一行都删不到，用例红在自己的前置上、走不到被测那段。
+         */
+        TestStoreCategory.open(mvc(), json, biz, "CAT210");
+        String fruit = createStore(biz, "只卖水果的那家·新品");
+        dropStoreCategory(fruit, "CAT210");              // 新店会继承主体类目，要换掉不是加上
+        TestStoreCategory.open(mvc(), json, biz, fruit, "CAT120");
+
+        // 真实新品路径：建品 → 提交审核 → 过审。**全程没有 toggle**
+        String goodsNo = saveGoods(biz, "新建就该有店级行的抽纸");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + biz)
+                        .header("X-Store-No", grain))
+                .andExpect(jsonPath("$.code").value(0));
+        approveGoods(goodsNo);
+
+        assertThat(entityOnSale(goodsNo))
+                .as("前置：过审要把它兑现成在架，否则下面测的是「没上架所以没播」")
+                .isTrue();
+
+        // AC1 + AC2：行要有，且不卖这一类的那家店是 on_sale=0
+        assertThat(storeRowsOf(goodsNo))
+                .as("新建的货一条店级行都没有 —— 零行会被当成「跟随主体」，它就串到每家店去了")
+                .containsOnlyKeys(grain, fruit);
+        assertThat(storeRowsOf(goodsNo).get(grain)).as("建品那家店经营 CAT210，要在架").isTrue();
+        assertThat(storeRowsOf(goodsNo).get(fruit)).as("只卖水果的那家不经营 CAT210，不该在架").isFalse();
+
+        // AC4：买家侧 —— 断言写成与实现模型无关的形状（走 /mp/goods，不碰任何表）
+        assertThat(allTabAt(biz, fruit))
+                .as("不卖这一类的那家店的商品列表里不该有它")
+                .doesNotContain(goodsNo);
+        assertThat(allTabAt(biz, grain))
+                .as("对照量：建品那家店必须看得到它，否则可能只是把整条路测坏了")
+                .contains(goodsNo);
+    }
+
+    @Test
+    @DisplayName("★★ 单店商家仍然零行 —— 那时零行就是「跟随主体」，行为一个字都不该变")
+    void singleStoreMerchantStillHasNoStoreRows() throws Exception {
+        /*
+         * 播种只对多门店主体做。单店也播的话，等于把所有存量单店商家的货
+         * 一次性转成「店级管理」—— 那是个大得多的改动，而且没有任何人要求过。
+         */
+        String biz = merchant("12600180032", "就一家店的商家");
+        String goodsNo = saveGoods(biz, "单店商家的抽纸");
+        mvc().perform(post("/biz/goods/" + goodsNo + "/submit")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0));
+        approveGoods(goodsNo);
+
+        assertThat(entityOnSale(goodsNo)).as("前置：过审要兑现成在架").isTrue();
+        assertThat(storeRowsOf(goodsNo))
+                .as("单店商家被播了店级行 —— 那是未经要求的语义变更")
+                .isEmpty();
+    }
+
+    /** 这件货的店级行：门店号 → 在架与否。**空 Map = 零行** */
+    private java.util.Map<String, Boolean> storeRowsOf(String goodsNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                storeGoodsMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo))
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo,
+                                r -> Boolean.TRUE.equals(r.getOnSale()))));
     }
 
     /**

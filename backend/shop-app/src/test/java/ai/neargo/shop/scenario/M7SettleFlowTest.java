@@ -347,6 +347,13 @@ class M7SettleFlowTest {
          * 实际是这单根本没发分。本轮第四次踩「fixture 落在默认值上」。
          */
         setPoints("M0001", true);
+        /*
+         * **小区那一层也要开**：积分闸门「商家送得到的小区全关积分 → 判否」。
+         * 演示商家 M0001 的范围是 C0001 / C0002（DevSeeder），两个小区的 points_enabled 默认 0。
+         * 此前 M0001 的可达集合是空的（它的货靠种子直接写进社区池才看得见），这一层被跳过；
+         * 可见性改成查询时现算之后「看得见 = 送得到」，这一层就真的生效了。
+         */
+        var communitiesBefore = communityPoints(java.util.List.of("C0001", "C0002"), true);
         try {
         String token = login("12800128099");
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-points-fee");
@@ -384,8 +391,30 @@ class M7SettleFlowTest {
              * 与积分毫无关系。共享库下，改全局开关的用例必须自己收拾。
              */
             setPoints("M0001", false);
+            communitiesBefore.forEach((no, was) -> communityPoints(java.util.List.of(no), was));
         }
     }
+
+    /** 设小区积分开关，返回改之前的值（用完原样还回去 —— 共享库） */
+    private java.util.Map<String, Boolean> communityPoints(java.util.List<String> communityNos, Boolean on) {
+        java.util.Map<String, Boolean> before = new java.util.LinkedHashMap<>();
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            for (var c : communityMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.community.entity.CmtCommunity>lambdaQuery()
+                    .in(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo, communityNos))) {
+                before.put(c.getCommunityNo(), c.getPointsEnabled());
+                communityMapper.update(null, com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunity>lambdaUpdate()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunity::getCommunityNo, c.getCommunityNo())
+                        .set(ai.neargo.shop.community.entity.CmtCommunity::getPointsEnabled, on));
+            }
+            return null;
+        });
+        return before;
+    }
+
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
 
     @Test
     @DisplayName("一个子单只能有一张结算单（重复生成 = 重复分账）")

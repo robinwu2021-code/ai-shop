@@ -193,7 +193,7 @@ class NewGoodsNotifyFlowTest {
      * 而每一条都是合法的「新品开售」—— 不报错、日志上看也正常。
      *
      * <p>判据取 {@code prd_goods.new_notified_at}：直接调 service 的上下架，
-     * 走的是与 `/biz/goods/{no}/toggle` 同一条路（{@code syncPool} 是所有上架路径的共同出口）。
+     * 走的是与 `/biz/goods/{no}/toggle` 同一条路（{@code onSaleSideEffects} 是所有上架路径的共同出口）。
      */
     @Test
     @DisplayName("★★★ 下架再上架不再通知 —— 否则来回切几次就能刷屏")

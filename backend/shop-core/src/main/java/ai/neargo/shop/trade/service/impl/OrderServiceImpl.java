@@ -674,7 +674,7 @@ public class OrderServiceImpl implements OrderService {
              */
             List<String> candidates = new ArrayList<>();
             if (defaultOpen && (communityNo == null
-                    || merchantPort.reachableCommunities(merchantNo, defaultStore).contains(communityNo))) {
+                    || merchantPort.serves(merchantNo, defaultStore, communityNo))) {
                 candidates.add(defaultStore);
             }
             // 默认店服务不了（或暂停了）：挑一家真的服务这个社区的营业店（多家都行时取最近，理由见方法注释）
@@ -750,7 +750,7 @@ public class OrderServiceImpl implements OrderService {
      * <p><b>只在默认店服务不了时才会走到这里</b>（见调用处）—— 所以「取最近」
      * 影响的是一个原先必然出错的场合，不会去动本来就正确的那些单。
      *
-     * <p>「服务」的判据与可见性同一个出口（{@code reachableCommunities(entityNo, storeNo)}）——
+     * <p>「服务」的判据与可见性同一个出口（{@code serves}，即 ReachRule）——
      * 另写一套迟早分岔，而分岔的表现是「他看得见却下不了单」或者反过来。
      */
     private String nearestServingStore(String merchantNo, String communityNo, Map<String, String> statuses) {
@@ -760,7 +760,7 @@ public class OrderServiceImpl implements OrderService {
         }
         List<String> serving = stores.stream()
                 .filter(st -> open(statuses, st))
-                .filter(st -> merchantPort.reachableCommunities(merchantNo, st).contains(communityNo))
+                .filter(st -> merchantPort.serves(merchantNo, st, communityNo))
                 .toList();
         if (serving.isEmpty()) {
             return null;
@@ -3181,9 +3181,16 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
         for (Group g : split.groups) {
-            java.util.Set<String> enabled = merchantPort.enabledFulfillmentsFor(
-                    g.merchantNo, storeOfMerchant.get(g.merchantNo), communityNo);
-            if (!enabled.isEmpty() && !enabled.contains(fulfillment)) {
+            String store = storeOfMerchant.get(g.merchantNo);
+            /*
+             * **「没配过」与「配过、但没有一路送得到这里」是两件事**，不能都用空集表达。
+             * 此前只问 enabledFulfillmentsFor：某几路选了 SUBSET、买家又不在任何一路的子集里时，
+             * 它把几路全裁掉、返回空集 —— 被这里当成「没配过」放行，商家没框的地方照样下得了单。
+             */
+            if (merchantPort.enabledFulfillments(g.merchantNo, store).isEmpty()) {
+                continue;
+            }
+            if (!merchantPort.enabledFulfillmentsFor(g.merchantNo, store, communityNo).contains(fulfillment)) {
                 throw BizException.of(ErrorCode.FULFILLMENT_NOT_SUPPORTED);
             }
         }

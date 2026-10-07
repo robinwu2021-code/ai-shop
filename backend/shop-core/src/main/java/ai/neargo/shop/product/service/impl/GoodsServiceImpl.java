@@ -8,10 +8,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.product.dto.GoodsVO;
-import ai.neargo.shop.product.entity.PrdCommunityPool;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
-import ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -49,44 +47,42 @@ public class GoodsServiceImpl implements GoodsService {
 
     private final GoodsMapper goodsMapper;
     private final SkuMapper skuMapper;
-    private final CommunityPoolMapper poolMapper;
     private final MerchantQueryPort merchantPort;
     private final ObjectMapper json;
     /** 限时特价覆盖展示价。product → marketing 走 Port（ArchUnit 守着不许直连） */
     private final ai.neargo.shop.spi.marketing.CampaignPort campaignPort;
     /** 首页推荐位的运营配置。没配时 promoted() 仍走销量兜底 */
     private final ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort;
-    /** 按区筛商品池要先把区展开成社区。product → community 走 Port（ArchUnit 守着不许直连） */
-    private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
     /** 门店级上架关系：门户只列本店在售的 */
     private final ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
     /** 店级库存的唯一一份判据（覆盖层规则）。买家侧详情按它换库存 */
     private final ai.neargo.shop.product.service.StoreStockReader storeStockReader;
+    /** 买家在哪儿能看到什么 —— 查询时现算（方案-商品可见性改查询时关联） */
+    private final GoodsVisibility visibility;
 
-    public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
+    public GoodsServiceImpl(GoodsMapper goodsMapper, SkuMapper skuMapper,
                             MerchantQueryPort merchantPort, ObjectMapper json,
                             ai.neargo.shop.spi.marketing.CampaignPort campaignPort,
                             ai.neargo.shop.spi.marketing.ContentSlotPort contentSlotPort,
-                            ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper,
-                            ai.neargo.shop.product.service.StoreStockReader storeStockReader) {
+                            ai.neargo.shop.product.service.StoreStockReader storeStockReader,
+                            GoodsVisibility visibility) {
+        this.visibility = visibility;
         this.storeGoodsMapper = storeGoodsMapper;
         this.storeStockReader = storeStockReader;
         this.goodsMapper = goodsMapper;
         this.skuMapper = skuMapper;
-        this.poolMapper = poolMapper;
         this.merchantPort = merchantPort;
         this.json = json;
         this.campaignPort = campaignPort;
         this.contentSlotPort = contentSlotPort;
-        this.communityQueryPort = communityQueryPort;
     }
 
     /**
-     * 这次要看的商品池 —— <b>「位置不明」不等于「看全平台」。</b>
+     * 这次能看到的商品 —— <b>「位置不明」不等于「看全平台」。</b>
      *
      * <p>两级：精确定位给 {@code communityNo}，模糊定位只给得出区县码，
-     * 那就把区展开成它底下的开放社区，按这一批的池子筛。
+     * 那就按「区里任一开放小区有门店服务」筛。查询时现算，见 {@link GoodsVisibility}。
      * 两级都没有才是真正的「不筛」，而端上不该走到那儿 ——
      * 连模糊定位都拒的人看到的是空态要位置，不是一屏他买不到的货。
      *
@@ -94,67 +90,8 @@ public class GoodsServiceImpl implements GoodsService {
      *         调用方必须回空而不是当成「不筛」—— 这两件事混在一起，
      *         正是「没铺货的区看到全平台商品」的由来
      */
-    private List<String> poolGoodsNos(String communityNo, String regionCode) {
-        List<String> communityNos;
-        if (communityNo != null && !communityNo.isBlank()) {
-            communityNos = List.of(communityNo);
-        } else if (regionCode != null && !regionCode.isBlank()) {
-            communityNos = communityQueryPort.openCommunityNosUnderRegion(regionCode);
-            if (communityNos.isEmpty()) {
-                // 这个区一个开放社区都没有 —— 那就是一件都买不到，不是「随便看看全平台」
-                return List.of();
-            }
-        } else {
-            return null;
-        }
-        return poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                        .in(PrdCommunityPool::getCommunityNo, communityNos)).stream()
-                .map(PrdCommunityPool::getGoodsNo).distinct().toList();
-    }
-
-    /**
-     * 每件货**由哪家门店提供**（TDD-C端商品归属门店与库存校验 AC1/AC2）。
-     *
-     * <p>池行本来就带 `store_no`，口径是「这家店在架卖它 ∧ 这家店可达」——
-     * 一件货两家店都摆着就是两行。此前 {@link #poolGoodsNos} 把它 `distinct()` 掉了，
-     * 于是跨店目录只剩商品号，落款只能印主体名（线上四家店在商品流里都显示
-     * 「虹选科技有限公司」）。
-     *
-     * <p><b>多家都摆着时挑哪家：默认店优先，否则按门店号定序取第一。</b>
-     * 与下单落店的优先级同序 —— 让「显示的那家」按定义等于「会履约的那家」，
-     * 而不是另立一套规则再写对账去守它。定序是必须的：
-     * 靠 Map 迭代顺序的话同一件货刷两次可能显示不同的店。
-     */
-    private Map<String, String> poolStoreOfGoods(String communityNo, String regionCode) {
-        List<String> communityNos;
-        if (communityNo != null && !communityNo.isBlank()) {
-            communityNos = List.of(communityNo);
-        } else if (regionCode != null && !regionCode.isBlank()) {
-            communityNos = communityQueryPort.openCommunityNosUnderRegion(regionCode);
-        } else {
-            return Map.of();
-        }
-        if (communityNos.isEmpty()) {
-            return Map.of();
-        }
-        List<PrdCommunityPool> rows = poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                .in(PrdCommunityPool::getCommunityNo, communityNos));
-        Map<String, java.util.TreeSet<String>> byGoods = new HashMap<>();
-        Map<String, String> entityOfGoods = new HashMap<>();
-        for (PrdCommunityPool r : rows) {
-            if (r.getStoreNo() == null || r.getStoreNo().isBlank()) {
-                continue;
-            }
-            byGoods.computeIfAbsent(r.getGoodsNo(), k -> new java.util.TreeSet<>()).add(r.getStoreNo());
-            entityOfGoods.putIfAbsent(r.getGoodsNo(), r.getEntityNo());
-        }
-        Map<String, String> out = new HashMap<>();
-        for (var e : byGoods.entrySet()) {
-            String defaultStore = merchantPort.defaultStoreNo(entityOfGoods.get(e.getKey())).orElse(null);
-            out.put(e.getKey(), defaultStore != null && e.getValue().contains(defaultStore)
-                    ? defaultStore : e.getValue().first());
-        }
-        return out;
+    private List<String> visibleGoodsNos(String communityNo, String regionCode) {
+        return visibility.goodsNos(communityNo, regionCode);
     }
 
     @Override
@@ -180,8 +117,8 @@ public class GoodsServiceImpl implements GoodsService {
                 .eq(PrdGoods::getAuditStatus, "APPROVED");
         onShelf(null).accept(w);
 
-        // 与 list() 同一条规矩：社区池之外的商品不该出现 —— 用户看到也买不到
-        List<String> goodsNos = poolGoodsNos(communityNo, regionCode);
+        // 与 list() 同一条规矩：这里没有门店服务的商品不该出现 —— 用户看到也买不到
+        List<String> goodsNos = visibleGoodsNos(communityNo, regionCode);
         if (goodsNos != null) {
             if (goodsNos.isEmpty()) {
                 return List.of();
@@ -343,9 +280,9 @@ public class GoodsServiceImpl implements GoodsService {
         if (q.merchantNo() != null && !q.merchantNo().isBlank()) {
             w.eq(PrdGoods::getEntityNo, q.merchantNo());
         } else {
-            // 社区池是筛选视图：先取可见的 goodsNo，再查商品。
-            // 没有池数据 = 那儿还没铺货，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
-            List<String> goodsNos = poolGoodsNos(q.communityNo(), q.regionCode());
+            // 先取这里看得到的 goodsNo，再查商品。
+            // 一件都没有 = 那儿还没有门店服务，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
+            List<String> goodsNos = visibleGoodsNos(q.communityNo(), q.regionCode());
             if (goodsNos != null) {
                 if (goodsNos.isEmpty()) {
                     return PageData.empty(q.page(), q.size());
@@ -388,14 +325,14 @@ public class GoodsServiceImpl implements GoodsService {
         var flash = campaignPort.flashPrices(nos);
         /*
          * 每行挂上**提供这件货的门店**（AC1/AC2）。按主体号查目录时不挂 ——
-         * 那条路没有池、也没有社区上下文，挂不出「哪家店」，端上退回主体名。
+         * 那条路没有社区上下文，挂不出「哪家店」，端上退回主体名。
          */
-        Map<String, String> byPool = q.merchantNo() != null && !q.merchantNo().isBlank()
-                ? Map.of() : poolStoreOfGoods(q.communityNo(), q.regionCode());
+        Map<String, String> byVisibility = q.merchantNo() != null && !q.merchantNo().isBlank()
+                ? Map.of() : visibility.providingStores(q.communityNo(), q.regionCode(), nos);
         /*
          * ★ **没有位置时的兜底：按「在架卖它的门店」反查，唯一才填**（2026-09-30）。
          *
-         * 上面那条走社区池，而池行的键是社区 —— 不给 communityNo 也不给 regionCode 时
+         * 上面那条按社区算 —— 不给 communityNo 也不给 regionCode 时
          * 它必然返回空，端上只能回落主体名。线上实测：首页（传了社区）显示
          * 「虹选粮油·深圳测试店」，而搜索页显示「虹选科技有限公司」，同一件货两个说法。
          *
@@ -408,9 +345,9 @@ public class GoodsServiceImpl implements GoodsService {
          * 说不清就不说，端上回落主体名 —— 那是诚实的默认值。
          */
         final Map<String, String> storeOfGoods =
-                byPool.isEmpty() && (q.merchantNo() == null || q.merchantNo().isBlank())
+                byVisibility.isEmpty() && (q.merchantNo() == null || q.merchantNo().isBlank())
                         ? soleSellingStoreOf(nos)
-                        : byPool;
+                        : byVisibility;
         Map<String, String> storeNames = storeNamesOf(storeOfGoods.values());
         List<GoodsVO> records = page.getRecords().stream()
                 .map(g -> withStoreScope(
@@ -598,13 +535,7 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public Boolean deliverableTo(String goodsNo, String communityNo) {
-        if (communityNo == null || communityNo.isBlank()) {
-            return null;
-        }
-        return DataScopeContext.executeWithoutScope(() -> poolMapper.selectCount(
-                Wrappers.<PrdCommunityPool>lambdaQuery()
-                        .eq(PrdCommunityPool::getCommunityNo, communityNo)
-                        .eq(PrdCommunityPool::getGoodsNo, goodsNo))) > 0;
+        return visibility.deliverable(goodsNo, communityNo);
     }
 
     /**
@@ -778,7 +709,7 @@ public class GoodsServiceImpl implements GoodsService {
                 groupBuyConf(g),
                 readParams(g.getParams()),
                 null,
-                // C 端不分门店视角：门店上下架由可售池决定，不在这条链上
+                // C 端不分门店视角：门店上下架在可见性那一步就算进去了，不在这条链上
                 null,
                 // 销售范围只有详情页要 —— 列表在这儿填就是 N+1，见 withSaleScope
                 null,

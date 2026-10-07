@@ -77,8 +77,8 @@ public interface CommunityAdminService {
 
         /**
          * @param buyerCount    围栏内有坐标的收货地址数
-         * @param merchantCount 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」
-         * @param goodsCount    社区池里在这儿搜得到的商品数
+         * @param merchantCount 在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」
+         * @param goodsCount    在这儿搜得到的商品数
          */
         public record DistributionRow(String communityNo, String name, String kind, String regionPath,
                                       int buyerCount, int merchantCount, int goodsCount) {
@@ -364,7 +364,7 @@ public interface CommunityAdminService {
     /**
      * 合并：把 {@code fromNo} 并进 {@code intoNo}。
      *
-     * <p>**改写的是「还会再用」的引用**：商家经营范围、商家社区池、商品社区池、
+     * <p>**改写的是「还会再用」的引用**：商家经营范围、商家社区表、
      * 自提点、渠道覆盖 —— 这些决定「以后谁看得到什么」。
      * 订单、批次、帖子这些**历史数据不动**：那条聚落行还在（置为关闭），
      * 历史单据指着它是对的，改写反而会让对账时的口径变了。

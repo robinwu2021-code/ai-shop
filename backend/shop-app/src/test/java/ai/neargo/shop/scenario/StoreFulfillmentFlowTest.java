@@ -442,6 +442,42 @@ class StoreFulfillmentFlowTest {
                 .containsExactly(c1);
     }
 
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
+
+    @Test
+    @DisplayName("★★ 主体删掉一块范围 → 门店子集里引用它的行一起删，那一路随之哪儿都不送")
+    void removingAnAreaPurgesSubsetsThatReferencedIt() {
+        String m = merchant("文三路 6 号");
+        String store = merchantQuery.defaultStoreNo(m).orElseThrow();
+        String c1 = openCommunity();
+        String c2 = openCommunity();
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c1),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c2))));
+        String area1 = areaNoOf(m, c1);
+        fulfillmentService.save(m, store, List.of(
+                new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(area1))));
+        assertThat(merchantQuery.reachableCommunities(m, store)).containsExactly(c1);
+
+        // 主体把 c1 那一块删了，只留 c2
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c2))));
+
+        /*
+         * 此前这行留着：子集指向一个已经不存在的 area_no（线上两家店就是这样，界面显示「仅 1 项」）。
+         * 而旧的展示规则把「子集与主体范围取交后为空」算成「自送没框 = 不限」—— 这家店当场全国可见。
+         */
+        assertThat(channelAreaMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchChannelArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchChannelArea::getAreaNo, area1)))
+                .as("引用被删范围的子集行要一起删").isZero();
+        assertThat(merchantQuery.reachableCommunities(m, store))
+                .as("自送选了子集、子集已空 = 这一路哪儿都不送；不能变成全部开放小区").isEmpty();
+    }
+
     @Test
     @DisplayName("范围子集：只能引用自己的范围项；按买家社区裁剪；EXPRESS 不允许收窄")
     void subsetNarrowsByBuyerCommunity() {

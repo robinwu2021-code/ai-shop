@@ -55,7 +55,7 @@ class QuickStartFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper accountMapper;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
+    private ai.neargo.shop.product.service.impl.GoodsVisibility visibility;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -124,8 +124,8 @@ class QuickStartFlowTest {
         entityMapper.updateById(shell);
 
         /*
-         * reachableCommunities 是 C 端可见性的**唯一出口** —— 上架写社区池、
-         * 商家详情可达性、履约全都只认它。空列表 = 这家店的货进不了任何人的可见范围。
+         * 「送不送得到」只有一个判定（ReachRule）—— 买家可见性、商家详情可达性、履约全都只认它。
+         * 空列表 = 这家店的货进不了任何人的可见范围。
          *
          * 这条断言挡住的是一个很具体的坏结果：谁都能注册一个账号、建一家店、
          * 把货铺给买家，而平台从没核过他是谁。
@@ -282,20 +282,11 @@ class QuickStartFlowTest {
         /*
          * ★ **这一条是本用例的全部意义**。
          *
-         * 社区池（prd_community_pool）是派生索引，而它此前**只在商品上下架时重建**。
-         * 上架发生在 PENDING_LICENSE 期间，那时可达社区是空的，所以池里一行都没有；
-         * 审核通过之后主体转 ACTIVE、可达社区有了，可池不会自己变 ——
-         * 于是他那批货**仍然对买家不可见**，而商家侧显示「在售」。
-         * 要他把每件商品重新上下架一遍才好，却没有任何地方告诉他要这么做。
+         * 上架发生在 PENDING_LICENSE 期间；审核通过之后主体转 ACTIVE。买家侧在查询时按主体状态现算，
+         * 紧接着的那一次请求就该看到这批货 —— 不能要求商家把每件商品重新上下架一遍。
          *
-         * <p><b>两个调用点都能救这一条，所以它不足以同时验证两处</b>（实测：只撤其中任意一个，
-         * 这条仍然绿；两个都撤才红）。它们覆盖的是不同的因：
-         * <ul>
-         *   <li>{@code MerchantPortImpl.activate} —— <b>主体状态变了</b>（补证照通过）</li>
-         *   <li>{@code MerchantStoreServiceImpl.replaceAreas} —— <b>可达范围变了</b>（改经营范围）</li>
-         * </ul>
-         * 本条走的入驻审核链路两件事同时发生，所以两条都会触发。
-         * 只有后者能覆盖的那个场景见 {@code scopeChangeMovesGoodsOutOfOldCommunity}。
+         * 历史：买家曾读社区池（只在上下架时重建），补证照之后那批货一直不可见，
+         * 先后靠两个调用点补重建。现在没有池，这条用例看的是「状态一变，下一次查询就对」。
          */
         assertThat(buyerSees("CM001", goodsNo))
                 .as("补完证照，之前上架的货就该被买家搜到 —— 不该要求他再上下架一遍")
@@ -318,8 +309,7 @@ class QuickStartFlowTest {
         /*
          * 把服务范围从 CM001 改成 CM002。**商品一个字都没动。**
          *
-         * 社区池只在商品上下架时重建，所以少了 replaceAreas 里那句 resyncPools，
-         * 这一步之后两头都错、且都不报错：
+         * 只改范围这一行；买家侧在查询时按新范围现算。算错的话两头都错、且都不报错：
          *   · CM001 的买家**还能搜到并下单** —— 而他已经不送那儿了
          *   · CM002 的买家搜不到 —— 而他明明改成送那儿了
          * 商家侧看经营范围是对的，所以他不会想到要去逐个商品重新上下架。
@@ -359,8 +349,8 @@ class QuickStartFlowTest {
     }
 
     @Test
-    @DisplayName("★ 池行记得住是哪家店摆的 —— 第 3 步按门店建池的前提")
-    void poolRowsCarryTheStore() throws Exception {
+    @DisplayName("★ 买家看到的货记得住是哪家店提供的 —— 单店商家就是默认店")
+    void listedGoodsCarryTheProvidingStore() throws Exception {
         // A7：这个令牌要打 /biz/**，必须是 btk_
         String token = TestLogin.merchantOwner(mvc(), json, otpStore, "12600160014");
         String merchantNo = quickStart(token, "记门店号的店");
@@ -371,31 +361,17 @@ class QuickStartFlowTest {
         String goodsNo = onSaleGoods(token, "带门店号入池的抽纸");
         assertThat(buyerSees("CM001", goodsNo)).isTrue();
 
-        /*
-         * V240 起池行带 store_no。**这一步池仍是主体级口径**（一件货一行），
-         * 所以这里给的是默认店 —— 与迁移回填存量行是同一个答案。
-         * 第 3 步改成逐门店建池时，这一列会换成真正摆它的那家店。
-         *
-         * 现在就把它钉住：这一列要是一直是空的，第 3 步会在一个没人验过的
-         * 前提上继续盖东西。
-         */
         String defaultStore = json.readTree(mvc().perform(get("/biz/store/list")
                         .header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get(0).get("storeNo").asString();
 
-        var rows = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                poolMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getGoodsNo, goodsNo)));
-        assertThat(rows).as("上架进池了").isNotEmpty();
-        assertThat(rows).allSatisfy(r -> {
-            assertThat(r.getEntityNo()).isEqualTo(merchantNo);
-            assertThat(r.getStoreNo()).as("池行要记得住是哪家店摆的").isEqualTo(defaultStore);
-        });
+        assertThat(visibility.providingStores("CM001", null, java.util.List.of(goodsNo)))
+                .as("列表落款要写提供它的那家店：单店商家就是默认店")
+                .containsEntry(goodsNo, defaultStore);
     }
 
-    /** C 端按社区列货：这才是「买家看不看得见」的真实判据（读的是社区池，不是 reachableCommunities） */
+    /** C 端按社区列货：这才是「买家看不看得见」的真实判据（不是 reachableCommunities 这个端口） */
     private boolean buyerSees(String communityNo, String goodsNo) throws Exception {
         String body = mvc().perform(get("/mp/goods")
                         .param("communityNo", communityNo).param("size", "50"))

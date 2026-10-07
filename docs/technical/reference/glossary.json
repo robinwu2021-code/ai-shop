@@ -24687,6 +24687,12 @@
           "ar": "لا يوجد حساب تحصيل فعّال لهذا المتجر؛ لا يمكن التحويل إلى وضع الطرف الثالث."
         },
         {
+          "key": "err.merchant.phone_required",
+          "zh-CN": "先绑定手机号，绑好就能进你所在的店",
+          "en": "Bind your phone number first, then you can enter your shop.",
+          "ar": "اربط رقم هاتفك أولًا للدخول إلى متجرك."
+        },
+        {
           "key": "err.merchant.pickup_landing_required",
           "zh-CN": "开社区自提点要有落点：在「管理」里挑一个取货点或自建一个，或先填门店地址",
           "en": "Community pickup needs a landing point: pick or build one under “Manage”, or add the store address first",
@@ -26144,13 +26150,6 @@
       "table": "prd_category_spec_value",
       "class": "PrdCategorySpecValue",
       "zh": "类目下的取值子集。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.product.entity"
-    },
-    {
-      "table": "prd_community_pool",
-      "class": "PrdCommunityPool",
-      "zh": "社区商品池：**只决定可见性，不存价**（TDD-backend §6.3）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -32997,6 +32996,13 @@
         "module": "shop-merchant"
       },
       {
+        "host": "ReachRule",
+        "name": "LEVEL_COMMUNITY",
+        "value": "COMMUNITY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
         "host": "PlanVO",
         "name": "FROM_PLAN",
         "value": "PLAN",
@@ -33225,6 +33231,7 @@
           "PAYOUT_ACCOUNT_NAME_MISMATCH",
           "PAYOUT_ACCOUNT_PENDING_EXISTS",
           "NOT_A_MERCHANT",
+          "PHONE_REQUIRED_FOR_MERCHANT",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",

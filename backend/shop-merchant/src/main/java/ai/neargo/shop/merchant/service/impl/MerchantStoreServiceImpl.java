@@ -46,19 +46,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
-    /**
-     * 主体激活 / 经营范围保存会改变**可达社区**，而 C 端可见性读的是 product 域的社区池。
-     *
-     * <p><b>为什么是 ObjectProvider 而不是直接注入</b>：直接注入会构成一个真实的构造环 ——
-     * merchant 域 → StoreShelfPort → MerchantGoodsService → GoodsService → 回到 merchant 域
-     * （商品要问「这家店可达哪些社区」）。Spring 默认禁止循环引用，整个上下文起不来。
-     *
-     * <p>环本身说明这两个域是双向的：可见性这件事，一半的事实在 merchant（谁可达哪儿），
-     * 一半在 product（哪件货在架）。真正拆开要引一层事件，那是更大的一次改动；
-     * 在此之前用延迟取代替，与 {@code SecurityConfig} 取 BizIdentityResolver 同一手法。
-     */
-    private final org.springframework.beans.factory.ObjectProvider<
-            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
     public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
@@ -69,9 +57,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                                    org.springframework.beans.factory.ObjectProvider<
-                                            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort) {
-        this.storeShelfPort = storeShelfPort;
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper) {
+        this.channelAreaMapper = channelAreaMapper;
         this.communityNamePort = communityNamePort;
         this.serviceAreaMapper = serviceAreaMapper;
         this.storeMapper = storeMapper;
@@ -378,12 +365,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             DataScopeContext.executeWithoutScope(() ->
                     serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
         }
+        java.util.Set<String> gone = new java.util.HashSet<>(keptNo.values());
         for (AreaCommand a : normalize(areas)) {
             if (a == null || a.level() == null || a.refCode() == null || a.refCode().isBlank()) {
                 continue;
             }
             MchServiceArea row = new MchServiceArea();
             String kept = keptNo.get(a.level() + "|" + a.refCode());
+            gone.remove(kept);
             row.setAreaNo(kept != null ? kept : BizKey.next(BizKey.SERVICE_AREA));
             row.setEntityNo(merchantNo);
             row.setLevel(a.level());
@@ -411,16 +400,16 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                     ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
         }
-
         /*
-         * ★ 范围改完，把这个主体的社区池重建一遍。
-         *
-         * 少了这一步，商家把服务范围从 A 小区改到 B 小区之后，
-         * 货**还留在 A 小区的池里、也进不了 B 小区** —— 两头都错，且不报任何错：
-         * A 小区的买家还能下单（他其实已经不送那儿了），B 小区的买家搜不到。
-         * 商家侧看经营范围是对的，所以他不会想到去逐个商品重新上下架。
+         * **删掉的范围项，各门店引用它的子集行一起删**（MchChannelArea 类注释里早就这么写着，一直没实现）。
+         * 不删的话子集指向一个不存在的 area_no：线上两家店界面显示「仅 1 项」，
+         * 那一项早已不在 —— 此前展示的旧规则还把这种「空子集」算成了全国可见。
+         * 删掉之后那一路的子集可能变空，按统一规则就是「这一路哪儿都不送」，与界面一致。
          */
-        storeShelfPort.getObject().resyncPools(merchantNo);
+        if (!gone.isEmpty()) {
+            DataScopeContext.executeWithoutScope(() -> channelAreaMapper.purgeAreas(gone));
+        }
+
     }
 
 

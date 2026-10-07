@@ -43,14 +43,15 @@ class CommunityHierarchyTest {
          * 默认值一旦不生效（比如某天有人把它改成 NOT NULL 无默认），
          * 存量商家的范围会从「纳入」变成别的东西，而没有任何报错。
          *
-         * 测试库里一条 service_area 都没有（种子不建），所以这里自己造一条：
-         * **不设 mode**，走的正是存量行那条路。
+         * 这里自己造一条：**不设 mode**，走的正是存量行那条路。
+         * 小区号用一个不存在的占位号 —— 种子里演示商家已经框了 C0001 / C0002（DevSeeder），
+         * 借用它们会撞 uk_service_area，也会让这一行短暂改变演示商家的可见范围。
          */
         MchServiceArea row = new MchServiceArea();
         row.setAreaNo("AREA-HIER-TEST");
         row.setEntityNo("M0001");
         row.setLevel("COMMUNITY");
-        row.setRefCode("C0001");
+        row.setRefCode("C-HIER-MODE-TEST");
         row.setStatus("ACTIVE");
         // 刻意不 setMode
 

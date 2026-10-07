@@ -8153,19 +8153,6 @@ _无字段_
 类型：[`CategorySpec`](#categoryspec)\[\]
 
 
-#### POST `/ops/community-pool/resync`
-
-重建社区池（「这件商品出现在哪些社区」的派生索引）
-
-**入参**
-
-_无字段_
-
-**出参**（`data`）
-
-类型：`integer`
-
-
 #### GET `/ops/goods`
 
 商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里）

@@ -120,8 +120,8 @@ class GoodsSaleScopeFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 框了范围 + 开了快递 = 仍然不限地区 —— 快递压过框过的那几块")
-    void expressBeatsConfiguredAreas() throws Exception {
+    @DisplayName("★★★ 框了范围 + 开了快递 = 列框过的那几块 —— 与可见性同一个判定，快递也尊重框选")
+    void expressRespectsConfiguredAreas() throws Exception {
         String m = merchant("SHIPPING");
         area(m, "DISTRICT", "440309", "ACTIVE", "INCLUDE");
         area(m, "DISTRICT", "440305", "ACTIVE", "INCLUDE");
@@ -129,22 +129,17 @@ class GoodsSaleScopeFlowTest {
         var scope = detail(goods(m)).get("saleScope");
 
         /*
-         * ★ 修之前这里是 false + 两个地名。
+         * 判据只有一条：**页面上写的范围 = 买家实际买得到的范围**。
          *
-         * 判据取自 reachableCommunities：它的 expressOn 分支
-         * `return minusExcluded(openCommunityNos(), allAreas)` —— **根本不看 areas**，
-         * 所以开了快递的商家实际可达是全部开放社区。而 saleScope 当时有 INCLUDE
-         * 就直接列地名、不看履约路，于是页面上那行**比实际可售范围小**：
-         * 买家在第三个区明明搜得到、买得到，点进详情却看见一句「这儿不在范围内」。
-         *
-         * 线上暂时不显形，只是因为开放社区恰好都落在框过的区里
-         * （2026-09-29：4403 深圳 2784 + 1408 运城 75 = 2859，与社区池对得上）。
+         * 2026-09-29 这条用例断言的是「不限地区」—— 当时可见性开了快递就不看框选。
+         * 10-06（#4②）可见性改成「快递也尊重框选」，这一行没跟上：框了两个区又开快递的商家，
+         * 详情页写「不限地区」，第三个区的买家其实搜不到这件货。
+         * 现在两处调同一个判定（ReachRule），这里跟着可见性走。
          */
         assertThat(scope.get("unlimited").asBoolean())
-                .as("开了快递就送得到所有开放社区，不该只报框过的那两块")
-                .isTrue();
-        assertThat(scope.get("areaNames")).isEmpty();
-        assertThat(scope.get("areaCount").asInt()).isZero();
+                .as("框了范围就按框选卖 —— 快递也一样，不能写「不限地区」")
+                .isFalse();
+        assertThat(scope.get("areaCount").asInt()).isEqualTo(2);
     }
 
     @Test

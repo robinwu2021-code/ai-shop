@@ -1,7 +1,6 @@
 package ai.neargo.shop.product.mapper;
 
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdCommunityPool;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
@@ -341,59 +340,6 @@ public final class ProductMappers {
 
     /** 门店级上架关系。只有增删改查，没有原子扣减那套 —— 它不是并发争抢的资源 */
     public interface StoreGoodsMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdStoreGoods> {
-    }
-
-    public interface CommunityPoolMapper extends BaseMapper<PrdCommunityPool> {
-
-        /**
-         * 整批复活被逻辑删的池行：一家门店的一串社区，一条语句。
-         *
-         * <p><b>为什么非复活不可</b>：下架是逻辑删，而 {@code uk_community_goods_store}
-         * 不含 deleted 列 —— 「下架再上架」时直接 insert 必然撞唯一键，表现为上架接口 500，
-         * 商家看到的是「系统开小差」。这个坑在商家社区表上踩过一次，池表这里换了个入口
-         * 又踩了一次：差集增删只解决了「不要先全删再全插」，没解决「删过的行还占着键」。
-         *
-         * <p><b>为什么是整批</b>：上架原先走的是「逐行先试复活，复活不到再 insert」。
-         * 线上一个社区两万三，于是「下架再上架」= 23656 次往返。2026-10-07 实测 <b>29.1 秒</b>
-         * （那一次全是复活、零新建，所以这 29 秒基本都在这儿）。
-         *
-         * <p>只用单列 {@code IN}，不用 {@code (a,b) IN ((..),(..))} 行构造器 ——
-         * 后者在 H2 与 MariaDB/MySQL 之间的支持不一致，而 SQL 方言闸门盯着这类写法。
-         * 按门店分组之后每组只剩社区一列，普通 {@code IN} 就够。
-         *
-         * @return 影响行数。<b>调用方不能拿它当「哪几条复活了」</b> —— 它只是个总数，
-         *         要知道哪几条，用 {@link #deletedPairs} 先把被删的读出来。
-         */
-        @Update("""
-                <script>
-                UPDATE prd_community_pool SET deleted = 0, version = version + 1
-                WHERE goods_no = #{goodsNo} AND store_no = #{storeNo} AND deleted = 1
-                  AND community_no IN
-                  <foreach item="c" collection="communityNos" open="(" separator="," close=")">#{c}</foreach>
-                </script>
-                """)
-        int reviveMany(@Param("goodsNo") String goodsNo, @Param("storeNo") String storeNo,
-                       @Param("communityNos") java.util.Collection<String> communityNos);
-
-        /**
-         * 这件货<b>被逻辑删掉</b>的池行是哪些 (社区, 门店)。
-         *
-         * <p>手写 SQL 是必须的：{@code @TableLogic} 会给 BaseMapper 的查询自动加上
-         * {@code deleted = 0}，而这里要的恰恰是被删的那一批。
-         *
-         * <p>读它是为了把「先试复活一下」这个逐行动作换成一次查询 + 分组批量更新：
-         * 知道哪些是删过的，就知道哪些该复活、哪些该新建，不必逐行去试。
-         */
-        @org.apache.ibatis.annotations.Select("""
-                SELECT community_no AS communityNo, store_no AS storeNo
-                FROM prd_community_pool
-                WHERE goods_no = #{goodsNo} AND deleted = 1
-                """)
-        List<CommunityStore> deletedPairs(@Param("goodsNo") String goodsNo);
-
-        /** {@link #deletedPairs} 的行。{@code storeNo} 可空 —— 存量行的门店没回填上 */
-        record CommunityStore(String communityNo, String storeNo) {
-        }
     }
 
     public interface StockLockMapper extends BaseMapper<PrdStockLock> {

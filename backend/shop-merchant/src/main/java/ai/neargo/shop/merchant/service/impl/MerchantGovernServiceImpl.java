@@ -316,8 +316,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             store.setStatus(MchStore.SUSPENDED);
             DataScopeContext.executeWithoutScope(() -> storeProfileMapper.updateById(store));
             /*
-             * 撤货架必须跟上（TDD D3）：门店 status 在 C 端可见性链路上没有读者，
-             * 只改状态 = 「处置完了还在卖」。真闸门是店级在售 × 主体总闸 × 社区池。
+             * 撤货架必须跟上（TDD D3）：停业的门店在查询时已经不算服务门店，
+             * 但处置要留下「平台压下的」标记，解除时才能只恢复这一批 —— 那是店级货架上的事。
              */
             shelfPort.getObject().platformOffline(merchantNo, storeNo);
         }

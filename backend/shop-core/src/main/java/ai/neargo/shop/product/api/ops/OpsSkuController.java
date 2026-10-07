@@ -103,7 +103,7 @@ public class OpsSkuController {
     }
 
     /**
-     * 平台压下架：主体级下架 + 撤社区池 + 记原因，<b>不撤过审</b> ——
+     * 平台压下架：主体级下架 + 记原因，<b>不撤过审</b> ——
      * 商家处理完自己点一下就能回来，不必走一遍重新提审。
      * 与 {@code POST /ops/goods/{goodsNo}/force-off}（撤销过审）是两件事。
      */

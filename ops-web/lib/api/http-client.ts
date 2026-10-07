@@ -129,7 +129,7 @@ function makeClient(base: string) {
   get: <T>(path: string, q?: object) => req<T>(base, `${path}${qs(q)}`),
   /**
    * POST。第三个参数是**查询串** —— 后端有一批写操作把参数收在 `@RequestParam` 上
-   * 而不是 body（如 `/ops/community-pool/resync?entityNo=`）。
+   * 而不是 body（如 `?entityNo=` 这类筛选参数）。
    *
    * <p>此前没有这个参数，于是唯一的写法是把 `?a=b` 拼进 path —— 那会让两道闸
    * （`gen-openapi` 与 `check-ops-contract`）把带查询串的整串当成路径去比对后端注册，

@@ -1,11 +1,9 @@
 package ai.neargo.shop.config;
 
 import ai.neargo.shop.product.entity.PrdCategory;
-import ai.neargo.shop.product.entity.PrdCommunityPool;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.CategoryMapper;
-import ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.community.entity.CmtCommunity;
@@ -47,7 +45,7 @@ public class DevSeeder {
     @Bean
     ApplicationRunner seedRunner(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
                                  MchEntityMapper merchantMapper, GoodsMapper goodsMapper,
-                                 SkuMapper skuMapper, CommunityPoolMapper poolMapper,
+                                 SkuMapper skuMapper,
                                  CategoryMapper categoryMapper, StaffMapper staffMapper,
                                  RoleMemberMapper roleMemberMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
@@ -55,6 +53,7 @@ public class DevSeeder {
                                  // 平台员工是 staffMapper，商家子账号是 merchantStaffMapper —— 两套人，别混
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                                  ai.neargo.shop.auth.PasswordHasher passwordHasher) {
         return args -> {
             /*
@@ -167,22 +166,41 @@ public class DevSeeder {
                 storeMapper.insert(defaultStore(seed[0], seed[2]));
             }
 
+            /*
+             * 两家演示商家的范围：C0001 / C0002 两个小区（没开送货方式 = 旧口径「自提」，框了才有落点）。
+             * 买家能看到什么在查询时按这些设置现算（方案-商品可见性改查询时关联）——
+             * 此前这里直接往社区池里写这两个小区的行，现在写的是真源。
+             */
+            for (String merchantNo : List.of("M0001", "M0002")) {
+                for (String communityNo : List.of("C0001", "C0002")) {
+                    var area = new ai.neargo.shop.merchant.entity.MchServiceArea();
+                    area.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+                    area.setEntityNo(merchantNo);
+                    area.setLevel("COMMUNITY");
+                    area.setRefCode(communityNo);
+                    area.setSource("SELF");
+                    area.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
+                    area.setMode(ai.neargo.shop.merchant.entity.MchServiceArea.MODE_INCLUDE);
+                    serviceAreaMapper.insert(area);
+                }
+            }
+
             pickupMapper.insert(pickup("PP0001", "C0001", "老张粮油店（自提点）",
                     "阳光花园东门旁", "ST-M0001", "08:00-21:00", "每晚 7 点前到货"));
             pickupMapper.insert(pickup("PP0002", "C0002", "翡翠城便利店",
                     "翡翠城 3 号楼底商", "ST-M0001", "07:00-22:00", "每晚 8 点前到货"));
 
-            seedGoods(goodsMapper, skuMapper, poolMapper,
+            seedGoods(goodsMapper, skuMapper,
                     "G0001", "M0001", "NORMAL", "🍚", "五常大米 10斤装", "东北五常，当季新米",
                     List.of(new SkuSeed("SK0001", "10斤装", 4980L, 5980L, 120),
                             new SkuSeed("SK0002", "20斤装", 9580L, 11800L, 60)));
-            seedGoods(goodsMapper, skuMapper, poolMapper,
+            seedGoods(goodsMapper, skuMapper,
                     "G0002", "M0001", "NORMAL", "🛢️", "金龙鱼调和油 5L", "家庭装，煎炒烹炸",
                     List.of(new SkuSeed("SK0003", "5L", 6980L, 7980L, 80)));
-            seedGoods(goodsMapper, skuMapper, poolMapper,
+            seedGoods(goodsMapper, skuMapper,
                     "G0003", "M0002", "FRESH", "🍑", "阳山水蜜桃 4枚礼盒", "次日到货，坏果包赔",
                     List.of(new SkuSeed("SK0004", "4枚装", 5800L, 6800L, 40)));
-            seedGoods(goodsMapper, skuMapper, poolMapper,
+            seedGoods(goodsMapper, skuMapper,
                     "G0004", "M0002", "FRESH", "🫐", "云南蓝莓 125g×4盒", "当季头茬",
                     List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 30)));
 
@@ -445,7 +463,7 @@ public class DevSeeder {
         return m;
     }
 
-    private void seedGoods(GoodsMapper goodsMapper, SkuMapper skuMapper, CommunityPoolMapper poolMapper,
+    private void seedGoods(GoodsMapper goodsMapper, SkuMapper skuMapper,
                            String goodsNo, String merchantNo, String type, String cover,
                            String title, String subtitle,
                            List<SkuSeed> skus) {
@@ -485,15 +503,6 @@ public class DevSeeder {
             sku.setStock(s.stock());
             sku.setLockedStock(0);
             skuMapper.insert(sku);
-        }
-
-        for (String communityNo : List.of("C0001", "C0002")) {
-            var pool = new PrdCommunityPool();
-            pool.setCommunityNo(communityNo);
-            pool.setGoodsNo(goodsNo);
-            pool.setEntityNo(merchantNo);
-            pool.setSortWeight(0);
-            poolMapper.insert(pool);
         }
     }
 

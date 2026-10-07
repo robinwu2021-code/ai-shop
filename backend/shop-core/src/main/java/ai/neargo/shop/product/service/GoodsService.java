@@ -38,7 +38,7 @@ public interface GoodsService {
     /**
      * 这件商品卖不卖到这个社区（TDD-C端商品收藏与送达判断 AC5 / AC6）。
      *
-     * <p>判据与首页商品池（{@code prd_community_pool}）同一份 —— 首页在这个社区看得到它，
+     * <p>判据与首页列表同一份（{@code GoodsVisibility}）—— 首页在这个社区看得到它，
      * 这里就说卖得到；两处各判一次迟早对不上。
      *
      * @param communityNo 收货地址推出来的社区。<b>空 = 不判，返回 null</b>：

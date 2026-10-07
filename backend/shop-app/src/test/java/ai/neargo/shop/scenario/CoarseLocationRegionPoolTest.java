@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 那不是一个决定，是过滤被跳过的副作用，而它在界面上与「这就是你这儿的货」长得一模一样。
  *
  * <p>改造后：模糊坐标仍然不匹配聚落（5 公里误差配 1000 米围栏，出来的是噪音），
- * 但落得准**区县**，商品池就按那个区筛。
+ * 但落得准**区县**，商品就按「区里任一开放小区有门店服务」筛（查询时现算）。
  *
  * <p><b>为什么要自己插种子</b>：测试库里一件商品、一行区划都没有 ——
  * 不插的话「按区筛出来是空的」与「按区筛没生效」在断言上完全一样，这条用例什么也证明不了。
@@ -74,6 +74,9 @@ class CoarseLocationRegionPoolTest {
     private static final String C_OUT = "CT5R02";
     private static final String G_IN = "GT5R01";
     private static final String G_OUT = "GT5R02";
+    /** 两家商家：一家只服务本区那个小区，一家只服务别区那个 —— 可见性按它们的范围现算 */
+    private static final String M_IN = "MT5R00";
+    private static final String M_OUT = "MT5R01";
     /**
      * 两件货共同的标题前缀。**断言一律带上它。**
      *
@@ -89,6 +92,12 @@ class CoarseLocationRegionPoolTest {
     private ObjectMapper json;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper merchantMapper;
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
     @BeforeAll
     void seed() {
@@ -102,15 +111,17 @@ class CoarseLocationRegionPoolTest {
         // 两个聚落，分属两个区。**对照组**：没有它，「筛没筛」看不出来
         community(C_IN, "按区筛-本区", DISTRICT, LAT_E6, LNG_E6);
         community(C_OUT, "按区筛-别区", OTHER_DISTRICT, LAT_E6, LNG_E6_OUT);
-        goods(G_IN);
-        goods(G_OUT);
-        pool(C_IN, G_IN);
-        pool(C_OUT, G_OUT);
+        merchantServing(M_IN, C_IN);
+        merchantServing(M_OUT, C_OUT);
+        goods(G_IN, M_IN);
+        goods(G_OUT, M_OUT);
     }
 
     @AfterAll
     void cleanup() {
-        jdbc.update("DELETE FROM prd_community_pool WHERE goods_no IN (?,?)", G_IN, G_OUT);
+        jdbc.update("DELETE FROM mch_service_area WHERE entity_no IN (?,?)", M_IN, M_OUT);
+        jdbc.update("DELETE FROM mch_store WHERE entity_no IN (?,?)", M_IN, M_OUT);
+        jdbc.update("DELETE FROM mch_entity WHERE entity_no IN (?,?)", M_IN, M_OUT);
         jdbc.update("DELETE FROM prd_goods WHERE goods_no IN (?,?)", G_IN, G_OUT);
         jdbc.update("DELETE FROM cmt_community WHERE community_no IN (?,?)", C_IN, C_OUT);
         jdbc.update("DELETE FROM sys_region WHERE region_code IN (?,?,?)",
@@ -129,15 +140,36 @@ class CoarseLocationRegionPoolTest {
                 no, name, regionCode, latE6, lngE6);
     }
 
-    private void goods(String no) {
+    private void goods(String no, String entityNo) {
         jdbc.update("INSERT INTO prd_goods (goods_no, entity_no, title, type, on_sale, audit_status, "
-                        + "created_at, updated_at) VALUES (?,'MT5R00',?, 'NORMAL', 1, 'APPROVED', NOW(), NOW())",
-                no, no);
+                        + "created_at, updated_at) VALUES (?,?,?, 'NORMAL', 1, 'APPROVED', NOW(), NOW())",
+                no, entityNo, no);
     }
 
-    private void pool(String communityNo, String goodsNo) {
-        jdbc.update("INSERT INTO prd_community_pool (community_no, goods_no, entity_no, "
-                + "created_at, updated_at) VALUES (?,?,'MT5R00',NOW(),NOW())", communityNo, goodsNo);
+    /** 一家 ACTIVE 商家 + 一家 ACTIVE 门店 + 一条只框这个小区的范围（没开送货方式 = 旧口径自提，框了才有落点） */
+    private void merchantServing(String entityNo, String communityNo) {
+        var m = new ai.neargo.shop.merchant.entity.MchEntity();
+        m.setEntityNo(entityNo);
+        m.setName("按区筛测试商家-" + entityNo);
+        m.setStatus("ACTIVE");
+        m.setLegalForm("ENTERPRISE");
+        merchantMapper.insert(m);
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setEntityNo(entityNo);
+        st.setStoreNo("ST" + entityNo);
+        st.setName("按区筛测试店");
+        st.setIsDefault(true);
+        st.setStatus("ACTIVE");
+        storeMapper.insert(st);
+        var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo("SVA" + entityNo);
+        a.setEntityNo(entityNo);
+        a.setLevel("COMMUNITY");
+        a.setRefCode(communityNo);
+        a.setSource("SELF");
+        a.setStatus("ACTIVE");
+        a.setMode("INCLUDE");
+        serviceAreaMapper.insert(a);
     }
 
     private MockMvc mvc() {

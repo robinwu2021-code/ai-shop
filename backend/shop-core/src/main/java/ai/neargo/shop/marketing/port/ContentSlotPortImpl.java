@@ -47,7 +47,7 @@ public class ContentSlotPortImpl implements ContentSlotPort {
     }
 
     /**
-     * 投放范围命中判断。<b>位子没写社区 = 投全部社区</b>（与商品社区池相反的默认，
+     * 投放范围命中判断。<b>位子没写社区 = 投全部社区</b>（与商品可见性相反的默认，
      * 因为版位是运营给全平台配的，而商品是商家一件件铺进社区的）。
      */
     private boolean hits(String communityNosJson, String communityNo) {

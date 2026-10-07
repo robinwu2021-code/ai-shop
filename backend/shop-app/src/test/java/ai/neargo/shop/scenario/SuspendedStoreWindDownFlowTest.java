@@ -130,9 +130,12 @@ class SuspendedStoreWindDownFlowTest {
         assertThat(entityOnSale(goodsNo))
                 .as("……主体总闸不能被停业店顶开 —— 顶开了 C 端无社区列表就会列出它")
                 .isFalse();
-        assertThat(poolRows(goodsNo))
-                .as("社区池更不能多出一行：停业店的货不该出现在任何买家面前")
-                .isZero();
+        assertThat(merchantQuery.servingStores("CM001").getOrDefault(merchantNoOf(biz), java.util.Set.of()))
+                .as("停业店不算服务门店：它的货不该出现在任何买家面前")
+                .doesNotContain(storeB);
+        assertThat(goodsService.deliverableTo(goodsNo, "CM001"))
+                .as("买家详情不能说送得到")
+                .isFalse();
     }
 
     // ── 夹具 ──────────────────────────────────────────────────────────
@@ -144,7 +147,10 @@ class SuspendedStoreWindDownFlowTest {
     private ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
 
     @Autowired
-    private ai.neargo.shop.product.mapper.ProductMappers.CommunityPoolMapper poolMapper;
+    private ai.neargo.shop.spi.user.MerchantQueryPort merchantQuery;
+
+    @Autowired
+    private ai.neargo.shop.product.service.GoodsService goodsService;
 
     private boolean entityOnSale(String goodsNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
@@ -162,13 +168,6 @@ class SuspendedStoreWindDownFlowTest {
                                 .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, goodsNo)
                                 .eq(ai.neargo.shop.product.entity.PrdStoreGoods::getStoreNo, storeNo))
                         .stream().anyMatch(r -> Boolean.TRUE.equals(r.getOnSale())));
-    }
-
-    private long poolRows(String goodsNo) {
-        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
-                poolMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.product.entity.PrdCommunityPool>lambdaQuery()
-                        .eq(ai.neargo.shop.product.entity.PrdCommunityPool::getGoodsNo, goodsNo)));
     }
 
     private ResultActions setStatus(String token, String storeNo, String status) throws Exception {

@@ -39,15 +39,6 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
-    /**
-     * 改送货方式/覆盖范围会改变**这家店可达哪些社区**，而 C 端可见性读的是 product 域的社区池。
-     *
-     * <p>{@code ObjectProvider} 而不是直接注入：直接注入构成构造环
-     * （merchant → StoreShelfPort → MerchantGoodsService → GoodsService → 回 merchant），
-     * Spring 默认禁循环引用，上下文起不来。与 MerchantPortImpl / MerchantStoreServiceImpl 同一手法。
-     */
-    private final org.springframework.beans.factory.ObjectProvider<
-            ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort;
 
     public StoreFulfillmentServiceImpl(FulfillmentChannelMapper channelMapper,
                                        MchStoreMapper storeMapper,
@@ -55,10 +46,7 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper pickupRefMapper,
                                        ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
                                        ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper areaRefMapper,
-                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                                       org.springframework.beans.factory.ObjectProvider<
-                                               ai.neargo.shop.spi.product.StoreShelfPort> storeShelfPort) {
-        this.storeShelfPort = storeShelfPort;
+                                       ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
         this.channelMapper = channelMapper;
         this.storeMapper = storeMapper;
         this.admissionPort = admissionPort;
@@ -270,16 +258,9 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
             return null;
         });
         /*
-         * ★ 送货方式与覆盖范围变了 = **这家店可达哪些社区**变了（可见性按门店算 · 第 5 步）。
-         *
-         * 社区池是派生索引，只在「商品那一侧」变化时重建。口径按门店算之后，
-         * 「门店那一侧」变化同样要重建 —— 少了这一句就是 e7cc4f24 那个回归的翻版：
-         * 商家把自送范围从 A 小区改到 B 小区，货还留在 A 小区的池里、进不了 B 小区，
-         * 而两头都不报错。
-         *
-         * 失败不阻塞：送货方式已经保存成功了，让池重建把它回滚掉更糟。
+         * 只写送货方式自己那几行。买家能看到什么、能选哪几路，都在查询时按这几行现算
+         * （方案-商品可见性改查询时关联）—— 此前这里要同步重建整个主体的社区池，保存要 4~5 秒。
          */
-        storeShelfPort.getObject().resyncPools(merchantNo);
         return get(merchantNo, store.getStoreNo());
     }
 
