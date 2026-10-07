@@ -1318,7 +1318,7 @@ onShareTimeline(() =>
           漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
           两样都没有时整段不渲染，不拿一个空白区块占着详情页。
         -->
-        <view v-if="detailParas.length || goods.detailImages?.length || detailFallback.length" class="sh-card block">
+        <view v-if="detailParas.length || goods.detailImages?.length || detailFallback.length" class="sh-card block dt">
           <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
           <!--
             **按空行分段**（§3.2）。后端存的是纯文本，这里只排版、不解析任何标记 ——
@@ -1326,21 +1326,29 @@ onShareTimeline(() =>
             此前整段正文挤成一坨，商家写的分段在买家这边一行都看不出来。
           -->
           <text v-for="(para, i) in detailParas" :key="i" class="txt-body dt__text">{{ para }}</text>
-          <!-- 长图按顺序全宽竖排。mode="widthFix" 是关键：不给的话
-               1:3 的长图会被压进默认的 320×240 里 -->
-          <image
-            v-for="(img, i) in goods.detailImages ?? []"
-            :key="img + i"
-            class="dt__img"
-            :src="thumb(img, 750)"
-            mode="widthFix"
-            lazy-load
-          />
-          <!-- 兜底（v3 d05）：没写正文也没传长图时，主图全宽排开 —— 此前这一段整块消失，往下滑是空的 -->
+          <!--
+            长图**零缝拼接**：商家传的是一张整稿切成的片 —— 线上「脆柿子」那 10 张
+            全是 1058×1026（同宽，高只差 1px），平台规范也是按 750 宽切、单片高 ≤1500。
+            既然是切片，任何缝隙或圆角都会把一张完整的稿切碎，所以包一层 `dt__imgs`：
+            它撑开卡片左右内边距通栏出血，里面的图挨着排、不留缝。淘宝 / 拼多多 同此。
+            mode="widthFix" 不能去：不给的话 1:3 的长图会被压进默认的 320×240 里。
+          -->
+          <view v-if="goods.detailImages?.length" class="dt__imgs">
+            <image
+              v-for="(img, i) in goods.detailImages"
+              :key="img + i"
+              class="dt__img"
+              :src="thumb(img, 750)"
+              mode="widthFix"
+              lazy-load
+            />
+          </view>
+          <!-- 兜底（v3 d05）：没写正文也没传长图时，主图全宽排开 —— 此前这一段整块消失，往下滑是空的。
+               这几张是**独立主图不是切片**，所以按照片排：留一道窄缝 + 圆角，不出血 -->
           <image
             v-for="(img, i) in detailFallback"
             :key="'fb' + img + i"
-            class="dt__img"
+            class="dt__img dt__img--photo"
             :src="thumb(img, 750)"
             mode="widthFix"
             lazy-load
@@ -1747,10 +1755,30 @@ onShareTimeline(() =>
   display: block;
   white-space: pre-wrap;
 }
+/* 段与段之间。此前是零 —— 商家按空行分的段，在买家这边又粘回了一坨；
+   之前看不出来，是因为后面那张图的 margin 把最后一段顶开了，段间并没有距离 */
+.dt__text + .dt__text {
+  margin-top: 12rpx;
+}
+/* 图文详情的长图区。出血到卡片边：稿是按 750 宽做的，留着 32rpx 内边距等于
+   给整张稿加一圈白框，稿里的字也跟着缩一圈。卡片的圆角要把出血的图裁住，
+   所以 .dt 上挂 overflow: hidden。 */
+.dt {
+  overflow: hidden;
+}
+.dt__imgs {
+  margin-top: 16rpx;
+  margin-inline: calc(var(--sh-pad-card, 32rpx) * -1);
+}
+/* 切片之间**不留缝**（理由见模板那段注释）。vertical-align 防 inline 基线缝 */
 .dt__img {
   display: block;
   width: 100%;
-  margin-top: 16rpx;
+  vertical-align: top;
+}
+/* 兜底的主图是独立照片，不是切片：窄缝 + 圆角，各自成图 */
+.dt__img--photo {
+  margin-top: 8rpx;
   border-radius: 16rpx;
 }
 
