@@ -15,8 +15,8 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import {
-  buildCandidates, entryAfterUndo, mergeUndo, planTextParse, raiseEntry, retarget,
-  type Candidate, type EntrySource,
+  asFreeParam, buildCandidates, entryAfterUndo, mergeUndo, overwritesOf, planTextParse, raiseEntry,
+  retargetWithSwap, similarDimNos, type Candidate, type EntrySource,
 } from "./text-parse";
 import { useMerchantStore } from "@/stores/merchant";
 import { emptyPrices, usePriceRows } from "./price-rows";
@@ -738,17 +738,15 @@ async function onImportZip() {
    * 此前两件都是自动的：一次导入同时触发两路识别，结果混在一起，分不清哪个是哪边来的。
    */
   if (txt) zipText.value = txt;
-  quickMode.value = "image";
 }
 
 // ── 快速录入：图片与文字两档，**各自点按钮识别、互不触发**（AC1/AC5）
 const parseInput = ref("");
-/**
- * 快速录入卡的两档：文字 / 图片（AC5）。**两边互不触发** —— 识别文字不跑图片识别，
- * 识别图片不往文字框里写东西。此前它们挤在一张卡、共用一个按钮位，
- * 导一个压缩包会同时往文字框灌字、又自动跑图片识别，商家分不清哪个结果是哪边来的。
+/*
+ * 快速录入卡**分两段、不切换**（2026-10-07 原型「乙」）：文字段在上，图片一行在下。
+ * 此前是文字 / 图片两档切换 —— 商家主要贴文字，压缩包是一次性的动作，
+ * 不值得为它常驻一个切换。两边仍各自点按钮识别、互不触发。
  */
-const quickMode = ref<"text" | "image">("text");
 /** 文字识别中（按钮转圈）。与图片的 `parsing` 分开 —— 两边各自有自己的忙 */
 const textParsing = ref(false);
 /** 压缩包里带回来的文字，**等人点「导入到文字识别」才进文字框** */
@@ -874,9 +872,41 @@ function undoParse() {
  * 改成点击之后那个理由不存在了。行怎么算在 `./text-parse.ts`（纯函数、有测试）。
  */
 const candidates = ref<Candidate[]>([]);
-/** 正在改落点的那一行（参数行才有） */
-const retargetKey = ref<string | null>(null);
+/** 正在调参数的那一块（参数块才有） */
+const pickerKey = ref<string | null>(null);
+/** 参数列表的搜索词 */
+const pickerQuery = ref("");
 const checkedCount = computed(() => candidates.value.filter((c) => c.checked).length);
+
+/** 正在调的那一块 */
+const pickerFor = computed(() => candidates.value.find((c) => c.key === pickerKey.value) ?? null);
+
+/**
+ * 参数列表：**相近的排前面**（值是重量就先列重量类参数），其余在「全部」；
+ * 有搜索词时两组都按名字过滤。只列本品类的参数 —— 落点是数据决定的，不让人凭空起名。
+ *
+ * <p>每一行带两样：`current`（这一块现在就在这儿）与 `occupant`（被同一批里别的值占着 ——
+ * 选它就是互换，行上写出会跟谁换，免得点下去另一块悄悄变了）。
+ */
+const pickerGroups = computed(() => {
+  const c = pickerFor.value;
+  if (!c) return [];
+  const all = propDims.value.map((d) => ({ dimNo: d.templateNo, name: d.name }));
+  const q = pickerQuery.value.trim();
+  const near = new Set(similarDimNos(c.value, all));
+  const decorate = (d: { dimNo: string; name: string }) => ({
+    ...d,
+    current: c.mapped === true && c.dimNo === d.dimNo,
+    occupant: candidates.value.find((o) => o.key !== c.key && o.kind === "param" && o.mapped && o.dimNo === d.dimNo)?.value,
+  });
+  const hit = all.filter((d) => !q || d.name.includes(q));
+  const similar = hit.filter((d) => near.has(d.dimNo)).map(decorate);
+  const rest = hit.filter((d) => !near.has(d.dimNo)).map(decorate);
+  return [
+    { key: "similar", titleKey: "goods.pickSimilar", dims: similar },
+    { key: "rest", titleKey: similar.length ? "goods.pickAll" : "goods.pickParams", dims: rest },
+  ].filter((g) => g.dims.length);
+});
 
 /**
  * 文字识别（规则 + LLM）：拿结果、算出确认区的行。**一个字段都不写**。
@@ -948,6 +978,25 @@ function toggleCandidate(key: string) {
   candidates.value = candidates.value.map((c) => (c.key === key ? { ...c, checked: !c.checked } : c));
 }
 
+/**
+ * 点参数块：参数块打开参数列表调参数；售价、配送、限购地区这类没有别的参数可换，点了就是选 / 不选。
+ */
+function tapBlock(c: Candidate) {
+  if (c.kind !== "param") {
+    toggleCandidate(c.key);
+    return;
+  }
+  pickerQuery.value = "";
+  pickerKey.value = c.key;
+}
+
+/** 不填这一项（参数列表里的那一行） */
+function skipPicked() {
+  const key = pickerKey.value;
+  pickerKey.value = null;
+  if (key) candidates.value = candidates.value.map((c) => (c.key === key ? { ...c, checked: false } : c));
+}
+
 /** 全选 / 全不选。有一行没勾就是「全选」，否则「全不选」 */
 function toggleAllCandidates() {
   const to = candidates.value.some((c) => !c.checked);
@@ -958,16 +1007,34 @@ function cancelCandidates() {
   candidates.value = [];
 }
 
-/** 改参数行的落点：从本品类的标准参数里挑一个，或者作自由参数 */
-function pickTarget(dim: { templateNo: string; name: string } | null) {
-  const key = retargetKey.value;
-  retargetKey.value = null;
+/**
+ * 选一个参数。**被别的值占着就互换**（`retargetWithSwap`，有测试）——
+ * 只换一个会让同一个参数填两次。传 null = 作自由参数（不落标准参数，原文叫法当参数名）。
+ */
+function pickTarget(dim: { dimNo: string; name: string } | null) {
+  const key = pickerKey.value;
+  pickerKey.value = null;
   if (!key) return;
-  candidates.value = candidates.value.map((c) => {
-    if (c.key !== key) return c;
-    // 作自由参数 = 不落标准参数，也就谈不上替换旧的同义参数
-    if (!dim) return { ...c, mapped: false, checked: false, replaces: undefined };
-    return retarget(c, { dimNo: dim.templateNo, name: dim.name }, currentParamLabels());
+  if (!dim) {
+    candidates.value = candidates.value.map((c) => (c.key === key ? asFreeParam(c, currentParamLabels()) : c));
+    return;
+  }
+  const r = retargetWithSwap(candidates.value, key, dim, currentParamLabels());
+  candidates.value = r.rows;
+  if (r.swappedWith) uni.showToast({ title: String(t("goods.blockSwapped")), icon: "none" });
+}
+
+/** 「粘贴」：读剪贴板放进文字框（追加，不覆盖他已经写的） */
+function pasteText() {
+  uni.getClipboardData({
+    success: (res) => {
+      const txt = (res.data ?? "").trim();
+      if (!txt) {
+        uni.showToast({ title: String(t("goods.pasteEmpty")), icon: "none" });
+        return;
+      }
+      parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
+    },
   });
 }
 
@@ -978,9 +1045,30 @@ function pickTarget(dim: { templateNo: string; name: string } | null) {
  * 参数行已有值且勾上了 = 他要覆盖：先清掉那一格，再走 `applyParamPicks`
  * （它只填空着的）—— 同一个落点函数，不另写一套。
  */
-function applyCandidates() {
-  const picked = candidates.value.filter((c) => c.checked);
+async function applyCandidates() {
+  let picked = candidates.value.filter((c) => c.checked);
   if (!picked.length) return;
+  /*
+   * **已有值只在这里处理**（用户 2026-10-07 定：不展示现值）。勾上的里面有会改掉已有内容的，
+   * 一次问「保留原值 / 覆盖」；关掉弹窗按「保留原值」算 —— 不确定时不改他填过的东西。
+   */
+  const over = overwritesOf(picked);
+  if (over.length) {
+    const ok = await confirm({
+      title: String(t("goods.overwriteTitle", { n: over.length })),
+      hint: over.map((c) => candidateTarget(c)).join("、"),
+      confirmText: String(t("goods.overwriteApply")),
+      cancelText: String(t("goods.overwriteKeep")),
+    });
+    if (!ok) {
+      const keep = new Set(over.map((c) => c.key));
+      picked = picked.filter((c) => !keep.has(c.key));
+      if (!picked.length) {
+        candidates.value = [];
+        return;
+      }
+    }
+  }
   const snapshot = {
     fulfillments: [...fulfillments.value],
     bulkPrice: bulk.value.price,
@@ -1081,7 +1169,6 @@ function importZipText() {
   if (!zipText.value) return;
   parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${zipText.value}` : zipText.value;
   zipText.value = "";
-  quickMode.value = "text";
 }
 
 async function genDetail() {
@@ -1872,148 +1959,80 @@ async function save(thenSubmit = false) {
       </text>
     </view>
     <!--
-      快速录入：**文字 / 图片两档，各自输入、各自点按钮识别、互不触发**
-      （TDD-商品快速录入-品类感知与逐项确认 AC1/AC5）。仍是第一张卡、卡序不变 ——
-      两档切换留在卡里，页面骨架不动。
+      快速录入：**文字一段 + 图片一行，不切换**（2026-10-07 原型「乙」；
+      TDD-商品快速录入-品类感知与逐项确认 AC1/AC5）。两边各自点按钮识别、互不触发。
+      识别结果**不进这张卡**，开在弹框里（见下面的「参数块」弹框）—— 卡只管输入。
     -->
     <view class="sh-card quick">
       <text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text>
-      <view class="segs quick__tabs">
+      <textarea
+        v-model="parseInput"
+        class="field__area field__area--grow"
+        :placeholder="$t('goods.parsePh')"
+        :maxlength="2000"
+        auto-height
+      />
+      <!-- 粘贴之后点这里才识别 —— 不再边输边识别（AC1） -->
+      <view class="sh-row quick__act">
+        <text class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="pasteText">{{ $t("goods.paste") }}</text>
         <text
-          class="sh-seg sh-seg--fill"
-          :class="{ 'sh-seg--on': quickMode === 'text' }"
-          @tap="quickMode = 'text'"
-        >{{ $t("goods.quickTabText") }}</text>
-        <text
-          class="sh-seg sh-seg--fill"
-          :class="{ 'sh-seg--on': quickMode === 'image' }"
-          @tap="quickMode = 'image'"
-        >{{ $t("goods.quickTabImage") }}</text>
+          class="sh-btn sh-btn--sm sh-hit"
+          :class="{ 'is-disabled': !parseInput.trim() || textParsing, 'is-loading': textParsing }"
+          @tap="recognizeText"
+        >
+          {{ textParsing ? $t("goods.parsing") : $t("goods.recognizeText") }}
+        </text>
       </view>
-
-      <!-- ── 文字档 ── -->
-      <template v-if="quickMode === 'text'">
-        <textarea
-          v-model="parseInput"
-          class="field__area field__area--grow"
-          :placeholder="$t('goods.parsePh')"
-          :maxlength="2000"
-          auto-height
-        />
-        <!-- 粘贴之后点这里才识别 —— 不再边输边识别（AC1） -->
-        <view class="sh-row quick__act">
-          <text
-            class="sh-btn sh-btn--sm sh-hit"
-            :class="{ 'is-disabled': !parseInput.trim() || textParsing, 'is-loading': textParsing }"
-            @tap="recognizeText"
-          >
-            {{ textParsing ? $t("goods.parsing") : $t("goods.recognizeText") }}
-          </text>
-        </view>
-        <!--
-          **确认区**（P2 · AC3）：一个识别出来的东西一行 —— 勾不勾、值、落到哪个字段。
-          点「识别文字」只列在这里，「填入」才写表单。参数行的落点可以改。
-          此前是一排只读的 chip（P1 已把两个重量拆成两枚），看得见却管不了。
-        -->
-        <view v-if="candidates.length" class="confirm">
-          <view class="sh-row confirm__head">
-            <text class="txt-caption sh-muted sh-fill">
-              {{ $t("goods.confirmTitle", { n: candidates.length, m: checkedCount }) }}
-            </text>
-            <text class="txt-caption sh-link sh-hit" @tap="toggleAllCandidates">
-              {{ candidates.some((c) => !c.checked) ? $t("goods.confirmAll") : $t("goods.confirmNone") }}
-            </text>
-          </view>
-          <!-- 整行点击切换，sh-check 只负责画（与盘点选货同一写法） -->
-          <view
-            v-for="c in candidates"
-            :key="c.key"
-            class="sh-row confirm__row"
-            @tap="toggleCandidate(c.key)"
-          >
-            <sh-check :model-value="c.checked"></sh-check>
-            <view class="sh-fill confirm__body">
-              <text class="txt-body">{{ candidateValue(c) }}</text>
-              <!-- 这一格已经有值：勾上会覆盖它，写出来让他看见覆盖的是什么 -->
-              <text v-if="c.before" class="txt-caption is-warning confirm__was">
-                {{ $t("goods.confirmWas", { v: c.before }) }}
-              </text>
-              <!-- 会替换掉的同义旧自由参数（「净重 4.5斤」）—— 写出来交给他勾，不静默删 -->
-              <text v-if="c.replaces" class="txt-caption is-warning confirm__was">
-                {{ $t("goods.confirmReplaces", { k: c.replaces.dimNo, v: c.replaces.label }) }}
-              </text>
-            </view>
-            <!-- 参数行的落点可以改；对不上标准参数的那行要先指定 -->
-            <text
-              v-if="c.kind === 'param'"
-              class="txt-caption sh-link sh-hit confirm__to"
-              :class="{ 'is-warning': !c.mapped }"
-              @tap.stop="retargetKey = c.key"
-            >
-              {{ c.mapped ? `→ ${c.target}` : $t("goods.confirmPick") }} ›
-            </text>
-            <text v-else class="txt-caption sh-muted confirm__to">→ {{ candidateTarget(c) }}</text>
-          </view>
-          <view class="sh-row quick__act">
-            <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="cancelCandidates">
-              {{ $t("common.cancel") }}
-            </text>
-            <text
-              class="sh-btn sh-btn--sm sh-hit"
-              :class="{ 'is-disabled': !checkedCount }"
-              @tap="applyCandidates"
-            >
-              {{ $t("goods.confirmApply", { n: checkedCount }) }}
-            </text>
-          </view>
-        </view>
-        <text v-if="parseUndo && parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
-        <!-- 填进去之后的出口：左边点开复核面逐项看，右边一下退回识别之前 -->
-        <view v-if="parseUndo" class="sh-row quick__specs">
-          <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
-            {{ $t("goods.parseUpdatedN", { n: parseUndo.items.length }) }}
-          </text>
-          <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="undoParse">
-            {{ $t("goods.parseUndo") }}
-          </text>
-        </view>
-        <!--
-          识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
-          列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
-        -->
-        <view v-if="specPicks.length" class="sh-row quick__specs">
-          <text class="txt-caption sh-muted sh-fill">
-            {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
-          </text>
-          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applySpecPicks">
-            {{ $t("goods.parseSpecApply") }}
-          </text>
-        </view>
-      </template>
-
-      <!-- ── 图片档：认主图。不往文字框里写东西 ── -->
-      <template v-else>
-        <text v-if="!cover" class="sh-muted quick__hint">{{ $t("goods.recognizeNeedImg") }}</text>
-        <view class="sh-row quick__act">
-          <text
-            class="sh-btn sh-btn--sm sh-hit"
-            :class="{ 'is-disabled': !cover || parsing, 'is-loading': parsing }"
-            @tap="runRecognize(recognized)"
-          >
-            {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
-          </text>
-        </view>
-        <!--
-          压缩包里带了文字：**给一个去处，不替他决定** —— 点了才切到文字档并填进去，
-          填进去也不识别，等他在文字档里再点一次。
-        -->
-        <view v-if="zipText" class="sh-row quick__specs">
-          <text class="txt-caption sh-muted sh-fill">{{ $t("goods.zipTextFound") }}</text>
-          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="importZipText">
-            {{ $t("goods.zipTextImport") }}
-          </text>
-        </view>
-      </template>
+      <text v-if="parseUndo && parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
+      <!-- 填进去之后的出口：左边点开复核面逐项看，右边一下退回识别之前 -->
+      <view v-if="parseUndo" class="sh-row quick__specs">
+        <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
+          {{ $t("goods.parseUpdatedN", { n: parseUndo.items.length }) }}
+        </text>
+        <text class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="undoParse">
+          {{ $t("goods.parseUndo") }}
+        </text>
+      </view>
+      <!--
+        识别到的规格**不自动加**：加一个维度会把价格/库存从一行变成 N 行。
+        列在这里等人点 —— 与上面那排只读的 chip 分开，因为它是一个动作。
+      -->
+      <view v-if="specPicks.length" class="sh-row quick__specs">
+        <text class="txt-caption sh-muted sh-fill">
+          {{ $t("goods.parseSpecFound") }}:{{ specPicks.map((s) => s.name).join("、") }}
+        </text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="applySpecPicks">
+          {{ $t("goods.parseSpecApply") }}
+        </text>
+      </view>
+      <!--
+        图片**只占一行**：商家主要贴文字，压缩包是一次性的动作。认的是主图，不往文字框里写东西。
+      -->
+      <view class="sh-row quick__img">
+        <text class="txt-sub sh-fill">{{ $t("goods.quickImage") }}</text>
+        <text v-if="!cover" class="txt-caption sh-muted">{{ $t("goods.recognizeNeedImg") }}</text>
+        <!-- #ifdef APP-PLUS -->
+        <text class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="onImportZip">{{ $t("goods.importZip") }}</text>
+        <!-- #endif -->
+        <text
+          v-if="cover"
+          class="sh-btn sh-btn--sm sh-hit"
+          :class="{ 'is-disabled': parsing, 'is-loading': parsing }"
+          @tap="runRecognize(recognized)"
+        >
+          {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
+        </text>
+      </view>
+      <!--
+        压缩包里带了文字：**给一个去处，不替他决定** —— 点了才填进文字框，
+        填进去也不识别，等他再点一次「识别文字」。
+      -->
+      <view v-if="zipText" class="sh-row quick__specs">
+        <text class="txt-caption sh-muted sh-fill">{{ $t("goods.zipTextFound") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="importZipText">
+          {{ $t("goods.zipTextImport") }}
+        </text>
+      </view>
     </view>
 
     <view class="sh-card">
@@ -2676,7 +2695,7 @@ async function save(thenSubmit = false) {
         <input
           v-if="isTextDim(d)"
           maxlength="120"
-          class="txt-body param__text"
+          class="txt-body sh-fill"
           :value="paramValues[d.templateNo]?.label || ''"
           :placeholder="String($t('goods.paramTextPlaceholder'))"
           @input="setParamText(d, String(($event as any).detail.value))"
@@ -3094,29 +3113,98 @@ async function save(thenSubmit = false) {
 
     <!-- 限购地区省份多选（反选）：勾中的省不发货，全不选 = 全国 -->
     <!--
-      改落点：这个值填到哪个参数。只列**本品类的标准参数** —— 落点是数据决定的，
-      不让人凭空起名；实在没有对应的，作自由参数。
+      识别结果：**参数块**（2026-10-07 用户选定）。一项一块，上参数、下值；选中是主色描边 + tint 底。
+      **不展示现值** —— 已有值只在点「填入」时问一次（见 applyCandidates）。
+      点参数块打开参数列表调参数；售价、配送这类点了就是选 / 不选。
     -->
     <sh-sheet
-      :visible="!!retargetKey"
-      :title="$t('goods.retargetTitle')"
-      @close="retargetKey = null"
+      :visible="candidates.length > 0"
+      fit
+      :title="$t('goods.blocksTitle', { n: candidates.length })"
+      @close="cancelCandidates"
     >
-      <!-- 没选类目就没有标准参数可挑 —— 给出路，不留一个只有「作自由参数」的空面板 -->
-      <text v-if="!propDims.length" class="txt-caption sh-muted confirm__empty">{{ $t("goods.retargetNeedCat") }}</text>
-      <view
-        v-for="d in propDims"
-        :key="d.templateNo"
-        class="sh-row confirm__row"
-        @tap="pickTarget(d)"
-      >
-        <text class="txt-body sh-fill">{{ d.name }}</text>
-        <text v-if="paramValues[d.templateNo]" class="txt-caption sh-muted">
-          {{ $t("goods.confirmWas", { v: paramValues[d.templateNo]?.label ?? "" }) }}
+      <template #head>
+        <text class="txt-sub sh-link sh-hit" @tap="toggleAllCandidates">
+          {{ candidates.some((c) => !c.checked) ? $t("goods.confirmAll") : $t("goods.confirmNone") }}
         </text>
+      </template>
+      <view class="blocks">
+        <sh-option
+          v-for="c in candidates"
+          :key="c.key"
+          :selected="c.checked"
+          @tap="tapBlock(c)"
+        >
+          <view class="sh-row block__k">
+            <text class="txt-caption sh-muted sh-fill">{{ candidateTarget(c) }}</text>
+            <!-- 对不上标准参数的那块：先不勾，标出来等他挑 -->
+            <text v-if="c.kind === 'param' && !c.mapped" class="txt-caption is-warning">{{ $t("goods.blockFree") }}</text>
+            <sh-go v-if="c.kind === 'param'"></sh-go>
+          </view>
+          <text class="txt-body block__v" :class="{ 'sh-muted': !c.checked }">{{ candidateValue(c) }}</text>
+        </sh-option>
       </view>
-      <view class="sh-row confirm__row" @tap="pickTarget(null)">
-        <text class="txt-body sh-muted sh-fill">{{ $t("goods.retargetFree") }}</text>
+      <template #foot>
+        <view class="sh-row block__acts">
+          <text class="sh-btn sh-btn--muted sh-fill sh-hit" @tap="cancelCandidates">{{ $t("common.cancel") }}</text>
+          <text
+            class="sh-btn sh-fill sh-hit"
+            :class="{ 'is-disabled': !checkedCount }"
+            @tap="applyCandidates"
+          >
+            {{ $t("goods.confirmApply", { n: checkedCount }) }}
+          </text>
+        </view>
+      </template>
+    </sh-sheet>
+
+    <!--
+      参数列表：这个值填到哪个参数。**相近的排前面**（值是重量就先列重量类），可搜。
+      只列本品类的标准参数 —— 落点是数据决定的，不让人凭空起名；实在没有对应的，作自由参数。
+      选一个被别的值占着的参数 = 两项互换（右边写着会跟谁换）。
+    -->
+    <sh-sheet
+      :visible="!!pickerFor"
+      stacked
+      flush
+      :title="$t('goods.pickTitle', { v: pickerFor?.value ?? '' })"
+      @close="pickerKey = null"
+    >
+      <template #toolbar>
+        <view class="sh-searchbox pick__search">
+          <input
+            class="txt-sub sh-fill"
+            maxlength="16"
+            :value="pickerQuery"
+            :placeholder="$t('goods.pickSearchPh')"
+            @input="pickerQuery = String(($event as any).detail.value ?? '')"
+          />
+        </view>
+      </template>
+      <!-- 没选类目就没有标准参数可挑 —— 给出路，不留一个只有「作自由参数」的空面板 -->
+      <text v-if="!propDims.length" class="txt-caption sh-muted pick__g">{{ $t("goods.retargetNeedCat") }}</text>
+      <template v-for="g in pickerGroups" :key="g.key">
+        <text class="txt-caption sh-muted pick__g">{{ $t(g.titleKey) }}</text>
+        <view
+          v-for="d in g.dims"
+          :key="d.dimNo"
+          class="sh-row pick__row"
+          @tap="pickTarget(d)"
+        >
+          <text class="txt-body sh-fill">{{ d.name }}</text>
+          <text v-if="d.current" class="txt-caption pick__cur">{{ $t("goods.pickCurrent") }}</text>
+          <text v-else-if="d.occupant" class="txt-caption sh-muted">{{ $t("goods.pickSwap", { v: d.occupant }) }}</text>
+        </view>
+      </template>
+      <text
+        v-if="pickerQuery.trim() && !pickerGroups.length && propDims.length"
+        class="txt-caption sh-muted pick__g"
+      >{{ $t("goods.pickNone", { q: pickerQuery.trim() }) }}</text>
+      <view class="sh-row pick__row" @tap="pickTarget(null)">
+        <text class="txt-body sh-fill">{{ $t("goods.pickFree", { k: pickerFor?.rawName || pickerFor?.target || "" }) }}</text>
+      </view>
+      <view class="sh-row pick__row" @tap="skipPicked">
+        <text class="txt-body sh-muted sh-fill">{{ $t("goods.pickSkip") }}</text>
       </view>
     </sh-sheet>
 
@@ -3136,7 +3224,7 @@ async function save(thenSubmit = false) {
         <text class="txt-body">{{ it.value || "—" }}</text>
       </sh-kv>
       <view class="build sh-row">
-        <text class="sh-btn sh-btn--sm sh-btn--ghost" @tap="undoParse">{{ $t("goods.parseUndo") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="undoParse">{{ $t("goods.parseUndo") }}</text>
         <text class="sh-btn sh-btn--sm" @tap="reviewOpen = false">{{ $t("goods.restrictedDone") }}</text>
       </view>
     </sh-sheet>
@@ -3157,7 +3245,7 @@ async function save(thenSubmit = false) {
         >{{ p.name }}</text>
       </view>
       <view class="build sh-row">
-        <text class="sh-btn sh-btn--sm sh-btn--ghost" @tap="restrictedRegions = []">{{ $t("goods.restrictedClear") }}</text>
+        <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="restrictedRegions = []">{{ $t("goods.restrictedClear") }}</text>
         <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("goods.restrictedDone") }}</text>
       </view>
     </sh-sheet>
@@ -3393,10 +3481,6 @@ async function save(thenSubmit = false) {
 .param__del {
   flex: none;
   padding-top: 8rpx;
-}
-.param__text {
-  flex: 1;
-  min-width: 0;
 }
 .param__orphanv {
   flex: 1;
@@ -3802,25 +3886,20 @@ async function save(thenSubmit = false) {
 }
 
 .quick__hint { display: block; margin-top: 8rpx; }
-.quick__got { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
 .quick__specs { margin-top: 12rpx; gap: 16rpx; }
-.quick__tabs { margin-top: 16rpx; margin-bottom: 16rpx; }
-.quick__act { justify-content: flex-end; margin-top: 12rpx; }
-/* 确认区:一行一个识别出来的东西。行间用发丝线,不用卡片 —— 它是一张清单,不是一组对象 */
-.confirm { margin-top: 16rpx; }
-.confirm__head { margin-bottom: 8rpx; }
-.confirm__row { gap: 16rpx; padding: 16rpx 0; border-top: var(--sh-hairline-soft); }
-.confirm__body { min-width: 0; }
-.confirm__was { display: block; margin-top: 4rpx; }
-.confirm__to { flex-shrink: 0; }
-.confirm__empty { display: block; padding: 16rpx 0; }
+.quick__act { justify-content: flex-end; gap: 16rpx; margin-top: 12rpx; }
+/* 图片一行：与文字段之间一条发丝线，表明是另一件事 */
+.quick__img { gap: 16rpx; margin-top: 20rpx; padding-top: 20rpx; border-top: var(--sh-hairline-soft); }
+/* 参数块：两列，一项一块。块与块等宽等高 —— 值长短不一，参差的块读起来像没对齐的表 */
+.blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 16rpx; }
+.block__k { gap: 8rpx; }
+.block__v { display: block; margin-top: 4rpx; word-break: break-all; }
+.block__acts { gap: 16rpx; }
+/* 参数列表：行通铺到边（sheet flush），组名是一行小字 */
+.pick__g { display: block; padding: 24rpx var(--sh-panel-pad-x, 36rpx) 8rpx; }
+.pick__row { gap: 16rpx; min-height: 96rpx; padding: 0 var(--sh-panel-pad-x, 36rpx); border-top: var(--sh-hairline-soft); }
+.pick__cur { color: var(--sh-primary); }
+/* 搜索框在面板上：面板就是 surface 底，搜索框得换成输入框那一档的底色才看得出是个框 */
+.pick__search { margin-top: 16rpx; background: var(--sh-faint); }
 .cat-lv__none { gap: 16rpx; margin-top: 8rpx; }
-.quick__tag {
-  font-size: 24rpx;
-  color: var(--sh-primary-text, #b25);
-  background: var(--sh-primary-tint, #fdeef0);
-  padding: 4rpx 16rpx;
-  border-radius: 999rpx;
-}
-.quick__tag--warn { color: var(--sh-warning, #a60); background: var(--sh-warning-tint, #fff4e5); }
 </style>

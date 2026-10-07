@@ -225,6 +225,8 @@ export interface Candidate {
    * 不处理它的话，两行会并列出现在参数卡里。**写出来交给他勾**，不静默删。
    */
   replaces?: { dimNo: string; label: string };
+  /** 参数行：原文叫法（「净重」）。作自由参数时拿它当参数名 —— 标准名「净含量」不是他写的 */
+  rawName?: string;
   checked: boolean;
 }
 
@@ -252,11 +254,11 @@ export interface CandidateCurrent {
 /**
  * 识别结果 → 确认区的行。
  *
- * <p>**默认勾不勾只有一条规矩：这一格已经有值就不勾**。勾上会覆盖他自己填的，
- * 那得他来决定 —— 所以把「原 15.00」写在值旁边，让他看见覆盖的是什么。
- * 此前直接填的时候，售价会从 15 静默变成 10（生产上实测到），而界面上只有一条 toast。
+ * <p>**默认都勾上，只有对不上标准参数的不勾**（mapped=false，它要先指定落点）。
  *
- * <p>参数行另有一条：**对不上标准参数的默认不勾**（mapped=false）—— 它要先指定落点。
+ * <p>已有值**不在这里处理**（2026-10-07 用户定：不展示现值，现值只在提交时处理）——
+ * `before` / `replaces` 仍然算出来，点「填入」时由 {@link overwritesOf} 挑出会覆盖的那几项，
+ * 一次问「保留原值 / 覆盖」。此前是「有值就默认不勾 + 写出原值」，信息多、占地方。
  */
 export function buildCandidates(
   plan: TextParsePlan,
@@ -274,14 +276,14 @@ export function buildCandidates(
     const before = cur.priceBefore.trim() || undefined;
     rows.push({
       key: "price", kind: "price", target: "goods.parsePrice",
-      value: plan.rowPrice, before, checked: !before,
+      value: plan.rowPrice, before, checked: true,
     });
   }
   if (plan.bulkPrice !== undefined) {
     const before = cur.bulkBefore.trim() || undefined;
     rows.push({
       key: "bulkPrice", kind: "bulkPrice", target: "goods.bulkPrice",
-      value: plan.bulkPrice, before, checked: !before,
+      value: plan.bulkPrice, before, checked: true,
     });
   }
   if (plan.restrictedRegions !== undefined) {
@@ -296,8 +298,9 @@ export function buildCandidates(
     const before = cur.params[p.dimNo] || undefined;
     rows.push({
       key: `param:${i}`, kind: "param", target: p.name, value: p.label,
-      dimNo: p.dimNo, mapped, before, checked: mapped && !before,
+      dimNo: p.dimNo, mapped, before, checked: mapped,
       replaces: mapped ? legacyFreeParam(p, cur) : undefined,
+      rawName: p.rawName || p.name,
     });
   });
   return rows;
@@ -323,10 +326,8 @@ function legacyFreeParam(
 }
 
 /**
- * 改一个参数行的落点（「140g」不是净含量，是单果重量）。
- *
- * <p>改完就算对上了（mapped=true）；**默认勾上**，除非那个参数已经有值 ——
- * 与 {@link buildCandidates} 同一条规矩：有值不替他覆盖。
+ * 改一个参数行的落点（「140g」不是净含量，是单果重量）。改完就算对上了、勾上；
+ * 那个参数已有值的话记进 `before`，填入时再问。
  */
 export function retarget(
   c: Candidate,
@@ -335,5 +336,70 @@ export function retarget(
 ): Candidate {
   const before = curParams[dim.dimNo] || undefined;
   // replaces 跟着原文叫法走，不跟落点：「净重」改落到毛重，被替换的旧「净重」还是那一条
-  return { ...c, dimNo: dim.dimNo, target: dim.name, mapped: true, before, checked: !before };
+  return { ...c, dimNo: dim.dimNo, target: dim.name, mapped: true, before, checked: true };
+}
+
+/**
+ * 作**自由参数**：不落标准参数，原文叫法当参数名（自由参数的旧形状 {dimNo:"净重", name:"净重"}）。
+ * 同名自由参数已有值的话记进 `before`，填入时再问；谈不上替换同义旧参数，`replaces` 清掉。
+ */
+export function asFreeParam(c: Candidate, curParams: Record<string, string | undefined>): Candidate {
+  const name = c.rawName || c.target;
+  return {
+    ...c, dimNo: name, target: name, mapped: false, checked: true,
+    before: curParams[name] || undefined, replaces: undefined,
+  };
+}
+
+/**
+ * 换落点，**被占着就互换**（2026-10-07 原型 s15）。
+ *
+ * <p>「4.5斤」换到单果重量，而「140g+」正占着单果重量 —— 只换一个会让单果重量填两次。
+ * 同一批里两个值争同一个参数，最常见的意图是模型把两者判反了，互换一下就对。
+ *
+ * @returns 新的行；`swappedWith` 是被换走的那一行的 key（没互换为 undefined），界面据此提示
+ */
+export function retargetWithSwap(
+  rows: Candidate[],
+  key: string,
+  dim: { dimNo: string; name: string },
+  curParams: Record<string, string | undefined>,
+): { rows: Candidate[]; swappedWith?: string } {
+  const me = rows.find((c) => c.key === key);
+  if (!me) return { rows };
+  const other = rows.find((c) => c.key !== key && c.kind === "param" && c.dimNo === dim.dimNo);
+  const next = rows.map((c) => {
+    if (c.key === key) return retarget(c, dim, curParams);
+    if (other && c.key === other.key && me.dimNo && me.mapped) {
+      // 被占的那一行拿走我原来的落点
+      return retarget(c, { dimNo: me.dimNo, name: me.target }, curParams);
+    }
+    return c;
+  });
+  return { rows: next, swappedWith: other && me.mapped ? other.key : undefined };
+}
+
+/**
+ * 填入时会**改掉已有内容**的那几项：这一格已经有值、且与识别值不同，或者会替换同义的旧参数。
+ * 只看勾上的。空 = 直接填入，不用问。原值就等于识别值的不算 —— 问了也只是多点一下。
+ */
+export function overwritesOf(rows: Candidate[]): Candidate[] {
+  return rows.filter((c) => c.checked && ((!!c.before && c.before !== c.value) || !!c.replaces));
+}
+
+/**
+ * 「相近」的参数：值是什么量，就把同一类的参数排到前面。
+ *
+ * <p>「4.5斤」是重量 → 单果重量 / 净含量 / 毛重；「500ml」是容量 → 容量 / 净含量。
+ * 认不出量纲就回空，界面只列「全部」。只按单位判、不猜别的 —— 判错了还有搜索兜底。
+ */
+export function similarDimNos(value: string, dims: { dimNo: string; name: string }[]): string[] {
+  const kinds: [RegExp, RegExp][] = [
+    [/\d\s*(?:g|克|kg|千克|公斤|斤|两)/i, /重|含量/],
+    [/\d\s*(?:ml|毫升|l\b|升)/i, /容量|含量|体积/],
+    [/\d\s*(?:cm|mm|厘米|毫米|米|m\b)/i, /长|宽|高|尺寸|直径|规格/],
+  ];
+  const hit = kinds.find(([unit]) => unit.test(value));
+  if (!hit) return [];
+  return dims.filter((d) => hit[1].test(d.name)).map((d) => d.dimNo);
 }

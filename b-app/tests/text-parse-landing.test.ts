@@ -8,8 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  buildCandidates, entryAfterUndo, mergeUndo, planTextParse, raiseEntry, retarget,
-  type CandidateCurrent, type TextParseTarget,
+  asFreeParam, buildCandidates, entryAfterUndo, mergeUndo, overwritesOf, planTextParse, raiseEntry, retarget,
+  retargetWithSwap, similarDimNos, type CandidateCurrent, type TextParseTarget,
 } from "@/pages/goods-edit/text-parse";
 import type { GoodsTextParse } from "@/api/requests";
 
@@ -276,21 +276,18 @@ describe("P2 确认区：一个识别出来的东西一行", () => {
     expect(rows.map((c) => c.kind)).toEqual(["fulfillment", "price", "regions", "param", "param"]);
   });
 
-  it("★★★ 这一格已有值 → 默认不勾，并写出原值（不替他覆盖）", () => {
-    // 生产上实测：售价 15.00 被识别成 10.00 静默覆盖，界面上只有一条 toast
+  it("★★★ 这一格已有值 → 照样默认勾上，记下原值留到填入时问（用户 2026-10-07 定）", () => {
+    // 不展示现值；售价 15.00 → 10.00 这种覆盖在点「填入」时由 overwritesOf 一次挑出来问
     const rows = buildCandidates(
       planTextParse(r, target({ rows: [{ priceMajor: { CNY: "15.00" } }] })),
       params,
       cur({ priceBefore: "15.00", params: { SD_NET_CONTENT: "5斤" } }),
     );
     const price = rows.find((c) => c.kind === "price")!;
-    expect(price.before).toBe("15.00");
-    expect(price.checked).toBe(false);
+    expect(price).toMatchObject({ before: "15.00", checked: true });
     const net = rows.find((c) => c.dimNo === "SD_NET_CONTENT")!;
-    expect(net.before).toBe("5斤");
-    expect(net.checked).toBe(false);
-    // 空着的那一格照常默认勾上
-    expect(rows.find((c) => c.dimNo === "SD_UNIT_WEIGHT")!.checked).toBe(true);
+    expect(net).toMatchObject({ before: "5斤", checked: true });
+    expect(overwritesOf(rows).map((c) => c.kind)).toEqual(["price", "param"]);
   });
 
   it("对不上本品类标准参数的那行默认不勾 —— 它要先指定落点", () => {
@@ -317,14 +314,14 @@ describe("P2 确认区：一个识别出来的东西一行", () => {
     expect(moved).toMatchObject({ dimNo: "SD_UNIT_WEIGHT", target: "单果重量", mapped: true, checked: true });
   });
 
-  it("改到一个已经有值的参数 → 写出原值、默认不勾", () => {
+  it("改到一个已经有值的参数 → 记下原值、照样勾上", () => {
     const [row] = buildCandidates(
       planTextParse(parsed({}), target()),
       [{ dimNo: "甜度", name: "甜度", label: "200g" }],
       cur(),
     );
     const moved = retarget(row!, { dimNo: "SD_GROSS_WEIGHT", name: "毛重" }, { SD_GROSS_WEIGHT: "5斤" });
-    expect(moved).toMatchObject({ before: "5斤", checked: false });
+    expect(moved).toMatchObject({ before: "5斤", checked: true });
   });
 });
 
@@ -377,5 +374,73 @@ describe("替换同义的旧自由参数（脆柿子草稿的真实情况）", (
   it("没有同义旧参数就没有 replaces", () => {
     const rows = buildCandidates(planTextParse(parsed({}), target()), params, cur({}));
     expect(rows.every((c) => !c.replaces)).toBe(true);
+  });
+});
+
+describe("参数块：换参数时互换 · 填入时问覆盖 · 相近参数", () => {
+  const props = ["SD_UNIT_WEIGHT", "SD_NET_CONTENT", "SD_GROSS_WEIGHT"];
+  const two = () => buildCandidates(
+    planTextParse(parsed({}), target()),
+    [
+      { dimNo: "SD_UNIT_WEIGHT", name: "单果重量", label: "140g+" },
+      { dimNo: "SD_NET_CONTENT", name: "净含量", label: "4.5斤" },
+    ],
+    { hasExpress: true, priceBefore: "", bulkBefore: "", params: {}, propDimNos: props },
+  );
+
+  it("★★★ 4.5斤 换到单果重量 → 原来占着的 140g+ 自动换到净含量", () => {
+    const { rows, swappedWith } = retargetWithSwap(two(), "param:1", { dimNo: "SD_UNIT_WEIGHT", name: "单果重量" }, {});
+    expect(rows.map((c) => [c.value, c.dimNo])).toEqual([
+      ["140g+", "SD_NET_CONTENT"],
+      ["4.5斤", "SD_UNIT_WEIGHT"],
+    ]);
+    expect(swappedWith).toBe("param:0");
+  });
+
+  it("换到没人占的参数 → 不互换", () => {
+    const { rows, swappedWith } = retargetWithSwap(two(), "param:1", { dimNo: "SD_GROSS_WEIGHT", name: "毛重" }, {});
+    expect(rows.find((c) => c.key === "param:1")!.dimNo).toBe("SD_GROSS_WEIGHT");
+    expect(rows.find((c) => c.key === "param:0")!.dimNo).toBe("SD_UNIT_WEIGHT");
+    expect(swappedWith).toBeUndefined();
+  });
+
+  it("原值就等于识别值 → 不算覆盖，不问", () => {
+    const rows = two().map((c) => (c.key === "param:0" ? { ...c, before: "140g+" } : { ...c, before: "5斤" }));
+    expect(overwritesOf(rows).map((c) => c.key)).toEqual(["param:1"]);
+  });
+
+  it("没勾的不算覆盖；会替换旧参数的也算覆盖", () => {
+    const rows = two().map((c) => (c.key === "param:0"
+      ? { ...c, before: "150g", checked: false }
+      : { ...c, replaces: { dimNo: "净重", label: "4.5斤" } }));
+    expect(overwritesOf(rows).map((c) => c.key)).toEqual(["param:1"]);
+  });
+
+  const dims = [
+    { dimNo: "SD_UNIT_WEIGHT", name: "单果重量" }, { dimNo: "SD_NET_CONTENT", name: "净含量" },
+    { dimNo: "SD_GROSS_WEIGHT", name: "毛重" }, { dimNo: "SD_ORIGIN_DETAIL", name: "原产地" },
+    { dimNo: "SD_VOLUME", name: "容量" },
+  ];
+  it("★★★ 重量值 → 相近的是三个重量参数，原产地不在里面", () => {
+    expect(similarDimNos("4.5斤", dims)).toEqual(["SD_UNIT_WEIGHT", "SD_NET_CONTENT", "SD_GROSS_WEIGHT"]);
+    expect(similarDimNos("140g+", dims)).toEqual(["SD_UNIT_WEIGHT", "SD_NET_CONTENT", "SD_GROSS_WEIGHT"]);
+  });
+
+  it("容量值 → 容量与净含量", () => {
+    expect(similarDimNos("500ml", dims)).toEqual(["SD_NET_CONTENT", "SD_VOLUME"]);
+  });
+
+  it("认不出量纲 → 空，只列全部", () => {
+    expect(similarDimNos("脆爽", dims)).toEqual([]);
+  });
+
+  it("★★ 作自由参数用原文叫法「净重」，不用标准名「净含量」", () => {
+    const rows = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "SD_NET_CONTENT", name: "净含量", label: "4.5斤", rawName: "净重" }],
+      { hasExpress: true, priceBefore: "", bulkBefore: "", params: {}, propDimNos: props },
+    );
+    const c = asFreeParam(rows[0]!, { 净重: "5斤" });
+    expect([c.dimNo, c.target, c.mapped, c.checked, c.before]).toEqual(["净重", "净重", false, true, "5斤"]);
   });
 });

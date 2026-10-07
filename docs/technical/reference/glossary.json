@@ -8930,6 +8930,24 @@
           "ar": "السعر أقل من التكلفة"
         },
         {
+          "key": "goods.blockFree",
+          "zh-CN": "自由参数",
+          "en": "Custom",
+          "ar": "مخصص"
+        },
+        {
+          "key": "goods.blockSwapped",
+          "zh-CN": "已互换",
+          "en": "Swapped",
+          "ar": "تم التبديل"
+        },
+        {
+          "key": "goods.blocksTitle",
+          "zh-CN": "识别到 {n} 项",
+          "en": "{n} found",
+          "ar": "وُجد {n}"
+        },
+        {
           "key": "goods.bulkCost",
           "zh-CN": "统一成本价",
           "en": "Cost for all",
@@ -9012,30 +9030,6 @@
           "zh-CN": "全不选",
           "en": "Select none",
           "ar": "إلغاء الكل"
-        },
-        {
-          "key": "goods.confirmPick",
-          "zh-CN": "选参数",
-          "en": "Choose parameter",
-          "ar": "اختر المعيار"
-        },
-        {
-          "key": "goods.confirmReplaces",
-          "zh-CN": "替换「{k} {v}」",
-          "en": "replaces “{k} {v}”",
-          "ar": "يستبدل «{k} {v}»"
-        },
-        {
-          "key": "goods.confirmTitle",
-          "zh-CN": "识别到 {n} 项 · 已选 {m}",
-          "en": "{n} found · {m} selected",
-          "ar": "وُجد {n} · محدد {m}"
-        },
-        {
-          "key": "goods.confirmWas",
-          "zh-CN": "原 {v}",
-          "en": "was {v}",
-          "ar": "كان {v}"
         },
         {
           "key": "goods.costPrice",
@@ -9638,6 +9632,24 @@
           "ar": "يجب أن يزيد السعر قبل الخصم عن سعر البيع"
         },
         {
+          "key": "goods.overwriteApply",
+          "zh-CN": "覆盖",
+          "en": "Overwrite",
+          "ar": "استبدال"
+        },
+        {
+          "key": "goods.overwriteKeep",
+          "zh-CN": "保留原值",
+          "en": "Keep current",
+          "ar": "الإبقاء على الحالية"
+        },
+        {
+          "key": "goods.overwriteTitle",
+          "zh-CN": "{n} 项已有值",
+          "en": "{n} already filled",
+          "ar": "{n} لها قيمة بالفعل"
+        },
+        {
           "key": "goods.paramAllAdded",
           "zh-CN": "平台这一项的可选值都已经在上面了",
           "en": "Every platform value for this parameter is already listed above",
@@ -9788,6 +9800,18 @@
           "ar": "جارٍ…"
         },
         {
+          "key": "goods.paste",
+          "zh-CN": "粘贴",
+          "en": "Paste",
+          "ar": "لصق"
+        },
+        {
+          "key": "goods.pasteEmpty",
+          "zh-CN": "剪贴板是空的",
+          "en": "Clipboard is empty",
+          "ar": "الحافظة فارغة"
+        },
+        {
           "key": "goods.payAfterSave",
           "zh-CN": "保存商品后可设置",
           "en": "Available after the product is saved",
@@ -9812,10 +9836,70 @@
           "ar": "صور المنتج"
         },
         {
+          "key": "goods.pickAll",
+          "zh-CN": "全部参数",
+          "en": "All parameters",
+          "ar": "كل المعايير"
+        },
+        {
+          "key": "goods.pickCurrent",
+          "zh-CN": "当前",
+          "en": "Current",
+          "ar": "الحالي"
+        },
+        {
+          "key": "goods.pickFree",
+          "zh-CN": "作自由参数「{k}」",
+          "en": "Keep as custom “{k}”",
+          "ar": "معيار مخصص «{k}»"
+        },
+        {
+          "key": "goods.pickNone",
+          "zh-CN": "没有「{q}」",
+          "en": "No “{q}”",
+          "ar": "لا يوجد «{q}»"
+        },
+        {
+          "key": "goods.pickParams",
+          "zh-CN": "参数",
+          "en": "Parameters",
+          "ar": "المعايير"
+        },
+        {
+          "key": "goods.pickSearchPh",
+          "zh-CN": "参数名",
+          "en": "Parameter name",
+          "ar": "اسم المعيار"
+        },
+        {
+          "key": "goods.pickSimilar",
+          "zh-CN": "相近",
+          "en": "Similar",
+          "ar": "مشابهة"
+        },
+        {
+          "key": "goods.pickSkip",
+          "zh-CN": "不填这项",
+          "en": "Skip this one",
+          "ar": "تخطَّ هذا"
+        },
+        {
           "key": "goods.pickStd",
           "zh-CN": "从标准品填充",
           "en": "Fill from a standard product (optional)",
           "ar": "التعبئة من منتج قياسي (اختياري)"
+        },
+        {
+          "key": "goods.pickSwap",
+          "zh-CN": "与 {v} 互换",
+          "en": "swap with {v}",
+          "ar": "تبديل مع {v}"
+        },
+        {
+          "key": "goods.pickTitle",
+          "zh-CN": "「{v}」填到哪个参数",
+          "en": "Fill “{v}” into",
+          "ar": "إدخال «{v}» في"
         },
         {
           "key": "goods.price",
@@ -9932,16 +10016,10 @@
           "ar": "إدخال سريع"
         },
         {
-          "key": "goods.quickTabImage",
+          "key": "goods.quickImage",
           "zh-CN": "图片",
           "en": "Image",
           "ar": "صورة"
-        },
-        {
-          "key": "goods.quickTabText",
-          "zh-CN": "文字",
-          "en": "Text",
-          "ar": "نص"
         },
         {
           "key": "goods.reRecognize",
@@ -10028,22 +10106,10 @@
           "ar": "تحديد المناطق المحظورة"
         },
         {
-          "key": "goods.retargetFree",
-          "zh-CN": "作自由参数",
-          "en": "Keep as a custom parameter",
-          "ar": "احتفظ كمعيار مخصص"
-        },
-        {
           "key": "goods.retargetNeedCat",
           "zh-CN": "先选主营类目，才有标准参数可选",
           "en": "Choose a category first to see its standard parameters",
           "ar": "اختر الفئة أولاً لعرض معاييرها القياسية"
-        },
-        {
-          "key": "goods.retargetTitle",
-          "zh-CN": "填到哪个参数",
-          "en": "Fill into which parameter",
-          "ar": "إلى أي معيار"
         },
         {
           "key": "goods.revChanged",
@@ -10254,12 +10320,6 @@
           "zh-CN": "保存为草稿，发布后生效",
           "en": "Saved as a draft; publish to go live",
           "ar": "تُحفظ كمسودة؛ انشرها لتصبح فعّالة"
-        },
-        {
-          "key": "goods.savedAsDraft",
-          "zh-CN": "已保存为草稿，线上商品未变",
-          "en": "Saved as draft — the live product is unchanged",
-          "ar": "حُفظت كمسودة — المنتج المعروض لم يتغيّر"
         },
         {
           "key": "goods.savedDraftHint",
@@ -10554,12 +10614,6 @@
           "zh-CN": "导入到文字识别",
           "en": "Send to text",
           "ar": "أرسل إلى النص"
-        },
-        {
-          "key": "goods.zipTxtFound",
-          "zh-CN": "压缩包里有商品文字，已带入识别框",
-          "en": "Text found in the zip, added to the box",
-          "ar": "عُثر على نص في الملف، أُضيف إلى الحقل"
         },
         {
           "key": "group.activity",

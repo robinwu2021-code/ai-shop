@@ -35,6 +35,13 @@ defineProps<{
    * 只影响正文那一段 —— 标题、副标题、页脚仍按面板的留白走。
    */
   flush?: boolean;
+  /**
+   * 有页脚时**按内容收高**，超过 84vh 才由正文接管滚动 —— 页脚照样钉在底下。
+   *
+   * 默认（不传）有页脚就定高 84vh：两个 picker 要的是切分栏时面板不跳高。
+   * 内容不变的弹层（识别结果三五块）照那样定高，下面空出半屏，按钮离内容很远。
+   */
+  fit?: boolean;
 }>();
 
 const emit = defineEmits<{ close: [] }>();
@@ -43,7 +50,7 @@ const emit = defineEmits<{ close: [] }>();
 <template>
   <view v-if="visible" class="sheet" :class="{ 'sheet--stacked': stacked }">
     <view class="sh-mask" @tap="emit('close')" />
-    <view class="sh-panel sheet__panel" :class="{ 'sheet__panel--tall': !!$slots.foot }">
+    <view class="sh-panel sheet__panel" :class="{ 'sheet__panel--tall': !!$slots.foot, 'sheet__panel--fit': fit }">
       <view class="sh-grip" />
       <view class="sh-row">
         <text class="txt-title sheet__title">{{ title }}</text>
@@ -124,6 +131,10 @@ const emit = defineEmits<{ close: [] }>();
   overflow: hidden;
   /* 安全区改由页脚自己给：面板不滚了，底部留白留在这儿会变成一段够不着的空白 */
   padding-bottom: 0;
+}
+/* fit：上限不变，高度让内容定（见 prop 注释） */
+.sheet__panel--tall.sheet__panel--fit {
+  height: auto;
 }
 .sheet__panel--tall .sheet__body {
   flex: 1;

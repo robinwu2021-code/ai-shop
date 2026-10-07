@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 507,
+        "b-app": 509,
         "c-app": 77
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 409,
+        "b-app": 410,
         "c-app": 82
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 111,
+        "b-app": 114,
         "c-app": 90
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 192,
+        "b-app": 194,
         "c-app": 77
       }
     },
@@ -885,7 +885,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 57,
+        "b-app": 63,
         "c-app": 7
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 64,
+        "b-app": 63,
         "c-app": 14
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 161,
+        "b-app": 166,
         "c-app": 89
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 31,
+        "b-app": 32,
         "c-app": 17
       }
     },
@@ -1547,7 +1547,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 8,
         "c-app": 5
       }
     },
@@ -1565,7 +1565,7 @@
         "text-align": "center"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 3,
         "c-app": 1
       }
     },
@@ -1601,7 +1601,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 8,
         "c-app": 5
       }
     },
@@ -1781,7 +1781,7 @@
         "background": "var(--sh-surface)"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 2,
         "c-app": 2
       }
     },
@@ -1964,7 +1964,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 9,
+        "b-app": 8,
         "c-app": 5,
         "lib": 0
       },
@@ -2207,7 +2207,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 21,
+        "b-app": 22,
         "c-app": 3,
         "lib": 0
       },
@@ -2353,7 +2353,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 5,
+        "b-app": 6,
         "c-app": 1,
         "lib": 0
       },
@@ -2620,16 +2620,17 @@
       "name": "sh-sheet",
       "file": "packages/ui/src/components/sh-sheet.vue",
       "scope": "跨端",
-      "lines": 169,
+      "lines": 180,
       "props": [
         "visible: boolean",
         "title: string",
         "hint?: string",
         "stacked?: boolean",
-        "flush?: boolean"
+        "flush?: boolean",
+        "fit?: boolean"
       ],
       "usage": {
-        "b-app": 25,
+        "b-app": 26,
         "c-app": 11,
         "lib": 1
       },
@@ -3637,37 +3638,22 @@
       "components": [
         "sh-actionbar",
         "sh-add",
-        "sh-check",
         "sh-cover",
         "sh-go",
         "sh-icon-btn",
         "sh-icon",
         "sh-kv",
+        "sh-option",
         "sh-scaffold",
         "sh-section",
         "sh-sheet",
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 462,
-      "localSelectors": 95,
-      "localCssLines": 370,
-      "rolled": [
-        {
-          "id": "wraprow",
-          "label": "换行横排",
-          "lib": ".sh-wrap",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-          "gap": false
-        },
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "libClassHits": 476,
+      "localSelectors": 92,
+      "localCssLines": 358,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4976,8 +4962,8 @@
         "sh-stepper"
       ],
       "libClassHits": 239,
-      "localSelectors": 77,
-      "localCssLines": 322,
+      "localSelectors": 80,
+      "localCssLines": 333,
       "rolled": []
     },
     {
@@ -5782,26 +5768,6 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
-      ]
-    },
-    {
-      "id": "wraprow",
-      "label": "换行横排",
-      "lib": ".sh-wrap",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-      "pages": [
-        "b-app/goods-edit"
-      ]
-    },
-    {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "b-app/goods-edit"
       ]
     },
     {
