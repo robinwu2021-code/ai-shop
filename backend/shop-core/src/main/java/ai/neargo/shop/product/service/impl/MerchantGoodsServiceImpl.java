@@ -2797,17 +2797,42 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return;
         }
         Map<String, Integer> distances = distancesFor(want.values(), sellingStores);
+        /*
+         * **「先试复活一下」改成「先问清楚哪些是删过的」。**
+         *
+         * 复活是必须的：下架是逻辑删，而 `uk_community_goods_store` 不含 deleted 列 ——
+         * 直接 insert 必然撞唯一键，表现为上架接口 500，商家看到的是「系统开小差」。
+         *
+         * 但原先的做法是**逐行去试**：每一行先发一条 UPDATE，没中再发一条 INSERT。
+         * 线上一个社区两万三，于是「下架再上架」= 23656 次往返。
+         * 2026-10-07 实测 **29.1 秒**（那一次全是复活、零新建，所以基本都花在这儿）。
+         *
+         * 现在一次把「被删掉的 (社区,门店)」全读出来，按门店分组整批复活，
+         * 剩下的才是真·新建。读一次 + 每店几条 UPDATE，代替两万多次往返。
+         */
+        Set<String> deletedKeys = DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.deletedPairs(g.getGoodsNo())).stream()
+                .map(r -> r.communityNo() + "|" + nz(r.storeNo()))
+                .collect(java.util.stream.Collectors.toSet());
+        Map<String, List<String>> reviveByStore = new LinkedHashMap<>();
+        List<Map.Entry<String, String>> toInsert = new java.util.ArrayList<>();
         for (Map.Entry<String, String> e : toAdd) {
+            if (deletedKeys.contains(e.getKey())) {
+                String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
+                reviveByStore.computeIfAbsent(storeNo, k -> new java.util.ArrayList<>()).add(e.getValue());
+            } else {
+                toInsert.add(e);
+            }
+        }
+        for (Map.Entry<String, List<String>> en : reviveByStore.entrySet()) {
+            for (List<String> batch : batches(en.getValue(), POOL_BATCH_CHUNK)) {
+                DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.reviveMany(g.getGoodsNo(), en.getKey(), batch));
+            }
+        }
+        for (Map.Entry<String, String> e : toInsert) {
             String communityNo = e.getValue();
             String storeNo = e.getKey().substring(e.getKey().indexOf('|') + 1);
-            /*
-             * 先试着复活被逻辑删的行。**下架是逻辑删，而唯一键不含 deleted** ——
-             * 直接 insert 会撞唯一键，表现为上架接口 500，而商家看到的是「系统开小差」。
-             */
-            if (DataScopeContext.executeWithoutScope(() ->
-                    poolMapper.revive(communityNo, g.getGoodsNo(), storeNo)) > 0) {
-                continue;
-            }
             PrdCommunityPool row = new PrdCommunityPool();
             row.setCommunityNo(communityNo);
             row.setGoodsNo(g.getGoodsNo());
@@ -2820,13 +2845,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     /**
-     * 一条 IN 里塞多少个 id。
+     * 一条 IN 里塞多少个值（撤行按 id，复活按社区号）。
      *
      * <p>不是「越大越好」：整条 UPDATE 的 SQL 文本要进 `max_allowed_packet`，
      * 而 MyBatis 的参数映射也是按个数展开的。一千个 id 的语句约 20KB，
      * 万级差集也就十几条语句 —— 再往上换不来可观的收益，只是把单条语句做大。
      */
-    private static final int POOL_WITHDRAW_CHUNK = 1000;
+    private static final int POOL_BATCH_CHUNK = 1000;
 
     /**
      * 逻辑删一批池行（按物理主键）。<b>分批 IN，不逐行</b>，理由见调用点。
@@ -2837,7 +2862,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 一条也不会误删别人的行（id 是这件货自己的池行读出来的）。
      */
     private void withdrawRows(List<Long> ids) {
-        for (List<Long> batch : batches(ids, POOL_WITHDRAW_CHUNK)) {
+        for (List<Long> batch : batches(ids, POOL_BATCH_CHUNK)) {
             DataScopeContext.executeWithoutScope(() -> poolMapper.deleteByIds(batch));
         }
     }
