@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>快速录入 · 识别弹框</title>
+<title>快速录入 · 结果弹框</title>
 <!-- 真源在仓库 prototypes/goods-quick-entry.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="proto.css">
@@ -10,22 +10,12 @@
 <div class="wrap">
 <header class="top">
   <div class="eyebrow">B 端 App · 交互原型 · 2026-10-07 · pages/goods-edit</div>
-  <h1>快速录入：识别在弹框里做完</h1>
-  <p class="sub">识别全程在<b>底部弹框</b>里：粘贴 → 识别 → 勾选 → 填入，弹框关掉，编辑页不变。每一行只有<b>参数名 + 参数值</b>。八屏。</p>
+  <h1>快速录入：输入在页面上，结果在弹框里</h1>
+  <p class="sub">文字输入留在编辑页的快速录入卡里；点「识别文字」后，<b>识别出的参数用底部弹框</b>列出来，勾选后「填入」，弹框关掉。每行只有<b>参数名 + 参数值</b>。七屏。</p>
 </header>
 
 <section>
-  <div class="sec-head"><span class="sec-num">一</span><h2>相比上一版</h2></div>
-  <div class="tw"><table class="spec">
-    <tr><th>上一版</th><th>这版</th></tr>
-    <tr><td>识别在独立一页</td><td><b>底部弹框</b>，盖在编辑页上，关掉就回来</td></tr>
-    <tr><td>一行三四段字：值 · → 字段 › · 原文叫法 · 替换说明</td><td><b>一行两样：参数名 · 参数值</b>。需要注意的只加一个两字标签：「覆盖」「替换」</td></tr>
-    <tr><td>按卡分组，每组一张卡</td><td>平铺一张清单，顺序同编辑页</td></tr>
-  </table></div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">二 · 01 — 04</span><h2>文字识别</h2></div>
+  <div class="sec-head"><span class="sec-num">一 · 01 — 04</span><h2>文字识别</h2></div>
   <div class="grid">
 
     <figure id="s01">
@@ -34,10 +24,9 @@
         <div class="scr">
           <div class="card">
             <div class="nm">快速录入</div>
-            <div class="tiles">
-              <span class="tile"><b>文字识别</b></span>
-              <span class="tile"><b>图片识别</b></span>
-            </div>
+            <div class="seg"><span class="on">文字</span><span>图片</span></div>
+            <div class="ta has" style="min-height:96px">规格：单果140g+<br>净重4.5斤装10元<br>圆通快递，新疆西藏海南不发货</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
           </div>
           <div class="card">
             <div class="nm">基本信息</div>
@@ -46,37 +35,21 @@
             <div class="gt">商品名称</div>
             <div class="ta has">现摘脆柿 早期脆甜多汁</div>
           </div>
-          <div class="meta" style="text-align:center">⋯ 图文详情 · 类目与配送 · 规格 · 商品参数 · 价格 · 库存 ⋯</div>
         </div>
         <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>01 入口</b>快速录入卡只有两个按钮。</figcaption>
+      <figcaption class="cap"><b>01 输入</b>在编辑页上：快速录入卡里粘贴文字，点「识别文字」。页面上不再出现识别结果。</figcaption>
     </figure>
 
     <figure id="s02">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
-          <div class="card"><div class="nm">快速录入</div></div>
-          <div class="card"><div class="nm">基本信息</div></div>
-        </div>
-        <div class="mask">
-          <div class="sheet">
-            <div class="h">文字识别</div>
-            <div class="ta" style="min-height:150px">粘贴商品文字</div>
-            <div class="acts"><div class="btn sec">粘贴</div><div class="btn main off">识别</div></div>
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="seg"><span class="on">文字</span><span>图片</span></div>
+            <div class="ta has" style="min-height:96px">规格：单果140g+<br>净重4.5斤装10元<br>圆通快递，新疆西藏海南不发货</div>
           </div>
-        </div>
-      </div>
-      <figcaption class="cap"><b>02 粘贴</b>弹框里一个输入框、两个按钮。「粘贴」一键读剪贴板。</figcaption>
-    </figure>
-
-    <figure id="s03">
-      <div class="ph">
-        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
-        <div class="scr">
-          <div class="card"><div class="nm">快速录入</div></div>
-          <div class="card"><div class="nm">基本信息</div></div>
         </div>
         <div class="mask">
           <div class="sheet">
@@ -88,15 +61,14 @@
               <div class="crow"><span class="ck on"></span><span class="k">配送</span><span class="b"><span class="v">快递</span></span></div>
               <div class="crow"><span class="ck on"></span><span class="k">限购地区</span><span class="b"><span class="v">新疆 西藏 海南</span></span></div>
             </div>
-            <div class="acts"><div class="btn sec">改文字</div><div class="btn main">填入（4）</div></div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>03 结果</b>一行：<b>参数名 · 参数值</b>。已有值的不勾、标「覆盖」；会替换旧参数的标「替换」。</figcaption>
-      <p class="why">「覆盖」「替换」是唯一保留的提示 —— 它们会改掉商家已经填好的东西。其余说明都去掉。参数名（红字）可点，改填到哪个参数。</p>
+      <figcaption class="cap"><b>02 结果弹框</b>一行：<b>参数名 · 参数值</b>。已有值的不勾、标「覆盖」；会替换旧参数的标「替换」。参数名（红字）可点改参数。</figcaption>
     </figure>
 
-    <figure id="s04">
+    <figure id="s03">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
@@ -116,58 +88,56 @@
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>04 改参数</b>点参数名，换一个。只列本品类的参数。</figcaption>
+      <figcaption class="cap"><b>03 改参数</b>点参数名换一个，只列本品类的参数。选完回到结果弹框。</figcaption>
     </figure>
 
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-num">三 · 05 — 08</span><h2>填入后 · 图片识别 · 没选类目 · 没认出</h2></div>
-  <div class="grid">
-
-    <figure id="s05">
+    <figure id="s04">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
           <div class="note">已填入 4 项　<b>撤销</b></div>
           <div class="card">
             <div class="nm">快速录入</div>
-            <div class="tiles"><span class="tile"><b>文字识别</b></span><span class="tile"><b>图片识别</b></span></div>
+            <div class="seg"><span class="on">文字</span><span>图片</span></div>
+            <div class="ta has" style="min-height:60px">规格：单果140g+ 净重4.5斤装10元…</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
           </div>
           <div class="card">
             <div class="nm">商品参数</div>
             <div class="frow"><span class="k">单果重量</span><span class="v">140g+</span></div>
             <div class="frow"><span class="k">净含量</span><span class="v">4.5斤</span></div>
           </div>
-          <div class="card">
-            <div class="nm">库存</div>
-            <div class="frow"><span class="k">限购地区</span><span class="v go">排除 新疆·西藏·海南</span></div>
-          </div>
         </div>
         <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>05 填入后</b>弹框关掉。顶上一条「已填入 4 项 · 撤销」。还没保存。</figcaption>
+      <figcaption class="cap"><b>04 填入后</b>弹框关掉，顶上一条「已填入 4 项 · 撤销」。原文还在，可以改了再识别。还没保存。</figcaption>
     </figure>
 
-    <figure id="s06">
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">二 · 05 — 07</span><h2>图片识别 · 没选类目 · 没认出</h2></div>
+  <div class="grid">
+
+    <figure id="s05">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
-          <div class="card"><div class="nm">快速录入</div></div>
-        </div>
-        <div class="mask">
-          <div class="sheet">
-            <div class="h">图片识别</div>
-            <div class="img" style="height:150px">🍊 主图</div>
-            <div class="acts"><div class="btn sec">换一张</div><div class="btn main">识别</div></div>
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="seg"><span>文字</span><span class="on">图片</span></div>
+            <div class="frow"><span class="k">主图</span><span class="v">🍊</span></div>
+            <div class="btnrow"><span class="btn main">识别图片</span></div>
           </div>
+          <div class="card"><div class="nm">基本信息</div></div>
         </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>06 图片识别</b>同一个弹框结构：上面是主图，下面两个按钮。识别完进同样的结果（03）。</figcaption>
+      <figcaption class="cap"><b>05 图片</b>同样在页面上点「识别图片」，结果进同一个弹框（02）。</figcaption>
     </figure>
 
-    <figure id="s07">
+    <figure id="s06">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
@@ -181,40 +151,39 @@
               <div class="crow"><span class="ck on"></span><span class="k tap">净含量</span><span class="b"><span class="v">4.5斤</span></span></div>
               <div class="crow"><span class="ck on"></span><span class="k">配送</span><span class="b"><span class="v">快递</span></span></div>
             </div>
-            <div class="acts"><div class="btn sec">改文字</div><div class="btn main">填入（3）</div></div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（3）</div></div>
           </div>
         </div>
       </div>
-      <figcaption class="cap"><b>07 没选类目</b>顶上一行「品类 · 水果 › 柿子」（识别猜的，点了可换）。选定后参数才对得上。</figcaption>
-      <p class="why">这一行同时也会把类目填进编辑页 —— 参数落到哪儿取决于品类，所以品类跟着参数一起确认。</p>
+      <figcaption class="cap"><b>06 没选类目</b>弹框顶上一行「品类 · 水果 › 柿子」（识别猜的，点了可换），跟参数一起填入。</figcaption>
     </figure>
 
-    <figure id="s08">
+    <figure id="s07">
       <div class="ph">
         <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
         <div class="scr">
-          <div class="card"><div class="nm">快速录入</div></div>
-        </div>
-        <div class="mask">
-          <div class="sheet">
-            <div class="h">没认出可填的内容</div>
-            <div class="d">写上价格、重量、发货地区试试</div>
-            <div class="acts"><div class="btn main">改文字</div></div>
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="seg"><span class="on">文字</span><span>图片</span></div>
+            <div class="ta has" style="min-height:60px">今天天气不错，柿子很甜</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
           </div>
+          <div class="toast">没认出可填的内容</div>
         </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
       </div>
-      <figcaption class="cap"><b>08 没认出</b>一句话 + 「改文字」，原文还在。识别失败时同一位置写「识别失败」+「重试」。</figcaption>
+      <figcaption class="cap"><b>07 没认出</b>不弹框，一条提示即可。原文在框里，改了再点。</figcaption>
     </figure>
 
   </div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">四</span><h2>落地</h2></div>
+  <div class="sec-head"><span class="sec-num">三</span><h2>落地</h2></div>
   <div class="tw"><table class="spec">
     <tr><th>位置</th><th>改动</th></tr>
-    <tr><td>新组件 <code>quick-entry-sheet</code></td><td>基于 <code>sh-sheet</code>；文字 / 图片两种模式；输入、识别、结果、改参数都在弹框里。结果沿用 P2 的 <code>buildCandidates</code> / <code>retarget</code></td></tr>
-    <tr><td>编辑页</td><td>快速录入卡收成两个按钮；删掉 P2 内嵌的确认区；「填入」仍走编辑页的 <code>applyCandidates</code>（快照、撤销不变）</td></tr>
+    <tr><td>编辑页 · 快速录入卡</td><td>保留文字 / 图片两档与输入框；加「粘贴」按钮；删掉 P2 嵌在卡里的确认区</td></tr>
+    <tr><td>结果弹框</td><td>用 <code>sh-sheet</code>；行改成「参数名 · 参数值」一行；沿用 P2 的 <code>buildCandidates</code> / <code>retarget</code> / <code>applyCandidates</code>（快照、撤销不变）</td></tr>
     <tr><td>后端</td><td>不动</td></tr>
   </table></div>
 </section>
