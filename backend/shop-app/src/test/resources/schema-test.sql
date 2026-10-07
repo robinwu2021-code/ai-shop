@@ -9689,13 +9689,11 @@ VALUES
   ('CAT122', 'SD_UNIT_WEIGHT',  'PROP', 0, 0, 180, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_NET_CONTENT',  'PROP', 0, 0, 185, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_GROSS_WEIGHT', 'PROP', 0, 0, 190, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
--- V379：生鲜补品种与发货地（TDD-生鲜参数补品种与发货地）。
--- 测试库不跑 Flyway，迁移里的种子要在这里同样来一份，否则端上查不到这两个维度。
 INSERT IGNORE INTO prd_spec_dim
   (dim_no, code, name, value_type, unit, usage_type, universal, scope, sort, status,
    tenant_no, created_at, created_by, updated_at, updated_by)
 VALUES
-  ('SD_VARIETY',   'VARIETY',   '品种',  'TEXT', NULL, 'PROP', 0, 'PLATFORM', 206, 'ACTIVE',
+  ('SD_VARIETY', 'VARIETY', '品种', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 206, 'ACTIVE',
    'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('SD_SHIP_FROM', 'SHIP_FROM', '发货地', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 207, 'ACTIVE',
    'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
@@ -9703,10 +9701,10 @@ INSERT IGNORE INTO prd_category_spec
   (category_no, dim_no, usage_type, is_primary, required, sort, status,
    tenant_no, created_at, created_by, updated_at, updated_by)
 VALUES
-  ('CAT110', 'SD_VARIETY',   'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  ('CAT120', 'SD_VARIETY',   'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  ('CAT121', 'SD_VARIETY',   'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  ('CAT122', 'SD_VARIETY',   'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT110', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT110', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT121', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
