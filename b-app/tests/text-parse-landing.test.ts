@@ -137,6 +137,15 @@ describe("保留现状的两条", () => {
     expect(p.addExpress).toBe(true);
   });
 
+  it("★★★ 复核面上「配送方式」的值是落进去的字段，不是承运商", () => {
+    // 写「配送方式 圆通」是假话:圆通没进任何字段,商品上没有承运商这一格
+    const p = planTextParse(parsed({ fulfillment: ["EXPRESS"], carriers: ["圆通"] }), target());
+    expect(p.items).toContainEqual({
+      labelKey: "goods.fulfillment", value: "goods.fulfillmentType.EXPRESS",
+    });
+    expect(JSON.stringify(p.items)).not.toContain("圆通");
+  });
+
   it("承运商不落任何字段 —— 商品上没有这一格，它只亮提示", () => {
     const p = planTextParse(parsed({ carriers: ["圆通"] }), target());
     expect(p.changed).toEqual([]);
@@ -210,7 +219,9 @@ describe("复核面要列出具体填了什么", () => {
     expect(p.items).toEqual([
       { labelKey: "goods.parsePrice", value: "10.00" },
       { labelKey: "goods.nominalGram", value: "2250" },
-      { labelKey: "goods.restrictedLabel", value: "65" },
+      // kind=regions:展示层要把省码换成省名 —— 表单上那一行写的就是省名,
+      // 复核面直接印「65」的话,同一个值在同一屏上有两种说法
+      { labelKey: "goods.restrictedLabel", value: "65", kind: "regions" },
     ]);
   });
 

@@ -32,6 +32,13 @@ export interface TextParseTarget {
 export interface ParseItem {
   labelKey: string;
   value: string;
+  /**
+   * 值要怎么显示。`regions` = 一串省级 regionCode，**展示前必须换成省名** ——
+   * 表单上那一行写的是「新疆维吾尔自治区、西藏自治区」，复核面若直接印
+   * 「65 54 46」，同一个值在同一屏上有两种说法，商家没法核对。
+   * 换名要查 `PROVINCE_NAME_BY_CODE`，那是展示层的事，不放进纯函数。
+   */
+  kind?: "regions";
 }
 
 /** 要改什么。每个字段都是「有值才改」，`undefined` = 这一项不动 */
@@ -107,7 +114,12 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
   if (r.fulfillment.includes("EXPRESS")) {
     plan.addExpress = true;
     plan.changed.push("parseExpress");
-    plan.items.push({ labelKey: "goods.fulfillment", value: r.carriers[0] ?? "" });
+    /*
+     * 值是**落进去的那个字段**，不是承运商。写「配送方式 圆通」是假话 ——
+     * 圆通没进任何字段（商品上没有承运商这一格），落进去的是「快递配送」。
+     * 复核面列的是「我改了什么」,印一个没被改的值会让人去找它在哪儿。
+     */
+    plan.items.push({ labelKey: "goods.fulfillment", value: "goods.fulfillmentType.EXPRESS" });
   }
 
   if (r.pricesMinor.length) {
@@ -140,7 +152,7 @@ export function planTextParse(r: GoodsTextParse, cur: TextParseTarget): TextPars
   if (more.length) {
     plan.restrictedRegions = [...cur.restrictedRegions, ...more];
     plan.changed.push("parseRegions");
-    plan.items.push({ labelKey: "goods.restrictedLabel", value: more.join(" ") });
+    plan.items.push({ labelKey: "goods.restrictedLabel", value: more.join(","), kind: "regions" });
   }
 
   plan.specPicks = (r.specs ?? [])

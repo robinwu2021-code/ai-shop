@@ -927,7 +927,16 @@ async function applyTextParse() {
   specPicks.value = plan.specPicks;
 
   const changed = [...plan.changed];
-  const items = plan.items.map((it) => ({ label: String(t(it.labelKey)), value: it.value }));
+  /*
+   * 展示层把值翻成人话:省码 → 省名(表单上那一行就是省名,两处必须一致)、
+   * 以 goods. 开头的值是 i18n 键(履约方式那种枚举)。
+   */
+  const items = plan.items.map((it) => ({
+    label: String(t(it.labelKey)),
+    value: it.kind === "regions"
+      ? provinceNamesByCodes(it.value.split(",")).join("、")
+      : (it.value.startsWith("goods.") ? String(t(it.value)) : it.value),
+  }));
   // 参数走图片识别同一个函数 —— 同一个后端结果，两条路不该两种待遇
   if (applyParamPicks(r.params ?? [])) {
     changed.push("parseParams");
