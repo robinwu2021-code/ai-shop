@@ -404,6 +404,8 @@ const RESPONSE_TYPES = {
   mGoodsDraft: "SaveGoodsReqBody",
   mPublishPreview: "PublishPreview",
   mGoodsRevisions: "GoodsRevision[]",
+  mGoodsRevision: "GoodsRevision",
+  mForkRevision: "GoodsRevision",
   mPublishGoods: "Goods",
   mDiscardGoodsDraft: "Goods",
   mSaveGoods: "Goods",

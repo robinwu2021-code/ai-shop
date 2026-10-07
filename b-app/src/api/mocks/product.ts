@@ -38,6 +38,8 @@ export const productMock: Pick<MerchantApi,
   | "mGoodsDraft"
   | "mPublishPreview"
   | "mGoodsRevisions"
+  | "mGoodsRevision"
+  | "mForkRevision"
   | "mPublishGoods"
   | "mDiscardGoodsDraft"
   | "mSavePresale"
@@ -463,6 +465,37 @@ export const productMock: Pick<MerchantApi,
         publishedBy: null, publishedAt: null, rejectReason: null });
     }
     return delay(rows);
+  },
+
+  async mGoodsRevision(goodsNo, revisionNo) {
+    const rows = await this.mGoodsRevisions(goodsNo);
+    const r = rows.find((x) => x.revisionNo === revisionNo);
+    if (!r) throw new Error("没有这一版");
+    return delay({
+      ...r,
+      changesFromPrev: [
+        { field: "price", label: "售价", before: "¥9.90", after: "¥10.00" },
+      ],
+      // 线上在售那一版与自己比没有差异 —— mock 也守这一条,免得页面画出一段假差异
+      changesVsOnline: r.status === "ONLINE" ? [] : [
+        { field: "title", label: "商品名称", before: "烟台红富士苹果", after: "阿克苏冰糖心苹果 4.5斤装" },
+        { field: "cover", label: "商品图", before: "2 张", after: "4 张" },
+      ],
+      canFork: r.status !== "ONLINE",
+    });
+  },
+
+  async mForkRevision(goodsNo, revisionNo) {
+    const rows = await this.mGoodsRevisions(goodsNo);
+    const src = rows.find((x) => x.revisionNo === revisionNo);
+    if (!src) throw new Error("没有这一版");
+    if (src.status === "ONLINE") throw new Error("这一版正在线上，取回它不会有任何变化");
+    const next = Math.max(...rows.map((x) => x.revisionNo)) + 1;
+    return delay({
+      ...src, revisionNo: next, status: "DRAFT" as const,
+      changeSummary: `取回 v${revisionNo}`,
+      publishedBy: null, publishedAt: null, rejectReason: null,
+    });
   },
 
   async mPublishPreview(goodsNo) {

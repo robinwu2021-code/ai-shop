@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.product.dto.GoodsRevisionVO;
+import ai.neargo.shop.product.dto.PublishPreviewVO;
 import ai.neargo.shop.product.entity.PrdGoodsRevision;
 import ai.neargo.shop.product.service.GoodsRevisionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,6 +127,87 @@ class GoodsRevisionFlowTest {
         revisions.recordSave(GOODS, MINE, "{}", null, null);
         assertThat(revisions.list(MINE, GOODS).get(0).entrySource())
                 .isEqualTo(PrdGoodsRevision.SRC_MANUAL);
+    }
+
+    @Test
+    @DisplayName("★★★ AC12 两份差异:对比基版 / 对比此刻线上,各答一个问题")
+    void detailGivesTwoDiffs() {
+        revisions.recordSave(GOODS, MINE, payload("烟台红富士", 990), "首版", null);
+        revisions.recordPublished(GOODS, "staff-A");                       // v1 上线
+        revisions.recordSave(GOODS, MINE, payload("阿克苏冰糖心", 1280), "商品名称、售价", null);
+        revisions.recordPublished(GOODS, "staff-A");                       // v2 上线,v1 被替换
+        revisions.recordSave(GOODS, MINE, payload("阿克苏冰糖心", 1500), "售价", null); // v3 草稿
+
+        // v2「当年干了什么」:对比它的基版 v1 —— 名称与售价两项
+        GoodsRevisionVO v2 = revisions.detail(MINE, GOODS, 2);
+        assertThat(v2.changesFromPrev()).extracting(PublishPreviewVO.DiffRow::label)
+                .containsExactlyInAnyOrder("商品名称", "第 1 档");
+        // v2 就是此刻线上 → 与线上比没有差异,且不能取回(取回它什么都不会变)
+        assertThat(v2.changesVsOnline()).isEmpty();
+        assertThat(v2.canFork()).isFalse();
+
+        // v1「跟现在差多少」:它是旧版,与线上 v2 比要列出名称与价
+        GoodsRevisionVO v1 = revisions.detail(MINE, GOODS, 1);
+        assertThat(v1.changesVsOnline()).extracting(PublishPreviewVO.DiffRow::label)
+                .containsExactlyInAnyOrder("商品名称", "第 1 档");
+        assertThat(v1.canFork()).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ AC12 取回旧版 = 建一份新草稿,不直接改线上")
+    void forkMakesNewDraft() {
+        revisions.recordSave(GOODS, MINE, payload("烟台红富士", 990), "首版", null);
+        revisions.recordPublished(GOODS, "staff-A");
+        revisions.recordSave(GOODS, MINE, payload("阿克苏", 1280), "商品名称、售价", null);
+        revisions.recordPublished(GOODS, "staff-A");
+
+        GoodsRevisionVO made = revisions.fork(MINE, GOODS, 1);
+        assertThat(made.revisionNo()).isEqualTo(3);
+        assertThat(made.status()).isEqualTo(PrdGoodsRevision.DRAFT);
+        assertThat(made.changeSummary()).isEqualTo("取回 v1");
+        // **线上没被动** —— 回滚也是一次发布,要走同一道差异确认
+        assertThat(onlineRows()).isEqualTo(1);
+        assertThat(revisions.list(MINE, GOODS).stream()
+                .filter(r -> PrdGoodsRevision.ONLINE.equals(r.status()))
+                .findFirst().orElseThrow().revisionNo()).isEqualTo(2);
+        // 取回的就是 v1 那份快照
+        assertThat(payloadOf(3)).isEqualTo(payload("烟台红富士", 990));
+    }
+
+    @Test
+    @DisplayName("取回线上在售那一版被拒 —— 给一个必然无效的动作不如拒")
+    void forkOnlineRejected() {
+        revisions.recordSave(GOODS, MINE, payload("甲", 100), null, null);
+        revisions.recordPublished(GOODS, "staff-A");
+        assertThatThrownBy(() -> revisions.fork(MINE, GOODS, 1))
+                .hasMessageContaining("BAD_REQUEST");
+    }
+
+    @Test
+    @DisplayName("手上已有草稿时取回 = 换掉那一版,不是多出一版")
+    void forkReplacesPendingDraft() {
+        revisions.recordSave(GOODS, MINE, payload("甲", 100), null, null);
+        revisions.recordPublished(GOODS, "staff-A");                       // v1 ONLINE
+        revisions.recordSave(GOODS, MINE, payload("乙", 200), "商品名称", null);
+        revisions.recordPublished(GOODS, "staff-A");                       // v2 ONLINE,v1 SUPERSEDED
+        revisions.recordSave(GOODS, MINE, payload("丙", 300), "商品名称", null);  // v3 草稿
+        // 取回已被替换的 v1 —— 换掉手上那份 v3,不是多出一版
+        revisions.fork(MINE, GOODS, 1);
+        assertThat(revisions.list(MINE, GOODS)).hasSize(3);
+        assertThat(payloadOf(3)).isEqualTo(payload("甲", 100));
+    }
+
+    @Test
+    @DisplayName("快照解不开时差异为空,不是 500 —— 快照不是契约,形状随编辑器走")
+    void unparsablePayloadYieldsEmptyDiff() {
+        revisions.recordSave(GOODS, MINE, "这不是 JSON", "售价", null);
+        assertThat(revisions.detail(MINE, GOODS, 1).changesFromPrev()).isEmpty();
+    }
+
+    /** 一份能被 SaveCommand 解开的最小快照 */
+    private static String payload(String title, long priceMinor) {
+        return "{\"goodsNo\":\"" + GOODS + "\",\"title\":\"" + title + "\","
+                + "\"skus\":[{\"optionValues\":[],\"price\":" + priceMinor + ",\"stock\":10}]}";
     }
 
     private int onlineRows() {

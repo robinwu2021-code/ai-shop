@@ -689,6 +689,12 @@ export interface GoodsRevision {
   publishedBy: string | null;
   publishedAt: string | null;
   rejectReason: string | null;
+  /** 这一版当年改了什么（对比它的基版）。**列表里是 null** —— 「没有改动」与「没算」是两件事 */
+  changesFromPrev?: PublishPreview["changes"] | null;
+  /** 它跟此刻线上差多少（决定要不要取回）。仅详情 */
+  changesVsOnline?: PublishPreview["changes"] | null;
+  /** 能不能以这一版建草稿。线上在售那一版取回毫无意义，所以它为 false */
+  canFork?: boolean;
 }
 
 export interface PublishPreview {
@@ -1238,6 +1244,15 @@ export interface MerchantApi {
    * 也说不出是谁改的。不分页：版本数以十计，而「线上在售那一版」要一眼找得到。
    */
   mGoodsRevisions(goodsNo: string): Promise<GoodsRevision[]>;
+
+  /** 某一版的详情：两份差异（对比基版 / 对比此刻线上）+ 能不能取回 */
+  mGoodsRevision(goodsNo: string, revisionNo: number): Promise<GoodsRevision>;
+
+  /**
+   * 以这一版建草稿。**不直接改线上** —— 回滚也是一次发布，要走同一道差异确认。
+   * 手上已有未发布草稿时，这一下是把那一版换掉，不是多出一版。
+   */
+  mForkRevision(goodsNo: string, revisionNo: number): Promise<GoodsRevision>;
   /**
    * 发布草稿。审核关：**原子换版**，买家看到的从整份旧版直接变整份新版，
    * 没有「先下架再上架」的真空期；审核开：提交待审，**线上继续卖旧版**。

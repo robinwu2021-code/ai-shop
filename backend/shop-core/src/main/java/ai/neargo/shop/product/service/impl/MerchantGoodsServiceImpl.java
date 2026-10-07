@@ -10,6 +10,7 @@ import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.product.dto.GoodsDiffs;
 import ai.neargo.shop.product.dto.GoodsVO;
 import ai.neargo.shop.product.dto.SpecTemplateVO;
 import ai.neargo.shop.product.entity.PrdCommunityPool;
@@ -1262,12 +1263,12 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
 
         List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows = new java.util.ArrayList<>();
-        diffRow(rows, "title", "标题", live.getTitle(), cmd.title());
-        diffRow(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
-        diffRow(rows, "cover", "封面", live.getCover(), cmd.cover());
-        diffRow(rows, "spec", "规格", renderGroups(live.getSpecGroups()), renderGroups(bakedGroups));
-        diffRow(rows, "params", "参数", renderParams(live.getParams()),
-                cmd.params() == null ? renderParams(live.getParams()) : renderParams(writeJson(cmd.params())));
+        GoodsDiffs.row(rows, "title", "标题", live.getTitle(), cmd.title());
+        GoodsDiffs.row(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
+        GoodsDiffs.row(rows, "cover", "封面", live.getCover(), cmd.cover());
+        GoodsDiffs.row(rows, "spec", "规格", GoodsDiffs.renderGroups(live.getSpecGroups()), GoodsDiffs.renderGroups(bakedGroups));
+        GoodsDiffs.row(rows, "params", "参数", GoodsDiffs.renderParams(live.getParams()),
+                cmd.params() == null ? GoodsDiffs.renderParams(live.getParams()) : GoodsDiffs.renderParams(writeJson(cmd.params())));
         // SKU：按位次比价格与库存 —— 档位文案差异已含在「规格」一行里
         List<PrdSku> liveSkus = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
@@ -1283,7 +1284,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     ? String.join(" · ", cmdSkus.get(i).optionValues() == null ? List.of() : cmdSkus.get(i).optionValues())
                       + " ¥" + cmdSkus.get(i).price() + " 库存" + cmdSkus.get(i).stock()
                     : null;
-            diffRow(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
+            GoodsDiffs.row(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
         }
         return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale, live.getVersion());
     }
@@ -1304,20 +1305,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return null;
         }
         List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows = new java.util.ArrayList<>();
-        diffRow(rows, "title", "商品名称", live.getTitle(), cmd.title());
-        diffRow(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
-        diffRow(rows, "cover", "商品图", live.getCover(), cmd.cover());
-        diffRow(rows, "category", "主营类目", live.getCategoryNo(), cmd.categoryNo());
-        diffRow(rows, "saleMode", "销售方式", live.getSaleMode(), cmd.saleMode());
-        diffRow(rows, "detail", "图文详情", live.getDetail(), cmd.detail());
-        diffRow(rows, "limit", "每人限购",
+        GoodsDiffs.row(rows, "title", "商品名称", live.getTitle(), cmd.title());
+        GoodsDiffs.row(rows, "subtitle", "副标题", live.getSubtitle(), cmd.subtitle());
+        GoodsDiffs.row(rows, "cover", "商品图", live.getCover(), cmd.cover());
+        GoodsDiffs.row(rows, "category", "主营类目", live.getCategoryNo(), cmd.categoryNo());
+        GoodsDiffs.row(rows, "saleMode", "销售方式", live.getSaleMode(), cmd.saleMode());
+        GoodsDiffs.row(rows, "detail", "图文详情", live.getDetail(), cmd.detail());
+        GoodsDiffs.row(rows, "limit", "每人限购",
                 live.getLimitPerUser() == null ? null : String.valueOf(live.getLimitPerUser()),
                 cmd.limitPerUser() == null ? null : String.valueOf(cmd.limitPerUser()));
-        diffRow(rows, "restricted", "限购地区",
+        GoodsDiffs.row(rows, "restricted", "限购地区",
                 live.getRestrictedRegions(),
                 cmd.restrictedRegions() == null ? live.getRestrictedRegions() : writeJson(cmd.restrictedRegions()));
-        diffRow(rows, "params", "商品参数", renderParams(live.getParams()),
-                cmd.params() == null ? renderParams(live.getParams()) : renderParams(writeJson(cmd.params())));
+        GoodsDiffs.row(rows, "params", "商品参数", GoodsDiffs.renderParams(live.getParams()),
+                cmd.params() == null ? GoodsDiffs.renderParams(live.getParams()) : GoodsDiffs.renderParams(writeJson(cmd.params())));
         if (rows.isEmpty()) {
             return null;
         }
@@ -1325,60 +1326,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 .map(ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow::label)
                 .distinct()
                 .collect(java.util.stream.Collectors.joining("、"));
-    }
-
-    private static void diffRow(List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> rows,
-                                String field, String label, String before, String after) {
-        if (java.util.Objects.equals(before, after)) {
-            return;
-        }
-        rows.add(new ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow(field, label, before, after));
-    }
-
-    /** spec_groups JSON → 「组名: 档1/档2」的一行文本，够对比用 —— 预览是给人扫一眼的，不是契约 */
-    private static String renderGroups(String json) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            var arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
-            StringBuilder sb = new StringBuilder();
-            for (var g : arr) {
-                if (sb.length() > 0) {
-                    sb.append("；");
-                }
-                sb.append(g.path("name").asText()).append(": ");
-                var opts = g.path("options");
-                for (int i = 0; i < opts.size(); i++) {
-                    if (i > 0) {
-                        sb.append("/");
-                    }
-                    sb.append(opts.get(i).asText());
-                }
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return json;
-        }
-    }
-
-    private static String renderParams(String json) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            var arr = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
-            StringBuilder sb = new StringBuilder();
-            for (var pnode : arr) {
-                if (sb.length() > 0) {
-                    sb.append("；");
-                }
-                sb.append(pnode.path("name").asText()).append(": ").append(pnode.path("label").asText());
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return json;
-        }
     }
 
     /**

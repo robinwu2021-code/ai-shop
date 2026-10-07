@@ -14026,6 +14026,82 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/goods/{goodsNo}/revisions/{revisionNo}": 
+    get: 
+      operationId: "mGoodsRevision"
+      summary: "某一版详情（对比基版 + 对比此刻线上，两份差异）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "revisionNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsRevision"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/goods/{goodsNo}/revisions/{revisionNo}/fork": 
+    post: 
+      operationId: "mForkRevision"
+      summary: "以这一版建草稿（不直接改线上，仍需发布）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "goodsNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+        - name: "revisionNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/GoodsRevision"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/goods/{goodsNo}/draft/discard": 
     post: 
       operationId: "mDiscardGoodsDraft"

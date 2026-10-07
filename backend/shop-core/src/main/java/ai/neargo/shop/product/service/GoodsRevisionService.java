@@ -35,11 +35,26 @@ public interface GoodsRevisionService {
     /** 记一次驳回：未发布那一行翻 REJECTED 并落原因 */
     void recordRejected(String goodsNo, String reason);
 
-    /**
-     * 某商品的全部版本，新的在前。
-     *
-     * <p>AC12 的「某一版详情 + 两份差异」与 AC13 的 overwrites **不在这一批** ——
-     * 见 {@link GoodsRevisionVO} 的类注释。
-     */
+    /** 某商品的全部版本，新的在前。两份差异不算（列表不需要，算一遍要读两份 payload） */
     List<GoodsRevisionVO> list(String merchantNo, String goodsNo);
+
+    /**
+     * 某一版的详情：带<b>两份</b>差异。
+     *
+     * <p>两份回答的是两个不同的问题：{@code changesFromPrev}「这一版当年干了什么」
+     * 用于追溯，{@code changesVsOnline}「它跟现在差多少」用于决定要不要取回。
+     * 只给一份的话，商家没法判断取回会动到哪些东西。
+     */
+    GoodsRevisionVO detail(String merchantNo, String goodsNo, int revisionNo);
+
+    /**
+     * 以某一版建草稿（AC12）。
+     *
+     * <p><b>不直接改线上</b> —— 回滚也是一次发布，要走同一道差异确认。
+     * 所以这里只把那一版的 payload 原样写成一份新的未发布版本，
+     * 发布那一步照旧。线上在售那一版取回毫无意义，拒。
+     *
+     * @return 新建出来的那一版
+     */
+    GoodsRevisionVO fork(String merchantNo, String goodsNo, int revisionNo);
 }

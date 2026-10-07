@@ -403,6 +403,10 @@ export const httpApi: MerchantApi = {
     http.get<PublishPreview>(buildPath(E.mPublishPreview.path, { goodsNo })),
   mGoodsRevisions: (goodsNo) =>
     http.get<GoodsRevision[]>(buildPath(E.mGoodsRevisions.path, { goodsNo })),
+  mGoodsRevision: (goodsNo, revisionNo) =>
+    http.get<GoodsRevision>(buildPath(E.mGoodsRevision.path, { goodsNo, revisionNo: String(revisionNo) })),
+  mForkRevision: (goodsNo, revisionNo) =>
+    http.post<GoodsRevision>(buildPath(E.mForkRevision.path, { goodsNo, revisionNo: String(revisionNo) })),
   // confirmVersion 不传就不发 body：后端 @RequestBody(required=false)，正常发布无需确认
   mPublishGoods: (goodsNo, confirmVersion) =>
     http.post<Goods>(buildPath(E.mPublishGoods.path, { goodsNo }),

@@ -248,6 +248,31 @@ public class BizGoodsController {
     }
 
     /**
+     * 某一版的详情：两份差异（对比它的基版 / 对比此刻线上）。
+     *
+     * <p>两份回答两个不同的问题：「这一版当年干了什么」用于追溯，
+     * 「它跟现在差多少」用于决定要不要取回。只给一份的话，
+     * 商家没法判断取回会动到哪些东西。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @GetMapping("/biz/goods/{goodsNo}/revisions/{revisionNo}")
+    public ai.neargo.shop.product.dto.GoodsRevisionVO revision(@PathVariable String goodsNo,
+                                                               @PathVariable int revisionNo) {
+        return revisionService.detail(BizContext.requireMerchantNo(), goodsNo, revisionNo);
+    }
+
+    /**
+     * 以某一版建草稿。**不直接改线上** —— 回滚也是一次发布，要走同一道差异确认。
+     * 这里只把那一版的快照写成一份新的未发布版本，发布那一步照旧。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/{goodsNo}/revisions/{revisionNo}/fork")
+    public ai.neargo.shop.product.dto.GoodsRevisionVO forkRevision(@PathVariable String goodsNo,
+                                                                   @PathVariable int revisionNo) {
+        return revisionService.fork(BizContext.requireMerchantNo(), goodsNo, revisionNo);
+    }
+
+    /**
      * {@code confirmVersion}（可选）：冲突（80018）后的出路。取自 publish-preview
      * 下发的 {@code baseVersion} —— 商家看过以此刻线上为基准的差异后显式确认，
      * 端上原样带回。不带 = 正常发布，基版过期就拒。

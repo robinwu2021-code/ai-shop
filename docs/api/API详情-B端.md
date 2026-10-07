@@ -1699,6 +1699,38 @@ _无字段_
 类型：[`GoodsRevision`](#goodsrevision)\[\]
 
 
+#### GET `/biz/goods/{goodsNo}/revisions/{revisionNo}`
+
+某一版详情（对比基版 + 对比此刻线上，两份差异）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+| `revisionNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`GoodsRevision`](#goodsrevision)
+
+
+#### POST `/biz/goods/{goodsNo}/revisions/{revisionNo}/fork`
+
+以这一版建草稿（不直接改线上，仍需发布）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `goodsNo` | path | `string` | 是 | 商品单号 |
+| `revisionNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`GoodsRevision`](#goodsrevision)
+
+
 #### POST `/biz/goods/{goodsNo}/stock`
 
 改库存　🔒
