@@ -264,6 +264,9 @@ class BizEndpointPermTest {
         put("/biz/goods/describe", BizPerms.GOODS);
         put("/biz/goods/parse-text", BizPerms.GOODS);   // C-AC 快速录入·文字识别
         put("/biz/goods/zip-plan", BizPerms.GOODS);     // 压缩包导入·文件结构归到主图/详情（TDD-商品压缩包导入）
+        // 压缩包导入·服务端解压（小程序端没有本地解压能力）。比 zip-plan 更重：它**真的往媒体库写**，
+        // 所以不能放 PUBLIC —— 登录即可的话，任何商家账号都能拿这个口子往公开桶里塞东西
+        put("/biz/goods/zip-import", BizPerms.GOODS);
         /*
          * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
          *

@@ -94,6 +94,12 @@ public class BizZipImportController {
     public record ZipImportResult(List<ZipImportedFile> files, Map<String, String> texts) {
     }
 
+    /*
+     * 权限与 zip-plan 同档（BizPerms.GOODS）：它比 zip-plan 更重 —— **真的往媒体库写**。
+     * 表里登记了还不够，这行注解才是执行的那一半（BizEndpointPermTest 两条分别钉这两件事）。
+     */
+    @org.springframework.security.access.prepost.PreAuthorize(
+            "@perm.canBiz('" + ai.neargo.shop.auth.BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/zip-import")
     public ZipImportResult importZip(@RequestParam("file") MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {

@@ -10699,6 +10699,40 @@ components:
         - "TEXT"
         - "IGNORE"
       description: "压缩包文件的标准去向：主图 / 详情 / 商品文案 / 不导入"
+    ZipImportedFile: 
+      type: "object"
+      properties: 
+        path: 
+          type: "string"
+          description: "包里的相对路径（目录名、文件名就是模型分类的主要线索）"
+        width: 
+          type: "number"
+          description: "图片宽，px；txt 或读不到时不传"
+        height: 
+          type: "number"
+          description: "图片高，px；长图（高明显大于宽）倾向详情"
+        url: 
+          type: "string"
+          description: "媒体库里的稳定相对路径。有它就直接用，不要再 mUploadImage"
+      required: 
+        - "path"
+        - "url"
+      additionalProperties: false
+      description: "服务端解压回来的一张图：已经过校验、落进媒体库，端上不用再逐张传"
+    ZipImported: 
+      type: "object"
+      properties: 
+        files: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ZipImportedFile"
+        texts: 
+          "$ref": "#/components/schemas/Record_string_string"
+      required: 
+        - "files"
+        - "texts"
+      additionalProperties: false
+      description: "服务端解压结果（小程序端专用——那一端没有 plus.zip）。\n\n<p>`texts` 是包里的 txt：端上没有本地文件可读，内容只能随清单一起带回来。"
     ZipPlan: 
       type: "object"
       properties: 
@@ -14462,6 +14496,34 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/ZipPlanReq"
+  "/biz/goods/zip-import": 
+    post: 
+      operationId: "mZipImport"
+      summary: "压缩包服务端解压（小程序端没有本地解压能力）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ZipImported"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/category/tree": 
     get: 
       operationId: "mCategoryTree"

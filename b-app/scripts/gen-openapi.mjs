@@ -201,6 +201,7 @@ const RESPONSE_TYPES = {
   mDescribeGoods: "{ detail: string }",
   mParseText: "GoodsTextParse",
   mZipPlan: "ZipPlan",
+  mZipImport: "ZipImported",   // 服务端解压回来的清单（已落库的图 + txt 内容）
   mDimValues: "SpecOption[]",
   mDropNoticeRecent: "StoreProfile",
   mEditMemberTag: "MemberTag",
