@@ -712,7 +712,13 @@ public class BizGoodsController {
         }
         List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> llm = files.isEmpty() ? null
                 : vision.mapZip(req.title(), categoryPath(req.categoryNo()), files, req.txtPreview());
-        var plan = ai.neargo.shop.product.dto.ZipPlanning.resolve(files, llm, req.ruleHint());
+        List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> rule = req.ruleHint() == null ? List.of()
+                : req.ruleHint().stream()
+                        .filter(h -> h != null && h.path() != null)
+                        .map(h -> new ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick(
+                                h.path(), h.target(), h.order() == null ? 0 : h.order(), false))
+                        .toList();
+        var plan = ai.neargo.shop.product.dto.ZipPlanning.resolve(files, llm, rule);
         return new ZipPlanVO(plan.source(), plan.items().stream()
                 .map(i -> new ZipPlanVO.Item(i.path(), i.target(), i.order()))
                 .toList());
@@ -995,7 +1001,15 @@ public class BizGoodsController {
      * @param ruleHint 端上规则（classifyZip）的分法：模型那一条不合格时用它
      */
     public record ZipPlanReq(String title, String categoryNo, List<ZipFileReq> files, String txtPreview,
-                             List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> ruleHint) {
+                             List<ZipHintReq> ruleHint) {
+    }
+
+    /**
+     * 规则分法的一条。**字段一律装箱**：此前直接收 port 的 {@code ZipPick}（{@code boolean cover}），
+     * 端上不发 cover，而 Jackson 3 默认 FAIL_ON_NULL_FOR_PRIMITIVES —— 整条请求 400，
+     * 端上按约定退回规则，于是**模型一次都没被用上**，界面上看不出任何异样（2026-10-07 生产探到）。
+     */
+    public record ZipHintReq(String path, String target, Integer order) {
     }
 
     /** 压缩包里的一个文件：相对路径 + 宽高（txt、读不到时为空） */

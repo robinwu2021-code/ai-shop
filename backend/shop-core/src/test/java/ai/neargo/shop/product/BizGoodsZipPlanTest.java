@@ -39,7 +39,7 @@ class BizGoodsZipPlanTest {
 
     private static BizGoodsController.ZipPlanReq req(List<BizGoodsController.ZipFileReq> files) {
         return new BizGoodsController.ZipPlanReq("脆柿子", null, files, null, List.of(
-                new GoodsVisionPort.ZipPick("长图/1.png", "MAIN", 1, false)));
+                new BizGoodsController.ZipHintReq("长图/1.png", "MAIN", 1)));
     }
 
     @Test
@@ -58,6 +58,23 @@ class BizGoodsZipPlanTest {
         var vo = controller().zipPlan(req(List.of(new BizGoodsController.ZipFileReq("长图/1.png", 750, 2400))));
         assertThat(vo.source()).isEqualTo("RULE");
         assertThat(vo.items()).extracting(BizGoodsController.ZipPlanVO.Item::target).containsExactly("MAIN");
+    }
+
+    @Test
+    @DisplayName("★★★ 端上原样的请求体能被 Jackson 3 默认配置读进来 —— 不发 cover、txt 不带宽高")
+    void frontendBodyDeserializes() throws Exception {
+        // 与 b-app http.ts 发出去的一字不差：ruleHint 只有 path/target/order，txt 没有 width/height
+        String body = """
+                {"title":"脆柿子","files":[{"path":"包/文案.txt"},{"path":"包/长图/1.png","width":750,"height":2400}],
+                 "ruleHint":[{"path":"包/文案.txt","target":"TEXT","order":0},
+                             {"path":"包/长图/1.png","target":"MAIN","order":1}]}
+                """;
+        var req = tools.jackson.databind.json.JsonMapper.builder().build()
+                .readValue(body, BizGoodsController.ZipPlanReq.class);
+        var vo = controller().zipPlan(req);
+        assertThat(vo.source()).isEqualTo("RULE");
+        assertThat(vo.items()).extracting(BizGoodsController.ZipPlanVO.Item::target)
+                .containsExactlyInAnyOrder("MAIN", "TEXT");
     }
 
     @Test
