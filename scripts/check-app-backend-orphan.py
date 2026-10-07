@@ -60,12 +60,23 @@ def app_exits(app: str) -> set[tuple[str, str]]:
     """端上所有出口：endpoints.ts 的登记 + 全量源码里的字面量路径。"""
     out = {(m, norm(p)) for _, m, p in contract(app)}
     # 源码里直接写的路径没有方法名，登记成通配 —— 宁可漏报
-    for f in (ROOT / app / "src").rglob("*"):
-        if f.suffix not in (".ts", ".vue", ".js") or not f.is_file():
+    #
+    # **`scripts/` 也要扫**：并包脚本（c-app/scripts/with-biz.mjs）在构建期生成页面，
+    # 那些页面里的请求是真实出口，但它们不在 src 下、后缀也不是 .ts/.vue。
+    # 不扫的话，只被生成页面调用的端点会被误判成孤儿 —— 2026-10-07
+    # `/mp/user/switch-to-merchant` 就是这么把全仓的 pre-push 挡住的。
+    # 与本文件开头那条「漏报，不误报」一致：出口认得越全越好。
+    roots = [(ROOT / app / "src", (".ts", ".vue", ".js")),
+             (ROOT / app / "scripts", (".ts", ".js", ".mjs"))]
+    for base, suffixes in roots:
+        if not base.is_dir():
             continue
-        src = f.read_text(encoding="utf-8", errors="replace")
-        for p in re.findall(r'["`](/(?:biz|mp)/[^"`\n\s]*)', src):
-            out.add(("*", norm(p)))
+        for f in base.rglob("*"):
+            if f.suffix not in suffixes or not f.is_file():
+                continue
+            src = f.read_text(encoding="utf-8", errors="replace")
+            for p in re.findall(r'["`](/(?:biz|mp)/[^"`\n\s]*)', src):
+                out.add(("*", norm(p)))
     return out
 
 
