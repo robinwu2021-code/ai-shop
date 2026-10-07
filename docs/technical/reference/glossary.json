@@ -25285,6 +25285,12 @@
           "zh-CN": "没能从微信获取手机号，请用验证码绑定",
           "en": "Could not get your number from WeChat — use an SMS code instead",
           "ar": "تعذّر جلب رقمك من WeChat — استخدم رمز التحقق"
+        },
+        {
+          "key": "err.zip.too_large",
+          "zh-CN": "压缩包太大了，图片控制在 200 张以内再试",
+          "en": "The archive is too large. Keep it under 200 images and try again.",
+          "ar": "الملف المضغوط كبير جدًا. أبقه دون 200 صورة."
         }
       ]
     }
@@ -33244,6 +33250,7 @@
           "PAYOUT_ACCOUNT_PENDING_EXISTS",
           "NOT_A_MERCHANT",
           "PHONE_REQUIRED_FOR_MERCHANT",
+          "ZIP_TOO_LARGE",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
