@@ -582,3 +582,22 @@ a{color:inherit}
 .crow .k.val{color:var(--sh-ink)}
 /* 可点的参数名（点了改填到哪个参数）。只换颜色、不加「›」—— 一行里多一个字就多占一份地方 */
 .crow .k.tap{color:var(--sh-primary-text)}
+
+/* ── 手机里的窄表格（识别结果对比稿，2026-10-07 goods-quick-entry）──
+   列：勾选 · 参数 · 识别值 · 现值。现值有值 = 勾上会覆盖，所以表格不需要「覆盖」标签 */
+.ptable{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+.ptable th{font-weight:400;color:var(--sh-sub);text-align:left;padding:2px 4px 6px;font-size:10px}
+.ptable td{padding:7px 4px;border-top:1px solid var(--sh-line);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptable td.p{color:var(--sh-sub)}
+.ptable td.n{font-weight:600;color:var(--sh-ink)}
+.ptable td.o{color:var(--sh-sub)}
+.ptable td.o.warn{color:var(--sh-warning-text);font-weight:600}
+.ptable tr.off td{opacity:.5}
+.ptable col.c{width:22px}
+/* ── 参数标签格：一项一块，点块即勾选 ── */
+.chipgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pchip{background:var(--sh-bg);border-radius:9px;padding:6px 8px;font-size:10px;color:var(--sh-sub);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pchip b{display:block;font-size:11.5px;font-weight:600;color:var(--sh-ink);overflow:hidden;text-overflow:ellipsis}
+.pchip.on{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.pchip.on b{color:var(--sh-primary-text)}
+.pchip.warn{outline:1px solid var(--sh-warning-text);outline-offset:-1px}
