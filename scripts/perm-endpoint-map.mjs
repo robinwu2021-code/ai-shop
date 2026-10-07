@@ -227,11 +227,6 @@ export const RULES = [
   ["GET", /^\/ops\/topics/, "product:topic:read"],
   ["*", /^\/ops\/topics/, "product:topic:update"],
 
-  // 小区可售池是**派生索引**，resync 是按现有商品重建它。
-  // 挂 product:sku:audit 而不是新起一个码：它改的是「哪些商品在哪些小区可见」，
-  // 与审核商品是同一件事的两面。**无菜单入口**（见 NO_UI_PREFIXES）
-  ["POST", /^\/ops\/community-pool\/resync$/, "product:sku:audit"],
-
   // ── 交易订单 ───────────────────────────────────────────────────────────
   ["POST", /^\/ops\/orders\/[^/]+\/intervene$/, "order:order:modify"],
   ["POST", /^\/ops\/orders\/[^/]+\/proxy-cancel$/, "order:order:proxy"],
@@ -522,8 +517,6 @@ export const NO_UI_PREFIXES = [
   // 两者都决定钱怎么走，不该分成两套权限
   "/ops/merchants/{merchantNo}/funds-mode",
   "/ops/merchants/mode-risk",
-  // 小区可售池重建：派生索引的维护动作，没有页面，只有出问题时运营手动跑一次
-  "/ops/community-pool/resync",
   // 门店渠道锁：后端能锁，ops-web 没有入口
   "/ops/stores/{storeNo}/channels/{channel}/lock",
 ];
