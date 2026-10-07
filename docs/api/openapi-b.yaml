@@ -10726,8 +10726,10 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/ZipImportedFile"
+          description: "包里的图片：已过校验并落进媒体库，每条带 url，端上不用再传"
         texts: 
           "$ref": "#/components/schemas/Record_string_string"
+          description: "包里的 txt：相对路径 → 内容。端上没有本地文件可读，只能随清单带回来"
       required: 
         - "files"
         - "texts"

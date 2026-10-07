@@ -318,7 +318,9 @@ export interface ZipImportedFile extends ZipPlanFile {
  * <p>`texts` 是包里的 txt：端上没有本地文件可读，内容只能随清单一起带回来。
  */
 export interface ZipImported {
+  /** 包里的图片：已过校验并落进媒体库，每条带 url，端上不用再传 */
   files: ZipImportedFile[];
+  /** 包里的 txt：相对路径 → 内容。端上没有本地文件可读，只能随清单带回来 */
   texts: Record<string, string>;
 }
 
