@@ -1,6 +1,6 @@
 # TDD-商品描述带参数生成
 
-状态：草稿
+状态：**已实现**（2026-10-07）
 档位：1（动了 `/biz/goods/describe` 的请求体 = 对外 JSON 结构；不新建表、不加权限码）
 关联需求：[TDD-C端商品详情页·内容丰富度](design/TDD-C端商品详情页-内容丰富度.md) §2.B「商家侧一键生成」（2026-09-27 已确认，本轮主力）
 用户 2026-10-07：「不只是布局，包含商品的文案，包含标题，说明，描述等等」
@@ -122,12 +122,30 @@ String describe(String imageUrl, String title, String subtitle, String category,
 
 ## §5 对账三 · 实现 → 需求（测试）
 
+测试类实际叫 `GoodsDescribePromptTest`，且在 `shop-channel` 而不是 `shop-app`（见 §6 偏差）。
+
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1 | `DescribeWithParamsTest#已填参数要进提示词` | 待填 | 去掉拼接 → 变红 |
-| AC2 | `DescribeWithParamsTest#禁写清单一条不少` | 待填 | 删掉一类禁写 → 变红 |
-| AC3 | `DescribeWithParamsTest#不带参数时提示词与改动前逐字相同` | 待填 | 空参数也拼一段 → 变红 |
-| AC4 | `DescribeWithParamsTest#提示词写明只许照抄不许引申` | 待填 | 去掉那一句 → 变红 |
+| AC1 | `GoodsDescribePromptTest#knownFactsGoIntoPrompt` | ✅ | 不拼「已知事实」段 → 变红 ✅ |
+| AC2 | `GoodsDescribePromptTest#forbiddenListStaysIntact` | ✅ | 见下（这条**有意**不随消融变红） |
+| AC3 | `GoodsDescribePromptTest#promptUnchangedWhenNoFacts` | ✅ | 同上 |
+| AC4 | `GoodsDescribePromptTest#factsMustBeCopiedNotExtended` | ✅ | 不拼那一段 → 变红 ✅ |
+| 附 | `GoodsDescribePromptTest#afterSaleParamsAreFiltered` | ✅ | 去掉售后过滤 → **只有这一条**变红 ✅ |
+| 附 | `GoodsDescribePromptTest#blankFactsAreSkipped` | ✅ | 不拼那一段 → 变红 ✅ |
+
+```
+Tests run: 6, Failures: 0, Errors: 0   BUILD SUCCESS（MVN_EXIT=0）
+
+消融 A1（不拼「已知事实」段）：Failures: 4 —— AC1 / AC4 / 售后过滤 / 空值跳过 四条红
+消融 A2（去掉售后过滤）    ：Failures: 1 —— 精准红在 afterSaleParamsAreFiltered
+还原后重跑：6/6 绿
+```
+
+**AC2 与 AC3 在消融 A1 下保持绿是对的，不是漏测。** 它们钉的是「补事实不等于
+放宽规则」与「空参数时逐字不变」—— 这两件事**本来就不依赖那段拼接存在**。
+消融 A1 真正证明的是：那四条确实在量「已知事实」这段，而不是在量别的东西。
+AC2/AC3 自己的消融是反方向的（删一类禁写、或让空参数也拼一段），
+那等于把实现改成**错的**而不是**撤掉**，不在本轮做。
 
 **判据取提示词文本，不取模型输出。** 模型是外部依赖、输出不确定，拿它当断言就是把闸门
 建在别人家的服务上（`known-failures.txt` 头部记着恒红闸门等于没有闸门）。
@@ -136,15 +154,52 @@ String describe(String imageUrl, String title, String subtitle, String category,
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
 ```
-[待填：git diff --stat]
+ b-app/src/api/requests.ts                          |  11 +++
+ .../neargo/shop/spi/product/GoodsVisionPort.java   |  15 ++-
+ .../shop/channel/ai/port/GoodsVisionGateway.java   |  45 ++++++++-
+ .../channel/ai/port/GoodsDescribePromptTest.java   | 104 +++++++++++++++++++++
+ .../shop/product/api/biz/BizGoodsController.java   |  18 +++-
+ 5 files changed, 187 insertions(+), 6 deletions(-)
 ```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 列了、实际没动：`b-app/src/pages/goods-edit/*`（调用点） | §2 就写明要等并行会话落定，照计划没动 |
+| 测试位置与类名与 §2 不同 | 见偏差说明第 2 条 |
 
 ### 偏差说明
 
-[待填]
+**1. 关键接口不是 `Map.Entry`，是复用已有的 `ParamKV`。**
+
+§2 的签名草稿写的是 `List<Map.Entry<String,String>>`。落地时发现
+`GoodsVisionPort` 里**已经有** `ParamKV(name, value, dimNo)`，还带一个
+`ParamKV(name, value)` 的两参构造器 —— 形状与这里要的逐字相同。
+按「先复用，再扩展，最后才新建」改成复用它；我中途一度新造过一个 `Fact` 记录，
+发现 `ParamKV` 后撤掉了。
+
+**2. 测试在 `shop-channel` 而不是 `shop-app`，类名是 `GoodsDescribePromptTest`。**
+
+§2 写的是 `shop-app/.../scenario/DescribeWithParamsTest.java`。但判据是**提示词文本**，
+而 `describePrompt` 在 `shop-channel` 且是 `private`。放在 shop-app 就得把它改成
+`public` —— 为了一个跨模块的测试把实现细节公开出去，比把测试放到同包里更糟。
+于是：方法降为**包内可见**（加了注释说明为什么不是 private），测试与它同包。
+
+**3. 多了两条 §0 没有的 AC：售后参数过滤、空名空值跳过。**
+
+写提示词时才想到：`params` 里可能有商家自由起名的「售后说明」（「坏果包赔」）。
+喂给模型，它会把这些织进正文 —— 而那正是 v2 栽过的那一类
+（「明早截单，后天一早送到」），对顾客是一条我们兑不了的承诺。
+C 端详情页出于同一理由也把这一格挡掉了。这条属于 AC2「不许编造承诺」的延伸，
+不是超范围，但 §0 当时没写出来，补记在这里。
+
+**4. 一次写错了判据。** `blankFactsAreSkipped` 最初用 `containsOnlyOnce("· ")`
+数项目符号 —— 而 v3 正文里本来就满是「· 」（格式规则与禁写清单都用它），
+量的根本不是「已知事实」那一段。改成用「· 名：值」整串做正负例。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-07 | 草稿，待确认 |
+| 2026-10-07 | 用户确认，开始实现 |
+| 2026-10-07 | 已实现。`GoodsDescribePromptTest` 6/6 绿，两次消融各自变红；b-app `vue-tsc` 0 错。<br>闸门：`mvn -pl shop-channel -am test`（扫 shop-channel 测试源码）+ 后端全量。<br>**整套 pre-push 未跑完** —— 生成物闸门被并行会话的未提交改动挡着。 |

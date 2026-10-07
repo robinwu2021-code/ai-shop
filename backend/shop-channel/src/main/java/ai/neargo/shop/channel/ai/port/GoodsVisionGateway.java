@@ -430,14 +430,15 @@ public class GoodsVisionGateway implements GoodsVisionPort {
      * 而截断的那一段看起来像模型写坏了，其实是配额到头了。
      */
     @Override
-    public String describe(String imageUrl, String title, String subtitle, String category) {
+    public String describe(String imageUrl, String title, String subtitle, String category,
+                           java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV> facts) {
         if (!isEnabled() || title == null || title.isBlank()) {
             return null;
         }
         try {
             // 有图就带图：同一件货，看得见实物写出来的描述具体得多
             var content = new java.util.ArrayList<Map<String, Object>>();
-            content.add(Map.of("type", "text", "text", describePrompt(title, subtitle, category)));
+            content.add(Map.of("type", "text", "text", describePrompt(title, subtitle, category, facts)));
             if (imageUrl != null && !imageUrl.isBlank()) {
                 content.add(Map.of("type", "image_url", "image_url", Map.of("url", imageUrl)));
             }
@@ -608,7 +609,11 @@ public class GoodsVisionGateway implements GoodsVisionPort {
      * 关键词探针查不出这种，靠的是读输出。所以端上那句
      * 「结果只填进输入框、不直接保存」不是客套，是这个功能成立的前提。
      */
-    private String describePrompt(String title, String subtitle, String category) {
+    // 包内可见（不是 private）：GoodsDescribePromptTest 直接比对提示词文本。
+    // 判据取文本而不是模型输出 —— 模型是外部依赖、输出不确定，拿它当断言
+    // 就是把闸门建在别人家的服务上（known-failures.txt 头部：恒红的闸门等于没有闸门）。
+    String describePrompt(String title, String subtitle, String category,
+                          java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV> facts) {
         var sb = new StringBuilder("""
                 你是社区团购的商品文案助手。为下面这件商品写一段图文详情正文。
 
@@ -640,6 +645,40 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         }
         if (category != null && !category.isBlank()) {
             sb.append("类目：").append(category).append('\n');
+        }
+        /*
+         * **已知事实**（TDD-商品描述带参数生成 AC1）。
+         *
+         * 只在真有参数时追加 —— 空时这段一个字都不拼，提示词与加这个参数之前**逐字相同**
+         * （AC3 钉的就是这条：老调用方不发 params，行为不能变）。
+         *
+         * 为什么这不算放宽 v3：v3 禁的是「写你不知道的事」，而这些值是商家自己在建品页
+         * 填的、经过候选值核验的结构化数据 —— 模型照抄它们不是编造。禁写清单原样保留。
+         *
+         * **滤掉售后类参数**（AC2 的一半）：那是商家自由起名的一格，内容多为
+         * 「坏果包赔」「七天无理由」。喂给模型，它会把这些织进正文 —— 而那正是
+         * v2 栽过的那一类（「明早截单，后天一早送到」），对顾客是一条我们兑不了的承诺。
+         * C 端详情页出于同一个理由也把这一格挡掉了（goods/index.vue 的 facts 计算）。
+         */
+        var known = (facts == null ? java.util.List.<ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV>of() : facts)
+                .stream()
+                .filter(f -> f != null && f.name() != null && !f.name().isBlank()
+                        && f.value() != null && !f.value().isBlank())
+                .filter(f -> !f.name().contains("售后"))
+                .toList();
+        if (!known.isEmpty()) {
+            sb.append("""
+
+                    已知事实（商家自己在建品页填的，和上面三项一样可以写进正文）：
+                    """);
+            for (var f : known) {
+                sb.append("· ").append(f.name()).append('：').append(f.value()).append('\n');
+            }
+            sb.append("""
+                    **这几条只能照抄，不许在它们之上引申。** 填了「常温」不等于可以写
+                    「常温保存更香甜」，填了「脆爽」不等于可以写「咬一口脆到掉渣」——
+                    那些仍然是你不知道的事。清单之外的一切，上面的禁写规则一个字都不放宽。
+                    """);
         }
         return sb.toString();
     }

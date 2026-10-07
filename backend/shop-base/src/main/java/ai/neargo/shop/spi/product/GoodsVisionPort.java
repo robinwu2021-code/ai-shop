@@ -48,13 +48,26 @@ public interface GoodsVisionPort {
      * 它写出来的是一个结构合理的模板。端上必须把它填进可编辑的输入框，
      * 而不是直接保存 —— 让商家改，比让他从空白开始容易得多。
      *
+     * <p><b>facts 是这个方法唯一的事实来源扩展</b>（TDD-商品描述带参数生成）。
+     * 提示词 v3 的第一句是「你只知道商品名、卖点、类目这三项，别的一概不知道」——
+     * 那是 v1/v2 两次编造（「散养土鸡蛋…蛋黄饱满」「明早截单，后天一早送到」）换来的。
+     * 所以**不是放宽规则，是补事实**：商家自己在建品页填过的参数（产地、口感、储存条件…）
+     * 是经过候选值核验的结构化数据，模型照抄它们不算编。
+     *
      * @param imageUrl 商品主图，可为空（没图就只按文字写）
      * @param title    商品名。**必须有** —— 没有名字的话模型只能瞎编
      * @param subtitle 副标题，可为空
      * @param category 类目中文路径，如「食品生鲜 / 水果」，可为空
+     * @param facts    商家已填的商品参数，可为空/null。**空时提示词与加这个参数之前逐字相同**。
+     *                 复用 {@link ParamKV}（名 + 值）：那个记录本来表示「模型抽出来的一条参数」，
+     *                 形状与这里要的逐字相同，没有理由再造一个近似类型。
+     *                 **只传中文名与中文值**（「产地」「山西运城临猗」），`dimNo` 用不上 ——
+     *                 与 {@code categoryPath()} 把类目号翻成中文名喂模型是同一条取舍：
+     *                 模型认得「产地」，不认得 SD_ORIGIN_DETAIL。
      * @return null = 没生成出来 / 模型不可达
      */
-    String describe(String imageUrl, String title, String subtitle, String category);
+    String describe(String imageUrl, String title, String subtitle, String category,
+                    java.util.List<ParamKV> facts);
 
     /**
      * 按类目给定的候选值，替商家**挑**商品参数（TDD-C 端商品详情页·内容丰富度 §2.B）。

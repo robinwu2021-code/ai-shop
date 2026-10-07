@@ -330,6 +330,17 @@ export interface DescribeGoodsReq {
   subtitle?: string;
   /** 类目号 */
   categoryNo?: string;
+  /**
+   * **已经填好的商品参数**。不传时后端的提示词与加这个字段之前逐字相同。
+   *
+   * 传它的理由：提示词写死了「你只知道商品名、卖点、类目这三项，别的一概不知道」——
+   * 那是两次编造（「散养土鸡蛋…蛋黄饱满」「明早截单，后天一早送到」）换来的规则。
+   * 商家已填的参数是经过候选值核验的事实，模型照抄不算编，所以**补事实而不是放宽规则**。
+   *
+   * 只发中文名与中文值（`{ name: "产地", label: "山西运城临猗" }`），不发 dimNo/code：
+   * 模型认得前者。售后类参数后端会挡掉（那是我们兑不了的承诺）。
+   */
+  params?: Array<{ name: string; label: string }>;
 }
 
 export interface RecognizeGoodsReq {

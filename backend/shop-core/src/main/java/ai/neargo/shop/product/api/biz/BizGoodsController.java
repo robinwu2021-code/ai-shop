@@ -658,7 +658,10 @@ public class BizGoodsController {
     @PostMapping("/biz/goods/describe")
     public DescribeVO describe(@RequestBody DescribeReq req) {
         String category = categoryPath(req.categoryNo());
-        String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category);
+        String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category,
+                req.params() == null ? List.of() : req.params().stream()
+                        .map(p -> new ai.neargo.shop.spi.product.GoodsVisionPort.ParamKV(p.name(), p.label()))
+                        .toList());
         return new DescribeVO(text == null ? "" : text, suggestParams(req, category));
     }
 
@@ -874,7 +877,18 @@ public class BizGoodsController {
         return out;
     }
 
-    public record DescribeReq(String imageUrl, String title, String subtitle, String categoryNo) {
+    /**
+     * @param params 商家**已经填好**的商品参数（TDD-商品描述带参数生成）。可不传 ——
+     *               不传时提示词与加这个字段之前逐字相同，老客户端不受影响。
+     *               传的是中文名与中文值（「产地」「山西运城临猗」），不是 dimNo/code：
+     *               模型认得前者，不认得 SD_ORIGIN_DETAIL（与 categoryPath 同一条取舍）。
+     */
+    public record DescribeReq(String imageUrl, String title, String subtitle, String categoryNo,
+                              List<ParamIn> params) {
+
+        /** 与端上落进 {@code prd_goods.params} 的那几个字段同形，这里只取模型用得上的两项 */
+        public record ParamIn(String name, String label) {
+        }
     }
 
     /**
