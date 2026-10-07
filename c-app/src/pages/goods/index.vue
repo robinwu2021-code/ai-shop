@@ -307,7 +307,24 @@ const facts = computed<Array<{ label: string; value: string }>>(() => {
   const g = goods.value;
   if (!g) return [];
   const out: Array<{ label: string; value: string }> = [];
+  /*
+   * **产地两层合成一行**。`SD_ORIGIN` 是粗枚举（本地 / 国产 / 进口），它的活是给买家筛选、
+   * 给跨店聚合用；`SD_ORIGIN_DETAIL` 是商家自己填的精确产区（「陕西富平」），TEXT 维度不入池
+   * （见 V375 迁移的注释）。两个都填，参数表就会出现「产地 国产」+「原产地 陕西富平」
+   * 两行说同一件事 —— 而买水果的人要的只是后者，「国产」对他等于没说。
+   *
+   * 所以有精确产区就只出它一行，占粗产地那一行的**位置与名字**（名字取后端下发的维度名，
+   * 不另造词条）。两边都没有时各走各的，行为不变。
+   */
+  const originDetail = (g.params ?? []).find((p) => p.dimNo === "SD_ORIGIN_DETAIL");
+  const originCoarse = (g.params ?? []).find((p) => p.dimNo === "SD_ORIGIN");
   for (const p of g.params ?? []) {
+    // 精确产区在场时，粗产地让位（它仍然在数据里，只是不单独占一行）
+    if (originDetail && p.dimNo === "SD_ORIGIN") continue;
+    if (p.dimNo === "SD_ORIGIN_DETAIL") {
+      out.push({ label: originCoarse?.name || p.name || p.dimNo, value: p.label });
+      continue;
+    }
     /*
      * 商家自己写的「售后说明 / 售后服务」先不出（v4，2026-09-29）：售后要作为一整块重新设计，
      * 在那之前每家店各写一句，买家看到的是一套半截说法 —— 与平台规则打架时还说不清谁算数。
@@ -335,6 +352,31 @@ const facts = computed<Array<{ label: string; value: string }>>(() => {
   }
   if (g.limitPerUser) {
     out.push({ label: String(t("goods.limitLabel")), value: String(t("goods.limit", { n: g.limitPerUser })) });
+  }
+  return out;
+});
+
+/**
+ * **生鲜的决策属性前置**（A 档）。买水果的人要先看到「哪儿产的 · 什么口感 · 怎么存」——
+ * 平台（淘宝 / 拼多多 / 京东生鲜）都把这几条做成标题下的标签，而不是让人翻到两屏以下的参数表。
+ * 标品不走这条：它的决策看品牌型号规格，那本来就该是一张表。
+ *
+ * 只取**值**不取名（「陕西富平」而不是「产地：陕西富平」）—— 标签是给人扫一眼的，
+ * 带上维度名三个标签就排不下一行了。完整的名值对仍在下面的参数表里，一条不少。
+ * 最多 3 条：第四条起会折行，而折了行就不再是「一眼」。
+ */
+const SPEC_CHIP_DIMS = ["SD_ORIGIN_DETAIL", "SD_ORIGIN", "SD_TASTE", "SD_STORE_COND"] as const;
+const specChips = computed<string[]>(() => {
+  const g = goods.value;
+  if (!g || !isFresh.value) return [];
+  const ps = g.params ?? [];
+  const out: string[] = [];
+  for (const dim of SPEC_CHIP_DIMS) {
+    // 产地同样是两层取一层：有精确产区就不再出粗枚举（与参数表同一口径）
+    if (dim === "SD_ORIGIN" && ps.some((p) => p.dimNo === "SD_ORIGIN_DETAIL")) continue;
+    const hit = ps.find((p) => p.dimNo === dim);
+    if (hit?.label) out.push(hit.label);
+    if (out.length === 3) break;
   }
   return out;
 });
@@ -1092,6 +1134,12 @@ onShareTimeline(() =>
               :merchant-no="goods.merchant.merchantNo"
               @poster="poster?.open()"
             ></biz-share-act>
+          </view>
+
+          <!-- 生鲜的决策属性（产地 · 口感 · 储存）。素色 chip，与下面那排促销/时效标签分开：
+               那排是会变的（倒计时、满减、仅剩 N 件），这排是这件货本身是什么样 -->
+          <view v-if="specChips.length" class="chips sh-wrap specchips">
+            <text v-for="(c, i) in specChips" :key="i" class="sh-chip">{{ c }}</text>
           </view>
 
           <view v-if="hasChips" class="chips sh-wrap">

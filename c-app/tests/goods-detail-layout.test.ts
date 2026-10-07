@@ -194,6 +194,62 @@ describe("商品详情页重排", () => {
     expect(html).not.toContain("坏果包赔");
   });
 
+  /*
+   * 产地两层：SD_ORIGIN 是粗枚举（本地/国产/进口，给筛选用），SD_ORIGIN_DETAIL 是商家填的
+   * 精确产区。线上柿子现在就只有粗的，参数表上写着「产地 国产」——对买水果的人等于没说。
+   */
+  it("★★★ 有精确产区时产地只出一行，用的是产区不是「国产」", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      type: "FRESH",
+      params: [
+        { dimNo: "SD_ORIGIN", name: "产地", label: "国产" },
+        { dimNo: "SD_ORIGIN_DETAIL", name: "原产地", label: "陕西富平" },
+      ],
+    } as never));
+    const html = (await render()).html();
+    const params = (await render()).find("#sec-detail").element.nextElementSibling!;
+    expect(params.textContent, "显示的是精确产区").toContain("陕西富平");
+    expect(params.textContent, "粗枚举不再单独占一行").not.toContain("国产");
+    // 名字取粗产地那条的维度名「产地」，不是「原产地」——占的是它的位置
+    expect(params.textContent).toContain("产地");
+    expect(html.split("陕西富平").length - 1, "参数表里只出现一次，没有两行说同一件事")
+      .toBeLessThanOrEqual(2); // 参数表 + 标题下的标签
+  });
+
+  it("★★ 只有粗产地时照旧显示它 —— 没有精确产区不代表不显示产地", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      type: "FRESH",
+      params: [{ dimNo: "SD_ORIGIN", name: "产地", label: "国产" }],
+    } as never));
+    const params = (await render()).find("#sec-detail").element.nextElementSibling!;
+    expect(params.textContent).toContain("国产");
+  });
+
+  it("★★★ 生鲜把产地/口感/储存提到标题下做标签；标品不出这一排", async () => {
+    goodsDetail.mockResolvedValue(goods({
+      type: "FRESH",
+      params: [
+        { dimNo: "SD_ORIGIN", name: "产地", label: "国产" },
+        { dimNo: "SD_ORIGIN_DETAIL", name: "原产地", label: "陕西富平" },
+        { dimNo: "SD_TASTE", name: "口感风味", label: "脆爽" },
+        { dimNo: "SD_STORE_COND", name: "储存条件", label: "常温" },
+        { dimNo: "SD_SHELF_LIFE", name: "保质期", label: "7天" },
+      ],
+    } as never));
+    const w = await render();
+    const row = w.find(".specchips");
+    expect(row.exists(), "生鲜要有这一排").toBe(true);
+    const chips = row.findAll(".sh-chip").map((c) => c.text());
+    expect(chips, "产地取精确的、最多 3 条、保质期不进标签").toEqual(["陕西富平", "脆爽", "常温"]);
+
+    // 标品：同样的参数也不出这一排
+    goodsDetail.mockResolvedValue(goods({
+      type: "STANDARD",
+      params: [{ dimNo: "SD_ORIGIN", name: "产地", label: "国产" }],
+    } as never));
+    expect((await render()).find(".specchips").exists(), "标品看品牌型号规格，那是一张表").toBe(false);
+  });
+
   it("★★★ v4 多规格也不在首屏说共几种 —— 规格面板只从底栏两颗按钮打开", async () => {
     goodsDetail.mockResolvedValue(goods({
       specGroups: [{ name: "重量", options: ["约10斤", "约5斤"] }],
