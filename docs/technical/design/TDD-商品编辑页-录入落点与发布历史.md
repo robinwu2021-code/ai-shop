@@ -1,6 +1,6 @@
 # TDD-商品编辑页：录入落点 · 文案收敛 · 发布历史
 
-状态：**A 全部 · B 全部 · C1 / C2 已实现**（2026-10-07）· AC12 / AC13 与驳回接线待做
+状态：**已实现**（A / B / C 三期与 AC1–AC14 全部，2026-10-07）· 只剩真机验
 关联：
 - 原型 [商品编辑页 · 快速录入与发布历史](https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd)（`prototypes/goods-edit-input-first.html`，15 屏）
 - [TDD-商品快速录入.md](TDD-商品快速录入.md)（AC1–14 的基座，本文是它的 AC11 落地决定）
@@ -397,6 +397,8 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 | **B2** | `83cca5eac` | AC5 撤销与复核面。卡内一行「已更新 N 项，看一遍 · 撤销」+ `sh-sheet` 只读清单 | 26 条（全量 99）。消融 `mergeUndo` 的「快照保持第一次那份」→ 1 条红 |
 | **C1** | 本批 | AC11：V377 `prd_goods_revision` + `GoodsRevisionService` 三个写入点 + `GET /biz/goods/{no}/revisions` + `entrySource` | `GoodsRevisionFlowTest` 6 条（真 H2）。消融「上一版翻 SUPERSEDED」→ 1 条红 |
 | **C2** | `47e3d2b` 起 | AC11 端上：`pages/goods-revisions` + 编辑页两处入口 + 横幅版本号 + 端上类型收窄 | 11 条（全量 110 / 19 文件）。消融「线上在售取 `rows[0]`」→ 2 条红 |
+| **AC12** | `0e998d346` 起 | 差异器从 `MerchantGoodsServiceImpl` 搬进 `GoodsDiffs`；两个端点（详情 / 取回）+ `pages/goods-revision` | 后端 11 条；消融「与此刻线上比」→ 1 条红。搬移后 M9b(44)/OpsProductGovern(17)/Architecture(16) 全绿，确认行为没变 |
+| **AC13** | `89ceb27d1` | 发布预览加 `overwrites` + `staleBy`；驳回与发布接进历史；`swapFromDraft` 多 `publishedBy` | 后端 14 条；回归 142 条（M9b/OpsProductGovern/M9aOps/StoreGoods/Architecture/BizEndpointPerm）|
 
 ### B2 的两个设计选择
 
@@ -406,12 +408,23 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 - **一串连续识别只有一个撤销点。** 撤销要退回的是「我贴这段话之前」，不是
   「上一次防抖之前」。这条规则抽成 `mergeUndo` 才有测试看得见。
 
-### C1 的边界
+### AC12 的前置：一次等价整理
 
-`GoodsRevisionVO` **故意没有差异字段**：AC12 的两份差异要比较两份 payload，
-而现有的差异计算比的是「线上实体 vs SaveCommand」，还依赖
-`MerchantGoodsServiceImpl` 里的私有渲染器。留一组恒空的字段比没有字段更糟 ——
-端上会照着它排版，然后永远显示空白。
+`renderGroups` / `renderParams` / `diffRow` 原先是 `MerchantGoodsServiceImpl` 的 private。
+`publishPreview` 比的是「线上实体 vs 提交体」，而历史要比**两份提交体** ——
+两种比较要用同一套渲染，否则同一件事在两个页面上长得不一样；而渲染留在 private 里，
+第二个调用方只能复制一份，复制出来的那份迟早漂移，症状是
+「发布预览说改了规格、历史说没改」，两边都不报错。
+
+搬进 `GoodsDiffs` 时**连「每次调用新建一个 Jackson 2 ObjectMapper」都照搬**——
+换成注入的 Jackson 3 bean 会改变未知字段与日期格式这些边角，不能夹在一次
+等价整理里悄悄做。搬完跑了三组既有测试确认行为没变。
+
+### AC13 踩到的那个点
+
+草稿表的 `base_version` 是 `prd_goods.version`（乐观锁列），**不是版本号** ——
+拿它查不到对应的快照。改用未发布那一行的 `base_revision`：那才是
+「我存草稿时线上是哪一版」。基版与线上同一版时回空，不算一份猜的。
 
 ---
 
@@ -419,12 +432,13 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 
 | 项 | 内容 |
 |---|---|
-| **AC12** | 某一版详情 + 两份差异 +「以这一版建草稿」。前置：把 `renderGroups` / `renderParams` / `diffRow` 从 `MerchantGoodsServiceImpl` 搬出来 |
-| **AC13** | 发布预览加 `overwrites[]`（线上比我的基版多出来、而我这一版会覆盖掉的项） |
-| 驳回接线 | `recordRejected` 已写好但**审核驳回那条路还没调它** —— 审核回调在另一处，单独一批 |
-| 真机验 | §6.4 要求的改前改后截图对比，**仍未做** |
+| **真机验** | §6.4 要求的改前改后截图对比，**仍未做**。B 端店主用 App 不用 H5，要打 APK 装到真机 |
+| 取回的端上确认文案 | `fork` 会把手上那份未发布草稿换掉（后端守「至多一行未发布」），端上过了一次确认，但那句 hint 没在真机上读过 |
+| `entrySource` 的上报 | 端上 `SaveCommand` 还没带它 —— 后端默认 MANUAL，所以历史里「怎么录的」目前恒为「手填」。补它要在 `save()` 的调用点判断这次是不是识别来的 |
 
----
+> 第三项是这批里唯一一处「**只写不读**」：列在历史页上的「怎么录的」有列、有落库、
+> 有测试，但端上从不传非 MANUAL 的值。界面看不出区别、闸门全绿 —— 正是那类最该被
+> 写下来的欠账。
 
 ## §14 闸门与基线（每批都量一次）
 
@@ -437,9 +451,10 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
 | `check-sql-portability` | 已知欠账 53 | 没有新增方言依赖 ✓ |
 | `ArchitectureTest` | 16 绿 | 16 绿 ✓ |
 | `BizEndpointPermTest` | 4 绿 | 4 绿 ✓ |
-| 界面清单 / 孤儿页 | 272 个界面 | **273**（商家 App 85 → 86），新页有两个入口 ✓ |
+| 界面清单 / 孤儿页 | 272 个界面 | **274**（商家 App 85 → 87），两个新页都有入口 ✓ |
 | `vue-tsc`（b-app） | 0 | 0 ✓ |
 | `vitest`（b-app） | 73 / 17 文件 | **110 / 19 文件** ✓ |
+| 后端场景回归 | — | **142 条**（M9b/OpsProductGovern/M9aOps/StoreGoods/Architecture/BizEndpointPerm）✓ |
 
 **整套 pre-push 仍然 exit 1**，挂在那 2 条别人的孤儿词条上 —— 与动手前一字不差。
 基线本来就是红的，而且红在这次要用的那道闸上：先存基线这一步不是形式，
