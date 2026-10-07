@@ -14,7 +14,10 @@ import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { entryAfterUndo, mergeUndo, planTextParse, raiseEntry, type EntrySource } from "./text-parse";
+import {
+  buildCandidates, entryAfterUndo, mergeUndo, planTextParse, raiseEntry, retarget,
+  type Candidate, type EntrySource,
+} from "./text-parse";
 import { useMerchantStore } from "@/stores/merchant";
 import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
@@ -808,17 +811,6 @@ async function runRecognize(force = false) {
 }
 
 /**
- * `plan.changed` 里的标识 → i18n 键。**一律写成字面量** —— 见 `applyTextParse` 里的注释。
- */
-const PARSE_LABEL: Record<string, string> = {
-  parseExpress: "goods.parseExpress",
-  parsePrice: "goods.parsePrice",
-  parsePriceBulk: "goods.parsePriceBulk",
-  parseRegions: "goods.parseRegions",
-  parseParams: "goods.parseParams",
-};
-
-/**
  * 这一版**怎么录的** —— 只进提交历史，不影响任何业务判断。
  *
  * <p>取值优先级：压缩包 > 图片识别 > 快速录入 > 手填。压缩包排最前是因为它
@@ -876,23 +868,29 @@ function undoParse() {
 }
 
 /**
- * 文字识别（规则 + LLM）：**点「识别文字」才跑**，只填空着的，不覆盖已填的。
- * 返回这次填进去了几项（0 = 什么都没认出来，-1 = 请求失败）—— 点了没反应比报错更糟。
+ * 确认区的行（P2 · AC3）。**点「识别文字」只产出这些行，不写表单** —— 「填入」才写。
  *
- * <p>落点怎么算在 `./text-parse.ts`（纯函数、有测试）。这里只做两件事：
- * 调它拿一份 plan，然后一行一行照 plan 写。
+ * <p>上一轮放弃「先确认再填入」的唯一理由是边输边识别下每打几个字就弹一次；
+ * 改成点击之后那个理由不存在了。行怎么算在 `./text-parse.ts`（纯函数、有测试）。
+ */
+const candidates = ref<Candidate[]>([]);
+/** 正在改落点的那一行（参数行才有） */
+const retargetKey = ref<string | null>(null);
+const checkedCount = computed(() => candidates.value.filter((c) => c.checked).length);
+
+/**
+ * 文字识别（规则 + LLM）：拿结果、算出确认区的行。**一个字段都不写**。
+ * 返回列出了几行（0 = 什么都没认出来，-1 = 请求失败）—— 点了没反应比报错更糟。
  *
- * <p>此前只落两项（快递、第一行售价），而 `parse-text` 回七项 —— 参数、
- * 标称重量、限购地区全丢在半路。**限购地区最要命**：它亮成一枚 chip，
- * 看着像生效了，于是「文字里写了不发货区域、商品页没更新」这个报障的根因
- * 一直被当成后端没认出来，实际是端上少一行赋值。
+ * <p>参数的落点后端已经核对到本品类的标准参数上了（`ParamMapping`）：
+ * 「净重 4.5 斤」回来就是「净含量」，不再是一条维度号为中文名的游离参数。
  */
 async function applyTextParse(): Promise<number> {
   const text = parseInput.value.trim();
   if (!text) {
     parsed.value = null;
     specPicks.value = [];
-    parseUndo.value = null;
+    candidates.value = [];
     return 0;
   }
   const r = await api.mParseText(text, categoryNo.value || undefined).catch(() => null);
@@ -901,21 +899,10 @@ async function applyTextParse(): Promise<number> {
     return -1;
   }
   parsed.value = r.confidence ? r : null;
-  if (!r.confidence) return 0;
-
-  /*
-   * 快照要在**改之前**拍，而且一串连续识别只拍一次（`parseUndo` 为空时）。
-   * `rows` 要连 `priceMajor` 一起拷：那是个对象，浅拷会让撤销改不回来。
-   */
-  const snapshot = {
-    fulfillments: [...fulfillments.value],
-    bulkPrice: bulk.value.price,
-    rows: rows.value.map((row) => ({ ...row, priceMajor: { ...row.priceMajor } })),
-    restrictedRegions: [...restrictedRegions.value],
-    paramValues: { ...paramValues.value },
-  };
-  const paramsBefore = { ...paramValues.value };
-
+  if (!r.confidence) {
+    candidates.value = [];
+    return 0;
+  }
   const plan = planTextParse(r, {
     multi: multi.value,
     bulkPrice: bulk.value.price,
@@ -924,50 +911,100 @@ async function applyTextParse(): Promise<number> {
     restrictedRegions: restrictedRegions.value,
     groupNames: groups.value.map((g) => g.name),
   });
-
-  if (plan.addExpress && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
-    fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
-  }
-  if (plan.bulkPrice !== undefined) bulk.value.price = plan.bulkPrice;
-  if (plan.rowPrice !== undefined && rows.value[0]) {
-    rows.value[0]!.priceMajor = { ...rows.value[0]!.priceMajor, [market.value]: plan.rowPrice };
-  }
-  if (plan.restrictedRegions !== undefined) restrictedRegions.value = plan.restrictedRegions;
   specPicks.value = plan.specPicks;
+  candidates.value = buildCandidates(plan, r.params ?? [], {
+    hasExpress: fulfillments.value.includes(FULFILLMENT.EXPRESS),
+    priceBefore: rows.value[0]?.priceMajor[market.value] ?? "",
+    bulkBefore: bulk.value.price,
+    params: currentParamLabels(),
+    propDimNos: propDims.value.map((d) => d.templateNo),
+  });
+  return candidates.value.length + specPicks.value.length;
+}
 
-  const changed = [...plan.changed];
-  /*
-   * 展示层把值翻成人话:省码 → 省名(表单上那一行就是省名,两处必须一致)、
-   * 以 goods. 开头的值是 i18n 键(履约方式那种枚举)。
-   */
-  const items = plan.items.map((it) => ({
-    label: String(t(it.labelKey)),
-    value: it.kind === "regions"
-      ? provinceNamesByCodes(it.value.split(",")).join("、")
-      : (it.value.startsWith("goods.") ? String(t(it.value)) : it.value),
-  }));
-  // 参数走图片识别同一个函数 —— 同一个后端结果，两条路不该两种待遇
-  if (applyParamPicks(r.params ?? [])) {
-    changed.push("parseParams");
-    // 复核面要列出**具体填了哪几个参数**，所以按「之前没有、现在有」反查
-    for (const [dimNo, v] of Object.entries(paramValues.value)) {
-      if (!paramsBefore[dimNo] && v) items.push({ label: v.name ?? dimNo, value: v.label ?? "" });
+/** 已填参数：维度号 → 值。确认区据此写「原 xx」，并决定默认勾不勾 */
+function currentParamLabels(): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [dimNo, v] of Object.entries(paramValues.value)) out[dimNo] = v?.label;
+  return out;
+}
+
+/** 确认区里一行的展示值：省码换省名、i18n 键换人话 */
+function candidateValue(c: Candidate): string {
+  if (c.kind === "regions") return provinceNamesByCodes(c.value.split(",").filter(Boolean)).join("、");
+  return c.value.startsWith("goods.") ? String(t(c.value)) : c.value;
+}
+
+/** 落到哪个字段：非参数行是 i18n 键，参数行已是人话 */
+function candidateTarget(c: Candidate): string {
+  return c.kind === "param" ? c.target : String(t(c.target));
+}
+
+function toggleCandidate(key: string) {
+  candidates.value = candidates.value.map((c) => (c.key === key ? { ...c, checked: !c.checked } : c));
+}
+
+/** 全选 / 全不选。有一行没勾就是「全选」，否则「全不选」 */
+function toggleAllCandidates() {
+  const to = candidates.value.some((c) => !c.checked);
+  candidates.value = candidates.value.map((c) => ({ ...c, checked: to }));
+}
+
+function cancelCandidates() {
+  candidates.value = [];
+}
+
+/** 改参数行的落点：从本品类的标准参数里挑一个，或者作自由参数 */
+function pickTarget(dim: { templateNo: string; name: string } | null) {
+  const key = retargetKey.value;
+  retargetKey.value = null;
+  if (!key) return;
+  candidates.value = candidates.value.map((c) => {
+    if (c.key !== key) return c;
+    if (!dim) return { ...c, mapped: false, checked: false };
+    return retarget(c, { dimNo: dim.templateNo, name: dim.name }, currentParamLabels());
+  });
+}
+
+/**
+ * 「填入」：只写**勾上**的那几行。
+ *
+ * <p>快照在写之前拍，撤销照旧能退回填入之前（`mergeUndo`，有测试）。
+ * 参数行已有值且勾上了 = 他要覆盖：先清掉那一格，再走 `applyParamPicks`
+ * （它只填空着的）—— 同一个落点函数，不另写一套。
+ */
+function applyCandidates() {
+  const picked = candidates.value.filter((c) => c.checked);
+  if (!picked.length) return;
+  const snapshot = {
+    fulfillments: [...fulfillments.value],
+    bulkPrice: bulk.value.price,
+    rows: rows.value.map((row) => ({ ...row, priceMajor: { ...row.priceMajor } })),
+    restrictedRegions: [...restrictedRegions.value],
+    paramValues: { ...paramValues.value },
+  };
+  for (const c of picked) {
+    if (c.kind === "fulfillment" && !fulfillments.value.includes(FULFILLMENT.EXPRESS)) {
+      fulfillments.value = [...fulfillments.value, FULFILLMENT.EXPRESS];
+    } else if (c.kind === "price" && rows.value[0]) {
+      rows.value[0]!.priceMajor = { ...rows.value[0]!.priceMajor, [market.value]: c.value };
+    } else if (c.kind === "bulkPrice") {
+      bulk.value.price = c.value;
+    } else if (c.kind === "regions" && c.regions) {
+      restrictedRegions.value = [...c.regions];
+    } else if (c.kind === "param" && c.dimNo) {
+      if (paramValues.value[c.dimNo]) {
+        const { [c.dimNo]: _drop, ...rest } = paramValues.value;
+        paramValues.value = rest;
+      }
+      applyParamPicks([{ dimNo: c.dimNo, name: c.target, label: c.value }]);
     }
   }
-  // 「一串连续识别只有一个撤销点」的规则在 text-parse.ts，有测试
+  const items = picked.map((c) => ({ label: candidateTarget(c), value: candidateValue(c) }));
   parseUndo.value = mergeUndo(parseUndo.value, snapshot, items);
-  // 真的填进去东西了才算快速录入 —— 贴一段没认出来的话不是
-  if (items.length) markEntry("QUICK_TEXT");
-  if (changed.length) {
-    /*
-     * **字面量键，不要写成 `t(`goods.${k}`)`。** 端上的 i18n 闸门扫的是字面量：
-     * 一个动态键不但让这几条词条被当成孤儿，还会把整个 `goods.` 命名空间
-     * 从对账里豁免掉（前缀只有一段）。缺词条的后果是界面上直接露出键名。
-     */
-    const f = changed.map((k) => String(t(PARSE_LABEL[k] ?? k))).join("、");
-    uni.showToast({ title: String(t("goods.updatedFields", { f })), icon: "none" });
-  }
-  return changed.length + specPicks.value.length;
+  markEntry("QUICK_TEXT");
+  candidates.value = [];
+  uni.showToast({ title: String(t("goods.confirmDone", { n: picked.length })), icon: "none" });
 }
 
 /**
@@ -1864,16 +1901,59 @@ async function save(thenSubmit = false) {
           </text>
         </view>
         <!--
-          **一个识别出来的东西一枚 chip**（AC2）。此前重量是 `weights.join(" ")`
-          拼进一枚 —— 「140g 4.5斤」看着像一个东西，而它们是单果重与净重两件事。
+          **确认区**（P2 · AC3）：一个识别出来的东西一行 —— 勾不勾、值、落到哪个字段。
+          点「识别文字」只列在这里，「填入」才写表单。参数行的落点可以改。
+          此前是一排只读的 chip（P1 已把两个重量拆成两枚），看得见却管不了。
         -->
-        <view v-if="parsed" class="quick__got">
-          <text v-if="parsed.pricesMinor.length" class="quick__tag">{{ $t("goods.parsePrice") }} {{ yuan(parsed.pricesMinor[0] ?? 0) }}元</text>
-          <text v-for="w in parsed.weights" :key="`w-${w}`" class="quick__tag">{{ w }}</text>
-          <text v-for="c in parsed.carriers" :key="`c-${c}`" class="quick__tag">{{ c }}</text>
-          <text v-if="parsed.excludeRegionText" class="quick__tag quick__tag--warn">{{ $t("goods.parseNoShip") }}:{{ parsed.excludeRegionText }}</text>
+        <view v-if="candidates.length" class="confirm">
+          <view class="sh-row confirm__head">
+            <text class="txt-caption sh-muted sh-fill">
+              {{ $t("goods.confirmTitle", { n: candidates.length, m: checkedCount }) }}
+            </text>
+            <text class="txt-caption sh-link sh-hit" @tap="toggleAllCandidates">
+              {{ candidates.some((c) => !c.checked) ? $t("goods.confirmAll") : $t("goods.confirmNone") }}
+            </text>
+          </view>
+          <!-- 整行点击切换，sh-check 只负责画（与盘点选货同一写法） -->
+          <view
+            v-for="c in candidates"
+            :key="c.key"
+            class="sh-row confirm__row"
+            @tap="toggleCandidate(c.key)"
+          >
+            <sh-check :model-value="c.checked"></sh-check>
+            <view class="sh-fill confirm__body">
+              <text class="txt-body">{{ candidateValue(c) }}</text>
+              <!-- 这一格已经有值：勾上会覆盖它，写出来让他看见覆盖的是什么 -->
+              <text v-if="c.before" class="txt-caption is-warning confirm__was">
+                {{ $t("goods.confirmWas", { v: c.before }) }}
+              </text>
+            </view>
+            <!-- 参数行的落点可以改；对不上标准参数的那行要先指定 -->
+            <text
+              v-if="c.kind === 'param'"
+              class="txt-caption sh-link sh-hit confirm__to"
+              :class="{ 'is-warning': !c.mapped }"
+              @tap.stop="retargetKey = c.key"
+            >
+              {{ c.mapped ? `→ ${c.target}` : $t("goods.confirmPick") }} ›
+            </text>
+            <text v-else class="txt-caption sh-muted confirm__to">→ {{ candidateTarget(c) }}</text>
+          </view>
+          <view class="sh-row quick__act">
+            <text class="sh-btn sh-btn--sm sh-btn--ghost sh-hit" @tap="cancelCandidates">
+              {{ $t("common.cancel") }}
+            </text>
+            <text
+              class="sh-btn sh-btn--sm sh-hit"
+              :class="{ 'is-disabled': !checkedCount }"
+              @tap="applyCandidates"
+            >
+              {{ $t("goods.confirmApply", { n: checkedCount }) }}
+            </text>
+          </view>
         </view>
-        <text v-if="parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
+        <text v-if="parseUndo && parsed && parsed.excludeRegionText" class="sh-muted quick__hint">{{ $t("goods.parseNoShipHint") }}</text>
         <!-- 填进去之后的出口：左边点开复核面逐项看，右边一下退回识别之前 -->
         <view v-if="parseUndo" class="sh-row quick__specs">
           <text class="txt-caption sh-link sh-fill sh-hit" @tap="reviewOpen = true">
@@ -2999,6 +3079,33 @@ async function save(thenSubmit = false) {
     </view>
 
     <!-- 限购地区省份多选（反选）：勾中的省不发货，全不选 = 全国 -->
+    <!--
+      改落点：这个值填到哪个参数。只列**本品类的标准参数** —— 落点是数据决定的，
+      不让人凭空起名；实在没有对应的，作自由参数。
+    -->
+    <sh-sheet
+      :visible="!!retargetKey"
+      :title="$t('goods.retargetTitle')"
+      @close="retargetKey = null"
+    >
+      <!-- 没选类目就没有标准参数可挑 —— 给出路，不留一个只有「作自由参数」的空面板 -->
+      <text v-if="!propDims.length" class="txt-caption sh-muted confirm__empty">{{ $t("goods.retargetNeedCat") }}</text>
+      <view
+        v-for="d in propDims"
+        :key="d.templateNo"
+        class="sh-row confirm__row"
+        @tap="pickTarget(d)"
+      >
+        <text class="txt-body sh-fill">{{ d.name }}</text>
+        <text v-if="paramValues[d.templateNo]" class="txt-caption sh-muted">
+          {{ $t("goods.confirmWas", { v: paramValues[d.templateNo]?.label ?? "" }) }}
+        </text>
+      </view>
+      <view class="sh-row confirm__row" @tap="pickTarget(null)">
+        <text class="txt-body sh-muted sh-fill">{{ $t("goods.retargetFree") }}</text>
+      </view>
+    </sh-sheet>
+
     <!-- 复核面:只读 + 一键撤销。它是事后看的,不挡路 -->
     <sh-sheet
       :visible="reviewOpen"
@@ -3685,6 +3792,14 @@ async function save(thenSubmit = false) {
 .quick__specs { margin-top: 12rpx; gap: 16rpx; }
 .quick__tabs { margin-top: 16rpx; margin-bottom: 16rpx; }
 .quick__act { justify-content: flex-end; margin-top: 12rpx; }
+/* 确认区:一行一个识别出来的东西。行间用发丝线,不用卡片 —— 它是一张清单,不是一组对象 */
+.confirm { margin-top: 16rpx; }
+.confirm__head { margin-bottom: 8rpx; }
+.confirm__row { gap: 16rpx; padding: 16rpx 0; border-top: var(--sh-hairline-soft); }
+.confirm__body { min-width: 0; }
+.confirm__was { display: block; margin-top: 4rpx; }
+.confirm__to { flex-shrink: 0; }
+.confirm__empty { display: block; padding: 16rpx 0; }
 .cat-lv__none { gap: 16rpx; margin-top: 8rpx; }
 .quick__tag {
   font-size: 24rpx;

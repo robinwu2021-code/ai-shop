@@ -192,3 +192,113 @@ export function raiseEntry(current: EntrySource, next: EntrySource): EntrySource
 export function entryAfterUndo(current: EntrySource): EntrySource {
   return current === "QUICK_TEXT" ? "MANUAL" : current;
 }
+
+/**
+ * 确认区的一行（TDD-商品快速录入-品类感知与逐项确认 P2 · AC3）。
+ *
+ * <p>**一个识别出来的东西就是一行**：勾不勾、值是什么、落到哪个字段。
+ * 参数行的落点可以改（「140g」落到单果重量还是净含量，商家说了算）。
+ *
+ * <p>点「识别文字」之后**先进这里，不写表单** —— 上一轮放弃「先确认再填入」的唯一理由
+ * （边输边识别下每打几个字就弹一次）在改成点击之后已经不存在了。
+ */
+export interface Candidate {
+  /** 稳定键：fulfillment / price / bulkPrice / regions / param:<序号> */
+  key: string;
+  kind: "fulfillment" | "price" | "bulkPrice" | "regions" | "param";
+  /** 落到哪个字段的名字。非参数行是 i18n 键；参数行是标准参数名（已是人话） */
+  target: string;
+  /** 要填进去的值。履约行是 i18n 键；限购地区行是省码逗号串（展示层换省名） */
+  value: string;
+  /** 这一格**现在**的值。有值 = 勾上会覆盖它，确认区要写出来 */
+  before?: string;
+  /** 参数行：落到的维度号 */
+  dimNo?: string;
+  /** 参数行：是否对到了本品类的标准参数。false = 自由参数，要人来指定落点 */
+  mapped?: boolean;
+  /** 限购地区行：并入之后的全集 */
+  regions?: string[];
+  checked: boolean;
+}
+
+/** 算确认区时需要知道的「现在是什么样」 */
+export interface CandidateCurrent {
+  /** 履约里已经有快递 —— 有了就不列这一行（没东西可改） */
+  hasExpress: boolean;
+  /** 单规格时第一行现在的价；空串 = 还没填 */
+  priceBefore: string;
+  /** 「统一价格」框现在的值 */
+  bulkBefore: string;
+  /** 已填的参数：维度号 → 值 */
+  params: Record<string, string | undefined>;
+  /** 本品类的标准参数维度号。参数行据此判 mapped */
+  propDimNos: string[];
+}
+
+/**
+ * 识别结果 → 确认区的行。
+ *
+ * <p>**默认勾不勾只有一条规矩：这一格已经有值就不勾**。勾上会覆盖他自己填的，
+ * 那得他来决定 —— 所以把「原 15.00」写在值旁边，让他看见覆盖的是什么。
+ * 此前直接填的时候，售价会从 15 静默变成 10（生产上实测到），而界面上只有一条 toast。
+ *
+ * <p>参数行另有一条：**对不上标准参数的默认不勾**（mapped=false）—— 它要先指定落点。
+ */
+export function buildCandidates(
+  plan: TextParsePlan,
+  params: { dimNo: string; name: string; label: string }[],
+  cur: CandidateCurrent,
+): Candidate[] {
+  const rows: Candidate[] = [];
+  if (plan.addExpress && !cur.hasExpress) {
+    rows.push({
+      key: "fulfillment", kind: "fulfillment",
+      target: "goods.fulfillment", value: "goods.fulfillmentType.EXPRESS", checked: true,
+    });
+  }
+  if (plan.rowPrice !== undefined) {
+    const before = cur.priceBefore.trim() || undefined;
+    rows.push({
+      key: "price", kind: "price", target: "goods.parsePrice",
+      value: plan.rowPrice, before, checked: !before,
+    });
+  }
+  if (plan.bulkPrice !== undefined) {
+    const before = cur.bulkBefore.trim() || undefined;
+    rows.push({
+      key: "bulkPrice", kind: "bulkPrice", target: "goods.bulkPrice",
+      value: plan.bulkPrice, before, checked: !before,
+    });
+  }
+  if (plan.restrictedRegions !== undefined) {
+    const added = plan.items.find((it) => it.kind === "regions")?.value ?? "";
+    rows.push({
+      key: "regions", kind: "regions", target: "goods.restrictedLabel",
+      value: added, regions: plan.restrictedRegions, checked: true,
+    });
+  }
+  params.forEach((p, i) => {
+    const mapped = cur.propDimNos.includes(p.dimNo);
+    const before = cur.params[p.dimNo] || undefined;
+    rows.push({
+      key: `param:${i}`, kind: "param", target: p.name, value: p.label,
+      dimNo: p.dimNo, mapped, before, checked: mapped && !before,
+    });
+  });
+  return rows;
+}
+
+/**
+ * 改一个参数行的落点（「140g」不是净含量，是单果重量）。
+ *
+ * <p>改完就算对上了（mapped=true）；**默认勾上**，除非那个参数已经有值 ——
+ * 与 {@link buildCandidates} 同一条规矩：有值不替他覆盖。
+ */
+export function retarget(
+  c: Candidate,
+  dim: { dimNo: string; name: string },
+  curParams: Record<string, string | undefined>,
+): Candidate {
+  const before = curParams[dim.dimNo] || undefined;
+  return { ...c, dimNo: dim.dimNo, target: dim.name, mapped: true, before, checked: !before };
+}

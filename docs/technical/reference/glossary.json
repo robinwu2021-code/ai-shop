@@ -8990,6 +8990,48 @@
           "ar": "جارٍ تحميل طرق التوصيل…"
         },
         {
+          "key": "goods.confirmAll",
+          "zh-CN": "全选",
+          "en": "Select all",
+          "ar": "تحديد الكل"
+        },
+        {
+          "key": "goods.confirmApply",
+          "zh-CN": "填入（{n}）",
+          "en": "Fill in ({n})",
+          "ar": "إدخال ({n})"
+        },
+        {
+          "key": "goods.confirmDone",
+          "zh-CN": "已填入 {n} 项",
+          "en": "{n} filled in",
+          "ar": "أُدخل {n}"
+        },
+        {
+          "key": "goods.confirmNone",
+          "zh-CN": "全不选",
+          "en": "Select none",
+          "ar": "إلغاء الكل"
+        },
+        {
+          "key": "goods.confirmPick",
+          "zh-CN": "选参数",
+          "en": "Choose parameter",
+          "ar": "اختر المعيار"
+        },
+        {
+          "key": "goods.confirmTitle",
+          "zh-CN": "识别到 {n} 项 · 已选 {m}",
+          "en": "{n} found · {m} selected",
+          "ar": "وُجد {n} · محدد {m}"
+        },
+        {
+          "key": "goods.confirmWas",
+          "zh-CN": "原 {v}",
+          "en": "was {v}",
+          "ar": "كان {v}"
+        },
+        {
           "key": "goods.costPrice",
           "zh-CN": "成本价（仅本店可见）",
           "en": "Cost price (visible only to you)",
@@ -9656,22 +9698,10 @@
           "ar": "لا توجد خصائص بعد؛ يمكنك إضافة واحدة"
         },
         {
-          "key": "goods.parseExpress",
-          "zh-CN": "快递",
-          "en": "Courier",
-          "ar": "الشحن"
-        },
-        {
           "key": "goods.parseFail",
           "zh-CN": "识别失败,请重试",
           "en": "Failed, try again",
           "ar": "فشل، أعد المحاولة"
-        },
-        {
-          "key": "goods.parseNoShip",
-          "zh-CN": "不发货区域",
-          "en": "No-ship area",
-          "ar": "منطقة بلا شحن"
         },
         {
           "key": "goods.parseNoShipHint",
@@ -9686,12 +9716,6 @@
           "ar": "لم يُتعرّف على شيء يمكن إدخاله"
         },
         {
-          "key": "goods.parseParams",
-          "zh-CN": "参数",
-          "en": "parameters",
-          "ar": "المعايير"
-        },
-        {
           "key": "goods.parsePh",
           "zh-CN": "粘贴商品文字，可识别名称、价格、规格、参数、限购地区",
           "en": "Paste the product text — name, price, specs, parameters and restricted areas can be recognized",
@@ -9702,18 +9726,6 @@
           "zh-CN": "价格",
           "en": "Price",
           "ar": "السعر"
-        },
-        {
-          "key": "goods.parsePriceBulk",
-          "zh-CN": "价格（已填进统一价格）",
-          "en": "price (into the bulk field)",
-          "ar": "السعر (في حقل التعميم)"
-        },
-        {
-          "key": "goods.parseRegions",
-          "zh-CN": "限购地区",
-          "en": "restricted areas",
-          "ar": "المناطق المقيدة"
         },
         {
           "key": "goods.parseReviewHint",
@@ -10008,6 +10020,24 @@
           "zh-CN": "设置限购地区",
           "en": "Set restricted regions",
           "ar": "تحديد المناطق المحظورة"
+        },
+        {
+          "key": "goods.retargetFree",
+          "zh-CN": "作自由参数",
+          "en": "Keep as a custom parameter",
+          "ar": "احتفظ كمعيار مخصص"
+        },
+        {
+          "key": "goods.retargetNeedCat",
+          "zh-CN": "先选主营类目，才有标准参数可选",
+          "en": "Choose a category first to see its standard parameters",
+          "ar": "اختر الفئة أولاً لعرض معاييرها القياسية"
+        },
+        {
+          "key": "goods.retargetTitle",
+          "zh-CN": "填到哪个参数",
+          "en": "Fill into which parameter",
+          "ar": "إلى أي معيار"
         },
         {
           "key": "goods.revChanged",
@@ -10476,12 +10506,6 @@
           "zh-CN": "{s} 未填，将显示中文",
           "en": "{s} empty — Chinese will be shown",
           "ar": "{s} فارغ؛ ستظهر الصينية"
-        },
-        {
-          "key": "goods.updatedFields",
-          "zh-CN": "已更新:{f}",
-          "en": "Updated: {f}",
-          "ar": "تم التحديث: {f}"
         },
         {
           "key": "goods.verifyStore",

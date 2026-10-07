@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  entryAfterUndo, mergeUndo, planTextParse, raiseEntry, type TextParseTarget,
+  buildCandidates, entryAfterUndo, mergeUndo, planTextParse, raiseEntry, retarget,
+  type CandidateCurrent, type TextParseTarget,
 } from "@/pages/goods-edit/text-parse";
 import type { GoodsTextParse } from "@/api/requests";
 
@@ -245,5 +246,84 @@ describe("录入方式只升不降", () => {
   it("撤销不动图片与压缩包 —— 图还在、参数还在,痕迹没撤掉", () => {
     expect(entryAfterUndo("IMAGE")).toBe("IMAGE");
     expect(entryAfterUndo("ZIP")).toBe("ZIP");
+  });
+});
+
+describe("P2 确认区：一个识别出来的东西一行", () => {
+  /** 用户那段原文的识别结果（生产上 parse-text 带水果类目回来的样子） */
+  const r = parsed({
+    pricesMinor: [1000], fulfillment: ["EXPRESS"], carriers: ["圆通"],
+    restrictedRegions: ["65", "54", "46"],
+  });
+  const params = [
+    { dimNo: "SD_UNIT_WEIGHT", name: "单果重量", label: "140g+" },
+    { dimNo: "SD_NET_CONTENT", name: "净含量", label: "4.5斤" },
+  ];
+  const cur = (over: Partial<CandidateCurrent> = {}): CandidateCurrent => ({
+    hasExpress: false, priceBefore: "", bulkBefore: "", params: {},
+    propDimNos: ["SD_UNIT_WEIGHT", "SD_NET_CONTENT", "SD_GROSS_WEIGHT"],
+    ...over,
+  });
+
+  it("★★★ 每个实体一行，两个重量各一行、各自落到自己的参数", () => {
+    const rows = buildCandidates(planTextParse(r, target()), params, cur());
+    const ps = rows.filter((c) => c.kind === "param");
+    expect(ps.map((c) => [c.value, c.dimNo, c.target])).toEqual([
+      ["140g+", "SD_UNIT_WEIGHT", "单果重量"],
+      ["4.5斤", "SD_NET_CONTENT", "净含量"],
+    ]);
+    // 配送 / 价格 / 限购地区 也各一行
+    expect(rows.map((c) => c.kind)).toEqual(["fulfillment", "price", "regions", "param", "param"]);
+  });
+
+  it("★★★ 这一格已有值 → 默认不勾，并写出原值（不替他覆盖）", () => {
+    // 生产上实测：售价 15.00 被识别成 10.00 静默覆盖，界面上只有一条 toast
+    const rows = buildCandidates(
+      planTextParse(r, target({ rows: [{ priceMajor: { CNY: "15.00" } }] })),
+      params,
+      cur({ priceBefore: "15.00", params: { SD_NET_CONTENT: "5斤" } }),
+    );
+    const price = rows.find((c) => c.kind === "price")!;
+    expect(price.before).toBe("15.00");
+    expect(price.checked).toBe(false);
+    const net = rows.find((c) => c.dimNo === "SD_NET_CONTENT")!;
+    expect(net.before).toBe("5斤");
+    expect(net.checked).toBe(false);
+    // 空着的那一格照常默认勾上
+    expect(rows.find((c) => c.dimNo === "SD_UNIT_WEIGHT")!.checked).toBe(true);
+  });
+
+  it("对不上本品类标准参数的那行默认不勾 —— 它要先指定落点", () => {
+    const rows = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "甜度", name: "甜度", label: "18度" }],
+      cur(),
+    );
+    expect(rows[0]).toMatchObject({ mapped: false, checked: false });
+  });
+
+  it("履约里已经有快递 → 不列那一行（没东西可改）", () => {
+    const rows = buildCandidates(planTextParse(r, target()), [], cur({ hasExpress: true }));
+    expect(rows.map((c) => c.kind)).not.toContain("fulfillment");
+  });
+
+  it("★★★ 改落点：140g 从净含量改到单果重量，改完算对上、默认勾上", () => {
+    const [row] = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "SD_NET_CONTENT", name: "净含量", label: "140g" }],
+      cur(),
+    );
+    const moved = retarget(row!, { dimNo: "SD_UNIT_WEIGHT", name: "单果重量" }, {});
+    expect(moved).toMatchObject({ dimNo: "SD_UNIT_WEIGHT", target: "单果重量", mapped: true, checked: true });
+  });
+
+  it("改到一个已经有值的参数 → 写出原值、默认不勾", () => {
+    const [row] = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "甜度", name: "甜度", label: "200g" }],
+      cur(),
+    );
+    const moved = retarget(row!, { dimNo: "SD_GROSS_WEIGHT", name: "毛重" }, { SD_GROSS_WEIGHT: "5斤" });
+    expect(moved).toMatchObject({ before: "5斤", checked: false });
   });
 });

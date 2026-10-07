@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 502,
+        "b-app": 507,
         "c-app": 77
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 406,
+        "b-app": 409,
         "c-app": 82
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 368,
+        "b-app": 375,
         "c-app": 273
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 190,
+        "b-app": 192,
         "c-app": 77
       }
     },
@@ -903,7 +903,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 51,
+        "b-app": 53,
         "c-app": 15
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 62,
+        "b-app": 64,
         "c-app": 14
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 157,
+        "b-app": 161,
         "c-app": 89
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 31,
         "c-app": 17
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 557,
+        "b-app": 562,
         "c-app": 200
       }
     },
@@ -1964,7 +1964,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 9,
         "c-app": 5,
         "lib": 0
       },
@@ -2629,7 +2629,7 @@
         "flush?: boolean"
       ],
       "usage": {
-        "b-app": 24,
+        "b-app": 25,
         "c-app": 11,
         "lib": 1
       },
@@ -3637,6 +3637,7 @@
       "components": [
         "sh-actionbar",
         "sh-add",
+        "sh-check",
         "sh-cover",
         "sh-go",
         "sh-icon-btn",
@@ -3648,9 +3649,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 427,
-      "localSelectors": 88,
-      "localCssLines": 363,
+      "libClassHits": 461,
+      "localSelectors": 95,
+      "localCssLines": 370,
       "rolled": [
         {
           "id": "wraprow",

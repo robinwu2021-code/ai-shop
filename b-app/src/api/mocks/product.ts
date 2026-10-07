@@ -637,9 +637,23 @@ export const productMock: Pick<MerchantApi,
     const restrictedRegions = region
       ? region.split(" ").map((n) => codeByName[n]).filter((c): c is string => !!c)
       : [];
-    const hit = prices.length || weights.length || carriers.length || region;
+    /*
+     * 参数照生产带水果类目时的返回演：模型拿着品类清单落到**标准维度号**，
+     * 「净重」落成「净含量」（后端 ParamMapping）。此前这里恒为空，
+     * mock 下确认区一行参数都没有 —— 那正是要验的那一半。
+     */
+    const PARAM_RULES: [RegExp, string, string][] = [
+      [/单果\s*(\d+(?:\.\d+)?\s*(?:g|克|kg|千克)\+?)/i, "SD_UNIT_WEIGHT", "单果重量"],
+      [/(?:净重|净含量)\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_NET_CONTENT", "净含量"],
+      [/毛重\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_GROSS_WEIGHT", "毛重"],
+    ];
+    const params = PARAM_RULES.flatMap(([re, dimNo, name]) => {
+      const m = re.exec(text);
+      return m ? [{ dimNo, name, label: m[1]!.replace(/\s+/g, ""), source: "llm", confidence: 0.9 }] : [];
+    });
+    const hit = prices.length || weights.length || carriers.length || region || params.length;
     return delay({
-      specs: [], params: [],
+      specs: [], params,
       pricesMinor: prices, weights, carriers,
       fulfillment: carriers.length ? ["EXPRESS"] : [],
       excludeRegionText: region,

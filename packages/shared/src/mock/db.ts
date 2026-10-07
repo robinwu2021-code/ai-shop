@@ -1745,6 +1745,19 @@ export const db = {
         { code: "ORGIMP", label: "进口" },
       ],
     },
+    /* 水果的三个重量参数（照 V378）：单果重量 / 净含量 / 毛重。TEXT、不入池 ——
+       「140g+」带着限定词，拆成数值会丢掉「+」。没有它们的话，文字识别出来的
+       重量在 mock 下无处可落，确认区那几行永远是「选参数」，验不到对上的那一种 */
+    ...([["SD_UNIT_WEIGHT", "单果重量"], ["SD_NET_CONTENT", "净含量"], ["SD_GROSS_WEIGHT", "毛重"]] as const)
+      .map(([templateNo, name]) => ({
+        templateNo,
+        scope: "PLATFORM" as const,
+        categoryType: CATEGORY_TYPE.FRESH,
+        categoryNo: "CAT120",
+        name,
+        options: [] as { code: string; label: string }[],
+        valueType: "TEXT" as const,
+      })),
     /* 演示会话那家店的货架是纸品清洁与米面粮油 —— 不给它们配参数的话，
        打开「商品参数」那一栏是空的，看着像功能没做 */
     {
