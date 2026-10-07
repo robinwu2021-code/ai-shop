@@ -81,6 +81,22 @@ const gallery = computed<string[]>(() => {
   if (!g) return [];
   return [g.cover, ...(g.images ?? [])].filter((x, i, arr) => x && arr.indexOf(x) === i);
 });
+/**
+ * 点图看大图（全站此前一处 `previewImage` 都没有：主图和详情长图都点不开，
+ * 而淘宝 / 拼多多 两处都能点开、双指放大、长按保存）。
+ *
+ * 两条讲究：
+ * ① **传原图不传缩略图**。页面上挂的是 `thumb(img, 750)`，放大了就糊 —— 调用点把原始
+ *    数组传进来，这里不做任何转换。
+ * ② **emoji 封面点不开**。`cover` 是二义字段（种子数据里是 🍚，商家传的才是 URL，
+ *    见 sh-cover 的注释）。不是 URL 就直接 return，否则 previewImage 收到 "🍚" 会报错。
+ */
+function preview(urls: string[], current: string): void {
+  if (!/^https?:\/\//.test(current)) return;
+  const list = urls.filter((u) => /^https?:\/\//.test(u));
+  if (!list.length) return;
+  uni.previewImage({ urls: list, current });
+}
 /** 各规格维度上当前选中的取值，下标与 specGroups 对齐 */
 const chosen = ref<string[]>([]);
 const qty = ref(1);
@@ -383,9 +399,16 @@ const lookMore = computed(() => {
   const rest = recommends.value.filter((r) => !hot.has(r.goodsNo));
   return rest.length >= 2 ? rest.slice(0, 6) : [];
 });
-/** 图文详情兜底：商家没写正文也没传长图时，用主图全宽排开（AC9，淘宝的做法） */
-const detailFallback = computed(() =>
-  !detailParas.value.length && !goods.value?.detailImages?.length ? gallery.value : []);
+/*
+ * 「图文详情兜底」（v3 AC9/d05）**已去掉**。它的做法是商家没写正文也没传长图时
+ * 把 `gallery` 再排一遍 —— 而 gallery 就是首屏主图轮播的那几张，等于同样的图
+ * 在一屏之内出现两次，中间只隔着一个「商品详情」标题。
+ *
+ * 当时的理由是「没有这段往下滑是空的」。但线上实测 15 个在售商品里 **14 个没有长图**，
+ * 也就是说这个兜底不是边角情况，它就是绝大多数商品的「商品详情」区 ——
+ * 整整一屏，内容是上面那张图的复制品。淘宝 / 拼多多 都不会把主图再放一遍：
+ * 没有详情就没有这一段。空着比重复诚实，也让「该传长图」这件事在后台看得见。
+ */
 
 /**
  * 底栏按钮点不点得动。多规格时**恒可点** —— 它的作用是打开面板，
@@ -1013,11 +1036,11 @@ onShareTimeline(() =>
           circular
           @change="(e: { detail: { current: number } }) => (heroAt = e.detail.current)"
         >
-          <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center">
+          <swiper-item v-for="(img, i) in gallery" :key="img + i" class="hero__item sh-center" @tap="preview(gallery, img)">
             <sh-cover class="hero__emoji" :src="img" :w="750"></sh-cover>
           </swiper-item>
         </swiper>
-        <view v-else class="hero sh-center">
+        <view v-else class="hero sh-center" @tap="preview(gallery, goods.cover)">
           <sh-cover class="hero__emoji" :src="goods.cover" :w="750"></sh-cover>
         </view>
         <view v-if="gallery.length > 1" class="hero__wrap">
@@ -1318,7 +1341,7 @@ onShareTimeline(() =>
           漏一处就是 XSS），所以这里也不做富文本解析，按段落原样排。
           两样都没有时整段不渲染，不拿一个空白区块占着详情页。
         -->
-        <view v-if="detailParas.length || goods.detailImages?.length || detailFallback.length" class="sh-card block dt">
+        <view v-if="detailParas.length || goods.detailImages?.length" class="sh-card block dt">
           <text class="txt-title dt__h">{{ $t("goods.detailTitle") }}</text>
           <!--
             **按空行分段**（§3.2）。后端存的是纯文本，这里只排版、不解析任何标记 ——
@@ -1341,18 +1364,9 @@ onShareTimeline(() =>
               :src="thumb(img, 750)"
               mode="widthFix"
               lazy-load
+              @tap="preview(goods.detailImages ?? [], img)"
             />
           </view>
-          <!-- 兜底（v3 d05）：没写正文也没传长图时，主图全宽排开 —— 此前这一段整块消失，往下滑是空的。
-               这几张是**独立主图不是切片**，所以按照片排：留一道窄缝 + 圆角，不出血 -->
-          <image
-            v-for="(img, i) in detailFallback"
-            :key="'fb' + img + i"
-            class="dt__img dt__img--photo"
-            :src="thumb(img, 750)"
-            mode="widthFix"
-            lazy-load
-          />
         </view>
 
         <!--
@@ -1540,7 +1554,12 @@ onShareTimeline(() =>
 /* 通栏：用负边距吃掉页面边距，贴满屏宽、贴住顶栏 */
 .hero {
   position: relative;
-  height: 560rpx;
+  /* 1:1。**rpx 的定义就是 750rpx = 屏宽**，所以 750rpx 高 = 正方形满宽框。
+     原先是 560rpx（比例 1.34），而商家传的主图实测**全是 1:1**
+     （线上 10 张无一例外：1280×1280 / 1200×1200），sh-cover 默认 aspectFill
+     填满裁切，于是每张主图上下各被切掉约 25% —— 柿子那张的字就是这么没的。
+     淘宝 / 拼多多 的主图区同样是满宽正方形。 */
+  height: 750rpx;
   margin: calc(-1 * var(--sh-pad-page, 28rpx)) calc(-1 * var(--sh-pad-page, 28rpx)) 0;
   background: var(--sh-faint);
 }
@@ -1765,6 +1784,11 @@ onShareTimeline(() =>
    所以 .dt 上挂 overflow: hidden。 */
 .dt {
   overflow: hidden;
+  /* 通栏到**屏幕边**，不是卡片边：详情稿按满屏 750 宽做，留着页边距等于给整张稿
+     加一圈白框、稿里的字也跟着缩。所以这一段不当圆角卡片，按整屏楼层排 ——
+     淘宝 / 拼多多 的「宝贝详情」同此。标题仍由卡片内边距缩进。 */
+  margin-inline: calc(-1 * var(--sh-pad-page, 28rpx));
+  border-radius: 0;
 }
 .dt__imgs {
   margin-top: 16rpx;
@@ -1775,11 +1799,6 @@ onShareTimeline(() =>
   display: block;
   width: 100%;
   vertical-align: top;
-}
-/* 兜底的主图是独立照片，不是切片：窄缝 + 圆角，各自成图 */
-.dt__img--photo {
-  margin-top: 8rpx;
-  border-radius: 16rpx;
 }
 
 /* 主图右下角的「1/N」 */

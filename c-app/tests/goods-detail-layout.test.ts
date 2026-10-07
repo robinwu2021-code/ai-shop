@@ -12,6 +12,7 @@
  * 首屏就在反复告诉他「没有」。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { uniMock } from "./setup";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { FULFILLMENT } from "@shared/utils/constants";
@@ -230,12 +231,46 @@ describe("商品详情页重排", () => {
     expect(w.findAll(".actionbar__add, .actionbar__buy").filter((b) => !b.element.closest(".sheetbar"))).toHaveLength(2);
   });
 
-  it("★★ v3 没有图文详情时用主图兜底；有长图时不兜底", async () => {
+  /*
+   * 这条原先钉的是 v3 的「主图兜底」（没正文没长图就把 gallery 再排一遍）。
+   * 2026-10-07 去掉了那个兜底：gallery 就是首屏主图轮播的那几张，兜底等于同样的图
+   * 在一屏内出现两次。线上 15 个在售商品里 14 个没长图 —— 这不是边角情况，
+   * 它就是绝大多数商品的「商品详情」区。现在钉**反过来的行为**。
+   */
+  it("★★★ 没正文没长图就不出「商品详情」段，不把主图再放一遍", async () => {
     goodsDetail.mockResolvedValue(goods({ cover: "https://x/c.jpg", images: ["https://x/a.jpg"] } as Partial<Goods>));
-    expect((await render()).html()).toContain("goods.detailTitle");
+    const empty = await render();
+    expect(empty.html(), "整段不渲染").not.toContain("goods.detailTitle");
+    expect(empty.findAll(".dt__img"), "更不该出现主图的复制品").toHaveLength(0);
+
     goodsDetail.mockResolvedValue(goods({ cover: "https://x/c.jpg", detailImages: ["https://x/d.jpg"] } as Partial<Goods>));
     const w = await render();
+    expect(w.html(), "真有长图时照常出").toContain("goods.detailTitle");
     expect(w.findAll(".dt__img")).toHaveLength(1);
+  });
+
+  it("★★★ 点主图 / 长图能看大图，传的是原图不是缩略图", async () => {
+    const C = "https://img.hxmall.top/c.jpg";
+    const D = "https://img.hxmall.top/d.jpg";
+    uniMock.previewImage.mockClear();
+    goodsDetail.mockResolvedValue(goods({ cover: C, images: [], detailImages: [D] } as Partial<Goods>));
+    const w = await render();
+
+    await w.find(".hero").trigger("tap");
+    expect(uniMock.previewImage).toHaveBeenCalledWith({ urls: [C], current: C });
+
+    uniMock.previewImage.mockClear();
+    await w.find(".dt__img").trigger("tap");
+    // 页面上挂的是 thumb(D, 750) = `${D}!w750`；放大必须给原图，否则点开是糊的
+    expect(uniMock.previewImage.mock.calls[0]?.[0]).toEqual({ urls: [D], current: D });
+  });
+
+  it("★★ emoji 封面点不开 —— previewImage 收到「🍚」会报错", async () => {
+    uniMock.previewImage.mockClear();
+    goodsDetail.mockResolvedValue(goods({ cover: "🍚", images: [] } as Partial<Goods>));
+    const w = await render();
+    await w.find(".hero").trigger("tap");
+    expect(uniMock.previewImage).not.toHaveBeenCalled();
   });
 
   it("★★ v3 评价头给好评率：4、5 星之和 / 总数", async () => {

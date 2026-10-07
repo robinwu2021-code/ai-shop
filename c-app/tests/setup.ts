@@ -20,6 +20,9 @@ export const uniMock = {
   setStorageSync: vi.fn(),
   getStorageSync: vi.fn(() => ""),
   removeStorageSync: vi.fn(),
+  /* 点图看大图。不补的话页面里 preview() 一调就抛，而抛在 tap 处理里的表现是
+     「用例照样绿、后面几步没跑」—— 和上面 setNavigationBarTitle 同一个坑 */
+  previewImage: vi.fn(),
 };
 
 // @ts-expect-error 测试环境里没有 uni，这里给一个
