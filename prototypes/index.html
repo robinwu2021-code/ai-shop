@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">28 份有效稿子，其中页面稿 18 份、共 221 屏；3 份作废。
+  <p class="sub">28 份有效稿子，其中页面稿 18 份、共 224 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -193,9 +193,9 @@
     <b>快速录入：结果呈现与录入布局的方案对比</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">页面稿 · 商家 App · 2026-10-07 · 10 屏</div>
-  <p class="pcard__sum">两组对比。①识别结果四种呈现（同一组 5 项数据，高度在浏览器里量）：A 表格（勾选·参数·识别值·现值，现值标黄=会覆盖，299px）、B 清单（284px，只有标签看不到现值）、C 参数块（263px，看不到现值）、D 新增/改动分组（340px）；推荐 A。②录入布局四种（文字图片分两段不切换，图片走导入压缩包）：甲上下两段 271px、乙文字为主+图片一行 199px、丙两张卡 289px、丁合一 199px（但文字图片合成一次识别）；推荐乙。最后走一遍乙+表格：导入压缩包后图片分进主图/详情，识别图片结果进表格弹框。</p>
-  <div class="screens"><a class="scr" href="goods-quick-entry.html#s01" title="s01 结果 A：表格（推荐）">s01</a><a class="scr" href="goods-quick-entry.html#s02" title="s02 结果 B：清单">s02</a><a class="scr" href="goods-quick-entry.html#s03" title="s03 结果 C：参数块">s03</a><a class="scr" href="goods-quick-entry.html#s04" title="s04 结果 D：新增 / 改动分组">s04</a><a class="scr" href="goods-quick-entry.html#s05" title="s05 布局 甲：上下两段">s05</a><a class="scr" href="goods-quick-entry.html#s06" title="s06 布局 乙：文字为主 + 图片一行（推荐）">s06</a><a class="scr" href="goods-quick-entry.html#s07" title="s07 布局 丙：两张卡">s07</a><a class="scr" href="goods-quick-entry.html#s08" title="s08 布局 丁：合一">s08</a><a class="scr" href="goods-quick-entry.html#s09" title="s09 推荐组合：导入压缩包后">s09</a><a class="scr" href="goods-quick-entry.html#s10" title="s10 推荐组合：图片识别结果表格">s10</a></div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-10-07 · 13 屏</div>
+  <p class="pcard__sum">两组对比。①识别结果四种呈现（同一组 5 项数据，高度在浏览器里量）：A 表格（勾选·参数·识别值·现值，现值标黄=会覆盖，299px）、B 清单（284px，只有标签看不到现值）、C 参数块（263px，看不到现值）、D 新增/改动分组（340px）；推荐 A。②录入布局四种（文字图片分两段不切换，图片走导入压缩包）：甲上下两段 271px、乙文字为主+图片一行 199px、丙两张卡 289px、丁合一 199px（但文字图片合成一次识别）；推荐乙。最后走一遍乙+表格：导入压缩包后图片分进主图/详情，识别图片结果进表格弹框。③参数随值调整：判据按先后为原文说明词（单果/净重/毛重，直接定）→ 同类多值的相对大小 → 单值时按品类判合理性（柿子 4.5斤=净含量，西瓜 4.5斤=单果重量）；判不准的行在参数格下多一小行「或 xx」，点了就换，同类两项互换可撤回。</p>
+  <div class="screens"><a class="scr" href="goods-quick-entry.html#s01" title="s01 结果 A：表格（推荐）">s01</a><a class="scr" href="goods-quick-entry.html#s02" title="s02 结果 B：清单">s02</a><a class="scr" href="goods-quick-entry.html#s03" title="s03 结果 C：参数块">s03</a><a class="scr" href="goods-quick-entry.html#s04" title="s04 结果 D：新增 / 改动分组">s04</a><a class="scr" href="goods-quick-entry.html#s05" title="s05 布局 甲：上下两段">s05</a><a class="scr" href="goods-quick-entry.html#s06" title="s06 布局 乙：文字为主 + 图片一行（推荐）">s06</a><a class="scr" href="goods-quick-entry.html#s07" title="s07 布局 丙：两张卡">s07</a><a class="scr" href="goods-quick-entry.html#s08" title="s08 布局 丁：合一">s08</a><a class="scr" href="goods-quick-entry.html#s09" title="s09 推荐组合：导入压缩包后">s09</a><a class="scr" href="goods-quick-entry.html#s10" title="s10 推荐组合：图片识别结果表格">s10</a><a class="scr" href="goods-quick-entry.html#s11" title="s11 参数随值调整：柿子 4.5斤 → 净含量（备选单果重量）">s11</a><a class="scr" href="goods-quick-entry.html#s12" title="s12 参数随值调整：西瓜 4.5斤 → 单果重量（备选净含量）">s12</a><a class="scr" href="goods-quick-entry.html#s13" title="s13 参数随值调整：换一项，同类两项互换可撤回">s13</a></div>
   <div class="pcard__links"><a href="goods-quick-entry.html">本地稿</a> <a href="https://claude.ai/artifact/3sDZxXVEdPgxtsqawJvyvw">claude.ai</a> <a href="../docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md">TDD-商品快速录入-品类感知与逐项确认</a></div>
   
 </article>
