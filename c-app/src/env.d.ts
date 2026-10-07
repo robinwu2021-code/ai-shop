@@ -8,6 +8,10 @@ interface ImportMetaEnv {
   readonly VITE_APP_NS: string;
   /** "1" = 这一包并进了元器件分包（c-app/scripts/with-elec.mjs 注入），「我的」里出现测试入口 */
   readonly VITE_WITH_ELEC?: string;
+  /** "1" = 这一包并进了 B 端轻量运营分包（c-app/scripts/with-biz.mjs 注入），「我的」里出现「商家运营」入口 */
+  readonly VITE_WITH_BIZ?: string;
+  /** B 端分包的路由前缀（with-biz.mjs 注入），如 /pkg-biz */
+  readonly VITE_BIZ_ROUTE_BASE?: string;
 }
 
 interface ImportMeta {

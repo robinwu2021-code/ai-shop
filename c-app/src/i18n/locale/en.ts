@@ -424,6 +424,7 @@ export default {
     noRating: "No reviews yet",
     reply: "Seller:",
     openShop: "I want to open a shop",
+    bizOps: "Merchant console",
     apply: "Sell with us",
     hours: "Opening hours",
     goodsTab: "Products {n}",

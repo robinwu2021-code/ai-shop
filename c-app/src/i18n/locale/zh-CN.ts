@@ -458,6 +458,7 @@ export default {
     noRating: "暂无评价",
     reply: "商家回复：",
     openShop: "我也想开店",
+    bizOps: "商家运营",
     apply: "商家入驻",
     hours: "营业时间",
     goodsTab: "在售商品 {n}",

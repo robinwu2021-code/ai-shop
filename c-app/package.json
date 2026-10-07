@@ -14,6 +14,8 @@
     "upload:mp": "node scripts/upload-mp.mjs",
     "release:mp": "bash scripts/release-mp.sh",
     "release:mp:with-elec": "node scripts/with-elec.mjs release",
+    "build:mp:with-biz": "node scripts/with-biz.mjs build",
+    "release:mp:with-biz": "node scripts/with-biz.mjs release",
     "test": "vitest run --config vitest.config.mts"
   },
   "dependencies": {

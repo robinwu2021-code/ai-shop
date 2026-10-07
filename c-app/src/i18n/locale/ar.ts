@@ -424,6 +424,7 @@ export default {
     noRating: "لا تقييمات بعد",
     reply: "رد التاجر:",
     openShop: "أريد فتح متجر",
+    bizOps: "لوحة التاجر",
     apply: "انضم كتاجر",
     hours: "ساعات العمل",
     goodsTab: "المنتجات {n}",

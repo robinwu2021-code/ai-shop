@@ -53,6 +53,16 @@ function gotoLogin() {
   uni.navigateTo({ url: ROUTES.login });
 }
 /**
+ * 商家运营入口。**只在「并进了 B 端分包」的那种构建里出现**
+ * （`VITE_WITH_BIZ`，由 scripts/with-biz.mjs 注入）；普通 c-app 包里这张卡不存在，
+ * 跳转目标 `/pkg-biz/_entry/index` 也不在包里。商家身份的闸在 `_entry` 里（无令牌先登录），
+ * 所以这里只要「已登录的 C 端用户」就显示 —— 它是随手运营的入口，不是权限判定点。
+ */
+const withBiz = import.meta.env.VITE_WITH_BIZ === "1";
+function gotoBizOps() {
+  uni.navigateTo({ url: "/pkg-biz/_entry/index" });
+}
+/**
  * 退出登录。二次确认是必要的 —— 这一格紧挨着「帮助」，误触代价是重新走一遍登录。
  * 真正作废服务端会话在 store 里做（见 stores/user.ts 的说明）。
  */
@@ -632,6 +642,15 @@ onShow(() => {
         「不收入驻费与年费…」就是同一个毛病。标题自己说得清。
       -->
       <text class="txt-caption txt-primary">{{ applyStatus ? applyStatusText : "›" }}</text>
+    </view>
+
+    <!--
+      商家运营：**只在并进 B 端分包的构建里出现**（见 gotoBizOps 说明）。
+      店主在手机上随手看单 / 核销 / 上下架 / 售后；建品、盘点、报表等重活在商家版 App 里。
+    -->
+    <view v-if="withBiz && user.isLogin" class="sh-card sh-row sh-row--between open-shop" @tap="gotoBizOps">
+      <text class="txt-title txt-primary">{{ $t("merchant.bizOps") }}</text>
+      <text class="txt-caption txt-primary">›</text>
     </view>
 
     <!--
