@@ -73,6 +73,12 @@ public class AuthServiceImpl implements AuthService {
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ai.neargo.shop.auth.BizIdentityResolver bizResolver = ai.neargo.shop.auth.BizIdentityResolver.NONE;
+    /**
+     * 按店员登录手机号签 B 端会话。**可选注入**，理由同上：实现在 shop-merchant，
+     * 无 bean 时兜底 {@link ai.neargo.shop.spi.user.StaffSessionPort#NONE}（谁都不是店员，fail-closed）。
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ai.neargo.shop.spi.user.StaffSessionPort staffSessionPort = ai.neargo.shop.spi.user.StaffSessionPort.NONE;
     private final OtpStore otpStore;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
@@ -238,18 +244,39 @@ public class AuthServiceImpl implements AuthService {
          * 所以这里不碰手机号、不重新认证。店员行常无 user_no，解析不到就走 NOT_A_MERCHANT 兜底。
          */
         ai.neargo.shop.auth.BizContext ctx = bizResolver.resolve(userNo);
-        if (ctx == null || ctx.merchantNo() == null || ctx.merchantNo().isBlank()) {
-            throw new BizException(ErrorCode.NOT_A_MERCHANT);
+        if (ctx != null && ctx.merchantNo() != null && !ctx.merchantNo().isBlank()) {
+            UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                    .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+            String nickname = user == null ? null : user.getNickname();
+            /*
+             * 签 btk_（realm=MERCHANT），与 /biz/auth/login 同构。**不撤销 ctk_** ——
+             * 用户要继续留在 C 端（这正是与 login 的差别：login 撤 ctk_，切换不撤）。
+             */
+            return tokenStore.issue(TokenStore.SessionData.of(
+                    LoginUser.merchantByUser(userNo, nickname)));
         }
-        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
-                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
-        String nickname = user == null ? null : user.getNickname();
         /*
-         * 签 btk_（realm=MERCHANT），与 /biz/auth/login 同构。**不撤销 ctk_** ——
-         * 用户要继续留在 C 端（这正是与 login 的差别：login 撤 ctk_，切换不撤）。
+         * **店员那一支：按本人手机号匹配 mch_account.login_phone。**
+         *
+         * 店员行往往没有 user_no（他是店主在后台录手机号加进来的，未必在 C 端注册过
+         * 同一身份），所以上面按 user_no 的解析对他恒为空 —— 只能按号认。
+         *
+         * 判定顺序与 /biz/auth/login 一致：**店主 → 店员 → 都不是**。
+         * 「自己的店优先」：一个人可能既开着自己的店、又被邻居的店加成店员。
+         *
+         * 号必须取**本人的完整号**（phoneOf 查的是 usr_identity，不是请求里带来的）：
+         *   · 取请求里的 = 报上任意手机号就能登进那个人的店；
+         *   · 取脱敏号 = `where login_phone = ?` 永远查不到，表现是「切过去变成不是商家」。
+         * 微信登录没授权手机号时 phoneOf 取不到 —— 那种情况下判不了店员，落到下面的 NOT_A_MERCHANT。
          */
-        return tokenStore.issue(TokenStore.SessionData.of(
-                LoginUser.merchantByUser(userNo, nickname)));
+        String phone = phoneOf(userNo);
+        if (phone != null && !phone.isBlank()) {
+            java.util.Optional<String> staffToken = staffSessionPort.issueStaffSession(phone);
+            if (staffToken.isPresent()) {
+                return staffToken.get();
+            }
+        }
+        throw new BizException(ErrorCode.NOT_A_MERCHANT);
     }
 
     @Override

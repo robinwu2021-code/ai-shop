@@ -18,7 +18,25 @@
 | AC4 | 前端 `_entry` 自动换、无 OTP；换不到引导入驻；去掉登录闸 | c-app pkg-biz `_entry`（with-biz.mjs 生成）+ endpoints |
 | AC5 | 关联键 `mch_account.user_no`（店主行）已可靠成立 | 现有链路（agent 确认，§1） |
 
-**孤立项**：无。明确排除：店员免登录（店员行常无 user_no，保留手机号登录兜底）；存量「运营代客进件且当时无 C 端账号」的店主（少数，回退手机号登录/客服）。
+| AC6 | **店员**也免登录：商家后台录入的店员手机号，与店员本人 C 端账号的手机号匹配即放行 | `StaffSessionPort`（新 SPI）+ `switchToMerchant` 店员分支 |
+
+**孤立项**：无。明确排除：存量「运营代客进件且当时无 C 端账号」的店主（少数，回退手机号登录/客服）。
+
+### AC6 · 店员那一支（第二轮补的）
+
+店主靠 `mch_account.user_no` 直连 C 端账号；而**店员行往往没有 user_no**
+（店员是店主在后台录手机号加进来的，他未必在 C 端注册过同一身份），按 user_no 解析恒为空。
+所以店员只能**按号认**：拿当前 C 端用户**本人已验证的完整手机号**去匹配 `mch_account.login_phone`。
+
+- 判定顺序与 `/biz/auth/login` 一致：**店主 → 店员 → 都不是**（自己的店优先；一个人可能既开店又被邻居店加为店员）。
+- 复用 `MerchantStaffService#issueStaffSession`（与 `/biz/auth/login` 店员支**同一条路**：同样只认 ACTIVE、
+  多主体同样按 `is_primary` 取默认），避免出现「登录能进、切换进不去」或两边进了不同主体。
+- 手机号取 `AuthServiceImpl#phoneOf(userNo)`（查 `usr_identity` 的 PHONE 凭证，**完整号**）：
+  - 取请求里带来的号 = 报上任意手机号就能登进那个人的店；
+  - 取脱敏号 = `where login_phone=?` 永远查不到，表现是「切过去变成不是商家」。
+- 微信登录没授权手机号时 `phoneOf` 为空 → 判不了店员，落 `NOT_A_MERCHANT`（与 login 同口径）。
+- **不并进 `StaffLoginPhonePort`**：那个接口刻意只回布尔、「不回是哪个账号」，为的是不让人靠它枚举
+  某手机号是不是商家；签发会话塞进去会破掉那条边界，故单开 `StaffSessionPort`（带 `NONE` fail-closed 兜底）。
 
 ## §1 现状与影响面
 
@@ -87,7 +105,14 @@ POST /mp/user/switch-to-merchant   (Authorization: Bearer ctk_...)
 | AC3 | `MpEndpointAuthTest`：需登录清单已登记 `POST /mp/user/switch-to-merchant`，匿名调回 401 | ✅ `Tests run: 7, Failures: 0, Errors: 0` | — |
 | AC2(i18n) | `BackendI18nParityTest`：`err.not_a_merchant` 三语齐 | ✅ `Tests run: 6, Failures: 0` | — |
 
-三组在**干净 HEAD 副本 + 仅本次 9 个改动**上一起跑：`BUILD SUCCESS`。
+| AC6 | `SwitchToMerchantTest#staffFallsBackToPhoneMatch`：解析不到店主时按本人手机号匹配到店员会话 | ✅ `Tests run: 4, Failures: 0` | ✅ 把 `if (phone != null…)` 改成 `if (false)` → **只有店员那条**变红，其余三条仍绿 |
+| AC6 | `SwitchToMerchantTest#ownerWinsOverStaff`：两个身份都有时走店主，`verify(never())` 不去问手机号 | ✅ 同上 | — |
+
+三组在**干净 HEAD 副本 + 仅本次改动**上一起跑：`BUILD SUCCESS`。
+
+店员那条用例**真的往 `usr_identity` 插了一条 PHONE 凭证**，没有把 `phoneOf` mock 掉 ——
+店员分支的前提就是「这个 C 端账号有已验证的手机号」，mock 掉等于没测到那个前提
+（第一版就是因为没插这行而红：用户没号 → 直接落 NOT_A_MERCHANT，根本没走到匹配）。
 
 **消融已做**（AC2）：撤掉 `switchToMerchant` 的判空分支 → 非商家用例立刻变红，还原后回绿。证明它测的就是那个分支，不是假绿。
 
