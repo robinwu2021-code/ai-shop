@@ -1171,7 +1171,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(live));
             return toVO(live);
         }
-        return swapFromDraft(live, draft);
+        return swapFromDraft(live, draft, merchantNo);
     }
 
     @Override
@@ -1286,7 +1286,30 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     : null;
             GoodsDiffs.row(rows, "sku" + i, "第 " + (i + 1) + " 档", before, after);
         }
-        return new ai.neargo.shop.product.dto.PublishPreviewVO(rows, blocked, stale, live.getVersion());
+        /*
+         * AC13：冲突时点名**会被你覆盖掉的项**与**是谁改的**。
+         *
+         * 只说「存在冲突」没有用 —— 商家要的是「现在发布，会把库存从 60 改回 200」
+         * 这一句。算法：拿草稿的基版快照与此刻线上那一版快照比 —— 中间别人改了什么，
+         * 就是我这一版会抹掉什么。两份快照哪一份取不到就不算（不冲突、建表前的
+         * 老商品、快照解不开），回空而不是回一份猜的。
+         */
+        List<ai.neargo.shop.product.dto.PublishPreviewVO.DiffRow> overwrites = List.of();
+        String staleBy = null;
+        if (stale) {
+            var now = revisions.onlineSnapshot(live.getGoodsNo());
+            var base = revisions.pendingBaseSnapshot(live.getGoodsNo());
+            if (now != null) {
+                staleBy = now.publishedBy();
+                // 基版与线上是同一版 = 中间没人发过布，没有「会被覆盖」的东西
+                if (base != null && base.revisionNo() != now.revisionNo()) {
+                    overwrites = GoodsDiffs.between(
+                            snapshotCmd(now.payload()), snapshotCmd(base.payload()));
+                }
+            }
+        }
+        return new ai.neargo.shop.product.dto.PublishPreviewVO(
+                rows, blocked, stale, live.getVersion(), overwrites, staleBy);
     }
 
     /**
@@ -1333,7 +1356,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * V247 下架段，收尾改成 编译+保持在售），成功后**物理删**草稿行 —— 同一事务，
      * 中途任何失败（80017 / 乐观锁）整体回滚，线上停在完整旧版。
      */
-    private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft) {
+    /**
+     * 快照 → SaveCommand。**读不动就回 null**（那一段差异随之为空）——
+     * 快照不是契约，形状随编辑器走；一份三个月前的旧快照解不开，
+     * 不该让发布预览整页 500。
+     */
+    private SaveCommand snapshotCmd(String payload) {
+        if (payload == null || payload.isBlank()) {
+            return null;
+        }
+        try {
+            return json.readValue(payload, SaveCommand.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft, String publishedBy) {
         SaveCommand cmd;
         try {
             cmd = json.readValue(draft.getPayload(), SaveCommand.class);
@@ -1356,7 +1395,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * save() 抛异常整体回滚，草稿不会被白删。
              */
             DataScopeContext.executeWithoutScope(() -> draftMapper.purge(draft.getGoodsNo()));
-            return save(live.getEntityNo(), cmd);
+            GoodsVO vo = save(live.getEntityNo(), cmd);
+            /*
+             * 换版成功了才记发布 —— 放在 save 之前的话,save 抛 80017 虽然会连同
+             * 这一笔一起回滚(同一事务),但顺序反着写就埋了一个「哪天改成不同事务
+             * 就会留下假记录」的雷。**成功之后记,不靠事务兜底。**
+             */
+            revisions.recordPublished(draft.getGoodsNo(), publishedBy);
+            return vo;
         } finally {
             PUBLISHING.remove();
         }
@@ -3112,6 +3158,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 驳回同时强制下架**并撤出社区池**：只改 on_sale 不撤池的话，
             // 被驳回的商品在 C 端还搜得到 —— 审核结论没有落到买家看得见的地方
             g.setOnSale(false);
+            // 历史里也记一笔:「为什么被驳回」是商家回头最想看的那一行,
+            // 而驳回原因只落在商品行上(V96),下一次保存就被覆盖掉了
+            revisions.recordRejected(goodsNo, reason.trim());
         } else {
             /*
              * **过审时把上架意向兑现**（V247）。
@@ -3139,7 +3188,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 草稿退回 EDITING，商家重新发布时得到 80017 的逐条点名。
                  */
                 try {
-                    return swapFromDraft(g, submitted);
+                    // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
+                    return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
                 } catch (BizException e) {
                     log.warn("[换版] 过审换版失败，旧版继续卖、草稿退回编辑态：goods={} msg={}",
                             g.getGoodsNo(), e.getMessage());

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 499,
+        "b-app": 500,
         "c-app": 77
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 364,
+        "b-app": 367,
         "c-app": 273
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 46,
+        "b-app": 48,
         "c-app": 36
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 131,
+        "b-app": 132,
         "c-app": 51
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 109,
+        "b-app": 111,
         "c-app": 90
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 225,
         "c-app": 84
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 553,
+        "b-app": 554,
         "c-app": 200
       }
     },
@@ -1455,7 +1455,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 35,
+        "b-app": 36,
         "c-app": 9
       }
     },
@@ -1813,7 +1813,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 25,
+        "b-app": 26,
         "c-app": 1
       }
     },
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 125,
+        "b-app": 126,
         "c-app": 28,
         "lib": 13
       },
@@ -3697,9 +3697,9 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 34,
-      "localSelectors": 7,
-      "localCssLines": 24,
+      "libClassHits": 47,
+      "localSelectors": 8,
+      "localCssLines": 28,
       "rolled": []
     },
     {

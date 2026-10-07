@@ -156,6 +156,27 @@ async function discard() {
       <!-- 冲突横幅：线上被别人改过（运营处置/其他设备）。发布必被拒，先说清楚 -->
       <view v-if="preview.stale" class="sh-notice sh-notice--warning banner banner--warn sh-mb-sm">
         <text class="txt-caption">{{ $t("goods.publishStale") }}</text>
+        <!-- 「是谁改的」:有了提交历史才答得出来。在那之前只能说「线上变过」 -->
+        <text v-if="preview.staleBy" class="txt-caption stale__by">
+          {{ $t("goods.publishStaleBy", { s: preview.staleBy }) }}
+        </text>
+      </view>
+
+      <!--
+        AC13:**会被你覆盖掉的项**。只说「存在冲突」没有用 ——
+        商家要的是「现在发布,会把库存从 60 改回 200」这一句。
+      -->
+      <view v-if="preview.overwrites?.length" class="sh-card sh-mb-sm">
+        <text class="txt-strong">{{ $t("goods.publishOverwrites") }}</text>
+        <text class="txt-caption sh-muted intro">{{ $t("goods.publishOverwritesHint") }}</text>
+        <view v-for="c in preview.overwrites" :key="`ow-${c.field}`" class="diff">
+          <text class="txt-caption txt-quiet">{{ c.label }}</text>
+          <view class="diff__vals sh-row sh-row--baseline">
+            <text class="txt-sub">{{ c.before || "—" }}</text>
+            <sh-icon name="chevronRight" :size="14" class="txt-quiet"></sh-icon>
+            <text class="txt-sub is-warning">{{ c.after || "—" }}</text>
+          </view>
+        </view>
       </view>
 
       <!-- 被拦的档位：与其点了发布再看 80017，不如进页面就点名 -->
@@ -209,6 +230,10 @@ async function discard() {
 <style scoped>
 /* 块间距由外壳给（.sh-scaffold > * + *），顶层块不写纵向 margin */
 .banner {
+}
+.stale__by {
+  display: block;
+  margin-top: 8rpx;
 }
 .blocked__item {
   display: block;

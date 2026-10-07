@@ -526,7 +526,11 @@ export const productMock: Pick<MerchantApi,
     );
     // mock 单人使用：没有「别人改过线上」，stale 恒 false、baseVersion 给个定值；
     // 冲突确认那条链（80018 → 确认 → 放行）只有真后端演得了，场景测试守着
-    return delay({ changes, blocked: [], stale: false, baseVersion: 1 } satisfies PublishPreview);
+    // stale 恒 false,所以 overwrites 恒空、staleBy 恒 null —— mock 不假装有第二个人
+    return delay({
+      changes, blocked: [], stale: false, baseVersion: 1,
+      overwrites: [], staleBy: null,
+    } satisfies PublishPreview);
   },
 
   async mPublishGoods(goodsNo) {

@@ -57,4 +57,24 @@ public interface GoodsRevisionService {
      * @return 新建出来的那一版
      */
     GoodsRevisionVO fork(String merchantNo, String goodsNo, int revisionNo);
+
+    /**
+     * 一版的快照（AC13 算「会被覆盖掉什么」用）。不走权限 —— 调用方是服务内部。
+     *
+     * @param payload 整份 SaveCommand 的 JSON
+     */
+    record Snapshot(int revisionNo, String payload, String publishedBy) {
+    }
+
+    /** 此刻线上在售那一版的快照。没发布过回 null */
+    Snapshot onlineSnapshot(String goodsNo);
+
+    /**
+     * 未发布那一版**所基于的**那一版的快照。
+     *
+     * <p>用它而不是 {@code prd_goods_draft.base_version}：后者是
+     * {@code prd_goods.version}（乐观锁列），不是版本号，查不到对应的快照。
+     * 未发布那一行的 {@code base_revision} 才是「我存草稿时线上是哪一版」。
+     */
+    Snapshot pendingBaseSnapshot(String goodsNo);
 }

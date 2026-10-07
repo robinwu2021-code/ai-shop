@@ -144,6 +144,28 @@ public class GoodsRevisionServiceImpl implements GoodsRevisionService {
         return toVO(made).withoutDiffs();
     }
 
+    @Override
+    public Snapshot onlineSnapshot(String goodsNo) {
+        return snap(current(goodsNo));
+    }
+
+    @Override
+    public Snapshot pendingBaseSnapshot(String goodsNo) {
+        PrdGoodsRevision p = pending(goodsNo);
+        if (p == null || p.getBaseRevision() == null) {
+            return null;
+        }
+        return snap(DataScopeContext.executeWithoutScope(() ->
+                revisionMapper.selectOne(Wrappers.<PrdGoodsRevision>lambdaQuery()
+                        .eq(PrdGoodsRevision::getGoodsNo, goodsNo)
+                        .eq(PrdGoodsRevision::getRevisionNo, p.getBaseRevision()).last("limit 1"))));
+    }
+
+    private static Snapshot snap(PrdGoodsRevision r) {
+        return r == null ? null
+                : new Snapshot(r.getRevisionNo(), r.getPayload(), r.getPublishedBy());
+    }
+
     private PrdGoodsRevision one(String goodsNo, int revisionNo) {
         PrdGoodsRevision r = DataScopeContext.executeWithoutScope(() ->
                 revisionMapper.selectOne(Wrappers.<PrdGoodsRevision>lambdaQuery()

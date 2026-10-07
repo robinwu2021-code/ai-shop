@@ -31,6 +31,7 @@ class GoodsRevisionFlowTest {
     private static final String GOODS = "GREVTEST01";
     private static final String MINE = "MCHREV0001";
     private static final String OTHERS = "MCHREV0002";
+    private static final String GOODS2 = "GREVTEST02";
 
     @Autowired
     private GoodsRevisionService revisions;
@@ -40,8 +41,10 @@ class GoodsRevisionFlowTest {
     @BeforeEach
     void seed() {
         // 还原:这是共享种子库,留下行会让别的类单独跑绿、全量红
-        jdbc.update("DELETE FROM prd_goods_revision WHERE goods_no = ?", GOODS);
-        jdbc.update("DELETE FROM prd_goods WHERE goods_no = ?", GOODS);
+        for (String g : new String[] { GOODS, GOODS2 }) {
+            jdbc.update("DELETE FROM prd_goods_revision WHERE goods_no = ?", g);
+            jdbc.update("DELETE FROM prd_goods WHERE goods_no = ?", g);
+        }
         /*
          * created_at / updated_at 要显式给:生成的 H2 schema 里它们 NOT NULL
          * 而**没有默认值**(生产 MariaDB/MySQL 有 CURRENT_TIMESTAMP)。
@@ -202,6 +205,51 @@ class GoodsRevisionFlowTest {
     void unparsablePayloadYieldsEmptyDiff() {
         revisions.recordSave(GOODS, MINE, "这不是 JSON", "售价", null);
         assertThat(revisions.detail(MINE, GOODS, 1).changesFromPrev()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ AC13 快照够算「会被覆盖掉什么」:基版 → 此刻线上之间别人改的那些")
+    void overwriteSourcesAreAvailable() {
+        revisions.recordSave(GOODS, MINE, payload("甲", 100), null, null);
+        revisions.recordPublished(GOODS, "staff-A");                     // v1 ONLINE
+        revisions.recordSave(GOODS, MINE, payload("乙", 200), "商品名称", null);  // v2 草稿,基版 v1
+        // 这期间别人发了一版 —— 现实里是另一个店员
+        revisions.recordSave(GOODS2, MINE, payload("丙", 300), null, null);
+
+        var base = revisions.pendingBaseSnapshot(GOODS);
+        var online = revisions.onlineSnapshot(GOODS);
+        assertThat(base).isNotNull();
+        assertThat(base.revisionNo()).isEqualTo(1);          // v2 存的时候线上是 v1
+        assertThat(online.revisionNo()).isEqualTo(1);        // 还没人发新的
+        assertThat(online.publishedBy()).isEqualTo("staff-A");  // 「是谁改的」答得出来
+        // 基版与线上同一版 → 没有「会被覆盖」的东西
+        assertThat(base.revisionNo()).isEqualTo(online.revisionNo());
+    }
+
+    @Test
+    @DisplayName("★★★ AC13 别人发过一版之后,基版与线上分叉 —— 差异就是会被我覆盖掉的")
+    void overwritesAppearAfterPeerPublish() {
+        revisions.recordSave(GOODS, MINE, payload("甲", 100), null, null);
+        revisions.recordPublished(GOODS, "staff-A");                     // v1 ONLINE
+        revisions.recordSave(GOODS, MINE, payload("乙", 200), "商品名称", null);  // v2 草稿,基版 v1
+        revisions.recordPublished(GOODS, "staff-B");                     // v2 上线(模拟别人发)
+        revisions.recordSave(GOODS, MINE, payload("丁", 400), "商品名称", null);  // v3 草稿,基版 v2
+
+        var base = revisions.pendingBaseSnapshot(GOODS);
+        var online = revisions.onlineSnapshot(GOODS);
+        assertThat(base.revisionNo()).isEqualTo(2);
+        assertThat(online.publishedBy()).isEqualTo("staff-B");
+        // 两端都拿得到,差异才算得出来
+        assertThat(base.payload()).isNotBlank();
+        assertThat(online.payload()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("没有未发布版本时基版快照为 null —— 不猜一份出来")
+    void noPendingNoBaseSnapshot() {
+        revisions.recordSave(GOODS, MINE, payload("甲", 100), null, null);
+        revisions.recordPublished(GOODS, "staff-A");
+        assertThat(revisions.pendingBaseSnapshot(GOODS)).isNull();
     }
 
     /** 一份能被 SaveCommand 解开的最小快照 */

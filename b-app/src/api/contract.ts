@@ -717,6 +717,15 @@ export interface PublishPreview {
    * 对得上才放行；确认之后线上又变了照样拒（另一条出路是 `mDiscardGoodsDraft`）。
    */
   baseVersion: number;
+  /**
+   * 冲突时（`stale`）**你这一版会覆盖掉的项**：线上比你的基版多出来的改动。
+   * 只说「存在冲突」没有用 —— 「现在发布，会把库存从 60 改回 200」才让人做得出决定。
+   * 不冲突时为空数组。
+   */
+  overwrites?: PublishPreview["changes"];
+  /** 线上那一版是谁发的。有了提交历史才答得出来 —— 在那之前只能说「线上变过」 */
+  staleBy?: string | null;
+
 }
 
 /** 一行字段差异。`label` 给人看（服务端给中文名），`field` 给机器（title/spec/sku0…） */
