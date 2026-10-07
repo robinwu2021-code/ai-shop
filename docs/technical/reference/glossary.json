@@ -9992,16 +9992,52 @@
           "ar": "{n} إصدارات"
         },
         {
+          "key": "goods.revDetailTitle",
+          "zh-CN": "v{n} 的变更",
+          "en": "Changes in v{n}",
+          "ar": "تغييرات الإصدار {n}"
+        },
+        {
           "key": "goods.revEmpty",
           "zh-CN": "这件商品还没有提交记录",
           "en": "No submissions yet for this product",
           "ar": "لا توجد إصدارات لهذا المنتج بعد"
         },
         {
+          "key": "goods.revFork",
+          "zh-CN": "以这一版建草稿",
+          "en": "Make a draft from this version",
+          "ar": "أنشئ مسودة من هذا الإصدار"
+        },
+        {
+          "key": "goods.revForkDone",
+          "zh-CN": "已生成草稿 v{n}",
+          "en": "Draft v{n} created",
+          "ar": "أُنشئت المسودة {n}"
+        },
+        {
+          "key": "goods.revForkHint",
+          "zh-CN": "会生成一版新草稿，仍需走一次发布 —— 不直接改线上",
+          "en": "Creates a new draft; it still has to be published — the live version is not touched",
+          "ar": "يُنشئ مسودة جديدة؛ لا يزال النشر مطلوباً — لا يُمسّ المعروض"
+        },
+        {
+          "key": "goods.revFromPrev",
+          "zh-CN": "这一版改了什么",
+          "en": "What this version changed",
+          "ar": "ما غيّره هذا الإصدار"
+        },
+        {
           "key": "goods.revHistory",
           "zh-CN": "历史",
           "en": "History",
           "ar": "السجل"
+        },
+        {
+          "key": "goods.revNoChange",
+          "zh-CN": "没有差别",
+          "en": "No differences",
+          "ar": "لا فروق"
         },
         {
           "key": "goods.revOnlineNone",
@@ -10080,6 +10116,12 @@
           "zh-CN": "提交历史",
           "en": "Submission history",
           "ar": "سجل الإصدارات"
+        },
+        {
+          "key": "goods.revVsOnline",
+          "zh-CN": "跟此刻线上的差别",
+          "en": "Compared with what is live now",
+          "ar": "الفرق عن المعروض الآن"
         },
         {
           "key": "goods.saleActivityOnly",
@@ -34766,6 +34808,7 @@
           "/pages/goods-edit/index",
           "/pages/goods-publish/index",
           "/pages/goods-revisions/index",
+          "/pages/goods-revision/index",
           "/pages/order/index",
           "/pages/verify/index",
           "/pages/picking/index",

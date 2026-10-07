@@ -112,8 +112,8 @@
 | 发布草稿（原子换版；冲突后带 confirmVersion） | POST | `/biz/goods/:goodsNo/publish` | `mPublishGoods` | goods-publish |
 | 发布预览（字段级差异） | GET | `/biz/goods/:goodsNo/publish-preview` | `mPublishPreview` | goods-publish |
 | 提交历史（每一版：谁存、怎么录、改了哪几项、何时发布） | GET | `/biz/goods/:goodsNo/revisions` | `mGoodsRevisions` | goods-edit、goods-revisions |
-| 某一版详情（对比基版 + 对比此刻线上，两份差异） | GET | `/biz/goods/:goodsNo/revisions/:revisionNo` | `mGoodsRevision` | — |
-| 以这一版建草稿（不直接改线上，仍需发布） | POST | `/biz/goods/:goodsNo/revisions/:revisionNo/fork` | `mForkRevision` | — |
+| 某一版详情（对比基版 + 对比此刻线上，两份差异） | GET | `/biz/goods/:goodsNo/revisions/:revisionNo` | `mGoodsRevision` | goods-revision |
+| 以这一版建草稿（不直接改线上，仍需发布） | POST | `/biz/goods/:goodsNo/revisions/:revisionNo/fork` | `mForkRevision` | goods-revision |
 | 改当前门店售价 | POST | `/biz/goods/:goodsNo/store-price` | `mSaveStorePrice` | goods-list |
 | 提交审核（草稿→待审） | POST | `/biz/goods/:goodsNo/submit` | `mSubmitGoods` | goods-edit、goods-list |
 | 上下架 | POST | `/biz/goods/:goodsNo/toggle` | `mToggleGoods` | goods-list |
@@ -412,6 +412,7 @@
 | `goods-edit` | `biz:goods` | `biz:store`、`biz:goods`、`biz:stock` | 老板、店长 | — |
 | `goods-list` | `biz:stock` | `biz:store`、`biz:stock`、`biz:goods` | 老板、店长、店员、理货员 | 店员（缺 biz:store、biz:goods）　理货员（缺 biz:store、biz:goods） |
 | `goods-publish` | `biz:goods` | `biz:goods`、`biz:stock` | 老板、店长 | — |
+| `goods-revision` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `goods-revisions` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `group` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `group-open` | `biz:campaign` | `biz:campaign`、`biz:stock` | 老板、店长 | — |
@@ -506,8 +507,6 @@
 | 地图上选中的小区直接开通 | `/biz/communities/from-map` | `mOpenCommunityFromMap` | `biz:store` |
 | 客户与复购（跨店总览在用） | `/biz/customers` | `mCustomers` | `biz:customer` |
 | 改截单与到货说明 | `/biz/goods/:goodsNo/presale` | `mSavePresale` | `biz:goods` |
-| 某一版详情（对比基版 + 对比此刻线上，两份差异） | `/biz/goods/:goodsNo/revisions/:revisionNo` | `mGoodsRevision` | `biz:goods` |
-| 以这一版建草稿（不直接改线上，仍需发布） | `/biz/goods/:goodsNo/revisions/:revisionNo/fork` | `mForkRevision` | `biz:goods` |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |

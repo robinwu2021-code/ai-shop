@@ -10,6 +10,7 @@ export const ROUTES = {
   goodsEdit: "/pages/goods-edit/index",
   goodsPublish: "/pages/goods-publish/index",
   goodsRevisions: "/pages/goods-revisions/index",
+  goodsRevision: "/pages/goods-revision/index",
   order: "/pages/order/index",
   verify: "/pages/verify/index",
   picking: "/pages/picking/index",

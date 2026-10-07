@@ -11,9 +11,7 @@
  * （存了草稿还没发布时，最新那版买家看不到）。所以顶部单独一行写「线上在售 vN」，
  * 不让人从列表里自己推。
  *
- * <p>没有差异详情：两份 payload 的差异要在服务端算，而现有的差异计算比的是
- * 「线上实体 vs 提交体」（AC12 未实现）。**不画一个点进去是空白的入口** ——
- * 那比没有入口更糟。
+ * <p>整卡可点进详情看两份差异（AC12）。卡里不放按钮 —— 列表卡的约定。
  */
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
@@ -21,6 +19,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { GoodsEntrySource, GoodsRevision, GoodsRevisionStatus } from "@/api/contract";
+import { ROUTES } from "@/shared/nav";
 import { onlineRevisionOf, statusChipOf } from "./revisions";
 
 const { t } = useI18n();
@@ -49,6 +48,11 @@ const SRC_LABEL: Record<GoodsEntrySource, string> = {
   IMAGE: "goods.revSrcIMAGE",
 };
 
+
+/** 点一版进详情看两份差异（AC12）。整卡可点 —— 卡里不放按钮 */
+function toDetail(revisionNo: number) {
+  uni.navigateTo({ url: `${ROUTES.goodsRevision}?goodsNo=${goodsNo.value}&revisionNo=${revisionNo}` });
+}
 
 async function load() {
   loading.value = true;
@@ -97,7 +101,7 @@ onLoad((q) => {
         </text>
       </view>
 
-      <view v-for="r in rows" :key="r.revisionNo" class="sh-card">
+      <view v-for="r in rows" :key="r.revisionNo" class="sh-card" @tap="toDetail(r.revisionNo)">
         <view class="sh-row sh-row--between">
           <text class="txt-strong sh-num">v{{ r.revisionNo }}</text>
           <text class="sh-chip" :class="statusChipOf(r.status)">{{ $t(STATUS_LABEL[r.status]) }}</text>
