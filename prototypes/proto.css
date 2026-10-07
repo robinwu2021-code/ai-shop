@@ -604,3 +604,13 @@ a{color:inherit}
 /* 表格里判不准的参数：参数格下面一小行「或 单果重量」，点了就换（2026-10-07） */
 .ptable td.p .alt{display:block;font-size:9.5px;color:var(--sh-primary-text);margin-top:2px}
 .ptable td.p.tap{color:var(--sh-primary-text)}
+/* 识别结果一行：值在前（粗），参数在后（可点切换的标 ⇄）。不显示现值 —— 已有值在「填入」时一次处理（2026-10-07） */
+.vrow{display:flex;align-items:center;gap:8px;border-top:1px solid var(--sh-line);padding:7px 0}
+.vrow:first-child{border-top:0}
+.vrow .val{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--sh-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vrow .par{flex:none;font-size:11px;color:var(--sh-sub)}
+.vrow .par.sw{color:var(--sh-primary-text)}
+.vrow .par.sw::after{content:" ⇄"}
+.vrow.off .val,.vrow.off .par{opacity:.45}
+.pchip .sw{color:var(--sh-primary-text)}
+.pchip .sw::after{content:" ⇄"}

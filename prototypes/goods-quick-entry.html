@@ -15,6 +15,119 @@
 </header>
 
 <section>
+  <div class="sec-head"><span class="sec-num">最新 · 14 — 18</span><h2>去掉现值：值在前点参数切换 / 参数块</h2></div>
+  <p class="sec-note">不显示现值，已有值在点「填入」时一次处理（18）。下面两种二选一，同一组 5 项数据。往下的一至四节是之前的方案，留作对比。</p>
+  <div class="grid">
+
+    <figure id="s14">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div><div class="ta has">脆柿 单果140g+ 4.5斤装 10元 圆通快递 新疆西藏海南不发货</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <div class="group">
+              <div class="vrow"><span class="ck on"></span><span class="val">140g+</span><span class="par">单果重量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">4.5斤</span><span class="par sw">净含量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val num">10.00</span><span class="par">售价</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">快递</span><span class="par">配送</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">新疆 西藏 海南</span><span class="par">限购地区</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（5）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>E 值在前 · 点参数切换</b>一行：值（粗）· 参数。判不准的参数标「⇄」（红），<b>点一下换到下一个候选</b>。</figcaption>
+    </figure>
+
+    <figure id="s15">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">已互换 140g+ ⇄ 4.5斤</span><span class="v go">撤回</span></div>
+            <div class="group">
+              <div class="vrow"><span class="ck on"></span><span class="val">140g+</span><span class="par sw">净含量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">4.5斤</span><span class="par sw">单果重量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val num">10.00</span><span class="par">售价</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">快递</span><span class="par">配送</span></div>
+              <div class="vrow off"><span class="ck"></span><span class="val">新疆 西藏 海南</span><span class="par">限购地区</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>E 点了之后</b>4.5斤 换到单果重量；原来占着的 140g+ <b>自动换到净含量</b>，顶上可撤回。点勾选框取消一项（这里取消了限购地区）。</figcaption>
+    </figure>
+
+    <figure id="s16">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <div class="chipgrid">
+              <span class="pchip on">单果重量<b>140g+</b></span>
+              <span class="pchip on"><span class="sw">净含量</span><b>4.5斤</b></span>
+              <span class="pchip on">售价<b>10.00</b></span>
+              <span class="pchip on">配送<b>快递</b></span>
+              <span class="pchip on">限购地区<b>新疆 西藏 海南</b></span>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（5）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>F 参数块</b>一项一块：上参数、下值。<b>点块打开调整</b>（17）；选中是红底。</figcaption>
+    </figure>
+
+    <figure id="s17">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">调整这一项</div>
+            <div class="gt">值</div>
+            <div class="ta has">4.5斤</div>
+            <div class="gt">参数</div>
+            <div class="seg"><span>单果重量</span><span class="on">净含量</span><span>毛重</span></div>
+            <div class="acts"><div class="btn sec">不填这项</div><div class="btn main">确定</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>F 点块之后</b>改值、换参数、或「不填这项」。比 E 多一步，但值也能改。</figcaption>
+    </figure>
+
+    <figure id="s18">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">2 项已有值</div>
+            <div class="d">售价、净含量</div>
+            <div class="acts"><div class="btn sec">保留原值</div><div class="btn main">覆盖</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>填入时处理已有值</b>只有勾选项里有已经填过的，才弹这一下：一句话 + 两个按钮，一次决定。没有就直接填入。</figcaption>
+    </figure>
+
+  </div>
+  <div class="tw"><table class="spec">
+    <tr><th></th><th>E 值在前 · 点参数切换</th><th>F 参数块</th></tr>
+    <tr><td>弹框高度（5 项，量的）</td><td id="h-e">283px</td><td id="h-f"><b>263px</b></td></tr>
+    <tr><td>换参数</td><td><b>点一下</b>（候选间切换）</td><td>点块 → 选 → 确定（3 下）</td></tr>
+    <tr><td>改值</td><td>不能（改原文重识别）</td><td><b>能</b></td></tr>
+    <tr><td>取消一项</td><td>点勾选框</td><td>点块 → 不填这项</td></tr>
+    <tr><td>长值</td><td id="long-e">3 省放得下；7 省截断 → 显示「7 省」</td><td id="long-f">同左</td></tr>
+  </table></div>
+  <p class="sec-note" id="rec-ef"><b>推荐 E。</b>识别后最常做的事是「这个值填错参数了」—— E 点一下就换，F 要点三下。F 只多了改值，而改值放到填入后在表单里改、或改原文重识别都更顺；E 只比 F 高 20px。</p>
+</section>
+
+<section>
   <div class="sec-head"><span class="sec-num">一 · 01 — 04</span><h2>识别结果：四种呈现</h2></div>
   <p class="sec-note">同一组 5 项：单果重量（新）、净含量（现有旧参数「净重 4.5斤」）、售价（现值 15.00）、配送（现在只有自提，加快递）、限购地区（新）。</p>
   <div class="grid">
