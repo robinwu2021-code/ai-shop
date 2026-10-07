@@ -580,3 +580,5 @@ a{color:inherit}
 /* 确认清单里「识别出来的值」：.crow .k 默认是灰色的键名，而在识别确认里值才是商家要核对的东西，
    落点是答案。值用正文色，不要被落点的粗体压过去（2026-10-07 goods-quick-entry s04） */
 .crow .k.val{color:var(--sh-ink)}
+/* 可点的参数名（点了改填到哪个参数）。只换颜色、不加「›」—— 一行里多一个字就多占一份地方 */
+.crow .k.tap{color:var(--sh-primary-text)}

@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">28 份有效稿子，其中页面稿 18 份、共 220 屏；3 份作废。
+  <p class="sub">28 份有效稿子，其中页面稿 18 份、共 219 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -190,12 +190,12 @@
   
 </article><article class="pcard" id="goods-quick-entry">
   <div class="pcard__hd">
-    <b>快速录入：识别搬进独立一页</b>
+    <b>快速录入：识别在弹框里做完</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">页面稿 · 商家 App · 2026-10-07 · 9 屏</div>
-  <p class="pcard__sum">P2 把识别结果放进编辑页，真机上一看识别区占了一整屏、和编辑页混在一起：两组「取消」同屏（一个丢识别结果、一个退出编辑）、两个红色主按钮同屏、结果不分组看不出改到哪。这版把识别整个搬进独立页 pages/goods-quick-entry：编辑页只留两个入口（文字识别 / 图片识别）；识别页里粘贴（一键粘贴剪贴板、顶上写明按哪个品类识别）→ 识别 → 确认（按编辑页的卡分组、一个实体一行、已有值默认不勾并写原值、替换同义旧参数写在行里）→ 改落点（只列本品类标准参数）→ 「填入商品」回编辑页，顶上一条提示可看一遍 / 撤销，保存仍是编辑页的事。每页只有一个主按钮。另含图片识别、没选类目先认品类、没认出来三屏。</p>
-  <div class="screens"><a class="scr" href="goods-quick-entry.html#s01" title="s01 编辑页 · 快速录入收成两个入口">s01</a><a class="scr" href="goods-quick-entry.html#s02" title="s02 文字识别 · 粘贴（品类写在顶上，可换）">s02</a><a class="scr" href="goods-quick-entry.html#s03" title="s03 文字识别 · 识别中">s03</a><a class="scr" href="goods-quick-entry.html#s04" title="s04 确认 · 按编辑页的卡分组，一个实体一行">s04</a><a class="scr" href="goods-quick-entry.html#s05" title="s05 确认 · 改落点（本品类标准参数）">s05</a><a class="scr" href="goods-quick-entry.html#s06" title="s06 回到编辑页 · 顶部提示可看一遍 / 撤销">s06</a><a class="scr" href="goods-quick-entry.html#s07" title="s07 图片识别 · 同一套页面结构">s07</a><a class="scr" href="goods-quick-entry.html#s08" title="s08 没选类目 · 先认品类再定参数落点">s08</a><a class="scr" href="goods-quick-entry.html#s09" title="s09 没认出来 · 改文字">s09</a></div>
+  <div class="pcard__meta">页面稿 · 商家 App · 2026-10-07 · 8 屏</div>
+  <p class="pcard__sum">识别全程在底部弹框里（粘贴 → 识别 → 勾选 → 填入），弹框关掉编辑页不变，不与主界面融在一起。结果一行只有参数名 + 参数值；已有值的不勾、标「覆盖」，会替换旧参数的标「替换」，其余说明全部去掉；参数名可点，改填到哪个参数（只列本品类参数）。填入后编辑页顶上一条「已填入 N 项 · 撤销」。另含图片识别（同一弹框结构）、没选类目（顶上一行品类可换）、没认出来。</p>
+  <div class="screens"><a class="scr" href="goods-quick-entry.html#s01" title="s01 入口：快速录入卡只有两个按钮">s01</a><a class="scr" href="goods-quick-entry.html#s02" title="s02 弹框 · 粘贴">s02</a><a class="scr" href="goods-quick-entry.html#s03" title="s03 弹框 · 结果：参数名 + 参数值">s03</a><a class="scr" href="goods-quick-entry.html#s04" title="s04 弹框 · 改参数">s04</a><a class="scr" href="goods-quick-entry.html#s05" title="s05 填入后：顶上提示可撤销">s05</a><a class="scr" href="goods-quick-entry.html#s06" title="s06 弹框 · 图片识别">s06</a><a class="scr" href="goods-quick-entry.html#s07" title="s07 弹框 · 没选类目：顶上一行品类">s07</a><a class="scr" href="goods-quick-entry.html#s08" title="s08 弹框 · 没认出">s08</a></div>
   <div class="pcard__links"><a href="goods-quick-entry.html">本地稿</a> <a href="https://claude.ai/artifact/3sDZxXVEdPgxtsqawJvyvw">claude.ai</a> <a href="../docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md">TDD-商品快速录入-品类感知与逐项确认</a></div>
   
 </article>
