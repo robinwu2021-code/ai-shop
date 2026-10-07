@@ -3638,7 +3638,7 @@ async function save(thenSubmit = false) {
 .pr__restv {
   flex: none;
   max-width: 52%;
-  text-align: right;
+  text-align: end;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
