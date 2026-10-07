@@ -26,6 +26,21 @@ export const HOLD_MS = 180;
 export const SLOP = 10;
 
 /**
+ * 拖动中，第 `i` 个要**让到哪个位置**：往前让 -1、往后让 +1、不动 0。
+ *
+ * <p>拖动本身不动数组（动了的话手指下那一个会跟着重排，抖得没法看），于是「让位」
+ * 得靠位移画出来：被拖的那个跟手走，它扫过的那几个各自挪一格。
+ * 2026-10-07 加这一条之前只有一圈描边 —— 看得出落点，但不像在排序。
+ *
+ * @returns 位移几格；没在拖、或就是被拖的那一个，都回 0
+ */
+export function slotShiftOf(i: number, from: number, to: number): number {
+  if (from < 0 || to < 0 || from === to || i === from) return 0;
+  if (from < to) return i > from && i <= to ? -1 : 0;
+  return i >= to && i < from ? 1 : 0;
+}
+
+/**
  * 把 from 挪到 to，**越界就原样返回**。
  *
  * 上一版少的就是这个判断：`arr.splice(越界, 1)` 返回 `[]`，
@@ -154,7 +169,19 @@ export function useChipDrag(
     dragFrom.value = -1;
   }
 
-  return { dragFrom, pending, dragTo, shift, onStart, onMove, onEnd, cancel };
+  /**
+   * 第 `i` 格为了让位要位移多少 px。**用量到的格子中心算，不用「一格宽 + 缝」**：
+   * 这一片会换行，行末那一格让位时是跳到下一行开头的，差的不是一个格子宽。
+   */
+  function slotShift(i: number): { x: number; y: number } {
+    const d = slotShiftOf(i, dragFrom.value, dragTo.value);
+    const me = boxes.value[i];
+    const dst = d === 0 ? undefined : boxes.value[i + d];
+    if (!d || !me || !dst) return { x: 0, y: 0 };
+    return { x: dst.x - me.x, y: dst.y - me.y };
+  }
+
+  return { dragFrom, pending, dragTo, shift, slotShift, onStart, onMove, onEnd, cancel };
 }
 
 /**
@@ -236,5 +263,10 @@ export function useRowDrag(
     await onDrop(from, to);
   }
 
-  return { dragFrom, pending, dragTo, shift, rowH, onStart, onMove, onEnd };
+  /** 第 `i` 行为了让位要上下挪多少 px。一列的几何：一格就是一个行高 */
+  function slotShift(i: number): number {
+    return slotShiftOf(i, dragFrom.value === null ? -1 : indexOf(dragFrom.value), dragTo.value) * rowH.value;
+  }
+
+  return { dragFrom, pending, dragTo, shift, rowH, slotShift, onStart, onMove, onEnd };
 }

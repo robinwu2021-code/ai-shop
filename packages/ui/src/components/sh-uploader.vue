@@ -61,7 +61,7 @@ const emit = defineEmits<{
  * `.up__cell` 只数到 list.length，末尾那个「＋」不参与（拖到它上面 = 放回最后一张）。
  */
 const {
-  dragFrom: sortFrom, dragTo: sortTo, shift: sortShift,
+  dragFrom: sortFrom, dragTo: sortTo, shift: sortShift, slotShift,
   onStart: sortStart, onMove: sortMove, onEnd: sortEnd, cancel: sortCancel,
 } = useChipDrag(
   getCurrentInstance(),
@@ -78,14 +78,27 @@ function add() {
   emit("add");
 }
 
-/** 拖动中的那一格跟着手指走；其余不动（落位在松手那一刻一次完成） */
+/**
+ * 拖动中：被拖的那一格**跟手走并抬起来**（放大一点 + 投影），其余的**让位** ——
+ * 它扫过的那几格各自挪一个位置，带过渡。
+ *
+ * <p>只有描边的话看得出落点、却不像在排序：手指底下那一张悬着，别的一动不动。
+ * 让位这一下把「松手会变成什么样」提前画出来（2026-10-07 用户：拖动特效不好）。
+ */
 function cellStyle(i: number) {
-  if (!props.sortable || sortFrom.value !== i) return cell.value;
-  return {
-    ...cell.value,
-    transform: `translate(${sortShift.value.x}px, ${sortShift.value.y}px)`,
-    zIndex: 2,
-  };
+  if (!props.sortable || sortFrom.value < 0) return cell.value;
+  if (sortFrom.value === i) {
+    return {
+      ...cell.value,
+      // 跟手不能有过渡：有的话手指到了、格子还在追，手感是「黏」的
+      transform: `translate(${sortShift.value.x}px, ${sortShift.value.y}px) scale(1.08)`,
+      zIndex: 2,
+      transition: "none",
+    };
+  }
+  const s = slotShift(i);
+  if (!s.x && !s.y) return cell.value;
+  return { ...cell.value, transform: `translate(${s.x}px, ${s.y}px)` };
 }
 
 /** 删一张：顺手取消可能正在计时的那次长按，否则它指向的下标已经没东西了 */
@@ -101,7 +114,7 @@ function remove(i: number) {
       v-for="(img, i) in list"
       :key="img + i"
       class="up__cell"
-      :class="{ 'up__cell--drag': sortable && sortFrom === i, 'up__cell--to': sortable && sortTo === i && sortFrom >= 0 }"
+      :class="{ 'up__cell--drag': sortable && sortFrom === i, 'up__cell--move': sortable && sortFrom >= 0 && sortFrom !== i }"
       :style="cellStyle(i)"
       @tap="emit('tapItem', i)"
       @touchstart="sortable && sortStart(i, $event)"
@@ -130,15 +143,14 @@ function remove(i: number) {
   flex: none;
 }
 /*
- * 拖动中那一格：抬起来（跟手 + 压在别人上面），落点那一格让出一条主色边。
- * 与规格档位的两档反馈同一套 —— 那边验过：只变透明度的话，在小格子上几乎看不出来。
+ * 两档反馈：**被拖的那一格抬起来**（放大 + 投影，见 cellStyle），
+ * **让位的那几格平移过去**，带过渡 —— 松手会变成什么样，拖的过程中就画出来了。
  */
-.up__cell--drag {
-  opacity: 0.9;
+.up__cell--drag .up__img {
+  box-shadow: var(--sh-shadow-float);
 }
-.up__cell--to .up__img {
-  outline: 4rpx solid var(--sh-primary);
-  outline-offset: 2rpx;
+.up__cell--move {
+  transition: transform var(--sh-t-fast) ease;
 }
 .up__img {
   border-radius: 16rpx;

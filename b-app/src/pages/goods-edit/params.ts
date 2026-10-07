@@ -327,6 +327,24 @@ export function useGoodsParams(categoryNo: Ref<string>) {
   }
 
   /** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
+  /**
+   * 这一项要画哪几枚 chip：**平台候选 + 他自己填的那个值**（后者不在候选里时才补）。
+   *
+   * <p>2026-10-07 的真实报障：「输入产地：山西运城临猗，弹框里识别到产地，但没有更新到系统」。
+   * 查下来值**确实写进去了**（`applyParamPicks` 的自由值那条路），保存也会带上 ——
+   * 只是这一行只画 `d.options`（本地 / 国产 / 进口），他填的那个不在里面，
+   * 于是一枚选中的 chip 都没有：**存进去了，但界面上看不见**，与「没识别到」长得一模一样。
+   *
+   * <p>识别、「＋ 加值」里自己输的、以及历史商品带回来的自填值，走的都是这一条。
+   * 补出来的那枚照旧可点：再点一次就是取消（`pickParam` 按 label 判）。
+   */
+  function paramChips(d: SpecTemplate): SpecOption[] {
+    const opts = d.options ?? [];
+    const cur = paramValues.value[d.templateNo];
+    if (!cur?.label || opts.some((o) => o.label === cur.label)) return opts;
+    return [...opts, { code: cur.code, label: cur.label }];
+  }
+
   function pickParam(dim: SpecTemplate, o: SpecOption) {
     const cur = paramValues.value[dim.templateNo];
     if (cur && cur.label === o.label) {
@@ -354,6 +372,6 @@ export function useGoodsParams(categoryNo: Ref<string>) {
     addingParam, newParam, addingValueFor, newParamValue,
     paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
     paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
-    isTextDim, setParamText, removeParam,
+    isTextDim, setParamText, removeParam, paramChips,
   };
 }

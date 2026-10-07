@@ -26,6 +26,13 @@ const DIMS = [
     templateNo: "SD_TASTE", name: "口感风味",
     options: [{ code: "TSTSWEET", label: "清甜" }, { code: "TSTCRISP", label: "脆爽" }],
   },
+  {
+    templateNo: "SD_ORIGIN", name: "产地",
+    options: [
+      { code: "ORIGINLOCAL", label: "本地" }, { code: "ORIGINCN", label: "国产" },
+      { code: "ORIGINIMP", label: "进口" },
+    ],
+  },
 ];
 
 function setup() {
@@ -100,5 +107,33 @@ describe("自动生成挑好的参数", () => {
     } as typeof p.paramValues.value;
     expect(p.applyParamPicks([])).toBe(0);
     expect(p.paramValues.value.SD_TASTE.label).toBe("脆爽");
+  });
+
+  /*
+   * 2026-10-07 的真实报障：「输入 产地：山西运城临猗，弹框里识别到产地，但没有更新到系统」。
+   * 值其实写进去了、保存也会带上 —— 只是这一行只画平台候选，他填的那个不在里面，
+   * **一枚选中的 chip 都没有**，与「没识别到」长得一模一样。断言画出来的那几枚，不是存了没存。
+   */
+  it("★★★ 自己填的值要画出来：识别到的产地不在候选里，也得是一枚选中的 chip", () => {
+    const p = setup();
+    expect(p.applyParamPicks([{ dimNo: "SD_ORIGIN", name: "产地", label: "山西运城临猗" }])).toBe(1);
+    const origin = DIMS.find((d) => d.templateNo === "SD_ORIGIN")!;
+    const chips = p.paramChips(origin as never);
+    expect(chips.map((o) => o.label), "候选之后补上他填的那个").toEqual(["本地", "国产", "进口", "山西运城临猗"]);
+    // 选中判据是 label 相等（模板的那几枚都没被选中）
+    expect(chips.filter((o) => o.label === p.paramValues.value.SD_ORIGIN?.label)).toHaveLength(1);
+  });
+
+  it("值就是候选之一时不重复画", () => {
+    const p = setup();
+    p.applyParamPicks([{ dimNo: "SD_ORIGIN", name: "产地", code: "ORIGINLOCAL", label: "本地" }]);
+    const origin = DIMS.find((d) => d.templateNo === "SD_ORIGIN")!;
+    expect(p.paramChips(origin as never).map((o) => o.label)).toEqual(["本地", "国产", "进口"]);
+  });
+
+  it("没填值的那一项照旧只画候选", () => {
+    const p = setup();
+    const origin = DIMS.find((d) => d.templateNo === "SD_ORIGIN")!;
+    expect(p.paramChips(origin as never)).toHaveLength(3);
   });
 });

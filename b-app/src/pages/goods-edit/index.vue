@@ -594,9 +594,21 @@ const {
  * 商品图那一组的拖动在 `sh-uploader` 里（同一个文件的 `useChipDrag`，几何不同：会换行）。
  */
 const dimgInstance = getCurrentInstance();
+/**
+ * 拖动中这一行长什么样：被拖的那一行跟手走（无过渡，否则手感发黏），
+ * 其余**让位**（它扫过的那几行各挪一个行高，带过渡）。与商品图那一组同一套反馈。
+ */
+function dimgRowStyle(i: number) {
+  if (dimgDragFrom.value === null) return "";
+  if (dimgDragFrom.value === String(i)) {
+    return { transform: `translateY(${dimgShift.value}px)`, zIndex: 2 };
+  }
+  const dy = dimgSlotShift(i);
+  return dy ? { transform: `translateY(${dy}px)` } : "";
+}
 const {
-  dragFrom: dimgDragFrom, dragTo: dimgDragTo, shift: dimgShift,
-  onStart: dimgDragStart, onMove: dimgDragMove, onEnd: dimgDragEnd,
+  dragFrom: dimgDragFrom, shift: dimgShift,
+  onStart: dimgDragStart, onMove: dimgDragMove, onEnd: dimgDragEnd, slotShift: dimgSlotShift,
 } = useRowDrag(
   dimgInstance,
   ".dimgs__row",
@@ -1388,7 +1400,7 @@ const {
   addingParam, newParam, addingValueFor, newParamValue,
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
-  isTextDim, setParamText, removeParam,
+  isTextDim, setParamText, removeParam, paramChips,
 } = useGoodsParams(categoryNo);
 
 /**
@@ -2301,8 +2313,8 @@ async function save(thenSubmit = false) {
             v-for="(img, i) in detailImages"
             :key="img + i"
             class="dimgs__row sh-row"
-            :class="{ 'dimgs__row--drag': dimgDragFrom === String(i), 'dimgs__row--to': dimgDragTo === i && dimgDragFrom !== null }"
-            :style="dimgDragFrom === String(i) ? { transform: `translateY(${dimgShift}px)`, zIndex: 2 } : ''"
+            :class="{ 'dimgs__row--drag': dimgDragFrom === String(i), 'dimgs__row--move': dimgDragFrom !== null && dimgDragFrom !== String(i) }"
+            :style="dimgRowStyle(i)"
             @touchstart="dimgDragStart(String(i), $event)"
             @touchmove.stop.prevent="dimgDragMove($event)"
             @touchend="dimgDragEnd"
@@ -2773,8 +2785,10 @@ async function save(thenSubmit = false) {
           不是这件货身上的一个私有字符串：后者不参与筛选，也不参与跨店比较。
         -->
         <view v-else class="param__opts sh-wrap">
+          <!-- 候选之外还画**他自己填的那个值**（paramChips）—— 只画 d.options 的话，
+               识别到的「产地 山西运城临猗」存进去了却一枚选中的 chip 都没有，看着像没识别到 -->
           <text
-            v-for="o in d.options"
+            v-for="o in paramChips(d)"
             :key="o.code || o.label"
             class="sh-chip"
             :class="{ 'sh-chip--primary': paramValues[d.templateNo]?.label === o.label }"
@@ -3567,8 +3581,9 @@ async function save(thenSubmit = false) {
   box-shadow: var(--sh-shadow-float);
   transition: none;
 }
-.dimgs__row--to {
-  border-top: 4rpx solid var(--sh-primary);
+/* 让位的那几行：平移过去，带过渡 —— 松手会变成什么样，拖的过程中就画出来了 */
+.dimgs__row--move {
+  transition: transform var(--sh-t-fast) ease;
 }
 
 /*
