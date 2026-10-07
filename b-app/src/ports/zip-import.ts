@@ -2,7 +2,7 @@
 //
 // **解压是 App 原生能力**（plus.zip），小程序/H5 没有，所以这里按端分叉。
 // 归类/排序是纯逻辑、已单测（zip-media.test.ts）；这个文件只管「把 zip 变成一堆本地路径」。
-import { classifyZip, dropJunk, type ZipMedia } from "@shared/ports/zip-media";
+import { classifyZipTree, dropJunk, type ZipMedia } from "@shared/ports/zip-media";
 
 // plus 是 App 运行时注入的全局，类型未在 @dcloudio 里导出，这里按 any 用
 declare const plus: any;
@@ -89,7 +89,7 @@ export interface ZipImport {
   root: string;
   /** 相对路径清单，系统垃圾已滤掉 */
   files: ZipEntry[];
-  /** 规则分类（按相对路径算 —— 「根目录的 txt」只有相对路径才判得出来） */
+  /** 规则分类（相对路径；共用的顶层目录先剥掉 —— 「根目录的 txt」才判得出来） */
   media: ZipMedia;
 }
 
@@ -115,7 +115,7 @@ export async function importZip(): Promise<ZipImport> {
   for (const path of rel) {
     files.push(IMAGE.test(path) ? { path, ...(await sizeOf(`${root}/${path}`)) } : { path });
   }
-  return { root, files, media: classifyZip(rel) };
+  return { root, files, media: classifyZipTree(rel) };
 }
 
 /** 读解压出的 txt 文本内容（商品文字）。App 用 plus.io；读失败返回 undefined。 */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyZip, dropJunk, listsOf, ruleHint, sortByNumber } from "@shared/ports/zip-media";
+import { classifyZip, classifyZipTree, dropJunk, listsOf, ruleHint, sortByNumber } from "@shared/ports/zip-media";
 
 /** 压缩包归类/排序（TDD-商品快速录入 §5 · AC1/AC2）。纯字符串逻辑，不碰解压。 */
 describe("压缩包分类与排序", () => {
@@ -84,5 +84,16 @@ describe("压缩包：规则先验与按分法取图", () => {
   it("★★ 根目录 txt 要用相对路径判：绝对路径里永远有 /，规则会认不出", () => {
     expect(classifyZip(["说明.txt"]).txt).toBe("说明.txt");
     expect(classifyZip(["/storage/emulated/0/doc/goods-zip-1/说明.txt"]).txt).toBeUndefined();
+  });
+
+  it("★★★ 包外面包着一层顶层目录（右键压缩文件夹）：剥掉再分，文案认得出", () => {
+    const r = classifyZipTree(["脆柿子/主图/1.jpg", "脆柿子/详情/1.jpg", "脆柿子/说明.txt"]);
+    expect(r.main).toEqual(["脆柿子/主图/1.jpg"]);
+    expect(r.detail).toEqual(["脆柿子/详情/1.jpg"]);
+    expect(r.txt).toBe("脆柿子/说明.txt");
+  });
+
+  it("★★ 顶层目录本身叫「详情」时不剥 —— 剥了就全成了主图", () => {
+    expect(classifyZipTree(["详情/1.jpg", "详情/2.jpg"]).detail).toEqual(["详情/1.jpg", "详情/2.jpg"]);
   });
 });

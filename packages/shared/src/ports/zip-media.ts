@@ -122,3 +122,19 @@ export function listsOf(items: ZipPick[]): { main: string[]; detail: string[]; t
     .sort((a, b) => a.order - b.order).map((i) => i.path);
   return { main: of("MAIN"), detail: of("DETAIL"), txt: items.find((i) => i.target === "TEXT")?.path };
 }
+
+/**
+ * 右键「压缩文件夹」打出来的包外面总包着一层顶层目录（`脆柿子/主图/1.jpg`、`脆柿子/说明.txt`）。
+ * 按原样分类的话，`说明.txt` 不在根目录，文案永远认不出。
+ *
+ * 所以**所有文件共用同一层顶层目录**时先剥掉它再分类，结果再拼回原路径。
+ * 那层目录本身叫「主图/详情」时不剥 —— 只有一个 `详情/` 的包剥了就全成了主图。
+ */
+export function classifyZipTree(paths: string[]): ZipMedia {
+  const tops = new Set(paths.map((p) => (p.includes("/") ? p.slice(0, p.indexOf("/")) : "")));
+  const top = tops.size === 1 ? [...tops][0] : "";
+  if (!top || /(主图|main|详情|detail)/i.test(top)) return classifyZip(paths);
+  const m = classifyZip(paths.map((p) => p.slice(top.length + 1)));
+  const back = (p: string) => `${top}/${p}`;
+  return { main: m.main.map(back), detail: m.detail.map(back), txt: m.txt ? back(m.txt) : undefined };
+}
