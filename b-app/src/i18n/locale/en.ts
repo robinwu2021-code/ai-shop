@@ -2230,6 +2230,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
   },
   me: {
     switchStore: "Switch",
+    accountSection: "Account Info",
     account: "Account",
     username: "Username",
     usernameUnset: "Not set",

@@ -2523,6 +2523,7 @@ entryHint: "谁在买 · 谁不来了",
   me: {
     switchStore: "切换",
     loggedOut: "已退出登录",
+    accountSection: "账户信息",
     account: "登录账号",
     username: "用户名",
     usernameUnset: "未设置",

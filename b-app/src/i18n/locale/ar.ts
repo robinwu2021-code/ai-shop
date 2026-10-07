@@ -2228,6 +2228,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
   },
   me: {
     switchStore: "تبديل",
+    accountSection: "معلومات الحساب",
     account: "الحساب",
     username: "اسم المستخدم",
     usernameUnset: "غير محدد",

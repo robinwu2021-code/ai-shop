@@ -222,6 +222,39 @@ onShow(() => {
     -->
 
     <!--
+      账户信息：登录身份那几行归成一组，摆在最上面。
+      它们原先散在「消息 / 外观 / 帮助」那一组中间 —— 店主要划过收入、结算、员工、
+      收款、证照、套餐…十来行才看得到「我是谁、用哪个号登的、密码」，于是反馈成「没有账户信息」。
+      这一组回答的是「账号维度」的事（身份），与头部那一格的「门店维度」（在哪家店）分开。
+      只有这一组带标题：它是店主明确要找的东西，给它一个名字才找得到。
+    -->
+    <text v-if="merchant.isLogin" class="txt-title sec">{{ $t("me.accountSection") }}</text>
+    <view v-if="merchant.isLogin" class="sh-cells">
+      <!-- 用户名（显示名）：改的是「我自己」那一行。店员/店主都能改各自的 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="editDisplayName">
+        <text class="txt-body cell__label">{{ $t("me.username") }}</text>
+        <text class="txt-caption cell__value">{{ merchant.profile?.displayName || $t("me.usernameUnset") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!-- 登录账号：这一页此前没有一处告诉店主「我是用哪个号登进来的」——
+           多店 / 多人时他分不清此刻是哪个身份，改密码、找回都无从对起。
+           只读展示登录手机号；第三方登录没有手机号时留空提示去补绑（补绑入口在登录页）。 -->
+      <view class="sh-cell sh-row sh-row--between">
+        <text class="txt-body cell__label">{{ $t("me.account") }}</text>
+        <text class="txt-caption cell__value sh-num">{{ merchant.profile?.phone || "—" }}</text>
+      </view>
+      <!-- 登录密码：设过就是「修改」，没设过是「设置」——
+           两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
+      <view class="sh-cell sh-row sh-row--between" @tap="editPassword">
+        <text class="txt-body cell__label">{{ $t("me.password") }}</text>
+        <text class="txt-caption cell__value">
+          {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
+        </text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+    </view>
+
+    <!--
       分组密排，不是一行一张卡。
       原先每一行都套 sh-card：卡片自带内边距、圆角与投影，五行就变成五块互不相干的浮起色块，
       中间的留白比行本身还显眼 —— 「看起来像五个功能模块」，而它们其实只是一张设置清单。
@@ -323,28 +356,6 @@ onShow(() => {
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
-      <!-- 登录账号：这一页此前没有一处告诉店主「我是用哪个号登进来的」——
-           多店 / 多人时他分不清此刻是哪个身份，改密码、找回都无从对起。
-           只读展示登录手机号；第三方登录没有手机号时留空提示去补绑（补绑入口在登录页）。 -->
-      <!-- 用户名（显示名）：改的是「我自己」那一行。店员/店主都能改各自的 -->
-      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="editDisplayName">
-        <text class="txt-body cell__label">{{ $t("me.username") }}</text>
-        <text class="txt-caption cell__value">{{ merchant.profile?.displayName || $t("me.usernameUnset") }}</text>
-        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
-      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between">
-        <text class="txt-body cell__label">{{ $t("me.account") }}</text>
-        <text class="txt-caption cell__value sh-num">{{ merchant.profile?.phone || "—" }}</text>
-      </view>
-      <!-- 登录密码：设过就是「修改」，没设过是「设置」——
-           两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
-      <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="editPassword">
-        <text class="txt-body cell__label">{{ $t("me.password") }}</text>
-        <text class="txt-caption cell__value">
-          {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
-        </text>
-        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
       <view class="sh-cell sh-row sh-row--between" @tap="sheetOpen = true">
         <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
         <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
@@ -376,6 +387,11 @@ onShow(() => {
 </template>
 
 <style scoped>
+/* 卡外分组小标题（同「我的套餐」页那条 .sec）：只管组与组之间的留白，不起壳 */
+.sec {
+  display: block;
+  margin: 28rpx 0 12rpx;
+}
 .head {
   gap: 24rpx;
 }

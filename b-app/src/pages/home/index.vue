@@ -423,7 +423,11 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="tab.home" tab="home">
+  <sh-scaffold
+    title-key="tab.home"
+    tab="home"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+  >
     <!-- 还不知道有没有店：等待时什么都不渲染，失败给重试 —— 都不能说成「还没有开店」 -->
     <sh-empty
       v-if="!merchant.canOperate && profileState !== 'ok'"
@@ -442,8 +446,12 @@ onShow(load);
     </view>
 
     <template v-else>
-      <!-- 门店这件事的唯一入口：显示在看哪家店，点进门店管理（切店/改名/开新店） -->
-      <biz-store-tag></biz-store-tag>
+      <!--
+        门店名改到标题栏（「工作台 · 虹选粮油」），正文顶部不再放切店胶囊。
+        与 stock / goods-list 同一处理：切店入口在「我的」头部那一格，
+        工作台专心排「今天要干的活」，不再被一枚每天划过去的胶囊占掉顶部一行。
+        （只在多店时缀名：单店没有「在哪家店」的歧义可消。）
+      -->
 
       <!--
         开张之后卡在哪，这里直说。**只在有问题时出现** ——
