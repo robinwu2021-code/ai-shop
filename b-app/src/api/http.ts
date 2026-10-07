@@ -21,6 +21,7 @@ import type {
   GoodsTextParse,
   ZipPlan,
   ZipPlanReq,
+  ZipImported,
   ParseTextReq,
   DissolveGroupReq,
   EnrollReq,
@@ -425,6 +426,9 @@ export const httpApi: MerchantApi = {
   // 真上传文件字节（multipart），不是把本地路径当 JSON 发 —— 后端要 MultipartFile
   mUploadImage: (tempPath) =>
     http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath),
+  // 整包传上去由服务端拆开：小程序没有本地解压能力（plus.zip 是 App 的）
+  mZipImport: (tempPath) =>
+    http.uploadFile<ZipImported>(E.mZipImport.path, tempPath),
   // 同样走 multipart：证照识别要的是字节，不是一个 URL ——
   // 后端刻意不接受「先传图拿 URL 再识别」，那会让身份证在桶里留一份
   mRecognizeQualification: (tempPath) =>

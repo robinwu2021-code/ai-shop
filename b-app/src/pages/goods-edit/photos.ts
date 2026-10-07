@@ -262,6 +262,17 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
       return undefined;
     }
     const abs = (rel: string) => `${zip.root}/${rel}`;
+    /*
+     * 小程序端走服务端解压，回来的条目**已经落过库**（带 url），不要再传一遍：
+     * 再传一遍是多一份存储、多一次流量，而且两份 URL 指向同一张图。
+     * App 端没有 url，照旧逐张上传。
+     */
+    const urlOf = new Map(zip.files.filter((f) => f.url).map((f) => [f.path, f.url as string]));
+    const uploadOne = async (rel: string) => {
+      const already = urlOf.get(rel);
+      if (already) return already;
+      return (await api.mUploadImage(abs(rel))).url;
+    };
     uploading.value = true;
     try {
       const hint = ruleHint(zip.media, zip.files.map((f) => f.path));
@@ -282,7 +293,7 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
         // 余量逐张看：合并后的「商品图」满 7 张就停，其余记进「放不下」
         if (photos.value.length >= PHOTO_LIMIT) { full++; continue; }
         try {
-          const { url } = await api.mUploadImage(abs(rel));
+          const url = await uploadOne(rel);
           images.value = [...images.value, url];
           if (!cover.value) cover.value = url;
           mainAdded++;
@@ -291,7 +302,7 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
       for (const rel of lists.detail) {
         if (detailImages.value.length >= DETAIL_IMAGE_LIMIT) { full++; continue; }
         try {
-          const { url } = await api.mUploadImage(abs(rel));
+          const url = await uploadOne(rel);
           detailImages.value = [...detailImages.value, url];
           detailAdded++;
         } catch { /* 跳过 */ }

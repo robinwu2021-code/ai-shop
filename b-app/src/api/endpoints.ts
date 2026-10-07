@@ -165,6 +165,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mDescribeGoods: { method: "POST", path: "/biz/goods/describe", auth: true, summary: "自动生成图文详情" },
   mParseText: { method: "POST", path: "/biz/goods/parse-text", auth: true, summary: "文字识别商品信息" },
   mZipPlan: { method: "POST", path: "/biz/goods/zip-plan", auth: true, summary: "压缩包文件归到主图/详情/文案（模型为主、目录规则兜底）" },
+  mZipImport: { method: "POST", path: "/biz/goods/zip-import", auth: true, summary: "压缩包服务端解压（小程序端没有本地解压能力）" },
 
   mCategoryTree: { method: "GET", path: "/biz/category/tree", auth: true, summary: "类目树（选类目）" },
   // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec

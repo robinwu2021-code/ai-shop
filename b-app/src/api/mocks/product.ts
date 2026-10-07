@@ -49,6 +49,7 @@ export const productMock: Pick<MerchantApi,
   | "mDescribeGoods"
   | "mParseText"
   | "mZipPlan"
+  | "mZipImport"
   | "mSpuStdSearch"
   | "mCategoryTree"
   | "mSpecTemplates"
@@ -622,6 +623,19 @@ export const productMock: Pick<MerchantApi,
   /** mock 里没有模型：原样回规则的分法（source=RULE），够让导入链路在 mock 下走通 */
   async mZipPlan(req) {
     return { source: "RULE", items: req.ruleHint };
+  },
+  /**
+   * mock 里不真解压：回一个最小的两图一文案的包，够让小程序端那条
+   * 「选 zip → 服务端解压 → 直接拿 url」的链路在 mock 下走通。
+   */
+  async mZipImport() {
+    return {
+      files: [
+        { path: "主图/1.jpg", width: 800, height: 800, url: "/mock/zip/main-1.jpg" },
+        { path: "详情/1.jpg", width: 800, height: 1600, url: "/mock/zip/detail-1.jpg" },
+      ],
+      texts: { "说明.txt": "mock 压缩包里的商品文案" },
+    };
   },
   async mParseText(text) {
     // mock 用最小正则演示，真解析在后端（规则+LLM）。够让弹框确认链路在 mock 下点得通

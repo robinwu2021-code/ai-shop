@@ -750,6 +750,7 @@ import type {
   GoodsTextParse,
   ZipPlan,
   ZipPlanReq,
+  ZipImported,
   PickupSelfBuildReq,
   PointsRecordQuery,
   StaffLoginReq,
@@ -1324,6 +1325,8 @@ export interface MerchantApi {
   mParseText(text: string, categoryNo?: string): Promise<GoodsTextParse>;
   /** 压缩包的文件结构归到标准结构（模型为主、目录规则兜底）。只看路径与宽高，不传图片 */
   mZipPlan(req: ZipPlanReq): Promise<ZipPlan>;
+  /** 整包上传、服务端解压（小程序端没有本地解压能力）。回已落库的图 + txt 内容 */
+  mZipImport(tempPath: string): Promise<ZipImported>;
 
   // ---- 类目（B-11.3.1）
   /**

@@ -182,6 +182,13 @@ public enum ErrorCode {
      * 合成一个码的话，店员会被告知「你还不是商家，去开店吧」—— 而他其实已经是店员了。
      */
     PHONE_REQUIRED_FOR_MERCHANT(10471, "err.merchant.phone_required"),
+    /**
+     * 压缩包太大 —— 三道闸任一超限都报它：单条目 5MB、总解压量 50MB、条目数 200。
+     *
+     * <p>数的是**解压后**的量，不是压缩包本身：高压缩比的构造几百 KB 能解出几个 G，
+     * 只看上传大小挡不住。
+     */
+    ZIP_TOO_LARGE(10472, "err.zip.too_large"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。

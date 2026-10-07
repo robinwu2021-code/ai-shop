@@ -306,6 +306,22 @@ export interface ZipPlanReq {
   ruleHint: ZipPick[];
 }
 
+/** 服务端解压回来的一张图：已经过校验、落进媒体库，端上不用再逐张传 */
+export interface ZipImportedFile extends ZipPlanFile {
+  /** 媒体库里的稳定相对路径。有它就直接用，不要再 mUploadImage */
+  url: string;
+}
+
+/**
+ * 服务端解压结果（小程序端专用——那一端没有 plus.zip）。
+ *
+ * <p>`texts` 是包里的 txt：端上没有本地文件可读，内容只能随清单一起带回来。
+ */
+export interface ZipImported {
+  files: ZipImportedFile[];
+  texts: Record<string, string>;
+}
+
 /** 压缩包分类结果 */
 export interface ZipPlan {
   /** 这份分法来自哪里 */

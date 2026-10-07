@@ -216,6 +216,103 @@ class MediaUploadFlowTest {
         return cachedToken;
     }
 
+    // ───────────────────────── 压缩包导入（服务端解压） ─────────────────────────
+
+    /** 造一个 zip：entries 是 路径→字节 */
+    private static byte[] zipOf(java.util.LinkedHashMap<String, byte[]> entries) throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(out)) {
+            for (var e : entries.entrySet()) {
+                zos.putNextEntry(new java.util.zip.ZipEntry(e.getKey()));
+                zos.write(e.getValue());
+                zos.closeEntry();
+            }
+        }
+        return out.toByteArray();
+    }
+
+    private static byte[] realJpeg(int w, int h) throws Exception {
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB), "jpg", o);
+        return o.toByteArray();
+    }
+
+    private String postZip(byte[] zip) throws Exception {
+        return mvc().perform(multipart("/biz/goods/zip-import")
+                        .file(new MockMultipartFile("file", "goods.zip", "application/zip", zip))
+                        .header("Authorization", "Bearer " + merchant()))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    @DisplayName("★ zip 导入：图片落媒体库并回 URL，txt 内容随清单带回")
+    void zipImportStoresImagesAndReturnsTexts() throws Exception {
+        var entries = new java.util.LinkedHashMap<String, byte[]>();
+        entries.put("主图/1.jpg", realJpeg(60, 40));
+        entries.put("详情/2.jpg", realJpeg(50, 50));
+        entries.put("说明.txt", "一段商品文案".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        var node = json.readTree(postZip(zipOf(entries)));
+        org.assertj.core.api.Assertions.assertThat(node.get("code").asInt()).isZero();
+        var data = node.get("data");
+        org.assertj.core.api.Assertions.assertThat(data.get("files")).hasSize(2);
+        // 路径原样回去 —— 端上靠它分主图/详情
+        org.assertj.core.api.Assertions.assertThat(data.get("files").get(0).get("path").asString())
+                .isEqualTo("主图/1.jpg");
+        org.assertj.core.api.Assertions.assertThat(data.get("files").get(0).get("url").asString()).isNotBlank();
+        org.assertj.core.api.Assertions.assertThat(data.get("files").get(0).get("width").asInt()).isEqualTo(60);
+        org.assertj.core.api.Assertions.assertThat(data.get("texts").get("说明.txt").asString())
+                .isEqualTo("一段商品文案");
+    }
+
+    /**
+     * <b>Zip Slip。</b>撤掉 BizZipImportController.unsafe() 里的路径校验，这个用例必须变红。
+     */
+    @Test
+    @DisplayName("★ zip 导入：带 ../ 与绝对路径的条目被跳过")
+    void zipImportSkipsPathTraversalEntries() throws Exception {
+        var entries = new java.util.LinkedHashMap<String, byte[]>();
+        entries.put("../evil.jpg", realJpeg(10, 10));
+        entries.put("/abs.jpg", realJpeg(10, 10));
+        entries.put("good.jpg", realJpeg(10, 10));
+
+        var data = json.readTree(postZip(zipOf(entries))).get("data");
+        // 只剩那张干净的
+        org.assertj.core.api.Assertions.assertThat(data.get("files")).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(data.get("files").get(0).get("path").asString())
+                .isEqualTo("good.jpg");
+    }
+
+    /**
+     * <b>伪装成图片的字节。</b>与 /biz/upload/image 同一道闸 ——
+     * 只认后缀的话，纯文本改名 .png 会以 image/png 落进公开桶。
+     */
+    @Test
+    @DisplayName("★ zip 导入：改了名的非图片字节不落库")
+    void zipImportSkipsNonImageBytes() throws Exception {
+        var entries = new java.util.LinkedHashMap<String, byte[]>();
+        entries.put("fake.png", "this-is-not-an-image".repeat(20).getBytes());
+        entries.put("real.jpg", realJpeg(20, 20));
+
+        var data = json.readTree(postZip(zipOf(entries))).get("data");
+        org.assertj.core.api.Assertions.assertThat(data.get("files")).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(data.get("files").get(0).get("path").asString())
+                .isEqualTo("real.jpg");
+    }
+
+    /** <b>解压炸弹</b>的条目数那一道。 */
+    @Test
+    @DisplayName("★ zip 导入：条目数超限报 ZIP_TOO_LARGE")
+    void zipImportRejectsTooManyEntries() throws Exception {
+        var entries = new java.util.LinkedHashMap<String, byte[]>();
+        byte[] img = realJpeg(8, 8);
+        for (int i = 0; i < 205; i++) {
+            entries.put("p/" + i + ".jpg", img);
+        }
+        var node = json.readTree(postZip(zipOf(entries)));
+        org.assertj.core.api.Assertions.assertThat(node.get("code").asInt()).isNotZero();
+    }
+
     /** 走完「入驻 → 通过 → 重新登录」，返回可用于 /biz/** 的 token。 */
     private String merchantOnce(String phone, String name) throws Exception {
         String user = TestLogin.consumer(mvc(), json, otpStore, phone);
