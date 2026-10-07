@@ -2555,10 +2555,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // 查一次放在循环外 —— 主体的门店列表在这个事务里不会变。
         java.util.Set<String> activeStores =
                 new java.util.HashSet<>(merchantPort.activeStoreNos(entityNo));
+        /*
+         * **「这家店能送到哪些小区」整趟只算一次**（2026-10-07）。
+         *
+         * 它只取决于 (主体, 门店)，与是哪件货无关，而此前每件货每家店各算一次 ——
+         * 生产上 16 件货 × 23656 个开放小区，一次「开/关自送」要把这张表重读十几遍：
+         * 保存送货方式实测 24~27 秒，而读只要 0.3 秒。
+         */
+        Map<String, List<String>> reachCache = new java.util.HashMap<>();
         for (PrdGoods g : all) {
             // 用主体级总闸，与上下架那条链路同一个判据。下架的走 syncPool(false) —— 
             // 它会把残留的池行撤掉，这正是「范围改小了」要的效果
-            syncPool(g, Boolean.TRUE.equals(g.getOnSale()));
+            syncPool(g, Boolean.TRUE.equals(g.getOnSale()), reachCache);
         }
         return all.size();
     }
@@ -2663,6 +2671,14 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     private void syncPool(PrdGoods g, boolean onSale) {
+        syncPool(g, onSale, null);
+    }
+
+    /**
+     * @param reachCache 整趟共用的「门店 → 可达社区」。单件上下架传 null（只算一次，缓存没意义）；
+     *                   全量重建传一个 map —— 每件货都重算一遍是这条链路最大的那块开销
+     */
+    private void syncPool(PrdGoods g, boolean onSale, Map<String, List<String>> reachCache) {
         publishOnSaleChanged(g, onSale);
         publishNewGoodsOnce(g, onSale);
         List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
@@ -2680,7 +2696,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         Map<String, String> want = new LinkedHashMap<>();   // key = 社区|门店
         List<String> sellingStores = storesSelling(g);
         for (String storeNo : sellingStores) {
-            for (String communityNo : merchantPort.reachableCommunities(g.getEntityNo(), storeNo)) {
+            List<String> reach = reachCache == null
+                    ? merchantPort.reachableCommunities(g.getEntityNo(), storeNo)
+                    : reachCache.computeIfAbsent(storeNo,
+                            x -> merchantPort.reachableCommunities(g.getEntityNo(), x));
+            for (String communityNo : reach) {
                 want.put(communityNo + "|" + storeNo, communityNo);
             }
         }

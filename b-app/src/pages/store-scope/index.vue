@@ -218,12 +218,24 @@ async function loadFulfillment() {
   }
 }
 
+/**
+ * 存一次送货方式。**开关先动，再去存**（2026-10-07 报障：「切换商家配送，反应很慢」）。
+ *
+ * <p>此前开关的位置绑的是服务端回包，于是按下去到它动为止，界面上**什么都不发生** ——
+ * 而这个接口在生产上实测 24~27 秒（它要连带重建社区池）。后端那一半已经挪到后台跑，
+ * 这里再补上即时反馈：慢的那条路修好了，但网络本来就可能慢，开关不该等任何人。
+ *
+ * <p>存失败就**原样翻回去**并说一句 —— 乐观更新的代价只有这一条：
+ * 不回滚的话，界面显示开着、实际没开，而那正是最难发现的一种。
+ */
 async function persistChannels(
   next: StoreFulfillment["channels"],
   channel: string,
   pickupNos?: string[],
 ) {
+  const before = fulfillment.value;
   savingChannel.value = channel;
+  if (before) fulfillment.value = { ...before, channels: next };
   try {
     fulfillment.value = await api.mSaveStoreFulfillment(merchant.storeNo || "default", {
       channels: next.map((c) => ({
@@ -235,6 +247,8 @@ async function persistChannels(
       })),
     });
   } catch (e) {
+    // 翻回去：显示开着、实际没开是最难发现的那一种
+    if (before) fulfillment.value = before;
     uni.showToast({ title: (e as Error).message || t("store.fulfillFailed"), icon: "none" });
   } finally {
     savingChannel.value = "";
