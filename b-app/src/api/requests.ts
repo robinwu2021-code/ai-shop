@@ -27,7 +27,7 @@ import type {
   StoreProfile,
   SaleMode,
 } from "@shared/types";
-import type { GoodsDraft } from "./contract";
+import type { GoodsDraft, GoodsEntrySource } from "./contract";
 
 // ---------------------------------------------------------------- 预约排期
 
@@ -200,6 +200,15 @@ export interface SaveGoodsReqBody {
    * 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。
    */
   saleMode?: SaleMode;
+  /**
+   * 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。
+   *
+   * <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 ——
+   * 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。
+   */
+  restrictedRegions?: string[];
+  /** 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） */
+  entrySource?: GoodsEntrySource;
 }
 
 export interface ToggleGoodsReq {
@@ -270,7 +279,9 @@ export interface GoodsTextParse {
 }
 
 export interface ParseTextReq {
+  /** 商家贴进来的原文（商品描述、规格、价格、不发货地区混在一起都行），上限 2000 字 */
   text: string;
+  /** 当前选中的类目。给了才能把参数对到这个品类的标准参数；不给 = 参数都按自由参数回 */
   categoryNo?: string;
 }
 

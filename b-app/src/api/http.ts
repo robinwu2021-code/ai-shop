@@ -368,6 +368,10 @@ export const httpApi: MerchantApi = {
       groupBuy: payload.groupBuy,
       fulfillments: payload.fulfillments,
       saleMode: payload.saleMode,
+      // 这两行 2026-10-07 才补上：页面一直在交，到这里被逐字段重建丢掉 ——
+      // 限购地区在生产上一件都没存下来，mock 收整个对象所以看不出（wire-alignment 守卫抓到的）
+      restrictedRegions: payload.restrictedRegions,
+      entrySource: payload.entrySource,
     } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
     http.post<Goods>(buildPath(E.mToggleGoods.path, { goodsNo }), { onSale } satisfies ToggleGoodsReq),

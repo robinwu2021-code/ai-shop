@@ -387,6 +387,16 @@ B 端店主用 App，不用 H5。A 期（文案）与 B 期（落点）各出一
    字面量「goods.done」。它就是基线里「用了但没有 1」那一条，来自我自己的
    `ef81c2d97`。
 
+5. **AC4（限购地区落库）与 AC11（录入方式）在真后端上从没生效过**（2026-10-07 发现）。
+   页面一直把 `restrictedRegions` / `entrySource` 交给 `api.mSaveGoods`，但 `http.ts`
+   **逐字段重建**请求体，这两行不在里面 —— 到这一层被丢掉。生产库实查：
+   `prd_goods.restricted_regions` 非空 **0 行**，`prd_goods_revision.entry_source` 只有 MANUAL。
+   H5 验证全绿是因为 mock 收整个对象；`wire-alignment` 守卫只比**类型**，
+   `SaveGoodsReqBody` 里没有这两个字段它才报出来 —— 而可选字段在 `satisfies` 下漏写映射也不报。
+   修：类型与映射各补两行；新增 `b-app/tests/save-goods-body.test.ts` 替掉传输层、直接断言发出去的 body
+   （消融：删掉映射两行 → 2 条红）。§13 的真机只核了文案与入口，**没有在真后端上保存过一件带限购地区的商品**
+   —— 这正是它漏过去的那一步。
+
 ---
 
 ## §12 增量实现记录（A2 / B2 / C1）
