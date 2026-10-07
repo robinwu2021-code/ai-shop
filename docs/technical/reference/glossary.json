@@ -9735,9 +9735,9 @@
         },
         {
           "key": "goods.parsePh",
-          "zh-CN": "粘贴商品文字，可识别名称、价格、规格、参数、限购地区",
-          "en": "Paste the product text — name, price, specs, parameters and restricted areas can be recognized",
-          "ar": "الصق نص المنتج — يمكن التعرّف على الاسم والسعر والمواصفات والمعايير والمناطق المقيدة"
+          "zh-CN": "粘贴商品文字",
+          "en": "Paste product text",
+          "ar": "الصق نص المنتج"
         },
         {
           "key": "goods.parsePrice",
@@ -35479,6 +35479,16 @@
           "ARCHIVED"
         ],
         "zh": "规格模板状态。"
+      },
+      {
+        "name": "SpecValueType",
+        "client": "shared",
+        "values": [
+          "ENUM",
+          "QUANT",
+          "TEXT"
+        ],
+        "zh": "参数维度的取值类型：ENUM 选值 / QUANT 数量 / TEXT 自由文本（配料、厂址这类每件唯一的字段）。"
       },
       {
         "name": "StaffRole",

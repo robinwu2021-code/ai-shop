@@ -6550,6 +6550,13 @@ components:
         - "PLATFORM"
         - "MERCHANT"
       description: "规格模板归属：平台统一维护 / 商家自存"
+    SpecValueType: 
+      type: "string"
+      enum: 
+        - "ENUM"
+        - "QUANT"
+        - "TEXT"
+      description: "参数维度的取值类型：ENUM 选值 / QUANT 数量 / TEXT 自由文本（配料、厂址这类每件唯一的字段）。缺省视同 ENUM"
     SpecOption: 
       type: "object"
       properties: 
@@ -6738,11 +6745,7 @@ components:
           type: "string"
           description: "规格维度名，如「重量」「香型」"
         valueType: 
-          type: "string"
-          enum: 
-            - "ENUM"
-            - "QUANT"
-            - "TEXT"
+          "$ref": "#/components/schemas/SpecValueType"
           description: "取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。\n\n<p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。"
         options: 
           type: "array"

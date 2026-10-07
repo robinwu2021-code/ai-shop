@@ -14,6 +14,7 @@ import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { ZIP_IMPORT_SUPPORTED } from "@/ports/zip-import";
 import {
   asFreeParam, buildCandidates, entryAfterUndo, mergeUndo, overwritesOf, planTextParse, raiseEntry,
   retargetWithSwap, similarDimNos, type Candidate, type EntrySource,
@@ -733,8 +734,8 @@ async function onImportZip() {
   markEntry("ZIP");
   /*
    * **两件事都不再自动做**（AC1/AC5）：
-   *   - 带回的 txt 不灌进文字框 —— 放进 zipText，在图片档给一行「导入到文字识别」
-   *   - 不自动跑图片识别 —— 切到图片档，按钮就在那儿，等人点
+   *   - 带回的 txt 不灌进文字框 —— 放进 zipText，录入卡里给一行「导入到文字识别」
+   *   - 不自动跑图片识别 —— 「识别图片」就在图片那一行，等人点
    * 此前两件都是自动的：一次导入同时触发两路识别，结果混在一起，分不清哪个是哪边来的。
    */
   if (txt) zipText.value = txt;
@@ -1977,7 +1978,7 @@ async function save(thenSubmit = false) {
         <text class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="pasteText">{{ $t("goods.paste") }}</text>
         <text
           class="sh-btn sh-btn--sm sh-hit"
-          :class="{ 'is-disabled': !parseInput.trim() || textParsing, 'is-loading': textParsing }"
+          :class="{ 'is-disabled': !parseInput.trim() || textParsing }"
           @tap="recognizeText"
         >
           {{ textParsing ? $t("goods.parsing") : $t("goods.recognizeText") }}
@@ -2011,13 +2012,11 @@ async function save(thenSubmit = false) {
       <view class="sh-row quick__img">
         <text class="txt-sub sh-fill">{{ $t("goods.quickImage") }}</text>
         <text v-if="!cover" class="txt-caption sh-muted">{{ $t("goods.recognizeNeedImg") }}</text>
-        <!-- #ifdef APP-PLUS -->
-        <text class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="onImportZip">{{ $t("goods.importZip") }}</text>
-        <!-- #endif -->
+        <text v-if="ZIP_IMPORT_SUPPORTED" class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="onImportZip">{{ $t("goods.importZip") }}</text>
         <text
           v-if="cover"
           class="sh-btn sh-btn--sm sh-hit"
-          :class="{ 'is-disabled': parsing, 'is-loading': parsing }"
+          :class="{ 'is-disabled': parsing }"
           @tap="runRecognize(recognized)"
         >
           {{ parsing ? $t("goods.parsing") : (recognized ? $t("goods.reRecognize") : $t("goods.recognize")) }}
@@ -2059,11 +2058,9 @@ async function save(thenSubmit = false) {
           <text class="sh-muted imgs__n">
             {{ $t("goods.imagesCount", { n: photos.length, m: PHOTO_LIMIT }) }}
           </text>
-          <!-- #ifdef APP-PLUS -->
-          <text class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onImportZip">
+          <text v-if="ZIP_IMPORT_SUPPORTED" class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onImportZip">
             {{ $t("goods.importZip") }}
           </text>
-          <!-- #endif -->
         </view>
         <sh-uploader
           :list="photos"
@@ -3192,7 +3189,7 @@ async function save(thenSubmit = false) {
           @tap="pickTarget(d)"
         >
           <text class="txt-body sh-fill">{{ d.name }}</text>
-          <text v-if="d.current" class="txt-caption pick__cur">{{ $t("goods.pickCurrent") }}</text>
+          <text v-if="d.current" class="txt-caption txt-primary">{{ $t("goods.pickCurrent") }}</text>
           <text v-else-if="d.occupant" class="txt-caption sh-muted">{{ $t("goods.pickSwap", { v: d.occupant }) }}</text>
         </view>
       </template>
@@ -3491,11 +3488,11 @@ async function save(thenSubmit = false) {
 /* 详情图拖拽中的那一行:浮起来 + 让位行的顶边提示落点（AC2）。
    手势识别在 useRowDrag,这里只做视觉反馈,没有它拖拽照样能用 */
 .dimgs__row {
-  transition: transform 0.12s ease;
+  transition: transform var(--sh-t-fast) ease;
 }
 .dimgs__row--drag {
   opacity: 0.9;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.18);
+  box-shadow: var(--sh-shadow-float);
   transition: none;
 }
 .dimgs__row--to {
@@ -3898,7 +3895,6 @@ async function save(thenSubmit = false) {
 /* 参数列表：行通铺到边（sheet flush），组名是一行小字 */
 .pick__g { display: block; padding: 24rpx var(--sh-panel-pad-x, 36rpx) 8rpx; }
 .pick__row { gap: 16rpx; min-height: 96rpx; padding: 0 var(--sh-panel-pad-x, 36rpx); border-top: var(--sh-hairline-soft); }
-.pick__cur { color: var(--sh-primary); }
 /* 搜索框在面板上：面板就是 surface 底，搜索框得换成输入框那一档的底色才看得出是个框 */
 .pick__search { margin-top: 16rpx; background: var(--sh-faint); }
 .cat-lv__none { gap: 16rpx; margin-top: 8rpx; }

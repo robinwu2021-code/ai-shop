@@ -390,7 +390,7 @@ export default {
     reRecognize: "重识图片",
     recognizeDone: "已识别并填入",
     parsing: "识别中…",
-    parsePh: "粘贴商品文字，可识别名称、价格、规格、参数、限购地区",
+    parsePh: "粘贴商品文字",
     parseFail: "识别失败,请重试",
     parsePrice: "价格",
     parseNoShipHint: "已填入限购地区。运费仍需在运费模板设置",

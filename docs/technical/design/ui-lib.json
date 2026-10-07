@@ -453,7 +453,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 43,
+        "b-app": 44,
         "c-app": 45
       }
     },
@@ -3650,9 +3650,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 476,
-      "localSelectors": 92,
-      "localCssLines": 358,
+      "libClassHits": 477,
+      "localSelectors": 91,
+      "localCssLines": 357,
       "rolled": []
     },
     {

@@ -65,6 +65,16 @@ function decompress(zipPath: string): Promise<string[]> {
   });
 }
 
+let zipSupported = false;
+// #ifdef APP-PLUS
+zipSupported = true;
+// #endif
+/**
+ * 这一端能不能导入压缩包（解压是 App 原生能力）。页面据此决定显不显示入口 ——
+ * 条件编译只留在 ports/ 里，页面不写 #ifdef（design-tokens 守卫）。
+ */
+export const ZIP_IMPORT_SUPPORTED = zipSupported;
+
 /** 选 zip → 解压 → 归类。返回的是本地临时路径，交给上层逐张上传。 */
 export async function importZipMedia(): Promise<ZipMedia> {
   const zip = await pickZip();

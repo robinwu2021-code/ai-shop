@@ -497,6 +497,9 @@ export interface Goods {
 export type SaleMode = "NORMAL" | "ACTIVITY_ONLY";
 /** 规格模板归属：平台统一维护 / 商家自存 */
 export type SpecTemplateScope = "PLATFORM" | "MERCHANT";
+
+/** 参数维度的取值类型：ENUM 选值 / QUANT 数量 / TEXT 自由文本（配料、厂址这类每件唯一的字段）。缺省视同 ENUM */
+export type SpecValueType = "ENUM" | "QUANT" | "TEXT";
 /** 商品在商家侧的状态。C 端只看得到 ON_SALE */
 /**
  * 商品状态。
@@ -639,7 +642,7 @@ export interface SpecTemplate {
    * <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入，
    * 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。
    */
-  valueType?: "ENUM" | "QUANT" | "TEXT";
+  valueType?: SpecValueType;
   /** 该维度的可选项 */
   options: SpecOption[];
   /** scope=MERCHANT 时归属的商家 */

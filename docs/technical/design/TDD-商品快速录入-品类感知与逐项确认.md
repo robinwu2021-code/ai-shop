@@ -443,3 +443,23 @@ POST /biz/goods/parse-text  {text: 用户原文, categoryNo: CAT120}
 - 库里**没有** `sh-btn--ghost`（`plan/index.vue` 的注释早就记过），上一版的「取消」一直是实心红；改用 `sh-btn--muted`
 - 两条自造件（`.quick__got` 换行横排、`.param__text` 手写 `flex:1;min-width:0`）HEAD 上已在 `ui-lib.json` 里却不在基线 ——
   前者随确认区一起删，后者换成 `.sh-fill`。自造件回到基线 1 条
+
+### 推不上去的那 66 个提交（同日补）
+
+整套 pre-push 跑下来，packages/shared 守卫红了一串，**几乎都在这条线的两个页面上** ——
+66 个提交一直没推，pre-push 从没跑到这里。逐条处理：
+
+| 守卫 | 落在哪 | 处理 |
+|---|---|---|
+| wire-alignment：`/biz/goods/save` 前端没发 `restrictedRegions` / `entrySource` | `http.ts` | **真缺陷**，见《TDD-商品编辑页-录入落点与发布历史》§11 第 5 条 |
+| 页面里不写条件编译 | goods-edit 两处 `#ifdef APP-PLUS` | 下沉成 `ports/zip-import.ts` 的 `ZIP_IMPORT_SUPPORTED` |
+| 主色当文字色 / 主色文字自写 | 参数列表「当前」 | 用 `.txt-primary` |
+| 写死颜色 / 散写投影 / 裸写时长 | 详情图拖拽行 | `--sh-shadow-float` / `--sh-t-fast` |
+| 类名不存在 | `is-loading` | 删掉（按钮文字已变「识别中…」且置灰） |
+| 短位文案超 16 字 | `goods.parsePh` | 「粘贴商品文字」（placeholder 只说字段名） |
+| 行尾箭头一律 22rpx | goods-revision 差异里的 `→` | 是「旧值 → 新值」的方向指示，登记进 DIRECTION（与 goods-publish 同形） |
+| 枚举未登记 / interface 内联联合 | `GoodsRevisionStatus` · `GoodsEntrySource` · `valueType` | 登记三条；`valueType` 提成 `SpecValueType` |
+| 字段没说明 | `ParseTextReq` | 补 JSDoc |
+| /biz 资源段要单数 | `/revisions/{revisionNo}` 两条 | 已上线、已在装好的 App 里 —— 登记进 `known-plural-paths.txt`，下次商品域动契约时三条一起改 |
+
+剩下不在基线里的：ops 查询读到未登记数据域的表（`ProductStatsServiceImpl`，别的会话的），没动。

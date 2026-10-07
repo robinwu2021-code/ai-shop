@@ -1251,6 +1251,7 @@ describe("行尾箭头只有一个尺寸", () => {
   const DIRECTION: Record<string, string> = {
     "b-app/src/pages/transfer/index.vue": "从库位 → 到库位",
     "b-app/src/pages/goods-publish/index.vue": "旧值 → 新值",
+    "b-app/src/pages/goods-revision/index.vue": "某一版的差异：旧值 → 新值（与 goods-publish 同一形态）",
   };
   const SIZE = 22;
 

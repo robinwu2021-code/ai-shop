@@ -1366,6 +1366,8 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：
 
@@ -2156,8 +2158,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `text` | `string` | 是 | — |
-| `categoryNo` | `string` | 否 | — |
+| `text` | `string` | 是 | 商家贴进来的原文（商品描述、规格、价格、不发货地区混在一起都行），上限 2000 字 |
+| `categoryNo` | `string` | 否 | 当前选中的类目。给了才能把参数对到这个品类的标准参数；不给 = 参数都按自由参数回 |
 
 **出参**（`data`）
 
@@ -2241,6 +2243,8 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：
 
@@ -5761,7 +5765,7 @@ _无字段_
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
-| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
+| `valueType` | [`SpecValueType`](#specvaluetype) | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |
@@ -5846,7 +5850,7 @@ _无字段_
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
-| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
+| `valueType` | [`SpecValueType`](#specvaluetype) | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |
@@ -7776,6 +7780,17 @@ _无字段_
 | `minCount` | `number` | 是 | — |
 | `price` | `number` | 是 | — |
 
+### GoodsEntrySource
+
+这一版怎么录的。与后端 `prd_goods_revision.entry_source` 同一套取值
+
+枚举取值：
+
+- `MANUAL`
+- `QUICK_TEXT`
+- `ZIP`
+- `IMAGE`
+
 ### GoodsInvMode
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -8913,8 +8928,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `text` | `string` | 是 | — |
-| `categoryNo` | `string` | 否 | — |
+| `text` | `string` | 是 | 商家贴进来的原文（商品描述、规格、价格、不发货地区混在一起都行），上限 2000 字 |
+| `categoryNo` | `string` | 否 | 当前选中的类目。给了才能把参数对到这个品类的标准参数；不给 = 参数都按自由参数回 |
 
 ### Partial_Record_MarketId_number
 
@@ -9607,6 +9622,8 @@ _无字段_
 | `groupBuy` | `object`（见下） | 否 | 拼团档：起团人数 + 团价，要么都给要么都不给 |
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
+| `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：
 
@@ -9985,7 +10002,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `categoryType` | [`CategoryType`](#categorytype) | 否 | 平台模板按品类推荐；商家模板不限品类 |
 | `categoryNo` | `string` | 否 | 类目级模板的归属类目；**空 = 品类兜底**。 <p>端上靠它区分两层：类目级排在前面并标出来。不下发的话两批混在一起， 商家分不出哪个是「专门给这一类的」。 |
 | `name` | `string` | 是 | 规格维度名，如「重量」「香型」 |
-| `valueType` | `ENUM` \| `QUANT` \| `TEXT` | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
+| `valueType` | [`SpecValueType`](#specvaluetype) | 否 | 取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。 <p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。 |
 | `options` | [`SpecOption`](#specoption)\[\] | 是 | 该维度的可选项 |
 | `merchantNo` | `string` | 否 | scope=MERCHANT 时归属的商家 |
 | `primary` | `boolean` | 否 | **主维度**：选完类目该自动建出来的就是这一组（每个类目至多一个，守卫测住）。 <p>不下发的话端上只能靠「数组第一个」猜 —— 后端确实那么排，但那是巧合而非契约： 排序一改端上跟着错，症状是「自动建出来的是包装不是重量」，没有一处会报错。 <p>商家自存模板与品类兜底模板恒为 false：主维度是**类目绑定**上的判据， 那两条路不经过绑定表。 |
@@ -10017,6 +10034,16 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `valueNo` | `string` | 是 | 平台值池里的编号。**有它才参与筛选与跨店比较** |
 | `code` | `string` | 是 | 码值 |
 | `label` | `string` | 是 | 显示名 |
+
+### SpecValueType
+
+参数维度的取值类型：ENUM 选值 / QUANT 数量 / TEXT 自由文本（配料、厂址这类每件唯一的字段）。缺省视同 ENUM
+
+枚举取值：
+
+- `ENUM`
+- `QUANT`
+- `TEXT`
 
 ### SpuStd
 

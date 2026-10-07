@@ -6549,6 +6549,13 @@ components:
         - "PLATFORM"
         - "MERCHANT"
       description: "规格模板归属：平台统一维护 / 商家自存"
+    SpecValueType: 
+      type: "string"
+      enum: 
+        - "ENUM"
+        - "QUANT"
+        - "TEXT"
+      description: "参数维度的取值类型：ENUM 选值 / QUANT 数量 / TEXT 自由文本（配料、厂址这类每件唯一的字段）。缺省视同 ENUM"
     SpecOption: 
       type: "object"
       properties: 
@@ -6737,11 +6744,7 @@ components:
           type: "string"
           description: "规格维度名，如「重量」「香型」"
         valueType: 
-          type: "string"
-          enum: 
-            - "ENUM"
-            - "QUANT"
-            - "TEXT"
+          "$ref": "#/components/schemas/SpecValueType"
           description: "取值类型 ENUM / QUANT / TEXT；**缺省视同 ENUM**。\n\n<p>端上靠它分流录入：TEXT（配料、厂名厂址这类每件唯一的字段）渲染文本输入， 填的字直接成为参数 label、不入平台值池；ENUM/QUANT 照旧走选值 chip。"
         options: 
           type: "array"
@@ -10373,6 +10376,14 @@ components:
         saleMode: 
           "$ref": "#/components/schemas/SaleMode"
           description: "销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。"
+        restrictedRegions: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。\n\n<p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。"
+        entrySource: 
+          "$ref": "#/components/schemas/GoodsEntrySource"
+          description: "这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」）"
       required: 
         - "title"
         - "subtitle"
@@ -10453,6 +10464,14 @@ components:
         - "stock"
       additionalProperties: false
       description: "SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是矩阵的坐标，错位就会出现「5 斤卖成 10 斤的价」。"
+    GoodsEntrySource: 
+      type: "string"
+      enum: 
+        - "MANUAL"
+        - "QUICK_TEXT"
+        - "ZIP"
+        - "IMAGE"
+      description: "这一版怎么录的。与后端 `prd_goods_revision.entry_source` 同一套取值"
     ToggleGoodsReq: 
       type: "object"
       properties: 
@@ -10609,8 +10628,10 @@ components:
       properties: 
         text: 
           type: "string"
+          description: "商家贴进来的原文（商品描述、规格、价格、不发货地区混在一起都行），上限 2000 字"
         categoryNo: 
           type: "string"
+          description: "当前选中的类目。给了才能把参数对到这个品类的标准参数；不给 = 参数都按自由参数回"
       required: 
         - "text"
       additionalProperties: false
