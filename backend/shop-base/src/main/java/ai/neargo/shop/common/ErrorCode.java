@@ -171,6 +171,17 @@ public enum ErrorCode {
      * 查不到店主的 mch_account。前端据此引导去入驻（「我也想开店」），而不是停在空白页。
      */
     NOT_A_MERCHANT(10470, "err.not_a_merchant"),
+    /**
+     * 切商家端时这个账号还没有已验证的手机号 —— **判不了店员身份**。
+     *
+     * <p>店主靠 {@code mch_account.user_no} 认，不需要号；而店员是店主在后台录手机号加进来的，
+     * 只能拿本人的号去匹配 {@code login_phone}。微信登录没授权手机号时就落到这里。
+     *
+     * <p>与 {@link #NOT_A_MERCHANT} 分开，是因为**端上该给的出路不同**：
+     * 这条要引导去「绑手机号」（绑完店员就能直接进），那条才是「去开店」。
+     * 合成一个码的话，店员会被告知「你还不是商家，去开店吧」—— 而他其实已经是店员了。
+     */
+    PHONE_REQUIRED_FOR_MERCHANT(10471, "err.merchant.phone_required"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。

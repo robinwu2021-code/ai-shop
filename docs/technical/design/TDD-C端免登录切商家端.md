@@ -34,7 +34,10 @@
 - 手机号取 `AuthServiceImpl#phoneOf(userNo)`（查 `usr_identity` 的 PHONE 凭证，**完整号**）：
   - 取请求里带来的号 = 报上任意手机号就能登进那个人的店；
   - 取脱敏号 = `where login_phone=?` 永远查不到，表现是「切过去变成不是商家」。
-- 微信登录没授权手机号时 `phoneOf` 为空 → 判不了店员，落 `NOT_A_MERCHANT`（与 login 同口径）。
+- 微信登录没授权手机号时 `phoneOf` 为空 → **判不了店员身份**，报单独的
+  `PHONE_REQUIRED_FOR_MERCHANT(10471)`，端上引导「去绑手机号」。
+  **不能并进 `NOT_A_MERCHANT`**：那会对一个已经是店员的人说「你还不是商家，去开店吧」——
+  而他要做的只是绑个号。两条码对应端上两条不同的出路（`need-phone` / `not-merchant`）。
 - **不并进 `StaffLoginPhonePort`**：那个接口刻意只回布尔、「不回是哪个账号」，为的是不让人靠它枚举
   某手机号是不是商家；签发会话塞进去会破掉那条边界，故单开 `StaffSessionPort`（带 `NONE` fail-closed 兜底）。
 
@@ -107,6 +110,7 @@ POST /mp/user/switch-to-merchant   (Authorization: Bearer ctk_...)
 
 | AC6 | `SwitchToMerchantTest#staffFallsBackToPhoneMatch`：解析不到店主时按本人手机号匹配到店员会话 | ✅ `Tests run: 4, Failures: 0` | ✅ 把 `if (phone != null…)` 改成 `if (false)` → **只有店员那条**变红，其余三条仍绿 |
 | AC6 | `SwitchToMerchantTest#ownerWinsOverStaff`：两个身份都有时走店主，`verify(never())` 不去问手机号 | ✅ 同上 | — |
+| AC7 | `SwitchToMerchantTest#noPhoneAsksToBindRatherThanApply`：没绑号 → `PHONE_REQUIRED_FOR_MERCHANT`（不是 `NOT_A_MERCHANT`），且不去查店员表 | ✅ `Tests run: 5, Failures: 0` | — |
 
 三组在**干净 HEAD 副本 + 仅本次改动**上一起跑：`BUILD SUCCESS`。
 

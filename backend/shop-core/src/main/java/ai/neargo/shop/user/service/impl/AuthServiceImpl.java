@@ -270,11 +270,17 @@ public class AuthServiceImpl implements AuthService {
          * 微信登录没授权手机号时 phoneOf 取不到 —— 那种情况下判不了店员，落到下面的 NOT_A_MERCHANT。
          */
         String phone = phoneOf(userNo);
-        if (phone != null && !phone.isBlank()) {
-            java.util.Optional<String> staffToken = staffSessionPort.issueStaffSession(phone);
-            if (staffToken.isPresent()) {
-                return staffToken.get();
-            }
+        /*
+         * **没号与不是商家要分开报。** 没号时我们根本没法判他是不是店员 ——
+         * 报 NOT_A_MERCHANT 会对一个已经是店员的人说「你还不是商家，去开店吧」，
+         * 而他要做的只是绑个号。两条码对应端上两条不同的出路。
+         */
+        if (phone == null || phone.isBlank()) {
+            throw new BizException(ErrorCode.PHONE_REQUIRED_FOR_MERCHANT);
+        }
+        java.util.Optional<String> staffToken = staffSessionPort.issueStaffSession(phone);
+        if (staffToken.isPresent()) {
+            return staffToken.get();
         }
         throw new BizException(ErrorCode.NOT_A_MERCHANT);
     }

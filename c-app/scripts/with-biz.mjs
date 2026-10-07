@@ -206,8 +206,14 @@ function generated() {
     `  { t: "商品上下架", d: "商品列表与上架开关", url: ROUTES.goods },\n` +
     `  { t: "售后", d: "处理退款与售后申请", url: ROUTES.afterSale },\n` +
     `];\n` +
-    `/** 凭 C 端令牌换商家令牌。换不到（含 NOT_A_MERCHANT）一律回 null */\n` +
-    `function exchange(ctk: string): Promise<string | null> {\n` +
+    `/**\n` +
+    ` * 后端两个码对应端上两条不同的出路，别合并：\n` +
+    ` *   10470 NOT_A_MERCHANT            → 真不是商家，引导「去开店」\n` +
+    ` *   10471 PHONE_REQUIRED_FOR_MERCHANT → 没绑号判不了店员身份，引导「去绑手机号」\n` +
+    ` */\n` +
+    `const PHONE_REQUIRED = 10471;\n` +
+    `/** 凭 C 端令牌换商家令牌。回 { token } 或 { code }（码用来决定引导去哪） */\n` +
+    `function exchange(ctk: string): Promise<{ token?: string; code?: number }> {\n` +
     `  return new Promise((resolve) => {\n` +
     `    uni.request({\n` +
     `      url: (import.meta.env.VITE_API_BASE || "") + "/mp/user/switch-to-merchant",\n` +
@@ -215,9 +221,10 @@ function generated() {
     `      header: { Authorization: "Bearer " + ctk },\n` +
     `      success: (res) => {\n` +
     `        const body = res.data as { code?: number; data?: { token?: string } };\n` +
-    `        resolve(body && body.code === 0 && body.data && body.data.token ? body.data.token : null);\n` +
+    `        if (body && body.code === 0 && body.data && body.data.token) resolve({ token: body.data.token });\n` +
+    `        else resolve({ code: body ? body.code : undefined });\n` +
     `      },\n` +
-    `      fail: () => resolve(null),\n` +
+    `      fail: () => resolve({}),\n` +
     `    });\n` +
     `  });\n` +
     `}\n` +
@@ -226,9 +233,13 @@ function generated() {
     `  if (m.isLogin) { state.value = "ready"; return; }   // 已有商家会话，直接用\n` +
     `  const ctk = uni.getStorageSync(C_STORAGE.token) as string;\n` +
     `  if (!ctk) { state.value = "need-c-login"; return; }\n` +
-    `  const btk = await exchange(ctk);\n` +
-    `  if (!btk) { state.value = "not-merchant"; return; }\n` +
-    `  uni.setStorageSync(BIZ_STORAGE.token, btk);\n` +
+    `  const r = await exchange(ctk);\n` +
+    `  if (!r.token) {\n` +
+    `    // 没绑号 ≠ 不是商家：店员绑完号就能进，劝他「去开店」是答非所问\n` +
+    `    state.value = r.code === PHONE_REQUIRED ? "need-phone" : "not-merchant";\n` +
+    `    return;\n` +
+    `  }\n` +
+    `  uni.setStorageSync(BIZ_STORAGE.token, r.token);\n` +
     `  await m.restore();\n` +
     `  state.value = m.isLogin ? "ready" : "not-merchant";\n` +
     `});\n` +
@@ -246,6 +257,11 @@ function generated() {
     `        </view>\n` +
     `        <sh-icon name="chevronRight" :size="36" />\n` +
     `      </view>\n` +
+    `    </view>\n` +
+    `    <view v-else-if="state === 'need-phone'" class="be__hint">\n` +
+    `      <text class="be__t">先绑手机号</text>\n` +
+    `      <text class="be__d">店里给你开的账号认的是手机号。在「我的」绑好之后，回来就能直接进。</text>\n` +
+    `      <view class="sh-btn sh-btn--primary be__btn" @tap="goApply">去绑手机号</view>\n` +
     `    </view>\n` +
     `    <view v-else-if="state === 'not-merchant'" class="be__hint">\n` +
     `      <text class="be__t">你还不是商家</text>\n` +

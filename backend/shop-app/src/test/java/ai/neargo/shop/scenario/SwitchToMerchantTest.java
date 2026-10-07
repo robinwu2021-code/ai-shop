@@ -66,7 +66,16 @@ class SwitchToMerchantTest {
     @Test
     @DisplayName("★ 非商家 → NOT_A_MERCHANT（消融：去掉判空会误签一个空商家会话）")
     void nonMerchantThrows() {
+        // 有号、但号不在任何 mch_account.login_phone 里 —— 这才是「确实不是商家」。
+        // 不插号的话会先撞 PHONE_REQUIRED_FOR_MERCHANT，测的就不是这条了。
+        UsrIdentity phoneId = new UsrIdentity();
+        phoneId.setUserNo("U-PLAIN");
+        phoneId.setIdentityType(IdentityType.PHONE);
+        phoneId.setIdentityValue("13900000002");
+        identityMapper.insert(phoneId);
+
         when(bizResolver.resolve("U-PLAIN")).thenReturn(BizContext.NONE);
+        when(staffSessionPort.issueStaffSession("13900000002")).thenReturn(java.util.Optional.empty());
 
         assertThatThrownBy(() -> authService.switchToMerchant("U-PLAIN"))
                 .isInstanceOf(BizException.class)
@@ -99,6 +108,26 @@ class SwitchToMerchantTest {
                 .thenReturn(java.util.Optional.of("btk_staff_session"));
 
         assertThat(authService.switchToMerchant("U-STAFF")).isEqualTo("btk_staff_session");
+    }
+
+    /**
+     * 微信登录没授权手机号的人：判不了店员身份。
+     * 这时必须报「去绑号」而不是「你还不是商家」—— 后者会把一个已经是店员的人劝去开店。
+     */
+    @Test
+    @DisplayName("★ 没绑手机号 → PHONE_REQUIRED_FOR_MERCHANT（不是 NOT_A_MERCHANT）")
+    void noPhoneAsksToBindRatherThanApply() {
+        when(bizResolver.resolve("U-NOPHONE")).thenReturn(BizContext.NONE);
+        // U-NOPHONE 在 usr_identity 里没有 PHONE 凭证 —— 不插就是这个前提
+
+        assertThatThrownBy(() -> authService.switchToMerchant("U-NOPHONE"))
+                .isInstanceOf(BizException.class)
+                .extracting(e -> ((BizException) e).errorCode())
+                .isEqualTo(ErrorCode.PHONE_REQUIRED_FOR_MERCHANT);
+
+        // 没号时根本不该去查店员表（查了也只能拿空号去匹配）
+        org.mockito.Mockito.verify(staffSessionPort, org.mockito.Mockito.never())
+                .issueStaffSession(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
