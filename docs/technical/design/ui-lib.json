@@ -2782,7 +2782,7 @@
       "name": "sh-tabbar",
       "file": "packages/ui/src/components/sh-tabbar.vue",
       "scope": "跨端",
-      "lines": 146,
+      "lines": 161,
       "props": [
         "active: string"
       ],
