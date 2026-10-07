@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 117,
         "c-app": 90
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 63,
+        "b-app": 66,
         "c-app": 14
       }
     },
@@ -977,7 +977,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 11,
+        "b-app": 14,
         "c-app": 2
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 166,
+        "b-app": 168,
         "c-app": 89
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 32,
+        "b-app": 35,
         "c-app": 17
       }
     },
@@ -3650,9 +3650,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 477,
-      "localSelectors": 91,
-      "localCssLines": 357,
+      "libClassHits": 491,
+      "localSelectors": 92,
+      "localCssLines": 358,
       "rolled": []
     },
     {

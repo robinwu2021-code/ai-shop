@@ -10623,6 +10623,98 @@ components:
         - "restrictedRegions"
         - "confidence"
       additionalProperties: false
+    ZipPlanSource: 
+      type: "string"
+      enum: 
+        - "LLM"
+        - "RULE"
+        - "MIXED"
+      description: "压缩包分类的来源：全部来自模型 / 全部按目录规则 / 两者都有"
+    ZipPlanFile: 
+      type: "object"
+      properties: 
+        path: 
+          type: "string"
+          description: "包里的相对路径（目录名、文件名就是模型分类的主要线索）"
+        width: 
+          type: "number"
+          description: "图片宽，px；txt 或读不到时不传"
+        height: 
+          type: "number"
+          description: "图片高，px；长图（高明显大于宽）倾向详情"
+      required: 
+        - "path"
+      additionalProperties: false
+      description: "压缩包里的一个文件"
+    ZipPlanReq: 
+      type: "object"
+      properties: 
+        title: 
+          type: "string"
+          description: "商品名，帮模型认出与这件货无关的图；可空"
+        categoryNo: 
+          type: "string"
+          description: "当前类目；可空"
+        files: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ZipPlanFile"
+          description: "文件清单，系统文件已滤掉；超过 200 个服务端拒绝"
+        txtPreview: 
+          type: "string"
+          description: "根目录 txt 的前 500 字，帮模型判断它是不是商品文案；可空"
+        ruleHint: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ZipPick"
+          description: "目录规则的分法，每个文件一条：模型那一条不合格时用它"
+      required: 
+        - "files"
+        - "ruleHint"
+      additionalProperties: false
+      description: "压缩包分类请求（TDD-商品压缩包导入 AC11/AC12）"
+    ZipPick: 
+      type: "object"
+      properties: 
+        path: 
+          type: "string"
+          description: "包里的相对路径（原样）"
+        target: 
+          "$ref": "#/components/schemas/ZipTarget"
+          description: "去向：MAIN 主图 / DETAIL 详情 / TEXT 文案 / IGNORE 不导入"
+        order: 
+          type: "number"
+          description: "同一去向内的顺序，从 1 起；TEXT / IGNORE 为 0"
+      required: 
+        - "path"
+        - "target"
+        - "order"
+      additionalProperties: false
+      description: "一个文件的去向。`order` 在同一去向内从 1 起；TEXT / IGNORE 为 0"
+    ZipTarget: 
+      type: "string"
+      enum: 
+        - "MAIN"
+        - "DETAIL"
+        - "TEXT"
+        - "IGNORE"
+      description: "压缩包文件的标准去向：主图 / 详情 / 商品文案 / 不导入"
+    ZipPlan: 
+      type: "object"
+      properties: 
+        source: 
+          "$ref": "#/components/schemas/ZipPlanSource"
+          description: "这份分法来自哪里"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ZipPick"
+          description: "每个文件一条，去向与顺序"
+      required: 
+        - "source"
+        - "items"
+      additionalProperties: false
+      description: "压缩包分类结果"
     ParseTextReq: 
       type: "object"
       properties: 
@@ -14322,6 +14414,40 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/ParseTextReq"
+  "/biz/goods/zip-plan": 
+    post: 
+      operationId: "mZipPlan"
+      summary: "压缩包文件归到主图/详情/文案（模型为主、目录规则兜底）"
+      tags: 
+        - "goods"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ZipPlan"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/ZipPlanReq"
   "/biz/category/tree": 
     get: 
       operationId: "mCategoryTree"

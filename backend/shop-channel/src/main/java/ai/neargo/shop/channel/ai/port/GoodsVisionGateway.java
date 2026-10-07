@@ -266,6 +266,111 @@ public class GoodsVisionGateway implements GoodsVisionPort {
                 {"name":"","params":[{"name":"单果重量","value":"140g+"},{"name":"净重","value":"4.5斤"}],"priceYuan":10,"fulfillment":["EXPRESS"],"courier":"圆通","provinces":["新疆维吾尔自治区","西藏自治区","海南省"],"confidence":0.9}""";
     }
 
+    /**
+     * 压缩包文件结构 → 标准结构（TDD-商品压缩包导入 AC11）。只发路径与宽高，不发图片。
+     *
+     * <p>token 按文件数给：一条输出约 40 token，200 个文件也装得下。失败一律 null，调用方全按规则。
+     */
+    @Override
+    public java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> mapZip(
+            String title, String category,
+            java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipFile> files, String txtPreview) {
+        if (!isEnabled() || files == null || files.isEmpty()) {
+            return null;
+        }
+        try {
+            var body = Map.of(
+                    "model", model,
+                    "max_tokens", Math.min(8000, 200 + 60 * files.size()),
+                    "temperature", 0,
+                    "chat_template_kwargs", Map.of("enable_thinking", false),
+                    "messages", List.of(Map.of(
+                            "role", "user",
+                            "content", zipPrompt(title, category, files, txtPreview))));
+            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .header("Content-Type", "application/json");
+            if (!apiKey.isBlank()) {
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            var resp = http.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                log.warn("压缩包分类失败：HTTP {} {}", resp.statusCode(), abbreviate(resp.body()));
+                return null;
+            }
+            String content = json.readTree(resp.body())
+                    .path("choices").path(0).path("message").path("content").asText("");
+            return parseZip(content);
+        } catch (Exception e) {
+            log.warn("压缩包分类异常：{}", e.toString());
+            return null;
+        }
+    }
+
+    private String zipPrompt(String title, String category,
+                             java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipFile> files,
+                             String txtPreview) {
+        var sb = new StringBuilder();
+        sb.append("你在帮商家整理一件商品的图片压缩包。按文件的路径（目录名、文件名）与宽高，")
+                .append("把每个文件归到下面四类之一，只输出 JSON。\n\n")
+                .append("MAIN   主图：商品方图（宽高接近 1:1），白底、正面、细节、场景都算；第一张是封面\n")
+                .append("DETAIL 详情：详情页长图（高明显大于宽），按阅读顺序\n")
+                .append("TEXT   文案：商品介绍的 .txt 文件\n")
+                .append("IGNORE 不导入：资质证照、检测报告、缩略图、重复的、和这件商品无关的\n\n")
+                .append("规则：目录名与文件名的意思优先（如「首图」「白底」「主图」→MAIN，「长图」「详情」→DETAIL，")
+                .append("「资质」「证书」「报告」→IGNORE）；名字看不出时看宽高；")
+                .append("文件名里的数字决定顺序（2 在 10 前面）；「封面」「首图」或序号最小的那张标 cover。\n\n");
+        if (title != null && !title.isBlank()) {
+            sb.append("商品：").append(title.trim()).append("\n");
+        }
+        if (category != null && !category.isBlank()) {
+            sb.append("类目：").append(category).append("\n");
+        }
+        sb.append("文件（路径 · 宽×高）：\n");
+        for (var f : files) {
+            sb.append(f.path());
+            if (f.width() != null && f.height() != null) {
+                sb.append(" · ").append(f.width()).append("×").append(f.height());
+            }
+            sb.append("\n");
+        }
+        if (txtPreview != null && !txtPreview.isBlank()) {
+            String t = txtPreview.length() > 500 ? txtPreview.substring(0, 500) : txtPreview;
+            sb.append("\ntxt 开头：").append(t.replace("\n", " ")).append("\n");
+        }
+        sb.append("\n输出：{\"files\":[{\"path\":\"原样照抄\",\"target\":\"MAIN|DETAIL|TEXT|IGNORE\",")
+                .append("\"order\":同类内从1起的序号,\"cover\":true|false}]}，每个文件恰好一条，路径一个字都不改。");
+        return sb.toString();
+    }
+
+    /** 解析压缩包分类的 JSON（容忍 ``` 代码块）。逐条校验交给调用方，这里只管形状 */
+    private java.util.List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> parseZip(String content) {
+        String s = content == null ? "" : content.trim();
+        int start = s.indexOf('{');
+        int end = s.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            log.warn("压缩包分类：返回体里没有 JSON —— {}", abbreviate(content));
+            return null;
+        }
+        try {
+            var out = new java.util.ArrayList<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick>();
+            for (var f : json.readTree(s.substring(start, end + 1)).path("files")) {
+                String path = f.path("path").asText("").trim();
+                if (!path.isEmpty()) {
+                    out.add(new ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick(
+                            path, f.path("target").asText("").trim().toUpperCase(),
+                            f.path("order").asInt(0), f.path("cover").asBoolean(false)));
+                }
+            }
+            return out;
+        } catch (Exception e) {
+            log.warn("压缩包分类：JSON 解析失败 —— {}", abbreviate(content));
+            return null;
+        }
+    }
+
     /** 解析文字抽取的 JSON（容忍 ``` 代码块，同 {@link #parse}）。 */
     private ai.neargo.shop.spi.product.GoodsVisionPort.TextExtract parseExtract(String content) {
         String s = content == null ? "" : content.trim();

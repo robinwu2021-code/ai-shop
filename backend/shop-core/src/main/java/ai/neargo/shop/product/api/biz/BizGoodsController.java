@@ -657,24 +657,65 @@ public class BizGoodsController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
     @PostMapping("/biz/goods/describe")
     public DescribeVO describe(@RequestBody DescribeReq req) {
-        // 类目路径喂中文名而不是编号：模型认得「食品生鲜/水果」，不认得 CAT120
+        String category = categoryPath(req.categoryNo());
+        String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category);
+        return new DescribeVO(text == null ? "" : text, suggestParams(req, category));
+    }
+
+    /**
+     * 类目路径的中文名（「食品生鲜/水果」）。喂给模型用中文名而不是编号：模型认得前者，不认得 CAT120。
+     * 只认二级、三级类目（一级不是可建商品的类目）；查不到返回空串。
+     */
+    private String categoryPath(String categoryNo) {
         String category = "";
-        if (req.categoryNo() != null && !req.categoryNo().isBlank()) {
+        if (categoryNo != null && !categoryNo.isBlank()) {
             for (var lv1 : categoryService.tree()) {
                 for (var lv2 : lv1.children()) {
-                    if (lv2.categoryNo().equals(req.categoryNo())) {
+                    if (lv2.categoryNo().equals(categoryNo)) {
                         category = lv1.name() + "/" + lv2.name();
                     }
                     for (var lv3 : lv2.children()) {
-                        if (lv3.categoryNo().equals(req.categoryNo())) {
+                        if (lv3.categoryNo().equals(categoryNo)) {
                             category = lv1.name() + "/" + lv2.name() + "/" + lv3.name();
                         }
                     }
                 }
             }
         }
-        String text = vision.describe(req.imageUrl(), req.title(), req.subtitle(), category);
-        return new DescribeVO(text == null ? "" : text, suggestParams(req, category));
+        return category;
+    }
+
+    /** 一次最多看多少个文件。再多就不是「一件商品的图」了，模型的输出也装不下 */
+    static final int ZIP_MAX_FILES = 200;
+
+    /**
+     * 压缩包的文件结构 → 标准结构（TDD-商品压缩包导入 AC11/AC12）：主图 / 详情 / 文案 / 不导入。
+     *
+     * <p><b>默认交给模型</b>：目录叫「01-首图」「长图」「白底」都能分对 —— 规则只认「主图/详情」。
+     * 模型只看路径与宽高，不看图片内容，所以不用先上传。
+     *
+     * <p><b>逐文件兜底</b>：模型的分法逐个校验（{@link ai.neargo.shop.product.dto.ZipPlanning}），
+     * 不合格的那一个用端上随请求带来的规则分法。模型关着、超时、整段不是 JSON，就全按规则 ——
+     * 导入不因为模型挂掉而失败。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
+    @PostMapping("/biz/goods/zip-plan")
+    public ZipPlanVO zipPlan(@RequestBody ZipPlanReq req) {
+        List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipFile> files = req.files() == null ? List.of()
+                : req.files().stream()
+                        .filter(f -> f != null && f.path() != null && !f.path().isBlank())
+                        .map(f -> new ai.neargo.shop.spi.product.GoodsVisionPort.ZipFile(
+                                f.path(), f.width(), f.height()))
+                        .toList();
+        if (files.size() > ZIP_MAX_FILES) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        }
+        List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> llm = files.isEmpty() ? null
+                : vision.mapZip(req.title(), categoryPath(req.categoryNo()), files, req.txtPreview());
+        var plan = ai.neargo.shop.product.dto.ZipPlanning.resolve(files, llm, req.ruleHint());
+        return new ZipPlanVO(plan.source(), plan.items().stream()
+                .map(i -> new ZipPlanVO.Item(i.path(), i.target(), i.order()))
+                .toList());
     }
 
     /**
@@ -946,6 +987,30 @@ public class BizGoodsController {
     }
 
     public record ParseTextReq(String text, String categoryNo) {
+    }
+
+    /**
+     * 压缩包分类请求。**对齐 b-app 契约 ZipPlanReq**。
+     *
+     * @param ruleHint 端上规则（classifyZip）的分法：模型那一条不合格时用它
+     */
+    public record ZipPlanReq(String title, String categoryNo, List<ZipFileReq> files, String txtPreview,
+                             List<ai.neargo.shop.spi.product.GoodsVisionPort.ZipPick> ruleHint) {
+    }
+
+    /** 压缩包里的一个文件：相对路径 + 宽高（txt、读不到时为空） */
+    public record ZipFileReq(String path, Integer width, Integer height) {
+    }
+
+    /**
+     * 压缩包分类结果。**对齐 b-app 契约 ZipPlan**。
+     *
+     * @param source LLM（全部来自模型）/ RULE（全部按规则）/ MIXED
+     * @param items  每个文件一条：去向 MAIN / DETAIL / TEXT / IGNORE，同一去向内的顺序从 1 起
+     */
+    public record ZipPlanVO(String source, List<Item> items) {
+        public record Item(String path, String target, int order) {
+        }
     }
 
     /**

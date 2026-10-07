@@ -9008,6 +9008,54 @@
           "ar": "جارٍ تحميل طرق التوصيل…"
         },
         {
+          "key": "goods.clear",
+          "zh-CN": "清空",
+          "en": "Clear",
+          "ar": "مسح"
+        },
+        {
+          "key": "goods.clearAllN",
+          "zh-CN": "商品图 {m} 张 · 详情图 {d} 张，保存后生效",
+          "en": "Product {m} · detail {d}, takes effect when saved",
+          "ar": "المنتج {m} · التفاصيل {d}، يسري بعد الحفظ"
+        },
+        {
+          "key": "goods.clearAllTitle",
+          "zh-CN": "清空全部图片？",
+          "en": "Clear all images?",
+          "ar": "مسح كل الصور؟"
+        },
+        {
+          "key": "goods.clearDetailTitle",
+          "zh-CN": "清空详情图？",
+          "en": "Clear detail images?",
+          "ar": "مسح صور التفاصيل؟"
+        },
+        {
+          "key": "goods.clearImages",
+          "zh-CN": "清空图片",
+          "en": "Clear images",
+          "ar": "مسح الصور"
+        },
+        {
+          "key": "goods.clearMainTitle",
+          "zh-CN": "清空商品图？",
+          "en": "Clear product images?",
+          "ar": "مسح صور المنتج؟"
+        },
+        {
+          "key": "goods.clearN",
+          "zh-CN": "{n} 张，保存后生效",
+          "en": "{n} images, takes effect when saved",
+          "ar": "{n} صور، يسري بعد الحفظ"
+        },
+        {
+          "key": "goods.clearOk",
+          "zh-CN": "清空",
+          "en": "Clear",
+          "ar": "مسح"
+        },
+        {
           "key": "goods.confirmAll",
           "zh-CN": "全选",
           "en": "Select all",
@@ -10604,6 +10652,18 @@
           "ar": "التسوية بالوزن الفعلي"
         },
         {
+          "key": "goods.zipImported",
+          "zh-CN": "已导入 商品图 {m} · 详情图 {d}",
+          "en": "Imported: product {m} · detail {d}",
+          "ar": "تم الاستيراد: المنتج {m} · التفاصيل {d}"
+        },
+        {
+          "key": "goods.zipImportedFull",
+          "zh-CN": "已导入 商品图 {m} · 详情图 {d}，{n} 张放不下",
+          "en": "Imported: product {m} · detail {d}; {n} did not fit",
+          "ar": "تم الاستيراد: المنتج {m} · التفاصيل {d}؛ {n} لم تتسع"
+        },
+        {
           "key": "goods.zipTextFound",
           "zh-CN": "压缩包里有一段文字",
           "en": "The zip contains some text",
@@ -10614,6 +10674,12 @@
           "zh-CN": "导入到文字识别",
           "en": "Send to text",
           "ar": "أرسل إلى النص"
+        },
+        {
+          "key": "goods.zipTooMany",
+          "zh-CN": "文件太多（{n} 个），一个压缩包最多 {max} 个",
+          "en": "Too many files ({n}); a zip can hold up to {max}",
+          "ar": "ملفات كثيرة ({n})؛ الحد الأقصى {max}"
         },
         {
           "key": "group.activity",
@@ -30254,6 +30320,55 @@
         "module": "shop-core"
       },
       {
+        "host": "ZipPlanning",
+        "name": "MAIN",
+        "value": "MAIN",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "DETAIL",
+        "value": "DETAIL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "TEXT",
+        "value": "TEXT",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "IGNORE",
+        "value": "IGNORE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "SOURCE_LLM",
+        "value": "LLM",
+        "zh": "全部来自模型 / 全部来自规则 / 都有",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "SOURCE_RULE",
+        "value": "RULE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ZipPlanning",
+        "name": "SOURCE_MIXED",
+        "value": "MIXED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdCategory",
         "name": "TEMPLATE_STANDARD",
         "value": "STANDARD",
@@ -35713,6 +35828,27 @@
           "FAILED"
         ],
         "zh": "提现状态。"
+      },
+      {
+        "name": "ZipPlanSource",
+        "client": "b-app",
+        "values": [
+          "LLM",
+          "RULE",
+          "MIXED"
+        ],
+        "zh": "压缩包分类的来源：全部来自模型 / 全部按目录规则 / 两者都有"
+      },
+      {
+        "name": "ZipTarget",
+        "client": "shared",
+        "values": [
+          "MAIN",
+          "DETAIL",
+          "TEXT",
+          "IGNORE"
+        ],
+        "zh": "压缩包文件的标准去向：主图 / 详情 / 商品文案 / 不导入"
       }
     ]
   },

@@ -19,6 +19,8 @@ import type {
   DescribeGoodsReq,
   DescribeGoodsRes,
   GoodsTextParse,
+  ZipPlan,
+  ZipPlanReq,
   ParseTextReq,
   DissolveGroupReq,
   EnrollReq,
@@ -434,6 +436,8 @@ export const httpApi: MerchantApi = {
     http.post<DescribeGoodsRes>(E.mDescribeGoods.path, req satisfies DescribeGoodsReq),
   mParseText: (text, categoryNo) =>
     http.post<GoodsTextParse>(E.mParseText.path, { text, categoryNo } satisfies ParseTextReq),
+  // 原样转发：请求体就是 ZipPlanReq，没有逐字段重建这一层（不会再丢字段）
+  mZipPlan: (req) => http.post<ZipPlan>(E.mZipPlan.path, req satisfies ZipPlanReq),
 
   mCategoryTree: () => http.get<Category[]>(E.mCategoryTree.path),
   mSpuStdSearch: (q) => http.get<SpuStd[]>(E.mSpuStdSearch.path, { ...q }),

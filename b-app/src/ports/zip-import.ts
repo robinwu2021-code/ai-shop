@@ -2,7 +2,7 @@
 //
 // **解压是 App 原生能力**（plus.zip），小程序/H5 没有，所以这里按端分叉。
 // 归类/排序是纯逻辑、已单测（zip-media.test.ts）；这个文件只管「把 zip 变成一堆本地路径」。
-import { classifyZip, type ZipMedia } from "@shared/ports/zip-media";
+import { classifyZip, dropJunk, type ZipMedia } from "@shared/ports/zip-media";
 
 // plus 是 App 运行时注入的全局，类型未在 @dcloudio 里导出，这里按 any 用
 declare const plus: any;
@@ -32,8 +32,8 @@ function pickZip(): Promise<string> {
   });
 }
 
-/** 把 zip 解压到临时目录，返回里面所有文件的本地路径（递归）。 */
-function decompress(zipPath: string): Promise<string[]> {
+/** 把 zip 解压到临时目录，返回解压目录与里面所有文件的本地绝对路径（递归）。 */
+function decompress(zipPath: string): Promise<{ root: string; paths: string[] }> {
   return new Promise((resolve, reject) => {
     // #ifdef APP-PLUS
     const target = "_doc/goods-zip-" + Date.now() + "/";
@@ -54,7 +54,8 @@ function decompress(zipPath: string): Promise<string[]> {
             }
           }, reject);
         };
-        walk(entry, () => resolve(out));
+        // 解压目录本身的绝对路径：清单里的路径减去它，才是包里的相对路径
+        walk(entry, () => resolve({ root: String(entry.fullPath).replace(/\/$/, ""), paths: out }));
       }, reject),
       reject,
     );
@@ -75,11 +76,46 @@ zipSupported = true;
  */
 export const ZIP_IMPORT_SUPPORTED = zipSupported;
 
-/** 选 zip → 解压 → 归类。返回的是本地临时路径，交给上层逐张上传。 */
-export async function importZipMedia(): Promise<ZipMedia> {
+/** 压缩包里的一个文件：**相对路径**（包里的样子）+ 图片的宽高（txt、读不到时为空） */
+export interface ZipEntry {
+  path: string;
+  width?: number;
+  height?: number;
+}
+
+/** 解压后的压缩包 */
+export interface ZipImport {
+  /** 解压目录的绝对路径（末尾不带 /）。上传、读 txt 时用 `${root}/${path}` */
+  root: string;
+  /** 相对路径清单，系统垃圾已滤掉 */
+  files: ZipEntry[];
+  /** 规则分类（按相对路径算 —— 「根目录的 txt」只有相对路径才判得出来） */
+  media: ZipMedia;
+}
+
+const IMAGE = /\.(jpe?g|png|webp|gif)$/i;
+
+/** 本地图片的宽高。读不到不报错 —— 宽高只是给模型的线索 */
+function sizeOf(path: string): Promise<{ width?: number; height?: number }> {
+  return new Promise((resolve) => {
+    uni.getImageInfo({
+      src: path,
+      success: (r) => resolve({ width: r.width, height: r.height }),
+      fail: () => resolve({}),
+    });
+  });
+}
+
+/** 选 zip → 解压 → 相对路径清单（带宽高）+ 规则分类。上传交给上层。 */
+export async function importZip(): Promise<ZipImport> {
   const zip = await pickZip();
-  const paths = await decompress(zip);
-  return classifyZip(paths);
+  const { root, paths } = await decompress(zip);
+  const rel = dropJunk(paths.map((p) => (p.startsWith(root + "/") ? p.slice(root.length + 1) : p)));
+  const files: ZipEntry[] = [];
+  for (const path of rel) {
+    files.push(IMAGE.test(path) ? { path, ...(await sizeOf(`${root}/${path}`)) } : { path });
+  }
+  return { root, files, media: classifyZip(rel) };
 }
 
 /** 读解压出的 txt 文本内容（商品文字）。App 用 plus.io；读失败返回 undefined。 */

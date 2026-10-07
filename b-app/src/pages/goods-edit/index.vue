@@ -583,7 +583,7 @@ const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
  */
 const {
   cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
-  addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
+  addImages, removePhoto, setCoverAt, tapPhoto, importFromZip, clearPhotos, clearDetail,
   addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
 } = useGoodsPhotos((guess) => applyGuess(guess));
 
@@ -729,9 +729,11 @@ const generating = ref(false);
  * <p>**覆盖前先问**：他可能已经写了几行，一键抹掉没有撤销。
  */
 async function onImportZip() {
-  // 导入压缩包：批量填图
-  const txt = await importFromZip();
-  markEntry("ZIP");
+  // 导入压缩包：模型分好主图/详情，往后累加（TDD-商品压缩包导入）
+  const r = await importFromZip({ title: title.value["zh-CN"], categoryNo: categoryNo.value });
+  if (!r) return;
+  if (r.added) markEntry("ZIP");
+  const txt = r.txt;
   /*
    * **两件事都不再自动做**（AC1/AC5）：
    *   - 带回的 txt 不灌进文字框 —— 放进 zipText，录入卡里给一行「导入到文字识别」
@@ -1023,6 +1025,26 @@ function pickTarget(dim: { dimNo: string; name: string } | null) {
   const r = retargetWithSwap(candidates.value, key, dim, currentParamLabels());
   candidates.value = r.rows;
   if (r.swappedWith) uni.showToast({ title: String(t("goods.blockSwapped")), icon: "none" });
+}
+
+/**
+ * 一键清空（TDD-商品压缩包导入 AC14/AC15）：主图、详情图各一个，录入卡上一个清两者。
+ * 先问一次 —— 一下抹掉十几张图；改的是表单，保存后才生效。清空 + 再导入 = 换一批图。
+ */
+async function confirmClear(which: "main" | "detail" | "all") {
+  const m = photos.value.length;
+  const d = detailImages.value.length;
+  const ok = await confirm({
+    title: String(t(which === "main" ? "goods.clearMainTitle"
+      : which === "detail" ? "goods.clearDetailTitle" : "goods.clearAllTitle")),
+    hint: String(which === "all" ? t("goods.clearAllN", { m, d })
+      : t("goods.clearN", { n: which === "main" ? m : d })),
+    confirmText: String(t("goods.clearOk")),
+    danger: true,
+  });
+  if (!ok) return;
+  if (which !== "detail") clearPhotos();
+  if (which !== "main") clearDetail();
 }
 
 /** 「粘贴」：读剪贴板放进文字框（追加，不覆盖他已经写的） */
@@ -2012,6 +2034,11 @@ async function save(thenSubmit = false) {
       <view class="sh-row quick__img">
         <text class="txt-sub sh-fill">{{ $t("goods.quickImage") }}</text>
         <text v-if="!cover" class="txt-caption sh-muted">{{ $t("goods.recognizeNeedImg") }}</text>
+        <text
+          v-if="photos.length || detailImages.length"
+          class="txt-sub sh-link sh-link--quiet sh-hit"
+          @tap="confirmClear('all')"
+        >{{ $t("goods.clearImages") }}</text>
         <text v-if="ZIP_IMPORT_SUPPORTED" class="sh-btn sh-btn--sm sh-btn--muted sh-hit" @tap="onImportZip">{{ $t("goods.importZip") }}</text>
         <text
           v-if="cover"
@@ -2053,10 +2080,13 @@ async function save(thenSubmit = false) {
         `sh-cover` 按值分流，不必逼商家先换实拍图才能改别的。
       -->
       <view class="field">
-        <view class="field__head">
-          <text class="txt-strong field__label">{{ $t("goods.photos") }}</text>
+        <view class="field__head imgs__head">
+          <text class="txt-strong field__label sh-fill">{{ $t("goods.photos") }}</text>
           <text class="sh-muted imgs__n">
             {{ $t("goods.imagesCount", { n: photos.length, m: PHOTO_LIMIT }) }}
+          </text>
+          <text v-if="photos.length" class="txt-sub sh-link sh-link--quiet sh-hit" @tap="confirmClear('main')">
+            {{ $t("goods.clear") }}
           </text>
           <text v-if="ZIP_IMPORT_SUPPORTED" class="sh-btn sh-btn--sm sh-btn--soft sh-hit" @tap="onImportZip">
             {{ $t("goods.importZip") }}
@@ -2227,10 +2257,13 @@ async function save(thenSubmit = false) {
         而不是只能全删重传。
       -->
       <view class="field">
-        <view class="field__head">
-          <text class="txt-strong field__label">{{ $t("goods.detailImages") }}</text>
+        <view class="field__head imgs__head">
+          <text class="txt-strong field__label sh-fill">{{ $t("goods.detailImages") }}</text>
           <text class="sh-muted imgs__n">
             {{ $t("goods.imagesCount", { n: detailImages.length, m: DETAIL_IMAGE_LIMIT }) }}
+          </text>
+          <text v-if="detailImages.length" class="txt-sub sh-link sh-link--quiet sh-hit" @tap="confirmClear('detail')">
+            {{ $t("goods.clear") }}
           </text>
         </view>
         <view class="dimgs">
@@ -3773,6 +3806,8 @@ async function save(thenSubmit = false) {
 .imgs__n {
   flex-shrink: 0;
 }
+/* 商品图/详情图的字段头：标签吃掉剩余宽度，计数、清空、导入按间距排在右边（四样东西 space-between 会被撑散） */
+.imgs__head { justify-content: flex-start; gap: 16rpx; }
 .kv .field__input {
   flex: 1;
   margin-top: 0;

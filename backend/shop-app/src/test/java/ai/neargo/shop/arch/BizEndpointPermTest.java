@@ -263,6 +263,7 @@ class BizEndpointPermTest {
         // 店员（只有 biz:stock）不该能改商品文案
         put("/biz/goods/describe", BizPerms.GOODS);
         put("/biz/goods/parse-text", BizPerms.GOODS);   // C-AC 快速录入·文字识别
+        put("/biz/goods/zip-plan", BizPerms.GOODS);     // 压缩包导入·文件结构归到主图/详情（TDD-商品压缩包导入）
         /*
          * 规格模板：**从 PUBLIC 移过来的**（2026-08-21）。
          *

@@ -28,6 +28,7 @@ import type {
   SaleMode,
 } from "@shared/types";
 import type { GoodsDraft, GoodsEntrySource } from "./contract";
+import type { ZipPick } from "@shared/ports/zip-media";
 
 // ---------------------------------------------------------------- 预约排期
 
@@ -276,6 +277,41 @@ export interface GoodsTextParse {
   restrictedRegions: string[];
   /** 1=识别出了东西，0=没认出来 */
   confidence: number;
+}
+
+/** 压缩包分类的来源：全部来自模型 / 全部按目录规则 / 两者都有 */
+export type ZipPlanSource = "LLM" | "RULE" | "MIXED";
+
+/** 压缩包里的一个文件 */
+export interface ZipPlanFile {
+  /** 包里的相对路径（目录名、文件名就是模型分类的主要线索） */
+  path: string;
+  /** 图片宽，px；txt 或读不到时不传 */
+  width?: number;
+  /** 图片高，px；长图（高明显大于宽）倾向详情 */
+  height?: number;
+}
+
+/** 压缩包分类请求（TDD-商品压缩包导入 AC11/AC12） */
+export interface ZipPlanReq {
+  /** 商品名，帮模型认出与这件货无关的图；可空 */
+  title?: string;
+  /** 当前类目；可空 */
+  categoryNo?: string;
+  /** 文件清单，系统文件已滤掉；超过 200 个服务端拒绝 */
+  files: ZipPlanFile[];
+  /** 根目录 txt 的前 500 字，帮模型判断它是不是商品文案；可空 */
+  txtPreview?: string;
+  /** 目录规则的分法，每个文件一条：模型那一条不合格时用它 */
+  ruleHint: ZipPick[];
+}
+
+/** 压缩包分类结果 */
+export interface ZipPlan {
+  /** 这份分法来自哪里 */
+  source: ZipPlanSource;
+  /** 每个文件一条，去向与顺序 */
+  items: ZipPick[];
 }
 
 export interface ParseTextReq {

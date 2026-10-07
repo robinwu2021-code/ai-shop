@@ -131,4 +131,37 @@ public interface GoodsVisionPort {
             this(name, value, null);
         }
     }
+
+    /**
+     * 把压缩包的**文件结构**归到标准结构（TDD-商品压缩包导入 AC11）：主图 / 详情 / 文案 / 不导入。
+     *
+     * <p>只看路径与宽高，不看图片内容 —— 不用先上传，也快。目录叫「01-首图」「长图」「白底」都行，
+     * 这正是规则（只认「主图/详情」）做不到的那一半。
+     *
+     * <p>失败/未启用返回 {@code null}；返回值**不可直接信**（模型会编路径、漏文件），
+     * 调用方逐文件校验，不合格的退回规则。
+     *
+     * @param title    商品名，可空
+     * @param category 类目名，可空
+     * @param files    文件清单（已滤掉系统文件）
+     * @param txtPreview 根目录 txt 的前若干字，可空 —— 帮模型判断它是不是商品文案
+     */
+    default java.util.List<ZipPick> mapZip(String title, String category,
+                                           java.util.List<ZipFile> files, String txtPreview) {
+        return null;
+    }
+
+    /** 压缩包里的一个文件。宽高读不到时为 null（txt 没有宽高） */
+    record ZipFile(String path, Integer width, Integer height) {
+    }
+
+    /**
+     * 一个文件的去向。
+     *
+     * @param target MAIN / DETAIL / TEXT / IGNORE
+     * @param order  同一去向内的顺序，从 1 起；IGNORE 为 0
+     * @param cover  是否适合当封面（只对 MAIN 有意义，调用方只取一张）
+     */
+    record ZipPick(String path, String target, int order, boolean cover) {
+    }
 }

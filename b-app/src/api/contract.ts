@@ -748,6 +748,8 @@ import type {
   DescribeGoodsReq,
   DescribeGoodsRes,
   GoodsTextParse,
+  ZipPlan,
+  ZipPlanReq,
   PickupSelfBuildReq,
   PointsRecordQuery,
   StaffLoginReq,
@@ -1320,6 +1322,8 @@ export interface MerchantApi {
   mDescribeGoods(req: DescribeGoodsReq): Promise<DescribeGoodsRes>;
   /** 从一段文字识别商品信息（规则+LLM）。全部是草稿，弹框确认后才落表单 */
   mParseText(text: string, categoryNo?: string): Promise<GoodsTextParse>;
+  /** 压缩包的文件结构归到标准结构（模型为主、目录规则兜底）。只看路径与宽高，不传图片 */
+  mZipPlan(req: ZipPlanReq): Promise<ZipPlan>;
 
   // ---- 类目（B-11.3.1）
   /**

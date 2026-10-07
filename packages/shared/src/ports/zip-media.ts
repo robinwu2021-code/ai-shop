@@ -74,3 +74,51 @@ export function classifyZip(paths: string[]): ZipMedia {
     txt: txts.length ? sortByNumber(txts)[0] : undefined,
   };
 }
+
+// ---------------------------------------------------------------- 交给模型分类（TDD-商品压缩包导入）
+
+/** 压缩包文件的标准去向：主图 / 详情 / 商品文案 / 不导入 */
+export type ZipTarget = "MAIN" | "DETAIL" | "TEXT" | "IGNORE";
+
+/** 一个文件的去向。`order` 在同一去向内从 1 起；TEXT / IGNORE 为 0 */
+export interface ZipPick {
+  /** 包里的相对路径（原样） */
+  path: string;
+  /** 去向：MAIN 主图 / DETAIL 详情 / TEXT 文案 / IGNORE 不导入 */
+  target: ZipTarget;
+  /** 同一去向内的顺序，从 1 起；TEXT / IGNORE 为 0 */
+  order: number;
+}
+
+/**
+ * 去掉解压出来的系统垃圾：macOS 的 `__MACOSX/` 与 `._*` 资源叉、`.DS_Store`、Windows 的 `Thumbs.db`。
+ * 先滤掉再交给模型 —— 省 token，也不给它犯错的机会。
+ */
+export function dropJunk(paths: string[]): string[] {
+  return paths.filter((p) => {
+    const base = p.slice(p.lastIndexOf("/") + 1);
+    return !/(^|\/)__MACOSX\//.test(p) && !base.startsWith("._")
+      && base !== ".DS_Store" && base.toLowerCase() !== "thumbs.db";
+  });
+}
+
+/**
+ * 规则的分法，**每个文件一条**：随请求交给服务端，模型那一条不合格时用它。
+ * 规则只有一份（`classifyZip`），服务端不再用 Java 写一遍。
+ */
+export function ruleHint(media: ZipMedia, all: string[]): ZipPick[] {
+  const at = (list: string[], p: string) => list.indexOf(p) + 1;
+  return all.map((path): ZipPick => {
+    if (at(media.main, path)) return { path, target: "MAIN", order: at(media.main, path) };
+    if (at(media.detail, path)) return { path, target: "DETAIL", order: at(media.detail, path) };
+    if (path === media.txt) return { path, target: "TEXT", order: 0 };
+    return { path, target: "IGNORE", order: 0 };
+  });
+}
+
+/** 分法 → 要导的主图、详情（各按 order）与文案（第一份 TEXT） */
+export function listsOf(items: ZipPick[]): { main: string[]; detail: string[]; txt?: string } {
+  const of = (t: ZipTarget) => items.filter((i) => i.target === t)
+    .sort((a, b) => a.order - b.order).map((i) => i.path);
+  return { main: of("MAIN"), detail: of("DETAIL"), txt: items.find((i) => i.target === "TEXT")?.path };
+}

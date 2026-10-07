@@ -48,6 +48,7 @@ export const productMock: Pick<MerchantApi,
   | "mRecognizeGoods"
   | "mDescribeGoods"
   | "mParseText"
+  | "mZipPlan"
   | "mSpuStdSearch"
   | "mCategoryTree"
   | "mSpecTemplates"
@@ -618,6 +619,10 @@ export const productMock: Pick<MerchantApi,
    * 包括**没填标题时应当拒绝**这一档 —— 真实实现里模型没有名字只能瞎编，
    * 所以那一档在服务端也是拒绝，不该只在真机上才发现。
    */
+  /** mock 里没有模型：原样回规则的分法（source=RULE），够让导入链路在 mock 下走通 */
+  async mZipPlan(req) {
+    return { source: "RULE", items: req.ruleHint };
+  },
   async mParseText(text) {
     // mock 用最小正则演示，真解析在后端（规则+LLM）。够让弹框确认链路在 mock 下点得通
     const prices = [...text.matchAll(/(\d+(?:\.\d+)?)\s*元/g)].map((m) => Math.round(Number(m[1]) * 100));

@@ -12,12 +12,15 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
-import { importZipMedia, readTextFile } from "@/ports/zip-import";
+import { importZip, readTextFile } from "@/ports/zip-import";
+import { listsOf, ruleHint } from "@shared/ports/zip-media";
 import { pick } from "@ai-shop/ui/prompt";
 import type { GoodsGuess } from "@/api/contract";
 
 /** 一组图的上限 = 封面 1 + 轮播 6。存的时候两个字段各自的上限没变 */
 const PHOTO_LIMIT = 7;
+/** 一个压缩包最多看多少个文件 —— 与服务端 zip-plan 的上限一致，超了不调接口 */
+const ZIP_MAX_FILES = 200;
 
 /**
  * 商品图与详情图的全部状态与动作。
@@ -236,50 +239,93 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
   }
 
   /**
-   * 从压缩包批量导入：主图进 images（首张=封面），详情进 detailImages，各按序号。
-   * 超过上限（7/10）截断并提示。解压/分类已在 zip-import + zip-media 处理好，
-   * 这里只负责逐张上传——走的还是 mUploadImage，后端一条校验都不绕。
-   * 返回带回的 txt 本地路径（没有则 undefined），文字识别那条链由页面处理。
+   * 从压缩包批量导入（TDD-商品压缩包导入 AC11–AC13）：
+   * 解压 → **模型按文件结构分**主图/详情/文案（目录规则兜底）→ 逐张上传、**往后累加**。
+   *
+   * <p>不认包、不比对、不弹确认（2026-10-07 用户定：逻辑以简洁为主）。要换一批图 =
+   * 先「清空」再导入。放不下的不再悄悄丢：toast 里写清几张没进去。
+   *
+   * <p>模型那一步失败（网络、500）也不挡导入：直接用规则的分法。
+   * 返回加进去几张、分到「文案」的那份 txt 的内容；没导成（取消、出错）返回 undefined ——
+   * 页面据此决定记不记「这一版是压缩包录的」。
    */
-  async function importFromZip(): Promise<string | undefined> {
+  async function importFromZip(
+    ctx: { title: string; categoryNo: string },
+  ): Promise<{ added: number; txt?: string } | undefined> {
     if (uploading.value) return undefined;
-    let media: Awaited<ReturnType<typeof importZipMedia>>;
+    let zip: Awaited<ReturnType<typeof importZip>>;
     try {
-      media = await importZipMedia();
+      zip = await importZip();
     } catch (e) {
       const msg = (e as Error).message;
       if (msg !== "已取消") uni.showToast({ title: msg || "导入失败", icon: "none" });
       return undefined;
     }
+    if (zip.files.length > ZIP_MAX_FILES) {
+      uni.showToast({ title: t("goods.zipTooMany", { n: zip.files.length, max: ZIP_MAX_FILES }), icon: "none" });
+      return undefined;
+    }
+    const abs = (rel: string) => `${zip.root}/${rel}`;
     uploading.value = true;
     try {
-      const mainRoom = PHOTO_LIMIT - photos.value.length;
-      for (const path of media.main.slice(0, Math.max(0, mainRoom))) {
+      const hint = ruleHint(zip.media, zip.files.map((f) => f.path));
+      const preview = zip.media.txt ? (await readTextFile(abs(zip.media.txt)))?.slice(0, 500) : undefined;
+      const plan = await api.mZipPlan({
+        title: ctx.title.trim() || undefined,
+        categoryNo: ctx.categoryNo || undefined,
+        files: zip.files,
+        txtPreview: preview || undefined,
+        ruleHint: hint,
+      }).catch(() => null);
+      const lists = listsOf(plan?.items ?? hint);
+
+      let mainAdded = 0;
+      let detailAdded = 0;
+      let full = 0;
+      for (const rel of lists.main) {
+        // 余量逐张看：合并后的「商品图」满 7 张就停，其余记进「放不下」
+        if (photos.value.length >= PHOTO_LIMIT) { full++; continue; }
         try {
-          const { url } = await api.mUploadImage(path);
+          const { url } = await api.mUploadImage(abs(rel));
           images.value = [...images.value, url];
           if (!cover.value) cover.value = url;
+          mainAdded++;
         } catch { /* 单张失败跳过，不中断整批 */ }
       }
-      const detailRoom = DETAIL_IMAGE_LIMIT - detailImages.value.length;
-      for (const path of media.detail.slice(0, Math.max(0, detailRoom))) {
+      for (const rel of lists.detail) {
+        if (detailImages.value.length >= DETAIL_IMAGE_LIMIT) { full++; continue; }
         try {
-          const { url } = await api.mUploadImage(path);
+          const { url } = await api.mUploadImage(abs(rel));
           detailImages.value = [...detailImages.value, url];
+          detailAdded++;
         } catch { /* 跳过 */ }
       }
-      if (media.main.length > mainRoom || media.detail.length > detailRoom) {
-        uni.showToast({ title: t("goods.imageLimit", { n: PHOTO_LIMIT }), icon: "none" });
-      }
+      uni.showToast({
+        title: String(full
+          ? t("goods.zipImportedFull", { m: mainAdded, d: detailAdded, n: full })
+          : t("goods.zipImported", { m: mainAdded, d: detailAdded })),
+        icon: "none",
+      });
+      return { added: mainAdded + detailAdded, txt: lists.txt ? await readTextFile(abs(lists.txt)) : undefined };
     } finally {
       uploading.value = false;
     }
-    return media.txt ? await readTextFile(media.txt) : undefined;
+  }
+
+  /** 清空商品图（封面 + 轮播）。改的是表单，保存后才生效 */
+  function clearPhotos() {
+    cover.value = "";
+    images.value = [];
+  }
+
+  /** 清空详情图 */
+  function clearDetail() {
+    detailImages.value = [];
   }
 
   return {
     cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
-    addImages, removePhoto, setCoverAt, tapPhoto, importFromZip,
+    addImages, removePhoto, setCoverAt, tapPhoto, importFromZip, clearPhotos, clearDetail,
     addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
   };
 }

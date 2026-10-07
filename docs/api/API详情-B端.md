@@ -2335,6 +2335,32 @@ _无字段_
 | `price` | `number` | 是 | — |
 
 
+#### POST `/biz/goods/zip-plan`
+
+压缩包文件归到主图/详情/文案（模型为主、目录规则兜底）　🔒
+
+**入参**
+
+请求体：[`ZipPlanReq`](#zipplanreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `title` | `string` | 否 | 商品名，帮模型认出与这件货无关的图；可空 |
+| `categoryNo` | `string` | 否 | 当前类目；可空 |
+| `files` | [`ZipPlanFile`](#zipplanfile)\[\] | 是 | 文件清单，系统文件已滤掉；超过 200 个服务端拒绝 |
+| `txtPreview` | `string` | 否 | 根目录 txt 的前 500 字，帮模型判断它是不是商品文案；可空 |
+| `ruleHint` | [`ZipPick`](#zippick)\[\] | 是 | 目录规则的分法，每个文件一条：模型那一条不合格时用它 |
+
+**出参**（`data`）
+
+类型：[`ZipPlan`](#zipplan)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ZipPlanSource`](#zipplansource) | 是 | 这份分法来自哪里 |
+| `items` | [`ZipPick`](#zippick)\[\] | 是 | 每个文件一条，去向与顺序 |
+
+
 ### group
 
 #### GET `/biz/group/{groupNo}`
@@ -10675,3 +10701,65 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `deliverDesc` | `string` | 是 | 发放说明，如「支付后 1 分钟内短信发码」 |
+
+### ZipPick
+
+一个文件的去向。`order` 在同一去向内从 1 起；TEXT / IGNORE 为 0
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `path` | `string` | 是 | 包里的相对路径（原样） |
+| `target` | [`ZipTarget`](#ziptarget) | 是 | 去向：MAIN 主图 / DETAIL 详情 / TEXT 文案 / IGNORE 不导入 |
+| `order` | `number` | 是 | 同一去向内的顺序，从 1 起；TEXT / IGNORE 为 0 |
+
+### ZipPlan
+
+压缩包分类结果
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | [`ZipPlanSource`](#zipplansource) | 是 | 这份分法来自哪里 |
+| `items` | [`ZipPick`](#zippick)\[\] | 是 | 每个文件一条，去向与顺序 |
+
+### ZipPlanFile
+
+压缩包里的一个文件
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `path` | `string` | 是 | 包里的相对路径（目录名、文件名就是模型分类的主要线索） |
+| `width` | `number` | 否 | 图片宽，px；txt 或读不到时不传 |
+| `height` | `number` | 否 | 图片高，px；长图（高明显大于宽）倾向详情 |
+
+### ZipPlanReq
+
+压缩包分类请求（TDD-商品压缩包导入 AC11/AC12）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `title` | `string` | 否 | 商品名，帮模型认出与这件货无关的图；可空 |
+| `categoryNo` | `string` | 否 | 当前类目；可空 |
+| `files` | [`ZipPlanFile`](#zipplanfile)\[\] | 是 | 文件清单，系统文件已滤掉；超过 200 个服务端拒绝 |
+| `txtPreview` | `string` | 否 | 根目录 txt 的前 500 字，帮模型判断它是不是商品文案；可空 |
+| `ruleHint` | [`ZipPick`](#zippick)\[\] | 是 | 目录规则的分法，每个文件一条：模型那一条不合格时用它 |
+
+### ZipPlanSource
+
+压缩包分类的来源：全部来自模型 / 全部按目录规则 / 两者都有
+
+枚举取值：
+
+- `LLM`
+- `RULE`
+- `MIXED`
+
+### ZipTarget
+
+压缩包文件的标准去向：主图 / 详情 / 商品文案 / 不导入
+
+枚举取值：
+
+- `MAIN`
+- `DETAIL`
+- `TEXT`
+- `IGNORE`
