@@ -1995,6 +1995,81 @@
           "route": "pages/goods-publish/index"
         }
       ]
+    },
+    {
+      "slug": "goods-quick-entry",
+      "file": "goods-quick-entry.html",
+      "title": "快速录入：识别搬进独立一页",
+      "kind": "pages",
+      "clients": [
+        "b-app"
+      ],
+      "status": "在建",
+      "date": "2026-10-07",
+      "summary": "P2 把识别结果放进编辑页，真机上一看识别区占了一整屏、和编辑页混在一起：两组「取消」同屏（一个丢识别结果、一个退出编辑）、两个红色主按钮同屏、结果不分组看不出改到哪。这版把识别整个搬进独立页 pages/goods-quick-entry：编辑页只留两个入口（文字识别 / 图片识别）；识别页里粘贴（一键粘贴剪贴板、顶上写明按哪个品类识别）→ 识别 → 确认（按编辑页的卡分组、一个实体一行、已有值默认不勾并写原值、替换同义旧参数写在行里）→ 改落点（只列本品类标准参数）→ 「填入商品」回编辑页，顶上一条提示可看一遍 / 撤销，保存仍是编辑页的事。每页只有一个主按钮。另含图片识别、没选类目先认品类、没认出来三屏。",
+      "docs": [
+        {
+          "label": "TDD-商品快速录入-品类感知与逐项确认",
+          "path": "docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md"
+        }
+      ],
+      "screens": [
+        {
+          "id": "s01",
+          "title": "编辑页 · 快速录入收成两个入口",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
+        },
+        {
+          "id": "s02",
+          "title": "文字识别 · 粘贴（品类写在顶上，可换）",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s03",
+          "title": "文字识别 · 识别中",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s04",
+          "title": "确认 · 按编辑页的卡分组，一个实体一行",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s05",
+          "title": "确认 · 改落点（本品类标准参数）",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s06",
+          "title": "回到编辑页 · 顶部提示可看一遍 / 撤销",
+          "client": "b-app",
+          "route": "pages/goods-edit/index"
+        },
+        {
+          "id": "s07",
+          "title": "图片识别 · 同一套页面结构",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s08",
+          "title": "没选类目 · 先认品类再定参数落点",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        },
+        {
+          "id": "s09",
+          "title": "没认出来 · 改文字",
+          "client": "b-app",
+          "route": "pages/goods-quick-entry/index"
+        }
+      ],
+      "artifact": "https://claude.ai/artifact/3sDZxXVEdPgxtsqawJvyvw"
     }
   ],
   "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

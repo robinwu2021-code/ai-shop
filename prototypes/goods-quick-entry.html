@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>快速录入 · 独立识别页</title>
+<!-- 真源在仓库 prototypes/goods-quick-entry.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 交互原型 · 2026-10-07 · pages/goods-edit → pages/goods-quick-entry（新）</div>
+  <h1>快速录入：识别搬进独立一页</h1>
+  <p class="sub">P2 把识别结果直接放进编辑页，在真机上一看：<b>识别区占了一整屏，和编辑页混在一起</b>。这版把识别整个搬进独立一页 —— 编辑页只留一个紧凑入口，识别、确认、改落点都在那一页里做完，点「填入商品」才回到编辑页。九屏。</p>
+  <p class="sub">识别的逻辑不变（点击才识别、一个实体一行、默认勾不勾的规矩、落点可改、替换同义旧参数），变的只是<b>在哪儿做</b>。方案：<code>docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md</code>。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">一</span><h2>现在哪里混在一起（真机截图上看到的）</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>问题</th><th>为什么不好</th><th>这版</th></tr>
+    <tr><td><b>识别区占一整屏</b></td><td>基本信息被挤到屏幕底，编辑页变成了识别页</td><td>编辑页只留一张紧凑的入口卡（两个入口），识别在独立页里做</td></tr>
+    <tr><td><b>两组「取消」同屏</b></td><td>确认区的「取消」= 丢掉识别结果，页底的「取消」= 退出编辑。同名不同义，最容易点错</td><td>识别页只有一个返回：左上角「‹」= 不填、回编辑页。编辑页的「取消 / 保存」不再和别的按钮同屏</td></tr>
+    <tr><td><b>两个红色主按钮同屏</b></td><td>「填入」和「保存」一样红，主次不清</td><td>每一页只有一个主按钮：识别页是「填入商品」，编辑页是「保存」</td></tr>
+    <tr><td><b>结果没分组</b></td><td>看不出会改到页面哪一块 —— 限购地区在库存卡，单果重量在参数卡</td><td>结果按<b>编辑页的卡</b>分组：商品参数 / 价格 / 配送与限购</td></tr>
+    <tr><td>识别完输入框还占着</td><td>结果被推到下面，要滚才看得到</td><td>识别后原文收成一行摘要（「改」可展开），结果顶上来</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">二 · 01 — 05</span><h2>文字识别：入口 → 粘贴 → 识别 → 确认 → 改落点</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="note">草稿未发布 · 线上在售旧版　<b>历史</b> · <b>查看差异</b></div>
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="tiles">
+              <span class="tile"><b>文字识别</b><span>粘贴一段描述</span></span>
+              <span class="tile"><b>图片识别</b><span>认主图</span></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="nm">基本信息</div>
+            <div class="frow"><span class="k">商品图</span><span class="v">已添加 5 / 7　导入压缩包</span></div>
+            <div class="pics"><span class="img">🍊</span><span class="img">🍊</span><span class="img">🍊</span><span class="add">＋</span></div>
+            <div class="gt">商品名称</div>
+            <div class="ta has">现摘脆柿 早期脆甜多汁</div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 图文详情 · 类目与配送 · 规格 · 商品参数 · 价格 · 库存 ⋯</div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>01 编辑页 · 入口</b>快速录入卡只剩两个入口，<b>高度从一整屏降到一行</b>。卡序不变，仍是第一张。</figcaption>
+      <p class="why">编辑页的主角是表单。入口放在第一张卡是对的（录入从这儿开始），但识别的过程不该在这里展开 —— 那会把表单挤下去，还会和页底的「取消 / 保存」同屏打架。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">文字识别</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k">按「水果」的参数识别</span><span class="v go">换</span></div>
+            <div class="ta" style="min-height:200px">粘贴商品文字</div>
+            <div class="btnrow"><span class="btn sec">粘贴剪贴板</span></div>
+          </div>
+          <div class="meta" style="text-align:center">识别后先给你确认，不会直接改商品</div>
+        </div>
+        <div class="foot"><div class="btn main off">识别</div></div>
+      </div>
+      <figcaption class="cap"><b>02 粘贴</b>大输入框 +「粘贴剪贴板」一键粘入。顶上写明<b>按哪个品类识别</b>，可换。没内容时「识别」置灰。</figcaption>
+      <p class="why">商家几乎都是从别处复制一段描述过来 —— 「粘贴剪贴板」省掉长按、等菜单、点粘贴三步。品类写在顶上是因为它决定数值落到哪个参数（同一个「140g」，水果是单果重量），识别前就该让他看见、能改。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">文字识别</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="frow"><span class="k">按「水果」的参数识别</span><span class="v go">换</span></div>
+            <div class="ta has" style="min-height:120px">规格：单果140g+<br>净重4.5斤装10元<br>圆通快递，新疆西藏海南不发货</div>
+            <div class="prog">
+              <div class="t"><span>识别中</span><b>约 5 秒</b></div>
+              <div class="bar"><i style="width:55%"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main off">识别中…</div></div>
+      </div>
+      <figcaption class="cap"><b>03 识别中</b>进度条 + 预计时间。按钮转为「识别中…」不可再点。</figcaption>
+      <p class="why">生产上一次识别要几秒（要调模型）。给个预计时间，比一个转圈更让人愿意等；按钮锁住，免得连点出两次请求。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认要填的</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k">原文：规格：单果140g+ 净重4.5斤装10元…</span><span class="v go">改</span></div></div>
+          <div class="frow"><span class="k">识别到 5 项 · 已选 4</span><span class="v go">全不选</span></div>
+          <div class="card">
+            <div class="nm">商品参数</div>
+            <div class="crow"><span class="ck on"></span><span class="k val">140g+</span><span class="b">
+              <span class="v">→ 单果重量 ›</span><span class="src">替换「单果重量 140g+」</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k val">4.5斤</span><span class="b">
+              <span class="v">→ 净含量 ›</span><span class="src">原文叫「净重」· 替换「净重 4.5斤」</span></span></div>
+          </div>
+          <div class="card">
+            <div class="nm">价格</div>
+            <div class="crow low"><span class="ck"></span><span class="k val num">10.00</span><span class="b">
+              <span class="v">→ 售价</span><span class="src">原 15.00 · 勾上会覆盖</span></span></div>
+          </div>
+          <div class="card">
+            <div class="nm">配送与限购</div>
+            <div class="crow"><span class="ck on"></span><span class="k val">快递配送</span><span class="b">
+              <span class="v">→ 配送方式</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k val">新疆、西藏、海南</span><span class="b">
+              <span class="v">→ 限购地区</span><span class="src">下单时按收货地址拦截</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">重新识别</div><div class="btn main">填入商品（4）</div></div>
+      </div>
+      <figcaption class="cap"><b>04 确认</b>原文收成一行。结果<b>按编辑页的卡分组</b>，一行一个识别出来的东西：勾选 · 值 · 落到哪个字段。底部只有一个主按钮。</figcaption>
+      <p class="why">分组是这一屏最重要的改动：商家要回答的是「这会改到我页面的哪里」，按卡分组就是直接的答案。<b>已有值的那一行（售价 15.00）默认不勾</b>、整行压暗，写出原值 —— 生产上售价曾被静默从 15 改成 10。替换同义旧参数也写在行里，勾上才替换。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认要填的</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">商品参数</div>
+            <div class="crow"><span class="ck on"></span><span class="k val">140g+</span><span class="b">
+              <span class="v">→ 单果重量 ›</span></span></div>
+            <div class="crow"><span class="ck on"></span><span class="k val">4.5斤</span><span class="b">
+              <span class="v">→ 净含量 ›</span></span></div>
+          </div>
+        </div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">「4.5斤」填到哪个参数</div>
+            <div class="group">
+              <div class="pickrow"><span>单果重量</span><span class="c">已在填 140g+</span></div>
+              <div class="pickrow on"><span>净含量</span><span class="c">当前</span></div>
+              <div class="pickrow"><span>毛重</span><span class="c">原 5斤</span></div>
+              <div class="pickrow"><span>原产地</span><span class="c"></span></div>
+              <div class="pickrow"><span>作自由参数</span><span class="c">不归到标准参数</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 改落点</b>点「→ 净含量 ›」弹出本品类的标准参数，选一个即改。已有值的参数旁写出原值。</figcaption>
+      <p class="why">只列这个品类的标准参数 —— 落点是数据决定的，不让人凭空起名，也不让他在一长串无关参数里找。这个弹层只改一行的落点，关掉就回到确认页，不会丢别的勾选。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">三 · 06</span><h2>填入之后：回到编辑页</h2></div>
+  <div class="grid">
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="note">已从文字填入 4 项　<b>看一遍</b> · <b>撤销</b></div>
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="tiles">
+              <span class="tile"><b>文字识别</b><span>粘贴一段描述</span></span>
+              <span class="tile"><b>图片识别</b><span>认主图</span></span>
+            </div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 基本信息 · 图文详情 · 类目与配送 · 规格 ⋯</div>
+          <div class="card">
+            <div class="nm">商品参数</div>
+            <div class="frow"><span class="k">单果重量</span><span class="v">140g+ <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">净含量</span><span class="v">4.5斤 <span class="pin">识别</span></span></div>
+            <div class="frow"><span class="k">毛重</span><span class="v">填写内容</span></div>
+          </div>
+          <div class="card">
+            <div class="nm">库存</div>
+            <div class="frow"><span class="k">限购地区</span><span class="v go">排除 新疆·西藏·海南 <span class="pin">识别</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>06 回到编辑页</b>顶上一条提示：填入了几项，可以「看一遍」「撤销」。被填的字段带「识别」小标。<b>还没保存</b> —— 保存仍是编辑页的事。</figcaption>
+      <p class="why">填入只改表单、不保存：识别是辅助录入，提交还是商家自己按「保存」。提示条放顶上而不是 toast —— toast 两秒就没了，而「撤销」要一直够得着，直到他保存或离开。</p>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">四 · 07 — 09</span><h2>图片识别 · 没选类目 · 没认出来</h2></div>
+  <div class="grid">
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">图片识别</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="img" style="height:200px">🍊 主图</div>
+            <div class="frow"><span class="k">用主图识别</span><span class="v go">换一张</span></div>
+          </div>
+          <div class="meta" style="text-align:center">识别后先给你确认，不会直接改商品</div>
+        </div>
+        <div class="foot"><div class="btn main">识别</div></div>
+      </div>
+      <figcaption class="cap"><b>07 图片识别</b>与文字识别<b>同一套页面结构</b>：上面是输入（主图），底部一个「识别」，识别完进同样的确认页（04）。</figcaption>
+      <p class="why">两种识别长得一样，商家只学一次。它们各自独立 —— 图片识别不往文字框里写东西，文字识别也不触发图片识别。压缩包导入仍在编辑页的「商品图」那一行，导完回到这里点识别。</p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认要填的</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">先确认是什么商品</div>
+            <div class="tiles">
+              <span class="tile on"><b>水果 › 柿子</b><span>最像</span></span>
+              <span class="tile"><b>水果 › 常温水果</b><span></span></span>
+            </div>
+            <div class="frow"><span class="k">都不是</span><span class="v go">去选类目</span></div>
+          </div>
+          <div class="card">
+            <div class="nm">商品参数</div>
+            <div class="crow low"><span class="ck"></span><span class="k val">140g+</span><span class="b">
+              <span class="v">→ 确认品类后定</span></span></div>
+            <div class="crow low"><span class="ck"></span><span class="k val">4.5斤</span><span class="b">
+              <span class="v">→ 确认品类后定</span></span></div>
+          </div>
+          <div class="card">
+            <div class="nm">配送与限购</div>
+            <div class="crow"><span class="ck on"></span><span class="k val">快递配送</span><span class="b"><span class="v">→ 配送方式</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">重新识别</div><div class="btn main">填入商品（1）</div></div>
+      </div>
+      <figcaption class="cap"><b>08 没选类目</b>先给品类候选让他点一个；参数行在品类确认前<b>压暗、不勾</b>，写「确认品类后定」。价格、配送这类不依赖品类的照常可填。</figcaption>
+      <p class="why">数值落到哪个参数取决于品类 —— 品类没定，参数的落点就是猜的。所以先把品类问清楚，而不是替他选一个。选完参数行自动对上、自动勾上；选「都不是」就回编辑页选类目。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">文字识别</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="frow"><span class="k">原文：今天天气不错，柿子很甜</span><span class="v go">改</span></div></div>
+          <div class="card" style="align-items:center;text-align:center;padding:28px 12px">
+            <div class="nm">没认出可填的内容</div>
+            <div class="meta">写明价格、重量、发货地区更容易认出来</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">改文字</div></div>
+      </div>
+      <figcaption class="cap"><b>09 没认出来</b>说清没认出来，给一个去处：「改文字」回到 02，原文还在。</figcaption>
+      <p class="why">点了没反应比报错更糟。这里只给一句怎么写更容易认出来 —— 它是这一刻商家唯一需要的信息。识别失败（网络 / 模型不可用）同一个位置写「识别失败」+「重试」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">五</span><h2>落地要改什么</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>位置</th><th>改动</th></tr>
+    <tr><td>新页 <code>pages/goods-quick-entry</code></td><td>文字 / 图片两种模式（入参区分）；输入、识别、确认、改落点都在这页。确认页沿用 P2 已有的 <code>buildCandidates</code> / <code>retarget</code>（纯函数、有测试），只是换了地方渲染</td></tr>
+    <tr><td>编辑页 <code>goods-edit</code></td><td>快速录入卡收成两个入口；P2 那块内嵌的确认区删掉。<b>写表单的逻辑留在编辑页</b>：识别页点「填入商品」时把勾上的行通过页面事件通道交回来，编辑页照旧走 <code>applyCandidates</code>（快照、撤销都不变）</td></tr>
+    <tr><td>回到编辑页的提示</td><td>顶上一条「已从文字填入 N 项 · 看一遍 · 撤销」，替代现在识别区里的「已更新 N 项」那一行</td></tr>
+    <tr><td>品类候选（08）</td><td>P3 的「先认品类」。没做之前，没选类目时 08 那张卡先显示「先在编辑页选类目」</td></tr>
+    <tr><td>后端</td><td>不动。识别接口、参数映射、<code>rawName</code> 都已就位（<code>rawName</code> 那次提交还没发，等这版端上一起发）</td></tr>
+  </table></div>
+</section>
+
+<footer>真源：prototypes/goods-quick-entry.html · 登记：prototypes/registry.json · 方案：docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md</footer>
+</div>
+</html>

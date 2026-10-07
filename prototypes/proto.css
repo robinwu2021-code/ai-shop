@@ -572,3 +572,11 @@ a{color:inherit}
 /* 时间轴一节的内容块：.tl .st 是 flex 行（圆点 + 内容），内容必须收在一个子元素里 */
 .tl .st .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .tl .st .bd b{font-size:12px;font-weight:600;color:var(--sh-ink)}
+
+/* 卡里的 tile：.tile 的底色与 .card 同为白，放进卡里就成了两段浮着的字（2026-10-07 在
+   goods-quick-entry 的入口卡上看见；goods-edit-input-first、inventory-interaction 同病）。
+   卡里改用页面底色。排除 .on —— 同优先级、后写的会把选中态的 tint 盖掉 */
+.card .tile:not(.on){background:var(--sh-bg)}
+/* 确认清单里「识别出来的值」：.crow .k 默认是灰色的键名，而在识别确认里值才是商家要核对的东西，
+   落点是答案。值用正文色，不要被落点的粗体压过去（2026-10-07 goods-quick-entry s04） */
+.crow .k.val{color:var(--sh-ink)}
