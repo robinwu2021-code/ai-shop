@@ -57,6 +57,17 @@ public interface AuthService {
     void logout(String currentToken);
 
     /**
+     * 免登录「切到商家端」：凭已登录的 C 端 {@code userNo} 换取商家令牌(btk_)。
+     *
+     * <p>按 {@code mch_account.user_no == userNo} 找店主身份：有则签发并返回 btk_（<b>不撤销</b>
+     * 当前 ctk_，用户要继续留在 C 端）；没有则抛 {@link ai.neargo.shop.common.ErrorCode#NOT_A_MERCHANT}，
+     * 前端据此引导去入驻。见 TDD-C端免登录切商家端。
+     *
+     * @return btk_ 前缀的商家令牌
+     */
+    String switchToMerchant(String userNo);
+
+    /**
      * 设置 / 修改登录密码。<b>调用方必须已登录</b>——当前会话就是授权。
      *
      * <p>不收「旧密码」：能调到这里说明他此刻已经用验证码或微信登进来了，

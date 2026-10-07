@@ -144,6 +144,7 @@ class MpEndpointAuthTest {
             "POST /mp/user/address/{addressId}/default",
             "POST /mp/user/deregister",
             "POST /mp/user/profile",
+            "POST /mp/user/switch-to-merchant",
             /*
              * C-AC-08 个人资料三条，**都是实弹验证的 401**。
              *

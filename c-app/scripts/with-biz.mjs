@@ -75,7 +75,11 @@ function rewrite(file) {
       .replace(
         /const\s*\{\s*t\s*\}\s*=\s*useI18n\(\)/,
         'const { t } = useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true })',
-      );
+      )
+      // 模板里全是 `$t(`——它是 globalInjection 注入的，**永远绑全局 composer**（c-app 词条），
+      // 查不到 b-app 的 key，于是真机上整片露 key。改成解构出来的 `t(`（上面建的 local composer），
+      // 整页模板才对 b-app 词条解析。脚本里的 `$t(` 只出现在注释里，改了无害。
+      .replace(/\$t\(/g, "t(");
   }
   if (out !== src) {
     writeFileSync(file, out);
@@ -124,13 +128,31 @@ function generated() {
   writeFileSync(join(OUT, "_shared", "http-client.ts"), client);
 
   // local scope 用的 messages：b-app 三份词条（拷到了 pkg-biz/i18n/locale）。
+  // **必须预编译成消息函数**：端上 vue-i18n runtime 只认消息函数这一种插值（与全局 createAppI18n
+  // 内部的 compileMessages 同款，那个函数是模块私有的，这里复制同一段逻辑）。直接喂原始字符串词条，
+  // 带 {0}/{name} 的那些在真机上不会插值。
   writeFileSync(
     join(OUT, "_i18n.ts"),
-    `// 构建期生成（with-biz.mjs）。pkg-biz 页面以此作 vue-i18n local scope 的 messages。\n` +
+    `// 构建期生成（with-biz.mjs）。pkg-biz 页面以此作 vue-i18n local scope 的 messages（已预编译成消息函数）。\n` +
     `import zhCN from "./i18n/locale/zh-CN";\n` +
     `import en from "./i18n/locale/en";\n` +
     `import ar from "./i18n/locale/ar";\n` +
-    `export default { "zh-CN": zhCN, en, ar };\n`,
+    `type Tree = { [k: string]: string | Tree };\n` +
+    `function compile(node: string | Tree): unknown {\n` +
+    `  if (typeof node === "string") {\n` +
+    `    const s = node;\n` +
+    `    // eslint-disable-next-line @typescript-eslint/no-explicit-any\n` +
+    `    return (ctx: any) => s.replace(/\\{(\\w+)\\}/g, (_: string, k: string) => {\n` +
+    `      const v = ctx?.named ? ctx.named(k) : undefined;\n` +
+    `      return v == null ? \`{\${k}}\` : String(v);\n` +
+    `    });\n` +
+    `  }\n` +
+    `  const out: Record<string, unknown> = {};\n` +
+    `  for (const k of Object.keys(node)) out[k] = compile((node as Tree)[k]);\n` +
+    `  return out;\n` +
+    `}\n` +
+    `// eslint-disable-next-line @typescript-eslint/no-explicit-any\n` +
+    `export default { "zh-CN": compile(zhCN as any), en: compile(en as any), ar: compile(ar as any) } as any;\n`,
   );
 
   // 占位页：范围外的重量页都落这里。文案硬编码中文（pkg-biz 不进版本库、不受 i18n 闸门管）。
@@ -163,29 +185,60 @@ function generated() {
   writeFileSync(
     join(OUT, "_entry", "index.vue"),
     `<script setup lang="ts">\n` +
-    `// 构建期生成（with-biz.mjs）。c-app「我的」→ 这里。无商家令牌先登录，再进四屏。\n` +
+    `// 构建期生成（with-biz.mjs）。c-app「我的」→ 这里。\n` +
+    `// **不要手机号+验证码**：凭 C 端会话(ctk_)向 /mp/user/switch-to-merchant 换商家令牌(btk_)。\n` +
+    `// 关联键是 mch_account.user_no == 当前 C 端 user_no（见 TDD-C端免登录切商家端）。\n` +
     `import { onShow } from "@dcloudio/uni-app";\n` +
     `import { ref } from "vue";\n` +
     `import { useMerchantStore } from "@/${PKG}/stores/merchant";\n` +
     `import { ROUTES } from "@/${PKG}/shared/nav";\n` +
+    `// 商家令牌位：shb 命名空间影子（与 C 端令牌分开存，一个手机号两套身份）\n` +
+    `import { STORAGE as BIZ_STORAGE } from "@/${PKG}/_shared/constants";\n` +
+    `// C 端令牌位：**真实** @shared 常量（本包构建出来就是 shc）—— 换取时要带的就是它。\n` +
+    `// 这个文件是生成的，不过并包改写，所以这里的 @shared 不会被替换成影子。\n` +
+    `import { STORAGE as C_STORAGE } from "@shared/utils/constants";\n` +
     `const m = useMerchantStore();\n` +
-    `const ready = ref(false);\n` +
+    `/** loading | ready | not-merchant | need-c-login */\n` +
+    `const state = ref("loading");\n` +
     `const ENTRIES = [\n` +
     `  { t: "订单", d: "查看与处理今天的订单", url: ROUTES.orders },\n` +
     `  { t: "核销", d: "提货 / 核验码核销自提单", url: ROUTES.verify },\n` +
     `  { t: "商品上下架", d: "商品列表与上架开关", url: ROUTES.goods },\n` +
     `  { t: "售后", d: "处理退款与售后申请", url: ROUTES.afterSale },\n` +
     `];\n` +
+    `/** 凭 C 端令牌换商家令牌。换不到（含 NOT_A_MERCHANT）一律回 null */\n` +
+    `function exchange(ctk: string): Promise<string | null> {\n` +
+    `  return new Promise((resolve) => {\n` +
+    `    uni.request({\n` +
+    `      url: (import.meta.env.VITE_API_BASE || "") + "/mp/user/switch-to-merchant",\n` +
+    `      method: "POST",\n` +
+    `      header: { Authorization: "Bearer " + ctk },\n` +
+    `      success: (res) => {\n` +
+    `        const body = res.data as { code?: number; data?: { token?: string } };\n` +
+    `        resolve(body && body.code === 0 && body.data && body.data.token ? body.data.token : null);\n` +
+    `      },\n` +
+    `      fail: () => resolve(null),\n` +
+    `    });\n` +
+    `  });\n` +
+    `}\n` +
     `onShow(async () => {\n` +
     `  await m.restore();\n` +
-    `  if (!m.isLogin) { uni.reLaunch({ url: ROUTES.login }); return; }\n` +
-    `  ready.value = true;\n` +
+    `  if (m.isLogin) { state.value = "ready"; return; }   // 已有商家会话，直接用\n` +
+    `  const ctk = uni.getStorageSync(C_STORAGE.token) as string;\n` +
+    `  if (!ctk) { state.value = "need-c-login"; return; }\n` +
+    `  const btk = await exchange(ctk);\n` +
+    `  if (!btk) { state.value = "not-merchant"; return; }\n` +
+    `  uni.setStorageSync(BIZ_STORAGE.token, btk);\n` +
+    `  await m.restore();\n` +
+    `  state.value = m.isLogin ? "ready" : "not-merchant";\n` +
     `});\n` +
     `function go(url: string) { uni.navigateTo({ url }); }\n` +
+    `/** 去入驻：c-app「我的」里有「我也想开店」。它是 tab 页，只能 switchTab */\n` +
+    `function goApply() { uni.switchTab({ url: "/pages/me/index" }); }\n` +
     `</script>\n\n` +
     `<template>\n` +
     `  <sh-scaffold title="商家运营">\n` +
-    `    <view v-if="ready" class="be">\n` +
+    `    <view v-if="state === 'ready'" class="be">\n` +
     `      <view v-for="e in ENTRIES" :key="e.url" class="be__cell sh-row sh-row--between" @tap="go(e.url)">\n` +
     `        <view class="be__txt">\n` +
     `          <text class="be__t">{{ e.t }}</text>\n` +
@@ -194,10 +247,22 @@ function generated() {
     `        <sh-icon name="chevronRight" :size="36" />\n` +
     `      </view>\n` +
     `    </view>\n` +
+    `    <view v-else-if="state === 'not-merchant'" class="be__hint">\n` +
+    `      <text class="be__t">你还不是商家</text>\n` +
+    `      <text class="be__d">开店之后，看单、核销、上下架、售后都能在这里随手做。</text>\n` +
+    `      <view class="sh-btn sh-btn--primary be__btn" @tap="goApply">去开店</view>\n` +
+    `    </view>\n` +
+    `    <view v-else-if="state === 'need-c-login'" class="be__hint">\n` +
+    `      <text class="be__t">先登录</text>\n` +
+    `      <text class="be__d">登录之后才能切到商家运营。</text>\n` +
+    `      <view class="sh-btn sh-btn--primary be__btn" @tap="goApply">去登录</view>\n` +
+    `    </view>\n` +
     `  </sh-scaffold>\n` +
     `</template>\n\n` +
     `<style scoped>\n` +
     `.be { padding: 24rpx 32rpx; display: flex; flex-direction: column; gap: 20rpx; }\n` +
+    `.be__hint { padding: 64rpx 48rpx; display: flex; flex-direction: column; gap: 16rpx; align-items: center; text-align: center; }\n` +
+    `.be__btn { margin-top: 24rpx; }\n` +
     `.be__cell { background: var(--sh-surface); border-radius: var(--sh-radius); padding: 28rpx 32rpx; }\n` +
     `.be__txt { display: flex; flex-direction: column; gap: 6rpx; }\n` +
     `.be__t { font-size: 30rpx; font-weight: 600; color: var(--sh-text); }\n` +

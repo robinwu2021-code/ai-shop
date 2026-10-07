@@ -66,6 +66,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final IdentityMapper identityMapper;
     private final TokenStore tokenStore;
+    /**
+     * 经营身份解析（判「这个 C 端用户是不是店主」）。**可选注入**：实现在 shop-merchant，
+     * 纯 shop-core 场景无 bean 时兜底 {@link ai.neargo.shop.auth.BizIdentityResolver#NONE}
+     * （全判非商家，fail-closed）。
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ai.neargo.shop.auth.BizIdentityResolver bizResolver = ai.neargo.shop.auth.BizIdentityResolver.NONE;
     private final OtpStore otpStore;
     private final ai.neargo.shop.auth.PasswordHasher passwordHasher;
     private final ai.neargo.shop.common.ratelimit.RateLimiter rateLimiter;
@@ -221,6 +228,28 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String currentToken) {
         tokenStore.revoke(currentToken);
+    }
+
+    @Override
+    public String switchToMerchant(String userNo) {
+        /*
+         * 免登录「切到商家端」：凭 C 端 user_no 解析经营身份。店主的 mch_account.user_no
+         * 由「C 端申请→运营审核建号」链路保证等于其 C 端 user_no（见 TDD-C端免登录切商家端 §1），
+         * 所以这里不碰手机号、不重新认证。店员行常无 user_no，解析不到就走 NOT_A_MERCHANT 兜底。
+         */
+        ai.neargo.shop.auth.BizContext ctx = bizResolver.resolve(userNo);
+        if (ctx == null || ctx.merchantNo() == null || ctx.merchantNo().isBlank()) {
+            throw new BizException(ErrorCode.NOT_A_MERCHANT);
+        }
+        UsrAccount user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                .eq(UsrAccount::getUserNo, userNo).last("limit 1"));
+        String nickname = user == null ? null : user.getNickname();
+        /*
+         * 签 btk_（realm=MERCHANT），与 /biz/auth/login 同构。**不撤销 ctk_** ——
+         * 用户要继续留在 C 端（这正是与 login 的差别：login 撤 ctk_，切换不撤）。
+         */
+        return tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.merchantByUser(userNo, nickname)));
     }
 
     @Override

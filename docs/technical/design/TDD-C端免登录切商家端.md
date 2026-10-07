@@ -1,0 +1,131 @@
+# TDD-C 端免登录切商家端
+
+状态：草稿
+关联需求：本会话确认（2026-10-07）——C 端已登录用户切到商家运营不再单独登录，用 C/B 账号关联换取商家令牌
+创建：2026-10-07 · 最后更新：2026-10-07
+
+> **一句话**：C 端小程序打开即静默微信登录(ctk_)，「商家运营」入口凭 C 端令牌向后端换取商家令牌(btk_)——
+> 后端按 `mch_account.user_no == 当前 C 端 user_no` 找到店主身份，有则签 btk_、无则回 `NOT_A_MERCHANT`。
+> 关联键是 **user_no**（不是手机号）；该等式由现有「C 端申请→运营审核建号」链路保证，本期**不补写入**。
+
+## §0 对账一 · 需求 → 设计
+
+| AC | 需求（一句话） | 落点 |
+|---|---|---|
+| AC1 | 已登录 C 端用户换取商家令牌：是店主则签 btk_、**不撤 ctk_** | `AuthService.switchToMerchant` + `MpUserController` 新端点 |
+| AC2 | 未关联商家 → 明确业务码，前端引导入驻 | 新 `ErrorCode.NOT_A_MERCHANT` + 三语 |
+| AC3 | 匿名（无 ctk_）调用 → 401 | 端点挂 C 端链；`MpEndpointAuthTest` 需登录清单 |
+| AC4 | 前端 `_entry` 自动换、无 OTP；换不到引导入驻；去掉登录闸 | c-app pkg-biz `_entry`（with-biz.mjs 生成）+ endpoints |
+| AC5 | 关联键 `mch_account.user_no`（店主行）已可靠成立 | 现有链路（agent 确认，§1） |
+
+**孤立项**：无。明确排除：店员免登录（店员行常无 user_no，保留手机号登录兜底）；存量「运营代客进件且当时无 C 端账号」的店主（少数，回退手机号登录/客服）。
+
+## §1 现状与影响面
+
+- **关联等式已成立**（agent 查实）：`currentUserNo() → mch_entity_apply.user_no → ActivateCommand.ownerUserNo → mch_account.user_no`，全程透传无改写。凭 C 端 user_no 查 `mch_account where user_no=? and is_owner=true` 能查到店主。
+  - 申请记号：`MpCatalogController.merchantApply`(`:308`) → `OpsServiceImpl.doCreateApply`(`:465`)
+  - 审核建号：`OpsServiceImpl.auditApply`(`:370`) → `MerchantPortImpl.ensureOwnerStaff`(`:1422` `setUserNo`)
+- **判店主的现成件**：`BizIdentityResolver.resolve(userNo)` → `BizContext`，`merchantNo` 非空即有经营身份。接口在 `shop-base-auth`，实现 `BizIdentityResolverImpl`(shop-merchant)。
+- **签 btk_ 的现成件**：`tokenStore.issue(SessionData.of(LoginUser.merchantByUser(userNo, nickname)))`（`LoginUser.java:147`）。与 `BizAuthController.login`(`:105`) 同构，差别：**本端点不撤 ctk_**。
+- **令牌池隔离**：ctk_(CONSUMER)/btk_(MERCHANT)/otk_(OPERATOR)，前缀即池。新端点必须挂 **C 端链**（consumerChain 认 ctk_）——挂 /biz 会被 merchantChain 第一道 401。
+- 会被改到：`AuthService`/`AuthServiceImpl`（加方法 + 注入 resolver）、`MpUserController`（加端点）、`ErrorCode` + 后端三语、`MpEndpointAuthTest`、c-app 并包脚本生成的 `_entry` + endpoints。
+- 不受影响：现有 /mp 与 /biz 登录、申请/审核链路（零改动）、b-app 原生应用、其它域。
+
+## §2 方案
+
+### 契约变更
+- 端点：**新增** `POST /mp/user/switch-to-merchant`（挂 C 端链，鉴权=已登录 ctk_，无请求体）。返回 `{ token }`（btk_）。
+- 库表/迁移：**无**。
+- 权限码：**无**（btk_ 的作用域由 `merchantByUser` 给 SELF）。
+- ErrorCode：**新增** `NOT_A_MERCHANT`（i18n key `err.not_a_merchant`），三语齐。
+- i18n：后端 `err.not_a_merchant` zh/en/ar。
+
+### 模块设计
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 修改 | `shop-core/.../user/service/AuthService.java` | 加 `String switchToMerchant(String userNo)` |
+| 修改 | `shop-core/.../user/service/impl/AuthServiceImpl.java` | 实现：resolve→非空签 btk_、空抛 NOT_A_MERCHANT；注入 `ObjectProvider<BizIdentityResolver>`（兜底 NONE） |
+| 修改 | `shop-core/.../user/api/mp/MpUserController.java` | 加 `@PostMapping("/switch-to-merchant")`，取 `currentUserNo`、调 service、审计 MERCHANT 池 |
+| 修改 | `shop-base/.../common/ErrorCode.java` | 加 `NOT_A_MERCHANT` |
+| 修改 | 后端三语 i18n | `err.not_a_merchant` |
+| 修改 | `MpEndpointAuthTest` | 新端点纳入「需登录」清单 |
+| 修改 | `c-app/scripts/with-biz.mjs` | `_entry`：自动换 + 去 OTP 登录闸；按结果分流（进四屏 / 引导入驻） |
+
+### 关键接口
+```
+// AuthService（shop-core）
+String switchToMerchant(String userNo);   // 返回 btk_；非店主抛 BizException(NOT_A_MERCHANT)
+
+// 端点
+POST /mp/user/switch-to-merchant   (Authorization: Bearer ctk_...)
+  200 { "token": "btk_..." }
+  业务码 NOT_A_MERCHANT   // 未关联商家
+  401                     // 匿名
+```
+
+## §3 选型
+| 维度 | 采用 | 不采用 | 理由 |
+|---|---|---|---|
+| 关联键 | **user_no** | 手机号 | 微信登录可能无手机号、手机号会换；user_no 是 C 端不变主键，且等式已由现有链路保证 |
+| 端点位置 | **/mp/user**（C 端链） | /biz/** | merchantChain 只认 btk_，ctk_ 打 /biz 必 401 |
+| ctk_ 处理 | **不撤销** | 撤销（同 login） | 用户要继续留在 C 端 |
+| 判店主 | `BizIdentityResolver.resolve` | 自写 SQL | 现成件，profileOf 店主分支同款 |
+
+## §4 风险
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| shop-core 注入 BizIdentityResolver 缺 bean（纯 core 测试） | 装配失败 | `ObjectProvider` 兜底 `NONE`（NONE→全判非商家，fail-closed 安全） |
+| 代客进件且当时无 C 端账号的店主 | 免登录查不到 | 回退手机号登录/客服；不在本期自动回填 |
+| 新 ErrorCode 漏登记 | BackendI18nParityTest 红、挡所有人 | 枚举 + 三语一起提交，跑 parity 测试 |
+| 运行时渲染/鉴权本机难全验 | 真机才暴露 | 发体验版真机验（与 i18n 修复一起） |
+
+## §5 对账三 · 实现 → 需求（测试）
+| AC | 测试 | 跑过 | 消融 |
+|---|---|---|---|
+| AC1 | `SwitchToMerchantTest#ownerGetsMerchantToken`：店主 user_no → `btk_` 前缀令牌 | ✅ `Tests run: 2, Failures: 0`（12.5s，真跑） | 见下 |
+| AC2 | `SwitchToMerchantTest#nonMerchantThrows`：非店主 → `NOT_A_MERCHANT` | ✅ 同上 | ✅ 把判空改成 `if (false)` → `Failures: 1`，还原后回绿 |
+| AC3 | `MpEndpointAuthTest`：需登录清单已登记 `POST /mp/user/switch-to-merchant`，匿名调回 401 | ✅ `Tests run: 7, Failures: 0, Errors: 0` | — |
+| AC2(i18n) | `BackendI18nParityTest`：`err.not_a_merchant` 三语齐 | ✅ `Tests run: 6, Failures: 0` | — |
+
+三组在**干净 HEAD 副本 + 仅本次 9 个改动**上一起跑：`BUILD SUCCESS`。
+
+**消融已做**（AC2）：撤掉 `switchToMerchant` 的判空分支 → 非商家用例立刻变红，还原后回绿。证明它测的就是那个分支，不是假绿。
+
+### 踩到并修掉的一个坑：新测试连累了别的测试类
+
+`SwitchToMerchantTest` 用 `@MockitoBean` 替换 `BizIdentityResolver`，这会让它**拿到一个新的 Spring 上下文**；
+而新上下文跑在共用的 `jdbc:h2:mem:shop` 上，会把 `schema-test.sql` **再执行一遍** ——
+其中 `UPDATE mch_admission_policy SET legal_form='NATURAL_PERSON' WHERE legal_form='MICRO'`
+第二次执行就撞 `uk_admission_legal_form(legal_form, tenant_no)` 唯一键，
+于是 **`MpEndpointAuthTest` 整个类 7 个用例全部 Error（context 起不来）**。
+
+症状极具误导性：报错指向一条与本次改动毫不相干的 SQL、且 `schema-test.sql` 自己没有任何改动，
+**我因此一度误判成「别人的半成品导致、与我无关」**。真正把它钉死的是基线对照 ——
+同一个干净 HEAD 副本，不带我的改动 7/7 绿、带上我的改动 7 个全错，嫌疑才落到自己头上。
+
+修法照抄 `PlaceResolveChainTest` 已有的解法（它的注释正写着这个坑）：给这个类
+`@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:switch-merchant;...")` 另开一个库。
+
+> **教训**：共享工作区里出现「看起来与我无关」的红，不能凭「报错指向别处」就撇清 ——
+> 判据只能是**干净 HEAD 副本上加/不加我的改动的差集**（[[claim-failures-with-baseline]]）。
+
+## §6 对账二 · 设计 → 实现
+
+```
+ shop-app/src/main/resources/i18n/messages.properties        |  2 +   # err.not_a_merchant
+ shop-app/src/main/resources/i18n/messages_ar.properties     |  2 +
+ shop-app/src/main/resources/i18n/messages_en.properties     |  2 +
+ shop-app/src/test/.../arch/MpEndpointAuthTest.java          |  1 +   # 新端点登记进需登录清单
+ shop-base/src/main/.../common/ErrorCode.java                |  5 +   # NOT_A_MERCHANT(10470)
+ shop-core/src/main/.../user/api/mp/MpUserController.java    | 19 ++   # POST /mp/user/switch-to-merchant
+ shop-core/src/main/.../user/service/AuthService.java        | 11 ++   # switchToMerchant 声明
+ shop-core/src/main/.../user/service/impl/AuthServiceImpl.java | 29 ++ # 实现 + 可选注入 BizIdentityResolver
+ c-app/scripts/with-biz.mjs                                  | 81 +++  # _entry 免登录换取 + i18n 模板 $t→t 修复
+ shop-app/src/test/.../scenario/SwitchToMerchantTest.java    | 新增    # AC1/AC2
+```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 列了、实际没动：后端新增端点以外的任何库表/权限码 | 符合设计：零迁移、零权限码 ✅ |
+| TDD 没列、实际改了：`with-biz.mjs` 的 i18n 模板 `$t(`→`t(` 改写 | 这是**上一版体验版露 key 的修复**，与本 TDD 同批发版，顺带记在这里 |
+| 范围内未做：店员免登录 | 店员行常无 `user_no`，按设计保留手机号登录兜底（§0 已声明排除） |

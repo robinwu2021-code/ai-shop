@@ -133,6 +133,25 @@ public class MpUserController {
         authService.logout(bearer(authorization));
     }
 
+    /**
+     * 免登录「切到商家端」：凭当前 C 端会话(ctk_)换商家令牌(btk_)。
+     *
+     * <p>按 {@code mch_account.user_no == 当前 user_no} 找店主身份：有则返回 btk_
+     * （<b>不撤销 ctk_</b>，用户继续留在 C 端）；不是商家则抛 {@code NOT_A_MERCHANT}，
+     * 前端据此引导去入驻。见 TDD-C端免登录切商家端。
+     */
+    @PostMapping("/switch-to-merchant")
+    public SwitchMerchantResp switchToMerchant() {
+        String userNo = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        String token = authService.switchToMerchant(userNo);
+        // 换成功留痕在 MERCHANT 池（与 /biz/auth/login 一致：问「哪个端在被用」）
+        auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, userNo);
+        return new SwitchMerchantResp(token);
+    }
+
+    public record SwitchMerchantResp(String token) {
+    }
+
     @PostMapping("/phone/bind")
     public UserVO bindPhone(@RequestBody @Valid BindPhoneReq req) {
         return userService.bindPhone(req.phone(), req.code());

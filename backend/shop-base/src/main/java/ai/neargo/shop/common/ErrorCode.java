@@ -166,6 +166,11 @@ public enum ErrorCode {
     PAYOUT_ACCOUNT_NAME_MISMATCH(10468, "err.payout_account.name_mismatch"),
     /** 已经有一张卡在等运营核。同时挂两张待审的卡，核完不知道该以哪张为准 */
     PAYOUT_ACCOUNT_PENDING_EXISTS(10469, "err.payout_account.pending_exists"),
+    /**
+     * 当前 C 端账号没有关联的商家身份 —— 免登录「切到商家端」时，凭 C 端 user_no
+     * 查不到店主的 mch_account。前端据此引导去入驻（「我也想开店」），而不是停在空白页。
+     */
+    NOT_A_MERCHANT(10470, "err.not_a_merchant"),
     APPLY_NOT_EDITABLE(10467, "err.apply.not_editable"),
     /**
      * 手机号或密码不对。
