@@ -24,7 +24,7 @@ import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
 import { useCategoryPicker } from "./category";
 import { useGoodsParams } from "./params";
-import { useRowDrag } from "../my-specs/drag-sort";
+import { useRowDrag } from "@ai-shop/ui/drag-sort";
 import { useSpecGroups } from "./spec-groups";
 import type { Row } from "./price-rows";
 import type { GoodsInvMode, InvMode, SellRule } from "@shared/types";
@@ -584,14 +584,14 @@ const isService = computed(() => type.value === CATEGORY_TYPE.SERVICE);
 const {
   cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
   addImages, removePhoto, setCoverAt, tapPhoto, importFromZip, clearPhotos, clearDetail,
-  addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
+  addDetailImages, removeDetailImage, reorderDetailImage, reorderPhoto, recognizeInto,
 } = useGoodsPhotos((guess) => applyGuess(guess));
 
 /*
- * **详情图拖拽排序**（TDD-商品录入优化5项 AC2）。复用 my-specs 那套纯 touch 拖拽
- * （`useRowDrag`，专为绕开小程序 movable-view 与滚动打架而写），key 用下标字符串。
- * 箭头版 `moveDetailImage` 保留作兜底：手势在三端表现不一时,点两下箭头永远能到位。
- * HOLD_MS 长按才进拖动,所以行内的箭头/删除按钮照常点。
+ * **详情图拖拽排序**。复用库里那套纯 touch 拖拽（`@ai-shop/ui/drag-sort` 的 `useRowDrag`，
+ * 专为绕开小程序 movable-view 与滚动打架而写），key 用下标字符串。
+ * HOLD_MS 长按才进拖动，所以行内的删除按钮照常点。
+ * 商品图那一组的拖动在 `sh-uploader` 里（同一个文件的 `useChipDrag`，几何不同：会换行）。
  */
 const dimgInstance = getCurrentInstance();
 const {
@@ -1384,12 +1384,38 @@ async function applyGuess(guess: GoodsGuess) {
  * 它只按类目取候选，所以只需要把 `categoryNo` 传进去。
  */
 const {
-  propDims, paramValues, loadProps, applyParamPicks,
+  propDims, paramValues, loadProps, disableParam, applyParamPicks,
   addingParam, newParam, addingValueFor, newParamValue,
   paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
   paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
   isTextDim, setParamText, removeParam,
 } = useGoodsParams(categoryNo);
+
+/**
+ * **本店不用这一项参数**（2026-10-07 用户：用不上的参数要能关掉）。
+ *
+ * <p>影响面写进确认框，因为它**不止这一件货**：关掉的是本店这个类目以后都不显示它。
+ * 这是刻意的 —— 用不上「口感」的店，下一件货同样用不上；
+ * 要找回来在「商品规格和参数」那一页的「可添加」里。已填的值跟着一起清。
+ */
+async function confirmDisableParam(d: { templateNo: string; name: string }) {
+  const ok = await confirm({
+    title: String(t("goods.disableParamTitle", { k: d.name })),
+    hint: String(t("goods.disableParamHint", { c: categoryLabel.value || t("goods.thisCategory") })),
+    confirmText: String(t("goods.disableParamOk")),
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    if (await disableParam(d.templateNo)) {
+      uni.showToast({ title: String(t("goods.disableParamDone", { k: d.name })), icon: "none" });
+    } else {
+      uni.showToast({ title: String(t("goods.disableParamFail")), icon: "none" });
+    }
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message || String(t("goods.disableParamFail")), icon: "none" });
+  }
+}
 
 /*
  * **孤儿参数**（TDD-商品录入优化5项 AC1）：商品身上有、但其维度已不在当前类目模板里。
@@ -2098,10 +2124,14 @@ async function save(thenSubmit = false) {
           :uploading="uploading"
           removable
           :badge="String($t('goods.coverBadge'))"
+          sortable
           @add="addImages"
           @remove="removePhoto"
           @tap-item="tapPhoto"
+          @sort="reorderPhoto"
         ></sh-uploader>
+        <!-- 手势要说出来：长按拖动在这套界面里只有这两处，不说没人会去试。两张以上才有意义 -->
+        <text v-if="photos.length > 1" class="txt-caption sh-muted imgs__tip">{{ $t("goods.dragTipPhotos") }}</text>
       </view>
 
       <!-- 三语：一个框 + 语言 tab，不给三个框并排 -->
@@ -2279,9 +2309,8 @@ async function save(thenSubmit = false) {
           >
             <sh-cover class="dimgs__img" :src="img" :w="200"></sh-cover>
             <text class="txt-caption dimgs__i">{{ i + 1 }}</text>
+            <!-- 只剩删除：上下移动那两颗做的是长按拖动已经能做的事（2026-10-07） -->
             <view class="dimgs__ops">
-              <view class="sh-chip sh-chip--primary mini" @tap="moveDetailImage(i, -1)"><sh-icon name="chevronUp" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
-              <view class="sh-chip sh-chip--primary mini" @tap="moveDetailImage(i, 1)"><sh-icon name="chevronDown" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
               <view class="sh-chip sh-chip--primary mini" @tap="removeDetailImage(i)"><sh-icon name="close" :size="24" color="var(--sh-primary-text)"></sh-icon></view>
             </view>
           </view>
@@ -2294,6 +2323,7 @@ async function save(thenSubmit = false) {
             <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
+        <text v-if="detailImages.length > 1" class="txt-caption sh-muted imgs__tip">{{ $t("goods.dragTipDetail") }}</text>
       </view>
 
     </view>
@@ -2752,12 +2782,20 @@ async function save(thenSubmit = false) {
           >{{ o.label }}</text>
           <sh-add small :text="String($t('goods.paramFill'))" @tap="openParamValue(d)"></sh-add>
         </view>
-        <!-- 已填的才给删除点（AC1）：清掉这一项,与 TEXT 清空输入框同一口径 -->
+        <!--
+          两个动作分得很开：**清值**（已填的才有）把这一项留在清单里、只去掉值；
+          **不用这项**把它从本店这个类目里关掉，下次建货不再出现。
+          后者带确认，且确认框里写清影响的不止这一件货。
+        -->
         <text
           v-if="paramValues[d.templateNo]"
           class="txt-caption sh-link sh-link--quiet param__del"
           @tap="removeParam(d.templateNo)"
         >{{ $t("goods.removeParam") }}</text>
+        <text
+          class="txt-caption sh-link sh-link--quiet param__off"
+          @tap="confirmDisableParam(d)"
+        >{{ $t("goods.disableParam") }}</text>
       </view>
       <!--
         孤儿参数（AC1）：维度已不在本类目模板里的存量/识别落项。只读显示 + 删除 ——
@@ -3508,7 +3546,8 @@ async function save(thenSubmit = false) {
 .param__opts {
   flex: 1;
 }
-.param__del {
+.param__del,
+.param__off {
   flex: none;
   padding-top: 8rpx;
 }
@@ -3808,6 +3847,8 @@ async function save(thenSubmit = false) {
 }
 /* 商品图/详情图的字段头：标签吃掉剩余宽度，计数、清空、导入按间距排在右边（四样东西 space-between 会被撑散） */
 .imgs__head { justify-content: flex-start; gap: 16rpx; }
+/* 手势说明：跟在那一组图下面，与计数同一档灰 */
+.imgs__tip { display: block; margin-top: 12rpx; }
 .kv .field__input {
   flex: 1;
   margin-top: 0;

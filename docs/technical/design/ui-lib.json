@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 509,
+        "b-app": 511,
         "c-app": 77
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 376,
+        "b-app": 379,
         "c-app": 273
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 66,
+        "b-app": 67,
         "c-app": 14
       }
     },
@@ -977,7 +977,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 14,
+        "b-app": 15,
         "c-app": 2
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 150,
+        "b-app": 148,
         "c-app": 54
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 66,
         "c-app": 25
       }
     },
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 126,
+        "b-app": 124,
         "c-app": 28,
         "lib": 13
       },
@@ -2917,7 +2917,7 @@
       "name": "sh-uploader",
       "file": "packages/ui/src/components/sh-uploader.vue",
       "scope": "跨端",
-      "lines": 134,
+      "lines": 188,
       "props": [
         "list: readonly string[]",
         "max?: number",
@@ -2925,7 +2925,8 @@
         "height?: number",
         "uploading?: boolean",
         "removable?: boolean",
-        "badge?: string"
+        "badge?: string",
+        "sortable?: boolean"
       ],
       "usage": {
         "b-app": 5,
@@ -3650,9 +3651,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 491,
-      "localSelectors": 92,
-      "localCssLines": 358,
+      "libClassHits": 494,
+      "localSelectors": 93,
+      "localCssLines": 360,
       "rolled": []
     },
     {

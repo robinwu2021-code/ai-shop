@@ -16,7 +16,7 @@
 // 看得到它。建错了只能一直留着，还占着配额，而配额用完那句「不能再建了」
 // 也说不清是被什么占了。
 import { computed, getCurrentInstance, ref } from "vue";
-import { moveItem, useChipDrag, useRowDrag } from "./drag-sort";
+import { moveItem, useChipDrag, useRowDrag } from "@ai-shop/ui/drag-sort";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -194,7 +194,7 @@ const platformNames = ref<Record<string, string>>({});
  * 也才有地方放动效 —— 边拖边重排的话，元素每帧都在换位置，没有可动画的稳定态。
  */
 
-/** 长按多久算「他要拖」等两个常数、moveItem，与两套拖动实现都在 `./drag-sort.ts` */
+/** 长按多久算「他要拖」等两个常数、moveItem，与两套拖动实现都在 `@ai-shop/ui/drag-sort` */
 const instance = getCurrentInstance();
 
 /*
@@ -381,7 +381,7 @@ async function saveDim(g: StoreCategorySpecs) {
  * 拖动排序。
  *
  * **只用 touch 事件，不用 movable-view。**仓库里为同一件事做过决定
- * （见 goods-edit 的 moveDetailImage）：movable-view 在小程序里与页面滚动打架。
+ * （见 goods-edit 的详情图）：movable-view 在小程序里与页面滚动打架。
  * 这里的做法是自己算：按下记住起点与那一行的高度，移动时用位移除以行高
  * 得到落到第几位，松手才提交。
  *

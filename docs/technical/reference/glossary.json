@@ -9152,6 +9152,42 @@
           "ar": "مجموعة المواصفات هذه مضافة بالفعل"
         },
         {
+          "key": "goods.disableParam",
+          "zh-CN": "不用这项",
+          "en": "Not used",
+          "ar": "غير مستخدم"
+        },
+        {
+          "key": "goods.disableParamDone",
+          "zh-CN": "已关掉「{k}」",
+          "en": "“{k}” turned off",
+          "ar": "تم إيقاف «{k}»"
+        },
+        {
+          "key": "goods.disableParamFail",
+          "zh-CN": "没能关掉，稍后再试",
+          "en": "Could not turn it off, try again later",
+          "ar": "تعذّر الإيقاف، حاول لاحقاً"
+        },
+        {
+          "key": "goods.disableParamHint",
+          "zh-CN": "本店{c}以后都不显示它，已填的值一并清掉。要找回来：商品规格和参数",
+          "en": "It will no longer appear for {c} in this store, and the filled value is cleared. To get it back: Specs & parameters",
+          "ar": "لن يظهر بعد الآن في {c} لهذا المتجر، وتُمسح القيمة المُدخلة. لاستعادته: المواصفات والمعايير"
+        },
+        {
+          "key": "goods.disableParamOk",
+          "zh-CN": "不用",
+          "en": "Stop using",
+          "ar": "إيقاف"
+        },
+        {
+          "key": "goods.disableParamTitle",
+          "zh-CN": "不用「{k}」？",
+          "en": "Stop using “{k}”?",
+          "ar": "إيقاف استخدام «{k}»؟"
+        },
+        {
           "key": "goods.discardBtn",
           "zh-CN": "放弃这份修改",
           "en": "Drop these changes",
@@ -9186,6 +9222,18 @@
           "zh-CN": "上次存的草稿没读到，现在编辑的是线上版；发布会覆盖掉草稿",
           "en": "Could not read your saved draft — you are editing the live version, and publishing will overwrite the draft",
           "ar": "تعذّر قراءة مسودتك المحفوظة؛ أنت تحرّر النسخة المعروضة، والنشر سيستبدل المسودة"
+        },
+        {
+          "key": "goods.dragTipDetail",
+          "zh-CN": "长按图片拖动调整顺序",
+          "en": "Long-press an image to reorder",
+          "ar": "اضغط مطوّلاً على صورة لإعادة الترتيب"
+        },
+        {
+          "key": "goods.dragTipPhotos",
+          "zh-CN": "长按图片拖动排序，第一张是主图",
+          "en": "Long-press an image to reorder; the first one is the cover",
+          "ar": "اضغط مطوّلاً على صورة لإعادة الترتيب؛ الأولى هي الغلاف"
         },
         {
           "key": "goods.durationMin",
@@ -10578,6 +10626,12 @@
           "zh-CN": "副标题",
           "en": "Subtitle",
           "ar": "العنوان الفرعي"
+        },
+        {
+          "key": "goods.thisCategory",
+          "zh-CN": "这个类目",
+          "en": "this category",
+          "ar": "هذه الفئة"
         },
         {
           "key": "goods.title",

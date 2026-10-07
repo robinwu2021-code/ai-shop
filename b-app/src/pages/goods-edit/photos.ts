@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { MAX_IMAGE_BYTES, pickImages } from "@shared/ports/media";
 import { importZip, readTextFile } from "@/ports/zip-import";
+import { reorderPhotos } from "./photo-order";
 import { listsOf, ruleHint } from "@shared/ports/zip-media";
 import { pick } from "@ai-shop/ui/prompt";
 import type { GoodsGuess } from "@/api/contract";
@@ -189,29 +190,24 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
   }
 
   /**
-   * 详情图**换顺序**。长图是有次序的（封面页 → 参数页 → 售后页），
-   * 传错了只能全删重传就太贵了。
+   * 商品图**拖动排序**：挪到第一位就是换封面（算法与断言在 `./photo-order.ts`）。
    *
-   * <p>用两个箭头而不是长按拖拽：拖拽在 uni 的三端各有各的手势冲突
-   * （小程序里 movable-view 与页面滚动打架），而这里最多 10 张、
-   * 实际多半 2–3 张 —— 点两下就到位。
+   * <p>2026-10-07 之前这一组根本排不了序，换封面要点开一个只有一项的弹层。
+   * 拖动把「换封面」与「调顺序」合成同一个动作 —— C 端轮播的顺序本来就是 `images` 的顺序。
    */
-  function moveDetailImage(i: number, delta: number) {
-    const to = i + delta;
-    const list = [...detailImages.value];
-    if (to < 0 || to >= list.length) return;
-    const [row] = list.splice(i, 1);
-    if (!row) return;
-    list.splice(to, 0, row);
-    detailImages.value = list;
+  function reorderPhoto(from: number, to: number) {
+    const next = reorderPhotos(photos.value, from, to);
+    cover.value = next.cover;
+    images.value = next.images;
   }
 
   /**
-   * 详情图**拖拽排序**（TDD-商品录入优化5项 AC2）：从 from 位拖到 to 位。
+   * 详情图**拖拽排序**：从 from 位拖到 to 位。长图是有次序的（封面页 → 参数页 → 售后页），
+   * 传错了只能全删重传就太贵了。
    *
-   * <p>与箭头版 {@link moveDetailImage} 并存——箭头是兜底（小程序里拖拽与页面滚动的
-   * 手势冲突是老问题,见上面那段）；拖拽走的是 my-specs 那套纯 touch 实现(useRowDrag)。
-   * 这里只负责「落位」这一步,手势识别在页面上。
+   * <p>走库里那套纯 touch 实现（`@ai-shop/ui/drag-sort`，专为绕开小程序 movable-view
+   * 与页面滚动打架而写）。这里只负责「落位」，手势识别在页面上。
+   * **上下箭头 2026-10-07 去掉**：一行三颗按钮里有两颗做的是拖动已经能做的事。
    */
   function reorderDetailImage(from: number, to: number) {
     const list = [...detailImages.value];
@@ -326,6 +322,6 @@ export function useGoodsPhotos(onGuess: (guess: GoodsGuess) => Promise<void>) {
   return {
     cover, images, photos, detailImages, uploading, PHOTO_LIMIT, DETAIL_IMAGE_LIMIT,
     addImages, removePhoto, setCoverAt, tapPhoto, importFromZip, clearPhotos, clearDetail,
-    addDetailImages, removeDetailImage, moveDetailImage, reorderDetailImage, recognizeInto,
+    addDetailImages, removeDetailImage, reorderDetailImage, reorderPhoto, recognizeInto,
   };
 }

@@ -17,10 +17,11 @@
 // · **不改的**：`apply` / `payment` 现在**没有删除入口**，收编后仍然没有 ——
 //   `removable` 默认关。给一个页面凭空添一个删除手势不是收编，是改需求。
 //
-// **`goods-edit` 的详情图（`.dimgs`）不归它管**：那是竖排列表 + 每行 ↑↓✕ 的
-// 排序件，与「一排缩略图 + ＋」是两个形态。名字像、东西不同 ——
+// **`goods-edit` 的详情图（`.dimgs`）不归它管**：那是竖排列表的排序件，
+// 与「一排缩略图 + ＋」是两个形态。名字像、东西不同 ——
 // 这一课这套界面已经上过三次（addbtn/candchip、卡内标题行/分段标题、行内首行）。
-import { computed } from "vue";
+import { computed, getCurrentInstance } from "vue";
+import { useChipDrag } from "../drag-sort";
 
 const props = withDefaults(
   defineProps<{
@@ -37,15 +38,37 @@ const props = withDefaults(
     removable?: boolean;
     /** 第一格左下角的角标（如「主图」）。留空不显示 */
     badge?: string;
+    /**
+     * 长按拖动排序。**默认关** —— 与 `removable` 同一条：给一个页面凭空添一个手势不是收编。
+     *
+     * <p>开了之后长按 180ms 起拖（`useChipDrag`，与规格档位同一套手势与手感），
+     * 松手派 `sort(from, to)`；**组件自己不动数组**，顺序归调用点。
+     */
+    sortable?: boolean;
   }>(),
-  { max: 0, width: 104, height: 0, uploading: false, removable: false, badge: "" },
+  { max: 0, width: 104, height: 0, uploading: false, removable: false, badge: "", sortable: false },
 );
 
 const emit = defineEmits<{
   (e: "add"): void;
   (e: "remove", index: number): void;
   (e: "tapItem", index: number): void;
+  (e: "sort", from: number, to: number): void;
 }>();
+
+/*
+ * 拖动排序。几何是「离手指最近的那一格」—— 格子会换行，一维的行高整除算不出来。
+ * `.up__cell` 只数到 list.length，末尾那个「＋」不参与（拖到它上面 = 放回最后一张）。
+ */
+const {
+  dragFrom: sortFrom, dragTo: sortTo, shift: sortShift,
+  onStart: sortStart, onMove: sortMove, onEnd: sortEnd, cancel: sortCancel,
+} = useChipDrag(
+  getCurrentInstance(),
+  ".up__cell",
+  () => props.list.length,
+  (from, to) => emit("sort", from, to),
+);
 
 const cell = computed(() => ({ width: `${props.width}rpx`, height: `${props.height || props.width}rpx` }));
 const canAdd = computed(() => !props.max || props.list.length < props.max);
@@ -53,6 +76,22 @@ const canAdd = computed(() => !props.max || props.list.length < props.max);
 function add() {
   if (props.uploading) return;
   emit("add");
+}
+
+/** 拖动中的那一格跟着手指走；其余不动（落位在松手那一刻一次完成） */
+function cellStyle(i: number) {
+  if (!props.sortable || sortFrom.value !== i) return cell.value;
+  return {
+    ...cell.value,
+    transform: `translate(${sortShift.value.x}px, ${sortShift.value.y}px)`,
+    zIndex: 2,
+  };
+}
+
+/** 删一张：顺手取消可能正在计时的那次长按，否则它指向的下标已经没东西了 */
+function remove(i: number) {
+  sortCancel();
+  emit("remove", i);
 }
 </script>
 
@@ -62,12 +101,16 @@ function add() {
       v-for="(img, i) in list"
       :key="img + i"
       class="up__cell"
-      :style="cell"
+      :class="{ 'up__cell--drag': sortable && sortFrom === i, 'up__cell--to': sortable && sortTo === i && sortFrom >= 0 }"
+      :style="cellStyle(i)"
       @tap="emit('tapItem', i)"
+      @touchstart="sortable && sortStart(i, $event)"
+      @touchmove="sortable && sortMove($event)"
+      @touchend="sortable && sortEnd()"
     >
       <sh-cover class="up__img" :style="cell" :src="img" :w="200"></sh-cover>
       <text v-if="badge && i === 0" class="txt-caption up__badge">{{ badge }}</text>
-      <view v-if="removable" class="up__del sh-hit sh-center" @tap.stop="emit('remove', i)">
+      <view v-if="removable" class="up__del sh-hit sh-center" @tap.stop="remove(i)">
         <sh-icon name="close" :size="24" color="#fff"></sh-icon>
       </view>
     </view>
@@ -85,6 +128,17 @@ function add() {
 .up__cell {
   position: relative;
   flex: none;
+}
+/*
+ * 拖动中那一格：抬起来（跟手 + 压在别人上面），落点那一格让出一条主色边。
+ * 与规格档位的两档反馈同一套 —— 那边验过：只变透明度的话，在小格子上几乎看不出来。
+ */
+.up__cell--drag {
+  opacity: 0.9;
+}
+.up__cell--to .up__img {
+  outline: 4rpx solid var(--sh-primary);
+  outline-offset: 2rpx;
 }
 .up__img {
   border-radius: 16rpx;

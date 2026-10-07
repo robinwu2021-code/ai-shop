@@ -262,6 +262,46 @@ export function useGoodsParams(categoryNo: Ref<string>) {
   }
 
   /**
+   * **本店不用这一项参数**（2026-10-07 用户：「可以删除/关闭没有用的参数，比如储存条件、口感」）。
+   *
+   * <p>平台给水果配了十几项，而一个卖脆柿子的用不上「口感」「储存条件」——
+   * 此前这些行只能一直摆在那儿，每建一件货都要从中间翻过去。
+   *
+   * <p><b>关掉的是「本店这个类目」，不是这一件商品</b>：复用已有的本店覆盖
+   * （`mSaveSpecOverride` 的 `enabled:false`，与「商品规格和参数」页移除一项同一条路），
+   * 不新开一张「这件货藏了哪几项」的表 —— 同一个商家在同一类目下用不上的，
+   * 下一件货同样用不上，而真要找回来，那一页的「可添加」里就有。
+   * 所以**调用点必须把影响面写在确认框里**。
+   *
+   * <p>先清掉这件货身上已填的值：留着的话保存时还会连同这一项一起写进商品，
+   * 而界面上它已经不在了 —— 只写不读的反面，一样看不出来。
+   *
+   * @returns 关掉了没有。false = 取不到当前状态，什么都没做（见下面那段「拿不到卡就不保存」）
+   */
+  async function disableParam(dimNo: string): Promise<boolean> {
+    if (!categoryNo.value) return false;
+    /*
+     * 后端先清后写：要带上这个类目下**销售规格与商品参数两个列表**的当前状态，
+     * 少带一条就抹掉一条（与 confirmParam 加参数那段同一条，理由见 buildSpecOverride）。
+     */
+    const [dims, props] = await Promise.all([
+      api.mSpecTemplates(undefined, categoryNo.value).catch(() => []),
+      api.mSpecProps(categoryNo.value).catch(() => []),
+    ]);
+    if (!props.some((t) => t.templateNo === dimNo)) return false;
+    await api.mSaveSpecOverride(
+      categoryNo.value,
+      buildSpecOverride({
+        g: { categoryNo: categoryNo.value, categoryName: "", dims, props },
+        removeDimNo: dimNo,
+      }),
+    );
+    removeParam(dimNo);
+    await loadProps();
+    return true;
+  }
+
+  /**
    * **TEXT 维度**：配料 / 厂名厂址 / 生产许可证 / 执行标准这类每件商品几乎唯一的字段。
    *
    * <p>它们不走值池——入池只会堆满永不复用的唯一串，而养值池的理由是跨店聚合，
@@ -310,7 +350,7 @@ export function useGoodsParams(categoryNo: Ref<string>) {
 
 
   return {
-    propDims, paramValues, loadProps, applyParamPicks,
+    propDims, paramValues, loadProps, disableParam, applyParamPicks,
     addingParam, newParam, addingValueFor, newParamValue,
     paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
     paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
