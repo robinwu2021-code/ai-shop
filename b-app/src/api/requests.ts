@@ -245,7 +245,11 @@ export interface GoodsTextParse {
   /** 规格维度草稿（LLM 归类，P1 空） */
   specs: { name: string; options: string[] }[];
   /** 参数草稿（LLM 从类目模板挑，P1 空）。source=llm/rule */
-  params: { dimNo: string; name: string; label: string; source: string; confidence: number }[];
+  params: {
+    dimNo: string; name: string; label: string; source: string; confidence: number;
+    /** 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 */
+    rawName?: string;
+  }[];
   /** 抽到的价（分）。带「元/￥」才算 */
   pricesMinor: number[];
   /** 重量/净重候选原文（4.5斤/140g） */

@@ -2191,6 +2191,7 @@ _无字段_
 | `label` | `string` | 是 | — |
 | `source` | `string` | 是 | — |
 | `confidence` | `number` | 是 | — |
+| `rawName` | `string` | 否 | 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 |
 
 
 #### POST `/biz/goods/recognize`
@@ -7872,6 +7873,7 @@ _无字段_
 | `label` | `string` | 是 | — |
 | `source` | `string` | 是 | — |
 | `confidence` | `number` | 是 | — |
+| `rawName` | `string` | 否 | 原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数 |
 
 ### GrantStoreReq
 

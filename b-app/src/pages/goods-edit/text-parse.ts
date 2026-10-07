@@ -218,6 +218,13 @@ export interface Candidate {
   mapped?: boolean;
   /** 限购地区行：并入之后的全集 */
   regions?: string[];
+  /**
+   * 参数行：会被**替换掉**的同义旧自由参数（「净重 4.5斤」）。
+   *
+   * <p>商家手工建过「净重」、或早先识别留下的 {dimNo:"净重"} —— 落标准参数「净含量」时
+   * 不处理它的话，两行会并列出现在参数卡里。**写出来交给他勾**，不静默删。
+   */
+  replaces?: { dimNo: string; label: string };
   checked: boolean;
 }
 
@@ -233,6 +240,13 @@ export interface CandidateCurrent {
   params: Record<string, string | undefined>;
   /** 本品类的标准参数维度号。参数行据此判 mapped */
   propDimNos: string[];
+  /**
+   * **自由参数**的键：维度号就是它自己的名字、没有 code（{dimNo:"净重", name:"净重"}）。
+   *
+   * <p>不能用「不在本品类清单里」来判 —— 产地 SD_ORIGIN 就不在水果的清单里，
+   * 那样判会把一个标准参数当成旧自由参数替换掉（测试抓到的）。可选：不传 = 没有自由参数。
+   */
+  freeKeys?: string[];
 }
 
 /**
@@ -246,7 +260,7 @@ export interface CandidateCurrent {
  */
 export function buildCandidates(
   plan: TextParsePlan,
-  params: { dimNo: string; name: string; label: string }[],
+  params: { dimNo: string; name: string; label: string; rawName?: string }[],
   cur: CandidateCurrent,
 ): Candidate[] {
   const rows: Candidate[] = [];
@@ -283,9 +297,29 @@ export function buildCandidates(
     rows.push({
       key: `param:${i}`, kind: "param", target: p.name, value: p.label,
       dimNo: p.dimNo, mapped, before, checked: mapped && !before,
+      replaces: mapped ? legacyFreeParam(p, cur) : undefined,
     });
   });
   return rows;
+}
+
+/**
+ * 找同义的**旧自由参数**：键是自由参数（见 `freeKeys`）、不是这次要落的那个，
+ * 而名字是原文叫法（净重）或标准名（单果重量）。
+ *
+ * <p>只认这两种名字，不做模糊匹配 —— 替错一个比漏替一个更糟：
+ * 漏了顶多两行并列，商家看得见；替错了是他手工填的东西被换掉。
+ */
+function legacyFreeParam(
+  p: { dimNo: string; name: string; rawName?: string },
+  cur: CandidateCurrent,
+): { dimNo: string; label: string } | undefined {
+  for (const key of [p.rawName, p.name]) {
+    if (!key || key === p.dimNo || !(cur.freeKeys ?? []).includes(key)) continue;
+    const label = cur.params[key];
+    if (label) return { dimNo: key, label };
+  }
+  return undefined;
 }
 
 /**
@@ -300,5 +334,6 @@ export function retarget(
   curParams: Record<string, string | undefined>,
 ): Candidate {
   const before = curParams[dim.dimNo] || undefined;
+  // replaces 跟着原文叫法走，不跟落点：「净重」改落到毛重，被替换的旧「净重」还是那一条
   return { ...c, dimNo: dim.dimNo, target: dim.name, mapped: true, before, checked: !before };
 }

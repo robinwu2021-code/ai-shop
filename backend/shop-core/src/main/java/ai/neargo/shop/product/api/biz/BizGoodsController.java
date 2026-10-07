@@ -749,7 +749,7 @@ public class BizGoodsController {
             for (var p : extract.params()) {
                 var r = ai.neargo.shop.product.dto.ParamMapping.resolve(p, hints);
                 params.add(new GoodsTextParseVO.ParamDraft(
-                        r.dimNo(), r.name(), p.value(), "llm", extract.confidence()));
+                        r.dimNo(), r.name(), p.value(), "llm", extract.confidence(), p.name()));
             }
         }
 
@@ -980,9 +980,19 @@ public class BizGoodsController {
         public record SpecDraft(String name, List<String> options) {
         }
 
-        /** 参数草稿（LLM 从类目模板里挑，P1 空）。source=llm/rule */
+        /**
+         * 参数草稿。source=llm/rule。
+         *
+         * @param dimNo   落到的维度号。核对到本品类标准参数时是真维度号（SD_NET_CONTENT），
+         *                对不上时是原文叫法（自由参数的旧形状）
+         * @param name    展示名。对上了是**标准名称**（净含量）
+         * @param rawName **原文叫法**（净重）。端上靠它找出同义的旧自由参数 ——
+         *                商家手工建过「净重」、或早先识别留下的 {dimNo:"净重"}，
+         *                落标准参数「净含量」时要在确认区写出「替换「净重 4.5斤」」交给他勾，
+         *                否则两行并列出现在参数卡里
+         */
         public record ParamDraft(String dimNo, String name, String label,
-                                 String source, double confidence) {
+                                 String source, double confidence, String rawName) {
         }
     }
 

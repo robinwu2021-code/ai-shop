@@ -642,14 +642,17 @@ export const productMock: Pick<MerchantApi,
      * 「净重」落成「净含量」（后端 ParamMapping）。此前这里恒为空，
      * mock 下确认区一行参数都没有 —— 那正是要验的那一半。
      */
+    // 第一个捕获组是原文叫法（rawName：净重），第二个是值；name 是对上之后的标准名
     const PARAM_RULES: [RegExp, string, string][] = [
-      [/单果\s*(\d+(?:\.\d+)?\s*(?:g|克|kg|千克)\+?)/i, "SD_UNIT_WEIGHT", "单果重量"],
-      [/(?:净重|净含量)\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_NET_CONTENT", "净含量"],
-      [/毛重\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_GROSS_WEIGHT", "毛重"],
+      [/(单果)\s*(\d+(?:\.\d+)?\s*(?:g|克|kg|千克)\+?)/i, "SD_UNIT_WEIGHT", "单果重量"],
+      [/(净重|净含量)\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_NET_CONTENT", "净含量"],
+      [/(毛重)\s*(\d+(?:\.\d+)?\s*(?:斤|kg|千克|g|克))/i, "SD_GROSS_WEIGHT", "毛重"],
     ];
     const params = PARAM_RULES.flatMap(([re, dimNo, name]) => {
       const m = re.exec(text);
-      return m ? [{ dimNo, name, label: m[1]!.replace(/\s+/g, ""), source: "llm", confidence: 0.9 }] : [];
+      if (!m) return [];
+      const rawName = m[1] === "单果" ? "单果重量" : m[1]!;
+      return [{ dimNo, name, label: m[2]!.replace(/\s+/g, ""), source: "llm", confidence: 0.9, rawName }];
     });
     const hit = prices.length || weights.length || carriers.length || region || params.length;
     return delay({

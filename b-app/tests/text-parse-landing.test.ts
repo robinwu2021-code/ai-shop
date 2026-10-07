@@ -327,3 +327,55 @@ describe("P2 确认区：一个识别出来的东西一行", () => {
     expect(moved).toMatchObject({ before: "5斤", checked: false });
   });
 });
+
+describe("替换同义的旧自由参数（脆柿子草稿的真实情况）", () => {
+  const props = ["SD_UNIT_WEIGHT", "SD_NET_CONTENT", "SD_GROSS_WEIGHT"];
+  // 生产草稿里实测到的两条：维度号是中文名的游离参数
+  const legacy = { 单果重量: "140g+", 净重: "4.5斤", SD_ORIGIN: "国产" };
+  const params = [
+    { dimNo: "SD_UNIT_WEIGHT", name: "单果重量", label: "140g+", rawName: "单果重量" },
+    { dimNo: "SD_NET_CONTENT", name: "净含量", label: "4.5斤", rawName: "净重" },
+  ];
+  // 自由参数的键：维度号是中文名的那两条。SD_ORIGIN 是标准参数，不在里面
+  const cur = (p: Record<string, string>): CandidateCurrent => ({
+    hasExpress: true, priceBefore: "", bulkBefore: "", params: p, propDimNos: props,
+    freeKeys: Object.keys(p).filter((k) => !k.startsWith("SD_")),
+  });
+
+  it("★★★ 原文叫「净重」→ 落「净含量」，并写出会替换掉旧的「净重」", () => {
+    const rows = buildCandidates(planTextParse(parsed({}), target()), params, cur(legacy));
+    const net = rows.find((c) => c.dimNo === "SD_NET_CONTENT")!;
+    expect(net.replaces).toEqual({ dimNo: "净重", label: "4.5斤" });
+    // 标准参数那一格是空的，所以照常默认勾上
+    expect(net.checked).toBe(true);
+  });
+
+  it("★★★ 标准名与旧自由参数同名（单果重量）也认得出来", () => {
+    const rows = buildCandidates(planTextParse(parsed({}), target()), params, cur(legacy));
+    expect(rows.find((c) => c.dimNo === "SD_UNIT_WEIGHT")!.replaces)
+      .toEqual({ dimNo: "单果重量", label: "140g+" });
+  });
+
+  it("不碰标准参数：SD_ORIGIN 不会被当成旧自由参数", () => {
+    const rows = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "SD_NET_CONTENT", name: "净含量", label: "1斤", rawName: "SD_ORIGIN" }],
+      cur(legacy),
+    );
+    expect(rows[0]!.replaces).toBeUndefined();
+  });
+
+  it("对不上标准参数的那行不谈替换", () => {
+    const rows = buildCandidates(
+      planTextParse(parsed({}), target()),
+      [{ dimNo: "甜度", name: "甜度", label: "18度", rawName: "甜度" }],
+      cur({ 甜度: "16度" }),
+    );
+    expect(rows[0]!.replaces).toBeUndefined();
+  });
+
+  it("没有同义旧参数就没有 replaces", () => {
+    const rows = buildCandidates(planTextParse(parsed({}), target()), params, cur({}));
+    expect(rows.every((c) => !c.replaces)).toBe(true);
+  });
+});

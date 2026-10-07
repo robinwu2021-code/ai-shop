@@ -10549,6 +10549,9 @@ components:
                 type: "string"
               confidence: 
                 type: "number"
+              rawName: 
+                type: "string"
+                description: "原文叫法（净重）。`name` 是对上之后的标准名（净含量）。端上靠它找同义的旧自由参数"
             required: 
               - "dimNo"
               - "name"

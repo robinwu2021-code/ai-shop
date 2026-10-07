@@ -154,6 +154,9 @@ class BizGoodsParseTextTest {
                 .containsExactly("单果重量", "净含量");
         assertThat(vo.params()).extracting(BizGoodsController.GoodsTextParseVO.ParamDraft::label)
                 .containsExactly("140g+", "4.5斤");
+        // 原文叫法也回给端上 —— 它要据此找出同义的旧自由参数（{dimNo:"净重"}）交给商家替换
+        assertThat(vo.params()).extracting(BizGoodsController.GoodsTextParseVO.ParamDraft::rawName)
+                .containsExactly("单果重量", "净重");
     }
 
     @Test

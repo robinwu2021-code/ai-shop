@@ -918,6 +918,10 @@ async function applyTextParse(): Promise<number> {
     bulkBefore: bulk.value.price,
     params: currentParamLabels(),
     propDimNos: propDims.value.map((d) => d.templateNo),
+    // 自由参数：维度号就是它自己的名字、没有 code —— 早先识别留下的 {dimNo:"净重"} 正是这个形状
+    freeKeys: Object.entries(paramValues.value)
+      .filter(([k, v]) => v && !v.code && (v.name ?? k) === k)
+      .map(([k]) => k),
   });
   return candidates.value.length + specPicks.value.length;
 }
@@ -961,7 +965,8 @@ function pickTarget(dim: { templateNo: string; name: string } | null) {
   if (!key) return;
   candidates.value = candidates.value.map((c) => {
     if (c.key !== key) return c;
-    if (!dim) return { ...c, mapped: false, checked: false };
+    // 作自由参数 = 不落标准参数，也就谈不上替换旧的同义参数
+    if (!dim) return { ...c, mapped: false, checked: false, replaces: undefined };
     return retarget(c, { dimNo: dim.templateNo, name: dim.name }, currentParamLabels());
   });
 }
@@ -993,6 +998,11 @@ function applyCandidates() {
     } else if (c.kind === "regions" && c.regions) {
       restrictedRegions.value = [...c.regions];
     } else if (c.kind === "param" && c.dimNo) {
+      // 勾上了就替换同义的旧自由参数 —— 确认区里写出来过，不是静默删
+      if (c.replaces) {
+        const { [c.replaces.dimNo]: _old, ...keep } = paramValues.value;
+        paramValues.value = keep;
+      }
       if (paramValues.value[c.dimNo]) {
         const { [c.dimNo]: _drop, ...rest } = paramValues.value;
         paramValues.value = rest;
@@ -1927,6 +1937,10 @@ async function save(thenSubmit = false) {
               <!-- 这一格已经有值：勾上会覆盖它，写出来让他看见覆盖的是什么 -->
               <text v-if="c.before" class="txt-caption is-warning confirm__was">
                 {{ $t("goods.confirmWas", { v: c.before }) }}
+              </text>
+              <!-- 会替换掉的同义旧自由参数（「净重 4.5斤」）—— 写出来交给他勾，不静默删 -->
+              <text v-if="c.replaces" class="txt-caption is-warning confirm__was">
+                {{ $t("goods.confirmReplaces", { k: c.replaces.dimNo, v: c.replaces.label }) }}
               </text>
             </view>
             <!-- 参数行的落点可以改；对不上标准参数的那行要先指定 -->

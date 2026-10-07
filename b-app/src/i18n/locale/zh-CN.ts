@@ -365,6 +365,7 @@ export default {
     confirmAll: "全选",
     confirmNone: "全不选",
     confirmWas: "原 {v}",
+    confirmReplaces: "替换「{k} {v}」",
     confirmPick: "选参数",
     confirmApply: "填入（{n}）",
     confirmDone: "已填入 {n} 项",

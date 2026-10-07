@@ -9020,6 +9020,12 @@
           "ar": "اختر المعيار"
         },
         {
+          "key": "goods.confirmReplaces",
+          "zh-CN": "替换「{k} {v}」",
+          "en": "replaces “{k} {v}”",
+          "ar": "يستبدل «{k} {v}»"
+        },
+        {
           "key": "goods.confirmTitle",
           "zh-CN": "识别到 {n} 项 · 已选 {m}",
           "en": "{n} found · {m} selected",
