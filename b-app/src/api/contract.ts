@@ -593,6 +593,12 @@ export interface GoodsDraft {
    * 排除语义:默认全国可售、列表内不可售。
    */
   restrictedRegions?: string[];
+  /**
+   * 这一版**怎么录的**：MANUAL 手填 / QUICK_TEXT 快速录入 / ZIP 压缩包 / IMAGE 图片识别。
+   * 不传 = MANUAL。**只进提交历史**，不影响任何业务判断 ——
+   * 它是识别与历史的接缝：三个月后问「这批参数哪来的」，答案在这一列。
+   */
+  entrySource?: GoodsEntrySource;
   /** 空数组 = 单规格。非空则 skus 必须是各组选项的笛卡尔积 */
   specGroups: SpecGroupDraft[];
   /** SKU 列表。单规格商品也有且仅有一条 */

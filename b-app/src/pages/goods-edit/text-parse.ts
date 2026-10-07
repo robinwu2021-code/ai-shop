@@ -169,3 +169,29 @@ export function mergeUndo<T extends object, I>(
   if (prev) return { ...prev, items: [...prev.items, ...items] };
   return { ...snapshot, items };
 }
+
+/** 录入方式，与后端 `prd_goods_revision.entry_source` 同一套取值 */
+export type EntrySource = "MANUAL" | "QUICK_TEXT" | "ZIP" | "IMAGE";
+
+/**
+ * 录入方式**只升不降**：压缩包 > 图片识别 > 快速录入 > 手填。
+ *
+ * <p>压缩包排最前是因为它顺带会触发后两者（带回的 txt 落进识别框、封面图自动跑
+ * 图片识别）。按「最后发生的那件事」记就全变成快速录入了，而商家心里做的是
+ * 「导了个压缩包」—— 历史里那一列是给人回答「这批参数哪来的」，要记最初那一下。
+ */
+export function raiseEntry(current: EntrySource, next: EntrySource): EntrySource {
+  const rank: Record<EntrySource, number> = { MANUAL: 0, QUICK_TEXT: 1, IMAGE: 2, ZIP: 3 };
+  return rank[next] > rank[current] ? next : current;
+}
+
+/**
+ * 撤销之后的录入方式。
+ *
+ * <p>文字全撤了就不该还记成「快速录入」—— 历史里那一列会说谎。
+ * 退回 MANUAL 而不是退回上一个值：图片识别与压缩包有自己的痕迹
+ * （图还在、参数还在），只有文字这一路是真的被撤干净了。
+ */
+export function entryAfterUndo(current: EntrySource): EntrySource {
+  return current === "QUICK_TEXT" ? "MANUAL" : current;
+}

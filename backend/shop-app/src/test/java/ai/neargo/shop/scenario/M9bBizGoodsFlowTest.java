@@ -1932,4 +1932,50 @@ class M9bBizGoodsFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+    @Test
+    @DisplayName("★★★ entrySource 真的从端上传到历史里 —— 这一列此前恒为「手填」")
+    void entrySourceReachesRevision() throws Exception {
+        /*
+         * 为什么要走 HTTP 而不是直调服务：这条链路上会掉东西的地方全在中间 ——
+         * SaveGoodsReq 少一个字段、controller 的构造点漏一个参数、
+         * SaveCommand 的位次错一个,都不报错,只是历史里那一列恒为 MANUAL。
+         * 服务层单测看不见它们(那边是直接传 entrySource 进去的)。
+         */
+        String token = merchant("12600199088", "录入方式·果铺");
+        String body = mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"录入方式测试\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"🍎\",\"images\":[],"
+                                + "\"entrySource\":\"QUICK_TEXT\","
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":9}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+
+        mvc().perform(get("/biz/goods/" + goodsNo + "/revisions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].entrySource").value("QUICK_TEXT"));
+    }
+
+    @Test
+    @DisplayName("不传 entrySource 落 MANUAL —— 不带它的老调用方不该写进一个 null")
+    void entrySourceDefaultsToManual() throws Exception {
+        String token = merchant("12600199089", "默认录入·果铺");
+        String body = mvc().perform(post("/biz/goods/save")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT110\",\"title\":\"默认录入测试\","
+                                + "\"subtitle\":\"测试\",\"cover\":\"🍐\",\"images\":[],"
+                                + "\"specGroups\":[],"
+                                + "\"skus\":[{\"optionValues\":[],\"price\":500,\"stock\":9}]}"))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        mvc().perform(get("/biz/goods/" + goodsNo + "/revisions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data[0].entrySource").value("MANUAL"));
+    }
+
 }

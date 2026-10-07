@@ -7,7 +7,9 @@
  * **plan 里那个字段的值**。
  */
 import { describe, expect, it } from "vitest";
-import { gramsOf, mergeUndo, planTextParse, type TextParseTarget } from "@/pages/goods-edit/text-parse";
+import {
+  entryAfterUndo, gramsOf, mergeUndo, planTextParse, raiseEntry, type TextParseTarget,
+} from "@/pages/goods-edit/text-parse";
 import type { GoodsTextParse } from "@/api/requests";
 
 /** 后端回包。默认什么都没认出来，各条测试只放自己关心的那几项 */
@@ -218,5 +220,34 @@ describe("复核面要列出具体填了什么", () => {
       target(),
     );
     expect(p.items).toHaveLength(p.changed.length);
+  });
+});
+
+describe("录入方式只升不降", () => {
+  it("★★★ 压缩包不会被它自己触发的快速录入盖掉", () => {
+    // 导压缩包 → txt 落进识别框 → 边输边识别跑起来 → 封面图跑图片识别
+    let src = raiseEntry("MANUAL", "ZIP");
+    src = raiseEntry(src, "QUICK_TEXT");
+    src = raiseEntry(src, "IMAGE");
+    // 商家心里做的是「导了个压缩包」,不是「贴了段文字」
+    expect(src).toBe("ZIP");
+  });
+
+  it("手填 → 快速录入 → 图片识别，逐级升上去", () => {
+    expect(raiseEntry("MANUAL", "QUICK_TEXT")).toBe("QUICK_TEXT");
+    expect(raiseEntry("QUICK_TEXT", "IMAGE")).toBe("IMAGE");
+  });
+
+  it("同一个值重复记不变", () => {
+    expect(raiseEntry("IMAGE", "IMAGE")).toBe("IMAGE");
+  });
+
+  it("★★★ 文字全撤了退回手填 —— 否则历史里那一列会说谎", () => {
+    expect(entryAfterUndo("QUICK_TEXT")).toBe("MANUAL");
+  });
+
+  it("撤销不动图片与压缩包 —— 图还在、参数还在,痕迹没撤掉", () => {
+    expect(entryAfterUndo("IMAGE")).toBe("IMAGE");
+    expect(entryAfterUndo("ZIP")).toBe("ZIP");
   });
 });

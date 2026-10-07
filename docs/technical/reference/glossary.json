@@ -33824,6 +33824,17 @@
         "zh": "报名状态"
       },
       {
+        "name": "EntrySource",
+        "client": "b-app",
+        "values": [
+          "MANUAL",
+          "QUICK_TEXT",
+          "ZIP",
+          "IMAGE"
+        ],
+        "zh": "录入方式，与后端 `prd_goods_revision.entry_source` 同一套取值"
+      },
+      {
         "name": "ExemptType",
         "client": "shared",
         "values": [

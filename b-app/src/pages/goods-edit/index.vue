@@ -14,7 +14,7 @@ import { computed, getCurrentInstance, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { mergeUndo, planTextParse } from "./text-parse";
+import { entryAfterUndo, mergeUndo, planTextParse, raiseEntry, type EntrySource } from "./text-parse";
 import { useMerchantStore } from "@/stores/merchant";
 import { emptyPrices, usePriceRows } from "./price-rows";
 import { useGoodsPhotos } from "./photos";
@@ -727,6 +727,7 @@ const generating = ref(false);
 async function onImportZip() {
   // 导入压缩包：批量填图。带回的 txt 回填到文字识别框
   const txt = await importFromZip();
+  markEntry("ZIP");
   if (txt) {
     // 已有内容不静默覆盖 —— 空则填，非空则追加（商家自己写的那段留着）
     parseInput.value = parseInput.value.trim() ? `${parseInput.value}\n${txt}` : txt;
@@ -787,6 +788,7 @@ async function runRecognize(force = false) {
       }
     }
     recognized.value = true;
+    markEntry("IMAGE");
     uni.showToast({ title: String(t("goods.recognizeDone")), icon: "none" });
   } catch {
     uni.showToast({ title: String(t("goods.parseFail")), icon: "none" });
@@ -806,6 +808,23 @@ const PARSE_LABEL: Record<string, string> = {
   parseRegions: "goods.parseRegions",
   parseParams: "goods.parseParams",
 };
+
+/**
+ * 这一版**怎么录的** —— 只进提交历史，不影响任何业务判断。
+ *
+ * <p>取值优先级：压缩包 > 图片识别 > 快速录入 > 手填。压缩包排最前是因为它
+ * 顺带会触发后两者（带回的 txt 落进识别框、封面图自动跑图片识别），
+ * 按「最后发生的那件事」记就全变成快速录入了，而商家心里做的是「导了个压缩包」。
+ *
+ * <p><b>保存之后不清</b>：一次保存对应一版历史，而这一版确实是那么录进来的。
+ * 下次进编辑页是新的 setup，自然回到 MANUAL。
+ */
+const entrySource = ref<EntrySource>("MANUAL");
+
+/** 记一笔录入方式。规则（只升不降）在 `text-parse.ts`，有测试 */
+function markEntry(src: EntrySource) {
+  entrySource.value = raiseEntry(entrySource.value, src);
+}
 
 /** 识别到、但**还没**加进规格的维度。只列出来等人点，不自动加（理由见 `text-parse.ts`） */
 const specPicks = ref<{ name: string; options: string[] }[]>([]);
@@ -842,6 +861,8 @@ function undoParse() {
   paramValues.value = u.paramValues;
   parseUndo.value = null;
   reviewOpen.value = false;
+  // 全撤了就不该还记成「快速录入」—— 规则在 text-parse.ts，有测试
+  entrySource.value = entryAfterUndo(entrySource.value);
   uni.showToast({ title: String(t("goods.parseUndone")), icon: "none" });
 }
 
@@ -917,6 +938,8 @@ async function applyTextParse() {
   }
   // 「一串连续识别只有一个撤销点」的规则在 text-parse.ts，有测试
   parseUndo.value = mergeUndo(parseUndo.value, snapshot, items);
+  // 真的填进去东西了才算快速录入 —— 贴一段没认出来的话不是
+  if (items.length) markEntry("QUICK_TEXT");
   if (changed.length) {
     /*
      * **字面量键，不要写成 `t(`goods.${k}`)`。** 端上的 i18n 闸门扫的是字面量：
@@ -1567,6 +1590,9 @@ async function save(thenSubmit = false) {
       limitPerUser: Number(limitPerUser.value) || 0,
       // 限购地区（#3）：整份覆盖——传空数组 = 清空恢复全国，与 params 同一口径
       restrictedRegions: restrictedRegions.value,
+      // 这一版怎么录的（AC11）：只进提交历史。不传的话后端默认 MANUAL，
+      // 那一列就恒为「手填」—— 有列、有落库、却没人写真值
+      entrySource: entrySource.value,
       // 生鲜段与服务段只在对应形态下提交：一件大米带上「服务时长 90 分钟」
       // 不会报错，但它会出现在服务类的详情模板里
       /*
