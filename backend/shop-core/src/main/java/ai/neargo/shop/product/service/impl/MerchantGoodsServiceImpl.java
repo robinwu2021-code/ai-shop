@@ -2563,10 +2563,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 保存送货方式实测 24~27 秒，而读只要 0.3 秒。
          */
         Map<String, List<String>> reachCache = new java.util.HashMap<>();
+        /*
+         * **池行一次读完**（2026-10-07）：逐件去查是 16 次往返、每次把这件货的两万多行
+         * 读进对象。整趟按主体一次取回来，在内存里按商品号分组。
+         */
+        List<String> goodsNos = all.stream().map(PrdGoods::getGoodsNo).filter(java.util.Objects::nonNull).toList();
+        Map<String, List<PrdCommunityPool>> poolOfGoods = goodsNos.isEmpty()
+                ? new java.util.HashMap<>()
+                : DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
+                                .in(PrdCommunityPool::getGoodsNo, goodsNos)))
+                        .stream().collect(java.util.stream.Collectors.groupingBy(PrdCommunityPool::getGoodsNo));
         for (PrdGoods g : all) {
             // 用主体级总闸，与上下架那条链路同一个判据。下架的走 syncPool(false) —— 
             // 它会把残留的池行撤掉，这正是「范围改小了」要的效果
-            syncPool(g, Boolean.TRUE.equals(g.getOnSale()), reachCache);
+            syncPool(g, Boolean.TRUE.equals(g.getOnSale()), reachCache, poolOfGoods);
         }
         return all.size();
     }
@@ -2671,19 +2682,24 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
     }
 
     private void syncPool(PrdGoods g, boolean onSale) {
-        syncPool(g, onSale, null);
+        syncPool(g, onSale, null, null);
     }
 
     /**
      * @param reachCache 整趟共用的「门店 → 可达社区」。单件上下架传 null（只算一次，缓存没意义）；
      *                   全量重建传一个 map —— 每件货都重算一遍是这条链路最大的那块开销
+     * @param poolOfGoods 整趟一次读完的池行（商品号 → 它的池行）。同样只给全量重建用：
+     *                   逐件去查是 16 次往返、每次两万多行
      */
-    private void syncPool(PrdGoods g, boolean onSale, Map<String, List<String>> reachCache) {
+    private void syncPool(PrdGoods g, boolean onSale, Map<String, List<String>> reachCache,
+                          Map<String, List<PrdCommunityPool>> poolOfGoods) {
         publishOnSaleChanged(g, onSale);
         publishNewGoodsOnce(g, onSale);
-        List<PrdCommunityPool> existing = DataScopeContext.executeWithoutScope(() ->
-                poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
-                        .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
+        List<PrdCommunityPool> existing = poolOfGoods != null
+                ? poolOfGoods.getOrDefault(g.getGoodsNo(), List.of())
+                : DataScopeContext.executeWithoutScope(() ->
+                        poolMapper.selectList(Wrappers.<PrdCommunityPool>lambdaQuery()
+                                .eq(PrdCommunityPool::getGoodsNo, g.getGoodsNo())));
         if (!onSale) {
             // 下架 = 从所有池里撤出。留在池里的话 C 端还能搜到，点进去才发现买不了
             for (PrdCommunityPool row : existing) {
