@@ -3328,6 +3328,12 @@
           "ar": "تم التحديث"
         },
         {
+          "key": "merchant.bizOps",
+          "zh-CN": "商家运营",
+          "en": "Merchant console",
+          "ar": "لوحة التاجر"
+        },
+        {
           "key": "merchant.callSales",
           "zh-CN": "有问题打 {p}",
           "en": "Questions? Call {p}",

@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 379,
-        "c-app": 273
+        "c-app": 274
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 44,
-        "c-app": 45
+        "c-app": 47
       }
     },
     {
@@ -536,7 +536,7 @@
       },
       "usage": {
         "b-app": 119,
-        "c-app": 31
+        "c-app": 32
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 225,
-        "c-app": 84
+        "c-app": 85
       }
     },
     {
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 562,
-        "c-app": 200
+        "c-app": 201
       }
     },
     {
@@ -1472,7 +1472,7 @@
       },
       "usage": {
         "b-app": 316,
-        "c-app": 98
+        "c-app": 99
       }
     },
     {
@@ -2917,7 +2917,7 @@
       "name": "sh-uploader",
       "file": "packages/ui/src/components/sh-uploader.vue",
       "scope": "跨端",
-      "lines": 188,
+      "lines": 200,
       "props": [
         "list: readonly string[]",
         "max?: number",
@@ -5079,7 +5079,7 @@
         "sh-sheet",
         "sh-theme-sheet"
       ],
-      "libClassHits": 128,
+      "libClassHits": 135,
       "localSelectors": 26,
       "localCssLines": 110,
       "rolled": []
