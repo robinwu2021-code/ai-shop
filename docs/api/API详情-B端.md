@@ -2347,8 +2347,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | — |
-| `texts` | [`Record_string_string`](#record_string_string) | 是 | — |
+| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | 包里的图片：已过校验并落进媒体库，每条带 url，端上不用再传 |
+| `texts` | [`Record_string_string`](#record_string_string) | 是 | 包里的 txt：相对路径 → 内容。端上没有本地文件可读，只能随清单带回来 |
 
 
 #### POST `/biz/goods/zip-plan`
@@ -10724,8 +10724,8 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | — |
-| `texts` | [`Record_string_string`](#record_string_string) | 是 | — |
+| `files` | [`ZipImportedFile`](#zipimportedfile)\[\] | 是 | 包里的图片：已过校验并落进媒体库，每条带 url，端上不用再传 |
+| `texts` | [`Record_string_string`](#record_string_string) | 是 | 包里的 txt：相对路径 → 内容。端上没有本地文件可读，只能随清单带回来 |
 
 ### ZipImportedFile
 
