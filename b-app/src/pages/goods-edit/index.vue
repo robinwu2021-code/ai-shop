@@ -3017,7 +3017,7 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': belowCost(rows[0]!) }"
             type="digit"
           />
-          <text v-if="rows[0]!.costMajor.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'cost')">清除</text>
+          <text v-if="rows[0]!.costMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'cost')">清除</text>
         </view>
         <text v-if="belowCost(rows[0]!)" class="txt-caption pr__warn">{{ $t("goods.belowCost") }}</text>
         <view class="pr sh-row">
@@ -3030,13 +3030,13 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': badOrigin(rows[0]!) }"
             type="digit"
           />
-          <text v-if="rows[0]!.originMajor.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'origin')">清除</text>
+          <text v-if="rows[0]!.originMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'origin')">清除</text>
         </view>
         <view v-if="(SHOW_FRESH_FIELDS && isFresh) || shipsByExpress" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="txt-sub pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="txt-body pr__v sh-num" type="number" />
-          <text v-if="rows[0]!.nominalGram.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'gram')">清除</text>
+          <text v-if="rows[0]!.nominalGram.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'gram')">清除</text>
         </view>
         <!-- 快递运费预估（§8 AC20）：买家寄基础价地区付多少；偏远加收与满额包邮见「发货设置」里的运费模板 -->
         <text v-if="shipsByExpress && freightOne" class="txt-caption sh-muted freight__est">
@@ -3086,7 +3086,7 @@ async function save(thenSubmit = false) {
           <input maxlength="6" v-else v-model="r.nominalGram" class="txt-body pr__v sh-num" type="number" />
           <text
             v-if="priceField !== 'price' && curPriceVal(r).trim()"
-            class="pr__clear sh-hit"
+            class="txt-caption txt-quiet pr__clear sh-hit"
             @tap="clearPrice(r, priceField as 'cost' | 'origin' | 'gram')"
           >清除</text>
         </view>
@@ -4016,8 +4016,6 @@ async function save(thenSubmit = false) {
 .pr__clear {
   flex-shrink: 0;
   margin-left: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub, #999);
   padding: 4rpx 8rpx;
 }
 </style>
