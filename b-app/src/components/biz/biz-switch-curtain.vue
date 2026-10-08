@@ -14,9 +14,9 @@ const { t } = useI18n();
 
 <template>
   <view v-if="phase" class="curtain" :class="`is-${phase}`" @touchmove.stop.prevent @tap.stop>
-    <view class="curtain__mark">
+    <view class="sh-center curtain__mark">
       <view v-if="phase === 'going'" class="curtain__spin"></view>
-      <view v-else class="curtain__tick">
+      <view v-else class="sh-center curtain__tick">
         <sh-icon name="check" :size="80" color="var(--sh-primary)"></sh-icon>
       </view>
     </view>
@@ -37,7 +37,6 @@ const { t } = useI18n();
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24rpx;
   padding: 0 64rpx;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
@@ -50,10 +49,7 @@ const { t } = useI18n();
 .curtain__mark {
   width: 160rpx;
   height: 160rpx;
-  margin-bottom: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: 40rpx;
 }
 .curtain__spin {
   width: 112rpx;
@@ -68,9 +64,6 @@ const { t } = useI18n();
   height: 160rpx;
   border-radius: 50%;
   background: var(--sh-on-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   animation: curtain-pop 360ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 .curtain__label {
@@ -78,6 +71,7 @@ const { t } = useI18n();
   opacity: 0.85;
 }
 .curtain__name {
+  margin-top: 24rpx;
   color: var(--sh-on-primary);
   text-align: center;
   word-break: break-all;
