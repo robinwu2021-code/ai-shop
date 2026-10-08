@@ -4015,7 +4015,7 @@ async function save(thenSubmit = false) {
 
 .pr__clear {
   flex-shrink: 0;
-  margin-left: 16rpx;
+  margin-inline-start: 16rpx;
   padding: 4rpx 8rpx;
 }
 </style>
