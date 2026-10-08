@@ -90,6 +90,19 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  # 接口耗时与慢日志（TDD-接口耗时与慢日志）。
+  # 键名必须与 ObsConfig 的 @Value 占位符**逐字一致** —— @Value 不做松绑定，
+  # 写成 slowMs 配了等于没配，而且不报错。
+  obs:
+    # 全量访问行。按 2026-10-08 实测的 3352 请求/天算约 670 KB/天，
+    # 而轮转是 20MB × 14 天（生产用环境变量配，见 systemd）—— 装得下。
+    # 关掉它只剩慢日志，那时「10 条慢」没有分母、说明不了任何事。
+    access-log: true
+    slow-ms: 1000
+    # /actuator/**：部署脚本的 health 探针一直在打，记它只是噪声。
+    # /ops/stream：SSE 长连接一挂几分钟，量出来就是「超慢」，会把慢日志整个淹掉 ——
+    #              而它慢是设计如此，不是故障。
+    exclude: /actuator/**,/ops/stream
   category:
     gate:
       # 类目资质闸门是否真的拦人。**暂时 false —— 只展示、不限制**（2026-08-23）。
