@@ -126,16 +126,20 @@ public class MasterDataPortImpl implements MasterDataPort {
         if (regionCodes == null || regionCodes.isEmpty()) {
             return java.util.Map.of();
         }
+        /*
+         * **一次查完，不逐个走祖先链。**
+         *
+         * 原来这里对每个码调一次 path()，而 path() 自己又逐级 selectOne 向上走到省。
+         * 2026-10-08 生产实测：GET /biz/communities 要 **77 秒** ——
+         * 23657 个社区 × 两个方法（本方法 + regionRural）× 4 层 ≈ 189,000 次往返。
+         * 而它走完整条链之后只取 path.get(size-1)，那就是码自己那一行：祖先全查了又全丢了。
+         *
+         * 这个缺陷任何测试都抓不到：H2 里只有十几条聚落，那个乘数是 80 次、跑 5 毫秒。
+         * 代码一行没错、闸门全绿、生产 77 秒 —— 它是被上线当天的慢日志抓到的。
+         */
         java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
-        for (String code : regionCodes) {
-            if (code == null || code.isBlank()) {
-                continue;
-            }
-            var path = regionService.path(code);
-            if (!path.isEmpty()) {
-                out.put(code, path.get(path.size() - 1).name());
-            }
-        }
+        regionService.byCodes(regionCodes)
+                .forEach((code, brief) -> out.put(code, brief.name()));
         return out;
     }
 
@@ -144,16 +148,10 @@ public class MasterDataPortImpl implements MasterDataPort {
         if (regionCodes == null || regionCodes.isEmpty()) {
             return java.util.Map.of();
         }
+        // 与上面 regionNames 同一条：一次 IN，不走祖先链。理由见那段注释
         java.util.Map<String, Boolean> out = new java.util.LinkedHashMap<>();
-        for (String code : regionCodes) {
-            if (code == null || code.isBlank()) {
-                continue;
-            }
-            var path = regionService.path(code);
-            if (!path.isEmpty()) {
-                out.put(code, path.get(path.size() - 1).rural());
-            }
-        }
+        regionService.byCodes(regionCodes)
+                .forEach((code, brief) -> out.put(code, brief.rural()));
         return out;
     }
 

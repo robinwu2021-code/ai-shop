@@ -359,6 +359,46 @@ public class RegionServiceImpl implements RegionService {
         return toVOs(chain);
     }
 
+    /**
+     * 码 → 自己那一行的名字与城乡标记。<b>一条 IN，查询数与码的个数无关。</b>
+     *
+     * <p>它替掉的是 {@code MasterDataPortImpl} 里那两段「签名是批量、实现是逐个」的循环：
+     * 那里对每个码调一次 {@code path()}，而 {@code path()} 自己又逐级 {@code selectOne}
+     * 向上走到省（深圳的 9 位街道码是 4 层）。生产实测 23657 个社区 × 两个方法 × 4 层
+     * ≈ 189,000 次往返 ≈ 76 秒，而 {@code GET /biz/communities} 实测就是 77 秒。
+     *
+     * <p>更冤的是那两段走完整条祖先链之后只取 {@code path.get(size - 1)} ——
+     * 那就是码自己那一行，祖先全查了又全丢了。
+     *
+     * <p>只 select 用得上的三列：{@code toVOs} 里那次「哪些码还有下级」的查询
+     * 对名字与城乡标记没有意义（{@link #pathNames} 同此取舍）。
+     */
+    @Override
+    public Map<String, RegionBrief> byCodes(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return Map.of();
+        }
+        Set<String> codes = new java.util.LinkedHashSet<>();
+        for (String c : regionCodes) {
+            if (c != null && !c.isBlank()) {
+                codes.add(c);
+            }
+        }
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .select(SysRegion::getRegionCode, SysRegion::getName, SysRegion::getRural)
+                        .in(SysRegion::getRegionCode, codes)));
+        Map<String, RegionBrief> out = new java.util.LinkedHashMap<>();
+        for (SysRegion r : rows) {
+            out.put(r.getRegionCode(),
+                    new RegionBrief(r.getName(), Boolean.TRUE.equals(r.getRural())));
+        }
+        return out;
+    }
+
     @Override
     public Map<String, String> pathNames(java.util.Collection<String> regionCodes) {
         if (regionCodes == null || regionCodes.isEmpty()) {

@@ -96,6 +96,29 @@ public interface RegionService {
     java.util.Map<String, String> pathNames(java.util.Collection<String> regionCodes);
 
     /**
+     * 批量版「码 → 这一级自己的名字与城乡标记」。<b>不走祖先链</b>。
+     *
+     * <p>与 {@link #pathNames} 的区别：那个要整条路径（省/市/区/街道），所以要按层级往上捞；
+     * 这个只要**码自己那一行**，一条 {@code IN} 就够，查询数恒为 1，与码的个数无关。
+     *
+     * <p><b>为什么不返回 {@link ai.neargo.shop.platform.dto.RegionVO}</b>：
+     * 构造它要填 {@code hasChild}，那会逼出一次「哪些码还有下级」的额外查询 ——
+     * 而名字与城乡标记用不上它。{@code pathNames} 当初也是为同一个理由绕开 {@code toVOs} 的。
+     *
+     * <p>查不到的码**不进返回 map**（与它替换掉的那条逐个实现逐字相同），调用方自己兜底。
+     */
+    java.util.Map<String, RegionBrief> byCodes(java.util.Collection<String> regionCodes);
+
+    /**
+     * 一个区划在列表富化时真正被用到的那两项。
+     *
+     * @param name  这一级自己的名字（「新安街道」），不是整条路径
+     * @param rural 是不是乡村口径（村委会 vs 居委会）—— 经营范围选择器按它分搜法
+     */
+    record RegionBrief(String name, boolean rural) {
+    }
+
+    /**
      * 按名称搜区划（选择器「任何一级都能搜」）。<b>四级都搜：省 / 市 / 区县 / 街道镇</b>。
      *
      * <p>此前不搜省，理由写的是「没人按省框范围」—— 而经营范围本来就是
