@@ -17,6 +17,32 @@ export interface ShellTab {
   icon: IconName | string;
   iconOn: IconName | string;
   labelKey: string;
+  /**
+   * 这一格的**现成文案**（不过 i18n）。给 {@link labelKey} 之外的一条路：
+   * 词条不在**全局** messages 里时用它。
+   *
+   * <p>并包小程序就是这个处境：b-app 的页面并进 c-app 的分包后，页面自己的 `t`
+   * 是 local scope（带着 b-app 的词条），而 `sh-tabbar` 在主包里、查的是 c-app 的
+   * 全局词条 —— `tab.orders`/`tab.goods` c-app 根本没有（露裸 key），
+   * 而 `tab.home` 两端**同名不同义**，显示成「首页」而不是「工作台」：
+   * 不报错，只是写着别的意思（2026-10-08 真机上撞到的）。
+   *
+   * <p>两个都给时 label 赢。
+   */
+  label?: string;
+  /**
+   * 怎么跳到这一格。默认 `switchTab` —— tabBar 页只能用它。
+   *
+   * <p>`reLaunch` 是给**不在 `pages.json` 的 `tabBar.list` 里**的页面用的，
+   * 典型是并包小程序里的分包页（`/pkg-biz/pages/...`）：对它们调 `switchTab`
+   * **静默失败** —— 不跳、不报错、点了没反应，像是菜单坏了。
+   * `with-biz.mjs` 已经把页面里的 `switchTab` 全改写成 `reLaunch`，
+   * 但这个库件在主包里，那条改写够不着它，只能由调用方标出来。
+   *
+   * <p>不用「switchTab 失败再回落」那条路：失败是静默的，`fail` 回调未必触发，
+   * 那样写出来的回落**自己就是没人走到的死代码**。
+   */
+  nav?: "switchTab" | "reLaunch";
 }
 
 /**

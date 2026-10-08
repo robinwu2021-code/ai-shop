@@ -60,6 +60,37 @@ const COPY_DIRS = readdirSync(B, { withFileTypes: true })
     .map((e) => e.name);
 
 /**
+ * b-app 的中文词条，扁平成 `"goods.title" -> "商品"`。
+ *
+ * <p><b>为什么构建期就要把 key 换成文案</b>：b-app 页面并进分包后，页面自己的 `t`
+ * 是 local scope（带着 b-app 的词条），但**传给库件的那些 key 不是页面在翻译** ——
+ * `sh-scaffold` 的 `title-key`、`sh-tabbar` 的 `labelKey` 都在主包的库件里翻译，
+ * 查的是 **c-app 的**全局词条。于是两种坏法：
+ *   · c-app 没有这个键 → 露裸 key（`tab.orders`）；
+ *   · c-app 有同名键 → 显示**另一个意思的中文**（`tab.home` b 端是「工作台」、c 端是「首页」）。
+ * 后者不报错、看着也正常，只是写错了 —— 2026-10-08 真机上两种一起出现。
+ *
+ * <p>把词条并进主包的全局 messages 不行：那会把 b-app 全量词条塞进 2MB 的主包，
+ * 而且主包 import 分包是小程序的硬禁忌。所以反过来：**构建期解引用，写成文案**。
+ * 只做中文 —— pkg-biz 本来就不进版本库、不受 i18n 闸门管（占位页同策略）。
+ */
+const BIZ_ZH = flattenMessages((await import(`file://${join(B, "i18n", "locale", "zh-CN.ts")}`)).default);
+
+function flattenMessages(obj, prefix = "", out = {}) {
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) flattenMessages(v, key, out);
+    else if (typeof v === "string") out[key] = v;
+  }
+  return out;
+}
+
+/** 解引用一个 b-app 词条键；查不到就原样回去（由调用处的断言兜住） */
+function bizText(key) {
+  return BIZ_ZH[key];
+}
+
+/**
  * 从 b-app 的 shared/nav.ts 解析出底部菜单，并把路由补成分包路径。
  *
  * 为什么解析源码而不是 import：这份结果要**内联成字面量**写进 c-app 的 App.vue
@@ -79,7 +110,14 @@ function readBizTabs() {
       /\{\s*key:\s*"([^"]+)",\s*route:\s*ROUTES\.(\w+),\s*icon:\s*"([^"]+)",\s*iconOn:\s*"([^"]+)",\s*labelKey:\s*"([^"]+)"\s*\}/g)) {
     const r = routes[m[2]];
     if (!r) throw new Error(`TABS 里的 ROUTES.${m[2]} 解析不到路径`);
-    tabs.push({ key: m[1], route: `/${PKG}${r}`, icon: m[3], iconOn: m[4], labelKey: m[5] });
+    const label = bizText(m[5]);
+    if (!label) throw new Error(`TABS 的 labelKey ${m[5]} 在 b-app 中文词条里查不到 —— 底部菜单会露裸 key`);
+    // 带上**现成文案**：这一格由主包的 sh-tabbar 渲染，它的 $t 查的是 c-app 的词条
+    tabs.push({
+      key: m[1], route: `/${PKG}${r}`, icon: m[3], iconOn: m[4], labelKey: m[5], label,
+      // 分包页不在 tabBar.list 里：switchTab 对它们**静默失败**（点了没反应）
+      nav: "reLaunch",
+    });
   }
   if (tabs.length !== 4) {
     throw new Error(`b-app 的 TABS 解析出 ${tabs.length} 条，预期 4 条 —— 正则跟不上 nav.ts 的写法了`);
@@ -195,6 +233,40 @@ function rewrite(file) {
       );
     }
     out = out.replace(/\$t\(/g, "t(");
+  }
+
+  /*
+   * **传给库件的 i18n key 要在构建期换成文案。**
+   *
+   * 上面那段只管页面**自己**翻译的字（`$t(` → local scope 的 `t(`）。而
+   * `title-key="goods.title"` 是把**键**交出去，由主包里的 `sh-scaffold` 翻译 ——
+   * 它的 `t` 查的是 c-app 的全局词条，b-app 的键在那儿要么没有（露裸 key）、
+   * 要么同名不同义（`tab.home`：b 端「工作台」、c 端「首页」，显示成另一个意思，
+   * 而且**不报错**）。2026-10-08 真机上两种一起出现在商家工作台上。
+   *
+   * 两种写法都要认：
+   *   title-key="goods.title"                       → title="商品"
+   *   title-key="isEdit ? 'a.b' : 'c.d'"            → :title="isEdit ? '…' : '…'"
+   * 后者是动态的，所以换成绑定形式；前者保持静态字符串。
+   */
+  if (extname(file) === ".vue") {
+    out = out.replace(/title-key="([^"]*)"/g, (whole, expr) => {
+      const plain = /^[\w.]+$/.test(expr.trim());
+      if (plain) {
+        const text = bizText(expr.trim());
+        if (!text) throw new Error(`${file}: title-key="${expr}" 在 b-app 中文词条里查不到`);
+        return `title="${text}"`;
+      }
+      // 三元之类：把里面每个引号包着的键逐个解引用，整体换成 :title 绑定
+      let missing = null;
+      const rewritten = expr.replace(/'([\w.]+)'/g, (q, key) => {
+        const text = bizText(key);
+        if (!text) { missing = key; return q; }
+        return `'${text}'`;
+      });
+      if (missing) throw new Error(`${file}: title-key 里的 '${missing}' 在 b-app 中文词条里查不到`);
+      return `:title="${rewritten}"`;
+    });
   }
 
   /*
@@ -456,6 +528,16 @@ function prepare() {
       && /uni\.switchTab\(/.test(readFileSync(f, "utf8")));
   if (leftSwitchTab.length) {
     throw new Error(`这些文件还有 uni.switchTab（分包里静默不跳）：\n  ${leftSwitchTab.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
+  }
+  /*
+   * ④ title-key 残留：它是把**键**交给主包里的 sh-scaffold 去翻译，而那边查的是
+   * c-app 的词条 —— 没有就露裸 key，同名就显示另一个意思的中文。两种都不报错。
+   * 这一条是 2026-10-08 真机回归（商家工作台的标题成了「首页」）加上的。
+   */
+  const leftTitleKey = walk(OUT).filter(
+    (f) => extname(f) === ".vue" && /title-key=/.test(readFileSync(f, "utf8")));
+  if (leftTitleKey.length) {
+    throw new Error(`这些文件还有 title-key（主包的库件按 c-app 词条翻，会露 key 或显示错的字）：\n  ${leftTitleKey.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
   }
 
   // 还留着指向 c-app 的 @/（非 @/pkg-biz/）导入 = 会静默解析到 c-app 同名模块。必须为零。

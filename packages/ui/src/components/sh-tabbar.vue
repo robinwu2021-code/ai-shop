@@ -9,7 +9,7 @@
 // 角标、落点登记、弹跳都来自 `configureShell()` —— 组件不知道有没有购物车这回事。
 import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { useShell } from "../shell";
+import { useShell, type ShellTab } from "../shell";
 import { hideNativeTabBar } from "@shared/ports/tabbar";
 import type { IconName } from "@shared/design/icons";
 
@@ -45,9 +45,14 @@ const tabs = computed(() =>
   })),
 );
 
-function go(key: string, route: string) {
-  if (key === props.active) return;
-  uni.switchTab({ url: route });
+function go(tab: ShellTab) {
+  if (tab.key === props.active) return;
+  /*
+   * 分包页不在 tabBar.list 里，对它们调 switchTab **静默失败**（不跳、不报错），
+   * 表现就是「底部菜单点了没反应」。由 tab 自己标出跳法，见 ShellTab.nav。
+   */
+  if (tab.nav === "reLaunch") uni.reLaunch({ url: tab.route });
+  else uni.switchTab({ url: tab.route });
 }
 
 function ready() {
@@ -80,7 +85,7 @@ watch(
       :key="tab.key"
       class="tabbar__item"
       :class="{ 'is-on': active === tab.key }"
-      @tap="go(tab.key, tab.route)"
+      @tap="go(tab)"
     >
       <view
         class="tabbar__icon-wrap"
@@ -91,7 +96,7 @@ watch(
           {{ tab.badge > 99 ? "99+" : tab.badge }}
         </text>
       </view>
-      <text class="txt-body tabbar__label">{{ $t(tab.labelKey) }}</text>
+      <text class="txt-body tabbar__label">{{ tab.label || $t(tab.labelKey) }}</text>
     </view>
   </view>
 </template>

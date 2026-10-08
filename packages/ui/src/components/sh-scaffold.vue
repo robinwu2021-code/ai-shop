@@ -13,6 +13,20 @@ const props = withDefaults(
      *  切语言必须运行时改写，否则标题永远停在建包时那门语言。 */
     titleKey?: string;
     /**
+     * 导航栏标题的**现成文案**（不过 i18n）。给 {@code titleKey} 之外的一条路：
+     * 文案已经在手上、或者**这一页的词条不在全局 messages 里**。
+     *
+     * <p>后者正是并包小程序的处境：b-app 的页面被并进 c-app 的分包后，
+     * 页面自己的 `t` 是 local scope（带着 b-app 的词条），而这个库件在主包里，
+     * 它的 `t` 查的是 **c-app 的**全局词条 —— 于是 `title-key="goods.title"`
+     * 要么露出裸 key，要么更糟：撞上 c-app 的同名词条，显示一句**别的意思的中文**
+     * （`tab.home` 在 b 端是「工作台」、在 c 端是「首页」，2026-10-08 真机上就是它）。
+     * 构建期把键换成文案写进这里，这条缝就不存在了。
+     *
+     * <p>两个都给时 {@code title} 赢 —— 它更具体。
+     */
+    title?: string;
+    /**
      * 标题后面缀一段**运行时才知道的字**，如「库存 · 福田店」。
      *
      * <p>为什么不是再开一个 titleKey：门店名不是词条，它是数据。
@@ -80,7 +94,7 @@ const props = withDefaults(
      */
     immersive?: boolean;
   }>(),
-  { padded: true, titleKey: "", tab: "", denied: false, deniedText: "",
+  { padded: true, titleKey: "", title: "", tab: "", denied: false, deniedText: "",
     failed: false, failedText: "", pending: false, immersive: false },
 );
 
@@ -125,8 +139,9 @@ const canBack = computed(() => {
 });
 
 const navTitle = computed(() => {
-  if (!props.titleKey) return "";
-  const base = String(t(props.titleKey));
+  // 现成文案优先：它更具体，而且 titleKey 那条路要求词条在**全局** messages 里
+  const base = props.title ? props.title : (props.titleKey ? String(t(props.titleKey)) : "");
+  if (!base) return "";
   return props.titleSuffix ? `${base} · ${props.titleSuffix}` : base;
 });
 
@@ -135,7 +150,7 @@ function goBack() {
 }
 
 function applyTitle() {
-  if (!props.titleKey) return;
+  if (!props.titleKey && !props.title) return;
   uni.setNavigationBarTitle({ title: navTitle.value });
 }
 
@@ -155,6 +170,7 @@ watch(() => app.lang, applyTitle);
  * 导航栏却一直写着「新建商品」，两个标题在同一屏上互相矛盾。
  */
 watch(() => props.titleKey, applyTitle);
+watch(() => props.title, applyTitle);
 // 门店名是异步拉回来的：不跟着它重刷，标题会一直停在没有后缀的那一版
 watch(() => props.titleSuffix, applyTitle);
 </script>
