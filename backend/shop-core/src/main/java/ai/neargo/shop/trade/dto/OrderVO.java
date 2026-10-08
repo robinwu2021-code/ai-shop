@@ -164,9 +164,33 @@ public record OrderVO(String orderNo,
                       Trace trace) {
 
     /** 物流轨迹（Y4）。status 同 ful_shipment；nodes 按时间倒序（最新在前） */
-    public record Trace(String status, List<Node> nodes) {
-        /** at 毫秒时刻；text 原样来自承运商；location 城市/网点可空 */
-        public record Node(long at, String text, String location) {
+    /**
+     * @param displayMode 展示渠道名（{@code wx-plugin} / {@code self-map}）。**端上按它决定怎么渲染，自己不判断**
+     *                    —— 判定在后端一处做完（TDD-物流轨迹多渠道 §2.3）。空=没有可用渠道，整块不显示
+     * @param displayToken 该渠道的载荷。微信插件是 waybillToken，给 openWaybillTracking 用；自建为 null
+     * @param route 城市路线「出发 / 当前 / 目的」，地图上三个标记用；取不到为 null
+     */
+    public record Trace(String status, List<Node> nodes, String displayMode, String displayToken, Route route) {
+
+        /** 老形状：没有展示渠道。存量调用方与用例用它 */
+        public Trace(String status, List<Node> nodes) {
+            this(status, nodes, null, null, null);
+        }
+
+        /** @param from 出发城市 · @param cur 当前城市 · @param to 目的城市，各自可空 */
+        public record Route(String from, String cur, String to) {
+        }
+
+        /**
+         * @param at 毫秒时刻；text 原样来自承运商；location 城市/网点可空
+         * @param latE6 行政区中心纬度 ×1e6，地图用。**不是快件 GPS**，只到城市级；可空
+         * @param lngE6 行政区中心经度 ×1e6；可空
+         */
+        public record Node(long at, String text, String location, Integer latE6, Integer lngE6) {
+            /** 不带坐标的老形状 */
+            public Node(long at, String text, String location) {
+                this(at, text, location, null, null);
+            }
         }
     }
 

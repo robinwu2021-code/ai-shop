@@ -1929,10 +1929,47 @@ public class OrderServiceImpl implements OrderService {
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
         }
-        return shipmentTracePort.traceOf(sub.getSubOrderNo())
+        /*
+         * **读路径纯读库，不调任何外部接口**（TDD-物流轨迹多渠道 §2.8）。
+         * 微信那条渠道的 waybill_token 由 WxWaybillBindJob 预先备好落在 ful_shipment 上，
+         * 这里只是把它读出来 —— 买家反复下拉刷新，打不穿微信的调用配额，也不花快递100 的钱。
+         *
+         * 端由请求头给（MP / APP / H5）。认不出当小程序：买家侧绝大多数请求来自小程序，
+         * 而认错的代价只是少一个渠道可选，不是错。
+         */
+        return shipmentTracePort.traceOf(sub.getSubOrderNo(), surfaceOfRequest(), null, null)
                 .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
-                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location())).toList()))
+                                .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                        n.latE6(), n.lngE6())).toList(),
+                        ct.displayMode(), ct.displayToken(),
+                        ct.routeFrom() == null && ct.routeCur() == null && ct.routeTo() == null ? null
+                                : new OrderVO.Trace.Route(ct.routeFrom(), ct.routeCur(), ct.routeTo())))
                 .orElse(null);
+    }
+
+    /**
+     * 当前请求来自哪个端。读 {@code X-Client} 头（下单那条路径早就在用它）。
+     * <p>认不出一律当 {@code MP}：买家侧绝大多数请求来自小程序，而认错只是少一个渠道可选。
+     */
+    private static String surfaceOfRequest() {
+        try {
+            var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            String c = attrs == null ? null : attrs.getRequest().getHeader("X-Client");
+            if (c == null || c.isBlank()) {
+                return "MP";
+            }
+            String u = c.trim().toUpperCase(java.util.Locale.ROOT);
+            if (u.startsWith("APP")) {
+                return "APP";
+            }
+            if (u.startsWith("H5") || u.startsWith("WEB")) {
+                return "H5";
+            }
+            return "MP";
+        } catch (Exception e) {
+            return "MP";
+        }
     }
 
     /** 自提类履约，给展示状态的反向过滤用（SHIPPED 与 ARRIVED 在库里是同一个状态）。 */

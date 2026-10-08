@@ -42,9 +42,14 @@ class LogisticsTraceRefreshTest {
     private final FulfillmentStatsPort statsPort = mock(FulfillmentStatsPort.class);
 
     private LogisticsServiceImpl svc(LogisticsTracePort port) {
+        return svc(port, 30);
+    }
+
+    /** @param ttlMinutes 查询缓存时长。显式给值——构造注入的理由就是别让测试用一个与生产不同的默认 */
+    private LogisticsServiceImpl svc(LogisticsTracePort port, int ttlMinutes) {
         return new LogisticsServiceImpl(shipmentMapper, traceMapper,
                 mock(FreightTemplateMapper.class), mock(CarrierMapper.class),
-                statsPort, port, new ObjectMapper());
+                statsPort, port, new ObjectMapper(), ttlMinutes);
     }
 
     private static FulShipment shipment(String no, String sub, String carrier, String waybill, String status) {
@@ -112,6 +117,36 @@ class LogisticsTraceRefreshTest {
         };
         svc(port).refreshInTransitTraces(300);
         assertThat(seen).containsEntry("SF-A", "13800138000").containsEntry("YT-B", "<null>");
+    }
+
+    /**
+     * 缓存闸（默认 30 分钟）：距上次查不足 TTL 的单直接跳过，一次承运商请求都不发。
+     * 既省钱，也躲开快递100「同一单间隔 <30 分钟会锁单」。
+     */
+    @Test
+    void withinTtlIsSkippedEntirely() {
+        FulShipment fresh = shipment("SHP-A", "SUB-A", "YTO", "YT-A", FulShipment.CREATED);
+        fresh.setTraceQueriedAt(System.currentTimeMillis() - 60_000L);      // 1 分钟前查过
+        FulShipment stale = shipment("SHP-B", "SUB-B", "YTO", "YT-B", FulShipment.CREATED);
+        stale.setTraceQueriedAt(System.currentTimeMillis() - 90 * 60_000L); // 90 分钟前
+        when(shipmentMapper.selectList(any())).thenReturn(List.of(fresh, stale));
+        when(traceMapper.selectList(any())).thenReturn(List.of());
+        when(statsPort.storesOf(any())).thenReturn(Map.of());
+
+        List<String> asked = new java.util.ArrayList<>();
+        LogisticsTracePort port = (store, carrier, waybill) -> {
+            asked.add(waybill);
+            return Optional.of(new TraceResult(waybill, "YTO", TraceStatus.IN_TRANSIT, "kuaidi100",
+                    List.of(new TraceNode(1000L, TraceStatus.IN_TRANSIT, "运输中", "武汉市"))));
+        };
+
+        TraceRefreshResult r = svc(port, 30).refreshInTransitTraces(300);
+
+        assertThat(asked).as("缓存期内那一单一次请求都不该发").containsExactly("YT-B");
+        assertThat(r.queried()).isEqualTo(1);
+        assertThat(fresh.getTraceQueriedAt()).as("跳过的单不更新查询时刻").isLessThan(stale.getTraceQueriedAt() + 90 * 60_000L);
+        assertThat(stale.getTraceQueriedAt()).as("查过的单要记下时刻，下一轮才算得出 TTL")
+                .isGreaterThan(System.currentTimeMillis() - 60_000L);
     }
 
     @Test

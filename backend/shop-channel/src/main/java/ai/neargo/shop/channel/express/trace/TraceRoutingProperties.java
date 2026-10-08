@@ -41,6 +41,28 @@ public class TraceRoutingProperties {
     private Display display = new Display();
 
     /**
+     * 查询与备载荷的缓存时长（分钟），默认 30。
+     *
+     * <p>管两件事：①距上次向数据源查轨迹不足这么久就不再查 ②距上次备展示载荷不足这么久就不再备。
+     * <b>既是省钱也是硬约束</b>：快递100 要求同一单查询间隔 ≥30 分钟否则锁单；
+     * 微信 trace_waybill 有调用次数上限（9300513），买家反复刷详情页就能打穿。
+     */
+    private int cacheTtlMinutes = 30;
+
+    public int getCacheTtlMinutes() {
+        return cacheTtlMinutes;
+    }
+
+    public void setCacheTtlMinutes(int cacheTtlMinutes) {
+        this.cacheTtlMinutes = cacheTtlMinutes;
+    }
+
+    /** 距上次动作还在缓存期内吗。{@code at} 为空（从没做过）一律返回 false */
+    public boolean withinTtl(Long at, long now) {
+        return at != null && now - at < cacheTtlMinutes * 60_000L;
+    }
+
+    /**
      * 数据源链。查的时候顺着链走，第一个「可用且认这个承运商且查到了」的胜出；
      * 查不到就继续下一个，全链走完仍空才算空。
      *

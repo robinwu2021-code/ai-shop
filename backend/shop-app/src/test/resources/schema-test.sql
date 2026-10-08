@@ -2629,6 +2629,8 @@ CREATE TABLE IF NOT EXISTS ful_shipment
     display_channel VARCHAR(32) DEFAULT NULL,
     display_token VARCHAR(512) DEFAULT NULL,
     display_fail_reason VARCHAR(255) DEFAULT NULL,
+    trace_queried_at BIGINT(20) DEFAULT NULL,
+    display_prepared_at BIGINT(20) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
     CONSTRAINT uk_shipment_sub_order UNIQUE (sub_order_no)

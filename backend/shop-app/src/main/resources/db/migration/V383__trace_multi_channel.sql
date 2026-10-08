@@ -8,7 +8,9 @@
 ALTER TABLE ful_shipment
     ADD COLUMN display_channel VARCHAR(32) DEFAULT NULL COMMENT '已备好载荷的展示渠道名（wx-plugin / self-map…）。空=还没备过',
     ADD COLUMN display_token VARCHAR(512) DEFAULT NULL COMMENT '该渠道的载荷。微信插件存 waybill_token——微信文档要求开发者自己存，且换取接口有调用次数上限(9300513)，不存就得反复换',
-    ADD COLUMN display_fail_reason VARCHAR(255) DEFAULT NULL COMMENT '最近一次备载荷失败的原因（运单不存在/超配额/openid 不合法…）。给运营排查用，不给买家看';
+    ADD COLUMN display_fail_reason VARCHAR(255) DEFAULT NULL COMMENT '最近一次备载荷失败的原因（运单不存在/超配额/openid 不合法…）。给运营排查用，不给买家看',
+    ADD COLUMN trace_queried_at BIGINT(20) DEFAULT NULL COMMENT '上次向数据源查轨迹的时刻(ms)。缓存判据：距今不足 TTL(默认30分钟)就不再查——既省钱，也躲开快递100「同一单间隔<30分钟会锁单」',
+    ADD COLUMN display_prepared_at BIGINT(20) DEFAULT NULL COMMENT '上次备展示载荷的时刻(ms)，成功失败都记。防止买家反复刷详情页把微信 trace_waybill 的调用配额(9300513)打穿';
 
 -- ② 轨迹节点的城市中心坐标。**必须落库**：不存的话轮询存了轨迹、坐标丢了，
 --    下次展示还得再查一遍快递100（按单计费，且同一单 30 分钟内重复查会锁单）。

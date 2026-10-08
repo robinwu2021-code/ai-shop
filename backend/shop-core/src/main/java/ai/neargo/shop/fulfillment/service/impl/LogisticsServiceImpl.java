@@ -63,11 +63,18 @@ public class LogisticsServiceImpl implements LogisticsService {
     private final FulfillmentStatsPort statsPort;
     private final LogisticsTracePort tracePort;
     private final ObjectMapper json;
+    /**
+     * 查轨迹的缓存时长（分钟）。**构造注入而不是 {@code @Value} 字段** ——
+     * 测试里手工 new 时必须显式给值，免得测的是一个与生产不同的默认。
+     */
+    private final int traceCacheTtlMinutes;
 
     public LogisticsServiceImpl(ShipmentMapper shipmentMapper, ShipmentTraceMapper traceMapper,
                                 FreightTemplateMapper templateMapper, CarrierMapper carrierMapper,
                                 FulfillmentStatsPort statsPort, LogisticsTracePort tracePort,
-                                ObjectMapper json) {
+                                ObjectMapper json,
+                                @org.springframework.beans.factory.annotation.Value(
+                                        "${shop.express.trace.cache-ttl-minutes:30}") int traceCacheTtlMinutes) {
         this.shipmentMapper = shipmentMapper;
         this.traceMapper = traceMapper;
         this.templateMapper = templateMapper;
@@ -75,6 +82,7 @@ public class LogisticsServiceImpl implements LogisticsService {
         this.statsPort = statsPort;
         this.tracePort = tracePort;
         this.json = json;
+        this.traceCacheTtlMinutes = traceCacheTtlMinutes;
     }
 
     // ---------------------------------------------------------------- 运单
@@ -270,7 +278,18 @@ public class LogisticsServiceImpl implements LogisticsService {
         int appended = 0;
         int advanced = 0;
         int delivered = 0;
+        long now = System.currentTimeMillis();
         for (FulShipment s : rows) {
+            /*
+             * **缓存闸（默认 30 分钟）**：距上次查不足 TTL 就跳过这一单。
+             * 两个理由叠在一起：按单计费，而且快递100 明说同一单间隔 <30 分钟会锁单。
+             * 轮询本身就是 30 分钟一轮，但调度有抖动、limit 调大后同一单也可能连着两轮被选中 ——
+             * 靠「每轮间隔」保证不了，得有显式判据。
+             */
+            if (s.getTraceQueriedAt() != null
+                    && now - s.getTraceQueriedAt() < traceCacheTtlMinutes * 60_000L) {
+                continue;
+            }
             // 门店没解出来 → 传 null，路由落到默认 provider（圆通）
             Optional<TraceResult> hit = tracePort.trace(
                     stores.get(s.getSubOrderNo()), s.getCarrier(), s.getWaybillNo(), phones.get(s.getSubOrderNo()));
@@ -280,6 +299,7 @@ public class LogisticsServiceImpl implements LogisticsService {
             }
             queried++;
             TraceResult tr = hit.get();
+            s.setTraceQueriedAt(now);
 
             int added = appendNodes(s.getShipmentNo(), tr.nodes());
             if (added > 0) {
@@ -325,6 +345,10 @@ public class LogisticsServiceImpl implements LogisticsService {
             t.setAt(n.at());
             t.setText(n.info());
             t.setLocation(n.location());
+            // 坐标必须落库：不落的话下次展示地图又要再查一遍（花钱 + 撞锁单）
+            t.setLatE6(n.latE6());
+            t.setLngE6(n.lngE6());
+            t.setStatusCode(n.statusCode());
             // 轨迹表不继承 BaseEntity：created_at 是 NOT NULL，没有别处替它填（见 updateWaybill 的同款注释）
             t.setTenantNo("MAIN");
             t.setCreatedAt(LocalDateTime.now());

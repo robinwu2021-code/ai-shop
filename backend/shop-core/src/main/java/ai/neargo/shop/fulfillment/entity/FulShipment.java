@@ -56,4 +56,19 @@ public class FulShipment extends BaseEntity {
 
     /** 收件地区（省 市）。超区判断看的就是它。 */
     private String region;
+
+    /** 已备好载荷的展示渠道名（wx-plugin / self-map…）。空=还没备过 */
+    private String displayChannel;
+
+    /** 该渠道的载荷。微信插件存 waybill_token */
+    private String displayToken;
+
+    /** 最近一次备载荷失败的原因，给运营排查用 */
+    private String displayFailReason;
+
+    /** 上次向数据源查轨迹的时刻(ms)。缓存判据，见 TDD-物流轨迹多渠道 §2.8 */
+    private Long traceQueriedAt;
+
+    /** 上次备展示载荷的时刻(ms)，成功失败都记 */
+    private Long displayPreparedAt;
 }

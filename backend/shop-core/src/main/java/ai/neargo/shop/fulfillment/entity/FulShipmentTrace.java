@@ -37,4 +37,13 @@ public class FulShipmentTrace {
     private String tenantNo;
 
     private LocalDateTime createdAt;
+
+    /** 行政区中心纬度 ×1e6。**不是快件 GPS** —— 聚合器只给到行政区中心点 */
+    private Integer latE6;
+
+    /** 行政区中心经度 ×1e6 */
+    private Integer lngE6;
+
+    /** 承运商/聚合器的高级状态码，步骤条区分「派送中」用 */
+    private String statusCode;
 }

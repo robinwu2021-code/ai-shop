@@ -32,6 +32,12 @@ public class ShipmentTraceQueryPortImpl implements ShipmentTraceQueryPort {
 
     @Override
     public Optional<CachedTrace> traceOf(String subOrderNo) {
+        return traceOf(subOrderNo, null, null, null);
+    }
+
+    @Override
+    public Optional<CachedTrace> traceOf(String subOrderNo, String surface,
+                                         String buyerOpenid, String transId) {
         if (subOrderNo == null || subOrderNo.isBlank()) {
             return Optional.empty();
         }
@@ -46,8 +52,34 @@ public class ShipmentTraceQueryPortImpl implements ShipmentTraceQueryPort {
                         .eq(FulShipmentTrace::getShipmentNo, s.getShipmentNo())
                         .orderByDesc(FulShipmentTrace::getAt)))   // 最新在前
                 .stream()
-                .map(t -> new CachedTrace.Node(t.getAt() == null ? 0L : t.getAt(), t.getText(), t.getLocation()))
+                .map(t -> new CachedTrace.Node(t.getAt() == null ? 0L : t.getAt(), t.getText(),
+                        t.getLocation(), t.getLatE6(), t.getLngE6()))
                 .toList();
-        return Optional.of(new CachedTrace(s.getStatus(), nodes));
+        if (surface == null) {
+            return Optional.of(new CachedTrace(s.getStatus(), nodes));
+        }
+        String channel = channelFor(s, surface);
+        return Optional.of(new CachedTrace(s.getStatus(), nodes, channel,
+                "wx-plugin".equals(channel) ? s.getDisplayToken() : null, null, null, null));
+    }
+
+    /**
+     * 这个端该用哪个展示渠道。**纯读库，不调外部接口** —— 外部调用（微信换 waybill_token）
+     * 由 {@code WxWaybillBindJob} 预先做好落在列上，详情页只是把它读出来。
+     *
+     * <p>这是「缓存 30 分钟」真正落地的地方：读路径根本不触发任何外部请求，
+     * 买家反复下拉刷新也只是多读几次库。
+     *
+     * <p>判据：库里备好的渠道在这个端可用就用它；否则一律 {@code self-map}（它三端都能呈现）。
+     */
+    private String channelFor(FulShipment s, String surface) {
+        String saved = s.getDisplayChannel();
+        boolean mp = "MP".equalsIgnoreCase(surface);
+        if ("wx-plugin".equals(saved)) {
+            // 微信插件只在小程序内能打开。B 端 App / 运营端拿到它也用不了，落回自建
+            return mp && s.getDisplayToken() != null && !s.getDisplayToken().isBlank()
+                    ? "wx-plugin" : "self-map";
+        }
+        return "self-map";
     }
 }
