@@ -543,7 +543,7 @@ _无字段_
 
 #### GET `/ops/coverage/distribution/communities`
 
-下钻：一个区县（6 位码）下的聚落明细
+下钻：一个区县（6 位码）下的聚落明细，分页（区县本身也可能有几千个聚落）
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -551,7 +551,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`DistributionRow`](#distributionrow)\[\]
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`DistributionRow`](#distributionrow)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/coverage/health`

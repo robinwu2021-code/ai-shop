@@ -910,7 +910,7 @@
 | GET | `/ops/communities/near` | 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */ | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/communities/open-map` | 把某个区划前缀下、**地图导入**的聚落批量开城 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/coverage/distribution` | 位置分布（P-2.1） | — | `CoverageDistribution` | — | ✅ | ✅ |
-| GET | `/ops/coverage/distribution/communities` | 下钻：一个区县（6 位码）下的聚落明细 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/coverage/distribution/communities` | 下钻：一个区县（6 位码）下的聚落明细，分页（区县本身也可能有几千个聚落） | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/coverage/health` | 坐标健康度（P-2.1） | — | `CoverageHealth` | — | ✅ | ✅ |
 | GET | `/ops/geo/places` | 固定地址库这一屏 | — | `GeoPlacePage` | — | ✅ | ✅ |
 | POST | `/ops/geo/places/promote` | 把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED） | — | `CommunityImportResult` | — | ✅ | ✅ |

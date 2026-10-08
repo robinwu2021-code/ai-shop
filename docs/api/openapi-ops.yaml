@@ -11150,7 +11150,7 @@ paths:
   "/ops/coverage/distribution/communities": 
     get: 
       operationId: "distributionCommunities"
-      summary: "下钻：一个区县（6 位码）下的聚落明细"
+      summary: "下钻：一个区县（6 位码）下的聚落明细，分页（区县本身也可能有几千个聚落）"
       tags: 
         - "community"
       responses: 
@@ -11167,9 +11167,23 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    type: "array"
-                    items: 
-                      "$ref": "#/components/schemas/DistributionRow"
+                    type: "object"
+                    properties: 
+                      records: 
+                        type: "array"
+                        items: 
+                          "$ref": "#/components/schemas/DistributionRow"
+                      total: 
+                        type: "integer"
+                      page: 
+                        type: "integer"
+                      size: 
+                        type: "integer"
+                    required: 
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
                 required: 
                   - "code"
                   - "msg"
