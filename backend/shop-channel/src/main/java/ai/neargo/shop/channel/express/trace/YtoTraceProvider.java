@@ -11,7 +11,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -88,7 +87,7 @@ public class YtoTraceProvider implements TraceProvider {
         }
         try {
             // 一次一个单号（圆通：param 带 Number）
-            String param = json.writeValueAsString(java.util.Map.of("Number", waybillNo));
+            String param = json.writeValueAsString(java.util.Map.of("NUMBER", waybillNo));
             String body = post(param);
             return Optional.of(parse(waybillNo, carrier, json.readTree(body)));
         } catch (RuntimeException | java.io.IOException | InterruptedException e) {
@@ -101,16 +100,37 @@ public class YtoTraceProvider implements TraceProvider {
         }
     }
 
+    /**
+     * 发一次查询。<b>报文形状对齐了圆通平台自己生成的那一份</b>（2026-10-08 在「在线调试」里取到的真请求）：
+     *
+     * <pre>Content-Type: application/json
+     * {"timestamp":"1791452385901","param":"{\"NUMBER\":\"YT2600227881409\"}",
+     *  "sign":"uhSL6hg8txxadZi26YPYPg==","format":"JSON"}</pre>
+     *
+     * <p>三处与原实现不同，三份证据都指向同一边（官方【报文结构】表、【请求格式-json】示例、平台生成的真请求）：
+     * <ol>
+     *   <li>body 是 <b>JSON</b>，不是 {@code application/x-www-form-urlencoded}</li>
+     *   <li><b>只有四个字段</b>：{@code timestamp/param/sign/format}。
+     *       {@code method}、{@code v}、{@code appKey} <b>不进 body</b> ——
+     *       它们在 URL 路径里（形如 {@code /open/<method>/<v>/<账号段>/<环境>}），
+     *       所以 {@code shop.express.yto.host} 配的是**整条接口地址**，不是一个域名。</li>
+     *   <li>{@code param} 的键是<b>大写 {@code NUMBER}</b></li>
+     * </ol>
+     *
+     * <p>⚠️ {@code method}/{@code v} 仍只用于算签名，且<b>取值尚未验证</b>：
+     * UAT 环境用各种取值都回 {@code {"code":401,"reason":"请求加密校验失败"}}，
+     * 真值要从 控制台→接口管理 的该接口条目上抄。
+     */
     private String post(String param) throws java.io.IOException, InterruptedException {
-        String timestamp = String.valueOf(System.currentTimeMillis());
-        String form = "method=" + enc(method) + "&v=" + enc(version)
-                + "&appKey=" + enc(appKey) + "&timestamp=" + enc(timestamp)
-                + "&format=JSON&sign=" + enc(sign(param, method, version, secret))
-                + "&param=" + enc(param);
+        java.util.Map<String, String> body = new java.util.LinkedHashMap<>();
+        body.put("timestamp", String.valueOf(System.currentTimeMillis()));
+        body.put("param", param);
+        body.put("sign", sign(param, method, version, secret));
+        body.put("format", "JSON");
         HttpRequest req = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(8))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(form, StandardCharsets.UTF_8))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body), StandardCharsets.UTF_8))
                 .build();
         return http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body();
     }
@@ -204,7 +224,4 @@ public class YtoTraceProvider implements TraceProvider {
         }
     }
 
-    private static String enc(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8);
-    }
 }

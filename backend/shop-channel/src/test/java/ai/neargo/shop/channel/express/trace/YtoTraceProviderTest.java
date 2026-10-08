@@ -115,7 +115,7 @@ class YtoTraceProviderTest {
      * <p>用 JDK 自带的 HttpServer 当假圆通：provider 是真的，HTTP 是真的，只有对端是假的。
      */
     @Test
-    void post_sendsFormWithRealSignature_andParsesResponse() throws Exception {
+    void post_sendsOfficialJsonBodyWithRealSignature() throws Exception {
         var received = new java.util.concurrent.ArrayBlockingQueue<String[]>(1);
         var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", ex -> {
@@ -145,25 +145,24 @@ class YtoTraceProviderTest {
 
             String[] got = received.poll(5, java.util.concurrent.TimeUnit.SECONDS);
             assertThat(got).as("假圆通没收到请求").isNotNull();
-            assertThat(got[1]).isEqualTo("application/x-www-form-urlencoded");
+            // 报文形状对齐圆通平台自己生成的那一份（在线调试里取到的真请求）
+            assertThat(got[1]).as("body 是 JSON，不是表单").isEqualTo("application/json");
 
-            // 把表单拆开逐项比（值是 URLEncoder 编过的，比之前先解回来）
-            var form = new java.util.HashMap<String, String>();
-            for (String kv : got[0].split("&")) {
-                int i = kv.indexOf('=');
-                form.put(kv.substring(0, i),
-                        java.net.URLDecoder.decode(kv.substring(i + 1), StandardCharsets.UTF_8));
-            }
-            String param = "{\"Number\":\"YT123\"}";
-            assertThat(form.get("method")).isEqualTo("TRACE_QUERY");
-            assertThat(form.get("v")).isEqualTo("1.0");
-            assertThat(form.get("appKey")).isEqualTo("ak-test");
-            assertThat(form.get("format")).isEqualTo("JSON");
-            assertThat(form.get("param")).as("一次一个单号，param 形如 {\"Number\":\"…\"}").isEqualTo(param);
-            assertThat(form.get("timestamp")).matches("\\d{13}");
-            // ★ 真正的判据：发到线上的签名 = 按真算法算出来的那一个（密钥不进表单）
-            assertThat(form.get("sign")).isEqualTo(YtoTraceProvider.sign(param, "TRACE_QUERY", "1.0", "sk-test"));
-            assertThat(got[0]).as("客户密钥绝不能出现在表单里").doesNotContain("sk-test");
+            var sent = json.readTree(got[0]);
+            String param = "{\"NUMBER\":\"YT123\"}";
+            assertThat(sent.path("format").asString("")).isEqualTo("JSON");
+            assertThat(sent.path("param").asString("")).as("一次一个单号，键是大写 NUMBER").isEqualTo(param);
+            assertThat(sent.path("timestamp").asString("")).matches("\\d{13}");
+            // ★ 真正的判据：发到线上的签名 = 按真算法算出来的那一个（密钥不进报文）
+            assertThat(sent.path("sign").asString(""))
+                    .isEqualTo(YtoTraceProvider.sign(param, "TRACE_QUERY", "1.0", "sk-test"));
+
+            // ★ 只有这四个字段。method/v/appKey 在 URL 路径里，不进 body ——
+            //   多发了圆通不会提示，只会在验签那一步回「请求加密校验失败」，而人会先去怀疑密钥
+            var keys = new java.util.ArrayList<String>();
+            sent.propertyNames().forEach(keys::add);
+            assertThat(keys).containsExactlyInAnyOrder("timestamp", "param", "sign", "format");
+            assertThat(got[0]).as("客户密钥绝不能出现在报文里").doesNotContain("sk-test");
 
             // 响应按官方结构解回来（最新在前）
             assertThat(r.status()).isEqualTo(TraceStatus.SIGNED);

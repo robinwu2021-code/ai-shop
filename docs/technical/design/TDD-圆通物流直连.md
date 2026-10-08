@@ -55,6 +55,39 @@
 `INBOUND` 自提柜入柜 / `SIGNED` 签收成功 / `FAILED` 签收失败 / `FORWARDING` 转寄 /
 `TMS_RETURN` 退回 / `AIRSEND` 航空发货 / `AIRPICK` 航空提货。
 
+### 3.1.1 ⚠️ 请求报文形状（2026-10-08 用平台「在线调试」取到的真请求校准）
+
+在开放平台的「在线调试」里点「生成参数」，它给出的**合法请求**是：
+
+```
+Content-Type: application/json
+{"timestamp":"1791452385901","param":"{\"NUMBER\":\"YT2600227881409\"}",
+ "sign":"uhSL6hg8txxadZi26YPYPg==","format":"JSON"}
+```
+
+与原实现三处不同，三份证据同向（官方【报文结构】表只列这四项、【请求格式-json】示例、平台生成的真请求）：
+
+| | 圆通 | 原实现 |
+|---|---|---|
+| body | **JSON** | `application/x-www-form-urlencoded` |
+| 字段 | **只有 4 个**：`timestamp`/`param`/`sign`/`format` | 多发 `method`、`v`、`appKey` |
+| `param` 键 | **大写 `NUMBER`** | `Number` |
+
+`method`/`v`/账号段都在 **URL 路径**里（形如 `/open/<method>/<v>/<账号段>/<环境>`），
+所以 **`shop.express.yto.host` 配的是整条接口地址，不是一个域名** —— 名字有误导，接的时候别只填域名。
+
+**同一次调试还打回一条真实响应**，逐字证实了 §3.1 的「查询为空」结构：
+
+```json
+{"map":{"YT2600227881409":[]},"code":"1001","success":"true","message":"查询结果为空。"}
+```
+
+⚠️ **仍未验证的**：`method`/`v` 的真实取值。UAT 地址用各种取值都回
+`{"success":false,"code":401,"reason":"请求加密校验失败"}`（试过 28 种组合：method/v 各取值 ×
+表单/JSON × `Number`/`NUMBER` × MD5 原始字节/十六进制）。也试过拿在线调试那个合法 sign 反推 ——
+用 UAT 密钥算不出它，说明在线调试走的是另一把密钥。**真值要从 控制台→接口管理 的该接口条目上抄**，
+并确认该接口在 UAT 账号下已添加（没添加同样会是这个 401）。
+
 ### 3.2 ⚠️ 更正：圆通**有**订阅与推送
 
 原文写「无订阅推送（公开文档未给）→ 轮询」，**是错的**。接口文档「物流轨迹」下有三个：
