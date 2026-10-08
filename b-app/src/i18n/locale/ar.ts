@@ -140,7 +140,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     today: "اليوم", orders: "الطلبات", gmv: "المبيعات", rating: "التقييم",
     visits7d: "{uv} زائر · {pv} زيارة خلال 7 أيام",
     ownedTraffic: "عملاؤك",
-    fulfillEntry: "الاستلام والفرز",
     storeEntry: "المتجر", shipEntry: "الشحن",
     blocker: { license: "لم تفتح للعمل بعد", payment: "لا يمكنك التحصيل بعد", scope: "لا يجدك العملاء بعد", payoutAccount: "لا يمكن تحويل مستحقاتك", agreement: "بقيت اتفاقية تنتظر تأكيدك" },
     blockerHint: {

@@ -140,7 +140,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     today: "Today", orders: "Orders", gmv: "GMV", rating: "Rating",
     visits7d: "{uv} visitors · {pv} visits in 7 days",
     ownedTraffic: "Own customers",
-    fulfillEntry: "Redeem & pick",
     storeEntry: "Shop", shipEntry: "Shipping",
     blocker: { license: "Not open for business yet", payment: "Cannot take payments yet", scope: "Not yet visible to customers", payoutAccount: "Proceeds cannot be paid out", agreement: "One agreement still needs your confirmation" },
     blockerHint: {

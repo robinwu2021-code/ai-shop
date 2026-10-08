@@ -207,7 +207,6 @@ export default {
     rating: "评分",
     visits7d: "近 7 天到访 {uv} 人 · {pv} 次",
     ownedTraffic: "自带客流",
-    fulfillEntry: "核销分拣",
     storeEntry: "店铺设置",
     shipEntry: "发货设置",
     blocker: { license: "还不能开张营业", payment: "还不能收款", scope: "顾客尚不可见", payoutAccount: "货款还打不出去", agreement: "还差你确认一份协议" },

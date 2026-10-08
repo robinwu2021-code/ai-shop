@@ -290,20 +290,6 @@ const entries = computed(() =>
     { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign" },
   ].filter((e) => merchant.can(e.perm)));
 
-/** 核销分拣的两个数：各跟自己的权限走，有活的那一格用主色 */
-const fulfillItems = computed(() =>
-  [
-    { key: "toPick", perm: "biz:receive", n: todo.value?.toPick ?? 0 },
-    { key: "toVerify", perm: "biz:verify", n: todo.value?.toVerify ?? 0 },
-  ]
-    .filter((x) => merchant.can(x.perm))
-    .map((x) => ({
-      key: x.key,
-      value: x.n,
-      label: String(t(`home.cell.${x.key}`)),
-      tone: x.n ? ("primary" as const) : undefined,
-    })));
-
 /**
  * 待办格子几列：**按个数挑，让最后一行别只剩一格**。格子数随角色与门店能力变（真机上福田店 5 个、
  * 自提点 7 个）：写死四列，5 个就是 4 + 1；写死三列，7 个就是 3 + 3 + 1。
@@ -570,25 +556,12 @@ onShow(load);
         两处各推一次迟早分岔，而分岔的表现是「看得见但点了报错」。
       -->
       <!--
-        履约台把核销、分拣、到货确认放在一起，而这三件事是**三个权限**。
-        入口只判 biz:verify 的话，理货员（只有 biz:receive）一个入口都看不到 ——
-        而分拣正是他今天唯一要干的活。有权限没有入口，和没权限一样。
-
-        **两道工序、两个数字、两个去处，不是一张卡赌一个目的地**：
-        分拣（备货中→标到货）在前、核销（等人来取）在后，是同一条流水线上
-        前后相邻的两步。此前这张卡不管点谁都固定跳核销页——同时有分拣活
-        没有核销活时，点进去正好是句"当前没有待核销的订单"，分拣入口
-        反而要回首页从待办格子里单独找。数字复用 `todo`（已经在拉了，不多发请求）。
+        **核销 / 分拣不再单独一张卡**（2026-10-08 店主：和上面的待办格重复）。
+        它俩的数、去处、权限与上面待办格里的「待核销 / 待分拣」逐条相同
+        （同一份 `todo`，toVerify→核销页、toPick→分拣页，各跟 biz:verify / biz:receive 走），
+        所以那张「履约台」卡是把同样两个数字在同一屏上又画了一遍。去掉它，只留待办格那一份。
+        —— 待办格的 splice 见上面 cells：只有自提点承接方才会出现这两格（ADR-005）。
       -->
-      <view
-        v-if="merchant.isPickupPoint && (merchant.can('biz:verify') || merchant.can('biz:receive'))"
-        class="sh-card fulfill"
-      >
-        <view class="sh-card__head">
-          <text class="txt-title">{{ $t("home.fulfillEntry") }}</text>
-        </view>
-        <sh-stat panel :items="fulfillItems" @change="open($event === 'toPick' ? ROUTES.picking : ROUTES.verify)"></sh-stat>
-      </view>
 
       <!--
         功能入口：两列小格。「规格」与「类目」各自一格（规格页已独立，埋在类目页里等于找不到）；
