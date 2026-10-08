@@ -9482,6 +9482,18 @@
           "ar": "يُحسب بالوزن الأول، حوالي {v}"
         },
         {
+          "key": "goods.freightTpl",
+          "zh-CN": "运费模板",
+          "en": "Shipping template",
+          "ar": "قالب الشحن"
+        },
+        {
+          "key": "goods.freightTplFollow",
+          "zh-CN": "跟随门店",
+          "en": "Same as store",
+          "ar": "مثل المتجر"
+        },
+        {
           "key": "goods.freshSection",
           "zh-CN": "生鲜信息",
           "en": "Fresh details",

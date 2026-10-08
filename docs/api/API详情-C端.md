@@ -52,6 +52,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -105,6 +106,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -597,6 +599,7 @@
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -870,6 +873,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1730,6 +1734,7 @@
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
 | `addressId` | `string` | 是 | — |
+| `storeNo` | `string` | 否 | — |
 
 **出参**（`data`）
 
@@ -1738,6 +1743,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1815,6 +1821,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1877,6 +1884,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1930,6 +1938,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1983,6 +1992,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -2085,6 +2095,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 门店（后端 `OrderVO.store`）。**预览的主单上恒为空** —— 门店在 `subOrders[].store` 上，一组一家店 |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致 |
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
@@ -2102,6 +2113,7 @@
 |---|---|:---:|---|
 | `merchantNo` | `string` | 否 | — |
 | `merchantName` | `string` | 否 | — |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这一组（子单）的门店（ADR-031）。预览按门店分组，同主体两家店是两组 |
 | `pickupNo` | `string` | 否 | — |
 | `pickupName` | `string` | 否 | — |
 | `pickupDistanceM` | `number,null` | 否 | 这个自提点离买家多远（米）。**点是后端按地址配的，买家没得挑** —— 不说距离的话，他要到取货那天才知道有多远。 `-1` = 这个点没标坐标（存量点是手填地址建的），**不是 0**： 0 会被显示成「0 米」，那是一句假话。预览之外为空。 |
@@ -2938,6 +2950,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家号 |
+| `storeNo` | `string,null` | 否 | 这一组的门店（ADR-031）；后端先按它认，没有再按商家号 |
 | `activityNo` | `string` | 是 | 活动号，或 `ACTIVITY_NONE`（这家店不参加活动） |
 
 ### ActivityTag
@@ -3146,6 +3159,8 @@
 | `invalid` | `boolean` | 否 | 失效（已下架 / 已删除）。**为真即不可勾选结算**，端上放进失效区。 ⚠️ **这里此前叫 `invalidReason?: string`，而后端从来没有发过那个名字** —— 后端 `CartItemVO` 发的一直是 `invalid: boolean`。同物异名的后果不是「少个字段」： 端上按 `!invalidReason` 判有效，于是**已下架的商品在购物车里完全正常**， 能勾能结算，一直到下单那一刻才被后端拒。 <p>不反过来让后端发那句中文原因：那是要显示给用户的话，而这个 app 有三门语言。 端上拿 `invalid` 与  {@link  available }  两个事实自己组装本地化文案， i18n 守卫也才管得着它。见 TDD-购物车与下单优化 §3.6。 |
 | `available` | `number` | 否 | 可售库存。`0` = 售罄。 ⚠️ **缺省表示「后端没给」，不是 0** —— 旧版本后端与 mock 都可能不发。 每一处都要按「空 = 不设上限」处理；默认成 0 的后果是整车一件都加不了， 而且只在没带这个字段的环境里才出现。 |
 | `invalidReason` | `string` | 否 | 失效原因**码**（不是文案）：`"OFF_SHELF" \| "ACTIVITY_ENDED" \| "SOLD_OUT"`，可售时缺省。 ⚠️ 和上面 `invalidReason?: string` 那段旧坑**不是一回事**：这里是一个**枚举码**， 端上 switch 到 i18n 词条，后端**不发中文**（见  {@link  invalid }  注释）。 它是 `invalid`/`available` 之上更细的一层：有它就按它出文案（能分出「活动结束」）， 没有（老后端）就回落到 `invalid`/`available` 的两分法。 |
+| `storeNo` | `string,null` | 否 | 所属门店（ADR-031：商品只属于一家门店，子单按门店拆）。同主体两家店的货在购物车、 结算页里各成一段，段头显示店名。老数据为空，回落主体。 |
+| `storeName` | `string,null` | 否 | 所属门店的店名：购物车段头显示它（同主体两家店才分得开）；老数据为空，回落商家名 |
 | `giftQty` | `number` | 否 | 买赠自动带出的赠品件数（不计价） |
 | `giftLabel` | `string` | 否 | 赠品说明，如「买 2 送 1」 |
 
@@ -3338,6 +3353,7 @@
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | — |
 | `addressId` | `string` | 是 | — |
+| `storeNo` | `string` | 否 | — |
 
 ### CreateRequestReq
 
@@ -3457,6 +3473,7 @@
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -3888,6 +3905,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家单号 |
+| `storeNo` | `string,null` | 否 | 这一组的门店（ADR-031：子单按门店拆）；空 = 老后端 |
 | `merchantName` | `string` | 是 | 商家名，展示用 |
 | `invoiceCapable` | `boolean` | 是 | 能否开票 |
 | `payMethods` | `string`\[\] | 是 | 该商家支持的支付方式；**空 = 未配置**（进件还没走完），不是「一种都不支持」 |
@@ -3902,6 +3920,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家号 |
+| `storeNo` | `string,null` | 否 | 这一组的门店（ADR-031）。选活动按它回传；空 = 老后端，按商家号 |
 | `merchantName` | `string` | 是 | 店名（一单多家店时，面板里每家店的活动前面写它） |
 | `options` | `object`（见下）\[\] | 是 | 这家店命中的活动。金额 = 只参加它时减多少 |
 | `chosen` | `string,null` | 否 | 这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动 |
@@ -4006,6 +4025,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4084,6 +4104,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 门店（后端 `OrderVO.store`）。**预览的主单上恒为空** —— 门店在 `subOrders[].store` 上，一组一家店 |
 | `amount` | [`OrderAmount`](#orderamount) | 是 | 试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 试算出来的订单行，含赠品行（价格 0）。数量与下单后落库的一致 |
 | `subOrders` | `object`（见下）\[\] | 否 | 按商家拆出来的子单，**带后端为每家配好的自提点**。 买家不再挑自提点：地址决定他在哪，点由后端按 「这家商家承接哪些 ∩ 归属链上 ∩ 离他最近」配出来，属于多个就是多个。 端上据此按**取货点**分组显示 —— 要在付款前说清楚「本单几个取货点」， 等下单响应才知道就晚了，那时钱已经付了。 `pickupNo` 为空 = 这家在买家那一带没有可用的点，付款前就要标出来。 |
@@ -4101,6 +4122,7 @@
 |---|---|:---:|---|
 | `merchantNo` | `string` | 否 | — |
 | `merchantName` | `string` | 否 | — |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这一组（子单）的门店（ADR-031）。预览按门店分组，同主体两家店是两组 |
 | `pickupNo` | `string` | 否 | — |
 | `pickupName` | `string` | 否 | — |
 | `pickupDistanceM` | `number,null` | 否 | 这个自提点离买家多远（米）。**点是后端按地址配的，买家没得挑** —— 不说距离的话，他要到取货那天才知道有多远。 `-1` = 这个点没标坐标（存量点是手填地址建的），**不是 0**： 0 会被显示成「0 米」，那是一句假话。预览之外为空。 |
@@ -4136,6 +4158,15 @@
 - `COMPLETED`
 - `CANCELLED`
 - `REFUNDED`
+
+### OrderStore
+
+子单的门店（后端 `OrderVO.StoreBrief`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号：同主体两张子单靠它分开（商家号相同） |
+| `storeName` | `string,null` | 否 | 门店名：段头 / 收银台子单列表显示它；取不到为空，回落商家名 |
 
 ### OrderTimelineNode
 

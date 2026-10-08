@@ -249,6 +249,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -302,6 +303,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -361,6 +363,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -1162,6 +1165,19 @@ _无字段_
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
 
 
+### freight-template
+
+#### GET `/biz/freight-template/list`
+
+平台在用的运费模板　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StoreFreightTemplate`](#storefreighttemplate)\[\]
+
+
 ### fulfillment
 
 #### GET `/biz/fulfillment/carriers`
@@ -1308,6 +1324,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1367,6 +1384,7 @@ _无字段_
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `freightTemplateNo` | `string` | 否 | 运费模板（ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店 |
 | `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：
@@ -1447,6 +1465,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1573,6 +1592,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1649,6 +1669,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1794,6 +1815,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1870,6 +1892,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -1946,6 +1969,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -2022,6 +2046,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -2104,6 +2129,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -2244,6 +2270,7 @@ _无字段_
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `freightTemplateNo` | `string` | 否 | 运费模板（ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店 |
 | `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：
@@ -2313,6 +2340,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -4207,6 +4235,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4260,6 +4289,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4313,6 +4343,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4441,6 +4472,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4655,6 +4687,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -4770,6 +4803,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -6937,6 +6971,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家号 |
+| `storeNo` | `string,null` | 否 | 这一组的门店（ADR-031）；后端先按它认，没有再按商家号 |
 | `activityNo` | `string` | 是 | 活动号，或 `ACTIVITY_NONE`（这家店不参加活动） |
 
 ### ActivityConflict
@@ -7828,6 +7863,7 @@ _无字段_
 | `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
+| `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
 | `onSale` | `boolean` | 是 | 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 |
 | `detail` | `string` | 否 | 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染， 别拿一个空白区块占着详情页。 |
 | `status` | [`GoodsStatus`](#goodsstatus) | 否 | 状态 |
@@ -8569,6 +8605,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `merchantNo` | `string` | 是 | 商家号 |
+| `storeNo` | `string,null` | 否 | 这一组的门店（ADR-031）。选活动按它回传；空 = 老后端，按商家号 |
 | `merchantName` | `string` | 是 | 店名（一单多家店时，面板里每家店的活动前面写它） |
 | `options` | `object`（见下）\[\] | 是 | 这家店命中的活动。金额 = 只参加它时减多少 |
 | `chosen` | `string,null` | 否 | 这次预览用上的活动号；`ACTIVITY_NONE` = 顾客选了不参加；空 = 这次没有活动 |
@@ -8881,6 +8918,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
 | `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
@@ -8984,6 +9022,15 @@ _无字段_
 - `COMPLETED`
 - `CANCELLED`
 - `REFUNDED`
+
+### OrderStore
+
+子单的门店（后端 `OrderVO.StoreBrief`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 门店号：同主体两张子单靠它分开（商家号相同） |
+| `storeName` | `string,null` | 否 | 门店名：段头 / 收银台子单列表显示它；取不到为空，回落商家名 |
 
 ### OrderTimelineNode
 
@@ -9693,6 +9740,7 @@ _无字段_
 | `stdNo` | `string` | 否 | 引用的平台标准品。传了它，服务端会用标准品的 categoryNo 与 optionCode **覆盖**请求里的值；不传 = 自建品 / 脱离标准品。 |
 | `saleMode` | [`SaleMode`](#salemode) | 否 | 销售方式（V340）。不传 = 不改。草稿回读（mGoodsDraft）靠 `...d` 原样带回 —— 所以这里必须声明，否则编辑一件有草稿的仅活动商品，再存一次就冲回了正常售卖。 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区：不卖到的省级 regionCode。**整份覆盖，空数组 = 清空恢复全国**；不传 = 不改。 <p>2026-10-07 之前这个字段不在这里，`http.ts` 逐字段重建请求体时也就没有它 —— 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。 |
+| `freightTemplateNo` | `string` | 否 | 运费模板（ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店 |
 | `entrySource` | [`GoodsEntrySource`](#goodsentrysource) | 否 | 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） |
 
 `fresh` 的字段：

@@ -4201,6 +4201,11 @@ components:
         merchantNo: 
           type: "string"
           description: "商家单号"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一组的门店（ADR-031：子单按门店拆）；空 = 老后端"
         merchantName: 
           type: "string"
           description: "商家名，展示用"
@@ -6426,6 +6431,11 @@ components:
           items: 
             type: "string"
           description: "限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `[\"65\",\"54\"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。"
+        freightTemplateNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店"
         onSale: 
           type: "boolean"
           description: "是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单"
@@ -9124,6 +9134,16 @@ components:
         invalidReason: 
           type: "string"
           description: "失效原因**码**（不是文案）：`\"OFF_SHELF\" | \"ACTIVITY_ENDED\" | \"SOLD_OUT\"`，可售时缺省。\n\n⚠️ 和上面 `invalidReason?: string` 那段旧坑**不是一回事**：这里是一个**枚举码**， 端上 switch 到 i18n 词条，后端**不发中文**（见  {@link  invalid }  注释）。 它是 `invalid`/`available` 之上更细的一层：有它就按它出文案（能分出「活动结束」）， 没有（老后端）就回落到 `invalid`/`available` 的两分法。"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "所属门店（ADR-031：商品只属于一家门店，子单按门店拆）。同主体两家店的货在购物车、 结算页里各成一段，段头显示店名。老数据为空，回落主体。"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+          description: "所属门店的店名：购物车段头显示它（同主体两家店才分得开）；老数据为空，回落商家名"
         giftQty: 
           type: "number"
           description: "买赠自动带出的赠品件数（不计价）"
@@ -9146,6 +9166,11 @@ components:
     OrderPreview: 
       type: "object"
       properties: 
+        store: 
+          anyOf: 
+            - "$ref": "#/components/schemas/OrderStore"
+            - type: "null"
+          description: "门店（后端 `OrderVO.store`）。**预览的主单上恒为空** —— 门店在 `subOrders[].store` 上，一组一家店"
         amount: 
           "$ref": "#/components/schemas/OrderAmount"
           description: "试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** —— 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端， 两处各算一次必然算出两个数，而用户看到的是「确认页 46.40、付款 51.40」。"
@@ -9163,6 +9188,11 @@ components:
                 type: "string"
               merchantName: 
                 type: "string"
+              store: 
+                anyOf: 
+                  - "$ref": "#/components/schemas/OrderStore"
+                  - type: "null"
+                description: "这一组（子单）的门店（ADR-031）。预览按门店分组，同主体两家店是两组"
               pickupNo: 
                 type: "string"
               pickupName: 
@@ -9216,6 +9246,21 @@ components:
         - "items"
       additionalProperties: false
       description: "订单预览的返回。**后端返的是完整 OrderVO，这里只声明端上要用的那部分** —— 预览页只关心金额与行，声明全套会让每次后端加字段都得改端上类型。"
+    OrderStore: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+          description: "门店号：同主体两张子单靠它分开（商家号相同）"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店名：段头 / 收银台子单列表显示它；取不到为空，回落商家名"
+      required: 
+        - "storeNo"
+      additionalProperties: false
+      description: "子单的门店（后端 `OrderVO.StoreBrief`）"
     OrderAmount: 
       type: "object"
       properties: 
@@ -9400,6 +9445,11 @@ components:
         merchantNo: 
           type: "string"
           description: "商家号"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一组的门店（ADR-031）。选活动按它回传；空 = 老后端，按商家号"
         merchantName: 
           type: "string"
           description: "店名（一单多家店时，面板里每家店的活动前面写它）"
@@ -9436,6 +9486,11 @@ components:
         merchantNo: 
           type: "string"
           description: "商家号"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一组的门店（ADR-031）；后端先按它认，没有再按商家号"
         activityNo: 
           type: "string"
           description: "活动号，或 `ACTIVITY_NONE`（这家店不参加活动）"
@@ -9576,6 +9631,11 @@ components:
         orderNo: 
           type: "string"
           description: "订单单号"
+        store: 
+          anyOf: 
+            - "$ref": "#/components/schemas/OrderStore"
+            - type: "null"
+          description: "这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空"
         status: 
           "$ref": "#/components/schemas/OrderStatus"
           description: "订单状态。粗粒度；售后细节见 `afterSale`"
@@ -10603,6 +10663,8 @@ components:
               merchantNo: 
                 type: "string"
               addressId: 
+                type: "string"
+              storeNo: 
                 type: "string"
             required: 
               - "merchantNo"

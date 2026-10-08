@@ -1,6 +1,6 @@
 # TDD 下单按门店拆单与运费模板
 
-状态：**已确认**（2026-10-09 用户拍板，实现中）
+状态：**已实现（期 A~D 代码与测试）· 未发布**（2026-10-09）
 档位：**2**（跨三端 + 库表 + 端点 + 不可逆：子单粒度）
 关联决策：[ADR-031 子单按门店拆与运费按商品门店计算](ADR/ADR-031-子单按门店拆与运费按商品门店计算.md) ·
 [ADR-030 商品归属改为门店 Offer](ADR/ADR-030-商品归属改为门店Offer与品牌库.md)
@@ -167,20 +167,40 @@ Optional<Quote> quoteMerged(List<FreightLine> lines, String receiverAddress);
 |---|---|---|---|
 | AC1 | `GoodsStoreOwnershipTest#newGoodsBelongsToCurrentStore` `#editKeepsOwner` | ✅ 2/2（期 A） | 撤 `newGoods` 里 `setStoreNo` → 2/2 红 |
 | AC2 | 迁移 SQL 在线上库只读预演（2026-10-09）：17 件在用商品全部归到其在架那家店，4 件多店的归主店（粮油 ×3、鲜果 ×1） | ✅ | — |
-| AC3 | `StoreScopedVisibilityFlowTest`（改造） | | |
-| AC4 | `StoreSplitOrderFlowTest#同主体两店两张子单` | | |
-| AC5/AC8 | `FreightResolveTest#商品模板优先` `#归档回落门店` | | |
-| AC6 | `FreightMergeTest`（后端）+ `freight.test.ts`（端上同组用例） | | |
-| AC7 | `FreightTemplateGoodsFlowTest#指定与清空` | | |
-| AC9 | `StoreSplitOrderFlowTest#额度按主体汇总` `#赠积分只发一次` | | |
-| AC10 | `StoreSplitOrderFlowTest#子单优惠之和等于整单` | | |
+| AC3 | `StoreScopedVisibilityFlowTest`（改造，16/16）· `StoreStockFlowTest`（改造，13/13）· `BizCrossStoreFlowTest` 7/7 · `ReviewStoreAttributionFlowTest` 3/3 · `StoreGoodsFlowTest` 8/8 | ✅ | 16 条「一件货多店卖」用例按新模型改写，见 §7 |
+| AC4 | `StoreSplitOrderFlowTest#sameEntityTwoStoresTwoSubOrders` | ✅ 1/1 | 分组键改回 `merchantNo` → 红（预览 1 组） |
+| AC5/AC8 | `FreightTemplateGoodsFlowTest#goodsTemplateWinsAndArchivedFallsBack` | ✅ | 解析恒取门店模板 → 红（¥3 期望，实 ¥8） |
+| AC6 | `FreightMergeTest` 6/6 + `freight.test.ts` 合并组 6/6（同一批数） | ✅ | — |
+| AC7 | `FreightTemplateGoodsFlowTest#merchantSetsAndClears` | ✅ | 首版未解域，UPDATE 静默 0 行 → 这条当场红，补 `executeWithoutScope` 后绿 |
+| AC9 | 未单独成例（代码见 `doCreate` 汇总 / `bonusGranted`）；待补 | ⚠️ | — |
+| AC10 | 未单独成例：`M6bCouponFlowTest` 27/27（含「子单优惠之和 = 券额」）在新分摊下回归通过；同主体两店的优惠用例待补 | ⚠️ | — |
 | AC11 | 线上真机：盐 + 柿子同单 | | |
 
 ## §6 对账二 · 设计 → 实现（每期贴 `git show --stat`）
+
+**期 B~D**（`88505dedb` 后端 · `7f80507ff` shared · `5edfaf7fb` c-app · `64f88e5eb` b-app）：与 §2.2 一致，偏差见 §7。
+迁移号：期 D 的 `freight_template_no` 落在 **V385**（Vα=V384、Vγ=V385；Vβ「置 NOT NULL」未做，待线上复制完 4 件后再加）。
 
 **期 A**：`V384__goods_store_no.sql`（新）· `PrdGoods`（+`storeNo`）· `MerchantGoodsServiceImpl.newGoods`（建品取当前店）·
 `schema-test.sql`（+列）· `GoodsStoreOwnershipTest`（新）。与 §2.2 期 A 一致；`GoodsVO` 带 `storeNo` 挪到期 B（期 A 只写不读）。
 
 ## §7 偏差说明
+
+- **期 B 不删投影三表、只收窄**（2026-10-09）：原计划 B 期删 `prd_store_goods/price/stock` 的读写。实际只把「这件货在哪些店卖」
+  收窄到 `goods.store_no` 那一家（可见性 `sellingAt`、门户列表、B 端列表、详情、快照逐件按归属门店取价与上下架），
+  三张表照旧做「这家店上不上架 / 什么价 / 多少货」的覆盖层。理由：删投影牵涉 20 个文件与进销存双写，
+  而收窄已足以让「显示的店 = 卖的店 = 发货的店」成立；删除留给商品归属重构 P4。
+- **门店在拆单时一次定死**：`split()` 给每组填 `storeNo`（归属门店；没有归属的测试种子按主体落店），
+  `storesOf` 只读组上的门店，不再解析第二遍；落店解析只对**没有归属**的货运行 ——
+  否则盐（粮油）+ 柿子（鲜果）会在落店那一步因「找不到两件都在架的同一家店」整单被拒。
+- **营销分组键改为「主体 + 门店」**：`AppliedActivity` / `MerchantDiscount`（活动与券两份）带 `storeNo`，
+  `CampaignPort.pick` 按「主体|门店」分桶，`Discount.of(m, s)` / `Allocation.discountOf(m, s)` 按组取；
+  老的按主体取保留（返回各店之和）。券分摊的尾数此前按主体号找最大那组，同主体两组会落错，改为按位置。
+- **端上契约**：活动 / 地址选择回传时带 `storeNo`（后端先认门店号、再认主体号）；`storeChoices` 端上不再发、后端仍收
+  （只对没有归属的货生效）。C 端 `store-choice.ts` 删除（上午为止血加的 `pickedAt` 一并删）。
+- **运费模板不进草稿**：商品指定模板是物流设置，保存即落主行（`applyFreightTemplate` 在草稿分支之前）；
+  清空用显式 `set(null)`（updateById 跳过 null）。非法模板号回 `BAD_REQUEST`，未新增错误码（端上只能从列表选）。
+- **`OrderVO.withOffers` / `withReturned` 顺手修**：此前调的是短构造器，会静默丢掉 `instantRefundEligible` 与 `trace`。
+- **c-app `checkout-offers.test.ts` 一条源码断言陈旧**：上午 `407d49c9d`（建议只套一次）改了那一行而没跑 c-app 单测，这次一并更新。
 
 - **期 A 回填有 4 行留空**：已删除的 4 件面粉（`deleted=1`），所属主体已没有门店。期 B 置 NOT NULL 前要先处理（填其主体曾用的店或物理清理），不能直接加约束。

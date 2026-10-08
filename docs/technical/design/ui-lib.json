@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 511,
+        "b-app": 512,
         "c-app": 75
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 416,
+        "b-app": 417,
         "c-app": 83
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 118,
         "c-app": 90
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 172,
+        "b-app": 173,
         "c-app": 90
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 566,
+        "b-app": 567,
         "c-app": 202
       }
     },
@@ -2207,7 +2207,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 22,
+        "b-app": 23,
         "c-app": 3,
         "lib": 0
       },
@@ -3791,10 +3791,18 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 506,
+      "libClassHits": 511,
       "localSelectors": 94,
       "localCssLines": 365,
-      "rolled": []
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5941,6 +5949,16 @@
       "rule": "^\\s*\\.(trio|quad|stat|kpi|effect__)\\b",
       "pages": [
         "c-app/merchant"
+      ]
+    },
+    {
+      "id": "sysmodal",
+      "label": "系统弹框",
+      "lib": "sh-sheet",
+      "gap": false,
+      "rule": "showModal\\(|showActionSheet\\(",
+      "pages": [
+        "b-app/goods-edit"
       ]
     },
     {
