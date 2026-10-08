@@ -166,6 +166,14 @@ public class PrdGoods extends BaseEntity {
      */
     private String restrictedRegions;
 
+    /**
+     * 所属门店（V384，ADR-030 / ADR-031）：**商品只属于一家门店**。
+     * B 端在哪家店下建的就归哪家；编辑不改归属。多店卖同款 = 每家店各建一件。
+     *
+     * <p>期 A 只写不读：读路径仍走 {@code prd_store_goods} 投影，期 B 一次切过来。
+     */
+    private String storeNo;
+
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

@@ -3202,6 +3202,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         PrdGoods g = new PrdGoods();
         g.setGoodsNo(BizKey.next(BizKey.GOODS));
         g.setEntityNo(merchantNo);
+        /*
+         * 归属门店 = 这次请求作用的那家店（X-Store-No，不带时 BizContextFilter 已解析成默认店）。
+         * 取不到（没有门店上下文的调用方）回落主体默认店 —— 不留空：期 B 起读路径只认这一列。
+         */
+        String store = ai.neargo.shop.auth.BizContext.current().currentStoreNo();
+        g.setStoreNo(store != null && !store.isBlank() ? store
+                : merchantPort.defaultStoreNo(merchantNo).orElse(null));
         g.setRating(50);
         g.setRatingCount(0);
         g.setSales(0);

@@ -165,8 +165,8 @@ Optional<Quote> quoteMerged(List<FreightLine> lines, String receiverAddress);
 
 | AC | 测试 | 跑过 | 消融 |
 |---|---|---|---|
-| AC1 | `GoodsStoreOwnershipTest#建品归当前店` `#编辑不改归属` | | |
-| AC2 | `GoodsStoreBackfillTest`（迁移 SQL 在 H2 上跑） | | |
+| AC1 | `GoodsStoreOwnershipTest#newGoodsBelongsToCurrentStore` `#editKeepsOwner` | ✅ 2/2（期 A） | 撤 `newGoods` 里 `setStoreNo` → 2/2 红 |
+| AC2 | 迁移 SQL 在线上库只读预演（2026-10-09）：17 件在用商品全部归到其在架那家店，4 件多店的归主店（粮油 ×3、鲜果 ×1） | ✅ | — |
 | AC3 | `StoreScopedVisibilityFlowTest`（改造） | | |
 | AC4 | `StoreSplitOrderFlowTest#同主体两店两张子单` | | |
 | AC5/AC8 | `FreightResolveTest#商品模板优先` `#归档回落门店` | | |
@@ -178,4 +178,9 @@ Optional<Quote> quoteMerged(List<FreightLine> lines, String receiverAddress);
 
 ## §6 对账二 · 设计 → 实现（每期贴 `git show --stat`）
 
+**期 A**：`V384__goods_store_no.sql`（新）· `PrdGoods`（+`storeNo`）· `MerchantGoodsServiceImpl.newGoods`（建品取当前店）·
+`schema-test.sql`（+列）· `GoodsStoreOwnershipTest`（新）。与 §2.2 期 A 一致；`GoodsVO` 带 `storeNo` 挪到期 B（期 A 只写不读）。
+
 ## §7 偏差说明
+
+- **期 A 回填有 4 行留空**：已删除的 4 件面粉（`deleted=1`），所属主体已没有门店。期 B 置 NOT NULL 前要先处理（填其主体曾用的店或物理清理），不能直接加约束。

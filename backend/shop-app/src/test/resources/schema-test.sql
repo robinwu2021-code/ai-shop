@@ -733,6 +733,7 @@ CREATE TABLE IF NOT EXISTS prd_goods
     inv_mode VARCHAR(8) NOT NULL DEFAULT 'INHERIT',
     new_notified_at BIGINT DEFAULT NULL,
     restricted_regions VARCHAR(255) DEFAULT NULL,
+    store_no VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_goods_no UNIQUE (goods_no)
 );
