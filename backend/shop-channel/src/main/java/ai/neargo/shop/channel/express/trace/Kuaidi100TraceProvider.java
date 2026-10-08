@@ -134,7 +134,9 @@ public class Kuaidi100TraceProvider implements TraceProvider {
             if (phone != null && !phone.isBlank()) {
                 p.put("phone", phone.trim());
             }
-            p.put("resultv2", "1");
+            // 4 才给 areaCenter（经纬度）与 routeInfo（出发/当前/目的城市）——地图与步骤条都靠它。
+            // 1 只有行政区名与状态名，画不了地图。按单计费与 1 相同。
+            p.put("resultv2", "4");
             p.put("show", "0");
             p.put("order", "desc");
             String param = json.writeValueAsString(p);
@@ -200,16 +202,63 @@ public class Kuaidi100TraceProvider implements TraceProvider {
                     continue;
                 }
                 String loc = d.path("areaName").asText(d.path("location").asText("")).trim();
+                int[] ll = parseCenter(d.path("areaCenter").asText(""));
+                String sc = d.path("statusCode").asText("").trim();
                 nodes.add(new TraceResult.TraceNode(at, nodeStatus(d.path("status").asText("")), text,
-                        loc.isEmpty() ? null : loc));
+                        loc.isEmpty() ? null : loc,
+                        ll == null ? null : ll[0], ll == null ? null : ll[1],
+                        sc.isEmpty() ? null : sc));
             }
             // 统一约定按时间倒序（最新在前）—— 不依赖对方的 order 参数
             nodes.sort((a, b) -> Long.compare(b.at(), a.at()));
-            return Optional.of(new TraceResult(waybillNo, carrier, overall, "kuaidi100", List.copyOf(nodes)));
+            return Optional.of(new TraceResult(waybillNo, carrier, overall, "kuaidi100",
+                    List.copyOf(nodes), parseRoute(n.path("routeInfo"))));
         } catch (Exception e) {
             log.warn("[trace:kuaidi100] {} {} 返回体解析失败", carrier, waybillNo);
             return Optional.empty();
         }
+    }
+
+    /**
+     * {@code areaCenter} 是 {@code "经度,纬度"}（如 {@code "116.277912,32.353038"}）→ {@code [latE6, lngE6]}。
+     *
+     * <p><b>顺序容易写反</b>：快递100 给的是经度在前，而我们库里与端上一律 lat 在前。
+     * 写反的症状是地图上所有点跑到国外，但<b>不报错</b>。所以这里按范围兜一道：
+     * 中国境内纬度 3~54、经度 73~136，取到的两个数若不在各自范围内就丢弃这一组坐标。
+     */
+    static int[] parseCenter(String areaCenter) {
+        if (areaCenter == null || areaCenter.isBlank()) {
+            return null;
+        }
+        String[] parts = areaCenter.trim().split(",");
+        if (parts.length != 2) {
+            return null;
+        }
+        try {
+            double lng = Double.parseDouble(parts[0].trim());
+            double lat = Double.parseDouble(parts[1].trim());
+            if (lat < 3 || lat > 54 || lng < 73 || lng > 136) {
+                return null;
+            }
+            return new int[]{(int) Math.round(lat * 1e6), (int) Math.round(lng * 1e6)};
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** {@code routeInfo: {from:{name}, cur:{name}, to:{name}}} → 城市路线；一个都没有时返回 null */
+    static TraceResult.Route parseRoute(JsonNode routeInfo) {
+        if (routeInfo == null || routeInfo.isMissingNode() || !routeInfo.isObject()) {
+            return null;
+        }
+        String from = routeInfo.path("from").path("name").asText("").trim();
+        String cur = routeInfo.path("cur").path("name").asText("").trim();
+        String to = routeInfo.path("to").path("name").asText("").trim();
+        if (from.isEmpty() && cur.isEmpty() && to.isEmpty()) {
+            return null;
+        }
+        return new TraceResult.Route(from.isEmpty() ? null : from,
+                cur.isEmpty() ? null : cur, to.isEmpty() ? null : to);
     }
 
     /** 两个时间字段、几种格式都试一遍；都认不出返回 null（调用方出警告后丢弃该节点） */

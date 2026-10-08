@@ -3,7 +3,9 @@ package ai.neargo.shop.channel.express.trace;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,11 +25,147 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "shop.express.trace")
 public class TraceRoutingProperties {
 
-    /** 门店号 → provider 名。没列的用 {@link #defaultProvider} */
+    /**
+     * 门店号 → provider 名。**老形状，保留兼容**：线上 yml 里可能还写着它。
+     * 新配置用 {@link #source}；两者都给时 source 赢。
+     */
     private Map<String, String> storeRoute = new HashMap<>();
 
-    /** 没在 storeRoute 里的门店走哪个 provider。**生产默认圆通（yto）**；开发期 stub（空轨迹，不白屏） */
+    /** 老形状的默认 provider。新配置用 {@code source.default} */
     private String defaultProvider = "stub";
+
+    /** 轴一：数据源优先级链（TDD-物流轨迹多渠道 §2.2） */
+    private Source source = new Source();
+
+    /** 轴二：展示渠道优先级链，按端（§2.3） */
+    private Display display = new Display();
+
+    /**
+     * 数据源链。查的时候顺着链走，第一个「可用且认这个承运商且查到了」的胜出；
+     * 查不到就继续下一个，全链走完仍空才算空。
+     *
+     * <p>键的优先级：{@link #byStore} › {@link #byCarrier} › {@link #byDefault}。
+     * **第一个命中的键胜出，不叠加** —— 叠加的话「门店配了一条短链」反而比默认链还长，与直觉相反。
+     */
+    public static class Source {
+        /**
+         * 兜底链。**不挂 ${ENV} 占位**：List/Map 字段挂空串绑不进去，整个 context 起不来
+         * （见 configprops-map-empty-env-crashes-context）。要改就改 yml 里的字面量。
+         */
+        private List<String> byDefault = new ArrayList<>(List.of("stub"));
+        /** 承运商码（微信 delivery_id，如 YTO）→ 链。圆通单优先直连、回退聚合就配在这儿 */
+        private Map<String, List<String>> byCarrier = new HashMap<>();
+        /** 门店号 → 链。优先级最高 */
+        private Map<String, List<String>> byStore = new HashMap<>();
+
+        public List<String> getByDefault() {
+            return byDefault;
+        }
+
+        public void setByDefault(List<String> byDefault) {
+            this.byDefault = byDefault;
+        }
+
+        public Map<String, List<String>> getByCarrier() {
+            return byCarrier;
+        }
+
+        public void setByCarrier(Map<String, List<String>> byCarrier) {
+            this.byCarrier = byCarrier;
+        }
+
+        public Map<String, List<String>> getByStore() {
+            return byStore;
+        }
+
+        public void setByStore(Map<String, List<String>> byStore) {
+            this.byStore = byStore;
+        }
+    }
+
+    /**
+     * 展示渠道链，按端。**链尾应当永远是 self-map**（它 supports 恒真，是兜底）——
+     * 链尾放一个会挑单的渠道，等于某些单什么都不显示。
+     */
+    public static class Display {
+        /** C 端小程序：优先微信插件，备不出落到自建 */
+        private List<String> mp = new ArrayList<>(List.of("self-map"));
+        /** B 端 App：插件只在小程序内可用，这里只有自建 */
+        private List<String> app = new ArrayList<>(List.of("self-map"));
+        /** 运营端 */
+        private List<String> ops = new ArrayList<>(List.of("self-map"));
+        /** H5（B 端调试用） */
+        private List<String> h5 = new ArrayList<>(List.of("self-map"));
+
+        public List<String> getMp() {
+            return mp;
+        }
+
+        public void setMp(List<String> mp) {
+            this.mp = mp;
+        }
+
+        public List<String> getApp() {
+            return app;
+        }
+
+        public void setApp(List<String> app) {
+            this.app = app;
+        }
+
+        public List<String> getOps() {
+            return ops;
+        }
+
+        public void setOps(List<String> ops) {
+            this.ops = ops;
+        }
+
+        public List<String> getH5() {
+            return h5;
+        }
+
+        public void setH5(List<String> h5) {
+            this.h5 = h5;
+        }
+    }
+
+    /**
+     * 这个门店 + 这个承运商该按哪条数据源链查。老配置（storeRoute/defaultProvider）
+     * 在新配置没写时继续生效，于是线上 yml 不动也不会变行为。
+     */
+    public List<String> sourceChain(String storeNo, String carrier) {
+        List<String> byStore = storeNo == null ? null : source.getByStore().get(storeNo);
+        if (byStore != null && !byStore.isEmpty()) {
+            return byStore;
+        }
+        List<String> byCarrier = carrier == null ? null : source.getByCarrier().get(carrier);
+        if (byCarrier != null && !byCarrier.isEmpty()) {
+            return byCarrier;
+        }
+        // 老配置兜底：门店路由表里有就用它，否则 defaultProvider
+        String legacy = storeNo == null ? null : storeRoute.get(storeNo);
+        if (legacy != null && !legacy.isBlank()) {
+            return List.of(legacy);
+        }
+        if (source.getByDefault() != null && !source.getByDefault().isEmpty()
+                && !List.of("stub").equals(source.getByDefault())) {
+            return source.getByDefault();
+        }
+        return defaultProvider == null || defaultProvider.isBlank()
+                ? source.getByDefault() : List.of(defaultProvider);
+    }
+
+    /** 这个端的展示渠道链 */
+    public List<String> displayChain(String surface) {
+        return switch (surface == null ? "" : surface.toUpperCase(java.util.Locale.ROOT)) {
+            case "MP" -> display.getMp();
+            case "APP" -> display.getApp();
+            case "OPS" -> display.getOps();
+            case "H5" -> display.getH5();
+            default -> display.getMp();
+        };
+    }
 
     public Map<String, String> getStoreRoute() {
         return storeRoute;
@@ -43,5 +181,21 @@ public class TraceRoutingProperties {
 
     public void setDefaultProvider(String defaultProvider) {
         this.defaultProvider = defaultProvider;
+    }
+
+    public Source getSource() {
+        return source;
+    }
+
+    public void setSource(Source source) {
+        this.source = source;
+    }
+
+    public Display getDisplay() {
+        return display;
+    }
+
+    public void setDisplay(Display display) {
+        this.display = display;
     }
 }

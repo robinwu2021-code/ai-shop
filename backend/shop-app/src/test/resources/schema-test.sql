@@ -2626,6 +2626,9 @@ CREATE TABLE IF NOT EXISTS ful_shipment
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    display_channel VARCHAR(32) DEFAULT NULL,
+    display_token VARCHAR(512) DEFAULT NULL,
+    display_fail_reason VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
     CONSTRAINT uk_shipment_sub_order UNIQUE (sub_order_no)
@@ -2640,6 +2643,9 @@ CREATE TABLE IF NOT EXISTS ful_shipment_trace
     location VARCHAR(64) DEFAULT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
+    lat_e6 INT DEFAULT NULL,
+    lng_e6 INT DEFAULT NULL,
+    status_code VARCHAR(16) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 

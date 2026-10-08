@@ -46,35 +46,54 @@ public class LogisticsTraceRouter implements LogisticsTracePort {
         return trace(storeNo, carrier, waybillNo, null);
     }
 
+    /**
+     * 顺着**数据源优先级链**查（TDD-物流轨迹多渠道 §2.2）：第一个「可用 + 认这个承运商 + 真查到了」的胜出。
+     *
+     * <p>与改造前的差别：以前是「按门店挑一个，挑中谁就是谁，不可用就空着」。
+     * 现在不可用 / 不认这个承运商 / 查不到，都**继续链上下一个**。
+     *
+     * <p><b>代价要说清楚</b>：一单可能连查两家、花两份钱。所以默认链只有一个，
+     * 多级链只给确有直连账号的承运商配（配置注释里也写了）。
+     */
     @Override
     public Optional<TraceResult> trace(String storeNo, String carrier, String waybillNo, String phone) {
         if (carrier == null || carrier.isBlank() || waybillNo == null || waybillNo.isBlank()) {
             return Optional.empty();
         }
-        // 按门店挑物流路径：门店配了用门店的，没配用默认（生产=圆通）
-        String providerName = storeNo == null ? routing.getDefaultProvider()
-                : routing.getStoreRoute().getOrDefault(storeNo, routing.getDefaultProvider());
-        TraceProvider p = byName.get(providerName);
-        /*
-         * 回落到空，不抛：
-         *   · 门店路由指了一个不存在的 provider 名（配错）
-         *   · provider 没配凭据（available=false）
-         *   · provider 不认这个承运商（covers=false，门店选的路径与这单承运商对不上）
-         * 任何一种，轨迹这一段空着好过整个订单详情 500。错误进日志，让运营看得见。
-         */
-        if (p == null) {
-            log.warn("[trace] 门店 {} 路由到的 provider '{}' 不存在，这一单没有轨迹", storeNo, providerName);
+        List<String> chain = routing.sourceChain(storeNo, carrier);
+        if (chain == null || chain.isEmpty()) {
+            log.warn("[trace] 门店 {} 承运商 {} 没有配数据源链，这一单没有轨迹", storeNo, carrier);
             return Optional.empty();
         }
-        if (!p.available()) {
-            log.warn("[trace] provider '{}' 不可用（缺凭据？），门店 {} 暂无轨迹", providerName, storeNo);
-            return Optional.empty();
+        for (String name : chain) {
+            TraceProvider p = byName.get(name);
+            /*
+             * 任何一种「这一环用不了」都只是**落到下一环**，不抛：
+             *   · 链里写了一个不存在的 provider 名（配错）
+             *   · provider 没配凭据（available=false）
+             *   · provider 不认这个承运商
+             *   · 查到了空（这家查不到，换一家也许有）
+             * 全链走完仍空 → 轨迹这一段空着，好过整个订单详情 500。原因进日志，让运营看得见。
+             */
+            if (p == null) {
+                log.warn("[trace] 链上的 provider '{}' 不存在（门店 {}），跳过", name, storeNo);
+                continue;
+            }
+            if (!p.available()) {
+                log.info("[trace] provider '{}' 不可用（缺凭据？），落到链上下一个", name);
+                continue;
+            }
+            if (!p.covers(carrier)) {
+                log.info("[trace] provider '{}' 不认承运商 {}，落到链上下一个", name, carrier);
+                continue;
+            }
+            Optional<TraceResult> hit = p.trace(carrier, waybillNo, phone);
+            if (hit.isPresent()) {
+                return hit;
+            }
+            log.info("[trace] provider '{}' 查不到 {} {}，落到链上下一个", name, carrier, waybillNo);
         }
-        if (!p.covers(carrier)) {
-            log.warn("[trace] provider '{}' 不认承运商 {}（门店 {} 的物流路径与这单承运商对不上）",
-                    providerName, carrier, storeNo);
-            return Optional.empty();
-        }
-        return p.trace(carrier, waybillNo, phone);
+        log.info("[trace] 链 {} 走完仍无结果：{} {}", chain, carrier, waybillNo);
+        return Optional.empty();
     }
 }
