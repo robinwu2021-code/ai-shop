@@ -83,6 +83,19 @@ public interface RegionService {
     List<RegionVO> path(String regionCode);
 
     /**
+     * 批量版「码 → 整条路径名」（省 / 市 / 区 / 街道，用 {@code " / "} 连）。
+     *
+     * <p><b>给「一屏很多码」的调用方用</b>：运营端位置分布要给两万多个开放小区各标一条路径，
+     * 逐个调 {@code regionPathName} 就是 {@code path()} 的逐级查库 × 两万多 ≈ 十万次往返
+     * （实测让 {@code /ops/coverage/distribution} 卡死 30 秒以上）。这里按层级分批 {@code IN}，
+     * 总查询数只到 {@code MAX_DEPTH} 量级，与小区数无关。
+     *
+     * <p>每个码的结果与 {@code regionPathName(码)} <b>逐字相同</b>：链断了给已走到的部分，
+     * 整条都查不到就回码本身。查不到的码不进返回 map，调用方自己兜底。
+     */
+    java.util.Map<String, String> pathNames(java.util.Collection<String> regionCodes);
+
+    /**
      * 按名称搜区划（选择器「任何一级都能搜」）。<b>四级都搜：省 / 市 / 区县 / 街道镇</b>。
      *
      * <p>此前不搜省，理由写的是「没人按省框范围」—— 而经营范围本来就是

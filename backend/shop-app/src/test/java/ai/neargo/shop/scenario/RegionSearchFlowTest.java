@@ -132,6 +132,29 @@ class RegionSearchFlowTest {
     }
 
     /** 幂等造行：同一个码再来一次就更新，免得每个用例各自清表 */
+    @Test
+    @DisplayName("★★ 批量 pathNames 与逐个 path() 逐字相同 —— 位置分布那两万多条靠它免 N+1")
+    void batchPathNamesEqualsPerCode() {
+        // 这几个码覆盖四级链（街道→区→市→省）、中间各级、省（无父）与不存在的码
+        List<String> codes = List.of("14", "1408", "140802", "140802001", "999999");
+        var batch = regionService.pathNames(codes);
+
+        for (String c : codes) {
+            String expected = regionService.path(c).stream()
+                    .map(RegionService.RegionVO::name)
+                    .reduce((a, b) -> a + " / " + b).orElse(null);
+            if (expected == null) {
+                // path() 空 = 这个码查不到；批量版据约定「不进 map」
+                assertThat(batch).as("查不到的码不该出现在结果里：%s", c).doesNotContainKey(c);
+            } else {
+                assertThat(batch.get(c)).as("批量与逐个对不上：%s", c).isEqualTo(expected);
+            }
+        }
+        // 对照量：真有多级拼出来的那一条非空，否则这条用例在比空值
+        assertThat(batch.get("140802")).isEqualTo("山西省 / 运城市 / 盐湖区");
+        assertThat(batch).doesNotContainKey("999999");
+    }
+
     private void region(String code, String parent, String level, String name) {
         region(code, parent, level, name, false);
     }

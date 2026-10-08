@@ -67,6 +67,15 @@ public interface MasterDataPort {
     String regionPathName(String regionCode);
 
     /**
+     * {@link #regionPathName} 的批量版：一屏很多码时用它，一次一条会打出 N 次逐级查库。
+     *
+     * <p>运营位置分布要给两万多个开放小区各标一条路径，逐个调曾让那个接口卡死 30 秒以上。
+     * 每个码的结果与 {@link #regionPathName} 逐字相同；<b>查不到的码不在结果里</b>，调用方自己兜底
+     * （通常回落成码本身，与单条版一致）。
+     */
+    java.util.Map<String, String> regionPathNames(java.util.Collection<String> regionCodes);
+
+    /**
      * 区划码 → <b>末级名</b>（「330106」→「西湖区」）。批量查，一次一条会打出 N 次查询。
      *
      * <p>与 {@link #regionPathName} 并存而不是复用：那个给的是整条路径

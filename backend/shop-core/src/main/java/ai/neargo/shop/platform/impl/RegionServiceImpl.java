@@ -360,6 +360,70 @@ public class RegionServiceImpl implements RegionService {
     }
 
     @Override
+    public Map<String, String> pathNames(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return Map.of();
+        }
+        /*
+         * **按层级分批把祖先链一次性捞齐**，再在内存里拼路径 —— 不逐个走 {@link #path}。
+         *
+         * path() 对一个码要逐级 selectOne（最多 MAX_DEPTH 次），
+         * 运营位置分布要给两万多个小区各拼一条，逐个调就是十万次往返。
+         * 这里每轮用一个 {@code IN} 把这一层的码连同它们的父码查回来，
+         * 下一轮只查「还没见过的父码」，总轮数封顶 MAX_DEPTH —— 查询数与码的个数无关。
+         *
+         * 只取拼名字要用的三列（码 / 父码 / 名），省掉 toVOs 里那次「有没有子级」的额外查询，
+         * 那个标记路径名用不上。
+         */
+        Map<String, SysRegion> byCode = new java.util.HashMap<>();
+        Set<String> need = new java.util.HashSet<>();
+        for (String c : regionCodes) {
+            if (c != null && !c.isBlank()) {
+                need.add(c);
+            }
+        }
+        for (int depth = 0; depth < MAX_DEPTH && !need.isEmpty(); depth++) {
+            Set<String> batch = need;
+            List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .select(SysRegion::getRegionCode, SysRegion::getParentCode, SysRegion::getName)
+                            .in(SysRegion::getRegionCode, batch)));
+            Set<String> nextParents = new java.util.HashSet<>();
+            for (SysRegion r : rows) {
+                byCode.put(r.getRegionCode(), r);
+                String parent = r.getParentCode();
+                if (parent != null && !parent.isBlank() && !byCode.containsKey(parent)) {
+                    nextParents.add(parent);
+                }
+            }
+            need = nextParents;
+        }
+
+        Map<String, String> out = new java.util.HashMap<>();
+        for (String c : regionCodes) {
+            if (c == null || c.isBlank() || out.containsKey(c)) {
+                continue;
+            }
+            // 与 path() 同一条规矩：自身往上走父码，链断了用已走到的部分；收集自身→省，再倒成省→自身
+            List<String> names = new ArrayList<>();
+            String code = c;
+            for (int i = 0; i < MAX_DEPTH && code != null && !code.isBlank(); i++) {
+                SysRegion row = byCode.get(code);
+                if (row == null) {
+                    break;
+                }
+                names.add(row.getName());
+                code = row.getParentCode();
+            }
+            if (!names.isEmpty()) {
+                Collections.reverse(names);
+                out.put(c, String.join(" / ", names));
+            }
+        }
+        return out;
+    }
+
+    @Override
     public List<RegionVO> searchVillages(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
         String kw = keyword == null ? "" : keyword.trim();
         /*

@@ -757,6 +757,15 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
             }
         }
 
+        /*
+         * 区划路径**一次性批量取**：逐个 regionPathOf 是 path() 的逐级查库 × 两万多个开放小区
+         * ≈ 十万次往返，曾让这个接口卡死 30 秒以上。批量版总查询数只到层级量级，与小区数无关。
+         * 查不到的码不在 map 里，下面回落成码本身，与 regionPathOf 单条口径一致。
+         */
+        Map<String, String> regionPaths = masterDataPort.regionPathNames(
+                open.stream().map(CmtCommunity::getRegionCode)
+                        .filter(rc -> rc != null && !rc.isBlank())
+                        .distinct().toList());
         var rows = open.stream()
                 .map(c -> {
                     // 池里没有这个聚落 = 那儿一件货都搜不到，补 0；
@@ -766,7 +775,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                     return new DistributionVO.DistributionRow(
                             c.getCommunityNo(), c.getName(),
                             c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),
-                            regionPathOf(c.getRegionCode()),
+                            c.getRegionCode() == null ? null
+                                    : regionPaths.getOrDefault(c.getRegionCode(), c.getRegionCode()),
                             buyers.getOrDefault(c.getCommunityNo(), 0),
                             st.merchantCount(), st.goodsCount());
                 })

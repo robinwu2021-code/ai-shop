@@ -60,6 +60,11 @@ public class MasterDataPortImpl implements MasterDataPort {
     }
 
     @Override
+    public java.util.Map<String, String> regionPathNames(java.util.Collection<String> regionCodes) {
+        return regionService.pathNames(regionCodes);
+    }
+
+    @Override
     public java.util.Optional<String> officialVillageStreet(String regionCode) {
         if (regionCode == null || regionCode.isBlank()) {
             return java.util.Optional.empty();
