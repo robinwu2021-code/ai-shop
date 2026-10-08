@@ -9629,6 +9629,7 @@ _无字段_
 | `unlimited` | `boolean` | 是 | true → 显示「不限地区」，此时 `areaNames` 为空 |
 | `areaNames` | `string`\[\] | 是 | 最多几个地名；区划是**叶子名**不是整条路径（「西湖区」不是「浙江省 / 杭州市 / 西湖区」） |
 | `areaCount` | `number` | 是 | 总数。只看截断后的列表会让「6 个」和「60 个」长得一模一样 |
+| `excludedNames` | `string`\[\] | 否 | 只在 `unlimited` 时可能非空：「不限地区（新疆、西藏除外）」括号里那几个。老后端不下发 |
 
 ### SaveCampaignReqBody
 

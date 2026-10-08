@@ -3209,10 +3209,11 @@
       "name": "biz-region-picker",
       "file": "b-app/src/components/biz/biz-region-picker.vue",
       "scope": "B 端",
-      "lines": 1543,
+      "lines": 1557,
       "props": [
         "visible: boolean",
-        "areas: ServiceArea[]"
+        "areas: ServiceArea[]",
+        "bareExclude?: boolean"
       ],
       "usage": {
         "b-app": 1,
