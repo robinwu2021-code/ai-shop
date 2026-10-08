@@ -585,7 +585,8 @@ public class LogisticsServiceImpl implements LogisticsService {
                 s.getStatus(), s.getReceiver(), s.getRegion(),
                 IsoTime.toIso(s.getCreatedAt()), IsoTime.toIso(s.getUpdatedAt()),
                 traces.stream().map(t -> new ShipmentVO.TraceVO(
-                        IsoTime.toIso(t.getAt()), t.getText(), t.getLocation())).toList());
+                        IsoTime.toIso(t.getAt()), t.getText(), t.getLocation())).toList(),
+                s.getDisplayChannel(), s.getDisplayFailReason());
     }
 
     private FreightTemplateVO toVO(FulFreightTemplate t) {

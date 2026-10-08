@@ -15,9 +15,23 @@ import java.util.List;
  * @param traces     轨迹节点，<b>按时间正序</b>。必填数组：端上直接 {@code .map}，
  *                   不下发会当场抛异常而不是显示为空
  */
+/**
+ * @param displayChannel 这一单备好的展示渠道（wx-plugin / self-map）。**运营要看见它** ——
+ *                       买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」
+ * @param displayFailReason 最近一次备载荷失败的原因，同上，只给运营看
+ */
 public record ShipmentVO(String shipmentNo, String orderNo, String carrier, String waybillNo,
                          String status, String receiver, String region,
-                         String createdAt, String updatedAt, List<TraceVO> traces) {
+                         String createdAt, String updatedAt, List<TraceVO> traces,
+                         String displayChannel, String displayFailReason) {
+
+    /** 老形状。存量调用方与用例用它 */
+    public ShipmentVO(String shipmentNo, String orderNo, String carrier, String waybillNo,
+                      String status, String receiver, String region,
+                      String createdAt, String updatedAt, List<TraceVO> traces) {
+        this(shipmentNo, orderNo, carrier, waybillNo, status, receiver, region,
+                createdAt, updatedAt, traces, null, null);
+    }
 
     /**
      * @param at   轨迹时间（ISO-8601）
