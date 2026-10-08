@@ -9676,6 +9676,8 @@ INSERT IGNORE INTO prd_spec_dim
    tenant_no, created_at, created_by, updated_at, updated_by)
 VALUES
   ('SD_VARIETY', 'VARIETY', '品种', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 206, 'ACTIVE',
+   'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('SD_SHIP_FROM', 'SHIP_FROM', '发货地', 'TEXT', NULL, 'PROP', 0, 'PLATFORM', 207, 'ACTIVE',
    'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 INSERT IGNORE INTO prd_category_spec
   (category_no, dim_no, usage_type, is_primary, required, sort, status,
@@ -9684,4 +9686,14 @@ VALUES
   ('CAT110', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT121', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  ('CAT122', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+  ('CAT122', 'SD_VARIETY', 'PROP', 0, 0, 206, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT110', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT120', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT121', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT122', 'SD_SHIP_FROM', 'PROP', 0, 0, 207, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
+DELETE FROM prd_category_spec
+ WHERE dim_no = 'SD_SHIP_FROM'
+   AND category_no IN ('CAT110', 'CAT120', 'CAT121', 'CAT122');
+UPDATE prd_spec_dim
+   SET status = 'INACTIVE', updated_at = NOW(), updated_by = 'SYSTEM'
+ WHERE dim_no = 'SD_SHIP_FROM';
