@@ -23,7 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>最要紧的仍是「算不了的」那一格。</b>没坐标的地址推不出聚落、落在所有围栏外的是开城线索、
  * 没标点的门店让自送半径形同虚设 —— 静默丢掉就会把「缺数据」说成「缺需求」。
  *
- * <p>用**合成区县码**（995010 / 995020），与别的测试种的聚落不撞，区县行的断言才精确。
+ * <p>用**合成区县码**（995010 / 995020）隔离区县行，再把坐标放在 **纬度 26.x 带**
+ * （别的测试与种子都在 30.x，见 ScopePreviewFlowTest / BindCommunityWithoutPickupTest）——
+ * {@code distribution()} 是全库聚合、按坐标把地址归到聚落，买家数会把**落在我围栏里的外来地址**
+ * 也数进来。只隔离区县码不够（那次全量红就是栽在这儿）：26.x 这条带没有任何测试/种子用，
+ * 外来地址进不了我的围栏，买家数才精确。**改坐标前先确认这条带仍是独占的。**
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -114,13 +118,13 @@ class CoverageDistributionTest {
         try {
             // D1 里两个聚落，**分属不同街道**（001/002，都归并到区县 D1）：A 有买家、B 没买家；
             // 都没有商家覆盖（测试库没有商家框到 D1）。不同街道码是为了真正考验「归并到 6 位区县」那一步
-            String a = community(D1, "001", 30_610_000, 120_610_000, 1000,
+            String a = community(D1, "001", 26_610_000, 120_610_000, 1000,
                     CmtCommunity.KIND_ESTATE, null, "OPEN");
-            String b = community(D1, "002", 30_620_000, 120_620_000, 1000,
+            String b = community(D1, "002", 26_620_000, 120_620_000, 1000,
                     CmtCommunity.KIND_ESTATE, null, "OPEN");
             nos.add(a);
             nos.add(b);
-            ids.add(address(30_610_050, 120_610_000));   // 落进 A 的围栏
+            ids.add(address(26_610_050, 120_610_000));   // 落进 A 的围栏
 
             var d = adminService.distribution();
             var r = region(d, D1);
@@ -146,8 +150,8 @@ class CoverageDistributionTest {
         var nos = new java.util.ArrayList<String>();
         var ids = new java.util.ArrayList<String>();
         try {
-            nos.add(community(D1, 30_610_000, 120_610_000, 1000));
-            ids.add(address(30_610_050, 120_610_000));
+            nos.add(community(D1, 26_610_000, 120_610_000, 1000));
+            ids.add(address(26_610_050, 120_610_000));
             var d = adminService.distribution();
             var t = d.totals();
             assertThat(t.okCount() + t.supplyGapCount() + t.demandGapCount() + t.emptyCount())
@@ -172,8 +176,8 @@ class CoverageDistributionTest {
     void drillStaysInRegion() {
         var nos = new java.util.ArrayList<String>();
         try {
-            String inD1 = community(D1, 30_610_000, 120_610_000, 1000);
-            String inD2 = community(D2, 30_710_000, 120_710_000, 1000);
+            String inD1 = community(D1, 26_610_000, 120_610_000, 1000);
+            String inD2 = community(D2, 26_710_000, 120_710_000, 1000);
             nos.add(inD1);
             nos.add(inD2);
             var rows = adminService.communitiesInRegion(D1);
@@ -187,12 +191,12 @@ class CoverageDistributionTest {
     @Test
     @DisplayName("★★★ 「有坐标但不落在任何围栏里」要单列 —— 开城线索，不是「没需求」")
     void addressesOutsideEveryFenceAreCountedSeparately() {
-        String near = community(D1, 30_500_000, 120_500_000, 500);
+        String near = community(D1, 26_500_000, 120_500_000, 500);
         var nos = new java.util.ArrayList<>(java.util.List.of(near));
         var ids = new java.util.ArrayList<String>();
         try {
-            ids.add(address(30_500_100, 120_500_000));   // 圈内
-            ids.add(address(31_500_000, 121_500_000));   // 离所有聚落一百多公里
+            ids.add(address(26_500_100, 120_500_000));   // 圈内
+            ids.add(address(27_500_000, 121_500_000));   // 离所有聚落一百多公里
             var d = adminService.distribution();
             assertThat(drillRow(D1, near).buyerCount()).as("圈内那条落到这个聚落上").isEqualTo(1);
             assertThat(d.unattributable().addressesOutsideFences())
@@ -230,14 +234,14 @@ class CoverageDistributionTest {
     @Test
     @DisplayName("★★★ 归属走层级优先于距离 —— 楼里的买家不该被算到隔壁小区头上")
     void buyersInsideABuildingCountForTheBuilding() {
-        String estate = community(D1, 30_510_000, 120_510_000, 1000);
-        String building = community(D1, 30_511_080, 120_510_000, 150,
+        String estate = community(D1, 26_510_000, 120_510_000, 1000);
+        String building = community(D1, 26_511_080, 120_510_000, 150,
                 CmtCommunity.KIND_BUILDING, estate, "OPEN");   // 离小区中心 ~120 米
         var nos = new java.util.ArrayList<>(java.util.List.of(estate, building));
         var ids = new java.util.ArrayList<String>();
         try {
             // 买家站在小区中心那点：离小区中心 0 米、离楼中心 ~120 米（在楼的 150 围栏内）
-            ids.add(address(30_510_000, 120_510_000));
+            ids.add(address(26_510_000, 120_510_000));
             assertThat(drillRow(D1, building).buyerCount())
                     .as("楼里的买家算到了小区头上 = 分布表与 C 端 resolve 用的不是同一套归属")
                     .isEqualTo(1);
@@ -252,8 +256,8 @@ class CoverageDistributionTest {
     @Test
     @DisplayName("★★ 关掉的聚落不进概览/下钻，但要在「算不了的」里报出条数 —— 历史数据还在")
     void closedCommunitiesAreReportedNotHidden() {
-        String open = community(D1, 30_520_000, 120_520_000, 500);
-        String closed = community(D1, 30_521_000, 120_520_000, 500,
+        String open = community(D1, 26_520_000, 120_520_000, 500);
+        String closed = community(D1, 26_521_000, 120_520_000, 500,
                 CmtCommunity.KIND_ESTATE, null, "CLOSED");
         var nos = new java.util.ArrayList<>(java.util.List.of(open, closed));
         try {
