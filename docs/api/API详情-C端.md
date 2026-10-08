@@ -3145,6 +3145,7 @@
 | `merchantName` | `string` | 是 | 商家名。**购物车按它分组** —— 一车东西来自几家店， 结算时会拆成几笔子订单，分组是把这件事提前说清楚（见 TDD-购物车商家可见）。 |
 | `invalid` | `boolean` | 否 | 失效（已下架 / 已删除）。**为真即不可勾选结算**，端上放进失效区。 ⚠️ **这里此前叫 `invalidReason?: string`，而后端从来没有发过那个名字** —— 后端 `CartItemVO` 发的一直是 `invalid: boolean`。同物异名的后果不是「少个字段」： 端上按 `!invalidReason` 判有效，于是**已下架的商品在购物车里完全正常**， 能勾能结算，一直到下单那一刻才被后端拒。 <p>不反过来让后端发那句中文原因：那是要显示给用户的话，而这个 app 有三门语言。 端上拿 `invalid` 与  {@link  available }  两个事实自己组装本地化文案， i18n 守卫也才管得着它。见 TDD-购物车与下单优化 §3.6。 |
 | `available` | `number` | 否 | 可售库存。`0` = 售罄。 ⚠️ **缺省表示「后端没给」，不是 0** —— 旧版本后端与 mock 都可能不发。 每一处都要按「空 = 不设上限」处理；默认成 0 的后果是整车一件都加不了， 而且只在没带这个字段的环境里才出现。 |
+| `invalidReason` | `string` | 否 | 失效原因**码**（不是文案）：`"OFF_SHELF" \| "ACTIVITY_ENDED" \| "SOLD_OUT"`，可售时缺省。 ⚠️ 和上面 `invalidReason?: string` 那段旧坑**不是一回事**：这里是一个**枚举码**， 端上 switch 到 i18n 词条，后端**不发中文**（见  {@link  invalid }  注释）。 它是 `invalid`/`available` 之上更细的一层：有它就按它出文案（能分出「活动结束」）， 没有（老后端）就回落到 `invalid`/`available` 的两分法。 |
 | `giftQty` | `number` | 否 | 买赠自动带出的赠品件数（不计价） |
 | `giftLabel` | `string` | 否 | 赠品说明，如「买 2 送 1」 |
 

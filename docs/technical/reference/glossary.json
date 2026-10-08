@@ -760,6 +760,12 @@
           "ar": "إتمام الشراء"
         },
         {
+          "key": "cart.clearInvalid",
+          "zh-CN": "清空失效",
+          "en": "Clear unavailable",
+          "ar": "مسح غير المتاح"
+        },
+        {
           "key": "cart.edit",
           "zh-CN": "编辑",
           "en": "Edit",
@@ -784,6 +790,12 @@
           "ar": "شاهد ما يشتريه جيرانك"
         },
         {
+          "key": "cart.findSimilar",
+          "zh-CN": "找相似",
+          "en": "Find similar",
+          "ar": "البحث عن مشابه"
+        },
+        {
           "key": "cart.goShopping",
           "zh-CN": "去逛逛",
           "en": "Start browsing",
@@ -794,6 +806,12 @@
           "zh-CN": "已选 {n} 件",
           "en": "{n} selected",
           "ar": "{n} مُختارة"
+        },
+        {
+          "key": "cart.invalidActivityEnded",
+          "zh-CN": "活动已结束",
+          "en": "Promotion ended",
+          "ar": "انتهى العرض"
         },
         {
           "key": "cart.invalidOffShelf",
@@ -31730,6 +31748,27 @@
         "host": "RiskEvent",
         "name": "DISMISSED",
         "value": "DISMISSED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "CartItemVO",
+        "name": "REASON_OFF_SHELF",
+        "value": "OFF_SHELF",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "CartItemVO",
+        "name": "REASON_ACTIVITY_ENDED",
+        "value": "ACTIVITY_ENDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "CartItemVO",
+        "name": "REASON_SOLD_OUT",
+        "value": "SOLD_OUT",
         "zh": "",
         "module": "shop-core"
       },
