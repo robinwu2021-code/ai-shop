@@ -60,8 +60,9 @@ async function search(k = keyword.value) {
   pushHistory(q);
   // 两个域并行查，切 tab 时不用再等
   let g, m;
-  const a = location.active;
-  const point = a?.latE6 != null && a?.lngE6 != null ? { latE6: a.latE6, lngE6: a.lngE6 } : {};
+  // 距离按「现在在哪儿逛」算（主动切的位置 > 生效地址 > 定位，见 browsePointE6）——
+  // 原来只读 active，临时切了位置搜门店还按旧地址排距离
+  const point = location.browsePointE6 ?? {};
   try {
     /*
      * 门店两段合起来搜：「附近」接口会去掉「我的店」已有的（那是店铺页去重用的），
