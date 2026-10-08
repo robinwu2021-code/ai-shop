@@ -174,6 +174,74 @@ class CommunityApplyFlowTest {
                 .isEqualTo("合并测试花园");
     }
 
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
+
+    /**
+     * 造一条**区级 region_code** 的存量聚落 —— 线上存量几乎全是这个形状
+     * （2026-10-08 实测：宝安 6367/6367、龙华 2783/2784 都是 6 位区级码，
+     * 全库只有 2 条是 9 位街道级，而那 2 条正是 openFromMap 自己建的）。
+     */
+    private String seedDistrictLevelCommunity(String name, String district, int latE6, int lngE6) {
+        var c = new ai.neargo.shop.community.entity.CmtCommunity();
+        c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+        c.setName(name);
+        c.setRegionCode(district);
+        c.setKind(ai.neargo.shop.community.entity.CmtCommunity.KIND_ESTATE);
+        c.setLatE6(latE6);
+        c.setLngE6(lngE6);
+        c.setSource(ai.neargo.shop.community.entity.CmtCommunity.SOURCE_OPS);
+        c.setStatus("OPEN");
+        c.setFenceRadius(1000);
+        c.setCreatedBy("SYSTEM");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> communityMapper.insert(c));
+        return c.getCommunityNo();
+    }
+
+    @Test
+    @DisplayName("★★ 地图建点查重要看得见区级码的存量 —— 按街道码精确取候选，等于一条候选也取不到")
+    void mapDedupSeesDistrictLevelRow() {
+        String m = merchant();
+        String st = street();            // 330106xxx，所属区是 330106
+        /*
+         * 线上「嘉逸花园」就是这个形状：存量那条是区级 440309、系统批量导入；
+         * 商家从地图选点解析出街道级 440309003，查重用 eq(region_code, 街道码)
+         * 取候选 —— 存量那条的码是区级，永远不在候选里，于是三道查重全部落空，
+         * 库里长出第二条同名同坐标的聚落。买家选到老那条就 0 商品。
+         */
+        String existing = seedDistrictLevelCommunity("嘉逸查重测试花园", "330106", 22_655_148, 114_034_872);
+
+        var vo = adminService.openFromMap(m, "嘉逸查重测试花园", null, 22_655_148, 114_034_872, st);
+
+        assertThat(vo.communityNo())
+                .as("同名、同坐标，必须复用存量那条，而不是建出第二条")
+                .isEqualTo(existing);
+    }
+
+    @Test
+    @DisplayName("★★ 疑似重复要跨区划粒度比 —— 区级与街道级各一条，按 region_code 精确分组就永远不相遇")
+    void duplicatesSpanRegionGranularity() {
+        String st = street();
+        String name = "跨粒度重复测试苑" + SEQ.incrementAndGet();
+        /*
+         * 两条都直接种：一条区级（存量形状），一条街道级（openFromMap 建出来的形状），
+         * 同名同坐标。不走 openFromMap 建第二条 —— 查重修好之后它会复用第一条，
+         * 那样就造不出「库里已经躺着两条」这个待治理的现状。
+         */
+        String older = seedDistrictLevelCommunity(name, "330106", 22_695_293, 114_027_370);
+        String newer = seedDistrictLevelCommunity(name, st, 22_695_293, 114_027_370);
+
+        /*
+         * 运营看不见就治理不了：duplicates() 按 region_code 精确分组，
+         * 这两条落在不同组，疑似重复清单里永远不会出现它们。
+         */
+        assertThat(adminService.duplicates(200))
+                .as("区级那条与街道级那条是同一个地方，必须报成疑似重复")
+                .anySatisfy(d -> assertThat(java.util.List.of(d.left().communityNo(), d.right().communityNo()))
+                        .containsExactlyInAnyOrder(older, newer));
+    }
+
     @Test
     @DisplayName("★ 疑似重复清单只在同一条街道里比 —— 全国几百个「幸福小区」不是重复，是重名")
     void duplicatesStayWithinStreet() {

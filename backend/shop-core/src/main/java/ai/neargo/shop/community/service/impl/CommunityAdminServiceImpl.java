@@ -949,27 +949,121 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 Wrappers.<CmtCommunity>lambdaQuery()
                         .eq(CmtCommunity::getStatus, OPEN)
                         .orderByAsc(CmtCommunity::getRegionCode)));
-        // 按街道分组后两两比 —— 全表两两比是 O(n²)，而同一条街道下最多几十条
-        Map<String, List<CmtCommunity>> byStreet = open.stream()
+        /*
+         * **分组键是「区」，不是 region_code 本身**。
+         *
+         * 原来按 region_code 精确分组，于是同一个地方的两条只要区划粒度不同就永远不相遇：
+         * 线上「嘉逸花园」存量那条是区级 440309、地图建出来的那条是街道级 440309003，
+         * 疑似重复清单里从来没出现过它们 —— 运营看不见，就治理不了。
+         * 而存量几乎全是区级（2026-10-08：宝安 6367/6367、龙华 2783/2784 是 6 位）。
+         *
+         * **但不能顺手把分组键换成区就完事**：原注释说「同一条街道下最多几十条」，
+         * 换成区之后一个区有六千多条，组内两两比就是 2000 万次带字符串归一的比较，
+         * 而这个端点的预算是 1 秒。所以改成两种分桶出候选对，再逐对判：
+         *   ① 同名：同区 + 归一名**首字**分桶。sameSettlement 是前缀匹配
+         *      （x.startsWith(y) || y.startsWith(x)），前缀对必然共享首字，
+         *      按首字分桶是**不漏**的预筛；按完整归一名分桶则会漏掉前缀对。
+         *   ② 近邻：同区 + 300m 网格，连同 8 个邻格一起取，避免贴着格子边界的对被漏掉。
+         * 判据本身（sameSettlement / NEARBY_DUP_METERS / nameLooksClose）一个字没改。
+         */
+        List<CmtCommunity> rows = open.stream()
                 .filter(c -> c.getRegionCode() != null && !c.getRegionCode().isBlank())
-                .collect(Collectors.groupingBy(CmtCommunity::getRegionCode));
-        List<DuplicateVO> out = new java.util.ArrayList<>();
-        for (List<CmtCommunity> group : byStreet.values()) {
-            for (int i = 0; i < group.size() && out.size() < cap; i++) {
-                for (int j = i + 1; j < group.size() && out.size() < cap; j++) {
-                    CmtCommunity a = group.get(i);
-                    CmtCommunity b = group.get(j);
-                    Integer dist = distanceOrNull(a, b);
-                    if (sameSettlement(a.getName(), b.getName())) {
-                        out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "SAME_NAME", dist));
-                    } else if (dist != null && dist <= NEARBY_DUP_METERS && nameLooksClose(a.getName(), b.getName())) {
-                        // 高德对同一个小区常给出「XX花园」「XX花园A区」—— 名字比不出来，位置骗不了人
-                        out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "NEARBY", dist));
+                .toList();
+        Map<String, CmtCommunity> byNo = new java.util.LinkedHashMap<>();
+        for (CmtCommunity c : rows) {
+            byNo.put(c.getCommunityNo(), c);
+        }
+
+        Map<String, List<CmtCommunity>> nameBuckets = new java.util.HashMap<>();
+        Map<String, List<CmtCommunity>> geoBuckets = new java.util.HashMap<>();
+        for (CmtCommunity c : rows) {
+            String district = districtPrefixOf(c.getRegionCode());
+            String nm = normalizeName(c.getName());
+            if (!nm.isEmpty()) {
+                nameBuckets.computeIfAbsent(district + "\u0000" + nm.charAt(0),
+                        k -> new java.util.ArrayList<>()).add(c);
+            }
+            if (c.getLatE6() != null && c.getLngE6() != null) {
+                geoBuckets.computeIfAbsent(geoCellKey(district, c.getLatE6(), c.getLngE6()),
+                        k -> new java.util.ArrayList<>()).add(c);
+            }
+        }
+
+        Set<String> pairKeys = new java.util.LinkedHashSet<>();
+        for (List<CmtCommunity> g : nameBuckets.values()) {
+            addPairs(pairKeys, g, g);
+        }
+        for (CmtCommunity c : rows) {
+            if (c.getLatE6() == null || c.getLngE6() == null) {
+                continue;
+            }
+            String district = districtPrefixOf(c.getRegionCode());
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    List<CmtCommunity> g = geoBuckets.get(geoCellKey(district,
+                            c.getLatE6() + dy * GEO_CELL_E6, c.getLngE6() + dx * GEO_CELL_E6));
+                    if (g != null) {
+                        addPairs(pairKeys, List.of(c), g);
                     }
                 }
             }
         }
+
+        List<DuplicateVO> out = new java.util.ArrayList<>();
+        for (String key : pairKeys) {
+            if (out.size() >= cap) {
+                break;
+            }
+            int sep = key.indexOf('\u0000');
+            CmtCommunity a = byNo.get(key.substring(0, sep));
+            CmtCommunity b = byNo.get(key.substring(sep + 1));
+            if (a == null || b == null) {
+                continue;
+            }
+            Integer dist = distanceOrNull(a, b);
+            if (sameSettlement(a.getName(), b.getName())) {
+                /*
+                 * **同名还要地理接近**。按街道分组时「同名」自然就近，换成按区之后不再成立：
+                 * 一个区里两个同名小区相距几公里，那是重名不是重复
+                 * （duplicatesStayWithinStreet 守的就是这件事）。
+                 * 没坐标的行退回原判据（同一个 region_code 才算），与改动前等价。
+                 */
+                boolean close = dist != null ? dist <= SAME_NAME_METERS
+                        : a.getRegionCode().equals(b.getRegionCode());
+                if (close) {
+                    out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "SAME_NAME", dist));
+                }
+            } else if (dist != null && dist <= NEARBY_DUP_METERS && nameLooksClose(a.getName(), b.getName())) {
+                // 高德对同一个小区常给出「XX花园」「XX花园A区」—— 名字比不出来，位置骗不了人
+                out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "NEARBY", dist));
+            }
+        }
         return out;
+    }
+
+    /** 同名判重额外要求的地理接近上限：同一个区里隔着几公里的同名小区是重名，不是重复 */
+    private static final int SAME_NAME_METERS = 2000;
+
+    /** 近邻分桶的网格边长（约 300m，与 {@link #NEARBY_DUP_METERS} 同量级） */
+    private static final int GEO_CELL_E6 = 2695;
+
+    private static String geoCellKey(String district, int latE6, int lngE6) {
+        return district + "\u0000" + Math.floorDiv(latE6, GEO_CELL_E6)
+                + "\u0000" + Math.floorDiv(lngE6, GEO_CELL_E6);
+    }
+
+    /** 把两组的笛卡尔对收进集合，键按聚落号排序规范化 —— 同一对从两条路进来也只留一份 */
+    private static void addPairs(Set<String> out, List<CmtCommunity> left, List<CmtCommunity> right) {
+        for (CmtCommunity a : left) {
+            for (CmtCommunity b : right) {
+                int cmp = a.getCommunityNo().compareTo(b.getCommunityNo());
+                if (cmp < 0) {
+                    out.add(a.getCommunityNo() + "\u0000" + b.getCommunityNo());
+                } else if (cmp > 0) {
+                    out.add(b.getCommunityNo() + "\u0000" + a.getCommunityNo());
+                }
+            }
+        }
     }
 
     private static Integer distanceOrNull(CmtCommunity a, CmtCommunity b) {
@@ -1214,6 +1308,60 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 c.getLatE6(), c.getLngE6(), c.getKind(), c.getSource());
     }
 
+    /** 地图建点查重的取候选半径：固定值，可以下推成外接矩形（见 {@link #dedupCandidates}） */
+    private static final int DEDUP_BOX_M = 3000;
+
+    /** 区划码取到区一级（前 6 位）—— 存量聚落的 region_code 就是这个粒度 */
+    private static String districtPrefixOf(String regionCode) {
+        return regionCode != null && regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
+    }
+
+    /**
+     * 地图建点的查重候选。<b>两轮取，只增不减</b>。
+     *
+     * <p>第一轮是原行为（同街道码精确相等），第二轮补的是它的盲区：
+     * <b>存量聚落几乎全是区级码</b> —— 2026-10-08 线上实测，宝安 6367/6367、
+     * 龙华 2783/2784 的 region_code 都是 6 位区级，全库只有 2 条是 9 位街道级，
+     * 而那 2 条正是本方法自己建出来的。于是「按街道码精确取候选」对整个存量语料
+     * <b>一条候选也取不到</b>，下面三道查重全部落空，同一个小区在库里长出第二条。
+     * 线上「嘉逸花园」就是这么来的：存量那条区级 440309、系统导入，
+     * 商家从地图选点解析出街道级 440309003，查重看不见它 —— 买家选到老那条就 0 商品。
+     *
+     * <p>第二轮用「同区 + 坐标外接矩形」。<b>矩形可以下推到 SQL</b>：这里判距用的是固定的
+     * {@link #DEDUP_BOX_M}，不是逐行的 {@code fence_radius}
+     *（{@code nearby()} 那边不能下推，正因为半径是逐行的，按全局值框会静默删掉宽围栏的聚落）。
+     * 没有坐标的存量行进不了矩形，仍由第一轮按街道码兜着 —— 与改动前等价。
+     */
+    private List<CmtCommunity> dedupCandidates(String street, int latE6, int lngE6) {
+        List<CmtCommunity> sameStreet = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .eq(CmtCommunity::getRegionCode, street)
+                        .last("limit 300")));
+        String district = districtPrefixOf(street);
+        if (district == null || district.isBlank()) {
+            return sameStreet;
+        }
+        int dLat = (int) Math.round(DEDUP_BOX_M / 111_320d * 1e6);
+        double cos = Math.max(0.1, Math.cos(Math.toRadians(latE6 / 1e6)));
+        int dLng = (int) Math.round(dLat / cos);
+        List<CmtCommunity> nearBox = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .likeRight(CmtCommunity::getRegionCode, district)
+                        .between(CmtCommunity::getLatE6, latE6 - dLat, latE6 + dLat)
+                        .between(CmtCommunity::getLngE6, lngE6 - dLng, lngE6 + dLng)
+                        .last("limit 300")));
+        Map<String, CmtCommunity> byNo = new java.util.LinkedHashMap<>();
+        for (CmtCommunity c : sameStreet) {
+            byNo.put(c.getCommunityNo(), c);
+        }
+        for (CmtCommunity c : nearBox) {
+            byNo.putIfAbsent(c.getCommunityNo(), c);
+        }
+        return List.copyOf(byNo.values());
+    }
+
     @Override
     @org.springframework.transaction.annotation.Transactional
     public CommunityVO openFromMap(String merchantNo, String name, String address,
@@ -1228,11 +1376,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         }
 
         // 三道查重：撞上就复用，别让同一个小区在库里长出第二条
-        var existing = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
-                Wrappers.<CmtCommunity>lambdaQuery()
-                        .eq(CmtCommunity::getStatus, OPEN)
-                        .eq(CmtCommunity::getRegionCode, street)
-                        .last("limit 300")));
+        var existing = dedupCandidates(street, latE6, lngE6);
         var hit = existing.stream().filter(c -> sameSettlement(c.getName(), n)).findFirst()
                 .or(() -> existing.stream()
                         // 高德对同一个小区常给出「XX花园」「XX花园A区」「XX花园(南门)」几条 ——
