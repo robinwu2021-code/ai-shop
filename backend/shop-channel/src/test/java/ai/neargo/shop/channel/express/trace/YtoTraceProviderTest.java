@@ -80,4 +80,73 @@ class YtoTraceProviderTest {
         assertThat(r.status()).isEqualTo(TraceStatus.UNKNOWN);
         assertThat(r.nodes()).isEmpty();
     }
+
+    /**
+     * ★ 线格式：真的发一次请求，断言**线上收到的是什么**。
+     *
+     * <p>此前只测到 {@link YtoTraceProvider#sign} 这个纯函数，而 {@code post()} 一条都没有 ——
+     * 表单编码、Content-Type、以及「算出来的签名有没有真的发出去」全是盲区。
+     * 这几样错了，单测照样全绿，等拿到真凭据联调时才会以「圆通说签名不对」的形式出现，
+     * 而那时你会先去怀疑密钥和白名单，查不到这一层。
+     *
+     * <p>用 JDK 自带的 HttpServer 当假圆通：provider 是真的，HTTP 是真的，只有对端是假的。
+     */
+    @Test
+    void post_sendsFormWithRealSignature_andParsesResponse() throws Exception {
+        var received = new java.util.concurrent.ArrayBlockingQueue<String[]>(1);
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", ex -> {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            received.offer(new String[]{body, String.valueOf(ex.getRequestHeaders().getFirst("Content-Type"))});
+            byte[] resp = ("""
+                    {"success":true,"result":{"traces":[
+                      {"opCode":"SIGNED","opTime":"2026-10-08 09:30:00","opName":"【深圳市】已签收","city":"深圳市"},
+                      {"opCode":"GOT","opTime":"2026-10-07 18:00:00","opName":"【深圳市】已揽收","city":"深圳市"}
+                    ]}}""").getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, resp.length);
+            try (var os = ex.getResponseBody()) {
+                os.write(resp);
+            }
+        });
+        server.start();
+        try {
+            var provider = new YtoTraceProvider("ak-test", "sk-test",
+                    "http://127.0.0.1:" + server.getAddress().getPort(), "TRACE_QUERY", "1.0");
+            assertThat(provider.available()).as("凭据齐了才会真发").isTrue();
+
+            TraceResult r = provider.trace("YTO", "YT123").orElseThrow(
+                    () -> new AssertionError("请求没发出去或响应没解析 —— provider 把异常吞成了 empty"));
+
+            String[] got = received.poll(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(got).as("假圆通没收到请求").isNotNull();
+            assertThat(got[1]).isEqualTo("application/x-www-form-urlencoded");
+
+            // 把表单拆开逐项比（值是 URLEncoder 编过的，比之前先解回来）
+            var form = new java.util.HashMap<String, String>();
+            for (String kv : got[0].split("&")) {
+                int i = kv.indexOf('=');
+                form.put(kv.substring(0, i),
+                        java.net.URLDecoder.decode(kv.substring(i + 1), StandardCharsets.UTF_8));
+            }
+            String param = "{\"Number\":\"YT123\"}";
+            assertThat(form.get("method")).isEqualTo("TRACE_QUERY");
+            assertThat(form.get("v")).isEqualTo("1.0");
+            assertThat(form.get("appKey")).isEqualTo("ak-test");
+            assertThat(form.get("format")).isEqualTo("JSON");
+            assertThat(form.get("param")).as("一次一个单号，param 形如 {\"Number\":\"…\"}").isEqualTo(param);
+            assertThat(form.get("timestamp")).matches("\\d{13}");
+            // ★ 真正的判据：发到线上的签名 = 按真算法算出来的那一个（密钥不进表单）
+            assertThat(form.get("sign")).isEqualTo(YtoTraceProvider.sign(param, "TRACE_QUERY", "1.0", "sk-test"));
+            assertThat(got[0]).as("客户密钥绝不能出现在表单里").doesNotContain("sk-test");
+
+            // 响应按文档结构解回来
+            assertThat(r.status()).isEqualTo(TraceStatus.SIGNED);
+            assertThat(r.nodes()).hasSize(2);
+            assertThat(r.nodes().get(0).info()).isEqualTo("【深圳市】已签收");
+            assertThat(r.nodes().get(0).location()).isEqualTo("深圳市");
+            assertThat(r.nodes().get(0).at()).isPositive();
+        } finally {
+            server.stop(0);
+        }
+    }
 }
