@@ -16,7 +16,7 @@ import PhoneGate from "@/components/phone-gate.vue";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
-import { confirm } from "@ai-shop/ui/prompt";
+import { confirm, pick } from "@ai-shop/ui/prompt";
 import { isPhone } from "@shared/utils/validate";
 import {
   INDUSTRY_OTHER,
@@ -368,6 +368,28 @@ const industries = computed(() => master.value?.industries ?? []);
 const industryOptions = computed(() => industryOptionsOf(master.value));
 /** 选中的这一档平台还没开放 —— 给一句话，不禁用、不拦提交 */
 const industryNotOpen = computed(() => isIndustryNotOpen(industryOptions.value, mForm.value.industry));
+
+/** 报名表上那一行显示的名字。没选时空串，由模板退回提示语 */
+const industryLabel = computed(
+  () => industryOptions.value.find((i) => i.industry === mForm.value.industry)?.name ?? "",
+);
+
+/**
+ * 选店铺类型。**开在报名表那层弹层之上**（`stacked`）——
+ * 不叠的话两层同 z-index，顺序只由 DOM 决定，而那是会随层叠上下文翻过来的。
+ *
+ * <p>取消（`null`）不动已选的那一项：他点开只是想看看有哪几类。
+ */
+async function pickIndustry() {
+  const opts = industryOptions.value;
+  const i = await pick({
+    title: String(t("merchant.intentIndustry")),
+    items: opts.map((o) => o.name),
+    selected: opts.findIndex((o) => o.industry === mForm.value.industry),
+    stacked: true,
+  });
+  if (i !== null && opts[i]) mForm.value.industry = opts[i].industry;
+}
 /** 选了「其他」才问手填 */
 const industryIsOther = computed(() => mForm.value.industry === INDUSTRY_OTHER);
 
@@ -776,16 +798,17 @@ onShow(() => {
           那四项后端全都不是必填：主体与简介由运营在审核时核对，联系人用不上
           （有手机号就够），推荐人改走官网与企微（端内出现奖励文案会被判平台型经营）。
         -->
-        <view class="types">
-          <view
-            v-for="i in industryOptions"
-            :key="i.industry"
-            class="sh-seg sh-seg--fill"
-            :class="{ 'sh-seg--on': mForm.industry === i.industry }"
-            @tap="mForm.industry = i.industry"
-          >
-            {{ i.name }}
-          </view>
+        <!--
+          店铺类型用**选一项**，不用一排平铺的分段。七个类目平铺到一行里，
+          每一格只剩两字宽 ——「居民生活服务」被折成六行竖排的单字，
+          一眼读不出哪一格是哪一类，而这恰恰是这张表的第一个问题。
+          行业数量还会随运营配置长，平铺的那条路越往后越窄。
+        -->
+        <view class="field__input sh-row sh-row--between types" @tap="pickIndustry">
+          <text class="txt-body" :class="mForm.industry ? '' : 'types__ph'">
+            {{ industryLabel || $t("merchant.pickIndustry") }}
+          </text>
+          <text class="txt-caption types__go">›</text>
         </view>
         <!--
           **未开放不等于不能报名**：拦下来就等于又拿准入的尺子量意向。
@@ -841,10 +864,19 @@ onShow(() => {
 
 <style scoped>
 
+/* 选一项的那一行：和下面几个输入框同一个形状，只是右端多一个指示 */
 .types {
-  display: flex;
-  gap: 16rpx;
   margin-top: 24rpx;
+}
+/* 没选时是提示语不是取值 —— 用 --sh-sub，与 input 的 placeholder 同色 */
+.types__ph {
+  color: var(--sh-sub);
+}
+/* 可点开的指示。用 `›` 而不是 sh-icon：图标表里没有「向右」这一个
+   （name 传个不存在的值不会报错，只是什么都不画），而页面上
+   「我也想开店」那张卡用的也是这个字符，两处是同一个意思 */
+.types__go {
+  color: var(--sh-sub);
 }
 /*
   「这一类还没开放」。**用 --sh-sub 不用 --sh-danger**：它是告知而不是错误 ——

@@ -409,6 +409,7 @@ export default {
     intentTitle: "My application",
     intentStatus: "Status",
     intentIndustry: "Shop type",
+    pickIndustry: "Choose a shop type",
     industryNotOpen: "Not open yet — we will note it down",
     industryNote: "Industry name",
     intentCategory: "What you sell",

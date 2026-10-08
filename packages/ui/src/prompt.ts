@@ -169,6 +169,15 @@ export interface PickOptions {
   items: string[];
   /** 当前已选中的下标，会打上勾 */
   selected?: number;
+  /**
+   * 开在**另一个弹层之上**（入驻表单里选店铺类型就是这个形态）。
+   *
+   * 不传的话两层同 z-index，谁在上面只由 DOM 顺序决定 —— 今天 sh-pick 排在
+   * scaffold 的最后，碰巧是对的；而调用它的那张表单一旦落进别的层叠上下文
+   * （祖先上一个 transform 或 position:sticky 就造一个），顺序就翻过来：
+   * 列表开了、蒙层也在，但内容压在表单下面，点哪儿都没反应，**且不报错**。
+   */
+  stacked?: boolean;
 }
 
 interface PickState extends PickOptions {
@@ -184,7 +193,7 @@ let settlePick: ((v: number | null) => void) | null = null;
 export function pick(opts: PickOptions): Promise<number | null> {
   settlePick?.(null);
   Object.assign(pickState, {
-    title: "", hint: "", selected: -1,
+    title: "", hint: "", selected: -1, stacked: false,
     ...opts,
     visible: true,
   });

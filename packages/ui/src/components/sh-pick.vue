@@ -14,6 +14,7 @@ const s = pickState;
     :visible="s.visible"
     :title="s.title || ''"
     :hint="s.hint"
+    :stacked="s.stacked"
     @close="closePick(null)"
   >
     <view

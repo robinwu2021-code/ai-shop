@@ -442,6 +442,7 @@ export default {
     intentTitle: "我的入驻意向",
     intentStatus: "状态",
     intentIndustry: "店铺类型",
+    pickIndustry: "选择店铺类型",
     // 未开放的行业照样收报名，所以这句是告知不是错误；别写成「暂不支持」
     industryNotOpen: "这一类还没开放，我们会先记下来",
     industryNote: "行业名称",

@@ -409,6 +409,7 @@ export default {
     intentTitle: "طلبي",
     intentStatus: "الحالة",
     intentIndustry: "نوع المتجر",
+    pickIndustry: "اختر نوع المتجر",
     industryNotOpen: "لم يُفتح بعد — سنسجّل رغبتك",
     industryNote: "اسم النشاط",
     intentCategory: "ماذا تبيع",
