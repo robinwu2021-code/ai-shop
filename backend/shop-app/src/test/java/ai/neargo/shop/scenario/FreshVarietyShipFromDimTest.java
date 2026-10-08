@@ -16,7 +16,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 生鲜补两个参数维度：品种与发货地（TDD-生鲜参数补品种与发货地）。
+ * 生鲜补「品种」参数维度。
+ *
+ * <p>发货地（SD_SHIP_FROM）2026-10-07 建过，2026-10-08 用户取消（V382 解绑停用），
+ * 所以这里只验品种。
  *
  * <p>用户 2026-10-07 提了四项，查过现状后只有这两项确实没有 ——
  * 包装 {@code SD_PACK} 与原产地 {@code SD_ORIGIN_DETAIL} 早就存在且已绑生鲜，
@@ -62,26 +65,11 @@ class FreshVarietyShipFromDimTest {
                 .as("蔬菜/水果/浆果/常温水果四个都要绑").containsAll(FRESH_CATEGORIES);
     }
 
-    @Test
-    @DisplayName("★★★ AC2 水果类目能查到「发货地」维度 —— 与产地是两件事")
-    void shipFromDimIsBoundToFreshCategories() {
-        PrdSpecDim d = dim("SD_SHIP_FROM");
-        assertThat(d).as("SD_SHIP_FROM 维度要存在").isNotNull();
-        assertThat(d.getName()).isEqualTo("发货地");
-        assertThat(d.getValueType()).isEqualTo("TEXT");
-
-        assertThat(bindings("SD_SHIP_FROM").stream().map(PrdCategorySpec::getCategoryNo))
-                .as("与品种同一组类目").containsAll(FRESH_CATEGORIES);
-
-        // 产地与发货地必须是**两个**维度：跨省代发时货长在哪儿、包裹从哪儿寄出不是一回事
-        assertThat(dim("SD_ORIGIN_DETAIL")).as("原产地是已有维度，不该被这次改掉").isNotNull();
-        assertThat(d.getDimNo()).isNotEqualTo("SD_ORIGIN_DETAIL");
-    }
 
     @Test
     @DisplayName("★★ AC3 两个新维度都不是通用维度 —— 不摆进所有类目的「添加参数」面板")
     void newDimsAreNotUniversal() {
-        for (String dimNo : List.of("SD_VARIETY", "SD_SHIP_FROM")) {
+        for (String dimNo : List.of("SD_VARIETY")) {
             assertThat(dim(dimNo).getUniversal())
                     .as("%s 是生鲜语境的字段，universal 必须是 0", dimNo).isFalse();
         }
@@ -90,7 +78,7 @@ class FreshVarietyShipFromDimTest {
     @Test
     @DisplayName("★★ AC4 只追加 PROP，不动各类目原有的主维度")
     void newBindingsAreNotPrimary() {
-        for (String dimNo : List.of("SD_VARIETY", "SD_SHIP_FROM")) {
+        for (String dimNo : List.of("SD_VARIETY")) {
             for (PrdCategorySpec b : bindings(dimNo)) {
                 assertThat(b.getIsPrimary())
                         .as("%s 在 %s 上必须是 is_primary=0（每个类目只能有一个主维度，"
