@@ -96,6 +96,30 @@ class DenseEstateMatchTest {
     }
 
     @Test
+    @DisplayName("★★ 批量 innermostNos 与逐个 resolve().innermostNo() 逐字相同 —— 位置分布靠它只 load 一次")
+    void batchInnermostEqualsPerPointResolve() {
+        // 40 个真实小区坐标 + 一个远在天边的点（北京：没围栏、最近也远超绑定半径 → null）
+        List<ai.neargo.shop.spi.user.UserQueryPort.Point> points = new java.util.ArrayList<>();
+        for (var e : SAMPLE) {
+            points.add(new ai.neargo.shop.spi.user.UserQueryPort.Point(e.latE6(), e.lngE6()));
+        }
+        points.add(new ai.neargo.shop.spi.user.UserQueryPort.Point(39904000, 116407000));
+
+        List<String> batch = communityService.innermostNos(points);
+        assertThat(batch).as("结果要与入参一一对应").hasSameSizeAs(points);
+        for (int i = 0; i < points.size(); i++) {
+            var p = points.get(i);
+            String expected = communityService.resolve(p.latE6(), p.lngE6(), false).innermostNo();
+            assertThat(batch.get(i))
+                    .as("第 %d 个点 (%d,%d) 批量与逐个对不上", i, p.latE6(), p.lngE6())
+                    .isEqualTo(expected);
+        }
+        // 对照量：前 40 个是真实归属（非空），末一个北京点是 null —— 否则这条在比一串 null
+        assertThat(batch.subList(0, SAMPLE.size())).as("40 个小区坐标都该归到某个小区").doesNotContainNull();
+        assertThat(batch.get(points.size() - 1)).as("北京那个点在这片没有归属").isNull();
+    }
+
+    @Test
     @DisplayName("★★★ 站在每个小区的坐标上，匹配到的就是它自己 —— 一公里内 179 个小区的那一片")
     void standingAtAnEstateMatchesThatEstate() {
         int hit = 0;

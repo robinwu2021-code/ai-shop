@@ -471,6 +471,51 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     @Override
+    public List<String> innermostNos(List<ai.neargo.shop.spi.user.UserQueryPort.Point> points) {
+        if (points == null || points.isEmpty()) {
+            return List.of();
+        }
+        // **开放聚落只 load 一次**，所有点对着它判 —— 口径见接口注释，复用下面 resolve 的同一组判定。
+        // selectList 不裹数据域，与 resolve / withNearest 的那两次读一致（这张表不按域隔离）
+        List<CmtCommunity> open = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt));
+        List<String> out = new ArrayList<>(points.size());
+        for (var p : points) {
+            out.add(innermostNoWithin(open, p.latE6(), p.lngE6()));
+        }
+        return out;
+    }
+
+    /**
+     * 给定<b>已 load 的开放聚落</b>与坐标，算归属聚落号 —— 与 {@link #resolve} 非模糊支逐字同口径：
+     * 围栏命中取「层级最内、同层最近」；没命中回落最近邻，超 {@link #defaultBindRadiusM} 则 null。
+     * 用的就是 resolve/withNearest 那几个私有判定，不另写围栏逻辑。
+     */
+    private String innermostNoWithin(List<CmtCommunity> open, Integer latE6, Integer lngE6) {
+        if (latE6 == null || lngE6 == null) {
+            return null;   // resolve 对空坐标走 withNearest，innermostNo 也是 null
+        }
+        CmtCommunity innermost = open.stream()
+                .filter(c -> withinRadius(c, latE6, lngE6))
+                .min(Comparator.comparingInt((CmtCommunity c) -> depthOf(c.getKind()))
+                        .thenComparingInt(c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
+                .orElse(null);
+        if (innermost != null) {
+            return innermost.getCommunityNo();
+        }
+        CmtCommunity nearest = open.stream()
+                .filter(c -> c.getLatE6() != null && c.getLngE6() != null)
+                .min(Comparator.comparingInt(c -> distance(c.getLatE6(), c.getLngE6(), latE6, lngE6)))
+                .orElse(null);
+        if (nearest == null) {
+            return null;
+        }
+        return distance(nearest.getLatE6(), nearest.getLngE6(), latE6, lngE6) <= defaultBindRadiusM
+                ? nearest.getCommunityNo() : null;
+    }
+
+    @Override
     public LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse) {
         /*
          * **模糊坐标不做聚落匹配。**

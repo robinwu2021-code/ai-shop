@@ -747,8 +747,12 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          */
         Map<String, Integer> buyers = new java.util.HashMap<>();
         int outside = 0;
-        for (var p : points) {
-            String no = communityService.getObject().resolve(p.latE6(), p.lngE6(), false).innermostNo();
+        /*
+         * **一次性批量归属**：逐个 resolve 会把全部开放聚落重 load 一遍（无命中再一遍），
+         * N 个收货点就是 2N 次全表扫，实测让这个接口卡在 9 秒。innermostNos 只 load 一次、
+         * 口径与 resolve(...).innermostNo() 逐字相同（判等由 CommunityHierarchyTest 钉住）。
+         */
+        for (String no : communityService.getObject().innermostNos(points)) {
             if (no == null || no.isBlank()) {
                 // 有坐标、却不落在任何围栏里 = 那儿真的有人，只是平台还没在那儿开聚落
                 outside++;

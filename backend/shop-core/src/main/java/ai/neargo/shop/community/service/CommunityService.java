@@ -32,6 +32,20 @@ public interface CommunityService {
     LocationVO resolve(Integer latE6, Integer lngE6, boolean coarse);
 
     /**
+     * 批量「坐标 → 归属聚落号」，每个结果与 {@link #resolve}(lat, lng, false) 的 {@code innermostNo()}
+     * <b>逐字相同</b>，但<b>只 load 一次开放聚落</b>。
+     *
+     * <p>给「一屏很多点」的调用方用（运营位置分布给每个收货地址标归属）：逐个 {@code resolve}
+     * 会把全部开放聚落重 load 一遍、无围栏命中时再 load 一遍 —— N 个点就是 2N 次全表扫，
+     * 实测让 {@code /ops/coverage/distribution} 卡在 9 秒。这里把那张表读一次，所有点对着它判。
+     *
+     * <p>口径与 resolve 同一套（围栏命中取层级最内、同层取最近；没命中回落最近邻，
+     * 超默认绑定半径则 null）—— 复用的是同一组私有判定（{@code withinRadius} / 层级 / 距离），
+     * 不另写一份围栏逻辑。结果与入参<b>一一对应</b>。
+     */
+    java.util.List<String> innermostNos(java.util.List<ai.neargo.shop.spi.user.UserQueryPort.Point> points);
+
+    /**
      * 「输个名字找地方」。**本地优先，地图是补充。**
      *
      * <p>本地那一条带着 {@code communityNo} —— 选中它才能直接绑到聚落、才有商品池；
