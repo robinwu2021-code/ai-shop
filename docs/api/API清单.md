@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 809 个接口**：后端已实现 733（91%）· 前端在调 733
+**合计 810 个接口**：后端已实现 734（91%）· 前端在调 734
 
 ---
 
@@ -880,7 +880,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **411** 个接口 ｜ 后端已实现 **345**（84%）｜ 前端在调 **335**
+共 **412** 个接口 ｜ 后端已实现 **346**（84%）｜ 前端在调 **336**
 
 ### aftersale（4）
 
@@ -891,7 +891,7 @@
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
-### community（32）
+### community（33）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -910,6 +910,7 @@
 | GET | `/ops/communities/near` | 一个坐标附近已开通的聚落，按距离升序 —— 裁决时查重用 */ | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/communities/open-map` | 把某个区划前缀下、**地图导入**的聚落批量开城 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/coverage/distribution` | 位置分布（P-2.1） | — | `CoverageDistribution` | — | ✅ | ✅ |
+| GET | `/ops/coverage/distribution/communities` | 下钻：一个区县（6 位码）下的聚落明细 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/coverage/health` | 坐标健康度（P-2.1） | — | `CoverageHealth` | — | ✅ | ✅ |
 | GET | `/ops/geo/places` | 固定地址库这一屏 | — | `GeoPlacePage` | — | ✅ | ✅ |
 | POST | `/ops/geo/places/promote` | 把高频建筑沉淀成聚落（kind=BUILDING、source=MAP、默认 CLOSED） | — | `CommunityImportResult` | — | ✅ | ✅ |
