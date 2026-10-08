@@ -1048,6 +1048,18 @@
           "ar": "جارٍ التحميل…"
         },
         {
+          "key": "common.noPermHint",
+          "zh-CN": "当前角色没有此页面的权限。如需使用，请联系店主调整角色。",
+          "en": "This role has no permission for this page. Ask the shop owner to adjust the role.",
+          "ar": "دورك الحالي لا يملك صلاحية هذه الصفحة. تواصل مع صاحب المتجر لتعديل الدور."
+        },
+        {
+          "key": "common.noPermTitle",
+          "zh-CN": "无访问权限",
+          "en": "No access",
+          "ar": "لا تملك صلاحية الوصول"
+        },
+        {
           "key": "common.retry",
           "zh-CN": "重试",
           "en": "Retry",
@@ -21006,6 +21018,96 @@
           "zh-CN": "取货地址：{s}",
           "en": "Pickup address: {s}",
           "ar": "عنوان الاستلام: {s}"
+        },
+        {
+          "key": "store.text.apply",
+          "zh-CN": "填入 {n} 条",
+          "en": "Add {n}",
+          "ar": "إضافة {n}"
+        },
+        {
+          "key": "store.text.dropped",
+          "zh-CN": "会清掉已选的 {n} 个地区",
+          "en": "Will remove {n} selected areas",
+          "ar": "ستتم إزالة {n} مناطق محددة"
+        },
+        {
+          "key": "store.text.empty",
+          "zh-CN": "没认出任何地方",
+          "en": "Nothing recognized",
+          "ar": "لم يتم التعرف على أي مكان"
+        },
+        {
+          "key": "store.text.entry",
+          "zh-CN": "用文字填",
+          "en": "Type it",
+          "ar": "اكتب النطاق"
+        },
+        {
+          "key": "store.text.example",
+          "zh-CN": "例：全国发货，新疆、西藏不发",
+          "en": "e.g. Ship nationwide, except Xinjiang and Tibet",
+          "ar": "مثال: الشحن لكل البلاد عدا شينجيانغ والتبت"
+        },
+        {
+          "key": "store.text.exclude",
+          "zh-CN": "排除",
+          "en": "Exclude",
+          "ar": "استثناء"
+        },
+        {
+          "key": "store.text.include",
+          "zh-CN": "纳入",
+          "en": "Include",
+          "ar": "تضمين"
+        },
+        {
+          "key": "store.text.parse",
+          "zh-CN": "识别",
+          "en": "Recognize",
+          "ar": "تحليل"
+        },
+        {
+          "key": "store.text.ph",
+          "zh-CN": "经营范围",
+          "en": "Service area",
+          "ar": "نطاق الخدمة"
+        },
+        {
+          "key": "store.text.pickOne",
+          "zh-CN": "「{p}」有 {n} 处同名，选一个",
+          "en": "\"{p}\" matches {n} places, pick one",
+          "ar": "«{p}» يطابق {n} أماكن، اختر واحدًا"
+        },
+        {
+          "key": "store.text.pickupOnly",
+          "zh-CN": "只做自提时，不限地区不生效",
+          "en": "No area limit has no effect for pickup only",
+          "ar": "بدون حدود لا يسري على الاستلام فقط"
+        },
+        {
+          "key": "store.text.replace",
+          "zh-CN": "替换现有范围",
+          "en": "Replace current areas",
+          "ar": "استبدال النطاق الحالي"
+        },
+        {
+          "key": "store.text.title",
+          "zh-CN": "用文字填写经营范围",
+          "en": "Describe your service area",
+          "ar": "صف نطاق الخدمة"
+        },
+        {
+          "key": "store.text.unlimited",
+          "zh-CN": "不限地区",
+          "en": "No area limit",
+          "ar": "بدون حدود جغرافية"
+        },
+        {
+          "key": "store.text.unmatched",
+          "zh-CN": "没认出：{p}",
+          "en": "Not recognized: {p}",
+          "ar": "لم يتم التعرف: {p}"
         },
         {
           "key": "store.timeRange.clear",

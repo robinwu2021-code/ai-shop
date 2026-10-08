@@ -5219,6 +5219,32 @@ _无字段_
 类型：[`Region`](#region)\[\]
 
 
+#### POST `/biz/regions/parse`
+
+经营范围文字录入：一句话识别成范围项（只读）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`ScopeParseResult`](#scopeparseresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `unlimited` | `boolean` | 是 | 说了「全国 / 不限」：端上清掉已框的纳入项（保留排除） |
+| `items` | [`ScopeParsedArea`](#scopeparsedarea)\[\] | 是 | 认准的范围项，按出现顺序 |
+| `ambiguous` | `object`（见下）\[\] | 是 | 同名多处，等店主点选 |
+| `unmatched` | `string`\[\] | 是 | 认不出的短语，原样 |
+
+`ambiguous[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phrase` | `string` | 是 | 原话里的那一段 |
+| `mode` | [`AreaMode`](#areamode) | 是 | 这一段的方向 |
+| `candidates` | [`ScopeParseCandidate`](#scopeparsecandidate)\[\] | 是 | 候选（按离门店远近排） |
+
+
 #### GET `/biz/regions/path`
 
 区划从省到自身的路径　🔒
@@ -9720,6 +9746,47 @@ _无字段_
 ### SaveStoreReqBody
 
 类型：`StoreProfile`
+
+### ScopeParseCandidate
+
+同名多处时的一个候选
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `level` | `string` | 是 | 层级，同 ScopeParsedArea.level |
+| `refCode` | `string` | 是 | 区划码或聚落号 |
+| `name` | `string` | 是 | 整条路径：同名的几处靠它分得开 |
+
+### ScopeParseResult
+
+经营范围文字录入的识别结果。只是建议，写进清单后与手勾的一样走预览与保存
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `unlimited` | `boolean` | 是 | 说了「全国 / 不限」：端上清掉已框的纳入项（保留排除） |
+| `items` | [`ScopeParsedArea`](#scopeparsedarea)\[\] | 是 | 认准的范围项，按出现顺序 |
+| `ambiguous` | `object`（见下）\[\] | 是 | 同名多处，等店主点选 |
+| `unmatched` | `string`\[\] | 是 | 认不出的短语，原样 |
+
+`ambiguous[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phrase` | `string` | 是 | 原话里的那一段 |
+| `mode` | [`AreaMode`](#areamode) | 是 | 这一段的方向 |
+| `candidates` | [`ScopeParseCandidate`](#scopeparsecandidate)\[\] | 是 | 候选（按离门店远近排） |
+
+### ScopeParsedArea
+
+文字识别出的一条经营范围项（TDD-经营范围文字录入）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `mode` | [`AreaMode`](#areamode) | 是 | INCLUDE 纳入 / EXCLUDE 排除 |
+| `level` | `string` | 是 | PROVINCE / CITY / DISTRICT / STREET / COMMUNITY |
+| `refCode` | `string` | 是 | 区划码或聚落号 |
+| `name` | `string` | 是 | 从省到自己的整条路径，与选择器勾选时存的 name 同形 |
+| `phrase` | `string` | 是 | 店主原话里的那一段，确认表上给他对照 |
 
 ### ScopePreview
 

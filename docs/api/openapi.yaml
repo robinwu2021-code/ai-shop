@@ -7400,6 +7400,95 @@ components:
         - "nextBuyers"
       additionalProperties: false
       description: "范围预览：保存之前先看这一组范围会覆盖到哪儿。\n\n**两个基数都给**，不只给改完的那个：光说「会覆盖 12 个聚落」， 商家答不出「那是多了还是少了」—— 而他真正要决定的是增减。\n\n`*Buyers` 是**能定位的**收货地址数。没坐标的一条也不算（推不出任何聚落）， 缺口有多大在运营端「位置分布」那一页单列，商家侧不重复这件事。"
+    ScopeParsedArea: 
+      type: "object"
+      properties: 
+        mode: 
+          "$ref": "#/components/schemas/AreaMode"
+          description: "INCLUDE 纳入 / EXCLUDE 排除"
+        level: 
+          type: "string"
+          description: "PROVINCE / CITY / DISTRICT / STREET / COMMUNITY"
+        refCode: 
+          type: "string"
+          description: "区划码或聚落号"
+        name: 
+          type: "string"
+          description: "从省到自己的整条路径，与选择器勾选时存的 name 同形"
+        phrase: 
+          type: "string"
+          description: "店主原话里的那一段，确认表上给他对照"
+      required: 
+        - "mode"
+        - "level"
+        - "refCode"
+        - "name"
+        - "phrase"
+      additionalProperties: false
+      description: "文字识别出的一条经营范围项（TDD-经营范围文字录入）"
+    ScopeParseCandidate: 
+      type: "object"
+      properties: 
+        level: 
+          type: "string"
+          description: "层级，同 ScopeParsedArea.level"
+        refCode: 
+          type: "string"
+          description: "区划码或聚落号"
+        name: 
+          type: "string"
+          description: "整条路径：同名的几处靠它分得开"
+      required: 
+        - "level"
+        - "refCode"
+        - "name"
+      additionalProperties: false
+      description: "同名多处时的一个候选"
+    ScopeParseResult: 
+      type: "object"
+      properties: 
+        unlimited: 
+          type: "boolean"
+          description: "说了「全国 / 不限」：端上清掉已框的纳入项（保留排除）"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/ScopeParsedArea"
+          description: "认准的范围项，按出现顺序"
+        ambiguous: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              phrase: 
+                type: "string"
+                description: "原话里的那一段"
+              mode: 
+                "$ref": "#/components/schemas/AreaMode"
+                description: "这一段的方向"
+              candidates: 
+                type: "array"
+                items: 
+                  "$ref": "#/components/schemas/ScopeParseCandidate"
+                description: "候选（按离门店远近排）"
+            required: 
+              - "phrase"
+              - "mode"
+              - "candidates"
+            additionalProperties: false
+          description: "同名多处，等店主点选"
+        unmatched: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "认不出的短语，原样"
+      required: 
+        - "unlimited"
+        - "items"
+        - "ambiguous"
+        - "unmatched"
+      additionalProperties: false
+      description: "经营范围文字录入的识别结果。只是建议，写进清单后与手勾的一样走预览与保存"
     Review: 
       type: "object"
       properties: 

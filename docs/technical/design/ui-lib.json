@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 411,
+        "b-app": 415,
         "c-app": 83
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 379,
+        "b-app": 384,
         "c-app": 275
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 50,
         "c-app": 38
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 194,
+        "b-app": 196,
         "c-app": 77
       }
     },
@@ -921,7 +921,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 37,
+        "b-app": 38,
         "c-app": 13
       }
     },
@@ -1017,7 +1017,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 112,
+        "b-app": 113,
         "c-app": 14
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 148,
+        "b-app": 152,
         "c-app": 54
       }
     },
@@ -1159,7 +1159,7 @@
         "color": "var(--sh-danger)"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 12
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 66,
+        "b-app": 69,
         "c-app": 25
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 168,
+        "b-app": 171,
         "c-app": 89
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 562,
+        "b-app": 566,
         "c-app": 202
       }
     },
@@ -1487,7 +1487,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 17,
+        "b-app": 20,
         "c-app": 7
       }
     },
@@ -1667,7 +1667,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 3
       }
     },
@@ -1964,7 +1964,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 8,
+        "b-app": 9,
         "c-app": 5,
         "lib": 0
       },
@@ -2631,7 +2631,7 @@
         "fit?: boolean"
       ],
       "usage": {
-        "b-app": 26,
+        "b-app": 27,
         "c-app": 11,
         "lib": 1
       },
@@ -2753,7 +2753,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 10,
+        "b-app": 11,
         "c-app": 2,
         "lib": 0
       },
@@ -3263,6 +3263,50 @@
       "rootDecl": {
         "gap": "8rpx"
       }
+    },
+    {
+      "name": "biz-scope-text",
+      "file": "b-app/src/components/biz/biz-scope-text.vue",
+      "scope": "B 端",
+      "lines": 204,
+      "props": [
+        "visible: boolean",
+        "areas: ServiceArea[]",
+        "pickupOnly?: boolean",
+        "near?: { latE6: number",
+        "lngE6: number } | null"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "经营范围文字录入（TDD-经营范围文字录入 AC5/AC6）：写一句话 → 识别 → 确认 → 填进清单",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-quiet"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          8,
+          12,
+          16,
+          24
+        ],
+        "radius": [],
+        "deps": [
+          "sh-check",
+          "sh-sheet",
+          "sh-switch"
+        ]
+      },
+      "rootClasses": [
+        "field__area"
+      ],
+      "rootDecl": {}
     },
     {
       "name": "biz-store-tag",
@@ -4762,9 +4806,10 @@
         "sh-switch",
         "biz-pickup-sheet",
         "biz-region-picker",
+        "biz-scope-text",
         "biz-store-tag"
       ],
-      "libClassHits": 100,
+      "libClassHits": 102,
       "localSelectors": 26,
       "localCssLines": 100,
       "rolled": []
@@ -5497,6 +5542,29 @@
     },
     {
       "app": "b-app",
+      "page": "biz-scope-text",
+      "key": "b-app/biz-scope-text",
+      "file": "b-app/src/components/biz/biz-scope-text.vue",
+      "components": [
+        "sh-check",
+        "sh-sheet",
+        "sh-switch"
+      ],
+      "libClassHits": 32,
+      "localSelectors": 8,
+      "localCssLines": 28,
+      "rolled": [
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
       "page": "biz-store-tag",
       "key": "b-app/biz-store-tag",
       "file": "b-app/src/components/biz/biz-store-tag.vue",
@@ -5846,13 +5914,23 @@
       "pages": [
         "c-app/me/profile"
       ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "b-app/biz-scope-text"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
     "blocks": 81,
-    "components": 38,
-    "pages": 154,
+    "components": 39,
+    "pages": 155,
     "gapKinds": 2
   }
 }
