@@ -40,6 +40,8 @@ class BizEndpointPermTest {
             // 本店适用的运费模板：平台定的价目，不含店的经营数据；发货设置（biz:store）与商品编辑（biz:goods）都要读
             "/biz/store/{storeNo}/freight-template",
             "/biz/regions/search",
+            // 经营范围文字录入：一句话 → 区划/聚落码，读的同样只是公共主数据（TDD-经营范围文字录入）
+            "/biz/regions/parse",
             "/biz/regions/path",
             "/biz/geo/reverse",
             "/biz/geo/geocode",

@@ -151,6 +151,7 @@ import type {
   ReachTask,
   Region,
   RegionSearchResult,
+  ScopeParseResult,
   Review,
   ScopePreview,
   SellRule,
@@ -255,6 +256,8 @@ export const httpApi: MerchantApi = {
     http.get<RegionSearchResult>(E.mRegionSearch.path,
       near ? { kw, latE6: near.latE6, lngE6: near.lngE6 } : { kw }),
   mRegionPath: (code) => http.get<Region[]>(E.mRegionPath.path, { code }),
+  mRegionParse: (text, near) =>
+    http.post<ScopeParseResult>(E.mRegionParse.path, near ? { text, latE6: near.latE6, lngE6: near.lngE6 } : { text }),
   mGeoReverse: (lat, lng) => http.get<GeoReverseResult>(E.mGeoReverse.path, { lat, lng }),
   mGeoTips: (kw, city) => http.get<GeoTip[]>(E.mGeoTips.path, city ? { kw, city } : { kw }),
   mEstates: (regionCode, opts) => http.get<EstateList>(E.mEstates.path, { regionCode, ...opts }),

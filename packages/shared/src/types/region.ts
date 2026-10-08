@@ -419,3 +419,44 @@ export interface ScopePreview {
   /** 改成这一组之后有几个能定位的买家 */
   nextBuyers: number;
 }
+
+/** 文字识别出的一条经营范围项（TDD-经营范围文字录入） */
+export interface ScopeParsedArea {
+  /** INCLUDE 纳入 / EXCLUDE 排除 */
+  mode: AreaMode;
+  /** PROVINCE / CITY / DISTRICT / STREET / COMMUNITY */
+  level: string;
+  /** 区划码或聚落号 */
+  refCode: string;
+  /** 从省到自己的整条路径，与选择器勾选时存的 name 同形 */
+  name: string;
+  /** 店主原话里的那一段，确认表上给他对照 */
+  phrase: string;
+}
+/** 同名多处时的一个候选 */
+export interface ScopeParseCandidate {
+  /** 层级，同 ScopeParsedArea.level */
+  level: string;
+  /** 区划码或聚落号 */
+  refCode: string;
+  /** 整条路径：同名的几处靠它分得开 */
+  name: string;
+}
+/** 经营范围文字录入的识别结果。只是建议，写进清单后与手勾的一样走预览与保存 */
+export interface ScopeParseResult {
+  /** 说了「全国 / 不限」：端上清掉已框的纳入项（保留排除） */
+  unlimited: boolean;
+  /** 认准的范围项，按出现顺序 */
+  items: ScopeParsedArea[];
+  /** 同名多处，等店主点选 */
+  ambiguous: Array<{
+    /** 原话里的那一段 */
+    phrase: string;
+    /** 这一段的方向 */
+    mode: AreaMode;
+    /** 候选（按离门店远近排） */
+    candidates: ScopeParseCandidate[];
+  }>;
+  /** 认不出的短语，原样 */
+  unmatched: string[];
+}

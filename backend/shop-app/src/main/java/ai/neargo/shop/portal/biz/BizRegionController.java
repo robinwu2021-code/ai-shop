@@ -117,6 +117,72 @@ public class BizRegionController {
         return new SearchVO(regions, communities, villages, places);
     }
 
+    /**
+     * 经营范围文字录入（TDD-经营范围文字录入）：一句话 → 建议的范围项。<b>只读，不落库</b>。
+     *
+     * <p>「全国发货，新疆、西藏不发」→ {@code unlimited} + 两条省级排除。认准的进 {@code items}，
+     * 同名多处进 {@code ambiguous} 让店主点选，认不出的原样进 {@code unmatched} —— 不替他猜。
+     * 结果只是建议：端上写进清单的未保存态，保存、预览、可见性走的都是原来那一条路。
+     *
+     * <p>与 {@link #search} 同性质：读的是公共主数据，不含任何一家店的数据，所以同样不挂权限码。
+     * POST 是因为一段话可能很长、带换行，塞不进 query string。
+     */
+    @PostMapping("/biz/regions/parse")
+    public ParseVO parse(@RequestBody ParseReq req) {
+        var parsed = ScopeTextParser.parse(req == null ? null : req.text());
+        var resolver = new ScopeTextResolver(regionService, communityService,
+                req == null ? null : req.latE6(), req == null ? null : req.lngE6());
+        java.util.LinkedHashMap<String, ParsedArea> items = new java.util.LinkedHashMap<>();
+        List<Ambiguous> ambiguous = new java.util.ArrayList<>();
+        List<String> unmatched = new java.util.ArrayList<>();
+        for (var ph : parsed.phrases()) {
+            String mode = ph.exclude() ? "EXCLUDE" : "INCLUDE";
+            for (var r : resolver.resolveAll(ph.text())) {
+                if (r.hits().size() == 1) {
+                    var h = r.hits().get(0);
+                    // 同一个地方说了两遍：后说的方向赢（「深圳都送，龙华不送」里龙华只出一条排除）
+                    items.remove(h.level() + "|" + h.refCode());
+                    items.put(h.level() + "|" + h.refCode(),
+                            new ParsedArea(mode, h.level(), h.refCode(), h.name(), ph.text()));
+                } else if (r.hits().isEmpty()) {
+                    unmatched.add(ph.text());
+                } else {
+                    ambiguous.add(new Ambiguous(ph.text(), mode, r.hits().stream()
+                            .map(h -> new Candidate(h.level(), h.refCode(), h.name())).toList()));
+                }
+            }
+        }
+        return new ParseVO(parsed.unlimited(), List.copyOf(items.values()), ambiguous, unmatched);
+    }
+
+    /** @param latE6 门店坐标，可空：同名区划按远近排候选 */
+    public record ParseReq(String text, Integer latE6, Integer lngE6) {
+    }
+
+    /**
+     * @param unlimited 说了「全国 / 不限」—— 端上据此清掉已框的纳入项（保留排除）
+     * @param items     认准的范围项，按出现顺序
+     * @param ambiguous 同名多处，等店主点选
+     * @param unmatched 认不出的短语，原样
+     */
+    public record ParseVO(boolean unlimited, List<ParsedArea> items, List<Ambiguous> ambiguous,
+                          List<String> unmatched) {
+    }
+
+    /**
+     * @param mode   INCLUDE / EXCLUDE
+     * @param name   从省到自己的整条路径（与选择器勾选时存的 name 同形）
+     * @param phrase 店主原话里的那一段，确认表上给他对照
+     */
+    public record ParsedArea(String mode, String level, String refCode, String name, String phrase) {
+    }
+
+    public record Ambiguous(String phrase, String mode, List<Candidate> candidates) {
+    }
+
+    public record Candidate(String level, String refCode, String name) {
+    }
+
     /** 从省到自身的整条链路：选择器从搜索命中下钻时要把面包屑换成真实路径 */
     @GetMapping("/biz/regions/path")
     public List<RegionService.RegionVO> path(@RequestParam String code) {

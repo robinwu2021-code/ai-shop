@@ -5,7 +5,7 @@
 
 import { allCommunitySeeds, db, delay, findGoodsSeed, persist, pick, toCommunity, toGoods } from "@shared/mock/db";
 import { ApiError } from "@shared/net/http-client";
-import type { Store } from "@shared/types";
+import type { ScopeParseResult, Store } from "@shared/types";
 import { STORAGE } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
 import {
@@ -78,6 +78,7 @@ export const storeMock: Pick<MerchantApi,
   | "mCommunities"
   | "mRegions"
   | "mRegionSearch"
+  | "mRegionParse"
   | "mGeoReverse"
   | "mGeoTips"
   | "mRegionPath"
@@ -720,6 +721,59 @@ export const storeMock: Pick<MerchantApi,
    * 村名词典。mock 里给北山街道配了两条官方村级（regionSeeds），
    * 词典就查它们 —— 与后端同口径：按街道过滤 + 名称包含。
    */
+  /**
+   * 经营范围文字录入。**简化版的后端口径**（ScopeTextParser + ScopeTextResolver）：
+   * 按「，；。」切分句、含「不 / 除」判排除、「全国 / 不限」判不限；省走简称表，其余在 regionSeeds 里按「名字相同或差一个行政后缀」认。
+   * 同名多处给候选，认不出的原样退回 —— 与后端一样不做包含式模糊。
+   */
+  async mRegionParse(text) {
+    const PROV: Record<string, [string, string]> = {
+      新疆: ["65", "新疆维吾尔自治区"], 西藏: ["54", "西藏自治区"], 青海: ["63", "青海省"],
+      内蒙古: ["15", "内蒙古自治区"], 宁夏: ["64", "宁夏回族自治区"], 浙江: ["33", "浙江省"], 上海: ["31", "上海市"],
+    };
+    const SUF = ["", "省", "市", "区", "县", "街道", "镇"];
+    const pathOf = (code: string): string => {
+      const chain: string[] = [];
+      let cur = db.regionSeeds.find((r) => r.regionCode === code);
+      while (cur) {
+        chain.unshift(cur.name);
+        cur = cur.parentCode ? db.regionSeeds.find((r) => r.regionCode === cur!.parentCode) : undefined;
+      }
+      return chain.join(" / ");
+    };
+    const out: ScopeParseResult = { unlimited: false, items: [], ambiguous: [], unmatched: [] };
+    for (const raw of (text ?? "").split(/[，,；;。\n]+/)) {
+      let clause = raw.trim();
+      if (!clause) continue;
+      const exclude = /不送|不发|不做|不卖|不含|不配送|除了|除外|排除|以外|之外/.test(clause) || /^除|除.+外/.test(clause);
+      if (/全国|不限/.test(clause)) {
+        out.unlimited = true;
+        clause = clause.replace(/全国各地|全国|不限地区|不限/g, "、");
+      }
+      for (const piece of clause.split(/[、\s]+/)) {
+        const name = piece
+          .replace(/^(除了|除|只送|只做|仅限|都)/, "")
+          .replace(/(不配送|不发货|不送|不发|不做|不卖|以外|之外|除外|外|都可以|发货|配送|包邮|全部|地区|都|送|发)+$/, "")
+          .trim();
+        if (!name) continue;
+        const mode = exclude ? "EXCLUDE" : "INCLUDE";
+        const prov = PROV[name] ?? Object.values(PROV).find(([, full]) => full === name);
+        if (prov) {
+          out.items.push({ mode, level: "PROVINCE", refCode: prov[0], name: prov[1], phrase: name });
+          continue;
+        }
+        const hits = db.regionSeeds.filter((r) => r.enabled && SUF.some((x) => r.name === name + x));
+        if (hits.length === 1) {
+          out.items.push({ mode, level: hits[0]!.level, refCode: hits[0]!.regionCode, name: pathOf(hits[0]!.regionCode), phrase: name });
+        } else if (hits.length > 1) {
+          out.ambiguous.push({ phrase: name, mode, candidates: hits.map((r) => ({ level: r.level, refCode: r.regionCode, name: pathOf(r.regionCode) })) });
+        } else {
+          out.unmatched.push(name);
+        }
+      }
+    }
+    return out;
+  },
   // ---- P1：跨级搜索 / 路径 / 关路清单 / 取货点 ----
   async mRegionSearch(kw) {
     const q = (kw ?? "").trim();

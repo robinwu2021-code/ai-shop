@@ -111,6 +111,7 @@ import type {
   ReachTask,
   Region,
   RegionSearchResult,
+  ScopeParseResult,
   Review,
   SaleMode,
   ScopePreview,
@@ -987,6 +988,8 @@ export interface MerchantApi {
    * 深圳的商家搜「福城」，不带位置排在最前的是新疆的「同和幸福城」。
    */
   mRegionSearch(kw: string, near?: { latE6: number; lngE6: number }): Promise<RegionSearchResult>;
+  /** 经营范围文字录入：一句话 → 建议的范围项。只读，不落库（TDD-经营范围文字录入） */
+  mRegionParse(text: string, near?: { latE6: number; lngE6: number }): Promise<ScopeParseResult>;
   /** 从省到自身的整条链路（选择器从搜索命中下钻用） */
   mRegionPath(code: string): Promise<Region[]>;
   /** 坐标转地址（P2）。未开通时抛 10503，端上据此藏按钮 */

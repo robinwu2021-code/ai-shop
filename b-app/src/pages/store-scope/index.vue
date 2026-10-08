@@ -103,6 +103,10 @@ const pickerOpen = ref(false);
 function setAreas(v: ServiceArea[]) {
   form.value.serviceAreas = v;
 }
+/** 用文字填（TDD-经营范围文字录入）：识别结果写进清单的未保存态，预览与保存条照常出现 */
+const textOpen = ref(false);
+const storeNear = computed(() =>
+  form.value.latE6 != null && form.value.lngE6 != null ? { latE6: form.value.latE6, lngE6: form.value.lngE6 } : null);
 
 // 提报进度：不显示的话商家会以为没提交成功，隔天再提一次同样的
 const applies = ref<CommunityApply[]>([]);
@@ -520,9 +524,12 @@ onShow(() => {
       <view class="sh-card__head">
         <text class="txt-title">{{ $t("store.scope") }}</text>
         <!-- 添加是这张卡的动作：放卡头右侧的药丸，不再是卡底一整条粉色大块 -->
-        <view class="sh-chip sh-chip--primary sh-chip--icon" @tap="pickerOpen = true">
-          <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
-          {{ $t("store.addArea") }}
+        <view class="sh-row">
+          <text class="sh-chip" @tap="textOpen = true">{{ $t("store.text.entry") }}</text>
+          <view class="sh-chip sh-chip--primary sh-chip--icon" @tap="pickerOpen = true">
+            <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
+            {{ $t("store.addArea") }}
+          </view>
         </view>
       </view>
 
@@ -709,6 +716,15 @@ onShow(() => {
       :bare-exclude="noIncludes && (deliveryOn || expressOn)"
       @update:areas="setAreas"
     ></biz-region-picker>
+
+    <biz-scope-text
+      :visible="textOpen"
+      :areas="areas"
+      :pickup-only="pickupOn && !deliveryOn && !expressOn"
+      :near="storeNear"
+      @close="textOpen = false"
+      @apply="setAreas"
+    ></biz-scope-text>
 
     <!-- 吸底保存条：范围有未保存改动时才浮现 -->
     <sh-savebar

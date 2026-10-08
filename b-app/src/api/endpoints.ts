@@ -47,6 +47,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mVillageDict: { method: "GET", path: "/biz/regions/villages", auth: true, summary: "街道/镇下的官方村名词典（提报村用）" },
   mRegionSearch: { method: "GET", path: "/biz/regions/search", auth: true, summary: "跨级搜区划与聚落（选择器搜索）" },
   mRegionPath: { method: "GET", path: "/biz/regions/path", auth: true, summary: "区划从省到自身的路径" },
+  mRegionParse: { method: "POST", path: "/biz/regions/parse", auth: true, summary: "经营范围文字录入：一句话识别成范围项（只读）" },
   mGeoReverse: { method: "GET", path: "/biz/geo/reverse", auth: true, summary: "坐标转地址（门店地址定位）" },
   mGeoTips: { method: "GET", path: "/biz/geo/tips", auth: true, summary: "地点输入提示（提报小区按名搜 POI）" },
   mEstates: { method: "GET", path: "/biz/geo/estates", auth: true, summary: "一片地方的小区（服务端读穿透：缓存优先，不够就问地图）" },

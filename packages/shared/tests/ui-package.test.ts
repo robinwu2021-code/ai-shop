@@ -249,6 +249,8 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     "biz-item-picker", "biz-supplier-picker",
     // 切店幕布：position fixed 整屏盖住，与 sh-dialog 同一层
     "biz-switch-curtain",
+    // 经营范围文字录入：外面包的是 sh-sheet
+    "biz-scope-text",
     // 选人面板与批量打标：外面包的是 sh-sheet，同样是浮层
     "biz-audience-picker", "biz-batch-tag-sheet",
     // 调整经营类目：同上，外面包的是 sh-sheet

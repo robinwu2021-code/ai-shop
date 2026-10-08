@@ -266,6 +266,7 @@ const RESPONSE_TYPES = {
   mRedeemCoupon: "CouponRedeemResult",
   mRegionPath: "Region[]",
   mRegionSearch: "RegionSearchResult",
+  mRegionParse: "ScopeParseResult",
   mRemoveMemberSegment: "void",
   mRenameSpecDim: "void",
   mSaveActivity: "StoreActivity",
