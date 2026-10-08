@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 410,
+        "b-app": 411,
         "c-app": 83
       }
     },
@@ -377,7 +377,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 12
       }
     },
@@ -3354,7 +3354,7 @@
       "name": "biz-switch-curtain",
       "file": "b-app/src/components/biz/biz-switch-curtain.vue",
       "scope": "B 端",
-      "lines": 112,
+      "lines": 111,
       "props": [
         "phase: CurtainPhase",
         "name: string"
@@ -3367,11 +3367,11 @@
       "note": "切店幕布：整屏主色、大字店名",
       "why": "—",
       "uses": {
-        "tiers": [],
-        "rawFontSize": [
-          30,
-          56
+        "tiers": [
+          "txt-body",
+          "txt-hero"
         ],
+        "rawFontSize": [],
         "spacing": [
           16,
           24,
@@ -3388,7 +3388,7 @@
       "rootDecl": {
         "position": "fixed",
         "inset": "0",
-        "z-index": "10000",
+        "z-index": "var(--sh-z-dialog)",
         "display": "flex",
         "flex-direction": "column",
         "align-items": "center",
@@ -5531,9 +5531,9 @@
       "components": [
         "sh-icon"
       ],
-      "libClassHits": 0,
+      "libClassHits": 2,
       "localSelectors": 15,
-      "localCssLines": 80,
+      "localCssLines": 79,
       "rolled": [
         {
           "id": "listrow",
