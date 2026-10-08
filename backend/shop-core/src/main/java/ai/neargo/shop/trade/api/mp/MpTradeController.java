@@ -133,8 +133,11 @@ public class MpTradeController {
     }
 
     @GetMapping("/mp/order/{orderNo}")
-    public OrderVO orderDetail(@PathVariable String orderNo) {
-        return orderService.detail(orderNo);
+    public OrderVO orderDetail(@PathVariable String orderNo,
+                               @RequestHeader(value = "X-Client", required = false) String client) {
+        // 端从请求头读、在这一层读 —— 领域层不碰 request（见 ArchitectureTest）。
+        // 物流轨迹按端选展示渠道：小程序才给微信插件入口，其余落自建地图。
+        return orderService.detail(orderNo, client);
     }
 
     @PostMapping("/mp/order/{orderNo}/confirm-receipt")

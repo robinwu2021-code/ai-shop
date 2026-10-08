@@ -1,4 +1,4 @@
-package ai.neargo.shop.channel.express.display;
+package ai.neargo.shop.channel.express.display.port;
 
 import ai.neargo.shop.channel.express.trace.TraceRoutingProperties;
 import ai.neargo.shop.spi.logistics.TraceDisplay;

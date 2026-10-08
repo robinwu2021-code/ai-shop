@@ -72,8 +72,12 @@ public interface OrderService {
     /**
      * 订单详情。**同时接受主单号与子单号**（Q6）：
      * 主单号 → 支付视角（合计 + subOrders）；子单号 → 订单视角（单商家 + 核销码 + 时间线）。
+     *
+     * @param client 请求端（原始 {@code X-Client} 头，可空）。<b>由 Controller 读头传入</b> ——
+     *               物流轨迹的展示渠道按端选（小程序才给微信插件入口），而领域层不许读 request
+     *               （读了就只能在 HTTP 线程跑，worker/事件路径调不动，见 ArchitectureTest）。
      */
-    OrderVO detail(String orderNo);
+    OrderVO detail(String orderNo, String client);
 
     /**
      * 关闭超时未支付的订单并释放库存（R7）。

@@ -1491,8 +1491,9 @@ public class OrderServiceImpl implements OrderService {
         eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
 
         // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
-        // 代客下单时下单的是客服、属主是顾客
-        return detailOf(orderNo, userNo);
+        // 代客下单时下单的是客服、属主是顾客。此刻还没有运单，traceOf 必然为 null，
+        // 展示渠道传什么都不影响 —— 给 MP 占位
+        return detailOf(orderNo, userNo, "MP");
     }
 
     // ---------------------------------------------------------------- 支付
@@ -1640,7 +1641,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderVO payResult(String orderNo) {
-        return detail(orderNo);
+        return detail(orderNo, null);
     }
 
     @Override
@@ -1855,8 +1856,8 @@ public class OrderServiceImpl implements OrderService {
     // ---------------------------------------------------------------- 查询与取消
 
     @Override
-    public OrderVO detail(String orderNo) {
-        return detailOf(orderNo, SecurityUtils.currentUserNo());
+    public OrderVO detail(String orderNo, String client) {
+        return detailOf(orderNo, SecurityUtils.currentUserNo(), surfaceOf(client));
     }
 
     /**
@@ -1867,7 +1868,7 @@ public class OrderServiceImpl implements OrderService {
      * 下单人是客服、属主是顾客，下单末尾那句「返回支付视角」用当前登录人去查，
      * <b>查出来的必然是空</b>，于是一张已经建好的单以 404 收场。
      */
-    private OrderVO detailOf(String orderNo, String userNo) {
+    private OrderVO detailOf(String orderNo, String userNo, String surface) {
         // Q6：先按子单号查（C 端绝大多数请求是订单视角），查不到再按主单号
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, orderNo)
@@ -1907,7 +1908,7 @@ public class OrderServiceImpl implements OrderService {
             // 已取消 / 已退款：券与积分去了哪（P3）。只在详情、只在这两个状态查
             vo = vo.withReturned(returnedOf(sub));
             // 物流轨迹（Y4）：快递单读缓存；非快递/无单号/缓存空时 traceOf 返回 null
-            vo = vo.withTrace(traceOf(sub));
+            vo = vo.withTrace(traceOf(sub, surface));
             if (sub.getPeriodNo() != null) {
                 // 集单（s37）：提货日与「截单前可取消」。已截单、已退款的不再给可取消时刻
                 Long until = periodPort == null || OrdSubOrder.REFUNDED.equals(sub.getStatus())
@@ -1924,7 +1925,7 @@ public class OrderServiceImpl implements OrderService {
      * 这张子单的物流轨迹（Y4）。只对快递履约、已回填单号的子单查缓存；其余 null（不展示）。
      * 只读缓存，不触发承运商查询（那是轮询 Job 的事）。
      */
-    private OrderVO.Trace traceOf(OrdSubOrder sub) {
+    private OrderVO.Trace traceOf(OrdSubOrder sub, String surface) {
         if (!OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
@@ -1934,10 +1935,9 @@ public class OrderServiceImpl implements OrderService {
          * 微信那条渠道的 waybill_token 由 WxWaybillBindJob 预先备好落在 ful_shipment 上，
          * 这里只是把它读出来 —— 买家反复下拉刷新，打不穿微信的调用配额，也不花快递100 的钱。
          *
-         * 端由请求头给（MP / APP / H5）。认不出当小程序：买家侧绝大多数请求来自小程序，
-         * 而认错的代价只是少一个渠道可选，不是错。
+         * 端（MP / APP / H5）由 Controller 读 X-Client 传进来，不在这儿读 request。
          */
-        return shipmentTracePort.traceOf(sub.getSubOrderNo(), surfaceOfRequest(), null, null)
+        return shipmentTracePort.traceOf(sub.getSubOrderNo(), surface, null, null)
                 .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
                                 .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
                                         n.latE6(), n.lngE6())).toList(),
@@ -1948,28 +1948,22 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 当前请求来自哪个端。读 {@code X-Client} 头（下单那条路径早就在用它）。
+     * 原始 {@code X-Client} 头 → 展示端（MP / APP / H5）。**纯字符串映射，不碰 request** ——
+     * 读头在 Controller，这里只做翻译，worker/事件路径传什么都能调。
      * <p>认不出一律当 {@code MP}：买家侧绝大多数请求来自小程序，而认错只是少一个渠道可选。
      */
-    private static String surfaceOfRequest() {
-        try {
-            var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
-                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-            String c = attrs == null ? null : attrs.getRequest().getHeader("X-Client");
-            if (c == null || c.isBlank()) {
-                return "MP";
-            }
-            String u = c.trim().toUpperCase(java.util.Locale.ROOT);
-            if (u.startsWith("APP")) {
-                return "APP";
-            }
-            if (u.startsWith("H5") || u.startsWith("WEB")) {
-                return "H5";
-            }
-            return "MP";
-        } catch (Exception e) {
+    static String surfaceOf(String client) {
+        if (client == null || client.isBlank()) {
             return "MP";
         }
+        String u = client.trim().toUpperCase(java.util.Locale.ROOT);
+        if (u.startsWith("APP")) {
+            return "APP";
+        }
+        if (u.startsWith("H5") || u.startsWith("WEB")) {
+            return "H5";
+        }
+        return "MP";
     }
 
     /** 自提类履约，给展示状态的反向过滤用（SHIPPED 与 ARRIVED 在库里是同一个状态）。 */
@@ -2056,7 +2050,7 @@ public class OrderServiceImpl implements OrderService {
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
         }
-        return detail(order.getOrderNo());
+        return detail(order.getOrderNo(), null);
     }
 
     /**
@@ -2087,7 +2081,7 @@ public class OrderServiceImpl implements OrderService {
         for (OrdSubOrder s : subs) {
             afterSaleService.systemRefund(s.getSubOrderNo(), "截单前取消", "买家在截单前取消了订单");
         }
-        return detail(order.getOrderNo());
+        return detail(order.getOrderNo(), null);
     }
 
     @Override
@@ -2171,7 +2165,7 @@ public class OrderServiceImpl implements OrderService {
         subOrderMapper.updateById(sub);
         appendStatusLog(subOrderNo, OrdSubOrder.COMPLETED, "已确认收货",
                 OrdStatusLog.BY_USER, SecurityUtils.currentUserNo());
-        return detail(subOrderNo);
+        return detail(subOrderNo, null);
     }
 
     /**
