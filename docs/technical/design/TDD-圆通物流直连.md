@@ -291,3 +291,28 @@ Y3 接的是**轨迹查询**这一半（轮询、只读、不编推进、不是�
 
 > `200010003` / `200017004` 这类重试多少次都没用，要把 `reason` **原样显示给人**并停止重试；
 > `200010005 重复下单` 标为可重试，说明圆通侧按 `logisticsNo` 做了幂等 —— 我方重试要复用同一个 `logisticsNo`。
+
+### 11.5 Y6 的接线：**复用 `ExpressPickupPort`，但要先补两处契约缺口**
+
+先复用再新建 —— spi 里已有 `ExpressPickupPort`（`enabled` / `quote` / `create(CreateCmd)→Booked` /
+`cancel` / `parseCallback`），实现有 `Kuaidi100PickupGateway` 与 `StubExpressPickupGateway`。
+`Booked.message()` 的注释写着「通道原话」，正好对上「失败要原样显示圆通的 `reason`」。
+**圆通版应该是它的第三个实现，不是另起一套抽象。**
+
+但直接复用会卡在两处，Y6 开工前必须先定：
+
+| 缺口 | 现状 | 圆通要什么 | 不补的后果 |
+|---|---|---|---|
+| **地址粒度** | `Party(name, mobile, address)` —— 地址是**一个扁平串** | `senderProvinceName`/`CityName`/`CountyName` + `senderAddress` **分开且省市必填**（收件人同） | 只能在圆通实现里**拆地址猜省市区**；拆错 → 报文校验不过（`200017004`，且不可重试） |
+| **面单信息无处安放** | `Booked(ok, taskId, orderId, trackingNo, message)` | 还会返回 `shortAddress`（三段码）与 `secretWaybills[]`（脱敏面单字段） | 三段码丢掉 = 打不了面单，而 eSeller 模式要求我方自行打印贴标 |
+
+两个选项：
+
+- **A（推荐）扩展 spi**：`Party` 加 `provinceName/cityName/countyName/townName`（可空，老实现不传＝行为不变）；
+  `Booked` 加 `shortAddress` 与 `secretWaybills`（可空）。动的是 spi 契约，要同步 `Kuaidi100PickupGateway`
+  与 `StubExpressPickupGateway` 两个实现（都只是多传/多填几个空字段）。
+- **B 不动 spi**：圆通实现内部拆地址、三段码另找地方存。**不建议** —— 拆地址是猜，
+  而 `200017004 订单报文不合法` 恰好是**不可重试**的那一类，错了只能人工介入。
+
+> `mailNo` 非必填这条（§11.3）映射到 `Booked`：允许 `ok=true` 且 `trackingNo=null`，
+> 调用方据此进「待取号」，**不能当成已发货**。
