@@ -22,4 +22,12 @@ public interface TraceProvider {
 
     /** 查一个运单的轨迹。查不到/不可用返回 empty（调用方据此显示「暂无轨迹」，不白屏） */
     Optional<TraceResult> trace(String carrier, String waybillNo);
+
+    /**
+     * 带收件人手机号查（TDD-快递100轨迹查询 AC2）：顺丰、中通等承运商的查询要校验手机号。
+     * 不需要手机号的 provider 不用覆写 —— 默认退回不带手机号的那个。
+     */
+    default Optional<TraceResult> trace(String carrier, String waybillNo, String phone) {
+        return trace(carrier, waybillNo);
+    }
 }

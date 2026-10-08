@@ -87,6 +87,40 @@ class LogisticsTraceRouterTest {
     }
 
     @Test
+    @DisplayName("★★★ 手机号透传到被选中的 provider（快递100 查顺丰、中通要校验手机号）")
+    void phonePassesThroughToProvider() {
+        java.util.concurrent.atomic.AtomicReference<String> seen = new java.util.concurrent.atomic.AtomicReference<>();
+        TraceProvider k = new TraceProvider() {
+            public String name() {
+                return "kuaidi100";
+            }
+
+            public boolean covers(String c) {
+                return true;
+            }
+
+            public boolean available() {
+                return true;
+            }
+
+            public Optional<TraceResult> trace(String c, String waybillNo) {
+                return trace(c, waybillNo, null);
+            }
+
+            public Optional<TraceResult> trace(String c, String waybillNo, String phone) {
+                seen.set(phone);
+                return Optional.of(new TraceResult(waybillNo, c, TraceStatus.IN_TRANSIT, "kuaidi100", List.of()));
+            }
+        };
+        var router = new LogisticsTraceRouter(List.of(k), routing(Map.of(), "kuaidi100"));
+        assertThat(router.trace("ST-A", "SF", "SF1", "13800138000")).isPresent();
+        assertThat(seen.get()).isEqualTo("13800138000");
+        // 老签名（不带手机号）照旧可用，传 null 下去
+        assertThat(router.trace("ST-A", "SF", "SF2")).isPresent();
+        assertThat(seen.get()).isNull();
+    }
+
+    @Test
     @DisplayName("★ 同名 provider = 装配错误，构造即抛（不靠注册顺序决定路由指谁）")
     void duplicateNameThrows() {
         try {

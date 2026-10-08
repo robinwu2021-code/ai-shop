@@ -87,6 +87,33 @@ class LogisticsTraceRefreshTest {
         verify(shipmentMapper, times(2)).updateById(any(FulShipment.class));
     }
 
+    /** 顺丰、中通在快递100 查询时要校验手机号：轮询要把子单上的收件人手机号带下去（TDD-快递100轨迹查询 AC2） */
+    @Test
+    void receiverPhoneReachesTracePort() {
+        FulShipment a = shipment("SHP-A", "SUB-A", "SF", "SF-A", FulShipment.CREATED);
+        FulShipment b = shipment("SHP-B", "SUB-B", "YTO", "YT-B", FulShipment.CREATED);
+        when(shipmentMapper.selectList(any())).thenReturn(List.of(a, b));
+        when(traceMapper.selectList(any())).thenReturn(List.of());
+        when(statsPort.storesOf(any())).thenReturn(Map.of());
+        when(statsPort.receiverPhonesOf(any())).thenReturn(Map.of("SUB-A", "13800138000"));   // B 没手机号
+
+        Map<String, String> seen = new java.util.HashMap<>();
+        LogisticsTracePort port = new LogisticsTracePort() {
+            @Override
+            public Optional<TraceResult> trace(String store, String carrier, String waybill) {
+                return trace(store, carrier, waybill, null);
+            }
+
+            @Override
+            public Optional<TraceResult> trace(String store, String carrier, String waybill, String phone) {
+                seen.put(waybill, phone == null ? "<null>" : phone);
+                return Optional.empty();
+            }
+        };
+        svc(port).refreshInTransitTraces(300);
+        assertThat(seen).containsEntry("SF-A", "13800138000").containsEntry("YT-B", "<null>");
+    }
+
     @Test
     void dedupExistingNodes() {
         FulShipment a = shipment("SHP-A", "SUB-A", "YTO", "YT-A", FulShipment.IN_TRANSIT);

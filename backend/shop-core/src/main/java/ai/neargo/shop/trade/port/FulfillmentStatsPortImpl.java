@@ -169,6 +169,25 @@ public class FulfillmentStatsPortImpl implements FulfillmentStatsPort {
     }
 
     @Override
+    public Map<String, String> receiverPhonesOf(Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return Map.of();
+        }
+        // 与 storesOf 同一个理由：轮询是系统作业，无会话主体，显式绕域
+        List<OrdSubOrder> rows = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .select(OrdSubOrder::getSubOrderNo, OrdSubOrder::getReceiverPhone)
+                        .in(OrdSubOrder::getSubOrderNo, subOrderNos)));
+        Map<String, String> out = new HashMap<>();
+        for (OrdSubOrder s : rows) {
+            if (s.getReceiverPhone() != null && !s.getReceiverPhone().isBlank()) {
+                out.put(s.getSubOrderNo(), s.getReceiverPhone());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public List<ExpressOrder> expressOrders() {
         // ★ 接数据域（批④），理由同 openPickupOrders：运营端的快递单列表
         List<OrdSubOrder> rows =

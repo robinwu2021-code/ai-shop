@@ -261,8 +261,10 @@ public class LogisticsServiceImpl implements LogisticsService {
         if (rows.isEmpty()) {
             return new TraceRefreshResult(0, 0, 0, 0, 0);
         }
-        Map<String, String> stores = statsPort.storesOf(
-                rows.stream().map(FulShipment::getSubOrderNo).toList());
+        List<String> subOrderNos = rows.stream().map(FulShipment::getSubOrderNo).toList();
+        Map<String, String> stores = statsPort.storesOf(subOrderNos);
+        // 顺丰、中通在快递100 查询时要校验收件人手机号（TDD-快递100轨迹查询 AC2）
+        Map<String, String> phones = statsPort.receiverPhonesOf(subOrderNos);
 
         int queried = 0;
         int appended = 0;
@@ -271,7 +273,7 @@ public class LogisticsServiceImpl implements LogisticsService {
         for (FulShipment s : rows) {
             // 门店没解出来 → 传 null，路由落到默认 provider（圆通）
             Optional<TraceResult> hit = tracePort.trace(
-                    stores.get(s.getSubOrderNo()), s.getCarrier(), s.getWaybillNo());
+                    stores.get(s.getSubOrderNo()), s.getCarrier(), s.getWaybillNo(), phones.get(s.getSubOrderNo()));
             if (hit.isEmpty()) {
                 // 缺凭据 / 查不到：**不编造推进**（ADR-005 §5 的原话），本单保持原样
                 continue;

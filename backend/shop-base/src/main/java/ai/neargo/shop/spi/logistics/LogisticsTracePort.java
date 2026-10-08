@@ -20,4 +20,11 @@ public interface LogisticsTracePort {
      * @param waybillNo 运单号
      */
     Optional<TraceResult> trace(String storeNo, String carrier, String waybillNo);
+
+    /**
+     * 同上，带收件人手机号（顺丰、中通在快递100 查询时必填）。手机号只往下传给 provider，不落日志。
+     */
+    default Optional<TraceResult> trace(String storeNo, String carrier, String waybillNo, String phone) {
+        return trace(storeNo, carrier, waybillNo);
+    }
 }

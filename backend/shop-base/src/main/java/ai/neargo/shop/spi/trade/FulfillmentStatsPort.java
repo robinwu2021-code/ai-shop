@@ -95,4 +95,12 @@ public interface FulfillmentStatsPort {
      * 查不到门店的子单不在返回里，路由会落到默认 provider。
      */
     Map<String, String> storesOf(Collection<String> subOrderNos);
+
+    /**
+     * 子单号 → 收件人手机号（TDD-快递100轨迹查询 AC2）。批量，轨迹轮询专用 ——
+     * 顺丰、中通在快递100 查询时要校验收件人手机号。没有手机号的子单不出现在结果里。
+     */
+    default Map<String, String> receiverPhonesOf(Collection<String> subOrderNos) {
+        return Map.of();
+    }
 }

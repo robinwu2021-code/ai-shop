@@ -43,6 +43,11 @@ public class LogisticsTraceRouter implements LogisticsTracePort {
 
     @Override
     public Optional<TraceResult> trace(String storeNo, String carrier, String waybillNo) {
+        return trace(storeNo, carrier, waybillNo, null);
+    }
+
+    @Override
+    public Optional<TraceResult> trace(String storeNo, String carrier, String waybillNo, String phone) {
         if (carrier == null || carrier.isBlank() || waybillNo == null || waybillNo.isBlank()) {
             return Optional.empty();
         }
@@ -70,6 +75,6 @@ public class LogisticsTraceRouter implements LogisticsTracePort {
                     providerName, carrier, storeNo);
             return Optional.empty();
         }
-        return p.trace(carrier, waybillNo);
+        return p.trace(carrier, waybillNo, phone);
     }
 }
