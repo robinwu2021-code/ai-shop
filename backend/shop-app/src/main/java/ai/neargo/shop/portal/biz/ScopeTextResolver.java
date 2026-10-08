@@ -96,6 +96,76 @@ final class ScopeTextResolver {
         return new Result(cap(communityExact(p)));
     }
 
+    /**
+     * 大模型给的整条行政路径 → 一条范围项（TDD-经营范围文字录入 §7）。
+     *
+     * <p>从省开始逐级往下：每一级都在上一级底下找「同名或差一个行政后缀」的区划；
+     * 区划找不到的那一段当聚落名，在上一级区划范围里找（再往下一段当楼栋）。
+     *
+     * <p><b>任何一级认不出，整条算认不出</b>，绝不退回上一级：
+     * {@code ["广东省","深圳市","龙华区","阳光花园"]} 里阳光花园不在库里时，退回「龙华区」
+     * 等于把范围悄悄放大成整个区 —— 排除时更糟，会把整个区都排掉。
+     *
+     * <p>只有一段、又不是省的（「阳光花园」「鹿鸣区」），交给规则版的 {@link #resolve}：
+     * 它会处理同名候选。
+     */
+    Result resolvePath(List<String> path) {
+        if (path == null || path.isEmpty()) {
+            return new Result(List.of());
+        }
+        if (path.size() == 1) {
+            return resolve(path.get(0));
+        }
+        Hit cur = null;
+        int i = 0;
+        String prov = ScopeTextParser.provinceCode(path.get(0));
+        if (prov != null) {
+            cur = province(prov);
+            i = 1;
+        }
+        for (; i < path.size(); i++) {
+            String seg = path.get(i).trim();
+            List<Hit> regionHits = regionExact(seg, cur == null ? null : cur.refCode());
+            if (regionHits.size() == 1) {
+                cur = regionHits.get(0);
+                continue;
+            }
+            if (regionHits.size() > 1) {
+                // 上级没定下来（模型没给省）才会同名多处：交给店主选，且只有走到最后一级时才算数
+                return i == path.size() - 1 ? new Result(cap(regionHits)) : new Result(List.of());
+            }
+            if (cur == null || "COMMUNITY".equals(cur.level())) {
+                return new Result(List.of());
+            }
+            // 不是区划：当聚落（小区/村）在上一级范围里找，下一段（若有）当楼栋
+            final String under = cur.refCode();
+            List<Hit> estates = communityExact(seg).stream()
+                    .filter(h -> regionOfCommunity(h.refCode()).startsWith(under))
+                    .toList();
+            if (estates.size() != 1) {
+                return estates.size() > 1 && i == path.size() - 1 ? new Result(cap(estates)) : new Result(List.of());
+            }
+            cur = estates.get(0);
+            if (i + 1 < path.size()) {
+                Matcher m = BUILDING_NAME.matcher(path.get(i + 1));
+                if (!m.matches() || i + 2 != path.size()) {
+                    return new Result(List.of());
+                }
+                List<Hit> b = buildingUnder(cur.refCode(), m.group(1));
+                return b.size() == 1 ? new Result(b) : new Result(List.of());
+            }
+            return new Result(List.of(cur));
+        }
+        return cur == null ? new Result(List.of()) : new Result(List.of(cur));
+    }
+
+    private String regionOfCommunity(String communityNo) {
+        return communities().stream()
+                .filter(c -> communityNo.equals(c.communityNo()))
+                .map(c -> c.regionCode() == null ? "" : c.regionCode())
+                .findFirst().orElse("");
+    }
+
     private Hit province(String code) {
         return new Hit("PROVINCE", code, ai.neargo.shop.common.Provinces.NAME_BY_CODE.get(code));
     }
@@ -152,7 +222,10 @@ final class ScopeTextResolver {
         if (parents.size() != 1) {
             return List.of();
         }
-        String parentNo = parents.get(0).refCode();
+        return buildingUnder(parents.get(0).refCode(), no);
+    }
+
+    private List<Hit> buildingUnder(String parentNo, String no) {
         return communities().stream()
                 .filter(c -> parentNo.equals(c.parentNo()))
                 .filter(c -> {

@@ -1261,6 +1261,8 @@ export default {
       pickupOnly: "只做自提时，不限地区不生效",
       apply: "填入 {n} 条",
       empty: "没认出任何地方",
+      guess: "按「{p}」补全的，请确认",
+      parsing: "识别中…",
     },
     applyProgress: "提报中 {n} 条",
     picker: {

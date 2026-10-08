@@ -432,6 +432,8 @@ export interface ScopeParsedArea {
   name: string;
   /** 店主原话里的那一段，确认表上给他对照 */
   phrase: string;
+  /** 原话没点名、模型按常识展开的（「江浙沪」「偏远地区」）—— 端上默认不勾 */
+  guess?: boolean;
 }
 /** 同名多处时的一个候选 */
 export interface ScopeParseCandidate {
@@ -459,4 +461,6 @@ export interface ScopeParseResult {
   }>;
   /** 认不出的短语，原样 */
   unmatched: string[];
+  /** llm = 大模型拆句；rule = 模型不可用时的规则兜底 */
+  source?: string;
 }

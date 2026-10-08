@@ -177,4 +177,33 @@ public interface GoodsVisionPort {
      */
     record ZipPick(String path, String target, int order, boolean cover) {
     }
+
+    /**
+     * 经营范围文字录入：一句话 → 结构化地点清单（TDD-经营范围文字录入 §7 大模型识别）。
+     *
+     * <p>放在这个端口上是因为它与商品文字抽取<b>同一个模型、同一套连接与降级</b>；
+     * 名字里的 Goods 是历史原因。<b>模型只给名字，不给码</b> —— 码由调用方逐级在库里查。
+     *
+     * @return 没配模型、超时、返回体解析不了时为 null，调用方退回规则识别
+     */
+    default ScopeExtract extractScope(String text) {
+        return null;
+    }
+
+    /**
+     * @param unlimited 「全国 / 不限 / 除…以外的其他地区」
+     * @param places    地点，按原话顺序
+     * @param unclear   原话提到、模型拿不准是哪里的说法（原样）
+     */
+    record ScopeExtract(boolean unlimited, java.util.List<ScopePlace> places, java.util.List<String> unclear) {
+    }
+
+    /**
+     * @param path  从省级开始的行政区划全称，逐级到原话说到的那一级；小区/楼栋原样接在最后
+     * @param mode  INCLUDE / EXCLUDE
+     * @param text  原话里对应的那一段
+     * @param guess 原话没点名、按常识展开的（「江浙沪」「偏远地区」）—— 端上默认不勾
+     */
+    record ScopePlace(java.util.List<String> path, String mode, String text, boolean guess) {
+    }
 }

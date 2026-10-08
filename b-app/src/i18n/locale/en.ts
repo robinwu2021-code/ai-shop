@@ -1043,6 +1043,8 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
       pickupOnly: "No area limit has no effect for pickup only",
       apply: "Add {n}",
       empty: "Nothing recognized",
+      guess: "Expanded from \"{p}\", please check",
+      parsing: "Recognizing…",
     },
     applyProgress: "{n} pending",
     picker: {

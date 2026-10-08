@@ -741,7 +741,7 @@ export const storeMock: Pick<MerchantApi,
       }
       return chain.join(" / ");
     };
-    const out: ScopeParseResult = { unlimited: false, items: [], ambiguous: [], unmatched: [] };
+    const out: ScopeParseResult = { unlimited: false, items: [], ambiguous: [], unmatched: [], source: "rule" };
     for (const raw of (text ?? "").split(/[，,；;。\n]+/)) {
       let clause = raw.trim();
       if (!clause) continue;

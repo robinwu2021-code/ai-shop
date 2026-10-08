@@ -35,13 +35,16 @@ public class BizRegionController {
     private final RegionService regionService;
     private final ai.neargo.shop.community.service.CommunityService communityService;
     private final GeoService geoService;
+    private final ai.neargo.shop.spi.product.GoodsVisionPort model;
 
     public BizRegionController(RegionService regionService,
                                ai.neargo.shop.community.service.CommunityService communityService,
-                               GeoService geoService) {
+                               GeoService geoService,
+                               ai.neargo.shop.spi.product.GoodsVisionPort model) {
         this.regionService = regionService;
         this.communityService = communityService;
         this.geoService = geoService;
+        this.model = model;
     }
 
     /**
@@ -129,9 +132,50 @@ public class BizRegionController {
      */
     @PostMapping("/biz/regions/parse")
     public ParseVO parse(@RequestBody ParseReq req) {
-        var parsed = ScopeTextParser.parse(req == null ? null : req.text());
+        String text = req == null ? null : req.text();
         var resolver = new ScopeTextResolver(regionService, communityService,
                 req == null ? null : req.latE6(), req == null ? null : req.lngE6());
+        /*
+         * **先问模型，模型不在再走规则**（§7）。模型拆句比规则稳得多（「山西运城」「江浙沪」「除了…的其他区域」），
+         * 但它只给名字：码仍由 resolver 逐级查库。没配模型 / 超时 / 返回体坏了 → null → 规则。
+         */
+        var extract = text == null || text.isBlank() ? null : model.extractScope(text);
+        if (extract != null) {
+            return fromModel(extract, resolver);
+        }
+        return fromRules(ScopeTextParser.parse(text), resolver);
+    }
+
+    /** 模型那条路：每个地点按整条路径认码；认不出的连同模型自己拿不准的，一起进 unmatched */
+    static ParseVO fromModel(ai.neargo.shop.spi.product.GoodsVisionPort.ScopeExtract extract, ScopeTextResolver resolver) {
+        java.util.LinkedHashMap<String, ParsedArea> items = new java.util.LinkedHashMap<>();
+        List<Ambiguous> ambiguous = new java.util.ArrayList<>();
+        List<String> unmatched = new java.util.ArrayList<>();
+        for (var pl : extract.places()) {
+            var r = resolver.resolvePath(pl.path());
+            if (r.hits().size() == 1) {
+                var h = r.hits().get(0);
+                items.remove(h.level() + "|" + h.refCode());
+                items.put(h.level() + "|" + h.refCode(),
+                        new ParsedArea(pl.mode(), h.level(), h.refCode(), h.name(), pl.text(), pl.guess()));
+            } else if (r.hits().isEmpty()) {
+                if (!unmatched.contains(pl.text())) {
+                    unmatched.add(pl.text());
+                }
+            } else {
+                ambiguous.add(new Ambiguous(pl.text(), pl.mode(), r.hits().stream()
+                        .map(h -> new Candidate(h.level(), h.refCode(), h.name())).toList()));
+            }
+        }
+        for (String u : extract.unclear()) {
+            if (!unmatched.contains(u)) {
+                unmatched.add(u);
+            }
+        }
+        return new ParseVO(extract.unlimited(), List.copyOf(items.values()), ambiguous, unmatched, "llm");
+    }
+
+    private static ParseVO fromRules(ScopeTextParser.Parsed parsed, ScopeTextResolver resolver) {
         java.util.LinkedHashMap<String, ParsedArea> items = new java.util.LinkedHashMap<>();
         List<Ambiguous> ambiguous = new java.util.ArrayList<>();
         List<String> unmatched = new java.util.ArrayList<>();
@@ -143,7 +187,7 @@ public class BizRegionController {
                     // 同一个地方说了两遍：后说的方向赢（「深圳都送，龙华不送」里龙华只出一条排除）
                     items.remove(h.level() + "|" + h.refCode());
                     items.put(h.level() + "|" + h.refCode(),
-                            new ParsedArea(mode, h.level(), h.refCode(), h.name(), ph.text()));
+                            new ParsedArea(mode, h.level(), h.refCode(), h.name(), ph.text(), false));
                 } else if (r.hits().isEmpty()) {
                     unmatched.add(ph.text());
                 } else {
@@ -152,7 +196,7 @@ public class BizRegionController {
                 }
             }
         }
-        return new ParseVO(parsed.unlimited(), List.copyOf(items.values()), ambiguous, unmatched);
+        return new ParseVO(parsed.unlimited(), List.copyOf(items.values()), ambiguous, unmatched, "rule");
     }
 
     /** @param latE6 门店坐标，可空：同名区划按远近排候选 */
@@ -164,17 +208,19 @@ public class BizRegionController {
      * @param items     认准的范围项，按出现顺序
      * @param ambiguous 同名多处，等店主点选
      * @param unmatched 认不出的短语，原样
+     * @param source    llm = 大模型拆句；rule = 模型不可用时的规则兜底
      */
     public record ParseVO(boolean unlimited, List<ParsedArea> items, List<Ambiguous> ambiguous,
-                          List<String> unmatched) {
+                          List<String> unmatched, String source) {
     }
 
     /**
      * @param mode   INCLUDE / EXCLUDE
      * @param name   从省到自己的整条路径（与选择器勾选时存的 name 同形）
      * @param phrase 店主原话里的那一段，确认表上给他对照
+     * @param guess  原话没点名、模型按常识展开的（「江浙沪」「偏远地区」）—— 端上默认不勾
      */
-    public record ParsedArea(String mode, String level, String refCode, String name, String phrase) {
+    public record ParsedArea(String mode, String level, String refCode, String name, String phrase, boolean guess) {
     }
 
     public record Ambiguous(String phrase, String mode, List<Candidate> candidates) {

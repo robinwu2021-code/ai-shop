@@ -54,8 +54,11 @@ async function parse() {
     /*
      * 说了「全国」又点名了某处纳入（「全国发货，龙华区自送」）：两句话互相抵消 ——
      * 只要清单里还有一条纳入，就不再是「不限」。纳入项默认不勾，店主真要就自己勾上。
+     * 模型按常识展开的（「江浙沪」「偏远地区」，guess）同样默认不勾：那不是他原话点的名。
      */
-    off.value = new Set(r.unlimited ? r.items.filter((a) => a.mode !== "EXCLUDE").map(keyOf) : []);
+    off.value = new Set(r.items
+      .filter((a) => a.guess || (r.unlimited && a.mode !== "EXCLUDE"))
+      .map(keyOf));
     chosen.value = {};
   } finally {
     busy.value = false;
@@ -111,7 +114,7 @@ function split(name: string) {
     <textarea v-model="text" class="field__area" :placeholder="String(t('store.text.ph'))" maxlength="300" />
     <text class="sh-hint">{{ t("store.text.example") }}</text>
     <view class="sh-btn sh-btn--soft scope-text__parse" :class="{ 'is-disabled': !text.trim() || busy }" @tap="parse">
-      {{ busy ? "…" : t("store.text.parse") }}
+      {{ busy ? t("store.text.parsing") : t("store.text.parse") }}
     </view>
 
     <view v-if="result" class="scope-text__result">
@@ -131,6 +134,7 @@ function split(name: string) {
         <view class="sh-fill">
           <text class="txt-body scope-text__name">{{ split(a.name).main }}</text>
           <text v-if="split(a.name).path" class="txt-caption scope-text__name">{{ split(a.name).path }}</text>
+          <text v-if="a.guess" class="txt-caption is-warning scope-text__name">{{ t("store.text.guess", { p: a.phrase }) }}</text>
         </view>
         <text class="sh-chip" :class="a.mode === 'EXCLUDE' ? 'sh-chip--danger' : 'sh-chip--primary'">
           {{ a.mode === "EXCLUDE" ? t("store.text.exclude") : t("store.text.include") }}

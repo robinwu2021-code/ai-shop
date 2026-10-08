@@ -733,6 +733,149 @@ public class GoodsVisionGateway implements GoodsVisionPort {
         return v < 0 ? 0 : Math.min(v, 1);
     }
 
+    // ------------------------------------------------------------------ 经营范围文字录入
+
+    /**
+     * 一句话 → 地点清单（TDD-经营范围文字录入 §7）。**模型只给名字**，码由调用方逐级在库里查。
+     *
+     * <p>token 给 800：一个地点一行约 50 token，「江浙沪」这类展开一次就是三行。
+     * 超时沿用 {@code shop.ai.vision.timeout-seconds}；失败一律 null，调用方退回规则。
+     */
+    @Override
+    public GoodsVisionPort.ScopeExtract extractScope(String text) {
+        if (!isEnabled() || text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            var body = Map.of(
+                    "model", model,
+                    "max_tokens", 800,
+                    "temperature", 0.1,
+                    "chat_template_kwargs", Map.of("enable_thinking", false),
+                    "messages", List.of(Map.of(
+                            "role", "user",
+                            "content", SCOPE_PROMPT + "\n\n商家原话：\n" + text.trim())));
+            var req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(timeoutSeconds))
+                    .header("Content-Type", "application/json");
+            if (!apiKey.isBlank()) {
+                req.header("Authorization", "Bearer " + apiKey);
+            }
+            var resp = http.send(
+                    req.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                log.warn("经营范围识别失败：HTTP {} {}", resp.statusCode(), abbreviate(resp.body()));
+                return null;
+            }
+            String content = json.readTree(resp.body())
+                    .path("choices").path(0).path("message").path("content").asText("");
+            return parseScope(json, content);
+        } catch (Exception e) {
+            log.warn("经营范围识别异常：{}", e.toString());
+            return null;
+        }
+    }
+
+    /**
+     * 经营范围识别提示词。
+     *
+     * <p>三条硬约束都是从规则版踩出来的：
+     * <ol>
+     *   <li><b>写整条行政路径、不写码</b> —— 码由后端逐级查库。模型知道「运城在山西」，
+     *       但它编出来的六位码不可信；路径让后端能在「山西省」底下找「运城市」，同名的「朝阳区」也就分开了。</li>
+     *   <li><b>方向管整句</b>：「新疆、西藏不发」两个都是排除 —— 规则版最早就栽在这里。</li>
+     *   <li><b>常识展开要标 guess</b>：「江浙沪」「偏远地区」不是原话点的名，端上默认不勾，让店主自己确认。</li>
+     * </ol>
+     */
+    static final String SCOPE_PROMPT = """
+            你是「经营范围」识别助手。商家用一句话描述自己的货卖到/送到哪些地方、哪些地方不送。
+            请整理成结构化的地点清单。只输出一个 JSON 对象，不要解释、不要代码块、不要编造。
+
+            字段：
+            - unlimited：true/false。原话有「全国」「不限地区」「其他地区都送」「除了…以外的其他区域」这类
+              「排除项之外都送」的意思时为 true；只列了几个地方时为 false。
+            - places：数组，每项 {"path":[…],"mode":"INCLUDE"或"EXCLUDE","text":"…","guess":true/false}
+              · path：从**省级**开始的行政区划**全称**，逐级写到原话说到的那一级为止，不要往下补、也不要跳级。
+                深圳 → ["广东省","深圳市"]；山西运城 → ["山西省","运城市"]；广东 → ["广东省"]；
+                运城盐湖区 → ["山西省","运城市","盐湖区"]；北京朝阳 → ["北京市","朝阳区"]（直辖市第二级直接是区）；
+                新疆 → ["新疆维吾尔自治区"]；内蒙 → ["内蒙古自治区"]。
+                小区、楼栋、村这类不是行政区划的，接在已知上级后面原样照抄：
+                「龙华区阳光花园3栋」→ ["广东省","深圳市","龙华区","阳光花园","3栋"]。
+                原话没说上级、你也不能确定在哪个省的（比如只写一个小区名），path 只写它自己：["阳光花园"]。
+              · mode：送/卖/发到那里 → "INCLUDE"；不送/不发/不卖/除外/排除 → "EXCLUDE"。
+                **方向管整句**：「新疆、西藏不发」两个都是 EXCLUDE；「深圳都送，龙华不送」深圳 INCLUDE、龙华 EXCLUDE。
+              · text：原话里对应的那几个字。
+              · guess：原话直接点了名的为 false；由你按常识展开的为 true。
+            - unclear：数组，原话提到了、但你无法确定是哪里的地点说法，原样照抄（如「老城区」「我们这边」）。
+
+            规则：
+            1. 多个地点连写要拆开：「新疆西藏青海」是三项。
+            2. 常见合称按常识展开、guess 记 true：
+               江浙沪 → 江苏省、浙江省、上海市；港澳台 → 香港特别行政区、澳门特别行政区、台湾省；
+               偏远地区（快递语境）→ 新疆维吾尔自治区、西藏自治区、青海省、内蒙古自治区、宁夏回族自治区、甘肃省；
+               珠三角、长三角这类不确定范围的合称不要展开，放进 unclear。
+            3. 「全国」本身不是地点，不进 places。「等」「等地」「都」「包邮」这类字不进 text 以外的任何地方。
+            4. 不要编造原话没提到的地点。拿不准就放 unclear，空着是合法答案。
+
+            示例输入：全国发货，新疆、西藏不发
+            示例输出：{"unlimited":true,"places":[{"path":["新疆维吾尔自治区"],"mode":"EXCLUDE","text":"新疆","guess":false},{"path":["西藏自治区"],"mode":"EXCLUDE","text":"西藏","guess":false}],"unclear":[]}
+
+            示例输入：除了新疆西藏的其他区域
+            示例输出：{"unlimited":true,"places":[{"path":["新疆维吾尔自治区"],"mode":"EXCLUDE","text":"新疆","guess":false},{"path":["西藏自治区"],"mode":"EXCLUDE","text":"西藏","guess":false}],"unclear":[]}
+
+            示例输入：深圳，山西运城，广东等
+            示例输出：{"unlimited":false,"places":[{"path":["广东省","深圳市"],"mode":"INCLUDE","text":"深圳","guess":false},{"path":["山西省","运城市"],"mode":"INCLUDE","text":"山西运城","guess":false},{"path":["广东省"],"mode":"INCLUDE","text":"广东","guess":false}],"unclear":[]}
+
+            示例输入：江浙沪包邮，偏远地区不发，龙华区阳光花园3栋不送
+            示例输出：{"unlimited":false,"places":[{"path":["江苏省"],"mode":"INCLUDE","text":"江浙沪","guess":true},{"path":["浙江省"],"mode":"INCLUDE","text":"江浙沪","guess":true},{"path":["上海市"],"mode":"INCLUDE","text":"江浙沪","guess":true},{"path":["新疆维吾尔自治区"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["西藏自治区"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["青海省"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["内蒙古自治区"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["宁夏回族自治区"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["甘肃省"],"mode":"EXCLUDE","text":"偏远地区","guess":true},{"path":["广东省","深圳市","龙华区","阳光花园","3栋"],"mode":"EXCLUDE","text":"龙华区阳光花园3栋","guess":false}],"unclear":[]}""";
+
+    /**
+     * 模型返回体 → {@link GoodsVisionPort.ScopeExtract}。容忍代码块与前后废话（取第一个 { 到最后一个 }）；
+     * mode 不是 INCLUDE/EXCLUDE 的、path 为空的地点丢弃 —— 宁可少一条也不要一条方向不明的。
+     */
+    static GoodsVisionPort.ScopeExtract parseScope(ObjectMapper json, String content) {
+        String s = content == null ? "" : content.trim();
+        int start = s.indexOf('{');
+        int end = s.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            log.warn("经营范围识别：返回体里没有 JSON —— {}", abbreviate(content));
+            return null;
+        }
+        try {
+            JsonNode node = json.readTree(s.substring(start, end + 1));
+            var places = new java.util.ArrayList<GoodsVisionPort.ScopePlace>();
+            for (JsonNode p : node.path("places")) {
+                var path = new java.util.ArrayList<String>();
+                for (JsonNode seg : p.path("path")) {
+                    String v = seg.asText("").trim();
+                    if (!v.isEmpty()) {
+                        path.add(v);
+                    }
+                }
+                String mode = p.path("mode").asText("").trim().toUpperCase(java.util.Locale.ROOT);
+                if (path.isEmpty() || !(mode.equals("INCLUDE") || mode.equals("EXCLUDE"))) {
+                    continue;
+                }
+                String text = p.path("text").asText("").trim();
+                places.add(new GoodsVisionPort.ScopePlace(List.copyOf(path), mode,
+                        text.isEmpty() ? String.join("", path) : text, p.path("guess").asBoolean(false)));
+            }
+            var unclear = new java.util.ArrayList<String>();
+            for (JsonNode u : node.path("unclear")) {
+                String v = u.asText("").trim();
+                if (!v.isEmpty()) {
+                    unclear.add(v);
+                }
+            }
+            return new GoodsVisionPort.ScopeExtract(node.path("unlimited").asBoolean(false),
+                    List.copyOf(places), List.copyOf(unclear));
+        } catch (Exception e) {
+            log.warn("经营范围识别：JSON 解析失败 —— {}", abbreviate(content));
+            return null;
+        }
+    }
+
     private static String abbreviate(String s) {
         if (s == null) {
             return "";
