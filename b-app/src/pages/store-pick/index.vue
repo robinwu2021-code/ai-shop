@@ -80,6 +80,9 @@ async function confirm() {
    * 落地那一屏（工作台标题「工作台 · 新店名」/「我的」头部）已经是新店，
    * 那就是「切过去了」最直接的回馈。
    */
+  // 店名在切之前就从列表里拿准（current = 选中那家）——
+  // 不用切完的 currentStore：跨证照切店后门店列表要重拉，那一瞬它可能还没对上新店。
+  const pickedName = current.value?.name || "";
   switching.value = true;
   uni.showLoading({ title: String(t("storePick.switching")), mask: true });
   try {
@@ -88,12 +91,25 @@ async function confirm() {
     uni.hideLoading();
     switching.value = false;
   }
-  if (entry.value) {
-    // reLaunch：这一页不该留在栈里，返回键不应回到「选择门店」
-    uni.reLaunch({ url: ROUTES.home });
-  } else {
-    uni.navigateBack();
-  }
+  /*
+   * **切完先给一个带对勾的「已切换至 XX」，停够看得见，再落地。**
+   * 店主反馈切店的动效不够明显 —— 只有转圈 + 落地页标题换名，太轻。
+   * 成功 toast 带 √ 图标、是明确的「切成功了」确认。
+   * 等 toast 露够（success 默认 1.5s，这里停 900ms 够看清又不拖沓）再跳，
+   * 否则 reLaunch 会把它一起吞掉。
+   */
+  uni.showToast({
+    title: String(t("stores.switched", { name: pickedName })),
+    icon: "success",
+  });
+  setTimeout(() => {
+    if (entry.value) {
+      // reLaunch：这一页不该留在栈里，返回键不应回到「选择门店」
+      uni.reLaunch({ url: ROUTES.home });
+    } else {
+      uni.navigateBack();
+    }
+  }, 900);
 }
 </script>
 

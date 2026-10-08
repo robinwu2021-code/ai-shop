@@ -274,7 +274,8 @@ async function switchTo(s: Store) {
     uni.hideLoading();
     switching.value = false;
   }
-  uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "none" });
+  // 带对勾的成功提示（不是纯文字 icon:none）—— 切店的动效要明显，√ 是明确的「切成功了」
+  uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "success" });
 }
 
 /**
