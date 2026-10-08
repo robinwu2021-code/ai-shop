@@ -9,6 +9,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onReachBottom, onShow } from "@dcloudio/uni-app";
+import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
@@ -37,11 +38,11 @@ const tabs = computed(() => [
 ]);
 
 async function load() {
-  if (!user.isLogin) await user.silentLogin().catch(() => {});
-  if (!user.isLogin) {
-    uni.navigateTo({ url: ROUTES.login });
-    return;
-  }
+  // 统一闸：没手机号弹授权层，绑完自动把这次加载补上
+  if (!(await withPhone(doLoad))) return;
+}
+
+async function doLoad() {
   try {
     const [g, s] = await Promise.all([api.favoriteGoods(1, PAGE_SIZE), api.favoriteStores()]);
     goods.value = g.records;
@@ -137,7 +138,9 @@ onReachBottom(more);
         :text="$t('favorites.emptyStores')"
       ></sh-empty>
     </view>
-  </sh-scaffold>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+    @done="onPhoneBound" @close="onPhoneGateClose" />
+</sh-scaffold>
 </template>
 
 <style scoped>

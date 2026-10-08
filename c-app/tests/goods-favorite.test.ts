@@ -84,6 +84,8 @@ describe("商品详情 · 收藏与送达", () => {
 
   it("★★★ AC1 点收藏：以后端回的状态为准，字变「已收藏」", async () => {
     useUserStore().token = "ctk_x";
+    // 这些动作走「要手机号」的统一闸（shared/phone-required）：只有 token 会被拦下弹授权层
+    useUserStore().user = { phone: "13900000000" } as never;
     goodsDetail.mockResolvedValue(goods({ favorited: false }));
     toggleFavoriteGoods.mockResolvedValue({ favorited: true });
     const w = await render();

@@ -2,6 +2,7 @@
 // 分类：三品类切换 + 列表。M0 只做品类维度，三级分类树在 M1 补。
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { phoneRequired, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
@@ -78,7 +79,11 @@ function openGoods(g: Goods) {
   uni.navigateTo({ url: goodsUrl(g) });
 }
 
-onShow(load);
+onShow(() => {
+  load();
+  // 进页即弹（2026-10-08 拍板）：没手机号就把授权层摆出来
+  void requirePhoneOnEnter();
+});
 </script>
 
 <template>
@@ -117,6 +122,8 @@ onShow(load);
         :text="$t('category.emptyInCommunity')"
       ></sh-empty>
     </view>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+      @done="onPhoneBound" @close="onPhoneGateClose" />
   </sh-scaffold>
 </template>
 

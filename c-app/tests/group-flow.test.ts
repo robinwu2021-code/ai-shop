@@ -139,6 +139,8 @@ describe("我的拼团（p12）", () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     useUserStore().token = "ctk_x";
+    // 这些动作走「要手机号」的统一闸（shared/phone-required）：只有 token 会被拦下弹授权层
+    useUserStore().user = { phone: "13900000000" } as never;
   });
 
   it("★★ 按状态分栏：截止了还没结算的算「没凑齐」，不挂在拼团中", async () => {

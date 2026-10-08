@@ -14,6 +14,7 @@
 // 不经过首页与选社区：扫码的人是来买东西的，游客可逛，加购时再引导登录。
 import { computed, ref } from "vue";
 import { onLoad, onPageScroll, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { phoneRequired, withPhone, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { useI18n } from "vue-i18n";
 import { fromE6, openLocation } from "@shared/ports/location";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
@@ -256,6 +257,8 @@ onLoad(async (q) => {
     return;
   }
   await load();
+  // 进页即弹（2026-10-08 拍板）：没手机号就把授权层摆出来
+  void requirePhoneOnEnter();
 });
 
 /** scene 没编码过时 decodeURIComponent 会对「%」抛错 —— 解不开就用原样，别整页崩掉。 */
@@ -307,10 +310,11 @@ async function addGoods(g: Goods, e: unknown) {
 }
 
 async function toggleFav() {
-  if (!user.isLogin) {
-    uni.navigateTo({ url: ROUTES.login });
-    return;
-  }
+  // 走统一闸：没手机号先弹授权层，绑完自动把这次收藏补上（不用再点一次）
+  if (!(await withPhone(doToggleFav))) return;
+}
+
+async function doToggleFav() {
   const { favorited: on } = await api.toggleFavoriteStore(entityNo.value);
   if (data.value) data.value.favorited = on;
   uni.showToast({ title: on ? t("store.faved") : t("store.unfaved"), icon: "none" });
@@ -577,7 +581,9 @@ onShareTimeline(() =>
         :store="{ storeNo, storeName, announcement: data.store.announcement }"
       ></biz-poster>
     </template>
-  </sh-scaffold>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+    @done="onPhoneBound" @close="onPhoneGateClose" />
+</sh-scaffold>
 </template>
 
 <style scoped>

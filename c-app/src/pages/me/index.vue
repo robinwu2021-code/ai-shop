@@ -5,6 +5,7 @@ import type { MasterData, MerchantApplyStatus, MyFission } from "@shared/types";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
+import { phoneRequired, withPhone, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { merchantApplyVisible, openWxCustomerService } from "@shared/ports";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
@@ -50,7 +51,8 @@ const points = ref(0);
 const unread = ref(0);
 
 function gotoLogin() {
-  uni.navigateTo({ url: ROUTES.login });
+  // 统一闸：这里要的其实是手机号（账号 openid 打开小程序就静默拿到了）
+  void withPhone(() => gotoProfile());
 }
 /**
  * 商家运营入口。**只在「并进了 B 端分包」的那种构建里出现**
@@ -503,6 +505,8 @@ onShow(() => {
     fission.value = null;
   }
   if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
+  // 进页即弹（2026-10-08 拍板）
+  void requirePhoneOnEnter();
 });
 </script>
 
@@ -830,7 +834,9 @@ onShow(() => {
       H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
     -->
     <phone-gate :visible="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
-  </sh-scaffold>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+    @done="onPhoneBound" @close="onPhoneGateClose" />
+</sh-scaffold>
 </template>
 
 <style scoped>

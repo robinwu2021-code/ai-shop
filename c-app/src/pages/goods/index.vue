@@ -12,6 +12,7 @@ import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 
 import { useI18n } from "vue-i18n";
 import { thumb } from "@shared/utils/media-thumb";
 import { onLoad, onPageScroll, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
+import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
@@ -747,6 +748,11 @@ watch(maxQty, (max) => {
   if (qty.value > max) qty.value = Math.max(1, max === Infinity ? qty.value : max);
 });
 
+/*
+ * **加购刻意不要手机号**（2026-10-08 拍板）：先让人把东西装进车，
+ * 到结算那一步再要号 —— 在加购就拦会把游客挡在转化漏斗最上面一层。
+ * 收藏、关注、参团那些要号，因为它们本身就是「挂在账号下」的动作。
+ */
 async function addToCart(e: unknown) {
   const g = goods.value;
   if (!g || !sku.value) return;
@@ -847,11 +853,13 @@ const faving = ref(false);
 async function toggleFavorite() {
   const g = goods.value;
   if (!g || faving.value) return;
-  if (!user.isLogin) await user.silentLogin().catch(() => {});
-  if (!user.isLogin) {
-    uni.navigateTo({ url: ROUTES.login });
-    return;
-  }
+  // 统一闸：没手机号弹授权层，绑完自动把这次收藏补上
+  if (!(await withPhone(doToggleFavorite))) return;
+}
+
+async function doToggleFavorite() {
+  const g = goods.value;
+  if (!g) return;
   faving.value = true;
   try {
     const { favorited } = await api.toggleFavoriteGoods(g.goodsNo);
@@ -1581,7 +1589,9 @@ onShareTimeline(() =>
   
   
     </template>
-  </sh-scaffold>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+    @done="onPhoneBound" @close="onPhoneGateClose" />
+</sh-scaffold>
 </template>
 
 <style scoped>
