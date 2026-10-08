@@ -5,6 +5,7 @@ import ai.neargo.shop.platform.AddressHints;
 import ai.neargo.shop.platform.GeoService;
 import ai.neargo.shop.platform.RegionService;
 import ai.neargo.shop.spi.platform.GeoPort;
+import ai.neargo.shop.spi.product.GoodsVisionPort;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.context.annotation.Profile;
@@ -35,12 +36,12 @@ public class BizRegionController {
     private final RegionService regionService;
     private final ai.neargo.shop.community.service.CommunityService communityService;
     private final GeoService geoService;
-    private final ai.neargo.shop.spi.product.GoodsVisionPort model;
+    private final GoodsVisionPort model;
 
     public BizRegionController(RegionService regionService,
                                ai.neargo.shop.community.service.CommunityService communityService,
                                GeoService geoService,
-                               ai.neargo.shop.spi.product.GoodsVisionPort model) {
+                               GoodsVisionPort model) {
         this.regionService = regionService;
         this.communityService = communityService;
         this.geoService = geoService;
@@ -147,7 +148,7 @@ public class BizRegionController {
     }
 
     /** 模型那条路：每个地点按整条路径认码；认不出的连同模型自己拿不准的，一起进 unmatched */
-    static ParseVO fromModel(ai.neargo.shop.spi.product.GoodsVisionPort.ScopeExtract extract, ScopeTextResolver resolver) {
+    static ParseVO fromModel(GoodsVisionPort.ScopeExtract extract, ScopeTextResolver resolver) {
         java.util.LinkedHashMap<String, ParsedArea> items = new java.util.LinkedHashMap<>();
         List<Ambiguous> ambiguous = new java.util.ArrayList<>();
         List<String> unmatched = new java.util.ArrayList<>();
