@@ -70,10 +70,14 @@ public interface CommunityAdminService {
     DistributionVO distribution();
 
     /**
-     * 下钻：一个<b>区县</b>（国标 6 位前缀）下的开放聚落明细，按买家数降序。
-     * 行数被区县框住（几百级），不是全平台两万多。区县码来自 {@link DistributionVO.RegionRow#regionCode}。
+     * 下钻：一个<b>区县</b>（国标 6 位前缀）下的开放聚落明细，按买家数降序，<b>分页</b>。
+     *
+     * <p><b>为什么要分页</b>：区县不一定「几百级」。深圳的区县是估价扫出来的，宝安区一个区就
+     * 6367 个聚落、且几乎全是空的（0 买家 0 商家）。一次全量返回就是把这次要消灭的噪声
+     * 缩到一个区县里重演（1.5MB / ~2s）。分页后每页只算、只传一页（默认 200），恒 &lt; 1s。
+     * 区县码来自 {@link DistributionVO.RegionRow#regionCode}。
      */
-    java.util.List<DistributionVO.DistributionRow> communitiesInRegion(String regionCode);
+    DistributionVO.CommunityPage communitiesInRegion(String regionCode, int page, int size);
 
     /**
      * 位置分布：**区县概览 + 招商清单 + 全局计数 + 算不了的**（O11–O13）。
@@ -118,6 +122,16 @@ public interface CommunityAdminService {
          */
         public record DistributionRow(String communityNo, String name, String kind, String regionPath,
                                       int buyerCount, int merchantCount, int goodsCount) {
+        }
+
+        /**
+         * 下钻一页。字段名与 ops-web 的 {@code Page<T>} 对齐（records/total/page/size），
+         * 端上直接喂 {@code PagedTable}。
+         *
+         * @param records 当前页的聚落明细（按买家数降序）
+         * @param total   该区县开放聚落总数（不是总页数）
+         */
+        public record CommunityPage(java.util.List<DistributionRow> records, long total, int page, int size) {
         }
 
         /**

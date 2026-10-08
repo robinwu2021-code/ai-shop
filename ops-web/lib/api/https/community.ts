@@ -5,8 +5,8 @@ import type { CommunityApi } from "../contracts/community";
 export const communityHttp: CommunityApi = {
   coverageHealth: () => client.get("/ops/coverage/health"),
   coverageDistribution: () => client.get("/ops/coverage/distribution"),
-  distributionCommunities: (regionCode) =>
-    client.get("/ops/coverage/distribution/communities", { regionCode }),
+  distributionCommunities: (regionCode, page, size) =>
+    client.get("/ops/coverage/distribution/communities", { regionCode, page, size }),
   openMapCommunities: (regionPrefix) => client.post("/ops/communities/open-map", undefined, { regionPrefix }),
   listCommunities: (q) => client.get("/ops/communities", q),
   setCommunityOpen: (no, opened) => client.post(`/ops/communities/${no}/open`, { opened }),

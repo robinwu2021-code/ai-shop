@@ -80,15 +80,17 @@ public class OpsCoverageController {
     }
 
     /**
-     * 下钻：一个<b>区县</b>（国标 6 位前缀，来自概览的 {@code regions[].regionCode}）下的聚落明细。
+     * 下钻：一个<b>区县</b>（国标 6 位前缀，来自概览的 {@code regions[].regionCode}）下的聚落明细，<b>分页</b>。
      *
-     * <p>概览按区县汇总（两万多聚落不可能平铺），要看具体哪些小区点开区县走这条 ——
-     * 行数被区县框住（几百级），不是全平台。
+     * <p>概览按区县汇总（两万多聚落不可能平铺）。要看具体哪些小区点开区县走这条 —— 但区县本身也可能很大
+     * （宝安区 6367 个聚落），所以这条也分页（默认每页 200），一页算一页、传一页，恒 &lt; 1s。
      */
     @GetMapping("/ops/coverage/distribution/communities")
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
-    public java.util.List<CommunityAdminService.DistributionVO.DistributionRow> distributionCommunities(
-            @org.springframework.web.bind.annotation.RequestParam String regionCode) {
-        return adminService.communitiesInRegion(regionCode);
+    public CommunityAdminService.DistributionVO.CommunityPage distributionCommunities(
+            @org.springframework.web.bind.annotation.RequestParam String regionCode,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "200") int size) {
+        return adminService.communitiesInRegion(regionCode, page, size);
     }
 }

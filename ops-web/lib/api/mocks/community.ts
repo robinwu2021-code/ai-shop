@@ -225,7 +225,7 @@ export const communityMock: CommunityApi = {
     }, 300);
   },
 
-  distributionCommunities: async (regionCode: string) => {
+  distributionCommunities: async (regionCode: string, page: number, size: number) => {
     const inside = (c: (typeof db.communities)[number]) =>
       c.latE6 == null ? 0 : (db.addresses ?? []).filter((a) => a.latE6 != null).filter((a) => {
         const dLat = ((c.latE6 as number) - a.latE6) / 1e6 * 111_000;
@@ -233,14 +233,16 @@ export const communityMock: CommunityApi = {
           * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
         return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
       }).length;
-    const rows = db.communities
+    const all = db.communities
       .filter((c) => c.opened && (c.regionCode ?? "").startsWith(regionCode))
       .map((c) => ({
         communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
         regionPath: c.regionPath, buyerCount: inside(c),
         merchantCount: c.regionCode ? 2 : 0, goodsCount: c.regionCode ? 17 : 0,
       })).sort((a, b) => b.buyerCount - a.buyerCount);
-    return wait(rows, 200);
+    // 只传一页 —— 真区县可能几千个聚落（宝安区 6367）。字段名与 Page<T> 对齐。
+    const from = Math.max(0, (page - 1) * size);
+    return wait({ records: all.slice(from, from + size), total: all.length, page, size }, 200);
   },
 
   listCommunityApplies: (q = {}) =>

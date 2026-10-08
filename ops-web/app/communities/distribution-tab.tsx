@@ -15,11 +15,13 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { PagedTable } from "@/components/ui/paged-table";
 import { ErrorState, Skeleton } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
 import { HelpNote } from "@/components/ui/help-note";
 import { useCopy, fill } from "@/lib/use-copy";
+import { usePaging } from "@/lib/use-paging";
 import { COMMUNITIES_COPY } from "./copy";
 import type { DistributionRow, RegionRow } from "@/lib/types";
 
@@ -57,9 +59,12 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     enabled,
   });
   const [drill, setDrill] = useState<RegionRow | null>(null);
+  // 下钻分页：区县本身可能几千个聚落（宝安区 6367），默认每页 200
+  const { page, setPage, size, setSize } = usePaging(200);
+  const openDrill = (r: RegionRow) => { setDrill(r); setPage(1); };
   const drillRows = useQuery({
-    queryKey: ["coverage-distribution-communities", drill?.regionCode],
-    queryFn: () => api.distributionCommunities(drill!.regionCode!),
+    queryKey: ["coverage-distribution-communities", drill?.regionCode, page, size],
+    queryFn: () => api.distributionCommunities(drill!.regionCode!, page, size),
     enabled: enabled && !!drill?.regionCode,
   });
 
@@ -89,7 +94,7 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     { header: c.colDistrict, cell: (r) => (
       <button type="button"
               className="focus-ring text-start text-primary-ink underline-offset-2 hover:underline"
-              onClick={() => setDrill(r)}>
+              onClick={() => openDrill(r)}>
         {r.regionName ?? r.regionCode ?? "—"}
       </button>
     ) },
@@ -173,21 +178,24 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
                    rowKey={(r) => r.regionCode ?? "_"} empty={c.distNoRegions} />
       </div>
 
-      {/* 下钻：某区县的小区明细（行数被区县框住） */}
+      {/* 下钻：某区县的小区明细，分页（区县本身可能几千个聚落） */}
       {drill && (
         <div className="space-y-2 rounded-card border border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <div className="txt-body font-medium">{drill.regionName ?? drill.regionCode}</div>
+            <div className="txt-body font-medium">
+              {drill.regionName ?? drill.regionCode}
+              <span className="ml-2 txt-caption text-muted-foreground tabular-nums">
+                {fill(c.distDrillTotal, { n: drillRows.data?.total ?? drill.communityCount })}
+              </span>
+            </div>
             <button type="button"
                     className="focus-ring txt-caption text-primary-ink underline-offset-2 hover:underline"
                     onClick={() => setDrill(null)}>
               {c.distDrillClose}
             </button>
           </div>
-          <DataTable rows={drillRows.data ?? []} columns={communityCols}
-                     loading={drillRows.isPending} error={drillRows.error}
-                     onRetry={() => drillRows.refetch()}
-                     rowKey={(r) => r.communityNo} empty={c.distDrillEmpty} />
+          <PagedTable query={drillRows} page={page} size={size} onPage={setPage} onSize={setSize}
+                      columns={communityCols} rowKey={(r) => r.communityNo} empty={c.distDrillEmpty} />
         </div>
       )}
     </div>

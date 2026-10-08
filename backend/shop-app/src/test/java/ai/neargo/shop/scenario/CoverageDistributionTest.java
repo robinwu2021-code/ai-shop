@@ -106,7 +106,7 @@ class CoverageDistributionTest {
     }
 
     private DistributionVO.DistributionRow drillRow(String district, String communityNo) {
-        return adminService.communitiesInRegion(district).stream()
+        return adminService.communitiesInRegion(district, 1, 500).records().stream()
                 .filter(r -> r.communityNo().equals(communityNo)).findFirst().orElse(null);
     }
 
@@ -180,9 +180,42 @@ class CoverageDistributionTest {
             String inD2 = community(D2, 26_710_000, 120_710_000, 1000);
             nos.add(inD1);
             nos.add(inD2);
-            var rows = adminService.communitiesInRegion(D1);
+            var rows = adminService.communitiesInRegion(D1, 1, 200).records();
             assertThat(rows).extracting(DistributionVO.DistributionRow::communityNo)
                     .contains(inD1).doesNotContain(inD2);
+        } finally {
+            dropCommunities(nos);
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 下钻分页：总数对、每页满、翻页不重不漏 —— 宝安区 6367 个聚落不能一次全发")
+    void drillPaginates() {
+        var nos = new java.util.ArrayList<String>();
+        try {
+            // D2 里种 5 个聚落（坐标各不同、都不带买家，分页与买家数无关）
+            for (int i = 0; i < 5; i++) {
+                nos.add(community(D2, "001", 26_700_000 + i * 2_000, 120_700_000, 300,
+                        CmtCommunity.KIND_ESTATE, null, "OPEN"));
+            }
+            var p1 = adminService.communitiesInRegion(D2, 1, 2);
+            assertThat(p1.total()).as("总数 = 这个区县的开放聚落数").isEqualTo(5);
+            assertThat(p1.records()).as("第一页满 2 条").hasSize(2);
+
+            var p2 = adminService.communitiesInRegion(D2, 2, 2);
+            var p3 = adminService.communitiesInRegion(D2, 3, 2);
+            assertThat(p2.records()).hasSize(2);
+            assertThat(p3.records()).as("最后一页剩 1 条").hasSize(1);
+
+            var all = new java.util.ArrayList<String>();
+            p1.records().forEach(r -> all.add(r.communityNo()));
+            p2.records().forEach(r -> all.add(r.communityNo()));
+            p3.records().forEach(r -> all.add(r.communityNo()));
+            assertThat(all).as("三页拼起来 = 全部 5 个，不重不漏")
+                    .containsExactlyInAnyOrderElementsOf(nos);
+
+            assertThat(adminService.communitiesInRegion(D2, 4, 2).records())
+                    .as("越过末页返回空，不报错").isEmpty();
         } finally {
             dropCommunities(nos);
         }
@@ -262,7 +295,8 @@ class CoverageDistributionTest {
         var nos = new java.util.ArrayList<>(java.util.List.of(open, closed));
         try {
             var d = adminService.distribution();
-            assertThat(adminService.communitiesInRegion(D1)).extracting(DistributionVO.DistributionRow::communityNo)
+            assertThat(adminService.communitiesInRegion(D1, 1, 200).records())
+                    .extracting(DistributionVO.DistributionRow::communityNo)
                     .contains(open).doesNotContain(closed);
             assertThat(d.unattributable().communitiesClosed()).isGreaterThanOrEqualTo(1);
         } finally {

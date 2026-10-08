@@ -47,9 +47,19 @@ RegionRow(regionCode, regionName, communityCount,
           supplyGapCount, demandGapCount, emptyCount)
 Totals(communities, buyers, okCount, supplyGapCount, demandGapCount, emptyCount)
 
-GET /ops/coverage/distribution/communities?regionCode=xxx   （权限 community:read）
-List<DistributionRow>           // 该区县（regionCode 前缀）下的开放聚落明细，复用现有 DistributionRow
+GET /ops/coverage/distribution/communities?regionCode=xxx&page=1&size=200   （权限 community:read）
+CommunityPage {                 // 字段名与 ops-web Page<T> 对齐，端上直接喂 PagedTable
+  records: DistributionRow[]     // 当前页的聚落明细（复用现有 DistributionRow），按买家数降序
+  total:   long                  // 该区县开放聚落总数（不是总页数）
+  page, size: int
+}
 ```
+
+> **下钻为什么也要分页**（2026-10-08 补）：原设计假设区县「几百级」。线上实测不成立 ——
+> 深圳的区县是估价扫出来的，宝安区一个区 **6367** 个聚落、且几乎全空（0 买家 0 商家）。
+> 一次全量返回就是把这次要消灭的噪声缩到一个区县里重演（1.5MB / ~2s）。改成每页 200
+> （上限 500），一页只建行、只查区县名、只序列化一页，恒 < 1s。买家数不在库里（靠坐标现算），
+> 要「有动静的排前面」就得先对全区县算一遍买家数再切页 —— 都是内存 map 查，便宜。
 
 - `DistributionRow` / `Unattributable`：字段不变，复用。
 - **区县归并**：聚落的 `region_code` 取国标**区县前缀**（6 位）归组；区县名用 `MasterDataPort.regionPathNames` 批量取（已有，亚秒）。码短于 6 位或查不到名的，用码本身兜底。
@@ -83,26 +93,28 @@ List<DistributionRow>           // 该区县（regionCode 前缀）下的开放�
   - 断言 `regions` 按区县归并、每区县的 buyerCount/各桶计数正确；
   - `totals` 四桶 = 各区县之和 = 逐聚落分类之和（**对账量**：换个方向数一遍）；
   - `supplyGaps` 恰好是「有买家无商家」那些聚落；
-  - 下钻 `communitiesInRegion(区县码)` 只回该区县的聚落，别的区县不漏进来。
+  - 下钻 `communitiesInRegion(区县码, page, size)` 只回该区县的聚落，别的区县不漏进来。
+  - 下钻分页（`drillPaginates`）：total = 区县开放聚落数、每页满、翻页不重不漏、越末页返回空。
 - 消融：把区县归并键改成「整条 region_code」（不截 6 位）→ 同区县不同街道被拆成多行，区县数暴涨、断言红。
 - 性能判据（接口预算）：线上实测默认接口返回体从 5.3MB 降到几 KB、端到端 < 1s（上线后核）。
 
 ## §5 对账三 · 实现 → 需求
 
-每条 AC 指名一个测试方法，跑过贴真实输出（`CoverageDistributionTest`，7/7 绿）：
+每条 AC 指名一个测试方法，跑过贴真实输出（`CoverageDistributionTest`，8/8 绿）：
 
 | AC（PRD） | 测试方法 | 结论 |
 |---|---|---|
 | O11/O12 区县概览按区县归并、各计数对 | `regionRollupAndSupplyGaps` | ✅ |
 | O13 四桶自洽：ok+supply+demand+empty == communities == 各区县之和 | `totalsReconcile` | ✅ |
 | O13 下钻只回该区县的聚落，别的区县不漏进来 | `drillStaysInRegion` | ✅ |
+| 下钻分页：total 对、每页满、翻页不重不漏、越末页空 | `drillPaginates` | ✅ |
 | O10 有坐标不落围栏 → 单列「落在围栏外」，不混进缺需求 | `addressesOutsideEveryFenceAreCountedSeparately` | ✅ |
 | O10 没坐标 → 进「算不了的」，不进买家总数 | `addressesWithoutCoordsAreNotSilentlyDropped` | ✅ |
 | C11/C12 归属走层级优先于距离（楼里的人算给楼） | `buyersInsideABuildingCountForTheBuilding` | ✅ |
 | 关停聚落不进概览/下钻，但「算不了的」里报条数 | `closedCommunitiesAreReportedNotHidden` | ✅ |
 
 ```
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.CoverageDistributionTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in ai.neargo.shop.scenario.CoverageDistributionTest
 [INFO] BUILD SUCCESS
 ```
 

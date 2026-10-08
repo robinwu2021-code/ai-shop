@@ -842,24 +842,39 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
         return regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
     }
 
+    /** 下钻每页上限：防止 size 传大把分页绕过（宝安区 6367 个聚落） */
+    private static final int DRILL_MAX_SIZE = 500;
+
     @Override
-    public List<DistributionVO.DistributionRow> communitiesInRegion(String regionCode) {
+    public DistributionVO.CommunityPage communitiesInRegion(String regionCode, int page, int size) {
+        int p = page < 1 ? 1 : page;
+        int s = size < 1 ? 200 : Math.min(size, DRILL_MAX_SIZE);
         if (regionCode == null || regionCode.isBlank()) {
-            return List.of();
+            return new DistributionVO.CommunityPage(List.of(), 0, p, s);
         }
         List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() ->
                 communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                         .eq(CmtCommunity::getStatus, OPEN)
                         .likeRight(CmtCommunity::getRegionCode, regionCode)));
         if (open.isEmpty()) {
-            return List.of();
+            return new DistributionVO.CommunityPage(List.of(), 0, p, s);
         }
-        var supply = supplyStatsPort.byCommunity();
+        // 买家数不在库里（靠坐标现算归属），要排序就得先对全区县算一遍——都是内存里的 map 查，便宜。
+        // 真正省的是**只给这一页建 DistributionRow + 查区县名 + 序列化**（宝安区 6367 → 200）。
         Map<String, Integer> buyers = buyersByCommunity();
+        List<CmtCommunity> sorted = open.stream()
+                .sorted(java.util.Comparator
+                        .comparingInt((CmtCommunity c) -> buyers.getOrDefault(c.getCommunityNo(), 0)).reversed()
+                        .thenComparing(CmtCommunity::getCommunityNo))
+                .toList();
+        int from = Math.min((p - 1) * s, sorted.size());
+        int to = Math.min(from + s, sorted.size());
+        List<CmtCommunity> pageList = sorted.subList(from, to);
+        var supply = supplyStatsPort.byCommunity();
         Map<String, String> regionPaths = masterDataPort.regionPathNames(
-                open.stream().map(CmtCommunity::getRegionCode)
+                pageList.stream().map(CmtCommunity::getRegionCode)
                         .filter(rc -> rc != null && !rc.isBlank()).distinct().toList());
-        return open.stream()
+        List<DistributionVO.DistributionRow> rows = pageList.stream()
                 .map(c -> {
                     var st = supply.getOrDefault(c.getCommunityNo(),
                             new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0));
@@ -871,9 +886,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                             buyers.getOrDefault(c.getCommunityNo(), 0),
                             st.merchantCount(), st.goodsCount());
                 })
-                .sorted(java.util.Comparator.comparingInt(DistributionVO.DistributionRow::buyerCount).reversed()
-                        .thenComparing(DistributionVO.DistributionRow::communityNo))
                 .toList();
+        return new DistributionVO.CommunityPage(rows, open.size(), p, s);
     }
 
     /** 收货点 → 聚落买家数，与 distribution() 用的是同一套归属（innermostNos） */
