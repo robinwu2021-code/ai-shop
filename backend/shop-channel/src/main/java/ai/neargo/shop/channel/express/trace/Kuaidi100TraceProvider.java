@@ -42,7 +42,15 @@ import java.util.Optional;
 public class Kuaidi100TraceProvider implements TraceProvider {
 
     private static final Logger log = LoggerFactory.getLogger(Kuaidi100TraceProvider.class);
-    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /**
+     * 时间格式。文档写的是 {@code yyyy-MM-dd HH:mm:ss}，但<b>真实响应没实跑过</b> ——
+     * 认不出就只能丢掉这个节点，而丢掉是静默的：轨迹变空、零报错。所以多认几种，且丢弃时出警告。
+     */
+    private static final List<DateTimeFormatter> TS_FORMATS = List.of(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     private static final ZoneId CN = ZoneId.of("Asia/Shanghai");
 
     /**
@@ -184,11 +192,11 @@ public class Kuaidi100TraceProvider implements TraceProvider {
                 if (text.isEmpty()) {
                     continue;
                 }
-                String time = d.path("ftime").asText(d.path("time").asText(""));
-                long at;
-                try {
-                    at = LocalDateTime.parse(time.trim(), TS).atZone(CN).toInstant().toEpochMilli();
-                } catch (Exception e) {
+                Long at = parseAt(d.path("ftime").asText(""), d.path("time").asText(""));
+                if (at == null) {
+                    // 认不出时间就只能丢，但**要出声**：静默丢掉等于轨迹凭空变空、零报错
+                    log.warn("[trace:kuaidi100] {} {} 节点时间认不出，已丢弃：ftime={} time={}",
+                            carrier, waybillNo, d.path("ftime").asText(""), d.path("time").asText(""));
                     continue;
                 }
                 String loc = d.path("areaName").asText(d.path("location").asText("")).trim();
@@ -202,6 +210,24 @@ public class Kuaidi100TraceProvider implements TraceProvider {
             log.warn("[trace:kuaidi100] {} {} 返回体解析失败", carrier, waybillNo);
             return Optional.empty();
         }
+    }
+
+    /** 两个时间字段、几种格式都试一遍；都认不出返回 null（调用方出警告后丢弃该节点） */
+    static Long parseAt(String ftime, String time) {
+        for (String raw : new String[]{ftime, time}) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            String v = raw.trim();
+            for (DateTimeFormatter f : TS_FORMATS) {
+                try {
+                    return LocalDateTime.parse(v, f).atZone(CN).toInstant().toEpochMilli();
+                } catch (Exception ignored) {
+                    // 下一种格式
+                }
+            }
+        }
+        return null;
     }
 
     /**

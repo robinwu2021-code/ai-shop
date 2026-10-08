@@ -58,6 +58,26 @@ class Kuaidi100TraceProviderTest {
     }
 
     @Test
+    @DisplayName("★★★ 时间多格式都认；都认不出时丢掉这个节点但不静默（真实响应未实跑，格式差一点轨迹就空）")
+    void parsesSeveralTimeFormats() {
+        assertThat(Kuaidi100TraceProvider.parseAt("2026-10-07 09:00:00", "")).isNotNull();
+        assertThat(Kuaidi100TraceProvider.parseAt("", "2026/10/07 09:00:00")).isNotNull();
+        assertThat(Kuaidi100TraceProvider.parseAt("2026-10-07T09:00:00", "")).isNotNull();
+        assertThat(Kuaidi100TraceProvider.parseAt("2026-10-07 09:00", "")).isNotNull();
+        // ftime 认不出时退回 time
+        assertThat(Kuaidi100TraceProvider.parseAt("昨天 09:00", "2026-10-07 09:00:00")).isNotNull();
+        assertThat(Kuaidi100TraceProvider.parseAt("", "")).isNull();
+        assertThat(Kuaidi100TraceProvider.parseAt("昨天", "刚刚")).isNull();
+
+        // 整条响应里时间全认不出 → 节点为空，但整单状态仍在（调用方据此不会倒退状态）
+        var r = Kuaidi100TraceProvider.parse(json, "YTO", "YT1",
+                "{\"message\":\"ok\",\"state\":\"3\",\"data\":[{\"ftime\":\"昨天\",\"time\":\"刚刚\",\"context\":\"已签收\"}]}");
+        assertThat(r).isPresent();
+        assertThat(r.get().nodes()).isEmpty();
+        assertThat(r.get().status()).isEqualTo(TraceStatus.SIGNED);
+    }
+
+    @Test
     @DisplayName("★★ 状态映射：揽收/在途/派件/签收/疑难/退回/拒签，三位高级码取百位，认不出 → UNKNOWN")
     void statusMapping() {
         assertThat(Kuaidi100TraceProvider.statusOf("1")).isEqualTo(TraceStatus.PICKED);
