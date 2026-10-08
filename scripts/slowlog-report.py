@@ -35,6 +35,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("log", help="日志文件路径，- 表示标准输入")
     ap.add_argument("--slow-ms", type=int, default=1000, help="判定「慢」的阈值，默认 1000")
+    # SLO（用户 2026-10-08 定）：正常 ≤200ms；≥3s 当问题报。
+    # 分档而不是只给一个阈值 —— 「1.2 秒」和「12 秒」是两回事，混在一个数里看不出来。
+    ap.add_argument("--ok-ms", type=int, default=200, help="正常线，默认 200")
+    ap.add_argument("--bad-ms", type=int, default=3000, help="问题线，默认 3000")
     ap.add_argument("--top", type=int, default=15, help="列前几个接口，默认 15")
     args = ap.parse_args()
 
@@ -77,25 +81,37 @@ def main():
     slow = {k: [x for x in v if x >= args.slow_ms] for k, v in by_api.items()}
     slow_total = sum(len(v) for v in slow.values())
 
-    print(f"读入 {total_lines} 行，解析到 {parsed} 个请求（按 rid 去重后）；"
-          f"其中 ≥{args.slow_ms}ms 的 {slow_total} 个"
-          f"（{slow_total * 100.0 / parsed:.1f}%）")
+    allv = sorted(v for vs in by_api.values() for v in vs)
+    n_ok = sum(1 for v in allv if v <= args.ok_ms)
+    n_bad = sum(1 for v in allv if v >= args.bad_ms)
+    print(f"读入 {total_lines} 行，解析到 {parsed} 个请求（按 rid 去重后）")
+    print(f"  正常 ≤{args.ok_ms}ms：{n_ok}（{n_ok * 100.0 / parsed:.1f}%）   "
+          f"整体 p95={percentile(allv, 0.95)}ms  p99={percentile(allv, 0.99)}ms  max={allv[-1]}ms")
+    print(f"  慢  ≥{args.slow_ms}ms：{slow_total}（{slow_total * 100.0 / parsed:.1f}%）")
+    status = "✗ 有问题" if n_bad else "✓"
+    print(f"  {status} ≥{args.bad_ms}ms：{n_bad}" + ("   ← 这些要查" if n_bad else ""))
     # 没有一条低于阈值 = 多半只拿到了慢日志，分母是假的。
     # 不说这一句的话，「慢请求占比 100%」看起来像系统全面崩溃，其实只是没开全量行。
     if slow_total == parsed:
         print("  ⚠ 没有任何低于阈值的请求 —— 多半 shop.obs.access-log 是关的，"
               "这里的占比没有分母，只能看绝对条数。")
     print()
-    print(f"{'接口':<46}{'次数':>6}{'慢':>5}{'p50':>7}{'p95':>7}{'max':>8}{'4xx/5xx':>9}")
-    print("-" * 88)
+    print(f"{'接口':<46}{'次数':>6}{'慢':>5}{'问题':>5}{'p50':>7}{'p95':>7}{'max':>8}{'4xx/5xx':>9}")
+    print("-" * 93)
 
     # 按「慢的条数」排，其次按 p95 —— 要先看见的是「哪个接口在拖」，不是「哪个调用多」
+    def bad_count(vals):
+        return sum(1 for x in vals if x >= args.bad_ms)
+
+    # 先按「≥问题线的条数」排，再按慢的条数 —— 要先看见的是「哪个接口在拖」，
+    # 不是「哪个调用最多」。一个被调一万次的 50ms 接口排在前面没有意义。
     rows = sorted(by_api.items(),
-                  key=lambda kv: (len(slow[kv[0]]), percentile(sorted(kv[1]), 0.95)),
+                  key=lambda kv: (bad_count(kv[1]), len(slow[kv[0]]),
+                                  percentile(sorted(kv[1]), 0.95)),
                   reverse=True)
     for key, vals in rows[:args.top]:
         v = sorted(vals)
-        print(f"{key[:45]:<46}{len(v):>6}{len(slow[key]):>5}"
+        print(f"{key[:45]:<46}{len(v):>6}{len(slow[key]):>5}{bad_count(v):>5}"
               f"{percentile(v, 0.5):>7}{percentile(v, 0.95):>7}{v[-1]:>8}"
               f"{errors.get(key, 0):>9}")
     return 0
