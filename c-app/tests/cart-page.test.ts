@@ -146,14 +146,30 @@ describe("购物车页", () => {
     expect(store.selectedTotalFen).toBe(2980 * 2);
   });
 
-  it("★★★ qty=1 时点减号不许把商品删掉 —— 那是删除，不是减数量", async () => {
+  it("★★★ qty=1 时点减号 = 删除，但要先确认（当年 min=1 挡的就是『没确认没撤销』）", async () => {
+    confirmMock.mockResolvedValue(true);
     cartList.mockResolvedValue([item({ skuNo: "S1", qty: 1 })]);
     const { w } = await render();
 
     const minus = w.findAll(".stepper__btn")[0]!;
-    expect(minus.classes(), "到底了要看得出来").toContain("is-off");
+    // qty=1 时减号要能点（min=0），不再是到底灰掉
+    expect(minus.classes(), "qty=1 时减号要能点，点下去是删除").not.toContain("is-off");
     await minus.trigger("tap");
-    expect(cartUpdate, "一次都不许调 —— 调了就是传 0 下去").not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r));
+    expect(confirmMock, "删除前要问一句").toHaveBeenCalled();
+    expect(cartRemove, "确认后删这一件").toHaveBeenCalledWith(["S1"]);
+    expect(cartUpdate, "是删除不是把 0 当数量更新").not.toHaveBeenCalled();
+  });
+
+  it("★★★ 减到 0 的删除可以反悔 —— 弹窗点取消，什么都不动", async () => {
+    confirmMock.mockResolvedValue(false);
+    cartList.mockResolvedValue([item({ skuNo: "S1", qty: 1 })]);
+    const { w } = await render();
+
+    await w.findAll(".stepper__btn")[0]!.trigger("tap");
+    await new Promise((r) => setTimeout(r));
+    expect(cartRemove, "点了取消就不该删").not.toHaveBeenCalled();
+    expect(cartUpdate).not.toHaveBeenCalled();
   });
 
   it("★★ 加号在可售库存用尽时停住", async () => {

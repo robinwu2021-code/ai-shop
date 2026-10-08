@@ -102,8 +102,8 @@ async function askQty(it: CartItem) {
   });
   if (v === null) return;
   const n = Math.floor(Number(v));
-  // 输 0 或乱输不当删除：那是另一个动作，得他自己去点
-  if (!Number.isFinite(n) || n <= 0) return;
+  // 乱输（负数/NaN）忽略；输 0 与减到 0 同义 —— 交给 changeQty 弹确认后删除
+  if (!Number.isFinite(n) || n < 0) return;
   const capped = Math.min(n, max ?? CART_RULES.maxQtyPerLine);
   if (capped === it.qty) return;
   void changeQty(it.skuNo, capped);
@@ -120,6 +120,24 @@ async function askQty(it: CartItem) {
  * 列表加载之后别人下单锁走了库存，他这一下才撞上。
  */
 async function changeQty(skuNo: string, n: number) {
+  /*
+   * **减到 0 就是删除，但先问一句。**
+   *
+   * 步进器的 min 本来是 1（减到 1 就减不动），当年那么定是因为「传 0 下去后端当删除、
+   * 商品当场消失，没有确认也没有撤销」。现在产品要「减到 0 即删除」—— 放开 min 的同时
+   * 把那句确认补上，既满足诉求，又不回到当年那种静默删除。
+   * 用 remove 而不是 update(0)：语义是删这一件，不是「把数量更新成 0」。
+   */
+  if (n <= 0) {
+    const ok = await confirm({
+      title: String(t("cart.removeTitle", { n: 1 })),
+      hint: String(t("cart.removeHint")),
+      confirmText: String(t("cart.remove")),
+      danger: true,
+    });
+    if (ok) await cart.remove([skuNo]);
+    return;
+  }
   try {
     await cart.update(skuNo, n);
   } catch (err) {
@@ -269,8 +287,10 @@ onShow(() => cart.load());
                   {{ $t("cart.stockLeft", { n: it.available }) }}
                 </text>
               </view>
+              <!-- min=0：减到 0 就是删除（changeQty 里弹确认）。默认 min 是 1，这里显式放开 -->
               <sh-stepper
                 :model-value="it.qty"
+                :min="0"
                 :max="maxOf(it) ?? CART_RULES.maxQtyPerLine"
                 editable
                 @change="(n: number) => changeQty(it.skuNo, n)"
