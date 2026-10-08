@@ -1,6 +1,6 @@
 # TDD-物流轨迹（圆通先行，多方式并存）
 
-状态：方案（2026-10-05）
+状态：部分已实现（Y1–Y4、Y3.1 已落地；Y3.2 等凭据）· 2026-10-08 按官方文档重校
 关联：`ExpressPickupPort`（寄件的 provider 抽象，参照但不复用）· `ExpressCompanies`（承运商码，圆通=YTO）·
 `WxShippingUploadService`（微信发货上报，另一条，不动）· `PlaceResolver`（cache-aside + 后台刷的样板）
 
@@ -29,12 +29,46 @@
 - 快递100 只接了**寄件**且是 stub（没接通）；不查轨迹。
 - 微信发货上报（报承运商+单号给微信、微信自己推物流卡）**不动** —— 交易组件要求，与自展示轨迹两回事。
 
-## 3 圆通接口（查证过，实现对官方文档校准）
+## 3 圆通接口（2026-10-08 逐页读过官方文档后重写本节）
 
-- **查轨迹**：`{timestamp, param(JSON), sign, format:"JSON"}` + `method`/`v`；`param` 带 `Number`=运单号，一次一个。
-- **签名**：`MD5(param + method + v + 客户密钥)` → Base64。
-- **返回**：运单号、扫描时间、状态（`GOT`揽收/`DEPARTURE`发出/`ARRIVAL`到达/`SIGNED`签收…）、处理信息、城市区县、重量。
-- **无订阅推送**（公开文档未给）→ 轮询。你账号若能开推送，Y2 改回调更省额度（见 §9）。
+- **查轨迹**：`{timestamp, param(JSON), sign, format:"JSON"}` + `method`/`v`；`param` 带 `Number`=运单号，一次一个。✅ 与实现一致
+- **签名**：`Base64(MD5bytes(param + method + v + 客户密钥))`。✅ 与实现一致
+- **`method` / `v` 是账号级的**：文档写明「通过 控制台——接口管理，添加所需接口，即可得到相应的测试地址、客户编码、客户密钥、方法和版本」。
+  **每个接口各一组**，代码里的 `TRACE_QUERY`/`1.0` 只是占位默认值，上线前必须按控制台实际值填。
+
+### 3.1 ⚠️ 返回结构（此前整节是错的，已按官方【成功/查询为空返回格式】改写）
+
+**查到时顶层直接是数组，按时间正序（最早在前）**：
+
+```json
+[{"waybill_No":"YT2000000000000","upload_Time":"2023-04-24 20:37:33","infoContent":"GOT",
+  "processInfo":"您的快件被【浙江省金华市义乌市上溪镇】揽收","city":"金华市","district":"义乌市","weight":0.68}, …]
+```
+
+**查不到时是另一种结构**（对象、不是数组，`success` 还是字符串）：
+
+```json
+{"map":{"YT2600205450611":[]},"code":"1001","success":"true","message":"查询结果为空。"}
+```
+
+`infoContent` 官方固定取值：`GOT` 已揽收 / `ARRIVAL` 已收入 / `DEPARTURE` 已发出 / `SENT_SCAN` 派件 /
+`INBOUND` 自提柜入柜 / `SIGNED` 签收成功 / `FAILED` 签收失败 / `FORWARDING` 转寄 /
+`TMS_RETURN` 退回 / `AIRSEND` 航空发货 / `AIRPICK` 航空提货。
+
+### 3.2 ⚠️ 更正：圆通**有**订阅与推送
+
+原文写「无订阅推送（公开文档未给）→ 轮询」，**是错的**。接口文档「物流轨迹」下有三个：
+**物流轨迹推送服务 / 物流轨迹查询接口 / 物流轨迹订阅接口**。
+轮询（30 分钟一轮）因此只是过渡；**Y5 应改订阅+推送**：实时、且省额度。
+
+### 3.3 其余可用接口（eSeller 方案页「电商类——仓库发货，指定网点揽件」正是本项目的模式）
+
+- **寄件服务**：订单创建 / 订单取消 / 订单修改 / 散单创建 / 散单取消
+  - 订单创建返回 **`mailNo`（圆通运单号）+ `shortAddress`（三段码 `800-061-00-005`）+ `secretWaybills[]`（已脱敏面单字段）**；
+    入参 `logisticsNo`（我方订单号，可当幂等键）+ `sender*`/`recipient*` + `OrderGoodsDto` + `RealNameInfo`。
+  - 失败体：`{"success":false,"code":200010003,"reason":"logisticsNo不能为空; "}`
+- **基础服务**：标准运价查询 / **地址是否可达查询** / 电子面单余额查询 / 面单打印
+- **工单服务**：拦截件推送/更址/退回/取消
 
 ## 4 架构：provider + 路由 + 缓存
 
@@ -105,9 +139,32 @@ Port 对外只给统一状态 —— 端上永不见承运商原始码（与收�
 | **Y1** ✅ | `TraceProvider`/`LogisticsTracePort`(spi) + `LogisticsTraceRouter`（**按门店**路由/回落）+ `StubTraceProvider` + 路由配置，单测 4+消融 | 否（stub） |
 | **Y2** ✅ | `YtoTraceProvider`（签名/HttpClient）+ 路由配 YTO→yto，单测（签名对、stub 可测） | 否（签名/映射用 stub 测；真查要你凭据） |
 | **Y3** ✅ | ~~`trd_logistics_trace`~~ **复用 `ful_shipment`/`ful_shipment_trace`** + 轮询 Job（在途→真轨迹，按门店路由） | 真查**是**（圆通凭据+IP 白名单）；代码/测试走 stub |
-| **Y4** | C 端 / B 端订单详情显示轨迹 | 否（读缓存） |
+| **Y3.1** ✅ | **按官方文档校准 `parse()`/`mapStatus`**（见上）+ `post()` 线格式用例 | 否 |
+| **Y4** ✅ | C 端 / B 端订单详情显示轨迹（`order.trace.nodes`，两端都已渲染） | 否（读缓存） |
+| **Y3.2** | env 配齐 + 白名单 `106.55.27.246` + 用探针对**一条真实响应**复核 Y3.1 | **是**：凭据 + 白名单 + 一个真运单号 |
+| **Y6** | **订单创建接口**（路径 A，见 §10）：取 `mailNo`+三段码、下单前查「地址是否可达」 | 月结账号/网点 |
+| **Y7** | 路径 B「待网点回传」状态与超时提醒；路径 C 发货页单号**存在性校验** | Y3.2 |
+| **Y5** | 轨迹**订阅+推送**回调，轮询降为兜底（见 §3.2） | 推送权限 |
 
-> Y1–Y2 不要凭据就能做完（架构 + 圆通 provider + 测试全走 stub/样例签名）。真正等你圆通账号的是 **Y3 上生产**那一刻。
+> Y1–Y2 不要凭据就能做完（架构 + 圆通 provider + 测试全走 stub/样例签名）。真正等你圆通账号的是 **Y3.2** 那一刻。
+
+## 10 运单号的三个来源（2026-10-08 需求澄清）
+
+轨迹链路只认运单号，所以三条路径**只做一件事：把运单号拿到手**，拿到之后共用同一条链路。
+
+```
+路径A 平台直连下单 ──┐
+路径B 合作网点回传 ──┼──→ ful_shipment.waybill_no ──→ 订阅/查询轨迹 ──→ C端 & B端订单详情
+路径C 商家自己填单 ──┘
+```
+
+| 路径 | 怎么拿到运单号 | 复用什么 | 产品交互要点 |
+|---|---|---|---|
+| **A 平台直连** | 调圆通**订单创建接口**，返回 `mailNo` + 三段码 | 照 `ExpressPickupServiceImpl`（Port + 带签名回调）的结构写 | 下单前先查**地址是否可达**，不可达当场拦住；失败**原样显示圆通的 `reason`**，别吞成「下单失败」；`logisticsNo` 用子订单号做幂等，重试不产生第二个运单号 |
+| **B 网点回传** | 网点把订单号+运单号回传，运营端录入 | **已有 `POST /ops/shipments/{shipmentNo}/waybill`** | 需新增**「待网点回传」状态 + 超时提醒** —— 网点不回传＝发不出去，这是这条路唯一会烂掉的地方 |
+| **C 商家自填** | 通知商家发货，商家在 B 端填单号 | b-app 订单详情发货入口 | **提交时立刻查一次轨迹做存在性校验**，查不到就提示「单号可能填错」。错单号一旦入库，买家会盯着一条永远不动的物流 |
+
+共同约定：轨迹**倒置渲染**（最新在上）；文案直接用 `processInfo`（圆通给的人话，与官网一致），不要自己编。
 
 **Y2 实现对账（2026-10-05）** —— `git diff --stat`：
 - 新增 `shop-channel/.../express/trace/YtoTraceProvider.java`：`@Component implements TraceProvider`，`name()=yto`、`covers()=YTO`、`available()=凭据非空（缺则 false 不抛，路由回落）`；签名 `Base64(MD5bytes(param+method+v+密钥))`（**与快递100 的十六进制大写不是一套**）、状态映射、响应解析都是 `static` 可测方法。
@@ -115,6 +172,23 @@ Port 对外只给统一状态 —— 端上永不见承运商原始码（与收�
 - 改 `shop-app/.../application.yml`：加 `shop.express.yto.{app-key,secret,host,trace-method,trace-version}`，全部 env 兜底、默认空。
 - **路由接 yto 不需改码**：`YtoTraceProvider` 作为 `@Component` 自动进 `List<TraceProvider>`，把 `SHOP_EXPRESS_TRACE_DEFAULT=yto`（或 `store-route` 单店指 yto）即生效。
 - ⚠️ 响应字段名（`result.traces[].{opCode,opTime,opName,city}`）按文档写，**Y3 拿到真账号对一条真实响应校准**，校准点集中在 `parse()` 一处。
+  - **→ 2026-10-08 Y3.1 已校准，结论是「无一字相符」**，见下方 Y3.1。那几个字段名不是「可能不同」，是**全错**。
+
+**Y3.1 按官方文档校准 `parse()`（2026-10-08）** —— 不需要凭据，照文档即可：
+
+| 原实现 | 官方实际 | 不改的后果 |
+|---|---|---|
+| `root.result.traces[]` | **顶层就是数组**；查不到时另有 `{"map":{…}}` 结构 | 解出来恒为空 |
+| `opCode` / `opTime` / `opName` | **`infoContent`** / **`upload_Time`** / **`processInfo`** | 状态恒 UNKNOWN、时刻恒 0、文案全空 |
+| `RETURN`/`REJECT`/`RETENTION` 当异常 | 圆通没有这三个码，退回是 **`TMS_RETURN`** | 退回被当成「运输中」 |
+
+- `parse()` 改为两种结构都认；节点仍按时刻倒排（端上要最新在前，而圆通给的是正序）。
+- `location` 取 `city`（与 `TraceNode` 的「城市/网点」同义），空则退 `district`。
+- 测试：`YtoTraceProviderTest` 6 条（新增官方数组结构、空结果结构、官方状态码全集；线格式那条的假响应同步换成真结构）。
+  **消融**：把结构读法退回 `result.traces` + 把 `TMS_RETURN` 退回 `RETURN` → **3 条红**
+  （`TMS_RETURN` 变 IN_TRANSIT、数组结构解出 0 条、整链路 status 变 UNKNOWN），已还原。
+- ⚠️ **仍待真实响应复核**：以上全部依据官方文档样例，尚未对真账号的一条真响应验过（缺凭据+白名单+真单号）。
+  探针已备好（`scratchpad/yto-probe.py`，服务器上实跑验证过），凭据一到即可复核。
 
 **Y3 实现对账（2026-10-05）——⚠️ 对设计的重大偏差，先看这里：**
 

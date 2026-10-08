@@ -41,42 +41,65 @@ class YtoTraceProviderTest {
         assertThat(YtoTraceProvider.sign("{\"Number\":\"B\"}", "M", "1.0", "k")).isNotEqualTo(a);
     }
 
+    /** 取值全集照官方返回参数表的 infoContent 一列。TMS_RETURN 是真·退回码（不是 RETURN/REJECT/RETENTION）。 */
     @Test
-    void mapStatus_coversKnownCodes() {
+    void mapStatus_coversOfficialCodes() {
         assertThat(YtoTraceProvider.mapStatus("GOT")).isEqualTo(TraceStatus.PICKED);
         assertThat(YtoTraceProvider.mapStatus("SIGNED")).isEqualTo(TraceStatus.SIGNED);
-        assertThat(YtoTraceProvider.mapStatus("RETURN")).isEqualTo(TraceStatus.EXCEPTION);
-        assertThat(YtoTraceProvider.mapStatus("DEPARTURE")).isEqualTo(TraceStatus.IN_TRANSIT);
-        assertThat(YtoTraceProvider.mapStatus("ARRIVAL")).isEqualTo(TraceStatus.IN_TRANSIT);
+        assertThat(YtoTraceProvider.mapStatus("FAILED")).isEqualTo(TraceStatus.EXCEPTION);
+        // ★ 退回必须是异常。写成 RETURN 时它会掉进 default 被当成「运输中」——
+        //   单子退回去了，买家看到的还是运输中，且不报错
+        assertThat(YtoTraceProvider.mapStatus("TMS_RETURN")).isEqualTo(TraceStatus.EXCEPTION);
+        for (String inTransit : new String[]{"ARRIVAL", "DEPARTURE", "SENT_SCAN", "INBOUND",
+                                             "FORWARDING", "AIRSEND", "AIRPICK"}) {
+            assertThat(YtoTraceProvider.mapStatus(inTransit)).as(inTransit).isEqualTo(TraceStatus.IN_TRANSIT);
+        }
         assertThat(YtoTraceProvider.mapStatus(null)).isEqualTo(TraceStatus.UNKNOWN);
     }
 
+    /**
+     * ★ 真实返回结构：<b>顶层就是数组</b>，且按时间<b>正序</b>（最早在前）。
+     * 样例逐字取自官方「物流轨迹查询接口」的【成功返回格式-json】。
+     */
     @Test
-    void parse_ordersNewestFirst_andStatusIsLatest() {
+    void parse_officialArrayShape_newestFirst() {
         String body = """
-            {"result":{"traces":[
-              {"opCode":"GOT","opTime":"2026-10-01 10:00:00","opName":"已揽收","city":"深圳市"},
-              {"opCode":"SIGNED","opTime":"2026-10-03 14:00:00","opName":"已签收","city":"杭州市"},
-              {"opCode":"ARRIVAL","opTime":"2026-10-02 08:00:00","opName":"到达","city":"杭州转运中心"}
-            ]}}
+            [
+              {"waybill_No":"YT2000000000000","upload_Time":"2023-04-24 20:37:33","infoContent":"GOT",
+               "processInfo":"您的快件被【浙江省金华市义乌市上溪镇】揽收","city":"金华市","district":"义乌市","weight":0.68},
+              {"waybill_No":"YT2000000000000","upload_Time":"2023-04-25 01:45:03","infoContent":"ARRIVAL",
+               "processInfo":"您的快件已经到达【义乌转运中心直营公司】","city":"金华市","district":"义乌市"},
+              {"waybill_No":"YT2000000000000","upload_Time":"2023-04-25 15:09:52","infoContent":"SIGNED",
+               "processInfo":"您的快件已签收，签收人: xxx","city":"绍兴市","district":"上虞区"}
+            ]
             """;
-        TraceResult r = YtoTraceProvider.parse("YT1", "YTO", json.readTree(body));
+        TraceResult r = YtoTraceProvider.parse("YT2000000000000", "YTO", json.readTree(body));
 
         assertThat(r.provider()).isEqualTo("yto");
         assertThat(r.carrier()).isEqualTo("YTO");
         assertThat(r.nodes()).hasSize(3);
-        // 最新在前：签收(10-03) → 到达(10-02) → 揽收(10-01)
+        // 圆通给正序，端上要倒序：签收(15:09) → 到达(01:45) → 揽收(前一天 20:37)
         assertThat(r.nodes().get(0).status()).isEqualTo(TraceStatus.SIGNED);
         assertThat(r.nodes().get(1).status()).isEqualTo(TraceStatus.IN_TRANSIT);
         assertThat(r.nodes().get(2).status()).isEqualTo(TraceStatus.PICKED);
-        // 整单状态取最新那条
+        // 整单状态取最新那条 —— 顺序搞反就会永远停在「已揽收」
         assertThat(r.status()).isEqualTo(TraceStatus.SIGNED);
-        assertThat(r.nodes().get(0).location()).isEqualTo("杭州市");
+        // 文案用 processInfo（圆通给的人话，与官网一致），位置用 city
+        assertThat(r.nodes().get(0).info()).isEqualTo("您的快件已签收，签收人: xxx");
+        assertThat(r.nodes().get(0).location()).isEqualTo("绍兴市");
+        assertThat(r.nodes().get(2).at()).as("upload_Time 要真解出时刻").isPositive();
     }
 
+    /**
+     * ★ 查不到时圆通换了一种结构（对象、不是数组，success 还是字符串）——
+     * 只认成功那种的话，这里会静默解成空而不报错，排查时看不出是「没查到」还是「解析错了」。
+     */
     @Test
-    void parse_emptyTraces_isUnknown() {
-        TraceResult r = YtoTraceProvider.parse("YT2", "YTO", json.readTree("{\"result\":{\"traces\":[]}}"));
+    void parse_emptyResultShape_isUnknown() {
+        String body = """
+            {"map":{"YT2600205450611":[]},"code":"1001","success":"true","message":"查询结果为空。"}
+            """;
+        TraceResult r = YtoTraceProvider.parse("YT2600205450611", "YTO", json.readTree(body));
         assertThat(r.status()).isEqualTo(TraceStatus.UNKNOWN);
         assertThat(r.nodes()).isEmpty();
     }
@@ -98,11 +121,14 @@ class YtoTraceProviderTest {
         server.createContext("/", ex -> {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             received.offer(new String[]{body, String.valueOf(ex.getRequestHeaders().getFirst("Content-Type"))});
+            // 官方结构：顶层数组、正序（最早在前）
             byte[] resp = ("""
-                    {"success":true,"result":{"traces":[
-                      {"opCode":"SIGNED","opTime":"2026-10-08 09:30:00","opName":"【深圳市】已签收","city":"深圳市"},
-                      {"opCode":"GOT","opTime":"2026-10-07 18:00:00","opName":"【深圳市】已揽收","city":"深圳市"}
-                    ]}}""").getBytes(StandardCharsets.UTF_8);
+                    [
+                      {"waybill_No":"YT123","upload_Time":"2026-10-07 18:00:00","infoContent":"GOT",
+                       "processInfo":"您的快件被【深圳市】揽收","city":"深圳市","district":"南山区"},
+                      {"waybill_No":"YT123","upload_Time":"2026-10-08 09:30:00","infoContent":"SIGNED",
+                       "processInfo":"您的快件已签收","city":"深圳市","district":"南山区"}
+                    ]""").getBytes(StandardCharsets.UTF_8);
             ex.sendResponseHeaders(200, resp.length);
             try (var os = ex.getResponseBody()) {
                 os.write(resp);
@@ -139,10 +165,10 @@ class YtoTraceProviderTest {
             assertThat(form.get("sign")).isEqualTo(YtoTraceProvider.sign(param, "TRACE_QUERY", "1.0", "sk-test"));
             assertThat(got[0]).as("客户密钥绝不能出现在表单里").doesNotContain("sk-test");
 
-            // 响应按文档结构解回来
+            // 响应按官方结构解回来（最新在前）
             assertThat(r.status()).isEqualTo(TraceStatus.SIGNED);
             assertThat(r.nodes()).hasSize(2);
-            assertThat(r.nodes().get(0).info()).isEqualTo("【深圳市】已签收");
+            assertThat(r.nodes().get(0).info()).isEqualTo("您的快件已签收");
             assertThat(r.nodes().get(0).location()).isEqualTo("深圳市");
             assertThat(r.nodes().get(0).at()).isPositive();
         } finally {

@@ -126,7 +126,16 @@ public class YtoTraceProvider implements TraceProvider {
         }
     }
 
-    /** 圆通状态码 → 统一状态。GOT 揽收 / SIGNED 签收 / 退回滞留类异常 / 其余运输中 */
+    /**
+     * 圆通状态码 → 统一状态。取值取自官方「物流轨迹查询接口」返回参数表的 {@code infoContent} 一列：
+     * GOT 已揽收 / ARRIVAL 已收入 / DEPARTURE 已发出 / SENT_SCAN 派件 / INBOUND 自提柜入柜 /
+     * SIGNED 签收成功 / FAILED 签收失败 / FORWARDING 转寄 / TMS_RETURN 退回 /
+     * AIRSEND 航空发货 / AIRPICK 航空提货。
+     *
+     * <p><b>此前这里写的是 RETURN / REJECT / RETENTION —— 圆通没有这三个码</b>（照别家猜的）。
+     * 真正的退回是 {@code TMS_RETURN}，于是「退回」一直掉进 default 被当成运输中：
+     * 单子已经退回去了，买家看到的却是「运输中」，而且不报错。
+     */
     static TraceStatus mapStatus(String ytoCode) {
         if (ytoCode == null) {
             return TraceStatus.UNKNOWN;
@@ -134,33 +143,54 @@ public class YtoTraceProvider implements TraceProvider {
         return switch (ytoCode.trim().toUpperCase()) {
             case "GOT" -> TraceStatus.PICKED;
             case "SIGNED" -> TraceStatus.SIGNED;
-            case "FAILED", "RETURN", "REJECT", "RETENTION" -> TraceStatus.EXCEPTION;
-            default -> TraceStatus.IN_TRANSIT;   // DEPARTURE / ARRIVAL / SENT_SCAN…
+            case "FAILED", "TMS_RETURN" -> TraceStatus.EXCEPTION;
+            // ARRIVAL / DEPARTURE / SENT_SCAN / INBOUND / FORWARDING / AIRSEND / AIRPICK
+            default -> TraceStatus.IN_TRANSIT;
         };
     }
 
     /**
-     * 解析圆通轨迹响应。
+     * 解析圆通轨迹响应。<b>字段名与结构已按官方「物流轨迹查询接口」文档校准（2026-10-08）。</b>
      *
-     * <p>⚠️ <b>字段名按圆通开放文档写，上线前（Y3 拿到真账号）对一条真实响应校准</b> ——
-     * 不同账号/版本的字段名可能不同；校准点集中在这一个方法，改这里即可，不动上面的链路。
-     * 期望结构：{@code {result:{traces:[{opCode,opTime,opName,city}...]}}}，节点按时间倒序排好。
+     * <p>查到时<b>顶层直接是数组</b>，按时间<b>正序</b>（最早的 GOT 在前、SIGNED 在最后）：
+     * <pre>[{waybill_No, upload_Time:"yyyy-MM-dd HH:mm:ss", infoContent:"GOT",
+     *   processInfo:"您的快件被【…】揽收", city:"金华市", district:"义乌市", weight:0.68}, …]</pre>
+     *
+     * <p>查不到时是<b>另一种结构</b>（对象，不是数组，且 success 是字符串）：
+     * <pre>{"map":{"YT2600205450611":[]},"code":"1001","success":"true","message":"查询结果为空。"}</pre>
+     * 两种都要认：只按其中一种写，另一种会静默解成空轨迹而不报错。
+     *
+     * <p><b>此前这里按 {@code result.traces[].{opCode,opTime,opName}} 写</b>，那是照文档「猜」的，
+     * 与真实返回<b>无一字相符</b> —— 真跑起来每一单都是空轨迹、状态恒 UNKNOWN，而且不抛异常。
      */
     static TraceResult parse(String waybillNo, String carrier, JsonNode root) {
-        JsonNode traces = root.path("result").path("traces");
         List<TraceResult.TraceNode> nodes = new ArrayList<>();
-        if (traces.isArray()) {
-            for (JsonNode t : traces) {
-                String code = t.path("opCode").asString("");
-                long at = parseTime(t.path("opTime").asString(""));
-                nodes.add(new TraceResult.TraceNode(at, mapStatus(code),
-                        t.path("opName").asString(""), t.path("city").asString("")));
-            }
+        for (JsonNode t : tracesOf(root, waybillNo)) {
+            nodes.add(new TraceResult.TraceNode(
+                    parseTime(t.path("upload_Time").asString("")),
+                    mapStatus(t.path("infoContent").asString("")),
+                    t.path("processInfo").asString(""),
+                    location(t)));
         }
-        // 最新在前：圆通不保证顺序，统一按时刻倒序
+        // 端上要最新在前，而圆通给的是正序 —— 统一按时刻倒排（也顺带防它哪天不保证顺序）
         nodes.sort(Comparator.comparingLong(TraceResult.TraceNode::at).reversed());
         TraceStatus status = nodes.isEmpty() ? TraceStatus.UNKNOWN : nodes.getFirst().status();
         return new TraceResult(waybillNo, carrier, status, "yto", nodes);
+    }
+
+    /** 查到＝顶层数组；查不到＝{@code {"map":{"<运单号>":[]},…}}。两种结构都收，其余一律当空。 */
+    private static Iterable<JsonNode> tracesOf(JsonNode root, String waybillNo) {
+        if (root.isArray()) {
+            return root;
+        }
+        JsonNode byNo = root.path("map").path(waybillNo);
+        return byNo.isArray() ? byNo : List.of();
+    }
+
+    /** 节点位置：用 city（当前操作城市，与 TraceNode 的「城市/网点」同义）；取不到退 district。 */
+    private static String location(JsonNode t) {
+        String city = t.path("city").asString("");
+        return city.isBlank() ? t.path("district").asString("") : city;
     }
 
     private static long parseTime(String s) {
