@@ -59,8 +59,9 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     enabled,
   });
   const [drill, setDrill] = useState<RegionRow | null>(null);
-  // 下钻分页：区县本身可能几千个聚落（宝安区 6367），默认每页 200
-  const { page, setPage, size, setSize } = usePaging(200);
+  // 下钻分页：区县本身可能几千个聚落（宝安区 6367）。每页条数走库件约定的 [10,20,50]
+  // （>50 一屏也扫不完），从上限 50 起；聚落按买家数降序，有动静的本来就在前面。
+  const { page, setPage, size, setSize } = usePaging(50);
   const openDrill = (r: RegionRow) => { setDrill(r); setPage(1); };
   const drillRows = useQuery({
     queryKey: ["coverage-distribution-communities", drill?.regionCode, page, size],
