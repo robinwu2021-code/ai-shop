@@ -160,6 +160,34 @@ export const useLocationStore = defineStore("location", {
     /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
     isTransient: (s) => !!s.transientAt,
     has: (s) => !!s.active,
+    /**
+     * **「我现在在哪儿逛」的坐标（E6）—— 按距离取东西的那一个点。**
+     *
+     * <p>门店列表「附近」按它排、下单取自提点按它算。优先级与 {@link label} 同序：
+     * 主动挑的点(transient) > 生效地址 > 被动定位(here)。
+     * 原来门店列表只读 `active`，于是 useTransient 临时切了位置、顶栏和商品都变了，
+     * 唯独「附近」停在旧地方 —— 因为它读的不是同一个「我在哪」。
+     *
+     * <p>都没有就 null：调用方据此不传点，后端按评分排（而不是按一个错的点排距离）。
+     */
+    browsePointE6: (s): { latE6: number; lngE6: number } | null => {
+      if (s.transientAt) {
+        return {
+          latE6: Math.round(s.transientAt.lat * 1e6),
+          lngE6: Math.round(s.transientAt.lng * 1e6),
+        };
+      }
+      if (s.active?.latE6 != null && s.active?.lngE6 != null) {
+        return { latE6: s.active.latE6, lngE6: s.active.lngE6 };
+      }
+      if (s.here?.coords) {
+        return {
+          latE6: Math.round(s.here.coords.lat * 1e6),
+          lngE6: Math.round(s.here.coords.lng * 1e6),
+        };
+      }
+      return null;
+    },
   },
 
   actions: {

@@ -32,9 +32,9 @@ const loaded = ref(false);
 const failed = ref(false);
 
 async function load() {
-  // 距离按买家生效地址算（与下单取自提点同一个点）；没有地址就不传，后端按评分排
-  const at = location.active;
-  const point = at?.latE6 != null && at?.lngE6 != null ? { latE6: at.latE6, lngE6: at.lngE6 } : {};
+  // 距离按「现在在哪儿逛」算（主动切的位置 > 生效地址 > 定位，见 browsePointE6）；
+  // 没有点就不传，后端按评分排。此前只读 active，临时切了位置这里不跟着变。
+  const point = location.browsePointE6 ?? {};
   /*
    * `allSettled` 而不是各自 `.catch(() => [])`：后者把「没取到」抹成「空」，
    * 两条全挂时页面会说「这一带还没有店」—— 而真相是一条都没取到。
