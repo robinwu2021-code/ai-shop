@@ -1,6 +1,7 @@
 // 覆盖范围：社区网格（P-2.1）与自提点主数据（P-2.2）。
 import type {
   Community, CommunityApply, CommunityDuplicate, CommunityImportResult, CoverageDistribution,
+  DistributionRow,
   CoverageHealth, FenceImpact, GeoPlacePage,
   NearbyCommunity, Page, PickupPoint, PickupStatus,
   Region, RegionSuggestion,
@@ -21,6 +22,8 @@ export interface CommunityApi {
    * 端上要把它画得同样显眼，否则「缺数据」会被读成「缺需求」。
    */
   coverageDistribution(): Promise<CoverageDistribution>;
+  /** 下钻：一个区县（6 位码）下的聚落明细。 */
+  distributionCommunities(regionCode: string): Promise<DistributionRow[]>;
 
   listCommunities(q?: CommunityQ): Promise<Page<Community>>;
   /** 开城/停城（P-2.1.2）。停城不影响已有订单，只是 C 端不再展示。 */

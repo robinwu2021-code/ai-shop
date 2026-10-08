@@ -78,4 +78,17 @@ public class OpsCoverageController {
     public CommunityAdminService.DistributionVO distribution() {
         return adminService.distribution();
     }
+
+    /**
+     * 下钻：一个<b>区县</b>（国标 6 位前缀，来自概览的 {@code regions[].regionCode}）下的聚落明细。
+     *
+     * <p>概览按区县汇总（两万多聚落不可能平铺），要看具体哪些小区点开区县走这条 ——
+     * 行数被区县框住（几百级），不是全平台。
+     */
+    @GetMapping("/ops/coverage/distribution/communities")
+    @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
+    public java.util.List<CommunityAdminService.DistributionVO.DistributionRow> distributionCommunities(
+            @org.springframework.web.bind.annotation.RequestParam String regionCode) {
+        return adminService.communitiesInRegion(regionCode);
+    }
 }

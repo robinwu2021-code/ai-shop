@@ -422,8 +422,40 @@ export interface FenceImpact {
  * 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。
  */
 export interface CoverageDistribution {
-  rows: DistributionRow[];
+  /** 区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻 */
+  regions: RegionRow[];
+  /** 招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区） */
+  supplyGaps: DistributionRow[];
+  /** 全局四桶计数 + 买家总数 */
+  totals: DistributionTotals;
   unattributable: Unattributable;
+}
+
+export interface RegionRow {
+  /** 国标 6 位区县码；下钻用它 */
+  regionCode: string | null;
+  regionName: string | null;
+  communityCount: number;
+  buyerCount: number;
+  /** 有买家的聚落数 */
+  buyerCommunityCount: number;
+  /** 有商家覆盖的聚落数（「买家真搜得到」，不是「谁框了这儿」） */
+  merchantCommunityCount: number;
+  /** 有人没商家 */
+  supplyGapCount: number;
+  /** 有商家没人 */
+  demandGapCount: number;
+  /** 两头空 */
+  emptyCount: number;
+}
+
+export interface DistributionTotals {
+  communities: number;
+  buyers: number;
+  okCount: number;
+  supplyGapCount: number;
+  demandGapCount: number;
+  emptyCount: number;
 }
 
 export interface DistributionRow {

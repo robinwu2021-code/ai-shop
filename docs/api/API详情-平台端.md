@@ -535,8 +535,23 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | — |
+| `regions` | [`#/definitions/RegionRow`](#definitionsregionrow)\[\] | 是 | 区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻 |
+| `supplyGaps` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | 招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区） |
+| `totals` | [`#/definitions/DistributionTotals`](#definitionsdistributiontotals) | 是 | 全局四桶计数 + 买家总数 |
 | `unattributable` | [`#/definitions/Unattributable`](#definitionsunattributable) | 是 | — |
+
+
+#### GET `/ops/coverage/distribution/communities`
+
+下钻：一个区县（6 位码）下的聚落明细
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`DistributionRow`](#distributionrow)\[\]
 
 
 #### GET `/ops/coverage/health`
@@ -10864,7 +10879,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | — |
+| `regions` | [`#/definitions/RegionRow`](#definitionsregionrow)\[\] | 是 | 区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻 |
+| `supplyGaps` | [`#/definitions/DistributionRow`](#definitionsdistributionrow)\[\] | 是 | 招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区） |
+| `totals` | [`#/definitions/DistributionTotals`](#definitionsdistributiontotals) | 是 | 全局四桶计数 + 买家总数 |
 | `unattributable` | [`#/definitions/Unattributable`](#definitionsunattributable) | 是 | — |
 
 ### CoverageHealth
@@ -10960,6 +10977,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `reason` | `string,null` | 否 | 变动原因 |
 | `operator` | `string,null` | 否 | 操作人 |
 | `createdAt` | `string,null` | 否 | 发生时间 |
+
+### DistributionRow
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `communityNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `kind` | `string` | 是 | ESTATE / VILLAGE / BUILDING |
+| `regionPath` | `string,null` | 否 | — |
+| `buyerCount` | `number` | 是 | 围栏内有坐标的收货地址数 |
+| `merchantCount` | `number` | 是 | 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 |
+| `goodsCount` | `number` | 是 | — |
 
 ### EffectiveFeeRates
 

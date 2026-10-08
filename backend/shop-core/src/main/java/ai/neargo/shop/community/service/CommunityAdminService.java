@@ -70,10 +70,46 @@ public interface CommunityAdminService {
     DistributionVO distribution();
 
     /**
-     * @param rows           每个开通聚落一行，按买家数降序
-     * @param unattributable 算不进任何一行的那些。<b>与 rows 并列，不是脚注</b>
+     * 下钻：一个<b>区县</b>（国标 6 位前缀）下的开放聚落明细，按买家数降序。
+     * 行数被区县框住（几百级），不是全平台两万多。区县码来自 {@link DistributionVO.RegionRow#regionCode}。
      */
-    record DistributionVO(java.util.List<DistributionRow> rows, Unattributable unattributable) {
+    java.util.List<DistributionVO.DistributionRow> communitiesInRegion(String regionCode);
+
+    /**
+     * 位置分布：**区县概览 + 招商清单 + 全局计数 + 算不了的**（O11–O13）。
+     *
+     * <p>不再逐聚落全量返回（那是实现漂移，被全国快递商家放大成两万多条噪声行）——
+     * 概览按区县汇总，聚落明细走 {@link #communitiesInRegion} 下钻。
+     *
+     * @param regions        有开放聚落的区县，一区县一行
+     * @param supplyGaps     招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区）
+     * @param totals         全局四桶计数 + 买家总数
+     * @param unattributable 算不进任何一行的那些。<b>与上面并列，不是脚注</b>
+     */
+    record DistributionVO(java.util.List<RegionRow> regions,
+                          java.util.List<DistributionRow> supplyGaps,
+                          Totals totals, Unattributable unattributable) {
+
+        /**
+         * 区县一行。
+         *
+         * @param communityCount        该区县开放聚落数
+         * @param buyerCount            落进该区县聚落的买家数（O11）
+         * @param buyerCommunityCount   有买家的聚落数（O11「哪些有人」）
+         * @param merchantCommunityCount 有商家覆盖的聚落数（O12）—— 口径是「买家真搜得到」，现算，不读社区池
+         * @param supplyGapCount        有人没商家（招商）
+         * @param demandGapCount        有商家没人
+         * @param emptyCount            两头空
+         */
+        public record RegionRow(String regionCode, String regionName, int communityCount,
+                                int buyerCount, int buyerCommunityCount, int merchantCommunityCount,
+                                int supplyGapCount, int demandGapCount, int emptyCount) {
+        }
+
+        /** 全局计数。四桶之和 = communities（减去不在任何桶的不会发生：每个开放聚落恰好落一桶） */
+        public record Totals(int communities, int buyers,
+                             int okCount, int supplyGapCount, int demandGapCount, int emptyCount) {
+        }
 
         /**
          * @param buyerCount    围栏内有坐标的收货地址数

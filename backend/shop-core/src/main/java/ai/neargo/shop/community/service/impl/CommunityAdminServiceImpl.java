@@ -766,15 +766,102 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
          * ≈ 十万次往返，曾让这个接口卡死 30 秒以上。批量版总查询数只到层级量级，与小区数无关。
          * 查不到的码不在 map 里，下面回落成码本身，与 regionPathOf 单条口径一致。
          */
+        /*
+         * 按**区县**（国标 6 位前缀）汇总 —— 两万多聚落不可能平铺，运营看的是「哪个区供需如何」。
+         * 一个聚落恰好落一桶：有人没商家=supply、有商家没人=demand、皆 0=empty、皆>0=ok。
+         * 区县名批量取（regionPathNames，亚秒），不逐聚落查库。
+         */
+        Map<String, String> districtNames = masterDataPort.regionPathNames(
+                open.stream().map(c -> districtOf(c.getRegionCode()))
+                        .filter(java.util.Objects::nonNull).distinct().toList());
+        Map<String, int[]> byDistrict = new java.util.LinkedHashMap<>();  // [聚落,买家,有买家聚落,有商家聚落,supply,demand,empty]
+        List<DistributionVO.DistributionRow> supplyGaps = new java.util.ArrayList<>();
+        int ok = 0, supplyN = 0, demandN = 0, emptyN = 0, buyersTotal = 0;
+        for (CmtCommunity c : open) {
+            int b = buyers.getOrDefault(c.getCommunityNo(), 0);
+            int m = pool.getOrDefault(c.getCommunityNo(),
+                    new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0)).merchantCount();
+            boolean hasBuyer = b > 0, hasMerchant = m > 0;
+            int bucket;   // 0 ok / 1 supply / 2 demand / 3 empty
+            if (hasBuyer && hasMerchant) { bucket = 0; ok++; }
+            else if (hasBuyer) { bucket = 1; supplyN++; }
+            else if (hasMerchant) { bucket = 2; demandN++; }
+            else { bucket = 3; emptyN++; }
+            buyersTotal += b;
+
+            String d = districtOf(c.getRegionCode());
+            int[] agg = byDistrict.computeIfAbsent(d == null ? "" : d, k -> new int[7]);
+            agg[0]++;
+            agg[1] += b;
+            if (hasBuyer) agg[2]++;
+            if (hasMerchant) agg[3]++;
+            if (bucket == 1) agg[4]++;
+            else if (bucket == 2) agg[5]++;
+            else if (bucket == 3) agg[6]++;
+
+            // 招商清单：有人没商家。全局小集合（可行动到具体小区）——注意今天它可能为空（全国快递商家铺满）。
+            // 用循环里已算好的 pool，别再调 supplyStatsPort（那会变成逐行 N+1）
+            if (bucket == 1) {
+                int goods = pool.getOrDefault(c.getCommunityNo(),
+                        new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0)).goodsCount();
+                supplyGaps.add(new DistributionVO.DistributionRow(
+                        c.getCommunityNo(), c.getName(),
+                        c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),
+                        d == null ? null : districtNames.getOrDefault(d, d),
+                        b, m, goods));
+            }
+        }
+
+        List<DistributionVO.RegionRow> regions = byDistrict.entrySet().stream()
+                .map(e -> {
+                    int[] a = e.getValue();
+                    String code = e.getKey().isEmpty() ? null : e.getKey();
+                    String name = code == null ? null : districtNames.getOrDefault(code, code);
+                    return new DistributionVO.RegionRow(code, name, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+                })
+                .sorted(java.util.Comparator.comparingInt(DistributionVO.RegionRow::buyerCount).reversed()
+                        .thenComparingInt(DistributionVO.RegionRow::communityCount).reversed()
+                        .thenComparing(r -> r.regionCode() == null ? "" : r.regionCode()))
+                .toList();
+        supplyGaps.sort(java.util.Comparator.comparingInt(DistributionVO.DistributionRow::buyerCount).reversed()
+                .thenComparing(DistributionVO.DistributionRow::communityNo));
+
+        return new DistributionVO(regions, supplyGaps,
+                new DistributionVO.Totals(open.size(), buyersTotal, ok, supplyN, demandN, emptyN),
+                new DistributionVO.Unattributable(
+                        health.total() - health.withCoords(), outside,
+                        storeHealth.total() - storeHealth.withCoords(),
+                        communities.size() - open.size()));
+    }
+
+    /** 国标区县前缀（省2+市2+区2=6 位）。短于 6 位就用原码（存量/异常数据） */
+    private static String districtOf(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+        return regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
+    }
+
+    @Override
+    public List<DistributionVO.DistributionRow> communitiesInRegion(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return List.of();
+        }
+        List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .likeRight(CmtCommunity::getRegionCode, regionCode)));
+        if (open.isEmpty()) {
+            return List.of();
+        }
+        var supply = supplyStatsPort.byCommunity();
+        Map<String, Integer> buyers = buyersByCommunity();
         Map<String, String> regionPaths = masterDataPort.regionPathNames(
                 open.stream().map(CmtCommunity::getRegionCode)
-                        .filter(rc -> rc != null && !rc.isBlank())
-                        .distinct().toList());
-        var rows = open.stream()
+                        .filter(rc -> rc != null && !rc.isBlank()).distinct().toList());
+        return open.stream()
                 .map(c -> {
-                    // 池里没有这个聚落 = 那儿一件货都搜不到，补 0；
-                    // 「没有这一行」与「这一行是 0」在数据层分开，在这儿才合并
-                    var st = pool.getOrDefault(c.getCommunityNo(),
+                    var st = supply.getOrDefault(c.getCommunityNo(),
                             new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0));
                     return new DistributionVO.DistributionRow(
                             c.getCommunityNo(), c.getName(),
@@ -787,11 +874,17 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 .sorted(java.util.Comparator.comparingInt(DistributionVO.DistributionRow::buyerCount).reversed()
                         .thenComparing(DistributionVO.DistributionRow::communityNo))
                 .toList();
+    }
 
-        return new DistributionVO(rows, new DistributionVO.Unattributable(
-                health.total() - health.withCoords(), outside,
-                storeHealth.total() - storeHealth.withCoords(),
-                communities.size() - open.size()));
+    /** 收货点 → 聚落买家数，与 distribution() 用的是同一套归属（innermostNos） */
+    private Map<String, Integer> buyersByCommunity() {
+        Map<String, Integer> buyers = new java.util.HashMap<>();
+        for (String no : communityService.getObject().innermostNos(userQueryPort.addressPoints())) {
+            if (no != null && !no.isBlank()) {
+                buyers.merge(no, 1, Integer::sum);
+            }
+        }
+        return buyers;
     }
 
     @Override

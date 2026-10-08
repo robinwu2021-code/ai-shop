@@ -18,28 +18,10 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { ErrorState, Skeleton } from "@/components/ui/misc";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { useCopy, fill } from "@/lib/use-copy";
 import { COMMUNITIES_COPY } from "./copy";
-import { segmentedItemClass, segmentedTrackClass } from "@/components/ui/segmented";
-import type { DistributionRow } from "@/lib/types";
-
-/**
- * 供需缺口（T13）。**同一份数据的四种切法，不是另一张表** ——
- * 另开一屏各算一遍，两处的数字迟早会不一样，而没人会知道该信哪个。
- *
- * - `supply` 有人没商家：这一格是招商清单
- * - `demand` 有商家没人：**先别急着撤** —— 今天全平台只有两条能定位的地址，
- *   绝大多数聚落都会落进这一格，那说明的是分母太小，不是那儿没人
- * - `empty`  两边都没有：既没人也没货，多半是刚开还没运营
- */
-type Gapkind = "all" | "supply" | "demand" | "empty";
-
-function classify(r: DistributionRow): Exclude<Gapkind, "all"> | "ok" {
-  if (r.buyerCount > 0 && r.merchantCount === 0) return "supply";
-  if (r.merchantCount > 0 && r.buyerCount === 0) return "demand";
-  if (r.buyerCount === 0 && r.merchantCount === 0) return "empty";
-  return "ok";
-}
+import type { DistributionRow, RegionRow } from "@/lib/types";
 
 type Copy = (typeof COMMUNITIES_COPY)["zh"];
 
@@ -74,8 +56,15 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     queryFn: () => api.coverageDistribution(),
     enabled,
   });
+  const [drill, setDrill] = useState<RegionRow | null>(null);
+  const drillRows = useQuery({
+    queryKey: ["coverage-distribution-communities", drill?.regionCode],
+    queryFn: () => api.distributionCommunities(drill!.regionCode!),
+    enabled: enabled && !!drill?.regionCode,
+  });
 
-  const cols: Column<DistributionRow>[] = [
+  // 聚落明细列：招商清单与下钻共用（买家真搜得到口径的「在售商家/商品」）
+  const communityCols: Column<DistributionRow>[] = [
     { header: c.colCommunity, cell: (r) => (
       <span>
         {r.name}
@@ -88,9 +77,6 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     ) },
     { header: c.colBuyers, numeric: true, cell: (r) => r.buyerCount },
     {
-      // 供给侧取的是**社区池**（买家真搜得到的），不是「谁框了这儿」：
-      // 一个商家框了整个区却一件货都没上，在「他框了什么」里是 1，在这儿是 0 ——
-      // 而运营要据此决定去哪儿招商，看错一个就是白跑一趟。
       header: c.colMerchants, numeric: true,
       cell: (r) => (r.merchantCount === 0 && r.buyerCount > 0
         ? <span className="text-destructive tabular-nums">{r.merchantCount}</span>
@@ -99,33 +85,47 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
     { header: c.colGoods, numeric: true, cell: (r) => r.goodsCount },
   ];
 
-  const [gap, setGap] = useState<Gapkind>("all");
+  const regionCols: Column<RegionRow>[] = [
+    { header: c.colDistrict, cell: (r) => (
+      <button type="button"
+              className="focus-ring text-start text-primary-ink underline-offset-2 hover:underline"
+              onClick={() => setDrill(r)}>
+        {r.regionName ?? r.regionCode ?? "—"}
+      </button>
+    ) },
+    { header: c.colCommunityCount, numeric: true, cell: (r) => r.communityCount },
+    { header: c.colBuyers, numeric: true, cell: (r) => r.buyerCount },
+    { header: c.colBuyerCommunities, numeric: true, cell: (r) => r.buyerCommunityCount },
+    { header: c.colMerchantCommunities, numeric: true, cell: (r) => r.merchantCommunityCount },
+    { header: c.distSupplyGap, numeric: true, cell: (r) => (r.supplyGapCount > 0
+        ? <span className="text-destructive tabular-nums">{r.supplyGapCount}</span>
+        : <span className="tabular-nums">{r.supplyGapCount}</span>) },
+    { header: c.distDemandGap, numeric: true, cell: (r) => r.demandGapCount },
+    { header: c.distEmpty, numeric: true, cell: (r) => r.emptyCount },
+  ];
 
-  // 出错时**必须出一块看得见的东西**：此前这里是 `return null`，
-  // 接口一挂整个面板空白，运营既不知道坏了、也没有重试的入口。
+  // 出错时**必须出一块看得见的东西**：接口一挂整个面板空白，运营既不知道坏了、也没有重试入口。
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data && isPending) return <Skeleton className="h-40 w-full" />;
   if (!data) return null;
 
   const u = data.unattributable;
-  const attributed = data.rows.reduce((n, r) => n + r.buyerCount, 0);
-  const totalBuyers = attributed + u.addressesWithoutCoords + u.addressesOutsideFences;
+  const t = data.totals;
+  const totalBuyers = t.buyers + u.addressesWithoutCoords + u.addressesOutsideFences;
 
   return (
     <div className="space-y-4">
       {/*
-        **样本太小的时候要直说。** 这张表在今天的库上分母是个位数，
-        任何一行的高低都不说明任何事 —— 而它长得和一张有统计意义的表一模一样，
-        不说的话，第一个看到它的人就会拿它去做决定。
+        **样本太小的时候要直说。** 分母是个位数时，任何一格的高低都不说明问题 ——
+        而它长得和一张有统计意义的表一模一样，不说的话第一个看到的人就会拿它去做决定。
       */}
       {totalBuyers < 30 && (
         <Notice tone="warning">{fill(c.distSmallSample, { n: totalBuyers })}</Notice>
       )}
 
       {/*
-        每一格都要能走到「具体缺什么数据」那一步，否则运营看到一个数字也无从做起。
-        没坐标的地址是**唯一一格给不出明细的**：那要列出具体是谁家的地址，
-        而这一屏要回答的是「哪儿有人」，不是「谁住哪儿」—— 所以那一格直说去哪儿看总量。
+        「算不了的」四格 —— 这屏最要紧的不是那几行。静默丢掉就会把「缺数据」说成「缺需求」。
+        每一格能走到「具体缺什么数据」那一步。
       */}
       <div className="grid gap-3 sm:grid-cols-4">
         <Gap label={c.gapNoCoords} n={u.addressesWithoutCoords} hint={c.gapNoCoordsHint} tone="danger"
@@ -137,33 +137,59 @@ export function DistributionTab({ enabled }: { enabled: boolean }) {
              to="/communities?tab=grid&opened=0" toLabel={c.gapGoClosed} />
       </div>
 
-      {/*
-        供需缺口：**同一份数据的四种切法**，点一格就把下面的表筛成那一格里的聚落 ——
-        「每一格能下钻到具体聚落」这条判据的意思就是这个。
-        另开一屏各算一遍的话，两处的数字迟早会不一样，而没人会知道该信哪个。
-      */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className={segmentedTrackClass()}>
-          {(["all", "supply", "demand", "empty"] as const).map((k) => (
-            <button key={k} type="button" className={segmentedItemClass(gap === k)}
-                    onClick={() => setGap(k)}>
-              {c[`gapTab${k[0].toUpperCase()}${k.slice(1)}` as keyof Copy] as string}
-              <span className="ml-1 tabular-nums">
-                {k === "all" ? data.rows.length : data.rows.filter((r) => classify(r) === k).length}
-              </span>
-            </button>
+      {/* 供需四桶：全平台计数（服务端算好，不靠把两万多行发过来自己数） */}
+      <div className="rounded-card border border-border bg-card p-4">
+        <div className="mb-3 txt-body font-medium">{c.distTotalsTitle}</div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {([
+            [c.distOk, t.okCount, ""],
+            [c.distSupplyGap, t.supplyGapCount, t.supplyGapCount > 0 ? "text-destructive" : ""],
+            [c.distDemandGap, t.demandGapCount, ""],
+            [c.distEmpty, t.emptyCount, ""],
+          ] as const).map(([label, n, cls]) => (
+            <div key={label}>
+              <div className="txt-caption text-muted-foreground">{label}</div>
+              <div className={`txt-display tabular-nums ${cls}`}>{n}</div>
+            </div>
           ))}
         </div>
-        <span className="txt-caption text-muted-foreground">
-          {gap === "supply" ? c.gapTabSupplyHint
-            : gap === "demand" ? c.gapTabDemandHint
-            : gap === "empty" ? c.gapTabEmptyHint : c.gapTabAllHint}
-        </span>
       </div>
 
-      <DataTable
-        rows={gap === "all" ? data.rows : data.rows.filter((r) => classify(r) === gap)}
-        columns={cols} rowKey={(r) => r.communityNo} empty={c.gapRowsEmpty} />
+      {/* 招商清单：有人没商家。可行动到具体小区；全平台都有商家覆盖时为空（不渲染这一块） */}
+      {data.supplyGaps.length > 0 && (
+        <div className="space-y-2">
+          <div className="txt-body font-medium">{c.distSupplyGapsTitle}</div>
+          <HelpNote>{c.distSupplyGapsHint}</HelpNote>
+          <DataTable rows={data.supplyGaps} columns={communityCols}
+                     rowKey={(r) => r.communityNo} empty="" />
+        </div>
+      )}
+
+      {/* 区县概览：一区县一行，点区县名下钻到它的小区明细 */}
+      <div className="space-y-2">
+        <div className="txt-body font-medium">{c.distRegionsTitle}</div>
+        <HelpNote>{c.distRegionsHint}</HelpNote>
+        <DataTable rows={data.regions} columns={regionCols}
+                   rowKey={(r) => r.regionCode ?? "_"} empty={c.distNoRegions} />
+      </div>
+
+      {/* 下钻：某区县的小区明细（行数被区县框住） */}
+      {drill && (
+        <div className="space-y-2 rounded-card border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="txt-body font-medium">{drill.regionName ?? drill.regionCode}</div>
+            <button type="button"
+                    className="focus-ring txt-caption text-primary-ink underline-offset-2 hover:underline"
+                    onClick={() => setDrill(null)}>
+              {c.distDrillClose}
+            </button>
+          </div>
+          <DataTable rows={drillRows.data ?? []} columns={communityCols}
+                     loading={drillRows.isPending} error={drillRows.error}
+                     onRetry={() => drillRows.refetch()}
+                     rowKey={(r) => r.communityNo} empty={c.distDrillEmpty} />
+        </div>
+      )}
     </div>
   );
 }

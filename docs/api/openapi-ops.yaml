@@ -2409,17 +2409,70 @@ components:
     CoverageDistribution: 
       type: "object"
       properties: 
-        rows: 
+        regions: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/RegionRow"
+          description: "区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻"
+        supplyGaps: 
           type: "array"
           items: 
             "$ref": "#/definitions/DistributionRow"
+          description: "招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区）"
+        totals: 
+          "$ref": "#/definitions/DistributionTotals"
+          description: "全局四桶计数 + 买家总数"
         unattributable: 
           "$ref": "#/definitions/Unattributable"
       required: 
-        - "rows"
+        - "regions"
+        - "supplyGaps"
+        - "totals"
         - "unattributable"
       additionalProperties: false
       description: "位置分布：聚落 × 买家 × 商家 × 商品。\n\n**最要紧的不是那几行，是 `unattributable`。** 把算不了的静默丢掉， 这张表就会把「缺数据」说成「缺需求」—— 而运营会据此去撤一个其实有人的片区的商家。 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。"
+    RegionRow: 
+      type: "object"
+      properties: 
+        regionCode: 
+          type: 
+            - "string"
+            - "null"
+          description: "国标 6 位区县码；下钻用它"
+        regionName: 
+          type: 
+            - "string"
+            - "null"
+        communityCount: 
+          type: "number"
+        buyerCount: 
+          type: "number"
+        buyerCommunityCount: 
+          type: "number"
+          description: "有买家的聚落数"
+        merchantCommunityCount: 
+          type: "number"
+          description: "有商家覆盖的聚落数（「买家真搜得到」，不是「谁框了这儿」）"
+        supplyGapCount: 
+          type: "number"
+          description: "有人没商家"
+        demandGapCount: 
+          type: "number"
+          description: "有商家没人"
+        emptyCount: 
+          type: "number"
+          description: "两头空"
+      required: 
+        - "regionCode"
+        - "regionName"
+        - "communityCount"
+        - "buyerCount"
+        - "buyerCommunityCount"
+        - "merchantCommunityCount"
+        - "supplyGapCount"
+        - "demandGapCount"
+        - "emptyCount"
+      additionalProperties: false
     DistributionRow: 
       type: "object"
       properties: 
@@ -2449,6 +2502,29 @@ components:
         - "buyerCount"
         - "merchantCount"
         - "goodsCount"
+      additionalProperties: false
+    DistributionTotals: 
+      type: "object"
+      properties: 
+        communities: 
+          type: "number"
+        buyers: 
+          type: "number"
+        okCount: 
+          type: "number"
+        supplyGapCount: 
+          type: "number"
+        demandGapCount: 
+          type: "number"
+        emptyCount: 
+          type: "number"
+      required: 
+        - "communities"
+        - "buyers"
+        - "okCount"
+        - "supplyGapCount"
+        - "demandGapCount"
+        - "emptyCount"
       additionalProperties: false
     Unattributable: 
       type: "object"
@@ -11053,6 +11129,34 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/CoverageDistribution"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/coverage/distribution/communities": 
+    get: 
+      operationId: "distributionCommunities"
+      summary: "下钻：一个区县（6 位码）下的聚落明细"
+      tags: 
+        - "community"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/DistributionRow"
                 required: 
                   - "code"
                   - "msg"

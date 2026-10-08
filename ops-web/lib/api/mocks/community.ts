@@ -173,24 +173,74 @@ export const communityMock: CommunityApi = {
           * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
         return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
       }).length;
+    const district = (c: (typeof db.communities)[number]) =>
+      (c.regionCode && c.regionCode.length >= 6 ? c.regionCode.slice(0, 6) : c.regionCode) ?? null;
     const rows = open.map((c) => ({
       communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
       regionPath: c.regionPath,
       buyerCount: inside(c),
-      // 供给侧：mock 没有社区池，按有没有归属区划给个稳定的假数
-      merchantCount: c.regionCode ? 2 : 0,
+      merchantCount: c.regionCode ? 2 : 0,   // mock 没有现算，按有没有归属区划给个稳定假数
       goodsCount: c.regionCode ? 17 : 0,
-    })).sort((a, b) => b.buyerCount - a.buyerCount);
-    const attributed = rows.reduce((n, r) => n + r.buyerCount, 0);
+    }));
+    const bucket = (r: typeof rows[number]) =>
+      r.buyerCount > 0 && r.merchantCount > 0 ? "ok"
+        : r.buyerCount > 0 ? "supply" : r.merchantCount > 0 ? "demand" : "empty";
+    const byDistrict = new Map<string | null, ReturnType<typeof region>>();
+    function region(code: string | null) {
+      return {
+        // 区县名解到**6 位区县码**那一级（省/市/区），与后端 regionPathNames(区县码) 同口径 ——
+        // 不能借某个聚落的 regionPath，那是街道级（省/市/区/街道），会在「区县」列里多出一截。
+        regionCode: code,
+        regionName: code == null ? null : (pathOf(code).map((r) => r.name).join(" / ") || code),
+        communityCount: 0, buyerCount: 0, buyerCommunityCount: 0,
+        merchantCommunityCount: 0, supplyGapCount: 0, demandGapCount: 0, emptyCount: 0,
+      };
+    }
+    const totals = { communities: open.length, buyers: 0, okCount: 0, supplyGapCount: 0, demandGapCount: 0, emptyCount: 0 };
+    const supplyGaps: typeof rows = [];
+    open.forEach((c, i) => {
+      const r = rows[i];
+      const code = district(c);
+      const agg = byDistrict.get(code) ?? region(code);
+      byDistrict.set(code, agg);
+      agg.communityCount++; agg.buyerCount += r.buyerCount; totals.buyers += r.buyerCount;
+      if (r.buyerCount > 0) agg.buyerCommunityCount++;
+      if (r.merchantCount > 0) agg.merchantCommunityCount++;
+      const b = bucket(r);
+      if (b === "ok") totals.okCount++;
+      else if (b === "supply") { agg.supplyGapCount++; totals.supplyGapCount++; supplyGaps.push(r); }
+      else if (b === "demand") { agg.demandGapCount++; totals.demandGapCount++; }
+      else { agg.emptyCount++; totals.emptyCount++; }
+    });
+    const regions = [...byDistrict.values()].sort((a, b) => b.buyerCount - a.buyerCount);
+    supplyGaps.sort((a, b) => b.buyerCount - a.buyerCount);
     return wait({
-      rows,
+      regions, supplyGaps, totals,
       unattributable: {
         addressesWithoutCoords: 1,
-        addressesOutsideFences: Math.max(0, withCoords.length - attributed),
+        addressesOutsideFences: Math.max(0, withCoords.length - totals.buyers),
         storesWithoutCoords: 2,
         communitiesClosed: db.communities.length - open.length,
       },
     }, 300);
+  },
+
+  distributionCommunities: async (regionCode: string) => {
+    const inside = (c: (typeof db.communities)[number]) =>
+      c.latE6 == null ? 0 : (db.addresses ?? []).filter((a) => a.latE6 != null).filter((a) => {
+        const dLat = ((c.latE6 as number) - a.latE6) / 1e6 * 111_000;
+        const dLng = ((c.lngE6 as number) - a.lngE6) / 1e6 * 111_000
+          * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
+        return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
+      }).length;
+    const rows = db.communities
+      .filter((c) => c.opened && (c.regionCode ?? "").startsWith(regionCode))
+      .map((c) => ({
+        communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
+        regionPath: c.regionPath, buyerCount: inside(c),
+        merchantCount: c.regionCode ? 2 : 0, goodsCount: c.regionCode ? 17 : 0,
+      })).sort((a, b) => b.buyerCount - a.buyerCount);
+    return wait(rows, 200);
   },
 
   listCommunityApplies: (q = {}) =>
