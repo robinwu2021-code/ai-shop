@@ -232,3 +232,62 @@ Y3 接的是**轨迹查询**这一半（轮询、只读、不编推进、不是�
 - **轮询 vs 推送**：圆通公开文档只有查询。你账号若能开**轨迹订阅推送**，Y3 改回调（更省额度、更实时），接法同 Kuaidi100 回调控制器。
 - **寄件（快递100）**：是另一条线（没接通），这份不碰；将来接通了它与轨迹各管各的。
 - **频控/额度**：圆通按客户编码限频 + IP 白名单，轮询间隔/批量按你账号额度调（配置项，不写死）。
+
+## 11 订单创建接口契约（2026-10-08 逐字抄自官方文档，Y6 据此实现，**不要再照骨架猜**）
+
+> 上一次「照文档猜字段」的代价见 §3.1 —— 整节全错且不报错。这一节是把真表抄下来。
+
+### 11.1 请求 `param` = OrderIncrementDto
+
+| 字段 | 必填 | 类型 | 长度 | 说明 |
+|---|---|---|---|---|
+| `logisticsNo` | Y | String | 64 | 物流单号；与渠道唯一确定一笔订单。**最低长度 7** —— 拿子订单号当幂等键时要保证够长 |
+| `senderName` / `senderProvinceName` / `senderCityName` / `senderAddress` / `senderMobile` | Y | String | 96/96/96/768/32 | 寄件人（固定仓库/合作网点那套） |
+| `senderCountyName` / `senderTownName` | N | String | 96/200 | 区县 / 乡镇 |
+| `recipientName` / `recipientProvinceName` / `recipientCityName` / `recipientAddress` / `recipientMobile` | Y | String | 96/96/96/768/32 | 收件人（**要真实地址，不能传脱敏值**） |
+| `recipientCountyName` / `recipientTownName` | N | String | 96/200 | |
+| `goods` | N | Set\<OrderGoodsDto\> | | 物品列表，**最多 20 个** |
+| `startTime` / `endTime` | N | Date | | 预约上门取件时间窗，`yyyy-MM-dd HH:mm:ss`；**规则：下单当天 00:00:00 ～ 下单当天+6 天 23:59:59** |
+| `cstBusinessType` | N | String | 45 | 客户业务类型（可用来区分渠道） |
+| `cstOrderNo` | N | String | 100 | 客户的订单号 |
+| `realNameInfo` | **N** | RealNameInfo | | 实名信息 —— **非必填**（此前列为「待确认」，已确认） |
+| `weight` | N | BigDecimal | (11,3) | 下单总重量，千克 |
+| `productCode` | N | String | 32 | `YZD` 圆准达 / `XTCTK` 同城特快 / `HKJ` 航空件 / `PK` 普快，**默认 PK** |
+
+`OrderGoodsDto`：`name`(Y,450) · `weight`/`length`/`width`/`height`/`price`(N, BigDecimal(11,3)，米/千克/元) · `quantity`(N, Integer)
+
+`RealNameInfo`：含 `cerType` 证件类型（11 居民身份证 / 12 临时居民身份证 / 13 户口簿 / … / 101 机构代码 / 102 税务登记号 / 103 统一社会信用代码）等。
+
+### 11.2 返回
+
+| 字段 | 必填 | 类型 | 说明 |
+|---|---|---|---|
+| `customerCode` | Y | String | 客户编码（K 开头） |
+| `logisticsNo` | Y | String | 回传我方物流单号 |
+| **`mailNo`** | **N** | String | **运单号** |
+| `shortAddress` | N | String | 三段码，如 `800-061-00-005` |
+| `secretWaybills` | N | List\<SecretWaybillRo\> | 面单打印用的脱敏字段表：`code` / `name`(描述) / `value`(脱敏值，如 `159****1555`、`测*`) |
+
+### 11.3 ⚠️ 两个容易埋雷的点
+
+1. **`mailNo` 是「非必填」—— 下单成功 ≠ 拿到运单号。**
+   代码必须处理「`success` 为真但 `mailNo` 为空」：此时不能把订单标成已发货，要留「待取号」态后续补取，
+   否则会出现一张没有运单号的"已发货"单，而买家那边永远查不到轨迹。
+2. **失败体的 `code` 是 `Long`，而轨迹接口查空时的 `code` 是字符串 `"1001"` —— 两个接口不一致**，
+   别共用一个解析器（这正是 §3.1 那类错误的温床）。
+
+失败体：`{"success":false(Boolean), "code":<Long>, "reason":"<描述>"}`
+
+### 11.4 失败码与**是否可重试**（官方表，重试策略照这一列写，别一律重试）
+
+| 编码 | 信息 | 可重试 |
+|---|---|---|
+| 200010002 | 系统其它错误信息 | **是** |
+| 200010003 | 入参不规范等错误信息 | 否 |
+| 200010005 | 重复下单，订单处理中 | **是** |
+| 200010013 | 电子面单拉单失败，请重试 | 否 |
+| 200017004 | 订单报文不合法，校验不通过 | 否 |
+| 200017005 | 系统异常，拉单失败，请联系圆通开放平台技术支持 | —— |
+
+> `200010003` / `200017004` 这类重试多少次都没用，要把 `reason` **原样显示给人**并停止重试；
+> `200010005 重复下单` 标为可重试，说明圆通侧按 `logisticsNo` 做了幂等 —— 我方重试要复用同一个 `logisticsNo`。
