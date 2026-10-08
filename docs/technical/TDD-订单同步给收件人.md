@@ -302,4 +302,330 @@ OrderVO.forReceiver(sub, share);            // 收件人：按 share.showAmount 
 | 2026-10-08 | 方案成稿，待确认 |
 | 2026-10-08 | 短信模板已报备 `SMS_512480923`（审核中）；微信模板已选用 `e9tQcC5iy…`（本期 enabled=0） |
 | 2026-10-08 | 查实微信「发不出去」真因＝授权数为 0，非桩非配置；本机 `.env.local` 的失效模板号已改回与生产同值 |
+| 2026-10-08 | 实现计划成稿（§8）；待实现 |
 | | 已实现；闸门 [列出跑了哪几道、扫了哪些目录] 全绿 |
+
+---
+
+## §8 实现任务（分步 TDD）
+
+> **给执行者**：每个任务 = 一个可独立测试、可独立被驳回的交付物；每步 2–5 分钟。
+> 顺序即依赖序，照做。签名与接口看 **§2 方案**（本节不重复），这里给**测试代码**与**承重实现片段**。
+> 用 `subagent-driven-development`（推荐）或 `executing-plans` 执行。
+
+**目标**：下单人显式/自动把子单同步给收件人，收件人注册登录后在「寄给我的」看到；通知走站内信+短信。
+
+**全局约束（每个任务都隐含）**：
+- 后端构建：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`；`mvn -o`；单测 `-pl shop-app -am -Dtest=X -Dsurefire.failIfNoSpecifiedTests=false`
+- 迁移号落地前重取最大号（成稿时 `V383`，计划用 `V384`，撞了就改号 + `clean package`）；新迁移**禁 uca1400**（生产 MySQL 9.7）；建表收尾 `) ...;` 单行
+- 新表三处：迁移 + 实体 + `schema-test.sql`；带枚举的表按「八处」登记；新 ErrorCode 四处；新 `/mp` 端点进鉴权名单
+- 坐标/手机号/userNo 测试值**挑全仓没用过的段**（防全量套件污染）；改共享种子要还原
+- MockMvc 场景测试必须 `.apply(SecurityMockMvcConfigurers.springSecurity())`
+- 共享工作区：只提交自己认得的文件、带路径、add 完立即 commit、绝不 amend
+- 提交信息结尾：`Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
+
+---
+
+### Task 1 · `ord_share` 表 + 同步幂等（AC1）
+
+**Files**
+- Create: `backend/shop-app/src/main/resources/db/migration/V384__ord_share.sql`
+- Create: `backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdShare.java`
+- Create: `backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/OrdShareMapper.java`
+- Create: `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/OrderShareService.java`（接口，签名见 §2 关键接口）
+- Create: `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderShareServiceImpl.java`
+- Modify: `backend/shop-app/src/test/resources/schema-test.sql`（加 `ord_share` 建表，与迁移一致）
+- Modify: `backend/shop-base/src/main/java/ai/neargo/shop/spi/user/PersonPort.java`（加 `String phoneHash(String phone)`）+ 其 impl 委托 `PhoneCrypto.hash`
+- Modify: `backend/shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java`（注册 `ord_share` → `SELF, "shared_by_user_no"`）
+- Test: `backend/shop-app/src/test/java/ai/neargo/shop/scenario/OrderShareFlowTest.java`
+
+**Interfaces**
+- Produces：`OrderShareService#share(subOrderNo, showAmount, operatorUserNo) → ShareVO`；`PersonPort#phoneHash(phone) → String`（HMAC+pepper，与 `usr_person` 同算法）
+
+- [ ] **S1 写失败测试** `OrderShareFlowTest#shareIsIdempotent`
+
+```java
+@Test
+void shareIsIdempotent() {
+    // 种一张配送子单（收件人手机号挑没人用的段，如 17011110001）
+    String subOrderNo = seedShippedSubOrder("17011110001", "李四");
+    shareService.share(subOrderNo, false, buyerUserNo);
+    shareService.share(subOrderNo, false, buyerUserNo);   // 再点一次
+    Long n = DataScopeContext.executeWithoutScope(() -> shareMapper.selectCount(
+            Wrappers.<OrdShare>lambdaQuery().eq(OrdShare::getSubOrderNo, subOrderNo)));
+    assertThat(n).as("重复同步只有一条").isEqualTo(1);
+}
+```
+
+- [ ] **S2 跑红**：`mvn -o -pl shop-app -am test -Dtest=OrderShareFlowTest#shareIsIdempotent -Dsurefire.failIfNoSpecifiedTests=false` → 编译失败（类不存在）
+- [ ] **S3 建表 + 实体 + 三处**：按 §2 的 DDL 写 `V384`（含 `uk_share_sub_phone`、`idx_share_phone_hash`），`OrdShare` 实体字段对齐，`schema-test.sql` 同步，`OrdShareMapper extends BaseMapper<OrdShare>`
+- [ ] **S4 实现 `share`**：`PersonPort.phoneHash(sub.receiverPhone)` 算 hash；用 `uk_share_sub_phone` 幂等（`insert` 撞唯一键就吞 `DuplicateKeyException` 当成功，或先 `exists` 再插）；`share_mode=MANUAL`。注册 DataScope。
+- [ ] **S5 跑绿** 同 S2 命令 → PASS
+- [ ] **S6 消融**：临时去掉 `uk_share_sub_phone` → 重复出两条 → 变红 → 恢复
+- [ ] **S7 commit** `feat(trade): ord_share 表 + 同步幂等`
+
+---
+
+### Task 2 · 收件人视角读取：唯一的闸（AC7 头号消融、AC4）
+
+**Files**
+- Modify: `OrderShareServiceImpl.java`（加 `receivedOrders(userNo, page, size)`）
+- Modify: `shop-base/.../spi/user/UserQueryPort.java`（加 `String fullPhoneOf(String userNo)`，读 `usr_identity` PHONE 明文）+ 其 impl
+- Test: `OrderShareFlowTest`
+
+**Interfaces**
+- Consumes：`PersonPort#phoneHash`、`UserQueryPort#fullPhoneOf`
+- Produces：`OrderShareService#receivedOrders(userNo, page, size) → PageData<OrderVO>`
+
+- [ ] **S1 写失败测试**（两条）
+
+```java
+@Test
+void unsharedOrderNeverVisible() {
+    String subOrderNo = seedShippedSubOrder("17011110002", "王五"); // 未同步
+    stubPhoneOf(receiverUserNo, "17011110002");                   // 收件人手机号恰好完全匹配
+    var page = shareService.receivedOrders(receiverUserNo, 1, 20);
+    assertThat(page.records()).as("没同步过＝永远看不到").isEmpty();
+}
+
+@Test
+void sharedBeforeRegistrationBecomesVisible() {
+    String subOrderNo = seedShippedSubOrder("17011110003", "赵六");
+    shareService.share(subOrderNo, false, buyerUserNo);           // 先同步（收件人还没注册）
+    stubPhoneOf(lateUserNo, "17011110003");                       // 之后该号注册
+    var page = shareService.receivedOrders(lateUserNo, 1, 20);
+    assertThat(page.records()).extracting(OrderVO::subOrderNo).contains(subOrderNo);
+}
+```
+
+- [ ] **S2 跑红**
+- [ ] **S3 实现**（§2 的两步查询，**唯一的闸是第①步的 where**）
+
+```java
+String myHash = personPort.phoneHash(userQueryPort.fullPhoneOf(userNo));
+List<String> nos = shareMapper.selectList(Wrappers.<OrdShare>lambdaQuery()
+        .select(OrdShare::getSubOrderNo)
+        .eq(OrdShare::getReceiverPhoneHash, myHash)   // ← 唯一拦得住越权的就是这句
+        .isNull(OrdShare::getRevokedAt))
+    .stream().map(OrdShare::getSubOrderNo).toList();
+if (nos.isEmpty()) return PageData.empty(page, size);
+return DataScopeContext.executeWithoutScope(() ->   // 绕 DataScope：ord_sub_order 是 fail-closed
+        pageBySubOrderNos(nos, userNo, page, size));
+```
+
+- [ ] **S4 跑绿**
+- [ ] **S5 头号消融**：注掉 `.eq(OrdShare::getReceiverPhoneHash, myHash)` → 跑 `unsharedOrderNeverVisible` **必须红**（收件人看到别人的单）→ 恢复
+- [ ] **S6 commit** `feat(trade): 收件人视角按手机号 hash 读取，绕 DataScope 后 where 为唯一闸`
+
+---
+
+### Task 3 · 字段按视角分流：金额与其他子单（AC2、AC5）
+
+**Files**
+- Modify: `backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java`（加 `static OrderVO forReceiver(OrdSubOrder sub, OrdShare share)`；现有买家视角不动）
+- Modify: `OrderShareServiceImpl#receivedOrders`（用 `forReceiver` 而非买家工厂）
+- Test: `OrderShareFlowTest`
+
+**Interfaces**
+- Produces：`OrderVO#forReceiver(sub, share)` —— **两工厂方法，不加布尔参**（照 `AddressVO#forOwner/forFulfillment`）
+
+- [ ] **S1 写失败测试**
+
+```java
+@Test
+void amountHiddenByDefault() {
+    var vo = shareReceivedOne("17011110004", /*showAmount=*/false);
+    assertThat(vo.payAmount()).as("默认不下发金额").isNull();
+}
+@Test
+void receiverCannotSeeSiblingSubOrders() {
+    // 一张主单两个商家两条子单，只同步其中一条
+    var vo = shareReceivedOne(...);
+    assertThat(vo.siblings()).as("收件人看不到同主单其他子单").isNullOrEmpty();
+    assertThat(vo.buyerNo()).as("不下发下单人身份").isNull();
+}
+```
+
+- [ ] **S2 跑红** → **S3 实现** `forReceiver`：`payAmount` 仅当 `share.showAmount()` 为真才填；`siblings/buyerNo/退款入口` 一律不填 → **S4 跑绿**
+- [ ] **S5 消融**：让 `forReceiver` 顶成 `forBuyer` → 两条都红 → 恢复
+- [ ] **S6 commit** `feat(trade): 收件人视角 OrderVO.forReceiver，金额按 share 开关、不露兄弟子单`
+
+---
+
+### Task 4 · 撤回（AC3）
+
+**Files**：`OrderShareServiceImpl#revoke`（置 `revoked_at`，鉴权 `shared_by_user_no == operator`，否则 `SHARE_NOT_ALLOWED`）；`OrderShareFlowTest`
+
+- [ ] **S1** `revokeHidesImmediately`：同步→可见→`revoke`→`receivedOrders` 立即空
+- [ ] **S2 红 → S3 实现**（`revoked_at = now`；读路径已带 `isNull(revokedAt)`）**→ S4 绿**
+- [ ] **S5 消融**：去掉读路径的 `isNull(OrdShare::getRevokedAt)` → 撤回后仍可见 → 红 → 恢复
+- [ ] **S6 commit** `feat(trade): 下单人撤回同步`
+
+---
+
+### Task 5 · 收件人确认收货、拒绝退款（AC6）
+
+**Files**：`OrderServiceImpl#confirmReceipt`（放开：确认人是**该子单的已同步收件人**也可确认）；售后/退款入口保持只认下单人；`OrderShareFlowTest`
+
+- [ ] **S1** `receiverConfirmsButCannotRefund`：收件人确认收货→子单完成；收件人调退款→抛（沿用售后现有的属主校验）
+- [ ] **S2 红 → S3 实现**：`confirmReceipt` 在原 `userNo==owner` 判定上并入「`ord_share` 里该号 hash 有未撤回记录」**→ S4 绿**
+- [ ] **S5 消融**：把退款也放开给收件人 → `receiverConfirmsButCannotRefund` 的退款断言红 → 恢复
+- [ ] **S6 commit** `feat(trade): 收件人可确认收货，退款仍限下单人`
+
+---
+
+### Task 6 · 无手机号身份的引导（AC12）
+
+**Files**：`receivedOrders` 返回体带 `needBindPhone` 标记（`fullPhoneOf` 为空时 true 且 records 空）；`OrderShareFlowTest`
+
+- [ ] **S1** `noPhoneIdentityGetsHint`：纯微信账号（`fullPhoneOf` 返回空）→ 返回 `needBindPhone=true`、records 空
+- [ ] **S2 红 → S3 实现 → S4 绿**
+- [ ] **S5 消融**：去掉标记直接返空 → 红 → 恢复
+- [ ] **S6 commit** `feat(trade): 无手机号身份时返回绑定引导标记`
+
+---
+
+### Task 7 · 通知：站内信 + 短信（取值链 + 发送前检测）（AC10）
+
+**Files**
+- Modify: `backend/shop-core/src/main/java/ai/neargo/shop/message/NotifyScene.java`（加 `ORDER_SHARED` 常量 **并加入 `ALL` 集合**，否则 switch 穷尽性校验红）
+- Modify: `backend/shop-core/src/main/java/ai/neargo/shop/message/NotificationConsumer.java`（加 `case ORDER_SHARED`）
+- Modify: `backend/shop-base/src/main/java/ai/neargo/shop/spi/notify/SmsPort.java`（加 `SendResult sendOrderShared(String phone, String senderDisplay)`）
+- Modify: `AliSmsGateway.java`（映射 `ALI_SMS_TPL_ORDER_SHARED` / `shop.sms.ali.templates.order-shared`）、`StubSmsGateway.java`
+- Create: `backend/shop-app/src/main/resources/db/migration/V385__notify_order_shared_seed.sql`（`notify_scene_channel` 落 **INAPP + SMS 两行**，不落 WXSUB；`notify_template` 种 `TPL_SMS_ORDER_SHARED` provider_template_id=`SMS_512480923`）
+- Modify: `schema-test.sql`（若其断言种子行数）
+- Create: `backend/shop-app/src/test/java/ai/neargo/shop/scenario/OrderShareNotifyTest.java`
+- 取值/检测放 `OrderShareServiceImpl`（或新 `ShareNotifier`）：`resolveSenderDisplay(userNo)` + `validSmsVar(s)`
+
+**Interfaces**
+- Consumes：`UserQueryPort#find(userNo) → Optional<UserBrief>`（取 `nickname`）、`UserQueryPort#fullPhoneOf`、`SmsPort#sendOrderShared`、`messageService.push(...)`、`routing.enabled(scene, aud, ch)`
+- Produces：`resolveSenderDisplay(userNo) → String`（昵称→完整手机号）；`validSmsVar(String) → boolean`
+
+- [ ] **S1 写失败测试**（四条）
+
+```java
+@Test void registeredGetsInapp() {           // 已注册收件人 → 站内信有一条，SMS 零
+    shareToRegistered(...); assertInbox(receiverUserNo, "ORDER_SHARED", 1); assertSms(0); }
+@Test void blankNameNeverSends() {            // 昵称空、手机号也取不到 → 不发且留痕
+    stubNickname(buyerUserNo, null); stubFullPhone(buyerUserNo, null);
+    shareToUnregistered("17011110005");
+    assertSms(0); assertNotifyLogSkipped("ORDER_SHARED"); }
+@Test void fallsBackToPhoneWhenNoNickname() { // 无昵称 → 用完整手机号
+    stubNickname(buyerUserNo, null); stubFullPhone(buyerUserNo, "13800001234");
+    shareToUnregistered("17011110006");
+    assertSmsVarEquals("13800001234"); }
+@Test void noWxSubRowSeeded() {               // 约定守卫：ORDER_SHARED 不许有 WXSUB 行
+    Long n = sceneChannelCount("ORDER_SHARED", "WXSUB"); assertThat(n).isZero(); }
+```
+
+- [ ] **S2 跑红**
+- [ ] **S3 实现**
+  - `case ORDER_SHARED`：收件人已注册→`messageService.push(receiverUserNo, TRADE, "有人给你寄了东西", body, link, eventNo)`；未注册→走短信
+  - 取值 + 检测：
+
+```java
+String display = userQueryPort.find(senderUserNo).map(UserQueryPort.UserBrief::nickname).orElse(null);
+if (isBlank(display)) display = userQueryPort.fullPhoneOf(senderUserNo);
+if (!validSmsVar(display)) { notifyLog.skipped(ORDER_SHARED, phone, "blank-var"); return; }
+smsPort.sendOrderShared(receiverPhone, display);
+
+static boolean validSmsVar(String s){
+    if (s==null) return false; int n=s.trim().length(); if(n<1||n>35) return false;
+    if (s.matches(".*(https?://|\\.com|\\.cn|qq\\.com|weixin|微信号).*")) return false;
+    return true;  // 纯数字手机号 5~11 位天然落在 1~35 内
+}
+```
+  - `V385`：`notify_scene_channel` 两行（INAPP/SMS），**不写 WXSUB 行**
+- [ ] **S4 跑绿**（四条）
+- [ ] **S5 消融**：①去掉 `validSmsVar` → `blankNameNeverSends` 红；②去掉手机号兜底 → `fallsBackToPhoneWhenNoNickname` 红 → 恢复
+- [ ] **S6 commit** `feat(notify): 订单同步场景——站内信+短信，取值链与发送前检测`
+
+> ⚠️ 短信 `SMS_512480923` 审核通过前，`ALI_SMS_TPL_ORDER_SHARED` 留空、`shop.sms.stub=true` 下测试走桩；上线接线等过审。
+
+---
+
+### Task 8 · 支付成功自动同步（AC8、AC9）
+
+**Files**
+- Create: `backend/shop-core/src/main/java/ai/neargo/shop/trade/notify/OrderShareAutoSyncer.java`（订阅支付成功事件的 `OutboxConsumer`，或挂现有支付成功 consumer）
+- 读开关：`spi.platform.SettingPort#get("order.share.auto-enabled", "false")`
+- Create: `backend/shop-app/src/test/java/ai/neargo/shop/scenario/OrderShareAutoSyncTest.java`
+
+**Interfaces**
+- Consumes：`SettingPort#get`、`UserQueryPort#fullPhoneOf`/手机号→userNo 反查（`findUserByPhone`）、`OrderShareService#share`
+
+- [ ] **S1 写失败测试**
+
+```java
+@Test void autoSyncWhenRegisteredAndToggleOn() {
+    setSetting("order.share.auto-enabled", "true");
+    seedRegisteredUser("17011110007", otherUserNo);          // 收件人号属于另一个已注册账号
+    String sub = seedShippedSubOrder("17011110007", "钱七", /*buyer=*/buyerUserNo);
+    onPaySuccess(sub);
+    assertShareExists(sub, mode="AUTO", showAmount=false);
+}
+@Test void noAutoSyncWhenToggleOff() {
+    setSetting("order.share.auto-enabled", "false");
+    onPaySuccess(seedShippedSubOrder("17011110008", "孙八", buyerUserNo));
+    assertNoShare(...);
+}
+```
+
+- [ ] **S2 红 → S3 实现**：四条与门（总闸开 ∧ 号解析到另一已注册账号 ∧ ≠下单人 ∧ 下单人没在下单页取消）；`share(sub, showAmount=false, SYSTEM)`，`share_mode=AUTO` **→ S4 绿**
+- [ ] **S5 消融**：去掉「≠下单人」判定 → 给自己寄也建记录 → `autoSyncWhenRegisteredAndToggleOn` 换成自寄用例应红（或加断言）；去掉总闸判定 → `noAutoSyncWhenToggleOff` 红 → 恢复
+- [ ] **S6 commit** `feat(trade): 支付成功后对已注册收件人自动同步（总闸默认关）`
+
+---
+
+### Task 9 · 补逐商家地址校验（AC11，现存缺口）
+
+**Files**：`OrderServiceImpl#requireReceiverWhenShipped`（现只校验全局 `cmd.addressId()`；改为对**每个配送类商家段**校验 `cmd.addressFor(merchantNo)` 非空）；`backend/shop-core/src/test/java/ai/neargo/shop/trade/service/AddressChoicesTest.java`
+
+- [ ] **S1** `AddressChoicesTest#perMerchantAddressRequired`：多地址下单，A 家给了地址、B 家没给 → 提交配送单 → 抛 `RECEIVER_REQUIRED`
+- [ ] **S2 红 → S3 实现**：遍历 `split.groups` 中配送类的 merchantNo，`isBlank(cmd.addressFor(m))` 即抛 **→ S4 绿**
+- [ ] **S5 消融**：还原成只校验全局 `cmd.addressId()` → 红 → 恢复
+- [ ] **S6 commit** `fix(trade): 多地址下单逐商家校验收货地址`
+
+---
+
+### Task 10 · 端点接线（/mp）+ 登记
+
+**Files**
+- Modify: `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java`
+  - `POST /mp/order/{subOrderNo}/share`（body `{showAmount}`）→ `shareService.share`
+  - `POST /mp/order/{subOrderNo}/share/revoke` → `shareService.revoke`
+  - `GET /mp/order?perspective=RECEIVED` → `shareService.receivedOrders`（原 `list` 加 `perspective` 分支）
+- Modify: 新 ErrorCode `SHARE_NOT_ALLOWED`/`SHARE_TARGET_SELF`（**四处**：ErrorCode.java + 三语文案）
+- Modify: `/mp` 鉴权名单（registration-checklists）
+
+- [ ] **S1** `OrderShareFlowTest#endpointsReachable`（MockMvc，带 `springSecurity()`）：三个端点登录态 200/业务码；非下单人调 share → `SHARE_NOT_ALLOWED`
+- [ ] **S2 红 → S3 实现 + 登记 → S4 绿**
+- [ ] **S5 commit** `feat(mp): 订单同步/撤回/「寄给我的」端点`
+
+---
+
+### Task 11 · C 端界面
+
+**Files**
+- Modify: `c-app/src/pages/order/index.vue`（详情加「同步给收件人」入口 + 金额开关 + 撤回；已同步显示「已同步给 138****0001」）
+- Modify: `c-app/src/pages/orders/index.vue`（加「寄给我的」页签，用分页组件；空态区分「无数据」与「需绑定手机号」）
+- Modify: `c-app/src/api/contract.ts` + `requests.ts`（三个端点）
+- i18n 词条（三语，动态键前缀≥两段）
+
+- [ ] **S1 改 .vue → S2 `cd c-app && npx vue-tsc --noEmit`（不是 tsc）→ S3 本机验（没后端走状态注入或本机真后端）→ S4 真机/H5 截图自查**
+- [ ] **S5 改了界面跑 `python3 scripts/gen-ui-catalog.py` 并一起提交**
+- [ ] **S6 commit** `feat(c-app): 订单同步给收件人 + 「寄给我的」页签`
+
+---
+
+### Task 12 · 生成物、闸门、对账
+
+- [ ] **S1** 重跑生成物：`node scripts/check-generated-docs.mjs --check` 列出漂的，逐个重生成（openapi、API 清单、表清单、角色×端点矩阵等），**在干净 HEAD 副本里跑**避免卷入同伴改动
+- [ ] **S2** 全量后端：`scripts/check-head-compiles.sh <自己的 SHA>`（编译 + 全量 / 只准变短）
+- [ ] **S3** 填 TDD §5「跑过」真实输出、§6 `git show --stat` 对账、§7 状态改「已实现」
+- [ ] **S4** 整套 pre-push：`bash .githooks/pre-push </dev/null`
+- [ ] **S5 commit** `docs(trade): 订单同步给收件人——重生成物 + 实现对账`
+
+---
+
+**自审覆盖**：AC1→T1 · AC2/AC5→T3 · AC3→T4 · AC4/AC7→T2 · AC6→T5 · AC8/AC9→T8 · AC10→T7 · AC11→T9 · AC12→T6 · 端点→T10 · 端→T11 · 生成物对账→T12。无孤立 AC。
