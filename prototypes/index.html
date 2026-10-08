@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">28 份有效稿子，其中页面稿 18 份、共 229 屏；3 份作废。
+  <p class="sub">29 份有效稿子，其中页面稿 19 份、共 236 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -197,6 +197,16 @@
   <p class="pcard__sum">最新（s14–s18）：不显示现值，已有值在点「填入」时一次处理（一句话 + 保留原值 / 覆盖）。两种二选一：E 值在前、参数在后，判不准的参数标 ⇄、点一下换候选，同类两项互换可撤回（283px，推荐）；F 参数块，点块调整值与参数（263px）。之前的对比留作参照：结果四种呈现、录入四种布局（推荐乙：文字为主 + 图片一行导入压缩包）、参数随值调整的判据。</p>
   <div class="screens"><a class="scr" href="goods-quick-entry.html#s01" title="s01 结果 A：表格（推荐）">s01</a><a class="scr" href="goods-quick-entry.html#s02" title="s02 结果 B：清单">s02</a><a class="scr" href="goods-quick-entry.html#s03" title="s03 结果 C：参数块">s03</a><a class="scr" href="goods-quick-entry.html#s04" title="s04 结果 D：新增 / 改动分组">s04</a><a class="scr" href="goods-quick-entry.html#s05" title="s05 布局 甲：上下两段">s05</a><a class="scr" href="goods-quick-entry.html#s06" title="s06 布局 乙：文字为主 + 图片一行（推荐）">s06</a><a class="scr" href="goods-quick-entry.html#s07" title="s07 布局 丙：两张卡">s07</a><a class="scr" href="goods-quick-entry.html#s08" title="s08 布局 丁：合一">s08</a><a class="scr" href="goods-quick-entry.html#s09" title="s09 推荐组合：导入压缩包后">s09</a><a class="scr" href="goods-quick-entry.html#s10" title="s10 推荐组合：图片识别结果表格">s10</a><a class="scr" href="goods-quick-entry.html#s11" title="s11 参数随值调整：柿子 4.5斤 → 净含量（备选单果重量）">s11</a><a class="scr" href="goods-quick-entry.html#s12" title="s12 参数随值调整：西瓜 4.5斤 → 单果重量（备选净含量）">s12</a><a class="scr" href="goods-quick-entry.html#s13" title="s13 参数随值调整：换一项，同类两项互换可撤回">s13</a><a class="scr" href="goods-quick-entry.html#s14" title="s14 最新 E：值在前 · 点参数切换（推荐）">s14</a><a class="scr" href="goods-quick-entry.html#s15" title="s15 最新 E：切换后同类互换可撤回">s15</a><a class="scr" href="goods-quick-entry.html#s16" title="s16 最新 F：参数块">s16</a><a class="scr" href="goods-quick-entry.html#s17" title="s17 最新 F：点块打开参数列表（相近在前·可搜）">s17</a><a class="scr" href="goods-quick-entry.html#s18" title="s18 填入时一次处理已有值">s18</a></div>
   <div class="pcard__links"><a href="goods-quick-entry.html">本地稿</a> <a href="https://claude.ai/artifact/3sDZxXVEdPgxtsqawJvyvw">claude.ai</a> <a href="../docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md">TDD-商品快速录入-品类感知与逐项确认</a></div>
+  
+</article><article class="pcard" id="logistics-trace">
+  <div class="pcard__hd">
+    <b>物流轨迹：多渠道展示（微信插件 / 自建地图）</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 商家 App · 运营端 · 2026-10-08 · 7 屏</div>
+  <p class="pcard__sum">展示渠道做成优先级链而不是二选一开关：C 端小程序 [wx-plugin, self-map]，B 端 App 与运营端只有 [self-map]（插件只在小程序内可用）。链上谁先说「这一单我能呈现」谁上，备载荷失败自动落下一个。自建渠道三件套：城市级地图（快递100 resultv2=4 的 areaCenter 是行政区中心点，不是快件 GPS，稿子里标明）、四档状态步骤条、默认折叠到 3 条的时间线（实测一单 12 条）。微信渠道只负责拿 waybill_token，点开后是微信全屏页，我们改不了也不维护——但步骤条与最新一条仍用自己的数据渲染，免得买家多点一次才看得到「到哪了」。运营端抽屉露出渠道名，异常件排查第一个问题就是「走的哪条链、哪一环断了」。</p>
+  <div class="screens"><a class="scr" href="logistics-trace.html#s01" title="s01 C 端自建 · 默认（折叠）">s01</a><a class="scr" href="logistics-trace.html#s02" title="s02 C 端自建 · 展开 + 复制/拨号">s02</a><a class="scr" href="logistics-trace.html#s03" title="s03 C 端自建 · 没有坐标时不画地图">s03</a><a class="scr" href="logistics-trace.html#s04" title="s04 C 端微信渠道 · 入口">s04</a><a class="scr" href="logistics-trace.html#s05" title="s05 C 端微信渠道 · 详情（示意）">s05</a><a class="scr" href="logistics-trace.html#s06" title="s06 B 端 App · 订单详情轨迹">s06</a><a class="scr" href="logistics-trace.html#s07" title="s07 运营端 · 快递单抽屉轨迹">s07</a></div>
+  <div class="pcard__links"><a href="logistics-trace.html">本地稿</a> <a href="../docs/technical/TDD-物流轨迹多渠道.md">TDD-物流轨迹多渠道</a> <a href="../docs/technical/TDD-快递100轨迹查询.md">TDD-快递100轨迹查询</a></div>
   
 </article>
   </div>

@@ -2124,6 +2124,70 @@
         }
       ],
       "artifact": "https://claude.ai/artifact/3sDZxXVEdPgxtsqawJvyvw"
+    },
+    {
+      "slug": "logistics-trace",
+      "file": "logistics-trace.html",
+      "title": "物流轨迹：多渠道展示（微信插件 / 自建地图）",
+      "kind": "pages",
+      "clients": [
+        "c-app",
+        "b-app",
+        "ops-web"
+      ],
+      "status": "在建",
+      "date": "2026-10-08",
+      "summary": "展示渠道做成优先级链而不是二选一开关：C 端小程序 [wx-plugin, self-map]，B 端 App 与运营端只有 [self-map]（插件只在小程序内可用）。链上谁先说「这一单我能呈现」谁上，备载荷失败自动落下一个。自建渠道三件套：城市级地图（快递100 resultv2=4 的 areaCenter 是行政区中心点，不是快件 GPS，稿子里标明）、四档状态步骤条、默认折叠到 3 条的时间线（实测一单 12 条）。微信渠道只负责拿 waybill_token，点开后是微信全屏页，我们改不了也不维护——但步骤条与最新一条仍用自己的数据渲染，免得买家多点一次才看得到「到哪了」。运营端抽屉露出渠道名，异常件排查第一个问题就是「走的哪条链、哪一环断了」。",
+      "docs": [
+        {
+          "label": "TDD-物流轨迹多渠道",
+          "path": "docs/technical/TDD-物流轨迹多渠道.md"
+        },
+        {
+          "label": "TDD-快递100轨迹查询",
+          "path": "docs/technical/TDD-快递100轨迹查询.md"
+        }
+      ],
+      "screens": [
+        {
+          "id": "s01",
+          "title": "C 端自建 · 默认（折叠）",
+          "client": "c-app",
+          "route": "pages/order/index"
+        },
+        {
+          "id": "s02",
+          "title": "C 端自建 · 展开 + 复制/拨号",
+          "client": "c-app",
+          "route": "pages/order/index"
+        },
+        {
+          "id": "s03",
+          "title": "C 端自建 · 没有坐标时不画地图",
+          "client": "c-app",
+          "route": "pages/order/index"
+        },
+        {
+          "id": "s04",
+          "title": "C 端微信渠道 · 入口",
+          "client": "c-app",
+          "route": "pages/order/index"
+        },
+        {
+          "id": "s05",
+          "title": "C 端微信渠道 · 详情（示意）"
+        },
+        {
+          "id": "s06",
+          "title": "B 端 App · 订单详情轨迹",
+          "client": "b-app",
+          "route": "pages/order/index"
+        },
+        {
+          "id": "s07",
+          "title": "运营端 · 快递单抽屉轨迹"
+        }
+      ]
     }
   ],
   "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"
