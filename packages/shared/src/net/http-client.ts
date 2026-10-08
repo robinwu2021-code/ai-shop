@@ -7,6 +7,18 @@ import type { Result } from "@shared/types";
 
 const BASE = import.meta.env.VITE_API_BASE || "";
 
+/**
+ * 请求超时。**此前一处都没设** —— `uni.request` 不给 timeout 时，请求挂住就一直挂着，
+ * 调用方的 `pending` 永远不落下来：界面上就是「计算价格…」转到天荒地老，
+ * 既不报错也不重试，用户只能杀掉重进（2026-10-08 线上遇到）。
+ *
+ * 20 秒：算价要过优惠/库存/运费几段，比普通查询慢；再长就不如告诉用户重试。
+ * 上传另给（见 uploadFile）：传图走的是流量，慢是正常的。
+ */
+const TIMEOUT_MS = 20_000;
+/** 上传超时放宽：一张手机直出照片在弱网下几十秒是常事 */
+const UPLOAD_TIMEOUT_MS = 60_000;
+
 export class ApiError extends Error {
   constructor(
     public code: number,
@@ -101,6 +113,7 @@ export function request<T>(
     uni.request({
       url: `${BASE}${path}`,
       method,
+      timeout: TIMEOUT_MS,
       data: pruneUndefined(data),
       header: {
         "Content-Type": "application/json",
@@ -164,6 +177,7 @@ export function uploadFile<T>(
       url: `${BASE}${path}`,
       filePath,
       name: "file",
+      timeout: UPLOAD_TIMEOUT_MS,
       formData,
       header: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -227,6 +241,7 @@ export function downloadBinary(path: string, params?: object): Promise<ArrayBuff
     uni.request({
       url: `${BASE}${path}`,
       method: "GET",
+      timeout: TIMEOUT_MS,
       data: pruneUndefined(params),
       responseType: "arraybuffer",
       header: token ? { Authorization: `Bearer ${token}` } : {},

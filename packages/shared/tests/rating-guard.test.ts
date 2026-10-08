@@ -16,8 +16,17 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(import.meta.dirname, "../../..");
 const APPS = ["c-app", "b-app", "packages/ui"];
 
+/**
+ * 只扫源码。**必须跳过 node_modules** —— 仓库里 `c-app/node_modules/node_modules`
+ * 是一条指向自己的软链，递归进去就是无限循环，报的是
+ * `ELOOP: too many symbolic links`，而错误信息指向一串重复的路径、
+ * 完全看不出是这条守卫扫错了地方。扫描面就是结论的边界：这里本来也只该看源码。
+ */
+const SKIP = new Set(["node_modules", "dist", ".git", "unpackage"]);
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
+    if (SKIP.has(name)) continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p, out);
     else if (p.endsWith(".vue")) out.push(p);
