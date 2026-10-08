@@ -204,7 +204,7 @@ class StoreGoodsFlowTest {
      * </ul>
      */
     @Test
-    @DisplayName("★★★ 「在售/已下架」两个页签按当前门店筛 —— 不按的话下架的货在「已下架」里找不到")
+    @DisplayName("★★★ 「在售/已下架」页签按当前门店筛 —— 商品只属于一家门店，别家店的货一件都不列")
     void tabsFilterByCurrentStore() throws Exception {
         String biz = merchant("12600220060", "页签按店筛店");
         String goodsNo = approvedGoods(biz);
@@ -212,27 +212,20 @@ class StoreGoodsFlowTest {
         TestPlan.grantPro(mvc(), json, planMapper, biz);
         String storeB = createStore(biz, "页签按店筛·分店");
 
-        // 造出线上那个形状：A 店下架、B 店在售 → 主体级总闸仍是 true
+        // A 店的货在 A 店下架：必须能在 A 店「已下架」里找到 —— 找不到就没法重新上架
         toggle(biz, storeA, goodsNo, true);
-        toggle(biz, storeB, goodsNo, true);
         toggle(biz, storeA, goodsNo, false);
-        assertThat(statusOf(biz, storeA, goodsNo)).isEqualTo("OFF_SALE");
-        assertThat(statusOf(biz, storeB, goodsNo)).as("主体级总闸靠它为真").isEqualTo("ON_SALE");
+        assertThat(listNos(biz, storeA, "OFF_SALE"))
+                .as("A 店下架的货，必须能在「已下架」页签里找到")
+                .contains(goodsNo);
+        assertThat(listNos(biz, storeA, "ON_SALE")).doesNotContain(goodsNo);
 
         /*
-         * ★ 站在 A 店：这件货必须出现在「已下架」里，不能出现在「在售」里。
-         * 撤掉按店筛的那一段，这两条会正好反过来 —— 而那正是店主看到的。
+         * ★ 站在 B 店：A 店的货**两个页签都不出现**（ADR-031）。
+         * 此前一件货挂主体、由门店行投影，B 店的列表里会列着它（显示「本店未上架」）；
+         * 现在 B 店要卖同款，是在 B 店建它自己的那一件。
          */
-        assertThat(listNos(biz, storeA, "OFF_SALE"))
-                .as("A 店下架的货，必须能在「已下架」页签里找到 —— 找不到就没法重新上架")
-                .contains(goodsNo);
-        assertThat(listNos(biz, storeA, "ON_SALE"))
-                .as("A 店没在卖的货不该出现在「在售」里")
-                .doesNotContain(goodsNo);
-
-        // 对照：站在 B 店，同一件货是反过来的。没有这一半，上面两条也可能只是
-        // 「这个筛选把什么都筛没了」
-        assertThat(listNos(biz, storeB, "ON_SALE")).contains(goodsNo);
+        assertThat(listNos(biz, storeB, "ON_SALE")).doesNotContain(goodsNo);
         assertThat(listNos(biz, storeB, "OFF_SALE")).doesNotContain(goodsNo);
     }
 

@@ -84,18 +84,36 @@ public interface CampaignPort {
      * 全都不减钱时取第一个只送积分的组合（它不减钱，但付款时要按它发分、扣它的量）。
      */
     static Discount pick(List<AppliedActivity> candidates, java.util.Map<String, String> choices) {
+        /*
+         * 按「主体 + 门店」分桶（ADR-031：子单按门店拆，同主体两家店各挑各的活动）。
+         * 老调用方门店为空，桶就是主体 —— 与改造前逐字相同。
+         * 选择先按门店号找、再按主体号找：老端上只会按主体传。
+         */
         java.util.Map<String, List<AppliedActivity>> byMerchant = new java.util.LinkedHashMap<>();
+        java.util.Map<String, AppliedActivity> keyOwner = new java.util.HashMap<>();
         for (AppliedActivity a : candidates) {
-            byMerchant.computeIfAbsent(a.merchantNo(), k -> new java.util.ArrayList<>()).add(a);
+            String k = bucketOf(a.merchantNo(), a.storeNo());
+            byMerchant.computeIfAbsent(k, x -> new java.util.ArrayList<>()).add(a);
+            keyOwner.putIfAbsent(k, a);
         }
-        for (String m : choices.keySet()) {
-            byMerchant.putIfAbsent(m, List.of());
+        if (choices != null) {
+            for (String m : choices.keySet()) {
+                boolean known = byMerchant.keySet().stream().anyMatch(k -> k.equals(m)
+                        || k.startsWith(m + "|") || k.endsWith("|" + m));
+                if (!known) {
+                    byMerchant.putIfAbsent(m, List.of());
+                }
+            }
         }
         List<MerchantDiscount> shares = new java.util.ArrayList<>();
         List<AppliedActivity> applied = new java.util.ArrayList<>();
         long total = 0L;
         for (var e : byMerchant.entrySet()) {
-            String choice = choices == null ? null : choices.get(e.getKey());
+            AppliedActivity owner = keyOwner.get(e.getKey());
+            String choice = choices == null ? null
+                    : owner == null ? choices.get(e.getKey())
+                    : owner.storeNo() != null && choices.containsKey(owner.storeNo()) ? choices.get(owner.storeNo())
+                    : choices.get(owner.merchantNo());
             AppliedActivity chosen = null;
             if (CHOICE_NONE.equals(choice)) {
                 continue;
@@ -118,12 +136,17 @@ public interface CampaignPort {
                 continue;
             }
             if (chosen.amountMinor() > 0) {
-                shares.add(new MerchantDiscount(e.getKey(), chosen.amountMinor()));
+                shares.add(new MerchantDiscount(chosen.merchantNo(), chosen.amountMinor(), chosen.storeNo()));
                 total += chosen.amountMinor();
             }
             applied.add(chosen);
         }
         return new Discount(total, shares, applied);
+    }
+
+    /** 分桶键：主体 + 门店；门店为空就是主体 */
+    private static String bucketOf(String merchantNo, String storeNo) {
+        return storeNo == null || storeNo.isBlank() ? merchantNo : merchantNo + "|" + storeNo;
     }
 
     /**
@@ -255,6 +278,20 @@ public interface CampaignPort {
                     .mapToLong(MerchantDiscount::amount).sum();
         }
 
+        /** 这个主体在这家店那一组的优惠（ADR-031：子单按门店拆） */
+        public long of(String merchantNo, String storeNo) {
+            return shares.stream().filter(s -> s.merchantNo().equals(merchantNo)
+                            && java.util.Objects.equals(s.storeNo(), storeNo))
+                    .mapToLong(MerchantDiscount::amount).sum();
+        }
+
+        /** {@link #platformOf(String)} 的按店版 */
+        public long platformOf(String merchantNo, String storeNo) {
+            return applied.stream().filter(a -> a.merchantNo().equals(merchantNo)
+                            && java.util.Objects.equals(a.storeNo(), storeNo))
+                    .mapToLong(AppliedActivity::platformMinor).sum();
+        }
+
         /**
          * 这一家的活动优惠里<b>平台出的那部分</b>（平台活动按出资比例拆出来的）。
          * 落进子单 {@code discount_platform}，结算时算回给商家（{@code gross = 实付 + 平台补贴}）。
@@ -266,7 +303,11 @@ public interface CampaignPort {
         }
     }
 
-    record MerchantDiscount(String merchantNo, long amount) {
+    record MerchantDiscount(String merchantNo, long amount, String storeNo) {
+
+        public MerchantDiscount(String merchantNo, long amount) {
+            this(merchantNo, amount, null);
+        }
     }
 
     /**
@@ -331,15 +372,28 @@ public interface CampaignPort {
                             *
                             * <p>取不到就是空：端上退回只显示金额，<b>不编名字</b>。
                             */
-                           String name) {
+                           String name,
+                           /** 这一组从哪家门店出（ADR-031）；空 = 老调用方，按主体当一组 */
+                           String storeNo) {
+
+        public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,
+                               long platformMinor, String enrollmentNo, String name) {
+            this(activityNo, merchantNo, amountMinor, qty, platformMinor, enrollmentNo, name, null);
+        }
 
         public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty) {
-            this(activityNo, merchantNo, amountMinor, qty, 0L, null, null);
+            this(activityNo, merchantNo, amountMinor, qty, 0L, null, null, null);
         }
 
         public AppliedActivity(String activityNo, String merchantNo, long amountMinor, int qty,
                                long platformMinor, String enrollmentNo) {
-            this(activityNo, merchantNo, amountMinor, qty, platformMinor, enrollmentNo, null);
+            this(activityNo, merchantNo, amountMinor, qty, platformMinor, enrollmentNo, null, null);
+        }
+
+        /** 同一个活动挂到某家店那一组上 */
+        public AppliedActivity atStore(String store) {
+            return new AppliedActivity(activityNo, merchantNo, amountMinor, qty, platformMinor, enrollmentNo,
+                    name, store);
         }
     }
 }

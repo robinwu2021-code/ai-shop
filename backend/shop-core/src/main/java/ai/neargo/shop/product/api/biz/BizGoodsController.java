@@ -155,7 +155,7 @@ public class BizGoodsController {
                         .map(x -> new MerchantGoodsService.GoodsParam(
                                 x.dimNo(), x.name(), x.valueNo(), x.code(), x.label()))
                         .toList(),
-                req.saleMode(), req.restrictedRegions(), req.entrySource()));
+                req.saleMode(), req.restrictedRegions(), req.entrySource(), req.freightTemplateNo()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.GOODS + "')")
@@ -949,7 +949,11 @@ public class BizGoodsController {
                                 * 这一版怎么录的：MANUAL / QUICK_TEXT / ZIP / IMAGE。不传 = MANUAL。
                                 * 只进提交历史，不影响任何业务判断。
                                 */
-                               String entrySource) {
+                               String entrySource,
+                               /**
+                                * 运费模板（V385，ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店。
+                                */
+                               String freightTemplateNo) {
     }
 
     /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */

@@ -59,6 +59,69 @@ public class FreightPortImpl implements FreightPort {
     }
 
     @Override
+    public boolean active(String templateNo) {
+        if (templateNo == null || templateNo.isBlank()) {
+            return false;
+        }
+        Long n = DataScopeContext.executeWithoutScope(() -> templateMapper.selectCount(
+                Wrappers.<FulFreightTemplate>lambdaQuery()
+                        .eq(FulFreightTemplate::getTemplateNo, templateNo)
+                        .isNull(FulFreightTemplate::getArchivedAt)));
+        return n != null && n > 0;
+    }
+
+    @Override
+    public List<Template> activeTemplates() {
+        return DataScopeContext.executeWithoutScope(() -> templateMapper.selectList(
+                        Wrappers.<FulFreightTemplate>lambdaQuery()
+                                .isNull(FulFreightTemplate::getArchivedAt)
+                                .orderByDesc(FulFreightTemplate::getIsDefault)
+                                .orderByAsc(FulFreightTemplate::getId)))
+                .stream().map(this::toTemplate).toList();
+    }
+
+    /**
+     * 一家门店的运费（ADR-031）：行按解析好的模板分份，每份算计费重、商品额与地区命中，交给
+     * {@link FreightPort#merge}。模板号不可用时 {@link #template} 回落默认 —— 与单模板同口径。
+     */
+    @Override
+    public Optional<Quote> quoteMerged(List<FreightLine> lines, String receiverAddress) {
+        if (lines == null || lines.isEmpty()) {
+            return Optional.empty();
+        }
+        String address = receiverAddress == null ? "" : receiverAddress;
+        java.util.Map<String, Template> templates = new java.util.LinkedHashMap<>();
+        java.util.Map<String, int[]> weights = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Long> amounts = new java.util.LinkedHashMap<>();
+        for (FreightLine l : lines) {
+            Optional<Template> t = template(l.templateNo());
+            if (t.isEmpty()) {
+                continue;
+            }
+            Template tp = t.get();
+            templates.putIfAbsent(tp.templateNo(), tp);
+            int w = Math.max(0, l.weighedGram()) + Math.max(0, l.unweighedUnits()) * tp.firstWeightGram();
+            weights.computeIfAbsent(tp.templateNo(), k -> new int[1])[0] += w;
+            amounts.merge(tp.templateNo(), l.goodsAmountMinor(), Long::sum);
+        }
+        if (templates.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Part> parts = templates.values().stream()
+                .map(tp -> new Part(tp, weights.get(tp.templateNo())[0], amounts.get(tp.templateNo()),
+                        hitOf(tp, address)))
+                .toList();
+        return Optional.of(FreightPort.merge(parts));
+    }
+
+    /** 收货地址命中的地区规则（按开头匹配，理由见 {@link #quote}） */
+    private static Rule hitOf(Template tp, String address) {
+        return tp.rules().stream()
+                .filter(r -> r.region() != null && !r.region().isBlank() && address.startsWith(r.region().trim()))
+                .findFirst().orElse(null);
+    }
+
+    @Override
     public Optional<Template> template(String templateNo) {
         FulFreightTemplate row = null;
         if (templateNo != null && !templateNo.isBlank()) {
@@ -83,9 +146,13 @@ public class FreightPortImpl implements FreightPort {
         if (row == null) {
             return Optional.empty();
         }
-        return Optional.of(new Template(row.getTemplateNo(), row.getName(), nz(row.getFirstWeightGram()),
+        return Optional.of(toTemplate(row));
+    }
+
+    private Template toTemplate(FulFreightTemplate row) {
+        return new Template(row.getTemplateNo(), row.getName(), nz(row.getFirstWeightGram()),
                 nzL(row.getFirstFee()), nz(row.getAddWeightGram()), nzL(row.getAddFee()), nzL(row.getFreeThreshold()),
-                rules(row.getOutOfRange())));
+                rules(row.getOutOfRange()));
     }
 
     private List<Rule> rules(String raw) {

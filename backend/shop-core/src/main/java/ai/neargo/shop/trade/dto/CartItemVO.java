@@ -29,7 +29,17 @@ public record CartItemVO(String goodsNo,
                           * 后端发文案会绕过 i18n 守卫（见 CartItem 注释里那段旧坑）。
                           * 与 {@code invalid}/{@code available} 不冲突：那两个是粗事实，这是更细的一层。
                           */
-                         String invalidReason) {
+                         String invalidReason,
+                         /** 所属门店（ADR-031）：购物车与结算按门店分段，段头显示店名。老数据为空 */
+                         String storeNo,
+                         String storeName) {
+
+    public CartItemVO(String goodsNo, String skuNo, String title, String cover, String spec, long price, int qty,
+                      String type, String fulfillment, String merchantNo, String merchantName, boolean selected,
+                      boolean invalid, int available, String invalidReason) {
+        this(goodsNo, skuNo, title, cover, spec, price, qty, type, fulfillment, merchantNo, merchantName,
+                selected, invalid, available, invalidReason, null, null);
+    }
 
     public static final String REASON_OFF_SHELF = "OFF_SHELF";
     public static final String REASON_ACTIVITY_ENDED = "ACTIVITY_ENDED";

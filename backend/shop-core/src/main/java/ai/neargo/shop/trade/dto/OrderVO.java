@@ -161,7 +161,43 @@ public record OrderVO(String orderNo,
                        */
                       Boolean instantRefundEligible,
                       /** 物流轨迹（TDD-圆通物流直连 Y4）。只有订单详情、快递履约、缓存有记录时非空；否则 null */
-                      Trace trace) {
+                      Trace trace,
+                      /**
+                       * 这张（子）单由哪家门店卖、哪家门店发（ADR-031：子单按门店拆）。
+                       * 同一主体两家店在一单里是两张子单，{@code merchantNo} 相同 —— 端上分段、
+                       * 段头显示、选活动都要按它分。主单与老数据为空。
+                       */
+                      StoreBrief store) {
+
+    public record StoreBrief(String storeNo, String storeName) {
+    }
+
+    /** 不带门店的签名：存量调用方 */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany, List<DiscountLine> discountLines, Returned returned,
+                   List<String> outOfRange, Offers offers, Boolean instantRefundEligible, Trace trace) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
+                instantRefundEligible, trace, null);
+    }
+
+    public OrderVO withStore(StoreBrief s) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
+                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
+                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, s);
+    }
 
     /** 物流轨迹（Y4）。status 同 ful_shipment；nodes 按时间倒序（最新在前） */
     /**
@@ -200,7 +236,7 @@ public record OrderVO(String orderNo,
                 amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
                 afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, t);
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, t, store);
     }
 
     /**
@@ -214,14 +250,23 @@ public record OrderVO(String orderNo,
     }
 
     /** @param chosen 这一次预览实际用上的活动号；NONE = 顾客选了不参加；null = 这家店这次没有活动 */
-    public record MerchantOffers(String merchantNo, String merchantName, List<Option> options, String chosen) {
+    /** @param storeNo 这一组的门店（ADR-031）。选活动按它回传；空 = 老数据，按主体 */
+    public record MerchantOffers(String merchantNo, String merchantName, List<Option> options, String chosen,
+                                 String storeNo) {
+        public MerchantOffers(String merchantNo, String merchantName, List<Option> options, String chosen) {
+            this(merchantNo, merchantName, options, chosen, null);
+        }
     }
 
     /** @param amountMinor 这家店只参加它时减多少 */
     public record Option(String activityNo, String name, long amountMinor) {
     }
 
-    public record Choice(String merchantNo, String activityNo) {
+    /** @param storeNo 这一组的门店（ADR-031）；空 = 按主体 */
+    public record Choice(String merchantNo, String activityNo, String storeNo) {
+        public Choice(String merchantNo, String activityNo) {
+            this(merchantNo, activityNo, null);
+        }
     }
 
     /** 订单关闭后券与积分去了哪。三项都可能为空 / 0 —— 有才说 */
@@ -368,7 +413,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /**
@@ -383,7 +428,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /**
@@ -395,7 +440,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /** 挂上超出配送范围的商家（P6，只在预览）。空表给 null —— 端上看 null 就不提示 */
@@ -406,7 +451,7 @@ public record OrderVO(String orderNo,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines, returned,
                 merchants == null || merchants.isEmpty() ? null : merchants, offers,
-                instantRefundEligible, trace);
+                instantRefundEligible, trace, store);
     }
 
     /** 挂上优惠选项（批 2，只在预览）。没有活动也没有券可选时给 null */
@@ -415,7 +460,8 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, o);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, o,
+                instantRefundEligible, trace, store);
     }
 
     /** 挂上去向（P3）。空的一律给 null —— 端上看 null 就整块不显示 */
@@ -425,7 +471,7 @@ public record OrderVO(String orderNo,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines,
-                r == null || r.isEmpty() ? null : r, outOfRange, offers);
+                r == null || r.isEmpty() ? null : r, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
@@ -434,7 +480,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers, instantRefundEligible, trace);
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /**
@@ -448,7 +494,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
     }
 
     /**

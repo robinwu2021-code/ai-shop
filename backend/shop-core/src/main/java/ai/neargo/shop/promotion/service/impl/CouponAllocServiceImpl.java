@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -106,21 +105,20 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         long allocated = 0;
         for (CouponPort.MerchantAmount g : applicable) {
             long part = Math.round((double) total * g.goodsAmount() / base);
-            shares.add(new CouponPort.MerchantDiscount(g.merchantNo(), part));
+            shares.add(new CouponPort.MerchantDiscount(g.merchantNo(), part, g.storeNo()));
             allocated += part;
         }
         long remainder = total - allocated;
         if (remainder != 0) {
-            String largest = applicable.stream()
-                    .max(Comparator.comparingLong(CouponPort.MerchantAmount::goodsAmount))
-                    .map(CouponPort.MerchantAmount::merchantNo).orElseThrow();
-            for (int i = 0; i < shares.size(); i++) {
-                if (shares.get(i).merchantNo().equals(largest)) {
-                    shares.set(i, new CouponPort.MerchantDiscount(largest,
-                            shares.get(i).amount() + remainder));
-                    break;
+            // 按位置找最大那一组，不按主体号：同主体两家店是两组（ADR-031），按号会落到第一组
+            int largest = 0;
+            for (int i = 1; i < applicable.size(); i++) {
+                if (applicable.get(i).goodsAmount() > applicable.get(largest).goodsAmount()) {
+                    largest = i;
                 }
             }
+            CouponPort.MerchantDiscount d = shares.get(largest);
+            shares.set(largest, new CouponPort.MerchantDiscount(d.merchantNo(), d.amount() + remainder, d.storeNo()));
         }
         return new CouponPort.Allocation(total,
                 PmtCoupon.BY_MERCHANT.equals(coupon.getFunder()), shares, coupon.getTitle());

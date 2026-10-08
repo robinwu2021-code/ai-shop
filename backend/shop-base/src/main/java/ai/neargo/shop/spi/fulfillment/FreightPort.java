@@ -30,6 +30,97 @@ public interface FreightPort {
     Optional<Template> template(String templateNo);
 
     /**
+     * 这个模板号此刻能不能用（存在且没归档）—— <b>不回落默认</b>。
+     * 商品指定的模板被归档时要回落到<b>门店</b>模板（AC8），而 {@link #template} 会直接回落平台默认。
+     */
+    default boolean active(String templateNo) {
+        return false;
+    }
+
+    /** 平台在用的模板（非归档），给商家在商品上选（AC7） */
+    default List<Template> activeTemplates() {
+        return List.of();
+    }
+
+    /**
+     * 一家门店这一单的运费：行各自带着解析好的模板（商品 ＞ 门店 ＞ 默认），按 {@link #merge} 合并。
+     *
+     * @return 模板一个都没有时为空（与 {@link #quote} 同口径：调用方按 0）
+     */
+    default Optional<Quote> quoteMerged(List<FreightLine> lines, String receiverAddress) {
+        return Optional.empty();
+    }
+
+    /**
+     * 一行货的运费输入。
+     *
+     * @param templateNo 已解析好的模板号（商品 ＞ 门店 ＞ 默认）；空 = 平台默认
+     */
+    record FreightLine(String templateNo, int weighedGram, int unweighedUnits, long goodsAmountMinor) {
+    }
+
+    /**
+     * 合并的一份：同一个模板下的全部货。
+     *
+     * @param weightGram 计费重（没填重量的件已按首重折进来）
+     * @param hit        收货地址命中的地区规则；没命中为空
+     */
+    record Part(Template template, int weightGram, long goodsAmountMinor, Rule hit) {
+    }
+
+    /**
+     * ★ 多模板合并（淘宝式，ADR-031 §2.5）—— 计价规则只此一处，端上 {@code freight.ts} 逐条照抄、用例对拍。
+     *
+     * <ol>
+     *   <li>任一份命中「不配送」→ 整店拒；</li>
+     *   <li>各份按自己模板的门槛判满额包邮，包邮的那份 0 元、不参与下面的比较；</li>
+     *   <li>其余份里<b>首费最高</b>的那个模板计首重 + 续重，其他份的<b>全部重量只按各自续重</b>计；</li>
+     *   <li>地区加收取参与计费那几份里最高的一笔，一个包裹只加一次。</li>
+     * </ol>
+     * 只有一份时与 {@link #fee} + 加收逐字相同 —— 改造前的单模板行为不变。
+     */
+    static Quote merge(List<Part> parts) {
+        for (Part p : parts) {
+            if (p.hit() != null && ACTION_REJECT.equals(p.hit().action())) {
+                return new Quote(p.template().templateNo(), 0L, true, p.hit().region(), false);
+            }
+        }
+        List<Part> charged = parts.stream()
+                .filter(p -> !(p.template().freeThreshold() > 0
+                        && p.goodsAmountMinor() >= p.template().freeThreshold()))
+                .toList();
+        if (charged.isEmpty()) {
+            Part first = parts.get(0);
+            return new Quote(first.template().templateNo(), 0L, false,
+                    first.hit() == null ? null : first.hit().region(), true);
+        }
+        // 首费最高者计首重；同额取先出现的（与活动「同额取先」同一个取法，结果确定）
+        Part primary = charged.get(0);
+        for (Part p : charged) {
+            if (p.template().firstFee() > primary.template().firstFee()) {
+                primary = p;
+            }
+        }
+        Template t = primary.template();
+        long fee = fee(primary.weightGram(), t.firstWeightGram(), t.firstFee(), t.addWeightGram(), t.addFee());
+        long surcharge = 0L;
+        String region = primary.hit() == null ? null : primary.hit().region();
+        for (Part p : charged) {
+            if (p != primary) {
+                Template o = p.template();
+                if (o.addWeightGram() > 0 && p.weightGram() > 0) {
+                    fee += (p.weightGram() + o.addWeightGram() - 1L) / o.addWeightGram() * o.addFee();
+                }
+            }
+            if (p.hit() != null && p.hit().surcharge() > surcharge) {
+                surcharge = p.hit().surcharge();
+                region = p.hit().region();
+            }
+        }
+        return new Quote(t.templateNo(), fee + Math.max(0L, surcharge), false, region, false);
+    }
+
+    /**
      * @param rejected      命中了「不配送」的地区 —— 下单要拒
      * @param matchedRegion 命中的地区名（加收或不配送），没命中为空
      * @param free          满额免邮

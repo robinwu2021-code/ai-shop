@@ -86,8 +86,9 @@ class ReviewStoreAttributionFlowTest {
                         .header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
 
-        // ③ 第二单落在 B —— 给 2 星
-        review(biz, "13001300012", goodsNo, 2);
+        // ③ 第二单落在 B —— 给 2 星。商品只属于一家门店（ADR-031）：B 店卖的是在 B 店建的那一件
+        String goodsB = listedGoods(biz, storeB, "评价归店·分店商品");
+        review(biz, "13001300012", goodsB, 2);
 
         var stores = storeRatings(biz);
         assertThat(stores.get(storeA).count()).as("A 店那条评价还在 A 上").isEqualTo(1);
@@ -273,9 +274,21 @@ class ReviewStoreAttributionFlowTest {
     }
 
     private String listedGoods(String bizToken, String title) throws Exception {
-        TestStoreCategory.open(mvc(), json, bizToken, "CAT210");
-        String goodsNo = json.readTree(mvc().perform(post("/biz/goods/save")
-                        .header("Authorization", "Bearer " + bizToken)
+        return listedGoods(bizToken, null, title);
+    }
+
+    /** @param storeNo 在哪家店下建（商品只属于一家门店）；null = 默认店 */
+    private String listedGoods(String bizToken, String storeNo, String title) throws Exception {
+        if (storeNo == null) {
+            TestStoreCategory.open(mvc(), json, bizToken, "CAT210");
+        } else {
+            TestStoreCategory.open(mvc(), json, bizToken, storeNo, "CAT210");
+        }
+        var save = post("/biz/goods/save").header("Authorization", "Bearer " + bizToken);
+        if (storeNo != null) {
+            save = save.header("X-Store-No", storeNo);
+        }
+        String goodsNo = json.readTree(mvc().perform(save
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"subtitle\":\"测试\",\"type\":\"NORMAL\","
                                 + "\"cover\":\"📦\",\"images\":[],\"specGroups\":[],"
@@ -286,9 +299,11 @@ class ReviewStoreAttributionFlowTest {
         mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
                 .header("Authorization", "Bearer " + TestLogin.operator(mvc(), json, "goods", "goods123"))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"));
-        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
-                .header("Authorization", "Bearer " + bizToken)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
+        var on = post("/biz/goods/" + goodsNo + "/toggle").header("Authorization", "Bearer " + bizToken);
+        if (storeNo != null) {
+            on = on.header("X-Store-No", storeNo);
+        }
+        mvc().perform(on.contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"));
         return goodsNo;
     }
 

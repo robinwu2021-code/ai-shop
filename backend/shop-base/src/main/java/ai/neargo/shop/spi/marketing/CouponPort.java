@@ -54,7 +54,15 @@ public interface CouponPort {
         return null;
     }
 
-    record MerchantAmount(String merchantNo, long goodsAmount) {
+    /**
+     * @param storeNo 这一组从哪家门店出（ADR-031：子单按门店拆，同主体两家店是两组）。
+     *                空 = 老调用方，按主体当一组
+     */
+    record MerchantAmount(String merchantNo, long goodsAmount, String storeNo) {
+
+        public MerchantAmount(String merchantNo, long goodsAmount) {
+            this(merchantNo, goodsAmount, null);
+        }
     }
 
     /**
@@ -76,12 +84,24 @@ public interface CouponPort {
             return new Allocation(0L, false, List.of(), null);
         }
 
+        /** 这个主体分到的合计（同主体多家店时是各店之和） */
         public long discountOf(String merchantNo) {
             return shares.stream().filter(s -> s.merchantNo().equals(merchantNo))
                     .mapToLong(MerchantDiscount::amount).sum();
         }
+
+        /** 这个主体在这家店那一组分到的（ADR-031：子单按门店拆） */
+        public long discountOf(String merchantNo, String storeNo) {
+            return shares.stream().filter(s -> s.merchantNo().equals(merchantNo)
+                            && java.util.Objects.equals(s.storeNo(), storeNo))
+                    .mapToLong(MerchantDiscount::amount).sum();
+        }
     }
 
-    record MerchantDiscount(String merchantNo, long amount) {
+    record MerchantDiscount(String merchantNo, long amount, String storeNo) {
+
+        public MerchantDiscount(String merchantNo, long amount) {
+            this(merchantNo, amount, null);
+        }
     }
 }

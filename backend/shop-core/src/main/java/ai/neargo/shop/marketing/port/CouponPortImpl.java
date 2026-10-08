@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -67,26 +66,26 @@ public class CouponPortImpl implements CouponPort {
         long allocated = 0;
         for (MerchantAmount g : applicable) {
             long part = Math.round((double) total * g.goodsAmount() / base);
-            shares.add(new Share(g.merchantNo(), part));
+            shares.add(new Share(g.merchantNo(), part, g.storeNo()));
             allocated += part;
         }
         // 尾数给适用商品额最大的那一单（正负都可能：round 会上下浮动）
         long remainder = total - allocated;
         if (remainder != 0) {
-            String largest = applicable.stream()
-                    .max(Comparator.comparingLong(MerchantAmount::goodsAmount))
-                    .map(MerchantAmount::merchantNo).orElseThrow();
-            for (int i = 0; i < shares.size(); i++) {
-                if (shares.get(i).merchantNo().equals(largest)) {
-                    shares.set(i, new Share(largest, shares.get(i).amount() + remainder));
-                    break;
+            // 按位置找最大那一组，不按主体号：同主体两家店是两组（ADR-031），按号会落到第一组
+            int largest = 0;
+            for (int i = 1; i < applicable.size(); i++) {
+                if (applicable.get(i).goodsAmount() > applicable.get(largest).goodsAmount()) {
+                    largest = i;
                 }
             }
+            Share d = shares.get(largest);
+            shares.set(largest, new Share(d.merchantNo(), d.amount() + remainder, d.storeNo()));
         }
 
         boolean byMerchant = MktCoupon.BY_MERCHANT.equals(coupon.getFunder());
         return new Allocation(total, byMerchant,
-                shares.stream().map(sh -> new MerchantDiscount(sh.merchantNo(), sh.amount())).toList(),
+                shares.stream().map(sh -> new MerchantDiscount(sh.merchantNo(), sh.amount(), sh.storeNo())).toList(),
                 coupon.getTitle());
     }
 
@@ -219,7 +218,7 @@ public class CouponPortImpl implements CouponPort {
         return c;
     }
 
-    private record Share(String merchantNo, long amount) {
+    private record Share(String merchantNo, long amount, String storeNo) {
     }
 
     private static long nz(Long v) {

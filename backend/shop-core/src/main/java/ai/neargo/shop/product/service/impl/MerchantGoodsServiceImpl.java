@@ -262,6 +262,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          *
          * ⚠️ 跨商家查（运营端）不走这条：那时没有「当前门店」这个概念。
          */
+        /*
+         * ★ 商品只属于一家门店（V384，ADR-031）：站在哪家店就只列这家店的货，五个页签都是。
+         * 别家店的同款是另一件商品，不出现在这里。没有归属的（测试种子）照旧按投影判。
+         */
+        if (storeNo != null && !storeNo.isBlank() && merchantNo != null && !merchantNo.isBlank()) {
+            w.and(x -> x.eq(PrdGoods::getStoreNo, storeNo).or().isNull(PrdGoods::getStoreNo));
+        }
         boolean byStore = storeNo != null && !storeNo.isBlank()
                 && merchantNo != null && !merchantNo.isBlank()
                 && ("ON_SALE".equals(status) || "OFF_SALE".equals(status));
@@ -775,6 +782,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 未上架的商品（草稿态/已下架/审核中）不走这里：它们没有「线上版」要保护，
          * 直接写主行，行为与从前逐字相同。
          */
+        applyFreightTemplate(g, isNew, cmd.freightTemplateNo());
         if (!isNew && Boolean.TRUE.equals(g.getOnSale()) && PUBLISHING.get() == null) {
             return saveAsDraft(g, cmd);
         }
@@ -1059,7 +1067,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 cmd.cover(), cmd.images(), merged, cmd.skus(), cmd.fulfillments(),
                 cmd.limitPerUser(), cmd.fresh(), cmd.service(), cmd.groupBuy(), cmd.stdNo(),
                 cmd.detail(), cmd.detailImages(), cmd.params(), cmd.saleMode(),
-                cmd.restrictedRegions(), cmd.entrySource());
+                cmd.restrictedRegions(), cmd.entrySource(), cmd.freightTemplateNo());
     }
 
     /**
@@ -2244,7 +2252,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 null,
                 // 商家侧不标销售范围：店主知道自己的经营范围，那是他在门店设置里配的
                 null,
-                base.saleMode(), null, null, null, null, base.restrictedRegions());
+                base.saleMode(), null, null, null, null, base.restrictedRegions())
+                .withFreightTemplateNo(g.getFreightTemplateNo());
     }
 
     /**
@@ -3198,6 +3207,34 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
 
     // ---------------------------------------------------------------- helpers
 
+    /**
+     * 商品指定的运费模板（V385，ADR-031）。**放在草稿分支之前、直接落主行**：
+     * 它是物流设置不是买家看的内容，在售商品改它不该等审核换版。
+     * 不传 = 不改；空串 = 清掉（跟随门店）；只能选平台在用的模板。
+     *
+     * <p>清空要显式 set null —— updateById 跳过 null 字段，「清空」那句 set 根本不会生成。
+     */
+    private void applyFreightTemplate(PrdGoods g, boolean isNew, String requested) {
+        if (requested == null) {
+            return;
+        }
+        String no = requested.isBlank() ? null : requested.trim();
+        if (no != null && (freightPort == null || !freightPort.active(no))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        g.setFreightTemplateNo(no);
+        if (!isNew) {
+            // 解域：带域表的直写在 B 端会话里静默改 0 行（与本类其余写法一致）
+            DataScopeContext.executeWithoutScope(() -> goodsMapper.update(null, Wrappers.<PrdGoods>lambdaUpdate()
+                    .eq(PrdGoods::getGoodsNo, g.getGoodsNo())
+                    .set(PrdGoods::getFreightTemplateNo, no)));
+        }
+    }
+
+    /** 快递运费模板：商品指定模板要校验「平台在用」。可空：只装了商品域的测试切片里没有履约域 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ai.neargo.shop.spi.fulfillment.FreightPort freightPort;
+
     private PrdGoods newGoods(String merchantNo) {
         PrdGoods g = new PrdGoods();
         g.setGoodsNo(BizKey.next(BizKey.GOODS));
@@ -3410,7 +3447,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 storeOnSale,
                 // 同上：销售范围是买家页的一行话，商家侧在门店设置里看
                 null,
-                base.saleMode(), null, null, null, null, base.restrictedRegions());
+                base.saleMode(), null, null, null, null, base.restrictedRegions())
+                .withFreightTemplateNo(g.getFreightTemplateNo());
     }
 
     /**

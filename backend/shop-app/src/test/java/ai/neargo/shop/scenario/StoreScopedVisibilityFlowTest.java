@@ -523,64 +523,32 @@ class StoreScopedVisibilityFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 在 A 店下架的货，A 店的买家下不了单 —— prd_store_goods.on_sale 此前在下单链路上没有读者")
+    @DisplayName("★★★ 所属门店下架的货下不了单，也不会被落到同主体别家店 —— 端上带别家店号也不行")
     void goodsOffSaleAtThisStoreCannotBeOrdered() throws Exception {
         String biz = merchant("12600180012", "两家店卖法不同的商家");
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
 
         String storeA = defaultStoreNo(biz);
-        String storeB = createStore(biz, "只有这家店还卖它");
+        String storeB = createStore(biz, "只有这家店卖它");
         TestStoreCategory.open(mvc(), json, biz, storeB, "CAT210");
 
-        /*
-         * 两家店都上架 → 这件货转成「按店管理」，而且主体总闸是开的。
-         * **主体总闸必须留着开**，否则下架 A 店之后主体也跟着关，
-         * 那条旧的主体级判据就能拦住下单，这条用例会变成永远绿的。
-         */
-        String goodsNo = onSaleGoodsAt(biz, storeB, "A 店不卖了的柠檬");
-        mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
-                        .header("Authorization", "Bearer " + biz)
-                        .header("X-Store-No", storeA)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":true}"))
-                .andExpect(jsonPath("$.code").value(0));
-
+        String goodsNo = onSaleGoodsAt(biz, storeB, "B 店的柠檬");
         String skuNo = firstSkuNo(goodsNo);
         String buyer = login("13800180012");
         addToCart(buyer, goodsNo, skuNo, 1);
 
-        /*
-         * **判据用 preview + storeChoices，不用加购。**
-         * 加购那条路根本不判上下架（`CartServiceImpl.add` 只判「仅活动可售」），
-         * 拿它当判据的话这条用例两边都绿，什么也说明不了。
-         * storeChoices 让「买家要去哪家店」变成用例自己说的事，
-         * 而不是靠自提点或默认社区去猜 —— 猜错了测到的就是另一家店。
-         */
         assertThat(previewOk(buyer, merchantNo, storeA))
-                .as("前置：A 店还在卖的时候，结算页本来是算得出来的")
+                .as("前置：在架时结算页算得出来 —— 端上带的门店号是 A 也一样，货是 B 店的（ADR-031）")
                 .isTrue();
 
-        offShelfAt(biz, storeA, goodsNo);
-        assertThat(entityOnSale(goodsNo))
-                .as("前置：B 店还在卖，主体总闸必须仍是开的，否则这条用例测不到门店级那一层")
-                .isTrue();
-
+        offShelfAt(biz, storeB, goodsNo);
         /*
-         * ★ 修之前这里是通的：`GoodsQueryPortImpl.snapshot` 的 onSale 只读
-         * `prd_goods.on_sale`（主体总闸），而门店行在下单链路上**没有任何读者**。
-         * 更糟的是，带门店上下文的那一支此前还挂在「有没有配门店价」这个开关后面
-         * （`OrderServiceImpl` 里的 if），不分店定价的商家连那一支都走不到。
-         *
-         * 消融：把 snapshot 里的 `&& !offHere.contains(...)` 去掉，这条必红。
+         * 所属门店下架就是下架：要说『已下架』（70076）不是『商品不存在』，
+         * 而且不能因为端上带了 A 店就落到 A 店去 —— 那正是 2026-10-09 盐被落到鲜果店的形状。
          */
-        assertThat(previewCode(buyer, merchantNo, storeA))
-                .as("这件货在买家要去的那家店已经下架 —— 结算页不该还算得出来，"
-                        + "而且要说『已下架』（70076）不是『商品不存在』："
-                        + "买家正看着这件货的详情页，说它不存在他只会反复重试")
-                .isEqualTo(70076);
-        assertThat(previewOk(buyer, merchantNo, storeB))
-                .as("对照量：B 店还在卖，那边必须仍然通 —— 否则这条用例可能只是把整条路测坏了")
-                .isTrue();
+        assertThat(previewCode(buyer, merchantNo, storeA)).isEqualTo(70076);
+        assertThat(previewCode(buyer, merchantNo, storeB)).isEqualTo(70076);
     }
 
     @Test
@@ -611,10 +579,10 @@ class StoreScopedVisibilityFlowTest {
                 .as("A 店没上架它，A 店的「全部」里不该有")
                 .doesNotContain(onlyAtB);
 
-        // 上架路径不丢：它还在「已下架」页签里，店主能在那儿把它重新上架
+        // 商品只属于一家门店（ADR-031）：B 店的货不是 A 店的，A 店「已下架」里也不列它
         assertThat(offSaleTabAt(biz, storeA))
-                .as("本店未上架的货要留在「已下架」页签里 —— 否则店主永远上不了架")
-                .contains(onlyAtB);
+                .as("别家店的货不进本店任何页签 —— A 店要卖同款，是在 A 店建它自己那一件")
+                .doesNotContain(onlyAtB);
     }
 
     @Test
@@ -982,8 +950,9 @@ class StoreScopedVisibilityFlowTest {
     }
 
     /** 建一件货、过审、在**指定门店**上架 */
+    /** 在这家店下建并上架（商品只属于建它的那家店，ADR-031） */
     private String onSaleGoodsAt(String token, String storeNo, String title) throws Exception {
-        String goodsNo = saveGoods(token, title);
+        String goodsNo = saveGoods(token, title, storeNo);
         approveGoods(goodsNo);
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                         .header("Authorization", "Bearer " + token)
@@ -1004,9 +973,20 @@ class StoreScopedVisibilityFlowTest {
     }
 
     private String saveGoods(String token, String title) throws Exception {
-        TestStoreCategory.open(mvc(), json, token, "CAT210");
-        return json.readTree(mvc().perform(post("/biz/goods/save")
-                        .header("Authorization", "Bearer " + token)
+        return saveGoods(token, title, null);
+    }
+
+    private String saveGoods(String token, String title, String storeNo) throws Exception {
+        if (storeNo == null) {
+            TestStoreCategory.open(mvc(), json, token, "CAT210");
+        } else {
+            TestStoreCategory.open(mvc(), json, token, storeNo, "CAT210");
+        }
+        var req = post("/biz/goods/save").header("Authorization", "Bearer " + token);
+        if (storeNo != null) {
+            req = req.header("X-Store-No", storeNo);
+        }
+        return json.readTree(mvc().perform(req
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\","
                                 + "\"subtitle\":\"\",\"cover\":\"🧻\",\"images\":[],"

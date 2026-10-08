@@ -270,14 +270,27 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 没有门店行的 SKU 保持主体价（fail-back），与库存的「无行视为 0」刻意相反：
          * 价格视为 0 就是白送。
          */
-        Map<String, Long> storePrice = storePrices(storeByEntity, skuNos);
+        /*
+         * ★ 每件货按**它自己的门店**取（V384，ADR-031）：商品只属于一家门店，
+         * 同一主体两家店的货进同一单时，各按各的店取价与上下架。没有归属的（测试种子）
+         * 才按调用方给的「主体 → 门店」。
+         */
+        Map<String, String> storeOfGoods = new HashMap<>();
+        for (PrdGoods g : goodsMap.values()) {
+            String st = g.getStoreNo() != null && !g.getStoreNo().isBlank() ? g.getStoreNo()
+                    : storeByEntity == null ? null : storeByEntity.get(g.getEntityNo());
+            if (st != null && !st.isBlank()) {
+                storeOfGoods.put(g.getGoodsNo(), st);
+            }
+        }
+        Map<String, Long> storePrice = storePricesAt(skus, storeOfGoods);
 
         /*
          * 门店级下架：与门店价同一个覆盖层，但**方向相反** ——
          * 价格「没有行就用主体价」，上下架「有行的商品，没有本店那行就是不卖」。
          * 相反是对的：价格取错是白送，上下架取错是把店主已经下掉的货接着卖。
          */
-        java.util.Set<String> offHere = storeOffSale(storeByEntity, goodsNos);
+        java.util.Set<String> offHere = storeOffSaleAt(storeOfGoods);
 
         Map<String, SkuSnapshot> result = new HashMap<>();
         for (PrdSku sku : skus) {
@@ -297,9 +310,62 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                             && !offHere.contains(sku.getGoodsNo()),
                     readList(g.getFulfillments()),
                     g.getGroupPriceMinor(), g.getGroupMinCount(),
-                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram()));
+                    g.getSaleMode(), g.getLimitPerUser(), sku.getNominalGram(), g.getStoreNo()));
         }
         return result;
+    }
+
+    /** 按每件货自己的门店取门店价（{@link #storePrices} 的逐件版：一单里同主体可能有两家店） */
+    private Map<String, Long> storePricesAt(List<PrdSku> skus, Map<String, String> storeOfGoods) {
+        if (storeOfGoods.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> storeOfSku = new HashMap<>();
+        for (PrdSku s : skus) {
+            String st = storeOfGoods.get(s.getGoodsNo());
+            if (st != null) {
+                storeOfSku.put(s.getSkuNo(), st);
+            }
+        }
+        if (storeOfSku.isEmpty()) {
+            return Map.of();
+        }
+        List<ai.neargo.shop.product.entity.PrdStorePrice> rows =
+                DataScopeContext.executeWithoutScope(() -> storePriceMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStorePrice>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getSkuNo, storeOfSku.keySet())
+                                .in(ai.neargo.shop.product.entity.PrdStorePrice::getStoreNo,
+                                        new java.util.HashSet<>(storeOfSku.values()))
+                                .eq(ai.neargo.shop.product.entity.PrdStorePrice::getMarket, MARKET_CN)));
+        Map<String, Long> out = new HashMap<>();
+        for (var r : rows) {
+            if (r.getPrice() != null && r.getStoreNo().equals(storeOfSku.get(r.getSkuNo()))) {
+                out.put(r.getSkuNo(), r.getPrice());
+            }
+        }
+        return out;
+    }
+
+    /** 按每件货自己的门店判店级下架（{@link #storeOffSale} 的逐件版，三态语义相同） */
+    private java.util.Set<String> storeOffSaleAt(Map<String, String> storeOfGoods) {
+        if (storeOfGoods.isEmpty()) {
+            return java.util.Set.of();
+        }
+        List<ai.neargo.shop.product.entity.PrdStoreGoods> rows =
+                DataScopeContext.executeWithoutScope(() -> storeGoodsMapper.selectList(
+                        Wrappers.<ai.neargo.shop.product.entity.PrdStoreGoods>lambdaQuery()
+                                .in(ai.neargo.shop.product.entity.PrdStoreGoods::getGoodsNo, storeOfGoods.keySet())));
+        java.util.Set<String> managed = new java.util.HashSet<>();
+        java.util.Set<String> onHere = new java.util.HashSet<>();
+        for (var r : rows) {
+            managed.add(r.getGoodsNo());
+            if (Boolean.TRUE.equals(r.getOnSale()) && r.getStoreNo() != null
+                    && r.getStoreNo().equals(storeOfGoods.get(r.getGoodsNo()))) {
+                onHere.add(r.getGoodsNo());
+            }
+        }
+        managed.removeAll(onHere);
+        return managed;
     }
 
     /**
@@ -371,6 +437,24 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                                 .in(PrdSku::getGoodsNo, goodsNos)
                                 .gt(PrdSku::getPresaleQuota, 0)))
                 .stream().map(PrdSku::getGoodsNo).collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Override
+    public Map<String, String> freightTemplatesOf(java.util.Collection<String> goodsNos) {
+        if (goodsNos == null || goodsNos.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> out = new HashMap<>();
+        for (PrdGoods g : DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                        .select(PrdGoods::getGoodsNo, PrdGoods::getFreightTemplateNo)
+                        .in(PrdGoods::getGoodsNo, goodsNos)
+                        .isNotNull(PrdGoods::getFreightTemplateNo)))) {
+            if (g.getFreightTemplateNo() != null && !g.getFreightTemplateNo().isBlank()) {
+                out.put(g.getGoodsNo(), g.getFreightTemplateNo());
+            }
+        }
+        return out;
     }
 
     @Override

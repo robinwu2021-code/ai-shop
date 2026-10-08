@@ -292,6 +292,8 @@ public class GoodsServiceImpl implements GoodsService {
         }
 
         if (q.storeNo() != null && !q.storeNo().isBlank()) {
+            // 商品只属于一家门店（V384）：门户只列本店的货；没有归属的（测试种子）沿用投影
+            w.and(x -> x.eq(PrdGoods::getStoreNo, q.storeNo()).or().isNull(PrdGoods::getStoreNo));
             List<String> notHere = notOnSaleAt(q.merchantNo(), q.storeNo());
             if (!notHere.isEmpty()) {
                 w.notIn(PrdGoods::getGoodsNo, notHere);
@@ -344,10 +346,16 @@ public class GoodsServiceImpl implements GoodsService {
          * 硬挑一家会让落款与真正履约的店对不上（下单落店另有自己的判据）。
          * 说不清就不说，端上回落主体名 —— 那是诚实的默认值。
          */
-        final Map<String, String> storeOfGoods =
+        final Map<String, String> storeOfGoods = new HashMap<>(
                 byVisibility.isEmpty() && (q.merchantNo() == null || q.merchantNo().isBlank())
                         ? soleSellingStoreOf(nos)
-                        : byVisibility;
+                        : byVisibility);
+        // 商品只属于一家门店（V384）：有归属就是它，不必再推断「唯一在架的那家」
+        page.getRecords().forEach(g -> {
+            if (g.getStoreNo() != null && !g.getStoreNo().isBlank()) {
+                storeOfGoods.put(g.getGoodsNo(), g.getStoreNo());
+            }
+        });
         Map<String, String> storeNames = storeNamesOf(storeOfGoods.values());
         List<GoodsVO> records = page.getRecords().stream()
                 .map(g -> withStoreScope(
@@ -355,6 +363,14 @@ public class GoodsServiceImpl implements GoodsService {
                         storeOfGoods.get(g.getGoodsNo()), storeNames))
                 .toList();
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    /** 商品的归属门店（V384）；没有归属返回 null */
+    private String ownerStoreOf(String goodsNo) {
+        PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
+                Wrappers.<PrdGoods>lambdaQuery().select(PrdGoods::getStoreNo)
+                        .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
+        return g == null || g.getStoreNo() == null || g.getStoreNo().isBlank() ? null : g.getStoreNo();
     }
 
     /** 门店号 → 门店名。一次取回，避免每行查一次 */
@@ -438,6 +454,14 @@ public class GoodsServiceImpl implements GoodsService {
     @Override
     public GoodsVO detailForBuyer(String goodsNo, String storeNo) {
         GoodsVO v = detail(goodsNo);
+        /*
+         * ★ 商品只属于一家门店（V384，ADR-031）：有归属就按它 —— 链接上带的门店号只是「从哪进来的」，
+         * 不决定这件货由谁卖。库存、店名都按归属店取。没有归属（测试种子）才用调用方给的。
+         */
+        String owner = ownerStoreOf(goodsNo);
+        if (owner != null) {
+            storeNo = owner;
+        }
         /*
          * **库存只在调用方真正传了 storeNo 时才换**（AC8：不带门店时给主体总量，口径不变 ——
          * 单店商家、从首页推荐进来的都走这一支）。换库存与下面「解析门店名」是两件事，别绑在一起：

@@ -347,7 +347,7 @@ public class OrderServiceImpl implements OrderService {
         boolean anyNoInvoice = false;
 
         for (Group g : split.groups) {
-            var cap = merchantPort.payCapabilityOf(g.merchantNo, stores.get(g.merchantNo));
+            var cap = merchantPort.payCapabilityOf(g.merchantNo, stores.get(g.key()));
             long amount = g.goodsAmount() + g.freight;
             boolean noInvoice = !cap.invoiceCapable();
             anyNoInvoice = anyNoInvoice || noInvoice;
@@ -358,14 +358,14 @@ public class OrderServiceImpl implements OrderService {
              * 与 requireWithinDeliveryRadius 里的放行是同一件事。
              */
             // 圆心按这一单落在的那家店（多门店时不是默认店）
-            var origin = merchantPort.deliveryOrigin(g.merchantNo, stores.get(g.merchantNo)).orElse(null);
+            var origin = merchantPort.deliveryOrigin(g.merchantNo, stores.get(g.key())).orElse(null);
             rows.add(new ai.neargo.shop.trade.dto.CheckoutCapabilityVO.MerchantCapability(
                     g.merchantNo, g.merchantName, cap.invoiceCapable(),
                     new ArrayList<>(cap.payMethods()),
                     cap.quotaExhausted(), cap.wouldExceed(amount),
                     origin == null ? null : origin.latE6(),
                     origin == null ? null : origin.lngE6(),
-                    origin == null ? null : origin.radiusM()));
+                    origin == null ? null : origin.radiusM(), g.storeNo()));
 
             /*
              * 交集而非并集：一笔支付覆盖整单，有一家不支持这种方式就用不了。
@@ -399,17 +399,32 @@ public class OrderServiceImpl implements OrderService {
          * ONLINE 永远在集合里（四层判定的约定），所以交集不会空。
          */
         java.util.Set<String> payModes = null;
-        for (Line line : split.items) {
-            // 带履约判：商家配送 × 线下要门店开了货到付款 —— 与建单同一个入口，结算页不会说一套、提交判一套
-            var modes = payModeService.availablePayModes(
-                    line.snapshot.goodsNo(), stores.get(line.snapshot.merchantNo()), cmd.fulfillment());
-            payModes = payModes == null ? new java.util.LinkedHashSet<>(modes)
-                    : intersect(payModes, modes);
+        for (Group g : split.groups) {
+            for (Line line : g.lines) {
+                // 带履约判：商家配送 × 线下要门店开了货到付款 —— 与建单同一个入口，结算页不会说一套、提交判一套
+                var modes = payModeService.availablePayModes(
+                        line.snapshot.goodsNo(), stores.get(g.key()), cmd.fulfillment());
+                payModes = payModes == null ? new java.util.LinkedHashSet<>(modes)
+                        : intersect(payModes, modes);
+            }
         }
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
                 usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows,
                 payModes == null ? List.of(ai.neargo.shop.common.PayModes.ONLINE)
                         : new ArrayList<>(payModes));
+    }
+
+    /**
+     * 这一单各组的店名。**必须解域**：买家会话带数据域，而门店名查询故意不解域，
+     * 不解的话登录后店名全是空（匿名测试看不出来）。
+     */
+    private Map<String, String> storeNamesOf(Split split) {
+        List<String> nos = split.groups.stream().map(Group::storeNo).filter(java.util.Objects::nonNull)
+                .distinct().toList();
+        if (nos.isEmpty()) {
+            return Map.of();
+        }
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> merchantPort.storeNames(nos));
     }
 
     private static java.util.Set<String> intersect(java.util.Set<String> a,
@@ -446,7 +461,7 @@ public class OrderServiceImpl implements OrderService {
         // 预览不落库、不锁库存：用户可能在结算页反复改地址与履约方式。
         // 但**优惠要按下单时同一套规则算**，否则结算页显示的金额和实付对不上
         Discounts discounts = discountsOf(cmd, split, userNo);
-        return split.toVO(discounts, pickups, remainingOf(split, userNo))
+        return split.toVO(discounts, pickups, remainingOf(split, userNo), storeNamesOf(split))
                 .withDiscountLines(discountLinesOf(discounts))
                 // 优惠选项与最省组合（批 2）：只在预览算，下单时按顾客提交的选择走
                 .withOffers(offersOf(cmd, split, userNo, discounts))
@@ -554,17 +569,26 @@ public class OrderServiceImpl implements OrderService {
      */
     private Map<String, String> storesOf(CreateOrderCommand cmd, Split split) {
         /*
-         * **拆单之后才有件**，所以这条路把件带上 —— 落店要判「这家店在架卖它 ∧ 有货」。
-         * 同一个 SKU 在一单里可能出现多行（不同活动），件数要累加，不是覆盖。
+         * ★ 组的键 → 门店（ADR-031）。门店在拆单时就定了（归属门店，或测试种子按主体落店的结果），
+         * 这里不再解析第二遍 —— 两遍各算一次正是「减 A 店的活动、扣 B 店的库存」那类错的来源。
          */
-        Map<String, Map<String, Integer>> itemsByMerchant = new HashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (Group g : split.groups) {
-            Map<String, Integer> m = itemsByMerchant.computeIfAbsent(g.merchantNo(), k -> new HashMap<>());
-            for (Line l : g.lines()) {
-                m.merge(l.skuNo(), l.qty(), Integer::sum);
+            if (g.storeNo() != null) {
+                out.put(g.key(), g.storeNo());
             }
         }
-        return storesOfEntities(cmd, split.groups.stream().map(Group::merchantNo).toList(), itemsByMerchant);
+        /*
+         * 状态闸：落到的店必须营业（AC7）—— 与 storesOfEntities 末尾同一道，归属门店也要过。
+         * 预览、能力、下单都经过这里，暂停营业的店在预览那一步就拒。
+         */
+        Map<String, String> statuses = storeStatuses(out.values().stream().distinct().toList());
+        for (String storeNo : out.values()) {
+            if (!open(statuses, storeNo)) {
+                throw BizException.of(ErrorCode.STORE_PAUSED);
+            }
+        }
+        return out;
     }
 
     /**
@@ -826,7 +850,7 @@ public class OrderServiceImpl implements OrderService {
         CouponPort.Allocation coupon = couponPort.allocate(userNo, cmd.couponNo(),
                 split.groups.stream()
                         .map(g -> new CouponPort.MerchantAmount(
-                                g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo)))
+                                g.merchantNo, g.goodsAmount() - auto.of(g.merchantNo, g.storeNo()), g.storeNo()))
                         .toList());
         return new Discounts(auto, coupon);
     }
@@ -837,7 +861,7 @@ public class OrderServiceImpl implements OrderService {
         boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
         return split.groups.stream()
                 .map(g -> new CampaignPort.MerchantAmount(
-                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.merchantNo),
+                        g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.key()),
                         // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
                         offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
                                 l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
@@ -862,31 +886,41 @@ public class OrderServiceImpl implements OrderService {
         Map<String, String> stores = storesOf(cmd, split);
         List<CampaignPort.MerchantAmount> amounts = merchantAmounts(cmd, split, stores);
         List<CampaignPort.AppliedActivity> cands = campaignPort.candidates(amounts);
+        /*
+         * 按组（门店）键（ADR-031）：同主体两家店各有各的活动选项。
+         * 顾客的选择先按门店号找、再按主体号找（老端上只按主体传）。
+         */
         Map<String, List<CampaignPort.AppliedActivity>> byMerchant = new LinkedHashMap<>();
+        Map<String, Group> groupOf = new LinkedHashMap<>();
         for (Group g : split.groups) {
+            groupOf.put(g.key(), g);
             List<CampaignPort.AppliedActivity> mine = cands.stream()
-                    .filter(a -> a.merchantNo().equals(g.merchantNo)).toList();
+                    .filter(a -> a.merchantNo().equals(g.merchantNo)
+                            && java.util.Objects.equals(a.storeNo(), g.storeNo())).toList();
             if (!mine.isEmpty()) {
                 // 默认最优在前：与 CampaignPort.pick 同一个取法（同额取先出现的）
                 List<CampaignPort.AppliedActivity> sorted = new ArrayList<>(mine);
                 sorted.sort((x, y) -> Long.compare(y.amountMinor(), x.amountMinor()));
-                byMerchant.put(g.merchantNo, sorted);
+                byMerchant.put(g.key(), sorted);
             }
         }
         List<OrderVO.MerchantOffers> merchants = new ArrayList<>();
         for (Group g : split.groups) {
-            List<CampaignPort.AppliedActivity> mine = byMerchant.get(g.merchantNo);
+            List<CampaignPort.AppliedActivity> mine = byMerchant.get(g.key());
             if (mine == null) {
                 continue;
             }
-            String chosen = current.auto().applied().stream().filter(a -> a.merchantNo().equals(g.merchantNo))
+            String choice = cmd.activityChoices() == null ? null
+                    : cmd.activityChoices().containsKey(g.key()) ? cmd.activityChoices().get(g.key())
+                    : cmd.activityChoices().get(g.merchantNo);
+            String chosen = current.auto().applied().stream()
+                    .filter(a -> a.merchantNo().equals(g.merchantNo)
+                            && java.util.Objects.equals(a.storeNo(), g.storeNo()))
                     .map(CampaignPort.AppliedActivity::activityNo).findFirst()
-                    .orElse(cmd.activityChoices() != null
-                            && CampaignPort.CHOICE_NONE.equals(cmd.activityChoices().get(g.merchantNo))
-                            ? CampaignPort.CHOICE_NONE : null);
+                    .orElse(CampaignPort.CHOICE_NONE.equals(choice) ? CampaignPort.CHOICE_NONE : null);
             merchants.add(new OrderVO.MerchantOffers(g.merchantNo, g.merchantName,
                     mine.stream().map(a -> new OrderVO.Option(a.activityNo(), a.name(), a.amountMinor())).toList(),
-                    chosen));
+                    chosen, g.storeNo()));
         }
 
         List<String> coupons = new ArrayList<>();
@@ -904,7 +938,7 @@ public class OrderServiceImpl implements OrderService {
         }
         boolean offline = PayModes.OFFLINE.equals(cmd.payMode());
         Map<String, Long> goodsOf = new HashMap<>();
-        split.groups.forEach(g -> goodsOf.put(g.merchantNo, g.goodsAmount()));
+        split.groups.forEach(g -> goodsOf.put(g.key(), g.goodsAmount()));
 
         // 活动组合：每家店从 [候选…, 不参加] 里选一个。超过上限只看「全部按最优」这一组
         List<Map<String, CampaignPort.AppliedActivity>> actCombos = new ArrayList<>();
@@ -938,8 +972,8 @@ public class OrderServiceImpl implements OrderService {
                     .mapToLong(CampaignPort.AppliedActivity::amountMinor).sum();
             List<CouponPort.MerchantAmount> after = split.groups.stream()
                     .map(g -> new CouponPort.MerchantAmount(g.merchantNo,
-                            goodsOf.get(g.merchantNo) - (acts.get(g.merchantNo) == null
-                                    ? 0L : acts.get(g.merchantNo).amountMinor())))
+                            goodsOf.get(g.key()) - (acts.get(g.key()) == null
+                                    ? 0L : acts.get(g.key()).amountMinor()), g.storeNo()))
                     .toList();
             for (String c : coupons) {
                 long couponOff = 0L;
@@ -968,7 +1002,9 @@ public class OrderServiceImpl implements OrderService {
         List<OrderVO.Choice> suggested = new ArrayList<>();
         for (String m : mNos) {
             CampaignPort.AppliedActivity a = bestActs.get(m);
-            suggested.add(new OrderVO.Choice(m, a == null ? CampaignPort.CHOICE_NONE : a.activityNo()));
+            Group g = groupOf.get(m);
+            suggested.add(new OrderVO.Choice(g.merchantNo, a == null ? CampaignPort.CHOICE_NONE : a.activityNo(),
+                    g.storeNo()));
         }
         return new OrderVO.Offers(merchants, suggested, bestCoupon, Math.max(bestTotal, 0L));
     }
@@ -1015,6 +1051,21 @@ public class OrderServiceImpl implements OrderService {
 
         long of(String merchantNo) {
             return auto.of(merchantNo) + coupon.discountOf(merchantNo);
+        }
+
+        /** 这一组（主体 + 门店）分到的优惠（ADR-031：子单按门店拆，同主体两组各算各的） */
+        long of(String merchantNo, String storeNo) {
+            return auto.of(merchantNo, storeNo) + coupon.discountOf(merchantNo, storeNo);
+        }
+
+        long merchantFunded(String merchantNo, String storeNo) {
+            return auto.of(merchantNo, storeNo) - auto.platformOf(merchantNo, storeNo)
+                    + (coupon.byMerchant() ? coupon.discountOf(merchantNo, storeNo) : 0L);
+        }
+
+        long platformFunded(String merchantNo, String storeNo) {
+            return auto.platformOf(merchantNo, storeNo)
+                    + (coupon.byMerchant() ? 0L : coupon.discountOf(merchantNo, storeNo));
         }
 
         /**
@@ -1125,7 +1176,7 @@ public class OrderServiceImpl implements OrderService {
                 && Fulfillments.NEIGHBOR_PICKUP.equals(cmd.fulfillment())) {
             // 团按自提点成团（一车送到一个点）：参团的单一律送团的那个点，不按买家坐标另配
             pickupByMerchant = new java.util.HashMap<>(pickupByMerchant);
-            pickupByMerchant.put(group.merchantNo(), group.pickupNo());
+            pickupByMerchant.put(split.groups.get(0).key(), group.pickupNo());
         }
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
@@ -1152,7 +1203,7 @@ public class OrderServiceImpl implements OrderService {
         try {
             List<StockPort.SkuQty> lock = new ArrayList<>();
             for (Group g : split.groups) {
-                String storeNo = storeOfMerchant.get(g.merchantNo());
+                String storeNo = storeOfMerchant.get(g.key());
                 for (Line i : g.lines) {
                     // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
                     lock.add(new StockPort.SkuQty(
@@ -1170,7 +1221,7 @@ public class OrderServiceImpl implements OrderService {
             try {
                 List<StockPort.SkuQty> paidOnly = new ArrayList<>();
                 for (Group g : split.groups) {
-                    String storeNo = storeOfMerchant.get(g.merchantNo());
+                    String storeNo = storeOfMerchant.get(g.key());
                     for (Line i : g.lines) {
                         paidOnly.add(new StockPort.SkuQty(i.skuNo(), i.qty(), storeNo));
                     }
@@ -1190,7 +1241,7 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, String> subOrderNoOf = new LinkedHashMap<>();
         for (Group g : split.groups) {
-            subOrderNoOf.put(g.merchantNo, BizKey.next(BizKey.SUB_ORDER));
+            subOrderNoOf.put(g.key(), BizKey.next(BizKey.SUB_ORDER));
         }
 
         /*
@@ -1208,8 +1259,8 @@ public class OrderServiceImpl implements OrderService {
                 ? PointsPort.Deduction.none()
                 : pointsPort.deduct(userNo, cmd.usePoints(), split.groups.stream()
                         .map(g -> new PointsPort.Target(g.merchantNo,
-                                g.goodsAmount() - discounts.of(g.merchantNo),
-                                subOrderNoOf.get(g.merchantNo)))
+                                g.goodsAmount() - discounts.of(g.merchantNo, g.storeNo()),
+                                subOrderNoOf.get(g.key())))
                         /*
                          * 端与支付方式一起传进去：能不能用积分抵扣是平台策略，
                          * 判定收在积分域一处。**传的是本次请求的端**（cmd.payScene()
@@ -1228,7 +1279,7 @@ public class OrderServiceImpl implements OrderService {
          * **拦在这里而不是支付后**：付过钱再告诉他「这张券不能用」，他要先退款才能重下。
          */
         if (PayModes.OFFLINE.equals(payMode) && discounts.total() > 0
-                && split.groups().stream().anyMatch(g -> discounts.platformFunded(g.merchantNo()) > 0)) {
+                && split.groups().stream().anyMatch(g -> discounts.platformFunded(g.merchantNo(), g.storeNo()) > 0)) {
             throw BizException.of(ErrorCode.PLATFORM_COUPON_OFFLINE_FORBIDDEN);
         }
 
@@ -1289,19 +1340,28 @@ public class OrderServiceImpl implements OrderService {
                 List<String> goodsNos = g.lines.stream().map(l -> l.snapshot.goodsNo()).distinct().toList();
                 int qty = g.lines.stream().mapToInt(Line::qty).sum();
                 periodPort.ticketFor(g.merchantNo, goodsNos, qty, now)
-                        .ifPresent(t -> ticketOf.put(g.merchantNo, t));
+                        .ifPresent(t -> ticketOf.put(g.key(), t));
             }
         }
+        /*
+         * 经营额度 / 单笔上限按**主体汇总**判（ADR-031 §2.7）：同主体两家店各一张子单，
+         * 逐组判的话两部分各自过、合起来却超了。
+         */
+        Map<String, Long> payByEntity = new LinkedHashMap<>();
         for (Group g : split.groups) {
-            long merchantPay = g.goodsAmount() + g.freight - discounts.of(g.merchantNo);
-            admissionPort.requireOrderAllowed(g.merchantNo, merchantPay,
-                    () -> paidAmountToday(g.merchantNo));
+            payByEntity.merge(g.merchantNo,
+                    g.goodsAmount() + g.freight - discounts.of(g.merchantNo, g.storeNo()), Long::sum);
+        }
+        payByEntity.forEach((entityNo, pay) ->
+                admissionPort.requireOrderAllowed(entityNo, pay, () -> paidAmountToday(entityNo)));
+        for (Group g : split.groups) {
+            long merchantPay = g.goodsAmount() + g.freight - discounts.of(g.merchantNo, g.storeNo());
             /*
              * 准入矩阵（§7.7）：这个主体能不能用这种履约方式。
              * 结论在下单这一刻定死并落进子单 —— 商家事后换自提点运营者，
              * 历史单的判定不该跟着变。
              */
-            needsConfirm.put(g.merchantNo, admissionPort.requireFulfillmentAllowed(
+            needsConfirm.put(g.key(), admissionPort.requireFulfillmentAllowed(
                     g.merchantNo, cmd.fulfillment(), cmd.pickupNo()));
 
             /*
@@ -1312,7 +1372,7 @@ public class OrderServiceImpl implements OrderService {
              * 用 wouldExceed 而不是 quotaExhausted：正好卡在额度边缘的那一单，
              * 放过去仍然会在通道侧失败。
              */
-            var cap = merchantPort.payCapabilityOf(g.merchantNo, storeOfMerchant.get(g.merchantNo));
+            var cap = merchantPort.payCapabilityOf(g.merchantNo, storeOfMerchant.get(g.key()));
             if (cap.wouldExceed(merchantPay)) {
                 throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
             }
@@ -1322,7 +1382,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<String> subOrderNos = new ArrayList<>();
         for (Group g : split.groups) {
-            String subOrderNo = subOrderNoOf.get(g.merchantNo);
+            String subOrderNo = subOrderNoOf.get(g.key());
             subOrderNos.add(subOrderNo);
 
             OrdSubOrder sub = new OrdSubOrder();
@@ -1345,7 +1405,7 @@ public class OrderServiceImpl implements OrderService {
              * 为了一个统计维度把下单挡住，代价和收益完全不成比例。
              */
             // 与上面锁库存用的是同一个 map —— 两处各算一次会让「扣了 A 店、单记在 B 店」
-            sub.setStoreNo(storeOfMerchant.get(g.merchantNo));
+            sub.setStoreNo(storeOfMerchant.get(g.key()));
             sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
             // 预约时段落到子单：商家的待服务列表按它排，买家的订单卡按它显示「几点」。
@@ -1364,7 +1424,7 @@ public class OrderServiceImpl implements OrderService {
              * 而 pickup_no / pickup_name / pickup_owner_ref 全在子单上）。
              * 端上显式传了点时这张表里每家都是同一个值，行为与改造前逐字相同。
              */
-            String pickupNo = pickupByMerchant.getOrDefault(g.merchantNo, cmd.pickupNo());
+            String pickupNo = pickupByMerchant.getOrDefault(g.key(), cmd.pickupNo());
             sub.setPickupNo(pickupNo);
             /*
              * 自提点快照。名称是给页面看的（改名不该影响历史订单），
@@ -1375,7 +1435,7 @@ public class OrderServiceImpl implements OrderService {
             sub.setPickupName(brief.map(p -> p.name()).orElse(null));
             sub.setPickupOwnerRef(brief.map(p -> p.ownerRef()).orElse(null));
             sub.setPickupOwnerStoreNo(brief.map(p -> p.ownerStoreNo()).orElse(null));
-            String subAddr = cmd.addressFor(g.merchantNo);
+            String subAddr = cmd.addressFor(g.storeNo(), g.merchantNo());
             sub.setAddressId(subAddr);
             /*
              * 收件人快照（V69）：与上面的 pickupName 同一个理由 ——
@@ -1395,25 +1455,25 @@ public class OrderServiceImpl implements OrderService {
             sub.setTrafficSource(attributionPort.resolveTrafficSource(userNo, g.merchantNo));
             sub.setGoodsAmount(g.goodsAmount());
             sub.setFreightAmount(g.freight);
-            long discount = discounts.of(g.merchantNo);
+            long discount = discounts.of(g.merchantNo, g.storeNo());
             sub.setDiscountAmount(discount);
             // 出资方分列（Q9）：合成一列的话 M7 分账无法判断该扣谁的钱
-            sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo));
-            sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo));
+            sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo, g.storeNo()));
+            sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo, g.storeNo()));
             // 积分快照：结算与售后直接读这两列，不用回查积分流水
             long pointsAmount = points.amountOf(subOrderNo);
             sub.setPointsDeduct((int) points.pointsOf(subOrderNo));
             sub.setPointsDeductMinor(pointsAmount);
             sub.setPayAmount(g.goodsAmount() + g.freight - discount - pointsAmount);
             sub.setRequireBuyerConfirm(
-                    Boolean.TRUE.equals(needsConfirm.get(g.merchantNo)) ? 1 : 0);
+                    Boolean.TRUE.equals(needsConfirm.get(g.key())) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
             sub.setRemark(cmd.remark());
             if (group != null) {
                 // 开团在这一刻建团（发起人 = 下单人），参团再判一次 —— 与订单同一个事务，下单失败团也不留
                 sub.setGroupNo(groupJoinPort.bind(userNo, group, pickupNo));
             }
-            var ticket = ticketOf.get(g.merchantNo);
+            var ticket = ticketOf.get(g.key());
             if (ticket != null) {
                 // 提货日写进子单：履约批次与自提点看板按它分天，而不是按下单日（集单是今天下明天提）
                 sub.setPeriodNo(ticket.periodNo());
@@ -1666,6 +1726,7 @@ public class OrderServiceImpl implements OrderService {
         // 锁定转实扣
         stockPort.confirm(orderNo);
 
+        java.util.Set<String> bonusGranted = new java.util.HashSet<>();
         for (OrdSubOrder sub : subOrders(orderNo)) {
             /*
              * **支付成功后落哪个状态，由履约方式决定**（《订单状态-统一整理》§2.2）。
@@ -1767,7 +1828,8 @@ public class OrderServiceImpl implements OrderService {
                         : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
                 final String scene = order.getPayScene();
                 // 自己组合的「送积分」：随常规积分一起发（同一次发放幂等、同一笔费用金）
-                final long bonus = campaignPort.bonusPoints(orderNo, entityNo);
+                // 活动赠积分按主体记（pmt_apply 没有门店维度）：同主体多张子单只发一次（ADR-031 §2.7）
+                final long bonus = bonusGranted.add(entityNo) ? campaignPort.bonusPoints(orderNo, entityNo) : 0L;
                 AfterCommit.run("发放积分 subOrderNo=" + subNo,
                         () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene, bonus));
             }
@@ -2281,14 +2343,17 @@ public class OrderServiceImpl implements OrderService {
         Map<String, Map<String, Integer>> itemsByMerchant = new HashMap<>();
         for (CreateOrderCommand.Item it : requested) {
             GoodsQueryPort.SkuSnapshot sn = snapshots.get(it.skuNo());
-            if (sn != null) {
+            /*
+             * ★ 有归属门店的货不进落店解析（ADR-031）：它的门店就是它自己那家，没有可挑的。
+             * 混进去的话，盐（粮油）+ 柿子（鲜果）这一单会因为「找不到一家两件都在架的店」整单被拒。
+             */
+            if (sn != null && (sn.storeNo() == null || sn.storeNo().isBlank())) {
                 itemsByMerchant.computeIfAbsent(sn.merchantNo(), k -> new HashMap<>())
                         .merge(it.skuNo(), it.qty(), Integer::sum);
             }
         }
-        Map<String, String> storeByEntity = storesOfEntities(cmd,
-                snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::merchantNo).distinct().toList(),
-                itemsByMerchant);
+        Map<String, String> storeByEntity = itemsByMerchant.isEmpty() ? Map.of()
+                : storesOfEntities(cmd, List.copyOf(itemsByMerchant.keySet()), itemsByMerchant);
         /*
          * **无条件重算，不再拿「有没有配门店价」当开关**（2026-09-30）。
          *
@@ -2335,19 +2400,36 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 按商家分组 —— 保持插入序，让预览与订单详情里子单的顺序稳定
-        Map<String, List<Line>> byMerchant = lines.stream().collect(Collectors.groupingBy(
-                l -> l.snapshot.merchantNo(), LinkedHashMap::new, Collectors.toList()));
+        /*
+         * ★ 按**门店**分组（ADR-031）—— 一组一张子单。门店 = 商品的归属门店；
+         * 没有归属的（测试种子）落到上面按主体解析出的那家。保持插入序，让子单顺序稳定。
+         */
+        final Map<String, String> landed = storeByEntity;
+        Map<String, List<Line>> byStore = lines.stream().collect(Collectors.groupingBy(
+                l -> storeKeyOf(l, landed), LinkedHashMap::new, Collectors.toList()));
 
-        List<Group> groups = byMerchant.entrySet().stream().map(e -> {
-            String merchantName = merchantPort.find(e.getKey())
-                    .map(MerchantQueryPort.MerchantBrief::merchantName).orElse("");
-            // S2 运费恒 0：运费模板属于 P-5.2.3（运营端配置），S3 履约一起做。
-            // 先给 0 而不是编一个假数字 —— 假数字会被端上当真的展示给用户
-            return new Group(e.getKey(), merchantName, e.getValue(), 0L);
+        Map<String, String> merchantNames = new HashMap<>();
+        List<Group> groups = byStore.values().stream().map(ls -> {
+            String merchantNo = ls.get(0).snapshot.merchantNo();
+            String merchantName = merchantNames.computeIfAbsent(merchantNo, m -> merchantPort.find(m)
+                    .map(MerchantQueryPort.MerchantBrief::merchantName).orElse(""));
+            String own = ls.get(0).snapshot.storeNo();
+            String storeNo = own != null && !own.isBlank() ? own : landed.get(merchantNo);
+            // 运费在 withFreight 里按模板算；这里先给 0 而不是编一个假数字
+            return new Group(merchantNo, merchantName, storeNo, ls, 0L);
         }).toList();
 
         return new Split(lines, groups);
+    }
+
+    /** 一行落在哪一组：归属门店；没有归属按主体落店的结果；都没有用主体号 */
+    private static String storeKeyOf(Line l, Map<String, String> landedByEntity) {
+        String own = l.snapshot.storeNo();
+        if (own != null && !own.isBlank()) {
+            return own;
+        }
+        String landed = landedByEntity.get(l.snapshot.merchantNo());
+        return landed != null && !landed.isBlank() ? landed : l.snapshot.merchantNo();
     }
 
     /**
@@ -2410,16 +2492,16 @@ public class OrderServiceImpl implements OrderService {
         Map<String, java.util.Set<String>> restricted = goodsPort.restrictedProvincesOf(goodsNos);
         Map<String, java.util.Set<String>> storeExcluded = new java.util.HashMap<>();
         for (Group g : split.groups) {
-            var ex = merchantPort.excludedProvinces(g.merchantNo(), storeOfMerchant.get(g.merchantNo()));
+            var ex = merchantPort.excludedProvinces(g.merchantNo(), storeOfMerchant.get(g.key()));
             if (!ex.isEmpty()) {
-                storeExcluded.put(g.merchantNo(), ex);
+                storeExcluded.put(g.key(), ex);
             }
         }
         if (restricted.isEmpty() && storeExcluded.isEmpty()) {
             return;   // 没有任何货设了限购地区、也没有门店排除省：这道闸整条跳过，不查地址
         }
         for (Group g : split.groups) {
-            String addr = cmd.addressFor(g.merchantNo());
+            String addr = cmd.addressFor(g.storeNo(), g.merchantNo());
             if (addr == null || addr.isBlank()) {
                 continue;   // 自提等无收货地址：限购地区针对「送到哪」，无地址无从谈起
             }
@@ -2429,7 +2511,7 @@ public class OrderServiceImpl implements OrderService {
             if (provinceCode == null) {
                 continue;   // 认不出省：放行（与 freight 的省名前缀同一套，认不出就不拦）
             }
-            if (storeExcluded.getOrDefault(g.merchantNo(), java.util.Set.of()).contains(provinceCode)) {
+            if (storeExcluded.getOrDefault(g.key(), java.util.Set.of()).contains(provinceCode)) {
                 throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
             }
             for (Line l : g.lines()) {
@@ -2447,24 +2529,31 @@ public class OrderServiceImpl implements OrderService {
             return Map.of();
         }
         Map<String, FreightPort.Quote> out = new LinkedHashMap<>();
+        Map<String, String> goodsTemplates = goodsPort.freightTemplatesOf(
+                split.items.stream().map(l -> l.snapshot().goodsNo()).distinct().toList());
+        Map<String, Boolean> activeTemplate = new HashMap<>();
         for (Group g : split.groups) {
-            String addr = cmd.addressFor(g.merchantNo());
+            String addr = cmd.addressFor(g.storeNo(), g.merchantNo());
             String address = addr == null || addr.isBlank() || userNo == null ? ""
                     : userPort.receiverOf(userNo, addr)
                             .map(ai.neargo.shop.spi.user.UserQueryPort.Receiver::address).orElse("");
-            int weighed = 0;
-            int unweighed = 0;
+            /*
+             * ★ 模板逐行解析（ADR-031 §2.4，实时读、不缓存）：商品指定的 ＞ 所属门店快递通道的 ＞ 平台默认。
+             * 商品指定的被运营归档了就跳过它（AC8）—— 回落门店，不回落成平台默认，更不是 0 元。
+             * 同一家店的几行交给 FreightPort.merge 按淘宝式合并：只有一个模板时与改造前逐字相同。
+             */
+            String storeTemplate = merchantPort.expressTemplateNo(g.merchantNo(), stores.get(g.key())).orElse(null);
+            List<FreightPort.FreightLine> lines = new ArrayList<>();
             for (Line l : g.lines()) {
+                String own = goodsTemplates.get(l.snapshot().goodsNo());
+                String template = own != null && activeTemplate.computeIfAbsent(own, freightPort::active)
+                        ? own : storeTemplate;
                 Integer w = l.snapshot().nominalGram();
-                if (w != null && w > 0) {
-                    weighed += w * l.qty();
-                } else {
-                    unweighed += l.qty();
-                }
+                boolean weighed = w != null && w > 0;
+                lines.add(new FreightPort.FreightLine(template, weighed ? w * l.qty() : 0,
+                        weighed ? 0 : l.qty(), l.amount()));
             }
-            String template = merchantPort.expressTemplateNo(g.merchantNo(), stores.get(g.merchantNo())).orElse(null);
-            freightPort.quote(template, weighed, unweighed, g.goodsAmount(), address)
-                    .ifPresent(q -> out.put(g.merchantNo(), q));
+            freightPort.quoteMerged(lines, address).ifPresent(q -> out.put(g.key(), q));
         }
         return out;
     }
@@ -2474,9 +2563,9 @@ public class OrderServiceImpl implements OrderService {
             return split;
         }
         List<Group> groups = split.groups.stream().map(g -> {
-            FreightPort.Quote q = quotes.get(g.merchantNo());
+            FreightPort.Quote q = quotes.get(g.key());
             long fee = q == null || q.rejected() ? g.freight() : q.feeMinor();
-            return new Group(g.merchantNo(), g.merchantName(), g.lines(), fee);
+            return new Group(g.merchantNo(), g.merchantName(), g.storeNo(), g.lines(), fee);
         }).toList();
         return new Split(split.items, groups);
     }
@@ -2498,9 +2587,12 @@ public class OrderServiceImpl implements OrderService {
                     q.groupPriceMinor(), s.available(), s.onSale(), s.fulfillments(),
                     s.groupPriceMinor(), s.groupMinCount(), s.saleMode(), s.limitPerUser(), s.nominalGram()), l.qty);
         }).toList();
-        List<Group> groups = split.groups.stream().map(g -> new Group(g.merchantNo, g.merchantName,
-                lines.stream().filter(l -> l.snapshot.merchantNo().equals(g.merchantNo)).toList(),
-                g.freight)).toList();
+        // 团单只有一件货、一组：按组里的货号把重算后的行认回去（不按主体认 —— 同主体可能多组）
+        List<Group> groups = split.groups.stream().map(g -> {
+            java.util.Set<String> skus = g.lines.stream().map(Line::skuNo).collect(Collectors.toSet());
+            return new Group(g.merchantNo, g.merchantName, g.storeNo,
+                    lines.stream().filter(l -> skus.contains(l.skuNo())).toList(), g.freight);
+        }).toList();
         return new Split(lines, groups);
     }
 
@@ -2522,7 +2614,18 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private record Group(String merchantNo, String merchantName, List<Line> lines, long freight) {
+    /**
+     * 一组 = 一张子单 = <b>一家门店</b>（ADR-031）。{@code merchantNo} 是主体（结算、额度、营销按它），
+     * {@code storeNo} 是这组由哪家店卖、哪家店发。同一主体两家店的货在一单里是两组。
+     *
+     * <p>{@link #key()} 是这一组在各张映射表里的键：有门店用门店号，没有（只有测试种子会这样）用主体号。
+     */
+    private record Group(String merchantNo, String merchantName, String storeNo, List<Line> lines, long freight) {
+
+        String key() {
+            return storeNo != null && !storeNo.isBlank() ? storeNo : merchantNo;
+        }
+
         long goodsAmount() {
             return lines.stream().mapToLong(Line::amount).sum();
         }
@@ -2598,22 +2701,30 @@ public class OrderServiceImpl implements OrderService {
          */
         OrderVO toVO(Discounts discounts, java.util.Map<String, PickupPick> pickups,
                      Map<String, Quota> quotas) {
+            return toVO(discounts, pickups, quotas, Map.of());
+        }
+
+        /** @param storeNames 门店号 → 店名：子单段头显示门店名（ADR-031） */
+        OrderVO toVO(Discounts discounts, java.util.Map<String, PickupPick> pickups,
+                     Map<String, Quota> quotas, Map<String, String> storeNames) {
             List<OrderVO> children = groups.stream().map(g -> new OrderVO(
                     null, null, OrdOrder.WAIT_PAY, null, g.merchantNo, g.merchantName,
                     g.lines.stream().map(l -> itemOf(l, g.merchantNo, quotas)).toList(),
                     OrderVO.Amount.of(g.goodsAmount(), g.freight,
-                            discounts.of(g.merchantNo), 0L, CURRENCY_CNY),
+                            discounts.of(g.merchantNo, g.storeNo()), 0L, CURRENCY_CNY),
                     // 预览还没有单，收件人与预约时间自然也没有；自提点是**已经配好的那个**
                     null,
-                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo).pickupNo() : null,
-                    pickups.containsKey(g.merchantNo) ? pickups.get(g.merchantNo).name() : null,
+                    pickups.containsKey(g.key()) ? pickups.get(g.key()).pickupNo() : null,
+                    pickups.containsKey(g.key()) ? pickups.get(g.key()).name() : null,
                     null, 0L, null, null, null, null, null, List.of(), null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
                 // 预览还没有单：评价、售后、支付分组三样都无从谈起
                 false, null, 1)
-                    .withPickupDistance(pickups.containsKey(g.merchantNo)
-                            ? pickups.get(g.merchantNo).distanceM() : null)).toList();
+                    .withPickupDistance(pickups.containsKey(g.key())
+                            ? pickups.get(g.key()).distanceM() : null)
+                    .withStore(g.storeNo() == null ? null
+                            : new OrderVO.StoreBrief(g.storeNo(), storeNames.get(g.storeNo())))).toList();
 
             return new OrderVO(null, null, OrdOrder.WAIT_PAY, null, null, null,
                     children.stream().flatMap(c -> c.items().stream()).toList(),
@@ -2717,7 +2828,19 @@ public class OrderServiceImpl implements OrderService {
                 false, null, 1,
                 // 集单四样这里不填；末位 expressCompany 要下发 ——
                 // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
-                null, null, null, null, s.getExpressCompany());
+                null, null, null, null, s.getExpressCompany())
+                .withStore(storeBriefOf(s));
+    }
+
+    /** 子单的门店（ADR-031）：端上按它分段、显示段头。门店名要解域，理由见 {@link #storeNamesOf} */
+    private OrderVO.StoreBrief storeBriefOf(OrdSubOrder s) {
+        String no = s.getStoreNo();
+        if (no == null || no.isBlank()) {
+            return null;
+        }
+        String name = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                () -> merchantPort.storeNames(List.of(no)).get(no));
+        return new OrderVO.StoreBrief(no, name);
     }
 
     /** 子单上的收件人快照 → VO。三列都空（自提单）时给 null，让端上少判一层 */
@@ -2873,7 +2996,7 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
         }
         for (Group g : split.groups()) {
-            String storeNo = storeOfMerchant.get(g.merchantNo());
+            String storeNo = storeOfMerchant.get(g.key());
             for (Line line : g.lines()) {
                 if (!payModeService.availablePayModes(line.snapshot().goodsNo(), storeNo, cmd.fulfillment())
                         .contains(payMode)) {
@@ -2933,11 +3056,11 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, String> stores = storesOf(cmd, split);
         for (var g : split.groups) {
-            String addr = cmd.addressFor(g.merchantNo);
+            String addr = cmd.addressFor(g.storeNo(), g.merchantNo());
             if (addr == null || addr.isBlank()) continue;
             var receiver = userPort.receiverOf(userNo, addr).orElse(null);
             if (receiver == null || receiver.latE6() == null || receiver.lngE6() == null) continue;
-            var origin = merchantPort.deliveryOrigin(g.merchantNo(), stores.get(g.merchantNo())).orElse(null);
+            var origin = merchantPort.deliveryOrigin(g.merchantNo(), stores.get(g.key())).orElse(null);
             if (origin == null || origin.radiusM() <= 0) {
                 continue;
             }
@@ -3048,7 +3171,7 @@ public class OrderServiceImpl implements OrderService {
                 throw BizException.of(ErrorCode.PICKUP_POINT_REQUIRED);
             }
             return split.groups.stream().collect(java.util.stream.Collectors.toMap(
-                    g -> g.merchantNo, g -> cmd.pickupNo(), (a, b) -> a));
+                    g -> g.key(), g -> cmd.pickupNo(), (a, b) -> a));
         }
         /*
          * 没传：按买家坐标逐个商家配。坐标取「这一单的地址，没有就用生效地址」
@@ -3080,7 +3203,7 @@ public class OrderServiceImpl implements OrderService {
                 throw BizException.of(ErrorCode.PICKUP_POINT_NONE_FOR_MERCHANT,
                         merchantPort.find(g.merchantNo).map(m -> m.merchantName()).orElse(g.merchantNo));
             }
-            out.put(g.merchantNo, options.get(0).pickupNo());
+            out.put(g.key(), options.get(0).pickupNo());
         }
         return out;
     }
@@ -3128,7 +3251,7 @@ public class OrderServiceImpl implements OrderService {
 
     private boolean anyStoreHasSlots(Split split, Map<String, String> storeOfMerchant) {
         for (Group g : split.groups) {
-            if (appointmentSlotPort.hasOpenSlots(storeOfMerchant.get(g.merchantNo))) {
+            if (appointmentSlotPort.hasOpenSlots(storeOfMerchant.get(g.key()))) {
                 return true;
             }
         }
@@ -3151,7 +3274,7 @@ public class OrderServiceImpl implements OrderService {
                 || !anyStoreHasSlots(split, storeOfMerchant)) {
             return null;
         }
-        String storeNo = storeOfMerchant.get(split.groups.get(0).merchantNo);
+        String storeNo = storeOfMerchant.get(split.groups.get(0).key());
         var r = appointmentSlotPort.tryBook(cmd.appointmentSlotNo(), storeNo);
         /*
          * 两种失败分开报，因为**给买家看的话不一样**：
@@ -3227,7 +3350,7 @@ public class OrderServiceImpl implements OrderService {
             return;
         }
         for (Group g : split.groups) {
-            String store = storeOfMerchant.get(g.merchantNo);
+            String store = storeOfMerchant.get(g.key());
             /*
              * **「没配过」与「配过、但没有一路送得到这里」是两件事**，不能都用空集表达。
              * 此前只问 enabledFulfillmentsFor：某几路选了 SUBSET、买家又不在任何一路的子集里时，

@@ -57,9 +57,9 @@ public class CampaignPortImpl implements CampaignPort {
                     : Math.min(best.getDiscountMinor() == null ? 0L : best.getDiscountMinor(),
                             g.goodsAmount());
             if (off > 0) {
-                shares.add(new MerchantDiscount(g.merchantNo(), off));
+                shares.add(new MerchantDiscount(g.merchantNo(), off, g.storeNo()));
                 applied.add(new AppliedActivity(best.getCampaignNo(), g.merchantNo(), off, 1,
-                        0L, null, best.getName()));
+                        0L, null, best.getName(), g.storeNo()));
                 total += off;
             }
         }

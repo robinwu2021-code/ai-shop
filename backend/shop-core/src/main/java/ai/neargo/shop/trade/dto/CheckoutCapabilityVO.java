@@ -54,6 +54,17 @@ public record CheckoutCapabilityVO(List<String> usablePayMethods,
                                      boolean invoiceCapable, List<String> payMethods,
                                      boolean quotaExhausted, boolean quotaWouldExceed,
                                      Integer deliveryLatE6, Integer deliveryLngE6,
-                                     Integer deliveryRadiusM) {
+                                     Integer deliveryRadiusM,
+                                     /** 这一组的门店（ADR-031：子单按门店拆）；空 = 老数据，按主体 */
+                                     String storeNo) {
+
+        public MerchantCapability(String merchantNo, String merchantName,
+                                  boolean invoiceCapable, List<String> payMethods,
+                                  boolean quotaExhausted, boolean quotaWouldExceed,
+                                  Integer deliveryLatE6, Integer deliveryLngE6,
+                                  Integer deliveryRadiusM) {
+            this(merchantNo, merchantName, invoiceCapable, payMethods, quotaExhausted, quotaWouldExceed,
+                    deliveryLatE6, deliveryLngE6, deliveryRadiusM, null);
+        }
     }
 }

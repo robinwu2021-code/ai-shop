@@ -163,7 +163,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     ComboHit h = comboHit(a, g);
                     if (h != null && (h.off() > 0 || h.points() > 0)) {
                         out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
-                                h.off(), 1, 0L, null, a.getName()));
+                                h.off(), 1, 0L, null, a.getName()).atStore(g.storeNo()));
                     }
                     continue;
                 }
@@ -175,7 +175,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 long off = Math.min(nz(a.getBenefitAmountMinor()), g.goodsAmount());
                 if (off > 0) {
                     out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
-                            off, 1, 0L, null, a.getName()));
+                            off, 1, 0L, null, a.getName()).atStore(g.storeNo()));
                 }
             }
             /*
@@ -185,7 +185,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             for (PlatformHit h : platformHits(g, now)) {
                 if (h.off() > 0) {
                     out.add(new CampaignPort.AppliedActivity(h.activity().getActivityNo(), g.merchantNo(),
-                            h.off(), 1, h.platformMinor(), h.enrollmentNo(), h.activity().getName()));
+                            h.off(), 1, h.platformMinor(), h.enrollmentNo(), h.activity().getName())
+                            .atStore(g.storeNo()));
                 }
             }
         }

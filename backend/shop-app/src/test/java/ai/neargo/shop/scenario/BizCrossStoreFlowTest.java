@@ -123,17 +123,19 @@ class BizCrossStoreFlowTest {
         String pickupA = seedStorePickup(storeA, "对账总店自提点");
         String pickupB = seedStorePickup(storeB, "对账分店自提点");
 
+        // 商品只属于一家门店（ADR-031）：两家店各卖各的一件，单落在商品所属的店
         String goodsNo = listedGoods(biz, "对账测试品", 1000, 100);
-        listAt(biz, storeB, goodsNo);
         String skuNo = firstSku(goodsNo);
+        String goodsB = listedGoodsAt(biz, storeB, "对账测试品·分店", 1000, 100);
+        String skuB = firstSku(goodsB);
 
         // A 店两单：1 件 + 3 件 = 4000 分；B 店一单：2 件 = 2000 分。
         // **金额刻意不同** —— 都一样的话「两行搞反了」这种错测不出来
         buyAndPay("13001000010", goodsNo, skuNo, 1, pickupA, "xs-a1");
         buyAndPay("13001000011", goodsNo, skuNo, 3, pickupA, "xs-a2");
-        buyAndPay("13001000012", goodsNo, skuNo, 2, pickupB, "xs-b1");
+        buyAndPay("13001000012", goodsB, skuB, 2, pickupB, "xs-b1");
         // 只下单不付款的那一笔**不算成交**，两边都不该出现它
-        buyOnly("13001000013", goodsNo, skuNo, 5, pickupB, "xs-b2-unpaid");
+        buyOnly("13001000013", goodsB, skuB, 5, pickupB, "xs-b2-unpaid");
 
         JsonNode rows = overview(biz).get("data").get("stores");
         assertThat(rows).as("两家店都要在总览里").hasSize(2);
@@ -347,10 +349,10 @@ class BizCrossStoreFlowTest {
         String pickupB = seedStorePickup(storeB, "授权分店自提点");
 
         String goodsNo = listedGoods(owner, "授权测试品", 1200, 50);
-        listAt(owner, storeB, goodsNo);
         String skuNo = firstSku(goodsNo);
+        String goodsB = listedGoodsAt(owner, storeB, "授权测试品·分店", 1200, 50);
         buyAndPay("13001000050", goodsNo, skuNo, 1, pickupA, "xs-s-a");
-        buyAndPay("13001000051", goodsNo, skuNo, 1, pickupB, "xs-s-b");
+        buyAndPay("13001000051", goodsB, firstSku(goodsB), 1, pickupB, "xs-s-b");
 
         // 老板看两家
         assertThat(overview(owner).get("data").get("stores")).hasSize(2);
@@ -508,6 +510,27 @@ class BizCrossStoreFlowTest {
      * 这两条当场红在「下单 10404」上。补的是**场景本来就该有的那一步**，
      * 不是为了让断言变绿而放宽判据。
      */
+    /** 在指定门店下建一件过审、在架的货（商品只属于一家门店，ADR-031） */
+    private String listedGoodsAt(String token, String storeNo, String title, long price, int stock)
+            throws Exception {
+        TestStoreCategory.open(mvc(), json, token, storeNo, "CAT210");
+        String body = mvc().perform(post("/biz/goods/save").header("Authorization", "Bearer " + token)
+                        .header("X-Store-No", storeNo)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryNo\":\"CAT210\",\"title\":\"" + title + "\",\"type\":\"NORMAL\","
+                                + "\"skus\":[{\"optionValues\":[],\"price\":" + price
+                                + ",\"stock\":" + stock + "}]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String goodsNo = json.readTree(body).get("data").get("goodsNo").asString();
+        mvc().perform(post("/ops/goods/" + goodsNo + "/audit")
+                        .header("Authorization", "Bearer " + TestLogin.admin(mvc(), json))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        listAt(token, storeNo, goodsNo);
+        return goodsNo;
+    }
+
     private void listAt(String token, String storeNo, String goodsNo) throws Exception {
         // 新店的经营类目是空的，不开这一项会被 GOODS_CATEGORY_IN_OTHER_STORE(70075) 拒
         TestStoreCategory.open(mvc(), json, token, storeNo, "CAT210");

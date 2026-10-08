@@ -80,6 +80,16 @@ public class BizExpressController {
         return freightPort.template(templateNo).orElse(null);
     }
 
+    /**
+     * 平台在用的运费模板（ADR-031 §2.4，AC7）：商品编辑页「运费模板」从这里选；不选 = 跟随门店。
+     * 与上面那条同一个理由**登录即可看** —— 它是平台定的价目，不含任何一家店的经营数据。
+     */
+    @GetMapping("/biz/freight-template/list")
+    public java.util.List<FreightPort.Template> freightTemplates() {
+        BizContext.current().requireMerchantNo();
+        return freightPort.activeTemplates();
+    }
+
     /** @param carrier 微信 delivery_id；@param weightKg 申报重量（公斤），0.1–30 */
     public record CreateReq(String carrier, BigDecimal weightKg) {
     }

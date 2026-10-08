@@ -258,6 +258,18 @@ public interface OrderService {
             return addressId;
         }
 
+        /**
+         * 取这一组（门店）的收货地址（ADR-031：子单按门店拆）：先按门店号找覆盖，再按主体号
+         * （老端上只按主体传），都没有用全局 addressId。
+         */
+        public String addressFor(String storeNo, String merchantNo) {
+            if (addressChoices != null && storeNo != null) {
+                String override = addressChoices.get(storeNo);
+                if (override != null && !override.isBlank()) return override;
+            }
+            return addressFor(merchantNo);
+        }
+
         /** 这张单要不要走团：参团或开团 */
         public boolean grouped() {
             return (groupNo != null && !groupNo.isBlank()) || openGroup;

@@ -357,7 +357,32 @@ public interface MerchantGoodsService {
                         * <p>只进提交历史，不影响任何业务判断 —— 它是识别与历史的接缝：
                         * 三个月后问「这批参数哪来的」，答案在这一列。
                         */
-                       String entrySource) {
+                       String entrySource,
+                       /**
+                        * 商品指定的运费模板（V385，ADR-031）。不传 = 不改；空串 = 清掉、跟随门店。
+                        * 只能是平台在用的模板。物流设置不进草稿、不送审：保存即生效。
+                        */
+                       String freightTemplateNo) {
+
+        /** 不带运费模板的签名：存量调用方（不改运费模板） */
+        public SaveCommand(String goodsNo, String title, String subtitle,
+                           Map<String, String> titleI18n, Map<String, String> subtitleI18n,
+                           String categoryNo, String cover, List<String> images,
+                           List<SpecGroup> specGroups, List<Sku> skus,
+                           List<String> fulfillments,
+                           Integer limitPerUser, FreshSpec fresh, ServiceSpec service,
+                           GroupBuySpec groupBuy,
+                           String stdNo,
+                           String detail,
+                           List<String> detailImages,
+                           List<GoodsParam> params,
+                           String saleMode,
+                           List<String> restrictedRegions,
+                           String entrySource) {
+            this(goodsNo, title, subtitle, titleI18n, subtitleI18n, categoryNo, cover, images, specGroups, skus,
+                    fulfillments, limitPerUser, fresh, service, groupBuy, stdNo, detail, detailImages, params,
+                    saleMode, restrictedRegions, entrySource, null);
+        }
     }
 
     /**

@@ -174,6 +174,12 @@ public class PrdGoods extends BaseEntity {
      */
     private String storeNo;
 
+    /**
+     * 商品指定的运费模板（V385，ADR-031）：下单时它 ＞ 门店快递通道的模板 ＞ 平台默认。
+     * 只能是平台模板；空 = 跟随门店。
+     */
+    private String freightTemplateNo;
+
     /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
     private String auditStatus;
 

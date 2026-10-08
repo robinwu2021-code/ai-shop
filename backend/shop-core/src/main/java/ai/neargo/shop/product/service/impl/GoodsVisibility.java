@@ -82,7 +82,7 @@ public class GoodsVisibility {
         }
         List<PrdGoods> goods = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
                 Wrappers.<PrdGoods>lambdaQuery()
-                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo)
+                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo)
                         .in(PrdGoods::getGoodsNo, goodsNos)
                         .eq(PrdGoods::getOnSale, true)));
         Map<String, List<PrdStoreGoods>> shelf = shelfOf(goods.stream().map(PrdGoods::getGoodsNo).toList());
@@ -107,7 +107,7 @@ public class GoodsVisibility {
         }
         PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
                 Wrappers.<PrdGoods>lambdaQuery()
-                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getOnSale)
+                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo, PrdGoods::getOnSale)
                         .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
         if (g == null || !Boolean.TRUE.equals(g.getOnSale())) {
             return false;
@@ -167,11 +167,22 @@ public class GoodsVisibility {
     /**
      * 服务这里的门店里，在架卖这件货的那几家（有序，取第一家要确定）。
      * 这件货一条店级行都没有 → 主体下服务这里的门店都算在卖（单店时代的商品全在这一支）。
+     *
+     * <p>★ <b>商品只属于一家门店</b>（V384，ADR-031）：有归属时候选只剩它自己那家 ——
+     * 同主体的别家店服务这里也不算，它们卖的是各自的商品。没有归属（只有测试种子会这样）
+     * 沿用投影规则。
      */
     private static TreeSet<String> sellingAt(PrdGoods g, Map<String, List<PrdStoreGoods>> shelf, Set<String> serving) {
         TreeSet<String> out = new TreeSet<>();
         if (serving == null || serving.isEmpty()) {
             return out;
+        }
+        String own = g.getStoreNo();
+        if (own != null && !own.isBlank()) {
+            if (!serving.contains(own)) {
+                return out;
+            }
+            serving = Set.of(own);
         }
         List<PrdStoreGoods> rows = shelf.getOrDefault(g.getGoodsNo(), List.of());
         if (rows.isEmpty()) {
@@ -189,7 +200,7 @@ public class GoodsVisibility {
     private List<PrdGoods> onSaleOf(Collection<String> entityNos) {
         return DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(
                 Wrappers.<PrdGoods>lambdaQuery()
-                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo)
+                        .select(PrdGoods::getGoodsNo, PrdGoods::getEntityNo, PrdGoods::getStoreNo)
                         .in(PrdGoods::getEntityNo, entityNos)
                         .eq(PrdGoods::getOnSale, true)));
     }

@@ -141,6 +141,13 @@ public interface GoodsQueryPort {
      *                   而积分规则按二级类目配（生鲜里蔬菜和水果的毛利就不一样）。
      *                   下单时快照进 {@code ord_item.category_no}
      */
+    /**
+     * 这些商品各自指定的运费模板号（V385）。没指定的不出现在结果里 —— 调用方按「跟随门店」处理。
+     */
+    default Map<String, String> freightTemplatesOf(java.util.Collection<String> goodsNos) {
+        return Map.of();
+    }
+
     record SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
                        String title, String cover, String spec,
                        String categoryType, String categoryNo,
@@ -151,7 +158,24 @@ public interface GoodsQueryPort {
                        /** 每人限购（按商品，终身累计）。null / 0 = 不限 */
                        Integer limitPerUser,
                        /** 规格标称重量（克）。快递运费按它算（TDD-快递100商家寄件 §8）；空 = 商家没填，按首重计 */
-                       Integer nominalGram) {
+                       Integer nominalGram,
+                       /**
+                        * 商品所属门店（V384，ADR-031）：这一行由哪家店卖、哪家店发。
+                        * 空 = 没有归属（只有测试种子会这样），调用方按主体落店的老规则兜底。
+                        */
+                       String storeNo) {
+
+        /** 不带归属门店的调用点（自己拼快照的，如团价重算会原样带过来） */
+        public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
+                           String title, String cover, String spec,
+                           String categoryType, String categoryNo,
+                           long price, int available, boolean onSale, List<String> fulfillments,
+                           Long groupPriceMinor, Integer groupMinCount, String saleMode, Integer limitPerUser,
+                           Integer nominalGram) {
+            this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
+                    price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
+                    saleMode, limitPerUser, nominalGram, null);
+        }
 
         /** 不带重量的调用点：按「没填重量」处理 */
         public SkuSnapshot(String skuNo, String goodsNo, String merchantNo,
@@ -161,7 +185,7 @@ public interface GoodsQueryPort {
                            Long groupPriceMinor, Integer groupMinCount, String saleMode, Integer limitPerUser) {
             this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
                     price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
-                    saleMode, limitPerUser, null);
+                    saleMode, limitPerUser, null, null);
         }
 
         /** 老调用点：不带限购 = 不限
@@ -172,7 +196,7 @@ public interface GoodsQueryPort {
                            Long groupPriceMinor, Integer groupMinCount, String saleMode) {
             this(skuNo, goodsNo, merchantNo, title, cover, spec, categoryType, categoryNo,
                     price, available, onSale, fulfillments, groupPriceMinor, groupMinCount,
-                    saleMode, null, null);
+                    saleMode, null, null, null);
         }
 
         /** 这件货设了每人限购 */

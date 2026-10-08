@@ -119,6 +119,12 @@ public class CartServiceImpl implements CartService {
                 goodsPort.snapshot(rows.stream().map(TrdCartItem::getSkuNo).toList());
         // 仅活动的货：活动全结束后还躺在车里的那件，与下架同一处理 —— 失效行，不抹掉
         java.util.Set<String> open = anyLive(snapshots.values());
+        // 所属门店的店名（ADR-031）：一次取回。门店名查询故意不解域，买家会话要显式豁免
+        List<String> storeNos = snapshots.values().stream().map(GoodsQueryPort.SkuSnapshot::storeNo)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        Map<String, String> storeNames = storeNos.isEmpty() ? Map.of()
+                : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                        () -> merchantPort.storeNames(storeNos));
 
         return rows.stream().map(row -> {
             GoodsQueryPort.SkuSnapshot s = snapshots.get(row.getSkuNo());
@@ -160,7 +166,8 @@ public class CartServiceImpl implements CartService {
                      * 与加购校验用同一个数，三处才不会各说各的。
                      */
                     sellable,
-                    reason);
+                    reason,
+                    s.storeNo(), s.storeNo() == null ? null : storeNames.get(s.storeNo()));
         }).toList();
     }
 
@@ -173,7 +180,8 @@ public class CartServiceImpl implements CartService {
      * 这种时候退回快照原来的数，保持改动前的显示；真相源算得出来时（生产的 DUAL）用真值。
      */
     private int displaySellable(GoodsQueryPort.SkuSnapshot s) {
-        int n = stockPort.sellable(s.skuNo());
+        // 按所属门店的库存显示（ADR-031）；没有归属（测试种子）按主体
+        int n = s.storeNo() == null ? stockPort.sellable(s.skuNo()) : stockPort.sellable(s.skuNo(), s.storeNo());
         return n == Integer.MAX_VALUE ? s.available() : n;
     }
 
@@ -199,7 +207,8 @@ public class CartServiceImpl implements CartService {
         int newQty = (existing == null ? 0 : existing.getQty()) + Math.max(qty, 1);
         requireWithinLimit(snap, skuNo, newQty);
         // 判的是**车内总量**不是这一次加的量：车里已有 3、再加 2 要看 5 够不够
-        requireInStock(skuNo, newQty, storeNo);
+        // 有所属门店就按它判 —— 链接上带的门店只是「从哪进来的」（ADR-031）
+        requireInStock(skuNo, newQty, snap != null && snap.storeNo() != null ? snap.storeNo() : storeNo);
         if (existing == null) {
             TrdCartItem row = new TrdCartItem();
             row.setUserNo(SecurityUtils.currentUserNo());
@@ -228,8 +237,13 @@ public class CartServiceImpl implements CartService {
             if (qty > row.getQty()) {
                 // 只在加量时判：减量永远放行，否则超限的车里连减都减不下来。
                 // 库存同理 —— 库存掉到 2 而车里躺着 5 件，得允许他减到 2，不能卡死在 5
-                requireWithinLimit(goodsPort.snapshot(List.of(skuNo)).get(skuNo), skuNo, qty);
-                requireInStock(skuNo, qty);
+                GoodsQueryPort.SkuSnapshot snap = goodsPort.snapshot(List.of(skuNo)).get(skuNo);
+                requireWithinLimit(snap, skuNo, qty);
+                if (snap != null && snap.storeNo() != null) {
+                    requireInStock(skuNo, qty, snap.storeNo());
+                } else {
+                    requireInStock(skuNo, qty);
+                }
             }
             row.setQty(qty);
             cartMapper.updateById(row);

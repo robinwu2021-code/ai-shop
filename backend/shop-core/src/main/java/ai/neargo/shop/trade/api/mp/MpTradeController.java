@@ -265,12 +265,26 @@ public class MpTradeController {
         public record StoreChoice(String merchantNo, String storeNo) {
         }
 
-        /** @param activityNo 活动号，或 "NONE"（这家店不参加活动） */
-        public record ActivityChoice(String merchantNo, String activityNo) {
+        /**
+         * @param activityNo 活动号，或 "NONE"（这家店不参加活动）
+         * @param storeNo    哪家门店那一组（ADR-031：子单按门店拆，同主体两家店各选各的）；
+         *                   不传 = 老端上，按主体选，应用到该主体每家店
+         */
+        public record ActivityChoice(String merchantNo, String activityNo, String storeNo) {
+            /** 选择落在哪一组：有门店按门店，否则按主体 */
+            String key() {
+                return storeNo != null && !storeNo.isBlank() ? storeNo : merchantNo;
+            }
         }
 
-        /** @param addressId 该商家的货送到哪个地址；不出现 = 用全局 addressId */
-        public record AddressChoice(String merchantNo, String addressId) {
+        /**
+         * @param addressId 该商家的货送到哪个地址；不出现 = 用全局 addressId
+         * @param storeNo   同 {@link ActivityChoice#storeNo}
+         */
+        public record AddressChoice(String merchantNo, String addressId, String storeNo) {
+            String key() {
+                return storeNo != null && !storeNo.isBlank() ? storeNo : merchantNo;
+            }
         }
 
         OrderService.CreateOrderCommand toCommand(String payScene) {
@@ -281,16 +295,16 @@ public class MpTradeController {
                     fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
                     payMode, payScene, appointmentSlotNo, groupNo, Boolean.TRUE.equals(openGroup),
                     activityChoices == null ? null : activityChoices.stream()
-                            .filter(c -> c.merchantNo() != null && c.activityNo() != null)
-                            .collect(java.util.stream.Collectors.toMap(ActivityChoice::merchantNo,
+                            .filter(c -> c.key() != null && c.activityNo() != null)
+                            .collect(java.util.stream.Collectors.toMap(ActivityChoice::key,
                                     ActivityChoice::activityNo, (a, b) -> b)),
                     storeChoices == null ? null : storeChoices.stream()
                             .filter(c -> c.merchantNo() != null && c.storeNo() != null && !c.storeNo().isBlank())
                             .collect(java.util.stream.Collectors.toMap(StoreChoice::merchantNo,
                                     StoreChoice::storeNo, (a, b) -> b)),
                     addressChoices == null ? null : addressChoices.stream()
-                            .filter(c -> c.merchantNo() != null && c.addressId() != null && !c.addressId().isBlank())
-                            .collect(java.util.stream.Collectors.toMap(AddressChoice::merchantNo,
+                            .filter(c -> c.key() != null && c.addressId() != null && !c.addressId().isBlank())
+                            .collect(java.util.stream.Collectors.toMap(AddressChoice::key,
                                     AddressChoice::addressId, (a, b) -> b)));
         }
     }
