@@ -53,15 +53,21 @@ public final class ScopeTextParser {
     /** 只在排除分句里剥的单字：「除新疆西藏外」——「除」只剥开头、「外」只剥结尾 */
     private static final List<String> EXCLUDE_EDGE = List.of("除", "外");
 
-    private static final List<String> UNLIMITED_WORDS = List.of("全国各地", "全国", "不限地区", "不限", "所有地区", "全部地区");
+    /**
+     * 「不限」的说法。「除了新疆西藏的**其他区域**」也是不限 —— 排除之外的地方都送。
+     * 长的在前：先替换「其他地区」再替换「全国」，免得留下半截。
+     */
+    private static final List<String> UNLIMITED_WORDS = List.of(
+            "全国各地", "全国", "不限地区", "不限", "所有地区", "全部地区",
+            "其他区域", "其他地区", "其他地方", "其他省份", "其它区域", "其它地区", "其余地区", "其余区域", "其余省份");
 
     /** 两头可剥的虚词（长的在前） */
     private static final List<String> FILLERS = List.of(
             "都可以", "可以", "发货", "配送", "送货", "快递", "包邮", "范围", "地区", "全部", "整个", "所有",
-            "只做", "只送", "只发", "仅限", "我们", "我家", "本店", "都", "均", "只", "仅");
+            "只做", "只送", "只发", "仅限", "我们", "我家", "本店", "或者", "以及", "还有", "都", "均", "只", "仅");
 
     /** 只从尾巴剥的单字：从开头剥会伤地名（「发展大道」「到滘」） */
-    private static final List<String> END_ONLY = List.of("的", "送", "发", "做", "卖");
+    private static final List<String> END_ONLY = List.of("等地区", "等地方", "等地", "等等", "等", "的", "送", "发", "做", "卖");
 
     /** 不该单独出现的残渣：剥完只剩这些就丢掉 */
     private static final Pattern NOISE = Pattern.compile("^[\\p{Punct}\\p{IsPunctuation}\\s]*$");

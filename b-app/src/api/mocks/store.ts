@@ -746,17 +746,29 @@ export const storeMock: Pick<MerchantApi,
       let clause = raw.trim();
       if (!clause) continue;
       const exclude = /不送|不发|不做|不卖|不含|不配送|除了|除外|排除|以外|之外/.test(clause) || /^除|除.+外/.test(clause);
-      if (/全国|不限/.test(clause)) {
+      if (/全国|不限|其[他它余](区域|地区|地方|省份)/.test(clause)) {
         out.unlimited = true;
-        clause = clause.replace(/全国各地|全国|不限地区|不限/g, "、");
+        clause = clause.replace(/全国各地|全国|不限地区|不限|其[他它余](区域|地区|地方|省份)/g, "、");
       }
       for (const piece of clause.split(/[、\s]+/)) {
         const name = piece
-          .replace(/^(除了|除|只送|只做|仅限|都)/, "")
-          .replace(/(不配送|不发货|不送|不发|不做|不卖|以外|之外|除外|外|都可以|发货|配送|包邮|全部|地区|都|送|发)+$/, "")
+          .replace(/^(除了|排除|除|只送|只做|仅限|或者|都)/, "")
+          .replace(/(不配送|不发货|不送|不发|不做|不卖|以外|之外|除外|外|都可以|发货|配送|包邮|全部|地区|等地|等|的|都|送|发)+$/, "")
           .trim();
         if (!name) continue;
         const mode = exclude ? "EXCLUDE" : "INCLUDE";
+        // 粘连的几个省（「新疆西藏」）按简称贪心切开，必须整串切得完 —— 与后端 splitProvinces 同口径
+        const glued: Array<[string, string]> = [];
+        for (let i = 0; i < name.length;) {
+          const k = Object.keys(PROV).sort((x, y) => y.length - x.length).find((x) => name.startsWith(x, i));
+          if (!k) { glued.length = 0; break; }
+          glued.push(PROV[k]!);
+          i += k.length;
+        }
+        if (glued.length >= 2) {
+          for (const [code, full] of glued) out.items.push({ mode, level: "PROVINCE", refCode: code, name: full, phrase: name });
+          continue;
+        }
         const prov = PROV[name] ?? Object.values(PROV).find(([, full]) => full === name);
         if (prov) {
           out.items.push({ mode, level: "PROVINCE", refCode: prov[0], name: prov[1], phrase: name });

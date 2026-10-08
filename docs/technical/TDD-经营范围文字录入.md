@@ -67,6 +67,7 @@
 | AC | 测试方法 | 跑过 | 消融 |
 |---|---|---|---|
 | AC1 | `ScopeTextParserTest#parses`（13 行表格）+ `ScopeTextParseFlowTest#unlimitedMinusProvinces` / `#gluedProvinces` | ✅ | 删掉「除…外」判向 → 表格红 ✅ |
+| 店主原话 | 「全国发货，排除新疆西藏」「除了新疆西藏的其他区域」「深圳，山西运城，广东等」→ `ScopeTextParseFlowTest#ownerSentence1-3`（真实码 44/4403/14/1408，只补缺、只删自己补的）+ 表格 4 行 | ✅ | 去掉「其他区域」与「等」→ 表格 3 行红 ✅ |
 | AC2 | `ScopeTextParseFlowTest#uniqueDistrict` / `#sameNameGivesCandidatesUnlessQualified` | ✅ | 同名改成取第一条 → 红「同名时不能挑一个塞进去」✅ |
 | AC3 | `ScopeTextParseFlowTest#buildingUnderEstate` | ✅ | — |
 | AC4 | `ScopeTextParseFlowTest#unmatchedKeptVerbatim`（含「单字不模糊命中」） | ✅ | — |

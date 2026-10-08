@@ -147,6 +147,78 @@ class ScopeTextParseFlowTest {
         assertThat(r.items().get(0).mode()).isEqualTo("EXCLUDE");
     }
 
+    // ------------------------------------------------------------------ 店主给的原话（2026-10-08，逐字）
+
+    /** 用真实国标码造的行：别的用例可能也造过同样的码，所以只补缺的、收尾只删自己补的 */
+    private final java.util.List<String> realSeeded = new java.util.ArrayList<>();
+
+    private void realRegion(String code, String parent, String level, String name) {
+        Integer n = jdbc.queryForObject("select count(*) from sys_region where region_code = ?", Integer.class, code);
+        if (n != null && n > 0) {
+            return;
+        }
+        region(code, parent, level, name);
+        realSeeded.add(code);
+    }
+
+    private void seedReal() {
+        realRegion("44", null, "PROVINCE", "广东省");
+        realRegion("4403", "44", "CITY", "深圳市");
+        realRegion("14", null, "PROVINCE", "山西省");
+        realRegion("1408", "14", "CITY", "运城市");
+    }
+
+    @AfterEach
+    void cleanupReal() {
+        for (String c : realSeeded) {
+            jdbc.update("delete from sys_region where region_code = ?", c);
+        }
+        realSeeded.clear();
+    }
+
+    @Test
+    @DisplayName("★★★ 原话「全国发货，排除新疆西藏」→ 不限 + 排除新疆、西藏")
+    void ownerSentence1() {
+        var r = parse("全国发货，排除新疆西藏");
+        assertThat(r.unlimited()).isTrue();
+        assertThat(r.items()).extracting(BizRegionController.ParsedArea::mode, BizRegionController.ParsedArea::refCode)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("EXCLUDE", "65"),
+                        org.assertj.core.groups.Tuple.tuple("EXCLUDE", "54"));
+        assertThat(r.unmatched()).isEmpty();
+        assertThat(r.ambiguous()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 原话「除了新疆西藏的其他区域」→ 同样是不限 + 排除新疆、西藏")
+    void ownerSentence2() {
+        var r = parse("除了新疆西藏的其他区域");
+        assertThat(r.unlimited()).as("「其他区域」= 排除之外都送").isTrue();
+        assertThat(r.items()).extracting(BizRegionController.ParsedArea::mode, BizRegionController.ParsedArea::refCode)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("EXCLUDE", "65"),
+                        org.assertj.core.groups.Tuple.tuple("EXCLUDE", "54"));
+        assertThat(r.unmatched()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 原话「深圳，山西运城，广东等」→ 深圳市、运城市（山西省内）、广东省，三条纳入")
+    void ownerSentence3() {
+        seedReal();
+        var r = parse("深圳，山西运城，广东等");
+        assertThat(r.unlimited()).isFalse();
+        assertThat(r.items()).extracting(BizRegionController.ParsedArea::mode, BizRegionController.ParsedArea::level,
+                        BizRegionController.ParsedArea::refCode)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("INCLUDE", "CITY", "4403"),
+                        org.assertj.core.groups.Tuple.tuple("INCLUDE", "CITY", "1408"),
+                        org.assertj.core.groups.Tuple.tuple("INCLUDE", "PROVINCE", "44"));
+        assertThat(r.items().get(0).name()).isEqualTo("广东省 / 深圳市");
+        assertThat(r.items().get(1).name()).isEqualTo("山西省 / 运城市");
+        assertThat(r.unmatched()).isEmpty();
+        assertThat(r.ambiguous()).isEmpty();
+    }
+
     private void region(String code, String parent, String level, String name) {
         var r = new ai.neargo.shop.platform.entity.SysRegion();
         r.setRegionCode(code);
