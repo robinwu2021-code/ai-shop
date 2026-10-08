@@ -9859,6 +9859,15 @@ components:
         merchantNo: 
           type: "string"
           description: "常去的店。与 communityNo 正交 —— 可以在 A 社区却常买 B 店（ADR-004 §5.1）"
+        merchantRole: 
+          type: 
+            - "string"
+            - "null"
+          enum: 
+            - "OWNER"
+            - "STAFF"
+            - null
+          description: "经营身份：`OWNER`（自己的店）/ `STAFF`（别人的店里的员工）/ 空（不是商家）。\n\n<p><b>只有 `/mp/user/profile` 会填它</b>，别的返回 User 的端点（登录、绑号、改资料） 一律为空 —— 判这一项后端要多查两次，而需要它的只有「我的」那一页。 所以别拿登录返回的那个 user 去判，它恒为空。\n\n<p><b>不能用  {@link  merchantNo }  代替</b>：那是 `usr_account.entity_no`（常去的店）， 而**店员那一行与他的 C 端账号之间没有任何一列相连** —— 店员是店主在后台 录手机号加进来的。靠它判的话，一个已经在两家店当店长的人， 在「我的」页看到的仍然是「我也想开店」（2026-10-08 真机上撞到的就是这个）。"
       required: 
         - "userNo"
         - "cUserNo"
