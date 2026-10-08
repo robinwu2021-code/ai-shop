@@ -2443,10 +2443,13 @@ components:
           type: 
             - "string"
             - "null"
+          description: "区县名（省/市/区）；regionCode 查不到名时为 null"
         communityCount: 
           type: "number"
+          description: "这个区县里已开通的聚落数"
         buyerCount: 
           type: "number"
+          description: "这个区县里的买家数（生效地址落在其中任一聚落）"
         buyerCommunityCount: 
           type: "number"
           description: "有买家的聚落数"
@@ -2478,8 +2481,10 @@ components:
       properties: 
         communityNo: 
           type: "string"
+          description: "聚落编号"
         name: 
           type: "string"
+          description: "聚落名"
         kind: 
           type: "string"
           description: "ESTATE / VILLAGE / BUILDING"
@@ -2487,14 +2492,16 @@ components:
           type: 
             - "string"
             - "null"
+          description: "归属区划路径（省/市/区/街道）；没挂区划时为空"
         buyerCount: 
           type: "number"
           description: "围栏内有坐标的收货地址数"
         merchantCount: 
           type: "number"
-          description: "社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」"
+          description: "现算在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」"
         goodsCount: 
           type: "number"
+          description: "这个聚落现算能买到的商品数（买家真搜得到）"
       required: 
         - "communityNo"
         - "name"
@@ -2508,16 +2515,22 @@ components:
       properties: 
         communities: 
           type: "number"
+          description: "全平台已开通聚落总数"
         buyers: 
           type: "number"
+          description: "全平台能定位到聚落的买家总数（不含「算不了的」）"
         okCount: 
           type: "number"
+          description: "供需都有的聚落数（有买家且有商家）"
         supplyGapCount: 
           type: "number"
+          description: "缺供给的聚落数（有买家、没商家）——招商目标"
         demandGapCount: 
           type: "number"
+          description: "缺需求的聚落数（有商家、没买家）"
         emptyCount: 
           type: "number"
+          description: "两头空的聚落数"
       required: 
         - "communities"
         - "buyers"

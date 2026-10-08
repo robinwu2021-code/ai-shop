@@ -10982,13 +10982,13 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `communityNo` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
+| `communityNo` | `string` | 是 | 聚落编号 |
+| `name` | `string` | 是 | 聚落名 |
 | `kind` | `string` | 是 | ESTATE / VILLAGE / BUILDING |
-| `regionPath` | `string,null` | 否 | — |
+| `regionPath` | `string,null` | 否 | 归属区划路径（省/市/区/街道）；没挂区划时为空 |
 | `buyerCount` | `number` | 是 | 围栏内有坐标的收货地址数 |
-| `merchantCount` | `number` | 是 | 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 |
-| `goodsCount` | `number` | 是 | — |
+| `merchantCount` | `number` | 是 | 现算在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 |
+| `goodsCount` | `number` | 是 | 这个聚落现算能买到的商品数（买家真搜得到） |
 
 ### EffectiveFeeRates
 

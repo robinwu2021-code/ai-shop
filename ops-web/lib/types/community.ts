@@ -434,8 +434,11 @@ export interface CoverageDistribution {
 export interface RegionRow {
   /** 国标 6 位区县码；下钻用它 */
   regionCode: string | null;
+  /** 区县名（省/市/区）；regionCode 查不到名时为 null */
   regionName: string | null;
+  /** 这个区县里已开通的聚落数 */
   communityCount: number;
+  /** 这个区县里的买家数（生效地址落在其中任一聚落） */
   buyerCount: number;
   /** 有买家的聚落数 */
   buyerCommunityCount: number;
@@ -450,24 +453,34 @@ export interface RegionRow {
 }
 
 export interface DistributionTotals {
+  /** 全平台已开通聚落总数 */
   communities: number;
+  /** 全平台能定位到聚落的买家总数（不含「算不了的」） */
   buyers: number;
+  /** 供需都有的聚落数（有买家且有商家） */
   okCount: number;
+  /** 缺供给的聚落数（有买家、没商家）——招商目标 */
   supplyGapCount: number;
+  /** 缺需求的聚落数（有商家、没买家） */
   demandGapCount: number;
+  /** 两头空的聚落数 */
   emptyCount: number;
 }
 
 export interface DistributionRow {
+  /** 聚落编号 */
   communityNo: string;
+  /** 聚落名 */
   name: string;
   /** ESTATE / VILLAGE / BUILDING */
   kind: string;
+  /** 归属区划路径（省/市/区/街道）；没挂区划时为空 */
   regionPath?: string | null;
   /** 围栏内有坐标的收货地址数 */
   buyerCount: number;
-  /** 社区池里在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 */
+  /** 现算在这儿有货的主体数 —— 是「买家真搜得到」，不是「谁框了这儿」 */
   merchantCount: number;
+  /** 这个聚落现算能买到的商品数（买家真搜得到） */
   goodsCount: number;
 }
 
