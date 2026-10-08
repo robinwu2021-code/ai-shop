@@ -181,6 +181,24 @@ export function tabQuery(spec: OrderTabSpec): { status?: OrderStatus; fulfillmen
  * <p>放在这里而不是各页各写一份：订单详情与收银台都要用它，
  * 两处各写一个三分支，迟早只改其中一处。
  */
+/**
+ * 这张单要不要给买家显示核销码 / 取货码 / 兑换码。
+ *
+ * 后端对每张已付子单都生成 verify_code，但只有一部分履约真的用它：
+ *   · 虚拟 / 卡券商品 → 兑换码（与履约方式无关）；
+ *   · 自提（SELF_PICKUP）、到店核销（SELF_SERVE）→ 取货 / 核销码；
+ *   · 快递 / 配送（SHIP_TO_BUYER）→ 送到买家手上，**没有核销这一步，不该显示码**
+ *     —— 否则快递单上冒出一个「取货码」，买家会以为是哪里来的假数据。
+ */
+export function showVerifyCode(
+  type?: string | null,
+  fulfillment?: FulfillmentType | null,
+): boolean {
+  if (type === "VIRTUAL" || type === "CARD") return true;
+  const shape = shapeOf(fulfillment);
+  return shape === DELIVERY_SHAPE.SELF_PICKUP || shape === DELIVERY_SHAPE.SELF_SERVE;
+}
+
 export function codeLabelKey(
   type?: string | null,
   fulfillment?: FulfillmentType | null,

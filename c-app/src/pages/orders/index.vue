@@ -11,6 +11,7 @@ import type { Order } from "@shared/types";
 import {
   DELIVERY_SHAPE,
   orderView,
+  showVerifyCode,
   tabQuery,
   type OrderTabSpec,
   statusTone,
@@ -235,7 +236,7 @@ onShow(load);
         </text>
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
-      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="sh-notice codeline sh-row sh-row--between">
+      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED' && showVerifyCode(o.items[0]?.type, o.fulfillment)" class="sh-notice codeline sh-row sh-row--between">
         <text class="txt-caption codeline__label txt-primary">{{ $t("pay.verifyCode") }}</text>
         <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>

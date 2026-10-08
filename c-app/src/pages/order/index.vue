@@ -2,7 +2,7 @@
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
 // 码放最上面：待取货的用户打开订单，十有八九就是来看码的。
 import { computed, ref } from "vue";
-import { codeLabelKey, statusTone } from "@shared/strategies/order-view";
+import { codeLabelKey, showVerifyCode, statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
 import { onShow, onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
@@ -214,6 +214,10 @@ async function applyInvoice() {
 const codeLabel = computed(() =>
   codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
 );
+// 快递/配送送到买家手上，没有核销这一步，不显示码（否则像冒出一个假取货码）
+const showCode = computed(() =>
+  showVerifyCode(order.value?.items[0]?.type, order.value?.fulfillment),
+);
 
 const isVirtualOrCard = computed(() => {
   const type = order.value?.items[0]?.type;
@@ -374,7 +378,7 @@ onShow(load);
       端上此前另外读一个 `redeemCode` —— 那个字段后端从来不发，于是兑换码那张卡
       永远不出现，而虚拟商品的码落进上面这张、被标成「取货码」。
     -->
-    <view v-if="order.verifyCode && order.status !== 'COMPLETED'" class="sh-card codecard">
+    <view v-if="order.verifyCode && order.status !== 'COMPLETED' && showCode" class="sh-card codecard">
       <text class="txt-caption codecard__label">{{ $t(codeLabel) }}</text>
       <text class="txt-hero codecard__v sh-num">{{ order.verifyCode }}</text>
       <text class="txt-caption codecard__hint">

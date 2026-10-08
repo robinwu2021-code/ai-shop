@@ -9,7 +9,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { requestPayment } from "@shared/ports/payment";
-import { codeLabelKey } from "@shared/strategies/order-view";
+import { codeLabelKey, showVerifyCode } from "@shared/strategies/order-view";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
@@ -34,6 +34,9 @@ const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
 /** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
 const codeLabel = computed(() =>
   codeLabelKey(order.value?.items[0]?.type, order.value?.fulfillment),
+);
+const showCode = computed(() =>
+  showVerifyCode(order.value?.items[0]?.type, order.value?.fulfillment),
 );
 
 /**
@@ -354,7 +357,7 @@ onUnmounted(() => clearInterval(timer));
               于是虚拟商品的兑换码一直和核销码长得一样。2026-09-06 接上。
             -->
             <view
-              v-if="order.verifyCode"
+              v-if="order.verifyCode && showCode"
               class="sh-notice code"
               :class="{ 'sh-notice--warning': codeLabel === 'pay.redeemCode' }"
             >
