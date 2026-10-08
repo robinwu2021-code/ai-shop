@@ -97,6 +97,29 @@ public interface LogisticsService {
     }
 
     /**
+     * 等待备微信展示载荷的在途运单：还没拿到 token、且距上次备超过 TTL（躲微信 trace_waybill 的调用上限）。
+     * 微信那条的触发（组装 openid/trans_id/商品、调 trace_waybill）在 shop-app/paybridge，
+     * 那里才拿得到支付域的付款人 openid；这里只把「该备哪些单」挑出来。
+     *
+     * @param limit 一轮最多备多少单
+     */
+    List<WxBindTarget> wxBindTargets(int limit);
+
+    /**
+     * 备微信展示载荷的结果写回这一单。
+     *
+     * <p><b>成功</b>（{@code token} 非空）：置 {@code display_channel=wx-plugin}、{@code display_token}，
+     * 清掉上次的失败原因；小程序据此打开微信全屏物流页。
+     * <b>没备成</b>（{@code token} 空）：只记 {@code display_fail_reason} 给运营看，渠道保持空（读路径落自建地图）。
+     * 两种都更新 {@code display_prepared_at} —— 这是 TTL 判据，防止反复 trace_waybill 打穿配额。
+     */
+    void applyWxDisplay(String shipmentNo, String channel, String token, String failReason);
+
+    /** 待备微信载荷的运单。storeNo 展示侧用不到，故不带。 */
+    record WxBindTarget(String shipmentNo, String subOrderNo, String carrier, String waybillNo) {
+    }
+
+    /**
      * 保存运费模板的入参。
      *
      * @param outOfRange 超区规则。同一区域只能有一条 —— 配两条时命中哪条取决于顺序

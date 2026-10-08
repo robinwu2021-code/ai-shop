@@ -219,6 +219,36 @@ class OpsLogisticsFlowTest {
         assertThat(n).as("轮询扫描前要先物化新发货单——否则商家发了货、运营没点列表，轨迹永远不查").isEqualTo(1L);
     }
 
+    @Test
+    @Order(2)
+    @DisplayName("★ applyWxDisplay 显式写 null：失败态清得掉上次的 token/渠道，不被 updateById 跳过")
+    void applyWxDisplayClearsOnFailure() throws Exception {
+        String biz = merchant("12600060070", "物流·微信渠道写回店");
+        String goodsNo = listedGoods(biz, 50);
+        String skuNo = firstSku(goodsNo);
+        String shipped = expressOrder("13000060070", goodsNo, skuNo);
+        assertThat(codeOf(shipRaw(biz, shipped, "SFLOG-E1"))).isZero();
+        logisticsService.refreshInTransitTraces(300);   // 物化出运单
+        String shipmentNo = DataScopeContext.executeWithoutScope(() -> shipmentMapper.selectOne(
+                Wrappers.<FulShipment>lambdaQuery().eq(FulShipment::getSubOrderNo, shipped)
+                        .last("limit 1"))).getShipmentNo();
+
+        // 成功：置 wx-plugin + token
+        logisticsService.applyWxDisplay(shipmentNo, "wx-plugin", "TOK-1", null);
+        FulShipment a = DataScopeContext.executeWithoutScope(() -> shipmentMapper.selectOne(
+                Wrappers.<FulShipment>lambdaQuery().eq(FulShipment::getShipmentNo, shipmentNo).last("limit 1")));
+        assertThat(a.getDisplayChannel()).isEqualTo("wx-plugin");
+        assertThat(a.getDisplayToken()).isEqualTo("TOK-1");
+
+        // 失败/落自建：三个字段都要能改写（updateById 跳 null，这里必须显式 set，否则旧 token 残留）
+        logisticsService.applyWxDisplay(shipmentNo, null, null, "运单微信还没有");
+        FulShipment b = DataScopeContext.executeWithoutScope(() -> shipmentMapper.selectOne(
+                Wrappers.<FulShipment>lambdaQuery().eq(FulShipment::getShipmentNo, shipmentNo).last("limit 1")));
+        assertThat(b.getDisplayChannel()).as("旧 wx-plugin 必须被清掉，否则读路径仍当微信单").isNull();
+        assertThat(b.getDisplayToken()).isNull();
+        assertThat(b.getDisplayFailReason()).isEqualTo("运单微信还没有");
+    }
+
     // ---------------------------------------------------------------- 运单：换单号三条闸（§4.7）
 
     @Test

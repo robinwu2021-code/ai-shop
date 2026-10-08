@@ -638,4 +638,36 @@ public class LogisticsServiceImpl implements LogisticsService {
     private static long nzL(Long v) {
         return v == null ? 0L : v;
     }
+
+    @Override
+    public List<WxBindTarget> wxBindTargets(int limit) {
+        // 还没 token、有单号、在途、且距上次备超过 TTL（没备过的 displayPreparedAt 为空，必被选中）
+        long cutoff = System.currentTimeMillis() - traceCacheTtlMinutes * 60_000L;
+        return DataScopeContext.executeWithoutScope(() ->
+                shipmentMapper.selectList(Wrappers.<FulShipment>lambdaQuery()
+                        .in(FulShipment::getStatus, POLL_STATES)
+                        .isNull(FulShipment::getDisplayToken)
+                        .isNotNull(FulShipment::getWaybillNo)
+                        .ne(FulShipment::getWaybillNo, "")
+                        .and(w -> w.isNull(FulShipment::getDisplayPreparedAt)
+                                .or().lt(FulShipment::getDisplayPreparedAt, cutoff))
+                        .orderByAsc(FulShipment::getDisplayPreparedAt)
+                        .last("limit " + Math.max(1, limit))))
+                .stream()
+                .map(s -> new WxBindTarget(s.getShipmentNo(), s.getSubOrderNo(), s.getCarrier(), s.getWaybillNo()))
+                .toList();
+    }
+
+    @Override
+    public void applyWxDisplay(String shipmentNo, String channel, String token, String failReason) {
+        // **用 lambdaUpdate 显式 set，不用 updateById**：后者跳过 null 字段（MyBatis-Plus 默认），
+        // 成功时清不掉上次的失败原因、也清不掉占位渠道。这里三个字段都要能置空。
+        DataScopeContext.executeWithoutScope(() ->
+                shipmentMapper.update(null, Wrappers.<FulShipment>lambdaUpdate()
+                        .set(FulShipment::getDisplayChannel, channel)
+                        .set(FulShipment::getDisplayToken, token)
+                        .set(FulShipment::getDisplayFailReason, failReason)
+                        .set(FulShipment::getDisplayPreparedAt, System.currentTimeMillis())
+                        .eq(FulShipment::getShipmentNo, shipmentNo)));
+    }
 }
