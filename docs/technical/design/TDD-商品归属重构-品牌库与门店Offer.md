@@ -14,8 +14,9 @@
 |---|---|---|---|
 | AC1 | 品牌在主体之上，一品牌多主体（加盟跨法人） | 新表 `mch_brand` + `mch_brand_entity`（多对多归属） | P1 |
 | AC2 | 库条目含类目/标题/图/规格组(带 optionCode)，无价无存 | 新表 `prd_brand_spu`（仿 `prd_spu_std` 结构 + `brand_no`） | P1 |
-| AC3 | 只有总部可写，门店只读 | 权限码 `BRAND_SPU_READ/UPDATE`；写端点校验「调用方主体 ∈ 该品牌」 | P1 |
+| AC3 | 只有总部主体可写，加盟只读 | 权限码 `BizPerms.BRAND_SPU`；写端点校验「调用方 `entityNo == brand.hqEntityNo`」 | P1 |
 | AC4 | 无品牌的独立单店不受影响 | `brandOf(entityNo)` 返回空 → 选品入口不下发（端上按能力位隐藏） | P1 |
+| AC4b | 库维护界面在 B 端 app，运营端不提供 | `b-app` 新页 `brand-spu/*`；`/biz/brand-spu` 读写都在 /biz；运营端只留强制下架 | P1 |
 | AC5 | 门店从库选品一键生成本店商品 | `POST /biz/goods/from-brand-spu`（批量）→ `GoodsOfferService.createFromBrandSpu` | P2 |
 | AC6 | 门店可直接自建，不经库 | 现有建品链路不变，`brand_spu_no = NULL` | P2 |
 | AC7 | 同库条目同门店只能一条在用 | 唯一索引 `uk(store_no, brand_spu_no)`（`deleted=0` 条件下）+ 服务端前置校验 | P2 |
@@ -80,7 +81,7 @@
 
 | 迁移 | 动作 |
 |---|---|
-| V384 | 建 `mch_brand`(brand_no, name, status, …) + `mch_brand_entity`(brand_no, entity_no) |
+| V384 | 建 `mch_brand`(brand_no, name, **hq_entity_no**, status, …) + `mch_brand_entity`(brand_no, entity_no)；`hq_entity_no` 定总部主体（ADR-030 §3.5） |
 | V385 | 建 `prd_brand_spu`(brand_spu_no, brand_no, category_no, title, title_i18n, subtitle, cover, images, spec_groups, keywords, barcode, status) |
 | V386 | `prd_goods` 加 `store_no`(先可空)、`brand_spu_no`、`overrides`、`platform_suspended` |
 | V387 | **回填**：按 `prd_store_goods` 把每条主体商品拆到门店；原货号留给默认店；门店价/存并入对应 `prd_sku`；回填后 `store_no` 置 NOT NULL |
@@ -91,14 +92,17 @@
 
 **端点**
 
-| 端点 | 用途 | 登记 |
-|---|---|---|
-| `GET /biz/brand-spu` | 门店浏览本品牌库（选品列表） | /biz 七处 + `RESPONSE_TYPES` |
-| `POST /biz/goods/from-brand-spu` | 批量选品生成门店商品（AC5） | 同上 |
-| `GET/POST/PUT /ops/brand-spu` | 总部维护库 | /ops 五处 |
-| `GET/POST /ops/brand` | 品牌与主体归属维护 | /ops 五处 |
+| 端点 | 用途 | 权限 | 登记 |
+|---|---|---|---|
+| `GET /biz/brand-spu` | 浏览本品牌库（总部维护列表 + 门店选品列表共用） | `biz:goods`（同品牌皆可读） | /biz 七处 + `RESPONSE_TYPES` |
+| `POST /biz/brand-spu` | 总部新建库条目 | `biz:brand:spu` + `entityNo==hqEntityNo` | 同上 |
+| `PUT /biz/brand-spu/{no}` | 总部编辑/归档库条目 | 同上 | 同上 |
+| `POST /biz/goods/from-brand-spu` | 批量选品生成门店商品（AC5） | `biz:goods` | 同上 |
+| `GET/POST /ops/brand` | 运营维护品牌与主体归属（含 `hq_entity_no`） | `OpsPerms` 新码 | /ops 五处 |
 
-**权限码**：`BRAND_SPU_READ` / `BRAND_SPU_UPDATE` / `BRAND_READ` / `BRAND_UPDATE`（新 ErrorCode 四处登记）。
+**权限码**：B 端新增 `BizPerms.BRAND_SPU = "biz:brand:spu"`，默认授予 `OWNER` / `MANAGER`
+（`ROLE_PERMS` + `LABELS` 两处都要加，否则角色页显示空白）。
+运营端新增品牌归属码。新 ErrorCode 四处登记。
 
 **i18n**：选品入口、来源标识（品牌库/本店自建）、归档提示、改写脱钩提示 —— 三语。
 动态键要带至少两段前缀，否则整片不受闸门管。
@@ -116,7 +120,8 @@
 | 新增 | `shop-base/.../spi/merchant/BrandQueryPort.java` | 商品域要问「这个主体属于哪个品牌」，走 spi 不跨域直连 |
 | 新增 | `shop-core/.../product/entity/PrdBrandSpu.java` | 库条目 |
 | 新增 | `shop-core/.../product/service/BrandSpuService.java` + impl | 库 CRUD + 归档 + 引用数统计 |
-| 新增 | `shop-core/.../product/api/ops/OpsBrandSpuController.java` | 总部维护（`@Profile("ops")`） |
+| 新增 | `shop-core/.../product/api/biz/BizBrandSpuController.java` | 库读写**都在 B 端**（AC4b）。写操作校验 `entityNo == brand.hqEntityNo` |
+| 修改 | `shop-base-auth/.../auth/BizPerms.java` | +`BRAND_SPU`；`ROLE_PERMS` 与 `LABELS` 两处同步 |
 | 新增 | `shop-core/.../product/service/impl/GoodsOfferService.java` | `createFromBrandSpu`（AC5/AC7）、`resolveRefs`（AC10/AC13 解引用） |
 | 修改 | `shop-core/.../product/entity/PrdGoods.java` | +`storeNo` +`brandSpuNo` +`overrides` +`platformSuspended`；类注释改写归属语义 |
 | 修改 | `shop-core/.../product/service/impl/GoodsVisibility.java` | 三方现算 → 「Offer.store_no ∈ servingStores」；删 `sellingAt` 的货架分支 |
@@ -126,7 +131,9 @@
 | 修改 | `shop-merchant/.../port/StoreShelfPort` 实现 | 平台强制下架改写 Offer 的 `platform_suspended` |
 | 删除 | `PrdStoreGoods` `PrdStorePrice` `PrdStoreStock` 实体与 mapper | P4，V388 之后 |
 | 修改 | `b-app` 商品列表/建品页 | 选品入口（AC5）+ 来源标识（AC8）+ 按门店分组 |
-| 新增 | `ops-web` 品牌库维护页 + 品牌归属页 | 含引用数（铺货率） |
+| **新增** | `b-app/src/pages/brand-spu/`（列表 + 编辑）+ `pages.json` 登记 | 总部维护库（AC4b）。**改完必须重跑 `gen-ui-catalog.py` 并提交 JSON**，否则 pre-push 挡所有人 |
+| 修改 | `b-app` 「我的」菜单 | 仅 `hq_entity_no` 主体且持 `biz:brand:spu` 时出现入口 |
+| 新增 | `ops-web` 品牌归属页（品牌↔主体、指定总部主体） | **不含**库维护（AC4b）。加菜单要改 `ops-web/lib/nav.ts` 且菜单在库里（要跑生成器落迁移） |
 | 修改 | 契约四处（`contract/http/endpoints/requests`）两端 | 新端点 |
 | **P0 独立** | `shop-core/.../community/service/impl/CommunityServiceImpl.java` | 建聚落查重复用（AC20）+ `nearby` 折叠同名同址（AC21） |
 | **P0 独立** | 合并处置（运营端动作或一次性脚本） | 改指 `mch_service_area.ref_code` 后归档被并聚落（AC22/AC23） |
@@ -182,6 +189,8 @@ Set<String> visibleGoodsNos(String communityNo) {
 | 门店价/库存 | **就是 Offer 的 `prd_sku`** | 保留覆盖表 | 覆盖表线上 1 条/2 条等于没人用；且两张表缺省方向相反（价回退、存归零）是已记录的陷阱 |
 | `entity_no` | **留在 Offer 上做结算键** | 摘掉 | 通道按主体发号（ADR-011 硬约束），摘掉要动四个域 |
 | 局部改写 | **`overrides` 存字段名集合** | 每个字段加 `xxx_overridden` 布尔 | 字段会长，布尔会爆；集合可演进 |
+| 库维护端 | **B 端 app** | 运营端代维 / 新建品牌端 | 总部自己就是平台上的经营主体，已有账号与录入能力可复用；运营代维等于把商家的日常工作搬给运营 |
+| 总部身份怎么表达 | **`mch_brand.hq_entity_no` + 权限码** | 给 `mch_account` 加 `brand_no` | 账号绑单一主体是现有模型的基石，加一级身份会穿透鉴权全链；总部本就是其中一个主体 |
 | 重复聚落 | **治本（建处查重）+ 兜底（读处折叠）** | 只折叠显示 | 只折叠的话库里继续长重复，经营范围还会指错 |
 
 ---
@@ -204,7 +213,8 @@ Set<String> visibleGoodsNos(String communityNo) {
 
 | AC | 测试方法 | 跑过 | 消融 |
 |---|---|---|---|
-| AC1/AC3 | `BrandScopeTest#一品牌多主体` `#非本品牌主体不得写库` | | 去掉品牌归属校验 → 红 |
+| AC1/AC3 | `BrandScopeTest#一品牌多主体` `#加盟主体不得写库` `#总部主体可写` | | 去掉 `entityNo==hqEntityNo` 校验 → 红 |
+| AC4b | `BrandSpuTest#库写端点在biz不在ops`；`BizPerms` 断言 OWNER/MANAGER 含 `biz:brand:spu` | | 从 `ROLE_PERMS` 摘掉该码 → 红 |
 | AC2/AC11 | `BrandSpuTest#库条目无价无存列` | | 给库表加 price 列 → 红 |
 | AC4 | `BrandSpuTest#无品牌主体选品入口为空` | | |
 | AC5/AC7 | `GoodsOfferTest#选品生成门店商品` `#同店同条目不重复` | | 去掉唯一索引与前置校验 → 红 |
@@ -245,5 +255,7 @@ Set<String> visibleGoodsNos(String communityNo) {
 
 ## §8 待补
 
-- [ ] 模型关系图：按 `docs/文档规范.md` 要求出 **SVG**（不用 mermaid），放 `docs/technical/diagrams/`，并更新 `数据库-ER图.md`
-- [ ] 品牌总部用哪个端登录维护库（运营端代维 vs 品牌端新角色）—— 本 TDD 暂按运营端代维设计，待产品确认
+- [x] 库维护端 —— **定在 B 端 app**（2026-10-08），见 ADR-030 §3.5、AC4b
+- [ ] 更新 `数据库-ER图.md` 与 `docs/technical/diagrams/db-prd.svg` / `db-mch.svg`（P1 落表时一并重出）
+
+模型关系图：[商品归属-品牌库与门店Offer.svg](../diagrams/商品归属-品牌库与门店Offer.svg)
