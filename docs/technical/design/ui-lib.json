@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 385,
+        "b-app": 389,
         "c-app": 275
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 50,
+        "b-app": 54,
         "c-app": 38
       }
     },
@@ -3747,9 +3747,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 498,
+      "libClassHits": 506,
       "localSelectors": 94,
-      "localCssLines": 367,
+      "localCssLines": 365,
       "rolled": []
     },
     {
