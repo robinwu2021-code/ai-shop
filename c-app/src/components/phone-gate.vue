@@ -186,8 +186,28 @@ async function bind(run: () => Promise<unknown>) {
 .conflict {
   margin-top: 24rpx;
 }
+/*
+ * **全仓唯一的原生 `<button>`**（微信只认 button 上的 open-type 拿手机号）。
+ *
+ * 原生 button 自带一整套默认外观：浅灰底、自己的圆角与字号、1px 边框、
+ * 以及一个 `::after` 画的边线。只挂 `.sh-btn` 是压不住的 —— 实际看到的
+ * 是一个灰白、偏小、带细边的按钮，和弹层里其它主按钮明显不是一套。
+ * 所以这里把它们逐条抹平，让它和 `.sh-btn` 长得一模一样。
+ */
 .onetap {
   margin-top: 32rpx;
+  /* 盖掉原生 button 的默认外观 */
+  border: none;
+  outline: none;
+  line-height: 1.4;
+  /* 原生 button 的边线是 ::after 画的，不去掉会在胶囊外面多一圈直角框 */
+}
+.onetap::after {
+  border: none;
+}
+/* 按下反馈：原生 button 的 hover-class 在这里用不上，自己给一档 */
+.onetap:active {
+  opacity: 0.9;
 }
 .form {
   margin-top: 32rpx;

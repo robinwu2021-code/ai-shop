@@ -57,7 +57,7 @@ export default {
     later: "以后再说",
     title: "留个手机号",
     why: "下单后要联系你：自提点到货会发通知，配送要打电话。只用于这些。",
-    oneTap: "微信一键获取",
+    oneTap: "用微信号码",
     useCode: "用手机号验证码",
     phonePlaceholder: "手机号",
     codePlaceholder: "验证码",
