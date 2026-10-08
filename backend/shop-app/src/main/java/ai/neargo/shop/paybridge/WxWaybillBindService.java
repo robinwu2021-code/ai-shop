@@ -83,7 +83,9 @@ public class WxWaybillBindService {
                     item == null ? null : item.getTitle(),
                     item == null ? null : item.getCover(),
                     orderNo == null ? null : "/pages/order/index?orderNo=" + orderNo,
-                    null, null);
+                    null, null,
+                    // 申通/中通等运力换 token 必填（微信 receiver_phone），缺了回 9300561
+                    receiverPhoneOf(t.subOrderNo()));
             Optional<DisplayPayload> p = displayPort.decide(Surface.MP, ctx);
             if (p.isPresent() && p.get().persist() && notBlank(p.get().token())) {
                 logistics.applyWxDisplay(t.shipmentNo(), p.get().channel(), p.get().token(), null);
@@ -105,6 +107,14 @@ public class WxWaybillBindService {
                 subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                         .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
         return s == null ? null : s.getOrderNo();
+    }
+
+    /** 收件人手机号：微信 trace_waybill 对申通/中通等运力必填（receiver_phone）。自提单无收件人为空 */
+    private String receiverPhoneOf(String subOrderNo) {
+        OrdSubOrder s = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
+        return s == null ? null : s.getReceiverPhone();
     }
 
     private String payTradeNoOf(String orderNo) {

@@ -53,6 +53,8 @@ class WxWaybillBindServiceTest {
         OrdSubOrder sub = new OrdSubOrder();
         sub.setSubOrderNo("SUB-1");
         sub.setOrderNo("SO-1");
+        // 申通/中通等运力换 token 必填（微信 receiver_phone）：缺了回 9300561
+        sub.setReceiverPhone("18503088359");
         when(subOrderMapper.selectOne(any())).thenReturn(sub);
         OrdOrder ord = new OrdOrder();
         ord.setOrderNo("SO-1");
@@ -86,6 +88,8 @@ class WxWaybillBindServiceTest {
         assertThat(ctx.getValue().buyerOpenid()).isEqualTo("oABC123");
         assertThat(ctx.getValue().transId()).isEqualTo("4200001234");
         assertThat(ctx.getValue().goodsName()).isEqualTo("盐 1kg");
+        // 申通单：收件人手机号必须带上，否则微信回 9300561「收件人手机号错误」
+        assertThat(ctx.getValue().receiverPhone()).isEqualTo("18503088359");
     }
 
     @Test

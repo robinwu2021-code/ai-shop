@@ -58,7 +58,21 @@ public interface TraceDisplay {
      */
     record ShipmentCtx(String shipmentNo, String carrier, String waybillNo, String storeNo,
                        String buyerOpenid, String transId, String goodsName, String goodsImgUrl,
-                       String orderPath, String savedChannel, String savedToken) {
+                       String orderPath, String savedChannel, String savedToken,
+                       /**
+                        * 收件人手机号（完整 11 位）。微信 {@code trace_waybill} 的 {@code receiver_phone}：
+                        * <b>部分运力（申通 / 中通等）必填</b>，用它查单；顺丰等用 {@code trans_id} 就够。
+                        * 缺了这类运单会回 9300561「收件人手机号错误」。可能为空（自提单无收件人）。
+                        */
+                       String receiverPhone) {
+
+        /** 不带收件人手机号的签名：自建渠道与存量调用方（它们用不到） */
+        public ShipmentCtx(String shipmentNo, String carrier, String waybillNo, String storeNo,
+                           String buyerOpenid, String transId, String goodsName, String goodsImgUrl,
+                           String orderPath, String savedChannel, String savedToken) {
+            this(shipmentNo, carrier, waybillNo, storeNo, buyerOpenid, transId, goodsName, goodsImgUrl,
+                    orderPath, savedChannel, savedToken, null);
+        }
     }
 
     /**

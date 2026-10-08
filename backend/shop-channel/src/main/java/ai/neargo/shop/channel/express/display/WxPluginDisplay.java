@@ -84,6 +84,10 @@ public class WxPluginDisplay implements TraceDisplay {
                 // 选填，但微信文档说传了能提高运单识别准确度，非主流快递尤其建议传
                 body.put("delivery_id", ctx.carrier());
             }
+            if (notBlank(ctx.receiverPhone())) {
+                // 申通/中通等运力必填，用它查单；缺了回 9300561「收件人手机号错误」。传完整号，微信比对后四位
+                body.put("receiver_phone", ctx.receiverPhone());
+            }
             body.put("goods_info", Map.of("detail_list", List.of(Map.of(
                     "goods_name", ctx.goodsName() == null ? "商品" : ctx.goodsName(),
                     "goods_img_url", ctx.goodsImgUrl() == null ? "" : ctx.goodsImgUrl()))));
