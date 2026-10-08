@@ -157,12 +157,19 @@ public class LogisticsServiceImpl implements LogisticsService {
                 }
                 continue;
             }
-            if (defaultCarrier == null) {
-                // 一家启用的运力都没有：建不出运单记录（承运商是快照，不能留空）。
-                // 这不是异常 —— 页面上就该是空的，而运力页会告诉运营为什么
-                return;
+            /*
+             * 承运商取**商家发货时选的那个**（存在 ord_sub_order.express_company）——
+             * 轨迹轮询按 ful_shipment.carrier 决定查哪个 provider，取错就拿顺丰去查申通单，恒「无结果」。
+             * 商家没填时才退回平台 topCarrier（历史单、或从非发货路径补齐的）。
+             */
+            String carrier = o.expressCompany() != null && !o.expressCompany().isBlank()
+                    ? o.expressCompany() : defaultCarrier;
+            if (carrier == null) {
+                // 商家没选、平台也一家启用运力都没有：这一单建不出（承运商是快照，不能留空）。
+                // **只跳过这一单**，不中断整轮 —— 别的单该补的还要补
+                continue;
             }
-            if (!taken.add(defaultCarrier + "|" + o.expressNo())) {
+            if (!taken.add(carrier + "|" + o.expressNo())) {
                 // 同承运商下这个单号已经被别的子单占了。补齐是个读操作，
                 // 不该因为一条冲突数据把整张列表打不开 —— 冲突那一单在这里就是「没有运单记录」
                 continue;
@@ -170,7 +177,7 @@ public class LogisticsServiceImpl implements LogisticsService {
             FulShipment s = new FulShipment();
             s.setShipmentNo(BizKey.next(BizKey.SHIPMENT));
             s.setSubOrderNo(o.subOrderNo());
-            s.setCarrier(defaultCarrier);
+            s.setCarrier(carrier);
             s.setWaybillNo(o.expressNo());
             s.setStatus(statusOf(o.status()));
             s.setReceiver(o.receiver());
@@ -258,6 +265,13 @@ public class LogisticsServiceImpl implements LogisticsService {
     @Override
     @Transactional
     public TraceRefreshResult refreshInTransitTraces(int limit) {
+        /*
+         * **先物化**：ful_shipment 是 ord_sub_order 快递数据的投影（见 ensureShipments）。
+         * 商家发货只写 ord_sub_order，运单记录是读时补齐的 —— 此前只有运营端打开
+         * 「快递与轨迹」列表才补。轮询也必须补一遍，否则「商家发了货、运营没点那个列表」
+         * 的单永远不在 ful_shipment 里，轮询扫不到、轨迹永远不查。
+         */
+        ensureShipments();
         // 扫在途运单（有单号的）。最久没刷的优先 —— updateById 会顺带把 updated_at 当「上次刷新」推上去
         List<FulShipment> rows = DataScopeContext.executeWithoutScope(() ->
                 shipmentMapper.selectList(Wrappers.<FulShipment>lambdaQuery()

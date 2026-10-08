@@ -82,7 +82,7 @@ public interface FulfillmentStatsPort {
      *               <b>编一个假的轨迹推进比没有更糟</b>
      * @param region 收件地区（省 市），取自下单时的地址快照。超区判断看的就是它
      */
-    record ExpressOrder(String subOrderNo, String expressNo, String status,
+    record ExpressOrder(String subOrderNo, String expressNo, String expressCompany, String status,
                         String receiver, String region, long createdAt) {
     }
 

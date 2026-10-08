@@ -197,7 +197,7 @@ public class FulfillmentStatsPortImpl implements FulfillmentStatsPort {
                         .ne(OrdSubOrder::getExpressNo, "")
                         .orderByDesc(OrdSubOrder::getId));
         return rows.stream().map(s -> new ExpressOrder(
-                s.getSubOrderNo(), s.getExpressNo(), s.getStatus(),
+                s.getSubOrderNo(), s.getExpressNo(), s.getExpressCompany(), s.getStatus(),
                 s.getReceiverName() == null ? "" : s.getReceiverName(),
                 regionOf(s.getReceiverAddress()),
                 s.getCreatedAt() == null ? 0L

@@ -1,7 +1,12 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.fulfillment.entity.FulShipment;
+import ai.neargo.shop.fulfillment.mapper.FulfillmentMappers.ShipmentMapper;
+import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -73,6 +78,12 @@ class OpsLogisticsFlowTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private LogisticsService logisticsService;
+
+    @Autowired
+    private ShipmentMapper shipmentMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -166,6 +177,46 @@ class OpsLogisticsFlowTest {
                 .as("按 JD 筛不该筛出 SF 的单").isNull();
         assertThat(rowByOrder(shipmentsPage("status", "DELIVERED"), shipped)).isNull();
         assertThat(rowByOrder(shipmentsPage("keyword", "SFLOG-A1"), shipped)).isNotNull();
+    }
+
+    @Test
+    @Order(2)
+    @DisplayName("★ 运单承运商取商家发货时选的那个，不是平台 topCarrier —— 否则轨迹查错承运商、恒查不到")
+    void shipmentUsesMerchantChosenCarrier() throws Exception {
+        String biz = merchant("12600060050", "物流·承运商快照店");
+        String goodsNo = listedGoods(biz, 50);
+        String skuNo = firstSku(goodsNo);
+        String shipped = expressOrder("13000060050", goodsNo, skuNo);
+
+        // 商家选 JD，而 topCarrier 是 SF（setup 里 SF 优先级 1）。
+        // 快递100 按 ful_shipment.carrier 查——取成 SF 就拿顺丰查京东单，恒「无结果」。
+        assertThat(codeOf(shipRaw(biz, shipped, "JDLOG-C1", "JD"))).isZero();
+
+        JsonNode row = rowByOrder(shipmentsPage(), shipped);
+        assertThat(row).as("快递履约 + 已回填单号的子单必须补出一条运单记录").isNotNull();
+        assertThat(row.get("carrier").asString())
+                .as("ful_shipment.carrier 必须是商家发货时选的承运商(JD)，不是 topCarrier(SF)")
+                .isEqualTo("JD");
+    }
+
+    @Test
+    @Order(2)
+    @DisplayName("★ 轮询自己物化在途运单：商家发货后不读运营列表，轮询也要能扫到这单")
+    void pollMaterializesShippedOrders() throws Exception {
+        String biz = merchant("12600060060", "物流·轮询物化店");
+        String goodsNo = listedGoods(biz, 50);
+        String skuNo = firstSku(goodsNo);
+        String shipped = expressOrder("13000060060", goodsNo, skuNo);
+        assertThat(codeOf(shipRaw(biz, shipped, "SFLOG-D1"))).isZero();
+
+        // 关键：**不读** /ops/shipments（那条路径自己会物化，会掩盖缺陷）。
+        // 直接跑轮询，它应当在扫描前先把新发货单物化进 ful_shipment。
+        logisticsService.refreshInTransitTraces(300);
+
+        // 直接查库确认物化发生了（走 /ops/shipments 会自己补齐，分不清是谁补的）
+        long n = DataScopeContext.executeWithoutScope(() -> shipmentMapper.selectCount(
+                Wrappers.<FulShipment>lambdaQuery().eq(FulShipment::getSubOrderNo, shipped)));
+        assertThat(n).as("轮询扫描前要先物化新发货单——否则商家发了货、运营没点列表，轨迹永远不查").isEqualTo(1L);
     }
 
     // ---------------------------------------------------------------- 运单：换单号三条闸（§4.7）
@@ -550,12 +601,16 @@ class OpsLogisticsFlowTest {
 
     /** 商家发货并回填快递单号 —— 运单记录的来源就是这一步。 */
     private String shipRaw(String bizToken, String subOrderNo, String expressNo) throws Exception {
-        // 快递公司与运单号成对必填（微信发货信息录入要求）。这里的物流测试
-        // 只关心运单号进没进得去，公司给一个有效码即可
+        return shipRaw(bizToken, subOrderNo, expressNo, "SF");
+    }
+
+    private String shipRaw(String bizToken, String subOrderNo, String expressNo, String carrier) throws Exception {
+        // 快递公司与运单号成对必填（微信发货信息录入要求）。承运商决定轨迹按哪个 provider 查，
+        // 所以能指定它 —— 商家选什么，ful_shipment 就该是什么
         return mvc().perform(post("/biz/order/" + subOrderNo + "/ship")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"expressNo\":\"" + expressNo + "\",\"expressCompany\":\"SF\"}"))
+                        .content("{\"expressNo\":\"" + expressNo + "\",\"expressCompany\":\"" + carrier + "\"}"))
                 .andReturn().getResponse().getContentAsString();
     }
 
