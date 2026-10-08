@@ -450,6 +450,8 @@ export interface DailyFlowPage {
 export interface MerchantCapability {
   /** 商家单号 */
   merchantNo: string;
+  /** 这一组的门店（ADR-031：子单按门店拆）；空 = 老后端 */
+  storeNo?: string | null;
   /** 商家名，展示用 */
   merchantName: string;
   /** 能否开票 */

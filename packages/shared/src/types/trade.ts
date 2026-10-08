@@ -87,6 +87,13 @@ export interface CartItem {
    * 没有（老后端）就回落到 `invalid`/`available` 的两分法。
    */
   invalidReason?: string;
+  /**
+   * 所属门店（ADR-031：商品只属于一家门店，子单按门店拆）。同主体两家店的货在购物车、
+   * 结算页里各成一段，段头显示店名。老数据为空，回落主体。
+   */
+  storeNo?: string | null;
+  /** 所属门店的店名：购物车段头显示它（同主体两家店才分得开）；老数据为空，回落商家名 */
+  storeName?: string | null;
   /** 买赠自动带出的赠品件数（不计价） */
   giftQty?: number;
   /** 赠品说明，如「买 2 送 1」 */
@@ -132,6 +139,8 @@ export type OrderStatus =
  * 预览页只关心金额与行，声明全套会让每次后端加字段都得改端上类型。
  */
 export interface OrderPreview {
+  /** 门店（后端 `OrderVO.store`）。**预览的主单上恒为空** —— 门店在 `subOrders[].store` 上，一组一家店 */
+  store?: OrderStore | null;
   /**
    * 试算出来的金额。**页面显示的应付必须等于这里的 payableMinor** ——
    * 端上不要自己再算一遍：优惠叠加顺序（先活动后券）在后端，
@@ -153,6 +162,8 @@ export interface OrderPreview {
   subOrders?: Array<{
     merchantNo?: string;
     merchantName?: string;
+    /** 这一组（子单）的门店（ADR-031）。预览按门店分组，同主体两家店是两组 */
+    store?: OrderStore | null;
     pickupNo?: string;
     pickupName?: string;
     /**
@@ -284,6 +295,8 @@ export interface CheckoutOffers {
 export interface MerchantOffers {
   /** 商家号 */
   merchantNo: string;
+  /** 这一组的门店（ADR-031）。选活动按它回传；空 = 老后端，按商家号 */
+  storeNo?: string | null;
   /** 店名（一单多家店时，面板里每家店的活动前面写它） */
   merchantName: string;
   /** 这家店命中的活动。金额 = 只参加它时减多少 */
@@ -295,6 +308,8 @@ export interface MerchantOffers {
 export interface ActivityChoice {
   /** 商家号 */
   merchantNo: string;
+  /** 这一组的门店（ADR-031）；后端先按它认，没有再按商家号 */
+  storeNo?: string | null;
   /** 活动号，或 `ACTIVITY_NONE`（这家店不参加活动） */
   activityNo: string;
 }
@@ -415,9 +430,18 @@ export interface InvoiceRequest {
   /** 申请时刻 */
   createdAt?: number;
 }
+/** 子单的门店（后端 `OrderVO.StoreBrief`） */
+export interface OrderStore {
+  /** 门店号：同主体两张子单靠它分开（商家号相同） */
+  storeNo: string;
+  /** 门店名：段头 / 收银台子单列表显示它；取不到为空，回落商家名 */
+  storeName?: string | null;
+}
 export interface Order {
   /** 订单单号 */
   orderNo: string;
+  /** 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 */
+  store?: OrderStore | null;
   /** 订单状态。粗粒度；售后细节见 `afterSale` */
   status: OrderStatus;
   /** 履约方式，下单时锁定 */

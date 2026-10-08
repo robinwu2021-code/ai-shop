@@ -34,3 +34,40 @@ export function estimateFreight(t: FreightTemplateView, nominalGram: number | nu
   const weighed = nominalGram != null && nominalGram > 0;
   return { fee: freightFee(weighed ? nominalGram : t.firstWeightGram, t), weighed };
 }
+
+/** 合并的一份：同一个模板下的全部货（后端 `FreightPort.Part`） */
+export interface FreightPart {
+  template: FreightTemplateView;
+  /** 计费重（没填重量的件已按首重折进来） */
+  weightGram: number;
+  goodsAmountMinor: number;
+  /** 收货地址命中的地区规则；没命中为空 */
+  hit?: FreightTemplateView["rules"][number] | null;
+}
+
+/**
+ * 一家门店多模板合并（淘宝式，ADR-031 §2.5）—— 逐条照抄后端 `FreightPort#merge`，
+ * 用例与 `FreightMergeTest` 同一批：
+ * 任一份不配送 → 整店拒；各份按自己的门槛判包邮（包邮的不参与比较）；
+ * 其余份首费最高者计首重 + 续重，其他份全部重量只按各自续重；加收取最高一笔、只加一次。
+ */
+export function mergeFreight(parts: FreightPart[]):
+  { templateNo: string; fee: number; rejected: boolean; free: boolean } {
+  const reject = parts.find((p) => p.hit?.action === "REJECT");
+  if (reject) return { templateNo: reject.template.templateNo, fee: 0, rejected: true, free: false };
+  const charged = parts.filter((p) => !(p.template.freeThreshold > 0
+    && p.goodsAmountMinor >= p.template.freeThreshold));
+  if (!charged.length) return { templateNo: parts[0]!.template.templateNo, fee: 0, rejected: false, free: true };
+  let primary = charged[0]!;
+  for (const p of charged) if (p.template.firstFee > primary.template.firstFee) primary = p;
+  let fee = freightFee(primary.weightGram, primary.template);
+  let surcharge = 0;
+  for (const p of charged) {
+    const t = p.template;
+    if (p !== primary && t.addWeightGram > 0 && p.weightGram > 0) {
+      fee += Math.ceil(p.weightGram / t.addWeightGram) * t.addFee;
+    }
+    if (p.hit && p.hit.surcharge > surcharge) surcharge = p.hit.surcharge;
+  }
+  return { templateNo: primary.template.templateNo, fee: fee + surcharge, rejected: false, free: false };
+}

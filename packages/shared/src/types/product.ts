@@ -409,6 +409,8 @@ export interface Goods {
    * C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。
    */
   restrictedRegions?: string[];
+  /** 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 */
+  freightTemplateNo?: string | null;
   /** 是否在售。下架后详情页仍可访问（历史订单要点得进去），但不可下单 */
   onSale: boolean;
   /**
