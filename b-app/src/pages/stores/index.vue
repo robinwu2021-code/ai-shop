@@ -23,6 +23,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api, ApiError } from "@/api";
 import { ROUTES } from "@/shared/nav";
+import { useStoreSwitch } from "@/shared/store-switch";
 import { money } from "@shared/utils/money";
 import type { CrossStoreOverview, MerchantPlan, PaymentApplyment, Store } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
@@ -48,8 +49,8 @@ const busy = ref(false);
 
 /** 新建表单：默认收起 —— 大多数商家只有一家店，天天看到一个空表单是噪音 */
 const adding = ref(false);
-/** 正在切店：亮着「切换中…」时挡住重复点另一家 */
-const switching = ref(false);
+/** 切店幕布（整屏、大字店名）：亮着时也挡住重复点另一家 */
+const curtain = useStoreSwitch();
 const form = ref({ name: "", address: "" });
 /**
  * 这家店挂在哪张证照下（02 屏）。
@@ -259,23 +260,12 @@ function goPlan() {
  * 员工数对不对。工作台等页面回来时按 onShow 重取，拿到的就是新店的数字。
  */
 async function switchTo(s: Store) {
-  if (switching.value) return;
   /*
-   * 先亮「切换中…」，await 到真的切完，再弹「已切换至 XX」。
-   * 此前是 pickStore 发出去就立刻弹成功 —— 而切店的异步工作（loadScope 等）
-   * 还没回来，本页的收款号/员工数那一瞬还是旧店的，提示却说已经切好了。
-   * 留在本页（不跳走）：切完常常还要顺手看这家的设置对不对。
+   * 整屏幕布、大字店名，await 到真的切完才打勾，淡出后露出的就是已切过去的本页
+   * （「当前经营」挪到这家）。留在本页不跳走：切完常常还要顺手看这家的收款号、员工数。
+   * 此前是转圈 + 带勾 toast，店主反馈感知不到、长店名还被裁掉（见 shared/store-switch）。
    */
-  switching.value = true;
-  uni.showLoading({ title: String(t("storePick.switching")), mask: true });
-  try {
-    await merchant.pickStore(s.storeNo);
-  } finally {
-    uni.hideLoading();
-    switching.value = false;
-  }
-  // 带对勾的成功提示（不是纯文字 icon:none）—— 切店的动效要明显，√ 是明确的「切成功了」
-  uni.showToast({ title: t("stores.switched", { name: s.name }), icon: "success" });
+  await curtain.run(s.storeNo, s.name);
 }
 
 /**
@@ -601,6 +591,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       <view class="sh-btn submit" @tap="create">{{ $t("common.save") }}</view>
       <view class="sh-btn sh-btn--soft cancel" @tap="adding = false">{{ $t("common.cancel") }}</view>
     </view>
+    <biz-switch-curtain :phase="curtain.phase.value" :name="curtain.name.value"></biz-switch-curtain>
   </sh-scaffold>
 </template>
 

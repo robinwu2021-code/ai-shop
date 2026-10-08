@@ -9,6 +9,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { useStoreSwitch } from "@/shared/store-switch";
 import { useI18n } from "vue-i18n";
 import type { EntityStores } from "@shared/types";
 
@@ -17,8 +18,8 @@ const merchant = useMerchantStore();
 /** 进 App 的那一次：选完去工作台；从「我的」进来的：选完回上一页 */
 const entry = ref(false);
 const picked = ref("");
-/** 正在切店：亮着「切换中…」时挡住重复点「进入」 */
-const switching = ref(false);
+/** 切店幕布（整屏、大字店名）：亮着时也挡住重复点「进入」 */
+const curtain = useStoreSwitch();
 
 /**
  * 按证照分组。**选一家门店同时定了两件事**：用哪张证照、进哪家店 ——
@@ -68,48 +69,25 @@ function choose(storeNo: string, status: string) {
 }
 
 async function confirm() {
-  if (!picked.value || switching.value) return;
+  if (!picked.value) return;
   /*
    * **切店要让人看见过程，也要让人落到已经切过去的那一屏。**
    *
-   * 此前这里 `pickStore` 一调就立刻 reLaunch —— 而切店的异步工作（loadScope，
-   * 跨证照时还有门店列表与资料重拉）那时还没完成，落地页拿旧店数据先渲染一帧，
-   * 店主的感受是「点了，但好像没换过去」。
-   *
-   * 现在：先亮「切换中…」（mask 挡住重复点），await 到真的切完，再落地 ——
-   * 落地那一屏（工作台标题「工作台 · 新店名」/「我的」头部）已经是新店，
-   * 那就是「切过去了」最直接的回馈。
+   * 整屏幕布盖住、大字写着新店名，await 到真的切完才打勾，**幕布还盖着时就落地** ——
+   * 揭开就是新店的工作台（标题「工作台 · 新店名」）。
+   * 此前是转圈 + 带勾 toast：屏幕中间一个小灰块、一秒不到就没了，toast 还把长店名裁掉，
+   * 店主两次反馈「切换感知不到」（见 shared/store-switch）。
    */
   // 店名在切之前就从列表里拿准（current = 选中那家）——
   // 不用切完的 currentStore：跨证照切店后门店列表要重拉，那一瞬它可能还没对上新店。
-  const pickedName = current.value?.name || "";
-  switching.value = true;
-  uni.showLoading({ title: String(t("storePick.switching")), mask: true });
-  try {
-    await merchant.pickStore(picked.value);
-  } finally {
-    uni.hideLoading();
-    switching.value = false;
-  }
-  /*
-   * **切完先给一个带对勾的「已切换至 XX」，停够看得见，再落地。**
-   * 店主反馈切店的动效不够明显 —— 只有转圈 + 落地页标题换名，太轻。
-   * 成功 toast 带 √ 图标、是明确的「切成功了」确认。
-   * 等 toast 露够（success 默认 1.5s，这里停 900ms 够看清又不拖沓）再跳，
-   * 否则 reLaunch 会把它一起吞掉。
-   */
-  uni.showToast({
-    title: String(t("stores.switched", { name: pickedName })),
-    icon: "success",
-  });
-  setTimeout(() => {
+  await curtain.run(picked.value, current.value?.name || "", () => {
     if (entry.value) {
       // reLaunch：这一页不该留在栈里，返回键不应回到「选择门店」
       uni.reLaunch({ url: ROUTES.home });
     } else {
       uni.navigateBack();
     }
-  }, 900);
+  });
 }
 </script>
 
@@ -150,6 +128,7 @@ async function confirm() {
       {{ $t("storePick.enter") }}
     </view>
     <text class="center sh-hint">{{ $t("storePick.crossHint") }}</text>
+    <biz-switch-curtain :phase="curtain.phase.value" :name="curtain.name.value"></biz-switch-curtain>
   </sh-scaffold>
 </template>
 
