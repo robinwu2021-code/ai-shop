@@ -173,6 +173,17 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (m == null) {
             return List.of();
         }
+        if (storeNo == null || storeNo.isBlank()) {
+            /*
+             * 主体口径 = 名下各 ACTIVE 门店覆盖面的**并集**（V381 经营范围改门店级）。
+             * 不能把各店范围混成一份再展开：A 店排除的楼会把 B 店纳入的同一栋一起减掉。
+             */
+            java.util.LinkedHashSet<String> union = new java.util.LinkedHashSet<>();
+            for (var reach : reachLoader.loadEach(m)) {
+                union.addAll(expandReach(reach));
+            }
+            return List.copyOf(union);
+        }
         return expandReach(reachLoader.load(m, storeNo));
     }
 
@@ -182,8 +193,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return false;
         }
         MchEntity m = activeEntity(merchantNo);
-        return m != null && ai.neargo.shop.merchant.reach.ReachRule.covers(
-                reachLoader.load(m, storeNo), communityRef(communityNo));
+        if (m == null) {
+            return false;
+        }
+        var ref = communityRef(communityNo);
+        if (storeNo == null || storeNo.isBlank()) {
+            // 主体口径：任一门店送得到即算
+            return reachLoader.loadEach(m).stream()
+                    .anyMatch(r -> ai.neargo.shop.merchant.reach.ReachRule.covers(r, ref));
+        }
+        return ai.neargo.shop.merchant.reach.ReachRule.covers(reachLoader.load(m, storeNo), ref);
     }
 
     @Override
@@ -280,6 +299,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public List<String> previewReachable(String merchantNo, List<String[]> areas) {
+        return previewReachable(merchantNo, null, areas);
+    }
+
+    /** 预览<b>这家店</b>改成这份范围后覆盖哪儿（V381 范围门店级）。门店为空 = 默认店 */
+    @Override
+    public List<String> previewReachable(String merchantNo, String storeNo, List<String[]> areas) {
         // 与可见性同一条闸：没激活的主体对谁都不可见，预览也不该给他一个好看的数
         MchEntity m = activeEntity(merchantNo);
         if (m == null) {
@@ -307,7 +332,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 不看框选 —— 而保存后的可达早已改成「快递也尊重框选」（#4②），
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
-        return expandReach(reachLoader.preview(m, rows));
+        return expandReach(reachLoader.preview(m, storeNo, rows));
     }
 
     @Override
@@ -368,13 +393,17 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 「全部」那几路一律放行、不看主体框选 —— 于是「看得见、结算说不送」或者反过来。
          * 主体状态不在这里判：那是另一道闸，这里只回答「送不送得到」。
          */
-        var reach = reachLoader.load(m, storeNo);
         var ref = communityRef(communityNo);
+        // 门店为空 = 主体口径：各 ACTIVE 门店逐个判，送得到的路取并集（V381 范围门店级）
+        var reaches = storeNo == null || storeNo.isBlank()
+                ? reachLoader.loadEach(m) : List.of(reachLoader.load(m, storeNo));
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        for (var route : reach.routes()) {
-            if (enabled.contains(route.channel())
-                    && ai.neargo.shop.merchant.reach.ReachRule.selectable(reach, route, ref)) {
-                out.add(route.channel());
+        for (var reach : reaches) {
+            for (var route : reach.routes()) {
+                if (enabled.contains(route.channel())
+                        && ai.neargo.shop.merchant.reach.ReachRule.selectable(reach, route, ref)) {
+                    out.add(route.channel());
+                }
             }
         }
         return out;
@@ -603,13 +632,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 买家详情页写着「不限地区」，而他在第三个区根本搜不到这件货。
          * 现在两处调同一个判定，不会再一处改了另一处没改。
          */
-        List<MchServiceArea> includes = DataScopeContext.executeWithoutScope(() ->
+        /*
+         * 经营范围门店级之后（V381），同一条范围在几家店各一行 —— 列地名要按 (层级, 编码) 去重，
+         * 否则「深圳市」会因为四家店都框了它而在买家页上出现四次。
+         * 只算 ACTIVE 门店的：停用的店不卖，它框过的地方不该写进「可售地区」。
+         */
+        java.util.Set<String> activeStores = new java.util.HashSet<>(activeStoreNos(merchantNo));
+        java.util.Map<String, MchServiceArea> uniq = new java.util.LinkedHashMap<>();
+        DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                                 .eq(MchServiceArea::getEntityNo, merchantNo)
                                 .eq(MchServiceArea::getStatus, AREA_ACTIVE)))
                 .stream()
                 .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
-                .toList();
+                .filter(a -> a.getStoreNo() != null && activeStores.contains(a.getStoreNo()))
+                .forEach(a -> uniq.putIfAbsent(a.getLevel() + "|" + a.getRefCode(), a));
+        List<MchServiceArea> includes = List.copyOf(uniq.values());
         if (!includes.isEmpty()) {
             return new SaleScope(false,
                     includes.stream().limit(SALE_SCOPE_SAMPLE).map(this::buyerAreaName).toList(),
@@ -625,7 +663,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 不另写一遍：另写的那份迟早与可见性分叉，届时页面上写着「不限地区」
          * 而这件商品在买家那儿根本搜不到。
          */
-        return new SaleScope(ai.neargo.shop.merchant.reach.ReachRule.unlimited(reachLoader.load(m, null)),
+        // 主体口径：任一 ACTIVE 门店不限地区，这件货就不限（V381 范围门店级）
+        return new SaleScope(reachLoader.loadEach(m).stream().anyMatch(ai.neargo.shop.merchant.reach.ReachRule::unlimited),
                 java.util.List.of(), 0);
     }
 

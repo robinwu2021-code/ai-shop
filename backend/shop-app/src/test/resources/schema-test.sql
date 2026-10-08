@@ -1971,9 +1971,10 @@ CREATE TABLE IF NOT EXISTS mch_service_area
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     area_no VARCHAR(64) NOT NULL,
     mode VARCHAR(16) NOT NULL DEFAULT 'INCLUDE',
+    store_no VARCHAR(64) DEFAULT NULL,
     CONSTRAINT uk_service_area_no UNIQUE (area_no),
     PRIMARY KEY (id),
-    CONSTRAINT uk_service_area UNIQUE (entity_no,level,ref_code)
+    CONSTRAINT uk_service_area_store UNIQUE (entity_no, store_no, level, ref_code)
 );
 
 CREATE TABLE IF NOT EXISTS cmt_community_apply

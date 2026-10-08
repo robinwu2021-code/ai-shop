@@ -187,7 +187,10 @@ public class StoreFulfillmentServiceImpl implements StoreFulfillmentService {
                     myAreaNos = new java.util.HashSet<>();
                     for (var a : ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
                             () -> serviceAreaMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
-                                    .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)))) {
+                                    .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
+                                    // 子集只能从这家店自己的范围里挑（V381 范围门店级）
+                                    .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo,
+                                            store.getStoreNo())))) {
                         myAreaNos.add(a.getAreaNo());
                     }
                 }

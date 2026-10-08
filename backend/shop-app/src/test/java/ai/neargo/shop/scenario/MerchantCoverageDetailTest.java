@@ -53,6 +53,12 @@ class MerchantCoverageDetailTest {
         var a = new MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(entityNo);
+        // 经营范围门店级（V381）：挂到这家主体的默认店上（用例里都先建了店再框范围）
+        a.setStoreNo(DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, entityNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
+                        .last("limit 1"))).getStoreNo());
         a.setLevel("COMMUNITY");
         a.setRefCode(refCode);
         a.setSource("SELF");

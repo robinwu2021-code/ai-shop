@@ -41,7 +41,7 @@ public class BizPickupPointController {
     }
 
     /**
-     * 候选点：主体经营范围内（可见性唯一出口 {@code reachableCommunities}）的常驻点 + 本店自建的点。
+     * 候选点：<b>本店</b>经营范围内（可见性唯一出口 {@code reachableCommunities(主体, 门店)}）的常驻点 + 本店自建的点。
      * 范围为空时只剩本店自建的 —— 自提靠落点，没框范围本来也没有落点可言。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
@@ -49,7 +49,8 @@ public class BizPickupPointController {
     public List<CommunityService.PickupCandidate> candidates(@RequestParam String storeNo) {
         String merchantNo = BizContext.requireMerchantNo();
         String store = requireOwnStore(merchantNo, storeNo);
-        return communityService.pickupCandidates(merchantPort.reachableCommunities(merchantNo), store);
+        // 这家店自己的经营范围（V381 门店级）：运城的店不该被推荐深圳那家店范围里的自提点
+        return communityService.pickupCandidates(merchantPort.reachableCommunities(merchantNo, store), store);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
@@ -61,7 +62,7 @@ public class BizPickupPointController {
          * 归社区的退路：就近（服务内）→ 经营范围里的第一个 → 本店已有自提点所在的社区。
          * 存量社区大多没坐标、存量店常常还没框范围 —— 两级都空时第三级多半还在。
          */
-        List<String> reachable = merchantPort.reachableCommunities(merchantNo);
+        List<String> reachable = merchantPort.reachableCommunities(merchantNo, store);
         String fallback = reachable.isEmpty() ? null : reachable.get(0);
         if (fallback == null) {
             fallback = pickupPort.activeStorePickupNos(List.of(store)).stream()

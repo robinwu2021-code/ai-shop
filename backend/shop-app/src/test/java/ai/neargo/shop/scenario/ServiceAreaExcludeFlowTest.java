@@ -36,6 +36,9 @@ class ServiceAreaExcludeFlowTest {
 
     private static int seq = 7100;
 
+    /** 主体 → 它的默认店（merchant() 建的那一家） */
+    private final java.util.Map<String, String> defaultStore = new java.util.HashMap<>();
+
     private String merchant(String reach) {
         var m = new ai.neargo.shop.merchant.entity.MchEntity();
         m.setEntityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.MERCHANT));
@@ -49,6 +52,7 @@ class ServiceAreaExcludeFlowTest {
         st.setEntityNo(m.getEntityNo());
         st.setIsDefault(true);
         storeMapper.insert(st);
+        defaultStore.put(m.getEntityNo(), st.getStoreNo());
         return m.getEntityNo();
     }
 
@@ -70,6 +74,7 @@ class ServiceAreaExcludeFlowTest {
         var a = new MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(entityNo);
+        a.setStoreNo(defaultStore.get(entityNo));   // 经营范围门店级（V381）
         a.setLevel(level);
         a.setRefCode(refCode);
         a.setSource("SELF");

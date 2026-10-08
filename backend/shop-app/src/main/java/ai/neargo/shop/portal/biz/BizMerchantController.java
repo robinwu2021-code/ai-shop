@@ -465,8 +465,13 @@ public class BizMerchantController {
                 : req.areas().stream()
                         .map(a -> new String[]{a.level(), a.refCode(), a.mode()})
                         .toList();
-        var after = merchantQueryPort.previewReachable(merchantNo, next);
-        var before = merchantQueryPort.reachableCommunities(merchantNo);
+        /*
+         * 两个数都按**当前门店**算（V381 经营范围改门店级）：店主改的是这家店的范围，
+         * 拿主体并集当「改之前」的话，多店商家看到的增减是错的。
+         */
+        String storeNo = BizContext.current().currentStoreNo();
+        var after = merchantQueryPort.previewReachable(merchantNo, storeNo, next);
+        var before = merchantQueryPort.reachableCommunities(merchantNo, storeNo);
         /*
          * 两个数都给：光给「改成这样会覆盖 12 个」，商家答不出「那是多了还是少了」——
          * 而他真正要决定的是增减。差值让端上自己算，两个基数都在这儿。

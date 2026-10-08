@@ -47,18 +47,32 @@ class ServiceAreaFlowTest {
         m.setStatus("ACTIVE");
         m.setFulfillmentReach(reach);
         merchantMapper.insert(m);
+        // 真实流程里激活就建好默认店（ensureDefaultStore）；经营范围门店级之后（V381）没有店就没有范围可言
+        store(m.getEntityNo());
         return m.getEntityNo();
     }
 
-    private void area(String entityNo, String level, String refCode) {
+    private Long area(String entityNo, String level, String refCode) {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(entityNo);
+        // 经营范围门店级（V381）：范围必须挂在某家店上，挂不上的行不属于任何门店、对谁都不可见
+        a.setStoreNo(defaultStoreOf(entityNo));
         a.setLevel(level);
         a.setRefCode(refCode);
         a.setSource("SELF");
         a.setStatus("ACTIVE");
         areaMapper.insert(a);
+        return a.getId();
+    }
+
+    /**
+     * 这家主体的默认店；还没有就建一家。真实流程里激活时 ensureDefaultStore 就建好了 ——
+     * 这里补上，测试才不是在造一个「有范围、没门店」的不存在的状态。
+     * 读不走数据域：测试里没有登录上下文，带域查会恒为空、反复建店。
+     */
+    private String defaultStoreOf(String entityNo) {
+        return store(entityNo);
     }
 
     /** 造一个挂在指定区划下的开放社区 */
@@ -185,6 +199,7 @@ class ServiceAreaFlowTest {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(m);
+        a.setStoreNo(defaultStoreOf(m));
         a.setLevel("COMMUNITY");
         a.setRefCode(c);
         a.setSource("SELF");
@@ -207,14 +222,14 @@ class ServiceAreaFlowTest {
     void areaRemoveThenAddAgain() {
         String m = merchant("PICKUP");
         String c = community("330106002");
-        area(m, "COMMUNITY", c);
+        Long id = area(m, "COMMUNITY", c);
 
         /*
          * 逻辑删 + 业务唯一键这个组合在本仓库踩过四次（门店角色、商品社区池、
          * 商家社区表各修了一个 revive）。这张表从一开始就走物理删除，
          * 从根上消掉那类 bug —— 这条用例守的就是「别哪天改回逻辑删」。
          */
-        areaMapper.hardDelete(m, "COMMUNITY", c);
+        areaMapper.hardDeleteById(id);
         assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
 
         area(m, "COMMUNITY", c);
@@ -233,12 +248,22 @@ class ServiceAreaFlowTest {
      * 建一行门店。真实流程里这一行由**入驻审核通过**时创建，
      * 门店保存只会更新它 —— 测试里要照着这个前提造，否则测的是一条不存在的路径。
      */
-    private void store(String merchantNo) {
+    /** 默认店：已有就返回那一家（幂等），没有才建 —— 一个主体只该有一家默认店 */
+    private String store(String merchantNo) {
+        var existing = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
+                        .last("limit 1")));
+        if (existing != null) {
+            return existing.getStoreNo();
+        }
         var st = new ai.neargo.shop.merchant.entity.MchStore();
         st.setStoreNo("ST" + seq++);
         st.setEntityNo(merchantNo);
         st.setIsDefault(true);
         storeMapper.insert(st);
+        return st.getStoreNo();
     }
 
     /** 再开一家非默认店，返回它的门店号 */
@@ -676,5 +701,104 @@ class ServiceAreaFlowTest {
         // null 不该把已有覆盖项抹掉 —— 抹掉的话老版本端一保存公告，
         // 这家店的范围就没了，而他只是改了句公告
         assertThat(merchantQuery.reachableCommunities(m)).containsExactly(c);
+    }
+
+    // ---------------------------------------------------------------- 经营范围门店级（V381）
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.StoreAdminService storeAdmin;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
+    private static ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand areasCmd(String... communityNos) {
+        return new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                java.util.Arrays.stream(communityNos)
+                        .map(c -> new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c))
+                        .toList(),
+                null, null);
+    }
+
+    private java.util.List<String> areaRefsOf(String m, String storeNo) {
+        return storeService.profile(m, storeNo).serviceAreas().stream()
+                .map(a -> a.refCode()).toList();
+    }
+
+    @Test
+    @DisplayName("★★★ 改一家店的经营范围，别的店一行都不变 —— 店主报的「改一家、全变」")
+    void editingOneStoreRangeLeavesOtherStoresAlone() {
+        /*
+         * 店主原话（2026-10-08）：「修改一个门店的经营范围，其他门店也改了。经营范围在门店，不在主体。」
+         * 此前 mch_service_area 只有 entity_no，一个主体所有门店共用一份；
+         * 虹选鲜果在深圳、虹选粮油在山西，共用一份范围根本不成立。
+         */
+        String m = merchant("ONSITE");
+        String a = store(m);
+        String b = extraStore(m, "B 店");
+        String ca = community("330106002");
+        String cb = community("330106003");
+        String ca2 = community("330106004");
+
+        storeService.save(m, a, areasCmd(ca));
+        storeService.save(m, b, areasCmd(cb));
+        // 再改一次 A 店 —— B 店的范围必须原样
+        storeService.save(m, a, areasCmd(ca2));
+
+        assertThat(areaRefsOf(m, a)).as("A 店改成了 ca2").containsExactly(ca2);
+        assertThat(areaRefsOf(m, b)).as("改 A 店，B 店的范围不该跟着变").containsExactly(cb);
+        assertThat(merchantQuery.reachableCommunities(m, a)).as("A 店只送 A 店框的").containsExactly(ca2);
+        assertThat(merchantQuery.reachableCommunities(m, b)).as("B 店只送 B 店框的").containsExactly(cb);
+    }
+
+    @Test
+    @DisplayName("★★ 主体口径是各店并集 —— A 店排除的楼，不能把 B 店纳入的同一栋减掉")
+    void entityReachIsUnionOfStoresNotAMixedList() {
+        String m = merchant("ONSITE");
+        String a = store(m);
+        String b = extraStore(m, "B 店");
+        String x = community("330106005");
+        String y = community("330106006");
+
+        // A 店框 y、排除 x；B 店框 x
+        storeService.save(m, a, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", y, "INCLUDE"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", x, "EXCLUDE")),
+                null, null));
+        storeService.save(m, b, areasCmd(x));
+
+        /*
+         * 把两家店的 INCLUDE/EXCLUDE 混成一份再展开的话，A 店的 EXCLUDE x 会把 B 店的 INCLUDE x 减掉，
+         * 主体口径（商家详情「覆盖哪儿」、自提点候选…）里就没有 x —— 而 B 店明明送 x。
+         */
+        assertThat(merchantQuery.reachableCommunities(m))
+                .as("主体口径 = 各店逐个判再取并集")
+                .containsExactlyInAnyOrder(x, y);
+        assertThat(merchantQuery.serves(m, null, x)).as("任一门店送得到即算").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 新开的店照抄默认店的范围 —— 不抄的话只做自提的新店对谁都不可见")
+    void newStoreInheritsDefaultStoreRange() {
+        String m = merchant("ONSITE");
+        String a = store(m);
+        // 这个夹具的主体没走真实激活（没有 ensureFreePlan 建的订阅行）—— 补一行，建店才过得了额度闸
+        var plan = new ai.neargo.shop.merchant.entity.MchEntityPlan();
+        plan.setEntityNo(m);
+        plan.setPlanCode(ai.neargo.shop.merchant.entity.MchEntityPlan.FREE);
+        plan.setStatus("ACTIVE");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> planMapper.insert(plan));
+        ai.neargo.shop.support.TestPlan.grantQuota(planMapper, m, 3);
+        String ca = community("330106007");
+        storeService.save(m, a, areasCmd(ca));
+
+        String b = storeAdmin.create(m, "新开的店", "某路 1 号").storeNo();
+
+        assertThat(areaRefsOf(m, b)).as("新店先照抄一份默认店的范围").containsExactly(ca);
+        // 抄的是一份**独立**的：改新店不影响默认店
+        String cb = community("330106008");
+        storeService.save(m, b, areasCmd(cb));
+        assertThat(areaRefsOf(m, a)).as("改新店，默认店不动").containsExactly(ca);
     }
 }

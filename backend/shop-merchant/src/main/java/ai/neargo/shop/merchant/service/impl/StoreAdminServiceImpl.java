@@ -52,11 +52,15 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private final ai.neargo.shop.merchant.service.StoreLinkService storeLinkService;
 
 
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
+
     public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
-                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService) {
+                                 ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+        this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
         this.roleMapper = roleMapper;
@@ -109,7 +113,42 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         s.setIsDefault(existing.isEmpty());
         s.setStatus(MchStore.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
+        inheritServiceAreas(merchantNo, existing, s.getStoreNo());
         return toVO(s, activePayMerchantNos(merchantNo), Map.of());
+    }
+
+    /**
+     * 新店<b>照抄默认店的经营范围</b>（V381 起范围是门店级的）。
+     *
+     * <p>不抄的话新店是空范围：只做自提的店对谁都不可见，商家看到「建店成功、上架成功、零订单」。
+     * 照抄与「新店继承主体经营类目」同一个取舍 —— 先给一份能用的，店主再在这家店上改；
+     * 改的只是这家店，不会影响默认店（那正是这次要修的「改一家、全变」）。
+     */
+    private void inheritServiceAreas(String merchantNo, List<MchStore> existing, String newStoreNo) {
+        String from = existing.stream()
+                .filter(x -> Boolean.TRUE.equals(x.getIsDefault())).map(MchStore::getStoreNo)
+                .findFirst()
+                .orElse(existing.isEmpty() ? null : existing.get(0).getStoreNo());
+        if (from == null) {
+            return;
+        }
+        var rows = DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getStoreNo, from)));
+        for (var a : rows) {
+            var copy = new ai.neargo.shop.merchant.entity.MchServiceArea();
+            copy.setAreaNo(BizKey.next(BizKey.SERVICE_AREA));
+            copy.setEntityNo(merchantNo);
+            copy.setStoreNo(newStoreNo);
+            copy.setLevel(a.getLevel());
+            copy.setRefCode(a.getRefCode());
+            copy.setSource(a.getSource());
+            copy.setStatus(a.getStatus());
+            copy.setMode(a.getMode());
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(copy));
+        }
     }
 
     @Override

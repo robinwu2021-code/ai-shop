@@ -61,11 +61,12 @@ public final class ReachRule {
     }
 
     /**
-     * 一家店（或主体口径）判定所需的全部配置。
+     * 一家店判定所需的全部配置。经营范围是门店级的（V381）：includes/excludes 是<b>这家店</b>的。
+     * 主体口径不再是一份合起来的配置，而是名下各店逐个判、取并集（见 StoreReachLoader.loadEach）——
+     * 把各店的 INCLUDE/EXCLUDE 混成一份判是错的：A 店排除的楼会把 B 店纳入的同一栋一起减掉。
      *
-     * @param storeNo  空 = 主体口径（各店开着的路取并集、一律按「全部」）
-     * @param includes 主体 ACTIVE 的 INCLUDE
-     * @param excludes 主体全部 EXCLUDE（不看 status）
+     * @param includes 这家店 ACTIVE 的 INCLUDE
+     * @param excludes 这家店全部 EXCLUDE（不看 status）
      */
     public record StoreReach(String entityNo, String storeNo, List<Route> routes,
                              List<Area> includes, List<Area> excludes) {

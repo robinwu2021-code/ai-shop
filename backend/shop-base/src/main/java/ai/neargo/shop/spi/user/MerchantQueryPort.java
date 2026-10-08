@@ -104,6 +104,12 @@ public interface MerchantQueryPort {
     java.util.List<String> previewReachable(String merchantNo, java.util.List<String[]> areas);
 
     /**
+     * 同上，但问的是<b>哪一家店</b>改成这份范围（经营范围门店级，V381）：路与子集照这家店的配。
+     * {@code storeNo} 为空 = 默认店。B 端预览走这个 —— 店主改的是当前门店的范围。
+     */
+    java.util.List<String> previewReachable(String merchantNo, String storeNo, java.util.List<String[]> areas);
+
+    /**
      * 该主体的<b>默认门店</b>。下单时用它填 {@code ord_sub_order.store_no}（M2 双写）。
      *
      * <p>为什么下单只认默认门店：多门店放开（M6）之前，一个主体恰好一家店，

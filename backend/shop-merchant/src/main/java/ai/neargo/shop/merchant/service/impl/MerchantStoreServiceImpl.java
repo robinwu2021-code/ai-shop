@@ -96,7 +96,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 merchant == null ? null : merchant.getServiceCityCode(),
                 merchant == null || merchant.getFulfillmentReach() == null
                         ? PICKUP : merchant.getFulfillmentReach(),
-                areasOf(merchantNo),
+                // 经营范围是门店级的（V381）：回显这家店自己的那一份
+                store == null ? List.of() : areasOf(merchantNo, store.getStoreNo()),
                 store == null ? null : store.getLatE6(),
                 store == null ? null : store.getLngE6(),
                 store == null ? "" : nz(store.getBannerUrl()));
@@ -310,9 +311,31 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
              */
             DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(merchant));
         }
-        syncCommunities(merchantNo, cmd.serviceCommunityNos());
-        syncAreas(merchantNo, cmd.serviceAreas());
-        return profile(merchantNo);
+        /*
+         * **经营范围写到这家店上，不是写到主体上**（V381）。
+         * 此前这里按主体写，一个主体所有门店共用一份 —— 店主在虹选粮油改范围，
+         * 虹选鲜果跟着变。门店号与回显同一个判据：传了用传的，没传取默认店。
+         */
+        // 只在真要写范围时才解析门店：只改公告/营业时间的保存不该因为「找不到门店」被拒
+        String sNo = cmd.serviceAreas() != null || cmd.serviceCommunityNos() != null
+                ? areaStoreNo(merchantNo, storeNo) : null;
+        syncCommunities(merchantNo, sNo, cmd.serviceCommunityNos());
+        syncAreas(merchantNo, sNo, cmd.serviceAreas());
+        return profile(merchantNo, storeNo);
+    }
+
+    /**
+     * 门店号：传了用传的，没传取默认店（与 {@link #row} 同一个判据）。
+     *
+     * <p>查不到门店时<b>拒绝</b>，不往下写一条 store_no 为空的范围 ——
+     * 那种行不属于任何门店、对谁都不可见，而商家看到的是「保存成功」。
+     */
+    private String areaStoreNo(String merchantNo, String storeNo) {
+        MchStore s = row(merchantNo, storeNo);
+        if (s == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return s.getStoreNo();
     }
 
     private static final String PICKUP = "PICKUP";
@@ -330,21 +353,24 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
      * <p>{@code null} 表示端上这次不改覆盖项（老版本 b-app 就不会传）——
      * 与空列表要分开：空列表是「清空」，而清空对 PICKUP 商家意味着从 C 端消失。
      */
-    private void syncAreas(String merchantNo, List<AreaCommand> areas) {
+    private void syncAreas(String merchantNo, String storeNo, List<AreaCommand> areas) {
         if (areas == null) {
             return;
         }
-        replaceAreas(merchantNo, areas, null);
+        replaceAreas(merchantNo, storeNo, areas, null);
     }
 
     /**
-     * 替换覆盖项。{@code onlyLevel} 非空时**只替换那一层** ——
+     * 替换**这家店**的覆盖项。{@code onlyLevel} 非空时**只替换那一层** ——
      * 老入口（只管社区）不该顺手把商家在新界面上勾的「西湖区」抹掉。
+     *
+     * <p>读、删、插都带上 {@code storeNo}（V381）：别的门店那一份一行都不碰。
      */
-    private void replaceAreas(String merchantNo, List<AreaCommand> areas, String onlyLevel) {
+    private void replaceAreas(String merchantNo, String storeNo, List<AreaCommand> areas, String onlyLevel) {
         List<MchServiceArea> current = DataScopeContext.executeWithoutScope(() ->
                 serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                         .eq(MchServiceArea::getEntityNo, merchantNo)
+                        .eq(MchServiceArea::getStoreNo, storeNo)
                         .eq(onlyLevel != null, MchServiceArea::getLevel, onlyLevel)));
         /*
          * 这里是全量删重插（唯一键在 entity+level+ref 上，改动最少的写法）。
@@ -362,8 +388,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         java.util.Map<String, String> keptNo = new java.util.HashMap<>();
         for (MchServiceArea old : current) {
             keptNo.put(old.getLevel() + "|" + old.getRefCode(), old.getAreaNo());
-            DataScopeContext.executeWithoutScope(() ->
-                    serviceAreaMapper.hardDelete(merchantNo, old.getLevel(), old.getRefCode()));
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(old.getId()));
         }
         java.util.Set<String> gone = new java.util.HashSet<>(keptNo.values());
         for (AreaCommand a : normalize(areas)) {
@@ -375,6 +400,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             gone.remove(kept);
             row.setAreaNo(kept != null ? kept : BizKey.next(BizKey.SERVICE_AREA));
             row.setEntityNo(merchantNo);
+            row.setStoreNo(storeNo);
             row.setLevel(a.level());
             row.setRefCode(a.refCode());
             row.setSource("SELF");
@@ -526,10 +552,11 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     }
 
     /** 回显覆盖项，名字由后端补 —— 端上只拿到 330106 的话要么显示数字要么再查一次 */
-    private List<StoreProfileVO.ServiceAreaVO> areasOf(String merchantNo) {
+    private List<StoreProfileVO.ServiceAreaVO> areasOf(String merchantNo, String storeNo) {
         return DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
-                                .eq(MchServiceArea::getEntityNo, merchantNo)))
+                                .eq(MchServiceArea::getEntityNo, merchantNo)
+                                .eq(MchServiceArea::getStoreNo, storeNo)))
                 .stream()
                 .map(a -> new StoreProfileVO.ServiceAreaVO(
                         a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus(), a.getAreaNo(),
@@ -558,6 +585,14 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     @Override
     @Transactional
     public void syncCommunities(String merchantNo, List<String> communityNos) {
+        if (communityNos == null) {
+            return;
+        }
+        // 入驻/激活这条老入口没有门店上下文：镜像进默认店（激活时 ensureDefaultStore 已先建好）
+        syncCommunities(merchantNo, areaStoreNo(merchantNo, null), communityNos);
+    }
+
+    private void syncCommunities(String merchantNo, String storeNo, List<String> communityNos) {
         if (communityNos == null) {
             return;
         }
@@ -596,12 +631,12 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          * 镜像只在这一个方法里做，没有「少一个入口、少一条分支」的余地。
          * mch_entity_community 退役时这一段跟着删。
          */
-        mirrorCommunitiesToAreas(merchantNo, communityNos);
+        mirrorCommunitiesToAreas(merchantNo, storeNo, communityNos);
     }
 
-    /** 把社区列表镜像成 COMMUNITY 层的覆盖项。**只动这一层**，不碰商家勾的区/市 */
-    private void mirrorCommunitiesToAreas(String merchantNo, List<String> communityNos) {
-        replaceAreas(merchantNo,
+    /** 把社区列表镜像成**这家店** COMMUNITY 层的覆盖项。**只动这一层**，不碰商家勾的区/市 */
+    private void mirrorCommunitiesToAreas(String merchantNo, String storeNo, List<String> communityNos) {
+        replaceAreas(merchantNo, storeNo,
                 communityNos.stream().map(c -> new AreaCommand(AREA_COMMUNITY, c)).toList(),
                 AREA_COMMUNITY);
     }

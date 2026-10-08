@@ -117,11 +117,15 @@ public final class MerchantMappers {
          * 墓碑行占着 {@code uk_service_area}，「移除之后又加回同一条」直接撞键。
          */
         @org.apache.ibatis.annotations.Delete("""
-                DELETE FROM mch_service_area
-                WHERE entity_no = #{entityNo} AND level = #{level} AND ref_code = #{refCode}
+                DELETE FROM mch_service_area WHERE id = #{id}
                 """)
-        int hardDelete(@Param("entityNo") String entityNo, @Param("level") String level,
-                       @Param("refCode") String refCode);
+        int hardDeleteById(@Param("id") Long id);
+
+        /*
+         * 原来是 hardDelete(entityNo, level, refCode)。经营范围改门店级（V381）之后
+         * 同一条 (level, ref) 在每家门店各有一行 —— 按那三个键删会把**所有门店**的那一条
+         * 一起删掉，正是这次要修的「改一家、全变」换个方向重演。按 id 删，只删手上这一行。
+         */
     }
 
     /**

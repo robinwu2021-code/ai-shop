@@ -201,6 +201,7 @@ class CommunityApplyFlowTest {
         var x = new ai.neargo.shop.merchant.entity.MchServiceArea();
         x.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         x.setEntityNo(entityNo);
+        x.setStoreNo("CAST" + entityNo);   // 经营范围门店级（V381）：挂在 merchant() 建的默认店上
         x.setLevel("COMMUNITY");
         x.setRefCode(communityNo);
         x.setSource("SELF");
@@ -215,8 +216,19 @@ class CommunityApplyFlowTest {
         m.setStatus("ACTIVE");
         m.setFulfillmentReach("PICKUP");
         merchantMapper.insert(m);
+        // 真实流程里激活就建好默认店；范围门店级之后（V381）没有店就没有范围
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setEntityNo(m.getEntityNo());
+        st.setStoreNo("CAST" + m.getEntityNo());
+        st.setName("提报测试店");
+        st.setIsDefault(true);
+        st.setStatus("ACTIVE");
+        storeMapper.insert(st);
         return m.getEntityNo();
     }
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
 
     @Test
     @DisplayName("★★ 待审的提报不进社区表 —— 进了就会出现在用户的选点列表里，而点进去什么都没有")

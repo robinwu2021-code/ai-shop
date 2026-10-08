@@ -52,6 +52,9 @@ class GoodsSaleScopeFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper areaMapper;
 
     @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
+    @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
 
     private MockMvc mvc() {
@@ -68,6 +71,14 @@ class GoodsSaleScopeFlowTest {
         m.setStatus("ACTIVE");
         m.setFulfillmentReach(reach);
         merchantMapper.insert(m);
+        // 真实流程里激活就建好默认店；经营范围门店级之后（V381）范围必须挂在店上
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setEntityNo(m.getEntityNo());
+        st.setStoreNo("SST" + m.getEntityNo());
+        st.setName("销售范围测试店");
+        st.setIsDefault(true);
+        st.setStatus("ACTIVE");
+        storeMapper.insert(st);
         return m.getEntityNo();
     }
 
@@ -75,6 +86,7 @@ class GoodsSaleScopeFlowTest {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
         a.setEntityNo(entityNo);
+        a.setStoreNo("SST" + entityNo);
         a.setLevel(level);
         a.setRefCode(refCode);
         a.setSource("SELF");

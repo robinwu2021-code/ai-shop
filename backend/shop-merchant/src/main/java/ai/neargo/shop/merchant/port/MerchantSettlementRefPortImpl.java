@@ -61,6 +61,13 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
      * 那家店的「商家自送只送这几个小区」里会留下一个指向不存在覆盖项的子集 ——
      * 表现为该渠道的范围凭空少了一个小区，且没有任何报错。
      */
+    /** 唯一键的「主体 + 门店」那一截（V381）。门店为空的孤行单独成一组 */
+    private static final class MchServiceAreaKey {
+        static String of(MchServiceArea a) {
+            return a.getEntityNo() + "|" + (a.getStoreNo() == null ? "" : a.getStoreNo());
+        }
+    }
+
     private int repointServiceAreas(String fromNo, String intoNo) {
         List<MchServiceArea> rows = serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
                 .eq(MchServiceArea::getLevel, AREA_COMMUNITY)
@@ -73,17 +80,19 @@ public class MerchantSettlementRefPortImpl implements SettlementRefPort {
                         .eq(MchServiceArea::getLevel, AREA_COMMUNITY)
                         .eq(MchServiceArea::getRefCode, intoNo))
                 .stream().collect(java.util.stream.Collectors.toMap(
-                        MchServiceArea::getEntityNo, MchServiceArea::getAreaNo, (a, b) -> a));
+                        MchServiceAreaKey::of, MchServiceArea::getAreaNo, (a, b) -> a));
         int n = 0;
         for (MchServiceArea r : rows) {
-            String survivor = targetAreaNo.get(r.getEntityNo());
+            // 去重维度跟着唯一键走：经营范围门店级之后（V381）是「主体 + 门店」，不是只看主体
+            String key = MchServiceAreaKey.of(r);
+            String survivor = targetAreaNo.get(key);
             if (survivor != null) {
                 repointChannelAreas(r.getAreaNo(), survivor);
-                serviceAreaMapper.hardDelete(r.getEntityNo(), AREA_COMMUNITY, fromNo);
+                serviceAreaMapper.hardDeleteById(r.getId());
             } else {
                 r.setRefCode(intoNo);
                 serviceAreaMapper.updateById(r);
-                targetAreaNo.put(r.getEntityNo(), r.getAreaNo());
+                targetAreaNo.put(key, r.getAreaNo());
             }
             n++;
         }

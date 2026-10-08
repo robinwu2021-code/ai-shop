@@ -26,6 +26,14 @@ public class MchServiceArea extends BaseEntity {
 
     private String entityNo;
 
+    /**
+     * 这条范围属于**哪家门店**（V381）。经营范围是门店级的：每家店各有各的范围，
+     * 可见性按这家店自己的范围算 —— 不是全主体共用一份。
+     *
+     * <p>空 = 迁移前写下、而主体当时没有任何门店的孤行，不参与任何门店的可见性。
+     */
+    private String storeNo;
+
     /** COMMUNITY / VILLAGE / STREET / DISTRICT / CITY */
     private String level;
 

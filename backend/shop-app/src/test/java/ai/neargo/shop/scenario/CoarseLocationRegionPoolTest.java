@@ -164,6 +164,7 @@ class CoarseLocationRegionPoolTest {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
         a.setAreaNo("SVA" + entityNo);
         a.setEntityNo(entityNo);
+        a.setStoreNo(st.getStoreNo());   // 经营范围门店级（V381）
         a.setLevel("COMMUNITY");
         a.setRefCode(communityNo);
         a.setSource("SELF");

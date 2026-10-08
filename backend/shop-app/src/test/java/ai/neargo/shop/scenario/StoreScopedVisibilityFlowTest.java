@@ -82,17 +82,22 @@ class StoreScopedVisibilityFlowTest {
         String storeA = defaultStoreNo(biz);
         String storeB = createStore(biz, "B 片区店");
 
-        // 主体足迹两块都要 —— 门店子集是从主体足迹里挑的
-        storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
+        /*
+         * 经营范围门店级（V381）：每家店框自己的 —— A 店只框 CM001，B 店只框 CM002。
+         * 此前这条用例是「主体足迹两块都框、再用 SUBSET 给每家店各收一块」，
+         * 那正是这次修掉的定位错误：范围本来就该在门店上，不该先放主体再收窄。
+         */
+        storeService.save(merchantNo, storeA, new MerchantStoreService.SaveCommand(
                 null, null, null, null, null, null, null, null, null, null, List.of(
-                        new MerchantStoreService.AreaCommand("COMMUNITY", "CM001"),
+                        new MerchantStoreService.AreaCommand("COMMUNITY", "CM001")), null, null));
+        storeService.save(merchantNo, storeB, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
                         new MerchantStoreService.AreaCommand("COMMUNITY", "CM002")), null, null));
 
-        // A 店只送 CM001，B 店只送 CM002
         fulfillmentService.save(merchantNo, storeA, List.of(new ChannelCmd(
-                Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaNoOf(merchantNo, "CM001")))));
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
         fulfillmentService.save(merchantNo, storeB, List.of(new ChannelCmd(
-                Fulfillments.MERCHANT_DELIVERY, true, null, null, "SUBSET", List.of(areaNoOf(merchantNo, "CM002")))));
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
 
         /*
          * 这件货**只摆在 A 店的货架上**（门店选品三态：一旦有了任意一条店级行，
@@ -216,7 +221,13 @@ class StoreScopedVisibilityFlowTest {
         String keep = openBuildingUnder("SVC-BLD-KEEP", estate);
         String drop = openBuildingUnder("SVC-BLD-DROP", estate);
 
-        String biz = merchant("12600180014", "框了小区又单独框了楼", estate);
+        /*
+         * 独占一个号（此前与 pendingGoodsStayInAllTabRegardlessOfStore 共用 12600180014，两条用例落在同一个主体上）。
+         * 经营范围门店级之后（V381），那条用例开的第二家店保留着它自己的 CM001 范围，
+         * 主体并集里就多出 CM001 —— 而这件货只在默认店上架，现算可见里自然没有它。
+         * 以前范围是主体级、后一次保存把 CM001 覆盖掉了，共用主体这件事被巧合盖住。
+         */
+        String biz = merchant("12600180050", "框了小区又单独框了楼", estate);
         String merchantNo = merchantNoOf(biz);
         TestPlan.grantQuota(planMapper, merchantNo, 3);
         storeService.save(merchantNo, new MerchantStoreService.SaveCommand(

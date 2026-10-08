@@ -176,6 +176,7 @@ public class DevSeeder {
                     var area = new ai.neargo.shop.merchant.entity.MchServiceArea();
                     area.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
                     area.setEntityNo(merchantNo);
+                    area.setStoreNo("ST-" + merchantNo); // 经营范围是门店级，挂到 defaultStore 那家
                     area.setLevel("COMMUNITY");
                     area.setRefCode(communityNo);
                     area.setSource("SELF");

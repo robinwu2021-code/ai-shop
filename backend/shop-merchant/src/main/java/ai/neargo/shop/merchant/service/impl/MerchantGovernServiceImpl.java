@@ -428,7 +428,15 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
                 Wrappers.<MchServiceArea>lambdaQuery().eq(MchServiceArea::getEntityNo, entityNo));
         List<CoverageVO.AreaItem> includes = new java.util.ArrayList<>();
         List<CoverageVO.AreaItem> excludes = new java.util.ArrayList<>();
+        /*
+         * 经营范围门店级之后（V381），同一条范围在几家店各一行 —— 运营这页看的是「这家主体覆盖哪儿」，
+         * 按 (方向, 层级, 编码) 去重，不然一个「深圳市」会因为四家店都框了而列四遍。
+         */
+        java.util.Set<String> seen = new java.util.HashSet<>();
         for (MchServiceArea a : areas) {
+            if (!seen.add(a.getMode() + "|" + a.getLevel() + "|" + a.getRefCode())) {
+                continue;
+            }
             var item = new CoverageVO.AreaItem(a.getLevel(), a.getRefCode(),
                     areaNameOf(a), a.getStatus());
             if (MchServiceArea.MODE_EXCLUDE.equals(a.getMode())) {
@@ -995,8 +1003,8 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             row.setStatus(ai.neargo.shop.merchant.entity.MchServiceArea.ACTIVE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.updateById(row));
         } else {
-            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDelete(
-                    row.getEntityNo(), row.getLevel(), row.getRefCode()));
+            // 按 id 删这一行：范围门店级之后（V381）同一条 (level, ref) 在别的门店也有，不能连带删
+            DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(row.getId()));
         }
     }
 
