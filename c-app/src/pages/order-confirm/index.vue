@@ -580,6 +580,12 @@ const activityChoices = ref<Record<string, string>>({});
  */
 const touched = ref(false);
 
+/**
+ * 「最省组合」这一轮套过没有。**只自动套一次** —— 理由见 {@link refreshAmount} 里那段注释。
+ * 车里的货（含数量）或履约方式变了才重新给一次建议，由下面那个 watch 重置。
+ */
+const suggestionApplied = ref(false);
+
 /** 这一单各主体在逛哪家店（门户里记下的）。在 B 店门户挑的货由 B 店履约（TDD §2.7） */
 function storeChoicesPayload() {
   return storeChoicesFor(items.value.map((it) => it.merchantNo));
@@ -666,8 +672,21 @@ async function refreshAmount() {
     discountLines.value = p.discountLines ?? [];
     serverOutOfRange.value = p.outOfRange ?? [];
     offers.value = p.offers ?? null;
-    // 没动过就照最省组合来：套上之后 watch 会再问一次价，这一次的结果就不必往下渲染了
-    if (!touched.value && applySuggestion(p.offers)) return;
+    /*
+     * 没动过就照最省组合来：套上之后 watch 会再问一次价，这一次的结果就不必往下渲染了。
+     *
+     * **只套一次**（`suggestionApplied`）。服务端的建议是<b>相对当前组合</b>算的：套上 A 之后
+     * 它可能转而建议 B、套上 B 又建议回 A。而「套一次」就改 `couponNo` / `activityChoices`，
+     * 那正是重新问价的 watch 依赖 —— 于是预览把自己喂成死循环。
+     *
+     * 2026-10-09 线上实测：一个买家的结算页 **401 次预览/分钟**，金额永远停在「计算中…」，
+     * 价看不到、也点不下去（`amountPending` 被每一次新调用重新置真，`finally` 里
+     * `seq === amountSeq` 永远不成立）。车里的货或履约方式变了才重新建议一次。
+     */
+    if (!touched.value && !suggestionApplied.value && applySuggestion(p.offers)) {
+      suggestionApplied.value = true;
+      return;
+    }
     // 上限只有后端算得准；没给的行不设限（宁可提交时拦，也不要凭旧数挡人）
     maxQtyOf.value = Object.fromEntries(
       (p.items ?? []).filter((i) => i.maxQty != null).map((i) => [i.skuNo, i.maxQty as number]),
@@ -767,6 +786,19 @@ watch(
     appointmentAt.value, payMode.value, JSON.stringify(activityChoices.value)],
   () => void refreshAmount(),
   { immediate: true },
+);
+
+/*
+ * 重新给一次「最省组合」的时机：**车里的货（含数量）或履约方式变了**。
+ *
+ * 刻意<b>不</b>跟 `couponNo` / `activityChoices` —— 那两个正是建议自己写进去的，
+ * 跟了就等于「套上就重置、重置又套」，死循环原样回来（见 refreshAmount 里那段）。
+ */
+watch(
+  () => [items.value.map((it) => `${it.skuNo}x${it.qty}`).join(","), fulfillment.value],
+  () => {
+    suggestionApplied.value = false;
+  },
 );
 
 /*
