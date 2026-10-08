@@ -199,7 +199,9 @@ async function bind(run: () => Promise<unknown>) {
   /* 盖掉原生 button 的默认外观 */
   border: none;
   outline: none;
-  line-height: 1.4;
+  /* 行高不在这儿写：`.sh-btn` 自己带 1.4（= 字阶的 .txt-strong），
+     而原生 button 的默认行高来自 `button` 这个元素选择器，权重更低、压不过它。
+     多写一遍只是把同一个数抄到第二处 —— 字阶改了这儿不会跟着改。 */
   /* 原生 button 的边线是 ::after 画的，不去掉会在胶囊外面多一圈直角框 */
 }
 .onetap::after {
