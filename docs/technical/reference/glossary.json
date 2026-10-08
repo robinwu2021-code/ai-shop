@@ -11138,12 +11138,6 @@
           "ar": "الأدوات"
         },
         {
-          "key": "home.fulfillEntry",
-          "zh-CN": "核销分拣",
-          "en": "Redeem & pick",
-          "ar": "الاستلام والفرز"
-        },
-        {
           "key": "home.gmv",
           "zh-CN": "成交额",
           "en": "GMV",

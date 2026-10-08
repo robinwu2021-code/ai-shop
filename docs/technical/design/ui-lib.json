@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 120,
+        "b-app": 119,
         "c-app": 32
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 225,
+        "b-app": 224,
         "c-app": 85
       }
     },
@@ -641,7 +641,7 @@
         "margin-bottom": "10px"
       },
       "usage": {
-        "b-app": 21,
+        "b-app": 20,
         "c-app": 0
       }
     },
@@ -2671,7 +2671,7 @@
         "active?: string"
       ],
       "usage": {
-        "b-app": 14,
+        "b-app": 13,
         "c-app": 0,
         "lib": 0
       },
@@ -3778,7 +3778,7 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 52,
+      "libClassHits": 49,
       "localSelectors": 20,
       "localCssLines": 84,
       "rolled": []
