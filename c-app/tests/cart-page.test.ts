@@ -132,6 +132,48 @@ describe("购物车页", () => {
     expect(store.selected).toEqual(["S1"]);
   });
 
+  it("★★★ 活动结束的失效件 → 文案「活动已结束」，不是「已下架」（按 invalidReason 码分）", async () => {
+    cartList.mockResolvedValue([
+      item({ skuNo: "S1" }),
+      item({ skuNo: "S2", title: "活动结束的", invalid: true, invalidReason: "ACTIVITY_ENDED" }),
+    ]);
+    const { w } = await render();
+    expect(w.text(), "活动结束该出自己的文案").toContain("cart.invalidActivityEnded");
+    expect(w.text(), "不该再误标已下架").not.toContain("cart.invalidOffShelf");
+  });
+
+  it("★★ 没有 invalidReason（老后端）时回落到 invalid 两分法", async () => {
+    cartList.mockResolvedValue([item({ skuNo: "S2", invalid: true })]);
+    const { w } = await render();
+    expect(w.text()).toContain("cart.invalidOffShelf");
+  });
+
+  it("★★★ 清空失效：删掉全部失效件，不碰有效件", async () => {
+    confirmMock.mockResolvedValue(true);
+    cartList.mockResolvedValue([
+      item({ skuNo: "S1" }),
+      item({ skuNo: "S2", invalid: true }),
+      item({ skuNo: "S3", invalid: true }),
+    ]);
+    const { w } = await render();
+    const link = w.findAll(".sh-link").find((e) => e.text() === "cart.clearInvalid")!;
+    expect(link, "失效区头要有『清空失效』").toBeTruthy();
+    await link.trigger("tap");
+    await new Promise((r) => setTimeout(r));
+    expect(cartRemove, "只删两件失效的，有效的 S1 不动")
+      .toHaveBeenCalledWith(["S2", "S3"]);
+  });
+
+  it("★★ 找相似：跳搜索页带上这件的标题", async () => {
+    cartList.mockResolvedValue([item({ skuNo: "S2", title: "下架的油", invalid: true })]);
+    const { w } = await render();
+    const link = w.findAll(".sh-link").find((e) => e.text() === "cart.findSimilar")!;
+    await link.trigger("tap");
+    const url = uniMock.navigateTo.mock.calls.at(-1)?.[0]?.url ?? "";
+    expect(url, "要去搜索页").toContain("/pages/search/index");
+    expect(url, "带上标题当关键词").toContain(encodeURIComponent("下架的油"));
+  });
+
   it("★★★ 底栏的件数是**勾选**件数，不是车里的件数", async () => {
     cartList.mockResolvedValue([
       item({ skuNo: "S1", qty: 2 }),

@@ -127,16 +127,28 @@ public class CartServiceImpl implements CartService {
                 // 直接从购物车里抹掉更省事，但用户会以为「我明明加过」，投诉无从查起
                 return new CartItemVO(row.getGoodsNo(), row.getSkuNo(), "该商品已下架", "", "",
                         0L, row.getQty(), "", "", "", "",
-                        Boolean.TRUE.equals(row.getSelected()), true, 0);
+                        Boolean.TRUE.equals(row.getSelected()), true, 0,
+                        CartItemVO.REASON_OFF_SHELF);
             }
             String merchantName = merchantPort.find(s.merchantNo())
                     .map(MerchantQueryPort.MerchantBrief::merchantName).orElse("");
+            boolean activityEnded = s.activityOnly() && !open.contains(s.goodsNo());
+            boolean invalid = !s.onSale() || activityEnded;
+            int sellable = displaySellable(s);
+            /*
+             * **原因码一个真源定在这里**，端上不再从 invalid/available 猜「活动结束」。
+             * 顺序：下架压过活动结束（都不在售时先说下架），再是售罄；可售为 null。
+             */
+            String reason = !s.onSale() ? CartItemVO.REASON_OFF_SHELF
+                    : activityEnded ? CartItemVO.REASON_ACTIVITY_ENDED
+                    : sellable == 0 ? CartItemVO.REASON_SOLD_OUT
+                    : null;
             return new CartItemVO(s.goodsNo(), s.skuNo(), s.title(), s.cover(), s.spec(),
                     s.price(), row.getQty(), s.categoryType(),
                     s.fulfillments().isEmpty() ? "" : s.fulfillments().get(0),
                     s.merchantNo(), merchantName,
                     Boolean.TRUE.equals(row.getSelected()),
-                    !s.onSale() || (s.activityOnly() && !open.contains(s.goodsNo())),
+                    invalid,
                     /*
                      * **下发 sellable，不下发快照的 available。**
                      *
@@ -147,7 +159,8 @@ public class CartServiceImpl implements CartService {
                      *
                      * 与加购校验用同一个数，三处才不会各说各的。
                      */
-                    displaySellable(s));
+                    sellable,
+                    reason);
         }).toList();
     }
 

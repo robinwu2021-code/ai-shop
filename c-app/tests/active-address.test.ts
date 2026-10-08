@@ -77,7 +77,7 @@ describe("生效位置 ≠ 默认收货地址", () => {
  * 只是那段模板既拿不到数据、又因为 `groups` 只遍历有效件而根本渲染不到。
  *
  * <p>所以下面改的是**字段名**，三条断言的强度一条不减：
- * 仍然要求「说出原因」「不可售不许还能加减数量」「不许替用户批量清理」。
+ * 仍然要求「说出原因」「不可售不许还能加减数量」「清空失效要用户点+确认、不许自动清」。
  * 真正的行为回归位在 `cart-page.test.ts` —— 那边把页面挂起来看它渲染出什么。
  */
 describe("购物车：不可售要说出来，但不许替用户删", () => {
@@ -96,20 +96,31 @@ describe("购物车：不可售要说出来，但不许替用户删", () => {
   });
 
   it("★★★ 不可售时不许还能加减数量 —— 加了也结不掉，只会让人更困惑", () => {
-    // 步进器只画在有效件那一段里；失效件走的是另一段模板（invalidItems）。
-    // 切片要**两头都掐住** —— 只掐开头的话会一路切到 <style>，
-    // 而那里必然有 .stepper，于是这条断言变成恒红（第一次跑就撞了）
-    expect(page).toContain("cart.invalidItems");
-    const from = page.indexOf("cart.invalidItems");
+    // 步进器只画在有效件那一段里；失效件走的是另一段**模板**（invalidItems）。
+    // 锚点用模板里的 `v-if="cart.invalidItems.length"` —— 不能用「第一个 invalidItems 出现处」：
+    // clearInvalid() 在脚本段也引用了 cart.invalidItems，那会把锚点漂到脚本里、
+    // 切片一路切到模板的有效件步进器，断言恒红（这条就这么踩过一次）。
+    const from = page.indexOf('v-if="cart.invalidItems.length"');
+    expect(from, "失效区模板的锚点找不到了").toBeGreaterThan(0);
     const to = page.indexOf("cart.loaded", from);
     expect(to, "失效区之后应当紧跟空态那一段").toBeGreaterThan(from);
     expect(page.slice(from, to), "失效区里不许出现步进器").not.toContain("stepper");
   });
 
-  it("★★★ 不许自动清空 —— 那是用户的东西，删不删由他决定", () => {
-    // 允许「点一下删这一件」与编辑态里他自己勾出来的批量删；
-    // 不允许出现「把不可售的一次性扫掉」这种替他做主的调用
-    expect(page).not.toMatch(/removeAllInvalid|clearInvalid/);
-    expect(page).not.toMatch(/invalidItems[^\n]*\.map[\s\S]{0,80}remove/);
+  it("★★★ 清空失效：允许用户点 + 确认，但绝不替他自动清", () => {
+    /*
+     * 产品决策反转（2026-10-08 对话）：失效区**可以**有「清空失效」按钮。
+     * 当年禁「批量清理」是怕替用户做主；现在守的是那一半仍然成立的意思：
+     *   · 必须由用户点（@tap 绑定），且删前 confirm；
+     *   · 绝不在加载路径（load / onShow）里自动清失效件。
+     */
+    expect(page, "清空失效要由用户点触发").toMatch(/@tap(\.stop)?="clearInvalid"/);
+    const idx = page.indexOf("function clearInvalid");
+    expect(idx, "clearInvalid 要有实现").toBeGreaterThan(0);
+    const body = page.slice(idx, page.indexOf("\n}", idx));
+    expect(body, "清空前必须确认，别一下扫光").toContain("confirm(");
+    // 加载路径里不许自动清（onShow 只重拉）
+    expect(page, "onShow/load 里不许自动清失效件")
+      .not.toMatch(/onShow[\s\S]{0,160}(clearInvalid|removeMarked)/);
   });
 });

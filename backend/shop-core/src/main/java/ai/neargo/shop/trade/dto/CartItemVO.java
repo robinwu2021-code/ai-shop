@@ -21,5 +21,17 @@ public record CartItemVO(String goodsNo,
                          /** 失效（下架/删除）：端上放进失效区，不参与结算 */
                          boolean invalid,
                          /** 可售库存，0 表示售罄 */
-                         int available) {
+                         int available,
+                         /**
+                          * 失效原因**码**（不是文案）：{@code OFF_SHELF / ACTIVITY_ENDED / SOLD_OUT}，
+                          * 可售时为 {@code null}。端上按码映射到 i18n 词条 ——
+                          * <b>绝不在这里发中文</b>：那是要显示给用户的话，而 app 有三门语言，
+                          * 后端发文案会绕过 i18n 守卫（见 CartItem 注释里那段旧坑）。
+                          * 与 {@code invalid}/{@code available} 不冲突：那两个是粗事实，这是更细的一层。
+                          */
+                         String invalidReason) {
+
+    public static final String REASON_OFF_SHELF = "OFF_SHELF";
+    public static final String REASON_ACTIVITY_ENDED = "ACTIVITY_ENDED";
+    public static final String REASON_SOLD_OUT = "SOLD_OUT";
 }

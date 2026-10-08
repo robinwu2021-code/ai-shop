@@ -42,11 +42,20 @@ function lowStock(it: CartItem): boolean {
 }
 
 /**
- * 不可售的原因。**端上按 `invalid` / `available` 两个事实组装本地化文案** ——
- * 让后端发那句中文原因等于把文案钉死在服务端，而这个 app 有三门语言。
+ * 不可售的原因文案。**后端发的是原因码，端上 switch 到词条**（不让后端发中文，app 有三门语言）。
+ * 有原因码就按它出（能分出「活动结束」）；老后端没发码时回落到 `invalid`/`available` 两分法。
  */
 function invalidText(it: CartItem): string {
-  return String(it.invalid ? t("cart.invalidOffShelf") : t("cart.invalidSoldOut"));
+  switch (it.invalidReason) {
+    case "ACTIVITY_ENDED":
+      return String(t("cart.invalidActivityEnded"));
+    case "SOLD_OUT":
+      return String(t("cart.invalidSoldOut"));
+    case "OFF_SHELF":
+      return String(t("cart.invalidOffShelf"));
+    default:
+      return String(it.invalid ? t("cart.invalidOffShelf") : t("cart.invalidSoldOut"));
+  }
 }
 
 // ── 勾选 ──────────────────────────────────────────────────────────────
@@ -153,6 +162,25 @@ async function changeQty(skuNo: string, n: number) {
  */
 async function remove(skuNo: string) {
   await cart.remove([skuNo]);
+}
+
+/** 一键清空所有失效件。**带确认** —— 别把他想留着等恢复的那几件一起扫掉 */
+async function clearInvalid() {
+  const skus = cart.invalidItems.map((it) => it.skuNo);
+  if (!skus.length) return;
+  const ok = await confirm({
+    title: String(t("cart.removeTitle", { n: skus.length })),
+    hint: String(t("cart.removeHint")),
+    confirmText: String(t("cart.clearInvalid")),
+    danger: true,
+  });
+  if (!ok) return;
+  await cart.remove(skus);
+}
+
+/** 下架件不是死路：拿标题去搜同类，给个替代品的出口 */
+function findSimilar(it: CartItem) {
+  uni.navigateTo({ url: `${ROUTES.search}?keyword=${encodeURIComponent(it.title)}` });
 }
 
 /** 编辑态的批量删。**是他勾出来的，不是替他清理** */
@@ -318,6 +346,8 @@ onShow(() => cart.load());
       <view class="ghead sh-row">
         <text class="txt-strong">{{ $t("cart.invalidTitle") }}</text>
         <text class="txt-caption ghead__note sh-num">{{ cart.invalidItems.length }}</text>
+        <view class="sh-fill"></view>
+        <text class="sh-link" @tap="clearInvalid">{{ $t("cart.clearInvalid") }}</text>
       </view>
       <view v-for="it in cart.invalidItems" :key="it.skuNo" class="line sh-row is-invalid">
         <view v-if="editing" class="box sh-hit sh-center" @tap.stop="cart.toggleMark(it.skuNo)">
@@ -332,9 +362,14 @@ onShow(() => cart.load());
         >
           <view class="sh-notice sh-notice--warning invalid sh-row sh-row--between">
             <text class="txt-caption txt-ink">{{ invalidText(it) }}</text>
-            <text class="sh-link" @tap.stop="remove(it.skuNo)">
-              {{ $t("cart.removeInvalid") }}
-            </text>
+            <view class="sh-row invalid__acts">
+              <text class="sh-link" @tap.stop="findSimilar(it)">
+                {{ $t("cart.findSimilar") }}
+              </text>
+              <text class="sh-link" @tap.stop="remove(it.skuNo)">
+                {{ $t("cart.removeInvalid") }}
+              </text>
+            </view>
           </view>
         </biz-sku-row>
       </view>
@@ -446,6 +481,9 @@ onShow(() => cart.load());
 }
 .invalid {
   margin-top: 8rpx;
+}
+.invalid__acts {
+  gap: 24rpx;
 }
 
 .splitnote {

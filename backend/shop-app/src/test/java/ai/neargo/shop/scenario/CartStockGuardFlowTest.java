@@ -211,4 +211,34 @@ class CartStockGuardFlowTest {
     void unknownSkuIsZeroNotUnlimited() {
         assertThat(stockPort.sellable("SKU-DOES-NOT-EXIST")).isZero();
     }
+
+    @Test
+    @DisplayName("★★★ 下架后购物车那件：invalidReason=OFF_SHELF —— 端上据此说「已下架」而不是「已售罄」")
+    void offShelfItemCarriesReason() {
+        String skuNo = sku(5, 0, 0, 0);
+        asBuyer();
+        cartService.add("G-CS", skuNo, 1);
+        // 加购之后商家下架这件
+        var g = createdGoods.get(createdGoods.size() - 1);
+        g.setOnSale(false);
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+
+        var line = cartService.list().stream().filter(i -> skuNo.equals(i.skuNo())).findFirst().orElseThrow();
+        assertThat(line.invalid()).isTrue();
+        assertThat(line.invalidReason()).isEqualTo("OFF_SHELF");
+    }
+
+    @Test
+    @DisplayName("★★★ 售罄（可售=0）那件：invalidReason=SOLD_OUT，且不是 OFF_SHELF —— 两种状态文案不同")
+    void soldOutItemCarriesReason() {
+        String skuNo = sku(5, 0, 0, 0);
+        asBuyer();
+        cartService.add("G-CS", skuNo, 2);
+        // 加购之后被别人把现货全锁走：可售掉到 0，但商品仍在架
+        DataScopeContext.executeWithoutScope(() -> skuMapper.lockStock(skuNo, 5));
+
+        var line = cartService.list().stream().filter(i -> skuNo.equals(i.skuNo())).findFirst().orElseThrow();
+        assertThat(line.available()).as("可售已经是 0").isZero();
+        assertThat(line.invalidReason()).isEqualTo("SOLD_OUT");
+    }
 }

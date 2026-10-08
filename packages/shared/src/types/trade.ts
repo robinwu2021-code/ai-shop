@@ -78,6 +78,15 @@ export interface CartItem {
    * 而且只在没带这个字段的环境里才出现。
    */
   available?: number;
+  /**
+   * 失效原因**码**（不是文案）：`"OFF_SHELF" | "ACTIVITY_ENDED" | "SOLD_OUT"`，可售时缺省。
+   *
+   * ⚠️ 和上面 `invalidReason?: string` 那段旧坑**不是一回事**：这里是一个**枚举码**，
+   * 端上 switch 到 i18n 词条，后端**不发中文**（见 {@link invalid} 注释）。
+   * 它是 `invalid`/`available` 之上更细的一层：有它就按它出文案（能分出「活动结束」），
+   * 没有（老后端）就回落到 `invalid`/`available` 的两分法。
+   */
+  invalidReason?: string;
   /** 买赠自动带出的赠品件数（不计价） */
   giftQty?: number;
   /** 赠品说明，如「买 2 送 1」 */
