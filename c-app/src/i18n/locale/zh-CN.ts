@@ -10,6 +10,14 @@ export default {
     loading: "加载中…",
     empty: "这里还没有内容",
     sold: "已售 {n}",
+    /*
+     * 这两条给的是**库件 sh-scaffold 的 denied 态**（`$t("common.noPermTitle")`）。
+     * C 端自己没有权限体系、从不传 denied，但**并包小程序里跑着 b-app 的页面** ——
+     * 那些页面会传，而库件在主包里、查的是这一份词条。缺了就露裸
+     * `common.noPermTitle` 给店员看（2026-10-08 真机上撞到的）。文案与 b-app 同义。
+     */
+    noPermTitle: "无访问权限",
+    noPermHint: "当前角色没有此页面的权限。如需使用，请联系店主调整角色。",
   },
   tab: {
     home: "首页",

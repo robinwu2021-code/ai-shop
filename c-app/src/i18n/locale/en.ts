@@ -10,6 +10,8 @@ export default {
     loading: "Loading…",
     empty: "Nothing here yet",
     sold: "{n} sold",
+    noPermTitle: "No access",
+    noPermHint: "This role has no permission for this page. Ask the shop owner to adjust the role.",
   },
   tab: {
     home: "Home",
