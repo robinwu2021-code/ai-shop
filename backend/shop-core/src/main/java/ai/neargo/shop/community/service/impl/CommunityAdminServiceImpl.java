@@ -846,18 +846,19 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
     private static final int DRILL_MAX_SIZE = 500;
 
     @Override
-    public DistributionVO.CommunityPage communitiesInRegion(String regionCode, int page, int size) {
+    public ai.neargo.shop.common.PageData<DistributionVO.DistributionRow> communitiesInRegion(
+            String regionCode, int page, int size) {
         int p = page < 1 ? 1 : page;
         int s = size < 1 ? 200 : Math.min(size, DRILL_MAX_SIZE);
         if (regionCode == null || regionCode.isBlank()) {
-            return new DistributionVO.CommunityPage(List.of(), 0, p, s);
+            return ai.neargo.shop.common.PageData.empty(p, s);
         }
         List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() ->
                 communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
                         .eq(CmtCommunity::getStatus, OPEN)
                         .likeRight(CmtCommunity::getRegionCode, regionCode)));
         if (open.isEmpty()) {
-            return new DistributionVO.CommunityPage(List.of(), 0, p, s);
+            return ai.neargo.shop.common.PageData.empty(p, s);
         }
         // 买家数不在库里（靠坐标现算归属），要排序就得先对全区县算一遍——都是内存里的 map 查，便宜。
         // 真正省的是**只给这一页建 DistributionRow + 查区县名 + 序列化**（宝安区 6367 → 200）。
@@ -887,7 +888,8 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                             st.merchantCount(), st.goodsCount());
                 })
                 .toList();
-        return new DistributionVO.CommunityPage(rows, open.size(), p, s);
+        // 已经手切到这一页，直接 of(...)；不走 ofAll（那会再切一次、且要求传全量 rows）
+        return ai.neargo.shop.common.PageData.of(rows, open.size(), p, s);
     }
 
     /** 收货点 → 聚落买家数，与 distribution() 用的是同一套归属（innermostNos） */

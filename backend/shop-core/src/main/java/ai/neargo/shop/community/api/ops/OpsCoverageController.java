@@ -87,7 +87,8 @@ public class OpsCoverageController {
      */
     @GetMapping("/ops/coverage/distribution/communities")
     @PreAuthorize("@perm.can('" + Perms.COMMUNITY_READ + "')")
-    public CommunityAdminService.DistributionVO.CommunityPage distributionCommunities(
+    public ai.neargo.shop.common.PageData<CommunityAdminService.DistributionVO.DistributionRow>
+            distributionCommunities(
             @org.springframework.web.bind.annotation.RequestParam String regionCode,
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "1") int page,
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "200") int size) {

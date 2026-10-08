@@ -76,8 +76,12 @@ public interface CommunityAdminService {
      * 6367 个聚落、且几乎全是空的（0 买家 0 商家）。一次全量返回就是把这次要消灭的噪声
      * 缩到一个区县里重演（1.5MB / ~2s）。分页后每页只算、只传一页（默认 200），恒 &lt; 1s。
      * 区县码来自 {@link DistributionVO.RegionRow#regionCode}。
+     *
+     * <p>返回标准分页包 {@link ai.neargo.shop.common.PageData}（{records,total,page,size}），
+     * 与运营端所有列表端点同形 —— 自造一个壳会让「运营端分页契约」那道闸红、端上还会把它当空页。
      */
-    DistributionVO.CommunityPage communitiesInRegion(String regionCode, int page, int size);
+    ai.neargo.shop.common.PageData<DistributionVO.DistributionRow> communitiesInRegion(
+            String regionCode, int page, int size);
 
     /**
      * 位置分布：**区县概览 + 招商清单 + 全局计数 + 算不了的**（O11–O13）。
@@ -122,16 +126,6 @@ public interface CommunityAdminService {
          */
         public record DistributionRow(String communityNo, String name, String kind, String regionPath,
                                       int buyerCount, int merchantCount, int goodsCount) {
-        }
-
-        /**
-         * 下钻一页。字段名与 ops-web 的 {@code Page<T>} 对齐（records/total/page/size），
-         * 端上直接喂 {@code PagedTable}。
-         *
-         * @param records 当前页的聚落明细（按买家数降序）
-         * @param total   该区县开放聚落总数（不是总页数）
-         */
-        public record CommunityPage(java.util.List<DistributionRow> records, long total, int page, int size) {
         }
 
         /**
