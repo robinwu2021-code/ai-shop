@@ -120,6 +120,26 @@ function assertMainPackageDoesNotRequireSubpackage() {
   console.log("✓ 主包没有 require 分包");
 }
 
+/**
+ * b-app App.vue 里的全局 CSS 变量。
+ *
+ * 进程是 c-app 的，b-app 的 App.vue 不会被执行，于是它 <style> 里那几个变量
+ * 对商家页面全部落空。它们都带回退值（`var(--sh-pad-page, 28rpx)`），
+ * 所以不会塌，只是间距/字号比原生 App 里略松 —— 但「两端都正常」就该补上。
+ *
+ * 皮肤（defaultSkin=brand）没法这样补：theme 是整个 app init 一次、不按页面走，
+ * 强行分会把买家的皮肤也改掉。那条是已知取舍，不在这里硬塞。
+ */
+function readBAppVars() {
+  const src = readFileSync(join(B, "App.vue"), "utf8");
+  const m = /<style>([\s\S]*?)<\/style>/.exec(src);
+  if (!m) throw new Error("b-app/src/App.vue 里找不到 <style>");
+  const vars = [...m[1].matchAll(/^\s*(--sh-[a-z-]+)\s*:\s*([^;]+);/gm)]
+    .map((x) => `  ${x[1]}: ${x[2].trim()};`);
+  if (!vars.length) throw new Error("b-app App.vue 的 <style> 里没解析到 --sh-* 变量 —— 写法变了？");
+  return vars.join("\n");
+}
+
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
     const p = join(dir, n);
@@ -140,22 +160,57 @@ function rewrite(file) {
     // 分包里没有 tabBar：switchTab 一律降级成 reLaunch
     .replace(/uni\.switchTab\(/g, "uni.reLaunch(");
 
-  // 页面 .vue：把 `const { t } = useI18n();` 换成 local scope + b-app 全量 messages。
-  // 整页（含模板 $t 与脚本 t）对 b-app 词条解析，不与 c-app 全局同名词条互串。
-  if (extname(file) === ".vue" && /const\s*\{\s*t\s*\}\s*=\s*useI18n\(\)/.test(out)) {
-    out = out
-      .replace(
-        /(import\s*\{\s*useI18n\s*\}\s*from\s*["']vue-i18n["'];?)/,
-        `$1\nimport __BIZ_MESSAGES from "@/${PKG}/_i18n";`,
-      )
-      .replace(
-        /const\s*\{\s*t\s*\}\s*=\s*useI18n\(\)/,
-        'const { t } = useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true })',
-      )
-      // 模板里全是 `$t(`——它是 globalInjection 注入的，**永远绑全局 composer**（c-app 词条），
-      // 查不到 b-app 的 key，于是真机上整片露 key。改成解构出来的 `t(`（上面建的 local composer），
-      // 整页模板才对 b-app 词条解析。脚本里的 `$t(` 只出现在注释里，改了无害。
-      .replace(/\$t\(/g, "t(");
+  /*
+   * **凡是用到 i18n 的 .vue，都要拿到 local composer。**
+   *
+   * 模板里的 `$t` 是 globalInjection 注入的，**永远绑全局 composer**（c-app 词条），
+   * 查不到 b-app 的 key，真机上就是整片露键名。所以把 `$t(` 改成解构出来的 `t(`，
+   * 并保证这个 `t` 来自带 b-app 全量词条的 local scope。
+   *
+   * ⚠️ 判据不能是「有没有 useI18n」：有 6 个文件（income/marketing/stats/messages/
+   * points-records/biz-store-tag）模板里纯用 $t、脚本里压根不解构 t，
+   * 按那个判据会被整个跳过 —— 它们恰恰是最该改的。2026-10-08 查出来的。
+   */
+  if (extname(file) === ".vue" && /(\$t|[^a-zA-Z_.$]t)\(/.test(out)) {
+    // 解构写法不止 `{ t }`，还有 `{ t, te }` —— 只认前者会把后者当成「没用过 useI18n」
+    // 而再补一行 const { t }，于是 t 重复声明、整个构建失败。
+    const hasUseI18n = /const\s*\{[^}]*\bt\b[^}]*\}\s*=\s*useI18n\(\)/.test(out);
+    if (hasUseI18n) {
+      out = out
+        .replace(
+          /(import\s*\{\s*useI18n\s*\}\s*from\s*["']vue-i18n["'];?)/,
+          `$1\nimport __BIZ_MESSAGES from "@/${PKG}/_i18n";`,
+        )
+        .replace(
+          /const\s*\{([^}]*)\}\s*=\s*useI18n\(\)/,
+          'const {$1} = useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true })',
+        );
+    } else if (/<script setup/.test(out)) {
+      // 没解构过 t 的：自己补一行。放在 <script setup ...> 之后的第一行
+      out = out.replace(
+        /(<script setup[^>]*>\n)/,
+        `$1import { useI18n as __useI18n } from "vue-i18n";\n`
+        + `import __BIZ_MESSAGES from "@/${PKG}/_i18n";\n`
+        + `const { t } = __useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true });\n`,
+      );
+    }
+    out = out.replace(/\$t\(/g, "t(");
+  }
+
+  /*
+   * **b-app App.vue 的全局 CSS 变量**要补给每个商家页面。
+   *
+   * 进程是 c-app 的，b-app 的 App.vue 不会被执行，它 <style> 里那几个变量
+   * 对商家页面全部落空 —— 都带回退值所以不会塌，只是间距/字号比原生 App 里略松。
+   *
+   * 落在**页面自己的非 scoped <style> 的 page 选择器**上：小程序每个页面是独立的
+   * page 节点，这样只影响这一页，不会漏到买家页面去。
+   */
+  if (extname(file) === ".vue" && /\/pages\//.test(file.replace(/\\/g, "/"))) {
+    const vars = readBAppVars();
+    out = /<\/style>\s*$/.test(out.trimEnd())
+      ? out.replace(/(<style scoped>)/, `<style>\npage {\n${vars}\n}\n</style>\n\n$1`)
+      : out + `\n<style>\npage {\n${vars}\n}\n</style>\n`;
   }
   if (out !== src) {
     writeFileSync(file, out);
@@ -374,6 +429,34 @@ function prepare() {
 
   // 3) 生成 pkg-biz 专属文件（在改写之后写，避免被改写二次触碰）
   generated();
+
+  /*
+   * **两个 app 共用一个运行时，下面几条都是「编译期不报、真机才暴露」的。**
+   * 每条都做成断言，别靠记性。
+   */
+  const vueFiles = walk(OUT).filter((f) => extname(f) === ".vue");
+  // ① 残留的 $t：它绑全局 composer（c-app 词条），查不到 b-app 的 key，整片露键名
+  const globalT = vueFiles.filter((f) => /\$t\(/.test(readFileSync(f, "utf8")));
+  if (globalT.length) {
+    throw new Error(`这些文件还在用全局 $t（会露键名）：\n  ${globalT.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
+  }
+  // ② 用了 t( 却没拿到 local composer：要么露键名、要么 t 未定义
+  const noLocalT = vueFiles.filter((f) => {
+    const src = readFileSync(f, "utf8");
+    return /[^a-zA-Z_.$]t\(/.test(src) && !/useI18n/.test(src);
+  });
+  if (noLocalT.length) {
+    throw new Error(`这些文件用了 t( 却没有 local i18n：\n  ${noLocalT.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
+  }
+  // ③ switchTab 残留：分包页面不是 tabBar 页，switchTab 静默不跳（点了没反应）
+  // _entry 例外：它 switchTab 的是 c-app 主包的「我的」（真 tabBar 页），那是对的
+  const leftSwitchTab = walk(OUT).filter(
+    (f) => [".ts", ".vue"].includes(extname(f))
+      && !f.endsWith(join("_entry", "index.vue"))
+      && /uni\.switchTab\(/.test(readFileSync(f, "utf8")));
+  if (leftSwitchTab.length) {
+    throw new Error(`这些文件还有 uni.switchTab（分包里静默不跳）：\n  ${leftSwitchTab.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
+  }
 
   // 还留着指向 c-app 的 @/（非 @/pkg-biz/）导入 = 会静默解析到 c-app 同名模块。必须为零。
   const leaks = walk(OUT).filter(
