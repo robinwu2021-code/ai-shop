@@ -74,7 +74,7 @@ docs/technical/ADR/ADR-*.md     ← 只为不可逆决策
 | 闸门 | 怎么跑 | 管什么 |
 |---|---|---|
 | `.githooks/pre-push` 14 道 | push 时自动；提交后 `bash .githooks/pre-push </dev/null` 整套跑 | UI 清单 · 契约 · 孤儿页 · i18n（**只扫端上**）· RTL · Controller 内聚 · SQL 方言 · 生成文档 · vue-tsc · c-app 单测 · 后端编译 |
-| `ArchitectureTest` 13 条 | `mvn -pl shop-app -am test -Dtest=ArchitectureTest` | 域间依赖 · Controller 位置 · Service 接口化 · Controller 不碰 Mapper · Port 只在 spi |
+| `ArchitectureTest` 16 条 | `mvn -pl shop-app -am test -Dtest=ArchitectureTest` | 域间依赖 · Controller 位置 · Service 接口化 · Controller 不碰 Mapper · Port 只在 spi |
 | `BackendI18nParityTest` 5 条 + `message-placeholder` 两向 | `mvn -pl shop-app -am test -Dtest=BackendI18nParityTest` · `packages/shared` vitest | **后端** i18n：三语键集一致 · 每个 ErrorCode 有文案 · 带 `{0}` 的码必传参。上一行的「i18n」管不到这些 |
 | `backend/known-*.txt` 5 份棘轮 | 各自的守卫 | 存量欠账**只准变短**。先读文件头 —— 「待办型」可减，「止血线型」一个字都改不得 |
 | `npx vue-tsc --noEmit` | `b-app` / `c-app` 各一次 | `.vue` 的类型。`npx tsc` 一行都不看，却会给你一个安静的空输出 |
