@@ -355,8 +355,10 @@ shop:
       app-key: ${SHOP_EXPRESS_YTO_APPKEY:}
       secret: ${SHOP_EXPRESS_YTO_SECRET:}
       host: ${SHOP_EXPRESS_YTO_HOST:https://openapi.yto.net.cn}
-      trace-method: ${SHOP_EXPRESS_YTO_TRACE_METHOD:TRACE_QUERY}
-      trace-version: ${SHOP_EXPRESS_YTO_TRACE_VERSION:1.0}
+      # 2026-10-08 在控制台→接口管理核实并实测过：方法/版本就是接口地址里那两段。
+      # 用它们算出的签名与平台「在线调试」生成的签名逐字一致，真打 UAT 回 HTTP 200。
+      trace-method: ${SHOP_EXPRESS_YTO_TRACE_METHOD:track_query_adapter}
+      trace-version: ${SHOP_EXPRESS_YTO_TRACE_VERSION:v1}
 
   # 定时任务的 cron。**只在 worker 部署生效**（SchedulingConfig 是 @Profile("worker")）。
   #
