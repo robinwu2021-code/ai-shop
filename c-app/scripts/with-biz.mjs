@@ -59,6 +59,67 @@ const COPY_DIRS = readdirSync(B, { withFileTypes: true })
     .filter((e) => e.isDirectory() && e.name !== "pages")
     .map((e) => e.name);
 
+/**
+ * 从 b-app 的 shared/nav.ts 解析出底部菜单，并把路由补成分包路径。
+ *
+ * 为什么解析源码而不是 import：这份结果要**内联成字面量**写进 c-app 的 App.vue
+ * （主包不能依赖分包，见注入处的说明）。nav.ts 是 TS，构建脚本里不能直接 require。
+ */
+function readBizTabs() {
+  const src = readFileSync(join(B, "shared", "nav.ts"), "utf8");
+  // ROUTES: key -> "/pages/x/index"
+  const routes = {};
+  for (const m of src.matchAll(/(\w+)\s*:\s*"(\/pages\/[a-z0-9-]+\/index)"/g)) {
+    routes[m[1]] = m[2];
+  }
+  const block = /export const TABS = \[([\s\S]*?)\] as const;/.exec(src);
+  if (!block) throw new Error("b-app/src/shared/nav.ts 里没找到 TABS —— tabsFor 注入无从取值");
+  const tabs = [];
+  for (const m of block[1].matchAll(
+      /\{\s*key:\s*"([^"]+)",\s*route:\s*ROUTES\.(\w+),\s*icon:\s*"([^"]+)",\s*iconOn:\s*"([^"]+)",\s*labelKey:\s*"([^"]+)"\s*\}/g)) {
+    const r = routes[m[2]];
+    if (!r) throw new Error(`TABS 里的 ROUTES.${m[2]} 解析不到路径`);
+    tabs.push({ key: m[1], route: `/${PKG}${r}`, icon: m[3], iconOn: m[4], labelKey: m[5] });
+  }
+  if (tabs.length !== 4) {
+    throw new Error(`b-app 的 TABS 解析出 ${tabs.length} 条，预期 4 条 —— 正则跟不上 nav.ts 的写法了`);
+  }
+  return tabs;
+}
+
+/**
+ * **主包不许 require 分包。** 这是小程序的硬规矩：分包代码在主包启动那一刻还没下载，
+ * 主包里一句 `require("./pkg-biz/…")` 就让整个小程序**在真机上打不开**。
+ *
+ * 为什么要做成闸门而不是靠记性：这种错**编译期零报错**，开发者工具里又常因为缓存
+ * 照样能跑 —— 2026-10-08 就是这么发了一版真机打不开的体验版，
+ * 而本地所有检查（构建、vue-tsc、单测、pre-push）全是绿的。
+ */
+function assertMainPackageDoesNotRequireSubpackage() {
+  const dist = join(HERE, "dist", "build", "mp-weixin");
+  if (!existsSync(dist)) return;
+  const bad = [];
+  const scan = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) {
+        if (p === join(dist, PKG)) continue;   // 分包自己当然可以
+        scan(p);
+      } else if (e.name.endsWith(".js") && readFileSync(p, "utf8").includes(`require("./${PKG}`)) {
+        bad.push(p.replace(dist + "/", ""));
+      }
+    }
+  };
+  scan(dist);
+  if (bad.length) {
+    console.error(`\n✗ 主包里 require 了分包，**真机上整个小程序打不开**（编译期不报错）：`);
+    for (const f of bad) console.error(`    ${f}`);
+    console.error(`  修：注入进 App.vue 的东西要内联成字面量，不要从 @/${PKG}/… import。\n`);
+    process.exit(1);
+  }
+  console.log("✓ 主包没有 require 分包");
+}
+
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
     const p = join(dir, n);
@@ -347,12 +408,24 @@ function prepare() {
   if (!appRaw.includes("configureShell({")) {
     throw new Error("c-app/src/App.vue 里找不到 configureShell({ —— 注入点变了，tabsFor 没接上");
   }
+  /*
+   * ⚠️ **tabs 必须内联成字面量，绝不能从分包 import。**
+   *
+   * 2026-10-08 踩过：这里原本写 `import { TABS } from "@/pkg-biz/shared/nav"`，
+   * 编译出来主包 app.js 第一行就 `require("./pkg-biz/shared/nav.js")` ——
+   * 而分包代码在主包启动那一刻**还没下载**，于是小程序一启动就挂，
+   * **真机上整个小程序打不开**（开发者工具里有缓存，常常看不出来）。
+   *
+   * 主包不能依赖分包，这是小程序的硬规矩。所以把 b-app 的 TABS 读出来、
+   * 序列化成字面量写进去：路由字符串前缀在这里补上（nav.ts 里的 ROUTES 是 /pages/…，
+   * 分包里要 /pkg-biz/pages/…）。
+   */
+  const bizTabs = readBizTabs();
   const appOut = appRaw
-    .replace(/(import\s*\{\s*configureShell\s*\}[^\n]*\n)/,
-             `$1import { TABS as __BIZ_TABS } from "@/${PKG}/shared/nav";\n`)
     .replace(/configureShell\(\{\n/,
-             `configureShell({\n    // with-biz 注入：商家分包的页面用 b-app 自己的底部菜单\n`
-             + `    tabsFor: (p: string) => (p.startsWith("/${PKG}/") ? __BIZ_TABS : undefined),\n`);
+             `configureShell({\n    // with-biz 注入：商家分包的页面用 b-app 自己的底部菜单。\n`
+             + `    // **字面量内联** —— 从分包 import 会让主包启动时 require 分包、真机打不开\n`
+             + `    tabsFor: (p: string) => (p.startsWith("/${PKG}/") ? (${JSON.stringify(bizTabs)} as never) : undefined),\n`);
   if (appOut === appRaw) {
     throw new Error("tabsFor 注入没生效（正则没命中）—— 商家页面会显示买家菜单");
   }
@@ -430,6 +503,7 @@ try {
   code = cmd === "build"
     ? run("npm", ["run", "build:mp-weixin"])
     : run("bash", ["scripts/release-mp.sh", ...rest]);
+  if (code === 0) assertMainPackageDoesNotRequireSubpackage();
 } catch (e) {
   console.error(`✗ ${e.message}`);
 } finally {
