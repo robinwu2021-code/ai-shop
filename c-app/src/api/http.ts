@@ -123,7 +123,8 @@ export const httpApi: ShopApi = {
     call<User>("updateProfile", undefined, { ...req } satisfies UpdateProfileReq),
   // 真上传字节（multipart），不是把本地临时路径当 JSON 发 —— 后端要 MultipartFile
   uploadAvatar: (tempPath) =>
-    http.uploadFile<User>(ENDPOINTS.uploadAvatar.path, tempPath),
+    http.uploadFile<User>(ENDPOINTS.uploadAvatar.path, tempPath, undefined,
+      "这张头像太大了，换一张小一点的（最大 5MB）"),
   setPassword: (password) =>
     call<void>("setPassword", undefined, { password } satisfies SetPasswordReq),
   passwordState: () => call<PasswordState>("passwordState"),

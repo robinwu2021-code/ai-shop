@@ -428,14 +428,18 @@ export const httpApi: MerchantApi = {
 
   // 真上传文件字节（multipart），不是把本地路径当 JSON 发 —— 后端要 MultipartFile
   mUploadImage: (tempPath) =>
-    http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath),
+    http.uploadFile<{ url: string }>(E.mUploadImage.path, tempPath, undefined,
+      "这张图太大了，换一张小一点的（最大 5MB）"),
   // 整包传上去由服务端拆开：小程序没有本地解压能力（plus.zip 是 App 的）
+  // 413 的提示要说压缩包，别说图片：空包体的 413 里端上只有这一句能说话
   mZipImport: (tempPath) =>
-    http.uploadFile<ZipImported>(E.mZipImport.path, tempPath),
+    http.uploadFile<ZipImported>(E.mZipImport.path, tempPath, undefined,
+      "压缩包太大了，拆成几个小包分次导入"),
   // 同样走 multipart：证照识别要的是字节，不是一个 URL ——
   // 后端刻意不接受「先传图拿 URL 再识别」，那会让身份证在桶里留一份
   mRecognizeQualification: (tempPath) =>
-    http.uploadFile<CertRecognition>(E.mRecognizeQualification.path, tempPath),
+    http.uploadFile<CertRecognition>(E.mRecognizeQualification.path, tempPath, undefined,
+      "这张证照图太大了，换一张小一点的（最大 5MB）"),
   mRecognizeGoods: (imageUrl) =>
     http.post<GoodsGuess>(E.mRecognizeGoods.path, { imageUrl } satisfies RecognizeGoodsReq),
 

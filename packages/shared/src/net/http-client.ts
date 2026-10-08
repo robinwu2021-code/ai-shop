@@ -169,6 +169,14 @@ export function uploadFile<T>(
   path: string,
   filePath: string,
   formData?: Record<string, string>,
+  /**
+   * 413 时说什么。**不给就按「这个文件」说，不要替它猜成图片** ——
+   * 这个函数同时在传商品图、证照、头像和**整个压缩包**，
+   * 而 413 的响应体是空的（容器在进 Controller 之前就拒了），
+   * 这里是端上唯一能说话的地方。2026-10-08 线上实况：商家导入压缩包
+   * 得到的提示是「图片太大，请换一张小一点的」—— 与他做的事无关的一句话。
+   */
+  tooBigHint?: string,
 ): Promise<T> {
   const token = uni.getStorageSync(STORAGE.token) as string;
   const storeNo = uni.getStorageSync(STORAGE.storeNo) as string;
@@ -191,7 +199,7 @@ export function uploadFile<T>(
          * 得到的提示是「响应格式不符合契约」，一个字都没说到大小上。
          */
         if (res.statusCode === 413) {
-          reject(new ApiError(413, "图片太大，请换一张小一点的（最大 5MB）"));
+          reject(new ApiError(413, tooBigHint || "这个文件太大了，换一个小一点的"));
           return;
         }
         // uploadFile 的响应体是**字符串**，要自己解析

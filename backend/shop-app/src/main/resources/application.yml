@@ -7,18 +7,28 @@ spring:
 
   servlet:
     multipart:
-      # **必须与 BizUploadController.MAX_BYTES 一致**。
-      # 这里原先一个字都没写 —— 于是走 Spring 默认的 1MB，而控制器里那个 5MB 的
-      # 判断**根本够不着**：1.85MB 的图在进方法之前就被容器拦掉，返回一个
-      # **空包体的 413**（端上会把它显示成「响应格式不符合契约」，一个字都没说到大小）。
+      # **这一层是粗闸，不是业务判据。** 它只管「别让超大请求把进程拖垮」，
+      # 具体多大算大由各控制器自己说：
+      #   · /biz/upload/image  → BizUploadController.MAX_BYTES = 5MB（单张商品图）
+      #   · /biz/goods/zip-import → BizZipImportController 的四道：单条目 5MB、
+      #     解压后总量 50MB、条目数 200、文本 64KB，超了回 ZIP_TOO_LARGE(10472)
       #
-      # 走 App 相册这条路暂时撞不上：`pickImages` 的 `sizeType: compressed`
-      # 会把 4000×3000/3.6MB 压成 1440×1080/约 700KB（实测）。但那是**端上的实现细节**，
-      # 换个端、关掉压缩、或走别的上传入口，这个 1MB 就立刻生效 ——
-      # 而两个数不一致这件事本身没有任何症状，只有撞上的人才知道。
-      max-file-size: 5MB
+      # **为什么不能再按单图那个 5MB 设**（2026-10-08 线上实况）：压缩包导入
+      # 传的是一整包（主图 + 详情图 + 文案），正常就不止 5MB。于是请求在进
+      # Controller 之前被容器拦掉，返回**空包体的 413** —— zip 控制器那四道
+      # 判断一道都没跑到，而端上把所有 413 一律显示成「图片太大」，
+      # 商家看到的是一句**与他做的事无关**的话。日志里是
+      # `p=/biz/goods/zip-import s=413 ms=27`：到了 tomcat，没到方法。
+      #
+      # 32MB 是与 nginx 对齐的（www.hxmall.top 的 server 级 client_max_body_size 32m）——
+      # 两处不一致的话，中间那一段大小会在 nginx 被拒，而应用这边什么都看不到。
+      max-file-size: 32MB
       # 比单文件略大：多出来的是 multipart 的边界与表单字段（bizType）本身
-      max-request-size: 6MB
+      max-request-size: 33MB
+      # 超过这个阈值就落临时文件，不进内存 —— 上面放到 32MB 之后，
+      # 不写这一条的话一个大包会整个进堆（Spring 默认 threshold 是 0，即总是落盘；
+      # 显式写出来是为了让「放大上限」与「不吃内存」这两件事在同一处看得见）
+      file-size-threshold: 256KB
 
   profiles:
     group:
