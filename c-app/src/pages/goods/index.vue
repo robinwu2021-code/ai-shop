@@ -16,6 +16,7 @@ import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shar
 import { api } from "@/api";
 import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
+import { pickedAt } from "@/shared/store-choice";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
 import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
@@ -761,6 +762,7 @@ async function addToCart(e: unknown) {
   if (!g || !sku.value) return;
   try {
     await cart.add(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
+    pickedAt(g.merchant.merchantNo, viaStore.value);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {
@@ -779,6 +781,7 @@ async function openGroupBuy() {
   try {
     // 设成 1 件而不是再加 1 件 —— 理由见 cart.setForCheckout
     await cart.setForCheckout(g.goodsNo, sku.value.skuNo, 1, viaStore.value || undefined);
+    pickedAt(g.merchant.merchantNo, viaStore.value);
     uni.navigateTo({
       url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(g)}&skus=${sku.value.skuNo}&openGroup=1`,
     });
@@ -805,6 +808,8 @@ async function buyNow() {
   buying.value = true;
   try {
     await cart.setForCheckout(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
+    // 结算按「这件货是在哪家店挑的」落店 —— 见 pickedAt
+    pickedAt(g.merchant.merchantNo, viaStore.value);
     const f = defaultFulfillment(g);
     const at = needAppointment.value && slotDate.value && slotTime.value
       ? new Date(`${slotDate.value}T${slotTime.value}:00`).getTime()

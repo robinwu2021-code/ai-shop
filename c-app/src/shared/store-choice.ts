@@ -29,6 +29,32 @@ export function rememberStore(entityNo: string, storeNo: string) {
   }
 }
 
+/**
+ * 在商品详情页挑货的那一刻（加购 / 立即购买 / 开团）：**这件货是从哪家店挑的就记哪家；
+ * 不是从门户点进来的就忘掉这个主体的记录**，交给后端按默认规则落一家「在架 ∧ 有货」的店。
+ *
+ * 只靠进门户时记一笔是不够的：记录按**主体**存，而一个主体常有几家店各卖各的。
+ * 2026-10-09 线上：买家在「虹选鲜果」门户买过柿子，再从首页点进同主体「虹选粮油」才上架的盐，
+ * 结算带着鲜果店去预览 → 70076 已下架 → 页面退回本地估算，运费显示成写死的 6 元。
+ * 后端对「他就是在这家店挑的」故意不换店也不拒（OrderServiceImpl#storesOfEntities），
+ * 所以错的只能是端上 —— 不是在那家店挑的，就不该说是。
+ */
+export function pickedAt(entityNo: string, viaStore: string | undefined) {
+  if (!entityNo) return;
+  if (viaStore) {
+    rememberStore(entityNo, viaStore);
+    return;
+  }
+  try {
+    const all = readAll();
+    if (!(entityNo in all)) return;
+    delete all[entityNo];
+    uni.setStorageSync(KEY, all);
+  } catch {
+    /* 同上 */
+  }
+}
+
 /** 这几个主体各自在逛哪家店。一个都没记过返回 undefined（请求里不带这个字段，与改造前逐字相同） */
 export function storeChoicesFor(merchantNos: readonly string[]): StoreChoice[] | undefined {
   const all = readAll();
