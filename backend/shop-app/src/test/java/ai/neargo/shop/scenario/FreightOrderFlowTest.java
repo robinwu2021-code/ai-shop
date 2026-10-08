@@ -139,6 +139,25 @@ class FreightOrderFlowTest {
         assertThat(ok.path("code").asInt()).as("浙江不在限购名单，应放行").isZero();
     }
 
+    @Test
+    @DisplayName("★★★ 门店经营范围排除了新疆：寄往新疆的快递单下单即拒(20003)，浙江照常（TDD-经营范围排除地区 AC3）")
+    void storeExcludedProvinceBlocksCreate() throws Exception {
+        String goodsNo = onSaleGoods(merchant("12600390031", "门店不送新疆"), "核桃");
+        Map<String, Object> st = jdbc.queryForMap(
+                "select s.entity_no, s.store_no from mch_store s join prd_goods g on g.entity_no = s.entity_no"
+                        + " where g.goods_no = ? and s.is_default = 1 and s.deleted = 0", goodsNo);
+        // 商品本身不设限购 —— 拦住它的只能是门店那条排除
+        jdbc.update("insert into mch_service_area (area_no, entity_no, store_no, level, ref_code, source, status, mode,"
+                        + " created_at, updated_at) values (?, ?, ?, 'PROVINCE', '65', 'SELF', 'ACTIVE', 'EXCLUDE', now(), now())",
+                "SA-EXCL-" + goodsNo, st.get("entity_no"), st.get("store_no"));
+
+        JsonNode blocked = place("12600390032", goodsNo, "新疆维吾尔自治区");
+        assertThat(blocked.path("code").asInt()).as("门店排除了新疆，应拒").isEqualTo(20003);
+
+        JsonNode ok = place("12600390033", goodsNo, "浙江省");
+        assertThat(ok.path("code").asInt()).as("对照：浙江没被排除，应放行").isZero();
+    }
+
     // ── helpers（与 TodoPickupScopeFlowTest 同一套下单脚手架） ─────────────────
 
     private JsonNode place(String phone, String goodsNo, String province) throws Exception {

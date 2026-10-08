@@ -114,6 +114,7 @@ export default {
     detailTitle: "Description",
     limit: "Limit {n} per customer",
     scopeUnlimited: "No area limit",
+    scopeUnlimitedExcept: "No area limit (except {names})",
     scopeMore: "{names} and {n} areas in total",
     origin: "Direct from source",
     weighed: "Priced by actual weight",

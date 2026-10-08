@@ -334,8 +334,10 @@ public record GoodsVO(String goodsNo,
      * @param unlimited 端上显示「不限地区」
      * @param areaNames 最多几个地名；区划是叶子名不是整条路径
      * @param areaCount 总数 —— 只给截断后的列表会让「6 个」和「60 个」长得一样
+     * @param excludedNames 不限时被排除的地区名：「不限地区（新疆、西藏除外）」（TDD-经营范围排除地区）
      */
-    public record SaleScopeVO(boolean unlimited, List<String> areaNames, int areaCount) {
+    public record SaleScopeVO(boolean unlimited, List<String> areaNames, int areaCount,
+                              List<String> excludedNames) {
     }
 
     /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */

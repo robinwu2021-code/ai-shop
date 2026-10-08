@@ -1096,8 +1096,9 @@ public class OrderServiceImpl implements OrderService {
          * 商品级限购地区（#3/#4①）：收货地址的省落在某商品的 restricted_regions 里 → 拒。
          * 与上面运费模板的「不配送省」分层——那是整店快递的运费/拒单,这道是「这件货不卖到哪」,
          * 对**所有带收货地址的履约**（快递 / 自送）都查,自提没有收货地址、天然跳过。
+         * 门店经营范围里排除的省（「不卖新疆、西藏」）走同一道闸（TDD-经营范围排除地区 AC3）。
          */
-        requireNotRegionRestricted(cmd, split, userNo);
+        requireNotRegionRestricted(cmd, split, storeOfMerchant, userNo);
         split = applyFreight(split, freightQuotes);
         /*
          * 支付方式的三道校验。**全部前置且只读**，不改上面任何分支的顺序 ——
@@ -2365,15 +2366,26 @@ public class OrderServiceImpl implements OrderService {
      * <p>省的判法与运费模板同口径：按省名前缀匹配收货地址（{@code address.startsWith(省名)}），
      * 命中省的 regionCode 取**前两位**（省级国标码），与 {@code restricted_regions} 存的两位码比。
      * 认不出省就**放行**——宁可漏拦一单，也不要把认不出地址的正常单误杀。
+     *
+     * <p>门店级：经营范围里 {@code PROVINCE + EXCLUDE} 的省同样拒。只拦到省 —— 地址只存省市名字，
+     * 市/区级排除在这儿认不准，只管可见性（TDD-经营范围排除地区 §3）。
      */
-    private void requireNotRegionRestricted(CreateOrderCommand cmd, Split split, String userNo) {
+    private void requireNotRegionRestricted(CreateOrderCommand cmd, Split split,
+                                            Map<String, String> storeOfMerchant, String userNo) {
         if (userNo == null) {
             return;
         }
         List<String> goodsNos = split.items.stream().map(l -> l.snapshot.goodsNo()).distinct().toList();
         Map<String, java.util.Set<String>> restricted = goodsPort.restrictedProvincesOf(goodsNos);
-        if (restricted.isEmpty()) {
-            return;   // 没有任何货设了限购地区：这道闸整条跳过，不查地址
+        Map<String, java.util.Set<String>> storeExcluded = new java.util.HashMap<>();
+        for (Group g : split.groups) {
+            var ex = merchantPort.excludedProvinces(g.merchantNo(), storeOfMerchant.get(g.merchantNo()));
+            if (!ex.isEmpty()) {
+                storeExcluded.put(g.merchantNo(), ex);
+            }
+        }
+        if (restricted.isEmpty() && storeExcluded.isEmpty()) {
+            return;   // 没有任何货设了限购地区、也没有门店排除省：这道闸整条跳过，不查地址
         }
         for (Group g : split.groups) {
             String addr = cmd.addressFor(g.merchantNo());
@@ -2385,6 +2397,9 @@ public class OrderServiceImpl implements OrderService {
             String provinceCode = ai.neargo.shop.common.Provinces.provinceCodeOf(address);
             if (provinceCode == null) {
                 continue;   // 认不出省：放行（与 freight 的省名前缀同一套，认不出就不拦）
+            }
+            if (storeExcluded.getOrDefault(g.merchantNo(), java.util.Set.of()).contains(provinceCode)) {
+                throw BizException.of(ErrorCode.OUT_OF_DELIVERY_RANGE);
             }
             for (Line l : g.lines()) {
                 java.util.Set<String> codes = restricted.get(l.snapshot.goodsNo());

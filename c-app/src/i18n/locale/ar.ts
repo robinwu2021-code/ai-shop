@@ -114,6 +114,7 @@ export default {
     detailTitle: "الوصف",
     limit: "الحد {n} لكل عميل",
     scopeUnlimited: "بدون حدود جغرافية",
+    scopeUnlimitedExcept: "بدون حدود جغرافية (باستثناء {names})",
     scopeMore: "{names} وما مجموعه {n} منطقة",
     origin: "مباشرة من المصدر",
     weighed: "يُحسب السعر حسب الوزن الفعلي",

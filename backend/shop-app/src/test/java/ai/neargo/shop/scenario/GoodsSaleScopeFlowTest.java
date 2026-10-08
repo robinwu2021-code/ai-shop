@@ -190,6 +190,68 @@ class GoodsSaleScopeFlowTest {
         assertThat(detail(goodsNo).get("saleScope")).as("扫描面非空的对照").isNotNull();
     }
 
+    @Autowired
+    private ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader;
+
+    @Test
+    @DisplayName("★★★ 不限地区 + 排除新疆、西藏 → 详情写「不限地区（新疆、西藏除外）」（TDD-经营范围排除地区 AC4）")
+    void unlimitedListsExcludedRegions() throws Exception {
+        String m = merchant("SHIPPING");
+        area(m, "PROVINCE", "65", "ACTIVE", "EXCLUDE");
+        area(m, "PROVINCE", "54", "ACTIVE", "EXCLUDE");
+        // 小区级排除不上买家页：「除 3 幢」对外地买家是噪音
+        area(m, "COMMUNITY", "CM001", "ACTIVE", "EXCLUDE");
+
+        var scope = detail(goods(m)).get("saleScope");
+        assertThat(scope.get("unlimited").asBoolean()).as("只排除不纳入 + 开快递 = 仍是不限").isTrue();
+        assertThat(scope.get("excludedNames")).as("两个省级排除，小区级不列").hasSize(2);
+    }
+
+    @Test
+    @DisplayName("★★★ 另一家店框进了新疆 → 不能对买家说「新疆除外」（主体口径是各店并集）")
+    void excludedNotClaimedWhenAnotherStoreCoversIt() {
+        String m = merchant("SHIPPING");
+        area(m, "PROVINCE", "65", "ACTIVE", "EXCLUDE");
+        area(m, "PROVINCE", "54", "ACTIVE", "EXCLUDE");
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setEntityNo(m);
+        st.setStoreNo("SST2" + m);
+        st.setName("销售范围测试分店");
+        st.setIsDefault(false);
+        st.setStatus("ACTIVE");
+        storeMapper.insert(st);
+        var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+        a.setEntityNo(m);
+        a.setStoreNo(st.getStoreNo());
+        a.setLevel("CITY");
+        a.setRefCode("6501");   // 乌鲁木齐
+        a.setSource("SELF");
+        a.setStatus("ACTIVE");
+        a.setMode("INCLUDE");
+        areaMapper.insert(a);
+
+        var scope = merchantQuery.saleScope(m);
+        assertThat(scope.unlimited()).isTrue();
+        assertThat(scope.excludedNames())
+                .as("分店在乌鲁木齐送货，新疆不能写成「除外」；西藏仍然没人送")
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 排除的省：那儿的买家看不到，别处照常（AC2）")
+    void unlimitedMinusExcludedProvinceIsInvisibleThere() {
+        String m = merchant("SHIPPING");
+        area(m, "PROVINCE", "65", "ACTIVE", "EXCLUDE");
+        var reach = reachLoader.load(merchantMapper.selectOne(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchEntity>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchEntity::getEntityNo, m)), null);
+        var urumqi = new ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef("C-X1", "650102001", null, true);
+        var hangzhou = new ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef("C-X2", "330106001", null, true);
+        assertThat(ai.neargo.shop.merchant.reach.ReachRule.covers(reach, urumqi)).as("新疆被排除").isFalse();
+        assertThat(ai.neargo.shop.merchant.reach.ReachRule.covers(reach, hangzhou)).as("对照：不限地区照常").isTrue();
+    }
+
     @Test
     @DisplayName("★★ 商家不存在时给空范围，不抛异常 —— 一条脏数据不该让详情页 500")
     void unknownMerchantIsEmptyNotError() {
@@ -207,6 +269,8 @@ class GoodsSaleScopeFlowTest {
                     .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m.getEntityNo()));
             goodsMapper.delete(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
                     .eq(ai.neargo.shop.product.entity.PrdGoods::getEntityNo, m.getEntityNo()));
+            storeMapper.delete(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                    .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, m.getEntityNo()));
             merchantMapper.deleteById(m.getId());
         }
     }

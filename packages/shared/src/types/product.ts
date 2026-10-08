@@ -259,6 +259,8 @@ export interface SaleScope {
   areaNames: string[];
   /** 总数。只看截断后的列表会让「6 个」和「60 个」长得一模一样 */
   areaCount: number;
+  /** 只在 `unlimited` 时可能非空：「不限地区（新疆、西藏除外）」括号里那几个。老后端不下发 */
+  excludedNames?: string[];
 }
 export interface Goods {
   /**

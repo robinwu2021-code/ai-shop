@@ -461,6 +461,17 @@ public interface MerchantQueryPort {
     SaleScope saleScope(String merchantNo);
 
     /**
+     * 这家店排除掉的<b>省</b>（两位国标码），下单按收货地址拦用。
+     *
+     * <p>只给省级：收货地址只存省市名字、没有区划码，市/区级排除下单时认不准（多个「朝阳区」），
+     * 只管可见性。与商品级 {@code restricted_regions} 同一道闸、同一个口径（TDD-经营范围排除地区 §3）。
+     *
+     * @param storeNo 空 = 默认店
+     * @return 没有排除省时为空集，不是 null
+     */
+    java.util.Set<String> excludedProvinces(String merchantNo, String storeNo);
+
+    /**
      * 一句话销售范围。
      *
      * @param unlimited 没框过地理范围、且不是「只做自提」—— 端上显示「不限地区」。
@@ -471,8 +482,17 @@ public interface MerchantQueryPort {
      *                  运营看「浙江省 / 杭州市 / 西湖区」是为了不看错，
      *                  买家看到自己家那三个字就够，路径只会把这一行挤成两行。
      * @param areaCount 总数。只给截断后的列表会让「6 个」和「60 个」长得一模一样
+     * @param excludedNames 只在 {@code unlimited} 时可能非空：「不限地区（新疆、西藏除外）」里括号那几个。
+     *                  只收<b>所有不限门店都排除、且没有任何限定门店框进去</b>的地区级排除项 ——
+     *                  主体口径是各店并集，一家不送新疆、另一家送，就不能对买家说「新疆除外」
+     *                  （TDD-经营范围排除地区 §3）
      */
-    record SaleScope(boolean unlimited, java.util.List<String> areaNames, int areaCount) {
+    record SaleScope(boolean unlimited, java.util.List<String> areaNames, int areaCount,
+                     java.util.List<String> excludedNames) {
+
+        public SaleScope(boolean unlimited, java.util.List<String> areaNames, int areaCount) {
+            this(unlimited, areaNames, areaCount, java.util.List.of());
+        }
 
         /** 端上据此整行不渲染：不是「不限」，也没有一个地名说得出来 */
         public boolean isEmpty() {

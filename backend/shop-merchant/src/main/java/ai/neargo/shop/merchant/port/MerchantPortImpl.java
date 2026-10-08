@@ -637,6 +637,18 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 否则「深圳市」会因为四家店都框了它而在买家页上出现四次。
          * 只算 ACTIVE 门店的：停用的店不卖，它框过的地方不该写进「可售地区」。
          */
+        /*
+         * **先判「有没有一家店不限」**，再列框选。范围门店级之后（V381）两者能同时成立：
+         * 默认店全国发快递、分店只框了乌鲁木齐 —— 先列框选的话买家页只写「乌鲁木齐」，
+         * 而可见性（各店并集）是全国。主体口径与可见性同一个：任一 ACTIVE 门店不限，这件货就不限。
+         */
+        var reaches = reachLoader.loadEach(m);
+        var unlimitedStores = reaches.stream().filter(ai.neargo.shop.merchant.reach.ReachRule::unlimited).toList();
+        if (!unlimitedStores.isEmpty()) {
+            return new SaleScope(true, java.util.List.of(), 0,
+                    excludedRegionNames(unlimitedStores, reaches.stream()
+                            .filter(r -> !ai.neargo.shop.merchant.reach.ReachRule.unlimited(r)).toList()));
+        }
         java.util.Set<String> activeStores = new java.util.HashSet<>(activeStoreNos(merchantNo));
         java.util.Map<String, MchServiceArea> uniq = new java.util.LinkedHashMap<>();
         DataScopeContext.executeWithoutScope(() ->
@@ -663,9 +675,73 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 不另写一遍：另写的那份迟早与可见性分叉，届时页面上写着「不限地区」
          * 而这件商品在买家那儿根本搜不到。
          */
-        // 主体口径：任一 ACTIVE 门店不限地区，这件货就不限（V381 范围门店级）
-        return new SaleScope(reachLoader.loadEach(m).stream().anyMatch(ai.neargo.shop.merchant.reach.ReachRule::unlimited),
-                java.util.List.of(), 0);
+        // 没有门店不限（上面已判），也一条纳入都没有：只做自提、谁也看不到 —— 不说话
+        return new SaleScope(false, java.util.List.of(), 0);
+    }
+
+    /**
+     * 「不限地区（新疆、西藏除外）」括号里那几个。
+     *
+     * <p>主体口径是各店并集：只有<b>每一家</b>不限门店都排除了、且<b>没有</b>任何限定门店框进去的地方，
+     * 买家在那儿才真的看不到 —— 少一个条件就是对买家说「新疆除外」而新疆其实有一家店在送。
+     * 只收区划级：小区/楼栋级的「除 3 幢」对外地买家是噪音（TDD-经营范围排除地区 §3）。
+     */
+    private java.util.List<String> excludedRegionNames(
+            java.util.List<ai.neargo.shop.merchant.reach.ReachRule.StoreReach> unlimitedStores,
+            java.util.List<ai.neargo.shop.merchant.reach.ReachRule.StoreReach> limitedStores) {
+        java.util.Set<String> common = null;
+        for (var s : unlimitedStores) {
+            java.util.Set<String> mine = new java.util.LinkedHashSet<>();
+            for (var a : s.excludes()) {
+                if (!"COMMUNITY".equals(a.level()) && a.refCode() != null && !a.refCode().isBlank()) {
+                    mine.add(a.refCode());
+                }
+            }
+            if (common == null) {
+                common = mine;
+            } else {
+                common.retainAll(mine);
+            }
+        }
+        if (common == null || common.isEmpty()) {
+            return java.util.List.of();
+        }
+        // 限定门店框进去的（含上下级重叠）就不能说「除外」。小区级纳入挂不出区划码，宁可漏说不错说：
+        // 漏说是买家页少一句话，错说是对一个确实送得到的地方说「不卖」。
+        java.util.List<String> codes = common.stream()
+                .filter(code -> limitedStores.stream().flatMap(r -> r.includes().stream())
+                        .noneMatch(i -> "COMMUNITY".equals(i.level())
+                                || i.refCode().startsWith(code) || code.startsWith(i.refCode())))
+                .toList();
+        if (codes.isEmpty()) {
+            return java.util.List.of();
+        }
+        var names = masterDataPort.regionNames(codes);
+        return codes.stream().map(c -> {
+            String n = names.get(c);
+            return n == null || n.isBlank() ? c : n;
+        }).toList();
+    }
+
+    @Override
+    public java.util.Set<String> excludedProvinces(String merchantNo, String storeNo) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return java.util.Set.of();
+        }
+        String sNo = storeNo == null || storeNo.isBlank() ? defaultStoreNo(merchantNo).orElse(null) : storeNo;
+        if (sNo == null) {
+            return java.util.Set.of();
+        }
+        // 排除不看 status（与 ReachRule 同一口径：待审的排除也立即生效）
+        return DataScopeContext.executeWithoutScope(() ->
+                        serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()
+                                .eq(MchServiceArea::getEntityNo, merchantNo)
+                                .eq(MchServiceArea::getStoreNo, sNo)
+                                .eq(MchServiceArea::getLevel, "PROVINCE")
+                                .eq(MchServiceArea::getMode, MchServiceArea.MODE_EXCLUDE)))
+                .stream().map(MchServiceArea::getRefCode)
+                .filter(c -> c != null && !c.isBlank())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     /**

@@ -118,6 +118,7 @@ export default {
     detailTitle: "商品详情",
     limit: "每人限购 {n} 件",
     scopeUnlimited: "不限地区",
+    scopeUnlimitedExcept: "不限地区（{names}除外）",
     scopeMore: "{names} 等 {n} 个地区",
     origin: "产地直发",
     weighed: "按实际重量结算，多退少补",

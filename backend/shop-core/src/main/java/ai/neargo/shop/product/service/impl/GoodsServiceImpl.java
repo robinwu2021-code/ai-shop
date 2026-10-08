@@ -741,7 +741,8 @@ public class GoodsServiceImpl implements GoodsService {
                 v.weighed(), v.origin(), v.durationMin(), v.storeName(), v.limitPerUser(),
                 v.onSale(), v.status(), v.titleI18n(), v.subtitleI18n(), v.stdNo(),
                 v.auditReason(), v.groupBuy(), v.params(), v.hasDraft(), v.storeOnSale(),
-                new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount()),
+                new GoodsVO.SaleScopeVO(scope.unlimited(), scope.areaNames(), scope.areaCount(),
+                        scope.excludedNames() == null ? List.of() : scope.excludedNames()),
                 v.saleMode(), v.directBuyable(), v.activityLive(), null, null, v.restrictedRegions());
     }
 

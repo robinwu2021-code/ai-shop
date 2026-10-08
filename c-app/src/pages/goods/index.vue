@@ -137,7 +137,10 @@ const saleScopeText = computed(() => {
     return "";
   }
   if (s.unlimited) {
-    return t("goods.scopeUnlimited");
+    // 「不限地区（新疆、西藏除外）」：门店排除了的省不说出来，那儿的买家会以为能买（TDD-经营范围排除地区 AC4）
+    return s.excludedNames?.length
+      ? t("goods.scopeUnlimitedExcept", { names: s.excludedNames.join("、") })
+      : t("goods.scopeUnlimited");
   }
   if (!s.areaNames.length) {
     return "";

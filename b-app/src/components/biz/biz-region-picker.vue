@@ -27,6 +27,12 @@ import type { Community, Region, RegionSearchResult, ServiceArea } from "@shared
 const props = defineProps<{
   visible: boolean;
   areas: ServiceArea[];
+  /**
+   * 门店现在是「不限地区」（没框纳入项、开了自送或快递）。此时没有上级覆盖，
+   * 但「全国发、就不发新疆西藏」正是要排除的场景 —— 每一行都给「排除」，勾选照旧可用。
+   * 见 TDD-经营范围排除地区 AC1。
+   */
+  bareExclude?: boolean;
 }>();
 const emit = defineEmits<{
   close: [];
@@ -458,7 +464,15 @@ function rowExcluded(r: Row) {
  * 浏览器上一眼看见的就是这个：「阳光里小区」明明在已选清单里，行上却写着「排除」。
  */
 function canExclude(r: Row) {
-  return !!(coverNote(r) || rowExcluded(r)) && !!(r.community || r.region);
+  return !!(coverNote(r) || rowExcluded(r) || bareRow(r)) && !!(r.community || r.region);
+}
+
+/**
+ * 不限态下的普通行：既能排除、也能勾。被上级覆盖的行只给排除（勾了也是重复），
+ * 已排除的行只给「取消排除」—— 同一行又勾又排除正是 addArea 要消除的矛盾。
+ */
+function bareRow(r: Row) {
+  return !!props.bareExclude && !r.picked && !coverNote(r) && !rowExcluded(r);
 }
 
 /** 加一条覆盖项，顺手把**被它盖住的子项**收掉（R3/R5：父子只留父） */
@@ -1150,7 +1164,7 @@ function toggleWhole() {
 /**
  * 排除 / 取消排除这一行。
  *
- * <p><b>只对「已被上级覆盖」的行开放</b>：排除一个本来就不在范围里的对象没有意义，
+ * <p><b>只对「已被上级覆盖」的行、或门店不限地区时开放</b>（后者见 `bareExclude`）：排除一个本来就不在范围里的对象没有意义，
  * 而界面上给了这个动作，商家会以为自己做了一件事（对照 §「不做」）。
  *
  * <p>加排除项时同键的纳入项要一起去掉，反过来 `addArea` 也会去掉排除项 ——
@@ -1318,7 +1332,7 @@ function close() {
               <!-- 勾选框归 `sh-check`（圆点形态）。此前自己画了一份 44rpx 的圈 +
                    选中铺主色 —— 那正是 sh-check 的内部实现，抄了一遍。
                    外面这层只留「点得着」与「正在加入」那一瞬。 -->
-              <view v-else class="sh-center row__box sh-hit" @tap.stop="pickRow(r)">
+              <view v-if="!canExclude(r) || bareRow(r)" class="sh-center row__box sh-hit" @tap.stop="pickRow(r)">
                 <text v-if="adding === r.key" class="row__tick">…</text>
                 <sh-check v-else round :model-value="r.picked" :disabled="!!coverNote(r)"></sh-check>
               </view>

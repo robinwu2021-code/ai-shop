@@ -72,15 +72,14 @@ const isExclude = (a: ServiceArea) => !includedAreas([a]).length;
 const activeAreas = computed(() => areas.value.filter((a) => !areaPending(a) && !isExclude(a)));
 
 /**
- * 这一条要不要等运营。**判据与后端同一句话**：小区/村、街道自助生效，区/市/省要审
- * （MerchantStoreServiceImpl#selfEffective）。
+ * 这一条要不要等运营。只读服务端回显的 `status === PENDING`。
  *
- * 为什么不能只看 `status`：那是服务端回显的，**刚勾上还没保存的那几条没有** ——
- * 而那正是最需要提示的时刻：商家勾完整个市、关掉面板，以为立刻就能卖。
+ * 2026-08-24 起所有粒度自选即生效（MerchantStoreServiceImpl#replaceAreas 一律写 ACTIVE），
+ * 选择器那边当天就改成只读 status（biz-region-picker 的 areaPending），这边漏了：
+ * 新勾的省/市/区和排除项被说成「整区、整市需运营审核」。留着读 PENDING 是为了兼容审核闸拿掉之前的存量待审记录。
  */
 function areaPending(a: ServiceArea) {
-  if (a.status) return a.status === "PENDING";
-  return a.level !== "COMMUNITY" && a.level !== "STREET";
+  return a.status === "PENDING";
 }
 const dirty = computed(() => loaded.value && JSON.stringify(areas.value) !== snapshot.value);
 
@@ -573,7 +572,7 @@ onShow(() => {
         -->
         <text v-if="preview.nextCommunities === 0" class="txt-caption pv__warn">{{ $t("store.previewZero") }}</text>
       </view>
-      <text v-if="areas.length > activeAreas.length" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
+      <text v-if="areas.some((a) => areaPending(a) && !isExclude(a))" class="sh-hint">{{ $t("store.areaPendingHint") }}</text>
 
 
       <view v-if="pendingApplies.length || rejectedApplies.length" class="progress">
@@ -707,6 +706,7 @@ onShow(() => {
       :visible="pickerOpen"
       @close="pickerOpen = false"
       :areas="areas"
+      :bare-exclude="noIncludes && (deliveryOn || expressOn)"
       @update:areas="setAreas"
     ></biz-region-picker>
 
