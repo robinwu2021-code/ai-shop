@@ -11,14 +11,15 @@ description: >
 
 > 需求说做什么，设计说怎么做，代码是交付物 —— 三者之间要能互相对账，对不上就是缺陷。
 
-流程走 superpowers：动手前 **brainstorming**（Bounded ≈ 0/1 档，Architectural ≈ 2 档）→ **writing-plans**（计划写进 TDD §2，不写 `docs/plans/`）
-→ **test-driven-development** → **verification-before-completion**。本篇只管三件事：写哪份文档、怎么对账、哪些闸门会挡你。
+流程走 superpowers：动手前 **brainstorming**（Bounded ≈ 0/1 档，Architectural ≈ 2 档；**TDD 就是 spec**，不另起 `docs/superpowers/specs/`）
+→ **writing-plans**（计划写进 TDD §2，不写 `docs/plans/`）→ **test-driven-development** → **verification-before-completion**。
+本篇只管三件事：写哪份文档、怎么对账、哪些闸门会挡你。
 
 ---
 
 ## 一、先声明档位
 
-接到任务，先输出一行，再动手：
+接到任务，只读探索（ls / grep / 读文件）随意，**改第一个文件之前**输出一行 —— 契约动没动要查了才知道，别没查就声明：
 
 ```
 档位：1 · 依据：docs/requirements/PRD-支付域.md §3.2 · 产出：docs/technical/TDD-退款回执.md
