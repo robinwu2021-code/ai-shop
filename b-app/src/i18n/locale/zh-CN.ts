@@ -682,6 +682,8 @@ export default {
     invOnHand: "进销存 {n}",
     invView: "查看",
     limitNone: "不限",
+    freightTpl: "运费模板",
+    freightTplFollow: "跟随门店",
     restrictedLabel: "限购地区",
     restrictedNone: "全国",
     restrictedSome: "全国，排除 {s} 共 {n} 省",

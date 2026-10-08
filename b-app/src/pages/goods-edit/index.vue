@@ -622,13 +622,38 @@ const {
  * 于是重量那一格对非生鲜也要出现，并在旁边给出运费预估，让商家下单前就知道买家要付多少运费。
  */
 const shipsByExpress = computed(() => fulfillments.value.includes(FULFILLMENT.EXPRESS));
-/** 本店适用的运费模板。只为预估，拉不到就不显示预估，不挡编辑 */
-const freightTpl = ref<StoreFreightTemplate | null>(null);
+/** 本店适用的运费模板（「跟随门店」时用它）。只为预估，拉不到就不显示预估，不挡编辑 */
+const storeFreightTpl = ref<StoreFreightTemplate | null>(null);
+/** 平台在用的模板（ADR-031：商品可以指定一个；不指定 = 跟随门店） */
+const freightTemplates = ref<StoreFreightTemplate[]>([]);
+/** 这件商品指定的模板号；空 = 跟随门店 */
+const freightTemplateNo = ref("");
 async function loadFreightTpl() {
-  if (freightTpl.value || !shipsByExpress.value) return;
-  freightTpl.value = await api.mFreightTemplate(merchant.storeNo || "default").catch(() => null);
+  if (!shipsByExpress.value) return;
+  if (!storeFreightTpl.value) {
+    storeFreightTpl.value = await api.mFreightTemplate(merchant.storeNo || "default").catch(() => null);
+  }
+  if (!freightTemplates.value.length) {
+    freightTemplates.value = await api.mFreightTemplates().catch(() => []);
+  }
 }
 watch(shipsByExpress, (on) => { if (on) void loadFreightTpl(); }, { immediate: true });
+/** 预估按哪个模板：指定了用指定的（列表里找不到就当跟随门店），否则门店的 —— 与下单解析同序 */
+const freightTpl = computed(() =>
+  freightTemplates.value.find((x) => x.templateNo === freightTemplateNo.value) ?? storeFreightTpl.value);
+const freightTplText = computed(() => {
+  const own = freightTemplates.value.find((x) => x.templateNo === freightTemplateNo.value);
+  if (own) return own.name;
+  const follow = String(t("goods.freightTplFollow"));
+  return storeFreightTpl.value ? `${follow}（${storeFreightTpl.value.name}）` : follow;
+});
+function pickFreightTpl() {
+  const list = freightTemplates.value;
+  uni.showActionSheet({
+    itemList: [String(t("goods.freightTplFollow")), ...list.map((x) => x.name)],
+    success: (r) => { freightTemplateNo.value = r.tapIndex === 0 ? "" : list[r.tapIndex - 1]!.templateNo; },
+  });
+}
 /** 单规格：这一件的运费预估；没填重量按首重（与下单同口径），并提示补重量 */
 const freightOne = computed(() => {
   const t = freightTpl.value;
@@ -1646,6 +1671,7 @@ onLoad(async (q) => {
   fulfillments.value = (g.fulfillments ?? []).slice(0, 1);
   limitPerUser.value = g.limitPerUser ? String(g.limitPerUser) : "";
   restrictedRegions.value = g.restrictedRegions ? [...g.restrictedRegions] : [];
+  freightTemplateNo.value = g.freightTemplateNo ?? "";
   fresh.value = {
     cutoffAt: g.cutoffAt ? new Date(g.cutoffAt).toISOString().slice(0, 16) : "",
     arrivalDesc: g.arrivalDesc ?? "",
@@ -1836,6 +1862,8 @@ async function save(thenSubmit = false) {
       // （一种履约都不支持的商品谁也买不了），而这正是我们要的报错
       fulfillments: fulfillments.value,
       limitPerUser: Number(limitPerUser.value) || 0,
+      // 运费模板只在走快递时交：空串 = 跟随门店；不走快递不交（= 不改）
+      freightTemplateNo: shipsByExpress.value ? freightTemplateNo.value : undefined,
       // 限购地区（#3）：整份覆盖——传空数组 = 清空恢复全国，与 params 同一口径
       restrictedRegions: restrictedRegions.value,
       // 这一版怎么录的（AC11）：只进提交历史。不传的话后端默认 MANUAL，
@@ -3209,6 +3237,12 @@ async function save(thenSubmit = false) {
         限购地区（#3）：反选——默认全国可售，点进去勾「不卖到哪些省」。
         与运费模板(整店快递)分层:这一行管「这件货不卖到哪」,下单按收货地址省级码拦。
       -->
+      <!-- 运费模板（ADR-031）：只对快递有意义。不选 = 跟随门店；下单时商品 ＞ 门店 ＞ 平台默认 -->
+      <view v-if="shipsByExpress" class="pr sh-row pr--sep" @tap="pickFreightTpl">
+        <text class="txt-sub pr__k sh-fill">{{ $t("goods.freightTpl") }}</text>
+        <text class="txt-body pr__restv" :class="{ 'sh-muted': !freightTemplateNo }">{{ freightTplText }}</text>
+        <sh-go></sh-go>
+      </view>
       <view class="pr sh-row pr--sep" @tap="restrictedSheet = true">
         <text class="txt-sub pr__k sh-fill">{{ $t("goods.restrictedLabel") }}</text>
         <text class="txt-body pr__restv" :class="{ 'sh-muted': !restrictedRegions.length }">{{ restrictedText }}</text>

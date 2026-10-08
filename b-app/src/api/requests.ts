@@ -208,6 +208,8 @@ export interface SaveGoodsReqBody {
    * 页面一直在交，到这一层被丢掉：生产上没有一件商品存下过限购地区，而 mock 收整个对象、照常显示。
    */
   restrictedRegions?: string[];
+  /** 运费模板（ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店 */
+  freightTemplateNo?: string;
   /** 这一版怎么录的，只进提交历史。不传 = 后端按 MANUAL 记（同一次丢失，历史那一列恒为「手填」） */
   entrySource?: GoodsEntrySource;
 }

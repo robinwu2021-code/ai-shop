@@ -188,6 +188,7 @@ const RESPONSE_TYPES = {
   mCancelExpress: "ExpressPickup",
   mShipSetting: "ShipSetting",
   mFreightTemplate: "StoreFreightTemplate",
+  mFreightTemplates: "StoreFreightTemplate[]",
   mSaveShipSetting: "ShipSetting",
   mCountDetail: "StockCount",
   mCountFill: "void",

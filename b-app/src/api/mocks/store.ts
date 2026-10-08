@@ -62,6 +62,7 @@ export const storeMock: Pick<MerchantApi,
   | "mStorePaySetting"
   | "mShipSetting"
   | "mFreightTemplate"
+  | "mFreightTemplates"
   | "mSaveShipSetting"
   | "mSaveStorePaySetting"
   | "mStaffList"
@@ -508,6 +509,23 @@ export const storeMock: Pick<MerchantApi,
         { region: "西藏自治区", action: "REJECT" as const, surcharge: 0 },
       ],
     });
+  },
+  // 平台在用的模板：默认 FT0001 + 一份包邮测试模板（与线上「联调免邮(测试)」同形）
+  async mFreightTemplates() {
+    return delay([
+      {
+        templateNo: "FT0001", name: "默认运费模板", firstWeightGram: 1000, firstFee: 800,
+        addWeightGram: 500, addFee: 200, freeThreshold: 9900,
+        rules: [
+          { region: "新疆维吾尔自治区", action: "SURCHARGE" as const, surcharge: 2000 },
+          { region: "西藏自治区", action: "REJECT" as const, surcharge: 0 },
+        ],
+      },
+      {
+        templateNo: "FT0002", name: "包邮", firstWeightGram: 1000, firstFee: 0,
+        addWeightGram: 1000, addFee: 0, freeThreshold: 1, rules: [],
+      },
+    ]);
   },
   async mSaveShipSetting(storeNo, body) {
     const s = requireStore(storeNo);

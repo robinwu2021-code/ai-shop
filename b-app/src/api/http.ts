@@ -377,6 +377,8 @@ export const httpApi: MerchantApi = {
       // 这两行 2026-10-07 才补上：页面一直在交，到这里被逐字段重建丢掉 ——
       // 限购地区在生产上一件都没存下来，mock 收整个对象所以看不出（wire-alignment 守卫抓到的）
       restrictedRegions: payload.restrictedRegions,
+      // 逐字段重建：漏写一行就是「页面在交、到这一层被丢掉」（限购地区 2026-10-07 那次）
+      freightTemplateNo: payload.freightTemplateNo,
       entrySource: payload.entrySource,
     } satisfies SaveGoodsReqBody),
   mToggleGoods: (goodsNo, onSale) =>
@@ -495,6 +497,7 @@ export const httpApi: MerchantApi = {
   mShipSetting: (storeNo) => http.get<ShipSetting>(buildPath(E.mShipSetting.path, { storeNo })),
   mFreightTemplate: (storeNo) =>
     http.get<StoreFreightTemplate | null>(buildPath(E.mFreightTemplate.path, { storeNo })),
+  mFreightTemplates: () => http.get<StoreFreightTemplate[]>(E.mFreightTemplates.path),
   mSaveShipSetting: (storeNo, body) =>
     http.put<ShipSetting>(buildPath(E.mSaveShipSetting.path, { storeNo }), body satisfies SaveShipSettingReq),
   mAppointmentSlots: (storeNo, from, to) =>

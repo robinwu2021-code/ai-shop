@@ -594,6 +594,8 @@ export interface GoodsDraft {
    * 排除语义:默认全国可售、列表内不可售。
    */
   restrictedRegions?: string[];
+  /** 运费模板（ADR-031）：平台模板号。不传 = 不改；空串 = 跟随门店 */
+  freightTemplateNo?: string;
   /**
    * 这一版**怎么录的**：MANUAL 手填 / QUICK_TEXT 快速录入 / ZIP 压缩包 / IMAGE 图片识别。
    * 不传 = MANUAL。**只进提交历史**，不影响任何业务判断 ——
@@ -1518,6 +1520,8 @@ export interface MerchantApi {
   mCancelExpress(orderNo: string): Promise<ExpressPickup>;
   /** 本店适用的运费模板；平台一个模板都没配时为 null（此时快递单运费按 0 收） */
   mFreightTemplate(storeNo: string): Promise<StoreFreightTemplate | null>;
+  /** 平台在用的运费模板（商品编辑页「运费模板」从这里选；不选 = 跟随门店） */
+  mFreightTemplates(): Promise<StoreFreightTemplate[]>;
   /** 本店发货设置（寄件人、电话、地址、默认快递公司与重量） */
   mShipSetting(storeNo: string): Promise<ShipSetting>;
   /** 改发货设置。空串 = 改回默认。要 biz:store:admin */
