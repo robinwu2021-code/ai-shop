@@ -21,10 +21,10 @@ const { t } = useI18n();
       </view>
     </view>
     <!-- 「已切换至」沿用切店 toast 的那条词条、去掉店名：店名单独放大在下面 -->
-    <text class="curtain__label">
+    <text class="txt-body curtain__label">
       {{ phase === "going" ? t("storePick.switching") : String(t("stores.switched", { name: "" })).trim() }}
     </text>
-    <text class="curtain__name">{{ name }}</text>
+    <text class="txt-hero curtain__name">{{ name }}</text>
   </view>
 </template>
 
@@ -32,7 +32,7 @@ const { t } = useI18n();
 .curtain {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--sh-z-dialog);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -59,7 +59,7 @@ const { t } = useI18n();
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  border: 8rpx solid rgba(255, 255, 255, 0.35);
+  border: 8rpx solid var(--sh-primary-tint);
   border-top-color: var(--sh-on-primary);
   animation: curtain-spin 800ms linear infinite;
 }
@@ -74,12 +74,11 @@ const { t } = useI18n();
   animation: curtain-pop 360ms cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 .curtain__label {
-  font-size: 30rpx;
+  color: var(--sh-on-primary);
   opacity: 0.85;
 }
 .curtain__name {
-  font-size: 56rpx;
-  font-weight: 700;
+  color: var(--sh-on-primary);
   line-height: 1.3;
   text-align: center;
   word-break: break-all;

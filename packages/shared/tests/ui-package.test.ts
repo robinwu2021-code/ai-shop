@@ -247,6 +247,8 @@ describe("小程序的块间缝：顶层组件也要在名单上", () => {
     //    小程序块间缝名单上」，与「改名」毫无关系。名单里的字符串是改名的暗礁。
     "biz-cart-fab", "phone-gate", "biz-region-picker", "biz-address-region", "biz-pickup-sheet",
     "biz-item-picker", "biz-supplier-picker",
+    // 切店幕布：position fixed 整屏盖住，与 sh-dialog 同一层
+    "biz-switch-curtain",
     // 选人面板与批量打标：外面包的是 sh-sheet，同样是浮层
     "biz-audience-picker", "biz-batch-tag-sheet",
     // 调整经营类目：同上，外面包的是 sh-sheet
