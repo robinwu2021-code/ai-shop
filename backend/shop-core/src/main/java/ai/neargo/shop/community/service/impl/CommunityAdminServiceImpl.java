@@ -729,13 +729,18 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
 
     @Override
     public DistributionVO distribution() {
+        // ⚠️ 临时相位计时（找这个 ops 屏的慢在哪，测完删）
+        long t0 = System.currentTimeMillis();
         var communities = DataScopeContext.executeWithoutScope(() ->
                 communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()));
         var open = communities.stream().filter(c -> OPEN.equals(c.getStatus())).toList();
+        long tComm = System.currentTimeMillis();
         var pool = supplyStatsPort.byCommunity();
+        long tPool = System.currentTimeMillis();
         var points = userQueryPort.addressPoints();
         var health = userQueryPort.addressCoordHealth();
         var storeHealth = merchantQueryPort.storeCoordHealth();
+        long tHealth = System.currentTimeMillis();
 
         /*
          * 归属**复用 `CommunityService.resolve`**，不在这儿再写一遍围栏判定。
@@ -760,6 +765,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 buyers.merge(no, 1, Integer::sum);
             }
         }
+        long tBuyers = System.currentTimeMillis();
 
         /*
          * 区划路径**一次性批量取**：逐个 regionPathOf 是 path() 的逐级查库 × 两万多个开放小区
@@ -770,6 +776,7 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 open.stream().map(CmtCommunity::getRegionCode)
                         .filter(rc -> rc != null && !rc.isBlank())
                         .distinct().toList());
+        long tRegion = System.currentTimeMillis();
         var rows = open.stream()
                 .map(c -> {
                     // 池里没有这个聚落 = 那儿一件货都搜不到，补 0；
@@ -788,6 +795,11 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                         .thenComparing(DistributionVO.DistributionRow::communityNo))
                 .toList();
 
+        long tRows = System.currentTimeMillis();
+        org.slf4j.LoggerFactory.getLogger(CommunityAdminServiceImpl.class).warn(
+                "[distribution-timing] communities={}ms supply={}ms health={}ms buyers={}ms region={}ms rows+sort={}ms 合计={}ms（open={}）",
+                tComm - t0, tPool - tComm, tHealth - tPool, tBuyers - tHealth,
+                tRegion - tBuyers, tRows - tRegion, tRows - t0, open.size());
         return new DistributionVO(rows, new DistributionVO.Unattributable(
                 health.total() - health.withCoords(), outside,
                 storeHealth.total() - storeHealth.withCoords(),
