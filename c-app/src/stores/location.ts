@@ -117,6 +117,17 @@ export const useLocationStore = defineStore("location", {
         return s.active.tag || s.active.detail || s.active.region || "";
       }
       /*
+       * **用户在选点页主动挑了「逛这儿」—— 和挑地址同级，压过被动定位 here。**
+       *
+       * 真机报过：切了位置商品变了、顶栏没变。根因就是这一条原来排在 here 之后，
+       * 而首页一加载 ensureHere() 就把 here 填上，于是 transient 永远轮不到。
+       * 它是明确动作（在选点页点了某个社区 / 当前位置），不是 here 那种被动定位，
+       * 所以要和 pickedByUser 一样排在 here 前面。
+       * transientName 为空时（「用当前位置」没解析出聚落名）才让位给 here，
+       * 那条路本来就该显示定位到的地名。
+       */
+      if (s.transientAt && s.transientName) return s.transientName;
+      /*
        * **模糊定位只说到区。**（2026-09-19 真机：人在龙华体育馆，顶栏写「棱镜·男生公寓(清湖地铁站总店)」）
        *
        * 走到 getFuzzyLocation 的那一次（精确定位被拒 / 接口不可用）——
@@ -130,7 +141,6 @@ export const useLocationStore = defineStore("location", {
       }
       // M9：顶栏 = 当前定位。它回答的是「我在看哪一带的货」，不是「送到哪」
       if (s.here?.place?.name && !s.here.coarse) return s.here.place.name;
-      if (s.transientAt && s.transientName) return s.transientName;
       if (s.active) return s.active.tag || s.active.detail || s.active.region || "";
       // 退到粗定位的区名 —— 顶栏那一行任何时候都要有内容，
       // 而「西湖区」至少是句真话：这一屏的货正是按那个区筛出来的
@@ -142,8 +152,9 @@ export const useLocationStore = defineStore("location", {
      */
     hereName: (s) => (s.here?.coarse ? s.here.regionName ?? "" : s.here?.place?.name ?? ""),
     /** 顶栏写的只是个大概（模糊定位，只准到区）—— 界面上要标出来，别让人当成精确位置 */
-    approx: (s) => !(s.pickedByUser && s.active) && !!s.here?.coarse
-      && !!(s.here.regionName || s.coarseRegion?.name),
+    // transient（用户主动挑的那个点）显示的是具体地名，不是模糊定位 —— 别标「大概位置」
+    approx: (s) => !(s.pickedByUser && s.active) && !(s.transientAt && s.transientName)
+      && !!s.here?.coarse && !!(s.here.regionName || s.coarseRegion?.name),
     /** 顶栏那个地名可能不是最新的（地图挂了、用的是库里旧的那条） */
     placeStale: (s) => s.here?.place?.stale === true,
     /** 这一次逛的是不是「当前位置」（而不是地址簿里的某一条） */
@@ -382,7 +393,7 @@ export const useLocationStore = defineStore("location", {
      * <p>「没匹配到」因此**不是死路**：他照样能逛、能下单。
      * 回落到「无位置首屏」只留给**连定位都拿不到**的情况。
      */
-    async useTransient(at: { lat: number; lng: number }) {
+    async useTransient(at: { lat: number; lng: number }, name?: string) {
       this.transientAt = at;
       const community = useCommunityStore();
       const list = await community.loadNearby(at.lat, at.lng).catch(() => [] as never[]);
@@ -398,10 +409,17 @@ export const useLocationStore = defineStore("location", {
        */
       if (c) await community.bind(c, p);
       /*
-       * 解析不出地名时给一句「当前位置」而不是空串：顶栏那一行**任何时候都要有内容**，
-       * 空着会让人以为页面没加载完，而这里恰恰是「已经切过去了」。
+       * **顶栏那一行是用户刚挑的那个名字。**
+       *
+       * 调用方点的是某个社区 / 某个地点，名字它本来就有（`name`）；此前这里把它丢了、
+       * 只认后端 resolve 出来的 innermostName —— 而选点页挑的那个社区常常不是该坐标的
+       * 「最内层围栏」，resolve 给不出名字，于是 transientName 落空、顶栏显示不出切过去的位置。
+       * 真机报的「切了位置顶栏没变」就有这一半（另一半是 label 的优先级，见该 getter）。
+       *
+       * 回落链：后端解析出的聚落名 → 调用方挑的那个名字 → 空。
+       * 空只留给「用当前位置」那条没有具体地名的路（name 不传），那时让位给 here（见 label）。
        */
-      this.transientName = ctx?.innermostName ?? "";
+      this.transientName = ctx?.innermostName || name || "";
       return { name: this.transientName, bound: !!(c && p) };
     },
 

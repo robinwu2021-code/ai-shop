@@ -246,7 +246,8 @@ async function choose(p: { name?: string; address?: string; lat: number; lng: nu
    * 而且它是上下文不是资料（PRD §6.1.0，`useTransient` 的说明）。
    */
   if (browse.value) {
-    await location.useTransient({ lat: p.lat, lng: p.lng });
+    // 把他刚挑的那个名字一起带上 —— 顶栏要显示它，别只靠后端 resolve（常给不出）
+    await location.useTransient({ lat: p.lat, lng: p.lng }, p.name);
     uni.navigateBack();
     return;
   }
