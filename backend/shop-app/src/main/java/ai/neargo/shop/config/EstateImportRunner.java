@@ -85,9 +85,9 @@ public class EstateImportRunner implements ApplicationRunner {
                 return;
             }
             var r = admin.importEstates(adcode, "CLOSED", false, items, "SYSTEM");
-            LOG.info("[estate-import] {} ← {}：收到 {} 新建 {} 更新 {} 跳过 {}（全部 CLOSED，"
+            LOG.info("[estate-import] {} ← {}：收到 {} 新建 {} 更新 {} 跳过 {} 同小区去重 {}（全部 CLOSED，"
                             + "放出来要另走 /ops/communities/open-map）",
-                    adcode, file, r.received(), r.created(), r.updated(), r.skipped());
+                    adcode, file, r.received(), r.created(), r.updated(), r.skipped(), r.deduped());
         } catch (Exception e) {
             // 补数据的动作不该让线上起不来
             LOG.error("[estate-import] 导入失败（不影响启动）：{}", e.toString());

@@ -645,9 +645,38 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                         .isNotNull(CmtCommunity::getOriginCode))).stream()
                 .collect(java.util.stream.Collectors.toMap(CmtCommunity::getOriginCode,
                         c -> c, (a, b) -> a));
+        /*
+         * **第二道查重：一个小区有好几个 POI。**
+         *
+         * 上面那道按 origin_code 认，防的是「同一个 POI 导两次」（重扫幂等）。
+         * 它防不住高德对**同一个小区**给出东门、西门、某栋楼各一条 —— poiId 各不相同，
+         * 于是一个小区在库里长出好几份档案。线上「百花公寓」就是这么来的：
+         * 两条、名字一字不差、相距 256 米、同一分钟由 SYSTEM 导进来。
+         * 后果要到买家那端才看得见：商家经营范围指着其中一份、买家选中另一份，
+         * 可见性按聚落号精确比对 → 0 件商品，而界面上两份长得一模一样。
+         *
+         * **判据只能是「名字完全相同 + 离得近」**，不能放宽：
+         * DenseEstateMatchTest 用的龙华真实数据里，一公里内 179 个小区、
+         * 最小间距 0 米（两个 POI 落在同一个点上）却是不同小区，
+         * 名字是「景华新村 / 景华新村东区 / 景华新村西区 / 景华新村南区」这种。
+         * 也不用归一名：PlaceNames.norm 会把「花园新村」整个剥成空串。
+         * **宁可漏合，不可错合** —— 漏合只是多一条待治理，
+         * 错合是把两个真实小区并成一个，那个小区的人直接找不到自己家。
+         */
+        List<CmtCommunity> inRegion = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getRegionCode, regionCode.trim())));
+        List<NameGeo> known = new java.util.ArrayList<>();
+        for (CmtCommunity c : inRegion) {
+            if (c.getName() != null && c.getLatE6() != null && c.getLngE6() != null) {
+                known.add(new NameGeo(c.getName().trim(), c.getLatE6(), c.getLngE6()));
+            }
+        }
+
         int created = 0;
         int updated = 0;
         int skipped = 0;
+        int deduped = 0;
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (EstateIn in : items) {
             /*
@@ -677,6 +706,16 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 }
                 continue;
             }
+            String nm = in.name().trim();
+            if (known.stream().anyMatch(k -> k.name().equals(nm)
+                    && meters(k.latE6(), k.lngE6(), in.latE6(), in.lngE6()) <= SAME_ESTATE_M)) {
+                // 同一个小区的另一个 POI：不建档。已有那条照原样留着，不拿这个 POI 的值去覆盖它，
+                // 否则同一个小区的坐标会在每次重扫时在东门和西门之间来回跳
+                deduped++;
+                continue;
+            }
+            // 同一批里后面的条目也要认得它 —— 试算时同样要认，否则试算报的「会新建几条」是假的
+            known.add(new NameGeo(nm, in.latE6(), in.lngE6()));
             created++;
             if (!dryRun) {
                 var c = new CmtCommunity();
@@ -698,7 +737,14 @@ public class CommunityAdminServiceImpl implements CommunityAdminService {
                 DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
             }
         }
-        return new ImportResult(items.size(), created, updated, skipped, dryRun);
+        return new ImportResult(items.size(), created, updated, skipped, deduped, dryRun);
+    }
+
+    /** 判「同一个小区的另一个 POI」的距离上限。与地图小区的围栏同值，不是巧合：围栏多大，就认多大 */
+    private static final int SAME_ESTATE_M = MAP_ESTATE_FENCE_M;
+
+    /** 查重用的轻量投影：只要名字和坐标，别把整行实体带进循环 */
+    private record NameGeo(String name, int latE6, int lngE6) {
     }
 
     @Override

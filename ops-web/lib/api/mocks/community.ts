@@ -55,7 +55,9 @@ export const communityMock: CommunityApi = {
     mapStatus: "CLOSED",
   }),
   promoteGeoPlaces: async (req) => ({
-    received: 12, created: req.dryRun === false ? 12 : 0, updated: 0, skipped: 0,
+    received: 12, created: req.dryRun === false ? 10 : 0, updated: 0, skipped: 0,
+    // 给个非零值：地图对同一个小区常给出好几个 POI，收到 12 条建出 10 条才是真实形状
+    deduped: req.dryRun === false ? 2 : 0,
     dryRun: req.dryRun !== false,
   }),
   openMapCommunities: (regionPrefix) => {

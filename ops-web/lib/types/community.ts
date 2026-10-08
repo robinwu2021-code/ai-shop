@@ -193,6 +193,12 @@ export interface CommunityImportResult {
   updated: number;
   /** 跳过多少条。**没坐标的一律跳** —— 建出来买家永远搜不到它，而这件事没有任何报错 */
   skipped: number;
+  /**
+   * 认出是「同一个小区的另一个 POI」而没有建档的条数（名字完全相同且相距 ≤300m）。
+   * 与 `skipped`（数据不合格）分开计：导一个区时这个数就是
+   * 「地图给的 POI 比小区多出来多少」，是判断导入质量的唯一依据。
+   */
+  deduped: number;
   /** 试算。**默认就是它** —— 一次动几百行的接口，默认值要在安全那一边 */
   dryRun: boolean;
 }

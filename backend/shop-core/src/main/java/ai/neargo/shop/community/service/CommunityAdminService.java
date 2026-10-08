@@ -246,7 +246,13 @@ public interface CommunityAdminService {
     record EstateIn(String originCode, String name, String address, Integer latE6, Integer lngE6) {
     }
 
-    record ImportResult(int received, int created, int updated, int skipped, boolean dryRun) {
+    /**
+     * @param deduped 认出是「同一个小区的另一个 POI」而没有建档的条数。
+     *                与 {@code skipped}（数据不合格）分开计：导一个区时这个数就是
+     *                「地图给的 POI 比小区多出来多少」，是判断导入质量的唯一依据。
+     */
+    record ImportResult(int received, int created, int updated, int skipped, int deduped,
+                        boolean dryRun) {
     }
 
     /**
