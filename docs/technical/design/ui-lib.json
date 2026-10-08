@@ -1385,7 +1385,7 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 29,
         "c-app": 35
       }
     },
@@ -3354,7 +3354,7 @@
       "name": "biz-switch-curtain",
       "file": "b-app/src/components/biz/biz-switch-curtain.vue",
       "scope": "B 端",
-      "lines": 110,
+      "lines": 104,
       "props": [
         "phase: CurtainPhase",
         "name: string"
@@ -3373,8 +3373,8 @@
         ],
         "rawFontSize": [],
         "spacing": [
-          16,
           24,
+          40,
           64
         ],
         "radius": [],
@@ -3393,7 +3393,6 @@
         "flex-direction": "column",
         "align-items": "center",
         "justify-content": "center",
-        "gap": "24rpx",
         "padding": "0 64rpx",
         "background": "var(--sh-primary)",
         "color": "var(--sh-on-primary)",
@@ -5531,18 +5530,10 @@
       "components": [
         "sh-icon"
       ],
-      "libClassHits": 2,
+      "libClassHits": 4,
       "localSelectors": 15,
-      "localCssLines": 78,
-      "rolled": [
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        }
-      ]
+      "localCssLines": 72,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5853,16 +5844,6 @@
       "rule": "pickImages\\(|chooseImages\\(",
       "pages": [
         "c-app/me/profile"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "b-app/biz-switch-curtain"
       ]
     }
   ],
