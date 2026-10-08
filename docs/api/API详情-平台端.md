@@ -3640,6 +3640,8 @@ _无字段_
 | `createdAt` | `string` | 是 | 建单时间 |
 | `updatedAt` | `string` | 是 | 最后一次轨迹更新时间 |
 | `traces` | [`#/definitions/ShipmentTrace`](#definitionsshipmenttrace)\[\] | 是 | 轨迹节点，按时间正序 |
+| `displayChannel` | `string,null` | 否 | 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** —— 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」 |
+| `displayFailReason` | `string,null` | 否 | 最近一次备载荷失败的原因，只给运营看，不给买家看 |
 
 
 ### group
@@ -13021,6 +13023,8 @@ KPI 卡（金额为最小货币单位整数）。
 | `createdAt` | `string` | 是 | 建单时间 |
 | `updatedAt` | `string` | 是 | 最后一次轨迹更新时间 |
 | `traces` | [`#/definitions/ShipmentTrace`](#definitionsshipmenttrace)\[\] | 是 | 轨迹节点，按时间正序 |
+| `displayChannel` | `string,null` | 否 | 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** —— 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」 |
+| `displayFailReason` | `string,null` | 否 | 最近一次备载荷失败的原因，只给运营看，不给买家看 |
 
 ### Sku
 

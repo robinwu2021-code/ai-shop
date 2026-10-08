@@ -9986,6 +9986,9 @@ _无字段_
 |---|---|:---:|---|
 | `status` | [`ShipmentStatus`](#shipmentstatus) | 是 | 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 |
 | `nodes` | [`ShipmentTraceNode`](#shipmenttracenode)\[\] | 是 | 轨迹节点，按时间倒序（最新在前，页面从上往下读） |
+| `displayMode` | [`TraceDisplayMode`](#tracedisplaymode) | 否 | 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map` |
+| `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
+| `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
 
 ### ShipmentTraceNode
 
@@ -9996,6 +9999,8 @@ _无字段_
 | `at` | `number` | 是 | 扫描时刻（毫秒时间戳） |
 | `text` | `string` | 是 | 节点描述，原样来自承运商（如「【深圳市】已揽收」），不翻译 |
 | `location` | `string` | 否 | 所在城市/网点，承运商没给时省略 |
+| `latE6` | `number,null` | 否 | 行政区中心纬度 ×1e6，地图用。**不是快件的实时位置** —— 聚合器只给到行政区中心点， 所以地图只能画城市级折线。没解析出行政区的节点没有坐标 |
+| `lngE6` | `number,null` | 否 | 行政区中心经度 ×1e6 |
 
 ### Sku
 
@@ -10723,6 +10728,25 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `onSale` | `boolean` | 是 | 目标状态：true 上架、false 下架。下架后详情页仍可访问但不可下单 |
+
+### TraceDisplayMode
+
+展示渠道（TDD-物流轨迹多渠道）。**端上按它决定怎么渲染，自己不判断该用哪个** —— 判定在后端一处做完
+
+枚举取值：
+
+- `wx-plugin`
+- `self-map`
+
+### TraceRoute
+
+城市路线：地图上「出发 / 当前 / 目的」三个标记。取不到时整个为空
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string,null` | 否 | 出发城市名 |
+| `cur` | `string,null` | 否 | 当前所在城市名 |
+| `to` | `string,null` | 否 | 目的城市名 |
 
 ### TrafficSource
 

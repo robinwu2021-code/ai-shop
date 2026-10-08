@@ -2779,6 +2779,16 @@ components:
           items: 
             "$ref": "#/definitions/ShipmentTrace"
           description: "轨迹节点，按时间正序"
+        displayChannel: 
+          type: 
+            - "string"
+            - "null"
+          description: "这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** —— 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」"
+        displayFailReason: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次备载荷失败的原因，只给运营看，不给买家看"
       required: 
         - "shipmentNo"
         - "orderNo"

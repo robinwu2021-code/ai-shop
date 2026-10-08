@@ -5554,6 +5554,72 @@
           "ar": "المظهر"
         },
         {
+          "key": "trace.at",
+          "zh-CN": "{t}",
+          "en": "{t}",
+          "ar": "{t}"
+        },
+        {
+          "key": "trace.callCourier",
+          "zh-CN": "拨打快递员电话",
+          "en": "Call courier",
+          "ar": "اتصل بالمندوب"
+        },
+        {
+          "key": "trace.cityLevel",
+          "zh-CN": "城市级示意，非实时位置",
+          "en": "City-level route, not live position",
+          "ar": "مسار على مستوى المدينة، ليس الموقع الحالي"
+        },
+        {
+          "key": "trace.fold",
+          "zh-CN": "收起",
+          "en": "Collapse",
+          "ar": "طيّ"
+        },
+        {
+          "key": "trace.openWx",
+          "zh-CN": "查看物流详情",
+          "en": "View tracking",
+          "ar": "عرض التتبع"
+        },
+        {
+          "key": "trace.step.delivering",
+          "zh-CN": "派送中",
+          "en": "Out for delivery",
+          "ar": "قيد التسليم"
+        },
+        {
+          "key": "trace.step.picked",
+          "zh-CN": "已揽收",
+          "en": "Picked up",
+          "ar": "تم الاستلام"
+        },
+        {
+          "key": "trace.step.signed",
+          "zh-CN": "已签收",
+          "en": "Delivered",
+          "ar": "تم التسليم"
+        },
+        {
+          "key": "trace.step.transit",
+          "zh-CN": "运输中",
+          "en": "In transit",
+          "ar": "في الطريق"
+        },
+        {
+          "key": "trace.unfold",
+          "zh-CN": "展开全部 {n} 条",
+          "en": "Show all {n}",
+          "ar": "عرض الكل ({n})"
+        },
+        {
+          "key": "trace.wxUnavailable",
+          "zh-CN": "物流插件没加载出来，稍后再试",
+          "en": "Tracking plugin failed to load, try again later",
+          "ar": "تعذّر تحميل مكوّن التتبع، حاول لاحقًا"
+        },
+        {
           "key": "visited.go",
           "zh-CN": "去逛逛",
           "en": "Start browsing",
@@ -21776,6 +21842,66 @@
           "ar": "المظهر واللغة"
         },
         {
+          "key": "trace.at",
+          "zh-CN": "{t}",
+          "en": "{t}",
+          "ar": "{t}"
+        },
+        {
+          "key": "trace.callCourier",
+          "zh-CN": "拨打快递员电话",
+          "en": "Call courier",
+          "ar": "اتصل بالمندوب"
+        },
+        {
+          "key": "trace.cityLevel",
+          "zh-CN": "城市级示意，非实时位置",
+          "en": "City-level route, not live position",
+          "ar": "مسار على مستوى المدينة، ليس الموقع الحالي"
+        },
+        {
+          "key": "trace.fold",
+          "zh-CN": "收起",
+          "en": "Collapse",
+          "ar": "طيّ"
+        },
+        {
+          "key": "trace.openWx",
+          "zh-CN": "查看物流详情",
+          "en": "View tracking",
+          "ar": "عرض التتبع"
+        },
+        {
+          "key": "trace.step.delivering",
+          "zh-CN": "派送中",
+          "en": "Out for delivery",
+          "ar": "قيد التسليم"
+        },
+        {
+          "key": "trace.step.picked",
+          "zh-CN": "已揽收",
+          "en": "Picked up",
+          "ar": "تم الاستلام"
+        },
+        {
+          "key": "trace.step.signed",
+          "zh-CN": "已签收",
+          "en": "Delivered",
+          "ar": "تم التسليم"
+        },
+        {
+          "key": "trace.step.transit",
+          "zh-CN": "运输中",
+          "en": "In transit",
+          "ar": "في الطريق"
+        },
+        {
+          "key": "trace.unfold",
+          "zh-CN": "展开全部 {n} 条",
+          "en": "Show all {n}",
+          "ar": "عرض الكل ({n})"
+        },
+        {
           "key": "transfer.addItem",
           "zh-CN": "添加商品",
           "en": "Add product",
@@ -33684,6 +33810,17 @@
         "module": "shop-auth-store"
       },
       {
+        "name": "Surface",
+        "values": [
+          "MP",
+          "APP",
+          "OPS",
+          "H5"
+        ],
+        "zh": "呈现的场合。",
+        "module": "shop-base"
+      },
+      {
         "name": "TicketRealm",
         "values": [
           "B",
@@ -35989,6 +36126,15 @@
           "info"
         ],
         "zh": ""
+      },
+      {
+        "name": "TraceDisplayMode",
+        "client": "shared",
+        "values": [
+          "wx-plugin",
+          "self-map"
+        ],
+        "zh": "展示渠道（TDD-物流轨迹多渠道）。"
       },
       {
         "name": "TrafficSource",

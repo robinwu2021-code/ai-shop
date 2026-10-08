@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 511,
-        "c-app": 77
+        "c-app": 75
       }
     },
     {
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 415,
+        "b-app": 416,
         "c-app": 83
       }
     },
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 389,
-        "c-app": 275
+        "b-app": 395,
+        "c-app": 273
       }
     },
     {
@@ -453,8 +453,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 44,
-        "c-app": 47
+        "b-app": 46,
+        "c-app": 48
       }
     },
     {
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 132,
+        "b-app": 133,
         "c-app": 51
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 196,
+        "b-app": 197,
         "c-app": 77
       }
     },
@@ -921,7 +921,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 38,
+        "b-app": 39,
         "c-app": 13
       }
     },
@@ -1078,7 +1078,7 @@
       },
       "usage": {
         "b-app": 344,
-        "c-app": 148
+        "c-app": 147
       }
     },
     {
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 171,
+        "b-app": 172,
         "c-app": 89
       }
     },
@@ -1440,7 +1440,7 @@
       },
       "usage": {
         "b-app": 566,
-        "c-app": 202
+        "c-app": 201
       }
     },
     {
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 316,
+        "b-app": 315,
         "c-app": 100
       }
     },
@@ -1504,7 +1504,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 27
+        "c-app": 26
       }
     },
     {
@@ -2915,6 +2915,50 @@
       }
     },
     {
+      "name": "sh-trace",
+      "file": "packages/ui/src/components/sh-trace.vue",
+      "scope": "跨端",
+      "lines": 294,
+      "props": [
+        "trace: ShipmentTrace",
+        "foldAt?: number"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 1,
+        "lib": 0
+      },
+      "note": "物流轨迹（TDD-物流轨迹多渠道；原型 prototypes/logistics-trace.html s01–s03、",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-body",
+          "txt-caption",
+          "txt-primary",
+          "txt-strong"
+        ],
+        "rawFontSize": [],
+        "spacing": [
+          4,
+          8,
+          16,
+          24
+        ],
+        "radius": [
+          16,
+          24
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "shtrace"
+      ],
+      "rootDecl": {
+        "display": "flex",
+        "flex-direction": "column"
+      }
+    },
+    {
       "name": "sh-uploader",
       "file": "packages/ui/src/components/sh-uploader.vue",
       "scope": "跨端",
@@ -4162,11 +4206,12 @@
         "sh-cover",
         "sh-dialog",
         "sh-go",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-trace"
       ],
-      "libClassHits": 171,
-      "localSelectors": 23,
-      "localCssLines": 93,
+      "libClassHits": 161,
+      "localSelectors": 19,
+      "localCssLines": 77,
       "rolled": []
     },
     {
@@ -5293,11 +5338,12 @@
       "file": "c-app/src/pages/order/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-trace"
       ],
-      "libClassHits": 161,
-      "localSelectors": 39,
-      "localCssLines": 155,
+      "libClassHits": 155,
+      "localSelectors": 35,
+      "localCssLines": 140,
       "rolled": []
     },
     {
@@ -5911,7 +5957,7 @@
   "counts": {
     "tokens": 16,
     "blocks": 81,
-    "components": 39,
+    "components": 40,
     "pages": 155,
     "gapKinds": 2
   }

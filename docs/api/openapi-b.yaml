@@ -9853,6 +9853,19 @@ components:
           items: 
             "$ref": "#/components/schemas/ShipmentTraceNode"
           description: "轨迹节点，按时间倒序（最新在前，页面从上往下读）"
+        displayMode: 
+          "$ref": "#/components/schemas/TraceDisplayMode"
+          description: "这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map`"
+        displayToken: 
+          type: 
+            - "string"
+            - "null"
+          description: "微信插件要的 waybillToken，只有 `displayMode === \"wx-plugin\"` 时才有"
+        route: 
+          anyOf: 
+            - "$ref": "#/components/schemas/TraceRoute"
+            - type: "null"
+          description: "城市路线，自建地图用"
       required: 
         - "status"
         - "nodes"
@@ -9879,11 +9892,47 @@ components:
         location: 
           type: "string"
           description: "所在城市/网点，承运商没给时省略"
+        latE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "行政区中心纬度 ×1e6，地图用。**不是快件的实时位置** —— 聚合器只给到行政区中心点， 所以地图只能画城市级折线。没解析出行政区的节点没有坐标"
+        lngE6: 
+          type: 
+            - "number"
+            - "null"
+          description: "行政区中心经度 ×1e6"
       required: 
         - "at"
         - "text"
       additionalProperties: false
       description: "一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有"
+    TraceDisplayMode: 
+      type: "string"
+      enum: 
+        - "wx-plugin"
+        - "self-map"
+      description: "展示渠道（TDD-物流轨迹多渠道）。**端上按它决定怎么渲染，自己不判断该用哪个** —— 判定在后端一处做完"
+    TraceRoute: 
+      type: "object"
+      properties: 
+        from: 
+          type: 
+            - "string"
+            - "null"
+          description: "出发城市名"
+        cur: 
+          type: 
+            - "string"
+            - "null"
+          description: "当前所在城市名"
+        to: 
+          type: 
+            - "string"
+            - "null"
+          description: "目的城市名"
+      additionalProperties: false
+      description: "城市路线：地图上「出发 / 当前 / 目的」三个标记。取不到时整个为空"
     GoodsBatch: 
       type: "object"
       properties: 
