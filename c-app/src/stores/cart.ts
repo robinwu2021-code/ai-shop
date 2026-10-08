@@ -311,13 +311,41 @@ export const useCartStore = defineStore("cart", {
         throw new Error(singlePageBlockedMessage());
       }
       this.items = await api.cartAdd(goodsNo, skuNo, qty, storeNo);
-      /*
-       * 刚加进来的这件默认勾上 —— 加购之后就是去结算，中间不该再点一次。
-       *
-       * **但绝不因此挤掉别的组**：加购发生在商品页，用户看不见购物车，
-       * 在那里把他之前勾的三件静默取消，他要到结算时才发现少了东西。
-       * 履约方式对不上就什么都不做，让他自己进购物车里挑。
-       */
+      this.selectAdded(skuNo);
+    },
+
+    /**
+     * 「立即购买 / 开团 / 参团」用：让车里这一行**恰好是本次要买的数量**，然后去结算。
+     *
+     * <p><b>不能用 {@link add}</b>：后端加购是在原有数量上累加，而结算页取的是车里这一行的数。
+     * 于是每点一次「立即购买」车里就 +1 —— 买家在结算页卡住返回再点，数量一路涨到 2、3、4，
+     * 撞上限购或库存后立即购买本身直接报错，彻底下不了单（2026-10-09 线上实测）。
+     *
+     * <p>先拉一次最新的车，不信本地状态：本地可能还没 load 过、或被别的页面改过，
+     * 拿过期的「车里没有」去 add，正是累加的来源。
+     */
+    async setForCheckout(goodsNo: string, skuNo: string, qty: number, storeNo?: string) {
+      if (inTimelineSinglePage()) {
+        throw new Error(singlePageBlockedMessage());
+      }
+      const want = Math.max(qty, 1);
+      this.items = await api.cartList();
+      this.loaded = true;
+      const existing = this.items.find((i) => i.skuNo === skuNo);
+      this.items = existing
+        ? await api.cartUpdate(skuNo, want)
+        : await api.cartAdd(goodsNo, skuNo, want, storeNo);
+      this.selectAdded(skuNo);
+    },
+
+    /**
+     * 刚加进来的这件默认勾上 —— 加购之后就是去结算，中间不该再点一次。
+     *
+     * **但绝不因此挤掉别的组**：加购发生在商品页，用户看不见购物车，
+     * 在那里把他之前勾的三件静默取消，他要到结算时才发现少了东西。
+     * 履约方式对不上就什么都不做，让他自己进购物车里挑。
+     */
+    selectAdded(skuNo: string) {
       const added = this.validItems.find((i) => i.skuNo === skuNo);
       const active = this.activeFulfillment;
       if (added && !this.isSelected(skuNo) && (!active || active === added.fulfillment)) {

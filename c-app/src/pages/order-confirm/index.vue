@@ -556,7 +556,7 @@ function changeFulfillment() {
 const clampNotice = ref("");
 function clampToMax(): boolean {
   let changed = false;
-  items.value = items.value.map((it) => {
+  const next = items.value.map((it) => {
     const max = maxQtyOf.value[it.skuNo];
     if (max != null && max > 0 && it.qty > max) {
       changed = true;
@@ -565,6 +565,16 @@ function clampToMax(): boolean {
     }
     return it;
   });
+  /*
+   * **只在真的压了数量时才赋值。**
+   *
+   * 此前是无条件 `items.value = items.value.map(...)` —— 没压也换一个新数组。
+   * 而问价 / 能力 / 积分三个 watch 的 getter 都返回新数组（`[items.value.length, …]`），
+   * Vue 比的是**引用**不是内容，每次赋值都判成「变了」：
+   * 预览成功 → 这里重写 items → 三个 watch 同时再打 preview / capability / 券 → 预览成功 → ……
+   * 2026-10-09 线上同一分钟三个接口都是 401 次，金额永远「计算中…」，所有买家都中。
+   */
+  if (changed) items.value = next;
   return changed;
 }
 
@@ -781,9 +791,18 @@ async function refreshPoints() {
   }
 }
 
+/*
+ * 下面三个 watch 的 getter 一律**返回字符串**。
+ *
+ * 返回数组（`[items.value.length, …]`）时，Vue 对 getter 的结果按**引用**比较，新数组恒「变了」——
+ * 于是任何一次与它无关的 items 重写都会把三个接口一起再打一遍。
+ * 2026-10-09 clampToMax 无条件重写 items，preview / capability / 券三个接口同一分钟各 401 次，
+ * 结算页金额永远「计算中…」。字符串按值比较，只有真正关心的东西变了才触发。
+ */
 watch(
-  () => [items.value.length, fulfillment.value, couponNo.value, usePoints.value, addressId.value,
-    appointmentAt.value, payMode.value, JSON.stringify(activityChoices.value)],
+  // 跟 skuNo 列表而不是件数：件数不变但换了货也要重新问价。数量变化由 setQty 自己调 refreshAmount
+  () => [items.value.map((it) => it.skuNo).join(","), fulfillment.value, couponNo.value, usePoints.value,
+    addressId.value, appointmentAt.value, payMode.value, JSON.stringify(activityChoices.value)].join("|"),
   () => void refreshAmount(),
   { immediate: true },
 );
@@ -795,8 +814,14 @@ watch(
  * 跟了就等于「套上就重置、重置又套」，死循环原样回来（见 refreshAmount 里那段）。
  */
 watch(
-  () => [items.value.map((it) => `${it.skuNo}x${it.qty}`).join(","), fulfillment.value],
+  // **返回字符串，不返回数组**：getter 返回新数组时 Vue 按引用比较，每次都判「变了」（clampToMax 那次事故）
+  () => `${items.value.map((it) => `${it.skuNo}x${it.qty}`).join(",")}|${fulfillment.value}|${payMode.value}`,
   () => {
+    /*
+     * 付款方式也算：第一次预览发出时能力接口还没回来，payMode 只能按线上付，
+     * 服务端据此建议了平台券；能力回来变成当面付后那张券被摘掉，
+     * 而按当面付算的最省组合（比如商家券）不重置这把闸就永远套不上。
+     */
     suggestionApplied.value = false;
   },
 );
@@ -811,14 +836,14 @@ watch(
  * 换券与改地址仍然不影响，所以它们不在这里。
  */
 watch(
-  () => [items.value.map((it) => it.skuNo).join(","), fulfillment.value],
+  () => [items.value.map((it) => it.skuNo).join(","), fulfillment.value].join("|"),
   () => void refreshCapability(),
   { immediate: true },
 );
 
 // 积分试算跟支付方式与券走 —— 线下能否抵是平台开关，上限按券后金额算
 watch(
-  () => [items.value.map((it) => it.skuNo).join(","), payMode.value, couponNo.value],
+  () => [items.value.map((it) => it.skuNo).join(","), payMode.value, couponNo.value].join("|"),
   () => void refreshPoints(),
   { immediate: true },
 );
@@ -841,6 +866,11 @@ const submitBlockedReason = computed(() => {
   if (outOfRangeNames.value.length) return String(t("confirm.whyOutOfRange"));
   if (noPayMethod.value) return String(t("confirm.whyNoPayMethod"));
   if (quotaBlocked.value.length) return String(t("confirm.whyQuota"));
+  /*
+   * 金额还在算：按钮上那个「立即支付 ¥X」是上一次预览的数。线上付带 auto=1 会直接拉起微信付款面板，
+   * 买家看着 ¥X 付出去的却是服务端算的另一个数。放最后 —— 它是瞬时的，前面那些才是他要动手改的。
+   */
+  if (amountPending.value) return String(t("confirm.calculating"));
   return "";
 });
 

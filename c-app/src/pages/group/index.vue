@@ -96,7 +96,8 @@ async function join() {
     const goods = await api.goodsDetail(g.goodsNo);
     const sku = goods.skus.find((s) => s.stock > 0) ?? goods.skus[0];
     if (!sku) throw new Error(String(t("group.soldOut")));
-    await cart.add(g.goodsNo, sku.skuNo, 1);
+    // 设成 1 件而不是再加 1 件 —— 理由见 cart.setForCheckout
+    await cart.setForCheckout(g.goodsNo, sku.skuNo, 1);
     uni.navigateTo({
       url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(goods)}&skus=${sku.skuNo}&groupNo=${g.groupNo}`,
     });

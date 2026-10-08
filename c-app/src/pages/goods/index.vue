@@ -774,23 +774,37 @@ async function addToCart(e: unknown) {
  */
 async function openGroupBuy() {
   const g = goods.value;
-  if (!g || !sku.value || !buyable.value) return;
+  if (!g || !sku.value || !buyable.value || buying.value) return;
+  buying.value = true;
   try {
-    await cart.add(g.goodsNo, sku.value.skuNo, 1, viaStore.value || undefined);
+    // 设成 1 件而不是再加 1 件 —— 理由见 cart.setForCheckout
+    await cart.setForCheckout(g.goodsNo, sku.value.skuNo, 1, viaStore.value || undefined);
     uni.navigateTo({
       url: `${ROUTES.orderConfirm}?fulfillment=${defaultFulfillment(g)}&skus=${sku.value.skuNo}&openGroup=1`,
     });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    buying.value = false;
   }
 }
 
-/** 立即购买：先加购再进结算 —— 结算页统一从购物车取数，不另开一条「直购」链路 */
+/**
+ * 「立即购买 / 开团」请求在途。**连点两下**以前会加购两次（数量 +2）、
+ * 再往页面栈里叠两个结算页 —— 参团那边一直有 busy，这里漏了。
+ */
+const buying = ref(false);
+
+/**
+ * 立即购买：把车里这一行**设成**本次选的数量再进结算 —— 结算页统一从购物车取数，
+ * 不另开一条「直购」链路。**不能 add**：后端加购是累加，每点一次车里 +1（见 cart.setForCheckout）。
+ */
 async function buyNow() {
   const g = goods.value;
-  if (!g || !sku.value || !buyable.value) return;
+  if (!g || !sku.value || !buyable.value || buying.value) return;
+  buying.value = true;
   try {
-    await cart.add(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
+    await cart.setForCheckout(g.goodsNo, sku.value.skuNo, qty.value, viaStore.value || undefined);
     const f = defaultFulfillment(g);
     const at = needAppointment.value && slotDate.value && slotTime.value
       ? new Date(`${slotDate.value}T${slotTime.value}:00`).getTime()
@@ -801,6 +815,8 @@ async function buyNow() {
     });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    buying.value = false;
   }
 }
 
