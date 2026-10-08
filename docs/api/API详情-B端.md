@@ -5235,6 +5235,7 @@ _无字段_
 | `items` | [`ScopeParsedArea`](#scopeparsedarea)\[\] | 是 | 认准的范围项，按出现顺序 |
 | `ambiguous` | `object`（见下）\[\] | 是 | 同名多处，等店主点选 |
 | `unmatched` | `string`\[\] | 是 | 认不出的短语，原样 |
+| `source` | `string` | 否 | llm = 大模型拆句；rule = 模型不可用时的规则兜底 |
 
 `ambiguous[]` 的字段：
 
@@ -9767,6 +9768,7 @@ _无字段_
 | `items` | [`ScopeParsedArea`](#scopeparsedarea)\[\] | 是 | 认准的范围项，按出现顺序 |
 | `ambiguous` | `object`（见下）\[\] | 是 | 同名多处，等店主点选 |
 | `unmatched` | `string`\[\] | 是 | 认不出的短语，原样 |
+| `source` | `string` | 否 | llm = 大模型拆句；rule = 模型不可用时的规则兜底 |
 
 `ambiguous[]` 的字段：
 
@@ -9787,6 +9789,7 @@ _无字段_
 | `refCode` | `string` | 是 | 区划码或聚落号 |
 | `name` | `string` | 是 | 从省到自己的整条路径，与选择器勾选时存的 name 同形 |
 | `phrase` | `string` | 是 | 店主原话里的那一段，确认表上给他对照 |
+| `guess` | `boolean` | 否 | 原话没点名、模型按常识展开的（「江浙沪」「偏远地区」）—— 端上默认不勾 |
 
 ### ScopePreview
 

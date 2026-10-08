@@ -7418,6 +7418,9 @@ components:
         phrase: 
           type: "string"
           description: "店主原话里的那一段，确认表上给他对照"
+        guess: 
+          type: "boolean"
+          description: "原话没点名、模型按常识展开的（「江浙沪」「偏远地区」）—— 端上默认不勾"
       required: 
         - "mode"
         - "level"
@@ -7482,6 +7485,9 @@ components:
           items: 
             type: "string"
           description: "认不出的短语，原样"
+        source: 
+          type: "string"
+          description: "llm = 大模型拆句；rule = 模型不可用时的规则兜底"
       required: 
         - "unlimited"
         - "items"

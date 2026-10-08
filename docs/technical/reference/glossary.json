@@ -21056,6 +21056,12 @@
           "ar": "استثناء"
         },
         {
+          "key": "store.text.guess",
+          "zh-CN": "按「{p}」补全的，请确认",
+          "en": "Expanded from \"{p}\", please check",
+          "ar": "مستنتج من «{p}»، يرجى التأكد"
+        },
+        {
           "key": "store.text.include",
           "zh-CN": "纳入",
           "en": "Include",
@@ -21066,6 +21072,12 @@
           "zh-CN": "识别",
           "en": "Recognize",
           "ar": "تحليل"
+        },
+        {
+          "key": "store.text.parsing",
+          "zh-CN": "识别中…",
+          "en": "Recognizing…",
+          "ar": "جارٍ التحليل…"
         },
         {
           "key": "store.text.ph",

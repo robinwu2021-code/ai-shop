@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 384,
+        "b-app": 385,
         "c-app": 275
       }
     },
@@ -1419,7 +1419,7 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 35,
+        "b-app": 39,
         "c-app": 17
       }
     },
@@ -3268,7 +3268,7 @@
       "name": "biz-scope-text",
       "file": "b-app/src/components/biz/biz-scope-text.vue",
       "scope": "B 端",
-      "lines": 199,
+      "lines": 203,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]",
@@ -3747,9 +3747,9 @@
         "sh-switch",
         "sh-uploader"
       ],
-      "libClassHits": 494,
-      "localSelectors": 93,
-      "localCssLines": 360,
+      "libClassHits": 498,
+      "localSelectors": 94,
+      "localCssLines": 367,
       "rolled": []
     },
     {
@@ -5550,7 +5550,7 @@
         "sh-sheet",
         "sh-switch"
       ],
-      "libClassHits": 33,
+      "libClassHits": 34,
       "localSelectors": 7,
       "localCssLines": 23,
       "rolled": []
