@@ -114,7 +114,42 @@ CREATE TABLE ord_share (
 
 **新 ErrorCode**（按「新 ErrorCode 四处」登记）：`SHARE_NOT_ALLOWED`（非下单人操作同步）、`SHARE_TARGET_SELF`（收件人就是自己）
 
-**短信模板**：阿里云新报备 → `ALI_SMS_TPL_ORDER_SHARED` / `shop.sms.ali.templates.order-shared`；`notify_template` 种 `TPL_SMS_ORDER_SHARED`
+**短信模板**（2026-10-08 已报备，审核中）：
+
+```
+模板CODE  SMS_512480923          签名 数智邻购   类型 通知短信
+正文      ${name}为您寄送了商品，可用本机号登录小程序查询物流。   （29 字 / 1 条）
+变量      name → 变量属性「个人姓名」
+配置      ALI_SMS_TPL_ORDER_SHARED / shop.sms.ali.templates.order-shared
+          notify_template 种 TPL_SMS_ORDER_SHARED，provider_template_id = SMS_512480923
+```
+
+⚠️ **审核通过前不要接线** —— 未过审的 CODE 调用会被拒。
+
+**微信订阅消息模板**（已选用，本期**不开**）：
+
+```
+模板ID    e9tQcC5iyO_-4gnsdH8Z7RKnZ3Yii8uRTB5Uq76JrS4
+标题      物品寄出通知        类型 一次性订阅
+关键词    物品名称、订单编号、温馨提示   （提交后不可改；刻意避开同步时还没有的运单号/承运方）
+```
+
+`notify_scene_channel` 落 WXSUB 行但 `enabled=0`，理由见 §4 风险表。
+
+### `${name}` 的取值链与发送前检测（AC10 的一部分）
+
+```java
+// 取值：昵称 → 完整手机号 → 放弃
+String display = nicknameOf(sharedByUserNo);
+if (isBlank(display)) display = phoneOf(sharedByUserNo);   // 完整号，规则允许 5~11 位
+if (!validSmsVar(display)) { logSkipped(...); return; }    // 不发，但留痕
+```
+
+`validSmsVar`：非空 · 长度 1~35 · 不含网址/QQ号/微信号。
+**绝不能发出主语空缺的短信**（「【数智邻购】为您寄送了商品」）。
+
+> 变量属性「个人姓名」是**审核辅助**（页面原文：「选择正确的变量属性将提高审核通过率」），
+> 不是发送期硬校验，所以手机号兜底不受它约束，无需重报模板。
 
 ### 模块设计
 
@@ -207,6 +242,8 @@ OrderVO.forReceiver(sub, share);            // 收件人：按 share.showAmount 
 | **号码回收** | 新机主看到旧单姓名/地址/品名 | 本期**接受**（ADR-029 决定二）：默认不可见压小面积 + 下单人可撤回 + 金额默认不可见 |
 | **突破「线索不发」政策** | 给没同意过的人发短信 | ADR-029 决定三划定边界：仅主动同步、幂等一次、不含详情与短链、带退订指引 |
 | **短信成本被刷** | 烧短信费 | 唯一键幂等 + 号码日上限（独立计数，不占 OTP 额度）+ 必须下单人主动触发 |
+| **微信那条发不出去** | 做了等于没做 | **不是桩、不是模板号错**（2026-10-08 查生产：`SHOP_WX_SUBSCRIBE_STUB=false`，三方同值，WXSUB 3 条全 SENT 零失败）。真瓶颈是**一次性订阅要收件人本人授权**，而线上「到货」模板授权数 **0**。故 `enabled=0` 挂着，等用户基数起来再开 |
+| **`${name}` 为空** | 发出主语空缺的短信 | 取值链 昵称→完整手机号→放弃；发送前 `validSmsVar` 硬断言，不过就不发并留痕 |
 | **pepper 变更** | 存量 hash 全失配，收件人集体看不到 | 与 `usr_person` 共用同一 pepper；`person-phone-pepper` 已记：**只配一次** |
 | **自动同步误伤** | 下单人没点头就暴露 | 总闸默认关 + 只对已注册 + 排除自己 + 金额恒不可见 + 可逐单取消 |
 | **迁移号撞车** | 本地不报、上生产起不来 | 落地前重取最大号，改号后 `clean package` |
@@ -230,6 +267,8 @@ OrderVO.forReceiver(sub, share);            // 收件人：按 share.showAmount 
 | AC8 | `OrderShareAutoSyncTest#autoSyncWhenRegisteredAndToggleOn` | ⬜ | 去掉「≠下单人」判定 → 给自己寄也建记录 → 变红 |
 | AC9 | `OrderShareAutoSyncTest#noAutoSyncWhenToggleOff` | ⬜ | 总闸判定取反 → 变红 |
 | AC10 | `OrderShareNotifyTest#registeredGetsInapp_unregisteredGetsSms` | ⬜ | 两条都发 → 断言「只发一次/只走一条」变红 |
+| AC10 | `OrderShareNotifyTest#blankNameNeverSends`（取值链+检测） | ⬜ | 去掉 `validSmsVar` → 空名也发出去 → 变红 |
+| AC10 | `OrderShareNotifyTest#fallsBackToPhoneWhenNoNickname` | ⬜ | 去掉手机号兜底 → 无昵称时不发 → 变红 |
 | AC11 | `AddressChoicesTest#perMerchantAddressRequired` | ⬜ | 还原成只校验全局 `addressId` → 变红 |
 | AC12 | `OrderShareFlowTest#noPhoneIdentityGetsHint` | ⬜ | 去掉标记、直接返空 → 变红 |
 
@@ -261,5 +300,6 @@ OrderVO.forReceiver(sub, share);            // 收件人：按 share.showAmount 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-08 | 方案成稿，待确认 |
-| | 短信模板报备提交（最长前置，与编码并行） |
+| 2026-10-08 | 短信模板已报备 `SMS_512480923`（审核中）；微信模板已选用 `e9tQcC5iy…`（本期 enabled=0） |
+| 2026-10-08 | 查实微信「发不出去」真因＝授权数为 0，非桩非配置；本机 `.env.local` 的失效模板号已改回与生产同值 |
 | | 已实现；闸门 [列出跑了哪几道、扫了哪些目录] 全绿 |
