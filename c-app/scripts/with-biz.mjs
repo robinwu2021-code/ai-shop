@@ -221,7 +221,9 @@ function rewrite(file) {
         )
         .replace(
           /const\s*\{([^}]*)\}\s*=\s*useI18n\(\)/,
-          'const {$1} = useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true })',
+          'const {$1} = useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true });\n'
+          // 末尾不带分号：源码里 useI18n() 后面本来就有一个，带上会变成 `;;`
+          + 'const __t = t',
         );
     } else if (/<script setup/.test(out)) {
       // 没解构过 t 的：自己补一行。放在 <script setup ...> 之后的第一行
@@ -229,10 +231,25 @@ function rewrite(file) {
         /(<script setup[^>]*>\n)/,
         `$1import { useI18n as __useI18n } from "vue-i18n";\n`
         + `import __BIZ_MESSAGES from "@/${PKG}/_i18n";\n`
-        + `const { t } = __useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true });\n`,
+        + `const { t } = __useI18n({ messages: __BIZ_MESSAGES, useScope: "local", inheritLocale: true });\n`
+        + `const __t = t;\n`,
       );
     }
-    out = out.replace(/\$t\(/g, "t(");
+    /*
+     * **换成 `__t` 而不是 `t`。**
+     *
+     * 模板里的 `$t` 是全局注入的，和页面脚本里的局部变量**从不冲突**；换成 `t` 之后
+     * 它就变成一个普通标识符，于是**任何把局部变量命名为 `t` 的作用域都会把它遮蔽掉**：
+     *
+     *     TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))   // 原样：对
+     *     TABS.map((t) => ({ key: t.key, label: String(t(t.labelKey)) }))    // 换成 t：把对象当函数调
+     *
+     * 运行时是 `t is not a function`，Vue 在渲染里抛错 → **整页 slot 不渲染，纯白屏**，
+     * 导航栏标题还在（那是 setNavigationBarTitle 设的），看起来像页面没写完。
+     * 2026-10-08 体验版 0.1.95 的订单页/商品页/消息页三处都是它 ——
+     * 此前被「底部菜单点不动」掩盖着，从来没人走到过那三页。
+     */
+    out = out.replace(/\$t\(/g, "__t(");
   }
 
   /*
@@ -511,6 +528,24 @@ function prepare() {
   const globalT = vueFiles.filter((f) => /\$t\(/.test(readFileSync(f, "utf8")));
   if (globalT.length) {
     throw new Error(`这些文件还在用全局 $t（会露键名）：\n  ${globalT.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
+  }
+  /*
+   * ①b 被局部变量遮蔽的翻译函数。模板里把 `t` 用作箭头参数是很自然的写法
+   * （`TABS.map((t) => …)`），而翻译函数一旦也叫 `t`，那一处就变成**把对象当函数调用**：
+   * 运行时 `t is not a function`，Vue 在渲染里抛错 → **整页纯白**，导航栏标题还在。
+   * 所以注入的翻译函数叫 `__t`；这条断言钉住「没有谁再去调用一个看起来像数据的 t」。
+   * 2026-10-08 体验版 0.1.95 的订单/商品/消息三页都栽在这上面。
+   */
+  /*
+   * 判据是「**把 `t` 当箭头参数的作用域里又调用了 `t(`**」，不是「模板里有裸 t(」——
+   * 后者会误报：b-app 本来就有一批模板直接用脚本解构出来的 `t(`（statement、
+   * biz-category-sheet…），那是对的。危险的只有被遮蔽的那种。
+   * 注入的 `__t(` 不会命中（`t(` 前面是 `_`，属于 \w）。
+   */
+  const shadowedT = vueFiles.filter(
+    (f) => /\(\s*t\s*(?:,[^)]*)?\)\s*=>[\s\S]{0,200}?[^\w.$]t\(/.test(readFileSync(f, "utf8")));
+  if (shadowedT.length) {
+    throw new Error(`这些文件在一个把 t 当参数的作用域里调用 t(（把对象当函数调，整页白屏）：\n  ${shadowedT.map((f) => f.replace(OUT + "/", "")).join("\n  ")}`);
   }
   // ② 用了 t( 却没拿到 local composer：要么露键名、要么 t 未定义
   const noLocalT = vueFiles.filter((f) => {

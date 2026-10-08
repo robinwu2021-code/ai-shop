@@ -43,6 +43,26 @@ describe("并包后商家页面的壳", () => {
     expect(script, "注入的商家 tab 要标成 reLaunch").toContain('nav: "reLaunch"');
   });
 
+  it("★★★ 翻译函数注入成 __t —— 叫 t 会被模板里的局部变量遮蔽，整页白屏", () => {
+    /*
+     * 模板里的 `$t` 是全局注入的，与页面脚本的局部变量从不冲突；换成 `t` 之后
+     * 它就是个普通标识符，于是**任何把局部变量命名为 t 的作用域都会遮蔽它**：
+     *
+     *   TABS.map((t) => ({ …, label: String($t(t.labelKey)) }))   // 原样：对
+     *   TABS.map((t) => ({ …, label: String(t(t.labelKey)) }))    // 换成 t：把对象当函数调
+     *
+     * 运行时 `t is not a function`，Vue 在渲染里抛错 → 整页 slot 不渲染、纯白，
+     * 而导航栏标题还在（那是 setNavigationBarTitle 设的），看着像页面没写完。
+     * 0.1.95 的订单/商品/消息三页都是它——此前被「底部菜单点不动」掩盖，没人走到过。
+     */
+    const script = read("c-app/scripts/with-biz.mjs");
+    expect(script, "注入的翻译函数要叫 __t").toContain('out.replace(/\\$t\\(/g, "__t(")');
+    expect(script).toContain("const __t = t");
+    // 闸门：把 t 当箭头参数的作用域里又调用 t( —— 判据不是「模板里有裸 t(」，
+    // 那会误报（b-app 本来就有一批模板直接用解构出来的 t）
+    expect(script).toContain("把 t 当参数的作用域里调用 t(");
+  });
+
   it("★★★ title-key 在构建期换成文案，并有闸门钉住不许残留", () => {
     const script = read("c-app/scripts/with-biz.mjs");
     // 两种写法都要认：静态键 → title="…"；三元 → :title="… ? '…' : '…'"
