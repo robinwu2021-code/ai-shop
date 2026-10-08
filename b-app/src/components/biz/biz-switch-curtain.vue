@@ -79,7 +79,6 @@ const { t } = useI18n();
 }
 .curtain__name {
   color: var(--sh-on-primary);
-  line-height: 1.3;
   text-align: center;
   word-break: break-all;
 }
