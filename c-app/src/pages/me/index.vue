@@ -805,10 +805,13 @@ onShow(() => {
           行业数量还会随运营配置长，平铺的那条路越往后越窄。
         -->
         <view class="field__input sh-row sh-row--between types" @tap="pickIndustry">
-          <text class="txt-body" :class="mForm.industry ? '' : 'types__ph'">
+          <text class="txt-body" :class="mForm.industry ? '' : 'txt-quiet'">
             {{ industryLabel || $t("merchant.pickIndustry") }}
           </text>
-          <text class="txt-caption types__go">›</text>
+          <!-- 可点开的指示。用 `›` 不用 sh-icon：图标表里没有「向右」这一个
+               （name 传个不存在的值不报错，只是什么都不画），而页面上
+               「我也想开店」那张卡用的也是这个字符，两处是同一个意思 -->
+          <text class="txt-caption txt-quiet">›</text>
         </view>
         <!--
           **未开放不等于不能报名**：拦下来就等于又拿准入的尺子量意向。
@@ -867,16 +870,6 @@ onShow(() => {
 /* 选一项的那一行：和下面几个输入框同一个形状，只是右端多一个指示 */
 .types {
   margin-top: 24rpx;
-}
-/* 没选时是提示语不是取值 —— 用 --sh-sub，与 input 的 placeholder 同色 */
-.types__ph {
-  color: var(--sh-sub);
-}
-/* 可点开的指示。用 `›` 而不是 sh-icon：图标表里没有「向右」这一个
-   （name 传个不存在的值不会报错，只是什么都不画），而页面上
-   「我也想开店」那张卡用的也是这个字符，两处是同一个意思 */
-.types__go {
-  color: var(--sh-sub);
 }
 /*
   「这一类还没开放」。**用 --sh-sub 不用 --sh-danger**：它是告知而不是错误 ——

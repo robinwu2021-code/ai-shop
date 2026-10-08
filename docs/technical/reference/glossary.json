@@ -3472,6 +3472,12 @@
           "ar": "رقم الجوال"
         },
         {
+          "key": "merchant.pickIndustry",
+          "zh-CN": "选择店铺类型",
+          "en": "Choose a shop type",
+          "ar": "اختر نوع المتجر"
+        },
+        {
           "key": "merchant.reply",
           "zh-CN": "商家回复：",
           "en": "Seller:",
