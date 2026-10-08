@@ -930,6 +930,21 @@ const pickerGroups = computed(() => {
  * <p>参数的落点后端已经核对到本品类的标准参数上了（`ParamMapping`）：
  * 「净重 4.5 斤」回来就是「净含量」，不再是一条维度号为中文名的游离参数。
  */
+/** 清除某个可选价（成本价/划线价/标称重量）。显式置 cleared 位，保存才真删（见 Row.cleared） */
+/** 多 SKU 列视图下，当前选中列（cost/origin/gram）在这一行的值字符串 */
+function curPriceVal(r: Row): string {
+  return priceField.value === "cost" ? r.costMajor
+    : priceField.value === "origin" ? r.originMajor
+    : priceField.value === "gram" ? r.nominalGram : "";
+}
+
+function clearPrice(r: Row, key: "cost" | "origin" | "gram") {
+  if (key === "cost") r.costMajor = "";
+  else if (key === "origin") r.originMajor = "";
+  else r.nominalGram = "";
+  r.cleared = { ...(r.cleared ?? {}), [key]: true };
+}
+
 async function applyTextParse(): Promise<number> {
   const text = parseInput.value.trim();
   if (!text) {
@@ -1886,10 +1901,10 @@ async function save(thenSubmit = false) {
            * 所以空串必须发 undefined 而不是 0 —— 发 0 会把已有的划线价抹掉，
            * 而商家只是没碰这一格。
            */
-          originPrice: r.originMajor.trim() ? toMinor(r.originMajor) : undefined,
-          nominalGram: r.nominalGram.trim() ? Number(r.nominalGram) || 0 : undefined,
+          originPrice: r.originMajor.trim() ? toMinor(r.originMajor) : (r.cleared?.origin ? 0 : undefined),
+          nominalGram: r.nominalGram.trim() ? Number(r.nominalGram) || 0 : (r.cleared?.gram ? 0 : undefined),
           // 成本价同一口径：空串 = 不改（他没碰这一格），填 0 = 清掉
-          costPrice: r.costMajor.trim() ? toMinor(r.costMajor) : undefined,
+          costPrice: r.costMajor.trim() ? toMinor(r.costMajor) : (r.cleared?.cost ? 0 : undefined),
           /*
            * 外部身份三件套：**原样发，包括空串** —— 后端「不传 = 不改，空串 = 清空」，
            * 而端上这三格永远是有值的（空字符串），所以发的就是他此刻看到的那份。
@@ -3002,6 +3017,7 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': belowCost(rows[0]!) }"
             type="digit"
           />
+          <text v-if="rows[0]!.costMajor.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'cost')">清除</text>
         </view>
         <text v-if="belowCost(rows[0]!)" class="txt-caption pr__warn">{{ $t("goods.belowCost") }}</text>
         <view class="pr sh-row">
@@ -3014,11 +3030,13 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': badOrigin(rows[0]!) }"
             type="digit"
           />
+          <text v-if="rows[0]!.originMajor.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'origin')">清除</text>
         </view>
         <view v-if="(SHOW_FRESH_FIELDS && isFresh) || shipsByExpress" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="txt-sub pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="txt-body pr__v sh-num" type="number" />
+          <text v-if="rows[0]!.nominalGram.trim()" class="pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'gram')">清除</text>
         </view>
         <!-- 快递运费预估（§8 AC20）：买家寄基础价地区付多少；偏远加收与满额包邮见「发货设置」里的运费模板 -->
         <text v-if="shipsByExpress && freightOne" class="txt-caption sh-muted freight__est">
@@ -3066,6 +3084,11 @@ async function save(thenSubmit = false) {
             type="digit"
           />
           <input maxlength="6" v-else v-model="r.nominalGram" class="txt-body pr__v sh-num" type="number" />
+          <text
+            v-if="priceField !== 'price' && curPriceVal(r).trim()"
+            class="pr__clear sh-hit"
+            @tap="clearPrice(r, priceField as 'cost' | 'origin' | 'gram')"
+          >清除</text>
         </view>
         <!-- 逐行看毛利在 8 行的表上没人看得过来，汇成一句 -->
         <text v-if="avgMargin !== null" class="txt-caption pr__margin">
@@ -3989,4 +4012,12 @@ async function save(thenSubmit = false) {
 /* 搜索框在面板上：面板就是 surface 底，搜索框得换成输入框那一档的底色才看得出是个框 */
 .pick__search { margin-top: 16rpx; background: var(--sh-faint); }
 .cat-lv__none { gap: 16rpx; margin-top: 8rpx; }
+
+.pr__clear {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub, #999);
+  padding: 4rpx 8rpx;
+}
 </style>

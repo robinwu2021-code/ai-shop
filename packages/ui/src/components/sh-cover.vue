@@ -45,7 +45,7 @@ const isImg = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith(
 
 <template>
   <view class="sh-center cover">
-    <image v-if="isImg(props.src)" :src="shown" :mode="props.mode" class="cover__img" />
+    <image v-if="isImg(props.src)" :src="shown" :mode="props.mode" class="cover__img" lazy-load />
     <text v-else class="cover__emoji"><slot>{{ props.src }}</slot></text>
   </view>
 </template>
