@@ -2200,6 +2200,12 @@
           "ar": "بدون حدود جغرافية"
         },
         {
+          "key": "goods.scopeUnlimitedExcept",
+          "zh-CN": "不限地区（{names}除外）",
+          "en": "No area limit (except {names})",
+          "ar": "بدون حدود جغرافية (باستثناء {names})"
+        },
+        {
           "key": "goods.shop",
           "zh-CN": "店铺",
           "en": "Store",
