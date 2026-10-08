@@ -3354,7 +3354,7 @@
       "name": "biz-switch-curtain",
       "file": "b-app/src/components/biz/biz-switch-curtain.vue",
       "scope": "B 端",
-      "lines": 111,
+      "lines": 110,
       "props": [
         "phase: CurtainPhase",
         "name: string"
@@ -5533,7 +5533,7 @@
       ],
       "libClassHits": 2,
       "localSelectors": 15,
-      "localCssLines": 79,
+      "localCssLines": 78,
       "rolled": [
         {
           "id": "listrow",
