@@ -1621,7 +1621,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 48,
+        "b-app": 49,
         "c-app": 18
       }
     },
@@ -3268,7 +3268,7 @@
       "name": "biz-scope-text",
       "file": "b-app/src/components/biz/biz-scope-text.vue",
       "scope": "B 端",
-      "lines": 204,
+      "lines": 199,
       "props": [
         "visible: boolean",
         "areas: ServiceArea[]",
@@ -5550,18 +5550,10 @@
         "sh-sheet",
         "sh-switch"
       ],
-      "libClassHits": 32,
-      "localSelectors": 8,
-      "localCssLines": 28,
-      "rolled": [
-        {
-          "id": "wraprow",
-          "label": "换行横排",
-          "lib": ".sh-wrap",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-          "gap": false
-        }
-      ]
+      "libClassHits": 33,
+      "localSelectors": 7,
+      "localCssLines": 23,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -5913,16 +5905,6 @@
       "rule": "pickImages\\(|chooseImages\\(",
       "pages": [
         "c-app/me/profile"
-      ]
-    },
-    {
-      "id": "wraprow",
-      "label": "换行横排",
-      "lib": ".sh-wrap",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-      "pages": [
-        "b-app/biz-scope-text"
       ]
     }
   ],
