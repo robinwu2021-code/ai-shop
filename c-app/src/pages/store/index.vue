@@ -25,7 +25,6 @@ import { useLocationStore } from "@/stores/location";
 import { ROUTES } from "@shared/utils/constants";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
-import { rememberStore } from "@/shared/store-choice";
 import { money } from "@shared/utils/money";
 import { distance } from "@shared/utils/format";
 import { hourMinute, isoDate } from "@shared/utils/datetime";
@@ -197,14 +196,12 @@ async function load() {
   }
 }
 
-/** 取到门户之后的几件事：标题、记住在逛哪家店、进店记录、我常买 */
+/** 取到门户之后的几件事：标题、进店记录、我常买 */
 async function afterLoad() {
   const home = data.value;
   if (!home) return;
   uni.setNavigationBarTitle({ title: storeName.value });
   if (home.portal) {
-    // 结算时这个主体的单优先落到这家店（§2.7）
-    rememberStore(home.merchant.merchantNo, home.portal.storeNo);
     /*
      * 进店：记进「我的店」+ 归因。**分享的回报就在这一步**：点开商家分享的门店，
      * 这家店从此留在他店铺页的「我的店」里。没登录不记（要挂在具体的人身上）；失败不影响看店。

@@ -24,7 +24,9 @@ function body(name: string, len = 600): string {
 
 describe("默认最省、动过不改", () => {
   it("★★★ 只有没动过才套用建议", () => {
-    expect(code).toContain("if (!touched.value && applySuggestion(p.offers)) return;");
+    // 2026-10-09 起还要「只套一次」：建议相对当前组合算，套 A 后可能建议 B、套 B 又建议 A，
+    // 而每套一次都改问价依赖 —— 预览把自己喂成死循环（线上 401 次/分钟，金额停在「计算中」）
+    expect(code).toContain("if (!touched.value && !suggestionApplied.value && applySuggestion(p.offers)) {");
   });
 
   it("★★★ 选券、选活动都算「动过」", () => {

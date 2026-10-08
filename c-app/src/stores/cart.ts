@@ -6,10 +6,19 @@ import { inTimelineSinglePage } from "@shared/ports/share";
 import { singlePageBlockedMessage } from "@/shared/single-page";
 import type { CartItem, FulfillmentType } from "@shared/types";
 
-/** 履约组内的商家段。一段 = 结算后的一笔子订单 */
+/**
+ * 履约组内的一段。一段 = 结算后的一笔子订单 = **一家门店**（ADR-031）。
+ *
+ * `merchantNo` 是这一段的**标识**：有门店用门店号，没有（老后端）用商家号 ——
+ * 收货地址覆盖、整段勾选、活动选择都按它存，同主体两家店因此各是一段。
+ * 回传后端时这个值放在 `storeNo` 里，后端先按门店号认。
+ * `merchantName` 是段头：有门店显示店名。
+ */
 export interface MerchantSegment {
   merchantNo: string;
   merchantName: string;
+  /** 这一段的门店；老后端为空 */
+  storeNo?: string;
   items: CartItem[];
 }
 
@@ -21,7 +30,7 @@ export interface CartGroup {
 }
 
 /**
- * 按商家聚段，**保持首次出现的顺序**。
+ * 按门店聚段（没有门店按商家），**保持首次出现的顺序**。
  *
  * 不排序是刻意的：用户加购的先后是他自己的心智顺序，
  * 按店名或单号重排会让「我刚加的那件」跳到别处。
@@ -29,9 +38,14 @@ export interface CartGroup {
 export function segmentByMerchant(items: CartItem[]): MerchantSegment[] {
   const map = new Map<string, MerchantSegment>();
   for (const it of items) {
-    const key = it.merchantNo || "";
+    const key = it.storeNo || it.merchantNo || "";
     const seg = map.get(key)
-      ?? { merchantNo: key, merchantName: it.merchantName || "", items: [] };
+      ?? {
+        merchantNo: key,
+        merchantName: it.storeName || it.merchantName || "",
+        storeNo: it.storeNo || undefined,
+        items: [],
+      };
     seg.items.push(it);
     map.set(key, seg);
   }

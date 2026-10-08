@@ -260,7 +260,7 @@ export interface CreateOrderReqBody {
    */
   storeChoices?: StoreChoice[];
   /** 逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId */
-  addressChoices?: { merchantNo: string; addressId: string }[];
+  addressChoices?: { merchantNo: string; addressId: string; storeNo?: string }[];
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /**

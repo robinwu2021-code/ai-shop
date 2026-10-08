@@ -15,7 +15,6 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
-import { storeChoicesFor } from "@/shared/store-choice";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
@@ -487,6 +486,7 @@ const amount = computed(() => serverAmount.value ?? localEstimate.value);
  */
 function applyPickupGroups(subs: Array<{
   merchantName?: string;
+  store?: { storeName?: string | null } | null;
   pickupNo?: string;
   pickupName?: string;
   pickupDistanceM?: number | null;
@@ -504,7 +504,8 @@ function applyPickupGroups(subs: Array<{
   }>();
   const missing: string[] = [];
   for (const sub of subs) {
-    const name = sub.merchantName ?? "";
+    // 一组一家门店（ADR-031）：说门店名，同主体两家店才分得开
+    const name = sub.store?.storeName || sub.merchantName || "";
     if (!sub.pickupNo) {
       missing.push(name);
       continue;
@@ -596,14 +597,30 @@ const touched = ref(false);
  */
 const suggestionApplied = ref(false);
 
-/** 这一单各主体在逛哪家店（门户里记下的）。在 B 店门户挑的货由 B 店履约（TDD §2.7） */
-function storeChoicesPayload() {
-  return storeChoicesFor(items.value.map((it) => it.merchantNo));
+/*
+ * 门店不再由端上传（ADR-031）：商品只属于一家门店，后端按商品定门店。
+ * 此前这里带着「这个主体逛的是哪家店」，同主体两家店各卖各的货时整单被落到一家店 ——
+ * 2026-10-09 盐在粮油、柿子在鲜果，盐的预览 70076 已下架，运费退回本地估算的 6 元。
+ */
+
+/**
+ * 段标识 → 回传给后端的那一对（商家号 + 门店号）。段标识有门店时就是门店号（见 MerchantSegment），
+ * 后端先按门店号认，老后端只认商家号。
+ */
+function choiceTarget(key: string): { merchantNo: string; storeNo?: string } {
+  const seg = merchantSegments.value.find((m) => m.merchantNo === key);
+  if (!seg?.storeNo) return { merchantNo: key };
+  return { merchantNo: seg.items[0]?.merchantNo || key, storeNo: seg.storeNo };
+}
+
+/** 段标识对应的段头（门店名；老后端回落商家名）。活动面板一单多家店时写在每家前面 */
+function segmentName(key: string, fallback: string): string {
+  return merchantSegments.value.find((m) => m.merchantNo === key)?.merchantName || fallback;
 }
 
 function choicesPayload(): ActivityChoice[] | undefined {
   const e = Object.entries(activityChoices.value);
-  return e.length ? e.map(([merchantNo, activityNo]) => ({ merchantNo, activityNo })) : undefined;
+  return e.length ? e.map(([key, activityNo]) => ({ ...choiceTarget(key), activityNo })) : undefined;
 }
 
 function addressChoicesPayload() {
@@ -611,7 +628,7 @@ function addressChoicesPayload() {
     ([, v]) => v && v !== addressId.value,
   );
   return entries.length
-    ? entries.map(([merchantNo, addressId]) => ({ merchantNo, addressId }))
+    ? entries.map(([key, addressId]) => ({ ...choiceTarget(key), addressId }))
     : undefined;
 }
 
@@ -622,7 +639,8 @@ function addressChoicesPayload() {
 function applySuggestion(o: CheckoutOffers | null | undefined): boolean {
   if (!o) return false;
   const wantCoupon = o.suggestedCouponNo ?? "";
-  const wantChoices = Object.fromEntries(o.suggestedChoices.map((c) => [c.merchantNo, c.activityNo]));
+  // 按段标识存（有门店用门店号），与面板、回传同一个键
+  const wantChoices = Object.fromEntries(o.suggestedChoices.map((c) => [c.storeNo || c.merchantNo, c.activityNo]));
   const same = wantCoupon === couponNo.value
     && JSON.stringify(wantChoices) === JSON.stringify(activityChoices.value);
   if (same) return false;
@@ -674,7 +692,6 @@ async function refreshAmount() {
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
       activityChoices: choicesPayload(),
-      storeChoices: storeChoicesPayload(),
     });
     if (seq !== amountSeq) return;
     serverAmount.value = p.amount;
@@ -749,7 +766,6 @@ async function refreshCapability() {
       fulfillment: fulfillment.value,
       // 不传 pickupNo：由后端按地址逐个商家配（与 preview 同一套规则）
       // 落哪家店决定能怎么付（门店级当面付开关），所以门店偏好也要带
-      storeChoices: storeChoicesPayload(),
     });
     // 同 refreshAmount：过期响应整份丢掉，否则「改成快递」之后
     // 迟到的自提能力会把当面付那个选项又放回屏幕上
@@ -1126,7 +1142,6 @@ async function submit() {
       payMode: payMode.value,
       usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
       activityChoices: choicesPayload(),
-      storeChoices: storeChoicesPayload(),
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
@@ -1557,19 +1572,20 @@ onMounted(async () => {
       -->
       <view v-if="offers?.merchants.length" class="sh-block">
         <text class="txt-caption txt-strong panel__head">{{ $t("confirm.panelActivityPick") }}</text>
-        <view v-for="m in offers.merchants" :key="m.merchantNo" class="sh-cells">
-          <text v-if="offers.merchants.length > 1" class="txt-caption sh-muted">{{ m.merchantName }}</text>
+        <view v-for="m in offers.merchants" :key="m.storeNo || m.merchantNo" class="sh-cells">
+          <text v-if="offers.merchants.length > 1" class="txt-caption sh-muted">{{
+            segmentName(m.storeNo || m.merchantNo, m.merchantName) }}</text>
           <view
             v-for="o in m.options"
             :key="o.activityNo"
             class="sh-cell sh-row sh-row--between"
-            @tap="chooseActivity(m.merchantNo, o.activityNo)"
+            @tap="chooseActivity(m.storeNo || m.merchantNo, o.activityNo)"
           >
             <text class="txt-body sh-fill">{{ o.name }}</text>
             <text class="txt-body is-danger sh-num">-{{ money(o.amountMinor) }}</text>
             <sh-icon v-if="m.chosen === o.activityNo" name="check" :size="28" color="var(--sh-primary)"></sh-icon>
           </view>
-          <view class="sh-cell sh-row sh-row--between" @tap="chooseActivity(m.merchantNo, ACTIVITY_NONE)">
+          <view class="sh-cell sh-row sh-row--between" @tap="chooseActivity(m.storeNo || m.merchantNo, ACTIVITY_NONE)">
             <text class="txt-body">{{ $t("confirm.noActivity") }}</text>
             <sh-icon v-if="m.chosen === ACTIVITY_NONE" name="check" :size="28" color="var(--sh-primary)"></sh-icon>
           </view>
