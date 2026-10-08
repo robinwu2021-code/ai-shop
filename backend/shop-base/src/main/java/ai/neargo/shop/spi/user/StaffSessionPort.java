@@ -33,17 +33,7 @@ public interface StaffSessionPort {
      *
      * <p><b>fail-closed</b> —— 宁可店员暂时切不过去，也不要因为实现没接上而放行。
      */
-    StaffSessionPort NONE = new StaffSessionPort() {
-        @Override
-        public Optional<String> issueStaffSession(String phone) {
-            return Optional.empty();
-        }
-
-        @Override
-        public boolean hasActiveStaffAccount(String phone) {
-            return false;
-        }
-    };
+    StaffSessionPort NONE = phone -> Optional.empty();
 
     /**
      * 按店员登录手机号签发 B 端会话令牌。
@@ -66,7 +56,19 @@ public interface StaffSessionPort {
      * <p>与 {@link StaffLoginPhonePort#isStaffLoginPhone} 也不是一回事：那个<b>含已停用</b>，
      * 问的是「这个号能不能被录进白名单」，口径更宽，拿来判身份会多放行一批人。
      *
+     * <p><b>为什么是 default 而不是第二个抽象方法</b>：加上去的话这个接口就不再是
+     * 函数式接口，{@link #NONE} 只能写成匿名类 —— 而匿名类是一个**具名的 Port 实现**
+     * ({@code StaffSessionPort$1})，住在 spi 包里，架构闸「Port 实现集中在各域的 .port 包」
+     * 当场变红（2026-10-08 真撞了一次）。与 {@code BizIdentityResolver} 同一个形状：
+     * 单抽象方法 + default。
+     *
+     * <p>default 回 false 就是 {@link #NONE} 要的那个行为（fail-closed）。
+     * <b>真实实现必须覆盖它</b> —— 不覆盖的症状是「所有店员都看不到商家运营入口」，
+     * 方向上安全，但同样是错的。
+     *
      * @param phone 当前登录用户本人的**完整**手机号，见类注释「安全边界」
      */
-    boolean hasActiveStaffAccount(String phone);
+    default boolean hasActiveStaffAccount(String phone) {
+        return false;
+    }
 }
