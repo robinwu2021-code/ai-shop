@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 124,
+        "b-app": 125,
         "c-app": 28,
         "lib": 13
       },
@@ -3348,6 +3348,57 @@
       ],
       "rootDecl": {
         "margin-bottom": "12rpx"
+      }
+    },
+    {
+      "name": "biz-switch-curtain",
+      "file": "b-app/src/components/biz/biz-switch-curtain.vue",
+      "scope": "B 端",
+      "lines": 112,
+      "props": [
+        "phase: CurtainPhase",
+        "name: string"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "切店幕布：整屏主色、大字店名",
+      "why": "—",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [
+          30,
+          56
+        ],
+        "spacing": [
+          16,
+          24,
+          64
+        ],
+        "radius": [],
+        "deps": [
+          "sh-icon"
+        ]
+      },
+      "rootClasses": [
+        "curtain"
+      ],
+      "rootDecl": {
+        "position": "fixed",
+        "inset": "0",
+        "z-index": "10000",
+        "display": "flex",
+        "flex-direction": "column",
+        "align-items": "center",
+        "justify-content": "center",
+        "gap": "24rpx",
+        "padding": "0 64rpx",
+        "background": "var(--sh-primary)",
+        "color": "var(--sh-on-primary)",
+        "animation": "curtain-in 220ms ease-out",
+        "transition": "opacity 250ms ease-in"
       }
     },
     {
@@ -4688,7 +4739,8 @@
       "file": "b-app/src/pages/store-pick/index.vue",
       "components": [
         "sh-check",
-        "sh-scaffold"
+        "sh-scaffold",
+        "biz-switch-curtain"
       ],
       "libClassHits": 15,
       "localSelectors": 10,
@@ -4725,7 +4777,8 @@
       "components": [
         "sh-icon",
         "sh-option",
-        "sh-scaffold"
+        "sh-scaffold",
+        "biz-switch-curtain"
       ],
       "libClassHits": 81,
       "localSelectors": 25,
@@ -5472,6 +5525,27 @@
     },
     {
       "app": "b-app",
+      "page": "biz-switch-curtain",
+      "key": "b-app/biz-switch-curtain",
+      "file": "b-app/src/components/biz/biz-switch-curtain.vue",
+      "components": [
+        "sh-icon"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 15,
+      "localCssLines": 80,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        }
+      ]
+    },
+    {
+      "app": "b-app",
       "page": "biz-time-range",
       "key": "b-app/biz-time-range",
       "file": "b-app/src/components/biz/biz-time-range.vue",
@@ -5780,13 +5854,23 @@
       "pages": [
         "c-app/me/profile"
       ]
+    },
+    {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "b-app/biz-switch-curtain"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
     "blocks": 81,
-    "components": 37,
-    "pages": 153,
+    "components": 38,
+    "pages": 154,
     "gapKinds": 2
   }
 }
