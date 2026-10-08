@@ -548,12 +548,34 @@ export type ShipmentStatus =
   | "DELIVERED"
   | "EXCEPTION";
 
+/** 展示渠道（TDD-物流轨迹多渠道）。**端上按它决定怎么渲染，自己不判断该用哪个** —— 判定在后端一处做完 */
+export type TraceDisplayMode = "wx-plugin" | "self-map";
+
+/** 城市路线：地图上「出发 / 当前 / 目的」三个标记。取不到时整个为空 */
+export interface TraceRoute {
+  /** 出发城市名 */
+  from?: string | null;
+  /** 当前所在城市名 */
+  cur?: string | null;
+  /** 目的城市名 */
+  to?: string | null;
+}
+
 /** 物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读） */
 export interface ShipmentTrace {
   /** 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 */
   status: ShipmentStatus;
   /** 轨迹节点，按时间倒序（最新在前，页面从上往下读） */
   nodes: ShipmentTraceNode[];
+  /**
+   * 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页；
+   * `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map`
+   */
+  displayMode?: TraceDisplayMode;
+  /** 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 */
+  displayToken?: string | null;
+  /** 城市路线，自建地图用 */
+  route?: TraceRoute | null;
 }
 
 /** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */
@@ -564,6 +586,13 @@ export interface ShipmentTraceNode {
   text: string;
   /** 所在城市/网点，承运商没给时省略 */
   location?: string;
+  /**
+   * 行政区中心纬度 ×1e6，地图用。**不是快件的实时位置** —— 聚合器只给到行政区中心点，
+   * 所以地图只能画城市级折线。没解析出行政区的节点没有坐标
+   */
+  latE6?: number | null;
+  /** 行政区中心经度 ×1e6 */
+  lngE6?: number | null;
 }
 
 /** 商品详情的社区集单块（原型 s26）。不是集单商品时接口返回 null */

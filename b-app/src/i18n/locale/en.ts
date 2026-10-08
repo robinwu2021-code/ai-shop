@@ -1,4 +1,18 @@
 export default {
+  trace: {
+    step: {
+      picked: "Picked up",
+      transit: "In transit",
+      delivering: "Out for delivery",
+      signed: "Delivered",
+    },
+    openWx: "View tracking",
+    cityLevel: "City-level route, not live position",
+    callCourier: "Call courier",
+    unfold: "Show all {n}",
+    fold: "Collapse",
+    at: "{t}",
+  },
   common: {
     loadFailed: "Could not load",
     loadFailedTip: "Most likely the network. Check it and try again.",

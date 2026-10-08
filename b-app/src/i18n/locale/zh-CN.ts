@@ -1,6 +1,20 @@
 // B 端词条。与 C 端各自维护 —— 商家看的是「待发货 / 待核销」，消费者看的是「待收货 / 取货码」，
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
+  trace: {
+    step: {
+      picked: "已揽收",
+      transit: "运输中",
+      delivering: "派送中",
+      signed: "已签收",
+    },
+    openWx: "查看物流详情",
+    cityLevel: "城市级示意，非实时位置",
+    callCourier: "拨打快递员电话",
+    unfold: "展开全部 {n} 条",
+    fold: "收起",
+    at: "{t}",
+  },
   common: {
     loadFailed: "没能加载出来",
     loadFailedTip: "多半是网络不通。检查网络后重试。",

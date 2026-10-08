@@ -189,6 +189,12 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "五个都是物流领域特有词、L1 表里没有对应：CREATED 建单未揽、PICKED_UP 已揽、"
       + "IN_TRANSIT 运输中、DELIVERED 已签收、EXCEPTION 疑难件（非终态，可能之后又派成）",
     words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
+  { decl: "shared:TraceDisplayMode", dom: "fulfillment", shape: "CLASS", verdict: "OK",
+    note: "物流轨迹的展示渠道（TDD-物流轨迹多渠道 §2.1，与 ShipmentStatus 正交——那是「到哪了」，这是「用什么界面呈现」）。"
+      + "后端 ful_shipment.display_channel 的取值域，详情端点按请求端下发：wx-plugin 微信官方物流页"
+      + "（仅小程序端、且已换到 waybill_token 时），self-map 自建地图+步骤条+时间线（三端兜底、不挑支付方式）。"
+      + "刻意做成分类型而非双值布尔——后面要加支付宝小程序、承运商 H5 等渠道时只是多一个取值",
+    words: ["wx-plugin", "self-map"] },
   { decl: "shared:GoodsStatus", dom: "core", shape: "STATUS", verdict: "RENAME",
     note: "与 ops-web SkuStatus 重叠，P4 待确认状态挂 SPU 还是 SKU。"
       + "AUDITING→PENDING **2026-08-12 真正归一**：此前只归在端上，"

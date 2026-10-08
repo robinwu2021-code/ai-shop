@@ -1,4 +1,19 @@
 export default {
+  trace: {
+    step: {
+      picked: "已揽收",
+      transit: "运输中",
+      delivering: "派送中",
+      signed: "已签收",
+    },
+    openWx: "查看物流详情",
+    cityLevel: "城市级示意，非实时位置",
+    callCourier: "拨打快递员电话",
+    unfold: "展开全部 {n} 条",
+    fold: "收起",
+    wxUnavailable: "物流插件没加载出来，稍后再试",
+    at: "{t}",
+  },
   common: {
     later: "以后再说",
     loadFailed: "没能加载出来",

@@ -4,6 +4,9 @@
 // - 正常在途：什么都不用做，用来对照
 // - 疑难件（EXCEPTION）：轨迹停在异常节点，运营要去联系承运商
 // - 已签收：用来验证「已签收不许改运单号」那条规则
+//
+// 展示渠道也要覆盖到两种 + 一次失败：默认值是 self-map，三条样本都不带的话，
+// 抽屉里那一行永远显示同一个字，「渠道落到哪条」这件事在 mock 下根本验不了。
 import type { FreightTemplate, Shipment } from "@/lib/types";
 
 export const shipments: Shipment[] = [
@@ -11,6 +14,7 @@ export const shipments: Shipment[] = [
     shipmentNo: "SH2026080601", orderNo: "SO2026080504", carrier: "SF", waybillNo: "SF1234567890",
     status: "IN_TRANSIT", receiver: "阿May", region: "浙江省 杭州市",
     createdAt: "2026-08-04T10:00:00Z", updatedAt: "2026-08-05T22:10:00Z",
+    displayChannel: "wx-plugin",
     traces: [
       { at: "2026-08-04T10:20:00Z", text: "快件已揽收", location: "杭州转运中心" },
       { at: "2026-08-05T02:40:00Z", text: "快件已发出", location: "杭州转运中心" },
@@ -21,6 +25,8 @@ export const shipments: Shipment[] = [
     shipmentNo: "SH2026080602", orderNo: "SO2026080506", carrier: "JD", waybillNo: "JD9988776655",
     status: "EXCEPTION", receiver: "海棠", region: "新疆维吾尔自治区 喀什地区",
     createdAt: "2026-08-03T01:00:00Z", updatedAt: "2026-08-05T09:00:00Z",
+    displayChannel: "self-map",
+    displayFailReason: "9300559 运单不存在，已落回自建展示",
     traces: [
       { at: "2026-08-03T01:30:00Z", text: "快件已揽收", location: "杭州分拣中心" },
       { at: "2026-08-04T18:00:00Z", text: "快件已发出", location: "乌鲁木齐转运中心" },

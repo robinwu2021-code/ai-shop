@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
 import { IdCell } from "@/components/ui/misc";
+import { traceStepIndex } from "@/lib/trace-step";
 import type { FulfillmentCopy } from "./copy";
 
 const useShipStatusMap = (c: FulfillmentCopy): StatusMap<ShipmentStatus> => ({
@@ -148,6 +149,52 @@ export function ExpressTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
             </DrawerSection>
 
             <DrawerSection title={c.secTraces}>
+              {/*
+                先说这一单走的哪个渠道。运营处理的是异常件，而「买家看不到物流」的第一个问题
+                就是「哪条链、哪一环断了」——渠道名与失败原因都只给运营看，不给买家看。
+              */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="txt-caption text-muted-foreground">{c.traceChannel}</span>
+                <span className="txt-caption">{current.displayChannel ?? "self-map"}</span>
+                {current.displayFailReason ? (
+                  <span className="txt-caption text-destructive">
+                    {c.traceFail}：{current.displayFailReason}
+                  </span>
+                ) : null}
+              </div>
+              {/*
+                四档步骤条：一眼看出走到第几步，不用读完整条轨迹。
+
+                判据必须与端上的 packages/ui/src/components/sh-trace.vue 保持一致，
+                否则同一单运营看到「运输中」而买家看到「派送中」—— 运营是照着自己这屏
+                答买家的问的。两处各写一份是因为 ops-web 不引 packages/shared；
+                改一处就要改另一处（异常件不画步骤条、派送中靠节点文案认）。
+              */}
+              {current.status !== "EXCEPTION" && (
+              <ol className="mb-4 flex gap-2">
+                {([
+                  [c.traceStepPicked, 0],
+                  [c.traceStepTransit, 1],
+                  [c.traceStepDelivering, 2],
+                  [c.traceStepSigned, 3],
+                ] as const).map(([label, i]) => {
+                    const at = traceStepIndex(current);
+                    return (
+                      <li key={label} className="flex flex-1 flex-col items-center gap-1">
+                        {/* 分段横条而不是小圆点：抽屉比手机宽得多，一条占满那一档更好认 */}
+                        <span
+                          className={`h-1 w-full rounded-chip ${
+                            i < at ? "bg-success" : i === at ? "bg-primary" : "bg-muted"
+                          }`}
+                        />
+                        <span className={`txt-caption ${i <= at ? "" : "text-muted-foreground"}`}>
+                          {label}
+                        </span>
+                      </li>
+                    );
+                })}
+              </ol>
+              )}
               {/* 轨迹倒序：最新的节点是运营要先看到的那条 */}
               <ol className="space-y-3">
                 {current.traces.map((t, i) => (

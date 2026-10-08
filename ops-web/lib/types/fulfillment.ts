@@ -132,6 +132,13 @@ export interface Shipment {
   updatedAt: string;
   /** 轨迹节点，按时间正序 */
   traces: ShipmentTrace[];
+  /**
+   * 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** ——
+   * 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」
+   */
+  displayChannel?: string | null;
+  /** 最近一次备载荷失败的原因，只给运营看，不给买家看 */
+  displayFailReason?: string | null;
 }
 
 // ── 运费模板与超区（P-5.2.3）────────────────────────────────────────

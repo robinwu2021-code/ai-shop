@@ -1,4 +1,19 @@
 export default {
+  trace: {
+    step: {
+      picked: "تم الاستلام",
+      transit: "في الطريق",
+      delivering: "قيد التسليم",
+      signed: "تم التسليم",
+    },
+    openWx: "عرض التتبع",
+    cityLevel: "مسار على مستوى المدينة، ليس الموقع الحالي",
+    callCourier: "اتصل بالمندوب",
+    unfold: "عرض الكل ({n})",
+    fold: "طيّ",
+    wxUnavailable: "تعذّر تحميل مكوّن التتبع، حاول لاحقًا",
+    at: "{t}",
+  },
   common: {
     later: "لاحقًا",
     loadFailed: "تعذّر التحميل",

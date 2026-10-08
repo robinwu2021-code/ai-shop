@@ -12,6 +12,7 @@ import { countdown, datetime, money } from "@shared/utils/format";
 import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types";
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
+import { openWxWaybillTracking } from "@/ports/wx-logistics";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
@@ -64,6 +65,23 @@ function copyOrderNo() {
   const no = order.value?.orderNo;
   if (!no) return;
   uni.setClipboardData({ data: no });
+}
+/** 运单号单独一颗复制：买家想去别处查就让他查，别堵着 */
+function copyExpressNo() {
+  const no = order.value?.expressNo;
+  if (!no) return;
+  uni.setClipboardData({ data: no });
+}
+/**
+ * 打开微信官方物流页（TDD-物流轨迹多渠道 §2.6）。条件编译收在 ports/wx-logistics 里，
+ * 这里只管「没打开成功就提示一句」。打不开的常因是插件没初始化好，不白跳。
+ */
+function openWxTracking() {
+  const token = order.value?.trace?.displayToken;
+  if (!token) return;
+  if (!openWxWaybillTracking(token)) {
+    uni.showToast({ title: String(t("trace.wxUnavailable")), icon: "none" });
+  }
 }
 /**
  * 拉挂了。
@@ -513,7 +531,10 @@ onShow(load);
       </view>
       <view v-if="order.expressNo" class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
-        <text class="txt-caption fact__v sh-num">{{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}</text>
+        <text class="txt-caption fact__v sh-num" @tap="copyExpressNo">
+          {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
+          <text class="txt-primary">{{ $t("order.copy") }}</text>
+        </text>
       </view>
       <!--
         物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点时才显示；没有就整块不出现
@@ -521,12 +542,8 @@ onShow(load);
       -->
       <view v-if="order.trace && order.trace.nodes.length" class="fact fact--col">
         <text class="txt-caption fact__k">{{ $t("order.trace") }}</text>
-        <view class="otrace">
-          <view v-for="(n, i) in order.trace.nodes" :key="i" class="otrace__node sh-row sh-row--top">
-            <text class="txt-caption sh-muted otrace__at sh-num">{{ datetime(n.at) }}</text>
-            <text class="txt-caption otrace__text">{{ n.text }}<text v-if="n.location" class="sh-muted"> · {{ n.location }}</text></text>
-          </view>
-        </view>
+        <!-- 地图 + 步骤条 + 折叠时间线。件与 B 端共用（packages/ui），两端各写一份迟早分叉 -->
+        <sh-trace :trace="order.trace" @open-wx="openWxTracking"></sh-trace>
       </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
@@ -741,21 +758,6 @@ onShow(load);
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-}
-.otrace {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-.otrace__node {
-  gap: 16rpx;
-}
-.otrace__at {
-  flex-shrink: 0;
-}
-.otrace__text {
-  flex: 1;
-  color: var(--sh-ink);
 }
 .ops {
   gap: 16rpx;

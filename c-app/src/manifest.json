@@ -24,6 +24,13 @@
   "mp-weixin": {
     "appid": "wx3201250c28393850",
     "setting": { "urlCheck": false, "minified": true },
+    /* 微信物流查询插件（TDD-物流轨迹多渠道 §2.6）。provider 是**插件自己的 appid**，
+       不是我们小程序的 appid —— 填成自己的，运行时报「插件未正确加载:空对象」，
+       而那句报错完全不指向真因。版本号以小程序后台「第三方设置」里添加的那个为准。
+       前置：后台 功能-物流服务 申请开通「查询组件」（2026-10-08 已开通，接口从 48001 变成参数错误）。 */
+    "plugins": {
+      "logisticsPlugin": { "version": "2.1.5", "provider": "wx9ad912bf20548d92" }
+    },
     "usingComponents": true,
     /* 调用点传给组件的 class **要落到组件根上**，不能只落在宿主节点上。
        两端的节点树形状不同：H5 里 `<script setup>` 组件没有宿主，`<sh-cover class="hero__emoji">`

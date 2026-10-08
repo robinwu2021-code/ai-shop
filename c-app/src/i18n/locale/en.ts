@@ -1,4 +1,19 @@
 export default {
+  trace: {
+    step: {
+      picked: "Picked up",
+      transit: "In transit",
+      delivering: "Out for delivery",
+      signed: "Delivered",
+    },
+    openWx: "View tracking",
+    cityLevel: "City-level route, not live position",
+    callCourier: "Call courier",
+    unfold: "Show all {n}",
+    fold: "Collapse",
+    wxUnavailable: "Tracking plugin failed to load, try again later",
+    at: "{t}",
+  },
   common: {
     later: "Later",
     loadFailed: "Could not load",

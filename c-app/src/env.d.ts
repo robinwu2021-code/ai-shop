@@ -30,3 +30,9 @@ declare module "*.vue" {
  * 它保证这个数**每次构建都不同**，因而能回答「我手上这份是不是刚传的那一版」。
  */
 declare const __BUILD_VERSION__: string;
+
+/**
+ * 小程序插件入口（TDD-物流轨迹多渠道 §2.6）。只有 MP-WEIXIN 下存在，
+ * 调用点都包在 `#ifdef MP-WEIXIN` 里；这里只是让 vue-tsc 认得它。
+ */
+declare function requirePlugin(name: string): unknown;
