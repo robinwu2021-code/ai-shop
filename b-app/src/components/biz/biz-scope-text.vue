@@ -139,11 +139,11 @@ function split(name: string) {
 
       <view v-for="(g, i) in result.ambiguous" :key="`amb-${i}`" class="scope-text__amb">
         <text class="txt-body">{{ t("store.text.pickOne", { p: g.phrase, n: g.candidates.length }) }}</text>
-        <view class="scope-text__chips">
+        <view class="sh-wrap scope-text__chips">
           <text
             v-for="c in g.candidates"
             :key="c.refCode"
-            class="sh-chip scope-text__chip"
+            class="sh-chip"
             :class="{ 'sh-chip--primary': chosen[i] === c.refCode }"
             @tap="choose(i, c.refCode)"
           >{{ split(c.name).path ? `${split(c.name).path} · ${split(c.name).main}` : split(c.name).main }}</text>
@@ -190,12 +190,7 @@ function split(name: string) {
   padding: 16rpx 0;
 }
 .scope-text__chips {
-  display: flex;
-  flex-wrap: wrap;
   margin-top: 12rpx;
-}
-.scope-text__chip {
-  margin: 0 12rpx 12rpx 0;
 }
 .scope-text__line {
   display: block;
