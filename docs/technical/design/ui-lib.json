@@ -2529,10 +2529,11 @@
       "name": "sh-scaffold",
       "file": "packages/ui/src/components/sh-scaffold.vue",
       "scope": "跨端",
-      "lines": 347,
+      "lines": 363,
       "props": [
         "padded?: boolean",
         "titleKey?: string",
+        "title?: string",
         "titleSuffix?: string",
         "tab?: string",
         "denied?: boolean",
@@ -2782,7 +2783,7 @@
       "name": "sh-tabbar",
       "file": "packages/ui/src/components/sh-tabbar.vue",
       "scope": "跨端",
-      "lines": 161,
+      "lines": 166,
       "props": [
         "active: string"
       ],
