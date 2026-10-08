@@ -101,9 +101,20 @@ public class MpUserController {
         authService.sendOtp(req.phone(), userNo);
     }
 
+    /**
+     * 本人资料。**带上经营身份**（`merchantRole`：OWNER / STAFF / null）。
+     *
+     * <p>只有这一个端点填它，别的返回 UserVO 的端点一律留 null —— 判这一项要多查两次
+     * （店主按 user_no、店员按手机号），而需要它的只有「我的」那一页：
+     * 它据此决定给「商家运营」还是「我也想开店」。
+     *
+     * <p>在 controller 里组装而不是在 UserService 里：那边注入 AuthService 会把
+     * 两个 service 绕成环，而这一项本来就是「这一个端点额外多说一句」。
+     */
     @GetMapping("/profile")
     public UserVO profile() {
-        return userService.profile();
+        UserVO me = userService.profile();
+        return me.withMerchantRole(authService.merchantRoleOf(me.userNo()));
     }
 
     @PostMapping("/community")

@@ -1065,6 +1065,12 @@ export const db = {
     nicknameSet: true,
     avatar: "🙂",
     phone: "13800138000",
+    /*
+     * 这个替身账号**不是商家** —— 于是「我的」页给的是「我也想开店」。
+     * 想看另一半（「商家运营」那张卡），把它改成 "OWNER" 或 "STAFF"。
+     * 真后端只在 /mp/user/profile 里填这一项，登录返回的 user 恒为空。
+     */
+    merchantRole: null,
   } as User,
 
   /**

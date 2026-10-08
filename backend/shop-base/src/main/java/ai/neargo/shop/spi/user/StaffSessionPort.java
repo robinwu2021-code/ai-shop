@@ -33,7 +33,17 @@ public interface StaffSessionPort {
      *
      * <p><b>fail-closed</b> —— 宁可店员暂时切不过去，也不要因为实现没接上而放行。
      */
-    StaffSessionPort NONE = phone -> Optional.empty();
+    StaffSessionPort NONE = new StaffSessionPort() {
+        @Override
+        public Optional<String> issueStaffSession(String phone) {
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean hasActiveStaffAccount(String phone) {
+            return false;
+        }
+    };
 
     /**
      * 按店员登录手机号签发 B 端会话令牌。
@@ -42,4 +52,21 @@ public interface StaffSessionPort {
      * @return 命中 ACTIVE 店员账号时给出 {@code btk_} 令牌；没命中返回空
      */
     Optional<String> issueStaffSession(String phone);
+
+    /**
+     * 这个手机号<b>现在</b>能不能切到商家端 —— 只问，不签会话。
+     *
+     * <p>给「我的」那一页判显示哪个入口用：是店员就给「商家运营」，不是就给「我也想开店」。
+     *
+     * <p><b>判据必须与 {@link #issueStaffSession} 完全一致（只认 ACTIVE）。</b>
+     * 松一档（比如把停用的也算上）的后果不是多显示一个入口，而是
+     * <b>点进去报「你还不是商家」</b> —— 页面刚告诉他他是。
+     * 两个判据写在两处就迟早会分家，所以实现要走同一个查询条件。
+     *
+     * <p>与 {@link StaffLoginPhonePort#isStaffLoginPhone} 也不是一回事：那个<b>含已停用</b>，
+     * 问的是「这个号能不能被录进白名单」，口径更宽，拿来判身份会多放行一批人。
+     *
+     * @param phone 当前登录用户本人的**完整**手机号，见类注释「安全边界」
+     */
+    boolean hasActiveStaffAccount(String phone);
 }

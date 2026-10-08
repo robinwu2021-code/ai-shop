@@ -143,4 +143,73 @@ class SwitchToMerchantTest {
         org.mockito.Mockito.verify(staffSessionPort, org.mockito.Mockito.never())
                 .issueStaffSession(org.mockito.ArgumentMatchers.anyString());
     }
+
+    /*
+     * ---- merchantRoleOf：switchToMerchant 的只读版（AC8）----
+     *
+     * 它驱动「我的」那一页给哪张卡。**判据必须与 switchToMerchant 一致** ——
+     * 松一档的后果不是多显示一个入口，而是「页面说你是商家、点进去说你不是」。
+     * 所以下面每一条都对着上面那几条写：店主、店员、没号、不是商家。
+     */
+
+    @Test
+    @DisplayName("★★★ 店员的经营身份是 STAFF —— 真机上他看到的却是「我也想开店」")
+    void staffRoleIsStaff() {
+        /*
+         * **这一条是 AC8 的全部意义。** 2026-10-08 真机上 18126333580 已经是
+         * 两家店的店长，而「我的」页给他的是一张入驻表 —— 因为端上只有
+         * merchantNo（usr_account.entity_no），而店员行与 C 端账号之间
+         * 没有任何一列相连。所以这一项只能由后端算。
+         */
+        UsrIdentity phoneId = new UsrIdentity();
+        phoneId.setUserNo("U-ROLE-STAFF");
+        phoneId.setIdentityType(IdentityType.PHONE);
+        phoneId.setIdentityValue("13977770012");
+        identityMapper.insert(phoneId);
+
+        when(bizResolver.resolve("U-ROLE-STAFF")).thenReturn(BizContext.NONE);
+        when(staffSessionPort.hasActiveStaffAccount("13977770012")).thenReturn(true);
+
+        assertThat(authService.merchantRoleOf("U-ROLE-STAFF")).isEqualTo("STAFF");
+        // **只问不签**：判身份这一步绝不能顺手发一个会话出去
+        org.mockito.Mockito.verify(staffSessionPort, org.mockito.Mockito.never())
+                .issueStaffSession(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("★★ 店主的经营身份是 OWNER，且不去问手机号")
+    void ownerRoleIsOwner() {
+        when(bizResolver.resolve("U-ROLE-OWNER")).thenReturn(new BizContext(
+                "M1", Set.of(), Set.of(), Set.of(), null, true, Map.of(), Map.of()));
+
+        assertThat(authService.merchantRoleOf("U-ROLE-OWNER")).isEqualTo("OWNER");
+        org.mockito.Mockito.verify(staffSessionPort, org.mockito.Mockito.never())
+                .hasActiveStaffAccount(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("★★ 不是商家 → 空（这一页才给「我也想开店」）")
+    void plainUserHasNoRole() {
+        UsrIdentity phoneId = new UsrIdentity();
+        phoneId.setUserNo("U-ROLE-NONE");
+        phoneId.setIdentityType(IdentityType.PHONE);
+        phoneId.setIdentityValue("13977770013");
+        identityMapper.insert(phoneId);
+
+        when(bizResolver.resolve("U-ROLE-NONE")).thenReturn(BizContext.NONE);
+        when(staffSessionPort.hasActiveStaffAccount("13977770013")).thenReturn(false);
+
+        assertThat(authService.merchantRoleOf("U-ROLE-NONE")).isNull();
+    }
+
+    @Test
+    @DisplayName("★★ 没绑手机号 → 空，且不拿空号去查店员表")
+    void noPhoneHasNoRole() {
+        when(bizResolver.resolve("U-ROLE-NOPHONE")).thenReturn(BizContext.NONE);
+
+        assertThat(authService.merchantRoleOf("U-ROLE-NOPHONE")).isNull();
+        // 拿空号去 `where login_phone = ?` 是白查一次，更糟的是会把判据悄悄放宽
+        org.mockito.Mockito.verify(staffSessionPort, org.mockito.Mockito.never())
+                .hasActiveStaffAccount(org.mockito.ArgumentMatchers.anyString());
+    }
 }

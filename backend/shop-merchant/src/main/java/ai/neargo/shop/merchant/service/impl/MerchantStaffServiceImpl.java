@@ -86,9 +86,15 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                 .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
     }
 
-    @Override
-    public java.util.Optional<String> issueStaffSession(String phone) {
-        MchAccount staff = DataScopeContext.executeWithoutScope(() ->
+    /**
+     * 按登录手机号找那一行 B 端账号。**签会话与只问身份走的是同一个查询** ——
+     * 两处各写一遍的话，口径迟早分家，而症状是「页面说你是店员、点进去说你不是」。
+     */
+    private MchAccount findActiveStaff(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        return DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
                         .eq(MchAccount::getLoginPhone, phone)
                         .eq(MchAccount::getStatus, MchAccount.ACTIVE)
@@ -96,6 +102,16 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
                         .orderByDesc(MchAccount::getIsPrimary)
                         .orderByAsc(MchAccount::getId)
                         .last("limit 1")));
+    }
+
+    @Override
+    public boolean hasActiveStaffAccount(String phone) {
+        return findActiveStaff(phone) != null;
+    }
+
+    @Override
+    public java.util.Optional<String> issueStaffSession(String phone) {
+        MchAccount staff = findActiveStaff(phone);
         if (staff == null) {
             return java.util.Optional.empty();
         }

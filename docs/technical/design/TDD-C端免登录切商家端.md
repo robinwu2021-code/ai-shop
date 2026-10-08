@@ -2,7 +2,7 @@
 
 状态：草稿
 关联需求：本会话确认（2026-10-07）——C 端已登录用户切到商家运营不再单独登录，用 C/B 账号关联换取商家令牌
-创建：2026-10-07 · 最后更新：2026-10-07
+创建：2026-10-07 · 最后更新：2026-10-08
 
 > **一句话**：C 端小程序打开即静默微信登录(ctk_)，「商家运营」入口凭 C 端令牌向后端换取商家令牌(btk_)——
 > 后端按 `mch_account.user_no == 当前 C 端 user_no` 找到店主身份，有则签 btk_、无则回 `NOT_A_MERCHANT`。
@@ -19,6 +19,8 @@
 | AC5 | 关联键 `mch_account.user_no`（店主行）已可靠成立 | 现有链路（agent 确认，§1） |
 
 | AC6 | **店员**也免登录：商家后台录入的店员手机号，与店员本人 C 端账号的手机号匹配即放行 | `StaffSessionPort`（新 SPI）+ `switchToMerchant` 店员分支 |
+
+| AC8 | 「我的」页按**真实经营身份**给入口：是商家给「商家运营」，不是才给「我也想开店」 | `UserVO.merchantRole` + `AuthService.merchantRoleOf` + `StaffSessionPort.hasActiveStaffAccount` |
 
 **孤立项**：无。明确排除：存量「运营代客进件且当时无 C 端账号」的店主（少数，回退手机号登录/客服）。
 
@@ -40,6 +42,32 @@
   而他要做的只是绑个号。两条码对应端上两条不同的出路（`need-phone` / `not-merchant`）。
 - **不并进 `StaffLoginPhonePort`**：那个接口刻意只回布尔、「不回是哪个账号」，为的是不让人靠它枚举
   某手机号是不是商家；签发会话塞进去会破掉那条边界，故单开 `StaffSessionPort`（带 `NONE` fail-closed 兜底）。
+
+### AC8 · 两张卡各判各的（第三轮，2026-10-08 真机上撞到）
+
+真机上两件事一起出现：
+
+- **18126333580 已经是虹选鲜果 / 虹选粮油两家店的店长**，而「我的」页给他的是一张**入驻表**；
+- **「商家运营」对一个刚注册、什么店都没有的人也亮着**，点下去才拿到 `NOT_A_MERCHANT`。
+
+根因是两张卡各判各的：开店卡只看后端开关（`merchant.apply.mp-visible`），
+商家运营卡只看 `withBiz && user.isLogin`，**两边都没问「他到底是不是商家」**。
+
+端上判不出来：它手里只有 `merchantNo`（= `usr_account.entity_no`，「常去的店」），
+而**店员那一行与他的 C 端账号之间没有任何一列相连** —— 店员是店主在后台录手机号加进来的
+（线上实况：`SF202610081123030000587` 的 `user_no` 是 NULL）。拿它判，店长永远被当成还没开店的人。
+
+所以加 `UserVO.merchantRole`（`OWNER` / `STAFF` / null），由后端算：
+
+- **只有 `/mp/user/profile` 填它**，别的返回 UserVO 的端点一律 null —— 判这一项要多查两次，
+  而需要它的只有「我的」那一页（`onShow` 已经在调 `loadProfile`）。
+- **判定与 `switchToMerchant` 必须同源**：店主 → 店员 → 都不是，连「店主优先」都一样。
+  松一档的后果不是多显示一个入口，而是**页面说你是商家、点进去说你不是**。
+- 店员那一支走新加的 `StaffSessionPort.hasActiveStaffAccount`（只问不签），
+  实现与 `issueStaffSession` **共用同一个查询**（`findActiveStaff`）—— 两处各写一遍就迟早分家。
+- **不复用 `StaffLoginPhonePort.isStaffLoginPhone`**：那个**含已停用**（它问的是「这个号能不能被录进白名单」），
+  口径更宽，拿来判身份会给一批已停用的店员亮出一个点下去会被拒的入口。
+- 在 controller 里组装而不是 `UserService`：那边注入 `AuthService` 会把两个 service 绕成环。
 
 ## §1 现状与影响面
 
@@ -112,7 +140,17 @@ POST /mp/user/switch-to-merchant   (Authorization: Bearer ctk_...)
 | AC6 | `SwitchToMerchantTest#ownerWinsOverStaff`：两个身份都有时走店主，`verify(never())` 不去问手机号 | ✅ 同上 | — |
 | AC7 | `SwitchToMerchantTest#noPhoneAsksToBindRatherThanApply`：没绑号 → `PHONE_REQUIRED_FOR_MERCHANT`（不是 `NOT_A_MERCHANT`），且不去查店员表 | ✅ `Tests run: 5, Failures: 0` | — |
 
+| AC8 | `SwitchToMerchantTest#staffRoleIsStaff`：店员 → `"STAFF"`，且 `verify(never()).issueStaffSession`（只问不签） | ✅ `Tests run: 9, Failures: 0, Errors: 0`（13.6s，真跑） | ✅ 把 `hasActiveStaffAccount(phone)` 改成 `false` → **只有这一条**变红，还原后 9/9 回绿 |
+| AC8 | `#ownerRoleIsOwner`：店主 → `"OWNER"`，且不去问手机号 | ✅ 同上 | — |
+| AC8 | `#plainUserHasNoRole`：有号但不是店员 → null | ✅ 同上 | — |
+| AC8 | `#noPhoneHasNoRole`：没绑号 → null，且不拿空号去查店员表 | ✅ 同上 | — |
+| AC8 | `c-app/tests/merchant-recruit.test.ts`「两张卡互斥」：判据取 `merchantRole`、两个 `v-if` 都钉住 | ✅ `7 passed` | ✅ 把 `withBiz && isMerchant` 改回 `withBiz && user.isLogin` → 变红，还原后回绿 |
+
 三组在**干净 HEAD 副本 + 仅本次改动**上一起跑：`BUILD SUCCESS`。
+
+**AC8 在 H5（mock）上验到的一半**：把 `merchantRole` 置成 `STAFF`，「我也想开店」当场消失；置回 null 又出现 —— 可证伪。
+**另一半验不了**：mock 构建里 `VITE_WITH_BIZ` 没设，「商家运营」那张卡恒不渲染，
+拿它当对照量会得到一个毫无信息的绿。那一半只能在并包的体验版上看。
 
 店员那条用例**真的往 `usr_identity` 插了一条 PHONE 凭证**，没有把 `phoneOf` mock 掉 ——
 店员分支的前提就是「这个 C 端账号有已验证的手机号」，mock 掉等于没测到那个前提

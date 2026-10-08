@@ -57,10 +57,20 @@ function gotoLogin() {
 /**
  * 商家运营入口。**只在「并进了 B 端分包」的那种构建里出现**
  * （`VITE_WITH_BIZ`，由 scripts/with-biz.mjs 注入）；普通 c-app 包里这张卡不存在，
- * 跳转目标 `/pkg-biz/_entry/index` 也不在包里。商家身份的闸在 `_entry` 里（无令牌先登录），
- * 所以这里只要「已登录的 C 端用户」就显示 —— 它是随手运营的入口，不是权限判定点。
+ * 跳转目标 `/pkg-biz/_entry/index` 也不在包里。
  */
 const withBiz = import.meta.env.VITE_WITH_BIZ === "1";
+
+/**
+ * 他已经是商家了吗（店主或店员）。后端在 `/mp/user/profile` 里算好下发
+ * （`merchantRole`），端上判不出来 —— 见那个字段的说明。
+ *
+ * <p>这一项管着两张卡**互斥地**出现：是商家就给「商家运营」，不是就给「我也想开店」。
+ * 此前两张卡各判各的（一个看后端开关、一个只看登录没登录），于是
+ * **一个已经在两家店当店长的人，看到的是一张入驻表**，而「商家运营」对
+ * 一个刚注册的人也亮着、点下去才被告知不是商家。2026-10-08 真机上两件都撞到了。
+ */
+const isMerchant = computed(() => !!user.user?.merchantRole);
 function gotoBizOps() {
   uni.navigateTo({ url: "/pkg-biz/_entry/index" });
 }
@@ -659,7 +669,7 @@ onShow(() => {
       看不见它。文案也从「商家入驻」换成「我也想开店」：前者是平台视角的流程名，
       后者是他心里那句话。
     -->
-    <view v-if="merchantApplyVisible(config.features)" class="sh-card sh-row sh-row--between open-shop"
+    <view v-if="merchantApplyVisible(config.features) && !isMerchant" class="sh-card sh-row sh-row--between open-shop"
           @tap="applyMerchant">
       <text class="txt-title txt-primary">{{ $t("merchant.openShop") }}</text>
       <!--
@@ -674,7 +684,7 @@ onShow(() => {
       商家运营：**只在并进 B 端分包的构建里出现**（见 gotoBizOps 说明）。
       店主在手机上随手看单 / 核销 / 上下架 / 售后；建品、盘点、报表等重活在商家版 App 里。
     -->
-    <view v-if="withBiz && user.isLogin" class="sh-card sh-row sh-row--between open-shop" @tap="gotoBizOps">
+    <view v-if="withBiz && isMerchant" class="sh-card sh-row sh-row--between open-shop" @tap="gotoBizOps">
       <text class="txt-title txt-primary">{{ $t("merchant.bizOps") }}</text>
       <text class="txt-caption txt-primary">›</text>
     </view>

@@ -286,6 +286,37 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public String merchantRoleOf(String userNo) {
+        /*
+         * switchToMerchant 的只读版：**同样的判定顺序**（店主 → 店员 → 都不是），
+         * 不签会话、不抛码。两处分家的话症状是「页面说你是店员、点进去说你不是」，
+         * 所以这里一步一步照着上面那段写，连「店主优先」都一样。
+         */
+        if (userNo == null || userNo.isBlank()) {
+            return null;
+        }
+        ai.neargo.shop.auth.BizContext ctx = bizResolver.resolve(userNo);
+        if (ctx != null && ctx.merchantNo() != null && !ctx.merchantNo().isBlank()) {
+            return ROLE_OWNER;
+        }
+        /*
+         * 没绑手机号时**判不了店员**（与 switchToMerchant 同一个前提：按本人完整号匹配）。
+         * 这里返回 null 而不是另一个值 —— 端上的出路只有两条（去商家端 / 去开店），
+         * 而「没号的店员」点下去会拿到 PHONE_REQUIRED_FOR_MERCHANT，由那一条引导绑号。
+         */
+        String phone = phoneOf(userNo);
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        return staffSessionPort.hasActiveStaffAccount(phone) ? ROLE_STAFF : null;
+    }
+
+    /** 经营身份：自己的店 */
+    private static final String ROLE_OWNER = "OWNER";
+    /** 经营身份：别人的店里的员工 */
+    private static final String ROLE_STAFF = "STAFF";
+
+    @Override
     @Transactional
     public LoginResult login(LoginCommand cmd) {
         /*

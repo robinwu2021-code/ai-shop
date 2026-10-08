@@ -30,4 +30,9 @@ public class StaffSessionPortImpl implements StaffSessionPort {
         }
         return staffService.issueStaffSession(phone);
     }
+
+    @Override
+    public boolean hasActiveStaffAccount(String phone) {
+        return phone != null && !phone.isBlank() && staffService.hasActiveStaffAccount(phone);
+    }
 }

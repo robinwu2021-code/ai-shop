@@ -38,6 +38,15 @@ public interface MerchantStaffService {
     java.util.Optional<String> issueStaffSession(String phone);
 
     /**
+     * 这个手机号现在是不是在职员工 —— <b>只问，不签会话</b>。
+     *
+     * <p>给「我的」那一页判显示哪个入口用。实现与 {@link #issueStaffSession}
+     * <b>共用同一个查询</b>（同样只认 ACTIVE、同样按 is_primary 取默认）：
+     * 两处各写一遍的话，口径迟早分家，而症状是「页面说你是店员、点进去说你不是」。
+     */
+    boolean hasActiveStaffAccount(String phone);
+
+    /**
      * 这个 principal 的员工登录手机号；不是员工就返回空串。
      *
      * <p>{@code principal} 两条路径都认（{@code user_no} 或 {@code mch_account_no}），

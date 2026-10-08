@@ -68,6 +68,23 @@ public interface AuthService {
     String switchToMerchant(String userNo);
 
     /**
+     * 这个 C 端用户现在的<b>经营身份</b>：{@code "OWNER"} / {@code "STAFF"} / {@code null}。
+     *
+     * <p>{@link #switchToMerchant} 的只读版：同样的判定顺序（店主 → 店员 → 都不是），
+     * 但<b>不签任何会话、不抛业务码</b>。给 {@code /mp/user/profile} 用，
+     * 让「我的」那一页按真实身份决定显示「商家运营」还是「我也想开店」。
+     *
+     * <p><b>为什么不能让端上自己判</b>：端上手里只有 {@code merchantNo}
+     * （= {@code usr_account.entity_no}，「常去的店」），而<b>店员行与 C 端账号之间
+     * 没有任何一列相连</b> —— 店员是店主在后台录手机号加进来的。靠它判的话，
+     * 一个已经在两家店当店长的人，在「我的」页看到的仍然是「我也想开店」。
+     *
+     * <p>判据必须与 {@link #switchToMerchant} 一致。松一档的后果不是多显示一个入口，
+     * 而是<b>点进去报「你还不是商家」</b> —— 页面刚告诉他他是。
+     */
+    String merchantRoleOf(String userNo);
+
+    /**
      * 设置 / 修改登录密码。<b>调用方必须已登录</b>——当前会话就是授权。
      *
      * <p>不收「旧密码」：能调到这里说明他此刻已经用验证码或微信登进来了，

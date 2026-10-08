@@ -37,6 +37,27 @@ describe("商家招募", () => {
     expect(gate).toContain('flags?.["merchant.apply.mp-visible"]');
   });
 
+  it("★★★ 两张卡互斥，且判据是后端下发的经营身份 —— 不是端上的 merchantNo", () => {
+    /*
+     * 2026-10-08 真机上撞到的：18126333580 已经是两家店的**店长**，而「我的」页
+     * 给他的是一张入驻表；同时「商家运营」对一个刚注册、什么店都没有的人也亮着，
+     * 点下去才被告知不是商家。两张卡各判各的，于是两头都错。
+     *
+     * **判据只能来自后端**（`profile` 下发的 `merchantRole`）：端上手里只有
+     * `merchantNo`（= `usr_account.entity_no`，「常去的店」），而**店员那一行
+     * 与他的 C 端账号之间没有任何一列相连** —— 店员是店主在后台录手机号加进来的。
+     * 拿 merchantNo 判的话，店长永远被当成还没开店的人。
+     */
+    const me = readFileSync(join(SRC, "pages/me/index.vue"), "utf8");
+    expect(me, "经营身份必须取后端下发的 merchantRole").toContain("user.user?.merchantRole");
+    // 是商家就不该再劝他开店
+    expect(me).toContain("merchantApplyVisible(config.features) && !isMerchant");
+    // 不是商家就不该给他一个点下去会被拒的入口（此前是 `withBiz && user.isLogin`）
+    expect(me).toContain('v-if="withBiz && isMerchant"');
+    expect(me, "别拿「常去的店」当经营身份——店员那一行根本没有它")
+      .not.toContain("user.user?.merchantNo ?");
+  });
+
   it("★★★ 冷启动真的去拉那份开关 —— 不拉的话开关永远是默认值", () => {
     const app = readFileSync(join(SRC, "App.vue"), "utf8");
     expect(app).toContain("useConfigStore().load()");

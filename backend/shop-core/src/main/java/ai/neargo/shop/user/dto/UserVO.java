@@ -20,7 +20,8 @@ public record UserVO(String userNo,
                      String communityNo,
                      String pickupNo,
                      String merchantNo,
-                     boolean nicknameSet) {
+                     boolean nicknameSet,
+                     String merchantRole) {
 
     /*
      * **phone 是完整号码，不脱敏** —— 这个 VO 只返回给号码的主人自己（资料 / 登录 / 绑定）。
@@ -34,7 +35,23 @@ public record UserVO(String userNo,
         return new UserVO(u.getUserNo(), u.getUserNo(),
                 u.getNickname(), u.getAvatar(), u.getPhone(),
                 u.getCommunityNo(), u.getPickupNo(), u.getEntityNo(),
-                nicknameSet(u.getNickname()));
+                nicknameSet(u.getNickname()), null);
+    }
+
+    /**
+     * 补上<b>经营身份</b>（{@code OWNER} / {@code STAFF} / null）。
+     *
+     * <p>只有 {@code /mp/user/profile} 填它，别的返回 UserVO 的端点一律留 null ——
+     * 判这一项要多查两次（店主按 user_no、店员按手机号），而需要它的只有「我的」那一页。
+     *
+     * <p><b>为什么不能让端上自己判</b>：端上手里只有 {@code merchantNo}，
+     * 而那是 {@code usr_account.entity_no}（「常去的店」），**店员那一行根本没有它**
+     * —— 店员是店主在后台录手机号加进来的，与他的 C 端账号之间没有任何一列相连。
+     * 靠它判的话，一个已经在两家店当店长的人，在「我的」页看到的仍是「我也想开店」。
+     */
+    public UserVO withMerchantRole(String role) {
+        return new UserVO(userNo, cUserNo, nickname, avatar, phone,
+                communityNo, pickupNo, merchantNo, nicknameSet, role);
     }
 
     /**
