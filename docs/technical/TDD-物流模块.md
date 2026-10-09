@@ -1,6 +1,6 @@
 # TDD-物流模块
 
-状态：草稿（待确认）
+状态：已确认（2026-10-09 用户：「方案可行」）· 待实现
 档位：2 · 依据：用户 2026-10-09 口头需求（§0.1 补 AC）· 产出：本文 + [ADR-032](ADR/ADR-032-物流独立为模块-先内嵌后可拆.md)
 关联：[TDD-物流域-完整方案](design/TDD-物流域-完整方案.md)（**本文取代其 §3.5 作业、§5.4 批 D/F**；§4 微信能力清单、§5.5 签收闭环实现记录继续有效）·
 [TDD-快递100轨迹查询](TDD-快递100轨迹查询.md)（主动查询改为默认关，见 §2.5）·
@@ -53,9 +53,9 @@
 | AC | 落点 |
 |---|---|
 | AC1 | 订阅链（`ChannelRouter`）；探测链默认不含 `kuaidi100`、`probe-surfaces.kuaidi100=[]`；UK(`biz_type`,`biz_ref`) 幂等 |
-| AC2 | `WxBindPolicy.ready()`：`wx_uploaded_at` 非空 ∧ `status ≥ COLLECTED` 才放行 |
+| AC2 | `WxBindPolicy.ready()`：`wx_uploaded_at` 非空 ∧ `status ≥ PICKED_UP` 才放行 |
 | AC3 | `PushIngestService` 每次推送后调 `WxBindPolicy`；`9300559` → `bind_state=WAITING`，无作业 |
-| AC4 | `WaybillStatus.advance()` 单调合并；`signed_at` 只在首次进入 SIGNED 时写；`LogisticsEvents.WaybillSigned` → `paybridge` 消费 |
+| AC4 | `WaybillStatus.advance()` 单调合并；`signed_at` 只在首次进入 DELIVERED 时写；`LogisticsEvents.WaybillSigned` → `paybridge` 消费 |
 | AC5 | `lgs_waybill.profile = SELF`；`WxBindPolicy` 对 SELF 恒 false；`NotificationConsumer` 订阅 `WaybillProgressed` 只对 SELF 发 |
 | AC6 | `TrackService.track()` 用 `wx_status_checked_at` 判 10 分钟缓存 |
 | AC7 | 外部动作走 `sys_outbox` 重试（退避、上限）；不可重试 → `*_state=FATAL` + `*_error`；`/ops/shipments` 筛选 + 重放端点 |
@@ -129,7 +129,7 @@
 
 | 层 | 模块 / 包 | 放什么 | 防住什么 |
 |---|---|---|---|
-| 契约 | `shop-base/spi/logistics` | `LogisticsPort`（读）、`LogisticsEvents`（出）、`ShipmentSourcePort`（唯一反向 Port） | 别的域只依赖这一层；直接 import 物流实现 = 拆分那天编译不过 |
+| 契约 | `shop-base/spi/logistics` | `LogisticsPort`（交易域读）、`LogisticsAdminPort`（运营端）、`LogisticsEvents`（出）、`ShipmentSourcePort`（唯一反向 Port） | 别的域只依赖这一层；直接 import 物流实现 = 拆分那天编译不过 |
 | 领域 | **`backend/logistics/logistics-domain`**（新） | 运单、轨迹、状态机、四个策略 SPI、推送接收、补偿逻辑、`/callback/logistics/**` | 不依赖任何业务域、不依赖 HTTP 客户端 |
 | 通道 | **`backend/logistics/logistics-channel`**（新） | 每家渠道一个包：`kuaidi100`、`yto`、`wx`、`stub`；将来 `sf`、`jd`… | 加一家渠道只在这一层加一个包；领域层不知道任何一家的报文 |
 | 桥 | `shop-app/logisticsbridge`（新） | `ShipmentSourcePortImpl`（拼发货快照）、补偿作业的 `JobHandler`、事件消费适配 | 跨域拼装只许出现在这里（同 `invbridge` / `paybridge`） |
@@ -228,17 +228,20 @@
 | `waybill_no` | varchar(64) | UK(`carrier`,`waybill_no`) 沿用 |
 | `profile` | varchar(8) | **`WX`**：有微信交易单号与付款人 openid，可用微信全套能力；**`SELF`**：其余（线下付款、APP 单）。**登记时定死** —— 不让每个调用点各自判断「这单能不能调微信」 |
 | `receiver_name` / `region` | 原列 | 快照 |
-| `receiver_phone_enc` | varchar(128) | 收件人手机号 **AES-GCM 密文**。订阅（顺丰等必填）与换 token（申通/中通必填）要完整号码。**进入终态（SIGNED / CANCELLED）后清空** —— 用完就删 |
+| `receiver_phone_enc` | varchar(128) | 收件人手机号 **AES-GCM 密文**。订阅（顺丰等必填）与换 token（申通/中通必填）要完整号码。**进入终态（DELIVERED / CANCELLED）后清空** —— 用完就删 |
 | `receiver_phone_last4` | char(4) | 展示与排查用 |
 | `wx_trans_id` / `wx_openid` / `wx_out_trade_no` | varchar(64) | **快照**：仅 `profile=WX` 有值；`trace_waybill` 与确认收货提醒要用 |
 | `goods_brief` | json | 商品名、图（≤3 件）：`trace_waybill` 必填 |
 | `status` | varchar(16) | 状态机见 §2.4.5，**单调** |
-| `collected_at` / `signed_at` | bigint | 首次进入 COLLECTED / SIGNED 的时刻（毫秒），**只写一次** |
+| `picked_up_at` / `signed_at` | bigint | 首次进入 PICKED_UP / DELIVERED 的时刻（毫秒），**只写一次** |
+| `at_locker` | tinyint | 渠道子状态「投柜或驿站」（快递100 `501`）—— 物流页显示「已到驿站 / 快递柜」（功能清单 L-C-05） |
+| `carrier_corrected_from` | varchar(16) | 渠道纠正过承运商时（快递100 `autoCheck=1`）记下原值 —— 商家选错快递公司是常态，纠正要留痕，不静默覆盖 |
 | `last_event_at` | bigint | 最近一次收到推送或查询有新进展的时刻 —— 补偿作业判「沉默」用 |
 | `sub_state` | varchar(12) | 订阅：`PENDING` / `DONE` / `FATAL` / `ENDED`（渠道停止跟踪） |
 | `sub_channel` | varchar(16) | **实际受理订阅的渠道**（`yto` / `kuaidi100` / …）。推送只认这个渠道来的 —— 否则换渠道重订阅后，旧渠道迟到的推送会和新渠道的打架 |
 | `sub_ref` | varchar(64) | 渠道返回的订阅号（有的渠道给，有的不给） |
 | `sub_attempts` / `sub_error` | int / varchar(200) | 链上最后一次失败的渠道、码与原文 |
+| `kd100_sub_month` / `kd100_sub_count` | char(6) / int | 快递100 本单号**本自然月**已订阅几次（官方上限每月 4 次）；月份变了计数归零 —— 重放前先看它，不去撞上限 |
 | `wx_uploaded_at` | bigint | 微信发货信息上传成功的时刻（来自交易域事件）—— 换 token 的前置条件 |
 | `bind_state` | varchar(12) | 微信换 token：`NA`（SELF 单）/ `WAITING`（前置未满足或微信还没收录）/ `DONE` / `FATAL` |
 | `bind_error` | varchar(200) | |
@@ -285,6 +288,8 @@
 
 ### 2.3 API
 
+> 本节只列契约形状与取舍；逐端点的请求 / 响应 / 错误码 / 鉴权见 **[物流-API](物流-API.md)**。
+
 #### 2.3.1 模块契约（`shop-base/spi/logistics`）
 
 ```java
@@ -306,7 +311,7 @@ public interface ShipmentSourcePort {
 }
 
 public final class LogisticsEvents {
-    record WaybillProgressed(String bizRef, String shipmentNo, String profile, String status, long at) { }  // COLLECTED / DELIVERING / EXCEPTION
+    record WaybillProgressed(String bizRef, String shipmentNo, String profile, String status, long at) { }  // PICKED_UP / DELIVERING / EXCEPTION
     record WaybillSigned(String bizRef, String shipmentNo, String profile, long signedAt, String source) { }
 }
 
@@ -315,31 +320,26 @@ public final class LogisticsEvents {
 // 新增：TradeEvents.WxShippingUploaded(String orderNo, List<String> subOrderNos, long at)
 ```
 
-`TrackView`：`status`、`signedAt`、`nodes[]`、`display{mode: WX_PLUGIN|SELF_MAP, waybillToken}`、`freshAt`、`refreshable`。
-比现在的 `OrderVO.Trace` **只加字段不改字段**，老端不受影响。
+`TrackView` **就是现有的 `OrderVO.Trace` 加字段**（字段只加不改，老端不受影响）：
+现有 `status` · `nodes[]`（倒序，`at` 毫秒）· `displayMode`（`wx-plugin` / `self-map`）· `displayToken` · `route`；
+新增 `carrier` · `waybillNo` · `signedAt` · `atLocker` · `freshAt` · `refreshable`。字段表见 [物流-API §3](物流-API.md)。
 
 #### 2.3.2 HTTP 端点
 
-| 方法 · 路径 | 状态 | 调用方 | 说明 |
-|---|---|---|---|
-| `POST /callback/logistics/{channel}` | **新** | 各渠道 | 轨迹推送的**唯一入口**。按 `{channel}` 找 `PushReceiver`：验签、解析、并由它决定给对方回什么（快递100 要 `{"result":true,"returnCode":"200"}`，圆通是另一种）。找不到该渠道 → 404。**入库失败也要回成功并记 ERROR**：回失败对方会重推，而重推的报文不会让入库变成功；靠补偿作业兜底。今天落地 `kuaidi100`，圆通推送调通后是 `yto` |
-| `GET /mp/order/{orderNo}/trace` | **新** | C 端物流页 | 物流页专用。`WX` 单返回 token 走插件，并按 10 分钟缓存调一次 `query_trace` 校正状态；`SELF` 单返回库里的节点 |
-| `GET /mp/order/{orderNo}` | 改 | C 端订单详情 | `trace` 只读库、**不再触发任何外部调用** —— 详情页每天被打开的次数远多于物流页 |
-| `GET /biz/order/{subOrderNo}/trace` | **新** | B 端 App | AC11。读库；`refresh=true` 仅当策略允许 BIZ 界面现查快递100 时生效，否则返回 `refreshable=false` |
-| `GET /biz/order/{subOrderNo}` | 不变 | B 端 | `trace` 只读库 |
-| `GET /ops/shipments` | 改 | 运营 | 加筛选 `subState`、`bindState`（看 FATAL）；路径不变，ops-web 改动最小 |
-| `POST /ops/shipments/{shipmentNo}/replay` | **新** | 运营 | 重放 `SUBSCRIBE`（可指定渠道，否则重走路由链）或 `WX_BIND`；新权限码 `logistics.shipment.replay`（/ops 五处登记） |
-| `POST /ops/shipments/{shipmentNo}/waybill` | 不变 | 运营 | 换单号；换了之后重新订阅 |
-| `GET/PUT /ops/fulfillment/carriers…` | 改 | 运营 | 多一个 `codes: {channel: code}`（读写 `lgs_carrier_code`） |
-| `GET /ops/logistics/channels` | **新** | 运营 | 各渠道启用 / 可用 / 支持哪些能力 / 覆盖哪些承运商（只读，排查「为什么这单走了快递100」用） |
-| `/internal/logistics/**` | 阶段 3 | 主服务 → logistics-svc | `@HttpExchange` 镜像 `LogisticsPort`（ADR-025） |
+逐端点见 **[物流-API](物流-API.md)**（13 个：C 端 2、B 端 3、运营端 5、回调 3）。这里只记两条形状上的决定：
 
-**回调放在物流模块里，不放主服务的 portal**：阶段 3 拆出去时 nginx 只要按前缀 `/callback/logistics/` 转发一行；
-放在 portal 里就得先改代码再拆。**一个 Controller、路径带渠道名**：加渠道不加 Controller、不改 nginx、不改安全配置
-（`/callback/**` 已经放行）。它不复用现有 `/callback/express/kuaidi100`（寄件回调，属代下单）——
-两个产品、两种报文，混在一个路径下要靠报文猜是哪一种。
+- **用户与运营端点留在主应用**（C / B 端在交易域的 controller，运营端在 `portal/ops`）：物流模块不认识用户，
+  「这张单是不是你的」只有交易域能判 —— 先按当前登录人查到子单（防 IDOR），再拿业务键问 `LogisticsPort`；
+  运营端经 `LogisticsAdminPort`。与支付域「领域模块不做 controller」同形。
+- **回调放在物流模块里**，路径 `/callback/logistics/{channel}`，一个 Controller 按渠道名分派：
+  阶段 3 拆出去时 nginx 按前缀转发一行；加渠道不加 Controller、不改 nginx、不改安全配置（`/callback/**` 已放行）。
+  回调**必须返回 `String`** —— 统一信封不排除 `/callback/**`，返回对象会被包成 `{code,msg,data}`，渠道认不出成功会重推。
+  它不复用现有 `/callback/express/kuaidi100`（寄件回调）—— 两个产品、两种报文。
 
 ### 2.4 核心流程
+
+> 本节是摘要。每个模块的输入、步骤、幂等、失败处理与测试要点见 **[物流-功能模块方案](物流-功能模块方案.md)**（回调 M4、查询 M7、作业 M8）；
+> 按场景的调用与推送清单见 **[物流-调用清单](物流-调用清单.md)**。
 
 ![物流主链路](diagrams/物流模块-主链路.svg)
 
@@ -378,8 +378,8 @@ POST /callback/logistics/{channel}
   渠道说「停止跟踪」（快递100 abort：如 3 天无记录）→ sub_state=ENDED；在途的交给补偿作业
   落节点（UK 去重）、last_event_at=now
   WaybillStatus.advance(当前, 推送状态) → 进了新阶段：
-      COLLECTED 首次 → collected_at；WxBindPolicy 判换 token（2.4.3）
-      SIGNED 首次 → signed_at；发 WaybillSigned（2.4.4）
+      PICKED_UP 首次 → picked_up_at；WxBindPolicy 判换 token（2.4.3）
+      DELIVERED 首次 → signed_at；发 WaybillSigned（2.4.4）
       其余 → 发 WaybillProgressed（SELF 单的自有通知用）
   每次推送后都再判一次 WxBindPolicy —— 上次 9300559 的，这次自然重试
 ```
@@ -387,8 +387,8 @@ POST /callback/logistics/{channel}
 #### 2.4.3 换 token（微信，**前置条件满足才调**）
 
 ```
-WxBindPolicy.ready(w) = profile==WX ∧ bind_state==WAITING ∧ wx_uploaded_at!=null ∧ status≥COLLECTED
-触发点：① 推送进入 COLLECTED 或之后任一推送  ② 收到 WxShippingUploaded（两者先后不定，两边都要判）
+WxBindPolicy.ready(w) = profile==WX ∧ bind_state==WAITING ∧ wx_uploaded_at!=null ∧ status≥PICKED_UP
+触发点：① 推送进入 PICKED_UP 或之后任一推送  ② 收到 WxShippingUploaded（两者先后不定，两边都要判）
 调 trace_waybill：
   成功 → display_token, bind_state=DONE
   9300559（微信还没收录）→ 保持 WAITING，什么都不做，等下一条推送
@@ -415,25 +415,32 @@ receiver_phone_enc 清空
 #### 2.4.5 状态机（单调）
 
 ```
-CREATED → COLLECTED → IN_TRANSIT → DELIVERING → SIGNED
+CREATED → PICKED_UP → IN_TRANSIT → DELIVERING → DELIVERED
    任一非终态 ⇄ EXCEPTION（疑难、退回、拒签；恢复后回到原阶段）
    任一非终态 → CANCELLED（发货撤回、换单号作废旧号）
 ```
 
-`advance(cur, incoming)`：incoming 的阶段序号 ≤ cur 的 → 不变。**没有任何路径能把 SIGNED 改回去** —— 这就是 AC12 的修法；
+`advance(cur, incoming)`：incoming 的阶段序号 ≤ cur 的 → 不变。**没有任何路径能把 DELIVERED 改回去** —— 这就是 AC12 的修法；
 旧代码的问题不是映射错，是「另一个数据源（订单状态）也能写这个字段」。新设计里订单状态**不再写**运单状态。
 
-**每个渠道自带一张映射表**（对方码 → 统一的 `TraceStatus`），状态机只认统一状态 —— 加渠道不改状态机。
+**运单状态沿用现有 `FulShipment` 的取值**（`CREATED` `PICKED_UP` `IN_TRANSIT` `DELIVERED` `EXCEPTION`，前端类型与存量数据都是这套），
+只新增 `DELIVERING`（派件中）与 `CANCELLED`。
 
-| 统一状态 | 快递100 | 微信 `query_trace` | 圆通 |
+**每个渠道自带一张映射表**（对方码 → 渠道统一状态 `TraceStatus`），状态机只认统一状态 —— 加渠道不改状态机。
+`TraceStatus` 现在是 `PICKED / IN_TRANSIT / SIGNED / EXCEPTION / UNKNOWN`，派件被并进了运输中；本期**新增 `DELIVERING`**，
+并给 `TraceResult` 加一个 `atLocker` 标志（快递100 子状态 `501` 投柜或驿站）。
+⚠️ 给枚举加值是有风险的：按它分支的老代码会把新值默默当成别的（`switch` 落进 default、`if` 只判了旧值）。
+批 1 要逐个排查 `TraceStatus` 的所有分支点，并加一条守卫：每个分支点都必须显式处理 `DELIVERING`。
+
+| 运单状态 ← 渠道统一状态 | 快递100 | 微信 `query_trace` | 圆通 |
 |---|---|---|---|
-| COLLECTED | `1` 揽收 | `1` | 沿用 `YtoTraceProvider.mapStatus`（Y3.1 已按官方文档校准） |
-| IN_TRANSIT | `0` 在途 / `7` 转投 / `8` 清关 | `2` | 同上 |
-| DELIVERING | `5` 派件 | `3` | 同上 |
-| SIGNED | `3` 签收 | `4` 已签收 / `6` 代签收 | 同上 |
-| EXCEPTION | `2` 疑难 / `4` 退签 / `6` 退回 / `14` 拒签 | `5` | 同上 |
+| PICKED_UP ← PICKED | `1` 揽收 | `1` | 沿用 `YtoTraceProvider.mapStatus`（Y3.1 已按官方文档校准） |
+| IN_TRANSIT ← IN_TRANSIT | `0` 在途 / `7` 转投 / `8` 清关 | `2` | 同上 |
+| DELIVERING ← DELIVERING（新） | `5` 派件（`501` 投柜或驿站 → `atLocker`） | `3` | 同上 |
+| DELIVERED ← SIGNED | `3` 签收（`301`~`304`） | `4` 已签收 / `6` 代签收 | 同上 |
+| EXCEPTION ← EXCEPTION | `2` 疑难 / `4` 退签 / `6` 退回 / `14` 拒签 | `5` | 同上 |
 
-> 快递100 与圆通的推送状态码都以**第一条真实推送**为准（快递100 `resultv2=1` 时还有子状态；圆通推送服务还没调试）；上表是官方文档口径。
+> 快递100 订阅时传 `resultv2=4` 才带子状态（要用 `501`）。快递100 与圆通的推送状态码都以**第一条真实推送**为准（圆通推送服务还没调试）；上表是官方文档口径。
 
 #### 2.4.6 查看
 
@@ -441,9 +448,9 @@ CREATED → COLLECTED → IN_TRANSIT → DELIVERING → SIGNED
 TrackService.track(q)
   读 lgs_waybill + 节点
   surface==MP ∧ profile==WX ∧ display_token 有：
-      display = WX_PLUGIN(token)
+      display = wx-plugin(token)
       若 now - wx_status_checked_at ≥ 10 分钟 ∧ 状态非终态：调 query_trace → advance（可能触发签收）
-  其余：display = SELF_MAP(nodes)
+  其余：display = self-map(nodes)
   refresh=true：按 StatusProbe 链问一次（链与界面白名单都由配置给；快递100 默认不在任何界面的白名单里）
 ```
 
@@ -457,7 +464,7 @@ TrackService.track(q)
 | 订阅链 | 谁把轨迹推给我们 | `yto`、`kuaidi100`、将来的渠道 | `[yto, kuaidi100]` |
 | 探测链 | 补偿与读时找谁问状态 | `wx`、`yto`、`kuaidi100`、将来的渠道 | `[wx]`；圆通查询审核通过后 `YTO: [wx, yto]` |
 | 探测允许的界面 | 哪些界面的「刷新」能真的去问渠道 | `MP` `APP` `H5` `BIZ` `OPS`，按渠道给 | `kuaidi100: []`（额度不够，一个都不允许） |
-| 换 token 时机 | 微信 | `on-collected`、`on-ship` | `on-collected` |
+| 换 token 时机 | 微信 | `on-picked-up`、`on-ship` | `on-picked-up` |
 
 ```yaml
 shop:
@@ -474,7 +481,7 @@ shop:
       kuaidi100: []
     read-cache-minutes: 10
     wx-bind:
-      trigger: on-collected
+      trigger: on-picked-up
     compensation:
       cron: "0 15 * * * *"
       silent-hours: 24
@@ -553,7 +560,8 @@ shop:
 | 新增 | `logistics-channel/kuaidi100/{Kuaidi100Subscriber,Kuaidi100PushReceiver}`；`Kuaidi100TraceProvider` 改为 `Kuaidi100StatusProbe` | |
 | 新增 | `logistics-domain/…/api/callback/LogisticsCallbackController` | `/callback/logistics/{channel}`，按名字分派 |
 | 删除 | `LogisticsServiceImpl.ensureShipments`、`refreshInTransitTraces`、`LogisticsTracePollingJob`、`WxWaybillBind*`、`WxConfirmReceiveJob` | |
-| 新增 | `shop-base/spi/logistics/{LogisticsPort,ShipmentSourcePort,LogisticsEvents}` | 取代 `ShipmentTraceQueryPort`、`LogisticsTracePort`、`TraceDisplayPort` |
+| 新增 | `shop-base/spi/logistics/{LogisticsPort,LogisticsAdminPort,ShipmentSourcePort,LogisticsEvents}` | 取代 `ShipmentTraceQueryPort`、`LogisticsTracePort`、`TraceDisplayPort` |
+| 移动 | `OpsLogisticsController` 的运单与运力部分 → `shop-app/portal/ops/OpsShipmentController` | 改调 `LogisticsAdminPort`；运费模板部分留原处 |
 | 新增 | `shop-app/logisticsbridge/{ShipmentSourcePortImpl,LogisticsJobHandlers}` | |
 | 修改 | `WxConfirmReceiveService` | 从扫表改为消费 `WaybillSigned` |
 | 修改 | `WxShippingUploadService` | 上传成功后发 `WxShippingUploaded` |
@@ -562,17 +570,108 @@ shop:
 | 新增 | 守卫 `LogisticsBoundaryTest`；`ArchitectureTest.DOMAINS` 加 `logistics` | AC10 |
 | 修改 | c-app 物流页、b-app 订单详情、ops-web 运单页 | 改调新端点 / 加筛选 |
 
-### 2.9 分批（每批单独可上线、可停）
+### 2.9 开发任务（每批单独可上线、可停）
 
-| 批 | 内容 | 上线后能看到什么 | 前置 |
-|---|---|---|---|
-| **0 止血** | `logistics-trace` 降到每小时；`ensureShipments` 状态只进不退（两行） | 快递100 调用量立刻减半以上；已签收单不再被重查 | 无，可立刻做 |
-| **1 收拢** | 建模块、搬类、改表名 + `lgs_carrier_code`（V387）、能力 SPI 与 `ChannelRouter`、新 Port、守卫。**行为不变** | 无外部可见变化；守卫开始挡越界 import | 0 |
-| **2 订阅与推送** | 发货登记、订阅链（快递100 + 圆通订阅）、通用推送回调（先落快递100 的 `PushReceiver`）、状态单调、删读时补齐与 `logistics-trace` | 快递100 降到每单一次；圆通单走圆通订阅；轨迹由推送更新 | **两家各用一张真运单实测订阅**：快递100 订阅是另一个产品、余额单独算（600=key 不属该账号、601=该产品余额 0）；圆通要正式客户编码 + 白名单 |
-| **2b 圆通推送** | `YtoPushReceiver`；圆通推送服务在控制台调通 | 圆通单的轨迹由圆通推送 | 圆通「轨迹推送服务」调试通过。没调通前 `yto` 的推送接收不可用 → 订阅也算不可用 → 圆通单**自动**落到快递100（§2.1.1）；调通当天配上推送密钥即生效，不改链 |
-| **3 微信** | 揽收触发换 token、`query_trace` 读时校正（10 分钟）、`WaybillSigned` 事件化、删两个微信作业 | 换 token 不再盲调；签收提醒即时 | 2 |
-| **4 线下付款单** | SELF 单的自有订阅消息；**先修 `requestSubscribe` 在 await 之后调用、手势失效导致授权从未收集成功**的缺陷 | 线下付款买家能收到发货/签收通知 | 2 |
-| **5 补偿与运营** | `logistics-compensate`、运营端 FATAL 筛选与重放、B 端轨迹端点、旧配置键清理、删旧列（V388） | 只剩一个物流作业 | 2、3 |
+> 每个任务一行：**做什么 · 对应 AC · 怎么验证 · 依赖**。「验证」一栏写的是**能失败的检查**；
+> 每条 AC 的测试都要做一次消融（撤实现必须变红），写进 §5。批与批之间各自上线、各自能停。
+
+#### 外部前置（需要有人去服务商控制台或生产环境做）
+
+| ID | 事项 | 谁 | 卡哪一批 | 怎么确认做完了 |
+|---|---|---|---|---|
+| P1 | 联系快递100 客服**开通 HTTPS 回调**（默认只推 HTTP） | 用户 | 批 2 | 快递100 调试工具对 `https://www.hxmall.top/callback/logistics/kuaidi100` 推一条，我方日志出现 `[lgs-push-first]` |
+| P2 | 确认快递100 **订阅产品**有余额（与「实时查询」是两本账） | 用户 / 我实测 | 批 2 | 一张真运单订阅返回 `200`；`600` / `601` 即没开或没钱 |
+| P3 | 圆通**订阅接口正式客户编码 / 密钥** | 用户 | 批 2（圆通单） | 生产机上一张真圆通单订阅成功 |
+| P4 | 圆通**轨迹推送服务**在控制台调通，拿推送密钥 | 用户 | 批 2b | 生产日志出现圆通的 `[lgs-push-first]` |
+| P5 | 生产 env 加键：`LOGISTICS_PHONE_KEY`、`LOGISTICS_CALLBACK_BASE`、`YTO_SUBSCRIBE_*`、`YTO_PUSH_SECRET` | 我（只回读键名，不打印值） | 批 2 | `GET /ops/logistics/channels` 各能力 `available=true` |
+| P6 | 圆通**查询接口**审核通过 | 圆通 | 不卡（配置即可加进探测链） | — |
+
+#### 批 0 · 止血（可立刻做，不等别的）
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T0.1 | `LogisticsServiceImpl.ensureShipments` 状态同步改为**只进不退**（已是 `DELIVERED` / `EXCEPTION` 的不被订单状态覆盖） | AC12 | 新用例：轮询推到 `DELIVERED` 后再跑一轮补齐，状态不变；消融：撤掉判断 → 红 | — |
+| T0.2 | 作业表 `logistics-trace` 的 cron 改为每小时 | AC1（部分） | 回读作业表；次日看快递100 调用量 | — |
+| T0.3 | 部署 + 回读 | — | health 200；线上进程是这一版 | T0.1 |
+
+#### 批 1 · 收拢（行为不变）
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T1.1 | 建 `backend/logistics/{pom,logistics-domain,logistics-channel}`，根 pom 登记；`shop-app` 依赖它们 | AC10 | `check-head-compiles.sh` 绿 | — |
+| T1.2 | `ArchitectureTest.DOMAINS` 加 `logistics`；新守卫 `LogisticsBoundaryTest`：①不 import 业务域 ②源码不出现 `ord_` `trd_` `pmt_` 表名 ③`shop-base/spi/logistics` 里反向 Port ≤ 1 | AC10 | 三条各故意违反一次 → 红 | T1.1 |
+| T1.3 | 迁移 `V387`：`RENAME` 三张表 → `lgs_*`；加列（§2.2）；建 `lgs_carrier_code` 并按 `ExpressCompanies` + 快递100 编码表种初始数据 | AC14 | **真库副本带 Flyway 跑一遍**（H2 绿证明不了）；`gen-test-schema.py` 重新生成 | T1.1 |
+| T1.4 | 实体 / Mapper 迁入 `logistics-domain`，表名改 `lgs_*`；`LogisticsServiceImpl` 运单与轨迹部分迁入（运费模板留原处） | — | 全量测试绿（行为不变） | T1.3 |
+| T1.5 | `channel/express/trace/**`、`WxPluginDisplay` 迁入 `logistics-channel/{kuaidi100,yto,wx,stub}/` | — | 同上 | T1.1 |
+| T1.6 | 能力 SPI（`TrackingSubscriber` `PushReceiver` `StatusProbe` `TraceDisplay` `WaybillCreator`）+ `ChannelRouter`（三级链、`covers` 读 `lgs_carrier_code`、订阅可用 ⇔ 推送可用）；`LogisticsTraceRouter` 并入 | AC13 | `ChannelRouterTest` 五条（§5） | T1.4 T1.5 |
+| T1.7 | `TraceStatus` 加 `DELIVERING`、`TraceResult` 加 `atLocker`；**逐个排查 `TraceStatus` 的所有分支点**；守卫：每个 `switch` 显式处理 `DELIVERING` | AC4 | 守卫故意漏一处 → 红 | T1.4 |
+| T1.8 | 新 Port：`LogisticsPort`、`LogisticsAdminPort`、`ShipmentSourcePort`、`LogisticsEvents`；旧 `ShipmentTraceQueryPort` 等改为委托（过渡） | AC10 | 编译 + 全量 | T1.4 |
+| T1.9 | `LogisticsProperties`（`shop.logistics.*`）；**写 yml 前 grep 是否已有 `logistics:`**；Map / List 用字段默认值 | AC9 | `LogisticsPropertiesTest`；全量（重复键会让上下文起不来） | T1.1 |
+| T1.10 | 部署 + 回读（迁移在生产跑通、三张表已改名） | — | `flyway_schema_history` 回读 387 成功；health 200 | T1.1–T1.9 |
+
+#### 批 2 · 发货登记 + 订阅 + 推送
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T2.0 | **实测**：快递100 订阅一张真运单（P2）；圆通订阅一张真圆通单（P3） | — | 返回码记进本 TDD §7 | P2 P3 |
+| T2.1 | `ShipmentRegistrar`：消费 `SubOrderShipped` → `sourceOf` → 登记（唯一键幂等）→ 发 `SubscribeRequested` | AC1 AC5 | `ShipmentRegistrarTest` 四条 | T1.8 |
+| T2.2 | `logisticsbridge/ShipmentSourcePortImpl`：拼快照（收件人、手机号、微信交易键、商品 ≤3、订单页路径） | AC5 | 快照字段齐；线下付款单 `wx=null` | T1.8 |
+| T2.3 | 手机号 AES-GCM（`phone-key`），终态清空，日志只出后四位 | AC4 | 加解密往返；签收后列为空；日志断言无完整号 | T1.9 |
+| T2.4 | `SubscribeExecutor`：按链订阅、可重试抛出、不可重试换下一个、链尽 FATAL；快递100 每月 4 次计数 | AC1 AC7 AC13 | `SubscribeExecutorTest` | T1.6 |
+| T2.5 | `Kuaidi100Subscriber` + `Kuaidi100Codes`（订阅返回码分类，`resultv2=4`，顺丰 / 中通带手机号） | AC7 | 返回码逐个用例 | T1.6 |
+| T2.6 | `YtoSubscriber`（凭据按能力分组，签名沿用已校准的实现） | AC13 | 样例报文单测；生产实测在 T2.0 | T1.6 P3 |
+| T2.7 | `LogisticsCallbackController`（`/callback/logistics/{channel}`，返回 `String`）+ `PushIngestService`（找运单、只认 `sub_channel`、节点去重、承运商纠正留痕、`abort`→`ENDED`、到柜标记、第一条原文落日志） | AC3 AC4 | `PushIngestServiceTest`；用快递100 文档样例报文 | T2.1 |
+| T2.8 | `Kuaidi100PushReceiver`：验签 `upper(md5(param+salt))`、解析、回执 | AC3 | 验签失败仍回成功且不入库；`abort` 回成功 | T2.7 |
+| T2.9 | `WaybillStatus.advance` 单调；`picked_up_at` / `signed_at` 只写一次 | AC4 AC12 | `WaybillStatusTest`；消融：允许降级 → 红 | T1.7 |
+| T2.10 | 删 `ensureShipments` 读时补齐；`order-auto-receipt` 改走 `LogisticsPort.signedAtOf`；订单详情 trace 只读库 | AC12 | 全量；详情接口不触发外部调用（mock 断言 0 次） | T2.1 |
+| T2.11 | 删 `LogisticsTracePollingJob`；**作业表 `logistics-trace` 停用** | AC8 | 回读作业表；调度器无 HandlerNotFound | T2.7 |
+| T2.12 | 上线后：对**所有在途运单**补一次订阅（一次性，约几十单） | AC1 | 在途运单 `sub_state` 全部非 `PENDING` | T2.0–T2.11 |
+| T2.13 | 部署 + 回读 + 第一条真推送核对（字段与文档是否一致） | — | 日志 `[lgs-push-first]`；运单节点在增长 | P1 P5 |
+
+#### 批 2b · 圆通推送
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T2b.1 | `YtoPushReceiver`（以调通后的真实报文为准）；配上推送密钥后 `available=true` → 圆通单自动走圆通 | AC13 | 推送密钥未配时圆通单落到快递100（用例）；配上后走圆通 | P4 |
+
+#### 批 3 · 微信
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T3.1 | `WxShippingUploadService` 上传成功后发 `WxShippingUploaded`；物流消费记 `wx_uploaded_at` | AC2 | 事件发出且只一次 | 批 2 |
+| T3.2 | `WxBindPolicy` + `WxBindExecutor`：两个触发点、`9300559` 保持 WAITING、FATAL 分类 | AC2 AC3 | `WxBindPolicyTest`：未上传或未揽收 → 0 次调用 | T3.1 |
+| T3.3 | `WxStatusProbe`（`query_trace`）；`TrackService` 读时校正（10 分钟、超时 2 秒） | AC6 | `TrackServiceTest`：10 分钟内第二次 0 次调用 | 批 2 |
+| T3.4 | `WaybillSigned` 事件；`WxConfirmReceiveService` 改为消费事件；删 `WxConfirmReceiveJob`，作业表停用 `wx-confirm-receive` | AC4 | 签收 → 提醒一次；重复签收推送不重复提醒 | T2.9 |
+| T3.5 | 删 `WxWaybillBindJob`，作业表停用 `wx-waybill-bind`；access_token 与发货上报**共用一个获取器** | AC8 | 回读作业表 | T3.2 |
+| T3.6 | **c-app 发 `X-Client`**（`packages/shared` http 客户端按平台给 `MP` / `APP` / `H5`） | AC6 | H5 下 A2 返回 `self-map`；小程序返回 `wx-plugin` | — |
+| T3.7 | `GET /mp/order/{orderNo}/trace`（交易域 controller，先判属主）；登记 `MpEndpointAuthTest.REQUIRES_LOGIN`、c-app `endpoints.ts` + `RESPONSE_TYPES` | AC6 | 别人的子单 → 10404；`gen:api` 绿 | T3.3 |
+| T3.8 | c-app「查看物流」改调 A2；`ShipmentStatus` 类型加 `DELIVERING` `CANCELLED`；`sh-trace` 状态分支逐个处理、到柜提示 | AC6 | `vue-tsc`；真机：小程序开插件、H5 展开轨迹 | T3.7 |
+| T3.9 | 部署 + 真机验证（一单从揽收到签收：token 在揽收后出现、签收后提醒到达） | — | 真机截图 | T3.1–T3.8 |
+
+#### 批 4 · 线下付款单
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T4.1 | **先修**：`requestSubscribe` 在两次 await 之后调用、手势失效 → 改到点击回调里同步调用 | AC5 | 真机：授权弹窗出现；订阅授权记录表里有这次授权（表名实现时按 TDD-通知与消息推送 §13 核对） | — |
+| T4.2 | `NotificationConsumer` 消费 `WaybillProgressed` / `WaybillSigned`，**只对 SELF 单**发订阅消息（发货 / 派件 / 签收模板） | AC5 | WX 单不发（不重复打扰）；SELF 单发 | T4.1 批 2 |
+
+#### 批 5 · 补偿与运营
+
+| ID | 做什么 | AC | 验证 | 依赖 |
+|---|---|---|---|---|
+| T5.1 | `LogisticsCompensationJob`（`0 15`、上限 200、单号 6 小时节流、五个数 detail、`@SchedulerLock`、`JobDeclaration` 在 bridge）；**作业表打开** | AC8 | `LogisticsCompensationTest`：正常推送中的单 0 次探测 | 批 3 |
+| T5.2 | 运营端：`OpsShipmentController` 移到 `portal/ops` 改调 `LogisticsAdminPort`；O1 筛选 + 数据库分页；O3 重放；O4 渠道总览；新权限码 `fulfillment:logistics:replay`；**/ops 五处登记** | AC7 | 新码三条用例（30013 / 30014 / 30015）；`ops-endpoint-exists` 绿 | 批 2 |
+| T5.3 | 新 ErrorCode 30013–30015：**四处登记**（`ErrorCode` + 三语、响应格式规范 §3、`gen-glossary`、`gen-ui-spec`） | AC7 | `BackendI18nParityTest`、`spec-completeness` 绿 | — |
+| T5.4 | B 端 `GET /biz/order/{subOrderNo}/trace` + b-app 订单详情展开完整轨迹；**B 端七处登记** | AC11 | 别的门店的子单 → 10404；`gen:api` 绿；`vue-tsc` | 批 2 |
+| T5.5 | ops-web：运单页加筛选与重放按钮、渠道总览、承运商编码编辑；从 `displayChannel` 切到 `bindState` | AC7 AC14 | ops-web 自查（mock 与真后端各一遍） | T5.2 |
+| T5.6 | 旧配置键清理（`shop.express.trace.*`、`shop.express.yto.*`）；**生产 env 同步改键名**；`withinTtl` 死代码删 | AC9 | 回读生产 env 键名；渠道总览全绿 | 批 2b |
+| T5.7 | `V388` 删 `lgs_waybill` 四个旧列（先确认无读者） | — | 真库副本跑一遍 | T5.5 |
+| T5.8 | `ChannelExtensibilityTest`：注册一个测试渠道，不动任何既有代码即被路由选中并收到推送 | AC14 | 消融：把渠道名写死进 Controller → 红 | T1.6 T2.7 |
+
+#### 每批收尾（都要做）
+
+`check-head-compiles.sh`（干净副本 + 全量）· 相关前端 `vue-tsc` · 生成物重跑（`gen:api`、`gen-test-schema.py`、改了界面就跑 `gen-ui-catalog.py`）·
+`deploy-backend.sh` + 回读 · 新作业注册后**在作业表打开**、删掉的作业**在作业表停用** · 本 TDD §5 / §6 回填。
 
 ---
 
@@ -634,6 +733,9 @@ shop:
 | 风险 | 影响 | 缓解 |
 |---|---|---|
 | 快递100 订阅产品没开 / 没余额 | 批 2 整个不成立 | 批 2 第一步**用一张真运单实测**，看返回码再写代码 |
+| 快递100 回调默认只支持 HTTP | 我们的回调是 HTTPS，不开通就收不到推送 | **批 2 前置：联系快递100 客服开通 HTTPS 回调**（官方文档原话：HTTPS 需联系客服） |
+| 快递100 同一单号每月最多订阅 4 次 | 重放、换渠道重订阅撞上限 | 重放前看本月已订阅次数，超了直接告诉运营 |
+| 快递100 回执失败只重试 3 次（每 30 分钟） | 我们发版重启窗口里的推送可能永久丢失 | 补偿作业按「24 小时无推送」去问微信；发版尽量避开整点 |
 | 推送报文与文档不符 | 字段取不到、什么都没发生（和没接一样） | 第一条真推送原文整条落 WARN（同微信结算事件的做法）；按字段名找、不赌层级 |
 | 回调地址收不到推送 | 全部运单沉默 | 回调用 `https://www.hxmall.top/callback/logistics/{channel}`（与微信回调同域，已验证公网可达）；补偿作业「沉默数」是第一个报警指标 |
 | `RENAME TABLE` 在生产出错 | 物流全停 | 在**真库副本**上带 Flyway 跑一遍（H2 全绿证明不了迁移）；MySQL 9.7 下 RENAME 原子 |
@@ -673,6 +775,7 @@ shop:
 | 日期 | 事件 |
 |---|---|
 | 2026-10-09 | 草稿 |
+| 2026-10-09 | 用户确认「方案可行」；补齐功能清单、API、功能模块方案、调用清单与 §2.9 开发任务 |
 
 ---
 
