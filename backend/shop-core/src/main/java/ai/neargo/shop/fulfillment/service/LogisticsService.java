@@ -120,6 +120,22 @@ public interface LogisticsService {
     }
 
     /**
+     * 已签收、可以提醒买家确认收货的运单（批 A）。
+     *
+     * <p>只挑 {@code DELIVERED} 且记下了 {@code signed_at} 的 —— 没有签收时间就没法调微信
+     * （{@code received_time} 必填且要晚于发货时间）。<b>幂等不在这一层</b>：
+     * 微信「每单一次」是按支付单算的，而一个支付单可能对应多张子单，
+     * 所以「提醒过没有」由 shop-app/paybridge 按支付单判，这里只负责「哪些运单签收了」。
+     *
+     * @param limit 一轮最多挑多少单
+     */
+    List<SignedShipment> signedShipments(int limit);
+
+    /** 已签收的运单。{@code signedAt} 毫秒 */
+    record SignedShipment(String shipmentNo, String subOrderNo, long signedAt) {
+    }
+
+    /**
      * 保存运费模板的入参。
      *
      * @param outOfRange 超区规则。同一区域只能有一条 —— 配两条时命中哪条取决于顺序

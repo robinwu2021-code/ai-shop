@@ -135,6 +135,52 @@ public class WxShippingGateway implements WxShippingPort {
     }
 
     /** 缺哪一件说哪一件。微信的参数码不会告诉你缺的是哪一个字段 */
+    /**
+     * 确认收货提醒。与 {@link #upload} 共用 access_token 与错误分类，但有两点不同：
+     * <ul>
+     *   <li><b>重复调用不当成功</b>：微信规定每单一次，第二次回的是真错。上层靠
+     *       {@code confirm_notified_at} 保证只调一次，这里不替它兜底 —— 兜了就看不见重复调用这件事。</li>
+     *   <li>10060029「签收时间非法」是 <b>fatal 不是可重试</b>：时间不会自己变合法，
+     *       重试只是把同一个错再撞 N 次，而每撞一次都可能耗掉「每单一次」的那一次。</li>
+     * </ul>
+     */
+    @Override
+    public Result notifyConfirmReceive(ConfirmCmd cmd) {
+        if (cmd == null || cmd.outTradeNo() == null || cmd.outTradeNo().isBlank()) {
+            return Result.fatal(-1, "缺商户单号");
+        }
+        if (cmd.receivedAt() <= 0) {
+            return Result.fatal(-1, "缺签收时间");
+        }
+        String body = "{\"merchant_id\":\"" + esc(mchId) + "\",\"merchant_trade_no\":\""
+                + esc(cmd.outTradeNo()) + "\",\"received_time\":" + cmd.receivedAt() + "}";
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(host + "/wxa/sec/order/notify_confirm_receive?access_token=" + accessToken()))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                    .build();
+            String resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body();
+            int code = intOf(resp, ERRCODE, -1);
+            String msg = strOf(resp, ERRMSG);
+            if (code == 0) {
+                log.info("[wxship] 确认收货提醒已发 outTradeNo={}", cmd.outTradeNo());
+                return Result.ok();
+            }
+            boolean retryable = code == 40001 || code == 42001 || code == 45009;
+            if (retryable) {
+                token = null;
+            }
+            log.warn("[wxship] 确认收货提醒失败 outTradeNo={} errcode={} errmsg={} 可重试={}",
+                    cmd.outTradeNo(), code, msg, retryable);
+            return retryable ? Result.retry(code, msg) : Result.fatal(code, msg);
+        } catch (Exception e) {
+            log.warn("[wxship] 确认收货提醒异常 outTradeNo={}：{}", cmd.outTradeNo(), e.toString());
+            return Result.retry(-1, e.getClass().getSimpleName());
+        }
+    }
+
     private static String validate(Command c) {
         if (c.outTradeNo() == null || c.outTradeNo().isBlank()) {
             return "缺商户单号";

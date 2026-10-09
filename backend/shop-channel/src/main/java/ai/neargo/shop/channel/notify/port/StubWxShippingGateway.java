@@ -32,4 +32,11 @@ public class StubWxShippingGateway implements WxShippingPort {
                 cmd.outTradeNo(), cmd.logisticsType(), cmd.itemDesc());
         return Result.ok();
     }
+
+    @Override
+    public Result notifyConfirmReceive(ConfirmCmd cmd) {
+        log.info("[wxship-stub] 确认收货提醒（未真发）outTradeNo={} receivedAt={}",
+                cmd.outTradeNo(), cmd.receivedAt());
+        return Result.ok();
+    }
 }

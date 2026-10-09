@@ -50,6 +50,33 @@ public interface WxShippingPort {
     }
 
     /**
+     * 确认收货提醒（{@code /wxa/sec/order/notify_confirm_receive}）。
+     *
+     * <p>我方从承运商得知签收后调它，微信据此提醒买家去确认收货 —— 买家确认（或微信到期自动确认）
+     * 之后这笔钱才进入结算。<b>微信不会把签收回调给开发者</b>，所以这一步的触发只能由我们自己查轨迹得出。
+     *
+     * <p>三条硬约束（都来自微信文档）：
+     * <ul>
+     *   <li><b>每个订单仅可调用一次</b> —— 幂等标记落在支付单这一层；</li>
+     *   <li>只有<b>物流快递</b>（{@code logistics_type=1}）才能提醒；</li>
+     *   <li>{@code received_time} 必须<b>晚于发货时间</b>，否则回 10060029。</li>
+     * </ul>
+     *
+     * <p>默认实现返回「未开通」—— 没装这条通道的切片测试不必各写一个桩。
+     */
+    default Result notifyConfirmReceive(ConfirmCmd cmd) {
+        return Result.fatal(-1, "未接入确认收货提醒");
+    }
+
+    /**
+     * @param outTradeNo 商户单号。与 {@link #upload} 用<b>同一套定位</b>（mchid + out_trade_no），
+     *                   不用 transaction_id —— 少一个「支付回调有没有写回微信交易号」的依赖
+     * @param receivedAt 快递签收时间，<b>秒</b>（微信要的是秒级时间戳，我们库里存的是毫秒，换算在调用方做）
+     */
+    record ConfirmCmd(String outTradeNo, long receivedAt) {
+    }
+
+    /**
      * @param success  成不成功。<b>「订单已发货」（10060002）算成功</b> ——
      *                 重试撞到它是正常的，按失败重试会永远重试下去
      * @param code     微信错误码，成功为 0。留着是为了台账上能看出「为什么失败」

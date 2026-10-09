@@ -71,4 +71,11 @@ public class FulShipment extends BaseEntity {
 
     /** 上次备展示载荷的时刻(ms)，成功失败都记 */
     private Long displayPreparedAt;
+
+    /**
+     * 签收时间（毫秒）。**推进到 {@link #DELIVERED} 那一刻记下**，不事后从轨迹节点反推 ——
+     * 节点会被后续查询追加、顺序也不保证，反推出来的时间可能早于发货，
+     * 而微信确认收货提醒要求 {@code received_time} 晚于发货时间（否则 10060029）。
+     */
+    private Long signedAt;
 }

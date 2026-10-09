@@ -327,6 +327,14 @@ public class LogisticsServiceImpl implements LogisticsService {
                 advanced++;
                 if (FulShipment.DELIVERED.equals(next)) {
                     delivered++;
+                    /*
+                     * **签收那一刻就记下签收时间**（批 A）。事后从轨迹节点反推不可靠：
+                     * 节点会被后续查询继续追加、顺序也不保证，而微信确认收货提醒要求
+                     * received_time 晚于发货时间，反推出一个早于发货的时间就是 10060029。
+                     * 取承运商给的签收节点时间；它没给（节点里找不到 SIGNED）就用此刻 ——
+                     * 宁可晚一点也不要早于发货。
+                     */
+                    s.setSignedAt(signedAtOf(tr, now));
                 }
             }
             // 查到了就回写一次：既落状态变更，也把 updated_at 当「上次刷新」推上去，
@@ -376,6 +384,17 @@ public class LogisticsServiceImpl implements LogisticsService {
      * 统一轨迹状态 → 运单状态。{@code UNKNOWN} 不动当前状态（查不到明确状态别倒退）。
      * 承运商原始码 → {@code TraceStatus} 的映射在各 provider 内做，这里只认统一枚举。
      */
+    /** 承运商给的签收节点时间；找不到就用 {@code fallback}（见调用处注释：宁晚勿早） */
+    private static long signedAtOf(TraceResult tr, long fallback) {
+        if (tr.nodes() == null) {
+            return fallback;
+        }
+        return tr.nodes().stream()
+                .filter(n -> n.status() == TraceStatus.SIGNED && n.at() > 0)
+                .mapToLong(TraceResult.TraceNode::at)
+                .max().orElse(fallback);
+    }
+
     private static String mapStatus(TraceStatus st, String current) {
         if (st == null) {
             return current;
@@ -637,6 +656,20 @@ public class LogisticsServiceImpl implements LogisticsService {
 
     private static long nzL(Long v) {
         return v == null ? 0L : v;
+    }
+
+    @Override
+    public List<SignedShipment> signedShipments(int limit) {
+        // 最久签收的优先：提醒确认收货越早越好，积压时先处理等得久的那些
+        return DataScopeContext.executeWithoutScope(() ->
+                        shipmentMapper.selectList(Wrappers.<FulShipment>lambdaQuery()
+                                .eq(FulShipment::getStatus, FulShipment.DELIVERED)
+                                .isNotNull(FulShipment::getSignedAt)
+                                .orderByAsc(FulShipment::getSignedAt)
+                                .last("limit " + Math.max(1, limit))))
+                .stream()
+                .map(s -> new SignedShipment(s.getShipmentNo(), s.getSubOrderNo(), nzL(s.getSignedAt())))
+                .toList();
     }
 
     @Override

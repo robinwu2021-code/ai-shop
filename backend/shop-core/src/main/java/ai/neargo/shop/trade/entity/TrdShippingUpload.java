@@ -44,4 +44,11 @@ public class TrdShippingUpload extends BaseEntity {
     private String errMsg;
 
     private java.time.LocalDateTime uploadedAt;
+
+    /**
+     * 已调用微信「确认收货提醒」的时间（毫秒）。微信规定<b>每个订单仅可调用一次</b>，
+     * 而一个支付单可能对应多张子单 —— 所以幂等标记落在支付单这一层（本表按 order_no 一行），
+     * 不落在运单上。
+     */
+    private Long confirmNotifiedAt;
 }
