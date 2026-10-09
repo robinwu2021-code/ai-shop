@@ -459,15 +459,32 @@ class StoreStockFlowTest {
 
     /** @return 下单响应的 code，0 = 成功 */
     /** 社区目录里这件货那一行；没出现时返回 null */
+    /**
+     * CM001 社区目录里这件货那一行，<b>翻遍所有页</b>找。
+     *
+     * <p>服务端 {@code size} 封顶 50、CM001 是共享种子社区，全量跑时累积了别的用例建的大量货。
+     * 此前只看第一页、靠「新货号大排在前 50」才命中；业务码改随机段后（ADR-033）命中的那件会落到任意一页。
+     * 翻遍所有页既稳又不改语义 —— 带 communityNo 时后端照常挂门店（providingStores），store 字段不受影响。
+     */
     private tools.jackson.databind.JsonNode catalogRow(String goodsNo) throws Exception {
-        String body = mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
-                .andReturn().getResponse().getContentAsString();
-        for (var r : json.readTree(body).get("data").get("records")) {
-            if (goodsNo.equals(r.get("goodsNo").asString())) {
-                return r;
+        for (long page = 1; ; page++) {
+            String body = mvc().perform(get("/mp/goods").param("communityNo", "CM001")
+                            .param("page", String.valueOf(page)).param("size", "50"))
+                    .andReturn().getResponse().getContentAsString();
+            var data = json.readTree(body).get("data");
+            var records = data.get("records");
+            if (records == null || records.isEmpty()) {
+                return null;
+            }
+            for (var r : records) {
+                if (goodsNo.equals(r.get("goodsNo").asString())) {
+                    return r;
+                }
+            }
+            if (page * 50 >= data.get("total").asLong()) {
+                return null;
             }
         }
-        return null;
     }
 
     /**

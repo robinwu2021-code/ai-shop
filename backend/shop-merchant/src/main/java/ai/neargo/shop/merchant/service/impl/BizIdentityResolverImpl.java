@@ -291,13 +291,24 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          * 请求带了 X-Store-No 时由 Filter 覆盖 —— 这里只负责「没指定时用哪家」。
          */
         Set<String> defaultCandidates = activeStoreNos.isEmpty() ? storeNos : activeStoreNos;
-        String defaultStore = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
-                        .eq(MchStore::getEntityNo, merchant.getEntityNo())
-                        .eq(MchStore::getIsDefault, true)).stream()
+        /*
+         * 一条有序查询定默认店：**is_default 在前，同级按 id（创建序）在前**，过滤到候选取第一个。
+         * 老板命中 is_default 店；店员没被授权 is_default 时，取他能管的**最早一家**。
+         *
+         * ⚠️ 原先 fallback 是 `defaultCandidates.stream().sorted()`——按 storeNo 字符串排。
+         * 旧业务码「前缀+时间戳+递增seq」的字符串序恰好=创建序，于是这条默默依赖了 ID 格式。
+         * 业务码带随机段之后（ADR-033）字符串序变任意序，默认店会随机落到另一家、不报错。
+         * 改成 id 排序：确定、含义是「最早的店」、与 ID 格式无关。
+         */
+        String defaultStore = DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
+                                .orderByDesc(MchStore::getIsDefault)
+                                .orderByAsc(MchStore::getId))).stream()
                 .map(MchStore::getStoreNo)
                 .filter(defaultCandidates::contains)
                 .findFirst()
-                .orElse(defaultCandidates.stream().sorted().findFirst().orElse(null));
+                .orElse(null);
 
         /*
          * 能核销哪些自提点：**按我能管的门店算**，不是按主体（V16 起自提点归属到门店）。

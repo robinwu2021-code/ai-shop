@@ -716,15 +716,20 @@ public class OrderServiceImpl implements OrderService {
                 candidates.add(served);
             }
             /*
-             * 剩下的营业店按门店号定序补在后面。**只有带件时才用得上** ——
-             * 不带件时闸门取第一顺位，与改造前逐字相同（下面那条 assert 就是它）。
+             * 剩下的营业店按**创建序**补在后面（`own` 来自 storeNos()，已按 id 升序=最早的店在前）。
+             * **只有带件时才用得上**；不带件时闸门取第一顺位。
+             *
+             * ⚠️ 这里原先是 `.sorted()`——按门店号字符串排。旧业务码是「前缀+时间戳+递增seq」，
+             * 字符串序恰好=创建序，于是没人发现这条默默依赖了 ID 格式。业务码改成带随机段之后
+             * （ADR-033），字符串序变任意序，落店会随机落到另一家，而不报错。
+             * 改回「用 own 自己的创建序」：确定、含义是「最早的店优先」、与 ID 格式无关。
              */
             if (!items.isEmpty()) {
-                own.stream().filter(st -> open(statuses, st)).sorted()
+                own.stream().filter(st -> open(statuses, st))
                         .filter(st -> !candidates.contains(st)).forEach(candidates::add);
             } else if (candidates.isEmpty() && !defaultOpen) {
-                // 不知道买家在哪个社区、默认店又暂停了：取任一营业店，按门店号定序 —— 必须确定
-                own.stream().filter(st -> open(statuses, st)).sorted().findFirst()
+                // 不知道买家在哪个社区、默认店又暂停了：取最早的营业店 —— 必须确定
+                own.stream().filter(st -> open(statuses, st)).findFirst()
                         .ifPresent(candidates::add);
             }
             if (candidates.isEmpty()) {

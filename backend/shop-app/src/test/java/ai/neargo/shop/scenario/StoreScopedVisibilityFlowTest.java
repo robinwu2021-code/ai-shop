@@ -131,7 +131,7 @@ class StoreScopedVisibilityFlowTest {
     @Test
     @DisplayName("★★★ 送货方式原样再存一次不能 500 —— 范围子集是物理删后重插，逻辑删的墓碑会撞唯一键")
     void savingSameSubsetTwiceDoesNotCollide() throws Exception {
-        String biz = merchant("12600180009", "连存两次的店");
+        String biz = merchant("12600180019", "连存两次的店");
         String merchantNo = merchantNoOf(biz);
         String store = defaultStoreNo(biz);
         storeService.save(merchantNo, new MerchantStoreService.SaveCommand(
@@ -422,11 +422,34 @@ class StoreScopedVisibilityFlowTest {
         });
     }
 
+    /**
+     * 买家在这个社区的目录里<b>翻遍所有页</b>能不能看到这件货。
+     *
+     * <p><b>为什么翻页而不是只看前 50</b>：{@code /mp/goods} 服务端 {@code size} 封顶 50，
+     * CM001 这类共享种子社区在全量跑时累积了别的用例建的大量货。此前这条靠「新货号大、排在前 50」
+     * 才绿；业务码改随机段后（ADR-033）排序里不再有单调的号，命中的那件会落到任意一页，
+     * 「只看第一页」就成了随机假红/假绿。翻遍所有页只由「社区可见性」决定命中，测的东西不变。
+     */
     private boolean buyerSees(String communityNo, String goodsNo) throws Exception {
-        String body = mvc().perform(get("/mp/goods")
-                        .param("communityNo", communityNo).param("size", "50"))
-                .andReturn().getResponse().getContentAsString();
-        return body.contains(goodsNo);
+        for (long page = 1; ; page++) {
+            String body = mvc().perform(get("/mp/goods")
+                            .param("communityNo", communityNo)
+                            .param("page", String.valueOf(page)).param("size", "50"))
+                    .andReturn().getResponse().getContentAsString();
+            var data = json.readTree(body).get("data");
+            var records = data.get("records");
+            if (records == null || records.isEmpty()) {
+                return false;
+            }
+            for (var r : records) {
+                if (goodsNo.equals(r.get("goodsNo").asString())) {
+                    return true;
+                }
+            }
+            if (page * 50 >= data.get("total").asLong()) {
+                return false;
+            }
+        }
     }
 
     private String areaNoOf(String merchantNo, String communityNo) {

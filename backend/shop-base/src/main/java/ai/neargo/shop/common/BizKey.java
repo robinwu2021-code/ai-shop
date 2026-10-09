@@ -1,9 +1,8 @@
 package ai.neargo.shop.common;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 业务键生成：{@code 前缀 + yyyyMMddHHmmss + 4 位序 + 3 位随机}。
@@ -61,7 +60,8 @@ public final class BizKey {
     public static final String MESSAGE = "MSG";
     public static final String MERCHANT = "M";
     public static final String MERCHANT_APPLY = "MA";
-    public static final String STAFF = "ST";
+    /** 平台运营员工（sys_ops_staff）。原为 "ST"，与 STORE 撞，2026-10-09 改 STF（ADR-033） */
+    public static final String STAFF = "STF";
     public static final String PICKUP_POINT = "PP";
     /** 社区（小区/网格）。运营开的点，或商家提报审过之后建出来的 */
     public static final String COMMUNITY = "C";
@@ -98,7 +98,8 @@ public final class BizKey {
     /** 放款记录（stl_payout，V391）。账期批次 × 收款号一笔；凭证号挂在它上面 */
     public static final String PAYOUT = "PO";
     /** 渠道报文（stl_channel_message，V286）。发送与回调共用一个前缀 —— 靠 msg_type 分 */
-    public static final String CHANNEL_MESSAGE = "CM";
+    /** 渠道报文（stl_channel_message）。原为 "CM"，与 CAMPAIGN 撞，改 CHM（ADR-033） */
+    public static final String CHANNEL_MESSAGE = "CHM";
     public static final String EVENT = "EVT";
     /** 短信/邮件发送记录 */
     public static final String NOTIFY_LOG = "NL";
@@ -129,15 +130,18 @@ public final class BizKey {
     /** 积分流水 */
     public static final String POINTS_LEDGER = "PL";
     /** 积分资金池流水 */
-    public static final String POINTS_POOL = "PP";
+    /** 积分池。原为 "PP"，与 PICKUP_POINT 撞，改 PPL（ADR-033） */
+    public static final String POINTS_POOL = "PPL";
     /** 榜单 */
     public static final String RANKING = "RK";
     /** 运营素材 */
-    public static final String MATERIAL = "MT";
+    /** 素材（content_material）。原为 "MT"，与 MEMBER_TAG 撞，改 MAT（ADR-033） */
+    public static final String MATERIAL = "MAT";
     /** 商品问答（买家在商品页提问，运营在后台回答） */
     public static final String QUESTION = "QA";
     /** 员工与授权的操作日志（B-11.10.3） */
-    public static final String STAFF_LOG = "SL";
+    /** 员工操作日志。原为 "SL"，与 CONTENT_SLOT 撞，改 SFL（ADR-033） */
+    public static final String STAFF_LOG = "SFL";
     /** 商家自定义角色（V71）。预置角色的码是 OWNER/MANAGER… 这类词，不走这里 */
     public static final String MERCHANT_ROLE = "R";
 
@@ -176,16 +180,37 @@ public final class BizKey {
      */
     public static final String PAYOUT_ACCOUNT = "PAC";
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private static final AtomicInteger SEQ = new AtomicInteger(0);
+    /** 日期段：yyMMdd。到天即可——排序有 created_at，没人靠单号排序（ADR-033） */
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyMMdd");
+
+    /**
+     * Crockford base32 字母表：去掉 I/L/O/U —— 它们与 1/0 混淆，电话报号/手抄最易错。
+     * 32 个字符 = 每位 5 bit。
+     */
+    private static final char[] CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".toCharArray();
+
+    /** 随机段位数。10 位 = 50 bit。短 ↔ 碰撞余量的取舍见 ADR-033；高量类型另有 DB 唯一索引兜底 */
+    private static final int RAND_LEN = 10;
+
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private BizKey() {
     }
 
+    /**
+     * 生成一个业务码：{@code <前缀> + yyMMdd + 10 位 Crockford base32 随机段}。
+     *
+     * <p><b>随机段替掉了原来的「每 JVM 递增 seq」</b>——那是单量泄露源，也是多实例碰撞源。
+     * 现在无共享状态：天然多实例安全，且枚举不出单量（ADR-033）。
+     *
+     * <p>碰撞兜底：50 bit 已足够稀；订单/支付等高量类型另有唯一索引，万一撞上
+     * insert 抛唯一冲突、调用方重试取新号。生成本身仍是纯内存、无 DB 往返。
+     */
     public static String next(String prefix) {
-        int seq = Math.floorMod(SEQ.getAndIncrement(), 10000);
-        int rand = RANDOM.nextInt(1000);
-        return "%s%s%04d%03d".formatted(prefix, LocalDateTime.now().format(FMT), seq, rand);
+        char[] rnd = new char[RAND_LEN];
+        for (int i = 0; i < RAND_LEN; i++) {
+            rnd[i] = CROCKFORD[RANDOM.nextInt(CROCKFORD.length)];
+        }
+        return prefix + LocalDate.now().format(FMT) + new String(rnd);
     }
 }

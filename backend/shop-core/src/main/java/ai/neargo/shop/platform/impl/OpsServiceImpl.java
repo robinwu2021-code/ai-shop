@@ -997,7 +997,8 @@ public class OpsServiceImpl implements OpsService {
 
         String initial = randomPassword();
         SysOpsStaff staff = new SysOpsStaff();
-        staff.setStaffNo("E" + System.currentTimeMillis() % 100000000L);
+        // 统一走 BizKey（ADR-033）：原来是 "E"+毫秒取模，多实例同毫秒会撞，且泄露创建节奏
+        staff.setStaffNo(BizKey.next(BizKey.STAFF));
         staff.setUsername(username);
         staff.setRealName(realName);
         staff.setPassword(passwordHasher.encode(initial));
