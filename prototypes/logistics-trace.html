@@ -14,7 +14,7 @@
   <p class="sub">
     展示渠道是一条<b>优先级链</b>，不是二选一开关：C 端小程序 <code>[wx-plugin, self-map]</code>、
     B 端 App 与运营端 <code>[self-map]</code>。链上谁先说「这一单我能呈现」谁上，备载荷失败自动落到下一个。
-    七屏：C 端两种渠道各两屏、B 端一屏、运营端一屏、失败兜底一屏。
+    十一屏：C 端两种渠道各两屏、B 端一屏、运营端一屏、失败兜底一屏，外加 2026-10-09 改版的四屏（C 端履约与物流合并为顶部一栏 + 详情弹框）。
   </p>
 </header>
 
@@ -242,6 +242,123 @@
         同一套件、同一份组件，不另画一份 —— 两端各写一份的下场是改一次文案要改两处，
         而漏掉的那一处没人会发现（三端时间线此前就是各写各的）。
         差别只有两点：这里带收件人（脱敏）、不带「查看物流详情」按钮（App 里没有微信插件）。
+      </p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">运输中</span><span class="v"><a>查看 ›</a></span></div>
+            <div class="note">【咸阳市】预计10月10日到达【深圳市】，两地距离 1765KM，预计将在 10 日上午为您更新快件状态</div>
+            <div class="frow"><span class="k">申通快递</span><span class="v">773445428821101 <a>复制</a></span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">商品</span><span class="v">虹选盐 1kg × 1</span></div>
+            <div class="frow"><span class="k">实付</span><span class="v">¥1.00</span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">订单号</span><span class="v">SUB2026…5442 <a>复制</a></span></div>
+            <div class="frow"><span class="k">下单时间</span><span class="v">2026-10-09 01:58</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 C 端 · 履约与物流合成顶部一栏</b>状态词 + 最新一条（最多两行）+ 承运商单号，整栏可点。</figcaption>
+      <p class="why">
+        此前这两件事是分开的：「履约方式 快递配送」是履约卡里的一行键值，
+        「物流轨迹」是同一张卡里再往下的一整块内联时间线。于是**买家要往下翻才知道货到哪了**，
+        而他点进这一页十次有九次只为这一件事。
+        合并之后第一屏就回答了它，而且 <b>不点开也知道</b> —— 状态词与最新一条都在栏里。
+        承运商与单号留在栏内（找客服要念它），复制按钮贴着它。
+      </p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">运输中</span><span class="v"><a>查看 ›</a></span></div></div>
+          <div class="mask">
+            <div class="sheet">
+              <div class="h">物流轨迹</div>
+              <div class="steps">
+                <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+                <div class="sp now"><span class="dot"></span><span class="lb">运输中</span></div>
+                <div class="sp"><span class="dot"></span><span class="lb">派送中</span></div>
+                <div class="sp"><span class="dot"></span><span class="lb">已签收</span></div>
+              </div>
+              <div class="tl">
+                <div class="st now"><div class="bd"><b>【咸阳市】预计10月10日到达【深圳市】</b><span>10-09 02:18 · 陕西 西安市</span></div></div>
+                <div class="st done"><div class="bd">【咸阳市】快件已发往 广东深圳转运中心<span>10-09 02:15 · 陕西 西安市</span></div></div>
+                <div class="st done"><div class="bd">【咸阳市】快件已到达 陕西西安转运中心<span>10-09 02:02 · 陕西 西安市</span></div></div>
+                <div class="st done"><div class="bd">【运城市】快件已发往 陕西西安转运中心<span>10-09 01:31 · 山西 运城市</span></div></div>
+                <div class="st done"><div class="bd">【运城市】已揽收<span>10-08 16:08 · 山西 运城市 临猗县</span><a>拨打快递员电话</a></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>09 C 端 · 详情弹框</b>步骤条 + 全部节点，<b>不折叠</b>；揽收那条带可拨的快递员电话。</figcaption>
+      <p class="why">
+        点进来就是为了看全过程，再给一个「展开全部 5 条」等于多一次点击 —— 所以这里不折叠。
+        <b>不画地图</b>：那张图是城市级示意（坐标是行政区中心点，不是快件 GPS），
+        它能回答「在西安」，而买家问的是「今天到不到」「要不要在家等」，答案在节点文字里。
+        地图这件事技术上是通的，后端一直在给坐标，哪天要加回来只是一个属性。
+      </p>
+    </figure>
+
+    <figure id="s10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">运输中</span><span class="v"><a>查看 ›</a></span></div></div>
+          <div class="mask">
+            <div class="sheet">
+              <div class="h">物流轨迹</div>
+              <div class="steps">
+                <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+                <div class="sp now"><span class="dot"></span><span class="lb">运输中</span></div>
+                <div class="sp"><span class="dot"></span><span class="lb">派送中</span></div>
+                <div class="sp"><span class="dot"></span><span class="lb">已签收</span></div>
+              </div>
+              <div class="tl">
+                <div class="st now"><div class="bd"><b>【咸阳市】预计10月10日到达【深圳市】</b><span>10-09 02:18 · 陕西 西安市</span></div></div>
+              </div>
+              <div class="acts"><span class="btn">在微信中查看完整物流</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>10 C 端 · 微信渠道</b>同一个弹框，底部多一颗按钮；步骤条与最新一条仍用我们自己的数据。</figcaption>
+      <p class="why">
+        微信插件页是全屏的、我们改不了也不维护，所以<b>不能只给一颗按钮</b>——
+        那样买家必须多点一次、再等插件加载，才知道「到哪了」。
+        自己的步骤条与最新一条先回答掉，愿意看全程的再点进微信。
+        插件不可用时（版本老、未开通）这颗按钮不出现，弹框退回第 09 屏那套，买家无感。
+      </p>
+    </figure>
+
+    <figure id="s11">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">待取货</span><span class="v">取货码 <b>8821</b></span></div>
+            <div class="note">虹选鲜果·福田店 · 今天 18:00 前到店自提</div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">商品</span><span class="v">虹选盐 1kg × 1</span></div>
+            <div class="frow"><span class="k">实付</span><span class="v">¥1.00</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>11 C 端 · 非快递单</b>同一个位置、同一种读法：状态词 + 一句「下一步做什么」。</figcaption>
+      <p class="why">
+        合并之后这一栏的含义是<b>「这一单现在走到哪、我该做什么」</b>，不是「快递信息」。
+        所以自提单在同一个位置给取货码与门店，商家配送给「今天送达」与地址 ——
+        <b>没有「查看 ›」</b>：它们没有可展开的过程，给一个点不出东西的入口比不给更糟。
+        这也是为什么这一栏不叫「物流」而按状态起头。
       </p>
     </figure>
 

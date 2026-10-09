@@ -604,8 +604,11 @@ onLoad((q) => {
 
     <!--
       物流详情弹框。**不折叠**：点进来就是为了看全过程，再给一个「展开全部」等于多一次点击。
-      地图要节点带经纬度才画（sh-trace 的 hasMap）—— 详情内嵌那份一度丢了坐标，
-      于是地图整块不出现而页面不报错，2026-10-09 已修（LogisticsRegistrationFlowTest 盯着）。
+      **B 端先不画地图**（show-map=false）：这是产品取舍，不是画不了 ——
+      地图已经能正常渲染（2026-10-09 真机确认，此前整块不出现是 `Array.prototype.at` 的锅）。
+      取舍的理由：那张图是「城市级示意」，告诉店主的是「在西安」，
+      而店主要判断的是「今天到不到」「要不要催」，那几句在节点文字里。
+      要再打开只需去掉这个属性，坐标后端一直在给（LogisticsRegistrationFlowTest 盯着）。
     -->
     <sh-sheet
       v-if="shownTrace"
@@ -613,7 +616,7 @@ onLoad((q) => {
       :title="$t('order.trace')"
       @close="traceOpen = false"
     >
-      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length"></sh-trace>
+      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length" :show-map="false"></sh-trace>
     </sh-sheet>
   </sh-scaffold>
 </template>
