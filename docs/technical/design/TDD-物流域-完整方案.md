@@ -238,12 +238,20 @@ A+B+C 是一条线（签收闭环），价值最大；D 是成本与新鲜度优
 
 **批 B 还需要人做的两件事**（都在微信后台「开发管理 → 消息推送」）：
 
-| # | 操作 | 配到哪 |
+小程序后台 →「开发管理 → 开发设置 → 消息推送」，**启用时要管理员扫码**（这一步没有接口，
+微信没给自有小程序开放设置消息推送的 API，只能人工）。四项填法：
+
+| 项 | 填什么 | 填错的后果 |
 |---|---|---|
-| 1 | 填回调 URL `https://www.hxmall.top/mp/wx/callback` | 微信后台 |
-| 2 | 生成 Token，同一个值配进生产 env | 微信后台 + `SHOP_WX_PUSH_TOKEN` |
+| 服务器地址 URL | `https://www.hxmall.top/mp/wx/callback` | —— |
+| 令牌 Token | 与生产 `SHOP_WX_PUSH_TOKEN` **同值** | 校验恒失败，而微信只说「token 验证失败」，不说是哪儿不对 |
+| 消息加密方式 | **明文模式** | ⚠️ 选安全/兼容模式代码不认：我们验的是 `signature`、body 按明文 JSON 读；加密模式要验 `msg_signature` 并做 AES 解密 |
+| 数据格式 | **JSON** | 选 XML 的话事件进得来但解析不出（会落一条「不是 JSON」的 WARN） |
 
 > 没配 token 时 POST **拒收**（不是放行）—— 放行等于谁都能冒充微信把别人的订单推成已完成。
+>
+> Token 已在生产生成并写入（2026-10-09），读法：
+> `ssh soukmind-tx 'sudo grep "^SHOP_WX_PUSH_TOKEN=" /data/app/ai-shop/shop-app/shop-app.env'`
 
 **批 A 的作业要记得开**：`wx-confirm-receive` 注册进调度表默认是关的（见 §3.5），
 部署后要在运营端开启，否则它一次都不会跑。
