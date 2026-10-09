@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**113 个功能点**，其中 **34 个游客可用**；**8 个没有任何页面调用**。
+统计：**114 个功能点**，其中 **34 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -91,7 +91,7 @@
 | `messageList` | `GET /mp/message` | 是 | messages | — |
 | `readMessage` | `POST /mp/message/:messageNo/read` | 是 | messages | — |
 | `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
-| `subscribeReport` | `POST /mp/message/subscribe` | 是 | pay · store | — |
+| `subscribeReport` | `POST /mp/message/subscribe` | 是 | order-confirm · pay · store | — |
 | `unreadMessages` | `GET /mp/message/unread-count` | 是 | me | — |
 | `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupon-code · coupons | — |
 | `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |
@@ -104,6 +104,7 @@
 | `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
 | `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
 | `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
+| `orderTrace` | `GET /mp/order/:orderNo/trace` | 是 | order | — |
 | `orderCapability` | `POST /mp/order/capability` | 是 | order-confirm | — |
 | `orderPreview` | `POST /mp/order/preview` | 是 | order-confirm | — |
 | `searchPlaces` | `GET /mp/place/search` | 游客 | address-pick | — |

@@ -11468,6 +11468,24 @@
           "ar": "تُجمع الفواتير المستحقة في اليوم نفسه في دفعة واحدة؛ لا يصل المبلغ قبل الإفراج عن الدفعة"
         },
         {
+          "key": "income.batchPaid",
+          "zh-CN": "已打款 · 凭证 {ref} · {d}",
+          "en": "Paid · ref {ref} · {d}",
+          "ar": "تم الدفع · المرجع {ref} · {d}"
+        },
+        {
+          "key": "income.batchPayoutFailed",
+          "zh-CN": "打款被退回，会重新放款",
+          "en": "Transfer returned; it will be paid out again",
+          "ar": "أُرجع التحويل؛ سيُصرف مجددًا"
+        },
+        {
+          "key": "income.batchPayoutPending",
+          "zh-CN": "放款记录已生成，等财务打款",
+          "en": "Payout created, waiting for finance to transfer",
+          "ar": "أُنشئ سجل الصرف، بانتظار تحويل المالية"
+        },
+        {
           "key": "income.batchTitle",
           "zh-CN": "我的账期",
           "en": "My settlement cycle",
@@ -25347,6 +25365,12 @@
           "ar": "الخلاصة مطلوبة: اكتب المبرر سواء أكدت أم استبعدت"
         },
         {
+          "key": "err.settle.batch_not_releasable",
+          "zh-CN": "批次当前状态 {0} 不能放款，只有自查通过（RECONCILED）的批次能放",
+          "en": "Batch is in status {0} and cannot be released; only RECONCILED batches can",
+          "ar": "الدفعة في الحالة {0} ولا يمكن صرفها؛ فقط الدفعات المطابقة (RECONCILED) تُصرف"
+        },
+        {
           "key": "err.settle.invoice_amount_mismatch",
           "zh-CN": "发票金额与应付合计不符，请检查开票周期是否选错",
           "en": "Invoice amount does not match the payable total — check the billing period",
@@ -25375,6 +25399,24 @@
           "zh-CN": "开票方名称与主体名称不一致，请核对后重开",
           "en": "The invoice issuer name does not match the supplier entity name",
           "ar": "اسم مُصدِر الفاتورة لا يطابق اسم كيان المورد"
+        },
+        {
+          "key": "err.settle.payout_account_missing",
+          "zh-CN": "主体 {0} 没有生效中的收款账户，钱不知道打给谁",
+          "en": "Entity {0} has no active payout account — nowhere to send the money",
+          "ar": "الكيان {0} ليس لديه حساب صرف فعّال — لا وجهة للمال"
+        },
+        {
+          "key": "err.settle.payout_invoice_pending",
+          "zh-CN": "本批有结算单的进项票还没了结，先核验或标无票：{0}",
+          "en": "Some bills in this batch still have unsettled purchase invoices — verify them or mark invoice-exempt: {0}",
+          "ar": "بعض فواتير هذه الدفعة لم تُسوَّ فواتير شرائها بعد — تحقق منها أو علّمها كمعفاة: {0}"
+        },
+        {
+          "key": "err.settle.payout_not_payable",
+          "zh-CN": "放款记录当前状态 {0}，不能登记付款或退回",
+          "en": "Payout is in status {0}; it cannot be marked paid or failed",
+          "ar": "سجل الصرف في الحالة {0}؛ لا يمكن تسجيله مدفوعًا أو مرتجعًا"
         },
         {
           "key": "err.settle.receiver_not_ready",
@@ -26811,6 +26853,13 @@
       "package": "ai.neargo.shop.pay.entity"
     },
     {
+      "table": "stl_payout",
+      "class": "StlPayout",
+      "zh": "放款记录：账期批次 × 收款号，一笔网银转账一条（V391 / TDD-账期推进与放款记录 §2.3）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
       "table": "stl_points_pool",
       "class": "StlPointsPool",
       "zh": "积分营销资金账户流水（V17、V24、V33、V38）。",
@@ -27473,6 +27522,13 @@
       },
       {
         "host": "StlBill",
+        "name": "BIZ_SELF_OPERATED",
+        "value": "SELF_OPERATED",
+        "zh": "经营模式：自营（business_mode 列）。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlBill",
         "name": "PENDING_RECON",
         "value": "PENDING_RECON",
         "zh": "",
@@ -27699,6 +27755,55 @@
         "host": "StlPayment",
         "name": "CLOSED",
         "value": "CLOSED",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "PENDING",
+        "value": "PENDING",
+        "zh": "已生成，还没进付款清单",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "EXPORTED",
+        "value": "EXPORTED",
+        "zh": "已导出进付款清单，财务拿去网银",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "PAID",
+        "value": "PAID",
+        "zh": "财务登记了凭证号",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "MATCHED",
+        "value": "MATCHED",
+        "zh": "银行流水勾上了。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "FAILED",
+        "value": "FAILED",
+        "zh": "打款失败或退回。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "CHANNEL_MANUAL",
+        "value": "MANUAL",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlPayout",
+        "name": "CHANNEL_BANK_API",
+        "value": "BANK_API",
         "zh": "",
         "module": "pay/pay-domain"
       },
@@ -28554,6 +28659,13 @@
         "name": "WITHDRAW",
         "value": "WD",
         "zh": "商家提现单（stl_withdraw）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PAYOUT",
+        "value": "PO",
+        "zh": "放款记录（stl_payout，V391）。",
         "module": "shop-base"
       },
       {
@@ -34003,6 +34115,10 @@
           "FULFILLMENT_TIER_DENIED",
           "MERCHANT_QUOTA_EXHAUSTED",
           "INVOICE_REQUIRED",
+          "BATCH_NOT_RELEASABLE",
+          "PAYOUT_ACCOUNT_MISSING",
+          "PAYOUT_NOT_PAYABLE",
+          "PAYOUT_INVOICE_PENDING",
           "INVOICE_AMOUNT_MISMATCH",
           "INVOICE_TITLE_MISMATCH",
           "FLASH_MULTI_SKU_UNSUPPORTED",
@@ -35586,6 +35702,27 @@
         "zh": "收款账户形态。"
       },
       {
+        "name": "PayoutChannel",
+        "client": "ops-web",
+        "values": [
+          "MANUAL",
+          "BANK_API"
+        ],
+        "zh": "放款通道。"
+      },
+      {
+        "name": "PayoutStatus",
+        "client": "ops-web",
+        "values": [
+          "PENDING",
+          "EXPORTED",
+          "PAID",
+          "MATCHED",
+          "FAILED"
+        ],
+        "zh": "只有一个方向。"
+      },
+      {
         "name": "PickupFeeMode",
         "client": "ops-web",
         "values": [
@@ -37140,6 +37277,14 @@
       "module": "shop-app"
     },
     {
+      "host": "SettleBatchJob",
+      "name": "NAME",
+      "type": "String",
+      "value": "\"settle-batch\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
       "host": "ReportDailyRollupJob",
       "name": "WATERMARK_KEY",
       "type": "String",
@@ -37621,18 +37766,18 @@
     },
     {
       "host": "Perms",
-      "name": "FINANCE_SETTLE_READ",
-      "type": "String",
-      "value": "\"finance:settle:read\"",
-      "zh": "",
-      "module": "shop-base-auth"
-    },
-    {
-      "host": "Perms",
       "name": "FULFILLMENT_LOGISTICS_REPLAY",
       "type": "String",
       "value": "\"fulfillment:logistics:replay\"",
       "zh": "物流重放：重新订阅（可点名渠道）/ 重新换微信 token（TDD-物流模块 O3）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "FINANCE_SETTLE_READ",
+      "type": "String",
+      "value": "\"finance:settle:read\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -37704,7 +37849,7 @@
       "name": "FINANCE_WITHDRAW_APPROVE",
       "type": "String",
       "value": "\"finance:withdraw:approve\"",
-      "zh": "提现审批（P-12.2.1）。",
+      "zh": "已退役（2026-10-09）：提现端点与菜单点撤掉，没有任何角色再持有它。",
       "module": "shop-base-auth"
     },
     {
