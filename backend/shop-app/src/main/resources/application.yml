@@ -300,6 +300,11 @@ shop:
     secret: ${WX_SECRET:}
     # developer / trial / formal。联调切 trial，免得打扰真实用户
     mp-state: ${WX_MP_STATE:formal}
+    push:
+      # 消息推送（小程序后台「开发管理 → 消息推送」）的校验 Token，与后台填的那个同值。
+      # 结算事件（确认收货 → 进结算）从这个口进来，GET 校验与 POST 事件**都靠它验签**。
+      # **没配时 POST 拒收**（不是放行）—— 放行等于谁都能冒充微信把别人的订单推成已完成。
+      token: ${SHOP_WX_PUSH_TOKEN:}
     templates:
       # mp 后台报备通过的模板号。**必须与端上 VITE_WX_TPL_* 同值** ——
       # 不同值的话前端攒的订阅额度后端查不到，一条也发不出去

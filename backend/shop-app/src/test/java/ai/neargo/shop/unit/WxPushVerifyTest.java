@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * 微信消息推送的握手校验。
@@ -39,7 +40,7 @@ class WxPushVerifyTest {
     @Test
     @DisplayName("★★★ 签名正确 → 原样回 echostr（不是包在信封里的 echostr）")
     void echoesBackOnValidSignature() throws Exception {
-        MpWxCallbackController c = new MpWxCallbackController(TOKEN);
+        MpWxCallbackController c = ctl(TOKEN);
         String ts = "1788400000", nonce = "zzz999";
         assertThat(c.verify(sign(TOKEN, ts, nonce), ts, nonce, "ECHO-1")).isEqualTo("ECHO-1");
     }
@@ -47,7 +48,7 @@ class WxPushVerifyTest {
     @Test
     @DisplayName("★★★ 三个值要按字典序排 —— 漏了排序时，用有序的入参自测会碰巧通过")
     void sortsBeforeHashing() throws Exception {
-        MpWxCallbackController c = new MpWxCallbackController(TOKEN);
+        MpWxCallbackController c = ctl(TOKEN);
         /*
          * 刻意挑一组**未排序**的：token 以 h 开头，排序后要落到中间。
          * 不排序直接拼 token+ts+nonce 会得到完全不同的摘要。
@@ -63,7 +64,7 @@ class WxPushVerifyTest {
     @Test
     @DisplayName("★★ 签名不符 → 回空串，不回 echostr")
     void rejectsBadSignature() {
-        MpWxCallbackController c = new MpWxCallbackController(TOKEN);
+        MpWxCallbackController c = ctl(TOKEN);
         assertThat(c.verify("deadbeef", "1788400000", "zzz999", "ECHO")).isEmpty();
     }
 
@@ -71,7 +72,7 @@ class WxPushVerifyTest {
     @DisplayName("★★★ 没配 token → 拒绝，不放行（放行等于谁都能冒充微信推事件）")
     void refusesWhenTokenMissing() throws Exception {
         for (String unset : new String[]{"", "   ", null}) {
-            MpWxCallbackController c = new MpWxCallbackController(unset);
+            MpWxCallbackController c = ctl(unset);
             assertThat(c.verify(sign("", "1", "2"), "1", "2", "ECHO"))
                     .as("token=%s 时必须拒绝", String.valueOf(unset))
                     .isEmpty();
@@ -80,10 +81,54 @@ class WxPushVerifyTest {
 
     @Test
     @DisplayName("★ 事件推送回 success —— 不回微信会重推三次并在后台标失败")
-    void acksEvents() {
-        assertThat(new MpWxCallbackController(TOKEN).receive("{\"MsgType\":\"event\"}"))
+    void acksEvents() throws Exception {
+        String ts = "1700000000";
+        String nonce = "n1";
+        assertThat(ctl(TOKEN).receive(sign(TOKEN, ts, nonce), ts, nonce, "{\"MsgType\":\"event\"}"))
                 .isEqualTo("success");
-        assertThat(new MpWxCallbackController(TOKEN).receive(null)).isEqualTo("success");
+        assertThat(ctl(TOKEN).receive(sign(TOKEN, ts, nonce), ts, nonce, null)).isEqualTo("success");
+    }
+
+    @Test
+    @DisplayName("★★★ POST 也要验签 —— 签名不符的事件必须被丢掉，不能进到改状态那一步")
+    void postRejectsBadSignature() {
+        var events = org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class);
+        MpWxCallbackController c = new MpWxCallbackController(TOKEN, events);
+
+        // 回 success 是给微信看的（别重推），但事件不能被处理
+        assertThat(c.receive("deadbeef", "1700000000", "n1", "{}")).isEqualTo("success");
+        assertThat(c.receive(null, null, null, "{}")).isEqualTo("success");
+        org.mockito.Mockito.verify(events, org.mockito.Mockito.never()).onEvent(any());
+    }
+
+    @Test
+    @DisplayName("★★★ 签名正确才把事件交下去处理")
+    void postPassesVerifiedEvent() throws Exception {
+        var events = org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class);
+        MpWxCallbackController c = new MpWxCallbackController(TOKEN, events);
+        String ts = "1700000000";
+        String nonce = "n1";
+
+        c.receive(sign(TOKEN, ts, nonce), ts, nonce, "{\"Event\":\"x\"}");
+
+        org.mockito.Mockito.verify(events).onEvent("{\"Event\":\"x\"}");
+    }
+
+    @Test
+    @DisplayName("★★ 事件处理抛异常不能冒出去 —— 冒出去微信会一直重推")
+    void postSwallowsHandlerFailure() throws Exception {
+        var events = org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class);
+        org.mockito.Mockito.when(events.onEvent(any())).thenThrow(new IllegalStateException("boom"));
+        MpWxCallbackController c = new MpWxCallbackController(TOKEN, events);
+        String ts = "1700000000";
+        String nonce = "n1";
+
+        assertThat(c.receive(sign(TOKEN, ts, nonce), ts, nonce, "{}")).isEqualTo("success");
+    }
+
+    private static MpWxCallbackController ctl(String token) {
+        return new MpWxCallbackController(token,
+                org.mockito.Mockito.mock(ai.neargo.shop.paybridge.WxPushEventService.class));
     }
 
     private static String hashRaw(String s) throws Exception {

@@ -261,12 +261,12 @@ class MpEndpointAuthTest {
      *       判据在 {@code WxPushVerifyTest}（单测，配了 token，真能红）——
      *       <b>这里刻意不再写一条端点级的</b>：这个类的上下文没配 token，
      *       控制器在验签之前就早返回了，那样的断言<b>恒绿、消融也不变红</b>；</li>
-     *   <li><b>POST</b> {@code /mp/wx/callback}：<b>今天完全没有校验</b> ——
-     *       任何人都能推任意 body，恒回 {@code "success"}。
-     *       它现在只落一行日志，所以无害；<b>而引入它的提交说
-     *       「支付结果与结算回调都要从这里进来」</b>。
-     *       那一天到来之前必须先给它加验签，否则就是无鉴权端点驱动资金。
-     *       这件事由 {@link #wxPushMustNotGrowSideEffectsBeforeVerifying} 盯着。</li>
+     *   <li><b>POST</b> {@code /mp/wx/callback}：<b>2026-10-09 起与 GET 同一套验签</b>
+     *       （token/timestamp/nonce 字典序 + SHA-1），不符就丢掉、不进事件处理。
+     *       补验签是接结算回调（批 B）的前置：这个口现在会据事件把子单推成已完成，
+     *       而那一步连着结算 —— 不验签就是无鉴权的公网端点在驱动资金。
+     *       判据在 {@code WxPushVerifyTest#postRejectsBadSignature}（单测，配了 token，真能红）。
+     *       这里只盯「验签不许被摘掉」，见 {@link #wxPushPostMustKeepVerifying}。</li>
      * </ul>
      */
     private static final Set<String> PLATFORM_CALLBACK = Set.of(
@@ -422,20 +422,26 @@ class MpEndpointAuthTest {
      * 它今天什么都不做。而「什么都不做」正是现在唯一让它安全的性质。
      */
     @Test
-    @DisplayName("★★★ 未验签的事件推送口，在补上验签之前不许长出副作用")
-    void wxPushMustNotGrowSideEffectsBeforeVerifying() {
-        var ctors = ai.neargo.shop.portal.mp.MpWxCallbackController.class.getDeclaredConstructors();
-        assertThat(ctors).hasSize(1);
-        Class<?>[] deps = ctors[0].getParameterTypes();
+    @DisplayName("★★★ 事件推送口的 POST 必须一直验签 —— 它现在驱动「确认收货 → 结算」")
+    void wxPushPostMustKeepVerifying() throws Exception {
+        var m = ai.neargo.shop.portal.mp.MpWxCallbackController.class
+                .getDeclaredMethod("receive", String.class, String.class, String.class, String.class);
 
-        assertThat(deps)
-                .as("MpWxCallbackController 长出了新依赖：" + java.util.Arrays.toString(deps)
-                        + "。它的 POST /mp/wx/callback **今天完全不验签** —— "
-                        + "任何人都能推任意 body，现在无害只因为它什么都不做（只落一行日志）。"
-                        + "要接事件处理，**先给 POST 加签名校验**，再来动这个构造器；"
-                        + "否则就是一个无鉴权的公网端点在驱动业务，"
-                        + "而引入它的提交说「支付结果与结算回调都要从这里进来」。")
-                .containsExactly(String.class);
+        /*
+         * 判据盯的是**签名三件套还在参数表里**。
+         *
+         * 2026-10-09 之前这个 POST 完全不验签，当时它只落一行日志所以无害；
+         * 批 B 让它据事件把子单推成已完成，而那一步连着结算。
+         * 签名参数一旦被摘掉（比如有人「简化」成只收 body），这个公网端点就变回
+         * 任何人都能用来完成别人订单的入口 —— 而那不会有任何报错。
+         *
+         * 真正验「签名算对没对」的是 WxPushVerifyTest#postRejectsBadSignature；
+         * 这里是结构判据，防的是整段被删。
+         */
+        assertThat(m.getParameterCount())
+                .as("POST /mp/wx/callback 的签名参数（signature/timestamp/nonce）被摘掉了 —— "
+                        + "它现在据事件推进订单状态并连着结算，不验签等于无鉴权端点驱动资金")
+                .isEqualTo(4);
     }
 
     @Test

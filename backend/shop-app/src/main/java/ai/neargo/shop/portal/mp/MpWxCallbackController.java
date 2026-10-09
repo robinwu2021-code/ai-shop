@@ -48,9 +48,12 @@ public class MpWxCallbackController {
     private static final Logger log = LoggerFactory.getLogger(MpWxCallbackController.class);
 
     private final String token;
+    private final ai.neargo.shop.paybridge.WxPushEventService events;
 
-    public MpWxCallbackController(@Value("${shop.wx.push.token:}") String token) {
+    public MpWxCallbackController(@Value("${shop.wx.push.token:}") String token,
+                                  ai.neargo.shop.paybridge.WxPushEventService events) {
         this.token = token == null ? "" : token.trim();
+        this.events = events;
     }
 
     /**
@@ -82,8 +85,36 @@ public class MpWxCallbackController {
      * 但这个口现在就要能收，否则后台那一步配置过不去。
      */
     @PostMapping("/callback")
-    public String receive(@RequestBody(required = false) String body) {
-        log.info("[wxpush] 收到事件推送：{}", body == null ? "(空)" : body.substring(0, Math.min(500, body.length())));
+    public String receive(@RequestParam(required = false) String signature,
+                          @RequestParam(required = false) String timestamp,
+                          @RequestParam(required = false) String nonce,
+                          @RequestBody(required = false) String body) {
+        /*
+         * ★ **POST 也要验签**（2026-10-09 补）。
+         *
+         * 此前只有 GET 那条校验验了签，POST 什么都不验 —— 当时它只落日志，无害。
+         * 但这个口一旦开始**据事件改状态**（确认收货 → 结算 → 动钱），不验签就等于
+         * 任何知道这个 URL 的人都能把别人的订单推成已完成。
+         * 算法与 GET 那条同一个（token/timestamp/nonce 字典序 + SHA-1）。
+         *
+         * 没配 token 一律拒：放行等于谁都能冒充微信推事件。
+         */
+        if (token.isEmpty()) {
+            log.error("[wxpush] 未配置 shop.wx.push.token —— 拒收事件推送");
+            return "success";   // 回 success 让微信别重推；我们这边当没收到
+        }
+        if (signature == null || timestamp == null || nonce == null
+                || !signatureOf(timestamp, nonce).equalsIgnoreCase(signature)) {
+            log.warn("[wxpush] 事件推送签名不符，丢弃。ts={} nonce={}", timestamp, nonce);
+            return "success";
+        }
+        String raw = body == null ? "" : body;
+        try {
+            events.onEvent(raw);
+        } catch (Exception e) {
+            // 处理失败不要让微信一直重推：事件原文已落日志，补偿走对账而不是重推
+            log.warn("[wxpush] 事件处理失败（已忽略，原文见上一条日志）：{}", e.toString());
+        }
         return "success";
     }
 
