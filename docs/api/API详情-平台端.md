@@ -2770,26 +2770,26 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payoutNo` | `string` | 是 | — |
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payMerchantNo` | `string,null` | 是 | — |
-| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
-| `bankName` | `string,null` | 是 | — |
-| `bankBranch` | `string,null` | 是 | — |
-| `accountNoMasked` | `string,null` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `billCount` | `number` | 是 | — |
-| `currency` | `string` | 是 | — |
-| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
-| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
-| `paymentRef` | `string,null` | 是 | — |
-| `bankFlowNo` | `string,null` | 是 | — |
-| `exportedAt` | `number,null` | 是 | — |
-| `paidAt` | `number,null` | 是 | — |
-| `paidBy` | `string,null` | 是 | — |
-| `matchedAt` | `number,null` | 是 | — |
-| `failReason` | `string,null` | 是 | — |
+| `payoutNo` | `string` | 是 | 放款单号（PO…） |
+| `batchNo` | `string` | 是 | 所属账期批次 |
+| `entityNo` | `string` | 是 | 收款主体业务键 |
+| `payMerchantNo` | `string,null` | 是 | 收款号（分组键）。自营一主体一账户时为空 |
+| `accountName` | `string,null` | 是 | 付款时快照：户名。银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | 付款时快照：开户行 |
+| `bankBranch` | `string,null` | 是 | 付款时快照：支行 |
+| `accountNoMasked` | `string,null` | 是 | 付款时快照：账号掩码。明文只在导出付款清单那一刻存在 |
+| `amountMinor` | `number` | 是 | 本笔金额（分）= 组内结算单 net 之和 |
+| `billCount` | `number` | 是 | 本笔包含几张结算单 |
+| `currency` | `string` | 是 | 币种 |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | 放款状态。只有一个方向，见 PayoutStatus |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | 放款通道。一期全是 MANUAL（网银手工） |
+| `paymentRef` | `string,null` | 是 | 凭证号（网银流水号）。登记付款时必填 |
+| `bankFlowNo` | `string,null` | 是 | 对上的银行流水号。出款对账勾上时写 |
+| `exportedAt` | `number,null` | 是 | 导出进付款清单的时刻（毫秒） |
+| `paidAt` | `number,null` | 是 | 登记凭证的时刻（毫秒） |
+| `paidBy` | `string,null` | 是 | 登记凭证的操作人 |
+| `matchedAt` | `number,null` | 是 | 银行流水勾上的时刻（毫秒） |
+| `failReason` | `string,null` | 是 | 退回原因。给运营看，也给商家看 |
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 
@@ -2811,26 +2811,26 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payoutNo` | `string` | 是 | — |
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payMerchantNo` | `string,null` | 是 | — |
-| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
-| `bankName` | `string,null` | 是 | — |
-| `bankBranch` | `string,null` | 是 | — |
-| `accountNoMasked` | `string,null` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `billCount` | `number` | 是 | — |
-| `currency` | `string` | 是 | — |
-| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
-| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
-| `paymentRef` | `string,null` | 是 | — |
-| `bankFlowNo` | `string,null` | 是 | — |
-| `exportedAt` | `number,null` | 是 | — |
-| `paidAt` | `number,null` | 是 | — |
-| `paidBy` | `string,null` | 是 | — |
-| `matchedAt` | `number,null` | 是 | — |
-| `failReason` | `string,null` | 是 | — |
+| `payoutNo` | `string` | 是 | 放款单号（PO…） |
+| `batchNo` | `string` | 是 | 所属账期批次 |
+| `entityNo` | `string` | 是 | 收款主体业务键 |
+| `payMerchantNo` | `string,null` | 是 | 收款号（分组键）。自营一主体一账户时为空 |
+| `accountName` | `string,null` | 是 | 付款时快照：户名。银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | 付款时快照：开户行 |
+| `bankBranch` | `string,null` | 是 | 付款时快照：支行 |
+| `accountNoMasked` | `string,null` | 是 | 付款时快照：账号掩码。明文只在导出付款清单那一刻存在 |
+| `amountMinor` | `number` | 是 | 本笔金额（分）= 组内结算单 net 之和 |
+| `billCount` | `number` | 是 | 本笔包含几张结算单 |
+| `currency` | `string` | 是 | 币种 |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | 放款状态。只有一个方向，见 PayoutStatus |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | 放款通道。一期全是 MANUAL（网银手工） |
+| `paymentRef` | `string,null` | 是 | 凭证号（网银流水号）。登记付款时必填 |
+| `bankFlowNo` | `string,null` | 是 | 对上的银行流水号。出款对账勾上时写 |
+| `exportedAt` | `number,null` | 是 | 导出进付款清单的时刻（毫秒） |
+| `paidAt` | `number,null` | 是 | 登记凭证的时刻（毫秒） |
+| `paidBy` | `string,null` | 是 | 登记凭证的操作人 |
+| `matchedAt` | `number,null` | 是 | 银行流水勾上的时刻（毫秒） |
+| `failReason` | `string,null` | 是 | 退回原因。给运营看，也给商家看 |
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 
@@ -12559,26 +12559,26 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payoutNo` | `string` | 是 | — |
-| `batchNo` | `string` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `payMerchantNo` | `string,null` | 是 | — |
-| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
-| `bankName` | `string,null` | 是 | — |
-| `bankBranch` | `string,null` | 是 | — |
-| `accountNoMasked` | `string,null` | 是 | — |
-| `amountMinor` | `number` | 是 | — |
-| `billCount` | `number` | 是 | — |
-| `currency` | `string` | 是 | — |
-| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
-| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
-| `paymentRef` | `string,null` | 是 | — |
-| `bankFlowNo` | `string,null` | 是 | — |
-| `exportedAt` | `number,null` | 是 | — |
-| `paidAt` | `number,null` | 是 | — |
-| `paidBy` | `string,null` | 是 | — |
-| `matchedAt` | `number,null` | 是 | — |
-| `failReason` | `string,null` | 是 | — |
+| `payoutNo` | `string` | 是 | 放款单号（PO…） |
+| `batchNo` | `string` | 是 | 所属账期批次 |
+| `entityNo` | `string` | 是 | 收款主体业务键 |
+| `payMerchantNo` | `string,null` | 是 | 收款号（分组键）。自营一主体一账户时为空 |
+| `accountName` | `string,null` | 是 | 付款时快照：户名。银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | 付款时快照：开户行 |
+| `bankBranch` | `string,null` | 是 | 付款时快照：支行 |
+| `accountNoMasked` | `string,null` | 是 | 付款时快照：账号掩码。明文只在导出付款清单那一刻存在 |
+| `amountMinor` | `number` | 是 | 本笔金额（分）= 组内结算单 net 之和 |
+| `billCount` | `number` | 是 | 本笔包含几张结算单 |
+| `currency` | `string` | 是 | 币种 |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | 放款状态。只有一个方向，见 PayoutStatus |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | 放款通道。一期全是 MANUAL（网银手工） |
+| `paymentRef` | `string,null` | 是 | 凭证号（网银流水号）。登记付款时必填 |
+| `bankFlowNo` | `string,null` | 是 | 对上的银行流水号。出款对账勾上时写 |
+| `exportedAt` | `number,null` | 是 | 导出进付款清单的时刻（毫秒） |
+| `paidAt` | `number,null` | 是 | 登记凭证的时刻（毫秒） |
+| `paidBy` | `string,null` | 是 | 登记凭证的操作人 |
+| `matchedAt` | `number,null` | 是 | 银行流水勾上的时刻（毫秒） |
+| `failReason` | `string,null` | 是 | 退回原因。给运营看，也给商家看 |
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 ### PayoutAccount

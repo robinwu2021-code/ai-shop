@@ -826,26 +826,45 @@ export type SettleBatchStatus =
  * 凭证号与银行流水挂在它上面，不再挂在逐张结算单上。
  */
 export interface Payout {
+  /** 放款单号（PO…） */
   payoutNo: string;
+  /** 所属账期批次 */
   batchNo: string;
+  /** 收款主体业务键 */
   entityNo: string;
+  /** 收款号（分组键）。自营一主体一账户时为空 */
   payMerchantNo: string | null;
-  /** 付款时快照：银行要户名，而账号会改 */
+  /** 付款时快照：户名。银行要户名，而账号会改 */
   accountName: string | null;
+  /** 付款时快照：开户行 */
   bankName: string | null;
+  /** 付款时快照：支行 */
   bankBranch: string | null;
+  /** 付款时快照：账号掩码。明文只在导出付款清单那一刻存在 */
   accountNoMasked: string | null;
+  /** 本笔金额（分）= 组内结算单 net 之和 */
   amountMinor: number;
+  /** 本笔包含几张结算单 */
   billCount: number;
+  /** 币种 */
   currency: string;
+  /** 放款状态。只有一个方向，见 PayoutStatus */
   status: PayoutStatus;
+  /** 放款通道。一期全是 MANUAL（网银手工） */
   channel: PayoutChannel;
+  /** 凭证号（网银流水号）。登记付款时必填 */
   paymentRef: string | null;
+  /** 对上的银行流水号。出款对账勾上时写 */
   bankFlowNo: string | null;
+  /** 导出进付款清单的时刻（毫秒） */
   exportedAt: number | null;
+  /** 登记凭证的时刻（毫秒） */
   paidAt: number | null;
+  /** 登记凭证的操作人 */
   paidBy: string | null;
+  /** 银行流水勾上的时刻（毫秒） */
   matchedAt: number | null;
+  /** 退回原因。给运营看，也给商家看 */
   failReason: string | null;
   /** 本笔包含的结算单 */
   settleNos: string[];

@@ -207,6 +207,8 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   review_no: { table: "rvw_review" },
   staff_no: { table: "sys_ops_staff" },
   settle_no: { table: "stl_bill" },
+  // 放款单（V391）：stl_payout 的业务键，stl_bill.payout_no 引用它（一笔网银转账一条）
+  payout_no: { table: "stl_payout" },
   after_sale_no: { table: "ord_after_sale" },
   payment_no: { table: "stl_payment" },
   // 用户的 USE 流水。商家进账挂它 —— 一次使用一条进账，见 LINEAGE 里那一跳

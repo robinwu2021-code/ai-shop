@@ -45,6 +45,9 @@
 
 b-app/login
 b-app/me
+# account 从 me 拆出的账号二级页（TDD-B 端账号二级页）：同是设置/菜单页，
+# 只读一个「设没设过密码」的布尔，改名改密都是动作且各自 catch 弹 toast —— 没有「空 vs 错」之分
+b-app/account
 b-app/sku-identity
 c-app/login
 c-app/me
