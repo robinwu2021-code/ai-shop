@@ -49,6 +49,16 @@ public class PendingRemotePortsConfig {
         ai.neargo.shop.spi.trade.SettleSourcePort.class,        // 3
         ai.neargo.shop.spi.trade.RefundSplitBackPort.class,     // 1
         ai.neargo.shop.spi.user.PickupQueryPort.class,          // 1
+        /*
+         * 2026-10-09 补：放款批 2（52e5ad56f）给 PayoutServiceImpl 加了这个构造参数，
+         * 而它的唯一实现在 shop-merchant —— 这个进程不引业务模块，于是**整个 pay-svc 起不来**
+         * （UnsatisfiedDependencyException: payoutServiceImpl 构造参数 3），
+         * 全量闸门在 pay-svc 就中断、后面的模块全是 SKIPPED，挡住所有人的部署。
+         * 正是类注释里说的「这张表会锈」。放款今天只在单体（shop-app）里跑
+         * —— PayoutService 的调用方只有 OpsPayoutController / OpsSettleController，
+         * 独立形态下不接这条流量，所以这里给「调用即抛」的桩是对的口径。
+         */
+        ai.neargo.shop.spi.user.PayoutAccountPort.class,        // 1
     };
 
     @Bean
