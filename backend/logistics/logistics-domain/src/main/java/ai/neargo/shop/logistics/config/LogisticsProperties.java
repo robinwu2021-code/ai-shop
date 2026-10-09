@@ -44,8 +44,13 @@ public class LogisticsProperties {
     /** 微信换 waybill_token 的时机 */
     private WxBind wxBind = new WxBind();
 
-    /** 推送回调地址前缀，后面拼渠道名 */
-    private String callbackBase = "https://www.hxmall.top/callback/logistics";
+    /**
+     * 推送回调地址前缀，后面拼渠道名。<b>http 不是 https</b>（2026-10-09）：快递100 订阅推送的回调
+     * 「默认仅支持 http，如需兼容 https 请联系快递100 技术人员」。生产 nginx 的 80 端口为
+     * {@code /callback/logistics/} 单开了一段直接反代（其余 80 端口请求照旧 301 到 https）——
+     * 推送方把 301 当回调失败。改回 https 之前先找快递100 开通，再删 nginx 那一段
+     */
+    private String callbackBase = "http://www.hxmall.top/callback/logistics";
 
     /** 收件人手机号加密密钥。空 → 不存密文（同 PhoneCrypto 的失败方式：降隐私不降可用），订阅不带手机号 */
     private String phoneKey = "";

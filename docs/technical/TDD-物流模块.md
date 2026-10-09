@@ -486,7 +486,7 @@ shop:
       cron: "0 15 * * * *"
       silent-hours: 24
     phone-key: ${LOGISTICS_PHONE_KEY:}   # 空 → 不存密文（同 PhoneCrypto 的失败方式），订阅不带手机号
-    callback-base: ${LOGISTICS_CALLBACK_BASE:https://www.hxmall.top/callback/logistics}
+    callback-base: ${LOGISTICS_CALLBACK_BASE:http://www.hxmall.top/callback/logistics}   # http：见 P1
     channels:
       kuaidi100:
         enabled: true                 # 账号凭据仍用 shop.express.kuaidi100.*（与寄件同一账号；阶段 3 再拆）
@@ -579,7 +579,7 @@ shop:
 
 | ID | 事项 | 谁 | 卡哪一批 | 怎么确认做完了 |
 |---|---|---|---|---|
-| P1 | 联系快递100 客服**开通 HTTPS 回调**（默认只推 HTTP） | 用户 | 批 2 | 快递100 调试工具对 `https://www.hxmall.top/callback/logistics/kuaidi100` 推一条，我方日志出现 `[lgs-push-first]` |
+| P1 | ~~联系快递100 客服**开通 HTTPS 回调**（默认只推 HTTP）~~ **已绕开（2026-10-09）**：用户定回调走 http —— 生产 nginx 80 端口为 `/callback/logistics/` 单开反代（其余 80 照旧 301 https），`callbackBase` 默认改 http；公网 `POST http://www.hxmall.top/callback/logistics/kuaidi100` 回 200 + 快递100 回执 | 用户 | 批 2 | 快递100 调试工具对 `https://www.hxmall.top/callback/logistics/kuaidi100` 推一条，我方日志出现 `[lgs-push-first]` |
 | P2 | 确认快递100 **订阅产品**有余额（与「实时查询」是两本账） | 用户 / 我实测 | 批 2 | 一张真运单订阅返回 `200`；`600` / `601` 即没开或没钱 |
 | P3 | 圆通**订阅接口正式客户编码 / 密钥** | 用户 | 批 2（圆通单） | 生产机上一张真圆通单订阅成功 |
 | P4 | 圆通**轨迹推送服务**在控制台调通，拿推送密钥 | 用户 | 批 2b | 生产日志出现圆通的 `[lgs-push-first]` |
@@ -738,7 +738,7 @@ shop:
 | 快递100 同一单号每月最多订阅 4 次 | 重放、换渠道重订阅撞上限 | 重放前看本月已订阅次数，超了直接告诉运营 |
 | 快递100 回执失败只重试 3 次（每 30 分钟） | 我们发版重启窗口里的推送可能永久丢失 | 补偿作业按「24 小时无推送」去问微信；发版尽量避开整点 |
 | 推送报文与文档不符 | 字段取不到、什么都没发生（和没接一样） | 第一条真推送原文整条落 WARN（同微信结算事件的做法）；按字段名找、不赌层级 |
-| 回调地址收不到推送 | 全部运单沉默 | 回调用 `https://www.hxmall.top/callback/logistics/{channel}`（与微信回调同域，已验证公网可达）；补偿作业「沉默数」是第一个报警指标 |
+| 回调地址收不到推送 | 全部运单沉默 | 回调用 `http://www.hxmall.top/callback/logistics/{channel}`（快递100 默认只推 http；nginx 80 端口单开这一段，2026-10-09 公网验证回 200）；补偿作业「沉默数」是第一个报警指标 |
 | `RENAME TABLE` 在生产出错 | 物流全停 | 在**真库副本**上带 Flyway 跑一遍（H2 全绿证明不了迁移）；MySQL 9.7 下 RENAME 原子 |
 | 在途运单在切换那一刻没有订阅 | 切换前发货的单收不到推送 | 批 2 上线后跑一次：对所有在途运单发订阅（约几十单，一次性） |
 | 手机号密钥没配 | 顺丰等订阅失败、申通换 token 失败 | 启动告警；失败归入 FATAL，运营可见 |
