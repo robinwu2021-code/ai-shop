@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="836" viewBox="0 0 1240 836" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>物流模块整体架构：交易域与物流模块之间只有 spi 契约与 outbox 事件两种连线</title>
+<desc>左边是交易域（发货、订单详情、自动确认收货、微信发货上报与确认收货提醒），中间是 shop-base/spi/logistics 的契约与 sys_outbox，右边是新的 backend/logistics 模块（logistics-domain 放运单、状态机、策略与推送接收；logistics-channel 放快递100 与微信的适配），最右是外部服务商。发货走事件进物流，物流只在登记那一刻经 ShipmentSourcePort 反向取一次快照（橙色，预算 1 条）；签收等事实经 LogisticsEvents 出物流，由交易域消费去调微信确认收货提醒。快递100 只做订阅，轨迹由它推送到 /callback/logistics/kuaidi100；微信只在揽收之后换 token、在买家打开物流页或运单沉默时查状态。定时作业只剩每小时一次的补偿作业。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#C9752F" stroke-width="1.5" stroke-linecap="round"/></marker>
+<marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#4E9A6B" stroke-width="1.5" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12px;font-weight:650;fill:#161A21}
+.sm{font-size:10px;fill:#5A6472}
+.mt{font-size:9.5px;fill:#6B7484;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.b{font-size:10.5px;fill:#8A94A2;letter-spacing:.1em;font-weight:600}
+.l{font-size:9px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.lw{font-size:9px;fill:#B5651F;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.port{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.7}
+.router{fill:#FDF6EC;stroke:#D9994A;stroke-width:1.7}
+.impl{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.caller{fill:#F7F8FA;stroke:#C4CBD5;stroke-width:1.2}
+.data{fill:#EEF4FC;stroke:#8FADD4;stroke-width:1.3}
+.job{fill:#FBF4F6;stroke:#C98FA6;stroke-width:1.3}
+.ext{fill:#F5F3FB;stroke:#A99BD0;stroke-width:1.3}
+.ar{stroke:#8A94A2;stroke-width:1.2;fill:none}
+.arw{stroke:#C9752F;stroke-width:1.5;fill:none}
+.arg{stroke:#4E9A6B;stroke-width:1.5;fill:none}
+.dash{stroke-dasharray:4 3}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.1;stroke-dasharray:5 4}
+.zone2{fill:#FCFCFD;stroke:#C9D2DD;stroke-width:1.2}
+.zt{font-size:9.5px;fill:#A6AEBB;letter-spacing:.08em}
+.ztb{font-size:10px;fill:#5A6472;letter-spacing:.06em;font-weight:700}
+.life{stroke:#E3E7ED;stroke-width:1.2;stroke-dasharray:3 4}
+.num{font-size:9px;font-weight:700;fill:#fff}
+.dot{fill:#8A94A2}.dotw{fill:#C9752F}.dotg{fill:#4E9A6B}
+.note{font-size:10px;fill:#3D4552}
+</style></defs>
+<rect x="0" y="0" width="1240" height="836" fill="#fff"/>
+<text class="b" x="24.0" y="26.0">物流模块 · 阶段 1：同库 · 同 jar · 边界按「随时能拆」切</text>
+<text class="sm" x="24.0" y="43.0">灰 = 交易域（不搬）　绿 = spi 契约　白 = 物流模块内的类　紫 = 外部服务商　蓝 = 落库　粉 = 定时作业　橙线 = 唯一的反向依赖</text>
+<rect class="zone2" x="20" y="60" width="300" height="184" rx="7"/>
+<text class="ztb" x="30.0" y="74.0">shop-app / logisticsbridge（新）</text>
+<rect class="router" x="36" y="92" width="268" height="66" rx="5"/>
+<text class="n" x="45.0" y="108.0">ShipmentSourcePortImpl</text>
+<text class="mt" x="45.0" y="122.0">拼发货快照：收件人、手机号、</text>
+<text class="mt" x="45.0" y="134.5">微信交易键、商品、订单页路径</text>
+<text class="mt" x="45.0" y="147.0">只在登记那一刻被调一次</text>
+<rect class="job" x="36" y="168" width="268" height="66" rx="5"/>
+<text class="n" x="45.0" y="184.0">LogisticsJobHandlers</text>
+<text class="mt" x="45.0" y="198.0">logistics-compensate</text>
+<text class="mt" x="45.0" y="210.5">每小时 · 只看沉默运单</text>
+<text class="mt" x="45.0" y="223.0">另三个物流作业删除</text>
+<rect class="zone2" x="20" y="256" width="300" height="444" rx="7"/>
+<text class="ztb" x="30.0" y="270.0">交易域（不搬）· shop-core / shop-app</text>
+<rect class="caller" x="36" y="280" width="268" height="52" rx="5"/>
+<text class="n" x="45.0" y="296.0">MerchantOrderServiceImpl.ship</text>
+<text class="mt" x="45.0" y="310.0">只写 ord_sub_order（照旧）</text>
+<text class="mt" x="45.0" y="322.5">提交后发 SubOrderShipped</text>
+<rect class="caller" x="36" y="346" width="268" height="52" rx="5"/>
+<text class="n" x="45.0" y="362.0">OrderServiceImpl / 订单详情</text>
+<text class="mt" x="45.0" y="376.0">详情只读库 · 物流页走 track()</text>
+<text class="mt" x="45.0" y="388.5">不再触发任何外部调用</text>
+<rect class="caller" x="36" y="410" width="268" height="52" rx="5"/>
+<text class="n" x="45.0" y="426.0">OrderAutoReceiptJob（每天）</text>
+<text class="mt" x="45.0" y="440.0">签收 7 天 / 发货 15 天 先到者</text>
+<text class="mt" x="45.0" y="452.5">经 signedAtOf 取签收时间</text>
+<rect class="zone" x="30" y="474" width="280" height="216" rx="7"/>
+<text class="zt" x="40.0" y="488.0">paybridge · 微信支付合规（留交易域）</text>
+<rect class="caller" x="42" y="496" width="256" height="52" rx="5"/>
+<text class="n" x="51.0" y="512.0">WxConfirmReceiveService</text>
+<text class="mt" x="51.0" y="526.0">消费 WaybillSigned（不再扫表）</text>
+<text class="mt" x="51.0" y="538.5">notify_confirm_receive 每单一次</text>
+<rect class="caller" x="42" y="560" width="256" height="52" rx="5"/>
+<text class="n" x="51.0" y="576.0">WxShippingUploadService</text>
+<text class="mt" x="51.0" y="590.0">upload_shipping_info（已接）</text>
+<text class="mt" x="51.0" y="602.5">成功后发 WxShippingUploaded</text>
+<rect class="caller" x="42" y="624" width="256" height="52" rx="5"/>
+<text class="n" x="51.0" y="640.0">NotificationConsumer</text>
+<text class="mt" x="51.0" y="654.0">消费 WaybillProgressed</text>
+<text class="mt" x="51.0" y="666.5">只对 SELF 单发自有订阅消息</text>
+<rect class="zone2" x="340" y="60" width="230" height="640" rx="7"/>
+<text class="ztb" x="350.0" y="74.0">shop-base / spi / logistics</text>
+<rect class="port" x="354" y="92" width="202" height="66" rx="5"/>
+<text class="n" x="363.0" y="108.0">ShipmentSourcePort</text>
+<text class="mt" x="363.0" y="122.0">sourceOf(subOrderNo)</text>
+<text class="mt" x="363.0" y="134.5">唯一反向 Port（预算 = 1）</text>
+<text class="mt" x="363.0" y="147.0">实现在 logisticsbridge</text>
+<rect class="data" x="354" y="172" width="202" height="118" rx="5"/>
+<text class="n" x="363.0" y="188.0">sys_outbox（已有）</text>
+<text class="mt" x="363.0" y="202.0">跨域事件全部经它投递</text>
+<text class="mt" x="363.0" y="214.5">提交后执行</text>
+<text class="mt" x="363.0" y="227.0">退避重试 · 上限 · FAILED</text>
+<text class="mt" x="363.0" y="239.5">= 不另起重试作业</text>
+<text class="mt" x="363.0" y="252.0">只带业务键</text>
+<rect class="port" x="354" y="304" width="202" height="66" rx="5"/>
+<text class="n" x="363.0" y="320.0">LogisticsPort</text>
+<text class="mt" x="363.0" y="334.0">track(bizRef, surface)</text>
+<text class="mt" x="363.0" y="346.5">signedAtOf(bizRefs)</text>
+<text class="mt" x="363.0" y="359.0">交易域读物流的唯一入口</text>
+<rect class="port" x="354" y="384" width="202" height="76" rx="5"/>
+<text class="n" x="363.0" y="400.0">事件契约</text>
+<text class="mt" x="363.0" y="414.0">出 LogisticsEvents：</text>
+<text class="mt" x="363.0" y="426.5">  WaybillProgressed · Signed</text>
+<text class="mt" x="363.0" y="439.0">进 TradeEvents：</text>
+<text class="mt" x="363.0" y="451.5">  SubOrderShipped · WxShipping…</text>
+<text class="sm" x="354.0" y="492.0">同库 · 同事务管理器，</text>
+<text class="sm" x="354.0" y="507.0">但跨域写一律经 outbox；</text>
+<text class="sm" x="354.0" y="522.0">谁也不写对方的表。</text>
+<text class="sm" x="354.0" y="548.0">sys_outbox 没有清理：</text>
+<text class="sm" x="354.0" y="563.0">事件里放手机号 = 永久</text>
+<text class="sm" x="354.0" y="578.0">留一份明文。所以登记时</text>
+<text class="sm" x="354.0" y="593.0">经 ③ 拉一次快照。</text>
+<rect class="zone2" x="600" y="60" width="420" height="640" rx="7"/>
+<text class="ztb" x="610.0" y="74.0">backend / logistics（新）</text>
+<rect class="zone" x="612" y="80" width="396" height="352" rx="7"/>
+<text class="zt" x="622.0" y="94.0">logistics-domain · ai.neargo.shop.logistics</text>
+<rect class="impl" x="624" y="102" width="178" height="66" rx="5"/>
+<text class="n" x="633.0" y="118.0">ShipmentRegistrar</text>
+<text class="mt" x="633.0" y="132.0">消费 SubOrderShipped</text>
+<text class="mt" x="633.0" y="144.5">取快照 → 登记运单</text>
+<text class="mt" x="633.0" y="157.0">定 profile = WX / SELF</text>
+<rect class="impl" x="818" y="102" width="178" height="66" rx="5"/>
+<text class="n" x="827.0" y="118.0">PushIngestService</text>
+<text class="mt" x="827.0" y="132.0">/callback/logistics/**</text>
+<text class="mt" x="827.0" y="144.5">验签 → 落节点（去重）</text>
+<text class="mt" x="827.0" y="157.0">每条推送后判换 token</text>
+<rect class="router" x="624" y="182" width="178" height="66" rx="5"/>
+<text class="n" x="633.0" y="198.0">WaybillStatus</text>
+<text class="mt" x="633.0" y="212.0">advance(cur, incoming)</text>
+<text class="mt" x="633.0" y="224.5">单调：签收不会被退回</text>
+<text class="mt" x="633.0" y="237.0">两个来源先到者写</text>
+<rect class="router" x="818" y="182" width="178" height="66" rx="5"/>
+<text class="n" x="827.0" y="198.0">WxBindPolicy</text>
+<text class="mt" x="827.0" y="212.0">WX 单 ∧ 已上传微信</text>
+<text class="mt" x="827.0" y="224.5">∧ 已揽收 才换 token</text>
+<text class="mt" x="827.0" y="237.0">9300559 → 等下一条推送</text>
+<rect class="impl" x="624" y="262" width="178" height="66" rx="5"/>
+<text class="n" x="633.0" y="278.0">TrackService</text>
+<text class="mt" x="633.0" y="292.0">LogisticsPort 实现</text>
+<text class="mt" x="633.0" y="304.5">MP+WX → 插件 token</text>
+<text class="mt" x="633.0" y="317.0">10 分钟内不重查微信</text>
+<rect class="job" x="818" y="262" width="178" height="66" rx="5"/>
+<text class="n" x="827.0" y="278.0">CompensationService</text>
+<text class="mt" x="827.0" y="292.0">沉默 &gt; 24h 的在途单</text>
+<text class="mt" x="827.0" y="304.5">按 StatusProbe 链探测</text>
+<text class="mt" x="827.0" y="317.0">默认只问微信</text>
+<rect class="port" x="624" y="344" width="372" height="76" rx="5"/>
+<text class="n" x="633.0" y="360.0">四个策略 SPI（链式，配置决定顺序）</text>
+<text class="mt" x="633.0" y="374.0">TrackingSubscriber   默认 [kuaidi100]</text>
+<text class="mt" x="633.0" y="386.5">StatusProbe          默认 [wx-query]</text>
+<text class="mt" x="633.0" y="399.0">kuaidi100-query 允许的界面  默认 []</text>
+<rect class="zone" x="612" y="446" width="396" height="132" rx="7"/>
+<text class="zt" x="622.0" y="460.0">logistics-channel · 服务商适配</text>
+<rect class="impl" x="624" y="468" width="178" height="52" rx="5"/>
+<text class="n" x="633.0" y="484.0">Kuaidi100PushParser</text>
+<text class="mt" x="633.0" y="498.0">报文 → 节点 + 状态</text>
+<text class="mt" x="633.0" y="510.5">按字段名找，不赌层级</text>
+<rect class="impl" x="818" y="468" width="178" height="52" rx="5"/>
+<text class="n" x="827.0" y="484.0">Kuaidi100Subscriber</text>
+<text class="mt" x="827.0" y="498.0">/poll 订阅 · 每单一次</text>
+<text class="mt" x="827.0" y="510.5">501 重复订阅 = 成功</text>
+<rect class="impl" x="624" y="528" width="178" height="40" rx="5"/>
+<text class="n" x="633.0" y="544.0">Kuaidi100Query（默认关）</text>
+<rect class="impl" x="818" y="528" width="178" height="40" rx="5"/>
+<text class="n" x="827.0" y="544.0">WxLogisticsClient</text>
+<rect class="zone" x="612" y="592" width="396" height="96" rx="7"/>
+<text class="zt" x="622.0" y="606.0">落库 · 主库 ai_shop · 前缀 lgs_</text>
+<rect class="data" x="624" y="614" width="112" height="62" rx="5"/>
+<text class="n" x="633.0" y="630.0">lgs_waybill</text>
+<text class="mt" x="633.0" y="644.0">← ful_shipment</text>
+<text class="mt" x="633.0" y="656.5">状态·订阅·token</text>
+<rect class="data" x="744" y="614" width="136" height="62" rx="5"/>
+<text class="n" x="753.0" y="630.0">lgs_waybill_node</text>
+<text class="mt" x="753.0" y="644.0">← ful_shipment_trace</text>
+<text class="mt" x="753.0" y="656.5">UK 去重全量推送</text>
+<rect class="data" x="888" y="614" width="108" height="62" rx="5"/>
+<text class="n" x="897.0" y="630.0">lgs_carrier</text>
+<text class="mt" x="897.0" y="644.0">← ful_carrier</text>
+<text class="mt" x="897.0" y="656.5">+微信/快递100码</text>
+<rect class="zone2" x="1044" y="60" width="180" height="640" rx="7"/>
+<text class="ztb" x="1054.0" y="74.0">外部</text>
+<rect class="ext" x="1056" y="92" width="156" height="92" rx="5"/>
+<text class="n" x="1065.0" y="108.0">快递100</text>
+<text class="mt" x="1065.0" y="122.0">只订阅，不主动查</text>
+<text class="mt" x="1065.0" y="134.5">订阅：每单 1 次</text>
+<text class="mt" x="1065.0" y="147.0">推送 → 我们的回调</text>
+<text class="mt" x="1065.0" y="159.5">（额度不够）</text>
+<rect class="ext" x="1056" y="300" width="156" height="108" rx="5"/>
+<text class="n" x="1065.0" y="316.0">微信物流</text>
+<text class="mt" x="1065.0" y="330.0">trace_waybill</text>
+<text class="mt" x="1065.0" y="342.5">query_trace</text>
+<text class="mt" x="1065.0" y="355.0">三节点消息直接推给</text>
+<text class="mt" x="1065.0" y="367.5">买家（不经我们）</text>
+<text class="mt" x="1065.0" y="380.0">query_trace 10 万/天</text>
+<rect class="ext" x="1056" y="470" width="156" height="66" rx="5"/>
+<text class="n" x="1065.0" y="486.0">买家 / 商家</text>
+<text class="mt" x="1065.0" y="500.0">小程序物流页（插件）</text>
+<text class="mt" x="1065.0" y="512.5">B 端 App 轨迹</text>
+<text class="mt" x="1065.0" y="525.0">运营端运单页</text>
+<path class="arw" d="M624.0 125.0 L562.0 125.0" marker-end="url(#arw)"/>
+<path class="arw" d="M354.0 125.0 L310.0 125.0" marker-end="url(#arw)"/>
+<text class="lw" x="565.0" y="119.0">③ 快照</text>
+<text class="lw" x="312.0" y="119.0">③</text>
+<path class="ar" d="M304.0 300.0 L330.0 300.0 L330.0 262.0 L348.0 262.0" marker-end="url(#ar)"/>
+<text class="l" x="312.0" y="294.0">①</text>
+<path class="ar" d="M556.0 190.0 L598.0 190.0 L598.0 150.0 L618.0 150.0" marker-end="url(#ar)"/>
+<text class="l" x="562.0" y="184.0">② 登记</text>
+<path class="ar" d="M624.0 236.0 L562.0 236.0" marker-end="url(#ar)"/>
+<text class="l" x="565.0" y="230.0">⑦ 事件</text>
+<path class="ar" d="M304.0 358.0 L348.0 358.0" marker-end="url(#ar)"/>
+<text class="l" x="318.0" y="352.0">读</text>
+<path class="ar" d="M556.0 316.0 L618.0 316.0" marker-end="url(#ar)"/>
+<text class="l" x="580.0" y="310.0">读</text>
+<path class="ar" d="M354.0 410.0 L326.0 410.0 L326.0 522.0 L304.0 522.0" marker-end="url(#ar)"/>
+<path class="ar" d="M298.0 586.0 L340.0 586.0 L340.0 440.0 L348.0 440.0" marker-end="url(#ar)"/>
+<path class="ar" d="M1056.0 135.0 L1002.0 135.0" marker-end="url(#ar)"/>
+<text class="l" x="1008.0" y="129.0">⑤ 推送</text>
+<path class="arg" d="M996.0 494.0 L1030.0 494.0 L1030.0 168.0 L1050.0 168.0" marker-end="url(#arg)"/>
+<text class="lw" x="936.0" y="461.0">④ 订阅（每单一次）</text>
+<path class="arg" d="M996.0 548.0 L1038.0 548.0 L1038.0 360.0 L1050.0 360.0" marker-end="url(#arg)"/>
+<text class="lw" x="842.0" y="588.0">⑥ 揽收后换 token · 查状态</text>
+<path class="ar" d="M1134.0 408.0 L1134.0 464.0" marker-end="url(#ar)"/>
+<text class="l" x="1140.0" y="442.0">三节点消息</text>
+<text class="b" x="24.0" y="724.0">图上看不出来的三件事</text>
+<text class="note" x="24.0" y="746.0">1. 运单不再是「读时补齐」：以前商家发货只写订单表，物流去扫订单表补出运单，补的时候还用订单状态覆盖运单状态 —— 已签收的单被打回运输中，</text>
+<text class="note" x="24.0" y="764.0">   每 30 分钟重查一次快递100。现在发货即登记，订单状态不再写运单状态（状态机只进不退）。</text>
+<text class="note" x="24.0" y="782.0">2. 快递100 只出现在两条线上：④ 订阅（我们调它，每单一次）与 ⑤ 推送（它调我们）。主动查询的实现还在，但默认没有任何界面被允许用它。</text>
+<text class="note" x="24.0" y="800.0">3. 微信能力分在两边：查询插件（换 token、查状态）进物流；发货上报与确认收货提醒是微信支付的合规义务（自提、虚拟商品也要报），</text>
+<text class="note" x="24.0" y="818.0">   留在交易域 —— 物流只给它一个「签收了」的事实（⑦）。所以 WxConfirmReceiveService 在左边，不在右边。</text>
+</svg>
