@@ -244,14 +244,21 @@ A+B+C 是一条线（签收闭环），价值最大；D 是成本与新鲜度优
 | 项 | 填什么 | 填错的后果 |
 |---|---|---|
 | 服务器地址 URL | `https://www.hxmall.top/mp/wx/callback` | —— |
-| 令牌 Token | 与生产 `SHOP_WX_PUSH_TOKEN` **同值** | 校验恒失败，而微信只说「token 验证失败」，不说是哪儿不对 |
+| 令牌 Token | 与生产 `WX_PUSH_TOKEN` **同值**（已配好，见下） | 校验恒失败，而微信只说「token 验证失败」，不说是哪儿不对 |
 | 消息加密方式 | **明文模式** | ⚠️ 选安全/兼容模式代码不认：我们验的是 `signature`、body 按明文 JSON 读；加密模式要验 `msg_signature` 并做 AES 解密 |
 | 数据格式 | **JSON** | 选 XML 的话事件进得来但解析不出（会落一条「不是 JSON」的 WARN） |
 
 > 没配 token 时 POST **拒收**（不是放行）—— 放行等于谁都能冒充微信把别人的订单推成已完成。
 >
-> Token 已在生产生成并写入（2026-10-09），读法：
-> `ssh soukmind-tx 'sudo grep "^SHOP_WX_PUSH_TOKEN=" /data/app/ai-shop/shop-app/shop-app.env'`
+> **2026-10-09 实测：生产 `WX_PUSH_TOKEN` 早已配好，回调 URL 公网可达，
+> 用真实 token 算签名打过去原样回显了 echostr —— 微信后台那一步「提交」会一次通过。**
+> 读 token：`ssh soukmind-tx 'sudo grep "^WX_PUSH_TOKEN=" /data/app/ai-shop/shop-app/shop-app.env'`
+>
+> ⚠️ 配置键叫 `WX_PUSH_TOKEN`（`shop.wx.push.token`），**不是** `SHOP_WX_PUSH_TOKEN`。
+> 我按后者查过一次、以为没配，还往 yml 里补了第二个 `shop.wx.push` ——
+> **YAML 重复键会让整个 Spring 上下文起不来**，而报错不指向 YAML。
+> 那一处上面本来就写着这条警告（有人踩过并合并了块），仍然没拦住我。
+> 教训：改 yml 前先 `grep` 这个前缀下已经有什么。
 
 **批 A 的作业要记得开**：`wx-confirm-receive` 注册进调度表默认是关的（见 §3.5），
 部署后要在运营端开启，否则它一次都不会跑。
