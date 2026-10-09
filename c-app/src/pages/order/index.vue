@@ -25,6 +25,18 @@ const { t } = useI18n();
 const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
+/**
+ * 这一单的明细由**微信插件**呈现吗。
+ *
+ * <p>是的话我们只给摘要（状态 + 最新一条 + 入口）：**明细在插件里已经有一份**，
+ * 页面上再铺一遍是同一份数据说两次，而且两份的新旧还可能不一致。
+ * 插件只在小程序里存在，所以 H5 / App 以及拿不到 token 的单仍然由我们自己铺 ——
+ * 否则那些端什么都看不到。
+ */
+const traceInPlugin = computed(() =>
+  order.value?.trace?.displayMode === "wx-plugin" && !!order.value?.trace?.displayToken);
+/** 摘要那一行。节点按时间倒序，第一条就是最新 */
+const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
 
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
@@ -444,9 +456,15 @@ onShow(load);
       长度靠折叠控制（轨迹默认 3 条）。
     -->
     <view v-if="order.fulfillment || hasTrace || nextStepText" class="sh-card block prog">
-      <text class="txt-title status" :class="statusTone(order.status)">
-        {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
-      </text>
+      <view class="sh-row sh-row--between">
+        <text class="txt-title status" :class="statusTone(order.status)">
+          {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
+        </text>
+        <!-- 走插件的单，入口在这里；明细不在页面上，所以这颗必须显眼 -->
+        <sh-go v-if="traceInPlugin" :text="String($t('trace.openWx'))" @tap="openWxTracking"></sh-go>
+      </view>
+      <!-- 走插件时页面只给最新一条，其余交给插件那一屏 -->
+      <text v-if="traceInPlugin" class="txt-caption sh-muted prog__next">{{ traceLatest }}</text>
       <!--
         **状态下面说一句「接下来会发生什么」**（原型 k07）：「待发货」三个字只说了此刻，
         没说他要等什么。**有轨迹时不说** —— 那句话固定、更粗，而轨迹件里的最新一条
@@ -480,11 +498,12 @@ onShow(load);
       </view>
 
       <!--
-        轨迹。微信渠道时这个件只给「步骤条 + 最新一条 + 查看物流详情」，
-        点那一颗进微信官方物流页；自建渠道给步骤条 + 折叠到 3 条的时间线。
+        轨迹明细。**只在插件不可用时铺** —— 走微信插件的单，明细在插件那一屏里已经有一份，
+        页面再铺一遍是同一份数据说两次，两份的新旧还可能不一致（插件是微信侧的数据）。
+        H5 / App 没有插件、拿不到 token 的单也走这里，否则那些端什么都看不到。
         不画地图：城市级示意回答不了「今天到不到」，而那正是买家问的。
       -->
-      <view v-if="hasTrace" class="prog__sec">
+      <view v-if="hasTrace && !traceInPlugin" class="prog__sec">
         <sh-trace :trace="order.trace!" :show-map="false" @open-wx="openWxTracking"></sh-trace>
       </view>
 
