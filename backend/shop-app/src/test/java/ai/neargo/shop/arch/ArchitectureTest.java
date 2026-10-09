@@ -511,6 +511,10 @@ class ArchitectureTest {
                 // 放进 trade 会让订单域知道报表库的存在；放进 report 会让那个派生库
                 // 反过来依赖交易域，拆的时候要连着搬。装配层是它唯一正确的位置。
                 "reportbridge",
+                // logisticsbridge：物流与订单 / 支付之间的**装配层**（ADR-032）——
+                // 登记时向交易域取一次快照（ShipmentSourcePort 的实现，要拼支付台账里的付款人 openid）、
+                // 补偿作业的 JobHandler 壳（物流模块不依赖 job-api，同进销存）。与 invbridge 同一个理由：必须同时认识两边。
+                "logisticsbridge",
                 // svc：进程之间怎么找到对方、怎么调（ServiceLocator + InternalHttp）。
                 // **不是业务域**：它不认识任何业务概念，只认识「服务名 → 地址」。
                 // 三个进程共用一份，所以住在 shop-base 里；见 ADR-023。

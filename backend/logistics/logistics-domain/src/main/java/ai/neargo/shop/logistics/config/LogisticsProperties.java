@@ -22,6 +22,13 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "shop.logistics")
 public class LogisticsProperties {
 
+    /**
+     * 订阅总开关。<b>默认关</b>（TDD-物流模块 批 2a）：快递100 默认只往 HTTP 推、HTTPS 要先联系客服开通；
+     * 开通前订阅出去推送到不了我们，而同一单号在跟踪结束前不能改订（501）。
+     * 关着时登记的运单停在 PENDING；打开后由补偿作业把 PENDING 的补订上。
+     */
+    private boolean subscribeEnabled = false;
+
     /** 各能力的路由链 */
     private Routes routes = new Routes();
 

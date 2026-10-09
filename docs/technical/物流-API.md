@@ -229,9 +229,9 @@ c-app 拿到 `wx-plugin` → `openWaybillTracking(displayToken)`；`self-map` �
 | 项 | 值 |
 |---|---|
 | 鉴权 | 无令牌（`/callback/**` 已放行）；靠各渠道验签 |
-| `channel` | `kuaidi100`（批 2）、`yto`（批 2b）；未知 → HTTP 404 |
+| `channel` | `kuaidi100`（批 2）、`yto`（批 2b）；未知 → `result:false` |
 | 返回 | `String`，`produces=application/json`，内容由渠道决定 |
-| 原则 | 只要渠道名存在，**一律回成功**（验签失败、找不到运单、入库异常都回成功，各自记 WARN / ERROR）—— 理由见 [功能模块方案 M4](物流-功能模块方案.md) |
+| 原则 | 只要渠道名存在，**一律回成功**（验签失败、找不到运单、入库异常都回成功，各自记 WARN / ERROR）—— 理由见 [功能模块方案 M4](物流-功能模块方案.md)。渠道名不存在 → `{"result":false,"returnCode":"404","message":"unknown channel"}`（HTTP 200：全局异常处理写不出 404） |
 
 **`kuaidi100`**（官方文档 2026-10-09 核对）：
 

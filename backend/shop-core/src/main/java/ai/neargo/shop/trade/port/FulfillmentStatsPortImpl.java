@@ -282,11 +282,44 @@ public class FulfillmentStatsPortImpl implements FulfillmentStatsPort {
      * <p>解析放在 trade 而不是让 fulfillment 自己切：地址的格式是下单时这一侧写进去的，
      * 格式变了该由这里跟着变 —— 让下游按约定去切，等于把一个隐式契约散到两个域。
      */
-    private static String regionOf(String address) {
+    /** 省级：省 / 自治区 / 特别行政区 */
+    private static final java.util.regex.Pattern PROVINCE =
+            java.util.regex.Pattern.compile("^(.+?(?:省|自治区|特别行政区))");
+    /** 直辖市：省级与地级是同一个名字（北京市北京市朝阳区… / 北京市朝阳区… 两种都见过） */
+    private static final java.util.regex.Pattern MUNICIPALITY =
+            java.util.regex.Pattern.compile("^(北京市|上海市|天津市|重庆市)");
+    /** 地级：市 / 自治州 / 地区 / 盟 */
+    private static final java.util.regex.Pattern CITY =
+            java.util.regex.Pattern.compile("^(.+?(?:市|自治州|地区|盟))");
+
+    /**
+     * 收件地区「省 市」。public：物流登记快照（logisticsbridge）复用同一种切法，不在物流那边另写一份。
+     *
+     * <p>⚠️ 地址快照的真实格式是<b>不带空格的连写</b>（「浙江省杭州市西湖区文三路 1 号」）。
+     * 原来按空格切，于是整串地址的前一截被当成地区 —— 运营端运单列表的「地区」一直是错的，
+     * 2026-10-09 物流登记的场景测试才抓到。按行政区划后缀切；老的带空格格式仍然认。
+     */
+    public static String regionOf(String address) {
         if (address == null || address.isBlank()) {
             return "";
         }
-        String[] parts = address.trim().split("\\s+");
-        return parts.length >= 2 ? parts[0] + " " + parts[1] : parts[0];
+        String a = address.trim();
+        String[] parts = a.split("\\s+");
+        if (parts.length >= 2 && (PROVINCE.matcher(parts[0]).matches() || MUNICIPALITY.matcher(parts[0]).matches())) {
+            return parts[0] + " " + parts[1];
+        }
+        String compact = a.replaceAll("\\s+", "");
+        java.util.regex.Matcher m = MUNICIPALITY.matcher(compact);
+        if (m.find()) {
+            // 直辖市的地级就是它自己（「北京市北京市朝阳区」与「北京市朝阳区」都是 北京市 北京市）
+            return m.group(1) + " " + m.group(1);
+        }
+        m = PROVINCE.matcher(compact);
+        if (!m.find()) {
+            return parts[0];
+        }
+        String province = m.group(1);
+        java.util.regex.Matcher c = CITY.matcher(compact.substring(province.length()));
+        return c.find() ? province + " " + c.group(1) : province;
     }
 }

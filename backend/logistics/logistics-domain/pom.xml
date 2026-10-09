@@ -26,5 +26,10 @@
             <artifactId>shop-store-mybatis</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 只为推送回调 /callback/logistics/{channel}：拆出去那天 nginx 按前缀转发一行即可 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
     </dependencies>
 </project>

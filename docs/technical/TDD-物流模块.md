@@ -792,6 +792,21 @@ shop:
 | §2.2 节点表唯一键 `(shipment_no, at, text_hash)` | **不加**；去重仍在代码里 | 存量可能有重复节点，加 UK 会让迁移在生产失败 |
 | §2.2 运单唯一键 `(biz_type, biz_ref)` | 仍是原 `uk_shipment_sub_order`（列改名为 `biz_ref`） | 今天只有子单一种业务；接退货运单时再换 |
 | — | `sub_state` 多一个取值 `NA`（登记前已签收的存量，不需要订阅） | 存量回填需要 |
+| — | 批 1 上 HEAD 后全量 **2250 红**：`CarrierCodeBook` 两个构造器都没标 `@Autowired`，上下文起不来（`f27eac410` 修） | 批 1 只跑了手工 new 的单测，没起过一次上下文；加 bean 后至少跑一条 `@SpringBootTest` |
+
+### 批 2a · 偏差说明
+
+| 计划 | 实际 | 为什么 |
+|---|---|---|
+| 批 2 一次上线订阅 + 推送 + 删轮询 | **拆成 2a（代码上线、订阅总开关 `shop.logistics.subscribe-enabled` 默认关、旧轮询照跑）与 2b（P1 / P2 到位后打开）** | 快递100 默认只推 HTTP、HTTPS 要先联系客服；开通前订出去推不到，而同一单号跟踪结束前改不了订（501） |
+| M1 登记一步完成（取快照 + 订阅） | **两段**：`SUB_ORDER_SHIPPED` 的消费者只登记骨架、几乎不可能失败；取快照与订阅放到物流内部事件 `LGS_WAYBILL_REGISTERED` 上 | 派发器把一条事件依次交给所有消费者、任一抛异常整条重投 —— 物流这边一失败，通知模块会把「已发货」再推一次 |
+| — | 补偿作业「待订阅超过 10 分钟补订」**提前到 2a**（`logistics-compensate`，开关关着时不动） | 开关打开那一刻存量待订阅要补订；outbox 重试耗尽的也要有人捡 |
+| — | 订阅累计 10 次仍不成 → FATAL | outbox 重试耗尽后补偿作业还会再推，不设上限一张一直 500 的单会被两边接力重试到永远 |
+| §2.3 X1 渠道名不存在回 404 | **回 `{"result":false}` + WARN** | 全局异常处理把任何异常（含 `ResponseStatusException`）转成 HTTP 200 + 10500；域里又不许碰 Servlet 响应对象 |
+| 回调返回 `ResponseEntity<String>` | **返回类型就是 `String`** | 统一信封只放过返回类型是 String 的方法，`ResponseEntity<String>` 照样被包 → ClassCastException → 渠道收到 10500（场景测试当场抓到） |
+| T2.6 `YtoSubscriber` | **推迟到 2b**（等 P3 正式客户编码与订阅报文实测） | 圆通推送没调通前路由本来就会跳过它（订阅可用 ⇔ 推送可用） |
+| — | **修了一个现存缺陷**：`FulfillmentStatsPortImpl.regionOf` 按空格切地址，而地址快照是连写的（「浙江省杭州市西湖区…」）—— 运营端运单列表的「地区」一直是错的 | 物流登记快照复用它，场景测试当场抓到；按行政区划后缀切，带空格的老格式仍认 |
+| T1.2 反向 Port 守卫 | 两处修正：`getAllSubclasses` 对接口不返回实现类 → 改 `isAssignableTo`；包名前缀不带点时 `logisticsbridge` 被当成物流内部 | 两次都是消融抓到的（预算调成 0 照样绿）；补了扫描面断言 |
 
 ## §7 确认与完成
 

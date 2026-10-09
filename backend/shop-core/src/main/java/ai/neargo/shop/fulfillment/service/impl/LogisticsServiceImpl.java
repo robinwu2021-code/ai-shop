@@ -193,7 +193,11 @@ public class LogisticsServiceImpl implements LogisticsService {
             s.setUpdatedBy("SYSTEM");
             s.setVersion(0L);
             s.setDeleted(0);
-            DataScopeContext.executeWithoutScope(() -> shipmentMapper.insert(s));
+            try {
+                DataScopeContext.executeWithoutScope(() -> shipmentMapper.insert(s));
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 过渡期（TDD-物流模块 批 2a）：发货事件那一路的登记可能刚刚先建了这一行 —— 撞键即已登记，跳过
+            }
         }
     }
 

@@ -94,11 +94,13 @@ class LogisticsBoundaryTest {
                     || !port.getSimpleName().endsWith("Port")) {
                 continue;
             }
-            boolean implementedOutside = port.getAllSubclasses().stream()
-                    .anyMatch(impl -> !impl.isInterface()
-                            && !impl.getPackageName().startsWith("ai.neargo.shop.logistics"));
-            boolean implementedInside = port.getAllSubclasses().stream()
-                    .anyMatch(impl -> impl.getPackageName().startsWith("ai.neargo.shop.logistics"));
+            // 用 isAssignableTo 找实现类：getAllSubclasses 对接口不返回实现类，这条守卫因此假绿过
+            // （2026-10-09 消融：预算调成 0 照样绿）
+            List<JavaClass> impls = classes.stream()
+                    .filter(c -> !c.isInterface() && !c.equals(port) && c.isAssignableTo(port.getName()))
+                    .toList();
+            boolean implementedOutside = impls.stream().anyMatch(impl -> !inLogistics(impl));
+            boolean implementedInside = impls.stream().anyMatch(LogisticsBoundaryTest::inLogistics);
             if (implementedOutside && !implementedInside) {
                 reverse.add(port.getSimpleName());
             }
@@ -107,6 +109,17 @@ class LogisticsBoundaryTest {
                 .as("物流向别的域要数据的 Port 超了预算（%d）：%s —— 每多一条，拆服务那天就多一个远程依赖",
                         REVERSE_PORT_BUDGET, reverse)
                 .hasSizeLessThanOrEqualTo(REVERSE_PORT_BUDGET);
+        assertThat(reverse).as("扫描面：ShipmentSourcePort 实现在 logisticsbridge，必须被认成反向 Port —— "
+                + "认不出说明找实现类的办法失效了，上面那条会恒绿").contains("ShipmentSourcePort");
+    }
+
+    /**
+     * 是不是物流模块里的类。<b>前缀必须带点</b>：{@code ai.neargo.shop.logisticsbridge} 也以
+     * {@code ai.neargo.shop.logistics} 开头 —— 不带点时桥接层被当成物流内部，反向 Port 一条都认不出（2026-10-09）。
+     */
+    private static boolean inLogistics(JavaClass c) {
+        String p = c.getPackageName();
+        return p.equals("ai.neargo.shop.logistics") || p.startsWith("ai.neargo.shop.logistics.");
     }
 
     /** 去掉注释：注释里写「不读 ord_sub_order」不该算违规 */
