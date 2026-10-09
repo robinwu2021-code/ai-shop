@@ -878,6 +878,7 @@ export default {
     express: "运单号",
     trace: "物流轨迹",
     traceView: "查看",
+    progress: "订单进度",
     orderNo: "订单号",
     /** 状态下面那一句「接下来会发生什么」（原型 k07）。没写的状态不显示，不编话 */
     next: {

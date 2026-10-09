@@ -806,6 +806,7 @@ export default {
     express: "Tracking no.",
     trace: "Tracking",
     traceView: "View",
+    progress: "Order progress",
     orderNo: "Order no.",
     next: {
       WAIT_PAY: "The seller starts preparing after payment; unpaid orders close automatically",

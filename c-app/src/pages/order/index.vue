@@ -21,15 +21,10 @@ const { t } = useI18n();
  * 快递公司名（TDD-快递100商家寄件 §7 AC14）。订单一直带着 `expressCompany`（微信 delivery_id），
  * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
  */
-/** 物流详情弹框。顶部那一栏点开才是全过程（原型 s08/s09） */
-const traceOpen = ref(false);
 /** 摘要行的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
 const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
-/** 最新一条。节点按时间倒序，第一条就是最新 */
-const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
-/** 有没有可展开的过程。没有就不给入口 —— 自提/配送单在这一栏只陈述落点 */
+/** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
-const canOpenTrace = hasTrace;
 
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
@@ -89,29 +84,15 @@ function copyExpressNo() {
  */
 function openWxTracking() {
   const token = order.value?.trace?.displayToken;
-  if (!token) return false;
+  if (!token) return;
   // **先打开、再刷新**：打开发生在点击回调里，不能排在 await 后面（同 requestSubscribe 的手势问题）
-  const ok = openWxWaybillTracking(token);
+  // 打不开就说一句：常因是插件没初始化好或版本老，不白跳
+  if (!openWxWaybillTracking(token)) {
+    uni.showToast({ title: String(t("trace.wxUnavailable")), icon: "none" });
+  }
   refreshTrace();
-  return ok;
 }
 
-/**
- * 点顶部那一栏。**微信渠道直接进微信官方物流页**，不隔一层我们自己的弹框 ——
- * 多一次点击、多等一次加载，换不来任何新信息。
- *
- * <p>插件打不开时**退回我们的弹框**而不是只弹一句提示：打不开的原因
- * （版本老、未开通、token 过期）买家一个都解决不了，而轨迹数据我们手上就有。
- * 2026-10-09 实测过插件报「物流组件没有加载出来」那一幕，那时用户什么也看不到。
- */
-function openTrace() {
-  const t0 = order.value?.trace;
-  if (!t0?.nodes?.length) return;
-  if (t0.displayMode === "wx-plugin" && t0.displayToken && openWxTracking()) {
-    return;
-  }
-  traceOpen.value = true;
-}
 /**
  * 问一次物流页端点（TDD-物流模块 批 3）：它会顺带向微信校正一次状态（10 分钟内不重复），
  * 回来的新状态 / 到柜提示盖到详情上 —— 买家从插件页返回时看到的是新的。拿不到就留着详情里的，不提示。
@@ -451,56 +432,27 @@ onShow(load);
 
     <!-- 状态 + 时间线 -->
     <!--
-      履约 + 物流，合成顶部一栏（原型 logistics-trace s08–s11）。
-      **这一栏回答的是「这一单现在走到哪、我该做什么」**，所以履约方式、自提点、
-      预约时间与快递轨迹在同一个地方 —— 此前它们分散在下面的履约卡里，
-      买家要翻过商品与金额才看得到，而他点进这一页十次有九次只为这一件事。
-      有轨迹才可点：微信渠道**直接进微信官方物流页**（不再隔一层我们自己的弹框），
-      插件打不开时才退回弹框 —— 见 openTrace。
+      进度区域（原型 logistics-trace s08–s11，2026-10-09 重排）。
+      **一个区域回答一个问题：这一单现在怎么了、我该做什么。**
+
+      此前这件事被拆在两处说：物流栏一个状态标题（运输中），紧跟着订单状态卡
+      又一个标题（履约中）+ 一句更旧的说明（商家已经发出）——
+      而轨迹那时已经说到「咸阳发往深圳」。两个标题叠着，后一个更粗更旧。
+
+      **这里没有我们自己的弹框**：小程序点「查看物流详情」出来的就是微信插件那一屏，
+      我们再套一层弹框等于两层弹层。所以轨迹、履约落点、订单进度都铺在这一个区域里，
+      长度靠折叠控制（轨迹默认 3 条）。
     -->
-    <view
-      v-if="order.fulfillment || hasTrace"
-      class="sh-card block tracebar"
-      @tap="openTrace"
-    >
-      <view class="sh-row sh-row--between">
-        <text class="txt-strong">
-          {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`fulfillment.${order.fulfillment}`) }}
-        </text>
-        <!-- 没有可展开的过程就不给入口：一个点不出东西的箭头比不给更糟 -->
-        <sh-go v-if="canOpenTrace" :text="String($t('order.traceView'))"></sh-go>
-      </view>
-
-      <!-- 最新一条最多两行：一行会截在半句上，再多就该点进去看了 -->
-      <text v-if="hasTrace" class="txt-caption sh-muted tracebar__last">{{ traceLatest }}</text>
-
-      <!-- 履约落点：自提点 / 到货日 / 预约时间。快递单把履约方式也写出来（状态词占了标题位） -->
-      <text v-if="hasTrace && order.fulfillment" class="txt-caption sh-muted tracebar__row">
-        {{ $t(`fulfillment.${order.fulfillment}`) }}
-      </text>
-      <text v-if="order.pickupName" class="txt-caption sh-muted tracebar__row">{{ order.pickupName }}</text>
-      <text v-if="order.arriveDate" class="txt-caption sh-muted tracebar__row sh-num">
-        {{ $t("order.batchPickup") }} {{ order.arriveDate }}
-      </text>
-      <text v-if="order.appointmentAt" class="txt-caption sh-muted tracebar__row sh-num">
-        {{ $t("order.appointment") }} {{ datetime(order.appointmentAt) }}
-      </text>
-      <text v-if="order.expressNo" class="txt-caption sh-muted tracebar__row sh-num" @tap.stop="copyExpressNo">
-        {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
-        <text class="txt-primary">{{ $t("order.copy") }}</text>
-      </text>
-    </view>
-
-    <view class="sh-card block">
+    <view v-if="order.fulfillment || hasTrace || nextStepText" class="sh-card block prog">
       <text class="txt-title status" :class="statusTone(order.status)">
-        {{ $t(`orderStatus.${order.status}`) }}
+        {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
       </text>
       <!--
-        **状态下面说一句「接下来会发生什么」**（原型 k07）。
-        「待发货」三个字只说了此刻，没说他要等什么 —— 而那正是他点进这一页想知道的。
-        没写过说明的状态整行不显示：编一句放之四海皆准的话等于什么都没说。
+        **状态下面说一句「接下来会发生什么」**（原型 k07）：「待发货」三个字只说了此刻，
+        没说他要等什么。**有轨迹时不说** —— 那句话固定、更粗，而轨迹件里的最新一条
+        既新又具体，两句并排只会让人读那句旧的。
       -->
-      <text v-if="nextStepText" class="txt-caption sh-muted status__next">{{ nextStepText }}</text>
+      <text v-if="!hasTrace && nextStepText" class="txt-caption sh-muted prog__next">{{ nextStepText }}</text>
       <!--
         **退了什么说什么**（待办设计 P3，原型 k10）。每一行都来自后端查到的数据，
         没有就不说 —— 「已为你退回」若不成立，比什么都不说更糟。
@@ -509,12 +461,46 @@ onShow(load);
         <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption txt-primary">{{ l }}</text>
       </view>
 
-      <view class="timeline">
-        <view v-for="(n, i) in order.timeline" :key="i" class="node">
-          <view class="node__dot" :class="{ 'is-last': i === order.timeline.length - 1 }" />
-          <view class="sh-fill">
-            <text class="txt-sub node__label">{{ n.label }}</text>
-            <text class="txt-caption node__at sh-num">{{ datetime(n.at) }}</text>
+      <!-- 履约落点：方式 + 自提点 / 到货日 / 预约时间 + 承运商单号 -->
+      <view class="prog__sec">
+        <text v-if="order.fulfillment" class="txt-caption sh-muted prog__row">
+          {{ $t(`fulfillment.${order.fulfillment}`) }}
+        </text>
+        <text v-if="order.pickupName" class="txt-caption sh-muted prog__row">{{ order.pickupName }}</text>
+        <text v-if="order.arriveDate" class="txt-caption sh-muted prog__row sh-num">
+          {{ $t("order.batchPickup") }} {{ order.arriveDate }}
+        </text>
+        <text v-if="order.appointmentAt" class="txt-caption sh-muted prog__row sh-num">
+          {{ $t("order.appointment") }} {{ datetime(order.appointmentAt) }}
+        </text>
+        <text v-if="order.expressNo" class="txt-caption sh-muted prog__row sh-num" @tap="copyExpressNo">
+          {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
+          <text class="txt-primary">{{ $t("order.copy") }}</text>
+        </text>
+      </view>
+
+      <!--
+        轨迹。微信渠道时这个件只给「步骤条 + 最新一条 + 查看物流详情」，
+        点那一颗进微信官方物流页；自建渠道给步骤条 + 折叠到 3 条的时间线。
+        不画地图：城市级示意回答不了「今天到不到」，而那正是买家问的。
+      -->
+      <view v-if="hasTrace" class="prog__sec">
+        <sh-trace :trace="order.trace!" :show-map="false" @open-wx="openWxTracking"></sh-trace>
+      </view>
+
+      <!--
+        订单进度：下单 / 支付 / 发货的时间点。**与承运商扫描是两回事**，
+        所以给一个小标题把两段分开 —— 并排不分段时买家读不出哪条线是谁的。
+      -->
+      <view v-if="order.timeline.length" class="prog__sec">
+        <text v-if="hasTrace" class="txt-caption sh-muted prog__cap">{{ $t("order.progress") }}</text>
+        <view class="timeline">
+          <view v-for="(n, i) in order.timeline" :key="i" class="node">
+            <view class="node__dot" :class="{ 'is-last': i === order.timeline.length - 1 }" />
+            <view class="sh-fill">
+              <text class="txt-sub node__label">{{ n.label }}</text>
+              <text class="txt-caption node__at sh-num">{{ datetime(n.at) }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -578,30 +564,11 @@ onShow(load);
           {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
         </text>
       </view>
-    </view>
-
-    <!-- 商家披露：分账场景下必须让用户知道钱付给了谁（ADR-002 §5）。
-         购物车跨商家会拆成多笔子订单，一单只对应一家 —— 不说清楚，
-         用户看到账单上出现陌生商户名会直接当成盗刷。 -->
-    <view v-if="order.merchantName" class="sh-card block">
-      <text class="txt-sub disclose">{{ $t("order.providedBy", { m: order.merchantName }) }}</text>
-      <text v-if="(order.payGroupSize ?? 1) > 1" class="sh-muted disclose__hint">
-        {{ $t("order.splitHint") }}
-      </text>
-    </view>
-
-    <!-- 订单信息。履约那几行 2026-10-09 上移进顶部那一栏（原型 s08），这里只剩单据本身 -->
-    <view class="sh-card block">
       <!--
-        **没有履约方式就整行不出**，不要渲染一个空值。
-        此前这一行无条件渲染，而主订单（多商家的单在这一层还没拆开）的
-        `fulfillment` 是 null —— 界面上显示的是那个 i18n 键本身（键名 + 点 + null），
-        直接漏到用户眼前。注释里不写出那个字面量：模板注释会被渲染进 HTML，
-        而 order-detail-review.test.ts 正是按「输出里不许出现它」来判的。
-        微信《小程序订单管理》的订单详情 path 传的正是主订单号，
-        所以从微信点进来的每一单都会看到它。
+        单据本身（订单号 + 下单时间）并进金额卡尾部：**对账要念的东西摆在一处** ——
+        商品、金额、订单号、下单时间。此前它独占一张卡，而那张卡只在找客服时才用到。
       -->
-      <view class="fact sh-row sh-row--between sh-row--top">
+      <view class="fact sh-row sh-row--between sh-row--top amt__doc">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
         <text class="txt-caption fact__v sh-num" @tap="copyOrderNo">
@@ -612,6 +579,16 @@ onShow(load);
         <text class="txt-caption fact__k">{{ $t("order.createdAt") }}</text>
         <text class="txt-caption fact__v sh-num">{{ datetime(order.createdAt) }}</text>
       </view>
+    </view>
+
+    <!-- 商家披露：分账场景下必须让用户知道钱付给了谁（ADR-002 §5）。
+         购物车跨商家会拆成多笔子订单，一单只对应一家 —— 不说清楚，
+         用户看到账单上出现陌生商户名会直接当成盗刷。 -->
+    <view v-if="order.merchantName" class="sh-card block">
+      <text class="txt-sub disclose">{{ $t("order.providedBy", { m: order.merchantName }) }}</text>
+      <text v-if="(order.payGroupSize ?? 1) > 1" class="sh-muted disclose__hint">
+        {{ $t("order.splitHint") }}
+      </text>
     </view>
 
     <!-- 售后进行中：把「下一步该我做什么」直接摆出来，别让用户自己找入口。
@@ -674,36 +651,10 @@ onShow(load);
     <view class="spacer" />
     </template>
 
-    <!--
-      物流详情弹框（原型 s09 / s10）。**不折叠**：点进来就是为了看全过程，
-      再给一个「展开全部」等于多一次点击。
-      **不画地图**：那张图是城市级示意（坐标是行政区中心点，不是快件 GPS），
-      它回答「在西安」，而买家问的是「今天到不到、要不要在家等」，答案在节点文字里。
-      地图技术上是通的、后端一直在给坐标，要加回来只是去掉一个属性。
-      微信渠道多一颗按钮，但**步骤条与最新一条仍用我们自己的数据** ——
-      只给按钮的话，买家得多点一次、再等插件加载才知道到哪了。
-    -->
-    <sh-sheet
-      v-if="order && order.trace"
-      :visible="traceOpen"
-      :title="String($t('order.trace'))"
-      @close="traceOpen = false"
-    >
-      <sh-trace
-        :trace="order.trace"
-        :fold-at="order.trace.nodes.length"
-        :show-map="false"
-        @open-wx="openWxTracking"
-      ></sh-trace>
-    </sh-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.status__next {
-  display: block;
-  margin-top: 8rpx;
-}
 .returned {
   display: flex;
   flex-direction: column;
@@ -846,16 +797,25 @@ onShow(load);
   height: 60rpx;
 }
 
-/* 履约 + 物流合并栏（原型 s08）：状态词 + 最新一条（两行）+ 落点若干行 */
-.tracebar__last {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+/* 进度区域：状态 → 履约落点 → 轨迹 → 订单进度，分段之间一条细线 */
+.prog__next {
+  display: block;
   margin-top: 8rpx;
 }
-.tracebar__row {
+.prog__sec {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--sh-line);
+}
+.prog__row {
   display: block;
   margin-top: 6rpx;
+}
+.prog__row:first-child {
+  margin-top: 0;
+}
+.prog__cap {
+  display: block;
+  margin-bottom: 12rpx;
 }
 </style>
