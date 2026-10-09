@@ -26,6 +26,15 @@ public class NotifyChannel extends BaseEntity {
     public static final String TYPE_WXSUB = "WXSUB";
     public static final String TYPE_PUSH = "PUSH";
     public static final String TYPE_INAPP = "INAPP";
+    /**
+     * 群机器人 Webhook。**不是发给某个人的** —— 与 {@link SysNotifyLog#WEBHOOK} 同名同义。
+     *
+     * <p>登记进这张表的只有 {@code scope=MERCHANT} 那种：商家自己的企微群，
+     * webhook URL 作为凭据进 {@code secret_cipher}（TDD-商家企微群来单通知 §2.1）。
+     * <b>平台那条群机器人（入驻通知）仍走 env，不在这张表里</b> ——
+     * 它没有 owner，也没有「运营能在后台配」的需求，加一行只会让那一屏说假话。
+     */
+    public static final String TYPE_WEBHOOK = "WEBHOOK";
 
     // ---- 供应商
     public static final String PROV_ALI = "ALI";
@@ -35,6 +44,8 @@ public class NotifyChannel extends BaseEntity {
     public static final String PROV_FCM = "FCM";
     public static final String PROV_APNS = "APNS";
     public static final String PROV_INTERNAL = "INTERNAL";
+    /** 企业微信（群机器人）。与 {@link #TYPE_WEBHOOK} 配对 */
+    public static final String PROV_WECOM = "WECOM";
 
     // ---- 接入范围
     public static final String SCOPE_PLATFORM = "PLATFORM";

@@ -4,6 +4,19 @@
 # 在这里重复一份生产配置的话，两边就会各自漂移，而漂移的表现是
 # 「测试全绿、上线才炸」。
 shop:
+  notify:
+    # 商家自带渠道凭据的落库加密密钥（NotifyCredCipher）。32 个零字节的 base64 ——
+    # 测试世界不需要真随机，需要的是**确定**：没它 upsert 会在「绝不明文落库」那一行拒掉，
+    # 而 WeComOrderAlertFlowTest 要先把商家的企微群存进库才能验整条链路。
+    #
+    # ⚠️ 放这里而不是用 @SpringBootTest(properties=…)：那样会给那个测试类**另起一个上下文**，
+    # 而第二个上下文会重跑 schema-test.sql，在同一个 H2 库上撞唯一键（mch_admission_policy）——
+    # 单独跑绿、和别人一起跑红，正是最费时间的那种假信号。
+    cred-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    wecom:
+      # 企微群机器人走桩（StubWeComBotSender）：只记下来，不往企业微信发 HTTP。
+      # 不开的话场景测试要么真在群里刷消息，要么每条等 5 秒超时。
+      stub: true
   pay:
     # 假回调端点（POST /pay/callback/stub）**默认不装配**：
     # 它的共享密钥用的是默认值，生产里存在就等于「知道订单号就能白拿货」。

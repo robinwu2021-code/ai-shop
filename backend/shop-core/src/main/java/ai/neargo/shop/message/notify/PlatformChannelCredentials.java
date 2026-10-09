@@ -83,7 +83,26 @@ public class PlatformChannelCredentials {
                     new Cred("APNS_KEY_ID", "shop.push.apns.key-id", false),
                     new Cred("APNS_PRIVATE_KEY", "shop.push.apns.private-key", true),
                     new Cred("APNS_TOPIC", "shop.push.apns.topic", false)),
-                    List.of("teamId", "keyId", "privateKey", "topic")));
+                    List.of("teamId", "keyId", "privateKey", "topic")),
+            /*
+             * 商家自己的企微群机器人（TDD-商家企微群来单通知 §2.1）。
+             *
+             * <b>creds 为空、providerRequired=false</b>：平台侧没有这条通道的 env 凭据 ——
+             * 它天生只有 scope=MERCHANT 一种形态，凭据是**每个商家自己**的那条 URL，
+             * 走 secret_cipher。所以 credsReady/missing 对它恒「齐」，
+             * statusOf 走的是 SCOPE_MERCHANT 那一支（看有没有密文），不会误报「通道坏了」。
+             *
+             * <b>stubDefault=false</b>：{@code shop.notify.wecom.stub} 确实存在
+             * （测试世界装 StubWeComBotSender），但**默认不走桩** —— 群机器人的「发不发」
+             * 本来由「这个商家配了 URL 没有」决定（MerchantWecomWebhook），
+             * 让它在生产里显示成 STUB 会让人以为「配了也不会真发」。
+             *
+             * <b>secretKeys=["webhook"]</b> 是这条规格真正的作用：upsert 时校验商家交上来的
+             * 凭证 JSON 含这个字段，配错在保存那一刻就拦下，不留到来单那一刻才发现发不出去。
+             */
+            new ChannelSpec(NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
+                    "shop.notify.wecom.stub", false, false, List.of(),
+                    List.of("webhook")));
 
     private static final Map<String, ChannelSpec> BY_KEY = SPECS.stream()
             .collect(Collectors.toMap(s -> key(s.channelType(), s.provider()), Function.identity()));

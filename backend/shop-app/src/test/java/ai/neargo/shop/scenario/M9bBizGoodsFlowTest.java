@@ -761,8 +761,7 @@ class M9bBizGoodsFlowTest {
         String goodsNo = createAndApprove(token, "会飞的扫帚");
 
         // 上架前：不该出现在买家的社区列表里
-        mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
-                .andExpect(jsonPath("$.data.records[?(@.title=='会飞的扫帚')]").doesNotExist());
+        assertThat(buyerTitles("CM001")).doesNotContain("会飞的扫帚");
 
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                         .header("Authorization", "Bearer " + token)
@@ -770,15 +769,43 @@ class M9bBizGoodsFlowTest {
                 .andExpect(jsonPath("$.data.status").value("ON_SALE"));
 
         // ★ 上架后必须搜得到 —— 只断言接口 200 的话，这个缺口会原样漏过去
-        mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
-                .andExpect(jsonPath("$.data.records[?(@.title=='会飞的扫帚')]").exists());
+        assertThat(buyerTitles("CM001")).contains("会飞的扫帚");
 
         // 下架后立刻消失：留在池里的话买家还能搜到，点进去才发现买不了
         mvc().perform(post("/biz/goods/" + goodsNo + "/toggle")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"onSale\":false}"));
-        mvc().perform(get("/mp/goods").param("communityNo", "CM001").param("size", "50"))
-                .andExpect(jsonPath("$.data.records[?(@.title=='会飞的扫帚')]").doesNotExist());
+        assertThat(buyerTitles("CM001")).doesNotContain("会飞的扫帚");
+    }
+
+    /**
+     * 买家在这个社区**所有页**上看得到的商品名。
+     *
+     * <p><b>为什么要遍历分页</b>：原先三处断言都是 {@code size=50} 只看第一页，
+     * 而 {@code /mp/goods} 把 size 钉在 {@code Math.min(size, 50)} —— 加大治不了。
+     * 共享的 H2 库里 CM001 的在售商品会随同批跑的别的测试类涨落，
+     * 一旦超过 50 件，这件货就落到第二页，于是**单独跑绿、全量跑红**，
+     * 而红的那条报错指向「买家搜不到」，看起来像可见性缺陷。
+     * （2026-10-09 加 WeComOrderAlertFlowTest 时就这么撞上了一次。）
+     *
+     * <p>遍历而不是改成按 keyword 查：keyword 会把这条断言从「买家列表里有它」
+     * 偷换成「按名字搜得到它」，而前者才是这条测试的那件事。
+     */
+    private java.util.List<String> buyerTitles(String communityNo) throws Exception {
+        java.util.List<String> titles = new java.util.ArrayList<>();
+        for (long page = 1; page <= 40; page++) {
+            String body = mvc().perform(get("/mp/goods")
+                            .param("communityNo", communityNo)
+                            .param("page", String.valueOf(page))
+                            .param("size", "50"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            var records = json.readTree(body).path("data").path("records");
+            if (records.isEmpty()) {
+                return titles;
+            }
+            records.forEach(n -> titles.add(n.path("title").asString("")));
+        }
+        throw new IllegalStateException("CM001 的在售商品翻了 40 页还没到底，这条辅助该改了");
     }
 
     /**

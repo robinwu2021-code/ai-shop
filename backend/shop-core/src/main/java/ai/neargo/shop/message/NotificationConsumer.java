@@ -60,13 +60,15 @@ public class NotificationConsumer implements OutboxConsumer {
     private final SceneChannelRouting routing;
     private final ObjectMapper json;
     private final SubOrderBuyerPort buyerPort;
+    private final ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
                                 MerchantStaffPort merchantStaffPort,
                                 ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort,
                                 SceneChannelRouting routing, ObjectMapper json,
-                                SubOrderBuyerPort buyerPort) {
+                                SubOrderBuyerPort buyerPort,
+                                ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -75,6 +77,7 @@ public class NotificationConsumer implements OutboxConsumer {
         this.routing = routing;
         this.json = json;
         this.buyerPort = buyerPort;
+        this.weComOrderAlert = weComOrderAlert;
     }
 
     @Override
@@ -220,15 +223,29 @@ public class NotificationConsumer implements OutboxConsumer {
             case NotifyScene.GROUP_FORMED -> fanOutToGroup(event, payload, true);
             case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端
-            case NotifyScene.SUB_ORDER_PAID -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
-                    "新订单", "有新的订单待备货，记得按时送到自提点",
-                    "/pages/orders/index?tab=PAID",
-                    // 来单：App 响铃与微信**都发**（wxFirst=false）—— 厂商通道没报备，App 在后台收不到（通知 TDD §13.3②）
-                    new WxStaff(WxSubscribePort.SCENE_MCH_NEW_ORDER, Map.of(
-                            "orderNo", nz(text(payload, "subOrderNo"), ""),
-                            "amount", yuan(payload.path("payAmount").asLong(0)),
-                            "time", String.valueOf(System.currentTimeMillis()),
-                            "tip", "有新订单，请及时备货"), false));
+            case NotifyScene.SUB_ORDER_PAID -> {
+                fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
+                        "新订单", "有新的订单待备货，记得按时送到自提点",
+                        "/pages/orders/index?tab=PAID",
+                        // 来单：App 响铃与微信**都发**（wxFirst=false）—— 厂商通道没报备，App 在后台收不到（通知 TDD §13.3②）
+                        new WxStaff(WxSubscribePort.SCENE_MCH_NEW_ORDER, Map.of(
+                                "orderNo", nz(text(payload, "subOrderNo"), ""),
+                                "amount", yuan(payload.path("payAmount").asLong(0)),
+                                "time", String.valueOf(System.currentTimeMillis()),
+                                "tip", "有新订单，请及时备货"), false));
+                /*
+                 * **第四条出口：商家自己的企微群**（TDD-商家企微群来单通知 AC1）。
+                 *
+                 * 与上面三条（站内信 / App 推送 / 微信订阅）并列而不是替代：
+                 * 微信订阅消息**一次授权只够一条**，商家不进小程序就没有额度；
+                 * 而群机器人只要配过一次就一直能发 —— 来单这条最怕漏，所以多一条腿。
+                 *
+                 * 商家没配群就什么都不做（{@code MerchantWecomWebhook} 返回空），
+                 * **绝不回落到平台那条 env** —— 理由见那个类的注释。
+                 */
+                weComOrderAlert.paid(text(payload, "entityNo"), text(payload, "storeNo"),
+                        text(payload, "subOrderNo"), payload.path("payAmount").asLong(0));
+            }
             case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
                     "/pages/after-sale/index",

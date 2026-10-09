@@ -212,6 +212,17 @@ shop:
       # 企业微信群机器人的 Webhook。**URL 本身就是凭据** —— 拿到它的人都能往群里发消息，
       # 所以只在服务器 env 里，不进仓库。空 = 不发（缺配置时不发半截）。
       webhook: ${SHOP_NOTIFY_WECOM_WEBHOOK:}
+    # 商家自带渠道凭据的落库加密密钥（NotifyCredCipher，AES-256-GCM）。
+    # base64 的 16/24/32 字节；空 = 未配，此时任何「存商家凭据」的操作都被拒（绝不明文落库）。
+    #
+    # ⚠️ **一配就不能换**：换掉等于存量商家凭据全部失配，而失配的症状是解密抛异常、
+    #   那条通道静默不发 —— 同 SHOP_LOGISTICS_PHONEKEY 那条。生成一次、记进服务器 env、不再动。
+    #
+    # ⚠️ 这一行**必须显式接线**，不能只靠 @Value 读 shop.notify.cred-key 去碰 env 的
+    #   relaxed binding：kebab-case 属性名能不能回落到 SHOP_NOTIFY_CRED_KEY 取决于
+    #   PropertySource 的实现细节，而「配了等于没配」这种失败是全静默的
+    #   （configured() 返回 false，服务照起，只是永远存不进凭据）。
+    cred-key: ${SHOP_NOTIFY_CRED_KEY:}
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false
