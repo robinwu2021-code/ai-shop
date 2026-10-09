@@ -1,6 +1,6 @@
 # TDD 物流域 · 完整方案
 
-状态：**架构已梳理（2026-10-09）· 微信能力落地待排期**
+状态：**架构已梳理 · 签收闭环 A+B+C 已实现（2026-10-09）· 未发布**
 档位：2（跨域架构 + 外部平台能力接入 + 扩展模型的不可逆决策）
 关联：[TDD-快递100商家寄件](../TDD-快递100商家寄件.md)（寄件 + 运费模板）·
 [TDD-快递100轨迹查询](../TDD-快递100轨迹查询.md)（数据源第一个真实 provider）·
@@ -200,11 +200,50 @@ source.by-store[门店] › source.by-carrier[承运商] › store-route[门店]
 
 | 批 | 内容 | 依赖 |
 |---|---|---|
-| **A** | 签收 → `notify_confirm_receive` 提醒买家确认收货 | 无 |
-| **B** | 接 `trade_manage_order_settlement` 回调 → 子单落 COMPLETED | 要在微信后台配回调 URL（**需人操作**） |
-| **C** | 自动确认收货改按签收起算 | A |
+| **A** | 签收 → `notify_confirm_receive` 提醒买家确认收货 | ✅ **已实现**（`e8a67356f`） |
+| **B** | 接 `trade_manage_order_settlement` 回调 → 子单落 COMPLETED | ✅ **代码已实现**；要在微信后台配回调 URL 与 token（**需人操作**） |
+| **C** | 自动确认收货改按签收起算 | ✅ **已实现**（`7130cdd5c`） |
 | **D** | 读时按需刷新 + 作业降频 + token 按需换 | 无 |
 | **E** | 合单发货 `upload_combined_shipping_info` | 一单多包裹的产品决策 |
 | **F** | 两处配置键收敛（§3.2）、`TraceRoutingProperties.withinTtl` 死代码清理 | 无 |
 
 A+B+C 是一条线（签收闭环），价值最大；D 是成本与新鲜度优化；E 看产品需要；F 是清理。
+
+### 5.5 签收闭环（A+B+C）的实现记录
+
+```
+快递100 查到签收（logistics-trace 作业）
+   └─ ful_shipment.signed_at ←「推进到 DELIVERED 那一刻」记下（V386）
+        ├─→ A  wx-confirm-receive 作业（0 10,40）
+        │      → 微信 notify_confirm_receive：提醒买家去确认
+        │        幂等落 trd_shipping_upload.confirm_notified_at（每支付单一次）
+        └─→ C  order-auto-receipt 作业
+               → 签收后 7 天 或 发货后 15 天，**先到者为准**
+
+微信 trade_manage_order_settlement 事件（买家确认 / 微信自动确认）
+   └─→ B  POST /mp/wx/callback（**已补验签**）→ WxPushEventService
+          → 该支付单下 FULFILLING 的子单逐张 confirmReceipt
+```
+
+**三个当时想清楚了的取舍，记下来免得回头被"优化"掉：**
+
+1. **签收时间在推进那一刻记，不事后反推。** 轨迹节点会被后续查询继续追加、顺序不保证，
+   反推可能得到一个早于发货的时间，而微信要求 `received_time` 晚于发货（10060029）。
+2. **自动确认收货取「先到者」，不是换成签收判据。** 直接换的话，第 10 天才签收的单
+   会从第 15 天推迟到第 17 天完成 —— 状态机的改动把钱的到账时间往后推。
+3. **回调事件按字段名在任意层级找，不赌嵌套结构。** 微信文档给了字段表
+   （`confirm_receive_method` 1 手动 / 2 自动、`confirm_receive_time` 秒）
+   但**没给完整报文**。按猜的层级取值，猜错时表现是「事件收到了、字段取不到、什么都没发生」——
+   和没接一样且不报错。现在认不出订单就把原文整条落 WARN，**第一条真实事件就是把它改成精确解析的依据**。
+
+**批 B 还需要人做的两件事**（都在微信后台「开发管理 → 消息推送」）：
+
+| # | 操作 | 配到哪 |
+|---|---|---|
+| 1 | 填回调 URL `https://www.hxmall.top/mp/wx/callback` | 微信后台 |
+| 2 | 生成 Token，同一个值配进生产 env | 微信后台 + `SHOP_WX_PUSH_TOKEN` |
+
+> 没配 token 时 POST **拒收**（不是放行）—— 放行等于谁都能冒充微信把别人的订单推成已完成。
+
+**批 A 的作业要记得开**：`wx-confirm-receive` 注册进调度表默认是关的（见 §3.5），
+部署后要在运营端开启，否则它一次都不会跑。
