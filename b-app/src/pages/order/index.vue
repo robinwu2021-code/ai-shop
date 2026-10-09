@@ -596,8 +596,12 @@ onLoad((q) => {
 
     <!--
       物流详情弹框。**不折叠**：点进来就是为了看全过程，再给一个「展开全部」等于多一次点击。
-      地图要节点带经纬度才画（sh-trace 的 hasMap）—— 详情内嵌那份一度丢了坐标，
-      于是这里是空的而页面不报错，2026-10-09 已修（LogisticsRegistrationFlowTest 盯着）。
+      **弹层里不画地图**（show-map=false）：`<map>` 在 App 端是原生组件，放进
+      position:fixed 的弹层会把 sh-trace **整棵子树**打掉 —— 步骤条、节点、电话全没了，
+      而 H5 完全正常、也不报错。2026-10-09 真机二分出来的：弹框里放一行纯文本能显示、
+      sh-trace 不显示，关掉地图后全回来。
+      顺带一提，这个坑此前一直被另一个缺陷盖着：详情内嵌的 trace 丢了经纬度 →
+      hasMap 恒 false → 根本不画 map，所以看着「一切正常」。
     -->
     <sh-sheet
       v-if="shownTrace"
@@ -605,7 +609,7 @@ onLoad((q) => {
       :title="$t('order.trace')"
       @close="traceOpen = false"
     >
-      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length"></sh-trace>
+      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length" :show-map="false"></sh-trace>
     </sh-sheet>
   </sh-scaffold>
 </template>

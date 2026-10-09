@@ -18,7 +18,9 @@ const props = withDefaults(defineProps<{
   trace: ShipmentTrace;
   /** 折叠阈值：超过这么多条就只显示前几条 + 「展开全部」。实测一单 12 条，全铺开要滑两屏 */
   foldAt?: number;
-}>(), { foldAt: 3 });
+  /** 画不画地图。弹层里要关掉 —— `<map>` 在 App 端是原生组件，放进 position:fixed 的弹层会整块不渲染 */
+  showMap?: boolean;
+}>(), { foldAt: 3, showMap: true });
 
 const expanded = ref(false);
 
@@ -46,7 +48,7 @@ const points = computed(() =>
       lng: Number(n.lngE6) / 1e6,
       name: n.location || "",
     })));
-const hasMap = computed(() => points.value.length >= 2);
+const hasMap = computed(() => props.showMap && points.value.length >= 2);
 
 /** 折线按时间正序画（节点是倒序的），这样「从起点走到当前」的方向与阅读方向一致 */
 const polyline = computed(() => [{
