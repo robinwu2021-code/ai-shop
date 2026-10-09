@@ -805,6 +805,7 @@ export default {
     appointment: "الموعد",
     express: "رقم الشحنة",
     trace: "تتبع الشحنة",
+    traceView: "عرض",
     orderNo: "رقم الطلب",
     next: {
       WAIT_PAY: "يبدأ التاجر التجهيز بعد الدفع، والطلب غير المدفوع يُغلق تلقائيًا",

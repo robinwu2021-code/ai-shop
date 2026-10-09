@@ -13,6 +13,7 @@ import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
+import { traceStepKey } from "@shared/strategies/trace-step";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
@@ -20,6 +21,13 @@ const { t } = useI18n();
  * 快递公司名（TDD-快递100商家寄件 §7 AC14）。订单一直带着 `expressCompany`（微信 delivery_id），
  * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
  */
+/** 物流详情弹框。顶部那一栏点开才是全过程（原型 s08/s09） */
+const traceOpen = ref(false);
+/** 摘要行的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
+const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
+/** 最新一条。节点按时间倒序，第一条就是最新 */
+const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
+
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
   if (!code) return "";
@@ -423,6 +431,26 @@ onShow(load);
     </view>
 
     <!-- 状态 + 时间线 -->
+    <!--
+      物流一栏（原型 logistics-trace s08）。**履约与物流合在一起、放在最顶上**：
+      买家点进这一页十次有九次只为「货到哪了」，而它此前要翻过商品与金额才看得到
+      （快递单号与内联时间线都塞在下面的履约卡里）。
+      状态词与最新一条就在栏里 —— **不点开也知道**，这是这一栏存在的理由，不是省地方。
+      整栏可点 → 弹框里是全过程。
+    -->
+    <view v-if="order.trace && order.trace.nodes.length" class="sh-card block tracebar" @tap="traceOpen = true">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ $t(`trace.step.${traceStep}`) }}</text>
+        <sh-go :text="String($t('order.traceView'))"></sh-go>
+      </view>
+      <!-- 最新一条最多两行：一行会截在半句上，再多就该点进去看了 -->
+      <text class="txt-caption sh-muted tracebar__last">{{ traceLatest }}</text>
+      <text v-if="order.expressNo" class="txt-caption sh-muted tracebar__no sh-num" @tap.stop="copyExpressNo">
+        {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
+        <text class="txt-primary">{{ $t("order.copy") }}</text>
+      </text>
+    </view>
+
     <view class="sh-card block">
       <text class="txt-title status" :class="statusTone(order.status)">
         {{ $t(`orderStatus.${order.status}`) }}
@@ -549,22 +577,6 @@ onShow(load);
         <text class="txt-caption fact__k">{{ $t("order.appointment") }}</text>
         <text class="txt-caption fact__v sh-num">{{ datetime(order.appointmentAt) }}</text>
       </view>
-      <view v-if="order.expressNo" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-caption fact__k">{{ $t("order.express") }}</text>
-        <text class="txt-caption fact__v sh-num" @tap="copyExpressNo">
-          {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
-          <text class="txt-primary">{{ $t("order.copy") }}</text>
-        </text>
-      </view>
-      <!--
-        物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点时才显示；没有就整块不出现
-        （而不是显示一个空的「物流轨迹」标题）—— 没发货 / 承运商还没回传时，空标题比不显示更让人以为出了错。
-      -->
-      <view v-if="order.trace && order.trace.nodes.length" class="fact fact--col">
-        <text class="txt-caption fact__k">{{ $t("order.trace") }}</text>
-        <!-- 地图 + 步骤条 + 折叠时间线。件与 B 端共用（packages/ui），两端各写一份迟早分叉 -->
-        <sh-trace :trace="order.trace" @open-wx="openWxTracking"></sh-trace>
-      </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
@@ -637,6 +649,29 @@ onShow(load);
     </view>
     <view class="spacer" />
     </template>
+
+    <!--
+      物流详情弹框（原型 s09 / s10）。**不折叠**：点进来就是为了看全过程，
+      再给一个「展开全部」等于多一次点击。
+      **不画地图**：那张图是城市级示意（坐标是行政区中心点，不是快件 GPS），
+      它回答「在西安」，而买家问的是「今天到不到、要不要在家等」，答案在节点文字里。
+      地图技术上是通的、后端一直在给坐标，要加回来只是去掉一个属性。
+      微信渠道多一颗按钮，但**步骤条与最新一条仍用我们自己的数据** ——
+      只给按钮的话，买家得多点一次、再等插件加载才知道到哪了。
+    -->
+    <sh-sheet
+      v-if="order && order.trace"
+      :visible="traceOpen"
+      :title="String($t('order.trace'))"
+      @close="traceOpen = false"
+    >
+      <sh-trace
+        :trace="order.trace"
+        :fold-at="order.trace.nodes.length"
+        :show-map="false"
+        @open-wx="openWxTracking"
+      ></sh-trace>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
@@ -790,5 +825,18 @@ onShow(load);
 }
 .spacer {
   height: 60rpx;
+}
+
+/* 物流一栏（原型 s08）：整卡可点，状态词 + 最新一条（两行）+ 承运商单号 */
+.tracebar__last {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 8rpx;
+}
+.tracebar__no {
+  display: block;
+  margin-top: 8rpx;
 }
 </style>
