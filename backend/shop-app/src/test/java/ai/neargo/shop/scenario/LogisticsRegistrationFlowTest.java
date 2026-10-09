@@ -161,6 +161,58 @@ class LogisticsRegistrationFlowTest {
     // ------------------------------------------------------------------ 辅助
 
     /** 快递100 文档格式（resultv2=4）：揽收 → 签收，倒序 */
+    @Test
+    @DisplayName("★★★ 同一张运单两个出口都要带坐标 —— 详情内嵌那份丢了经纬度，B 端地图整块不画")
+    void detailTraceKeepsCoordinates() throws Exception {
+        Ctx c = prepare("15973010011", "轨迹坐标测试店", "15973010012");
+        ship(c, "STO-LGS-0005", "STO");
+        drainOutbox();
+        subscribedAt(c.subOrderNo, "kuaidi100");
+
+        String param = pushWithCoords("STO-LGS-0005");
+        mvc().perform(post("/callback/logistics/kuaidi100")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("param", param).param("sign", sign(param))).andExpect(status().isOk());
+
+        /*
+         * 两个出口：专用物流页端点，与**订单详情里内嵌的那份**。
+         * 后者此前用 3 参的 Node 构造，把经纬度丢了 —— 而 sh-trace 的 hasMap 要
+         * 「至少两个带坐标的点」才画图，于是 App 上地图整块不出现，**不报错、不留痕**。
+         * 两份出自同一张表，不一致本身就是缺陷，不只是少了张图。
+         */
+        for (String path : new String[]{
+                "/biz/order/" + c.subOrderNo + "/trace",
+                "/biz/order/" + c.subOrderNo}) {
+            String body = mvc().perform(get(path).header("Authorization", "Bearer " + c.merchantToken))
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+            var data = json.readTree(body).get("data");
+            var nodes = path.endsWith("/trace") ? data.get("nodes") : data.get("trace").get("nodes");
+            assertThat(nodes.size()).as("%s 一个节点都没有", path).isEqualTo(2);
+            long withCoords = 0;
+            for (var n : nodes) {
+                if (!n.get("latE6").isNull() && !n.get("lngE6").isNull()) {
+                    withCoords++;
+                }
+            }
+            assertThat(withCoords).as("%s 的节点丢了经纬度 —— 地图画不出来，而页面不会报错", path)
+                    .isEqualTo(2);
+        }
+    }
+
+    /** 带 areaCenter（经,纬）的推送。快递100 真实推送就带它，而原来的 helper 没有，于是坐标这条路从没被测过 */
+    private String pushWithCoords(String nu) {
+        return "{\"status\":\"polling\",\"billstatus\":\"got\",\"message\":\"\",\"autoCheck\":\"0\",\"comOld\":\"\",\"comNew\":\"\","
+                + "\"lastResult\":{\"message\":\"ok\",\"state\":\"0\",\"status\":\"200\",\"condition\":\"F00\",\"ischeck\":\"0\","
+                + "\"com\":\"shentong\",\"nu\":\"" + nu + "\",\"data\":["
+                + "{\"context\":\"快件已发往 广东深圳转运中心\",\"time\":\"2026-10-09 02:15:14\",\"ftime\":\"2026-10-09 02:15:14\","
+                + "\"status\":\"在途\",\"statusCode\":\"0\",\"areaCode\":\"CN610100000000\",\"areaName\":\"陕西,西安市\","
+                + "\"areaCenter\":\"108.940174,34.341568\"},"
+                + "{\"context\":\"快件已揽收\",\"time\":\"2026-10-08 09:00:00\",\"ftime\":\"2026-10-08 09:00:00\","
+                + "\"status\":\"揽收\",\"statusCode\":\"103\",\"areaCode\":\"CN610100000000\",\"areaName\":\"陕西,西安市\","
+                + "\"areaCenter\":\"108.940174,34.341568\"}]}}";
+    }
+
     private String signedPush(String nu) {
         return "{\"status\":\"shutdown\",\"billstatus\":\"\",\"message\":\"\",\"autoCheck\":\"0\",\"comOld\":\"\",\"comNew\":\"\","
                 + "\"lastResult\":{\"message\":\"ok\",\"state\":\"3\",\"status\":\"200\",\"condition\":\"F00\",\"ischeck\":\"1\","

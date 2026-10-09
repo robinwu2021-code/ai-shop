@@ -12,6 +12,8 @@
 import { computed, ref } from "vue";
 import type { ShipmentTrace } from "@shared/types";
 
+import { TRACE_STEPS, traceHasSteps, traceStepIndex } from "@shared/strategies/trace-step";
+
 const props = withDefaults(defineProps<{
   trace: ShipmentTrace;
   /** 折叠阈值：超过这么多条就只显示前几条 + 「展开全部」。实测一单 12 条，全铺开要滑两屏 */
@@ -20,28 +22,10 @@ const props = withDefaults(defineProps<{
 
 const expanded = ref(false);
 
-/** 四档步骤条。顺序固定 —— 统一状态就这四个，EXCEPTION 不占一档（它可能之后又派送成功） */
-const stepKeys = ["picked", "transit", "delivering", "signed"] as const;
-
-/**
- * 走到第几步（0–3）。**派送中靠高级状态码区分**：统一状态把「运输中」与「派送中」并成一档，
- * 而买家最想知道的恰好是「是不是今天能到」。拿不到状态码时退回第 1 步，不猜。
- */
-const stepIndex = computed(() => {
-  const st = props.trace.status;
-  if (st === "DELIVERED") return 3;
-  // 后端 2026-10-09 起给出「派件中」这一档（TDD-物流模块 批 3）：有它就不必再猜节点文字
-  if (st === "DELIVERING") return 2;
-  if (st === "CREATED") return 0;
-  if (st === "PICKED_UP") return 0;
-  const delivering = props.trace.nodes.some(
-    (n) => (n.text || "").includes("派件") || (n.text || "").includes("派送"),
-  );
-  return delivering ? 2 : 1;
-});
-
-/** 异常件不走步骤条：它不在那条线上，硬塞进去会让人以为还在正常运输 */
-const showSteps = computed(() => props.trace.status !== "EXCEPTION" && props.trace.status !== "CANCELLED");
+/** 四档步骤条与「走到第几步」都来自 shared —— 摘要行也读同一份，别在两处各写一个三分支 */
+const stepKeys = TRACE_STEPS;
+const stepIndex = computed(() => traceStepIndex(props.trace));
+const showSteps = computed(() => traceHasSteps(props.trace));
 
 /** 微信渠道那一屏只给最新一条，不给整条时间线——两边数据源不同，两份时间线会对不上 */
 const latestText = computed(() => props.trace.nodes.at(0)?.text || "");

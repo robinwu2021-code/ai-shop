@@ -14,6 +14,7 @@ import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
+import { traceStepKey } from "@shared/strategies/trace-step";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
 import type { Order, ShipmentTrace } from "@shared/types";
@@ -29,6 +30,12 @@ const order = ref<Order | null>(null);
  */
 const fullTrace = ref<ShipmentTrace | null>(null);
 const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null);
+/** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
+const traceOpen = ref(false);
+/** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
+const traceStep = computed(() => (shownTrace.value ? traceStepKey(shownTrace.value) : "picked"));
+/** 摘要行上的最新一条。节点按时间倒序，第一条就是最新 */
+const traceLatest = computed(() => shownTrace.value?.nodes?.[0]?.text ?? "");
 
 /** 已取消 / 已退款的单：券与积分的去向（后端只在这两个状态、只在详情给） */
 const returnedLines = computed(() => {
@@ -354,13 +361,18 @@ onLoad((q) => {
           </view>
         </view>
         <!--
-          物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点才显示；没有就整块不出现。
-          轨迹来自承运商、经缓存，不是平台编的（没凭据查不到时为空，不显示空标题）。
+          物流轨迹（TDD-物流模块 B2）。**主页面只留一行摘要**，详情进弹框：
+          轨迹是「要看一眼」的东西，不是「一直摊在那」的东西 —— 铺开要占半屏，
+          而店主在这一页真正要做的是发货、改地址、复制给供应商。
+          一行里带状态与最新一条，**不点开也知道货到哪了**。
         -->
-        <view v-if="shownTrace && shownTrace.nodes.length" class="line line--wrap">
+        <view v-if="shownTrace && shownTrace.nodes.length" class="line line--wrap trace-row" @tap="traceOpen = true">
           <text class="sh-muted">{{ $t("order.trace") }}</text>
-          <!-- 与 C 端共用同一个件（packages/ui）。App 端的 <map> 走高德 SDK，key 注入已有 -->
-          <sh-trace :trace="shownTrace"></sh-trace>
+          <view class="sh-row sh-fill trace-row__body">
+            <text class="txt-body trace-row__st">{{ $t(`trace.step.${traceStep}`) }}</text>
+            <text class="txt-caption sh-muted sh-fill trace-row__last">{{ traceLatest }}</text>
+            <text class="trace-row__go">›</text>
+          </view>
         </view>
         <!-- 复制订单信息发给供应商（§5）。放在订单信息卡尾：拣货要的就是这张卡上的东西 -->
         <view class="sh-btn sh-btn--sm sh-btn--muted sh-mt-sm" @tap="copyForSupplier">
@@ -581,6 +593,20 @@ onLoad((q) => {
         </template>
       </sh-dialog>
     </template>
+
+    <!--
+      物流详情弹框。**不折叠**：点进来就是为了看全过程，再给一个「展开全部」等于多一次点击。
+      地图要节点带经纬度才画（sh-trace 的 hasMap）—— 详情内嵌那份一度丢了坐标，
+      于是这里是空的而页面不报错，2026-10-09 已修（LogisticsRegistrationFlowTest 盯着）。
+    -->
+    <sh-sheet
+      v-if="shownTrace"
+      :visible="traceOpen"
+      :title="$t('order.trace')"
+      @close="traceOpen = false"
+    >
+      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length"></sh-trace>
+    </sh-sheet>
   </sh-scaffold>
 </template>
 
@@ -669,5 +695,24 @@ onLoad((q) => {
   border-color: var(--sh-primary);
   color: var(--sh-primary-text);
   background: var(--sh-primary-tint);
+}
+
+/* 物流摘要行：整行可点，右侧一个 ›。最新一条占满剩余宽度、单行省略 —— 两行会把这一行变成一小段 */
+.trace-row__body {
+  gap: 12rpx;
+  min-width: 0;
+}
+.trace-row__st {
+  flex: none;
+}
+.trace-row__last {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.trace-row__go {
+  flex: none;
+  color: var(--sh-text-muted);
 }
 </style>

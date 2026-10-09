@@ -139,7 +139,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         }
         return shipmentTracePort.traceOf(sub.getSubOrderNo())
                 .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
-                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location())).toList()))
+                        // **坐标要带上**：sh-trace 的地图要「至少两个带坐标的点」才画。
+                        // 此前这里用 3 参构造，与 /trace 那个出口给的不是同一份东西 ——
+                        // 症状是 App 上地图整块不出现，不报错、不留痕（2026-10-09 真机实测）
+                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                n.latE6(), n.lngE6())).toList()))
                 .orElse(null);
     }
 

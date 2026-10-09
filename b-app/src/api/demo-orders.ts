@@ -151,7 +151,29 @@ export function ensureDemoOrders(): void {
   if (a) rows.push(build("FULFILLING", FULFILLMENT.PICKUP, "邻居小张", [a], 180, "MERCHANT_OWNED"));
   if (b) rows.push(build("PAID", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
   if (c) rows.push(build("PAID", FULFILLMENT.DELIVERY, "王先生", [c], 60, "PLATFORM"));
-  if (a) rows.push(build("PAID", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM"));
+  if (a) {
+    /*
+     * 这张快递单带**已发货 + 轨迹**：否则订单详情的物流那一行永远不出现，
+     * 弹框、步骤条、地图三样在 mock 下一样都验不了（2026-10-09 加，当时正是因为
+     * mock 里没有轨迹，改完只能上真机才看得见）。
+     * 节点带经纬度 —— sh-trace 要「至少两个带坐标的点」才画地图。
+     */
+    const express = build("FULFILLING", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM");
+    express.expressCompany = "STO";
+    express.expressNo = "773445428821101";
+    express.trace = {
+      status: "IN_TRANSIT",
+      nodes: [
+        { at: Date.now() - 20 * MIN, text: "【深圳市】快件已到达 广东深圳转运中心",
+          location: "广东,深圳市", latE6: 22547000, lngE6: 114085947 },
+        { at: Date.now() - 90 * MIN, text: "【咸阳市】快件已发往 广东深圳转运中心",
+          location: "陕西,西安市", latE6: 34341568, lngE6: 108940174 },
+        { at: Date.now() - 160 * MIN, text: "【咸阳市】快件已揽收",
+          location: "陕西,西安市", latE6: 34341568, lngE6: 108940174 },
+      ],
+    };
+    rows.push(express);
+  }
   /*
    * 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了。
    * **订单状态是 COMPLETED**：售后挂在订单上，两者并存 ——
