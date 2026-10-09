@@ -347,6 +347,31 @@ function generated() {
     `export const MOCK_DB_KEY = __biz(__REAL_DB);\n`,
   );
 
+  /*
+   * slug 影子：**小程序那一份不带拼音库**。
+   *
+   * `b-app/src/utils/slug.ts` 用 pinyin-pro 把店名转成店铺代码的**建议值**。
+   * 那个文件自己的注释写着「只在 b-app 装 pinyin-pro，字典 1MB，c-app 要进小程序的 2MB 包」——
+   * 而全量并包把 b-app/src 整个拷过来，正好绕过了那道防线：
+   * 实测主包 common/vendor.js **480KB，去掉它只剩 176KB**，主包因此超 2048KB 上限传不上去。
+   *
+   * 试过动态 import：uni 的小程序构建把异步 chunk 又并回主包 vendor，没有收益（2026-10-09 实测）。
+   *
+   * 所以小程序里不给建议值 —— 它只是个**建议**，店主本来就能改、能清空，
+   * 而弹窗的 placeholder 已经说清了格式要求。App 那边原样保留拼音建议。
+   */
+  const slugFile = join(OUT, "utils", "slug.ts");
+  if (!existsSync(slugFile)) throw new Error("没拷到 utils/slug.ts，slug 影子无从下手");
+  writeFileSync(
+    slugFile,
+    `// 构建期生成（with-biz.mjs）。小程序这一份**不引 pinyin-pro**：\n` +
+    `// 那本字典会落进主包 common/vendor.js（实测 +304KB），而主包上限只有 2048KB。\n` +
+    `// 代码只是建议值，店主能改能清空，所以这里返回空串而不是半成品拼音。\n` +
+    `export function slugSuggest(_name: string): string {\n` +
+    `  return "";\n` +
+    `}\n`,
+  );
+
   // http-client 拷贝：唯一改动是常量来源指向上面的影子（随构建重生成，不与共享源漂移）。
   const client = readFileSync(join(SHARED, "net", "http-client.ts"), "utf8")
     .replace(/@shared\/utils\/constants/g, `@/${PKG}/_shared/constants`);
