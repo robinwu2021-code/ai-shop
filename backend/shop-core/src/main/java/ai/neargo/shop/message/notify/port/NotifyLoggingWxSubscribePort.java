@@ -95,6 +95,11 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
                 () -> delegate.sendElecQuoted(openId, rfqNo, summary, resultText, page, tip));
     }
 
+    @Override
+    public SendResult sendWaybill(String openId, String scene, WaybillNotice notice, String page) {
+        return logged(openId, scene, () -> delegate.sendWaybill(openId, scene, notice, page));
+    }
+
     /**
      * 场景 → **我们自己的**模板号。与 {@code delegate.templateId(scene)} 不同：
      * 那个返回微信侧报备的 id（会随重新报备而变），这个是库里那份可查可改的模板。
@@ -109,6 +114,9 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
             case WxSubscribePort.SCENE_REFUNDED -> "TPL_WX_REFUNDED";
             case WxSubscribePort.SCENE_NEW_GOODS -> "TPL_WX_NEW_GOODS";
             case WxSubscribePort.SCENE_ELEC_QUOTED -> "TPL_WX_ELEC_QUOTED";
+            case WxSubscribePort.SCENE_WAYBILL_PICKED_UP -> "TPL_WX_WAYBILL_PICKED_UP";
+            case WxSubscribePort.SCENE_WAYBILL_DELIVERING -> "TPL_WX_WAYBILL_DELIVERING";
+            case WxSubscribePort.SCENE_WAYBILL_SIGNED -> "TPL_WX_WAYBILL_SIGNED";
             default -> "TPL_WX_ARRIVED";
         };
     }

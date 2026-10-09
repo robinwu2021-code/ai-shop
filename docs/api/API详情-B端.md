@@ -10016,7 +10016,7 @@ _无字段_
 
 ### ShipmentStatus
 
-运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功
+运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功
 
 枚举取值：
 
@@ -10024,8 +10024,10 @@ _无字段_
 - `PICKED_UP`
 - `IN_TRANSIT`
 - `DELIVERED`
+- `DELIVERING`
 - `EXCEPTION`
 
+- `CANCELLED`
 ### ShipmentTrace
 
 物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）
@@ -10038,6 +10040,12 @@ _无字段_
 | `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
 | `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
 
+| `carrier` | `string,null` | 否 | 承运商码（SF / STO / YTO …） |
+| `waybillNo` | `string,null` | 否 | 运单号 |
+| `signedAt` | `number,null` | 否 | 签收时间（毫秒） |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
+| `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
+| `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
 ### ShipmentTraceNode
 
 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有

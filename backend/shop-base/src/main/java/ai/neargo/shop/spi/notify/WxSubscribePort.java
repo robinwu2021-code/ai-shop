@@ -48,6 +48,21 @@ public interface WxSubscribePort {
      */
     String SCENE_ELEC_QUOTED = "ELEC_QUOTED";
 
+    /*
+     * 快递单的三个节点：揽收 / 派件（含已放驿站、快递柜）/ 签收（TDD-物流模块 批 4）。
+     *
+     * 只给<b>线下付款单</b>发 —— 微信支付单的物流动态由微信「购物订单」自己推，再发就是重复打扰。
+     * <b>三个场景三个模板</b>：一次授权只够一条，同一个模板发完揽收就没额度发签收了；
+     * 下单那一次点击可以一次问三个（微信上限就是三个），用户逐个勾选。
+     * 哪个节点配哪个模板、配不配，由 mp 后台能选到什么决定 —— 没配的场景静默跳过。
+     */
+    /** 场景：快递已揽收 */
+    String SCENE_WAYBILL_PICKED_UP = "WAYBILL_PICKED_UP";
+    /** 场景：快递派件中 / 已放到驿站或快递柜 */
+    String SCENE_WAYBILL_DELIVERING = "WAYBILL_DELIVERING";
+    /** 场景：快递已签收 */
+    String SCENE_WAYBILL_SIGNED = "WAYBILL_SIGNED";
+
     /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
      *
@@ -105,6 +120,24 @@ public interface WxSubscribePort {
      */
     SendResult sendElecQuoted(String openId, String rfqNo, String summary, String resultText, String page,
                               String tip);
+
+    /**
+     * 快递节点通知。三个快递场景共用这一个方法（{@code scene} 只能是 {@code SCENE_WAYBILL_*}）——
+     * 三条的入参完全一样，区别只在模板号与字段名，那正是通道该决定的东西。
+     *
+     * @param scene 三个 {@code SCENE_WAYBILL_*} 之一
+     */
+    SendResult sendWaybill(String openId, String scene, WaybillNotice notice, String page);
+
+    /**
+     * @param carrierName 承运商名称（「顺丰速运」）
+     * @param statusText  这一步的人话（「已揽收」「派件中」「已到驿站」「已签收」），≤5 字
+     * @param at          这一步发生的时刻（毫秒）
+     * @param tip         提示语；{@code null} 用通道的默认话术
+     */
+    record WaybillNotice(String orderNo, String carrierName, String waybillNo, String statusText, long at,
+                         String tip) {
+    }
 
     class WxSubscribeException extends RuntimeException {
         /** 网络类失败可重试；微信业务码（额度不足、模板被封）重试一万次也是同一个结果。 */

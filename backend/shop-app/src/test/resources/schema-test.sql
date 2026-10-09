@@ -9782,3 +9782,17 @@ INSERT IGNORE INTO lgs_carrier_code (carrier, channel, code, created_at, updated
 INSERT IGNORE INTO lgs_carrier_code (carrier, channel, code, created_at, updated_at, updated_by) VALUES
 ('YTO', 'yto', 'YTO', NOW(), NOW(), 'V387');
 UPDATE lgs_waybill SET sub_state = 'NA' WHERE status = 'DELIVERED';
+INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'WAYBILL_PROGRESSED' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'WAYBILL_PROGRESSED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'WAYBILL_PROGRESSED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'WAYBILL_SIGNED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
+    SELECT 'WAYBILL_SIGNED', 'C_USER', 'PUSH', 1, 'NORMAL' UNION ALL
+    SELECT 'WAYBILL_SIGNED', 'C_USER', 'WXSUB', 1, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);

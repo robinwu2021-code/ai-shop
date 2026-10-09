@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 812 个接口**：后端已实现 736（91%）· 前端在调 736
+**合计 813 个接口**：后端已实现 737（91%）· 前端在调 737
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **112** 个接口 ｜ 后端已实现 **111**（99%）｜ 前端在调 **112**
+共 **113** 个接口 ｜ 后端已实现 **112**（99%）｜ 前端在调 **113**
 
 ### after-sale（4）
 
@@ -170,7 +170,7 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（10）
+### order（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -182,6 +182,7 @@
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/trace` | 物流页（查看物流） | — | `ShipmentTrace` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/capability` | 结算页能力提示（开票/支付方式/额度） | — | `CheckoutCapability` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
 

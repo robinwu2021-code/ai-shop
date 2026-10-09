@@ -66,6 +66,18 @@ public class WxSubscribeGateway implements WxSubscribePort {
     /** {@code developer} / {@code trial} / {@code formal}。联调时切 trial 免得打扰真实用户。 */
     private final String mpState;
 
+    /**
+     * 快递三个节点的模板（可选，TDD-物流模块 批 4）：场景 → 模板号与字段名。
+     *
+     * <p>字段名与元器件那条同一个理由不写死：要等 mp 后台选定模板才知道长什么样。
+     * 按「订单号, 快递公司, 运单号, 状态, 时间, 提示语」六个位置配，模板里没有的位置留空。
+     * <b>不走构造器</b>：可选配置，测试直接 new 的那两个构造器不必跟着改。
+     */
+    private final Map<String, WaybillTpl> waybillTpls = new java.util.HashMap<>();
+
+    private record WaybillTpl(String templateId, String[] fields) {
+    }
+
     /** stable_token 缓存。到期前 5 分钟就换新，避免拿着一个正好过期的 token 去发。 */
     private volatile String token;
     private volatile long tokenExpireAt;
@@ -152,6 +164,26 @@ public class WxSubscribeGateway implements WxSubscribePort {
         log.info("[wxsub] 订阅消息通道已启用 appid={} state={}", appid, mpState);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    void waybillTemplates(@Value("${shop.wx.templates.waybill-picked-up:}") String pickedUp,
+                          @Value("${shop.wx.templates.waybill-picked-up-fields:}") String pickedUpFields,
+                          @Value("${shop.wx.templates.waybill-delivering:}") String delivering,
+                          @Value("${shop.wx.templates.waybill-delivering-fields:}") String deliveringFields,
+                          @Value("${shop.wx.templates.waybill-signed:}") String signed,
+                          @Value("${shop.wx.templates.waybill-signed-fields:}") String signedFields) {
+        putWaybill(SCENE_WAYBILL_PICKED_UP, pickedUp, pickedUpFields);
+        putWaybill(SCENE_WAYBILL_DELIVERING, delivering, deliveringFields);
+        putWaybill(SCENE_WAYBILL_SIGNED, signed, signedFields);
+    }
+
+    private void putWaybill(String scene, String templateId, String fields) {
+        if (templateId == null || templateId.isBlank()) {
+            return;   // 没选模板：这个节点不发订阅消息，站内信照发
+        }
+        waybillTpls.put(scene, new WaybillTpl(templateId.trim(), fields == null ? new String[0]
+                : java.util.Arrays.stream(fields.split(",", -1)).map(String::trim).toArray(String[]::new)));
+    }
+
     private static void require(String v, String envName) {
         if (v == null || v.isBlank()) {
             throw new IllegalStateException(
@@ -175,6 +207,10 @@ public class WxSubscribeGateway implements WxSubscribePort {
             case SCENE_REFUNDED -> tplRefunded;
             case SCENE_NEW_GOODS -> tplNewGoods;
             case SCENE_ELEC_QUOTED -> tplElecQuoted;
+            case SCENE_WAYBILL_PICKED_UP, SCENE_WAYBILL_DELIVERING, SCENE_WAYBILL_SIGNED -> {
+                WaybillTpl t = waybillTpls.get(scene);
+                yield t == null ? null : t.templateId();
+            }
             default -> null;
         };
     }
@@ -250,6 +286,28 @@ public class WxSubscribeGateway implements WxSubscribePort {
             }
         }
         return send(openId, tplElecQuoted, page, data);
+    }
+
+    @Override
+    public SendResult sendWaybill(String openId, String scene, WaybillNotice n, String page) {
+        WaybillTpl t = waybillTpls.get(scene);
+        if (t == null) {
+            throw new WxSubscribeException("快递节点通知未接入（" + scene + " 没配模板号）—— 站内信照发", false);
+        }
+        if (t.fields().length < 6) {
+            throw new WxSubscribeException("快递节点模板的字段名要按「订单号,快递公司,运单号,状态,时间,提示语」"
+                    + "配六个位置（模板里没有的留空）：" + scene, false);
+        }
+        String[] values = {n.orderNo(), n.carrierName(), n.waybillNo(), n.statusText(),
+                DATE_FMT.format(java.time.Instant.ofEpochMilli(n.at()).atZone(java.time.ZoneId.systemDefault())),
+                n.tip() == null || n.tip().isBlank() ? "点开订单查看物流详情" : n.tip()};
+        Map<String, String> data = new LinkedHashMap<>();
+        for (int i = 0; i < values.length; i++) {
+            if (!t.fields()[i].isEmpty()) {
+                data.put(t.fields()[i], clampByType(t.fields()[i], values[i]));
+            }
+        }
+        return send(openId, t.templateId(), page, data);
     }
 
     /** 按微信字段类型截断：thing 20 字、phrase 5 字、character_string 32 位、name 10 字；其余原样 */

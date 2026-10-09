@@ -80,8 +80,15 @@ public class WaybillProgress {
             // 手机号用完就删：签收之后再没有任何地方要用完整号码
             waybills.update(null, Wrappers.<LgsWaybill>update().set("receiver_phone_enc", null).eq("id", w.getId()));
         }
+        if (!t.changed() && trace != null && trace.atLocker() && !Integer.valueOf(1).equals(w.getAtLocker())
+                && WaybillStatus.DELIVERING.equals(w.getStatus())) {
+            // 派件中途放进了驿站 / 快递柜：主状态没变，但「去取件」是买家这一路上最要紧的一句
+            events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
+                    carrierOf(w, patch), w.getWaybillNo(), WaybillStatus.DELIVERING, true, now));
+        }
         if (t.changed()) {
-            publish(w, t, trace, patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
+            publish(w, carrierOf(w, patch), t, trace,
+                    patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
             // 进了揽收（或更后）之后再判一次换 token —— 上次 9300559 的，这一次自然重试
             LgsWaybill after = copyForPolicy(w, t.next());
             if (WxBindPolicy.ready(after, props.getWxBind().onShip())) {
@@ -94,18 +101,24 @@ public class WaybillProgress {
         return t;
     }
 
-    private void publish(LgsWaybill w, Transition t, TraceResult trace, long signedAt, String channel, long now) {
+    /** 这一次补丁纠正了承运商的话用纠正后的（快递100 自动识别会改它） */
+    private static String carrierOf(LgsWaybill w, LgsWaybill patch) {
+        return patch.getCarrier() != null ? patch.getCarrier() : w.getCarrier();
+    }
+
+    private void publish(LgsWaybill w, String carrier, Transition t, TraceResult trace, long signedAt,
+                         String channel, long now) {
         if (t.firstPickedUp()) {
             events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
-                    WaybillStatus.PICKED_UP, false, now));
+                    carrier, w.getWaybillNo(), WaybillStatus.PICKED_UP, false, now));
         }
         if (WaybillStatus.DELIVERING.equals(t.next()) || WaybillStatus.EXCEPTION.equals(t.next())) {
             events.publish(new LogisticsEvents.WaybillProgressed(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
-                    t.next(), trace != null && trace.atLocker(), now));
+                    carrier, w.getWaybillNo(), t.next(), trace != null && trace.atLocker(), now));
         }
         if (t.firstDelivered()) {
             events.publish(new LogisticsEvents.WaybillSigned(w.getShipmentNo(), w.getBizRef(), w.getProfile(),
-                    signedAt, channel));
+                    carrier, w.getWaybillNo(), signedAt, channel));
         }
     }
 

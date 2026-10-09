@@ -5578,6 +5578,12 @@
           "ar": "{t}"
         },
         {
+          "key": "trace.atLocker",
+          "zh-CN": "已放到驿站或快递柜，取件码见下方物流信息",
+          "en": "Waiting at a pickup station or locker — the pickup code is in the tracking below",
+          "ar": "بانتظارك في نقطة الاستلام أو الخزانة — رمز الاستلام في تفاصيل الشحن أدناه"
+        },
+        {
           "key": "trace.callCourier",
           "zh-CN": "拨打快递员电话",
           "en": "Call courier",
@@ -21938,6 +21944,12 @@
           "ar": "{t}"
         },
         {
+          "key": "trace.atLocker",
+          "zh-CN": "已放到驿站或快递柜，取件码见下方物流信息",
+          "en": "Waiting at a pickup station or locker — the pickup code is in the tracking below",
+          "ar": "بانتظارك في نقطة الاستلام أو الخزانة — رمز الاستلام في تفاصيل الشحن أدناه"
+        },
+        {
           "key": "trace.callCourier",
           "zh-CN": "拨打快递员电话",
           "en": "Call courier",
@@ -27253,6 +27265,13 @@
         "module": "logistics"
       },
       {
+        "host": "WxBindRequested",
+        "name": "TYPE",
+        "value": "LGS_WX_BIND_REQUESTED",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
         "host": "TestPayGateway",
         "name": "CHANNEL",
         "value": "TEST",
@@ -30190,6 +30209,20 @@
         "name": "NEW_GOODS_ON_SALE",
         "value": "NEW_GOODS_ON_SALE",
         "zh": "收藏的店铺有新品开售 —— 扇出给该店的收藏者（C 端）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "WAYBILL_PROGRESSED",
+        "value": "WAYBILL_PROGRESSED",
+        "zh": "快递揽收 / 派件 / 放进驿站或快递柜（C 端）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyScene",
+        "name": "WAYBILL_SIGNED",
+        "value": "WAYBILL_SIGNED",
+        "zh": "快递已签收（C 端）。",
         "module": "shop-core"
       },
       {
@@ -34006,7 +34039,8 @@
         "values": [
           "OK",
           "RETRYABLE",
-          "FATAL"
+          "FATAL",
+          "NOT_READY"
         ],
         "zh": "",
         "module": "logistics"
@@ -34071,8 +34105,7 @@
         "values": [
           "ACCEPTED",
           "REJECTED",
-          "UNKNOWN_WAYBILL",
-          "IGNORED"
+          "UNKNOWN_WAYBILL"
         ],
         "zh": "",
         "module": "logistics"
@@ -36182,22 +36215,12 @@
           "CREATED",
           "PICKED_UP",
           "IN_TRANSIT",
+          "DELIVERING",
           "DELIVERED",
-          "EXCEPTION"
+          "EXCEPTION",
+          "CANCELLED"
         ],
-        "zh": "快递状态。"
-      },
-      {
-        "name": "ShipmentStatus",
-        "client": "shared",
-        "values": [
-          "CREATED",
-          "PICKED_UP",
-          "IN_TRANSIT",
-          "DELIVERED",
-          "EXCEPTION"
-        ],
-        "zh": "运单状态（与后端 `lgs_waybill` 一致）。"
+        "zh": "DELIVERING（派件中）与 CANCELLED（已作废）2026-10-09 加（TDD-物流模块 批 3），与 packages/shared 的同名类型对齐"
       },
       {
         "name": "SkinGroup",
@@ -38352,7 +38375,7 @@
       "host": "NotifyScene",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE, SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED, AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT)",
+      "value": "Set.of( ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED, SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE, SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED, AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT, WAYBILL_PROGRESSED, WAYBILL_SIGNED)",
       "zh": "全部场景码。",
       "module": "shop-core"
     },

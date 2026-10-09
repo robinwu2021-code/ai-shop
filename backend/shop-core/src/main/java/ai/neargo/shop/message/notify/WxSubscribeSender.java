@@ -107,6 +107,15 @@ public class WxSubscribeSender {
                 openId -> port.sendNewGoods(openId, goodsTitle, goodsDesc, onSaleAt, page, tip));
     }
 
+    /**
+     * 快递节点通知（揽收 / 派件 / 签收，TDD-物流模块 批 4）。
+     *
+     * @param scene 三个 {@code WxSubscribePort.SCENE_WAYBILL_*} 之一 —— 各自一个模板、各自一份额度
+     */
+    public void waybill(String userNo, String scene, WxSubscribePort.WaybillNotice notice, String page) {
+        send(userNo, scene, openId -> port.sendWaybill(openId, scene, notice, page));
+    }
+
     private boolean send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {

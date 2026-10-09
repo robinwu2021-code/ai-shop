@@ -16,12 +16,16 @@ public final class LogisticsEvents {
     }
 
     /**
-     * 首次揽收 / 首次派件 / 进入异常。
+     * 首次揽收 / 首次派件 / 进入异常；派件中途<b>放进驿站或快递柜</b>也发一次（{@code atLocker=true}）——
+     * 快递100 的「投柜 / 驿站」是派件的子状态，主状态不变，不单发的话「去取件」这一句永远到不了买家。
      *
-     * @param status  PICKED_UP / DELIVERING / EXCEPTION
-     * @param profile WX / SELF
+     * @param status    PICKED_UP / DELIVERING / EXCEPTION
+     * @param profile   WX / SELF
+     * @param carrier   承运商码（SF / YTO …）；通知要说「哪家快递、哪个单号」，消费方不必再回头查物流
+     * @param waybillNo 运单号
      */
-    public record WaybillProgressed(String shipmentNo, String bizRef, String profile, String status,
+    public record WaybillProgressed(String shipmentNo, String bizRef, String profile,
+                                    String carrier, String waybillNo, String status,
                                     boolean atLocker, long at) implements DomainEvent {
         @Override
         public String aggregateType() {
@@ -45,7 +49,8 @@ public final class LogisticsEvents {
      * @param signedAt 签收时间（毫秒，取渠道节点的时间）
      * @param source   哪条路来的（kuaidi100 推送 / wx 查询 …），排查用
      */
-    public record WaybillSigned(String shipmentNo, String bizRef, String profile, long signedAt,
+    public record WaybillSigned(String shipmentNo, String bizRef, String profile,
+                                String carrier, String waybillNo, long signedAt,
                                 String source) implements DomainEvent {
         @Override
         public String aggregateType() {

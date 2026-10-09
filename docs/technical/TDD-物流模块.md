@@ -585,6 +585,7 @@ shop:
 | P4 | 圆通**轨迹推送服务**在控制台调通，拿推送密钥 | 用户 | 批 2b | 生产日志出现圆通的 `[lgs-push-first]` |
 | P5 | 生产 env 加键：`LOGISTICS_PHONE_KEY`、`LOGISTICS_CALLBACK_BASE`、`YTO_SUBSCRIBE_*`、`YTO_PUSH_SECRET` | 我（只回读键名，不打印值） | 批 2 | `GET /ops/logistics/channels` 各能力 `available=true` |
 | P6 | 圆通**查询接口**审核通过 | 圆通 | 不卡（配置即可加进探测链） | — |
+| P7 | 小程序后台**选快递节点的订阅模板**（揽收 / 派件 / 签收，公共模板库里「物流」类），把模板号与字段名给我：后端 `WX_TPL_WAYBILL_{PICKED_UP,DELIVERING,SIGNED}` + `_FIELDS`，c-app `.env` 的 `VITE_WX_TPL_WAYBILL_*` 同值 | 用户选 / 我配 | 批 4 的订阅消息那一路（站内信不卡） | 线下付款快递单提交时弹出授权框；`notify_subscribe` 有这三个模板号的额度 |
 
 #### 批 0 · 止血（可立刻做，不等别的）
 
@@ -821,6 +822,18 @@ shop:
 | — | ops-web 的 `ShipmentStatus` 一并加 `DELIVERING` / `CANCELLED`（类型对齐检查要求） | 两套类型系统同名枚举不许分歧 |
 | — | `V388` 只改 `lgs_waybill.status` 列注释 | 枚举对账按注释认取值域；V387 已应用不能改 |
 | — | `lgs_waybill` 写进「运营端读得到、有意不登记数据域」 | V387 加了归属列后数据域守卫才认出它；物流不装数据域（ADR-032），运营端收窄放批 5 |
+
+### 批 4 · 偏差说明
+
+| 计划 | 实际 | 为什么 |
+|---|---|---|
+| T4.1 修 `requestSubscribe` 手势 | 支付页把授权挪到回查订单那次 await **之前**；**另在结算页「提交订单」点击当下**问快递三个模板（仅「快递 + 当面付」） | 线下付款单根本不经过微信支付，支付页那一处管不到它；AC5「用我们自己的订阅消息」得先有授权 |
+| T4.2 发货 / 派件 / 签收模板 | **三个场景三个模板**（`WxSubscribePort.SCENE_WAYBILL_*`），各自可选、字段名可配（同元器件那条） | 一次授权只够一条；共用一个模板的话揽收那条就把额度用完了。选模板是新的外部前置 **P7** |
+| — | 揽收**不发站内信 / 推送**，只走订阅消息；异常（EXCEPTION）一路都不发 | 发货时 `SUB_ORDER_SHIPPED` 已经说过；疑难件多半之后又派成了 |
+| — | 派件中途**放进驿站 / 快递柜**也发一次 `WaybillProgressed(DELIVERING, atLocker=true)` | 快递100 的投柜 / 驿站是派件的子状态、主状态不变 —— 不单发的话「去取件」永远到不了买家 |
+| — | 物流事件加 `carrier` / `waybillNo`；新增 `SubOrderBuyerPort`（message → trade）查收件人 | 物流不认识买家（ADR-032）；通知要说哪家快递、哪个单号 |
+| — | `V389`：两个场景的 INAPP / PUSH / WXSUB 种子全开 | 路由「查不到 = 关」；WXSUB 没配模板时发送端静默跳过，开着无害，关着的话配上模板那天也发不出去 |
+| T4.1 验证「真机授权弹窗」 | **没做** | 模板号还没选（P7）：`requestSubscribe` 把 STUB 模板整批剔掉、不弹窗；支付页那一处要有微信支付单才走得到（支付端上 banned） |
 
 ## §7 确认与完成
 

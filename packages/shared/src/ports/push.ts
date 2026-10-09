@@ -17,6 +17,14 @@ export const SUBSCRIBE_TMPL = {
    * 所以它是「一次预约」而不是「订阅关系」：发完就没了，用户要再点一次收藏。
    */
   newGoods: (import.meta.env?.VITE_WX_TPL_NEW_GOODS as string) || "STUB_TPL_NEW_GOODS",
+  /**
+   * 快递三个节点（揽收 / 派件 / 签收），**只给线下付款的快递单收**（TDD-物流模块 批 4）：
+   * 微信支付单的物流动态微信自己推。三个模板三份额度 —— 一次授权只够一条，
+   * 共用一个模板的话揽收那条就把额度用完了。没配的节点被下面的过滤器剔掉，不弹。
+   */
+  waybillPickedUp: (import.meta.env?.VITE_WX_TPL_WAYBILL_PICKED_UP as string) || "STUB_TPL_WAYBILL_PICKED_UP",
+  waybillDelivering: (import.meta.env?.VITE_WX_TPL_WAYBILL_DELIVERING as string) || "STUB_TPL_WAYBILL_DELIVERING",
+  waybillSigned: (import.meta.env?.VITE_WX_TPL_WAYBILL_SIGNED as string) || "STUB_TPL_WAYBILL_SIGNED",
 } as const;
 
 export interface SubscribeResult {

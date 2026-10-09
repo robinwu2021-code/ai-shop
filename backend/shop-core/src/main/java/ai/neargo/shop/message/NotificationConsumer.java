@@ -1,11 +1,14 @@
 package ai.neargo.shop.message;
 
+import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgSceneChannel;
 import ai.neargo.shop.message.notify.SceneChannelRouting;
 import ai.neargo.shop.message.notify.WxSubscribeSender;
+import ai.neargo.shop.spi.notify.WxSubscribePort;
+import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
 import ai.neargo.shop.spi.user.MerchantStaffPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,12 +58,14 @@ public class NotificationConsumer implements OutboxConsumer {
     private final ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort;
     private final SceneChannelRouting routing;
     private final ObjectMapper json;
+    private final SubOrderBuyerPort buyerPort;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
                                 MerchantStaffPort merchantStaffPort,
                                 ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort,
-                                SceneChannelRouting routing, ObjectMapper json) {
+                                SceneChannelRouting routing, ObjectMapper json,
+                                SubOrderBuyerPort buyerPort) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -68,6 +73,7 @@ public class NotificationConsumer implements OutboxConsumer {
         this.storeFavoritePort = storeFavoritePort;
         this.routing = routing;
         this.json = json;
+        this.buyerPort = buyerPort;
     }
 
     @Override
@@ -141,6 +147,8 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo());
                 cPush(scene, userNo, title, body, link);
             }
+            case NotifyScene.WAYBILL_PROGRESSED -> waybill(event, payload, text(payload, "status"));
+            case NotifyScene.WAYBILL_SIGNED -> waybill(event, payload, "DELIVERED");
             case NotifyScene.AFTER_SALE_REFUNDED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId();
@@ -289,6 +297,68 @@ public class NotificationConsumer implements OutboxConsumer {
         }
         log.info("[notify] 团结果扇出 group={} 结果={} 人数={}",
                 event.getAggregateId(), formed ? "成团" : "未成团", arr.size());
+    }
+
+    /**
+     * 快递节点 → 买家（TDD-物流模块 批 4）。
+     *
+     * <p><b>只认线下付款单</b>（{@code profile = SELF}）：微信支付单的物流动态微信自己推。
+     * 揽收那一档不发站内信与推送（发货时 {@code SUB_ORDER_SHIPPED} 说过了），只走订阅消息 ——
+     * 那是线下单在微信里唯一能收到的一条。异常不发：多半之后又派成了，先吓人没有用。
+     *
+     * <p>三个节点三个订阅模板、三份额度（{@link WxSubscribePort#SCENE_WAYBILL_PICKED_UP} 的注释）。
+     */
+    private void waybill(SysOutbox event, JsonNode payload, String status) {
+        if (!"SELF".equals(text(payload, "profile"))) {
+            return;
+        }
+        boolean atLocker = payload.path("atLocker").asBoolean(false);
+        String wxScene;
+        String title;
+        String body;
+        String carrierName = nz(ExpressCompanies.nameOf(text(payload, "carrier")), "快递");
+        String waybillNo = nz(text(payload, "waybillNo"), "");
+        switch (status == null ? "" : status) {
+            case "PICKED_UP" -> {
+                wxScene = WxSubscribePort.SCENE_WAYBILL_PICKED_UP;
+                title = "已揽收";
+                body = null;
+            }
+            case "DELIVERING" -> {
+                wxScene = WxSubscribePort.SCENE_WAYBILL_DELIVERING;
+                title = atLocker ? "已到驿站" : "派件中";
+                body = atLocker
+                        ? "%s %s 已放到驿站或快递柜，取件码见订单里的物流信息".formatted(carrierName, waybillNo)
+                        : "%s %s 正在派送，请保持电话畅通".formatted(carrierName, waybillNo);
+            }
+            case "DELIVERED" -> {
+                wxScene = WxSubscribePort.SCENE_WAYBILL_SIGNED;
+                title = "已签收";
+                body = "%s %s 已签收".formatted(carrierName, waybillNo);
+            }
+            default -> {
+                return;
+            }
+        }
+        var buyer = buyerPort.buyerOf(text(payload, "bizRef"));
+        if (buyer.isEmpty()) {
+            log.warn("[notify] 运单 {} 的子单 {} 查不到，快递节点通知没发", event.getAggregateId(),
+                    text(payload, "bizRef"));
+            return;
+        }
+        String userNo = buyer.get().userNo();
+        String link = "/pages/order/index?orderNo=" + buyer.get().orderNo();
+        String scene = event.getEventType();
+        if (body != null) {
+            messageService.push(userNo, MessageService.TRADE, title, body, link, event.getEventNo());
+            cPush(scene, userNo, title, body, link);
+        }
+        if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+            long at = "DELIVERED".equals(status) ? payload.path("signedAt").asLong(System.currentTimeMillis())
+                    : payload.path("at").asLong(System.currentTimeMillis());
+            wxSender.waybill(userNo, wxScene, new WxSubscribePort.WaybillNotice(buyer.get().orderNo(),
+                    carrierName, waybillNo, title, at, null), link.substring(1));
+        }
     }
 
     /** 走到终态的说法，按履约方式分。**不认识的履约方式回落成中性说法**，不要硬套自提。 */

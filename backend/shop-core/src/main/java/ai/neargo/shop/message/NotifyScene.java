@@ -78,6 +78,16 @@ public final class NotifyScene {
      * 理由见 TDD-C 端裂变与商家招募 §10.4。
      */
     public static final String NEW_GOODS_ON_SALE = "NEW_GOODS_ON_SALE";
+    /**
+     * 快递揽收 / 派件 / 放进驿站或快递柜（C 端）。事件来自物流模块（{@code LogisticsEvents.WaybillProgressed}）。
+     *
+     * <p><b>只给线下付款单发</b>（运单 {@code profile = SELF}）：微信支付单的物流动态由微信「购物订单」
+     * 自己推，再发一条是重复打扰（TDD-物流模块 AC5）。揽收那一档不发站内信 —— 发货时
+     * {@link #SUB_ORDER_SHIPPED} 已经说过了，这一档只走订阅消息（线下单在微信里唯一能收到的一条）。
+     */
+    public static final String WAYBILL_PROGRESSED = "WAYBILL_PROGRESSED";
+    /** 快递已签收（C 端）。口径同 {@link #WAYBILL_PROGRESSED}：只给线下付款单发 */
+    public static final String WAYBILL_SIGNED = "WAYBILL_SIGNED";
 
     /**
      * 全部场景码。
@@ -89,7 +99,8 @@ public final class NotifyScene {
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
             SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE,
             SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED,
-            AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT);
+            AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT,
+            WAYBILL_PROGRESSED, WAYBILL_SIGNED);
 
     /**
      * <b>营销类场景</b> —— 站内信不强制开。

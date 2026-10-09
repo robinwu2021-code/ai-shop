@@ -321,6 +321,8 @@ const zh = {
   scene_AFTER_SALE_APPLIED: "买家申请售后",
   scene_AFTER_SALE_REFUNDED: "退款已到账",
   scene_REVIEW_CREATED: "收到新评价",
+  scene_WAYBILL_PROGRESSED: "快递揽收 / 派件（线下付款单）",
+  scene_WAYBILL_SIGNED: "快递已签收（线下付款单）",
 
 };
 
@@ -635,6 +637,8 @@ const en: typeof zh = {
   scene_AFTER_SALE_APPLIED: "After-sale requested",
   scene_AFTER_SALE_REFUNDED: "Refund credited",
   scene_REVIEW_CREATED: "New review",
+  scene_WAYBILL_PROGRESSED: "Parcel picked up / out for delivery (offline-paid)",
+  scene_WAYBILL_SIGNED: "Parcel signed for (offline-paid)",
 
 };
 

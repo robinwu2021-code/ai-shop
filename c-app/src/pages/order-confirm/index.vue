@@ -30,6 +30,7 @@ import type { ActivityChoice, Address, CartItem, CheckoutCapability, CheckoutOff
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
+import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 
 const { t } = useI18n();
 const cart = useCartStore();
@@ -1077,6 +1078,21 @@ function submitFailText(e: unknown): string {
 
 async function submit() {
   if (!canSubmit.value) return;
+  /*
+   * **线下付款的快递单：就在这一次点击里问快递节点的订阅授权**（TDD-物流模块 批 4）。
+   *
+   * 必须排在下面任何一个 await 前面 —— 微信只认用户点击当下调起的授权框，隔一次 await 就弹不出来
+   * （支付页原来就是这么失效的）。线上付款的单不问：微信支付单的物流动态微信自己推。
+   * 不等它：授权框与下单各走各的，结果出来再上报；这一单没下成，额度留给下一单。
+   */
+  if (fulfillment.value === FULFILLMENT.EXPRESS && payMode.value === PAY_MODE.OFFLINE) {
+    void requestSubscribe([
+      SUBSCRIBE_TMPL.waybillPickedUp, SUBSCRIBE_TMPL.waybillDelivering, SUBSCRIBE_TMPL.waybillSigned,
+    ]).then((r) => {
+      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+    });
+  }
   /*
    * **自提单必须先有归属。**
    *

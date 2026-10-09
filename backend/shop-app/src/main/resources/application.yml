@@ -312,6 +312,14 @@ shop:
       # 按「单号,料号概述,结果,提示语」四个位置写模板里的字段名（没有的位置留空，如 "character_string1,thing2,,thing4"）
       elec-quoted: ${WX_TPL_ELEC_QUOTED:}
       elec-quoted-fields: ${WX_TPL_ELEC_QUOTED_FIELDS:character_string1,thing2,phrase3,thing4}
+      # 快递三个节点（TDD-物流模块 批 4，只给线下付款单发）。各自可选，没配的节点只发站内信。
+      # 字段名按「订单号,快递公司,运单号,状态,时间,提示语」六个位置写模板里的字段名，没有的位置留空
+      waybill-picked-up: ${WX_TPL_WAYBILL_PICKED_UP:}
+      waybill-picked-up-fields: ${WX_TPL_WAYBILL_PICKED_UP_FIELDS:}
+      waybill-delivering: ${WX_TPL_WAYBILL_DELIVERING:}
+      waybill-delivering-fields: ${WX_TPL_WAYBILL_DELIVERING_FIELDS:}
+      waybill-signed: ${WX_TPL_WAYBILL_SIGNED:}
+      waybill-signed-fields: ${WX_TPL_WAYBILL_SIGNED_FIELDS:}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。

@@ -171,17 +171,20 @@ async function pay() {
       });
       return;
     }
-    // 以回查为准，不用端侧返回值判成功
-    order.value = await api.orderDetail(o.orderNo);
-    // 付掉了：结算页的幂等键作废。不清的话，紧接着再买一份一模一样的会被回放成这张已付的单
-    if (paid.value) clearCheckoutKey();
-
-    // 订阅消息必须由用户点击行为触发，支付成功这一刻是收集授权的最佳时机。
-    // 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
+    /*
+     * 订阅消息必须由用户点击行为（或支付回调）当下调起，支付回来这一刻是收集授权的最佳时机。
+     * **要排在回查订单那次 await 前面**：原来排在它后面，隔了一次网络请求，
+     * 已经不算「支付回调当下」了，授权框弹不出来（TDD-物流模块 批 4 T4.1）。
+     * 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
+     */
     const subscribed = requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
       if (r.accepted.length) void api.subscribeReport(r.accepted, true);
       if (r.rejected.length) void api.subscribeReport(r.rejected, false);
     });
+    // 以回查为准，不用端侧返回值判成功
+    order.value = await api.orderDetail(o.orderNo);
+    // 付掉了：结算页的幂等键作废。不清的话，紧接着再买一份一模一样的会被回放成这张已付的单
+    if (paid.value) clearCheckoutKey();
 
     /*
      * **团单付完直接落在自己的团页**（原型 p04）：倒计时、人头、一颗「邀请邻居来拼」。

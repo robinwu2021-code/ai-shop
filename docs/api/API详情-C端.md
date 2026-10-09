@@ -2065,6 +2065,35 @@
 | `priceUp` | `string`\[\] | 是 | 涨价了但仍加入的商品名 |
 
 
+#### GET `/mp/order/{orderNo}/trace`
+
+物流页（查看物流）　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ShipmentTrace`](#shipmenttrace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | [`ShipmentStatus`](#shipmentstatus) | 是 | 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 |
+| `nodes` | [`ShipmentTraceNode`](#shipmenttracenode)\[\] | 是 | 轨迹节点，按时间倒序（最新在前，页面从上往下读） |
+| `displayMode` | [`TraceDisplayMode`](#tracedisplaymode) | 否 | 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map` |
+| `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
+| `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
+| `carrier` | `string,null` | 否 | 承运商码（SF / STO / YTO …） |
+| `waybillNo` | `string,null` | 否 | 运单号 |
+| `signedAt` | `number,null` | 否 | 签收时间（毫秒） |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
+| `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
+| `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
+
+
 #### POST `/mp/order/capability`
 
 结算页能力提示（开票/支付方式/额度）　🔒
@@ -4625,15 +4654,17 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 ### ShipmentStatus
 
-运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功
+运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功
 
 枚举取值：
 
 - `CREATED`
 - `PICKED_UP`
 - `IN_TRANSIT`
+- `DELIVERING`
 - `DELIVERED`
 - `EXCEPTION`
+- `CANCELLED`
 
 ### ShipmentTrace
 
@@ -4646,6 +4677,12 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | `displayMode` | [`TraceDisplayMode`](#tracedisplaymode) | 否 | 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map` |
 | `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
 | `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
+| `carrier` | `string,null` | 否 | 承运商码（SF / STO / YTO …） |
+| `waybillNo` | `string,null` | 否 | 运单号 |
+| `signedAt` | `number,null` | 否 | 签收时间（毫秒） |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
+| `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
+| `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
 
 ### ShipmentTraceNode
 
