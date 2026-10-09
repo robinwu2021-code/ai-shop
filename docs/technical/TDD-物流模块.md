@@ -585,7 +585,7 @@ shop:
 | P4 | 圆通**轨迹推送服务**在控制台调通，拿推送密钥 | 用户 | 批 2b | 生产日志出现圆通的 `[lgs-push-first]` |
 | P5 | 生产 env 加键：`LOGISTICS_PHONE_KEY`、`LOGISTICS_CALLBACK_BASE`、`YTO_SUBSCRIBE_*`、`YTO_PUSH_SECRET` | 我（只回读键名，不打印值） | 批 2 | `GET /ops/logistics/channels` 各能力 `available=true` |
 | P6 | 圆通**查询接口**审核通过 | 圆通 | 不卡（配置即可加进探测链） | — |
-| P7 | 小程序后台**选快递节点的订阅模板**（揽收 / 派件 / 签收，公共模板库里「物流」类），把模板号与字段名给我：后端 `WX_TPL_WAYBILL_{PICKED_UP,DELIVERING,SIGNED}` + `_FIELDS`，c-app `.env` 的 `VITE_WX_TPL_WAYBILL_*` 同值 | 用户选 / 我配 | 批 4 的订阅消息那一路（站内信不卡） | 线下付款快递单提交时弹出授权框；`notify_subscribe` 有这三个模板号的额度 |
+| P7 | ~~小程序后台选快递节点的订阅模板~~ **已完成（2026-10-09）**：公共模板库没有现成的揽收/派件/签收三件套，选了三个标题能直接给买家看的：揽收=物流信息通知（物流公司 `thing2`、物流单号 `character_string3`、发货时间 `time4`）、派件·到驿站=物流状态提醒（订单号 `character_string4`、物流公司 `thing3`、物流单号 `character_string2`、备注 `thing1` 接提示语位）、签收=订单签收通知（订单编号 `character_string1`、快递公司 `thing5`、快递单号 `character_string6`、签收时间 `date4`）。**都不选「当前状态」类常量字段**（要先过枚举值审核）。模板号与字段写进生产 env `WX_TPL_WAYBILL_*`(`_FIELDS`)、c-app `.env` | 用户选 / 我配 | 批 4 的订阅消息那一路 | 下次发版后端生效；c-app 要发小程序新版 |
 
 #### 批 0 · 止血（可立刻做，不等别的）
 

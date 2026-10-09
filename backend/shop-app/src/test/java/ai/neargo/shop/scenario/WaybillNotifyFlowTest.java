@@ -81,7 +81,7 @@ class WaybillNotifyFlowTest {
         assertThat(inbox.getFirst().getLink()).isEqualTo("/pages/order/index?orderNo=" + b.orderNo);
         assertThat(sentTo(b.openId)).singleElement().satisfies(s -> {
             assertThat(s.scene()).isEqualTo(WxSubscribePort.SCENE_WAYBILL_DELIVERING);
-            assertThat(s.summary()).contains("SF7001").contains("派件中");
+            assertThat(s.summary()).contains("SF7001").contains("派件中").contains("请保持电话畅通");
         });
     }
 
@@ -89,6 +89,7 @@ class WaybillNotifyFlowTest {
     @DisplayName("★★★ 放进驿站 → 说「已到驿站」，告诉他取件码在哪")
     void lockerSaysGoPickUp() throws Exception {
         Buyer b = aBuyerWithSubOrder("wx-open-wbn-2", "SUB-WBN-2");
+        grant(b.userNo, WxSubscribePort.SCENE_WAYBILL_DELIVERING);
 
         progressed("SUB-WBN-2", "SELF", "DELIVERING", true);
 
@@ -96,6 +97,9 @@ class WaybillNotifyFlowTest {
             assertThat(m.getTitle()).isEqualTo("已到驿站");
             assertThat(m.getBody()).contains("取件码");
         });
+        assertThat(sentTo(b.openId)).singleElement()
+                .satisfies(s -> assertThat(s.summary()).as("订阅消息的提示语要说去哪取件")
+                        .contains("已到驿站，取件码见订单"));
     }
 
     @Test

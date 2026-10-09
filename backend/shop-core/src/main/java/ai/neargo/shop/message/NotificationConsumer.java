@@ -356,8 +356,12 @@ public class NotificationConsumer implements OutboxConsumer {
         if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
             long at = "DELIVERED".equals(status) ? payload.path("signedAt").asLong(System.currentTimeMillis())
                     : payload.path("at").asLong(System.currentTimeMillis());
+            // 派件那条模板的「备注」接在提示语位上：说清楚下一步做什么（去取件 / 留意电话），
+            // 而不是一句泛泛的「点开查看」。另外两条模板没有提示语格，传了也不占位
+            String tip = "DELIVERING".equals(status)
+                    ? (atLocker ? "已到驿站，取件码见订单" : "派件中，请保持电话畅通") : null;
             wxSender.waybill(userNo, wxScene, new WxSubscribePort.WaybillNotice(buyer.get().orderNo(),
-                    carrierName, waybillNo, title, at, null), link.substring(1));
+                    carrierName, waybillNo, title, at, tip), link.substring(1));
         }
     }
 
