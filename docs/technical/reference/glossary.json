@@ -36676,6 +36676,14 @@
       "module": "job"
     },
     {
+      "host": "WaybillProber",
+      "name": "WX",
+      "type": "String",
+      "value": "\"wx\"",
+      "zh": "",
+      "module": "logistics"
+    },
+    {
       "host": "AlipayApis",
       "name": "GATEWAY",
       "type": "String",

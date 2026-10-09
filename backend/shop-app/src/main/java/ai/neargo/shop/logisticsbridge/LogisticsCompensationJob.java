@@ -53,7 +53,8 @@ public class LogisticsCompensationJob implements JobHandler {
     public JobDeclaration logisticsCompensateDeclaration() {
         return new JobDeclaration(NAME, "物流补偿",
                 "订阅停在待订阅超过 10 分钟的补订（订阅总开关刚打开 / 事件重试耗尽）；"
-                        + "批 3 起加「订阅成功但 24 小时没有任何推送」的在途单去问微信。正常推送中的运单不碰",
+                        + "订阅成功但 24 小时没有任何进展的在途单去问微信（同一单 6 小时内只问一次）。"
+                        + "正常推送中的运单不碰。detail 末尾「FATAL+outbox FAILED 合计」长期应为 0",
                 "shop-app", "0 15 * * * *", true,
                 540, 600, true, true);
     }

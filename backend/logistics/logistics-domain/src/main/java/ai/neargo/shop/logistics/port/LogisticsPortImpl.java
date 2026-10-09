@@ -9,12 +9,10 @@ import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
+import ai.neargo.shop.logistics.probe.WaybillProber;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
-import ai.neargo.shop.spi.logistics.TraceResult;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,14 +35,12 @@ import java.util.function.LongSupplier;
 @Component
 public class LogisticsPortImpl implements LogisticsPort {
 
-    private static final Logger log = LoggerFactory.getLogger(LogisticsPortImpl.class);
-    static final String WX = "wx";
+    static final String WX = WaybillProber.WX;
 
     private final WaybillMapper waybills;
     private final WaybillNodeMapper nodes;
     private final ChannelRouter router;
-    private final WaybillProgress progress;
-    private final PhoneCipher phones;
+    private final WaybillProber prober;
     private final LogisticsProperties props;
     private final LongSupplier clock;
 
@@ -59,10 +55,9 @@ public class LogisticsPortImpl implements LogisticsPort {
         this.waybills = waybills;
         this.nodes = nodes;
         this.router = router;
-        this.progress = progress;
-        this.phones = phones;
         this.props = props;
         this.clock = clock;
+        this.prober = new WaybillProber(waybills, router, progress, phones);
     }
 
     @Override
@@ -117,27 +112,9 @@ public class LogisticsPortImpl implements LogisticsPort {
         return out;
     }
 
-    /** @return 有没有带来新进展 */
+    /** @return 有没有带来新进展。问失败照样返回库里的 */
     private boolean probe(LgsWaybill w, StatusProbe p, long now) {
-        LgsWaybill patch = LgsWaybill.patch(w.getId());
-        if (WX.equals(p.channel())) {
-            patch.setWxStatusCheckedAt(now);
-            w.setWxStatusCheckedAt(now);
-        }
-        try {
-            Optional<TraceResult> r = p.probe(new StatusProbe.ProbeCmd(w.getCarrier(),
-                    router.codeOf(w.getCarrier(), p).orElse(null), w.getWaybillNo(),
-                    phones.decrypt(w.getReceiverPhoneEnc()), w.getDisplayToken()));
-            if (r.isPresent()) {
-                return progress.apply(w, r.get(), p.channel(), "QUERY", patch, now).changed();
-            }
-        } catch (RuntimeException e) {
-            log.warn("[lgs-track] {} 问 {} 失败（照样返回库里的）：{}", w.getShipmentNo(), p.channel(), e.toString());
-        }
-        if (patch.getWxStatusCheckedAt() != null) {
-            waybills.updateById(patch);
-        }
-        return false;
+        return prober.probe(w, p, now).changed();
     }
 
     private boolean due(LgsWaybill w, long now) {
