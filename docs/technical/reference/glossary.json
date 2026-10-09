@@ -6795,9 +6795,9 @@
         },
         {
           "key": "apply.categoryHint",
-          "zh-CN": "填写日常说法即可。可上架的类目由平台审核确定，通过后在「资质证照」中查看。",
-          "en": "Everyday wording is fine. Sellable categories are determined by platform review and listed under Credentials once approved.",
-          "ar": "بكلماتك أنت. التصنيفات المسموح بعرضها تُحدَّد أثناء المراجعة، وتظهر في «الرخص» بعد الموافقة."
+          "zh-CN": "填写日常说法即可。可上架的类目由平台审核确定，通过后在「经营资质」中查看。",
+          "en": "Everyday wording is fine. Sellable categories are determined by platform review and listed under Category permits once approved.",
+          "ar": "بكلماتك أنت. التصنيفات المسموح بعرضها تُحدَّد أثناء المراجعة، وتظهر في «تصاريح الفئات» بعد الموافقة."
         },
         {
           "key": "apply.categoryPh",
@@ -8823,9 +8823,9 @@
         },
         {
           "key": "entities.title",
-          "zh-CN": "证照与账户",
-          "en": "Licenses & accounts",
-          "ar": "الرخص والحسابات"
+          "zh-CN": "营业执照",
+          "en": "Business license",
+          "ar": "الرخصة التجارية"
         },
         {
           "key": "entityDetail.denied",
@@ -16125,9 +16125,9 @@
         },
         {
           "key": "qual.title",
-          "zh-CN": "资质证照",
-          "en": "My licences",
-          "ar": "تراخيصي"
+          "zh-CN": "经营资质",
+          "en": "Category permits",
+          "ar": "تصاريح الفئات"
         },
         {
           "key": "qual.typeFoodPermit",
@@ -21357,9 +21357,9 @@
         },
         {
           "key": "storeCategories.notAuthorized",
-          "zh-CN": "缺少经营这一类的资质，去「资质证照」里补齐后再添加",
-          "en": "You are not credentialed for this category. Add it under “My licences” first.",
-          "ar": "لا تملك رخصة هذه الفئة؛ أضفها من «تراخيصي» ثم اعرضها"
+          "zh-CN": "缺少经营这一类的资质，去「经营资质」里补齐后再添加",
+          "en": "You are not credentialed for this category. Add it under “Category permits” first.",
+          "ar": "لا تملك رخصة هذه الفئة؛ أضفها من «تصاريح الفئات» ثم اعرضها"
         },
         {
           "key": "storeCategories.onSale",
@@ -21603,9 +21603,9 @@
         },
         {
           "key": "stores.qualEntry",
-          "zh-CN": "资质证照",
-          "en": "Licences",
-          "ar": "التراخيص"
+          "zh-CN": "经营资质",
+          "en": "Category permits",
+          "ar": "تصاريح الفئات"
         },
         {
           "key": "stores.quotaHint",
@@ -25832,10 +25832,24 @@
     },
     {
       "table": "lgs_waybill",
+      "class": "LgsWaybill",
+      "zh": "运单（V132 建为 ful_shipment，V387 改名 lgs_waybill 并加列）。",
+      "module": "logistics",
+      "package": "ai.neargo.shop.logistics.entity"
+    },
+    {
+      "table": "lgs_waybill",
       "class": "FulShipment",
       "zh": "",
       "module": "shop-core",
       "package": "ai.neargo.shop.fulfillment.entity"
+    },
+    {
+      "table": "lgs_waybill_node",
+      "class": "LgsWaybillNode",
+      "zh": "轨迹节点（append-only。",
+      "module": "logistics",
+      "package": "ai.neargo.shop.logistics.entity"
     },
     {
       "table": "lgs_waybill_node",
@@ -27043,6 +27057,146 @@
         "value": "LINE_NO_OFFER",
         "zh": "某一行：收到求购的供应商都回了「没货」，平台也没报",
         "module": "elec"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "CREATED",
+        "value": "CREATED",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "PICKED_UP",
+        "value": "PICKED_UP",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "IN_TRANSIT",
+        "value": "IN_TRANSIT",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "DELIVERING",
+        "value": "DELIVERING",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "DELIVERED",
+        "value": "DELIVERED",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "EXCEPTION",
+        "value": "EXCEPTION",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillStatus",
+        "name": "CANCELLED",
+        "value": "CANCELLED",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "BIZ_SUB_ORDER",
+        "value": "SUB_ORDER",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "PROFILE_WX",
+        "value": "WX",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "PROFILE_SELF",
+        "value": "SELF",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "SUB_PENDING",
+        "value": "PENDING",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "SUB_DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "SUB_FATAL",
+        "value": "FATAL",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "SUB_ENDED",
+        "value": "ENDED",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "SUB_NA",
+        "value": "NA",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "BIND_NA",
+        "value": "NA",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "BIND_WAITING",
+        "value": "WAITING",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "BIND_DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "LgsWaybill",
+        "name": "BIND_FATAL",
+        "value": "FATAL",
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "host": "WaybillRegistered",
+        "name": "TYPE",
+        "value": "LGS_WAYBILL_REGISTERED",
+        "zh": "",
+        "module": "logistics"
       },
       {
         "host": "TestPayGateway",
@@ -28645,6 +28799,13 @@
         "name": "PLATFORM",
         "value": "PLATFORM",
         "zh": "全平台 —— 无履约半径的：虚拟商品、卡券、平台自营的快递品",
+        "module": "shop-base"
+      },
+      {
+        "host": "LogisticsEvents",
+        "name": "AGG_WAYBILL",
+        "value": "WAYBILL",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -33850,6 +34011,17 @@
         ],
         "zh": "榜单的排序口径。",
         "module": "shop-report"
+      },
+      {
+        "name": "Outcome",
+        "values": [
+          "ACCEPTED",
+          "REJECTED",
+          "UNKNOWN_WAYBILL",
+          "IGNORED"
+        ],
+        "zh": "",
+        "module": "logistics"
       },
       {
         "name": "PaidOutcome",
