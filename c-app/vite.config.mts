@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import uniModule from "@dcloudio/vite-plugin-uni";
 import UnoCSS from "unocss/vite";
+// mock 剔除与 b-app 共用一份（packages/shared/build/strip-mock.mts）
+import { stripMock } from "../packages/shared/build/strip-mock.mts";
 
 // .mts 走原生 ESM 加载（unocss/vite 是 ESM-only）。
 // @dcloudio/vite-plugin-uni 是 CJS，ESM 下真正的工厂函数在 .default 上（Babel 互操作）。
@@ -31,7 +33,14 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const BUILD_STAMP =
   `${pad(D.getUTCMonth() + 1)}${pad(D.getUTCDate())}-${pad(D.getUTCHours())}${pad(D.getUTCMinutes())}`;
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  /*
+   * **构建期读 .env 判断要不要带 mock。** 这里不能用 `import.meta.env` ——
+   * 那是产物里的东西，配置文件跑在 node 里。`loadEnv` 与 vite 自己注入
+   * `import.meta.env.VITE_USE_MOCK` 读的是同一批文件，两处判断因此不会分叉。
+   */
+  const useMock = loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_").VITE_USE_MOCK !== "0";
+  return {
   define: {
     __BUILD_VERSION__: JSON.stringify(`${VERSION_NAME} · ${BUILD_STAMP}`),
   },
@@ -82,5 +91,22 @@ export default defineConfig({
       "/biz": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
-  plugins: [uni(), UnoCSS()],
+  plugins: [
+    /*
+     * 第二条是**并包带进来的**：`with-biz` 把 b-app/src 拷到 `src/pkg-biz/`，
+     * 其中 `api/demo-orders.ts` 是 b 端的演示店与演示订单（文件头自己写着
+     * 「接真后端后整个文件不参与」），而 App.vue 与入驻页都是静态 import。
+     * 不登记的话并包构建直接失败（2026-10-09 实测），而平时不并包时这条用不上 ——
+     * 正因如此它很容易被漏掉，所以写在这里而不是 with-biz 里：
+     * 构建配置只有一处，漏了立刻红。
+     */
+    stripMock(useMock, [{
+      test: /[\\/]api[\\/]demo-orders(\.ts)?$/,
+      code: "export const ensureDemoOrders = () => {};\n"
+        + "export const ensureDemoMerchant = () => {};\n",
+    }]),
+    uni(),
+    UnoCSS(),
+  ],
+  };
 });

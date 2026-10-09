@@ -1,8 +1,10 @@
 import { fileURLToPath, URL } from "node:url";
 import { readFileSync } from "node:fs";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import uniModule from "@dcloudio/vite-plugin-uni";
 import UnoCSS from "unocss/vite";
+// mock 剔除与 c-app 共用一份（packages/shared/build/strip-mock.mts）
+import { stripMock } from "../packages/shared/build/strip-mock.mts";
 
 // 与 c-app 同构（见 c-app/vite.config.mts 的说明）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +24,11 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const BUILD_STAMP =
   `${pad(D.getUTCMonth() + 1)}${pad(D.getUTCDate())}-${pad(D.getUTCHours())}${pad(D.getUTCMinutes())}`;
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // 构建期读开关。`loadEnv` 同时收 shell 变量与 .env 文件 ——
+  // b-app-mock 那个 dev server 靠 shell 传 VITE_USE_MOCK=1，走的是前一条
+  const useMock = loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_").VITE_USE_MOCK !== "0";
+  return {
   define: {
     __BUILD_VERSION__: JSON.stringify(`${VERSION_NAME} · ${BUILD_STAMP}`),
   },
@@ -71,5 +77,20 @@ export default defineConfig({
       "/biz": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
-  plugins: [uni(), UnoCSS()],
+  plugins: [
+    /*
+     * 演示店与演示订单（`api/demo-orders`）是 b-app 独有的一份种子 ——
+     * 文件头自己写着「接真后端后整个文件不参与」，而 App.vue 与入驻页都是
+     * **静态 import、if (USE_MOCK) 调用**，于是它照样进生产包。
+     * 桩只给那两个被生产路径引到的名字，将来多引一个就在构建期报，不静默。
+     */
+    stripMock(useMock, [{
+      test: /[\\/]api[\\/]demo-orders(\.ts)?$|^@\/api\/demo-orders$|^\.\.?\/demo-orders$/,
+      code: "export const ensureDemoOrders = () => {};\n"
+        + "export const ensureDemoMerchant = () => {};\n",
+    }]),
+    uni(),
+    UnoCSS(),
+  ],
+  };
 });

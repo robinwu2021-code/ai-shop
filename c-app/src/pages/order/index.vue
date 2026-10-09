@@ -828,7 +828,7 @@ onShow(load);
 }
 .prog__row {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .prog__row:first-child {
   margin-top: 0;
