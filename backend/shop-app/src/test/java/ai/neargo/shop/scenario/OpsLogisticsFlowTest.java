@@ -71,6 +71,8 @@ class OpsLogisticsFlowTest {
     private static final String SEED_TEMPLATE = "FT0001";
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
@@ -117,20 +119,31 @@ class OpsLogisticsFlowTest {
     @DisplayName("★ 不能停掉最后一家启用的运力 —— 全停之后快递单无处可下")
     void cannotDisableTheLastEnabledCarrier() throws Exception {
         /*
-         * 先停 SF。此刻本类还没读过 /ops/shipments，库里一条运单记录都没有，
-         * 所以 SF 名下没有在途单，这一步该成功。
-         * 它要是返回 30011，说明有别的路径先把运单补齐了 —— 断言会当场说清楚。
+         * 2026-10-09 改写（TDD-物流模块 批 2a）：原来先停 SF 再停 JD，前提是「库里一条运单都没有、SF 名下没有在途单」。
+         * 批 2a 起**每一单快递发货都会登记运单**（不再是读时补齐），全量跑时 SF / JD 名下几乎必然有别的用例
+         * 留下的在途单 —— 停 SF 先撞上 30011，这条用例想测的 30012 根本到不了。
+         *
+         * 改为：造一家**没有任何运单**的运力，把其余启用的直接停掉（快照、finally 原样还原），再停它。
          */
-        assertThat(codeOf(setEnabledRaw("SF", false)))
-                .as("此刻不该有任何在途单，停用 SF 应当成功（拿到 30011 = 运单已被别处补齐）")
-                .isZero();
+        List<java.util.Map<String, Object>> before = jdbc.queryForList("select carrier, enabled from lgs_carrier");
+        jdbc.update("insert into lgs_carrier (carrier, name, enabled, priority, account_masked, api_key_configured,"
+                + " pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)"
+                + " values ('ZLAST', '最后一家测试运力', 1, 97, null, 1, '17:00', 48, 'MAIN', now(), 'T', now(), 'T', 0, 0)");
+        try {
+            jdbc.update("update lgs_carrier set enabled = 0 where carrier <> 'ZLAST'");
 
-        // 现在只剩 JD 一家启用的。停掉它 = 之后所有快递单都发不出去
-        assertThat(codeOf(setEnabledRaw("JD", false))).isEqualTo(30012);
+            // 现在只剩 ZLAST 一家启用的。停掉它 = 之后所有快递单都发不出去
+            assertThat(codeOf(setEnabledRaw("ZLAST", false))).isEqualTo(30012);
 
-        // 闸没有把 JD 的状态改坏 —— 拒绝之后它必须还是启用的
-        assertThat(carrier("JD").get("enabled").asBoolean())
-                .as("被拒的停用不能留下副作用").isTrue();
+            // 闸没有把它的状态改坏 —— 拒绝之后它必须还是启用的
+            assertThat(carrier("ZLAST").get("enabled").asBoolean())
+                    .as("被拒的停用不能留下副作用").isTrue();
+        } finally {
+            for (var row : before) {
+                jdbc.update("update lgs_carrier set enabled = ? where carrier = ?", row.get("enabled"), row.get("carrier"));
+            }
+            jdbc.update("delete from lgs_carrier where carrier = 'ZLAST'");   // 物理删：带 @TableLogic，逻辑删会占住唯一键
+        }
     }
 
     // ---------------------------------------------------------------- 运单：读时补齐（§4.6）
