@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 417,
+        "b-app": 418,
         "c-app": 83
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 395,
+        "b-app": 396,
         "c-app": 273
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 119,
+        "b-app": 118,
         "c-app": 32
       }
     },
@@ -659,7 +659,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 159,
+        "b-app": 160,
         "c-app": 33
       }
     },
@@ -683,7 +683,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 58,
+        "b-app": 59,
         "c-app": 12
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 567,
+        "b-app": 568,
         "c-app": 202
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 315,
+        "b-app": 316,
         "c-app": 100
       }
     },
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 125,
+        "b-app": 126,
         "c-app": 28,
         "lib": 13
       },
@@ -2544,7 +2544,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 86,
+        "b-app": 87,
         "c-app": 40,
         "lib": 1
       },
@@ -3533,6 +3533,20 @@
   "pages": [
     {
       "app": "b-app",
+      "page": "account",
+      "key": "b-app/account",
+      "file": "b-app/src/pages/account/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold"
+      ],
+      "libClassHits": 17,
+      "localSelectors": 2,
+      "localCssLines": 7,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "activities",
       "key": "b-app/activities",
       "file": "b-app/src/pages/activities/index.vue",
@@ -4017,7 +4031,7 @@
         "sh-scaffold",
         "sh-theme-sheet"
       ],
-      "libClassHits": 94,
+      "libClassHits": 82,
       "localSelectors": 9,
       "localCssLines": 38,
       "rolled": []
@@ -5976,7 +5990,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 40,
-    "pages": 155,
+    "pages": 156,
     "gapKinds": 2
   }
 }

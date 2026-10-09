@@ -9943,7 +9943,7 @@ components:
         - "IN_TRANSIT"
         - "DELIVERED"
         - "EXCEPTION"
-      description: "运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功"
+      description: "运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功"
     ShipmentTraceNode: 
       type: "object"
       properties: 

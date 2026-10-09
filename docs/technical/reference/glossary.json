@@ -5660,6 +5660,12 @@
       ],
       "terms": [
         {
+          "key": "account.title",
+          "zh-CN": "账号",
+          "en": "Account",
+          "ar": "الحساب"
+        },
+        {
           "key": "activities.always",
           "zh-CN": "长期",
           "en": "Always on",
@@ -12242,10 +12248,10 @@
           "ar": "الحساب"
         },
         {
-          "key": "me.accountSection",
-          "zh-CN": "账户信息",
-          "en": "Account Info",
-          "ar": "معلومات الحساب"
+          "key": "me.accountEntry",
+          "zh-CN": "账号",
+          "en": "Account",
+          "ar": "الحساب"
         },
         {
           "key": "me.appearance",
@@ -25629,13 +25635,6 @@
       "package": "ai.neargo.shop.fulfillment.entity"
     },
     {
-      "table": "ful_carrier",
-      "class": "FulCarrier",
-      "zh": "第三方运力接入配置（P-5.2.4）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.fulfillment.entity"
-    },
-    {
       "table": "ful_freight_template",
       "class": "FulFreightTemplate",
       "zh": "平台运费模板与超区规则（P-5.2.3）。",
@@ -25646,20 +25645,6 @@
       "table": "ful_group_pickup",
       "class": "FulGroupPickup",
       "zh": "邻里自提点（C-GB-06 / ADR-005）：团发起人勾「送到我家」时建的**团粒度临时点**，随团生随团灭。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.fulfillment.entity"
-    },
-    {
-      "table": "ful_shipment",
-      "class": "FulShipment",
-      "zh": "快递运单记录（P-5.2.1）。",
-      "module": "shop-core",
-      "package": "ai.neargo.shop.fulfillment.entity"
-    },
-    {
-      "table": "ful_shipment_trace",
-      "class": "FulShipmentTrace",
-      "zh": "快递轨迹节点（append-only）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.fulfillment.entity"
     },
@@ -25830,6 +25815,34 @@
       "zh": "计量单位字典。",
       "module": "shop-inventory",
       "package": "ai.neargo.shop.inventory.entity"
+    },
+    {
+      "table": "lgs_carrier",
+      "class": "FulCarrier",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.fulfillment.entity"
+    },
+    {
+      "table": "lgs_carrier_code",
+      "class": "LgsCarrierCode",
+      "zh": "一家承运商在某个物流渠道里叫什么（V387）。",
+      "module": "logistics",
+      "package": "ai.neargo.shop.logistics.entity"
+    },
+    {
+      "table": "lgs_waybill",
+      "class": "FulShipment",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.fulfillment.entity"
+    },
+    {
+      "table": "lgs_waybill_node",
+      "class": "FulShipmentTrace",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.fulfillment.entity"
     },
     {
       "table": "mbr_member",
@@ -33489,6 +33502,16 @@
         "module": "svc-client"
       },
       {
+        "name": "Capability",
+        "values": [
+          "SUBSCRIBE",
+          "PUSH",
+          "PROBE"
+        ],
+        "zh": "物流渠道的能力。",
+        "module": "logistics"
+      },
+      {
         "name": "Cell",
         "values": [
           "ALLOW",
@@ -33766,6 +33789,16 @@
       {
         "name": "Kind",
         "values": [
+          "OK",
+          "RETRYABLE",
+          "FATAL"
+        ],
+        "zh": "",
+        "module": "logistics"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "COUPON",
           "MERCHANT",
           "PICKUP",
@@ -33885,6 +33918,7 @@
         "values": [
           "PICKED",
           "IN_TRANSIT",
+          "DELIVERING",
           "SIGNED",
           "EXCEPTION",
           "UNKNOWN"
@@ -35495,6 +35529,7 @@
           "/pages/groups/index",
           "/pages/income/index",
           "/pages/settle/index",
+          "/pages/account/index",
           "/pages/payout-account/index",
           "/pages/deposit/index",
           "/pages/invoice/index",
@@ -35936,7 +35971,7 @@
           "DELIVERED",
           "EXCEPTION"
         ],
-        "zh": "运单状态（与后端 `ful_shipment` 一致）。"
+        "zh": "运单状态（与后端 `lgs_waybill` 一致）。"
       },
       {
         "name": "SkinGroup",
