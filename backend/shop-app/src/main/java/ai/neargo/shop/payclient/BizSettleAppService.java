@@ -37,8 +37,10 @@ public interface BizSettleAppService {
      * @param allStores {@code true} = 看授权范围内全部门店；否则只看当前门店。
      *                  <b>「全部」对老板和店员不是一回事</b> —— 老板的全部是主体名下所有店，
      *                  店员的只是他被授权的那几家，由 {@code BizContext} 决定
+     * @param day       {@code yyyy-MM-dd}，只看这一天（按成交日）。空 = 不按天筛。
+     *                  入口是收入页每日流水那一行 —— 点开核「这天是哪几笔」
      */
-    List<SettleBillVO> bills(Boolean allStores);
+    List<SettleBillVO> bills(Boolean allStores, String day);
 
     /**
      * 收入总览：按状态汇总的四个数。

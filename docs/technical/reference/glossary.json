@@ -11474,10 +11474,22 @@
           "ar": "{n} فاتورة"
         },
         {
+          "key": "income.dailyCommission",
+          "zh-CN": "佣金 {a}",
+          "en": "commission {a}",
+          "ar": "عمولة {a}"
+        },
+        {
           "key": "income.dailyEmpty",
           "zh-CN": "这段时间没有流水",
           "en": "No flow in this period",
           "ar": "لا توجد حركة في هذه الفترة"
+        },
+        {
+          "key": "income.dailyFee",
+          "zh-CN": "服务费 {a}",
+          "en": "service fee {a}",
+          "ar": "رسوم خدمة {a}"
         },
         {
           "key": "income.dailyFreight",
@@ -11556,6 +11568,24 @@
           "zh-CN": "售后期结束后自动结算",
           "en": "Settled automatically once the after-sales window closes",
           "ar": "تتم التسوية تلقائيًا بعد انتهاء فترة ما بعد البيع"
+        },
+        {
+          "key": "income.rangeLast30",
+          "zh-CN": "近 30 天",
+          "en": "Last 30 days",
+          "ar": "آخر 30 يومًا"
+        },
+        {
+          "key": "income.rangeLastMonth",
+          "zh-CN": "上月",
+          "en": "Last month",
+          "ar": "الشهر الماضي"
+        },
+        {
+          "key": "income.rangeThisMonth",
+          "zh-CN": "本月",
+          "en": "This month",
+          "ar": "هذا الشهر"
         },
         {
           "key": "income.received",
@@ -16928,6 +16958,12 @@
           "ar": "شحن لكل المناطق"
         },
         {
+          "key": "settle.accruedNone",
+          "zh-CN": "无成交日",
+          "en": "No transaction date",
+          "ar": "بلا تاريخ بيع"
+        },
+        {
           "key": "settle.batchNo",
           "zh-CN": "所属批次",
           "en": "Batch",
@@ -16974,6 +17010,24 @@
           "zh-CN": "平台佣金",
           "en": "Platform commission",
           "ar": "عمولة المنصة"
+        },
+        {
+          "key": "settle.dayBills",
+          "zh-CN": "{n} 笔 · 合计 {a}",
+          "en": "{n} bills · {a} total",
+          "ar": "{n} فاتورة · الإجمالي {a}"
+        },
+        {
+          "key": "settle.dayClear",
+          "zh-CN": "看全部",
+          "en": "Show all",
+          "ar": "عرض الكل"
+        },
+        {
+          "key": "settle.dayFilter",
+          "zh-CN": "{d} 这一天",
+          "en": "{d}",
+          "ar": "{d}"
         },
         {
           "key": "settle.dueAt",

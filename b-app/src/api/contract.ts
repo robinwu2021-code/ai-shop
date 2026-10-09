@@ -1894,7 +1894,11 @@ export interface MerchantApi {
    * @param allStores 是否看全部门店。默认（false）只看当前门店 ——
    *                  与订单页同一套惯例；「全部」对老板和店员不是一回事，后端按授权收窄
    */
-  mSettleList(allStores?: boolean): Promise<SettleBill[]>;
+  /**
+   * @param day `yyyy-MM-dd`，只看这一天（按**成交日**）。空 = 全部。
+   *            入口是收入页每日流水那一行 —— 点开核「这天是哪几笔」
+   */
+  mSettleList(allStores?: boolean, day?: string): Promise<SettleBill[]>;
   /** 费率卡（后端已实现）。把费率讲清楚是「自带客流零佣金」能起作用的前提 */
   mRateCard(): Promise<RateCard>;
   /**

@@ -44,12 +44,18 @@ public class BizSettleController {
      *
      * <p>存量流水没有 {@code store_no}，按当前门店筛会把它们全部滤掉 ——
      * 所以只在<b>真的有多家店</b>时才收窄，单店商家永远看到全部（与今天逐字一致）。
+     *
+     * @param day {@code yyyy-MM-dd}，只看这一天（按<b>成交日</b>）。空 = 全部，与改前逐字一致。
+     *            <b>日界与 {@code /daily-flow} 共用同一处代码</b>，不是同一套规则 ——
+     *            两处各算一遍的话，表现是「点开 7 笔的那天看到 6 笔」，
+     *            不报错、只在某个跨日界的订单上出现一次。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/settle/bills")
     public List<SettleBillVO> bills(
-            @RequestParam(required = false) Boolean allStores) {
-        return app.bills(allStores);
+            @RequestParam(required = false) Boolean allStores,
+            @RequestParam(required = false) String day) {
+        return app.bills(allStores, day);
     }
 
     /**

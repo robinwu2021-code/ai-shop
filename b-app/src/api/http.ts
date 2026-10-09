@@ -662,8 +662,12 @@ export const httpApi: MerchantApi = {
       ...(q?.to ? { to: q.to } : {}),
       ...(q?.allStores ? { allStores: true } : {}),
     }),
-  mSettleList: (allStores) =>
-    http.get<SettleBill[]>(E.mSettleList.path, allStores ? { allStores: true } : undefined),
+  mSettleList: (allStores, day) =>
+    http.get<SettleBill[]>(E.mSettleList.path, {
+      ...(allStores ? { allStores: true } : {}),
+      // 空串也不发：后端把空串当「不筛」，但发一个空参数只会让抓包时看不清意图
+      ...(day ? { day } : {}),
+    }),
   mRateCard: () => http.get<RateCard>(E.mRateCard.path),
   mSettleBatches: () => http.get<MySettleBatch[]>(E.mSettleBatches.path),
   mMyDebt: () => http.get<MyDebt>(E.mMyDebt.path),

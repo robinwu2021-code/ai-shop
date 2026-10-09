@@ -175,8 +175,18 @@ public interface SettleService {
     /**
      * @param storeNos 门店作用域。<b>空集合不等于不过滤</b> —— 与订单侧同一个越权陷阱；
      *                 单店主体一律不收窄（存量流水没有 store_no，一筛就全没了）
+     * @param day      {@code yyyy-MM-dd}，只看这一天（按<b>成交日</b>，与
+     *                 {@link #dailyFlows} 共用同一处日界）。空 = 不按天筛。
+     *
+     *                 <p>它存在的理由是把「每天总额」与「逐笔清单」连起来：
+     *                 商家在每日流水上看到某天的数不对，此前**那一行点不开** ——
+     *                 要核是哪几笔只能去清单页，而那页是全量倒序、按不了天。
+     *
+     *                 <p>⚠️ 成交日为空的存量行**哪一天都不会被筛出来**，
+     *                 与每日流水把它们归入 {@code undated} 是同一个结果。
      */
-    List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos);
+    List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos,
+                                     String day);
 
     SettleBillVO merchantBill(String merchantNo, String settleNo);
 

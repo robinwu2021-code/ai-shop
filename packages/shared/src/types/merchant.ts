@@ -415,9 +415,13 @@ export interface DailyFlow {
    * 被退的那笔在它自己成交的那天已经记过。
    */
   refundMinor: number;
-  /** 平台佣金 */
+  /**
+   * 平台佣金。**页面必须说出来** —— 它通常是扣款里最大的一项，
+   * 而「商家问『这个月我的钱少在哪』只剩这张表能答」。
+   * 契约从一开始就有这一列，端上此前零引用（TDD-B 端每日流水补齐与按天明细 §1）。
+   */
   commissionMinor: number;
-  /** 履约服务费 */
+  /** 履约服务费。同上 —— 与佣金一起，是那句「少在哪」的另一半答案 */
   serviceFeeMinor: number;
   /**
    * 这一天被扣掉的实付快递费（分）。**只有平台代寄的才有** ——
@@ -1167,6 +1171,15 @@ export interface SettleBill {
   batchStatus?: SettleBatchStatus;
   /** 批次被挂起的原因，**直接展示给商家的原话**。空 = 没挂起 */
   batchBlockedReason?: string;
+  /**
+   * 成交日（毫秒）。**空 = 存量行没有成交日**。
+   *
+   * ⚠️ **清单上要显示的是它，不是 `createdAt`**。每日流水按成交日聚合
+   * （与运营端三维统计同口径），而 `createdAt` 是入库时刻 —— 两者可以差一天。
+   * 点开「10-08 这一天」之后行上显示 10-07，看起来像筛坏了，
+   * 而商家的下一步是打电话说「你们筛错了」。
+   */
+  accruedAt?: number | null;
 }
 /** 账期批次状态。DRAFT 收单中 · COLLECTED 已截批 · RECONCILING 对账中 · BLOCKED 已挂起 · RECONCILED 待放款 · RELEASED 已放款 */
 export type SettleBatchStatus =

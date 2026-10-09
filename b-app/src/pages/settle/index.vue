@@ -11,7 +11,7 @@
 //
 // ⚠️ 费率与服务费口径未定（B9/B10），页面上明确标注，不装作已经定了。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
@@ -47,6 +47,44 @@ const togglingPoints = ref(false);
  * 跟着页面一起拉会让结算页多等一个请求，而那个请求大部分时候没人看。
  */
 const pointsRecords = ref<MerchantPointsRecord[] | null>(null);
+
+/**
+ * 只看某一天（`yyyy-MM-dd`，按**成交日**）。入口是收入页的每日流水那一行。
+ *
+ * ⚠️ **不叫 `tab`、不叫 `title` 之类** —— 查询参数名撞上 `sh-scaffold` 的属性名时，
+ * 它会被当成外壳配置透下去（本仓库踩过：`?tab=` 让页面长出一条空菜单、返回键消失）。
+ */
+const day = ref("");
+
+/**
+ * 筛选态下**把无关的卡收起来**：四个入口卡、费率卡、积分卡。
+ *
+ * 商家是来核一天的账的，不是来改积分开关的。全留着的话，
+ * 他要先划过三块与这一天无关的内容才看到那几笔。
+ */
+const dayMode = computed(() => Boolean(day.value));
+
+/** 这一天的小计。**从筛出来的行自己加** —— 再调一次每日流水就是第二个真源 */
+const daySum = computed(() => bills.value.reduce((n, b) => n + b.netMinor, 0));
+
+function clearDay() {
+  day.value = "";
+  void load();
+}
+
+/**
+ * 行上的日期。**给成交日，不给 createdAt。**
+ *
+ * 每日流水按成交日聚合，而 `createdAt` 是入库时刻 —— 两者可以差一天。
+ * 点开「10-08 这一天」之后行上显示 10-07，看起来像筛坏了，
+ * 而商家的下一步是打电话说「你们筛错了」。
+ *
+ * 存量行没有成交日，说出来而不是回落到 `createdAt`：回落的话它会显示成某一天，
+ * 而那一天的每日流水里并没有它 —— 清单与流水从此对不上。
+ */
+function billDay(b: SettleBill) {
+  return b.accruedAt == null ? String(t("settle.accruedNone")) : monthDay(b.accruedAt);
+}
 
 const SCOPES = [
   { all: false, labelKey: "settle.scopeCurrent" },
@@ -113,7 +151,7 @@ async function load() {
   // 绑在一起的话，一个没开通的功能会把整页结算数据带走
   try {
     [bills.value, rate.value, points.value] = await Promise.all([
-      api.mSettleList(allStores.value),
+      api.mSettleList(allStores.value, day.value || undefined),
       api.mRateCard(),
       api.mPointsAccount().catch(() => null),
     ]);
@@ -166,6 +204,14 @@ function go(url: string) {
   uni.navigateTo({ url });
 }
 
+/*
+ * `onLoad` 而不是 `onShow`：参数只在进页面那一次给，
+ * 而 `onShow` 每次回到前台都跑 —— 放那儿会在从二级页返回时把筛选态重置。
+ */
+onLoad((q) => {
+  day.value = (q?.day as string) ?? "";
+});
+
 onShow(() => {
   void load();
   /*
@@ -182,12 +228,27 @@ onShow(() => {
     <text class="txt-display">{{ $t("settle.title") }}</text>
 
     <!--
+      只看某一天。**从收入页的每日流水那一行点进来的。**
+      小计从筛出来的行自己加，不再调一次每日流水 —— 那会是第二个真源，
+      而两处对不上的那天商家只会理解成「平台算错了我的钱」。
+    -->
+    <view v-if="dayMode" class="sh-card dayfilter">
+      <view class="sh-row sh-row--between sh-row--baseline">
+        <text class="txt-title sh-num">{{ $t("settle.dayFilter", { d: day }) }}</text>
+        <text class="sh-link" @tap="clearDay">{{ $t("settle.dayClear") }}</text>
+      </view>
+      <text class="txt-caption sh-muted dayfilter__sum sh-num">
+        {{ $t("settle.dayBills", { n: bills.length, a: money(daySum) }) }}
+      </text>
+    </view>
+
+    <!--
       入口摆在最上面。**它们是「钱去哪了」的另外几半** ——
       结算单说的是「挣了多少」，收款账户说的是「打到哪张卡」，
       保证金说的是「押着多少、还差多少」。
       （提现入口已撤：钱按账期打，不走申请，见 ADR-011。）
     -->
-    <view class="entries sh-row">
+    <view v-if="!dayMode" class="entries sh-row">
       <view class="entries__item sh-card" @tap="go(ROUTES.payoutAccount)">
         <text class="txt-title">{{ $t("payoutAccount.title") }}</text>
         <text class="sh-muted entries__hint">{{ $t("settle.entryPayoutAccount") }}</text>
@@ -209,7 +270,7 @@ onShow(() => {
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。
          把费率讲明白是「自带客流零佣金」这个策略能起作用的前提 —— 商家算不清自己能拿多少，
          就不会有动力把老客带进来 -->
-    <view v-if="rate" class="sh-card ratecard">
+    <view v-if="rate && !dayMode" class="sh-card ratecard">
       <text class="txt-title">{{ $t("settle.rateTitle") }}</text>
       <view class="ratecard__row sh-row sh-row--between">
         <text class="sh-chip sh-chip--primary">{{ $t("order.trafficMERCHANT_OWNED") }}</text>
@@ -227,7 +288,7 @@ onShow(() => {
       不生效时显示后端给的 disabledReason：小微主体要说「升级为个体工商户后可开启」，
       而不是「本店未开启」—— 后者会让商家去按一个他根本按不动的开关。
     -->
-    <view v-if="points" class="sh-card points">
+    <view v-if="points && !dayMode" class="sh-card points">
       <view class="points__head sh-row sh-row--between">
         <text class="txt-title">{{ $t("settle.pointsTitle") }}</text>
         <text
@@ -294,7 +355,8 @@ onShow(() => {
     -->
     <view v-for="b in bills" :key="b.settleNo" class="sh-card bill">
       <view class="bill__head sh-row sh-row--between">
-        <text class="txt-strong sh-num">{{ monthDay(b.createdAt) }}</text>
+        <!-- 成交日，不是入库时刻 —— 见 billDay() 的理由 -->
+        <text class="txt-strong sh-num">{{ billDay(b) }}</text>
         <text
           class="sh-chip"
           :class="b.status === 'SPLIT' ? 'sh-chip--primary' : 'sh-chip--warning'"
@@ -440,6 +502,11 @@ onShow(() => {
 }
 .batch__why {
   display: block;
+}
+
+.dayfilter__sum {
+  display: block;
+  margin-top: 8rpx;
 }
 
 .bill__amount {

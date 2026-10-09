@@ -93,5 +93,18 @@ public record SettleBillVO(String settleNo,
                             */
                            String batchStatus,
                            /** 批次被挂起的原因，<b>直接展示给商家的原话</b>。空 = 没挂起 */
-                           String batchBlockedReason) {
+                           String batchBlockedReason,
+                           /**
+                            * 成交日（{@code accrued_at}，毫秒）。<b>空 = 存量行没有成交日</b>。
+                            *
+                            * <p><b>为什么清单上要给它而不是只给 {@code createdAt}</b>：
+                            * 每日流水按成交日聚合（与运营端三维统计逐字同一个口径），
+                            * 而 {@code createdAt} 是入库时刻 —— 两者可以差一天。
+                            * 「点开 10-08 那天」之后行上显示 10-07，看起来像筛坏了，
+                            * 而商家的下一步是打电话说「你们筛错了」。
+                            *
+                            * <p>所以这个字段是「按天看明细」能不能成立的前置，
+                            * 不是顺手加的美化。
+                            */
+                           Long accruedAt) {
 }

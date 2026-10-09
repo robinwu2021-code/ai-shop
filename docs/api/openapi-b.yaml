@@ -4150,10 +4150,10 @@ components:
           description: "退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。"
         commissionMinor: 
           type: "number"
-          description: "平台佣金"
+          description: "平台佣金。**页面必须说出来** —— 它通常是扣款里最大的一项， 而「商家问『这个月我的钱少在哪』只剩这张表能答」。 契约从一开始就有这一列，端上此前零引用（TDD-B 端每日流水补齐与按天明细 §1）。"
         serviceFeeMinor: 
           type: "number"
-          description: "履约服务费"
+          description: "履约服务费。同上 —— 与佣金一起，是那句「少在哪」的另一半答案"
         freightCostMinor: 
           type: "number"
           description: "这一天被扣掉的实付快递费（分）。**只有平台代寄的才有** —— 商家自寄是他自付，平台没垫钱也没扣。\n\n提现入口撤掉之后（ADR-011 §6），商家问「这个月我的钱少在哪」只剩这张表能答。 而快递费恰好是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。"
@@ -5126,6 +5126,11 @@ components:
         batchBlockedReason: 
           type: "string"
           description: "批次被挂起的原因，**直接展示给商家的原话**。空 = 没挂起"
+        accruedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "成交日（毫秒）。**空 = 存量行没有成交日**。\n\n⚠️ **清单上要显示的是它，不是 `createdAt`**。每日流水按成交日聚合 （与运营端三维统计同口径），而 `createdAt` 是入库时刻 —— 两者可以差一天。 点开「10-08 这一天」之后行上显示 10-07，看起来像筛坏了， 而商家的下一步是打电话说「你们筛错了」。"
       required: 
         - "settleNo"
         - "subOrderNo"
@@ -9929,11 +9934,6 @@ components:
             - "$ref": "#/components/schemas/TraceRoute"
             - type: "null"
           description: "城市路线，自建地图用"
-      required: 
-        - "status"
-        - "nodes"
-      additionalProperties: false
-      description: "物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）"
         carrier: 
           type: 
             - "string"
@@ -9960,21 +9960,26 @@ components:
         refreshable: 
           type: "boolean"
           description: "这个界面的「刷新」能不能真的去问渠道"
+      required: 
+        - "status"
+        - "nodes"
+      additionalProperties: false
+      description: "物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）"
     ShipmentStatus: 
       type: "string"
       enum: 
         - "CREATED"
         - "PICKED_UP"
         - "IN_TRANSIT"
+        - "DELIVERING"
         - "DELIVERED"
         - "EXCEPTION"
+        - "CANCELLED"
       description: "运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功"
     ShipmentTraceNode: 
       type: "object"
-        - "DELIVERING"
       properties: 
         at: 
-        - "CANCELLED"
           type: "number"
           description: "扫描时刻（毫秒时间戳）"
         text: 

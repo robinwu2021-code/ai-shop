@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 512,
+        "b-app": 513,
         "c-app": 75
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 396,
+        "b-app": 397,
         "c-app": 273
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 118,
+        "b-app": 119,
         "c-app": 32
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 224,
+        "b-app": 225,
         "c-app": 85
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 67,
+        "b-app": 68,
         "c-app": 16
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 344,
+        "b-app": 346,
         "c-app": 147
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 152,
+        "b-app": 153,
         "c-app": 54
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 69,
+        "b-app": 70,
         "c-app": 25
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 568,
+        "b-app": 571,
         "c-app": 202
       }
     },
@@ -1455,7 +1455,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 36,
+        "b-app": 38,
         "c-app": 9
       }
     },
@@ -1471,7 +1471,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 316,
+        "b-app": 317,
         "c-app": 100
       }
     },
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 126,
+        "b-app": 127,
         "c-app": 28,
         "lib": 13
       },
@@ -3951,11 +3951,12 @@
       "key": "b-app/income",
       "file": "b-app/src/pages/income/index.vue",
       "components": [
+        "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 93,
-      "localSelectors": 7,
-      "localCssLines": 21,
+      "libClassHits": 98,
+      "localSelectors": 9,
+      "localCssLines": 28,
       "rolled": []
     },
     {
@@ -4535,9 +4536,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 109,
-      "localSelectors": 14,
-      "localCssLines": 51,
+      "libClassHits": 119,
+      "localSelectors": 15,
+      "localCssLines": 55,
       "rolled": []
     },
     {

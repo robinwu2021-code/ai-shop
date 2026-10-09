@@ -77,25 +77,28 @@ export const settleMock: Pick<MerchantApi,
    * 两处口径不同的话，页面上顶部四档与下面这张表就会对不上，
    * 而那正是这一屏最不该出的错。
    *
-   * ⚠️ 两处与真后端不同，都是**刻意的**：
-   *   1. 按 `createdAt` 分天，真后端按 `accrued_at`（成交日）。端上的 SettleBill
-   *      没有这一列，mock 只驱动界面，不做口径判据。
-   *   2. **最早那一张算进 undated**，让「没有成交日的存量单」那一行在 mock 下
-   *      也看得见 —— 否则那块界面永远是隐藏的，改坏了也没人发现。
+   * ⚠️ 与真后端的差别**只剩一处**，是刻意的：`mSettleList` 把**最早那一张**的
+   * 成交日挖空当存量行，让「没有成交日的存量单」那一行在 mock 下也看得见 ——
+   * 否则那块界面永远是隐藏的，改坏了也没人发现。
+   *
+   * 分天的判据与真后端已经一致（都按 `accruedAt`）：此前这里按 `createdAt` 分，
+   * 理由是「端上的 SettleBill 没有这一列」—— 那一列现在有了
+   * （TDD-B 端每日流水补齐与按天明细 AC6），所以那条差异不该再留着。
+   * 它留着的代价是「点开某一天」在 mock 下筛出来的和这张表对不上。
    */
   async mDailyFlow(q) {
     const bills = await this.mSettleList(q?.allStores);
-    const sorted = [...bills].sort((a, b) => a.createdAt - b.createdAt);
-    const undated = sorted.length > 2 ? sorted.slice(0, 1) : [];
-    const dated = sorted.slice(undated.length);
+    const undated = bills.filter((b) => b.accruedAt == null);
+    const dated = bills.filter((b) => b.accruedAt != null);
 
     const from = q?.from ? Date.parse(`${q.from}T00:00:00`) : 0;
     const to = q?.to ? Date.parse(`${q.to}T23:59:59.999`) : Number.MAX_SAFE_INTEGER;
 
     const byDay = new Map<string, DailyFlowPage["days"][number]>();
     for (const b of dated) {
-      if (b.createdAt < from || b.createdAt > to) continue;
-      const d = new Date(b.createdAt);
+      const at = b.accruedAt as number;
+      if (at < from || at > to) continue;
+      const d = new Date(at);
       const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const row = byDay.get(day) ?? {
         day, grossMinor: 0, refundMinor: 0, commissionMinor: 0,
@@ -121,7 +124,7 @@ export const settleMock: Pick<MerchantApi,
     });
   },
 
-  async mSettleList(allStores) {
+  async mSettleList(allStores, day) {
     const merchantNo = db.merchant.merchantNo;
     /*
      * **一个子订单一行**，与后端 stl_bill 同形 —— 这里此前造的是一套「按周聚合的账单」
@@ -134,7 +137,7 @@ export const settleMock: Pick<MerchantApi,
     const home = db.stores.find((s) => s.isDefault) ?? db.stores[0];
     const scope = allStores ? null : home?.storeNo;
 
-    return delay(
+    const rows = (
       settled
         .filter(() => !scope || Boolean(home))
         .map((o) => {
@@ -210,8 +213,40 @@ export const settleMock: Pick<MerchantApi,
             storeNo: home?.storeNo,
             // 门店没单独配号就走主体默认号 —— 那就是合并结算
             payMerchantNo: home?.payMerchantNo ?? "PM-MOCK-ENTITY",
+            /*
+             * 成交日。**先全部填上，下面再把最早那张挖空** ——
+             * 「没有成交日的存量行」那一块界面在 mock 下也要看得见，
+             * 否则它永远是隐藏的，改坏了也没人发现。
+             */
+            accruedAt: o.createdAt as number | null | undefined,
           };
-        }),
+        })
+    );
+
+    /*
+     * 最早那一张的成交日挖空，当存量行。**挖的是 accruedAt 不是 createdAt** ——
+     * 真后端两列是分开的（createdAt 永远有值，accruedAt 可空），
+     * mock 里合成一列的话，「清单显示成交日、存量行留空」那段分支走不到。
+     */
+    if (rows.length > 2) {
+      const earliest = rows.reduce((a, b) => (a.createdAt <= b.createdAt ? a : b));
+      earliest.accruedAt = null;
+    }
+
+    /*
+     * 按天筛。**用 accruedAt 不是 createdAt**，与真后端逐字同一个判据 ——
+     * 而成交日为空的存量行**哪一天都不该筛出来**（它们归入 undated，
+     * 某一天把它筛出来就是把那笔钱算两遍）。
+     */
+    // 元组而不是数组：数组下标在 strict 下是 `number | undefined`
+    const dayRange: [number, number] | null = day
+      ? [Date.parse(`${day}T00:00:00`), Date.parse(`${day}T23:59:59.999`)]
+      : null;
+    return delay(
+      dayRange
+        ? rows.filter((b) => b.accruedAt != null
+            && b.accruedAt >= dayRange[0] && b.accruedAt <= dayRange[1])
+        : rows,
     );
   },
 

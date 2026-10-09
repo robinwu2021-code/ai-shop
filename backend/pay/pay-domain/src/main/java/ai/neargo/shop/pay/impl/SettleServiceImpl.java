@@ -756,7 +756,7 @@ public class SettleServiceImpl implements SettleService {
         long received = 0, inFlight = 0, pending = 0, offline = 0;
         int inFlightCount = 0;
         Long oldest = null;
-        for (SettleBillVO b : merchantBills(merchantNo, storeNos)) {
+        for (SettleBillVO b : merchantBills(merchantNo, storeNos, null)) {
             String st = b.status();
             if (StlBill.SPLIT_CONFIRMED.equals(st) || StlBill.PAID.equals(st)) {
                 received += b.netMinor();
@@ -779,7 +779,8 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    public List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos) {
+    public List<SettleBillVO> merchantBills(String merchantNo, java.util.Collection<String> storeNos,
+                                            String day) {
         /*
          * 收窄的同时**必须放行没有门店归属的行**（store_no 为空 = V14 之前的存量流水）。
          *
@@ -792,7 +793,7 @@ public class SettleServiceImpl implements SettleService {
          *
          * 空集合在这里**不等于不过滤**：那是越权陷阱，与订单侧同一个判断。
          */
-        List<StlBill> bills = billsFor(merchantNo, storeNos);
+        List<StlBill> bills = billsFor(merchantNo, storeNos, day);
         // 批次一次查齐再拼：逐单查的话，一屏 20 单就是 20 次往返
         var batches = batchesOf(bills);
         return bills.stream()
@@ -804,30 +805,60 @@ public class SettleServiceImpl implements SettleService {
      * 商家可见的结算单（原始实体）。**merchantBills 与 dailyFlows 共用这一处谓词** ——
      * 收窄规则写两遍迟早走岔，而走岔的表现是「每日流水加起来不等于总览」。
      */
-    private List<StlBill> billsFor(String merchantNo, java.util.Collection<String> storeNos) {
+    private List<StlBill> billsFor(String merchantNo, java.util.Collection<String> storeNos, String day) {
         boolean scoped = storeNos != null && !storeNos.isEmpty()
                 && storeNos.stream().anyMatch(x -> x != null && !x.isBlank());
+        /*
+         * `day` 非空时按**成交日**下推成 SQL between。
+         *
+         * ⚠️ 日界**必须**走 dayRange()，不在这里另算一遍 —— 每日流水与这里走岔的话，
+         * 表现是「点开 7 笔的那天看到 6 笔」：不报错、不变红，
+         * 只在某个跨日界的订单上出现一次。抽成一处是让那条断言结构上成立。
+         *
+         * accrued_at 为空的存量行**恰好被 between 排除**，与每日流水把它们
+         * 归入 undated 是同一个结果 —— 它们一天都归不进去，所以哪一天都不该筛出它们。
+         */
+        long[] range = day == null || day.isBlank() ? null : dayRange(day, day);
         return DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
                         .eq(StlBill::getEntityNo, merchantNo)
                         .and(scoped, w -> w.in(StlBill::getStoreNo, storeNos)
                                 .or().isNull(StlBill::getStoreNo))
+                        .between(range != null, StlBill::getAccruedAt,
+                                range == null ? null : range[0], range == null ? null : range[1])
                         .orderByDesc(StlBill::getId)));
+    }
+
+    /**
+     * 一段日期的毫秒上下界（含两端）。<b>每日流水与「按天看明细」共用这一处</b>。
+     *
+     * <p>上界取「{@code to} 那天的最后一毫秒」，<b>不是次日零点</b> ——
+     * 后者会把次日零点整那一笔算进来。
+     *
+     * <p>⚠️ 时区走 {@code systemDefault()}，与改前逐字一致。换掉它会让
+     * 跨日界那一笔换一天归属，而那正是「筛出来的笔数等于那天显示的」那条断言要量的东西。
+     */
+    private long[] dayRange(String from, String to) {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        return new long[]{
+                java.time.LocalDate.parse(from).atStartOfDay(zone).toInstant().toEpochMilli(),
+                java.time.LocalDate.parse(to).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1,
+        };
     }
 
     @Override
     public SettleService.DailyFlowPageVO dailyFlows(String merchantNo, java.util.Collection<String> storeNos,
                                       String from, String to) {
         java.time.ZoneId zone = java.time.ZoneId.systemDefault();
-        long fromMs = java.time.LocalDate.parse(from).atStartOfDay(zone).toInstant().toEpochMilli();
-        // 上界取「to 那天的最后一毫秒」，不是次日零点 —— 后者会把次日零点整那一笔算进来
-        long toMs = java.time.LocalDate.parse(to).plusDays(1)
-                .atStartOfDay(zone).toInstant().toEpochMilli() - 1;
+        // 日界走共用的 dayRange()：与「按天看明细」那条路同一处代码，不是同一套规则
+        long[] range = dayRange(from, to);
+        long fromMs = range[0];
+        long toMs = range[1];
 
         Map<String, long[]> acc = new java.util.TreeMap<>(java.util.Comparator.reverseOrder());
         long undatedMinor = 0;
         int undatedCount = 0;
-        for (StlBill b : billsFor(merchantNo, storeNos)) {
+        for (StlBill b : billsFor(merchantNo, storeNos, null)) {
             Long at = b.getAccruedAt();
             if (at == null) {
                 /*
@@ -1546,7 +1577,8 @@ public class SettleServiceImpl implements SettleService {
                 b.getFreightShipMode(), b.getFreightDiffReason(),
                 b.getSettleableAt(), batch == null ? null : batch.getDueAt(), b.getBatchNo(),
                 batch == null ? null : batch.getStatus(),
-                batch == null ? null : batch.getBlockedReason());
+                batch == null ? null : batch.getBlockedReason(),
+                b.getAccruedAt());
     }
 
     /** 一次把这批单涉及的批次查齐，避免列表页逐单查 */

@@ -12,6 +12,7 @@ import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime, monthDay } from "@shared/utils/datetime";
+import { ROUTES } from "@/shared/nav";
 import type { DailyFlowPage, IncomeSummary, MyDebt, MySettleBatch } from "@shared/types";
 
 const merchant = useMerchantStore();
@@ -43,6 +44,59 @@ const debt = ref<MyDebt | null>(null);
  * 两处各算一次必然漂移，而漂移的那天没人会发现。
  */
 const daily = ref<DailyFlowPage | null>(null);
+
+/**
+ * 每日流水看哪一段。**默认仍是「近 30 天」** —— 改成「本月」的话，
+ * 月初打开只剩一两行，商家第一反应是「我的数据没了」。
+ *
+ * 只给这三档，不给日历选择器：`/bills` 与 `/daily-flow` 底下都是无分页全量查询，
+ * 放开任意区间等于放开一个没有上限的查询（见 TDD §2「明确不做」）。
+ */
+/*
+ * ⚠️ **词条键写成字面量**，不用 `$t(`income.range${r}`)` 拼。
+ * 动态键不进 i18n 对账：这三条会被当成没人用的孤儿词条，
+ * 而真正缺词条的那天页面直接露出裸 key。与结算页 `SCOPES` 同一个写法。
+ */
+const RANGES = [
+  { key: "last30", labelKey: "income.rangeLast30" },
+  { key: "thisMonth", labelKey: "income.rangeThisMonth" },
+  { key: "lastMonth", labelKey: "income.rangeLastMonth" },
+] as const;
+type Range = (typeof RANGES)[number]["key"];
+const range = ref<Range>("last30");
+
+/** `yyyy-MM-dd`。**不用 toISOString** —— 它按 UTC 切，东八区的今天会变成昨天 */
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * 区间 → `{from, to}`。**`last30` 返回空** —— 让后端用它自己那个默认，
+ * 端上再算一遍近 30 天的话，两处对 "30 天" 的理解迟早差一天。
+ */
+function rangeQuery(r: Range): { from?: string; to?: string } {
+  if (r === "last30") return {};
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + (r === "lastMonth" ? -1 : 0), 1);
+  // 下个月 0 号 = 这个月最后一天，不用自己判闰年与月长
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  return { from: ymd(first), to: ymd(last) };
+}
+
+function switchRange(r: Range) {
+  range.value = r;
+  void load();
+}
+
+/**
+ * 点开某一天 → 结算单页只看那一天。
+ *
+ * **复用结算单页，不在这儿再画一份逐笔。** 那一页的逐笔渲染里有实测攒出来的东西：
+ * 运费四态、批次挂起原话照抄、多店才显示门店与收款号 —— 抄一份必然走岔。
+ */
+function openDay(day: string) {
+  uni.navigateTo({ url: `${ROUTES.settle}?day=${day}` });
+}
 
 /**
  * 在途卡了多久。**只给金额的话商家看不出是一笔大的还是很多笔**，
@@ -86,7 +140,7 @@ async function load() {
       api.mSettleBatches().catch(() => []),
       api.mMyDebt().catch(() => null),
       // 每日流水也单独 catch：它是新接的口子，老后端上 404，不该把收入带走
-      api.mDailyFlow({ allStores: allStores.value }).catch(() => null),
+      api.mDailyFlow({ allStores: allStores.value, ...rangeQuery(range.value) }).catch(() => null),
     ]);
     sum.value = s;
     batches.value = b;
@@ -208,18 +262,49 @@ onShow(() => {
       <text class="txt-title">{{ $t("income.dailyTitle") }}</text>
       <text class="txt-caption sub sh-muted">{{ $t("income.dailyHint") }}</text>
 
-      <view v-for="d in daily.days" :key="d.day" class="day">
+      <!--
+        看哪一段。**默认仍是「近 30 天」** —— 改成「本月」的话月初只剩一两行，
+        商家第一反应是「我的数据没了」。
+      -->
+      <view class="ranges sh-row">
+        <text
+          v-for="r in RANGES"
+          :key="r.key"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': range === r.key }"
+          @tap="switchRange(r.key)"
+        >{{ $t(r.labelKey) }}</text>
+      </view>
+
+      <!--
+        整行可点 → 结算单页只看那一天。**此前这一行点不开**：
+        商家看到某天的数不对，要核是哪几笔只能去结算单页，而那页是全量倒序、按不了天。
+        右边给一枚箭头，不靠「这一行好像能点」让人猜。
+      -->
+      <view v-for="d in daily.days" :key="d.day" class="day" @tap="openDay(d.day)">
         <view class="sh-row sh-row--between sh-row--baseline">
           <text class="sh-num">{{ d.day }}</text>
-          <text class="txt-price sh-num">{{ money(d.netMinor) }}</text>
+          <view class="sh-row sh-row--baseline">
+            <text class="txt-price sh-num">{{ money(d.netMinor) }}</text>
+            <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)" class="day__more"></sh-icon>
+          </view>
         </view>
         <text class="txt-caption sub sh-muted">
           {{ $t("income.dailyBills", { n: d.billCount }) }}
           <!-- 退款只在有的时候出现：常态是没有，挂一行「退 ¥0.00」只会让人以为出了事 -->
           <text v-if="d.refundMinor > 0">　{{ $t("income.dailyRefund", { a: money(d.refundMinor) }) }}</text>
           <!--
+            **佣金与服务费是扣款里最大的两笔**，而这一行此前一个字都没说。
+            契约从一开始就把这两列送上来了（DailyFlowVO），端上零引用 ——
+            于是「商家问『这个月我的钱少在哪』只剩这张表能答」只答了快递费那个小头。
+
+            同样只在非零时出现：自带客流零佣金、非自提无服务费，
+            天天挂两行 ¥0.00 是噪音。
+          -->
+          <text v-if="d.commissionMinor > 0">　{{ $t("income.dailyCommission", { a: money(d.commissionMinor) }) }}</text>
+          <text v-if="d.serviceFeeMinor > 0">　{{ $t("income.dailyFee", { a: money(d.serviceFeeMinor) }) }}</text>
+          <!--
             快递费同理：自提与自送的日子恒为 0，天天挂一行「快递费 ¥0.00」是噪音。
-            提现入口撤掉之后，商家问「这个月我的钱少在哪」只剩这张表能答 ——
             而快递费是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。
           -->
           <text v-if="d.freightCostMinor > 0">　{{ $t("income.dailyFreight", { a: money(d.freightCostMinor) }) }}</text>
@@ -278,6 +363,14 @@ onShow(() => {
 }
 .day {
   margin-top: 24rpx;
+}
+.day__more {
+  /* 逻辑属性：阿语下整行翻转，箭头要留在金额的「末尾侧」而不是恒在右边 */
+  margin-inline-start: 8rpx;
+}
+.ranges {
+  margin-top: 16rpx;
+  gap: 16rpx;
 }
 .batch__chip {
   /* 逻辑属性：阿语下徽标要跟着翻到日期的另一侧，写死 left 它不会翻 */

@@ -45,8 +45,8 @@ public class BizSettleAppServiceImpl implements BizSettleAppService {
     }
 
     @Override
-    public List<SettleBillVO> bills(Boolean allStores) {
-        return settleService.merchantBills(BizContext.requireMerchantNo(), storeScope(allStores));
+    public List<SettleBillVO> bills(Boolean allStores, String day) {
+        return settleService.merchantBills(BizContext.requireMerchantNo(), storeScope(allStores), day);
     }
 
     @Override

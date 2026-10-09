@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.dto.SettleBillVO;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -157,6 +158,114 @@ class BizDailyFlowFlowTest {
                 .mapToLong(SettleService.DailyFlowVO::refundMinor).sum()).isEqualTo(5_000);
     }
 
+    // ==================== 按天看明细（TDD-B 端每日流水补齐与按天明细） ====================
+
+    @Test
+    @DisplayName("按天筛出来的就是那天的单，别的天不进来")
+    void dayFilterReturnsOnlyThatDay() {
+        bill("t1", today, 10_000, StlBill.PENDING, null);
+        bill("t2", today, 20_000, StlBill.PENDING, null);
+        bill("y", today.minusDays(1), 30_000, StlBill.PENDING, null);
+
+        assertThat(billsOf(today.toString()))
+                .extracting(SettleBillVO::netMinor)
+                .containsExactlyInAnyOrder(10_000L, 20_000L);
+    }
+
+    @Test
+    @DisplayName("★★ 筛出来的笔数与金额 = 那天显示的 —— 两处日界必须是同一处代码")
+    void dayFilterAgreesWithThatDaysRow() {
+        /*
+         * **这一笔刻意落在本地 01:00。**
+         *
+         * 它是整个用例的量具：Asia/Shanghai 的 01:00 在 UTC 上是前一天 17:00，
+         * 所以 dayRange() 的时区一换，这一笔的归属就变 —— 而那正是
+         * 「点开 7 笔的那天看到 6 笔」那种缺陷的全部成因。
+         * 落在正午的话两个时区都算同一天，断言就恒绿、保护为零。
+         */
+        billAt("edge", today, 1, 11_000, StlBill.PENDING, null);
+        bill("mid", today, 22_000, StlBill.PENDING, null);
+        bill("rv", today, 3_000, StlBill.REVERSED, null);
+        bill("other", today.minusDays(2), 99_000, StlBill.PENDING, null);
+
+        /*
+         * 每日流水取**宽区间**，不是单天 —— 这是消融能生效的前提。
+         * 两边都查单天的话，时区一换两边一起漂，于是「它们相等」照样成立，
+         * 而真实场景里商家看的恰恰是一张宽区间的表、点开的是其中一天。
+         */
+        var row = flows(today.minusDays(7), today).days().stream()
+                .filter(d -> d.day().equals(today.toString())).findFirst().orElseThrow();
+        var list = billsOf(today.toString());
+
+        // ① 笔数：退款那笔也算一笔，它在那一行的 billCount 里
+        assertThat(list).hasSize(row.billCount()).hasSize(3);
+
+        /*
+         * ② 金额**要分开断言，不能写成一个「合计相等」**。
+         * dailyFlows 对 REVERSED 的口径是「只计 refund，不冲减当天 net」——
+         * 合成一条的话，退款那天永远对不上而其余每一天都绿，
+         * 那种红会被当成偶发。
+         */
+        assertThat(list.stream().filter(b -> !StlBill.REVERSED.equals(b.status()))
+                .mapToLong(SettleBillVO::netMinor).sum())
+                .isEqualTo(row.netMinor()).isEqualTo(33_000);
+        assertThat(list.stream().filter(b -> StlBill.REVERSED.equals(b.status()))
+                .mapToLong(SettleBillVO::netMinor).sum())
+                .isEqualTo(row.refundMinor()).isEqualTo(3_000);
+    }
+
+    @Test
+    @DisplayName("★ 没有成交日的存量行哪一天都筛不出来 —— 与它们归入 undated 是同一个结果")
+    void undatedRowsNeverMatchAnyDay() {
+        bill("dated", today, 10_000, StlBill.PENDING, null);
+        undatedBill("old", 7_000);
+
+        // 它们一天都归不进去。某一天把它筛出来的话，那笔钱就被算了两遍
+        assertThat(billsOf(today.toString())).hasSize(1);
+        assertThat(billsOf(today.minusDays(1).toString())).isEmpty();
+        // 而不按天筛的时候它必须在 —— 悄悄丢掉等于让钱凭空消失
+        assertThat(billsOf(null)).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("★ 清单行带成交日；存量行那一列为空而不是回落到入库时刻")
+    void billsCarryAccruedAt() {
+        bill("dated", today, 10_000, StlBill.PENDING, null);
+        undatedBill("old", 7_000);
+
+        var byNo = billsOf(null).stream()
+                .collect(java.util.stream.Collectors.toMap(SettleBillVO::settleNo, b -> b));
+
+        /*
+         * **清单上的日期必须是成交日，不是 createdAt。**
+         * 每日流水按成交日聚合，两者可以差一天 —— 点开 10-08 之后行上显示 10-07，
+         * 商家的下一步是打电话说「你们筛错了」。
+         */
+        assertThat(byNo.get("SB-DF-" + run + "-dated").accruedAt())
+                .isEqualTo(today.atTime(12, 0).atZone(zone).toInstant().toEpochMilli());
+        /*
+         * 存量行**留空**，不回落到 createdAt。回落的话它会显示成某一天，
+         * 而那一天的每日流水里没有它 —— 清单与流水从此对不上。
+         */
+        assertThat(byNo.get("SB-DF-" + run + "-old").accruedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("day 为空时与改前逐字一致 —— 新参数不许改「看全部」那条路")
+    void nullDayKeepsOldBehaviour() {
+        bill("a", today, 10_000, StlBill.PENDING, null);
+        bill("b", today.minusDays(9), 20_000, StlBill.PENDING, null);
+        undatedBill("c", 30_000);
+
+        // 三张全在：空串也要当成「不筛」，否则端上传了个空参数就看不到任何单
+        assertThat(billsOf(null)).hasSize(3);
+        assertThat(billsOf("")).hasSize(3);
+    }
+
+    private List<SettleBillVO> billsOf(String day) {
+        return settleService.merchantBills(ENT, List.of(), day);
+    }
+
     private SettleService.DailyFlowPageVO flows(LocalDate from, LocalDate to) {
         return settleService.dailyFlows(ENT, List.of(), from.toString(), to.toString());
     }
@@ -164,6 +273,13 @@ class BizDailyFlowFlowTest {
     private void bill(String tag, LocalDate accruedDay, long net, String status, String storeNo) {
         // 落在当天正午：避开时区边界上「零点整那一笔算哪天」的干扰
         insert(tag, accruedDay.atTime(12, 0).atZone(zone).toInstant().toEpochMilli(),
+                net, status, storeNo);
+    }
+
+    /** 指定小时 —— 用来造「本地与 UTC 不同天」的那一笔，见 dayFilterAgreesWithThatDaysRow */
+    private void billAt(String tag, LocalDate accruedDay, int hour, long net,
+                        String status, String storeNo) {
+        insert(tag, accruedDay.atTime(hour, 0).atZone(zone).toInstant().toEpochMilli(),
                 net, status, storeNo);
     }
 
