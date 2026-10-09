@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
  */
 @Getter
 @Setter
-@TableName("ful_shipment_trace")
+// V387 起表名改为 lgs_ 前缀（TDD-物流模块 批 1）。本类是过渡：批 2 起由 logistics 模块的实体取代
+@TableName("lgs_waybill_node")
 public class FulShipmentTrace {
 
     @TableId(type = IdType.AUTO)

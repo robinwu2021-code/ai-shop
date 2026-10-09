@@ -184,14 +184,14 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "按主单的 ARRIVED 过滤 —— 真实后端发的是 WAIT_FULFILL，列表因此恒空",
     words: ["WAIT_PAY", "WAIT_FULFILL", "FULFILLING", "COMPLETED", "REFUNDED"] },
   { decl: "shared:ShipmentStatus", dom: "fulfillment", shape: "STATUS", verdict: "OK",
-    note: "运单状态，与后端 ful_shipment 一致（TDD-圆通物流直连 Y4）。"
+    note: "运单状态，与后端 lgs_waybill 一致（TDD-圆通物流直连 Y4；V387 起由 ful_shipment 改名）。"
       + "承运商轨迹推导出来的状态，订单详情据此显示物流进度。"
       + "五个都是物流领域特有词、L1 表里没有对应：CREATED 建单未揽、PICKED_UP 已揽、"
       + "IN_TRANSIT 运输中、DELIVERED 已签收、EXCEPTION 疑难件（非终态，可能之后又派成）",
     words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
   { decl: "shared:TraceDisplayMode", dom: "fulfillment", shape: "CLASS", verdict: "OK",
     note: "物流轨迹的展示渠道（TDD-物流轨迹多渠道 §2.1，与 ShipmentStatus 正交——那是「到哪了」，这是「用什么界面呈现」）。"
-      + "后端 ful_shipment.display_channel 的取值域，详情端点按请求端下发：wx-plugin 微信官方物流页"
+      + "后端 lgs_waybill.display_channel 的取值域，详情端点按请求端下发：wx-plugin 微信官方物流页"
       + "（仅小程序端、且已换到 waybill_token 时），self-map 自建地图+步骤条+时间线（三端兜底、不挑支付方式）。"
       + "刻意做成分类型而非双值布尔——后面要加支付宝小程序、承运商 H5 等渠道时只是多一个取值",
     words: ["wx-plugin", "self-map"] },

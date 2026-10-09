@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+    <artifactId>logistics-domain</artifactId>
+    <packaging>jar</packaging>
+    <description>物流域：运单、轨迹、状态机、渠道能力 SPI 与路由、推送接收、补偿</description>
+    <!-- ADR-032：现在内嵌在主服务（同库、同 jar、同事务管理器），按「随时能拆」切依赖 ——
+         **不依赖任何业务域模块**（shop-core / shop-merchant …），只认 shop-base 的 spi 与公共件。
+         要从订单域拿的东西经 spi 的 Port 拿；要告诉订单域的事经事件出去。LogisticsBoundaryTest 看住。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-store-mybatis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

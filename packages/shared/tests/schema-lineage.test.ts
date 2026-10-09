@@ -157,7 +157,7 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
    */
   event_no: { table: "sys_outbox" },
   // 履约：运单与轨迹是一对多
-  shipment_no: { table: "ful_shipment" },
+  shipment_no: { table: "lgs_waybill" },
   /*
    * 商户订单号：stl_payment 是主（它建的唯一键），trd_shipping_upload 引用它。
    * 后者是微信「发货信息录入」的上报台账（V323），一次上报对应一笔支付 ——

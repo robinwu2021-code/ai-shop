@@ -700,8 +700,8 @@ const ENTITY_MAP = {
   StockLocation: { table: "inv_location" },
   Supplier: { table: "inv_supplier" },
   Carrier: {
-    table: "ful_carrier",
-    note: "**承运方归履约域维护，进销存只读** —— 跨库不能外键，"
+    table: "lgs_carrier",
+    note: "**承运方归物流域维护，进销存只读** —— 跨库不能外键，"
       + "所以调拨单存的是业务键 carrier，名字由端上回传快照",
   },
   UserCard: { table: "mkt_user_coupon", note: "卡包与券共表：储值卡/次卡在 mkt_user_coupon 上用类型区分" },

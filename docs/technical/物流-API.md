@@ -104,7 +104,7 @@
 | `shipmentNo` `orderNo` `carrier` `waybillNo` `status` `receiver` `region` `createdAt` `updatedAt` `traces[]` | 现有 | `traces` 正序、`at` 为 ISO 字符串（沿用，不改） |
 | `displayChannel` `displayFailReason` | 现有 → **弃用** | 批 5 删；过渡期由 `bindState` / `bindError` 推导 |
 | `profile` | 新增 | `WX` / `SELF` |
-| `storeNo` `merchantNo` | 新增 | 快照 |
+| `storeNo` `entityNo` | 新增 | 快照 |
 | `subState` `subChannel` `subError` `subAttempts` | 新增 | 订阅：`PENDING` / `DONE` / `FATAL` / `ENDED`；渠道；最后一次失败（渠道 + 码 + 原文） |
 | `bindState` `bindError` | 新增 | 微信换 token：`NA` / `WAITING` / `DONE` / `FATAL` |
 | `signedAt` `lastEventAt` | 新增 | ISO 字符串 |

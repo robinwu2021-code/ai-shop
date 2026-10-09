@@ -223,7 +223,7 @@
 | `shipment_no` | varchar(32) UK | 业务键，沿用原值（不重编，外部已引用） |
 | `biz_type` | varchar(16) | `SUB_ORDER`（今天唯一值）/ 将来 `RETURN`（售后寄回）—— 不写死「子单」，退货物流接进来不用改表 |
 | `biz_ref` | varchar(32) | 原 `sub_order_no` 改名。**UK(`biz_type`,`biz_ref`)** —— 重复的发货事件只登记一次（AC1 幂等的根） |
-| `merchant_no` / `store_no` | varchar(32) | **快照**：运营筛选用；不回查商家表（ADR-021 §3.3 跨库只存业务键+快照） |
+| `entity_no` / `store_no` | varchar(32) | **快照**：运营筛选用；不回查商家表（ADR-021 §3.3 跨库只存业务键+快照） |
 | `carrier` | varchar(16) | 我方承运商码（`lgs_carrier.carrier`） |
 | `waybill_no` | varchar(64) | UK(`carrier`,`waybill_no`) 沿用 |
 | `profile` | varchar(8) | **`WX`**：有微信交易单号与付款人 openid，可用微信全套能力；**`SELF`**：其余（线下付款、APP 单）。**登记时定死** —— 不让每个调用点各自判断「这单能不能调微信」 |
@@ -302,7 +302,7 @@ public interface LogisticsPort {
 /** 唯一的反向 Port：登记那一刻向交易域取一次快照（实现在 shop-app/logisticsbridge） */
 public interface ShipmentSourcePort {
     Optional<ShipmentSource> sourceOf(String subOrderNo);
-    record ShipmentSource(String subOrderNo, String merchantNo, String storeNo,
+    record ShipmentSource(String subOrderNo, String entityNo, String storeNo,
                           String carrier, String waybillNo,
                           String receiverName, String receiverPhone, String region,
                           WxKey wx,                    // 没有微信交易单号 → null → profile=SELF
@@ -471,11 +471,11 @@ shop:
   logistics:
     routes:
       subscribe:
-        default: [yto, kuaidi100]     # yto 只覆盖圆通单；其余承运商直接落到 kuaidi100
+        by-default: [yto, kuaidi100]  # yto 只覆盖圆通单；其余承运商直接落到 kuaidi100
         by-carrier: {}                # 例：{ SF: [sf, kuaidi100] }  —— 接顺丰直连那天
         by-store: {}                  # 例：{ ST-xxx: [kuaidi100] } —— 沿用 2026-10-05「按门店路由」
       probe:
-        default: [wx]
+        by-default: [wx]
         by-carrier: {}                # 圆通查询审核通过后：{ YTO: [wx, yto] }
     probe-surfaces:
       kuaidi100: []
@@ -769,6 +769,29 @@ shop:
 | AC14 | `ChannelExtensibilityTest#testChannelRoutedAndReceivesPushWithoutCodeChange` | | |
 
 ## §6 对账二 · 设计 → 实现（实现后填）
+
+### 批 0（`ac0274dd6`，2026-10-09 上线）
+
+与 §2.9 一致：T0.1 补齐只进不退（三条用例，修复前两条红）；T0.2 作业表 `logistics-trace` cron 改 `0 0 * * * *`
+（作业表的 cron 首次写入后归运营、发版不覆盖，所以改表即可）；T0.3 门禁 3047/0 红，上线回读 health 200。
+
+### 批 1 · 偏差说明
+
+| 计划 | 实际 | 为什么 |
+|---|---|---|
+| T1.4 把老的运单 / 轨迹实现整体搬进 `logistics-domain` | **只建新模块；老实现原地不动**，三个老实体改 `@TableName` 指向 `lgs_*`（`subOrderNo` 用 `@TableField("biz_ref")`） | 老实现里的读时补齐、轮询、两个微信作业批 2 / 批 3 就要删掉，先搬再删是白干，而且共享工作区里别的会话也在改这些文件。老代码随各批被替换时删除 |
+| T1.5 搬渠道代码 | 照做：8 个类 + 3 个测试 `git mv` 到 `logistics-channel/{kuaidi100,yto,stub,wx,selfmap,routing}` | 外部 0 处 import（同 pay-channel 的拆法） |
+| T1.6 五个能力 SPI | 建了 `TrackingSubscriber` `PushReceiver` `StatusProbe`；**`WaybillCreator` 没建**；`TraceDisplay` 沿用 `shop-base` 现有的 | 没有实现、也没有调用方的接口是死代码；Y6 开工时再建 |
+| T1.6 订阅链尾补 stub | **订阅链不补 stub** | 生产两家凭据都没配时 stub 会让订阅「成功」而什么都没订上；链走完就该 FATAL 让运营看见 |
+| §2.5 「没配 `channels.<name>` 的渠道不启用」 | **默认启用**，能不能用由凭据（`available()`）决定；`enabled: false` 只当紧急关闭 | 两套开关（配置 + 凭据）会出现「凭据配了却忘了开」的静默失效 |
+| §2.5 路由键 `default` | `by-default` / `by-carrier` / `by-store` | 沿用现有 `shop.express.trace` 的键名；`default` 是 Java 关键字 |
+| T1.7 守卫「每个 switch 显式处理 DELIVERING」 | 不另写守卫：消费方唯一的分支点 `LogisticsServiceImpl.mapStatus` 是**不带 default 的 switch 表达式**，加枚举值即编译失败 | 编译器就是守卫，比文本扫描可靠 |
+| T1.7 `DELIVERING` 直通运单状态 | 渠道层识别 `DELIVERING`（快递100 `5`/`501`、圆通 `SENT_SCAN`/`INBOUND`），**旧服务仍把它记成运输中** | 运单状态出现「派件中」要和三端前端类型一起改（批 3），否则端上收到不认识的值 |
+| T1.8 新 Port | **推迟到实现它们的批次**（批 2 起） | 同 `WaybillCreator`：先建空接口是死代码 |
+| §2.2 `lgs_waybill.merchant_no` | **`entity_no`** | 子单上的商家就叫 `entity_no`（主体号），同一个概念不起两个名字。回填 SQL 照 `merchant_no` 写会在生产失败而 H2 跳过 —— 写迁移时对 `schema-test.sql` 核实列名才发现 |
+| §2.2 节点表唯一键 `(shipment_no, at, text_hash)` | **不加**；去重仍在代码里 | 存量可能有重复节点，加 UK 会让迁移在生产失败 |
+| §2.2 运单唯一键 `(biz_type, biz_ref)` | 仍是原 `uk_shipment_sub_order`（列改名为 `biz_ref`） | 今天只有子单一种业务；接退货运单时再换 |
+| — | `sub_state` 多一个取值 `NA`（登记前已签收的存量，不需要订阅） | 存量回填需要 |
 
 ## §7 确认与完成
 

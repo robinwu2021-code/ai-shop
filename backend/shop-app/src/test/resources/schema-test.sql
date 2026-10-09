@@ -2611,11 +2611,11 @@ CREATE TABLE IF NOT EXISTS ful_shortage_report
     PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS ful_shipment
+CREATE TABLE IF NOT EXISTS lgs_waybill
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     shipment_no VARCHAR(64) NOT NULL,
-    sub_order_no VARCHAR(64) NOT NULL,
+    biz_ref VARCHAR(64) NOT NULL,
     carrier VARCHAR(16) NOT NULL,
     waybill_no VARCHAR(64) DEFAULT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'CREATED',
@@ -2634,12 +2634,37 @@ CREATE TABLE IF NOT EXISTS ful_shipment
     trace_queried_at BIGINT(20) DEFAULT NULL,
     display_prepared_at BIGINT(20) DEFAULT NULL,
     signed_at BIGINT DEFAULT NULL,
+    biz_type VARCHAR(16) NOT NULL DEFAULT 'SUB_ORDER',
+    entity_no VARCHAR(32) DEFAULT NULL,
+    store_no VARCHAR(32) DEFAULT NULL,
+    profile VARCHAR(8) NOT NULL DEFAULT 'SELF',
+    receiver_phone_enc VARCHAR(128) DEFAULT NULL,
+    receiver_phone_last4 CHAR(4) DEFAULT NULL,
+    wx_trans_id VARCHAR(64) DEFAULT NULL,
+    wx_openid VARCHAR(64) DEFAULT NULL,
+    wx_out_trade_no VARCHAR(64) DEFAULT NULL,
+    goods_brief VARCHAR(1000) DEFAULT NULL,
+    picked_up_at BIGINT DEFAULT NULL,
+    at_locker TINYINT NOT NULL DEFAULT 0,
+    carrier_corrected_from VARCHAR(16) DEFAULT NULL,
+    last_event_at BIGINT DEFAULT NULL,
+    sub_state VARCHAR(12) NOT NULL DEFAULT 'PENDING',
+    sub_channel VARCHAR(16) DEFAULT NULL,
+    sub_ref VARCHAR(64) DEFAULT NULL,
+    sub_attempts INT NOT NULL DEFAULT 0,
+    sub_error VARCHAR(255) DEFAULT NULL,
+    kd100_sub_month CHAR(6) DEFAULT NULL,
+    kd100_sub_count INT NOT NULL DEFAULT 0,
+    wx_uploaded_at BIGINT DEFAULT NULL,
+    bind_state VARCHAR(12) NOT NULL DEFAULT 'NA',
+    bind_error VARCHAR(255) DEFAULT NULL,
+    wx_status_checked_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
-    CONSTRAINT uk_shipment_sub_order UNIQUE (sub_order_no)
+    CONSTRAINT uk_shipment_sub_order UNIQUE (biz_ref)
 );
 
-CREATE TABLE IF NOT EXISTS ful_shipment_trace
+CREATE TABLE IF NOT EXISTS lgs_waybill_node
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     shipment_no VARCHAR(64) NOT NULL,
@@ -2651,6 +2676,8 @@ CREATE TABLE IF NOT EXISTS ful_shipment_trace
     lat_e6 INT DEFAULT NULL,
     lng_e6 INT DEFAULT NULL,
     status_code VARCHAR(16) DEFAULT NULL,
+    channel VARCHAR(16) DEFAULT NULL,
+    mode VARCHAR(8) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
@@ -2678,7 +2705,7 @@ CREATE TABLE IF NOT EXISTS ful_freight_template
     CONSTRAINT uk_freight_template_no UNIQUE (template_no)
 );
 
-CREATE TABLE IF NOT EXISTS ful_carrier
+CREATE TABLE IF NOT EXISTS lgs_carrier
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     carrier VARCHAR(16) NOT NULL,
@@ -4559,6 +4586,19 @@ CREATE TABLE IF NOT EXISTS prd_goods_revision
     CONSTRAINT uk_goods_revision UNIQUE (goods_no, revision_no)
 );
 
+CREATE TABLE IF NOT EXISTS lgs_carrier_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    carrier VARCHAR(16) NOT NULL,
+    channel VARCHAR(16) NOT NULL,
+    code VARCHAR(32) NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_carrier_channel (carrier, channel)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -6316,15 +6356,15 @@ VALUES
 ('FT0001', '默认运费模板', 1000, 800, 500, 200, 9900, 1,
  '[{"region":"新疆维吾尔自治区","action":"SURCHARGE","surcharge":2000},{"region":"西藏自治区","action":"REJECT","surcharge":0}]',
  'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
-INSERT IGNORE INTO ful_carrier
+INSERT IGNORE INTO lgs_carrier
 (carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
 ('SF', '顺丰速运', 1, 1, 'SF-****-8821', 1, '17:00', 48, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
-INSERT IGNORE INTO ful_carrier
+INSERT IGNORE INTO lgs_carrier
 (carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
 ('JD', '京东物流', 1, 2, 'JD-****-3390', 1, '16:30', 72, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
-INSERT IGNORE INTO ful_carrier
+INSERT IGNORE INTO lgs_carrier
 (carrier, name, enabled, priority, account_masked, api_key_configured, pickup_cutoff, sla_hours, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
 ('YTO', '圆通速递', 0, 3, NULL, 0, '18:00', 96, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM', 0, 0);
@@ -9709,3 +9749,36 @@ DELETE FROM prd_category_spec
 UPDATE prd_spec_dim
    SET status = 'INACTIVE', updated_at = NOW(), updated_by = 'SYSTEM'
  WHERE dim_no = 'SD_SHIP_FROM';
+INSERT IGNORE INTO lgs_carrier_code (carrier, channel, code, created_at, updated_at, updated_by) VALUES
+('SF', 'wx', 'SF', NOW(), NOW(), 'V387'),
+('ZTO', 'wx', 'ZTO', NOW(), NOW(), 'V387'),
+('YTO', 'wx', 'YTO', NOW(), NOW(), 'V387'),
+('YD', 'wx', 'YD', NOW(), NOW(), 'V387'),
+('STO', 'wx', 'STO', NOW(), NOW(), 'V387'),
+('JTSD', 'wx', 'JTSD', NOW(), NOW(), 'V387'),
+('JD', 'wx', 'JD', NOW(), NOW(), 'V387'),
+('YZPY', 'wx', 'YZPY', NOW(), NOW(), 'V387'),
+('EMS', 'wx', 'EMS', NOW(), NOW(), 'V387'),
+('DBL', 'wx', 'DBL', NOW(), NOW(), 'V387'),
+('HTKY', 'wx', 'HTKY', NOW(), NOW(), 'V387'),
+('FWX', 'wx', 'FWX', NOW(), NOW(), 'V387'),
+('UC', 'wx', 'UC', NOW(), NOW(), 'V387'),
+('ZJS', 'wx', 'ZJS', NOW(), NOW(), 'V387');
+INSERT IGNORE INTO lgs_carrier_code (carrier, channel, code, created_at, updated_at, updated_by) VALUES
+('SF', 'kuaidi100', 'shunfeng', NOW(), NOW(), 'V387'),
+('ZTO', 'kuaidi100', 'zhongtong', NOW(), NOW(), 'V387'),
+('YTO', 'kuaidi100', 'yuantong', NOW(), NOW(), 'V387'),
+('YD', 'kuaidi100', 'yunda', NOW(), NOW(), 'V387'),
+('STO', 'kuaidi100', 'shentong', NOW(), NOW(), 'V387'),
+('JTSD', 'kuaidi100', 'jtexpress', NOW(), NOW(), 'V387'),
+('JD', 'kuaidi100', 'jd', NOW(), NOW(), 'V387'),
+('YZPY', 'kuaidi100', 'youzhengguonei', NOW(), NOW(), 'V387'),
+('EMS', 'kuaidi100', 'ems', NOW(), NOW(), 'V387'),
+('DBL', 'kuaidi100', 'debangkuaidi', NOW(), NOW(), 'V387'),
+('HTKY', 'kuaidi100', 'huitongkuaidi', NOW(), NOW(), 'V387'),
+('FWX', 'kuaidi100', 'fengwang', NOW(), NOW(), 'V387'),
+('UC', 'kuaidi100', 'youshuwuliu', NOW(), NOW(), 'V387'),
+('ZJS', 'kuaidi100', 'zhaijisong', NOW(), NOW(), 'V387');
+INSERT IGNORE INTO lgs_carrier_code (carrier, channel, code, created_at, updated_at, updated_by) VALUES
+('YTO', 'yto', 'YTO', NOW(), NOW(), 'V387');
+UPDATE lgs_waybill SET sub_state = 'NA' WHERE status = 'DELIVERED';

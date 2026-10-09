@@ -79,7 +79,7 @@ export const KEY_OWNERS = {
   topic_no: "prd_topic",
   // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
   event_no: "sys_outbox",
-  shipment_no: "ful_shipment",
+  shipment_no: "lgs_waybill",
   // 商户订单号：stl_payment 是主，trd_shipping_upload（微信发货上报台账 V323）引用它。
   // 判据与理由见 packages/shared/tests/schema-lineage.test.ts 的同一条 —— 两份必须一致
   out_trade_no: "stl_payment",

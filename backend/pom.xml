@@ -59,6 +59,8 @@
         <module>elec</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
         <module>shop-channel</module>
+        <!-- 物流域：运单与轨迹、渠道路由与适配（ADR-032，先内嵌后可拆） -->
+        <module>logistics</module>
         <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->
         <module>shop-notify</module>
         <!-- 启动模块：portal(三端 Controller) + config + 装配 -->

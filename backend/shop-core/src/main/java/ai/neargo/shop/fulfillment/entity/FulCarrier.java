@@ -20,7 +20,8 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("ful_carrier")
+// V387 起表名改为 lgs_ 前缀（TDD-物流模块 批 1）。本类是过渡：批 2 起由 logistics 模块的实体取代
+@TableName("lgs_carrier")
 public class FulCarrier extends BaseEntity {
 
     private String carrier;

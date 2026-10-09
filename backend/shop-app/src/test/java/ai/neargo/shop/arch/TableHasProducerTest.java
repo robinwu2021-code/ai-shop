@@ -53,7 +53,7 @@ class TableHasProducerTest {
 
     /** 主数据：由迁移种子写入，代码只读。**这是正确的状态**，不是欠账 */
     private static final List<String> SEEDED = List.of(
-            "ful_carrier", "mch_admission_policy", "sys_channel_category_rule",
+            "lgs_carrier", "lgs_carrier_code", "mch_admission_policy", "sys_channel_category_rule",
             "sys_function", "sys_function_point", "sys_industry", "sys_legal_form",
             "sys_merchant_plan_def", "sys_pay_channel");
     // 元器件的 elc_* 表 2026-09-30 随元器件迁到独立项目 ai-hxkey，不在本仓库扫描范围内

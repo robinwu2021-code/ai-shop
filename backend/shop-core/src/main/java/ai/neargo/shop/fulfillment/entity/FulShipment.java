@@ -1,6 +1,7 @@
 package ai.neargo.shop.fulfillment.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,7 +18,8 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@TableName("ful_shipment")
+// V387 起表名改为 lgs_ 前缀（TDD-物流模块 批 1）。本类是过渡：批 2 起由 logistics 模块的实体取代
+@TableName("lgs_waybill")
 public class FulShipment extends BaseEntity {
 
     public static final String CREATED = "CREATED";
@@ -39,6 +41,8 @@ public class FulShipment extends BaseEntity {
      */
     private String shipmentNo;
 
+    /** 列名 V387 起是 biz_ref（运单不只属于子单：将来还有售后寄回）；Java 侧过渡期沿用旧名 */
+    @TableField("biz_ref")
     private String subOrderNo;
 
     /** SF / JD / YTO。建单时取<b>当时优先级最高的启用运力</b>并快照。 */

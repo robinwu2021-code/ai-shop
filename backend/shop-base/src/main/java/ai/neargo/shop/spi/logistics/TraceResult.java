@@ -10,14 +10,22 @@ import java.util.List;
  * @param status    统一状态（最新一档）
  * @param provider  这条是哪个 provider 查来的（yto / kuaidi100 / stub）—— 排查用，端上不显示
  * @param nodes     轨迹节点，**按时间倒序**（最新在前，端上从上往下读）
+ * @param atLocker  已投柜或进驿站（快递100 子状态 501、圆通 INBOUND）。渠道不给结构化取件码，
+ *                  只给这个标志 —— 取件码在节点原文里，不从文字里抠（抠错比不显示更糟）
  */
 public record TraceResult(String waybillNo, String carrier, TraceStatus status,
-                          String provider, List<TraceNode> nodes, Route route) {
+                          String provider, List<TraceNode> nodes, Route route, boolean atLocker) {
+
+    /** 不带到柜标志的形状 */
+    public TraceResult(String waybillNo, String carrier, TraceStatus status,
+                       String provider, List<TraceNode> nodes, Route route) {
+        this(waybillNo, carrier, status, provider, nodes, route, false);
+    }
 
     /** 不带城市路线的老形状。存量 provider（圆通、stub）与存量用例不用改 */
     public TraceResult(String waybillNo, String carrier, TraceStatus status,
                        String provider, List<TraceNode> nodes) {
-        this(waybillNo, carrier, status, provider, nodes, null);
+        this(waybillNo, carrier, status, provider, nodes, null, false);
     }
 
     /**

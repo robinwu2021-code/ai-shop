@@ -573,7 +573,7 @@ export interface Order {
   trace?: ShipmentTrace;
 }
 
-/** 运单状态（与后端 `ful_shipment` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */
+/** 运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */
 export type ShipmentStatus =
   | "CREATED"
   | "PICKED_UP"

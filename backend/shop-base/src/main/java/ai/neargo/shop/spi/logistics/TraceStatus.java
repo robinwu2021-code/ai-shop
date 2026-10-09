@@ -10,8 +10,16 @@ package ai.neargo.shop.spi.logistics;
 public enum TraceStatus {
     /** 已揽收 */
     PICKED,
-    /** 运输中（发出 / 到达中转 / 派送中，统一成一档，端上不必区分那么细） */
+    /** 运输中（发出 / 到达中转） */
     IN_TRANSIT,
+    /**
+     * 派件中（含「投柜或驿站」，见 {@link TraceResult#atLocker()}）。2026-10-09 从运输中拆出来（TDD-物流模块 批 1）：
+     * 买家要的「到驿站了没有、要不要去取」只在这一档能回答。
+     *
+     * <p>⚠️ 加这一档时所有按本枚举分支的地方都要显式处理它 —— 落进 default 就被当成别的。
+     * 消费方一律用<b>不带 default 的 switch 表达式</b>，让编译器当守卫。
+     */
+    DELIVERING,
     /** 已签收 */
     SIGNED,
     /** 异常（退回 / 滞留 / 拒收等） */

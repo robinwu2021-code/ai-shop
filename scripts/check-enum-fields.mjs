@@ -385,8 +385,8 @@ export const FIELDS = [
   },
   {
     concept: "运单状态",
-    field: "ful_shipment.status",
-    backend: { ddl: ["ful_shipment", "status"] },
+    field: "lgs_waybill.status",
+    backend: { ddl: ["lgs_waybill", "status"] },
     clients: [{ file: "ops-web/lib/types/fulfillment.ts", type: "ShipmentStatus" }],
   },
   {

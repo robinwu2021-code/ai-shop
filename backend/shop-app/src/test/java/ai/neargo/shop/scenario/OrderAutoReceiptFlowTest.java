@@ -93,10 +93,10 @@ class OrderAutoReceiptFlowTest {
         return new OrderAutoReceiptJob(orderService, jobs, shippedDays, signedDays);
     }
 
-    /** 把这张子单的运单标成「几天前签收」。签收时间落在 ful_shipment 上（V386） */
+    /** 把这张子单的运单标成「几天前签收」。签收时间落在运单上（V386；V387 起表名 lgs_waybill、子单号列 biz_ref） */
     private void backdateSigned(String subOrderNo, String waybillNo, int daysAgo) {
         long at = System.currentTimeMillis() - (long) daysAgo * 86_400_000L;
-        jdbc.update("insert into ful_shipment (shipment_no, sub_order_no, carrier, waybill_no, status,"
+        jdbc.update("insert into lgs_waybill (shipment_no, biz_ref, carrier, waybill_no, status,"
                         + " signed_at, tenant_no, created_at, updated_at)"
                         + " values (?, ?, 'SF', ?, 'DELIVERED', ?, 'MAIN', now(), now())",
                 "SH-" + subOrderNo, subOrderNo, waybillNo, at);

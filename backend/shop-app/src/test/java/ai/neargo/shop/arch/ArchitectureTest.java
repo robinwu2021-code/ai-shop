@@ -68,7 +68,10 @@ class ArchitectureTest {
             // 它的表不在 ai_shop 里，一旦哪个域直接 import 了它的实体或 Mapper，
             // 那不只是耦合，是**跨库直连**：编译得过、启动得起来，跑到那一行才炸。
             // 唯一合法的入口是 shop-base 里的 Port。
-            "inventory"};
+            "inventory",
+            // logistics：物流（lgs_*，ADR-032）。**现在内嵌、将来可拆** —— 登记进来，
+            // 订单域直接 import 运单实体这类越界当场就红，而不是等拆分那天编译不过才发现
+            "logistics"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {

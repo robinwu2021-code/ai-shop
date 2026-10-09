@@ -420,6 +420,8 @@ public class LogisticsServiceImpl implements LogisticsService {
         return switch (st) {
             case PICKED -> FulShipment.PICKED_UP;
             case IN_TRANSIT -> FulShipment.IN_TRANSIT;
+            // 批 3 之前运单状态还没有「派件中」（端上类型也没有）：仍记运输中，行为与拆档前一致
+            case DELIVERING -> FulShipment.IN_TRANSIT;
             case SIGNED -> FulShipment.DELIVERED;
             case EXCEPTION -> FulShipment.EXCEPTION;
             case UNKNOWN -> current;
