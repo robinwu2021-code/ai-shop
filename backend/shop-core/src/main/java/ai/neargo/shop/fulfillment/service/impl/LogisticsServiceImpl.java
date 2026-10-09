@@ -149,9 +149,13 @@ public class LogisticsServiceImpl implements LogisticsService {
                 /*
                  * 状态跟着订单走。**必须同步**：不同步的话运单永远停在建行那一刻的状态，
                  * 而「已签收不许改单号」这条闸就永远轮不到它生效。
+                 *
+                 * **但只进不退**（TDD-物流模块 批 0）：订单状态是粗粒度的（履约中 → 运输中），
+                 * 轨迹轮询已经推到已签收 / 疑难的单，被它覆盖回运输中，下一轮就又去查一次快递100 ——
+                 * 每张已签收的单在买家确认收货前（最长 7 天）每轮都白查一次。
                  */
                 String next = statusOf(o.status());
-                if (!next.equals(cur.getStatus())) {
+                if (rank(next) > rank(cur.getStatus())) {
                     cur.setStatus(next);
                     DataScopeContext.executeWithoutScope(() -> shipmentMapper.updateById(cur));
                 }
@@ -208,6 +212,20 @@ public class LogisticsServiceImpl implements LogisticsService {
      * <p><b>一期不接承运商回传</b>（ADR-005 §5）：编一个假的轨迹推进比没有更糟。
      * {@code EXCEPTION} 没有产生路径，这里也不会造出来。
      */
+    /**
+     * 运单状态的先后。疑难排在运输中之后、签收之前：订单完成仍可把它推到已签收，
+     * 订单还在履约中则不能把它抹回运输中（抹掉了运营就看不到这单卡住了）。
+     */
+    private static int rank(String status) {
+        return switch (status == null ? "" : status) {
+            case FulShipment.PICKED_UP -> 1;
+            case FulShipment.IN_TRANSIT -> 2;
+            case FulShipment.EXCEPTION -> 3;
+            case FulShipment.DELIVERED -> 4;
+            default -> 0;
+        };
+    }
+
     private static String statusOf(String orderStatus) {
         return switch (orderStatus == null ? "" : orderStatus) {
             case "FULFILLING" -> FulShipment.IN_TRANSIT;

@@ -62,6 +62,53 @@ class LogisticsTraceRefreshTest {
         return s;
     }
 
+    /**
+     * ★★★ 补齐运单时<b>状态只进不退</b>（TDD-物流模块 批 0 / AC12）。
+     *
+     * <p>补齐用订单状态推导运单状态：子单还在履约中 → 运输中。原来的写法是「不相等就覆盖」，
+     * 于是轮询刚推到已签收的单，下一轮补齐又被打回运输中、再被查一次快递100 ——
+     * 每张已签收的单在买家确认收货前（最长 7 天）每轮都白查一次，而快递100 额度本来就不够。
+     */
+    @Test
+    void ensureNeverPullsDeliveredBackToInTransit() {
+        FulShipment d = shipment("SHP-D", "SUB-D", "SF", "SF-D", FulShipment.DELIVERED);
+        when(statsPort.expressOrders()).thenReturn(List.of(new FulfillmentStatsPort.ExpressOrder(
+                "SUB-D", "SF-D", "SF", "FULFILLING", "张三", "广东", 1L)));
+        when(shipmentMapper.selectList(any())).thenReturn(List.of(d));
+        when(traceMapper.selectList(any())).thenReturn(List.of());
+
+        svc((store, carrier, waybill) -> Optional.empty()).refreshInTransitTraces(300);
+
+        assertThat(d.getStatus()).as("已签收被订单状态打回运输中 —— 下一轮又去查快递100").isEqualTo(FulShipment.DELIVERED);
+        verify(shipmentMapper, never()).updateById(any(FulShipment.class));
+    }
+
+    @Test
+    void ensureNeverOverwritesException() {
+        FulShipment e = shipment("SHP-E", "SUB-E", "SF", "SF-E", FulShipment.EXCEPTION);
+        when(statsPort.expressOrders()).thenReturn(List.of(new FulfillmentStatsPort.ExpressOrder(
+                "SUB-E", "SF-E", "SF", "FULFILLING", "张三", "广东", 1L)));
+        when(shipmentMapper.selectList(any())).thenReturn(List.of(e));
+        when(traceMapper.selectList(any())).thenReturn(List.of());
+
+        svc((store, carrier, waybill) -> Optional.empty()).refreshInTransitTraces(300);
+
+        assertThat(e.getStatus()).as("疑难件被订单状态抹成运输中，运营就看不到它了").isEqualTo(FulShipment.EXCEPTION);
+    }
+
+    @Test
+    void ensureStillAdvancesForward() {
+        FulShipment t = shipment("SHP-T", "SUB-T", "SF", "SF-T", FulShipment.IN_TRANSIT);
+        when(statsPort.expressOrders()).thenReturn(List.of(new FulfillmentStatsPort.ExpressOrder(
+                "SUB-T", "SF-T", "SF", "COMPLETED", "张三", "广东", 1L)));
+        when(shipmentMapper.selectList(any())).thenReturn(List.of(t));
+        when(traceMapper.selectList(any())).thenReturn(List.of());
+
+        svc((store, carrier, waybill) -> Optional.empty()).refreshInTransitTraces(300);
+
+        assertThat(t.getStatus()).as("订单已完成 → 运单应推进到已签收（往前走不受影响）").isEqualTo(FulShipment.DELIVERED);
+    }
+
     @Test
     void appendsNodesAndAdvancesStatus() {
         FulShipment a = shipment("SHP-A", "SUB-A", "YTO", "YT-A", FulShipment.CREATED);
