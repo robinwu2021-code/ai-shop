@@ -96,6 +96,8 @@ class BizEndpointPermTest {
             // 要 biz 权限的话，收到「新订单」通知的店员反而打不开消息中心
             "/biz/message", "/biz/message/unread-count",
             "/biz/message/{messageNo}/read", "/biz/message/read-all",
+            // 订阅授权上报：攒的是当前登录者自己的额度（TDD-微信订阅消息优先 AC8）
+            "/biz/message/subscribe",
             // 设备绑定：绑的是当前登录者自己的设备。要权限的话，
             // 收「新订单」提醒的店员反而绑不上（ADR-018）
             "/biz/push-token", "/biz/push-token/unregister");

@@ -12,6 +12,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
+import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -164,6 +165,8 @@ const candidates = ref<PickupOrder[] | null>(null);
 async function verify(input?: string) {
   const c = (input ?? code.value).trim();
   if (!c || busy.value) return;
+  // 小程序里顺带攒订阅额度（AC8）。扫码后进来的那次隔了 await，框弹不出来 —— 不碍事，手输核销那次会问
+  askMchSubscribe();
   busy.value = true;
   error.value = "";
   candidates.value = null;

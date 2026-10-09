@@ -399,6 +399,7 @@ const RESPONSE_TYPES = {
   mMessageUnread: "number",
   mMessageRead: "Message[]",
   mMessageReadAll: "Message[]",
+  mSubscribeReport: "void",
   mRegisterPushToken: "void",
   mUnregisterPushToken: "void",
   mGoodsList: "PageResult<Goods>",

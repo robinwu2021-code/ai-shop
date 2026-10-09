@@ -13,6 +13,7 @@ import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import type { AfterSale, Order } from "@shared/types";
@@ -78,6 +79,8 @@ async function load() {
 
 async function agree(r: Row) {
   if (busy.value) return;
+  // 小程序里顺带攒订阅额度（TDD-微信订阅消息优先 AC8）
+  askMchSubscribe();
   busy.value = true;
   try {
     await api.mApproveAfterSale(r.as.afterSaleNo, "");
@@ -96,6 +99,7 @@ async function agree(r: Row) {
  */
 async function confirmReturn(r: Row) {
   if (busy.value) return;
+  askMchSubscribe();
   busy.value = true;
   try {
     await api.mConfirmReturn(r.as.afterSaleNo);
@@ -114,6 +118,7 @@ async function reject(r: Row) {
     return;
   }
   if (busy.value) return;
+  askMchSubscribe();
   busy.value = true;
   try {
     await api.mRejectAfterSale(r.as.afterSaleNo, reason.value.trim());

@@ -74,6 +74,12 @@ public class StubWxSubscribeGateway implements WxSubscribePort {
                 + (n.tip() == null || n.tip().isBlank() ? "" : "/" + n.tip()) + " -> " + page);
     }
 
+    @Override
+    public SendResult sendFielded(String openId, String scene, java.util.Map<String, String> values, String page) {
+        // 语义键按字母序拼进摘要：测试要能断言「理由 / 时限 / 退款那句真的传下去了」
+        return record(openId, scene, new java.util.TreeMap<>(values) + " -> " + page);
+    }
+
     private synchronized SendResult record(String openId, String scene, String summary) {
         sent.addLast(new Sent(openId, scene, summary));
         while (sent.size() > KEEP) {

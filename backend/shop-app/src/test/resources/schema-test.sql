@@ -9848,3 +9848,28 @@ SELECT 'COMMUNITY_OPS', 'ACT__FULFILLMENT_LOGISTICS_REPLAY', 'OPS', NOW(), NOW()
                     WHERE x.role_code = 'COMMUNITY_OPS' AND x.point_code = 'ACT__FULFILLMENT_LOGISTICS_REPLAY');
 DELETE FROM sys_role_point WHERE point_code = 'OPS_FINANCE__TAB_WITHDRAW' AND end_code = 'OPS';
 DELETE FROM sys_function_point WHERE point_code = 'OPS_FINANCE__TAB_WITHDRAW';
+UPDATE notify_scene_channel
+SET enabled = 1, updated_at = NOW()
+WHERE channel = 'WXSUB' AND audience = 'C_USER'
+  AND scene_code IN ('AFTER_SALE_REJECTED', 'AFTER_SALE_RETURN_WAIT', 'GROUP_FORMED', 'GROUP_FAILED',
+                     'SUB_ORDER_SHIPPED');
+UPDATE notify_scene_channel
+SET enabled = 1, updated_at = NOW()
+WHERE channel = 'WXSUB' AND audience = 'B_STAFF'
+  AND scene_code IN ('SUB_ORDER_PAID', 'AFTER_SALE_APPLIED', 'REVIEW_CREATED');
+INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'AFTER_SALE_REJECTED' AS scene_code, 'C_USER' AS audience, 'WXSUB' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'AFTER_SALE_RETURN_WAIT', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FORMED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'GROUP_FAILED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_SHIPPED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'WXSUB', 1, 'NORMAL' UNION ALL
+    SELECT 'REVIEW_CREATED', 'B_STAFF', 'WXSUB', 1, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);

@@ -18935,6 +18935,35 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/message/subscribe": 
+    post: 
+      operationId: "mSubscribeReport"
+      summary: "上报订阅消息授权结果（小程序里的商家页面）"
+      tags: 
+        - "message"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/push-token": 
     post: 
       operationId: "mRegisterPushToken"

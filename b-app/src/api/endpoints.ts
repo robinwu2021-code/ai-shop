@@ -362,6 +362,13 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     summary: "标记已读",
   },
   mMessageReadAll: { method: "POST", path: "/biz/message/read-all", auth: true, summary: "全部已读" },
+  // 只在小程序里会调（App 调不起订阅消息）。店主的商家账号与 C 端同一个 user_no，额度记在同一张表
+  mSubscribeReport: {
+    method: "POST",
+    path: "/biz/message/subscribe",
+    auth: true,
+    summary: "上报订阅消息授权结果（小程序里的商家页面）",
+  },
 
   // ---------------------------------------------------------------- 推送设备（三期，ADR-018）
   mRegisterPushToken: {

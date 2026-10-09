@@ -17,6 +17,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -146,6 +147,18 @@ public class NotificationConsumer implements OutboxConsumer {
                 messageService.push(userNo, MessageService.TRADE, title, body,
                         link, event.getEventNo());
                 cPush(scene, userNo, title, body, link);
+                /*
+                 * 微信订阅消息**只发商家配送的「开始配送」**（TDD-微信订阅消息优先 AC5）：
+                 * 快递发货那条微信支付单由微信「发货信息录入」推、线下单由物流「揽收」推，再发就重复；
+                 * 商家配送的单微信只在「已送达」上报时推，出发那一刻没人告诉买家。
+                 */
+                if (!byExpress && routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    wxSender.fielded(userNo, WxSubscribePort.SCENE_DELIVERY_START, Map.of(
+                            "orderNo", nz(text(payload, "subOrderNo"), ""),
+                            "status", "配送中",
+                            "tip", "商家已出发，请保持电话畅通",
+                            "time", String.valueOf(System.currentTimeMillis())), link.substring(1));
+                }
             }
             case NotifyScene.WAYBILL_PROGRESSED -> waybill(event, payload, text(payload, "status"));
             case NotifyScene.WAYBILL_SIGNED -> waybill(event, payload, "DELIVERED");
@@ -177,6 +190,13 @@ public class NotificationConsumer implements OutboxConsumer {
                 messageService.push(userNo, MessageService.TRADE, "售后未通过", body,
                         link, event.getEventNo());
                 cPush(scene, userNo, "售后未通过", body, link);
+                if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    wxSender.fielded(userNo, WxSubscribePort.SCENE_AFTER_SALE_RESULT, Map.of(
+                            "orderNo", nz(text(payload, "subOrderNo"), ""),
+                            "result", "未通过",
+                            "reason", why == null || why.isBlank() ? "可在售后详情里申请平台介入" : why,
+                            "time", String.valueOf(System.currentTimeMillis())), link.substring(1));
+                }
             }
             case NotifyScene.AFTER_SALE_RETURN_WAIT -> {
                 String userNo = text(payload, "userNo");
@@ -189,16 +209,34 @@ public class NotificationConsumer implements OutboxConsumer {
                 messageService.push(userNo, MessageService.TRADE, "请寄回商品", body,
                         link, event.getEventNo());
                 cPush(scene, userNo, "请寄回商品", body, link);
+                if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    wxSender.fielded(userNo, WxSubscribePort.SCENE_RETURN_WAIT, Map.of(
+                            "afterSaleNo", event.getAggregateId(),
+                            "status", "待寄回",
+                            "tip", "请尽快寄回并填单号，超时自动关闭",
+                            "time", String.valueOf(System.currentTimeMillis())), link.substring(1));
+                }
             }
             case NotifyScene.GROUP_FORMED -> fanOutToGroup(event, payload, true);
             case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端
             case NotifyScene.SUB_ORDER_PAID -> fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
                     "新订单", "有新的订单待备货，记得按时送到自提点",
-                    "/pages/orders/index?tab=PAID");
+                    "/pages/orders/index?tab=PAID",
+                    // 来单：App 响铃与微信**都发**（wxFirst=false）—— 厂商通道没报备，App 在后台收不到（通知 TDD §13.3②）
+                    new WxStaff(WxSubscribePort.SCENE_MCH_NEW_ORDER, Map.of(
+                            "orderNo", nz(text(payload, "subOrderNo"), ""),
+                            "amount", yuan(payload.path("payAmount").asLong(0)),
+                            "time", String.valueOf(System.currentTimeMillis()),
+                            "tip", "有新订单，请及时备货"), false));
             case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
-                    "/pages/after-sale/index");
+                    "/pages/after-sale/index",
+                    new WxStaff(WxSubscribePort.SCENE_MCH_AFTER_SALE, Map.of(
+                            "orderNo", nz(text(payload, "subOrderNo"), ""),
+                            "status", "待处理",
+                            "tip", "顾客申请了售后，请尽快处理",
+                            "time", String.valueOf(System.currentTimeMillis())), true));
             case NotifyScene.REVIEW_CREATED -> {
                 int rating = payload.get("rating") == null ? 5 : payload.get("rating").asInt();
                 // 差评单独点名：混在普通评价里会被当成例行夸奖划掉
@@ -206,7 +244,11 @@ public class NotificationConsumer implements OutboxConsumer {
                         rating <= 2 ? "收到差评" : "收到新评价",
                         rating <= 2 ? "有一条 " + rating + " 星评价，回复得当能挽回大多数顾客"
                                 : "有顾客发表了新评价",
-                        "/pages/reviews/index");
+                        "/pages/reviews/index",
+                        new WxStaff(WxSubscribePort.SCENE_MCH_REVIEW, Map.of(
+                                "rating", rating + "星",
+                                "time", String.valueOf(System.currentTimeMillis()),
+                                "tip", rating <= 2 ? "收到差评，及时回复能挽回顾客" : "有顾客发表了新评价"), true));
             }
             default -> {
                 /*
@@ -284,6 +326,12 @@ public class NotificationConsumer implements OutboxConsumer {
                 ? "「%s」已成团，等商家发货".formatted(title)
                 : "「%s」人数没凑够，货款将原路退回".formatted(title);
         boolean inapp = routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_INAPP);
+        boolean wx = routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB);
+        Map<String, String> wxValues = Map.of(
+                "groupNo", event.getAggregateId(),
+                "goods", title,
+                "result", formed ? "成功" : "失败",
+                "remark", formed ? "已成团，等商家发货" : "未成团，款项原路退回");
         for (JsonNode n : arr) {
             String userNo = n.asString();
             if (userNo == null || userNo.isBlank()) {
@@ -294,6 +342,10 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo() + ":" + userNo);
             }
             cPush(scene, userNo, msgTitle, body, link);
+            if (wx) {
+                // 团里多数人没授权过这条 —— 没额度的静默跳过（WxSubscribeSender 的口径），不是错误
+                wxSender.fielded(userNo, WxSubscribePort.SCENE_GROUP_RESULT, wxValues, link.substring(1));
+            }
         }
         log.info("[notify] 团结果扇出 group={} 结果={} 人数={}",
                 event.getAggregateId(), formed ? "成团" : "未成团", arr.size());
@@ -408,17 +460,41 @@ public class NotificationConsumer implements OutboxConsumer {
                 entityNo, event.getAggregateId(), userNos.size(), inapp, wx);
     }
 
+    /**
+     * 商家那一路微信订阅消息（TDD-微信订阅消息优先 AC9 / AC10）。
+     *
+     * @param wxFirst true = 微信发出去了就不再走 App（售后、评价）；false = 两路都发（来单）
+     */
+    private record WxStaff(String scene, Map<String, String> values, boolean wxFirst) {
+    }
+
+    /** 商家页面在小程序里挂在分包 {@code pkg-biz} 下（c-app/scripts/with-biz.mjs） */
+    private static String mpBizPage(String link) {
+        return "pkg-biz" + link;
+    }
+
+    private static String yuan(long minor) {
+        return "%.2f元".formatted(minor / 100.0);
+    }
+
     private void fanOutToStaff(SysOutbox event, String entityNo, Set<String> roles,
-                               String title, String body, String link) {
+                               String title, String body, String link, WxStaff wxStaff) {
         String scene = event.getEventType();
         boolean push = routing.enabled(scene, MsgSceneChannel.AUD_B_STAFF, MsgSceneChannel.CH_PUSH);
         boolean ring = push
                 && MsgSceneChannel.LEVEL_RING.equals(routing.pushLevel(scene, MsgSceneChannel.AUD_B_STAFF));
+        boolean wx = wxStaff != null
+                && routing.enabled(scene, MsgSceneChannel.AUD_B_STAFF, MsgSceneChannel.CH_WXSUB);
         List<String> userNos = merchantStaffPort.staffUserNos(entityNo, roles);
         for (String userNo : userNos) {
             messageService.pushTo(MsgMessage.RECEIVER_STAFF, userNo, MessageService.TRADE,
                     title, body, link, event.getEventNo() + ":" + userNo);
-            if (!push) {
+            /*
+             * 店主的商家账号与 C 端同一个 user_no，小程序 openid 现成；店员多半查不到 openid → 静默跳过、只走 App。
+             * 没额度 / 没模板同样静默跳过 —— 那正是「微信优先、没发出去才回落 App」里「没发出去」的那一半。
+             */
+            boolean wxSent = wx && wxSender.fielded(userNo, wxStaff.scene(), wxStaff.values(), mpBizPage(link));
+            if (!push || (wxSent && wxStaff.wxFirst())) {
                 continue;
             }
             if (ring) {

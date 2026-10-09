@@ -11,6 +11,7 @@ export const messageMock: Pick<MerchantApi,
   | "mMessageUnread"
   | "mMessageRead"
   | "mMessageReadAll"
+  | "mSubscribeReport"
   | "mRegisterPushToken"
   | "mUnregisterPushToken"
 > = {
@@ -35,6 +36,11 @@ export const messageMock: Pick<MerchantApi,
     db.messages.forEach((m) => (m.read = true));
     persist();
     return delay([...db.messages]);
+  },
+
+  // mock 世界不在小程序里，弹不出授权框，这条不会被调到
+  async mSubscribeReport() {
+    return delay(undefined);
   },
 
   // mock 世界没有真设备（H5 下 getPushDevice 恒为 null，这两个不会被调到）

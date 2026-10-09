@@ -10,7 +10,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { requestPayment } from "@shared/ports/payment";
 import { codeLabelKey, showVerifyCode } from "@shared/strategies/order-view";
-import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
+import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
@@ -175,9 +175,14 @@ async function pay() {
      * 订阅消息必须由用户点击行为（或支付回调）当下调起，支付回来这一刻是收集授权的最佳时机。
      * **要排在回查订单那次 await 前面**：原来排在它后面，隔了一次网络请求，
      * 已经不算「支付回调当下」了，授权框弹不出来（TDD-物流模块 批 4 T4.1）。
-     * 收集与上报是两步：不上报的话后端额度永远是 0，到货/退款一条都发不出
+     * 收集与上报是两步：不上报的话后端额度永远是 0，一条都发不出。
+     *
+     * 问哪几个按履约方式定（TDD-微信订阅消息优先 §2.2）：自提 → 到货、商家配送 → 开始配送、拼团 → 团结果；
+     * **快递不问、退款不问** —— 微信支付单的发货与退款到账微信支付自己推（AC6）。
+     * 用的是付款前那份订单（`o`）：回查在后面，等它就晚了。
      */
-    const subscribed = requestSubscribe([SUBSCRIBE_TMPL.arrived, SUBSCRIBE_TMPL.refunded]).then((r) => {
+    const tmpls = orderSubscribeTmpls(o.fulfillment, { offline: false, grouped: !!groupNoOf(o) });
+    const subscribed = requestSubscribe(tmpls).then((r) => {
       if (r.accepted.length) void api.subscribeReport(r.accepted, true);
       if (r.rejected.length) void api.subscribeReport(r.rejected, false);
     });

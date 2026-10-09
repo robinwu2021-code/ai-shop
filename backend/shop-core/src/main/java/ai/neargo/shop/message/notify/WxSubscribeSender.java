@@ -116,6 +116,16 @@ public class WxSubscribeSender {
         send(userNo, scene, openId -> port.sendWaybill(openId, scene, notice, page));
     }
 
+    /**
+     * 「能微信推的都用微信推」那一批（TDD-微信订阅消息优先）。
+     *
+     * @param values 业务语义键 → 值（{@code orderNo}、{@code result}…），模板格由通道按配置映射
+     * @return 真的发出去了才 true —— 商家那几条要据此决定还走不走 App 推送（微信优先、没发出去才回落）
+     */
+    public boolean fielded(String userNo, String scene, java.util.Map<String, String> values, String page) {
+        return send(userNo, scene, openId -> port.sendFielded(openId, scene, values, page));
+    }
+
     private boolean send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {

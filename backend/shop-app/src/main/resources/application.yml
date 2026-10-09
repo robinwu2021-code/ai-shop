@@ -320,6 +320,21 @@ shop:
       waybill-delivering-fields: ${WX_TPL_WAYBILL_DELIVERING_FIELDS:}
       waybill-signed: ${WX_TPL_WAYBILL_SIGNED:}
       waybill-signed-fields: ${WX_TPL_WAYBILL_SIGNED_FIELDS:}
+      # 「能微信推的都用微信推」那一批（TDD-微信订阅消息优先）。字段写成「语义键:模板格名,…」，语义键见各场景发送处
+      after-sale-result: ${WX_TPL_AFTER_SALE_RESULT:}
+      after-sale-result-fields: ${WX_TPL_AFTER_SALE_RESULT_FIELDS:}
+      return-wait: ${WX_TPL_RETURN_WAIT:}
+      return-wait-fields: ${WX_TPL_RETURN_WAIT_FIELDS:}
+      group-result: ${WX_TPL_GROUP_RESULT:}
+      group-result-fields: ${WX_TPL_GROUP_RESULT_FIELDS:}
+      delivery-start: ${WX_TPL_DELIVERY_START:}
+      delivery-start-fields: ${WX_TPL_DELIVERY_START_FIELDS:}
+      mch-new-order: ${WX_TPL_MCH_NEW_ORDER:}
+      mch-new-order-fields: ${WX_TPL_MCH_NEW_ORDER_FIELDS:}
+      mch-after-sale: ${WX_TPL_MCH_AFTER_SALE:}
+      mch-after-sale-fields: ${WX_TPL_MCH_AFTER_SALE_FIELDS:}
+      mch-review: ${WX_TPL_MCH_REVIEW:}
+      mch-review-fields: ${WX_TPL_MCH_REVIEW_FIELDS:}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。

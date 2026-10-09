@@ -1954,6 +1954,11 @@ export interface MerchantApi {
   mMessageUnread(): Promise<number>;
   mMessageRead(messageNo: string): Promise<Message[]>;
   mMessageReadAll(): Promise<Message[]>;
+  /**
+   * 上报订阅消息授权结果（TDD-微信订阅消息优先 AC8）。accepted / rejected **各报一次** ——
+   * 「允许」是攒一次发送额度，「拒绝」也要记，后端才知道这个人不想要。
+   */
+  mSubscribeReport(templateIds: string[], accepted: boolean): Promise<void>;
 
   // ---- App 推送设备（ADR-018；仅 App 构建有 clientId）
   mRegisterPushToken(platform: string, provider: string, clientId: string): Promise<void>;

@@ -4145,6 +4145,17 @@ _无字段_
 类型：[`Message`](#message)\[\]
 
 
+#### POST `/biz/message/subscribe`
+
+上报订阅消息授权结果（小程序里的商家页面）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
 #### GET `/biz/message/unread-count`
 
 未读数（红点轮询，只给一个数）　🔒

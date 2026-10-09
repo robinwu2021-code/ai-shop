@@ -8,6 +8,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
+import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
@@ -92,6 +93,8 @@ const currentNo = ref("");
 
 async function confirmOffline() {
   if (!order.value || busy.value) return;
+  // 小程序里顺带攒「新订单 / 售后 / 评价」的订阅额度（TDD-微信订阅消息优先 AC8）；App 里什么都不发生
+  askMchSubscribe();
   busy.value = true;
   try {
     order.value = await api.mConfirmOfflinePay(order.value.orderNo);
@@ -147,6 +150,7 @@ async function ship() {
     uni.showToast({ title: t("order.pickCarrier"), icon: "none" });
     return;
   }
+  askMchSubscribe();
   busy.value = true;
   try {
     order.value = await api.mShip(
@@ -161,6 +165,7 @@ async function ship() {
 
 async function delivered() {
   if (!order.value || busy.value) return;
+  askMchSubscribe();
   busy.value = true;
   try {
     order.value = await api.mDelivered(order.value.orderNo);

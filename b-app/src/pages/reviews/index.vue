@@ -10,6 +10,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { datetime } from "@shared/utils/datetime";
 import { REVIEW_RULES } from "@shared/utils/constants";
 import type { Review } from "@shared/types";
@@ -67,6 +68,8 @@ function startReply(r: Review) {
 
 async function submit(r: Review) {
   if (!text.value.trim() || busy.value) return;
+  // 小程序里顺带攒订阅额度（TDD-微信订阅消息优先 AC8）
+  askMchSubscribe();
   busy.value = true;
   try {
     await api.mReplyReview(r.reviewNo, text.value.trim());

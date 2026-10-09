@@ -91,7 +91,7 @@
 | `messageList` | `GET /mp/message` | 是 | messages | — |
 | `readMessage` | `POST /mp/message/:messageNo/read` | 是 | messages | — |
 | `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
-| `subscribeReport` | `POST /mp/message/subscribe` | 是 | order-confirm · pay · store | — |
+| `subscribeReport` | `POST /mp/message/subscribe` | 是 | after-sale · order-confirm · pay · store | — |
 | `unreadMessages` | `GET /mp/message/unread-count` | 是 | me | — |
 | `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupon-code · coupons | — |
 | `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |

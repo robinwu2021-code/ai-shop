@@ -63,6 +63,25 @@ public interface WxSubscribePort {
     /** 场景：快递已签收 */
     String SCENE_WAYBILL_SIGNED = "WAYBILL_SIGNED";
 
+    /*
+     * 「能微信推的都用微信推」那一批（TDD-微信订阅消息优先，2026-10-09）。这几条走 {@link #sendFielded}：
+     * 领域给业务语义键，通道按配置把它们映射到模板格。
+     */
+    /** 场景：售后被驳回（带理由） */
+    String SCENE_AFTER_SALE_RESULT = "AFTER_SALE_RESULT";
+    /** 场景：退货待寄回（有时限） */
+    String SCENE_RETURN_WAIT = "RETURN_WAIT";
+    /** 场景：拼团成 / 败 */
+    String SCENE_GROUP_RESULT = "GROUP_RESULT";
+    /** 场景：商家配送开始配送 */
+    String SCENE_DELIVERY_START = "DELIVERY_START";
+    /** 场景（商家）：新订单 */
+    String SCENE_MCH_NEW_ORDER = "MCH_NEW_ORDER";
+    /** 场景（商家）：顾客申请了售后 */
+    String SCENE_MCH_AFTER_SALE = "MCH_AFTER_SALE";
+    /** 场景（商家）：新评价 */
+    String SCENE_MCH_REVIEW = "MCH_REVIEW";
+
     /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
      *
@@ -128,6 +147,16 @@ public interface WxSubscribePort {
      * @param scene 三个 {@code SCENE_WAYBILL_*} 之一
      */
     SendResult sendWaybill(String openId, String scene, WaybillNotice notice, String page);
+
+    /**
+     * 按配置映射字段的通用发送：{@code values} 的键是<b>业务语义</b>（{@code orderNo}、{@code result}、{@code reason}…），
+     * 不是模板格名 —— 格名在 mp 后台选模板时才定，由通道按 {@code shop.wx.templates.<场景>-fields} 映射。
+     * 领域因此仍然不认识 {@code thing3} 这类东西（本接口类注释那条原则不变，只是把「一场景一方法」换成了「一场景一份映射」）。
+     *
+     * @param scene 上面「能微信推的都用微信推」那一批的场景之一
+     * @throws WxSubscribeException 场景没配模板或字段映射时（不可重试）
+     */
+    SendResult sendFielded(String openId, String scene, java.util.Map<String, String> values, String page);
 
     /**
      * @param carrierName 承运商名称（「顺丰速运」）

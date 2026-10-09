@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -47,5 +48,18 @@ public class BizMessageController {
     @PostMapping("/biz/message/read-all")
     public List<MessageVO> readAll() {
         return messageService.markAllRead(MsgMessage.RECEIVER_STAFF);
+    }
+
+    /**
+     * 商家在小程序里授权订阅消息后上报（TDD-微信订阅消息优先 AC8）。与 {@code /mp/message/subscribe} 同一张额度表：
+     * 店主的商家账号与 C 端同一个 user_no，发送时按这个号查小程序 openid、扣这里攒的额度。
+     * App 里调不起 {@code uni.requestSubscribeMessage}，根本不会走到这里。
+     */
+    @PostMapping("/biz/message/subscribe")
+    public void subscribe(@RequestBody SubscribeReq req) {
+        messageService.subscribe(req.templateIds(), Boolean.TRUE.equals(req.accepted()));
+    }
+
+    public record SubscribeReq(List<String> templateIds, Boolean accepted) {
     }
 }

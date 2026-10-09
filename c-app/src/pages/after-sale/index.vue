@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { chooseImages } from "@shared/ports/media";
+import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
@@ -80,6 +81,19 @@ async function pickImages() {
 async function submit() {
   const o = order.value;
   if (!o || !canSubmit.value) return;
+  /*
+   * 售后结果 / 退货寄回的订阅授权（TDD-微信订阅消息优先 AC7）。**排在任何 await 前面** —— 隔一次 await 就弹不出来。
+   * 极速退不问：不经商家审，没有「结果」要等；仅退款不问「寄回」。
+   */
+  if (!instantRefund.value) {
+    const tmpls = type.value === "RETURN_REFUND"
+      ? [SUBSCRIBE_TMPL.afterSaleResult, SUBSCRIBE_TMPL.returnWait]
+      : [SUBSCRIBE_TMPL.afterSaleResult];
+    void requestSubscribe(tmpls).then((r) => {
+      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+    });
+  }
   submitting.value = true;
   try {
     const label = String(t(`afterSale.reason.${reason.value}`));

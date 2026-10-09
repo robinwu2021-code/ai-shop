@@ -25,7 +25,45 @@ export const SUBSCRIBE_TMPL = {
   waybillPickedUp: (import.meta.env?.VITE_WX_TPL_WAYBILL_PICKED_UP as string) || "STUB_TPL_WAYBILL_PICKED_UP",
   waybillDelivering: (import.meta.env?.VITE_WX_TPL_WAYBILL_DELIVERING as string) || "STUB_TPL_WAYBILL_DELIVERING",
   waybillSigned: (import.meta.env?.VITE_WX_TPL_WAYBILL_SIGNED as string) || "STUB_TPL_WAYBILL_SIGNED",
+  /*
+   * 以下七个见 TDD-微信订阅消息优先：买家四个，商家三个。
+   * 商家三个也从 c-app 的 .env 取 —— 商家页面在小程序里是 c-app 构建的分包（with-biz.mjs），
+   * App 构建调不起订阅消息，这三个在那里取不到值也无所谓。
+   */
+  afterSaleResult: (import.meta.env?.VITE_WX_TPL_AFTER_SALE_RESULT as string) || "STUB_TPL_AFTER_SALE_RESULT",
+  returnWait: (import.meta.env?.VITE_WX_TPL_RETURN_WAIT as string) || "STUB_TPL_RETURN_WAIT",
+  groupResult: (import.meta.env?.VITE_WX_TPL_GROUP_RESULT as string) || "STUB_TPL_GROUP_RESULT",
+  deliveryStart: (import.meta.env?.VITE_WX_TPL_DELIVERY_START as string) || "STUB_TPL_DELIVERY_START",
+  mchNewOrder: (import.meta.env?.VITE_WX_TPL_MCH_NEW_ORDER as string) || "STUB_TPL_MCH_NEW_ORDER",
+  mchAfterSale: (import.meta.env?.VITE_WX_TPL_MCH_AFTER_SALE as string) || "STUB_TPL_MCH_AFTER_SALE",
+  mchReview: (import.meta.env?.VITE_WX_TPL_MCH_REVIEW as string) || "STUB_TPL_MCH_REVIEW",
 } as const;
+
+/**
+ * 一张单在「下单 / 支付」那一下该问哪几个模板（TDD-微信订阅消息优先 §2.2）。
+ *
+ * <p>微信一次最多问 3 个，**顺序即优先级**：拼团结果排第一（没成团 = 钱要退，比物流节点要紧）。
+ * 微信支付的快递单一个都不问 —— 它的发货与物流动态微信自己推，再发就是重复打扰。
+ *
+ * @param offline true = 线下付款（结算页提交时问）；false = 微信支付单（支付回调时问）
+ */
+export function orderSubscribeTmpls(
+  fulfillment: string | undefined,
+  opts: { offline: boolean; grouped: boolean },
+): string[] {
+  const out: string[] = [];
+  if (opts.grouped) out.push(SUBSCRIBE_TMPL.groupResult);
+  if (fulfillment === "EXPRESS") {
+    if (opts.offline) {
+      out.push(SUBSCRIBE_TMPL.waybillPickedUp, SUBSCRIBE_TMPL.waybillDelivering, SUBSCRIBE_TMPL.waybillSigned);
+    }
+  } else if (fulfillment === "MERCHANT_DELIVERY") {
+    out.push(SUBSCRIBE_TMPL.deliveryStart);
+  } else if (fulfillment === "STORE_PICKUP" || fulfillment === "NEIGHBOR_PICKUP") {
+    out.push(SUBSCRIBE_TMPL.arrived);
+  }
+  return out.slice(0, 3);
+}
 
 export interface SubscribeResult {
   /** 用户点了「允许」的模板（每个 = 后端一次发送额度） */

@@ -78,6 +78,15 @@ public class WxSubscribeGateway implements WxSubscribePort {
     private record WaybillTpl(String templateId, String[] fields) {
     }
 
+    /**
+     * 「能微信推的都用微信推」那一批（TDD-微信订阅消息优先）：场景 → 模板号 + 「业务语义键 → 模板格名」映射。
+     * 映射写成 {@code orderNo:character_string1,result:thing4}；领域只给语义键，格名是通道的事。
+     */
+    private final Map<String, FieldedTpl> fieldedTpls = new java.util.HashMap<>();
+
+    private record FieldedTpl(String templateId, Map<String, String> fields) {
+    }
+
     /** stable_token 缓存。到期前 5 分钟就换新，避免拿着一个正好过期的 token 去发。 */
     private volatile String token;
     private volatile long tokenExpireAt;
@@ -176,6 +185,52 @@ public class WxSubscribeGateway implements WxSubscribePort {
         putWaybill(SCENE_WAYBILL_SIGNED, signed, signedFields);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    void fieldedTemplates(@Value("${shop.wx.templates.after-sale-result:}") String afterSaleResult,
+                          @Value("${shop.wx.templates.after-sale-result-fields:}") String afterSaleResultFields,
+                          @Value("${shop.wx.templates.return-wait:}") String returnWait,
+                          @Value("${shop.wx.templates.return-wait-fields:}") String returnWaitFields,
+                          @Value("${shop.wx.templates.group-result:}") String groupResult,
+                          @Value("${shop.wx.templates.group-result-fields:}") String groupResultFields,
+                          @Value("${shop.wx.templates.delivery-start:}") String deliveryStart,
+                          @Value("${shop.wx.templates.delivery-start-fields:}") String deliveryStartFields,
+                          @Value("${shop.wx.templates.mch-new-order:}") String mchNewOrder,
+                          @Value("${shop.wx.templates.mch-new-order-fields:}") String mchNewOrderFields,
+                          @Value("${shop.wx.templates.mch-after-sale:}") String mchAfterSale,
+                          @Value("${shop.wx.templates.mch-after-sale-fields:}") String mchAfterSaleFields,
+                          @Value("${shop.wx.templates.mch-review:}") String mchReview,
+                          @Value("${shop.wx.templates.mch-review-fields:}") String mchReviewFields) {
+        putFielded(SCENE_AFTER_SALE_RESULT, afterSaleResult, afterSaleResultFields);
+        putFielded(SCENE_RETURN_WAIT, returnWait, returnWaitFields);
+        putFielded(SCENE_GROUP_RESULT, groupResult, groupResultFields);
+        putFielded(SCENE_DELIVERY_START, deliveryStart, deliveryStartFields);
+        putFielded(SCENE_MCH_NEW_ORDER, mchNewOrder, mchNewOrderFields);
+        putFielded(SCENE_MCH_AFTER_SALE, mchAfterSale, mchAfterSaleFields);
+        putFielded(SCENE_MCH_REVIEW, mchReview, mchReviewFields);
+    }
+
+    /** {@code orderNo:character_string1,result:thing4} → 有序映射。格式不对的段跳过（启动不因配置拼写失败） */
+    static Map<String, String> parseFieldMap(String spec) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (spec == null) {
+            return out;
+        }
+        for (String part : spec.split(",")) {
+            int i = part.indexOf(':');
+            if (i > 0 && i < part.length() - 1) {
+                out.put(part.substring(0, i).trim(), part.substring(i + 1).trim());
+            }
+        }
+        return out;
+    }
+
+    private void putFielded(String scene, String templateId, String fields) {
+        if (templateId == null || templateId.isBlank()) {
+            return;   // 没选模板：这个场景只发站内信 / App 推送
+        }
+        fieldedTpls.put(scene, new FieldedTpl(templateId.trim(), parseFieldMap(fields)));
+    }
+
     private void putWaybill(String scene, String templateId, String fields) {
         if (templateId == null || templateId.isBlank()) {
             return;   // 没选模板：这个节点不发订阅消息，站内信照发
@@ -211,7 +266,10 @@ public class WxSubscribeGateway implements WxSubscribePort {
                 WaybillTpl t = waybillTpls.get(scene);
                 yield t == null ? null : t.templateId();
             }
-            default -> null;
+            default -> {
+                FieldedTpl t = fieldedTpls.get(scene);
+                yield t == null ? null : t.templateId();
+            }
         };
     }
 
@@ -306,6 +364,30 @@ public class WxSubscribeGateway implements WxSubscribePort {
             if (!t.fields()[i].isEmpty()) {
                 data.put(t.fields()[i], clampByType(t.fields()[i], values[i]));
             }
+        }
+        return send(openId, t.templateId(), page, data);
+    }
+
+    @Override
+    public SendResult sendFielded(String openId, String scene, Map<String, String> values, String page) {
+        FieldedTpl t = fieldedTpls.get(scene);
+        if (t == null) {
+            throw new WxSubscribeException(scene + " 没配模板号 —— 站内信照发", false);
+        }
+        if (t.fields().isEmpty()) {
+            throw new WxSubscribeException(scene + " 的字段映射没配（WX_TPL_*_FIELDS，写成 语义键:格名,…）", false);
+        }
+        Map<String, String> data = new LinkedHashMap<>();
+        for (var e : t.fields().entrySet()) {
+            String v = values.get(e.getKey());
+            String field = e.getValue();
+            // 领域给时间一律是毫秒数；time / date 格只认 DATE_FMT 那种写法，纯数字整条被拒
+            if (v != null && (field.startsWith("time") || field.startsWith("date")) && v.matches("\\d{10,}")) {
+                v = DATE_FMT.format(java.time.Instant.ofEpochMilli(Long.parseLong(v))
+                        .atZone(java.time.ZoneId.systemDefault()));
+            }
+            // 模板里选了的格都得有值，空着整条会被拒（47003）—— 填一个短横，让「少了一格」只是少一格
+            data.put(field, clampByType(field, v == null || v.isBlank() ? "-" : v));
         }
         return send(openId, t.templateId(), page, data);
     }

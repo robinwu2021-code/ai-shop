@@ -691,6 +691,8 @@ export const httpApi: MerchantApi = {
   mMessageUnread: () => http.get<number>(E.mMessageUnread.path),
   mMessageRead: (messageNo) => http.post<Message[]>(buildPath(E.mMessageRead.path, { messageNo })),
   mMessageReadAll: () => http.post<Message[]>(E.mMessageReadAll.path),
+  mSubscribeReport: (templateIds, accepted) =>
+    http.post<void>(E.mSubscribeReport.path, { templateIds, accepted }),
 
   // ---- 推送设备
   mRegisterPushToken: (platform, provider, clientId) =>

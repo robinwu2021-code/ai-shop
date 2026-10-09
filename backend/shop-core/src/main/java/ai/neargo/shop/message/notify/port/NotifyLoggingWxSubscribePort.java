@@ -100,6 +100,11 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
         return logged(openId, scene, () -> delegate.sendWaybill(openId, scene, notice, page));
     }
 
+    @Override
+    public SendResult sendFielded(String openId, String scene, java.util.Map<String, String> values, String page) {
+        return logged(openId, scene, () -> delegate.sendFielded(openId, scene, values, page));
+    }
+
     /**
      * 场景 → **我们自己的**模板号。与 {@code delegate.templateId(scene)} 不同：
      * 那个返回微信侧报备的 id（会随重新报备而变），这个是库里那份可查可改的模板。
@@ -117,6 +122,13 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
             case WxSubscribePort.SCENE_WAYBILL_PICKED_UP -> "TPL_WX_WAYBILL_PICKED_UP";
             case WxSubscribePort.SCENE_WAYBILL_DELIVERING -> "TPL_WX_WAYBILL_DELIVERING";
             case WxSubscribePort.SCENE_WAYBILL_SIGNED -> "TPL_WX_WAYBILL_SIGNED";
+            case WxSubscribePort.SCENE_AFTER_SALE_RESULT -> "TPL_WX_AFTER_SALE_RESULT";
+            case WxSubscribePort.SCENE_RETURN_WAIT -> "TPL_WX_RETURN_WAIT";
+            case WxSubscribePort.SCENE_GROUP_RESULT -> "TPL_WX_GROUP_RESULT";
+            case WxSubscribePort.SCENE_DELIVERY_START -> "TPL_WX_DELIVERY_START";
+            case WxSubscribePort.SCENE_MCH_NEW_ORDER -> "TPL_WX_MCH_NEW_ORDER";
+            case WxSubscribePort.SCENE_MCH_AFTER_SALE -> "TPL_WX_MCH_AFTER_SALE";
+            case WxSubscribePort.SCENE_MCH_REVIEW -> "TPL_WX_MCH_REVIEW";
             default -> "TPL_WX_ARRIVED";
         };
     }

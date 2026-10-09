@@ -45,3 +45,49 @@ describe("订阅授权：未配的模板号不许递给微信", () => {
     expect(r).toEqual({ accepted: [], rejected: [] });
   });
 });
+
+/**
+ * 一张单问哪几个模板（TDD-微信订阅消息优先 §2.2 / AC6 / AC7）。
+ * 测的是**桩世界的占位号** —— 判的是「问了哪一类」，不是具体号。
+ */
+describe("下单 / 支付那一下问哪几个模板", () => {
+  async function load() {
+    return (await import("../src/ports/push")).orderSubscribeTmpls;
+  }
+
+  it("★★★ 微信支付的快递单一个都不问 —— 发货与物流动态微信自己推，再发是重复打扰", async () => {
+    const pick = await load();
+    expect(pick("EXPRESS", { offline: false, grouped: false })).toEqual([]);
+  });
+
+  it("★★★ 线下付款的快递单问揽收 / 派件 / 签收", async () => {
+    const pick = await load();
+    expect(pick("EXPRESS", { offline: true, grouped: false })).toEqual([
+      "STUB_TPL_WAYBILL_PICKED_UP", "STUB_TPL_WAYBILL_DELIVERING", "STUB_TPL_WAYBILL_SIGNED",
+    ]);
+  });
+
+  it("★★★ 拼团排第一、满 3 个截断 —— 没成团等于钱要退，比物流节点要紧", async () => {
+    const pick = await load();
+    const r = pick("EXPRESS", { offline: true, grouped: true });
+    expect(r, "微信一次最多 3 个，第 4 个整批失败").toHaveLength(3);
+    expect(r[0]).toBe("STUB_TPL_GROUP_RESULT");
+  });
+
+  it("★★ 商家配送问「开始配送」，自提问「到货」—— 两种都不分线上线下", async () => {
+    const pick = await load();
+    for (const offline of [true, false]) {
+      expect(pick("MERCHANT_DELIVERY", { offline, grouped: false })).toEqual(["STUB_TPL_DELIVERY_START"]);
+      expect(pick("STORE_PICKUP", { offline, grouped: false })).toEqual(["STUB_TPL_ORDER_ARRIVED"]);
+    }
+    expect(pick("NEIGHBOR_PICKUP", { offline: false, grouped: true }))
+      .toEqual(["STUB_TPL_GROUP_RESULT", "STUB_TPL_ORDER_ARRIVED"]);
+  });
+
+  it("★★ 退款不再问 —— 微信支付单的退款到账微信支付自己推（AC6）", async () => {
+    const pick = await load();
+    for (const f of ["EXPRESS", "MERCHANT_DELIVERY", "STORE_PICKUP", "NEIGHBOR_PICKUP", "APPOINTMENT"]) {
+      expect(pick(f, { offline: false, grouped: true })).not.toContain("STUB_TPL_REFUNDED");
+    }
+  });
+});
