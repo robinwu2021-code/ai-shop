@@ -288,7 +288,7 @@
     {
       "path": "pages/qualifications/index",
       "style": {
-        "navigationBarTitleText": "资质证照",
+        "navigationBarTitleText": "经营资质",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -408,7 +408,7 @@
     {
       "path": "pages/entities/index",
       "style": {
-        "navigationBarTitleText": "证照与账户",
+        "navigationBarTitleText": "营业执照",
         "app-plus": {
           "navigationStyle": "custom"
         },

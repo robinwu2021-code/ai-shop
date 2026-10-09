@@ -311,7 +311,7 @@
             {
               "app": "b-app",
               "route": "/pages/entities/index",
-              "title": "证照与账户",
+              "title": "营业执照",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -618,7 +618,7 @@
             {
               "app": "b-app",
               "route": "/pages/qualifications/index",
-              "title": "资质证照",
+              "title": "经营资质",
               "domain": "门店",
               "tab": false,
               "status": "已实现",
