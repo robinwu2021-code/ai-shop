@@ -278,6 +278,13 @@ export const settleMock: Pick<MerchantApi,
           billCount: group.length,
           netMinor: group.reduce((n, b) => n + b.netMinor, 0),
           ...batchStateOf(due),
+          /*
+           * 放款摘要（V391）：已放款的批次给一笔「已打款 + 凭证」，让账期块那三行分支在 mock 下看得见。
+           * 凭证号用批次号派生 —— 稳定，刷新不变。
+           */
+          ...(batchStateOf(due).status === "RELEASED"
+            ? { payoutStatus: "PAID" as const, paymentRef: `BANK-${batchNoOf(due).slice(-8)}`, paidAt: due + 86_400_000 }
+            : {}),
         };
       }),
     );

@@ -234,7 +234,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   裂变活动: { en: "Referral campaigns" },
   分账结算: { en: "Settlement & splits" },
   费率: { en: "Rates" },
-  提现与税: { en: "Withdrawals & tax" },
+  发票与税: { en: "Invoices & tax" },
   审核: { en: "Moderation" },
   评分: { en: "Rating" },
   触达: { en: "Outreach" },

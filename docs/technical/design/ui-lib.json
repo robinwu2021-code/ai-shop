@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 513,
+        "b-app": 514,
         "c-app": 75
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 397,
+        "b-app": 400,
         "c-app": 273
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 346,
+        "b-app": 347,
         "c-app": 147
       }
     },
@@ -3954,7 +3954,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 98,
+      "libClassHits": 103,
       "localSelectors": 9,
       "localCssLines": 28,
       "rolled": []

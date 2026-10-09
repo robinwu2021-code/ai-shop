@@ -1,8 +1,7 @@
 // 覆盖范围：分账结算（P-12.1）。本域的价值在**跨域收口**：
 // 读商家的报备状态、消费售后的回退标记 —— 这两处不接上，前面几个域的字段就是死的。
 import * as db from "@/lib/mock/db";
-import { MAX_TAX_RATE, MIN_WITHDRAW_AMOUNT, WITHDRAW_REVIEW_THRESHOLD } from "@/lib/constants";
-import { WITHDRAW_TRANSITIONS } from "@/lib/types";
+import { MAX_TAX_RATE } from "@/lib/constants";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
 import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow, type PayoutList } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
@@ -393,50 +392,6 @@ export const financeMock: FinanceApi = {
     return wait(rule, 400);
   },
 
-  listWithdrawals: (q = {}) =>
-    wait(
-      db.paginate(db.withdrawals, q.page, q.size, (w) =>
-        db.eqHit(q.status, w.status) && db.kwHit(q.keyword, w.withdrawNo, w.merchantNo, w.merchantName),
-      ),
-    ),
-
-  decideWithdrawal: async ({ withdrawNo, pass, remark }) => {
-    const w = db.withdrawals.find((x) => x.withdrawNo === withdrawNo);
-    if (!w) notFound("提现单", "Withdrawal", withdrawNo);
-    db.assertTransition(WITHDRAW_TRANSITIONS, w.status, pass ? "APPROVED" : "REJECTED", "提现单", "Withdrawal");
-
-    if (!pass) {
-      // 驳回原因原样回商家 B 端，不写等于让人猜
-      if (!remark?.trim()) fail("驳回提现必须写原因 —— 商家在 B 端看到的就是这段话", "Rejecting a withdrawal needs a reason — the merchant sees this text in their app");
-      w.status = "REJECTED";
-    } else {
-      const m = db.merchants.find((x) => x.merchantNo === w.merchantNo);
-      if (!m) notFound("商家", "Merchant", w.merchantNo);
-      // 没有收款账户，批了钱也打不出去（ADR-002）
-      if (!m.settleAccountReady) fail(`${m.name} 尚未报备分账接收方，无法打款`, `${m.name} has no payout account registered, so there is nowhere to send the money`);
-      // 解封是另一条链路上的决定（P-11.1.4），不在这里绕过去
-      if (m.status === "SUSPENDED") fail(`${m.name} 处于封禁中，请先解封再处理提现`, `${m.name} is banned — lift the ban before handling the withdrawal`);
-      // 用申请那一刻的余额快照，而不是实时值：实时值会因为期间的新订单而漂移
-      if (w.amount > w.availableBalance) {
-        fail(`申请金额超过可提余额（可提 ${w.availableBalance / 100} 元）`, `The request exceeds the available balance (¥${w.availableBalance / 100})`);
-      }
-      if (w.amount < MIN_WITHDRAW_AMOUNT) {
-        fail(`单笔提现不得低于 ${MIN_WITHDRAW_AMOUNT / 100} 元 —— 渠道手续费比本金还贵`, `A withdrawal cannot be under ¥${MIN_WITHDRAW_AMOUNT / 100} — the channel fee costs more than the amount`);
-      }
-      // 大额是最容易被冒用的口子
-      if (w.amount >= WITHDRAW_REVIEW_THRESHOLD && !remark?.trim()) {
-        fail(`金额超过 ${WITHDRAW_REVIEW_THRESHOLD / 100} 元，必须填写复核说明`, `Above ¥${WITHDRAW_REVIEW_THRESHOLD / 100} a review note is required`);
-      }
-      // 落 APPROVED 而不是 PAID：打款结果来自渠道回执
-      w.status = "APPROVED";
-    }
-
-    w.remark = remark?.trim() || null;
-    w.decidedAt = new Date().toISOString();
-    w.decidedBy = "admin";
-    return wait(w, 400);
-  },
-
   listInvoiceRequests: (q = {}) =>
     wait(
       db.paginate(db.invoiceRequests, q.page, q.size, (i) =>
@@ -538,7 +493,13 @@ export const financeMock: FinanceApi = {
       fail(`批次当前状态 ${b.status} 不能放款，只有自查通过的批次能放`,
         `Batch is ${b.status}; only RECONCILED batches can be released`);
     }
-    const acc = db.payoutAccounts.find((a) => a.entityNo === b.entityNo && a.status === "ACTIVE");
+    /*
+     * mock 库里批次用 M0001 这种商家号、收款账户用 E2026… 这种主体号，两套编号对不上
+     * （历史原因，别处也没统一）。按号找不到就回落到任一生效账户 —— 这里要演示的是放款链路，
+     * 不是「没账户怎么办」；那条闸真后端有 PayoutFlowTest 钉着。
+     */
+    const acc = db.payoutAccounts.find((a) => a.entityNo === b.entityNo && a.status === "ACTIVE")
+      ?? db.payoutAccounts.find((a) => a.status === "ACTIVE");
     if (!acc) fail(`主体 ${b.entityNo} 没有生效中的收款账户`, `Entity ${b.entityNo} has no active payout account`);
     const p = {
       payoutNo: `PO${Date.now()}`, batchNo, entityNo: b.entityNo, payMerchantNo: null,

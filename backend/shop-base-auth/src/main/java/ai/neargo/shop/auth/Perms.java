@@ -167,6 +167,7 @@ public final class Perms {
      * <p>⚠️ 持有它<b>不等于能打款</b>：通过后落 APPROVED，实际出款是线下动作
      * （待完成功能清单 B-12.5「一期只记账、线下结算」）。
      */
+    /** 已退役（2026-10-09）：提现端点与菜单点撤掉，没有任何角色再持有它。常量留着是为了老数据可读 */
     public static final String FINANCE_WITHDRAW_APPROVE = "finance:withdraw:approve";
 
     // ── 团购与求团 ──────────────────────────────────────────────────────────
@@ -727,9 +728,7 @@ public final class Perms {
                     FINANCE_INVOICE_READ, FINANCE_INVOICE_VERIFY, FINANCE_PAYOUT_EXECUTE,
                     FINANCE_RATE_READ, FINANCE_RATE_UPDATE, FINANCE_RECON_READ,
                     FINANCE_RECON_RESOLVE, FINANCE_SETTLE_EXECUTE, FINANCE_SETTLE_READ,
-                    // 提现审批（P-12.2.1）。财务是唯一该持有它的角色 ——
-                    // 超管靠通配拿到，其余角色一律不给：这是把钱批出去的那个动作
-                    FINANCE_WITHDRAW_APPROVE,
+                    // 提现审批码 2026-10-09 从角色表撤掉（提现端点与菜单点一起退役，见 V392）
                     MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ)),
 
             /*

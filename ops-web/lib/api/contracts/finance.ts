@@ -2,7 +2,7 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal,
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
   BankFlowImportResult,
 } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
@@ -127,26 +127,6 @@ export interface FinanceApi {
     effectiveFrom?: number;
     remark?: string;
   }): Promise<FeeRuleVersion>;
-
-  // ── 提现审批（P-12.2.1）──────────────────────────────────────
-
-  listWithdrawals(q?: PageQ & { status?: string }): Promise<Page<Withdrawal>>;
-
-  /**
-   * 审批一笔提现。这是**运营端唯一会把钱打出去**的动作，校验最密：
-   *
-   * - 只有 `PENDING` / `FAILED` 能审批（状态机）；
-   * - 金额不得超过申请时的可提余额快照 —— 用快照而不是实时值，
-   *   因为审批看的是"申请那一刻他能提多少"，实时值会因为期间的新订单而漂移；
-   * - 商家**未报备分账接收方**不能通过：没有收款账户，批了钱也打不出去（ADR-002）；
-   * - 商家**已封禁**不能通过：要先解封，那是另一条链路上的决定（P-11.1.4）；
-   * - 低于单笔下限不能通过：渠道手续费比本金还贵；
-   * - 超过复核阈值必须写复核说明；驳回必须写原因。
-   *
-   * ⚠️ 通过后落 `APPROVED` 而不是 `PAID` —— 打款结果来自渠道回执，
-   * 让人手动置为"已打款"就等于允许在钱没到账时把单子做平。
-   */
-  decideWithdrawal(v: { withdrawNo: string; pass: boolean; remark?: string }): Promise<Withdrawal>;
 
   // ── 发票与个税（P-12.2.2 / 12.2.3）──────────────────────────
 

@@ -7278,6 +7278,21 @@ components:
             - "string"
             - "null"
           description: "处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来"
+        payoutStatus: 
+          anyOf: 
+            - "$ref": "#/definitions/PayoutStatus"
+            - type: "null"
+          description: "本批最近一笔放款的摘要（V391）。空 = 还没放款"
+        paymentRef: 
+          type: 
+            - "string"
+            - "null"
+          description: "凭证号（网银流水号）"
+        paidAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "财务登记凭证的时刻（毫秒）"
       required: 
         - "batchNo"
         - "entityNo"
@@ -7314,6 +7329,15 @@ components:
         - "SELF_ONLY"
         - "BOTH"
       description: "对账覆盖面。<b>SELF_ONLY 不等于「对完了」</b> —— 它只是我方账内自洽，通道账单还没比过。界面要如实标注， 显示成「已对账」是一句自证的话。"
+    PayoutStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "EXPORTED"
+        - "PAID"
+        - "MATCHED"
+        - "FAILED"
+      description: "只有一个方向。MATCHED 只能由出款对账轴写（银行流水勾上），不给人工入口"
     Payout: 
       type: "object"
       properties: 
@@ -7411,15 +7435,6 @@ components:
         - "settleNos"
       additionalProperties: false
       description: "放款记录（V391 / TDD-账期推进与放款记录）：**账期批次 × 收款号，一笔网银转账一条**。 凭证号与银行流水挂在它上面，不再挂在逐张结算单上。"
-    PayoutStatus: 
-      type: "string"
-      enum: 
-        - "PENDING"
-        - "EXPORTED"
-        - "PAID"
-        - "MATCHED"
-        - "FAILED"
-      description: "只有一个方向。MATCHED 只能由出款对账轴写（银行流水勾上），不给人工入口"
     PayoutChannel: 
       type: "string"
       enum: 
@@ -14953,86 +14968,6 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/finance/withdrawals": 
-    get: 
-      operationId: "listWithdrawals"
-      summary: "listWithdrawals"
-      tags: 
-        - "finance"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    type: "object"
-                    properties: 
-                      records: 
-                        type: "array"
-                        items: 
-                          "$ref": "#/components/schemas/Withdrawal"
-                      total: 
-                        type: "integer"
-                      page: 
-                        type: "integer"
-                      size: 
-                        type: "integer"
-                    required: 
-                      - "records"
-                      - "total"
-                      - "page"
-                      - "size"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/finance/withdrawals/{withdrawNo}/decide": 
-    post: 
-      operationId: "decideWithdrawal"
-      summary: "审批一笔提现"
-      tags: 
-        - "finance"
-      responses: 
-        "200": 
-          description: "成功"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/Withdrawal"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters: 
-        - name: "withdrawNo"
-          in: "path"
-          required: true
-          schema: 
-            type: "string"
-      requestBody: 
-        required: true
-        content: 
-          "application/json": 
-            schema: 
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
   "/ops/finance/invoices": 
     get: 
       operationId: "listInvoiceRequests"

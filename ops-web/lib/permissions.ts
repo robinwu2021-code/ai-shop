@@ -81,10 +81,10 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "elec:rfq:read",
   ],
 
-  // 财务/结算：分账、结算单、提现、发票、个税代扣（唯一持有打款/分账码的角色）
+  // 财务/结算：分账、结算单、放款、发票、个税代扣（唯一持有打款/分账码的角色）。提现审批 2026-10-09 退役
   FINANCE: [
     "dashboard:overview:read",
-    "finance:settle:read", "finance:settle:execute", "finance:withdraw:approve",
+    "finance:settle:read", "finance:settle:execute",
     "finance:invoice:read", "finance:rate:update",
     "order:order:read", "order:order:export",
     "aftersale:ticket:read",
@@ -218,7 +218,7 @@ export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   CAMPAIGN_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "group:campaign:audit", "group:campaign:read", "growth:attribution:read", "growth:attribution:update", "growth:fission:read", "growth:fission:update", "marketing:campaign:read", "marketing:campaign:update", "marketing:coupon:issue", "marketing:coupon:read", "marketing:coupon:update", "marketing:slot:read", "marketing:slot:update", "order:order:read"],
   COMMUNITY_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "community:community:update", "community:pickup:read", "community:pickup:update", "community:region:read", "community:region:update", "dashboard:overview:read", "fulfillment:batch:read", "fulfillment:logistics:read", "fulfillment:logistics:replay", "fulfillment:redeem:read", "fulfillment:rule:update", "order:order:read", "system:industry:read", "system:industry:update"],
   AUDITOR: ["community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "inventory:credential:read", "inventory:stock:read", "product:sku:audit", "product:sku:read", "review:review:audit", "review:review:read", "review:score:read", "review:score:update"],
-  FINANCE: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "finance:invoice:read", "finance:invoice:verify", "finance:payout:execute", "finance:rate:read", "finance:rate:update", "finance:recon:read", "finance:recon:resolve", "finance:settle:execute", "finance:settle:read", "finance:withdraw:approve", "merchant:admission:read", "merchant:admission:update", "order:order:read"],
+  FINANCE: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "finance:invoice:read", "finance:invoice:verify", "finance:payout:execute", "finance:rate:read", "finance:rate:update", "finance:recon:read", "finance:recon:resolve", "finance:settle:execute", "finance:settle:read", "merchant:admission:read", "merchant:admission:update", "order:order:read"],
   RISK: ["aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "elec:supplier:manage", "elec:supplier:read", "order:order:read", "risk:blacklist:read", "risk:blacklist:update", "risk:event:handle", "risk:event:read", "risk:rule:read", "risk:rule:update"],
   ANALYST: ["community:community:read"],
   TECH_OPS: ["iam:audit:read", "system:param:read", "system:param:update", "system:theme:read", "system:theme:update",
@@ -285,7 +285,6 @@ export const CRITICAL_PERMS = [
   "system:testphone:update",
   "merchant:merchant:ban",
   "finance:settle:execute",
-  "finance:withdraw:approve",
   "risk:blacklist:update",
   "system:env:switch",
 ] as const;

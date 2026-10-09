@@ -796,6 +796,12 @@ export interface SettleBatch {
   decidedBy: string | null;
   /** 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 */
   decideRemark: string | null;
+  /** 本批最近一笔放款的摘要（V391）。空 = 还没放款 */
+  payoutStatus?: PayoutStatus | null;
+  /** 凭证号（网银流水号） */
+  paymentRef?: string | null;
+  /** 财务登记凭证的时刻（毫秒） */
+  paidAt?: number | null;
 }
 
 /**

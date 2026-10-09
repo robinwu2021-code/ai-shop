@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { financeMock } from "@/lib/api/mocks/finance";
 import { invoiceRequests, merchants, taxRule, withdrawals } from "@/lib/mock/db";
-import { MAX_TAX_RATE, MIN_WITHDRAW_AMOUNT, WITHDRAW_REVIEW_THRESHOLD } from "@/lib/constants";
+import { MAX_TAX_RATE } from "@/lib/constants";
 
 const wSnapshot = withdrawals.map((w) => ({ ...w }));
 const iSnapshot = invoiceRequests.map((i) => ({ ...i }));
@@ -17,54 +17,6 @@ beforeEach(() => {
   invoiceRequests.splice(0, invoiceRequests.length, ...iSnapshot.map((i) => ({ ...i })));
   merchants.splice(0, merchants.length, ...mSnapshot.map((m) => ({ ...m })));
   Object.assign(taxRule, tSnapshot);
-});
-
-describe("提现审批（P-12.2.1）", () => {
-  it("**通过后落 APPROVED 而不是 PAID** —— 打款结果来自渠道回执，手动做平就是在钱没到账时结案", async () => {
-    const w = await financeMock.decideWithdrawal({ withdrawNo: "WD901", pass: true });
-    expect(w.status).toBe("APPROVED");
-    expect(w.decidedBy).toBe("admin");
-  });
-
-  it("申请金额超过可提余额要拒绝", async () => {
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD902", pass: true })).rejects.toThrow(/超过可提余额/);
-  });
-
-  it("**没报备分账接收方的不能通过** —— 批了钱也打不出去", async () => {
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD903", pass: true })).rejects.toThrow(/尚未报备分账接收方/);
-  });
-
-  it("封禁中的商家不能通过 —— 解封是另一条链路上的决定", async () => {
-    const m = merchants.find((x) => x.merchantNo === "M903")!;
-    m.status = "SUSPENDED";
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD901", pass: true })).rejects.toThrow(/封禁中/);
-  });
-
-  it(`超过 ${WITHDRAW_REVIEW_THRESHOLD / 100} 元必须写复核说明 —— 大额是最容易被冒用的口子`, async () => {
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD904", pass: true })).rejects.toThrow(/复核说明/);
-    const w = await financeMock.decideWithdrawal({
-      withdrawNo: "WD904", pass: true, remark: "已与商家电话核对账户，录音存档 #2026-0804",
-    });
-    expect(w.status).toBe("APPROVED");
-  });
-
-  it(`低于 ${MIN_WITHDRAW_AMOUNT / 100} 元不能通过 —— 手续费比本金还贵`, async () => {
-    const w = withdrawals.find((x) => x.withdrawNo === "WD901")!;
-    w.amount = MIN_WITHDRAW_AMOUNT - 1;
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD901", pass: true })).rejects.toThrow(/不得低于/);
-  });
-
-  it("驳回必须写原因（原样回商家 B 端）", async () => {
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD901", pass: false })).rejects.toThrow(/必须写原因/);
-    const w = await financeMock.decideWithdrawal({
-      withdrawNo: "WD901", pass: false, remark: "账户户名与主体不一致，请更正后重新申请",
-    });
-    expect(w.status).toBe("REJECTED");
-  });
-
-  it("**已打款的不能再审批** —— 状态机拦住重复放款", async () => {
-    await expect(financeMock.decideWithdrawal({ withdrawNo: "WD905", pass: true })).rejects.toThrow(/不允许从/);
-  });
 });
 
 describe("发票（P-12.2.2）", () => {

@@ -122,7 +122,7 @@ export function BusinessSections() {
           <ReadOnlyNotice what="商家入驻审核" perm="merchant:apply:audit" />
         </Row>
         <Row label="多权限码（缺任一即降级）">
-          <ReadOnlyNotice what="分账执行 / 提现审批" perm={["finance:settle:execute", "finance:withdraw:approve"]} />
+          <ReadOnlyNotice what="分账执行 / 放款" perm={["finance:settle:execute", "finance:payout:execute"]} />
         </Row>
         <Row label="带 note">
           <ReadOnlyNotice what="自提点建档" perm="community:pickup:update" note="不能新增、编辑或归档" />

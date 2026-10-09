@@ -31,10 +31,6 @@ describe("高危权限的持有者（矩阵 §2.3「高危权限」列）", () =
     expect(holders("finance:settle:execute").sort()).toEqual(["FINANCE", "SUPER_ADMIN"]);
   });
 
-  it("提现审批只有超管与财务", () => {
-    expect(holders("finance:withdraw:approve").sort()).toEqual(["FINANCE", "SUPER_ADMIN"]);
-  });
-
   it("封禁商家只有超管、BD 与风控", () => {
     expect(holders("merchant:merchant:ban").sort()).toEqual(["MERCHANT_BD", "RISK", "SUPER_ADMIN"]);
   });

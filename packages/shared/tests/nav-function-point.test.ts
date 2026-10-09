@@ -69,7 +69,27 @@ function seededPoints() {
       }
     }
   }
-  return out;
+  /*
+   * **撤掉的点要减掉**（2026-10-09 第一次撤菜单点：V392 撤「提现审批」）。
+   * 只认 INSERT 的话，撤掉的点会被报成「只在库里」—— 而那条迁移正是按守卫自己的提示出的。
+   * 认 `DELETE FROM sys_function_point WHERE point_code = '…'` 这一种写法；
+   * 撤点一律写成这个形状，别写 IN (…) 或拼条件，否则这里认不到、守卫照红。
+   */
+  const removed = new Set<string>();
+  for (const f of readdirSync(MIGRATION_DIR).sort()) {
+    if (!f.endsWith(".sql")) continue;
+    const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
+    for (const m of sql.matchAll(/DELETE\s+FROM\s+sys_function_point\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
+      removed.add(m[1]);
+    }
+  }
+  /*
+   * 撤点按 **href** 连带清掉同 href 的旧码：V62 用顺序编号（OPS_FINANCE_05）、V72 换成按 href 派生
+   * 并整体重建（先 DELETE … LIKE 'OPS\_%' 再 INSERT）。这里只认 INSERT，不模拟那次整体重建，
+   * 于是同一个 href 在 `out` 里有两条 —— 只减掉新码那条，旧码那条还会把 href 报成「只在库里」。
+   */
+  const removedHrefs = new Set(out.filter((p) => removed.has(p.pointCode)).map((p) => p.href));
+  return out.filter((p) => !removed.has(p.pointCode) && !(p.href && removedHrefs.has(p.href)));
 }
 
 /** nav.ts 里的叶子（有 href + label 的那些） */

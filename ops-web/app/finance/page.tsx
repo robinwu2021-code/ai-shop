@@ -21,7 +21,6 @@ import type { AfterSale, Settlement, SplitLog, TrafficSource } from "@/lib/types
 import { SettleStatusBadge, useSettleStatusMap, useTrafficSourceMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 提现与发票各自成块 —— 与结算那四个 tab 只共用文案表
-import { WithdrawTab } from "./withdraw-tab";
 import { InvoiceTab } from "./invoice-tab";
 // 费率单独成块：它与结算那几个 tab 只共用文案表，且形状是版本化的、与配置卡完全不同
 import { FeeRuleTab } from "./fee-rule-tab";
@@ -53,7 +52,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 type Copy = (typeof FINANCE_COPY)["zh"];
 const TAB_KEYS = ["settlements", "settle-batches", "splits", "refund-back", "payables",
   "purchase-invoices", "buyer-invoices", "rates", "pay-channels", "debts",
-  "points", "points-policy", "withdraw", "invoice", "channel-messages",
+  "points", "points-policy", "invoice", "channel-messages",
   "payout-accounts", "settle-stats"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
@@ -86,7 +85,6 @@ function FinanceInner() {
   const canEditRate = allow("finance:rate:update");
   /* 保证金抵扣动的是商家本金，与「看看谁欠着」不是一类权限 */
   const canPayout = allow("finance:payout:execute");
-  const canWithdraw = allow("finance:withdraw:approve");
   const canInvoice = allow("finance:invoice:read");
   /*
    * **读与写分开。** 这一屏上两处写口（个税规则 PUT、开票抬头 POST）后端判的都是
@@ -295,19 +293,12 @@ function FinanceInner() {
         </>
       )}
 
-      {tab === "withdraw" && (
-        <>
-          {!canWithdraw && <ReadOnlyNotice what={c.withdrawReadOnlyWhat} perm="finance:withdraw:approve" className="mb-3" />}
-          <WithdrawTab c={c} canApprove={canWithdraw} />
-        </>
-      )}
-
       {tab === "invoice" && <InvoiceTab c={c} canEdit={canInvoice} canWrite={canInvoiceWrite} />}
 
       {tab === "rates" && <FeeRuleTab c={c} canEdit={canEditRate} />}
 
       {tab === "pay-channels" && <PayChannelTab c={c} canEdit={canEditRate} />}
-      {tab === "settle-batches" && <SettleBatchTab c={c} canExecute={canExecute} />}
+      {tab === "settle-batches" && <SettleBatchTab c={c} canExecute={canExecute} canPayout={canPayout} />}
       {tab === "debts" && <DebtTab c={c} canExecute={canPayout} />}
       {tab === "channel-messages" && <ChannelMessageTab c={c} />}
       {tab === "payout-accounts" && <PayoutAccountTab c={c} canAudit={canPayout} />}

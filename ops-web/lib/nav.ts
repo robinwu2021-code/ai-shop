@@ -405,8 +405,12 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=pay-channels", label: "支付通道与费率", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=settle-batches", label: "账期批次与放款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
       { href: "/finance?tab=debts", label: "商家欠款", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
-      { href: "/finance?tab=withdraw", label: "提现审批", perm: "finance:withdraw:approve", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
-      { href: "/finance?tab=invoice", label: "发票与个税", perm: "finance:invoice:read", group: "提现与税", matrix: "P-12.2", phase: 2, ready: true },
+      /*
+       * 「提现审批」2026-10-09 撤掉（TDD-账期推进与放款记录 AC9 / PRD §7）：
+       * 商家向平台提现是二清（ADR-011 §2），这个入口从建成到撤掉生产 0 行。
+       * 钱出去走「账期批次与放款」。表 stl_withdraw 留着不删，只撤入口与菜单点。
+       */
+      { href: "/finance?tab=invoice", label: "发票与个税", perm: "finance:invoice:read", group: "发票与税", matrix: "P-12.2", phase: 2, ready: true },
       /*
        * 渠道报文（O1）。**归财务不归订单**：报文里有通道侧的商户号，
        * 而设计册定的可见范围是财务与技术支持。

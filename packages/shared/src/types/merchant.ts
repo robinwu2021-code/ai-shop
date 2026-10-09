@@ -1213,6 +1213,16 @@ export interface MySettleBatch {
   blockedReason?: string;
   /** 超时未处置将自动放行的时刻 */
   blockExpireAt?: number;
+  /**
+   * 本批最近一笔放款到哪一步了（V391）。空 = 还没放款。
+   * 批次状态 RELEASED 只说「放了」，没说钱到哪一步 —— 商家问客服的正是后者：
+   * PENDING / EXPORTED 财务还没打；PAID 已登记凭证；MATCHED 银行流水勾上；FAILED 退回了。
+   */
+  payoutStatus?: "PENDING" | "EXPORTED" | "PAID" | "MATCHED" | "FAILED" | null;
+  /** 凭证号（网银流水号）。商家拿它对自己的银行到账记录 */
+  paymentRef?: string | null;
+  /** 财务登记凭证的时刻（毫秒）。空 = 还没登记 */
+  paidAt?: number | null;
 }
 /**
  * 我的欠款。

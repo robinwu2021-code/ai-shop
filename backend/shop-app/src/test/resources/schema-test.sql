@@ -9846,3 +9846,5 @@ INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, 
 SELECT 'COMMUNITY_OPS', 'ACT__FULFILLMENT_LOGISTICS_REPLAY', 'OPS', NOW(), NOW() FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x
                     WHERE x.role_code = 'COMMUNITY_OPS' AND x.point_code = 'ACT__FULFILLMENT_LOGISTICS_REPLAY');
+DELETE FROM sys_role_point WHERE point_code = 'OPS_FINANCE__TAB_WITHDRAW' AND end_code = 'OPS';
+DELETE FROM sys_function_point WHERE point_code = 'OPS_FINANCE__TAB_WITHDRAW';

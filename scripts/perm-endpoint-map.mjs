@@ -337,7 +337,6 @@ export const RULES = [
    *
    * ⚠️ 持有它**不等于能打款**：通过后落 APPROVED，出款是线下动作（B-12.5）。
    */
-  ["*", /^\/ops\/finance\/withdrawals/, "finance:withdraw:approve"],
   /*
    * 商家结算发票（P-12.2.4）。**第三个方向的票**：进项是供应商开给平台
    * （purchase-invoices），销项对 C 是平台开给消费者（invoice-requests），

@@ -8920,6 +8920,9 @@ _无字段_
 | `netMinor` | `number` | 是 | 本批应放款合计（分） |
 | `blockedReason` | `string` | 否 | 挂起原因，**原话展示**（含具体数字与阈值），不要在端上再拼一遍 |
 | `blockExpireAt` | `number` | 否 | 超时未处置将自动放行的时刻 |
+| `payoutStatus` | `PENDING` \| `EXPORTED` \| `PAID` \| `MATCHED` \| `FAILED` \| `null` | 否 | 本批最近一笔放款到哪一步了（V391）。空 = 还没放款。 批次状态 RELEASED 只说「放了」，没说钱到哪一步 —— 商家问客服的正是后者： PENDING / EXPORTED 财务还没打；PAID 已登记凭证；MATCHED 银行流水勾上；FAILED 退回了。 |
+| `paymentRef` | `string,null` | 否 | 凭证号（网银流水号）。商家拿它对自己的银行到账记录 |
+| `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒）。空 = 还没登记 |
 
 ### OfflineSaleItem
 

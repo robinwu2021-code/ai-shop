@@ -75,11 +75,14 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     @Value("${shop.settle.freeze-days:7}")
     private int freezeDays;
 
+    private final ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payoutMapper;
+
     public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
                                   SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
                                   PayChannelMasterService channelMaster,
                                   ReconDiffMapper diffMapper,
-                                  ai.neargo.shop.pay.risk.FundRiskService fundRiskService) {
+                                  ai.neargo.shop.pay.risk.FundRiskService fundRiskService,
+                                  ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payoutMapper) {
         this.billMapper = billMapper;
         this.batchMapper = batchMapper;
         this.sourcePort = sourcePort;
@@ -87,6 +90,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         this.channelMaster = channelMaster;
         this.diffMapper = diffMapper;
         this.fundRiskService = fundRiskService;
+        this.payoutMapper = payoutMapper;
     }
 
     // ---------------------------------------------------------------- ① 定 T2
@@ -580,11 +584,32 @@ public class SettleBatchServiceImpl implements SettleBatchService {
 
     @Override
     public java.util.List<BatchVO> merchantBatches(String entityNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                        batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
-                                .eq(StlSettleBatch::getEntityNo, entityNo)
-                                .orderByDesc(StlSettleBatch::getId)))
-                .stream().map(SettleBatchServiceImpl::toVO).toList();
+        List<StlSettleBatch> rows = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getEntityNo, entityNo)
+                        .orderByDesc(StlSettleBatch::getId)));
+        // B 端无锚点，放款记录同样绕过（与批次同一条理由）
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> latest =
+                DataScopeContext.executeWithoutScope(() -> latestPayouts(rows));
+        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
+    }
+
+    /**
+     * 每个批次最近一笔放款（按 id 倒序取第一条）。<b>一次 IN 查齐</b>：逐批查的话一页 20 批 20 次往返。
+     * 退回过的批次会有一笔 FAILED 和一笔新的，取最近那笔 —— 商家要看的是现在这笔到哪了。
+     */
+    private Map<String, ai.neargo.shop.pay.entity.StlPayout> latestPayouts(List<StlSettleBatch> rows) {
+        if (rows.isEmpty()) {
+            return new java.util.HashMap<>();
+        }
+        List<String> nos = rows.stream().map(StlSettleBatch::getBatchNo).toList();
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> out = new java.util.HashMap<>();
+        for (var p : payoutMapper.selectList(Wrappers.<ai.neargo.shop.pay.entity.StlPayout>lambdaQuery()
+                .in(ai.neargo.shop.pay.entity.StlPayout::getBatchNo, nos)
+                .orderByDesc(ai.neargo.shop.pay.entity.StlPayout::getId))) {
+            out.putIfAbsent(p.getBatchNo(), p);
+        }
+        return out;
     }
 
     @Override
@@ -596,11 +621,12 @@ public class SettleBatchServiceImpl implements SettleBatchService {
          * 下一步动作是放款 —— 与提现审批同一档。配了商家域的财务不该看到别家的批次。
          * `entityNo` 参数是运营主动筛某一家，与数据域是两回事。
          */
-        return batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
-                        .eq(byStatus, StlSettleBatch::getStatus, status)
-                        .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
-                        .orderByDesc(StlSettleBatch::getId))
-                .stream().map(SettleBatchServiceImpl::toVO).toList();
+        List<StlSettleBatch> rows = batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                .eq(byStatus, StlSettleBatch::getStatus, status)
+                .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
+                .orderByDesc(StlSettleBatch::getId));
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> latest = latestPayouts(rows);
+        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
     }
 
     @Override
@@ -666,12 +692,18 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     }
 
     private static BatchVO toVO(StlSettleBatch b) {
+        return toVO(b, null);
+    }
+
+    private static BatchVO toVO(StlSettleBatch b, ai.neargo.shop.pay.entity.StlPayout p) {
         return new BatchVO(b.getBatchNo(), b.getEntityNo(), b.getPayChannel(), b.getSettleCycle(),
                 nz(b.getPeriodFrom()), nz(b.getDueAt()), b.getReleasedAt(), b.getFreezeExpireAt(),
                 b.getStatus(), b.getBillCount() == null ? 0 : b.getBillCount(),
                 nz(b.getGrossMinor()), nz(b.getNetMinor()), b.getReconScope(),
                 b.getBlockedReason(), b.getBlockedAt(), b.getBlockExpireAt(),
-                b.getDecidedBy(), b.getDecideRemark());
+                b.getDecidedBy(), b.getDecideRemark(),
+                p == null ? null : p.getStatus(), p == null ? null : p.getPaymentRef(),
+                p == null ? null : p.getPaidAt());
     }
 
     private ZoneId zoneOf() {

@@ -21,26 +21,6 @@ public class OpsWithdrawAppServiceImpl implements OpsWithdrawAppService {
     }
 
     @Override
-    public PageData<WithdrawVO> list(String status, String keyword, long page, long size) {
-        return withdrawService.list(status, keyword, page, size);
-    }
-
-    @Override
-    public WithdrawVO decide(String withdrawNo, Boolean pass, String remark) {
-        String operator = SecurityUtils.currentUserNo();
-        /*
-         * `pass` 漏传时按**不通过**算。反过来写的话，一个缺字段的请求
-         * 就是一次放行 —— 而这是运营端唯一会把钱批出去的动作。
-         */
-        boolean passed = Boolean.TRUE.equals(pass);
-        WithdrawVO vo = withdrawService.decide(withdrawNo, passed, remark, operator);
-        // 动的是真金白银，必须能追到是谁在什么时候批的
-        auditLogPort.record("WITHDRAW_DECIDE", withdrawNo,
-                (passed ? "通过" : "驳回") + "｜" + (remark == null ? "" : remark), true);
-        return vo;
-    }
-
-    @Override
     public TaxRuleVO taxRule() {
         return withdrawService.taxRule();
     }

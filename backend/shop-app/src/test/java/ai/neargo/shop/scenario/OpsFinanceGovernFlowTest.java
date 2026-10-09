@@ -208,79 +208,6 @@ class OpsFinanceGovernFlowTest {
 
     // ---------------------------------------------------------------- 提现审批（P-12.2.1 / 12.2.2）
 
-    @Test
-    @DisplayName("★ 提现审批状态机：驳回必须带原因 · 已审的不能再审 · 三道金额闸")
-    void withdrawApprovalStateMachine() throws Exception {
-        String biz = merchant("12600700020", "财务·提现审批店");
-        String merchantNo = merchantNoOf(biz);
-
-        // 驳回不写原因 = 让商家猜。原因是原样回 B 端的那半边
-        String w1 = seedWithdraw(merchantNo, "提现审批店", 200_000L, 500_000L);
-        assertThat(codeOf(decideRaw(w1, false, "   "))).isEqualTo(10430);
-        JsonNode rejected = data(decideRaw(w1, false, "收款账户与主体不符"));
-        assertThat(rejected.get("status").asString()).isEqualTo("REJECTED");
-        assertThat(rejected.get("remark").asString()).isEqualTo("收款账户与主体不符");
-        assertThat(rejected.get("decidedBy").asString())
-                .as("这是运营端唯一会把钱批出去的动作，必须留痕").isNotBlank();
-        assertThat(rejected.get("decidedAt").isNull()).isFalse();
-
-        // 已驳回的单被二次审批 = 同一笔钱批两次
-        assertThat(codeOf(decideRaw(w1, true, "再批一次"))).isEqualTo(50003);
-
-        // 低于单笔下限：渠道手续费比本金还贵
-        String w2 = seedWithdraw(merchantNo, "提现审批店", 500L, 500_000L);
-        assertThat(codeOf(decideRaw(w2, true, null))).isEqualTo(50005);
-
-        // 超过申请那一刻的可提余额快照（不是实时值 —— 实时值会因期间的新订单而漂移）
-        String w3 = seedWithdraw(merchantNo, "提现审批店", 600_000L, 300_000L);
-        assertThat(codeOf(decideRaw(w3, true, "大额说明"))).isEqualTo(50004);
-
-        // 大额没有复核说明：事后只能看到「某人批了五万」，看不到为什么这五万是对的
-        String w4 = seedWithdraw(merchantNo, "提现审批店", 500_000L, 1_000_000L);
-        assertThat(codeOf(decideRaw(w4, true, null))).isEqualTo(50006);
-
-        // 被拒的审批一律不能留下副作用
-        assertThat(statusOfWithdraw(w2)).isEqualTo("PENDING");
-        assertThat(statusOfWithdraw(w3)).isEqualTo("PENDING");
-        assertThat(statusOfWithdraw(w4)).isEqualTo("PENDING");
-
-        // 列表按状态筛得动，且是分页壳
-        JsonNode page = withdrawPage("PENDING");
-        assertThat(rowByNo(page, "withdrawNo", w2)).isNotNull();
-        assertThat(rowByNo(withdrawPage("REJECTED"), "withdrawNo", w1)).isNotNull();
-        assertThat(rowByNo(withdrawPage("REJECTED"), "withdrawNo", w2)).isNull();
-    }
-
-    @Test
-    @DisplayName("★「通过」只落 APPROVED，不打款 —— 一期线下结算，系统不碰支付通道")
-    void approvingAWithdrawDoesNotPayAnything() throws Exception {
-        String biz = merchant("12600700030", "财务·通过不打款店");
-        String merchantNo = merchantNoOf(biz);
-        String no = seedWithdraw(merchantNo, "通过不打款店", 300_000L, 800_000L);
-
-        long payoutsBefore = payoutCount();
-
-        JsonNode approved = data(decideRaw(no, true, null));
-        assertThat(approved.get("status").asString())
-                .as("通过之后是 APPROVED，不是 PAID —— 打款结果只能来自渠道回执")
-                .isEqualTo("APPROVED");
-        assertThat(approved.get("decidedBy").asString()).isNotBlank();
-
-        /*
-         * **「没有触发任何打款动作」的证据在这里。**
-         * stl_payment 里 direction=PAYOUT 的流水是系统里唯一记「往外打钱」的地方 ——
-         * 审批前后它一条都没多，才说明这个按钮真的只是记账。
-         * 只断言 status=APPROVED 是不够的：一个「顺手把钱打出去还写了 APPROVED」的实现同样能过。
-         */
-        assertThat(payoutCount())
-                .as("审批不该产生任何 PAYOUT 流水（B-12.5：一期只记账、线下结算）")
-                .isEqualTo(payoutsBefore);
-
-        // 也没有任何人工入口能把它推到 PAID —— APPROVED 之后再审就被状态机挡住
-        assertThat(codeOf(decideRaw(no, true, "想再点一次"))).isEqualTo(50003);
-        assertThat(statusOfWithdraw(no)).isEqualTo("APPROVED");
-    }
-
     // ---------------------------------------------------------------- 结算发票（P-12.2.4）
 
     @Test
@@ -491,19 +418,6 @@ class OpsFinanceGovernFlowTest {
         Long n = paymentMapper.selectCount(Wrappers.<StlPayment>lambdaQuery()
                 .eq(StlPayment::getDirection, StlPayment.PAYOUT));
         return n == null ? 0L : n;
-    }
-
-    private String decideRaw(String withdrawNo, boolean pass, String remark) throws Exception {
-        String body = "{\"pass\":" + pass
-                + (remark == null ? "" : ",\"remark\":\"" + remark + "\"") + "}";
-        return mvc().perform(post("/ops/finance/withdrawals/" + withdrawNo + "/decide")
-                        .header("Authorization", "Bearer " + finance())
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andReturn().getResponse().getContentAsString();
-    }
-
-    private JsonNode withdrawPage(String status) throws Exception {
-        return pageOf(get("/ops/finance/withdrawals").param("status", status).param("size", "200"));
     }
 
     // ---------------------------------------------------------------- 装配 · 发票

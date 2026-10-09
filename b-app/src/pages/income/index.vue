@@ -240,6 +240,19 @@ onShow(() => {
           {{ b.batchNo }}　{{ $t("income.batchBills", { n: b.billCount }) }}
         </text>
         <!--
+          放款到哪一步了（V391）。批次「已放款」只说放了，没说钱到哪一步 ——
+          商家打客服电话问的正是后者。凭证号给出来：他拿它对自己的银行到账记录。
+        -->
+        <text v-if="b.paymentRef" class="txt-caption sub sh-num">
+          {{ $t("income.batchPaid", { ref: b.paymentRef, d: b.paidAt ? monthDay(b.paidAt) : "" }) }}
+        </text>
+        <text v-else-if="b.payoutStatus === 'PENDING' || b.payoutStatus === 'EXPORTED'" class="txt-caption sub sh-muted">
+          {{ $t("income.batchPayoutPending") }}
+        </text>
+        <text v-else-if="b.payoutStatus === 'FAILED'" class="txt-caption sub is-warning">
+          {{ $t("income.batchPayoutFailed") }}
+        </text>
+        <!--
           挂起原因**原样展示后端那句话**：它含具体数字与阈值，
           在端上再拼一遍的话，商家看到的和运营看到的就不是同一句 ——
           而客服正是照着运营那句话答的。

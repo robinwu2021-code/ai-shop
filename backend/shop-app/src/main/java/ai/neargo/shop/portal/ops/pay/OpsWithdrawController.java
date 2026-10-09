@@ -1,20 +1,14 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FinanceVOs.TaxRuleVO;
-import ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO;
-import ai.neargo.shop.pay.service.WithdrawService;
 import ai.neargo.shop.payclient.OpsWithdrawAppService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -38,30 +32,11 @@ public class OpsWithdrawController {
         this.app = app;
     }
 
-    /**
-     * 提现单列表。
-     *
-     * <p>返回 {@code PageData} 而不是裸数组：运营端列表页按 {@code {records,total}} 渲染，
-     * 裸数组会被当成空页 —— 接口 200、数据几十条、页面显示「暂无数据」。
+    /*
+     * 提现单列表与审批两条端点 2026-10-09 撤掉（TDD-账期推进与放款记录 AC9 / PRD §7）：
+     * 商家向平台提现是二清，入口从建成到撤掉生产 0 行。钱出去走 /ops/settle-batches/{no}/release。
+     * 这个类只剩个税规则两条；WithdrawService 与 stl_withdraw 留着，删表另起迁移。
      */
-    @GetMapping("/ops/finance/withdrawals")
-    @PreAuthorize("@perm.can('" + Perms.FINANCE_WITHDRAW_APPROVE + "')")
-    public PageData<WithdrawVO> list(@RequestParam(required = false) String status,
-                                     @RequestParam(required = false) String keyword,
-                                     @RequestParam(defaultValue = "1") long page,
-                                     @RequestParam(defaultValue = "20") long size) {
-        return app.list(status, keyword, page, size);
-    }
-
-    /**
-     * 审批一笔提现。<b>运营端唯一会把钱批出去的动作</b>，六道校验见
-     * {@link WithdrawService#decide}。
-     */
-    @PostMapping("/ops/finance/withdrawals/{withdrawNo}/decide")
-    @PreAuthorize("@perm.can('" + Perms.FINANCE_WITHDRAW_APPROVE + "')")
-    public WithdrawVO decide(@PathVariable String withdrawNo, @RequestBody DecideReq req) {
-        return app.decide(withdrawNo, req.pass(), req.remark());
-    }
 
     @GetMapping("/ops/finance/tax-rule")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_READ + "')")
@@ -78,15 +53,6 @@ public class OpsWithdrawController {
     @PreAuthorize("@perm.can('" + Perms.FINANCE_INVOICE_VERIFY + "')")
     public TaxRuleVO saveTaxRule(@RequestBody TaxRuleReq req) {
         return app.saveTaxRule(req.threshold(), req.rate());
-    }
-
-    /**
-     * @param pass   true 通过 / false 驳回
-     * @param remark 驳回原因 / 大额复核说明。<b>字段名不叫 reason</b> ——
-     *               运营端契约发的是 {@code remark}（`ops-reason-required` 守卫按字段名判定，
-     *               叫 reason 会要求前端也发 reason，而它发的是 remark）
-     */
-    public record DecideReq(Boolean pass, String remark) {
     }
 
     /**

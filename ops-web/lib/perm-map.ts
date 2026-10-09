@@ -94,7 +94,6 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 就是这张表注释里说的「按钮神秘消失」。两个码在 Perms.java 里一直都有。
   "finance:payout:execute": "finance:payout:execute",
   "finance:invoice:verify": "finance:invoice:verify",
-  "finance:withdraw:approve": "finance:withdraw:approve",
   "risk:blacklist:update": "risk:blacklist:update",
   "risk:rule:update": "risk:rule:update",
   "content:material:audit": "content:material:audit",

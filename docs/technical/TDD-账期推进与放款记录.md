@@ -1,6 +1,6 @@
 # TDD-账期推进与放款记录
 
-状态：**已确认**（用户 2026-10-09「以上按照建议」）
+状态：**已实现**（三批，2026-10-09）
 档位：2（新表 `stl_payout` · 新 Job · 跨三端 · 改财务操作粒度）
 关联：[ADR-011 商家资金走自营供应商模式](ADR/ADR-011-商家资金走自营供应商模式.md)（本 TDD 是它 §3「出款走银行卡转账」的落地）·
 [PRD-商家资金到账与对账](../requirements/PRD-商家资金到账与对账.md) §7（本次增补）·
@@ -153,7 +153,7 @@ stl_bank_flow   + matched_payout_no  （原 matched_settle_no 留着给存量）
 | AC7 | `PayoutFlowTest#markPaidCascadesToBills` + `#markFailedRollsBackSoItCanBeReleasedAgain` | ✅ | ✅ 不级联 → 红 |
 | AC7 | `PayoutBankReconFlowTest#payoutMatchedByBankFlowBecomesMatched` + `#duplicateRefAcrossPayoutsIsADiffOnEach` | ✅ | — |
 | AC7 | `PayoutListFlowTest#payoutRowsComeFirstAndGetExported` | ✅ | — |
-| AC9 | `packages/shared` nav / perm 守卫 | 待填 | — |
+| AC9 | `packages/shared` nav / perm 守卫相对基线零新增；`income-batch-payout.test.ts` 4 条（AC8） | ✅ | — |
 
 判据取「钱有没有按规则动」（状态、金额、分组），不取耗时。
 
@@ -210,9 +210,36 @@ ops-web contracts / https / mocks / types 接线；settle-batch-tab 的处置按
 - `glossary.json` / `静态常量清单.md` 这批仍没重出：主树里别的会话正在改它们。`db-stl.svg` / `ER 图` 生成器跑出了变化
   但没拷回：那两份由别的会话的生成器在管，而且 `check-generated-docs` 不盯它们。
 
+### 批 3（2026-10-09）
+
+```
+ops-web  settle-batch-tab：「待放款」段（RECONCILED → 放款按钮，finance:payout:execute）+ 放款记录表（登记凭证 / 退回）
+         page.tsx 摘掉 withdraw tab；nav.ts 撤「提现审批」、分组「提现与税」→「发票与税」；withdraw-tab.tsx 删除
+         copy.ts 放款文案 zh/en；nav-visibility.baseline.json 去掉撤掉的叶子
+backend  BatchVO +payoutStatus/paymentRef/paidAt（每批最近一笔，一次 IN 查齐）
+         V392 撤 OPS_FINANCE__TAB_WITHDRAW 菜单点与授权（先删 sys_role_point 再删 sys_function_point；表与权限码不动）
+shared   MySettleBatch 同三字段
+b-app    income 账期块三句：已打款（带凭证号与日期）/ 等财务打款 / 打款被退回；三语；mock 已放款批次带凭证；测试 4 条
+产物     ui-catalog.json（导航变了）· openapi-b / openapi / openapi-ops · 词表 · README 索引
+```
+
+**偏差说明**：§2.4 写「账期批次与放款改为批次 + 放款两段」—— 做成了同一 tab 里的三段
+（挂起队列 / 待放款 / 放款记录），没有新开 tab：放款的入口就该挨着「待放款」那几批。
+
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-09 | 用户拍板 A/B/C 与放款粒度；状态直接为「已确认」，开始批 1 |
+| 2026-10-09 | 三批全部提交，状态转「已实现」。§8 记剩余事项 |
+
+## §8 做完之后还剩什么
+
+- **上线动作**：`shop.job.settle-batch.dry-run` 默认 true、`start-date` 为空。上线当天要在生产配置里
+  填 `start-date = 上线日`，看一轮 dry-run 的数，再把 dry-run 翻 false。**两步都是运营/部署的人点**，代码里不替他做。
+- **第三方分账轨**：批次 RELEASED 之后 `executeSplit` 仍未接（等 B7 书面口径）。
+- **银行 API**：`stl_payout.channel` 预留 `BANK_API`；接上那天只换 EXPORTED→PAID 那一步。
+- **`stl_withdraw` 删表**：入口与菜单已撤，表与 `WithdrawService` 留着；删表另起迁移。
+- **存量清零**：起始日之前的自营单继续走逐张 confirm/paid；清零之后把 `OpsPayoutListAppServiceImpl`
+  与 `PayoutReconAxis` 里的存量分支摘掉。

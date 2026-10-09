@@ -13,16 +13,6 @@ import ai.neargo.shop.pay.dto.FinanceVOs.WithdrawVO;
  */
 public interface OpsWithdrawAppService {
 
-    PageData<WithdrawVO> list(String status, String keyword, long page, long size);
-
-    /**
-     * 审批一笔提现。六道校验在支付域里。
-     *
-     * @param pass   为空按「不通过」算 —— 漏传不能变成放行
-     * @param remark 驳回原因 / 大额复核说明
-     */
-    WithdrawVO decide(String withdrawNo, Boolean pass, String remark);
-
     TaxRuleVO taxRule();
 
     /**

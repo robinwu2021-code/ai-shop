@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 820 个接口**：后端已实现 743（91%）· 前端在调 744
+**合计 818 个接口**：后端已实现 741（91%）· 前端在调 742
 
 ---
 
@@ -889,7 +889,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **418** 个接口 ｜ 后端已实现 **352**（84%）｜ 前端在调 **342**
+共 **416** 个接口 ｜ 后端已实现 **350**（84%）｜ 前端在调 **340**
 
 ### aftersale（4）
 
@@ -970,7 +970,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（46）
+### finance（44）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -983,8 +983,6 @@
 | POST | `/ops/finance/invoices/{invoiceNo}/reject` | rejectInvoice | — | `InvoiceRequest` | — | ✅ | ✅ |
 | GET | `/ops/finance/tax-rule` | getTaxRule | — | `TaxRule` | — | ✅ | ✅ |
 | PUT | `/ops/finance/tax-rule` | 个税代扣规则 | — | `TaxRule` | — | ✅ | ✅ |
-| GET | `/ops/finance/withdrawals` | listWithdrawals | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/finance/withdrawals/{withdrawNo}/decide` | 审批一笔提现 | — | `Withdrawal` | — | ✅ | ✅ |
 | GET | `/ops/invoice-requests` | listBuyerInvoiceRequests | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/invoice-requests/{requestNo}/issued` | markBuyerInvoiceIssued | — | `BuyerInvoiceRequest` | — | ✅ | ⬜ |
 | POST | `/ops/invoice-requests/{requestNo}/reject` | rejectBuyerInvoiceRequest | — | `BuyerInvoiceRequest` | — | ✅ | ⬜ |

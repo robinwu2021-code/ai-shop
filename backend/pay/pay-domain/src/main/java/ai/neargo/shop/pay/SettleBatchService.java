@@ -152,6 +152,12 @@ public interface SettleBatchService {
                    long periodFrom, long dueAt, Long releasedAt, Long freezeExpireAt,
                    String status, int billCount, long grossMinor, long netMinor,
                    String reconScope, String blockedReason, Long blockedAt, Long blockExpireAt,
-                   String decidedBy, String decideRemark) {
+                   String decidedBy, String decideRemark,
+                   /**
+                    * 本批最近一笔放款的摘要（V391）。空 = 还没放款（或第三方批次，走分账）。
+                    * 商家在账期页上要看到的是「哪笔打了、凭证号、哪天」—— 批次状态 RELEASED 只说「放了」，
+                    * 没说钱到哪一步；放款记录才说。
+                    */
+                   String payoutStatus, String paymentRef, Long paidAt) {
     }
 }

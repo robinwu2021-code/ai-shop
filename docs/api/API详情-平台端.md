@@ -2433,57 +2433,6 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
-#### GET `/ops/finance/withdrawals`
-
-listWithdrawals
-
-> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：`object`（见下）
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `records` | [`Withdrawal`](#withdrawal)\[\] | 是 | — |
-| `total` | `integer` | 是 | — |
-| `page` | `integer` | 是 | — |
-| `size` | `integer` | 是 | — |
-
-
-#### POST `/ops/finance/withdrawals/{withdrawNo}/decide`
-
-审批一笔提现
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `withdrawNo` | path | `string` | 是 | 提现单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`Withdrawal`](#withdrawal)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `withdrawNo` | `string` | 是 | 提现单号 |
-| `merchantNo` | `string` | 是 | 申请商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `amount` | `number` | 是 | 申请金额（分） |
-| `availableBalance` | `number` | 是 | 申请时的可提余额（分）。快照，不是实时值 —— 审批看的是申请那一刻的口径 |
-| `bankAccountMasked` | `string` | 是 | 收款账户，展示一律脱敏 |
-| `status` | [`#/definitions/WithdrawStatus`](#definitionswithdrawstatus) | 是 | 提现状态。**`APPROVED → PAID` 由渠道回执驱动，运营点不了** |
-| `appliedAt` | `string` | 是 | 申请时间 |
-| `decidedAt` | `string,null` | 否 | 审批时间。未审为 null |
-| `decidedBy` | `string,null` | 否 | 审批人（STAFF 账号）。未审为 null |
-| `remark` | `string,null` | 否 | 驳回原因 / 大额复核说明。原样回商家 B 端 |
-
-
 #### GET `/ops/invoice-requests`
 
 listBuyerInvoiceRequests
@@ -3128,6 +3077,9 @@ _无字段_
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
 | `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+| `payoutStatus` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) \| `null` | 否 | 本批最近一笔放款的摘要（V391）。空 = 还没放款 |
+| `paymentRef` | `string,null` | 否 | 凭证号（网银流水号） |
+| `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒） |
 
 
 #### POST `/ops/settle-batches/{batchNo}/hold`
@@ -3166,6 +3118,9 @@ _无字段_
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
 | `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+| `payoutStatus` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) \| `null` | 否 | 本批最近一笔放款的摘要（V391）。空 = 还没放款 |
+| `paymentRef` | `string,null` | 否 | 凭证号（网银流水号） |
+| `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒） |
 
 
 #### POST `/ops/settle-batches/{batchNo}/release`
@@ -13165,6 +13120,9 @@ KPI 卡（金额为最小货币单位整数）。
 | `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
 | `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
 | `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+| `payoutStatus` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) \| `null` | 否 | 本批最近一笔放款的摘要（V391）。空 = 还没放款 |
+| `paymentRef` | `string,null` | 否 | 凭证号（网银流水号） |
+| `paidAt` | `number,null` | 否 | 财务登记凭证的时刻（毫秒） |
 
 ### SettleStatRow
 
@@ -13619,22 +13577,6 @@ KPI 卡（金额为最小货币单位整数）。
 | `detail` | `string` | 是 | 事实描述与证据出处。必填 —— 没有事实的处置在申诉时站不住 |
 | `operator` | `string` | 是 | 处置人（STAFF 账号） |
 | `at` | `string` | 是 | 处置时间 |
-
-### Withdrawal
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `withdrawNo` | `string` | 是 | 提现单号 |
-| `merchantNo` | `string` | 是 | 申请商家 |
-| `merchantName` | `string` | 是 | 商家名快照 |
-| `amount` | `number` | 是 | 申请金额（分） |
-| `availableBalance` | `number` | 是 | 申请时的可提余额（分）。快照，不是实时值 —— 审批看的是申请那一刻的口径 |
-| `bankAccountMasked` | `string` | 是 | 收款账户，展示一律脱敏 |
-| `status` | [`#/definitions/WithdrawStatus`](#definitionswithdrawstatus) | 是 | 提现状态。**`APPROVED → PAID` 由渠道回执驱动，运营点不了** |
-| `appliedAt` | `string` | 是 | 申请时间 |
-| `decidedAt` | `string,null` | 否 | 审批时间。未审为 null |
-| `decidedBy` | `string,null` | 否 | 审批人（STAFF 账号）。未审为 null |
-| `remark` | `string,null` | 否 | 驳回原因 / 大额复核说明。原样回商家 B 端 |
 
 ### WxTemplates
 
