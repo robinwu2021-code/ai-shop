@@ -26,6 +26,7 @@ import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 export const orderMock: Pick<MerchantApi,
   "mOrderList"
   | "mOrderDetail"
+  | "mOrderTrace"
   | "mShip"
   | "mDelivered"
   | "mConfirmOfflinePay"
@@ -95,6 +96,20 @@ export const orderMock: Pick<MerchantApi,
 
   async mOrderDetail(orderNo) {
     return delay({ ...findOrder(orderNo) });
+  },
+
+  async mOrderTrace(orderNo) {
+    // 与真后端同口径：不是快递 / 还没回填单号 → null；B 端没有微信插件，恒为自建轨迹
+    const o = findOrder(orderNo);
+    if (o.fulfillment !== "EXPRESS" || !o.expressNo || !o.trace) return delay(null);
+    return delay({
+      ...o.trace,
+      displayMode: "self-map",
+      displayToken: null,
+      carrier: o.expressCompany ?? null,
+      waybillNo: o.expressNo,
+      refreshable: false,
+    });
   },
 
   async mShip(orderNo, expressNo, expressCompany) {

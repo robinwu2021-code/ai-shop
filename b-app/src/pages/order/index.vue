@@ -15,13 +15,19 @@ import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
-import type { Order } from "@shared/types";
+import type { Order, ShipmentTrace } from "@shared/types";
 import type { ExpressPickup, ExpressQuote } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+/**
+ * 物流轨迹那份（TDD-物流模块 B2）：比详情里的多承运商、单号、到柜。
+ * 拿不到（老后端 / 网络）就用详情里带的那份 —— 两份读的是同一张运单，只是字段多少不同
+ */
+const fullTrace = ref<ShipmentTrace | null>(null);
+const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null);
 
 /** 已取消 / 已退款的单：券与积分的去向（后端只在这两个状态、只在详情给） */
 const returnedLines = computed(() => {
@@ -103,12 +109,22 @@ async function load(orderNo: string) {
   try {
     order.value = await api.mOrderDetail(orderNo);
     failed.value = false;
+    fullTrace.value = null;
+    if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.expressNo) void loadTrace(orderNo);
     void loadPickup();
     if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
   } catch {
     // 此前这句是裸的：拉挂了是一个没人接的 Promise 拒绝，
     // 界面上一个字都不说，整页停在空白
     failed.value = true;
+  }
+}
+
+async function loadTrace(orderNo: string) {
+  try {
+    fullTrace.value = await api.mOrderTrace(orderNo);
+  } catch {
+    fullTrace.value = null;
   }
 }
 
@@ -336,10 +352,10 @@ onLoad((q) => {
           物流轨迹（TDD-圆通物流直连 Y4）。只有快递单、缓存里有节点才显示；没有就整块不出现。
           轨迹来自承运商、经缓存，不是平台编的（没凭据查不到时为空，不显示空标题）。
         -->
-        <view v-if="order.trace && order.trace.nodes.length" class="line line--wrap">
+        <view v-if="shownTrace && shownTrace.nodes.length" class="line line--wrap">
           <text class="sh-muted">{{ $t("order.trace") }}</text>
           <!-- 与 C 端共用同一个件（packages/ui）。App 端的 <map> 走高德 SDK，key 注入已有 -->
-          <sh-trace :trace="order.trace"></sh-trace>
+          <sh-trace :trace="shownTrace"></sh-trace>
         </view>
         <!-- 复制订单信息发给供应商（§5）。放在订单信息卡尾：拣货要的就是这张卡上的东西 -->
         <view class="sh-btn sh-btn--sm sh-btn--muted sh-mt-sm" @tap="copyForSupplier">

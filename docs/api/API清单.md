@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 813 个接口**：后端已实现 737（91%）· 前端在调 737
+**合计 816 个接口**：后端已实现 739（91%）· 前端在调 740
 
 ---
 
@@ -266,7 +266,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **288** 个接口 ｜ 后端已实现 **279**（97%）｜ 前端在调 **288**
+共 **289** 个接口 ｜ 后端已实现 **279**（97%）｜ 前端在调 **289**
 
 ### activities（4）
 
@@ -612,7 +612,7 @@
 | POST | `/biz/my-spec-dims/{dimNo}/archive` | 停用/启用自建维度 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/my-spec-dims/{dimNo}/rename` | 给自建维度改名 | — | — | 🔒 | ✅ | ✅ |
 
-### order（9）
+### order（10）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -625,6 +625,7 @@
 | POST | `/biz/order/{orderNo}/express/cancel` | 取消取件 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/express/quotes` | 快递报价 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/trace` | 物流轨迹 | — | `ShipmentTrace` | 🔒 | ⬜ | ✅ |
 
 ### payout-account（2）
 
@@ -888,7 +889,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **412** 个接口 ｜ 后端已实现 **346**（84%）｜ 前端在调 **336**
+共 **414** 个接口 ｜ 后端已实现 **348**（84%）｜ 前端在调 **338**
 
 ### aftersale（4）
 
@@ -1016,7 +1017,7 @@
 | GET | `/ops/settlements` | listSettlements | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/split-records` | listSplitRecords | — | `object` | — | ✅ | ✅ |
 
-### fulfillment（16）
+### fulfillment（18）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1034,7 +1035,9 @@
 | POST | `/ops/fulfillment/overdue-rule` | 逾期规则（P-5.1.4） | — | `OverdueRule` | — | ✅ | ✅ |
 | GET | `/ops/fulfillment/redeem` | 核销监控与逾期看板（P-5.1.3） | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/fulfillment/sorting` | 按自提点汇总分拣（P-5.1.2） | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/logistics/channels` | 物流渠道总览（O4） | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/shipments` | listShipments | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/shipments/{shipmentNo}/replay` | 重放（TDD-物流模块 O3）：重新订阅（可点名渠道）或重新换微信 token | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/shipments/{shipmentNo}/waybill` | 换运单号（录错了、或承运商重新出单） | — | `Shipment` | — | ✅ | ✅ |
 
 ### group（8）

@@ -89,6 +89,57 @@ public class ChannelRouter {
         return c.coversAllCarriers() ? Optional.ofNullable(carrier) : codes.codeOf(carrier, c.channel());
     }
 
+    /**
+     * 指定渠道订阅（运营重放时点名用）：不可用时返回原因，可用时返回空。
+     * 判据与 {@link #subscribers} 逐条相同 —— 两套判据的话，「总览说能用、重放说不能」就会出现。
+     */
+    public Optional<String> subscribeBlocker(String channel, String carrier) {
+        TrackingSubscriber s = subscribers.get(channel);
+        if (s == null) {
+            return Optional.of("没有装 " + channel + " 的订阅实现");
+        }
+        Optional<String> r = blocker(s, carrier);
+        if (r.isPresent()) {
+            return r;
+        }
+        return pushUsable(channel) ? Optional.empty() : Optional.of("推送不可用，订阅随之不可用");
+    }
+
+    /** 指定渠道的订阅实现（先用 {@link #subscribeBlocker} 判过可用） */
+    public Optional<TrackingSubscriber> subscriber(String channel) {
+        return Optional.ofNullable(subscribers.get(channel));
+    }
+
+    /** 渠道总览（O4）用：每种能力装了哪些渠道 */
+    public Map<String, TrackingSubscriber> installedSubscribers() {
+        return subscribers;
+    }
+
+    public Map<String, PushReceiver> installedReceivers() {
+        return receivers;
+    }
+
+    public Map<String, StatusProbe> installedProbes() {
+        return probes;
+    }
+
+    /** 一个能力（不看承运商）为什么不可用；可用返回空 */
+    public Optional<String> blocker(ChannelCapability c) {
+        if (!props.enabled(c.channel())) {
+            return Optional.of("配置里没启用");
+        }
+        return c.available() ? Optional.empty() : Optional.of("凭据没配");
+    }
+
+    private Optional<String> blocker(ChannelCapability c, String carrier) {
+        Optional<String> r = blocker(c);
+        if (r.isPresent()) {
+            return r;
+        }
+        return c.coversAllCarriers() || codes.covers(c.channel(), carrier) ? Optional.empty()
+                : Optional.of("不覆盖承运商 " + carrier + "（承运商编码表里没有这一家）");
+    }
+
     /** 渠道编码 → 我方承运商码 */
     public Optional<String> carrierOf(String channel, String code) {
         return codes.carrierOf(channel, code);

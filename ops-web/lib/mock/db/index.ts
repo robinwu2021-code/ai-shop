@@ -4,7 +4,7 @@ export * from "./helpers";
 export { merchants, applies, authCodes, violations , admissionPolicies, depositTxns, payQuotas, storeModes, storeFulfillments, merchantStaff, qualifications, merchantPlans, planDefs } from "./merchant";
 export { orders, orderInterventions } from "./order";
 export { reconDiffs, closeRule } from "./payment";
-export { shipments, freightTemplates, carriers } from "./logistics";
+export { shipments, freightTemplates, carriers, logisticsChannels } from "./logistics";
 export { withdrawals, invoiceRequests, taxRule, invoiceTitle } from "./payout";
 export { posts, rankings, questions } from "./ugc";
 export { kpi, trend, funnel, merchantRanking } from "./dashboard";

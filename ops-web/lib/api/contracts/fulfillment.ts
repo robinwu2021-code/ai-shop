@@ -1,8 +1,19 @@
 // 覆盖范围：履约调度（P-5.1）。实际核销动作在 B 端核销台，这里只做调度与监控。
-import type { ArrivalBatch, BatchStatus, CarrierConfig, FreightDraft, FreightTemplate, OverdueRule, Page, RedeemStat, Shipment, SortingRow } from "@/lib/types";
+import type { ArrivalBatch, BatchStatus, CarrierConfig, FreightDraft, FreightTemplate, LogisticsChannel, OverdueRule, Page, RedeemStat, Shipment, SortingRow } from "@/lib/types";
 import type { BatchQ, PageQ, ScopedQ } from "../query";
 
-export type ShipmentQ = PageQ & { status?: string; carrier?: string };
+export type ShipmentQ = PageQ & {
+  status?: string;
+  carrier?: string;
+  /** 订阅状态，看 `FATAL` 用 */
+  subState?: string;
+  /** 微信 token 状态 */
+  bindState?: string;
+  /** 受理订阅的渠道 */
+  subChannel?: string;
+  /** `WX` / `SELF` */
+  profile?: string;
+};
 
 export interface FulfillmentApi {
   listArrivalBatches(q?: BatchQ): Promise<Page<ArrivalBatch>>;
@@ -28,6 +39,16 @@ export interface FulfillmentApi {
    * - `reason` 必填。
    */
   updateWaybill(v: { shipmentNo: string; waybillNo: string; reason: string }): Promise<Shipment>;
+
+  /**
+   * 重放（TDD-物流模块 O3）：重新订阅（可点名渠道）或重新换微信 token。只改状态、发事件，立即返回 ——
+   * 结果看列表。已签收 / 已作废 30014；点名的渠道不可用 30015（带原因）；快递100 本月已订 4 次 30013；
+   * 线下付款单换 token 10400。权限 `fulfillment:logistics:replay`
+   */
+  replayShipment(v: { shipmentNo: string; action: "SUBSCRIBE" | "WX_BIND"; channel?: string }): Promise<{ accepted: boolean }>;
+
+  /** 物流渠道总览（O4）。每个渠道每种能力可不可用、为什么不可用 */
+  listLogisticsChannels(): Promise<LogisticsChannel[]>;
 
   // ── 运费模板与超区（P-5.2.3）──────────────────────────────────
 
@@ -68,7 +89,7 @@ export interface FulfillmentApi {
    * - **密钥不在这里配**：契约里只有 `apiKeyConfigured` 这个布尔，
    *   密钥本身不该出现在前端契约里，哪怕是脱敏的。
    */
-  saveCarrier(v: Pick<CarrierConfig, "carrier" | "name" | "priority" | "pickupCutoff" | "slaHours">): Promise<CarrierConfig>;
+  saveCarrier(v: Pick<CarrierConfig, "carrier" | "name" | "priority" | "pickupCutoff" | "slaHours"> & Pick<Partial<CarrierConfig>, "codes">): Promise<CarrierConfig>;
 
   /**
    * 启停一家运力。

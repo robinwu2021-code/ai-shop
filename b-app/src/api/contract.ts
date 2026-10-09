@@ -7,6 +7,7 @@ import type { PAY_MODE } from "@shared/utils/constants";
 import type {
   // 进销存（P-18）
   StockSummary,
+  ShipmentTrace,
   ActivityConflict,
   AfterSale,
   AppointmentSlot,
@@ -1498,6 +1499,11 @@ export interface MerchantApi {
     },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
+  /**
+   * 物流轨迹（TDD-物流模块 B2）：比详情里的多承运商、单号、签收时间、到柜。不是快递 / 还没发货 → null。
+   * `refresh` 只在后端配置放行时才真去问渠道（`refreshable` 说明这一单能不能）
+   */
+  mOrderTrace(orderNo: string, refresh?: boolean): Promise<ShipmentTrace | null>;
   /** 快递发货：回填运单号 */
   mShip(orderNo: string, expressNo: string, expressCompany: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */

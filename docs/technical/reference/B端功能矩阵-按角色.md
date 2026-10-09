@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 225 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 226 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -27,8 +27,8 @@
 | `SHIP` | 发货、标记自送送达 | 5 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 
 **只有 OWNER 能碰的 2 项**：`STORE_ADMIN`、`FINANCE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
@@ -288,16 +288,17 @@
 - `/biz/after-sale/{afterSaleNo}/receive`
 - `/biz/after-sale/{afterSaleNo}/reject`
 
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
+
+- `/biz/order`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/trace`
+
 ### `REVIEW`　（OWNER、MANAGER、CS）
 
 - `/biz/review`
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/order`
-- `/biz/order/{subOrderNo}`
 
 > **空角色 = 零权限**，不是「零权限 = 全放行」——`BizPerms.can` 对空集合直接返回 false。
 

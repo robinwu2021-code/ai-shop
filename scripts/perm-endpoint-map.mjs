@@ -261,7 +261,10 @@ export const RULES = [
   ["GET", /^\/ops\/fulfillment\/carriers/, "fulfillment:logistics:read"],
   ["*", /^\/ops\/fulfillment\/carriers/, "fulfillment:rule:update"],
   ["GET", /^\/ops\/(shipments|freight-templates)/, "fulfillment:logistics:read"],
+  // 物流重放（TDD-物流模块 O3）：单独一个码 —— 会真去调渠道、消耗快递100 的订阅额度。必须排在下一条通配前面
+  ["POST", /^\/ops\/shipments\/[^/]+\/replay$/, "fulfillment:logistics:replay"],
   ["*", /^\/ops\/(shipments|freight-templates)/, "fulfillment:rule:update"],
+  ["GET", /^\/ops\/logistics\/channels$/, "fulfillment:logistics:read"],
 
   // ── 增长与归因（P-9，V121）──────────────────────────────────────────────
   // 读写分开的理由写在 Perms.GROWTH_ATTRIBUTION_READ 上：BD 要查得到链路（商家质疑账单），

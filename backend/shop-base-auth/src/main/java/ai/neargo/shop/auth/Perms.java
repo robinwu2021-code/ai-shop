@@ -125,6 +125,11 @@ public final class Perms {
      * 都不该能改 —— 该分的那一刀已经分在读写之间了。
      */
     public static final String FULFILLMENT_RULE_UPDATE = "fulfillment:rule:update";
+    /**
+     * 物流重放：重新订阅（可点名渠道）/ 重新换微信 token（TDD-物流模块 O3）。
+     * 单独一个码而不并进 {@link #FULFILLMENT_RULE_UPDATE}：重放会真去调渠道、消耗快递100 每单每月 4 次的订阅额度
+     */
+    public static final String FULFILLMENT_LOGISTICS_REPLAY = "fulfillment:logistics:replay";
 
     // ── 结算与资金 ──────────────────────────────────────────────────────────
     public static final String FINANCE_SETTLE_READ = "finance:settle:read";
@@ -677,7 +682,7 @@ public final class Perms {
 
             /*
              * 社区运营。矩阵 §2.3 原话：「社区网格、自提点建档与启停、**履约调度**」——
-             * 四个 fulfillment 码全给它，其余角色一个都不给。
+             * fulfillment 码全给它（五个，含物流重放），其余角色一个都不给。
              *
              * **刻意不给客服快递只读**：他的数据边界是「按工单授权」，
              * 而 /ops/shipments 是全平台运单。要让客服查一单物流，
@@ -687,7 +692,7 @@ public final class Perms {
                     AFTERSALE_TICKET_READ, COMMUNITY_READ,
                     COMMUNITY_UPDATE, COMMUNITY_PICKUP_READ, COMMUNITY_PICKUP_UPDATE,
                     COMMUNITY_REGION_READ, COMMUNITY_REGION_UPDATE, DASHBOARD_OVERVIEW_READ,
-                    FULFILLMENT_BATCH_READ, FULFILLMENT_LOGISTICS_READ,
+                    FULFILLMENT_BATCH_READ, FULFILLMENT_LOGISTICS_READ, FULFILLMENT_LOGISTICS_REPLAY,
                     FULFILLMENT_REDEEM_READ, FULFILLMENT_RULE_UPDATE,
                     ORDER_READ,
                     SYSTEM_INDUSTRY_READ, SYSTEM_INDUSTRY_UPDATE)),

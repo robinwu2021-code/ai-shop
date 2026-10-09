@@ -10,9 +10,14 @@ import ai.neargo.shop.event.DomainEvent;
  * 所以发货事件那一端只登记骨架、几乎不可能失败；取快照、调渠道这些会失败的事放到这条只属于物流的事件上，
  * 重试只重试物流自己。
  */
-public record WaybillRegistered(String shipmentNo) implements DomainEvent {
+public record WaybillRegistered(String shipmentNo, String channel) implements DomainEvent {
 
     public static final String TYPE = "LGS_WAYBILL_REGISTERED";
+
+    /** 按路由链订阅（登记、补订都走这条）。{@code channel} 非空 = 运营重放时点名了渠道 */
+    public WaybillRegistered(String shipmentNo) {
+        this(shipmentNo, null);
+    }
 
     @Override
     public String aggregateType() {

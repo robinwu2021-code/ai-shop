@@ -6,8 +6,8 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.fulfillment.dto.CarrierConfigVO;
 import ai.neargo.shop.fulfillment.dto.FreightTemplateVO;
-import ai.neargo.shop.fulfillment.dto.ShipmentVO;
 import ai.neargo.shop.fulfillment.service.LogisticsService;
+import ai.neargo.shop.spi.logistics.LogisticsAdminPort;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 平台端 · 物流（P-5.2）：运单、运费模板、运力档案。
@@ -37,38 +38,18 @@ public class OpsLogisticsController {
     private final LogisticsService logisticsService;
     private final AuditLogPort auditLogPort;
     private final FreightDraftService freightDraftService;
+    private final LogisticsAdminPort logisticsAdmin;
 
     public OpsLogisticsController(LogisticsService logisticsService, AuditLogPort auditLogPort,
-                                  FreightDraftService freightDraftService) {
+                                  FreightDraftService freightDraftService, LogisticsAdminPort logisticsAdmin) {
         this.logisticsService = logisticsService;
         this.auditLogPort = auditLogPort;
         this.freightDraftService = freightDraftService;
+        this.logisticsAdmin = logisticsAdmin;
     }
 
-    @GetMapping("/ops/shipments")
-    @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_LOGISTICS_READ + "')")
-    public PageData<ShipmentVO> shipments(@RequestParam(required = false) String status,
-                                          @RequestParam(required = false) String carrier,
-                                          @RequestParam(required = false) String keyword,
-                                          @RequestParam(defaultValue = "1") long page,
-                                          @RequestParam(defaultValue = "20") long size) {
-        return PageData.ofAll(logisticsService.shipments(status, carrier, keyword), page, size);
-    }
-
-    /**
-     * 换运单号。<b>必须写原因</b>：改运单号意味着「之前那个号是错的」，
-     * 而用户可能已经拿着旧号在查件 —— 客服要能答出为什么变了。
-     */
-    @PostMapping("/ops/shipments/{shipmentNo}/waybill")
-    @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_RULE_UPDATE + "')")
-    public ShipmentVO updateWaybill(@PathVariable String shipmentNo,
-                                    @RequestBody WaybillReq req) {
-        var vo = logisticsService.updateWaybill(shipmentNo, req.waybillNo(), req.reason(),
-                SecurityUtils.currentUserNo());
-        auditLogPort.record("SHIPMENT_WAYBILL", shipmentNo,
-                "改为 " + req.waybillNo() + "：" + req.reason());
-        return vo;
-    }
+    // 运单（/ops/shipments、换单号、重放、渠道总览）已搬到主应用 portal/ops/OpsShipmentController，
+    // 改调 LogisticsAdminPort（TDD-物流模块 批 5）。这里只剩运费模板与承运商。
 
     @GetMapping("/ops/freight-templates")
     @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_LOGISTICS_READ + "')")
@@ -128,7 +109,9 @@ public class OpsLogisticsController {
     @GetMapping("/ops/fulfillment/carriers")
     @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_LOGISTICS_READ + "')")
     public List<CarrierConfigVO> carriers() {
-        return logisticsService.carriers();
+        Map<String, Map<String, String>> codes = logisticsAdmin.carrierCodes();
+        return logisticsService.carriers().stream()
+                .map(c -> c.withCodes(codes.getOrDefault(c.carrier(), Map.of()))).toList();
     }
 
     @PutMapping("/ops/fulfillment/carriers/{carrier}")
@@ -137,8 +120,13 @@ public class OpsLogisticsController {
                                        @RequestBody CarrierReq req) {
         var vo = logisticsService.saveCarrier(carrier, req.name(), nz(req.priority()),
                 req.pickupCutoff(), nz(req.slaHours()), SecurityUtils.currentUserNo());
-        auditLogPort.record("CARRIER_CONFIG", carrier, req.name());
-        return vo;
+        // 不传 / 传空 = 不改编码（空 ≠ 清空）：老的页面只发前四个字段，不能因此把编码表清掉
+        if (req.codes() != null && !req.codes().isEmpty()) {
+            logisticsAdmin.saveCarrierCodes(carrier, req.codes());
+        }
+        auditLogPort.record("CARRIER_CONFIG", carrier, req.name()
+                + (req.codes() == null || req.codes().isEmpty() ? "" : " 编码 " + req.codes()));
+        return vo.withCodes(logisticsAdmin.carrierCodes().getOrDefault(carrier, Map.of()));
     }
 
     /**
@@ -153,7 +141,7 @@ public class OpsLogisticsController {
         var vo = logisticsService.setCarrierEnabled(carrier, on, SecurityUtils.currentUserNo());
         // 停用一家运力 = 一批订单换路走，critical
         auditLogPort.record("CARRIER_ENABLED", carrier, on ? "启用" : "停用", true);
-        return vo;
+        return vo.withCodes(logisticsAdmin.carrierCodes().getOrDefault(carrier, Map.of()));
     }
 
     private static int nz(Integer v) {
@@ -164,10 +152,6 @@ public class OpsLogisticsController {
         return v == null ? 0L : v;
     }
 
-    /** @param reason 必填 —— 用户可能已拿着旧号在查件 */
-    public record WaybillReq(String waybillNo, String reason) {
-    }
-
     public record FreightTemplateReq(String templateNo, String name,
                                      Integer firstWeightGram, Long firstFee,
                                      Integer addWeightGram, Long addFee,
@@ -175,7 +159,9 @@ public class OpsLogisticsController {
                                      List<FreightTemplateVO.OutOfRangeVO> outOfRange) {
     }
 
-    public record CarrierReq(String name, Integer priority, String pickupCutoff, Integer slaHours) {
+    /** @param codes 各物流渠道里的编码 {@code {"kuaidi100":"shentong"}}；不传 = 不改 */
+    public record CarrierReq(String name, Integer priority, String pickupCutoff, Integer slaHours,
+                             Map<String, String> codes) {
     }
 
     public record EnabledReq(Boolean enabled) {

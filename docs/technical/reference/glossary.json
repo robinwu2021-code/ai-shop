@@ -24579,6 +24579,12 @@
           "ar": "لا يمكن أرشفة القالب الافتراضي — لن يبقى للتجار الجدد قالب يستخدمونه"
         },
         {
+          "key": "err.fulfillment.logistics_channel_unavailable",
+          "zh-CN": "这个物流渠道没有启用或凭据没配，不能用它订阅：{0}",
+          "en": "This logistics channel is disabled or missing credentials, so it can't subscribe: {0}",
+          "ar": "قناة الشحن هذه غير مفعّلة أو بلا بيانات اعتماد، فلا يمكن الاشتراك عبرها: {0}"
+        },
+        {
           "key": "err.fulfillment.not_this_pickup",
           "zh-CN": "该订单不属于本自提点",
           "en": "Order does not belong to this pickup point",
@@ -24607,6 +24613,18 @@
           "zh-CN": "已签收的快递单不能改运单号",
           "en": "A delivered shipment's waybill number cannot be changed",
           "ar": "لا يمكن تغيير رقم بوليصة شحنة تم تسليمها"
+        },
+        {
+          "key": "err.fulfillment.waybill_subscribe_limit",
+          "zh-CN": "这个运单号本月在快递100 已订阅 4 次，不能再订阅；可换其他渠道或下月再试",
+          "en": "This waybill has been subscribed on Kuaidi100 4 times this month; use another channel or try next month",
+          "ar": "تم الاشتراك في رقم البوليصة هذا 4 مرات هذا الشهر على Kuaidi100؛ استخدم قناة أخرى أو حاول الشهر القادم"
+        },
+        {
+          "key": "err.fulfillment.waybill_terminal",
+          "zh-CN": "运单已签收或已作废，不需要重放",
+          "en": "The shipment is already signed for or cancelled; nothing to replay",
+          "ar": "الشحنة مستلمة أو ملغاة بالفعل، فلا حاجة لإعادة التشغيل"
         },
         {
           "key": "err.geo.address_unresolved",
@@ -33861,6 +33879,9 @@
           "CARRIER_KEY_MISSING",
           "CARRIER_HAS_IN_FLIGHT",
           "CARRIER_LAST_ENABLED",
+          "WAYBILL_SUBSCRIBE_LIMIT",
+          "WAYBILL_TERMINAL",
+          "LOGISTICS_CHANNEL_UNAVAILABLE",
           "COUPON_SOLD_OUT",
           "COUPON_NOT_APPLICABLE",
           "COUPON_DISCOUNT_CAP_REQUIRED",
@@ -34391,6 +34412,17 @@
           "POINTS_BOOST"
         ],
         "zh": "权益类型。"
+      },
+      {
+        "name": "BindState",
+        "client": "ops-web",
+        "values": [
+          "NA",
+          "WAITING",
+          "DONE",
+          "FATAL"
+        ],
+        "zh": "微信 token：`NA` 不适用（线下单）· `WAITING` 等揽收后换 · `DONE` 已换上 · `FATAL` 换不了"
       },
       {
         "name": "BizQualification",
@@ -35165,6 +35197,17 @@
           "unavailable"
         ],
         "zh": "定位失败的两类原因，端上要分开提示： - denied：用户没给权限 / 系统定位没开 —— 能引导去设置，再试就能好 - unavailable：环境或网络问题（高德 2/4/6、超时…）—— 引导也没用，退回手动"
+      },
+      {
+        "name": "LogisticsCapabilityKind",
+        "client": "ops-web",
+        "values": [
+          "SUBSCRIBE",
+          "PUSH",
+          "PROBE",
+          "BIND"
+        ],
+        "zh": "物流渠道的能力种类：`SUBSCRIBE` 订阅 · `PUSH` 收推送 · `PROBE` 主动查 · `BIND` 换微信 token"
       },
       {
         "name": "Market",
@@ -36209,6 +36252,15 @@
         "zh": "聚落类型。"
       },
       {
+        "name": "ShipmentProfile",
+        "client": "ops-web",
+        "values": [
+          "WX",
+          "SELF"
+        ],
+        "zh": "运单走哪套：`WX` 微信支付单 / `SELF` 线下付款等"
+      },
+      {
         "name": "ShipmentStatus",
         "client": "ops-web",
         "values": [
@@ -36421,6 +36473,18 @@
           "DEVICE"
         ],
         "zh": ""
+      },
+      {
+        "name": "SubscribeState",
+        "client": "ops-web",
+        "values": [
+          "PENDING",
+          "DONE",
+          "FATAL",
+          "ENDED",
+          "NA"
+        ],
+        "zh": "订阅状态：`PENDING` 待订阅（总开关关着时就停在这）· `DONE` 已订上 · `FATAL` 判死（换了所有渠道都不成，要人处理）· `ENDED` 渠道说跟踪结束 · `NA` 不需要（已终态）"
       },
       {
         "name": "SurfaceTone",
@@ -37561,6 +37625,14 @@
       "type": "String",
       "value": "\"finance:settle:read\"",
       "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "FULFILLMENT_LOGISTICS_REPLAY",
+      "type": "String",
+      "value": "\"fulfillment:logistics:replay\"",
+      "zh": "物流重放：重新订阅（可点名渠道）/ 重新换微信 token（TDD-物流模块 O3）。",
       "module": "shop-base-auth"
     },
     {

@@ -70,7 +70,9 @@ public class SubscribeExecutor implements OutboxConsumer {
 
     @Override
     public void consume(SysOutbox event) {
-        String shipmentNo = json.readTree(event.getPayload()).path("shipmentNo").asString("");
+        var payload = json.readTree(event.getPayload());
+        String shipmentNo = payload.path("shipmentNo").asString("");
+        String forced = payload.path("channel").asString("");
         LgsWaybill w = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("shipment_no", shipmentNo).last("limit 1"));
         if (w == null || !LgsWaybill.SUB_PENDING.equals(w.getSubState())) {
             return;   // 已订上 / 已判死 / 已结束：幂等
@@ -85,7 +87,7 @@ public class SubscribeExecutor implements OutboxConsumer {
         if (!props.isSubscribeEnabled()) {
             return;   // 总开关关着：停在 PENDING，打开后补偿作业补订
         }
-        subscribe(w, phone);
+        subscribe(w, phone, forced.isBlank() ? null : forced);
     }
 
     /** 取快照写进运单，返回明文手机号（只在内存里用这一次） */
@@ -127,12 +129,27 @@ public class SubscribeExecutor implements OutboxConsumer {
     }
 
     void subscribe(LgsWaybill w, String phone) {
+        subscribe(w, phone, null);
+    }
+
+    /** @param forced 运营重放时点名的渠道；空 = 走路由链。点名的渠道这时已不可用 → 直接判死，不悄悄换别家 */
+    void subscribe(LgsWaybill w, String phone, String forced) {
         int attempts = w.getSubAttempts() == null ? 0 : w.getSubAttempts();
         if (attempts >= MAX_ATTEMPTS) {
             fatal(w, attempts, "累计订阅 " + attempts + " 次仍不成：" + w.getSubError());
             return;
         }
-        List<TrackingSubscriber> chain = router.subscribers(w.getStoreNo(), w.getCarrier());
+        List<TrackingSubscriber> chain;
+        if (forced != null) {
+            Optional<String> blocker = router.subscribeBlocker(forced, w.getCarrier());
+            if (blocker.isPresent()) {
+                fatal(w, attempts, forced + " 不可用：" + blocker.get());
+                return;
+            }
+            chain = router.subscriber(forced).map(List::of).orElse(List.of());
+        } else {
+            chain = router.subscribers(w.getStoreNo(), w.getCarrier());
+        }
         if (chain.isEmpty()) {
             fatal(w, attempts, "没有可用的订阅渠道（承运商 " + w.getCarrier() + "）——看运营端渠道总览");
             return;

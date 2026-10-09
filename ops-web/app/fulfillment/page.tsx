@@ -70,6 +70,8 @@ function FulfillmentInner() {
 
   const canDispatch = allow("fulfillment:batch:read");
   const canEditRule = allow("fulfillment:rule:update");
+  // 物流重放单独一个码：会真去调渠道、消耗快递100 的订阅额度（TDD-物流模块 O3）
+  const canReplay = allow("fulfillment:logistics:replay");
   const batchStatusMap = useBatchStatusMap();
 
   const batchQ = { keyword, status, page, size };
@@ -255,7 +257,7 @@ function FulfillmentInner() {
       {tab === "express" && (
         <>
           {!canEditRule && <ReadOnlyNotice what={c.expressReadOnlyWhat} perm="fulfillment:rule:update" className="mb-3" />}
-          <ExpressTab c={c} canEdit={canEditRule} />
+          <ExpressTab c={c} canEdit={canEditRule} canReplay={canReplay} />
         </>
       )}
 

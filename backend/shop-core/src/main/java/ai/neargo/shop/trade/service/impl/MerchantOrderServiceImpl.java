@@ -4,6 +4,7 @@ import ai.neargo.shop.trade.service.MerchantOrderService;
 import ai.neargo.shop.spi.user.UserQueryPort;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.entity.OrdItem;
@@ -102,6 +103,30 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 .withTrace(traceOf(sub));
     }
 
+
+    /** 物流页（TDD-物流模块 B2）。setter 注入：存量手工构造本类的地方不用跟着改 */
+    private LogisticsPort logisticsPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setLogisticsPort(LogisticsPort port) {
+        this.logisticsPort = port;
+    }
+
+    @Override
+    public OrderVO.Trace trace(String merchantNo, String storeNo, String subOrderNo, boolean refresh) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        if (logisticsPort == null || !OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", refresh))
+                .map(v -> new OrderVO.Trace(v.status(),
+                        v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                n.latE6(), n.lngE6())).toList(),
+                        "self-map", null, null,
+                        v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable()))
+                .orElse(null);
+    }
 
     /**
      * 这张子单的物流轨迹（Y4）。<b>只对快递履约、已回填单号</b>的子单查缓存；其余返回 null，

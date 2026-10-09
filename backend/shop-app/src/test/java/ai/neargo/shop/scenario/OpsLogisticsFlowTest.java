@@ -39,9 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 「看板数字与真实订单是不是同一份事实」，这个问 <b>「三页上的每一条闸是不是真的关得住」</b>。
  * 每条闸挡的都不是「显示不对」，而是<b>订单发不出去 / 轨迹对不上</b>：
  * <ol>
- *   <li><b>运单记录从真实订单补齐</b> —— 快递履约且已回填单号的子单才建；没回填的不建。
- *       撤掉补齐这一段，{@code /ops/shipments} 会永远是空的，
- *       而接口 200、页面「暂无数据」，控制台一条错误都没有</li>
+ *   <li><b>发货即登记运单</b>（TDD-物流模块 批 2a 起）—— 快递履约且已回填单号的子单才有；没回填的没有。
+ *       列表在批 5 搬到主应用 {@code OpsShipmentController}、改走物流模块，不再「读时补齐」</li>
  *   <li><b>换单号三条闸</b>：已签收不许改（把一条已完成的轨迹指向别处）、
  *       同承运商不许重号（两单轨迹搅在一起）、原因必填（之后对不上时唯一的线索）</li>
  *   <li><b>默认运费模板恰好一个、且不可归档</b> —— 归档之后新商家没有模板可用</li>
@@ -53,9 +52,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>「不可停掉最后一家」这条闸要求目标运力名下<b>一张在途单都没有</b> ——
  * 因为停用校验先看在途单（30011）再看是不是最后一家（30012）。
- * 而运单记录是<b>读时补齐</b>的：本类只要读过一次 {@code /ops/shipments}，
- * 库里所有已发货的快递单就都挂到了当时优先级最高的那家（SF）名下。
- * 所以这一条必须排在任何运单用例之前跑，否则它会拿到 30011 —— 那不是缺陷，是用例自己踩了自己。
+ * 而本类的运单用例会在 SF 名下造在途单。所以这一条排在任何运单用例之前跑
+ * （它现在用独立的 ZLAST 承运商，已不依赖全局在途单，排序留着当保险）。
  *
  * <p>手机号段 {@code 126006xxxxx}（商户）/ {@code 130006xxxxx}（买家）。
  */
@@ -86,6 +84,16 @@ class OpsLogisticsFlowTest {
 
     @Autowired
     private ShipmentMapper shipmentMapper;
+
+    @Autowired
+    private ai.neargo.shop.event.OutboxDispatcher dispatcher;
+
+    /** 发货事件 → 物流登记运单（批 2a 起发货即登记，不再「读列表时补齐」）。outbox 每批 200 条，要排空 */
+    private void drainOutbox() {
+        for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
+            dispatcher.dispatchPending();
+        }
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -150,8 +158,8 @@ class OpsLogisticsFlowTest {
 
     @Test
     @Order(2)
-    @DisplayName("★ 运单记录从真实订单补齐：回填了单号的才建，没回填的不建，重复读不重复建")
-    void shipmentsMaterializeFromRealOrders() throws Exception {
+    @DisplayName("★ 发货即登记运单：回填了单号的才有，没回填的没有；列表筛选真的收敛结果")
+    void shipmentsRegisteredOnShip() throws Exception {
         String biz = merchant("12600060001", "物流·运单补齐店");
         String goodsNo = listedGoods(biz, 50);
         String skuNo = firstSku(goodsNo);
@@ -159,15 +167,17 @@ class OpsLogisticsFlowTest {
         String shipped = expressOrder("13000060001", goodsNo, skuNo);
         String notShipped = expressOrder("13000060002", goodsNo, skuNo);
         assertThat(codeOf(shipRaw(biz, shipped, "SFLOG-A1"))).isZero();
+        drainOutbox();
 
         JsonNode page = shipmentsPage();
         JsonNode row = rowByOrder(page, shipped);
-        assertThat(row).as("快递履约 + 已回填单号的子单必须补出一条运单记录").isNotNull();
-        assertThat(row.get("carrier").asString())
-                .as("承运商取当时优先级最高的启用运力并快照").isEqualTo("SF");
+        assertThat(row).as("快递履约 + 已回填单号的子单，发货那一刻就要登记出一条运单").isNotNull();
+        assertThat(row.get("carrier").asString()).isEqualTo("SF");
         assertThat(row.get("waybillNo").asString()).isEqualTo("SFLOG-A1");
-        // 订单已推进到履约中 → 运单在途。状态由订单状态推导，一期不接承运商回传
-        assertThat(row.get("status").asString()).isEqualTo("IN_TRANSIT");
+        // 状态只由渠道推进（推送 / 微信查询）：还没有任何推送 → CREATED。不再从订单状态推导
+        assertThat(row.get("status").asString()).isEqualTo("CREATED");
+        assertThat(row.get("profile").asString()).as("这单没走微信支付").isEqualTo("SELF");
+        assertThat(row.get("subState").asString()).as("订阅总开关默认关：停在待订阅").isEqualTo("PENDING");
         /*
          * 平台侧主键不是快递单号。分成两个键是因为换单号时运单记录必须还是同一条，
          * 否则轨迹会断在换单那一刻。
@@ -178,11 +188,7 @@ class OpsLogisticsFlowTest {
         assertThat(rowByOrder(page, notShipped))
                 .as("没回填单号的不建 —— 那种单还没发货，建出来是一条永远没有轨迹的空记录").isNull();
 
-        // 幂等：再读一次既不多一条，也不会因为唯一键炸掉
-        JsonNode again = shipmentsPage();
-        assertThat(countByOrder(again, shipped)).as("读时补齐必须幂等").isEqualTo(1);
-        assertThat(rowByOrder(again, shipped).get("shipmentNo").asString())
-                .isEqualTo(row.get("shipmentNo").asString());
+        assertThat(countByOrder(shipmentsPage(), shipped)).as("一张子单一张运单").isEqualTo(1);
 
         // 筛选：承运商、状态、关键字三条都真的收敛了结果
         assertThat(rowByOrder(shipmentsPage("carrier", "SF"), shipped)).isNotNull();
@@ -190,6 +196,9 @@ class OpsLogisticsFlowTest {
                 .as("按 JD 筛不该筛出 SF 的单").isNull();
         assertThat(rowByOrder(shipmentsPage("status", "DELIVERED"), shipped)).isNull();
         assertThat(rowByOrder(shipmentsPage("keyword", "SFLOG-A1"), shipped)).isNotNull();
+        assertThat(rowByOrder(shipmentsPage("profile", "SELF"), shipped)).isNotNull();
+        assertThat(rowByOrder(shipmentsPage("profile", "WX"), shipped)).isNull();
+        assertThat(rowByOrder(shipmentsPage("subState", "FATAL"), shipped)).isNull();
     }
 
     @Test
@@ -204,9 +213,10 @@ class OpsLogisticsFlowTest {
         // 商家选 JD，而 topCarrier 是 SF（setup 里 SF 优先级 1）。
         // 快递100 按 ful_shipment.carrier 查——取成 SF 就拿顺丰查京东单，恒「无结果」。
         assertThat(codeOf(shipRaw(biz, shipped, "JDLOG-C1", "JD"))).isZero();
+        drainOutbox();
 
         JsonNode row = rowByOrder(shipmentsPage(), shipped);
-        assertThat(row).as("快递履约 + 已回填单号的子单必须补出一条运单记录").isNotNull();
+        assertThat(row).as("快递履约 + 已回填单号的子单，发货那一刻就要登记出一条运单").isNotNull();
         assertThat(row.get("carrier").asString())
                 .as("ful_shipment.carrier 必须是商家发货时选的承运商(JD)，不是 topCarrier(SF)")
                 .isEqualTo("JD");
@@ -276,6 +286,7 @@ class OpsLogisticsFlowTest {
         String b = expressOrder("13000060012", goodsNo, skuNo);
         shipRaw(biz, a, "SFLOG-B1");
         shipRaw(biz, b, "SFLOG-B2");
+        drainOutbox();
 
         JsonNode page = shipmentsPage();
         String shipA = rowByOrder(page, a).get("shipmentNo").asString();
@@ -308,16 +319,107 @@ class OpsLogisticsFlowTest {
         assertThat(codeOf(waybillRaw(shipB, "SFLOG-B1", "接手了对方的面单")))
                 .isZero();
 
-        // 已签收（DELIVERED）不许改 —— 等于把一条已完成的轨迹指向别处
-        assertThat(codeOf(deliveredRaw(biz, a))).isZero();
-        JsonNode afterDelivered = rowByOrder(shipmentsPage(), a);
-        assertThat(afterDelivered.get("status").asString())
-                .as("订单完成后运单状态必须跟着到 DELIVERED，否则这条闸永远轮不到生效")
-                .isEqualTo("DELIVERED");
+        /*
+         * 换号作废旧号上的一切：订阅回到待订阅、按新号重新订（批 5：原地换，唯一键在子单号上）。
+         */
+        assertThat(changed.get("subState").asString()).isEqualTo("PENDING");
+        assertThat(changed.get("status").asString()).isEqualTo("CREATED");
+
+        // 已签收（DELIVERED）不许改 —— 等于把一条已完成的轨迹指向别处。
+        // 签收只由渠道推进（推送 / 微信查询），这里直接把运单置成签收，测的是这道闸本身
+        DataScopeContext.executeWithoutScope(() -> shipmentMapper.update(null, Wrappers.<FulShipment>update()
+                .set("status", "DELIVERED").eq("shipment_no", shipA)));
+        assertThat(rowByOrder(shipmentsPage(), a).get("status").asString()).isEqualTo("DELIVERED");
         assertThat(codeOf(waybillRaw(shipA, "SFLOG-B1Z", "还想再改一次"))).isEqualTo(30006);
         // 被拒之后单号不能被改掉
         assertThat(rowByOrder(shipmentsPage(), a).get("waybillNo").asString())
                 .isEqualTo("SFLOG-B1X");
+    }
+
+    // ---------------------------------------------------------------- 重放 / 渠道总览 / 承运商编码（批 5）
+
+    @Test
+    @Order(3)
+    @DisplayName("★ 重放三条闸：线下付款单换 token → 10400 · 点名不存在的渠道 → 30015 · 已签收 → 30014；受理回到待订阅")
+    void replayGates() throws Exception {
+        String biz = merchant("12600060080", "物流·重放店");
+        String goodsNo = listedGoods(biz, 50);
+        String skuNo = firstSku(goodsNo);
+        String sub = expressOrder("13000060080", goodsNo, skuNo);
+        assertThat(codeOf(shipRaw(biz, sub, "SFLOG-R1"))).isZero();
+        drainOutbox();
+        String shipNo = rowByOrder(shipmentsPage(), sub).get("shipmentNo").asString();
+
+        assertThat(codeOf(replayRaw(shipNo, "{\"action\":\"WX_BIND\"}")))
+                .as("线下付款单不调任何微信物流接口（AC5）").isEqualTo(10400);
+        String unavailable = replayRaw(shipNo, "{\"action\":\"SUBSCRIBE\",\"channel\":\"nope\"}");
+        assertThat(codeOf(unavailable)).isEqualTo(30015);
+        assertThat(json.readTree(unavailable).get("msg").asString())
+                .as("原因要说出来，运营据此去看渠道总览").contains("nope");
+
+        assertThat(data(replayRaw(shipNo, "{\"action\":\"SUBSCRIBE\"}")).get("accepted").asBoolean()).isTrue();
+        assertThat(rowByOrder(shipmentsPage(), sub).get("subState").asString()).isEqualTo("PENDING");
+
+        DataScopeContext.executeWithoutScope(() -> shipmentMapper.update(null, Wrappers.<FulShipment>update()
+                .set("status", "DELIVERED").eq("shipment_no", shipNo)));
+        assertThat(codeOf(replayRaw(shipNo, "{\"action\":\"SUBSCRIBE\"}"))).isEqualTo(30014);
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("★ 渠道总览：每个装了的渠道、每种能力可不可用；不可用的必须说出原因")
+    void channelsOverview() throws Exception {
+        String body = mvc().perform(get("/ops/logistics/channels").header("Authorization", "Bearer " + opsLogin()))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode list = data(body);
+        List<String> names = new ArrayList<>();
+        list.forEach(c -> names.add(c.get("name").asString()));
+        assertThat(names).contains("kuaidi100", "wx");
+        for (JsonNode c : list) {
+            assertThat(c.get("capabilities")).as(c.get("name").asString() + " 一种能力都没列").isNotEmpty();
+            for (JsonNode cap : c.get("capabilities")) {
+                if (!cap.get("available").asBoolean()) {
+                    assertThat(cap.get("reason").asString())
+                            .as("不可用却不说为什么 —— 运营只能去翻日志：" + c).isNotBlank();
+                }
+            }
+        }
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("★ 承运商编码：随承运商一起读写；保存时不传编码 = 不改（空 ≠ 清空）")
+    void carrierCodesRoundTrip() throws Exception {
+        JsonNode before = carrier("SF").get("codes");
+        assertThat(before.get("kuaidi100").asString()).as("种子里顺丰在快递100 叫 shunfeng").isEqualTo("shunfeng");
+        try {
+            String saved = mvc().perform(put("/ops/fulfillment/carriers/SF")
+                            .header("Authorization", "Bearer " + opsLogin())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"顺丰速运\",\"priority\":1,\"pickupCutoff\":\"17:00\","
+                                    + "\"slaHours\":48,\"codes\":{\"kuaidi100\":\"shunfengkuaiyun\",\"wx\":\"SF\"}}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(data(saved).get("codes").get("kuaidi100").asString()).isEqualTo("shunfengkuaiyun");
+
+            // 老页面只发前四个字段 —— 不能因此把编码表清掉
+            assertThat(codeOf(saveCarrierRaw("SF", "顺丰速运", 1, "17:00", 48))).isZero();
+            assertThat(carrier("SF").get("codes").get("kuaidi100").asString()).isEqualTo("shunfengkuaiyun");
+        } finally {
+            StringBuilder codes = new StringBuilder();
+            before.properties().forEach(e -> codes.append(codes.isEmpty() ? "" : ",")
+                    .append('"').append(e.getKey()).append("\":\"").append(e.getValue().asString()).append('"'));
+            mvc().perform(put("/ops/fulfillment/carriers/SF").header("Authorization", "Bearer " + opsLogin())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"顺丰速运\",\"priority\":1,\"pickupCutoff\":\"17:00\",\"slaHours\":48,"
+                            + "\"codes\":{" + codes + "}}"));
+        }
+    }
+
+    private String replayRaw(String shipmentNo, String body) throws Exception {
+        return mvc().perform(post("/ops/shipments/" + shipmentNo + "/replay")
+                        .header("Authorization", "Bearer " + opsLogin())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString();
     }
 
     // ---------------------------------------------------------------- 运费模板（§4.7）
@@ -418,7 +520,8 @@ class OpsLogisticsFlowTest {
         String skuNo = firstSku(goodsNo);
         String sub = expressOrder("13000060021", goodsNo, skuNo);
         shipRaw(biz, sub, "SFLOG-C1");
-        assertThat(rowByOrder(shipmentsPage(), sub).get("status").asString()).isEqualTo("IN_TRANSIT");
+        drainOutbox();
+        assertThat(rowByOrder(shipmentsPage(), sub)).as("发货即登记：这张就是 SF 名下的在途单").isNotNull();
 
         // 还有在途单不能停：那些单的轨迹会就此断掉
         assertThat(codeOf(setEnabledRaw("SF", false))).isEqualTo(30011);
@@ -654,12 +757,6 @@ class OpsLogisticsFlowTest {
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"expressNo\":\"" + expressNo + "\",\"expressCompany\":\"" + carrier + "\"}"))
-                .andReturn().getResponse().getContentAsString();
-    }
-
-    private String deliveredRaw(String bizToken, String subOrderNo) throws Exception {
-        return mvc().perform(post("/biz/order/" + subOrderNo + "/delivered")
-                        .header("Authorization", "Bearer " + bizToken))
                 .andReturn().getResponse().getContentAsString();
     }
 

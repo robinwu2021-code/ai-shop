@@ -111,6 +111,18 @@ public class BizOrderController {
     }
 
     /**
+     * 物流页（TDD-物流模块 B2）：完整轨迹。看订单的人就能看物流（同详情的权限码与门店判法）。
+     * {@code refresh} 默认不真去问渠道 —— 要配置对 {@code BIZ} 放行（快递100 短期额度只够订阅）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    @GetMapping("/biz/order/{subOrderNo}/trace")
+    public OrderVO.Trace trace(@PathVariable String subOrderNo,
+                               @RequestParam(defaultValue = "false") boolean refresh) {
+        var ctx = BizContext.current();
+        return merchantOrderService.trace(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo, refresh);
+    }
+
+    /**
      * 发货：快递单号与<b>快递公司</b>都必填。
      *
      * <p>单号：没有单号的「已发货」对买家没有任何用处。

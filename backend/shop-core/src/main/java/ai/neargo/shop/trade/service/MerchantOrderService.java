@@ -75,6 +75,14 @@ public interface MerchantOrderService {
     OrderVO detail(String merchantNo, String storeNo, String subOrderNo);
 
     /**
+     * 物流页（TDD-物流模块 B2）：完整轨迹。门店判法同 {@link #detail}（不是这家店的单 → 10404）。
+     * 不是快递 / 还没回填单号 → null。展示恒为自建轨迹（B 端没有微信插件）。
+     *
+     * @param refresh 只在配置对 {@code BIZ} 放行了某个探测渠道时才真去问（默认一个都不放行）
+     */
+    OrderVO.Trace trace(String merchantNo, String storeNo, String subOrderNo, boolean refresh);
+
+    /**
      * 发货（EXPRESS 履约）。WAIT_FULFILL → FULFILLING，并记下快递单号。
      *
      * <p><b>快递单号必填</b>：没有单号的「已发货」对买家没有任何用处 ——

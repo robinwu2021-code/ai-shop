@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 418,
+        "b-app": 420,
         "c-app": 83
       }
     },
@@ -1403,7 +1403,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 173,
+        "b-app": 175,
         "c-app": 90
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 571,
+        "b-app": 573,
         "c-app": 202
       }
     },
@@ -2918,7 +2918,7 @@
       "name": "sh-trace",
       "file": "packages/ui/src/components/sh-trace.vue",
       "scope": "跨端",
-      "lines": 294,
+      "lines": 303,
       "props": [
         "trace: ShipmentTrace",
         "foldAt?: number"

@@ -141,6 +141,77 @@ export interface Shipment {
   displayChannel?: string | null;
   /** 最近一次备载荷失败的原因，只给运营看，不给买家看 */
   displayFailReason?: string | null;
+  /*
+   * 以下是物流模块的状态（TDD-物流模块 批 5）。运营处理异常件时要回答「哪一环断了」：
+   * 订阅订上没有、走的哪家、最后一次失败说了什么；微信 token 换上没有。
+   */
+  /** `WX` 微信支付单（可用微信物流全套）/ `SELF` 线下付款等（不调任何微信物流接口） */
+  profile?: ShipmentProfile;
+  /** 门店号（登记时快照） */
+  storeNo?: string | null;
+  /** 商家主体号（登记时快照） */
+  entityNo?: string | null;
+  /** 订阅状态 */
+  subState?: SubscribeState;
+  /** 受理订阅的渠道（`kuaidi100` / `yto` …） */
+  subChannel?: string | null;
+  /** 订阅最后一次失败：渠道 + 码 + 原文 */
+  subError?: string | null;
+  /** 订阅累计尝试次数 */
+  subAttempts?: number;
+  /** 微信 token 状态 */
+  bindState?: BindState;
+  /** 换微信 token 最后一次失败的原因 */
+  bindError?: string | null;
+  /** 签收时间 */
+  signedAt?: string | null;
+  /** 最近一次有新进展的时刻 */
+  lastEventAt?: string | null;
+  /** 已放到驿站或快递柜 */
+  atLocker?: boolean;
+  /** 渠道纠正过承运商时的原值 */
+  carrierCorrectedFrom?: string | null;
+  /** 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） */
+  receiverPhoneLast4?: string | null;
+}
+
+/** 运单走哪套：`WX` 微信支付单 / `SELF` 线下付款等 */
+export type ShipmentProfile = "WX" | "SELF";
+
+/**
+ * 订阅状态：`PENDING` 待订阅（总开关关着时就停在这）· `DONE` 已订上 ·
+ * `FATAL` 判死（换了所有渠道都不成，要人处理）· `ENDED` 渠道说跟踪结束 · `NA` 不需要（已终态）
+ */
+export type SubscribeState = "PENDING" | "DONE" | "FATAL" | "ENDED" | "NA";
+
+/** 微信 token：`NA` 不适用（线下单）· `WAITING` 等揽收后换 · `DONE` 已换上 · `FATAL` 换不了 */
+export type BindState = "NA" | "WAITING" | "DONE" | "FATAL";
+
+/** 物流渠道总览的一行（`GET /ops/logistics/channels`） */
+export interface LogisticsChannel {
+  /** 渠道名：`kuaidi100` / `yto` / `wx` / `stub` */
+  name: string;
+  /** 配置里启用没有 */
+  enabled: boolean;
+  /** 每种能力可不可用 */
+  capabilities: LogisticsCapability[];
+  /** 覆盖的承运商码；`*` = 全覆盖 */
+  carriers: string[];
+  /** 出现在哪些路由链里（`subscribe.default#1` 这种） */
+  routes: string[];
+}
+
+/** 物流渠道的能力种类：`SUBSCRIBE` 订阅 · `PUSH` 收推送 · `PROBE` 主动查 · `BIND` 换微信 token */
+export type LogisticsCapabilityKind = "SUBSCRIBE" | "PUSH" | "PROBE" | "BIND";
+
+/** 渠道的一种能力 */
+export interface LogisticsCapability {
+  /** 能力种类 */
+  capability: LogisticsCapabilityKind;
+  /** 可不可用 */
+  available: boolean;
+  /** 不可用的原因（「凭据没配」「推送不可用，订阅随之不可用」） */
+  reason: string | null;
 }
 
 // ── 运费模板与超区（P-5.2.3）────────────────────────────────────────
@@ -257,4 +328,9 @@ export interface CarrierConfig {
   updatedAt: string;
   /** 最后修改人（STAFF 账号） */
   updatedBy: string;
+  /**
+   * 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。
+   * 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过
+   */
+  codes?: Record<string, string>;
 }

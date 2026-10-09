@@ -198,6 +198,7 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   "iam:staff:read": "iam:staff:read",
   "content:material:read": "content:material:read",
   "fulfillment:logistics:read": "fulfillment:logistics:read",
+  "fulfillment:logistics:replay": "fulfillment:logistics:replay",
   "fulfillment:redeem:read": "fulfillment:redeem:read",
   "risk:rule:read": "risk:rule:read",
   "store:page:read": UNIMPLEMENTED,

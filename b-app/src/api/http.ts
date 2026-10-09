@@ -133,6 +133,7 @@ import type {
   MySettleBatch,
   OfflineSaleRow,
   Order,
+  ShipmentTrace,
   PageResult,
   PaymentApplyment,
   PermOption,
@@ -481,6 +482,8 @@ export const httpApi: MerchantApi = {
 
   mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
+  mOrderTrace: (orderNo, refresh) =>
+    http.get<ShipmentTrace | null>(buildPath(E.mOrderTrace.path, { orderNo }), refresh ? { refresh: true } : undefined),
   mShip: (orderNo, expressNo, expressCompany) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }),
       { expressNo, expressCompany } satisfies ShipReq),

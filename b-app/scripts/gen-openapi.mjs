@@ -422,6 +422,7 @@ const RESPONSE_TYPES = {
   mSaveSpecTemplate: "SpecTemplate",
   mOrderList: "PageResult<Order>",
   mOrderDetail: "Order",
+  mOrderTrace: "ShipmentTrace",
   mShip: "Order",
   mDelivered: "Order",
   mDeliveryRule: "DeliveryRule",

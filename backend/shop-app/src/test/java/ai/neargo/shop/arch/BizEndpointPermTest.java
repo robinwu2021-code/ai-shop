@@ -228,6 +228,8 @@ class BizEndpointPermTest {
         // ---- 订单与经营数据 ----
         put("/biz/order", BizPerms.ORDER_VIEW);
         put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
+        // 物流轨迹（TDD-物流模块 B2）：看订单的人就能看物流
+        put("/biz/order/{subOrderNo}/trace", BizPerms.ORDER_VIEW);
         put("/biz/dashboard/stats", BizPerms.CUSTOMER);
         put("/biz/customers", BizPerms.CUSTOMER);
         // 跨店总览与对比（B-11.12.5/6）：同样是经营数据，与 /biz/dashboard/stats 同一档。

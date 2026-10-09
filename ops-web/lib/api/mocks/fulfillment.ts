@@ -61,6 +61,10 @@ export const fulfillmentMock: FulfillmentApi = {
       db.paginate(db.shipments, q.page, q.size, (s) =>
         db.eqHit(q.status, s.status) &&
         db.eqHit(q.carrier, s.carrier) &&
+        db.eqHit(q.subState, s.subState) &&
+        db.eqHit(q.bindState, s.bindState) &&
+        db.eqHit(q.subChannel, s.subChannel ?? undefined) &&
+        db.eqHit(q.profile, s.profile) &&
         db.kwHit(q.keyword, s.shipmentNo, s.orderNo, s.waybillNo, s.receiver),
       ),
     ),
@@ -86,6 +90,35 @@ export const fulfillmentMock: FulfillmentApi = {
     ];
     return wait(sh, 350);
   },
+
+  replayShipment: async ({ shipmentNo, action, channel }) => {
+    const sh = db.shipments.find((x) => x.shipmentNo === shipmentNo);
+    if (!sh) notFound("快递单", "Shipment", shipmentNo);
+    // 与后端同口径（LogisticsAdminPortImpl）：终态不重放、线下单不换 token、点名的渠道要可用
+    if (sh.status === "DELIVERED" || sh.status === "CANCELLED") {
+      fail("运单已签收或已作废，不需要重放", "The shipment is already signed for or cancelled; nothing to replay");
+    }
+    if (action === "WX_BIND") {
+      if (sh.profile !== "WX") fail("线下付款单不调微信物流接口", "Offline-paid orders never call WeChat logistics");
+      sh.bindState = "WAITING";
+      sh.bindError = null;
+      return wait({ accepted: true }, 300);
+    }
+    if (channel) {
+      const ch = db.logisticsChannels.find((x) => x.name === channel);
+      const sub = ch?.capabilities.find((x) => x.capability === "SUBSCRIBE");
+      if (!sub?.available) {
+        const why = sub?.reason ?? `没有装 ${channel} 的订阅实现`;
+        fail(`这个物流渠道没有启用或凭据没配，不能用它订阅：${why}`, `This logistics channel is disabled or missing credentials, so it can't subscribe: ${why}`);
+      }
+    }
+    sh.subState = "PENDING";
+    sh.subAttempts = 0;
+    sh.subError = null;
+    return wait({ accepted: true }, 300);
+  },
+
+  listLogisticsChannels: async () => wait(db.logisticsChannels.map((c) => ({ ...c }))),
 
   listFreightTemplates: async (q = {}) =>
     wait(db.paginate(db.freightTemplates, undefined, 100, (t) => db.liveHit(t, q.showArchived))),
@@ -177,7 +210,10 @@ export const fulfillmentMock: FulfillmentApi = {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v.pickupCutoff)) fail("截单时间必须是 HH:mm，例如 17:00", "The cut-off must be HH:mm, for example 17:00");
     if (!Number.isInteger(v.slaHours) || v.slaHours <= 0) fail("承诺时效必须是正整数小时", "The promised SLA must be a positive whole number of hours");
 
-    Object.assign(c, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    // 编码与后端同口径：不传 / 传空 = 不改（空 ≠ 清空），老的保存只发前四个字段
+    const { codes, ...rest } = v;
+    Object.assign(c, rest, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    if (codes && Object.keys(codes).length) c.codes = { ...codes };
     return wait(c, 400);
   },
 

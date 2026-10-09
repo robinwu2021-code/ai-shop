@@ -362,6 +362,18 @@ public enum ErrorCode {
     /** 不能停掉最后一家启用的运力 —— 全停之后快递单无处可下 */
     CARRIER_LAST_ENABLED(30012, "err.fulfillment.carrier_last_enabled"),
 
+    /**
+     * 快递100 同一公司 + 单号每月最多订阅 4 次，这一单本月用完了（TDD-物流模块 O3）。
+     * 运营的下一步：指定别的渠道重放，或下月再试
+     */
+    WAYBILL_SUBSCRIBE_LIMIT(30013, "err.fulfillment.waybill_subscribe_limit"),
+
+    /** 运单已签收或已作废，重放没有意义 */
+    WAYBILL_TERMINAL(30014, "err.fulfillment.waybill_terminal"),
+
+    /** 指定的物流渠道没启用或凭据没配。{0} = 不可用原因（同渠道总览里的那句） */
+    LOGISTICS_CHANNEL_UNAVAILABLE(30015, "err.fulfillment.logistics_channel_unavailable"),
+
     // ---- 4xxxx 营销 ----
     COUPON_SOLD_OUT(40001, "err.marketing.coupon_sold_out"),
     COUPON_NOT_APPLICABLE(40002, "err.marketing.coupon_not_applicable"),

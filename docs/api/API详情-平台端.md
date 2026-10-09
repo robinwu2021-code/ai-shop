@@ -3479,6 +3479,7 @@ _无字段_
 | `slaHours` | `number` | 是 | 承诺时效（小时） |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+| `codes` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过 |
 
 
 #### POST `/ops/fulfillment/carriers/{carrier}/enabled`
@@ -3509,6 +3510,7 @@ _无字段_
 | `slaHours` | `number` | 是 | 承诺时效（小时） |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+| `codes` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过 |
 
 
 #### GET `/ops/fulfillment/overdue-rule`
@@ -3593,6 +3595,19 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+#### GET `/ops/logistics/channels`
+
+物流渠道总览（O4）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`LogisticsChannel`](#logisticschannel)\[\]
+
+
 #### GET `/ops/shipments`
 
 listShipments
@@ -3611,6 +3626,23 @@ listShipments
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+#### POST `/ops/shipments/{shipmentNo}/replay`
+
+重放（TDD-物流模块 O3）：重新订阅（可点名渠道）或重新换微信 token
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `shipmentNo` | path | `string` | 是 | 运单记录单号（平台侧主键，非快递单号） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### POST `/ops/shipments/{shipmentNo}/waybill`
@@ -3643,6 +3675,20 @@ _无字段_
 | `traces` | [`#/definitions/ShipmentTrace`](#definitionsshipmenttrace)\[\] | 是 | 轨迹节点，按时间正序 |
 | `displayChannel` | `string,null` | 否 | 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** —— 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」 |
 | `displayFailReason` | `string,null` | 否 | 最近一次备载荷失败的原因，只给运营看，不给买家看 |
+| `profile` | [`#/definitions/ShipmentProfile`](#definitionsshipmentprofile) | 否 | `WX` 微信支付单（可用微信物流全套）/ `SELF` 线下付款等（不调任何微信物流接口） |
+| `storeNo` | `string,null` | 否 | 门店号（登记时快照） |
+| `entityNo` | `string,null` | 否 | 商家主体号（登记时快照） |
+| `subState` | [`#/definitions/SubscribeState`](#definitionssubscribestate) | 否 | 订阅状态 |
+| `subChannel` | `string,null` | 否 | 受理订阅的渠道（`kuaidi100` / `yto` …） |
+| `subError` | `string,null` | 否 | 订阅最后一次失败：渠道 + 码 + 原文 |
+| `subAttempts` | `number` | 否 | 订阅累计尝试次数 |
+| `bindState` | [`#/definitions/BindState`](#definitionsbindstate) | 否 | 微信 token 状态 |
+| `bindError` | `string,null` | 否 | 换微信 token 最后一次失败的原因 |
+| `signedAt` | `string,null` | 否 | 签收时间 |
+| `lastEventAt` | `string,null` | 否 | 最近一次有新进展的时刻 |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 |
+| `carrierCorrectedFrom` | `string,null` | 否 | 渠道纠正过承运商时的原值 |
+| `receiverPhoneLast4` | `string,null` | 否 | 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） |
 
 
 ### group
@@ -10668,6 +10714,7 @@ _无字段_
 | `slaHours` | `number` | 是 | 承诺时效（小时） |
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
+| `codes` | [`#/definitions/Record<string,string>`](#definitionsrecordstringstring) | 否 | 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过 |
 
 ### Category
 
@@ -11720,6 +11767,18 @@ KPI 卡（金额为最小货币单位整数）。
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+
+### LogisticsChannel
+
+物流渠道总览的一行（`GET /ops/logistics/channels`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `name` | `string` | 是 | 渠道名：`kuaidi100` / `yto` / `wx` / `stub` |
+| `enabled` | `boolean` | 是 | 配置里启用没有 |
+| `capabilities` | [`#/definitions/LogisticsCapability`](#definitionslogisticscapability)\[\] | 是 | 每种能力可不可用 |
+| `carriers` | `string`\[\] | 是 | 覆盖的承运商码；`*` = 全覆盖 |
+| `routes` | `string`\[\] | 是 | 出现在哪些路由链里（`subscribe.default#1` 这种） |
 
 ### MarketConfig
 
@@ -13027,6 +13086,20 @@ KPI 卡（金额为最小货币单位整数）。
 | `traces` | [`#/definitions/ShipmentTrace`](#definitionsshipmenttrace)\[\] | 是 | 轨迹节点，按时间正序 |
 | `displayChannel` | `string,null` | 否 | 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** —— 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」 |
 | `displayFailReason` | `string,null` | 否 | 最近一次备载荷失败的原因，只给运营看，不给买家看 |
+| `profile` | [`#/definitions/ShipmentProfile`](#definitionsshipmentprofile) | 否 | `WX` 微信支付单（可用微信物流全套）/ `SELF` 线下付款等（不调任何微信物流接口） |
+| `storeNo` | `string,null` | 否 | 门店号（登记时快照） |
+| `entityNo` | `string,null` | 否 | 商家主体号（登记时快照） |
+| `subState` | [`#/definitions/SubscribeState`](#definitionssubscribestate) | 否 | 订阅状态 |
+| `subChannel` | `string,null` | 否 | 受理订阅的渠道（`kuaidi100` / `yto` …） |
+| `subError` | `string,null` | 否 | 订阅最后一次失败：渠道 + 码 + 原文 |
+| `subAttempts` | `number` | 否 | 订阅累计尝试次数 |
+| `bindState` | [`#/definitions/BindState`](#definitionsbindstate) | 否 | 微信 token 状态 |
+| `bindError` | `string,null` | 否 | 换微信 token 最后一次失败的原因 |
+| `signedAt` | `string,null` | 否 | 签收时间 |
+| `lastEventAt` | `string,null` | 否 | 最近一次有新进展的时刻 |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 |
+| `carrierCorrectedFrom` | `string,null` | 否 | 渠道纠正过承运商时的原值 |
+| `receiverPhoneLast4` | `string,null` | 否 | 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） |
 
 ### Sku
 

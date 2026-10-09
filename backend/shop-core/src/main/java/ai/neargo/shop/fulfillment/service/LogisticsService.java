@@ -2,7 +2,6 @@ package ai.neargo.shop.fulfillment.service;
 
 import ai.neargo.shop.fulfillment.dto.CarrierConfigVO;
 import ai.neargo.shop.fulfillment.dto.FreightTemplateVO;
-import ai.neargo.shop.fulfillment.dto.ShipmentVO;
 
 import java.util.List;
 
@@ -21,23 +20,7 @@ import java.util.List;
  */
 public interface LogisticsService {
 
-    /**
-     * 快递运单列表（P-5.2.1）。
-     *
-     * <p><b>读时补齐</b>：快递履约且已回填快递单号的子单，若还没有运单记录就地建一条，
-     * 承运商取当时优先级最高的启用运力。没回填单号的不建 ——
-     * 那种单还没发货，建出来是一条永远没有轨迹的空记录。
-     */
-    List<ShipmentVO> shipments(String status, String carrier, String keyword);
-
-    /**
-     * 换运单号。运营在这一页唯一能做的写动作。
-     *
-     * <p>三条闸：<b>已签收的不许改</b>（等于把一条已完成的轨迹指向别处）、
-     * <b>同承运商下不许重号</b>（两单轨迹会搅在一起）、<b>原因必填</b>
-     * （之后对不上时这是唯一线索）。换号本身会写进轨迹。
-     */
-    ShipmentVO updateWaybill(String shipmentNo, String waybillNo, String reason, String operatorNo);
+    // 运单列表与换单号已搬到物流模块（LogisticsAdminPort，TDD-物流模块 批 5）
 
     /** @param showArchived 为真时连归档的一起返回（G1：归档不是删除，得看得见） */
     List<FreightTemplateVO> freightTemplates(boolean showArchived);

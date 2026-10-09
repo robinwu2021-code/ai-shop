@@ -196,8 +196,11 @@ c-app 拿到 `wx-plugin` → `openWaybillTracking(displayToken)`；`self-map` �
 
 ### O2 `POST /ops/shipments/{shipmentNo}/waybill` —— 改
 
-请求体不变 `{"waybillNo":"…","carrier":"…"}`。行为变化：旧运单 `CANCELLED`，按新单号**新登记一张**并订阅；
-旧单号此后的推送因状态与 `sub_channel` 对不上被丢弃。错误：`30006` 已签收不能换、`30007` 单号被占。
+请求体 `{"waybillNo":"…","reason":"…","carrier":"…"}`（`carrier` 可省 = 不变；`reason` 必填）。
+**原地换**（批 5 实现时改）：运单唯一键在子单号上，同一子单只有一张运单，「旧单作废 + 新登记一张」做不了。
+换号时旧号上的一切作废 —— 订阅回 `PENDING`、token 清空、状态回 `CREATED`、签收 / 到柜清空 ——
+轨迹里记一条「运单号由 X 改为 Y：原因」，再按新号重新订阅。旧号此后的推送按单号找不到运单，被丢弃。
+错误：`30006` 已签收 / 已作废不能换、`30007` 单号被占、`10400` 缺单号或原因。
 
 ### O3 `POST /ops/shipments/{shipmentNo}/replay` —— 新
 

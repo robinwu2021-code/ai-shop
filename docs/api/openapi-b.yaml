@@ -15454,6 +15454,39 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/order/{orderNo}/trace": 
+    get: 
+      operationId: "mOrderTrace"
+      summary: "物流轨迹"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ShipmentTrace"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/order/{orderNo}/ship": 
     post: 
       operationId: "mShip"

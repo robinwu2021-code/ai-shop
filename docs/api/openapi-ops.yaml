@@ -2795,6 +2795,66 @@ components:
             - "string"
             - "null"
           description: "最近一次备载荷失败的原因，只给运营看，不给买家看"
+        profile: 
+          "$ref": "#/definitions/ShipmentProfile"
+          description: "`WX` 微信支付单（可用微信物流全套）/ `SELF` 线下付款等（不调任何微信物流接口）"
+        storeNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "门店号（登记时快照）"
+        entityNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "商家主体号（登记时快照）"
+        subState: 
+          "$ref": "#/definitions/SubscribeState"
+          description: "订阅状态"
+        subChannel: 
+          type: 
+            - "string"
+            - "null"
+          description: "受理订阅的渠道（`kuaidi100` / `yto` …）"
+        subError: 
+          type: 
+            - "string"
+            - "null"
+          description: "订阅最后一次失败：渠道 + 码 + 原文"
+        subAttempts: 
+          type: "number"
+          description: "订阅累计尝试次数"
+        bindState: 
+          "$ref": "#/definitions/BindState"
+          description: "微信 token 状态"
+        bindError: 
+          type: 
+            - "string"
+            - "null"
+          description: "换微信 token 最后一次失败的原因"
+        signedAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "签收时间"
+        lastEventAt: 
+          type: 
+            - "string"
+            - "null"
+          description: "最近一次有新进展的时刻"
+        atLocker: 
+          type: "boolean"
+          description: "已放到驿站或快递柜"
+        carrierCorrectedFrom: 
+          type: 
+            - "string"
+            - "null"
+          description: "渠道纠正过承运商时的原值"
+        receiverPhoneLast4: 
+          type: 
+            - "string"
+            - "null"
+          description: "收件人手机号后四位（完整号只在物流模块里加密存，签收后清空）"
       required: 
         - "shipmentNo"
         - "orderNo"
@@ -2807,6 +2867,89 @@ components:
         - "updatedAt"
         - "traces"
       additionalProperties: false
+    ShipmentProfile: 
+      type: "string"
+      enum: 
+        - "WX"
+        - "SELF"
+      description: "运单走哪套：`WX` 微信支付单 / `SELF` 线下付款等"
+    SubscribeState: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "DONE"
+        - "FATAL"
+        - "ENDED"
+        - "NA"
+      description: "订阅状态：`PENDING` 待订阅（总开关关着时就停在这）· `DONE` 已订上 · `FATAL` 判死（换了所有渠道都不成，要人处理）· `ENDED` 渠道说跟踪结束 · `NA` 不需要（已终态）"
+    BindState: 
+      type: "string"
+      enum: 
+        - "NA"
+        - "WAITING"
+        - "DONE"
+        - "FATAL"
+      description: "微信 token：`NA` 不适用（线下单）· `WAITING` 等揽收后换 · `DONE` 已换上 · `FATAL` 换不了"
+    LogisticsChannel: 
+      type: "object"
+      properties: 
+        name: 
+          type: "string"
+          description: "渠道名：`kuaidi100` / `yto` / `wx` / `stub`"
+        enabled: 
+          type: "boolean"
+          description: "配置里启用没有"
+        capabilities: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/LogisticsCapability"
+          description: "每种能力可不可用"
+        carriers: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "覆盖的承运商码；`*` = 全覆盖"
+        routes: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "出现在哪些路由链里（`subscribe.default#1` 这种）"
+      required: 
+        - "name"
+        - "enabled"
+        - "capabilities"
+        - "carriers"
+        - "routes"
+      additionalProperties: false
+      description: "物流渠道总览的一行（`GET /ops/logistics/channels`）"
+    LogisticsCapability: 
+      type: "object"
+      properties: 
+        capability: 
+          "$ref": "#/definitions/LogisticsCapabilityKind"
+          description: "能力种类"
+        available: 
+          type: "boolean"
+          description: "可不可用"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+          description: "不可用的原因（「凭据没配」「推送不可用，订阅随之不可用」）"
+      required: 
+        - "capability"
+        - "available"
+        - "reason"
+      additionalProperties: false
+      description: "渠道的一种能力"
+    LogisticsCapabilityKind: 
+      type: "string"
+      enum: 
+        - "SUBSCRIBE"
+        - "PUSH"
+        - "PROBE"
+        - "BIND"
+      description: "物流渠道的能力种类：`SUBSCRIBE` 订阅 · `PUSH` 收推送 · `PROBE` 主动查 · `BIND` 换微信 token"
     FreightTemplate: 
       type: "object"
       properties: 
@@ -2984,6 +3127,9 @@ components:
         updatedBy: 
           type: "string"
           description: "最后修改人（STAFF 账号）"
+        codes: 
+          "$ref": "#/definitions/Record%3Cstring%2Cstring%3E"
+          description: "这家承运商在各物流渠道里叫什么（`{ kuaidi100: \"shentong\", wx: \"STO\" }`）。 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过"
       required: 
         - "carrier"
         - "name"
@@ -2997,6 +3143,10 @@ components:
         - "updatedBy"
       additionalProperties: false
       description: "一家承运商的接入配置。\n\n⚠️ 这一页配错的后果不是\"显示不对\"，而是**订单发不出去**： 全停、启用没配密钥的、或者停掉还有在途单的那家，都会让快递链路当场断掉。 所以规则全部落在 mock 层，页面写不出违规配置。"
+    "Record<string,string>": 
+      type: "object"
+      additionalProperties: 
+        type: "string"
     StoreAuditKind: 
       type: "string"
       enum: 
@@ -4865,10 +5015,6 @@ components:
         - "labels"
       additionalProperties: false
       description: "类目绑定的整份替换体。顺序即排序，主维度只能有一个"
-    "Record<string,string>": 
-      type: "object"
-      additionalProperties: 
-        type: "string"
     CategoryArchiveImpact: 
       type: "object"
       properties: 
@@ -15581,6 +15727,72 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/shipments/{shipmentNo}/replay": 
+    post: 
+      operationId: "replayShipment"
+      summary: "重放（TDD-物流模块 O3）：重新订阅（可点名渠道）或重新换微信 token"
+      tags: 
+        - "fulfillment"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "shipmentNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/logistics/channels": 
+    get: 
+      operationId: "listLogisticsChannels"
+      summary: "物流渠道总览（O4）"
+      tags: 
+        - "fulfillment"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/LogisticsChannel"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/freight-templates": 
     get: 
       operationId: "listFreightTemplates"

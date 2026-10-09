@@ -4509,6 +4509,35 @@ _无字段_
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
 
 
+#### GET `/biz/order/{orderNo}/trace`
+
+物流轨迹　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ShipmentTrace`](#shipmenttrace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | [`ShipmentStatus`](#shipmentstatus) | 是 | 运单当前状态（最新一档），用于订单详情顶部的物流状态标签 |
+| `nodes` | [`ShipmentTraceNode`](#shipmenttracenode)\[\] | 是 | 轨迹节点，按时间倒序（最新在前，页面从上往下读） |
+| `displayMode` | [`TraceDisplayMode`](#tracedisplaymode) | 否 | 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map` |
+| `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
+| `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
+| `carrier` | `string,null` | 否 | 承运商码（SF / STO / YTO …） |
+| `waybillNo` | `string,null` | 否 | 运单号 |
+| `signedAt` | `number,null` | 否 | 签收时间（毫秒） |
+| `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
+| `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
+| `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
+
+
 ### payout-account
 
 #### GET `/biz/payout-account`
@@ -7625,8 +7654,8 @@ _无字段_
 | `day` | `string` | 是 | yyyy-MM-dd |
 | `grossMinor` | `number` | 是 | 成交额（分）。与结算单同口径 —— **不含运费**，运费单列（见 SettleBill.grossMinor） |
 | `refundMinor` | `number` | 是 | 退掉的（正数）。**来源与其余几列不同**：结算单上没有退款列， 退款走的是回退单，所以它不冲减当天的成交额与净额 —— 被退的那笔在它自己成交的那天已经记过。 |
-| `commissionMinor` | `number` | 是 | 平台佣金 |
-| `serviceFeeMinor` | `number` | 是 | 履约服务费 |
+| `commissionMinor` | `number` | 是 | 平台佣金。**页面必须说出来** —— 它通常是扣款里最大的一项， 而「商家问『这个月我的钱少在哪』只剩这张表能答」。 契约从一开始就有这一列，端上此前零引用（TDD-B 端每日流水补齐与按天明细 §1）。 |
+| `serviceFeeMinor` | `number` | 是 | 履约服务费。同上 —— 与佣金一起，是那句「少在哪」的另一半答案 |
 | `freightCostMinor` | `number` | 是 | 这一天被扣掉的实付快递费（分）。**只有平台代寄的才有** —— 商家自寄是他自付，平台没垫钱也没扣。 提现入口撤掉之后（ADR-011 §6），商家问「这个月我的钱少在哪」只剩这张表能答。 而快递费恰好是**他自己能改小的那一笔**（把商品重量填准），不说等于不让他改。 |
 | `netMinor` | `number` | 是 | 商家净额。**不含 refund**，已扣掉 freightCostMinor |
 | `billCount` | `number` | 是 | 当天笔数。只给金额看不出「一笔大的还是很多笔」 |
@@ -9979,6 +10008,7 @@ _无字段_
 | `batchNo` | `string` | 否 | 归属批次。空 = 还没入批 |
 | `batchStatus` | [`SettleBatchStatus`](#settlebatchstatus) | 否 | 本批当前状态。空 = 还没入批。 **单据状态说「钱在哪」，批次状态说「流程走到哪」** —— 两个都要看： 单子还是 PENDING 但批次已 RECONCILED，说明就快放了。 |
 | `batchBlockedReason` | `string` | 否 | 批次被挂起的原因，**直接展示给商家的原话**。空 = 没挂起 |
+| `accruedAt` | `number,null` | 否 | 成交日（毫秒）。**空 = 存量行没有成交日**。 ⚠️ **清单上要显示的是它，不是 `createdAt`**。每日流水按成交日聚合 （与运营端三维统计同口径），而 `createdAt` 是入库时刻 —— 两者可以差一天。 点开「10-08 这一天」之后行上显示 10-07，看起来像筛坏了， 而商家的下一步是打电话说「你们筛错了」。 |
 
 ### SettleBillStatus
 
@@ -10023,11 +10053,11 @@ _无字段_
 - `CREATED`
 - `PICKED_UP`
 - `IN_TRANSIT`
-- `DELIVERED`
 - `DELIVERING`
+- `DELIVERED`
 - `EXCEPTION`
-
 - `CANCELLED`
+
 ### ShipmentTrace
 
 物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）
@@ -10039,13 +10069,13 @@ _无字段_
 | `displayMode` | [`TraceDisplayMode`](#tracedisplaymode) | 否 | 这一单用哪个渠道展示。`wx-plugin` → 给一个按钮，点开微信官方物流页； `self-map` → 自己画地图 + 步骤条 + 时间线。缺省按 `self-map` |
 | `displayToken` | `string,null` | 否 | 微信插件要的 waybillToken，只有 `displayMode === "wx-plugin"` 时才有 |
 | `route` | [`TraceRoute`](#traceroute) \| `null` | 否 | 城市路线，自建地图用 |
-
 | `carrier` | `string,null` | 否 | 承运商码（SF / STO / YTO …） |
 | `waybillNo` | `string,null` | 否 | 运单号 |
 | `signedAt` | `number,null` | 否 | 签收时间（毫秒） |
 | `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
 | `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
 | `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
+
 ### ShipmentTraceNode
 
 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有

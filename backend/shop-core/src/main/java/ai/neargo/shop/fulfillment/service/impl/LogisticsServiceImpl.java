@@ -7,7 +7,6 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.IsoTime;
 import ai.neargo.shop.fulfillment.dto.CarrierConfigVO;
 import ai.neargo.shop.fulfillment.dto.FreightTemplateVO;
-import ai.neargo.shop.fulfillment.dto.ShipmentVO;
 import ai.neargo.shop.fulfillment.entity.FulCarrier;
 import ai.neargo.shop.fulfillment.entity.FulFreightTemplate;
 import ai.neargo.shop.fulfillment.entity.FulShipment;
@@ -86,33 +85,6 @@ public class LogisticsServiceImpl implements LogisticsService {
     }
 
     // ---------------------------------------------------------------- 运单
-
-    @Override
-    @Transactional
-    public List<ShipmentVO> shipments(String status, String carrier, String keyword) {
-        ensureShipments();
-        var w = Wrappers.<FulShipment>lambdaQuery()
-                .eq(status != null && !status.isBlank(), FulShipment::getStatus, status)
-                .eq(carrier != null && !carrier.isBlank(), FulShipment::getCarrier, carrier);
-        if (keyword != null && !keyword.isBlank()) {
-            w.and(q -> q.like(FulShipment::getWaybillNo, keyword)
-                    .or().like(FulShipment::getSubOrderNo, keyword)
-                    .or().like(FulShipment::getReceiver, keyword));
-        }
-        w.orderByDesc(FulShipment::getId);
-        List<FulShipment> rows = DataScopeContext.executeWithoutScope(() -> shipmentMapper.selectList(w));
-        if (rows.isEmpty()) {
-            return List.of();
-        }
-        // 轨迹一次查回来按运单分组 —— 逐单查是 N+1，而这是列表页
-        Map<String, List<FulShipmentTrace>> traces = DataScopeContext.executeWithoutScope(() ->
-                        traceMapper.selectList(Wrappers.<FulShipmentTrace>lambdaQuery()
-                                .in(FulShipmentTrace::getShipmentNo,
-                                        rows.stream().map(FulShipment::getShipmentNo).toList())
-                                .orderByAsc(FulShipmentTrace::getAt)))
-                .stream().collect(java.util.stream.Collectors.groupingBy(FulShipmentTrace::getShipmentNo));
-        return rows.stream().map(s -> toVO(s, traces.getOrDefault(s.getShipmentNo(), List.of()))).toList();
-    }
 
     /**
      * 读时补齐（TDD-运营端履约调度 §4.6）。
@@ -236,50 +208,6 @@ public class LogisticsServiceImpl implements LogisticsService {
             case "COMPLETED" -> FulShipment.DELIVERED;
             default -> FulShipment.CREATED;
         };
-    }
-
-    @Override
-    @Transactional
-    public ShipmentVO updateWaybill(String shipmentNo, String waybillNo, String reason,
-                                    String operatorNo) {
-        // 原因必填：之后对不上时这是唯一线索，而用户可能已拿着旧号在查件
-        if (waybillNo == null || waybillNo.isBlank() || reason == null || reason.isBlank()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        FulShipment s = requireShipment(shipmentNo);
-        // 已签收的不许改 —— 等于把一条已完成的轨迹指向别处
-        if (FulShipment.DELIVERED.equals(s.getStatus())) {
-            throw BizException.of(ErrorCode.WAYBILL_LOCKED);
-        }
-        // 同承运商下不许重号：两单的轨迹会搅在一起，而且没法自动拆开
-        Long dup = DataScopeContext.executeWithoutScope(() ->
-                shipmentMapper.selectCount(Wrappers.<FulShipment>lambdaQuery()
-                        .eq(FulShipment::getCarrier, s.getCarrier())
-                        .eq(FulShipment::getWaybillNo, waybillNo)
-                        .ne(FulShipment::getShipmentNo, shipmentNo)));
-        if (dup != null && dup > 0) {
-            throw BizException.of(ErrorCode.WAYBILL_DUPLICATED);
-        }
-
-        String old = s.getWaybillNo();
-        s.setWaybillNo(waybillNo);
-        DataScopeContext.executeWithoutScope(() -> shipmentMapper.updateById(s));
-
-        // 换号本身要进轨迹：不写的话，之后看到的是一条凭空换了单号的运单
-        FulShipmentTrace t = new FulShipmentTrace();
-        t.setShipmentNo(shipmentNo);
-        t.setAt(System.currentTimeMillis());
-        t.setText("运单号由 " + (old == null ? "空" : old) + " 改为 " + waybillNo + "：" + reason.trim());
-        /*
-         * 轨迹表**不继承 BaseEntity**（它是 append-only 的，没有 updated_by / version / deleted），
-         * 所以这两列没有任何地方替它填 —— 而 created_at 是 NOT NULL。
-         * 漏掉的后果不是「少一列」：整个换单号动作会以 10500 收场。
-         */
-        t.setTenantNo("MAIN");
-        t.setCreatedAt(LocalDateTime.now());
-        DataScopeContext.executeWithoutScope(() -> traceMapper.insert(t));
-
-        return toVO(s, tracesOf(shipmentNo));
     }
 
     // ---------------------------------------------------------------- 轨迹轮询（Y3）
@@ -607,16 +535,6 @@ public class LogisticsServiceImpl implements LogisticsService {
                         .orderByAsc(FulShipmentTrace::getAt)));
     }
 
-    private FulShipment requireShipment(String shipmentNo) {
-        FulShipment s = DataScopeContext.executeWithoutScope(() ->
-                shipmentMapper.selectOne(Wrappers.<FulShipment>lambdaQuery()
-                        .eq(FulShipment::getShipmentNo, shipmentNo).last("limit 1")));
-        if (s == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return s;
-    }
-
     private FulFreightTemplate requireTemplate(String templateNo) {
         FulFreightTemplate t = DataScopeContext.executeWithoutScope(() ->
                 templateMapper.selectOne(Wrappers.<FulFreightTemplate>lambdaQuery()
@@ -635,15 +553,6 @@ public class LogisticsServiceImpl implements LogisticsService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return c;
-    }
-
-    private ShipmentVO toVO(FulShipment s, List<FulShipmentTrace> traces) {
-        return new ShipmentVO(s.getShipmentNo(), s.getSubOrderNo(), s.getCarrier(), s.getWaybillNo(),
-                s.getStatus(), s.getReceiver(), s.getRegion(),
-                IsoTime.toIso(s.getCreatedAt()), IsoTime.toIso(s.getUpdatedAt()),
-                traces.stream().map(t -> new ShipmentVO.TraceVO(
-                        IsoTime.toIso(t.getAt()), t.getText(), t.getLocation())).toList(),
-                s.getDisplayChannel(), s.getDisplayFailReason());
     }
 
     private FreightTemplateVO toVO(FulFreightTemplate t) {
