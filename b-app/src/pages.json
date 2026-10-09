@@ -538,6 +538,12 @@
       }
     },
     {
+      "path": "pages/account/index",
+      "style": {
+        "navigationBarTitleText": "账号"
+      }
+    },
+    {
       "path": "pages/payout-account/index",
       "style": {
         "navigationBarTitleText": "收款账户"

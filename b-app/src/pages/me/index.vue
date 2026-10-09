@@ -9,10 +9,19 @@ import { refreshUnread, unreadCount } from "@/stores/messages";
 import { ROUTES } from "@/shared/nav";
 import { api } from "@/api";
 import type { MerchantPlan } from "@shared/types";
-import { prompt } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
+
+/**
+ * 账号入口那一行的摘要：**有用户名显示用户名，没有就显示登录手机号**。
+ *
+ * <p>不是装饰。「登录账号」那一行当初存在的理由是「多店 / 多人时分不清此刻是哪个身份」——
+ * 收进二级页之后如果入口只写「账号 ›」，那个问题就被重新制造出来了。
+ * 两样都没有（第三方登录且没补绑手机号）时给「未设置」，不给空白。
+ */
+const accountSummary = computed(() =>
+  merchant.profile?.displayName || merchant.profile?.phone || String(t("me.usernameUnset")));
 const sheetOpen = ref(false);
 /** 构建版本号（vite define 注入，versionName · 构建时刻）：回答「装的是不是刚传的那一版」。见 vite.config.mts */
 const buildVersion = __BUILD_VERSION__;
@@ -110,53 +119,12 @@ async function loadPlan() {
  * 登录密码。**设过与没设过是两种心理动作**（修改 / 设置），文案要分开。
  * 拿不到就当没设过：这一行只影响文案，不值得为它弹错。
  */
-const hasPassword = ref(false);
 
 async function loadHasPassword() {
   if (!merchant.isLogin) return;
-  hasPassword.value = (await api.mHasPassword().catch(() => null))?.hasPassword ?? false;
 }
 
-/**
- * 设置 / 修改密码。用系统输入框而不是单开一页：这是一个字段的表单，
- * 为它建一页要连带处理返回、校验、键盘遮挡三件事，收益不抵成本。
- */
-async function editPassword() {
-  // password: true —— showModal 做不到打点，输密码时整屏都看得见
-  const pwd = (await prompt({
-    title: String(t(hasPassword.value ? "me.passwordSet" : "me.passwordUnset")),
-    placeholder: String(t("login.passwordPh")),
-    password: true,
-  })) ?? "";
-  if (!pwd.trim()) return;
-  // 与后端 PWD_MIN_LEN 一致；端上先挡一道是为了少一次必失败的往返
-  if (pwd.trim().length < 6) {
-    uni.showToast({ title: t("me.passwordTooShort"), icon: "none" });
-    return;
-  }
-  try {
-    await api.mSetPassword(pwd.trim());
-    hasPassword.value = true;
-    uni.showToast({ title: t("me.passwordSaved"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
 
-async function editDisplayName() {
-  const name = (await prompt({
-    title: String(t("me.username")),
-    placeholder: String(t("me.usernamePh")),
-  })) ?? "";
-  if (!name.trim()) return;
-  try {
-    await api.mSetDisplayName(name.trim());
-    await merchant.loadProfile();
-    uni.showToast({ title: t("me.usernameSaved"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  }
-}
 
 async function logout() {
   // 解绑要在清令牌**之前** —— 之后就没有可用的令牌了。
@@ -234,31 +202,21 @@ onShow(() => {
       （page-block-spacing 守卫）。包起来之后 `.acct__label` 是内层块，
       才能用 margin 把标题贴紧它下面那一组。
     -->
-    <view v-if="merchant.isLogin">
-      <text class="txt-title acct__label">{{ $t("me.accountSection") }}</text>
-      <view class="sh-cells">
-      <!-- 用户名（显示名）：改的是「我自己」那一行。店员/店主都能改各自的 -->
-      <view class="sh-cell sh-row sh-row--between" @tap="editDisplayName">
-        <text class="txt-body cell__label">{{ $t("me.username") }}</text>
-        <text class="txt-caption cell__value">{{ merchant.profile?.displayName || $t("me.usernameUnset") }}</text>
+    <!--
+      账号收进二级页（TDD-B 端账号二级页）。原先这里平铺三行：
+      用户名 / 登录账号 / 登录密码 —— 全页最低频的三行，却占着首屏约三分之一，
+      把「收入 / 结算 / 员工 / 收款设置」那些每天要用的压到下面去了。
+
+      **入口带摘要不是装饰。** 「登录账号」那一行当初存在的理由是
+      「多店 / 多人时分不清此刻是哪个身份」；如果收进二级页之后入口只写「账号 ›」，
+      那个问题就被重新制造出来。所以摘要要能答「我是谁」：
+      有用户名显示用户名，没有就显示登录手机号。
+    -->
+    <view v-if="merchant.isLogin" class="sh-cells">
+      <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.account)">
+        <text class="txt-body cell__label">{{ $t("me.accountEntry") }}</text>
+        <text class="txt-caption cell__value">{{ accountSummary }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
-      <!-- 登录账号：这一页此前没有一处告诉店主「我是用哪个号登进来的」——
-           多店 / 多人时他分不清此刻是哪个身份，改密码、找回都无从对起。
-           只读展示登录手机号；第三方登录没有手机号时留空提示去补绑（补绑入口在登录页）。 -->
-      <view class="sh-cell sh-row sh-row--between">
-        <text class="txt-body cell__label">{{ $t("me.account") }}</text>
-        <text class="txt-caption cell__value sh-num">{{ merchant.profile?.phone || "—" }}</text>
-      </view>
-      <!-- 登录密码：设过就是「修改」，没设过是「设置」——
-           两个词对应的心理动作不同，含糊成一个「密码」会让人不知道点进去会发生什么 -->
-      <view class="sh-cell sh-row sh-row--between" @tap="editPassword">
-        <text class="txt-body cell__label">{{ $t("me.password") }}</text>
-        <text class="txt-caption cell__value">
-          {{ hasPassword ? $t("me.passwordSet") : $t("me.passwordUnset") }}
-        </text>
-        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
-      </view>
       </view>
     </view>
 

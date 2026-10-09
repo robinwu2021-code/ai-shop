@@ -2261,10 +2261,13 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     entityPending: "الرخصة قيد الاستكمال",
     entityClosed: "مغلق",
   },
+  account: {
+    title: "الحساب",
+  },
   me: {
     switchStore: "تبديل",
-    accountSection: "معلومات الحساب",
     account: "الحساب",
+    accountEntry: "الحساب",
     username: "اسم المستخدم",
     usernameUnset: "غير محدد",
     usernamePh: "اختر اسمًا، 1–20 حرفًا",

@@ -45,6 +45,7 @@ export const ROUTES = {
    * （ADR-011 · TDD §6 第 4 条）：自营供应商模式下钱按账期打，
    * 商家要做的是把收款账户填对，不是「申请提现」。
    */
+  account: "/pages/account/index",
   payoutAccount: "/pages/payout-account/index",
   deposit: "/pages/deposit/index",
   invoice: "/pages/invoice/index",

@@ -2263,10 +2263,13 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     entityPending: "License pending",
     entityClosed: "Closed",
   },
+  account: {
+    title: "Account",
+  },
   me: {
     switchStore: "Switch",
-    accountSection: "Account Info",
     account: "Account",
+    accountEntry: "Account",
     username: "Username",
     usernameUnset: "Not set",
     usernamePh: "Pick a name, 1–20 chars",

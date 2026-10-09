@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 87,
+      "count": 88,
       "domains": [
         {
           "name": "工作台",
@@ -329,6 +329,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/entity-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/account/index",
+              "title": "账号",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/account/index"
             },
             {
               "app": "b-app",
@@ -3479,5 +3490,5 @@
       ]
     }
   ],
-  "total": 274
+  "total": 275
 }
