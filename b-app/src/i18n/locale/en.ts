@@ -6,6 +6,7 @@ export default {
       delivering: "Out for delivery",
       signed: "Delivered",
     },
+    atLocker: "Waiting at a pickup station or locker — the pickup code is in the tracking below",
     openWx: "View tracking",
     cityLevel: "City-level route, not live position",
     callCourier: "Call courier",

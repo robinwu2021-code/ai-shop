@@ -2,7 +2,7 @@
 //
 // 这样做的意义：端点只有一处定义，http 实现、mock、OpenAPI 三者不会漂移。
 // 迁移到真实后端时这个文件基本不用改 —— 改的是 `.env` 里的开关。
-import { http } from "@shared/net/http-client";
+import { clientTag, http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
 import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
@@ -77,6 +77,7 @@ import type {
   StoreCodeImage,
   Message,
   Order,
+  ShipmentTrace,
   PageQuery,
   PageResult,
   PointAccount,
@@ -107,7 +108,7 @@ function call<T>(
    * 405，而且是运行时才知道。mock 下永远看不出来（mock 不看方法）。
    */
   if (ep.method === "GET") {
-    return http.get<T>(url, d);
+    return http.get<T>(url, d, ep.clientTag ? { "X-Client": clientTag() } : undefined);
   }
   return ep.method === "PUT" ? http.put<T>(url, d) : http.post<T>(url, d);
 }
@@ -191,6 +192,7 @@ export const httpApi: ShopApi = {
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
+  orderTrace: (orderNo) => call<ShipmentTrace | null>("orderTrace", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>
     call<AfterSale>("applyAfterSale", { orderNo }, { reason, images, type } satisfies AfterSaleReq),

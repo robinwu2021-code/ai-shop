@@ -2,17 +2,10 @@ package ai.neargo.shop.logistics.channel.wx;
 
 import ai.neargo.shop.spi.logistics.TraceDisplay;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -36,22 +29,11 @@ public class WxPluginDisplay implements TraceDisplay {
 
     private static final Logger log = LoggerFactory.getLogger(WxPluginDisplay.class);
 
-    private final String host;
-    private final String appid;
-    private final String secret;
-    private final ObjectMapper json = new ObjectMapper();
-    private final HttpClient http = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5)).build();
+    private final WxLogisticsClient client;
 
-    private volatile String token;
-    private volatile long tokenExpireAt;
-
-    public WxPluginDisplay(@Value("${shop.wx.host:https://api.weixin.qq.com}") String host,
-                           @Value("${shop.wx.appid:}") String appid,
-                           @Value("${shop.wx.secret:}") String secret) {
-        this.host = host;
-        this.appid = appid == null ? "" : appid.trim();
-        this.secret = secret == null ? "" : secret.trim();
+    /** token 与 HTTP 交给 {@link WxLogisticsClient}：与换 token、查状态共用同一份 stable_token 缓存 */
+    public WxPluginDisplay(WxLogisticsClient client) {
+        this.client = client;
     }
 
     @Override
@@ -62,7 +44,7 @@ public class WxPluginDisplay implements TraceDisplay {
     @Override
     public boolean supports(Surface surface, ShipmentCtx ctx) {
         return surface == Surface.MP
-                && !appid.isEmpty() && !secret.isEmpty()
+                && client.configured()
                 && ctx != null
                 && notBlank(ctx.buyerOpenid())
                 && notBlank(ctx.transId())      // 微信 trace_waybill 必填，没有就根本换不到 token
@@ -94,13 +76,7 @@ public class WxPluginDisplay implements TraceDisplay {
             if (notBlank(ctx.orderPath())) {
                 body.put("order_detail_path", ctx.orderPath());
             }
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(host + "/cgi-bin/express/delivery/open_msg/trace_waybill?access_token=" + accessToken()))
-                    .timeout(Duration.ofSeconds(10))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body), StandardCharsets.UTF_8))
-                    .build();
-            JsonNode n = json.readTree(http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body());
+            JsonNode n = client.post("trace_waybill", body, Duration.ofSeconds(10));
             int code = n.path("errcode").asInt(0);
             String tk = n.path("waybill_token").asText("");
             if (code != 0 || tk.isBlank()) {
@@ -128,27 +104,4 @@ public class WxPluginDisplay implements TraceDisplay {
     }
 
     /** 与别的微信通道各管一份 stable_token：拿到的是同一个 token，而可用性不互相绑死 */
-    private String accessToken() throws Exception {
-        long now = System.currentTimeMillis();
-        String t = token;
-        if (t != null && now < tokenExpireAt) {
-            return t;
-        }
-        String body = json.writeValueAsString(Map.of(
-                "grant_type", "client_credential", "appid", appid, "secret", secret));
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(host + "/cgi-bin/stable_token"))
-                .timeout(Duration.ofSeconds(10))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)).build();
-        JsonNode n = json.readTree(http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body());
-        String got = n.path("access_token").asText("");
-        if (got.isBlank()) {
-            throw new IllegalStateException("取 access_token 失败：" + n.path("errmsg").asText(""));
-        }
-        // 提前 5 分钟过期，免得卡在边界上用一个刚失效的 token
-        tokenExpireAt = now + (n.path("expires_in").asLong(7200) - 300) * 1000L;
-        token = got;
-        return got;
-    }
 }

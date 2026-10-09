@@ -57,8 +57,8 @@ public class LogisticsCallbackController {
         }
         PushReceiver r = receiver.get();
         try {
-            ingestion.logFirst(channel, body != null && !body.isBlank() ? body : String.valueOf(form));
-            ingestion.ingest(channel, r.parse(new PushReceiver.Request(form, body)));
+            String raw = body != null && !body.isBlank() ? body : String.valueOf(form);
+            ingestion.ingest(channel, r.parse(new PushReceiver.Request(form, body)), raw);
         } catch (RuntimeException e) {
             log.error("[lgs-push] {} 推送入库失败（照样回成功，补偿作业兜底）：{}", channel, e.toString(), e);
         }

@@ -111,6 +111,28 @@ class LogisticsRegistrationFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 物流页 GET /mp/order/{no}/trace：本人看得到；别人查同一张子单 10404（防 IDOR）")
+    void tracePageIsOwnerOnly() throws Exception {
+        Ctx c = prepare("15973010007", "物流页测试店", "15973010008");
+        ship(c, "STO-LGS-0004", "STO");
+        drainOutbox();
+
+        String body = mvc().perform(get("/mp/order/" + c.subOrderNo + "/trace")
+                        .header("Authorization", "Bearer " + c.buyerToken).header("X-Client", "H5"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        var data = json.readTree(body).get("data");
+        assertThat(data.get("waybillNo").asString()).isEqualTo("STO-LGS-0004");
+        assertThat(data.get("carrier").asString()).isEqualTo("STO");
+        assertThat(data.get("status").asString()).isEqualTo("CREATED");
+        assertThat(data.get("displayMode").asString()).as("H5 里没有微信插件").isEqualTo("self-map");
+
+        String stranger = login("15973010009");
+        mvc().perform(get("/mp/order/" + c.subOrderNo + "/trace").header("Authorization", "Bearer " + stranger))
+                .andExpect(jsonPath("$.code").value(10404));
+    }
+
+    @Test
     @DisplayName("★★ 验签失败：照样回成功（重推也不会变对），但一个字都不入库")
     void badSignatureIsAckedButIgnored() throws Exception {
         Ctx c = prepare("15973010005", "物流验签测试店", "15973010006");
@@ -193,7 +215,7 @@ class LogisticsRegistrationFlowTest {
                 .build();
     }
 
-    private record Ctx(String merchantToken, String subOrderNo) {
+    private record Ctx(String merchantToken, String subOrderNo, String buyerToken) {
     }
 
     private void ship(Ctx c, String expressNo, String company) throws Exception {
@@ -267,7 +289,7 @@ class LogisticsRegistrationFlowTest {
                 .andReturn().getResponse().getContentAsString();
         var records = json.readTree(list).get("data").get("records");
         assertThat(records.size()).as("商家应当看得到刚下的单").isGreaterThan(0);
-        return new Ctx(token, records.get(0).get("orderNo").asString());
+        return new Ctx(token, records.get(0).get("orderNo").asString(), buyer);
     }
 
     private String login(String phone) throws Exception {

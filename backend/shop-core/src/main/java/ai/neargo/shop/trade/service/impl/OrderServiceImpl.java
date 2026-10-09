@@ -204,6 +204,14 @@ public class OrderServiceImpl implements OrderService {
         this.shippingUploadPort = port;
     }
 
+    /** 物流页（TDD-物流模块 批 3）。setter 注入：存量手工构造本类的地方不用跟着改 */
+    private ai.neargo.shop.spi.logistics.LogisticsPort logisticsPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setLogisticsPort(ai.neargo.shop.spi.logistics.LogisticsPort port) {
+        this.logisticsPort = port;
+    }
+
     /**
      * 微信支付下单的 {@code description}。
      *
@@ -1987,6 +1995,29 @@ public class OrderServiceImpl implements OrderService {
      * 这张子单的物流轨迹（Y4）。只对快递履约、已回填单号的子单查缓存；其余 null（不展示）。
      * 只读缓存，不触发承运商查询（那是轮询 Job 的事）。
      */
+    @Override
+    public OrderVO.Trace logisticsTrace(String orderNo, String client) {
+        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, orderNo)
+                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
+                .last("limit 1"));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (logisticsPort == null || !OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
+                        sub.getSubOrderNo(), surfaceOf(client), false))
+                .map(v -> new OrderVO.Trace(v.status(),
+                        v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                n.latE6(), n.lngE6())).toList(),
+                        v.displayMode(), v.displayToken(), null,
+                        v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable()))
+                .orElse(null);
+    }
+
     private OrderVO.Trace traceOf(OrdSubOrder sub, String surface) {
         if (!OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {

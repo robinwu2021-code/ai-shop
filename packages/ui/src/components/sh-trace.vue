@@ -30,6 +30,8 @@ const stepKeys = ["picked", "transit", "delivering", "signed"] as const;
 const stepIndex = computed(() => {
   const st = props.trace.status;
   if (st === "DELIVERED") return 3;
+  // 后端 2026-10-09 起给出「派件中」这一档（TDD-物流模块 批 3）：有它就不必再猜节点文字
+  if (st === "DELIVERING") return 2;
   if (st === "CREATED") return 0;
   if (st === "PICKED_UP") return 0;
   const delivering = props.trace.nodes.some(
@@ -39,7 +41,7 @@ const stepIndex = computed(() => {
 });
 
 /** 异常件不走步骤条：它不在那条线上，硬塞进去会让人以为还在正常运输 */
-const showSteps = computed(() => props.trace.status !== "EXCEPTION");
+const showSteps = computed(() => props.trace.status !== "EXCEPTION" && props.trace.status !== "CANCELLED");
 
 /** 微信渠道那一屏只给最新一条，不给整条时间线——两边数据源不同，两份时间线会对不上 */
 const latestText = computed(() => props.trace.nodes.at(0)?.text || "");
@@ -143,6 +145,9 @@ const emit = defineEmits<{ openWx: [] }>();
           <text class="txt-caption shtrace__lb">{{ $t(`trace.step.${k}`) }}</text>
         </view>
       </view>
+      <view v-if="trace.atLocker" class="sh-row shtrace__locker">
+        <text class="txt-body sh-fill">{{ $t("trace.atLocker") }}</text>
+      </view>
       <view v-if="latestText" class="sh-row shtrace__latest">
         <text class="txt-body sh-fill">{{ latestText }}</text>
       </view>
@@ -151,6 +156,9 @@ const emit = defineEmits<{ openWx: [] }>();
 
     <!-- 自建渠道：地图 + 步骤条 + 时间线 -->
     <template v-else>
+      <view v-if="trace.atLocker" class="sh-row shtrace__locker">
+        <text class="txt-body sh-fill">{{ $t("trace.atLocker") }}</text>
+      </view>
       <view v-if="hasMap" class="shtrace__map">
         <map
           class="shtrace__mapbox"
@@ -258,6 +266,7 @@ const emit = defineEmits<{ openWx: [] }>();
 .shtrace__sp.is-now .shtrace__lb {
   color: var(--sh-primary-text);
 }
+.shtrace__locker,
 .shtrace__latest {
   margin-bottom: 16rpx;
 }

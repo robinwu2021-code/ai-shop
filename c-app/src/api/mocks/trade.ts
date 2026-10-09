@@ -7,7 +7,7 @@ import type { CreateOrderReq } from "../contract";
 import { allCommunitySeeds, assertTransition, db, delay, findGoodsSeed, merchantBrief, nextNo, paginate, persist, pick, pointBalance, pushMessage, pushPoint, toCommunity, toGoods } from "@shared/mock/db";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
-import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery } from "@shared/types";
+import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery, ShipmentTrace } from "@shared/types";
 import { CATEGORY_TYPE, FULFILLMENT, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
@@ -55,6 +55,7 @@ export const tradeMock: Pick<ShopApi,
   | "myInvoices"
   | "invoiceOfOrder"
   | "orderDetail"
+  | "orderTrace"
   | "cancelOrder"
 > = {
   // ---------------------------------------------------------------- 交易
@@ -396,6 +397,12 @@ export const tradeMock: Pick<ShopApi,
     const r = db.invoiceRequests.find((x) => x.orderNo === orderNo);
     // 没申请过返回 null 而不是抛错：那是常态不是错误
     return delay(r ? { ...r } : null);
+  },
+
+  /** mock 没有物流页那几个字段：直接给详情里的 trace（够端上把按钮与步骤条跑起来） */
+  async orderTrace(orderNo) {
+    const o = findOrder(orderNo) as { trace?: ShipmentTrace } | undefined;
+    return delay(o?.trace ?? null);
   },
 
   async orderDetail(orderNo) {

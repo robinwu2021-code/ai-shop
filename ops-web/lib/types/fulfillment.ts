@@ -100,7 +100,9 @@ export type Carrier = "SF" | "JD" | "YTO";
  * `EXCEPTION` 不是终态：快递可能"疑难件"之后又派送成功。把它做成终态，
  * 运营就得手工把单子拉回来，而那本该是承运商回传的事。
  */
-export type ShipmentStatus = "CREATED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "EXCEPTION";
+/** DELIVERING（派件中）与 CANCELLED（已作废）2026-10-09 加（TDD-物流模块 批 3），与 packages/shared 的同名类型对齐 */
+export type ShipmentStatus =
+  | "CREATED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERING" | "DELIVERED" | "EXCEPTION" | "CANCELLED";
 
 export interface ShipmentTrace {
   /** 轨迹时间 */

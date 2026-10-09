@@ -9934,6 +9934,32 @@ components:
         - "nodes"
       additionalProperties: false
       description: "物流轨迹（Y4）。`nodes` 按时间倒序（最新在前，页面从上往下读）"
+        carrier: 
+          type: 
+            - "string"
+            - "null"
+          description: "承运商码（SF / STO / YTO …）"
+        waybillNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "运单号"
+        signedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "签收时间（毫秒）"
+        atLocker: 
+          type: "boolean"
+          description: "已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠"
+        freshAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用"
+        refreshable: 
+          type: "boolean"
+          description: "这个界面的「刷新」能不能真的去问渠道"
     ShipmentStatus: 
       type: "string"
       enum: 
@@ -9945,8 +9971,10 @@ components:
       description: "运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功"
     ShipmentTraceNode: 
       type: "object"
+        - "DELIVERING"
       properties: 
         at: 
+        - "CANCELLED"
           type: "number"
           description: "扫描时刻（毫秒时间戳）"
         text: 

@@ -32,9 +32,12 @@ const useShipStatusMap = (c: FulfillmentCopy): StatusMap<ShipmentStatus> => ({
   CREATED: { label: c.shipCreated, tone: "muted" },
   PICKED_UP: { label: c.shipPickedUp, tone: "info" },
   IN_TRANSIT: { label: c.shipInTransit, tone: "info" },
+  DELIVERING: { label: c.shipDelivering, tone: "info" },
   DELIVERED: { label: c.shipDelivered, tone: "success" },
   // 疑难件不是终态：承运商还可能派送成功，所以是警告不是失败
   EXCEPTION: { label: c.shipException, tone: "warning" },
+  // 发货撤回 / 换了单号：这张运单不再跟踪
+  CANCELLED: { label: c.shipCancelled, tone: "muted" },
 });
 
 const useCarrierMap = (c: FulfillmentCopy): StatusMap<Carrier> => ({

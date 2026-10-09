@@ -187,8 +187,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "运单状态，与后端 lgs_waybill 一致（TDD-圆通物流直连 Y4；V387 起由 ful_shipment 改名）。"
       + "承运商轨迹推导出来的状态，订单详情据此显示物流进度。"
       + "五个都是物流领域特有词、L1 表里没有对应：CREATED 建单未揽、PICKED_UP 已揽、"
-      + "IN_TRANSIT 运输中、DELIVERED 已签收、EXCEPTION 疑难件（非终态，可能之后又派成）",
-    words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
+      + "IN_TRANSIT 运输中、DELIVERED 已签收、EXCEPTION 疑难件（非终态，可能之后又派成）。"
+      + "2026-10-09 加 DELIVERING 派件中（TDD-物流模块 批 3）：从运输中拆出来，因为买家要的「今天能不能到、"
+      + "到驿站了没有」只在这一档能回答；L1 表里没有「派送」这一档。CANCELLED 用 L1 的（发货撤回、换单号作废）",
+    words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERING", "DELIVERED", "EXCEPTION"] },
   { decl: "shared:TraceDisplayMode", dom: "fulfillment", shape: "CLASS", verdict: "OK",
     note: "物流轨迹的展示渠道（TDD-物流轨迹多渠道 §2.1，与 ShipmentStatus 正交——那是「到哪了」，这是「用什么界面呈现」）。"
       + "后端 lgs_waybill.display_channel 的取值域，详情端点按请求端下发：wx-plugin 微信官方物流页"
@@ -334,9 +336,10 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "超时未取的处置动作，后端无超时策略" },
   { decl: "ops-web:Carrier", dom: "fulfillment", shape: "CLASS", verdict: "PLANNED",
     note: "快递承运商，后端 ord_sub_order 只存 express_no 不存承运商" },
-  { decl: "ops-web:ShipmentStatus", dom: "fulfillment", shape: "STATUS", verdict: "PLANNED",
-    note: "运单状态，后端无物流轨迹对接",
-    words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "EXCEPTION"] },
+  { decl: "ops-web:ShipmentStatus", dom: "fulfillment", shape: "STATUS", verdict: "OK",
+    note: "运单状态，与 shared:ShipmentStatus 同一套（后端 lgs_waybill.status）。"
+      + "原说明「后端无物流轨迹对接」已过时：2026-10-09 起物流独立成模块、渠道推送与微信查询驱动状态（TDD-物流模块）",
+    words: ["CREATED", "PICKED_UP", "IN_TRANSIT", "DELIVERING", "DELIVERED", "EXCEPTION"] },
   { decl: "ops-web:OutOfRangeAction", dom: "fulfillment", shape: "CLASS", verdict: "PLANNED",
     note: "超区处置动作，后端只判超区拒单（err.trade.out_of_delivery_range），没有可配策略" },
   { decl: "ops-web:PayMode", dom: "trade", shape: "CLASS", verdict: "OK",

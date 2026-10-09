@@ -19,11 +19,13 @@ public interface ShipmentSourcePort {
      * @param wx        微信支付键。<b>没有微信交易单号就是 null</b> → 物流把这单定为 SELF，不调任何微信物流接口
      * @param goods     商品（≤3 件）：微信 trace_waybill 必填
      * @param orderPath 订单页路径：微信物流页里「回到订单」用
+     * @param wxUploadedAt 微信发货信息已上传成功的时刻（毫秒），没上传为 null。换 token 的前置条件之一；
+     *                     上传事件可能先于登记到达，所以快照里也带一份，免得那一次通知落空
      */
     record ShipmentSource(String subOrderNo, String orderNo, String entityNo, String storeNo,
                           String carrier, String waybillNo,
                           String receiverName, String receiverPhone, String region,
-                          WxKey wx, List<GoodsBrief> goods, String orderPath) {
+                          WxKey wx, List<GoodsBrief> goods, String orderPath, Long wxUploadedAt) {
     }
 
     record WxKey(String transId, String outTradeNo, String openid) {

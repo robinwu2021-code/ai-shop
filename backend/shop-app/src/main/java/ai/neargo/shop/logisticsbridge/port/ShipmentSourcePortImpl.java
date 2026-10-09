@@ -6,11 +6,13 @@ import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.entity.TrdShippingUpload;
 import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.port.FulfillmentStatsPortImpl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,13 +31,16 @@ public class ShipmentSourcePortImpl implements ShipmentSourcePort {
     private final TradeMappers.SubOrderMapper subOrders;
     private final TradeMappers.OrderMapper orders;
     private final TradeMappers.OrderItemMapper items;
+    private final TradeMappers.ShippingUploadMapper uploads;
     private final PaymentLedgerService ledger;
 
     public ShipmentSourcePortImpl(TradeMappers.SubOrderMapper subOrders, TradeMappers.OrderMapper orders,
-                                  TradeMappers.OrderItemMapper items, PaymentLedgerService ledger) {
+                                  TradeMappers.OrderItemMapper items, TradeMappers.ShippingUploadMapper uploads,
+                                  PaymentLedgerService ledger) {
         this.subOrders = subOrders;
         this.orders = orders;
         this.items = items;
+        this.uploads = uploads;
         this.ledger = ledger;
     }
 
@@ -55,7 +60,23 @@ public class ShipmentSourcePortImpl implements ShipmentSourcePort {
                 s.getReceiverName(), s.getReceiverPhone(), FulfillmentStatsPortImpl.regionOf(s.getReceiverAddress()),
                 wx, goods,
                 // C 端订单详情按子单号查（OrderServiceImpl.detailOf 先认子单）
-                "/pages/order/index?orderNo=" + subOrderNo));
+                "/pages/order/index?orderNo=" + subOrderNo,
+                uploadedAtOf(s.getOrderNo())));
+    }
+
+    /** 微信发货信息已上传的时刻。上传事件可能先于登记到达（那一次通知会落空），快照里带一份兜住 */
+    private Long uploadedAtOf(String orderNo) {
+        if (orderNo == null) {
+            return null;
+        }
+        TrdShippingUpload u = DataScopeContext.executeWithoutScope(() -> uploads.selectOne(
+                Wrappers.<TrdShippingUpload>lambdaQuery()
+                        .eq(TrdShippingUpload::getOrderNo, orderNo).last("limit 1")));
+        if (u == null || !TrdShippingUpload.SUCCESS.equals(u.getStatus())) {
+            return null;
+        }
+        return u.getUploadedAt() == null ? System.currentTimeMillis()
+                : u.getUploadedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     private WxKey wxKeyOf(String orderNo) {

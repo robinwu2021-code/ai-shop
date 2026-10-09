@@ -8,6 +8,7 @@ export default {
       delivering: "派送中",
       signed: "已签收",
     },
+    atLocker: "已放到驿站或快递柜，取件码见下方物流信息",
     openWx: "查看物流详情",
     cityLevel: "城市级示意，非实时位置",
     callCourier: "拨打快递员电话",

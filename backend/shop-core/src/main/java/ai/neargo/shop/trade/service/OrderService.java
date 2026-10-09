@@ -80,6 +80,16 @@ public interface OrderService {
     OrderVO detail(String orderNo, String client);
 
     /**
+     * 物流页（TDD-物流模块 批 3，物流-API A2）：点「查看物流」时调。
+     *
+     * <p>先按当前登录人查子单（属主写在查询条件里，防 IDOR）—— 查不到一律 10404，不区分「不存在」与「不是你的」；
+     * 再拿子单号问物流。不是快递 / 还没发货 → null（不是错误）。
+     *
+     * @param client 原始 {@code X-Client} 头，同 {@link #detail}
+     */
+    OrderVO.Trace logisticsTrace(String orderNo, String client);
+
+    /**
      * 关闭超时未支付的订单并释放库存（R7）。
      * 由定时任务调用；参数化「当前时间」是为了让测试不必真等 15 分钟。
      *

@@ -206,7 +206,18 @@ public record OrderVO(String orderNo,
      * @param displayToken 该渠道的载荷。微信插件是 waybillToken，给 openWaybillTracking 用；自建为 null
      * @param route 城市路线「出发 / 当前 / 目的」，地图上三个标记用；取不到为 null
      */
-    public record Trace(String status, List<Node> nodes, String displayMode, String displayToken, Route route) {
+    public record Trace(String status, List<Node> nodes, String displayMode, String displayToken, Route route,
+                        String carrier, String waybillNo, Long signedAt, boolean atLocker, Long freshAt,
+                        boolean refreshable) {
+        /*
+         * 后 6 个字段 2026-10-09 加（TDD-物流模块 批 3，物流-API §3.1）：只有物流页那个端点（GET /mp/order/{no}/trace）给，
+         * 订单详情里的 trace 仍是老形状 —— 字段只加不改，老端不受影响。
+         */
+
+        /** 订单详情用的形状（没有物流页那几个字段） */
+        public Trace(String status, List<Node> nodes, String displayMode, String displayToken, Route route) {
+            this(status, nodes, displayMode, displayToken, route, null, null, null, false, null, false);
+        }
 
         /** 老形状：没有展示渠道。存量调用方与用例用它 */
         public Trace(String status, List<Node> nodes) {

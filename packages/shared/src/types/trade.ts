@@ -578,8 +578,12 @@ export type ShipmentStatus =
   | "CREATED"
   | "PICKED_UP"
   | "IN_TRANSIT"
+  /** 派件中（含已放到驿站 / 快递柜，见 `ShipmentTrace.atLocker`）。2026-10-09 起（TDD-物流模块 批 3） */
+  | "DELIVERING"
   | "DELIVERED"
-  | "EXCEPTION";
+  | "EXCEPTION"
+  /** 已作废：发货撤回、换了单号 */
+  | "CANCELLED";
 
 /** 展示渠道（TDD-物流轨迹多渠道）。**端上按它决定怎么渲染，自己不判断该用哪个** —— 判定在后端一处做完 */
 export type TraceDisplayMode = "wx-plugin" | "self-map";
@@ -609,6 +613,21 @@ export interface ShipmentTrace {
   displayToken?: string | null;
   /** 城市路线，自建地图用 */
   route?: TraceRoute | null;
+  /*
+   * 以下只有物流页（GET /mp/order/{no}/trace）给，订单详情里的 trace 没有（TDD-物流模块 批 3）
+   */
+  /** 承运商码（SF / STO / YTO …） */
+  carrier?: string | null;
+  /** 运单号 */
+  waybillNo?: string | null;
+  /** 签收时间（毫秒） */
+  signedAt?: number | null;
+  /** 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 */
+  atLocker?: boolean;
+  /** 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 */
+  freshAt?: number | null;
+  /** 这个界面的「刷新」能不能真的去问渠道 */
+  refreshable?: boolean;
 }
 
 /** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */

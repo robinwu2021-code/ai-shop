@@ -27,6 +27,11 @@ export interface EndpointDef {
   /** 一句话说明，会写进 OpenAPI 的 summary */
   summary: string;
   /**
+   * 带端标识 `X-Client`（MP / APP / H5）。只给需要按端区分展示的读接口开 —— 见 http-client 的 clientTag。
+   * ⚠️ 必须写在 summary **之后**：gen-openapi 用正则按 method/path/auth/summary 的顺序抠端点。
+   */
+  clientTag?: boolean;
+  /**
    * 把契约方法的位置参数映射成 { path 参数, query/body }。
    * 不写则默认：第一个参数是对象 → 整体作为 query(GET)/body(POST)。
    */
@@ -211,7 +216,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   orderList: { method: "GET", path: "/mp/order", auth: true, summary: "订单列表" },
   promotedGoods: { method: "GET", path: "/mp/goods/promoted", auth: false, summary: "推荐商品（运营位）" },
   promotedMerchants: { method: "GET", path: "/mp/merchant/promoted", auth: false, summary: "推荐门店（运营位）" },
-  orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情" },
+  orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情", clientTag: true },
+  orderTrace: { method: "GET", path: "/mp/order/:orderNo/trace", auth: true, summary: "物流页（查看物流）", clientTag: true },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
   orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },

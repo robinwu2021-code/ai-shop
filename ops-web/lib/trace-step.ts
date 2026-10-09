@@ -18,6 +18,7 @@ const DELIVERING_WORDS = ["派件", "派送"];
  */
 export function traceStepIndex(s: Pick<Shipment, "status" | "traces">): number {
   if (s.status === "DELIVERED") return 3;
+  if (s.status === "DELIVERING") return 2;
   if (s.status === "CREATED" || s.status === "PICKED_UP") return 0;
   const delivering = s.traces.some((t) => DELIVERING_WORDS.some((w) => t.text.includes(w)));
   return delivering ? 2 : 1;

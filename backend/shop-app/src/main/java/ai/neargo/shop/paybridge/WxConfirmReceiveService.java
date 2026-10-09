@@ -93,8 +93,8 @@ public class WxConfirmReceiveService {
         return new NotifyResult(signed.size(), notified);
     }
 
-    /** @return 真的调了微信并成功才 true */
-    private boolean notifyOne(String orderNo, long signedAtMillis) {
+    /** @return 真的调了微信并成功才 true。包内可见：签收事件那一路（{@link WxConfirmOnSignedConsumer}）也走这里 */
+    boolean notifyOne(String orderNo, long signedAtMillis) {
         TrdShippingUpload row = DataScopeContext.executeWithoutScope(() -> uploadMapper.selectOne(
                 Wrappers.<TrdShippingUpload>lambdaQuery()
                         .eq(TrdShippingUpload::getOrderNo, orderNo).last("limit 1")));

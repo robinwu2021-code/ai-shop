@@ -97,10 +97,30 @@ function pruneUndefined(data?: object): Record<string, unknown> | undefined {
   return out;
 }
 
+/**
+ * 端标识（{@code X-Client}）：MP / APP / H5。
+ *
+ * **不全局发**：下单接口里的积分策略也读这个头（禁用名单 —— 没带头的一律放行），
+ * 全局一发，运营配过的端策略就会突然开始生效，那是物流之外的行为变化。
+ * 所以只给需要「按端区分展示」的读接口带（物流：小程序给微信插件、App / H5 给自建轨迹），
+ * 由端点表里的 `clientTag: true` 声明。
+ */
+export function clientTag(): string {
+  try {
+    const p = (uni.getSystemInfoSync() as { uniPlatform?: string }).uniPlatform ?? "";
+    if (p === "app") return "APP";
+    if (p === "web" || p === "h5") return "H5";
+    return "MP";
+  } catch {
+    return "MP";
+  }
+}
+
 export function request<T>(
   method: Method,
   path: string,
   data?: object,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   const token = uni.getStorageSync(STORAGE.token) as string;
   /*
@@ -119,6 +139,7 @@ export function request<T>(
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(storeNo ? { "X-Store-No": storeNo } : {}),
+        ...(extraHeaders ?? {}),
       },
       success(res) {
         const body = res.data as Result<T>;
@@ -289,7 +310,8 @@ function utf8(bytes: Uint8Array): string {
 export const http = {
   // 入参用 object 而非 Record<string, unknown>：契约里的 payload 是具名接口
   // （LoginReq / GoodsDraft…），具名接口没有索引签名，用 Record 会在每个调用点报错。
-  get: <T>(path: string, params?: object) => request<T>("GET", path, params),
+  get: <T>(path: string, params?: object, headers?: Record<string, string>) =>
+    request<T>("GET", path, params, headers),
   post: <T>(path: string, data?: object) => request<T>("POST", path, data),
   put: <T>(path: string, data?: object) => request<T>("PUT", path, data),
   del: <T>(path: string, data?: object) => request<T>("DELETE", path, data),

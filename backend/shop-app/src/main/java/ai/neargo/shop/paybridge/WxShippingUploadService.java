@@ -1,5 +1,7 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.event.OutboxEventBus;
+import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.common.WxLogisticsTypes;
 import ai.neargo.shop.spi.trade.WxShippingPort;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
@@ -41,9 +43,14 @@ public class WxShippingUploadService {
     private final TradeMappers.ShippingUploadMapper mapper;
     private final WxShippingPort shipping;
 
-    public WxShippingUploadService(TradeMappers.ShippingUploadMapper mapper, WxShippingPort shipping) {
+    /** 上传成功后告诉物流（换 waybill_token 的前置条件之一，TDD-物流模块 §2.4.3） */
+    private final OutboxEventBus events;
+
+    public WxShippingUploadService(TradeMappers.ShippingUploadMapper mapper, WxShippingPort shipping,
+                                   OutboxEventBus events) {
         this.mapper = mapper;
         this.shipping = shipping;
+        this.events = events;
     }
 
     /**
@@ -122,6 +129,8 @@ public class WxShippingUploadService {
             patch.setStatus(TrdShippingUpload.SUCCESS);
             patch.setUploadedAt(LocalDateTime.now());
             DataScopeContext.executeWithoutScope(() -> mapper.updateById(patch));
+            events.publish(new OrderEvents.WxShippingUploaded(
+                    row.getOrderNo(), row.getOutTradeNo(), System.currentTimeMillis()));
             return true;
         }
         patch.setErrCode(r.code());

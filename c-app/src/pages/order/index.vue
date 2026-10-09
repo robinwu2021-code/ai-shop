@@ -79,8 +79,24 @@ function copyExpressNo() {
 function openWxTracking() {
   const token = order.value?.trace?.displayToken;
   if (!token) return;
+  // **先打开、再刷新**：打开发生在点击回调里，不能排在 await 后面（同 requestSubscribe 的手势问题）
   if (!openWxWaybillTracking(token)) {
     uni.showToast({ title: String(t("trace.wxUnavailable")), icon: "none" });
+  }
+  refreshTrace();
+}
+/**
+ * 问一次物流页端点（TDD-物流模块 批 3）：它会顺带向微信校正一次状态（10 分钟内不重复），
+ * 回来的新状态 / 到柜提示盖到详情上 —— 买家从插件页返回时看到的是新的。拿不到就留着详情里的，不提示。
+ */
+async function refreshTrace() {
+  try {
+    const fresh = await api.orderTrace(orderNo.value);
+    if (fresh && order.value) {
+      order.value = { ...order.value, trace: { ...order.value.trace, ...fresh } };
+    }
+  } catch {
+    /* 物流页是锦上添花：失败照用详情里的 */
   }
 }
 /**

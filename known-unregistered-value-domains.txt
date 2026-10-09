@@ -46,9 +46,9 @@ cmt_pickup_point.fee_mode
 cmt_pickup_point.owner_ref
 cmt_pickup_point.scope
 cnt_question.status
-ful_carrier.carrier
+lgs_carrier.carrier
 ful_group_pickup.status
-ful_shipment.carrier
+lgs_waybill.carrier
 ful_shortage_report.kind
 inv_inbound_order.source_type
 inv_inbound_order.status

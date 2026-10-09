@@ -132,6 +132,16 @@ public class MpTradeController {
         return orderService.list(status, fulfillments, page, Math.min(size, 50));
     }
 
+    /**
+     * 物流页：点「查看物流」时调（TDD-物流模块 批 3，物流-API A2）。小程序 + 微信支付单会顺带向微信校正一次状态
+     * （10 分钟内不重复），其余纯读库。订单详情里的 trace 不触发任何外部调用。
+     */
+    @GetMapping("/mp/order/{orderNo}/trace")
+    public OrderVO.Trace orderTrace(@PathVariable String orderNo,
+                                    @RequestHeader(value = "X-Client", required = false) String client) {
+        return orderService.logisticsTrace(orderNo, client);
+    }
+
     @GetMapping("/mp/order/{orderNo}")
     public OrderVO orderDetail(@PathVariable String orderNo,
                                @RequestHeader(value = "X-Client", required = false) String client) {

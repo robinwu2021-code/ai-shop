@@ -191,6 +191,7 @@ const RESPONSE_TYPES = {
   payOrder: "Order",
   orderList: "PageResult<Order>",
   orderDetail: "Order",
+  orderTrace: "ShipmentTrace",
   cancelOrder: "Order",
   applyAfterSale: "Order",
   couponList: "Coupon[]",

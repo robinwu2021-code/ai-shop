@@ -62,7 +62,7 @@ class SubscribeExecutorTest {
     private void source(ShipmentSourcePort.WxKey wx) {
         when(source.sourceOf("SUB1")).thenReturn(Optional.of(new ShipmentSource("SUB1", "O1", "E1", "ST1", "YTO", "YT1",
                 "张三", "13800138000", "浙江省 杭州市", wx,
-                List.of(new ShipmentSourcePort.GoodsBrief("盐", "img")), "/pages/order/index?orderNo=SUB1")));
+                List.of(new ShipmentSourcePort.GoodsBrief("盐", "img")), "/pages/order/index?orderNo=SUB1", null)));
     }
 
     private TrackingSubscriber sub(String name, ChannelOutcome outcome) {

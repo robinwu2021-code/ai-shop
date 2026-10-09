@@ -75,7 +75,15 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
           /(?:@TableField\("(\w+)"\)\s*)?private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
         )].map((m) => (m[1] ? camel(m[1]) : m[2]!)),
       );
-      out.set(t, { file: p.slice(ROOT.length + 1), fields });
+      /*
+       * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
+       * FulShipment 与 LgsWaybill 都映射 lgs_waybill）。这条检查要回答的是「这一列有没有人读得到」，
+       * 所以按**所有实体字段的并集**对账 —— 只取最后扫到的那个，会因为目录顺序误报过渡用的那一个。
+       */
+      const prev = out.get(t);
+      out.set(t, prev
+        ? { file: `${prev.file} + ${p.slice(ROOT.length + 1)}`, fields: new Set([...prev.fields, ...fields]) }
+        : { file: p.slice(ROOT.length + 1), fields });
     }
   }
   return out;

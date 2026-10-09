@@ -79,6 +79,29 @@ public final class OrderEvents {
      * @param expressNo      快递单号（自送为 null）—— <b>单号是这条通知的全部价值</b>，
      *                       没有它，「已发货」只说了一件买家本来就在等的事
      */
+    /**
+     * 微信发货信息上传成功（{@code upload_shipping_info}）。物流据此满足换 waybill_token 的前置条件之一
+     * （另一个是已揽收；两者先后不定，物流两边都判 —— TDD-物流模块 §2.4.3）。
+     *
+     * @param outTradeNo 微信支付的商户单号。物流按它找运单（登记快照里存了同一个值），不必认识子单与支付单的对应
+     */
+    public record WxShippingUploaded(String orderNo, String outTradeNo, long at) implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "ORDER";
+        }
+
+        @Override
+        public String aggregateId() {
+            return orderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "WX_SHIPPING_UPLOADED";
+        }
+    }
+
     public record SubOrderShipped(String subOrderNo, String orderNo, String merchantNo,
                                   String userNo, String fulfillment,
                                   String expressCompany, String expressNo)

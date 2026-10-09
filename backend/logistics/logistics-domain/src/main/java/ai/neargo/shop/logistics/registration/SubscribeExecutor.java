@@ -118,6 +118,9 @@ public class SubscribeExecutor implements OutboxConsumer {
             p.setProfile(LgsWaybill.PROFILE_SELF);
             p.setBindState(LgsWaybill.BIND_NA);
         }
+        if (s.wxUploadedAt() != null && w.getWxUploadedAt() == null) {
+            p.setWxUploadedAt(s.wxUploadedAt());   // 上传事件可能先于登记到达，那一次通知落空了，这里补上
+        }
         waybills.updateById(p);
         w.setStoreNo(s.storeNo());
         return s.receiverPhone();
