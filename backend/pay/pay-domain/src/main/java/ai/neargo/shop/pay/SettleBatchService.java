@@ -133,7 +133,12 @@ public interface SettleBatchService {
      *
      * @param remark <b>必填</b> —— 放行与继续挂起都要写原因，否则事后没人说得清当时凭什么放
      */
-    BatchVO release(String batchNo, String operator, String remark);
+    /**
+     * 挂起处置通过：BLOCKED / RECONCILING → RECONCILED。<b>不是放款</b>——
+     * 这个方法 2026-10-09 之前叫 release，而真正把钱放出去的那一步从来不存在。
+     * 真放款在 {@link PayoutService#releaseBatch}。
+     */
+    BatchVO approve(String batchNo, String operator, String remark);
 
     /** 继续挂起。同样必须写原因 */
     BatchVO hold(String batchNo, String operator, String reason);

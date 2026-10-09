@@ -95,6 +95,8 @@ public final class BizKey {
     public static final String PAYMENT = "PY";
     /** 商家提现单（stl_withdraw）。V288 起商家可申请，此前这张表从没被写过 */
     public static final String WITHDRAW = "WD";
+    /** 放款记录（stl_payout，V391）。账期批次 × 收款号一笔；凭证号挂在它上面 */
+    public static final String PAYOUT = "PO";
     /** 渠道报文（stl_channel_message，V286）。发送与回调共用一个前缀 —— 靠 msg_type 分 */
     public static final String CHANNEL_MESSAGE = "CM";
     public static final String EVENT = "EVT";

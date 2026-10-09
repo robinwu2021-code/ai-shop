@@ -2790,6 +2790,101 @@ _无字段_
 | `auditedAt` | `number,null` | 否 | 审核时刻（毫秒）。未审为空 —— 与「审过但没写原因」是两回事 |
 
 
+#### GET `/ops/payouts`
+
+listPayouts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`Payout`](#payout)\[\]
+
+
+#### POST `/ops/payouts/{payoutNo}/fail`
+
+打款失败或退回
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `payoutNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Payout`](#payout)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payoutNo` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payMerchantNo` | `string,null` | 是 | — |
+| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | — |
+| `bankBranch` | `string,null` | 是 | — |
+| `accountNoMasked` | `string,null` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `billCount` | `number` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
+| `paymentRef` | `string,null` | 是 | — |
+| `bankFlowNo` | `string,null` | 是 | — |
+| `exportedAt` | `number,null` | 是 | — |
+| `paidAt` | `number,null` | 是 | — |
+| `paidBy` | `string,null` | 是 | — |
+| `matchedAt` | `number,null` | 是 | — |
+| `failReason` | `string,null` | 是 | — |
+| `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
+
+
+#### POST `/ops/payouts/{payoutNo}/paid`
+
+登记凭证
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `payoutNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`Payout`](#payout)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payoutNo` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payMerchantNo` | `string,null` | 是 | — |
+| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | — |
+| `bankBranch` | `string,null` | 是 | — |
+| `accountNoMasked` | `string,null` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `billCount` | `number` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
+| `paymentRef` | `string,null` | 是 | — |
+| `bankFlowNo` | `string,null` | 是 | — |
+| `exportedAt` | `number,null` | 是 | — |
+| `paidAt` | `number,null` | 是 | — |
+| `paidBy` | `string,null` | 是 | — |
+| `matchedAt` | `number,null` | 是 | — |
+| `failReason` | `string,null` | 是 | — |
+| `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
+
+
 #### GET `/ops/points/client-policy`
 
 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣
@@ -2997,6 +3092,44 @@ _无字段_
 类型：[`SettleBatch`](#settlebatch)\[\]
 
 
+#### POST `/ops/settle-batches/{batchNo}/approve`
+
+人工放行一批
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`SettleBatch`](#settlebatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
+| `entityNo` | `string` | 是 | 收款主体号 |
+| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
+| `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
+| `periodFrom` | `number` | 是 | 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 |
+| `dueAt` | `number` | 是 | T3 应结日 |
+| `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
+| `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
+| `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
+| `billCount` | `number` | 是 | 本批单据数 |
+| `grossMinor` | `number` | 是 | 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** |
+| `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
+| `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
+| `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
+| `blockedAt` | `number,null` | 是 | 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 |
+| `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
+| `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
+| `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+
+
 #### POST `/ops/settle-batches/{batchNo}/hold`
 
 继续挂起
@@ -3037,7 +3170,7 @@ _无字段_
 
 #### POST `/ops/settle-batches/{batchNo}/release`
 
-人工放行一批
+**放款**（V391）：RECONCILED → RELEASED，按收款号生成放款记录
 
 **入参**
 
@@ -3049,28 +3182,7 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`SettleBatch`](#settlebatch)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `batchNo` | `string` | 是 | 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 |
-| `entityNo` | `string` | 是 | 收款主体号 |
-| `payChannel` | `string` | 是 | 支付通道码。**不同通道账期不同，所以不能合批** |
-| `settleCycle` | `string` | 是 | 本批采用的账期规则快照，如 T+1 / WEEKLY |
-| `periodFrom` | `number` | 是 | 本批的收单起始时刻。与 dueAt 一起界定「这批装的是哪几天的单」 |
-| `dueAt` | `number` | 是 | T3 应结日 |
-| `releasedAt` | `number,null` | 是 | 实际放行时刻。与 dueAt 分开才答得出「晚了几天」 |
-| `freezeExpireAt` | `number,null` | 是 | Tmax：通道冻结窗口到期时刻。**为 null 表示还判不了** —— 冻结窗口的天数还没有书面口径，此时不该按一个猜的数报警 |
-| `status` | [`#/definitions/SettleBatchStatus`](#definitionssettlebatchstatus) | 是 | DRAFT / COLLECTED / RECONCILING / BLOCKED / RECONCILED / RELEASED |
-| `billCount` | `number` | 是 | 本批单据数 |
-| `grossMinor` | `number` | 是 | 本批结算基数合计（分）。与单据上同名字段一个口径 —— **不含运费** |
-| `netMinor` | `number` | 是 | 本批应放款合计（分）。**放行时按这个数下发** |
-| `reconScope` | [`#/definitions/ReconScope`](#definitionsreconscope) | 是 | 对账覆盖面。**SELF_ONLY 时界面要如实标注「仅我方自查」**， 不能显示成「已对账」—— 没有对方账单时那是一句自证的话 |
-| `blockedReason` | `string,null` | 是 | 挂起原因，**直接展示给商家的原话**（含具体数字与阈值） |
-| `blockedAt` | `number,null` | 是 | 挂起时刻。与 blockExpireAt 一起才看得出「还剩多久自动放行」 |
-| `blockExpireAt` | `number,null` | 是 | 挂起时限。超时自动放行并告警 —— 没有时限的挂起等于永久冻结 |
-| `decidedBy` | `string,null` | 是 | 人工放行者；**SYSTEM_TIMEOUT = 超时自动放行**，要单独看 |
-| `decideRemark` | `string,null` | 是 | 处置时写的原因。**事后要能回答「当时凭什么放的」**，而那句话只有此刻的人写得出来 |
+类型：[`Payout`](#payout)\[\]
 
 
 #### GET `/ops/settle-stats`
@@ -12485,6 +12597,34 @@ KPI 卡（金额为最小货币单位整数）。
 | `applyStatus` | `string,null` | 否 | 进件状态；未 ACTIVE 时额度设了也不生效 |
 | `limitMinor` | `number` | 是 | 上限（分）；**0 = 未设置，不拦**，不是「额度为零」 |
 | `usedMinor` | `number` | 是 | 已用（分）。支付累加出来的事实，运营改不了 |
+
+### Payout
+
+放款记录（V391 / TDD-账期推进与放款记录）：**账期批次 × 收款号，一笔网银转账一条**。 凭证号与银行流水挂在它上面，不再挂在逐张结算单上。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payoutNo` | `string` | 是 | — |
+| `batchNo` | `string` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `payMerchantNo` | `string,null` | 是 | — |
+| `accountName` | `string,null` | 是 | 付款时快照：银行要户名，而账号会改 |
+| `bankName` | `string,null` | 是 | — |
+| `bankBranch` | `string,null` | 是 | — |
+| `accountNoMasked` | `string,null` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `billCount` | `number` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | [`#/definitions/PayoutStatus`](#definitionspayoutstatus) | 是 | — |
+| `channel` | [`#/definitions/PayoutChannel`](#definitionspayoutchannel) | 是 | — |
+| `paymentRef` | `string,null` | 是 | — |
+| `bankFlowNo` | `string,null` | 是 | — |
+| `exportedAt` | `number,null` | 是 | — |
+| `paidAt` | `number,null` | 是 | — |
+| `paidBy` | `string,null` | 是 | — |
+| `matchedAt` | `number,null` | 是 | — |
+| `failReason` | `string,null` | 是 | — |
+| `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 ### PayoutAccount
 

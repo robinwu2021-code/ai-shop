@@ -45,7 +45,12 @@ public interface OpsPayoutListAppService {
                      String accountName, String accountNumber,
                      String bankName, String bankBranch,
                      long amountMinor, int billCount, String remark,
-                     List<String> settleNos) {
+                     List<String> settleNos,
+                     /**
+                      * 放款单号（V391）。<b>有号的按号回填凭证</b>（`/ops/payouts/{no}/paid`），
+                      * 没号的是存量老路（逐张 `/ops/payables/{settleNo}/paid`）。两条路并存到存量清零。
+                      */
+                     String payoutNo) {
     }
 
     /**

@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.entity.StlBankFlow;
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlPayout;
 import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.mapper.SettleMappers.BankFlowMapper;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
@@ -50,6 +51,8 @@ class PayoutBankReconFlowTest {
     @Autowired
     private BankFlowMapper flows;
     @Autowired
+    private ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payouts;
+    @Autowired
     private ReconDiffMapper diffs;
 
     private String run;
@@ -66,6 +69,10 @@ class PayoutBankReconFlowTest {
     @AfterEach
     void cleanup() {
         bills.delete(Wrappers.<StlBill>lambdaQuery().eq(StlBill::getEntityNo, ENT));
+        payouts.delete(Wrappers.<StlPayout>lambdaQuery().eq(StlPayout::getEntityNo, ENT));
+        diffs.delete(Wrappers.<StlReconDiff>lambdaQuery()
+                .eq(StlReconDiff::getAxis, PayoutReconAxis.CODE)
+                .likeRight(StlReconDiff::getPaymentNo, "PO-BRK-" + run));
         flows.delete(Wrappers.<StlBankFlow>lambdaQuery().likeRight(StlBankFlow::getFlowNo, "BF-" + run));
         diffs.delete(Wrappers.<StlReconDiff>lambdaQuery()
                 .eq(StlReconDiff::getAxis, PayoutReconAxis.CODE)
@@ -132,6 +139,61 @@ class PayoutBankReconFlowTest {
         assertThat(f.getMatchedSettleNo()).isEqualTo("SB-BRK-" + run + "-h");
         // 勾上了就不该再报这两类差异中的任何一类
         assertThat(myDiffs(PayoutReconAxis.CODE)).isEmpty();
+    }
+
+    // ==================== 放款粒度（V391 / TDD-账期推进与放款记录 AC7） ====================
+
+    @Test
+    @DisplayName("★★★ 放款记录与流水勾上 → MATCHED、流水记 matched_payout_no —— 这一步只能由对账轴写")
+    void payoutMatchedByBankFlowBecomesMatched() {
+        String ref = "BF-" + run + "-po";
+        String payoutNo = paidPayout("m", ref, 30_000);
+        bankFlow(ref, today, 30_000);
+
+        axis.scan(System.currentTimeMillis());
+
+        StlPayout p = payouts.selectOne(Wrappers.<StlPayout>lambdaQuery().eq(StlPayout::getPayoutNo, payoutNo));
+        assertThat(p.getStatus()).isEqualTo(StlPayout.MATCHED);
+        assertThat(p.getBankFlowNo()).isEqualTo(ref);
+        assertThat(p.getMatchedAt()).isNotNull();
+        StlBankFlow f = flows.selectOne(Wrappers.<StlBankFlow>lambdaQuery().eq(StlBankFlow::getFlowNo, ref));
+        assertThat(f.getMatchedPayoutNo()).isEqualTo(payoutNo);
+        assertThat(myDiffs(PayoutReconAxis.CODE)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 同一个凭证号登在两笔放款上 —— 一笔钱记成两笔付出，每笔各记一条 DUP_REF")
+    void duplicateRefAcrossPayoutsIsADiffOnEach() {
+        String ref = "BF-" + run + "-dup";
+        String a = paidPayout("d1", ref, 10_000);
+        String b = paidPayout("d2", ref, 20_000);
+
+        axis.scan(System.currentTimeMillis());
+
+        assertThat(myDiffs(PayoutReconAxis.CODE))
+                .filteredOn(d -> "PAYOUT_DUP_REF".equals(d.getDiffType()))
+                .extracting(StlReconDiff::getPaymentNo)
+                .containsExactlyInAnyOrder(a, b);
+    }
+
+    /** 一笔已登记凭证的放款记录（直接造，不走批次链：这里验的是对账，不是放款） */
+    private String paidPayout(String tag, String ref, long amount) {
+        StlPayout p = new StlPayout();
+        p.setPayoutNo("PO-BRK-" + run + "-" + tag);
+        p.setBatchNo("STB-BRK-" + run);
+        p.setEntityNo(ENT);
+        p.setAmountMinor(amount);
+        p.setBillCount(1);
+        p.setCurrency("CNY");
+        p.setStatus(StlPayout.PAID);
+        p.setChannel(StlPayout.CHANNEL_MANUAL);
+        p.setPaymentRef(ref);
+        p.setPaidAt(todayMillis);
+        p.setTenantNo("MAIN");
+        p.setCreatedAt(java.time.LocalDateTime.now());
+        p.setUpdatedAt(java.time.LocalDateTime.now());
+        payouts.insert(p);
+        return p.getPayoutNo();
     }
 
     @Test

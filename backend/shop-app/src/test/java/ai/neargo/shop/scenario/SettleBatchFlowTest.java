@@ -304,13 +304,13 @@ class SettleBatchFlowTest {
     void manualDecideRejectsBlankRemark() {
         String batchNo = givenBlockedBatch("decide-blank");
 
-        assertThatThrownBy(() -> batchService.release(batchNo, "OPS", null))
+        assertThatThrownBy(() -> batchService.approve(batchNo, "OPS", null))
                 .as("不写原因必须拒 —— 事后要能回答「当时凭什么放的」")
                 .isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode())
                 .isEqualTo(ErrorCode.REASON_REQUIRED);
 
-        assertThatThrownBy(() -> batchService.release(batchNo, "OPS", "   "))
+        assertThatThrownBy(() -> batchService.approve(batchNo, "OPS", "   "))
                 .as("空白串与 null 同等对待 —— 否则敲一个空格就绕过去了")
                 .isInstanceOf(BizException.class);
 
@@ -322,7 +322,7 @@ class SettleBatchFlowTest {
     @Test
     @DisplayName("★★ 人工处置的另外两条失败：批次不存在 = NOT_FOUND，状态不对 = CONFLICT")
     void manualDecideRejectsUnknownAndWrongStatus() {
-        assertThatThrownBy(() -> batchService.release("STL-BATCH-NOPE", "OPS", "放"))
+        assertThatThrownBy(() -> batchService.approve("STL-BATCH-NOPE", "OPS", "放"))
                 .isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode())
                 .isEqualTo(ErrorCode.NOT_FOUND);
@@ -333,7 +333,7 @@ class SettleBatchFlowTest {
         batchService.collectIntoBatches();
         String draft = reload("STL-BATCH-draft-1").getBatchNo();
 
-        assertThatThrownBy(() -> batchService.release(draft, "OPS", "放"))
+        assertThatThrownBy(() -> batchService.approve(draft, "OPS", "放"))
                 .as("DRAFT 的批还没截批，放行它等于把还在收单的钱放出去")
                 .isInstanceOf(BizException.class)
                 .extracting(e -> ((BizException) e).errorCode())
@@ -345,7 +345,7 @@ class SettleBatchFlowTest {
     void manualReleaseRecordsWhoAndWhy() {
         String batchNo = givenBlockedBatch("decide-ok");
 
-        var vo = batchService.release(batchNo, "OPS-7", "已人工核对流水，放");
+        var vo = batchService.approve(batchNo, "OPS-7", "已人工核对流水，放");
 
         assertThat(vo.status()).isEqualTo(StlSettleBatch.RECONCILED);
         var row = reloadBatch(batchNo);

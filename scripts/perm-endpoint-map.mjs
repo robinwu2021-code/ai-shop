@@ -373,7 +373,12 @@ export const RULES = [
   // 账期批次。**看与放不是同一档**：能看结算单的人就该看得到钱卡在哪一批
   // （否则客服答不上「为什么还没到」），但放行是一次真的动钱。
   ["GET", /^\/ops\/settle-batches/, "finance:settle:read"],
+  // 放款是运营端唯一让钱出去的动作，与付款清单 / 凭证回填同一个码；排在通配之前
+  ["POST", /^\/ops\/settle-batches\/[^/]+\/release$/, "finance:payout:execute"],
   ["*", /^\/ops\/settle-batches/, "finance:settle:execute"],
+  // 放款记录（V391）
+  ["GET", /^\/ops\/payouts/, "finance:settle:read"],
+  ["POST", /^\/ops\/payouts\/[^/]+\/(paid|fail)$/, "finance:payout:execute"],
   // 商家欠款。抵扣动的是商家的**本金**（保证金），比放行更重一档 ——
   // 用 payout:execute 而不是 settle:execute
   ["GET", /^\/ops\/debts/, "finance:settle:read"],

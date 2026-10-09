@@ -547,6 +547,18 @@ export const FIELDS = [
     clients: [{ file: "ops-web/lib/types/finance.ts", type: "ReconScope" }],
   },
   {
+    concept: "放款记录状态",
+    field: "stl_payout.status",
+    backend: { ddl: ["stl_payout", "status"] },
+    clients: [{ file: "ops-web/lib/types/finance.ts", type: "PayoutStatus" }],
+  },
+  {
+    concept: "放款通道",
+    field: "stl_payout.channel",
+    backend: { ddl: ["stl_payout", "channel"] },
+    clients: [{ file: "ops-web/lib/types/finance.ts", type: "PayoutChannel" }],
+  },
+  {
     concept: "结算批次状态",
     field: "stl_settle_batch.status",
     backend: { ddl: ["stl_settle_batch", "status"] },

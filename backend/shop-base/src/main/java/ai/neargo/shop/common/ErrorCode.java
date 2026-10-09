@@ -971,6 +971,18 @@ public enum ErrorCode {
      * 完全不知道该去做什么，而看到「发票未核验」就知道要先去催票或核验。
      */
     INVOICE_REQUIRED(70026, "err.settle.invoice_required"),
+    /** 放款：批次不在可放款态（只有 RECONCILED 能放；RELEASED 再放是重复打款，BLOCKED 放是绕过挂起） */
+    BATCH_NOT_RELEASABLE(70077, "err.settle.batch_not_releasable"),
+    /** 放款：主体没有生效中的收款账户，钱不知道打给谁 */
+    PAYOUT_ACCOUNT_MISSING(70078, "err.settle.payout_account_missing"),
+    /** 放款记录不在能登记付款 / 退回的状态 */
+    PAYOUT_NOT_PAYABLE(70079, "err.settle.payout_not_payable"),
+    /**
+     * 放款：本批有结算单的进项票没了结，{0} 是单号清单。
+     * 不复用 INVOICE_REQUIRED：那个码在逐张付款的老路上无参抛，文案没有 {0}；
+     * 放款是整批的，运营要一次看到全部不合格的单号，而不是核完一张再被下一张挡。
+     */
+    PAYOUT_INVOICE_PENDING(70080, "err.settle.payout_invoice_pending"),
     /** 发票金额与应付合计不符。多半是周期选错或漏了几单 */
     INVOICE_AMOUNT_MISMATCH(70016, "err.settle.invoice_amount_mismatch"),
     /** 开票方名称与供应商主体名不一致 —— 三流不一致会被认定虚开风险 */

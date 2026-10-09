@@ -429,6 +429,14 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 放款记录（V391）。运营端全量队列 `/ops/payouts` 不绕过 —— 配了商家域的财务
+         * 不该看到别家的放款。绕过的只有生成 / 回填 / 退回那几处写（`PayoutServiceImpl`），
+         * 它们跑在运营会话里但改的是别人家的账，与 `stl_settle_batch` 同一条理由。
+         */
+        registry.register("stl_payout", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 保证金与欠款这四张。读它们的 ops 端点都是 `/{merchantNo}` 形式，
          * 没有全量队列 —— 与收款进件同形：登记挡的是「知道商家号也查不到域外的」。
          *

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 816 个接口**：后端已实现 739（91%）· 前端在调 740
+**合计 820 个接口**：后端已实现 743（91%）· 前端在调 744
 
 ---
 
@@ -889,7 +889,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **414** 个接口 ｜ 后端已实现 **348**（84%）｜ 前端在调 **338**
+共 **418** 个接口 ｜ 后端已实现 **352**（84%）｜ 前端在调 **342**
 
 ### aftersale（4）
 
@@ -970,7 +970,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（42）
+### finance（46）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -996,6 +996,9 @@
 | GET | `/ops/payables/payout-list` | 付款清单（P2） | — | `PayoutList` | — | ✅ | ⬜ |
 | GET | `/ops/payout-accounts` | listPayoutAccounts | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/payout-accounts/{accountNo}/audit` | 审核 | — | `PayoutAccount` | — | ✅ | ⬜ |
+| GET | `/ops/payouts` | listPayouts | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payouts/{payoutNo}/fail` | 打款失败或退回 | — | `Payout` | — | ✅ | ✅ |
+| POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
 | GET | `/ops/points/client-policy` | 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣 | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
 | POST | `/ops/points/client-policy` | savePointsClientPolicy | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
@@ -1005,8 +1008,9 @@
 | GET | `/ops/refund-split-backs` | 待回退分账的售后单（P-12.1.5 / E4）：售后裁决打的 `refundSplitPending` 标记 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/refund-split-backs/{asNo}/execute` | 执行退款回退分账，**执行后清除该售后单的标记**，否则队列永远消不掉 | — | `AfterSale` | — | ⬜ | ✅ |
 | GET | `/ops/settle-batches` | 账期批次列表 | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/settle-batches/{batchNo}/approve` | 人工放行一批 | — | `SettleBatch` | — | ✅ | ✅ |
 | POST | `/ops/settle-batches/{batchNo}/hold` | 继续挂起 | — | `SettleBatch` | — | ✅ | ✅ |
-| POST | `/ops/settle-batches/{batchNo}/release` | 人工放行一批 | — | `SettleBatch` | — | ✅ | ✅ |
+| POST | `/ops/settle-batches/{batchNo}/release` | **放款**（V391）：RECONCILED → RELEASED，按收款号生成放款记录 | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/settle-stats` | listSettleStats | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/settle/fee-rules` | 全部费率版本，含历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/settle/fee-rules` | 新增一个费率版本 | — | `FeeRuleVersion` | — | ✅ | ✅ |

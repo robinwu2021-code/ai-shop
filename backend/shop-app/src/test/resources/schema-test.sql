@@ -1003,6 +1003,7 @@ CREATE TABLE IF NOT EXISTS stl_bill
     freight_cost_minor BIGINT NOT NULL DEFAULT 0,
     freight_ship_mode VARCHAR(32) NULL,
     freight_diff_reason VARCHAR(32) NULL,
+    payout_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -4557,6 +4558,7 @@ CREATE TABLE IF NOT EXISTS stl_bank_flow
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    matched_payout_no VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_bank_flow UNIQUE (flow_no)
 );
@@ -4597,6 +4599,40 @@ CREATE TABLE IF NOT EXISTS lgs_carrier_code
     updated_by VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_carrier_channel (carrier, channel)
+);
+
+CREATE TABLE IF NOT EXISTS stl_payout
+(
+    id                BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    payout_no         VARCHAR(64)  NOT NULL,
+    batch_no          VARCHAR(64)  NOT NULL,
+    entity_no         VARCHAR(64)  NOT NULL,
+    pay_merchant_no   VARCHAR(64)  DEFAULT NULL,
+    account_name      VARCHAR(128) DEFAULT NULL,
+    bank_name         VARCHAR(64)  DEFAULT NULL,
+    bank_branch       VARCHAR(128) DEFAULT NULL,
+    account_no_masked VARCHAR(32)  DEFAULT NULL,
+    amount_minor      BIGINT(20)   NOT NULL DEFAULT 0,
+    bill_count        INT(11)      NOT NULL DEFAULT 0,
+    currency          VARCHAR(8)   NOT NULL DEFAULT 'CNY',
+    status            VARCHAR(16)  NOT NULL DEFAULT 'PENDING',
+    channel           VARCHAR(16)  NOT NULL DEFAULT 'MANUAL',
+    payment_ref       VARCHAR(64)  DEFAULT NULL,
+    bank_flow_no      VARCHAR(64)  DEFAULT NULL,
+    exported_at       BIGINT(20)   DEFAULT NULL,
+    paid_at           BIGINT(20)   DEFAULT NULL,
+    paid_by           VARCHAR(64)  DEFAULT NULL,
+    matched_at        BIGINT(20)   DEFAULT NULL,
+    fail_reason       VARCHAR(512) DEFAULT NULL,
+    tenant_no         VARCHAR(32)  NOT NULL DEFAULT 'MAIN',
+    created_at        DATETIME     NOT NULL,
+    created_by        VARCHAR(64)  DEFAULT NULL,
+    updated_at        DATETIME     NOT NULL,
+    updated_by        VARCHAR(64)  DEFAULT NULL,
+    version           BIGINT(20)   NOT NULL DEFAULT 0,
+    deleted           TINYINT(4)   NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_payout_no UNIQUE (payout_no, tenant_no)
 );
 
 -- 种子数据

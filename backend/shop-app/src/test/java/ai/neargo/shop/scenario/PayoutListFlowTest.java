@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.entity.MchPayoutAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.PayoutAccountMapper;
 import ai.neargo.shop.merchant.service.PayoutAccountCipher;
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlPayout;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.payclient.OpsPayoutListAppService;
 import ai.neargo.shop.payclient.OpsPayoutListAppService.PayoutListVO;
@@ -57,6 +58,8 @@ class PayoutListFlowTest {
     @Autowired
     private BillMapper bills;
     @Autowired
+    private ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payouts;
+    @Autowired
     private PayoutAccountMapper accounts;
     @Autowired
     private PayoutAccountCipher cipher;
@@ -84,6 +87,7 @@ class PayoutListFlowTest {
     void cleanup() {
         bills.delete(Wrappers.<StlBill>lambdaQuery()
                 .in(StlBill::getEntityNo, E_OK, E_NO_ACC, E_NO_INV, E_UNCONF));
+        payouts.delete(Wrappers.<StlPayout>lambdaQuery().eq(StlPayout::getEntityNo, E_OK));
         accounts.delete(Wrappers.<MchPayoutAccount>lambdaQuery()
                 .in(MchPayoutAccount::getEntityNo, E_OK, E_NO_ACC, E_NO_INV, E_UNCONF));
     }
@@ -134,6 +138,37 @@ class PayoutListFlowTest {
         assertThat(confReason).contains("对账");
         // **两条原因必须不同** —— 合成一句「条件不足」，财务就不知道该去催票还是去确认
         assertThat(invReason).isNotEqualTo(confReason);
+    }
+
+    @Test
+    @DisplayName("★★★ 放款记录一笔一行、带放款单号、附言带号；导出即 EXPORTED —— 再导一次看得出已导过")
+    void payoutRowsComeFirstAndGetExported() {
+        StlPayout p = new StlPayout();
+        p.setPayoutNo("PO-PL-" + run);
+        p.setBatchNo("STB-PL-" + run);
+        p.setEntityNo(E_OK);
+        p.setAmountMinor(77_000L);
+        p.setBillCount(3);
+        p.setCurrency("CNY");
+        p.setStatus(StlPayout.PENDING);
+        p.setChannel(StlPayout.CHANNEL_MANUAL);
+        p.setTenantNo("MAIN");
+        p.setCreatedAt(LocalDateTime.now());
+        p.setUpdatedAt(LocalDateTime.now());
+        payouts.insert(p);
+
+        PayoutListVO vo = app.list(null);
+
+        var row = vo.rows().stream().filter(r -> ("PO-PL-" + run).equals(r.payoutNo())).findFirst();
+        assertThat(row).as("放款记录要进清单").isPresent();
+        assertThat(row.get().amountMinor()).isEqualTo(77_000);
+        assertThat(row.get().accountNumber()).as("账号仍是明文、仍只解这一次").isEqualTo(CARD);
+        assertThat(row.get().remark()).contains("PO-PL-" + run);
+        // 存量老路那一行（E_OK 的两张 CONFIRMED 单）仍在，且没有放款单号
+        assertThat(vo.rows()).anyMatch(r -> E_OK.equals(r.entityNo()) && r.payoutNo() == null);
+        StlPayout after = payouts.selectOne(Wrappers.<StlPayout>lambdaQuery().eq(StlPayout::getPayoutNo, "PO-PL-" + run));
+        assertThat(after.getStatus()).isEqualTo(StlPayout.EXPORTED);
+        assertThat(after.getExportedAt()).isNotNull();
     }
 
     @Test

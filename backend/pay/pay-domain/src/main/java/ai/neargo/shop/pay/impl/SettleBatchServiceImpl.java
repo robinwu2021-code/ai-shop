@@ -605,7 +605,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
 
     @Override
     @Transactional("payTxManager")
-    public BatchVO release(String batchNo, String operator, String remark) {
+    public BatchVO approve(String batchNo, String operator, String remark) {
         return decide(batchNo, operator, remark, true);
     }
 

@@ -498,6 +498,10 @@ const ANCHOR_WAIVED: Record<string, string> = {
     "账期批次属于商家。**看到空白的是**：配了社区域的运营打开放款队列。"
     + "而放款是财务的活（finance:settle:*），社区运营没有这个码",
   "stl_settle_batch:PICKUP": "同上",
+  "stl_payout:COMMUNITY":
+    "放款记录（V391）属于商家，与批次同一条理由。**看到空白的是**：配了社区域的运营打开放款队列 "
+    + "—— 而放款是财务的活（finance:payout:execute / finance:settle:read），社区运营没有这个码",
+  "stl_payout:PICKUP": "同上，自提点运营者更不该出现在放款队列里",
   "mch_deposit:COMMUNITY": "保证金属于商家，不属于片区",
   "mch_deposit:PICKUP": "同上",
   "mch_deposit_txn:COMMUNITY": "同上",

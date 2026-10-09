@@ -22,13 +22,16 @@ public class OpsPayoutListAppServiceImpl implements OpsPayoutListAppService {
     private final SettleService settleService;
     private final PayoutAccountPort payoutAccounts;
     private final MerchantQueryPort merchantPort;
+    private final ai.neargo.shop.pay.PayoutService payoutService;
 
     public OpsPayoutListAppServiceImpl(SettleService settleService,
                                        PayoutAccountPort payoutAccounts,
-                                       MerchantQueryPort merchantPort) {
+                                       MerchantQueryPort merchantPort,
+                                       ai.neargo.shop.pay.PayoutService payoutService) {
         this.settleService = settleService;
         this.payoutAccounts = payoutAccounts;
         this.merchantPort = merchantPort;
+        this.payoutService = payoutService;
     }
 
     @Override
@@ -40,23 +43,64 @@ public class OpsPayoutListAppServiceImpl implements OpsPayoutListAppService {
          * 而那正是财务第一个会问的问题。下面按原因分流，
          * 付不了的也要带着原因出现在结果里。
          */
+        List<PayoutRow> rows = new ArrayList<>();
+        List<BlockedRow> blocked = new ArrayList<>();
+        long total = 0L;
+
+        /*
+         * **先出放款记录（V391）。** 三道闸（对账、票、账户）在放款那一步已经过了，
+         * 这里只是把它们装进清单；账号明文仍只在这一刻解一次。
+         * 导出即置 EXPORTED —— 财务拿着去网银了，再导一次该看得出「已经导过」。
+         */
+        List<ai.neargo.shop.pay.PayoutService.PayoutVO> payouts = payoutService.list(null, entityNo).stream()
+                .filter(p -> ai.neargo.shop.pay.entity.StlPayout.PENDING.equals(p.status())
+                        || ai.neargo.shop.pay.entity.StlPayout.EXPORTED.equals(p.status()))
+                .toList();
+        if (!payouts.isEmpty()) {
+            Map<String, MerchantQueryPort.MerchantBrief> pb = merchantPort.findAll(
+                    payouts.stream().map(ai.neargo.shop.pay.PayoutService.PayoutVO::entityNo)
+                            .collect(Collectors.toSet()));
+            for (var p : payouts) {
+                var brief = pb.get(p.entityNo());
+                var account = payoutAccounts.activeAccount(p.entityNo());
+                if (account.isEmpty()) {
+                    // 放款之后账户被停了：不能付、要说出来，而不是悄悄少一行
+                    blocked.add(new BlockedRow(p.entityNo(), brief == null ? p.entityNo() : brief.merchantName(),
+                            p.amountMinor(), p.billCount(), "放款后收款账户已失效，先处理账户再导"));
+                    continue;
+                }
+                var acc = account.get();
+                total += p.amountMinor();
+                rows.add(new PayoutRow(p.entityNo(), brief == null ? p.entityNo() : brief.merchantName(),
+                        acc.accountType(), acc.accountName(),
+                        payoutAccounts.decryptAccountNumber(acc.accountNo()),
+                        acc.bankName(), acc.bankBranch(), p.amountMinor(), p.billCount(),
+                        // 附言带放款单号：银行回单上这个号能直接勾到记录
+                        "货款-" + p.entityNo() + "-" + p.payoutNo(), p.settleNos(), p.payoutNo()));
+            }
+            payoutService.markExported(rows.stream().map(PayoutRow::payoutNo)
+                    .filter(java.util.Objects::nonNull).toList(), null);
+        }
+
+        /*
+         * **再出存量老路**：没入批、没放款记录的自营单（起始日之前成交的那些），
+         * 仍按逐张 confirm / paid 走。两条路并存到存量清零，见 TDD-账期推进与放款记录 §2.6。
+         */
         List<SettleBillVO> all = settleService.opsPayables(null, entityNo);
 
-        // 已付的不再出现：它既不该重复付，也不属于「本该付而没付」
+        // 已付的不再出现：它既不该重复付，也不属于「本该付而没付」；已入批的走放款记录，不在这儿重复出现
         Map<String, List<SettleBillVO>> byEntity = all.stream()
                 .filter(b -> !StlBill.PAID.equals(b.status()))
+                .filter(b -> b.batchNo() == null || b.batchNo().isBlank())
                 .collect(Collectors.groupingBy(SettleBillVO::merchantNo,
                         LinkedHashMap::new, Collectors.toList()));
         if (byEntity.isEmpty()) {
-            return new PayoutListVO(List.of(), List.of(), 0L);
+            return new PayoutListVO(rows, blocked, total);
         }
 
         Map<String, MerchantQueryPort.MerchantBrief> briefs =
                 merchantPort.findAll(Set.copyOf(byEntity.keySet()));
 
-        List<PayoutRow> rows = new ArrayList<>();
-        List<BlockedRow> blocked = new ArrayList<>();
-        long total = 0L;
 
         for (var e : byEntity.entrySet()) {
             String ent = e.getKey();
@@ -111,7 +155,7 @@ public class OpsPayoutListAppServiceImpl implements OpsPayoutListAppService {
                     acc.bankName(), acc.bankBranch(), amount, payable.size(),
                     // 银行附言要能回勾：给的是主体号不是商家名 —— 名字会改，号不会
                     "货款-" + ent,
-                    payable.stream().map(SettleBillVO::settleNo).toList()));
+                    payable.stream().map(SettleBillVO::settleNo).toList(), null));
         }
         return new PayoutListVO(rows, blocked, total);
     }

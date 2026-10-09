@@ -6,6 +6,10 @@ import { WITHDRAW_TRANSITIONS } from "@/lib/types";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
 import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow, type PayoutList } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
+import type { Payout } from "@/lib/types";
+
+/** 放款记录只活在内存里：mock 的批次放一次生成一条，刷新即清 —— 它不是演示数据的一部分 */
+const mockPayouts: Payout[] = [];
 import type { ClientPointsPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -504,7 +508,7 @@ export const financeMock: FinanceApi = {
     wait(db.settleBatches.filter((b) =>
       db.eqHit(q.status, b.status) && db.eqHit(q.entityNo, b.entityNo))),
 
-  releaseSettleBatch: async (batchNo, remark) => {
+  approveSettleBatch: async (batchNo, remark) => {
     const b = db.settleBatches.find((x) => x.batchNo === batchNo);
     if (!b) notFound("批次", "Batch", batchNo);
     /*
@@ -521,6 +525,61 @@ export const financeMock: FinanceApi = {
     b.decidedBy = "admin";
     b.decideRemark = remark;
     return wait({ ...b });
+  },
+
+  /**
+   * 放款（V391）。mock 也走三道闸里最常撞的那道：**只有 RECONCILED 能放**。
+   * 一批一笔（mock 的批次没有多收款号），户名从收款账户快照。
+   */
+  releaseSettleBatch: async (batchNo) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    if (b.status !== "RECONCILED") {
+      fail(`批次当前状态 ${b.status} 不能放款，只有自查通过的批次能放`,
+        `Batch is ${b.status}; only RECONCILED batches can be released`);
+    }
+    const acc = db.payoutAccounts.find((a) => a.entityNo === b.entityNo && a.status === "ACTIVE");
+    if (!acc) fail(`主体 ${b.entityNo} 没有生效中的收款账户`, `Entity ${b.entityNo} has no active payout account`);
+    const p = {
+      payoutNo: `PO${Date.now()}`, batchNo, entityNo: b.entityNo, payMerchantNo: null,
+      accountName: acc.accountName, bankName: acc.bankName ?? null, bankBranch: acc.bankBranch ?? null,
+      accountNoMasked: acc.accountMasked, amountMinor: b.netMinor, billCount: b.billCount,
+      currency: "CNY", status: "PENDING" as const, channel: "MANUAL" as const,
+      paymentRef: null, bankFlowNo: null, exportedAt: null, paidAt: null, paidBy: null,
+      matchedAt: null, failReason: null, settleNos: [] as string[],
+    };
+    mockPayouts.push(p);
+    b.status = "RELEASED";
+    b.releasedAt = Date.now();
+    return wait([{ ...p }]);
+  },
+
+  listPayouts: async (q = {}) =>
+    wait(mockPayouts.filter((p) => db.eqHit(q.status, p.status) && db.eqHit(q.entityNo, p.entityNo))),
+
+  payPayout: async (payoutNo, paymentRef) => {
+    const p = mockPayouts.find((x) => x.payoutNo === payoutNo);
+    if (!p) notFound("放款", "Payout", payoutNo);
+    if (!paymentRef || !paymentRef.trim()) fail("凭证号必填", "Payment reference is required");
+    if (p.status !== "PENDING" && p.status !== "EXPORTED") {
+      fail(`放款记录当前状态 ${p.status}，不能登记付款`, `Payout is ${p.status}; cannot mark paid`);
+    }
+    p.status = "PAID";
+    p.paymentRef = paymentRef.trim();
+    p.paidAt = Date.now();
+    p.paidBy = "admin";
+    return wait({ ...p });
+  },
+
+  failPayout: async (payoutNo, reason) => {
+    const p = mockPayouts.find((x) => x.payoutNo === payoutNo);
+    if (!p) notFound("放款", "Payout", payoutNo);
+    if (!reason || !reason.trim()) fail("退回必须写原因", "A reason is required");
+    p.status = "FAILED";
+    p.failReason = reason.trim();
+    const b = db.settleBatches.find((x) => x.batchNo === p.batchNo);
+    if (b) { b.status = "RECONCILED"; b.releasedAt = null; }
+    return wait({ ...p });
   },
 
   holdSettleBatch: async (batchNo, remark) => {

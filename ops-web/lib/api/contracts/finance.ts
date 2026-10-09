@@ -2,7 +2,7 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal,
+  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule, Withdrawal,
   BankFlowImportResult,
 } from "@/lib/types";
 import type { PageQ, SettlementQ } from "../query";
@@ -205,10 +205,27 @@ export interface FinanceApi {
    * 与超时自动放行（`decidedBy = SYSTEM_TIMEOUT`）分开统计 ——
    * 那个数持续大于零说明挂起时限比处置能力短，要调的是时限不是任务。
    */
-  releaseSettleBatch(batchNo: string, remark: string): Promise<SettleBatch>;
+  approveSettleBatch(batchNo: string, remark: string): Promise<SettleBatch>;
 
   /** 继续挂起。同样必须写原因 */
   holdSettleBatch(batchNo: string, remark: string): Promise<SettleBatch>;
+
+  /**
+   * **放款**（V391）：RECONCILED → RELEASED，按收款号生成放款记录。
+   * 三道闸（票、账户、状态）在后端。这是运营端唯一让钱出去的动作。
+   *
+   * ⚠️ 2026-10-09 之前 `releaseSettleBatch` 调的是上面那个「挂起处置通过」，从来不放钱。
+   */
+  releaseSettleBatch(batchNo: string): Promise<Payout[]>;
+
+  // ── 放款记录（V391）：一笔网银转账一条，凭证与银行流水挂在它上面
+
+  /** @param status 空 = 全部；PENDING 待导出、EXPORTED 已导出待登记 */
+  listPayouts(q?: { status?: string; entityNo?: string }): Promise<Payout[]>;
+  /** 登记凭证。凭证号必填 */
+  payPayout(payoutNo: string, paymentRef: string): Promise<Payout>;
+  /** 打款失败或退回。原因必填；结算单回待对账、批次回可放款 */
+  failPayout(payoutNo: string, reason: string): Promise<Payout>;
 
   // ── 商家欠款（Z4 追偿第二层）
 

@@ -1,7 +1,9 @@
 package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.pay.PayoutService;
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.pay.SettleService.SplitLogVO;
 import ai.neargo.shop.pay.dto.SettleBillVO;
 import java.util.List;
@@ -35,11 +37,17 @@ public class OpsSettleController {
 
     private final SettleService settleService;
     private final ai.neargo.shop.pay.SettleBatchService batchService;
+    private final PayoutService payoutService;
+    private final AuditLogPort auditLogPort;
 
     public OpsSettleController(SettleService settleService,
-                               ai.neargo.shop.pay.SettleBatchService batchService) {
+                               ai.neargo.shop.pay.SettleBatchService batchService,
+                               PayoutService payoutService,
+                               AuditLogPort auditLogPort) {
         this.settleService = settleService;
         this.batchService = batchService;
+        this.payoutService = payoutService;
+        this.auditLogPort = auditLogPort;
     }
 
     /**
@@ -58,17 +66,34 @@ public class OpsSettleController {
     }
 
     /**
-     * 人工放行一批。<b>必须写原因</b> —— 事后要能回答「当时凭什么放的」。
+     * 挂起处置通过（BLOCKED → RECONCILED）。<b>必须写原因</b> —— 事后要能回答「当时凭什么放的」。
      *
-     * <p>与超时自动放行（{@code decided_by = SYSTEM_TIMEOUT}）分开统计：
+     * <p>2026-10-09 之前这条路径叫 {@code /release}，而它从来不放钱 —— 真放款在下面那条。
+     * 与超时自动放行（{@code decided_by = SYSTEM_TIMEOUT}）分开统计：
      * 那个数持续大于零，说明挂起时限比运营的处置能力短，要调的是时限不是任务。
      */
-    @PostMapping("/ops/settle-batches/{batchNo}/release")
+    @PostMapping("/ops/settle-batches/{batchNo}/approve")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
-    public ai.neargo.shop.pay.SettleBatchService.BatchVO releaseBatch(
+    public ai.neargo.shop.pay.SettleBatchService.BatchVO approveBatch(
             @PathVariable String batchNo, @RequestBody DecideReq req) {
-        return batchService.release(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
+        return batchService.approve(batchNo, ai.neargo.shop.auth.SecurityUtils.currentUserNo(),
                 req == null ? null : req.remark());
+    }
+
+    /**
+     * <b>放款</b>：RECONCILED → RELEASED，按收款号生成放款记录（TDD-账期推进与放款记录 §2.2 ⑤）。
+     * 三道闸（票、账户、状态）在服务里。<b>写 critical 审计</b>：这是运营端唯一让钱出去的动作。
+     */
+    @PostMapping("/ops/settle-batches/{batchNo}/release")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_PAYOUT_EXECUTE + "')")
+    public java.util.List<PayoutService.PayoutVO> releaseBatch(@PathVariable String batchNo) {
+        String operator = ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        var payouts = payoutService.releaseBatch(batchNo, operator);
+        auditLogPort.record("SETTLE_BATCH_RELEASE", batchNo,
+                "放款：生成 %d 笔 · 合计 %d 分".formatted(payouts.size(),
+                        payouts.stream().mapToLong(PayoutService.PayoutVO::amountMinor).sum()),
+                true);
+        return payouts;
     }
 
     /** 继续挂起。同样必须写原因 */

@@ -524,6 +524,11 @@ export interface ChannelMessage {
  * 不要存进任何全局 state、不要打日志。
  */
 export interface PayoutRow {
+  /**
+   * 放款单号（V391）。**有号的按号回填凭证**（`payPayout`），
+   * 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。
+   */
+  payoutNo?: string | null;
   /** 供应商主体号 */
   entityNo: string;
   /** 商家名。查不到时回落成主体号 */
@@ -808,7 +813,48 @@ export type SettleBatchStatus =
   | "RECONCILING"    // 三道对账门在跑
   | "BLOCKED"        // 有未处置差异或风控命中，整批挂起
   | "RECONCILED"     // 全过，可放行
-  | "RELEASED";      // 已逐单下发指令
+  | "RELEASED";      // 已放款：生成了放款记录（自营）或待分账（第三方）
+
+/**
+ * 放款记录（V391 / TDD-账期推进与放款记录）：**账期批次 × 收款号，一笔网银转账一条**。
+ * 凭证号与银行流水挂在它上面，不再挂在逐张结算单上。
+ */
+export interface Payout {
+  payoutNo: string;
+  batchNo: string;
+  entityNo: string;
+  payMerchantNo: string | null;
+  /** 付款时快照：银行要户名，而账号会改 */
+  accountName: string | null;
+  bankName: string | null;
+  bankBranch: string | null;
+  accountNoMasked: string | null;
+  amountMinor: number;
+  billCount: number;
+  currency: string;
+  status: PayoutStatus;
+  channel: PayoutChannel;
+  paymentRef: string | null;
+  bankFlowNo: string | null;
+  exportedAt: number | null;
+  paidAt: number | null;
+  paidBy: string | null;
+  matchedAt: number | null;
+  failReason: string | null;
+  /** 本笔包含的结算单 */
+  settleNos: string[];
+}
+
+/** 放款通道。一期全是网银手工；BANK_API 预留，接口来了只换 EXPORTED→PAID 那一步 */
+export type PayoutChannel = "MANUAL" | "BANK_API";
+
+/** 只有一个方向。MATCHED 只能由出款对账轴写（银行流水勾上），不给人工入口 */
+export type PayoutStatus =
+  | "PENDING"    // 已生成，待导出进付款清单
+  | "EXPORTED"   // 已导出，财务拿去网银
+  | "PAID"       // 已登记凭证
+  | "MATCHED"    // 银行流水勾上
+  | "FAILED";    // 打款失败或退回
 
 /**
  * 商家欠款：退款追不回来时先记在账上，从后续货款里扣。

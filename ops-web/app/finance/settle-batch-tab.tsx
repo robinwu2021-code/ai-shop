@@ -57,7 +57,7 @@ export function SettleBatchTab({ c, canExecute }: { c: FinanceCopy; canExecute: 
   const decide = useMutation({
     mutationFn: ({ batchNo, pass }: { batchNo: string; pass: boolean }) =>
       pass
-        ? api.releaseSettleBatch(batchNo, remark[batchNo] ?? "")
+        ? api.approveSettleBatch(batchNo, remark[batchNo] ?? "")
         : api.holdSettleBatch(batchNo, remark[batchNo] ?? ""),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["settle-batches"] });

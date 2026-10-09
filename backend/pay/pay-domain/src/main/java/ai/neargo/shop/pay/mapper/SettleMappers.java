@@ -36,6 +36,11 @@ public final class SettleMappers {
             extends BaseMapper<ai.neargo.shop.pay.entity.StlBankFlow> {
     }
 
+    /** 放款记录（V391）：账期批次 × 收款号一笔 */
+    public interface PayoutMapper
+            extends BaseMapper<ai.neargo.shop.pay.entity.StlPayout> {
+    }
+
     /** 采购进项票（自营）。发票代码+号码联合唯一，挡住同一张票冲两个周期的账。 */
     public interface PurchaseInvoiceMapper extends BaseMapper<StlPurchaseInvoice> {
     }

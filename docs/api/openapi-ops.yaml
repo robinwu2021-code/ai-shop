@@ -6786,6 +6786,11 @@ components:
     PayoutRow: 
       type: "object"
       properties: 
+        payoutNo: 
+          type: 
+            - "string"
+            - "null"
+          description: "放款单号（V391）。**有号的按号回填凭证**（`payPayout`）， 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。"
         entityNo: 
           type: "string"
           description: "供应商主体号"
@@ -7309,6 +7314,118 @@ components:
         - "SELF_ONLY"
         - "BOTH"
       description: "对账覆盖面。<b>SELF_ONLY 不等于「对完了」</b> —— 它只是我方账内自洽，通道账单还没比过。界面要如实标注， 显示成「已对账」是一句自证的话。"
+    Payout: 
+      type: "object"
+      properties: 
+        payoutNo: 
+          type: "string"
+        batchNo: 
+          type: "string"
+        entityNo: 
+          type: "string"
+        payMerchantNo: 
+          type: 
+            - "string"
+            - "null"
+        accountName: 
+          type: 
+            - "string"
+            - "null"
+          description: "付款时快照：银行要户名，而账号会改"
+        bankName: 
+          type: 
+            - "string"
+            - "null"
+        bankBranch: 
+          type: 
+            - "string"
+            - "null"
+        accountNoMasked: 
+          type: 
+            - "string"
+            - "null"
+        amountMinor: 
+          type: "number"
+        billCount: 
+          type: "number"
+        currency: 
+          type: "string"
+        status: 
+          "$ref": "#/definitions/PayoutStatus"
+        channel: 
+          "$ref": "#/definitions/PayoutChannel"
+        paymentRef: 
+          type: 
+            - "string"
+            - "null"
+        bankFlowNo: 
+          type: 
+            - "string"
+            - "null"
+        exportedAt: 
+          type: 
+            - "number"
+            - "null"
+        paidAt: 
+          type: 
+            - "number"
+            - "null"
+        paidBy: 
+          type: 
+            - "string"
+            - "null"
+        matchedAt: 
+          type: 
+            - "number"
+            - "null"
+        failReason: 
+          type: 
+            - "string"
+            - "null"
+        settleNos: 
+          type: "array"
+          items: 
+            type: "string"
+          description: "本笔包含的结算单"
+      required: 
+        - "payoutNo"
+        - "batchNo"
+        - "entityNo"
+        - "payMerchantNo"
+        - "accountName"
+        - "bankName"
+        - "bankBranch"
+        - "accountNoMasked"
+        - "amountMinor"
+        - "billCount"
+        - "currency"
+        - "status"
+        - "channel"
+        - "paymentRef"
+        - "bankFlowNo"
+        - "exportedAt"
+        - "paidAt"
+        - "paidBy"
+        - "matchedAt"
+        - "failReason"
+        - "settleNos"
+      additionalProperties: false
+      description: "放款记录（V391 / TDD-账期推进与放款记录）：**账期批次 × 收款号，一笔网银转账一条**。 凭证号与银行流水挂在它上面，不再挂在逐张结算单上。"
+    PayoutStatus: 
+      type: "string"
+      enum: 
+        - "PENDING"
+        - "EXPORTED"
+        - "PAID"
+        - "MATCHED"
+        - "FAILED"
+      description: "只有一个方向。MATCHED 只能由出款对账轴写（银行流水勾上），不给人工入口"
+    PayoutChannel: 
+      type: "string"
+      enum: 
+        - "MANUAL"
+        - "BANK_API"
+      description: "放款通道。一期全是网银手工；BANK_API 预留，接口来了只换 EXPORTED→PAID 那一步"
     MerchantDebt: 
       type: "object"
       properties: 
@@ -15280,9 +15397,9 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/settle-batches/{batchNo}/release": 
+  "/ops/settle-batches/{batchNo}/approve": 
     post: 
-      operationId: "releaseSettleBatch"
+      operationId: "approveSettleBatch"
       summary: "人工放行一批"
       tags: 
         - "finance"
@@ -15345,6 +15462,150 @@ paths:
                   - "data"
       parameters: 
         - name: "batchNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/settle-batches/{batchNo}/release": 
+    post: 
+      operationId: "releaseSettleBatch"
+      summary: "**放款**（V391）：RECONCILED → RELEASED，按收款号生成放款记录"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Payout"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/payouts": 
+    get: 
+      operationId: "listPayouts"
+      summary: "listPayouts"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/Payout"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payouts/{payoutNo}/paid": 
+    post: 
+      operationId: "payPayout"
+      summary: "登记凭证"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Payout"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "payoutNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/payouts/{payoutNo}/fail": 
+    post: 
+      operationId: "failPayout"
+      summary: "打款失败或退回"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Payout"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "payoutNo"
           in: "path"
           required: true
           schema: 

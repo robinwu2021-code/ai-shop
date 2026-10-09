@@ -24,6 +24,12 @@ public class StlBill extends BaseEntity {
     /** 资金路径：直连商家二级户（分账）。**只有这条路径存在补差动作** */
     public static final String DIRECT = "DIRECT";
 
+    /**
+     * 经营模式：自营（business_mode 列）。与 {@code MerchantQueryPort.MODE_SELF_OPERATED} 同值 ——
+     * 支付域自己留一份，是为了不再多一处对商家域的反向引用（PayReverseDependencyBudgetTest 盯着那个数）。
+     */
+    public static final String BIZ_SELF_OPERATED = "SELF_OPERATED";
+
     public static final String PENDING_RECON = "PENDING_RECON";
     /** 已确认：双方对账一致，等收票与付款。 */
     public static final String CONFIRMED = "CONFIRMED";
@@ -294,6 +300,11 @@ public class StlBill extends BaseEntity {
 
     /** 归属账期批次。为空 = 还没入批；查「这单卡在哪」全靠它 */
     private String batchNo;
+    /**
+     * 这张单在哪笔放款里（V391）。为空 = 还没放款，或走的是老的逐张付款路（存量）。
+     * 凭证号从此挂在放款记录上，这里的 payment_ref 只是镜像 —— 存量那条老路的读者还在读它。
+     */
+    private String payoutNo;
 
     /** 财务登记的付款时间。与 {@code splitAt} 分开——那是分账时间，两条轨道不共用。 */
     private Long paidAt;

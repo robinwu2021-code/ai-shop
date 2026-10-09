@@ -54,6 +54,8 @@ public class StlBankFlow extends BaseEntity {
 
     /** 勾对上的结算单号；空 = 还没勾上（可能是差异，也可能只是还没扫到） */
     private String matchedSettleNo;
+    /** 勾上的放款单（V391）。matchedSettleNo 留给存量的逐张付款 */
+    private String matchedPayoutNo;
 
     /** 谁传的。银行流水是对账的判据，<b>判据从哪来要留痕</b> */
     private String importedBy;

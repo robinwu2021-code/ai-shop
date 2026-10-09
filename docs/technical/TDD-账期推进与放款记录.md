@@ -77,7 +77,7 @@ DRAFT ─close→ COLLECTED ─④reconcile→ RECONCILING ─自查全过→ RE
 - **⑤ `release(batchNo)`**（改）：只接受 `RECONCILED`。
   按 `pay_merchant_no` 分组生成 `stl_payout`（一组一笔），批次置 `RELEASED`，本批结算单置 `CONFIRMED`。
   **三道闸在这里**：缺生效收款账户 → `PAYOUT_ACCOUNT_MISSING`；
-  任一自营单进项票未了结 → `INVOICE_REQUIRED`（带 settleNo 清单）。闸不过批次不动，运营补齐再放。
+  任一自营单进项票未了结 → `PAYOUT_INVOICE_PENDING`（带 settleNo 清单；不复用 `INVOICE_REQUIRED`——它在老路上无参抛、文案没有 `{0}`）。闸不过批次不动，运营补齐再放。
   第三方单（`PENDING`）的批次不生成 payout —— 它们走分账轨，`RELEASED` 后由 `executeSplit` 接（不在本 TDD）。
 - 原 `release` 端点语义改名 **`approve`**（挂起处置通过）。`hold` 不变。
 
@@ -114,7 +114,7 @@ stl_bank_flow   + matched_payout_no  （原 matched_settle_no 留着给存量）
 | 端点 /biz | `GET /biz/settle/batch` 的 `BatchVO` 加 `payoutStatus / paymentRef / paidAt` |
 | 权限码 | 复用 `finance:settle:execute`（approve/release）、`finance:payout:execute`（paid/fail/payout-list）；不加新码 |
 | 配置项 | `shop.settle.freeze-days`、`shop.job.settle-batch.{cron,dry-run,start-date}` |
-| ErrorCode | 新 `PAYOUT_ACCOUNT_MISSING`、`BATCH_NOT_RELEASABLE`、`PAYOUT_NOT_PAYABLE` |
+| ErrorCode | 新 `PAYOUT_ACCOUNT_MISSING`、`BATCH_NOT_RELEASABLE`、`PAYOUT_NOT_PAYABLE`、`PAYOUT_INVOICE_PENDING` |
 | i18n | ops-web 财务文案（放款 tab）、b-app `income.*` 三条 |
 | 菜单 | 撤「提现审批」「提现与税」；「账期批次与放款」改为批次 + 放款两段 |
 
@@ -146,13 +146,13 @@ stl_bank_flow   + matched_payout_no  （原 matched_settle_no 留着给存量）
 | C | `SettleBatchJobFlowTest#dryRunReportsButWritesNothing` | ✅ | dry-run 仍写库 → 红 |
 | C | `SettleBatchJobFlowTest#startDateTomorrowMovesNothing` + `SettleBatchFlowTest#startDateFencesOffLegacyBills` | ✅ | 去掉起始日谓词 → 红 |
 | AC4 | `SettleBatchJobFlowTest#stepOrderIsFixedAndFailuresAreIsolated` | ✅ | 换成 collect→mark → 当轮少入批 → 红 |
-| AC6 | `PayoutFlowTest#放款按收款号分组一组一笔_合计等于本组结算单` | 待填 | 不分组 → 红 |
-| AC6 | `PayoutFlowTest#缺收款账户不放_批次不动` | 待填 | 去掉账户闸 → 红 |
-| AC6 | `PayoutFlowTest#任一单票未了结不放_报出是哪几张` | 待填 | 去掉票闸 → 红 |
-| AC6 | `PayoutFlowTest#只有RECONCILED能放_RELEASED再放是CONFLICT` | 待填 | — |
-| AC7 | `PayoutFlowTest#回填凭证后结算单跟着PAID` | 待填 | 不级联 → 红 |
-| AC7 | `PayoutBankReconFlowTest`（改）`#流水按payout勾_勾上即MATCHED` | 待填 | 不写 MATCHED → 红 |
-| AC7 | `PayoutListFlowTest`（改）`#清单一行一笔payout_导出后置EXPORTED` | 待填 | — |
+| AC6 | `PayoutFlowTest#releaseGroupsByPayMerchantAndSumsNet` | ✅ | ✅ 不分组 → 红 |
+| AC6 | `PayoutFlowTest#accountGateBlocksRelease` | ✅ | — |
+| AC6 | `PayoutFlowTest#invoiceGateNamesTheBills` | ✅ | ✅ 去掉票闸 → 红 |
+| AC6 | `PayoutFlowTest#onlyReconciledBatchCanBeReleased`（码是 BATCH_NOT_RELEASABLE，不是 CONFLICT） | ✅ | — |
+| AC7 | `PayoutFlowTest#markPaidCascadesToBills` + `#markFailedRollsBackSoItCanBeReleasedAgain` | ✅ | ✅ 不级联 → 红 |
+| AC7 | `PayoutBankReconFlowTest#payoutMatchedByBankFlowBecomesMatched` + `#duplicateRefAcrossPayoutsIsADiffOnEach` | ✅ | — |
+| AC7 | `PayoutListFlowTest#payoutRowsComeFirstAndGetExported` | ✅ | — |
 | AC9 | `packages/shared` nav / perm 守卫 | 待填 | — |
 
 判据取「钱有没有按规则动」（状态、金额、分组），不取耗时。
@@ -182,6 +182,33 @@ backend/shop-app/src/test/.../SettleBatchJobFlowTest.java    新 5 条
 
 **配置键与 §2.4 的一处偏差**：起始日放在 `shop.job.settle-batch.start-date`（Job 拥有它），
 不是 `shop.settle.batch-start-date`。
+
+### 批 2（2026-10-09）
+
+```
+库表   V391__stl_payout.sql（新表 + stl_bill.payout_no + stl_bank_flow.matched_payout_no）；schema-test.sql 重出
+域     StlPayout · PayoutService/Impl（releaseBatch / list / markExported / markPaid / markFailed）
+       SettleBatchService.release → approve（它从来不放钱）；PayoutReconAxis 两种粒度并存
+       BizKey.PAYOUT · ErrorCode 70077–70080 + 三语文案 + 响应格式规范 §3
+app    OpsPayoutController（GET /ops/payouts · paid · fail）· OpsSettleController（approve 新 · release 真放款）
+       OpsPayoutListAppServiceImpl 先出放款记录再出存量；DataScopeRegistration 登记 stl_payout
+守卫   perm-endpoint-map · check-enum-fields FIELDS ×2 · enum-registry ×2 · ops-data-scope ANCHOR_WAIVED ×2
+ops-web contracts / https / mocks / types 接线；settle-batch-tab 的处置按钮改调 approve（放款 tab 在批 3）
+测试   PayoutFlowTest 7 条（新）· PayoutBankReconFlowTest +2 · PayoutListFlowTest +1 · 批次两类跟 approve 改名
+产物   openapi-ops.yaml · API清单 · API详情-平台端 · 三端权限矩阵 · 运营端角色×端点矩阵(+fixture) ·
+       中英文对照 ×2 · 后端分层清单 · 数据库表清单（都在只带本批改动的副本上重出）
+```
+
+**三处消融各红一条**：不按收款号分组 / 去掉票闸 / 回填凭证不级联。
+
+**偏差说明**
+
+- §2.4 写的 `INVOICE_REQUIRED` 改成新码 `PAYOUT_INVOICE_PENDING`：老路上那个码无参抛、文案没有 `{0}`，
+  而放款要一次报出全部不合格单号 —— `message-placeholder` 守卫把这件事拦下来了。
+- 读放款记录的三条路（列表 / 登记 / 退回）**不绕数据域**：配了商家域的财务拿别家的放款单号来登记该是 NOT_FOUND。
+  `ops-data-scope` G1 守卫拦下的是 GET 付款清单里顺手置 EXPORTED 那一笔绕过。
+- `glossary.json` / `静态常量清单.md` 这批仍没重出：主树里别的会话正在改它们。`db-stl.svg` / `ER 图` 生成器跑出了变化
+  但没拷回：那两份由别的会话的生成器在管，而且 `check-generated-docs` 不盯它们。
 
 
 ## §7 确认与完成

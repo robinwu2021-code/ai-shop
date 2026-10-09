@@ -145,7 +145,7 @@ class SettleBatchJobFlowTest {
         @Override public List<BatchMismatch> checkBatchTotals(int limit) { throw new UnsupportedOperationException(); }
         @Override public List<BatchVO> merchantBatches(String entityNo) { throw new UnsupportedOperationException(); }
         @Override public List<BatchVO> opsBatches(String status, String entityNo) { throw new UnsupportedOperationException(); }
-        @Override public BatchVO release(String batchNo, String operator, String remark) { throw new UnsupportedOperationException(); }
+        @Override public BatchVO approve(String batchNo, String operator, String remark) { throw new UnsupportedOperationException(); }
         @Override public BatchVO hold(String batchNo, String operator, String reason) { throw new UnsupportedOperationException(); }
         @Override public Preview preview(Long from) { throw new UnsupportedOperationException(); }
     }

@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.pay.entity.StlBankFlow;
 import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlPayout;
 import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -45,13 +46,16 @@ public class PayoutReconAxis implements ReconAxis {
     private final SettleMappers.BillMapper billMapper;
     private final SettleMappers.ReconDiffMapper diffMapper;
     private final SettleMappers.BankFlowMapper bankFlowMapper;
+    private final SettleMappers.PayoutMapper payoutMapper;
 
     public PayoutReconAxis(SettleMappers.BillMapper billMapper,
                            SettleMappers.ReconDiffMapper diffMapper,
-                           SettleMappers.BankFlowMapper bankFlowMapper) {
+                           SettleMappers.BankFlowMapper bankFlowMapper,
+                           SettleMappers.PayoutMapper payoutMapper) {
         this.billMapper = billMapper;
         this.diffMapper = diffMapper;
         this.bankFlowMapper = bankFlowMapper;
+        this.payoutMapper = payoutMapper;
     }
 
     @Override
@@ -61,9 +65,18 @@ public class PayoutReconAxis implements ReconAxis {
 
     @Override
     public ScanOutcome scan(long now) {
+        /*
+         * **两种粒度并存**（V391 起）：有放款记录的按放款单对（一笔转账一个号），
+         * 没有的是存量老路（逐张回填）。存量那条留着直到清零 —— 突然不对它们，
+         * 已经登记的几十张单就从对账里消失了。
+         */
         List<StlBill> paid = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getStatus, StlBill.PAID)));
+                        .eq(StlBill::getStatus, StlBill.PAID)
+                        .isNull(StlBill::getPayoutNo)));
+        List<StlPayout> payouts = DataScopeContext.executeWithoutScope(() ->
+                payoutMapper.selectList(Wrappers.<StlPayout>lambdaQuery()
+                        .in(StlPayout::getStatus, StlPayout.PAID, StlPayout.MATCHED)));
 
         // 流水号 → 用了它的单。**先全量归并再判**：逐条查「有没有别的单用了同一个号」
         // 是 N 次往返，而这张表会一直长
@@ -76,6 +89,26 @@ public class PayoutReconAxis implements ReconAxis {
                 continue;
             }
             byRef.computeIfAbsent(ref.trim(), k -> new java.util.ArrayList<>()).add(b);
+        }
+        /*
+         * 放款粒度的 A 侧：没凭证号不可能（登记时必填），同号两笔放款才是要抓的 ——
+         * 一笔钱被登记成两笔放款，是真金白银的重复付款。
+         * 与存量单共用同一个 byRef 表：一个号既在放款上又在存量单上同样要报。
+         */
+        Map<String, List<StlPayout>> payoutByRef = new HashMap<>();
+        for (StlPayout p : payouts) {
+            if (p.getPaymentRef() != null && !p.getPaymentRef().isBlank()) {
+                payoutByRef.computeIfAbsent(p.getPaymentRef().trim(), k -> new java.util.ArrayList<>()).add(p);
+            }
+        }
+        for (var e : payoutByRef.entrySet()) {
+            int legacy = byRef.getOrDefault(e.getKey(), List.of()).size();
+            if (e.getValue().size() + legacy < 2) {
+                continue;
+            }
+            for (StlPayout p : e.getValue()) {
+                opened += openPayout(p, DIFF_DUP_REF, e.getKey());
+            }
         }
         for (var e : byRef.entrySet()) {
             if (e.getValue().size() < 2) {
@@ -102,7 +135,7 @@ public class PayoutReconAxis implements ReconAxis {
                         .eq(StlBankFlow::getDirection, StlBankFlow.OUT)));
         if (flows.isEmpty()) {
             // 一条流水都没有 = B 侧还没数据。全部 deferred，一条差异都不记
-            return new ScanOutcome(paid.size(), 0, opened, paid.size());
+            return new ScanOutcome(paid.size() + payouts.size(), 0, opened, paid.size() + payouts.size());
         }
 
         String minDate = flows.stream().map(StlBankFlow::getTradeDate)
@@ -118,6 +151,42 @@ public class PayoutReconAxis implements ReconAxis {
 
         int deferred = 0;
         java.util.Set<String> hitFlowNos = new java.util.HashSet<>();
+        /*
+         * 放款记录与流水勾对。**勾上即 MATCHED** —— 这是放款状态机里唯一不由人写的一步，
+         * 与 SPLIT_CONFIRMED 只能由通道回执产生同一条规矩。
+         */
+        for (StlPayout p : payouts) {
+            String ref = p.getPaymentRef() == null ? null : p.getPaymentRef().trim();
+            if (ref == null || ref.isBlank()) {
+                continue;
+            }
+            String payDay = p.getPaidAt() == null ? null
+                    : java.time.Instant.ofEpochMilli(p.getPaidAt())
+                            .atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString();
+            if (payDay == null || minDate == null
+                    || payDay.compareTo(minDate) < 0 || payDay.compareTo(maxDate) > 0) {
+                deferred++;
+                continue;
+            }
+            StlBankFlow f = flowByNo.get(ref);
+            if (f == null) {
+                opened += openPayout(p, DIFF_NO_BANK_FLOW, ref);
+                continue;
+            }
+            hitFlowNos.add(f.getFlowNo().trim());
+            if (!p.getPayoutNo().equals(f.getMatchedPayoutNo())) {
+                f.setMatchedPayoutNo(p.getPayoutNo());
+                DataScopeContext.executeWithoutScope(() -> bankFlowMapper.updateById(f));
+            }
+            if (!StlPayout.MATCHED.equals(p.getStatus())) {
+                StlPayout patch = new StlPayout();
+                patch.setId(p.getId());
+                patch.setStatus(StlPayout.MATCHED);
+                patch.setBankFlowNo(f.getFlowNo());
+                patch.setMatchedAt(System.currentTimeMillis());
+                DataScopeContext.executeWithoutScope(() -> payoutMapper.updateById(patch));
+            }
+        }
         for (StlBill b : paid) {
             String ref = b.getPaymentRef();
             if (ref == null || ref.isBlank()) {
@@ -152,12 +221,41 @@ public class PayoutReconAxis implements ReconAxis {
          */
         for (StlBankFlow f : flows) {
             String no = f.getFlowNo() == null ? null : f.getFlowNo().trim();
-            if (no == null || hitFlowNos.contains(no) || f.getMatchedSettleNo() != null) {
+            if (no == null || hitFlowNos.contains(no)
+                    || f.getMatchedSettleNo() != null || f.getMatchedPayoutNo() != null) {
                 continue;
             }
             opened += openBankSide(f);
         }
-        return new ScanOutcome(paid.size() + flows.size(), 0, opened, deferred);
+        return new ScanOutcome(paid.size() + payouts.size() + flows.size(), 0, opened, deferred);
+    }
+
+    /** 放款粒度的差异：锚点是放款单号（payment_no 列），金额是放款额 */
+    private int openPayout(StlPayout p, String type, String ref) {
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
+                        .eq(StlReconDiff::getAxis, CODE)
+                        .eq(StlReconDiff::getPaymentNo, p.getPayoutNo())
+                        .eq(StlReconDiff::getDiffType, type)
+                        .eq(StlReconDiff::getStatus, "PENDING"))) > 0;
+        if (exists) {
+            return 0;
+        }
+        StlReconDiff d = new StlReconDiff();
+        d.setAxis(CODE);
+        d.setDiffNo(BizKey.next(BizKey.RECON_DIFF));
+        d.setDiffType(type);
+        d.setBillDate(java.time.LocalDate.now().toString());
+        d.setSource("SELF_CHECK");
+        d.setPaymentNo(p.getPayoutNo());
+        d.setPayChannel(CHANNEL_NA);
+        d.setChannelTxnNo(ref);
+        d.setPlatformAmountMinor(p.getAmountMinor() == null ? 0L : p.getAmountMinor());
+        d.setStatus("PENDING");
+        d.setTenantNo("MAIN");
+        d.setCreatedAt(LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
+        return 1;
     }
 
     private int open(StlBill b, String type, String ref) {
