@@ -27,6 +27,9 @@ const traceOpen = ref(false);
 const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
 /** 最新一条。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
+/** 有没有可展开的过程。没有就不给入口 —— 自提/配送单在这一栏只陈述落点 */
+const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
+const canOpenTrace = hasTrace;
 
 const expressCompanyName = computed(() => {
   const code = order.value?.expressCompany;
@@ -86,12 +89,28 @@ function copyExpressNo() {
  */
 function openWxTracking() {
   const token = order.value?.trace?.displayToken;
-  if (!token) return;
+  if (!token) return false;
   // **先打开、再刷新**：打开发生在点击回调里，不能排在 await 后面（同 requestSubscribe 的手势问题）
-  if (!openWxWaybillTracking(token)) {
-    uni.showToast({ title: String(t("trace.wxUnavailable")), icon: "none" });
-  }
+  const ok = openWxWaybillTracking(token);
   refreshTrace();
+  return ok;
+}
+
+/**
+ * 点顶部那一栏。**微信渠道直接进微信官方物流页**，不隔一层我们自己的弹框 ——
+ * 多一次点击、多等一次加载，换不来任何新信息。
+ *
+ * <p>插件打不开时**退回我们的弹框**而不是只弹一句提示：打不开的原因
+ * （版本老、未开通、token 过期）买家一个都解决不了，而轨迹数据我们手上就有。
+ * 2026-10-09 实测过插件报「物流组件没有加载出来」那一幕，那时用户什么也看不到。
+ */
+function openTrace() {
+  const t0 = order.value?.trace;
+  if (!t0?.nodes?.length) return;
+  if (t0.displayMode === "wx-plugin" && t0.displayToken && openWxTracking()) {
+    return;
+  }
+  traceOpen.value = true;
 }
 /**
  * 问一次物流页端点（TDD-物流模块 批 3）：它会顺带向微信校正一次状态（10 分钟内不重复），
@@ -432,20 +451,41 @@ onShow(load);
 
     <!-- 状态 + 时间线 -->
     <!--
-      物流一栏（原型 logistics-trace s08）。**履约与物流合在一起、放在最顶上**：
-      买家点进这一页十次有九次只为「货到哪了」，而它此前要翻过商品与金额才看得到
-      （快递单号与内联时间线都塞在下面的履约卡里）。
-      状态词与最新一条就在栏里 —— **不点开也知道**，这是这一栏存在的理由，不是省地方。
-      整栏可点 → 弹框里是全过程。
+      履约 + 物流，合成顶部一栏（原型 logistics-trace s08–s11）。
+      **这一栏回答的是「这一单现在走到哪、我该做什么」**，所以履约方式、自提点、
+      预约时间与快递轨迹在同一个地方 —— 此前它们分散在下面的履约卡里，
+      买家要翻过商品与金额才看得到，而他点进这一页十次有九次只为这一件事。
+      有轨迹才可点：微信渠道**直接进微信官方物流页**（不再隔一层我们自己的弹框），
+      插件打不开时才退回弹框 —— 见 openTrace。
     -->
-    <view v-if="order.trace && order.trace.nodes.length" class="sh-card block tracebar" @tap="traceOpen = true">
+    <view
+      v-if="order.fulfillment || hasTrace"
+      class="sh-card block tracebar"
+      @tap="openTrace"
+    >
       <view class="sh-row sh-row--between">
-        <text class="txt-strong">{{ $t(`trace.step.${traceStep}`) }}</text>
-        <sh-go :text="String($t('order.traceView'))"></sh-go>
+        <text class="txt-strong">
+          {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`fulfillment.${order.fulfillment}`) }}
+        </text>
+        <!-- 没有可展开的过程就不给入口：一个点不出东西的箭头比不给更糟 -->
+        <sh-go v-if="canOpenTrace" :text="String($t('order.traceView'))"></sh-go>
       </view>
+
       <!-- 最新一条最多两行：一行会截在半句上，再多就该点进去看了 -->
-      <text class="txt-caption sh-muted tracebar__last">{{ traceLatest }}</text>
-      <text v-if="order.expressNo" class="txt-caption sh-muted tracebar__no sh-num" @tap.stop="copyExpressNo">
+      <text v-if="hasTrace" class="txt-caption sh-muted tracebar__last">{{ traceLatest }}</text>
+
+      <!-- 履约落点：自提点 / 到货日 / 预约时间。快递单把履约方式也写出来（状态词占了标题位） -->
+      <text v-if="hasTrace && order.fulfillment" class="txt-caption sh-muted tracebar__row">
+        {{ $t(`fulfillment.${order.fulfillment}`) }}
+      </text>
+      <text v-if="order.pickupName" class="txt-caption sh-muted tracebar__row">{{ order.pickupName }}</text>
+      <text v-if="order.arriveDate" class="txt-caption sh-muted tracebar__row sh-num">
+        {{ $t("order.batchPickup") }} {{ order.arriveDate }}
+      </text>
+      <text v-if="order.appointmentAt" class="txt-caption sh-muted tracebar__row sh-num">
+        {{ $t("order.appointment") }} {{ datetime(order.appointmentAt) }}
+      </text>
+      <text v-if="order.expressNo" class="txt-caption sh-muted tracebar__row sh-num" @tap.stop="copyExpressNo">
         {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
         <text class="txt-primary">{{ $t("order.copy") }}</text>
       </text>
@@ -550,7 +590,7 @@ onShow(load);
       </text>
     </view>
 
-    <!-- 履约信息 -->
+    <!-- 订单信息。履约那几行 2026-10-09 上移进顶部那一栏（原型 s08），这里只剩单据本身 -->
     <view class="sh-card block">
       <!--
         **没有履约方式就整行不出**，不要渲染一个空值。
@@ -561,22 +601,6 @@ onShow(load);
         微信《小程序订单管理》的订单详情 path 传的正是主订单号，
         所以从微信点进来的每一单都会看到它。
       -->
-      <view v-if="order.fulfillment" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-caption fact__k">{{ $t("goods.fulfillment") }}</text>
-        <text class="txt-caption fact__v">{{ $t(`fulfillment.${order.fulfillment}`) }}</text>
-      </view>
-      <view v-if="order.pickupName" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-caption fact__k">{{ $t("order.pickup") }}</text>
-        <text class="txt-caption fact__v">{{ order.pickupName }}</text>
-      </view>
-      <view v-if="order.arriveDate" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-caption fact__k">{{ $t("order.batchPickup") }}</text>
-        <text class="txt-caption fact__v sh-num">{{ order.arriveDate }}</text>
-      </view>
-      <view v-if="order.appointmentAt" class="fact sh-row sh-row--between sh-row--top">
-        <text class="txt-caption fact__k">{{ $t("order.appointment") }}</text>
-        <text class="txt-caption fact__v sh-num">{{ datetime(order.appointmentAt) }}</text>
-      </view>
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
@@ -809,11 +833,6 @@ onShow(load);
   color: var(--sh-ink);
   text-align: end;
 }
-.fact--col {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
 .ops {
   gap: 16rpx;
   margin-top: 28rpx;
@@ -827,7 +846,7 @@ onShow(load);
   height: 60rpx;
 }
 
-/* 物流一栏（原型 s08）：整卡可点，状态词 + 最新一条（两行）+ 承运商单号 */
+/* 履约 + 物流合并栏（原型 s08）：状态词 + 最新一条（两行）+ 落点若干行 */
 .tracebar__last {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -835,8 +854,8 @@ onShow(load);
   overflow: hidden;
   margin-top: 8rpx;
 }
-.tracebar__no {
+.tracebar__row {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
 }
 </style>
