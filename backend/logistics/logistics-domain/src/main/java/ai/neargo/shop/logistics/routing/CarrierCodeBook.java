@@ -2,6 +2,7 @@ package ai.neargo.shop.logistics.routing;
 
 import ai.neargo.shop.logistics.entity.LgsCarrierCode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.CarrierCodeMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -26,6 +27,11 @@ public class CarrierCodeBook {
     private final LongSupplier clock;
     private volatile Snapshot snapshot;
 
+    /**
+     * 给 Spring 用的构造器。**必须标 {@code @Autowired}**：本类还有一个给测试注入时钟的构造器，
+     * 两个都不标时 Spring 去找无参构造器、整个上下文起不来（2026-10-09 全量 2250 红就是这么来的）。
+     */
+    @Autowired
     public CarrierCodeBook(CarrierCodeMapper mapper) {
         this(mapper, System::currentTimeMillis);
     }
