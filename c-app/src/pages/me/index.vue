@@ -7,6 +7,7 @@ import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { phoneRequired, withPhone, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { merchantApplyVisible, openWxCustomerService } from "@shared/ports";
+import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { useConfigStore } from "@/stores/config";
@@ -72,6 +73,26 @@ const withBiz = import.meta.env.VITE_WITH_BIZ === "1";
  */
 const isMerchant = computed(() => !!user.user?.merchantRole);
 function gotoBizOps() {
+  /*
+   * **进商家端这一下，顺带把商家那三条通知的订阅授权要了**（TDD-微信订阅消息优先 AC8）。
+   *
+   * 为什么挂在这里而不是只挂在发货/核销那些动作上：商家进来第一件事多半是看单，
+   * 而「来单提醒」恰恰要在**他还没做任何操作时**就能响。只挂在业务动作上的话，
+   * 他不发货就永远没有额度 —— 2026-10-09 真机实测正是如此：
+   * 支付成功、站内信与 App 推送都到了，微信一条没发，因为 notify_subscribe 里一行都没有。
+   *
+   * **必须在 navigateTo 之前同步调起**：微信只认用户点击当下的授权框，
+   * 页面一跳就弹不出来（同结算页那条）。不等它：授权框与跳转各走各的。
+   *
+   * 额度按 user_no 记，而店主的商家账号与 C 端**同一个 user_no**，
+   * 所以这里走 C 端的上报端点，发送时查得到。
+   */
+  void requestSubscribe([
+    SUBSCRIBE_TMPL.mchNewOrder, SUBSCRIBE_TMPL.mchAfterSale, SUBSCRIBE_TMPL.mchReview,
+  ]).then((r) => {
+    if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+    if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+  });
   uni.navigateTo({ url: "/pkg-biz/_entry/index" });
 }
 /**
