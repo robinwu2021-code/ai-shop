@@ -36,6 +36,11 @@ const traceOpen = ref(false);
 const traceStep = computed(() => (shownTrace.value ? traceStepKey(shownTrace.value) : "picked"));
 /** 摘要行上的最新一条。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => shownTrace.value?.nodes?.[0]?.text ?? "");
+/** 承运商显示名。拿不到译名就显示原码 —— 显示「STO」好过显示空白 */
+const carrierLabel = computed(() => {
+  const code = shownTrace.value?.carrier || order.value?.expressCompany || "";
+  return carriers.find((c) => c.code === code)?.name || code;
+});
 
 /** 已取消 / 已退款的单：券与积分的去向（后端只在这两个状态、只在详情给） */
 const returnedLines = computed(() => {
@@ -320,10 +325,37 @@ onLoad((q) => {
     @retry="() => load(currentNo)"
   >
     <template v-if="order">
+      <!--
+        物流一栏，**放在最顶上、独立成卡**（淘宝订单详情那种形态）。
+        店主打开这一页最常问的就是「货到哪了」，它不该排在订单号、下单时间后面；
+        而混在订单信息那堆键值行里，它读起来像又一条属性，不像一件在变化的事。
+        整卡可点 → 弹框里是全过程。
+      -->
+      <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true">
+        <view class="sh-row sh-row--between">
+          <text class="txt-body trace-card__st">{{ $t(`trace.step.${traceStep}`) }}</text>
+          <sh-go :text="String($t('order.traceView'))"></sh-go>
+        </view>
+        <!-- 最新一条**最多两行**：一行截得太狠（「预计10月10日到达…」停在「两地」），
+             两行能把「哪天到哪儿」说完；再多就该点进去看了 -->
+        <text class="txt-caption sh-muted trace-card__last">{{ traceLatest }}</text>
+        <text class="txt-caption sh-muted trace-card__no">
+          {{ carrierLabel }} {{ order.expressNo }}
+        </text>
+      </view>
+
       <view class="sh-card">
         <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.no") }}</text>
-          <text class="sh-num">{{ order.orderNo }}</text>
+          <view class="sh-row no-row__v">
+            <text class="sh-num">{{ order.orderNo }}</text>
+            <!-- 复制订单信息发给供应商（§5）。**不占一整行**：它是顺手动作，
+                 而整宽按钮会把它读成这一页的主动作，挤掉真正的主动作（发货）。
+                 贴在订单号右边：复制的正是这张卡上的东西 -->
+            <text class="sh-link no-row__copy" @tap.stop="copyForSupplier">
+              {{ $t("order.copyToSupplier") }}
+            </text>
+          </view>
         </view>
         <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.createdAt") }}</text>
@@ -339,12 +371,6 @@ onLoad((q) => {
           <text class="sh-muted">{{ $t("order.buyer") }}</text>
           <text>{{ order.buyerNickname || "—" }}</text>
         </view>
-        <view v-if="order.trafficSource" class="line sh-row sh-row--between">
-          <text class="sh-muted">{{ $t("home.ownedTraffic") }}</text>
-          <text class="sh-chip sh-chip--primary">
-            {{ $t(`order.traffic${order.trafficSource}`) }}
-          </text>
-        </view>
         <!--
           收件人。自提单没有这一段（货在自提点，不送）。
           手机号的脱敏程度后端已经按履约方式定好了，这里原样显示 ——
@@ -359,24 +385,6 @@ onLoad((q) => {
             </text>
             <text class="txt-caption recv__addr">{{ order.receiver.address }}</text>
           </view>
-        </view>
-        <!--
-          物流轨迹（TDD-物流模块 B2）。**主页面只留一行摘要**，详情进弹框：
-          轨迹是「要看一眼」的东西，不是「一直摊在那」的东西 —— 铺开要占半屏，
-          而店主在这一页真正要做的是发货、改地址、复制给供应商。
-          一行里带状态与最新一条，**不点开也知道货到哪了**。
-        -->
-        <view v-if="shownTrace && shownTrace.nodes.length" class="line line--wrap trace-row" @tap="traceOpen = true">
-          <text class="sh-muted">{{ $t("order.trace") }}</text>
-          <view class="sh-row sh-fill trace-row__body">
-            <text class="txt-body trace-row__st">{{ $t(`trace.step.${traceStep}`) }}</text>
-            <text class="txt-caption sh-muted sh-fill trace-row__last">{{ traceLatest }}</text>
-            <text class="trace-row__go">›</text>
-          </view>
-        </view>
-        <!-- 复制订单信息发给供应商（§5）。放在订单信息卡尾：拣货要的就是这张卡上的东西 -->
-        <view class="sh-btn sh-btn--sm sh-btn--muted sh-mt-sm" @tap="copyForSupplier">
-          {{ $t("order.copyToSupplier") }}
         </view>
       </view>
 
@@ -596,12 +604,8 @@ onLoad((q) => {
 
     <!--
       物流详情弹框。**不折叠**：点进来就是为了看全过程，再给一个「展开全部」等于多一次点击。
-      **弹层里不画地图**（show-map=false）：`<map>` 在 App 端是原生组件，放进
-      position:fixed 的弹层会把 sh-trace **整棵子树**打掉 —— 步骤条、节点、电话全没了，
-      而 H5 完全正常、也不报错。2026-10-09 真机二分出来的：弹框里放一行纯文本能显示、
-      sh-trace 不显示，关掉地图后全回来。
-      顺带一提，这个坑此前一直被另一个缺陷盖着：详情内嵌的 trace 丢了经纬度 →
-      hasMap 恒 false → 根本不画 map，所以看着「一切正常」。
+      地图要节点带经纬度才画（sh-trace 的 hasMap）—— 详情内嵌那份一度丢了坐标，
+      于是地图整块不出现而页面不报错，2026-10-09 已修（LogisticsRegistrationFlowTest 盯着）。
     -->
     <sh-sheet
       v-if="shownTrace"
@@ -609,7 +613,7 @@ onLoad((q) => {
       :title="$t('order.trace')"
       @close="traceOpen = false"
     >
-      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length" :show-map="false"></sh-trace>
+      <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length"></sh-trace>
     </sh-sheet>
   </sh-scaffold>
 </template>
@@ -701,22 +705,28 @@ onLoad((q) => {
   background: var(--sh-primary-tint);
 }
 
-/* 物流摘要行：整行可点，右侧一个 ›。最新一条占满剩余宽度、单行省略 —— 两行会把这一行变成一小段 */
-.trace-row__body {
-  gap: 12rpx;
-  min-width: 0;
+/* 物流卡：整卡可点。放在最顶上 —— 店主打开这一页最先问的就是「货到哪了」 */
+.trace-card__st {
+  font-weight: 600;
 }
-.trace-row__st {
-  flex: none;
-}
-.trace-row__last {
-  min-width: 0;
+.trace-card__last {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  margin-top: 8rpx;
 }
-.trace-row__go {
+.trace-card__no {
+  display: block;
+  margin-top: 8rpx;
+}
+
+/* 订单号右边的「复制」：顺手动作，不占整行、不抢发货那个主动作 */
+.no-row__v {
+  gap: 16rpx;
+  min-width: 0;
+}
+.no-row__copy {
   flex: none;
-  color: var(--sh-text-muted);
 }
 </style>

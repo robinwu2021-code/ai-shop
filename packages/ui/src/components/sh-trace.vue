@@ -18,7 +18,13 @@ const props = withDefaults(defineProps<{
   trace: ShipmentTrace;
   /** 折叠阈值：超过这么多条就只显示前几条 + 「展开全部」。实测一单 12 条，全铺开要滑两屏 */
   foldAt?: number;
-  /** 画不画地图。弹层里要关掉 —— `<map>` 在 App 端是原生组件，放进 position:fixed 的弹层会整块不渲染 */
+  /**
+   * 画不画地图。默认画。
+   *
+   * <p>留这个开关是因为地图在窄容器里没有信息量（它本就是「城市级示意」），
+   * 而不是因为哪个端画不了 —— 2026-10-09 一度以为 App 的弹层画不了地图，
+   * 实测是 `Array.prototype.at` 在 App 运行时不存在把整块打掉了，与容器无关。
+   */
   showMap?: boolean;
 }>(), { foldAt: 3, showMap: true });
 
@@ -30,7 +36,7 @@ const stepIndex = computed(() => traceStepIndex(props.trace));
 const showSteps = computed(() => traceHasSteps(props.trace));
 
 /** 微信渠道那一屏只给最新一条，不给整条时间线——两边数据源不同，两份时间线会对不上 */
-const latestText = computed(() => props.trace.nodes.at(0)?.text || "");
+const latestText = computed(() => props.trace.nodes[0]?.text || "");
 
 const shown = computed(() =>
   expanded.value ? props.trace.nodes : props.trace.nodes.slice(0, props.foldAt));
@@ -59,14 +65,26 @@ const polyline = computed(() => [{
 }]);
 
 const markers = computed(() => {
-  const ps = [...points.value].reverse();
+  /*
+   * **变量名不能叫 `ps`**（同本文件下面那条「不能叫 m」）：UnoCSS 把 `ps[0]` 读成
+   * `ps-[0]`（padding-inline-start 的任意值），于是在 script 里改写源码，
+   * 整个 .vue 编译失败 —— 报错是「Cannot split a chunk that has already been edited」。
+   * 旧代码写的是 `ps.at(0)`，没有方括号所以躲过了；换成下标当场撞上。
+   */
+  const seq = [...points.value].reverse();
   const out: Record<string, unknown>[] = [];
   const label = (t: string, bg: string) => ({
     content: t, color: "#FFFFFF", fontSize: 10, bgColor: bg,
     padding: 3, borderRadius: 8, anchorX: 0, anchorY: -4, display: "ALWAYS",
   });
-  const first = ps.at(0);
-  const last = ps.at(-1);
+  /*
+   * **不要用 `Array.prototype.at`**：App 的 JS 运行时里没有它，
+   * 取到的是 `TypeError: n.at is not a function` —— 而这个 computed
+   * 只在地图渲染时求值，于是表现成「带地图就整块不渲染」，
+   * logcat 一个字都没有（2026-10-09 真机查出来的）。用下标。
+   */
+  const first = seq[0];
+  const last = seq[seq.length - 1];
   if (first) {
     out.push({ id: 1, latitude: first.lat, longitude: first.lng, width: 1, height: 1,
       callout: label(props.trace.route?.from || first.name, "#8C8C8C") });

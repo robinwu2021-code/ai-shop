@@ -729,6 +729,7 @@ export default {
     ship: "发货",
     expressNo: "运单号",
     trace: "物流轨迹",
+    traceView: "查看",
     pickCarrier: "请选择快递公司",
     expressBook: "叫快递上门",
     expressSandbox: "测试",

@@ -179,7 +179,8 @@ async function submit() {
   try {
     await api.mSubmitInvoice({
       // 周期取覆盖到的最后一个月：它只是票据上的标签，不参与选单
-      period: pending.value.periods.at(-1) ?? "",
+      // 不用 `.at(-1)`：App 的 JS 运行时没有 Array.prototype.at（见 sh-trace 的注释）
+      period: pending.value.periods[pending.value.periods.length - 1] ?? "",
       invoiceNumber: invoiceNumber.value.trim(),
       invoiceType: "GENERAL",
       titleName: titleName.value.trim(),
