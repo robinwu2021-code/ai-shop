@@ -207,6 +207,35 @@ public class WxSubscribeGateway implements WxSubscribePort {
         putFielded(SCENE_MCH_NEW_ORDER, mchNewOrder, mchNewOrderFields);
         putFielded(SCENE_MCH_AFTER_SALE, mchAfterSale, mchAfterSaleFields);
         putFielded(SCENE_MCH_REVIEW, mchReview, mchReviewFields);
+        logLoaded();
+    }
+
+    /**
+     * <b>把「哪些场景真有模板」在启动时说出来。</b>
+     *
+     * <p>加载本身是静默的：没配的场景只是不进 map，发送时抛一句「没配模板号」被上层
+     * 当成「站内信照发」吞掉。于是「env 里写了」与「进程读到了」这两件事之间
+     * <b>没有任何回读</b> —— 而这两者差一个字（键名拼错、值被引号包住、
+     * 改了 env 没重启）就全线静默失效，界面上一切正常。
+     *
+     * <p>生产只暴露 health / info 两个 actuator 端点，问不出容器里的值，
+     * 所以这一行日志是唯一的判据。**没配的那几个也要列出来** —— 那一半才是待办。
+     */
+    private void logLoaded() {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (String scene : new String[]{SCENE_AFTER_SALE_RESULT, SCENE_RETURN_WAIT, SCENE_GROUP_RESULT,
+                SCENE_DELIVERY_START, SCENE_MCH_NEW_ORDER, SCENE_MCH_AFTER_SALE, SCENE_MCH_REVIEW}) {
+            if (!fieldedTpls.containsKey(scene)) {
+                missing.add(scene);
+            }
+        }
+        // 只打场景名与格名，**不打模板号**：模板号不是密钥，但日志里没必要多一份可抄的东西
+        log.info("[wxsub] 按配置映射的模板：{} 个已接 {}；未配 {}（这些场景只走站内信 / App 推送）",
+                fieldedTpls.size(),
+                fieldedTpls.entrySet().stream()
+                        .map(e -> e.getKey() + fieldedTpls.get(e.getKey()).fields().keySet())
+                        .toList(),
+                missing);
     }
 
     /** {@code orderNo:character_string1,result:thing4} → 有序映射。格式不对的段跳过（启动不因配置拼写失败） */
@@ -377,9 +406,20 @@ public class WxSubscribeGateway implements WxSubscribePort {
         if (t.fields().isEmpty()) {
             throw new WxSubscribeException(scene + " 的字段映射没配（WX_TPL_*_FIELDS，写成 语义键:格名,…）", false);
         }
+        return send(openId, t.templateId(), page, fieldedData(t.fields(), values));
+    }
+
+    /**
+     * 语义键 → 模板格名，顺带把值整成微信收得下的样子。
+     *
+     * <p><b>单独抽出来是为了能测</b>：底下 {@link #send} 是真发 HTTP，而这里每一条
+     * 规则漏掉都只换来一个 47003（参数不符合规则）—— 微信那句话不说是哪一格，
+     * 而发送失败在上层被当成「站内信照发」吞掉，线上看不出来。
+     */
+    static Map<String, String> fieldedData(Map<String, String> fieldMap, Map<String, String> values) {
         Map<String, String> data = new LinkedHashMap<>();
-        for (var e : t.fields().entrySet()) {
-            String v = values.get(e.getKey());
+        for (var e : fieldMap.entrySet()) {
+            String v = values == null ? null : values.get(e.getKey());
             String field = e.getValue();
             // 领域给时间一律是毫秒数；time / date 格只认 DATE_FMT 那种写法，纯数字整条被拒
             if (v != null && (field.startsWith("time") || field.startsWith("date")) && v.matches("\\d{10,}")) {
@@ -389,7 +429,7 @@ public class WxSubscribeGateway implements WxSubscribePort {
             // 模板里选了的格都得有值，空着整条会被拒（47003）—— 填一个短横，让「少了一格」只是少一格
             data.put(field, clampByType(field, v == null || v.isBlank() ? "-" : v));
         }
-        return send(openId, t.templateId(), page, data);
+        return data;
     }
 
     /** 按微信字段类型截断：thing 20 字、phrase 5 字、character_string 32 位、name 10 字；其余原样 */
