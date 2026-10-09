@@ -566,7 +566,7 @@ class InventoryBizEndpointTest {
          */
         String token = merchant("12600288010", "退休上账·果蔬");
         String goodsNo = saveGoods(token, null, "[]", "[{\"optionValues\":[],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
-        dispatcher.dispatchPending();
+        drainOutbox();
         String oldSku = onlyLiveSkuOf(goodsNo);
         String oldItem = acl.itemIdOfSku(oldSku);
         String ownerId = acl.ownerOfSku(oldSku);
@@ -575,7 +575,7 @@ class InventoryBizEndpointTest {
         saveGoods(token, goodsNo,
                 "[{\"name\":\"重量\",\"options\":[\"约10斤\"]}]",
                 "[{\"optionValues\":[\"约10斤\"],\"price\":900,\"stock\":0,\"saleUnit\":\"袋\"}]");
-        dispatcher.dispatchPending();
+        drainOutbox();
 
         assertThat(pickableIdsOf(token))
                 .as("★ 零库存的退休物料必须当场消失 —— 留着就是弹层里两行一模一样的货")
@@ -594,7 +594,7 @@ class InventoryBizEndpointTest {
         saveGoods(token, goodsNo,
                 "[{\"name\":\"重量\",\"options\":[\"约20斤\"]}]",
                 "[{\"optionValues\":[\"约20斤\"],\"price\":1700,\"stock\":0,\"saleUnit\":\"袋\"}]");
-        dispatcher.dispatchPending();
+        drainOutbox();
 
         assertThat(pickableIdsOf(token))
                 .as("★★ 有库存的退休物料**必须留着** —— 那 3 袋是真货，归档掉商家再也盘不着，账永远平不了")
@@ -632,6 +632,21 @@ class InventoryBizEndpointTest {
                 .distinct().toList();
         assertThat(nos).as("前提：这件商品此刻应当只有一条活着的 SKU").hasSize(1);
         return nos.get(0);
+    }
+
+    /**
+     * 排空 outbox —— **必须循环，不能只推一把**。
+     *
+     * <p>{@code dispatchPending()} 一次最多投 200 条、按 id 升序，而待投队列是**全量跑时全套测试共用的**。
+     * 只推一把就隐含假设了「此刻全局积压不到 200 条」—— 那是这个测试控制不了的量。
+     * 2026-10-09 真实发生过：别的测试类新增了 3 条用例，积压越过 200，
+     * 这件货的上账事件被挤到后面投不出去，于是红在这里、缺陷在那边，
+     * 报错写着「这一份里没有 ITM…」，一路指向无关的归档逻辑。
+     */
+    private void drainOutbox() {
+        for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
+            dispatcher.dispatchPending();
+        }
     }
 
     private List<String> pickableIdsOf(String token) throws Exception {
@@ -676,7 +691,7 @@ class InventoryBizEndpointTest {
                         .get(0).getSkuNo());
 
         // Outbox 是「只写库、异步投」，所以要推一把才看得到消费方的结果
-        dispatcher.dispatchPending();
+        drainOutbox();
 
         assertThat(acl.itemIdOfSku(skuNo))
                 .as("建了 SKU 却没上账 —— 商家在库存里找不到这件货，而没有任何地方会报错")
