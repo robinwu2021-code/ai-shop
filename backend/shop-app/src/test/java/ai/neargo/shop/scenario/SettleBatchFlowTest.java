@@ -93,6 +93,130 @@ class SettleBatchFlowTest {
         return b;
     }
 
+    // ==================== 批 1：自营入批 · 自查 · 冻结 · 起始日（TDD-账期推进与放款记录） ====================
+
+    /** 造一张**自营**单（PENDING_RECON）。活钱走的是这条，而它此前一张都没进过批 */
+    private StlBill givenSelfBill(String suffix, long completedAt) {
+        StlBill b = givenBill(suffix, completedAt, null);
+        b.setStatus(StlBill.PENDING_RECON);
+        b.setBusinessMode(ai.neargo.shop.spi.user.MerchantQueryPort.MODE_SELF_OPERATED);
+        b.setInvoiceStatus(StlBill.INV_PENDING);
+        DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+        return b;
+    }
+
+    @Test
+    @DisplayName("★★★ 自营单也定 T2 也入批 —— 此前批次链只收第三方，活钱那条从来没进过批")
+    void selfOperatedBillsEnterBatches() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenSelfBill("self", old);
+
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+
+        StlBill b = reload("STL-BATCH-self");
+        assertThat(b.getSettleableAt()).as("自营单要定 T2").isNotNull();
+        assertThat(b.getBatchNo()).as("自营单要入批").isNotNull();
+        // 状态不动：PENDING_RECON 仍是它在应付链上的身份，入批不改它
+        assertThat(b.getStatus()).isEqualTo(StlBill.PENDING_RECON);
+    }
+
+    @Test
+    @DisplayName("★★★ 截批后自查全过 → 自动可放款（RECONCILED）—— 此前 COLLECTED 之后没有任何代码再推它")
+    void reconcilePromotesCleanBatch() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill("rc1", old, null);
+        givenBill("rc2", old, null);
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        batchService.closeDueBatches();
+        String batchNo = reload("STL-BATCH-rc1").getBatchNo();
+        assertThat(reloadBatch(batchNo).getStatus()).isEqualTo(StlSettleBatch.COLLECTED);
+
+        int moved = batchService.reconcileClosedBatches();
+
+        assertThat(moved).isEqualTo(1);
+        assertThat(reloadBatch(batchNo).getStatus()).isEqualTo(StlSettleBatch.RECONCILED);
+    }
+
+    @Test
+    @DisplayName("★★★ 本批有没处理的单据差异 → 挂起并写原因 —— 原因要能原样给商家看")
+    void reconcileBlocksBatchWithOpenDiff() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill("bd", old, null);
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        batchService.closeDueBatches();
+        String batchNo = reload("STL-BATCH-bd").getBatchNo();
+        // 截批之后才冒出来的一条差异（比如 fund-invariant 发现的）
+        DataScopeContext.executeWithoutScope(() -> jdbc.update(
+                "INSERT INTO stl_recon_diff (diff_no, axis, diff_type, bill_date, source, payment_no,"
+                + " pay_channel, status, tenant_no, created_at, updated_at) VALUES"
+                + " ('RD-BATCH-bd', 'BILL', 'BILL_UNBALANCED', '2026-10-09', 'SELF_CHECK',"
+                + " 'STL-BATCH-bd', 'NA', 'PENDING', 'MAIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"));
+
+        batchService.reconcileClosedBatches();
+
+        var row = reloadBatch(batchNo);
+        assertThat(row.getStatus()).isEqualTo(StlSettleBatch.BLOCKED);
+        assertThat(row.getBlockedReason()).contains("差异");
+        assertThat(row.getBlockedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("★★ 冻结到期 = 本批最早一单成交 + 7 天 —— 此前这一列刻意留空（没有书面口径）")
+    void freezeExpireIsEarliestAccrualPlusSevenDays() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill("f1", old, null);
+        givenBill("f2", old + 2 * DAY, null);   // 晚两天成交的
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+        batchService.closeDueBatches();
+
+        var row = reloadBatch(reload("STL-BATCH-f1").getBatchNo());
+        // 取最早那一单：整批一起放，最早的先到期，它到期就意味着这一批已经出问题了
+        assertThat(row.getFreezeExpireAt()).isEqualTo(old + 7 * DAY);
+    }
+
+    @Test
+    @DisplayName("★★★ 快递单也「平」—— 恒等式此前漏了运费两项，凡是快递单都进不了批")
+    void expressBillIsBalanced() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        StlBill b = givenBill("exp", old, null);
+        // net = gross − commission + freightIncome − freightCost：与落库公式同一条式子
+        b.setFreightIncomeMinor(800L);
+        b.setFreightCostMinor(1200L);
+        b.setFreightShipMode("PLATFORM_CALL");
+        b.setNetMinor(10000L - 500L + 800L - 1200L);
+        DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
+
+        batchService.markSettleable();
+        batchService.collectIntoBatches();
+
+        assertThat(reload("STL-BATCH-exp").getBatchNo())
+                .as("快递单账是平的，该入批；进不了批说明恒等式漏了运费")
+                .isNotNull();
+        Long diffs = DataScopeContext.executeWithoutScope(() ->
+                jdbc.queryForObject("SELECT COUNT(*) FROM stl_recon_diff WHERE payment_no = 'STL-BATCH-exp'", Long.class));
+        assertThat(diffs).as("平的单不该被记成差异").isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 起始日之前成交的单不推进 —— 存量走老路，两条路一撞就是重复付款")
+    void startDateFencesOffLegacyBills() {
+        long old = System.currentTimeMillis() - 30 * DAY;
+        givenBill("legacy", old, null);
+        givenBill("fresh", old + 10 * DAY, null);
+
+        // 起始日落在两单之间
+        batchService.markSettleable(old + 5 * DAY);
+        batchService.collectIntoBatches(old + 5 * DAY);
+
+        assertThat(reload("STL-BATCH-legacy").getSettleableAt()).as("起始日之前的不定 T2").isNull();
+        assertThat(reload("STL-BATCH-legacy").getBatchNo()).isNull();
+        assertThat(reload("STL-BATCH-fresh").getBatchNo()).as("起始日之后的照常入批").isNotNull();
+    }
+
     private StlBill reload(String settleNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectOne(Wrappers.<StlBill>lambdaQuery()

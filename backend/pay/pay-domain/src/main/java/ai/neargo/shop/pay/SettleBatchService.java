@@ -44,6 +44,45 @@ public interface SettleBatchService {
      */
     int closeDueBatches();
 
+    /**
+     * 同 {@link #markSettleable()}，但只看成交时刻 ≥ {@code fromAccruedAt} 的单。
+     *
+     * <p>这是「上线日」那道闸（TDD-账期推进与放款记录 §2.1 C）：
+     * 第一轮跑起来时库里有几个月的存量，不限起始日的话会把它们一次性全卷进批次，
+     * 而存量此前走的是逐张 confirm / paid 的老路，两条路一撞就是重复付款。
+     * 空 = 不限（测试与存量清零之后用）。
+     */
+    int markSettleable(Long fromAccruedAt);
+
+    /** 同 {@link #collectIntoBatches()}，限起始日，理由同上 */
+    int collectIntoBatches(Long fromAccruedAt);
+
+    /**
+     * ④ 把截批的批次推到可放款：<b>三道自查全过 → RECONCILED；任一不过 → BLOCKED + 原因</b>。
+     *
+     * <p>此前 {@link #closeDueBatches()} 把批次置 COLLECTED 之后<b>没有任何代码再推它</b>，
+     * 而人工处置只接受 BLOCKED / RECONCILING —— 于是一个批次都走不到放款。
+     *
+     * <p>三道自查：本批合计与其下结算单之和相等（R6）；本批没有挂着的单据差异；
+     * 资金风控不拦（影子模式下恒 PASS）。{@code reconScope = BOTH} 今天没有产生者，按 SELF_ONLY 走。
+     *
+     * @return 推进（含挂起）的批次数
+     */
+    int reconcileClosedBatches();
+
+    /**
+     * 只数不写：这一轮会推进多少。给 Job 的 dry-run 用 ——
+     * 第一轮上线前运营要先看一眼「会动多少单」，看过再放开。
+     */
+    Preview preview(Long fromAccruedAt);
+
+    /** @param toMark 会定 T2 的候选数（不含售后判定，只数查询命中） */
+    record Preview(int toMark, int toCollect, int toClose, int toReconcile) {
+        public boolean nothing() {
+            return toMark == 0 && toCollect == 0 && toClose == 0 && toReconcile == 0;
+        }
+    }
+
     /** 某商家的账期批次，倒序。<b>商家问的是「这一批什么时候放、卡在哪」</b> */
     /**
      * <b>核验 R6：批次合计 ≡ 其下结算单之和。</b>

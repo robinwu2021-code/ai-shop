@@ -67,6 +67,14 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     @Value("${shop.settle.zone:Asia/Shanghai}")
     private String zoneId;
 
+    /**
+     * 冻结窗口天数（TDD-账期推进与放款记录 §2.1 A，2026-10-09 拍定 7 天）。
+     * {@code freeze_expire_at = 本批最早一单成交时刻 + 这个数}。
+     * 此前这一列刻意留空（没有书面口径），盯 Tmax 的任务据此知道「还不能判」。
+     */
+    @Value("${shop.settle.freeze-days:7}")
+    private int freezeDays;
+
     public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
                                   SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
                                   PayChannelMasterService channelMaster,
@@ -84,12 +92,27 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ① 定 T2
 
     @Override
-    @Transactional("payTxManager")
     public int markSettleable() {
+        return markSettleable(null);
+    }
+
+    /**
+     * 哪些状态的单会被推进：第三方的 {@code PENDING} 与<b>自营的 {@code PENDING_RECON}</b>。
+     *
+     * <p>此前只有前者。自营是 ADR-011 定的活钱路径，而它从来没进过批 ——
+     * 批次链与应付链是两条互不相接的线（TDD-账期推进与放款记录 §1.1）。
+     */
+    private static final List<String> PUSHABLE = List.of(StlBill.PENDING, StlBill.PENDING_RECON);
+
+    @Override
+    @Transactional("payTxManager")
+    public int markSettleable(Long fromAccruedAt) {
         List<StlBill> pending = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getStatus, StlBill.PENDING)
+                        .in(StlBill::getStatus, PUSHABLE)
                         .isNull(StlBill::getSettleableAt)
+                        // 起始日：存量不卷进来，它们走老路（见接口注释）
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)
                         .last("LIMIT " + SCAN_LIMIT)));
         if (pending.isEmpty()) {
             return 0;
@@ -134,13 +157,19 @@ public class SettleBatchServiceImpl implements SettleBatchService {
     // ---------------------------------------------------------------- ② 入批
 
     @Override
-    @Transactional("payTxManager")
     public int collectIntoBatches() {
+        return collectIntoBatches(null);
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public int collectIntoBatches(Long fromAccruedAt) {
         List<StlBill> ready = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getStatus, StlBill.PENDING)
+                        .in(StlBill::getStatus, PUSHABLE)
                         .isNotNull(StlBill::getSettleableAt)
                         .isNull(StlBill::getBatchNo)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)
                         .last("LIMIT " + SCAN_LIMIT)));
         int collected = 0;
         for (StlBill bill : ready) {
@@ -310,10 +339,12 @@ public class SettleBatchServiceImpl implements SettleBatchService {
              * 取平均或取最晚都会让告警晚于实际到期 —— 整批一起放，
              * 而最早的那一笔先到期，它到期就意味着这一批已经出问题了。
              *
-             * ⚠️ 冻结窗口的天数**还没有书面口径**（PRD 待确认 #1），
-             * 所以这里暂不写死一个数：拿到之前 freeze_expire_at 留空，
-             * 盯 Tmax 的那个任务据此知道「还不能判」，而不是按一个猜的数报警。
+             * 窗口天数 2026-10-09 拍定 7 天（shop.settle.freeze-days）。
+             * 没有成交时刻的批次（全是存量 undated 单）仍留空 —— 判不了就别猜。
              */
+            if (earliest != null) {
+                patch.setFreezeExpireAt(earliest + freezeDays * 86400000L);
+            }
             DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
             /*
              * ★ 风控判定放在**截批之后**，因为它要用本批的合计数（集中度 = 批额 / 保证金）——
@@ -351,6 +382,109 @@ public class SettleBatchServiceImpl implements SettleBatchService {
      * <p>幂等：已有 PENDING 的同类差异就不再开 —— 这一单每一轮扫描都会被捞到，
      * 不去重的话一天能生出几百条指向同一件事的待处置。
      */
+    // ---------------------------------------------------------------- ④ 自查过了才可放款
+
+    @Override
+    @Transactional("payTxManager")
+    public int reconcileClosedBatches() {
+        List<StlSettleBatch> closed = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.COLLECTED)
+                        .last("LIMIT " + SCAN_LIMIT)));
+        int moved = 0;
+        for (StlSettleBatch batch : closed) {
+            String why = selfCheck(batch);
+            StlSettleBatch patch = new StlSettleBatch();
+            patch.setId(batch.getId());
+            if (why == null) {
+                patch.setStatus(StlSettleBatch.RECONCILED);
+                log.info("[settle-batch] 批次 {} 自查全过，可放款（{} 单 · {} 分）",
+                        batch.getBatchNo(), batch.getBillCount(), batch.getNetMinor());
+            } else {
+                /*
+                 * 挂起原因**原样给商家看**（B 端照抄 blockedReason）：
+                 * 含具体数字，让商家与运营看到同一句话 —— 客服正是照着它答的。
+                 */
+                patch.setStatus(StlSettleBatch.BLOCKED);
+                patch.setBlockedReason(why);
+                patch.setBlockedAt(System.currentTimeMillis());
+                log.warn("[settle-batch] 批次 {} 自查不过，挂起：{}", batch.getBatchNo(), why);
+            }
+            DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+            moved++;
+        }
+        return moved;
+    }
+
+    /**
+     * 三道自查。<b>返回 null = 全过</b>，否则是挂起原因（给人读的一句话）。
+     *
+     * <p>顺序：先合计（R6）、再单据差异、最后风控 —— 前两条是「账对不对」，
+     * 第三条是「该不该放」。账不对的批次谈风控没有意义。
+     */
+    private String selfCheck(StlSettleBatch batch) {
+        List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getBatchNo, batch.getBatchNo())));
+        String batchCur = batch.getCurrency() == null || batch.getCurrency().isBlank()
+                ? DEFAULT_CURRENCY : batch.getCurrency();
+        long net = 0;
+        int cnt = 0;
+        for (StlBill b : bills) {
+            String bc = b.getCurrency() == null || b.getCurrency().isBlank() ? DEFAULT_CURRENCY : b.getCurrency();
+            if (!bc.equals(batchCur)) {
+                continue;
+            }
+            net += nz(b.getNetMinor());
+            cnt++;
+        }
+        int recordedCount = batch.getBillCount() == null ? 0 : batch.getBillCount();
+        if (nz(batch.getNetMinor()) != net || recordedCount != cnt) {
+            return "批次合计 %d 分 / %d 单，与其下结算单之和 %d 分 / %d 单对不上（R6）"
+                    .formatted(nz(batch.getNetMinor()), recordedCount, net, cnt);
+        }
+        if (!bills.isEmpty()) {
+            List<String> nos = bills.stream().map(StlBill::getSettleNo).toList();
+            Long open = DataScopeContext.executeWithoutScope(() ->
+                    diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
+                            .in(StlReconDiff::getPaymentNo, nos)
+                            .eq(StlReconDiff::getStatus, "PENDING")));
+            if (open != null && open > 0) {
+                return "本批有 %d 条结算单差异还没处理".formatted(open);
+            }
+        }
+        try {
+            var verdict = fundRiskService.decide(batch);
+            if (verdict != null && !ai.neargo.shop.pay.risk.FundRisk.PASS.equals(verdict.result())) {
+                return "资金风控拦下：" + (verdict.explain() == null ? verdict.code() : verdict.explain());
+            }
+        } catch (RuntimeException e) {
+            // 风控挂了不该让放款停：记一笔，按过处理 —— 与截批那一步同一条规矩
+            log.warn("[settle-batch] 批次 {} 风控判定失败，按通过处理：{}", batch.getBatchNo(), e.toString());
+        }
+        return null;
+    }
+
+    @Override
+    public Preview preview(Long fromAccruedAt) {
+        long now = System.currentTimeMillis();
+        return DataScopeContext.executeWithoutScope(() -> new Preview(
+                billMapper.selectCount(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNull(StlBill::getSettleableAt)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)).intValue(),
+                billMapper.selectCount(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNotNull(StlBill::getSettleableAt)
+                        .isNull(StlBill::getBatchNo)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)).intValue(),
+                batchMapper.selectCount(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.DRAFT)
+                        .le(StlSettleBatch::getDueAt, now)).intValue(),
+                batchMapper.selectCount(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.COLLECTED)).intValue()));
+    }
+
     private void openIdentityDiff(StlBill bill) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()

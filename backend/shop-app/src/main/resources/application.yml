@@ -377,6 +377,9 @@ shop:
   # 每条都带着原值作为默认值：不配任何环境变量时行为与此前**逐字节一致**。
   # 停掉某个任务用 `-` （Spring 的 disabled 标记），不要设成一个永不触发的表达式 ——
   # 后者在日志里看不出是「停了」还是「配错了」。
+  settle:
+    # 冻结窗口天数（TDD-账期推进与放款记录 §2.1 A）。freeze_expire_at = 本批最早成交 + 它
+    freeze-days: ${SHOP_SETTLE_FREEZE_DAYS:7}
   job:
     outbox:
       # 5 秒一轮：它投的是站内信，用户在等。见 OutboxDispatchJob 的类注释
@@ -407,6 +410,13 @@ shop:
       cron: ${SHOP_JOB_POINTS_IDENTITY_CRON:0 40 0 * * *}
     qualification-expiry:
       cron: ${SHOP_JOB_QUALIFICATION_EXPIRY_CRON:0 10 3 * * *}
+    # 账期推进（TDD-账期推进与放款记录 §2.1 C）。每小时整点过 15 分。
+    # **dry-run 默认开**：只报「会动多少单」不写库，上线看过数再翻 false。
+    # start-date：只推进这一天（含）之后成交的单；存量走老路。空 = 不限。
+    settle-batch:
+      cron: ${SHOP_JOB_SETTLE_BATCH_CRON:0 15 * * * *}
+      dry-run: ${SHOP_JOB_SETTLE_BATCH_DRY_RUN:true}
+      start-date: ${SHOP_JOB_SETTLE_BATCH_START_DATE:}
     recon-scan:
       # 调密之前先看 lockAtMostFor（PT9M）—— 间隔小于它时，卡住的那轮会挡住下一轮
       cron: ${SHOP_JOB_RECON_SCAN_CRON:0 */10 * * * *}

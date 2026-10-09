@@ -26,11 +26,20 @@ public final class BillIdentity {
      * 只回 true/false 的话，运营看到「不平」还要自己去减一遍。
      */
     public static long gap(StlBill b) {
+        /*
+         * **运费两项必须在等式里**（2026-10-09 补）。落库的净额公式是
+         * gross − commission − serviceFee − pointsFee − 商家承担的通道费 + freightIncome − freightCost
+         * （SettleServiceImpl#generateForOrder），而这里此前没有运费两项 ——
+         * 于是**凡是快递单都「不平」**，门 1 把它们全部挡在批次外、各记一条差异。
+         * 没人发现是因为推进链路从没跑过；第一次跑起来那天会是几百条 BILL_UNBALANCED。
+         */
         return nz(b.getGrossMinor())
                 - nz(b.getCommissionMinor())
                 - nz(b.getServiceFeeMinor())
                 - nz(b.getPointsFeeMinor())
                 - merchantBorneFee(b)
+                + nz(b.getFreightIncomeMinor())
+                - nz(b.getFreightCostMinor())
                 - nz(b.getNetMinor());
     }
 
