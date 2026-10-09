@@ -1067,9 +1067,9 @@ describe("运营端数据域接入", () => {
     lgs_waybill:
       "物流模块不装数据域（ADR-032：将来独立成服务，不依赖数据域引擎）；而且运单在买家物流页、"
       + "渠道推送回调、outbox 消费里都被读写 —— 登记之后这些路径没有锚点，fail-closed 变空白"
-      + "（与「B 端直查带域表读写皆哑」同一个形状）。运营端的范围放在主应用显式传参："
-      + "TDD-物流模块 批 5（OpsShipmentController 经 LogisticsAdminPort 按 entity_no / store_no 收窄）。"
-      + "**今天看到全量的是**：配了商家域 / 社区域的运营打开「快递与轨迹」页 —— 与改名前完全一样",
+      + "（与「B 端直查带域表读写皆哑」同一个形状）。运营端的范围在主应用显式传参（2026-10-09 批 5 起）："
+      + "OpsShipmentController.entityScope() 把会话的商家维度换成 entityNos 交给 LogisticsAdminPort；"
+      + "只配了社区 / 自提点维度的运营 → 空集、一条都看不到（运单上没有这两列，与引擎「缺锚点」同口径）",
     // ── 这一轮（2026-08-31）已经逐张判过的，理由与 data-scope-coverage 的 EXEMPT 同源 ──
     cmt_community:
       "COMMUNITY 维度自己的锚点表。登记会让**登录买家**的社区列表与详情变空"

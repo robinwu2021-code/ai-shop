@@ -849,6 +849,8 @@ shop:
 | T5.4 B2 `refresh` | 对微信放行（探测要 token、不花钱），快递100 仍默认不放行 | `probe-surfaces` 的既定口径是「没列的渠道全部放行」；API 文档「默认一个都不放行」写宽了，以代码为准 |
 | T5.5 渠道总览 | 快递页工具栏一个按钮 + 抽屉，不新开菜单 | 运营端菜单在库里，新开要落迁移；它只在订阅判死时才看 |
 | T5.5 承运商编码 | 只在编辑抽屉里看与改，列表不加列 | 加一列表格就挤出容器、操作列滚到看不见的地方 |
+| T5.6 旧配置键清理、T5.7 删旧列 | **推到 2b 之后** | 旧读者还在跑：`logistics-trace` 作业（`ensureShipments` 物化、读 `trace_queried_at`）、旧微信展示写回（`display_channel` / `display_fail_reason` / `display_prepared_at`）、订单详情读 `ShipmentTraceQueryPort`。2b 删掉这些读者之后，旧键与旧列才是真的没人读 |
+| T5.8 | `ChannelExtensibilityTest`：测试里注册 `testch`（订阅 + 推送），只改路由配置 | 消融：Controller 写死只认 kuaidi100 → 红 |
 
 ## §7 确认与完成
 
