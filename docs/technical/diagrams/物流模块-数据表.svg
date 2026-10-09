@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="640" viewBox="0 0 1240 640" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>物流模块数据表（草案）：三张表都由 ful_ 改名而来，跨域只存业务键与快照</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="700" viewBox="0 0 1240 700" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>物流模块数据表（草案）：三张由 ful_ 改名而来、新增一张渠道编码映射，跨域只存业务键与快照</title>
 <desc>三张表：lgs_waybill（运单，由 ful_shipment 改名加列）、lgs_waybill_node（轨迹节点，由 ful_shipment_trace 改名）、lgs_carrier（承运商，由 ful_carrier 改名并加微信与快递100 两套编码）。运单以 (biz_type, biz_ref) 指向交易域的子单，只存业务键不建外键，商家门店收件人与微信交易键都是登记那一刻的快照。手机号只存密文与后四位，终态后清空。不新增外部动作台账表：订阅与换 token 的状态作为运单上的列，重试交给 sys_outbox。草案，迁移落地后以 schema 生成的 db 图为准。</desc>
 <defs>
 <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -35,10 +35,10 @@
 .dot{fill:#8A94A2}.dotw{fill:#C9752F}.dotg{fill:#4E9A6B}
 .note{font-size:10px;fill:#3D4552}
 </style></defs>
-<rect x="0" y="0" width="1240" height="640" fill="#fff"/>
+<rect x="0" y="0" width="1240" height="700" fill="#fff"/>
 <text class="b" x="24.0" y="26.0">物流模块 · 数据表（草案，手画；迁移落地后以 schema 生成的 db-*.svg 为准）</text>
 <text class="sm" x="24.0" y="43.0">蓝 = 物流模块的表　灰 = 交易域的表（只用业务键引用，不建外键、不 JOIN）　新 = 新增列　改 = 改名</text>
-<rect class="data" x="40" y="84" width="430" height="263.0" rx="5"/>
+<rect class="data" x="40" y="84" width="430" height="275.5" rx="5"/>
 <text class="n" x="49.0" y="100.0">lgs_waybill  ← ful_shipment</text>
 <text class="mt" x="49.0" y="114.0">shipment_no        UK  业务键（沿用）</text>
 <text class="mt" x="49.0" y="126.5">biz_type + biz_ref UK  改：原 sub_order_no</text>
@@ -54,25 +54,32 @@
 <text class="mt" x="49.0" y="251.5">collected_at · signed_at  只写一次</text>
 <text class="mt" x="49.0" y="264.0">last_event_at      新  补偿判「沉默」</text>
 <text class="mt" x="49.0" y="276.5">sub_state · sub_attempts · sub_error  新</text>
-<text class="mt" x="49.0" y="289.0">wx_uploaded_at     新  换 token 前置</text>
-<text class="mt" x="49.0" y="301.5">bind_state · bind_error  新</text>
-<text class="mt" x="49.0" y="314.0">display_token      存 waybill_token</text>
-<text class="mt" x="49.0" y="326.5">wx_status_checked_at  新  10 分钟读缓存</text>
+<text class="mt" x="49.0" y="289.0">sub_channel · sub_ref  新  实际受理的渠道</text>
+<text class="mt" x="49.0" y="301.5">wx_uploaded_at     新  换 token 前置</text>
+<text class="mt" x="49.0" y="314.0">bind_state · bind_error  新</text>
+<text class="mt" x="49.0" y="326.5">display_token      存 waybill_token</text>
+<text class="mt" x="49.0" y="339.0">wx_status_checked_at  新  10 分钟读缓存</text>
 <rect class="data" x="540" y="84" width="330" height="113.0" rx="5"/>
 <text class="n" x="549.0" y="100.0">lgs_waybill_node  ← ful_shipment_trace</text>
 <text class="mt" x="549.0" y="114.0">shipment_no · at · text · location</text>
 <text class="mt" x="549.0" y="126.5">lat_e6 · lng_e6 · status_code</text>
-<text class="mt" x="549.0" y="139.0">source       新  KD100_PUSH / WX_QUERY …</text>
+<text class="mt" x="549.0" y="139.0">channel + mode  新  哪个渠道 · PUSH/QUERY</text>
 <text class="mt" x="549.0" y="151.5">text_hash    新</text>
 <text class="mt" x="549.0" y="164.0">UK(shipment_no, at, text_hash)</text>
 <text class="mt" x="549.0" y="176.5">快递100 每次推全量 → 唯一键丢重复</text>
-<rect class="data" x="540" y="234" width="330" height="100.5" rx="5"/>
+<rect class="data" x="540" y="234" width="330" height="63.0" rx="5"/>
 <text class="n" x="549.0" y="250.0">lgs_carrier  ← ful_carrier</text>
-<text class="mt" x="549.0" y="264.0">carrier  UK  我方码（SF / STO …）</text>
+<text class="mt" x="549.0" y="264.0">carrier  UK  我方码（SF / STO / YTO …）</text>
 <text class="mt" x="549.0" y="276.5">enabled · priority · sla_hours</text>
-<text class="mt" x="549.0" y="289.0">wx_delivery_id  新  微信 delivery_id</text>
-<text class="mt" x="549.0" y="301.5">kd100_code      新  快递100 公司编码</text>
-<text class="mt" x="549.0" y="314.0">两套码在这一张表里对上</text>
+<rect class="data" x="540" y="316" width="330" height="100.5" rx="5"/>
+<text class="n" x="549.0" y="332.0">lgs_carrier_code  新</text>
+<text class="mt" x="549.0" y="346.0">carrier + channel  UK</text>
+<text class="mt" x="549.0" y="358.5">code  该渠道里的叫法</text>
+<text class="mt" x="549.0" y="371.0">快递100 shentong · 微信 STO · 圆通 YTO</text>
+<text class="mt" x="549.0" y="383.5">渠道的 covers(carrier) = 这里有没有我这一行</text>
+<text class="mt" x="549.0" y="396.0">加一家渠道 = 插几行，不改表</text>
+<path class="ar" d="M705.0 297.0 L705.0 310.0" marker-end="url(#ar)"/>
+<text class="l" x="712.0" y="307.0">1 : N</text>
 <rect class="caller" x="940" y="84" width="260" height="52" rx="5"/>
 <text class="n" x="949.0" y="100.0">ord_sub_order（交易域）</text>
 <text class="mt" x="949.0" y="114.0">sub_order_no · express_no</text>
@@ -90,16 +97,16 @@
 <text class="l" x="474.0" y="278.0">carrier</text>
 <path class="ar dash" d="M420.0 84.0 L420.0 70.0 L1070.0 70.0 L1070.0 78.0" marker-end="url(#ar)"/>
 <text class="l" x="600.0" y="65.0">biz_ref → sub_order_no（业务键，不建外键、不 JOIN）</text>
-<path class="ar dash" d="M470.0 350.5 L912.0 350.5 L912.0 184.0 L934.0 184.0" marker-end="url(#ar)"/>
-<text class="l" x="560.0" y="365.5">WaybillSigned 事件经 sys_outbox，不直连交易域的表</text>
-<rect class="router" x="540" y="380.5" width="660" height="104" rx="5"/>
-<text class="n" x="549.0" y="396.5">不新增的表，以及为什么</text>
-<text class="mt" x="549.0" y="410.5">外部动作台账表：每张运单只有两件外部动作（订阅、换 token），状态做成运单上的列；</text>
-<text class="mt" x="549.0" y="423.0">        重试交给 sys_outbox 现成的退避与上限 —— 新建一张表只是把 outbox 再写一遍。</text>
-<text class="mt" x="549.0" y="435.5">推送收件箱表：节点唯一键已保证幂等；第一条真推送原文落 WARN 日志即可。</text>
-<text class="mt" x="549.0" y="448.0">删除的旧列（下一版迁移）：display_channel · display_fail_reason · display_prepared_at · trace_queried_at</text>
-<text class="b" x="24.0" y="560.0">图上看不出来的三件事</text>
-<text class="note" x="24.0" y="582.0">1. 前缀从 ful_ 改成 lgs_：自提、分拣那几张 ful_ 表不搬。前缀不分开，阶段 2「主库迁移里不再出现 lgs_ 建表」这条闸门就写不出来。</text>
-<text class="note" x="24.0" y="602.0">2. 手机号加密不能在 SQL 里做（密钥在应用配置）：迁移只改结构，在途运单的密文由应用启动后的一次性回填写入；已签收的不需要回填。</text>
-<text class="note" x="24.0" y="622.0">3. 改名用 RENAME TABLE（MySQL 原子、不拷数据），但仍要在真库副本上带 Flyway 跑一次 —— H2 全绿证明不了迁移能在生产上跑。</text>
+<path class="ar dash" d="M300.0 359.5 L300.0 432.5 L912.0 432.5 L912.0 184.0 L934.0 184.0" marker-end="url(#ar)"/>
+<text class="l" x="560.0" y="447.5">WaybillSigned 事件经 sys_outbox，不直连交易域的表</text>
+<rect class="router" x="540" y="462.5" width="660" height="104" rx="5"/>
+<text class="n" x="549.0" y="478.5">另外两张没建的表，以及为什么</text>
+<text class="mt" x="549.0" y="492.5">外部动作台账表：每张运单只有两件外部动作（订阅、换 token），状态做成运单上的列；</text>
+<text class="mt" x="549.0" y="505.0">        重试交给 sys_outbox 现成的退避与上限 —— 新建一张表只是把 outbox 再写一遍。</text>
+<text class="mt" x="549.0" y="517.5">推送收件箱表：节点唯一键已保证幂等；第一条真推送原文落 WARN 日志即可。</text>
+<text class="mt" x="549.0" y="530.0">删除的旧列（下一版迁移）：display_channel · display_fail_reason · display_prepared_at · trace_queried_at</text>
+<text class="b" x="24.0" y="612.0">图上看不出来的三件事</text>
+<text class="note" x="24.0" y="634.0">1. 前缀从 ful_ 改成 lgs_：自提、分拣那几张 ful_ 表不搬。前缀不分开，阶段 2「主库迁移里不再出现 lgs_ 建表」这条闸门就写不出来。</text>
+<text class="note" x="24.0" y="654.0">2. 手机号加密不能在 SQL 里做（密钥在应用配置）：迁移只改结构，在途运单的密文由应用启动后的一次性回填写入；已签收的不需要回填。</text>
+<text class="note" x="24.0" y="674.0">3. 改名用 RENAME TABLE（MySQL 原子、不拷数据），但仍要在真库副本上带 Flyway 跑一次 —— H2 全绿证明不了迁移能在生产上跑。</text>
 </svg>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="980" viewBox="0 0 1240 980" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
 <title>物流主链路：一张运单从发货到确认收货，每一步谁调谁、为什么</title>
-<desc>六条泳道从左到右是：交易域、sys_outbox、物流模块、快递100、微信、买家。从上到下是一张微信支付快递单的完整生命周期：发货发事件、物流登记并向快递100 订阅一次、交易域上传发货信息给微信并通知物流、快递100 推送揽收后物流才去微信换 token、微信自己给买家推三节点消息、快递100 推送签收后物流写签收时间并发事件、交易域据此调微信确认收货提醒、买家打开物流页时按 10 分钟缓存查一次微信状态、买家确认收货后微信推结算事件给交易域。右下角是补偿作业：只处理 24 小时没有任何推送的在途运单。线下付款单在第 ⑥ ⑨ 步改走自有订阅消息，不调任何微信物流接口。</desc>
+<desc>六条泳道从左到右是：交易域、sys_outbox、物流模块、快递100、微信、买家。从上到下是一张微信支付快递单的完整生命周期：发货发事件、物流登记并向快递100 订阅一次、交易域上传发货信息给微信并通知物流、快递100 推送揽收后物流才去微信换 token、微信自己给买家推三节点消息、快递100 推送签收后物流写签收时间并发事件、交易域据此调微信确认收货提醒、买家打开物流页时按 10 分钟缓存查一次微信状态、买家确认收货后微信推结算事件给交易域。订阅渠道按路由链选：圆通单走圆通直连，其余走快递100。右下角是补偿作业：只处理 24 小时没有任何推送的在途运单。线下付款单在第 ⑥ ⑨ 步改走自有订阅消息，不调任何微信物流接口。</desc>
 <defs>
 <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
@@ -37,7 +37,7 @@
 </style></defs>
 <rect x="0" y="0" width="1240" height="980" fill="#fff"/>
 <text class="b" x="24.0" y="26.0">物流主链路 · 一张微信支付快递单的一生（线下付款单的差别见右侧注）</text>
-<text class="sm" x="24.0" y="43.0">实线箭头 = 同步调用　虚线 = 经 sys_outbox 的事件（提交后执行，失败退避重试）　绿 = 微信　橙 = 快递100　编号 = 时间顺序</text>
+<text class="sm" x="24.0" y="43.0">实线箭头 = 同步调用　虚线 = 经 sys_outbox 的事件（提交后执行，失败退避重试）　绿 = 微信　橙 = 订阅渠道（圆通直连 / 快递100 / …）　编号 = 时间顺序</text>
 <rect class="zone2" x="48" y="58" width="124" height="30" rx="5"/>
 <text class="n" x="110.0" y="78.0" text-anchor="middle">交易域</text>
 <line class="life" x1="110" y1="88" x2="110" y2="900"/>
@@ -48,7 +48,7 @@
 <text class="n" x="470.0" y="78.0" text-anchor="middle">物流模块</text>
 <line class="life" x1="470" y1="88" x2="470" y2="900"/>
 <rect class="zone2" x="603" y="58" width="124" height="30" rx="5"/>
-<text class="n" x="665.0" y="78.0" text-anchor="middle">快递100</text>
+<text class="n" x="665.0" y="78.0" text-anchor="middle">订阅渠道</text>
 <line class="life" x1="665" y1="88" x2="665" y2="900"/>
 <rect class="zone2" x="768" y="58" width="124" height="30" rx="5"/>
 <text class="n" x="830.0" y="78.0" text-anchor="middle">微信</text>
@@ -75,8 +75,8 @@
 <path class="arw" d="M474.0 262.0 L659.0 262.0" marker-end="url(#arw)"/>
 <circle class="dotw" cx="484" cy="262" r="8"/>
 <text class="num" x="484" y="265.2" text-anchor="middle">4</text>
-<text class="l" x="496.0" y="255.0">订阅（/poll · 每单一次）</text>
-<text class="mt" x="496.0" y="277.0">200 / 501 = DONE；600/601/700 = FATAL</text>
+<text class="l" x="496.0" y="255.0">订阅（按路由链 · 每单一次）</text>
+<text class="mt" x="496.0" y="277.0">圆通单 → yto；其余 → kuaidi100</text>
 <path class="arg" d="M114.0 312.0 L824.0 312.0" marker-end="url(#arg)"/>
 <circle class="dotg" cx="124" cy="312" r="8"/>
 <text class="num" x="124" y="315.2" text-anchor="middle">5</text>
@@ -89,7 +89,7 @@
 <circle class="dotw" cx="651" cy="388" r="8"/>
 <text class="num" x="651" y="391.2" text-anchor="middle">6</text>
 <text class="l" x="496.0" y="381.0">推送「已揽收」</text>
-<text class="mt" x="496.0" y="403.0">验签 · 落节点 · COLLECTED</text>
+<text class="mt" x="496.0" y="403.0">→ /callback/logistics/{ch} · 只认 sub_channel</text>
 <path class="arg" d="M474.0 432.0 L824.0 432.0" marker-end="url(#arg)"/>
 <circle class="dotg" cx="484" cy="432" r="8"/>
 <text class="num" x="484" y="435.2" text-anchor="middle">7</text>
