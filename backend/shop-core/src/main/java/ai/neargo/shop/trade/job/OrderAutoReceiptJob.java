@@ -60,6 +60,12 @@ public class OrderAutoReceiptJob implements JobHandler {
     private final int shippedDays;
 
     /**
+     * 签收后多少天自动确认收货。行业惯例 7 天（淘宝/拼多多）。
+     * <b>0 = 关掉签收判据</b>，整条退回只按发货算。
+     */
+    private final int signedDays;
+
+    /**
      * <b>构造注入，不是 {@code @Value} 字段注入。</b>
      *
      * <p>字段注入会让这个任务在测试里静默失效：Job 是 {@code @Profile("worker")} 的，
@@ -69,10 +75,12 @@ public class OrderAutoReceiptJob implements JobHandler {
      * 构造注入把这个参数摆到调用点上，测试必须显式给一个值。
      */
     public OrderAutoReceiptJob(OrderService orderService, JobSupport jobs,
-                               @Value("${shop.job.order-auto-receipt.shipped-days:15}") int shippedDays) {
+                               @Value("${shop.job.order-auto-receipt.shipped-days:15}") int shippedDays,
+                               @Value("${shop.job.order-auto-receipt.signed-days:7}") int signedDays) {
         this.orderService = orderService;
         this.jobs = jobs;
         this.shippedDays = shippedDays;
+        this.signedDays = signedDays;
     }
 
     @Scheduled(cron = "${shop.job.order-auto-receipt.cron:0 0 3 * * *}")
@@ -105,7 +113,7 @@ public class OrderAutoReceiptJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        int n = orderService.autoConfirmReceipt(System.currentTimeMillis(), shippedDays);
+        int n = orderService.autoConfirmReceipt(System.currentTimeMillis(), shippedDays, signedDays);
         if (n == 0) {
             return JobResult.ok(null);
         }

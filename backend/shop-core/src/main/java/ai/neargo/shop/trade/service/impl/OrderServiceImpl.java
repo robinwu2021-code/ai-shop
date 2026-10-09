@@ -2244,6 +2244,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public int autoConfirmReceipt(long now, int shippedDays) {
+        return autoConfirmReceipt(now, shippedDays, 0);
+    }
+
+    /**
+     * @param signedDays 签收后多少天自动确认收货。<b>0 = 不启用签收判据</b>，整条退回只按发货算
+     *                   （与接签收之前逐字相同）
+     */
+    @Override
+    public int autoConfirmReceipt(long now, int shippedDays, int signedDays) {
         if (shippedDays <= 0) {
             return 0;
         }
@@ -2287,7 +2296,20 @@ public class OrderServiceImpl implements OrderService {
                 .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
                 .collect(Collectors.toSet());
 
-        long deadline = now - (long) shippedDays * 86_400_000L;
+        /*
+         * ★ 判据从「发货后 N 天」扩成「**签收后 N 天 或 发货后 M 天，先到者为准**」（批 C）。
+         *
+         * 行业惯例（淘宝/拼多多）是签收后 7 天，而签收回传此前没有，所以上一版退到发货后 15 天。
+         * 现在 ful_shipment.signed_at 有了，但**不是直接换掉**：换掉的话
+         * 「第 10 天才签收」的单会从第 15 天推迟到第 17 天 —— 状态机的改动把某些单的
+         * 完成时间往后推，那是在动钱的到账时间。取先到者保证**没有任何一单比今天等得更久**。
+         *
+         * 查不到签收时间（自提已排除；快递里承运商没回传、或还没签收）一律走发货判据。
+         */
+        long shipDeadline = now - (long) shippedDays * 86_400_000L;
+        long signDeadline = signedDays > 0 ? now - (long) signedDays * 86_400_000L : Long.MIN_VALUE;
+        Map<String, Long> signedAt = signedDays > 0 && shipmentTracePort != null
+                ? shipmentTracePort.signedAtOf(subNos) : Map.of();
         int n = 0;
         for (OrdSubOrder sub : shipped) {
             if (blocked.contains(sub.getSubOrderNo())) {
@@ -2298,13 +2320,18 @@ public class OrderServiceImpl implements OrderService {
              * 宁可多等：没有流水说明状态是被别的路径改的，那种单自动签收的风险更高。
              */
             Long at = shippedAt.get(sub.getSubOrderNo());
-            if (at == null || at > deadline) {
+            Long signed = signedAt.get(sub.getSubOrderNo());
+            boolean bySigned = signed != null && signed <= signDeadline;
+            boolean byShipped = at != null && at <= shipDeadline;
+            if (!bySigned && !byShipped) {
                 continue;
             }
             sub.setStatus(OrdSubOrder.COMPLETED);
             DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+            // 理由写清按哪条到期的 —— 对账时「为什么这单这天完成」只能看这一行
             appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.COMPLETED,
-                    "发货满 " + shippedDays + " 天自动确认收货",
+                    bySigned ? "签收满 " + signedDays + " 天自动确认收货"
+                            : "发货满 " + shippedDays + " 天自动确认收货",
                     OrdStatusLog.BY_SYSTEM, null);
             n++;
         }

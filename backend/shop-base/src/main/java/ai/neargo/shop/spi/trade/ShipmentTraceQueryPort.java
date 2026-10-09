@@ -38,6 +38,16 @@ public interface ShipmentTraceQueryPort {
      * @param status 运单状态（CREATED/PICKED_UP/IN_TRANSIT/DELIVERED/EXCEPTION，同 {@code ful_shipment}）
      * @param nodes  轨迹节点，**按时间倒序**（最新在前）
      */
+    /**
+     * 这些子单的<b>签收时间</b>（毫秒）。没签收 / 不是快递 / 承运商没回传的不出现在结果里。
+     *
+     * <p>给「自动确认收货」用：行业惯例是「签收后 N 天」，而签收时间只有履约域知道。
+     * 默认返回空 —— 没装履约域的切片测试按「查不到签收」走兜底判据，与加这个方法之前逐字相同。
+     */
+    default java.util.Map<String, Long> signedAtOf(java.util.Collection<String> subOrderNos) {
+        return java.util.Map.of();
+    }
+
     record CachedTrace(String status, List<Node> nodes, String displayMode, String displayToken,
                        String routeFrom, String routeCur, String routeTo) {
 

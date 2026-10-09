@@ -72,6 +72,25 @@ public class ShipmentTraceQueryPortImpl implements ShipmentTraceQueryPort {
      *
      * <p>判据：库里备好的渠道在这个端可用就用它；否则一律 {@code self-map}（它三端都能呈现）。
      */
+    @Override
+    public java.util.Map<String, Long> signedAtOf(java.util.Collection<String> subOrderNos) {
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, Long> out = new java.util.HashMap<>();
+        for (FulShipment s : DataScopeContext.executeWithoutScope(() ->
+                shipmentMapper.selectList(Wrappers.<FulShipment>lambdaQuery()
+                        .select(FulShipment::getSubOrderNo, FulShipment::getSignedAt)
+                        .in(FulShipment::getSubOrderNo, subOrderNos)
+                        .isNotNull(FulShipment::getSignedAt)))) {
+            if (s.getSignedAt() != null && s.getSignedAt() > 0) {
+                // 一张子单理论上一条运单；真有多条取最晚签收的那条（整单才算收齐）
+                out.merge(s.getSubOrderNo(), s.getSignedAt(), Math::max);
+            }
+        }
+        return out;
+    }
+
     private String channelFor(FulShipment s, String surface) {
         String saved = s.getDisplayChannel();
         boolean mp = "MP".equalsIgnoreCase(surface);

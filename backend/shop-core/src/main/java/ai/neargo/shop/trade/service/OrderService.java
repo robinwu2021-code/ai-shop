@@ -110,6 +110,18 @@ public interface OrderService {
     int autoConfirmReceipt(long now, int shippedDays);
 
     /**
+     * 同上，但同时启用<b>签收判据</b>：「签收后 {@code signedDays} 天」与
+     * 「发货后 {@code shippedDays} 天」<b>先到者为准</b>。
+     *
+     * <p>为什么是「先到者」而不是直接换成签收判据：换掉的话，第 10 天才签收的单
+     * 会从第 15 天推迟到第 17 天完成 —— 那是在把钱的到账时间往后推。
+     * 取先到者保证没有任何一单比接签收之前等得更久。
+     *
+     * @param signedDays 0 = 不启用签收判据，行为与 {@link #autoConfirmReceipt(long, int)} 逐字相同
+     */
+    int autoConfirmReceipt(long now, int shippedDays, int signedDays);
+
+    /**
      * 关掉指定的一笔待支付单（对账自查用：通道明确回「没有这笔」）。
      *
      * <p>与 {@link #closeExpiredOrders} 走同一段关单逻辑 —— 关单要连着释放库存、券、积分，

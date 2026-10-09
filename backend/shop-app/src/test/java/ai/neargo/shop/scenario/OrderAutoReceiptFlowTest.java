@@ -85,7 +85,68 @@ class OrderAutoReceiptFlowTest {
      * 传 0 的话 {@code autoConfirmReceipt} 直接返回 0，而断言「没有误确认」的那几条会全绿。
      */
     private OrderAutoReceiptJob job(int shippedDays) {
-        return new OrderAutoReceiptJob(orderService, jobs, shippedDays);
+        return job(shippedDays, 0);
+    }
+
+    /** @param signedDays 0 = 不启用签收判据（存量用例都走这一支，行为与接签收前逐字相同） */
+    private OrderAutoReceiptJob job(int shippedDays, int signedDays) {
+        return new OrderAutoReceiptJob(orderService, jobs, shippedDays, signedDays);
+    }
+
+    /** 把这张子单的运单标成「几天前签收」。签收时间落在 ful_shipment 上（V386） */
+    private void backdateSigned(String subOrderNo, String waybillNo, int daysAgo) {
+        long at = System.currentTimeMillis() - (long) daysAgo * 86_400_000L;
+        jdbc.update("insert into ful_shipment (shipment_no, sub_order_no, carrier, waybill_no, status,"
+                        + " signed_at, tenant_no, created_at, updated_at)"
+                        + " values (?, ?, 'SF', ?, 'DELIVERED', ?, 'MAIN', now(), now())",
+                "SH-" + subOrderNo, subOrderNo, waybillNo, at);
+    }
+
+    @Test
+    @DisplayName("★★★ 签收满 7 天自动确认收货 —— 比「发货满 15 天」先到，按先到的算")
+    void signedLongAgoIsAutoConfirmed() throws Exception {
+        Ctx c = prepare("12600181007", "签收确认测试店", "12600181008", "EXPRESS");
+        ship(c, "SF-SIGNED-1");
+        // 发货才 3 天（按发货判据远没到期），但已签收 10 天
+        backdateShipped(c.subOrderNo, 3);
+        backdateSigned(c.subOrderNo, "SF-SIGNED-1", 10);
+
+        job(15, 7).confirm();
+
+        assertThat(statusOf(c.subOrderNo))
+                .as("签收 10 天了，按行业惯例（签收后 7 天）该自动完成 —— "
+                        + "只按发货算的话要再等 12 天，买家的钱也就在平台多压 12 天")
+                .isEqualTo("COMPLETED");
+    }
+
+    @Test
+    @DisplayName("★★★ 签收没满 7 天、发货也没满 15 天：两条都不到期，不许动")
+    void neitherDeadlineReachedIsNotTouched() throws Exception {
+        Ctx c = prepare("12600181009", "两条都没到店", "12600181010", "EXPRESS");
+        ship(c, "SF-SIGNED-2");
+        backdateShipped(c.subOrderNo, 3);
+        backdateSigned(c.subOrderNo, "SF-SIGNED-2", 2);
+
+        job(15, 7).confirm();
+
+        assertThat(statusOf(c.subOrderNo))
+                .as("签收才 2 天，买家还在验货期内")
+                .isEqualTo("FULFILLING");
+    }
+
+    @Test
+    @DisplayName("★★★ 没有签收回传的单仍按发货判据 —— 接签收不能让这类单变得永不到期")
+    void withoutSignedStillFallsBackToShipped() throws Exception {
+        Ctx c = prepare("12600181011", "无签收回传店", "12600181012", "EXPRESS");
+        ship(c, "SF-NOSIGN-1");
+        backdateShipped(c.subOrderNo, 20);
+        // 故意不写 ful_shipment：承运商没回传签收（圆通缺凭据、或快递100 查不到）
+
+        job(15, 7).confirm();
+
+        assertThat(statusOf(c.subOrderNo))
+                .as("查不到签收就回落发货判据；回落没接上的话这类单永远结算不出来")
+                .isEqualTo("COMPLETED");
     }
 
     @Test
