@@ -181,13 +181,30 @@ class ReachRuleTest {
 
     // ---- 「不限地区」（买家详情页）与正向展开
 
+    /**
+     * 「不限地区」的判据在 ADR-034 改了：从「<b>没框</b>任何 INCLUDE + 开了快递/自送」
+     * 改成「有一条<b>显式的</b> {@code UNLIMITED} 纳入项 + 开了快递/自送」。
+     *
+     * <p>为什么要改：「没框」有四种成因（框写到别家店、没物化成行、框成了 EXCLUDE、门店级错位），
+     * 任何一种都会让商家在不知情的情况下铺满全平台 —— 虹选粮油「框了嘉逸花园却全平台可见」就是这么来的，
+     * 而且不报错。改成显式之后，存量那批由 V397 按旧语义逐字回填，行为不变但从此看得见、改得掉。
+     */
+    static final Area UNLIMITED_ITEM = new Area("A9",
+            ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+            ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF);
+
     @Test
-    void unlimitedOnlyWhenUnframedAndAnOpenEndedRouteIsOn() {
-        assertTrue(ReachRule.unlimited(store(List.of(Route.all(EXPRESS)), List.of(), List.of())));
-        assertFalse(ReachRule.unlimited(store(List.of(Route.all(PICKUP)), List.of(), List.of())));
+    void unlimitedNeedsAnExplicitItemPlusAnOpenEndedRoute() {
+        assertTrue(ReachRule.unlimited(store(List.of(Route.all(EXPRESS)), List.of(UNLIMITED_ITEM), List.of())));
+        assertTrue(ReachRule.unlimited(store(List.of(Route.all(DELIVERY)), List.of(UNLIMITED_ITEM), List.of())));
+        assertFalse(ReachRule.unlimited(store(List.of(Route.all(PICKUP)), List.of(UNLIMITED_ITEM), List.of())),
+                "自提没有落点，「不限」对它无意义");
+        assertFalse(ReachRule.unlimited(store(List.of(Route.all(EXPRESS)), List.of(), List.of())),
+                "一条范围项都没有 ≠ 不限（消融：恢复旧判据这一行就红）");
         assertFalse(ReachRule.unlimited(store(List.of(Route.all(EXPRESS)), List.of(FUTIAN), List.of())),
-                "框了范围就不是不限 —— 快递也一样");
-        assertFalse(ReachRule.unlimited(store(List.of(subset(DELIVERY, "A1")), List.of(), List.of())));
+                "框了具体范围就按框选卖 —— 快递也一样");
+        assertFalse(ReachRule.unlimited(store(List.of(subset(DELIVERY, "A1")), List.of(UNLIMITED_ITEM), List.of())),
+                "子集路不吃「不限」：子集说的是「这一路只服务我框的其中几块」");
     }
 
     @Test
