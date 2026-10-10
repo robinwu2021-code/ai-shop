@@ -300,6 +300,13 @@ export interface ServiceArea {
    * 而这是他自己永远查不出来的那类故障。
    */
   status?: AreaStatus;
+  /**
+   * 仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。
+   *
+   * 保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格；
+   * 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。
+   */
+  geometry?: string;
 }
 /**
  * 商家提报的新社区（ADR-013 阶段三）。

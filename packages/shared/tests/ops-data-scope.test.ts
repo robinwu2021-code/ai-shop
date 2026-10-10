@@ -427,9 +427,22 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "GoodsVisibility#onSaleOf":
     "买家可见性判定（全局，买家会话无数据域）；运营位置分布的供给侧复用它，"
     + "口径与此前读未登记的社区池时相同 —— 全平台供给",
-  "StoreReachLoader#allServing":
-    "买家可见性判定：哪些 ACTIVE 门店服务某个小区（全局）；运营位置分布复用它，"
-    + "口径与此前读未登记的社区池时相同 —— 全平台供给",
+  /*
+   * ── 2026-10-10 可见范围判定改索引点查（ADR-034）──
+   *
+   * `StoreReachLoader#allServing` 已删：它每请求把全平台门店范围整表拉进内存逐店判，
+   * 换成了下面这几个。口径一字未变 —— 仍是「全平台供给」，仍绕数据域：
+   * 买家会话是 SELF 维度，接上数据域这些查询就是 1=0，而那会让整个目录空掉。
+   */
+  "ReachMatcher#activeEntities":
+    "反向展开「每家店覆盖哪些小区」要先列出全平台 ACTIVE 主体（运营位置分布那一屏）。"
+    + "口径与此前 StoreReachLoader#allServing 相同 —— 全平台供给，不按运营的数据域收窄",
+  "ReachMatcher#activeStoreNos":
+    "同上，列这个主体名下的 ACTIVE 门店。另一条路径是 B 端看自己的主体口径范围"
+    + "（各店足迹取并集），那是商家会话、SELF 维度，接上数据域就是 1=0",
+  "ReachMatcher#context":
+    "取这家店判定所需的材料（范围项、网格行、履约路与子集）。买家可见性与 B 端回显共用，"
+    + "两边都没有运营数据域；归属由查询条件自身的 store_no 保证",
 };
 
 /**
@@ -464,6 +477,15 @@ const ANCHOR_WAIVED: Record<string, string> = {
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
   "mch_entity_plan:COMMUNITY": "增值包订阅属于商家，不属于片区",
   "mch_entity_plan:PICKUP": "同上",
+  /*
+   * ── 2026-10-10 多边形范围的 S2 网格派生表（V396，ADR-034）──
+   *
+   * 它是「商家画的那片配送范围」离散成的网格行，归属只有主体与门店（随所属范围项）。
+   * 片区与自提点上**不存在这个事实** —— 一片多边形不属于某个小区，它正是用来回答
+   * 「哪些地方在范围内」的那个东西。登记 MERCHANT 是给运营端履约配置视图看的。
+   */
+  "mch_service_area_cell:COMMUNITY": "配送范围属于门店，不属于片区",
+  "mch_service_area_cell:PICKUP": "同上",
   /*
    * ── 2026-09-29 收款账户（V358，ADR-011 自营供应商模式）──
    *

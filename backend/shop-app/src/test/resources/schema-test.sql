@@ -4693,6 +4693,26 @@ CREATE TABLE IF NOT EXISTS mch_service_area_cell
     CONSTRAINT uk_sac_area_cell UNIQUE (area_no, cell_id)
 );
 
+CREATE TABLE IF NOT EXISTS lnk_short
+(
+    id          BIGINT(20)    NOT NULL AUTO_INCREMENT,
+    code        VARCHAR(16)   NOT NULL,
+    target      VARCHAR(1024) NOT NULL,
+    biz_type    VARCHAR(32)   NOT NULL,
+    biz_ref     VARCHAR(64)   DEFAULT NULL,
+    hits        BIGINT(20)    NOT NULL DEFAULT 0,
+    expires_at  DATETIME      DEFAULT NULL,
+    tenant_no   VARCHAR(32)   NOT NULL DEFAULT 'MAIN',
+    created_at  DATETIME      NOT NULL,
+    created_by  VARCHAR(64)   DEFAULT NULL,
+    updated_at  DATETIME      NOT NULL,
+    updated_by  VARCHAR(64)   DEFAULT NULL,
+    version     BIGINT(20)    NOT NULL DEFAULT 0,
+    deleted     TINYINT(4)    NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_lnk_short_code UNIQUE (code)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

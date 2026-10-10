@@ -10,7 +10,7 @@
 -- H2 / MySQL 共用一份：不写排序规则、不用 MODIFY COLUMN 改注释。
 
 ALTER TABLE mch_service_area
-    ADD COLUMN geometry TEXT NULL COMMENT 'level=POLYGON 时的顶点 JSON [[lngE6,latE6],...]（规范化、首尾不重复）；其余为 NULL';
+    ADD COLUMN geometry TEXT NULL COMMENT '多边形范围的顶点串，形如 [[lngE6,latE6],...]，已规范化且首尾不重复；只有地图多边形那一档有值，其余留空';
 
 CREATE INDEX idx_service_area_store_mode ON mch_service_area (store_no, mode);
 

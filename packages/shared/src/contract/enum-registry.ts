@@ -272,7 +272,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
       + "端上据此决定要不要标「位置可能不是最新的」，运营端据此看「还要依赖地图多久」。"
       + "后端 PlaceResolver.SOURCE_* 同一套取值" },
   { decl: "shared:AREA_LEVEL", dom: "core", shape: "CLASS", verdict: "OK",
-    note: "覆盖项粒度。取值与 sys_region.level 同源（COMMUNITY 除外——那是社区不是区划），后端不写字面量，值从库里带出来。2026-08-23 补 PROVINCE：经营范围本就是「任意一级的并集」，走快递的商家框的就是省；后端无需新分支——展开走国标码前缀（省码 2 位），审核归入「非社区非街道即待审」那一档" },
+    note: "覆盖项粒度。取值与 sys_region.level 同源（COMMUNITY 除外——那是社区不是区划），后端不写字面量，值从库里带出来。2026-08-23 补 PROVINCE：经营范围本就是「任意一级的并集」，走快递的商家框的就是省；后端无需新分支——展开走国标码前缀（省码 2 位），审核归入「非社区非街道即待审」那一档。2026-10-10 补 POLYGON / UNLIMITED（ADR-034）：前者是商家在地图上画的多边形（refCode 是服务端算的几何指纹、形状在 geometry 里、经 S2 网格命中），后者是显式的「全平台不限」（refCode 恒为 `*`、一店一条、只对快递/自送生效）。**这两档都没有地名**，界面不能像别的粒度那样显示 name。加 UNLIMITED 的理由：此前「不限」靠「没框任何范围 + 开了快递/自送」隐式成立，而「没框范围」有四种成因（框写到别家店、没物化、框成排除、门店级错位），任何一种都会让商家在不知情的情况下铺满全平台且不报错——虹选粮油「框了嘉逸花园却全平台可见」就是这么来的。后端同一套取值在 MchServiceArea.LEVEL_*" },
   { decl: "ops-web:Role", dom: "auth", shape: "CLASS", verdict: "OK",
     note: "**已对齐（2026-08-11）**。判权改读后端下发的 staff.perms，前端 UI 码经 lib/perm-map.ts 的 UI_PERM_MAP 翻译成后端码 —— 两套码的粒度不同不是错（前端 45 个要控按钮，后端 14 个只管端点），错的是此前根本没连接。三条守卫在 ops-web/lib/perm-map.test.ts：页面用的码必须登记、映射到的后端码必须真存在于 Perms.java、前端的角色镜像必须与 Java 源码一致。角色码异名同义仍在 http 层翻译（BD↔MERCHANT_BD 等）。**ops-web 保留 11 个角色**：它们与需求矩阵 §2.3 逐条对应，后端只配了 4 个 —— 那是后端的缺口，不是前端多造，砍前端等于砍需求" },
   { decl: "ops-web:FieldType", dom: "ui", shape: "CLASS", verdict: "OK",
