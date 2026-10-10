@@ -69,3 +69,13 @@ b-app staff.role.MANAGER
 b-app stores.hint
 b-app verify.ovBatches
 b-app verify.ovFee
+#
+# ── 2026-10-10：物流/通知那条线新加的 6 条，locale 已加、$t 引用还没接 ──────────
+# （代码里的 order.trace / order.pickupName / order.expressNo 是数据字段访问，不是 $t 键，别误当已引用。）
+# 登记以免挡住共享分支推送；由物流/通知那条线接上入口或删掉后，从这儿删这几行。
+b-app notifySetting.https
+c-app goods.fulfillment
+c-app order.pickup
+c-app order.express
+c-app order.trace
+c-app order.traceView
