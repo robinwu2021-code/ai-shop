@@ -1,6 +1,6 @@
 # TDD-收件人物流触达与分享裂变
 
-状态：**草稿 · 待确认**（2026-10-10 用户：「给出详细的设计方案」）
+状态：**已确认**（2026-10-10 用户：「短链用 s.hxmall.top，其他都按建议执行」）· 一期实现中
 档位：**3**（新表 ×2、新 /mp 匿名端点、新 C 端页面、新通知场景、新 Aliyun 模板、微信 URL Link 接入）
 关联：[TDD-来单多渠道通知](TDD-来单多渠道通知.md)（短信/留痕复用）· [TDD-物流轨迹多渠道](TDD-物流轨迹多渠道.md)（轨迹复用）· [ADR-004 增长模型](ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md)（裂变归因）
 
@@ -118,7 +118,7 @@ GET /mp/track?t=<token>    （匿名，进 /mp 鉴权白名单）
 短信里不能直接放小程序页路径（短信点不开小程序页），要两跳：
 
 ```
-短信里的短链  https://hxmall.top/s/<code>
+短信里的短链  https://s.hxmall.top/<code>
       │ 302
       ▼
 微信 URL Link  https://wxaurl.cn/xxxx   （urllink.generate 生成，打开小程序指定页）
@@ -131,7 +131,8 @@ GET /mp/track?t=<token>    （匿名，进 /mp 鉴权白名单）
 
 - 新表 `lnk_short(code, target, biz_type, created_at, expires_at, hits)`。
 - `code` 短随机串（6~8 位，BizKey 随机段同款）。
-- nginx/后端 `/s/<code>` → 查 target → 302。顺带 `hits++`（点击量，运营看效果）。
+- 子域名 **`s.hxmall.top`**（用户选定）：nginx 新 server 块 → 后端 `/<code>` → 查 target → 302。顺带 `hits++`。
+- 需 DNS（DNSPod 加 A 记录）+ 证书（`*.hxmall.top` 泛域名证书，若无则单独签 s.hxmall.top）。
 - **为什么要短链而不直接放 URL Link**：微信 URL Link 很长（`wxaurl.cn/` + 一长串），
   短信按 70 字一条计费，长链接直接多花一条的钱；短链把每条压回一条。
 
@@ -199,13 +200,33 @@ token 无状态，不建表。
 
 | # | 决策 | 选项与推荐 |
 |---|---|---|
-| A | **看件页隐私口径** | 推荐「收窄视图」：隐价格、隐买家身份，只给物流+收货+店名+商品摘要。你若要更严（连地址也掩），或更松（给全详情），改这一处 |
-| B | **发货短信成本** | 每单发货一条给收件人，按条计费。要不要**所有 EXPRESS 单都发**，还是只对某些（如跨城/送礼）？推荐先全发、看量再收 |
-| C | **裂变激励给什么** | 只「看到」不够。推荐：新用户打开看件页 → 领一张本店首单券。但券的面额/规则要你定（或先不给激励、只做归因，二期再加券） |
-| D | **短链域名报备** | `hxmall.top/s/` 要在阿里云短信后台报白名单（否则带链模板审核不过）。确认用这个域名 |
+| A | **看件页隐私口径** | ✅ 收窄视图（隐价格、隐买家身份；给物流+收货+店名+商品摘要） |
+| B | **发货短信成本** | ✅ 一期全发（所有 EXPRESS 单），看量再收 |
+| C | **裂变激励** | ✅ 一期只做归因（inviterNo），二期再加本店首单券 |
+| D | **短链域名** | ✅ **`s.hxmall.top`**（用户选定）。要：DNSPod 加 A 记录 + 证书 + 阿里云短信后台报白名单 |
 | E | **新 Aliyun 模板** | 发货短信要新模板报备（几小时）。文案见 §2.2，带 ${url} 变量 |
 
 ---
+
+## §8.1 一期模块清单（文件级）
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `shop-core/…/trade/track/ShipTrackToken.java` | token 签发/校验（HMAC-SHA256，key 走 env） |
+| 新增 | `shop-core/…/trade/api/mp/MpTrackController.java` | `GET /mp/track`（匿名，白名单） |
+| 新增 | `shop-core/…/trade/dto/TrackVO.java` | 收窄视图 VO |
+| 新增 | `shop-app/…/db/migration/V39x__lnk_short.sql` | 短链表 |
+| 新增 | `shop-core/…/link/ShortLinkService.java` + entity/mapper | 生成短码、查 target、hits++ |
+| 新增 | `shop-core/…/link/api/ShortLinkController.java` | `GET /{code}`（s.hxmall.top 的匿名 302），profile 独立或 api |
+| 新增 | `shop-core/…/notify/WxUrlLinkClient.java` | 微信 `urllink.generate` |
+| 修改 | `NotificationConsumer` | `SUB_ORDER_SHIPPED` → 给收件人发短信（EXPRESS） |
+| 修改 | `SmsPort` + `AliSmsGateway` + `StubSmsGateway` | `sendShipToRecipient(phone, url)` |
+| 修改 | `application.yml` | `SHIP_TRACK_KEY`、`ALI_SMS_TPL_SHIP`、短链域名 |
+| 修改 | ops `bizLabel` / copy | 新 bizType `SHIP_NOTIFY` |
+| 新增 | c-app `pages/track/index.vue` + pages.json | 免登录看件页 |
+| 修改 | c-app `pages/order/index.vue` | 收货信息卡 + 配送进度；分享落到看件页 |
+| 鉴权 | `/mp/track` 进白名单；`/s` 域名独立放行 | 匿名可访问 |
+| 部署 | DNSPod s.hxmall.top、nginx server、证书、阿里云模板+白名单 | 运维步骤 |
 
 ## §9 分期建议
 
@@ -219,4 +240,4 @@ token 无状态，不建表。
 | 日期 | 事件 |
 |---|---|
 | 2026-10-10 | 草稿；用户「给出详细的设计方案」；取件码确认不支持 |
-| 待办 | 用户确认 §8 的 A~E 五个决策后，进 writing-plans / 实现 |
+| 2026-10-10 | 用户确认：短链 s.hxmall.top，其余按推荐 → 进一期实现 |
