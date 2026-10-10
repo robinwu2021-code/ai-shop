@@ -26,6 +26,16 @@ const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
 /**
+ * 状态头的底色档（原型 c-order-detail）：待办给暖色、进行中给主色、终态给灰。
+ * 与 statusTone（文字色，库件给）分开 —— 这里只决定 header 背景，不碰字色。
+ */
+const statusBg = computed(() => {
+  const s = order.value?.status;
+  if (s === "WAIT_PAY" || s === "WAIT_OFFLINE_PAY") return "head--warn";
+  if (s === "COMPLETED" || s === "CANCELLED" || s === "REFUNDED") return "head--done";
+  return "head--active";
+});
+/**
  * 这一单的明细由**微信插件**呈现吗。
  *
  * <p>是的话我们只给摘要（状态 + 最新一条 + 入口）：**明细在插件里已经有一份**，
@@ -456,8 +466,8 @@ onShow(load);
       长度靠折叠控制（轨迹默认 3 条）。
     -->
     <view v-if="order.fulfillment || hasTrace || nextStepText" class="sh-card block prog">
-      <view class="sh-row sh-row--between">
-        <text class="txt-title status" :class="statusTone(order.status)">
+      <view class="sh-row sh-row--between prog__head" :class="statusBg">
+        <text class="txt-title status prog__st" :class="statusTone(order.status)">
           {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
         </text>
         <!-- 走插件的单，入口在这里；明细不在页面上，所以这颗必须显眼 -->
@@ -752,6 +762,27 @@ onShow(load);
    这里留一条 color 就会把库件那条压掉，而闸门看不出来。 */
 .status {
   display: block;
+}
+/* 状态头（原型 c-order-detail）：大字状态 + 按状态档的底色，像京东/淘宝那张醒目的头。
+   只给背景与字号，字色仍交给 statusTone 库件（见上面那条注释的理由）。 */
+.prog__head {
+  padding: 16rpx 20rpx;
+  border-radius: 12rpx;
+  margin-bottom: 8rpx;
+  align-items: center;
+}
+.prog__head.head--warn {
+  background: var(--sh-warning-tint);
+}
+.prog__head.head--active {
+  background: var(--sh-primary-tint);
+}
+.prog__head.head--done {
+  background: var(--sh-faint);
+}
+.prog__st {
+  font-size: 34rpx;
+  line-height: 1.3;
 }
 .timeline {
   margin-top: 28rpx;
