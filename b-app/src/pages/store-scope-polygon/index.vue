@@ -198,37 +198,38 @@ function back() {
   position: absolute;
   background: var(--sh-primary);
 }
+/* 居中用 translate 而不是 -1rpx 负 margin：半格值不在 4rpx 网格上，且 2rpx 线的一半本就不是整格 */
 .cross__v {
   left: 50%;
   top: 0;
   width: 2rpx;
   height: 100%;
-  margin-left: -1rpx;
+  transform: translateX(-50%);
 }
 .cross__h {
   top: 50%;
   left: 0;
   height: 2rpx;
   width: 100%;
-  margin-top: -1rpx;
+  transform: translateY(-50%);
 }
 .bar {
   display: flex;
   align-items: center;
-  gap: var(--sh-gap-sm);
-  padding: var(--sh-gap-sm) var(--sh-gap);
+  gap: 12rpx;
+  padding: 12rpx 24rpx;
 }
 .bar__n {
   font-weight: 600;
 }
 .bar__hint {
-  color: var(--sh-muted);
+  color: var(--sh-sub);
 }
 .ops {
   display: flex;
   align-items: center;
-  gap: var(--sh-gap-sm);
-  padding: 0 var(--sh-gap) var(--sh-gap);
+  gap: 12rpx;
+  padding: 0 24rpx 24rpx;
 }
 .ops__add {
   margin-left: auto;
