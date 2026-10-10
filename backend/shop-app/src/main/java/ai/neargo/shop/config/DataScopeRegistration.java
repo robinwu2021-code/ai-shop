@@ -212,6 +212,14 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 多边形范围的 S2 网格派生表（V396，ADR-034）。登记 MERCHANT 是给运营端看的；
+         * 可见性命中查询（ReachMatchMapper）与保存时的级联写删都走 executeWithoutScope——
+         * 调用方是 C 端目录或 B 端会话，接上数据域就是 1=0。归属由所属范围项的 store_no/entity_no 保证。
+         */
+        registry.register("mch_service_area_cell", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 门店货架。登记 MERCHANT 是给运营端看的（「这家店摆了哪几类」）；
          * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。

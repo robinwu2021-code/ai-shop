@@ -34,10 +34,21 @@ public class MchServiceArea extends BaseEntity {
      */
     private String storeNo;
 
-    /** COMMUNITY / VILLAGE / STREET / DISTRICT / CITY */
+    /**
+     * 粒度：COMMUNITY 社区/楼栋 · VILLAGE 村/居委会 · STREET 街道 · DISTRICT 区县 · CITY 城市 · PROVINCE 省
+     * · POLYGON 地图多边形 · UNLIMITED 全平台不限（ADR-034）。
+     *
+     * <p>行政五级按国标码前缀匹配（省 2 / 市 4 / 区县 6 / 街道 9 / 村居 12 位）；
+     * POLYGON 经 S2 网格派生表 {@code mch_service_area_cell} 命中、边界 cell 再用 {@link #geometry} 精判；
+     * UNLIMITED 只对快递/自送路生效，自提没有落点。
+     */
     private String level;
 
-    /** {@code level=COMMUNITY} 时是 {@code community_no}，否则是 {@code region_code} */
+    /**
+     * {@code COMMUNITY} 时是 {@code community_no}；行政级是 {@code region_code}；
+     * {@code POLYGON} 是几何指纹（规范化顶点 JSON 的 SHA-256 前 32 位——几何不变则项不变、area_no 得以沿用）；
+     * {@code UNLIMITED} 恒为 {@link #UNLIMITED_REF}。
+     */
     private String refCode;
 
     /** SELF 商家自选 / OPS 运营指定 */
@@ -58,9 +69,30 @@ public class MchServiceArea extends BaseEntity {
      */
     private String mode;
 
+    /**
+     * {@code level=POLYGON} 时的顶点 JSON：{@code [[lngE6,latE6],...]}，规范化、首尾不重复（V396）。
+     * 其余 level 为 null。网格派生表可由它全量重建。
+     */
+    private String geometry;
+
     public static final String MODE_INCLUDE = "INCLUDE";
     public static final String MODE_EXCLUDE = "EXCLUDE";
 
     public static final String ACTIVE = "ACTIVE";
     public static final String PENDING = "PENDING";
+
+    public static final String LEVEL_COMMUNITY = "COMMUNITY";
+    public static final String LEVEL_VILLAGE = "VILLAGE";
+    public static final String LEVEL_STREET = "STREET";
+    public static final String LEVEL_DISTRICT = "DISTRICT";
+    public static final String LEVEL_CITY = "CITY";
+    public static final String LEVEL_PROVINCE = "PROVINCE";
+    public static final String LEVEL_POLYGON = "POLYGON";
+    public static final String LEVEL_UNLIMITED = "UNLIMITED";
+    /** UNLIMITED 项的 ref_code 恒为它：一店一条，由唯一键 (entity_no, store_no, level, ref_code) 保证 */
+    public static final String UNLIMITED_REF = "*";
+
+    /** 行政五级：按 region_code 前缀匹配的那几档 */
+    public static final java.util.Set<String> ADMIN_LEVELS = java.util.Set.of(
+            LEVEL_PROVINCE, LEVEL_CITY, LEVEL_DISTRICT, LEVEL_STREET, LEVEL_VILLAGE);
 }

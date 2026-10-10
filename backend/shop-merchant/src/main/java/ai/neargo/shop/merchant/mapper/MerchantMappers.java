@@ -151,6 +151,24 @@ public final class MerchantMappers {
     }
 
     /** SUBSET 收窄（P2 启用）。 */
+    /**
+     * 多边形范围的 S2 网格派生行（V396，ADR-034）。查询走 {@code cell_id IN (...)}（见 ReachMatchMapper），
+     * 这里只管写入与级联清理。
+     */
+    public interface ServiceAreaCellMapper
+            extends BaseMapper<ai.neargo.shop.merchant.entity.MchServiceAreaCell> {
+
+        /**
+         * **物理删**这些范围项的全部网格行。多边形项被删或几何改了（指纹变 = 新项）时同事务调用；
+         * 不删的话旧网格还会让消费者命中一片已经不存在的范围。
+         */
+        @org.apache.ibatis.annotations.Delete({"<script>",
+                "DELETE FROM mch_service_area_cell WHERE area_no IN",
+                "<foreach collection='areaNos' item='n' open='(' separator=',' close=')'>#{n}</foreach>",
+                "</script>"})
+        int purgeByAreaNos(@Param("areaNos") java.util.Collection<String> areaNos);
+    }
+
     public interface ChannelAreaMapper
             extends BaseMapper<ai.neargo.shop.merchant.entity.MchChannelArea> {
 

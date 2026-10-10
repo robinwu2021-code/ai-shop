@@ -1975,6 +1975,7 @@ CREATE TABLE IF NOT EXISTS mch_service_area
     area_no VARCHAR(64) NOT NULL,
     mode VARCHAR(16) NOT NULL DEFAULT 'INCLUDE',
     store_no VARCHAR(64) DEFAULT NULL,
+    geometry TEXT NULL,
     CONSTRAINT uk_service_area_no UNIQUE (area_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_service_area_store UNIQUE (entity_no, store_no, level, ref_code)
@@ -4669,6 +4670,27 @@ CREATE TABLE IF NOT EXISTS mch_notify_recipient
     deleted        TINYINT(4)    NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_mch_notify_recipient UNIQUE (store_no, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS mch_service_area_cell
+(
+    id         BIGINT      NOT NULL AUTO_INCREMENT,
+    area_no    VARCHAR(64) NOT NULL,
+    entity_no  VARCHAR(64) NOT NULL,
+    store_no   VARCHAR(64) NOT NULL,
+    mode       VARCHAR(16) NOT NULL,
+    cell_id    VARCHAR(32) NOT NULL,
+    s2_level   TINYINT     NOT NULL,
+    boundary   TINYINT     NOT NULL DEFAULT 0,
+    tenant_no  VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME    NOT NULL,
+    created_by VARCHAR(64)          DEFAULT NULL,
+    updated_at DATETIME    NOT NULL,
+    updated_by VARCHAR(64)          DEFAULT NULL,
+    version    BIGINT      NOT NULL DEFAULT 0,
+    deleted    TINYINT     NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sac_area_cell UNIQUE (area_no, cell_id)
 );
 
 -- 种子数据
