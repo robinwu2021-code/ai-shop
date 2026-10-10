@@ -24,6 +24,23 @@ const { t } = useI18n();
 onLaunch(() => {
   // 朋友圈单页模式：跳转被微信禁掉且不报错 —— 在壳上一处拦下来明说（见 single-page.ts）
   guardSinglePageNavigation(() => String(t("share.singlePageBlocked")));
+  // #ifdef H5
+  /*
+   * 发货看件短链的 H5 落地（TDD-收件人物流触达 §4.3）：短链 302 到 `/c/?t=<令牌>`。
+   * **令牌放在 ? query（# 之前），不放 hash**：302 的 Location 若把页面路径放进 `#`，
+   * 浏览器跟随重定向时会把 fragment 丢掉 —— 人就落回 `/c/` 首页（看着像落错页）。
+   * 放 ? 里必然保住，启动时读出来 reLaunch 到看件页（hash 路由，令牌进页面 query）。
+   */
+  try {
+    const trackToken = new URLSearchParams(window.location.search).get("t");
+    if (trackToken) {
+      uni.reLaunch({ url: `${ROUTES.track}?t=${encodeURIComponent(trackToken)}` });
+      return;
+    }
+  } catch {
+    /* 没有 window / 解析失败：当作普通启动，不拦 */
+  }
+  // #endif
   // 外壳的 C 端特征：购物车角标、飞入小球与它的落点、切语言/市场后要重拉的服务端文案。
   // 组件库对这些一无所知（packages/ui/src/shell.ts）
   const cart = useCartStore();

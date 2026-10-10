@@ -318,7 +318,7 @@ shop:
     # 看件页在小程序里的路径（URL Link 用），不带前导斜杠
     track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/track/index}
     # URL Link 生成不出来时退回的 H5 看件页前缀（hash 路由），token 以 ?t= 拼在后面
-    track-h5-base: ${SHIP_TRACK_H5_BASE:https://hxmall.top/c/#/pages/track/index}
+    track-h5-base: ${SHIP_TRACK_H5_BASE:https://www.hxmall.top/c/?t=}
 
   # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
   #

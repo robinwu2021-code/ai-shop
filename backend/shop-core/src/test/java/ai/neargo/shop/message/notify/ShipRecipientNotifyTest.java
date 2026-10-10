@@ -43,7 +43,7 @@ class ShipRecipientNotifyTest {
         when(sms.sendShipToRecipient(anyString(), anyString())).thenReturn(SendResult.none());
         notify = new ShipRecipientNotify(new ShipTrackPortImpl(new ShipTrackToken("k", 30)),
                 shortLink, sms, buyer,
-                "https://hxmall.top/c/#/pages/track/index", 30);
+                "https://www.hxmall.top/c/?t=", 30);
     }
 
     @Test
@@ -71,7 +71,7 @@ class ShipRecipientNotifyTest {
         ArgumentCaptor<String> target = ArgumentCaptor.forClass(String.class);
         verify(shortLink).shorten(target.capture(), anyString(), eq("SUB-A"), any());
         assertThat(target.getValue())
-                .startsWith("https://hxmall.top/c/#/pages/track/index?t=");
+                .startsWith("https://www.hxmall.top/c/?t=");
     }
 
     @Test

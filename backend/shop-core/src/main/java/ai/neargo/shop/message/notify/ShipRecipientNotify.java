@@ -35,7 +35,8 @@ public class ShipRecipientNotify {
     private final ShortLinkService shortLink;
     private final SmsPort smsPort;
     private final SubOrderBuyerPort buyerPort;
-    /** H5 看件页前缀（hash 路由），token 以 {@code ?t=} 拼在后面 */
+    /** H5 看件落地前缀，**以 {@code ?t=} 收尾**，token 直接拼在后面（放 ? 而非 #，避免 302 丢 fragment）。
+     *  H5 入口 App.vue 读 search.t 再 reLaunch 到看件页 */
     private final String h5Base;
     /** 短链有效期（天），与看件令牌同寿 */
     private final long linkTtlDays;
@@ -43,7 +44,7 @@ public class ShipRecipientNotify {
     public ShipRecipientNotify(ShipTrackPort token,
                                ShortLinkService shortLink, SmsPort smsPort,
                                SubOrderBuyerPort buyerPort,
-                               @Value("${shop.ship.track-h5-base:https://hxmall.top/c/#/pages/track/index}") String h5Base,
+                               @Value("${shop.ship.track-h5-base:https://www.hxmall.top/c/?t=}") String h5Base,
                                @Value("${shop.ship.track-ttl-days:30}") long linkTtlDays) {
         this.token = token;
         this.shortLink = shortLink;
@@ -73,7 +74,7 @@ public class ShipRecipientNotify {
              * /mp/track/mini-link 拿 URL Link）。这里不再在后端生成 URL Link 作 target ——
              * 那条要小程序正式版发布才有，拿它当短信落点会在未发布时把短信指向一个唤不起的链接。
              */
-            String target = h5Base + "?t=" + t;
+            String target = h5Base + t;
             LocalDateTime expiresAt = LocalDateTime.now().plusDays(linkTtlDays);
             String shortUrl = shortLink.shorten(target, ShortLink.BIZ_SHIP_TRACK, subOrderNo, expiresAt);
             smsPort.sendShipToRecipient(phone.get(), shortUrl);
