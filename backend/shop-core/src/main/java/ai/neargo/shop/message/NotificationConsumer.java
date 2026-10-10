@@ -237,9 +237,20 @@ public class NotificationConsumer implements OutboxConsumer {
             case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端
             case NotifyScene.SUB_ORDER_PAID -> {
-                fanOutToStaff(event, text(payload, "entityNo"), text(payload, "storeNo"), ORDER_ROLES,
+                /*
+                 * 深链落到**订单详情页**（通知就是针对这一单），带上 storeNo 与 src=notify：
+                 * 详情按当前门店过滤，而点通知的人当前选的店多半不是这单的店 ——
+                 * 不对齐门店会跨店 NOT_FOUND。src=notify 让详情页把这当成深链、做门店对齐，
+                 * 与「从列表正常点进来」区分开（后者当前门店已对，不用切）。
+                 * storeNo 为空（老数据）时省掉 store 参数，详情页回落到「不限门店查」。
+                 */
+                String paidStore = text(payload, "storeNo");
+                String detailLink = "/pages/order/index?orderNo=" + nz(text(payload, "subOrderNo"), "")
+                        + (paidStore == null || paidStore.isBlank() ? "" : "&store=" + paidStore)
+                        + "&src=notify";
+                fanOutToStaff(event, text(payload, "entityNo"), paidStore, ORDER_ROLES,
                         "新订单", "有新的订单待备货，记得按时送到自提点",
-                        "/pages/orders/index?tab=PAID",
+                        detailLink,
                         // 来单：App 响铃与微信**都发**（wxFirst=false）—— 厂商通道没报备，App 在后台收不到（通知 TDD §13.3②）
                         new WxStaff(WxSubscribePort.SCENE_MCH_NEW_ORDER, Map.of(
                                 "orderNo", nz(text(payload, "subOrderNo"), ""),

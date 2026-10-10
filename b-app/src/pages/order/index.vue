@@ -313,8 +313,31 @@ async function cancelPickup() {
   }
 }
 
-onLoad((q) => {
-  if (q?.orderNo) void load(q.orderNo);
+onLoad(async (q) => {
+  const no = q?.orderNo;
+  if (!no) return;
+  /*
+   * 深链（微信通知 / App 推送，后端带 src=notify）：订单详情按**当前门店**过滤，
+   * 而点通知的人当前选的店多半不是这单的店 —— 不对齐门店会跨店 NOT_FOUND、显示「加载失败」。
+   *
+   * 链接带了 store（后端已知）就直接切过去；**没带 store（旧通知 / 兜底）就先清当前门店、
+   * 不限门店查到这单，再从订单里取它的店切过去** —— 这就是「链接没有门店信息时先查询获得」。
+   *
+   * 从订单列表正常点进来（没有 src=notify）当前门店已经是对的，不切，省掉两次 loadScope。
+   */
+  if (q?.src === "notify") {
+    if (q?.store) {
+      await merchant.switchStore(q.store as string);
+      await load(no as string);
+    } else {
+      await merchant.switchStore("");          // 清当前店 → 请求不带 X-Store-No，跨店也查得到
+      await load(no as string);
+      const resolved = order.value?.store?.storeNo;
+      if (resolved) await merchant.switchStore(resolved);   // 对齐到这单的店，返回列表才对
+    }
+  } else {
+    void load(no as string);
+  }
 });
 </script>
 

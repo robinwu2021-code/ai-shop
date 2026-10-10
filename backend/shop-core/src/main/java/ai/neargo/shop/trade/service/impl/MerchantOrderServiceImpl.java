@@ -98,7 +98,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         // 已取消 / 已退款：券与积分的去向（P3）—— 商家客服接到「我的券呢」时要看得到
         // 优惠明细（批 3 · B8）：此前 B 端详情只有应付，商家看不到这单减了什么、谁出的钱
-        return toVO(sub).withDiscountLines(orderService.discountLinesOf(sub))
+        return toVO(sub)
+                // 门店号带上：深链（微信通知/推送）落地要用它把当前门店对齐到这单所属的店，
+                // 否则详情按当前门店过滤会跨店 NOT_FOUND（店名置 null，落地只用 storeNo 切店）。
+                .withStore(new OrderVO.StoreBrief(sub.getStoreNo(), null))
+                .withDiscountLines(orderService.discountLinesOf(sub))
                 .withReturned(orderService.returnedOf(sub))
                 .withTrace(traceOf(sub));
     }
