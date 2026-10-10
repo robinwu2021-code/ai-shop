@@ -65,7 +65,11 @@ import java.util.List;
  * 按 @Mapper 注解扫，范围收在 archive 包内：不放开到全局，
  * 免得又把「谁都能当 Mapper」这条口子开回来。
  */
-@MapperScan(basePackages = {"ai.neargo.shop.archive", "ai.neargo.shop.media"},
+@MapperScan(basePackages = {"ai.neargo.shop.archive", "ai.neargo.shop.media",
+        // ReachMatchMapper（ADR-034）：可见范围的命中查询跨 mch_service_area 与 mch_service_area_cell
+        // 两张表，绑不到单一实体，与 ArchiveMapper 同一处境。这个包里其余 Mapper 都是 BaseMapper
+        // 子接口，由上面那个 scan 收；按 @Mapper 注解扫只会收到真正标注了的那个。
+        "ai.neargo.shop.merchant.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
