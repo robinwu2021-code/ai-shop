@@ -79,6 +79,27 @@ export const FIELDS = [
     ],
   },
   {
+    /*
+     * 商家能自己开关的四条通道（TDD-来单四渠道与商家通知设置）。
+     *
+     * **只登记 channel 不登记 scene**：scene 那一列的取值是 NotifyScene 的全集
+     * （十几个场景码，还会继续加），端上从来不枚举它 —— 页面渲染的是后端回的
+     * scenes 数组。把它登记成取值域只会制造一份必然漂移的名单。
+     */
+    concept: "商家能自己开关的通知通道",
+    field: "mch_notify_pref.channel",
+    /*
+     * **从 DDL 抽而不是从 Java 常量抽**：MchNotifyPref 里那四个常量写的是
+     * `CH_WXSUB = MsgSceneChannel.CH_WXSUB`（引用而不是字面量，为的是别让
+     * 同一个通道码在两处各拼一遍），抽取器读不到字面量就判「取值域为空」。
+     * 建表注释里是实打实的四个词，那才是这一列的真源。
+     */
+    backend: { ddl: ["mch_notify_pref", "channel"] },
+    clients: [
+      { file: "b-app/src/api/contract.ts", type: "NotifyChannelCode" },
+    ],
+  },
+  {
     concept: "供应商收款账户的状态",
     field: "mch_payout_account.status",
     backend: {

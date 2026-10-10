@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **191** 张表、**302** 条引用关系，分 **16** 个域。
+全库 **194** 张表、**306** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,15 +14,15 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 10 | 14 |
-| 商家主体与门店 | `mch_*` | 28 | 12 |
+| 商家主体与门店 | `mch_*` | 29 | 13 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 27 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
 | 交易 | `ord_*` | 7 | 8 |
-| 履约 | `ful_*` | 8 | 0 |
+| 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
 | 积分 | `pts_*` | 2 | 0 |
-| 结算 | `stl_*` | 12 | 1 |
+| 结算 | `stl_*` | 13 | 1 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
@@ -53,7 +53,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（28 张）
+### 商家主体与门店 `mch_*`（29 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -87,6 +87,7 @@
 | `mch_debt_txn` | 欠款流水。只有余额字段的账户是不可审计的 |
 | `mch_store_qrcode_print` | 店铺码印刷量登记台账（线下事实，运营录入） |
 | `mch_payout_account` | 供应商收款账户（自营付款用，账号密文存储） |
+| `mch_notify_pref` | 门店自己的通知开关（缺行=开） |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`、`mch_session.user_no` → `usr_account`、`mch_login_log.user_no` → `usr_account`
 
@@ -165,7 +166,7 @@
 
 **跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`
 
-### 履约 `ful_*`（8 张）
+### 履约 `ful_*`（5 张）
 
 ![履约表关系](../diagrams/db-ful.svg)
 
@@ -175,12 +176,9 @@
 | `ful_group_pickup` | 邻里自提点（团粒度临时点，随团生灭，零报酬） |
 | `ful_verify_log` | 核销日志（append-only） |
 | `ful_shortage_report` | 自提点缺件上报（append-only，只留痕不改状态） |
-| `ful_shipment` | 快递运单记录（平台侧） |
-| `ful_shipment_trace` | 快递轨迹节点（append-only） |
 | `ful_freight_template` | 平台运费模板与超区规则 |
-| `ful_carrier` | 第三方运力接入配置（一期只存不接） |
 
-**跨域引用**：`ful_batch.pickup_no` → `cmt_pickup_point`、`ful_batch.community_no` → `cmt_community`、`ful_group_pickup.pickup_no` → `cmt_pickup_point`、`ful_group_pickup.group_no` → `mkt_group_buy`、`ful_group_pickup.user_no` → `usr_account`、`ful_verify_log.sub_order_no` → `ord_sub_order`、`ful_verify_log.pickup_no` → `cmt_pickup_point`、`ful_shortage_report.sub_order_no` → `ord_sub_order`、`ful_shortage_report.pickup_no` → `cmt_pickup_point`、`ful_shortage_report.sku_no` → `prd_sku`、`ful_shipment.sub_order_no` → `ord_sub_order`
+**跨域引用**：`ful_batch.pickup_no` → `cmt_pickup_point`、`ful_batch.community_no` → `cmt_community`、`ful_group_pickup.pickup_no` → `cmt_pickup_point`、`ful_group_pickup.group_no` → `mkt_group_buy`、`ful_group_pickup.user_no` → `usr_account`、`ful_verify_log.sub_order_no` → `ord_sub_order`、`ful_verify_log.pickup_no` → `cmt_pickup_point`、`ful_shortage_report.sub_order_no` → `ord_sub_order`、`ful_shortage_report.pickup_no` → `cmt_pickup_point`、`ful_shortage_report.sku_no` → `prd_sku`
 
 ### 营销与团购 `mkt_*`（17 张）
 
@@ -219,7 +217,7 @@
 
 **跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`
 
-### 结算 `stl_*`（12 张）
+### 结算 `stl_*`（13 张）
 
 ![结算表关系](../diagrams/db-stl.svg)
 
@@ -237,8 +235,9 @@
 | `stl_settle_batch` | 账期批次：一个主体一个通道一个账期一批 |
 | `stl_channel_message` | 渠道发送与回调报文。归 pay —— D2 拆库时跟着支付域走 |
 | `stl_bank_flow` | 银行流水镜像（人工上传，出款对账 B 侧） |
+| `stl_payout` | 放款记录：账期批次 × 收款号一笔，凭证号与银行流水都挂在它上面 |
 
-**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`、`stl_withdraw.entity_no` → `mch_entity`、`stl_settle_invoice.entity_no` → `mch_entity`、`stl_settle_batch.entity_no` → `mch_entity`
+**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`、`stl_withdraw.entity_no` → `mch_entity`、`stl_settle_invoice.entity_no` → `mch_entity`、`stl_settle_batch.entity_no` → `mch_entity`、`stl_payout.entity_no` → `mch_entity`、`stl_payout.pay_merchant_no` → `mch_payment_merchant`
 
 ### 评价 `rvw_*`（3 张）
 

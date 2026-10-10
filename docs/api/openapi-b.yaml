@@ -19022,6 +19022,117 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/notify/setting": 
+    get: 
+      operationId: "mNotifySetting"
+      summary: "本店的通知开关与企微群状态"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+    put: 
+      operationId: "mSaveNotifySwitch"
+      summary: "改本店某个场景某条通道的开关"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/notify/wecom": 
+    put: 
+      operationId: "mSaveNotifyWecom"
+      summary: "录入本店的企业微信群机器人地址"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/notify/wecom/test": 
+    post: 
+      operationId: "mTestNotifyWecom"
+      summary: "往本店的企微群发一条测试"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "boolean"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/inventory/summary": 
     get: 
       operationId: "mStockSummary"

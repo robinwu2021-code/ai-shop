@@ -283,6 +283,8 @@ const entries = computed(() =>
     { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store" },
     // 发货设置：寄件人、地址、默认快递与重量，一次填好，发货时自动带出（TDD-快递100商家寄件 §7）
     { key: "ship", label: t("home.shipEntry"), route: ROUTES.shipSettings, perm: "biz:store" },
+    // 通知设置：来单 / 售后 / 评价各四条通道的开关 + 本店的企微群（TDD-来单四渠道与商家通知设置）
+    { key: "notify", label: t("home.notifyEntry"), route: ROUTES.notifySettings, perm: "biz:store" },
     { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin" },
     { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods" },
     { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods" },

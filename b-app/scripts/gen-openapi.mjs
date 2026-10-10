@@ -187,6 +187,12 @@ const RESPONSE_TYPES = {
   mExpressPickup: "ExpressPickup",
   mCancelExpress: "ExpressPickup",
   mShipSetting: "ShipSetting",
+  // 通知设置（TDD-来单四渠道与商家通知设置）。三条都回整份设置 —— 改完立刻回读，
+  // 端上不做乐观更新：这一屏每一格都对应「会不会收到通知」，不能留一个说假话的开关
+  mNotifySetting: "NotifySetting",
+  mSaveNotifySwitch: "NotifySetting",
+  mSaveNotifyWecom: "NotifySetting",
+  mTestNotifyWecom: "boolean",
   mFreightTemplate: "StoreFreightTemplate",
   mFreightTemplates: "StoreFreightTemplate[]",
   mSaveShipSetting: "ShipSetting",

@@ -453,16 +453,23 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         registry.register("mch_debt_txn", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
         /*
-         * 商家自己的通知开关（TDD-来单四渠道与商家通知设置）。
+         * **mch_notify_pref 刻意不登记**（TDD-来单四渠道与商家通知设置）。
          *
-         * ⚠️ **发送侧一律显式豁免**（MerchantNotifyPrefs 里全是 executeWithoutScope）：
-         * 读它的是 outbox 消费线程，没有会话 —— 不豁免会 fail-closed 拼成 1=0，
-         * 于是「缺行 = 开」这条默认值反而把所有商家都判成开，看着没事，
-         * 可商家真关掉的那一条也照发，而他点了关却毫无效果。
-         * 登记这一行是为了**运营端将来要看这张表时**有正确的域，不是为发送侧。
+         * 这张表只有 store_no，而数据域只有 MERCHANT / PICKUP / COMMUNITY 三个维度 ——
+         * 门店不是其中之一。第一版照着上下几行写了
+         * {@code Map.of(ScopeDim.MERCHANT, "store_no")}，那是错配：
+         * MERCHANT 维度的值是商家号，拿它去比门店号**一行都匹配不上**，
+         * 而症状是运营页面整片空白、零报错（ops-data-scope 守卫当天就抓了出来）。
+         *
+         * 不登记的含义是「拦截器不动这条 SQL」，而这对它正好成立：
+         * 读者只有发送侧（outbox 消费线程，没有会话，MerchantNotifyPrefs 里
+         * 全程 executeWithoutScope）与商家自己那四条 /biz 端点（按 X-Store-No
+         * 限住当前门店）。**运营端今天没有任何一屏读它。**
+         *
+         * ⚠️ 运营端要加一屏看通知开关的那天，两条路选一条：
+         * 给这张表冗余一列 entity_no 并回填，然后按 MERCHANT 登记；
+         * 或者在那一屏显式豁免并自己判归属。别照上面错配的那种写法再来一遍。
          */
-        registry.register("mch_notify_pref", Map.of(
-                ScopeDim.MERCHANT, "entity_no"));
         // 快递代下单的取件单（TDD-快递100商家寄件）。服务层读写一律显式豁免、自己按 entity_no 判归属 ——
         // 商家用的是消费者令牌（维度 SELF），不豁免会拼成 1=0；回调线程则根本没有会话
         registry.register("ord_express_pickup", Map.of(

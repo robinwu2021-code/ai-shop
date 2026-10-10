@@ -462,7 +462,7 @@ const ANCHOR_WAIVED: Record<string, string> = {
     + "而那和 V137 给子单加列是同一种代价，值不值得看仲裁台会不会按片区分工",
   "ord_after_sale:PICKUP":
     "同上。自提点运营者不做售后仲裁 —— 那需要 aftersale:ticket:read",
-    "mch_entity_plan:COMMUNITY": "增值包订阅属于商家，不属于片区",
+  "mch_entity_plan:COMMUNITY": "增值包订阅属于商家，不属于片区",
   "mch_entity_plan:PICKUP": "同上",
   /*
    * ── 2026-09-29 收款账户（V358，ADR-011 自营供应商模式）──

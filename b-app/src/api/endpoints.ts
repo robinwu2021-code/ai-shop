@@ -388,6 +388,14 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
     summary: "解绑推送设备（登出前，共用设备换班必须解）",
   },
 
+  // ── 通知设置（TDD-来单四渠道与商家通知设置）。开关与群都是**门店级**，
+  // 作用于请求头 X-Store-No 指定的那一家。
+  mNotifySetting: { method: "GET", path: "/biz/notify/setting", auth: true, summary: "本店的通知开关与企微群状态" },
+  mSaveNotifySwitch: { method: "PUT", path: "/biz/notify/setting", auth: true, summary: "改本店某个场景某条通道的开关" },
+  // webhook 进加密列、永不回显 —— 它是凭据，拿到的人都能往那个群发消息
+  mSaveNotifyWecom: { method: "PUT", path: "/biz/notify/wecom", auth: true, summary: "录入本店的企业微信群机器人地址" },
+  mTestNotifyWecom: { method: "POST", path: "/biz/notify/wecom/test", auth: true, summary: "往本店的企微群发一条测试" },
+
   // ── 进销存（P-18）。**注释别夹在 `{` 与 `method:` 之间** ——
   // 端点表的解析器认那个位置，夹进去这条端点会静默不进 spec。
   mStockSummary: { method: "GET", path: "/biz/inventory/summary", auth: true, summary: "库存总览三个数" },

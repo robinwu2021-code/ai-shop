@@ -6,7 +6,8 @@ import type { AutomationSession, GoodsPayMode, PayMode, StorePaySetting, EstateL
   GoodsRevision,
   DepositAccount, DepositTxn, PendingInvoice, PlatformInvoiceTitle,
   PayoutAccount,
-  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate } from "./contract";
+  PurchaseInvoice, Statement, ExpressQuote, ExpressPickup, ShipSetting, StoreFreightTemplate,
+  NotifySetting } from "./contract";
 // 入参的 wire 契约。`satisfies` 让「实际发出去的 body」在编译期受检 ——
 // 字段写错、少传、多传都编译不过，而不是等联调才发现（与 C 端同一套做法）
 import type {
@@ -699,6 +700,14 @@ export const httpApi: MerchantApi = {
     http.post<void>(E.mRegisterPushToken.path, { platform, provider, clientId }),
   mUnregisterPushToken: (clientId) =>
     http.post<void>(E.mUnregisterPushToken.path, { clientId }),
+
+  // ---- 通知设置（TDD-来单四渠道与商家通知设置）。门店级，作用于 X-Store-No 那一家
+  mNotifySetting: () => http.get<NotifySetting>(E.mNotifySetting.path),
+  mSaveNotifySwitch: (scene, channel, enabled) =>
+    http.put<NotifySetting>(E.mSaveNotifySwitch.path, { scene, channel, enabled }),
+  mSaveNotifyWecom: (webhook) =>
+    http.put<NotifySetting>(E.mSaveNotifyWecom.path, { webhook }),
+  mTestNotifyWecom: () => http.post<boolean>(E.mTestNotifyWecom.path),
 
   // ---- 进销存（P-18）
   mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),

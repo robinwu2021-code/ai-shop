@@ -18,6 +18,7 @@ export const ROUTES = {
   store: "/pages/store/index",
   storeNotice: "/pages/store-notice/index",
   shipSettings: "/pages/ship-settings/index",
+  notifySettings: "/pages/notify-settings/index",
   storeScope: "/pages/store-scope/index",
   storePick: "/pages/store-pick/index",
   payment: "/pages/payment/index",

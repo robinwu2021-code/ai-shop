@@ -370,6 +370,18 @@
       }
     },
     {
+      "path": "pages/notify-settings/index",
+      "style": {
+        "navigationBarTitleText": "通知设置",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/ship-settings/index",
       "style": {
         "navigationBarTitleText": "发货设置",

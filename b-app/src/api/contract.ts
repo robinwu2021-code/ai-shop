@@ -183,6 +183,30 @@ export interface GoodsPayMode {
 }
 
 /** 密钥票据的端：B = 店主（btk_），OPS = 运营（otk_）。与后端 AutomationTicketVerifier.TicketRealm 同名 */
+/**
+ * 商家能自己开关的四条通道。
+ *
+ * <p>**与后端 `MchNotifyPref.SWITCHABLE` 的顺序一致**，而这里不重写一份名单 ——
+ * 页面渲染用后端回的 `switches` 的键序，端上只需要这个类型做收窄。
+ * 自己再列一份的后果是「后端加了第五条，页面上少一个开关」，而且零报错。
+ *
+ * <p>**没有 INAPP**：站内信是事实记录，恒发不可关。
+ */
+export type NotifyChannelCode = "WXSUB" | "WEBHOOK" | "SMS" | "PUSH";
+
+/** 一个场景的一组开关。`switches` 的键序即页面顺序 */
+export interface NotifySceneSwitches {
+  scene: string;
+  switches: Record<string, boolean>;
+}
+
+export interface NotifySetting {
+  /** 三个场景各一组：来单 / 售后申请 / 新评价。顺序即页面顺序 */
+  scenes: NotifySceneSwitches[];
+  /** 本店的企微群配过没有。**URL 本身永远不下发** —— 它是凭据 */
+  wecomReady: boolean;
+}
+
 export type AutomationRealm = "B" | "OPS";
 
 /** 密钥票据换出的会话（ADR-027）。realm 为 B 时 token 是 btk_ */
@@ -1967,6 +1991,25 @@ export interface MerchantApi {
    * 上一班的人不能继续收到这家店的订单推送。
    */
   mUnregisterPushToken(clientId: string): Promise<void>;
+
+  // ---- 通知设置（TDD-来单四渠道与商家通知设置）
+  /** 本店的四条通道开关（三个场景各一组）与企微群是否配过 */
+  mNotifySetting(): Promise<NotifySetting>;
+  /**
+   * 改一个开关。**后端会拒掉 INAPP** —— 站内信是事实记录，不给开关。
+   *
+   * @param scene 只能是后端 SCENES 里那三个（来单 / 售后 / 评价）
+   */
+  mSaveNotifySwitch(scene: string, channel: NotifyChannelCode,
+                    enabled: boolean): Promise<NotifySetting>;
+  /**
+   * 录入本店的企微群地址。
+   *
+   * <p>**回显里永远拿不到它** —— 它是凭据，响应只给 `wecomReady`。想换就重填一次。
+   */
+  mSaveNotifyWecom(webhook: string): Promise<NotifySetting>;
+  /** 往本店的群发一条测试。失败会抛（企微的 errcode 是唯一线索，别吞） */
+  mTestNotifyWecom(): Promise<boolean>;
 
   // ---- 进销存（P-18 / B-1…B-21）。**独立模块、独立库**，见 shop-inventory
   //
