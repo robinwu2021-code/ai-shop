@@ -35,6 +35,75 @@ const statusBg = computed(() => {
   if (s === "COMPLETED" || s === "CANCELLED" || s === "REFUNDED") return "head--done";
   return "head--active";
 });
+
+/**
+ * 待付款的剩余时间（状态头右上）。**只在还没过期时给** —— 过期了后端会把单关掉，
+ * 这时再显示一个负数倒计时比不显示更糟。非待付款态恒空。
+ */
+const payLeft = computed(() => {
+  const o = order.value;
+  if (!o || o.status !== "WAIT_PAY" || !o.payDeadlineAt) return "";
+  const left = o.payDeadlineAt - Date.now();
+  return left > 0 ? countdown(left) : "";
+});
+
+/** 有没有「货去哪」这件事要说：收货人 / 自提点 / 到货日 / 预约。都没有就不画那张卡 */
+const hasDelivery = computed(() => {
+  const o = order.value;
+  if (!o) return false;
+  return !!(o.receiver?.name || o.receiver?.address || o.pickupName || o.arriveDate || o.appointmentAt);
+});
+
+/** 商品卡的店头：门店名优先，没有门店（老数据/主体单）退回主体名 */
+const shopName = computed(() => order.value?.store?.storeName || order.value?.merchantName || "");
+
+/**
+ * 吸底条的次要操作。**一次只给一颗** —— 底部放三颗以上就谁也点不准，
+ * 低频的（开票、再来一单）留在页内那一排。
+ */
+const secondaryOp = computed<"cancel" | "afterSale" | "buyAgain">(() => {
+  if (canCancel.value) return "cancel";
+  if (canAfterSale.value) return "afterSale";
+  return "buyAgain";
+});
+
+/** 吸底条的主操作：按「此刻最该做什么」排序 —— 去支付 > 评价 > 售后 > 再来一单 */
+const primaryKey = computed<"pay" | "review" | "afterSale" | "buyAgain">(() => {
+  const o = order.value;
+  if (o?.status === "WAIT_PAY") return "pay";
+  if (canReview.value) return "review";
+  if (canAfterSale.value && secondaryOp.value !== "afterSale") return "afterSale";
+  return "buyAgain";
+});
+
+const primaryLabel = computed(() => {
+  switch (primaryKey.value) {
+    case "pay":
+      return String(t("orders.pay"));
+    case "review":
+      return String(t("review.writeTitle"));
+    case "afterSale":
+      return String(t("order.afterSale"));
+    default:
+      return String(t("order.buyAgain"));
+  }
+});
+
+function runPrimary() {
+  switch (primaryKey.value) {
+    case "pay":
+      pay();
+      break;
+    case "review":
+      review();
+      break;
+    case "afterSale":
+      afterSale();
+      break;
+    default:
+      buyAgain();
+  }
+}
 /**
  * 这一单的明细由**微信插件**呈现吗。
  *
@@ -418,11 +487,79 @@ onShow(load);
     </sh-empty>
 
     <template v-if="order">
-    <!-- 码：待取货的用户主要就是来看这个 -->
     <!--
-      **一张卡，标签按品类变**。后端把自提码 / 核销码 / 兑换码合在同一个字段里，
-      端上此前另外读一个 `redeemCode` —— 那个字段后端从来不发，于是兑换码那张卡
-      永远不出现，而虚拟商品的码落进上面这张、被标成「取货码」。
+      订单详情重排（原型 prototypes/c-order-detail.html，2026-10-10）。
+      恒定骨架：状态头 → 收货/自提 → 店铺+商品 → 金额 → 订单信息 → 附属卡 → 吸底操作条。
+      「货到哪、我该做什么」提到最顶，对账要念的（单号/时间）沉到下面。
+    -->
+
+    <!-- ① 状态头：满宽大字 + 按状态底色；已发货把物流并进来（原型 s01–s04） -->
+    <view class="sh-card block ostat" :class="statusBg">
+      <view class="ostat__head">
+        <view class="sh-row sh-row--between ostat__line">
+          <text class="ostat__st" :class="statusTone(order.status)">
+            {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
+          </text>
+          <!-- 右上：待付款给倒计时；走插件的单给物流入口 -->
+          <text v-if="payLeft" class="txt-caption ostat__cd sh-num">{{ payLeft }}</text>
+          <sh-go
+            v-else-if="traceInPlugin"
+            :text="String($t('trace.openWx'))"
+            @tap="openWxTracking"
+          ></sh-go>
+        </view>
+        <!-- 有物流就说最新那条（比状态词具体）；没有就说「接下来会发生什么」 -->
+        <text v-if="hasTrace" class="txt-caption ostat__sub">{{ traceLatest }}</text>
+        <text v-else-if="nextStepText" class="txt-caption ostat__sub">{{ nextStepText }}</text>
+        <!-- 承运商 + 单号：已发货才有，点一下复制 -->
+        <text v-if="order.expressNo" class="txt-caption ostat__sub sh-num" @tap="copyExpressNo">
+          {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
+          <text class="txt-primary">{{ $t("order.copy") }}</text>
+        </text>
+      </view>
+      <!-- 退了什么说什么（P3）：只在后端真查到时出现 -->
+      <view v-if="returnedLines.length" class="ostat__body returned">
+        <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption txt-primary">{{ l }}</text>
+      </view>
+      <!--
+        轨迹明细只在插件不可用时铺（走微信插件的单，明细在插件那一屏；两边新旧还可能不一致）。
+        不画地图：城市级示意回答不了「今天到不到」。
+      -->
+      <view v-if="hasTrace && !traceInPlugin" class="ostat__body">
+        <sh-trace :trace="order.trace!" :show-map="false" @open-wx="openWxTracking"></sh-trace>
+      </view>
+    </view>
+
+    <view v-if="batchCancellable" class="sh-notice sh-notice--warning">
+      <text class="txt-caption">{{ $t("order.batchCancelBefore", { t: batchTime(order.cancellableUntil!) }) }}</text>
+    </view>
+
+    <!-- ② 收货 / 自提：紧跟状态。快递给收货人，自提给取件点与码 —— 一张卡回答「货去哪」 -->
+    <view v-if="hasDelivery" class="sh-card block recvcard">
+      <view class="sh-row sh-row--between">
+        <text class="txt-caption sh-muted">{{ $t("track.receiverTitle") }}</text>
+        <text v-if="order.fulfillment" class="txt-caption sh-chip tiny">
+          {{ $t(`fulfillment.${order.fulfillment}`) }}
+        </text>
+      </view>
+      <view v-if="order.receiver && (order.receiver.name || order.receiver.phone)" class="sh-row sh-row--between recv">
+        <text class="txt-strong">{{ order.receiver.name }}</text>
+        <text v-if="order.receiver.phone" class="txt-caption sh-muted sh-num">{{ order.receiver.phone }}</text>
+      </view>
+      <text v-if="order.receiver?.address" class="txt-caption sh-muted">{{ order.receiver.address }}</text>
+      <!-- 自提：取件点 / 到货日 / 预约时刻 -->
+      <text v-if="order.pickupName" class="txt-strong">{{ order.pickupName }}</text>
+      <text v-if="order.arriveDate" class="txt-caption sh-muted sh-num">
+        {{ $t("order.batchPickup") }} {{ order.arriveDate }}
+      </text>
+      <text v-if="order.appointmentAt" class="txt-caption sh-muted sh-num">
+        {{ $t("order.appointment") }} {{ datetime(order.appointmentAt) }}
+      </text>
+    </view>
+
+    <!--
+      码：待取货的用户主要就是来看这个，所以紧跟取件信息。
+      **一张卡，标签按品类变** —— 自提码 / 核销码 / 兑换码后端合在同一个字段。
     -->
     <view v-if="order.verifyCode && order.status !== 'COMPLETED' && showCode" class="sh-card codecard">
       <text class="txt-caption codecard__label">{{ $t(codeLabel) }}</text>
@@ -430,10 +567,6 @@ onShow(load);
       <text class="txt-caption codecard__hint">
         {{ isVirtualOrCard ? $t("order.redeemHint") : $t("order.codeHint") }}
       </text>
-    </view>
-
-    <view v-if="batchCancellable" class="sh-notice sh-notice--warning">
-      <text class="txt-caption">{{ $t("order.batchCancelBefore", { t: batchTime(order.cancellableUntil!) }) }}</text>
     </view>
 
     <!-- 拼团进度（原型 p08）：团单才有。整张卡进团页 -->
@@ -452,101 +585,9 @@ onShow(load);
       </button>
     </view>
 
-    <!-- 状态 + 时间线 -->
-    <!--
-      进度区域（原型 logistics-trace s08–s11，2026-10-09 重排）。
-      **一个区域回答一个问题：这一单现在怎么了、我该做什么。**
-
-      此前这件事被拆在两处说：物流栏一个状态标题（运输中），紧跟着订单状态卡
-      又一个标题（履约中）+ 一句更旧的说明（商家已经发出）——
-      而轨迹那时已经说到「咸阳发往深圳」。两个标题叠着，后一个更粗更旧。
-
-      **这里没有我们自己的弹框**：小程序点「查看物流详情」出来的就是微信插件那一屏，
-      我们再套一层弹框等于两层弹层。所以轨迹、履约落点、订单进度都铺在这一个区域里，
-      长度靠折叠控制（轨迹默认 3 条）。
-    -->
-    <view v-if="order.fulfillment || hasTrace || nextStepText" class="sh-card block prog">
-      <view class="sh-row sh-row--between prog__head" :class="statusBg">
-        <text class="txt-title status prog__st" :class="statusTone(order.status)">
-          {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
-        </text>
-        <!-- 走插件的单，入口在这里；明细不在页面上，所以这颗必须显眼 -->
-        <sh-go v-if="traceInPlugin" :text="String($t('trace.openWx'))" @tap="openWxTracking"></sh-go>
-      </view>
-      <!-- 走插件时页面只给最新一条，其余交给插件那一屏 -->
-      <text v-if="traceInPlugin" class="txt-caption sh-muted prog__next">{{ traceLatest }}</text>
-      <!--
-        **状态下面说一句「接下来会发生什么」**（原型 k07）：「待发货」三个字只说了此刻，
-        没说他要等什么。**有轨迹时不说** —— 那句话固定、更粗，而轨迹件里的最新一条
-        既新又具体，两句并排只会让人读那句旧的。
-      -->
-      <text v-if="!hasTrace && nextStepText" class="txt-caption sh-muted prog__next">{{ nextStepText }}</text>
-      <!--
-        **退了什么说什么**（待办设计 P3，原型 k10）。每一行都来自后端查到的数据，
-        没有就不说 —— 「已为你退回」若不成立，比什么都不说更糟。
-      -->
-      <view v-if="returnedLines.length" class="returned">
-        <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption txt-primary">{{ l }}</text>
-      </view>
-
-      <!-- 履约落点：方式 + 自提点 / 到货日 / 预约时间 + 承运商单号 -->
-      <view class="prog__sec">
-        <text v-if="order.fulfillment" class="txt-caption sh-muted prog__row">
-          {{ $t(`fulfillment.${order.fulfillment}`) }}
-        </text>
-        <text v-if="order.pickupName" class="txt-caption sh-muted prog__row">{{ order.pickupName }}</text>
-        <text v-if="order.arriveDate" class="txt-caption sh-muted prog__row sh-num">
-          {{ $t("order.batchPickup") }} {{ order.arriveDate }}
-        </text>
-        <text v-if="order.appointmentAt" class="txt-caption sh-muted prog__row sh-num">
-          {{ $t("order.appointment") }} {{ datetime(order.appointmentAt) }}
-        </text>
-        <text v-if="order.expressNo" class="txt-caption sh-muted prog__row sh-num" @tap="copyExpressNo">
-          {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
-          <text class="txt-primary">{{ $t("order.copy") }}</text>
-        </text>
-      </view>
-
-      <!--
-        轨迹明细。**只在插件不可用时铺** —— 走微信插件的单，明细在插件那一屏里已经有一份，
-        页面再铺一遍是同一份数据说两次，两份的新旧还可能不一致（插件是微信侧的数据）。
-        H5 / App 没有插件、拿不到 token 的单也走这里，否则那些端什么都看不到。
-        不画地图：城市级示意回答不了「今天到不到」，而那正是买家问的。
-      -->
-      <view v-if="hasTrace && !traceInPlugin" class="prog__sec">
-        <sh-trace :trace="order.trace!" :show-map="false" @open-wx="openWxTracking"></sh-trace>
-      </view>
-
-      <!--
-        订单进度：下单 / 支付 / 发货的时间点。**与承运商扫描是两回事**，
-        所以给一个小标题把两段分开 —— 并排不分段时买家读不出哪条线是谁的。
-      -->
-      <view v-if="order.timeline.length" class="prog__sec">
-        <text v-if="hasTrace" class="txt-caption sh-muted prog__cap">{{ $t("order.progress") }}</text>
-        <view class="timeline">
-          <view v-for="(n, i) in order.timeline" :key="i" class="node">
-            <view class="node__dot" :class="{ 'is-last': i === order.timeline.length - 1 }" />
-            <view class="sh-fill">
-              <text class="txt-sub node__label">{{ n.label }}</text>
-              <text class="txt-caption node__at sh-num">{{ datetime(n.at) }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 收货信息（原型 k；买家看自己的单：完整地址与完整手机号，那是他填的） -->
-    <view v-if="order.receiver && (order.receiver.name || order.receiver.address)" class="sh-card block">
-      <text class="txt-caption sh-muted">{{ $t("track.receiverTitle") }}</text>
-      <view class="sh-row sh-row--between recv">
-        <text class="txt-strong">{{ order.receiver.name }}</text>
-        <text v-if="order.receiver.phone" class="txt-caption sh-muted sh-num">{{ order.receiver.phone }}</text>
-      </view>
-      <text v-if="order.receiver.address" class="txt-caption sh-muted">{{ order.receiver.address }}</text>
-    </view>
-
-    <!-- 商品 -->
+    <!-- ③ 店铺 + 商品：商品上面给店名，买家才知道这单是谁发的（原型 s01–s04 的店头） -->
     <view class="sh-card block">
+      <text v-if="shopName" class="txt-strong shop">{{ shopName }}</text>
       <biz-sku-row
         v-for="(it, i) in order.items"
         :key="i"
@@ -566,7 +607,7 @@ onShow(load);
       </biz-sku-row>
     </view>
 
-    <!-- 金额 -->
+    <!-- ④ 金额 -->
     <view class="sh-card block">
       <view class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.goods") }}</text>
@@ -603,11 +644,15 @@ onShow(load);
           {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
         </text>
       </view>
-      <!--
-        单据本身（订单号 + 下单时间）并进金额卡尾部：**对账要念的东西摆在一处** ——
-        商品、金额、订单号、下单时间。此前它独占一张卡，而那张卡只在找客服时才用到。
-      -->
-      <view class="fact sh-row sh-row--between sh-row--top amt__doc">
+    </view>
+
+    <!--
+      ⑤ 订单信息独立成卡（原型）：单号 + 各节点时刻。
+      此前它并在金额卡尾部，而找客服念单号与核对金额是两件事；时间线原来是一列带圆点的长表，
+      占掉大半屏——这里压成每节点一行，信息不丢、版面短一半。
+    -->
+    <view class="sh-card block">
+      <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.orderNo") }}</text>
         <!-- 找客服时他要念这一串：给一颗复制，别让人照着屏幕抄 -->
         <text class="txt-caption fact__v sh-num" @tap="copyOrderNo">
@@ -617,6 +662,14 @@ onShow(load);
       <view class="fact sh-row sh-row--between sh-row--top">
         <text class="txt-caption fact__k">{{ $t("order.createdAt") }}</text>
         <text class="txt-caption fact__v sh-num">{{ datetime(order.createdAt) }}</text>
+      </view>
+      <view
+        v-for="(n, i) in order.timeline"
+        :key="i"
+        class="fact sh-row sh-row--between sh-row--top"
+      >
+        <text class="txt-caption fact__k sh-muted">{{ n.label }}</text>
+        <text class="txt-caption fact__v sh-num sh-muted">{{ datetime(n.at) }}</text>
       </view>
     </view>
 
@@ -631,9 +684,7 @@ onShow(load);
     </view>
 
     <!-- 售后进行中：把「下一步该我做什么」直接摆出来，别让用户自己找入口。
-         判据是**售后单存在**，不是订单状态 —— 订单在售后期间保持原状态
-         （已完成的单照样能申请售后），此前 gate 在 order.status==='REFUNDING'
-         上，而后端从不下发这个订单状态，整张卡片因此永远不显示 -->
+         判据是**售后单存在**，不是订单状态 —— 订单在售后期间保持原状态。 -->
     <view v-if="order.afterSale" class="sh-card as">
       <text class="txt-body as__title">
         {{ $t(`afterSale.status.${order.afterSale.status}`) }}
@@ -658,8 +709,7 @@ onShow(load);
       </view>
     </view>
 
-    <!-- 开票状态。**申请完就没下文**是这类入口最常见的失败 ——
-         用户点完按钮，页面毫无变化，他会以为没提交成功而再点一次 -->
+    <!-- 开票状态。**申请完就没下文**是这类入口最常见的失败 -->
     <view v-if="invoice" class="sh-card invoicecard">
       <text class="sh-muted">{{ $t("invoice.section") }}</text>
       <text class="invoicecard__st">{{ $t(`invoiceStatus.${invoice.status}`) }}</text>
@@ -669,25 +719,42 @@ onShow(load);
       <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
     </view>
 
+    <!-- 低频操作留在页内：吸底条只放主次两颗，其余（开票 / 再来一单）在这里 -->
     <view class="ops sh-wrap">
-      <view v-if="order.status === 'WAIT_PAY'" class="txt-sub sh-btn op" @tap="pay">
-        {{ $t("orders.pay") }}
-      </view>
-      <view v-if="canCancel" class="txt-sub sh-btn sh-btn--muted op" @tap="cancel">
-        {{ $t("order.cancel") }}
-      </view>
-      <view v-if="canReview" class="txt-sub sh-btn op" @tap="review">
-        {{ $t("review.writeTitle") }}
-      </view>
-      <view v-if="canAfterSale" class="txt-sub sh-btn sh-btn--soft op" @tap="afterSale">
-        {{ $t("order.afterSale") }}
-      </view>
       <view v-if="canInvoice" class="txt-sub sh-btn sh-btn--soft op" @tap="applyInvoice">
         {{ invoice ? $t("invoice.reapply") : $t("invoice.apply") }}
       </view>
-      <view class="txt-sub sh-btn sh-btn--muted op" @tap="buyAgain">{{ $t("order.buyAgain") }}</view>
+      <view v-if="secondaryOp !== 'buyAgain'" class="txt-sub sh-btn sh-btn--muted op" @tap="buyAgain">
+        {{ $t("order.buyAgain") }}
+      </view>
     </view>
-    <view class="spacer" />
+
+    <!-- 吸底条的占位：不留这块，最后一张卡会被压在条下面 -->
+    <view class="barph" />
+
+    <!--
+      ⑥ 吸底操作条（原型）：左边实付、右边主次两颗。
+      京东淘宝都把「该做什么」钉在底部 —— 此前这几颗按钮排在页尾，
+      长单要滚到底才看得见「去支付」。
+    -->
+    <view class="bar">
+      <view class="bar__sum">
+        <text class="txt-caption sh-muted">{{ $t("order.paid") }}</text>
+        <text class="txt-price sh-num bar__price">
+          {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
+        </text>
+      </view>
+      <view v-if="secondaryOp === 'cancel'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="cancel">
+        {{ $t("order.cancel") }}
+      </view>
+      <view v-else-if="secondaryOp === 'afterSale'" class="txt-sub sh-btn sh-btn--soft bar__btn" @tap="afterSale">
+        {{ $t("order.afterSale") }}
+      </view>
+      <view v-else-if="secondaryOp === 'buyAgain'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="buyAgain">
+        {{ $t("order.buyAgain") }}
+      </view>
+      <view class="txt-sub sh-btn bar__btn bar__btn--main" @tap="runPrimary">{{ primaryLabel }}</view>
+    </view>
     </template>
 
   </sh-scaffold>
@@ -763,26 +830,91 @@ onShow(load);
 .status {
   display: block;
 }
-/* 状态头（原型 c-order-detail）：大字状态 + 按状态档的底色，像京东/淘宝那张醒目的头。
+/* 状态头（原型 c-order-detail）：**满宽**大字 + 按状态档的底色，像京东/淘宝那张醒目的头。
+   卡自己 padding 归零，头与身各自留白，底色才能铺满整张卡宽。
    只给背景与字号，字色仍交给 statusTone 库件（见上面那条注释的理由）。 */
-.prog__head {
-  padding: 16rpx 20rpx;
-  border-radius: 12rpx;
-  margin-bottom: 8rpx;
-  align-items: center;
+.ostat {
+  padding: 0;
+  overflow: hidden;
 }
-.prog__head.head--warn {
+.ostat__head {
+  padding: 28rpx 24rpx 24rpx;
+}
+.ostat.head--warn .ostat__head {
   background: var(--sh-warning-tint);
 }
-.prog__head.head--active {
+.ostat.head--active .ostat__head {
   background: var(--sh-primary-tint);
 }
-.prog__head.head--done {
+.ostat.head--done .ostat__head {
   background: var(--sh-faint);
 }
-.prog__st {
-  font-size: 34rpx;
-  line-height: 1.3;
+.ostat__line {
+  align-items: baseline;
+}
+.ostat__st {
+  font-size: 44rpx;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.ostat__cd {
+  flex-shrink: 0;
+}
+.ostat__sub {
+  display: block;
+  margin-top: 10rpx;
+}
+.ostat__body {
+  padding: 20rpx 24rpx;
+}
+
+/* 收货 / 自提：一张卡回答「货去哪」 */
+.recvcard {
+  gap: 8rpx;
+}
+
+/* 商品卡的店头 */
+.shop {
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+/* 吸底操作条：左边实付、右边主次两颗。占位块把最后一张卡顶起来，别被条压住 */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--sh-card);
+  border-top: 1rpx solid var(--sh-line);
+}
+.bar__sum {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.bar__price {
+  line-height: 1.2;
+}
+/* 吸底的按钮不能被 flex 压扁：库件的 sh-btn 是块级满宽的，放进横向条里会缩成一颗圆球、
+   文字挤成两行（2026-10-10 本地实测）。这里把宽度交还给内容，并给足左右内距。 */
+.bar__btn {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding-left: 32rpx;
+  padding-right: 32rpx;
+  min-width: 168rpx;
+  white-space: nowrap;
+}
+.barph {
+  height: calc(140rpx + env(safe-area-inset-bottom));
 }
 .timeline {
   margin-top: 28rpx;
