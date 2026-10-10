@@ -41,11 +41,15 @@ public class GoodsVisibility {
     private final GoodsMapper goodsMapper;
     private final StoreGoodsMapper storeGoodsMapper;
 
+    private final ai.neargo.shop.community.service.ConsumerProfileResolver profileResolver;
+
     public GoodsVisibility(MerchantQueryPort merchantPort, GoodsMapper goodsMapper,
-                           StoreGoodsMapper storeGoodsMapper) {
+                           StoreGoodsMapper storeGoodsMapper,
+                           ai.neargo.shop.community.service.ConsumerProfileResolver profileResolver) {
         this.merchantPort = merchantPort;
         this.goodsMapper = goodsMapper;
         this.storeGoodsMapper = storeGoodsMapper;
+        this.profileResolver = profileResolver;
     }
 
     /**
@@ -55,7 +59,15 @@ public class GoodsVisibility {
      *         两者混在一起，就是「没铺货的区看到全平台商品」
      */
     public List<String> goodsNos(String communityNo, String regionCode) {
-        Map<String, Set<String>> serving = serving(communityNo, regionCode);
+        return goodsNos(communityNo, regionCode, null, null);
+    }
+
+    /**
+     * 同上，但带消费者坐标（ADR-034）：有坐标才能命中商家画的多边形范围，
+     * 也才能在「只有定位、没落到任何小区」时按省市区匹配。
+     */
+    public List<String> goodsNos(String communityNo, String regionCode, Integer latE6, Integer lngE6) {
+        Map<String, Set<String>> serving = serving(communityNo, regionCode, latE6, lngE6);
         if (serving == null) {
             return null;
         }
@@ -76,7 +88,13 @@ public class GoodsVisibility {
      * 必须确定 —— 同一件货刷两次不能显示两家店。
      */
     public Map<String, String> providingStores(String communityNo, String regionCode, Collection<String> goodsNos) {
-        Map<String, Set<String>> serving = serving(communityNo, regionCode);
+        return providingStores(communityNo, regionCode, null, null, goodsNos);
+    }
+
+    /** 同上，带消费者坐标（ADR-034） */
+    public Map<String, String> providingStores(String communityNo, String regionCode,
+                                               Integer latE6, Integer lngE6, Collection<String> goodsNos) {
+        Map<String, Set<String>> serving = serving(communityNo, regionCode, latE6, lngE6);
         if (serving == null || serving.isEmpty() || goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
@@ -154,15 +172,21 @@ public class GoodsVisibility {
     }
 
     /** 小区优先；没有小区按区；两者都没有返回 {@code null}（= 不筛） */
-    private Map<String, Set<String>> serving(String communityNo, String regionCode) {
-        if (communityNo != null && !communityNo.isBlank()) {
-            return merchantPort.servingStores(communityNo);
+    private Map<String, Set<String>> serving(String communityNo, String regionCode,
+                                             Integer latE6, Integer lngE6) {
+        /*
+         * 三个入参合成一个消费者画像，一次算完行政五级、聚落、地图多边形、「不限」与各级排除（ADR-034）。
+         * 此前是「有小区走小区、否则按区里的开放小区逐个判」—— 那条路让「所在区没有运营开过小区」的
+         * 消费者一片空白，而商家明明框了整个市。
+         */
+        if ((communityNo == null || communityNo.isBlank())
+                && (regionCode == null || regionCode.isBlank())
+                && !ai.neargo.shop.spi.reach.ConsumerProfile.validCoords(latE6, lngE6)) {
+            return null;   // 什么都没给：不按地址筛（与改造前逐字相同）
         }
-        if (regionCode != null && !regionCode.isBlank()) {
-            return merchantPort.servingStoresInRegion(regionCode);
-        }
-        return null;
+        return merchantPort.servingStores(profileResolver.resolve(communityNo, regionCode, latE6, lngE6));
     }
+
 
     /**
      * 服务这里的门店里，在架卖这件货的那几家（有序，取第一家要确定）。

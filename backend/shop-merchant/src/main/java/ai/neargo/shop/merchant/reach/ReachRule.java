@@ -240,12 +240,18 @@ public final class ReachRule {
     }
 
     /**
-     * 「不限地区」：主体没框任何 INCLUDE，且有一路选了「全部」的快递或自送。
+     * 「不限地区」：有<b>显式的 {@code UNLIMITED} 纳入项</b>，且有一路选了「全部」的快递或自送。
      * 买家详情页「销售区域」那一行用它 —— 与可见性同一个判据，不另写一遍。
+     *
+     * <p>判据在 ADR-034 改过：此前是「没框任何 INCLUDE + 开了快递/自送」= 隐式不限。
+     * 改成显式之后，存量那批店被迁移补上了 UNLIMITED 行 —— 若这里还按「includes 为空」判，
+     * 补完行之后 includes 不空了，详情页会从「不限地区」变成列出一条没有地名的范围项。
      */
     public static boolean unlimited(StoreReach s) {
-        return s.includes().isEmpty() && s.routes().stream()
-                .anyMatch(r -> !r.subset() && unlimitedWhenUnframed(r.channel()));
+        boolean hasUnlimitedItem = s.includes().stream()
+                .anyMatch(a -> ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED.equals(a.level()));
+        return hasUnlimitedItem && s.routes().stream()
+                .anyMatch(r -> !r.subset() && unlimitedChannel(r.channel()));
     }
 
     /** 范围里直接点名的小区号（展开时要把它们也放进候选：它们可能没开放，不在开放小区全集里） */

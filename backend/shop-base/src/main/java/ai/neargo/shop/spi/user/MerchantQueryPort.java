@@ -77,6 +77,23 @@ public interface MerchantQueryPort {
     java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode);
 
     /**
+     * 反查的<b>主签名</b>（ADR-034）：哪些主体的哪些门店服务这个<b>消费者画像</b>。
+     *
+     * <p>画像带着「已知最精确区划码的祖先集 + 聚落号/父聚落 + S2 各级 cell token + 坐标」——
+     * 于是行政五级、聚落、地图多边形、「全平台不限」与各级排除<b>一次算完</b>。
+     * 上面两个 String 版是它的特例（只有小区号 / 只有区划码），内部造画像后委托到这里。
+     *
+     * <p>匹配<b>不再要求「所在区里先有开放小区」</b>：只有定位坐标、或只有省市区码的消费者同样能被匹配到。
+     */
+    java.util.Map<String, java.util.Set<String>> servingStores(ai.neargo.shop.spi.reach.ConsumerProfile profile);
+
+    /**
+     * 这家店送不送得到这个<b>消费者画像</b>（ADR-034）。与 {@link #servingStores(ai.neargo.shop.spi.reach.ConsumerProfile)}
+     * 同一条规则，不会出现「目录看得见、下单说送不到」。
+     */
+    boolean serves(String merchantNo, String storeNo, ai.neargo.shop.spi.reach.ConsumerProfile profile);
+
+    /**
      * 每家 ACTIVE 门店的可达小区（运营端「供给分布」按门店聚合用）。
      *
      * @param storeNo 门店号

@@ -73,6 +73,31 @@ public interface ReachMatchMapper {
             """)
     List<CellHitRow> cellHits(@Param("tokens") List<String> tokens, @Param("storeNo") String storeNo);
 
+    /**
+     * 门店属性快照的<b>版本探针</b>（ADR-034）：影响判定的五张表的 {@code COUNT(*) + SUM(version)}。
+     *
+     * <p>为什么是这两个量：新增/物理删改变 {@code COUNT(*)}；{@code updateById} 走 MyBatis-Plus 乐观锁
+     * （{@code BaseEntity.version} 带 {@code @Version}）必然递增 {@code version}。于是 insert / update / delete
+     * 三种写操作都会改变这个数，<b>且与时间精度无关</b> —— 同一毫秒内的修改也测得出来。
+     *
+     * <p>这替掉了「在每个写入口手工 evict 缓存」：那条路要覆盖 6 个 service 的二十多个事务方法，
+     * 漏一处的症状是「商家改完范围，买家几十秒内看不到」，而且不报错。
+     * 探针让正确性由机器保证，新增写路径不需要任何人记得接线。
+     */
+    @Select("""
+            SELECT (SELECT COUNT(*) FROM mch_entity)
+                 + (SELECT COALESCE(SUM(version), 0) FROM mch_entity)
+                 + (SELECT COUNT(*) FROM mch_store)
+                 + (SELECT COALESCE(SUM(version), 0) FROM mch_store)
+                 + (SELECT COUNT(*) FROM mch_service_area)
+                 + (SELECT COALESCE(SUM(version), 0) FROM mch_service_area)
+                 + (SELECT COUNT(*) FROM mch_fulfillment_channel)
+                 + (SELECT COALESCE(SUM(version), 0) FROM mch_fulfillment_channel)
+                 + (SELECT COUNT(*) FROM mch_channel_area)
+                 + (SELECT COALESCE(SUM(version), 0) FROM mch_channel_area)
+            """)
+    long snapshotVersion();
+
     /** 行政级/聚落级命中的一行 */
     record AreaHitRow(String storeNo, String areaNo, String mode) {
     }

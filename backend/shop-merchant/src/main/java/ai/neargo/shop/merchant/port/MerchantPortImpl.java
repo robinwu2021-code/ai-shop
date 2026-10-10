@@ -17,6 +17,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
 import java.util.List;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +89,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort;
     /** 「送不送得到」的配置读取；判定本身在 {@link ai.neargo.shop.merchant.reach.ReachRule} */
     private final ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader;
+    /** 可见范围判定的唯一入口（ADR-034）。正向命中走索引点查、反向展开走内存，同一条 ReachRule.decide */
+    private final ai.neargo.shop.merchant.reach.ReachMatcher reachMatcher;
+    private final ai.neargo.shop.geo.ReachGeoProps geoProps;
 
 
     public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
@@ -109,6 +113,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
                             ai.neargo.shop.spi.user.PickupQueryPort pickupQueryPort,
                             ai.neargo.shop.merchant.reach.StoreReachLoader reachLoader,
+                            ai.neargo.shop.merchant.reach.ReachMatcher reachMatcher,
+                            ai.neargo.shop.geo.ReachGeoProps geoProps,
                             org.springframework.beans.factory.ObjectProvider<
                                     ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
                             org.springframework.beans.factory.ObjectProvider<
@@ -119,6 +125,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.channelPickupMapper = channelPickupMapper;
         this.pickupQueryPort = pickupQueryPort;
         this.reachLoader = reachLoader;
+        this.reachMatcher = reachMatcher;
+        this.geoProps = geoProps;
         this.authCodeService = authCodeService;
         this.entityPlanMapper = entityPlanMapper;
         this.planDefMapper = planDefMapper;
@@ -173,18 +181,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (m == null) {
             return List.of();
         }
-        if (storeNo == null || storeNo.isBlank()) {
-            /*
-             * 主体口径 = 名下各 ACTIVE 门店覆盖面的**并集**（V381 经营范围改门店级）。
-             * 不能把各店范围混成一份再展开：A 店排除的楼会把 B 店纳入的同一栋一起减掉。
-             */
-            java.util.LinkedHashSet<String> union = new java.util.LinkedHashSet<>();
-            for (var reach : reachLoader.loadEach(m)) {
-                union.addAll(expandReach(reach));
-            }
-            return List.copyOf(union);
-        }
-        return expandReach(reachLoader.load(m, storeNo));
+        return reachMatcher.reachableCommunities(m, storeNo);
     }
 
     @Override
@@ -192,17 +189,23 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (communityNo == null || communityNo.isBlank()) {
             return false;
         }
+        return serves(merchantNo, storeNo, reachMatcher.profileOf(communityRef(communityNo)));
+    }
+
+    @Override
+    public boolean serves(String merchantNo, String storeNo, ConsumerProfile profile) {
+        if (profile == null) {
+            return false;
+        }
         MchEntity m = activeEntity(merchantNo);
         if (m == null) {
             return false;
         }
-        var ref = communityRef(communityNo);
         if (storeNo == null || storeNo.isBlank()) {
-            // 主体口径：任一门店送得到即算
-            return reachLoader.loadEach(m).stream()
-                    .anyMatch(r -> ai.neargo.shop.merchant.reach.ReachRule.covers(r, ref));
+            // 主体口径：任一 ACTIVE 门店送得到即算
+            return !servingStores(profile).getOrDefault(merchantNo, java.util.Set.of()).isEmpty();
         }
-        return ai.neargo.shop.merchant.reach.ReachRule.covers(reachLoader.load(m, storeNo), ref);
+        return reachMatcher.covers(storeNo, profile);
     }
 
     @Override
@@ -210,46 +213,32 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (communityNo == null || communityNo.isBlank()) {
             return java.util.Map.of();
         }
-        var ref = communityRef(communityNo);
-        java.util.Map<String, java.util.Set<String>> out = new java.util.LinkedHashMap<>();
-        for (var reach : reachLoader.allServing()) {
-            if (ai.neargo.shop.merchant.reach.ReachRule.covers(reach, ref)) {
-                out.computeIfAbsent(reach.entityNo(), k -> new java.util.LinkedHashSet<>()).add(reach.storeNo());
-            }
-        }
-        return out;
+        return servingStores(reachMatcher.profileOf(communityRef(communityNo)));
     }
 
+    @Override
+    public java.util.Map<String, java.util.Set<String>> servingStores(ConsumerProfile profile) {
+        return reachMatcher.servingStores(profile);
+    }
+
+    /**
+     * 按区划反查。<b>区划码本身就是画像的一部分</b>（ADR-034）—— 不再「先找区里的开放小区、再逐个判」：
+     * 那条路让「所在区没有运营开过小区」的消费者一片空白，而商家明明框了整个市。
+     */
     @Override
     public java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode) {
         if (regionCode == null || regionCode.isBlank()) {
             return java.util.Map.of();
         }
-        var refs = communityQueryPort.openCommunityRefsUnderRegion(regionCode);
-        if (refs.isEmpty()) {
-            return java.util.Map.of();
-        }
-        java.util.Map<String, java.util.Set<String>> out = new java.util.LinkedHashMap<>();
-        for (var reach : reachLoader.allServing()) {
-            // 命中一个就够：问的是「这个区里有没有它送得到的地方」
-            for (var ref : refs) {
-                if (ai.neargo.shop.merchant.reach.ReachRule.covers(reach, ref)) {
-                    out.computeIfAbsent(reach.entityNo(), k -> new java.util.LinkedHashSet<>()).add(reach.storeNo());
-                    break;
-                }
-            }
-        }
-        return out;
+        return servingStores(ConsumerProfile.of(regionCode, null, null, null, null,
+                geoProps.getS2MinLevel(), geoProps.getS2MaxLevel()));
     }
 
     @Override
     public java.util.List<StoreCoverage> storeCoverage() {
-        java.util.List<StoreCoverage> out = new java.util.ArrayList<>();
-        var open = communityQueryPort.openCommunityRefs();
-        for (var reach : reachLoader.allServing()) {
-            out.add(new StoreCoverage(reach.entityNo(), reach.storeNo(), expandReach(reach, open)));
-        }
-        return out;
+        return reachMatcher.storeCoverage().stream()
+                .map(r -> new StoreCoverage(r.entityNo(), r.storeNo(), r.communityNos()))
+                .toList();
     }
 
     /**
@@ -264,31 +253,6 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .eq(MchEntity::getEntityNo, merchantNo).last("limit 1")));
         return m != null && ACTIVE.equals(m.getStatus()) ? m : null;
-    }
-
-    /**
-     * 正向展开：候选 = 全部开放小区 ∪ 范围里直接点名的小区（它们可能没开放，不在开放全集里），
-     * 逐个过 {@code ReachRule.covers}。规则只有那一份，这里只负责给候选。
-     */
-    private List<String> expandReach(ai.neargo.shop.merchant.reach.ReachRule.StoreReach reach) {
-        return expandReach(reach, communityQueryPort.openCommunityRefs());
-    }
-
-    private List<String> expandReach(ai.neargo.shop.merchant.reach.ReachRule.StoreReach reach,
-                                     List<ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef> open) {
-        List<ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef> candidates = new java.util.ArrayList<>(open);
-        java.util.Set<String> named = new java.util.LinkedHashSet<>(
-                ai.neargo.shop.merchant.reach.ReachRule.namedCommunities(reach));
-        candidates.forEach(c -> named.remove(c.communityNo()));
-        if (!named.isEmpty()) {
-            var found = communityQueryPort.communityRefs(named);
-            for (String no : named) {
-                // 点名了一个库里查不到的小区号：照旧算它（与 serves 的兜底同一口径），判定只剩「点名」这一条能命中
-                candidates.add(found.getOrDefault(no,
-                        new ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef(no, null, null, false)));
-            }
-        }
-        return ai.neargo.shop.merchant.reach.ReachRule.reachable(reach, candidates);
     }
 
     /** 查不到的小区按「未开放、无区划、无上级」判 —— 只剩「范围里直接点名它」这一条能命中，与展开口径一致 */
@@ -332,7 +296,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 不看框选 —— 而保存后的可达早已改成「快递也尊重框选」（#4②），
          * 于是商家在预览里看到「全国」，保存之后实际只覆盖框的那几块。
          */
-        return expandReach(reachLoader.preview(m, storeNo, rows));
+        return reachMatcher.previewReachable(m, storeNo, rows);
     }
 
     @Override
@@ -393,16 +357,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 「全部」那几路一律放行、不看主体框选 —— 于是「看得见、结算说不送」或者反过来。
          * 主体状态不在这里判：那是另一道闸，这里只回答「送不送得到」。
          */
-        var ref = communityRef(communityNo);
+        ConsumerProfile profile = reachMatcher.profileOf(communityRef(communityNo));
         // 门店为空 = 主体口径：各 ACTIVE 门店逐个判，送得到的路取并集（V381 范围门店级）
-        var reaches = storeNo == null || storeNo.isBlank()
-                ? reachLoader.loadEach(m) : List.of(reachLoader.load(m, storeNo));
+        List<String> stores = storeNo == null || storeNo.isBlank()
+                ? activeStoreNos(merchantNo) : List.of(storeNo);
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
-        for (var reach : reaches) {
-            for (var route : reach.routes()) {
-                if (enabled.contains(route.channel())
-                        && ai.neargo.shop.merchant.reach.ReachRule.selectable(reach, route, ref)) {
-                    out.add(route.channel());
+        for (String st : stores) {
+            for (String channel : enabled) {
+                if (reachMatcher.selectable(st, channel, profile)) {
+                    out.add(channel);
                 }
             }
         }
@@ -658,6 +621,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 .stream()
                 .filter(a -> !MchServiceArea.MODE_EXCLUDE.equals(a.getMode()))
                 .filter(a -> a.getStoreNo() != null && activeStores.contains(a.getStoreNo()))
+                // 只列**有地名**的范围项：UNLIMITED 的 ref 是 `*`、POLYGON 的是几何指纹，
+                // 列出来是一串无意义的字符。走到这里说明没有「不限」（上面已判），
+                // 只开自提却留着 UNLIMITED 行就是这种情形
+                .filter(a -> MchServiceArea.ADMIN_LEVELS.contains(a.getLevel())
+                        || MchServiceArea.LEVEL_COMMUNITY.equals(a.getLevel()))
                 .forEach(a -> uniq.putIfAbsent(a.getLevel() + "|" + a.getRefCode(), a));
         List<MchServiceArea> includes = List.copyOf(uniq.values());
         if (!includes.isEmpty()) {

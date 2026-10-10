@@ -82,6 +82,16 @@ class GoodsSaleScopeFlowTest {
         return m.getEntityNo();
     }
 
+    /**
+     * 给这家主体的默认店加一条显式「全平台不限」纳入项（ADR-034）。
+     * 「不限」从此是一条范围项，不再由「没框范围 + 开了快递/自送」隐式成立 ——
+     * 后者让配置错位（框写到别家店、没物化、框成排除）静默铺满全平台。
+     */
+    private void unlimited(String entityNo) {
+        area(entityNo, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF, "ACTIVE", "INCLUDE");
+    }
+
     private void area(String entityNo, String level, String refCode, String status, String mode) {
         var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
         a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
@@ -155,11 +165,27 @@ class GoodsSaleScopeFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 没框范围 + 开了自送 = 不限地区")
-    void deliveryWithNoAreaIsUnlimited() {
-        var scope = merchantQuery.saleScope(merchant("ONSITE"));
+    @DisplayName("★★★ 显式「全平台不限」+ 开了自送 = 不限地区")
+    void deliveryWithExplicitUnlimitedIsUnlimited() {
+        String m = merchant("ONSITE");
+        unlimited(m);
+        var scope = merchantQuery.saleScope(m);
         assertThat(scope.unlimited()).isTrue();
+        assertThat(scope.areaNames()).as("「不限」没有地名可列").isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 一条范围项都没有 + 开了自送 = 什么都不说，不再隐式等于「不限」")
+    void noAreaAtAllSaysNothingEvenWithDelivery() {
+        /*
+         * 消融判据（ADR-034 AC5）：把「includes 为空 + 快递/自送 = 不限」那条隐式分支加回去，这一条立刻变红。
+         * 它与 pickupOnlyWithNoAreaSaysNothing 合起来说明：现在「空范围」对任何履约方式都是「谁也看不到」，
+         * 而不是「自提谁也看不到、快递全平台」这种要靠记规则才看得懂的分叉。
+         */
+        var scope = merchantQuery.saleScope(merchant("ONSITE"));
+        assertThat(scope.unlimited()).isFalse();
         assertThat(scope.areaNames()).isEmpty();
+        assertThat(scope.areaCount()).isZero();
     }
 
     @Test
@@ -197,6 +223,7 @@ class GoodsSaleScopeFlowTest {
     @DisplayName("★★★ 不限地区 + 排除新疆、西藏 → 详情写「不限地区（新疆、西藏除外）」（TDD-经营范围排除地区 AC4）")
     void unlimitedListsExcludedRegions() throws Exception {
         String m = merchant("SHIPPING");
+        unlimited(m);
         area(m, "PROVINCE", "65", "ACTIVE", "EXCLUDE");
         area(m, "PROVINCE", "54", "ACTIVE", "EXCLUDE");
         // 小区级排除不上买家页：「除 3 幢」对外地买家是噪音
@@ -211,6 +238,7 @@ class GoodsSaleScopeFlowTest {
     @DisplayName("★★★ 另一家店框进了新疆 → 不能对买家说「新疆除外」（主体口径是各店并集）")
     void excludedNotClaimedWhenAnotherStoreCoversIt() {
         String m = merchant("SHIPPING");
+        unlimited(m);
         area(m, "PROVINCE", "65", "ACTIVE", "EXCLUDE");
         area(m, "PROVINCE", "54", "ACTIVE", "EXCLUDE");
         var st = new ai.neargo.shop.merchant.entity.MchStore();

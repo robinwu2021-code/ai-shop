@@ -113,16 +113,34 @@ class ServiceAreaFlowTest {
     }
 
     @Test
-    @DisplayName("★ 原 CITY → ONSITE 且没有覆盖项：仍然是全部开放社区")
-    void onsiteWithoutAreasStaysUnlimited() {
+    @DisplayName("★ 自送 + 显式「全平台不限」：全部开放社区")
+    void onsiteWithExplicitUnlimitedCoversEveryOpenCommunity() {
         String m = merchant("ONSITE");
         /*
-         * 这一条是迁移里最危险的一格：存量 CITY 商家的 service_city_code 全是 NULL，
-         * 造不出覆盖项。把「无覆盖项」当成「谁也看不到」的话，
-         * 他们会在迁移当天集体从 C 端消失，而且不报错。
+         * 这一条守的东西没变：存量 CITY 商家（service_city_code 全是 NULL、造不出覆盖项）
+         * 不能在迁移当天集体从 C 端消失。
+         *
+         * 变的是**凭什么不消失**（ADR-034）：此前是「无覆盖项 + 开着自送」= 隐式不限 ——
+         * 而「无覆盖项」有四种成因（框写到别家店、没物化、框成 EXCLUDE、门店级错位），
+         * 任何一种都会让商家在不知情的情况下铺满全平台，虹选粮油就是这么「框了嘉逸花园却全平台可见」的。
+         * 现在「不限」必须是一条显式的 UNLIMITED 范围项；存量那批由 V397 迁移按旧语义逐字回填
+         * （判据见 StoreRoutes，对照量见 UnlimitedBackfillTest），所以他们照旧不消失、而且从此看得见、改得掉。
          */
+        area(m, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF);
         assertThat(merchantQuery.reachableCommunities(m))
                 .containsExactlyInAnyOrderElementsOf(communityQuery.openCommunityNos());
+    }
+
+    @Test
+    @DisplayName("★★★ 自送但一条范围项都没有：对谁都不可见 —— 不再隐式等于全平台")
+    void onsiteWithoutAnyAreaReachesNobody() {
+        /*
+         * 消融判据（ADR-034 AC5）：把隐式不限那条分支加回去，这一条立刻变红。
+         * 方向上宁可少卖不可错卖 —— 配置错位的后果是「商家自己看不到订单」（会被发现、会来问），
+         * 而不是「消费者买了送不到」（谁都不会主动发现）。
+         */
+        assertThat(merchantQuery.reachableCommunities(merchant("ONSITE"))).isEmpty();
     }
 
     @Test
@@ -137,10 +155,12 @@ class ServiceAreaFlowTest {
                 .as("框了一个社区 → 快递也只服务那个社区")
                 .containsExactly(c);
 
-        // 没框（无 INCLUDE 行）的快递商家仍是全国 —— 回落行为逐字不变
+        // 开快递 + 显式「全平台不限」→ 全部开放社区（ADR-034：不限必须显式，不再由「没框」隐式成立）
         String nationwide = merchant("SHIPPING");
+        area(nationwide, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF);
         assertThat(merchantQuery.reachableCommunities(nationwide))
-                .as("开快递、没框任何范围 → 仍全部开放社区")
+                .as("开快递 + 显式不限 → 全部开放社区")
                 .containsExactlyInAnyOrderElementsOf(communityQuery.openCommunityNos());
     }
 

@@ -1,6 +1,8 @@
 package ai.neargo.shop.merchant.reach;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.geo.ReachGeoProps;
+import ai.neargo.shop.merchant.mapper.ReachMatchMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -9,41 +11,52 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 门店属性快照的进程内缓存（ADR-034）。
  *
- * <h2>为什么这一份可以缓存</h2>
- * {@code CacheConfig} 的判据是「共享度 × 变更频率」，并明确写着<b>商家覆盖不缓存</b>
- * （按商家分散、命中率低、本人改本人读陈旧会被当场看见）。这一份不在那条里：它是
+ * <h2>失效靠版本探针，不靠人工接线</h2>
+ * 每次 {@link #get()} 先用一条很轻的聚合 SQL 问「影响判定的那五张表变了没有」
+ * （{@link ReachMatchMapper#snapshotVersion()}：{@code COUNT(*) + SUM(version)}，
+ * 对 insert / update / 物理删都敏感、与时间精度无关）。变了就重装，没变就复用。
+ *
+ * <p><b>为什么不在写入口 evict</b>：影响快照的写路径散在 6 个 service 的二十多个事务方法里
+ * （建店、改范围、改履约、停店、主体停用、自营建店、运营治理…），手工接必漏一处，
+ * 而漏接的症状是「商家改完范围、买家几十秒内看不到」且不报错。探针让正确性由机器保证，
+ * 将来新增写路径不需要任何人记得这件事。
+ *
+ * <p><b>探针跳过窗口</b>（{@code shop.reach.snapshot-probe-skip-ms}，默认 500ms）：
+ * 一次目录请求里会对几十家店反复问快照，窗口内直接复用、连探针都省。
+ * 窗口越大越省、「改完多久生效」的上限也越大 —— 500ms 对商家感知是即时的。
+ *
+ * <h2>与 CacheConfig 的判据不冲突</h2>
+ * 那边写着<b>商家覆盖不缓存</b>（按商家分散、命中率低）。这一份不在那条里：它是
  * <b>全平台一份、每个消费者请求都读同一个对象</b>（共享度最高），而范围与履约配置是低频变更。
- * 「本人改本人读」那个风险由两件事挡住：写路径 {@code AfterCommit} 主动失效（同实例立即生效）、
- * 商家自己看自己的范围走 {@code StoreReachLoader.load/loadEach} 不经这里。
- *
- * <h2>为什么不进 Spring Cache / ehcache</h2>
- * 这是<b>单键</b>快照，不需要 key 化的缓存容器，{@code @Cacheable} 在这儿是重武器；
- * 而且 {@code CacheConfig} 是共享文件，为一个单键加两处注册不划算。
- * TTL 只是兜底（失效链路万一漏了，最坏错 {@code shop.reach.snapshot-ttl-seconds} 秒），
- * 与那边「TTL 是兜底不是主策略」同一个取舍。
- *
- * <p>⚠️ 单实例前提同 {@code CacheConfig}：生产是 scp jar + systemd 的单实例。
- * 多实例那天失效要跨进程广播，入口就是这里的 {@link #evict()}。
  */
 @Component
 public class ReachSnapshotCache {
 
     private final ReachSnapshotLoader loader;
+    private final ReachMatchMapper mapper;
     private final ReachGeoProps props;
 
     private final AtomicReference<ReachSnapshot> snapshot = new AtomicReference<>();
-    private final AtomicLong expireAtMs = new AtomicLong(0);
-    /** 对照量：测试据此断言「两次 get 只装一次」「evict 后重装」 */
+    private final AtomicLong cachedVersion = new AtomicLong(Long.MIN_VALUE);
+    private final AtomicLong probeSkipUntilMs = new AtomicLong(0);
+    /** 对照量：测试据此断言「复用时没有重装」「数据变了会重装」 */
     private final AtomicLong loadCount = new AtomicLong(0);
 
-    public ReachSnapshotCache(ReachSnapshotLoader loader, ReachGeoProps props) {
+    public ReachSnapshotCache(ReachSnapshotLoader loader, ReachMatchMapper mapper, ReachGeoProps props) {
         this.loader = loader;
+        this.mapper = mapper;
         this.props = props;
     }
 
     public ReachSnapshot get() {
+        long now = System.currentTimeMillis();
         ReachSnapshot cur = snapshot.get();
-        if (cur != null && System.currentTimeMillis() < expireAtMs.get()) {
+        if (cur != null && now < probeSkipUntilMs.get()) {
+            return cur;
+        }
+        long version = DataScopeContext.executeWithoutScope(mapper::snapshotVersion);
+        if (cur != null && version == cachedVersion.get()) {
+            probeSkipUntilMs.set(now + props.getSnapshotProbeSkipMs());
             return cur;
         }
         /*
@@ -53,16 +66,23 @@ public class ReachSnapshotCache {
         ReachSnapshot fresh = loader.load();
         loadCount.incrementAndGet();
         snapshot.set(fresh);
-        expireAtMs.set(System.currentTimeMillis() + props.getSnapshotTtlSeconds() * 1000L);
+        cachedVersion.set(version);
+        probeSkipUntilMs.set(now + props.getSnapshotProbeSkipMs());
         return fresh;
     }
 
-    /** 范围 / 履约路 / 门店状态写完后调（{@code AfterCommit} 里），下一次 {@link #get()} 重装 */
+    /**
+     * 立刻作废（下一次 {@link #get()} 必定重探针并重装）。
+     *
+     * <p>正常不需要调它 —— 版本探针已经覆盖了数据变更。留着给两种场合：
+     * 测试要确定性地重装；将来真出现「探针测不到的变更」时有一个显式出口。
+     */
     public void evict() {
-        expireAtMs.set(0);
+        probeSkipUntilMs.set(0);
+        cachedVersion.set(Long.MIN_VALUE);
     }
 
-    /** 装载次数，仅供测试断言缓存真的在缓存 */
+    /** 装载次数，仅供测试断言缓存真的在复用 */
     public long loadCount() {
         return loadCount.get();
     }
