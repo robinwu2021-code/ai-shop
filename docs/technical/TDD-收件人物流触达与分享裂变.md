@@ -228,6 +228,26 @@ token 无状态，不建表。
 | 鉴权 | `/mp/track` 进白名单；`/s` 域名独立放行 | 匿名可访问 |
 | 部署 | DNSPod s.hxmall.top、nginx server、证书、阿里云模板+白名单 | 运维步骤 |
 
+## §4.3 短链 → H5 → 小程序（2026-10-10 定）
+
+```
+发货短信  s.hxmall.top/<短码>
+   │ 302（浏览器/短信app，稳定可打开、审核友好）
+   ▼
+H5 看件落地页  www.hxmall.top/c/#/pages/track/index?t=<令牌>
+   │ · 直接展示：物流进度 + 收货 + 商品（GET /mp/track，没微信也能看）
+   │ · 「在小程序中打开」按钮（仅 H5；GET /mp/track/mini-link 拿微信 URL Link）
+   ▼ 点击
+   小程序看件页  pages/track/index?t=<令牌>
+```
+
+- **短链 target 固定 H5**，不在后端生成 URL Link 作 target（URL Link 要小程序正式版发布才有，
+  拿它当短信落点会在未发布时指向唤不起的链接）。
+- **跳小程序走 URL Link** 不走 `wx-open-launch-weapp`：收件人从短信点开多在系统浏览器，
+  开放标签只在微信内浏览器生效。
+- **优雅降级**：URL Link 生成不出（小程序未发布 / `SHOP_WX_URLLINK_STUB=true`）→ mini-link 返 null
+  → H5 不显示按钮，只看 H5 看件内容。小程序正式版发布 + 开 urllink 真通道后，按钮自动出现。
+
 ## §9 分期建议
 
 - **一期（骨架）**：短链服务 + URL Link + 免登录看件页 + 发货短信（无激励）+ 运营端留痕。
