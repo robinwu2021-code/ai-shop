@@ -147,8 +147,12 @@ class PushNotifyFlowTest {
         assertThat(sent.getFirst().title()).contains("新订单");
         // 响铃是「新订单」独有的：其余经营事件一律常规级
         assertThat(sent.getFirst().level()).isEqualTo("RING");
-        // 点开要能落到订单列表 —— 停在首页的推送等于没推
-        assertThat(sent.getFirst().link()).contains("/pages/orders/index");
+        // 点开要能落到这一单的详情，且带门店与 src=notify（深链要对齐门店，见 NotificationConsumer）——
+        // 停在首页或落错门店的推送等于没推
+        assertThat(sent.getFirst().link())
+                .contains("/pages/order/index")
+                .contains("orderNo=")
+                .contains("src=notify");
 
         assertThat(notifyLogMapper.selectCount(Wrappers.<SysNotifyLog>lambdaQuery()
                 .eq(SysNotifyLog::getChannel, SysNotifyLog.PUSH)
