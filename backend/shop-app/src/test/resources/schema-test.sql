@@ -4713,6 +4713,14 @@ CREATE TABLE IF NOT EXISTS lnk_short
     CONSTRAINT uk_lnk_short_code UNIQUE (code)
 );
 
+CREATE TABLE IF NOT EXISTS sys_sequence
+(
+    seq_name   VARCHAR(32) NOT NULL,
+    next_value BIGINT      NOT NULL DEFAULT 0,
+    updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq_name)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -9987,3 +9995,5 @@ WHERE NOT EXISTS (SELECT 1
                   WHERE x.scene_code = t.scene_code
                     AND x.audience = 'B_STAFF'
                     AND x.channel = t.channel);
+INSERT IGNORE INTO sys_sequence (seq_name, next_value)
+VALUES ('ord_main', 0);

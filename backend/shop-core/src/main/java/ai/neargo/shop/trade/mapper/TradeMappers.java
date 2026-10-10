@@ -7,9 +7,12 @@ import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.entity.SysSequence;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /** trade 域的 Mapper 集合。 */
@@ -65,5 +68,24 @@ public final class TradeMappers {
     }
 
     public interface ExpressPickupMapper extends BaseMapper<OrdExpressPickup> {
+    }
+
+    /**
+     * 号段序列（ADR-035）。三个方法合起来是一次「领段」：touch 兜底种子、bump 原子推进、peek 读回。
+     * 调用方必须在**同一事务**里 bump → peek（行锁保证读到的是自己 bump 后的值），见 SeqSegmentSource。
+     */
+    public interface SeqMapper extends BaseMapper<SysSequence> {
+
+        /** 种子兜底：迁移已插则无副作用。INSERT IGNORE 两端（MySQL/H2）都认 */
+        @Insert("INSERT IGNORE INTO sys_sequence(seq_name, next_value) VALUES(#{name}, 0)")
+        int touch(@Param("name") String name);
+
+        /** 原子推进 step（单条 UPDATE 带行锁） */
+        @Update("UPDATE sys_sequence SET next_value = next_value + #{step} WHERE seq_name = #{name}")
+        int bump(@Param("name") String name, @Param("step") long step);
+
+        /** 读回当前游标（必须与 bump 同事务，否则读到的可能是别人 bump 后的值） */
+        @Select("SELECT next_value FROM sys_sequence WHERE seq_name = #{name}")
+        Long peek(@Param("name") String name);
     }
 }

@@ -22,6 +22,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.trade.support.OrderNoGenerator;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.ErrorCode;
@@ -84,6 +85,7 @@ public class OrderServiceImpl implements OrderService {
      */
     private final CloseRuleService closeRuleService;
     private final ShipmentTraceQueryPort shipmentTracePort;
+    private final OrderNoGenerator orderNoGenerator;
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -303,7 +305,8 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.member.MemberEventPort memberEventPort,
                             ai.neargo.shop.spi.user.PersonPort personPort,
                             CloseRuleService closeRuleService,
-                            ShipmentTraceQueryPort shipmentTracePort) {
+                            ShipmentTraceQueryPort shipmentTracePort,
+                            OrderNoGenerator orderNoGenerator) {
         this.payModeService = payModeService;
         this.appointmentSlotPort = appointmentSlotPort;
         this.reviewQueryPort = reviewQueryPort;
@@ -314,6 +317,7 @@ public class OrderServiceImpl implements OrderService {
         this.admissionPort = admissionPort;
         this.closeRuleService = closeRuleService;
         this.shipmentTracePort = shipmentTracePort;
+        this.orderNoGenerator = orderNoGenerator;
         this.itemMapper = itemMapper;
         this.cartMapper = cartMapper;
         this.goodsPort = goodsPort;
@@ -1200,8 +1204,12 @@ public class OrderServiceImpl implements OrderService {
          */
         var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
 
-        String orderNo = BizKey.next(BizKey.ORDER);
         long now = System.currentTimeMillis();
+        // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
+        String orderNo = orderNoGenerator.mainOrderNo(now,
+                no -> orderMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, no)) > 0);
 
         /*
          * 买赠：算出每行该送几件。
@@ -1253,8 +1261,10 @@ public class OrderServiceImpl implements OrderService {
          * 而扣减必须在落库之前完成 —— 余额不足要能降级成不抵扣，不能让订单先落库再回滚。
          */
         Map<String, String> subOrderNoOf = new LinkedHashMap<>();
+        int subIdx = 0;
         for (Group g : split.groups) {
-            subOrderNoOf.put(g.key(), BizKey.next(BizKey.SUB_ORDER));
+            // 子单号 = 主单号 + 后缀（ADR-035），一眼看出属于哪一单；不消耗序列
+            subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
         }
 
         /*
