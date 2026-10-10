@@ -35,10 +35,6 @@ import java.util.Set;
 @Component
 public class StoreReachLoader {
 
-    /** 旧单值列 {@code fulfillment_reach}：channel 表一行都没有（或全关）的门店回落到它 */
-    private static final String LEGACY_PICKUP = "PICKUP";
-    private static final String LEGACY_SHIPPING = "SHIPPING";
-
     private final MerchantMappers.MchEntityMapper entityMapper;
     private final MerchantMappers.MchStoreMapper storeMapper;
     private final MerchantMappers.FulfillmentChannelMapper channelMapper;
@@ -183,46 +179,8 @@ public class StoreReachLoader {
                 includes.add(area);
             }
         }
-        return new StoreReach(m.getEntityNo(), storeNo, routes(m, storeNo, channels, subsets),
+        return new StoreReach(m.getEntityNo(), storeNo, StoreRoutes.of(m, storeNo, channels, subsets),
                 List.copyOf(includes), List.copyOf(excludes));
-    }
-
-    private static List<Route> routes(MchEntity m, String storeNo, List<MchFulfillmentChannel> channels,
-                                      List<MchChannelArea> subsets) {
-        Map<String, Route> out = new LinkedHashMap<>();
-        for (MchFulfillmentChannel ch : channels) {
-            // 运营锁路：锁着的路买家侧不可选 —— 与 enabledFulfillments 同一个口径
-            if (!Boolean.TRUE.equals(ch.getEnabled()) || Boolean.TRUE.equals(ch.getOpsLocked())) {
-                continue;
-            }
-            if (storeNo != null && MchFulfillmentChannel.SCOPE_SUBSET.equals(ch.getScopeMode())) {
-                Set<String> picked = new LinkedHashSet<>();
-                for (MchChannelArea ca : subsets) {
-                    if (ch.getChannel().equals(ca.getChannel())) {
-                        picked.add(ca.getAreaNo());
-                    }
-                }
-                out.put(ch.getChannel(), new Route(ch.getChannel(), Set.copyOf(picked)));
-            } else {
-                // 主体口径一律「全部」；同一路多家店都开着时只留一条
-                out.putIfAbsent(ch.getChannel(), Route.all(ch.getChannel()));
-            }
-        }
-        if (!out.isEmpty()) {
-            return List.copyOf(out.values());
-        }
-        /*
-         * 一路都没开（或该店还没迁到 channel 模型）→ 回落旧单值列。语义与迁移前逐字一致：
-         *   SHIPPING → 快递；PICKUP / 空 → 自提（没框 = 谁也看不到）；其余 → 自送（没框 = 不限）。
-         */
-        String reach = m.getFulfillmentReach() == null ? LEGACY_PICKUP : m.getFulfillmentReach();
-        if (LEGACY_SHIPPING.equals(reach)) {
-            return List.of(Route.all(Fulfillments.EXPRESS));
-        }
-        if (LEGACY_PICKUP.equals(reach)) {
-            return List.of(Route.all(Fulfillments.STORE_PICKUP));
-        }
-        return List.of(Route.all(Fulfillments.MERCHANT_DELIVERY));
     }
 
     /** 这几家门店各自的经营范围（V381 门店级）。store_no 为空的孤行不属于任何门店，不读 */
