@@ -17,6 +17,8 @@ export interface ChannelLabels {
   mail: string;
   wxsub: string;
   push: string;
+  /** 企业微信群（WEBHOOK/WECOM）。只在**发送记录**出现（模板列表没有它），所以可选，同 inapp */
+  webhook?: string;
   /** 仅**模板列表**会出现：站内信有模板，但它不进发送记录（见 NotifyChannel 的注释）。 */
   inapp?: string;
 }
@@ -33,6 +35,7 @@ export interface BizLabels {
 export function channelLabel(channel: string, l: ChannelLabels): string {
   const map: Record<string, string> = {
     SMS: l.sms, MAIL: l.mail, WXSUB: l.wxsub, PUSH: l.push,
+    ...(l.webhook ? { WEBHOOK: l.webhook } : {}),
     ...(l.inapp ? { INAPP: l.inapp } : {}),
   };
   return map[channel] ?? channel;

@@ -102,7 +102,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
 
   // 映射规则在 lib/notify-label.ts（纯函数，有测试守着 —— 本仓只测 lib，
   // 内联在这里的话「WXSUB 被显示成短信」那类缺陷没有任何测试能拦）
-  const chLabels = { sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub, push: c.nlPush };
+  const chLabels = { sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub, push: c.nlPush, webhook: c.nlWebhook };
   const bizLabels = {
     otp: c.nlBizOTP, initPwd: c.nlBizInitPwd, resetPwd: c.nlBizResetPwd,
     test: c.nlBizTest, trade: c.nlBizTrade,
@@ -188,6 +188,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
             <option value="">{c.nlAll}</option>
             <option value="SMS">{c.nlSms}</option>
             <option value="MAIL">{c.nlMail}</option>
+            <option value="WEBHOOK">{c.nlWebhook}</option>
             <option value="WXSUB">{c.nlWxsub}</option>
             <option value="PUSH">{c.nlPush}</option>
           </Select>

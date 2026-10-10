@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bizLabel, channelLabel, type BizLabels, type ChannelLabels } from "./notify-label";
 
-const CH: ChannelLabels = { sms: "短信", mail: "邮件", wxsub: "微信订阅消息", push: "App 推送" };
+const CH: ChannelLabels = { sms: "短信", mail: "邮件", wxsub: "微信订阅消息", push: "App 推送", webhook: "企业微信群" };
 const BIZ: BizLabels = {
   otp: "验证码", initPwd: "账号初始密码", resetPwd: "密码重置",
   test: "测试发送", trade: "交易触达",
@@ -21,6 +21,8 @@ describe("发送记录的码 → 文案", () => {
   it("四条通道各自映射正确", () => {
     expect(channelLabel("SMS", CH)).toBe("短信");
     expect(channelLabel("MAIL", CH)).toBe("邮件");
+    // 企微群（来单推商家自己的群）也要认出来，别回落成原码
+    expect(channelLabel("WEBHOOK", CH)).toBe("企业微信群");
   });
 
   it("★ 未知通道回落原码，不猜成某个已知类型", () => {
