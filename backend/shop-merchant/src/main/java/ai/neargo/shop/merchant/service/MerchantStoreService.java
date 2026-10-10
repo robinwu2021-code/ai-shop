@@ -155,12 +155,19 @@ public interface MerchantStoreService {
      *
      * @param mode {@code INCLUDE} 纳入 / {@code EXCLUDE} 排除（挖洞：框了整个园区，单排掉其中一栋）。
      *     <b>空按 INCLUDE</b> —— 老版本 b-app 不传这个字段，而它历史上只勾得出纳入项。
+     * @param geometry 仅 {@code level=POLYGON}：商家在地图上画的闭合顶点 JSON {@code [[lngE6,latE6],...]}（ADR-034）。
+     *     服务端会规范化、校验、算几何指纹覆写 {@code refCode}，并派生 S2 网格行；其余粒度传 null。
      */
-    record AreaCommand(String level, String refCode, String mode) {
+    record AreaCommand(String level, String refCode, String mode, String geometry) {
 
         /** 老形状（= 纳入）。留着是因为覆盖项还有几处内部构造点只造纳入项 */
         public AreaCommand(String level, String refCode) {
-            this(level, refCode, null);
+            this(level, refCode, null, null);
+        }
+
+        /** 三参形状（不带几何）。{@code POLYGON} 之外的粒度都用它 */
+        public AreaCommand(String level, String refCode, String mode) {
+            this(level, refCode, mode, null);
         }
     }
 }

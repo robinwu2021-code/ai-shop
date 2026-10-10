@@ -48,6 +48,10 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper;
 
+    /** 多边形范围的 S2 网格派生行：唯一写入方（ADR-034） */
+    private final ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells;
+    private final ai.neargo.shop.geo.ReachGeoProps geoProps;
+
     public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
                                     ObjectMapper json,
@@ -55,6 +59,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ai.neargo.shop.spi.platform.SettingPort settingPort,
                                     ai.neargo.shop.spi.platform.BannedWordPort bannedWords,
                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                    ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells,
+                                    ai.neargo.shop.geo.ReachGeoProps geoProps,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper) {
@@ -69,6 +75,8 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         this.settingPort = settingPort;
         this.bannedWords = bannedWords;
         this.masterDataPort = masterDataPort;
+        this.serviceAreaCells = serviceAreaCells;
+        this.geoProps = geoProps;
     }
 
     @Override
@@ -391,18 +399,50 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.hardDeleteById(old.getId()));
         }
         java.util.Set<String> gone = new java.util.HashSet<>(keptNo.values());
+        java.util.Map<MchServiceArea, ai.neargo.shop.geo.GeoPolygon> toIndex = new java.util.LinkedHashMap<>();
+        boolean unlimitedSeen = false;
         for (AreaCommand a : normalize(areas)) {
-            if (a == null || a.level() == null || a.refCode() == null || a.refCode().isBlank()) {
+            if (a == null || a.level() == null) {
+                continue;
+            }
+            /*
+             * POLYGON / UNLIMITED 的 refCode 由**服务端**定（ADR-034），端上传什么都不作数：
+             *   POLYGON   → 几何指纹。几何不变则 level|refCode 不变，于是下面「沿用原 area_no」
+             *               自动生效、子集引用不会落空；几何改了就是新项、重算网格。
+             *   UNLIMITED → 恒为 `*`，一店一条（唯一键保证）。
+             */
+            String level = a.level();
+            String refCode = a.refCode();
+            ai.neargo.shop.geo.GeoPolygon polygon = null;
+            if (MchServiceArea.LEVEL_POLYGON.equals(level)) {
+                try {
+                    polygon = ai.neargo.shop.geo.GeoPolygon.parse(a.geometry(), geoProps.getPolygonMaxVertices());
+                } catch (IllegalArgumentException e) {
+                    throw BizException.of(ErrorCode.SERVICE_AREA_POLYGON_INVALID, e.getMessage());
+                }
+                refCode = polygon.fingerprint();
+            } else if (MchServiceArea.LEVEL_UNLIMITED.equals(level)) {
+                if (MchServiceArea.MODE_EXCLUDE.equals(a.mode())) {
+                    // 「排除全部」没有意义，而写进去的后果是整店对谁都不可见、且看不出原因
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+                if (unlimitedSeen) {
+                    continue;   // 端上重复传了，取第一条
+                }
+                unlimitedSeen = true;
+                refCode = MchServiceArea.UNLIMITED_REF;
+            } else if (refCode == null || refCode.isBlank()) {
                 continue;
             }
             MchServiceArea row = new MchServiceArea();
-            String kept = keptNo.get(a.level() + "|" + a.refCode());
+            String kept = keptNo.get(level + "|" + refCode);
             gone.remove(kept);
             row.setAreaNo(kept != null ? kept : BizKey.next(BizKey.SERVICE_AREA));
             row.setEntityNo(merchantNo);
             row.setStoreNo(storeNo);
-            row.setLevel(a.level());
-            row.setRefCode(a.refCode());
+            row.setLevel(level);
+            row.setRefCode(refCode);
+            row.setGeometry(polygon == null ? null : polygon.normalizedJson());
             row.setSource("SELF");
             /*
              * **所有粒度自选即生效**（2026-08-24 起，取代 ADR-013 §4.2 的区/市送审规则）。
@@ -425,7 +465,12 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
             row.setMode(MchServiceArea.MODE_EXCLUDE.equals(a.mode())
                     ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE);
             DataScopeContext.executeWithoutScope(() -> serviceAreaMapper.insert(row));
+            if (polygon != null) {
+                toIndex.put(row, polygon);
+            }
         }
+        // 多边形的 S2 网格：删重插之后按当前几何重建（派生数据，唯一写入方是 ServiceAreaCells）
+        toIndex.forEach(serviceAreaCells::rebuild);
         /*
          * **删掉的范围项，各门店引用它的子集行一起删**（MchChannelArea 类注释里早就这么写着，一直没实现）。
          * 不删的话子集指向一个不存在的 area_no：线上两家店界面显示「仅 1 项」，
@@ -434,6 +479,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
          */
         if (!gone.isEmpty()) {
             DataScopeContext.executeWithoutScope(() -> channelAreaMapper.purgeAreas(gone));
+            // 多边形项被删（或几何改了 = 指纹变 = 旧项消失）时网格一起清：
+            // 不清的话旧网格还会让消费者命中一片已经不存在的范围，而界面上那条早就没了
+            serviceAreaCells.purge(gone);
         }
 
     }
@@ -538,12 +586,21 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         java.util.function.Function<AreaCommand, String> modeOf = a ->
                 MchServiceArea.MODE_EXCLUDE.equals(a.mode())
                         ? MchServiceArea.MODE_EXCLUDE : MchServiceArea.MODE_INCLUDE;
+        /*
+         * 参与「前缀即子集」归一的只有**行政区划码**。POLYGON 的 refCode 是几何指纹、
+         * UNLIMITED 的是 `*` —— 它们不是区划码，不该被当成谁的父级或子级（ADR-034）。
+         * 定长指纹与 `*` 实际不会互为前缀，但把它们显式挡在外面比依赖这个巧合可靠。
+         */
         List<AreaCommand> regions = areas.stream()
                 .filter(a -> a != null && a.level() != null && a.refCode() != null && !a.refCode().isBlank())
                 .filter(a -> !AREA_COMMUNITY.equals(a.level()))
+                .filter(a -> !MchServiceArea.LEVEL_POLYGON.equals(a.level())
+                        && !MchServiceArea.LEVEL_UNLIMITED.equals(a.level()))
                 .toList();
         return areas.stream()
                 .filter(a -> a == null || a.refCode() == null || AREA_COMMUNITY.equals(a.level())
+                        || MchServiceArea.LEVEL_POLYGON.equals(a.level())
+                        || MchServiceArea.LEVEL_UNLIMITED.equals(a.level())
                         || regions.stream().noneMatch(
                                 p -> modeOf.apply(p).equals(modeOf.apply(a))
                                         && !p.refCode().equals(a.refCode())
@@ -560,7 +617,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                 .stream()
                 .map(a -> new StoreProfileVO.ServiceAreaVO(
                         a.getLevel(), a.getRefCode(), areaNameOf(a), a.getStatus(), a.getAreaNo(),
-                        a.getMode() == null ? MchServiceArea.MODE_INCLUDE : a.getMode()))
+                        a.getMode() == null ? MchServiceArea.MODE_INCLUDE : a.getMode(),
+                        // 多边形要带几何回去，端上才画得出那片范围；其余粒度库里就是 null
+                        a.getGeometry()))
                 .toList();
     }
 

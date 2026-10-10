@@ -52,8 +52,18 @@ public record StoreProfileVO(String announcement, Long announcementUntil,
      *     单列一栏，于是「已排除 3 幢」在界面上长得和「已覆盖 3 幢」一模一样，
      *     而商家保存一次就会把它当成纳入项原样传回来。
      */
+    /**
+     * @param geometry 仅 {@code level=POLYGON}：顶点 JSON，端上据此在地图上回显那片范围（ADR-034）。
+     *     其余粒度为 null。{@code POLYGON} 的 {@code refCode} 是几何指纹、{@code UNLIMITED} 的是 {@code *} ——
+     *     两者都<b>没有地名</b>，端上要按 level 决定怎么显示，不要把 refCode 当名字。
+     */
     public record ServiceAreaVO(String level, String refCode, String name, String status, String areaNo,
-                                String mode) {
+                                String mode, String geometry) {
+
+        /** 不带几何的老形状 */
+        public ServiceAreaVO(String level, String refCode, String name, String status, String areaNo, String mode) {
+            this(level, refCode, name, status, areaNo, mode, null);
+        }
     }
 
     /**
