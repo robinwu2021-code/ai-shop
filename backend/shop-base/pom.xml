@@ -120,6 +120,19 @@
             <artifactId>ehcache</artifactId>
             <classifier>jakarta</classifier>
         </dependency>
+        <!--
+            可见范围几何（ADR-034）：JTS 解析多边形并做含边界的点在面内精判，
+            S2 把多边形离散成网格 cell 写进派生表、消费者坐标按级取 cell token。
+            放在 shop-base：ai.neargo.shop.geo 是纯工具，merchant/core 都要用。版本由根 BOM 钉。
+        -->
+        <dependency>
+            <groupId>org.locationtech.jts</groupId>
+            <artifactId>jts-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.geometry</groupId>
+            <artifactId>s2-geometry</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
