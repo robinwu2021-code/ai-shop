@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 商家自送（B-11.4.6 / 4.7）。
 //
 // ⚠️ **不做骑手系统**（ADR-005 §5）：小店老板骑电动车送两条街，他要的是「点一下已送达」，
@@ -13,12 +16,16 @@ import type { DeliveryRule, Order } from "@shared/types";
 
 const { t } = useI18n();
 
-const rule = ref<DeliveryRule>({
-  radius: 3000,
-  minOrderMinor: 0,
-  feeMinor: 0,
-  freeThresholdMinor: 0,
-});
+/**
+ * 配送规则。**只有能改门店经营面的人才拿得到**（`/biz/delivery/rule` 要 `biz:store`）。
+ *
+ * 拿不到时是 `null` 而不是那份默认值 —— 默认值会让店员看到一张
+ * 「半径 3000 米、起送 0 元」的规则卡，那是**编出来的**：他没权限读，
+ * 屏幕上却显示了一个具体数字，而店里真实的规则可能完全不同。
+ */
+const rule = ref<DeliveryRule | null>(null);
+/** 我能不能改配送规则 —— 决定规则卡片画不画 */
+const canRule = computed(() => merchant.can("biz:store"));
 /** 表单用主单位（元），保存时换回最小单位 —— 店主输 20，存 2000 */
 const form = ref({ radius: "3000", minOrder: "0", fee: "0", freeThreshold: "0" });
 const orders = ref<Order[]>([]);
@@ -28,16 +35,48 @@ const pending = computed(() =>
   orders.value.filter((o) => o.fulfillment === FULFILLMENT.DELIVERY && o.status === "PAID"),
 );
 
+/*
+ * 两件事各自取，**不用裸 Promise.all**。
+ *
+ * 这一页的门禁是 `biz:ship`，而规则接口要的是 `biz:store` —— 店员与配送员
+ * 有前者没有后者。原先一个 Promise.all 把两件事绑在一起，规则被 70006 拒
+ * 就整体 reject，**待送列表也一起没了**：配送员打开为他而设的页面，看到的是一片空白。
+ *
+ * 而工作台「待配送」格子的权限正是 `biz:ship`，它每天都在把配送员往这儿送。
+ */
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  const [r, res] = await Promise.all([api.mDeliveryRule(), api.mOrderList({ size: 100 })]);
-  rule.value = r;
-  form.value = {
-    radius: String(r.radius),
-    minOrder: toMajor(r.minOrderMinor),
-    fee: toMajor(r.feeMinor),
-    freeThreshold: toMajor(r.freeThresholdMinor),
-  };
-  orders.value = res.records;
+  try {
+    /*
+     * **先等权限到位**。`can()` 在 perms 没加载时一律 false（fail-closed），
+     * 而深链进来时 `onShow` 会早于外壳的 `ensureScope` 跑完 ——
+     * 不等的话老板刷新这一页也看不到规则卡，且**不会重试**：
+     * 那正是「判权状态没加载 = 界面被自己锁死」这个老问题的新形态。
+     */
+    await merchant.ensureScope();
+    const [r, res] = await Promise.all([
+      canRule.value ? api.mDeliveryRule() : Promise.resolve(null),
+      api.mOrderList({ size: 100 }),
+    ]);
+    rule.value = r;
+    if (r) {
+      form.value = {
+        radius: String(r.radius),
+        minOrder: toMajor(r.minOrderMinor),
+        fee: toMajor(r.feeMinor),
+        freeThreshold: toMajor(r.freeThresholdMinor),
+      };
+    }
+    orders.value = res?.records ?? [];
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 async function saveRule() {
@@ -48,6 +87,16 @@ async function saveRule() {
     freeThresholdMinor: toMinor(form.value.freeThreshold),
   });
   uni.showToast({ title: t("common.saved"), icon: "none" });
+}
+
+/**
+ * 拨号。**脱敏号拨不通，所以只在拿到完整号时才让点** ——
+ * 一个点了没反应的电话号码比不显示更糟。
+ */
+function call(o: Order) {
+  const phone = o.receiver?.phone;
+  if (!phone || phone.includes("*")) return;
+  uni.makePhoneCall({ phoneNumber: phone });
 }
 
 async function delivered(o: Order) {
@@ -68,108 +117,109 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="delivery.title">
-    <text class="sh-h1">{{ $t("delivery.title") }}</text>
+  <sh-scaffold title-key="delivery.title" :denied="!merchant.can('biz:ship')">
+    <!-- 当前门店只读标记：配送规则是**这家店**的（/biz/delivery/rule 全程按当前门店）——
+         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
+         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+    <biz-store-tag readonly></biz-store-tag>
 
-    <view class="sh-card mt">
-      <text class="sh-h2">{{ $t("delivery.rule") }}</text>
+    <text class="txt-display">{{ $t("delivery.title") }}</text>
+
+    <!--
+      规则卡片只给能改门店经营面的人（`biz:store`）。店员与配送员进得来这一页
+      （他们有 `biz:ship`），但读不到规则 —— 画一张空表格让他填、点保存报 70006，
+      比不画它更糟。
+    -->
+    <view v-if="canRule && rule" class="sh-card sh-mt-sm">
+      <text class="txt-title">{{ $t("delivery.rule") }}</text>
 
       <view class="field">
         <text class="field__label">{{ $t("delivery.radius") }}</text>
-        <input v-model="form.radius" class="field__input sh-num" type="number" />
+        <input maxlength="3" v-model="form.radius" class="field__input sh-num" type="number" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.minOrder") }}</text>
-        <input v-model="form.minOrder" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.minOrder" class="field__input sh-num" type="digit" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.fee") }}</text>
-        <input v-model="form.fee" class="field__input sh-num" type="digit" />
+        <input maxlength="10" v-model="form.fee" class="field__input sh-num" type="digit" />
       </view>
       <view class="field">
         <text class="field__label">{{ $t("delivery.freeThreshold") }}</text>
-        <input v-model="form.freeThreshold" class="field__input sh-num" type="digit" />
-        <text class="hint">{{ $t("delivery.freeHint") }}</text>
+        <input maxlength="10" v-model="form.freeThreshold" class="field__input sh-num" type="digit" />
+        <text class="sh-hint">{{ $t("delivery.freeHint") }}</text>
       </view>
 
       <view class="sh-btn sh-btn--soft save" @tap="saveRule">{{ $t("common.save") }}</view>
     </view>
 
-    <view class="list-head">
-      <text class="sh-h2">{{ $t("delivery.pending") }}</text>
+    <view class="list-head sh-row sh-row--between sh-row--baseline">
+      <text class="txt-title">{{ $t("delivery.pending") }}</text>
       <text class="sh-muted sh-num">{{ pending.length }}</text>
     </view>
 
-    <sh-empty v-if="!pending.length" :text='$t("delivery.empty")'></sh-empty>
+    <sh-empty v-if="!pending.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("delivery.empty")'></sh-empty>
 
-    <view v-for="o in pending" :key="o.orderNo" class="sh-card row">
-      <view class="row__main">
-        <text class="row__buyer">{{ o.buyerNickname || "—" }}</text>
-        <text class="sh-muted sh-num">{{ o.orderNo }}</text>
+    <view v-for="o in pending" :key="o.orderNo" class="sh-row sh-card row sh-mb-sm">
+      <view class="sh-fill">
+        <!--
+          **送到哪里、找谁、打哪个号** —— 这一页在这之前只有单号和金额，
+          配送员拿着它出不了门。自送单的手机号后端给的是完整号（其余履约方式脱敏），
+          点一下直接拨：站在楼下找不到人时，多一步操作就是多一次白跑。
+        -->
+        <text class="txt-strong row__buyer">{{ o.receiver?.name || o.buyerNickname || "—" }}</text>
+        <text v-if="o.receiver?.address" class="txt-body row__addr">{{ o.receiver.address }}</text>
+        <text v-else class="txt-body row__addr txt-quiet">{{ $t("delivery.noAddress") }}</text>
+        <view class="row__sub sh-row">
+          <text class="sh-muted sh-num">{{ o.orderNo }}</text>
+          <text v-if="o.receiver?.phone" class="txt-strong row__tel sh-num txt-primary" @tap="call(o)">
+            {{ o.receiver.phone }}
+          </text>
+        </view>
       </view>
-      <text class="row__amount sh-num">
+      <!--
+        配送员拿到的是**裁剪档**（后端 CourierOrderVO，无金额、无核销码）。
+        所以这里按字段有无渲染，而不是按角色判 —— 少一处判断就少一处会漂的地方。
+      -->
+      <text v-if="o.amount" class="txt-price sh-num">
         {{ money(o.amount.payableMinor, o.amount.currency) }}
       </text>
-      <text class="btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
+      <text class="sh-btn sh-btn--sm btn" @tap="delivered(o)">{{ $t("order.delivered") }}</text>
     </view>
 
-    <text class="tip">{{ $t("delivery.noRiderHint") }}</text>
+    <text class="tip sh-hint">{{ $t("delivery.noRiderHint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.mt {
+.save {
   margin-top: 24rpx;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.save {
-  margin-top: 32rpx;
-}
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 32rpx 8rpx 16rpx;
+  margin: 0 8rpx;
 }
 .row {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
-  margin-bottom: 16rpx;
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row__buyer {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
-.row__amount {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
+.row__addr {
+  display: block;
+  margin-top: 4rpx;
 }
+.row__sub {
+  margin-top: 8rpx;
+}
+
 .btn {
-  padding: 18rpx 28rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  font-weight: 600;
+
+  padding: 16rpx 28rpx;
+
 }
 .tip {
-  display: block;
-  margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
+  margin: 0 8rpx;
 }
 </style>

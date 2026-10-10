@@ -26,7 +26,7 @@ const body = epSrc.slice(epSrc.indexOf("export const ENDPOINTS"));
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -35,19 +35,71 @@ if (!Object.keys(endpoints).length) {
   throw new Error("没有从 endpoints.ts 解析到任何端点 —— 表结构变了？");
 }
 
+/*
+ * 已知用了「复数资源名 + id」的端点。**清单只准变短。**
+ *
+ * 原来这里是**硬失败**，于是 18 条存量端点（整个库存域 + 门店履约）
+ * 让这个生成器**一次都跑不起来** —— `openapi-b.yaml` 从那天起就停在原地，
+ * 而它不在 `check-generated-docs` 的名单里，没有任何东西会报。
+ * 一条规矩把自己的产物锁死，还没人知道，这比规矩被破坏更糟。
+ *
+ * 2026-08-28 数下来：c-app 3 条（都在 goods/address 豁免里）、b-app 18 条、
+ * **ops-web 98 条**（它的生成器压根没这条规矩）。126 个线上活着的端点是复数，
+ * 而规矩只活在两个生成器里。要不要把 ADR-007 改成承认复数，是另一件事 ——
+ * 那要动 126 条线上路径或改约定本身，不该由一个文档生成器顺手决定。
+ */
+const knownPlural = new Set(
+  fs
+    .readFileSync(path.resolve(here, "known-plural-paths.txt"), "utf8")
+    .split("\n")
+    .filter((l) => l.trim() && !l.startsWith("#"))
+    .map((l) => l.split("\t")[0]),
+);
+const fixedPlural = [...knownPlural];
+
 // 与 C 端同一条规矩：带 id 的资源段用单数；前缀必须是 /biz（ADR-007）
 for (const [key, ep] of Object.entries(endpoints)) {
   const bad = ep.path.match(/\/(\w+s)\/:/);
   if (bad && !/^(goods|address)$/.test(bad[1])) {
-    throw new Error(`端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id`);
+    if (!knownPlural.has(key)) {
+      throw new Error(
+        `端点 "${key}" 的路径 ${ep.path} 用了复数资源名 "${bad[1]}" 且紧跟 id。\n` +
+          "  ADR-007 是资源段用单数。确实要破例的话，把它加进 b-app/scripts/known-plural-paths.txt 并写清理由。",
+      );
+    }
+    fixedPlural.splice(fixedPlural.indexOf(key), 1);
   }
-  if (!ep.path.startsWith("/biz/")) {
+  /*
+   * `/common/**` 是跨端公共元数据（行业/主体/通道），C 端与 B 端要的是同一份。
+   * 给它造一个 /biz 别名只会得到两条路径服务同一件事，而两条路径迟早返回不一样的东西。
+   * 与 packages/shared/tests/type-alignment.test.ts 的豁免口径一致。
+   */
+  if (!ep.path.startsWith("/biz/") && !ep.path.startsWith("/common/")) {
     throw new Error(`端点 "${key}" 的路径 ${ep.path} 不在 /biz/** 下 —— B 端前缀见 ADR-007`);
   }
 }
+// 棘轮只准变短：清单里有、代码里已经改好的，要提醒删掉
+if (fixedPlural.length) {
+  console.error(`✗ 这些已经不是复数路径了，把它们从 known-plural-paths.txt 里删掉：\n  ${fixedPlural.join("\n  ")}`);
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------- 2. 类型 → JSON Schema
-function collect(file, typeNames) {
+/**
+ * 一次把入口能看见的类型**全部**生成出来。响应类型与 `requests.ts` 都走这一条。
+ *
+ * <p><b>不再逐个名字 `createSchema(name)`</b>：那种调法只解析得动「从这个名字出发、
+ * 且声明就在入口文件里」的引用 —— 跨文件的引用它解不开，解不开就 catch 掉、跳过，
+ * 不报错。共享类型因此被钉死在一个 5139 行的文件里：一拆就静默少 39 个 schema。
+ *
+ * <p>`createSchema("*")` 走的是整个 program（与平台端 `ops-web/scripts/gen-openapi.mjs`
+ * 同一种调法，那边的 `lib/types` 早就是按域分文件的）—— 拆不拆都一样。
+ *
+ * <p>旧注释里说 `requests.ts` 只能按名逐个取（「24 个请求类型只出了 5 个」），
+ * 那是**没有 `expose: "all"`** 时的行为：现在两种调法在 requests.ts 上量过，
+ * 68 个定义一个不差，所以那条例外去掉了。
+ */
+function collectAll(file) {
   const gen = createGenerator({
     path: file,
     tsconfig: path.resolve(root, "tsconfig.json"),
@@ -57,33 +109,10 @@ function collect(file, typeNames) {
     topRef: true,
     additionalProperties: false,
   });
-  const out = {};
-  for (const name of typeNames) {
-    try {
-      const s = gen.createSchema(name);
-      Object.assign(out, s.definitions ?? {});
-    } catch {
-      // 该名字不是一个可导出的类型（如泛型别名），跳过 —— 由调用方决定要不要报错
-    }
-  }
-  return out;
+  return gen.createSchema("*").definitions ?? {};
 }
 
-/** 从源码里抠出所有 `export interface X` / `export type X` 的名字 */
-function exportedTypeNames(file) {
-  const src = fs.readFileSync(file, "utf8");
-  const names = [];
-  const re = /^export\s+(?:interface|type)\s+(\w+)/gm;
-  let x;
-  while ((x = re.exec(src))) names.push(x[1]);
-  return names;
-}
-
-
-const respNames = exportedTypeNames(typesFile);
-const reqNames = exportedTypeNames(reqFile);
-
-let schemas = { ...collect(typesFile, respNames), ...collect(reqFile, reqNames) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
   process.exit(1);
@@ -122,28 +151,287 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  /*
+   * 2026-08-28 一次补齐 **97 条**。它们是逐批加进契约的，谁都没回来登记这张表 ——
+   * 而漏一条整份 spec 就不生成（硬失败），于是 `openapi-b.yaml` 停在原地，
+   * 且这个生成器**不在 check-generated-docs 的名单里**，没有任何东西会报。
+   * 类型逐条取自 `contract.ts` 的签名，不是猜的。
+   */
+  mActivities: "StoreActivity[]",
+  mActivity: "StoreActivity",
+  mActivityConflicts: "ActivityConflict[]",
+  mMarketingSummary: "MarketingSummary",
+  mPeriods: "BatchPeriod[]",
+  mPeriod: "BatchPeriodDetail",
+  mCutoffPeriod: "BatchPeriod",
+  mDecidePeriod: "BatchPeriod",
+  mPeriodPurchaseLines: "BatchPurchaseLine[]",
+  mAddSpecDim: "SpecTemplate",
+  mAddSpecValue: "SpecValueAdded",
+  mAppointmentSlots: "AppointmentSlot[]",
+  mArchiveSpecDim: "void",
+  mDeposit: "DepositAccount",
+  mDepositTxns: "DepositTxn[]",
+  mInvoiceTitle: "PlatformInvoiceTitle",
+  mMyInvoices: "PurchaseInvoice[]",
+  mPendingInvoice: "PendingInvoice",
+  mStatement: "Statement",
+  mOpenStorePayment: "PaymentApplyment",
+  mSubmitInvoice: "PurchaseInvoice",
+  mPayoutAccounts: "PayoutAccount[]",
+  mSubmitPayoutAccount: "PayoutAccount",
+  mCloseAppointmentSlot: "AppointmentSlot",
+  mConfirmOfflinePay: "Order",
+  mExpressQuotes: "ExpressQuote[]",
+  mBookExpress: "ExpressPickup",
+  mExpressPickup: "ExpressPickup",
+  mCancelExpress: "ExpressPickup",
+  mShipSetting: "ShipSetting",
+  // 通知设置（TDD-来单四渠道与商家通知设置）。三条都回整份设置 —— 改完立刻回读，
+  // 端上不做乐观更新：这一屏每一格都对应「会不会收到通知」，不能留一个说假话的开关
+  mNotifySetting: "NotifySetting",
+  mSaveNotifySwitch: "NotifySetting",
+  mSaveNotifyWecom: "NotifySetting",
+  mTestNotifyWecom: "boolean",
+  mSaveNotifyPhones: "NotifySetting",
+  mSaveNotifyEmail: "NotifySetting",
+  mFreightTemplate: "StoreFreightTemplate",
+  mFreightTemplates: "StoreFreightTemplate[]",
+  mSaveShipSetting: "ShipSetting",
+  mCountDetail: "StockCount",
+  mCountFill: "void",
+  mCountOpen: "string",
+  mCountPost: "void",
+  mCountVoid: "void",
+  mCoupon: "MerchantCoupon",
+  mCouponIssues: "CouponIssueBatch[]",
+  mCoupons: "MerchantCoupon[]",
+  mCreateMemberTag: "MemberTag",
+  mDescribeGoods: "{ detail: string }",
+  mParseText: "GoodsTextParse",
+  mZipPlan: "ZipPlan",
+  mZipImport: "ZipImported",   // 服务端解压回来的清单（已落库的图 + txt 内容）
+  mDimValues: "SpecOption[]",
+  mDropNoticeRecent: "StoreProfile",
+  mEditMemberTag: "MemberTag",
+  mEnrollMember: "Member",
+  mEntities: "Entity[]",
+  mEntity: "EntityStores",
+  mEstateCounts: "Record<string, number>",
+  mEstates: "EstateList",
+  mFulfillmentImpact: "FulfillmentImpactItem[]",
+  mGeoReverse: "GeoReverseResult",
+  mGeoTips: "GeoTip[]",
+  mInboundCreate: "string",
+  mInboundPost: "void",
+  mInboundUpdate: "void",
+  mInboundVoid: "void",
+  mIncomeSummary: "IncomeSummary",
+  mDailyFlow: "DailyFlowPage",
+  mIssueCoupon: "CouponIssueBatch",
+  mLocationSetSource: "void",
+  mInvCategorySettings: "InvCategorySetting[]",
+  mInvSetCategory: "InvModeChange",
+  mGoodsInvModes: "GoodsInvMode[]",
+  mGoodsSetInvMode: "InvModeChange",
+  mStockSync: "StockSyncState",
+  mSetStockSync: "StockSyncState",
+  mStorePaySetting: "StorePaySetting",
+  mSaveStorePaySetting: "StorePaySetting",
+  mGoodsPayMode: "GoodsPayMode",
+  mSetGoodsPayMode: "GoodsPayMode",
+  mStockAlignment: "StockAlignRow[]",
+  mConfirmAlignment: "{ adjusted: number }",
+  mSellRules: "SellRule[]",
+  mOfflineSales: "OfflineSaleRow[]",
+  mOfflineSell: "{ docNo: string }",
+  mOfflineSaleRevoke: "{ docNo: string }",
+  mSaveSellRule: "SellRule",
+  mMemberDetail: "MemberDetail",
+  mMemberSegments: "MemberSegment[]",
+  mMemberSettings: "MemberSetting",
+  mMemberStats: "MemberStats",
+  mMemberTags: "MemberTag[]",
+  mMembers: "PageResult<Member>",
+  mMergeMemberTag: "MemberMergePreview",
+  mMySpecDims: "MerchantSpecDim[]",
+  mMyStores: "EntityStores[]",
+  mOpenAppointmentSlot: "AppointmentSlot",
+  mOpenCommunityFromMap: "Community",
+  mOutboundCreate: "string",
+  mOutboundPost: "void",
+  mOutboundVoid: "void",
+  mPatchMember: "Member",
+  mPeekCouponCode: "CouponRedeemView",
+  mPickableDims: "SpecTemplate[]",
+  mPickableProps: "SpecTemplate[]",
+  mPickupCandidates: "PickupCandidate[]",
+  mPlanReach: "ReachPlan",
+  mPoster: "Poster",
+  mPreviewMemberSegment: "MemberSegmentPreview",
+  mQualifications: "MyQualifications",
+  mQuickStart: "MerchantProfile",
+  mAutomationLogin: "AutomationSession",
+  mRedeemCoupon: "CouponRedeemResult",
+  mRegionPath: "Region[]",
+  mRegionSearch: "RegionSearchResult",
+  mRegionParse: "ScopeParseResult",
+  mRemoveMemberSegment: "void",
+  mRenameSpecDim: "void",
+  mSaveActivity: "StoreActivity",
+  mSaveAnnouncement: "StoreProfile",
+  mSaveCoupon: "MerchantCoupon",
+  mSaveMemberSegment: "MemberSegment",
+  mSaveMemberSettings: "MemberSetting",
+  mSaveQualification: "Qualification",
+  mRecognizeQualification: "CertRecognition",
+  mSaveSpecOverride: "SpecTemplate[]",
+  mSaveStoreFulfillment: "StoreFulfillment",
+  mSelfBuildPickup: "PickupCandidate",
+  mSendReach: "ReachResult",
+  mReachTasks: "ReachTask[]",
+  mReachTask: "ReachTask",
+  mSetActivityStatus: "StoreActivity",
+  mSetCouponStatus: "MerchantCoupon",
+  mSkuIdentityExport: "{ csv: string }",
+  mSkuIdentityImport: "SkuIdentityReport",
+  mSkuIdentityPlan: "SkuIdentityReport",
+  mSpecProps: "SpecTemplate[]",
+  mStockAdjust: "void",
+  mSafetyStock: "void",
+  mItemBySku: "StockItemDetail",
+  mItemByBarcode: "StockBalance",
+  mBindBarcode: "void",
+  mStockBalances: "StockBalance[]",
+  mStockCrossStore: "StockCrossStoreRow[]",
+  mStockDocuments: "StockDocument[]",
+  mStockItem: "StockItemDetail",
+  mStockLedger: "StockLedgerPage",
+  mStockLocations: "StockLocation[]",
+  mStockMonthly: "StockMonthly",
+  mStockPickable: "StockBalance[]",
+  mSupplierActive: "void",
+  mSupplierCreate: "{ supplierNo: string }",
+  mSupplierUpdate: "void",
+  mSuppliers: "Supplier[]",
+  mCarriers: "Carrier[]",
+  mStockRanking: "StockRank[]",
+  mStockSummary: "StockSummary",
+  mStoreFulfillment: "StoreFulfillment",
+  mStoreSpecDims: "StoreCategorySpecs[]",
+  mTagMembers: "void",
+  mBatchTagMembers: "BatchTagResult",
+  mAudiencePreview: "AudiencePreview",
+  mMemberTagUsage: "MemberTagUsage",
+  mMemberSegmentDetail: "MemberSegmentDetail",
+  mTransferCreate: "string",
+  mTransferDetail: "StockTransfer",
+  mTransferReceive: "void",
+  mTransferVoid: "void",
+  mTransferShip: "void",
+  mVillageDict: "Region[]",
+  mWarehouseCreate: "string",
+
+  // 漏配一条就整份 spec 不生成（守卫是对的）：/biz/goods/{no}/store-stock 因此
+  // 长期不在契约里，而后端实现了 —— 按契约算的覆盖率会凭空少一条。
+  mSaveStoreStock: "Goods",
+  mSaveStorePrice: "Goods",
+  mSubmitGoods: "Goods",
+  mSavePresale: "Goods",
+  mSendOtp: "void",
+  // 密码登录（并行改动带进来的两条）：设置只回成功与否，查询回一个布尔壳
+  mSetPassword: "void",
+  mSetDisplayName: "void",
+  mHasPassword: "HasPasswordResp",
   mLogin: "MerchantLoginResp",
+  mStaffLogin: "MerchantLoginResp",
   mProfile: "MerchantProfile",
   mApply: "MerchantProfile",
   mApplyDraft: "MerchantApplyReq",
+  // 补勾协议返回的是同意时刻（毫秒），不是对象 —— 已经勾过时返回的是原来那一次
+  mAcceptAgreement: "number",
+  // 补勾协议返回的是同意时刻（毫秒），不是对象 —— 已经勾过时返回的是原来那一次
+
+  mMasterData: "MasterData",
+  mPayments: "PaymentApplyment[]",
+  mPayChannels: "PaymentApplyment[]",
+  mSubmitPayment: "PaymentApplyment",
+  mRefreshPayment: "PaymentApplyment",
+  mStoreList: "Store[]",
+  mCreateStore: "Store",
+  mRenameStore: "Store",
+  mSetStoreStatus: "Store",
+  mSetDefaultStore: "Store",
+  mSetStoreSlug: "Store",
+  mSetStorePayment: "Store",
+  mStoreCategories: "StoreCategory[]",
+  mSaveStoreCategories: "StoreCategory[]",
+  // 标准品搜索：从标准品建品的入口，一期只读
+  mSpuStdSearch: "SpuStd[]",
+  mStaffList: "MerchantStaff[]",
+  mStaffLogs: "StaffLog[]",
+  mRoles: "MerchantRole[]",
+  mRolePerms: "PermOption[]",
+  mCreateRole: "MerchantRole",
+  mUpdateRole: "MerchantRole",
+  mDeleteRole: "void",
+  mVerifySearch: "Order[]",
+  mAddStaff: "MerchantStaff",
+  mSetStaffStatus: "MerchantStaff",
+  mGrantStore: "MerchantStaff",
   mStore: "StoreProfile",
+  mScopePreview: "ScopePreview",
   mCommunities: "Community[]",
+  mRegions: "Region[]",
+  mApplyCommunity: "CommunityApply",
+  mMyCommunityApplies: "CommunityApply[]",
   mSaveStore: "StoreProfile",
   mStoreQrcode: "StoreQrcode",
   mShareKit: "ShareKit",
   mTodo: "MerchantTodo",
   mStats: "MerchantStats",
+  mDailyReport: "DailyReport",
+  mGoodsRank: "GoodsRank",
+  mMonthlyReport: "MonthlyReport",
+  mCrossStoreOverview: "CrossStoreOverview",
+  mCrossStoreCompare: "CrossStoreCompare",
+  // 试用返回的是**开通后的新视图**，与读接口同一个类型 ——
+  // 端上拿到就能重渲染，不必再拉一次
+  mMyPlan: "MerchantPlan",
+  mStartTrial: "MerchantPlan",
+
+  // 消息与推送（触达域）。这五条一直没登记，而**漏一条整份 spec 就不生成** ——
+  // 于是 `check:api` 全仓中断，连带别的域的契约校验也跑不了。
+  // 类型逐字取自 contract.ts 的签名，不另猜。
+  mMessageList: "Message[]",
+  mMessageUnread: "number",
+  mMessageRead: "Message[]",
+  mMessageReadAll: "Message[]",
+  mSubscribeReport: "void",
+  mRegisterPushToken: "void",
+  mUnregisterPushToken: "void",
   mGoodsList: "PageResult<Goods>",
   mGoodsDetail: "Goods",
+  // 双版本（V279）。mGoodsDraft 的线上形状是 SaveGoodsReqBody（提交体镜像），
+  // 不是页面的 GoodsDraft —— 无草稿时 data 为 null，由信封表达（同 mApplyDraft）
+  mGoodsDraft: "SaveGoodsReqBody",
+  mPublishPreview: "PublishPreview",
+  mGoodsRevisions: "GoodsRevision[]",
+  mGoodsRevision: "GoodsRevision",
+  mForkRevision: "GoodsRevision",
+  mPublishGoods: "Goods",
+  mDiscardGoodsDraft: "Goods",
   mSaveGoods: "Goods",
   mToggleGoods: "Goods",
   mSaveStock: "Goods",
   mUploadImage: "object",
   mRecognizeGoods: "GoodsGuess",
+  mCategoryTree: "Category[]",
   mSpecTemplates: "SpecTemplate[]",
   mSaveSpecTemplate: "SpecTemplate",
   mOrderList: "PageResult<Order>",
   mOrderDetail: "Order",
+  mOrderTrace: "ShipmentTrace",
   mShip: "Order",
   mDelivered: "Order",
   mDeliveryRule: "DeliveryRule",
@@ -160,6 +448,13 @@ const RESPONSE_TYPES = {
   mConfirmReturn: "Order",
   mGroupList: "GroupBuy[]",
   mCreateGroup: "GroupBuy",
+  mGroup: "GroupBuy",
+  mDissolveGroup: "GroupBuy",
+  mGroupPickups: "GroupPickupOption[]",
+  mPlatformActivities: "PlatformActivity[]",
+  mPlatformActivity: "PlatformActivity",
+  mEnroll: "PlatformEnrollment",
+  mWithdrawEnrollment: "PlatformEnrollment",
   mRequestList: "GroupRequest[]",
   mQuote: "GroupRequest",
   mReviewList: "Review[]",
@@ -170,14 +465,31 @@ const RESPONSE_TYPES = {
   mToggleCampaign: "MarketingCampaign",
   mCustomers: "MerchantCustomer[]",
   mSettleList: "SettleBill[]",
+  mBizScope: "BizScope",
   mRateCard: "RateCard",
+  mSettleBatches: "MySettleBatch[]",
+  mMyDebt: "MyDebt",
+  mPointsAccount: "MerchantPointAccount",
+  mPointsRecords: "MerchantPointsRecord[]",
+  mPointsToggle: "MerchantPointAccount",
   mReportShortage: "Order",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
+  mStaffLogin: "StaffLoginReq",
   mApply: "MerchantApplyReqBody",
+  mSubmitPayment: "SubmitPaymentReq",
+  mCreateStore: "StoreEditReq",
+  mRenameStore: "StoreEditReq",
+  mSetStoreStatus: "SetActiveReq",
+  mSetStorePayment: "SetStorePaymentReq",
+  mSetStoreSlug: "SetStoreSlugReq",
+  mAddStaff: "AddStaffReq",
+  mSetStaffStatus: "SetActiveReq",
+  mGrantStore: "GrantStoreReq",
   mSaveStore: "SaveStoreReqBody",
   mShareKit: "ShareKitQuery",
   mGoodsList: "GoodsListQuery",
@@ -186,10 +498,15 @@ const REQUEST_TYPES = {
   mSaveStock: "SaveStockReq",
   mUploadImage: "UploadImageReq",
   mRecognizeGoods: "RecognizeGoodsReq",
+  mParseText: "ParseTextReq",
+  mZipPlan: "ZipPlanReq",
   mSpecTemplates: "SpecTemplatesQuery",
   mSaveSpecTemplate: "SaveSpecTemplateReq",
   mOrderList: "OrderListQuery",
   mShip: "ShipReq",
+  mExpressQuotes: "ExpressQuotesQuery",
+  mBookExpress: "BookExpressReq",
+  mSaveShipSetting: "SaveShipSettingReq",
   mSaveDeliveryRule: "SaveDeliveryRuleReqBody",
   mMarkArrived: "MarkArrivedReq",
   mVerify: "VerifyReq",
@@ -197,6 +514,8 @@ const REQUEST_TYPES = {
   mApproveAfterSale: "HandleAfterSaleReq",
   mRejectAfterSale: "HandleAfterSaleReq",
   mCreateGroup: "CreateGroupReq",
+  mDissolveGroup: "DissolveGroupReq",
+  mEnroll: "EnrollReq",
   mQuote: "QuoteReq",
   mReplyReview: "ReplyReviewReq",
   mAppealReview: "AppealReviewReq",
@@ -223,8 +542,25 @@ function queryParams(typeName) {
   }));
 }
 
+/**
+ * 契约里的**标量**返回类型。
+ *
+ * 没有这张表的话，`"void"` / `"number"` 会走到最后一行，生成
+ * `$ref: #/components/schemas/void` —— 一个**指向不存在组件的悬空引用**。
+ * 校验器多半不报（$ref 解析是懒的），而拿这份 spec 生成客户端的人会得到一个
+ * 编译不过的类型名，然后来问「后端返回的 void 是个什么对象」。
+ */
+const SCALARS = {
+  void: { description: "无返回体（data 恒为 null）", nullable: true },
+  number: { type: "number" },
+  integer: { type: "integer" },
+  string: { type: "string" },
+  boolean: { type: "boolean" },
+};
+
 function dataSchema(typeExpr) {
   if (!typeExpr || typeExpr === "object") return { type: "object" };
+  if (SCALARS[typeExpr]) return { ...SCALARS[typeExpr] };
   const arr = typeExpr.match(/^(\w+)\[\]$/);
   if (arr) return { type: "array", items: { $ref: `#/components/schemas/${arr[1]}` } };
   const page = typeExpr.match(/^PageResult<(\w+)>$/);
@@ -284,7 +620,10 @@ for (const [key, ep] of Object.entries(endpoints)) {
     },
   };
 
-  if (ep.method === "POST" && reqType) {
+  // PUT 与 POST 一样带 body。**此前抽取正则只认 GET|POST**，
+  // 于是所有 PUT 端点（b-app 9 条、c-app 1 条）**静默不进 spec** ——
+  // 规格看着完整，少的那几条谁也不会发现（同 endpoints 表那次「注释夹在中间」的坑）
+  if ((ep.method === "POST" || ep.method === "PUT") && reqType) {
     op.requestBody = {
       required: true,
       content: {

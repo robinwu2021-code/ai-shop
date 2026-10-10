@@ -1,0 +1,241 @@
+<script setup lang="ts">
+// 进销存报表（B-8）。
+//
+// **算式要能在屏幕上算得通**：期初 + 进 − 销 − 损 ± 调 = 期末。
+// 对不上说明台账漏了一笔 —— 那正是这张报表存在的理由，所以对不上时要显眼，
+// 不能悄悄显示一个期末数了事。
+//
+// **毛利必须标「估算」并给出算式**：它用的是 SKU 当前的成本价，
+// 不是那一天的实际进货成本。不标的话商家会拿它去报税。
+import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import type { StockMonthly, StockRank } from "@shared/types";
+import { pick } from "@ai-shop/ui/prompt";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+
+const month = ref(thisMonth());
+const monthly = ref<StockMonthly | null>(null);
+const fast = ref<StockRank[]>([]);
+const slow = ref<StockRank[]>([]);
+const loading = ref(false);
+
+function thisMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** 分 → 元。展示用，不参与计算 */
+function yuan(minor?: number | null): string {
+  return ((minor ?? 0) / 100).toFixed(2);
+}
+
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」。
+ *  这一页本来就弹了吐司，但吐司两秒就没，而空态一直挂在那儿说「还没有」 */
+const failed = ref(false);
+
+async function load() {
+  loading.value = true;
+  try {
+    /*
+     * 榜单各自兜底：取不到不该让月报也空着。
+     *
+     * **但月报自己不兜底**：兜了的话，`.catch(() => null)` 会让「没取到」
+     * 与「这个月没数」长得一模一样 —— 下面那张空态卡说「暂无数据」，
+     * 而真相是这次没请求到。让它抛出去，由外面的 catch 记成 failed。
+     */
+    const [m, f, s] = await Promise.all([
+      api.mStockMonthly(month.value),
+      api.mStockRanking({ type: "fast", size: 5 }).catch(() => []),
+      api.mStockRanking({ type: "slow", size: 5 }).catch(() => []),
+    ]);
+    monthly.value = m;
+    fast.value = f;
+    slow.value = s;
+    failed.value = false;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
+  } finally {
+    loading.value = false;
+    loaded.value = true;
+  }
+}
+
+/** 屏幕上那一行算式。**把数字摆出来让人自己核** —— 只说「账对得上」是要人信 */
+const formula = computed(() => {
+  const m = monthly.value;
+  if (!m) return "";
+  const adj = m.adjusted === 0 ? "" : (m.adjusted > 0 ? ` + ${m.adjusted}` : ` − ${-m.adjusted}`);
+  return `${m.opening} + ${m.purchased} − ${m.sold} − ${m.lost}${adj} = ${m.closing}`;
+});
+
+/**
+ * 回边：从榜单走到那件货。**此前榜单是死路** —— 看到「这件压了 90 天」，
+ * 想知道它怎么积起来的，得退回库存页自己找。
+ */
+function openItem(r: StockRank) {
+  uni.navigateTo({ url: `/pages/stock-detail/index?itemId=${encodeURIComponent(r.itemId)}` });
+}
+
+async function pickMonth() {
+  // 只给最近 12 个月：更早的月份商家不会在手机上看，给了只是让列表变长
+  const items: string[] = [];
+  const d = new Date();
+  for (let i = 0; i < 12; i++) {
+    items.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    d.setMonth(d.getMonth() - 1);
+  }
+  const idx = await pick({ items, selected: items.indexOf(month.value) });
+  if (idx === null) return;
+  month.value = items[idx]!;
+  await load();
+}
+
+onShow(load);
+</script>
+
+<template>
+  <sh-scaffold title-key="stockReport.title" :denied="!merchant.can('biz:customer')">
+    <view class="sh-card hd sh-row sh-row--between">
+      <text class="txt-strong">{{ $t("stockReport.month") }}</text>
+      <text class="sh-link sh-num" @tap="pickMonth">{{ month }} ▾</text>
+    </view>
+
+    <template v-if="monthly">
+      <view class="sh-block">
+        <sh-section pad :title="String($t('stockReport.goodsThisMonth'))"></sh-section>
+        <!-- 口径写在数的旁边：不写的话，店主会拿这里的「销」去减经营报表的销售额（§9） -->
+        <text class="txt-caption sh-muted scope">{{ $t("stockReport.scopeHint") }}</text>
+        <view class="blk">
+          <sh-kv between :label="String($t('stockReport.opening'))">
+            <text class="sh-num">{{ monthly.opening }}</text>
+          </sh-kv>
+          <sh-kv between :label="String($t('stockReport.purchased'))">
+            <text class="sh-num is-success">+{{ monthly.purchased }}</text>
+          </sh-kv>
+          <sh-kv between :label="String($t('stockReport.sold'))">
+            <text class="sh-num is-danger">−{{ monthly.sold }}</text>
+          </sh-kv>
+          <sh-kv between :label="String($t('stockReport.lost'))">
+            <text class="sh-num is-danger">−{{ monthly.lost }}</text>
+          </sh-kv>
+          <sh-kv v-if="monthly.adjusted !== 0" between :label="String($t('stockReport.adjusted'))">
+            <text class="sh-num">{{ monthly.adjusted > 0 ? `+${monthly.adjusted}` : monthly.adjusted }}</text>
+          </sh-kv>
+          <sh-kv between divided :label="String($t('stockReport.closing'))">
+            <text class="txt-price sh-num">{{ monthly.closing }}</text>
+          </sh-kv>
+
+          <!--
+            **算不平要显眼**：它不是显示问题，是台账漏了一笔。
+            显示成一句灰字的话，唯一会看见它的人是已经在找问题的人。
+          -->
+          <view class="formula" :class="monthly.balanced ? 'is-success' : 'is-danger'">
+            <text class="sh-num">{{ formula }}</text>
+            <text>{{ monthly.balanced ? $t("stockReport.balanced") : $t("stockReport.unbalanced") }}</text>
+          </view>
+        </view>
+      </view>
+    </template>
+
+    <sh-empty v-else-if="!loading" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('stockReport.noData'))"></sh-empty>
+
+    <view v-if="fast.length" class="sh-block">
+      <sh-section pad :title="String($t('stockReport.fast'))"></sh-section>
+      <view class="blk">
+        <sh-kv
+          v-for="r in fast"
+          :key="r.itemId"
+          between
+          :label="`${r.name}${r.specText ? ` · ${r.specText}` : ''}`"
+          @tap="openItem(r)"
+        >
+          <text class="txt-strong sh-num">{{ r.qty }}</text>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </sh-kv>
+      </view>
+    </view>
+
+    <view v-if="slow.length" class="sh-block">
+      <sh-section pad :title="String($t('stockReport.slow'))"></sh-section>
+      <view class="blk">
+        <view v-for="r in slow" :key="r.itemId" class="slow sh-row" @tap="openItem(r)">
+          <view class="slow__main sh-fill">
+            <text class="txt-body">{{ r.name }}{{ r.specText ? ` · ${r.specText}` : "" }}</text>
+            <!--
+              **金额只在有的时候画**：滞销榜后端不算金额（`costAmountMinor` 是 null），
+              兜底成 ¥0.00 会让人以为这批货不值钱，而它恰恰是压着钱的那批。
+            -->
+            <text class="txt-caption sh-num">
+              {{ r.costAmountMinor == null
+                ? $t("stockReport.pressedQty", { n: r.qty })
+                : $t("stockReport.pressed", { n: r.qty, money: yuan(r.costAmountMinor) }) }}
+            </text>
+          </view>
+          <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+        </view>
+      </view>
+    </view>
+
+    <!--
+      **这里给的是成本，不是毛利。**
+
+      毛利 = 收入 − 成本，而收入不在进销存域：出库单只带成本、不带售价
+      （同一件货不同渠道价不一样，写进来就有了第二个真源）。
+      原型上那张「毛利（估算）」的卡，前端只能拿「销量 × 当前售价」去凑 ——
+      促销、多渠道、改价之后统统对不上，而毛利恰恰是商家会拿去报税的那个数。
+
+      销货成本是这个域自己的真源（台账每一笔都带当时的单位成本），给得起就给。
+    -->
+    <view v-if="monthly" class="sh-block">
+      <sh-section pad :title="String($t('stockReport.money'))"></sh-section>
+      <view class="blk">
+        <sh-kv between :label="String($t('stockReport.soldCost'))">
+          <text class="txt-price sh-num">¥{{ yuan(monthly.soldCostMinor) }}</text>
+        </sh-kv>
+        <sh-kv between :label="String($t('stockReport.lostCost'))">
+          <text class="sh-num is-danger">¥{{ yuan(monthly.lostCostMinor) }}</text>
+        </sh-kv>
+        <text class="txt-caption note">{{ $t("stockReport.moneyHint") }}</text>
+      </view>
+    </view>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.scope {
+  display: block;
+  padding: 0 24rpx 12rpx;
+}
+.hd > view > text {
+  display: block;
+}
+.blk {
+  padding: 0 24rpx 8rpx;
+}
+.formula {
+  margin-top: 12rpx;
+  padding: 12rpx 0 0;
+}
+.formula > text {
+  display: block;
+}
+/* 加了箭头就得横排 —— 不给 flex 的话箭头掉到名字下面自成一行 */
+.slow {
+  padding: 12rpx 0;
+}
+.note {
+  display: block;
+  margin-top: 12rpx;
+}
+.slow__main > text {
+  display: block;
+}
+</style>

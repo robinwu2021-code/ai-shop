@@ -13,7 +13,11 @@
 测试库和生产库结构不一致，而 SchemaDriftTest 又只比对列集合，可能刚好放过。
 所以重放是必须的，不是优化。
 
-用法：python3 backend/scripts/gen-test-schema.py
+用法：python3 backend/scripts/gen-test-schema.py [输出文件] [迁移源目录]
+
+**第二个参数**是给进销存独立库用的：它有自己的一条 Flyway 历史（db/inventory），
+表也不在 ai_shop 里，所以要单独生成一份 H2 schema，而不是并进平台那一份 ——
+并进去的话平台的 SchemaDriftTest 会把 17 张 inv_ 表当成平台表来比对。
 """
 import pathlib
 import re
@@ -26,45 +30,317 @@ OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
+--
+-- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
+--
+-- 为什么必须这样：H2 是 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1`，库在 Spring context
+-- 关掉之后还活着。同一次 mvn 里起第二个 context 时，sql-init 会把这些 INSERT
+-- **再跑一遍** —— 普通 INSERT 会撞主键（最常见的是 sys_industry(id)=1），
+-- 而症状是**别的测试类**报「Failed to load ApplicationContext」，与那个类本身
+-- 毫无关系，且**单独跑永远复现不了**（只有一个 context 时不会重放）。
+--
+-- 这个坑在 2026-09-29 一天内复发两次，第一次被当成「某个类多声明了 profile」
+-- 修掉了症状（改 profile 只是让它排到第一个 context，排序一变就轮到别人）。
+-- 幂等才是根治：谁加什么 annotation 都不再影响它。
+--
+-- H2 2.4.240 + MODE=MySQL 认 `INSERT IGNORE`（实测：重复插入 update count=0，
+-- **保留原值不覆盖**，所以测试中途改过的数据不会被后一个 context 的重放冲掉）。
+--
+-- 仍然值得注意：**多一个 context 就多一次全量重放**，几百条 INSERT 的代价是实打实的。
+-- 什么会多起一个 context：@ActiveProfiles 的组合不同、@TestPropertySource、
+-- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
+-- 写测试时只声明真正需要的那些。
 
 """
 
 
+
+def _h2_type(col: str) -> str:
+    """列类型的 H2 兼容映射。
+
+    **JSON → TEXT**：H2 的 JSON 列经 MyBatis 映射成 String 时读回来是**空串**，
+    于是「存下去了、字段全没了」，而代码与 SQL 各自看都正常。
+    本库其余 JSON 串（title_i18n / spec_groups / featured / out_of_range）
+    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON —— 
+    它让平台规格模板（E27）在测试里从来跑不通。
+
+    **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
+    这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
+    """
+    return re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I)
+
+
 def main():
+    # 可选的输出路径：**先生成到别处比对、确认无误再覆盖**。
+    # 这个口子是有来由的：这份产物一度与生成器分叉了很久（生成器根本跑不通，
+    # 文件其实在手工维护），而发现分叉的唯一办法就是先生成一份出来 diff ——
+    # 直接覆盖的话，分叉会被自己的产物盖掉，再也看不出差在哪。
+    out_path = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else OUT
+    src_dir = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else MIGRATION_DIR
+
     tables = {}   # name -> list[str] 列/约束定义，保持顺序
     order = []
+    seeds = []    # INSERT 种子数据，原样保留
+    altered = set()  # 被 ALTER 加过列的表 —— 只有它们的种子要钉列名
+    renames = {}  # 旧表名 -> 新表名（ALTER ... RENAME TO）。种子里的旧名要按它回填
 
     # **按版本号数字排序**，不是字典序。字典序把 V15 排在 V2 前面，
     # 于是 V15 的 ALTER 在建表之前重放 —— alter_table() 里 tables.get() 拿到 None
     # 就直接 return，**不报错、不提示**，产出一份缺列的 schema。
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
-    for f in sorted(MIGRATION_DIR.glob("V*.sql"),
+    for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        replay(f.read_text(), tables, order)
+        replay(f.read_text(), tables, order, seeds, renames, altered)
 
     out = [HEADER]
     for name in order:
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
                    + ",\n".join(tables[name]) + "\n);\n")
-    OUT.write_text("\n".join(out))
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(order)} tables")
+    if seeds:
+        # 种子里的旧表名回填成改名后的新名（见 alter_table 里 RENAME TO 那段）
+        fixed = []
+        for table, snap, stmt in seeds:
+            if table in altered:
+                cols = _column_names(snap)
+                if cols:
+                    stmt = re.sub(r"^(INSERT\s+INTO\s+\w+)\s+VALUES\b",
+                                  lambda mm: f"{mm.group(1)} ({', '.join(cols)}) VALUES",
+                                  stmt, count=1, flags=re.S | re.I)
+            stmt = stmt + ";"
+            for old, new in renames.items():
+                stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)
+            # **种子一律写成 INSERT IGNORE** —— 这是这份产物幂等的唯一来源，见 HEADER。
+            # H2 2.4 在 MODE=MySQL 下认这个关键字（实测：重复插入 update count=0，
+            # 且**保留原值不覆盖**，所以测试中途改过的数据不会被重放冲掉）。
+            stmt = re.sub(r"^INSERT\s+INTO\b", "INSERT IGNORE INTO", stmt, count=1, flags=re.I)
+            fixed.append(stmt)
+        out.append("-- 种子数据\n" + "\n".join(fixed) + "\n")
+    out_path.write_text("\n".join(out))
+    try:
+        shown = out_path.relative_to(ROOT)
+    except ValueError:
+        shown = out_path
+    print(f"wrote {shown}: {len(order)} tables, {len(seeds)} seeds")
     return 0
 
 
-def replay(sql, tables, order):
+def strip_comments(sql):
+    """剥掉 `--` 行注释，**必须在按分号切分之前做**。
+
+    此前是先切后剥，于是**注释里出现一个分号就会把语句切碎** ——
+    V91 的注释里写了一段含分号的正则，生成器当场报「不认识的语句：\\n]*)」，
+    而那个报错既不指向 V91，也看不出跟注释有关。
+
+    要认引号：种子数据的 remark 里可能出现 `--`（中文破折号 `——` 是另一个码位，
+    不会误伤，但英文场景会）。在字符串字面量内部的 `--` 不是注释。
+    """
+    out = []
+    for line in sql.splitlines():
+        in_str = False
+        cut = None
+        i = 0
+        while i < len(line):
+            c = line[i]
+            if c == "'":
+                # SQL 的转义是叠写两个单引号，跳过即可
+                if in_str and i + 1 < len(line) and line[i + 1] == "'":
+                    i += 2
+                    continue
+                in_str = not in_str
+            elif not in_str and c == "-" and i + 1 < len(line) and line[i + 1] == "-":
+                cut = i
+                break
+            i += 1
+        out.append(line[:cut] if cut is not None else line)
+    return "\n".join(out)
+
+
+def _column_names(cols):
+    """建表体里挑出真正的列名（跳过 PRIMARY KEY / CONSTRAINT 那几行）。"""
+    out = []
+    for line in cols:
+        t = line.strip()
+        if re.match(r"^(PRIMARY KEY|CONSTRAINT|UNIQUE|KEY|INDEX)\b", t, re.I):
+            continue
+        m = re.match(r"^(\w+)\s", t)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
+def _snapshot(stmt, tables):
+    """把这条种子和它**此刻**的列快照绑在一起，等重放完再决定要不要钉列名。
+
+    <b>不能在收集时就决定</b>：V2 的种子先落，而给这张表加列的 ALTER 在 V274 ——
+    收集那一刻还不知道它将来会被加列。也不能用最终列去钉：那时的值只有旧列那么多。
+    """
+    m = re.match(r"^(INSERT\s+INTO\s+(\w+))\s+VALUES\b", stmt, re.S | re.I)
+    return (m.group(2) if m else None, list(tables.get(m.group(2), [])) if m else [], stmt)
+
+
+def _pin_columns(stmt, tables, altered):
+    """把 `INSERT INTO t VALUES (...)` 补成 `INSERT INTO t (col, ...) VALUES (...)`。
+
+    **为什么必须补**：种子是按原样收集、最后统一重放的，而它们跑在**最终**表结构上。
+    只要有一条 ALTER 给这张表加过列，位置式 INSERT 的列数就对不上，
+    H2 直接报 `Column count does not match` —— 而真跑时的症状是
+    「Spring 上下文起不来」，报错指向一个毫不相干的 Controller。
+    2026-08-30 V274 给 sys_pay_channel 加两列时撞上，这是这个脚本的第三个盲点。
+
+    补的是**这一刻**的列（重放到这条 INSERT 时的表结构），不是最终列 ——
+    补最终列同样对不上，因为那时的值只有旧列那么多。
+    """
+    m = re.match(r"^(INSERT\s+INTO\s+(\w+))\s+VALUES\b(.*)$", stmt, re.S | re.I)
+    if not m:
+        return stmt
+    head, table, rest = m.group(1), m.group(2), m.group(3)
+    # **只动被 ALTER 加过列的表。** 全量改写会把每一条种子的形状都换掉，
+    # 而有测试是按位置解析这些种子的（channel-subject-code 就读 sys_legal_form）——
+    # 一次「更整齐」的改写让一条毫不相干的守卫红了。改窄到真正需要的那几张表。
+    if table not in altered:
+        return stmt
+    cols = _column_names(tables.get(table, []))
+    if not cols:
+        return stmt
+    return f"{head} ({', '.join(cols)}) VALUES{rest}"
+
+
+def replay(sql, tables, order, seeds, renames, altered):
     # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
-    for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
-        stmt = re.sub(r"--[^\n]*", "", stmt).strip()
+    for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
         if not stmt:
             continue
         low = stmt.lower()
         if low.startswith("create table"):
             create_table(stmt, tables, order)
         elif low.startswith("alter table"):
-            alter_table(stmt, tables)
+            alter_table(stmt, tables, order, renames, altered)
         elif low.startswith("create unique index"):
             create_unique_index(stmt, tables)
-        # 普通 CREATE INDEX：H2 测试不需要，丢弃
+        elif low.startswith("drop table"):
+            drop_table(stmt, tables, order)
+        elif low.startswith("update ") or low.startswith("delete from"):
+            # UPDATE / DELETE 有**两种**，处理方式相反，判据是「有没有 JOIN / SELECT」：
+            #
+            # 1. **改种子行的**（单表、常量条件）—— 必须重放。
+            #    这里原先一律 `pass`，理由是「作用于生产存量数据，H2 测试库是空的」。
+            #    那个理由对业务数据成立，对**主数据**不成立：V22 用 UPDATE 停用行业与
+            #    授权码，改的正是 V2/V5 用 INSERT 灌进来的种子行，而那些种子就在
+            #    这份产物里。跳过的后果是 H2 上七个行业全启用而真库只剩两个 ——
+            #    「一期只能选两个行业」那条用例永远失败，且看起来像校验没写对。
+            #
+            # 2. **回填存量业务数据的**（带 JOIN 或子查询）—— 不能重放，
+            #    与 INSERT ... SELECT 同一个理由，外加一条更硬的：它们是 MySQL 方言。
+            #    V16 那条 `UPDATE cmt_pickup_point p JOIN mch_store s ...` 在 H2 上
+            #    直接语法错（H2 的 UPDATE 不接 JOIN），整个 schema 加载失败。
+            #    而它要搬的是存量自提点的归属，H2 测试库里一行都没有 —— 搬无可搬。
+            if re.search(r"\b(join|select)\b", low):
+                pass
+            else:
+                seeds.append(_snapshot(stmt, tables))
+        elif low.startswith("insert ignore into"):
+            # `INSERT IGNORE` 是可重入写法（V72/V74 用它灌权限点与授权）。
+            # 这里先归一成普通 INSERT，**输出时再统一加回 IGNORE**（见下方写文件那段）——
+            # 所有种子走同一条路，不必区分源迁移用的是哪种写法。
+            #
+            # ⚠️ 这里原本写着「H2 不认这个 MySQL 关键字」，**2026-09-29 实测证伪**：
+            # H2 2.4.240 + MODE=MySQL 认得，且重复插入时 update count=0、保留原值。
+            stmt_h2 = re.sub(r"^INSERT\s+IGNORE\s+INTO", "INSERT INTO", stmt, flags=re.I)
+            if re.search(r"\bselect\b", low):
+                pass
+            else:
+                seeds.append(_snapshot(stmt_h2, tables))
+        elif low.startswith("insert into"):
+            # 用正则而不是 `" select " in low`：回填语句里 SELECT 常常另起一行，
+            # 而 low 是原样文本 —— 子串判断会漏掉带换行的写法，然后把回填当种子抄进测试库
+            if re.search(r"\bfrom\s+dual\b", low):
+                # **`INSERT … SELECT … FROM DUAL WHERE NOT EXISTS (…)` 是可重入的种子，
+                # 不是回填。** 数据源是常量（DUAL），不读任何存量表 ——
+                # V74 用这个写法灌权限点授权，跳过它的后果是：H2 上 SUPER_ADMIN
+                # 只有 82 个功能点而代码期望 104，OpsPermConfigFlowTest 直接红，
+                # 而报错看起来像「权限配置写错了」，与生成器毫无关系。
+                # H2 跑在 MODE=MySQL 下，认识 FROM DUAL。
+                seeds.append((None, [], stmt))
+            elif _reads_only(low, stmt):
+                # **常量派生表也是种子**，与上面 FROM DUAL 同一条理由 ——
+                # 数据源是 `FROM (SELECT … UNION ALL …) t`，不读任何存量表；
+                # 末尾的 `WHERE NOT EXISTS (SELECT 1 FROM 自己)` 只是可重入判据。
+                #
+                # 不认它的后果**已经发生过**：V156 那批「场景×通道」种子被当成回填跳掉，
+                # 于是有人把整段 H2 等价物**手工抄进产物**（产物开头明明写着「勿手改」）。
+                # 下一个人重新生成 → 手抄的那段被冲掉 → 站内信照发、微信订阅消息一条不出，
+                # 而报错是 `Expected size: 1 but was: 0`，和 schema 看不出任何关系。
+                #
+                # 判据用「除目标表外不读任何表」，不用「长得像不像」：
+                # 回填语句一定要读别的表（那才是它存在的意义），种子一定不读。
+                seeds.append((None, [], stmt))
+            elif _is_reentrant_seed(low):
+                # **可重入的派生授权也是种子** —— 判据与理由见 _is_reentrant_seed。
+                # 它读了第三张表，但那张表是同一个迁移刚灌好的，且这里按一串写死的
+                # 编码去捞行；数据源仍然是常量。丢掉它 = 权限点静默少几个。
+                seeds.append((None, [], stmt))
+            elif re.search(r"\bselect\b", low):
+                # **INSERT ... SELECT 是数据回填，不是种子。**
+                #
+                # 回填读的是**中间态的表结构** —— V42 的回填从 usr_merchant.address
+                # 取值，而同一个迁移随后就把那一列删了。重放到最终 schema 上必然报
+                # 「列不存在」，而报错指向的是一个毫不相干的 Controller（上下文起不来）。
+                #
+                # 何况它的目的是搬运存量数据，而 H2 测试库本来就是空的 —— 搬无可搬。
+                pass
+            else:
+                # 种子数据：H2 建表脚本里保留，测试要用到（如端×品类可售规则的 25 行）
+                seeds.append(_snapshot(stmt, tables))
+        elif low.startswith("create temporary table") or low.startswith("drop temporary table"):
+            # **临时表是迁移过程中的草稿纸，不是结构的一部分。**
+            #
+            # V72 用 `CREATE TEMPORARY TABLE tmp_rp_identity AS SELECT …` 把「清空重建
+            # 之前的自定义角色授权」暂存下来，重建完再 `INSERT … SELECT … FROM tmp_…`
+            # 搬回去 —— 与 INSERT ... SELECT 是同一件事：**搬运存量数据**。
+            # H2 测试库本来就是空的，搬无可搬；而它的建表体是一条 MySQL 方言的
+            # 多表 JOIN 查询，重放到 H2 上只会语法错。
+            #
+            # 之前这里没有这一支，V72 一进来整个生成器就 SystemExit ——
+            # 报错说「不认识的语句」，而真正该说的是「这类语句本来就不该进 schema」。
+            pass
+        elif low.startswith("create index"):
+            # 普通索引 H2 测试用不上
+            pass
+        elif low.startswith("drop index"):
+            # 普通索引忽略即可 —— 但**唯一约束不行**。
+            #
+            # 这里原本一律 pass，注释写着「约束由 CREATE UNIQUE INDEX 重建」。
+            # 那句话只说对了一半：新的确实会被重建，而<b>旧的没有被删掉</b>。
+            # 于是 `DROP INDEX uk_x ON t` + `CREATE UNIQUE INDEX uk_x ON t (…)`
+            # 这组「改一道唯一键」的标准写法，产出的是**两条同名 CONSTRAINT**，
+            # H2 建表当场报错 —— 而错误信息指向的是某个毫不相干的测试类。
+            #
+            # 2026-09-02 给批次唯一键加币种时撞上。
+            di = re.match(r"DROP INDEX\s+(\w+)\s+ON\s+(\w+)", stmt, re.I)
+            if di:
+                idx, tbl = di.group(1), di.group(2)
+                cols = tables.get(tbl)
+                if cols is not None:
+                    cols[:] = [c for c in cols
+                               if not re.match(rf"^\s*CONSTRAINT\s+{idx}\b", c, re.I)]
+        elif re.fullmatch(r"select\s+[\d'\"][^;]*", low) and not re.search(r"\bfrom\b", low):
+            # **只为占位的空查询**（`SELECT 1;`）。
+            #
+            # V318 是一条纯注记迁移：它一个字节的结构都不改，存在只是为了给 V315
+            # 留一句「已应用的迁移是冻结的」——而 Flyway 要求文件里得有条能跑的语句，
+            # 于是 body 是 `SELECT 1;`。
+            #
+            # **判据刻意收得很紧**：不带 FROM，且选的是字面量。
+            # 一律按前缀 `select` 跳过的话，`INSERT ... SELECT` 那类真回填
+            # 也会被静默放过 —— 那正是本脚本开头那条「不认识的语句必须炸」
+            # 要防的事，放宽它等于把闸门拆了。
+            pass
+        else:
+            # **不认识的语句必须炸，不能静默跳过。**
+            # 这个脚本此前只认 CREATE TABLE 与部分 ALTER，DROP TABLE / DROP COLUMN
+            # 全被丢弃 —— 产出的 schema 看着正常，实际多了一张已删的表、
+            # 少删了两列。缺的东西只有等某个测试恰好用到才会暴露。
+            raise SystemExit(f"✗ 不认识的语句，请在本脚本里实现：\n  {stmt[:120]}")
 
 
 def create_table(stmt, tables, order):
@@ -93,6 +369,7 @@ def create_table(stmt, tables, order):
         u = re.match(r"^UNIQUE KEY\s+(\w+)\s*\((.*)\)$", line, re.I)
         if u:
             line = f"CONSTRAINT {u.group(1)} UNIQUE ({u.group(2)})"
+        line = _h2_type(line)
         cols.append("    " + line)
     # ENGINE=... 尾巴会粘在最后一行上，切掉
     if cols:
@@ -102,32 +379,189 @@ def create_table(stmt, tables, order):
         order.append(name)
 
 
-def alter_table(stmt, tables):
+def alter_table(stmt, tables, order, renames, altered):
     m = re.match(r"ALTER TABLE\s+(\w+)\s+(.*)", stmt, re.S | re.I)
     if not m:
         return
     table, action = m.group(1), m.group(2).strip()
+
+    # 表改名：整表挪到新名下。不认它的话，后续针对新表名的 ALTER 全部报
+    # 「目标表还不存在」，而真正的原因在几十行之前
+    ren_tbl = re.match(r"RENAME TO\s+(\w+)", action, re.I)
+    if ren_tbl:
+        new_name = ren_tbl.group(1)
+        if table not in tables:
+            raise SystemExit(f"✗ RENAME TO：源表 {table} 不存在\n  {stmt[:80]}")
+        tables[new_name] = tables.pop(table)
+        order[order.index(table)] = new_name
+        # **种子里的旧表名也要跟着改**。
+        #
+        # 这个脚本把所有迁移压平成一份最终 schema：建表按最终名生成，
+        # 而**更早的 INSERT 用的是改名前的表名** —— 真实数据库按顺序重放没问题
+        # （那时表还叫旧名），压平之后就变成「往一张不存在的表插数据」。
+        #
+        # 症状极难认：Spring 上下文起不来，报错指向一个毫不相干的 Controller。
+        # 2026-08-17 撞到一次（msg_template → notify_template），
+        # 而 SchemaGeneratorTest 的报错文案早就预言了这个形状。
+        renames[table] = new_name
+        return
+
     cols = tables.get(table)
     if cols is None:
         # 静默 return 是这个脚本此前最坏的行为：迁移顺序一错，整批 ALTER 全被丢掉，
         # 而产出的 schema 看上去完全正常。宁可炸。
         raise SystemExit(f"✗ ALTER 的目标表 {table} 还不存在 —— 迁移重放顺序错了？\n  {stmt[:80]}")
 
+    # **一条 ALTER 里可以有多个动作**（MySQL 允许 `MODIFY ..., ADD UNIQUE KEY ...`）。
+    # 不切分的话整段当成一个动作，而 MODIFY 的正则是贪婪的 —— 它会把
+    # 「, ADD UNIQUE KEY uk_x (c)」一起吞进列定义，产出
+    # 「area_no VARCHAR(64) NOT NULL, ADD UNIQUE KEY ...」这样的列行，H2 建表即语法错。
+    # 而报错指向的是一个毫不相干的 Controller（上下文起不来），根因在这里。
+    for one in _split_actions(action):
+        if _apply_action(table, one, cols):
+            altered.add(table)
+
+
+def _split_actions(action):
+    """按顶层逗号切多动作 ALTER —— 括号内（如 UNIQUE KEY 的列清单）与
+    单引号内（COMMENT 文本）的逗号不算分隔符。"""
+    parts, buf, depth, quoted = [], [], 0, False
+    for ch in action:
+        if quoted:
+            buf.append(ch)
+            if ch == "'":
+                quoted = False
+            continue
+        if ch == "'":
+            quoted = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(ch)
+    tail = "".join(buf).strip().rstrip(";")
+    if tail:
+        parts.append(tail)
+    return [p for p in parts if p]
+
+
+def _apply_action(table, action, cols):
+    """返回 True 表示这次动作**加了列** —— 加过列的表，种子要钉列名。"""
+
     rename = re.match(r"RENAME COLUMN\s+(\w+)\s+TO\s+(\w+)", action, re.I)
     if rename:
         old, new = rename.group(1), rename.group(2)
+        hit = False
         for i, c in enumerate(cols):
             if re.match(rf"^\s*{old}\s", c):
                 cols[i] = re.sub(rf"^(\s*){old}(\s)", rf"\g<1>{new}\g<2>", c)
+                hit = True
+                continue
+            # 约束里的列引用也要改名。漏掉这一步的后果不是"少改一处"，而是产出一份
+            # **建不起来的 schema**：UNIQUE (merchant_no, channel) 指向一个已经不存在的列，
+            # H2 在建表那一刻就报错，整个 Spring 上下文起不来 —— 而错误信息指向的是
+            # 一个毫不相干的 Controller，很难看出根因在生成器上。
+            if re.match(r"^\s*(UNIQUE|KEY|CONSTRAINT|PRIMARY|INDEX)\b", c, re.I):
+                cols[i] = re.sub(rf"(?<![\w]){old}(?![\w])", new, c)
+        if not hit:
+            raise SystemExit(f"✗ RENAME COLUMN {table}.{old}：这一列本来就不存在")
         return
 
-    add = re.match(r"ADD COLUMN\s+(.*)", action, re.I | re.S)
+    # MODIFY COLUMN：改类型与可空性。**不重放的话测试库停在建表当天的定义** ——
+    # V46 把 user_no 从 NOT NULL 改成可空，而测试库仍是 NOT NULL，
+    # 于是「员工不必有 C 端账号」这条在真库成立、在测试里插不进去。
+    # 两边结构分叉是最难查的一类差异：代码没错，只有测试环境炸。
+    mod = re.match(r"MODIFY COLUMN\s+(\w+)\s+(.+)", action, re.I | re.S)
+    if mod:
+        col, rest = mod.group(1), mod.group(2).strip()
+        # 只取类型与 NULL/NOT NULL / DEFAULT，丢掉 COMMENT（H2 不需要）
+        rest = re.sub(r"\s*COMMENT\s+'(?:[^']|'')*'", "", rest, flags=re.I).strip().rstrip(";")
+        for i, c in enumerate(cols):
+            if re.match(rf"^\s*{col}\s", c):
+                cols[i] = f"    {col} {rest}"
+                break
+        else:
+            raise SystemExit(f"✗ MODIFY COLUMN {table}.{col}：这一列本来就不存在")
+        return
+
+    drop = re.match(r"DROP COLUMN\s+(\w+)", action, re.I)
+    if drop:
+        col = drop.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols if not re.match(rf"^\s*{col}\s", c)]
+        if len(cols) == before:
+            raise SystemExit(f"✗ DROP COLUMN {table}.{col}：这一列本来就不存在")
+        return
+
+    add = re.match(r"ADD COLUMN\s+(?:IF NOT EXISTS\s+)?(.*)", action, re.I | re.S)
     if add:
+        # ↑ `IF NOT EXISTS` 要在这里吃掉。不吃的话它会当成**列名**落进建表语句
+        #   （`IF NOT EXISTS archived_at DATETIME ...`），H2 建表即语法错。
         col = re.sub(r"\s+COMMENT\s+'[^']*'", "", add.group(1).strip())
-        # 插在最后一个业务列之后（约束行都在末尾）
+        # `AFTER x` / `FIRST` 是 MySQL 的列序语法，**H2 不认**，而且这里也不需要它 ——
+        # 我们在重建 CREATE TABLE，列序由下面的插入位置决定。
+        # 不剥的话它原样落进建表语句（`grid VARCHAR(64) DEFAULT NULL AFTER city_code`），
+        # H2 在建表那一刻就报错，整个 Spring 上下文起不来 ——
+        # 而错误信息指向的是一个毫不相干的 Controller，很难看出根因在生成器上。
+        col = re.sub(r"\s+(AFTER\s+\w+|FIRST)\s*$", "", col, flags=re.I).strip()
+        # 插在最后一个业务列之后。**PRIMARY KEY 也算约束行** ——
+        # 只认 CONSTRAINT 的话，新列会插到 `PRIMARY KEY (id)` 后面，
+        # 建表语句里出现「主键声明之后又冒出一列」，同样建不起来。
         idx = next((i for i, c in enumerate(cols)
-                    if re.match(r"^\s*CONSTRAINT\s", c, re.I)), len(cols))
+                    if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
         cols.insert(idx, "    " + col)
+        return True
+
+    # ALTER 里的唯一键增删。**必须实现，不能靠「反正 H2 用不上索引」糊过去** ——
+    # 唯一键不是索引，它是约束：漏掉一次 DROP + ADD，测试库就停在旧的键上，
+    # 于是 V14 把 uk_mp_entity_channel 从 (entity_no,pay_channel) 换成
+    # (entity_no,pay_channel,store_no) 之后，H2 里仍是两列版，
+    # 「一个主体给两家店各进一次件」在测试里必然 DuplicateKey，而生产是好的。
+    # 这类漂移最难查：报错指向业务代码，根因在这个脚本里。
+    drop_idx = re.match(r"DROP\s+(?:INDEX|KEY)\s+(?:IF\s+EXISTS\s+)?(\w+)", action, re.I)
+    if drop_idx:
+        name = drop_idx.group(1)
+        before = len(cols)
+        cols[:] = [c for c in cols
+                   if not re.match(rf"^\s*CONSTRAINT\s+{name}\b", c, re.I)]
+        if len(cols) == before:
+            # 普通索引没被写进建表语句，删不到是正常的；唯一键删不到才是问题，
+            # 但这里分不出来，所以只提示不中断
+            print(f"  · DROP {name} on {table}: 建表语句里没有同名约束（普通索引则正常）")
+        return
+
+    add_uk = re.match(
+        r"ADD\s+(?:CONSTRAINT\s+\w+\s+)?UNIQUE(?:\s+(?:KEY|INDEX))?\s*"
+        r"(?:IF\s+NOT\s+EXISTS\s+)?(\w+)?\s*\(([^)]+)\)", action, re.I)
+    if add_uk:
+        name, uk_cols = add_uk.group(1), add_uk.group(2)
+        name = name or f"uk_{table}_{re.sub(r'[^a-z0-9]+', '_', uk_cols.lower())}"
+        idx = next((i for i, c in enumerate(cols)
+                    if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
+        cols.insert(idx, f"    CONSTRAINT {name} UNIQUE ({uk_cols.strip()})")
+        return
+
+    if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):
+        # 普通索引：H2 测试库用不上，与 CREATE INDEX 同样跳过
+        return
+
+    # **兜底必须炸。** 这个分支此前是隐式的 `pass` —— 与本脚本开头写的
+    # 「不认识的语句必须炸，不能静默跳过」自相矛盾，而唯一键漂移正是它放过去的。
+    raise SystemExit(f"✗ 不认识的 ALTER 动作，请在本脚本里实现：\n  {table}: {action[:100]}")
+
+
+def drop_table(stmt, tables, order):
+    m = re.match(r"DROP TABLE(?: IF EXISTS)?\s+(\w+)", stmt, re.I)
+    if not m:
+        return
+    name = m.group(1)
+    tables.pop(name, None)
+    if name in order:
+        order.remove(name)
 
 
 def create_unique_index(stmt, tables):
@@ -137,6 +571,82 @@ def create_unique_index(stmt, tables):
     name, table, cols_expr = m.group(1), m.group(2), m.group(3)
     if table in tables:
         tables[table].append(f"    CONSTRAINT {name} UNIQUE ({cols_expr.strip()})")
+
+
+def _reads_only(low: str, stmt: str) -> bool:
+    """`INSERT INTO t … SELECT …` 是否**只读它自己**（= 常量种子，不是回填）。
+
+    真表引用取 `FROM x` / `JOIN x` 中 x 不是左括号的那些。`FROM (` 是派生表，
+    里面全是常量 SELECT；`FROM t`（目标表自己）出现在可重入的 NOT EXISTS 里。
+    只要出现**第三张表**，它就是在搬运存量数据 —— 那种语句重放到最终 schema 上
+    会报「列不存在」（读的是中间态结构），且 H2 测试库本来就没有存量可搬。
+    """
+    if not re.search(r"\bselect\b", low):
+        return False
+    target = re.match(r"insert\s+(?:ignore\s+)?into\s+([\w.]+)", low)
+    if not target:
+        return False
+    refs = re.findall(r"\b(?:from|join)\s+([\w.]+)", low)
+    # 一个真表引用都没有（纯常量 SELECT）同样是种子 —— all([]) 为真，正是要的语义
+    return all(r == target.group(1) for r in refs)
+
+
+def _is_reentrant_seed(low: str) -> bool:
+    """读了第三张表，但仍然是**种子**的那一类：可重入的派生授权。
+
+    形如（V199 / V72 里都有）::
+
+        INSERT INTO sys_role_point (...)
+        SELECT 'SUPER_ADMIN', p.point_code, 'OPS', NOW(), NOW()
+          FROM sys_function_point p
+         WHERE p.point_code IN ('A','B','C')
+           AND NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE ...);
+
+    它确实读了 `sys_function_point`，所以 :func:`_reads_only` 判它是回填、丢掉。
+    **但它不是搬运存量数据**：那张表是同一个迁移在上面几行刚灌进去的，
+    这里只是按一串**写死的点码**把行捞出来建关联 —— 数据源仍然是常量。
+
+    丢掉它的代价已经付过一次：V199 给 SUPER_ADMIN / GOODS_OPS 授的那四个规格功能点
+    整段消失，于是 H2 上超管拿到 153 个点而库里有 157，`superAdminHasEveryPoint` 长期
+    红着，报错是「expected 157 but was 153」—— 看起来像权限配置写漏了，
+    而生产（真跑 V199）一个都不少。
+
+    判据取**两条同时成立**，不看语句长得像不像：
+
+    1. 带 ``NOT EXISTS (SELECT`` 幂等闸 —— 回填不需要幂等，它是一次性的；
+    2. 每一张非目标表都被一个**常量键列表**框住（``IN ('..','..')`` 或 ``= '..'``）。
+       回填一定是**整表扫**（那才是它存在的意义：把存量搬过来），
+       一旦框到几个写死的编码上，它搬的就不是存量了。
+
+    两条缺一条就仍按回填丢掉 —— 宁可漏一条种子（红得明显），
+    不可放进一条回填（它读中间态列，重放到最终 schema 上炸在毫不相干的地方）。
+    """
+    if not re.search(r"not\s+exists\s*\(\s*select\b", low):
+        return False
+    target = re.match(r"insert\s+(?:ignore\s+)?into\s+([\w.]+)", low)
+    if not target:
+        return False
+    # 表引用连同别名一起取：别名是把「常量框」对应到具体那张表的唯一线索
+    others = [(t, a) for t, a in
+              re.findall(r"\b(?:from|join)\s+([\w.]+)\s+(?:as\s+)?(\w+)?", low)
+              if t != target.group(1) and t != "dual"]
+    if not others:
+        return False
+    for _table, alias in others:
+        if not alias:
+            return False
+        # 该别名的某一列被写死的字符串列表框住
+        # **只认 `IN ('..','..')` 这种写死的键列表。**
+        # 一开始我把 `alias.col = '常量'` 也算进来，结果三条真回填当场混了进去：
+        # 「按 status='PENDING' 搬审核单」「按 deleted=0 搬优惠券」「按
+        # perm_code='merchant:merchant:read' 给所有角色补点」——
+        # 它们都带 `= '字面量'`，可那是**过滤条件**，不是把范围框死到几行上；
+        # 连 `CASE WHEN c.type = 'DISCOUNT'` 都能撞上这个正则。
+        # 整表扫 + 一个条件 = 回填；写死的一串编码 = 种子。
+        if not re.search(r"\b" + re.escape(alias) + r"\.\w+\s+in\s*\(\s*'[^)]*\)", low):
+            return False
+    return True
+
 
 
 if __name__ == "__main__":

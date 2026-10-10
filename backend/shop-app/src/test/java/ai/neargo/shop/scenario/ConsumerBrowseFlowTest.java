@@ -30,14 +30,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ConsumerBrowseFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
     /** 读回刚发出去的验证码：走真实发码-校验链路，不给生产代码开万能码后门。 */
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -48,7 +49,19 @@ class ConsumerBrowseFlowTest {
     @Test
     @DisplayName("游客：选社区 → 看到自提点与承接商家")
     void guestCanPickCommunity() throws Exception {
-        String body = mvc().perform(get("/mp/community/nearby").param("lat", "30.2900").param("lng", "120.1100"))
+        /*
+         * 探针挪过 —— 原来是 (30.2900, 120.1100)，离 C0001 有 1470 米。
+         *
+         * 那时「附近」判的是全局 5000 米，所以 1470 米外的 C0001 也在列表里，
+         * 下面「第二条的距离更大」才有东西可比。现在判据换成了**每个聚落自己的围栏**
+         * （2026-09-04，默认 1000 米）—— 1470 米外**本来就不该算附近**，列表只剩一条，
+         * `communities.get(1)` 是 null。
+         *
+         * 用例的意图没变（传了定位就该算距离、近的排前面），缺的只是一个
+         * 两个社区都覆盖得到的探针。新点到 C0002 是 147 米、到 C0001 是 588 米，
+         * 都在围栏内，且近远关系与原来一致。
+         */
+        String body = mvc().perform(get("/mp/community/nearby").param("lat", "30.2840").param("lng", "120.1040"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
@@ -95,7 +108,7 @@ class ConsumerBrowseFlowTest {
         long storePrice = priceOf(mvc().perform(get("/mp/goods").param("merchantNo", "M0001"))
                 .andReturn().getResponse().getContentAsString(), "G0001");
 
-        // 价格只挂 (merchant_no, sku_no)，社区池不存价 —— 两条入口读的是同一行，不可能不同
+        // 价格只挂 (entity_no, sku_no)，社区池不存价 —— 两条入口读的是同一行，不可能不同
         assertThat(storePrice).isEqualTo(platformPrice);
     }
 
@@ -114,7 +127,7 @@ class ConsumerBrowseFlowTest {
     }
 
     @Test
-    @DisplayName("登录 → 绑定归属 → 我的资料（手机号脱敏）")
+    @DisplayName("登录 → 绑定归属 → 我的资料（本人手机号是完整号，端上要拿它预填地址）")
     void loginThenBindCommunity() throws Exception {
         String token = login("13800138000");
 
@@ -129,7 +142,7 @@ class ConsumerBrowseFlowTest {
         mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.cUserNo").isNotEmpty())
-                .andExpect(jsonPath("$.data.phone").value("138****8000"));
+                .andExpect(jsonPath("$.data.phone").value("13800138000"));
     }
 
     @Test
@@ -157,6 +170,7 @@ class ConsumerBrowseFlowTest {
     /** 走真实的 OTP 链路：发码 → 从日志拿不到码，所以这里直接调服务发码后用固定流程登录。 */
     private String login(String phone) throws Exception {
         mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}")).andExpect(status().isOk());
 

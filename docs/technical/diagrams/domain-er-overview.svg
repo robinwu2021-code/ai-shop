@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="712" viewBox="0 0 1088 712" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>全域对象关联图（ER 风格）：两套账号池 · 经营 · 商品 · 交易履约 · 营销增长 · 平台支撑</title>
+<desc>六层。实线=归属，橙色虚线=可变关联（多门店的关键），灰色长虚线=历史快照。绿色=核心实体，橙底=待建表。</desc>
+<defs>
+<marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.5" stroke-linecap="round"/></marker>
+<marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#C98B3E" stroke-width="1.5" stroke-linecap="round"/></marker>
+<style>
+.h{font-size:11px;fill:#8A94A2;letter-spacing:.14em}
+.n{font-size:12px;font-weight:600;fill:#161A21}
+.tb{font-size:9.5px;fill:#7A8493;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.t{font-size:9.5px;fill:#5A6472}
+.core{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.5;rx:7}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.1;rx:7}
+.new{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.1;rx:7}
+.base{fill:#F7F8FA;stroke:#D8DEE6;stroke-width:1.1;rx:7}
+.own{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.rel{stroke:#C98B3E;stroke-width:1.4;fill:none;stroke-dasharray:5 3}
+.snap{stroke:#9AA4B2;stroke-width:1.2;fill:none;stroke-dasharray:2 4}
+.lbl{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:4;stroke-linejoin:round}
+.lblr{font-size:9.5px;fill:#B8791F;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:4;stroke-linejoin:round}
+.cut{font-size:11px;fill:#B04A4A;font-weight:600}
+</style></defs>
+
+<!-- ═══ 第①层 身份（两套池） ═══ -->
+<text class="h" x="24" y="30">① 身份 —— 两套账号池，互不关联</text>
+<rect class="box" x="24" y="40" width="160" height="52"/>
+<text class="n" x="34" y="58">消费者账号</text>
+<text class="tb" x="34" y="72">usr_user</text>
+<text class="t" x="34" y="85">C 端池 · 逛买评</text>
+<rect class="new" x="200" y="40" width="160" height="52"/>
+<text class="n" x="210" y="58">身份绑定（消）</text>
+<text class="tb" x="210" y="72">usr_user_identity</text>
+<text class="t" x="210" y="85">微信/支付宝/Apple</text>
+<text class="cut" x="420" y="70">✕ 不关联</text>
+<rect class="core" x="552" y="40" width="160" height="52"/>
+<text class="n" x="562" y="58">商家账号</text>
+<text class="tb" x="562" y="72">usr_merchant_staff</text>
+<text class="t" x="562" y="85">B 端池 · 手机号注册</text>
+<rect class="new" x="728" y="40" width="160" height="52"/>
+<text class="n" x="738" y="58">身份绑定（商）</text>
+<text class="tb" x="738" y="72">usr_staff_identity</text>
+<text class="t" x="738" y="85">B 小程序免登</text>
+<rect class="core" x="904" y="40" width="160" height="52"/>
+<text class="n" x="914" y="58">员工门店角色</text>
+<text class="tb" x="914" y="72">usr_staff_store</text>
+<text class="t" x="914" y="85">每店一角色 MGR/CLERK</text>
+
+<!-- ═══ 第②层 经营 ═══ -->
+<text class="h" x="24" y="128">② 经营 —— 钱与信用挂主体</text>
+<rect class="box" x="200" y="138" width="160" height="52"/>
+<text class="n" x="210" y="156">收款商户号</text>
+<text class="tb" x="210" y="170">usr_merchant_payment</text>
+<text class="t" x="210" y="183">每通道一条 sub_mchid</text>
+<rect class="core" x="376" y="138" width="160" height="52"/>
+<text class="n" x="386" y="156">主体（一张执照）</text>
+<text class="tb" x="386" y="170">usr_merchant</text>
+<text class="t" x="386" y="183">进件·信用·行业·负债</text>
+<rect class="core" x="728" y="138" width="160" height="52"/>
+<text class="n" x="738" y="156">门店</text>
+<text class="tb" x="738" y="170">usr_store</text>
+<text class="t" x="738" y="183">顾客感知 · 可切换主体</text>
+<rect class="new" x="904" y="138" width="160" height="52"/>
+<text class="n" x="914" y="156">Plan</text>
+<text class="tb" x="914" y="170">plan_def · merchant_plan</text>
+<text class="t" x="914" y="183">1:1 额度快照·GRACE</text>
+
+<!-- ═══ 第③层 商品 ═══ -->
+<text class="h" x="24" y="240">③ 商品 —— 目录挂主体，卖不卖挂门店</text>
+<rect class="base" x="24" y="250" width="160" height="52"/>
+<text class="n" x="34" y="268">分类（平台）</text>
+<text class="tb" x="34" y="282">prd_category</text>
+<text class="t" x="34" y="295">统一树 · 不属于主体</text>
+<rect class="box" x="200" y="250" width="160" height="52"/>
+<text class="n" x="210" y="268">商品目录</text>
+<text class="tb" x="210" y="282">prd_goods · prd_sku</text>
+<text class="t" x="210" y="295">录一次 · 价格挂主体</text>
+<rect class="new" x="552" y="250" width="160" height="52"/>
+<text class="n" x="562" y="268">门店选品</text>
+<text class="tb" x="562" y="282">prd_store_goods</text>
+<text class="t" x="562" y="295">无行=不卖 有行=可下架</text>
+<rect class="new" x="728" y="250" width="160" height="52"/>
+<text class="n" x="738" y="268">门店库存</text>
+<text class="tb" x="738" y="282">prd_store_stock</text>
+<text class="t" x="738" y="295">SKU 级 · 在架 0=卖完</text>
+
+<!-- ═══ 第④层 交易与履约 ═══ -->
+<text class="h" x="24" y="340">④ 交易与履约 —— 订单是历史快照</text>
+<rect class="box" x="24" y="350" width="160" height="52"/>
+<text class="n" x="34" y="368">购物车 · 地址</text>
+<text class="tb" x="34" y="382">cart · usr_address</text>
+<text class="t" x="34" y="395">挂用户</text>
+<rect class="box" x="200" y="350" width="160" height="52"/>
+<text class="n" x="210" y="368">主单</text>
+<text class="tb" x="210" y="382">ord_order</text>
+<text class="t" x="210" y="395">一次下单</text>
+<rect class="core" x="376" y="350" width="160" height="52"/>
+<text class="n" x="386" y="368">子单（快照）</text>
+<text class="tb" x="386" y="382">ord_sub_order</text>
+<text class="t" x="386" y="395">merchant_no + store_no</text>
+<rect class="box" x="552" y="350" width="160" height="52"/>
+<text class="n" x="562" y="368">售后</text>
+<text class="tb" x="562" y="382">tra after_sale</text>
+<text class="t" x="562" y="395">对子单</text>
+<rect class="box" x="728" y="350" width="160" height="52"/>
+<text class="n" x="738" y="368">评价</text>
+<text class="tb" x="738" y="382">rev_*</text>
+<text class="t" x="738" y="395">跟门店 · 换主体不清零</text>
+<rect class="box" x="904" y="350" width="160" height="52"/>
+<text class="n" x="914" y="368">自提点</text>
+<text class="tb" x="914" y="382">cmt_pickup_point</text>
+<text class="t" x="914" y="395">owner = 门店</text>
+
+<!-- ═══ 第⑤层 营销与增长 ═══ -->
+<text class="h" x="24" y="452">⑤ 营销与增长 —— 权益边界是主体</text>
+<rect class="box" x="24" y="462" width="160" height="52"/>
+<text class="n" x="34" y="480">券</text>
+<text class="tb" x="34" y="494">mkt_coupon · user_coupon</text>
+<text class="t" x="34" y="507">定义挂主体·持有挂用户</text>
+<rect class="box" x="200" y="462" width="160" height="52"/>
+<text class="n" x="210" y="480">积分</text>
+<text class="tb" x="210" y="494">pts_user_account · pts_*</text>
+<text class="t" x="210" y="507">账户(用户×市场)·成本挂主体</text>
+<rect class="box" x="376" y="462" width="160" height="52"/>
+<text class="n" x="386" y="480">活动 · 团购</text>
+<text class="tb" x="386" y="494">mkt_campaign · group_buy</text>
+<text class="t" x="386" y="507">挂主体 / 团挂门店</text>
+<rect class="box" x="552" y="462" width="160" height="52"/>
+<text class="n" x="562" y="480">归因</text>
+<text class="tb" x="562" y="494">mkt_attribution</text>
+<text class="t" x="562" y="507">用户×主体 → 费率分档</text>
+<rect class="new" x="728" y="462" width="160" height="52"/>
+<text class="n" x="738" y="480">分享 · 曝光</text>
+<text class="tb" x="738" y="494">mkt_share_* · exposure</text>
+<text class="t" x="738" y="507">挂门店×商家账号</text>
+<rect class="new" x="904" y="462" width="160" height="52"/>
+<text class="n" x="914" y="480">常逛 · 动态</text>
+<text class="tb" x="914" y="494">store_follow · feed</text>
+<text class="t" x="914" y="507">用户×门店 · 逛过即建立</text>
+
+<!-- ═══ 第⑥层 平台支撑 ═══ -->
+<text class="h" x="24" y="564">⑥ 平台支撑</text>
+<rect class="base" x="24" y="574" width="336" height="52"/>
+<text class="n" x="34" y="592">主数据（表管规则）</text>
+<text class="tb" x="34" y="606">sys_industry · merchant_subject · pay_channel</text>
+<text class="t" x="34" y="619">主体的行业/类型引用它 · 通道能力</text>
+<rect class="base" x="376" y="574" width="160" height="52"/>
+<text class="n" x="386" y="592">结算 · 分账</text>
+<text class="tb" x="386" y="606">stl_*</text>
+<text class="t" x="386" y="619">按 merchant_no 聚合</text>
+<rect class="base" x="552" y="574" width="160" height="52"/>
+<text class="n" x="562" y="592">社区 · 片区</text>
+<text class="tb" x="562" y="606">cmt_community · region</text>
+<text class="t" x="562" y="619">开城由入驻驱动</text>
+<rect class="base" x="728" y="574" width="160" height="52"/>
+<text class="n" x="738" y="592">消息 · 审计</text>
+<text class="tb" x="738" y="606">msg_* · sys_audit_log</text>
+<text class="t" x="738" y="619">触达 / 谁改的价</text>
+<rect class="base" x="904" y="574" width="160" height="52"/>
+<text class="n" x="914" y="592">服务区域</text>
+<text class="tb" x="914" y="606">community + geo</text>
+<text class="t" x="914" y="619">四形态 · 挂门店</text>
+
+<!-- ═══ 连线 ═══ -->
+<!-- 身份绑定 → 各自账号（归属） -->
+<path class="own" d="M200 66 L184 66" marker-end="url(#d1)"/>
+<path class="own" d="M728 66 L712 66" marker-end="url(#d1)"/>
+<!-- 商家账号 → 员工角色（关联） -->
+<path class="rel" d="M712 78 L904 78" marker-end="url(#d2)"/>
+<!-- 商家账号 → 主体：成员 N:M -->
+<path class="rel" d="M600 92 L470 138" marker-end="url(#d2)"/>
+<text class="lblr" x="486" y="120">成员 N:M</text>
+<!-- 员工角色 → 门店 -->
+<path class="rel" d="M960 92 L830 138" marker-end="url(#d2)"/>
+<text class="lblr" x="848" y="120">授权到店</text>
+<!-- 主体 → 收款号：归属 1:N -->
+<path class="own" d="M376 164 L360 164" marker-end="url(#d1)"/>
+<text class="lbl" x="342" y="158">1:N</text>
+<!-- 门店 → 主体：可切换 -->
+<path class="rel" d="M728 164 L536 164" marker-end="url(#d2)"/>
+<text class="lblr" x="586" y="158">N:1 可切换主体</text>
+<!-- 门店 → 收款号：payment_no -->
+<path class="rel" d="M740 190 L740 212 L300 212 L300 190" marker-end="url(#d2)"/>
+<text class="lblr" x="470" y="208">payment_no 可换（空=主体默认）</text>
+<!-- Plan → 主体：1:1（上绕） -->
+<path class="own" d="M984 138 L984 116 L446 116 L446 138" marker-end="url(#d1)"/>
+<text class="lbl" x="620" y="112">Plan 1:1 主体</text>
+<!-- 主体 → 商品目录：归属 1:N -->
+<path class="own" d="M400 190 L300 250" marker-end="url(#d1)"/>
+<text class="lbl" x="316" y="226">1:N 目录</text>
+<!-- 商品 → 分类 -->
+<path class="own" d="M200 276 L184 276" marker-end="url(#d1)"/>
+<text class="lbl" x="188" y="316">N:1 归类</text>
+<!-- 商品 × 门店 → 选品 -->
+<path class="rel" d="M360 276 L552 276" marker-end="url(#d2)"/>
+<text class="lblr" x="430" y="270">选品 N:M</text>
+<path class="rel" d="M770 190 L640 250" marker-end="url(#d2)"/>
+<text class="lblr" x="652" y="226">卖不卖</text>
+<!-- 选品 → 库存 / 门店 → 库存 -->
+<path class="own" d="M712 276 L728 276" marker-end="url(#d1)"/>
+<path class="own" d="M808 190 L808 250" marker-end="url(#d1)"/>
+<text class="lbl" x="814" y="226">库存挂店</text>
+<!-- 消费者账号 → 购物车（左缘长线） -->
+<path class="own" d="M24 70 L10 70 L10 376 L24 376" marker-end="url(#d1)"/>
+<!-- 购物车 → 主单 → 子单 → 售后 -->
+<path class="own" d="M184 376 L200 376" marker-end="url(#d1)"/>
+<path class="own" d="M360 376 L376 376" marker-end="url(#d1)"/>
+<text class="lbl" x="342" y="344">1:N 按主体拆</text>
+<path class="own" d="M536 376 L552 376" marker-end="url(#d1)"/>
+<!-- 子单 → 主体：历史快照 -->
+<path class="snap" d="M456 350 L456 190" marker-end="url(#d1)"/>
+<text class="lbl" x="462" y="330">历史快照：当时的结算方+门店</text>
+<!-- 评价 → 门店（右缘绕行） -->
+<path class="snap" d="M872 350 L896 350 L896 176 L888 176" marker-end="url(#d1)"/>
+<text class="lbl" x="838" y="342">跟门店</text>
+<!-- 营销层挂靠（短标注线） -->
+<path class="own" d="M104 462 L104 440 L400 440 L400 190" marker-end="url(#d1)"/>
+<text class="lbl" x="112" y="436">券定义/活动/归因 → 主体</text>
+<path class="rel" d="M790 462 L790 440 L1030 440 L1030 402" marker-end="url(#d2)"/>
+<text class="lblr" x="800" y="436">增长对象挂门店</text>
+
+<!-- 图例 -->
+<rect class="base" x="24" y="648" width="1040" height="48"/>
+<text class="n" x="36" y="666">图例</text>
+<text class="t" x="76" y="666">绿框=核心实体　白框=已有　橙底=待建（M3–M7）　灰底=平台支撑</text>
+<text class="t" x="76" y="684">实线=归属（不可改挂）　橙虚线=可变关联（多门店的关键：成员/切主体/换收款号/授权/选品）　点线=历史快照或跨层引用　14 条关系明细见正文 §五</text>
+</svg>

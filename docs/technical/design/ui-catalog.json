@@ -1,0 +1,3514 @@
+{
+  "apps": [
+    {
+      "key": "b-app",
+      "label": "商家 App",
+      "count": 90,
+      "domains": [
+        {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/home/index",
+              "title": "工作台",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/home/index"
+            }
+          ]
+        },
+        {
+          "name": "订单与履约",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/orders/index",
+              "title": "订单",
+              "domain": "订单与履约",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/orders/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/order/index",
+              "title": "详情",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/order/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/verify/index",
+              "title": "核销台",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s17",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/verify/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/picking/index",
+              "title": "分拣单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/picking/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/delivery/index",
+              "title": "商家配送",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/delivery/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/after-sale/index",
+              "title": "售后处理",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/after-sale/index"
+            }
+          ]
+        },
+        {
+          "name": "商品",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-list/index",
+              "title": "商品",
+              "domain": "商品",
+              "tab": true,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/goods-list/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-edit/index",
+              "title": "编辑商品",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s19",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+              "preview": "http://localhost:5175/#/pages/goods-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-publish/index",
+              "title": "发布修改",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
+              "preview": "http://localhost:5175/#/pages/goods-publish/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-categories/index",
+              "title": "经营类目",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-categories/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/my-specs/index",
+              "title": "商品规格",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s23",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+              "preview": "http://localhost:5175/#/pages/my-specs/index"
+            }
+          ]
+        },
+        {
+          "name": "账号与设置",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "账号与设置",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "preview": "http://localhost:5175/#/pages/me/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/login/index",
+              "title": "商家登录",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/login/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/apply/index",
+              "title": "入驻申请",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/apply/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff-detail/index",
+              "title": "员工详情",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/staff-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/role-detail/index",
+              "title": "角色",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/role-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff/index",
+              "title": "员工",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/staff/index"
+            }
+          ]
+        },
+        {
+          "name": "消息与评价",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/messages/index",
+              "title": "消息",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/messages/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reviews/index",
+              "title": "评价与回复",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reviews/index"
+            }
+          ]
+        },
+        {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-revisions/index",
+              "title": "提交历史",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s13",
+              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
+              "preview": "http://localhost:5175/#/pages/goods-revisions/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-revision/index",
+              "title": "提交历史",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/goods-revision/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/schedule/index",
+              "title": "预约排期",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/schedule/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/sku-identity/index",
+              "title": "商品编码",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/sku-identity/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/notify-settings/index",
+              "title": "通知设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/notify-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/ship-settings/index",
+              "title": "发货设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/ship-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-scope-polygon/index",
+              "title": "画配送范围",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-scope-polygon/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/entities/index",
+              "title": "营业执照",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/entities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/entity-detail/index",
+              "title": "证照详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/entity-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/account/index",
+              "title": "账号",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/account/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/payout-account/index",
+              "title": "收款账户",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/payout-account/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/deposit/index",
+              "title": "保证金",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/deposit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/statement/index",
+              "title": "对账单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/statement/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-add/index",
+              "title": "添加会员",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/member-add/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-segments/index",
+              "title": "人群",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m10",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-segments/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activities/index",
+              "title": "活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/activities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/periods/index",
+              "title": "集单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s31",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/periods/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/period/index",
+              "title": "集单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s20",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/period/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/activity-edit/index",
+              "title": "新建活动",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/activity-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reach-tasks/index",
+              "title": "发出去的",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reach-tasks/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reach-task/index",
+              "title": "触达效果",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reach-task/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-reach/index",
+              "title": "给会员发消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m18",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-reach/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-align/index",
+              "title": "期初对齐",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-align/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-settings/index",
+              "title": "库存设置",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/artifact/F6WeTTr6aYReBd4wseF5Ug",
+              "preview": "http://localhost:5175/#/pages/stock-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-cross/index",
+              "title": "跨店库存",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-cross/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/offline-sale/index",
+              "title": "线下卖出",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/offline-sale/index"
+            }
+          ]
+        },
+        {
+          "name": "钱",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/income/index",
+              "title": "收入",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/income/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/points/index",
+              "title": "积分",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/points/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/points-records/index",
+              "title": "积分发放明细",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/points-records/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/payment/index",
+              "title": "收款设置",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/payment/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/settle/index",
+              "title": "结算单",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/settle/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/invoice/index",
+              "title": "开票",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/invoice/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/plan/index",
+              "title": "套餐",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/plan/index"
+            }
+          ]
+        },
+        {
+          "name": "门店",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stores/index",
+              "title": "门店管理",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stores/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/qualifications/index",
+              "title": "经营资质",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/qualifications/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store/index",
+              "title": "店铺设置",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-notice/index",
+              "title": "店铺公告",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-notice/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-scope/index",
+              "title": "经营范围",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-scope/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-pick/index",
+              "title": "选择门店",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-pick/index"
+            }
+          ]
+        },
+        {
+          "name": "团购与求团",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/quotes/index",
+              "title": "求团报价",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/quotes/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/group/index",
+              "title": "团详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/group/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/group-open/index",
+              "title": "开团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s34",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/group-open/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/groups/index",
+              "title": "团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s09",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/groups/index"
+            }
+          ]
+        },
+        {
+          "name": "会员与营销",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/platform-activities/index",
+              "title": "平台活动",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s27",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/platform-activities/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/platform-activity-apply/index",
+              "title": "活动报名",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s28",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/platform-activity-apply/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/marketing/index",
+              "title": "营销",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/marketing/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/customers/index",
+              "title": "会员",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m01",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/customers/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-detail/index",
+              "title": "会员详情",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m04",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-tags/index",
+              "title": "标签",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m07",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-tags/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-tag/index",
+              "title": "标签详情",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m08",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-tag/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-segment/index",
+              "title": "人群详情",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m11",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-segment/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/member-settings/index",
+              "title": "会员设置",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m21",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/member-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupons/index",
+              "title": "优惠券",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/coupons/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon/index",
+              "title": "券详情",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s15",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/coupon/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-send/index",
+              "title": "发放",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "m17",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:5175/#/pages/coupon-send/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-edit/index",
+              "title": "新建券",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s13",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/coupon-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/coupon-issues/index",
+              "title": "发放记录",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s16",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/coupon-issues/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/members/add",
+              "title": "手工录入会员",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "preview": null
+            }
+          ]
+        },
+        {
+          "name": "数据",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stats/index",
+              "title": "经营数据",
+              "domain": "数据",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stats/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/cross-store/index",
+              "title": "跨店对比",
+              "domain": "数据",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/cross-store/index"
+            }
+          ]
+        },
+        {
+          "name": "进销存",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/stock/index",
+              "title": "库存",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-detail/index",
+              "title": "库存明细",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-check/index",
+              "title": "盘点",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock-check/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/purchase-edit/index",
+              "title": "进货",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s04",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/purchase-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-docs/index",
+              "title": "单据",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s05",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock-docs/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-out/index",
+              "title": "报损",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock-out/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/transfer/index",
+              "title": "调拨",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s07",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/transfer/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-report/index",
+              "title": "报表",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s08",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/stock-report/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/suppliers/index",
+              "title": "供应商",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/suppliers/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/locations/index",
+              "title": "库位",
+              "domain": "进销存",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s09",
+              "protoUrl": "https://claude.ai/code/artifact/f3904519-ea36-4bc0-b231-d113b696f7e0",
+              "preview": "http://localhost:5175/#/pages/locations/index"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "c-app",
+      "label": "买家小程序",
+      "count": 38,
+      "domains": [
+        {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/home/index",
+              "title": "社区好物",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现",
+              "proto": "l01",
+              "protoUrl": "https://claude.ai/artifact/8fR5US62QopHk6cxULpNFL",
+              "preview": "http://localhost:5176/#/pages/home/index"
+            }
+          ]
+        },
+        {
+          "name": "商品",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/category/index",
+              "title": "分类",
+              "domain": "商品",
+              "tab": true,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/category/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/goods/index",
+              "title": "商品详情",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s10",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
+              "preview": "http://localhost:5176/#/pages/goods/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/search/index",
+              "title": "搜索",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/search/index"
+            }
+          ]
+        },
+        {
+          "name": "订单与履约",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/cart/index",
+              "title": "购物车",
+              "domain": "订单与履约",
+              "tab": true,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/cart/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/order-confirm/index",
+              "title": "确认订单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s23",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5176/#/pages/order-confirm/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/pay/index",
+              "title": "收银台",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "k11",
+              "protoUrl": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz",
+              "preview": "http://localhost:5176/#/pages/pay/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/orders/index",
+              "title": "我的订单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "k09",
+              "protoUrl": "https://claude.ai/artifact/QghtPhTz1uQNLPikWgL7hz",
+              "preview": "http://localhost:5176/#/pages/orders/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/order/index",
+              "title": "订单详情",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s37",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5176/#/pages/order/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/after-sale/index",
+              "title": "申请售后",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/after-sale/index"
+            }
+          ]
+        },
+        {
+          "name": "账号与设置",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "账号与设置",
+              "tab": true,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/me/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/me/profile/index",
+              "title": "个人资料",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/me/profile/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/address/index",
+              "title": "收货地址",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "preview": "http://localhost:5176/#/pages/address/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/address-pick/index",
+              "title": "选择收货地址",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "preview": "http://localhost:5176/#/pages/address-pick/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/login/index",
+              "title": "登录",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/login/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/legal/index",
+              "title": "协议与条款",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/legal/index"
+            }
+          ]
+        },
+        {
+          "name": "店铺与逛",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/merchant/index",
+              "title": "商家主页",
+              "domain": "店铺与逛",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s06",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
+              "preview": "http://localhost:5176/#/pages/merchant/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/merchants/index",
+              "title": "附近商家",
+              "domain": "店铺与逛",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
+              "preview": "http://localhost:5176/#/pages/merchants/index"
+            }
+          ]
+        },
+        {
+          "name": "团购与求团",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/group/index",
+              "title": "团购详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s22",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5176/#/pages/group/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/groups/index",
+              "title": "拼团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "p02",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/groups/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/request/index",
+              "title": "求团详情",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "p10",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/request/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/request-create/index",
+              "title": "发起求团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": "p11",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/request-create/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/group-host/index",
+              "title": "我发起的团",
+              "domain": "团购与求团",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/group-host/index"
+            }
+          ]
+        },
+        {
+          "name": "其它",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/address-edit/index",
+              "title": "address-edit",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "preview": "http://localhost:5176/#/pages/address-edit/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/city-pick/index",
+              "title": "city-pick",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": "https://claude.ai/artifact/4SHtxPwEUkVBcW1LFUCF5i",
+              "preview": "http://localhost:5176/#/pages/city-pick/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/track/index",
+              "title": "物流详情",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/track/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/my-memberships/index",
+              "title": "我的会员与消息",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/my-memberships/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/my-groups/index",
+              "title": "my-groups",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "p12",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/my-groups/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/favorites/index",
+              "title": "我的收藏",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": "g08",
+              "protoUrl": "https://claude.ai/artifact/UyG6Rj21TqqFZWxvyo7pN1",
+              "preview": "http://localhost:5176/#/pages/favorites/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/invite/index",
+              "title": "邀请有礼",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/invite/index"
+            }
+          ]
+        },
+        {
+          "name": "消息与评价",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/review-write/index",
+              "title": "发表评价",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/review-write/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/messages/index",
+              "title": "消息",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/messages/index"
+            }
+          ]
+        },
+        {
+          "name": "钱",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/points/index",
+              "title": "我的积分",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/points/index"
+            }
+          ]
+        },
+        {
+          "name": "会员与营销",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/coupons/index",
+              "title": "我的券",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s24",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5176/#/pages/coupons/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/coupon-code/index",
+              "title": "coupon-code",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s25",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5176/#/pages/coupon-code/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/cards/index",
+              "title": "我的卡包",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/cards/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/member-card/index",
+              "title": "我的会员卡",
+              "domain": "会员与营销",
+              "tab": false,
+              "status": "原型",
+              "proto": "s16",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "preview": null
+            }
+          ]
+        },
+        {
+          "name": "门店",
+          "pages": [
+            {
+              "app": "c-app",
+              "route": "/pages/store/index",
+              "title": "店铺主页",
+              "domain": "门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/artifact/TxQikiY2JD8toqZa1xvEyf",
+              "preview": "http://localhost:5176/#/pages/store/index"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ops-web",
+      "label": "运营端",
+      "count": 149,
+      "domains": [
+        {
+          "name": "经营看板",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/",
+              "title": "经营看板",
+              "domain": "经营看板",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/"
+            }
+          ]
+        },
+        {
+          "name": "商家与门店",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/merchants",
+              "title": "商家与门店",
+              "domain": "商家与门店",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/merchants"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants",
+              "title": "入驻审核",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=list",
+              "title": "商家档案",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=list"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=stores",
+              "title": "门店档案",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=stores"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=categories",
+              "title": "类目授权",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=categories"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=qualifications",
+              "title": "资质档案",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=qualifications"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=admission",
+              "title": "准入与保证金",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=admission"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=onboarding",
+              "title": "进件看板",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=onboarding"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=self-operated",
+              "title": "建平台自营商家",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=self-operated"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=on-behalf",
+              "title": "代商家进件",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=on-behalf"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=mode-risk",
+              "title": "无照自营风险",
+              "domain": "商家与门店",
+              "group": "入驻与资质",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=mode-risk"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=verify",
+              "title": "认证标管理",
+              "domain": "商家与门店",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=verify"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=credit",
+              "title": "信用档案",
+              "domain": "商家与门店",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=credit"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=ban",
+              "title": "违规处置与封禁",
+              "domain": "商家与门店",
+              "group": "信用与处置",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=ban"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=plans",
+              "title": "增值包授予",
+              "domain": "商家与门店",
+              "group": "增值包",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=plans"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=plan-defs",
+              "title": "档位定义",
+              "domain": "商家与门店",
+              "group": "增值包",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=plan-defs"
+            },
+            {
+              "app": "ops-web",
+              "route": "/merchants?tab=chain",
+              "title": "链条画像",
+              "domain": "商家与门店",
+              "group": "经营诊断",
+              "matrix": "P-11.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/merchants?tab=chain"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores",
+              "title": "店招公告审核",
+              "domain": "商家与门店",
+              "group": "模板与合规",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/stores"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=template",
+              "title": "主页模板配置",
+              "domain": "商家与门店",
+              "group": "模板与合规",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/stores?tab=template"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=qrcode",
+              "title": "店铺码生成导出",
+              "domain": "商家与门店",
+              "group": "获客",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/stores?tab=qrcode"
+            },
+            {
+              "app": "ops-web",
+              "route": "/stores?tab=effect",
+              "title": "获客效果看板",
+              "domain": "商家与门店",
+              "group": "获客",
+              "matrix": "P-10.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/stores?tab=effect"
+            }
+          ]
+        },
+        {
+          "name": "商品与库存",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/products",
+              "title": "商品与库存",
+              "domain": "商品与库存",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/products"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products",
+              "title": "平台类目树",
+              "domain": "商品与库存",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=skus",
+              "title": "商品池与审核",
+              "domain": "商品与库存",
+              "group": "商品",
+              "matrix": "P-3.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=skus"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=audit",
+              "title": "商品审核队列",
+              "domain": "商品与库存",
+              "group": "商品",
+              "matrix": "P-3.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=audit"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=stock",
+              "title": "预售额度与超卖",
+              "domain": "商品与库存",
+              "group": "库存与预售",
+              "matrix": "P-3.3",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=stock"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=templates",
+              "title": "规格模板维护",
+              "domain": "商品与库存",
+              "group": "规格模板",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=templates"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spec-common",
+              "title": "通用规格",
+              "domain": "商品与库存",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=spec-common"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spec-special",
+              "title": "专用规格",
+              "domain": "商品与库存",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=spec-special"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-spec",
+              "title": "类目 × 规格",
+              "domain": "商品与库存",
+              "group": "规格",
+              "matrix": "P-3.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=category-spec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-pay-mode",
+              "title": "当面付禁用类目",
+              "domain": "商品与库存",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=category-pay-mode"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=category-points",
+              "title": "类目 × 积分",
+              "domain": "商品与库存",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=category-points"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=banned-word",
+              "title": "建品规则",
+              "domain": "商品与库存",
+              "group": "类目",
+              "matrix": "P-3.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=banned-word"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=spu-std",
+              "title": "标准品库",
+              "domain": "商品与库存",
+              "group": "标准品",
+              "matrix": "P-3.5",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=spu-std"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=topics",
+              "title": "主题分类",
+              "domain": "商品与库存",
+              "group": "陈列",
+              "matrix": "P-3.6",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=topics"
+            },
+            {
+              "app": "ops-web",
+              "route": "/products?tab=stats",
+              "title": "商品统计",
+              "domain": "商品与库存",
+              "group": "统计",
+              "matrix": "P-3.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/products?tab=stats"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory",
+              "title": "库存健康度",
+              "domain": "商品与库存",
+              "group": "库存治理",
+              "matrix": "P-18.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/inventory"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory?tab=ledger",
+              "title": "库存流水",
+              "domain": "商品与库存",
+              "group": "库存治理",
+              "matrix": "P-18.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/inventory?tab=ledger"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory?tab=recon",
+              "title": "库存对差",
+              "domain": "商品与库存",
+              "group": "切换判据",
+              "matrix": "P-18.3",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/inventory?tab=recon"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory?tab=link-health",
+              "title": "链路健康",
+              "domain": "商品与库存",
+              "group": "链路",
+              "matrix": "P-18.5",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/inventory?tab=link-health"
+            },
+            {
+              "app": "ops-web",
+              "route": "/inventory?tab=credentials",
+              "title": "开放对接",
+              "domain": "商品与库存",
+              "group": "对外",
+              "matrix": "P-18.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/inventory?tab=credentials"
+            }
+          ]
+        },
+        {
+          "name": "交易与履约",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/orders",
+              "title": "交易与履约",
+              "domain": "交易与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/orders"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders",
+              "title": "订单检索",
+              "domain": "交易与履约",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=exception",
+              "title": "异常单处理",
+              "domain": "交易与履约",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders?tab=exception"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=proxy",
+              "title": "代客下单/取消",
+              "domain": "交易与履约",
+              "group": "订单",
+              "matrix": "P-4.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders?tab=proxy"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=pay",
+              "title": "支付流水核对",
+              "domain": "交易与履约",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders?tab=pay"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=repair",
+              "title": "掉单补偿",
+              "domain": "交易与履约",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders?tab=repair"
+            },
+            {
+              "app": "ops-web",
+              "route": "/orders?tab=close",
+              "title": "关单策略配置",
+              "domain": "交易与履约",
+              "group": "支付",
+              "matrix": "P-4.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/orders?tab=close"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment",
+              "title": "到货批次与配车",
+              "domain": "交易与履约",
+              "group": "到货与分拣",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=sorting",
+              "title": "按自提点汇总分拣",
+              "domain": "交易与履约",
+              "group": "到货与分拣",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=sorting"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=redeem",
+              "title": "核销监控与逾期",
+              "domain": "交易与履约",
+              "group": "核销",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=redeem"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=overdue",
+              "title": "逾期规则配置",
+              "domain": "交易与履约",
+              "group": "核销",
+              "matrix": "P-5.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=overdue"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=express",
+              "title": "快递与轨迹",
+              "domain": "交易与履约",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=express"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=freight",
+              "title": "运费模板与超区",
+              "domain": "交易与履约",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=freight"
+            },
+            {
+              "app": "ops-web",
+              "route": "/fulfillment?tab=carrier",
+              "title": "第三方运力配置",
+              "domain": "交易与履约",
+              "group": "物流",
+              "matrix": "P-5.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/fulfillment?tab=carrier"
+            }
+          ]
+        },
+        {
+          "name": "售后治理",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/after-sales",
+              "title": "售后治理",
+              "domain": "售后治理",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/after-sales"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales",
+              "title": "售后工单池",
+              "domain": "售后治理",
+              "group": "处置",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/after-sales"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales?tab=intervene",
+              "title": "平台介入裁决",
+              "domain": "售后治理",
+              "group": "处置",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/after-sales?tab=intervene"
+            },
+            {
+              "app": "ops-web",
+              "route": "/after-sales?tab=fastrefund",
+              "title": "售后规则",
+              "domain": "售后治理",
+              "group": "规则",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/after-sales?tab=fastrefund"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=refund-back",
+              "title": "退款回退分账",
+              "domain": "售后治理",
+              "group": "规则",
+              "matrix": "P-6.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=refund-back"
+            }
+          ]
+        },
+        {
+          "name": "营销与增长",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/marketing",
+              "title": "营销与增长",
+              "domain": "营销与增长",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/marketing"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing",
+              "title": "券模板",
+              "domain": "营销与增长",
+              "group": "优惠券",
+              "matrix": "P-7.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=issues",
+              "title": "发放记录",
+              "domain": "营销与增长",
+              "group": "优惠券",
+              "matrix": "P-7.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=issues"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=campaigns",
+              "title": "活动",
+              "domain": "营销与增长",
+              "group": "活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=campaigns"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=slots",
+              "title": "首页楼层与 Banner",
+              "domain": "营销与增长",
+              "group": "内容位",
+              "matrix": "P-7.3",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=slots"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=member",
+              "title": "会员卡与权益",
+              "domain": "营销与增长",
+              "group": "会员",
+              "matrix": "P-7.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=member"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=promoCoupons",
+              "title": "券敞口",
+              "domain": "营销与增长",
+              "group": "敞口",
+              "matrix": "P-7.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=promoCoupons"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=promoActivities",
+              "title": "活动敞口",
+              "domain": "营销与增长",
+              "group": "敞口",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/marketing?tab=promoActivities"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=platform",
+              "title": "平台活动",
+              "domain": "营销与增长",
+              "group": "平台活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s29",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:3000/marketing?tab=platform"
+            },
+            {
+              "app": "ops-web",
+              "route": "/marketing?tab=platformAudit",
+              "title": "报名审核",
+              "domain": "营销与增长",
+              "group": "平台活动",
+              "matrix": "P-7.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s30",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:3000/marketing?tab=platformAudit"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups",
+              "title": "商家团",
+              "domain": "营销与增长",
+              "group": "商家团",
+              "matrix": "P-8.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/groups"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups?tab=demands",
+              "title": "需求单池与指派",
+              "domain": "营销与增长",
+              "group": "求团撮合",
+              "matrix": "P-8.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/groups?tab=demands"
+            },
+            {
+              "app": "ops-web",
+              "route": "/groups?tab=quotes",
+              "title": "改价留痕与毁约",
+              "domain": "营销与增长",
+              "group": "求团撮合",
+              "matrix": "P-8.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/groups?tab=quotes"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth",
+              "title": "归因规则",
+              "domain": "营销与增长",
+              "group": "归因引擎",
+              "matrix": "P-9.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/growth"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth?tab=traces",
+              "title": "归因链路审计",
+              "domain": "营销与增长",
+              "group": "归因引擎",
+              "matrix": "P-9.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/growth?tab=traces"
+            },
+            {
+              "app": "ops-web",
+              "route": "/growth?tab=fission",
+              "title": "邀请有礼配置",
+              "domain": "营销与增长",
+              "group": "裂变活动",
+              "matrix": "P-9.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/growth?tab=fission"
+            }
+          ]
+        },
+        {
+          "name": "会员与人档",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/members",
+              "title": "会员与人档",
+              "domain": "会员与人档",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/members"
+            },
+            {
+              "app": "ops-web",
+              "route": "/members",
+              "title": "会员名单",
+              "domain": "会员与人档",
+              "group": "会员",
+              "matrix": "P-7.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/members"
+            },
+            {
+              "app": "ops-web",
+              "route": "/members?tab=persons",
+              "title": "人档",
+              "domain": "会员与人档",
+              "group": "会员",
+              "matrix": "P-7.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/members?tab=persons"
+            },
+            {
+              "app": "ops-web",
+              "route": "/members?tab=reach",
+              "title": "触达健康度",
+              "domain": "会员与人档",
+              "group": "会员",
+              "matrix": "P-7.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": "o01",
+              "protoUrl": "https://claude.ai/artifact/8VNNrPTZU8ypwAj3w71Bhc",
+              "preview": "http://localhost:3000/members?tab=reach"
+            }
+          ]
+        },
+        {
+          "name": "结算与资金",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/finance",
+              "title": "结算与资金",
+              "domain": "结算与资金",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/finance"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance",
+              "title": "结算单与分账",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=splits",
+              "title": "分账明细",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=splits"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=settle-stats",
+              "title": "经营统计",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=settle-stats"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=refund-back",
+              "title": "退款回退分账",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=refund-back"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=payables",
+              "title": "自营应付账款",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=payables"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=purchase-invoices",
+              "title": "进项票",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=purchase-invoices"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=buyer-invoices",
+              "title": "买家开票申请",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=buyer-invoices"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=payout-accounts",
+              "title": "供应商收款账户",
+              "domain": "结算与资金",
+              "group": "应付与发票",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=payout-accounts"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=points",
+              "title": "积分资金看板",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=points"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=points-policy",
+              "title": "积分端开关",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=points-policy"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=rates",
+              "title": "分档费率与服务费",
+              "domain": "结算与资金",
+              "group": "费率",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=rates"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=pay-channels",
+              "title": "支付通道与费率",
+              "domain": "结算与资金",
+              "group": "费率",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=pay-channels"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=settle-batches",
+              "title": "账期批次与放款",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=settle-batches"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=debts",
+              "title": "商家欠款",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=debts"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=invoice",
+              "title": "发票与个税",
+              "domain": "结算与资金",
+              "group": "发票与税",
+              "matrix": "P-12.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=invoice"
+            },
+            {
+              "app": "ops-web",
+              "route": "/finance?tab=channel-messages",
+              "title": "渠道报文",
+              "domain": "结算与资金",
+              "group": "分账结算",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/finance?tab=channel-messages"
+            }
+          ]
+        },
+        {
+          "name": "内容与口碑",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/reviews",
+              "title": "内容与口碑",
+              "domain": "内容与口碑",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/reviews"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews",
+              "title": "评价审核",
+              "domain": "内容与口碑",
+              "group": "审核",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/reviews"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews?tab=appeals",
+              "title": "恶意差评申诉裁决",
+              "domain": "内容与口碑",
+              "group": "审核",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/reviews?tab=appeals"
+            },
+            {
+              "app": "ops-web",
+              "route": "/reviews?tab=score",
+              "title": "评分算法参数",
+              "domain": "内容与口碑",
+              "group": "评分",
+              "matrix": "P-13.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/reviews?tab=score"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents",
+              "title": "素材中心与分发",
+              "domain": "内容与口碑",
+              "group": "素材",
+              "matrix": "P-15.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/contents"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents?tab=audit",
+              "title": "种草内容审核",
+              "domain": "内容与口碑",
+              "group": "内容",
+              "matrix": "P-15.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/contents?tab=audit"
+            },
+            {
+              "app": "ops-web",
+              "route": "/contents?tab=rank",
+              "title": "榜单与问答",
+              "domain": "内容与口碑",
+              "group": "内容",
+              "matrix": "P-15.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/contents?tab=rank"
+            }
+          ]
+        },
+        {
+          "name": "消息与客服",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/messages",
+              "title": "消息与客服",
+              "domain": "消息与客服",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/messages"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages",
+              "title": "通道总览",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=sms",
+              "title": "短信",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=sms"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=mail",
+              "title": "邮件",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=mail"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=wxsub",
+              "title": "微信订阅消息",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=wxsub"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=apppush",
+              "title": "App 推送",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=apppush"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=inapp",
+              "title": "站内信模板",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=inapp"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=routing",
+              "title": "场景与通道",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=routing"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=notifyLog",
+              "title": "发送记录",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=notifyLog"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=broadcast",
+              "title": "营销广播",
+              "domain": "消息与客服",
+              "group": "触达",
+              "matrix": "P-14.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=broadcast"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=tickets",
+              "title": "客服工单与代客留痕",
+              "domain": "消息与客服",
+              "group": "客服",
+              "matrix": "P-14.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=tickets"
+            },
+            {
+              "app": "ops-web",
+              "route": "/messages?tab=faq",
+              "title": "帮助中心维护",
+              "domain": "消息与客服",
+              "group": "客服",
+              "matrix": "P-14.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/messages?tab=faq"
+            }
+          ]
+        },
+        {
+          "name": "社区与网点",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/communities",
+              "title": "社区与网点",
+              "domain": "社区与网点",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/communities"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities",
+              "title": "社区网格",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=applies",
+              "title": "商家提报",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=applies"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=regions",
+              "title": "区划维护",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=regions"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=health",
+              "title": "坐标健康",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=health"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=distribution",
+              "title": "位置分布",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=distribution"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=places",
+              "title": "固定地址库",
+              "domain": "社区与网点",
+              "group": "社区网格",
+              "matrix": "P-2.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=places"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=pickups",
+              "title": "自提点",
+              "domain": "社区与网点",
+              "group": "自提点",
+              "matrix": "P-2.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=pickups"
+            },
+            {
+              "app": "ops-web",
+              "route": "/communities?tab=neighbor",
+              "title": "临时点监控",
+              "domain": "社区与网点",
+              "group": "自提点",
+              "matrix": "P-2.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/communities?tab=neighbor"
+            }
+          ]
+        },
+        {
+          "name": "风控",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/risk",
+              "title": "风控",
+              "domain": "风控",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/risk"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk",
+              "title": "风险事件",
+              "domain": "风控",
+              "group": "识别",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/risk"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk?tab=blacklist",
+              "title": "黑名单与申诉",
+              "domain": "风控",
+              "group": "处置",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/risk?tab=blacklist"
+            },
+            {
+              "app": "ops-web",
+              "route": "/risk?tab=rules",
+              "title": "拦截规则配置",
+              "domain": "风控",
+              "group": "处置",
+              "matrix": "P-16.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/risk?tab=rules"
+            }
+          ]
+        },
+        {
+          "name": "元器件",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/elec",
+              "title": "元器件",
+              "domain": "元器件",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/elec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec",
+              "title": "询报价",
+              "domain": "元器件",
+              "group": "撮合",
+              "matrix": "P-19.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=supplier",
+              "title": "供应商",
+              "domain": "元器件",
+              "group": "货源",
+              "matrix": "P-19.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=supplier"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=part",
+              "title": "料号与库存",
+              "domain": "元器件",
+              "group": "货源",
+              "matrix": "P-19.3",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=part"
+            },
+            {
+              "app": "ops-web",
+              "route": "/elec?tab=base",
+              "title": "基础数据",
+              "domain": "元器件",
+              "group": "主数据",
+              "matrix": "P-19.4",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/elec?tab=base"
+            }
+          ]
+        },
+        {
+          "name": "平台管理",
+          "pages": [
+            {
+              "app": "ops-web",
+              "route": "/iam",
+              "title": "平台管理",
+              "domain": "平台管理",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "preview": "http://localhost:3000/iam"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam",
+              "title": "员工账号与数据域",
+              "domain": "平台管理",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/iam"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=roles",
+              "title": "角色与权限",
+              "domain": "平台管理",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/iam?tab=roles"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=menu",
+              "title": "菜单顺序",
+              "domain": "平台管理",
+              "group": "账号",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/iam?tab=menu"
+            },
+            {
+              "app": "ops-web",
+              "route": "/iam?tab=audit",
+              "title": "操作审计日志",
+              "domain": "平台管理",
+              "group": "审计",
+              "matrix": "P-1.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/iam?tab=audit"
+            },
+            {
+              "app": "ops-web",
+              "route": "/jobs",
+              "title": "任务与执行日志",
+              "domain": "平台管理",
+              "group": "定时任务",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/jobs"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system",
+              "title": "外观与规则文案",
+              "domain": "平台管理",
+              "group": "外观与语言",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=market",
+              "title": "市场/货币/汇率",
+              "domain": "平台管理",
+              "group": "外观与语言",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=market"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=flags",
+              "title": "开关与灰度",
+              "domain": "平台管理",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=flags"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=storage",
+              "title": "存储空间治理",
+              "domain": "平台管理",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=storage"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=testPhone",
+              "title": "测试号固定验证码",
+              "domain": "平台管理",
+              "group": "运行配置",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=testPhone"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=industry",
+              "title": "行业与小微白名单",
+              "domain": "平台管理",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=industry"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=authCode",
+              "title": "经营授权码",
+              "domain": "平台管理",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=authCode"
+            },
+            {
+              "app": "ops-web",
+              "route": "/system?tab=scope",
+              "title": "经营范围开关",
+              "domain": "平台管理",
+              "group": "经营范围",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/system?tab=scope"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "total": 277
+}

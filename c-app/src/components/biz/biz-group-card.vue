@@ -21,15 +21,15 @@ const off = computed(() =>
 </script>
 
 <template>
-  <view class="gcard" @tap="$emit('tap')">
+  <view class="gcard" @tap.stop="$emit('tap')">
     <view class="gcard__top">
-      <view class="gcard__cover">{{ group.cover }}</view>
-      <view class="gcard__main">
-        <text class="gcard__title">{{ group.title }}</text>
-        <text class="gcard__pickup">{{ group.pickupName }}</text>
-        <view class="gcard__price">
-          <text class="gcard__now sh-num">{{ money(group.groupPrice) }}</text>
-          <text v-if="off > 0" class="gcard__base sh-num">{{
+      <sh-cover class="sh-center gcard__cover" :src="group.cover" :w="375"></sh-cover>
+      <view class="sh-fill gcard__main">
+        <text class="txt-strong gcard__title">{{ group.title }}</text>
+        <text class="sh-hint">{{ group.pickupName }}</text>
+        <view class="gcard__price sh-row sh-row--baseline">
+          <text class="txt-display txt-ink gcard__now sh-num">{{ money(group.groupPrice) }}</text>
+          <text v-if="off > 0" class="sh-was sh-num">{{
             money(group.basePrice)
           }}</text>
           <text v-if="off > 0" class="sh-chip sh-chip--danger sh-num"
@@ -40,14 +40,19 @@ const off = computed(() =>
     </view>
 
     <!-- 还差几人到下一档 —— 这句话就是分享文案 -->
-    <view class="gcard__goal">
-      <text v-if="!group.reached" class="gcard__goal-text">
+    <view class="sh-row sh-row--between gcard__goal">
+      <!--
+        强调靠**主色**，不靠字重 —— 这行已经是全卡唯一的彩色文字，再加一道粗体是同一件事说两遍。
+        ⚠️ 颜色走库件类而不是本页 scoped 规则：scoped 选择器带 `[data-v-x]`，权重压得过
+        全局的 `.is-success` —— 「已成团」那一支会被染回主色，而两个类看着都挂着。
+      -->
+      <text v-if="!group.reached" class="txt-sub txt-primary">
         {{ $t("group.needMore", { n: group.need }) }}
       </text>
-      <text v-else class="gcard__goal-text gcard__goal-text--max">
+      <text v-else class="txt-sub is-success">
         {{ $t("group.done") }}
       </text>
-      <text class="gcard__cd sh-num">{{
+      <text class="txt-sub gcard__cd sh-num">{{
         countdown(group.expireAt - now)
       }}</text>
     </view>
@@ -56,8 +61,8 @@ const off = computed(() =>
       <view class="bar__fill" :style="{ width: `${progress}%` }" />
     </view>
 
-    <view class="gcard__foot">
-      <view class="avatars">
+    <view class="sh-row sh-row--between gcard__foot">
+      <view class="sh-row avatars">
         <text
           v-for="(m, i) in group.members.slice(0, 5)"
           :key="i"
@@ -65,11 +70,11 @@ const off = computed(() =>
         >
           {{ m.avatar }}
         </text>
-        <text class="avatars__n sh-num">
+        <text class="txt-caption txt-quiet avatars__n sh-num">
           {{ $t("group.joined", { n: group.joinedCount }) }}
         </text>
       </view>
-      <view class="gcard__btn">
+      <view class="txt-sub txt-bold gcard__btn">
         {{ group.joined ? $t("group.joinedBtn") : $t("group.join") }}
       </view>
     </view>
@@ -88,7 +93,7 @@ const off = computed(() =>
 .gcard {
   border-radius: 32rpx;
   /* 卡在「今日团」白块内，块自己给上下留白 —— 卡再加外边距会在块底叠出一道空白 */
-  padding: 4rpx 26rpx;
+  padding: 4rpx 24rpx;
 }
 .gcard__top {
   display: flex;
@@ -98,69 +103,23 @@ const off = computed(() =>
   width: 150rpx;
   height: 150rpx;
   border-radius: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 96rpx;
   flex-shrink: 0;
 }
-.gcard__main {
-  flex: 1;
-  min-width: 0;
-}
 .gcard__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gcard__pickup {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 8rpx;
-}
 .gcard__price {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
-  margin-top: 18rpx;
-}
-.gcard__now {
-  font-size: 40rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
-}
-.gcard__base {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  text-decoration: line-through;
+  margin-top: 16rpx;
 }
 .gcard__goal {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 24rpx;
 }
-.gcard__goal-text {
-  /* 强调靠**主色**，不靠字重 —— 这行已经是全卡唯一的彩色文字，
-     再加一道粗体是同一件事说两遍。 */
-  font-size: 26rpx;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--sh-primary);
-}
-.gcard__goal-text--max {
-  color: var(--sh-success);
-}
 .gcard__cd {
-  font-size: 24rpx;
   color: var(--sh-warning);
   flex-shrink: 0;
 }
@@ -169,25 +128,19 @@ const off = computed(() =>
   border-radius: 9999px;
   /* 槽用主色浅调：与进度条同色系，一眼读作「还没走完的部分」 */
   background: var(--sh-primary-tint);
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   overflow: hidden;
 }
 .bar__fill {
   height: 100%;
   border-radius: 9999px;
   background: var(--sh-primary);
-  transition: width 0.3s ease;
+  transition: width var(--sh-t-base) ease;
 }
 .gcard__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-top: 22rpx;
+  margin-top: 24rpx;
 }
 .avatars {
-  display: flex;
-  align-items: center;
   gap: 8rpx;
   min-width: 0;
 }
@@ -201,7 +154,6 @@ const off = computed(() =>
   font-size: 24rpx;
 }
 .avatars__n {
-  font-size: 24rpx;
   color: var(--sh-sub);
   margin-inline-start: 8rpx;
 }
@@ -211,7 +163,5 @@ const off = computed(() =>
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 </style>

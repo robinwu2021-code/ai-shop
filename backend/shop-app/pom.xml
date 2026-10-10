@@ -16,56 +16,93 @@
     <description>启动模块：portal(三端 Controller) + config + 装配。单体形态依赖全部 svc。</description>
 
     <dependencies>
+        <!-- 定时任务调度引擎。**业务实例内的 worker 用它**（J2/G2 阶段）——
+             与独立 worker 跑的是同一套代码，「先在业务实例内跑通、观察一周、再拆出去」
+             这条路上才不会变成两套各自演进的实现 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-common</artifactId>
+            <artifactId>job-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-spi</artifactId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-store-mybatis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base-auth</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <!-- ★ 这段依赖列表就是「形态」：单体聚合全部 svc；将来出 shop-app-trade 只留 trade 那几个 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-user</artifactId>
+            <artifactId>shop-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-product</artifactId>
+            <artifactId>shop-merchant</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-trade</artifactId>
+            <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-fulfillment</artifactId>
+            <artifactId>shop-inventory</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 报表：独立库的持久层。日结「读交易域、写报表库」是跨域组合，
+             按 ArchitectureTest 的规矩住在本模块（reportbridge 包），
+             所以引它的是 shop-app，而不是 shop-report 反过来引 shop-core -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-report</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 元器件是独立进程（elec-svc），主应用**不引它的代码**，只引零依赖的内部契约：
+             给它开的 /internal/elec/** 与它那一侧的客户端用同一份路径与 record -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>elec-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-marketing</artifactId>
+            <artifactId>shop-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-settle</artifactId>
+            <artifactId>logistics-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-message</artifactId>
+            <artifactId>logistics-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 支付通道适配（2026-09-01 从 shop-channel 拆出）。
+             **内嵌形态必须显式依赖它**：shop-app 不直接 import 这些类，
+             只通过 spi 接口拿到 —— 所以少了这条依赖**编译照样过**，
+             而运行时 PayQueryPort / 验签器 / 各 Gateway 的 bean 全部消失。 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
-            <artifactId>shop-svc-platform</artifactId>
+            <artifactId>shop-notify</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -92,6 +129,13 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!-- ShedLock 的锁实现：只有启动模块知道连的是哪个库（注解在 shop-base）。
+             版本在 backend/pom.xml 的 dependencyManagement（Boot BOM 不管它） -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
         </dependency>
 
         <dependency>
@@ -131,9 +175,70 @@
                             <goal>repackage</goal>
                         </goals>
                     </execution>
+                    <!--
+                      build-info：把版本与构建时刻写进 META-INF/build-info.properties，
+                      Spring Boot 的 /actuator/info 会自动读它。
+                      **为什么需要**：线上跑的是哪个提交，此前从外面问不出来 ——
+                      2026-08-29 排查一个任务异常时为此反推了四轮，
+                      而部署脚本切软链与进程重启是两件事，文件名对不代表进程在跑它。
+                    -->
+                    <execution>
+                        <id>build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <additionalProperties>
+                                <!--
+                                  提交号由**部署脚本**用 -Dgit.sha= 传进来，不引额外插件
+                                  （git-commit-id 不在本机 ~/.m2，而构建是离线的）。
+                                  好处不只是省一个依赖：jar 文件名里的 SHA 与这里的 SHA
+                                  **来自同一个变量**，天然不可能对不上。
+                                  手工 mvn package 时它是 unknown —— 那也如实反映了
+                                  「这个包不是走部署流程出来的」。
+                                -->
+                                <gitSha>${git.sha}</gitSha>
+                            </additionalProperties>
+                        </configuration>
+                    </execution>
                 </executions>
+            </plugin>
+
+
+
+            <!--
+              E2E 默认不跑：它依赖一个跑着的 MariaDB，没有数据库的机器上会红 ——
+              而「构建在别人机器上红」会让人开始忽略红灯。
+              跑法：mvn test -Pe2e
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
+                    <groups>${surefire.groups}</groups>
+                    <excludedGroups>${surefire.excludedGroups}</excludedGroups>
+                </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <properties>
+        <!-- 默认：跑全部非 e2e 的用例 -->
+        <git.sha>unknown</git.sha>
+        <surefire.groups></surefire.groups>
+        <surefire.excludedGroups>e2e</surefire.excludedGroups>
+    </properties>
+
+    <profiles>
+        <profile>
+            <id>e2e</id>
+            <properties>
+                <!-- 只跑 E2E：与快测分开，失败原因不会混在一起 -->
+                <surefire.groups>e2e</surefire.groups>
+                <surefire.excludedGroups></surefire.excludedGroups>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>

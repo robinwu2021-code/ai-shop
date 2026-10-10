@@ -7,21 +7,33 @@ export const storeAudits: StorePageAudit[] = [
   { auditNo: "SA9002", merchantNo: "M901", merchantName: "阿姨家的菜摊", kind: "NOTICE", content: "全网最低价！假一赔十，绝对正宗有机蔬菜。", status: "PENDING", hits: ["全网最低", "假一赔十", "绝对"], submittedAt: "2026-08-05T14:22:00Z" },
   { auditNo: "SA9003", merchantNo: "M902", merchantName: "老张水果店", kind: "BANNER", content: "https://cdn.example.com/store/M902/banner-0805.jpg", status: "PENDING", hits: ["图片含二维码"], submittedAt: "2026-08-04T09:05:00Z" },
   { auditNo: "SA9004", merchantNo: "M905", merchantName: "快修家电服务", kind: "NOTICE", content: "空调清洗预约请提前一天下单。", status: "PASSED", hits: [], submittedAt: "2026-08-02T02:00:00Z" },
+  // 覆盖项待审（ADR-013 阶段三）：content 是机器串，display 是运营真正读的东西
+  { auditNo: "SA9006", merchantNo: "M901", merchantName: "阿姨家的菜摊", kind: "SERVICE_AREA", content: "DISTRICT:330106", display: "浙江省 / 杭州市 / 西湖区", status: "PENDING", hits: [], submittedAt: "2026-08-06T01:15:00Z" },
   { auditNo: "SA9005", merchantNo: "M906", merchantName: "夜市烧烤", kind: "BANNER", content: "https://cdn.example.com/store/M906/banner-0730.jpg", status: "REJECTED", hits: ["含联系方式"], submittedAt: "2026-07-30T11:40:00Z", reason: "店招图里印了店主微信号，属于站外引流，请去掉后重新提交" },
 ];
 
 export const storeQrcodes: StoreQrcode[] = [
-  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", code: "shop_M903_c2", size: "10x10cm", printed: 200, scanCount: 1842 },
-  { merchantNo: "M902", merchantName: "老张水果店", communityName: "锦绣花园", code: "shop_M902_c1", size: "10x10cm", printed: 150, scanCount: 1130 },
-  { merchantNo: "M901", merchantName: "阿姨家的菜摊", communityName: "锦绣花园", code: "shop_M901_c1", size: "6x6cm", printed: 80, scanCount: 402 },
-  { merchantNo: "M905", merchantName: "快修家电服务", communityName: "梧桐苑", code: "shop_M905_c3", size: "10x10cm", printed: 120, scanCount: 836 },
+  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", storeNo: "ST903", storeName: "邻家便利", code: "shop_M903_c2", size: "10x10cm", printed: 200, scanCount: 1842 },
+  { merchantNo: "M902", merchantName: "老张水果店", communityName: "锦绣花园", storeNo: "ST902", storeName: "老张水果店", code: "shop_M902_c1", size: "10x10cm", printed: 150, scanCount: 1130 },
+  { merchantNo: "M901", merchantName: "阿姨家的菜摊", communityName: "锦绣花园", storeNo: "ST901", storeName: "阿姨家的菜摊", code: "shop_M901_c1", size: "6x6cm", printed: 80, scanCount: 402 },
+  { merchantNo: "M905", merchantName: "快修家电服务", communityName: "梧桐苑", storeNo: "ST905", storeName: "快修家电服务", code: "shop_M905_c3", size: "10x10cm", printed: 120, scanCount: 836 },
+  // ★ 还没人登记印刷量的那一行：printed 是 null 不是 0 ——
+  //   「没登记」与「印了 0 张」在界面上必须分得开，否则运营不知道该催谁
+  { merchantNo: "M904", merchantName: "社区鲜奶站", communityName: "梧桐苑", storeNo: "ST904", storeName: "社区鲜奶站", code: "shop_M904_c3", size: null, printed: null, scanCount: 57 },
+  // ★ V298：**还没发过码的分店**。它是运营要动手的那一行 ——
+  //   此前列表按「有码」过滤，这种行根本不出现，于是没人知道要去发码
+  { merchantNo: "M903", merchantName: "邻家便利", communityName: "阳光里", storeNo: "ST903-2", storeName: "邻家便利·南门店", code: null, size: null, printed: null, scanCount: 0 },
 ];
 
 export const storeAcquisition: StoreAcquisition[] = [
-  { merchantNo: "M903", merchantName: "邻家便利", scan: 1842, enter: 1310, register: 540, firstOrder: 312, convRate: 0.169 },
-  { merchantNo: "M902", merchantName: "老张水果店", scan: 1130, enter: 806, register: 302, firstOrder: 161, convRate: 0.142 },
-  { merchantNo: "M905", merchantName: "快修家电服务", scan: 836, enter: 512, register: 188, firstOrder: 96, convRate: 0.115 },
-  { merchantNo: "M901", merchantName: "阿姨家的菜摊", scan: 402, enter: 232, register: 150, firstOrder: 71, convRate: 0.177 },
+  { merchantNo: "M903", merchantName: "邻家便利", storeNo: "ST903", storeName: "邻家便利", scan: 1842, scanUv: 1289, enter: 1310, register: 540, firstOrder: 312, convRate: 0.242 },
+  { merchantNo: "M902", merchantName: "老张水果店", storeNo: "ST902", storeName: "老张水果店", scan: 1130, scanUv: 791, enter: 806, register: 302, firstOrder: 161, convRate: 0.204 },
+  { merchantNo: "M905", merchantName: "快修家电服务", storeNo: "ST905", storeName: "快修家电服务", scan: 836, scanUv: 585, enter: 512, register: 188, firstOrder: 96, convRate: 0.164 },
+  { merchantNo: "M901", merchantName: "阿姨家的菜摊", storeNo: "ST901", storeName: "阿姨家的菜摊", scan: 402, scanUv: 281, enter: 232, register: 150, firstOrder: 71, convRate: 0.253 },
+  // ★ S1：**同一商家的第二家店**。此前看板一行一主体，这种行根本不存在，
+  //   于是「分店之间分得开吗」在 mock 上永远验不到 —— 而那正是这次改动的全部意义。
+  //   转化率明显低于主店：多门店商家看板上要能一眼看出是哪家店在拖后腿
+  { merchantNo: "M903", merchantName: "邻家便利", storeNo: "ST903-2", storeName: "邻家便利·南门店", scan: 268, scanUv: 191, enter: 143, register: 47, firstOrder: 12, convRate: 0.063 },
 ];
 
 /**
@@ -69,5 +81,67 @@ export const storeTemplates: import("@/lib/types").StoreTemplate[] = [
     ],
     enabled: false, isDefault: false, usedByCount: 0,
     updatedAt: "2026-07-28T09:00:00Z", updatedBy: "ops01",
+  },
+];
+
+/**
+ * 门店档案（P-11.2.1）。
+ *
+ * ⚠️ `storeNo` 与 `name` **逐条对齐 `merchant.ts` 的 `storeModes` 与
+ * `merchantStaff[].roles`** —— 那两处早就有 ST001/ST002，另起一套编号的话
+ * 「门店档案」和「准入与保证金」会各说各的门店，而两边都自洽、谁也不报错。
+ *
+ * 门店名与主体名**故意不同**（张记粮油 vs 阿姨家的菜摊）：一个主体可以开几家
+ * 挂别的招牌的店，列表里门店名与商家名是两列，共用一个名字就验不出这一点。
+ *
+ * 四条样本覆盖运营真的会遇到的四种状态：
+ *   · ST001 默认店 + 自营 + 无专属收款号（走主体默认号）
+ *   · ST002 第三方 + 有专属收款号
+ *   · ST003 **平台强制下线** —— 「解除下线」这个动作唯一能验到的样本
+ *   · ST004 商家自助停用 —— 用来验「READONLY 解不了」（那是商家自己关的）
+ */
+export const stores: import("@/lib/types").StoreGovern[] = [
+  {
+    storeNo: "ST001", name: "张记粮油·文三路店", address: "杭州市西湖区文三路 122 号",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊",
+    isDefault: true, status: "ACTIVE", businessMode: "SELF_OPERATED",
+    // null = 用主体默认收款号，**不是「没配」** —— 页面要显示成前者
+    payMerchantNo: null,
+    // 有评价的那家：rating 是 ×10 的整数
+    rating: 47, ratingCount: 128,
+    announcement: "每日 6 点到货，蔬菜当日售完不留隔夜。", openHours: "06:00-21:00",
+    deliveryRadiusM: 2000, deliveryMinOrderMinor: 1500, deliveryFeeMinor: 300,
+    deliveryFreeThresholdMinor: 4900,
+  },
+  {
+    storeNo: "ST002", name: "张记粮油·古荡店", address: "杭州市西湖区古荡新村 3 幢",
+    merchantNo: "M901", merchantName: "阿姨家的菜摊",
+    isDefault: false, status: "ACTIVE", businessMode: "THIRD_PARTY",
+    payMerchantNo: "PM_M901_DEFAULT",
+    rating: 42, ratingCount: 31,
+    announcement: "", openHours: "07:00-20:30",
+    deliveryRadiusM: 1500, deliveryMinOrderMinor: 2000, deliveryFeeMinor: 400,
+    deliveryFreeThresholdMinor: 5900,
+  },
+  {
+    storeNo: "ST003", name: "夜市烧烤·凤起路店", address: "杭州市下城区凤起路 88 号",
+    merchantNo: "M906", merchantName: "夜市烧烤（停业整改）",
+    isDefault: true, status: "SUSPENDED", businessMode: "THIRD_PARTY",
+    payMerchantNo: "PM_M906_DEFAULT",
+    // ★ 新店：ratingCount = 0 是「暂无评价」，不是 0 分 —— 页面按条数判空
+    rating: null, ratingCount: 0,
+    announcement: "", openHours: "17:00-02:00",
+    deliveryRadiusM: 3000, deliveryMinOrderMinor: 3000, deliveryFeeMinor: 500,
+    deliveryFreeThresholdMinor: 9900,
+  },
+  {
+    storeNo: "ST004", name: "邻家便利·阳光里店", address: "杭州市拱墅区阳光里 1 号商铺",
+    merchantNo: "M903", merchantName: "邻家便利",
+    isDefault: true, status: "READONLY", businessMode: "THIRD_PARTY",
+    payMerchantNo: null,
+    rating: 39, ratingCount: 7,
+    announcement: "店主外出，暂停接单三天。", openHours: "08:00-22:00",
+    deliveryRadiusM: 1200, deliveryMinOrderMinor: 0, deliveryFeeMinor: 0,
+    deliveryFreeThresholdMinor: 0,
   },
 ];

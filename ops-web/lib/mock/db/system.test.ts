@@ -59,8 +59,10 @@ describe("市场与汇率（P-17.1.3）", () => {
   });
 
   it("合法汇率落库", async () => {
-    const m = await systemMock.saveMarketRate("SG", 5.4, true);
-    expect(m.rate).toBe(5.4);
+    // 保存不再回传实体（页面本来就不读返回体，靠 invalidate 重取）——
+    // 所以断言落库，而不是断言返回值
+    await systemMock.saveMarketRate("SG", 5.4, true);
+    expect((await systemMock.listMarkets()).find((x) => x.code === "SG")?.rate).toBe(5.4);
   });
 });
 
@@ -88,7 +90,8 @@ describe("开关与灰度（P-17.1.5）", () => {
   });
 
   it("保存开关与比例", async () => {
-    const f = await systemMock.saveFeatureFlag("group_demand", false, 10);
-    expect(f).toMatchObject({ enabled: false, rolloutPercent: 10 });
+    await systemMock.saveFeatureFlag("group_demand", false, 10);
+    expect((await systemMock.listFeatureFlags()).find((x) => x.key === "group_demand"))
+      .toMatchObject({ enabled: false, rolloutPercent: 10 });
   });
 });

@@ -14,46 +14,264 @@ import { ensureDemoOrders } from "@/api/demo-orders";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { pickImages } from "@shared/ports/media";
-import type { MerchantSubject } from "@shared/types";
+import { SERVICE_SCOPE } from "@shared/utils/constants";
+import type { Community, MasterData, MerchantSubject, ServiceScope, QualificationItem } from "@shared/types";
+import { isPhone, notBlank } from "@shared/utils/validate";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
-const SUBJECTS: MerchantSubject[] = ["PERSONAL", "INDIVIDUAL_BIZ", "COMPANY"];
+/*
+ * 主体与行业都**从 /common/master-data 取**，不再是页面里的常量 ——
+ * 微信放开某个行业的小微白名单时不用发版。
+ * 主数据没回来之前用这份兜底：表单不能因为一个 GET 失败就打不开。
+ */
+const SUBJECTS: MerchantSubject[] = ["NATURAL_PERSON", "INDIVIDUAL", "ENTERPRISE"];
+const master = ref<MasterData | null>(null);
+const industries = computed(() => master.value?.industries ?? []);
+const subjectList = computed<MerchantSubject[]>(
+  () => master.value?.subjects.map((s) => s.subjectType) ?? SUBJECTS,
+);
+
+/**
+ * 当前行业允许的主体类型。
+ *
+ * **小微受行业白名单管控**（`industryGated`），其余主体不受。
+ * 不做这个联动的后果不是提示不友好，是**进件被拒** ——
+ * 而那时商家已经开完店、上完架，回头再改主体要重走一遍开户。
+ */
+const subjectAllowed = (s: MerchantSubject) => {
+  const meta = master.value?.subjects.find((x) => x.subjectType === s);
+  if (!meta?.industryGated) return true;
+  const ind = industries.value.find((i) => i.industry === form.value.industry);
+  // 还没选行业时不禁用：先禁再解释，人会以为这个选项坏了
+  return !ind || ind.microAllowed;
+};
+
+/*
+ * 档位**从主数据取**，与上面的行业、主体同一个理由 —— 这一行原先是写死的三档。
+ *
+ * 写死的后果不是「多一个选项」：一期自营模式关掉了 PLATFORM，而这里照样把
+ * 「全平台发货」摆出来，商家点下去得到「当前不支持这个经营范围」——
+ * 一个必被拒的选项，而他无从知道自己该选什么。2026-08-11 端到端实测撞到过。
+ *
+ * 主数据没取到时退到「仅本社区」一档：它是启用白名单里永远不会空的那一档
+ * （后台不允许全关），也是一期的主力形态。退到三档才是危险的 —— 那等于
+ * 在加载失败时把已知拒绝的选项重新摆回去。
+ */
+const scopes = computed<readonly ServiceScope[]>(
+  () => master.value?.serviceScopes ?? [SERVICE_SCOPE.COMMUNITY],
+);
 
 const form = ref({
   name: "",
-  subject: "PERSONAL" as MerchantSubject,
+  subject: "NATURAL_PERSON" as MerchantSubject,
   contactName: "",
   contactPhone: "",
   category: "",
   desc: "",
+  /** 行业：决定能不能以小微进件，也是 points_forced 的来源。此前根本没有这个字段 */
+  industry: "",
   asPickupPoint: true,
+  /*
+   * 服务范围**必须在申请时就填**。
+   *
+   * 此前这张表没有这两项，提交上去恒空 —— 本该由运营在审核时补，
+   * 而运营侧那条链还没接通，于是没有任何地方能填上它：
+   * 商家通过审核、商品上了架，**对谁都不可见**，而这个故障不报错。
+   */
+  serviceScope: SERVICE_SCOPE.COMMUNITY as ServiceScope,
+  communityNos: [] as string[],
 });
 const submitting = ref(false);
+const communities = ref<Community[]>([]);
+/**
+ * 小区列表**没加载出来**（区别于「加载成功但一个都没有」）。
+ *
+ * 两者在界面上都是一片空白，后果却相反：前者刷新可能就好，后者等也没用。
+ * 不分开的话，申请人对着空白只会反复点提交 —— 而「仅本社区」必须选一个小区，
+ * 提交永远过不去，他也永远不知道为什么。
+ */
+/** 草稿没取到。**与「这是第一次填」是两件事** —— 后者才该是空表单 */
+const draftFailed = ref(false);
+
+/**
+ * 这张申请单是**运营代填**的，而本人当时并不知道（三期）。
+ *
+ * <p>运营代商家进件时会按手机号建出账号 —— 不建的话审核通过时没有 owner 可挂。
+ * 代价是这个人第一次进来会发现自己名下凭空有一家店。**这一屏就是为了不让那件事发生**：
+ * 告诉他资料是谁在什么时候录的，并请他自己补勾协议（运营不能替他勾）。
+ */
+const onBehalf = ref(false);
+/** 本人同意协议的时刻（毫秒）；0 = 还没勾 */
+const agreedAt = ref(0);
+const agreeing = ref(false);
+
+async function acceptAgreement() {
+  if (agreeing.value) return;
+  agreeing.value = true;
+  try {
+    // 回写服务端返回的那个时刻，**不用 Date.now()** ——
+    // 已经勾过时后端返回的是原来那一次，端上自己造一个数会盖掉它
+    agreedAt.value = await api.mAcceptAgreement();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    agreeing.value = false;
+  }
+}
+const communitiesFailed = ref(false);
+
+function pickScope(v: ServiceScope) {
+  form.value.serviceScope = v;
+}
+
+function toggleCommunity(communityNo: string) {
+  const list = form.value.communityNos;
+  const i = list.indexOf(communityNo);
+  if (i >= 0) list.splice(i, 1);
+  else list.push(communityNo);
+}
 
 const status = computed(() => merchant.profile?.status ?? "NONE");
-/** 个人主体不需要营业执照，也就不需要商户号 */
-const needLicense = computed(() => form.value.subject !== "PERSONAL");
+/**
+ * 要不要营业执照 —— **从主数据取，不在端上写死取值**。
+ *
+ * 这一行原先是 `subject !== "MICRO"`。权威在 `sys_legal_form.need_license`，
+ * 而取值在 V87 就真的改了（MICRO → NATURAL_PERSON）—— 当初若写死取值，
+ * 那天会**静默失配**：
+ * 不报错，只是所有人都被要求传执照，或者所有人都不被要求。
+ *
+ * 取不到主数据时按 true（要执照）：宁可多要一次，也不要放进一个本该有照却没照的商家。
+ */
+const needLicense = computed(() => {
+  const meta = master.value?.subjects.find((x) => x.subjectType === form.value.subject);
+  return meta ? meta.needLicense : true;
+});
 const settleType = computed(() =>
-  needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_OPENID",
+  needLicense.value ? "settleMERCHANT_ID" : "settlePERSONAL_BANK_CARD",
 );
-const canSubmit = computed(
-  () => !!form.value.name && !!form.value.contactName && /^\d{11}$/.test(form.value.contactPhone),
+/** 「仅本社区」却一个小区都没选 = 上架后对谁都不可见，所以它也是提交的前置 */
+const scopeReady = computed(
+  () => form.value.serviceScope !== SERVICE_SCOPE.COMMUNITY || form.value.communityNos.length > 0,
+);
+/**
+ * 还差哪几项 —— **按页面从上到下的顺序**，因为他要照着这个顺序回去找。
+ *
+ * <p>此前这里只有一个布尔，点灰按钮弹一句「请把必填项填完」：
+ * 一屏十来个字段，他得自己一个个回头看。而建品页早就做到了
+ * 「待填写：价格（1 斤）」—— 同一个 app 两套标准，
+ * 而入驻是新商家第一次用，最不该在这儿让他猜。
+ */
+const missingFields = computed(() => {
+  const out: string[] = [];
+  if (!notBlank(form.value.name)) out.push(String(t("apply.name")));
+  if (!notBlank(form.value.contactName)) out.push(String(t("apply.contact")));
+  // `!!x` 会把 `"   "` 当成填了；`/^\d{11}$/` 会把 `00000000000` 当成手机号
+  if (!isPhone(form.value.contactPhone)) out.push(String(t("apply.phone")));
+  if (!scopeReady.value) out.push(String(t("store.scopeCommunities")));
+  return out;
+});
+
+const canSubmit = computed(() => missingFields.value.length === 0);
+
+/*
+ * **三段各自「填完了没有」。**
+ *
+ * <p>这一页有十来个字段、四张卡，而卡上没有一个字说明它在回答什么问题 ——
+ * 于是它读起来是一条看不到头的长队。此前唯一的进度信号是提交键的灰不灰，
+ * 而那要滚到最底下才看得到。
+ *
+ * <p>不改成分步向导：那要拆表单、拆校验、拆提交，而这条链路正在线上跑着。
+ * 加三个小标题 + 一个对勾就够回答「还剩多少」—— 判据全部复用已有的那几个，
+ * **不另立一份**（两份判据迟早会打架，而打架的表现是「明明填完了却交不了」）。
+ */
+const sec1Done = computed(
+  () => notBlank(form.value.name) && notBlank(form.value.contactName) && isPhone(form.value.contactPhone),
+);
+const sec2Done = computed(() => scopeReady.value);
+const sec3Done = computed(() => !licenseMissing.value);
+const secDoneCount = computed(
+  () => [sec1Done.value, sec2Done.value, sec3Done.value].filter(Boolean).length,
 );
 
-/** 已上传的资质图（个体户/企业必需，个人免） */
+/** 已上传的资质图（旧字段，仍然传 —— 后端两个都收，存量申请单靠它回看） */
 const licenses = ref<string[]>([]);
 const uploading = ref(false);
 
-onShow(async () => {
-  // **不拿 profile.phone 预填**：那是脱敏后的登录号（138****8000），
-  // 填进去看着像已填好，实际过不了 11 位校验，人只会盯着一个"填了的"框发愣。
-  // 联系号码本来也不一定等于登录号 —— 店主登录，留的是店里座机是常事。
+/**
+ * **结构化资质**：只有带类型/证号/有效期的这一份，审核通过时才转得进
+ * `mch_qualification` —— 而上架的两个闸门（资质过期、类目授权）读的就是那张表。
+ *
+ * 光传图片 URL 填不出那些列，所以此前商家传的执照停在申请单里，两个闸门从不触发。
+ */
+// 直接用契约类型，不在端上另造一个 —— 另造的那个迟早与契约漂移，而漂移不报错
+const qualItems = ref<QualificationItem[]>([]);
+/** 长期有效 —— 勾上时 expireAt 传 null。**不要用 0 或一个很大的数字冒充**：
+ *  过期扫描会把前者当成已过期、后者当成永不过期，两种都错且都不报错 */
+const foreverFlags = ref<boolean[]>([]);
+
+function addQual(type: QualificationItem["type"]) {
+  qualItems.value.push({ type, code: "", imageUrl: "", expireAt: null });
+  foreverFlags.value.push(true);
+}
+function removeQual(i: number) {
+  qualItems.value.splice(i, 1);
+  foreverFlags.value.splice(i, 1);
+}
+/** 提交前把界面状态折成后端要的形状；勾了长期有效就抹掉日期 */
+function toPayload(): QualificationItem[] {
+  return qualItems.value
+    .filter((q) => q.type && q.imageUrl)
+    .map((q, i) => ({ ...q, expireAt: foreverFlags.value[i] ? null : q.expireAt }));
+}
+/** 缺营业执照 —— 需要执照的档位不能提交 */
+const licenseMissing = computed(
+  () => needLicense.value && !qualItems.value.some((q) => q.type === "BUSINESS_LICENSE" && q.imageUrl),
+);
+
+/**
+ * 他已经在营业了 —— 这一趟是「再加一张证照」，不是第一次开店。
+ *
+ * <p>判据用主体状态而不是「有没有申请单」：驳回后重提也没有申请单，
+ * 但那仍然是第一次开店的那条路。
+ */
+const isMore = computed(() => merchant.profile?.status === "ACTIVE");
+
+// 抽成具名函数：草稿没取到那一行要能重试，而 `@retry` 叫不到匿名箭头
+async function load() {
+  // **不拿 profile.phone 预填**：联系号码不一定等于登录号 —— 店主登录，留的是店里座机是常事。
+  // （profile.phone 现在是完整号了，2026-09-22 起本人不脱敏；要预填的话已经可以做。）
   // 驳回后回填上次填过的内容 —— 驳回往往只是缺一张执照，
   // 让人从头重填一遍是把「补交」变成「重来」
-  const draft = await api.mApplyDraft().catch(() => null);
+  // 可选小区与主数据先取：驳回回填时要按它们显示已选中的项与可选主体
+  communities.value = await api.mCommunities().catch(() => {
+    communitiesFailed.value = true;
+    return [];
+  });
+  master.value = await api.mMasterData().catch(() => null);
+
+  /*
+   * **草稿不兜底**。兜成 null 之后下面那句 `if (!draft) return` 悄悄退出，
+   * 留下一张空表单 —— 而上面那句注释写的正是这件事：
+   * 「驳回往往只是缺一张执照，让人从头重填一遍是把『补交』变成『重来』」。
+   * 兜底造成的恰恰是它警告的后果，而且不出声。
+   */
+  let draft;
+  try {
+    draft = await api.mApplyDraft();
+    draftFailed.value = false;
+  } catch {
+    draftFailed.value = true;
+    return;
+  }
   if (!draft) return;
+  /*
+   * 代填与协议（三期）。**从申请单上读，不从本地推**：
+   * 「这张单是不是别人替我填的」只有后端答得出，端上没有任何别的线索。
+   */
+  onBehalf.value = draft.onBehalf === true;
+  agreedAt.value = draft.agreedAt ?? 0;
   form.value = {
     name: draft.name,
     subject: draft.subject,
@@ -61,15 +279,34 @@ onShow(async () => {
     contactPhone: draft.contactPhone,
     category: draft.category,
     desc: draft.desc,
+    industry: draft.industry ?? "",
     // 契约里这几项是选填（分账主体属于独立开户流程，ADR-002），
     // 但 B 端表单确实收，草稿回显时给默认值
     asPickupPoint: draft.asPickupPoint ?? false,
+    serviceScope: draft.serviceScope ?? SERVICE_SCOPE.COMMUNITY,
+    communityNos: [...(draft.communityNos ?? [])],
   };
   licenses.value = [...(draft.licenses ?? [])];
-});
+
+  /*
+   * **结构化资质也要回填**（V79）。
+   *
+   * 此前只回填了 `licenses` —— 那只有图片 URL。证件类型、编号、有效期三项全丢，
+   * 商家重提时得逐格再填一遍，而这正是上面那段注释想避免的：
+   * 「让人从头重填一遍是把补交变成重来」。后端一直在发 `qualificationItems`。
+   *
+   * `foreverFlags` 由 expireAt 推出：null = 长期有效（见 QualificationItem 的注释，
+   * 不要用 0 或很大的数字冒充）。
+   */
+  qualItems.value = (draft.qualificationItems ?? []).map((q) => ({ ...q }));
+  foreverFlags.value = qualItems.value.map((q) => q.expireAt == null);
+}
+
+onShow(load);
 
 /** 上传资质。缺它正是个体户/企业被驳回的主因，所以入口要显眼 */
-async function addLicense() {
+/** @param idx 传入下标 = 上传到该条结构化资质；不传 = 旧的图片数组（两者并存） */
+async function addLicense(idx?: number) {
   if (uploading.value) return;
   let picked;
   try {
@@ -82,7 +319,13 @@ async function addLicense() {
   uploading.value = true;
   try {
     const { url } = await api.mUploadImage(img.tempPath);
-    licenses.value.push(url);
+    if (idx === undefined) {
+      licenses.value.push(url);
+    } else {
+      qualItems.value[idx]!.imageUrl = url;
+      // 旧字段同步塞一份：审核台与存量逻辑还在读它
+      licenses.value.push(url);
+    }
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -91,8 +334,19 @@ async function addLicense() {
 }
 
 async function submit() {
+  if (!scopeReady.value) {
+    // 单独给这条提示：它与「必填项没填」不是一回事，而后果比必填项更严重
+    uni.showToast({ title: t("store.scopeNeedCommunity"), icon: "none" });
+    return;
+  }
+  if (licenseMissing.value) {
+    // 单独提示：与「必填项没填」不是一回事 —— 后端也会拒，但在这里说清楚缺的是哪张证
+    uni.showToast({ title: t("apply.licenseRequired"), icon: "none" });
+    return;
+  }
   if (!canSubmit.value) {
-    uni.showToast({ title: t("apply.required"), icon: "none" });
+    // 指名道姓，别让他自己在一屏字段里找
+    uni.showToast({ title: t("apply.requiredList", { s: missingFields.value.join("、") }), icon: "none" });
     return;
   }
   if (submitting.value) return;
@@ -101,15 +355,21 @@ async function submit() {
     const profile = await api.mApply({
       ...form.value,
       licenses: licenses.value,
-      settleAccountType: needLicense.value ? "MERCHANT_ID" : "PERSONAL_OPENID",
+      qualificationItems: toPayload(),
+      settleAccountType: needLicense.value ? "MERCHANT_ID" : "PERSONAL_BANK_CARD",
     });
     merchant.profile = profile;
 
-    // **被驳回就不要说「已提交」也不要跳走** —— 提交了但没过，
-    // 跳到工作台看到「还没有开店」只会让人以为系统坏了。
-    // 留在原页，驳回原因就在上方，改完再交。
+    // **没过审就不要跳走** —— 工作台的空态只会判断「有没有生效的店」（isActive），
+    // APPLYING 和从没申请过在那边长得一模一样，跳过去看到「还没有开店」
+    // 会让人以为提交失败了，回头再交一次。留在原页，用上面的状态卡说清楚。
     if (profile.status === "REJECTED") {
       uni.showToast({ title: profile.rejectReason || t("apply.rejectFallback"), icon: "none" });
+      scrollToTop();
+      return;
+    }
+    if (profile.status === "APPLYING") {
+      uni.showToast({ title: t("apply.submitted"), icon: "none" });
       scrollToTop();
       return;
     }
@@ -130,51 +390,125 @@ async function submit() {
 </script>
 
 <template>
-  <sh-scaffold title-key="apply.title">
+  <sh-scaffold :title-key="isMore ? 'apply.titleMore' : 'apply.title'">
+    <!--
+      **同一张表服务两种人，开场白不能只写给其中一种。**
+
+      <p>第一次开店的人，与已经在营业、来「再加一张证照」的人
+      （证照与账户页 → 新增一张证照，走的就是这条路）看到的是同一页。
+      而此前页首那句「个人也可以先开张 —— 做起来之后平台帮你代办个体工商户」
+      是写给前者的：后者读到它，第一反应是「我已经有店了，这是要我重新注册？
+      会不会把现在的店覆盖掉？」—— 而这一页没有任何地方回答这个问题。
+    -->
     <view class="head">
-      <text class="sh-h1">{{ $t("apply.title") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.hint") }}</text>
+      <text class="txt-display">{{ isMore ? $t("apply.titleMore") : $t("apply.title") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ isMore ? $t("apply.hintMore") : $t("apply.hint") }}</text>
+      <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.secProgress", { n: secDoneCount }) }}</text>
+    </view>
+
+    <!-- 上次填的没取到。**摆在最上面**：下面那张表看起来是空的，
+         而空表在这一页的意思是「第一次填」—— 商家会从头重来一遍，
+         那正是 `mApplyDraft` 那段注释警告的事。 -->
+    <view v-if="draftFailed" class="sh-card status">
+      <sh-empty line failed @retry="load"></sh-empty>
+    </view>
+
+    <!--
+      ★ **代填告知**（三期）。摆在所有状态块之前，因为它回答的是更靠前的一个问题：
+      「我怎么会有一家店？」
+
+      运营代商家进件时会按手机号把账号建出来 —— 不建的话审核通过时没有 owner 可挂。
+      于是这个人第一次进来时名下已经有一张待审的单，而他从没填过任何东西。
+      不说清楚的话，他要么以为被盗用了，要么以为自己忘了。
+
+      协议那一勾**必须由他自己点**：运营代填时后端一律留空，
+      而这里是唯一能把它填上的地方。
+    -->
+    <view v-if="onBehalf" class="sh-card onbehalf">
+      <text class="txt-title">{{ $t("apply.onBehalfTitle") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.onBehalfHint") }}</text>
+      <view v-if="!agreedAt" class="sh-mt-sm">
+        <text class="txt-body blk">{{ $t("apply.agreementAsk") }}</text>
+        <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.agreementWhy") }}</text>
+        <text class="sh-btn sh-mt-sm" @tap="acceptAgreement">
+          {{ agreeing ? $t("common.loading") : $t("apply.agreementAccept") }}
+        </text>
+      </view>
+      <text v-else class="txt-caption sh-muted blk sh-mt-sm">{{ $t("apply.agreementDone") }}</text>
     </view>
 
     <!-- 审核中/驳回：不重复渲染整张表，先把状态说清楚 -->
     <view v-if="status === 'APPLYING'" class="sh-card status">
-      <text class="sh-h2">{{ $t("apply.statusAPPLYING") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.statusAPPLYINGHint") }}</text>
+      <text class="txt-title">{{ $t("apply.statusAPPLYING") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.statusAPPLYINGHint") }}</text>
     </view>
 
     <!-- 驳回：**必须说清楚为什么** —— 只显示「已驳回」等于让人猜，
          下面的表单已回填上次内容，改缺的那一项再交即可 -->
     <view v-if="status === 'REJECTED'" class="sh-card rejected">
-      <text class="sh-h2">{{ $t("apply.statusREJECTED") }}</text>
-      <text class="reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
-      <text class="sh-muted mt">{{ $t("apply.rejectedHint") }}</text>
+      <text class="txt-title">{{ $t("apply.statusREJECTED") }}</text>
+      <text class="txt-body reason">{{ merchant.profile?.rejectReason || $t("apply.rejectFallback") }}</text>
+      <text class="sh-muted sh-mt-xs blk">{{ $t("apply.rejectedHint") }}</text>
     </view>
 
     <view class="sh-card">
+      <sh-section :title="String($t('apply.sec1'))">
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec1Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
+      </sh-section>
+      <!--
+        行业排在主体之前：**它决定主体能不能选小微**（微信白名单按行业给）。
+        顺序反了的话，人先挑了小微再选一个不允许小微的行业，
+        要么被无声改掉选择，要么提交后才被拒。
+      -->
+      <view class="field">
+        <text class="field__label">{{ $t("apply.industry") }}</text>
+        <view class="chips sh-wrap">
+          <text
+            v-for="i in industries"
+            :key="i.industry"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': form.industry === i.industry }"
+            @tap="form.industry = i.industry"
+          >
+            {{ i.name }}
+          </text>
+        </view>
+        <text class="sh-hint">{{ $t("apply.industryHint") }}</text>
+      </view>
+
       <view class="field">
         <text class="field__label">{{ $t("apply.subject") }}</text>
-        <view class="chips">
+        <view class="chips sh-wrap">
           <text
-            v-for="s in SUBJECTS"
+            v-for="s in subjectList"
             :key="s"
             class="sh-chip"
-            :class="{ 'sh-chip--primary': form.subject === s }"
-            @tap="form.subject = s"
+            :class="{
+              'sh-chip--primary': form.subject === s,
+              'is-blocked': !subjectAllowed(s),
+            }"
+            @tap="subjectAllowed(s) && (form.subject = s)"
           >
             {{ $t(`apply.subject${s}`) }}
           </text>
         </view>
-        <text class="hint">{{ $t("apply.subjectHint") }}</text>
+        <!-- 禁用要给出理由：光变灰会让人以为是 bug，然后去反复点它 -->
+        <text v-if="!subjectAllowed('NATURAL_PERSON')" class="txt-caption warn">
+          {{ $t("apply.microBlocked") }}
+        </text>
+        <text class="sh-hint">{{ $t("apply.subjectHint") }}</text>
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.name") }}</text>
-        <input v-model="form.name" class="field__input" placeholder="张记粮油" />
+        <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('apply.namePh')" />
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.contact") }}</text>
-        <input v-model="form.contactName" class="field__input" placeholder="张老板" />
+        <input maxlength="64" v-model="form.contactName" class="field__input" :placeholder="$t('apply.contactPh')" />
       </view>
 
       <view class="field">
@@ -188,52 +522,167 @@ async function submit() {
         />
       </view>
 
+      <!--
+        **这一格是「他自己的说法」，不是审批结果。**
+
+        <p>库里是两列并存（MchEntityApply）：`category` 是商家写的（「食品」），
+        `categoryCodes` 是运营审核时批的权威码 —— 注释里写着为什么不合成一列：
+        「追溯要的恰恰是这两者的差：他说卖食品，我们批的是预包装食品」。
+
+        <p>问题出在**两处在商家眼里都叫「类目」**：他在这里填了「粮油副食」，
+        会以为经营范围就此定了；而真正决定他能上架什么的是运营批的那一套，
+        他要到「资质证照」页才看得见。等到上架被类目授权拦下时，
+        他记得自己「填过类目」—— 那通电话就是这么来的。
+      -->
       <view class="field">
         <text class="field__label">{{ $t("apply.category") }}</text>
-        <input v-model="form.category" class="field__input" :placeholder="$t('apply.categoryPh')" />
+        <input maxlength="64" v-model="form.category" class="field__input" :placeholder="$t('apply.categoryPh')" />
+        <text class="sh-hint">{{ $t("apply.categoryHint") }}</text>
       </view>
 
       <view class="field">
         <text class="field__label">{{ $t("apply.desc") }}</text>
-        <input v-model="form.desc" class="field__input" placeholder="街角三十年老店" />
+        <input maxlength="255" v-model="form.desc" class="field__input" :placeholder="$t('apply.descPh')" />
+      </view>
+    </view>
+
+    <!--
+      服务范围：决定这家店的货在 C 端能被谁看到。
+      不是展示问题 —— 选大了会卖到送不到的地方（下单后提不了货），
+      选小了整片小区都搜不到这家店。所以给后果说明，不只给三个单选。
+    -->
+    <view class="sh-card sh-mt-sm">
+      <sh-section :title="String($t('apply.sec2'))">
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec2Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
+      </sh-section>
+      <text class="txt-title sh-mt-xs">{{ $t("store.scope") }}</text>
+      <text class="sh-hint">{{ $t("apply.scopeHint") }}</text>
+
+      <sh-option
+        v-for="sc in scopes"
+        :key="sc"
+        class="scope sh-row"
+        :selected="form.serviceScope === sc"
+        @tap="pickScope(sc)"
+      >
+        <view class="sh-fill">
+          <text class="txt-strong scope__name">{{ $t(`serviceScope.${sc}`) }}</text>
+          <text class="txt-caption scope__desc">{{ $t(`store.scopeDesc.${sc}`) }}</text>
+        </view>
+        <sh-icon v-if="form.serviceScope === sc" class="scope__tick" name="check"
+          :size="30" color="var(--sh-primary-text)"></sh-icon>
+      </sh-option>
+
+      <!-- 只有「仅本社区」才需要选小区，其余两档选了也用不上 -->
+      <view v-if="form.serviceScope === SERVICE_SCOPE.COMMUNITY" class="cms">
+        <text class="field__label">{{ $t("store.scopeCommunities") }}</text>
+        <view class="cms__list sh-wrap">
+          <text
+            v-for="c in communities"
+            :key="c.communityNo"
+            class="sh-chip"
+            :class="{ 'sh-chip--solid': form.communityNos.includes(c.communityNo) }"
+            @tap="toggleCommunity(c.communityNo)"
+          >
+            {{ c.name }}
+          </text>
+        </view>
+        <!-- 加载失败与「真的一个小区都没有」要分开说 -->
+        <text v-if="communitiesFailed" class="txt-caption warn">
+          {{ $t("store.communitiesFailed") }}
+        </text>
+        <view v-else-if="!communities.length">
+          <text class="txt-caption warn">{{ $t("store.communitiesEmpty") }}</text>
+          <text class="sh-hint txt-quiet">{{ $t("store.communitiesEmptyTip") }}</text>
+        </view>
+        <text v-else-if="!form.communityNos.length" class="txt-caption warn">
+          {{ $t("store.scopeNeedCommunity") }}
+        </text>
       </view>
     </view>
 
     <!-- 自提点：小店既是供给方也是取货点（ADR-005 type=STORE） -->
-    <view class="sh-card mt-card">
-      <view class="switch-row" @tap="form.asPickupPoint = !form.asPickupPoint">
+    <view class="sh-card sh-mt-sm">
+      <view class="switch-row sh-row" @tap="form.asPickupPoint = !form.asPickupPoint">
         <view class="switch-row__text">
-          <text class="sh-h2">{{ $t("apply.asPickup") }}</text>
-          <text class="hint">{{ $t("apply.asPickupHint") }}</text>
+          <text class="txt-title">{{ $t("apply.asPickup") }}</text>
+          <text class="sh-hint">{{ $t("apply.asPickupHint") }}</text>
         </view>
-        <view class="toggle" :class="{ 'is-on': form.asPickupPoint }">
-          <view class="toggle__dot" />
-        </view>
+        <sh-switch :model-value="form.asPickupPoint"></sh-switch>
       </view>
     </view>
 
-    <view class="sh-card mt-card">
-      <text class="field__label">{{ $t("apply.settle") }}</text>
-      <text class="sh-h2">{{ $t(`apply.${settleType}`) }}</text>
-      <text class="hint">{{ $t("apply.settleHint") }}</text>
-      <view v-if="needLicense" class="license">
+    <view class="sh-card sh-mt-sm">
+      <sh-section :title="String($t('apply.sec3'))">
+        <!-- ✓ 用图标不用字符：字符在三端字体下大小与基线各不相同（守卫盯着这条） -->
+        <sh-icon v-if="sec3Done" name="check" :size="28" color="var(--sh-success)" />
+        <text v-else class="txt-caption sh-muted">{{ $t("apply.secTodo") }}</text>
+      </sh-section>
+      <text class="field__label sh-mt-xs">{{ $t("apply.settle") }}</text>
+      <text class="txt-title">{{ $t(`apply.${settleType}`) }}</text>
+      <text class="sh-hint">{{ $t("apply.settleHint") }}</text>
+      <!-- 免执照档位：整块隐藏，换一句说明。对自然人要执照本来就是错的 -->
+      <view v-if="!needLicense" class="license">
+        <text class="sh-hint">{{ $t("apply.noLicenseNeeded") }}</text>
+      </view>
+
+      <view v-else class="license">
         <text class="field__label">{{ $t("apply.licenses") }}</text>
-        <text class="hint">{{ $t("apply.licensesHint") }}</text>
-        <view class="shots">
-          <image
-            v-for="(url, i) in licenses"
-            :key="i"
-            :src="url"
-            class="shot"
-            mode="aspectFill"
-          />
-          <view class="shot shot--add" @tap="addLicense">
-            <text>{{ uploading ? $t("apply.uploading") : "＋" }}</text>
+        <text class="sh-hint">{{ $t("apply.licensesHint") }}</text>
+
+        <view v-for="(q, i) in qualItems" :key="i" class="qual">
+          <view class="qual__head sh-row sh-row--between">
+            <text class="txt-bold">{{ $t(`apply.qual${q.type}`) }}</text>
+            <text class="sh-link sh-link--quiet sh-hit" @tap="removeQual(i)">{{ $t("apply.qualRemove") }}</text>
           </view>
+          <input
+            maxlength="64"
+            v-model="q.code"
+            class="field__input"
+            :placeholder="$t('apply.qualCode')"
+          />
+          <view class="qual__row sh-row">
+            <view class="qual__forever sh-row" @tap="foreverFlags[i] = !foreverFlags[i]">
+              <sh-check :model-value="foreverFlags[i]"></sh-check>
+              <text>{{ $t("apply.qualForever") }}</text>
+            </view>
+            <input
+              maxlength="10"
+              v-if="!foreverFlags[i]"
+              class="field__input qual__date"
+              type="number"
+              :value="q.expireAt ?? ''"
+              :placeholder="$t('apply.qualExpire')"
+              @input="q.expireAt = Number(($event as any).detail.value) || null"
+            />
+          </view>
+          <sh-uploader
+            :list="q.imageUrl ? [q.imageUrl] : []"
+            :w="140"
+            :uploading="uploading"
+            @add="addLicense(i)"
+            @tap-item="addLicense(i)"
+          ></sh-uploader>
         </view>
+
+        <view class="qual__add">
+          <sh-add small :text="String($t('apply.qualBUSINESS_LICENSE'))" @tap="addQual('BUSINESS_LICENSE')"></sh-add>
+          <sh-add small :text="String($t('apply.qualFOOD_PERMIT'))" @tap="addQual('FOOD_PERMIT')"></sh-add>
+        </view>
+        <text v-if="licenseMissing" class="txt-caption warn">{{ $t("apply.licenseRequired") }}</text>
       </view>
     </view>
 
+    <!--
+      **差什么写在按钮上方，不等他点了才说。**
+      灰按钮 + 一句 toast 的组合要他先点一次才知道差什么，
+      而这一屏有十来个字段 —— 那一次点击换来的信息，本来就该一直在那儿。
+    -->
+    <text v-if="!canSubmit" class="txt-caption todo">
+      {{ $t("apply.requiredList", { s: missingFields.join("、") }) }}
+    </text>
     <view class="sh-btn submit" :class="{ 'sh-btn--muted': !canSubmit }" @tap="submit">
       {{ status === "REJECTED" ? $t("apply.resubmit") : $t("apply.submit") }}
     </view>
@@ -241,103 +690,101 @@ async function submit() {
 </template>
 
 <style scoped>
+/* 这一段填完了 —— 只给一个对勾，不给整张卡换色：四张卡一起变色是灯光秀，不是进度 */
+/* 还差什么：贴在提交键上方，与建品页底部那行「待填写：…」同一个位置关系 */
+.todo {
+  display: block;
+  margin: 20rpx 8rpx 0;
+  color: var(--sh-warning);
+}
+
 .rejected {
-  margin-bottom: 24rpx;
   background: var(--sh-danger-tint);
+}
+/* 代填告知：用 warning 底而不是 danger —— 它不是出错了，是「有件事你得知道」 */
+.onbehalf {
+  background: var(--sh-warning-tint);
 }
 .reason {
   display: block;
   margin-top: 12rpx;
-  font-size: 26rpx;
   color: var(--sh-danger);
-  line-height: 1.6;
 }
-.shots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+/* 结构化资质：一条一块，与旧的「一排缩略图」区分开 —— 那个表达不出「哪张证」 */
+.qual {
   margin-top: 20rpx;
+  padding: 20rpx;
+  border: var(--sh-hairline);
+  border-radius: 16rpx;
 }
-.shot {
-  width: 140rpx;
-  height: 140rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-}
-.shot--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40rpx;
-  color: var(--sh-sub);
-}
+.qual__row { margin-top: 12rpx; }
+.qual__forever { gap: 8rpx; }
+.qual__date { flex: 1; }
+.qual__add { display: flex; gap: 24rpx; margin-top: 20rpx; }
 
 .head {
   padding: 32rpx 8rpx 28rpx;
 }
-.mt {
+.blk {
   display: block;
-  margin-top: 12rpx;
-}
-.mt-card {
-  margin-top: 24rpx;
 }
 .status {
-  margin-bottom: 24rpx;
   background: var(--sh-warning-tint);
 }
 .field + .field {
   margin-top: 20rpx;
 }
 .chips {
-  display: flex;
   gap: 16rpx;
-  flex-wrap: wrap;
 }
 .chips .sh-chip {
-  font-size: 26rpx;
-  padding: 14rpx 28rpx;
+  padding: 16rpx 28rpx;
 }
-.hint {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.5;
-}
+
 .switch-row {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
 .switch-row__text {
   flex: 1;
 }
-.toggle {
-  width: 88rpx;
-  height: 48rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  padding: 4rpx;
-  transition: background 0.2s ease;
-}
-.toggle.is-on {
-  background: var(--sh-primary);
-}
-.toggle__dot {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 9999px;
-  background: var(--sh-surface);
-  transition: transform 0.2s ease;
-}
-.toggle.is-on .toggle__dot {
-  transform: translateX(40rpx);
-}
 .license {
-  margin-top: 28rpx;
+  margin-top: 20rpx;
 }
-.submit {
-  margin-top: 40rpx;
+
+.sh-chip.is-blocked {
+  opacity: 0.4;
 }
+
+/* 服务范围选择器：与店铺设置页同一套观感 —— 同一件事在两处长得不一样会让人以为是两件事 */
+/* 形态（描边 / 圆角 / 选中底色）由 `sh-option` 给 —— `member-settings` 的范围
+   选择用的就是它，这里是同一件事漏收的一个。页面只留「名称与说明左、勾右」的排布。 */
+.scope {
+  gap: 20rpx;
+  margin-top: 16rpx;
+}
+
+.scope__name {
+  display: block;
+}
+.scope__desc {
+  display: block;
+  margin-top: 8rpx;
+}
+.scope__tick {
+  flex-shrink: 0;
+}
+.cms {
+  margin-top: 20rpx;
+}
+.cms__list {
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.warn {
+  display: block;
+  margin-top: 16rpx;
+  color: var(--sh-danger);
+}
+
 </style>

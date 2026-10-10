@@ -1,0 +1,19 @@
+{
+  "name": "虹选 · 好物",
+  "short_name": "虹选好物",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#E1251B",
+  "background_color": "#FFFFFF",
+  "display": "standalone"
+}

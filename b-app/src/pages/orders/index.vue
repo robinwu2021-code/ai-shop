@@ -1,34 +1,105 @@
 <script setup lang="ts">
 // 订单列表（B-11.4.1）。
 //
-// tab 按「我要做什么」分，不按订单状态字典分 —— 商家不关心 PAID/PREPARING 的区别，
+// tab 按「我要做什么」分，不按订单状态字典分 —— 商家不关心状态字典的细分，
 // 只关心「这单要不要我发货」。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
+import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
+import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
-import type { Order, OrderStatus } from "@shared/types";
+import type { Order } from "@shared/types";
+import {
+  DELIVERY_SHAPE,
+  fulfillmentsOf,
+  tabQuery,
+  type OrderTabSpec,
+} from "@shared/strategies/order-view";
+
+/** 要商家核销的履约：自提点、邻居家、到店核销。**靠履约方式判，不靠状态** */
+const PICKUP_LIKE = new Set<string>(
+  fulfillmentsOf(DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE),
+);
 
 const merchant = useMerchantStore();
+const { t } = useI18n();
 
 /** 状态色：要动手的用主色、售后用警示色、终态保持中性 —— 一眼能挑出「该我做的」 */
-function statusChip(status: OrderStatus): string {
-  if (status === "REFUNDING") return "sh-chip--warning";
-  if (status === "PAID" || status === "PREPARING" || status === "ARRIVED") return "sh-chip--primary";
+function statusChip(o: Order): string {
+  // 「该我做的」= 待履约，或已履约但还要我核销的（自提/到店核销）
+  // 待收款也是「该我做的」—— 而且是这一批里唯一一件不做就收不到钱的事
+  if (o.status === "WAIT_OFFLINE_PAY") return "sh-chip--primary";
+  if (o.status === "PAID") return "sh-chip--primary";
+  if (o.status === "FULFILLING" && PICKUP_LIKE.has(o.fulfillment)) return "sh-chip--primary";
   return "";
 }
 
-const TABS: { key: string; status?: OrderStatus; labelKey: string }[] = [
+/**
+ * 行上那句状态，**要连履约方式一起看**。
+ *
+ * `PAID` 的中文一律写成「待发货」时，一张自提单也会显示「待发货」——
+ * 店主会去找快递单号，而这单根本不发货：邻居自己来取。
+ * 工作台上早就是分开的（待发货 / 待自送 / 待核销），列表这里却只按状态拼 key。
+ *
+ * 只处理「还没交付」的两个状态，其余（已完成/已退款/待付款）与履约方式无关。
+ */
+function statusText(o: Order): string {
+  const f = o.fulfillment;
+  if (o.status === "PAID") {
+    if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.cell.toVerify");
+    if (f === FULFILLMENT.DELIVERY) return t("home.cell.toDeliver");
+    return t("order.statusPAID");
+  }
+  if (o.status === "FULFILLING") {
+    // 自送单在路上说「配送中」更准；自提/到店核销说「待核销」；快递才是「已发货」
+    if (f === FULFILLMENT.DELIVERY) return t("order.delivering");
+    if (PICKUP_LIKE.has(f)) return t("home.cell.toVerify");
+    return t("order.statusSHIPPED");
+  }
+  return t(`order.status${o.status}`);
+}
+
+/*
+ * 页签 = **谓词**（抽象状态 + 交付形态），不是状态值。
+ *
+ * 商家侧与买家侧看同一批单、分法不同：买家分「去取 / 等着」，
+ * 商家分「待发货 / 已发货 / 待核销」。**同一份状态支撑两种分法**，
+ * 正是因为状态不含履约 —— 此前 `ARRIVED`/`SHIPPED` 把商家的分法烧进了状态里。
+ */
+const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
   { key: "all", labelKey: "order.tabAll" },
+  /*
+   * 待收款单独一个页签，**排在待发货前面**。
+   *
+   * 不并进「待发货」：那一组的动作是「把货交出去」，这一组是「把钱收进来」，
+   * 而线下单在收到钱之前根本不该发货 —— 混在一起，店员会照着列表先发后收。
+   */
+  { key: "toReceive", status: "WAIT_OFFLINE_PAY", labelKey: "order.tabToReceive" },
   { key: "toShip", status: "PAID", labelKey: "order.tabToShip" },
-  { key: "shipped", status: "SHIPPED", labelKey: "order.tabShipped" },
-  { key: "toVerify", status: "ARRIVED", labelKey: "order.tabToVerify" },
+  {
+    key: "shipped",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SHIP_TO_BUYER, DELIVERY_SHAPE.SERVE_TO_BUYER],
+    labelKey: "order.tabShipped",
+  },
+  {
+    key: "toVerify",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE],
+    labelKey: "order.tabToVerify",
+  },
   { key: "done", status: "COMPLETED", labelKey: "order.tabDone" },
-  { key: "afterSale", status: "REFUNDING", labelKey: "order.tabAfterSale" },
+  // 售后不按订单状态筛 —— 它是另一张单，走 /biz/after-sale（见 load()）
+  // 而那张单要 `biz:aftersale`：这一页的门禁只有 `biz:order:view`，
+  // 店员与配送员进得来但点不开这个 tab。**跟着自己的权限走**，与工作台待办格子同一手法。
+  { key: "afterSale", labelKey: "order.tabAfterSale", perm: "biz:aftersale" },
 ];
+
+const TABS = computed(() => ALL_TABS.filter((t) => !t.perm || merchant.can(t.perm)));
 
 const tab = ref("all");
 const list = ref<Order[]>([]);
@@ -36,15 +107,34 @@ const loading = ref(false);
 
 const empty = computed(() => !loading.value && !list.value.length);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  if (!merchant.isActive) return;
+  if (!merchant.canOperate) return;
   loading.value = true;
   try {
-    const status = TABS.find((t) => t.key === tab.value)?.status;
-    const res = await api.mOrderList({ status, size: 50 });
-    list.value = res.records;
+    const scope = { size: 50 };
+    if (tab.value === "afterSale") {
+      const afterSales = await api.mAfterSaleList();
+      // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
+      const nos = new Set(afterSales.map((a) => a.subOrderNo));
+      const res = await api.mOrderList(scope);
+      list.value = res.records.filter((o) => nos.has(o.orderNo));
+    } else {
+      const spec = ALL_TABS.find((t) => t.key === tab.value);
+      const res = await api.mOrderList({ ...scope, ...(spec ? tabQuery(spec) : {}) });
+      list.value = res.records;
+    }
+    failed.value = false;
+  } catch {
+    // 此前只有 finally，请求挂了没人接：单子列表空着，而商家以为今天没单
+    failed.value = true;
   } finally {
     loading.value = false;
+    loaded.value = true;
   }
 }
 
@@ -57,41 +147,55 @@ function open(o: Order) {
   uni.navigateTo({ url: `${ROUTES.order}?orderNo=${o.orderNo}` });
 }
 
-onShow(load);
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：筛选条上那句「当前门店 / 全部门店」靠它判多店。
+   * 不拉的话 `stores` 是空的 → `multiStore` 为 false → **整条门店范围消失**，
+   * 而请求照样带着 X-Store-No：他看的是某一家店的单，界面上却没有一个字说是哪家。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="order.title" tab="orders">
+  <!-- 门店名缀在标题栏（「订单 · 福田店」），不占正文：切店只在工作台与「我的」 -->
+  <sh-scaffold
+    title-key="order.title"
+    tab="orders"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:order:view')"
+  >
     <sh-tabs
       :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
       :active="tab"
       @change="switchTab"
     ></sh-tabs>
 
-    <sh-empty v-if="empty" :text='$t("order.empty")'></sh-empty>
+    <sh-empty v-if="empty" :pending="!loaded" :failed="failed" @retry='load' :text='$t("order.empty")'></sh-empty>
 
-    <view v-for="o in list" :key="o.orderNo" class="sh-card row" @tap="open(o)">
-      <view class="row__head">
-        <text class="row__no sh-num">{{ o.orderNo }}</text>
+    <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
+      <view class="row__head sh-row sh-row--between">
+        <text class="txt-caption sh-num">{{ o.orderNo }}</text>
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
-        <text class="sh-chip" :class="statusChip(o.status)">
-          {{ $t(`order.status${o.status}`) }}
+        <text class="sh-chip" :class="statusChip(o)">
+          {{ statusText(o) }}
         </text>
       </view>
 
-      <view v-for="it in o.items" :key="it.skuNo" class="item">
-        <text class="item__cover">{{ it.cover }}</text>
-        <view class="item__main">
-          <text class="item__title">{{ it.title }}</text>
+      <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
+        <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
+        <view class="sh-fill">
+          <text class="txt-strong item__title">{{ it.title }}</text>
           <text class="sh-muted">{{ it.spec }} × {{ it.qty }}</text>
         </view>
       </view>
 
-      <view class="row__foot">
+      <view class="row__foot sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ datetime(o.createdAt) }}</text>
-        <text class="row__amount sh-num">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
+        <text class="txt-price sh-num">{{ money(o.amount.payableMinor, o.amount.currency) }}</text>
       </view>
     </view>
   </sh-scaffold>
@@ -100,24 +204,13 @@ onShow(load);
 <style scoped>
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
-.row {
-  margin-bottom: 14rpx;
-}
+
 .row__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 20rpx;
 }
-.row__no {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
+
 .item {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
-  margin-bottom: 16rpx;
 }
 .item__cover {
   font-size: 48rpx;
@@ -128,24 +221,18 @@ onShow(load);
   text-align: center;
   line-height: 76rpx;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
+
+/*
+ * 商品名是这张卡片的**标题**，要靠字重站住，不能只靠颜色。
+ * 此前它 26rpx/400 墨色，而紧挨着的规格与时间是 26rpx/400 灰色 ——
+ * 同号同重，只差一档灰度，于是整张卡片唯一「重」的东西是金额，
+ * 一屏列表扫下来看不出每单卖的是什么。墨色已经是最深的一档，
+ * 再往下压没有空间，能动的是字重与字号。
+ */
 .item__title {
   display: block;
-  font-size: 26rpx;
-  color: var(--sh-ink);
 }
 .row__foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin-top: 12rpx;
-}
-.row__amount {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
 }
 </style>

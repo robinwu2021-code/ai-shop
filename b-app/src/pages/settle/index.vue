@@ -10,152 +10,533 @@
 //      但必须分别列出来，否则店主看不懂钱去哪了。
 //
 // ⚠️ 费率与服务费口径未定（B9/B10），页面上明确标注，不装作已经定了。
-import { ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
 import { money } from "@shared/utils/money";
 import { monthDay } from "@shared/utils/datetime";
-import type { RateCard, SettleBill } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
+import type {
+  MerchantPointAccount,
+  MerchantPointsRecord,
+  RateCard,
+  SettleBill,
+} from "@shared/types";
 
+const { t } = useI18n();
+const merchant = useMerchantStore();
 const bills = ref<SettleBill[]>([]);
 const rate = ref<RateCard | null>(null);
+const allStores = ref(false);
+/**
+ * 本店积分：**发分服务费是商家唯一感知到的积分成本**，它是一笔真金白银的支出。
+ *
+ * 放在结算页而不是单开一页：与账单是同一个人在同一个场景下看的（「这个月我付了多少」）。
+ * 单开一页会让「钱」这件事在 B 端有两个入口，而它们本来就该一起看。
+ *
+ * 此前后端与契约都在，**没有任何一页调用它** —— 于是老板既看不到这笔费用，也关不掉它。
+ */
+const points = ref<MerchantPointAccount | null>(null);
+const togglingPoints = ref(false);
+/**
+ * 发分服务费明细（一单一条）。**点开才拉** ——
+ * 多数时候店主只想看一眼这个月花了多少，不需要逐单核对；
+ * 跟着页面一起拉会让结算页多等一个请求，而那个请求大部分时候没人看。
+ */
+const pointsRecords = ref<MerchantPointsRecord[] | null>(null);
 
-/** 万分比 → 百分数。后端 RateCardVO 存的是万分比整数（2% = 200），直接显示会变成 200% */
-const pct = (bp: number) => `${(bp / 100).toFixed(bp % 100 === 0 ? 0 : 2)}%`;
+/**
+ * 只看某一天（`yyyy-MM-dd`，按**成交日**）。入口是收入页的每日流水那一行。
+ *
+ * ⚠️ **不叫 `tab`、不叫 `title` 之类** —— 查询参数名撞上 `sh-scaffold` 的属性名时，
+ * 它会被当成外壳配置透下去（本仓库踩过：`?tab=` 让页面长出一条空菜单、返回键消失）。
+ */
+const day = ref("");
 
-async function load() {
-  [bills.value, rate.value] = await Promise.all([api.mSettleList(), api.mRateCard()]);
+/**
+ * 筛选态下**把无关的卡收起来**：四个入口卡、费率卡、积分卡。
+ *
+ * 商家是来核一天的账的，不是来改积分开关的。全留着的话，
+ * 他要先划过三块与这一天无关的内容才看到那几笔。
+ */
+const dayMode = computed(() => Boolean(day.value));
+
+/** 这一天的小计。**从筛出来的行自己加** —— 再调一次每日流水就是第二个真源 */
+const daySum = computed(() => bills.value.reduce((n, b) => n + b.netMinor, 0));
+
+function clearDay() {
+  day.value = "";
+  void load();
 }
 
-onShow(load);
+/**
+ * 行上的日期。**给成交日，不给 createdAt。**
+ *
+ * 每日流水按成交日聚合，而 `createdAt` 是入库时刻 —— 两者可以差一天。
+ * 点开「10-08 这一天」之后行上显示 10-07，看起来像筛坏了，
+ * 而商家的下一步是打电话说「你们筛错了」。
+ *
+ * 存量行没有成交日，说出来而不是回落到 `createdAt`：回落的话它会显示成某一天，
+ * 而那一天的每日流水里并没有它 —— 清单与流水从此对不上。
+ */
+function billDay(b: SettleBill) {
+  return b.accruedAt == null ? String(t("settle.accruedNone")) : monthDay(b.accruedAt);
+}
+
+const SCOPES = [
+  { all: false, labelKey: "settle.scopeCurrent" },
+  { all: true, labelKey: "settle.scopeAll" },
+];
+
+const multiStore = computed(() => merchant.multiStore);
+
+/**
+ * 批次状态的色调判据是**「球在谁那边」**，不是状态好不好听：
+ * BLOCKED 要商家知道（警告色），RELEASED 是好消息（主色），其余都是过程态（默认）。
+ * 全都上色等于都没上色。
+ */
+function batchTone(st: string) {
+  if (st === "BLOCKED") return "sh-chip--warning";
+  if (st === "RELEASED") return "sh-chip--primary";
+  return "";
+}
+
+/** 万分比 → 百分数。后端存的是万分比整数（2% = 200），直接显示会变成 200% */
+const pct = (bp: number) => `${(bp / 100).toFixed(bp % 100 === 0 ? 0 : 2)}%`;
+
+/**
+ * 快递费那一行右边的小标签。**没有要说的就不给标签**（返回空串）。
+ *
+ * 四种情形要说四句不同的话，而金额本身分不开它们：
+ *   商家自寄        ¥0.00  平台没垫钱，不扣 —— 他不必管
+ *   代寄未称重      ¥0.00  要扣，只是快递100 还没回传 —— 他要等
+ *   代寄已扣        -¥X    正常
+ *   超重 / 超上限   -¥X    他会问「为什么比运费多」，得先答上来
+ */
+function freightTag(b: SettleBill): string {
+  if (b.freightShipMode === "MERCHANT_SELF") {
+    return t("settle.freightSelf");
+  }
+  if (b.freightDiffReason === "OVER_CAP") {
+    return t("settle.freightOverCap");
+  }
+  if (b.freightDiffReason === "OVERWEIGHT") {
+    return t("settle.freightOverweight");
+  }
+  // 代寄而金额还是 0：称重回传还没到
+  return b.freightCostMinor > 0 ? "" : t("settle.freightPending");
+}
+
+/** 流水上是门店号，商家认的是门店名。查不到就原样显示号 —— 空白比一个号更难查 */
+function storeName(storeNo?: string) {
+  if (!storeNo) return "—";
+  return merchant.stores.find((s) => s.storeNo === storeNo)?.name ?? storeNo;
+}
+
+function switchScope(all: boolean) {
+  allStores.value = all;
+  void load();
+}
+
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+/** 积分流水那一段单独算：它是折叠出来的，挂了不该牵连账单 */
+const pointsFailed = ref(false);
+
+async function load() {
+  // 三件事各自 catch：积分账户还没开通时这条会失败，而账单本身没问题 ——
+  // 绑在一起的话，一个没开通的功能会把整页结算数据带走
+  try {
+    [bills.value, rate.value, points.value] = await Promise.all([
+      api.mSettleList(allStores.value, day.value || undefined),
+      api.mRateCard(),
+      api.mPointsAccount().catch(() => null),
+    ]);
+    failed.value = false;
+  } catch {
+    // 账单没兜底（见上）：它挂了这一屏就没内容 —— 而「本期没有可结算的单」
+    // 与「没取到」在界面上一模一样，前者该等下个账期，后者该重试
+    failed.value = true;
+  }
+}
+
+/**
+ * 开 / 关本店积分。
+ *
+ * **关闭只影响将来**：已发出的分仍有效、已扣的服务费不退 ——
+ * 所以这里要二次确认，否则店主会以为关掉就能把这个月的钱要回来。
+ * 平台按行业强制开的（`forced`）不给关，那个开关他按了也没用。
+ */
+async function togglePoints() {
+  const p = points.value;
+  if (!p || p.forced || togglingPoints.value) return;
+  const on = !p.enabled;
+  const res = await confirm({ title: String(t(on ? "settle.pointsOnTitle" : "settle.pointsOffTitle")), hint: String(t(on ? "settle.pointsOnHint" : "settle.pointsOffHint")) });
+  if (!res) return;
+  togglingPoints.value = true;
+  try {
+    points.value = await api.mPointsToggle({ enabled: on });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    togglingPoints.value = false;
+  }
+}
+
+/** 展开 / 收起明细。收起时置回 null，下次展开重拉 —— 服务费会随新单增加 */
+async function loadPointsRecords() {
+  if (pointsRecords.value) {
+    pointsRecords.value = null;
+    return;
+  }
+  try {
+    pointsRecords.value = await api.mPointsRecords();
+    pointsFailed.value = false;
+  } catch {
+    pointsFailed.value = true;
+  }
+}
+
+function go(url: string) {
+  uni.navigateTo({ url });
+}
+
+/*
+ * `onLoad` 而不是 `onShow`：参数只在进页面那一次给，
+ * 而 `onShow` 每次回到前台都跑 —— 放那儿会在从二级页返回时把筛选态重置。
+ */
+onLoad((q) => {
+  day.value = (q?.day as string) ?? "";
+});
+
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：页内那个「按门店 / 全部门店」的作用域切换靠它判多店。
+   * 不拉的话整条消失，而账还是按某一家店的范围出的 ——
+   * 钱的口径没写出来，比数字本身更容易吵起来。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="settle.title">
-    <text class="sh-h1">{{ $t("settle.title") }}</text>
+  <sh-scaffold title-key="settle.title" :denied="!merchant.can('biz:finance')">
+    <text class="txt-display">{{ $t("settle.title") }}</text>
+
+    <!--
+      只看某一天。**从收入页的每日流水那一行点进来的。**
+      小计从筛出来的行自己加，不再调一次每日流水 —— 那会是第二个真源，
+      而两处对不上的那天商家只会理解成「平台算错了我的钱」。
+    -->
+    <view v-if="dayMode" class="sh-card dayfilter">
+      <view class="sh-row sh-row--between sh-row--baseline">
+        <text class="txt-title sh-num">{{ $t("settle.dayFilter", { d: day }) }}</text>
+        <text class="sh-link" @tap="clearDay">{{ $t("settle.dayClear") }}</text>
+      </view>
+      <text class="txt-caption sh-muted dayfilter__sum sh-num">
+        {{ $t("settle.dayBills", { n: bills.length, a: money(daySum) }) }}
+      </text>
+    </view>
+
+    <!--
+      入口摆在最上面。**它们是「钱去哪了」的另外几半** ——
+      结算单说的是「挣了多少」，收款账户说的是「打到哪张卡」，
+      保证金说的是「押着多少、还差多少」。
+      （提现入口已撤：钱按账期打，不走申请，见 ADR-011。）
+    -->
+    <view v-if="!dayMode" class="entries sh-row">
+      <view class="entries__item sh-card" @tap="go(ROUTES.payoutAccount)">
+        <text class="txt-title">{{ $t("payoutAccount.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryPayoutAccount") }}</text>
+      </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.deposit)">
+        <text class="txt-title">{{ $t("deposit.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryDeposit") }}</text>
+      </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.invoice)">
+        <text class="txt-title">{{ $t("invoice.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryInvoice") }}</text>
+      </view>
+      <view class="entries__item sh-card" @tap="go(ROUTES.statement)">
+        <text class="txt-title">{{ $t("statement.title") }}</text>
+        <text class="sh-muted entries__hint">{{ $t("settle.entryStatement") }}</text>
+      </view>
+    </view>
 
     <!-- 费率卡放在账单**之前**：先说清楚怎么算，再看算出来多少。
          把费率讲明白是「自带客流零佣金」这个策略能起作用的前提 —— 商家算不清自己能拿多少，
          就不会有动力把老客带进来 -->
-    <view v-if="rate" class="sh-card ratecard">
-      <text class="sh-h2">{{ $t("settle.rateTitle") }}</text>
-      <view class="ratecard__row">
+    <view v-if="rate && !dayMode" class="sh-card ratecard">
+      <text class="txt-title">{{ $t("settle.rateTitle") }}</text>
+      <view class="ratecard__row sh-row sh-row--between">
         <text class="sh-chip sh-chip--primary">{{ $t("order.trafficMERCHANT_OWNED") }}</text>
-        <text class="ratecard__v sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
+        <text class="txt-body sh-num">{{ pct(rate.merchantOwnedRate) }}</text>
       </view>
-      <view class="ratecard__row">
+      <view class="ratecard__row sh-row sh-row--between">
         <text class="sh-chip">{{ $t("order.trafficPLATFORM") }}</text>
-        <text class="ratecard__v sh-num">{{ pct(rate.platformRate) }}</text>
+        <text class="txt-body sh-num">{{ pct(rate.platformRate) }}</text>
       </view>
       <text class="sh-muted ratecard__note">{{ rate.note }}</text>
     </view>
 
-    <sh-empty v-if="!bills.length" :text='$t("settle.empty")'></sh-empty>
-
-    <view v-for="b in bills" :key="b.billNo" class="sh-card bill">
-      <view class="bill__head">
-        <text class="bill__period sh-num">
-          {{ monthDay(b.periodStart) }} – {{ monthDay(b.periodEnd) }}
-        </text>
-        <text class="sh-chip" :class="b.status === 'DONE' ? 'sh-chip--primary' : 'sh-chip--warning'">
-          {{ $t(`settle.status${b.status}`) }}
-        </text>
+    <!--
+      本店积分。**它是一笔支出**，所以摆在费率卡下面、账单上面 —— 与「怎么算」同一层。
+      不生效时显示后端给的 disabledReason：小微主体要说「升级为个体工商户后可开启」，
+      而不是「本店未开启」—— 后者会让商家去按一个他根本按不动的开关。
+    -->
+    <view v-if="points && !dayMode" class="sh-card points">
+      <view class="points__head sh-row sh-row--between">
+        <text class="txt-title">{{ $t("settle.pointsTitle") }}</text>
+        <text
+          v-if="!points.forced"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': points.enabled }"
+          @tap="togglePoints"
+        >{{ $t(points.enabled ? "settle.pointsOn" : "settle.pointsOff") }}</text>
+        <!-- 平台按行业强制开的：显示状态但不给按，按了也没用 -->
+        <text v-else class="sh-chip sh-chip--primary">{{ $t("settle.pointsForced") }}</text>
       </view>
-
-      <view class="bill__amount">
-        <text class="sh-muted">{{ $t("settle.payable") }}</text>
-        <text class="sh-num big">{{ money(b.payableMinor, b.currency) }}</text>
+      <view class="points__row sh-row sh-row--between sh-row--baseline">
+        <text class="sh-muted">{{ $t("settle.pointsExpense", { period: points.period }) }}</text>
+        <text class="txt-hero sh-num">{{ money(points.periodExpenseMinor) }}</text>
       </view>
+      <text v-if="points.disabledReason" class="sh-muted points__note">
+        {{ points.disabledReason }}
+      </text>
+      <text v-else class="sh-muted points__note">{{ $t("settle.pointsHint") }}</text>
 
-      <view class="rows">
-        <view class="row">
-          <text class="sh-muted">{{ $t("settle.orderCount") }}</text>
-          <text class="sh-num">{{ b.orderCount }}</text>
-        </view>
-        <view class="row">
-          <text class="sh-muted">{{ $t("settle.commission") }}</text>
-          <text class="sh-num minus">-{{ money(b.commissionMinor, b.currency) }}</text>
-        </view>
-        <view class="row">
-          <text class="sh-muted">{{ $t("settle.fulfillFee") }}</text>
-          <text class="sh-num minus">-{{ money(b.fulfillFeeMinor, b.currency) }}</text>
-        </view>
-        <view class="row">
-          <text class="sh-muted">{{ $t("settle.settled") }}</text>
-          <text class="sh-num">{{ money(b.settledMinor, b.currency) }}</text>
+      <!--
+        明细按需展开：**一笔支出必须能对到单**，否则「这个月 ¥3.76」就是一个
+        无法核对的数字 —— 商家对不上的账，早晚变成一张工单。
+      -->
+      <text v-if="points.periodExpenseMinor > 0" class="sh-link points__more" @tap="loadPointsRecords">
+        {{ pointsRecords ? $t("settle.pointsFold") : $t("settle.pointsDetail") }}
+      </text>
+      <view v-if="pointsRecords" class="rows">
+        <sh-empty v-if="!pointsRecords.length"
+          :failed="pointsFailed"
+          @retry="load" :text='$t("settle.pointsEmpty")'></sh-empty>
+        <view v-for="r in pointsRecords" :key="r.settleNo + r.subOrderNo" class="sh-row sh-row--between row">
+          <text class="sh-muted sh-num">{{ r.subOrderNo }}</text>
+          <text class="sh-num">
+            {{ $t("settle.pointsQty", { n: r.points }) }}　{{ money(r.feeMinor) }}
+          </text>
         </view>
       </view>
     </view>
 
-    <text class="tip">{{ $t("settle.rateHint") }}</text>
-    <text class="tip">{{ $t("settle.pendingHint") }}</text>
+    <!--
+      门店范围。**多店才显示** —— 单店商家看到「全部门店」只会疑惑还有别的店。
+      钱的作用域与订单页共用同一套惯例（allStores + 后端 allowedStoresOrAll），
+      不另写一套：两套实现迟早有一套忘了跟上授权模型的变化。
+    -->
+    <view v-if="multiStore" class="scope">
+      <text
+        v-for="opt in SCOPES"
+        :key="String(opt.all)"
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': allStores === opt.all }"
+        @tap="switchScope(opt.all)"
+      >{{ $t(opt.labelKey) }}</text>
+    </view>
+
+    <sh-empty v-if="!bills.length"
+          :failed="failed"
+          @retry="load" :text='$t("settle.empty")'></sh-empty>
+
+    <!--
+      **一笔子订单一行**，不是周期账单 —— 后端 stl_bill 就是这个粒度。
+      此前这里按「周账单」渲染（billNo / periodStart / orderCount），
+      而那些字段后端从来没有过：mock 下好看，连真后端整片空白。
+    -->
+    <view v-for="b in bills" :key="b.settleNo" class="sh-card bill">
+      <view class="bill__head sh-row sh-row--between">
+        <!-- 成交日，不是入库时刻 —— 见 billDay() 的理由 -->
+        <text class="txt-strong sh-num">{{ billDay(b) }}</text>
+        <text
+          class="sh-chip"
+          :class="b.status === 'SPLIT' ? 'sh-chip--primary' : 'sh-chip--warning'"
+        >{{ $t(`settle.status${b.status}`) }}</text>
+      </view>
+
+      <view class="bill__amount sh-row sh-row--between sh-row--baseline">
+        <text class="sh-muted">{{ $t("settle.net") }}</text>
+        <text class="txt-hero sh-num">{{ money(b.netMinor) }}</text>
+      </view>
+
+      <view class="rows">
+        <view class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.gross") }}</text>
+          <text class="sh-num">{{ money(b.grossMinor) }}</text>
+        </view>
+        <!--
+          运费两行**只在快递单出现**（freightShipMode 为空 = 自提或自送，没有快递费这回事）。
+          非快递单硬摆两个 ¥0.00，是给最常见的那类单加两行噪音。
+        -->
+        <view v-if="b.freightShipMode" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.freightIncome") }}</text>
+          <text class="sh-num">+{{ money(b.freightIncomeMinor) }}</text>
+        </view>
+        <view v-if="b.freightShipMode" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.freightCost") }}</text>
+          <!--
+            **同样是 ¥0.00，两件事**：商家自寄（平台没垫钱，不扣）与
+            平台代寄但还没称重回传（要扣，只是数还没回来）。
+            只显示金额的话这两行长得一模一样，而商家的下一步完全不同 ——
+            前者不必管，后者要等。判据取 freightShipMode，不是「金额是不是 0」。
+          -->
+          <view class="sh-row">
+            <text v-if="freightTag(b)" class="sh-chip row__tag">{{ freightTag(b) }}</text>
+            <text class="sh-num" :class="{ 'is-danger': b.freightCostMinor > 0 }">
+              {{ b.freightCostMinor > 0 ? "-" + money(b.freightCostMinor) : money(0) }}
+            </text>
+          </view>
+        </view>
+        <view class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.commission") }}（{{ pct(b.commissionRate) }}）</text>
+          <text class="sh-num is-danger">-{{ money(b.commissionMinor) }}</text>
+        </view>
+        <view class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.fulfillFee") }}</text>
+          <text class="sh-num is-danger">-{{ money(b.serviceFeeMinor) }}</text>
+        </view>
+        <!--
+          **「什么时候到」和「多少钱」是两个问题**，这一页此前只答了后一个。
+          商家拿一个金额去对银行流水，对不上就来找客服，
+          而客服看到的也只有同一个金额 —— 那通电话谁都答不上来。
+
+          三档说的是三件不同的事，不能合成一句：
+            没有 settleableAt = 售后期还没过（**这个他能自己推进**：催买家确认收货）；
+            有应结日 = 哪天放（等着就行）；
+            批次挂起 = 卡住了，原因照抄后端原话（含数字与阈值）。
+        -->
+        <view class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.dueAt") }}</text>
+          <text v-if="b.dueAt" class="sh-num">{{ monthDay(b.dueAt) }}</text>
+          <text v-else class="sh-muted">{{ $t("settle.notSettleable") }}</text>
+        </view>
+        <view v-if="b.batchStatus" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.batchNo") }}</text>
+          <view class="sh-row">
+            <text class="sh-num">{{ b.batchNo }}</text>
+            <text class="sh-chip batch__chip" :class="batchTone(b.batchStatus)">
+              {{ $t(`settle.batchStatus${b.batchStatus}`) }}
+            </text>
+          </view>
+        </view>
+        <text v-if="b.batchBlockedReason" class="sh-hint row batch__why">
+          {{ b.batchBlockedReason }}
+        </text>
+        <!-- 多店商家必须看得见「哪家店挣的」和「打给哪个号」：
+             只给其中一个，他就无法回答「河坊街店这个月的钱进了哪张卡」 -->
+        <view v-if="multiStore" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.store") }}</text>
+          <text>{{ storeName(b.storeNo) }}</text>
+        </view>
+        <view v-if="multiStore && b.payMerchantNo" class="sh-row sh-row--between row">
+          <text class="sh-muted">{{ $t("settle.payTo") }}</text>
+          <text class="sh-num">{{ b.payMerchantNo }}</text>
+        </view>
+      </view>
+    </view>
+
+    <text class="tip sh-hint">{{ $t("settle.rateHint") }}</text>
+    <text class="tip sh-hint">{{ $t("settle.pendingHint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.ratecard {
-  margin-bottom: 14rpx;
+
+.entries {
+  /*
+   * 四个入口，一行放不下 —— 两列换行。一行四个的话每个只剩指甲盖宽，
+   * 标题会折成两行而副文案挤没。
+   *
+   * ⚠️ **不写 margin-top**：`.sh-scaffold > * + *` 已经给了统一的块间距，
+   * 顶层块自己再写一条就压过它 —— 这一页的间距从此与别处不同，
+   * 而它长得像「本该如此」，没人会去量。
+   */
+  flex-wrap: wrap;
+  gap: 16rpx;
 }
-.ratecard__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 14rpx;
+.entries__item {
+  /*
+   * ⚠️ **必须 border-box。** sh-card 是 content-box（项目默认），
+   * 于是 flex-basis 算的是**内容宽**，再加上左右各 24rpx 内边距就超过一半，
+   * 两个放不下 —— 表现是四张卡竖着排、右半边空着。
+   * 计算样式里 flex-basis 一切正常（171.5px），只有量**盒子的实际宽度**
+   * 才看得出它是 196px。
+   */
+  box-sizing: border-box;
+  flex: 0 0 calc(50% - 8rpx);
 }
-.ratecard__v {
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
-.ratecard__note {
+.entries__hint {
   display: block;
-  margin-top: 14rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 
-.bill {
-  margin-top: 14rpx;
+.ratecard__row {
+  margin-top: 16rpx;
 }
-.bill__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+
+.ratecard__note {
+  display: block;
+  margin-top: 16rpx;
 }
-.bill__period {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
+
+.points__row {
+  margin-top: 16rpx;
 }
+.points__note {
+  display: block;
+  margin-top: 12rpx;
+}
+
+.batch__chip {
+  /* 逻辑属性：阿语下徽标要跟着翻到日期的另一侧，写死 left 它不会翻 */
+  margin-inline-start: 12rpx;
+}
+.batch__why {
+  display: block;
+}
+
+.dayfilter__sum {
+  display: block;
+  margin-top: 8rpx;
+}
+
 .bill__amount {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 24rpx 0;
 }
-.big {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
+
 .rows {
   border-radius: 24rpx;
   background: var(--sh-faint);
   padding: 8rpx 24rpx;
 }
+/*
+ * 金额左边的小标签：说清这个 ¥0 是「不用扣」还是「还没回传」。
+ *
+ * **底色要换成 surface**：`.sh-chip` 默认底是 `--sh-faint`，而它正好是
+ * 外层 `.rows` 的底色（同一个 #E4E5E8）—— 直接用等于把标签画成隐形。
+ * 截图里那一行看着像裸文字，而 class 是在的、圆角也生效了，
+ * 只有把两处的值摆在一起才看得出是同色。
+ */
+.row__tag {
+  /* 逻辑属性：阿语下整行翻转，标签要留在金额的「起始侧之前」而不是恒在左边 */
+  margin-inline-end: 12rpx;
+  background: var(--sh-surface);
+  color: var(--sh-sub);
+}
+
 .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16rpx 0;
 }
-.minus {
-  color: var(--sh-danger);
-}
 .tip {
-  display: block;
-  margin: 24rpx 8rpx 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
+  margin: 0 8rpx;
 }
 </style>

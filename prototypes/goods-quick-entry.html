@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>快速录入 · 方案对比</title>
+<!-- 真源在仓库 prototypes/goods-quick-entry.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 交互原型 · 2026-10-07 · pages/goods-edit</div>
+  <h1>快速录入：结果呈现与录入布局的方案对比</h1>
+  <p class="sub">两组对比：<b>识别结果怎么呈现</b>（表格 + 另三种）、<b>文字与图片怎么摆</b>（分两段不切换，四种摆法，图片走导入压缩包）。四种结果呈现用同一组数据，高度是在浏览器里量的。最后一节是推荐组合走一遍。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">最新 · 14 — 18</span><h2>去掉现值：值在前点参数切换 / 参数块</h2></div>
+  <p class="sec-note">不显示现值，已有值在点「填入」时一次处理（18）。下面两种二选一，同一组 5 项数据。往下的一至四节是之前的方案，留作对比。</p>
+  <div class="grid">
+
+    <figure id="s14">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div><div class="ta has">脆柿 单果140g+ 4.5斤装 10元 圆通快递 新疆西藏海南不发货</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <div class="group">
+              <div class="vrow"><span class="ck on"></span><span class="val">140g+</span><span class="par">单果重量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">4.5斤</span><span class="par sw">净含量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val num">10.00</span><span class="par">售价</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">快递</span><span class="par">配送</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">新疆 西藏 海南</span><span class="par">限购地区</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（5）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>E 值在前 · 点参数切换</b>一行：值（粗）· 参数。判不准的参数标「⇄」（红），<b>点一下换到下一个候选</b>。</figcaption>
+    </figure>
+
+    <figure id="s15">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">已互换 140g+ ⇄ 4.5斤</span><span class="v go">撤回</span></div>
+            <div class="group">
+              <div class="vrow"><span class="ck on"></span><span class="val">140g+</span><span class="par sw">净含量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">4.5斤</span><span class="par sw">单果重量</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val num">10.00</span><span class="par">售价</span></div>
+              <div class="vrow"><span class="ck on"></span><span class="val">快递</span><span class="par">配送</span></div>
+              <div class="vrow off"><span class="ck"></span><span class="val">新疆 西藏 海南</span><span class="par">限购地区</span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>E 点了之后</b>4.5斤 换到单果重量；原来占着的 140g+ <b>自动换到净含量</b>，顶上可撤回。点勾选框取消一项（这里取消了限购地区）。</figcaption>
+    </figure>
+
+    <figure id="s16">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <div class="chipgrid">
+              <span class="pchip on">单果重量<b>140g+</b></span>
+              <span class="pchip on"><span class="sw">净含量</span><b>4.5斤</b></span>
+              <span class="pchip on">售价<b>10.00</b></span>
+              <span class="pchip on">配送<b>快递</b></span>
+              <span class="pchip on">限购地区<b>新疆 西藏 海南</b></span>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（5）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>F 参数块</b>一项一块：上参数、下值。<b>点块打开调整</b>（17）；选中是红底。</figcaption>
+    </figure>
+
+    <figure id="s17">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">「4.5斤」填到哪个参数</div>
+            <div class="search">参数名</div>
+            <div class="gt">相近</div>
+            <div class="plist">
+              <div class="frow"><span class="k ink">单果重量</span><span class="v dim">与 140g+ 互换</span></div>
+              <div class="frow"><span class="k ink">净含量</span><span class="v hot">当前</span></div>
+              <div class="frow"><span class="k ink">毛重</span><span class="v"></span></div>
+            </div>
+            <div class="gt">全部参数</div>
+            <div class="plist">
+              <div class="frow"><span class="k ink">产地</span><span class="v"></span></div>
+              <div class="frow"><span class="k ink">作自由参数「净重」</span><span class="v"></span></div>
+              <div class="frow"><span class="k">不填这项</span><span class="v"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>F 点块之后：参数列表</b>值是重量，<b>重量类排前面</b>；顶上可搜。被别的值占着的写出「与 140g+ 互换」，选了两块对调。对不上的作自由参数（用原文叫法），或不填这项。已落地 <code>fa770ebb1</code>。</figcaption>
+    </figure>
+
+    <figure id="s18">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">2 项已有值</div>
+            <div class="d">售价、净含量</div>
+            <div class="acts"><div class="btn sec">保留原值</div><div class="btn main">覆盖</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>填入时处理已有值</b>只有勾选项里有已经填过的，才弹这一下：一句话 + 两个按钮，一次决定。没有就直接填入。</figcaption>
+    </figure>
+
+  </div>
+  <div class="tw"><table class="spec">
+    <tr><th></th><th>E 值在前 · 点参数切换</th><th>F 参数块</th></tr>
+    <tr><td>弹框高度（5 项，量的）</td><td id="h-e">283px</td><td id="h-f"><b>263px</b></td></tr>
+    <tr><td>换参数</td><td><b>点一下</b>（候选间切换）</td><td>点块 → 选 → 确定（3 下）</td></tr>
+    <tr><td>改值</td><td>不能（改原文重识别）</td><td><b>能</b></td></tr>
+    <tr><td>取消一项</td><td>点勾选框</td><td>点块 → 不填这项</td></tr>
+    <tr><td>长值</td><td id="long-e">3 省放得下；7 省截断 → 显示「7 省」</td><td id="long-f">同左</td></tr>
+  </table></div>
+  <p class="sec-note" id="rec-ef"><b>推荐 E。</b>识别后最常做的事是「这个值填错参数了」—— E 点一下就换，F 要点三下。F 只多了改值，而改值放到填入后在表单里改、或改原文重识别都更顺；E 只比 F 高 20px。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">一 · 01 — 04</span><h2>识别结果：四种呈现</h2></div>
+  <p class="sec-note">同一组 5 项：单果重量（新）、净含量（现有旧参数「净重 4.5斤」）、售价（现值 15.00）、配送（现在只有自提，加快递）、限购地区（新）。</p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <table class="ptable">
+              <colgroup><col class="c"><col style="width:58px"><col><col style="width:70px"></colgroup>
+              <tr><th></th><th>参数</th><th>识别值</th><th>现值</th></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">单果重量</td><td class="n">140g+</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">净含量</td><td class="n">4.5斤</td><td class="o warn">净重 4.5斤</td></tr>
+              <tr class="off"><td><span class="ck"></span></td><td class="p">售价</td><td class="n">10.00</td><td class="o warn">15.00</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">配送</td><td class="n">+ 快递</td><td class="o">自提</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">限购地区</td><td class="n">新疆 西藏 海南</td><td class="o">—</td></tr>
+            </table>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>A 表格</b>四列：勾选 · 参数 · 识别值 · 现值。<b>现值一栏标黄 = 勾上会覆盖</b>，不再需要标签。</figcaption>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项</span><span class="v go">全不选</span></div>
+            <div class="group">
+              <div class="crow"><span class="ck on"></span><span class="k tap">单果重量</span><span class="b"><span class="v">140g+</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k tap">净含量</span><span class="b"><span class="v">4.5斤<span class="tag del">替换</span></span></span></div>
+              <div class="crow"><span class="ck"></span><span class="k">售价</span><span class="b"><span class="v num">10.00<span class="tag upd">覆盖</span></span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">配送</span><span class="b"><span class="v">+ 快递</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">限购地区</span><span class="b"><span class="v">新疆 西藏 海南</span></span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>B 清单</b>（上一版）两列：参数 · 识别值。会覆盖的只打「覆盖 / 替换」标签，看不到原来是多少。</figcaption>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 5 项 · 点块选择</span><span class="v go">全不选</span></div>
+            <div class="chipgrid">
+              <span class="pchip on">单果重量<b>140g+</b></span>
+              <span class="pchip on warn">净含量<b>4.5斤</b></span>
+              <span class="pchip warn">售价<b>10.00</b></span>
+              <span class="pchip on">配送<b>+ 快递</b></span>
+              <span class="pchip on">限购地区<b>新疆 西藏 海南</b></span>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>C 参数块</b>两列方块，点块即选。最省高度，但<b>看不到现值</b>，长值会截断。</figcaption>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">新增 3 项</span><span class="v go">全不选</span></div>
+            <div class="group">
+              <div class="crow"><span class="ck on"></span><span class="k">单果重量</span><span class="b"><span class="v">140g+</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">配送</span><span class="b"><span class="v">+ 快递</span></span></div>
+              <div class="crow"><span class="ck on"></span><span class="k">限购地区</span><span class="b"><span class="v">新疆 西藏 海南</span></span></div>
+            </div>
+            <div class="frow"><span class="k">改动 2 项</span><span class="v"></span></div>
+            <div class="group">
+              <div class="crow"><span class="ck on"></span><span class="k">净含量</span><span class="b"><span class="diff"><span class="old">净重 4.5斤</span><span class="arw">›</span><span class="new">4.5斤</span></span></span></div>
+              <div class="crow"><span class="ck"></span><span class="k">售价</span><span class="b"><span class="diff"><span class="old num">15.00</span><span class="arw">›</span><span class="new num">10.00</span></span></span></div>
+            </div>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>D 新增 / 改动分组</b>按「会不会改掉现有内容」分两组，改动组写「旧 › 新」。最清楚，但最高。</figcaption>
+    </figure>
+
+  </div>
+
+  <div class="tw"><table class="spec">
+    <tr><th></th><th>A 表格</th><th>B 清单</th><th>C 参数块</th><th>D 新增 / 改动</th></tr>
+    <tr><td>弹框高度（5 项，量的）</td><td id="h-a"><b>299px</b></td><td id="h-b">284px</td><td id="h-c">263px</td><td id="h-d">340px</td></tr>
+    <tr><td>看得到现值</td><td><b>✓ 一栏</b></td><td>✗ 只有标签</td><td>✗</td><td>✓ 改动的那几项</td></tr>
+    <tr><td>一眼看出会覆盖</td><td>现值标黄</td><td>标签</td><td>描边</td><td><b>单独一组</b></td></tr>
+    <tr><td>长值（量的）</td><td>3 省放得下；<b>7 省截断</b></td><td>3 省一行；7 省折成两行</td><td>3 省放得下；7 省截断</td><td>同清单</td></tr>
+    <tr><td>选择</td><td>点行</td><td>点行</td><td>点块</td><td>点行</td></tr>
+    <tr><td>改参数</td><td>点参数</td><td>点参数</td><td>长按块</td><td>点参数</td></tr>
+  </table></div>
+  <p class="sec-note"><b>推荐 A 表格。</b>它是唯一一种不加任何标签就能回答「这一项原来是多少、会不会被我覆盖」的呈现 —— 现值就在同一行。它只比清单高 15px（299 对 284）。代价是长值：3 个省放得下，7 个省会截断 —— 截断时<b>点那一格看全</b>，或者省多时显示成「7 省」。D 最清楚但最高（340px）；C 最省（263px）但看不到现值，覆盖风险藏起来了，不建议。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">二 · 05 — 08</span><h2>录入布局：文字和图片分两段，不切换</h2></div>
+  <p class="sec-note">图片识别改成<b>导入压缩包</b>：压缩包里的图按目录分进主图 / 详情图，带的文字可放进文字段。四种摆法都不用切换。</p>
+  <div class="grid">
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card" data-quick>
+            <div class="nm">快速录入</div>
+            <div class="gt">文字</div>
+            <div class="ta" style="min-height:70px">粘贴商品文字</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
+            <div class="gt">图片</div>
+            <div class="frow"><span class="k">压缩包</span><span class="v go">导入</span></div>
+            <div class="btnrow"><span class="btn main off">识别图片</span></div>
+          </div>
+          <div class="card"><div class="nm">基本信息</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>甲 上下两段</b>一张卡里，文字段在上、图片段在下，各自一个识别按钮。</figcaption>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card" data-quick>
+            <div class="nm">快速录入</div>
+            <div class="ta" style="min-height:70px">粘贴商品文字</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
+            <div class="frow"><span class="k">图片</span><span class="v go">导入压缩包</span></div>
+          </div>
+          <div class="card"><div class="nm">基本信息</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>乙 文字为主 + 图片一行</b>文字段完整；图片段压成一行「导入压缩包」，导入后这一行变成「主图 4 · 详情 4 · 识别」。</figcaption>
+    </figure>
+
+    <figure id="s07">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card" data-quick>
+            <div class="nm">文字识别</div>
+            <div class="ta" style="min-height:70px">粘贴商品文字</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别</span></div>
+          </div>
+          <div class="card" data-quick>
+            <div class="nm">图片识别</div>
+            <div class="frow"><span class="k">压缩包</span><span class="v go">导入</span></div>
+            <div class="btnrow"><span class="btn main off">识别</span></div>
+          </div>
+          <div class="card"><div class="nm">基本信息</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>丙 两张卡</b>文字识别、图片识别各一张卡。分得最开，但多占一张卡的边距。</figcaption>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card" data-quick>
+            <div class="nm">快速录入</div>
+            <div class="ta has" style="min-height:70px">规格：单果140g+ 净重4.5斤装10元…</div>
+            <div class="frow"><span class="k">📎 压缩包</span><span class="v">主图 4 · 详情 4　×</span></div>
+            <div class="btnrow"><span class="btn sec">导入压缩包</span><span class="btn main">一起识别</span></div>
+          </div>
+          <div class="card"><div class="nm">基本信息</div></div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>丁 合一</b>一个输入框，压缩包作附件挂在下面；<b>一个按钮把文字和图片一起识别</b>，结果进同一个弹框。</figcaption>
+    </figure>
+
+  </div>
+
+  <div class="tw"><table class="spec">
+    <tr><th></th><th>甲 上下两段</th><th>乙 文字为主 + 图片一行</th><th>丙 两张卡</th><th>丁 合一</th></tr>
+    <tr><td>快速录入占高（量的）</td><td id="q-jia">271px</td><td id="q-yi"><b>199px</b></td><td id="q-bing">289px（两张卡）</td><td id="q-ding">199px</td></tr>
+    <tr><td>要切换</td><td>否</td><td>否</td><td>否</td><td>否</td></tr>
+    <tr><td>文字 / 图片分开识别</td><td>是</td><td>是</td><td>是</td><td><b>否</b>，一次识别两样</td></tr>
+    <tr><td>按钮数</td><td>4</td><td>3（导入后 4）</td><td>4</td><td>2</td></tr>
+    <tr><td>没导入压缩包时</td><td>图片段空着占地方</td><td><b>只多一行</b></td><td>整张空卡</td><td>不显示附件行</td></tr>
+  </table></div>
+  <p class="sec-note"><b>推荐 乙。</b>和丁一样只占 199px，却仍是文字、图片分开识别。商家主要是贴文字，压缩包是一次性的动作 —— 图片段平时只该占一行，导入了再展开成「主图 4 · 详情 4 · 识别」。丁最省按钮，但把文字和图片合成一次识别，和你之前定的「图片识别和文字识别要分开」相反，列在这里只作对比。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">三 · 09 — 10</span><h2>推荐组合走一遍：乙 + 表格，导入压缩包</h2></div>
+  <div class="grid">
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">快速录入</div>
+            <div class="ta has" style="min-height:70px">规格：单果140g+<br>净重4.5斤装10元</div>
+            <div class="btnrow"><span class="btn sec">粘贴</span><span class="btn main">识别文字</span></div>
+            <div class="frow"><span class="k">图片</span><span class="v">主图 4 · 详情 4</span></div>
+            <div class="btnrow"><span class="btn sec">重新导入</span><span class="btn main">识别图片</span></div>
+          </div>
+          <div class="card">
+            <div class="nm">基本信息</div>
+            <div class="frow"><span class="k">商品图</span><span class="v">已添加 4 / 7</span></div>
+            <div class="pics"><span class="img">🍊</span><span class="img">🍊</span><span class="img">🍊</span><span class="img">🍊</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>09 导入压缩包后</b>图片已分进主图 4 张、详情 4 张（下面「商品图」那一行已经填好）。图片这一行展开出「识别图片」。</figcaption>
+    </figure>
+
+    <figure id="s10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">图片识别到 5 项</span><span class="v go">全不选</span></div>
+            <table class="ptable">
+              <colgroup><col class="c"><col style="width:58px"><col><col style="width:70px"></colgroup>
+              <tr><th></th><th>参数</th><th>识别值</th><th>现值</th></tr>
+              <tr class="off"><td><span class="ck"></span></td><td class="p">商品名称</td><td class="n">巧克力脆柿</td><td class="o warn">现摘脆柿…</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">副标题</td><td class="n">早期脆甜多汁</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">类目</td><td class="n">水果 › 柿子</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">口感风味</td><td class="n">脆爽</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">图文详情</td><td class="n">现摘巧克力柿…</td><td class="o">—</td></tr>
+            </table>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（4）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>10 图片识别结果</b>同一种表格弹框。商品名称已经有值 → 现值标黄、默认不勾。</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">四 · 11 — 13</span><h2>参数随值调整：4.5斤 是单果重量还是净含量</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>判据（按先后）</th><th>例子</th><th>结果</th></tr>
+    <tr><td>① 原文有说明词</td><td>「<b>单果</b>140g」「<b>净重</b>4.5斤」「<b>毛重</b>5斤」</td><td>直接定，不给备选</td></tr>
+    <tr><td>② 同类有几个值，看相对大小</td><td>「140g 4.5斤」都没说明词</td><td>小的是单果、大的是净含量，给备选</td></tr>
+    <tr><td>③ 只有一个值，看品类合不合理</td><td>柿子「4.5斤」/ 西瓜「4.5斤」</td><td>模型判（一颗柿子不会 2250g），给备选</td></tr>
+  </table></div>
+  <div class="grid">
+
+    <figure id="s11">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入 · 柿子</div><div class="ta has">巧克力脆柿 4.5斤装 10元</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 2 项</span><span class="v go">全不选</span></div>
+            <table class="ptable">
+              <colgroup><col class="c"><col style="width:64px"><col><col style="width:60px"></colgroup>
+              <tr><th></th><th>参数</th><th>识别值</th><th>现值</th></tr>
+              <tr><td><span class="ck on"></span></td><td class="p tap">净含量<span class="alt">或 单果重量</span></td><td class="n">4.5斤</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">售价</td><td class="n">10.00</td><td class="o">—</td></tr>
+            </table>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（2）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>11 柿子 · 4.5斤</b>没有说明词，按品类判：一颗柿子不会 2250g → <b>净含量</b>，下面给「或 单果重量」。</figcaption>
+    </figure>
+
+    <figure id="s12">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入 · 西瓜</div><div class="ta has">麒麟西瓜 4.5斤 19.9元</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">识别到 2 项</span><span class="v go">全不选</span></div>
+            <table class="ptable">
+              <colgroup><col class="c"><col style="width:64px"><col><col style="width:60px"></colgroup>
+              <tr><th></th><th>参数</th><th>识别值</th><th>现值</th></tr>
+              <tr><td><span class="ck on"></span></td><td class="p tap">单果重量<span class="alt">或 净含量</span></td><td class="n">4.5斤</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">售价</td><td class="n">19.90</td><td class="o">—</td></tr>
+            </table>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（2）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>12 西瓜 · 同一个 4.5斤</b>一个西瓜 4.5 斤很正常 → <b>单果重量</b>，备选净含量。同一个值，品类不同，默认落点不同。</figcaption>
+    </figure>
+
+    <figure id="s13">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr"><div class="card"><div class="nm">快速录入 · 柿子</div><div class="ta has">脆柿 140g 4.5斤 10元</div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="frow"><span class="k">已互换：4.5斤 ⇄ 140g</span><span class="v go">撤回</span></div>
+            <table class="ptable">
+              <colgroup><col class="c"><col style="width:64px"><col><col style="width:60px"></colgroup>
+              <tr><th></th><th>参数</th><th>识别值</th><th>现值</th></tr>
+              <tr><td><span class="ck on"></span></td><td class="p tap">单果重量<span class="alt">或 净含量</span></td><td class="n">4.5斤</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p tap">净含量<span class="alt">或 单果重量</span></td><td class="n">140g</td><td class="o">—</td></tr>
+              <tr><td><span class="ck on"></span></td><td class="p">售价</td><td class="n">10.00</td><td class="o">—</td></tr>
+            </table>
+            <div class="acts"><div class="btn sec">取消</div><div class="btn main">填入（3）</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>13 换了之后</b>点「或 单果重量」：4.5斤 换到单果重量，原来占着单果重量的 140g <b>自动换到净含量</b>，顶上一行可撤回。</figcaption>
+      <p class="why">两个重量争同一个参数时，只换一个会留下「单果重量填了两次」。同类两项互换是最常见的意图（模型把大小判反了），一下改对；不是要互换的话点「撤回」，再单独改。</p>
+    </figure>
+
+  </div>
+  <div class="tw"><table class="spec">
+    <tr><th>落地</th><th>改动</th></tr>
+    <tr><td>prompt</td><td>品类参数清单里每个参数带一句含义（「单果重量：一颗的重量，不是整箱」）；每个值回<b>首选 + 备选</b>参数，按上面三条判据排</td></tr>
+    <tr><td>后端</td><td>参数草稿加 <code>alternatives</code>（备选维度号，同样核对必须在本品类清单里）；①有说明词时由规则直接定，不给备选</td></tr>
+    <tr><td>端上</td><td>有备选的行多一小行「或 xx」，点了换；同类两项互换并给撤回</td></tr>
+  </table></div>
+</section>
+
+<footer>真源：prototypes/goods-quick-entry.html · 方案：docs/technical/design/TDD-商品快速录入-品类感知与逐项确认.md</footer>
+</div>
+</html>

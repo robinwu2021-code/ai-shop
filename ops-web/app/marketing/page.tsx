@@ -10,22 +10,27 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MARKETING_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { Campaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget } from "@/lib/types";
+import type { CouponBuildableType, MerchantCampaign, ContentSlot, Coupon, CouponIssue, CouponStatus, IssueTarget, SlotKind } from "@/lib/types";
 import {
-  CampaignStatusBadge, CouponStatusBadge, useCampaignStatusMap, useCampaignTypeMap,
+  PlatformSlotStatusBadge, CouponStatusBadge, usePlatformSlotStatusMap, usePlatformSlotTypeMap,
   useCouponStatusMap, useCouponTypeMap, useSlotKindMap,
+  useMerchantCampaignTypeMap, useMerchantCampaignStatusMap,
 } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 会员卡自成一块 —— 与券/活动/内容位三个 tab 只共用文案表
 import { MemberTab } from "./member-tab";
-import { ArchiveActions, ShowArchivedToggle, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
+import { ExposureTab } from "./exposure-tab";
+import { PlatformTab } from "./platform-tab";
+import { PlatformAuditTab } from "./platform-audit-tab";
+import { ArchiveActions, ShowArchivedToggle, ARCHIVE_LABEL_KEY, UNARCHIVE_LABEL_KEY, archiveConfirm, archivedRowClass, unarchiveConfirm } from "@/components/archive";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Drawer, Field } from "@/components/ui/drawer";
+import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
+import { RowActions } from "@/components/ui/dropdown-menu";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,19 +39,21 @@ import { Pagination } from "@/components/ui/misc";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { HelpNote } from "@/components/ui/help-note";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useI18n } from "@/lib/i18n";
 
 type Copy = (typeof MARKETING_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "coupons", label: c.tabCoupons },
-  { key: "issues", label: c.tabIssues },
-  { key: "campaigns", label: c.tabCampaigns },
-  { key: "slots", label: c.tabSlots },
-  { key: "member", label: c.tabMember },
-];
+/*
+ * 末尾两个是**敞口**（P8 · O5–O6）：看的是「谁家的券会失控」，
+ * 不是券本身。放在营销页而不是会员页 —— 权限码是 marketing:*，
+ * 挂到会员下面会让看会员的人顺带拿到营销的入口。
+ */
+const TAB_KEYS = ["coupons", "issues", "campaigns", "slots", "member",
+                  "promoCoupons", "promoActivities", "platform", "platformAudit"] as const;
 
 const TARGET_OPTIONS = (c: Copy): { value: IssueTarget; label: string }[] => [
   { value: "ALL", label: c.targetAll },
@@ -60,13 +67,82 @@ function couponValue(coupon: Coupon, c: Copy) {
   return coupon.type === "DISCOUNT" ? fill(c.discountValue, { n: (coupon.value / 1000).toFixed(1) }) : money(coupon.value);
 }
 
+/** 建券表单。字段都是字符串——数值转换与校验留到提交那一刻，与 MemberTab 的 Form 同一套做法。 */
+interface CouponForm {
+  couponNo?: string;
+  name: string;
+  type: CouponBuildableType;
+  faceMinor: string;
+  discountRate: string;
+  maxDiscountMinor: string;
+  threshold: string;
+  totalCount: string;
+  perUserLimit: string;
+  budget: string;
+  validFrom: string;
+  validTo: string;
+}
+
+const EMPTY_COUPON_FORM: CouponForm = {
+  name: "", type: "FULL_CUT", faceMinor: "", discountRate: "", maxDiscountMinor: "",
+  threshold: "", totalCount: "", perUserLimit: "1", budget: "", validFrom: "", validTo: "",
+};
+
+const toCouponForm = (x: Coupon): CouponForm => ({
+  couponNo: x.couponNo, name: x.name, type: x.type === "DISCOUNT" ? "DISCOUNT" : "FULL_CUT",
+  faceMinor: x.type === "DISCOUNT" ? "" : String(x.value / 100),
+  discountRate: x.type === "DISCOUNT" ? (x.value / 1000).toFixed(1) : "",
+  maxDiscountMinor: x.type === "DISCOUNT" ? String(x.maxDiscountMinor / 100) : "",
+  threshold: x.threshold ? String(x.threshold / 100) : "",
+  totalCount: String(x.totalCount), perUserLimit: String(x.perUserLimit),
+  budget: x.budget ? String(x.budget / 100) : "",
+  validFrom: toDatetimeLocal(x.validFrom), validTo: toDatetimeLocal(x.validTo),
+});
+
+/**
+ * 内容位表单。货号用**逗号分隔的文本**收，而不是一个选货器：
+ * 运营手里的清单本来就是从商品页复制出来的一串货号，先做能用的那一版；
+ * 选货器要等商品检索组件（它同时被活动、专题、标准库要着）。
+ */
+type SlotForm = {
+  slotNo?: string;
+  title: string;
+  kind: SlotKind;
+  sort: string;
+  communityNos: string;
+  goodsNos: string;
+  onlineAt: string;
+  offlineAt: string;
+  enabled: boolean;
+};
+
+const EMPTY_SLOT_FORM: SlotForm = {
+  title: "", kind: "HOME_FLOOR", sort: "0", communityNos: "", goodsNos: "",
+  onlineAt: "", offlineAt: "", enabled: true,
+};
+
+const toSlotForm = (x: ContentSlot): SlotForm => ({
+  slotNo: x.slotNo, title: x.title, kind: x.kind, sort: String(x.sort),
+  communityNos: x.communityNos.join(", "), goodsNos: x.goodsNos.join(", "),
+  onlineAt: toDatetimeLocal(Date.parse(x.onlineAt)), offlineAt: toDatetimeLocal(Date.parse(x.offlineAt)),
+  enabled: x.enabled,
+});
+
+/** 逗号 / 空格 / 换行都当分隔符 —— 运营是从别处复制过来的，形状不由他决定。 */
+const splitNos = (v: string) => v.split(/[,，\s]+/).map((x) => x.trim()).filter(Boolean);
+
+const toDatetimeLocal = (ms: number) => {
+  const d = new Date(ms - new Date().getTimezoneOffset() * 60_000);
+  return d.toISOString().slice(0, 16);
+};
+
 export default function MarketingPage() {
   return <Suspense fallback={null}><MarketingInner /></Suspense>;
 }
 
 function MarketingInner() {
   const c = useCopy(MARKETING_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/marketing", TAB_KEYS);
   const targetOptions = TARGET_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();
@@ -83,10 +159,13 @@ function MarketingInner() {
   const [showArchived, setShowArchived] = useState(false);
 
   const [issuing, setIssuing] = useState<Coupon | null>(null);
-  const [issueForm, setIssueForm] = useState<{ target: IssueTarget; targetDesc: string; count: string }>({
-    target: "ALL", targetDesc: "", count: "100",
+  const [issueForm, setIssueForm] = useState<{ target: IssueTarget; targetDesc: string; userNo: string; count: string }>({
+    // 默认「指定用户」：它是唯一后端能真发的，也是最高频的场景（客服补偿券）
+    target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1",
   });
   const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; value: string } | null>(null);
+  const [couponForm, setCouponForm] = useState<CouponForm | null>(null);
+  const [slotForm, setSlotForm] = useState<SlotForm | null>(null);
 
   const canIssue = allow("marketing:coupon:issue");
   const canEditCampaign = allow("marketing:campaign:update");
@@ -95,8 +174,9 @@ function MarketingInner() {
 
   const couponTypeMap = useCouponTypeMap();
   const couponStatusMap = useCouponStatusMap();
-  const campaignTypeMap = useCampaignTypeMap();
-  const campaignStatusMap = useCampaignStatusMap();
+  // 商家活动，不是平台场次 —— 两套枚举不能混用
+  const campaignTypeMap = useMerchantCampaignTypeMap();
+  const campaignStatusMap = useMerchantCampaignStatusMap();
   const slotKindMap = useSlotKindMap();
 
   const couponQ = { keyword, type, status, showArchived, page, size };
@@ -116,12 +196,37 @@ function MarketingInner() {
   };
 
   const statusMut = useMutation({
-    mutationFn: (v: { couponNo: string; status: CouponStatus }) => api.setCouponStatus(v.couponNo, v.status),
+    // 理由必填：后端把它写进审计，空理由 10400。此前这里不传 reason，
+    // 于是**运营在真后端下点「暂停」必然失败** —— mock 没有这条校验所以演示一切正常
+    mutationFn: (v: { couponNo: string; status: CouponStatus; reason: string }) =>
+      api.setCouponStatus(v.couponNo, v.status, v.reason),
     onSuccess: () => { invalidate(); notify.success(c.toastCouponStatus); },
+  });
+  const campaignToggleMut = useMutation({
+    mutationFn: (v: { campaignNo: string; running: boolean; reason: string }) =>
+      api.toggleCampaign(v.campaignNo, v.running, v.reason),
+    onSuccess: () => { invalidate(); notify.success(c.toastCampaignToggled); },
   });
   const budgetMut = useMutation({
     mutationFn: (v: { couponNo: string; budget: number }) => api.setCouponBudget(v.couponNo, v.budget),
     onSuccess: () => { invalidate(); setBudgetEdit(null); notify.success(c.toastBudgetSaved); },
+  });
+  const saveCouponMut = useMutation({
+    mutationFn: (f: CouponForm) =>
+      api.saveCoupon({
+        couponNo: f.couponNo, name: f.name, type: f.type,
+        faceMinor: f.type === "FULL_CUT" ? Math.round(Number(f.faceMinor) * 100) : undefined,
+        // 折扣输入的是"折"（8.5 = 八五折），万分比 = 折 × 1000
+        discountRate: f.type === "DISCOUNT" ? Math.round(Number(f.discountRate) * 1000) : undefined,
+        maxDiscountMinor: f.type === "DISCOUNT" ? Math.round(Number(f.maxDiscountMinor) * 100) : undefined,
+        threshold: f.threshold ? Math.round(Number(f.threshold) * 100) : 0,
+        totalCount: Math.round(Number(f.totalCount)),
+        perUserLimit: f.perUserLimit ? Math.round(Number(f.perUserLimit)) : 1,
+        budget: f.budget ? Math.round(Number(f.budget) * 100) : 0,
+        validFrom: new Date(f.validFrom).getTime(),
+        validTo: new Date(f.validTo).getTime(),
+      }),
+    onSuccess: () => { invalidate(); setCouponForm(null); notify.success(c.toastCouponSaved); },
   });
   const issueMut = useMutation({
     mutationFn: () =>
@@ -129,9 +234,22 @@ function MarketingInner() {
         couponNo: issuing!.couponNo,
         target: issueForm.target,
         targetDesc: issueForm.targetDesc || targetOptions.find((o) => o.value === issueForm.target)!.label,
+        userNo: issueForm.userNo.trim() || undefined,
         count: Number(issueForm.count),
       }),
     onSuccess: (r) => { invalidate(); setIssuing(null); notify.success(fill(c.toastIssued, { n: r.count, amount: money(r.amount) })); },
+  });
+  const saveSlotMut = useMutation({
+    mutationFn: (f: SlotForm) =>
+      api.saveContentSlot({
+        slotNo: f.slotNo, title: f.title, kind: f.kind, sort: Number(f.sort) || 0,
+        communityNos: splitNos(f.communityNos), goodsNos: splitNos(f.goodsNos),
+        // datetime-local 是本地时间，后端收的是 ISO —— 不转的话上下线会差一个时区
+        onlineAt: new Date(f.onlineAt).toISOString(),
+        offlineAt: new Date(f.offlineAt).toISOString(),
+        enabled: f.enabled,
+      }),
+    onSuccess: () => { invalidate(); setSlotForm(null); notify.success(c.toastSlotSaved); },
   });
   const slotEnableMut = useMutation({
     mutationFn: (v: { slotNo: string; enabled: boolean }) => api.setSlotEnabled(v.slotNo, v.enabled),
@@ -149,6 +267,19 @@ function MarketingInner() {
     onSuccess: invalidate,
   });
 
+  /**
+   * 停 / 启一张券。**走确认框收理由** —— 后端要求它，且它会写进审计给商家看。
+   * 不做成「点了就改」：这是改别人家的券，一次误点在领券中心是立刻可见的。
+   */
+  const askCouponStatus = (x: Coupon, status: CouponStatus) =>
+    confirm({
+      title: status === "PAUSED" ? c.pauseCouponTitle : c.resumeCouponTitle,
+      desc: `${x.name}（${x.couponNo}）`,
+      danger: status === "PAUSED",
+      requireReason: true,
+      action: (reason) => statusMut.mutateAsync({ couponNo: x.couponNo, status, reason }),
+    });
+
   const couponColumns: Column<Coupon>[] = [
     { header: c.colCouponNo, cell: (x) => x.couponNo, numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
@@ -158,14 +289,27 @@ function MarketingInner() {
     {
       header: c.colBudget,
       width: "14rem",
-      // 预算是唯一挡住"发着发着超支"的地方，所以给进度条而不是两个数字
-      cell: (c) => (
-        <div className="flex items-center gap-2">
-          <Progress value={c.issuedAmount} total={c.budget} warnAt={90} showText={false} className="w-20" />
+      // 预算是唯一挡住"发着发着超支"的地方，所以给进度条而不是两个数字。
+      // budget=0 是「不限」而不是「零元」—— 画成 ¥5.00 / ¥0.00 会读成已经超支，
+      // 而它恰恰是「这张券没人在管支出」，两个意思相反
+      // 整格可点 = 改预算的入口。此前抽屉、输入框、保存按钮、mutation 四样都在，
+      // **唯独没有任何地方打开那个抽屉** —— 加上后端那条缺失的端点，
+      // 这条链上五环齐全就差最后一个按钮，而预算因此永远是 0
+      cell: (r) => (
+        <button
+          type="button"
+          disabled={!canIssue}
+          title={c.budgetTitle}
+          className="focus-ring flex w-full items-center gap-2 rounded-field px-1 transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+          onClick={() => setBudgetEdit({ couponNo: r.couponNo, value: (r.budget / 100).toFixed(2) })}
+        >
+          {r.budget > 0 && (
+            <Progress value={r.issuedAmount} total={r.budget} warnAt={90} showText={false} className="w-20" />
+          )}
           <span className="tabular-nums text-muted-foreground">
-            {money(c.issuedAmount)} / {money(c.budget)}
+            {money(r.issuedAmount)} / {r.budget > 0 ? money(r.budget) : c.budgetUnlimited}
           </span>
-        </div>
+        </button>
       ),
     },
     { header: c.colIssuedRedeemed, cell: (x) => `${x.issued} / ${x.redeemed}`, numeric: true },
@@ -173,28 +317,44 @@ function MarketingInner() {
     { header: c.colStatus, cell: (x) => <CouponStatusBadge value={x.status} /> },
     {
       header: c.colActions,
-      cell: (x) => (
-        <ArchiveActions
-          archived={!!x.archivedAt}
-          canWrite={canIssue}
-          onArchive={async () => {
-            await confirm(archiveConfirm(c.entityCoupon, x.name, x.couponNo, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false })));
-          }}
-          onUnarchive={async () => {
-            await confirm(unarchiveConfirm(c.entityCoupon, x.name, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: true })));
-          }}
-          actions={
-            // 只出当前状态允许的那一个动作（合法迁移表见 lib/types/marketing.ts）
-            x.status === "DRAFT" ? (
-              <Button size="sm" variant="outline" onClick={() => statusMut.mutate({ couponNo: x.couponNo, status: "ACTIVE" })}>{c.btnActivate}</Button>
-            ) : x.status === "ACTIVE" ? (
-              <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "ALL", targetDesc: "", count: "100" }); }}>{c.btnIssue}</Button>
-            ) : x.status === "PAUSED" ? (
-              <Button size="sm" variant="outline" onClick={() => statusMut.mutate({ couponNo: x.couponNo, status: "ACTIVE" })}>{c.btnResume}</Button>
-            ) : null
-          }
-        />
-      ),
+      cell: (x) => {
+        // 行内只留「这个状态下最常按的那一个」（DRAFT→启用 / ACTIVE→发券 / PAUSED→恢复），
+        // 其余（编辑、暂停、归档）收进「更多」——行内动作 ≤2 个是本站表格操作列的约定
+        // （见 components/README.md），这一列此前平铺到 4 个按钮，表格被撑得要横向滚动。
+        const primary =
+          x.status === "DRAFT" ? (
+            <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnActivate}</Button>
+          ) : x.status === "ACTIVE" ? (
+            <Button size="sm" onClick={() => { setIssuing(x); setIssueForm({ target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1" }); }}>{c.btnIssue}</Button>
+          ) : x.status === "PAUSED" ? (
+            <Button size="sm" variant="outline" onClick={() => askCouponStatus(x, "ACTIVE")}>{c.btnResume}</Button>
+          ) : null;
+        return (
+          <div className="flex flex-nowrap items-center gap-2">
+            {primary}
+            <RowActions
+              actions={[
+                canIssue && !x.archivedAt && (x.type === "FULL_CUT" || x.type === "DISCOUNT") && {
+                  label: c.actionEditCoupon, onSelect: () => setCouponForm(toCouponForm(x)),
+                },
+                // 出事时的止损手段：券从领券中心消失、领取被拒，已领到手的不动
+                canIssue && !x.archivedAt && x.status === "ACTIVE" && {
+                  label: c.btnPause, onSelect: () => askCouponStatus(x, "PAUSED"), danger: true,
+                },
+                canIssue && (x.archivedAt
+                  ? {
+                      label: t(UNARCHIVE_LABEL_KEY),
+                      onSelect: () => confirm(unarchiveConfirm(c.entityCoupon, x.name, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: true }))),
+                    }
+                  : {
+                      label: t(ARCHIVE_LABEL_KEY), danger: true,
+                      onSelect: () => confirm(archiveConfirm(c.entityCoupon, x.name, x.couponNo, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false }))),
+                    }),
+              ]}
+            />
+          </div>
+        );
+      },
     },
   ];
 
@@ -209,14 +369,29 @@ function MarketingInner() {
     { header: c.colTime, cell: (r) => fmtTime(r.createdAt) },
   ];
 
-  const campaignColumns: Column<Campaign>[] = [
+  /*
+   * 这一列表是**商家自建的店铺活动**，不是平台投放场次（后端还没有那个对象）。
+   * 于是没有「位置」列 —— 那是场次专属的；商品数取 goodsNos 的长度，
+   * 后端 CampaignVO 里一直有这个字段，此前因为类型对不上而恒为空。
+   */
+  /** 停 / 启商家活动。与停券同一套：理由必填，写进审计 */
+  const askCampaignToggle = (x: MerchantCampaign, running: boolean) =>
+    confirm({
+      title: running ? c.resumeCampaignTitle : c.pauseCampaignTitle,
+      desc: `${x.name}（${x.merchantNo}）`,
+      danger: !running,
+      requireReason: true,
+      action: (reason) => campaignToggleMut.mutateAsync({ campaignNo: x.campaignNo, running, reason }),
+    });
+
+  const campaignColumns: Column<MerchantCampaign>[] = [
     { header: c.colCampaignNo, cell: (x) => x.campaignNo, numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
+    { header: c.colMerchant, cell: (x) => x.merchantNo },
     { header: c.colType, cell: (x) => <StatusBadge map={campaignTypeMap} value={x.type} /> },
-    { header: c.colPosition, cell: (x) => x.position },
     { header: c.colRange, cell: (x) => `${fmtTime(x.startAt)} ~ ${fmtTime(x.endAt)}` },
-    { header: c.colSkuCount, cell: (x) => x.skuCount, numeric: true },
-    { header: c.colStatus, cell: (x) => <CampaignStatusBadge value={x.status} /> },
+    { header: c.colSkuCount, cell: (x) => x.goodsNos?.length ?? 0, numeric: true },
+    { header: c.colStatus, cell: (x) => <StatusBadge map={campaignStatusMap} value={x.status} /> },
     {
       header: c.colActions,
       cell: (x) => (
@@ -229,6 +404,18 @@ function MarketingInner() {
           onUnarchive={async () => {
             await confirm(unarchiveConfirm(c.entityCampaign, x.name, () => archiveMut.mutateAsync({ kind: "campaign", no: x.campaignNo, restore: true })));
           }}
+          actions={
+            /*
+             * 平台对商家活动的**全部**能力就是这一个开关：看得见、能停。
+             * 不能建也不能改内容 —— 那是商家自己的经营决定。
+             * ENDED 的不给按钮：已经结束的活动没有「停」这回事。
+             */
+            x.status === "RUNNING" ? (
+              <Button size="sm" variant="outline" onClick={() => askCampaignToggle(x, false)}>{c.btnPause}</Button>
+            ) : x.status === "PAUSED" ? (
+              <Button size="sm" variant="outline" onClick={() => askCampaignToggle(x, true)}>{c.btnResume}</Button>
+            ) : null
+          }
         />
       ),
     },
@@ -241,6 +428,9 @@ function MarketingInner() {
     { header: c.colSort, cell: (s) => s.sort, numeric: true },
     // 空 = 全部社区。写"全部社区"而不是留空：留空会被读成"还没配"
     { header: c.colCommunities, cell: (s) => (s.communityNos.length ? s.communityNos.join("、") : c.allCommunities) },
+    // 只有首页楼层有内容；另两种在 C 端还没有承接位，写「—」而不是 0，
+    // 0 会被读成「配了但空着」，而它其实是「这种形态本来就不带货」
+    { header: c.colSlotGoods, cell: (s) => (s.kind === "HOME_FLOOR" ? s.goodsNos.length : "—"), numeric: true },
     { header: c.colOnOffline, cell: (s) => `${fmtTime(s.onlineAt)} ~ ${fmtTime(s.offlineAt)}` },
     {
       header: c.colEnabled,
@@ -256,6 +446,10 @@ function MarketingInner() {
     {
       header: c.colActions,
       cell: (s) => (
+        <div className="flex items-center gap-2">
+        {canEditSlot && !s.archivedAt && (
+          <Button size="sm" variant="outline" onClick={() => setSlotForm(toSlotForm(s))}>{c.actionEdit}</Button>
+        )}
         <ArchiveActions
           archived={!!s.archivedAt}
           canWrite={canEditSlot}
@@ -266,6 +460,7 @@ function MarketingInner() {
             await confirm(unarchiveConfirm(c.entitySlot, s.title, () => archiveMut.mutateAsync({ kind: "slot", no: s.slotNo, restore: true })));
           }}
         />
+        </div>
       ),
     },
   ];
@@ -298,7 +493,19 @@ function MarketingInner() {
         </>
       )}
 
-      {tab !== "member" && (
+      {tab === "platform" && <PlatformTab c={c} canEdit={allow("marketing:campaign:update")} />}
+      {tab === "platformAudit" && <PlatformAuditTab c={c} canReview={allow("marketing:campaign:update")} />}
+
+      {(tab === "promoCoupons" || tab === "promoActivities") && (
+        <ExposureTab
+          c={c}
+          kind={tab === "promoCoupons" ? "coupons" : "activities"}
+          canStop={allow("marketing:campaign:update")}
+        />
+      )}
+
+      {tab !== "member" && tab !== "promoCoupons" && tab !== "promoActivities"
+        && tab !== "platform" && tab !== "platformAudit" && (
       <>
       <Toolbar
         search={keyword}
@@ -309,6 +516,13 @@ function MarketingInner() {
               : tab === "campaigns" ? c.searchCampaigns
                 : c.searchSlots
         }
+        onAdd={
+          tab === "coupons" ? () => setCouponForm(EMPTY_COUPON_FORM)
+            : tab === "slots" ? () => setSlotForm(EMPTY_SLOT_FORM)
+              : undefined
+        }
+        addLabel={tab === "slots" ? c.actionNewSlot : c.actionNewCoupon}
+        canAdd={tab === "slots" ? canEditSlot : canIssue}
       >
         {tab === "coupons" && (
           <>
@@ -377,7 +591,11 @@ function MarketingInner() {
         desc={issuing?.couponNo}
         footer={
           issuing ? (
-            <Button loading={issueMut.isPending} onClick={() => issueMut.mutate()}>{c.btnConfirmIssue}</Button>
+            <Button
+              loading={issueMut.isPending}
+              disabled={issueForm.target === "SINGLE_USER" && !issueForm.userNo.trim()}
+              onClick={() => issueMut.mutate()}
+            >{c.btnConfirmIssue}</Button>
           ) : null
         }
       >
@@ -396,6 +614,23 @@ function MarketingInner() {
                 {targetOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
             </div>
+            {/*
+              收券人。只在 SINGLE_USER 时出现，因为只有这一种后端能真发 ——
+              其余三种的收件人在入口处就不存在（「定向说明」是自由文本，
+              给不出社区号也给不出 userNo），后端会返回 10501「还没做完」。
+              不做成隐藏后仍可提交：那等于让运营点一次才知道这条路不通。
+            */}
+            {issueForm.target === "SINGLE_USER" && (
+              <div className="space-y-1">
+                <Label htmlFor="iss-user" required>{c.fieldUserNo}</Label>
+                <Input
+                  id="iss-user" className="w-full" value={issueForm.userNo}
+                  placeholder={c.userNoPlaceholder}
+                  onChange={(e) => setIssueForm({ ...issueForm, userNo: e.target.value })}
+                />
+                <p className="txt-caption text-muted-foreground">{c.userNoHint}</p>
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="iss-desc">{c.fieldTargetDesc}</Label>
               <Input
@@ -426,6 +661,177 @@ function MarketingInner() {
             <Button className="mt-3" onClick={() => budgetMut.mutate({ couponNo: budgetEdit.couponNo, budget: Math.round(Number(budgetEdit.value) * 100) })}>
               {c.save}
             </Button>
+          </div>
+        </Drawer>
+      )}
+
+      {/* 建券 / 改券抽屉（TDD-营销预算前置）。字段随类型切换显隐——折扣券封顶必填，
+          满减券根本不问封顶，避免运营看着一个跟当前类型无关的必填框发懵。 */}
+      {couponForm && (
+        <Drawer
+          open
+          onOpenChange={(o) => !o && setCouponForm(null)}
+          title={couponForm.couponNo ? fill(c.editCouponTitle, { name: couponForm.name }) : c.newCouponTitle}
+          desc={couponForm.couponNo}
+          footer={
+            <Button loading={saveCouponMut.isPending} onClick={() => saveCouponMut.mutate(couponForm)}>
+              {c.btnSaveCoupon}
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            {(() => {
+              const issued = coupons.data?.records.find((r) => r.couponNo === couponForm.couponNo)?.issued ?? 0;
+              return issued > 0 ? <Notice tone="warning">{fill(c.issuedLockedNotice, { n: issued })}</Notice> : null;
+            })()}
+            <div className="space-y-1">
+              <Label htmlFor="cp-name" required>{c.fieldCouponName}</Label>
+              <Input id="cp-name" className="w-full" value={couponForm.name}
+                onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cp-type" required>{c.fieldCouponType}</Label>
+              <Select id="cp-type" className="w-full" value={couponForm.type}
+                onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value as CouponForm["type"] })}>
+                <option value="FULL_CUT">{c.ctFullCut}</option>
+                <option value="DISCOUNT">{c.ctDiscount}</option>
+              </Select>
+            </div>
+            <FieldGrid>
+              {couponForm.type === "FULL_CUT" ? (
+                <div className="space-y-1">
+                  <Label htmlFor="cp-face" required>{c.fieldFace}</Label>
+                  <Input id="cp-face" className="w-full" value={couponForm.faceMinor}
+                    onChange={(e) => setCouponForm({ ...couponForm, faceMinor: e.target.value })} />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <Label htmlFor="cp-rate" required>{c.fieldDiscountRate}</Label>
+                    <Input id="cp-rate" className="w-full" value={couponForm.discountRate}
+                      onChange={(e) => setCouponForm({ ...couponForm, discountRate: e.target.value })} />
+                    <p className="txt-caption text-muted-foreground">{c.discountRateHint}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="cp-cap" required>{c.fieldMaxDiscount}</Label>
+                    <Input id="cp-cap" className="w-full" value={couponForm.maxDiscountMinor}
+                      onChange={(e) => setCouponForm({ ...couponForm, maxDiscountMinor: e.target.value })} />
+                    <p className="txt-caption text-muted-foreground">{c.maxDiscountHint}</p>
+                  </div>
+                </>
+              )}
+              <div className="space-y-1">
+                <Label htmlFor="cp-threshold">{c.fieldThreshold}</Label>
+                <Input id="cp-threshold" className="w-full" value={couponForm.threshold}
+                  onChange={(e) => setCouponForm({ ...couponForm, threshold: e.target.value })} />
+                <p className="txt-caption text-muted-foreground">{c.thresholdHint}</p>
+              </div>
+            </FieldGrid>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="cp-total" required>{c.fieldTotalCount}</Label>
+                <Input id="cp-total" className="w-full" value={couponForm.totalCount}
+                  onChange={(e) => setCouponForm({ ...couponForm, totalCount: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cp-per-user">{c.fieldPerUserLimit}</Label>
+                <Input id="cp-per-user" className="w-full" value={couponForm.perUserLimit}
+                  onChange={(e) => setCouponForm({ ...couponForm, perUserLimit: e.target.value })} />
+              </div>
+            </FieldGrid>
+            <div className="space-y-1">
+              <Label htmlFor="cp-budget">{c.fieldCouponBudget}</Label>
+              <Input id="cp-budget" className="w-full" value={couponForm.budget}
+                onChange={(e) => setCouponForm({ ...couponForm, budget: e.target.value })} />
+              <p className="txt-caption text-muted-foreground">{c.couponBudgetHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="cp-from" required>{c.fieldValidFrom}</Label>
+                <Input id="cp-from" type="datetime-local" className="w-full" value={couponForm.validFrom}
+                  onChange={(e) => setCouponForm({ ...couponForm, validFrom: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cp-to" required>{c.fieldValidTo}</Label>
+                <Input id="cp-to" type="datetime-local" className="w-full" value={couponForm.validTo}
+                  onChange={(e) => setCouponForm({ ...couponForm, validTo: e.target.value })} />
+              </div>
+            </FieldGrid>
+          </div>
+        </Drawer>
+      )}
+
+      {/* 内容位抽屉：首页第一屏配什么，就在这里 */}
+      {slotForm && (
+        <Drawer
+          open
+          onOpenChange={() => setSlotForm(null)}
+          title={slotForm.slotNo ? fill(c.editSlotTitle, { title: slotForm.title }) : c.newSlotTitle}
+          desc={slotForm.slotNo}
+          footer={
+            <Button loading={saveSlotMut.isPending} onClick={() => saveSlotMut.mutate(slotForm)}>{c.save}</Button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="sl-title" required>{c.fieldSlotTitle}</Label>
+              <Input id="sl-title" className="w-full" value={slotForm.title}
+                onChange={(e) => setSlotForm({ ...slotForm, title: e.target.value })} />
+              <p className="txt-caption text-muted-foreground">{c.slotTitleHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="sl-kind">{c.fieldSlotKind}</Label>
+                <Select id="sl-kind" className="w-full" value={slotForm.kind}
+                  onChange={(e) => setSlotForm({ ...slotForm, kind: e.target.value as SlotKind })}>
+                  {(Object.keys(slotKindMap) as SlotKind[]).map((k) => (
+                    <option key={k} value={k}>{slotKindMap[k].label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sl-sort">{c.fieldSlotSort}</Label>
+                <Input id="sl-sort" className="w-full" value={slotForm.sort}
+                  onChange={(e) => setSlotForm({ ...slotForm, sort: e.target.value })} />
+              </div>
+            </FieldGrid>
+            {slotForm.kind === "HOME_FLOOR" ? (
+              <div className="space-y-1">
+                <Label htmlFor="sl-goods" required>{c.fieldSlotGoods}</Label>
+                <Textarea value={slotForm.goodsNos}
+                  onChange={(v) => setSlotForm({ ...slotForm, goodsNos: v })}
+                  placeholder={c.slotGoodsPlaceholder} />
+                <p className="txt-caption text-muted-foreground">{c.slotGoodsHint}</p>
+              </div>
+            ) : (
+              // 说清楚而不是留一个能填却没人读的框：填了也不会有任何端展示它
+              <HelpNote>{c.slotKindNoContent}</HelpNote>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="sl-communities">{c.fieldSlotCommunities}</Label>
+              <Input id="sl-communities" className="w-full" value={slotForm.communityNos}
+                onChange={(e) => setSlotForm({ ...slotForm, communityNos: e.target.value })}
+                placeholder={c.slotCommunitiesPlaceholder} />
+              <p className="txt-caption text-muted-foreground">{c.slotCommunitiesHint}</p>
+            </div>
+            <FieldGrid>
+              <div className="space-y-1">
+                <Label htmlFor="sl-online" required>{c.fieldSlotOnline}</Label>
+                <Input id="sl-online" type="datetime-local" className="w-full" value={slotForm.onlineAt}
+                  onChange={(e) => setSlotForm({ ...slotForm, onlineAt: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sl-offline" required>{c.fieldSlotOffline}</Label>
+                <Input id="sl-offline" type="datetime-local" className="w-full" value={slotForm.offlineAt}
+                  onChange={(e) => setSlotForm({ ...slotForm, offlineAt: e.target.value })} />
+              </div>
+            </FieldGrid>
+            <div className="space-y-1">
+              <Label htmlFor="sl-enabled">{c.fieldSlotEnabled}</Label>
+              <Switch checked={slotForm.enabled} aria-label={c.fieldSlotEnabled}
+                onChange={(v) => setSlotForm({ ...slotForm, enabled: v })} />
+              <p className="txt-caption text-muted-foreground">{c.slotEnabledHint}</p>
+            </div>
           </div>
         </Drawer>
       )}

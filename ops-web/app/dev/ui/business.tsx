@@ -7,28 +7,27 @@ import * as React from "react";
 import { Section, Row, Cell, Hint } from "./kit";
 import {
   MerchantStatusBadge, OrderStatusBadge, VerifiedBadge,
-  useFulfillTypeMap, useTrafficSourceMap,
+  useFulfillmentTypeMap, useTrafficSourceMap,
 } from "@/components/status";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ShowArchivedToggle, ArchivedAt, ArchiveActions } from "@/components/archive";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
-import type { MerchantStatus, OrderStatus, FulfillType, TrafficSource } from "@/lib/types";
+import type { MerchantStatus, OrderStatus, FulfillmentType, TrafficSource } from "@/lib/types";
 
 // 顺序 = 状态机推进顺序（与 lib/types 里的迁移表同序），不是字母序。
-const MERCHANT_STATES: MerchantStatus[] = [
-  "DRAFT", "SUBMITTED", "REVIEWING", "APPROVED", "REJECTED", "SUSPENDED",
-];
+// 经营状态只有三个（审核状态在申请单上，不在这里）
+const MERCHANT_STATES: MerchantStatus[] = ["ACTIVE", "SUSPENDED", "FROZEN"];
 const ORDER_STATES: OrderStatus[] = [
-  "PENDING_PAY", "PAID", "PREPARING", "DELIVERING", "ARRIVED", "COMPLETED", "CANCELLED", "AFTER_SALE",
+  "WAIT_PAY", "WAIT_OFFLINE_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED", "REFUNDED",
 ];
-const FULFILL_TYPES: FulfillType[] = [
-  "PICKUP_STORE", "PICKUP_NEIGHBOR", "MERCHANT_DELIVERY", "EXPRESS", "SERVICE",
+const FULFILL_TYPES: FulfillmentType[] = [
+  "STORE_PICKUP", "NEIGHBOR_PICKUP", "MERCHANT_DELIVERY", "EXPRESS", "STORE_VERIFY",
 ];
-const TRAFFIC_SOURCES: TrafficSource[] = ["MERCHANT_OWNED", "PLATFORM", "INVITE", "CHANNEL"];
+const TRAFFIC_SOURCES: TrafficSource[] = ["MERCHANT_OWNED", "PLATFORM"];
 
 export function BusinessSections() {
   const [showArchived, setShowArchived] = React.useState(false);
-  const fulfillMap = useFulfillTypeMap();
+  const fulfillMap = useFulfillmentTypeMap();
   const trafficMap = useTrafficSourceMap();
 
   return (
@@ -123,7 +122,7 @@ export function BusinessSections() {
           <ReadOnlyNotice what="商家入驻审核" perm="merchant:apply:audit" />
         </Row>
         <Row label="多权限码（缺任一即降级）">
-          <ReadOnlyNotice what="分账执行 / 提现审批" perm={["finance:settle:execute", "finance:withdraw:approve"]} />
+          <ReadOnlyNotice what="分账执行 / 放款" perm={["finance:settle:execute", "finance:payout:execute"]} />
         </Row>
         <Row label="带 note">
           <ReadOnlyNotice what="自提点建档" perm="community:pickup:update" note="不能新增、编辑或归档" />

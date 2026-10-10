@@ -1,36 +1,160 @@
 <script setup lang="ts">
 // 订单列表。tab 是「用户视角的下一步动作」，不是订单状态枚举 ——
-// 用户关心的是「我要去付钱 / 我要去取货」，不是 PREPARING 和 ARRIVED 的区别。
-import { computed, ref } from "vue";
+// 用户关心的是「我要去付钱 / 我要去取货」，不是 PAID 和 ARRIVED 的区别。
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
-import { datetime, money } from "@shared/utils/format";
-import type { Order, OrderStatus } from "@shared/types";
+import { countdown, datetime, money } from "@shared/utils/format";
+import type { Order } from "@shared/types";
+import {
+  DELIVERY_SHAPE,
+  orderView,
+  showVerifyCode,
+  tabQuery,
+  type OrderTabSpec,
+  statusTone,
+} from "@shared/strategies/order-view";
 
-/** 每个 tab 对应一组订单状态 */
-const TABS: { key: string; statuses: OrderStatus[] | null }[] = [
-  { key: "all", statuses: null },
-  { key: "toPay", statuses: ["WAIT_PAY"] },
-  { key: "toPick", statuses: ["PAID", "PREPARING", "ARRIVED", "SHIPPED"] },
-  { key: "done", statuses: ["COMPLETED"] },
-  { key: "afterSale", statuses: ["REFUNDING", "REFUNDED"] },
+/**
+ * 页签 = **谓词**（抽象状态 + 交付形态集合），不是状态值。
+ *
+ * 这一点是刻意的：状态集合封闭（6 个，与履约无关），履约集合开放。
+ * 「待取货」不是一个状态，是 `FULFILLING ∧ 自己去取` 这个条件 ——
+ * 于是**加一种履约方式不需要加状态**，只要把它归进某个交付形态；
+ * 想把两个页签并成一个，改这里的 `shapes`，后端一行不用动。
+ *
+ * ⚠️ 曾经这里是 `toPick: [PAID, ARRIVED, SHIPPED]` 三个「状态」并成一个页签，
+ * 而 `ARRIVED`/`SHIPPED` 本身就是「状态 × 履约」的组合冒充状态。
+ * 两层错叠在一起的表现是：**买快递的用户在「待取货」下看到自己的单**。
+ *
+ * ⚠️「售后」是**唯一不按订单状态筛的页签** —— 售后是挂在订单上的另一张单，
+ * 与订单状态并存：一个「已完成」的订单照样可以有一张处理中的售后单。
+ * 此前这个页签筛 `["REFUNDING","REFUNDED"]`，而 `REFUNDING` 从来只是售后单的状态、
+ * 订单不会是这个值，于是处理中的售后一条也进不来。
+ */
+const TABS: OrderTabSpec[] = [
+  { key: "all" },
+  { key: "toPay", status: "WAIT_PAY" },
+  /** 已付款、等交付方行动 —— 用户这时什么都不用做 */
+  { key: "toShip", status: "PAID" },
+  /** 该你了：自提到点了要去取、到店核销的码已出可去用 */
+  {
+    key: "toPick",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SELF_PICKUP, DELIVERY_SHAPE.SELF_SERVE],
+  },
+  /** 等着：实物在路上、服务方按约定时间来 */
+  {
+    key: "toReceive",
+    status: "FULFILLING",
+    shapes: [DELIVERY_SHAPE.SHIP_TO_BUYER, DELIVERY_SHAPE.SERVE_TO_BUYER],
+  },
+  { key: "done", status: "COMPLETED" },
+  { key: "afterSale" },
 ];
 
+/**
+ * 后端 `Math.min(size, 50)`。**端上写 100 是自欺**：要 100 拿 50，
+ * 而前端还在这 50 条上做筛选 —— 老用户的订单会静默缺失，且不报错。
+ * 写成与后端一致的 50，超出部分由 `hiddenCount` 明说。
+ */
+const PAGE_SIZE = 50;
+
+const { t } = useI18n();
 const tab = ref("all");
 const orders = ref<Order[]>([]);
+/**
+ * 有售后单的**子订单**号。「售后」页签靠它筛，而不是靠订单状态。
+ * ⚠️ 用 subOrderNo 不是 orderNo —— 列表一行是一张子订单，
+ * 而售后单上的 orderNo 是主单号，两个字段同名不同物（见 AfterSale 的注释）
+ */
+const afterSaleOrderNos = ref<Set<string>>(new Set());
 const loaded = ref(false);
+/**
+ * 这一页拉挂了。
+ *
+ * ⚠️ **此前没有这个状态**：`orderList` 不接异常（同一个 `Promise.all` 里的
+ * `afterSaleList` 反倒接了），而传输层只集中处理 401、其余错误不弹 ——
+ * 于是一次网络抖动的表现是**一页空白，没有提示也没有重试**，
+ * 而空白与「你还没有订单」在屏幕上长得一模一样。
+ */
+const failed = ref(false);
+/**
+ * 后端说的那句话。**有就显示它，没有才回落到「多半是网络不通」** ——
+ * 「订单不存在」这种情况下告诉用户去检查网络，是一句**错的**解释，
+ * 而错的解释比没有解释更费时间。
+ */
+const failReason = ref("");
 
-const shown = computed(() => {
-  const def = TABS.find((x) => x.key === tab.value);
-  if (!def?.statuses) return orders.value;
-  return orders.value.filter((o) => def.statuses!.includes(o.status));
+/**
+ * 秒表。**待付款那几单要显示还剩多久**（原型 k09）——
+ * 列表是他决定「先付哪一单」的地方，而「还有 3 分钟」和「还有 3 小时」是两回事。
+ */
+const now = ref(Date.now());
+let tick: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  tick = setInterval(() => (now.value = Date.now()), 1000);
 });
+onUnmounted(() => clearInterval(tick));
+
+/** 这一单还剩多久自动关闭。没有截止时刻（不是待付款）就返回空串 */
+function payLeft(o: Order): string {
+  if (o.status !== "WAIT_PAY" || !o.payDeadlineAt) return "";
+  const left = o.payDeadlineAt - now.value;
+  return left > 0 ? countdown(left) : "";
+}
+
+/**
+ * 状态页签由**后端**筛完了，端上不再二次过滤。
+ * 「售后」是例外：它按另一张单的存在与否筛，后端的 status 参数管不着。
+ */
+const shown = computed(() =>
+  tab.value === "afterSale"
+    ? orders.value.filter((o) => afterSaleOrderNos.value.has(o.orderNo))
+    : orders.value,
+);
+
+/** 后端还有、这一页没拿到的条数。**说出来**，不要让它悄悄消失 */
+const hiddenCount = ref(0);
 
 async function load() {
-  const res = await api.orderList({ size: 100 });
-  orders.value = res.records;
-  loaded.value = true;
+  // 售后页签要在全量里找挂了售后单的那些，不能带筛选
+  const spec = tab.value === "afterSale"
+    ? undefined
+    : TABS.find((x) => x.key === tab.value);
+
+  failed.value = false;
+  failReason.value = "";
+  try {
+    const [res, afterSales] = await Promise.all([
+      api.orderList({ size: PAGE_SIZE, ...(spec ? tabQuery(spec) : {}) }),
+      // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
+      api.afterSaleList().catch(() => []),
+    ]);
+    orders.value = res.records;
+    hiddenCount.value = Math.max(0, res.total - res.records.length);
+    afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
+    loaded.value = true;
+  } catch (e) {
+    /*
+     * **失败要与「没有订单」分开**。两者在屏幕上都是「什么都没有」，
+     * 而用户该做的事完全相反：一个是重试，一个是去逛逛。
+     * 不清空 `orders` —— 重试失败时留着上一次的结果比清成空白强。
+     */
+    failed.value = true;
+    failReason.value = (e as Error).message || "";
+  }
+}
+
+/** 换页签要重新取数 —— 筛选在后端，不换数据就还是上一个页签的结果 */
+watch(tab, load);
+
+/** 状态文案：`(状态 × 履约 × 信息)`。预约单要把时间带进文案，没时间的「待服务」等于没说 */
+function statusText(o: Order): string {
+  const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
+  return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
 }
 
 function open(o: Order) {
@@ -57,12 +181,17 @@ onShow(load);
     ></sh-tabs>
 
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
-      <view class="card__head">
-        <text class="card__pickup">
+      <view class="card__head sh-row sh-row--between">
+        <text class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
-        <text class="card__status" :class="`is-${o.status}`">
-          {{ $t(`orderStatus.${o.status}`) }}
+        <!--
+          状态文案不再是 `orderStatus.<状态>` 一对一 —— 同一个 FULFILLING，
+          自提说「已到自提点」、快递说「已发货」、预约说「待服务 · 明天 14:00」。
+          由 orderView(状态, 履约, 信息) 决定，三端共用同一份映射。
+        -->
+        <text class="txt-caption txt-bold card__status" :class="statusTone(o.status)">
+          {{ statusText(o) }}
         </text>
       </view>
 
@@ -75,117 +204,114 @@ onShow(load);
       >
         <template #right>
           <view class="row__right">
-            <text v-if="it.isGift" class="sh-chip sh-chip--danger tiny">
+            <text v-if="it.isGift" class="txt-caption sh-chip sh-chip--danger tiny">
               {{ $t("promo.gift") }}
             </text>
-            <text v-else class="row__price sh-num">{{ money(it.price) }}</text>
-            <text class="row__qty sh-num">×{{ it.qty }}</text>
+            <text v-else class="txt-strong row__price sh-num">{{ money(it.price) }}</text>
+            <text class="txt-caption row__qty sh-num">×{{ it.qty }}</text>
           </view>
         </template>
       </biz-sku-row>
-      <text v-if="o.items.length > 3" class="more sh-num">
+      <text v-if="o.items.length > 3" class="txt-caption more sh-num">
         {{ $t("orders.moreItems", { n: o.items.length - 3 }) }}
       </text>
 
-      <view class="card__foot">
-        <text class="card__time sh-num">{{ datetime(o.createdAt) }}</text>
-        <text class="card__total sh-num">
-          {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
+      <view class="card__foot sh-row sh-row--between">
+        <text class="txt-caption sh-num">{{ datetime(o.createdAt) }}</text>
+        <view class="sh-row foot__right">
+          <!-- 省了多少是他在列表里最想比的那个数（原型 k09） -->
+          <text v-if="o.amount.discountMinor" class="txt-caption sh-muted sh-num">
+            {{ $t("orders.saved", { p: money(o.amount.discountMinor) }) }}
+          </text>
+          <text class="txt-price sh-num">
+            {{ $t("orders.total", { p: money(o.amount.payableMinor) }) }}
+          </text>
+        </view>
+      </view>
+
+      <view v-if="o.status === 'WAIT_PAY'" class="card__ops sh-row sh-row--between">
+        <!-- 倒计时给在按钮旁边：不说的话他不知道这一单还等不等得起 -->
+        <text v-if="payLeft(o)" class="txt-caption is-danger sh-num">
+          {{ $t("orders.payLeft", { t: payLeft(o) }) }}
         </text>
+        <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
       </view>
-
-      <view v-if="o.status === 'WAIT_PAY'" class="card__ops">
-        <view class="sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
-      </view>
-      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED'" class="codeline">
-        <text class="codeline__label">{{ $t("pay.verifyCode") }}</text>
-        <text class="codeline__v sh-num">{{ o.verifyCode }}</text>
+      <view v-else-if="o.verifyCode && o.status !== 'COMPLETED' && showVerifyCode(o.items[0]?.type, o.fulfillment)" class="sh-notice codeline sh-row sh-row--between">
+        <text class="txt-caption codeline__label txt-primary">{{ $t("pay.verifyCode") }}</text>
+        <text class="txt-body codeline__v sh-num">{{ o.verifyCode }}</text>
       </view>
     </view>
 
-    <view v-if="loaded && !shown.length" class="empty">
-      <text class="empty__text">{{ $t("orders.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
-    </view>
+    <!--
+      后端还有、这一页没拿到的。**宁可难看也要说** ——
+      不说的表现是「我上个月那单不见了」，而用户会以为订单丢了。
+    -->
+    <text v-if="hiddenCount > 0" class="txt-caption hidden-note">
+      {{ $t("orders.hiddenCount", { n: hiddenCount }) }}
+    </text>
+
+    <!-- 拉挂了：说清楚，并给一条出路。与下面的空态是两件事 -->
+    <sh-empty
+      v-if="failed && !shown.length"
+      :text="String($t('common.loadFailed'))"
+      :tip="String(failReason || $t('common.loadFailedTip'))"
+    >
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="load">{{ $t("common.retry") }}</view>
+      </template>
+    </sh-empty>
+
+    <sh-empty v-else-if="loaded && !shown.length" :text="String($t('orders.empty'))">
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.foot__right {
+  gap: 16rpx;
+}
 .card {
   margin-bottom: 20rpx;
 }
 .card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 20rpx;
 }
 .card__pickup {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 颜色交给库件（见 order 页同名说明）：scoped 权重高于全局 .is-*，
+   留在这里会把库件压掉 */
 .card__status {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: var(--sh-primary);
   flex-shrink: 0;
-}
-.card__status.is-WAIT_PAY {
-  color: var(--sh-warning);
-}
-.card__status.is-COMPLETED,
-.card__status.is-CANCELLED,
-.card__status.is-REFUNDED {
-  color: var(--sh-sub);
-}
-.card__status.is-REFUNDING {
-  color: var(--sh-danger);
 }
 .row__right {
   text-align: end;
   flex-shrink: 0;
 }
 .tiny {
-  padding: 4rpx 14rpx;
-  font-size: 24rpx;
+  padding: 4rpx 16rpx;
 }
 .row__price {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .row__qty {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 4rpx;
 }
 .more {
   display: block;
   text-align: center;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 16rpx;
 }
 .card__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 24rpx;
 }
-.card__time {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.card__total {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: var(--sh-ink);
-}
+
 .card__ops {
   display: flex;
   justify-content: flex-end;
@@ -193,40 +319,16 @@ onShow(load);
 }
 .card__pay {
   padding: 16rpx 48rpx;
-  font-size: 26rpx;
 }
 .codeline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-top: 20rpx;
-  background: var(--sh-primary-tint);
-  border-radius: 24rpx;
-  padding: 16rpx 24rpx;
-}
-.codeline__label {
-  font-size: 24rpx;
-  color: var(--sh-primary);
 }
 .codeline__v {
-  font-size: 30rpx;
-  font-weight: 400;
   letter-spacing: 3rpx;
-  color: var(--sh-ink);
 }
-.empty__text {
+.hidden-note {
   display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-left: 60rpx;
-  padding-right: 60rpx;
-}
-.empty {
   text-align: center;
-  padding: 120rpx 40rpx;
+  padding: 24rpx 32rpx;
 }
 </style>

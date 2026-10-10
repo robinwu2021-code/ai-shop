@@ -2,7 +2,7 @@
 // 一处声明，两处消费：http.ts 按表发请求；后端据此生成 controller 骨架。
 import type { MerchantApi } from "./contract";
 
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -15,39 +15,200 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mSendOtp: { method: "POST", path: "/biz/auth/otp/send", auth: false, summary: "发送验证码" },
+  mSetPassword: { method: "POST", path: "/biz/auth/password", auth: true, summary: "设置登录密码" },
+  mSetDisplayName: { method: "POST", path: "/biz/merchant/display-name", auth: true, summary: "改用户名" },
+  mHasPassword: { method: "GET", path: "/biz/auth/password", auth: true, summary: "是否已设密码" },
   mLogin: { method: "POST", path: "/biz/auth/login", auth: false, summary: "商家登录" },
+  mStaffLogin: { method: "POST", path: "/biz/auth/staff-login", auth: false, summary: "员工登录" },
   mProfile: { method: "GET", path: "/biz/merchant/profile", auth: true, summary: "商家资料" },
-  mApply: { method: "POST", path: "/biz/merchant/apply", auth: true, summary: "提交入驻申请" },
 
+  mApply: { method: "POST", path: "/biz/merchant/apply", auth: true, summary: "提交入驻申请" },
+  mQuickStart: { method: "POST", path: "/biz/merchant/quick-start", auth: true, summary: "无证照快速开店" },
+  mAutomationLogin: { method: "POST", path: "/common/auth/automation", auth: false, summary: "密钥票据换会话（自动化测试，ADR-027）" },
   mApplyDraft: { method: "GET", path: "/biz/merchant/apply", auth: true, summary: "上次入驻申请" },
+  mAcceptAgreement: { method: "POST", path: "/biz/merchant/agreement/accept", auth: true, summary: "本人同意商家服务协议" },
+  mMasterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
+
+  mPayments: { method: "GET", path: "/biz/merchant/payment", auth: true, summary: "收款进件状态" },
+  mPayChannels: { method: "GET", path: "/biz/merchant/pay-channel", auth: true, summary: "本店能开的收款通道（含没开的）" },
+  mSubmitPayment: { method: "POST", path: "/biz/merchant/payment", auth: true, summary: "补交资料并提交进件" },
+  mOpenStorePayment: { method: "POST", path: "/biz/merchant/payment/store/:storeNo", auth: true, summary: "为门店单独开通收款" },
+  mRefreshPayment: {
+    method: "POST",
+    path: "/biz/merchant/payment/:payChannel/refresh",
+    auth: true,
+    summary: "回查进件结果",
+  },
 
   mStore: { method: "GET", path: "/biz/store", auth: true, summary: "店铺门面" },
   mCommunities: { method: "GET", path: "/biz/communities", auth: true, summary: "可选社区（设经营范围用）" },
+  mRegions: { method: "GET", path: "/biz/regions", auth: true, summary: "行政区划下一级（框覆盖范围用）" },
+  mVillageDict: { method: "GET", path: "/biz/regions/villages", auth: true, summary: "街道/镇下的官方村名词典（提报村用）" },
+  mRegionSearch: { method: "GET", path: "/biz/regions/search", auth: true, summary: "跨级搜区划与聚落（选择器搜索）" },
+  mRegionPath: { method: "GET", path: "/biz/regions/path", auth: true, summary: "区划从省到自身的路径" },
+  mRegionParse: { method: "POST", path: "/biz/regions/parse", auth: true, summary: "经营范围文字录入：一句话识别成范围项（只读）" },
+  mGeoReverse: { method: "GET", path: "/biz/geo/reverse", auth: true, summary: "坐标转地址（门店地址定位）" },
+  mGeoTips: { method: "GET", path: "/biz/geo/tips", auth: true, summary: "地点输入提示（提报小区按名搜 POI）" },
+  mEstates: { method: "GET", path: "/biz/geo/estates", auth: true, summary: "一片地方的小区（服务端读穿透：缓存优先，不够就问地图）" },
+  mEstateCounts: { method: "GET", path: "/biz/geo/estates/counts", auth: true, summary: "下辖各片的小区条数（列表预告）" },
+  mApplyCommunity: { method: "POST", path: "/biz/communities/apply", auth: true, summary: "提报平台还没有的小区" },
+  mOpenCommunityFromMap: { method: "POST", path: "/biz/communities/from-map", auth: true, summary: "地图上选中的小区直接开通" },
+  mMyCommunityApplies: { method: "GET", path: "/biz/communities/applies", auth: true, summary: "我提报过的小区" },
   mSaveStore: { method: "POST", path: "/biz/store", auth: true, summary: "保存店铺门面" },
+  // POST 而不是 GET：入参是一串 {level, refCode, mode}，塞 query string 既难读又有长度上限。
+  // 它只读、不写库 —— 这一点靠后端注释与用例保证，不靠动词。
+  mScopePreview: { method: "POST", path: "/biz/store/scope-preview", auth: true, summary: "范围预览" },
+  mSaveAnnouncement: { method: "POST", path: "/biz/store/announcement", auth: true, summary: "只改公告（含有效期，可同时发到别的门店）" },
+  mDropNoticeRecent: { method: "POST", path: "/biz/store/announcement/recent/remove", auth: true, summary: "从常用里删一条" },
+
+  mStoreFulfillment: { method: "GET", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "门店送货方式" },
+  mSaveStoreFulfillment: { method: "PUT", path: "/biz/stores/:storeNo/fulfillment", auth: true, summary: "保存门店送货方式" },
+  mFulfillmentImpact: { method: "GET", path: "/biz/stores/:storeNo/fulfillment/:channel/impact", auth: true, summary: "关掉这一路会影响的在售商品" },
+  mPickupCandidates: { method: "GET", path: "/biz/pickup-points/candidates", auth: true, summary: "门店可引用的取货点候选" },
+  mSelfBuildPickup: { method: "POST", path: "/biz/pickup-points", auth: true, summary: "自建自提点（待运营核实）" },
+  mStoreList: { method: "GET", path: "/biz/store/list", auth: true, summary: "我的门店" },
+
+  // 跨证照（多证照）。**故意不吃当前证照的范围** —— 那是「当前这一张」，
+  // 而这三个问的正是「当前之外我还有哪几张」
+  mMyStores: { method: "GET", path: "/biz/stores/mine", auth: true, summary: "我能进的所有门店（按证照分组）" },
+  mEntities: { method: "GET", path: "/biz/entities", auth: true, summary: "我名下的证照" },
+  mEntity: { method: "GET", path: "/biz/entity/:entityNo", auth: true, summary: "一张证照的详情与门店" },
+  mCreateStore: { method: "POST", path: "/biz/store/create", auth: true, summary: "新建门店" },
+  mRenameStore: { method: "POST", path: "/biz/store/:storeNo/rename", auth: true, summary: "改门店名与地址" },
+  mSetStoreStatus: { method: "POST", path: "/biz/store/:storeNo/status", auth: true, summary: "停用/启用门店" },
+  mSetDefaultStore: { method: "POST", path: "/biz/store/:storeNo/default", auth: true, summary: "设为默认店" },
+  mSetStoreSlug: { method: "POST", path: "/biz/store/:storeNo/slug", auth: true, summary: "设门店代码（对外链接那一段）" },
+  mSetStorePayment: { method: "POST", path: "/biz/store/:storeNo/payment", auth: true, summary: "换门店收款号" },
+
+  // 门店货架（TDD-品类约束全链路）。读挂 biz:store（店长要看得见本店卖哪几类），
+  // 写挂 biz:store:admin —— 摆货架是店铺配置，不是日常经营
+  mStoreCategories: { method: "GET", path: "/biz/store/:storeNo/categories", auth: true, summary: "本店经营类目" },
+  mQualifications: { method: "GET", path: "/biz/qualifications", auth: true, summary: "我的资质与已获授权的类目" },
+  mSaveQualification: { method: "POST", path: "/biz/qualifications/save", auth: true, summary: "传一张资质证件" },
+  mRecognizeQualification: {
+    method: "POST", path: "/biz/qualifications/recognize", auth: true,
+    summary: "识别证照（预填编号与有效期，认不出就让他手填）",
+  },
+  mSaveStoreCategories: { method: "POST", path: "/biz/store/:storeNo/categories", auth: true, summary: "整份替换本店经营类目" },
+
+  mStaffList: { method: "GET", path: "/biz/staff", auth: true, summary: "员工列表" },
+  mAddStaff: { method: "POST", path: "/biz/staff", auth: true, summary: "加员工" },
+  mSetStaffStatus: { method: "POST", path: "/biz/staff/:mchAccountNo/status", auth: true, summary: "停用/启用员工" },
+  mBizScope: { method: "GET", path: "/biz/context", auth: true, summary: "我的作用域与权限" },
+  mStaffLogs: { method: "GET", path: "/biz/staff/logs", auth: true, summary: "员工与授权变更记录" },
+  mRoles: { method: "GET", path: "/biz/roles", auth: true, summary: "角色列表（预置 + 自定义）" },
+  mRolePerms: { method: "GET", path: "/biz/role-perms", auth: true, summary: "可勾的权限点" },
+  mCreateRole: { method: "POST", path: "/biz/roles", auth: true, summary: "建自定义角色" },
+  mUpdateRole: { method: "POST", path: "/biz/role/:roleCode", auth: true, summary: "改角色" },
+  mDeleteRole: {
+    method: "POST",
+    path: "/biz/role/:roleCode/delete",
+    auth: true,
+    summary: "删除自定义角色",
+  },
+  mGrantStore: { method: "POST", path: "/biz/staff/:mchAccountNo/store", auth: true, summary: "授权到店" },
   mStoreQrcode: { method: "GET", path: "/biz/store/qrcode", auth: true, summary: "店铺码" },
   mShareKit: { method: "GET", path: "/biz/store/share-kit", auth: true, summary: "分享素材" },
+  mPoster: { method: "GET", path: "/biz/store/poster", auth: true, summary: "分享海报" },
 
   mTodo: { method: "GET", path: "/biz/dashboard/todo", auth: true, summary: "工作台待办" },
   mStats: { method: "GET", path: "/biz/dashboard/stats", auth: true, summary: "经营数据" },
+  mDailyReport: { method: "GET", path: "/biz/report/daily", auth: true, summary: "近几日报表" },
+  mGoodsRank: { method: "GET", path: "/biz/report/goods", auth: true, summary: "商品销售榜" },
+  mMonthlyReport: { method: "GET", path: "/biz/report/monthly", auth: true, summary: "按月营收" },
+
+  // 跨店总览与对比（B-11.12.5 / 11.12.6）。权限与 /biz/dashboard/stats 同一档
+  // （biz:customer，后端没有另造 biz:cross-store 码），另有一道能力位门禁：
+  // 无 cross_store_stats 的档位会被拒（70023），端上渲染示例态。
+  mCrossStoreOverview: {
+    method: "GET",
+    path: "/biz/cross-store/overview",
+    auth: true,
+    summary: "跨店总览（按店并列今日/本月/待办）",
+  },
+  mCrossStoreCompare: {
+    method: "GET",
+    path: "/biz/cross-store/compare",
+    auth: true,
+    summary: "跨店对比（销售额/订单/复购/缺货）",
+  },
+
+  // 我的增值包（B-11.13，增值包 P4）。挂 biz:store:admin —— **只有老板**：
+  // 这一页答的是「主体买了什么」，与建店、挂收款号同属主体结构面。
+  // 店长调这两条会 403，所以端上要按 can('biz:store:admin') 决定渲不渲染入口
+  mMyPlan: { method: "GET", path: "/biz/plan", auth: true, summary: "我的套餐（档位/用量/三档对比）" },
+  mStartTrial: { method: "POST", path: "/biz/plan/trial", auth: true, summary: "自助开通试用（一主体一次）" },
 
   mGoodsList: { method: "GET", path: "/biz/goods", auth: true, summary: "商品列表" },
   mGoodsDetail: { method: "GET", path: "/biz/goods/:goodsNo", auth: true, summary: "商品详情" },
   mSaveGoods: { method: "POST", path: "/biz/goods/save", auth: true, summary: "新建/编辑商品" },
   mToggleGoods: { method: "POST", path: "/biz/goods/:goodsNo/toggle", auth: true, summary: "上下架" },
   mSaveStock: { method: "POST", path: "/biz/goods/:goodsNo/stock", auth: true, summary: "改库存" },
+  mSaveStoreStock: { method: "POST", path: "/biz/goods/:goodsNo/store-stock", auth: true, summary: "改当前门店库存" },
+  // 挂 biz:goods 而不是 biz:stock —— 改价是定价权，与补货不是一回事
+  mSaveStorePrice: { method: "POST", path: "/biz/goods/:goodsNo/store-price", auth: true, summary: "改当前门店售价" },
+  mSubmitGoods: { method: "POST", path: "/biz/goods/:goodsNo/submit", auth: true, summary: "提交审核（草稿→待审）" },
+  // 双版本发布（V279）：在售编辑落草稿线上照卖；发布=原子换版（审核开则线上继续卖旧版）
+  mGoodsDraft: { method: "GET", path: "/biz/goods/:goodsNo/draft", auth: true, summary: "读草稿（编辑页回填）" },
+  mPublishPreview: { method: "GET", path: "/biz/goods/:goodsNo/publish-preview", auth: true, summary: "发布预览（字段级差异）" },
+  mPublishGoods: { method: "POST", path: "/biz/goods/:goodsNo/publish", auth: true, summary: "发布草稿（原子换版；冲突后带 confirmVersion）" },
+  // 提交历史（AC11）：发布不留痕是此前查不到「发过什么」的根因
+  mGoodsRevisions: { method: "GET", path: "/biz/goods/:goodsNo/revisions", auth: true, summary: "提交历史（每一版：谁存、怎么录、改了哪几项、何时发布）" },
+  mGoodsRevision: { method: "GET", path: "/biz/goods/:goodsNo/revisions/:revisionNo", auth: true, summary: "某一版详情（对比基版 + 对比此刻线上，两份差异）" },
+  mForkRevision: { method: "POST", path: "/biz/goods/:goodsNo/revisions/:revisionNo/fork", auth: true, summary: "以这一版建草稿（不直接改线上，仍需发布）" },
+  mDiscardGoodsDraft: { method: "POST", path: "/biz/goods/:goodsNo/draft/discard", auth: true, summary: "放弃草稿（线上不动，幂等）" },
+  // 只改截单，**不触发重审** —— 走 save 的话生鲜商家改一次截单等于停一天生意
+  mSavePresale: { method: "POST", path: "/biz/goods/:goodsNo/presale", auth: true, summary: "改截单与到货说明" },
 
   mUploadImage: { method: "POST", path: "/biz/upload/image", auth: true, summary: "上传商品图" },
   mRecognizeGoods: { method: "POST", path: "/biz/goods/recognize", auth: true, summary: "拍照识别商品" },
+  mDescribeGoods: { method: "POST", path: "/biz/goods/describe", auth: true, summary: "自动生成图文详情" },
+  mParseText: { method: "POST", path: "/biz/goods/parse-text", auth: true, summary: "文字识别商品信息" },
+  mZipPlan: { method: "POST", path: "/biz/goods/zip-plan", auth: true, summary: "压缩包文件归到主图/详情/文案（模型为主、目录规则兜底）" },
+  mZipImport: { method: "POST", path: "/biz/goods/zip-import", auth: true, summary: "压缩包服务端解压（小程序端没有本地解压能力）" },
+
+  mCategoryTree: { method: "GET", path: "/biz/category/tree", auth: true, summary: "类目树（选类目）" },
+  // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec
+  mSpuStdSearch: { method: "GET", path: "/biz/spu-std", auth: true, summary: "标准品搜索（建品用）" },
 
   mSpecTemplates: { method: "GET", path: "/biz/spec-templates", auth: true, summary: "规格模板" },
+  mPickableDims: { method: "GET", path: "/biz/spec-dims", auth: true, summary: "加规格组时能挑的维度（本类目已配 + 平台通用 + 自建）" },
+  mSpecProps: { method: "GET", path: "/biz/spec-props", auth: true, summary: "这一类的商品参数（产地/保质期/材质，不分 SKU）" },
+  mPickableProps: { method: "GET", path: "/biz/pickable-props", auth: true, summary: "还能加进这一类的商品参数（本类目已配 + 平台通用 + 自建）" },
+  mAddSpecValue: { method: "POST", path: "/biz/spec-values", auth: true, summary: "在平台维度下加一个自有规格值" },
+  mSkuIdentityExport: { method: "GET", path: "/biz/sku-identity/export", auth: true, summary: "导出本店全部规格行的条码/货号/单位" },
+  mSkuIdentityPlan: { method: "POST", path: "/biz/sku-identity/import/plan", auth: true, summary: "商品编码导入试算（不写库）" },
+  mSkuIdentityImport: { method: "POST", path: "/biz/sku-identity/import", auth: true, summary: "商品编码批量导入" },
+  mAddSpecDim: { method: "POST", path: "/biz/spec-dims", auth: true, summary: "自建规格维度（只本店可用）" },
+  mMySpecDims: { method: "GET", path: "/biz/my-spec-dims", auth: true, summary: "我建的规格维度（含用量与配额）" },
+  mStoreSpecDims: { method: "GET", path: "/biz/store-spec-dims", auth: true, summary: "本店货架类目各自能用的规格" },
+  mDimValues: { method: "GET", path: "/biz/spec-dims/{dimNo}/values", auth: true, summary: "某个规格下平台有的全部档位（加档位的候选）" },
+  mSaveSpecOverride: { method: "POST", path: "/biz/spec-override/{categoryNo}", auth: true, summary: "本店用哪几个规格、什么顺序、叫什么" },
+  mRenameSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/rename", auth: true, summary: "给自建维度改名" },
+  mArchiveSpecDim: { method: "POST", path: "/biz/my-spec-dims/{dimNo}/archive", auth: true, summary: "停用/启用自建维度" },
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
+  mOrderTrace: { method: "GET", path: "/biz/order/:orderNo/trace", auth: true, summary: "物流轨迹" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },
   mDelivered: { method: "POST", path: "/biz/order/:orderNo/delivered", auth: true, summary: "自送已送达" },
+  mConfirmOfflinePay: { method: "POST", path: "/biz/order/:orderNo/confirm-offline-pay", auth: true, summary: "确认线下收款" },
+  mExpressQuotes: { method: "GET", path: "/biz/order/:orderNo/express/quotes", auth: true, summary: "快递报价" },
+  mBookExpress: { method: "POST", path: "/biz/order/:orderNo/express", auth: true, summary: "叫快递上门取件" },
+  mExpressPickup: { method: "GET", path: "/biz/order/:orderNo/express", auth: true, summary: "取件单" },
+  mCancelExpress: { method: "POST", path: "/biz/order/:orderNo/express/cancel", auth: true, summary: "取消取件" },
+  mShipSetting: { method: "GET", path: "/biz/store/:storeNo/ship-setting", auth: true, summary: "发货设置" },
+  mFreightTemplate: { method: "GET", path: "/biz/store/:storeNo/freight-template", auth: true, summary: "本店运费模板" },
+  mFreightTemplates: { method: "GET", path: "/biz/freight-template/list", auth: true, summary: "平台在用的运费模板" },
+  mSaveShipSetting: { method: "PUT", path: "/biz/store/:storeNo/ship-setting", auth: true, summary: "改发货设置" },
   mDeliveryRule: { method: "GET", path: "/biz/delivery/rule", auth: true, summary: "自送规则" },
   mSaveDeliveryRule: { method: "POST", path: "/biz/delivery/rule", auth: true, summary: "保存自送规则" },
+
+  mAppointmentSlots: { method: "GET", path: "/biz/stores/:storeNo/appointment-slots", auth: true, summary: "预约时段列表" },
+  mOpenAppointmentSlot: { method: "POST", path: "/biz/stores/:storeNo/appointment-slots", auth: true, summary: "开预约时段" },
+  mCloseAppointmentSlot: { method: "POST", path: "/biz/appointment-slots/:slotNo/close", auth: true, summary: "停约" },
 
   mPickupOverview: { method: "GET", path: "/biz/pickup/overview", auth: true, summary: "自提点履约总览" },
   mPickupOrders: { method: "GET", path: "/biz/pickup/orders", auth: true, summary: "本自提点订单" },
@@ -55,6 +216,28 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mMarkArrived: { method: "POST", path: "/biz/pickup/arrived", auth: true, summary: "标记到货" },
   mVerify: { method: "POST", path: "/biz/pickup/verify", auth: true, summary: "核销自提码" },
   mVerifyBatch: { method: "POST", path: "/biz/pickup/verify/batch", auth: true, summary: "批量核销" },
+  mVerifySearch: {
+    method: "GET",
+    path: "/biz/pickup/verify/search",
+    auth: true,
+    summary: "按取货码片段搜单",
+  },
+
+  // 提现（V288）。**读与写分开两条**：读给出「能提多少 + 下限 + 记录」，
+  // 写只接一个金额 —— 让端上没法把「可提余额」当成入参传回去。
+  mDeposit: { method: "GET", path: "/biz/deposit", auth: true, summary: "保证金账户" },
+  mDepositTxns: { method: "GET", path: "/biz/deposit/txns", auth: true, summary: "保证金流水" },
+  mPendingInvoice: { method: "GET", path: "/biz/settle/invoice-pending", auth: true, summary: "待开票摘要" },
+  mInvoiceTitle: { method: "GET", path: "/biz/settle/invoice-title", auth: true, summary: "平台开票信息" },
+  mMyInvoices: { method: "GET", path: "/biz/settle/invoices", auth: true, summary: "我提交的票" },
+  mStatement: { method: "GET", path: "/biz/settle/statement", auth: true, summary: "对账单" },
+  mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
+
+  // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：
+  // /biz 约定单数，而「我的收款账户」读的是列表、写的是一张新卡，
+  // 语义上都是同一个资源的两面。
+  mPayoutAccounts: { method: "GET", path: "/biz/payout-account", auth: true, summary: "我的收款账户" },
+  mSubmitPayoutAccount: { method: "POST", path: "/biz/payout-account", auth: true, summary: "提交收款账户" },
 
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },
   // 同意与驳回是**两个动词、两条路径**，不是一个布尔参数 ——
@@ -66,6 +249,13 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   mGroupList: { method: "GET", path: "/biz/groups", auth: true, summary: "我的商家团" },
   mCreateGroup: { method: "POST", path: "/biz/groups", auth: true, summary: "开团" },
+  mGroup: { method: "GET", path: "/biz/group/:groupNo", auth: true, summary: "团详情" },
+  mDissolveGroup: { method: "POST", path: "/biz/group/:groupNo/dissolve", auth: true, summary: "散团（参团已付款的单全额退款）" },
+  mGroupPickups: { method: "GET", path: "/biz/group/pickups", auth: true, summary: "开团可选的自提点" },
+  mPlatformActivities: { method: "GET", path: "/biz/platform-activity", auth: true, summary: "平台活动（可报名 / 已报名 / 已结束）" },
+  mPlatformActivity: { method: "GET", path: "/biz/platform-activity/:activityNo", auth: true, summary: "平台活动详情（含我的报名）" },
+  mEnroll: { method: "POST", path: "/biz/platform-activity/:activityNo/enrollment", auth: true, summary: "报名平台活动（审核前可改）" },
+  mWithdrawEnrollment: { method: "POST", path: "/biz/platform-activity/:activityNo/withdraw", auth: true, summary: "撤回待审的报名" },
   mRequestList: { method: "GET", path: "/biz/group-request/pool", auth: true, summary: "可报价需求单" },
   mQuote: { method: "POST", path: "/biz/group-request/:requestNo/quote", auth: true, summary: "报价" },
 
@@ -77,13 +267,212 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveCampaign: { method: "POST", path: "/biz/campaign", auth: true, summary: "新建/编辑活动" },
   mToggleCampaign: { method: "POST", path: "/biz/campaign/:campaignNo/toggle", auth: true, summary: "活动启停" },
 
-  mCustomers: { method: "GET", path: "/biz/customers", auth: true, summary: "客户与复购" },
+  mCustomers: { method: "GET", path: "/biz/customers", auth: true, summary: "客户与复购（跨店总览在用）" },
+  // 会员（P1）：客户页的升级版。沿用 biz:customer，不新造权限码
+  mMembers: { method: "GET", path: "/biz/members", auth: true, summary: "会员列表（筛选+分页）" },
+  mMemberStats: { method: "GET", path: "/biz/members/stats", auth: true, summary: "四层人数与未计入买家" },
+  mMemberDetail: { method: "GET", path: "/biz/members/{memberNo}", auth: true, summary: "会员详情：各店往来与来源轨迹" },
+  // 录入与标签（P2）
+  mEnrollMember: { method: "POST", path: "/biz/members", auth: true, summary: "手工录入（未注册记为线索）" },
+  mPatchMember: { method: "PUT", path: "/biz/members/{memberNo}", auth: true, summary: "改备注 / 拉黑" },
+  mTagMembers: { method: "POST", path: "/biz/members/tags", auth: true, summary: "批量打标 / 去标" },
+  mBatchTagMembers: { method: "POST", path: "/biz/members/tags/batch", auth: true, summary: "批量打/去一个标签（confirm=false 只试算）" },
+  mAudiencePreview: { method: "POST", path: "/biz/members/audience-preview", auth: true, summary: "选人试算：命中 / 收得到 / 跳过原因" },
+  mMemberTagUsage: { method: "GET", path: "/biz/member-tags/{tagNo}/usage", auth: true, summary: "标签用在哪（活动与人群）" },
+  mMemberSegmentDetail: { method: "GET", path: "/biz/member-segments/{segmentNo}", auth: true, summary: "人群详情：此刻人数与用在哪" },
+  mMemberTags: { method: "GET", path: "/biz/member-tags", auth: true, summary: "标签字典（含人数）" },
+  mCreateMemberTag: { method: "POST", path: "/biz/member-tags", auth: true, summary: "新建标签" },
+  mEditMemberTag: { method: "PUT", path: "/biz/member-tags/{tagNo}", auth: true, summary: "改名 / 停用" },
+  mMergeMemberTag: { method: "POST", path: "/biz/member-tags/{tagNo}/merge", auth: true, summary: "合并（confirm=false 只试算）" },
+  mMemberSettings: { method: "GET", path: "/biz/member-settings", auth: true, summary: "会员经营口径" },
+  mSaveMemberSettings: { method: "PUT", path: "/biz/member-settings", auth: true, summary: "改口径（店主）" },
+  mMemberSegments: { method: "GET", path: "/biz/member-segments", auth: true, summary: "人群列表" },
+  mSaveMemberSegment: { method: "POST", path: "/biz/member-segments", auth: true, summary: "存人群（存条件不存名单）" },
+  mRemoveMemberSegment: { method: "POST", path: "/biz/member-segments/{segmentNo}/remove", auth: true, summary: "删人群（端上没有 DELETE，见 http-client）" },
+  mPreviewMemberSegment: { method: "POST", path: "/biz/member-segments/preview", auth: true, summary: "试算命中与可触达" },
+  mCoupons: { method: "GET", path: "/biz/coupons", auth: true, summary: "券列表" },
+  mCoupon: { method: "GET", path: "/biz/coupons/{couponNo}", auth: true, summary: "券详情" },
+  mSaveCoupon: { method: "POST", path: "/biz/coupons", auth: true, summary: "建券 / 改券（敞口在这一步算清）" },
+  mSetCouponStatus: { method: "PUT", path: "/biz/coupons/{couponNo}/status", auth: true, summary: "暂停 / 恢复 / 结束" },
+  mIssueCoupon: { method: "POST", path: "/biz/coupons/{couponNo}/issue", auth: true, summary: "按人群定向发券" },
+  mCouponIssues: { method: "GET", path: "/biz/coupon-issues", auth: true, summary: "发放记录（含跳过明细）" },
+  mPeekCouponCode: { method: "GET", path: "/biz/coupon-redeem/{code}", auth: true, summary: "先看：这张券能不能核" },
+  mRedeemCoupon: { method: "POST", path: "/biz/coupon-redeem", auth: true, summary: "到店核销一次（不可撤销）" },
+  mActivities: { method: "GET", path: "/biz/activities", auth: true, summary: "活动列表" },
+  mActivity: { method: "GET", path: "/biz/activities/{activityNo}", auth: true, summary: "活动详情" },
+  mSaveActivity: { method: "POST", path: "/biz/activities", auth: true, summary: "建 / 改活动（敞口在这一步算清）" },
+  mSetActivityStatus: { method: "PUT", path: "/biz/activities/{activityNo}/status", auth: true, summary: "启停 / 结束" },
+  mActivityConflicts: { method: "POST", path: "/biz/activity-conflicts", auth: true, summary: "这些商品已经在哪些活动里" },
+  mMarketingSummary: { method: "GET", path: "/biz/marketing/summary", auth: true, summary: "营销入口一屏的数字" },
+  mPeriods: { method: "GET", path: "/biz/period", auth: true, summary: "社区集单：按状态列期" },
+  mPeriod: { method: "GET", path: "/biz/period/{periodNo}", auth: true, summary: "社区集单：一期详情（按商品 / 自提点汇总）" },
+  mCutoffPeriod: { method: "POST", path: "/biz/period/{periodNo}/cutoff", auth: true, summary: "社区集单：提前截单" },
+  mDecidePeriod: { method: "POST", path: "/biz/period/{periodNo}/decision", auth: true, summary: "社区集单：未达起订量时取消本期或照常发货" },
+  mPeriodPurchaseLines: { method: "GET", path: "/biz/period/{periodNo}/purchase-lines", auth: true, summary: "社区集单：按 SKU 汇总给进货单" },
+  mPlanReach: { method: "POST", path: "/biz/member-reach/plan", auth: true, summary: "群发试算：能发多少、跳过多少" },
+  mSendReach: { method: "POST", path: "/biz/member-reach/send", auth: true, summary: "群发（会打扰真实用户）" },
+  mReachTasks: { method: "GET", path: "/biz/member-reach/task", auth: true, summary: "发出去的消息（批次列表）" },
+  mReachTask: { method: "GET", path: "/biz/member-reach/task/{taskNo}", auth: true, summary: "一次触达的效果" },
 
   mRateCard: { method: "GET", path: "/biz/settle/rate-card", auth: true, summary: "费率卡" },
   mSettleList: { method: "GET", path: "/biz/settle/bills", auth: true, summary: "结算单列表" },
+  mSettleBatches: { method: "GET", path: "/biz/settle/batch", auth: true, summary: "我的账期批次" },
+  mMyDebt: { method: "GET", path: "/biz/merchant/debt", auth: true, summary: "我的欠款与流水" },
   mReportShortage: { method: "POST", path: "/biz/pickup/:orderNo/report", auth: true, summary: "破损短少上报" },
+
+  // ---------------------------------------------------------------- 积分（B-11.x）
+  //
+  // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
+  // 这里只有他自己发分的成本，以及开关。
+  mIncomeSummary: { method: "GET", path: "/biz/settle/income", auth: true, summary: "收入按状态汇总" },
+  // 每日流水：与上面那条**同一批结算单的另一种切法**（按天，不按状态）
+  mDailyFlow: { method: "GET", path: "/biz/settle/daily-flow", auth: true, summary: "每日流水" },
+
+  mPointsAccount: {
+    method: "GET",
+    path: "/biz/points/account",
+    auth: true,
+    summary: "本期发分服务费与开关状态",
+  },
+  mPointsRecords: {
+    method: "GET",
+    path: "/biz/points/records",
+    auth: true,
+    summary: "发分服务费明细（按单）",
+  },
+  mPointsToggle: {
+    method: "POST",
+    path: "/biz/points/toggle",
+    auth: true,
+    summary: "开/关本店积分",
+  },
+
+  // ---------------------------------------------------------------- 消息（二期）
+  mMessageList: { method: "GET", path: "/biz/message", auth: true, summary: "商家消息列表" },
+  mMessageUnread: {
+    method: "GET",
+    path: "/biz/message/unread-count",
+    auth: true,
+    summary: "未读数（红点轮询，只给一个数）",
+  },
+  mMessageRead: {
+    method: "POST",
+    path: "/biz/message/:messageNo/read",
+    auth: true,
+    summary: "标记已读",
+  },
+  mMessageReadAll: { method: "POST", path: "/biz/message/read-all", auth: true, summary: "全部已读" },
+  // 只在小程序里会调（App 调不起订阅消息）。店主的商家账号与 C 端同一个 user_no，额度记在同一张表
+  mSubscribeReport: {
+    method: "POST",
+    path: "/biz/message/subscribe",
+    auth: true,
+    summary: "上报订阅消息授权结果（小程序里的商家页面）",
+  },
+
+  // ---------------------------------------------------------------- 推送设备（三期，ADR-018）
+  mRegisterPushToken: {
+    method: "POST",
+    path: "/biz/push-token",
+    auth: true,
+    summary: "绑定 App 推送设备（登录后）",
+  },
+  // POST 而非 DELETE：端上 call() 只走 GET/POST 两条路，
+  // DELETE 会被静默当成 POST —— 解绑「没报错但没生效」是最坏的失败方式。
+  //
+  // ⚠️ 注释放在属性外面：生成器正则是 `\{\s*method:`，夹在中间这个端点就不进 spec。
+  mUnregisterPushToken: {
+    method: "POST",
+    path: "/biz/push-token/unregister",
+    auth: true,
+    summary: "解绑推送设备（登出前，共用设备换班必须解）",
+  },
+
+  // ── 通知设置（TDD-来单四渠道与商家通知设置）。开关与群都是**门店级**，
+  // 作用于请求头 X-Store-No 指定的那一家。
+  mNotifySetting: { method: "GET", path: "/biz/notify/setting", auth: true, summary: "本店的通知开关与企微群状态" },
+  mSaveNotifySwitch: { method: "PUT", path: "/biz/notify/setting", auth: true, summary: "改本店某个场景某条通道的开关" },
+  // webhook 进加密列、永不回显 —— 它是凭据，拿到的人都能往那个群发消息
+  mSaveNotifyWecom: { method: "PUT", path: "/biz/notify/wecom", auth: true, summary: "录入本店的企业微信群机器人地址" },
+  // 收件地址：短信号（店主登录手机号之外最多两个）与邮件地址
+  mSaveNotifyPhones: { method: "PUT", path: "/biz/notify/sms-phones", auth: true, summary: "改本店的额外短信接收号" },
+  mSaveNotifyEmail: { method: "PUT", path: "/biz/notify/email", auth: true, summary: "改本店的邮件接收地址" },
+  mTestNotifyWecom: { method: "POST", path: "/biz/notify/wecom/test", auth: true, summary: "往本店的企微群发一条测试" },
+
+  // ── 进销存（P-18）。**注释别夹在 `{` 与 `method:` 之间** ——
+  // 端点表的解析器认那个位置，夹进去这条端点会静默不进 spec。
+  mStockSummary: { method: "GET", path: "/biz/inventory/summary", auth: true, summary: "库存总览三个数" },
+  mStockCrossStore: { method: "GET", path: "/biz/inventory/cross-store", auth: true, summary: "跨店库存总览" },
+  mStockBalances: { method: "GET", path: "/biz/inventory/balances", auth: true, summary: "库存列表（默认只给要处理的）" },
+  mStockPickable: { method: "GET", path: "/biz/inventory/pickable", auth: true, summary: "可挑的货（含 0 库存，从物料出发）" },
+  mSuppliers: { method: "GET", path: "/biz/inventory/suppliers", auth: true, summary: "供应商档案（挑供应商传 activeOnly=true）" },
+  mSupplierCreate: { method: "POST", path: "/biz/inventory/suppliers", auth: true, summary: "建供应商档案" },
+  mSupplierUpdate: { method: "PUT", path: "/biz/inventory/suppliers/:no", auth: true, summary: "改供应商档案（引用平台档案的只能改备注）" },
+  mSupplierActive: { method: "POST", path: "/biz/inventory/suppliers/:no/active", auth: true, summary: "停用 / 启用供应商" },
+  mStockItem: { method: "GET", path: "/biz/inventory/items/:itemId", auth: true, summary: "单件库存明细" },
+  mStockLedger: { method: "GET", path: "/biz/inventory/ledger", auth: true, summary: "库存变动明细" },
+  mStockAdjust: { method: "POST", path: "/biz/inventory/adjust", auth: true, summary: "直接改数（走盘点，落单落流水）" },
+  mSafetyStock: { method: "PUT", path: "/biz/inventory/safety-stock", auth: true, summary: "设安全库存（不传 locationId 设默认值；qty 为 null 撤掉库位覆盖）" },
+  mItemBySku: { method: "GET", path: "/biz/inventory/item-by-sku", auth: true, summary: "按平台 SKU 查进销存的账" },
+  mItemByBarcode: { method: "GET", path: "/biz/inventory/items/by-barcode", auth: true, summary: "按条码找货（没绑过回 null，不是 404）" },
+  mBindBarcode: { method: "POST", path: "/biz/sku-identity/barcode", auth: true, summary: "把条码绑到一件 SKU 上（幂等；本店内唯一）" },
+
+  mInboundCreate: { method: "POST", path: "/biz/inventory/inbounds", auth: true, summary: "记一笔进货" },
+  mInboundUpdate: { method: "PUT", path: "/biz/inventory/inbounds/:no", auth: true, summary: "改进货草稿" },
+  mInboundPost: { method: "POST", path: "/biz/inventory/inbounds/:no/post", auth: true, summary: "进货过账" },
+  mInboundVoid: { method: "POST", path: "/biz/inventory/inbounds/:no/void", auth: true, summary: "作废入库单" },
+
+  mOutboundCreate: { method: "POST", path: "/biz/inventory/outbounds", auth: true, summary: "报损/领用出库" },
+  mOutboundPost: { method: "POST", path: "/biz/inventory/outbounds/:no/post", auth: true, summary: "出库过账" },
+  mOutboundVoid: { method: "POST", path: "/biz/inventory/outbounds/:no/void", auth: true, summary: "作废出库单" },
+
+  mCountOpen: { method: "POST", path: "/biz/inventory/counts", auth: true, summary: "开盘点单（锁账面数）" },
+  mCountDetail: { method: "GET", path: "/biz/inventory/counts/:no", auth: true, summary: "读回盘点单（含账面快照）" },
+  mCountFill: { method: "PUT", path: "/biz/inventory/counts/:no/lines", auth: true, summary: "填实盘数" },
+  mCountPost: { method: "POST", path: "/biz/inventory/counts/:no/post", auth: true, summary: "盘点过账" },
+
+  mTransferCreate: { method: "POST", path: "/biz/inventory/transfers", auth: true, summary: "建调拨单" },
+  mTransferDetail: { method: "GET", path: "/biz/inventory/transfers/:no", auth: true, summary: "读回调拨单" },
+  mTransferShip: { method: "POST", path: "/biz/inventory/transfers/:no/ship", auth: true, summary: "调拨发出" },
+  mCarriers: { method: "GET", path: "/biz/fulfillment/carriers", auth: true, summary: "承运方可选列表（只列启用的）" },
+  mTransferReceive: { method: "POST", path: "/biz/inventory/transfers/:no/receive", auth: true, summary: "调拨收货" },
+  mCountVoid: { method: "POST", path: "/biz/inventory/counts/:no/void", auth: true, summary: "作废还在盘的盘点单" },
+  mTransferVoid: { method: "POST", path: "/biz/inventory/transfers/:no/void", auth: true, summary: "作废调拨草稿" },
+
+  mStockDocuments: { method: "GET", path: "/biz/inventory/documents", auth: true, summary: "出入库单据" },
+  mStockMonthly: { method: "GET", path: "/biz/inventory/report/monthly", auth: true, summary: "进销存月报" },
+  mStockRanking: { method: "GET", path: "/biz/inventory/report/ranking", auth: true, summary: "动销/滞销榜" },
+
+  mStockLocations: { method: "GET", path: "/biz/inventory/locations", auth: true, summary: "库位与仓" },
+  mWarehouseCreate: { method: "POST", path: "/biz/inventory/locations", auth: true, summary: "加一个仓" },
+  mLocationSetSource: { method: "PUT", path: "/biz/inventory/locations/:id/source", auth: true, summary: "设发货源" },
+  mInvCategorySettings: { method: "GET", path: "/biz/inventory/category-setting", auth: true, summary: "记库存的品类（各门店经营类目合集，每类一行）" },
+  mInvSetCategory: { method: "PUT", path: "/biz/inventory/category-setting/:categoryNo", auth: true, summary: "拨一个品类记不记库存（有在途拒绝、有库存要确认）" },
+  mGoodsInvModes: { method: "GET", path: "/biz/goods/inv-mode", auth: true, summary: "几件商品记不记库存（列表标签、编辑页那一行）" },
+  mGoodsSetInvMode: { method: "PUT", path: "/biz/goods/:goodsNo/inv-mode", auth: true, summary: "单件商品记不记库存（跟随品类 / 记 / 不记）" },
+  mStockSync: { method: "GET", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "本店库存同步状态" },
+  mSetStockSync: { method: "PUT", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "开 / 关本店库存同步（要先期初对齐）" },
+  mStorePaySetting: { method: "GET", path: "/biz/store/:storeNo/pay-setting", auth: true, summary: "本店收款方式（线下收款 / 货到付款）" },
+  mSaveStorePaySetting: { method: "PUT", path: "/biz/store/:storeNo/pay-setting", auth: true, summary: "开 / 关线下收款与货到付款（开线下要有有效营业执照）" },
+  mGoodsPayMode: { method: "GET", path: "/biz/goods/:goodsNo/pay-mode", auth: true, summary: "这件商品支持哪几种付款" },
+  mSetGoodsPayMode: { method: "PUT", path: "/biz/goods/:goodsNo/pay-mode", auth: true, summary: "改商品支持的付款方式（即时生效，不重审）" },
+  mStockAlignment: { method: "GET", path: "/biz/store/:storeNo/stock-alignment", auth: true, summary: "期初对齐清单：实存与商城库存逐件对照" },
+  mConfirmAlignment: { method: "POST", path: "/biz/store/:storeNo/stock-alignment/confirm", auth: true, summary: "确认期初对齐（以商城为准 / 已实地盘点）" },
+  mSellRules: { method: "GET", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "本店线上可售规则" },
+  mSaveSellRule: { method: "PUT", path: "/biz/store/:storeNo/sell-rules", auth: true, summary: "存一条线上可售规则并重算" },
+  mOfflineSales: { method: "GET", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "本店某天的线下卖出" },
+  mOfflineSell: { method: "POST", path: "/biz/store/:storeNo/offline-sale", auth: true, summary: "记一笔线下卖出并过账" },
+  mOfflineSaleRevoke: { method: "POST", path: "/biz/store/:storeNo/offline-sale/:docNo/revoke", auth: true, summary: "撤销一笔线下卖出（开退回入库单）" },
 };
 
+/**
+ * 把路径里的占位换成实参。**两种写法都认**：`:memberNo` 与 `{memberNo}`。
+ *
+ * 此前只认 `:x`，而表里 20 条写的是 `{x}`（与后端 @PathVariable 同形）—— 接真后端时字面的
+ * `{memberNo}` 原样发出去（线上日志 `/biz/activities/%7BactivityNo%7D`），会员详情、券详情、
+ * 发券、活动详情等整片打不开；mock 不走路径，演示时看不出来（2026-09-19 真机发现）。
+ */
 export function buildPath(path: string, params: Record<string, string | number>): string {
-  return path.replace(/:([a-zA-Z]+)/g, (_, k: string) => String(params[k] ?? ""));
+  const sub = (_: string, k: string) => encodeURIComponent(String(params[k] ?? ""));
+  return path.replace(/\{([a-zA-Z]+)\}/g, sub).replace(/:([a-zA-Z]+)/g, sub);
 }

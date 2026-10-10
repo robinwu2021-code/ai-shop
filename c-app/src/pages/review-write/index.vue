@@ -46,9 +46,21 @@ const target = computed(() =>
 
 const canSubmit = computed(() => !!target.value && content.value.trim().length >= 5 && !submitting.value);
 
+/** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `target` 后面，
+ *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
+const failed = ref(false);
+/** 重试要把单号带回去 —— `@retry` 不带参数 */
+const currentNo = ref("");
+
 async function load(orderNo: string) {
-  order.value = await api.orderDetail(orderNo);
-  goodsNo.value = order.value.items.find((it) => !it.isGift)?.goodsNo ?? "";
+  currentNo.value = orderNo;
+  try {
+    order.value = await api.orderDetail(orderNo);
+    goodsNo.value = order.value.items.find((it) => !it.isGift)?.goodsNo ?? "";
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
 }
 
 async function pickImages() {
@@ -61,9 +73,22 @@ async function pickImages() {
 }
 
 async function submit() {
+  if (submitting.value) return;
   const o = order.value;
   const it = target.value;
-  if (!o || !it || !canSubmit.value) return;
+  /*
+   * **点了没反应"永远是缺陷**：以前这里 `if (!canSubmit) return;` 静默吞掉，
+   * 用户敲了几个字点了没动静，只能怀疑功能坏了。改成告诉他为什么点不动。
+   */
+  if (!o || !it) {
+    uni.showToast({ title: String(t("review.orderMissing")), icon: "none" });
+    return;
+  }
+  const text = content.value.trim();
+  if (text.length < 5) {
+    uni.showToast({ title: String(t("review.tooShort")), icon: "none" });
+    return;
+  }
   submitting.value = true;
   try {
     await api.createReview({
@@ -91,87 +116,93 @@ onLoad((q) => {
 </script>
 
 <template>
-  <sh-scaffold v-if="target" title-key="review.writeTitle">
-    <view class="sh-card">
-      <biz-sku-row
-        :cover="target.cover"
-        :title="target.title"
-        :spec="target.spec"
-      ></biz-sku-row>
+  <sh-scaffold title-key="review.writeTitle"
+    :pending="!target"
+    :failed="failed"
+    @retry="() => load(currentNo)"
+  >
+    <!-- 正文全靠 `target` 解引用，所以要一层 `v-if` 让 vue-tsc 收窄类型。
+         **不写在 `<sh-scaffold>` 上**：写在那儿的话，`target` 为空时连外壳都不渲染 ——
+         没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
+    <template v-if="target">
+      <view class="sh-card">
+        <biz-sku-row
+          :cover="target.cover"
+          :title="target.title"
+          :spec="target.spec"
+        ></biz-sku-row>
 
-      <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
-      <view class="stars">
-        <text
-          v-for="i in 5"
-          :key="i"
-          class="star"
-          :class="{ 'is-on': i <= rating }"
-          @tap="setRating(i)"
-        >
-          ★
-        </text>
-        <text class="stars__label">{{ $t(`review.star${rating}`) }}</text>
-      </view>
-
-      <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
-           「东西没问题，是送得太慢」——而那正是他能改的部分 -->
-      <view v-for="d in DIMS" :key="d.key" class="dim">
-        <text class="dim__label">{{ $t(d.labelKey) }}</text>
-        <view class="dim__stars">
+        <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
+        <view class="stars sh-row">
           <text
             v-for="i in 5"
             :key="i"
-            class="star star--sm"
-            :class="{ 'is-on': i <= scores[d.key] }"
-            @tap="setDim(d.key, i)"
+            class="star"
+            :class="{ 'is-on': i <= rating }"
+            @tap="setRating(i)"
           >
             ★
           </text>
+          <text class="txt-caption stars__label">{{ $t(`review.star${rating}`) }}</text>
+        </view>
+
+        <!-- 三维度：不强制，动了才算细评。只看总分的商家永远不知道
+             「东西没问题，是送得太慢」——而那正是他能改的部分 -->
+        <view v-for="d in DIMS" :key="d.key" class="dim sh-row sh-row--between">
+          <text class="txt-sub">{{ $t(d.labelKey) }}</text>
+          <view class="dim__stars">
+            <text
+              v-for="i in 5"
+              :key="i"
+              class="star star--sm"
+              :class="{ 'is-on': i <= scores[d.key] }"
+              @tap="setDim(d.key, i)"
+            >
+              ★
+            </text>
+          </view>
         </view>
       </view>
-    </view>
 
-    <view class="sh-card block">
-      <textarea
-        v-model="content"
-        class="ta"
-        :placeholder="$t('review.contentPh')"
-        maxlength="300"
-      />
-      <text class="counter sh-num">{{ content.length }}/300</text>
+      <view class="sh-card block">
+        <textarea
+          v-model="content"
+          class="field__area ta"
+          :placeholder="$t('review.contentPh')"
+          maxlength="300"
+        />
+        <text class="txt-caption counter sh-num">{{ content.length }}/300</text>
+        <text v-if="content.trim().length > 0 && content.trim().length < 5"
+              class="txt-caption is-danger counter">
+          {{ $t("review.tooShort") }}
+        </text>
 
-      <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
-      <view class="imgs">
-        <view v-for="(img, i) in images" :key="i" class="img">
-          <image class="img__i" :src="img" mode="aspectFill" />
-        </view>
-        <view v-if="images.length < 3" class="img img--add" @tap="pickImages">
-          <text class="img__plus">＋</text>
-        </view>
+        <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
+        <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
       </view>
-    </view>
 
-    <view class="actionbar">
-      <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
-        {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
-      </view>
-      <text class="tip">{{ $t("review.tip") }}</text>
-    </view>
-    <view class="spacer" />
+      <sh-actionbar class="bar-center" :pad="220">
+        <view class="sh-btn" :class="{ 'is-disabled': !canSubmit }" @tap="submit">
+          {{ submitting ? $t("confirm.submitting") : $t("review.submit") }}
+        </view>
+        <text class="sh-hint sh-mt-sm">{{ $t("review.tip") }}</text>
+      </sh-actionbar>
+  
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
+/* 条里除了按钮还有一行说明/取消，居中对齐 —— 定位归 `sh-actionbar`，
+   这一条是这一页自己的排布。收编时它一度被连着定位一起删掉了。 */
+.bar-center {
+  text-align: center;
+}
+
 .dim {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
-.dim__label {
-  font-size: 26rpx;
-  color: var(--sh-sub);
-}
+
 .dim__stars {
   display: flex;
   gap: 8rpx;
@@ -181,8 +212,6 @@ onLoad((q) => {
 }
 
 .stars {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
   margin-top: 32rpx;
   direction: ltr;
@@ -193,79 +222,30 @@ onLoad((q) => {
   line-height: 1;
 }
 .star.is-on {
-  color: var(--sh-warning);
+  /* 星标点亮色，不是告警色 —— 见 base.css 的 --sh-star */
+  color: var(--sh-star);
 }
 .stars__label {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-inline-start: 12rpx;
 }
-.block {
-  margin-top: 20rpx;
-}
+/* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
-  width: 100%;
-  box-sizing: border-box;
   min-height: 220rpx;
-  background: var(--sh-faint);
-  border-radius: 24rpx;
-  padding: 24rpx;
-  font-size: 26rpx;
-  color: var(--sh-ink);
 }
 .counter {
   display: block;
   text-align: end;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 10rpx;
+  margin-top: 8rpx;
 }
 .imglabel {
   display: block;
   margin-top: 24rpx;
 }
+/* 只留这一段与页面版面有关的外边距 —— 格子本身（尺寸 / 圆角 / 底色 / 「＋」）
+   全在 `sh-uploader` 里。两页此前的 `.img` 一族**逐字节相同**：
+   160rpx 方格、24rpx 圆角、faint 底、48rpx 的 `＋` 字符。
+   顺带把那个 `＋` 换成真图标 —— 字符跟着字体走，三端字形不一样。 */
 .imgs {
-  display: flex;
-  gap: 16rpx;
   margin-top: 16rpx;
-}
-.img {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  overflow: hidden;
-}
-.img__i {
-  width: 100%;
-  height: 100%;
-}
-.img--add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.img__plus {
-  font-size: 48rpx;
-  color: var(--sh-sub);
-  line-height: 1;
-}
-.actionbar {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-  text-align: center;
-}
-.tip {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 18rpx;
-}
-.is-disabled {
-  opacity: 0.45;
-}
-.spacer {
-  height: 220rpx;
 }
 </style>

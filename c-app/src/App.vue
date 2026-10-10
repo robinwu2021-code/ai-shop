@@ -1,20 +1,46 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { onLaunch } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { guardSinglePageNavigation } from "@/shared/single-page";
 import { configureShell } from "@ai-shop/ui/shell";
-import { TABS } from "@shared/utils/constants";
+import { ROUTES, TABS, TAB_ROUTES } from "@shared/utils/constants";
+import { initPush } from "@shared/ports/push";
+import { setUnauthorizedHandler } from "@shared/net/http-client";
 import { flyState, registerCartAnchor } from "@/shared/fly";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
 import { useAppStore } from "@ai-shop/ui/stores/app";
 import { useMarketStore } from "@ai-shop/ui/stores/market";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
+import { useConfigStore } from "@/stores/config";
 import { useCartStore } from "@/stores/cart";
 import { initFonts } from "@shared/ports/font";
 import { USE_MOCK } from "@/api";
 import { restoreDb } from "@shared/mock/db";
 
+const { t } = useI18n();
+
 onLaunch(() => {
+  // 朋友圈单页模式：跳转被微信禁掉且不报错 —— 在壳上一处拦下来明说（见 single-page.ts）
+  guardSinglePageNavigation(() => String(t("share.singlePageBlocked")));
+  // #ifdef H5
+  /*
+   * 发货看件短链的 H5 落地（TDD-收件人物流触达 §4.3）：短链 302 到 `/c/?t=<令牌>`。
+   * **令牌放在 ? query（# 之前），不放 hash**：302 的 Location 若把页面路径放进 `#`，
+   * 浏览器跟随重定向时会把 fragment 丢掉 —— 人就落回 `/c/` 首页（看着像落错页）。
+   * 放 ? 里必然保住，启动时读出来 reLaunch 到看件页（hash 路由，令牌进页面 query）。
+   */
+  try {
+    const trackToken = new URLSearchParams(window.location.search).get("t");
+    if (trackToken) {
+      uni.reLaunch({ url: `${ROUTES.track}?t=${encodeURIComponent(trackToken)}` });
+      return;
+    }
+  } catch {
+    /* 没有 window / 解析失败：当作普通启动，不拦 */
+  }
+  // #endif
   // 外壳的 C 端特征：购物车角标、飞入小球与它的落点、切语言/市场后要重拉的服务端文案。
   // 组件库对这些一无所知（packages/ui/src/shell.ts）
   const cart = useCartStore();
@@ -39,6 +65,90 @@ onLaunch(() => {
   useAppStore().init(); // 语言 + RTL
   useUserStore().restore(); // 登录态
 
+  /*
+   * **打开即登录**（小程序）。
+   *
+   * `wx.login` 换 openid 微信侧不要用户确认，所以这一步是无感的：
+   * 老用户命中 openid 直接认出来，新用户建号 —— 两种情况他都不知道发生过什么。
+   *
+   * **不 await**：它是一次网络往返，await 会把首屏渲染压在它后面，
+   * 而首页本来就是游客可看的。失败也静默 —— 这只是「顺手认出他」，
+   * 失败了他照样能逛，到需要身份的那一步再走正常登录。
+   */
+  void useUserStore().silentLogin();
+
+  /*
+   * 登录失效时去登录页。**注册在壳上**，因为 401 可能从任何一个请求回来。
+   *
+   * 此前一处也没接：令牌一过期（重启后端、放一夜），页面渲染成一片空白
+   * 加一个未捕获错误 —— 没有提示、没有跳转，刷新也一样，因为没人清 token。
+   *
+   * 用 reLaunch 而不是 navigateTo：登录态没了，栈里剩下的页面每一张都拉不到数据。
+   * 再延一个宏任务：这条路径最常见的触发点是启动时的那几个请求，
+   * 那一刻首页还没挂载，此时发起的跳转会被直接丢掉（B 端实测过两次）。
+   */
+  /**
+   * 现在这一页的完整路径（含参数），形如 `/pages/order/index?orderNo=X`。
+   *
+   * <p>取不到就返回空 —— 启动时那几个请求触发 401 时页面栈可能还是空的，
+   * 那时没有「回得去的地方」，直接跳登录页才是对的。
+   */
+  function currentRoute(): string {
+    const pages = getCurrentPages();
+    const top = pages[pages.length - 1] as undefined | { route?: string; options?: Record<string, string> };
+    if (!top?.route) return "";
+    const q = Object.entries(top.options ?? {})
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
+    return `/${top.route}${q ? `?${q}` : ""}`;
+  }
+
+  setUnauthorizedHandler(async () => {
+    /*
+     * **先等一等还在飞的那次静默登录，再决定要不要把人踢去登录页。**
+     *
+     * 启动时的请求（购物车、资料）与静默登录是赛跑关系：先跑的那个会拿到 401。
+     * 不等的话，一次 401 就把人 reLaunch 到登录页 ——
+     * 而一秒之后静默登录成功了，**token 有了、账号也建了，他看着的却是登录页**。
+     * 真机实测就是这个样子（2026-08-22，automator 抓到：token 长度 36、
+     * 生产账号数 1→2，当前页却是 pages/login/index）。
+     *
+     * 等到了就当无事发生：调用方的那次请求确实失败了，但下一次点就是好的，
+     * 比把人扔去登录页强得多 —— 后者会让「打开即登录」这个功能整个看不见。
+     */
+    const user = useUserStore();
+    /*
+     * **401 意味着手里这个 token 已经死了 —— 先扔掉，再换一个。**
+     *
+     * 不先扔的话，`silentLogin()` 第一句 `if (this.token) return true` 会直接返回成功，
+     * 401 被当成「已经登录着」吞掉 —— 人就卡在一个拿着死令牌的假登录态里：
+     * 界面显示着旧账号，每个请求都 401，而没有任何提示、也不会去重登。
+     *
+     * 真机实测撞到过：注销之后旧 token 被服务端吊销，端上还留着，
+     * 于是重开小程序仍然「是」那个已注销的账号，**新账号根本没建**
+     * （生产库账号数纹丝不动，而按设计同一个微信此刻应当是全新用户）。
+     */
+    user.clearSession();
+    if (await user.silentLogin(true).catch(() => false)) {
+      return;
+    }
+    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
+    /*
+     * **把当前这一页带过去，登录完要回得来。**
+     *
+     * 此前只跳 `ROUTES.login`，而登录页登完调的是 `navigateBack()` ——
+     * 我们这一跳用的是 `reLaunch`，**页面栈已经被清空了**，没有「上一页」，
+     * 于是那句 `navigateBack` 是空转：人登录成功了，却停在登录页。
+     *
+     * 这条路径不是边角：微信《小程序订单管理》要求「通过 path 进入订单中心，
+     * 检测到无登录态时引导登录，**登录后停留在订单中心页**」——
+     * 登完回不去正是平台点名要驳回的形态。
+     */
+    const back = currentRoute();
+    setTimeout(() => uni.reLaunch({
+      url: back ? `${ROUTES.login}?redirect=${encodeURIComponent(back)}` : ROUTES.login,
+    }), 0);
+  });
+
   // 社区归属里存的是**绑定当时那门语言/那个市场**的文案快照。
   // 上次用英文绑定、这次以中文启动时，界面是中文而归属条是英文 —— 所以启动时也要校正一次，
   // 不能只在「切语言」这个动作里重拉。失败不阻塞启动。
@@ -46,7 +156,26 @@ onLaunch(() => {
   community.restore();
   void community.refreshLocalized();
 
+  /*
+   * 平台开关（`/mp/config/bootstrap`）。**此前端上一次都没调过这条端点** ——
+   * 后端在发、运营端能改，而买家侧拿到的只有编译期常量，改一个开关要重新发版。
+   * 小程序还要重新提审，而「商家入驻入口显不显示」正是一条随时可能要立刻关掉的开关。
+   * 失败不阻塞启动：拿不到就各用各的默认值。
+   */
+  void useConfigStore().load();
+
   initFonts(); // 远程字体，失败静默降级
+
+  // 推送点击的落点（ADR-018）。tab 页只能 switchTab —— 用 navigateTo 会静默失败，
+  // 表现是「点开推送什么也没发生」
+  initPush((link) => {
+    const path = link.split("?")[0] ?? link;
+    if (TAB_ROUTES.has(path)) {
+      uni.switchTab({ url: path });
+    } else {
+      uni.navigateTo({ url: link });
+    }
+  });
 });
 </script>
 

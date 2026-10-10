@@ -10,8 +10,8 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { AFTER_SALES_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
-import { LIABILITY_SHARE_TOTAL, MIN_FAST_REFUND_HOURS } from "@/lib/constants";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
+import { MIN_FAST_REFUND_HOURS } from "@/lib/constants";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
@@ -21,26 +21,23 @@ import { AfterSaleStatusBadge, useAfterSaleStatusMap, useAfterSaleTypeMap } from
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Notice } from "@/components/ui/notice";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { StatRow, StatCard, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof AFTER_SALES_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "tickets", label: c.tabTickets },
-  { key: "intervene", label: c.tabIntervene },
-  { key: "fastrefund", label: c.tabFastRefund },
-];
+const TAB_KEYS = ["tickets", "intervene", "fastrefund"] as const;
 
 const LIABILITY_OPTIONS = (c: Copy): { value: Liability; label: string; hint: string }[] => [
   { value: "MERCHANT", label: c.liabMerchant, hint: c.liabMerchantHint },
@@ -48,20 +45,13 @@ const LIABILITY_OPTIONS = (c: Copy): { value: Liability; label: string; hint: st
   { value: "PLATFORM", label: c.liabPlatform, hint: c.liabPlatformHint },
 ];
 
-/** 责任方 → 默认出资比例。矩阵 M4 未定，这里只是**填单起点**，裁决人可改。 */
-const DEFAULT_SHARE: Record<Liability, { platform: number; merchant: number; pickup: number }> = {
-  MERCHANT: { platform: 0, merchant: 100, pickup: 0 },
-  PICKUP: { platform: 0, merchant: 0, pickup: 100 },
-  PLATFORM: { platform: 100, merchant: 0, pickup: 0 },
-};
-
 export default function AfterSalesPage() {
   return <Suspense fallback={null}><AfterSalesInner /></Suspense>;
 }
 
 function AfterSalesInner() {
   const c = useCopy(AFTER_SALES_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/after-sales", TAB_KEYS);
   const liabilityOptions = LIABILITY_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();
@@ -73,9 +63,7 @@ function AfterSalesInner() {
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
   const [current, setCurrent] = useState<AfterSale | null>(null);
-  const [form, setForm] = useState<{
-    liability: Liability; platform: string; merchant: string; pickup: string; verdict: string; amount: string;
-  } | null>(null);
+  const [form, setForm] = useState<{ refund: boolean; liability: Liability; verdict: string } | null>(null);
 
   const canHandle = allow("aftersale:ticket:handle");
   const canApprove = allow("aftersale:refund:approve");
@@ -96,15 +84,10 @@ function AfterSalesInner() {
   const decide = useMutation({
     mutationFn: () =>
       api.decideAfterSale({
-        asNo: current!.asNo,
+        afterSaleNo: current!.afterSaleNo,
+        refund: form!.refund,
         liability: form!.liability,
-        share: {
-          platform: Number(form!.platform),
-          merchant: Number(form!.merchant),
-          pickup: Number(form!.pickup),
-        },
         verdict: form!.verdict,
-        amount: Math.round(Number(form!.amount) * 100),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["after-sales"] });
@@ -119,6 +102,10 @@ function AfterSalesInner() {
     enabled: d.enabled,
     maxAmount: String(d.maxAmount / 100),
     withinHours: String(d.withinHours),
+    replyHours: String(d.replyHours),
+    shipBackDays: String(d.shipBackDays),
+    confirmHours: String(d.confirmHours),
+    interveneWorkDays: String(d.interveneWorkDays),
   }));
   const saveRule = useMutation({
     mutationFn: () =>
@@ -127,38 +114,33 @@ function AfterSalesInner() {
         maxAmount: Math.round(Number(editing!.maxAmount) * 100),
         withinHours: Number(editing!.withinHours),
         categories: rule.data?.categories ?? [],
+        replyHours: Number(editing!.replyHours),
+        shipBackDays: Number(editing!.shipBackDays),
+        confirmHours: Number(editing!.confirmHours),
+        interveneWorkDays: Number(editing!.interveneWorkDays),
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["fast-refund"] }); resetRule(); notify.success(c.toastRuleSaved); },
   });
 
   const openDecide = (a: AfterSale) => {
     setCurrent(a);
-    const liability = a.liability ?? "MERCHANT";
-    const share = a.share ?? DEFAULT_SHARE[liability];
-    setForm({
-      liability,
-      platform: String(share.platform), merchant: String(share.merchant), pickup: String(share.pickup),
-      verdict: a.verdict ?? "",
-      amount: (a.amount / 100).toFixed(2),
-    });
+    setForm({ refund: true, liability: a.liability ?? "MERCHANT", verdict: a.verdict ?? "" });
   };
 
-  const shareSum = form ? Number(form.platform) + Number(form.merchant) + Number(form.pickup) : 0;
-
   const columns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => a.asNo, numeric: true, align: "start" },
-    { header: c.colOrderNo, cell: (a) => a.orderNo, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => <IdCell value={a.afterSaleNo} />, numeric: true, align: "start" },
+    { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colBuyer, cell: (a) => a.buyerNickname },
     { header: c.colType, cell: (a) => <StatusBadge map={typeMap} value={a.type} /> },
-    { header: c.colAmount, cell: (a) => money(a.amount), numeric: true },
+    { header: c.colAmount, cell: (a) => money(a.refundMinor), numeric: true },
     {
       header: c.colReason,
       width: "20rem",
       className: "whitespace-normal",
       cell: (a) => <span className="line-clamp-1 text-muted-foreground">{a.reason}</span>,
     },
-    { header: c.colEvidence, cell: (a) => a.evidenceCount, numeric: true },
+    { header: c.colEvidence, cell: (a) => a.images.length, numeric: true },
     {
       header: c.colLiability,
       // 未裁决时留"—"而不是空：空会被读成"判过了但没责任方"
@@ -171,15 +153,15 @@ function AfterSalesInner() {
       header: c.colActions,
       cell: (a) => (
         <Button size="sm" variant="outline" onClick={() => openDecide(a)}>
-          {a.status === "PLATFORM_INTERVENE" && canHandle ? c.actionDecide : c.actionView}
+          {a.status === "ARBITRATING" && canHandle ? c.actionDecide : c.actionView}
         </Button>
       ),
     },
   ];
 
   const rows = list.data?.records ?? [];
-  const interveneCount = rows.filter((a) => a.status === "PLATFORM_INTERVENE").length;
-  const pendingAmount = rows.filter((a) => a.status !== "REFUNDED" && a.status !== "CLOSED").reduce((n, a) => n + a.amount, 0);
+  const interveneCount = rows.filter((a) => a.status === "ARBITRATING").length;
+  const pendingAmount = rows.filter((a) => a.status !== "REFUNDED" && a.status !== "CLOSED").reduce((n, a) => n + a.refundMinor, 0);
 
   return (
     <div>
@@ -210,13 +192,17 @@ function AfterSalesInner() {
             )}
           </Toolbar>
 
-          <DataTable
-            columns={columns} rows={list.data?.records} loading={list.isLoading}
-            error={list.error} onRetry={() => list.refetch()}
-            rowKey={(a) => a.asNo}
+          <PagedTable
+            query={list}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={list.isLoading}
+            columns={columns}
+            rowKey={(a) => a.afterSaleNo}
             empty={tab === "intervene" ? c.emptyIntervene : c.emptyTickets}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -257,6 +243,34 @@ function AfterSalesInner() {
                     {fill(c.hoursHint, { n: MIN_FAST_REFUND_HOURS })}
                   </p>
                 </div>
+
+                {/* 时限：与极速退同一份配置，但它们管的是「沉默多久之后由系统替他决定」 */}
+                <h3 className="txt-body font-medium pt-2">{c.slaTitle}</h3>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-reply" required>{c.fieldReplyHours}</Label>
+                  <Input id="fr-reply" className="w-full" disabled={!canApprove} value={editing.replyHours}
+                    onChange={(e) => setField("replyHours", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.replyHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-shipback" required>{c.fieldShipBackDays}</Label>
+                  <Input id="fr-shipback" className="w-full" disabled={!canApprove} value={editing.shipBackDays}
+                    onChange={(e) => setField("shipBackDays", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.shipBackHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-confirm" required>{c.fieldConfirmHours}</Label>
+                  <Input id="fr-confirm" className="w-full" disabled={!canApprove} value={editing.confirmHours}
+                    onChange={(e) => setField("confirmHours", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.confirmHint}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="fr-intervene" required>{c.fieldInterveneWorkDays}</Label>
+                  <Input id="fr-intervene" className="w-full" disabled={!canApprove}
+                    value={editing.interveneWorkDays}
+                    onChange={(e) => setField("interveneWorkDays", e.target.value)} />
+                  <p className="txt-caption text-muted-foreground">{c.interveneHint}</p>
+                </div>
             </>
           )}
         </ConfigCard>
@@ -265,11 +279,11 @@ function AfterSalesInner() {
       <Drawer
         open={!!current}
         onOpenChange={(o) => { if (!o) { setCurrent(null); setForm(null); } }}
-        title={current ? `${current.asNo} · ${current.merchantName}` : ""}
+        title={current ? `${current.afterSaleNo} · ${current.merchantName}` : ""}
         desc={current ? fill(c.drawerOrder, { no: current.orderNo }) : undefined}
         width="w-[560px]"
         footer={
-          current?.status === "PLATFORM_INTERVENE" && canHandle ? (
+          current?.status === "ARBITRATING" && canHandle ? (
             <Button loading={decide.isPending} onClick={() => decide.mutate()}>{c.btnConfirmDecide}</Button>
           ) : null
         }
@@ -281,30 +295,31 @@ function AfterSalesInner() {
               <Field className="mb-3" label={c.colType}><StatusBadge map={typeMap} value={current.type} /></Field>
               <Field className="mb-3" label={c.colStatus}><AfterSaleStatusBadge value={current.status} /></Field>
               <Field className="mb-3" label={c.colBuyer}>{current.buyerNickname}</Field>
-              <Field className="mb-3" label={c.colEvidence}>{current.evidenceCount ? fill(c.evidenceCount, { n: current.evidenceCount }) : c.none}</Field>
+              <Field className="mb-3" label={c.colAmount}>{money(current.refundMinor)}</Field>
+              <Field className="mb-3" label={c.colEvidence}>{current.images.length ? fill(c.evidenceCount, { n: current.images.length }) : c.none}</Field>
             </FieldGrid>
             <Field className="mb-0" label={c.fieldReason}><p className="whitespace-pre-wrap">{current.reason}</p></Field>
             </DrawerSection>
 
-            {current.status === "PLATFORM_INTERVENE" && canHandle ? (
+            {current.status === "ARBITRATING" && canHandle ? (
               <DrawerSection title={c.secDecide} desc={c.secDecideDesc}>
                 <div className="mb-4 space-y-1">
-                  <Label htmlFor="as-amount" required>{c.fieldRefundAmount}</Label>
-                  <Input id="as-amount" className="w-full" value={form.amount}
-                    onChange={(e) => setForm((p) => (p ? { ...p, amount: e.target.value } : p))} />
-                  <p className="txt-caption text-muted-foreground">{c.refundAmountHint}</p>
+                  <Label htmlFor="as-refund" required>{c.fieldRefund}</Label>
+                  <Select
+                    id="as-refund" className="w-full" value={form.refund ? "1" : "0"}
+                    onChange={(e) => setForm((p) => (p ? { ...p, refund: e.target.value === "1" } : p))}
+                  >
+                    <option value="1">{c.refundYes}</option>
+                    <option value="0">{c.refundNo}</option>
+                  </Select>
+                  <p className="txt-caption text-muted-foreground">{c.refundAmountNote}</p>
                 </div>
 
                 <div className="mb-4 space-y-1">
                   <Label htmlFor="as-liab" required>{c.fieldLiability}</Label>
                   <Select
                     id="as-liab" className="w-full" value={form.liability}
-                    onChange={(e) => {
-                      const liability = e.target.value as Liability;
-                      const d = DEFAULT_SHARE[liability];
-                      // 换责任方时同步默认比例：否则会留下"责任在商家、平台出 100%"这种矛盾组合
-                      setForm((p) => (p ? { ...p, liability, platform: String(d.platform), merchant: String(d.merchant), pickup: String(d.pickup) } : p));
-                    }}
+                    onChange={(e) => setForm((p) => (p ? { ...p, liability: e.target.value as Liability } : p))}
                   >
                     {liabilityOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
@@ -312,19 +327,6 @@ function AfterSalesInner() {
                     {liabilityOptions.find((o) => o.value === form.liability)?.hint}
                   </p>
                 </div>
-
-                <div className="mb-1 grid grid-cols-3 gap-3">
-                  {([["platform", c.sharePlatform], ["merchant", c.shareMerchant], ["pickup", c.sharePickup]] as const).map(([k, label]) => (
-                    <div key={k} className="space-y-1">
-                      <Label htmlFor={`as-${k}`}>{label} %</Label>
-                      <Input id={`as-${k}`} value={form[k]} onChange={(e) => setForm((p) => (p ? { ...p, [k]: e.target.value } : p))} />
-                    </div>
-                  ))}
-                </div>
-                <p className={shareSum === LIABILITY_SHARE_TOTAL ? "mb-4 txt-caption text-muted-foreground" : "mb-4 txt-caption text-[var(--destructive)]"}>
-                  {fill(c.shareSum, { sum: shareSum, total: LIABILITY_SHARE_TOTAL })}
-                  {shareSum !== LIABILITY_SHARE_TOTAL && c.shareSumBad}
-                </p>
 
                 <Field label={c.fieldVerdict}>
                   <Textarea value={form.verdict} onChange={(v) => setForm((p) => (p ? { ...p, verdict: v } : p))}
@@ -336,17 +338,12 @@ function AfterSalesInner() {
                 <Field label={c.fieldLiability}>
                   {current.liability ? liabilityOptions.find((o) => o.value === current.liability)?.label : c.liabilityUndecided}
                 </Field>
-                <Field label={c.fieldShare}>
-                  {current.share
-                    ? fill(c.shareText, { p: current.share.platform, m: current.share.merchant, k: current.share.pickup })
-                    : "—"}
-                </Field>
-                <Field className={current.refundSplitPending ? undefined : "mb-0"} label={c.fieldVerdict}>{current.verdict || "—"}</Field>
-                {current.refundSplitPending && (
-                  <Notice>
-                    {c.refundSplitPending}
-                  </Notice>
+                {current.liability && (
+                  <Field label={c.fieldRefund}>
+                    {current.status === "CLOSED" ? c.refundRejected : c.refundDecided}
+                  </Field>
                 )}
+                <Field className="mb-0" label={c.fieldVerdict}>{current.verdict || "—"}</Field>
               </DrawerSection>
             )}
           </div>

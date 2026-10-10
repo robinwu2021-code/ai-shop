@@ -1,33 +1,38 @@
 // 营销域 mock（P-7.1 / P-7.2 / P-7.3）。
 // 券刻意留了「预算快用完」「已停用」「草稿」三种，否则预算校验与状态机在页面上验不到。
-import type { Campaign, ContentSlot, Coupon, CouponIssue } from "@/lib/types";
+import type { MerchantCampaign, PlatformSlot, ContentSlot, Coupon, CouponIssue } from "@/lib/types";
 
 export const coupons: Coupon[] = [
   {
-    couponNo: "CP9001", name: "新人首单立减 5 元", type: "NEWCOMER", status: "ACTIVE",
-    value: 500, threshold: 1900, validFrom: "2026-08-01T00:00:00Z", validTo: "2026-08-31T16:00:00Z",
-    budget: 500_000, issuedAmount: 214_000, issued: 428, redeemed: 301, createdAt: "2026-07-28T02:00:00Z",
+    couponNo: "CP9001", name: "新人首单立减 5 元", type: "FULL_CUT", status: "ACTIVE",
+    value: 500, threshold: 1900, validFrom: Date.parse("2026-08-01T00:00:00Z"), validTo: Date.parse("2026-08-31T16:00:00Z"),
+    budget: 500_000, issuedAmount: 214_000, issued: 428, redeemed: 301, createdAt: Date.parse("2026-07-28T02:00:00Z"),
+    totalCount: 1000, perUserLimit: 1, maxDiscountMinor: 0,
   },
   {
     couponNo: "CP9002", name: "满 39 减 8（生鲜）", type: "FULL_CUT", status: "ACTIVE",
-    value: 800, threshold: 3900, validFrom: "2026-08-04T00:00:00Z", validTo: "2026-08-10T16:00:00Z",
+    value: 800, threshold: 3900, validFrom: Date.parse("2026-08-04T00:00:00Z"), validTo: Date.parse("2026-08-10T16:00:00Z"),
     // 预算快用完：用来验「超预算发券被拒」
-    budget: 120_000, issuedAmount: 116_800, issued: 146, redeemed: 88, createdAt: "2026-08-03T06:00:00Z",
+    budget: 120_000, issuedAmount: 116_800, issued: 146, redeemed: 88, createdAt: Date.parse("2026-08-03T06:00:00Z"),
+    totalCount: 150, perUserLimit: 1, maxDiscountMinor: 0,
   },
   {
     couponNo: "CP9003", name: "邻家便利 85 折（店铺定向）", type: "DISCOUNT", status: "PAUSED",
-    value: 8500, threshold: 0, validFrom: "2026-07-20T00:00:00Z", validTo: "2026-08-20T16:00:00Z",
-    budget: 200_000, issuedAmount: 63_500, issued: 127, redeemed: 61, createdAt: "2026-07-19T03:00:00Z",
+    value: 8500, threshold: 0, validFrom: Date.parse("2026-07-20T00:00:00Z"), validTo: Date.parse("2026-08-20T16:00:00Z"),
+    budget: 200_000, issuedAmount: 63_500, issued: 127, redeemed: 61, createdAt: Date.parse("2026-07-19T03:00:00Z"),
+    totalCount: 200, perUserLimit: 1, maxDiscountMinor: 2000,
   },
   {
-    couponNo: "CP9004", name: "老客回归 10 元券", type: "TARGETED", status: "DRAFT",
-    value: 1000, threshold: 4900, validFrom: "2026-08-10T00:00:00Z", validTo: "2026-09-10T16:00:00Z",
-    budget: 300_000, issuedAmount: 0, issued: 0, redeemed: 0, createdAt: "2026-08-05T08:00:00Z",
+    couponNo: "CP9004", name: "老客回归 10 元券", type: "FULL_CUT", status: "DRAFT",
+    value: 1000, threshold: 4900, validFrom: Date.parse("2026-08-10T00:00:00Z"), validTo: Date.parse("2026-09-10T16:00:00Z"),
+    budget: 300_000, issuedAmount: 0, issued: 0, redeemed: 0, createdAt: Date.parse("2026-08-05T08:00:00Z"),
+    totalCount: 500, perUserLimit: 1, maxDiscountMinor: 0,
   },
   {
     couponNo: "CP9005", name: "七月满 50 减 12（已结束）", type: "FULL_CUT", status: "ENDED",
-    value: 1200, threshold: 5000, validFrom: "2026-07-01T00:00:00Z", validTo: "2026-07-31T16:00:00Z",
-    budget: 400_000, issuedAmount: 386_400, issued: 322, redeemed: 258, createdAt: "2026-06-28T02:00:00Z",
+    value: 1200, threshold: 5000, validFrom: Date.parse("2026-07-01T00:00:00Z"), validTo: Date.parse("2026-07-31T16:00:00Z"),
+    budget: 400_000, issuedAmount: 386_400, issued: 322, redeemed: 258, createdAt: Date.parse("2026-06-28T02:00:00Z"),
+    totalCount: 400, perUserLimit: 1, maxDiscountMinor: 0,
   },
 ];
 
@@ -38,19 +43,39 @@ export const couponIssues: CouponIssue[] = [
   { issueNo: "CI9104", couponNo: "CP9003", couponName: "邻家便利 85 折（店铺定向）", target: "COMMUNITY", targetDesc: "阳光里", count: 127, amount: 63_500, operator: "campaign01", createdAt: "2026-07-21T02:00:00Z" },
 ];
 
-export const campaigns: Campaign[] = [
+/**
+ * **商家自建的店铺活动**（`/ops/campaigns` 返回的东西）。
+ *
+ * 此前这里造的是平台投放场次的数据（SECKILL / position / skuCount）——
+ * 一个后端并不存在的对象。**mock 比后端好看**，于是页面在 mock 下一切正常，
+ * 接上真后端才露出类型列打原始枚举码。
+ */
+export const merchantCampaigns: MerchantCampaign[] = [
+  { campaignNo: "CM9001", merchantNo: "M0001", name: "开业满 50 减 8", type: "FULL_CUT", status: "RUNNING", startAt: Date.parse("2026-08-04T00:00:00Z"), endAt: Date.parse("2026-08-10T16:00:00Z"), goodsNos: ["G001", "G002"] },
+  { campaignNo: "CM9002", merchantNo: "M0001", name: "挂面尝鲜价", type: "FLASH", status: "RUNNING", startAt: Date.parse("2026-08-06T00:00:00Z"), endAt: Date.parse("2026-08-13T16:00:00Z"), goodsNos: ["G003"] },
+  { campaignNo: "CM9003", merchantNo: "M0002", name: "买二送一（抽纸）", type: "BUY_GIFT", status: "PAUSED", startAt: Date.parse("2026-08-01T00:00:00Z"), endAt: Date.parse("2026-08-31T16:00:00Z"), goodsNos: ["G010", "G011", "G012"] },
+  { campaignNo: "CM9004", merchantNo: "M0002", name: "店铺券·满 20 减 3", type: "COUPON", status: "ENDED", startAt: Date.parse("2026-07-01T00:00:00Z"), endAt: Date.parse("2026-07-31T16:00:00Z"), goodsNos: [] },
+];
+
+/**
+ * 平台投放场次的 mock。**后端还没有这个对象** —— 保留它是为了那块 UI
+ * （位置、秒杀场次重叠校验）在 mock 模式下仍能演示，以及把那几条产品规则
+ * 记在测试里：首尾相接不算重叠、跨位置可并行。
+ *
+ * **单独一个数组**，不与 merchantCampaigns 混：两个领域对象共用一个数组
+ * 正是「类型列一半中文一半原始枚举码」的来源。
+ */
+export const platformSlots: PlatformSlot[] = [
   { campaignNo: "AC9001", name: "早市秒杀 07:00 场", type: "SECKILL", status: "RUNNING", startAt: "2026-08-06T23:00:00Z", endAt: "2026-08-07T00:00:00Z", position: "首页秒杀位", skuCount: 12, createdAt: "2026-08-01T02:00:00Z" },
   { campaignNo: "AC9002", name: "晚市秒杀 18:00 场", type: "SECKILL", status: "SCHEDULED", startAt: "2026-08-07T10:00:00Z", endAt: "2026-08-07T11:00:00Z", position: "首页秒杀位", skuCount: 8, createdAt: "2026-08-01T02:10:00Z" },
   { campaignNo: "AC9003", name: "生鲜满 39 减 8", type: "FULL_REDUCE", status: "RUNNING", startAt: "2026-08-04T00:00:00Z", endAt: "2026-08-10T16:00:00Z", position: "生鲜频道", skuCount: 46, createdAt: "2026-08-03T06:00:00Z" },
-  { campaignNo: "AC9004", name: "新人礼包（三张券）", type: "NEWCOMER", status: "RUNNING", startAt: "2026-08-01T00:00:00Z", endAt: "2026-08-31T16:00:00Z", position: "新人专区", skuCount: 0, createdAt: "2026-07-28T02:00:00Z" },
-  { campaignNo: "AC9005", name: "买二赠一（抽纸）", type: "GIFT", status: "DRAFT", startAt: "2026-08-12T00:00:00Z", endAt: "2026-08-18T16:00:00Z", position: "日用频道", skuCount: 3, createdAt: "2026-08-05T09:00:00Z" },
 ];
 
 export const contentSlots: ContentSlot[] = [
-  { slotNo: "SL9001", title: "今日团（首页第一屏）", kind: "HOME_FLOOR", sort: 1, communityNos: [], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-12-31T16:00:00Z", enabled: true },
-  { slotNo: "SL9002", title: "生鲜大促 Banner", kind: "BANNER", sort: 1, communityNos: ["C001", "C002"], onlineAt: "2026-08-04T00:00:00Z", offlineAt: "2026-08-10T16:00:00Z", enabled: true },
-  { slotNo: "SL9003", title: "新人专区入口", kind: "HOME_FLOOR", sort: 2, communityNos: [], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-08-31T16:00:00Z", enabled: true },
-  { slotNo: "SL9004", title: "梧桐苑开城 Banner", kind: "BANNER", sort: 2, communityNos: ["C003"], onlineAt: "2026-08-08T00:00:00Z", offlineAt: "2026-08-20T16:00:00Z", enabled: false },
+  { slotNo: "SL9001", title: "今日团（首页第一屏）", kind: "HOME_FLOOR", sort: 1, communityNos: [], goodsNos: ["G0004", "G0002", "G0001"], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-12-31T16:00:00Z", enabled: true },
+  { slotNo: "SL9002", title: "生鲜大促 Banner", kind: "BANNER", sort: 1, communityNos: ["C001", "C002"], goodsNos: [], onlineAt: "2026-08-04T00:00:00Z", offlineAt: "2026-08-10T16:00:00Z", enabled: true },
+  { slotNo: "SL9003", title: "新人专区入口", kind: "HOME_FLOOR", sort: 2, communityNos: [], goodsNos: ["G0003"], onlineAt: "2026-08-01T00:00:00Z", offlineAt: "2026-08-31T16:00:00Z", enabled: true },
+  { slotNo: "SL9004", title: "梧桐苑开城 Banner", kind: "BANNER", sort: 2, communityNos: ["C003"], goodsNos: [], onlineAt: "2026-08-08T00:00:00Z", offlineAt: "2026-08-20T16:00:00Z", enabled: false },
 ];
 
 /**

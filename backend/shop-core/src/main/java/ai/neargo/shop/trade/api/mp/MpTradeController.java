@@ -1,0 +1,323 @@
+package ai.neargo.shop.trade.api.mp;
+
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.trade.dto.CartItemVO;
+import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.service.CartService;
+import ai.neargo.shop.trade.service.OrderService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/**
+ * 购物车与交易端点（[API 清单 §2.4]）。全部需要登录，由过滤器链保证。
+ */
+@Profile("api")
+@RestController
+@Validated
+public class MpTradeController {
+
+    private final CartService cartService;
+    private final OrderService orderService;
+    private final AfterSaleService afterSaleService;
+
+    public MpTradeController(CartService cartService, OrderService orderService,
+                             AfterSaleService afterSaleService) {
+        this.cartService = cartService;
+        this.orderService = orderService;
+        this.afterSaleService = afterSaleService;
+    }
+
+    // ---- 购物车
+
+    @GetMapping("/mp/cart")
+    public List<CartItemVO> cart() {
+        return cartService.list();
+    }
+
+    @PostMapping("/mp/cart/add")
+    public List<CartItemVO> cartAdd(@RequestBody @Valid CartAddReq req) {
+        return cartService.add(req.goodsNo(), req.skuNo(), req.qty(), req.storeNo());
+    }
+
+    @PostMapping("/mp/cart/update")
+    public List<CartItemVO> cartUpdate(@RequestBody @Valid CartUpdateReq req) {
+        return cartService.update(req.skuNo(), req.qty());
+    }
+
+    @PostMapping("/mp/cart/remove")
+    public List<CartItemVO> cartRemove(@RequestBody CartRemoveReq req) {
+        return cartService.remove(req.skuNos());
+    }
+
+    // ---- 交易
+
+    @PostMapping("/mp/order/preview")
+    public OrderVO preview(@RequestBody CreateOrderReq req) {
+        return orderService.preview(req.toCommand(null));
+    }
+
+    /**
+     * 结算页能力提示：能不能开票、能用哪些支付方式、额度够不够。
+     *
+     * <p>与 preview 分开是有意的：这三件事的共同后果都是<b>付款那一刻才炸</b>，
+     * 而买家在结算页就该知道 —— 小微没有 H5/App 支付方式（混合购物车整单付不了）、
+     * 小微不能开票（买完才发现补救不了）、额度用尽（通道直接拒收）。
+     */
+    @PostMapping("/mp/order/capability")
+    public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(@RequestBody CreateOrderReq req) {
+        return orderService.capability(req.toCommand(null));
+    }
+
+    /**
+     * 下单。{@code Idempotency-Key} 走请求头而不是请求体 ——
+     * 它是传输层语义（重试同一个请求），放进业务体会诱使有人为了「重新下单」而换 key。
+     */
+    /**
+     * @param client 下单端（{@code X-Client}）。<b>只用于平台策略判定</b>（哪个端能发/用积分），
+     *               它来自客户端、天然可伪造，<b>绝不能用于权限或资金判定</b>。
+     *               不传时留空 —— 存量端上没有这个头，不能因为补了它就让老版本下不了单。
+     */
+    @PostMapping("/mp/order")
+    public OrderVO create(@RequestBody CreateOrderReq req,
+                          @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+                          @RequestHeader(value = "X-Client", required = false) String client) {
+        return orderService.create(req.toCommand(client), idemKey == null ? req.idempotencyKey() : idemKey);
+    }
+
+    /**
+     * 这一单能用哪些支付方式（C-1）。
+     *
+     * <p><b>单数 {@code pay-method}</b> —— {@code /mp} 下一律单数，有闸门在拦。
+     *
+     * <p>端上拿到之后：{@code configured = false} 时照常允许支付
+     * （进件还没走完，钱先欠着）；{@code true} 而列表为空时要拦住。
+     * <b>两者是相反的动作</b>，合成一个空数组会把正常订单拦死。
+     */
+    @GetMapping("/mp/order/{orderNo}/pay-method")
+    public ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(@PathVariable String orderNo) {
+        return orderService.payMethods(orderNo);
+    }
+
+    @PostMapping("/mp/order/{orderNo}/pay")
+    public OrderService.PayResult pay(@PathVariable String orderNo,
+                                      @RequestParam(required = false) String payChannel) {
+        return orderService.pay(orderNo, payChannel);
+    }
+
+    /** 支付结果回查：**端侧不自判成功**，付款后轮询这个。 */
+    @GetMapping("/mp/order/{orderNo}/pay-result")
+    public OrderVO payResult(@PathVariable String orderNo) {
+        return orderService.payResult(orderNo);
+    }
+
+    @GetMapping("/mp/order")
+    public PageData<OrderVO> orderList(@RequestParam(required = false) String status,
+                                       // 与 status 正交：页签是「状态 + 履约集合」的谓词，不是一个状态值
+                                       @RequestParam(required = false) java.util.List<String> fulfillments,
+                                       @RequestParam(defaultValue = "1") long page,
+                                       @RequestParam(defaultValue = "10") long size) {
+        return orderService.list(status, fulfillments, page, Math.min(size, 50));
+    }
+
+    /**
+     * 物流页：点「查看物流」时调（TDD-物流模块 批 3，物流-API A2）。小程序 + 微信支付单会顺带向微信校正一次状态
+     * （10 分钟内不重复），其余纯读库。订单详情里的 trace 不触发任何外部调用。
+     */
+    @GetMapping("/mp/order/{orderNo}/trace")
+    public OrderVO.Trace orderTrace(@PathVariable String orderNo,
+                                    @RequestHeader(value = "X-Client", required = false) String client,
+                                    // 端上点「刷新」才带 true。默认 false —— 进页面不该花钱/打配额
+                                    @RequestParam(required = false, defaultValue = "false") boolean refresh) {
+        return orderService.logisticsTrace(orderNo, client, refresh);
+    }
+
+    @GetMapping("/mp/order/{orderNo}")
+    public OrderVO orderDetail(@PathVariable String orderNo,
+                               @RequestHeader(value = "X-Client", required = false) String client) {
+        // 端从请求头读、在这一层读 —— 领域层不碰 request（见 ArchitectureTest）。
+        // 物流轨迹按端选展示渠道：小程序才给微信插件入口，其余落自建地图。
+        return orderService.detail(orderNo, client);
+    }
+
+    @PostMapping("/mp/order/{orderNo}/confirm-receipt")
+    public OrderVO confirmReceipt(@PathVariable String orderNo) {
+        return orderService.confirmReceipt(orderNo);
+    }
+
+    @PostMapping("/mp/order/{orderNo}/cancel")
+    public OrderVO cancel(@PathVariable String orderNo, @RequestBody(required = false) CancelReq req) {
+        return orderService.cancel(orderNo, req == null ? null : req.reason());
+    }
+
+    // ---- 售后
+
+    /** 售后是**子单粒度**：路径上的 orderNo 就是子单号（Q6）。 */
+    @PostMapping("/mp/order/{orderNo}/after-sale")
+    public AfterSaleVO applyAfterSale(@PathVariable String orderNo, @RequestBody @Valid ApplyAfterSaleReq req) {
+        return afterSaleService.apply(orderNo, new AfterSaleService.ApplyCommand(
+                req.type(), req.reason(), req.images(), req.refundMinor()));
+    }
+
+    @GetMapping("/mp/after-sale/reasons")
+    public List<String> afterSaleReasons() {
+        return afterSaleService.reasons();
+    }
+
+    @GetMapping("/mp/after-sale")
+    public List<AfterSaleVO> myAfterSales() {
+        return afterSaleService.myList();
+    }
+
+    @GetMapping("/mp/after-sale/{afterSaleNo}")
+    public AfterSaleVO afterSaleDetail(@PathVariable String afterSaleNo) {
+        return afterSaleService.detail(afterSaleNo);
+    }
+
+    @PostMapping("/mp/after-sale/{afterSaleNo}/cancel")
+    public AfterSaleVO cancelAfterSale(@PathVariable String afterSaleNo) {
+        return afterSaleService.cancel(afterSaleNo);
+    }
+
+    @PostMapping("/mp/after-sale/{afterSaleNo}/ship")
+    public AfterSaleVO shipBack(@PathVariable String afterSaleNo, @RequestBody @Valid ShipBackReq req) {
+        return afterSaleService.shipBack(afterSaleNo, req.expressCompany(), req.expressNo());
+    }
+
+    @PostMapping("/mp/after-sale/{afterSaleNo}/escalate")
+    public AfterSaleVO escalate(@PathVariable String afterSaleNo, @RequestBody EscalateReq req) {
+        return afterSaleService.escalate(afterSaleNo, req.appeal());
+    }
+
+    public record ApplyAfterSaleReq(@NotBlank String type, @NotBlank String reason,
+                                    List<String> images, Long refundMinor) {
+    }
+
+    public record ShipBackReq(String expressCompany, @NotBlank String expressNo) {
+    }
+
+    public record EscalateReq(String appeal) {
+    }
+
+    /**
+     * @param storeNo 买家正在逛的那家店（AC6）。**只用于这一刻的库存校验，不落库** ——
+     *                trd_cart_item 上没有 store_no，下单时仍由后端自行落店。
+     *                空 = 没有门店上下文（从首页那类跨店目录加的购），按旧口径判
+     */
+    public record CartAddReq(@NotBlank String goodsNo, @NotBlank String skuNo, int qty, String storeNo) {
+    }
+
+    public record CartUpdateReq(@NotBlank String skuNo, int qty) {
+    }
+
+    public record CartRemoveReq(List<String> skuNos) {
+    }
+
+    public record CancelReq(String reason) {
+    }
+
+    /**
+     * @param usePoints 想用多少积分。<b>c-app 一直在传这个字段，而这里此前没有它</b> ——
+     *                  Jackson 直接丢掉，不报错：用户勾了积分抵扣，然后照原价付款。
+     *                  没人撞上是因为 C 端的 {@code FEATURES.points} 关着
+     */
+    public record CreateOrderReq(List<Item> items, String fulfillment, String pickupNo, String addressId,
+                                 String couponNo, Long usePoints, String remark, String idempotencyKey,
+                                 // 上门预约的时段。APPOINTMENT 履约必填，其余忽略
+                                 Long appointmentAt,
+                                 /*
+                                  * 支付方式（PayModes）。**不传按 ONLINE**：
+                                  * 存量端上没有这个字段，不能因为补了它就让老版本下不了单。
+                                  */
+                                 String payMode,
+                                 /*
+                                  * 预约时段编号。这家店开了时段就必填 —— 没开则忽略，
+                                  * 走 appointmentAt 那条旧路（存量端上没有这个字段）。
+                                  */
+                                 String appointmentSlotNo,
+                                 /*
+                                  * 参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。
+                                  * 与 openGroup 二选一；都不传就是普通单
+                                  */
+                                 String groupNo,
+                                 /* 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 */
+                                 Boolean openGroup,
+                                 /*
+                                  * 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或不参加。
+                                  * 不传 = 全部按最优（存量端上没有这个字段）
+                                  */
+                                 List<ActivityChoice> activityChoices,
+                                 /*
+                                  * 顾客在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。
+                                  * 不传 = 与改造前相同（存量端上没有这个字段）
+                                  */
+                                 List<StoreChoice> storeChoices,
+                                 /*
+                                  * 逐商家收货地址覆盖（TDD-多地址下单）：每家店送到哪个地址。
+                                  * 不传 = 全部用 addressId（存量端上没有这个字段）
+                                  */
+                                 List<AddressChoice> addressChoices) {
+
+        public record Item(String goodsNo, String skuNo, int qty) {
+        }
+
+        /** @param storeNo 该主体下的门店号；不属于这个主体的会被忽略 */
+        public record StoreChoice(String merchantNo, String storeNo) {
+        }
+
+        /**
+         * @param activityNo 活动号，或 "NONE"（这家店不参加活动）
+         * @param storeNo    哪家门店那一组（ADR-031：子单按门店拆，同主体两家店各选各的）；
+         *                   不传 = 老端上，按主体选，应用到该主体每家店
+         */
+        public record ActivityChoice(String merchantNo, String activityNo, String storeNo) {
+            /** 选择落在哪一组：有门店按门店，否则按主体 */
+            String key() {
+                return storeNo != null && !storeNo.isBlank() ? storeNo : merchantNo;
+            }
+        }
+
+        /**
+         * @param addressId 该商家的货送到哪个地址；不出现 = 用全局 addressId
+         * @param storeNo   同 {@link ActivityChoice#storeNo}
+         */
+        public record AddressChoice(String merchantNo, String addressId, String storeNo) {
+            String key() {
+                return storeNo != null && !storeNo.isBlank() ? storeNo : merchantNo;
+            }
+        }
+
+        OrderService.CreateOrderCommand toCommand(String payScene) {
+            return new OrderService.CreateOrderCommand(
+                    items == null ? List.of() : items.stream()
+                            .map(i -> new OrderService.CreateOrderCommand.Item(i.goodsNo(), i.skuNo(), i.qty()))
+                            .toList(),
+                    fulfillment, pickupNo, addressId, couponNo, usePoints, remark, appointmentAt,
+                    payMode, payScene, appointmentSlotNo, groupNo, Boolean.TRUE.equals(openGroup),
+                    activityChoices == null ? null : activityChoices.stream()
+                            .filter(c -> c.key() != null && c.activityNo() != null)
+                            .collect(java.util.stream.Collectors.toMap(ActivityChoice::key,
+                                    ActivityChoice::activityNo, (a, b) -> b)),
+                    storeChoices == null ? null : storeChoices.stream()
+                            .filter(c -> c.merchantNo() != null && c.storeNo() != null && !c.storeNo().isBlank())
+                            .collect(java.util.stream.Collectors.toMap(StoreChoice::merchantNo,
+                                    StoreChoice::storeNo, (a, b) -> b)),
+                    addressChoices == null ? null : addressChoices.stream()
+                            .filter(c -> c.key() != null && c.addressId() != null && !c.addressId().isBlank())
+                            .collect(java.util.stream.Collectors.toMap(AddressChoice::key,
+                                    AddressChoice::addressId, (a, b) -> b)));
+        }
+    }
+}

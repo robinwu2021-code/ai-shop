@@ -16,9 +16,9 @@ beforeEach(() => {
 });
 
 describe("类目树（P-3.1）", () => {
-  it(`最多 ${MAX_CATEGORY_LEVEL} 级：三级类目下不能再建子类目`, async () => {
+  it(`最多 ${MAX_CATEGORY_LEVEL} 级：二级类目下不能再建子类目`, async () => {
     await expect(
-      productMock.saveCategory({ categoryNo: "", name: "嫩叶菜", parentNo: "CAT111", template: "FRESH", qualifications: [] }),
+      productMock.saveCategory({ categoryNo: "", name: "嫩叶菜", parentNo: "CAT110", template: "FRESH", qualifications: [] }),
     ).rejects.toThrow(new RegExp(String(MAX_CATEGORY_LEVEL)));
   });
 
@@ -29,16 +29,16 @@ describe("类目树（P-3.1）", () => {
   });
 
   it("有子类目的类目不能归档（归档后 C 端类目树会断枝）", async () => {
-    await expect(productMock.archiveCategory("CAT110")).rejects.toThrow(/子类目/);
+    await expect(productMock.archiveCategory("CAT100")).rejects.toThrow(/子类目/);
   });
 
   it("有在售商品的类目不能归档", async () => {
-    await expect(productMock.archiveCategory("CAT111")).rejects.toThrow(/在售商品/);
+    await expect(productMock.archiveCategory("CAT110")).rejects.toThrow(/在售商品/);
   });
 
   it("空类目可以归档，且默认列表不再出现", async () => {
     await productMock.archiveCategory("CAT400");
-    const list = await productMock.listCategories();
+    const list = (await productMock.listCategories()).records;
     expect(list.some((c) => c.categoryNo === "CAT400")).toBe(false);
   });
 });
@@ -118,5 +118,34 @@ describe("预售与超卖（P-3.3）", () => {
       // 只报警不自动下架：补货还是退单要人判断
       expect(s.status).toBe("ON_SALE");
     }
+  });
+});
+
+describe("goods 级强制下架（P-3.2.3）", () => {
+  it("原因必填 —— 它原样进商家 B 端", async () => {
+    await expect(productMock.forceOffGoods("SKU1001", "")).rejects.toThrow(/原因/);
+    await expect(productMock.forceOffGoods("SKU1001", "  ")).rejects.toThrow(/原因/);
+  });
+
+  it("只有在售的才谈得上撤销过审", async () => {
+    await expect(productMock.forceOffGoods("SKU1002", "图文不符")).rejects.toThrow(/在售/);
+  });
+
+  it("★ 落到 REJECTED 而不是 OFF_SALE —— 商家必须改完重新提审，不能一键复原", async () => {
+    const g = await productMock.forceOffGoods("SKU1001", "图片盗用他人素材");
+    expect(g.status).toBe("REJECTED");
+    expect(g.auditReason).toContain("平台强制下架");
+    expect(g.auditReason).toContain("盗用");
+  });
+
+  it("详情读得回驳回原因（商家看到的就是这句）", async () => {
+    await productMock.forceOffGoods("SKU1001", "图片盗用他人素材");
+    const d = await productMock.getGoodsDetail("SKU1001");
+    expect(d.auditReason).toContain("平台强制下架");
+    // 后端必发的四个数组：声明成必填才逼得出页面不写 `?? []`
+    expect(Array.isArray(d.images)).toBe(true);
+    expect(Array.isArray(d.skus)).toBe(true);
+    expect(Array.isArray(d.specGroups)).toBe(true);
+    expect(Array.isArray(d.fulfillments)).toBe(true);
   });
 });

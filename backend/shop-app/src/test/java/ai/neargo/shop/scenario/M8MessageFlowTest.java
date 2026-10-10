@@ -1,7 +1,7 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,19 +35,59 @@ class M8MessageFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
-    private MerchantMapper merchantMapper;
+    private MchEntityMapper merchantMapper;
 
     @Autowired
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
+    /**
+     * 把本类要买的 SKU 库存补满。
+     *
+     * <p>种子给 SK0003 的库存是 80，全套测试跑下来前面的交易用例会把它买到见底。
+     * 于是这里的 {@code buyAndPay} 静默失败（下单被 20001 拒），一条支付事件都没产生，
+     * 而断言报的是「支付成功消息应有 1 条、实际 0 条」—— 看起来像**消息模块坏了**，
+     * 真正的原因在两百个用例之前。这类假红比真 bug 更贵。
+     */
+    /**
+     * 把队列排空再开始。
+     *
+     * <p>{@code dispatchPending()} 一批只取 200 条（按 id 升序）。跑全套时，
+     * 前面两百多个用例会在 outbox 里堆下几百条没人投递的事件，于是本类刚产生的那条
+     * 排在队尾 —— 一次 dispatch 根本轮不到它，断言看到的是「支付成功消息 0 条」，
+     * 像是<b>消息模块坏了</b>，而实际上它连投递都没轮上。
+     *
+     * <p>循环到排空而不是调一次：待投条数没有上界，调一次仍可能剩下。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void drainOutbox() {
+        for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
+            dispatcher.dispatchPending();
+        }
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    void refillStock() {
+        var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, "SK0003").last("limit 1"));
+        if (sku != null && sku.getStock() < 50) {
+            sku.setStock(500);
+            skuMapper.updateById(sku);
+        }
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -81,6 +121,11 @@ class M8MessageFlowTest {
         String token = login("12700127002");
         buyAndPay(token, "m8-pickup");
         String biz = loginAsOwnerOf("M0001", "12700127003");
+
+        // 先登记到货 —— 核销要求货已经在点上（NOT_ARRIVED），这也是店员真实走的两步
+        mvc().perform(post("/biz/pickup/arrived").header("Authorization", "Bearer " + biz)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderNos\":[\"" + latestSubOrderNo(token) + "\"]}"));
 
         String verifyCode = verifyCodeOf(token);
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + biz)
@@ -276,6 +321,13 @@ class M8MessageFlowTest {
         return n;
     }
 
+    /** 最新一张子单的单号（C 端列表按子单发，`orderNo` 就是子单号）。 */
+    private String latestSubOrderNo(String token) throws Exception {
+        String body = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("records").get(0).get("orderNo").asString();
+    }
+
     private String verifyCodeOf(String token) throws Exception {
         String body = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
@@ -292,7 +344,7 @@ class M8MessageFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
     }
@@ -301,15 +353,19 @@ class M8MessageFlowTest {
         String token = login(phone);
         String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setOwnerUserNo(json.readTree(body).get("data").get("userNo").asString());
+        // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
+        grantOwner(m.getEntityNo(), json.readTree(body).get("data").get("userNo").asString());
         merchantMapper.updateById(m);
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return ai.neargo.shop.support.TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow();
         String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
@@ -318,4 +374,94 @@ class M8MessageFlowTest {
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+    /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
+    private void grantOwner(String merchantNo, String userNo) {
+        var existing = merchantStaffMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .last("limit 1"));
+        if (existing != null) {
+            existing.setUserNo(userNo);
+            merchantStaffMapper.updateById(existing);
+            return;
+        }
+        var st = new ai.neargo.shop.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-T-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
+        merchantStaffMapper.insert(st);
+    }
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
+
+
+    // ---------------------------------------------------------------- 平台触达治理（P-14.1）
+
+    @Test
+    @DisplayName("★ 频控：没配过给保守默认值，而不是「不限」")
+    void quotaDefaultsAreConservative() throws Exception {
+        String body = mvc().perform(get("/ops/notify-quota")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var data = json.readTree(body).get("data");
+        assertThat(data.get("dailyPerUser").asInt())
+                .as("没配过不等于不限 —— 默认必须是个真实的上限").isPositive();
+        assertThat(data.get("minIntervalHours").asInt()).isPositive();
+    }
+
+    @Test
+    @DisplayName("★ 频控上限为 0 被拒：0 等于没有频控，但界面上看着像配了")
+    void zeroQuotaRejected() throws Exception {
+        String ops = opsLogin();
+        for (String bad : new String[]{
+                "{\"dailyPerUser\":0,\"minIntervalHours\":24}",
+                "{\"dailyPerUser\":5,\"minIntervalHours\":0}"}) {
+            mvc().perform(post("/ops/notify-quota").header("Authorization", "Bearer " + ops)
+                            .contentType(MediaType.APPLICATION_JSON).content(bad))
+                    .andExpect(jsonPath("$.code").value(10400));
+        }
+    }
+
+    @Test
+    @DisplayName("频控保存后读得回来（走 sys_setting，不建新表）")
+    void quotaRoundTrips() throws Exception {
+        String ops = opsLogin();
+        mvc().perform(post("/ops/notify-quota").header("Authorization", "Bearer " + ops)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dailyPerUser\":3,\"minIntervalHours\":12}"))
+                .andExpect(jsonPath("$.data.dailyPerUser").value(3));
+
+        mvc().perform(get("/ops/notify-quota").header("Authorization", "Bearer " + ops))
+                .andExpect(jsonPath("$.data.dailyPerUser").value(3))
+                .andExpect(jsonPath("$.data.minIntervalHours").value(12));
+    }
+
+    @Test
+    @DisplayName("模板列表可读；无 ticket:handle 的角色读不了")
+    void templatesReadableWithPermission() throws Exception {
+        mvc().perform(get("/ops/msg-templates").header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.code").value(0));
+
+        String bd = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"bd\",\"password\":\"bd123\"}"))
+                .andReturn().getResponse().getContentAsString();
+        mvc().perform(get("/ops/msg-templates")
+                        .header("Authorization", "Bearer " + json.readTree(bd).get("data").get("token").asString()))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"support\",\"password\":\"support123\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
 }

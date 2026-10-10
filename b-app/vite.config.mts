@@ -1,13 +1,37 @@
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
+import { defineConfig, loadEnv } from "vite";
 import uniModule from "@dcloudio/vite-plugin-uni";
 import UnoCSS from "unocss/vite";
+// mock 剔除与 c-app 共用一份（packages/shared/build/strip-mock.mts）
+import { stripMock } from "../packages/shared/build/strip-mock.mts";
 
 // 与 c-app 同构（见 c-app/vite.config.mts 的说明）。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const uni = ((uniModule as any).default ?? uniModule) as () => any;
 
-export default defineConfig({
+/*
+ * 构建版本号：**versionName + 构建时刻**，注入成 `__BUILD_VERSION__`，显示在「我的」页尾。
+ * 与 c-app 同构：只用 versionName 的话忘了改就恒不变，而这个数存在的意义是回答
+ * 「我手上这份是不是刚传的那一版」——带上构建时刻每次都不同，答错不了。真源是 manifest.json。
+ */
+const MANIFEST = fileURLToPath(new URL("./src/manifest.json", import.meta.url));
+const VERSION_NAME =
+  /"versionName"\s*:\s*"([^"]+)"/.exec(readFileSync(MANIFEST, "utf8"))?.[1] ?? "0.0.0";
+// 北京时间 MMDD-HHmm：构建机时区不定，按 UTC+8 自己算
+const D = new Date(Date.now() + 8 * 3600 * 1000);
+const pad = (n: number) => String(n).padStart(2, "0");
+const BUILD_STAMP =
+  `${pad(D.getUTCMonth() + 1)}${pad(D.getUTCDate())}-${pad(D.getUTCHours())}${pad(D.getUTCMinutes())}`;
+
+export default defineConfig(({ mode }) => {
+  // 构建期读开关。`loadEnv` 同时收 shell 变量与 .env 文件 ——
+  // b-app-mock 那个 dev server 靠 shell 传 VITE_USE_MOCK=1，走的是前一条
+  const useMock = loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_").VITE_USE_MOCK !== "0";
+  return {
+  define: {
+    __BUILD_VERSION__: JSON.stringify(`${VERSION_NAME} · ${BUILD_STAMP}`),
+  },
   // 两端各自独立部署在自己的域名根路径下（ADR-008 §5）。
   // 这个开关只为「非要挂在某个子路径下」的场景保留 —— 但**别再用它把两端合到同一域名**：
   // 同源会让两端共用 localStorage（登录态、皮肤、mock 数据库全串在一起）
@@ -28,6 +52,45 @@ export default defineConfig({
   // store 调 `setCurrentCurrency("USD")` 改的是副本，页面读到的还是 CNY，
   // 表现为「切了市场，价格还是 ¥」，而类型检查、单测、构建全都不会报错。
   optimizeDeps: { exclude: ["@ai-shop/ui"] },
-  server: { port: Number(process.env.PORT) || 5273, strictPort: false },
-  plugins: [uni(), UnoCSS()],
+  server: {
+    port: Number(process.env.PORT) || 5273,
+    strictPort: false,
+    /*
+     * ⚠️ `preserveSymlinks: true`（见上）的副作用：**vite 只 watch 软链本身，
+     * 不 watch 它指向的真实目录**。于是改 `packages/ui` 的组件或样式，
+     * dev server 毫无反应 —— 页面用的还是启动那一刻的旧版本。
+     *
+     * 这个坑咬过两次，且两次都极难判断：改动明明在源码里、类型检查通过、
+     * 构建产物也正确，唯独浏览器里没变化，看起来像"代码没生效"。
+     */
+    watch: { ignored: ["!**/packages/**"] },
+    fs: { allow: [fileURLToPath(new URL("..", import.meta.url))] },
+    /*
+     * 反代到本地后端（`VITE_USE_MOCK=0` 时生效）。
+     *
+     * 走反代而不是让前端直连 8080：后端**没有任何 CORS 配置** —— 这是对的，
+     * 生产上前后端同域，为本地联调去开一个 `allowedOrigins: *` 只会把一个
+     * 只在开发期存在的口子带进生产配置。反代让浏览器眼里始终是同源。
+     */
+    proxy: {
+      "/mp": { target: "http://localhost:8080", changeOrigin: true },
+      "/biz": { target: "http://localhost:8080", changeOrigin: true },
+    },
+  },
+  plugins: [
+    /*
+     * 演示店与演示订单（`api/demo-orders`）是 b-app 独有的一份种子 ——
+     * 文件头自己写着「接真后端后整个文件不参与」，而 App.vue 与入驻页都是
+     * **静态 import、if (USE_MOCK) 调用**，于是它照样进生产包。
+     * 桩只给那两个被生产路径引到的名字，将来多引一个就在构建期报，不静默。
+     */
+    stripMock(useMock, [{
+      test: /[\\/]api[\\/]demo-orders(\.ts)?$|^@\/api\/demo-orders$|^\.\.?\/demo-orders$/,
+      code: "export const ensureDemoOrders = () => {};\n"
+        + "export const ensureDemoMerchant = () => {};\n",
+    }]),
+    uni(),
+    UnoCSS(),
+  ],
+  };
 });

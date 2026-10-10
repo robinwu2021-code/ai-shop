@@ -66,8 +66,8 @@ describe("对账差异处置（P-4.2.1 / 4.2.2）", () => {
   });
 
   it("按类型与状态筛选", async () => {
-    const open = await paymentMock.listReconDiffs({ status: "OPEN", size: 100 });
-    expect(open.records.every((d) => d.status === "OPEN")).toBe(true);
+    const open = await paymentMock.listReconDiffs({ status: "PENDING", size: 100 });
+    expect(open.records.every((d) => d.status === "PENDING")).toBe(true);
     const chOnly = await paymentMock.listReconDiffs({ type: "CHANNEL_ONLY", size: 100 });
     expect(chOnly.records.every((d) => d.type === "CHANNEL_ONLY")).toBe(true);
   });

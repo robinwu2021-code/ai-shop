@@ -15,8 +15,13 @@ export interface GroupApi {
    * 同一需求同一商家只能有一条报价；毁约 ≥3 次的商家禁止报价（ADR-003 信用约束）。
    */
   assignQuote(v: { demandNo: string; merchantNo: string; price: number; minQty: number; validTo: string }): Promise<Quote>;
-  /** 改价（P-8.2.4）：留痕并公示，超过阈值禁止再改。 */
-  changeQuotePrice(quoteNo: string, price: number): Promise<Quote>;
+  /**
+   * 改价（P-8.2.4）：留痕并公示，超过阈值禁止再改。
+   *
+   * **理由必填**（后端空理由返回 10400）—— 平台改的是商家对买家的报价，
+   * 改价历史是公示给用户看的，一笔没有说明的平台改价解释不了。
+   */
+  changeQuotePrice(quoteNo: string, price: number, reason: string): Promise<Quote>;
   /** 标记毁约（P-8.2.5）：累计进商家信用档案。 */
   markQuoteBreached(quoteNo: string): Promise<Quote>;
 }

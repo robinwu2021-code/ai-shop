@@ -28,8 +28,9 @@ export const growthMock: GrowthApi = {
       db.paginate(db.attributionTraces, q.page, q.size, (t) =>
         db.eqHit(q.source, t.source) &&
         (q.conflictOnly !== "1" || !!t.conflictWith) &&
-        (q.riskyOnly !== "1" || t.riskSignals.length > 0) &&
-        db.kwHit(q.keyword, t.traceNo, t.userNickname, t.sourceRef, t.orderNo),
+        // riskSignals 后端不下发（契约里已改成可选）—— mock 里也别假设它一定在
+        (q.riskyOnly !== "1" || (t.riskSignals?.length ?? 0) > 0) &&
+        db.kwHit(q.keyword, t.traceNo, t.userNickname ?? t.userNo, t.sourceRef, t.orderNo),
       ),
     ),
 

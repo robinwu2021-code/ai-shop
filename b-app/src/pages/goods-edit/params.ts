@@ -1,0 +1,377 @@
+// 商品编辑页的**商品参数**：产地 / 保质期 / 材质这一类。
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// 与销售规格分开的理由是**性质**，不是范围
+// ─────────────────────────────────────────────────────────────────────────────
+// 规格进笛卡尔积生成 SKU，每一档要单独定价与备库存；参数一项也不进 ——
+// 买家不用挑，只是看。混在一起的话「本地 × 500g」会变成一个要单独定价备货的行，
+// 而商家只想说「这袋菜是本地的」。
+//
+// <p>它跨出去的只有一样：**按哪个类目取候选**。所以 `categoryNo` 是入参。
+// 搬过来的实现一个字没改。
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { buildSpecOverride } from "@/utils/spec-override";
+import type { Ref } from "vue";
+import type { GoodsParam, SpecOption, SpecTemplate } from "@shared/types";
+
+/**
+ * 商品参数的全部状态与动作。
+ *
+ * @param categoryNo 当前类目 —— 候选参数按它取（换类目要重新 `loadProps()`）
+ */
+export function useGoodsParams(categoryNo: Ref<string>) {
+  const { t } = useI18n();
+
+  // ── 十一、参数 ──────────────────────────────────────────────────────────────
+  //    不参与组合的属性（产地、材质）—— 与规格分开的理由见 propDims
+  /*
+   * 商品参数（V250）：产地 / 保质期 / 材质这一类。
+   *
+   * <p><b>与销售规格分开的理由是性质，不是范围</b>：规格进笛卡尔积生成 SKU，
+   * 每一档要单独定价与备库存；参数一项也不进，买家不用挑，只是看。
+   * 混在一起的话「本地 × 500g」变成一个要单独定价备货的行，
+   * 而他只想说「这袋菜是本地的」。
+   */
+  const propDims = ref<SpecTemplate[]>([]);
+  /** dimNo → 已选的那一项。量纲型没有候选值，存的是他自己填的文字 */
+  const paramValues = ref<Record<string, GoodsParam>>({});
+
+  async function loadProps() {
+    propDims.value = await api.mSpecProps(categoryNo.value || undefined).catch(() => []);
+  }
+
+  /*
+   * **参数可以在这里现加**（规格不行）。
+   *
+   * <p>两者的代价不一样。规格进笛卡尔积、要单独定价备库存，在建品页现造一个
+   * 只对这一件商品成立的维度，等于给自己开一条以后对不上账的路 ——
+   * 所以规格一律去「商品规格和参数」加一次，全店通用。
+   * 而参数是写给买家看的一行字：「海拔 1200 米」平台不会替他想到，
+   * 他也不该为了标一行字先跳出去一趟、回来再重填一遍这件货。
+   *
+   * <p><b>但加出来的东西是一样的</b>：走同一个 `mAddSpecDim(PROP)` 落进规格库、
+   * 拿到编号、挂到这个类目下 —— 下次建同类的品它就在那儿了。
+   * 「只在这一件商品上有效」的私有字符串一条都不造，那是掉出聚合的那条路。
+   */
+  const addingParam = ref(false);
+  const newParam = ref("");
+
+  /** 正在给哪个参数加值；null = 没在加 */
+  const addingValueFor = ref<SpecTemplate | null>(null);
+  const newParamValue = ref("");
+  /** 平台在这个参数下的**全部**值。分成「能加的」与「已经在用的」两排，见 openParamValue */
+  const paramPool = ref<SpecOption[]>([]);
+  /** 池子没取到。**与「平台没配」必须分开说** —— 两者在界面上都是一片空白 */
+  const paramPoolFailed = ref(false);
+
+  /**
+   * 打开「加可选值」。**取的是平台这一项的全部值，不是「减去已有的」之后那点余数。**
+   *
+   * <p>此前这里直接把 `全部 − 已有` 存进 `paramCands`，于是当类目已经把平台该项的值
+   * 全给了（「产地」平台就三个值，类目全给了），候选恒为空 —— 弹层里只剩一个
+   * 「新建可选值」输入框，**看不到系统里有哪些值，也没有一句话说为什么**。
+   * 商家的描述是「无法添加系统中的值」，而他看到的确实就是这样。
+   *
+   * <p>现在池子整份留着，由下面三个 computed 分成「能加的」与「已经在用的」，
+   * 两排都摆出来 —— **「系统里有什么」和「你还能加什么」是两个问题**，
+   * 只回答后者的话，前者就永远无解。
+   */
+  async function openParamValue(d: SpecTemplate) {
+    addingValueFor.value = d;
+    newParamValue.value = "";
+    paramPool.value = [];
+    paramPoolFailed.value = false;
+    try {
+      paramPool.value = await api.mDimValues(d.templateNo);
+    } catch {
+      // 吞掉异常会让「取不到」和「平台没配」长成同一屏 —— 那句话就成了假话
+      paramPoolFailed.value = true;
+    }
+  }
+
+  /** 这一项当前已经能选的值（类目给的 + 他加过的） */
+  const paramHave = computed(
+    () => new Set((addingValueFor.value?.options ?? []).map((o) => o.code ?? o.label)),
+  );
+  /** 平台有、这一类还没有的 —— 点一下就用上 */
+  const paramCands = computed(() => paramPool.value.filter((o) => !paramHave.value.has(o.code ?? o.label)));
+  /** 平台有、上面那排已经列着的。**照样摆出来**：他要确认的是「系统里有没有」 */
+  const paramUsed = computed(() => paramPool.value.filter((o) => paramHave.value.has(o.code ?? o.label)));
+
+  /*
+   * 副标题要说当下这一屏的实话。**四种情况说四句** —— 此前是三种，
+   * 而漏掉的那一种恰恰是最常见的：平台有值、但都已经在上面了。
+   * 那一屏此前不说话，于是看起来和「平台什么都没配」一模一样。
+   *
+   *   取不到       → 「没取到平台的可选值，重开一次」  ← 此前被 catch 吞成「没配」
+   *   有能加的     → 「平台可选值」
+   *   池子非空但全在用 → 「平台这一项的值都已经在上面了」  ← 此前不说话
+   *   池子是空的   → 「该参数暂无平台可选值」
+   *
+   * 一律写死一句的话，总有一屏在说假话 —— 而假话比没话更贵。
+   */
+  const paramSheetHint = computed(() => {
+    if (paramPoolFailed.value) return t("goods.paramPoolFailed");
+    if (paramCands.value.length) return t("goods.paramMore");
+    if (paramPool.value.length) return t("goods.paramAllAdded");
+    return t("goods.paramFillHint");
+  });
+
+  function closeParamValue() {
+    addingValueFor.value = null;
+    newParamValue.value = "";
+    paramPool.value = [];
+    paramPoolFailed.value = false;
+  }
+
+  /**
+   * 挑一个平台已有的值。**只落在这件货身上，不改本店配置。**
+   *
+   * <p>他这一下的意思是「这袋菜是云南的」，不是「以后蔬菜这一类都要有云南这一档」。
+   * 顺手把它写进类目覆盖的话，全店所有蔬菜的参数列表都跟着变了 ——
+   * 而他从没这么说过。要改那个，去「商品规格和参数」，那里的每一下都是全店的。
+   */
+  function pickParamCand(o: SpecOption) {
+    const d = addingValueFor.value;
+    if (!d) return;
+    pickParam(d, o);
+    closeParamValue();
+  }
+
+  async function confirmAddParam() {
+    const name = newParam.value.trim();
+    if (!name || !categoryNo.value) return;
+    try {
+      const dim = await api.mAddSpecDim(name, [], "PROP");
+      /*
+       * **挂到这个类目下**，否则它只是躺在规格库里：下次进来这一页看不到它，
+       * 而他明明刚建过 —— 与「我的规格」里加一个是同一条路，所以用同一个载荷拼装。
+       *
+       * <p>当前状态从**这两条按类目取的接口**拿，不从「本店货架类目」那份拿：
+       * 这件货的类目不一定在他的货架上（货架是他摆出来卖的那几类，
+       * 而建品页可以选到任何类目）。拿不到卡就静静不保存 —— 加完什么都没发生，
+       * 而这条路上没有任何东西会报错。实测就是这么撞上的（蔬菜不在货架上）。
+       *
+       * <p>先取一份当前状态是因为后端先清后写：少带一条就抹掉一条。
+       */
+      const [dims, props] = await Promise.all([
+        api.mSpecTemplates(undefined, categoryNo.value).catch(() => []),
+        api.mSpecProps(categoryNo.value).catch(() => []),
+      ]);
+      await api.mSaveSpecOverride(
+        categoryNo.value,
+        buildSpecOverride({
+          g: { categoryNo: categoryNo.value, categoryName: "", dims, props },
+          added: dim,
+        }),
+      );
+      await loadProps();
+      addingParam.value = false;
+      newParam.value = "";
+      // 撞上平台已有的同名参数时后端直接返回它 —— 说一声，否则他以为自己白填了
+      if (dim.name !== name) {
+        uni.showToast({ title: t("mySpecs.valueMerged", { name: dim.name }), icon: "none" });
+      }
+    } catch (e) {
+      uni.showToast({ title: (e as Error).message, icon: "none" });
+    }
+  }
+
+  /**
+   * 给一个没有候选值的参数填一个值。
+   *
+   * <p><b>填的是规格库里的一档，不是这件货身上的一个字符串。</b>
+   * 「海拔」这种量纲型平台不会枚举值，但他填的「1200 米」仍然要拿到编号 ——
+   * 否则三家店的「1200米」「1200 m」「一千二」永远聚不到一起，
+   * 而那正是养这个库的全部理由。落库之后它也成了下一件货的候选。
+   */
+  async function confirmParamValue() {
+    const d = addingValueFor.value;
+    const text = newParamValue.value.trim();
+    if (!d || !text) return;
+    try {
+      const added = await api.mAddSpecValue(d.templateNo, text);
+      await loadProps();
+      const fresh = propDims.value.find((x) => x.templateNo === d.templateNo) ?? d;
+      pickParam(fresh, { code: added.code || added.valueNo, label: added.label });
+      closeParamValue();
+    } catch (e) {
+      uni.showToast({ title: (e as Error).message, icon: "none" });
+    }
+  }
+
+  /**
+   * 把「自动生成」挑好的参数填进表单（§2.B）。
+   *
+   * <p><b>只填空着的那几项</b>：商家已经点过的不动 —— 一键覆盖掉他自己选的值，
+   * 与详情那边「覆盖前先问」是同一条理由，而这里连问都不必：留着他的更对。
+   *
+   * <p>维度不在本类目模板里、或值不在候选里的，直接丢掉。后端已经核验过一遍，
+   * 这里再拦一次是因为**端上的模板是另取的一份**（loadProps），两边可能差一个类目。
+   *
+   * @returns 实际填进去几项 —— 调用方据此决定提示什么
+   */
+  function applyParamPicks(
+    picks: Array<{ dimNo: string; name?: string; code?: string; label: string }>,
+  ): number {
+    let n = 0;
+    for (const p of picks) {
+      // 已经有值的不动：一键覆盖掉商家自己选的没有撤销（理由同上）
+      if (!p || !p.label || paramValues.value[p.dimNo]) continue;
+      const dim = propDims.value.find((d) => d.templateNo === p.dimNo);
+      const o = dim && (dim.options ?? []).find((x) => (x.code ?? x.label) === (p.code ?? p.label));
+      if (dim && o) {
+        // 模板维度、且识别值就是平台候选之一 → 走带 code 的那条，参与跨店聚合
+        pickParam(dim, o);
+      } else {
+        /*
+         * **识别到的参数/值可以不在本类目模板里**（TDD-商品录入优化5项 AC4）。
+         * 「这袋面 2.5kg」而类目模板的重量没配 2.5kg 这档、甚至没绑重量 —— 旧版两道过滤
+         * （维度要在 propDims、值要在 options）会把它**静默丢掉**,于是识别得越准、落得越少。
+         * 模板是推荐不是上限（与 pickableProps 同一理念）。落为自由参数:label 为准、
+         * 维度名优先用识别带回的 name（后端给的是 GoodsParam），没有再退回本地 dim 名或 dimNo。
+         * 无候选 code 的就不带 code —— 与 TEXT 维度同一形状（快照,不入池）。
+         */
+        paramValues.value = {
+          ...paramValues.value,
+          [p.dimNo]: {
+            dimNo: p.dimNo,
+            name: p.name || dim?.name || p.dimNo,
+            ...(p.code ? { code: p.code } : {}),
+            label: p.label,
+          },
+        };
+      }
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * **删一项参数**（TDD-商品录入优化5项 AC1）。任何类型都能删，
+   * 包括从历史商品载入、但维度已不在当前类目模板里的「孤儿参数」——
+   * 那种在界面上没有 chip 可以再点一次取消，只能靠这个显式删除点。
+   */
+  function removeParam(dimNo: string) {
+    if (!paramValues.value[dimNo]) return;
+    const next = { ...paramValues.value };
+    delete next[dimNo];
+    paramValues.value = next;
+  }
+
+  /**
+   * **本店不用这一项参数**（2026-10-07 用户：「可以删除/关闭没有用的参数，比如储存条件、口感」）。
+   *
+   * <p>平台给水果配了十几项，而一个卖脆柿子的用不上「口感」「储存条件」——
+   * 此前这些行只能一直摆在那儿，每建一件货都要从中间翻过去。
+   *
+   * <p><b>关掉的是「本店这个类目」，不是这一件商品</b>：复用已有的本店覆盖
+   * （`mSaveSpecOverride` 的 `enabled:false`，与「商品规格和参数」页移除一项同一条路），
+   * 不新开一张「这件货藏了哪几项」的表 —— 同一个商家在同一类目下用不上的，
+   * 下一件货同样用不上，而真要找回来，那一页的「可添加」里就有。
+   * 所以**调用点必须把影响面写在确认框里**。
+   *
+   * <p>先清掉这件货身上已填的值：留着的话保存时还会连同这一项一起写进商品，
+   * 而界面上它已经不在了 —— 只写不读的反面，一样看不出来。
+   *
+   * @returns 关掉了没有。false = 取不到当前状态，什么都没做（见下面那段「拿不到卡就不保存」）
+   */
+  async function disableParam(dimNo: string): Promise<boolean> {
+    if (!categoryNo.value) return false;
+    /*
+     * 后端先清后写：要带上这个类目下**销售规格与商品参数两个列表**的当前状态，
+     * 少带一条就抹掉一条（与 confirmParam 加参数那段同一条，理由见 buildSpecOverride）。
+     */
+    const [dims, props] = await Promise.all([
+      api.mSpecTemplates(undefined, categoryNo.value).catch(() => []),
+      api.mSpecProps(categoryNo.value).catch(() => []),
+    ]);
+    if (!props.some((t) => t.templateNo === dimNo)) return false;
+    await api.mSaveSpecOverride(
+      categoryNo.value,
+      buildSpecOverride({
+        g: { categoryNo: categoryNo.value, categoryName: "", dims, props },
+        removeDimNo: dimNo,
+      }),
+    );
+    removeParam(dimNo);
+    await loadProps();
+    return true;
+  }
+
+  /**
+   * **TEXT 维度**：配料 / 厂名厂址 / 生产许可证 / 执行标准这类每件商品几乎唯一的字段。
+   *
+   * <p>它们不走值池——入池只会堆满永不复用的唯一串，而养值池的理由是跨店聚合，
+   * 唯一串聚不起来（后端 `PrdSpecDim.TEXT` 的注释写着同一条）。所以这里**不调
+   * `mAddSpecValue`、不拿 code**，填的字直接成为参数 label，保存时整存进
+   * `prd_goods.params[].label`（后端保存链路按 label 存、不校验 valueNo）。
+   */
+  function isTextDim(dim: SpecTemplate): boolean {
+    return dim.valueType === "TEXT";
+  }
+
+  /** TEXT 维度填一行字：空字符串 = 删掉这一项（与 chip 再点一次取消同一口径）。 */
+  function setParamText(dim: SpecTemplate, text: string) {
+    const label = (text ?? "").trim();
+    const next = { ...paramValues.value };
+    if (!label) {
+      delete next[dim.templateNo];
+    } else {
+      // 不带 code：TEXT 维度不入池，code 留空正是「这是快照、不是库里一档」的标记
+      next[dim.templateNo] = { dimNo: dim.templateNo, name: dim.name, label };
+    }
+    paramValues.value = next;
+  }
+
+  /** 点一下选中/取消。**再点一次取消** —— 不给「清空」按钮，一排 chip 自己就是开关 */
+  /**
+   * 这一项要画哪几枚 chip：**平台候选 + 他自己填的那个值**（后者不在候选里时才补）。
+   *
+   * <p>2026-10-07 的真实报障：「输入产地：山西运城临猗，弹框里识别到产地，但没有更新到系统」。
+   * 查下来值**确实写进去了**（`applyParamPicks` 的自由值那条路），保存也会带上 ——
+   * 只是这一行只画 `d.options`（本地 / 国产 / 进口），他填的那个不在里面，
+   * 于是一枚选中的 chip 都没有：**存进去了，但界面上看不见**，与「没识别到」长得一模一样。
+   *
+   * <p>识别、「＋ 加值」里自己输的、以及历史商品带回来的自填值，走的都是这一条。
+   * 补出来的那枚照旧可点：再点一次就是取消（`pickParam` 按 label 判）。
+   */
+  function paramChips(d: SpecTemplate): SpecOption[] {
+    const opts = d.options ?? [];
+    const cur = paramValues.value[d.templateNo];
+    if (!cur?.label || opts.some((o) => o.label === cur.label)) return opts;
+    return [...opts, { code: cur.code, label: cur.label }];
+  }
+
+  function pickParam(dim: SpecTemplate, o: SpecOption) {
+    const cur = paramValues.value[dim.templateNo];
+    if (cur && cur.label === o.label) {
+      const next = { ...paramValues.value };
+      delete next[dim.templateNo];
+      paramValues.value = next;
+      return;
+    }
+    paramValues.value = {
+      ...paramValues.value,
+      /*
+       * **不填 valueNo。** 端上手里只有 code —— 它才是跨店可比的那个稳定编码，
+       * valueNo 是库里的行号。伪造一个行号发上去，后端存下来就是一条对不上的引用。
+       * 真要它的话该由后端按 dimNo + code 反查（与规格值那侧的 resolveValueNos 同一条路）。
+       */
+      // name 一起存：买家页要显示「产地：本地」，只有 dimNo 的话那一行是 `SD_ORIGIN: 本地`。
+      // 与 specGroups 的组名同一口径 —— 快照，商家事后改本店叫法不影响已建好的商品
+      [dim.templateNo]: { dimNo: dim.templateNo, name: dim.name, code: o.code, label: o.label },
+    };
+  }
+
+
+  return {
+    propDims, paramValues, loadProps, disableParam, applyParamPicks,
+    addingParam, newParam, addingValueFor, newParamValue,
+    paramPool, paramPoolFailed, openParamValue, paramHave, paramCands, paramUsed,
+    paramSheetHint, closeParamValue, pickParamCand, confirmAddParam, confirmParamValue, pickParam,
+    isTextDim, setParamText, removeParam, paramChips,
+  };
+}

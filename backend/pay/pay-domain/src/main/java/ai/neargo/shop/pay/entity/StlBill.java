@@ -1,0 +1,344 @@
+package ai.neargo.shop.pay.entity;
+
+import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * 结算单（ADR-002）。**按子单**：一个子单 = 一个商家 = 一次分账。
+ *
+ * <p>三个金额列各有用处，不能合并成一个 net：
+ * 商家问「为什么这单只结了 46 块」时，要能拆成「基数 - 佣金 - 服务费」给他看。
+ */
+@Getter
+@Setter
+@TableName("stl_bill")
+public class StlBill extends BaseEntity {
+
+    // ── 自营链路状态（business_mode = SELF_OPERATED）
+    /** 待对账：应付账款已生成，等供应商核对。 */
+    /** 资金路径：归集到平台户（代销）。今天唯一在跑的 */
+    public static final String AGGREGATED = "AGGREGATED";
+    /** 资金路径：直连商家二级户（分账）。**只有这条路径存在补差动作** */
+    public static final String DIRECT = "DIRECT";
+
+    /**
+     * 经营模式：自营（business_mode 列）。与 {@code MerchantQueryPort.MODE_SELF_OPERATED} 同值 ——
+     * 支付域自己留一份，是为了不再多一处对商家域的反向引用（PayReverseDependencyBudgetTest 盯着那个数）。
+     */
+    public static final String BIZ_SELF_OPERATED = "SELF_OPERATED";
+
+    public static final String PENDING_RECON = "PENDING_RECON";
+    /** 已确认：双方对账一致，等收票与付款。 */
+    public static final String CONFIRMED = "CONFIRMED";
+    /** 已付款：财务在网银付了，系统登记凭证号。 */
+    public static final String PAID = "PAID";
+
+    // ── 进项票状态
+    public static final String INV_PENDING = "PENDING_INVOICE";
+    public static final String INV_SUBMITTED = "SUBMITTED";
+    public static final String INV_VERIFIED = "VERIFIED";
+    public static final String INV_REJECTED = "REJECTED";
+    /** 无票供应商：**不进发票流程，但要在应付列表上标出来** ——
+     *  让财务在付款前就看见「这笔付出去是不能列支的」，而不是月末报税才发现。 */
+    public static final String INV_NONE = "NO_INVOICE";
+
+    public static final String PENDING = "PENDING";
+    public static final String SPLITTING = "SPLITTING";
+    /**
+     * <b>分账指令已发出，等通道确认。</b>
+     *
+     * <p>⚠️ <b>它不是终态，也不表示钱到了。</b> 到账是 {@link #SPLIT_CONFIRMED}。
+     *
+     * <p>此前这一个值同时表示两件事，而底下调的是 {@code StubSplitGateway} ——
+     * 账面显示已分账，一分钱都没有真的动过，而商家看着以为钱在路上。
+     */
+    public static final String SPLIT = "SPLIT";
+    /**
+     * <b>通道回执确认已到账。</b>分账链路的终态。
+     *
+     * <p>⚠️ <b>只能由回执产生，不给人工入口。</b>
+     * 与 {@code stl_withdraw} 的 {@code APPROVED → PAID} 同一条规矩：
+     * 让人手动把单子做平，之后对账差额永远说不清是「通道慢了」还是「有人点早了」。
+     *
+     * <p>所以桩网关永远停在 {@link #SPLIT} —— 那正是它该待的地方：
+     * 指令「发」出去了（发给了一个桩），而没有任何回执说钱到了。
+     */
+    public static final String SPLIT_CONFIRMED = "SPLIT_CONFIRMED";
+    public static final String RETRYING = "RETRYING";
+    public static final String MANUAL = "MANUAL";
+    public static final String REVERSED = "REVERSED";
+
+    /**
+     * 线下（当面）收款的<b>终态</b>：账单一生成就是这个状态，之后不再变。
+     *
+     * <p><b>不进 {@link #PENDING}</b> —— 那是「等着分账」的意思，而线下单的钱
+     * 从来没进过平台，分个什么账。用它做终态而不是复用 {@link #SPLIT}，
+     * 是为了让「这笔钱平台碰过没有」在状态列上一眼看得出来：
+     * 对账时按状态一分，SPLIT 的那些能和通道流水对上，OFFLINE_SETTLED 的那些
+     * 本来就不该出现在通道流水里。混成一个状态，对不上的那几笔要人工翻订单才认得出。
+     *
+     * <p>结算域<b>早就有一条不走分账的路</b>（自营的
+     * {@link #PENDING_RECON} → {@link #CONFIRMED} → {@link #PAID}），
+     * 所以这里是加一个终态，不是造一条链路。
+     */
+    public static final String OFFLINE_SETTLED = "OFFLINE_SETTLED";
+
+    /**
+     * {@code status} 列的<b>全集</b>。两条链路（自营对账、第三方分账）加线下终态。
+     *
+     * <p>它存在只为一件事：让端上的状态文案能被<b>机器</b>对账。
+     * B 端结算单页写的是 {@code $t(`settle.status${b.status}`)} —— 动态键，
+     * i18n 闸门<b>一个字都看不见</b>，缺词条不报错，只在界面上把键名原样吐出来
+     * （2026-09-29 线上实测：虹选转自营后，三个状态全露成
+     * {@code settle.statusPENDING_RECON}）。守卫 {@code scripts/check-settle-status-i18n.py}
+     * 读的就是这个集合。
+     *
+     * <p><b>新增状态时这里要一起加</b>，否则守卫量不到它，等于没有守卫。
+     */
+    public static final java.util.Set<String> STATUS_ALL = java.util.Set.of(
+            PENDING_RECON, CONFIRMED, PAID,
+            PENDING, SPLITTING, SPLIT, SPLIT_CONFIRMED,
+            RETRYING, MANUAL, REVERSED, OFFLINE_SETTLED);
+
+    /**
+     * 通道费率来源：标准档。
+     *
+     * <p>与「这一列为 null」是两件事：<b>null = 没配过费率</b>（不知道多少），
+     * {@code STANDARD} 且金额为 0 = 配了 0%（真的不收）。
+     * 兜成同一个值之后，事后没人能把这两种情况分开。
+     */
+    public static final String FEE_STANDARD = "STANDARD";
+
+    /** 优惠档。今天没有任何地方会写它 —— 真出现时应由费率版本自己标明，不在结算侧猜 */
+    public static final String FEE_PROMO = "PROMO";
+
+    /** 实付高于代收：商家填的标称重量不准。 */
+    public static final String DIFF_OVERWEIGHT = "OVERWEIGHT";
+    /** 实付高于代收：收货地在模板的加收地区。 */
+    public static final String DIFF_REGION_SURCHARGE = "REGION_SURCHARGE";
+    /** 实付超过代收的 200% 上限：只扣到上限，差额等人工处理（§9 AC24）。 */
+    public static final String DIFF_OVER_CAP = "OVER_CAP";
+
+    private String settleNo;
+    private String subOrderNo;
+    private String orderNo;
+    private String entityNo;
+
+    /**
+     * 应结基数 = 货款 + **平台补贴的优惠**（平台券的钱最终要给商家）。
+     *
+     * <p><b>不含运费</b>（§9 AC21）：运费是代收代付的钱，进了这里就等于让商家
+     * 为平台代收的运费付佣金。它单独落在 {@link #freightIncomeMinor}。
+     */
+    private Long grossMinor;
+
+    private Long commissionMinor;
+    private Long serviceFeeMinor;
+
+    /**
+     * 买家付的运费（代收）。**不进 {@link #grossMinor}，所以不进佣金基数。**
+     *
+     * <p>非快递单为 0：只有 {@code EXPRESS} 会走运费模板（`OrderServiceImpl#freightQuotes`）。
+     */
+    private Long freightIncomeMinor;
+
+    /**
+     * 平台实付给快递公司的钱。**只有平台代寄才有**。
+     *
+     * <p>商家自己填单号发货时是商家自付，平台一分没出，这里是 0 ——
+     * 扣了就是收两遍。判据是 {@link #freightShipMode}。
+     */
+    private Long freightCostMinor;
+
+    /**
+     * 发货方式：{@code SettleSourcePort.SHIP_PLATFORM_CALL} 平台代寄 /
+     * {@code SHIP_MERCHANT_SELF} 商家自寄；非快递单为 null。
+     *
+     * <p><b>取值域住在 spi，这里不转出口</b>：pay 里曾有两个别名常量指过去，
+     * 但没有任何调用方（文件外零处，文件内只有这句注释在 link 它们），
+     * 而它们让 pay → SettleSourcePort 的反向引用从 14 涨到 16，
+     * 撞上 known-pay-reverse-deps 那道棘轮。用注释指名比留两个没人读的常量便宜。
+     */
+    private String freightShipMode;
+
+    /** 实付与代收有差额时的原因，见 {@link #DIFF_OVERWEIGHT} / {@link #DIFF_REGION_SURCHARGE}。 */
+    private String freightDiffReason;
+
+    /**
+     * 商家实得 = 基数 − 佣金 − 服务费 + 运费收入 − 实付快递费。
+     *
+     * <p>平台代寄且不超重时后两项对消，回到「货款 − 佣金」；
+     * 商家自寄时 {@code freightCostMinor} 为 0，运费全额留给商家。
+     */
+    private Long netMinor;
+
+    private String trafficSource;
+
+    /** 万分比，**落库快照** —— 费率会变，历史账不能跟着变。 */
+    private Integer commissionRate;
+
+    private String status;
+    /** <b>指令发出</b>的时刻。与 {@link #splitConfirmedAt} 分开 —— 两者的间隔是对账要盯的 */
+    private Long splitAt;
+    /**
+     * 回执确认<b>到账</b>的时刻；空 = 还没确认。
+     *
+     * <p>存量的 SPLIT 行这一列都是空的：它们是桩时代产生的，本来就不知道到没到账 ——
+     * 回填一个时间等于凭空断言那些钱到了。
+     */
+    private Long splitConfirmedAt;
+    private Integer retryCount;
+    private String lastError;
+    /**
+     * 计提时间（支付成功时）。与 {@code splitAt}（实际分账时间）**分开** ——
+     * 账面与资金是两个时点：支付即计提让商家立刻看到实收，
+     * 而真实资金移动等到售后期结束解冻时才发生。
+     */
+    private Long accruedAt;
+
+
+    /** 支付通道 WECHAT/ALIPAY：分账实现按它路由，对账按它切分。 */
+    private String payChannel;
+
+    /** 下单端，与 payChannel 不是一回事。 */
+    private String payScene;
+
+    /** 该笔实际扣的通道手续费（分）。**以回执为准**，不是按费率算出来的。 */
+    private Long channelFeeMinor;
+
+    /** 通道费率快照（万分比）。 */
+    private Integer channelFeeRate;
+
+    /** STANDARD/PROMO —— 费率来源，差异要能对商家解释。 */
+    private String channelFeeSource;
+
+    /** 通道费由 MERCHANT 还是 PLATFORM 承担。 */
+    private String feeBearer;
+
+    /** 本单的积分服务费（分）：商家发分即扣，结算时从货款扣走进积分池。 */
+    private Long pointsFeeMinor;
+
+    /**
+     * 积分抵扣补差额（分）：平台补进二级商户，让<b>商家按全额收款</b>。
+     *
+     * <p>不补的话，买家用积分抵掉的那部分就从商家的货款里出了 ——
+     * 而 {@code ord_sub_order.points_deduct} 的注释明确写着那是平台内部字段、
+     * 商家按订单全额收款。落快照是因为积分规则会变，
+     * 而「这单当初补了多少」必须能原样查回来。
+     */
+    private Long subsidyMinor;
+
+    /** 补差成功时刻；空 = 未补或无需补。 */
+    private Long subsidyAt;
+
+    /**
+     * 实际向通道发起分账的金额（分）= 佣金 + 履约服务费 + 积分服务费。
+     *
+     * <p><b>分账指令以它为准，不要在发起时重算</b> —— 算式会变（将来可能加收费项），
+     * 而历史账不能跟着变。与 commissionRate 落快照是同一个道理。
+     */
+    private Long splitAmountMinor;
+
+    /**
+     * 这笔钱是<b>哪家店</b>挣的（{@code ord_sub_order.store_no} 快照）。
+     *
+     * <p>纯统计维度：门店经营报表按它聚合。<b>它不决定钱打给谁</b> ——
+     * 打给谁看 {@link #payMerchantNo}。空 = 存量主体级流水。
+     */
+    private String storeNo;
+
+    /**
+     * 这笔钱打给<b>哪个收款商户号</b>（生成时快照）。
+     *
+     * <p>快照而非实时解析：商家随时可以改门店的收款号，实时解析会把还没打的
+     * 历史流水一起挪到新账户 —— 钱已经进了旧账户，账却说打给新账户。
+     * 退款更严重：从新账户扣，两个账户各错一笔且方向相反。
+     *
+     * <p>空 = 生成时进件还没走完（账单照常生成，钱是欠着的），
+     * 或是 V14 之前的存量行 —— 两种都在发起打款时再解析一次。
+     */
+    private String payMerchantNo;
+    /**
+     * 下单时的经营模式快照。<b>决定这张单走哪条状态机</b>。
+     *
+     * <p>快照而不是回查门店：门店的经营模式改了，未结的历史流水不能跟着改口径——
+     * 自营的单要收进项票、第三方的单不用，走错分支的结果是凭证对不上账。
+     */
+    private String businessMode;
+
+    /**
+     * 下单时的<b>资金路径</b>快照：{@link #AGGREGATED} / {@link #DIRECT}。
+     *
+     * <p><b>与 {@link #businessMode} 是两件事</b>：这个说钱先进谁的账户，
+     * 那个说谁是销售主体。「要不要补差」看的是**这一列** ——
+     * 钱在商家账户才需要补进去，钱在平台账户是平台自己少收，无人需要补。
+     */
+    private String fundsMode;
+
+    /**
+     * 归集路径下平台自己承担的积分成本（分）。
+     *
+     * <p><b>与 {@link #subsidyMinor} 互斥</b>：那个是直连下真的划进商家账户的一笔钱，
+     * 这个只是记账。混用的后果是读单据的人以为平台补过钱 ——
+     * 而归集路径上根本没有「补」这个动作。
+     */
+    private Long pointsCostMinor;
+
+    /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
+    private String paymentRef;
+
+    /**
+     * T2 可结算时刻 = 履约完成 + 售后期。
+     *
+     * <p><b>为空 = 还不可结算</b>（未履约，或售后未闭环），不是「立刻可结」——
+     * 兜成 0 的话这单会在第一轮扫描就进批，而那时售后可能还开着。
+     */
+    private Long settleableAt;
+
+    /** 归属账期批次。为空 = 还没入批；查「这单卡在哪」全靠它 */
+    private String batchNo;
+    /**
+     * 这张单在哪笔放款里（V391）。为空 = 还没放款，或走的是老的逐张付款路（存量）。
+     * 凭证号从此挂在放款记录上，这里的 payment_ref 只是镜像 —— 存量那条老路的读者还在读它。
+     */
+    private String payoutNo;
+
+    /** 财务登记的付款时间。与 {@code splitAt} 分开——那是分账时间，两条轨道不共用。 */
+    private Long paidAt;
+
+    /** 所属进项票；空 = 尚未开票或无票供应商。 */
+    private String purchaseInvoiceNo;
+
+    /** 见 {@link #INV_PENDING} 等。冗余一列是因为应付列表要按它筛。 */
+    private String invoiceStatus;
+
+    /**
+     * 线下单<b>让掉</b>的佣金：<b>只记不扣</b>。
+     *
+     * <p>线下支付已拍板不抽佣，所以这一列不是「为了将来去收」，
+     * 而是<b>为了知道让了多少</b> —— 缺了它，连「线下这部分生意值多少钱」都算不出来，
+     * 将来无论继续免还是重新定价都没有依据。
+     *
+     * <p>与 {@link #commissionMinor} 并列才一眼看得出「本该收多少、实际收了 0」。
+     */
+    private Long waivedCommissionMinor;
+
+
+
+    /**
+     * 记账币种（V287）。<b>决定这个金额能不能与别的相加。</b>
+     *
+     * <p>补这一列与多区域无关，单币种下它也是对的 ——
+     * 只是没有第二个币种时看不出错，而错的形状是
+     * 「把 100 台币当成 100 人民币加进合计」，不报错、只是数字不对。
+     *
+     * <p><b>写入路径必须显式赋值</b>，不能靠 DEFAULT 活着：
+     * 靠默认值的列在第二个币种出现时会静默地全部写成人民币。
+     * {@code stl_payment.currency} 就是活例子 —— 那一列 V1 就有，
+     * 而生产代码里没有任何一处给它赋值。
+     */
+    private String currency;
+}

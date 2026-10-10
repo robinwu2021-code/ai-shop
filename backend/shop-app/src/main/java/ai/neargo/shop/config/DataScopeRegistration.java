@@ -33,31 +33,547 @@ public class DataScopeRegistration implements DataScopeRegistrar {
 
         // —— 交易：子订单是商家视角的账本，也是 C 端「我的订单」的来源 ——
         // SELF 必须登记，理由见类注释第 2 条。
+        // COMMUNITY 是运营端接入时补的（V137 的冗余列）：运营会话的维度是
+        // MERCHANT/COMMUNITY/PICKUP，缺哪一个，配了那个维度的运营就整页空白。
         registry.register("ord_sub_order", Map.of(
                 ScopeDim.SELF, "user_no",
-                ScopeDim.MERCHANT, "merchant_no",
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.COMMUNITY, "community_no",
                 ScopeDim.PICKUP, "pickup_no"));
 
+        // 主单跨商家（一次结算拆成多个商家的子单），没有单一 entity_no/pickup_no ——
+        // 运营端不列主单，只经已授权子单按主键回捞（见 MerchantOrderServiceImpl#toOpsVO）。
         registry.register("ord_order", Map.of(
-                ScopeDim.SELF, "user_no"));
+                ScopeDim.SELF, "user_no",
+                ScopeDim.COMMUNITY, "community_no"));
 
         // —— 商品：商家只能改自己的货 ——
         registry.register("prd_goods", Map.of(
-                ScopeDim.MERCHANT, "merchant_no"));
+                ScopeDim.MERCHANT, "entity_no"));
+        /*
+         * SKU（批⑤ P2-4）。**此前是登记表里的一个口子**：`prd_sku` 未注册 = 未注册表放行，
+         * 于是不带过滤条件的 `GET /ops/skus` 是全平台可见 —— 配了商家域的运营也一样。
+         * `PlatformProductServiceImpl.matchingGoodsNos` 只补上了「带过滤」的那一半。
+         *
+         * ⚠️ 注册它的**前置**是把所有买家侧读写显式豁免（fail-closed：C 端会话的维度是
+         * SELF，在 SKU 的锚点里找不到，拼出的是 1=0 而不是放行）。已经做了：
+         * `GoodsServiceImpl.loadSkus/skuPrice`、`GoodsQueryPortImpl.snapshot`、
+         * `StockPortImpl` 的五处原子扣减。少豁免一处的症状是
+         * <b>商品显示 ¥0 / 购物车空 / 下单说库存不足</b>，且日志干净。
+         */
+        registry.register("prd_sku", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
 
-        // —— 履约：自提点承接的任务含别家商品，行级过滤之外还要字段级裁剪（第 ④ 道防线）——
-        registry.register("ful_pickup_task", Map.of(
-                ScopeDim.SELF, "user_no",
-                ScopeDim.PICKUP, "pickup_no",
-                ScopeDim.MERCHANT, "merchant_no"));
+        /*
+         * 商品草稿（V279，双版本）。商家私有数据，与 prd_goods 同一根轴。
+         * **登记时服务层的十处访问已全部显式豁免**（saveAsDraft/publishDraft/
+         * swapFromDraft/审核换版/hasDraft/preview —— 归属由上游 mine(merchantNo,goodsNo)
+         * 把关），所以这一行是纵深防御：将来谁绕过服务层直查这张表，
+         * 会被按商家过滤而不是全平台放行。
+         */
+        registry.register("prd_goods_draft", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 履约任务表 `ful_pickup_task` 这里曾经登记着，而**这张表从来没有建过** ——
+         * 没有迁移、没有实体、没有任何 Java 引用。登记一张不存在的表不报错
+         * （没有查询会碰到它），坏处是它让人以为这块已经防住了。
+         * 2026-08-14 由 `ops-data-scope.test.ts` 的 G3 点名后删除。
+         * 真做这张表时，连同 SELF/PICKUP/MERCHANT 三个锚点一起加回来。
+         */
 
         // —— 邻里自提：作用域是单个团，且发起人零报酬（ADR-005）——
+        // PICKUP 是运营端接入时补的：表上本来就有 pickup_no，只是没登记 ——
+        // 而没登记的后果不是「不过滤」，是配了自提点域的运营看这张表全空（fail-closed）。
         registry.register("ful_group_pickup", Map.of(
                 ScopeDim.SELF, "user_no",
+                ScopeDim.PICKUP, "pickup_no",
                 ScopeDim.GROUP, "group_no"));
+
+        /*
+         * —— 数据域补登记 · 第一批（2026-08-30）——
+         *
+         * 选表的判据是**读点数**，不是业务重要性：登记一张表的风险与它的读点数成正比
+         * （每个没显式豁免的读点都是一个可能静默变空的功能）。所以先做读点最少的，
+         * 把闭环流程跑通，而不是先啃 cmt_community（17 处）那种。
+         *
+         * 三张各自的判定过程：
+         *
+         *   · ful_verify_log —— **只写不读**（PickupServiceImpl 只 insert，一处查询都没有）。
+         *     登记它行为完全不变，纯粹把「这张表有归属列且会被自动过滤」变成真的。
+         *   · cnt_post —— 三处读点全在 ContentServiceImpl，而它**只被 OpsContentController
+         *     消费**（种草内容的运营审核队列），C 端不读。所以登记对 C 端零影响，
+         *     而运营端正是该按社区裁的那一侧。
+         *   · cmt_community_apply —— 三处读点全在 CommunityAdminServiceImpl（运营端提报审核），
+         *     同上。
+         *
+         * 反向风险（配了域的运营看全空）由 ful_group_pickup 那条注释说的同一个机制兜着：
+         * 这三张的运营端读点本来就该按域裁，裁不到才是缺陷。
+         */
+        registry.register("ful_verify_log", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
+
+        registry.register("cnt_post", Map.of(
+                ScopeDim.COMMUNITY, "community_no"));
+
+        registry.register("cmt_community_apply", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.COMMUNITY, "community_no"));
 
         // —— 结算：钱的可见性最敏感，只有商家自己和平台财务 ——
         registry.register("stl_bill", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 供应商收款账户（V358，ADR-011）。锚点只有 MERCHANT ——
+         * 这张表没有社区/自提点的概念，钱打给谁只跟主体有关。
+         *
+         * ⚠️ 登记之后 **B 端那三条路径必须 executeWithoutScope**：
+         * 商家自己的会话里没有运营的数据域，直查会 SELECT 不到、UPDATE 静默 0 行。
+         * 见 PayoutAccountServiceImpl 里那几处注释。
+         */
+        registry.register("mch_payout_account", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * —— 商家主体与门店（批②，2026-08-14）——
+         *
+         * **只登记 MERCHANT 一个维度**，COMMUNITY / PICKUP 刻意不登记。
+         *
+         * 一度打算给 mch_store 加一列冗余 community_no 好登记 COMMUNITY，理由是
+         * 「社区运营打开门店档案会是空白」。那个判断错了两层：
+         *   ① 门店的社区是**多值**的（一家店可以在多个社区各挂一个自提点，
+         *      cmt_pickup_point.owner_ref 上没有唯一键），单列表达不了 ——
+         *      取其中一个的后果是「另一个社区的运营看不到这家店」，
+         *      比整页空白更难发现；
+         *   ② 更根本的是**那个担忧是假想的**：COMMUNITY_OPS 的 15 个权限码里
+         *      一个 merchant:* 都没有，而 GET /ops/stores 要 merchant:merchant:read
+         *      —— 它根本进不了这个页面。
+         *
+         * 教训：**加一列冗余数据之前，先确认那个角色进不进得来。**
+         *
+         * 若将来给社区运营开了门店档案，回到
+         * TDD-运营端数据域接入 §6.1 的三个选项里重选，不要直接加列。
+         */
+        registry.register("mch_entity", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ── 2026-09-02：获客埋点与店铺码印刷台账 ──
+         *
+         * 两张都只有 entity_no 一个归属列，所以只登记 MERCHANT。
+         *
+         * **不登记的后果不是报错，是越权**：运营端的获客看板与店铺码页都是跨商家列表，
+         * 配了「只看某商家」的运营会看到全平台的扫码量与印刷量 —— 而这不会有任何提示。
+         * 第一版我在那两处写了 executeWithoutScope（理由写的是「跨主体只读」），
+         * 那正是把这件事做实了；数据域守卫把它抓了出来。
+         *
+         * 写入侧仍然解域：扫码的人还没登录、不属于任何数据域（见 StoreVisitServiceImpl#record）。
+         */
+        registry.register("mkt_store_visit", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_store_qrcode_print", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ── 2026-08-30 第二批：结算域的三张「运营端队列」表 ──
+         *
+         * 挑这三张的判据与第一批一致：**运营端有一条全量列表读它**。
+         * 那正是这道守卫说的症状 ——「只配了某商家域的财务打开提现队列，
+         * 看到的是全平台的申请」，而且不报错。
+         *
+         * 三张都只有 entity_no 一个归属列，所以只登记 MERCHANT。
+         * COMMUNITY / PICKUP 两个维度在这些表上没有锚点，缺口写进
+         * packages/shared 的 ANCHOR_WAIVED 并注明谁会看到空白。
+         *
+         * <p><b>登记本身不产生任何效果，除非同时把 ops 队列上的
+         * `executeWithoutScope` 去掉</b> —— 第一批在 cmt_community_apply 上
+         * 就是这么白干了一轮：登记完测试照样红，因为读它的那句被绕过包着。
+         * 本批的三处去绕过与登记在同一个提交里。
+         */
+        registry.register("stl_withdraw", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("stl_purchase_invoice", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("stl_settle_invoice", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        registry.register("mch_store", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 门店送货方式（方案 v4）。登记 MERCHANT 是给运营端看的（履约配置视图）；
+         * 可见性/下单闸/B 端配置全走 executeWithoutScope —— 那些调用方是 C 端或
+         * B 端会话（SELF 维度），接上就是 1=0。归属由 Service 的 requireStore 保证。
+         */
+        registry.register("mch_fulfillment_channel", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 多边形范围的 S2 网格派生表（V396，ADR-034）。登记 MERCHANT 是给运营端看的；
+         * 可见性命中查询（ReachMatchMapper）与保存时的级联写删都走 executeWithoutScope——
+         * 调用方是 C 端目录或 B 端会话，接上数据域就是 1=0。归属由所属范围项的 store_no/entity_no 保证。
+         */
+        registry.register("mch_service_area_cell", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 商家的地理覆盖项（经营范围）。**父表此前一直没登记，而它的派生表（上面那张）
+         * 与同形状的 `mch_fulfillment_channel` 都登记了** —— 表册覆盖那道棘轮就一直差这一条。
+         * 登记 MERCHANT 是给运营端看的（覆盖分布、范围审核）；可见性命中查询（ReachMatchMapper）、
+         * B 端范围页、买家目录全走 executeWithoutScope —— 那些调用方是 C 端或 B 端会话（SELF 维度），
+         * 接上就是 1=0。归属由 Service 的 requireStore / requireMerchantNo 保证。
+         */
+        registry.register("mch_service_area", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 门店货架。登记 MERCHANT 是给运营端看的（「这家店摆了哪几类」）；
+         * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
+         * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
+         */
+        registry.register("mch_store_category", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 门店价。登记 MERCHANT 是给运营端看的；取价链路全程 executeWithoutScope
+         * （调用方是 C 端会话，SELF 维度）。
+         *
+         * **万一哪条路径忘了豁免，后果是回退主体价而不是 0** —— 与库存那张表相反，
+         * 那边漏豁免会把货变成「没货」，这边最多是「没享受到本店价」。
+         * 这个方向差别正是 prd_store_price 与 prd_store_stock 回退语义相反的延伸。
+         */
+        registry.register("prd_store_price", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * —— 图片资产记账 sys_media_asset：**刻意不登记**（TDD-图片存储与空间回收）——
+         *
+         * 它带 entity_no 与 store_no 两个归属列，看着该登记。一开始也确实登记了
+         * MERCHANT → entity_no，然后被 MediaUploadFlowTest 当场按住：
+         *
+         *     UPDATE sys_media_asset SET status=? WHERE id=? AND 1 = 0
+         *
+         * 上传的第三步（PENDING → ACTIVE）影响 0 行，记账行永远停在 PENDING。
+         * 这正是类注释第 2 条说的 fail-closed —— 而它的表现恰好是最难查的那种：
+         * 上传返回 200、文件也确实落盘了，只有那一列状态不对。
+         *
+         * 不登记的理由不是「绕开麻烦」，是**它和 sys_outbox / sys_idempotent 同类**：
+         * `sys_` 前缀的横切基础设施表，由系统自己写、平台自己读，
+         * 没有任何 B 端端点把它暴露给商家。而运营端那个页面（platform:media:read，
+         * 只发平台角色）要的恰恰是**全平台视图** —— 过滤才是错的。
+         *
+         * ⚠️ **触发重新登记的那一天**：B 端出现「我的存储占用」这类页面时。
+         * 那时要连同「这个会话到底带哪几个维度」一起验，别照抄 prd_goods 的写法 ——
+         * 上面这次 1=0 就是照抄来的。
+         */
+
+        /*
+         * ─────────── 会员（mbr_*，P1–P3） ───────────
+         *
+         * 只登记 MERCHANT：这几张表上没有 user_no —— 会员挂的是**人档**（person_no），
+         * 不是账号。所以 C 端会话（SELF 维度）读它们会被判成 1=0 而不是放行。
+         *
+         * **因此所有系统链路的读写必须显式豁免**，已经做了：
+         * `MemberServiceImpl.onOrderPaid`（买家自己付钱那一刻，会话是 SELF）、
+         * `claimByPerson`（登录后转正，同样是 SELF）。
+         * 少豁免一处的症状是<b>入会静默不发生</b>：订单正常、日志干净、会员数不涨，
+         * 而商家两周后才会发现「买了这么多人怎么会员只有几个」。
+         * MemberEnrollScopeTest 拿一个 SELF 会话跑完整入会，就是守这一条。
+         *
+         * 运营端将来要看会员（P8）时，这里要补 COMMUNITY/PICKUP —— 漏一个，
+         * 配了那个维度的运营看到的是空列表而不是报错。
+         */
+        registry.register("mbr_member", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_store", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_source", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_setting", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_tag", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_member_tag", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_tag_merge_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mbr_segment", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ─────────── 券的新模型（pmt_*，P4） ───────────
+         *
+         * 用户券与优惠发生记录**两个维度都要登记**：商家要看自己发出去多少（MERCHANT），
+         * 买家要看自己的券包（SELF）。只登记一个的话，另一边整页空白而不报错。
+         *
+         * `pmt_coupon` / `pmt_coupon_scope` 只有 MERCHANT：券模板是商家的资产。
+         * 平台券的 entity_no 为空 —— 平台侧读它走的是 ops 会话（ALL），不受影响；
+         * 而下单算价读模板时会话是 SELF，所以 `CouponAllocServiceImpl` 里
+         * 那几处读模板/用户券都是 executeWithoutScope 的。
+         *
+         * `pmt_coupon_scope` 没有 entity_no（它挂在 coupon_no 上），
+         * 因此**不登记**：它从不作为检索入口，总是随券模板一起查。
+         */
+        registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * ── 2026-08-31 第三批：活动跟上券 ──
+         *
+         * `pmt_activity` 与 `pmt_coupon` **在同一个 Service 的相邻两个方法里**，
+         * 券 2026-08-29 接上了数据域，活动没有 —— 于是「给这个运营配了只看某商家」
+         * 在券那一页生效、在活动那一页不生效，而两页长得一样。
+         * 这种不一致比整体都没接更难发现：人会从其中一页得出「已经接了」的结论。
+         *
+         * `pmt_activity_audience` / `pmt_activity_goods` 不登记：它们挂在 activity_no 上，
+         * 从不作为检索入口，总是随活动一起查 —— 与 pmt_coupon_scope 同一个理由。
+         */
+        registry.register("pmt_activity", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 集单的一期（2026-09-18，TDD-营销域-详细设计 §2.7）。与活动同一维度同一锚点：
+         * 期是活动的实例，能看活动的人就该能看它的期，不能看的也不该从期上看到。
+         *
+         * **三处必须绕开**，且各自用显式条件钉死边界：买家下单取期（PeriodPortImpl，钉 entity_no）、
+         * 定时任务推进与取消（PeriodServiceImpl.scoped，按状态与时刻扫全量正是任务的本意）、
+         * 期内订单行（PeriodOrderPortImpl，钉 period_no）。不绕的话任务里查出来恒为空 ——
+         * 表现是「没有一期会被截单」，零报错。
+         */
+        registry.register("pmt_period", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 平台活动报名单（2026-09-19，详细设计 §2.7）。锚点是报名的商家：
+         * 只看某些商家的运营在审核页只看到那些商家的报名 —— 这是它要登记的理由。
+         *
+         * 绕开的地方：商家读自己的报名（钉 entity_no = 自己）、下单算价取已通过的报名（钉 entity_no = 这一单的商家）。
+         * 平台活动那一行本身（entity_no = 'PLATFORM'）不属于任何商家，读它、占它的预算时绕域，
+         * 边界靠 owner = PLATFORM。pmt_enrollment_goods 挂在报名号上，从不作为检索入口，不登记。
+         */
+        registry.register("pmt_enrollment", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 触达流水。**登记它今天不改变任何可见行为，这一点要写清楚**。
+         *
+         * 我一开始以为触达健康度那一页会漏：每行是「这家商家发了多少条 / 有多少会员 /
+         * 多少人退订」，而 `mbr_member` 2026-08-29 就登记了、这张表没有。
+         * 写了用例、消融验证 —— **没变红**。查下去才明白：那一页的行是按
+         * `mbr_member` 分组生成的，`sent` 只是按商家号取值，域外商家根本不会出现一行。
+         * 取不到，也就漏不出去。
+         *
+         * 那为什么还登记：**这张表按归属该被裁，而今天恰好只有一个读它的地方**。
+         * 等下一个人加一条「按时间列全部触达」的查询时，登记在这里就已经生效了 ——
+         * 而那时他不会想到来补。**这是唯一一处「登记但当下无效果」是对的情形**：
+         * 前提是没有绕过要一起去掉（有的话不去掉就是白登记，见 cmt_community_apply 那一轮）。
+         */
+        registry.register("mbr_reach_log", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        // 触达批次头（会员标签与定向营销 批 C）：与明细同一归属。运营端触达健康度读它的计数，
+        // 商家端「发出去的」按 entity_no 列 —— 登记在这里，两边都不必记得自己加条件
+        registry.register("mbr_reach_task", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 违规处置记录。判据与前两批一致：**运营端有一条全量队列读它**
+         * （`GET /ops/merchants/violations`，merchantNo 可空 = 全平台）。
+         * 配了商家域的运营打开处置台，此前看到的是全平台的处置记录 ——
+         * 而这一页上有商家名、门店名与处置理由，是**跨商家的经营信息**。
+         *
+         * 登记 MERCHANT + PICKUP：`store_no` 在这张表上，
+         * 但门店与自提点是两个概念，PICKUP 维度上没有锚点 —— 见 ANCHOR_WAIVED。
+         */
+        registry.register("mch_violation", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 收款进件。**这一张的收益与前几张不同，写清楚免得下一个人误解**：
+         * 读它的两条 ops 端点都是 `/{merchantNo}` 形式（进件详情、收款额度），
+         * **没有全量队列** —— 所以登记它挡的不是「打开页面看到全平台」，
+         * 而是「**知道商家号、手敲 URL 也查不到域外的**」。
+         *
+         * 收益有限但不是零：与提现/违规那几张的用例里第三条断言同一件事 ——
+         * 筛选参数（或路径参数）不该能绕过数据域，否则「知道单号就能查」，那不是限制。
+         *
+         * <p>三处必须保留的绕过，都已在 SCOPE_BYPASS_OK 里或本就跑在非运营会话：
+         *   MerchantPortImpl 的算价/能力查询 —— 买家会话（SELF），不绕商品页付不了款
+         *   MerchantPaymentServiceImpl#rows —— B 端商家看自己的进件，SELF 无锚点
+         *   ensurePayment —— 建店时的写前检查，此刻还没有会话
+         */
+        registry.register("mch_payment_merchant", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 资质档案。与收款进件同形：读它的 ops 端点是 `/{merchantNo}/qualifications`，
+         * 没有全量队列 —— 登记挡的是「知道商家号也查不到域外的」。
+         *
+         * <p>三处绕过保留，它们跑在**没有运营会话**的路径上，或与 B 端共用：
+         *   MerchantPayPortImpl —— 准入判定「这家有没有这类证」，下单/上架链路
+         *   MerchantPortImpl    —— 审核时的重复写入检查（此刻还没落库）
+         *   MerchantGovernServiceImpl#qualifications —— ops 与 B 端共用，
+         *     不绕的话商家打开自己的资质档案是空的（见 SCOPE_BYPASS_OK）
+         */
+        registry.register("mch_qualification", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 评价与申诉。运营端两条**全量队列**（`/ops/reviews`、`/ops/review-appeals`，
+         * merchantNo 可空）此前都被绕过包着 —— 而这两页上有评价原文、商家名与申诉理由，
+         * 下一步动作是删评价或驳回申诉。
+         *
+         * <p>C 端那条 `list(goodsNo, merchantNo)` 的绕过**必须留着**，
+         * 它自己的注释写明了理由：「评价对游客可见（看评价才有下单动机）」——
+         * 游客没有会话，登录买家是 SELF 维度，两者在这张表上都没有锚点。
+         *
+         * <p>`rvw_appeal` 只有 entity_no：申诉是商家提的，买家不参与。
+         */
+        registry.register("rvw_review", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.SELF, "user_no"));
+
+        registry.register("rvw_appeal", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 账期批次。运营端的放款队列（`GET /ops/settle-batches`，status/entityNo 都可空
+         * = 全平台）此前被绕过包着 —— 而**下一步动作是放款**，与提现审批同一档。
+         *
+         * <p>三处绕过保留，都不在运营会话里：
+         *   `closeDueBatches` —— 截批，扫全平台到期的批次。
+         *       ⚠️ **它今天没有任何东西在调**（2026-10-09 核实：全仓主代码里只有接口声明
+         *       与实现定义两处，调用点只在测试里）。这里原本写的是「**定时**截批」，
+         *       而那个定时任务从来不存在 —— 读到那句的人会以为这条线在跑。
+         *       绕过数据域的理由仍然成立（它将来就是要跑在无会话的任务里），
+         *       所以保留；但别再把它当成一件正在发生的事。
+         *   `merchantBatches(entityNo)` —— B 端商家看自己的账期，SELF 无锚点
+         *   `SettleServiceImpl` 里那处 —— 结算过账，跑在无会话的链路上
+         */
+        registry.register("stl_settle_batch", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 放款记录（V391）。运营端全量队列 `/ops/payouts` 不绕过 —— 配了商家域的财务
+         * 不该看到别家的放款。绕过的只有生成 / 回填 / 退回那几处写（`PayoutServiceImpl`），
+         * 它们跑在运营会话里但改的是别人家的账，与 `stl_settle_batch` 同一条理由。
+         */
+        registry.register("stl_payout", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 保证金与欠款这四张。读它们的 ops 端点都是 `/{merchantNo}` 形式，
+         * 没有全量队列 —— 与收款进件同形：登记挡的是「知道商家号也查不到域外的」。
+         *
+         * <p>⚠️ **保证金两张用的是旧列名 `merchant_no`**，欠款两张是 `entity_no`。
+         * 别照着上下几行抄 —— 抄错的表现是 fail-closed 拼成 1=0，
+         * 运营打开保证金页一片空白，而不会有任何报错。
+         */
+        registry.register("mch_deposit", Map.of(
                 ScopeDim.MERCHANT, "merchant_no"));
+        registry.register("mch_deposit_txn", Map.of(
+                ScopeDim.MERCHANT, "merchant_no"));
+        registry.register("mch_debt", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mch_debt_txn", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        /*
+         * **mch_notify_pref 刻意不登记**（TDD-来单四渠道与商家通知设置）。
+         *
+         * 这张表只有 store_no，而数据域只有 MERCHANT / PICKUP / COMMUNITY 三个维度 ——
+         * 门店不是其中之一。第一版照着上下几行写了
+         * {@code Map.of(ScopeDim.MERCHANT, "store_no")}，那是错配：
+         * MERCHANT 维度的值是商家号，拿它去比门店号**一行都匹配不上**，
+         * 而症状是运营页面整片空白、零报错（ops-data-scope 守卫当天就抓了出来）。
+         *
+         * 不登记的含义是「拦截器不动这条 SQL」，而这对它正好成立：
+         * 读者只有发送侧（outbox 消费线程，没有会话，MerchantNotifyPrefs 里
+         * 全程 executeWithoutScope）与商家自己那四条 /biz 端点（按 X-Store-No
+         * 限住当前门店）。**运营端今天没有任何一屏读它。**
+         *
+         * ⚠️ 运营端要加一屏看通知开关的那天，两条路选一条：
+         * 给这张表冗余一列 entity_no 并回填，然后按 MERCHANT 登记；
+         * 或者在那一屏显式豁免并自己判归属。别照上面错配的那种写法再来一遍。
+         */
+        // 快递代下单的取件单（TDD-快递100商家寄件）。服务层读写一律显式豁免、自己按 entity_no 判归属 ——
+        // 商家用的是消费者令牌（维度 SELF），不豁免会拼成 1=0；回调线程则根本没有会话
+        registry.register("ord_express_pickup", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 拼团与报价。运营端的全量队列（`/ops/groups`、`/ops/quotes`）此前走的是
+         * `GroupServiceImpl` 里一个**自建的 `scoped()` 包装** —— 它的注释写着
+         * 「团购与求团是公共内容，分享出去的链接要能打开」，那句话对 C 端成立，
+         * 但**运营治理页也走同一个包装**，于是 C 端的理由把运营端一起豁免了。
+         * 两拨调用方在代码里长得一模一样，这是这一轮见过最难看出来的一种。
+         * ops 那两条已改成不走 scoped()，C 端照旧。
+         *
+         * <p>`mkt_group_buy` 连 PICKUP 一起登记 —— 它有 pickup_no（邻里自提团）。
+         * 这是本轮第一张三个维度里能填上两个的表。
+         */
+        registry.register("mkt_quote", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 平台券与营销活动。运营端两条全量队列此前都被绕过包着，
+         * 而 `opsCoupons` 那句注释值得记下来：
+         *
+         *     「平台视角要跨商家。不解除数据域的话，运营看到的永远是空列表」
+         *
+         * **那句话在这张表还没登记时是对的** —— 未登记 = 拦截器不动这条 SQL。
+         * 一旦登记，entity_no 就是锚点，配了商家域的运营看到的正是他该看到的；
+         * 没配数据域的照旧看全平台（空 = 不限定）。
+         * 它描述的是一个不成立的担心，而结论恰好挡住了真正该做的事。
+         *
+         * <p>C 端领券中心（`center()`）的绕过必须留着：那是给买家看的公共列表。
+         */
+        registry.register("mkt_coupon", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mkt_campaign", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
+         * 到货批次与缺货上报。**这是本轮唯一一组按 PICKUP 维度登记的表** ——
+         * 前面几批的锚点都是 entity_no，而自提点运营者看的是「我这几个点今天到什么货」。
+         *
+         * <p>`ful_batch` 的 ops 查询已改成不绕过。`ful_shortage_report` 那处
+         * （`shortageBySku`）按 pickupNos 反查，集合来自已经裁过的批次 ——
+         * 登记它是为了防住将来直接按时间列缺货上报的查询。
+         */
+        registry.register("ful_batch", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
+        registry.register("ful_shortage_report", Map.of(
+                ScopeDim.PICKUP, "pickup_no"));
+
+        /*
+         * 增值包订阅。运营端的到期看板（`/ops/merchant-plans`，filter/keyword 都可空）
+         * 是全量队列 —— 配了商家域的运营该只看到自己那几家的订阅与到期情况。
+         *
+         * <p>其余读点（`ofMerchant` 等）按 entityNo 单条取，且 B 端也走，
+         * 保留绕过。
+         */
+        registry.register("mch_entity_plan", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("mkt_group_buy", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.PICKUP, "pickup_no"));
+
+        /*
+         * 售后单。运营端的平台仲裁工单池（`GET /ops/after-sales`）是一条全量列表，
+         * merchantNo 可空 —— 而这一页上有**商家名与买家昵称**，是跨商家的信息。
+         *
+         * <p><b>另外三处读它的 Port 早就显式绕过了</b>，登记不影响它们：
+         *   RefundSplitBackPortImpl —— 注释写明「售后单的属主是买家，运营看的是全量」
+         *   SettleSourcePortImpl    —— 结算取数，判「这单还有没有未了的售后」
+         *   TradeStatsPortImpl      —— 跨主体统计
+         * 这一点是先查过再登记的：上一张（sys_media_asset）就是没查漏了
+         * MediaScanner 那条必须全量的路径，登记后 5 条红。
+         *
+         * <p>SELF → user_no 一并登记：售后单的属主本来就是买家，
+         * C 端「我的售后」靠它，而那条路今天走的是按 user_no 过滤的查询。
+         */
+        registry.register("ord_after_sale", Map.of(
+                ScopeDim.MERCHANT, "entity_no",
+                ScopeDim.SELF, "user_no"));
+        registry.register("pmt_user_coupon", Map.of(
+                ScopeDim.SELF, "user_no",
+                ScopeDim.MERCHANT, "entity_no"));
+        registry.register("pmt_coupon_issue", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("pmt_apply", Map.of(
+                ScopeDim.SELF, "user_no",
+                ScopeDim.MERCHANT, "entity_no"));
     }
 }

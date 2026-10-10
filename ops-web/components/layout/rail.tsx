@@ -1,8 +1,11 @@
 "use client";
 
-// L1 图标栏（Rail）：18 项 RBAC 过滤 + 当前项高亮 + 待建灰显 + pinBottom + 可展开标签。
-// 项数多（矩阵 §六 18 个业务域）→ 竖排可能超出视口，nav 保留 overflow-y-auto。
+// L1 图标栏（Rail）：RBAC 过滤 + 当前项高亮 + 待建灰显 + pinBottom + 可展开标签。
+// **当前 21 个业务域，竖排 904px —— 在 720px 以下的窗口必然超出视口。**
+// nav 一直有 overflow-y-auto（滚得动），但 macOS 的覆盖式滚动条静止时不渲染，
+// 于是「下面还有 8 个」没有任何提示。`ScrollHint` 补的就是这个提示，不是滚动本身。
 // 仅依赖 pathname（不读 query），无需 Suspense。
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
@@ -12,9 +15,11 @@ import {
 } from "@/lib/nav";
 import { useAuth } from "@/lib/auth";
 import { useNavPrefs } from "@/lib/stores/nav-prefs";
+import { useServerMenu, useNavTree } from "@/lib/stores/server-menu";
 import { useI18n } from "@/lib/i18n";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { ScrollHint, useScrollHint } from "./scroll-hint";
 
 function iconOf(name: string) {
   return (Icons[name as keyof typeof Icons] ?? Icons.Circle) as React.ComponentType<{ className?: string }>;
@@ -36,7 +41,7 @@ function RailItem({
   );
   // shrink-0：项多时容器溢出滚动，flex 默认会压扁子项（图标变形），必须禁止收缩。
   const base = cn(
-    "group relative flex shrink-0 items-center gap-3 rounded-field py-2 transition-colors",
+    "group relative flex shrink-0 items-center gap-3 rounded-field py-[7px] transition-colors",
     expanded ? "px-3" : "justify-center px-0",
   );
   // 折叠态提示：自绘 Tooltip（components/ui/tooltip.tsx，portal+fixed）。
@@ -65,7 +70,7 @@ function RailItem({
             ref={ref}
             href={href}
             aria-label={label}
-            className={cn(base, active ? "bg-accent font-medium text-[var(--primary)]" : "text-sidebar-foreground hover:bg-accent/60 hover:text-foreground")}
+            className={cn("focus-ring", base, active ? "bg-accent font-medium text-[var(--primary)]" : "text-sidebar-foreground hover:bg-accent/60 hover:text-foreground")}
           >
             {inner}
           </Link>
@@ -77,12 +82,16 @@ function RailItem({
 
 export function Rail() {
   const pathname = normPath(usePathname());
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { railExpanded, toggleRail } = useNavPrefs();
+  const scrollRef = React.useRef<HTMLElement>(null);
+  const hint = useScrollHint(scrollRef);
   const { t } = useI18n();
 
-  const sections = visibleSections(role);
-  const activeKey = findActiveSection(pathname, role)?.key;
+  const serverHrefs = useServerMenu((s) => s.hrefSet);
+  const nav = useNavTree();
+  const sections = visibleSections(perms, serverHrefs, nav);
+  const activeKey = findActiveSection(pathname, perms, serverHrefs)?.key;
   const top = sections.filter((s) => !s.pinBottom);
   const bottom = sections.filter((s) => s.pinBottom);
 
@@ -92,7 +101,7 @@ export function Rail() {
       section={s}
       active={s.key === activeKey}
       soon={!!s.soon}
-      href={sectionDefaultHref(s, role)}
+      href={sectionDefaultHref(s, perms)}
       expanded={railExpanded}
     />
   );
@@ -105,19 +114,32 @@ export function Rail() {
       style={{ width: railExpanded ? RAIL_EXPANDED_WIDTH : RAIL_WIDTH }}
     >
       <div className={cn("flex h-14 items-center gap-2", railExpanded ? "px-4" : "justify-center")}>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary text-xs text-primary-foreground">邻</span>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-field bg-primary txt-caption text-primary-foreground">邻</span>
         {railExpanded && <span className="truncate txt-strong">{t("common.appName")}</span>}
       </div>
-      <nav className={cn("flex flex-1 flex-col gap-1 overflow-y-auto py-2", railExpanded ? "px-2" : "px-2")}>
-        {top.map(render)}
-        <div className="flex-1" />
-        {bottom.map(render)}
-      </nav>
+      {/* relative：渐隐条挂在容器的定位父级上，跟着容器一起滚就没意义了 */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/*
+          gap-0.5 + py-1 而不是 gap-1 + py-2：13 个 L1 在 620px 高的窗口里
+          可用高只有 524（视口 − Logo 56 − 收起按钮 40），原来的节奏要 536px，差 12px。
+          为 12px 再合并一个业务域是拿像素倒推信息架构 —— 收紧自己的间距才是这一层该做的事。
+          现在 13×36 + 12×2 + 8 = 500，还剩 24px 余量。
+          2026-09-30 加第 14 个 L1「元器件」时又差 14px（14×36+13×2+8 = 538）：项的上下内边距
+          py-2 → py-[7px]，每项 36 → 34，14×34 + 13×2 + 8 = 510，余 14px。图标与字号不动。
+        */}
+        <nav ref={scrollRef} className={cn("flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-1")}>
+          {top.map(render)}
+          <div className="flex-1" />
+          {bottom.map(render)}
+        </nav>
+        <ScrollHint side="top" show={hint.top} />
+        <ScrollHint side="bottom" show={hint.bottom} />
+      </div>
       <button
         type="button"
         onClick={toggleRail}
         aria-label={railExpanded ? t("nav.collapse") : t("nav.expand")}
-        className="flex h-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="focus-ring flex h-[calc(var(--ctl-h)+4px)] items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         {railExpanded ? <Icons.ChevronsLeft className="size-4" /> : <Icons.ChevronsRight className="size-4" />}
       </button>

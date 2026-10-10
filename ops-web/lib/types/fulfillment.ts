@@ -100,7 +100,9 @@ export type Carrier = "SF" | "JD" | "YTO";
  * `EXCEPTION` 不是终态：快递可能"疑难件"之后又派送成功。把它做成终态，
  * 运营就得手工把单子拉回来，而那本该是承运商回传的事。
  */
-export type ShipmentStatus = "CREATED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "EXCEPTION";
+/** DELIVERING（派件中）与 CANCELLED（已作废）2026-10-09 加（TDD-物流模块 批 3），与 packages/shared 的同名类型对齐 */
+export type ShipmentStatus =
+  | "CREATED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERING" | "DELIVERED" | "EXCEPTION" | "CANCELLED";
 
 export interface ShipmentTrace {
   /** 轨迹时间 */
@@ -132,6 +134,84 @@ export interface Shipment {
   updatedAt: string;
   /** 轨迹节点，按时间正序 */
   traces: ShipmentTrace[];
+  /**
+   * 这一单备好的展示渠道（`wx-plugin` / `self-map`）。**运营要看见它** ——
+   * 买家说「看不到物流」时，第一个要回答的就是「走的哪条链、哪一环断了」
+   */
+  displayChannel?: string | null;
+  /** 最近一次备载荷失败的原因，只给运营看，不给买家看 */
+  displayFailReason?: string | null;
+  /*
+   * 以下是物流模块的状态（TDD-物流模块 批 5）。运营处理异常件时要回答「哪一环断了」：
+   * 订阅订上没有、走的哪家、最后一次失败说了什么；微信 token 换上没有。
+   */
+  /** `WX` 微信支付单（可用微信物流全套）/ `SELF` 线下付款等（不调任何微信物流接口） */
+  profile?: ShipmentProfile;
+  /** 门店号（登记时快照） */
+  storeNo?: string | null;
+  /** 商家主体号（登记时快照） */
+  entityNo?: string | null;
+  /** 订阅状态 */
+  subState?: SubscribeState;
+  /** 受理订阅的渠道（`kuaidi100` / `yto` …） */
+  subChannel?: string | null;
+  /** 订阅最后一次失败：渠道 + 码 + 原文 */
+  subError?: string | null;
+  /** 订阅累计尝试次数 */
+  subAttempts?: number;
+  /** 微信 token 状态 */
+  bindState?: BindState;
+  /** 换微信 token 最后一次失败的原因 */
+  bindError?: string | null;
+  /** 签收时间 */
+  signedAt?: string | null;
+  /** 最近一次有新进展的时刻 */
+  lastEventAt?: string | null;
+  /** 已放到驿站或快递柜 */
+  atLocker?: boolean;
+  /** 渠道纠正过承运商时的原值 */
+  carrierCorrectedFrom?: string | null;
+  /** 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） */
+  receiverPhoneLast4?: string | null;
+}
+
+/** 运单走哪套：`WX` 微信支付单 / `SELF` 线下付款等 */
+export type ShipmentProfile = "WX" | "SELF";
+
+/**
+ * 订阅状态：`PENDING` 待订阅（总开关关着时就停在这）· `DONE` 已订上 ·
+ * `FATAL` 判死（换了所有渠道都不成，要人处理）· `ENDED` 渠道说跟踪结束 · `NA` 不需要（已终态）
+ */
+export type SubscribeState = "PENDING" | "DONE" | "FATAL" | "ENDED" | "NA";
+
+/** 微信 token：`NA` 不适用（线下单）· `WAITING` 等揽收后换 · `DONE` 已换上 · `FATAL` 换不了 */
+export type BindState = "NA" | "WAITING" | "DONE" | "FATAL";
+
+/** 物流渠道总览的一行（`GET /ops/logistics/channels`） */
+export interface LogisticsChannel {
+  /** 渠道名：`kuaidi100` / `yto` / `wx` / `stub` */
+  name: string;
+  /** 配置里启用没有 */
+  enabled: boolean;
+  /** 每种能力可不可用 */
+  capabilities: LogisticsCapability[];
+  /** 覆盖的承运商码；`*` = 全覆盖 */
+  carriers: string[];
+  /** 出现在哪些路由链里（`subscribe.default#1` 这种） */
+  routes: string[];
+}
+
+/** 物流渠道的能力种类：`SUBSCRIBE` 订阅 · `PUSH` 收推送 · `PROBE` 主动查 · `BIND` 换微信 token */
+export type LogisticsCapabilityKind = "SUBSCRIBE" | "PUSH" | "PROBE" | "BIND";
+
+/** 渠道的一种能力 */
+export interface LogisticsCapability {
+  /** 能力种类 */
+  capability: LogisticsCapabilityKind;
+  /** 可不可用 */
+  available: boolean;
+  /** 不可用的原因（「凭据没配」「推送不可用，订阅随之不可用」） */
+  reason: string | null;
 }
 
 // ── 运费模板与超区（P-5.2.3）────────────────────────────────────────
@@ -179,6 +259,39 @@ export interface OutOfRangeRule {
   surcharge: number;
 }
 
+/** 发货城市 → 快递100 报价生成模板时，每个省的原始报价（分）。查不到价为 null */
+export interface FreightProvincePrice {
+  /** 省份简称，写进模板的地区名（按收货地址开头匹配） */
+  region: string;
+  /** 首重价（分） */
+  firstFee: number | null;
+  /** 一个续重单位的价（分） */
+  addFee: number | null;
+}
+
+/**
+ * 从快递100 报价生成的运费模板草稿（TDD-快递100商家寄件 §8 AC17）。**不落库** ——
+ * 运营核对、改过之后走 saveFreightTemplate。首重 / 续重取多数省份那一档，贵的省份写成加收，查不到价的省份不配送。
+ */
+export interface FreightDraft {
+  /** 建议的模板名，如「运城市发 · 中通快递」 */
+  name: string;
+  /** 首重（克） */
+  firstWeightGram: number;
+  /** 首重费（分） */
+  firstFee: number;
+  /** 续重单位（克） */
+  addWeightGram: number;
+  /** 每个续重单位的费用（分） */
+  addFee: number;
+  /** 地区规则：贵的省份加收、查不到价的省份不配送 */
+  outOfRange: OutOfRangeRule[];
+  /** 31 个省的原始报价，运营据此核对 */
+  rows: FreightProvincePrice[];
+  /** 查不到价的省份数 */
+  unquoted: number;
+}
+
 // ── 第三方运力配置（P-5.2.4）──────────────────────────────────────
 
 /**
@@ -215,4 +328,9 @@ export interface CarrierConfig {
   updatedAt: string;
   /** 最后修改人（STAFF 账号） */
   updatedBy: string;
+  /**
+   * 这家承运商在各物流渠道里叫什么（`{ kuaidi100: "shentong", wx: "STO" }`）。
+   * 某个渠道没有这一项 = 那家渠道不覆盖它，订阅时会跳过
+   */
+  codes?: Record<string, string>;
 }

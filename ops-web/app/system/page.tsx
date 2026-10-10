@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { fill, useCopy } from "@/lib/use-copy";
 import { SYSTEM_COPY } from "./copy";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
@@ -18,6 +18,11 @@ import { notify } from "@/lib/notify";
 import { C_END_THEMES, type ThemeKey } from "@/lib/stores/theme";
 import { BASE_CURRENCY, type FeatureFlag, type MarketConfig } from "@/lib/types";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
+import { IndustryTab } from "./industry-tab";
+import { AuthCodeTab } from "./auth-code-tab";
+import { ServiceScopeTab } from "./service-scope-tab";
+import { StorageTab } from "./storage-tab";
+import { TestPhoneTab } from "./test-phone-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,17 +30,14 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 
 type Copy = (typeof SYSTEM_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "appearance", label: c.tabAppearance },
-  { key: "market", label: c.tabMarket },
-  { key: "flags", label: c.tabFlags },
-];
+const TAB_KEYS = ["appearance", "market", "flags", "storage", "industry", "authCode", "scope",
+  "testPhone"] as const;
 
 export default function SystemPage() {
   return <Suspense fallback={null}><SystemInner /></Suspense>;
@@ -44,7 +46,7 @@ export default function SystemPage() {
 function SystemInner() {
   const { t } = useI18n();
   const c = useCopy(SYSTEM_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/system", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
 
@@ -53,6 +55,8 @@ function SystemInner() {
   const canTheme = allow("system:theme:update");
   const canEnv = allow("system:env:switch");
   const canParam = allow("system:param:read");
+  // 看清单与发起回收是两个码：看是日常查看，删是不可逆操作
+  const canMediaPurge = allow("system:media:purge");
 
   const appearance = useQuery({ queryKey: ["appearance"], queryFn: () => api.getAppearance(), enabled: tab === "appearance" });
   const texts = useQuery({ queryKey: ["rule-texts"], queryFn: () => api.getRuleTexts(), enabled: tab === "appearance" });
@@ -253,10 +257,10 @@ function SystemInner() {
 
       {tab === "market" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.marketNotice}
             {fill(c.baseCurrencyNotice, { cur: BASE_CURRENCY })}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={marketColumns} rows={markets.data} loading={markets.isLoading}
             error={markets.error} onRetry={() => markets.refetch()}
@@ -266,12 +270,24 @@ function SystemInner() {
         </>
       )}
 
+      {/* 主数据三块都接了真后端（其余 tab 仍走 mock） */}
+      {tab === "storage" && <StorageTab c={c} canPurge={canMediaPurge} />}
+      {tab === "industry" && <IndustryTab c={c} canWrite={canEnv} />}
+      {/* 授权码字典改的是「一共有哪些门槛」，与类目树同权限（category:manage） */}
+      {tab === "authCode" && <AuthCodeTab c={c} canWrite={allow("category:manage")} />}
+      {tab === "scope" && <ServiceScopeTab c={c} canWrite={canEnv} />}
+      {/*
+        * 测试号白名单：读与写各一个独立码，**都不并进 system:param:***
+        * —— 这一页把固定验证码明文显示出来，能看它就等于知道那几个号的登录码。
+        */}
+      {tab === "testPhone" && <TestPhoneTab c={c} canWrite={allow("system:testphone:update")} />}
+
       {tab === "flags" && (
         <>
           {!canEnv && <ReadOnlyNotice what={c.flagsReadOnlyWhat} perm="system:env:switch" note={c.flagsReadOnlyNote} className="mb-3" />}
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.flagsNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={flagColumns} rows={flags.data} loading={flags.isLoading}
             error={flags.error} onRetry={() => flags.refetch()}

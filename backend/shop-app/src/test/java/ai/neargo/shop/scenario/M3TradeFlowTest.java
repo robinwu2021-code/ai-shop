@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,13 +40,14 @@ class M3TradeFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
     private ai.neargo.shop.trade.service.OrderService orderService;
@@ -412,20 +414,13 @@ class M3TradeFlowTest {
     }
 
     private void payCallback(String payOrderNo, String txId) throws Exception {
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"" + txId
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
 }

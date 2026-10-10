@@ -1,0 +1,478 @@
+package ai.neargo.shop.auth.store;
+
+import ai.neargo.auth.store.SessionDao;
+import ai.neargo.auth.store.TokenHash;
+import java.time.LocalDateTime;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import ai.neargo.auth.store.*;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.TokenStore;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.simple.JdbcClient;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** {@link DbTokenStore}：会话进库之后，多实例与撤销传播才成立。 */
+class DbTokenStoreTest {
+
+    /** 可拨动的时钟 —— 过期与节流都靠应用时钟判定，不能靠真等。 */
+    private static final class Dial extends Clock {
+        private Instant now = Instant.parse("2026-08-26T12:00:00Z");
+
+        void advance(Duration d) {
+            now = now.plus(d);
+        }
+
+        @Override public ZoneId getZone() { return ZoneId.of("UTC"); }
+        @Override public Clock withZone(ZoneId z) { return this; }
+        @Override public Instant instant() { return now; }
+    }
+
+    /** 可编程的用户表：记下被读了几次，用来验缓存真的省了回源。 */
+    private static final class FakeUsers implements IdentityLoader<LoginUser> {
+        final Map<String, LoginUser> users = new ConcurrentHashMap<>();
+        final List<String> loads = new ArrayList<>();
+
+        @Override
+        public synchronized Optional<LoginUser> load(String userNo) {
+            loads.add(userNo);
+            return Optional.ofNullable(users.get(userNo));
+        }
+    }
+
+    private Dial clock;
+    private JdbcClient jdbc;
+    private SessionProfile profile;
+    private FakeUsers users;
+    private final List<AutoCloseable> closeables = new ArrayList<>();
+
+    @BeforeEach
+    void setUp() {
+        clock = new Dial();
+        jdbc = AuthStoreTestSupport.freshDatabase();
+        profile = AuthStoreTestSupport.consumer();
+        users = new FakeUsers();
+        users.users.put("U1", LoginUser.consumer("U1", "小王"));
+    }
+
+    @AfterEach
+    void tearDown() {
+        closeables.forEach(c -> {
+            try {
+                c.close();
+            } catch (Exception ignored) {
+                // 测试收尾，关不掉也不影响断言
+            }
+        });
+    }
+
+    /**
+     * 身份缓存用**真实的极短 TTL**，不用上面那个假时钟。
+     *
+     * <p>Ehcache 的过期走**真实墙钟**，拨 {@link Dial} 不会让它的条目失效 ——
+     * 第一版这么写的两条用例红了，而红的原因与被测行为无关。
+     * 会话过期那条仍然用假时钟，因为那是**我们自己**用 {@code clock} 判的。
+     */
+    private DbTokenStore instanceWithLiveIdentity() {
+        return instanceWithLiveIdentity(Realm.CONSUMER);
+    }
+
+    private DbTokenStore instanceWithLiveIdentity(Realm poolRealm) {
+        SessionProfile fast = new SessionProfile(
+                profile.poolName(), profile.sessionTable(), profile.loginLogTable(),
+                poolRealm.tokenPrefix(), profile.sessionTtl(), profile.cacheTtl(),
+                Duration.ofMillis(1),          // 身份缓存立刻过期
+                profile.revokePoll(), profile.lastSeenThrottle(),
+                profile.asyncLoginLog(), profile.logRetentionDays());
+        AuthCache<String, DbTokenStore.CachedSession> sc = new AuthCache<>(
+                "s" + System.nanoTime(), String.class, DbTokenStore.CachedSession.class,
+                fast.cacheTtl(), 1000);
+        AuthCache<String, LoginUser> ic = new AuthCache<>(
+                "i" + System.nanoTime(), String.class, LoginUser.class,
+                fast.identityTtl(), 1000);
+        closeables.add(sc);
+        closeables.add(ic);
+        return new DbTokenStore(poolRealm, fast, new SessionDao(jdbc, fast),
+                users, sc, ic, auditWriter(fast), clock);
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★ 店员那一支同样要盖 realm —— 两支都盖上，这条闸才算完整")
+    void reloadedStaffIdentityAlsoKeepsPoolRealm() {
+        /*
+         * B 端池里有两支：店员（kind=MCH，主体是 mch_account_no）与店主（kind=USR）。
+         * 店主那支的 loader 回 CONSUMER，是显性的坑；店员那支的 loader 本来就回
+         * MERCHANT，realm 恰好是对的 —— **恰好对，不等于被守着**。
+         *
+         * 把它一起钉上，是因为这一类缺陷的成因是「realm 由 loader 决定」，
+         * 而不是「某个 loader 写错了」。哪天有人给店员那支换个 loader 实现，
+         * 只有店主那条测试会红，而红的地方与改动毫不相干 —— 那种红最容易被改掉。
+         */
+        DbTokenStore store = instanceWithLiveIdentity(Realm.MERCHANT);
+        String token = store.issue(TokenStore.SessionData.of(
+                LoginUser.merchant("MA-STAFF-1", "小李")));
+        users.users.put("MA-STAFF-1", LoginUser.merchant("MA-STAFF-1", "小李"));
+
+        letIdentityCacheExpire();
+
+        LoginUser reloaded = store.get(token).orElseThrow().user();
+        org.assertj.core.api.Assertions.assertThat(reloaded.realm()).isEqualTo(Realm.MERCHANT);
+        org.assertj.core.api.Assertions.assertThat(reloaded.subjectKind())
+                .as("盖 realm 不能顺手把 subjectKind 也改了 —— 分发靠的就是它")
+                .isEqualTo(ai.neargo.auth.store.SubjectKind.MCH);
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★★★ 身份重建后 realm 必须还是本池的 —— loader 不知道会话属于哪个端")
+    void reloadedIdentityKeepsPoolRealm() {
+        /*
+         * **这条守的是一次有潜伏期的线上故障。**
+         *
+         * A7 之后 B 端池里装着两类主体：店员（kind=MCH）和店主（kind=USR，主体是 user_no）。
+         * 店主那条按 kind 分发给 ConsumerIdentityLoader，而它无论谁来问都回
+         * LoginUser.consumer(...) —— realm=CONSUMER。于是：
+         *
+         *   登录那一刻   → 缓存里是 issue() 存进去的对象，realm=MERCHANT，一切正常
+         *   缓存失效之后 → 走 loader 重建，realm 变成 CONSUMER，/biz/** 当场 401
+         *
+         * 表现是「登录成功，用了半分钟突然掉线」，而日志里一条 WARN 都没有
+         * （不是孤儿会话，用户查得到）。2026-08-28 上线后靠真机才发现 ——
+         * 单测用内存 store 直接存对象、从不走 loader，这条路只在 token-store=db 下存在。
+         */
+        DbTokenStore store = instanceWithLiveIdentity(Realm.MERCHANT);
+        LoginUser owner = LoginUser.merchantByUser("U-OWNER-1", "老王");
+        String token = store.issue(TokenStore.SessionData.of(owner));
+
+        // 库里的身份由 loader 提供，而 loader 给的是 C 端形态 —— 这正是线上的情形
+        users.users.put("U-OWNER-1", LoginUser.consumer("U-OWNER-1", "老王"));
+
+        letIdentityCacheExpire();
+
+        LoginUser reloaded = store.get(token).orElseThrow().user();
+        org.assertj.core.api.Assertions.assertThat(reloaded.realm())
+                .as("重建出来的身份必须仍属于本池，否则 /biz/** 会在缓存失效后开始 401")
+                .isEqualTo(Realm.MERCHANT);
+        org.assertj.core.api.Assertions.assertThat(reloaded.userNo()).isEqualTo("U-OWNER-1");
+    }
+
+    private static void letIdentityCacheExpire() {
+        try {
+            Thread.sleep(20);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** 造一个「实例」：共享同一个库，但**自己的两级缓存**。 */
+    private DbTokenStore instance() {
+        AuthCache<String, DbTokenStore.CachedSession> sc = new AuthCache<>(
+                "s" + System.nanoTime(), String.class, DbTokenStore.CachedSession.class,
+                profile.cacheTtl(), 1000);
+        AuthCache<String, LoginUser> ic = new AuthCache<>(
+                "i" + System.nanoTime(), String.class, LoginUser.class,
+                profile.identityTtl(), 1000);
+        closeables.add(sc);
+        closeables.add(ic);
+        return new DbTokenStore(Realm.CONSUMER, profile, new SessionDao(jdbc, profile),
+                users, sc, ic, auditWriter(profile), clock);
+    }
+
+    /** 审计写同一个库，用同步档位 —— 测试里不要引入异步的时序。 */
+    private LoginLogWriter auditWriter(SessionProfile p) {
+        SessionProfile sync = new SessionProfile(
+                p.poolName(), p.sessionTable(), p.loginLogTable(), p.tokenPrefix(),
+                p.sessionTtl(), p.cacheTtl(), p.identityTtl(), p.revokePoll(),
+                p.lastSeenThrottle(), false, p.logRetentionDays());
+        LoginLogWriter w = new LoginLogWriter(new LoginLogDao(jdbc, sync), sync);
+        closeables.add(w);
+        return w;
+    }
+
+    @Test
+    @DisplayName("★ 登出落审计，而登录**不在这里落** —— 存储层只记会话表上的事件")
+    void logoutIsAuditedButLoginIsNot() {
+        DbTokenStore store = instance();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        store.revoke(token);
+
+        var rows = new LoginLogDao(jdbc, profile).findByUser("U1", 10, 0);
+        /*
+         * **只有 LOGOUT。**
+         *
+         * 从签发处落 LOGIN 看似省事，但它只在 db 形态下存在 —— 生产走 ehcache，
+         * 于是「登录成功」在生产一条都没有，而三张登录日志表建它就是为了这个。
+         * LOGIN 已挪到 LoginAuditor 由业务层显式调；这里再写一次就是重复。
+         */
+        assertEquals(1, rows.size(), "签发处不该再写 LOGIN —— 那会在切 db 之后变成重复记录");
+        assertEquals("LOGOUT", rows.get(0).event());
+        assertTrue(rows.get(0).success());
+    }
+
+    @Test
+    @DisplayName("★ 孤儿会话落成失败事件 —— 那是数据不一致，不是「没登录」")
+    void orphanSessionIsAudited() {
+        DbTokenStore store = instanceWithLiveIdentity();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        users.users.remove("U1");
+        letIdentityCacheExpire();
+
+        assertTrue(store.get(token).isEmpty());
+
+        var rows = new LoginLogDao(jdbc, profile).recentFailures(
+                java.time.LocalDateTime.now(clock).minusHours(1), 10);
+        assertEquals(1, rows.size());
+        assertEquals("ORPHAN_SESSION", rows.get(0).event());
+        assertEquals("USER_NOT_FOUND", rows.get(0).reason());
+    }
+
+    @Test
+    @DisplayName("签发 → 取回 → 身份对得上")
+    void issueThenGet() {
+        DbTokenStore store = instance();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        assertTrue(token.startsWith("ctk_"), "令牌要带本池前缀");
+        LoginUser back = store.get(token).orElseThrow().user();
+        assertEquals("U1", back.userNo());
+        assertEquals("小王", back.nickname());
+    }
+
+    @Test
+    @DisplayName("★★ 两个实例共享一个库：A 踢人之后 B 拒绝 —— 这是会话进库的全部理由")
+    void revokeOnOneInstanceIsSeenByTheOther() {
+        DbTokenStore a = instance();
+        DbTokenStore b = instance();
+        String token = a.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        assertTrue(b.get(token).isPresent(), "B 应当认得 A 签发的会话 —— 这就是多实例共享");
+        assertTrue(a.get(token).isPresent());
+
+        a.revokeUser("U1");                 // 停用账号：A 上执行
+
+        assertTrue(a.get(token).isEmpty(), "A 上必须立刻失效");
+        b.pollRevocations();                // B 的下一轮撤销轮询
+        assertTrue(b.get(token).isEmpty(),
+                "B 还认这个令牌 —— 按下「停用」的人以为立刻生效了，而另一台上他照常操作");
+    }
+
+    @Test
+    @DisplayName("★ 撤销轮询只剔被撤的那几条，不清空整个缓存")
+    void revocationEvictsOnlyTheRevokedOnes() {
+        DbTokenStore a = instance();
+        DbTokenStore b = instance();
+        users.users.put("U2", LoginUser.consumer("U2", "小李"));
+        String t1 = a.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        String t2 = a.issue(TokenStore.SessionData.of(users.users.get("U2")));
+        b.get(t1);
+        b.get(t2);
+
+        a.revokeUser("U1");
+        int evicted = b.pollRevocations();
+
+        assertEquals(1, evicted, "只该剔一条 —— 清空会把一次撤销放大成库上的尖峰");
+        assertTrue(b.get(t2).isPresent(), "没被踢的人不该受影响");
+    }
+
+    @Test
+    @DisplayName("★ 身份现读现算：改了昵称/角色，下一个请求就生效，不必踢人")
+    void identityIsResolvedLive() {
+        DbTokenStore store = instanceWithLiveIdentity();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        assertEquals("小王", store.get(token).orElseThrow().user().nickname());
+
+        users.users.put("U1", LoginUser.consumer("U1", "改过的名字"));
+        letIdentityCacheExpire();
+
+        assertEquals("改过的名字", store.get(token).orElseThrow().user().nickname(),
+                "身份是从用户表现读的，会话里不该有第二份快照");
+    }
+
+    @Test
+    @DisplayName("★ 停用账号：用户表读不到就 401，不给幽灵身份放行")
+    void disabledAccountIsRejectedEvenWithAValidToken() {
+        DbTokenStore store = instanceWithLiveIdentity();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        users.users.remove("U1");                               // 停用/注销
+        letIdentityCacheExpire();
+
+        assertTrue(store.get(token).isEmpty(),
+                "给一个空身份放行的话，那是没有任何权限的幽灵身份在系统里游走 —— "
+                + "多数接口会挡住它所以不报错，直到碰上一个只判「登录了没」的接口");
+    }
+
+    @Test
+    @DisplayName("★ 跨池令牌直接拒，且**不查库**")
+    void foreignPoolTokenIsRejectedWithoutTouchingTheDatabase() {
+        DbTokenStore store = instance();
+        store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        int loadsBefore = users.loads.size();
+
+        assertTrue(store.get("otk_deadbeef").isEmpty(), "运营端令牌不该被 C 端 store 认");
+        assertTrue(store.get("btk_deadbeef").isEmpty(), "商家令牌同理");
+        assertEquals(loadsBefore, users.loads.size(), "前缀不符时连身份都不该去加载");
+    }
+
+    @Test
+    @DisplayName("★ 不做负缓存：A 刚登录，B 立刻就能认")
+    void noNegativeCaching() {
+        DbTokenStore a = instance();
+        DbTokenStore b = instance();
+
+        String probe = "ctk_" + "0".repeat(32);
+        assertTrue(b.get(probe).isEmpty(), "还没签发，当然认不出");
+
+        // 现在把这个令牌真的写进库（模拟 A 实例完成登录）
+        new SessionDao(jdbc, profile).insert(TokenHash.of(probe), "U1", "USR",
+                java.time.LocalDateTime.now(clock), java.time.LocalDateTime.now(clock).plusDays(30));
+
+        assertTrue(b.get(probe).isPresent(),
+                "缓存了「不存在」的话，用户刚登录后的头几秒会间歇性 401 —— "
+                + "而这种错「重试一下就好了」，最容易被当成网络问题");
+    }
+
+    /**
+     * 会话缓存也用**真实的极短 TTL**，逼 {@link DbTokenStore#get} 走回源。
+     *
+     * <p>不这么做的话，「续期了吗」这个问题只会问到缓存里那份，
+     * 而缓存本来就是刚写进去的 —— 断言必然通过，且**production 里真正长期走的
+     * 是回源那条路**。这块代码上次出问题（重建丢 realm）就是这个形状：
+     * 命中与回源是两条路，测试几乎总在命中那条上跑完。
+     */
+    private DbTokenStore instanceWithoutSessionCache() {
+        SessionProfile fast = new SessionProfile(
+                profile.poolName(), profile.sessionTable(), profile.loginLogTable(),
+                profile.tokenPrefix(), profile.sessionTtl(),
+                Duration.ofMillis(1),          // 会话缓存立刻过期 → 每次都回源
+                profile.identityTtl(),
+                // revokePoll 要跟着调小：SessionProfile 不许 cacheTtl 比它还短
+                // （缓存比轮询活得久 = 撤销轮询形同虚设，那条校验是对的）
+                Duration.ofMillis(1),
+                profile.lastSeenThrottle(),
+                profile.asyncLoginLog(), profile.logRetentionDays());
+        AuthCache<String, DbTokenStore.CachedSession> sc = new AuthCache<>(
+                "s" + System.nanoTime(), String.class, DbTokenStore.CachedSession.class,
+                fast.cacheTtl(), 1000);
+        AuthCache<String, LoginUser> ic = new AuthCache<>(
+                "i" + System.nanoTime(), String.class, LoginUser.class,
+                fast.identityTtl(), 1000);
+        closeables.add(sc);
+        closeables.add(ic);
+        return new DbTokenStore(Realm.CONSUMER, fast, new SessionDao(jdbc, fast),
+                users, sc, ic, auditWriter(fast), clock);
+    }
+
+    @Test
+    @DisplayName("★★★ 用着的会话不会在整 30 天那一刻被踢 —— 而且续期要真落到库里")
+    void activeSessionSlidesPastOriginalTtl() {
+        /*
+         * 在这之前 expires_at 是签发那一刻定死的：用得再勤也在第 30 天死。
+         * C 端有静默登录会自愈，**B 端与运营端没有** —— 那里 401 的动作是
+         * 清登录态 + 跳回登录页，商家要重新收一次短信，且正干着的那一页没了。
+         *
+         * 断言走的是**回源那条路**（会话缓存 1ms 就过期），
+         * 问的是库里的行，不是刚写进去的那份缓存。
+         */
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        // 隔了两小时（超过 1 小时的节流）再用一次 —— 这一下才会触发续期
+        clock.advance(Duration.ofHours(2));
+        assertTrue(store.get(token).isPresent(), "两小时后当然还在");
+
+        // 越过**原本**的到点时间，但在续期之后的窗口内
+        clock.advance(profile.sessionTtl().minusHours(1));
+
+        assertTrue(store.get(token).isPresent(),
+                "原到期日之后仍然可用 —— 续期没落库的话这里是空的");
+    }
+
+    @Test
+    @DisplayName("★★ 续期过的会话放着不用，仍然到点就死 —— 是「用着不过期」不是「永不过期」")
+    void renewedSessionStillExpiresWhenIdle() {
+        /*
+         * 与上一条成对：那条管「续了没有」，这条管「续得对不对」。
+         *
+         * ⚠️ **必须先真的触发一次续期，再放着不用。** 第一版写成「签发后直接
+         * 快进 31 天」—— 那样 touchIfStale 一次都没跑，renewed 写成什么都看不见。
+         * 消融验出来的：把续期改成 now.plusYears(100)，那一版全绿。
+         * 而它的注释当时写着「少了这一条，写成很远的常量也能让上面那条绿」——
+         * **那句话是假的**，测试并没有提供它声称的那层保护。
+         */
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        clock.advance(Duration.ofHours(2));                 // 过节流窗口
+        assertTrue(store.get(token).isPresent(), "这一下才真的续了一次");
+
+        clock.advance(profile.sessionTtl().plusDays(1));    // 此后一次都没用过
+
+        assertTrue(store.get(token).isEmpty(),
+                "续期只该推一个 TTL，推成「很远的将来」就是会话永不过期");
+    }
+
+    @Test
+    @DisplayName("节流窗口内反复用不会反复写库 —— 续期精度是小时级，够用")
+    void renewalIsThrottled() {
+        DbTokenStore store = instanceWithoutSessionCache();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+        SessionDao dao = new SessionDao(jdbc, profile);
+        String hash = TokenHash.of(token);
+        LocalDateTime first = dao.findByHash(hash).orElseThrow().expiresAt();
+
+        clock.advance(Duration.ofMinutes(10));             // 没到 1 小时
+        assertTrue(store.get(token).isPresent());
+
+        assertEquals(first, dao.findByHash(hash).orElseThrow().expiresAt(),
+                "节流窗口内不该写库 —— 每请求写会把这张表变成全库写最频繁的表");
+    }
+
+    @Test
+    @DisplayName("过期的会话取不到（应用时钟判定）")
+    void expiredSessionIsRejected() {
+        DbTokenStore store = instance();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        clock.advance(profile.sessionTtl().plusDays(1));
+
+        assertTrue(store.get(token).isEmpty());
+    }
+
+    @Test
+    @DisplayName("会话缓存真的省了回源 —— 命中率看得见")
+    void sessionCacheAvoidsRepeatedQueries() {
+        DbTokenStore store = instance();
+        String token = store.issue(TokenStore.SessionData.of(users.users.get("U1")));
+
+        for (int i = 0; i < 10; i++) {
+            assertTrue(store.get(token).isPresent());
+        }
+        assertTrue(store.cacheStats().get(0).hitRate() > 0.8,
+                "命中率掉下去通常意味着条目上限太小或 TTL 被改短了，而两者都不报错");
+    }
+
+    @Test
+    @DisplayName("装配错了要当场炸：把运营端的登录塞进 C 端 store")
+    void mismatchedRealmIsRejectedAtIssue() {
+        DbTokenStore consumerStore = instance();
+        LoginUser operator = LoginUser.operator("S1", "管理员", List.of("SUPER_ADMIN"), List.of());
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> consumerStore.issue(TokenStore.SessionData.of(operator)));
+        assertTrue(e.getMessage().contains("OPERATOR"), e.getMessage());
+    }
+}

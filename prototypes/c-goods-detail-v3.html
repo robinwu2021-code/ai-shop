@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商品详情 v3</title>
+<!-- 真源在仓库 prototypes/c-goods-detail-v3.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-27</div>
+  <h1>商品详情 v3：参照淘宝、京东，把一页撑起来</h1>
+  <p class="sub">现状一页只有「图 · 价 · 名 · 一行保障 · 店名 · 两块空态 · 两行参数 · 一排横滑」，往下滑三屏都是同一张脸。
+  v3 按淘宝 / 京东的顺序重排：<b>首屏定「买不买」</b>（价、促销、已选、怎么拿到），<b>第二屏看「别人怎么说、谁在卖」</b>，
+  <b>往下是「细看」</b>（参数、图文），<b>最后「再逛逛」</b>。除标注的两处外，所有数都是后端已经下发、页面没用上的。八屏。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 02</span><h2>首屏：决定买不买</h2></div>
+  <div class="grid">
+
+    <figure id="d01">
+      <div class="ph c">
+        <div class="ov"><i>‹</i><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="img hero full">主图 · 可左右滑<span class="gd-cnt num">1/4</span></div>
+          <div class="pz ink">
+            <div class="gd-price"><b class="num"><small>¥</small>39.90</b><s class="num">¥49.90</s><span class="chip bad">省 ¥10.00</span><span class="sold num">已售 1.2 万</span></div>
+            <div class="gd-tags"><span class="chip bad">满 99 减 10</span><span class="chip pri">买 2 送 1</span><span class="chip">新客立减 5</span></div>
+            <div class="tr"><div><div class="t">阳光玫瑰青提 · 约 2 斤装</div><div class="meta">清甜多汁 · 云南产地直发</div></div><span class="acts2"><span class="sh fav on">收藏</span><span class="sh">分享</span></span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">领券</span><span class="v go"><span class="chip bad">满 50 减 5</span> <span class="chip bad">满 99 减 12</span></span></div>
+          </div>
+          <div class="gd-rows">
+            <div class="r"><span class="k">已选</span><span class="v"><span>约 2 斤装 · 1 件</span><span class="s">共 3 种规格可选</span></span></div>
+            <div class="r"><span class="k">配送</span><span class="v"><span>门店自提 · 免运费</span><span class="s">今日 18:00 前下单，明日 17:00 前到店</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>01 首屏 · 价格区</b>主图带张数；价格一行：现价大字、划线价、省多少、已售；下一行是这件货能享的促销；再下是名字与卖点、领券；首屏末尾露出选购卡的「已选 / 配送」。</figcaption>
+      <p class="why">淘宝、京东的首屏都是「图 → 价 → 促销 → 名」，促销紧贴价格，因为它回答的就是「到手多少钱」。促销标签来自 <code>activityTags</code>（满减 / 新客）与 <code>promotions</code>（买赠），都已下发、现在一个都没画。已售按「1.2 万」缩写；0 仍然不显示。购物车从左上角回到底栏（两家都放在那儿，且带件数角标）。</p>
+    </figure>
+
+    <figure id="d02">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span class="on">商品</span><span>评价</span><span>详情</span><span>推荐</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-rows">
+            <div class="r"><span class="k">已选</span><span class="v"><span>约 2 斤装 · 1 件</span><span class="s">共 3 种规格可选</span></span></div>
+            <div class="r"><span class="k">配送</span><span class="v"><span>门店自提 · 免运费</span><span class="s">福田店 · 距你 1.2 km · 今日 18:00 前下单，明日 17:00 前到店</span></span></div>
+            <div class="r"><span class="k">保障</span><span class="v"><span>极速退款 · 门店自提免运费 · 支持当面付款</span></span></div>
+            <div class="r nogo"><span class="k">产地</span><span class="v"><span>云南 · 按实称多退少补</span></span></div>
+          </div>
+          <div class="gd-rv">
+            <div class="hd"><b>评价</b><span class="meta num">126 条 · 好评率 98%</span><span class="more">全部</span></div>
+            <div class="sc"><span>商品 <em class="num">4.9</em></span><span>履约 <em class="num">4.8</em></span><span>服务 <em class="num">4.9</em></span><span>带图 <em class="num">32</em></span></div>
+            <div class="it"><div class="by"><i></i>邻居 8928 · ★★★★★</div><div>颗粒饱满，孩子很爱吃，下次还买。</div><div class="pics"><span></span><span></span></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>02 选购卡</b>已选、配送、保障、产地四行合成一张卡；滚过主图后顶栏换成实底并出现锚点。</figcaption>
+      <p class="why"><b>这一块与 v2 的取舍相反</b>：v2 去掉了「已选 / 范围」，理由是「还没决定买就问件数」。v3 保留那条理由，所以「已选」不问件数，改答「共几种规格」（多规格的人一眼知道还有别的）；<b>配送是下单前最关心的「怎么拿到、什么时候到」</b>，淘宝京东都放在首屏。数据：规格数来自 <code>specGroups</code>，配送方式 <code>fulfillments</code>，截单 / 到货 <code>cutoffAt</code> / <code>arrivalDesc</code>，产地 <code>origin</code>，按实称 <code>weighed</code>，当面付款来自 <code>/mp/order/capability</code>。<b>门店名与距离要后端补</b>（见表 ①）。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03 — 04</span><h2>第二屏：别人怎么说、谁在卖</h2></div>
+  <div class="grid">
+
+    <figure id="d03">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span class="on">评价</span><span>详情</span><span>推荐</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-rv">
+            <div class="hd"><b>评价</b><span class="meta num">126 条 · 好评率 98%</span><span class="more">全部</span></div>
+            <div class="sc"><span>商品 <em class="num">4.9</em></span><span>履约 <em class="num">4.8</em></span><span>服务 <em class="num">4.9</em></span></div>
+            <div class="gd-tags"><span class="chip">全部 126</span><span class="chip pri">有图 32</span><span class="chip">好评 121</span><span class="chip">中评 4</span><span class="chip">差评 1</span></div>
+            <div class="it"><div class="by"><i></i>邻居 8928 · ★★★★★ · 约 2 斤装</div><div>颗粒饱满，孩子很爱吃，下次还买。</div><div class="pics"><span></span><span></span><span></span></div></div>
+            <div class="it"><div class="by"><i></i>邻居 1203 · ★★★★☆ · 约 2 斤装</div><div>甜度不错，有两颗压坏了，商家补发了。</div></div>
+          </div>
+          <div class="gd-rv">
+            <div class="hd"><b>问大家</b><span class="meta num">3 个问题</span><span class="more">全部</span></div>
+            <div class="frow"><span class="k">问</span><span class="v l">能放几天？</span><span class="meta">2 个回答</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>03 评价（有评价）</b>总条数、好评率、三项分、筛选标签、两条评价（带规格与图）、问大家一条。</figcaption>
+      <p class="why">好评率 = 五档分布 <code>dist</code> 里 4、5 星之和 / 总数；三项分是 <code>avgGoods / avgFulfillment / avgService</code>，对应淘宝的「描述 / 物流 / 服务」。这些都在 <code>reviewSummary</code> 里，现在页面只用了总数。</p>
+    </figure>
+
+    <figure id="d04">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span class="on">评价</span><span>详情</span><span>推荐</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-empty"><span><b>评价</b>暂无，购买后可评价</span><span><b>问大家</b>去提问 ›</span></div>
+          <div class="gd-shop">
+            <div class="hd"><span class="lg">HX</span><div><div class="nm"><span class="chip pri">自营</span> 虹选鲜果 ✓</div><div class="meta num">评分 4.9 · 在售 12 件</div></div><span class="go">进店</span></div>
+            <div class="gd-h">本店热卖<small>全部 ›</small></div>
+            <div class="gd-g3">
+              <div><span>🍐</span><b>香梨</b><em class="num">¥50.00</em></div>
+              <div><span>🍋</span><b>柠檬</b><em class="num">¥50.00</em></div>
+              <div><span>🍇</span><b>巨峰葡萄</b><em class="num">¥29.90</em></div>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>04 空态合并 · 店铺卡</b>没有评价、没有提问时两块合成一行；店铺卡带评分、在售件数、进店按钮，下挂本店热卖三列。</figcaption>
+      <p class="why">现状两块空态各占一张卡，新店的详情页一半是「还没有…」。店铺卡：名称、自营、认证、评分都已下发（<code>merchant</code>）；本店热卖用现在「本店还卖」那份数据改成三列。<b>在售件数要后端补</b>（表 ②），补之前这一格不显示。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05 — 06</span><h2>往下：细看，再逛逛</h2></div>
+  <div class="grid">
+
+    <figure id="d05">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span>评价</span><span class="on">详情</span><span>推荐</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-h">商品参数</div>
+          <div class="gd-params">
+            <span class="k">产地</span><span>云南</span>
+            <span class="k">规格</span><span>约 2 斤装 / 约 4 斤装 / 约 8 斤装</span>
+            <span class="k">保质期</span><span>冷藏 7 天</span>
+            <span class="k">销售区域</span><span>深圳市</span>
+            <span class="all">全部参数 ›</span>
+          </div>
+          <div class="gd-h">图文详情</div>
+          <div class="gd-detail">
+            <p>阳光玫瑰，果粒大、无籽、带玫瑰香。当日采摘冷链到店，收货后冷藏保存。</p>
+            <span>详情长图 1</span><span>详情长图 2</span>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>05 参数 · 图文详情</b>参数两列表，前 4 条 + 全部；图文详情先正文、后长图全宽。</figcaption>
+      <p class="why">参数现在是一行一张卡、每行两端对齐，四条就占半屏；两列表同样四条只要现在的一半高。图文详情：<code>detail</code> 与 <code>detailImages</code> 都已下发。<b>商家没传详情时，用商品主图 <code>images</code> 全宽依次排开兜底</b>（淘宝的做法），不再整块消失 —— 现在大部分商品往下滑是空的。</p>
+    </figure>
+
+    <figure id="d06">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span>评价</span><span>详情</span><span class="on">推荐</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-h">看了又看<small>同类目 · 附近在售</small></div>
+          <div class="gd-g2">
+            <div class="cd"><span>🍇</span><div><b>巨峰葡萄 约 3 斤</b><span class="num">¥29.90</span><span class="m">邻里果铺 · 已售 860</span></div></div>
+            <div class="cd"><span>🍑</span><div><b>水蜜桃 6 个装</b><span class="num">¥35.00</span><span class="m">虹选鲜果 · 已售 420</span></div></div>
+            <div class="cd"><span>🍈</span><div><b>哈密瓜 一个</b><span class="num">¥19.90</span><span class="m">邻里果铺</span></div></div>
+            <div class="cd"><span>🍎</span><div><b>红富士 约 5 斤</b><span class="num">¥39.90</span><span class="m">虹选鲜果</span></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>06 推荐 · 双列</b>页底「看了又看」：同类目、买家这一带在售的货，双列卡，带店名与已售。</figcaption>
+      <p class="why">淘宝京东的详情页都以一段瀑布流收尾，看完这件还能接着逛。数据用现成的商品列表接口按 <code>categoryNo</code> + 买家归属查（首页就是这么要货的），不需要新接口。排除本商品；不足 4 件时整块不显示。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07 — 08</span><h2>对照与取舍</h2></div>
+  <div class="grid">
+
+    <figure id="d07">
+      <div class="ph c">
+        <div class="ov"><i>‹</i><i>🛒<b>3</b></i><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="img hero full">主图</div>
+          <div class="pz ink">
+            <div class="p"><b class="num">¥39.90</b><s class="num">¥49.90</s><span class="chip bad">省 ¥10.00</span></div>
+            <div class="tr"><div><div class="t">阳光玫瑰青提</div><div class="meta">清甜多汁新鲜水果</div></div><span class="acts2"><span class="sh fav on">收藏</span><span class="sh">分享</span></span></div>
+          </div>
+          <div class="group"><div class="frow"><span class="k">· 极速退款</span><span class="v go"></span></div></div>
+          <div class="gc"><div class="th">HX</div><div class="bd"><div class="ln"><span><span class="chip pri">自营</span> <b>虹选鲜果</b> ✓</span><span class="meta">›</span></div></div></div>
+          <div class="gd-empty"><span><b>评价</b>还没有评价 · 购买后可发表评价</span><span></span></div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>07 现状（0.1.61，对照）</b>图 · 价 · 名 · 一行保障 · 店名 · 空态。</figcaption>
+      <p class="why">同一件货，v3 首屏多出：张数、已售、促销标签、领券、已选（规格数）、配送与到货时间、保障合并一行、产地与按称。现状这些数据后端都给了，只是没画。</p>
+    </figure>
+
+    <figure id="d08">
+      <div class="ph c">
+        <div class="ov"><i>‹</i><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="img hero full">主图 · 可左右滑<span class="gd-cnt num">1/3</span></div>
+          <div class="pz ink">
+            <div class="gd-price"><b class="num"><small>¥</small>24.90</b><span class="sold num">已售 36</span></div>
+            <div class="tr"><div><div class="t">五得利 五星特精小麦粉</div><div class="meta">家用通用面粉，馒头、面条、饺子皆宜</div></div><span class="acts2"><span class="sh fav">收藏</span><span class="sh">分享</span></span></div>
+          </div>
+          <div class="gd-rows">
+            <div class="r"><span class="k">已选</span><span class="v"><span>5kg · 1 件</span><span class="s">共 2 种规格可选</span></span></div>
+            <div class="r"><span class="k">配送</span><span class="v"><span>门店自提 · 免运费</span><span class="s">虹选粮油 · 运城市盐湖区</span></span></div>
+            <div class="r"><span class="k">保障</span><span class="v"><span>极速退款 · 支持当面付款</span></span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>08 数据少的商品</b>没有划线价、没有促销、没有评价时，首屏照样成立：缺的块不出，不画空壳。</figcaption>
+      <p class="why">v3 的每一块都「有数才出」：没有划线价就不画「省」，没有促销就没有那一行标签，没有券就没有领券行。数据少的商品首屏会短一些，但不会出现一排「暂无」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">表</span><h2>每一块的数据从哪来</h2></div>
+  <table class="spec">
+    <tr><th>块</th><th>字段</th><th>现状</th><th>要不要改后端</th></tr>
+    <tr><td>主图张数</td><td><code>images</code></td><td>已下发，未画</td><td>不用</td></tr>
+    <tr><td>已售 / 促销标签</td><td><code>sales</code> · <code>activityTags</code> · <code>promotions</code></td><td>已下发，只画了买赠</td><td>不用</td></tr>
+    <tr><td>已选（规格数）</td><td><code>specGroups</code> · <code>skus</code></td><td>已下发</td><td>不用</td></tr>
+    <tr><td>配送 / 到货</td><td><code>fulfillments</code> · <code>cutoffAt</code> · <code>arrivalDesc</code></td><td>已下发，未画</td><td>不用</td></tr>
+    <tr><td>① 配送行里的门店名与距离</td><td>—</td><td>详情接口没有</td><td><b>要补</b>：详情带上买家这一带可取货的门店名与距离（结算页已有同一份计算）</td></tr>
+    <tr><td>保障 / 当面付款</td><td><code>services</code> · <code>/mp/order/capability</code></td><td>保障已画；当面付款只在结算页</td><td>不用（详情页也调一次 capability）</td></tr>
+    <tr><td>评价头</td><td><code>reviewSummary</code>（dist / avg* / withImages）</td><td>只用了总数</td><td>不用</td></tr>
+    <tr><td>② 店铺在售件数</td><td>—</td><td>没有</td><td><b>要补</b>：<code>merchant</code> 带 <code>onSaleCount</code>；补之前不显示</td></tr>
+    <tr><td>参数 / 图文</td><td><code>params</code> · <code>detail</code> · <code>detailImages</code> · <code>images</code></td><td>已下发</td><td>不用</td></tr>
+    <tr><td>看了又看</td><td><code>/mp/goods?categoryNo=&amp;communityNo=</code></td><td>现成接口</td><td>不用</td></tr>
+  </table>
+</section>
+
+<footer>真源：prototypes/c-goods-detail-v3.html · 登记：prototypes/registry.json · 前一版：prototypes/c-goods-group.html（g01–g07）· 页面：c-app pages/goods/index</footer>
+</div>
+</html>

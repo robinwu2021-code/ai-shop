@@ -11,8 +11,29 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
+
+/**
+ * 三端共用的实体源码，**整个目录读进来**。
+ *
+ * <p>`types/` 2026-09-03 从单文件（5139 行）按域拆开了。只读 `index.ts` 的话
+ * 读到的是一份 `export *` 的门面 —— 一个类型都扫不到，而这道闸会**全绿**：
+ * 「少扫 = 没有违规」正是它最不该有的失败方式。
+ */
+function sharedTypesSrc(root: string): string {
+  const dir = join(root, "packages/shared/src/types");
+  const src = readdirSync(dir)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => readFileSync(join(dir, f), "utf8"))
+    .join("\n");
+  // **扫描面本身要有断言**：这道闸是「找出违规」型的，少扫一律表现为全绿。
+  // 目录读空、后缀改了、路径写错 —— 都在这里当场炸，而不是安静地放行。
+  const n = (src.match(/export interface \w+/g) ?? []).length;
+  if (n < 100) throw new Error(`只扫到 ${n} 个实体（应有 100+）—— 扫描面塌了，闸门这时候的「绿」不作数`);
+  return src;
+}
+
 const GLOSSARY = readFileSync(join(ROOT, "docs/requirements/项目词典.md"), "utf8");
-const TYPES = readFileSync(join(ROOT, "packages/shared/src/types/index.ts"), "utf8");
+const TYPES = sharedTypesSrc(ROOT);
 const CONSTS = readFileSync(
   join(ROOT, "packages/shared/src/utils/constants/index.ts"),
   "utf8",
@@ -27,14 +48,52 @@ function enumValues(name: string): string[] {
 
 /** 取某个常量对象的键集合 */
 function constKeys(name: string): string[] {
-  const m = CONSTS.match(new RegExp(`export const ${name} = \\{(.*?)\\} as const;`, "s"));
-  if (!m) throw new Error(`constants 里找不到 ${name}`);
-  return [...m[1]!.matchAll(/^\s*(\w+):/gm)].map((x) => x[1]!);
+  return constBody(name).map((e) => e.key);
 }
 
-/** 词典里所有反引号包起来的标识符 */
+/**
+ * 常量对象里的**值** —— 词典要收录的是这一侧。
+ *
+ * <p><b>为什么不是键。</b>MUST_COVER 原来用 `constKeys`，而这三个常量对象里
+ * `FULFILLMENT` 的键与值有两处不同（`PICKUP = "STORE_PICKUP"`、
+ * `DELIVERY = "MERCHANT_DELIVERY"`）。于是这条断言**要求词典写键名**，
+ * 而词典就照办了 —— §5 那一行列的是 `PICKUP` / `DELIVERY`，
+ * 照它写筛选条件（`?fulfillment=PICKUP`）必然筛不出东西。
+ *
+ * <p>断言本身的目的是「跨端沟通全靠这张表」，而跨端传的是**值**：
+ * 键只是端上代码里的叫法（词典 §3 规矩第 2 条明说键名随意）。
+ * 所以这里改成比值。`CATEGORY_TYPE` 与 `SERVICE_SCOPE` 键值相同，对它们是零变化。
+ */
+function constValues(name: string): string[] {
+  return constBody(name).map((e) => e.value);
+}
+
+function constBody(name: string): { key: string; value: string }[] {
+  const m = CONSTS.match(new RegExp(`export const ${name} = \\{(.*?)\\} as const;`, "s"));
+  if (!m) throw new Error(`constants 里找不到 ${name}`);
+  const out = [...m[1]!.matchAll(/^\s*(\w+):\s*"([^"]+)"/gm)].map((x) => ({
+    key: x[1]!,
+    value: x[2]!,
+  }));
+  // 少扫等于全绿：解析写挂时这里会是空数组，而「每个值都在词典里」照样通过
+  if (out.length === 0) throw new Error(`${name} 一个成员都没解析出来 —— 解析写挂了`);
+  return out;
+}
+
+/**
+ * 词典里所有反引号包起来的标识符 —— **不含 §11 状态词表**。
+ *
+ * <p>下面那一检的前提是「词典描述现状，所以词典里的标识符代码里必须有」。
+ * 这个前提对 §11 不成立：那张表是**规定**，不是记录 ——
+ * `PROCESSING` 是「该用但还没用到」，`DENIED` 是「明确不要用」。
+ * 把规定性的内容拿去和现状对账，只会逼着规范去追代码，
+ * 而这正是词典改为规定性要终结的那个方向（见词典头部）。
+ */
+const PRESCRIPTIVE = /## 11\. Status words[\s\S]*?\n(?=## 12\.)/;
 const quoted = new Set(
-  [...GLOSSARY.matchAll(/`([^`]+)`/g)].flatMap((m) => m[1]!.split(/[\s/|]+/)),
+  [...GLOSSARY.replace(PRESCRIPTIVE, "").matchAll(/`([^`]+)`/g)].flatMap((m) =>
+    m[1]!.split(/[\s/|]+/),
+  ),
 );
 
 describe("项目词典", () => {
@@ -45,11 +104,20 @@ describe("项目词典", () => {
     ["AfterSaleType", enumValues("AfterSaleType")],
     ["MerchantSubject", enumValues("MerchantSubject")],
     ["MerchantTier", enumValues("MerchantTier")],
-    ["FULFILLMENT", constKeys("FULFILLMENT")],
-    ["CATEGORY_TYPE", constKeys("CATEGORY_TYPE")],
-    ["SERVICE_SCOPE", constKeys("SERVICE_SCOPE")],
+    ["FULFILLMENT", constValues("FULFILLMENT")],
+    ["CATEGORY_TYPE", constValues("CATEGORY_TYPE")],
+    ["SERVICE_SCOPE", constValues("SERVICE_SCOPE")],
   ];
 
+  /*
+   * ⚠️ **粒度是「全文档出现过」，不是「写在那个词条那一行」。**
+   * 判据是 `GLOSSARY.includes(v)` —— 一个值只要在页面任何地方出现（哪怕在脚注里
+   * 被当反例提到），这条就通过。2026-09-06 实测：把 §5 履约那一行的 `STORE_PICKUP`
+   * 改回 `PICKUP`，断言**照样绿**，因为表下注里还有一处 `STORE_PICKUP`。
+   *
+   * 所以它保证的是「wire 取值被这一页记录过」，**不保证词条那一行写对了**。
+   * 后者要按行比对，那是另一条断言的事；在有人写之前，不要以为这条守着行内容。
+   */
   for (const [name, values] of MUST_COVER) {
     it(`${name} 的每个值都在词典里`, () => {
       const missing = values.filter((v) => !GLOSSARY.includes(v));
@@ -90,10 +158,24 @@ describe("项目词典", () => {
       "USER", // PickupPoint.ownerType
       "MERCHANT_OWNED",
       "PLATFORM", // trafficSource
+      // 端上键名（`FULFILLMENT.PICKUP` 这一侧）**允许**出现在词典里 —— 词典要解释
+      // 「键 ≠ 值」这件事就绕不开它们。但它们不是 wire 值，所以只在这里放行，
+      // 不进 MUST_COVER：词典**必须**收录的是值，键写不写随意。
+      ...constKeys("FULFILLMENT"),
+      ...constKeys("CATEGORY_TYPE"),
+      ...constKeys("SERVICE_SCOPE"),
     ]);
-    // 常量**组名**（FULFILLMENT / CATEGORY_TYPE…）本身就是词典要解释的对象，不是值
+    /*
+     * 常量**名**（FULFILLMENT / CATEGORY_TYPE / PLANNED_FULFILLMENTS…）本身就是
+     * 词典要解释的对象，不是取值。
+     *
+     * 原来只认 `export const X = {`（对象字面量），于是 `PLANNED_FULFILLMENTS`
+     * 这种 `export const X: readonly string[] = [` 被判成「代码里不存在」——
+     * 而它就在同一个文件里。断言的措辞是「在任何一端的代码里都不存在」，
+     * 而判据只是一张手工白名单：**措辞比判据宽，多出来的那部分就是误报**。
+     */
     const groupNames = new Set(
-      [...CONSTS.matchAll(/^export const ([A-Z_]+) = \{/gm)].map((m) => m[1]!),
+      [...CONSTS.matchAll(/^export const ([A-Z][A-Z0-9_]*)\s*[:=]/gm)].map((m) => m[1]!),
     );
     const ops = opsVocabulary();
     const invented = [...quoted].filter(
@@ -111,6 +193,62 @@ describe("后端验收清单与 mock 同步", () => {
   // 这份清单是后端的实现依据（`docs/api/后端验收清单.md`，由 npm run gen:spec 生成）。
   // 它一旦过期就是**有害的**：后端照着实现，结果 mock 早就改了规则 —— 联调时两边都觉得自己对。
   const SPEC = readFileSync(join(ROOT, "docs/api/后端验收清单.md"), "utf8");
+
+  /*
+   * 词典 §5 的**迁移边** ↔ 下发口径的状态机。
+   *
+   * <p>下面那条比的是 `mock TRANSITIONS ↔ 后端验收清单`（两份代码侧产物）。
+   * 词典这一侧此前只有**取值**被 MUST_COVER 管着，**边一条都没人比** ——
+   * 而词典是规定：它漂了，实现与规定就在无人知晓的情况下分了家。
+   *
+   * <p>2026-09-06 逐条比过：7 个状态、每条边都对得上，所以这条从第一天起是绿的。
+   * 先绿再挂 —— 恒红的闸门等于没有闸门。
+   *
+   * <p><b>比的必须是下发口径</b>（`OrderStatus` / mock `TRANSITIONS`），
+   * 不是 `OrderStateMachine.ORDER`：词典这一节的标题写着 `OrderStatus`，
+   * 而它自己注明「库里那一列存的是 WAIT_FULFILL，同一件事」——
+   * 库口径与下发口径是刻意分层的两张表，拿错一张来比会得到一堆假差异
+   * （我第一次就比错了，报出四条根本不存在的「不一致」）。
+   */
+  it("★★ 词典 §5 的状态迁移边与下发口径一致 —— 规定漂了没人知道", () => {
+    const db = readFileSync(join(ROOT, "packages/shared/src/mock/db.ts"), "utf8");
+    const blk = db.match(/const TRANSITIONS: Record<OrderStatus, OrderStatus\[\]> = \{(.*?)\n\};/s);
+    expect(blk, "TRANSITIONS 改名了，本判据读不到就等于没查").toBeTruthy();
+    const code = new Map<string, string[]>();
+    for (const m of blk![1]!.matchAll(/^\s*(\w+):\s*\[([^\]]*)\]/gm)) {
+      code.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
+    }
+
+    const sec = GLOSSARY.slice(
+      GLOSSARY.indexOf("### Order status"),
+      GLOSSARY.indexOf("> **订单状态里没有"),
+    );
+    const doc = new Map<string, string[]>();
+    for (const line of sec.split("\n")) {
+      const m = line.match(/^\|\s*`(\w+)`\s*\|(.*)\|([^|]*)\|\s*$/);
+      if (!m) continue;
+      doc.set(m[1]!, [...m[3]!.matchAll(/`(\w+)`/g)].map((x) => x[1]!));
+    }
+
+    // 少扫等于全绿：表格格式一改，doc 会是空 Map 而下面的差集照样为空
+    expect(doc.size, `词典 §5 只解析出 ${doc.size} 个状态，表格格式变了？`).toBe(code.size);
+
+    const diff: string[] = [];
+    for (const [state, tos] of code) {
+      const spec = doc.get(state);
+      if (!spec) { diff.push(`${state}：代码有、词典没有`); continue; }
+      const missing = tos.filter((t) => !spec.includes(t));
+      const extra = spec.filter((t) => !tos.includes(t));
+      if (missing.length || extra.length) {
+        diff.push(`${state}：代码多 [${missing.join(" ") || "—"}] · 词典多 [${extra.join(" ") || "—"}]`);
+      }
+    }
+    expect(
+      diff,
+      "词典 §5 的迁移边与下发口径对不上：\n  " + diff.join("\n  ") +
+        "\n词典是规定 —— 冲突时改代码、不改词典（见词典抬头）。",
+    ).toEqual([]);
+  });
 
   it("订单状态机与代码一致", () => {
     const db = readFileSync(join(ROOT, "packages/shared/src/mock/db.ts"), "utf8");
@@ -131,10 +269,19 @@ describe("后端验收清单与 mock 同步", () => {
     const count = (p: string) =>
       [...readFileSync(join(ROOT, p), "utf8").matchAll(/throw new Error\(\s*(`[^`]*`|"[^"]*")\s*\)/g)]
         .map((m) => m[1]!.slice(1, -1).replace(/\$\{[^}]*\}/g, "…"));
+    /*
+     * B 端替身 2026-09-03 按域拆到了 `b-app/src/api/mocks/`。
+     * **整个目录都要数**：只数原路径的话这一端一条都数不到，
+     * 而这条断言会「变绿」—— 少数等于没有规则，正是它最不该有的失败方式。
+     */
+    const countDir = (dir: string) =>
+      readdirSync(join(ROOT, dir))
+        .filter((f) => f.endsWith(".ts"))
+        .flatMap((f) => count(`${dir}/${f}`));
     const all = new Set([
       ...count("packages/shared/src/mock/db.ts"),
-      ...count("c-app/src/api/mock.ts"),
-      ...count("b-app/src/api/mock.ts"),
+      ...countDir("c-app/src/api/mocks"),
+      ...countDir("b-app/src/api/mocks"),
     ]);
     const declared = SPEC.match(/mock 里共强制 \*\*(\d+)\*\* 条拒绝规则/);
     expect(declared, "验收清单里找不到条数声明").toBeTruthy();

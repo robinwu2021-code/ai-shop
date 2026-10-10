@@ -1,0 +1,220 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>商品两页的微调</title>
+<!-- 真源在仓库 prototypes/goods-two-pages-tweaks.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.prose{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.prose p,.prose ul{margin:0}
+.cap ul{margin:6px 0 0;padding-inline-start:16px}
+.cap .after{color:var(--note);font-weight:600;margin-inline-start:8px}
+.grid.pair{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.fab{position:absolute;right:12px;bottom:12px;padding-inline:16px}
+.ops{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+.ops.wide{gap:20px}
+/* 点按区示意：sh-hit 的 ::after，各边 12px（0.8 缩放后约 10px） */
+.hit{position:relative}
+.showhit .hit::after{content:"";position:absolute;inset:-10px;background:var(--sh-success-tint);outline:1px dashed var(--sh-success-text);pointer-events:none}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 方案稿 · 2026-09-19</div>
+  <h1>商品两页的微调</h1>
+  <p class="sub">大布局不动：列表还是「搜索 → 状态页签 → 商品卡 → 悬浮新建」，编辑还是一页几张卡往下排。只动<b>积木与细节</b>，让它和营销那几页（活动、优惠券、建活动、建券）说同一种话。以生成版规范 <code>规范-字体 / 版面 / 组件</code> 为准，原型里的每个元素都对得上一个真类名。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">一</span><h2>对齐的是什么</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>位置</th><th>营销现在用</th><th>商品现在用</th><th>这次</th></tr>
+    <tr><td>列表 · 状态</td><td><code>sh-chip</code> · 进行中 <code>--success</code> · 要动手 <code>--warning</code></td><td>自画的圆点加字（<code>.state__dot</code>）</td><td>改</td></tr>
+    <tr><td>列表 · 行尾箭头</td><td>整卡可点，不画箭头；设置行用 <code>sh-icon chevronRight 22</code></td><td>字符「›」用 <code>txt-title</code> 画（17px 粗体）</td><td>改</td></tr>
+    <tr><td>列表 · 行内按钮</td><td>（活动与券的列表上没有行内按钮）</td><td><code>sh-btn--sm</code> 30px，缝 8px，<b>点按区不足 44</b></td><td>改</td></tr>
+    <tr><td>列表 · 新建</td><td>二级页：底部 <code>sh-actionbar</code></td><td>一级页：右下 <code>sh-fab</code></td><td>不动 · 一级页只有它，也只该是它</td></tr>
+    <tr><td>编辑 · 保存</td><td><code>sh-actionbar</code> 贴底：取消（<code>--muted</code>）＋ 保存（主）</td><td>页面最末尾一颗 <code>sh-btn</code>，下面压一行灰字</td><td>改</td></tr>
+    <tr><td>编辑 · 草稿提示</td><td>状态提示用 <code>sh-notice--warning</code>，放在页顶</td><td>「保存为草稿，发布后生效」灰字压在按钮下</td><td>改</td></tr>
+    <tr><td>编辑 · 单选切换</td><td><code>sh-seg</code>（弱色底、选中翻主色）</td><td>价格卡「售价 / 成本价 / 划线价」用 <code>sh-chip</code> 冒充</td><td>改</td></tr>
+    <tr><td>编辑 · 表单行</td><td><code>sh-cells</code>：标签在左、值在右</td><td><code>field__label</code> 在上、<code>field__input</code> 在下</td><td>不动 · 这是大布局</td></tr>
+    <tr><td>编辑 · 节名</td><td>建活动第一步叫「基本信息」</td><td>「商品信息」</td><td>改</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">二 · 01 — 02</span><h2>商品列表</h2></div>
+  <div class="grid pair">
+
+    <figure id="s01">
+      <div class="ph showhit">
+        <div class="nav"><span></span><span class="t">商品</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">搜索商品名称</span></div></div>
+          <div class="tabs"><span class="on">全部</span><span>在售</span><span>草稿</span><span>审核中</span><span>已驳回</span></div>
+          <div class="card">
+            <div class="hd">
+              <span class="img" style="width:36px;height:36px;flex:none">🍎</span>
+              <div style="flex:1;min-width:0"><div class="nm">山东烟台红富士苹果</div>
+                <div class="meta"><b class="num" style="color:var(--sh-primary-text)">¥29.80</b> · <span class="num">库存 280</span></div></div>
+              <span class="meta" style="color:var(--sh-success-text)">● 在售</span><b>›</b>
+            </div>
+            <div class="ops">
+              <span class="chip hit" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">下架</span><span class="chip hit">改库存</span><span class="chip hit">分享</span>
+            </div>
+          </div>
+        </div>
+        <span class="btn fab">＋ 新建商品</span>
+      </div>
+      <figcaption class="cap"><b>01 商品列表 · 现在</b>208c1e25 上线后
+        <ul>
+          <li>绿框示意<strong>若直接挂 <code>sh-hit</code></strong> 的点按区：三颗按钮之间只有 8px 缝，相邻的点按区<strong>叠住 16px</strong>，点在缝里会命中右边那颗</li>
+          <li>状态是一个自画的圆点，营销那边同样的信息是一颗 chip</li>
+          <li>行尾「›」是 17px 粗体字符，全仓行尾箭头的规矩是 <code>sh-icon</code> 22rpx</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph showhit">
+        <div class="nav"><span></span><span class="t">商品</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">搜索商品名称</span></div></div>
+          <div class="tabs"><span class="on">全部</span><span>在售</span><span>草稿</span><span>审核中</span><span>已驳回</span></div>
+          <div class="card">
+            <div class="hd">
+              <span class="img" style="width:36px;height:36px;flex:none">🍎</span>
+              <div style="flex:1;min-width:0"><div class="nm">山东烟台红富士苹果</div>
+                <div class="meta"><b class="num" style="color:var(--sh-primary-text)">¥29.80</b> · <span class="num">库存 280</span></div></div>
+              <span class="chip ok">在售</span><span class="meta">❯</span>
+            </div>
+            <div class="ops wide">
+              <span class="chip hit" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">下架</span><span class="chip hit">改库存</span><span class="chip hit">分享</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="hd">
+              <span class="img" style="width:36px;height:36px;flex:none">🥬</span>
+              <div style="flex:1;min-width:0"><div class="nm">本地绿叶菜组合</div>
+                <div class="meta"><b class="num" style="color:var(--sh-primary-text)">¥12.80</b> · <span style="color:var(--sh-primary-text)">缺货</span></div></div>
+              <span class="chip warn">已驳回</span><span class="meta">❯</span>
+            </div>
+            <div class="meta" style="color:var(--sh-warning-text)">图片不清晰，请重新上传主图</div>
+          </div>
+        </div>
+        <span class="btn fab">＋ 新建商品</span>
+      </div>
+      <figcaption class="cap"><b>02 商品列表 · 微调后<span class="after">布局不变</span></b>
+        <ul>
+          <li><strong>状态 → <code>sh-chip</code></strong>：在售 <code>--success</code>；已驳回 <code>--warning</code>（等他动手，与活动「未设上限」同一档）；草稿 / 审核中 / 已下架用素色 chip</li>
+          <li><strong>按钮挂 <code>sh-hit</code>，缝 8 → 24px</strong>：视觉仍是 30px，点按区 54px，且互不相叠。一行三颗宽 175 + 48 = 223px，卡内有 327px，放得下</li>
+          <li><strong>行尾箭头 → <code>sh-icon chevronRight :size="22"</code></strong>，与设置行、营销入口同一个件</li>
+          <li>悬浮新建、搜索、页签、卡片结构全部不动</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">三 · 03 — 04</span><h2>编辑商品</h2></div>
+  <div class="grid pair">
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">商品信息</div>
+            <div class="gt">商品名称</div>
+            <div class="img" style="height:30px;justify-content:flex-start;padding-inline:10px;color:var(--sh-ink)">山东烟台红富士苹果</div>
+            <div><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">从标准品填充</span></div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 图文详情 · 类目与配送 · 规格 · 参数 ⋯</div>
+          <div class="card">
+            <div class="nm">价格</div>
+            <div><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">售价</span> <span class="chip">成本价</span> <span class="chip">划线价</span></div>
+            <div class="frow"><span>约 5 斤</span><span class="v num">¥ 29.80</span></div>
+            <div class="frow"><span>约 10 斤</span><span class="v num">¥ 55.00</span></div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 库存 · 商品编码 ⋯</div>
+          <div class="btn">保存</div>
+          <div class="meta" style="text-align:center">保存为草稿，发布后生效</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 编辑商品 · 现在 · 顶与底</b>1988px，约 2.5 屏
+        <ul>
+          <li>保存键在第 2.5 屏的最末尾：改完价格还要往下滚过库存与编码才按得到</li>
+          <li>「这次保存只是草稿」这件要紧的事，压在按钮<strong>下面</strong>，按之前看不到</li>
+          <li>价格三选一的切换用 chip 画，长得和「履约方式」那排多选一样</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">编辑商品</span><span></span></div>
+        <div class="scr">
+          <div class="note">在售中 · 保存为草稿，发布后生效</div>
+          <div class="card">
+            <div class="nm">基本信息</div>
+            <div class="gt">商品名称</div>
+            <div class="img" style="height:30px;justify-content:flex-start;padding-inline:10px;color:var(--sh-ink)">山东烟台红富士苹果</div>
+            <div><span class="chip" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">从标准品填充</span></div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 图文详情 · 类目与配送 · 规格 · 参数 ⋯</div>
+          <div class="card">
+            <div class="nm">价格</div>
+            <div class="seg"><span class="on">售价</span><span>成本价</span><span>划线价</span></div>
+            <div class="frow"><span>约 5 斤</span><span class="v num">¥ 29.80</span></div>
+            <div class="frow"><span>约 10 斤</span><span class="v num">¥ 55.00</span></div>
+          </div>
+          <div class="meta" style="text-align:center">⋯ 库存 · 商品编码 ⋯</div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存</div></div>
+      </div>
+      <figcaption class="cap"><b>04 编辑商品 · 微调后 · 顶与底<span class="after">布局不变</span></b>
+        <ul>
+          <li><strong>保存 → <code>sh-actionbar</code></strong>：贴底常驻，左「取消」<code>--muted</code>、右「保存」主色 —— 与建活动、建券一模一样</li>
+          <li><strong>草稿提示 → 页顶 <code>sh-notice--warning</code></strong>，只在编辑在售商品时出现；新建与草稿商品不出</li>
+          <li><strong>价格切换 → <code>sh-seg</code></strong>：三选一是分段，不是标签；多选的「配送方式」「规格」仍用 chip</li>
+          <li><strong>「商品信息」→「基本信息」</strong>，与建活动第一步同名</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">四</span><h2>改动清单（照这张落地）</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>#</th><th>页</th><th>改什么</th><th>用的积木</th><th>依据</th></tr>
+    <tr><td class="num">1</td><td>列表</td><td>状态圆点 → chip；在售 success、已驳回 warning、其余素色</td><td><code>sh-chip</code> <code>--success</code> <code>--warning</code></td><td>组件规范 · 标签用 tint 色块</td></tr>
+    <tr><td class="num">2</td><td>列表</td><td>行尾字符「›」→ 图标</td><td><code>sh-icon chevronRight :size="22"</code></td><td>版面闸门 · 行尾箭头只有一个尺寸</td></tr>
+    <tr><td class="num">3</td><td>列表</td><td>行内按钮挂点按区，缝 8 → 24px</td><td><code>sh-hit</code>，<code>.row__btns</code> 的 gap 16 → 48rpx</td><td>版面 · 可点元素不小于 88rpx</td></tr>
+    <tr><td class="num">4</td><td>编辑</td><td>底部保存 → 贴底操作条，加「取消」</td><td><code>sh-actionbar</code> + <code>sh-btn--muted</code> / <code>sh-btn</code></td><td>与 activity-edit / coupon-edit 同位</td></tr>
+    <tr><td class="num">5</td><td>编辑</td><td>草稿提示从按钮下挪到页顶，只在在售商品出现</td><td><code>sh-notice sh-notice--warning</code></td><td>状态写在动手之前，不写在之后</td></tr>
+    <tr><td class="num">6</td><td>编辑</td><td>价格卡三选一的切换</td><td><code>sh-seg</code> / <code>--on</code></td><td>版面 · 分段格与筛选 chip 分工</td></tr>
+    <tr><td class="num">7</td><td>编辑</td><td>单独出现的小按钮挂点按区（从标准品填充 / 自动生成 / 统一填入）</td><td><code>sh-hit</code></td><td>同 3</td></tr>
+    <tr><td class="num">8</td><td>编辑</td><td>节名「商品信息」→「基本信息」（三语同批）</td><td>词条 <code>goods.secBasic</code></td><td>与建活动第一步同名</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">五</span><h2>明确不动的</h2></div>
+  <div class="prose">
+    <p><b>列表</b>：搜索框、七个状态页签、「图 + 名 + 价/库存」加下排按钮的两段卡、右下悬浮新建、「更多」的收纳规则。悬浮新建不挪进底部通栏 —— 全仓只有商品列表是带底部菜单的一级页，通栏叠在底部菜单上会吃掉 130px。</p>
+    <p><b>编辑</b>：八张卡的顺序与内容、「标签在上、输入在下」的表单形态、类目与规格的 chip 选择、图片上传。营销的编辑页用 <code>sh-cells</code>（标签左、值右），那是另一种布局，不在这次范围。</p>
+    <p><b>数据与接口</b>：一个都不动。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">六</span><h2>顺带查出来的一处闸门盲区</h2></div>
+  <p class="why">「可点元素不小于 88rpx」这条闸门只扫<b>页面自己 CSS 里同时写死 width 与 height 的类</b>。靠 padding 撑开的库件（<code>sh-btn--sm</code>、<code>sh-chip</code>）它一个都看不到 —— 所以商品列表那三颗 30px 的按钮闸门全绿，改之前 25px 的 <code>.mini</code> 也全绿。第 3、7 条修的就是它漏掉的那一类。闸门本身要不要补，是另一件事，这份不动它。</p>
+</section>
+
+<footer>真源：prototypes/goods-two-pages-tweaks.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj">https://claude.ai/artifact/Qfp4NvR21dgYH7ksi7H5Dj</a> · 相关文档：docs/technical/design/规范-字体.md ／ 规范-版面.md ／ 规范-组件.md</footer>
+</div>
+</html>

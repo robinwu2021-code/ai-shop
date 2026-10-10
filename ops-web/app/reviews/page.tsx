@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { REVIEWS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { SCORE_WEIGHT_TOTAL } from "@/lib/constants";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -27,17 +27,13 @@ import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { Pagination, IdCell } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof REVIEWS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "audit", label: c.tabAudit },
-  { key: "appeals", label: c.tabAppeals },
-  { key: "score", label: c.tabScore },
-];
+const TAB_KEYS = ["audit", "appeals", "score"] as const;
 
 const RISKY_OPTIONS = (c: Copy) => [{ value: "1", label: c.riskyOnly }];
 
@@ -50,7 +46,7 @@ export default function ReviewsPage() {
 
 function ReviewsInner() {
   const c = useCopy(REVIEWS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/reviews", TAB_KEYS);
   const riskyOptions = RISKY_OPTIONS(c);
   const qc = useQueryClient();
   const allow = useCan();
@@ -59,7 +55,18 @@ function ReviewsInner() {
 
   const { page, setPage, size, setSize } = usePaging();
   const [keyword, setKeyword] = useState("");
-  const [status, setStatus] = useState("PENDING");
+  /*
+   * **默认看全部，不是「待审核」**。
+   *
+   * 这一版是**先发后审**：后端 `ReviewServiceImpl.create()` 直接落 `PASSED`，
+   * 从来不产生 `PENDING`（P-13.1.1 的敏感词/风控入队还没做）。
+   * 默认筛 PENDING 的结果是：运营每次打开这一页都看到「待审队列已清空」，
+   * 而库里躺着几十条评价 —— 他会以为审核功能在正常空转，直到有人投诉才发现
+   * 从没审过任何一条。
+   *
+   * 敏感词入队做出来之后，把这里改回 PENDING，并同步改 emptyAudit 的文案。
+   */
+  const [status, setStatus] = useState("");
   const [risky, setRisky] = useState("");
   const [current, setCurrent] = useState<Review | null>(null);
   const [reason, setReason] = useState("");
@@ -122,7 +129,7 @@ function ReviewsInner() {
   });
 
   const reviewColumns: Column<Review>[] = [
-    { header: c.colReviewNo, cell: (r) => r.reviewNo, numeric: true, align: "start" },
+    { header: c.colReviewNo, cell: (r) => <IdCell value={r.reviewNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (r) => r.merchantName },
     { header: c.colScore, cell: (r) => <span title={fill(c.scoreTitle, { n: r.score })}>{stars(r.score)}</span> },
     {
@@ -149,7 +156,7 @@ function ReviewsInner() {
   const appealColumns: Column<ReviewAppeal>[] = [
     { header: c.colAppealNo, cell: (a) => a.appealNo, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
-    { header: c.colRelatedReview, cell: (a) => a.reviewNo, numeric: true, align: "start" },
+    { header: c.colRelatedReview, cell: (a) => <IdCell value={a.reviewNo} />, numeric: true, align: "start" },
     {
       header: c.colReason,
       width: "24rem",
@@ -342,7 +349,16 @@ function ReviewsInner() {
       >
         {appeal && (
           <div>
-            <Field label={c.colRelatedReview}>{appeal.reviewNo}</Field>
+            {/* **被申诉的那条评价要先出现**：裁决人判的是它，不是申诉书。
+                只给单号的话，他要切页签、改筛选、自己去列表里找 ——
+                实际发生的是没人去找，于是裁决只听得到商家一方的陈述。 */}
+            <Field label={c.colRelatedReview}>
+              <span className="text-muted-foreground">{appeal.reviewNo}</span>
+              <p className="mt-1 whitespace-pre-wrap">
+                <span className="mr-2">{"★".repeat(appeal.reviewRating)}{"☆".repeat(Math.max(0, 5 - appeal.reviewRating))}</span>
+                {appeal.reviewContent}
+              </p>
+            </Field>
             <Field label={c.fieldAppealReason}><p className="whitespace-pre-wrap">{appeal.reason}</p></Field>
             <Field label={c.fieldEvidence}>{appeal.evidenceCount ? fill(c.evidenceCount, { n: appeal.evidenceCount }) : c.none}</Field>
             <Field label={c.fieldVerdict}>

@@ -2,7 +2,7 @@
 import * as db from "@/lib/mock/db";
 import { STUCK_MINUTES } from "@/lib/constants";
 import { ORDER_TRANSITIONS } from "@/lib/types";
-import type { ExceptionKind, Order, OrderException } from "@/lib/types";
+import type { ExceptionKind, Order, OrderException, ProxyLimit } from "@/lib/types";
 import type { OrderApi } from "../contracts/order";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -25,9 +25,20 @@ function toException(o: Order): OrderException | null {
   const stuckMinutes = Math.floor((Date.now() - new Date(since).getTime()) / 60_000);
   if (stuckMinutes <= thresholdMinutes) return null;
   // 待支付超时还没关单 = 关单任务本身出了问题，与"卡住"不是一回事，处置也不同
-  const kind: ExceptionKind = o.status === "PENDING_PAY" ? "PAY_TIMEOUT" : "STUCK";
+  const kind: ExceptionKind = o.status === "WAIT_PAY" ? "PAY_TIMEOUT" : "STUCK";
   return { order: o, kind, stuckMinutes, thresholdMinutes };
 }
+
+/**
+ * 代客下单能选的履约方式：**到点自取那几种**。
+ * 快递 / 自送 / 上门都要收货地址，而地址是顾客的个人信息、客服也没法当面核对。
+ */
+/** 代客限额（mock 内存态）。默认与后端出厂值一致：单笔 2000 元 · 每人每天 20 笔 */
+const proxyLimit: ProxyLimit = {
+  maxAmountMinor: 200_000, maxPerDay: 20, updatedAt: null, updatedBy: null,
+};
+
+const PROXY_FULFILLMENTS = ["STORE_PICKUP", "NEIGHBOR_PICKUP", "STORE_VERIFY"];
 
 export const orderMock: OrderApi = {
   listOrders: (q = {}) =>
@@ -92,15 +103,36 @@ export const orderMock: OrderApi = {
     return wait(o, 350);
   },
 
-  createProxyOrder: async ({ buyerNickname, communityNo, merchantNo, fulfillType, items, reason }) => {
-    if (!buyerNickname.trim()) fail("请填写下单人", "Enter who the order is for");
+  getProxyLimit: async () => wait({ ...proxyLimit }),
+
+  saveProxyLimit: async (v) => {
+    // 与后端同一条：0 不是「不限」而是把整条路关死 —— 想关功能该去收权限码
+    if (!(v.maxAmountMinor > 0) || !(v.maxPerDay > 0)) {
+      fail("限额必须大于 0", "Both limits have to be greater than zero");
+    }
+    Object.assign(proxyLimit, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    return wait({ ...proxyLimit }, 300);
+  },
+
+  createProxyOrder: async ({ userNo, phone, merchantNo, fulfillType, payMode, items, reason }) => {
+    /*
+     * 顾客要么是人档里的 userNo，要么是一个完整手机号（后端按它建号）。
+     * 两个都没有 = 一张没有主人的订单：顾客看不到、付不了、也退不了。
+     */
+    if (!userNo?.trim() && !/^\d{11}$/.test(phone?.trim() ?? "")) {
+      fail("请先选顾客，或填写完整手机号", "Pick the customer, or type their full phone number");
+    }
     if (!reason.trim()) fail("代客下单必须写原因 —— 它绕过了用户自主下单", "A proxy order needs a reason — it bypasses the customer ordering for themselves");
     if (!items.length) fail("至少要选一个商品", "Pick at least one item");
+    // 快递/自送/上门要收货地址，而客服不该替顾客填地址（也没法核对）
+    if (!PROXY_FULFILLMENTS.includes(fulfillType)) {
+      fail("代客下单只能选到点自取：要送货得顾客自己在 App 里下，地址得他自己选", "Proxy orders are pickup-only — delivery needs the customer to place it themselves so they pick the address");
+    }
 
-    const community = db.communities.find((x) => x.communityNo === communityNo);
-    if (!community) notFound("社区", "Community", communityNo);
     const merchant = db.merchants.find((x) => x.merchantNo === merchantNo);
     if (!merchant) notFound("商家", "Merchant", merchantNo);
+    const person = db.opsMembers.find((m) => "U-" + m.personNo === userNo);
+    const tail = person?.phoneTail ?? phone?.slice(-4);
 
     const lines = items.map(({ skuNo, qty }) => {
       const sku = db.skus.find((x) => x.skuNo === skuNo);
@@ -123,18 +155,22 @@ export const orderMock: OrderApi = {
     const order: Order = {
       orderNo: `SO${now.slice(0, 10).replace(/-/g, "")}P${seq}`,
       parentNo: `PO${now.slice(0, 10).replace(/-/g, "")}P${seq}`,
-      status: "PENDING_PAY", // 代客下单**不代付款**：钱必须由用户自己付
+      // 代客下单**不代付款**：线下付落「待线下付」（当面付给商家），线上付落「待支付」
+      status: payMode === "OFFLINE" ? "WAIT_OFFLINE_PAY" : "WAIT_PAY",
       merchantNo, merchantName: merchant.name,
-      communityNo, communityName: community.name,
-      fulfillType, trafficSource: "PLATFORM",
-      buyerNickname: buyerNickname.trim(),
+      communityNo: "", communityName: "",
+      fulfillType,
+      // 归因照常按顾客算 —— 硬写 PLATFORM 会让商家为自己带来的客人多付佣金。
+      // mock 里没有归因数据，所以留空由后端决定，不在这儿编一个
+      trafficSource: "PLATFORM",
+      buyerNickname: tail ? `尾号 ${tail}` : (userNo ?? ""),
       items: lines.map((x) => x.line),
       payAmount: lines.reduce((s, x) => s + x.line.price * x.line.qty, 0),
       createdAt: now, paidAt: null, statusAt: now,
     };
     db.orders.unshift(order);
     db.orderInterventions.unshift({
-      orderNo: order.orderNo, from: "PENDING_PAY", to: "PENDING_PAY",
+      orderNo: order.orderNo, from: "WAIT_PAY", to: "WAIT_PAY",
       remark: `代客下单：${reason.trim()}`, operator: "admin", at: now,
     });
     return wait(order, 400);

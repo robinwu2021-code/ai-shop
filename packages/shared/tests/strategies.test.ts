@@ -44,3 +44,23 @@ describe("结算参数：占位值也要守住方向", () => {
     expect(SETTLE.fulfillFeePerItemMinor).toBeGreaterThan(0);
   });
 });
+
+import { showVerifyCode } from "@shared/strategies/order-view";
+
+describe("核销码/取货码显示：快递单不显示码（ADR 无，2026-10-09 用户：快递单的取货码像假数据）", () => {
+  it("自提 / 到店核销：显示码", () => {
+    expect(showVerifyCode("NORMAL", FULFILLMENT.PICKUP)).toBe(true);
+    expect(showVerifyCode("NORMAL", FULFILLMENT.NEIGHBOR_PICKUP)).toBe(true);
+    expect(showVerifyCode("NORMAL", FULFILLMENT.STORE_VERIFY)).toBe(true);
+  });
+
+  it("★ 快递 / 配送：送到买家手上，没有核销这一步，不显示码", () => {
+    expect(showVerifyCode("NORMAL", FULFILLMENT.EXPRESS)).toBe(false);
+    expect(showVerifyCode("NORMAL", FULFILLMENT.DELIVERY)).toBe(false);
+  });
+
+  it("虚拟 / 卡券：兑换码，与履约方式无关，始终显示", () => {
+    expect(showVerifyCode("VIRTUAL", FULFILLMENT.EXPRESS)).toBe(true);
+    expect(showVerifyCode("CARD", FULFILLMENT.DELIVERY)).toBe(true);
+  });
+});

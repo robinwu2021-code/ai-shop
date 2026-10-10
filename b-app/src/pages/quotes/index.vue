@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MERCHANT_LOGO_FALLBACK } from "@shared/utils/constants";
 // 邻里求团报价（B-11.6.3~6.5）。
 //
 // 这是平台区别于社区团购的那条线：需求先于供给，邻居先发「想买床垫」，商家再来报价。
@@ -30,9 +31,20 @@ function myQuote(r: GroupRequest): Quote | undefined {
 
 const canQuote = computed(() => merchant.isActive);
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  editing.value = "";
-  list.value = await api.mRequestList();
+  try {
+    editing.value = "";
+    list.value = await api.mRequestList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 function start(r: GroupRequest) {
@@ -71,20 +83,18 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="quotes.title">
-    <text class="sh-h1">{{ $t("quotes.title") }}</text>
-    <text class="sh-muted intro">{{ $t("quotes.intro") }}</text>
+  <sh-scaffold title-key="quotes.title" :denied="!merchant.can('biz:campaign')">
+    <text class="txt-display">{{ $t("quotes.title") }}</text>
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("quotes.empty")'></sh-empty>
 
-    <sh-empty v-if="!list.length" :text='$t("quotes.empty")'></sh-empty>
-
-    <view v-for="r in list" :key="r.requestNo" class="sh-card item">
-      <view class="item__head">
-        <text class="item__title">{{ r.title }}</text>
+    <view v-for="r in list" :key="r.requestNo" class="sh-card sh-mt-sm">
+      <view class="item__head sh-row sh-row--between">
+        <text class="txt-body item__title">{{ r.title }}</text>
         <text class="sh-chip sh-chip--primary">{{ $t("quotes.wanted", { n: r.interestedCount }) }}</text>
       </view>
       <text class="sh-muted item__desc">{{ r.desc }}</text>
 
-      <view class="meta">
+      <view class="meta sh-wrap">
         <text class="sh-muted">{{ $t("quotes.expectQty") }} {{ r.expectQty }}</text>
         <text v-if="r.budgetMinor" class="sh-muted sh-num">
           {{ $t("quotes.budget") }} {{ money(r.budgetMinor) }}
@@ -100,24 +110,24 @@ onShow(load);
           class="quote"
           :class="{ 'is-mine': q.merchant.merchantNo === merchant.profile?.merchantNo }"
         >
-          <view class="quote__l">
-            <text class="quote__name">
-              {{ q.merchant.logo }} {{ q.merchant.name }}
-              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="mine-tag">
+          <view class="sh-fill">
+            <text class="txt-strong quote__name">
+              {{ q.merchant.logo || MERCHANT_LOGO_FALLBACK }} {{ q.merchant.name }}
+              <text v-if="q.merchant.merchantNo === merchant.profile?.merchantNo" class="txt-caption mine-tag txt-primary">
                 {{ $t("quotes.mine") }}
               </text>
             </text>
             <text class="sh-muted">{{ $t("quotes.minCount") }} {{ q.minCount }} · {{ q.desc || "—" }}</text>
             <!-- 只公示涨价：曾报 ¥X -->
-            <text v-if="q.revisions.length" class="raised sh-num">
+            <text v-if="q.revisions.length" class="txt-caption raised sh-num">
               {{ $t("quotes.raised", { p: money(q.revisions[q.revisions.length - 1]!.priceMinor) }) }}
             </text>
-            <text v-if="q.merchant.breachCount" class="breach">
+            <text v-if="q.merchant.breachCount" class="txt-caption breach">
               {{ $t("quotes.breach", { n: q.merchant.breachCount }) }}
             </text>
           </view>
           <view class="quote__r">
-            <text class="quote__p sh-num">{{ money(q.priceMinor) }}</text>
+            <text class="txt-body quote__p sh-num">{{ money(q.priceMinor) }}</text>
             <text v-if="q.locked" class="sh-chip">{{ $t("quotes.locked") }}</text>
           </view>
         </view>
@@ -126,21 +136,21 @@ onShow(load);
       <template v-if="editing === r.requestNo">
         <view class="field">
           <text class="field__label">{{ $t("quotes.price") }}</text>
-          <input v-model="form.price" class="field__input sh-num" type="digit" />
+          <input maxlength="10" v-model="form.price" class="field__input sh-num" type="digit" />
         </view>
         <view class="field">
           <text class="field__label">{{ $t("quotes.minCount") }}</text>
-          <input v-model="form.minCount" class="field__input sh-num" type="number" />
+          <input maxlength="6" v-model="form.minCount" class="field__input sh-num" type="number" />
         </view>
         <view class="field">
           <text class="field__label">{{ $t("quotes.desc") }}</text>
-          <input v-model="form.desc" class="field__input" :placeholder="$t('quotes.descPh')" />
+          <input maxlength="255" v-model="form.desc" class="field__input" :placeholder="$t('quotes.descPh')" />
         </view>
         <view class="btns">
-          <text class="btn btn--ghost" @tap="editing = ''">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submit(r)">{{ $t("quotes.submit") }}</text>
+          <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="editing = ''">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submit(r)">{{ $t("quotes.submit") }}</text>
         </view>
-        <text class="tip">{{ $t("quotes.lockHint") }}</text>
+        <text class="sh-hint sh-mt-sm">{{ $t("quotes.lockHint") }}</text>
       </template>
 
       <view v-else-if="canQuote" class="sh-btn sh-btn--soft act" @tap="start(r)">
@@ -151,39 +161,19 @@ onShow(load);
 </template>
 
 <style scoped>
-.intro {
-  display: block;
-  margin: 12rpx 8rpx 0;
-  line-height: 1.6;
-}
-.item {
-  margin-top: 14rpx;
-}
-.item__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .item__title {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .item__desc {
   display: block;
-  margin-top: 10rpx;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
 .meta {
-  display: flex;
-  flex-wrap: wrap;
   gap: 20rpx;
   margin-top: 16rpx;
 }
 .quotes {
-  margin-top: 24rpx;
+  margin-top: 16rpx;
 }
 .quote {
   display: flex;
@@ -196,30 +186,18 @@ onShow(load);
   border-radius: 24rpx;
   padding: 20rpx 24rpx;
 }
-.quote__l {
-  flex: 1;
-  min-width: 0;
-}
+
 .quote__name {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.mine-tag {
-  font-size: 24rpx;
-  color: var(--sh-primary);
 }
 .raised {
   display: block;
-  margin-top: 6rpx;
-  font-size: 24rpx;
+  margin-top: 8rpx;
   color: var(--sh-warning);
 }
 .breach {
   display: block;
   margin-top: 4rpx;
-  font-size: 24rpx;
   color: var(--sh-danger);
 }
 .quote__r {
@@ -227,9 +205,6 @@ onShow(load);
 }
 .quote__p {
   display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .btns {
   display: flex;
@@ -239,25 +214,10 @@ onShow(load);
 .btn {
   flex: 1;
   text-align: center;
-  padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
+  padding: 24rpx 0;
 }
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
-}
+
 .act {
   margin-top: 24rpx;
-}
-.tip {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

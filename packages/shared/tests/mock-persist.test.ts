@@ -8,6 +8,7 @@
 // 这个测试守的就是这条对称性：**写进去的一定读得回来**。
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, persist, restoreDb } from "@shared/mock/db";
+import { MOCK_DB_KEY } from "@shared/utils/constants";
 import { clearStorage } from "./setup";
 
 /** persist 有 60ms 防抖（合并连续写），测试要等它真的落盘 */
@@ -94,7 +95,9 @@ describe("mock 落盘：写进去的读得回来", () => {
   it("新增一个 db 字段时默认就会被持久化（防的是白名单漏配）", async () => {
     // 这条断言的对象不是某个具体字段，而是**策略本身**：
     // 只要不在 TRANSIENT 名单里，就该进落盘。以前是反过来的 —— 不在白名单里就丢。
-    const raw = () => JSON.parse((uni.getStorageSync("sh_mock_db") as string) || "{}");
+    // 用常量而不是字面量 "sh_mock_db"：key 现在还带数据源后缀（mock/real 各一套存储空间），
+    // 硬编码的话改名当天这条断言会变成"读了个不存在的 key、拿到 {}"，然后指责落盘没生效
+    const raw = () => JSON.parse((uni.getStorageSync(MOCK_DB_KEY) as string) || "{}");
 
     persist();
     await flush();

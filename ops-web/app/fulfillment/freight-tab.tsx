@@ -12,10 +12,11 @@ import { notify } from "@/lib/notify";
 import { fill } from "@/lib/use-copy";
 import { money } from "@/lib/utils";
 import { MINOR_UNIT } from "@/lib/constants";
-import type { FreightTemplate, OutOfRangeAction, OutOfRangeRule } from "@/lib/types";
+import type { FreightDraft, FreightProvincePrice, FreightTemplate, OutOfRangeAction, OutOfRangeRule } from "@/lib/types";
+import { FreightDraftRows } from "./freight-draft-rows";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Toolbar } from "@/components/ui/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,28 @@ interface Form {
   freeThreshold: string;
   isDefault: boolean;
   outOfRange: OutOfRangeRule[];
+  /** 从快递100 生成时带着各省原始报价，给运营核对；手建 / 编辑已有模板时为空 */
+  draftRows?: FreightProvincePrice[];
+  draftUnquoted?: number;
 }
+
+/** 从快递100 生成：发货地址 + 快递公司 + 首重 / 续重（克） */
+interface DraftForm {
+  origin: string;
+  carrier: string;
+  firstWeightGram: string;
+  addWeightGram: string;
+}
+
+/** 快递100 能叫的快递公司（与后端 Kuaidi100PickupGateway.CODES 同一份，微信 delivery_id）；名称在 copy 里 */
+const DRAFT_CARRIERS = ["ZTO", "YTO", "YD", "STO", "JTSD", "JD", "DBL", "EMS"] as const;
+
+const fromDraft = (d: FreightDraft): Form => ({
+  name: d.name, firstWeightGram: String(d.firstWeightGram), firstFee: toYuan(d.firstFee),
+  addWeightGram: String(d.addWeightGram), addFee: toYuan(d.addFee), freeThreshold: "0",
+  isDefault: false, outOfRange: d.outOfRange.map((r) => ({ ...r })),
+  draftRows: d.rows, draftUnquoted: d.unquoted,
+});
 
 const blank: Form = {
   name: "", firstWeightGram: "1000", firstFee: "8",
@@ -58,6 +80,22 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const qc = useQueryClient();
   const { confirm, dialog } = useConfirm();
   const [editing, setEditing] = useState<Form | null>(null);
+  const [drafting, setDrafting] = useState<DraftForm | null>(null);
+
+  // 生成草稿：31 省 × 2 个重量向快递100 查价，结果填进编辑抽屉，**运营核对后再保存**
+  const draft = useMutation({
+    mutationFn: () => api.draftFreightTemplate({
+      origin: drafting!.origin.trim(),
+      carrier: drafting!.carrier,
+      firstWeightGram: Number(drafting!.firstWeightGram),
+      addWeightGram: Number(drafting!.addWeightGram),
+    }),
+    onSuccess: (d) => {
+      setDrafting(null);
+      setEditing(fromDraft(d));
+      notify.success(c.toastDraftReady);
+    },
+  });
 
   const list = useQuery({ queryKey: ["freight-templates"], queryFn: () => api.listFreightTemplates() });
   const done = () => { qc.invalidateQueries({ queryKey: ["freight-templates"] }); setEditing(null); };
@@ -134,10 +172,17 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.freightNotice}</Notice>
-      <Toolbar onAdd={() => setEditing({ ...blank })} addLabel={c.actionNewTemplate} canAdd={canEdit} />
+      <HelpNote className="mb-3">{c.freightNotice}</HelpNote>
+      <Toolbar onAdd={() => setEditing({ ...blank })} addLabel={c.actionNewTemplate} canAdd={canEdit}>
+        {canEdit && (
+          <Button size="sm" variant="secondary" className="ms-auto"
+            onClick={() => setDrafting({ origin: "", carrier: "ZTO", firstWeightGram: "1000", addWeightGram: "1000" })}>
+            {c.actionDraftFromKd100}
+          </Button>
+        )}
+      </Toolbar>
       <DataTable
-        columns={columns} rows={list.data} loading={list.isLoading}
+        columns={columns} rows={list.data?.records} loading={list.isLoading}
         error={list.error} onRetry={() => list.refetch()}
         rowKey={(t) => t.templateNo}
         empty={c.emptyTemplate}
@@ -188,6 +233,13 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
               </div>
             </DrawerSection>
 
+            {editing.draftRows && (
+              <DrawerSection title={fill(c.secDraftRows, { n: editing.draftUnquoted ?? 0 })}>
+                <p className="mb-3 txt-caption text-muted-foreground">{c.draftRowsHint}</p>
+                <FreightDraftRows c={c} rows={editing.draftRows} rules={editing.outOfRange} />
+              </DrawerSection>
+            )}
+
             <DrawerSection title={c.secOutOfRange}>
               <p className="mb-3 txt-caption text-muted-foreground">{c.outOfRangeHint}</p>
               <div className="space-y-2">
@@ -222,6 +274,43 @@ export function FreightTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
                 {c.btnAddRegion}
               </Button>
             </DrawerSection>
+          </div>
+        )}
+      </Drawer>
+      <Drawer
+        open={!!drafting}
+        onOpenChange={(o) => !o && setDrafting(null)}
+        title={c.draftTitle}
+        width="w-[480px]"
+        footer={<Button loading={draft.isPending} disabled={!drafting?.origin.trim()} onClick={() => draft.mutate()}>{c.btnDraft}</Button>}
+      >
+        {drafting && (
+          <div>
+            <HelpNote className="mb-3">{c.draftHint}</HelpNote>
+            <div className="mb-3 space-y-1">
+              <Label htmlFor="fd-origin" required>{c.fieldOrigin}</Label>
+              <Input id="fd-origin" className="w-full" value={drafting.origin} placeholder={c.fieldOrigin}
+                onChange={(e) => setDrafting((p) => p && { ...p, origin: e.target.value })} />
+            </div>
+            <div className="mb-3 space-y-1">
+              <Label htmlFor="fd-carrier" required>{c.fieldCarrier}</Label>
+              <Select id="fd-carrier" className="w-full" value={drafting.carrier}
+                onChange={(e) => setDrafting((p) => p && { ...p, carrier: e.target.value })}>
+                {DRAFT_CARRIERS.map((code) => <option key={code} value={code}>{c[`carrier${code}`]}</option>)}
+              </Select>
+            </div>
+            <FieldGrid>
+              <div className="mb-3 space-y-1">
+                <Label htmlFor="fd-fw" required>{c.fieldFirstWeight}</Label>
+                <Input id="fd-fw" className="w-full" value={drafting.firstWeightGram}
+                  onChange={(e) => setDrafting((p) => p && { ...p, firstWeightGram: e.target.value })} />
+              </div>
+              <div className="mb-3 space-y-1">
+                <Label htmlFor="fd-aw" required>{c.fieldAddWeight}</Label>
+                <Input id="fd-aw" className="w-full" value={drafting.addWeightGram}
+                  onChange={(e) => setDrafting((p) => p && { ...p, addWeightGram: e.target.value })} />
+              </div>
+            </FieldGrid>
           </div>
         )}
       </Drawer>

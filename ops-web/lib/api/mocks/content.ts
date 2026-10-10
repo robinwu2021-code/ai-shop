@@ -165,7 +165,7 @@ export const contentMock: ContentApi = {
     const q = db.questions.find((x) => x.questionNo === questionNo);
     if (!q) notFound("提问", "Question", questionNo);
     if (!reason.trim()) fail("隐藏提问必须写原因，否则用户来问时没人说得清", "Hiding a question needs a reason, or nobody can explain it when the shopper asks");
-    q.status = "HIDDEN";
+    q.status = "OFFLINE";
     q.hideReason = reason.trim();
     return wait(q, 350);
   },

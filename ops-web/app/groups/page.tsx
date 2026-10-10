@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { GROUPS_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { MAX_MERCHANT_BREACH, MAX_QUOTE_PRICE_CHANGES } from "@/lib/constants";
 import { fmtTime, money } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
@@ -35,11 +35,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 
 type Copy = (typeof GROUPS_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "campaigns", label: c.tabCampaigns },
-  { key: "demands", label: c.tabDemands },
-  { key: "quotes", label: c.tabQuotes },
-];
+const TAB_KEYS = ["campaigns", "demands", "quotes"] as const;
 
 export default function GroupsPage() {
   return <Suspense fallback={null}><GroupsInner /></Suspense>;
@@ -47,7 +43,7 @@ export default function GroupsPage() {
 
 function GroupsInner() {
   const c = useCopy(GROUPS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/groups", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
@@ -65,12 +61,15 @@ function GroupsInner() {
   // 只在指派抽屉打开时查（size 100：一期候选池很小，够用且不分页）。
   const merchants = useQuery({
     queryKey: ["merchants", "assignable"],
-    queryFn: () => api.listMerchants({ size: 100, status: "APPROVED" }),
+    // 状态词是 ACTIVE：APPROVED 是进件申请单的词，商家档案上没有 —— 写错就是空下拉框
+    queryFn: () => api.listMerchants({ size: 100, status: "ACTIVE" }),
     enabled: !!assigning,
   });
 
   const [assignForm, setAssignForm] = useState({ merchantNo: "M903", price: "", minQty: "10", validTo: "2026-08-20T16:00:00Z" });
-  const [priceEdit, setPriceEdit] = useState<{ quoteNo: string; value: string } | null>(null);
+  // reason 与新价一起收：后端要求它（平台改的是商家对买家的报价，
+  // 改价历史公示给用户看，一笔没有说明的平台改价解释不了），空理由 10400
+  const [priceEdit, setPriceEdit] = useState<{ quoteNo: string; value: string; reason: string } | null>(null);
 
   const canAudit = allow("group:campaign:audit");
   const canAssign = allow("group:demand:assign");
@@ -94,7 +93,7 @@ function GroupsInner() {
     mutationFn: (v: { groupNo: string; pass: boolean; reason?: string }) => api.auditGroupCampaign(v.groupNo, v.pass, v.reason),
     onSuccess: (g) => {
       invalidate(); setAuditing(null); setRejectReason("");
-      notify.success(g.status === "RUNNING" ? c.toastAuditPassed : c.toastAuditRejected);
+      notify.success(g.status === "OPEN" ? c.toastAuditPassed : c.toastAuditRejected);
     },
   });
 
@@ -111,7 +110,8 @@ function GroupsInner() {
   });
 
   const changePrice = useMutation({
-    mutationFn: (v: { quoteNo: string; price: number }) => api.changeQuotePrice(v.quoteNo, v.price),
+    mutationFn: (v: { quoteNo: string; price: number; reason: string }) =>
+      api.changeQuotePrice(v.quoteNo, v.price, v.reason),
     onSuccess: (q) => {
       invalidate(); setPriceEdit(null);
       notify.success(fill(c.toastPriceChanged, { n: q.priceChanges }));
@@ -156,7 +156,7 @@ function GroupsInner() {
     {
       header: c.colActions,
       cell: (g) =>
-        g.status === "PENDING_AUDIT" && canAudit ? (
+        g.status === "PENDING" && canAudit ? (
           <Button size="sm" variant="outline" onClick={() => { setAuditing(g); setRejectReason(""); }}>{c.actionAudit}</Button>
         ) : <span className="text-muted-foreground">—</span>,
     },
@@ -193,17 +193,28 @@ function GroupsInner() {
       cell: (q) =>
         priceEdit?.quoteNo === q.quoteNo ? (
           <span className="flex items-center justify-end gap-1">
-            <Input className="w-24" value={priceEdit.value} aria-label={c.ariaNewPrice}
-              onChange={(e) => setPriceEdit({ quoteNo: q.quoteNo, value: e.target.value })} />
-            <Button size="sm" onClick={() => changePrice.mutate({ quoteNo: q.quoteNo, price: Math.round(Number(priceEdit.value) * 100) })}>{c.save}</Button>
+            <Input className="w-20" value={priceEdit.value} aria-label={c.ariaNewPrice}
+              onChange={(e) => setPriceEdit({ ...priceEdit, value: e.target.value })} />
+            <Input className="w-32" value={priceEdit.reason} aria-label={c.ariaPriceReason}
+              placeholder={c.priceReasonPlaceholder}
+              onChange={(e) => setPriceEdit({ ...priceEdit, reason: e.target.value })} />
+            <Button
+              size="sm"
+              disabled={!priceEdit.reason.trim()}
+              onClick={() => changePrice.mutate({
+                quoteNo: q.quoteNo,
+                price: Math.round(Number(priceEdit.value) * 100),
+                reason: priceEdit.reason.trim(),
+              })}
+            >{c.save}</Button>
             <Button size="sm" variant="ghost" onClick={() => setPriceEdit(null)}>{c.cancel}</Button>
           </span>
         ) : (
           <button
             type="button"
             disabled={!canAssign}
-            className="rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
-            onClick={() => setPriceEdit({ quoteNo: q.quoteNo, value: (q.price / 100).toFixed(2) })}
+            className="focus-ring rounded-field px-1 tabular-nums transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+            onClick={() => setPriceEdit({ quoteNo: q.quoteNo, value: (q.price / 100).toFixed(2), reason: "" })}
           >
             {money(q.price)}
           </button>

@@ -12,170 +12,449 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "社区好物"
+        "navigationBarTitleText": "社区好物",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/category/index",
       "style": {
-        "navigationBarTitleText": "分类"
+        "navigationBarTitleText": "分类",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/cart/index",
       "style": {
-        "navigationBarTitleText": "购物车"
+        "navigationBarTitleText": "购物车",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/me/index",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/me/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人资料",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/goods/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/merchant/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/merchants/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/search/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/group/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/groups/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/request/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/address/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/address-edit/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/city-pick/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/address-pick/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/order-confirm/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/pay/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/orders/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/order/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/track/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/after-sale/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/review-write/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/points/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/my-memberships/index",
+      "style": {
+        "navigationBarTitleText": "我的会员与消息",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/coupons/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/coupon-code/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/cards/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/messages/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/request-create/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
-    {
-      "path": "pages/community/index",
-      "style": {
-        "navigationBarTitleText": "选择社区自提点"
-      }
-    },
+    
     {
       "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": "登录"
+        "navigationBarTitleText": "登录",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/store/index",
       "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/my-groups/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/favorites/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/invite/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     },
     {
       "path": "pages/group-host/index",
       "style": {
-        "navigationBarTitleText": "我发起的团"
+        "navigationBarTitleText": "我发起的团",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
+      "path": "pages/legal/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
       }
     }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F4F5F7",
+    "backgroundColor": "#ECEDEF",
+    "app-plus": {
+      "navigationStyle": "custom"
+    },
+    "h5": {
+      "navigationStyle": "custom"
+    },
     "rpxCalcMaxDeviceWidth": 600,
     "rpxCalcBaseDeviceWidth": 375
   },

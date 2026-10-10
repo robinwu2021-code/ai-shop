@@ -5,7 +5,7 @@
 // - 超过可提余额：必须拒
 // - 商家没报备收款账户：批了钱也打不出去
 // - 大额：要写复核说明
-import type { InvoiceRequest, TaxRule, Withdrawal } from "@/lib/types";
+import type { InvoiceRequest, InvoiceTitle, TaxRule, Withdrawal } from "@/lib/types";
 
 export const withdrawals: Withdrawal[] = [
   {
@@ -70,6 +70,15 @@ export const invoiceRequests: InvoiceRequest[] = [
 ];
 
 /** 个税代扣规则。起征点 800 元、税率 20% —— 与劳务报酬的常见口径对齐。 */
+/**
+ * 平台开票抬头。**初始五项全空，与后端 `TITLE_DEFAULT` 一致** ——
+ * mock 里填一份漂亮的假抬头，就看不出「还没配」这个最常见的真实状态了，
+ * 而那恰恰是这一屏要让人一眼发现的东西。
+ */
+export const invoiceTitle: InvoiceTitle = {
+  companyName: "", taxNo: "", address: "", phone: "", bankAccount: "",
+};
+
 export const taxRule: TaxRule = {
   threshold: 800_00,
   rate: 2000,

@@ -1,0 +1,386 @@
+<script setup lang="ts">
+// 报损出库（B-6）。
+//
+// **报损与盘亏是两件事**：报损是主动的（知道坏了几个），盘亏是被动的
+//（盘完才发现少了）。都落出库单，但 `reason_code` 不同，月底汇总分得开。
+//
+// **出库单只带成本，不带售价**：售价是销售那边的事，同一件货不同渠道价不一样，
+// 写进来就有了第二个真源。
+//
+// 数量填不到超过可用 —— **库存不允许为负**，错误停在这里比流进报表便宜。
+import { computed, ref } from "vue";
+import { ROUTES } from "@/shared/nav";
+import { isoDay } from "@/shared/quick-dates";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import type { StockBalance, Supplier } from "@shared/types";
+import { pick, prompt } from "@ai-shop/ui/prompt";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+
+/** SCRAP 必填的原因。**枚举不是自由文本** —— 自由文本汇总不出这个月报损了多少 */
+const REASONS = ["BROKEN", "EXPIRED", "GIFT", "OTHER"] as const;
+
+interface Line {
+  itemId: string;
+  name: string;
+  specText?: string;
+  uom?: string;
+  /** 可用量，用来卡上限 */
+  available: number;
+  qty: number;
+}
+
+/**
+ * 出库去向。**这一页此前写死 SCRAP** —— 于是所有非销售出库都被记成报损，
+ * 「退给供应商」这件事记不了，而「这个月退给老周多少货」是应付账款对账的一半。
+ *
+ * **`SALE` 不在这里，且永远不会在**：销售出库只能由预留 commit 产生
+ *（后端 `OutboundServiceImpl` 的闸门）。做成一个选项的话，
+ * 商家能凭空造一笔销售出库，而它会进销量榜。
+ */
+const PURPOSES = ["SCRAP", "RETURN_SUPPLIER", "INTERNAL"] as const;
+
+const occurredAt = ref(isoDay());
+const purpose = ref<(typeof PURPOSES)[number]>("SCRAP");
+const reason = ref<(typeof REASONS)[number]>("EXPIRED");
+/** 退供应商时退给谁。**只有 RETURN_SUPPLIER 用得上** */
+const supplier = ref<{ supplierNo: string; name: string } | null>(null);
+const suppliers = ref<Supplier[]>([]);
+const lines = ref<Line[]>([]);
+const busy = ref(false);
+const pickable = ref<StockBalance[]>([]);
+const showPick = ref(false);
+/**
+ * 开挑货弹层的同时直接开相机（2026-09-18 店主：「扫码考虑放到外层，减少点击」）。
+ *
+ * <p>改之前扫码埋在第二层：添加商品 → 弹层 → 扫码，**相机打开前要点两下**。
+ * 现在页面上并排一枚扫码钮，一下到相机。
+ *
+ * <p>扫码的流程本身没搬出来 —— 它仍在 `biz-item-picker` 里，三处共用一份。
+ * 页面只负责「开着就扫」：把 scanCode 抄到三个页面上，
+ * 「没绑过的码怎么办」那条分支迟早在三处各自漂。
+ */
+const autoScan = ref(false);
+
+/**
+ * 扫到的码在列表里找不到对应的货 —— 带着码去建品（2026-09-18）。
+ *
+ * <p>先关弹层再跳：留着的话回来时它还开着，而那时列表已经变了
+ * （新建的货在里面），他会看到一个「上一次」的界面。
+ *
+ * <p>本页是 navigateTo 进来的，草稿还在栈上 —— 建完返回，这张单的行原样都在。
+ */
+function createWithBarcode(barcode: string) {
+  showPick.value = false;
+  autoScan.value = false;
+  uni.navigateTo({ url: `${ROUTES.goodsEdit}?barcode=${encodeURIComponent(barcode)}` });
+}
+
+function openPick(scan: boolean) {
+  autoScan.value = scan;
+  showPick.value = true;
+}
+
+
+const totalQty = computed(() => lines.value.reduce((s, l) => s + l.qty, 0));
+
+/** 这次没取到。**与「确定为空」是两件事** —— 空的选择器与「一件都没有」长得一样 */
+const failed = ref(false);
+
+async function load() {
+  try {
+    // 只给有货的：报损一件可用为 0 的货，唯一的结果是被后端拒绝
+    const all = await api.mStockBalances({ filter: "all", size: 200 });
+    pickable.value = all.filter((b) => b.available > 0);
+    // 供应商与货一起取：切到「退供应商」时再去拉，商家会先看到一个空选择器
+    suppliers.value = await api.mSuppliers({ activeOnly: true }).catch(() => []);
+    failed.value = false;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
+  }
+}
+
+/** 选去向。切走「退供应商」时把已选的那家清掉 —— 留着它，下次切回来会是一家没显示过的 */
+async function pickPurpose() {
+  const idx = await pick({
+    title: String(t("stockOut.purposeLabel")),
+    items: PURPOSES.map((p) => String(t(`stockOut.purpose.${p}`))),
+  });
+  if (idx === null) return;
+  purpose.value = PURPOSES[idx]!;
+  if (purpose.value !== "RETURN_SUPPLIER") supplier.value = null;
+}
+
+async function pickSupplier() {
+  if (!suppliers.value.length) {
+    // 空态说实话：**没有供应商**与「加载失败」是两件事，
+    // 而商家能自己解决前者（去进货页随手建一个）
+    uni.showToast({ title: String(t("stockOut.noSupplier")), icon: "none" });
+    return;
+  }
+  const idx = await pick({
+    title: String(t("stockOut.supplierLabel")),
+    items: suppliers.value.map((s) => s.shortName || s.name),
+  });
+  if (idx === null) return;
+  const s = suppliers.value[idx]!;
+  supplier.value = { supplierNo: s.supplierNo, name: s.shortName || s.name };
+}
+
+function pickQty(b: StockBalance): string {
+  return String(t("stockOut.availableN", { n: b.available }));
+}
+
+function addLine(b: StockBalance) {
+  if (lines.value.some((l) => l.itemId === b.itemId)) return;
+  lines.value = [...lines.value, {
+    itemId: b.itemId, name: b.name, specText: b.specText, uom: b.baseUom,
+    available: b.available, qty: 1,
+  }];
+  showPick.value = false;
+}
+
+function removeLine(itemId: string) {
+  lines.value = lines.value.filter((l) => l.itemId !== itemId);
+}
+
+async function editQty(l: Line) {
+  const v = await prompt({
+    title: String(t("stockOut.qtyTitle", { name: l.name })),
+    hint: String(t("stockOut.qtyHint", { n: l.available })),
+    type: "number",
+    value: String(l.qty),
+  });
+  if (v == null || v === "") return;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n <= 0) {
+    uni.showToast({ title: String(t("stockOut.qtyBad")), icon: "none" });
+    return;
+  }
+  // **在这里就卡住**：错误停在录入处，比让它流到过账再被拒便宜
+  if (n > l.available) {
+    uni.showToast({ title: String(t("stockOut.qtyOver", { n: l.available })), icon: "none" });
+    return;
+  }
+  l.qty = n;
+}
+
+async function post() {
+  if (!lines.value.length || busy.value) return;
+  // 退供应商必须指得出是哪一家。**在这里就卡住** —— 后端也拦，
+  // 但让它走一趟网络再被拒，商家看到的是一句没头没尾的错误
+  if (purpose.value === "RETURN_SUPPLIER" && !supplier.value) {
+    uni.showToast({ title: String(t("stockOut.needSupplier")), icon: "none" });
+    return;
+  }
+  busy.value = true;
+  try {
+    const no = await api.mOutboundCreate({
+      purpose: purpose.value,
+      // 原因只有报损要：退供应商说得出退给谁，不需要再问一次为什么
+      reasonCode: purpose.value === "SCRAP" ? reason.value : undefined,
+      targetType: purpose.value === "RETURN_SUPPLIER" ? "SUPPLIER" : undefined,
+      targetNo: purpose.value === "RETURN_SUPPLIER" ? supplier.value?.supplierNo : undefined,
+      occurredAt: `${occurredAt.value}T00:00:00`,
+      lines: lines.value.map((l) => ({ itemId: l.itemId, qty: l.qty, uom: l.uom })),
+    });
+    await api.mOutboundPost(no);
+    uni.showToast({ title: String(t("stockOut.posted", { no })), icon: "none" });
+    uni.navigateBack();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+onShow(load);
+</script>
+
+<template>
+  <sh-scaffold title-key="stockOut.title" :denied="!merchant.can('biz:stock')">
+    <!-- 当前门店只读标记：出库扣的是**这家店**的库存（同上）——
+         界面上不说清是哪家店，多店店主会在另一家店上动手，而且没有任何症状。
+         只在多店时渲染（单店没有歧义可消）；切店入口在工作台，这里不带动作。 -->
+    <biz-store-tag readonly></biz-store-tag>
+
+    <view class="sh-card">
+      <!--
+        去向排在日期上面：它决定了下面那半屏长什么样（报损问原因、退供应商问退给谁），
+        而排在后面的话，商家会先填完原因再发现自己要的不是报损。
+      -->
+      <sh-kv between :label="String($t('stockOut.purposeLabel'))" @tap="pickPurpose">
+        <text class="sh-link">{{ $t(`stockOut.purpose.${purpose}`) }}</text>
+      </sh-kv>
+      <sh-kv
+        v-if="purpose === 'RETURN_SUPPLIER'"
+        between
+        :label="String($t('stockOut.supplierLabel'))"
+        @tap="pickSupplier"
+      >
+        <text class="sh-link">{{ supplier?.name || $t("stockOut.supplierPh") }}</text>
+      </sh-kv>
+      <!--
+        ★ **日期直接显示，不再给快捷钮**（2026-09-18 店主：「日期去掉今天、昨天、
+        前天，就直接显示日期信息即可，只要容易点击即可」）。
+
+        上一版是三枚快捷 + 兜底滚轮。店主要的是更简单的东西：这一行多数时候
+        不用动，看一眼就够；真要改时有一个**好点的**目标就行。
+        所以整块 88rpx（44px，可点下限）、日期用等宽数字排，右边「›」说明它点得开。
+      -->
+      <sh-kv between :label="String($t('stockOut.date'))">
+        <picker mode="date" :value="occurredAt" @change="occurredAt = $event.detail.value">
+          <view class="date sh-row">
+            <text class="txt-body sh-num">{{ occurredAt }}</text>
+            <text class="sh-muted">›</text>
+          </view>
+        </picker>
+      </sh-kv>
+    </view>
+
+    <!--
+      ★ **新建单据时不放空态卡**（2026-09-18 店主：进销存几页「浪费太多空间」）。
+
+      量到的：那张卡 70px + 上下间距 10px，**而它正下方就是「+ 添加商品」** ——
+      一句「尚未添加商品」既没告诉他发生了什么，也没告诉他该做什么，
+      那枚按钮两件都做到了。空着的位置本身就是「还没加」。
+
+      **已有单据那一侧的空态留着**（见上面 doc 分支）：那里「没有行」是
+      「这张单还没发出」，是一条真消息，而且那一屏没有别的东西替它说话。
+    -->
+
+    <view v-for="l in lines" :key="l.itemId" class="sh-card sh-mb-sm">
+      <view class="row__top sh-row">
+        <view class="sh-fill">
+          <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
+          <text class="sh-muted sh-num">{{ $t("stockOut.availableN", { n: l.available }) }}</text>
+        </view>
+        <text class="sh-link sh-num qty" @tap="editQty(l)">{{ l.qty }}</text>
+        <text class="sh-link sh-link--quiet" @tap="removeLine(l.itemId)">
+          {{ $t("common.remove") }}
+        </text>
+      </view>
+    </view>
+
+    <view class="addrow sh-row">
+      <sh-add class="sh-fill" :text="String($t('stockOut.addItem'))" @tap="openPick(false)"></sh-add>
+      <!--
+        扫码与「添加商品」并排：**它们是同一件事的两种做法**（找到那件货）。
+        藏进弹层的话商家会以为扫码是另一个功能，而且每次要多点一下。
+      -->
+      <view class="scan sh-center" @tap="openPick(true)">
+        <sh-icon name="scan" :size="26" color="var(--sh-on-primary)"></sh-icon>
+      </view>
+    </view>
+
+    <!-- 原因只有报损要问：退供应商说得出退给谁，再问一次「为什么」是多余的一步 -->
+    <!--
+      ★ **标题挪到行首**（2026-09-18 店主：「报损页面也类似，浪费太多空间」）。
+      原来标题独占一行、四枚原因另起一行，一个字段吃掉两行高 ——
+      而它与上面那张卡里的「去向/日期」是同一类东西（一行一个字段），
+      写法却不一样。统一成 sh-kv，不新造件。
+    -->
+    <view v-if="purpose === 'SCRAP'" class="sh-card">
+      <sh-kv between :label="String($t('stockOut.reasonLabel'))">
+      <view class="reasons sh-row">
+        <text
+          v-for="r in REASONS"
+          :key="r"
+          class="sh-chip"
+          :class="{ 'sh-chip--primary': reason === r }"
+          @tap="reason = r"
+        >
+          {{ $t(`stock.reason.${r}`) }}
+        </text>
+      </view>
+      </sh-kv>
+    </view>
+
+    <view v-if="lines.length" class="sh-card hd sh-row sh-row--between">
+      <text class="txt-strong">{{ $t("stockOut.totalQty") }}</text>
+      <text class="txt-display sh-num is-danger">−{{ totalQty }}</text>
+    </view>
+
+    <!-- 主动作贴底：报损单的行数没有上限，按钮跟在行后面会被推下去 -->
+    <sh-actionbar :pad="180">
+      <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="post">
+        {{ $t("stockOut.post") }}
+      </view>
+    </sh-actionbar>
+
+    <biz-item-picker
+      :visible="showPick"
+      :auto-scan="autoScan"
+      :title="String($t('stockOut.addItem'))"
+      :items="pickable"
+      :failed="failed"
+      @retry="load"
+      :picked="lines.map((l) => l.itemId)"
+      :qty-label="pickQty"
+      @pick="addLine"
+      @close="showPick = false; autoScan = false"
+      @create="createWithBarcode"
+    ></biz-item-picker>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+/* 四枚并排跟在标题右边；挤不下就换行并靠右，不把标题顶走 */
+.reasons {
+  gap: 12rpx;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+/*
+ * 与进货页同一档：72rpx（36px）比 44px 的可点下限矮一档，**这是有意的** ——
+ * 那条下限是给主操作的，而这一排是并列的筛选式选择，四枚一起构成一个控件。
+ */
+/*
+ * **原因这四枚保持原样，不放大**（2026-09-18 店主：「报损原因保持目前的形状，
+ * 不要运用圆形，占用空间太多」）。
+ *
+ * 我此前把它们从 24px 抬到了 44px（可点下限），店主看过之后要的是省地方 ——
+ * 这一排是四枚并列的筛选式选择，一起构成一个控件，不是四个主操作按钮。
+ * **这条是店主的决定，不是漏改**：24px 确实低于可点下限，代价他认了。
+ */
+/* 44px：整块是可点目标，不是一行字。「›」与日期之间留一点，别贴着 */
+.date {
+  min-height: 88rpx;
+  gap: 8rpx;
+  align-items: center;
+}
+.addrow {
+  gap: 16rpx;
+}
+/* 与「添加商品」同高（44px），圆形 —— 形状说明它是另一种做法，不是第三个动作 */
+.scan {
+  flex: none;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 9999px;
+  background: var(--sh-primary);
+}
+.row__top {
+  gap: 20rpx;
+}
+
+.row__title {
+  display: block;
+}
+.qty {
+  min-width: 72rpx;
+  text-align: end;
+  flex: none;
+}
+.hint {
+  padding: 0 4rpx;
+}
+.pick {
+  padding: 20rpx 0;
+}
+</style>

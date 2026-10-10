@@ -1,0 +1,771 @@
+package ai.neargo.shop.platform.impl;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.platform.RegionService;
+import ai.neargo.shop.platform.entity.SysRegion;
+import ai.neargo.shop.platform.mapper.PlatformMappers.RegionMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/** {@link RegionService} 实现。 */
+@Service
+public class RegionServiceImpl implements RegionService {
+
+    /** 单条实体 → VO。与列表那处同一口径，别在两个地方各写一份 */
+    private RegionVO toVO(SysRegion r) {
+        boolean hasChild = mapper.exists(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getParentCode, r.getRegionCode()));
+        return new RegionVO(r.getRegionCode(), r.getParentCode(), r.getLevel(), r.getName(),
+                Boolean.TRUE.equals(r.getEnabled()), hasChild,
+                r.getSource() == null ? "OFFICIAL" : r.getSource(),
+                !SysRegion.APPROVED.equals(r.getAuditStatus()),
+                r.getAuditStatus(), r.getRejectReason(), r.getLatE6(), r.getLngE6(),
+                Boolean.TRUE.equals(r.getRural()));
+    }
+
+    /** 地址里的四段名字。非贪婪 + 限长：「广东省深圳市龙华区福城街道福庆路1号」要切成四段，不是一整串 */
+    private static final java.util.regex.Pattern P_PROVINCE =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,8}?(?:省|自治区|特别行政区))|(北京|天津|上海|重庆)市");
+    private static final java.util.regex.Pattern P_CITY =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:市|自治州|地区|盟))");
+    private static final java.util.regex.Pattern P_DISTRICT =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:区|县|旗|市))");
+    private static final java.util.regex.Pattern P_STREET =
+            java.util.regex.Pattern.compile("([\\u4e00-\\u9fa5]{2,10}?(?:街道|镇|乡))");
+
+    /** 坐标最近邻的搜索窗口（度）。0.05° ≈ 5.5 公里 —— 再大就会把隔壁街道的村也算进来 */
+    private static final double NEAR_WINDOW_DEG = 0.05;
+
+    @Override
+    public List<Suggestion> resolve(String address, Integer latE6, Integer lngE6) {
+        var out = new java.util.LinkedHashMap<String, Suggestion>();
+        byAddress(address).ifPresent(s -> out.put(s.region().regionCode(), s));
+        byCoords(latE6, lngE6).ifPresent(s -> out.putIfAbsent(s.region().regionCode(), s));
+        return List.copyOf(out.values());
+    }
+
+    /**
+     * 地址文本 → 街道。逐级按名字前缀匹配往下走，走到哪一级算哪一级 ——
+     * 走不到街道也把区县给出去，运营从那儿接着点比从全国点起省事得多。
+     */
+    private java.util.Optional<Suggestion> byAddress(String address) {
+        String addr = address == null ? "" : address.trim();
+        if (addr.length() < 4) {
+            return java.util.Optional.empty();
+        }
+        /*
+         * 逐段往后切，**不要各自在整串上找**：非贪婪 2–10 字的街道模式在整串上会从中间截出
+         * 「江省杭州市西湖区北山街道」这种跨级的垃圾（实测），于是街道那一级永远匹配不上，
+         * 推断只能停在区县。切成「省之后找市、市之后找区、区之后找街道」才对得上。
+         */
+        String rest = addr;
+        String province = firstMatch(P_PROVINCE, rest);
+        rest = after(rest, province);
+        String city = firstMatch(P_CITY, rest);
+        rest = after(rest, city);
+        String district = firstMatch(P_DISTRICT, rest);
+        rest = after(rest, district);
+        String street = firstMatch(P_STREET, rest);
+
+        SysRegion cur = null;
+        StringBuilder hit = new StringBuilder();
+        for (String token : new String[]{province, city, district, street}) {
+            if (token == null) {
+                continue;
+            }
+            SysRegion next = childByName(cur == null ? null : cur.getRegionCode(), token);
+            if (next == null) {
+                break;
+            }
+            cur = next;
+            hit.append(token);
+        }
+        // 只匹配到省没有意义（一个省几千个街道），至少要到区县
+        if (cur == null || SysRegion.LEVEL_PROVINCE.equals(cur.getLevel())) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new Suggestion(toVO(cur), pathName(cur.getRegionCode()),
+                "ADDRESS", hit.toString()));
+    }
+
+    /**
+     * 坐标 → 街道：在**已补录坐标**的村级区划里找最近的一条，取它的父街道。
+     *
+     * <p>不做逆地理编码 —— 那要高德 Web 服务 key，而这条用的是库里已有的数据。
+     * 代价是只在补过坐标的城市有效（当前运城、深圳），别的地方直接不出这个候选，
+     * 而不是给一个瞎猜的答案。
+     */
+    private java.util.Optional<Suggestion> byCoords(Integer latE6, Integer lngE6) {
+        if (latE6 == null || lngE6 == null) {
+            return java.util.Optional.empty();
+        }
+        int win = (int) (NEAR_WINDOW_DEG * 1e6);
+        var rows = mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
+                .isNotNull(SysRegion::getLatE6)
+                .between(SysRegion::getLatE6, latE6 - win, latE6 + win)
+                .between(SysRegion::getLngE6, lngE6 - win, lngE6 + win)
+                .last("limit 500"));
+        SysRegion best = null;
+        double bestM = Double.MAX_VALUE;
+        for (SysRegion r : rows) {
+            double m = meters(latE6, lngE6, r.getLatE6(), r.getLngE6());
+            if (m < bestM) {
+                bestM = m;
+                best = r;
+            }
+        }
+        if (best == null || best.getParentCode() == null) {
+            return java.util.Optional.empty();
+        }
+        SysRegion street = mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()
+                .eq(SysRegion::getRegionCode, best.getParentCode()).last("limit 1"));
+        if (street == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new Suggestion(toVO(street), pathName(street.getRegionCode()),
+                "COORDS", best.getName() + " · " + Math.round(bestM) + " 米"));
+    }
+
+    /** 切掉已经匹配的那一段，继续往后找下一级 */
+    private static String after(String s, String token) {
+        if (token == null) {
+            return s;
+        }
+        int i = s.indexOf(token);
+        return i < 0 ? s : s.substring(i + token.length());
+    }
+
+    private static String firstMatch(java.util.regex.Pattern p, String s) {
+        var m = p.matcher(s);
+        return m.find() ? m.group() : null;
+    }
+
+    /** 某一级下按名字找一条。名字可能带后缀差异（「福城街道」vs「福城街道办事处」），用前缀匹配兜一手 */
+    private SysRegion childByName(String parentCode, String name) {
+        var w = Wrappers.<SysRegion>lambdaQuery();
+        if (parentCode == null) {
+            w.isNull(SysRegion::getParentCode);
+        } else {
+            w.eq(SysRegion::getParentCode, parentCode);
+        }
+        w.and(q -> q.eq(SysRegion::getName, name).or().likeRight(SysRegion::getName, name));
+        return mapper.selectList(w.last("limit 5")).stream()
+                .min(java.util.Comparator.comparingInt(r -> r.getName().length()))
+                .orElse(null);
+    }
+
+    private String pathName(String code) {
+        return path(code).stream().map(RegionVO::name).collect(Collectors.joining(" / "));
+    }
+
+    private static double meters(int latE6, int lngE6, int otherLatE6, int otherLngE6) {
+        double perDeg = 111_320d;
+        double dLat = (latE6 - otherLatE6) / 1e6 * perDeg;
+        double midLat = Math.toRadians((latE6 + otherLatE6) / 2e6);
+        double dLng = (lngE6 - otherLngE6) / 1e6 * perDeg * Math.cos(midLat);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+
+    /** 回溯深度上限。四级树最多走 4 步，给 8 是为了让**坏数据不会变成死循环** */
+    private static final int MAX_DEPTH = 8;
+
+    private final RegionMapper mapper;
+
+    public RegionServiceImpl(RegionMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Override
+    public List<RegionVO> children(String parentCode, boolean enabledOnly) {
+        return children(parentCode, enabledOnly, null);
+    }
+
+    @Override
+    public List<RegionVO> children(String parentCode, boolean enabledOnly, String entityNo) {
+        String owner = entityNo == null || entityNo.isBlank() ? null : entityNo;
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(enabledOnly, SysRegion::getEnabled, true)
+                        // 顶层是 parent_code IS NULL，不是空串 —— 见实体上的说明
+                        .isNull(parentCode == null || parentCode.isBlank(), SysRegion::getParentCode)
+                        .eq(parentCode != null && !parentCode.isBlank(),
+                                SysRegion::getParentCode, parentCode)
+                        /*
+                         * 可见范围：**已通过的 + 我自己提报的（含被驳回的）**。
+                         *
+                         * 判据是 audit_status 而不是 owner_entity_no ——
+                         * 后者现在只记「谁报的」，通过之后也保留，用它判可见性
+                         * 会让通过后的补录反而只有提报方看得到。
+                         *
+                         * 被驳回的也给提报方看：连同理由。看不到的话那个村在他那里
+                         * 凭空消失，他不知道为什么，多半原样再录一遍。
+                         */
+                        .and(q -> {
+                            q.eq(SysRegion::getAuditStatus, SysRegion.APPROVED);
+                            if (owner != null) {
+                                q.or(o -> o.eq(SysRegion::getOwnerEntityNo, owner));
+                            }
+                        })
+                        .orderByAsc(SysRegion::getRegionCode)));
+        return toVOs(rows);
+    }
+
+    @Override
+    public List<RegionVO> allOfLevel(String level, boolean enabledOnly) {
+        /*
+         * **只放行市级。** 区县 3000+、街道 4 万、村 62 万 —— 一次给全会把首屏拖垮。
+         * 做成「传什么给什么」的通用查询，就一定有人拿它去拉村，
+         * 而那件事不会报错、只会慢得莫名其妙。
+         */
+        if (!SysRegion.LEVEL_CITY.equals(level)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(enabledOnly, SysRegion::getEnabled, true)
+                        .eq(SysRegion::getLevel, level)
+                        .orderByAsc(SysRegion::getRegionCode)));
+        return toVOs(rows);
+    }
+
+    /** 下一级的 level 由父级推导 —— 不让人选，选错的代价是整棵树的层级从此对不上 */
+    private static String childLevel(String parentLevel) {
+        return switch (parentLevel) {
+            case SysRegion.LEVEL_PROVINCE -> SysRegion.LEVEL_CITY;
+            case SysRegion.LEVEL_CITY -> SysRegion.LEVEL_DISTRICT;
+            case SysRegion.LEVEL_DISTRICT -> SysRegion.LEVEL_STREET;
+            default -> throw BizException.of(ErrorCode.BAD_REQUEST);
+        };
+    }
+
+    @Override
+    @Transactional
+    public RegionVO createNode(String parentCode, String name, String operatorNo) {
+        String vname = name == null ? "" : name.trim();
+        SysRegion parent = find(parentCode == null ? "" : parentCode.trim());
+        if (parent == null || vname.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 同父下同名直接返回既有的 —— 报错的话运营看到「已存在」还得自己去找它在哪
+        SysRegion dup = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(SysRegion::getParentCode, parent.getRegionCode())
+                        .eq(SysRegion::getName, vname).last("limit 1")));
+        if (dup != null) {
+            return toVOs(List.of(dup)).get(0);
+        }
+        /*
+         * 生成码 = 父码 + X + 两位序号。官方码纯数字（62 万条实测过），
+         * 字母段保证官方将来补发号段也撞不上唯一键 —— 用数字续号的话，
+         * 某天官方发出那个号，撞的是 uk_sys_region_code，报出来是「保存失败」
+         * 而根因在两年前的编码方案上。
+         */
+        List<SysRegion> mine = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .likeRight(SysRegion::getRegionCode, parent.getRegionCode() + "X")));
+        int max = 0;
+        for (SysRegion x : mine) {
+            try {
+                max = Math.max(max, Integer.parseInt(
+                        x.getRegionCode().substring(parent.getRegionCode().length() + 1)));
+            } catch (NumberFormatException ignored) {
+                // 手工写进来的怪码不参与算号，但也不该让新增失败
+            }
+        }
+        if (max >= 99) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        SysRegion row = new SysRegion();
+        row.setRegionCode("%sX%02d".formatted(parent.getRegionCode(), max + 1));
+        row.setParentCode(parent.getRegionCode());
+        row.setLevel(childLevel(parent.getLevel()));
+        row.setName(vname);
+        row.setSource("OPS");
+        row.setAuditStatus(SysRegion.APPROVED);
+        row.setEnabled(true);
+        row.setSort(0);
+        row.setCreatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public RegionVO toggleNode(String regionCode, boolean enabled, String operatorNo) {
+        SysRegion row = find(regionCode);
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 不级联：停用「西湖区」只让它自己从选择器消失，底下街道仍可单独选。
+        // 级联会让一次误操作波及几十个街道，而恢复时没人记得原来哪些是停的
+        row.setEnabled(enabled);
+        row.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public RegionVO renameNode(String regionCode, String name, String operatorNo) {
+        String vname = name == null ? "" : name.trim();
+        SysRegion row = find(regionCode);
+        if (row == null || vname.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        row.setName(vname);
+        row.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> mapper.updateById(row));
+        return toVOs(List.of(row)).get(0);
+    }
+
+
+    @Override
+    public List<RegionVO> path(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return List.of();
+        }
+        List<SysRegion> chain = new ArrayList<>();
+        String code = regionCode;
+        for (int i = 0; i < MAX_DEPTH && code != null && !code.isBlank(); i++) {
+            SysRegion row = find(code);
+            if (row == null) {
+                /*
+                 * 链断了就返回**已经走到的部分**，不抛异常也不返回空。
+                 *
+                 * 存量数据里会有已撤并的区划码（区划每年调整，而这份数据停在 2023）。
+                 * 抛异常的话，一个早年归属的社区会让整个运营页打不开；
+                 * 返回空的话，界面显示「未归属」而它其实归属过 —— 两个都比
+                 * 「显示到能显示的那一级」更糟。
+                 */
+                break;
+            }
+            chain.add(row);
+            code = row.getParentCode();
+        }
+        Collections.reverse(chain);   // 从省到自身
+        return toVOs(chain);
+    }
+
+    /**
+     * 码 → 自己那一行的名字与城乡标记。<b>一条 IN，查询数与码的个数无关。</b>
+     *
+     * <p>它替掉的是 {@code MasterDataPortImpl} 里那两段「签名是批量、实现是逐个」的循环：
+     * 那里对每个码调一次 {@code path()}，而 {@code path()} 自己又逐级 {@code selectOne}
+     * 向上走到省（深圳的 9 位街道码是 4 层）。生产实测 23657 个社区 × 两个方法 × 4 层
+     * ≈ 189,000 次往返 ≈ 76 秒，而 {@code GET /biz/communities} 实测就是 77 秒。
+     *
+     * <p>更冤的是那两段走完整条祖先链之后只取 {@code path.get(size - 1)} ——
+     * 那就是码自己那一行，祖先全查了又全丢了。
+     *
+     * <p>只 select 用得上的三列：{@code toVOs} 里那次「哪些码还有下级」的查询
+     * 对名字与城乡标记没有意义（{@link #pathNames} 同此取舍）。
+     */
+    @Override
+    public Map<String, RegionBrief> byCodes(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return Map.of();
+        }
+        Set<String> codes = new java.util.LinkedHashSet<>();
+        for (String c : regionCodes) {
+            if (c != null && !c.isBlank()) {
+                codes.add(c);
+            }
+        }
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .select(SysRegion::getRegionCode, SysRegion::getName, SysRegion::getRural)
+                        .in(SysRegion::getRegionCode, codes)));
+        Map<String, RegionBrief> out = new java.util.LinkedHashMap<>();
+        for (SysRegion r : rows) {
+            out.put(r.getRegionCode(),
+                    new RegionBrief(r.getName(), Boolean.TRUE.equals(r.getRural())));
+        }
+        return out;
+    }
+
+    @Override
+    public Map<String, String> pathNames(java.util.Collection<String> regionCodes) {
+        if (regionCodes == null || regionCodes.isEmpty()) {
+            return Map.of();
+        }
+        /*
+         * **按层级分批把祖先链一次性捞齐**，再在内存里拼路径 —— 不逐个走 {@link #path}。
+         *
+         * path() 对一个码要逐级 selectOne（最多 MAX_DEPTH 次），
+         * 运营位置分布要给两万多个小区各拼一条，逐个调就是十万次往返。
+         * 这里每轮用一个 {@code IN} 把这一层的码连同它们的父码查回来，
+         * 下一轮只查「还没见过的父码」，总轮数封顶 MAX_DEPTH —— 查询数与码的个数无关。
+         *
+         * 只取拼名字要用的三列（码 / 父码 / 名），省掉 toVOs 里那次「有没有子级」的额外查询，
+         * 那个标记路径名用不上。
+         */
+        Map<String, SysRegion> byCode = new java.util.HashMap<>();
+        Set<String> need = new java.util.HashSet<>();
+        for (String c : regionCodes) {
+            if (c != null && !c.isBlank()) {
+                need.add(c);
+            }
+        }
+        for (int depth = 0; depth < MAX_DEPTH && !need.isEmpty(); depth++) {
+            Set<String> batch = need;
+            List<SysRegion> rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .select(SysRegion::getRegionCode, SysRegion::getParentCode, SysRegion::getName)
+                            .in(SysRegion::getRegionCode, batch)));
+            Set<String> nextParents = new java.util.HashSet<>();
+            for (SysRegion r : rows) {
+                byCode.put(r.getRegionCode(), r);
+                String parent = r.getParentCode();
+                if (parent != null && !parent.isBlank() && !byCode.containsKey(parent)) {
+                    nextParents.add(parent);
+                }
+            }
+            need = nextParents;
+        }
+
+        Map<String, String> out = new java.util.HashMap<>();
+        for (String c : regionCodes) {
+            if (c == null || c.isBlank() || out.containsKey(c)) {
+                continue;
+            }
+            // 与 path() 同一条规矩：自身往上走父码，链断了用已走到的部分；收集自身→省，再倒成省→自身
+            List<String> names = new ArrayList<>();
+            String code = c;
+            for (int i = 0; i < MAX_DEPTH && code != null && !code.isBlank(); i++) {
+                SysRegion row = byCode.get(code);
+                if (row == null) {
+                    break;
+                }
+                names.add(row.getName());
+                code = row.getParentCode();
+            }
+            if (!names.isEmpty()) {
+                Collections.reverse(names);
+                out.put(c, String.join(" / ", names));
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public List<RegionVO> searchVillages(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
+        String kw = keyword == null ? "" : keyword.trim();
+        /*
+         * 「深圳市龙华区西坑社区」与「西坑社区」是同一个诉求 —— 末段当目标搜，
+         * 前面几段留作祖先约束（同名的「西坑」全国有好几个，这几个字正好用来分辨）。
+         */
+        List<String> segs = segments(kw);
+        List<String> ancestors = segs.size() > 1 ? segs.subList(0, segs.size() - 1) : List.of();
+        if (segs.size() > 1) {
+            kw = segs.get(segs.size() - 1);
+        }
+        // 两个字以下会命中上万行（「新村」「东村」），给人挑的列表不该这么长
+        if (kw.length() < 2) {
+            return List.of();
+        }
+        final String key = kw;
+        int cap = Math.max(1, Math.min(limit, 20));
+        /*
+         * **按距离排，不是按码排**。同名的村全国到处都是 —— 深圳的商家搜「福城」，
+         * 排在最前的却是新疆的「同和幸福城」，那条列表对他毫无用处（真机上就是这么撞到的）。
+         *
+         * 给了位置就先用外接矩形把候选缩到方圆 ~110 公里，不够再放开到全国：
+         * 商家的经营范围不会跨省，而「一条都搜不到」比「排序不理想」更糟。
+         */
+        int wide = 1_000_000; // 1 度 ≈ 111 公里
+        List<SysRegion> rows = List.of();
+        if (nearLatE6 != null && nearLngE6 != null) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, key)
+                            .between(SysRegion::getLatE6, nearLatE6 - wide, nearLatE6 + wide)
+                            .between(SysRegion::getLngE6, nearLngE6 - wide, nearLngE6 + wide)
+                            .last("LIMIT 200")));
+            rows = rows.stream()
+                    .sorted(java.util.Comparator.comparingDouble(
+                            r -> meters(nearLatE6, nearLngE6, r.getLatE6(), r.getLngE6())))
+                    .limit(cap)
+                    .toList();
+        }
+        /*
+         * **前缀优先**：`name LIKE '福城%'` 能走 (level, name) 索引的范围扫，
+         * 而 `LIKE '%福城%'` 只能把 62 万行村级挨个取出来比 —— 线上实测 2.3 秒，
+         * 而这条查询是每次输入都要跑的。人的打法绝大多数是前缀（「西坑」找「西坑社区」），
+         * 所以先走快的那条，取不满配额才退到包含。
+         */
+        if (rows.isEmpty()) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .likeRight(SysRegion::getName, key)
+                            // 有坐标的排前面：没坐标的开出来买家用定位也搜不到
+                            .orderByDesc(SysRegion::getLatE6)
+                            .last("LIMIT " + cap)));
+        }
+        if (rows.isEmpty()) {
+            rows = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, SysRegion.LEVEL_VILLAGE)
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, key)
+                            .orderByDesc(SysRegion::getLatE6)
+                            .last("LIMIT " + cap)));
+        }
+        /*
+         * 祖先约束在**取完之后**筛：村级 62 万行，先按名字命中再逐条回溯父链，
+         * 回溯的只是这几十条；反过来（先按祖先圈范围）要对整表做前缀扫描。
+         */
+        if (!ancestors.isEmpty()) {
+            Map<String, String> names = ancestorNames(rows);
+            rows = rows.stream().filter(r -> matchesAncestors(r, ancestors, names)).toList();
+        }
+        return toVOs(rows);
+    }
+
+    /**
+     * 每级配额。省少而粗、街道多而细，各留各的位置 ——
+     * 共用一份配额时细的那一级永远把粗的挤掉（这正是「搜运城出不来运城市」的原因）。
+     */
+    private static final List<String> SEARCH_LEVELS = List.of(SysRegion.LEVEL_PROVINCE, SysRegion.LEVEL_CITY, SysRegion.LEVEL_DISTRICT, SysRegion.LEVEL_STREET);
+    private static final Map<String, Integer> SEARCH_QUOTA =
+            Map.of(SysRegion.LEVEL_PROVINCE, 3, SysRegion.LEVEL_CITY, 5, SysRegion.LEVEL_DISTRICT, 8, SysRegion.LEVEL_STREET, 8);
+    /** 每级先捞多少候选再在内存里排序。前缀命中通常远少于这个数，兜底防「新华」「城关」这种烂大街的名字 */
+    private static final int CANDIDATES_PER_LEVEL = 200;
+
+    /**
+     * 「深圳市龙华区」这种<b>带上级的写法</b>切成 ["深圳市", "龙华区"]。
+     *
+     * <p>人打字时习惯从大到小写全，而区划表里没有任何一行叫「深圳市龙华区」——
+     * 于是 `LIKE '%深圳市龙华区%'` 一条也搜不到，而单独打「龙华区」就有。
+     * 商家看到的是「这个系统时灵时不灵」，没人会想到是自己多打了两个字。
+     *
+     * <p>只按<b>行政后缀</b>切，不做分词：后缀是区划名自带的，切错的代价（多一段约束）
+     * 远小于分词切错（把「龙华」切成「龙」「华」，一条都对不上）。
+     */
+    /** 切分本身挪到 {@link ai.neargo.shop.platform.AddressHints}：问地图（inputtips/around）要同一套切法 */
+    static List<String> segments(String kw) {
+        return ai.neargo.shop.platform.AddressHints.segments(kw);
+    }
+
+    @Override
+    public List<RegionVO> search(String keyword, int limit, Integer nearLatE6, Integer nearLngE6) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            return List.of();
+        }
+        /*
+         * 带上级的写法先走一遍「末段当目标、前面几段当祖先约束」。
+         * 搜不到就**照原样再搜一次**：多打的那几个字不该让人一条结果都拿不到。
+         */
+        List<String> segs = segments(kw);
+        if (segs.size() > 1) {
+            List<RegionVO> byPath = searchWithAncestors(segs, limit, nearLatE6, nearLngE6);
+            if (!byPath.isEmpty()) {
+                return byPath;
+            }
+            /*
+             * 祖先对不上（打错了上级、或那一级在库里叫别的名字）时**只按末段搜**，
+             * 而不是拿整串「杭州市盐湖区」再去 LIKE 一次 —— 后者必然一条也没有，
+             * 而人要找的那个区其实就在库里。
+             */
+            kw = segs.get(segs.size() - 1);
+        }
+        /*
+         * **区划一个字就能搜，聚落仍是两个字**（searchVillages）。
+         * 「京」「沪」「渝」本身就是完整的省级简称，而区划表只有 4.4 万行、
+         * 又按级配额取，一个字不会把列表撑爆；村级 62 万行则不然。
+         */
+        int cap = Math.max(1, Math.min(limit, 30));
+        List<SysRegion> picked = new ArrayList<>();
+        for (String level : SEARCH_LEVELS) {
+            picked.addAll(searchOneLevel(level, kw, SEARCH_QUOTA.getOrDefault(level, 5), nearLatE6, nearLngE6));
+        }
+        return toVOs(picked.size() > cap ? picked.subList(0, cap) : picked);
+    }
+
+    /**
+     * 一级之内的候选与排序。
+     *
+     * <p>先按<b>前缀</b>捞（可走索引、也最像人要找的东西：搜「运城」要的是「运城市」，
+     * 不是「同和幸福城」），不够配额再按包含补。排序在内存里做而不是写进 SQL：
+     * ORDER BY 里拼 CASE WHEN 要把关键词塞进 SQL 文本，而它来自用户输入。
+     */
+    private List<SysRegion> searchOneLevel(String level, String kw, int quota,
+                                           Integer nearLatE6, Integer nearLngE6) {
+        List<SysRegion> prefix = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(SysRegion::getLevel, level)
+                        .eq(SysRegion::getEnabled, true)
+                        .eq(SysRegion::getAuditStatus, "APPROVED")
+                        .likeRight(SysRegion::getName, kw)
+                        .last("LIMIT " + CANDIDATES_PER_LEVEL)));
+        Map<String, SysRegion> byCode = new LinkedHashMap<>();
+        prefix.forEach(r -> byCode.put(r.getRegionCode(), r));
+        if (byCode.size() < quota) {
+            List<SysRegion> contains = DataScopeContext.executeWithoutScope(() ->
+                    mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                            .eq(SysRegion::getLevel, level)
+                            .eq(SysRegion::getEnabled, true)
+                            .eq(SysRegion::getAuditStatus, "APPROVED")
+                            .like(SysRegion::getName, kw)
+                            .last("LIMIT " + CANDIDATES_PER_LEVEL)));
+            contains.forEach(r -> byCode.putIfAbsent(r.getRegionCode(), r));
+        }
+        return byCode.values().stream()
+                .sorted(Comparator
+                        .comparingInt((SysRegion r) -> strength(r.getName(), kw))
+                        .thenComparingDouble(r -> distanceRank(r, nearLatE6, nearLngE6))
+                        .thenComparing(SysRegion::getRegionCode))
+                .limit(quota)
+                .toList();
+    }
+
+    /**
+     * 末段当目标搜，再用前面几段筛祖先。
+     *
+     * <p>祖先判定走<b>父链上的名字</b>而不是路径字符串拼接：拼接要先把每条命中的路径查出来，
+     * 而这里筛掉的正是大多数 —— 先筛后查，省的是那几十次回溯。
+     */
+    private List<RegionVO> searchWithAncestors(List<String> segs, int limit,
+                                               Integer nearLatE6, Integer nearLngE6) {
+        String target = segs.get(segs.size() - 1);
+        List<String> ancestors = segs.subList(0, segs.size() - 1);
+        int cap = Math.max(1, Math.min(limit, 30));
+        List<SysRegion> picked = new ArrayList<>();
+        for (String level : SEARCH_LEVELS) {
+            // 配额放宽一档：祖先约束会筛掉大部分，按原配额取会把对的那条挡在候选之外
+            picked.addAll(searchOneLevel(level, target, SEARCH_QUOTA.getOrDefault(level, 5) * 4,
+                    nearLatE6, nearLngE6));
+        }
+        Map<String, String> names = ancestorNames(picked);
+        List<SysRegion> kept = picked.stream()
+                .filter(r -> matchesAncestors(r, ancestors, names))
+                .limit(cap)
+                .toList();
+        return toVOs(kept);
+    }
+
+    /**
+     * 祖先码由**区划码前缀**推出来：省 2 / 市 4 / 区 6 / 街道 9 位，下级码以上级码开头。
+     *
+     * <p>不逐条回溯 `parent_code` 是因为那是 N+1：三十条候选 × 四级 = 一百多次点查，
+     * 每次都要过连接池。前缀是编码规则本身给的，一次 `IN` 就能把所有祖先名取回来。
+     */
+    private static List<String> ancestorCodes(String code) {
+        if (code == null) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (int len : new int[]{2, 4, 6, 9}) {
+            if (code.length() > len) {
+                out.add(code.substring(0, len));
+            }
+        }
+        return out;
+    }
+
+    /** 一批候选的祖先名字：code → name，一次查完 */
+    private Map<String, String> ancestorNames(List<SysRegion> rows) {
+        Set<String> codes = new java.util.LinkedHashSet<>();
+        rows.forEach(r -> codes.addAll(ancestorCodes(r.getRegionCode())));
+        if (codes.isEmpty()) {
+            return Map.of();
+        }
+        List<SysRegion> found = DataScopeContext.executeWithoutScope(() ->
+                mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                        .select(SysRegion::getRegionCode, SysRegion::getName)
+                        .in(SysRegion::getRegionCode, codes)));
+        Map<String, String> out = new LinkedHashMap<>();
+        found.forEach(r -> out.put(r.getRegionCode(), r.getName() == null ? "" : r.getName()));
+        return out;
+    }
+
+    /** 这一条的祖先里，是不是每一段都能对上（按名字前缀，「深圳市」对「深圳市」） */
+    private static boolean matchesAncestors(SysRegion row, List<String> ancestors,
+                                            Map<String, String> names) {
+        List<String> mine = ancestorCodes(row.getRegionCode()).stream()
+                .map(c -> names.getOrDefault(c, ""))
+                .filter(n -> !n.isEmpty())
+                .toList();
+        return ancestors.stream().allMatch(a -> mine.stream()
+                .anyMatch(n -> n.startsWith(a) || a.startsWith(n) || n.contains(a)));
+    }
+
+    /** 0 完全相同 / 1 前缀命中 / 2 只是包含。「运城市」对「运城」算 1，「同和幸福城」算 2 */
+    private static int strength(String name, String kw) {
+        String n = name == null ? "" : name;
+        if (n.equals(kw)) {
+            return 0;
+        }
+        return n.startsWith(kw) ? 1 : 2;
+    }
+
+    /**
+     * 同强度时的第二排序键：离门店多远。
+     *
+     * <p>没坐标的区划排在有坐标的后面而不是最前 —— 坐标是 V192 补的，
+     * 补到哪儿是哪儿；让没补的插队会把「本地那一条」压下去。
+     */
+    private static double distanceRank(SysRegion r, Integer nearLatE6, Integer nearLngE6) {
+        if (nearLatE6 == null || nearLngE6 == null || r.getLatE6() == null || r.getLngE6() == null) {
+            return Double.MAX_VALUE;
+        }
+        return meters(nearLatE6, nearLngE6, r.getLatE6(), r.getLngE6());
+    }
+
+    private SysRegion find(String code) {
+        return DataScopeContext.executeWithoutScope(() ->
+                mapper.selectOne(Wrappers.<SysRegion>lambdaQuery()
+                        .eq(SysRegion::getRegionCode, code).last("LIMIT 1")));
+    }
+
+    /**
+     * 一次性查出「哪些码还有下级」，而不是每行各查一次。
+     *
+     * <p>省级只有 31 行时逐行查看不出问题，而街道一层单个区就能有几十条 ——
+     * 那就是几十次往返。列表页的 N+1 一向如此：小数据集上永远发现不了。
+     */
+    private List<RegionVO> toVOs(List<SysRegion> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        List<String> codes = rows.stream().map(SysRegion::getRegionCode).toList();
+        Set<String> withChild = DataScopeContext.executeWithoutScope(() ->
+                        mapper.selectList(Wrappers.<SysRegion>lambdaQuery()
+                                .select(SysRegion::getParentCode)
+                                .in(SysRegion::getParentCode, codes)
+                                .groupBy(SysRegion::getParentCode))).stream()
+                .map(SysRegion::getParentCode).collect(Collectors.toSet());
+
+        return rows.stream().map(r -> new RegionVO(
+                r.getRegionCode(), r.getParentCode(), r.getLevel(), r.getName(),
+                Boolean.TRUE.equals(r.getEnabled()),
+                withChild.contains(r.getRegionCode()),
+                r.getSource() == null ? "OFFICIAL" : r.getSource(),
+                !SysRegion.APPROVED.equals(r.getAuditStatus()),
+                r.getAuditStatus(), r.getRejectReason(),
+                r.getLatE6(), r.getLngE6(), Boolean.TRUE.equals(r.getRural()))).toList();
+    }
+}

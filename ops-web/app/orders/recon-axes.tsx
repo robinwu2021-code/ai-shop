@@ -1,0 +1,91 @@
+"use client";
+
+// 四条对账轴的总览。
+//
+// **这一屏要回答的不是「今天有没有差异」，是「哪一类对不上、以及哪一类根本没在看」。**
+//
+// ⚠️ 两处必须分得开，因为它们在页面上长得一样、含义却完全相反：
+//   · **零差异** vs **这条轴今天没跑成**（error 非空）
+//   · **零差异** vs **这条轴查不到那一类**（coverage.complete = false）
+//
+// **出款轴已经有 B 侧**：银行流水靠人工上传（结算与资金 → 自营应付账款 → 导入银行流水），
+// 所以它的覆盖面跟着「传过哪几天」走 —— 没传的日期一律算判不了，不记差异。
+// 其余三条仍只有 A 侧（我方自查）：渠道账单与分账查询两种外部数据还没接。
+// 所以「今天没有差异」对那三条仍是假话，而这一屏的职责就是把这句话说出来。
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ReconAxisReport } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
+import { Notice } from "@/components/ui/notice";
+import { SectionHeader } from "@/components/ui/section-header";
+import type { OrdersCopy } from "./copy";
+
+export function ReconAxes({ c }: { c: OrdersCopy }) {
+  const axes = useQuery({ queryKey: ["recon-axes"], queryFn: () => api.reconAxes() });
+  const rows = axes.data ?? [];
+
+  if (axes.isLoading) {
+    return <div className="txt-body text-muted-foreground">{c.axesLoading}</div>;
+  }
+  if (!rows.length) return null;
+
+  const broken = rows.filter((r) => r.error);
+
+  return (
+    <div className="mb-4 space-y-3">
+      <SectionHeader className="mb-0" title={c.axesTitle} summary={c.axesSubtitle} />
+
+      {/*
+        有轴没跑成时先把它顶到最上面。**一条没跑成的轴等于今天这一类没人看** ——
+        而它在下面的卡片里只是一个小标签，扫一眼很容易漏掉。
+      */}
+      {broken.length > 0 && (
+        <Notice tone="danger">
+          {c.axesBroken.replace("{axes}", broken.map((r) => c[`axisName_${r.axis}` as keyof OrdersCopy] ?? r.axis).join("、"))}
+        </Notice>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {rows.map((r) => <AxisCard key={r.axis} c={c} r={r} />)}
+      </div>
+    </div>
+  );
+}
+
+function AxisCard({ c, r }: { c: OrdersCopy; r: ReconAxisReport }) {
+  const name = (c[`axisName_${r.axis}` as keyof OrdersCopy] as string) ?? r.axis;
+  return (
+    <div className={`rounded-card border p-3 ${r.error ? "border-destructive bg-destructive-tint/20" : "border-border"}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-semibold">{name}</span>
+        {r.error
+          // ⚠️ 「没跑成」不能只是灰掉 —— 它比「有差异」更该被处理
+          ? <Badge tone="danger">{c.axisFailed}</Badge>
+          : r.outcome && r.outcome.opened > 0
+            ? <Badge tone="warning">{c.axisOpened.replace("{n}", String(r.outcome.opened))}</Badge>
+            : <Badge tone="muted">{c.axisClean}</Badge>}
+      </div>
+
+      {r.outcome && (
+        <div className="mt-1 txt-caption tabular-nums text-muted-foreground">
+          {c.axisCounts
+            .replace("{scanned}", String(r.outcome.scanned))
+            .replace("{resolved}", String(r.outcome.resolved))
+            .replace("{deferred}", String(r.outcome.deferred))}
+        </div>
+      )}
+
+      {r.error && <div className="mt-1 font-mono txt-caption text-destructive-ink">{r.error}</div>}
+
+      {/*
+        覆盖范围**永远显示**，不折叠、不藏在 tooltip 里。
+        藏起来的话，读的人看到「零差异」就走了 —— 而那正是要防的。
+      */}
+      {!r.coverage.complete && (
+        <div className="mt-2 border-t border-border pt-2 txt-caption leading-[1.55] text-muted-foreground">
+          {r.coverage.note}
+        </div>
+      )}
+    </div>
+  );
+}

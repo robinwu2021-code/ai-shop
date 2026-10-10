@@ -1,9 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { AlertTriangle } from "lucide-react";
 import { Card } from "./card";
+import { Button } from "./button";
 
 /**
  * 统计卡（工作台 KPI）。
@@ -13,7 +16,7 @@ import { Card } from "./card";
  * 这正是"绕开原语"的典型代价：改一处的时候漏掉另一处，而且没人会发现。
  */
 export function StatCard({
-  label, value, sub, tone, loading,
+  label, value, sub, tone, loading, href,
 }: {
   label: string;
   value: React.ReactNode;
@@ -21,9 +24,20 @@ export function StatCard({
   tone?: "up" | "down";
   /** 数据未回来。此前调用方只能自己往 value 里塞一个 Skeleton，各页塞得不一样高 */
   loading?: boolean;
+  /**
+   * 点这张卡去哪儿。**只有待办型的卡该给** —— 「今天成交 128 万」点进去没有下一步，
+   * 而「194 件待审」的下一步是唯一的：那条队列。
+   *
+   * 不给 href 时整卡不可点，也不会有 hover 反馈 —— 看起来能点却点不动
+   * 比一开始就是静态的更糟。
+   */
+  href?: string;
 }) {
-  return (
-    <Card data-surface="stat" className="p-5">
+  const card = (
+    <Card
+      data-surface="stat"
+      className={cn("p-5", href && "transition-colors hover:border-[var(--ring)] hover:bg-accent/40")}
+    >
       <div data-slot="label" className="txt-body text-muted-foreground">{label}</div>
       <div className="mt-2 txt-display tabular-nums">
         {loading ? <Skeleton className="w-24" style={{ height: "30px" }} /> : value}
@@ -36,6 +50,10 @@ export function StatCard({
       )}
     </Card>
   );
+  // 数据没回来时不给链接：这一瞬间点进去的是一条还不知道有没有内容的队列
+  return href && !loading
+    ? <Link href={href} className="block rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]">{card}</Link>
+    : card;
 }
 
 /**
@@ -55,9 +73,39 @@ export function EmptyState({
 }: { title: string; desc?: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-card bg-muted/50 py-16 text-center">
-      <div className="text-sm font-semibold">{title}</div>
+      <div className="txt-body font-semibold">{title}</div>
       {desc && <div className="txt-caption text-muted-foreground">{desc}</div>}
       {action && <div className="mt-2">{action}</div>}
+    </div>
+  );
+}
+
+/**
+ * 取数失败的整块占位。**必须与空态严格分开** —— 出错时渲染成「没有数据」，
+ * 运营会去改筛选条件而不是报障，这是 `DataTable` 此前最严重的一个缺陷
+ * （TDD-ops-组件库优化 §1.A）。
+ *
+ * 从 `DataTable` 内部提出来，是因为「整块内容依赖一个查询」的地方不止表格：
+ * 社区覆盖的两个页签此前写的是 `if (!data) return null` —— 接口一挂，
+ * 整个面板**什么都不渲染**，比错误的空态更难报障：屏幕上连一句话都没有。
+ */
+export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const { t } = useI18n();
+  return (
+    // data-audit-error：给 dev 工具一个稳定标记。/dev/pages 要区分「这一页没数据」
+    // 与「这一页接口挂了」—— 靠文案匹配的话，改一次文案或切一次语言就失灵。
+    <div data-audit-error className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+      <div className="flex size-11 items-center justify-center rounded-sheet bg-destructive-tint text-[var(--destructive-ink)]">
+        <AlertTriangle className="size-5" />
+      </div>
+      <div>
+        <div className="txt-heading">{t("table.errorTitle")}</div>
+        {/* 把后端/网络的原话给出来：运营报障时能直接截图，不用我们再问一遍 */}
+        <p className="mt-1 max-w-md txt-body text-muted-foreground">
+          {error instanceof Error ? error.message : t("error.unknown")}
+        </p>
+      </div>
+      {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t("table.retry")}</Button>}
     </div>
   );
 }
@@ -81,6 +129,38 @@ export function PageTitle({ title, desc, action }: { title: string; desc?: strin
 
 // 简易分页。
 /** 可选的每页条数。50 封顶：再多一屏也扫不完，只是把接口拖慢。 */
+/**
+ * 业务单号单元格（商品编码、订单号、申请单号…）。
+ *
+ * <p><b>它是表里最不重要、却最长的一列</b>：21 位的 `G20260817214022000026`
+ * 会把标题、商家、类目一起挤扁，而运营真正要读的是后面那些。
+ * 这里把它压成等宽小字 + 定宽截断，完整值放 `title` —— 需要复制时仍拿得到。
+ *
+ * <p>等宽而不是普通字体：单号是逐位比对的东西，比例字体下 `0/O`、`1/l` 对不齐。
+ */
+/**
+ * 单号 / 编号单元格：等宽 + 12px/500 的扫描锚点。
+ *
+ * ⚠️ **默认不截断。** 这里原先写死 `maxWidth: 9rem`（144px），而运营端的单号是
+ * 「3~4 位前缀 + 20 位数字」共 23 个字符，等宽 12px 下要 173px —— 也就是说
+ * 默认宽度**必然截掉尾部**，而尾部恰恰是区分两笔单的那几位：
+ * `SUB202609030227380008614` 与 `…0007270` 截完长得一模一样。
+ * 标识符被静默切短比字号不对严重得多：它让人对着两行相同的字去猜哪行是哪笔。
+ *
+ * 要限宽就显式传 `width`（比如一屏里列特别多的表），传了才截。
+ */
+export function IdCell({ value, width }: { value: string; width?: string }) {
+  return (
+    <span
+      title={value}
+      style={width ? { maxWidth: width } : undefined}
+      className={cn("block font-mono txt-caption text-muted-foreground", width && "truncate")}
+    >
+      {value}
+    </span>
+  );
+}
+
 export const PAGE_SIZES = [10, 20, 50] as const;
 
 /** 超过这么多页才出跳页输入框。少于它时输入框只是噪音。 */

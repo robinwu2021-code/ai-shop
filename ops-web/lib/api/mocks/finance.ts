@@ -1,11 +1,15 @@
 // 覆盖范围：分账结算（P-12.1）。本域的价值在**跨域收口**：
 // 读商家的报备状态、消费售后的回退标记 —— 这两处不接上，前面几个域的字段就是死的。
 import * as db from "@/lib/mock/db";
-import { MAX_TAX_RATE, MIN_WITHDRAW_AMOUNT, WITHDRAW_REVIEW_THRESHOLD } from "@/lib/constants";
-import { WITHDRAW_TRANSITIONS } from "@/lib/types";
+import { MAX_TAX_RATE } from "@/lib/constants";
 import { MAX_SPLIT_RETRY, SETTLE_FREEZE_MIN_DAYS } from "@/lib/constants";
-import { SETTLE_TRANSITIONS, type Settlement } from "@/lib/types";
+import { SETTLE_TRANSITIONS, type Settlement, type SettleStatRow, type PayoutList } from "@/lib/types";
 import type { FinanceApi } from "../contracts/finance";
+import type { Payout } from "@/lib/types";
+
+/** 放款记录只活在内存里：mock 的批次放一次生成一条，刷新即清 —— 它不是演示数据的一部分 */
+const mockPayouts: Payout[] = [];
+import type { ClientPointsPolicy } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -15,69 +19,332 @@ function find(settleNo: string): Settlement {
   return s;
 }
 
-/** 对账恒等式：gross = platformFee + serviceFee + net。三个数来自三处，不校验必对不上。 */
-function assertBalanced(s: Pick<Settlement, "grossAmount" | "platformFee" | "serviceFee" | "netAmount">) {
-  const sum = s.platformFee + s.serviceFee + s.netAmount;
-  if (sum !== s.grossAmount) {
-    fail(`对账不平：应结 ${s.grossAmount} ≠ 佣金 ${s.platformFee} + 服务费 ${s.serviceFee} + 实付 ${s.netAmount}`, `Books do not balance: gross ${s.grossAmount} ≠ commission ${s.platformFee} + service fee ${s.serviceFee} + net ${s.netAmount}`);
+/** 对账恒等式：gross = 佣金 + 服务费 + 实付。三个数来自三处，不校验必对不上。 */
+function assertBalanced(s: Settlement) {
+  const sum = s.commissionMinor + s.serviceFeeMinor + s.netMinor;
+  if (sum !== s.grossMinor) {
+    fail(`对账不平：基数 ${s.grossMinor} ≠ 佣金 ${s.commissionMinor} + 服务费 ${s.serviceFeeMinor} + 实付 ${s.netMinor}`, `Books do not balance: gross ${s.grossMinor} ≠ commission ${s.commissionMinor} + service fee ${s.serviceFeeMinor} + net ${s.netMinor}`);
   }
 }
 
+/** mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
+let mockClientPolicy: ClientPointsPolicy = { earnDeny: [], redeemDeny: [], offlineRedeem: true };
+
+/** 取一张应付单，找不到就报错 —— mock 里也要报，否则开发期点到不存在的单是静默的 */
+function mustBill(settleNo: string) {
+  const b = db.settlements.find((x) => x.settleNo === settleNo);
+  if (!b) fail("结算单不存在", "Settlement not found");
+  return b;
+}
+
 export const financeMock: FinanceApi = {
-  listSettlements: (q = {}) =>
-    wait(
-      db.paginate(db.settlements, q.page, q.size, (s) =>
-        db.eqHit(q.merchantNo, s.merchantNo) &&
-        db.eqHit(q.status, s.status) &&
-        db.eqHit(q.period, s.period) &&
-        db.kwHit(q.keyword, s.settleNo, s.merchantName, s.period),
-      ),
-    ),
+  // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
+  // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
+  /*
+   * ⚠️ mock 里**故意让两个数对得上**（流通 12800 分 == 池子 12800 分）。
+   * 这一页的用途就是发现失衡，而开发时看到的应该是「正常的样子」——
+   * 造一份天然不平的假数据，会让人误以为页面坏了。
+   * 真接口下这两个数由流水推出来，对不上才是真信号。
+   */
+  /*
+   * 端策略。mock 里**默认什么都不禁** —— 与后端默认值一致。
+   * 造一个「已经禁了两个端」的初值会让人以为线上就是那样，
+   * 而这一页的第一职责恰恰是「现在到底禁了谁」。
+   */
+  pointsClientPolicy: async () => wait({ ...mockClientPolicy }),
 
-  executeSplit: async (settleNo) => {
-    const s = find(settleNo);
-    assertBalanced(s);
-    // 跨域前置：没报备分账接收方，分账指令下发下去也是失败（ADR-002）
-    const merchant = db.merchants.find((m) => m.merchantNo === s.merchantNo);
-    if (!merchant?.settleAccountReady) {
-      fail(`${s.merchantName} 尚未报备分账接收方，无法分账（ADR-002）`, `${s.merchantName} has not registered a settlement account, so the split cannot run (ADR-002)`);
-    }
-    // 无限重试会把一个坏账刷成一堆日志，到上限就转人工
-    if (s.retryCount >= MAX_SPLIT_RETRY) {
-      fail(`已重试 ${s.retryCount} 次，达到上限，请人工介入处理`, `${s.retryCount} retries is the cap — this one needs a human`);
-    }
-    db.assertTransition(SETTLE_TRANSITIONS, s.status, "SPLITTING", "结算单", "Settlement");
-    if (s.status === "FAILED") s.retryCount += 1;
-    // mock 简化：指令下发即成功。真实链路是异步回执（ADR-002 走微信支付分账）
-    s.status = "SPLIT";
-    s.failReason = undefined;
-    return wait(s, 400);
+  savePointsClientPolicy: async (v) => {
+    mockClientPolicy = {
+      earnDeny: [...v.earnDeny],
+      redeemDeny: [...v.redeemDeny],
+      offlineRedeem: v.offlineRedeem,
+    };
+    return wait({ ...mockClientPolicy });
   },
 
-  freezeBackSettlement: async (settleNo) => {
-    const s = find(settleNo);
-    db.assertTransition(SETTLE_TRANSITIONS, s.status, "FROZEN_BACK", "结算单", "Settlement");
-    const days = Math.floor((Date.parse("2026-08-06T00:00:00Z") - Date.parse(s.frozenAt)) / 86_400_000);
-    if (days < db.feeRule.freezeDays) {
-      fail(`冻结仅 ${days} 天，未达兜底阈值 ${db.feeRule.freezeDays} 天，不能解冻回平台`, `Frozen for only ${days} days, short of the ${db.feeRule.freezeDays}-day fallback threshold — it cannot be released back yet`);
-    }
-    s.status = "FROZEN_BACK";
-    return wait(s, 400);
+  pointsOverview: async (market = "CN") => {
+    return wait({
+      circulatingPoints: 12_800,
+      poolBalanceMinor: 12_800,
+      periodRedeemMinor: 3_400,
+      byChannel: [
+        { market, payChannel: "WECHAT", balanceMinor: 9_000 },
+        { market, payChannel: "ALIPAY", balanceMinor: 3_800 },
+      ],
+    });
   },
 
-  listSplitRecords: (q = {}) =>
-    wait(
-      db.paginate(db.splitRecords, q.page, q.size, (r) =>
-        db.eqHit(q.settleNo, r.settleNo) &&
-        db.kwHit(q.keyword, r.splitNo, r.orderNo, r.merchantName),
-      ),
-    ),
+  /*
+   * **返回分页包，与真后端同形**。
+   *
+   * 此前 mock 返裸数组而后端返 `{records,…}` —— 页面按数组用，
+   * 于是 mock 下一切正常、真接口下 `rows.filter is not a function` 整页崩。
+   * mock 与真接口形状不一致时，mock 不再是「后端的替身」，而是一层遮罩。
+   */
+  // ── 自营应付账款 ──
+  //
+  // **mock 里各档都要有**：只造「待付款」的话，「票还没到所以付不了」
+  // 那条分支永远看不见，而它恰恰是这一页最要紧的规则（票到付款）。
+  listPayables: async (q = {}) =>
+    wait(db.settlements.filter((s) =>
+      s.businessMode === "SELF_OPERATED"
+      && db.eqHit(q.status, s.status)
+      && db.eqHit(q.entityNo, s.merchantNo))),
+
+  /*
+   * 收款账户（V358）。**三档都要有**：待审的能点审核，
+   * 生效中的要能看出「已经有一张在用」，被驳回的要能看到原因 ——
+   * 只造待审那一档的话，「通过之后旧卡会被顶替」这条规则在界面上看不见。
+   */
+  listPayoutAccounts: async (q = {}) => {
+    const all = db.payoutAccounts.filter((a) =>
+      db.eqHit(q.status, a.status) && db.eqHit(q.entityNo, a.entityNo));
+    return wait({ records: all, total: all.length, page: q.page ?? 1, size: q.size ?? 20 });
+  },
+
+  auditPayoutAccount: async (accountNo, pass, remark) => {
+    const a = db.payoutAccounts.find((x) => x.accountNo === accountNo);
+    if (!a) fail("找不到这张收款账户", "Payout account not found");
+    if (a.status !== "PENDING") fail("只有待审核的账户能审", "Only pending accounts can be audited");
+    // 驳回必须写原因 —— 与后端同一套判据，否则按钮亮着、点了报错
+    if (!pass && !remark?.trim()) fail("驳回必须写原因", "A reason is required to reject");
+    if (pass) {
+      // 通过时同主体的旧生效账户被顶替 —— 这条规则要能在 mock 里看出来
+      db.payoutAccounts
+        .filter((x) => x.entityNo === a.entityNo && x.status === "ACTIVE")
+        .forEach((x) => { x.status = "DISABLED"; });
+      a.status = "ACTIVE";
+    } else {
+      a.status = "REJECTED";
+    }
+    a.auditRemark = remark ?? null;
+    a.auditedAt = Date.now();
+    return wait({ ...a });
+  },
+
+  /*
+   * 经营统计。**从 db.settlements 现算而不是写死一份** ——
+   * 写死的话，mock 里的统计与 mock 里的结算单对不上，
+   * 而「两个数对不上」正是这一页上线后最可能被报的问题，
+   * 本地却永远复现不了。
+   */
+  listSettleStats: async (q) => {
+    const key = (b: (typeof db.settlements)[number]) =>
+      q.dim === "ENTITY" ? b.merchantNo
+        : q.dim === "PAY_MERCHANT" ? (b.payMerchantNo ?? "__UNASSIGNED__")
+          : (b.storeNo ?? "__UNASSIGNED__");
+    const acc = new Map<string, SettleStatRow>();
+    for (const b of db.settlements) {
+      if (q.businessMode && b.businessMode !== q.businessMode) continue;
+      const k = key(b) ?? "__UNASSIGNED__";
+      const cur = acc.get(k) ?? { dimKey: k, dimName: k, grossMinor: 0, commissionMinor: 0,
+        serviceFeeMinor: 0, channelFeeMinor: 0,
+        freightIncomeMinor: 0, freightCostMinor: 0, netMinor: 0, billCount: 0 };
+      cur.grossMinor += b.grossMinor ?? 0;
+      cur.commissionMinor += b.commissionMinor ?? 0;
+      cur.serviceFeeMinor += b.serviceFeeMinor ?? 0;
+      // 渠道费这一列 **mock 算不出来**：后端的 SettleBillVO 本来就没有暴露它
+      // （它在 StlBill 实体上有，但不进对外契约），所以这里恒 0。
+      // 真后端的统计是直接从 stl_bill 聚合的，有这一列 —— 两边差异仅此一处。
+      cur.channelFeeMinor += 0;
+      // 运费两列与渠道费不同：**SettleBillVO 现在带了它们**（V367 / §9），
+      // 所以 mock 能算出真数，不必留 0。留 0 的话这两列在 mock 下恒空，
+      // 而它们恰好是这次要看的东西。
+      cur.freightIncomeMinor += b.freightIncomeMinor ?? 0;
+      cur.freightCostMinor += b.freightCostMinor ?? 0;
+      cur.netMinor += b.netMinor ?? 0;
+      cur.billCount += 1;
+      acc.set(k, cur);
+    }
+    // 空门店那一行给个能读的名字 —— 与后端同一口径
+    for (const r of acc.values()) {
+      if (r.dimKey === "__UNASSIGNED__") r.dimName = q.dim === "STORE" ? "未分配门店" : "未分配";
+    }
+    return wait([...acc.values()].sort((a, b) => b.netMinor - a.netMinor));
+  },
+
+  /*
+   * 付款清单。**三道闸都要能在 mock 里看见** ——
+   * 只造可付的那批，界面上「blocked 区块」就永远是空的，
+   * 而那一块恰恰是这一页最要紧的信息（财务要知道这一期少付了谁、为什么）。
+   *
+   * mock 的账号是假的明文，与真后端一样带在响应里 —— 端上的处理逻辑要一致：
+   * 拿到即写进导出文件，不进任何 state。
+   */
+  payoutList: async (entityNo) => {
+    const src = db.settlements.filter((b) =>
+      b.businessMode === "SELF_OPERATED" && b.status !== "PAID"
+      && db.eqHit(entityNo, b.merchantNo));
+    const rows: PayoutList["rows"] = [];
+    const blocked: PayoutList["blocked"] = [];
+    const byEntity = new Map<string, typeof src>();
+    for (const b of src) {
+      byEntity.set(b.merchantNo, [...(byEntity.get(b.merchantNo) ?? []), b]);
+    }
+    for (const [ent, bills] of byEntity) {
+      const sum = (xs: typeof bills) => xs.reduce((n, x) => n + (x.netMinor ?? 0), 0);
+      const notConfirmed = bills.filter((b) => b.status !== "CONFIRMED");
+      if (notConfirmed.length) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(notConfirmed),
+          billCount: notConfirmed.length, reason: "还没确认对账" });
+      }
+      const confirmed = bills.filter((b) => b.status === "CONFIRMED");
+      const noInv = confirmed.filter((b) => b.invoiceStatus !== "VERIFIED" && b.invoiceStatus !== "NO_INVOICE");
+      if (noInv.length) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(noInv),
+          billCount: noInv.length, reason: "进项票还没核验，也没标无票供应商" });
+      }
+      const payable = confirmed.filter((b) => b.invoiceStatus === "VERIFIED" || b.invoiceStatus === "NO_INVOICE");
+      if (!payable.length) continue;
+      const acc = db.payoutAccounts.find((a) => a.entityNo === ent && a.status === "ACTIVE");
+      if (!acc) {
+        blocked.push({ entityNo: ent, merchantName: ent, amountMinor: sum(payable),
+          billCount: payable.length, reason: "没有生效中的收款账户，钱不知道打给谁" });
+        continue;
+      }
+      rows.push({
+        entityNo: ent, merchantName: acc.accountName, accountType: acc.accountType,
+        accountName: acc.accountName, accountNumber: "6222020000" + ent.slice(-6).padStart(9, "0"),
+        bankName: acc.bankName ?? null, bankBranch: acc.bankBranch ?? null,
+        amountMinor: sum(payable), billCount: payable.length,
+        remark: "货款-" + ent, settleNos: payable.map((b) => b.settleNo),
+      });
+    }
+    return wait({ rows, blocked, totalMinor: rows.reduce((n, r) => n + r.amountMinor, 0) });
+  },
+
+  /*
+   * 银行流水导入。**mock 也要真的解析**：只回一个「成功 N 条」的假数字，
+   * 页面上那三类结果（入库 / 跳过 / 失败明细）就永远只看得到一类，
+   * 而它们恰恰对应三种完全不同的处置。
+   *
+   * ⚠️ 已导入的流水号存在模块级集合里，**刷新页面就忘了** —— 真后端靠唯一键，
+   * 不会忘。所以「重复上传被跳过」这件事在 mock 里只在一次会话内成立。
+   */
+  importBankFlows: async (fileName, csv) => {
+    const lines = (csv ?? "").replace(/\r\n?/g, "\n").split("\n");
+    const head = lines.findIndex((l) => l.includes("流水号") && (l.includes("金额") || l.includes("发生额")));
+    if (head < 0) {
+      return wait({ total: 1, imported: 0, skipped: 0, failed: 1,
+        failures: [{ line: 0, reason: "找不到表头：至少要有「流水号」和「金额」两列" }] }, 300);
+    }
+    const cols = lines[head].split(",").map((x) => x.replace(/\s/g, ""));
+    const at = (names: string[]) => cols.findIndex((c) => names.some((n) => c.includes(n)));
+    const iNo = at(["流水号", "凭证号"]);
+    const iAmt = at(["金额", "发生额"]);
+    const iDir = at(["借贷", "方向", "收支"]);
+    let imported = 0;
+    let skipped = 0;
+    const failures: { line: number; reason: string }[] = [];
+    for (let i = head + 1; i < lines.length; i++) {
+      const raw = lines[i];
+      if (!raw.trim()) continue;
+      const cells = raw.split(",");
+      const no = (cells[iNo] ?? "").trim();
+      if (!no) continue;   // 页脚合计行
+      const amt = (cells[iAmt] ?? "").replace(/[,¥￥\s]/g, "");
+      if (!amt || Number.isNaN(Number(amt))) {
+        failures.push({ line: i + 1, reason: `看不懂的金额：${cells[iAmt] ?? ""}` });
+        continue;
+      }
+      const dir = (cells[iDir] ?? "").trim();
+      if (!dir && !amt.startsWith("-")) {
+        failures.push({ line: i + 1, reason: "看不出收支方向：借贷标志列是空的，金额也没有负号" });
+        continue;
+      }
+      if (importedFlowNos.has(no)) { skipped++; continue; }
+      importedFlowNos.add(no);
+      imported++;
+    }
+    return wait({ total: imported + skipped + failures.length, imported, skipped,
+      failed: failures.length, failures }, 400);
+  },
+
+  confirmPayable: async (settleNo) => {
+    const b = mustBill(settleNo);
+    // 未对账不能付款 —— 付了一个双方还没认的数
+    if (b.status !== "PENDING_RECON") fail("只有待对账的单能确认", "Only bills awaiting reconciliation can be confirmed");
+    b.status = "CONFIRMED";
+    return wait({ ...b });
+  },
+
+  payPayable: async (settleNo, paymentRef) => {
+    const b = mustBill(settleNo);
+    if (b.status !== "CONFIRMED") fail("只有已对账的单能登记付款", "Only reconciled bills can be marked paid");
+    // 票到付款：要么票已核验，要么显式标过无票供应商
+    if (b.invoiceStatus !== "VERIFIED" && b.invoiceStatus !== "NO_INVOICE") {
+      fail("票还没到 —— 核验进项票，或先标记为无票供应商",
+        "Invoice not received — verify it, or mark the supplier as invoice-exempt");
+    }
+    b.status = "PAID";
+    b.paymentRef = paymentRef;
+    return wait({ ...b });
+  },
+
+  markNoInvoice: async (settleNo) => {
+    const b = mustBill(settleNo);
+    b.invoiceStatus = "NO_INVOICE";
+    return wait({ ...b });
+  },
+
+  // ── 进项票 ──
+  listPurchaseInvoices: async (q = {}) =>
+    wait(db.purchaseInvoices.filter((i) => db.eqHit(q.status, i.status))),
+
+  verifyPurchaseInvoice: async (invoiceNo) => {
+    const i = db.purchaseInvoices.find((x) => x.invoiceNo === invoiceNo);
+    if (!i) fail("发票不存在", "Invoice not found");
+    // 抬头对不上不给过 —— 而界面上要说清是这个原因
+    if (!i.titleMatched) fail("抬头与主体名不一致，不能核验", "Title does not match the entity name");
+    i.status = "VERIFIED";
+    return wait({ ...i });
+  },
+
+  rejectPurchaseInvoice: async (invoiceNo, reason) => {
+    const i = db.purchaseInvoices.find((x) => x.invoiceNo === invoiceNo);
+    if (!i) fail("发票不存在", "Invoice not found");
+    i.status = "REJECTED";
+    i.rejectReason = reason;
+    return wait({ ...i });
+  },
+
+  // ── 买家开票申请 ──
+  listBuyerInvoiceRequests: async (q = {}) =>
+    wait(db.buyerInvoiceRequests.filter((r) => db.eqHit(q.status, r.status))),
+
+  markBuyerInvoiceIssued: async (requestNo, invoiceNo) => {
+    const r = db.buyerInvoiceRequests.find((x) => x.requestNo === requestNo);
+    if (!r) fail("申请不存在", "Request not found");
+    r.status = "ISSUED";
+    r.invoiceNo = invoiceNo;
+    r.issuedAt = Date.now();
+    return wait({ ...r });
+  },
+
+  rejectBuyerInvoiceRequest: async (requestNo, reason) => {
+    const r = db.buyerInvoiceRequests.find((x) => x.requestNo === requestNo);
+    if (!r) fail("申请不存在", "Request not found");
+    r.status = "REJECTED";
+    r.rejectReason = reason;
+    return wait({ ...r });
+  },
+
+  listSettlements: async (q = {}) =>
+    wait(db.paginate(db.settlements, 1, 100, (s) =>
+      db.eqHit(q.merchantNo, s.merchantNo)
+      && db.eqHit(q.status, s.status)
+      && db.eqHit(q.businessMode, s.businessMode ?? undefined))),
+
+  // 失败的指令**也给**：出问题时要看的恰恰是它们
+  listSplitRecords: async (q = {}) =>
+    wait(db.paginate(db.splitRecords, 1, 100, (r) =>
+      db.eqHit(q.settleNo, r.settleNo) && db.eqHit(q.action, r.splitAction))),
 
   // 队列直接由售后单派生，不另建实体：另建就有两份真相，且一定会不同步
   listRefundSplitBacks: async () => wait(db.afterSales.filter((a) => a.refundSplitPending)),
 
   executeRefundSplitBack: async (asNo) => {
-    const a = db.afterSales.find((x) => x.asNo === asNo);
+    const a = db.afterSales.find((x) => x.afterSaleNo === asNo);
     if (!a) notFound("售后单", "After-sales case", asNo);
     if (!a.refundSplitPending) fail("该售后单没有待回退的分账", "This case has no split waiting to be reversed");
     if (!a.share) fail("该售后单尚未判定赔付比例，无法按比例回退", "Liability shares have not been decided, so the reversal cannot be apportioned");
@@ -87,61 +354,42 @@ export const financeMock: FinanceApi = {
     return wait(a, 400);
   },
 
-  getFeeRule: async () => wait(db.feeRule),
+  listFeeRules: async () =>
+    wait([...db.feeRules].sort((a, b) => b.effectiveFrom - a.effectiveFrom)),
 
-  saveFeeRule: async (v) => {
-    for (const [k, rate] of Object.entries(v.byTrafficSource)) {
-      if (rate < 0 || rate > 10_000) fail(`${k} 的费率必须在 0–10000 万分比之间`, `The ${k} rate must be between 0 and 10000 basis points`);
+  /**
+   * 停用的版本要**参与覆盖再被移除**，不能直接跳过 —— 与后端同一套语义。
+   * 「停用最新版本」的意图是回退到上一版；直接跳过会让最新版形同没存在过，
+   * 于是命中的是更早的某一版：只调过一次时看不出区别，调过三次时结果完全不同。
+   */
+  effectiveFeeRates: async (at = Date.now()) => {
+    const out: Record<string, number> = {};
+    for (const r of [...db.feeRules].filter((r) => r.effectiveFrom <= at)
+      .sort((a, b) => a.effectiveFrom - b.effectiveFrom)) {
+      const key = `${r.businessMode}|${r.trafficSource}`;
+      if (r.enabled !== 1) delete out[key];
+      else out[key] = r.rateBp;
     }
-    if (v.pickupServiceFeeRate < 0) fail("履约服务费费率不能为负", "The fulfilment service fee rate cannot be negative");
-    // 兜底天数太短会把还在正常重试的单提前解冻回平台
-    if (v.freezeDays < SETTLE_FREEZE_MIN_DAYS) fail(`超时兜底天数至少 ${SETTLE_FREEZE_MIN_DAYS} 天`, `The fallback window must be at least ${SETTLE_FREEZE_MIN_DAYS} days`);
-    Object.assign(db.feeRule, v, { updatedAt: "2026-08-06T00:00:00Z", updatedBy: "admin" });
-    return wait(db.feeRule, 400);
+    return wait(out);
   },
 
-  listWithdrawals: (q = {}) =>
-    wait(
-      db.paginate(db.withdrawals, q.page, q.size, (w) =>
-        db.eqHit(q.status, w.status) && db.kwHit(q.keyword, w.withdrawNo, w.merchantNo, w.merchantName),
-      ),
-    ),
-
-  decideWithdrawal: async ({ withdrawNo, pass, remark }) => {
-    const w = db.withdrawals.find((x) => x.withdrawNo === withdrawNo);
-    if (!w) notFound("提现单", "Withdrawal", withdrawNo);
-    db.assertTransition(WITHDRAW_TRANSITIONS, w.status, pass ? "APPROVED" : "REJECTED", "提现单", "Withdrawal");
-
-    if (!pass) {
-      // 驳回原因原样回商家 B 端，不写等于让人猜
-      if (!remark?.trim()) fail("驳回提现必须写原因 —— 商家在 B 端看到的就是这段话", "Rejecting a withdrawal needs a reason — the merchant sees this text in their app");
-      w.status = "REJECTED";
-    } else {
-      const m = db.merchants.find((x) => x.merchantNo === w.merchantNo);
-      if (!m) notFound("商家", "Merchant", w.merchantNo);
-      // 没有收款账户，批了钱也打不出去（ADR-002）
-      if (!m.settleAccountReady) fail(`${m.name} 尚未报备分账接收方，无法打款`, `${m.name} has no payout account registered, so there is nowhere to send the money`);
-      // 解封是另一条链路上的决定（P-11.1.4），不在这里绕过去
-      if (m.status === "SUSPENDED") fail(`${m.name} 处于封禁中，请先解封再处理提现`, `${m.name} is banned — lift the ban before handling the withdrawal`);
-      // 用申请那一刻的余额快照，而不是实时值：实时值会因为期间的新订单而漂移
-      if (w.amount > w.availableBalance) {
-        fail(`申请金额超过可提余额（可提 ${w.availableBalance / 100} 元）`, `The request exceeds the available balance (¥${w.availableBalance / 100})`);
-      }
-      if (w.amount < MIN_WITHDRAW_AMOUNT) {
-        fail(`单笔提现不得低于 ${MIN_WITHDRAW_AMOUNT / 100} 元 —— 渠道手续费比本金还贵`, `A withdrawal cannot be under ¥${MIN_WITHDRAW_AMOUNT / 100} — the channel fee costs more than the amount`);
-      }
-      // 大额是最容易被冒用的口子
-      if (w.amount >= WITHDRAW_REVIEW_THRESHOLD && !remark?.trim()) {
-        fail(`金额超过 ${WITHDRAW_REVIEW_THRESHOLD / 100} 元，必须填写复核说明`, `Above ¥${WITHDRAW_REVIEW_THRESHOLD / 100} a review note is required`);
-      }
-      // 落 APPROVED 而不是 PAID：打款结果来自渠道回执
-      w.status = "APPROVED";
+  addFeeRule: async (v) => {
+    // 少一个零和多一个零是同一次手滑：5000（50%）打成 50000 就是 500%，
+    // 净额会变成大额负数并一路走到分账
+    if (v.rateBp < 0 || v.rateBp > 10_000) {
+      fail("费率必须在 0–10000 万分比之间", "The rate must be between 0 and 10000 basis points");
     }
-
-    w.remark = remark?.trim() || null;
-    w.decidedAt = new Date().toISOString();
-    w.decidedBy = "admin";
-    return wait(w, 400);
+    const rule = {
+      ruleNo: `FR-${db.feeRules.length + 1}`,
+      businessMode: v.businessMode,
+      trafficSource: v.trafficSource,
+      rateBp: v.rateBp,
+      effectiveFrom: v.effectiveFrom ?? Date.now(),
+      enabled: 1,
+      remark: v.remark ?? null,
+    };
+    db.feeRules.push(rule);
+    return wait(rule, 400);
   },
 
   listInvoiceRequests: (q = {}) =>
@@ -182,6 +430,17 @@ export const financeMock: FinanceApi = {
     return wait(iv, 400);
   },
 
+  getInvoiceTitle: async () => wait(db.invoiceTitle),
+
+  saveInvoiceTitle: async (v) => {
+    // **与后端同一条规则**：缺这两项供应商根本开不出票，存下去只会让人以为已经配好了。
+    // mock 放宽的话，开发时看着能存、接真后端才被 10400 拒 —— 那正是这一族缺陷的来源。
+    if (!v.companyName?.trim()) fail("公司全称必填", "The company name is required");
+    if (!v.taxNo?.trim()) fail("纳税人识别号必填", "The tax number is required");
+    Object.assign(db.invoiceTitle, v);
+    return wait(db.invoiceTitle, 400);
+  },
+
   getTaxRule: async () => wait(db.taxRule),
 
   saveTaxRule: async (v) => {
@@ -191,4 +450,172 @@ export const financeMock: FinanceApi = {
     Object.assign(db.taxRule, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
     return wait(db.taxRule, 400);
   },
+
+  /*
+   * 支付通道。**mock 里也要照后端的形状返回 `currentRate: null`** ——
+   * 「没配过费率」是真实存在的初始状态，mock 里塞一个数会让页面
+   * 永远走不到「未配置」那一支，而那正是运营第一次打开时看到的画面。
+   */
+  listPayChannels: async () => wait(db.payChannels.map(withCurrentRate)),
+
+  // ── 账期批次
+  listSettleBatches: async (q = {}) =>
+    wait(db.settleBatches.filter((b) =>
+      db.eqHit(q.status, b.status) && db.eqHit(q.entityNo, b.entityNo))),
+
+  approveSettleBatch: async (batchNo, remark) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    /*
+     * mock 也走「必须写原因」这条规则：恒成功的 mock 会让端上
+     * 「不写原因就点不动」那段界面永远走不到 —— 而那正是这个动作最要紧的约束。
+     */
+    if (!remark || !remark.trim()) fail("放行必须写原因", "A reason is required");
+    // 只有挂起中的能人工处置：已放行的再挂起最危险 —— 钱已经在路上，界面却显示挂起
+    if (b.status !== "BLOCKED" && b.status !== "RECONCILING") {
+      fail(`只有挂起中的批次能人工处置，当前 ${b.status}`,
+        `Only blocked batches can be decided, now ${b.status}`);
+    }
+    b.status = "RECONCILED";
+    b.decidedBy = "admin";
+    b.decideRemark = remark;
+    return wait({ ...b });
+  },
+
+  /**
+   * 放款（V391）。mock 也走三道闸里最常撞的那道：**只有 RECONCILED 能放**。
+   * 一批一笔（mock 的批次没有多收款号），户名从收款账户快照。
+   */
+  releaseSettleBatch: async (batchNo) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    if (b.status !== "RECONCILED") {
+      fail(`批次当前状态 ${b.status} 不能放款，只有自查通过的批次能放`,
+        `Batch is ${b.status}; only RECONCILED batches can be released`);
+    }
+    /*
+     * mock 库里批次用 M0001 这种商家号、收款账户用 E2026… 这种主体号，两套编号对不上
+     * （历史原因，别处也没统一）。按号找不到就回落到任一生效账户 —— 这里要演示的是放款链路，
+     * 不是「没账户怎么办」；那条闸真后端有 PayoutFlowTest 钉着。
+     */
+    const acc = db.payoutAccounts.find((a) => a.entityNo === b.entityNo && a.status === "ACTIVE")
+      ?? db.payoutAccounts.find((a) => a.status === "ACTIVE");
+    if (!acc) fail(`主体 ${b.entityNo} 没有生效中的收款账户`, `Entity ${b.entityNo} has no active payout account`);
+    const p = {
+      payoutNo: `PO${Date.now()}`, batchNo, entityNo: b.entityNo, payMerchantNo: null,
+      accountName: acc.accountName, bankName: acc.bankName ?? null, bankBranch: acc.bankBranch ?? null,
+      accountNoMasked: acc.accountMasked, amountMinor: b.netMinor, billCount: b.billCount,
+      currency: "CNY", status: "PENDING" as const, channel: "MANUAL" as const,
+      paymentRef: null, bankFlowNo: null, exportedAt: null, paidAt: null, paidBy: null,
+      matchedAt: null, failReason: null, settleNos: [] as string[],
+    };
+    mockPayouts.push(p);
+    b.status = "RELEASED";
+    b.releasedAt = Date.now();
+    return wait([{ ...p }]);
+  },
+
+  listPayouts: async (q = {}) =>
+    wait(mockPayouts.filter((p) => db.eqHit(q.status, p.status) && db.eqHit(q.entityNo, p.entityNo))),
+
+  payPayout: async (payoutNo, paymentRef) => {
+    const p = mockPayouts.find((x) => x.payoutNo === payoutNo);
+    if (!p) notFound("放款", "Payout", payoutNo);
+    if (!paymentRef || !paymentRef.trim()) fail("凭证号必填", "Payment reference is required");
+    if (p.status !== "PENDING" && p.status !== "EXPORTED") {
+      fail(`放款记录当前状态 ${p.status}，不能登记付款`, `Payout is ${p.status}; cannot mark paid`);
+    }
+    p.status = "PAID";
+    p.paymentRef = paymentRef.trim();
+    p.paidAt = Date.now();
+    p.paidBy = "admin";
+    return wait({ ...p });
+  },
+
+  failPayout: async (payoutNo, reason) => {
+    const p = mockPayouts.find((x) => x.payoutNo === payoutNo);
+    if (!p) notFound("放款", "Payout", payoutNo);
+    if (!reason || !reason.trim()) fail("退回必须写原因", "A reason is required");
+    p.status = "FAILED";
+    p.failReason = reason.trim();
+    const b = db.settleBatches.find((x) => x.batchNo === p.batchNo);
+    if (b) { b.status = "RECONCILED"; b.releasedAt = null; }
+    return wait({ ...p });
+  },
+
+  holdSettleBatch: async (batchNo, remark) => {
+    const b = db.settleBatches.find((x) => x.batchNo === batchNo);
+    if (!b) notFound("批次", "Batch", batchNo);
+    if (!remark || !remark.trim()) fail("继续挂起必须写原因", "A reason is required");
+    b.status = "BLOCKED";
+    b.blockedReason = remark;
+    b.blockedAt = Date.now();
+    b.decidedBy = "admin";
+    b.decideRemark = remark;
+    return wait({ ...b });
+  },
+
+  // ── 商家欠款
+  merchantDebt: async (entityNo) =>
+    wait(db.merchantDebts[entityNo]
+      ?? { entityNo, balanceMinor: 0, txns: [] }),
+
+  offsetDebtByDeposit: async (entityNo, amountMinor, reason, _requestNo) => {
+    const d = db.merchantDebts[entityNo];
+    if (!d || d.balanceMinor <= 0) fail("这家没有待抵扣的欠款", "No outstanding debt");
+    // 两头封顶，与后端一致：不超过欠款，也不超过保证金可用额（mock 里假设可用 5000）
+    const available = 5_000;
+    const take = Math.min(d.balanceMinor, amountMinor, available);
+    if (take <= 0) fail("保证金可用额不足", "Deposit balance is insufficient");
+    d.balanceMinor -= take;
+    d.txns.unshift({
+      txnNo: `DBT-MOCK-${d.txns.length + 1}`, txnType: "DEPOSIT",
+      amountMinor: -take, balanceAfterMinor: d.balanceMinor,
+      sourceType: null, sourceNo: null, batchNo: null,
+      reason: `${reason || "保证金抵扣"}（操作人 admin）`, at: Date.now(),
+    });
+    return wait({ ...d });
+  },
+
+  updatePayChannel: async (channel, v) => {
+    const row = db.payChannels.find((c) => c.payChannel === channel);
+    if (!row) fail("通道不存在", "Channel not found");
+    Object.assign(row, v);
+    return wait(withCurrentRate(row), 300);
+  },
+
+  addPayChannelRate: async (channel, v) => {
+    const row = db.payChannels.find((c) => c.payChannel === channel);
+    if (!row) fail("通道不存在", "Channel not found");
+    if (v.rateBp < 0 || v.rateBp > 10000) {
+      fail("万分比越界 —— 把 0.38% 写成 38 是最常见的那种错",
+        "Basis points out of range — writing 0.38% as 38 is the usual slip");
+    }
+    const rate = {
+      rateNo: `PCR${Date.now()}${Math.floor(Math.random() * 1000)}`,
+      payChannel: channel,
+      payMethod: v.payMethod || "*",
+      legalForm: v.legalForm || "*",
+      rateBp: v.rateBp,
+      minFeeMinor: v.minFeeMinor ?? 0,
+      effectiveFrom: v.effectiveFrom ?? Date.now(),
+      enabled: true,
+      remark: v.remark ?? null,
+    };
+    row.rates = [rate, ...row.rates];
+    return wait(rate, 300);
+  },
 };
+
+/** 此刻生效的那一版：精确优先于通配，与后端 `PayChannelRateServiceImpl` 同一套。 */
+function withCurrentRate(c: (typeof db.payChannels)[number]) {
+  const now = Date.now();
+  const usable = c.rates.filter((r) => r.enabled !== false && r.effectiveFrom <= now);
+  const pick = (pm: string, lf: string) =>
+    usable.filter((r) => r.payMethod === pm && r.legalForm === lf)
+      .sort((a, b) => b.effectiveFrom - a.effectiveFrom)[0] ?? null;
+  return { ...c, currentRate: pick("*", "*") };
+}
+
+/** mock 里已导入过的流水号。真后端靠 `uk_stl_bank_flow` 唯一键，这里只在一次会话内成立 */
+const importedFlowNos = new Set<string>();

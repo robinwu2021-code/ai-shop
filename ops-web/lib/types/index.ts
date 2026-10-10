@@ -12,6 +12,7 @@ export * from "./review";
 export * from "./aftersale";
 export * from "./group";
 export * from "./product";
+export * from "./inventory";
 export * from "./finance";
 export * from "./iam";
 export * from "./growth";
@@ -19,3 +20,310 @@ export * from "./risk";
 export * from "./message";
 export * from "./content";
 export * from "./system";
+export * from "./job";
+export * from "./elec";
+
+/**
+ * 运营侧看到的一条会员（P8）。
+ *
+ * @remarks `phoneTail` **只有后四位**。「跨商家可见」与「手机号脱敏」是并列的两句 ——
+ * 不是前者的例外。要看完整号得走 `revealMemberPhone`：单独权限码、必填理由、每次留痕。
+ */
+export interface OpsMember {
+  /** 会员号（某商家下的一条会员关系） */
+  memberNo: string;
+  /** 平台人档号。**一份人档串起几家商家的会员关系** —— 跨商家查同一个人靠它 */
+  personNo: string;
+  /** 手机号后四位。**只有后四位** —— 要完整号得走 revealMemberPhone：单独权限码、必填理由、每次留痕 */
+  phoneTail: string | null;
+  /** 所属商家 */
+  entityNo: string;
+  /** 商家名 */
+  entityName: string;
+  /** 状态 */
+  status: string;
+  /** 这个会员是怎么来的 */
+  source: string;
+  /** 会员等级。空 = 商家没开分层 */
+  level: string | null;
+  /** 累计下单数 */
+  orderCount: number;
+  /** 累计消费（分） */
+  totalSpentMinor: number;
+  /** 已退订。**退订的人不进任何受众** —— 运营排查「怎么没收到」第一个看它 */
+  reachOptOut: boolean;
+  /** 成为会员的时刻 */
+  joinedAt: number;
+}
+
+/** 人档：一份人档串起几家商家的会员关系 —— 这正是它存在的理由 */
+export interface OpsPerson {
+  /** 平台人档号 */
+  personNo: string;
+  /** 手机号后四位。**永远不给完整号** */
+  phoneTail: string | null;
+  /** 用户号 */
+  userNo: string | null;
+  /** 他在各商家的会员关系。**一份人档串起几家** —— 这正是人档存在的理由 */
+  memberships: OpsMember[];
+  /** 合并过的人档号。合并不可逆，留痕是唯一的回溯手段 */
+  merges: string[];
+}
+
+/**
+ * 触达健康度。
+ *
+ * @remarks `optOutRate` 是这条线唯一的健康指标 —— 发得多不是成绩，
+ * 发到有人关掉才是问题。列表按它倒序。
+ */
+export interface ReachStat {
+  /** 所属商家 */
+  entityNo: string;
+  /** 商家名 */
+  entityName: string;
+  /** 发出多少条 */
+  sent: number;
+  /** 覆盖多少会员 */
+  members: number;
+  /** 其中退订多少人 */
+  optOut: number;
+  /** 退订率。**这条线唯一的健康指标** —— 发得多不是成绩，发到有人关掉才是问题 */
+  optOutRate: number;
+  /** 标签**个数**。只有个数：标签名是商家的经营判断，运营这一页用不到（AC-15） */
+  tagCount: number;
+  /** 人群**个数**。同上，没有人群条件 */
+  segmentCount: number;
+  /** 近 30 天触达次数（批次数） */
+  tasks: number;
+  /** 被频次闸等拦下的人次 */
+  skipped: number;
+  /** 跳过率（%）= 拦下的 / 命中的。高 = 在反复给同一批人发 */
+  skipRate: number;
+}
+
+/** 一次会员分层重算的结果 */
+export interface LevelRecomputeRun {
+  /** 按哪个时刻算的（毫秒） */
+  at: number;
+  /** 扫描了多少会员 */
+  scanned: number;
+  /** 分层或近 90 天单数变了的人数 */
+  changed: number;
+  /** 其中这一轮新变成沉睡的人数。第一次上线会很大 —— 那是历史欠账一次性显形，不是事故 */
+  newlySleeping: number;
+  /** 用时（毫秒） */
+  tookMs: number;
+}
+
+/**
+ * 会员分层口径（全平台统一，商家只读）。
+ *
+ * @remarks 改了不会立刻重算 —— 下一轮凌晨任务生效；要马上看效果去「定时任务」手动跑
+ * `member-level-recompute`。改完就重算的话，一次手滑几秒内就改掉全平台的分层。
+ */
+export interface MemberLevelPolicy {
+  /** 超过这么多天没下单算沉睡 */
+  sleepDays: number;
+  /** 近 90 天至少这么多单算熟客 */
+  loyalD90Orders: number;
+  /** 近 90 天至少这么多单算常客；再少是新客 */
+  regularD90Orders: number;
+  /** 上一次重算。从没跑过为 null —— 页面要说「还没跑过」，而不是显示一排 0 */
+  lastRun?: LevelRecomputeRun | null;
+}
+
+/**
+ * 运营看到的一张券（新模型）。
+ *
+ * @remarks `flags` 是这一页的价值所在：`NO_BUDGET` 没设预算、`UNLIMITED` 不限量、
+ * `HIGH_VALUE` 单张优惠过大、`NEARLY_OUT` 快发完。商家自己看不出来 ——
+ * 他只看得到他那一张；跨商家排在一起才看得见。
+ */
+export interface OpsPromoCoupon {
+  /** 券模板号 */
+  couponNo: string;
+  /** 所属商家 */
+  entityNo: string;
+  /** 商家名 */
+  entityName: string;
+  /** 券名 */
+  title: string;
+  /** `CASH` 减固定金额 / `PERCENT` 打折 / `GIFT` 换赠品 / `TIMES` 次卡 */
+  benefitMode: string;
+  /** 优惠力度。含义**跟着 benefitMode 变**：CASH 是分、PERCENT 是万分比、TIMES 是次数 */
+  benefitValue: number;
+  /** 折扣券封顶（分）。空 = 不封顶 —— 与 UNLIMITED 一起出现时敞口无上限 */
+  benefitCapMinor: number | null;
+  /** 总发行量。空 = 不限量 */
+  totalCount: number | null;
+  /** 已领取数 */
+  receivedCount: number;
+  /** 预算上限（分）。空 = 不限 */
+  budgetMinor: number | null;
+  /** 最大敞口 = 限量 × 单张优惠。**这一页真正要看的数** —— 不限量时它算不出来 */
+  maxExposureMinor: number | null;
+  /** 状态 */
+  status: string;
+  /** 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 */
+  flags: string[];
+}
+
+/** 平台活动的报名门槛（原型 s29「报名门槛」「类目」「城市」） */
+export interface PlatformEnrollRule {
+  /** 评分下限；空 = 不限 */
+  minRating: number | null;
+  /** 是否要求无违规 */
+  noViolation: boolean;
+  /** 只收这些类目的货 */
+  categoryNos: string[];
+  /** 只收这些城市的店（暂只展示、不校验） */
+  cityCodes: string[];
+}
+
+/**
+ * 平台活动（原型 s29 · s30）。与商家活动同一个模型；多出来的只有出资、预算、报名。
+ * 出资比例用万分比：10000 全额 / 5000 一半 / 0 不出。
+ */
+export interface OpsPlatformActivity {
+  /** 活动号 */
+  activityNo: string;
+  /** 名称 */
+  name: string;
+  /** 触发：NONE 立减 / AMOUNT 满额 / QTY 满件 */
+  triggerType: string;
+  /** 满多少（分） */
+  triggerAmountMinor: number | null;
+  /** 满几件 */
+  triggerQty: number | null;
+  /** 优惠方式（现只有 CUT） */
+  benefitType: string;
+  /** 减多少（分） */
+  benefitAmountMinor: number | null;
+  /** 活动开始 */
+  startAt: number | null;
+  /** 活动结束 */
+  endAt: number | null;
+  /** 报名截止 */
+  enrollDeadline: number | null;
+  /** 平台出资万分比 */
+  platformShareBp: number;
+  /** 平台预算（分） */
+  budgetMinor: number | null;
+  /** 已通过的报名占掉的预算（分） */
+  reservedMinor: number;
+  /** 每单平台最多补贴（分） */
+  perOrderPlatformMinor: number;
+  /** 每单商家最多承担（分） */
+  perOrderMerchantMinor: number;
+  /** 报名门槛 */
+  enrollRule: PlatformEnrollRule;
+  /** DRAFT / RUNNING / ENDED */
+  status: string;
+  /** 待审 */
+  submitted: number;
+  /** 已通过 */
+  approved: number;
+  /** 已驳回 */
+  rejected: number;
+}
+
+/** 建 / 改平台活动的入参（s29）。publish = true 即发布报名 */
+export interface OpsPlatformDraft {
+  /** 空 = 新建 */
+  activityNo?: string;
+  /** 名称 */
+  name: string;
+  /** NONE / AMOUNT / QTY */
+  triggerType: string;
+  /** 满多少（分） */
+  triggerAmountMinor?: number | null;
+  /** 满几件 */
+  triggerQty?: number | null;
+  /** 减多少（分） */
+  benefitAmountMinor: number;
+  /** 活动开始 */
+  startAt: number;
+  /** 活动结束 */
+  endAt: number;
+  /** 报名截止，须早于开始 */
+  enrollDeadline: number;
+  /** 平台出资万分比 */
+  platformShareBp: number;
+  /** 平台预算（分），平台出资时必填 */
+  budgetMinor?: number | null;
+  /** 报名门槛 */
+  enrollRule: PlatformEnrollRule;
+  /** 发布报名还是存草稿 */
+  publish: boolean;
+}
+
+/** 一份报名（s30 审核表的一行） */
+export interface OpsEnrollment {
+  /** 报名单号 */
+  enrollmentNo: string;
+  /** 平台活动 */
+  activityNo: string;
+  /** 商家 */
+  entityNo: string;
+  /** 商家名 */
+  merchantName: string;
+  /** 报名的货 */
+  goodsNos: string[];
+  /** 报的份数 */
+  quota: number;
+  /** 已用份数 */
+  quotaUsed: number;
+  /** 最多平台出资（分） */
+  platformMaxMinor: number;
+  /** 最多商家承担（分） */
+  merchantMaxMinor: number;
+  /** 商家评分 */
+  rating: number;
+  /** SUBMITTED / APPROVED / REJECTED / WITHDRAWN */
+  status: string;
+  /** 驳回理由 */
+  rejectReason: string | null;
+  /** 审核时间 */
+  reviewedAt: number | null;
+  /** 提交时间 */
+  createdAt: number;
+}
+
+/** 运营看到的一场活动（新模型）。`audienceCount === 0` 表示对所有人生效 */
+export interface OpsPromoActivity {
+  /** 活动号 */
+  activityNo: string;
+  /** 所属商家 */
+  entityNo: string;
+  /** 商家名 */
+  entityName: string;
+  /** 活动名 */
+  name: string;
+  /** 触发条件：满额 / 满件 / 命中商品 / 无条件 */
+  triggerType: string;
+  /** 优惠方式：减钱 / 改单价 / 送商品 / 发券 */
+  benefitType: string;
+  /** 排期：短期 / 长期 / 周期 */
+  scheduleType: string;
+  /** 限量。空 = 不限量 */
+  quota: number | null;
+  /** 已用掉的限量 */
+  quotaUsed: number;
+  /**
+   * 被关单退回的份数（待办设计 P4）。`quotaUsed` 已经不含它们 ——
+   * 这个数让运营知道「真实卖出」与「曾经被占过」差多少
+   */
+  quotaReleased?: number;
+  /** 预算上限（分）。空 = 不限 */
+  budgetMinor: number | null;
+  /** 已花掉的预算（分） */
+  budgetUsedMinor: number;
+  /** 定向人数。**0 表示对所有人生效**，不是「谁也不发」 */
+  audienceCount: number;
+  /** 状态 */
+  status: string;
+  /** 为什么停的：到期 / 限量用尽 / 预算用尽 / 人工停。商家问「怎么停了」要有答案 */
+  endedReason: string | null;
+  /** 风险标记。商家自己看不出来 —— 他只看得到他那一张，跨商家排在一起才看得见 */
+  flags: string[];
+}

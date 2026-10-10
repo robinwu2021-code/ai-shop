@@ -30,7 +30,14 @@ export function Drawer({
         <Dialog.Overlay className="fixed inset-0 z-[var(--z-drawer)] bg-black/40 animate-in fade-in" />
         <Dialog.Content
           className={cn(
-            "fixed right-0 top-0 z-[var(--z-drawer)] flex h-screen flex-col overflow-hidden rounded-l-sheet bg-card shadow-pop outline-none",
+            /*
+             * `max-w-full` 不是可选的收尾：抽屉是 `fixed right-0` + 固定宽度，
+             * 窄屏下多出来的部分会被顶到屏幕左边**外面**去，而页面并不会横向滚
+             * （实测 375px 视口下 left=-65，「通过」按钮只剩右边 15px 可点，
+             * 「驳回」却完整可见 —— 手机上只驳得回、通不过）。
+             * 运营会在手机上打开这一页：企微群机器人推的入驻意向通知点进来就是它。
+             */
+            "fixed right-0 top-0 z-[var(--z-drawer)] flex h-screen max-w-full flex-col overflow-hidden rounded-l-sheet bg-card shadow-pop outline-none",
             "animate-in slide-in-from-right",
             width,
           )}

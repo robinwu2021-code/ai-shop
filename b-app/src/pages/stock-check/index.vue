@@ -1,0 +1,520 @@
+<script setup lang="ts">
+// 盘点（B-3）。
+//
+// **账面数是开单那一刻的快照**（后端 `bookQty`），不是当前余额 ——
+// 盘的过程中照常卖，拿当前数算差异会把中间卖掉的量记成盘亏，
+// 而那是一笔凭空出现的损失。所以这一页读回 `mCountDetail`，不自己拿余额顶替。
+//
+// **差异原因是枚举不是自由文本**：自由文本汇总不出「这个月报损了多少」，
+// 而那正是盘完之后商家唯一想知道的数。
+//
+// 过账后盘盈生成入库单、盘亏生成出库单 —— **盘点自己不改库存**，走的是同一个过账口。
+import { computed, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import type { StockBalance, StockCount } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
+import { scanCode } from "@shared/ports/scan";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+
+/** 差异原因。与后端 `reason_code` 同一套枚举 */
+const REASONS = ["BROKEN", "EXPIRED", "GIFT", "OTHER"] as const;
+
+const countNo = ref("");
+const doc = ref<StockCount | null>(null);
+/** itemId → 实盘数（字符串：输入框里可以是空的，空 ≠ 0） */
+const counted = ref<Record<string, string>>({});
+const reason = ref<(typeof REASONS)[number]>("BROKEN");
+const busy = ref(false);
+
+/** 还没开单时，先选要盘哪几件 */
+const picking = ref<StockBalance[]>([]);
+const picked = ref<string[]>([]);
+
+/*
+ * **搜索与全选**（2026-08-28 补）。原来这一屏是一条一条往下滚：
+ * 一条卡片两行、一屏只放得下 8 条，而 `mStockPickable` 一次取 200 条 ——
+ * 真实商家几百个 SKU 时，「盘其中三件」要滚两屏去找。
+ *
+ * 只在端上过滤，不再往后端发请求：这一批本来就已经全在手里了。
+ */
+const keyword = ref("");
+
+const visible = computed(() => {
+  const k = keyword.value.trim().toLowerCase();
+  if (!k) return picking.value;
+  return picking.value.filter((b) =>
+    `${b.name} ${b.specText ?? ""}`.toLowerCase().includes(k));
+});
+
+/** 全选只作用在**当前筛出来的那些**上 —— 搜了「大米」却把全部 200 条选上，没人想要 */
+const allPicked = computed(() =>
+  visible.value.length > 0 && visible.value.every((b) => picked.value.includes(b.itemId)));
+
+function toggleAll() {
+  const ids = visible.value.map((b) => b.itemId);
+  picked.value = allPicked.value
+    ? picked.value.filter((x) => !ids.includes(x))
+    : [...new Set([...picked.value, ...ids])];
+}
+
+onLoad(async (q) => {
+  // 同 stock：门店名搬进标题之后，得由页面自己拉 —— 胶囊原本替它做了这件事
+  void merchant.ensureStores();
+  countNo.value = String((q as Record<string, string>)?.no ?? "");
+  if (countNo.value) await loadDoc();
+  else await loadPick();
+});
+
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
+async function loadDoc() {
+  try {
+    doc.value = await api.mCountDetail(countNo.value);
+    // 已填过的回显。**null 与 0 要分开**：null 是「还没盘」，0 是「盘了，一件都没有」
+    const map: Record<string, string> = {};
+    for (const l of doc.value.lines) {
+      map[l.itemId] = l.countedQty == null ? "" : String(l.countedQty);
+    }
+    counted.value = map;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
+async function loadPick() {
+  try {
+    // 同上：盘点要能盘到账面为 0 的货（盘盈就是这种情况）
+    picking.value = await api.mStockPickable({ size: 200 });
+    failed.value = false;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
+  }
+}
+
+function toggle(itemId: string) {
+  picked.value = picked.value.includes(itemId)
+    ? picked.value.filter((x) => x !== itemId)
+    : [...picked.value, itemId];
+}
+
+/** 开单。**这一刻锁账面数** —— 之后卖掉多少都不影响差异 */
+async function open() {
+  if (!picked.value.length) return;
+  /*
+   * ★ **「账面数在这一刻被锁住」只在这一刻说。**
+   *
+   * 这句话原本常年占着首屏（「开单时锁定账面数，盘点期间的销售不计入差异」）。
+   * 它回答的是一个人猜不到的问题 —— 我盘的时候卖出去的算不算差异 ——
+   * 所以不能删；但它与「现在要不要开单」是同一个决定，摆在这儿才用得上。
+   *
+   * 2026-09-17 店主要求去掉页面顶部的解释，这是那句话的新去处。
+   */
+  const ok = await confirm({
+    // 标题里也有 {n}。**两处都要传** —— 只给正文传的话标题会原样印出
+    // 「开始盘点这 {n} 件？」，而它不报错（2026-09-18 真机截图为证）
+    title: String(t("stockCheck.openTitle", { n: picked.value.length })),
+    hint: String(t("stockCheck.openBody", { n: picked.value.length })),
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    countNo.value = await api.mCountOpen(picked.value);
+    await loadDoc();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+/** 某一行的差异；还没填实盘数时返回 null（显示成「—」而不是 0） */
+/*
+ * 连续扫码点数（INV-W12 第四项）。
+ *
+ * **为什么是「扫一次 +1」而不是「扫一下跳到那一行」**：跳转那种做法要求
+ * 每扫一件都回来手输一个数，那不叫连续 —— 而盘点里真正费时的恰恰是
+ * 「货架上有几件」这个计数动作本身。逐件扫过去，数是攒出来的，不是数出来的。
+ * 整箱整袋的商品照旧手输，两条路并存：扫出来的数落在同一个输入框里，
+ * 扫完还能改。
+ *
+ * **`uni.scanCode` 是一次性的**，没有常驻取景框那种 API。所以这里自己循环：
+ * 扫完一件立刻再唤起一次，**取消扫码就是退出连扫**——那是这个模式唯一的出口，
+ * 而它恰好也是商家的自然动作（盘完这一片，按返回）。
+ *
+ * 循环里**任何一件事都不许把整轮打断**：扫到没绑过的码、扫到不在本单的货、
+ * 甚至查码时网络抖了一下，都只 toast 一句然后继续。他正端着手机站在货架前，
+ * 中途弹回去意味着刚才那几件白扫了。
+ */
+const scanning = ref(false);
+/** 这一轮扫中了几件 —— 退出时给一句汇总，否则他不知道刚才那阵子算没算上 */
+const scanHits = ref(0);
+
+async function scanLoop() {
+  if (scanning.value || !doc.value) return;
+  scanning.value = true;
+  scanHits.value = 0;
+  try {
+    for (;;) {
+      let code: string;
+      try {
+        code = (await scanCode()).trim();
+      } catch {
+        break;   // 取消 / 这个端不支持 —— 都是退出，不是错误
+      }
+      if (!code) continue;
+      await countOne(code);
+    }
+  } finally {
+    scanning.value = false;
+    if (scanHits.value) {
+      uni.showToast({ title: String(t("stockCheck.scanDone", { n: scanHits.value })), icon: "none" });
+    }
+  }
+}
+
+/** 扫到一个码：找到本单里那一行，实盘数 +1。三条失败路径都只提示，不中断连扫 */
+async function countOne(code: string) {
+  let hit: StockBalance | null = null;
+  try {
+    hit = await api.mItemByBarcode(code);
+  } catch {
+    uni.showToast({ title: String(t("stockCheck.scanFailed")), icon: "none" });
+    return;
+  }
+  if (!hit) {
+    // 第一天必然全是这一条：线上 prd_sku.barcode 是 0/396。绑码在挑货那一步做，
+    // 这里不做 —— 盘点单已经开了，此刻绑上也不会让它多出一行
+    uni.showToast({ title: String(t("stockCheck.scanUnknown")), icon: "none" });
+    return;
+  }
+  const line = doc.value?.lines.find((l) => l.itemId === hit!.itemId);
+  if (!line) {
+    // 开单时没选这一件。**说出是哪件货**，否则他会以为是码没绑上，反复扫同一件
+    uni.showToast({ title: String(t("stockCheck.scanNotInDoc", { name: hit.name })), icon: "none" });
+    return;
+  }
+  const next = Number(counted.value[line.itemId] || 0) + 1;
+  counted.value = { ...counted.value, [line.itemId]: String(next) };
+  scanHits.value += 1;
+  uni.showToast({ title: String(t("stockCheck.scanCounted", { name: line.name, n: next })), icon: "none" });
+}
+
+function diff(itemId: string, bookQty: number): number | null {
+  const v = counted.value[itemId];
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n - bookQty : null;
+}
+
+const totalDiff = computed(() => {
+  if (!doc.value) return 0;
+  return doc.value.lines.reduce((sum, l) => sum + (diff(l.itemId, l.bookQty) ?? 0), 0);
+});
+
+/** 有差异的行都要带原因。**差异为 0 的不带** —— 让人给没差异的行选原因，那一栏就成了噪音 */
+const hasDiff = computed(() =>
+  !!doc.value && doc.value.lines.some((l) => (diff(l.itemId, l.bookQty) ?? 0) !== 0),
+);
+
+/** 一件都没填就提交，等于把整张单当成「全部盘成 0」—— 那会清空这几件货 */
+const filledCount = computed(() =>
+  Object.values(counted.value).filter((v) => v !== "").length,
+);
+
+/**
+ * 作废这张单 —— 「开错了怎么办」的答案。
+ *
+ * **它是 2026-09-17 才需要的**：在「一个库位同时只许开一张」那道闸之前，
+ * 开错一张不管它就是了；闸立起来之后，那张错单会**把这个库位的盘点整个挡死**。
+ * 而在这个入口出现之前，唯一的退路是「提交一张一件都没填的单」——
+ * 它确实是空操作，但没人看得出那是退路。
+ *
+ * 放在单据头里而不是贴底条上：底下那枚是「提交并过账」，
+ * 一个是收工、一个是扔掉，摆一起迟早点错（旁边那句注释写的是同一件事）。
+ */
+async function voidDoc() {
+  if (!doc.value || busy.value) return;
+  const ok = await confirm({
+    title: String(t("stockCheck.voidTitle")),
+    hint: String(t("stockCheck.voidHint", { no: doc.value.countNo })),
+    confirmText: String(t("stockCheck.voidConfirm")),
+    danger: true,
+  });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    await api.mCountVoid(doc.value.countNo);
+    uni.showToast({ title: String(t("stockCheck.voided")), icon: "none" });
+    // 回上一页：这张单没了，留在它的详情上没有意义
+    uni.navigateBack();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function submit() {
+  if (!doc.value || !filledCount.value) return;
+  const ok = await confirm({
+    title: String(t("stockCheck.confirmTitle")),
+    hint: String(t("stockCheck.confirmBody", { n: totalDiff.value })),
+  });
+  if (!ok) return;
+
+  busy.value = true;
+  try {
+    const lines = doc.value.lines
+      .filter((l) => counted.value[l.itemId] !== "")
+      .map((l) => {
+        const d = diff(l.itemId, l.bookQty) ?? 0;
+        return {
+          itemId: l.itemId,
+          countedQty: Number(counted.value[l.itemId]),
+          reasonCode: d === 0 ? undefined : reason.value,
+        };
+      });
+    await api.mCountFill(countNo.value, lines);
+    await api.mCountPost(countNo.value);
+    uni.showToast({ title: String(t("stockCheck.posted")), icon: "none" });
+    uni.navigateBack();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+/**
+ * 差异的显示。**带符号** —— 「2」与「−2」在窄列里差一个字符，
+ * 而这一栏的正负正是盘盈与盘亏的分界。
+ *
+ * 写在 `<script setup>` 里而不是另一个 `<script>` 块：普通块的导出
+ * **模板里取不到**，而 tsc 不会为此报错 —— 表现是那一列永远空白。
+ */
+function diffText(n: number): string {
+  return n > 0 ? `+${n}` : String(n);
+}
+function diffClass(n: number | null): string {
+  if (n == null || n === 0) return "";
+  return n < 0 ? "is-danger" : "is-success";
+}
+
+/** 「08-26 09:02」。切片不解析 —— 后端发的是不带时区的 LocalDateTime */
+function at(iso?: string): string {
+  return iso && iso.length >= 16 ? iso.slice(5, 16).replace("T", " ") : "";
+}
+</script>
+
+<template>
+  <sh-scaffold
+    title-key="stockCheck.title"
+    :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
+    :denied="!merchant.can('biz:stock')"
+  >
+      <!-- ① 还没开单：先选要盘哪几件。
+           **顶部那句解释去掉了**（2026-09-17 店主要求）：前半句「选择需要盘点的商品」
+           是在念页面名字；后半句「开单时锁定账面数」有信息，挪到开单确认那一刻说 -->
+      <template v-if="!doc">
+
+      <view v-if="picking.length" class="sh-card sh-mb-sm">
+        <view class="sh-row">
+          <input
+            maxlength="32"
+            v-model="keyword"
+            class="field__input sh-fill"
+            :placeholder="String($t('stockPick.searchPh'))"
+            confirm-type="search"
+          />
+          <text class="sh-link" @tap="toggleAll">
+            {{ allPicked ? $t("stockCheck.clearAll") : $t("stockCheck.pickAll") }}
+          </text>
+        </view>
+      </view>
+
+      <sh-empty v-if="!picking.length"
+          :failed="failed"
+          @retry="loadPick" :text="String($t('stockCheck.pickEmpty'))"></sh-empty>
+      <sh-empty v-else-if="!visible.length" :text="String($t('stockPick.empty'))"></sh-empty>
+
+      <view v-for="b in visible" :key="b.itemId" class="sh-card sh-mb-sm" @tap="toggle(b.itemId)">
+        <view class="row__top sh-row">
+          <!-- 勾选由整行接管（点一行就选中），sh-check 只负责画 -->
+          <sh-check :model-value="picked.includes(b.itemId)"></sh-check>
+          <view class="sh-fill">
+            <text class="txt-strong row__title">{{ b.name }}{{ b.specText ? ` · ${b.specText}` : "" }}</text>
+            <text class="sh-muted sh-num">{{ $t("stockCheck.bookN", { n: b.onHand }) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!--
+        ⚠️ 这两枚是**流程节点**，不是「随时可提交」：先「开始盘点」，
+        填完实盘数才「提交」。贴底之后它们一直在眼前，所以
+        **禁用态尤其要准** —— 没选货 / 没填数时是 muted，那是唯一的护栏。
+        （原来它们在流末，滚不到就点不到，等于多了一道物理护栏；现在没有了。）
+      -->
+      <sh-actionbar :pad="180">
+        <view
+          class="sh-btn"
+          :class="{ 'sh-btn--muted': !picked.length || busy }"
+          @tap="open"
+        >
+          {{ $t("stockCheck.start", { n: picked.length }) }}
+        </view>
+      </sh-actionbar>
+    </template>
+
+    <!-- ② 已开单：填实盘数 -->
+    <template v-else>
+      <view class="sh-card">
+        <view class="hd sh-row sh-row--between">
+          <text class="txt-strong sh-num">{{ doc.countNo }}</text>
+          <text class="sh-chip sh-chip--warning">{{ $t("stockCheck.counting") }}</text>
+        </view>
+        <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
+
+        <!--
+          连续扫码贴在单据头下面，不进底部动作条：底下那枚是「提交并过账」，
+          两者一个是干活、一个是收工，摆一起迟早点错。
+        -->
+        <!--
+          一行两枚，**退路在左、干活的在右**：
+          「作废」与「连续扫码」不是一档东西 —— 一个是扔掉、一个是接着干，
+          退路不该长得像入口，所以它用 caption 字号 + 危险色，确认框走 `danger` 档。
+          各自单独占一行的话，两枚一左一右吊在那儿，看不出谁跟谁有关系。
+        -->
+        <!--
+          一行两枚，**退路在左、干活的在右**：
+          「作废」与「连续扫码」不是一档东西 —— 一个是扔掉、一个是接着干，
+          退路不该长得像入口，所以它用 caption 字号 + 危险色，确认框走 `danger` 档。
+          各自单独占一行的话，两枚一左一右吊在那儿，看不出谁跟谁有关系。
+        -->
+        <view class="sh-row sh-row--between acts">
+          <text class="sh-link voidlink" @tap="voidDoc">
+            {{ $t("stockCheck.voidDoc") }}
+          </text>
+          <!--
+            扫码中压暗且不响应。**两个静态文案而不是一个三元** —— 界面清单的
+            生成器只认 `$t("…")` 紧跟引号的写法，三元里的词条它一个都抽不到，
+            于是这枚按钮在清单上凭空消失，而 `--check` 照样绿。
+          -->
+          <text v-if="!scanning" class="sh-link" @tap="scanLoop">
+            {{ $t("stockCheck.scanStart") }}
+          </text>
+          <text v-else class="sh-link sh-muted">
+            {{ $t("stockCheck.scanning") }}
+          </text>
+        </view>
+      </view>
+
+      <view v-for="l in doc.lines" :key="l.itemId" class="sh-card sh-mb-sm">
+        <view class="row__top sh-row">
+          <view class="sh-fill">
+            <text class="txt-strong row__title">{{ l.name }}{{ l.specText ? ` · ${l.specText}` : "" }}</text>
+            <view class="row__meta sh-row">
+              <text class="sh-muted sh-num">{{ $t("stockCheck.bookN", { n: l.bookQty }) }}</text>
+              <text
+                v-if="(diff(l.itemId, l.bookQty) ?? 0) !== 0"
+                class="sh-chip sh-chip--danger"
+              >
+                {{ $t("stockCheck.reasonRequired") }}
+              </text>
+            </view>
+          </view>
+          <input
+            maxlength="6"
+            v-model="counted[l.itemId]"
+            class="field__input qty sh-num"
+            type="number"
+            :placeholder="String(l.bookQty)"
+          />
+          <view class="row__end">
+            <text class="txt-strong sh-num" :class="diffClass(diff(l.itemId, l.bookQty))">
+              {{ diff(l.itemId, l.bookQty) == null ? "—" : diffText(diff(l.itemId, l.bookQty)!) }}
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 原因只在真有差异时才问 -->
+      <view v-if="hasDiff" class="sh-card">
+        <text class="field__label">{{ $t("stockCheck.reasonLabel") }}</text>
+        <view class="reasons sh-wrap">
+          <text
+            v-for="r in REASONS"
+            :key="r"
+            class="sh-chip"
+            :class="{ 'sh-chip--primary': reason === r }"
+            @tap="reason = r"
+          >
+            {{ $t(`stock.reason.${r}`) }}
+          </text>
+        </view>
+      </view>
+
+      <view class="sh-card hd sh-row sh-row--between">
+        <text class="txt-strong">{{ $t("stockCheck.totalDiff") }}</text>
+        <text class="txt-display sh-num" :class="diffClass(totalDiff)">
+          {{ diffText(totalDiff) }}
+        </text>
+      </view>
+
+      <text class="sh-hint hint">{{ $t("stockCheck.postHint") }}</text>
+      <sh-actionbar :pad="200">
+        <view
+          class="sh-btn"
+          :class="{ 'sh-btn--muted': !filledCount || busy }"
+          @tap="submit"
+        >
+          {{ $t("stockCheck.submit") }}
+        </view>
+      </sh-actionbar>
+    </template>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+/* 作废：弱化到底，与「连续扫码」那枚不是一档东西 —— 退路不该长得像入口 */
+.voidlink {
+  display: block;
+  margin-top: 12rpx;
+}
+
+/* 连扫入口贴在单号右下：它属于这张单，不是一个独立功能 */
+/* 作废与连续扫码那一行。`.sh-row--between` 把两枚推到两端 */
+.acts {
+  padding-top: 12rpx;
+}
+
+.row__top {
+  gap: 20rpx;
+}
+
+.row__title {
+  display: block;
+}
+.row__meta {
+  margin-top: 8rpx;
+}
+.row__end {
+  min-width: 72rpx;
+  text-align: end;
+  flex: none;
+}
+.qty {
+  width: 144rpx;
+  text-align: end;
+  flex: none;
+}
+.hint {
+  padding: 0 4rpx;
+}
+</style>

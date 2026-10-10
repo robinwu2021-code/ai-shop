@@ -2,7 +2,7 @@
 // 拆三张表会让"这个用户同时命中几类"看不出来 —— 而那恰恰最该优先处理。
 
 export type RiskType = "FAKE_ORDER" | "ABNORMAL_FISSION" | "MALICIOUS_REFUND";
-export type RiskStatus = "OPEN" | "CONFIRMED" | "DISMISSED";
+export type RiskStatus = "PENDING" | "CONFIRMED" | "DISMISSED";
 
 export interface RiskEvent {
   /** 风险事件单号 */
@@ -12,7 +12,7 @@ export interface RiskEvent {
   /** 主体：用户昵称 / 商家名 / 设备号 */
   subject: string;
   /** 主体类型，决定 `subject` 是昵称、店名还是设备号 */
-  subjectType: "USER" | "MERCHANT" | "DEVICE";
+  subjectType: SubjectType;
   /**
    * 命中的信号。**不给分值** —— 分值口径要等有真实样本后由风控定，
    * 现在编一个看起来很准的分数，只会让人照着它做决定。
@@ -36,7 +36,7 @@ export type SubjectType = "USER" | "MERCHANT" | "DEVICE";
  * 两者是完全不同的东西（一个是商家申诉差评，一个是被拉黑者申诉解禁）。
  * 同名会在 `lib/types` 的总出口上直接冲突，也会让读代码的人以为它们是一回事。
  */
-export type BlacklistAppealStatus = "NONE" | "PENDING" | "ACCEPTED" | "REJECTED";
+export type BlacklistAppealStatus = "NONE" | "PENDING" | "UPHELD" | "REJECTED";
 
 export interface BlacklistEntry {
   /** 黑名单单号 */

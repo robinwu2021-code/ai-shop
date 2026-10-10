@@ -1,194 +1,139 @@
 <script setup lang="ts">
-// 商家团（B-11.6.1 / 6.2）。
-//
-// 一期的团**绝大多数应该由商家和运营铺出来**，不是等用户自发（ADR-004 §3.3）——
-// 所以这个页面是团购这条线的起点。社区里还没人的时候，用户发不起团。
-//
-// 规则（需求 §五之四）：
-//   · 成团单位是**自提点**（拼的是一车送到一个点的成本）
-//   · **单档成团**，不做阶梯价
-//   · **不成团不作废**，按原价照常发货 —— 生鲜场景下「不成团退款」= 用户白等一天没菜
-import { ref } from "vue";
+/*
+ * 团（原型 s09）。**一行是一个团，不是一个活动** —— 与活动列表、集单列表同一种卡：
+ * 名称 + 状态 / 一行信息 / 一行指标；卡内不放按钮，处理在团详情里。
+ *
+ * 指标行的进度条是「几人 / 成团人数」。开团在底部操作栏（s34）。
+ *
+ * 参团 = 买家带团号下单，付款成功才算一人；到期没凑齐、或商家散团，
+ * 参团已付款的单自动全额退款 —— 这一页只看结果，不处理钱。
+ */
+import { computed, onUnmounted, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
-import { money } from "@shared/utils/money";
-import { countdown } from "@shared/utils/datetime";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
 import type { GroupBuy } from "@shared/types";
 
-/** 只取开团要用的三个字段，不把整个 Goods 拖进页面状态 */
-interface Groupable {
-  goodsNo: string;
-  title: string;
-  cover: string;
-}
-
 const { t } = useI18n();
+const merchant = useMerchantStore();
 
-const groups = ref<GroupBuy[]>([]);
-/** 可开团的商品 = 配过 {起团人数, 团购价} 的 —— 没配就没有团价可用 */
-const groupable = ref<Groupable[]>([]);
-const busy = ref(false);
+const TABS = [
+  { key: "OPEN", label: String(t("groups.tab.OPEN")) },
+  { key: "FORMED", label: String(t("groups.tab.FORMED")) },
+  { key: "FAILED", label: String(t("groups.tab.FAILED")) },
+] as const;
+const tab = ref<string>("OPEN");
+
+const list = ref<GroupBuy[]>([]);
+const loaded = ref(false);
+const failed = ref(false);
+const now = ref(Date.now());
+const tick = setInterval(() => { now.value = Date.now(); }, 1000);
+onUnmounted(() => clearInterval(tick));
 
 async function load() {
-  const [gs, res] = await Promise.all([api.mGroupList(), api.mGoodsList({ size: 100 })]);
-  groups.value = gs;
-  groupable.value = res.records
-    .filter((g) => g.groupBuy && g.onSale)
-    .map((g) => ({ goodsNo: g.goodsNo, title: g.title, cover: g.cover }));
-}
-
-async function create(goodsNo: string) {
-  if (busy.value) return;
-  busy.value = true;
   try {
-    await api.mCreateGroup(goodsNo);
-    uni.showToast({ title: t("groups.created"), icon: "none" });
-    await load();
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
+    list.value = await api.mGroupList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
   }
+  loaded.value = true;
 }
 
-onShow(load);
+/** 待审的团归进「进行中」：对商家来说它们都是还没结果的团 */
+function tabOf(g: GroupBuy): string {
+  return g.status === "PENDING" ? "OPEN" : g.status;
+}
+
+const shown = computed(() => list.value.filter((g) => tabOf(g) === tab.value));
+
+/** 黄 = 还差人；绿 = 已成团；灰 = 已散 / 待审 */
+function chipOf(g: GroupBuy): { text: string; cls: string } {
+  if (g.status === "FORMED") return { text: String(t("groups.status.FORMED")), cls: "sh-chip--success" };
+  if (g.status === "FAILED") return { text: String(t("groups.status.FAILED")), cls: "" };
+  if (g.status === "PENDING") return { text: String(t("groups.status.PENDING")), cls: "" };
+  return { text: String(t("groups.need", { n: g.need })), cls: "sh-chip--warning" };
+}
+
+function metaOf(g: GroupBuy): string {
+  const who = g.initiatorNickname
+    ? String(t("groups.byBuyer", { name: g.initiatorNickname }))
+    : String(t("groups.byMerchant"));
+  return g.pickupName ? `${who} · ${g.pickupName}` : who;
+}
+
+function left(g: GroupBuy): string {
+  const s = Math.max(0, Math.floor((g.expireAt - now.value) / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
+
+function pct(g: GroupBuy): number {
+  return g.minCount ? Math.min(100, Math.round((g.joinedCount / g.minCount) * 100)) : 0;
+}
+
+function go(url: string) {
+  uni.navigateTo({ url });
+}
+
+onShow(() => {
+  void load();
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="groups.title">
-    <text class="sh-h1">{{ $t("groups.title") }}</text>
-    <text class="sh-muted intro">{{ $t("groups.intro") }}</text>
+  <sh-scaffold title-key="groups.title" :denied="!merchant.can('biz:campaign')" :failed="failed" @retry="load">
+    <sh-tabs :items="TABS" :active="tab" @change="tab = $event"></sh-tabs>
 
-    <text class="sh-h2 sec">{{ $t("groups.running") }}</text>
-    <sh-empty v-if="!groups.length" :text='$t("groups.noRunning")'></sh-empty>
-
-    <view v-for="g in groups" :key="g.groupNo" class="sh-card item">
-      <view class="item__head">
-        <text class="item__cover">{{ g.cover }}</text>
-        <view class="item__main">
-          <text class="item__title">{{ g.title }}</text>
-          <text class="sh-muted">{{ g.pickupName }}</text>
-        </view>
-        <view class="item__price">
-          <text class="sh-num now">{{ money(g.groupPrice) }}</text>
-          <text class="sh-num base">{{ money(g.basePrice) }}</text>
-        </view>
+    <view v-for="g in shown" :key="g.groupNo" class="sh-card card" @tap="go(`${ROUTES.group}?groupNo=${g.groupNo}`)">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ g.title }}</text>
+        <text class="sh-chip" :class="chipOf(g).cls">{{ chipOf(g).text }}</text>
       </view>
-
-      <view class="progress">
-        <text class="sh-chip" :class="g.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
-          {{ g.reached ? $t("groups.reached") : $t("groups.need", { n: g.need }) }}
+      <text class="txt-sub sh-muted card__meta">{{ metaOf(g) }}</text>
+      <view class="sh-row card__metric">
+        <view class="bar sh-fill"><view class="bar__in" :style="{ width: pct(g) + '%' }"></view></view>
+        <text class="txt-caption sh-muted sh-num">
+          {{ $t("groups.joinedOf", { n: g.joinedCount, m: g.minCount }) }}
+          <template v-if="g.status === 'OPEN'"> · {{ $t("groups.left", { t: left(g) }) }}</template>
         </text>
-        <text class="sh-muted sh-num">{{ $t("groups.joined", { n: g.joinedCount }) }}</text>
-        <text class="sh-muted sh-num">{{ countdown(g.expireAt - Date.now()) }}</text>
       </view>
     </view>
 
-    <text class="sh-h2 sec">{{ $t("groups.canOpen") }}</text>
-    <sh-empty v-if="!groupable.length" :text='$t("groups.noGroupable")'></sh-empty>
+    <sh-empty
+      v-if="!shown.length"
+      :pending="!loaded"
+      :text="String($t('groups.empty'))"
+      :tip="String($t('groups.emptyTip'))"
+    ></sh-empty>
 
-    <view v-for="g in groupable" :key="g.goodsNo" class="sh-card row">
-      <text class="row__cover">{{ g.cover }}</text>
-      <text class="row__title">{{ g.title }}</text>
-      <text class="btn" @tap="create(g.goodsNo)">{{ $t("groups.open") }}</text>
-    </view>
-
-    <text class="tip">{{ $t("groups.rules") }}</text>
+    <sh-actionbar>
+      <view class="sh-btn" @tap="go(ROUTES.groupOpen)">{{ $t("groups.open") }}</view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.intro {
+.card__meta {
   display: block;
-  margin: 12rpx 8rpx 0;
-  line-height: 1.6;
+  margin-top: 8rpx;
 }
-.sec {
-  display: block;
-  margin: 40rpx 8rpx 16rpx;
+.card__metric {
+  margin-top: 12rpx;
+  gap: 16rpx;
 }
-.item {
-  margin-bottom: 20rpx;
-}
-.item__head {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.item__cover {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 24rpx;
+.bar {
+  height: 8rpx;
+  border-radius: 9999px;
   background: var(--sh-faint);
-  font-size: 52rpx;
-  text-align: center;
-  line-height: 88rpx;
+  overflow: hidden;
 }
-.item__main {
-  flex: 1;
-  min-width: 0;
-}
-.item__title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.item__price {
-  text-align: end;
-}
-.now {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-primary);
-}
-.base {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  text-decoration: line-through;
-}
-.progress {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-top: 20rpx;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 16rpx;
-}
-.row__cover {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 44rpx;
-  text-align: center;
-  line-height: 72rpx;
-}
-.row__title {
-  flex: 1;
-  min-width: 0;
-  font-size: 28rpx;
-  color: var(--sh-ink);
-}
-.btn {
-  padding: 18rpx 32rpx;
+.bar__in {
+  height: 100%;
   border-radius: 9999px;
   background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 24rpx;
-  font-weight: 600;
-}
-.tip {
-  display: block;
-  margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

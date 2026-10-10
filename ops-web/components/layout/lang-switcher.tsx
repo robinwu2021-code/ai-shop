@@ -35,9 +35,10 @@ export function LangSwitcher() {
             aria-pressed={active}
             title={o.label}
             className={cn(
-              // 不用 txt-label：active 态靠 font-semibold 区分，而类型阶（无 @layer）
-              // 会盖掉 Tailwind 的字重类 —— 同 tabs/tab-header 的分段控件。
-              "rounded-control px-2 py-0.5 text-xs transition-all duration-[var(--dur)] ease-[var(--ease)]",
+              // 这里原先绕开字阶，注释写着「类型阶（无 @layer）会盖掉 Tailwind 的字重类」——
+              // 诊断是对的，而根因已在 globals.css 修掉（七档收进 @layer components）。
+              // 现在 active 态的 font-semibold 真的生效，可以正常用字阶。
+              "rounded-control px-2 py-0.5 txt-caption transition-all duration-[var(--dur)] ease-[var(--ease)]",
               "focus-ring",
               active
                 ? "bg-card font-semibold text-foreground shadow-[var(--card-shadow)]"

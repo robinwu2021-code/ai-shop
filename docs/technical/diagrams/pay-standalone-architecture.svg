@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="820" viewBox="0 0 1060 820" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>方案二：支付独立服务 —— 支付域没有 controller</title>
+<desc>三端（C 端消费者、B 端商家、运营端）与支付通道全部只打到主应用，主应用是唯一的 HTTP 入口，三端 controller、鉴权、判权、数据域解析都在那里完成。主应用通过 PayPort 调支付域：内嵌形态注入本地实现，独立形态注入 HTTP 客户端，打到 pay-svc 的 /internal 内部口（共享密钥、绑内网、不认用户身份）。因此 pay-svc 不需要鉴权链、不读会话表、不判权限，也就不依赖数据域引擎，从而不带 MyBatis，AOT 成立。数据域从 SQL 拦截器自动加 where 改为主应用显式传收窄后的条件，失败方向从静默全量变成空集或编译不过。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#7FA2CC" stroke-width="1.6" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.em{font-weight:700;fill:#161A21}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.lb{font-size:9.5px;fill:#4A7CB0;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.unit{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.6}
+.pay{fill:#EEF4FC;stroke:#7FA2CC;stroke-width:1.6}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.stop{fill:#FBF0F0;stroke:#C97B7B;stroke-width:1.4}
+.infra{fill:#F5F6F8;stroke:#C6CDD8;stroke-width:1.2}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.arb{stroke:#7FA2CC;stroke-width:1.6;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+</style></defs>
+
+<text class="b" x="24" y="26">① 四类调用方 —— 全部只打到主应用，支付域对外没有任何 HTTP 表面</text>
+
+<rect class="box" x="24" y="38" width="238" height="62" rx="7"/>
+<text class="n" x="38" y="58">C 端消费者　/mp/**</text>
+<text class="t" x="38" y="76">小程序 · App · H5</text>
+<text class="t" x="38" y="92">下单支付（今天还是桩）</text>
+
+<rect class="box" x="278" y="38" width="238" height="62" rx="7"/>
+<text class="n" x="292" y="58">B 端商家　/biz/**</text>
+<text class="t" x="292" y="76">App（H5 仅调试用）</text>
+<text class="t" x="292" y="92">结算单 · 账期 · 欠款 · 进件</text>
+
+<rect class="box" x="532" y="38" width="238" height="62" rx="7"/>
+<text class="n" x="546" y="58">运营端　/ops/**</text>
+<text class="t" x="546" y="76">ops-web（内网）</text>
+<text class="t" x="546" y="92">批次放款 · 对账 · 费率 · 提现</text>
+
+<rect class="box warn" x="786" y="38" width="250" height="62" rx="7"/>
+<text class="n" x="800" y="58">支付通道　/callback/**</text>
+<text class="t" x="800" y="76">微信 · 支付宝 · 聚合网关</text>
+<text class="t" x="800" y="92"><tspan class="em">直接进 pay :8083</tspan>，不经主应用</text>
+
+<path class="ar" marker-end="url(#ar)" d="M143 100 L143 128"/>
+<path class="ar" marker-end="url(#ar)" d="M397 100 L397 128"/>
+<path class="ar" marker-end="url(#ar)" d="M651 100 L651 128"/>
+<path class="ar" marker-end="url(#ar)" d="M911 100 L911 118 L862 118 L862 184"/>
+
+<line x1="24" y1="146" x2="1036" y2="146" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="172">② 主应用 —— 唯一的 HTTP 入口，身份问题在这里全部解决完</text>
+
+<rect class="unit" x="24" y="184" width="640" height="300" rx="8"/>
+<text class="n" x="40" y="206">ai-shop.service　:8081　—— nginx 不需要为支付配任何分流规则</text>
+
+<rect class="box" x="40" y="218" width="608" height="56" rx="6"/>
+<text class="n" x="54" y="238">四条 SecurityFilterChain　/biz · /mp · /ops · /callback</text>
+<text class="t" x="54" y="256">令牌校验 · 会话 · @perm.can / @perm.canBiz · <tspan class="em">数据域解析</tspan></text>
+<text class="t" x="54" y="270">全部在这里，一条都不下沉到支付域</text>
+
+<rect class="box" x="40" y="282" width="608" height="56" rx="6"/>
+<text class="n" x="54" y="302">支付相关的三端 controller　位置一行不动</text>
+<text class="t" x="54" y="320">/ops/settle-batches · /biz/settle/** · /biz/merchant/debt · /mp/order/*/pay</text>
+<text class="t" x="54" y="334">形态切换只改它们背后注入的是哪个 PayPort 实现</text>
+
+<rect class="key" x="40" y="346" width="608" height="60" rx="6"/>
+<text class="n" x="54" y="366">传给支付域的是<tspan class="em">已经收窄过的条件</tspan>，不是「当前用户是谁」</text>
+<text class="t" x="54" y="384">payPort.settleBatches(visibleEntityNos, status)</text>
+<text class="t" x="54" y="400">数据域从「SQL 拦截器自动加 where」变成「显式传参」—— 失败方向不同，见图下</text>
+
+<rect class="pay" x="40" y="414" width="608" height="56" rx="6"/>
+<text class="n" x="54" y="434">PayPort　—— 业务域只认这一个接口</text>
+<text class="t" x="54" y="452">embedded：LocalPayAdapter（直接调 pay-domain，同进程）</text>
+<text class="t" x="54" y="466">remote　：RemotePayClient（HTTP → :8083 /internal）</text>
+
+<rect class="pay" x="688" y="184" width="348" height="300" rx="8"/>
+<text class="n" x="704" y="206">ai-shop-pay.service　:8083　【形态 B】</text>
+
+<rect class="stop" x="704" y="218" width="316" height="70" rx="6"/>
+<text class="n" x="718" y="238">没有 controller · 不验令牌</text>
+<text class="t" x="718" y="256">不起 SecurityFilterChain、不读会话表、</text>
+<text class="t" x="718" y="272">不判权限、不解析数据域</text>
+
+<rect class="key" x="704" y="296" width="316" height="54" rx="6"/>
+<text class="n" x="718" y="316">/internal/** + /callback/pay/**</text>
+<text class="t" x="718" y="334">前者共享密钥绑内网；后者验签，是唯一的公网入口</text>
+
+<rect class="box" x="704" y="358" width="316" height="60" rx="6"/>
+<text class="n" x="718" y="378">pay-domain · pay-store</text>
+<text class="t" x="718" y="396">pay-channel（通道适配）· pay-risk</text>
+<text class="t" x="718" y="411">pay-job（四个任务，随账走）</text>
+
+<rect class="key" x="704" y="426" width="316" height="44" rx="6"/>
+<text class="n" x="718" y="446">依赖：shop-base 内核 + store-data-aot</text>
+<text class="t" x="718" y="462"><tspan class="em">没有 shop-base-auth，所以没有 MyBatis</tspan></text>
+
+<path class="arb" marker-end="url(#arb)" d="M648 442 L704 442"/>
+<text class="lb" x="676" y="434" text-anchor="middle">HTTP</text>
+
+<line x1="24" y1="502" x2="1036" y2="502" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="528">③ 这一条原则同时解决的四件事</text>
+
+<rect class="key" x="24" y="540" width="1012" height="104" rx="7"/>
+<text class="t" x="40" y="562">早先的设计让 pay 自带三端 controller 与鉴权链，于是它必须依赖 shop-base-auth → 数据域引擎 → <tspan class="em">MyBatis</tspan>（实测 11 处），AOT 那半个理由当场没了。</text>
+<text class="t" x="40" y="584">① pay 不鉴权　→　不依赖 auth　→　<tspan class="em">不带 MyBatis　→　AOT 成立</tspan></text>
+<text class="t" x="40" y="602">② pay 不读会话　→　「token-store 切 db」<tspan class="em">不再是拆分的前置条件</tspan>（它本身仍值得做，但那是另一件事）</text>
+<text class="t" x="40" y="620">③ 判权只在主应用发生　→　不需要跨库读 sys_role_point，也不需要远程回查</text>
+<text class="t" x="40" y="638">④ 只有一个进程有 controller　→　nginx 不必按路径分流，也就没有「少配一条就静默走到连不上 pay 库的那份」</text>
+
+<rect class="warn" x="24" y="660" width="1012" height="62" rx="7"/>
+<text class="n" x="40" y="680">代价要认：支付相关的读多一跳，且数据域改成显式传参</text>
+<text class="t" x="40" y="699">但显式传参的<tspan class="em">失败方向更安全</tspan>：拦截器漏装是静默全量（越权且不报错，本仓库刚在结算表上验过一次），</text>
+<text class="t" x="40" y="715">显式传参漏传是空集或编译不过。前者要靠人发现，后者当场就停。</text>
+
+<text class="l" x="24" y="748">通道回调直接进 pay（2026-08-31 定）：验签与回查是通道侧的事，跟着 pay 走 —— 这条链因此<tspan class="em">不依赖主应用可用</tspan>，而它恰好最不该依赖别人（钱已经付了，通道在等 ack）。</text>
+<text class="l" x="24" y="768">于是有唯一一处 pay → 主应用 的方向：写完 stl_payment 后同步调 /internal/order/paid 让订单转 PAID，失败落 Outbox，再不行由不变式 I8 每小时兜底。</text>
+<text class="l" x="24" y="788">形态 A（内嵌）下 pay-internal 是多余的：主应用直接注入 LocalPayAdapter，没有理由为了自己调自己而起一个内网端点。</text>
+<text class="l" x="24" y="808">灰度粒度也变了：早先按 nginx 路径切，现在按 PayPort 的方法切 —— 更细，回滚是改一个配置项，不是改反向代理。</text>
+</svg>

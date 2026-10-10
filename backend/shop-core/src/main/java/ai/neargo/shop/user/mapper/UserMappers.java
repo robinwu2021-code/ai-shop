@@ -1,0 +1,96 @@
+package ai.neargo.shop.user.mapper;
+
+import ai.neargo.shop.user.entity.UsrAccount;
+import ai.neargo.shop.user.entity.UsrAddress;
+import ai.neargo.shop.user.entity.UsrIdentity;
+import ai.neargo.shop.user.entity.UsrStoreFavorite;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+/**
+ * user 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
+ * Mapper 只做单表 CRUD 与条件组合，跨表聚合放 Service —— 一旦 Mapper 里出现业务分支，
+ * 数据域拦截器与状态机就会被绕过。
+ *
+ * <p>商家的六个 Mapper 已迁往 {@code MerchantMappers}（S3），
+ * 社区与自提点迁往 {@code CommunityMappers}（S4）。
+ */
+public final class UserMappers {
+
+    private UserMappers() {
+    }
+
+    public interface UserMapper extends BaseMapper<UsrAccount> {
+    }
+
+    /**
+     * 平台人档。唯一键：手机号哈希、账号号各一把。
+     *
+     * <p>只做单表读写 —— 「按手机号找人、找不到就建」那段逻辑有分支与并发，
+     * 属于 Service。
+     */
+    public interface PersonMapper extends BaseMapper<ai.neargo.shop.user.entity.UsrPerson> {
+    }
+
+    /** 人档合并留痕。常年应该是空的 */
+    public interface PersonMergeLogMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrPersonMergeLog> {
+    }
+
+    /** 登录凭证。一个人多条，唯一键 (identity_type, identity_value)。 */
+    public interface IdentityMapper extends BaseMapper<UsrIdentity> {
+
+        /**
+         * <b>物理</b>删除某人的全部凭证 —— 注销账号专用。
+         *
+         * <p>不能用 `delete()`：`BaseEntity` 上有 `@TableLogic`，那条会变成
+         * `update ... set deleted = 1`，而 <b>{@code uk_identity} 唯一键里没有 deleted</b>，
+         * 软删掉的行仍然占着 (type, value)。后果是**同一个微信永远注册不回来** ——
+         * 注销之后再进小程序，建号那一步撞唯一键、整个登录 500，
+         * 而报错是「系统开小差」，跟注销一点关系都看不出来。
+         *
+         * <p>这也是注销该做的事：凭证要真的还回去，不是留着占位。
+         */
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_identity WHERE user_no = #{userNo}")
+        int deleteAllByUserPhysically(@org.apache.ibatis.annotations.Param("userNo") String userNo);
+    }
+
+    public interface AddressMapper extends BaseMapper<UsrAddress> {
+    }
+
+    /** 用户逛过的门店。一人一店一行（{@code uk_store_view_user_store}），覆盖写 */
+    public interface StoreViewMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrStoreView> {
+    }
+
+    /**
+     * 测试号固定验证码白名单（苹果审核演示账号）。
+     *
+     * <p>删要<b>物理删</b>：{@code BaseEntity} 上有 {@code @TableLogic}，普通 {@code delete}
+     * 会变成 {@code update ... set deleted = 1}，而 <b>{@code uk_otp_test_phone} 唯一键里
+     * 没有 deleted</b> —— 软删掉的行仍然占着那个手机号。后果是**删掉的号再也录不回来**：
+     * 插入撞唯一键、接口 500，而报错与「删过一次」看不出任何关系。
+     * 与 {@code IdentityMapper.deleteAllByUserPhysically}、{@code StoreFavoriteMapper.purge}
+     * 同一个坑（这仓库已经栽过两次）。
+     */
+    public interface OtpTestPhoneMapper
+            extends BaseMapper<ai.neargo.shop.user.entity.UsrOtpTestPhone> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_otp_test_phone WHERE id = #{id}")
+        int purge(@org.apache.ibatis.annotations.Param("id") Long id);
+    }
+
+
+    /**
+     * 取消收藏要<b>真删</b>：全局逻辑删除只是 {@code deleted=1}，这一行还占着唯一键
+     * {@code uk_user_entity(user_no, entity_no)} —— 同一家店取消后再收藏就撞（TDD-C端商品收藏与送达判断 §2）。
+     */
+    public interface StoreFavoriteMapper extends BaseMapper<UsrStoreFavorite> {
+
+        @org.apache.ibatis.annotations.Delete(
+                "DELETE FROM usr_store_favorite WHERE user_no = #{userNo} AND entity_no = #{entityNo}")
+        int purge(@org.apache.ibatis.annotations.Param("userNo") String userNo,
+                  @org.apache.ibatis.annotations.Param("entityNo") String entityNo);
+    }
+}

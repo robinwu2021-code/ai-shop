@@ -2,22 +2,26 @@
 // 分类：三品类切换 + 列表。M0 只做品类维度，三级分类树在 M1 补。
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { phoneRequired, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
-import { firstSku } from "@shared/utils/goods";
+import { goodsUrl } from "@/shared/goods-route";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
 import type { CategoryType, Goods } from "@shared/types";
 
 const cart = useCartStore();
 const community = useCommunityStore();
+const location = useLocationStore();
 const active = ref<CategoryType>(CATEGORY_TYPE.FRESH);
 const list = ref<Goods[]>([]);
 
 const tabs = [
   { type: CATEGORY_TYPE.FRESH, key: "fresh" },
-  { type: CATEGORY_TYPE.GOODS, key: "goods" },
+  { type: CATEGORY_TYPE.NORMAL, key: "goods" },
   { type: CATEGORY_TYPE.SERVICE, key: "service" },
 ];
 /*
@@ -31,16 +35,29 @@ const tabs = [
  * 只是走店铺页与搜索触达。二期若真有量，再决定给不给独立入口。
  */
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  // 与首页同一条约束：送不到我这个社区的商品不该出现在「逛」的场景里 ——
-  // 让人点进去才发现没法自提，比一开始就不展示更糟。
-  // （搜索页不加这个限制：那是**主动找特定商家**，用户自己清楚在找什么。）
-  const res = await api.goodsList({
-    type: active.value,
-    size: 50,
-    communityNo: community.community?.communityNo,
-  });
-  list.value = res.records;
+  try {
+    // 与首页同一条约束：送不到我这个社区的商品不该出现在「逛」的场景里 ——
+    // 让人点进去才发现没法自提，比一开始就不展示更糟。
+    // （搜索页不加这个限制：那是**主动找特定商家**，用户自己清楚在找什么。）
+    const res = await api.goodsList({
+      type: active.value,
+      size: 50,
+      communityNo: community.community?.communityNo,
+      // 坐标让商家画的地图范围也参与筛（ADR-034）；取不到就不传
+      ...(location.browsePointE6 ?? {}),
+    });
+    list.value = res.records;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
 
 function switchTab(type: CategoryType) {
@@ -50,7 +67,7 @@ function switchTab(type: CategoryType) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, g.store?.storeNo);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover || GOODS_COVER_FALLBACK);
   } catch (err) {
@@ -63,16 +80,20 @@ function gotoSearch() {
 }
 
 function openGoods(g: Goods) {
-  uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
+  uni.navigateTo({ url: goodsUrl(g) });
 }
 
-onShow(load);
+onShow(() => {
+  load();
+  // 进页即弹（2026-10-08 拍板）：没手机号就把授权层摆出来
+  void requirePhoneOnEnter();
+});
 </script>
 
 <template>
   <sh-scaffold title-key="tab.category" tab="category">
-    <view class="searchentry" @tap="gotoSearch">
-      <text class="searchentry__text">{{ $t("search.placeholder") }}</text>
+    <view class="sh-searchbox searchentry" @tap="gotoSearch">
+      <text class="txt-sub">{{ $t("search.placeholder") }}</text>
     </view>
 
     <view class="sh-block">
@@ -101,22 +122,17 @@ onShow(load);
            照旧显示「还没有内容」会让人以为 App 坏了 -->
       <sh-empty
         bare
-        v-if="!list.length"
+        v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load"
         :text="$t('category.emptyInCommunity')"
       ></sh-empty>
     </view>
+    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
+      @done="onPhoneBound" @close="onPhoneGateClose" />
   </sh-scaffold>
 </template>
 
 <style scoped>
 .searchentry {
-  background: var(--sh-surface);
-  border-radius: 9999px;
-  padding: 24rpx 32rpx;
   margin-bottom: 24rpx;
-}
-.searchentry__text {
-  font-size: 26rpx;
-  color: var(--sh-sub);
 }
 </style>

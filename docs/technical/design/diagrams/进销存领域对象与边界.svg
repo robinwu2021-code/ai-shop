@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="580" viewBox="0 0 960 580" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>进销存的领域对象与边界：定义归商品域，数量归进销存域</title><desc>三条纵向泳道：左为商品域（SPU/SKU 的定义）、中为进销存域（数量、流水、单据）、右为它引用但不拥有的对象（门店与仓、订单、报表、外部 ERP）。两条竖直虚线是模块边界，跨界只有一个共享键 sku_no 和几个 Port 接口。</desc>
+<defs>
+<marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="pd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#B39A6A" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.bx{fill:#FFFFFF;stroke:#D5DBE3;stroke-width:1.2}
+.bn{fill:#FFFDF6;stroke:#D9C89A;stroke-width:1.3;stroke-dasharray:5 3}
+.bk{fill:#FFFFFF;stroke:#8FA5C4;stroke-width:1.8}
+.lane{fill:#F7F9FC;stroke:none}
+.laneb{fill:#FCFAF3;stroke:none}
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.s{font-size:10.5px;fill:#5A6472}
+.t{font-size:13px;font-weight:700;fill:#3A4351}
+.band{font-size:11px;fill:#7B8695;letter-spacing:.06em}
+.bd{stroke:#B39A6A;stroke-width:1.4;stroke-dasharray:5 4;fill:none}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.ard{stroke:#B39A6A;stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+.l{font-size:10px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FC;stroke-width:3.5;stroke-linejoin:round}
+.lg{font-size:10px;fill:#8A7434;paint-order:stroke;stroke:#FCFAF3;stroke-width:3.5;stroke-linejoin:round}
+</style></defs>
+
+<rect class="lane" x="16" y="56" width="288" height="352" rx="8"/>
+<rect class="laneb" x="326" y="56" width="308" height="352" rx="8"/>
+<rect class="lane" x="656" y="56" width="288" height="352" rx="8"/>
+
+<text class="t" x="26" y="46">商品域 · 定义</text>
+<text class="t" x="336" y="46">进销存域 · 数量　★ 新模块</text>
+<text class="t" x="666" y="46">引用但不拥有</text>
+
+<line class="bd" x1="315" y1="36" x2="315" y2="412"/>
+<line class="bd" x1="645" y1="36" x2="645" y2="412"/>
+
+<rect class="bx" x="30" y="72" width="260" height="52" rx="7"/>
+<text class="n" x="42" y="94">SPU　prd_goods</text><text class="s" x="42" y="112">标题 · 图片 · 类目 · 履约方式</text>
+<rect class="bk" x="30" y="136" width="260" height="66" rx="7"/>
+<text class="n" x="42" y="158">SKU　prd_sku　（定义列）</text>
+<text class="s" x="42" y="176">option_value_nos · price · barcode</text>
+<text class="s" x="42" y="192">merchant_sku_code · sale_unit</text>
+<rect class="bx" x="30" y="214" width="260" height="46" rx="7"/>
+<text class="n" x="42" y="236">规格库四层　prd_spec_*</text><text class="s" x="42" y="252">档位编号 + 归一量</text>
+<rect class="bx" x="30" y="272" width="260" height="52" rx="7"/>
+<text class="n" x="42" y="294">门店选品 / 门店价</text><text class="s" x="42" y="312">prd_store_goods · prd_store_price</text>
+
+<rect class="bk" x="340" y="72" width="280" height="66" rx="7"/>
+<text class="n" x="352" y="94">StockItem　聚合根</text>
+<text class="s" x="352" y="112">prd_sku.stock ＋ prd_store_stock</text>
+<text class="s" x="352" y="128">身份 = (sku_no, store_no?)，store_no 可空</text>
+<rect class="bx" x="340" y="150" width="280" height="52" rx="7"/>
+<text class="n" x="352" y="172">StockLock　prd_stock_lock</text><text class="s" x="352" y="190">可变：LOCKED → RELEASED / CONFIRMED</text>
+<rect class="bn" x="340" y="214" width="280" height="52" rx="7"/>
+<text class="n" x="352" y="236">StockLedgerEntry　prd_stock_ledger</text><text class="s" x="352" y="254">不可变，只追加。与锁是两个概念</text>
+<rect class="bn" x="340" y="278" width="280" height="52" rx="7"/>
+<text class="n" x="352" y="300">PurchaseNote · TransferNote · StockCheck</text><text class="s" x="352" y="318">单据可作废不可修改</text>
+<rect class="bn" x="340" y="342" width="280" height="44" rx="7"/>
+<text class="n" x="352" y="364">cost_price　写权归这里</text><text class="s" x="352" y="380">列仍在 prd_sku，但由进货单驱动</text>
+
+<rect class="bx" x="670" y="72" width="260" height="66" rx="7"/>
+<text class="n" x="682" y="94">StockLocation　mch_store</text>
+<text class="s" x="682" y="112">store_type = SHOP / WAREHOUSE</text>
+<text class="s" x="682" y="128">仓不是新对象，是门店的一个类型</text>
+<rect class="bx" x="670" y="150" width="260" height="52" rx="7"/>
+<text class="n" x="682" y="172">交易　ord_order / ord_sub_order</text><text class="s" x="682" y="190">下单锁定 · 支付确认 · 退款回补</text>
+<rect class="bn" x="670" y="214" width="260" height="52" rx="7"/>
+<text class="n" x="682" y="236">报表　rpt_daily_*</text><text class="s" x="682" y="254">按 StockLedgerPort 只读取数</text>
+<rect class="bn" x="670" y="278" width="260" height="52" rx="7"/>
+<text class="n" x="682" y="300">外部 ERP　Open API</text><text class="s" x="682" y="318">按流水 id 游标增量拉</text>
+
+<path class="ard" marker-end="url(#pd)" d="M340 168 L300 168"/>
+<text class="lg" x="243" y="162">只读 sale_unit</text>
+<path class="ar" marker-end="url(#pa)" d="M670 176 L620 176"/>
+<text class="l" x="628" y="212" text-anchor="end">StockPort</text>
+<path class="ard" marker-end="url(#pd)" d="M620 100 L670 100"/>
+<path class="ar" marker-end="url(#pa)" d="M620 240 L670 240"/>
+<path class="ar" marker-end="url(#pa)" d="M620 300 L670 300"/>
+
+<text class="band" x="26" y="440">跨界的东西一共只有这些 —— 接口面小，是「能不能独立部署」的唯一客观判据</text>
+<text class="s" x="26" y="466">进　StockPort（lock/release/confirm，交易调）· StockQueryPort（批量查结存）· 盘点与进货的写接口（B 端调）</text>
+<text class="s" x="26" y="486">出　读 mch_store.store_type（仓路由）· 读 prd_sku.sale_unit（导出给 ERP 时的单位）· 发 StockChanged 事件</text>
+<text class="s" x="26" y="512">共享键　只有 sku_no 一个。进销存域不持有 PrdSku 实体，只认这个字符串 —— 这是将来拆库拆服务的唯一前提。</text>
+<text class="s" x="26" y="538">红线　prd_sku.stock / prd_store_stock / prd_stock_ledger / prd_purchase_* 只有进销存模块能写，守卫扫描全仓强制。</text>
+</svg>

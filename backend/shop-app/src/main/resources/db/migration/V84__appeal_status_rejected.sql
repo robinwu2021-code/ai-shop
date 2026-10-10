@@ -1,0 +1,14 @@
+-- 申诉不成立：DISMISSED → REJECTED。
+--
+-- 项目词典 §11 早就把「拒绝 / 驳回 / 申诉不成立」统一到 `REJECTED`
+-- （明写「不用 DISMISSED / DENIED」），端上两处也都按它写了 ——
+-- 只有后端一直存的是 `DISMISSED`。后果不是「值不好看」：
+--   · 运营端状态列直接印出 DISMISSED（徽标映射里没有这个键）
+--   · B 端商家看到的是 `reviews.appealDISMISSED` —— i18n 的 key 原文，
+--     因为那个 key 是拿状态码拼出来的
+-- 两边都不报错，所以「统一」只发生在文档里。
+--
+-- 风控的 DISMISSED（已排除）不在此列：那里没有人被驳回，是一条线索被排除。
+--
+-- 可重入：改完再跑一次匹配不到行，不报错。
+UPDATE rvw_appeal SET status = 'REJECTED' WHERE status = 'DISMISSED';

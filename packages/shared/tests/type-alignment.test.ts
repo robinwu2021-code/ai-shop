@@ -41,27 +41,19 @@ function enums(dir: string): Record<string, Set<string>> {
  * 否则这里就变成了「把问题登记一下然后忘掉」的清单。
  */
 const KNOWN_DRIFT: Record<string, string> = {
-  OrderStatus:
-    "同一状态两套拼法（WAIT_PAY↔PENDING_PAY / SHIPPED↔DELIVERING / REFUNDING↔AFTER_SALE）。" +
-    "权威取 shared（状态机与 assertTransition 在这里）。ops-web 侧待改名。",
-  AfterSaleStatus:
-    "shared 是**售后单自身**的状态机（PENDING→AGREED→RETURNING→RECEIVED→DONE）；" +
-    "ops 的 APPLIED/MERCHANT_HANDLING/PLATFORM_INTERVENE 是**平台视角的处理阶段**。" +
-    "两者语义不同名字也该不同：ops 那套应更名为 AfterSaleStage。",
   AfterSaleType: "ops 多一个 EXCHANGE（换货）—— 一期不做换货，用「退货重下」代替（C-AS-01）。",
   MerchantStatus:
     "shared: NONE/APPLYING/REJECTED/ACTIVE/SUSPENDED（商家自己看到的）；" +
     "ops: DRAFT/SUBMITTED/REVIEWING/APPROVED/REJECTED（审核流水线）。" +
     "APPROVED 与 ACTIVE 是同一件事的两个名字 —— 接后端前必须并成一个。",
-  MerchantTier:
-    "**名字撞了、意思不同**：shared 的 tier 是规模（SMALL/MEDIUM/LARGE，为引入大商家预留）；" +
-    "ops 的 tier 装的是主体类型（PERSONAL/INDIVIDUAL/COMPANY），那在 shared 里叫 MerchantSubject。" +
-    "ops 侧应改名为 MerchantSubject，把 tier 让出来。",
   CampaignType:
     "两端各自的活动类型集合（shared 是商家活动，ops 是平台活动）。" +
     "接后端时要么合并成一张表，要么显式分成 MerchantCampaignType / PlatformCampaignType。",
   CampaignStatus: "shared 有 PAUSED（商家可暂停），ops 有 SCHEDULED（平台可预约生效）。都合理，合并即可。",
   AppealStatus: "ops 的申诉状态；shared 侧叫 ReviewAppealStatus，值域需对齐（UPHELD/REJECTED/PENDING）。",
+  CouponStatus:
+    "ops 多一个 DRAFT（运营建券时的草稿态，只存在于运营端的编辑流程）。" +
+    "C 端只看得到已发布的券，DRAFT 对它没有意义 —— 这是视角差，不是漂移。",
 };
 
 describe("两套类型系统的词汇对齐", () => {
@@ -109,13 +101,23 @@ describe("端点前缀：文档与代码不许再对不上", () => {
   const read = (app: string) => readFileSync(join(ROOT, app, "src/api/endpoints.ts"), "utf8");
   const paths = (src: string) => [...src.matchAll(/path:\s*"([^"]+)"/g)].map((m) => m[1]!);
 
-  it("C 端全部 /mp/**，B 端全部 /biz/**", () => {
+  /**
+   * `/common/**` 是**第三类端点**：跨端公共元数据（后端 `CommonMetaController`）。
+   *
+   * 行业/主体类型/支付通道这类主数据 C 端与 B 端要的是同一份，
+   * 给它造一个 `/biz/master-data` 别名只会得到两条路径服务同一件事 ——
+   * 而两条路径迟早返回不一样的东西。所以它显式豁免，不是漏网。
+   */
+  const SHARED_PREFIX = "/common/";
+
+  it("C 端全部 /mp/**，B 端全部 /biz/**（跨端公共元数据 /common/** 除外）", () => {
     const bad: string[] = [];
     for (const [app, prefix] of [
       ["c-app", "/mp/"],
       ["b-app", "/biz/"],
     ] as const) {
       for (const p of paths(read(app))) {
+        if (p.startsWith(SHARED_PREFIX)) continue;
         if (!p.startsWith(prefix)) bad.push(`${app}: ${p}（应以 ${prefix} 开头）`);
       }
     }
@@ -129,7 +131,7 @@ describe("端点前缀：文档与代码不许再对不上", () => {
       "docs/requirements/B端功能清单.md",
       "docs/requirements/C端功能清单.md",
       "docs/requirements/平台端功能清单.md",
-      "docs/technical/TDD-b-app.md",
+      "docs/technical/design/TDD-b-app.md",
     ];
     const HISTORICAL = /原定|已废弃|历史|曾经|~~/;
     const bad: string[] = [];
@@ -157,7 +159,17 @@ describe("契约四件套：契约 / 端点表 / mock / http 必须一一对应"
     it(`${app}: 四处齐全`, () => {
       const methods = new Set([...read(app, "contract.ts").matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]!));
       const eps = new Set([...read(app, "endpoints.ts").matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]!));
-      const mockSrc = read(app, "mock.ts");
+      /*
+       * B 端替身 2026-09-03 按域拆到了 `src/api/mocks/`（原文件 5240 行）。
+       * **目录优先**：只读 `mock.ts` 的话读到的是一份 `export` 门面，
+       * 228 个方法会全被判成「mock 缺」—— 这次是响的（它当场红了），
+       * 但反过来的少扫是哑的，所以这里按目录读，别再回到单文件。
+       */
+      const mockDir = join(ROOT, app, "src/api/mocks");
+      const mockSrc = existsSync(mockDir)
+        ? readdirSync(mockDir).filter((f) => f.endsWith(".ts"))
+          .map((f) => readFileSync(join(mockDir, f), "utf8")).join("\n")
+        : read(app, "mock.ts");
       const mocks = new Set(
         [...mockSrc.matchAll(/^ {2}(?:async )?(\w+)[(:]/gm)].map((m) => m[1]!),
       );

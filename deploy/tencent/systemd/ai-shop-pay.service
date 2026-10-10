@@ -1,0 +1,40 @@
+# 支付域独立形态（形态 B）。今天只承接费率的只读调用 —— 见 ADR-021 / TDD-支付域 §C4。
+# 安装位置：/etc/systemd/system/ai-shop-pay.service（源文件在仓库 deploy/tencent/systemd/）
+[Unit]
+Description=ai-shop pay service (standalone pay domain)
+# 2026-09-16 切 MySQL 9.7：这两行原本指向 mariadb.service。
+# 不改的后果不是「起不来」，而是**「停掉 MariaDB」这件事根本不成立**：
+# Requires= 在启动本服务时会把它一起拉起来 —— 切换当天实测，停掉 MariaDB 之后
+# 只要起一次 ai-shop，3306 就又在听了；而反过来停 MariaDB 会把三个应用一起带停。
+# 依赖必须跟着数据源走。
+After=network.target mysql97.service
+Requires=mysql97.service
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/data/app/ai-shop/pay-svc
+EnvironmentFile=/data/app/ai-shop/pay-svc/pay.env
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 日志（测试档）：资金问题回溯周期长，天数比主应用多留几天。说明见 ai-shop.service
+Environment=LOGGING_FILE_NAME=/data/log/ai-shop/pay-svc/pay-svc.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=10MB
+# maxHistory 放宽、总量封顶不动（2026-09-14 复核）：实测平时约 0.5MB/天，
+# 起约束的一直是天数不是总量 —— 3 天只留约 1.5MB，周五的问题周一就查不到了。
+# 洪水照样被 TOTAL_SIZE_CAP 挡住；多留的天数在平时几乎不占空间。
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=30
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=50MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+Environment=LOGGING_EXCEPTION_CONVERSION_WORD=%%wEx{30}
+
+# 堆给 512m：它今天只做费率只读，比 shop-job（256m）重一点，远小于主应用（2g）
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx512m -jar /data/app/ai-shop/pay-svc/pay-svc.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

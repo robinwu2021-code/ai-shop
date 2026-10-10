@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>物流轨迹 · 多渠道展示（微信插件 / 自建地图）</title>
+<!-- 真源在仓库 prototypes/logistics-trace.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">三端 · 界面原型 · 2026-10-08</div>
+  <h1>物流轨迹：多渠道展示</h1>
+  <p class="sub">
+    展示渠道是一条<b>优先级链</b>，不是二选一开关：C 端小程序 <code>[wx-plugin, self-map]</code>、
+    B 端 App 与运营端 <code>[self-map]</code>。链上谁先说「这一单我能呈现」谁上，备载荷失败自动落到下一个。
+    十一屏：C 端两种渠道各两屏、B 端一屏、运营端一屏、失败兜底一屏，外加 2026-10-09 重排的四屏（C 端把履约、物流与订单进度合成**一个区域**；走微信插件的单只给摘要，明细交给插件）。
+  </p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>C 端小程序 · 自建渠道（self-map）</h2></div>
+  <p class="sec-note">
+    没有微信支付交易单号的订单走这条（线下收款、历史单）。地图只能画到<b>城市级</b> ——
+    快递100 给的是行政区中心点，不是快件 GPS。这是行业通行做法，但稿子里必须标出来，
+    否则落地后第一个问题一定是「为什么不显示快递车在哪」。
+  </p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">物流</span><span class="v">中通快递 · 74100621092303</span></div>
+          </div>
+          <div class="group">
+            <div class="pmap">
+              <svg viewBox="0 0 300 118" preserveAspectRatio="none">
+                <polyline points="44,22 96,38 150,64 214,86" fill="none" stroke="#C8302B" stroke-width="2"
+                          stroke-dasharray="4 3" stroke-linecap="round"/>
+                <circle cx="44" cy="22" r="3" fill="#8C8C8C"/><circle cx="96" cy="38" r="3" fill="#8C8C8C"/>
+                <circle cx="150" cy="64" r="3" fill="#8C8C8C"/><circle cx="214" cy="86" r="4.5" fill="#C8302B"/>
+              </svg>
+              <span class="mk from" style="left:15%;top:17%">鞍山</span>
+              <span class="mk" style="left:32%;top:30%">盘锦</span>
+              <span class="mk" style="left:50%;top:52%">佛山</span>
+              <span class="mk now" style="left:71%;top:71%">深圳 · 当前</span>
+              <span class="cap2">城市级示意，非实时位置</span>
+            </div>
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>已取出签收，签收代收点：丰巢-嘉逸小区入口右侧1号丰巢柜</b>
+                <span>10-08 11:13 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已送达【丰巢-嘉逸小区入口右侧1号丰巢柜】，请及时取件
+                <span>10-07 10:42 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快递员 <a>袁柯祯 15917062593</a> 正在为您派件
+                <span>10-07 07:33 · 广东 深圳市</span></div></div>
+            </div>
+            <div class="more">展开全部 12 条 ⌄</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 自建 · 默认（折叠）</b>地图在最上、步骤条次之、时间线默认只给最近三条。</figcaption>
+      <p class="why">
+        顺序是按「看一眼就走」的人排的：他要的是「到哪了」，不是读完 12 条。
+        地图与步骤条各回答一半 —— 地图回答「在哪」，步骤条回答「走到第几步」。
+        时间线折叠到 3 条：那单实测 12 条，全铺开要滑两屏，而后面 9 条都是转运中心流水。
+      </p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">物流</span><span class="v">中通快递 · 74100621092303 <a>复制</a></span></div>
+          </div>
+          <div class="group">
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>已取出签收</b><span>10-08 11:13 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已送达丰巢柜<span>10-07 10:42 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快递员 <a>袁柯祯 15917062593</a> 正在派件<span>10-07 07:33 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已到达 深圳景华<span>10-07 00:40 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已发往 深圳景华<span>10-06 21:25 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已到达 深圳转运中心<span>10-06 21:14 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已发往 深圳转运中心<span>10-06 18:31 · 广东 佛山市</span></div></div>
+              <div class="st done"><div class="bd">快件已到达 佛山转运中心<span>10-06 17:53 · 广东 佛山市</span></div></div>
+              <div class="st done"><div class="bd">由 <a>宗大帅 15241263064</a> 揽收<span>10-04 19:04 · 辽宁 鞍山市</span></div></div>
+            </div>
+            <div class="more">收起 ⌃</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>02 自建 · 展开</b>单号右侧「复制」；文案里的快递员电话可点拨打。</figcaption>
+      <p class="why">
+        电话从文案里抽出来做成可点的，而不是让买家长按选中 11 位数字 —— 承运商的文案里电话位置不固定，
+        后端按正则抽、抽不到就保持纯文本，不猜。复制单号是给「想去别处查」的人留的出口，不堵他。
+      </p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">物流</span><span class="v">中通快递 · 74100621092303</span></div>
+          </div>
+          <div class="group">
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>快件已到达 佛山转运中心</b><span>10-06 17:53 · 广东 佛山市</span></div></div>
+              <div class="st done"><div class="bd">快件已发往 深圳转运中心<span>10-04 22:59 · 辽宁 盘锦市</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 自建 · 没有坐标时</b>地图整块不出现，步骤条与时间线照常。</figcaption>
+      <p class="why">
+        不是所有节点都解析得出行政区（承运商没回传、或快递100 没解析出来）。
+        这时<b>整块不画地图</b>，而不是画一张空白底图 —— 空地图看着像加载失败，
+        而「没有地图」至少是个确定的状态。判据是「有没有至少两个带坐标的节点」：一个点连不成线。
+      </p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 05</span><h2>C 端小程序 · 微信渠道（wx-plugin）</h2></div>
+  <p class="sec-note">
+    这一单有微信支付交易单号时走它。我们只负责拿到 <code>waybill_token</code>，
+    点开之后<b>是微信自己的全屏物流页</b>，轨迹、地图、样式都由微信渲染 —— 我们一行都改不了，也不必维护。
+  </p>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">物流</span><span class="v">中通快递 · 74100621092303</span></div>
+          </div>
+          <div class="group">
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+            <div class="frow"><span class="k">最新</span><span class="v">已取出签收 · 10-08 11:13</span></div>
+          </div>
+          <div class="btnrow"><div class="btn main">查看物流详情</div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>04 微信渠道 · 入口</b>步骤条 + 最新一条留在我们页面上，详情交给微信。</figcaption>
+      <p class="why">
+        不做成「只有一个按钮」：买家最常问的那一句（到哪了）不该要多点一次才看得到。
+        步骤条与最新一条用我们自己查到的轨迹渲染，与按钮背后的微信页<b>并不冲突</b> ——
+        两边数据源不同，可能有几分钟时差，所以我们这边只放「最新一条」，不放整条时间线，避免两份时间线对不上。
+      </p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">微信 · 物流详情</span><span></span></div>
+        <div class="scr">
+          <div class="note">这一屏由微信插件全屏渲染，我们画不了也改不了。<br>
+            调用：<code>requirePlugin("logisticsPlugin").openWaybillTracking({ waybillToken })</code></div>
+          <div class="group">
+            <div class="frow"><span class="k">我们给的</span><span class="v">waybillToken</span></div>
+            <div class="frow"><span class="k">微信渲染</span><span class="v">轨迹 · 地图 · 商品卡片</span></div>
+            <div class="frow"><span class="k">额外收益</span><span class="v">揽收/派送/签收 三档微信服务通知</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 微信渠道 · 详情（示意）</b>真实样子以微信为准，这里只说明边界。</figcaption>
+      <p class="why">
+        画成示意而不是仿真：仿一张假的微信页，评审时会去挑它的样式，而那些我们一个都改不了。
+        这一屏要评审的只有一件事 —— <b>边界在哪</b>：token 是我们给的，其余都是微信的。
+      </p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06 — 07</span><h2>B 端 App 与运营端</h2></div>
+  <p class="sec-note">
+    这两端<b>用不了微信插件</b>（插件只在小程序内），链上只有 <code>self-map</code>。
+    运营端本期<b>不做地图</b>：网页地图要高德 JS API key，线上只有服务端 Web 服务 key，得先申请。
+  </p>
+  <div class="grid">
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">收件人</span><span class="v">张**  138****0000</span></div>
+            <div class="frow"><span class="k">运单</span><span class="v">中通 · 74100621092303 <a>复制</a></span></div>
+          </div>
+          <div class="group">
+            <div class="pmap">
+              <svg viewBox="0 0 300 118" preserveAspectRatio="none">
+                <polyline points="44,22 96,38 150,64 214,86" fill="none" stroke="#C8302B" stroke-width="2"
+                          stroke-dasharray="4 3" stroke-linecap="round"/>
+                <circle cx="44" cy="22" r="3" fill="#8C8C8C"/><circle cx="214" cy="86" r="4.5" fill="#C8302B"/>
+              </svg>
+              <span class="mk from" style="left:15%;top:17%">鞍山</span>
+              <span class="mk now" style="left:71%;top:71%">深圳 · 已签收</span>
+              <span class="cap2">城市级示意</span>
+            </div>
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>已取出签收</b><span>10-08 11:13 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已送达丰巢柜<span>10-07 10:42 · 广东 深圳市</span></div></div>
+            </div>
+            <div class="more">展开全部 12 条 ⌄</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>06 B 端 App</b>与 C 端自建渠道同一套展示件，收件人按既有规则脱敏。</figcaption>
+      <p class="why">
+        同一套件、同一份组件，不另画一份 —— 两端各写一份的下场是改一次文案要改两处，
+        而漏掉的那一处没人会发现（三端时间线此前就是各写各的）。
+        差别只有两点：这里带收件人（脱敏）、不带「查看物流详情」按钮（App 里没有微信插件）。
+      </p>
+    </figure>
+
+    <figure id="s08">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k"><b>运输中</b></span><span class="v"><a>查看物流详情 ›</a></span></div>
+            <div class="note">【咸阳市】预计10月10日到达【深圳市】，两地距离 1765KM</div>
+            <div class="frow"><span class="k">快递配送</span><span class="v">申通快递 773445428821101 <a>复制</a></span></div>
+            <div class="frow"><span class="k">订单进度</span><span class="v"></span></div>
+            <div class="tl">
+              <div class="st done"><div class="bd">已发货<span>10-09 02:00</span></div></div>
+              <div class="st done"><div class="bd">已支付<span>10-09 01:59</span></div></div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">商品</span><span class="v">虹选盐 1kg × 1</span></div>
+            <div class="frow"><span class="k">实付</span><span class="v">¥1.00</span></div>
+            <div class="frow"><span class="k">订单号</span><span class="v">SUB2026…5442 <a>复制</a></span></div>
+            <div class="frow"><span class="k">下单时间</span><span class="v">2026-10-09 01:58</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 C 端 · 走微信插件的单</b>页面<b>只给摘要</b>：状态 + 最新一条 + 入口；明细在插件那一屏。</figcaption>
+      <p class="why">
+        一个区域回答一个问题：<b>这一单现在怎么了、我该做什么</b>。
+        此前这件事被拆成两处说 —— 物流一个标题「运输中」，紧跟着订单状态卡又一个「履约中」
+        加一句更旧的「商家已经发出」，而轨迹那时已经说到咸阳发往深圳。
+        <b>明细不在这里铺</b>：插件那一屏已经有一份，页面再铺一遍是同一份数据说两次，
+        而且插件读的是微信侧数据，两份的新旧还可能不一致 —— 同一页上两个版本的「到哪了」比少一份更糟。
+        订单进度（下单/支付/发货）与承运商扫描是两回事，给小标题分段，不并排混读。
+      </p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k"><b>运输中</b></span><span class="v"></span></div>
+            <div class="frow"><span class="k">快递配送</span><span class="v">申通快递 773445428821101 <a>复制</a></span></div>
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>【咸阳市】预计10月10日到达【深圳市】</b><span>10-09 02:18 · 陕西 西安市</span></div></div>
+              <div class="st done"><div class="bd">【咸阳市】快件已发往 广东深圳转运中心<span>10-09 02:15 · 陕西 西安市</span></div></div>
+              <div class="st done"><div class="bd">【运城市】快件已揽收<span>10-08 16:08 · 山西 运城市</span><a>拨打快递员电话</a></div></div>
+            </div>
+            <div class="more">展开全部 5 条 ⌄</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>09 C 端 · 插件不可用时</b>同一个区域里补上步骤条与时间线（折叠 3 条）。</figcaption>
+      <p class="why">
+        判据是<b>「这一单的明细由谁呈现」，不是端</b>：c-app 也出 H5 与 App，那两端没有微信插件；
+        小程序里也有拿不到 token 的单（换 token 失败、插件未开通）。
+        这些情形下我们自己铺，否则买家什么都看不到 ——
+        2026-10-09 实测插件报「物流组件没有加载出来」那一幕，正是这个处境。
+        <b>不画地图</b>：城市级示意（坐标是行政区中心点，不是快件 GPS）回答不了
+        「今天到不到、要不要在家等」，而那正是买家问的。
+      </p>
+    </figure>
+
+    <figure id="s10">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k"><b>待取货</b></span><span class="v"></span></div>
+            <div class="note">商家备货后可凭取货码到店自提</div>
+            <div class="frow"><span class="k">到店自提</span><span class="v">虹选鲜果·福田店</span></div>
+            <div class="frow"><span class="k">订单进度</span><span class="v"></span></div>
+            <div class="tl">
+              <div class="st done"><div class="bd">已支付<span>10-09 09:12</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>10 C 端 · 没有轨迹的单</b>同一个区域、同一种读法；<b>不给入口</b>，也没有「下一步」被埋。</figcaption>
+      <p class="why">
+        自提与配送没有可展开的过程，所以<b>不给「查看」</b> —— 一个点不出东西的箭头比不给更糟。
+        这时第二行换成「接下来会发生什么」（<code>order.next.*</code>）：
+        「待取货」三个字只说了此刻，没说他要等什么。
+        <b>有轨迹时这句话反而不出现</b> —— 它固定且更粗，而最新扫描既新又具体，
+        两句并排只会让人读那句旧的。
+      </p>
+    </figure>
+
+    <figure id="s11">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k"><b>已取消</b></span><span class="v"></span></div>
+            <div class="note">款项将原路退回，到账时间以支付渠道为准</div>
+            <div class="frow"><span class="k">已退回</span><span class="v">优惠券 1 张 · 积分 120</span></div>
+            <div class="frow"><span class="k">订单进度</span><span class="v"></span></div>
+            <div class="tl">
+              <div class="st done"><div class="bd">已取消<span>10-09 10:40</span></div></div>
+              <div class="st done"><div class="bd">已下单<span>10-09 09:05</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>11 C 端 · 取消 / 退款</b>「钱去哪了」在同一个区域里，主色一行。</figcaption>
+      <p class="why">
+        取消单的「现在怎么了」就是<b>钱的去向</b>，所以它和状态在同一处，不是埋在某张卡里。
+        每一行都来自后端查到的数据，<b>没有就不说</b> ——
+        「已为你退回」若不成立，比什么都不说更糟。
+      </p>
+    </figure>
+
+    <figure id="s07">
+      <div class="desk">
+        <div class="side"><b>运营</b><span>概览</span><span class="on">履约</span><span>商家</span><span>商品</span></div>
+        <div class="main">
+          <div class="hdr"><b>快递单</b><span class="btn">导出</span></div>
+          <table class="ptable">
+            <tr><th>运单号</th><th>承运商</th><th>状态</th><th>收件</th><th>更新</th></tr>
+            <tr><td>74100621092303</td><td>中通</td><td>已签收</td><td>深圳 张**</td><td>10-08 11:13</td></tr>
+            <tr><td>YT7512345678901</td><td>圆通</td><td>运输中</td><td>杭州 李**</td><td>10-08 09:02</td></tr>
+          </table>
+          <div class="sheet">
+            <div class="sl-h"><b>74100621092303 · 中通</b><span>self-map</span></div>
+            <div class="steps">
+              <div class="sp done"><span class="dot"></span><span class="lb">已揽收</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">运输中</span></div>
+              <div class="sp done"><span class="dot"></span><span class="lb">派送中</span></div>
+              <div class="sp now"><span class="dot"></span><span class="lb">已签收</span></div>
+            </div>
+            <div class="tl">
+              <div class="st now"><div class="bd"><b>已取出签收</b><span>10-08 11:13 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快件已送达丰巢柜<span>10-07 10:42 · 广东 深圳市</span></div></div>
+              <div class="st done"><div class="bd">快递员正在派件<span>10-07 07:33 · 广东 深圳市</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>07 运营端</b>快递单列表 + 右侧抽屉轨迹。抽屉头右上角标出这一单走的是哪个渠道。</figcaption>
+      <p class="why">
+        运营要处理的是异常件，所以<b>渠道名要露出来</b>（<code>self-map</code> / <code>wx-plugin</code>）——
+        买家说「看不到物流」时，第一个要回答的问题就是「他走的是哪条链、哪一环断了」。
+        备载荷失败的原因也落在这里（库里 <code>display_fail_reason</code>），不给买家看。
+      </p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/logistics-trace.html · 登记：prototypes/registry.json · 设计：docs/technical/TDD-物流轨迹多渠道.md</footer>
+</div>
+</html>

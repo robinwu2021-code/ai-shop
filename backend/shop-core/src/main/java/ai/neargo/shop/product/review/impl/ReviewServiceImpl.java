@@ -1,0 +1,746 @@
+package ai.neargo.shop.product.review.impl;
+
+import ai.neargo.shop.product.review.ReviewService;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.trade.ReviewableOrderPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.product.review.dto.ReviewVO;
+import ai.neargo.shop.product.review.entity.RvwAppeal;
+import ai.neargo.shop.product.review.entity.RvwReview;
+import ai.neargo.shop.product.review.entity.RvwReviewLike;
+import ai.neargo.shop.product.review.mapper.ReviewMappers.AppealMapper;
+import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewLikeMapper;
+import ai.neargo.shop.product.review.mapper.ReviewMappers.ReviewMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 评价实现。
+ *
+ * <p>两条规则由**库唯一键**兜底，服务端校验只是为了给出人话错误：
+ * {@code uk_order_goods(sub_order_no, goods_no)} 挡重复评价，
+ * {@code uk_review_user(review_no, user_no)} 挡重复点赞。
+ * 只靠应用层判断的话，并发双击就能写进两条。
+ */
+@Service
+public class ReviewServiceImpl implements ReviewService {
+
+    /** C 端只看得到审核通过的评价 —— 待审与被驳回的不能出现在商品页 */
+    private static final String VISIBLE = "PASSED";
+
+    private final ReviewMapper reviewMapper;
+    private final ReviewLikeMapper likeMapper;
+    private final AppealMapper appealMapper;
+    private final ReviewableOrderPort orderPort;
+    private final UserQueryPort userPort;
+    private final ai.neargo.shop.spi.user.MerchantRatingPort ratingPort;
+    /** 只用来把 entityNo 换成店名 —— 裁决台上一列 M0001 谁也认不出是哪家 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+    private final ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper;
+    private final ai.neargo.shop.event.OutboxEventBus eventBus;
+    private final ObjectMapper json;
+
+    public ReviewServiceImpl(ReviewMapper reviewMapper, ReviewLikeMapper likeMapper,
+                             AppealMapper appealMapper, ReviewableOrderPort orderPort,
+                             UserQueryPort userPort,
+                             ai.neargo.shop.spi.user.MerchantRatingPort ratingPort,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort,
+                             ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper goodsMapper,
+                             ai.neargo.shop.event.OutboxEventBus eventBus,
+                             ObjectMapper json) {
+        this.reviewMapper = reviewMapper;
+        this.likeMapper = likeMapper;
+        this.appealMapper = appealMapper;
+        this.orderPort = orderPort;
+        this.userPort = userPort;
+        this.ratingPort = ratingPort;
+        this.merchantPort = merchantPort;
+        this.goodsMapper = goodsMapper;
+        this.eventBus = eventBus;
+        this.json = json;
+    }
+
+    @Override
+    public List<ReviewVO> list(String goodsNo, String merchantNo, String filter, int page, int size) {
+        return list(goodsNo, merchantNo, null, filter, page, size);
+    }
+
+    @Override
+    public List<ReviewVO> list(String goodsNo, String merchantNo, String storeNo, String filter, int page, int size) {
+        List<RvwReview> rows = visibleRows(goodsNo, merchantNo, storeNo);
+        rows = rows.stream().filter(r -> matches(r, filter)).toList();
+
+        int p = Math.max(1, page);
+        int sz = Math.min(Math.max(1, size), ReviewService.MAX_PAGE_SIZE);
+        int from = Math.min((p - 1) * sz, rows.size());
+        int to = Math.min(from + sz, rows.size());
+        rows = rows.subList(from, to);
+
+        Set<String> likedByMe = likedByCurrentUser(rows);
+        Map<String, RvwAppeal> appeals = appealsOf(rows);
+        return rows.stream().map(r -> toVO(r, likedByMe.contains(r.getReviewNo()),
+                appeals.get(r.getReviewNo()))).toList();
+    }
+
+    @Override
+    public ReviewService.ReviewSummaryVO summary(String goodsNo, String merchantNo) {
+        List<RvwReview> rows = visibleRows(goodsNo, merchantNo);
+        var dist = new java.util.ArrayList<>(java.util.Collections.nCopies(5, 0));
+        long sum = 0;
+        int withImages = 0;
+        long g = 0;
+        long f = 0;
+        long sv = 0;
+        int gN = 0;
+        int fN = 0;
+        int svN = 0;
+        for (RvwReview r : rows) {
+            int star = Math.min(5, Math.max(1, r.getRating() == null ? 5 : r.getRating()));
+            dist.set(star - 1, dist.get(star - 1) + 1);
+            sum += star;
+            if (!readJson(r.getImages()).isEmpty()) {
+                withImages++;
+            }
+            // 三个维度各自算各自的：没打过那一维的单不该把它的平均分拉低到 0
+            if (r.getScoreGoods() != null && r.getScoreGoods() > 0) {
+                g += r.getScoreGoods();
+                gN++;
+            }
+            if (r.getScoreFulfillment() != null && r.getScoreFulfillment() > 0) {
+                f += r.getScoreFulfillment();
+                fN++;
+            }
+            if (r.getScoreService() != null && r.getScoreService() > 0) {
+                sv += r.getScoreService();
+                svN++;
+            }
+        }
+        int n = rows.size();
+        return new ReviewService.ReviewSummaryVO(n, round1(sum, n), dist, withImages,
+                round1(g, gN), round1(f, fN), round1(sv, svN));
+    }
+
+    /** 保留一位小数。分母为 0 时给 0 —— 「还没有人评价」不是 0 分，端上按 total 判空 */
+    private static double round1(long sum, int n) {
+        return n <= 0 ? 0 : Math.round(sum * 10.0 / n) / 10.0;
+    }
+
+    /**
+     * 这一条落不落在所选的筛选里。
+     *
+     * <p>不认识的 filter 按全部处理：筛选是便利，不该因为端上传错一个词就把整页打空。
+     */
+    private boolean matches(RvwReview r, String filter) {
+        int star = r.getRating() == null ? 5 : r.getRating();
+        return switch (filter == null ? "" : filter) {
+            case ReviewService.FILTER_IMAGE -> !readJson(r.getImages()).isEmpty();
+            case ReviewService.FILTER_GOOD -> star >= 4;
+            case ReviewService.FILTER_BAD -> star <= 2;
+            default -> true;
+        };
+    }
+
+    /** 列表与概览共用的那一次查询：同一批行，两种用法 */
+    private List<RvwReview> visibleRows(String goodsNo, String merchantNo) {
+        return visibleRows(goodsNo, merchantNo, null);
+    }
+
+    /** @param storeNo 门户按门店看（老评价没有门店号，不会出现在按门店的结果里） */
+    private List<RvwReview> visibleRows(String goodsNo, String merchantNo, String storeNo) {
+        // 都不传就是全表扫描，没有任何使用场景 —— 与契约注释一致，直接拒绝
+        if (isBlank(goodsNo) && isBlank(merchantNo) && isBlank(storeNo)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 评价对游客可见（看评价才有下单动机），所以要跳过数据域裁剪
+        return DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getStatus, VISIBLE)
+                        .eq(!isBlank(goodsNo), RvwReview::getGoodsNo, goodsNo)
+                        .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                        .eq(!isBlank(storeNo), RvwReview::getStoreNo, storeNo)
+                        .orderByDesc(RvwReview::getId)));
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO create(CreateCommand cmd) {
+        String userNo = SecurityUtils.currentUserNo();
+        if (cmd.rating() < 1 || cmd.rating() > 5) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        ReviewableOrderPort.ReviewableItem item = orderPort
+                .findItem(cmd.orderNo(), cmd.goodsNo())
+                .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));   // 订单不存在 / 该单没买这个商品
+
+        // 别人的单不能评 —— 订单号是可枚举的，不校验归属就是任意写入
+        if (!userNo.equals(item.userNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        // 验收清单：「订单完成后才能评价」
+        if (!item.completed()) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        // 验收清单：「该订单已评价」。库唯一键是最终防线，这里先给出可读的错误
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.exists(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getSubOrderNo, item.subOrderNo())
+                        .eq(RvwReview::getGoodsNo, cmd.goodsNo())));
+        if (exists) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        RvwReview r = new RvwReview();
+        r.setReviewNo(BizKey.next(BizKey.REVIEW));
+        r.setSubOrderNo(item.subOrderNo());
+        r.setOrderNo(cmd.orderNo());
+        r.setGoodsNo(cmd.goodsNo());
+        r.setSkuNo(item.skuNo());
+        r.setEntityNo(item.merchantNo());
+        /*
+         * ★ 评价归门店（ADR-011 决定表第 3 行，V155）。
+         * 取的是**下单那一刻**子单上的门店，不是「商家现在的默认店」——
+         * 半年后他把那家店关了、或者换了默认店，这条评价不该跟着搬家。
+         * 老单可能没有门店，那样这条评价只计主体分。
+         */
+        r.setStoreNo(item.storeNo());
+        r.setUserNo(userNo);
+        // 昵称与头像存快照：用户改昵称不该让历史评价的署名跟着变
+        r.setNickname(userPort.find(userNo).map(UserQueryPort.UserBrief::nickname).orElse("匿名用户"));
+        r.setRating(cmd.rating());
+        r.setContent(cmd.content());
+        r.setImages(writeJson(cmd.images()));
+        r.setSpec(item.spec());
+        r.setLikeCount(0);
+        r.setStatus(VISIBLE);
+        if (cmd.scores() != null) {
+            r.setScoreGoods(cmd.scores().goods());
+            r.setScoreFulfillment(cmd.scores().fulfillment());
+            r.setScoreService(cmd.scores().service());
+        }
+        reviewMapper.insert(r);
+        // 「评价发表后…并计入商家评分」是写在发表页上的一句承诺，这里把它兑现
+        recomputeRating(cmd.goodsNo(), item.merchantNo(), item.storeNo());
+        // B-N-3：商家要看到新评价，差评（≤2 星）在消费侧单独点名
+        eventBus.publish(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
+                r.getReviewNo(), item.merchantNo(), item.storeNo(), cmd.goodsNo(), cmd.rating()));
+        return toVO(r, false, null);
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO toggleLike(String reviewNo) {
+        String userNo = SecurityUtils.currentUserNo();
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, reviewNo)));
+        if (r == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);   // 验收清单：「评价不存在」
+        }
+
+        RvwReviewLike existing = DataScopeContext.executeWithoutScope(() ->
+                likeMapper.selectOne(Wrappers.<RvwReviewLike>lambdaQuery()
+                        .eq(RvwReviewLike::getReviewNo, reviewNo)
+                        .eq(RvwReviewLike::getUserNo, userNo)));
+
+        boolean liked;
+        if (existing == null) {
+            RvwReviewLike like = new RvwReviewLike();
+            like.setReviewNo(reviewNo);
+            like.setUserNo(userNo);
+            likeMapper.insert(like);
+            liked = true;
+        } else {
+            likeMapper.deleteById(existing.getId());
+            liked = false;
+        }
+
+        /*
+         * like_count 是**派生值**，用明细重算而不是 +1/-1。
+         * 增量更新在并发下会漂：两个人同时点赞，两次读到同一个旧值，各写回 +1，实际只加了 1。
+         * 明细表才是 likeCount 的真源（V16 的表注释写明了这一点）。
+         */
+        long count = DataScopeContext.executeWithoutScope(() ->
+                likeMapper.selectCount(Wrappers.<RvwReviewLike>lambdaQuery()
+                        .eq(RvwReviewLike::getReviewNo, reviewNo)));
+        r.setLikeCount((int) count);
+        reviewMapper.updateById(r);
+        return toVO(r, liked, appealsOf(List.of(r)).get(reviewNo));
+    }
+
+    // ---------------------------------------------------------------- 内部
+
+    /** 一次查出当前用户对这批评价的点赞，避免逐条查（列表页 N+1 的经典来源） */
+    private Set<String> likedByCurrentUser(List<RvwReview> rows) {
+        String userNo = SecurityUtils.currentUserNoOrNull();
+        if (userNo == null || rows.isEmpty()) {
+            return Set.of();
+        }
+        List<String> nos = rows.stream().map(RvwReview::getReviewNo).toList();
+        return DataScopeContext.executeWithoutScope(() ->
+                likeMapper.selectList(Wrappers.<RvwReviewLike>lambdaQuery()
+                                .eq(RvwReviewLike::getUserNo, userNo)
+                                .in(RvwReviewLike::getReviewNo, nos))
+                        .stream().map(RvwReviewLike::getReviewNo).collect(Collectors.toSet()));
+    }
+
+    private Map<String, RvwAppeal> appealsOf(List<RvwReview> rows) {
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        List<String> nos = rows.stream().map(RvwReview::getReviewNo).toList();
+        return DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
+                                .in(RvwAppeal::getReviewNo, nos))
+                        .stream().collect(Collectors.toMap(RvwAppeal::getReviewNo, a -> a, (a, b) -> a)));
+    }
+
+    private ReviewVO toVO(RvwReview r, boolean liked, RvwAppeal appeal) {
+        ReviewVO.Scores scores = r.getScoreGoods() == null ? null
+                : new ReviewVO.Scores(r.getScoreGoods(), nz(r.getScoreFulfillment()), nz(r.getScoreService()));
+        ReviewVO.Appeal appealVO = appeal == null ? null
+                : new ReviewVO.Appeal(appeal.getAppealNo(), appeal.getReason(),
+                appeal.getStatus(), appeal.getVerdict());
+        return new ReviewVO(r.getReviewNo(), r.getGoodsNo(), r.getEntityNo(),
+                r.getNickname(), r.getAvatar(), nz(r.getRating()), r.getContent(),
+                readJson(r.getImages()), r.getSpec(), createdAtMillis(r),
+                nz(r.getLikeCount()), liked, r.getReply(), r.getRepliedAt(), scores, appealVO);
+    }
+
+    private long createdAtMillis(RvwReview r) {
+        LocalDateTime t = r.getCreatedAt();
+        return t == null ? 0L : t.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    private List<String> readJson(String jsonArray) {
+        if (jsonArray == null || jsonArray.isBlank()) {
+            return List.of();
+        }
+        try {
+            return json.readValue(jsonArray, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            // 存量脏数据不该让整个列表 500 —— 图片读不出来，评价正文照样有用
+            return List.of();
+        }
+    }
+
+    private String writeJson(List<String> images) {
+        try {
+            return json.writeValueAsString(Optional.ofNullable(images).orElse(List.of()));
+        } catch (Exception e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
+    }
+
+    // ---------------------------------------------------------------- 商家侧（B-11.7）
+
+    /** 低于这个分数才算差评，才允许申诉。三星是「一般」，不是差评。 */
+    private static final int APPEALABLE_BELOW = 3;
+
+    @Override
+    public int pendingReplyCount(String merchantNo) {
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectCount(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getEntityNo, merchantNo)
+                        .eq(RvwReview::getStatus, VISIBLE)
+                        .isNull(RvwReview::getReply)));
+        return n == null ? 0 : n.intValue();
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO reply(String merchantNo, String reviewNo, String reply) {
+        if (isBlank(reply)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = ofMerchant(merchantNo, reviewNo);
+        // 一条评价只能回一次：回复是公开表态，反复改会变成评论区里来回改口
+        if (!isBlank(r.getReply())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        r.setReply(reply.trim());
+        r.setRepliedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+        return toVO(r, false, appealOf(reviewNo));
+    }
+
+    @Override
+    @Transactional
+    public ReviewVO appeal(String merchantNo, String reviewNo, String reason, List<String> images) {
+        if (isBlank(reason)) {
+            // 没有理由的申诉在裁决台上无法处理，只会变成一条永远待办的单
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = ofMerchant(merchantNo, reviewNo);
+        if (r.getRating() >= APPEALABLE_BELOW) {
+            /*
+             * 只有差评可申诉。放开的话「凡是不满意的评价都申诉一遍」，
+             * 平台裁决台会被淹掉 —— 淹掉之后真正的恶意差评也没人看了。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (appealOf(reviewNo) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        RvwAppeal a = new RvwAppeal();
+        a.setAppealNo(BizKey.next(BizKey.APPEAL));
+        a.setReviewNo(reviewNo);
+        a.setEntityNo(merchantNo);
+        a.setReason(reason.trim());
+        a.setImages(writeJson(images));
+        a.setStatus("PENDING");
+        a.setSubmittedAt(System.currentTimeMillis());
+        /*
+         * 「一条评价只能申诉一次」的唯一键在库上（uk_review）——
+         * 先查后插必然有竞态，而重复申诉在裁决台上是两条互相矛盾的待办。
+         * 上面那次 appealOf 只是为了给出人话报错，不是防线。
+         */
+        DataScopeContext.executeWithoutScope(() -> appealMapper.insert(a));
+        return toVO(r, false, a);
+    }
+
+    /** 取这条评价，并确认它属于这家店 —— 否则商家能回别家的评价。 */
+    private RvwReview ofMerchant(String merchantNo, String reviewNo) {
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, reviewNo).last("limit 1")));
+        if (r == null || !merchantNo.equals(r.getEntityNo())) {
+            // 不区分「不存在」与「不是你的」：区分了就等于一个评价归属探测器
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return r;
+    }
+
+    private RvwAppeal appealOf(String reviewNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectOne(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(RvwAppeal::getReviewNo, reviewNo).last("limit 1")));
+    }
+
+    // ---------------------------------------------------------------- 平台治理（P-13.1）
+
+    private static final String REJECTED = "REJECTED";
+    private static final String PENDING = "PENDING";
+    private static final String UPHELD = "UPHELD";
+    /**
+     * 申诉不成立。**用 REJECTED 不用 DISMISSED** —— 项目词典 §11 已经把
+     * 「拒绝 / 驳回 / 申诉不成立」统一到这一个词。
+     *
+     * <p>这里原先写的是 `DISMISSED`，而端上两处都按词典写了 `REJECTED`：
+     * 于是运营端的状态列直接印出 `DISMISSED`（徽标映射里没有这个键），
+     * B 端商家看到的是 **`reviews.appealDISMISSED`** —— i18n 的 key 原文，
+     * 因为那个 key 是拿状态码拼出来的。<b>统一只发生在文档和两个前端的类型声明里</b>，
+     * 后端从没跟着改，而两边都不报错。
+     *
+     * <p>（风控的 `DISMISSED`「已排除」是另一件事：那里没有人被驳回，
+     * 是一条线索被排除，词典没有把它并进来。）
+     */
+    private static final String REJECTED_APPEAL = "REJECTED";
+
+    @Override
+    public List<OpsReviewVO> opsList(String status, String merchantNo, String keyword) {
+        /*
+         * **不绕过**：运营端的全量评价队列（merchantNo 可空），
+         * 这一页上有评价原文与商家名，下一步动作是删评价。
+         * `merchantNo` 参数是运营主动筛某一家，与数据域是两回事。
+         *
+         * 与上面 C 端那条 `list()` 的分别：那条要给游客看，必须绕；
+         * 这条是运营治理，正是数据域该起作用的地方。同一张表两条查询，
+         * 判据是**归属由谁保证**。
+         */
+        List<RvwReview> rows = reviewMapper.selectList(Wrappers.<RvwReview>lambdaQuery()
+                .eq(!isBlank(status), RvwReview::getStatus, status)
+                .eq(!isBlank(merchantNo), RvwReview::getEntityNo, merchantNo)
+                .like(!isBlank(keyword), RvwReview::getContent, keyword)
+                .orderByDesc(RvwReview::getId));
+        return rows.stream().map(this::toOpsVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsReviewVO decide(String reviewNo, boolean pass, String reason, String operatorNo) {
+        if (!pass && isBlank(reason)) {
+            // 与门店审核同一条规矩：驳回不写理由，被驳的人无从改起，只会反复提交同一份
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, reviewNo).last("limit 1")));
+        if (r == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        r.setStatus(pass ? VISIBLE : REJECTED);
+        r.setRejectReason(pass ? null : reason.trim());
+        DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+        // 驳回一条差评就该把它从评分里拿掉；恢复亦然 —— 否则治理动作只改了可见性。
+        // **门店那一份也要跟着变**：只回主体分的话，那家店的分里仍然压着一条已被裁掉的差评
+        recomputeRating(r.getGoodsNo(), r.getEntityNo(), r.getStoreNo());
+        return toOpsVO(r);
+    }
+
+    @Override
+    public List<OpsAppealVO> appeals(String status) {
+        // 不绕过：运营端的全量申诉队列，与上面的评价队列同一个理由
+        List<RvwAppeal> rows = appealMapper.selectList(Wrappers.<RvwAppeal>lambdaQuery()
+                .eq(!isBlank(status), RvwAppeal::getStatus, status)
+                .orderByDesc(RvwAppeal::getId));
+        return rows.stream().map(this::toAppealVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsAppealVO decideAppeal(String appealNo, boolean uphold, String verdict, String operatorNo) {
+        if (isBlank(verdict)) {
+            // 无论支持还是驳回都必须写：商家会看到它，「已读不处理」不是一种结果
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        RvwAppeal a = DataScopeContext.executeWithoutScope(() ->
+                appealMapper.selectOne(Wrappers.<RvwAppeal>lambdaQuery()
+                        .eq(RvwAppeal::getAppealNo, appealNo).last("limit 1")));
+        if (a == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 裁完就是终态：再裁一次意味着同一条差评有两个结论，商家看到哪个取决于他什么时候刷新
+        if (!PENDING.equals(a.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        a.setStatus(uphold ? UPHELD : REJECTED_APPEAL);
+        a.setVerdict(verdict.trim());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> appealMapper.updateById(a));
+
+        if (uphold) {
+            /*
+             * 支持商家 = 差评从 C 端消失。**改的是评价的状态，不是删除它** ——
+             * 删了的话，同一个买家可以再评一条一模一样的，而平台看不出这是被裁过的。
+             */
+            RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                    reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                            .eq(RvwReview::getReviewNo, a.getReviewNo()).last("limit 1")));
+            if (r != null) {
+                r.setStatus(REJECTED);
+                r.setRejectReason("申诉成立：" + verdict.trim());
+                DataScopeContext.executeWithoutScope(() -> reviewMapper.updateById(r));
+                // 差评被裁掉了，分也要跟着回去 —— 只从 C 端隐掉而分还压着，等于申诉赢了一半
+                recomputeRating(r.getGoodsNo(), r.getEntityNo(), r.getStoreNo());
+            }
+        }
+        return toAppealVO(a);
+    }
+
+    /** 评分放大 10 倍存整数（48 = 4.8）—— 浮点在不同库/语言里 round 得不一样，而它要展示给人看 */
+    private static final int RATING_SCALE = 10;
+
+    /**
+     * 评分的**时间半衰期**：这么多天前的一条评价，只顶今天一条的一半。
+     *
+     * <p>为什么要加权（2026-08-14 拍板）：纯算术平均下，<b>一家店的分是它历史的
+     * 平均而不是它现在的样子</b>。开了两年、攒了几百条好评的店，换了老板、菜品
+     * 变了、迟迟不发货，分也几乎不动 —— 新买家看到的 4.8 描述的是两年前那家店。
+     * 反过来，一家整改好了的店要靠新评价把旧账「稀释」掉，而稀释需要的条数
+     * 与它的历史成正比：越老的店越难翻身，这与整改的努力完全无关。
+     *
+     * <p>180 天：一个季节循环 + 一点余量。太短（如 30 天）会让分随几条新评价
+     * 剧烈跳动，商家会觉得这个分是随机的；太长（如 2 年）等于没加权。
+     */
+    private static final double RATING_HALF_LIFE_DAYS = 180.0;
+
+    /**
+     * 取当前时间。留一个缝是为了能测衰减 —— 否则测试要么等半年，
+     * 要么往库里塞「未来的评价」，后者会让别的用例莫名其妙。
+     */
+    java.util.function.Supplier<LocalDateTime> clock = LocalDateTime::now;
+
+    /**
+     * 重算这件商品与这家店的评分。**拿明细算，整份盖掉**。
+     *
+     * <p>与 likeCount 同一条规矩（见 {@link #toggleLike}）：派生值不做增量。
+     * 增量在并发下会漂 —— 两条评价同时落库，各自读到同一个旧值再写回，只算进去一条。
+     * 而评分漂了不会报错、也没有对账口，只是让一家店在列表里悄悄排到后面去。
+     *
+     * <p><b>只算审核通过的</b>：待审、被驳回、申诉成立被撤下的都不计入 ——
+     * 否则平台把一条恶意差评裁掉了，分却还压在商家头上，等于申诉只赢了一半。
+     *
+     * <p>口径是<b>纯评价均分</b>。《待完成功能清单》B4 提的
+     * 「均分 ×0.8 + 订单量对数 ×0.2」还没拍板，那一项定了再往上加 ——
+     * 但「发表评价 → 计入评分」这条链路不该继续空着，页面上已经这么写了。
+     */
+    /**
+     * <b>刻意没有「不传门店」的重载</b>：留一个两参版本的话，下一个调用点少传一个参数
+     * 就悄悄跳过了门店那一份，而症状是「主体分变了、门店分没变」——
+     * 没有报错，只有两个数字对不上，而且要等到有人并排看它们时才发现。
+     *
+     * @param storeNo 一并重算这家门店的分；**为空则不动任何门店**（老评价没有门店）
+     */
+    private void recomputeRating(String goodsNo, String merchantNo, String storeNo) {
+        if (merchantNo != null && !merchantNo.isBlank()) {
+            var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
+                    .eq(RvwReview::getEntityNo, merchantNo));
+            ratingPort.updateRating(merchantNo, agg);
+        }
+        /*
+         * ★ 门店分与主体分**同一份明细、同一套口径**（含 180 天半衰期）——
+         * 两套口径的后果是「主体 4.6 分，三家店 4.8/4.7/4.9」，
+         * 而没有人能解释那个 4.6 是怎么来的。
+         *
+         * 只在评价带门店时算：老评价不属于任何一家店，
+         * 拿它去更新某家店等于把别人的口碑记到这家头上。
+         */
+        if (storeNo != null && !storeNo.isBlank()) {
+            var agg = aggregate(Wrappers.<RvwReview>lambdaQuery()
+                    .eq(RvwReview::getStoreNo, storeNo));
+            ratingPort.updateStoreRating(storeNo, agg);
+        }
+        if (goodsNo == null || goodsNo.isBlank()) {
+            return;
+        }
+        var agg = aggregate(Wrappers.<RvwReview>lambdaQuery().eq(RvwReview::getGoodsNo, goodsNo));
+        var g = DataScopeContext.executeWithoutScope(() ->
+                goodsMapper.selectOne(Wrappers.<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)
+                        .last("limit 1")));
+        if (g == null) {
+            return;
+        }
+        g.setRating(agg.ratingX10());
+        g.setRatingCount(agg.count());
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+    }
+
+
+
+    /**
+     * 一条评价都没有时返回 0 分 / 0 条 —— <b>不是默认给个 5 分</b>。
+     * 新店本来就没人评过，端上按 count 显示「暂无评价」，而一个凭空的 5 分是假的。
+     */
+    private ai.neargo.shop.spi.user.MerchantRatingPort.Rating aggregate(
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RvwReview> w) {
+        List<RvwReview> rows = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectList(w.eq(RvwReview::getStatus, VISIBLE)));
+        if (rows.isEmpty()) {
+            return new ai.neargo.shop.spi.user.MerchantRatingPort.Rating(0, 0, 0, 0, 0);
+        }
+        /*
+         * **三维度与综合分取自同一批评价**。分开算的话看板会与总分对不上，
+         * 而对不上时没人看得出是哪一边错了。
+         *
+         * 三维度是选填的（老评价没有），所以各自只在填了的那些里平均 ——
+         * 把没填的当 0 分摊进去，会让一家店因为「有人只打了总分」而莫名其妙掉分。
+         */
+        return new ai.neargo.shop.spi.user.MerchantRatingPort.Rating(
+                avgX10(rows, RvwReview::getRating), rows.size(),
+                avgX10(rows, RvwReview::getScoreGoods),
+                avgX10(rows, RvwReview::getScoreService),
+                avgX10(rows, RvwReview::getScoreFulfillment));
+    }
+
+    /** 只算填了的那些；一条都没填返回 0（端上按 0 显示「暂无」） */
+    /** 包级可见：{@code ReviewRatingWeightTest} 直接喂几条评价验证衰减，不必造整套 mapper */
+    int avgX10(List<RvwReview> rows,
+               java.util.function.Function<RvwReview, Integer> f) {
+        LocalDateTime now = clock.get();
+        double weighted = 0;
+        double weights = 0;
+        for (RvwReview r : rows) {
+            Integer v = f.apply(r);
+            if (v == null || v <= 0) {
+                continue;   // 三维度是选填的：没填的不参与，不是当 0 分摊进去
+            }
+            double w = weightOf(r, now);
+            weighted += w * v;
+            weights += w;
+        }
+        if (weights <= 0) {
+            return 0;
+        }
+        return (int) Math.round(weighted * RATING_SCALE / weights);
+    }
+
+    /**
+     * 一条评价此刻的权重：{@code 0.5 ^ (天数 / 半衰期)}。
+     *
+     * <p><b>是衰减不是截断</b>。「只算最近半年」那种写法有一个很难解释的后果：
+     * 一条评价在某个午夜之后突然不算了，分会自己跳一下，而那一刻店家什么也没做。
+     * 指数衰减下每条评价的影响是连续变小的，任何一天的变化都小到看不出来。
+     *
+     * <p>没有 createdAt 的按最老算（权重最低）而不是最新：历史数据缺字段时，
+     * 宁可让它少影响分，也不要让一批来历不明的行主导今天的评分。
+     */
+    private static double weightOf(RvwReview r, LocalDateTime now) {
+        if (r.getCreatedAt() == null) {
+            return Math.pow(0.5, 10);   // ≈ 0.001，等于「几乎不算」但不是 0
+        }
+        double days = java.time.Duration.between(r.getCreatedAt(), now).toMinutes() / 1440.0;
+        if (days <= 0) {
+            return 1.0;   // 时钟回拨或同一分钟内的评价，按最新算
+        }
+        return Math.pow(0.5, days / RATING_HALF_LIFE_DAYS);
+    }
+
+    private OpsReviewVO toOpsVO(RvwReview r) {
+        return new OpsReviewVO(r.getReviewNo(), r.getSubOrderNo(), r.getEntityNo(),
+                // 商家名不在评价表上，这里去商家域取 —— 原先把 entityNo 传了两遍，
+                // 注释写着「前端再去商家域取名」，而前端并没有取：屏幕上是一列 M0001
+                merchantPort.find(r.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(r.getEntityNo()),
+                r.getNickname(), nz(r.getRating()), nz(r.getScoreGoods()),
+                nz(r.getScoreFulfillment()), nz(r.getScoreService()), r.getContent(),
+                readJson(r.getImages()).size(), r.getStatus(), readJson(r.getRiskFlags()),
+                r.getCreatedAt() == null ? 0L
+                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                r.getRejectReason());
+    }
+
+    /**
+     * 裁决台的一行。**必须带上被申诉那条评价的正文与星级**。
+     *
+     * <p>此前这里只给一个 `reviewNo`：裁决人要判断「这条差评是不是恶意的」，
+     * 而屏幕上<b>看不到那条差评</b> —— 只有一串单号和商家自己写的申诉理由。
+     * 想读原文得切到另一个页签、改筛选、自己去列表里找。
+     * 一个只听得到一方陈述的裁决台，裁出来的结论也只反映那一方。
+     *
+     * <p>商家名同理：原先把 `entityNo` 传了两遍，注释写着「前端再去商家域取名」，
+     * 而前端并没有取 —— 运营看到的是一列 `M0001`。
+     */
+    private OpsAppealVO toAppealVO(RvwAppeal a) {
+        RvwReview r = DataScopeContext.executeWithoutScope(() ->
+                reviewMapper.selectOne(Wrappers.<RvwReview>lambdaQuery()
+                        .eq(RvwReview::getReviewNo, a.getReviewNo()).last("limit 1")));
+        return new OpsAppealVO(a.getAppealNo(), a.getReviewNo(), a.getEntityNo(),
+                merchantPort.find(a.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(a.getEntityNo()),
+                r == null ? 0 : nz(r.getRating()), r == null ? "" : r.getContent(),
+                a.getReason(), readJson(a.getImages()).size(), a.getStatus(),
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(), a.getVerdict());
+    }
+}

@@ -148,12 +148,54 @@ export function contrast(a: RGBA, b: RGBA): number {
  * 元素的**实际**背景色：自身背景半透明时向上合成祖先背景，直到遇到不透明层。
  * 只看 background-color（不看 background-image/渐变，本项目组件层没有渐变底）。
  */
+/**
+ * 取元素**自己那个视图**的 computed style。
+ *
+ * 不用全局 `getComputedStyle`：跨 iframe 扫真实页面时（`app/dev/pages`），
+ * 元素来自另一个 document，拿父窗口的视图去量是未定义行为 ——
+ * 而它出错的样子是「量到了，但量的是别的东西」，比抛异常难发现得多。
+ */
+export const csOf = (el: Element): CSSStyleDeclaration =>
+  (el.ownerDocument.defaultView ?? window).getComputedStyle(el);
+
+/**
+ * 祖先背景色的缓存。**按「一组皮肤/明暗」清一次** —— 组内颜色不变，组间必须失效。
+ *
+ * 为什么需要：`effectiveBg` 对每个元素都往上走一遍祖先链，而同一个容器下的几十个
+ * 兄弟节点走的是同一批祖先。一个 1300 节点的页面 × 10 组，`getComputedStyle`
+ * 会被叫到五万次以上 —— 实测在后台标签页（被节流）里一条路由要磨几分钟。
+ * 用 WeakMap 缓存「这个元素自己的背景色」之后，每个元素只量一次。
+ */
+let bgCache: WeakMap<Element, RGBA | null> | null = null;
+
+/**
+ * **默认关着**，由批量扫描显式开启。
+ *
+ * 为什么不是默认开：`/dev/ui` 的对比度探针在用户切皮肤时逐个重量，
+ * 它们没有「一批」的概念 —— 缓存默认开的话，切完皮肤读到的是上一组的背景色，
+ * 而那种错**看起来完全正常**（数字落在合理区间里），比不缓存严重得多。
+ * 所以：只有明确知道「这一段里颜色不会变」的调用方才打开它。
+ */
+export function beginColorBatch(): void {
+  bgCache = new WeakMap();
+}
+export function endColorBatch(): void {
+  bgCache = null;
+}
+
 export function effectiveBg(el: Element): RGBA {
+  const ownBg = (e: Element): RGBA | null => {
+    if (bgCache?.has(e)) return bgCache.get(e)!;
+    const c = parseColor(csOf(e).backgroundColor);
+    const v = c && c.a > 0 ? c : null;
+    bgCache?.set(e, v);
+    return v;
+  };
   const stack: RGBA[] = [];
   let cur: Element | null = el;
   while (cur) {
-    const c = parseColor(getComputedStyle(cur).backgroundColor);
-    if (c && c.a > 0) {
+    const c = ownBg(cur);
+    if (c) {
       stack.push(c);
       if (c.a >= 0.999) break;
     }
@@ -175,7 +217,7 @@ export type Measured = {
 
 /** 量一个已挂载元素的「文字 vs 实际背景」对比度 */
 export function measure(el: Element): Measured {
-  const cs = getComputedStyle(el);
+  const cs = csOf(el);
   const fgRaw = cs.color;
   const bg = effectiveBg(el);
   const fg = parseColor(fgRaw);
@@ -191,9 +233,20 @@ export function rgbText({ r, g, b }: RGBA): string {
 
 /** AA 判据：正文 4.5、大字（≥18.66px 或 ≥14px 且 bold）3.0 */
 export function aaThreshold(el: Element): number {
-  const cs = getComputedStyle(el);
+  const cs = csOf(el);
   const px = parseFloat(cs.fontSize) || 14;
   const weight = parseInt(cs.fontWeight, 10) || 400;
   const large = px >= 24 || (px >= 18.66 && weight >= 700);
   return large ? 3 : 4.5;
 }
+
+/**
+ * 比值的显示格式：**向下截到两位**，不是四舍五入。
+ *
+ * `toFixed(2)` 会把 4.4996 显示成 “4.50”，而它是**不达标**的 —— 于是失败行
+ * 读起来像误报：「4.50 / 4.5，这不是过了吗」。第一次拿它扫真实页面时，
+ * 21 条里最刺眼的一条正好落在这儿，判断它是真缺陷还是显示问题花掉了一轮。
+ *
+ * 截断保证「显示出来的数字」与「判定」永远同向：显示 4.49 就是没到 4.5。
+ */
+export const fmtRatio = (n: number): string => (Math.floor(n * 100) / 100).toFixed(2);

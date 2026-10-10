@@ -1,0 +1,35 @@
+# MySQL 9.7 LTS · **生产主库**（2026-09-16 起；此前是待机实例）
+# 安装：deploy/tencent/mysql97/install.sh（幂等）· 说明：同目录 README.md
+[Unit]
+Description=MySQL 9.7 LTS primary (port 3307)
+After=network.target
+# 与 MariaDB 互不依赖：两个数据目录、两个端口、两个 socket，谁停都不牵连对方。
+# 2026-09-16 起 MariaDB 已 disable + mask（连同 mysql/mysqld 两个别名），
+# 端口仍留在 3307 —— 改成 3306 要动三个应用的连接串，收益只是「看着顺眼」。
+
+[Service]
+Type=simple
+User=mysql
+Group=mysql
+# 官方通用二进制包链接的是 libaio.so.1，而 Ubuntu 24.04 改名成了 libaio.so.1t64。
+# 兼容链接放在 MySQL 自己的私有目录里、只对这个服务生效 —— 不往系统库目录里写任何东西。
+Environment=LD_LIBRARY_PATH=/opt/mysql/lib-compat
+# --defaults-file 必须是第一个参数，而且不能省：否则会读到 MariaDB 的 /etc/mysql/my.cnf
+ExecStart=/opt/mysql/current/bin/mysqld --defaults-file=/etc/mysql97/my.cnf
+RuntimeDirectory=mysqld97
+RuntimeDirectoryMode=0755
+LimitNOFILE=10000
+# 「尽量小的资源」的硬边界。按 my.cnf 的配置常驻约 200~300MB：
+# 内存限额**不在这里** —— 见 mysql97.service.d/10-memory.conf。
+# 放 drop-in 而不是放这儿：那两个数必须与 my.cnf 的 innodb_buffer_pool_size 一起改，
+# 而 2026-09-16 之前这里写着 MemoryHigh=384M、my.cnf 写着 pool=1G，两边直接矛盾，
+# 结果是 buffer pool 一申请就被 memcg 回收进 swap，「整库常驻」从未成立。
+# 同一件事只留一个真相源，改的时候才不会只改到一半。
+# InnoDB 正常关机要刷脏页，别被 systemd 默认的 90 秒掐断
+TimeoutStopSec=600
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

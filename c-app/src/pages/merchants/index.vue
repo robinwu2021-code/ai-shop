@@ -1,65 +1,58 @@
 <script setup lang="ts">
 /*
- * 店铺 tab —— 「挑哪家店」这件事的专属页面。
+ * 店铺 tab —— 「挑哪家店」这件事的专属页面（TDD-C端门店化与门店门户 s01/s02）。
  *
- * 为什么它值得一个独立 tab：**挑店和挑货是两种不同的决策**，
- * 挤在首页里必然互相挤压（前几轮门店入口在首页反复挪位，根因就是这个）。
- * 邻里购物尤其是「认人先于认货」—— 买谁的菜取决于「阿明家的菜新鲜」，
- * 所以选店本身就是一条主路径，不是首页的附属模块。
+ * **单位是门店，不是主体**：同一主体下的几家店各占一行、叫门店名。此前按主体列，
+ * 四家店在这里只有一行、叫公司名，点进去还可能是一家已经停用的店。
  *
- * 三块，按**关系由近到远**排：
- *   1. 我买过的 —— 真实消费过的（从订单聚合，不是收藏、不是浏览足迹），复购主入口
- *   2. 平台推荐 —— 运营位。新店没订单没评分，在任何按成绩排的列表里都垫底，
- *      需要一个不看历史成绩的位置，否则永远冷启动不了
- *   3. 附近的   —— 服务范围覆盖当前社区的，按距离
- * 已经在上面出现过的店不在下面重复出现 —— 一期社区里只有三五家，不去重整页都是同一批。
+ * 两段，按关系由近到远：
+ *   1. 我的店 —— 买过的一直在；只逛过的留 30 天。每行第二行说**为什么它在这里**
+ *      （买过几次 / 朋友分享 / 逛过）。「朋友分享」那一行就是给商家的回报：
+ *      别人点开他分享的门店，这家店就留在对方的列表里
+ *   2. 附近   —— 能卖到这个社区、营业中，去掉上一段已有的；有位置按距离，没位置按评分
+ * 「平台推荐」不再放这里（2026-09-29 拍板）。没登录就没有第一段 —— 不是空着留个标题。
  */
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
-import { distance, isoDate } from "@shared/utils/format";
-import type { Merchant, VisitedMerchant } from "@shared/types";
+import type { StoreCard } from "@shared/types";
 
 const community = useCommunityStore();
+const location = useLocationStore();
 const user = useUserStore();
 
-const visited = ref<VisitedMerchant[]>([]);
-const promoted = ref<Merchant[]>([]);
-const nearby = ref<Merchant[]>([]);
+const mine = ref<StoreCard[]>([]);
+const nearby = ref<StoreCard[]>([]);
 const loaded = ref(false);
-
-/** 逐层去重：越靠上的关系越强，同一家店只在最强的那一档露面 */
-const promotedShown = computed(() => {
-  const seen = new Set(visited.value.map((m) => m.merchantNo));
-  return promoted.value.filter((m) => !seen.has(m.merchantNo));
-});
-const nearbyShown = computed(() => {
-  const seen = new Set([
-    ...visited.value.map((m) => m.merchantNo),
-    ...promotedShown.value.map((m) => m.merchantNo),
-  ]);
-  return nearby.value.filter((m) => !seen.has(m.merchantNo));
-});
+/** 问过的全没取到。**与「这一带确实没有店」是两件事** */
+const failed = ref(false);
 
 async function load() {
-  const communityNo = community.community?.communityNo;
-  const [v, p, n] = await Promise.all([
-    // 未登录没有消费记录，但推荐与附近照常要出 —— 不能整页空着
-    user.isLogin ? api.visitedMerchants().catch(() => []) : Promise.resolve([]),
-    api.promotedMerchants({ communityNo }).catch(() => []),
-    api.merchantList({ communityNo }).catch(() => []),
+  // 距离按「现在在哪儿逛」算（主动切的位置 > 生效地址 > 定位，见 browsePointE6）；
+  // 没有点就不传，后端按评分排。此前只读 active，临时切了位置这里不跟着变。
+  const point = location.browsePointE6 ?? {};
+  /*
+   * `allSettled` 而不是各自 `.catch(() => [])`：后者把「没取到」抹成「空」，
+   * 两条全挂时页面会说「这一带还没有店」—— 而真相是一条都没取到。
+   */
+  const [m, n] = await Promise.allSettled([
+    user.isLogin ? api.myStores(point) : Promise.resolve([] as StoreCard[]),
+    api.storeNearby({ ...point, communityNo: community.community?.communityNo, size: 50 }),
   ]);
-  visited.value = v;
-  promoted.value = p;
-  nearby.value = n;
+  mine.value = m.status === "fulfilled" ? m.value : [];
+  nearby.value = n.status === "fulfilled" ? n.value.records : [];
+  // 未登录时第一条是恒 fulfilled 的空数组，不能算进「全挂了」—— 否则出错态对游客永远到不了
+  const asked = user.isLogin ? [m, n] : [n];
+  failed.value = asked.every((r) => r.status === "rejected");
   loaded.value = true;
 }
 
-function open(merchantNo: string) {
-  uni.navigateTo({ url: `${ROUTES.merchant}?merchantNo=${merchantNo}` });
+function open(s: StoreCard) {
+  uni.navigateTo({ url: `${ROUTES.store}?no=${s.storeNo}&from=LIST` });
 }
 
 function goShopping() {
@@ -71,176 +64,28 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="shops.title" tab="merchants">
-    <!-- 1. 我买过的：真实消费过的关系，回购主路径，放最上面 -->
-    <view v-if="visited.length" class="sh-block">
+    <view v-if="mine.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.visited") }}</text>
-        <text class="sh-muted">{{ $t("shops.visitedHint") }}</text>
+        <text class="txt-title">{{ $t("shops.mine") }}</text>
+        <text class="txt-caption txt-quiet">{{ $t("shops.mineHint") }}</text>
       </view>
-      <view
-        v-for="m in visited"
-        :key="m.merchantNo"
-        class="card"
-        @tap="open(m.merchantNo)"
-      >
-        <biz-merchant-bar
-          :merchant="m"
-          @tap="open(m.merchantNo)"
-        ></biz-merchant-bar>
-        <view class="meta">
-          <text class="sh-chip sh-num">{{
-            $t("visited.orders", { n: m.orderCount })
-          }}</text>
-          <text class="sh-chip sh-num">
-            {{ $t("visited.last", { d: isoDate(m.lastOrderAt) }) }}
-          </text>
-          <text class="sh-chip">{{ $t(`merchant.type.${m.type}`) }}</text>
-        </view>
-      </view>
+      <biz-store-row v-for="s in mine" :key="s.storeNo" :store="s" @tap="open(s)"></biz-store-row>
     </view>
 
-    <!-- 2. 平台推荐：运营位，给新店一个不看历史成绩的位置 -->
-    <view v-if="promotedShown.length" class="sh-block">
+    <view v-if="nearby.length" class="sh-block">
       <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.promoted") }}</text>
-        <text class="sh-muted">{{ $t("shops.promotedHint") }}</text>
+        <text class="txt-title">{{ $t("shops.nearby") }}</text>
       </view>
-      <view
-        v-for="m in promotedShown"
-        :key="m.merchantNo"
-        class="card"
-        @tap="open(m.merchantNo)"
-      >
-        <biz-merchant-bar
-          :merchant="m"
-          @tap="open(m.merchantNo)"
-        ></biz-merchant-bar>
-        <text class="desc">{{ m.desc }}</text>
-        <view class="meta">
-          <text class="sh-chip">{{
-            $t(`serviceScope.${m.serviceScope}`)
-          }}</text>
-        </view>
-      </view>
+      <biz-store-row v-for="s in nearby" :key="s.storeNo" :store="s" @tap="open(s)"></biz-store-row>
     </view>
 
-    <!-- 3. 附近的：服务范围覆盖本社区，按距离。密排一点 —— 到这一档只需要认个脸 -->
-    <view v-if="nearbyShown.length" class="sh-block">
-      <view class="sh-block__head">
-        <text class="sh-h2">{{ $t("shops.nearby") }}</text>
-        <text class="sh-muted">{{ $t("shops.nearbyHint") }}</text>
-      </view>
-      <view class="near">
-        <view
-          v-for="m in nearbyShown"
-          :key="m.merchantNo"
-          class="near__i"
-          @tap="open(m.merchantNo)"
-        >
-          <text class="near__logo">{{ m.logo }}</text>
-          <view class="near__main">
-            <text class="near__name">{{ m.name }}</text>
-            <text class="near__desc">{{ m.desc }}</text>
-          </view>
-          <text v-if="m.distance" class="near__dist sh-num">{{
-            distance(m.distance)
-          }}</text>
-        </view>
-      </view>
-    </view>
-
-    <view
-      v-if="loaded && !visited.length && !promoted.length && !nearby.length"
-      class="empty"
+    <sh-empty
+      v-if="!mine.length && !nearby.length" :pending="!loaded" :failed="failed" @retry="load"
+      :text="String($t('shops.empty'))"
     >
-      <text class="empty__text">{{ $t("shops.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{
-        $t("visited.go")
-      }}</view>
-    </view>
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
-
-<style scoped>
-/* 卡在分区白块内成行 —— 行的边界靠内边距，不再各自一张卡 */
-.card {
-  padding: 20rpx 26rpx;
-}
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 24rpx;
-}
-.desc {
-  display: block;
-  margin-top: 18rpx;
-  font-size: 24rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
-}
-/* 附近的店：一行一家，密排 —— 这一档只是「附近还有谁」，不需要展开介绍 */
-/* 底和圆角由外层 .sh-block 给 —— 白底套白底只会多一圈看不见的边 */
-.near {
-  display: flex;
-  flex-direction: column;
-}
-.near__i {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 22rpx 24rpx;
-}
-.near__logo {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  font-size: 40rpx;
-  line-height: 76rpx;
-  text-align: center;
-  flex-shrink: 0;
-}
-.near__main {
-  flex: 1;
-  min-width: 0;
-}
-.near__name {
-  display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.near__desc {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.near__dist {
-  flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
-}
-.empty__text {
-  display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-left: 60rpx;
-  padding-right: 60rpx;
-}
-</style>

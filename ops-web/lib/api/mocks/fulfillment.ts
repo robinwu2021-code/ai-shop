@@ -1,10 +1,17 @@
 // 覆盖范围：履约调度（P-5.1）。
+import type { OutOfRangeRule } from "@/lib/types";
 import * as db from "@/lib/mock/db";
 import { MIN_FIRST_WEIGHT_GRAM, MIN_OVERDUE_GRACE_HOURS } from "@/lib/constants";
 import { BATCH_TRANSITIONS } from "@/lib/types";
 import type { FulfillmentApi } from "../contracts/fulfillment";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+/** 与后端 ExpressCompanies 同名（微信 delivery_name） */
+const CARRIER_NAMES: Record<string, string> = {
+  ZTO: "中通快递", YTO: "圆通速递", YD: "韵达速递", STO: "申通快递",
+  JTSD: "极兔速递", JD: "京东快递", DBL: "德邦快递", EMS: "EMS",
+};
 
 export const fulfillmentMock: FulfillmentApi = {
   listArrivalBatches: (q = {}) =>
@@ -25,15 +32,15 @@ export const fulfillmentMock: FulfillmentApi = {
   },
 
   // 分拣只看**已签收**批次：没签收就分拣，等于把责任判定的依据跳过去了
+  // 与后端 PageData 同形 —— 裸数组正是「mock 绿、真后端 data.map 崩」那一类
   listSorting: async (q = {}) => {
     const signed = new Set(db.batches.filter((b) => b.status === "SIGNED").map((b) => b.pickupNo));
-    return wait(
-      db.sorting.filter((r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)),
-    );
+    return wait(db.paginate(db.sorting, q.page, q.size,
+      (r) => signed.has(r.pickupNo) && db.eqHit(q.pickupNo, r.pickupNo)));
   },
 
   listRedeemStats: async (q = {}) =>
-    wait(db.redeemStats.filter((r) => db.eqHit(q.pickupNo, r.pickupNo))),
+    wait(db.paginate(db.redeemStats, q.page, q.size, (r) => db.eqHit(q.pickupNo, r.pickupNo))),
 
   getOverdueRule: async () => wait(db.overdueRule),
 
@@ -54,6 +61,10 @@ export const fulfillmentMock: FulfillmentApi = {
       db.paginate(db.shipments, q.page, q.size, (s) =>
         db.eqHit(q.status, s.status) &&
         db.eqHit(q.carrier, s.carrier) &&
+        db.eqHit(q.subState, s.subState) &&
+        db.eqHit(q.bindState, s.bindState) &&
+        db.eqHit(q.subChannel, s.subChannel ?? undefined) &&
+        db.eqHit(q.profile, s.profile) &&
         db.kwHit(q.keyword, s.shipmentNo, s.orderNo, s.waybillNo, s.receiver),
       ),
     ),
@@ -80,7 +91,37 @@ export const fulfillmentMock: FulfillmentApi = {
     return wait(sh, 350);
   },
 
-  listFreightTemplates: async (q = {}) => wait(db.freightTemplates.filter((t) => db.liveHit(t, q.showArchived))),
+  replayShipment: async ({ shipmentNo, action, channel }) => {
+    const sh = db.shipments.find((x) => x.shipmentNo === shipmentNo);
+    if (!sh) notFound("快递单", "Shipment", shipmentNo);
+    // 与后端同口径（LogisticsAdminPortImpl）：终态不重放、线下单不换 token、点名的渠道要可用
+    if (sh.status === "DELIVERED" || sh.status === "CANCELLED") {
+      fail("运单已签收或已作废，不需要重放", "The shipment is already signed for or cancelled; nothing to replay");
+    }
+    if (action === "WX_BIND") {
+      if (sh.profile !== "WX") fail("线下付款单不调微信物流接口", "Offline-paid orders never call WeChat logistics");
+      sh.bindState = "WAITING";
+      sh.bindError = null;
+      return wait({ accepted: true }, 300);
+    }
+    if (channel) {
+      const ch = db.logisticsChannels.find((x) => x.name === channel);
+      const sub = ch?.capabilities.find((x) => x.capability === "SUBSCRIBE");
+      if (!sub?.available) {
+        const why = sub?.reason ?? `没有装 ${channel} 的订阅实现`;
+        fail(`这个物流渠道没有启用或凭据没配，不能用它订阅：${why}`, `This logistics channel is disabled or missing credentials, so it can't subscribe: ${why}`);
+      }
+    }
+    sh.subState = "PENDING";
+    sh.subAttempts = 0;
+    sh.subError = null;
+    return wait({ accepted: true }, 300);
+  },
+
+  listLogisticsChannels: async () => wait(db.logisticsChannels.map((c) => ({ ...c }))),
+
+  listFreightTemplates: async (q = {}) =>
+    wait(db.paginate(db.freightTemplates, undefined, 100, (t) => db.liveHit(t, q.showArchived))),
 
   saveFreightTemplate: async (v) => {
     if (!v.name.trim()) fail("模板名称不能为空", "The template name cannot be empty");
@@ -115,6 +156,35 @@ export const fulfillmentMock: FulfillmentApi = {
     return wait(saved, 400);
   },
 
+  // 模板名里的快递公司名（后端取 ExpressCompanies#nameOf）；替身只认快递100 那八家
+  // 替身按「多数省份一个价、偏远几档加价」造报价，推导规则与后端 FreightDraftServiceImpl#build 同一套
+  draftFreightTemplate: async (v) => {
+    if (!v.origin.trim()) fail("请填发货地址", "Enter the ship-from address");
+    if (v.firstWeightGram < MIN_FIRST_WEIGHT_GRAM) {
+      fail(`首重不得少于 ${MIN_FIRST_WEIGHT_GRAM} 克`, `The first weight cannot be under ${MIN_FIRST_WEIGHT_GRAM} g`);
+    }
+    const far: Record<string, [number, number]> = { 新疆: [2000, 1500], 西藏: [2500, 1800], 青海: [1200, 600], 海南: [1000, 300] };
+    const regions = ["北京", "天津", "河北", "山西", "内蒙古", "辽宁", "吉林", "黑龙江", "上海", "江苏", "浙江", "安徽",
+      "福建", "江西", "山东", "河南", "湖北", "湖南", "广东", "广西", "海南", "重庆", "四川", "贵州", "云南", "西藏",
+      "陕西", "甘肃", "青海", "宁夏", "新疆"];
+    const rows = regions.map((region) => {
+      const [f, a] = far[region] ?? [600, 200];
+      return { region, firstFee: region === "西藏" ? null : f, addFee: region === "西藏" ? null : a };
+    });
+    const baseFirst = 600;
+    const baseAdd = 200;
+    const outOfRange = rows.flatMap((r): OutOfRangeRule[] => {
+      if (r.firstFee === null) return [{ region: r.region, action: "REJECT", surcharge: 0 }];
+      const extra = Math.max(0, r.firstFee - baseFirst) + Math.max(0, (r.addFee ?? 0) - baseAdd);
+      return extra > 0 ? [{ region: r.region, action: "SURCHARGE", surcharge: extra }] : [];
+    });
+    const city = v.origin.replace(/^(.*?(省|自治区))/, "").replace(/(市).*$/, "$1") || v.origin;
+    return wait({
+      name: `${city}发 · ${CARRIER_NAMES[v.carrier] ?? v.carrier}`, firstWeightGram: v.firstWeightGram, firstFee: baseFirst,
+      addWeightGram: v.addWeightGram, addFee: baseAdd, outOfRange, rows, unquoted: 1,
+    }, 800);
+  },
+
   archiveFreightTemplate: async (templateNo) => {
     const t = db.freightTemplates.find((x) => x.templateNo === templateNo);
     if (!t) notFound("模板", "Template", templateNo);
@@ -140,7 +210,10 @@ export const fulfillmentMock: FulfillmentApi = {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v.pickupCutoff)) fail("截单时间必须是 HH:mm，例如 17:00", "The cut-off must be HH:mm, for example 17:00");
     if (!Number.isInteger(v.slaHours) || v.slaHours <= 0) fail("承诺时效必须是正整数小时", "The promised SLA must be a positive whole number of hours");
 
-    Object.assign(c, v, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    // 编码与后端同口径：不传 / 传空 = 不改（空 ≠ 清空），老的保存只发前四个字段
+    const { codes, ...rest } = v;
+    Object.assign(c, rest, { updatedAt: new Date().toISOString(), updatedBy: "admin" });
+    if (codes && Object.keys(codes).length) c.codes = { ...codes };
     return wait(c, 400);
   },
 

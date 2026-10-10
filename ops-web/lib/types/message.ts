@@ -1,6 +1,11 @@
 // 消息与客服域（矩阵 P-14）。
-export type MsgChannel = "SUBSCRIBE" | "PUSH" | "INBOX";
-export type PushStatus = "DRAFT" | "SCHEDULED" | "SENT" | "CANCELLED";
+/**
+ * 模板所属通道。**与后端 `SysNotifyLog` 的四个常量 + INAPP 一致**。
+ *
+ * <p>旧值 `SUBSCRIBE/PUSH/INBOX` 来自 V20 的建表注释，而代码与种子（V141）
+ * 用的一直是这一套 —— 两套名字并存时，模板列表的通道列会显示成空白。
+ */
+export type MsgChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH" | "INAPP";
 
 /** 订阅消息模板（P-14.1.1）。 */
 export interface MsgTemplate {
@@ -8,34 +13,28 @@ export interface MsgTemplate {
   templateNo: string;
   /** 模板名 */
   name: string;
-  /** 触达渠道：订阅消息 / App 推送 / 站内信 */
+  /** 触达渠道 */
   channel: MsgChannel;
-  /** 模板正文，含 {占位符} */
+  /**
+   * 语言（zh-CN / en / ar）。
+   *
+   * <p>同一个 templateNo 每种语言一行（V145）——**列表上必须显示它**，
+   * 否则运营看到的是两条一模一样的模板，改了其中一条还发现"没生效"。
+   */
+  lang?: string;
+  /** 模板正文，含 {占位符}。**模拟发送靠它展示「会发出什么」并做预览** */
   content: string;
+  /**
+   * 渠道侧模板 ID（阿里云 `SMS_xxx` / 微信模板号）。站内信为空。
+   *
+   * <p>后端 `TemplateVO` 一直有这个字段，端上类型此前漏了 —— 于是页面拿不到它，
+   * 而它正是运营核对「我们发的是哪个报备模板」的唯一凭据。
+   */
+  providerTemplateId?: string | null;
   /** 是否启用。停用后引用它的推送任务发不出去 */
   enabled: boolean;
   /** 近 30 天发送量 */
   sentCount: number;
-}
-
-/** 推送任务（P-14.1.2）。 */
-export interface PushTask {
-  /** 任务单号 */
-  taskNo: string;
-  /** 任务名 */
-  name: string;
-  /** 使用的消息模板 */
-  templateNo: string;
-  /** 人群描述，如「近 7 日未下单的老客」 */
-  audience: string;
-  /** 预估触达数。为 0 说明人群是空的，发了等于白发 */
-  estimatedReach: number;
-  /** 任务状态 */
-  status: PushStatus;
-  /** 计划发送时间。`status=SCHEDULED` 时有值 */
-  scheduledAt?: string;
-  /** 创建时间 */
-  createdAt: string;
 }
 
 /**
@@ -53,10 +52,10 @@ export interface NotifyQuota {
   updatedBy: string;
 }
 
-export type TicketStatus = "OPEN" | "ASSIGNED" | "RESOLVED" | "CLOSED";
+export type TicketStatus = "PENDING" | "ASSIGNED" | "RESOLVED" | "CLOSED";
 
 export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  OPEN: ["ASSIGNED", "CLOSED"],
+  PENDING: ["ASSIGNED", "CLOSED"],
   ASSIGNED: ["RESOLVED", "CLOSED"],
   RESOLVED: ["CLOSED", "ASSIGNED"],
   CLOSED: [],
@@ -76,10 +75,30 @@ export interface Ticket {
   status: TicketStatus;
   /** 处理人（员工登录名）；未分派为空 */
   assignee?: string;
-  /** 代客操作留痕（P-14.2.3）：谁、对什么、做了什么 */
-  proxyActions: string[];
+  /**
+   * 代客操作留痕（P-14.2.3）：谁、对什么、做了什么。
+   *
+   * **可选，不要去掉 `?`。** 后端 `TicketVO` 目前不下发这个字段
+   * （`MessageVOs.java` 里只有 ticketNo/subject/content/orderNo/status/reply/createdAt/repliedAt），
+   * 只有 mock 有。声明成必填数组 + `page.tsx` 直接 `.length` = 真接口下抛 TypeError。
+   * 与 `Merchant.qualifications` 同一形状，由 `ops-contract-fields` 守卫抓出。
+   */
+  proxyActions?: string[];
   /** 提单时间 */
   createdAt: string;
+  /**
+   * 客服回复正文。**用户在 C 端工单详情页看的就是这个字段**。
+   *
+   * 此前它在三层上各缺一处：后端 `notify_ticket` 建表就留了 `reply`/`replied_at`/`replied_by`
+   * 且注释写明「代客操作要能追到人」，但没有任何代码写过它们；
+   * 契约里也从没定义过「回复」这个动作（只有分派、关闭、代客留痕）。
+   * 于是用户提单后反复点开详情，看到的永远是空的，而且不报任何错。
+   */
+  reply?: string;
+  /** 回复时间；未回复为空 */
+  repliedAt?: string;
+  /** 回复人（员工登录名）。回复署的是平台的名，必须能追到人 */
+  repliedBy?: string;
 }
 
 /** 帮助中心条目（P-14.2.4）。 */
@@ -96,4 +115,245 @@ export interface FaqEntry {
   published: boolean;
   /** 浏览量，用来发现「大家其实在问什么」 */
   views: number;
+}
+
+/**
+ * 一条短信/邮件发送记录。
+ *
+ * `target` 是**掩码后的**收件人（138****8888 / r***n@neargo.ai）——
+ * 这张表运营都看得到，而收件人是用户的手机号与邮箱。
+ * 要查具体一条，靠 `providerMsgId` 去通道后台查。
+ */
+/**
+ * 外发渠道。**与后端 `SysNotifyLog` 的四个常量逐字一致**。
+ *
+ * <p>WXSUB = 微信小程序订阅消息（服务通知），target 是掩码后的 openid；
+ * PUSH = App 推送（个推/uni-push，ADR-018），target 是掩码后的 clientId。
+ *
+ * <p><b>站内信（INAPP）不在这里</b>：它不进 `sys_notify_log`，
+ * 它自己就是一张可查的表（`notify_message`）。混进来会让人以为能在发送记录里查到它。
+ */
+export type NotifyChannel = "SMS" | "MAIL" | "WXSUB" | "PUSH";
+
+/**
+ * 通道体检（TDD-运营端触达中心 §4.1）。
+ *
+ * <p><b>凭据只有「配没配」，没有值</b>：一个能在 Web 上读出生产短信密钥的接口，
+ * 泄漏一次就是全平台可群发。要改密钥去改环境变量并重启，不在这个页面上改。
+ */
+export interface NotifyChannelHealth {
+  /** 通道 */
+  channel: NotifyChannel;
+  /** 走桩：不真发，只记日志 */
+  stub: boolean;
+  /** 真实通道已启用（!stub） */
+  enabled: boolean;
+  /** 这条通道的凭据配没配全。**没配全就发不出**，而症状是「发送成功」后没人收到 */
+  credentials: { envVar: string; present: boolean; required: boolean }[];
+  /** 非密业务参数，可回显（模板号、endpoint 这类本就印在短信里的东西） */
+  params: { key: string; value: string }[];
+  /** 今天发了多少条 */
+  todaySent: number;
+  /** 今天失败多少条 */
+  todayFailed: number;
+}
+
+/** 微信订阅消息的模板号映射。**唯一一项开放到运营端的通道参数**（模板号不是凭据）。 */
+export interface WxTemplates {
+  /** 「订单已送达」用的微信模板 id */
+  orderArrived: string;
+  /** 「退款成功」用的微信模板 id */
+  refunded: string;
+}
+
+/** 与后端 MsgMessage 的三个常量逐字一致 —— 内联在 interface 里的话对登记表不可见（规范 §D5） */
+export type InboxMessageType = "TRADE" | "MARKETING" | "SYSTEM";
+
+/**
+ * 运营自己的通知收件箱（顶栏铃铛）。
+ * 与 NotifyLog 是两回事：这个是**发给运营的待办**（新工单/待审核/告警），
+ * 那个是**平台发给用户**的触达留痕。
+ */
+export interface InboxMessage {
+  /** 消息号 */
+  messageNo: string;
+  /** 类型 */
+  type: InboxMessageType;
+  /** 标题 */
+  title: string;
+  /** 正文 */
+  body: string;
+  /** 点开跳哪儿。空 = 只是一条通知，点不动 */
+  link?: string | null;
+  /** 已读 */
+  read: boolean;
+  /** 发生时刻 */
+  at: number;
+}
+
+/**
+ * 站内信的平台侧记录（发送记录页第二个 tab）。
+ *
+ * <p><b>没有 status</b>：站内信入库即到达，不存在「发送中/失败」——
+ * 这正是它与 NotifyLog 不能合成一张表的原因。
+ */
+export interface InAppLog {
+  /** 消息号 */
+  messageNo: string;
+  /** USER / STAFF / OPS */
+  receiverType: string;
+  /** 收件人编号。**不掩码**：它是平台内部标识（userNo），不是手机号邮箱 */
+  receiverNo: string;
+  /** 类型 */
+  type: InboxMessageType;
+  /** 标题 */
+  title: string;
+  /** 模板号 */
+  templateNo?: string | null;
+  /** 已读 */
+  read: boolean;
+  /** 发生时刻 */
+  at: number;
+}
+
+/** 发送结果。**失败也记**——只记成功的话，这张表回答不了「他为什么没收到」。 */
+export type NotifyStatus = "SENT" | "FAILED";
+
+/**
+ * 渠道注册表一行（触达推送中台 N2/N4）。一条 = 类型×供应商×接入范围×归属。
+ * 类型/供应商/接入范围/状态用 string（同 NotifyLog.bizType）：取值随后端演进，
+ * 端上不硬编码一份联合类型。
+ */
+/**
+ * 场景 × 受众 × 通道 的一格（P-14.1）。
+ *
+ * <p>「哪个事件走哪些通道」以前**硬编码在编排里** —— 后端把它做成了可配置，
+ * 而运营端此前没有入口，于是这份配置存在、能改，却没人看得见。
+ */
+export interface SceneChannelCell {
+  /** 场景码（订单已支付、售后已受理…） */
+  scene: string;
+  /** 受众：买家 / 商家 / 运营 */
+  audience: string;
+  /** 通道 */
+  channel: string;
+  /** 启用中 */
+  enabled: boolean;
+  /** 推送等级（App 推送用；其它通道为空） */
+  pushLevel: string;
+  /**
+   * **恒锁定的格子**。站内信（INAPP）是事实记录，运营不可关 ——
+   * 后端会拒掉这一格的关闭请求，前端被绕过也兜得住，界面只是别让人白点。
+   */
+  locked: boolean;
+}
+
+export interface NotifyChannelRow {
+  /** 渠道编号（业务主键，启停用它） */
+  channelNo: string;
+  /** SMS / MAIL / WXSUB / PUSH / INAPP */
+  channelType: string;
+  /** ALI / SMTP / WECHAT / GETUI / FCM / APNS / INTERNAL */
+  provider: string;
+  /** 接入范围 PLATFORM / MERCHANT / TEST */
+  scope: string;
+  /** scope=MERCHANT 的商家号；平台/测试为空串 */
+  ownerNo: string;
+  /** 软开关（运营即时启停） */
+  enabled: boolean;
+  /** 读时派生 UNCONFIGURED / STUB / READY / DISABLED / DEGRADED */
+  status: string;
+  /** 同类型同供应商多实例的选择优先级，小者先 */
+  priority: number;
+  /** 凭据引用（env 前缀），不含密钥明文；可空 */
+  credRef?: string | null;
+  /** 非密参数（签名/模板号/topic），JSON 串 */
+  configJson: string;
+  /** 平台接入还缺哪些环境变量（供运维照配）；商家/测试接入为空 */
+  missingCreds: string[];
+  /** INAPP 恒锁定：站内信不可关 */
+  locked: boolean;
+}
+
+/**
+ * 平台营销广播推送任务（触达推送中台 N6）。运营主动发起的群发：
+ * 圈人群 → 预估触达 → 定时下发。与事件驱动触达（发给用户的必达通知）分开。
+ */
+export interface NotifyPushTask {
+  /** 任务号 */
+  taskNo: string;
+  /** 任务名（运营自己看的） */
+  name: string;
+  /** 人群 ALL_APP_USER（消费者）/ ALL_STAFF（商家员工） */
+  audienceType: string;
+  /** 下发通道，一期仅 PUSH */
+  channel: string;
+  /** 标题 */
+  title: string;
+  /** 正文 */
+  body: string;
+  /** 点开落点，可空 */
+  link?: string | null;
+  /** 定时下发时刻 ISO；空=尽快发 */
+  scheduledAt?: string | null;
+  /** QUEUED / RUNNING / DONE / CANCELLED */
+  status: string;
+  /** 创建时预估触达人数 */
+  estimatedCount: number;
+  /** 实际发出条数 */
+  sentCount: number;
+  /** 结束时刻。空 = 还在发 */
+  finishedAt?: string | null;
+}
+
+export interface NotifyLog {
+  /** 触达记录号 */
+  notifyNo: string;
+  /** 通道 */
+  channel: NotifyChannel;
+  /** 供应商 ALI/SMTP/WECHAT/GETUI/FCM/APNS（N3）；旧行与单供应商推出为空 */
+  provider?: string | null;
+  /** OTP / OPS_INIT_PASSWORD / OPS_RESET_PASSWORD / TEST */
+  bizType: string;
+  /** 发给谁。**已脱敏** —— 这张表运营都看得到 */
+  target: string;
+  /** 短信是阿里云模板号；邮件是主题 */
+  templateCode?: string | null;
+  /** 状态 */
+  status: NotifyStatus;
+  /** 失败时通道返回的原文。**排查第一眼看它** */
+  error?: string | null;
+  /** 阿里云 BizId / 邮件 Message-ID */
+  providerMsgId?: string | null;
+  /** 谁发的（人工触达时） */
+  operatorNo?: string | null;
+  /** 创建时刻 */
+  createdAt: string;
+}
+
+/** 图形验证码挑战。`imageBase64` 不带 data: 前缀，端上自己拼 */
+export interface Captcha {
+  /** 验证码会话号，校验时要带回来 */
+  captchaId: string;
+  /** 图形验证码的图，base64 */
+  imageBase64: string;
+}
+
+/**
+ * 某收件人绑定的一台推送终端（运营端「选择终端发起测试」用）。
+ * `clientId` 是原始设备标识，发送时回传；`clientIdMask` 只用于展示。
+ */
+export interface PushDevice {
+  /** 收件人类型：买家 / 商家 */
+  receiverType: string;
+  /** 平台 */
+  platform: string;
+  /** 厂商通道（华为/小米/…）。**真机稳不稳看它** —— 走不了厂商通道就只能靠自建长连 */
+  provider: string;
+  /** 个推的 CID。**推送真正寻址靠它**，不是设备号 */
+  clientId: string;
+  /** 打码后的 CID，列表里显示这个 */
+  clientIdMask: string;
+  /** 更新时刻 */
+  updatedAt?: string;
 }

@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { RISK_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -20,25 +20,22 @@ import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
-import { StatRow, Pagination, StatCard } from "@/components/ui/misc";
+import { HelpNote } from "@/components/ui/help-note";
+import { StatRow, StatCard } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof RISK_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "events", label: c.tabEvents },
-  { key: "blacklist", label: c.tabBlacklist },
-  { key: "rules", label: c.tabRules },
-];
+const TAB_KEYS = ["events", "blacklist", "rules"] as const;
 
 const SUBJECT_LABEL = (c: Copy): Record<SubjectType, string> => ({ USER: c.subjectUser, MERCHANT: c.subjectMerchant, DEVICE: c.subjectDevice });
 const SUBJECT_OPTIONS = (c: Copy) => (Object.keys(SUBJECT_LABEL(c)) as SubjectType[]).map((v) => ({ value: v, label: SUBJECT_LABEL(c)[v] }));
@@ -49,7 +46,7 @@ export default function RiskPage() {
 
 function RiskInner() {
   const c = useCopy(RISK_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/risk", TAB_KEYS);
   const subjectLabel = SUBJECT_LABEL(c);
   const subjectOptions = SUBJECT_OPTIONS(c);
   const qc = useQueryClient();
@@ -103,7 +100,7 @@ function RiskInner() {
     mutationFn: (v: { blackNo: string; accept: boolean }) => api.decideBlacklistAppeal(v.blackNo, v.accept, appealVerdict),
     onSuccess: (b) => {
       invalidate(); setAppeal(null); setAppealVerdict("");
-      notify.success(b.appealStatus === "ACCEPTED" ? c.toastAppealAccepted : c.toastAppealRejected);
+      notify.success(b.appealStatus === "UPHELD" ? c.toastAppealAccepted : c.toastAppealRejected);
     },
   });
   const saveRule = useMutation({
@@ -140,7 +137,7 @@ function RiskInner() {
       header: c.colActions,
       cell: (e) => (
         <Button size="sm" variant="outline" onClick={() => { setCurrent(e); setVerdict(e.verdict ?? ""); }}>
-          {e.status === "OPEN" && canBlacklist ? c.actionHandle : c.actionView}
+          {e.status === "PENDING" && canBlacklist ? c.actionHandle : c.actionView}
         </Button>
       ),
     },
@@ -166,7 +163,7 @@ function RiskInner() {
   ];
 
   const rows = events.data?.records ?? [];
-  const openCount = rows.filter((e) => e.status === "OPEN").length;
+  const openCount = rows.filter((e) => e.status === "PENDING").length;
 
   return (
     <div>
@@ -183,28 +180,32 @@ function RiskInner() {
             <StatCard label={c.kpiPageCount} value={rows.length} />
             <StatCard label={c.kpiActiveBlack} value={blacks.data?.total ?? "—"} />
           </StatRow>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.eventsNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchEvents}>
             <FilterSelect aria-label={c.filterType} value={type} onChange={(v) => { setType(v); setPage(1); }} options={typeMap} allLabel={c.filterTypeAll} />
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
-          <DataTable
-            columns={eventColumns} rows={events.data?.records} loading={events.isLoading}
-            error={events.error} onRetry={() => events.refetch()}
+          <PagedTable
+            query={events}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={events.isLoading}
+            columns={eventColumns}
             rowKey={(e) => e.eventNo}
             empty={c.emptyEvents}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={events.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
       {tab === "blacklist" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.blacklistNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar
             search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }}
             searchPlaceholder={c.searchBlacklist}
@@ -215,14 +216,18 @@ function RiskInner() {
             <FilterSelect aria-label={c.filterActive} value={activeOnly} onChange={(v) => { setActiveOnly(v); setPage(1); }}
               options={[{ value: "1", label: c.filterActiveOnly }]} allLabel={c.filterActiveAll} />
           </Toolbar>
-          <DataTable
-            columns={blackColumns} rows={blacks.data?.records} loading={blacks.isLoading}
-            error={blacks.error} onRetry={() => blacks.refetch()}
+          <PagedTable
+            query={blacks}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={blacks.isLoading}
+            columns={blackColumns}
             rowKey={(b) => b.blackNo}
             empty={c.emptyBlacklist}
             emptyAction={canBlacklist ? <Button size="sm" onClick={openAddBlack}>{c.addLabel}</Button> : undefined}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={blacks.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -231,9 +236,9 @@ function RiskInner() {
           <CardHeader><CardTitle>{c.rulesTitle}</CardTitle></CardHeader>
           <CardContent>
             {!canUpdateRule && <ReadOnlyNotice what={c.rulesReadOnlyWhat} perm="risk:rule:update" className="mb-3" />}
-            <Notice className="mb-4">
+            <HelpNote className="mb-4">
               {c.rulesNotice}
-            </Notice>
+            </HelpNote>
             <div className="space-y-5">
               {(rules.data ?? []).map((r: RiskRule) => (
                 <div key={r.type} className="rounded-card bg-secondary p-4">
@@ -279,7 +284,7 @@ function RiskInner() {
         desc={current ? subjectLabel[current.subjectType] : undefined}
         width="w-[520px]"
         footer={
-          current?.status === "OPEN" && canBlacklist ? (
+          current?.status === "PENDING" && canBlacklist ? (
             <>
               <Button variant="outline" onClick={() => decide.mutate({ eventNo: current.eventNo, confirmed: false })}>{c.btnDismiss}</Button>
               <Button onClick={() => decide.mutate({ eventNo: current.eventNo, confirmed: true })}>{c.btnConfirmRisk}</Button>
@@ -303,7 +308,7 @@ function RiskInner() {
                       <code className="txt-caption">{r}</code>
                       {/* 归因链路号能跳过去看「人是怎么进来的」—— 异常裂变的判断就靠它 */}
                       {r.startsWith("AT") && (
-                        <a className="ms-2 text-[var(--primary)] underline" href={`/growth?tab=traces&keyword=${r}`}>
+                        <a className="focus-ring ms-2 text-[var(--primary)] underline" href={`/growth?tab=traces&keyword=${r}`}>
                           {c.linkTrace}
                         </a>
                       )}
@@ -313,7 +318,7 @@ function RiskInner() {
               ) : c.none}
             </Field>
             <Field label={c.fieldVerdict}>
-              {current.status === "OPEN" && canBlacklist ? (
+              {current.status === "PENDING" && canBlacklist ? (
                 <Textarea value={verdict} onChange={setVerdict}
                   placeholder={c.verdictPlaceholder} />
               ) : (

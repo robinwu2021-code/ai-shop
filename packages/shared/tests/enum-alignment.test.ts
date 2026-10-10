@@ -1,0 +1,104 @@
+// 枚举对账守卫：端上声明的取值，后端真的会下发/接受吗。
+//
+// 这条守卫是被**三次同一形状的故障**换来的（2026-08）：路径通、200、字段也在，
+// 唯独值对不上 —— 订单状态让买家的「待取货」和商家的三个页签全空；
+// ops-web 的售后状态是另一套「处理阶段」的名字；登录方式端上发 WX_MINI 而后端只认 WECHAT_MP。
+// 三次都不是打字错误，是两边各自定义了一套词汇，而**没有任何东西比对过**。
+//
+// `check:api` 只比路径不比取值，所以它三次都是绿的。
+import { describe, expect, it } from "vitest";
+// @ts-expect-error —— 脚本是 .mjs，没有类型声明；这里只用它的两个纯函数
+import { findGaps } from "../../../scripts/check-enums.mjs";
+
+interface Gap {
+  client: "shared" | "ops-web";
+  name: string;
+  missing: string[];
+  total: number;
+}
+
+/**
+ * shared（c-app / b-app）已知且**有理由**的差异。
+ *
+ * 每一条都必须写清楚「为什么现在可以留着、什么时候该删掉」——
+ * 否则这份名单会退化成「报错了就加一行」，而守卫就此失效。
+ */
+const KNOWN_SHARED: Record<string, string> = {
+  ExemptType:
+    "HANDCRAFT（家庭手工业）后端 seed 里还没有主体用它。电商法 §10 的四类豁免是**法条给定的闭集**，" +
+    "不能因为暂时没人用就从契约里删 —— 删了之后来一个手工业者，端上会落进兜底分支而不报错。" +
+    "AGRI/SERVICE/PETTY 已在用",
+  PickupScope:
+    "GROUP_INSTANCE（团粒度自提点，一团一销）后端未实现。ADR-005 里有，链路还没接",
+  GrantType:
+    "**WX_MINI 已对齐**（2026-08-14）：后端 AuthService.GRANT_WX_MINI 与 WECHAT_MP 同分支，" +
+    "小程序静默登录已跑通。剩下两个各缺一截，都不是命名问题：" +
+    "WX_PHONE（一键取手机号）缺端上的 getPhoneNumber encryptedData 与服务端解密分支，" +
+    "前置是微信认证；WX_OPEN（App 微信开放平台）换 openid 走 sns/oauth2/access_token，" +
+    "是另一个端点，接 App 时再补。两者接通时删掉本条对应的半句",
+  MerchantTier:
+    "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
+  FULFILLMENT:
+    "**STORE_VERIFY 与 APPOINTMENT 已接通**（2026-08-17，服务履约一、二期）：后端取值域、" +
+    "支付后落 FULFILLING（不经「待发货」，因为没有东西要发）、预约时段与上门地址两道必填闸、核销全链路。" +
+    "剩 INSTANT（虚拟即时发放，三期：与卡包耦合）。" +
+    "接通时**不需要新增订单状态** —— 归进 SELF_SERVE / SERVE_TO_BUYER 两个交付形态即可，" +
+    "文案表加一行（见《订单状态-统一整理》）。" +
+    "（DELIVERY 与 MERCHANT_DELIVERY 的同物异名、PICKUP 与 STORE_PICKUP 的同物异名均已修）",
+};
+
+/**
+ * ops-web 的差异数**只许降不许升**。
+ *
+ * 它有 171 条端点还没有后端实现，逐条对齐是接下来几周的事；
+ * 但在那之前，不该再新增一个「后端永远不会给的值」。
+ * 这个数字每降一点，就是一块真正对齐了的地方。
+ */
+/*
+ * 34 而不是 33：MerchantTier 的取值从「主体类型旧取值」改成了「分层」
+ * （SMALL/MEDIUM/LARGE），而**分层一期没启用**，后端 mch_entity.tier 恒为 null。
+ * 所以它现在是一条诚实的「端上声明了、后端还没实现」—— 比此前那条
+ * 「取值来自另一个概念、这一列永远显示不出东西」好，但确实多了一条差异。
+ * 基线只能往下走，这次是有理由的例外，理由记在这里。
+ */
+const OPS_WEB_BASELINE = 34;
+
+describe("枚举对账", () => {
+  const gaps: Gap[] = findGaps();
+
+  it("shared：端上声明的取值，后端都真的会给（例外必须在 KNOWN_SHARED 里写明理由）", () => {
+    const unexplained = gaps
+      .filter((g) => g.client === "shared" && !KNOWN_SHARED[g.name])
+      .map((g) => `${g.name}: ${g.missing.join(", ")}`);
+
+    expect(
+      unexplained,
+      "这些取值端上声明了、后端永远不会下发 —— 端上按自己的类型解析或筛选，\n" +
+        "结果是「接口 200 但页面是空的」，而且不报错：\n  " +
+        unexplained.join("\n  ") +
+        "\n\n要么去后端实现，要么从契约里删掉。确实要暂留的，写进 KNOWN_SHARED 并说明理由。",
+    ).toEqual([]);
+  });
+
+  it("ops-web：差异只许降不许升", () => {
+    const count = gaps.filter((g) => g.client === "ops-web").length;
+    expect(
+      count,
+      `ops-web 的枚举差异从 ${OPS_WEB_BASELINE} 涨到了 ${count}。\n` +
+        "它有大量端点还没有后端实现，所以基线不为零；但**不该再新增**：\n" +
+        "新增一条就是又写下一个后端永远不会给的值，而 ops-web 只跑 mock，自己发现不了。\n" +
+        "对齐了几个就把 OPS_WEB_BASELINE 调低几个 —— 这个数字只能往下走。",
+    ).toBeLessThanOrEqual(OPS_WEB_BASELINE);
+  });
+
+  it("KNOWN_SHARED 里不留已经修好的条目（名单本身也会过期）", () => {
+    const stale = Object.keys(KNOWN_SHARED).filter(
+      (name) => !gaps.some((g) => g.client === "shared" && g.name === name),
+    );
+    expect(
+      stale,
+      `这些已经不再有差异，从 KNOWN_SHARED 删掉：${stale.join(", ")}\n` +
+        "留着的话，下次同一个类型再出问题就会被这条豁免掉。",
+    ).toEqual([]);
+  });
+});

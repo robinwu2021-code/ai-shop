@@ -1,0 +1,624 @@
+package ai.neargo.shop.arch;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 每个 {@code /mp} 端点都必须**明确**它要不要登录。
+ *
+ * <h2>为什么 C 端需要这道闸，而它此前没有</h2>
+ * <p>B 端有 {@link BizEndpointPermTest}：每加一个 {@code /biz} 端点都必须登记它要什么权限，
+ * 没登记直接红。C 端一直没有对应物 —— {@code /mp/**} 整条安全链是 {@code permitAll}，
+ * 登录靠散在各处的 161 处 {@code SecurityUtils.currentUserNo()} 各自把关。
+ *
+ * <p><b>那个设计本身是对的</b>：门店主页游客可看，未登录不该 401，
+ * 所以才有刻意分开的 {@code currentUserNoOrNull()}。缺的只是这道闸 ——
+ * 新加一个端点忘了取当前用户，它就是匿名可调的，<b>而没有任何地方会说</b>。
+ *
+ * <h2>判据是实弹，不是源码模式</h2>
+ * <p>不扫 {@code currentUserNo} 的字面出现：90 个端点的强制是在 service 层做的，
+ * 控制器里根本看不到。这里<b>真的不带令牌打一遍</b>，看回什么。
+ *
+ * <p>端点清单来自 {@code RequestMappingHandlerMapping} 而不是正则扫源码 ——
+ * 少认一种 HTTP 方法、或注解写法一变，正则会静默漏掉端点而守卫照样绿。
+ *
+ * <h2>三个桶</h2>
+ * <ul>
+ *   <li>{@link #REQUIRES_LOGIN}：匿名调回 401。<b>这是主判据</b>，逐条实弹验证。</li>
+ *   <li>{@link #ANONYMOUS}：匿名调回 0（成功）。游客可看的那些。</li>
+ *   <li>{@link #UNDETERMINED}：<b>探测判不出来的</b>。路径变量是假的、
+ *       或请求体是空的，于是业务校验（404/400）挡在鉴权之前 ——
+ *       回的不是 401，但也不能据此说它不要登录。
+ *       <b>这个桶里的每一条都需要人确认</b>，它是待办清单，不是许可。</li>
+ *   <li>{@link #PLATFORM_CALLBACK}：<b>平台回调</b>。调它的是微信的服务器，
+ *       不带我方令牌，鉴权靠签名自证；而且它<b>故意返回裸字符串</b>
+ *       （{@code echostr} / {@code "success"}）而不是信封 —— 那是微信的要求。
+ *       于是它既拿不到 401，也拿不到 {@code 200/0}，三个桶都不适配。
+ *       <b>这一桶不是「免检」</b>：每一条都要有自己的判据 ——
+ *       GET 由 {@code WxPushVerifyTest} 逐条钉（签名不符回空串、没配 token 拒绝、
+ *       三个值要排序），POST 由 {@link #wxPushMustNotGrowSideEffectsBeforeVerifying} 盯着。</li>
+ * </ul>
+ *
+ * <p>加端点时三个桶都不在，这条用例会红并点名 —— 逼加的人回答一句「这个要不要登录」。
+ * <b>这正是这类守卫存在的理由：不是防止今天写错，是防止明天忘记。</b>
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+@DisplayName("C 端 · 每个端点都要明确要不要登录")
+class MpEndpointAuthTest {
+
+    /** 匿名访问回 401，已逐条实弹验证。 */
+    private static final Set<String> REQUIRES_LOGIN = Set.of(
+            "GET /mp/after-sale",
+            "GET /mp/after-sale/{afterSaleNo}",
+            "GET /mp/cart",
+            "GET /mp/coupon/mine",
+            "GET /mp/group-buy/hosted",
+            "GET /mp/invoice/mine",
+            "GET /mp/invoice/order/{orderNo}",
+            "GET /mp/merchant/apply",
+            "GET /mp/merchant/visited",
+            "GET /mp/message",
+            "GET /mp/message/unread-count",
+            "GET /mp/my-coupons",
+            "GET /mp/my-memberships",
+            "GET /mp/order",
+            "GET /mp/order/{orderNo}",
+            // 物流页（TDD-物流模块 批 3）：先按当前登录人查子单再问物流
+            "GET /mp/order/{orderNo}/trace",
+            // 小程序侧看件：要登录(绑过手机号)且本人才看，匿名调 401
+            "GET /mp/track/mine",
+            "GET /mp/order/{orderNo}/pay-result",
+            // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
+            "GET /mp/order/{orderNo}/pay-method",
+            "GET /mp/points/account",
+            "GET /mp/points/records",
+            "GET /mp/store/{no}/frequent",
+            "GET /mp/ticket",
+            "GET /mp/ticket/{ticketNo}",
+            "GET /mp/user/active-address",
+            "GET /mp/user/address",
+            "GET /mp/user/profile",
+            "POST /mp/user/active-address/{addressId}",
+            "POST /mp/after-sale/{afterSaleNo}/cancel",
+            "POST /mp/after-sale/{afterSaleNo}/escalate",
+            "POST /mp/after-sale/{afterSaleNo}/ship",
+            "POST /mp/attribution/report",
+            // 点推送进店回写：只认本人，没登录就没有「本人」
+            "POST /mp/member-reach/{reachNo}/opened",
+            "POST /mp/cart/remove",
+            "POST /mp/coupon/best",
+            "POST /mp/coupon/{couponNo}/receive",
+            "POST /mp/group-buy",
+            "POST /mp/group-buy/{groupNo}/join",
+            "POST /mp/group-buy/{groupNo}/verify",
+            "POST /mp/group-request",
+            "POST /mp/group-request/{requestNo}/confirm",
+            "POST /mp/group-request/{requestNo}/interest",
+            "POST /mp/invoice/apply",
+            "POST /mp/merchant/apply",
+            "POST /mp/merchant/apply/{applyNo}",
+            "POST /mp/message/read-all",
+            "POST /mp/message/subscribe",
+            "POST /mp/message/{messageNo}/read",
+            "POST /mp/order",
+            "POST /mp/order/capability",
+            "POST /mp/order/preview",
+            "POST /mp/order/{orderNo}/after-sale",
+            "POST /mp/order/{orderNo}/cancel",
+            "POST /mp/order/{orderNo}/confirm-receipt",
+            "POST /mp/order/{orderNo}/pay",
+            "POST /mp/order/{orderNo}/reorder",
+            "POST /mp/push-token",
+            "POST /mp/push-token/unregister",
+            "POST /mp/review/{reviewNo}/like",
+            // 提问要记是谁问的（运营回答时要能回到人），所以必须登录
+            "POST /mp/question",
+            // 「我邀到了几个」——没有「我」就没有答案（§3.1）
+            "GET /mp/fission",
+            "POST /mp/risk/appeal",
+            "POST /mp/store/{no}/enter",
+            // 商品 / 店铺收藏（TDD-C端商品收藏与送达判断）
+            "POST /mp/favorite/goods/{goodsNo}",
+            "GET /mp/favorite/goods",
+            "GET /mp/favorite/store",
+            // 我的拼团（TDD-C端拼团买家流程）
+            "GET /mp/group-buy/mine",
+            "POST /mp/favorite/store/{merchantNo}",
+            "POST /mp/store/{no}/rebuy",
+            "POST /mp/ticket",
+            "POST /mp/user/address/{addressId}/archive",
+            "POST /mp/user/address/{addressId}/default",
+            "POST /mp/user/deregister",
+            "POST /mp/user/profile",
+            "POST /mp/user/switch-to-merchant",
+            /*
+             * C-AC-08 个人资料三条，**都是实弹验证的 401**。
+             *
+             * 为了做到这一点，这两条 POST 的参数校验刻意放在方法体里、放在取当前用户
+             * 之后 —— `@Valid` 与 multipart 的缺参校验跑在方法体之前，
+             * 那样匿名探测拿到的是 10400 而不是 401，只能塞进 UNDETERMINED，
+             * 而那个桶是待办不是许可（它上面有棘轮，不许变长）。
+             */
+            "POST /mp/user/avatar",
+            "POST /mp/user/password",
+            "GET /mp/user/password",
+            "");
+
+    /** 匿名访问回成功。游客可看。 */
+    private static final Set<String> ANONYMOUS = Set.of(
+            "GET /mp/goods/{goodsNo}",
+            // 集单块（s26）：未登录的人也要看得到截单时间才会下单；不是集单商品时 data 为 null
+            "GET /mp/goods/{goodsNo}/batch",
+            // 问答与评价同一条理由：看得到才有下单动机（§3.3）
+            "GET /mp/goods/{goodsNo}/question",
+            // 海报要用的店铺码。游客可见 —— 海报本来就是发出去给陌生人看的（§7.3）
+            "GET /mp/merchant/{merchantNo}/acode",
+            "GET /mp/goods/{goodsNo}/group",
+            "GET /mp/merchant/{merchantNo}",
+            "GET /mp/merchant/{merchantNo}/score",
+            "GET /mp/pickup/{pickupNo}",
+            "GET /mp/store/{no}",
+            "GET /mp/after-sale/reasons",
+            "GET /mp/category/tree",
+            "GET /mp/community",
+            "GET /mp/community/nearby",
+            "GET /mp/community/regions",
+            "GET /mp/config/bootstrap",
+            "GET /mp/coupon",
+            "GET /mp/goods",
+            "GET /mp/location/resolve",
+            "GET /mp/place/search",
+            "GET /mp/goods/promoted",
+            "GET /mp/group-buy",
+            "GET /mp/group-request",
+            "GET /mp/group-request/{requestNo}/price-history",
+            "GET /mp/group-request/{requestNo}/quotes",
+            "GET /mp/help/faq",
+            "GET /mp/merchant",
+            "GET /mp/merchant/promoted",
+            "GET /mp/regions",
+            "GET /mp/search/hot",
+            "GET /mp/search/suggest",
+            "GET /mp/store/mine",
+            // 附近的门店（TDD-C端门店化与门店门户）：没登录的人也要能逛到店
+            "GET /mp/store/nearby",
+            // 门户的商品与店码：与门户同一条理由（扫码的人多数还没登录）
+            "GET /mp/store/{no}/goods",
+            "GET /mp/store/{no}/acode",
+            "GET /mp/topics",
+            "GET /mp/topics/{topicNo}/goods",
+            "GET /mp/user/phone/capable",
+            // 免登录看件（TDD-收件人物流触达 §3）：收件人没有账号，令牌即授权。
+            // 不带票探测时返回成功的空信封（data=null），所以归游客可看而不是要登录。
+            "GET /mp/track",
+            // 看件 H5 的「在小程序中打开」按钮用：生成 URL Link。同样令牌即授权、无票返回 null。
+            "GET /mp/track/mini-link",
+            "");
+
+    /**
+     * 探测判不出的。**待办清单，不是许可。**
+     *
+     * <p>它们回的是 404/400 —— 业务校验挡在了鉴权之前，于是判不出要不要登录。
+     * <b>2026-08-28 用种子里的真号把 5 条判出来了</b>（商品、商家、商家评分、
+     * 自提点、门店主页，全部匿名可看），剩下这些各自卡在：
+     *
+     * <ul>
+     *   <li><b>缺种子数据</b>：团购、求团、小区详情 —— 测试库里没有对应的号，
+     *       给了假号就 404。要判定得先补种子。</li>
+     *   <li><b>缺合法请求体</b>：购物车、地址、评价、绑手机等写接口 ——
+     *       空 body 在参数校验就被挡下。</li>
+     *   <li><b>本来就是登录流程</b>：login / otp/send / phone/wx /
+     *       token/refresh —— 它们的存在就是为了让还没登录的人用。</li>
+     * </ul>
+     *
+     * <p><b>{@code GET /mp/group-buy/&#123;groupNo&#125;/orders} 单独说一句</b>：
+     * 它返回团里其他人的订单（买家昵称、核销码）。源码上它走
+     * {@code requireOwner} → {@code currentUserNo()}，用真实团号打过确实是 401 ——
+     * 但这里给不出真团号，所以留在这一桶里，<b>不是因为它没被保护</b>。
+     *
+     * <p>其中三条另有问题：{@code logout}、{@code token/refresh} 的
+     * {@code @RequestHeader("Authorization")} 是必填的，缺了会被渲染成
+     * <b>10500 服务器内部错误</b>而不是 400 —— 客户端的错在监控里长成服务端故障。
+     */
+    /*
+     * ⚠ **还有两个端点谁都没登记：`GET|POST /mp/wx/callback`**（MpWxCallbackController）。
+     *
+     * 它们的鉴权不归本表的三个桶管：调它的是微信的服务器，不带我们的令牌，
+     * 靠 token/timestamp/nonce 的 SHA-1 签名自证；而且它们**故意返回裸字符串**
+     * （`echostr` / `"success"`）而不是 {code,msg,data} 信封 —— 那是微信的要求，
+     * 套了信封微信会判校验失败。
+     *
+     * 于是：探测拿不到 401（不是「要登录」），也拿不到 `200/0`（不是本表定义的
+     * 「游客可看」），而 UNDETERMINED 有棘轮、按设计不收新端点。
+     * **三个桶都不适配，缺的是第四类「平台回调，签名自证」。**
+     *
+     * 这一条留给微信推送那个功能的作者定：要么加一类，要么给 ANONYMOUS 的判据
+     * 加上「裸字符串 200 也算成功」。在那之前不替它判 ——
+     * 猜一个填进去，等于用一条假登记把这个口子的鉴权问题盖过去。
+     */
+    /**
+     * <b>平台回调，签名自证。</b>2026-09-04 加这一桶。
+     *
+     * <h2>为什么此前空着</h2>
+     * 建表的人写下过一句「这一条留给微信推送那个功能的作者定 —— 猜一个填进去，
+     * 等于用一条假登记把这个口子的鉴权问题盖过去」。那句话是对的，
+     * 所以这一桶<b>不是把两条路径抄进来了事</b>：下面两条用例分别钉住
+     * GET 的签名判据与 POST 的「不许长出副作用」。
+     *
+     * <h2>读代码得到的事实，不是猜的</h2>
+     * <ul>
+     *   <li><b>GET</b> {@code /mp/wx/callback}：校验 SHA-1(排序后的 token/timestamp/nonce)，
+     *       <b>不符就不回显 {@code echostr}</b>，token 没配则一律拒。这是真的签名自证。
+     *       判据在 {@code WxPushVerifyTest}（单测，配了 token，真能红）——
+     *       <b>这里刻意不再写一条端点级的</b>：这个类的上下文没配 token，
+     *       控制器在验签之前就早返回了，那样的断言<b>恒绿、消融也不变红</b>；</li>
+     *   <li><b>POST</b> {@code /mp/wx/callback}：<b>2026-10-09 起与 GET 同一套验签</b>
+     *       （token/timestamp/nonce 字典序 + SHA-1），不符就丢掉、不进事件处理。
+     *       补验签是接结算回调（批 B）的前置：这个口现在会据事件把子单推成已完成，
+     *       而那一步连着结算 —— 不验签就是无鉴权的公网端点在驱动资金。
+     *       判据在 {@code WxPushVerifyTest#postRejectsBadSignature}（单测，配了 token，真能红）。
+     *       这里只盯「验签不许被摘掉」，见 {@link #wxPushPostMustKeepVerifying}。</li>
+     * </ul>
+     */
+    private static final Set<String> PLATFORM_CALLBACK = Set.of(
+            "GET /mp/wx/callback",
+            "POST /mp/wx/callback");
+
+    private static final Set<String> UNDETERMINED = Set.of(
+            "GET /mp/community/{communityNo}",   // 探测得到 200/code=10404
+            "GET /mp/goods/{goodsNo}/sku-price",   // 探测得到 200/code=10400
+            "GET /mp/group-buy/{groupNo}",   // 探测得到 200/code=10404
+            "GET /mp/group-buy/{groupNo}/orders",   // 探测得到 200/code=10404
+            "GET /mp/group-request/{requestNo}",   // 探测得到 200/code=10404
+            "GET /mp/points/deductible",   // 探测得到 200/code=10400
+            "GET /mp/review",   // 探测得到 200/code=10400
+            "GET /mp/store/by-code",   // 探测得到 200/code=10400
+            "GET /mp/stores/{storeNo}/appointment-slots",   // 探测得到 200/code=10400
+            "POST /mp/cart/add",   // 探测得到 200/code=10400
+            "POST /mp/cart/update",   // 探测得到 200/code=10400
+            "POST /mp/group-buy/{groupNo}/receive",   // 探测得到 200/code=10404
+            "POST /mp/group-request/{requestNo}/choose",   // 探测得到 200/code=10404
+            "POST /mp/review",   // 探测得到 200/code=10400
+            "POST /mp/user/address",   // 探测得到 200/code=10400
+            "POST /mp/user/community",   // 探测得到 200/code=10400
+            "POST /mp/user/login",   // 探测得到 200/code=10400
+            "POST /mp/user/logout",   // 探测得到 200/code=10500
+            "POST /mp/user/otp/send",   // 探测得到 200/code=10500
+            "POST /mp/user/phone/bind",   // 探测得到 200/code=10500
+            "POST /mp/user/phone/wx",   // 探测得到 200/code=70027
+            "POST /mp/user/token/refresh",   // 探测得到 200/code=10500
+            "PUT /mp/my-memberships/{entityNo}/reach",   // 探测得到 200/code=10400
+            "");
+
+    @Autowired
+    WebApplicationContext context;
+
+    @Autowired
+    @Qualifier("requestMappingHandlerMapping")
+    RequestMappingHandlerMapping mapping;
+
+    private MockMvc mvc() {
+        return MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
+                        .springSecurity())
+                .build();
+    }
+
+    @Test
+    @DisplayName("★★★ 每个 /mp 端点都必须在三个桶之一里 —— 没登记的直接报出来")
+    void everyMpEndpointIsClassified() {
+        Set<String> all = allMpEndpoints();
+        assertThat(all).as("一个端点都没枚举到，装配变了？").isNotEmpty();
+
+        Set<String> unlisted = new TreeSet<>(all);
+        unlisted.removeAll(REQUIRES_LOGIN);
+        unlisted.removeAll(ANONYMOUS);
+        unlisted.removeAll(UNDETERMINED);
+        unlisted.removeAll(PLATFORM_CALLBACK);
+        assertThat(unlisted)
+                .as("""
+                        这些 /mp 端点还没决定要不要登录：%s
+
+                        每一个都可能是匿名可调的口子。跑一遍不带令牌的请求看它回什么，
+                        然后加进 REQUIRES_LOGIN / ANONYMOUS；判不出来的放 UNDETERMINED
+                        并说明为什么判不出；平台回调放 PLATFORM_CALLBACK，
+                        **并给它写一条自己的判据**。""".formatted(unlisted))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 登记为「要登录」的，匿名访问必须 401 —— 这是唯一的实弹判据")
+    void loginRequiredEndpointsRejectAnonymous() {
+        List<String> leaked = new ArrayList<>();
+        for (String ep : REQUIRES_LOGIN) {
+            if (ep.isEmpty()) {
+                continue;
+            }
+            int status = callAnonymously(ep);
+            if (status != 401) {
+                // 带上 HTTP 状态就够定位了：200 基本就是「被 @Valid 挡在鉴权之前」，
+                // 那时要补的是 PROBE_BODY，不是这条判据（理由见 PROBE_BODY 的注释）
+                leaked.add(ep + " → " + status);
+            }
+        }
+        assertThat(leaked)
+                .as("""
+                        这些端点登记为「要登录」，但匿名访问没有被拒：%s
+
+                        要么是有人删掉了取当前用户那一步（于是它成了匿名可调的口子），
+                        要么是这条登记本来就错。两种都要当场查清楚。""".formatted(leaked))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 登记为「游客可看」的，匿名访问必须真的成功 —— 不是「没被拒」而已")
+    void anonymousEndpointsStayOpen() {
+        List<String> broken = new ArrayList<>();
+        for (String ep : ANONYMOUS) {
+            if (ep.isEmpty()) {
+                continue;
+            }
+            /*
+             * **判据是业务码 0，不是「不等于 401」。**
+             *
+             * 只查 401 的话，一个回 404 的端点也算通过 —— 于是把
+             * {@link #SEED} 里的真号换回假占位符，这条用例照样绿，
+             * 而后续所有判定都建立在「资源不存在」这种无效响应上。
+             * 用成功码钉住，就等于同时钉住了「种子号还有效」。
+             */
+            String outcome = probeCode(ep);
+            if (!"200/0".equals(outcome)) {
+                broken.add(ep + " → " + outcome);
+            }
+        }
+        assertThat(broken)
+                .as("""
+                        这些端点登记为游客可看，匿名访问却没有成功：%s
+
+                        401 = 改成要登录了（可以，但要顺手改这张表）；
+                        404/400 = 多半是 SEED 里的种子号失效了 —— 那会让整张表的判定失去依据。"""
+                        .formatted(broken))
+                .isEmpty();
+    }
+
+    /** 匿名打一次，回「HTTP 状态/业务码」。业务码取自响应体 —— 全局信封把状态统一成 200。 */
+    private String probeCode(String endpoint) {
+        String[] parts = endpoint.split(" ", 2);
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
+        try {
+            var res = mvc().perform(MockMvcRequestBuilders.get(url)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andReturn().getResponse();
+            var m = java.util.regex.Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)")
+                    .matcher(res.getContentAsString());
+            return res.getStatus() + "/" + (m.find() ? m.group(1) : "?");
+        } catch (Exception e) {
+            return "EX:" + e.getClass().getSimpleName();
+        }
+    }
+
+    /**
+     * <b>POST 那一条今天不验签。</b>在给它补上验签之前，不许它长出任何副作用。
+     *
+     * <p>判据用的是「构造器只有一个 String（token）」—— 不优雅，但它钉住的正是
+     * 那件要紧的事：<b>一个无鉴权的公网端点，不能开始驱动业务</b>。
+     * 谁要往里注入 SettlePort / OrderService 之类，这条会红，
+     * 逼他先回答「这个口的鉴权怎么办」。
+     *
+     * <p>钉「行为」比钉「结构」好，但这里没有可观测的行为可钉 ——
+     * 它今天什么都不做。而「什么都不做」正是现在唯一让它安全的性质。
+     */
+    @Test
+    @DisplayName("★★★ 事件推送口的 POST 必须一直验签 —— 它现在驱动「确认收货 → 结算」")
+    void wxPushPostMustKeepVerifying() throws Exception {
+        var m = ai.neargo.shop.portal.mp.MpWxCallbackController.class
+                .getDeclaredMethod("receive", String.class, String.class, String.class, String.class);
+
+        /*
+         * 判据盯的是**签名三件套还在参数表里**。
+         *
+         * 2026-10-09 之前这个 POST 完全不验签，当时它只落一行日志所以无害；
+         * 批 B 让它据事件把子单推成已完成，而那一步连着结算。
+         * 签名参数一旦被摘掉（比如有人「简化」成只收 body），这个公网端点就变回
+         * 任何人都能用来完成别人订单的入口 —— 而那不会有任何报错。
+         *
+         * 真正验「签名算对没对」的是 WxPushVerifyTest#postRejectsBadSignature；
+         * 这里是结构判据，防的是整段被删。
+         */
+        assertThat(m.getParameterCount())
+                .as("POST /mp/wx/callback 的签名参数（signature/timestamp/nonce）被摘掉了 —— "
+                        + "它现在据事件推进订单状态并连着结算，不验签等于无鉴权端点驱动资金")
+                .isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("待确认的那一桶只能变短，不能变长")
+    void undeterminedMustNotGrow() {
+        // 23 条。建表时是 28，用种子真号判出 5 条。**这个数字只许往下走** ——
+        // 新端点往这个桶里一塞就等于绕过了整道闸
+        assertThat(UNDETERMINED.size() - 1)
+                .as("判不出的端点变多了：新端点不能往这个桶里塞，它是待办不是许可")
+                .isLessThanOrEqualTo(23);
+    }
+
+    /**
+     * 路径变量用<b>种子里真实存在的号</b>，不用占位符。
+     *
+     * <p>占位符会让业务校验（「没有这个商品」）挡在鉴权之前 ——
+     * 回的是 404 而不是 401，于是判不出这个端点到底要不要登录。
+     * 换成真号，请求能走到鉴权那一步，401 与否才是可信的判据。
+     */
+    private static final java.util.Map<String, String> SEED = java.util.Map.of(
+            "goodsNo", "G0001", "merchantNo", "M0001", "communityNo", "CM001",
+            "pickupNo", "PP0001", "storeNo", "ST-TEST", "skuNo", "SK0001",
+            // /mp/store/{no}：门店号或主体号按前缀分派（TDD-C端门店化与门店门户 §2.1）。用种子门店
+            "no", "ST-M0001");
+
+    /** 不带令牌打一次，回状态码。 */
+    private int callAnonymously(String endpoint) {
+        String[] parts = endpoint.split(" ", 2);
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
+        var req = switch (parts[0]) {
+            case "POST" -> MockMvcRequestBuilders.post(url);
+            case "PUT" -> MockMvcRequestBuilders.put(url);
+            case "DELETE" -> MockMvcRequestBuilders.delete(url);
+            case "PATCH" -> MockMvcRequestBuilders.patch(url);
+            default -> MockMvcRequestBuilders.get(url);
+        };
+        try {
+            return mvc().perform(req.contentType(MediaType.APPLICATION_JSON)
+                            .content(PROBE_BODY.getOrDefault(endpoint, "{}")))
+                    .andReturn().getResponse().getStatus();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * 探针 body：**要能过 `@Valid`**，否则这条实弹判据会被校验层挡在鉴权之前。
+     *
+     * <p>接上 `@Valid` 之后（2026-08-29），`@RequestBody` 的校验发生在**参数解析**阶段 ——
+     * 早于控制器方法体里那句取当前用户，也早于 `@PreAuthorize`。于是空 body `{}`
+     * 打到这几个端点上，回的是 200 + 10400「参数有误」，而不是 401。
+     *
+     * <p>那样这条用例就废了，而且是**最坏的废法**：它照旧绿着。一个真的丢了鉴权
+     * 那一步的端点，只要 DTO 上有一个 `@NotBlank`，空 body 就永远走不到鉴权，
+     * 于是「匿名被拒了」——拒它的是校验，不是登录。**判据必须踩到被测的那一层。**
+     *
+     * <p>所以这里给能过校验的最小 body。将来谁给这些 DTO 加了新的必填字段，
+     * 这条用例会红并把 10400 打出来 —— 那时补一个字段进来，不要改判据。
+     */
+    private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.of(
+            "POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}",
+            "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
+            "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",
+            "POST /mp/after-sale/{afterSaleNo}/ship", "{\"expressNo\":\"PROBE1\"}",
+            "POST /mp/group-request", "{\"title\":\"探针\"}",
+            // 两个字段都带 @NotBlank：不给的话被挡在鉴权之前，探到的是 200/10400 而不是 401
+            "POST /mp/question", "{\"goodsNo\":\"G0001\",\"content\":\"探针\"}");
+
+    private String probeDetail(String endpoint) {
+        String[] parts = endpoint.split(" ", 2);
+        String url = parts[1];
+        for (var e : SEED.entrySet()) {
+            url = url.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        url = url.replaceAll("\\{[^}]+\\}", "PROBE1");
+        var req = switch (parts[0]) {
+            case "POST" -> MockMvcRequestBuilders.post(url);
+            case "PUT" -> MockMvcRequestBuilders.put(url);
+            case "DELETE" -> MockMvcRequestBuilders.delete(url);
+            case "PATCH" -> MockMvcRequestBuilders.patch(url);
+            default -> MockMvcRequestBuilders.get(url);
+        };
+        try {
+            var res = mvc().perform(req.contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse();
+            var m = java.util.regex.Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)")
+                    .matcher(res.getContentAsString());
+            return res.getStatus() + "/" + (m.find() ? m.group(1) : "?");
+        } catch (Exception e) {
+            return "EX";
+        }
+    }
+
+    private Set<String> allMpEndpoints() {
+        Set<String> out = new TreeSet<>();
+        mapping.getHandlerMethods().forEach((info, handler) -> {
+            var patterns = info.getPathPatternsCondition();
+            if (patterns == null) {
+                return;
+            }
+            String verb = info.getMethodsCondition().getMethods().stream()
+                    .map(Enum::name).findFirst().orElse("GET");
+            patterns.getPatternValues().stream()
+                    .filter(p -> p.startsWith("/mp/"))
+                    .forEach(p -> out.add(verb + " " + p));
+        });
+        return out;
+    }
+
+    @Test
+    @DisplayName("★ 缺必填请求头是 400 不是 500 —— 客户端的错不该在监控里长成服务端故障")
+    void missingRequiredHeaderIsBadRequestNotInternalError() throws Exception {
+        /*
+         * /mp/user/logout 与 /mp/user/token/refresh 的 @RequestHeader("Authorization")
+         * 是必填的。此前缺了会掉进兜底的 Exception 处理器 → 10500「服务器内部错误」。
+         *
+         * 判据是响应体里的 code：HTTP 状态被全局信封统一成 200，
+         * 只看状态码分不出「跑成了」和「炸了」。
+         */
+        for (String url : List.of("/mp/user/logout", "/mp/user/token/refresh")) {
+            String body = mvc().perform(MockMvcRequestBuilders.post(url)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(body)
+                    .as("%s 缺 Authorization 头时回的应该是 10400，不是 10500", url)
+                    .contains("10400")
+                    .doesNotContain("10500");
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ C-AC-08 带合法载荷时，头像上传与设密码对匿名一律 401")
+    void avatarAndPasswordRejectAnonymousWithValidPayload() throws Exception {
+        /*
+         * 这两条端点在 UNDETERMINED 桶里，不是因为它们免检，是因为**探测打不到鉴权**：
+         * `@Valid` 与 multipart 的缺参校验跑在过滤器之后、方法体之前，
+         * 于是空载荷的探测拿到的是 10400 而不是 401。
+         *
+         * 那个 10400 很容易被读成「挡住了」。它确实挡住了这一次请求，
+         * 但挡的是参数不是身份 —— 一个**不取当前用户**的实现在空载荷探测下
+         * 同样回 10400，而它是匿名可调的。所以这里带着合法载荷再打一遍。
+         */
+        String pwd = mvc().perform(MockMvcRequestBuilders.post("/mp/user/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"a-long-enough-password\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(pwd)
+                .as("匿名设密码必须 401（10401），而不是真的去给谁设了一个密码")
+                .contains("10401");
+
+        String avatar = mvc().perform(MockMvcRequestBuilders.multipart("/mp/user/avatar")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "a.png", "image/png", pngBytes())))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(avatar)
+                .as("匿名传头像必须 401（10401），而不是把字节存下来")
+                .contains("10401");
+    }
+
+    /** 一个最小的合法 PNG 头 —— 要过 ImageProbe 的 magic number，不然 400 又挡在鉴权前。 */
+    private static byte[] pngBytes() {
+        byte[] b = new byte[64];
+        byte[] magic = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        System.arraycopy(magic, 0, b, 0, magic.length);
+        return b;
+    }
+}

@@ -1,0 +1,13 @@
+# 装配冒烟专用。**只为让上下文起得来**，不跑任何业务。
+#
+# 这个 profile 与生产的差别只有数据源一处 —— 其余（MapperScan、
+# 排掉的那五条安全自动配置、deployment=standalone）全部沿用主配置。
+# 差别越少，这条冒烟越能代表生产。
+spring:
+  datasource:
+    url: jdbc:h2:mem:paysvc;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  flyway:
+    enabled: false

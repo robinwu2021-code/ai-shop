@@ -1,0 +1,75 @@
+package ai.neargo.shop.member.service;
+
+import ai.neargo.shop.member.dto.MemberVOs.MemberQuery;
+import ai.neargo.shop.member.dto.MemberVOs.SegmentPreviewVO;
+import ai.neargo.shop.member.dto.MemberVOs.SegmentVO;
+
+import java.util.List;
+
+/**
+ * 人群：一组筛选条件，可命名保存、反复用。
+ *
+ * <p><b>为什么要有它</b>：发券、活动受众、发消息都要回答「给哪一群人」。
+ * 三处各存一份条件的话，同一群人会算出三个数，而商家分不清哪个对。
+ *
+ * <p><b>存条件不存名单</b>：名单每天都在变。{@link #resolve} 一律当场算。
+ */
+public interface MemberSegmentService {
+
+    List<SegmentVO> list(String entityNo);
+
+    /** 保存或改名。同名视为同一个人群（覆盖条件），不报错 */
+    SegmentVO save(String entityNo, String segmentNo, String name, String scopeStoreNo,
+                   MemberQuery rule);
+
+    void remove(String entityNo, String segmentNo);
+
+    /** 试算：此刻命中多少人、其中多少人能真正收到。界面上那句「命中 N 人」就是它 */
+    SegmentPreviewVO preview(String entityNo, String scopeStoreNo, MemberQuery rule);
+
+    /**
+     * 解析成<b>可触达</b>的会员号列表 —— 发券与触达直接照这份发。
+     *
+     * <p><b>当场算，不吃缓存</b>：按两周前的名单发券是错的。
+     * <p><b>只给可触达的</b>：线索会员（商家手录、本人还没在平台出现）与退订的人不在内。
+     * 想看完整命中人数用 {@link #preview}。
+     */
+    List<String> resolve(String entityNo, String segmentNo);
+
+    /** 这个人群此刻**命中**多少人（含发不出去的）。发放页要说「发了 25、跳过 12」 */
+    int matchedCount(String entityNo, String segmentNo);
+
+    /** 这一个人此刻在不在这个人群里。活动受众判断用它 —— 同样是当场算 */
+    boolean matches(String entityNo, String segmentNo, String memberNo);
+
+    /**
+     * 这个人群此刻命中的**全部**会员号（含不可触达的）。
+     *
+     * <p>与 {@link #resolve} 的差别：那条只给能收到东西的人，这条给全部 ——
+     * 触达要自己按原因分类跳过（线索 / 退订 / 还没注册），
+     * 只拿到「能发的那批」就说不出「为什么少了 12 个」。
+     */
+    List<String> matchAll(String entityNo, String segmentNo);
+
+    List<String> resolve(String entityNo, String scopeStoreNo, MemberQuery rule);
+
+    /**
+     * 抄一份人群此刻的条件（含门店范围），给活动存成快照。
+     * 进行中的活动按这份快照判人 —— 商家之后改人群，不会偷偷改掉已发布活动的受众（AC-9）。
+     */
+    String snapshot(String entityNo, String segmentNo);
+
+    /** 这个会员是否满足一份快照条件。快照读不出来时按不命中，并留 WARN */
+    boolean matchesSnapshot(String entityNo, String snapshot, String memberNo);
+
+    /** 引用了这个标签的人群（条件里的 tagNos 含它） */
+    List<SegmentVO> usingTag(String entityNo, String tagNo);
+
+    /**
+     * 标签合并后把人群条件里的源标签换成目标标签（重复的去掉）。
+     * 不换的话，引用源标签的人群从合并那一刻起一个人都命中不了 —— 关系行已经全部改指到目标标签了。
+     *
+     * @return 改写了几个人群
+     */
+    int retargetTag(String entityNo, String fromTagNo, String toTagNo);
+}

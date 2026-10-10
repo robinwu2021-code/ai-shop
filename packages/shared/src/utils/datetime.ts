@@ -97,3 +97,27 @@ export function countdownShort(ms: number): string {
   const m = Math.floor((s % 3600) / 60);
   return h > 0 ? `${pad(h)}:${pad(m)}` : `${pad(m)}:${pad(s % 60)}`;
 }
+
+/**
+ * 账户积分到期时刻：最近一次积分变动 + 无活动期。
+ *
+ * **不是按批次算的**。批次级到期（每笔各一个日子）在 V30 废除了 ——
+ * 那需要在每条 EARN 行上维护 `remaining` 与 `expire_at`，而它们唯一的读者
+ * 就是过期任务本身。账户级之后这两列连同 FIFO 取批次一起删掉了。
+ *
+ * 取**市场本地时区**的当天 23:59:59，不是精确到毫秒的时刻 ——
+ * 用毫秒的话用户会在某个随机的下午 3 点 07 分眼看着积分消失，
+ * 而界面上写的是「12 月 31 日到期」。
+ *
+ * @param lastActiveAt 最近一次积分变动（UTC 毫秒）
+ * @param inactiveDays 无活动多久清零
+ */
+export function pointsExpireAt(lastActiveAt: number, inactiveDays: number): number {
+  const p = parts(lastActiveAt + inactiveDays * 86_400_000);
+  return endOfLocalDay(p.y, p.m, p.d);
+}
+
+/** 市场本地 y-m-d 的 23:59:59.999 对应的 UTC 毫秒 */
+function endOfLocalDay(y: number, m: number, d: number): number {
+  return Date.UTC(y, m - 1, d, 23, 59, 59, 999) - offsetMinutes * 60_000;
+}

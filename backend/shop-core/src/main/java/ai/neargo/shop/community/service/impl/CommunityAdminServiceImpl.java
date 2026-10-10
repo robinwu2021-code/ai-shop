@@ -1,0 +1,1599 @@
+package ai.neargo.shop.community.service.impl;
+
+import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.community.entity.CmtCommunity;
+import ai.neargo.shop.community.entity.CmtPickupPoint;
+import ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper;
+import ai.neargo.shop.community.mapper.CommunityMappers.PickupPointMapper;
+import ai.neargo.shop.community.service.CommunityAdminService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Service
+public class CommunityAdminServiceImpl implements CommunityAdminService {
+
+    private static final String OPEN = "OPEN";
+    /**
+     * 新建社区的默认围栏（米）。与建表默认值一致 —— 两处不一致的话，
+     * 提报建出来的社区和运营建出来的会有不同的覆盖半径，而没人会想到去比。
+     */
+    private static final int DEFAULT_FENCE_RADIUS = 1000;
+    private static final String CLOSED = "CLOSED";
+
+    private static final String STORE = "STORE";
+    private static final String NEIGHBOR = "NEIGHBOR";
+    private static final String PLATFORM = "PLATFORM";
+    /** 三类自提点。**PLATFORM 不能漏** —— 它的费率规则与另外两类完全不同 */
+    private static final Set<String> PICKUP_TYPES = Set.of(STORE, NEIGHBOR, PLATFORM);
+    private static final String ACTIVE = "ACTIVE";
+    /** 商家自建点的初态（P1，V188）；运营核实后 ACTIVE，驳回 REJECTED */
+    private static final String PENDING = "PENDING";
+    private static final String REJECTED = "REJECTED";
+    private static final String SUSPENDED = "SUSPENDED";
+    private static final String MIGRATING = "MIGRATING";
+
+    /** 自提点状态迁移。迁移完成后只能停用 —— 旧点不再启用，新点是另一条记录。 */
+    private static final Map<String, Set<String>> PICKUP_TRANSITIONS = Map.of(
+            ACTIVE, Set.of(SUSPENDED, MIGRATING),
+            SUSPENDED, Set.of(ACTIVE),
+            MIGRATING, Set.of(SUSPENDED));
+
+    private final CommunityMapper communityMapper;
+    private final PickupPointMapper pickupMapper;
+    /**
+     * 只用来把 region_code 拼成人能读的路径。
+     *
+     * <p>走 {@code spi} 的 Port 而不是直接注 {@code platform.RegionService} ——
+     * 后者是跨业务域直连，ArchUnit 第 1 条就会拦下来。规则拦的正是这种
+     * 「为了一个显示名捅穿一层边界」：捅一次之后，下一个人会顺手用上 RegionService
+     * 的别的方法，两个域就再也拆不开了。
+     */
+    private final ai.neargo.shop.spi.platform.MasterDataPort masterDataPort;
+
+    /** 提报单（ADR-013 阶段三） */
+    private final ai.neargo.shop.community.mapper.CommunityMappers.CommunityApplyMapper applyMapper;
+    /** 只为把提报队列里的商家号显示成店名 —— 运营看着一串 M20260811… 判断不了任何事 */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort;
+    /** 围栏影响预览要数收货地址。跨域，走 port */
+    private final ai.neargo.shop.spi.user.UserQueryPort userQueryPort;
+    /** 分布表的供给侧 = 买家真搜得到的（与买家列表同一个判定），不是「谁框了这儿」 */
+    private final ai.neargo.shop.spi.product.SupplyStatsPort supplyStatsPort;
+    /**
+     * 归属判定复用它（围栏 + 层级优先于距离）。
+     * <b>延迟取</b>：同域的两个服务互相引用，直接注入会绕成环。
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            ai.neargo.shop.community.service.CommunityService> communityService;
+
+    /** 逆地理：从坐标定出区县码与街道名。走 spi Port，不直连 platform.GeoService（ArchUnit 第 1 条） */
+    private final ai.neargo.shop.spi.platform.GeoPort geoPort;
+    private final ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper;
+    private final ai.neargo.shop.community.support.MapBreaker mapBreaker;
+
+    public CommunityAdminServiceImpl(CommunityMapper communityMapper, PickupPointMapper pickupMapper,
+                                     ai.neargo.shop.spi.platform.MasterDataPort masterDataPort,
+                                     ai.neargo.shop.community.mapper.CommunityMappers
+                                             .CommunityApplyMapper applyMapper,
+                                     ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
+                                     ai.neargo.shop.spi.user.UserQueryPort userQueryPort,
+                                     ai.neargo.shop.spi.product.SupplyStatsPort supplyStatsPort,
+                                     org.springframework.beans.factory.ObjectProvider<
+                                             ai.neargo.shop.community.service.CommunityService> communityService,
+                                     ai.neargo.shop.spi.platform.GeoPort geoPort,
+                                     java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts,
+                                     @org.springframework.beans.factory.annotation.Value(
+                                             "${shop.community.auto-open:MAP,OFFICIAL}") String autoOpen,
+            ai.neargo.shop.community.mapper.CommunityMappers.GeoPlaceMapper placeMapper,
+            ai.neargo.shop.community.support.MapBreaker mapBreaker) {
+        this.refPorts = refPorts;
+        this.autoOpenSources = java.util.Arrays.stream(autoOpen.split(","))
+                .map(String::trim).filter(x -> !x.isEmpty()).map(String::toUpperCase)
+                .collect(java.util.stream.Collectors.toSet());
+        this.geoPort = geoPort;
+        this.masterDataPort = masterDataPort;
+        this.communityMapper = communityMapper;
+        this.pickupMapper = pickupMapper;
+        this.applyMapper = applyMapper;
+        this.merchantQueryPort = merchantQueryPort;
+        this.userQueryPort = userQueryPort;
+        this.supplyStatsPort = supplyStatsPort;
+        this.communityService = communityService;
+        this.placeMapper = placeMapper;
+        this.mapBreaker = mapBreaker;
+    }
+
+    /**
+     * 哪些来源**免人审直接开通**。默认 `MAP,OFFICIAL` —— 地图 POI 与官方名录都有外部权威作依据，
+     * 而人工审这两类基本是走过场，那道等待却按天算（期间商家的货在那个地方一个人也看不见）。
+     *
+     * <p>做成配置而不是写死的 if：将来要收紧成「地图来源也得人审」，改一行配置即可，
+     * 端上一个字都不用动 —— 商家那边的表现自动从「已加入」变成「已提交，等审核」，
+     * 两套文案本来就都在。反过来也一样：某个城市数据质量好，可以把 MERCHANT 也放开。
+     */
+    private final java.util.Set<String> autoOpenSources;
+
+    /**
+     * 各域自己实现的「引用改写」。**注入一个列表而不是逐个 Port**：
+     * 以后哪个域新增了指向聚落的表，它自己加一个实现就接进来了，
+     * 合并这边一行都不用改 —— 反过来（这里逐个列举）必然会漏，而漏掉不报错。
+     */
+    private final java.util.List<ai.neargo.shop.spi.user.SettlementRefPort> refPorts;
+
+    /** 这一类来源现在允不允许免审直开 */
+    private boolean autoOpens(String source) {
+        return source != null && autoOpenSources.contains(source);
+    }
+
+    // ------------------------------------------------------------ 商家提报新社区（阶段三）
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public ApplyVO submitApply(String merchantNo, String name, String address,
+                               String regionCode, String note,
+                               String kind, String originCode, Integer latE6, Integer lngE6) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        /*
+         * 同一家店对同一个名字只能有一条待审。
+         *
+         * 重复提报不会让它更快通过，只会让运营的队列里出现两条一模一样的 ——
+         * 而两个人各裁一条的结果是**建出两个同名社区**，商家勾选时分不清该勾哪个。
+         */
+        /*
+         * **系统里已经有的小区不必提报**。
+         *
+         * 端上已经把已开通的聚落摆在同一屏（直接勾），但地图那一组和官方名录那一组
+         * 仍可能出现同一个地方的另一种写法（「阳光花园」vs「阳光花园小区」）。
+         * 不在写入口拦一道的话，运营队列里会出现一条注定被驳回的单，
+         * 而商家要等上几天才知道「它本来就有」。
+         *
+         * 判据：同一个街道下已开通、且名字互为前缀（去掉「小区/花园/苑」这类后缀之后同名）。
+         * 宁可漏拦也不误拦 —— 拦错的代价是一个真的新小区提不上来。
+         */
+        String streetCode = regionCode == null ? null : regionCode.trim();
+        if (streetCode != null && !streetCode.isBlank()) {
+            var exist = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                    Wrappers.<CmtCommunity>lambdaQuery()
+                            .eq(CmtCommunity::getRegionCode, streetCode)
+                            .eq(CmtCommunity::getStatus, OPEN)
+                            .last("limit 200"))).stream()
+                    .filter(c -> sameSettlement(c.getName(), n))
+                    .findFirst().orElse(null);
+            if (exist != null) {
+                throw BizException.of(ErrorCode.COMMUNITY_ALREADY_OPEN, exist.getName());
+            }
+        }
+
+        boolean dup = DataScopeContext.executeWithoutScope(() -> applyMapper.exists(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getName, n)
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus,
+                                ai.neargo.shop.community.entity.CmtCommunityApply.PENDING)));
+        if (dup) {
+            throw BizException.of(ErrorCode.COMMUNITY_APPLY_DUPLICATE);
+        }
+        var a = new ai.neargo.shop.community.entity.CmtCommunityApply();
+        a.setApplyNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY_APPLY));
+        a.setEntityNo(merchantNo);
+        a.setName(n);
+        a.setAddress(address == null ? null : address.trim());
+        a.setRegionCode(regionCode == null || regionCode.isBlank() ? null : regionCode.trim());
+        a.setNote(note);
+        // 聚落模型：小区与村同一条链路，kind 只是标签。不认识的值落回 ESTATE，
+        // 而不是拒——旧客户端不传 kind，拒了等于把存量提报全堵死
+        a.setKind(CmtCommunity.KIND_VILLAGE.equals(kind)
+                ? CmtCommunity.KIND_VILLAGE : CmtCommunity.KIND_ESTATE);
+        a.setOriginCode(originCode == null || originCode.isBlank() ? null : originCode.trim());
+        // 商家提报时的定位。他正站在那儿 —— 运营在办公室补不出坐标。
+        // 可空：H5 拿不到定位权限时提报照样要能走
+        a.setLatE6(latE6);
+        a.setLngE6(lngE6);
+        a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.PENDING);
+        a.setSubmittedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
+
+        /*
+         * 官方名录里的村：**免裁决直接开通**。
+         *
+         * 数据源是统计局名录、origin_code 天然唯一、下面 decideApply 里已有一村一聚落的查重 ——
+         * 运营审这一类基本是走过场，而那道等待按天算，期间商家的货对这个村一个人也看不见。
+         *
+         * 走 decideApply 而不是自己插一条社区：区划 9 位校验、查重、坐标兜底、
+         * 开城状态与围栏半径的默认值全在那里，另写一份迟早两边不一致。
+         * 商家自己补录的村（source=MERCHANT）与小区仍然要审 —— 名字是他自己起的。
+         *
+         * 撞上「这个村已经开通过」时**让异常抛出去**：这条提报会随事务一起回滚，
+         * 商家当场看到「已经有了，直接勾选」，比留一条几天后被驳回的待审有用得多。
+         */
+        if (a.getOriginCode() != null && autoOpens(CmtCommunity.SOURCE_OFFICIAL)) {
+            var street = masterDataPort.officialVillageStreet(a.getOriginCode());
+            if (street.isPresent()) {
+                return decideApply(a.getApplyNo(), true, street.get(), null, "SYSTEM");
+            }
+        }
+        return toApplyVO(a);
+    }
+
+    @Override
+    public List<ApplyVO> appliesOf(String merchantNo) {
+        return DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                                .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getEntityNo, merchantNo)
+                                .orderByDesc(ai.neargo.shop.community.entity.CmtCommunityApply::getId)))
+                .stream().map(this::toApplyVO).toList();
+    }
+
+    @Override
+    public List<ApplyVO> applies(String status) {
+        var w = com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery();
+        if (status != null && !status.isBlank()) {
+            w.eq(ai.neargo.shop.community.entity.CmtCommunityApply::getStatus, status);
+        }
+        w.orderByDesc(ai.neargo.shop.community.entity.CmtCommunityApply::getId);
+        /*
+         * **这一处不绕过数据域**（2026-08-30）。
+         *
+         * <p>它是运营端的**全量待审队列**（`/ops/communities/applies` 不带商家参数），
+         * 正是数据域该起作用的地方：配了商家域或社区域的运营，只该看见自己那部分。
+         * 此前包着 executeWithoutScope，于是 `cmt_community_apply` 登记了也没有任何效果 ——
+         * 「登记一张表」与「那张表真的被过滤」是两件事，中间隔着每一个读点的豁免。
+         *
+         * <p>对照 {@link #appliesOf(String)}：那条**按参数过滤**（商家查自己的），
+         * 它绕不绕过都一样 —— 拿它当验证会得到一个恒绿的假象。
+         */
+        return applyMapper.selectList(w).stream().map(this::toApplyVO).toList();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public ApplyVO decideApply(String applyNo, boolean pass, String regionCode,
+                               String reason, String operatorNo) {
+        if (!pass && (reason == null || reason.isBlank())) {
+            // 驳回理由原样出现在商家 B 端 —— 不写的话他不知道该改什么，只会原样再提一次
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var a = DataScopeContext.executeWithoutScope(() -> applyMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.CmtCommunityApply>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.CmtCommunityApply::getApplyNo, applyNo)
+                        .last("limit 1")));
+        if (a == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // 裁完就是终态：再裁一次意味着同一条提报有两个结论，而通过那次已经建了社区
+        if (!ai.neargo.shop.community.entity.CmtCommunityApply.PENDING.equals(a.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        if (pass) {
+            String code = regionCode == null || regionCode.isBlank()
+                    ? a.getRegionCode() : regionCode.trim();
+            /*
+             * 区划挂错比不挂更糟，所以这里与 setRegion 用同一道校验：
+             * 挂到一个不存在的码上不报错，只会让这个新社区在任何「按区覆盖」里都出不来 ——
+             * 而运营看着界面上明明填着值。
+             */
+            if (code != null && code.equals(masterDataPort.regionPathName(code))) {
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_NOT_FOUND, code);
+            }
+            /*
+             * 聚落必须挂在**街道/镇（9 位）**下。
+             *
+             * 挂粗了（6 位区县）不报错，但比它细的经营范围从此永远匹配不到 ——
+             * 存量那两条就是这么废掉「按街道覆盖」的。在裁决这一步拦住，
+             * 比等商家框了街道发现一个聚落都命中不了要便宜得多。
+             */
+            if (code == null) {
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_REQUIRED);
+            }
+            if (code.length() != 9) {
+                throw BizException.of(ErrorCode.COMMUNITY_REGION_NOT_STREET, code);
+            }
+            /*
+             * 官方村码查重：同一个官方村不能被开成两个聚落。
+             * 唯一键兜底，但这里先查是为了给运营一句能看懂的话 ——
+             * 撞键报出来的是「系统开小差」，而错在提报重复。
+             */
+            if (a.getOriginCode() != null) {
+                boolean opened = DataScopeContext.executeWithoutScope(() -> communityMapper.exists(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers
+                                .<CmtCommunity>lambdaQuery()
+                                .eq(CmtCommunity::getOriginCode, a.getOriginCode())));
+                if (opened) {
+                    throw BizException.of(ErrorCode.COMMUNITY_ORIGIN_ALREADY_OPEN);
+                }
+            }
+            var c = new CmtCommunity();
+            c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+            c.setName(a.getName());
+            c.setAddress(a.getAddress());
+            c.setRegionCode(code);
+            c.setKind(a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind());
+            c.setOriginCode(a.getOriginCode());
+            /*
+             * 来源按**依据**而不是按谁点的按钮：带官方村码的依据是统计局名录（OFFICIAL），
+             * 没有的依据只是商家自己填的名字（MERCHANT）—— 后者才是将来要收紧的那一类。
+             */
+            c.setSource(a.getOriginCode() != null && !a.getOriginCode().isBlank()
+                    ? CmtCommunity.SOURCE_OFFICIAL : CmtCommunity.SOURCE_MERCHANT);
+            /*
+             * 坐标沿用商家提报的定位。**没有这一步，建出来的聚落永远没坐标**，
+             * 而 withinRadius 对空坐标直接 false —— 买家用定位永远找不到它。
+             * 全仓此前唯一写坐标的地方是 DevSeeder。
+             */
+            if (a.getLatE6() != null && a.getLngE6() != null) {
+                c.setLatE6(a.getLatE6());
+                c.setLngE6(a.getLngE6());
+                c.setCoordsSource("MERCHANT");
+            } else {
+                /*
+                 * 商家没带定位时，用官方村码从区划表兜底（V192 起村级有坐标）。
+                 *
+                 * 不兜的话建出来的聚落坐标为空，withinRadius 恒 false ——
+                 * 买家用定位永远搜不到它，而运营界面上这条提报是「已通过」，没有任何异常。
+                 * 运营端此前提示「通过前先补坐标」，但既没有入口也没有接口，等于一句空话。
+                 */
+                masterDataPort.regionCoords(a.getOriginCode()).ifPresent(rc -> {
+                    c.setLatE6(rc.latE6());
+                    c.setLngE6(rc.lngE6());
+                    c.setCoordsSource("AMAP");
+                });
+            }
+            // 审过即开城：运营随时能关，而默认关掉的话商家提报通过了却依然看不到它
+            c.setStatus(OPEN);
+            // 0 意味着这个社区覆盖不到任何地址，而界面上看起来只是「还没配」
+            c.setFenceRadius(DEFAULT_FENCE_RADIUS);
+            c.setCreatedBy(operatorNo);
+            DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+            a.setCommunityNo(c.getCommunityNo());
+            a.setRegionCode(code);
+        }
+        a.setStatus(pass ? ai.neargo.shop.community.entity.CmtCommunityApply.APPROVED
+                : ai.neargo.shop.community.entity.CmtCommunityApply.REJECTED);
+        a.setReason(pass ? null : reason.trim());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> applyMapper.updateById(a));
+        return toApplyVO(a);
+    }
+
+    /**
+     * 两个名字是不是同一个聚落。去掉常见后缀再比 —— 「阳光花园」「阳光花园小区」「阳光花园(北区)」
+     * 在商家嘴里是同一个地方，而它们只要写法不同就会各开一个聚落，买家侧就此分裂成两个圈。
+     */
+    private static boolean sameSettlement(String a, String b) {
+        String x = normalizeName(a);
+        String y = normalizeName(b);
+        return !x.isEmpty() && !y.isEmpty() && (x.equals(y) || x.startsWith(y) || y.startsWith(x));
+    }
+
+    /** 委托共享的那份（见 PlaceNames）—— 这里此前独立一份，漏了「村委会」这个后缀，
+     *  搜「景滑村」出两条的同一类问题在这条查重路径上也存在过 */
+    private static String normalizeName(String s) {
+        return ai.neargo.shop.common.PlaceNames.norm(s);
+    }
+
+    private ApplyVO toApplyVO(ai.neargo.shop.community.entity.CmtCommunityApply a) {
+        // 没带定位时，官方村码在区划表里的坐标就是兜底来源 —— 运营要看得到「补不补得上」
+        var fb = a.getLatE6() != null && a.getLngE6() != null
+                ? java.util.Optional.<MasterDataPort.RegionCoords>empty()
+                : masterDataPort.regionCoords(a.getOriginCode());
+        return new ApplyVO(a.getApplyNo(), a.getEntityNo(),
+                merchantQueryPort.find(a.getEntityNo())
+                        .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                        .orElse(a.getEntityNo()),
+                a.getName(), a.getAddress(), a.getRegionCode(),
+                a.getRegionCode() == null ? null : masterDataPort.regionPathName(a.getRegionCode()),
+                a.getNote(), a.getStatus(), a.getCommunityNo(), a.getReason(),
+                a.getSubmittedAt() == null ? 0L : a.getSubmittedAt(),
+                a.getKind() == null ? CmtCommunity.KIND_ESTATE : a.getKind(),
+                a.getOriginCode(),
+                a.getLatE6() != null && a.getLngE6() != null,
+                a.getLatE6(), a.getLngE6(),
+                fb.map(MasterDataPort.RegionCoords::latE6).orElse(null),
+                fb.map(MasterDataPort.RegionCoords::lngE6).orElse(null));
+    }
+
+    @Override
+    public List<CommunityVO> communities(String keyword, boolean showClosed, boolean showArchived,
+                                         String regionPrefix) {
+        var w = Wrappers.<CmtCommunity>lambdaQuery();
+        if (!showClosed) {
+            w.eq(CmtCommunity::getStatus, OPEN);
+        }
+        /*
+         * 归档的默认不出现，`showArchived=true` 才看得到 —— 与 /ops/coupons、
+         * /ops/categories 同一口径。
+         *
+         * <p>**这个开关不是可选项**：归档一旦真的生效，没有它运营就再也找不回
+         * 被归档的社区（列表看不到 → 点不了恢复）。那比「归档不生效」更糟。
+         */
+        if (!showArchived) {
+            w.isNull(CmtCommunity::getArchivedAt);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(x -> x.like(CmtCommunity::getName, keyword)
+                    .or().like(CmtCommunity::getCommunityNo, keyword));
+        }
+        // 国标码天然是层级前缀：4403 命中整个深圳、440309 只命中龙华区。
+        // 空前缀**不筛**（与 openMapCommunities 那边的「空前缀拒绝」不同：
+        // 这里是只读列表，不筛是合理默认；那边是批量写，空前缀会开全国的城）
+        if (regionPrefix != null && !regionPrefix.isBlank()) {
+            w.likeRight(CmtCommunity::getRegionCode, regionPrefix.trim());
+        }
+        w.orderByDesc(CmtCommunity::getId);
+        List<CmtCommunity> rows = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(w));
+
+        // 自提点数一次算完，不逐行 count —— 社区列表是运营每天开的第一个页面
+        Map<String, Long> counts = DataScopeContext.executeWithoutScope(() ->
+                        pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
+                                .select(CmtPickupPoint::getCommunityNo))).stream()
+                .filter(p -> p.getCommunityNo() != null)
+                .collect(Collectors.groupingBy(CmtPickupPoint::getCommunityNo, Collectors.counting()));
+
+        return rows.stream().map(c -> toVO(c, counts.getOrDefault(c.getCommunityNo(), 0L).intValue()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public CommunityVO setOpened(String communityNo, boolean opened, String operatorNo) {
+        CmtCommunity c = requireCommunity(communityNo);
+        /*
+         * 关城只停获客，不动在途订单 —— C 端不再展示这个社区，
+         * 但已经付过钱的买家仍要能收到货、能核销。把在途一起停掉，受损的是买家。
+         */
+        c.setStatus(opened ? OPEN : CLOSED);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        return toVO(c, pickupCountOf(communityNo));
+    }
+
+    @Override
+    @Transactional
+    public CommunityCoordHealth communityCoordHealth() {
+        var rows = communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                .eq(CmtCommunity::getStatus, "OPEN")
+                .isNull(CmtCommunity::getArchivedAt));
+        java.util.List<java.util.Map<String, String>> missing = rows.stream()
+                .filter(c -> c.getLatE6() == null || c.getLngE6() == null)
+                .map(c -> java.util.Map.of("communityNo", c.getCommunityNo(),
+                        "name", c.getName() == null ? "" : c.getName()))
+                .toList();
+        return new CommunityCoordHealth(rows.size(), rows.size() - missing.size(), missing);
+    }
+
+    /**
+     * 建楼默认围栏 <b>150 米</b>，不是小区那个 1000。
+     *
+     * <p>一栋写字楼直径也就几十米，套 1000 米等于把周围整片都算成「我在这栋楼里」——
+     * 而楼栋这一档存在的全部理由是「层级优先于距离」：站在 3 幢门口要判成 3 幢。
+     * 默认值给大了，第一批楼建出来就是错的，且没有任何报错。
+     */
+    private static final int DEFAULT_FENCE_BUILDING = 150;
+
+    /** 默认围栏按 kind 分档。加新的一档时**必须在这里给值**，否则它会静默拿到小区那个 1000 */
+    private static int defaultFenceOf(String kind) {
+        return CmtCommunity.KIND_BUILDING.equals(kind) ? DEFAULT_FENCE_BUILDING : DEFAULT_FENCE_RADIUS;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public CommunityVO createBuilding(String name, String address, String parentNo,
+                                      Integer latE6, Integer lngE6, String operatorNo) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty() || parentNo == null || parentNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtCommunity parent = requireCommunity(parentNo);
+        /*
+         * **只做两层。** 父级自己有父级 = 有人在往楼里塞单元，而单元不是服务单位：
+         * 没有商家按单元框范围，它们属于收货地址的门牌号（house_no）。
+         * 放开一层看着无害，代价是 reachableCommunities 的展开要递归，
+         * 而递归展开在一条坏数据（自己指自己）上会挂住整个可见性。
+         */
+        if (parent.getParentNo() != null && !parent.getParentNo().isBlank()) {
+            throw BizException.of(ErrorCode.COMMUNITY_PARENT_TOO_DEEP, parent.getName());
+        }
+        /*
+         * 街道从父级继承，不让运营自己填 —— 两处各填一次就会有不一致的那一天，
+         * 而「楼挂的街道和它所在小区不是同一个」会让它在按街道覆盖时归到别人那儿。
+         * 父级没有街道就拒：那条数据本身要先补，补之前建出来的楼一样是错的。
+         */
+        if (parent.getRegionCode() == null || parent.getRegionCode().isBlank()) {
+            throw BizException.of(ErrorCode.COMMUNITY_PARENT_NO_STREET, parent.getName());
+        }
+        var c = new CmtCommunity();
+        c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+        c.setName(n);
+        c.setAddress(address == null || address.isBlank() ? null : address.trim());
+        c.setRegionCode(parent.getRegionCode());
+        c.setParentNo(parent.getCommunityNo());
+        c.setKind(CmtCommunity.KIND_BUILDING);
+        c.setLatE6(latE6);
+        c.setLngE6(lngE6);
+        // 坐标可以先空着（楼在小区里，父级的围栏先兜着），但要分清「空的」与「没人核过」
+        c.setCoordsSource(latE6 == null ? null : "OPS");
+        c.setSource(CmtCommunity.SOURCE_OPS);
+        c.setStatus(OPEN);
+        c.setFenceRadius(defaultFenceOf(CmtCommunity.KIND_BUILDING));
+        c.setCreatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+        return toVO(c, 0);
+    }
+
+    /**
+     * 地图小区批量建档。契约与取舍见 {@link CommunityAdminService#importEstates}。
+     *
+     * <p><b>围栏给 300 米，不是小区默认的 1000。</b>
+     *
+     * <p>⚠️ 这里原先写的理由是「1000 米会让一个坐标落进十几个围栏、选错」，
+     * <b>那条被实测推翻了</b>：拿龙华最密的一片（一公里内 179 个小区）做消融，
+     * 围栏改回 1000 米，40 个小区仍然 40/40 各归各位 ——
+     * 「同档之间比距离」早就把最近的挑出来了，围栏多大都不影响选谁。
+     *
+     * <p>300 米真正决定的是**另一件事**：<b>算不算「住在这个小区里」</b>。
+     * 1000 米下，一个离最近小区 800 米的人会被判成 innermost，
+     * 顶栏显示那个小区名、商品池按它算，而他并不住在那儿；
+     * 300 米下他落不进任何围栏，走「最近的聚落」那一级，
+     * 顶栏写明「最近的取货点 · 约 800 米」。同一个人，一个说法是假的，另一个是真的。
+     * 判据见 {@code DenseEstateMatchTest.fenceKeepsFarBuyersOut}。
+     */
+    private static final int MAP_ESTATE_FENCE_M = 300;
+
+    @Override
+    public PlacePageVO places(String kind, Integer minHits, int limit) {
+        var q = com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.community.entity.GeoPlace>lambdaQuery()
+                .orderByDesc(ai.neargo.shop.community.entity.GeoPlace::getHitCount);
+        if (kind != null && !kind.isBlank()) {
+            q.eq(ai.neargo.shop.community.entity.GeoPlace::getKind, kind);
+        }
+        if (minHits != null) {
+            q.ge(ai.neargo.shop.community.entity.GeoPlace::getHitCount, minHits);
+        }
+        java.util.List<ai.neargo.shop.community.entity.GeoPlace> all = placeMapper.selectList(q);
+        java.util.List<GeoPlaceVO> rows = all.stream().limit(Math.max(1, limit))
+                .map(p -> new GeoPlaceVO(p.getGeoKey(), p.getName(), p.getKind(), p.getAddress(),
+                        p.getLatE6(), p.getLngE6(), p.getHitCount(), p.getVerifiedAt(),
+                        p.getPromotedNo()))
+                .toList();
+        /*
+         * **总数给全量的那个，不是这一页的。** 「这张表长成什么样」决定了我们还要
+         * 依赖地图多久 —— 只给一页的条数，那个判断就做不出来。
+         */
+        return new PlacePageVO(rows, all.size(), mapBreaker.describe());
+    }
+
+    @Override
+    @Transactional
+    public ImportResult promotePlaces(String regionCode, int minHits, boolean dryRun,
+                                      String operatorNo) {
+        /*
+         * **只沉淀 POI。** AOI（小区/楼盘）多半已经在聚落库里了，再建一遍会让
+         * 同一个坐标落进两个围栏，选出来的那个取决于扫表顺序；
+         * STREET 是「街道+门牌」，不是一个能服务的单位。
+         *
+         * **已经升级过的跳过**（promoted_no 非空）—— 不靠 importEstates 的幂等兜底：
+         * 那一层按 origin_code 去重，而这里还要把 promoted_no 写回去。
+         */
+        java.util.List<ai.neargo.shop.community.entity.GeoPlace> hot = placeMapper.selectList(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.community.entity.GeoPlace>lambdaQuery()
+                        .eq(ai.neargo.shop.community.entity.GeoPlace::getKind,
+                                ai.neargo.shop.community.entity.GeoPlace.KIND_POI)
+                        .ge(ai.neargo.shop.community.entity.GeoPlace::getHitCount, minHits)
+                        .isNull(ai.neargo.shop.community.entity.GeoPlace::getPromotedNo)
+                        .isNotNull(ai.neargo.shop.community.entity.GeoPlace::getLatE6));
+
+        java.util.List<EstateIn> items = hot.stream()
+                // geo_key 当 origin_code 用：同一个格子升级两次不会建出两条
+                .map(p -> new EstateIn(p.getGeoKey(), p.getName(), p.getAddress(),
+                        p.getLatE6(), p.getLngE6()))
+                .toList();
+        ImportResult r = importEstates(regionCode, "CLOSED", dryRun, items, operatorNo);
+        if (dryRun) {
+            return r;
+        }
+        // 建完把 promoted_no 写回去，下一次就不会重复挑到它们
+        for (ai.neargo.shop.community.entity.GeoPlace p : hot) {
+            CmtCommunity built = communityMapper.selectOne(
+                    com.baomidou.mybatisplus.core.toolkit.Wrappers.<CmtCommunity>lambdaQuery()
+                            .eq(CmtCommunity::getOriginCode, p.getGeoKey()).last("limit 1"));
+            if (built == null) {
+                continue;   // 被 importEstates 跳过了（没坐标等），下次再说
+            }
+            ai.neargo.shop.community.entity.GeoPlace patch =
+                    new ai.neargo.shop.community.entity.GeoPlace();
+            patch.setId(p.getId());
+            patch.setPromotedNo(built.getCommunityNo());
+            placeMapper.updateById(patch);
+        }
+        return r;
+    }
+
+    @Override
+    @Transactional
+    public ImportResult importEstates(String regionCode, String status, boolean dryRun,
+                                      java.util.List<EstateIn> items, String operatorNo) {
+        if (regionCode == null || regionCode.isBlank() || items == null || items.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String st = status == null || status.isBlank() ? CLOSED : status.trim();
+        if (!OPEN.equals(st) && !CLOSED.equals(st)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 已有的按 origin_code 认 —— 一次查完，别在循环里逐条查（几千次往返）
+        java.util.Map<String, CmtCommunity> existing = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getSource, CmtCommunity.SOURCE_MAP)
+                        .isNotNull(CmtCommunity::getOriginCode))).stream()
+                .collect(java.util.stream.Collectors.toMap(CmtCommunity::getOriginCode,
+                        c -> c, (a, b) -> a));
+        /*
+         * **第二道查重：一个小区有好几个 POI。**
+         *
+         * 上面那道按 origin_code 认，防的是「同一个 POI 导两次」（重扫幂等）。
+         * 它防不住高德对**同一个小区**给出东门、西门、某栋楼各一条 —— poiId 各不相同，
+         * 于是一个小区在库里长出好几份档案。线上「百花公寓」就是这么来的：
+         * 两条、名字一字不差、相距 256 米、同一分钟由 SYSTEM 导进来。
+         * 后果要到买家那端才看得见：商家经营范围指着其中一份、买家选中另一份，
+         * 可见性按聚落号精确比对 → 0 件商品，而界面上两份长得一模一样。
+         *
+         * **判据只能是「名字完全相同 + 离得近」**，不能放宽：
+         * DenseEstateMatchTest 用的龙华真实数据里，一公里内 179 个小区、
+         * 最小间距 0 米（两个 POI 落在同一个点上）却是不同小区，
+         * 名字是「景华新村 / 景华新村东区 / 景华新村西区 / 景华新村南区」这种。
+         * 也不用归一名：PlaceNames.norm 会把「花园新村」整个剥成空串。
+         * **宁可漏合，不可错合** —— 漏合只是多一条待治理，
+         * 错合是把两个真实小区并成一个，那个小区的人直接找不到自己家。
+         */
+        List<CmtCommunity> inRegion = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getRegionCode, regionCode.trim())));
+        List<NameGeo> known = new java.util.ArrayList<>();
+        for (CmtCommunity c : inRegion) {
+            if (c.getName() != null && c.getLatE6() != null && c.getLngE6() != null) {
+                known.add(new NameGeo(c.getName().trim(), c.getLatE6(), c.getLngE6()));
+            }
+        }
+
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+        int deduped = 0;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (EstateIn in : items) {
+            /*
+             * **没坐标的一律跳过**，不是建一个空坐标的。withinRadius 对空坐标恒 false，
+             * 建出来买家永远搜不到它，而这件事没有任何报错 —— 只是那个小区的人
+             * 打开首页看到的是别人家小区的货。
+             */
+            if (in == null || in.originCode() == null || in.originCode().isBlank()
+                    || in.name() == null || in.name().isBlank()
+                    || in.latE6() == null || in.lngE6() == null
+                    || !seen.add(in.originCode())) {
+                skipped++;
+                continue;
+            }
+            CmtCommunity old = existing.get(in.originCode());
+            if (old != null) {
+                updated++;
+                if (!dryRun) {
+                    old.setName(in.name().trim());
+                    old.setAddress(in.address() == null || in.address().isBlank()
+                            ? null : in.address().trim());
+                    old.setLatE6(in.latE6());
+                    old.setLngE6(in.lngE6());
+                    // **状态不覆盖**：这一条可能已经被运营开过或关过，
+                    // 重扫一次把它按默认值改回去，是一次没人察觉的批量开/关城
+                    DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(old));
+                }
+                continue;
+            }
+            String nm = in.name().trim();
+            if (known.stream().anyMatch(k -> k.name().equals(nm)
+                    && meters(k.latE6(), k.lngE6(), in.latE6(), in.lngE6()) <= SAME_ESTATE_M)) {
+                // 同一个小区的另一个 POI：不建档。已有那条照原样留着，不拿这个 POI 的值去覆盖它，
+                // 否则同一个小区的坐标会在每次重扫时在东门和西门之间来回跳
+                deduped++;
+                continue;
+            }
+            // 同一批里后面的条目也要认得它 —— 试算时同样要认，否则试算报的「会新建几条」是假的
+            known.add(new NameGeo(nm, in.latE6(), in.lngE6()));
+            created++;
+            if (!dryRun) {
+                var c = new CmtCommunity();
+                c.setCommunityNo(ai.neargo.shop.common.BizKey.next(
+                        ai.neargo.shop.common.BizKey.COMMUNITY));
+                c.setName(in.name().trim());
+                c.setAddress(in.address() == null || in.address().isBlank()
+                        ? null : in.address().trim());
+                c.setRegionCode(regionCode.trim());
+                c.setKind(CmtCommunity.KIND_ESTATE);
+                c.setLatE6(in.latE6());
+                c.setLngE6(in.lngE6());
+                c.setCoordsSource("AMAP");
+                c.setSource(CmtCommunity.SOURCE_MAP);
+                c.setOriginCode(in.originCode());
+                c.setStatus(st);
+                c.setFenceRadius(MAP_ESTATE_FENCE_M);
+                c.setCreatedBy(operatorNo);
+                DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+            }
+        }
+        return new ImportResult(items.size(), created, updated, skipped, deduped, dryRun);
+    }
+
+    /** 判「同一个小区的另一个 POI」的距离上限。与地图小区的围栏同值，不是巧合：围栏多大，就认多大 */
+    private static final int SAME_ESTATE_M = MAP_ESTATE_FENCE_M;
+
+    /** 查重用的轻量投影：只要名字和坐标，别把整行实体带进循环 */
+    private record NameGeo(String name, int latE6, int lngE6) {
+    }
+
+    @Override
+    @Transactional
+    public int openMapCommunities(String regionPrefix, String operatorNo) {
+        /*
+         * **空前缀不放行。** 空串在 likeRight 下匹配一切 —— 那会把全国所有
+         * 地图来源的聚落一次开城，而这个接口本来是给「一个区」用的。
+         */
+        if (regionPrefix == null || regionPrefix.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var rows = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getSource, CmtCommunity.SOURCE_MAP)
+                        .eq(CmtCommunity::getStatus, CLOSED)
+                        .isNull(CmtCommunity::getArchivedAt)
+                        .likeRight(CmtCommunity::getRegionCode, regionPrefix.trim())));
+        for (CmtCommunity c : rows) {
+            c.setStatus(OPEN);
+            c.setUpdatedBy(operatorNo);
+            DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        }
+        // 不打日志：这个类本来就没有 logger，而返回值已经把「改了几条」说清楚了，
+        // 审计留痕由控制器那一层统一写（与同类的开城/调围栏一致）
+        return rows.size();
+    }
+
+    @Override
+    public DistributionVO distribution() {
+        var communities = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()));
+        var open = communities.stream().filter(c -> OPEN.equals(c.getStatus())).toList();
+        var pool = supplyStatsPort.byCommunity();
+        var points = userQueryPort.addressPoints();
+        var health = userQueryPort.addressCoordHealth();
+        var storeHealth = merchantQueryPort.storeCoordHealth();
+
+        /*
+         * 归属**复用 `CommunityService.resolve`**，不在这儿再写一遍围栏判定。
+         *
+         * 另写一份的下场在 T9 已经看过：两个数字都「算对了」，只是算的不是同一件事，
+         * 而分歧只出现在边界那一圈上，没人查得动。这里还多一层：resolve 里
+         * 「层级优先于距离」（站在 3 幢门口判成 3 幢，不是隔壁小区）——
+         * 按距离取最近会把楼里的买家算到隔壁小区头上，两边的结论都跟着错。
+         */
+        Map<String, Integer> buyers = new java.util.HashMap<>();
+        int outside = 0;
+        /*
+         * **一次性批量归属**：逐个 resolve 会把全部开放聚落重 load 一遍（无命中再一遍），
+         * N 个收货点就是 2N 次全表扫，实测让这个接口卡在 9 秒。innermostNos 只 load 一次、
+         * 口径与 resolve(...).innermostNo() 逐字相同（判等由 CommunityHierarchyTest 钉住）。
+         */
+        for (String no : communityService.getObject().innermostNos(points)) {
+            if (no == null || no.isBlank()) {
+                // 有坐标、却不落在任何围栏里 = 那儿真的有人，只是平台还没在那儿开聚落
+                outside++;
+            } else {
+                buyers.merge(no, 1, Integer::sum);
+            }
+        }
+
+        /*
+         * 区划路径**一次性批量取**：逐个 regionPathOf 是 path() 的逐级查库 × 两万多个开放小区
+         * ≈ 十万次往返，曾让这个接口卡死 30 秒以上。批量版总查询数只到层级量级，与小区数无关。
+         * 查不到的码不在 map 里，下面回落成码本身，与 regionPathOf 单条口径一致。
+         */
+        /*
+         * 按**区县**（国标 6 位前缀）汇总 —— 两万多聚落不可能平铺，运营看的是「哪个区供需如何」。
+         * 一个聚落恰好落一桶：有人没商家=supply、有商家没人=demand、皆 0=empty、皆>0=ok。
+         * 区县名批量取（regionPathNames，亚秒），不逐聚落查库。
+         */
+        Map<String, String> districtNames = masterDataPort.regionPathNames(
+                open.stream().map(c -> districtOf(c.getRegionCode()))
+                        .filter(java.util.Objects::nonNull).distinct().toList());
+        Map<String, int[]> byDistrict = new java.util.LinkedHashMap<>();  // [聚落,买家,有买家聚落,有商家聚落,supply,demand,empty]
+        List<DistributionVO.DistributionRow> supplyGaps = new java.util.ArrayList<>();
+        int ok = 0, supplyN = 0, demandN = 0, emptyN = 0, buyersTotal = 0;
+        for (CmtCommunity c : open) {
+            int b = buyers.getOrDefault(c.getCommunityNo(), 0);
+            int m = pool.getOrDefault(c.getCommunityNo(),
+                    new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0)).merchantCount();
+            boolean hasBuyer = b > 0, hasMerchant = m > 0;
+            int bucket;   // 0 ok / 1 supply / 2 demand / 3 empty
+            if (hasBuyer && hasMerchant) { bucket = 0; ok++; }
+            else if (hasBuyer) { bucket = 1; supplyN++; }
+            else if (hasMerchant) { bucket = 2; demandN++; }
+            else { bucket = 3; emptyN++; }
+            buyersTotal += b;
+
+            String d = districtOf(c.getRegionCode());
+            int[] agg = byDistrict.computeIfAbsent(d == null ? "" : d, k -> new int[7]);
+            agg[0]++;
+            agg[1] += b;
+            if (hasBuyer) agg[2]++;
+            if (hasMerchant) agg[3]++;
+            if (bucket == 1) agg[4]++;
+            else if (bucket == 2) agg[5]++;
+            else if (bucket == 3) agg[6]++;
+
+            // 招商清单：有人没商家。全局小集合（可行动到具体小区）——注意今天它可能为空（全国快递商家铺满）。
+            // 用循环里已算好的 pool，别再调 supplyStatsPort（那会变成逐行 N+1）
+            if (bucket == 1) {
+                int goods = pool.getOrDefault(c.getCommunityNo(),
+                        new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0)).goodsCount();
+                supplyGaps.add(new DistributionVO.DistributionRow(
+                        c.getCommunityNo(), c.getName(),
+                        c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),
+                        d == null ? null : districtNames.getOrDefault(d, d),
+                        b, m, goods));
+            }
+        }
+
+        List<DistributionVO.RegionRow> regions = byDistrict.entrySet().stream()
+                .map(e -> {
+                    int[] a = e.getValue();
+                    String code = e.getKey().isEmpty() ? null : e.getKey();
+                    String name = code == null ? null : districtNames.getOrDefault(code, code);
+                    return new DistributionVO.RegionRow(code, name, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+                })
+                .sorted(java.util.Comparator.comparingInt(DistributionVO.RegionRow::buyerCount).reversed()
+                        .thenComparingInt(DistributionVO.RegionRow::communityCount).reversed()
+                        .thenComparing(r -> r.regionCode() == null ? "" : r.regionCode()))
+                .toList();
+        supplyGaps.sort(java.util.Comparator.comparingInt(DistributionVO.DistributionRow::buyerCount).reversed()
+                .thenComparing(DistributionVO.DistributionRow::communityNo));
+
+        return new DistributionVO(regions, supplyGaps,
+                new DistributionVO.Totals(open.size(), buyersTotal, ok, supplyN, demandN, emptyN),
+                new DistributionVO.Unattributable(
+                        health.total() - health.withCoords(), outside,
+                        storeHealth.total() - storeHealth.withCoords(),
+                        communities.size() - open.size()));
+    }
+
+    /** 国标区县前缀（省2+市2+区2=6 位）。短于 6 位就用原码（存量/异常数据） */
+    private static String districtOf(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+        return regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
+    }
+
+    /** 下钻每页上限：防止 size 传大把分页绕过（宝安区 6367 个聚落） */
+    private static final int DRILL_MAX_SIZE = 500;
+
+    @Override
+    public ai.neargo.shop.common.PageData<DistributionVO.DistributionRow> communitiesInRegion(
+            String regionCode, int page, int size) {
+        int p = page < 1 ? 1 : page;
+        int s = size < 1 ? 200 : Math.min(size, DRILL_MAX_SIZE);
+        if (regionCode == null || regionCode.isBlank()) {
+            return ai.neargo.shop.common.PageData.empty(p, s);
+        }
+        List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectList(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .likeRight(CmtCommunity::getRegionCode, regionCode)));
+        if (open.isEmpty()) {
+            return ai.neargo.shop.common.PageData.empty(p, s);
+        }
+        // 买家数不在库里（靠坐标现算归属），要排序就得先对全区县算一遍——都是内存里的 map 查，便宜。
+        // 真正省的是**只给这一页建 DistributionRow + 查区县名 + 序列化**（宝安区 6367 → 200）。
+        Map<String, Integer> buyers = buyersByCommunity();
+        List<CmtCommunity> sorted = open.stream()
+                .sorted(java.util.Comparator
+                        .comparingInt((CmtCommunity c) -> buyers.getOrDefault(c.getCommunityNo(), 0)).reversed()
+                        .thenComparing(CmtCommunity::getCommunityNo))
+                .toList();
+        int from = Math.min((p - 1) * s, sorted.size());
+        int to = Math.min(from + s, sorted.size());
+        List<CmtCommunity> pageList = sorted.subList(from, to);
+        var supply = supplyStatsPort.byCommunity();
+        Map<String, String> regionPaths = masterDataPort.regionPathNames(
+                pageList.stream().map(CmtCommunity::getRegionCode)
+                        .filter(rc -> rc != null && !rc.isBlank()).distinct().toList());
+        List<DistributionVO.DistributionRow> rows = pageList.stream()
+                .map(c -> {
+                    var st = supply.getOrDefault(c.getCommunityNo(),
+                            new ai.neargo.shop.spi.product.SupplyStatsPort.SupplyStat(0, 0));
+                    return new DistributionVO.DistributionRow(
+                            c.getCommunityNo(), c.getName(),
+                            c.getKind() == null ? CmtCommunity.KIND_ESTATE : c.getKind(),
+                            c.getRegionCode() == null ? null
+                                    : regionPaths.getOrDefault(c.getRegionCode(), c.getRegionCode()),
+                            buyers.getOrDefault(c.getCommunityNo(), 0),
+                            st.merchantCount(), st.goodsCount());
+                })
+                .toList();
+        // 已经手切到这一页，直接 of(...)；不走 ofAll（那会再切一次、且要求传全量 rows）
+        return ai.neargo.shop.common.PageData.of(rows, open.size(), p, s);
+    }
+
+    /** 收货点 → 聚落买家数，与 distribution() 用的是同一套归属（innermostNos） */
+    private Map<String, Integer> buyersByCommunity() {
+        Map<String, Integer> buyers = new java.util.HashMap<>();
+        for (String no : communityService.getObject().innermostNos(userQueryPort.addressPoints())) {
+            if (no != null && !no.isBlank()) {
+                buyers.merge(no, 1, Integer::sum);
+            }
+        }
+        return buyers;
+    }
+
+    @Override
+    public FenceImpactVO fenceImpact(String communityNo, Integer radiusM) {
+        CmtCommunity c = requireCommunity(communityNo);
+        int current = c.getFenceRadius() == null || c.getFenceRadius() <= 0
+                ? DEFAULT_FENCE_RADIUS : c.getFenceRadius();
+        int preview = radiusM == null || radiusM <= 0 ? current : radiusM;
+        var health = userQueryPort.addressCoordHealth();
+        var storeHealth = merchantQueryPort.storeCoordHealth();
+        /*
+         * 没坐标的聚落算不出任何圈 —— 两个数都给 0，**分母照给**。
+         * 给 0/0 而不是报错：这一页正是运营用来发现「这个聚落还没标点」的地方，
+         * 报错会让整页打不开，而缺口本身看不见。
+         */
+        if (c.getLatE6() == null || c.getLngE6() == null) {
+            return new FenceImpactVO(current, preview, 0, 0, health.withCoords());
+        }
+        return new FenceImpactVO(current, preview,
+                userQueryPort.addressesWithin(c.getLatE6(), c.getLngE6(), current),
+                userQueryPort.addressesWithin(c.getLatE6(), c.getLngE6(), preview),
+                health.withCoords());
+    }
+
+    @Override
+    public CommunityVO setFence(String communityNo, int fenceRadius, String operatorNo) {
+        if (fenceRadius <= 0) {
+            // 0 意味着这个社区覆盖不到任何地址，而界面上看起来只是「还没配」
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtCommunity c = requireCommunity(communityNo);
+        c.setFenceRadius(fenceRadius);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        return toVO(c, pickupCountOf(communityNo));
+    }
+
+    // ------------------------------------------------------------ 疑似重复与合并
+
+    /** 疑似重复只在同一条街道里找：跨街道同名（全国有几百个「幸福小区」）不是重复，是重名 */
+    private static final int NEARBY_DUP_METERS = 300;
+
+    @Override
+    public List<DuplicateVO> duplicates(int limit) {
+        int cap = Math.max(1, Math.min(limit, 200));
+        List<CmtCommunity> open = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .orderByAsc(CmtCommunity::getRegionCode)));
+        /*
+         * **分组键是「区」，不是 region_code 本身**。
+         *
+         * 原来按 region_code 精确分组，于是同一个地方的两条只要区划粒度不同就永远不相遇：
+         * 线上「嘉逸花园」存量那条是区级 440309、地图建出来的那条是街道级 440309003，
+         * 疑似重复清单里从来没出现过它们 —— 运营看不见，就治理不了。
+         * 而存量几乎全是区级（2026-10-08：宝安 6367/6367、龙华 2783/2784 是 6 位）。
+         *
+         * **但不能顺手把分组键换成区就完事**：原注释说「同一条街道下最多几十条」，
+         * 换成区之后一个区有六千多条，组内两两比就是 2000 万次带字符串归一的比较，
+         * 而这个端点的预算是 1 秒。所以改成两种分桶出候选对，再逐对判：
+         *   ① 同名：同区 + 归一名**首字**分桶。sameSettlement 是前缀匹配
+         *      （x.startsWith(y) || y.startsWith(x)），前缀对必然共享首字，
+         *      按首字分桶是**不漏**的预筛；按完整归一名分桶则会漏掉前缀对。
+         *   ② 近邻：同区 + 300m 网格，连同 8 个邻格一起取，避免贴着格子边界的对被漏掉。
+         * 判据本身（sameSettlement / NEARBY_DUP_METERS / nameLooksClose）一个字没改。
+         */
+        List<CmtCommunity> rows = open.stream()
+                .filter(c -> c.getRegionCode() != null && !c.getRegionCode().isBlank())
+                .toList();
+        Map<String, CmtCommunity> byNo = new java.util.LinkedHashMap<>();
+        for (CmtCommunity c : rows) {
+            byNo.put(c.getCommunityNo(), c);
+        }
+
+        Map<String, List<CmtCommunity>> nameBuckets = new java.util.HashMap<>();
+        Map<String, List<CmtCommunity>> geoBuckets = new java.util.HashMap<>();
+        for (CmtCommunity c : rows) {
+            String district = districtPrefixOf(c.getRegionCode());
+            String nm = normalizeName(c.getName());
+            if (!nm.isEmpty()) {
+                nameBuckets.computeIfAbsent(district + "\u0000" + nm.charAt(0),
+                        k -> new java.util.ArrayList<>()).add(c);
+            }
+            if (c.getLatE6() != null && c.getLngE6() != null) {
+                geoBuckets.computeIfAbsent(geoCellKey(district, c.getLatE6(), c.getLngE6()),
+                        k -> new java.util.ArrayList<>()).add(c);
+            }
+        }
+
+        Set<String> pairKeys = new java.util.LinkedHashSet<>();
+        for (List<CmtCommunity> g : nameBuckets.values()) {
+            addPairs(pairKeys, g, g);
+        }
+        for (CmtCommunity c : rows) {
+            if (c.getLatE6() == null || c.getLngE6() == null) {
+                continue;
+            }
+            String district = districtPrefixOf(c.getRegionCode());
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    List<CmtCommunity> g = geoBuckets.get(geoCellKey(district,
+                            c.getLatE6() + dy * GEO_CELL_E6, c.getLngE6() + dx * GEO_CELL_E6));
+                    if (g != null) {
+                        addPairs(pairKeys, List.of(c), g);
+                    }
+                }
+            }
+        }
+
+        List<DuplicateVO> out = new java.util.ArrayList<>();
+        for (String key : pairKeys) {
+            if (out.size() >= cap) {
+                break;
+            }
+            int sep = key.indexOf('\u0000');
+            CmtCommunity a = byNo.get(key.substring(0, sep));
+            CmtCommunity b = byNo.get(key.substring(sep + 1));
+            if (a == null || b == null) {
+                continue;
+            }
+            Integer dist = distanceOrNull(a, b);
+            if (sameSettlement(a.getName(), b.getName())) {
+                /*
+                 * **同名还要地理接近**。按街道分组时「同名」自然就近，换成按区之后不再成立：
+                 * 一个区里两个同名小区相距几公里，那是重名不是重复
+                 * （duplicatesStayWithinStreet 守的就是这件事）。
+                 * 没坐标的行退回原判据（同一个 region_code 才算），与改动前等价。
+                 */
+                boolean close = dist != null ? dist <= SAME_NAME_METERS
+                        : a.getRegionCode().equals(b.getRegionCode());
+                if (close) {
+                    out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "SAME_NAME", dist));
+                }
+            } else if (dist != null && dist <= NEARBY_DUP_METERS && nameLooksClose(a.getName(), b.getName())) {
+                // 高德对同一个小区常给出「XX花园」「XX花园A区」—— 名字比不出来，位置骗不了人
+                out.add(new DuplicateVO(toVO(a, 0), toVO(b, 0), "NEARBY", dist));
+            }
+        }
+        return out;
+    }
+
+    /** 同名判重额外要求的地理接近上限：同一个区里隔着几公里的同名小区是重名，不是重复 */
+    private static final int SAME_NAME_METERS = 2000;
+
+    /** 近邻分桶的网格边长（约 300m，与 {@link #NEARBY_DUP_METERS} 同量级） */
+    private static final int GEO_CELL_E6 = 2695;
+
+    private static String geoCellKey(String district, int latE6, int lngE6) {
+        return district + "\u0000" + Math.floorDiv(latE6, GEO_CELL_E6)
+                + "\u0000" + Math.floorDiv(lngE6, GEO_CELL_E6);
+    }
+
+    /** 把两组的笛卡尔对收进集合，键按聚落号排序规范化 —— 同一对从两条路进来也只留一份 */
+    private static void addPairs(Set<String> out, List<CmtCommunity> left, List<CmtCommunity> right) {
+        for (CmtCommunity a : left) {
+            for (CmtCommunity b : right) {
+                int cmp = a.getCommunityNo().compareTo(b.getCommunityNo());
+                if (cmp < 0) {
+                    out.add(a.getCommunityNo() + "\u0000" + b.getCommunityNo());
+                } else if (cmp > 0) {
+                    out.add(b.getCommunityNo() + "\u0000" + a.getCommunityNo());
+                }
+            }
+        }
+    }
+
+    private static Integer distanceOrNull(CmtCommunity a, CmtCommunity b) {
+        if (a.getLatE6() == null || a.getLngE6() == null || b.getLatE6() == null || b.getLngE6() == null) {
+            return null;
+        }
+        return (int) Math.round(meters(a.getLatE6(), a.getLngE6(), b.getLatE6(), b.getLngE6()));
+    }
+
+    @Override
+    @Transactional
+    public CommunityVO merge(String fromNo, String intoNo, String operatorNo) {
+        if (fromNo == null || intoNo == null || fromNo.equals(intoNo)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtCommunity from = requireCommunity(fromNo);
+        CmtCommunity into = requireCommunity(intoNo);
+
+        /*
+         * **名字要留下来**：被并掉的那条叫「阳光花园A区」，留下的叫「阳光花园」——
+         * 不记 alias 的话，下一次地图联想拿着「阳光花园A区」来查重，
+         * 三道查重全都比不上，于是又建出一条一模一样的。合并就白做了。
+         */
+        String alias = java.util.stream.Stream.of(into.getAlias(), from.getName(), from.getAlias())
+                .filter(x -> x != null && !x.isBlank())
+                .flatMap(x -> java.util.Arrays.stream(x.split(",")))
+                .map(String::trim).filter(x -> !x.isEmpty() && !x.equals(into.getName()))
+                .distinct().collect(Collectors.joining(","));
+        into.setAlias(alias.isEmpty() ? null : alias);
+        // 坐标缺一个补一个：被并掉的那条常常是「地图点出来的那条」，坐标反而更准
+        if (into.getLatE6() == null && from.getLatE6() != null) {
+            into.setLatE6(from.getLatE6());
+            into.setLngE6(from.getLngE6());
+            into.setCoordsSource(from.getCoordsSource());
+        }
+        into.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(into));
+
+        // 各域自己改写「以后还会用」的引用；漏一处的后果是商家的货在这个小区悄悄消失
+        for (var port : refPorts) {
+            port.repointSettlement(fromNo, intoNo);
+        }
+
+        /*
+         * 被并掉的那条**关掉而不是删掉**：历史订单、批次、帖子都还指着它，
+         * 删了那些单据的社区名就查不出来了。关掉之后它不参与任何新的可见性计算。
+         */
+        from.setStatus("CLOSED");
+        from.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(from));
+
+        return toVO(into, pickupCountOf(intoNo));
+    }
+
+    @Override
+    @Transactional
+    public CommunityVO setRegion(String communityNo, String regionCode, String operatorNo) {
+        CmtCommunity c = requireCommunity(communityNo);
+        String code = regionCode == null || regionCode.isBlank() ? null : regionCode.trim();
+        /*
+         * **挂之前先确认这个码存在。**
+         *
+         * 挂到一个不存在的码上不会报错，只会让这个社区在任何「按区覆盖」里都出不来 ——
+         * 而运营看着界面上明明填着值，商家看着自己的货就是没人搜得到。
+         * 这正是本仓库反复记录的那类无报错故障，只能在写入口拦。
+         */
+        // 码不存在时 regionPathName 原样返回码本身 —— 拿它与入参比对即可判断存在性，
+        // 不必为此在 Port 上再开一个方法
+        if (code != null && code.equals(masterDataPort.regionPathName(code))) {
+            throw new ai.neargo.shop.common.BizException(
+                    ai.neargo.shop.common.ErrorCode.NOT_FOUND, "区划不存在：" + code);
+        }
+        c.setRegionCode(code);
+        c.setUpdatedBy(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.updateById(c));
+        return toVO(c, pickupCountOf(communityNo));
+    }
+
+    @Override
+    public List<PickupVO> pickups(String communityNo, String type, String status) {
+        var w = Wrappers.<CmtPickupPoint>lambdaQuery();
+        if (communityNo != null && !communityNo.isBlank()) {
+            w.eq(CmtPickupPoint::getCommunityNo, communityNo);
+        }
+        if (type != null && !type.isBlank()) {
+            w.eq(CmtPickupPoint::getType, type);
+        }
+        if (status != null && !status.isBlank()) {
+            w.eq(CmtPickupPoint::getStatus, status);
+        }
+        w.orderByDesc(CmtPickupPoint::getId);
+        return DataScopeContext.executeWithoutScope(() -> pickupMapper.selectList(w))
+                .stream().map(this::toVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public PickupVO createPickup(CreatePickupCommand cmd, String operatorNo) {
+        if (cmd == null || blank(cmd.communityNo()) || blank(cmd.name()) || blank(cmd.address())
+                || cmd.type() == null || !PICKUP_TYPES.contains(cmd.type())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 社区必须真的存在：挂在一个不存在的社区上，这个点对谁都不可见，
+        // 而运营看列表时它是「正常的」
+        boolean communityOk = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.exists(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getCommunityNo, cmd.communityNo())));
+        if (!communityOk) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        /*
+         * owner_ref 是**多态列**，三类的必填项完全不同：
+         *   STORE    → 门店号（V16 起）。没有它，「这个点属于哪家店」表达不了，
+         *              核销权限与出货门店都无从判断
+         *   NEIGHBOR → 用户号，且**报酬必须为 0** —— 给了报酬他就变成团长了
+         *   PLATFORM → 空。平台自己的点没有承接方
+         * 传错的后果是永久错位，且不会报错 —— 所以在入口处就分开判。
+         */
+        String owner = blank(cmd.ownerRef()) ? null : cmd.ownerRef().trim();
+        int feeRate = cmd.serviceFeeRate() == null ? 0 : cmd.serviceFeeRate();
+        long feePerItem = cmd.serviceFeePerItemMinor() == null ? 0L : cmd.serviceFeePerItemMinor();
+        if (feeRate < 0 || feePerItem < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        switch (cmd.type()) {
+            case STORE, NEIGHBOR -> {
+                if (owner == null) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
+            default -> owner = null;
+        }
+        if (NEIGHBOR.equals(cmd.type()) && (feeRate != 0 || feePerItem != 0)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        CmtPickupPoint p = new CmtPickupPoint();
+        p.setPickupNo(BizKey.next(BizKey.PICKUP_POINT));
+        p.setCommunityNo(cmd.communityNo());
+        p.setName(cmd.name().trim());
+        p.setType(cmd.type());
+        // 常驻点。GROUP_INSTANCE（一团一销）后端还没实现，不在这里放开
+        p.setScope("PERMANENT");
+        p.setOwnerRef(owner);
+        p.setAddress(cmd.address().trim());
+        p.setOpenHours(blank(cmd.openHours()) ? null : cmd.openHours().trim());
+        p.setArrivalDesc(blank(cmd.arrivalDesc()) ? null : cmd.arrivalDesc().trim());
+        p.setServiceFeeRate(feeRate);
+        p.setServiceFeePerItemMinor(feePerItem);
+        p.setStatus(ACTIVE);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        return toVO(p);
+    }
+
+    private static boolean blank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    @Override
+    @Transactional
+    public PickupVO setPickupStatus(String pickupNo, String status, String operatorNo) {
+        CmtPickupPoint p = requirePickup(pickupNo);
+        if (!PICKUP_TRANSITIONS.getOrDefault(p.getStatus(), Set.of()).contains(status)) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        p.setStatus(status);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.updateById(p));
+        return toVO(p);
+    }
+
+    @Override
+    @Transactional
+    public PickupVO setPickupServiceFee(String pickupNo, int serviceFeeRate, String operatorNo) {
+        if (serviceFeeRate < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        CmtPickupPoint p = requirePickup(pickupNo);
+        /*
+         * 邻里自提零报酬（ADR-005）：给了报酬，承接的邻居就变成团长 ——
+         * 那是另一套责任与税务关系，不是「多给点钱」那么简单。
+         * 库上有 CHECK 兜底，这里先拦是为了给一句人话的报错。
+         */
+        if (NEIGHBOR.equals(p.getType()) && serviceFeeRate != 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        p.setServiceFeeRate(serviceFeeRate);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.updateById(p));
+        return toVO(p);
+    }
+
+    @Override
+    public List<PickupVO> riskyNeighborPickups(int minAcceptCount) {
+        /*
+         * 承接次数还没有统计口径（要按核销日志聚合，那是 P-2.2.5 的后半段）。
+         * 这里先按「邻里点且在营业」给出候选，acceptCount30d 恒为 0 并在契约上写明 ——
+         * **不编一个看起来像真的数字**：运营会照着它去处置，而它是假的。
+         */
+        return DataScopeContext.executeWithoutScope(() ->
+                        pickupMapper.selectList(Wrappers.<CmtPickupPoint>lambdaQuery()
+                                .eq(CmtPickupPoint::getType, NEIGHBOR)
+                                .eq(CmtPickupPoint::getStatus, ACTIVE)))
+                .stream().map(this::toVO).toList();
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+
+    private CmtCommunity requireCommunity(String communityNo) {
+        CmtCommunity c = DataScopeContext.executeWithoutScope(() ->
+                communityMapper.selectOne(Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getCommunityNo, communityNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return c;
+    }
+
+    private CmtPickupPoint requirePickup(String pickupNo) {
+        CmtPickupPoint p = DataScopeContext.executeWithoutScope(() ->
+                pickupMapper.selectOne(Wrappers.<CmtPickupPoint>lambdaQuery()
+                        .eq(CmtPickupPoint::getPickupNo, pickupNo).last("limit 1")));
+        if (p == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return p;
+    }
+
+    private int pickupCountOf(String communityNo) {
+        Long n = DataScopeContext.executeWithoutScope(() ->
+                pickupMapper.selectCount(Wrappers.<CmtPickupPoint>lambdaQuery()
+                        .eq(CmtPickupPoint::getCommunityNo, communityNo)));
+        return n == null ? 0 : n.intValue();
+    }
+
+    private CommunityVO toVO(CmtCommunity c, int pickupCount) {
+        return new CommunityVO(c.getCommunityNo(), c.getName(), c.getCityCode(), c.getGrid(),
+                OPEN.equals(c.getStatus()),
+                c.getFenceRadius() == null ? 0 : c.getFenceRadius(), pickupCount,
+                c.getCreatedAt() == null ? 0L
+                        : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                c.getRegionCode(), regionPathOf(c.getRegionCode()),
+                c.getLatE6(), c.getLngE6(), c.getKind(), c.getSource());
+    }
+
+    /** 地图建点查重的取候选半径：固定值，可以下推成外接矩形（见 {@link #dedupCandidates}） */
+    private static final int DEDUP_BOX_M = 3000;
+
+    /** 区划码取到区一级（前 6 位）—— 存量聚落的 region_code 就是这个粒度 */
+    private static String districtPrefixOf(String regionCode) {
+        return regionCode != null && regionCode.length() >= 6 ? regionCode.substring(0, 6) : regionCode;
+    }
+
+    /**
+     * 地图建点的查重候选。<b>两轮取，只增不减</b>。
+     *
+     * <p>第一轮是原行为（同街道码精确相等），第二轮补的是它的盲区：
+     * <b>存量聚落几乎全是区级码</b> —— 2026-10-08 线上实测，宝安 6367/6367、
+     * 龙华 2783/2784 的 region_code 都是 6 位区级，全库只有 2 条是 9 位街道级，
+     * 而那 2 条正是本方法自己建出来的。于是「按街道码精确取候选」对整个存量语料
+     * <b>一条候选也取不到</b>，下面三道查重全部落空，同一个小区在库里长出第二条。
+     * 线上「嘉逸花园」就是这么来的：存量那条区级 440309、系统导入，
+     * 商家从地图选点解析出街道级 440309003，查重看不见它 —— 买家选到老那条就 0 商品。
+     *
+     * <p>第二轮用「同区 + 坐标外接矩形」。<b>矩形可以下推到 SQL</b>：这里判距用的是固定的
+     * {@link #DEDUP_BOX_M}，不是逐行的 {@code fence_radius}
+     *（{@code nearby()} 那边不能下推，正因为半径是逐行的，按全局值框会静默删掉宽围栏的聚落）。
+     * 没有坐标的存量行进不了矩形，仍由第一轮按街道码兜着 —— 与改动前等价。
+     */
+    private List<CmtCommunity> dedupCandidates(String street, int latE6, int lngE6) {
+        List<CmtCommunity> sameStreet = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .eq(CmtCommunity::getRegionCode, street)
+                        .last("limit 300")));
+        String district = districtPrefixOf(street);
+        if (district == null || district.isBlank()) {
+            return sameStreet;
+        }
+        int dLat = (int) Math.round(DEDUP_BOX_M / 111_320d * 1e6);
+        double cos = Math.max(0.1, Math.cos(Math.toRadians(latE6 / 1e6)));
+        int dLng = (int) Math.round(dLat / cos);
+        List<CmtCommunity> nearBox = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .likeRight(CmtCommunity::getRegionCode, district)
+                        .between(CmtCommunity::getLatE6, latE6 - dLat, latE6 + dLat)
+                        .between(CmtCommunity::getLngE6, lngE6 - dLng, lngE6 + dLng)
+                        .last("limit 300")));
+        Map<String, CmtCommunity> byNo = new java.util.LinkedHashMap<>();
+        for (CmtCommunity c : sameStreet) {
+            byNo.put(c.getCommunityNo(), c);
+        }
+        for (CmtCommunity c : nearBox) {
+            byNo.putIfAbsent(c.getCommunityNo(), c);
+        }
+        return List.copyOf(byNo.values());
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public CommunityVO openFromMap(String merchantNo, String name, String address,
+                                   int latE6, int lngE6, String streetHint) {
+        String n = name == null ? "" : name.trim();
+        if (n.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String street = resolveStreet(latE6, lngE6, streetHint);
+        if (street == null) {
+            throw BizException.of(ErrorCode.COMMUNITY_STREET_UNRESOLVED);
+        }
+
+        // 三道查重：撞上就复用，别让同一个小区在库里长出第二条
+        var existing = dedupCandidates(street, latE6, lngE6);
+        var hit = existing.stream().filter(c -> sameSettlement(c.getName(), n)).findFirst()
+                .or(() -> existing.stream()
+                        // 高德对同一个小区常给出「XX花园」「XX花园A区」「XX花园(南门)」几条 ——
+                        // 名字比不出来，但它们必然挨在一起
+                        .filter(c -> c.getLatE6() != null && c.getLngE6() != null
+                                && meters(latE6, lngE6, c.getLatE6(), c.getLngE6()) <= 150
+                                && nameLooksClose(c.getName(), n))
+                        .findFirst());
+        if (hit.isPresent()) {
+            return toVO(hit.get(), pickupCountOf(hit.get().getCommunityNo()));
+        }
+
+        /*
+         * **策略收紧时走提报**（shop.community.auto-open 去掉 MAP）：建一条待审单，
+         * 把「等运营」这句话原样抛给商家 —— 端上本来就把错误消息当提示显示。
+         * 不静默建一个 CLOSED 聚落：那会让他在列表里看见一个永远没有订单的地方。
+         */
+        if (!autoOpens(CmtCommunity.SOURCE_MAP)) {
+            submitApply(merchantNo, n, address, street, "该地点已提交，等运营核对后即可加入",
+                    CmtCommunity.KIND_ESTATE, null, latE6, lngE6);
+            throw BizException.of(ErrorCode.COMMUNITY_APPLY_SUBMITTED);
+        }
+
+        var c = new CmtCommunity();
+        c.setCommunityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY));
+        c.setName(n);
+        c.setAddress(address == null || address.isBlank() ? null : address.trim());
+        c.setRegionCode(street);
+        c.setKind(CmtCommunity.KIND_ESTATE);
+        c.setLatE6(latE6);
+        c.setLngE6(lngE6);
+        c.setCoordsSource("AMAP");
+        c.setSource(CmtCommunity.SOURCE_MAP);
+        c.setStatus(OPEN);
+        c.setFenceRadius(DEFAULT_FENCE_RADIUS);
+        c.setCreatedBy(merchantNo);
+        DataScopeContext.executeWithoutScope(() -> communityMapper.insert(c));
+
+        /*
+         * **台账仍然要留**：商家侧没有「提报」这件事了，但半年后发现某个聚落坐标偏了 800 米，
+         * 得追得到是谁、凭哪条地图记录建的。直接记成已通过（决策人 SYSTEM），
+         * 运营端那条队列因此变成「事后治理」的入口，而不是事前闸门。
+         */
+        var a = new ai.neargo.shop.community.entity.CmtCommunityApply();
+        a.setApplyNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.COMMUNITY_APPLY));
+        a.setEntityNo(merchantNo);
+        a.setName(n);
+        a.setAddress(c.getAddress());
+        a.setRegionCode(street);
+        a.setKind(CmtCommunity.KIND_ESTATE);
+        a.setLatE6(latE6);
+        a.setLngE6(lngE6);
+        a.setStatus(ai.neargo.shop.community.entity.CmtCommunityApply.APPROVED);
+        a.setCommunityNo(c.getCommunityNo());
+        a.setSubmittedAt(System.currentTimeMillis());
+        a.setDecidedAt(System.currentTimeMillis());
+        a.setDecidedBy("SYSTEM");
+        DataScopeContext.executeWithoutScope(() -> applyMapper.insert(a));
+
+        return toVO(c, 0);
+    }
+
+    /**
+     * 坐标 → 街道码。**先逆地理（权威），拿不到才用端上给的提示**。
+     *
+     * <p>逆地理给的是「区县码 + 街道名」，两者组合才定得准 ——
+     * 高德自己的 towncode 与统计局口径不同源，直接用会挂到隔壁街道（见接口注释）。
+     */
+    private String resolveStreet(int latE6, int lngE6, String hint) {
+        if (geoPort.available()) {
+            var r = geoPort.reverse(latE6, lngE6).orElse(null);
+            if (r != null) {
+                var byName = masterDataPort.streetByDistrictAndName(r.adcode(), r.township());
+                if (byName.isPresent()) {
+                    return byName.get();
+                }
+            }
+        }
+        String h = hint == null ? "" : hint.trim();
+        // 只认 9 位：挂粗了（6 位区县）不报错，但比它细的经营范围从此永远匹配不到
+        return h.length() == 9 ? h : null;
+    }
+
+    /** 名字「像不像」：去掉后缀之后有一方包含另一方的前两个字，够挡住 A 区/南门这类切分 */
+    private static boolean nameLooksClose(String a, String b) {
+        String x = normalizeName(a);
+        String y = normalizeName(b);
+        if (x.isEmpty() || y.isEmpty()) {
+            return false;
+        }
+        String shorter = x.length() <= y.length() ? x : y;
+        String longer = x.length() <= y.length() ? y : x;
+        return shorter.length() >= 2 && longer.contains(shorter.substring(0, Math.min(3, shorter.length())));
+    }
+
+    @Override
+    public List<NearbyVO> communitiesNear(int latE6, int lngE6, int radiusM) {
+        // 先用外接矩形把候选压到几十条，再在内存里算真距离 —— 库里没有空间索引，
+        // 全表算距离在 62 万级的邻表上会很难看（这里只有聚落表，但口径要一致）
+        int win = (int) (radiusM / 111_320d * 1e6) + 1;
+        var rows = DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(
+                Wrappers.<CmtCommunity>lambdaQuery()
+                        .eq(CmtCommunity::getStatus, OPEN)
+                        .isNotNull(CmtCommunity::getLatE6)
+                        .between(CmtCommunity::getLatE6, latE6 - win, latE6 + win)
+                        .between(CmtCommunity::getLngE6, lngE6 - win, lngE6 + win)
+                        .last("limit 200")));
+        return rows.stream()
+                .map(c -> new NearbyVO(c.getCommunityNo(), c.getName(), c.getLatE6(), c.getLngE6(),
+                        (int) Math.round(meters(latE6, lngE6, c.getLatE6(), c.getLngE6())),
+                        regionPathOf(c.getRegionCode())))
+                .filter(v -> v.distanceM() <= radiusM)
+                .sorted(java.util.Comparator.comparingInt(NearbyVO::distanceM))
+                .limit(20)
+                .toList();
+    }
+
+    /** 与围栏判定同一套算法：经度间距随纬度收缩，不乘 cos 高纬度会多算出几百米 */
+    private static double meters(int latE6, int lngE6, int otherLatE6, int otherLngE6) {
+        double perDeg = 111_320d;
+        double dLat = (latE6 - otherLatE6) / 1e6 * perDeg;
+        double midLat = Math.toRadians((latE6 + otherLatE6) / 2e6);
+        double dLng = (lngE6 - otherLngE6) / 1e6 * perDeg * Math.cos(midLat);
+        return Math.sqrt(dLat * dLat + dLng * dLng);
+    }
+
+    /**
+     * 「浙江省 / 杭州市 / 西湖区 / 北山街道」。
+     *
+     * <p>拼在后端而不是丢给端上：端上只拿到 330106001 的话，要么显示一串数字，
+     * 要么自己按码长切片再逐级查 —— 而国标的编码规则不是端该知道的事。
+     *
+     * <p>区划码查不到时返回码本身：那多半是已撤并的旧码（区划每年调整，
+     * 而这份数据停在 2023）。显示成空白会让人以为「没归属」，而它其实归属过。
+     */
+    private String regionPathOf(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+        return masterDataPort.regionPathName(regionCode);
+    }
+
+    private PickupVO toVO(CmtPickupPoint p) {
+        return new PickupVO(p.getPickupNo(), p.getName(), p.getType(), p.getStatus(),
+                p.getCommunityNo(), null,
+                // STORE 点的承接方是**门店**（V16 起），NEIGHBOR 是 C 端用户 ——
+                // 同一列两种含义，所以只在 STORE 时下发
+                "STORE".equals(p.getType()) ? p.getOwnerRef() : null,
+                p.getAddress(), p.getOpenHours(), p.getArrivalDesc(),
+                p.getServiceFeeRate() == null ? 0 : p.getServiceFeeRate(),
+                p.getServiceFeePerItemMinor() == null ? 0L : p.getServiceFeePerItemMinor(),
+                p.getFeeMode(), 0,
+                p.getCreatedAt() == null ? 0L
+                        : p.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                p.getLatE6(), p.getLngE6(), p.getRejectReason());
+    }
+
+    @Override
+    @Transactional
+    public PickupVO decidePickup(String pickupNo, boolean pass, String reason, String operatorNo) {
+        CmtPickupPoint p = requirePickup(pickupNo);
+        // 裁完就是终态：再裁一次意味着同一个点有两个结论
+        if (!PENDING.equals(p.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (!pass && blank(reason)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        p.setStatus(pass ? ACTIVE : REJECTED);
+        p.setRejectReason(pass ? null : reason.trim());
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.updateById(p));
+        return toVO(p);
+    }
+}

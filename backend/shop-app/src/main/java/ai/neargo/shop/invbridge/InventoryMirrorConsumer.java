@@ -1,0 +1,202 @@
+package ai.neargo.shop.invbridge;
+
+import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.shop.inventory.service.LocationService;
+import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.StockCountService;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 把平台侧的库存动作<b>补记</b>到进销存。双写的第二半。
+ *
+ * <h2>幂等是硬要求，不是「最好有」</h2>
+ * outbox 是 <b>at-least-once</b>：投递器在「消费成功」与「标记已发」之间崩掉，
+ * 同一笔就会再来一遍。所以这里每个动作都必须能重复执行而结果不变。
+ *
+ * <p>靠的是<b>自然键</b>（平台的锁号 / 售后单号 → 进销存的 {@code external_ref}），
+ * 不是靠「调用方记得只调一次」：
+ * <ul>
+ *   <li>{@code reserve} 同一个 ref 第二次进来，进销存按唯一键认出是同一笔</li>
+ *   <li>{@code commit} / {@code release} 找不到那笔预留时<b>当成已经处理过</b> ——
+ *       重投的第二遍必然找不到，那不是错</li>
+ * </ul>
+ *
+ * <h2>吞哪些异常，不吞哪些</h2>
+ * <b>「已经做过了」吞掉，「做不了」抛出去。</b>
+ * 抛出去的会留在队列里退避重投（{@code OutboxDispatcher} 逐条捕获、不标已发），
+ * 投满上限转 FAILED 等人处理。这正是我们要的：<b>补记失败必须看得见</b>，
+ * 否则双写期结束时对差是干净的，而干净的原因是「漏的那些根本没记」。
+ */
+@Component
+@ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
+public class InventoryMirrorConsumer implements OutboxConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryMirrorConsumer.class);
+
+    /** 与 {@code DualWriteStockPort} 里的 TTL 同一个量级 —— 比它短会先把还能付款的单释放掉 */
+    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+
+    private final StockCountService counts;
+    private final ReservationService reservations;
+    private final InventoryAclService acl;
+    private final LocationService locations;
+    private final ObjectMapper json;
+
+    public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
+                                   LocationService locations, ObjectMapper json) {
+        this.counts = counts;
+        this.reservations = reservations;
+        this.acl = acl;
+        this.locations = locations;
+        this.json = json;
+    }
+
+    @Override
+    public boolean supports(String eventType) {
+        return eventType != null && eventType.startsWith(InvMirrorEvent.PREFIX);
+    }
+
+    @Override
+    public void consume(SysOutbox event) {
+        JsonNode p = json.readTree(event.getPayload());
+        String ref = text(p, "ref");
+        // 手改那一类没有 ref（它的自然键是 skuNo + 目标值），单独放行
+        if (InvMirrorEvent.ADJUST.equals(event.getEventType())) {
+            adjust(p);
+            return;
+        }
+        if (ref == null || ref.isBlank()) {
+            // 没有自然键就没法幂等。**丢掉而不是重投** —— 重投一个永远处理不了的事件
+            // 只会让队列越堆越长，而堆着的那些会把真正的失败盖住
+            log.warn("镜像事件缺 ref，丢弃：eventNo={} type={}", event.getEventNo(), event.getEventType());
+            return;
+        }
+
+        switch (event.getEventType()) {
+            case InvMirrorEvent.RESERVE -> reserve(ref, p);
+            case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
+            case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
+            case InvMirrorEvent.RESTORE -> restore(ref, p);
+            case InvMirrorEvent.ADJUST -> adjust(p);
+            default -> log.warn("不认识的镜像事件类型：{}", event.getEventType());
+        }
+    }
+
+    private void reserve(String ref, JsonNode p) {
+        List<ReservationService.Line> lines = lines(p);
+        if (lines.isEmpty()) {
+            return;
+        }
+        String owner = requireOwner(first(p));
+        reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS);
+    }
+
+    /**
+     * 手改库存的镜像：落成一张盘点单。
+     *
+     * <p><b>天然幂等</b>：它是「设成这个数」而不是「加减多少」——
+     * 同一笔来两遍，第二遍算出来的差异是 0，不会再动一次。
+     */
+    private void adjust(JsonNode p) {
+        String skuNo = text(p, "skuNo");
+        if (skuNo == null) {
+            return;
+        }
+        String owner = requireOwner(skuNo);
+        String locationId = locations.resolveStockLocation(
+                owner, acl.locationOfStore(owner, text(p, "storeNo")));
+        String reason = text(p, "reason");
+        int onHand = p.get("onHand") == null ? 0 : p.get("onHand").asInt();
+        counts.adjustOne(owner, locationId, acl.itemIdOfSku(skuNo), onHand,
+                reason == null ? "OTHER" : reason, "GOODS_PAGE");
+    }
+
+    private void restore(String ref, JsonNode p) {
+        List<ReservationService.Line> lines = lines(p);
+        if (lines.isEmpty()) {
+            return;
+        }
+        String owner = requireOwner(first(p));
+        reservations.restore(owner, ref, lines, "MIRROR");
+    }
+
+    /**
+     * commit / release：<b>找不到那笔预留就是已经处理过了</b>。
+     *
+     * <p>重投的第二遍必然找不到（第一遍已经把它 commit 或 release 掉了），
+     * 把它当成错误抛出去的话，这条事件会永远重投、永远失败，
+     * 而队列里那条红会盖住真正需要人看的那些。
+     */
+    private void settled(String ref, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException e) {
+            log.debug("镜像 {} 找不到对应预留，按已处理跳过", ref, e);
+        }
+    }
+
+    private List<ReservationService.Line> lines(JsonNode p) {
+        JsonNode items = p.get("items");
+        if (items == null || !items.isArray() || items.isEmpty()) {
+            return List.of();
+        }
+        String owner = requireOwner(first(p));
+        List<ReservationService.Line> out = new ArrayList<>();
+        for (JsonNode it : items) {
+            String skuNo = text(it, "skuNo");
+            String storeNo = text(it, "storeNo");
+            int qty = it.get("qty") == null ? 0 : it.get("qty").asInt();
+            if (skuNo == null || qty <= 0) {
+                continue;
+            }
+            String locationId = locations.resolveStockLocation(
+                    owner, acl.locationOfStore(owner, storeNo));
+            out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty));
+        }
+        return out;
+    }
+
+    /**
+     * 按 SKU 反查业主，<b>查不到就抛</b> —— 别拿着 null 往下走。
+     *
+     * <p>查不到 = 这个 SKU 还没投影到进销存（{@link InventoryAclService#ownerOfSku} 的约定）。
+     * 此前这里不判：null 一路传到自动建库位，MyBatis-Plus 插入时把空值那一列整个略掉，
+     * 报出来的是「Field 'owner_id' doesn't have a default value」、指向 LocationMapper ——
+     * 看上去是库位代码漏了一列，查错方向整个是反的。
+     * 2026-09-14 那 20 条毒消息都是同一个商品：支付联调用的测试商品由种子数据直接写库，
+     * 没走「保存即投影」，进销存里从来没有它。
+     *
+     * <p>抛出去而不是丢掉：这是「做不了」不是「做过了」（见类注释）。
+     * 投递器会退避重投、到上限转 FAILED —— 期间商家保存一次商品就会投影，重投即可成功。
+     */
+    private String requireOwner(String skuNo) {
+        String owner = acl.ownerOfSku(skuNo);
+        if (owner == null) {
+            throw new IllegalStateException("商品还没投影到进销存，无法补记：skuNo=" + skuNo
+                    + "（商家保存一次商品即会投影，或跑存量搬运）");
+        }
+        return owner;
+    }
+
+    /** 第一行的 skuNo —— 一张单只属于一个商家，拿它反查业主就够 */
+    private String first(JsonNode p) {
+        JsonNode items = p.get("items");
+        return items != null && items.isArray() && !items.isEmpty()
+                ? text(items.get(0), "skuNo") : null;
+    }
+
+    private String text(JsonNode node, String field) {
+        JsonNode v = node == null ? null : node.get(field);
+        return v == null || v.isNull() ? null : v.asString();
+    }
+}

@@ -1,0 +1,389 @@
+#!/usr/bin/env bash
+#
+# 推之前从 HEAD 拉一份干净副本编一遍。
+#
+# 为什么是 pre-push 而不是 CI：后端的父 POM（ai.neargo:neargo-parent）和整套
+# neargo-common-* 只存在于开发机的 ~/.m2，公网仓库里没有 —— GitHub 托管的 runner
+# 拿不到，所以云端 CI 目前编不了后端（见 .github/workflows/backend.yml 顶部）。
+# 而这台机器上有 .m2，闸门就该立在这里。
+#
+# 跳过（仅限确知不涉及后端的推送）：SKIP_COMPILE_GATE=1 git push
+set -euo pipefail
+
+if [ "${SKIP_COMPILE_GATE:-}" = "1" ]; then
+  echo "⚠ 已跳过编译闸门（SKIP_COMPILE_GATE=1）"
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+# ── 下面两道闸都在 HEAD 的干净副本里跑 ──────────────────────────────────────
+#
+# ⚠️ **它们此前读的是工作区**，而这个目录常有多个会话同时在改。后果是：
+# 任何人手上有一个**未提交**的新页面，全员都推不动 —— 而被挡住的人看到的是
+# 「+ 新增 b-app/pages/schedule/index」，一个跟他毫不相干的页面名。
+# 他既不知道是谁的，也不该替对方跑生成器（跑了就等于把别人的半成品
+# 烘进一个已提交的产物）。2026-08-25 真的挡住了一个只改前端文案的会话。
+#
+# 与编译闸门是同一条教训：**闸门要判的是「推出去的那份对不对」，
+# 判据必须取自 HEAD，不是谁的工作区。** check-head-compiles.sh 一直是这么做的，
+# 这两道快闸漏了。
+#
+# 代价是一次 worktree（几百毫秒）。两道闸本身仍是纯读文件、几十毫秒，
+# 所以仍不做「没动过就跳过」的判断 —— 那种判断会漏掉「改了生成器本身」这一类。
+GATE_WT="$(mktemp -d)/head-gates"
+cleanup() { git worktree remove --force "$GATE_WT" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+git worktree add -q --detach "$GATE_WT" HEAD
+
+# 判据脚本一律经这个入口跑。
+#
+# **为什么需要它**：这个 hook 文件是从**工作区**读的（git 就是这么执行 hook 的），
+# 而它跑的判据在 `$GATE_WT`（HEAD 干净副本）里 —— 两边不同步的窗口真实存在。
+# 2026-08-29 撞过一次：有人改了 pre-push 指向一个新脚本、而那个脚本还没提交，
+# 于是 node 在副本里 MODULE_NOT_FOUND，**整条闸门是崩掉而不是变红** ——
+# 全员推不动，而报错里一个字都没提「你少提交了一个文件」。
+#
+# 缺脚本时跳过并说明，不静默放行（与 node_modules 那两处同一个处理）。
+gate_run() {
+  runner="$1"; script="$2"; shift 2
+  if [ ! -f "$GATE_WT/$script" ]; then
+    echo "⚠ 跳过 $script：HEAD 里没有这个脚本。"
+    echo "  多半是**改了 .githooks/pre-push、而脚本还没提交** —— hook 从工作区读、判据从 HEAD 跑。"
+    echo "  把那个脚本提交上就会自动启用。"
+    return 0
+  fi
+  "$runner" "$GATE_WT/$script" "$@"
+}
+
+# 界面清单闸门：清单是三端 UI 的唯一索引（docs/technical/design/ui-catalog.json），
+# 由 pages.json 与 nav.ts 生成。改了路由/标题/导航而没重跑生成器，这一条就红。
+# 纯 python、不需要依赖，所以在 worktree 里能直接跑（那里没有 node_modules）。
+if ! gate_run python3 scripts/gen-ui-catalog.py --check; then
+  echo "  ↑ 判据取自 HEAD。工作区里未提交的页面不会让你被挡住，也不会替别人放行。"
+  exit 1
+fi
+
+# 原型总览闸门：prototypes/registry.json 是三端界面原型的唯一登记表，
+# 总览页与 docs/technical/design/原型清单.md 由它生成；登记的锚点要在稿子里真有，
+# 页面稿不许带内联 <style>（样式只在 prototypes/proto.css）。纯 python。
+if ! gate_run python3 scripts/gen-proto-index.py --check; then
+  echo "    python3 scripts/gen-proto-index.py      # 重生成总览，或修登记表"
+  exit 1
+fi
+
+# 进销存界面清单闸门：上面那道看的是「有哪些页面」，这道看的是**那些页面上写了什么字**
+# （docs/technical/design/进销存-界面清单.md 的逐项表，从 .vue 与词条现抽）。
+#
+# 为什么单挂一道：那份清单自称「生成的，判据是跑一遍输出没变」，而**没有任何东西在跑它**。
+# 2026-08-28 → 09-02 之间它漏了整整一屏（供应商），外加十余处旧文案，
+# 期间上面那道 ui-catalog 闸门一直是绿的 —— 两把尺量的不是同一个东西。
+# 纯 python、几十毫秒，同样不需要 node_modules。
+if ! gate_run python3 scripts/gen-inv-ui-inventory.py --check; then
+  echo "  ↑ 判据取自 HEAD。本机重现：python3 scripts/gen-inv-ui-inventory.py --check"
+  exit 1
+fi
+
+# 运营端功能清单（主菜单 → 子菜单 → 角色）。它比上面两道多量一样东西：**谁看得见**。
+# 权限码改一处、角色加减一条、菜单挪一行，这份清单就该变 —— 而这三件事分别在
+# nav.ts、Perms.java、菜单树里，没有任何东西保证它们一起改。
+# 漏改的症状最温和：某个岗位登录后少一个菜单，而他不会知道自己少了什么。
+if ! gate_run python3 scripts/gen-ops-feature-list.py --check; then
+  echo "  ↑ 本机重现：python3 scripts/gen-ops-feature-list.py --check"
+  exit 1
+fi
+
+# V2 文档守卫：那套文档里同一事实被写了两遍的地方不少（术语层、能力码、状态、
+# 表名、自称数字）。一次人工 review 抓到过一处实质漂移 —— 可售时段的关系表
+# 在对齐清单里挂 goods、在规格书里挂 listing，**表名不同只是表面，粒度错了才是缺陷**。
+# 靠人比对四十份文档不可持续，所以查四类机器查得动的：断链 / 表名集合 /
+# 自称数字 / 能力码取值域。纯 node 内置模块，几十毫秒。
+# 查不动的（叙述矛盾、语义粒度）仍靠 review —— 它不假装能替代。
+if ! gate_run node scripts/check-v2-docs.mjs; then
+  echo "  ↑ 判据取自 HEAD。本机重现：node scripts/check-v2-docs.mjs"
+  exit 1
+fi
+
+# ops-web 契约闸门：运营端默认走 mock，所以「前端调了一个后端根本没有的接口」
+# 在界面上看不出来 —— 页面有数据、点得动、不报错，一直到真连后端那天才集体爆出来。
+# 锁的是差集：已知欠账放行（ops-web/known-mock-endpoints.txt），新写的空接口拦下。
+# 只用 node 内置模块，同样不需要 node_modules。
+if ! gate_run node scripts/check-ops-contract.mjs --check; then
+  exit 1
+fi
+
+# 同一件事的另外两端。c-app / b-app 此前没有任何东西做这件事，失败方式不同
+# 但一样安静：两端的 http.ts 统一 catch，页面拿到空数组，**屏是空的但不报错**；
+# b-app 的 mFulfillmentImpact 干脆写着 `.catch(() => [])`，于是「关掉这条履约渠道
+# 会影响多少单」在线上恒为空，店主看到「影响 0 单」然后放心关掉。
+# 基线：app-known-missing-endpoints.txt，与运营端那份同一个棘轮。纯 python。
+if ! gate_run python3 scripts/check-app-contract.py --check; then
+  exit 1
+fi
+
+# **b/c 端的反向那一侧**：后端做了、端上没有入口。
+# 上面那道盯「画了没后端」（切真后端时 404，看得见），这道盯「做了没入口」——
+# 它不报任何错，表现成「这个功能我们做过啊」，而人点不到。
+# 运营端两个方向早就都有闸了（check-ops-contract / check-ops-orphan），
+# **b/c 端此前只有一个方向**，缺的偏偏是更难发现的那个。
+# 立闸当天扫出 33 条，其中 b 端 5 条里两条是功能洞（报价不能改、结算单没详情）。
+# 基线：known-app-backend-orphan.txt，两向都有闸（新增会红，修好没删也会红）。
+if ! gate_run python3 scripts/check-app-backend-orphan.py --check; then
+  exit 1
+fi
+
+# **动态键那一片**：结算单页的状态标签写成 `$t(`settle.status${b.status}`)`，
+# 上面那几道 i18n 闸扫的是字面量键，这一整片它们一个字都看不见 ——
+# 缺词条不报错、不回退，直接把键名原样渲染给店主。
+# 2026-09-29 线上实测：虹选合并证照转自营后，结算单上明晃晃写着
+# `settle.statusPENDING_RECON`，而当时 14 道闸全绿。
+# 这道闸换个方向量：从 StlBill.STATUS_ALL 出发，要求每个状态三语都有文案。
+if ! gate_run python3 scripts/check-settle-status-i18n.py; then
+  exit 1
+fi
+
+# 反向那一侧：**后端做了、运营端没有入口**。两个方向都要盯 ——
+# 「画了没后端」在切真后端时会 404，看得见；「做了没入口」不报任何错，
+# 它表现为「这个功能我们做过啊」，而运营点不到。
+# 2026-08-26 首扫 18 条，其中 13 条是整条自营应付+发票链路，
+# 而那是当时唯一真能把钱付出去的路。
+# 同一条判据的 App 端：**页面注册了、app 里没有一处跳得过去**。
+# 2026-08-26 一天撞三次（my-specs 更早那次、income 已随包上了线、
+# sku-identity 装到真机才发现）。三次都不报错 —— 页面是好的、路由是对的、
+# 包也打进去了，只是点不到；而在 H5 上验页面时直接改 hash 进去，
+# 「有没有门」这件事从来不在验证路径上。
+if ! gate_run node scripts/check-app-orphan.mjs --check; then
+  exit 1
+fi
+
+if ! gate_run node scripts/check-ops-orphan.mjs --check; then
+  exit 1
+fi
+
+# 词条与代码的**双向**对账。已有的 i18n-keys-exist 只管「用了但没有」，
+# 而且只走 .vue；这条把「有了但没人用」也盯上，并且扫 .ts。
+# 2026-08-29 全站盘点时一次清出 70 条死词条（goods-edit 规格 UI 重写留下的）。
+# 死词条不报错，害处在改稿时：分不清哪条还在生效，
+# 于是「改了半天线上没变」或者「以为改全了其实漏了在用的那条」。
+if ! gate_run node scripts/check-i18n-orphan.mjs --check; then
+  exit 1
+fi
+
+# 写死左右的 CSS —— 阿语是 RTL，`direction: rtl` 管不到 padding-left /
+# border-left / text-align: right 这些物理方向属性，它们在阿语下原地不动。
+# 2026-08-29 一次清了 40 处（b-app 28 / packages/ui 3 / c-app 12）：
+# 数字列贴错边、强调竖杠留在错的一侧。**中英文下一切正常，闸门全绿** ——
+# 只有真把语言切成阿语逐屏看才发现，而没人会为了改一行样式去切阿语。
+if ! gate_run node scripts/check-rtl-physical.mjs --check; then
+  exit 1
+fi
+
+# Controller 粒度：一个类只装一个资源（阈值 3）。判据是**路径第一段的种数**，
+# 不是端点数 —— 按端点数定阈值会逼人把一个资源硬拆成两半来达标。
+# 由来：BizMerchantController 一个类 40 端点 / 1022 行 / 九个不相干的节，
+# 而每个往里加的人都有一个局部合理的理由。这道闸就是补那一眼。
+if ! gate_run node scripts/check-controller-cohesion.mjs --check; then
+  exit 1
+fi
+
+# SQL 方言：新写的 SQL 必须 MariaDB 与 MySQL 8 都能跑。
+# 由来：2026-08-28 拍板「将来一定切 MySQL」，当天一审计发现 **160 张表全部**是
+# utf8mb4_uca1400_ai_ci —— MariaDB 11.4+ 独有，MySQL 上一张表都建不起来。
+# 已应用的迁移改不得（Flyway checksum），所以这道闸不修历史，只止血：
+# 历史 50 条进基线，只准变短。两个方向都查（MySQL 独有的今天就炸）。
+if ! gate_run node scripts/check-sql-portability.mjs --check; then
+  exit 1
+fi
+
+# 生成物有没有跟着源码走。**在本条之前只有界面清单有闸门**，
+# 其余五个生成器谁都不盯，于是一直在漂：2026-08-26 重跑一次，
+# API 清单 +51/−16、B 端功能点矩阵 +192/−69。
+# 清单的价值全在「说的是真话」—— 漏了十几个接口的清单比没有清单更糟。
+#
+# ⚠️ 它会**真的写文件**，所以必须跑在 $GATE_WT（HEAD 干净副本）上，
+# 不碰任何人的工作区。与编译闸门同一条规矩：判的是「推出去的那份对不对」。
+#
+# ⚠️ 这一条与上面两道不同：**它需要 node_modules**（gen-api-detail 用了 yaml 包）。
+# worktree 里没有，所以软链主仓的过去。链而不是装：npm i 要几十秒，
+# 而这道闸本身只有几百毫秒 —— 为一道闸让每次推送多等半分钟不划算。
+# 主仓没装依赖时跳过并说明，**不静默放行**：说不清自己有没有跑，比没跑更糟。
+if [ -d "$ROOT/node_modules" ]; then
+  ln -sfn "$ROOT/node_modules" "$GATE_WT/node_modules"
+  if ! gate_run node scripts/check-generated-docs.mjs --check; then
+    exit 1
+  fi
+else
+  echo "⚠ 跳过生成物闸门：本机没有 node_modules（跑一次 npm i 就会启用）"
+fi
+
+# 设计守卫：字阶 / 圆角 / 皮肤变量 / 令牌对比度 / 字符当图标 / 三语词条一致 / 词条引用存在。
+#
+# **最后一条 2026-08-27 加**：`i18n-parity` 比的是「三种语言的 key 集合一致」，
+# 而 C 端社区页那十个 key **在三种语言里都缺**，缺得整整齐齐 —— 它一致、它绿，
+# 而用户那一屏直接显示 `community.noLocation` 这串字符。
+# 一致 ≠ 存在，这是两条不同的断言。
+#
+# **最后一条 2026-08-27 才挂上，而守卫本身早就写好了。** 它拦的是「中文加了词条、
+# 英/阿没跟上」—— 后果是那两种语言的用户直接看到裸 key（`picking.qtyTitle` 这种）。
+# 挂上去当天就发现 HEAD 上已经缺了 6 条。**工具是有的，只是没有人被它挡住过** ——
+# 与「仓库里一直有 type-check 脚本却没挂闸」是同一个形状。
+#
+# **为什么到现在才挂**：这三道 2026-08-26 之前一直是红的（7 条断言），
+# 而**恒红的闸门挂上去等于全员推不动** —— 结果只会是加一个 SKIP 开关，
+# 那就等于没有闸门。先修绿、再挂闸，顺序反了做不成。
+#
+# 它们拦的是「代码违不违反规范」，与上面那道生成物闸门（拦「清单说没说真话」）
+# 是两件事，别混。
+#
+# ⚠️ **2026-08-29：这里从「手工枚举 18 份」改成「两个工作区全部都跑」。**
+#
+# 现在覆盖 packages/shared（61 份）与 ops-web（50 份）。ops-web 那 50 份此前
+# **一份都不在闸门里** —— 与下面 packages/shared 那次是同一个形状。挂之前先跑了
+# 一遍确认全绿（664 条断言），所以它的基线是空的：一条都不欠，从此任何一条红都拦。
+#
+# 改之前这是一张白名单，而写守卫的人以为写完就生效了 —— 「写了守卫」与「有闸门」
+# 是两件事。当天把没列进来的 43 份跑了一遍：**16 份红、28 条断言失败**，
+# 其中至少四条是**已经被突破的棘轮**（记录值写在代码里，实测早就越过去了）：
+#   · data-scope-coverage  56 → 70  带归属列却没登记数据域的表 = 那张表永远不过滤
+#   · biz-contract-fields  15 → 24  后端在发、B 端契约没接的字段
+#   · doc-standard         27 → 42  没有状态行的文档
+#   · ops-endpoint-exists  反向：已经接通了却还留在 KNOWN_GAPS 里的陈行
+# 一份守卫红着没人知道，与没有这份守卫是同一件事 —— 而它还额外骗人。
+#
+# 直接要求全绿会让闸门恒红，所以冻结那 28 条为基线（packages/shared/
+# known-guard-failures.txt），机制与 backend/known-failures.txt 完全一致：
+# 基线之外的新失败挡住推送，基线里修好的只提示不拦（清单只准变短）。
+# 分诊与降账计划见 docs/technical/design/守卫与闸门-问题与优化方案.md。
+#
+# 判据取自 $GATE_WT（HEAD 干净副本），与其它几道一致：**闸门要判的是
+# 「推出去的那份对不对」，不是谁的工作区**。跑 vitest 需要 node_modules，
+# 上面那段已经把主仓的软链过去了；没有就跳过并说明，不静默放行。
+if [ -d "$ROOT/node_modules" ]; then
+  if ! gate_run node scripts/check-shared-guards.mjs --check; then
+    echo "  本机重现：cd packages/shared && npx vitest run"
+    echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
+    exit 1
+  fi
+else
+  echo "⚠ 跳过共享守卫：本机没有 node_modules（跑一次 npm i 就会启用）"
+fi
+
+# 自造件棘轮：**新页面不许自造库里已经有的件**。
+#
+# 为什么这一刻才立：2026-08-26 这一轮把缺件补齐（库 14 → 27 个组件，
+# 缺口 16 类 → 1 类）。闸门要立在刚清完的时候 —— 早了是恒红，晚了就又长回来。
+# `sh-tabs` 的方块 tab 收编过一次，没有闸门，后来新页面又各画各的。
+#
+# 判据不在这里，在 gen-ui-lib.py 的 ROLLED 表 —— 所以这里先重跑生成器再判，
+# 免得清单本身是陈的。纯 python，worktree 里不需要依赖。
+# 已知的 33 处欠账记在 known-handrolled-ui.txt，**只准变短**：
+# 修好了不删那一行，那个页面将来又自造起来也不会有人发现。
+if gate_run python3 scripts/gen-ui-lib.py >/dev/null 2>&1; then
+  # 逐页体检：页面有没有照三份规范写（字阶 / 圆角与间距 / 颜色）。
+  # 与上面那道「有件不用」是两件事：这道管的是「自己写了一行 font-size」。
+  if ! gate_run python3 scripts/check-page-spec.py --check >/dev/null 2>&1; then
+    echo "✗ 有页面没照规范写（字阶 / 圆角与间距 / 颜色）。看是哪一页："
+    echo "    python3 scripts/check-page-spec.py --check"
+    echo "  清单：known-page-spec-debt.txt（只准变短）"
+    exit 1
+  fi
+
+  if ! gate_run node scripts/check-handrolled-ui.mjs --check --root="$GATE_WT"; then
+    exit 1
+  fi
+else
+  echo "⚠ 跳过自造件棘轮：ui-lib 生成器在 HEAD 副本里跑不起来"
+fi
+
+# 类型检查（两端 uni-app：b-app / c-app；元器件小程序 2026-09-30 迁到 ai-hxkey，在它自己的 pre-push 里查）。**这一条是被一个真缺陷催出来的**：
+# 仓库里一直有 `npm run type-check` 脚本，却没挂在任何闸门上，于是
+# `stock-check` 与 `transfer` 把 showModal 换成 confirm() 时留下了 `content:` ——
+# ConfirmOptions 没这个字段，**说明文字被静默丢掉**：盘点看不到差异件数、
+# 收货看不到数量和去向。页面照样跑、H5 照样构建、没有任何报错。
+#
+# 两端加起来不到 5 秒，比下面的后端编译便宜得多，所以不做「没动过就跳过」。
+# worktree 里要把两端各自的 node_modules 也软链过去（npm workspaces 没把
+# uni-app 那套类型全提到根上）。
+if [ -d "$ROOT/node_modules" ]; then
+  ln -sfn "$ROOT/b-app/node_modules" "$GATE_WT/b-app/node_modules" 2>/dev/null
+  ln -sfn "$ROOT/c-app/node_modules" "$GATE_WT/c-app/node_modules" 2>/dev/null
+  for app in b-app c-app; do
+    if ! (cd "$GATE_WT/$app" && npx vue-tsc --noEmit 2>&1); then
+      echo "✗ $app 类型检查没过（上面是原始输出）。本机重现："
+      echo "    cd $app && npx vue-tsc --noEmit"
+      echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
+      exit 1
+    fi
+  done
+
+  # c-app 的 vitest。**此前一道都没跑**：check-shared-guards 只覆盖 packages/shared
+  # 与 ops-web，两端 uni-app 只做类型检查。于是 145 条用例里有 3 条红了不知道多久 ——
+  # 根因是两次 markup 改动（`show` → `visible`、提交按钮从原生 <button> 换成 .sh-btn），
+  # 而类型检查看不见「测试按标签选元素」这种事。
+  #
+  # 挂之前先修绿：145 条全过，所以这里**不设基线**，红就是红。
+  #
+  # ⚠️ **2026-09-06 当天它就红了一次，16 条**，而挂上去时是绿的 —— 中间两个提交把
+  # 提示条/密排清单/搜索框/步进器收进了 packages/ui。真因不是那两个提交改错了，是
+  # **c-app 的测试里 `<sh-*>` 从来就没渲染过**：它们靠 uni 的 easycom 解析，
+  # 而 vitest 不走那套、也没有 @ai-shop/ui 别名，于是被当成未知自定义元素 ——
+  # 标签在、内容不在。以前断言的都是页面自己那部分 DOM，所以看不出来；
+  # 内容一搬进库件，断言就落在空字符串上。
+  # 修法是让测试按应用的真实方式解析库件（vitest.config.mts 的别名 + tests/setup.ts
+  # 里按 easycom 规则全局注册），**不是**把断言改去迁就一个没渲染的组件树。
+  # 代价要说清楚：库件改了会让 c-app 变红 —— 那正是它该做的事，
+  # 这 16 条本该在收件的那两个提交上就被拦住。
+  #
+  # ⚠️ **b-app 2026-09-06 起也在这里**（此前是「一个测试文件都没有，不是跳过是没有
+  # 可跑的」）。第一批只有纯函数（`src/utils` / `src/shared`）：那些是一个值进、
+  # 一个值出的业务规则，出错的后果具体（提交载荷少一半、覆盖被后端清掉），
+  # 而且不会跟正在进行的 UI 重构撞车 —— c-app 那边正是撞在这上面。
+  for app in c-app b-app; do
+    if ! (cd "$GATE_WT/$app" && npm test --silent 2>&1); then
+      echo "✗ $app 单元测试没过（上面是原始输出）。本机重现："
+      echo "    cd $app && npm test"
+      echo "  判据取自 HEAD —— 工作区里没提交的改动不会让你被挡住。"
+      exit 1
+    fi
+  done
+
+  # ops-web 的 Hook 规则（ESLint react-hooks/rules-of-hooks，只开这一条）。
+  #
+  # 2026-09-24 线上白屏：侧栏的两个 Hook 写在 `return null` 之后，从看板点进商户页
+  # 才崩（React #310），直接刷新不崩 —— tsc、vitest、构建全绿。挂之前全量扫过：
+  # 存量 0 条，所以不设基线；拿修复前的那份文件回放，报 2 条，正是那两个 Hook。
+  # --quiet 只报错误：代码里给别的插件写的 eslint-disable 注释会出「无效」警告，与此无关。
+  # 两秒左右。
+  if [ -f "$GATE_WT/ops-web/eslint.config.mjs" ] && [ -x "$ROOT/ops-web/node_modules/.bin/eslint" ]; then
+    # 先删再链：上面的共享守卫跑 vitest 时已在副本里建了 ops-web/node_modules/.vite（真目录），
+    # ln -sfn 遇到目录会把链接建进它里面，eslint 就找不到。副本是一次性的，删它不伤人。
+    rm -rf "$GATE_WT/ops-web/node_modules"
+    ln -s "$ROOT/ops-web/node_modules" "$GATE_WT/ops-web/node_modules"
+    (cd "$GATE_WT/ops-web" && node_modules/.bin/eslint --quiet . 2>&1); rc=$?
+    # eslint 退出码：1 = 有违规，2 = 自己崩了（配置 / 依赖）。两件事要说成两句话 ——
+    # 第一次挂上去时崩了却报「Hook 写错了」，读的人会去翻一段根本没问题的代码。
+    if [ "$rc" -ge 2 ]; then
+      echo "✗ ops-web 的 ESLint 没跑起来（退出码 $rc，上面是原始输出）—— 不是代码的问题，是闸门本身。"
+      echo "  本机试：cd ops-web && npm run lint；没装就 npm i"
+      exit 1
+    elif [ "$rc" -ne 0 ]; then
+      echo "✗ ops-web 有 Hook 写在了条件 / 提前 return 之后（上面是原始输出）。本机重现："
+      echo "    cd ops-web && npm run lint"
+      echo "  修法见 components/layout/secondary-nav.tsx：把 return 之后的部分拆成子组件，"
+      echo "  别把 Hook 挪到 return 前面 —— 挂载时量一次的 effect 会量到 null 且不报错。"
+      exit 1
+    fi
+  else
+    echo "⚠ 跳过 ops-web Hook 规则：HEAD 里没有 ops-web/eslint.config.mjs，或本机 ops-web 没装 eslint（npm i）"
+  fi
+else
+  echo "⚠ 跳过类型检查与两端单测：本机没有 node_modules（跑一次 npm i 就会启用）"
+fi
+
+# 后端没动过就不必编 —— 别为改一行文案等两分钟
+if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
+  echo "→ 本次推送未触及 backend/，跳过编译闸门"
+  exit 0
+fi
+
+exec "$ROOT/scripts/check-head-compiles.sh"

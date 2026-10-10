@@ -1,0 +1,470 @@
+package ai.neargo.shop.product.dto;
+
+import java.util.List;
+
+/**
+ * 商品（对齐 c-app {@code Goods}）。字段名与顺序都按端上契约来。
+ *
+ * <p>{@code merchant} 内嵌而不是只给 {@code merchantNo}：商品卡上要显示商家名与认证标，
+ * 端上再去批量查商家会让首页多一次串行请求。
+ *
+ * @param price 展示价 = 最低 SKU 价（端上「¥x 起」）
+ */
+public record GoodsVO(String goodsNo,
+                      String title,
+                      String subtitle,
+                      String cover,
+                      List<String> images,
+                      /**
+                       * 图文详情正文（纯文本）。空 = 商家没写 —— 端上整段不渲染，
+                       * 别拿一个空白区块占着详情页。
+                       */
+                      String detail,
+                      /**
+                       * 图文详情区的长图，按顺序全宽竖排（与 {@link #images} 的顶部轮播分开）。
+                       * 空数组 = 没传过，端上不渲染这一段。
+                       */
+                      List<String> detailImages,
+                      String type,
+                      String categoryNo,
+                      MerchantBriefVO merchant,
+                      double rating,
+                      int ratingCount,
+                      long price,
+                      Long originPrice,
+                      List<String> fulfillments,
+                      List<SpecGroupVO> specGroups,
+                      List<SkuVO> skus,
+                      int sales,
+                      Long cutoffAt,
+                      String arrivalDesc,
+                      Boolean weighed,
+                      String origin,
+                      Integer durationMin,
+                      String storeName,
+                      int limitPerUser,
+                      boolean onSale,
+                      /**
+                       * 商家侧状态：ON_SALE / OFF_SALE / AUDITING / REJECTED。
+                       *
+                       * <p><b>只在 B 端下发，C 端恒为 null</b> —— 买家不需要知道
+                       * 某件商品是"审核中"还是"被驳回"，那是店主和平台之间的事。
+                       *
+                       * <p>它不能由 {@code onSale} 推出来：下架的商品与审核中的商品
+                       * {@code onSale} 都是 false，而店主对这两者要做的动作完全不同
+                       * （一个是点上架，一个是等/改）。
+                       */
+                      String status,
+                      /**
+                       * 三语标题原文（{@code prd_goods.title_i18n}）。
+                       *
+                       * <p><b>只在 B 端下发</b>：C 端拿到的 {@code title} 已经按当前语言拍平，
+                       * 给它整份译文没有用处。
+                       *
+                       * <p>为什么必须下发：编辑页按语言一格一格填，它拿不到原文就只能
+                       * 回填当前那一格 —— 而保存是**整份覆盖**。于是
+                       * <b>用中文编辑一次，英文和阿语的标题就没了</b>，
+                       * 且没有任何报错：C 端回落中文，看起来一切正常。
+                       */
+                      java.util.Map<String, String> titleI18n,
+                      /** 三语副标题原文，同 {@link #titleI18n} */
+                      java.util.Map<String, String> subtitleI18n,
+                      /**
+                       * 引用的平台标准品；空 = 自建品。<b>只在商家侧与 ops 下发，C 端恒空。</b>
+                       *
+                       * <p>必须下发：编辑页保存是整份覆盖，拿不到它就等于
+                       * <b>打开编辑页再保存一次就自动脱离了标准品</b> ——
+                       * 商品从此不再被收敛，而界面上没有任何变化。
+                       * 与 titleI18n / priceByMarket 是同一个形状的故障。
+                       */
+                      String stdNo,
+                      /**
+                       * 最近一次驳回/强制下架的原因（V96）。
+                       *
+                       * <p><b>只在 B 端与运营端下发，C 端恒为 null</b>。它是审核结论里
+                       * 商家能看到的那半边：审计日志只有运营看得到，没有它商家面对
+                       * REJECTED 只能猜要改什么。过审时清空。
+                       */
+                      String auditReason,
+                      /**
+                       * 已配好的拼团设置：{@code {minCount, price}}。没配过为 null。
+                       *
+                       * <p><b>B 端「可开团的商品」整个列表靠它</b>：页面按
+                       * `g.groupBuy && g.onSale` 筛。此前后端一直不下发，
+                       * 于是那一栏永远是「还没有配过团购价的商品」——
+                       * 商家在商品里配好了团价，<b>开团入口从来没有出现过</b>，
+                       * 而两处都不报错。
+                       */
+                      GroupBuyConfVO groupBuy,
+                      /**
+                       * 商品参数（V250）：产地 / 保质期 / 材质这一类，<b>不分 SKU</b>。
+                       * 买家侧原样展示；商家侧编辑页靠它回显 ——
+                       * 不回显的话，「打开编辑页再保存一次就把参数清空了」。
+                       */
+                      List<GoodsParamVO> params,
+                      /**
+                       * 有未发布的草稿修改（双版本）。**只在 B 端商家视角下发，其余为 null** ——
+                       * 买家不需要知道商家改没改到一半，与 {@code status} 同一条规矩。
+                       */
+                      Boolean hasDraft,
+                      /**
+                       * <b>本店</b>上不上架（多门店，B 端列表用）。
+                       *
+                       * <p>{@code null} = 未按店管理（跟随主体级 {@link #onSale}），
+                       * <b>不是「未上架」</b>。语义与 {@code prd_store_goods} 一致：
+                       * 有任意店级行即按店管理，没有行的店视为未上架。
+                       *
+                       * <p>为什么必须下发：上下架**早就按门店落行了**
+                       * （{@code MerchantGoodsServiceImpl#toggle}），而列表一直回显主体级的
+                       * {@code onSale} —— A 店店长点「下架」，B 店还在卖、主体 on_sale 仍是 true，
+                       * <b>刷新后这件货还写着「在售」</b>，他会以为没点上然后再点一次。
+                       */
+                      Boolean storeOnSale,
+                      /**
+                       * 这件货卖到哪儿，一行话。<b>只有 {@code /mp/goods/\{no\}} 详情下发，
+                       * 列表恒 null</b> —— 列表一屏几十行，每行再去查一次范围就是 N+1，
+                       * 而买家是点进详情才问「送到我这儿吗」。
+                       *
+                       * <p>null 或 {@code isEmpty()} → 端上<b>整行不渲染</b>。
+                       * 注意「不渲染」与「不限」是两件事，别在端上把空当成不限：
+                       * 那个判断已经在 {@code MerchantQueryPort#saleScope} 里做完了。
+                       */
+                      SaleScopeVO saleScope,
+                      /**
+                       * 销售方式（V340）：NORMAL 正常售卖 / ACTIVITY_ONLY 仅活动。两端都下发。
+                       * <p>B 端编辑页靠它回显 —— 不回显的话，打开编辑页再保存一次就把「仅活动」冲回了正常售卖。
+                       */
+                      String saleMode,
+                      /**
+                       * <b>只在 C 端详情下发</b>：此刻能不能走普通下单（加购 / 立即购买 / 单买）。
+                       * = 正常售卖，或仅活动且此刻有集单 / 特价 / 买赠开着。
+                       * <p>由后端算、前端不推：特价、买赠、平台活动前端并不知道，
+                       * 让它自己拼就是第二个判定入口，迟早与下单那道闸不一致。列表里恒为 null。
+                       */
+                      Boolean directBuyable,
+                      /**
+                       * <b>只在 B 端列表下发</b>：仅活动的货此刻有没有点名它的活动在跑（含拼团）。
+                       * 为 false 时列表写「未在活动中」—— 「在售」却没人买得到，不写出来商家会以为出了故障。
+                       * 正常售卖的货恒为 null。
+                       */
+                      Boolean activityLive,
+                      /* 当前买家收藏了没有（TDD-C端商品收藏与送达判断）。只有买家详情页与「我的收藏」填；
+                         其余出口一律 null。未登录 = false */
+                      Boolean favorited,
+                      /* 这件商品卖不卖到端上传来的那个社区（收货地址推出来的）。
+                         判据与首页商品池同一份；没传社区号 = null（不判 —— 模糊定位只准到区，拿它判会误拦） */
+                      Boolean deliverable,
+                      /**
+                       * 促销（契约 {@code Goods.promotions}，一期只有买 N 送 M）。<b>只在 C 端详情下发</b>。
+                       * 此前后端从不下发，商品页的「买 2 送 1」标签只在 mock 下出现过。
+                       */
+                      List<PromotionVO> promotions,
+                      /**
+                       * 这家店此刻的减钱活动（优惠券全链路梳理 批 3）。<b>只在 C 端详情下发</b>。
+                       * 结构化给，端上自己拼「满 ¥50 减 ¥8」—— 不让后端拼中文，三种语言都要用
+                       */
+                      List<ActivityTagVO> activityTags,
+                      /**
+                       * 服务承诺（§3.4）：详情页上那一条**可核验的短语**，如极速退款、门店自提免运。
+                       *
+                       * <p>下发的是**码**不是文案：这是三语 App，下发中文等于把翻译从端上剥夺掉
+                       * （与 {@code ord_after_sale.reason} 同一条口径）。
+                       *
+                       * <p><b>由后端判定</b>：「极速退款」成不成立取决于售后规则里的金额上限与
+                       * 总开关（运营可调）。端上拿常量比金额，就是那份 ¥50 常量的翻版 ——
+                       * 页面写着承诺、后端按另一个数执行。只在买家详情填。
+                       */
+                      List<String> services,
+                      /**
+                       * 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。
+                       *
+                       * <p><b>随详情一起下发</b>，不另起一条端点 —— 详情页为了一行「4.6 分」
+                       * 多打一次请求不值当，而这一行恰恰在首屏。只在买家详情填。
+                       */
+                      ai.neargo.shop.product.review.ReviewService.ReviewSummaryVO reviewSummary,
+                      /**
+                       * 这件货**由哪家门店提供**（TDD-C端商品归属门店与库存校验 AC1/AC2）。
+                       *
+                       * <p><b>跨店目录里也要有它</b>：一个主体名下可以有好几家店，而 C 端展示的单位是门店 ——
+                       * 落款印主体名的话，线上那家四店主体在商品流里全都显示「虹选科技有限公司」。
+                       *
+                       * <p>取的是**会履约的那家**：与下单落店同序（默认店优先，否则按门店号定序），
+                       * 所以显示与履约不会各说各话。
+                       *
+                       * <p>空 = 没有门店上下文（按主体号查目录、或池行没有门店号）。
+                       * 与 {@link #storeName} 不是一回事 —— 那个是 SERVICE 商品由商家手填的「可核销门店」。
+                       */
+                      StoreBriefVO store,
+                      /**
+                       * 限购地区（#3）：这件货<b>不卖到</b>的省级 regionCode 列表（如 {@code ["65","54"]}）。
+                       * 两端都下发——B 端编辑页据此回显反选器勾选态；C 端详情据省级码解析出省名、
+                       * 显示「不发货地区」。空 = 全国可售。排除语义，下单按收货地址省级码拦截。
+                       */
+                      List<String> restrictedRegions,
+                      /**
+                       * 商品指定的运费模板号（V385，ADR-031）：B 端编辑页回显「运费模板」。
+                       * 空 = 跟随门店。只在 B 端详情填。
+                       */
+                      String freightTemplateNo) {
+
+    /** 不带运费模板的签名：存量构造处不必跟着改 */
+    public GoodsVO(String goodsNo,
+                   String title,
+                   String subtitle,
+                   String cover,
+                   List<String> images,
+                   String detail,
+                   List<String> detailImages,
+                   String type,
+                   String categoryNo,
+                   MerchantBriefVO merchant,
+                   double rating,
+                   int ratingCount,
+                   long price,
+                   Long originPrice,
+                   List<String> fulfillments,
+                   List<SpecGroupVO> specGroups,
+                   List<SkuVO> skus,
+                   int sales,
+                   Long cutoffAt,
+                   String arrivalDesc,
+                   Boolean weighed,
+                   String origin,
+                   Integer durationMin,
+                   String storeName,
+                   int limitPerUser,
+                   boolean onSale,
+                   String status,
+                   java.util.Map<String, String> titleI18n,
+                   java.util.Map<String, String> subtitleI18n,
+                   String stdNo,
+                   String auditReason,
+                   GroupBuyConfVO groupBuy,
+                   List<GoodsParamVO> params,
+                   Boolean hasDraft,
+                   Boolean storeOnSale,
+                   SaleScopeVO saleScope,
+                   String saleMode,
+                   Boolean directBuyable,
+                   Boolean activityLive,
+                   Boolean favorited,
+                   Boolean deliverable,
+                   List<PromotionVO> promotions,
+                   List<ActivityTagVO> activityTags,
+                   List<String> services,
+                   ai.neargo.shop.product.review.ReviewService.ReviewSummaryVO reviewSummary,
+                   StoreBriefVO store,
+                   List<String> restrictedRegions) {
+        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, null);
+    }
+
+    public GoodsVO withFreightTemplateNo(String no) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, no);
+    }
+
+    /** 买 N 送 M。与契约 {@code Promotion} 同形 */
+    public record PromotionVO(String type, int buyN, int giftM) {
+        public static final String BUY_N_GET_M = "BUY_N_GET_M";
+    }
+
+    /** 一条活动标签。见 {@code CampaignPort.ActivityTag} */
+    public record ActivityTagVO(String activityNo, String name, long amountMinor, long thresholdMinor,
+                                int thresholdQty, boolean newCustomerOnly) {
+    }
+
+    /** 不带促销与活动标签的签名：存量构造处不必跟着改（这两项只有买家详情填） */
+    public GoodsVO(String goodsNo,
+                   String title,
+                   String subtitle,
+                   String cover,
+                   List<String> images,
+                   String detail,
+                   List<String> detailImages,
+                   String type,
+                   String categoryNo,
+                   MerchantBriefVO merchant,
+                   double rating,
+                   int ratingCount,
+                   long price,
+                   Long originPrice,
+                   List<String> fulfillments,
+                   List<SpecGroupVO> specGroups,
+                   List<SkuVO> skus,
+                   int sales,
+                   Long cutoffAt,
+                   String arrivalDesc,
+                   Boolean weighed,
+                   String origin,
+                   Integer durationMin,
+                   String storeName,
+                   int limitPerUser,
+                   boolean onSale,
+                   String status,
+                   java.util.Map<String, String> titleI18n,
+                   java.util.Map<String, String> subtitleI18n,
+                   String stdNo,
+                   String auditReason,
+                   GroupBuyConfVO groupBuy,
+                   List<GoodsParamVO> params,
+                   Boolean hasDraft,
+                   Boolean storeOnSale,
+                   SaleScopeVO saleScope,
+                   String saleMode,
+                   Boolean directBuyable,
+                   Boolean activityLive,
+                   Boolean favorited,
+                   Boolean deliverable,
+                   List<String> restrictedRegions) {
+        this(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope, saleMode, directBuyable, activityLive, favorited, deliverable, null, null, null, null, null, restrictedRegions);
+    }
+
+    /** 极速退款 —— 受售后规则的金额上限与总开关约束，逐件判 */
+    public static final String SERVICE_INSTANT_REFUND = "INSTANT_REFUND";
+    /** 门店自提免运 —— 支持到店自提时才给 */
+    public static final String SERVICE_PICKUP_FREE = "PICKUP_FREE";
+
+    /** 挂上服务承诺（只在买家详情）。空列表与 null 同义：整条不显示 */
+    public GoodsVO withServices(List<String> services) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags,
+                services == null || services.isEmpty() ? null : services, reviewSummary, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /** 挂上评分概览（只在买家详情）。没有评价时给 null，端上据此显示空态 */
+    public GoodsVO withReviewSummary(ai.neargo.shop.product.review.ReviewService.ReviewSummaryVO s) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags,
+                services, s, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /** 挂上促销与活动标签（只在买家详情） */
+    public GoodsVO withPromotions(List<PromotionVO> promotions, List<ActivityTagVO> activityTags) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /** 只换 {@link #directBuyable} 与 {@link #activityLive}：详情与 B 端列表各自补上，其余逐字不变 */
+    public GoodsVO withSaleGate(Boolean directBuyable, Boolean activityLive) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /**
+     * 换成**这家店**的库存（TDD-C端商品归属门店与库存校验 AC7）。
+     *
+     * <p>不带门店时不调用它 —— 那一支给的是主体总量，与单店时代逐字相同。
+     */
+    public GoodsVO withStoreSkus(List<SkuVO> storeSkus) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, storeSkus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /** 买家视角的两项：收藏了没有、卖不卖到他那儿。只在买家出口上填 */
+    public GoodsVO withViewer(Boolean favorited, Boolean deliverable) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, store, restrictedRegions, freightTemplateNo);
+    }
+
+    /** 挂上提供这件货的门店（只在买家出口填） */
+    public GoodsVO withStore(StoreBriefVO s) {
+        return new GoodsVO(goodsNo, title, subtitle, cover, images, detail, detailImages, type, categoryNo, merchant, rating, ratingCount, price, originPrice, fulfillments, specGroups, skus, sales, cutoffAt, arrivalDesc, weighed, origin, durationMin, storeName, limitPerUser, onSale, status, titleI18n, subtitleI18n, stdNo, auditReason, groupBuy, params, hasDraft, storeOnSale, saleScope,
+                saleMode, directBuyable, activityLive, favorited, deliverable, promotions, activityTags, services, reviewSummary, s, restrictedRegions, freightTemplateNo);
+    }
+
+    /**
+     * 提供这件货的门店。只给端上要显示的两项 —— 名字与门店号（点进门户要用）。
+     *
+     * @param storeName 门店名，如「虹选粮油·深圳测试店」。<b>不是主体名</b>
+     */
+    public record StoreBriefVO(String storeNo, String storeName) {
+    }
+
+    /** 一条商品参数。量纲型（功率、净重）平台不枚举值，那时只有 label */
+    /**
+     * @param name 维度名（「产地」「保质期」）。**买家页要显示它** ——
+     *             只有 dimNo 的话详情页上是一行 {@code SD_ORIGIN: 本地}。
+     *             它是下单那一刻的快照，商家事后改本店叫法不影响已卖出的商品。
+     */
+    public record GoodsParamVO(String dimNo, String name, String valueNo, String code, String label) {
+    }
+
+    /**
+     * 销售范围（买家侧展示用），形状对齐 {@code MerchantQueryPort.SaleScope}。
+     *
+     * @param unlimited 端上显示「不限地区」
+     * @param areaNames 最多几个地名；区划是叶子名不是整条路径
+     * @param areaCount 总数 —— 只给截断后的列表会让「6 个」和「60 个」长得一样
+     * @param excludedNames 不限时被排除的地区名：「不限地区（新疆、西藏除外）」（TDD-经营范围排除地区）
+     */
+    public record SaleScopeVO(boolean unlimited, List<String> areaNames, int areaCount,
+                              List<String> excludedNames) {
+    }
+
+    /** 商品上配好的拼团设置。开团那一步不能临时定价，价与人数都取自这里 */
+    public record GroupBuyConfVO(int minCount, long price) {
+    }
+
+    /** @param ratingCount 0 条 = 还没人评过，端上据此显示「暂无评价」而不是 0 颗星 */
+    /** @param selfOperated 平台自营 —— 端上据此在店名前显示「自营」（电商法 §37） */
+    public record MerchantBriefVO(String merchantNo, String name, String logo,
+                                  double rating, int ratingCount,
+                                  boolean verified, int breachCount, boolean selfOperated) {
+    }
+
+    /**
+     * @param optionCodes 与 {@link #options} 一一对应的规格编码（B-4.5）。
+     *                    <b>来自平台模板的才有</b>，手输的没有 —— 有 code 的才聚合得起来
+     *                    （三家店的「500g」「五百克」「0.5kg」是同一件事）。
+     *                    此前它在写库那一步就被丢掉了，从接口到页面全程看不出来。
+     * @param templateNo  这组规格取自哪个平台模板。历史商品靠它解释自己的 code 是什么意思
+     */
+    public record SpecGroupVO(String name, List<String> options,
+                              List<String> optionCodes, String templateNo) {
+    }
+
+    /**
+     * @param priceByMarket 各市场价（市场码 → 最小货币单位）。
+     *
+     *                      <p><b>只在商家侧 {@code /biz/goods/{no}} 下发，C 端恒空</b> ——
+     *                      买家只看自己那个市场的价，给他整张表没有用处。
+     *
+     *                      <p>为什么必须下发：编辑页按市场逐格填，而<b>保存是整份覆盖</b>。
+     *                      拿不到整张表它就只能回填当前市场那一格，于是
+     *                      <b>商家改一次标题，其余市场的价格行就被删了</b>，且不报错。
+     *                      与 {@code titleI18n} 是逐字同款的形状 —— 那个当年补了下发，这个没补。
+     */
+    /**
+     * @param barcode         商品条码。**只在商家侧下发** —— 买家不需要它，
+     *                        而它是商家与供应商/ERP 之间的键
+     * @param merchantSkuCode 商家自有货号，同上
+     * @param saleUnit        计量单位（件/斤/kg/份）。**买家侧也要** ——
+     *                        「5」到底是 5 件还是 5 斤，买家同样需要知道
+     */
+    public record SkuVO(String skuNo,
+                        List<String> optionValues,
+                        String spec,
+                        long price,
+                        Long originPrice,
+                        int stock,
+                        Integer nominalGram,
+                        java.util.Map<String, Long> priceByMarket,
+                        /**
+                         * 本店单独定的价（批 C）。<b>只在 B 端下发</b>，且**空 = 同主体价**，
+                         * 不是 0 —— 端上据此显示「同总部」还是一个具体数字。
+                         *
+                         * <p>与门店库存回退方向相反：没设过价的店按主体价卖，
+                         * 没设过库存的店按 0 卖。
+                         */
+                        Long storePrice,
+                        /**
+                         * 成本价（最小货币单位）。<b>只在商家侧下发，买家端与运营端恒空</b> ——
+                         * 进货价是商家的经营秘密，平台没有理由转发给别人。
+                         *
+                         * <p>空 = 没填过。端上据此决定要不要显示毛利那一行。
+                         */
+                        Long costPrice,
+                        String barcode,
+                        String merchantSkuCode,
+                        String saleUnit) {
+    }
+}

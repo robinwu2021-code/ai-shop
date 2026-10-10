@@ -25,6 +25,7 @@ import { BusinessSections } from "./business";
 import { PreviewVersionCtx } from "./probe";
 import { audit, groupFindings, type AuditResult } from "./audit";
 import { runContrastSweep, groupFails, type SweepResult } from "./sweep";
+import { fmtRatio } from "./color";
 import { Button } from "@/components/ui/button";
 import { THEMES } from "@/lib/stores/theme";
 import { cn } from "@/lib/utils";
@@ -175,7 +176,7 @@ export default function DevUiPage() {
                     <span className="font-bold">{g.comp}</span>
                     <span className="mx-1.5 text-muted-foreground">·</span>
                     <span className="rounded-chip bg-destructive-tint px-1.5 py-0.5 tabular-nums text-destructive-ink">
-                      最差 {g.worst.toFixed(2)}:1（需 {g.need}）
+                      最差 {fmtRatio(g.worst)}:1（需 {g.need}）
                     </span>
                     <div className="mt-1 text-muted-foreground">{g.sample}</div>
                     <div className="mt-0.5 text-muted-foreground">命中：{g.combos.join("、")}</div>

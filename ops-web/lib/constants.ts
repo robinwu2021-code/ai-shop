@@ -30,9 +30,6 @@ export const MIN_OVERDUE_GRACE_HOURS = 1;
 /** 评分三维权重之和（P-13.1.4）。和不为它就是配置错误，两侧都校验。 */
 export const SCORE_WEIGHT_TOTAL = 100;
 
-/** 售后赔付三方比例之和（P-6.1.4）。 */
-export const LIABILITY_SHARE_TOTAL = 100;
-
 /** 极速退的最小时限（小时）。0 小时等于关掉，但开关看起来还是"已启用"。 */
 export const MIN_FAST_REFUND_HOURS = 1;
 
@@ -70,13 +67,20 @@ export const MAX_UNPAID_CLOSE_MINUTES = 1440;
  * 终态（COMPLETED / CANCELLED）不设时限。
  */
 export const STUCK_MINUTES: Record<string, number> = {
-  PENDING_PAY: 15,
-  PAID: 30,
-  PREPARING: 120,
-  DELIVERING: 240,
-  ARRIVED: 1440,
-  AFTER_SALE: 2880,
+  WAIT_PAY: 15,
+  // 已付款待发货：备货本身要时间，30 分钟一刀切会把正常单刷进异常队列
+  PAID: 120,
+  /*
+   * 履约中。**自提与配送的合理时长不同**（等人来取 vs 在途），
+   * 而它们是同一个状态 —— 差别落在履约方式上，由调用方按 fulfillment 取值。
+   * 这里给的是配送档；自提档见 FULFILLING_PICKUP。
+   */
+  FULFILLING: 240,
+  REFUNDED: 2880,
 };
+
+/** 履约中·自提类的时限：等买家来取，放一天很正常 */
+export const FULFILLING_PICKUP_MINUTES = 1440;
 
 /** 运费模板首重下限（克）。首重 0 克意味着"拿起来就收首重费"，是配置错误而不是策略。 */
 export const MIN_FIRST_WEIGHT_GRAM = 100;

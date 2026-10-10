@@ -1,7 +1,8 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.user.entity.UsrMerchant;
-import ai.neargo.shop.user.mapper.UserMappers.MerchantMapper;
+import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,16 +38,43 @@ class M6aStoreAttributionFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
-    private MerchantMapper merchantMapper;
+    private MchEntityMapper merchantMapper;
+
+    @Autowired
+    private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
+
+    /**
+     * 把本类要买的 SKU 库存补满。
+     *
+     * <p><b>不是为了「多买几件」，是为了不依赖别人剩下多少。</b> 种子给 SK0003 的库存是 80，
+     * 全套测试跑下来，前面的交易用例会把它买到见底 —— 于是本类在**单跑时全绿、
+     * 全量时报 20001（库存不足）**，而失败信息指向归因逻辑，与真正的原因毫无关系。
+     *
+     * <p>这类假红比真 bug 更贵：它让人怀疑一个其实没坏的模块，
+     * 而下一次真的坏了，也会被当成"又是那个老毛病"。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void refillStock() {
+        for (String skuNo : java.util.List.of("SK0001", "SK0003", "SK0004", "SK0005")) {
+            var sku = skuMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                    .<ai.neargo.shop.product.entity.PrdSku>lambdaQuery()
+                    .eq(ai.neargo.shop.product.entity.PrdSku::getSkuNo, skuNo).last("limit 1"));
+            if (sku != null && sku.getStock() < 50) {
+                sku.setStock(500);
+                skuMapper.updateById(sku);
+            }
+        }
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -64,8 +92,17 @@ class M6aStoreAttributionFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.merchant.merchantNo").value("M0001"))
                 .andExpect(jsonPath("$.data.merchant.name").value("老张粮油店"))
-                .andExpect(jsonPath("$.data.hotGoods").isArray())
-                .andExpect(jsonPath("$.data.fulfillmentDesc").isNotEmpty());
+                // 字段名按契约：端上读的是 goods 与 store，不是 hotGoods / fulfillmentDesc
+                .andExpect(jsonPath("$.data.goods").isArray())
+                /*
+                 * **门面文案要是店主填的那份**。此前公告写死成空串、履约文案写死成
+                 * 一句「每晚 7 点前到货」—— 店主在 B 端认真填的公告与营业时间
+                 * 一个字都到不了 C 端；而契约要的字段叫 `store`，页面读
+                 * `store.announcement` 直接抛错，门店主页整页空白。
+                 */
+                .andExpect(jsonPath("$.data.store.announcement").exists())
+                .andExpect(jsonPath("$.data.store.openHours").exists())
+                .andExpect(jsonPath("$.data.store.address").exists());
     }
 
     @Test
@@ -151,8 +188,10 @@ class M6aStoreAttributionFlowTest {
 
         mvc().perform(get("/mp/store/mine").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                // 最后扫的那家成为常去店：用户用脚投票，不该由先到先得决定
-                .andExpect(jsonPath("$.data[0].merchantNo").value("M0002"));
+                // 最后扫的那家排在「我的店」第一：用户用脚投票，不该由先到先得决定。
+                // 门店化之后单位是门店 —— 老链接带主体号进来，落到它的默认门店
+                .andExpect(jsonPath("$.data[0].storeNo").value("ST-M0002"))
+                .andExpect(jsonPath("$.data[1].storeNo").value("ST-M0001"));
 
         addToCart(token, "G0003", "SK0004", 1);
         createOrder(token, "m6a-override");
@@ -201,7 +240,9 @@ class M6aStoreAttributionFlowTest {
         assertThat(items.size()).isGreaterThanOrEqualTo(2);
         // 买得最多的排最前 —— 第一屏就是「我买过的」，顺序错了这个页面就没用了
         assertThat(items.get(0).get("skuNo").asString()).isEqualTo("SK0003");
-        assertThat(items.get(0).get("buyCount").asInt()).isEqualTo(2);
+        // 字段名按契约：端上读的是 times（页面上那句「买过 N 次」）
+        assertThat(items.get(0).get("times").asInt()).isEqualTo(2);
+        assertThat(items.get(0).get("lastAt").asLong()).isPositive();
         assertThat(items.get(0).get("price").asLong()).isPositive();
         assertThat(items.get(0).get("lastPrice").asLong()).isPositive();
     }
@@ -243,15 +284,22 @@ class M6aStoreAttributionFlowTest {
     }
 
     @Test
-    @DisplayName("收藏本店：出现在「我的常去店」，再点取消")
+    @DisplayName("收藏本店：出现在「我的收藏 · 店铺」，再点取消")
     void favoriteStore() throws Exception {
         String token = login("13100131023");
 
-        mvc().perform(post("/mp/store/M0001/favorite").header("Authorization", "Bearer " + token))
+        // 收藏本店挪到了 POST /mp/favorite/store/{merchantNo}，回的是 {favorited}（TDD-C端商品收藏与送达判断）。
+        // 旧的 /mp/store/{merchantNo}/favorite 回的是列表，门店主页一直当布尔用 —— 已删
+        mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.favorited").value(true));
+        // /mp/store/mine 门店化后是「买过的 + 逛过的门店」，不再混入收藏（TDD-C端门店化与门店门户）
+        mvc().perform(get("/mp/favorite/store").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)));
 
-        mvc().perform(post("/mp/store/M0001/favorite").header("Authorization", "Bearer " + token))
+        mvc().perform(post("/mp/favorite/store/M0001").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.favorited").value(false));
+        mvc().perform(get("/mp/favorite/store").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
@@ -272,8 +320,8 @@ class M6aStoreAttributionFlowTest {
     }
 
     private String storeCodeOf(String merchantNo) {
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         return m.getStoreCode();
     }
 
@@ -321,7 +369,7 @@ class M6aStoreAttributionFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
     }
@@ -330,21 +378,42 @@ class M6aStoreAttributionFlowTest {
         String token = login(phone);
         String body = mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        UsrMerchant m = merchantMapper.selectOne(Wrappers.<UsrMerchant>lambdaQuery()
-                .eq(UsrMerchant::getMerchantNo, merchantNo).last("limit 1"));
+        MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
         m.setOwnerUserNo(json.readTree(body).get("data").get("userNo").asString());
+        // V44 起 B 端身份来自 mch_account，不再是 owner_user_no —— 两处都要写
+        grantOwner(m.getEntityNo(), json.readTree(body).get("data").get("userNo").asString());
         merchantMapper.updateById(m);
-        return login(phone);
+        // A7：这个令牌是拿去打 /biz/** 的，必须是 btk_
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
+    /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
+    private void grantOwner(String merchantNo, String userNo) {
+        var existing = merchantStaffMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .last("limit 1"));
+        if (existing != null) {
+            existing.setUserNo(userNo);
+            merchantStaffMapper.updateById(existing);
+            return;
+        }
+        var st = new ai.neargo.shop.merchant.entity.MchAccount();
+        st.setMchAccountNo("SF-T-" + merchantNo);
+        st.setEntityNo(merchantNo);
+        st.setUserNo(userNo);
+        st.setIsOwner(true);
+        st.setIsPrimary(true);
+        st.setStatus(ai.neargo.shop.merchant.entity.MchAccount.ACTIVE);
+        merchantStaffMapper.insert(st);
+    }
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
+
 }

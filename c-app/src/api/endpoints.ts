@@ -9,7 +9,14 @@
 // 迁移到真实后端时，端点表不用改：`VITE_USE_MOCK=0` 之后走的就是这张表。
 import type { ShopApi } from "./contract";
 
-export type HttpMethod = "GET" | "POST";
+/**
+ * C 端此前只用过 GET/POST。**PUT 是这次第一次出现**（关掉某家店的消息）——
+ * 加进来的同时要改 `http.ts` 的 `call`：它原来是「非 GET 即 POST」，
+ * 会把 PUT 静默降级，端点表写着 PUT 而实际发出去的是 POST，运行时才 405。
+ *
+ * ⚠️ 小程序的 `uni.request` 不支持 PATCH（B 端为它退过一次改动），所以这里没有它。
+ */
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 export interface EndpointDef {
   method: HttpMethod;
@@ -20,6 +27,11 @@ export interface EndpointDef {
   /** 一句话说明，会写进 OpenAPI 的 summary */
   summary: string;
   /**
+   * 带端标识 `X-Client`（MP / APP / H5）。只给需要按端区分展示的读接口开 —— 见 http-client 的 clientTag。
+   * ⚠️ 必须写在 summary **之后**：gen-openapi 用正则按 method/path/auth/summary 的顺序抠端点。
+   */
+  clientTag?: boolean;
+  /**
    * 把契约方法的位置参数映射成 { path 参数, query/body }。
    * 不写则默认：第一个参数是对象 → 整体作为 query(GET)/body(POST)。
    */
@@ -29,8 +41,78 @@ export interface EndpointDef {
 /** 键必须与 ShopApi 的方法名一一对应，漏一个会编译报错 */
 export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // ---------------------------------------------------------------- 用户
+  // auth: true —— 后端要求已有会话（小程序静默登录背后就是 openid）。
+  // 那道闸挡的是「对着不同号码轮着发」的脚本：按号码与按 IP 的限流各自都在额度内，
+  // 唯独没人限「谁在发」。登记成 false 会让读这张表的人以为它是个匿名口。
+  sendOtp: { method: "POST", path: "/mp/user/otp/send", auth: true, summary: "发送验证码" },
   login: { method: "POST", path: "/mp/user/login", auth: false, summary: "登录建户" },
   profile: { method: "GET", path: "/mp/user/profile", auth: true, summary: "我的资料" },
+  /*
+   * C-AC-08 个人资料。后端 POST /mp/user/profile 一直存在，而这张表里以前一条都没有
+   * —— 端上无从调用，于是「改昵称」这件事在界面上根本不存在。
+   */
+  updateProfile: {
+    method: "POST",
+    path: "/mp/user/profile",
+    auth: true,
+    summary: "改昵称 / 头像",
+  },
+  // 真上传字节（multipart），不是把本地临时路径当 JSON 发。
+  // 这条**当场把头像落到账号上**并回整个 User —— 分成「传图拿 url」+「再存一次」
+  // 两步的话，中间那步失败就是「提示上传成功而头像没变」
+  uploadAvatar: {
+    method: "POST",
+    path: "/mp/user/avatar",
+    auth: true,
+    summary: "上传头像并落到账号上",
+  },
+  setPassword: {
+    method: "POST",
+    path: "/mp/user/password",
+    auth: true,
+    summary: "设置 / 修改登录密码",
+  },
+  // 回 hasPassword（按钮显示「设置」还是「修改」）与 canSet（没绑手机号时整行不可点）。
+  // canSet 让后端说了算，与 phone/capable 同一个口径 —— 判据端上查不到
+  passwordState: {
+    method: "GET",
+    path: "/mp/user/password",
+    auth: true,
+    summary: "密码状态（设过没有 / 现在能不能设）",
+  },
+  logout: { method: "POST", path: "/mp/user/logout", auth: true, summary: "登出（作废服务端会话）" },
+  bindPhone: {
+    method: "POST",
+    path: "/mp/user/phone/bind",
+    auth: true,
+    summary: "绑定手机号（验证码）",
+  },
+  bindPhoneByWx: {
+    method: "POST",
+    path: "/mp/user/phone/wx",
+    auth: true,
+    summary: "微信一键授权绑定手机号",
+  },
+  /*
+   * **游客可读**。它只回一个布尔值，而登录页在用户还没登录时就要用它
+   * 决定显示「微信一键」还是「验证码」—— 标成 auth:true 的话，
+   * 那一屏永远拿不到答案，只能盲猜一个默认值。
+   *
+   * ⚠️ 注释必须写在条目**上方**：夹在 `{` 与 `method:` 之间的话，
+   * 端点表的解析器会静默跳过这一条（生成器随后报「不是端点表中的端点」）。
+   */
+  phoneCapable: {
+    method: "GET",
+    path: "/mp/user/phone/capable",
+    auth: false,
+    summary: "一键授权当前可不可用（游客可读）",
+  },
+  deregister: {
+    method: "POST",
+    path: "/mp/user/deregister",
+    auth: true,
+    summary: "注销账号（匿名化 + 解绑凭证，交易记录留存）",
+  },
   bindCommunity: {
     method: "POST",
     path: "/mp/user/community",
@@ -39,6 +121,18 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   },
 
   // ---------------------------------------------------------------- 地址簿
+  activeAddress: {
+    method: "GET",
+    path: "/mp/user/active-address",
+    auth: true,
+    summary: "当前生效位置（可能为空，新用户就是这个状态）",
+  },
+  switchActiveAddress: {
+    method: "POST",
+    path: "/mp/user/active-address/:addressId",
+    auth: true,
+    summary: "切换生效位置（不动默认收货地址）",
+  },
   addressList: { method: "GET", path: "/mp/user/address", auth: true, summary: "地址列表" },
   saveAddress: { method: "POST", path: "/mp/user/address", auth: true, summary: "新增/编辑地址" },
   removeAddress: {
@@ -61,10 +155,51 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "附近社区与自提点",
   },
+  searchPlaces: {
+    method: "GET",
+    path: "/mp/place/search",
+    auth: false,
+    summary: "按名字找地方（本地优先，地图是补充）",
+  },
+  resolveLocation: {
+    method: "GET",
+    path: "/mp/location/resolve",
+    auth: false,
+    summary: "一个坐标解析出「我在哪」与归属链",
+  },
+  allCommunities: {
+    method: "GET",
+    path: "/mp/community",
+    auth: false,
+    summary: "全部已开通社区（附近为空时的出路）",
+  },
+  // M6 要按号取一个**半径之外**的社区（默认归属），而 nearbyCommunities 带 5 公里半径、
+  // allCommunities 会把全部社区都拉下来。按号取一条是这两者都给不了的
+  communityDetail: {
+    method: "GET",
+    path: "/mp/community/:communityNo",
+    auth: false,
+    summary: "按号取一个社区",
+  },
+  openRegions: {
+    method: "GET",
+    path: "/mp/community/regions",
+    auth: false,
+    summary: "有已开通社区的区域清单",
+  },
+  // 与上面那条是两个问题：这条答「我家在哪儿」，没开通的区也要能选出来。
+  // 免登录 —— 「先填地址、再登录下单」这条路要走得通
+  regions: {
+    method: "GET",
+    path: "/mp/regions",
+    auth: false,
+    summary: "行政区划（省市区三级，地址簿用）",
+  },
 
   // ---------------------------------------------------------------- 商品
   goodsList: { method: "GET", path: "/mp/goods", auth: false, summary: "商品列表" },
-  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情" },
+  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情（可带 communityNo 与 latE6/lngE6 判送达）" },
+  goodsBatch: { method: "GET", path: "/mp/goods/:goodsNo/batch", auth: false, summary: "商品的社区集单信息（截单、提货、已订份数）" },
 
   // ---------------------------------------------------------------- 购物车
   cartList: { method: "GET", path: "/mp/cart", auth: true, summary: "购物车" },
@@ -74,12 +209,26 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 交易
   createOrder: { method: "POST", path: "/mp/order", auth: true, summary: "下单（幂等）" },
+  // 收银台先问「能用哪些方式」，再带着选中的通道去发起 —— 两步，不是一步。
+  // 后端算好了交集（市场 × 各商家进件 × 网关有没有实现），端上直接渲染。
+  payMethods: { method: "GET", path: "/mp/order/:orderNo/pay-method", auth: true, summary: "可用支付方式" },
   payOrder: { method: "POST", path: "/mp/order/:orderNo/pay", auth: true, summary: "支付" },
   orderList: { method: "GET", path: "/mp/order", auth: true, summary: "订单列表" },
   promotedGoods: { method: "GET", path: "/mp/goods/promoted", auth: false, summary: "推荐商品（运营位）" },
   promotedMerchants: { method: "GET", path: "/mp/merchant/promoted", auth: false, summary: "推荐门店（运营位）" },
-  orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情" },
+  orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情", clientTag: true },
+  track: { method: "GET", path: "/mp/track", auth: false, summary: "免登录看件（令牌即授权）", clientTag: true },
+  trackMiniLink: { method: "GET", path: "/mp/track/mini-link", auth: false, summary: "看件页跳小程序的 URL Link" },
+  trackMine: { method: "GET", path: "/mp/track/mine", auth: true, summary: "小程序侧看件(本人)", clientTag: true },
+  orderTrace: { method: "GET", path: "/mp/order/:orderNo/trace", auth: true, summary: "物流页（查看物流）", clientTag: true },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
+  orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
+  orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },
+  // 开票（ADR-017 §3.4 条件 2）。此前 C 端零入口 —— 只有下单前一句「本商家无法开票」，
+  // 连申请的地方都没有。归集路径下开票的是平台，不是商家
+  applyInvoice: { method: "POST", path: "/mp/invoice/apply", auth: true, summary: "申请开票" },
+  myInvoices: { method: "GET", path: "/mp/invoice/mine", auth: true, summary: "我的开票申请" },
+  invoiceOfOrder: { method: "GET", path: "/mp/invoice/order/:orderNo", auth: true, summary: "某单的开票状态" },
   applyAfterSale: {
     method: "POST",
     path: "/mp/order/:orderNo/after-sale",
@@ -88,10 +237,38 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   },
 
   // ---------------------------------------------------------------- 营销
+  afterSaleReasons: { method: "GET", path: "/mp/after-sale/reasons", auth: false, summary: "售后原因清单" },
+  afterSaleList: { method: "GET", path: "/mp/after-sale", auth: true, summary: "我的售后单" },
   fillReturnExpress: { method: "POST", path: "/mp/after-sale/:afterSaleNo/ship", auth: true, summary: "填退货运单号" },
   raiseDispute: { method: "POST", path: "/mp/after-sale/:afterSaleNo/escalate", auth: true, summary: "上升平台裁决" },
 
   couponList: { method: "GET", path: "/mp/coupon", auth: false, summary: "优惠券列表" },
+  /*
+   * **「我的券」与「领券中心」是两个端点，别混用**（TDD-C端我的券接真接口）。
+   * `couponList` 回答「现在能领哪些」，下面这个回答「我手里有哪些」——
+   * 活动下架 / 抢光 / 过期之后，券从前者消失，而它还在用户手里。
+   */
+  myCoupons: { method: "GET", path: "/mp/coupon/mine", auth: true, summary: "我领到的券" },
+  // 邀请有礼（§3.1）：当前活动 + 我邀到了几个。没有活动时后端返回 null
+  // 冷启动配置（皮肤 / 开关 / 最低版本）。**端上此前一次都没调过它**
+  bootstrapConfig: { method: "GET", path: "/mp/config/bootstrap", auth: false, summary: "冷启动配置" },
+  myFission: { method: "GET", path: "/mp/fission", auth: true, summary: "邀请有礼" },
+  // 海报要用的店铺码（§7.3）。游客可见 —— 海报本来就是发出去给陌生人看的
+  merchantAcode: { method: "GET", path: "/mp/merchant/{merchantNo}/acode", auth: false, summary: "商家小程序码" },
+  /*
+   * 最优券试算。**不可用的券也返回并带原因** —— 下单页的优惠面板靠它，
+   * 少了它只能自己按门槛猜，而「适用范围」这类规则端上根本算不了。
+   */
+  couponBest: { method: "POST", path: "/mp/coupon/best", auth: true, summary: "最优券试算（含不可用原因）" },
+  myStoreCoupons: { method: "GET", path: "/mp/my-coupons", auth: true, summary: "商家发给我的券（含到店码）" },
+  myMemberships: { method: "GET", path: "/mp/my-memberships", auth: true, summary: "我是哪几家店的会员" },
+  reachOpened: { method: "POST", path: "/mp/member-reach/:reachNo/opened", auth: true, summary: "点推送进店" },
+  setMembershipReach: {
+    method: "PUT",
+    path: "/mp/my-memberships/:entityNo/reach",
+    auth: true,
+    summary: "关掉/打开某家店的消息",
+  },
   receiveCoupon: {
     method: "POST",
     path: "/mp/coupon/:couponNo/receive",
@@ -107,16 +284,12 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: false,
     summary: "商家团详情",
   },
-  joinGroupBuy: {
-    method: "POST",
-    path: "/mp/group-buy/:groupNo/join",
-    auth: true,
-    summary: "参团",
-  },
+  goodsGroup: { method: "GET", path: "/mp/goods/:goodsNo/group", auth: false, summary: "商品的拼团信息（开团价、正在拼的团）" },
   createGroupBuy: { method: "POST", path: "/mp/group-buy", auth: true, summary: "发起商家团" },
 
   // ---------------------------------------------------------------- 邻里求团
   myHostedGroups: { method: "GET", path: "/mp/group-buy/hosted", auth: true, summary: "我发起的团" },
+  myJoinedGroups: { method: "GET", path: "/mp/group-buy/mine", auth: true, summary: "我的拼团（参加过的团）" },
   confirmGroupBatch: { method: "POST", path: "/mp/group-buy/:groupNo/receive", auth: true, summary: "批次签收" },
   verifyGroupPickup: { method: "POST", path: "/mp/group-buy/:groupNo/verify", auth: true, summary: "发起人核销" },
   groupPickupOrders: { method: "GET", path: "/mp/group-buy/:groupNo/orders", auth: true, summary: "本团待取订单" },
@@ -150,11 +323,24 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 商家
   merchantList: { method: "GET", path: "/mp/merchant", auth: false, summary: "商家列表/搜索" },
-  storeHome: { method: "GET", path: "/mp/store/:merchantNo", auth: false, summary: "门店主页" },
-  frequentItems: { method: "GET", path: "/mp/store/:merchantNo/frequent", auth: true, summary: "常买清单" },
+  // `:no` 按前缀分派：门店号（ST…）直接进；主体号（M…，老链接）落到默认门店
+  storeHome: { method: "GET", path: "/mp/store/:no", auth: false, summary: "门店门户" },
+  storeGoods: { method: "GET", path: "/mp/store/:no/goods", auth: false, summary: "门户商品（本店在售）" },
+  storeAcode: { method: "GET", path: "/mp/store/:no/acode", auth: false, summary: "门店小程序码（海报用）" },
+  // 扫码落地。**游客可访问** —— 扫贴纸的人多数还没登录，要求登录的话
+  // 漏斗最宽的那一层永远是空的，而那一层正是「这批贴纸有没有用」的答案
+  storeByCode: { method: "GET", path: "/mp/store/by-code", auth: false, summary: "扫码进店" },
+  frequentItems: { method: "GET", path: "/mp/store/:no/frequent", auth: true, summary: "常买清单" },
   reorderFrom: { method: "POST", path: "/mp/order/:orderNo/reorder", auth: true, summary: "一键再来一单" },
-  toggleFavoriteStore: { method: "POST", path: "/mp/store/:merchantNo/favorite", auth: true, summary: "收藏本店" },
-  myStores: { method: "GET", path: "/mp/store/mine", auth: true, summary: "我的常去店" },
+  toggleFavoriteStore: { method: "POST", path: "/mp/favorite/store/:merchantNo", auth: true, summary: "收藏 / 取消收藏店铺" },
+  toggleFavoriteGoods: { method: "POST", path: "/mp/favorite/goods/:goodsNo", auth: true, summary: "收藏 / 取消收藏商品" },
+  favoriteGoods: { method: "GET", path: "/mp/favorite/goods", auth: true, summary: "我的收藏 · 商品" },
+  favoriteStores: { method: "GET", path: "/mp/favorite/store", auth: true, summary: "我的收藏 · 店铺" },
+  // 我的店 / 附近 / 进店（TDD-C端门店化与门店门户）。**单位是门店，不是主体**
+  myStores: { method: "GET", path: "/mp/store/mine", auth: false, summary: "我的店：买过的 + 近期逛过的门店" },
+  storeNearby: { method: "GET", path: "/mp/store/nearby", auth: false, summary: "附近的门店（去掉我的店）" },
+  // 进店：记进「我的店」+ 归因。`:no` 是门店号（ST…）或主体号（M…，老链接）
+  storeEnter: { method: "POST", path: "/mp/store/:no/enter", auth: true, summary: "进店" },
 
   merchantDetail: {
     method: "GET",
@@ -168,11 +354,17 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: true,
     summary: "我买过的商家",
   },
+  masterData: { method: "GET", path: "/common/master-data", auth: false, summary: "平台主数据（行业/主体/通道）" },
   merchantApply: { method: "POST", path: "/mp/merchant/apply", auth: true, summary: "商家入驻申请" },
+  myMerchantApply: { method: "GET", path: "/mp/merchant/apply", auth: true, summary: "我的入驻申请状态" },
+  updateMerchantApply: { method: "POST", path: "/mp/merchant/apply/:applyNo", auth: true, summary: "改入驻意向（仅待审核）" },
 
   // ---------------------------------------------------------------- 评价
   reviewList: { method: "GET", path: "/mp/review", auth: false, summary: "评价列表" },
   createReview: { method: "POST", path: "/mp/review", auth: true, summary: "发表评价" },
+  // 商品问答（§3.3）。列表按商品号走路径：它是这条集合的归属，不是筛选条件
+  questionList: { method: "GET", path: "/mp/goods/{goodsNo}/question", auth: false, summary: "商品问答" },
+  askQuestion: { method: "POST", path: "/mp/question", auth: true, summary: "提问" },
   toggleReviewLike: {
     method: "POST",
     path: "/mp/review/:reviewNo/like",
@@ -181,19 +373,17 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   },
 
   // ---------------------------------------------------------------- 积分（一期开关关闭）
-  pointAccount: { method: "GET", path: "/mp/point/account", auth: true, summary: "积分账户" },
-  pointRecords: { method: "GET", path: "/mp/point/records", auth: true, summary: "积分流水" },
-  merchantPointAccount: {
+  //
+  // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
+  // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
+  // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
+  pointAccount: { method: "GET", path: "/mp/points/account", auth: true, summary: "积分账户" },
+  pointRecords: { method: "GET", path: "/mp/points/records", auth: true, summary: "积分流水" },
+  pointsDeductible: {
     method: "GET",
-    path: "/mp/merchant/point/account",
+    path: "/mp/points/deductible",
     auth: true,
-    summary: "商家积分账户",
-  },
-  merchantPointRecords: {
-    method: "GET",
-    path: "/mp/merchant/point/records",
-    auth: true,
-    summary: "商家积分流水",
+    summary: "结算页试算：本单最多可抵多少",
   },
 
   // ---------------------------------------------------------------- 卡包
@@ -208,6 +398,37 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     summary: "标记已读",
   },
   readAllMessages: { method: "POST", path: "/mp/message/read-all", auth: true, summary: "全部已读" },
+  unreadMessages: {
+    method: "GET",
+    path: "/mp/message/unread-count",
+    auth: true,
+    summary: "未读数（角标用，只给一个数）",
+  },
+  subscribeReport: {
+    method: "POST",
+    path: "/mp/message/subscribe",
+    auth: true,
+    summary: "订阅消息授权上报（同意与拒绝都报：后端记额度 + 防反复弹窗）",
+  },
+  registerPushToken: {
+    method: "POST",
+    path: "/mp/push-token",
+    auth: true,
+    summary: "绑定 App 推送设备（登录后）",
+  },
+  // POST 而不是 DELETE：端上的 call() 只分 GET / POST 两条路（见 http.ts），
+  // DELETE 会被当成 POST 发出去，路径对而动词错，表现是「解绑没报错但没生效」。
+  //
+  // ⚠️ 注释必须在**属性外面**：生成器的正则是 `\{\s*method:`，
+  // 大括号与 method 之间夹一行注释，这个端点就**静默地不进 spec** ——
+  // 然后 api-align 报「前端调用了契约里没有的端点」，而端点明明就在这张表里。
+  // （同一个形状本轮在 ops-web 的 setSkuPresale 上踩过一次。）
+  unregisterPushToken: {
+    method: "POST",
+    path: "/mp/push-token/unregister",
+    auth: true,
+    summary: "解绑推送设备（登出前，共用设备换人必须解）",
+  },
 
   // ---------------------------------------------------------------- 团长
 };

@@ -1,11 +1,14 @@
 // 导航结构单测。这里锁的是**结构约束**，不是文案：
 // 文案会随产品走，结构一破（分组不相邻、href 重复、模块与权限码对不上）界面就会出错。
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { tNav } from "./i18n/nav-labels";
-import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, leafParts, normPath, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
+import { BACKEND_ROLE_PERMS, backendPermsOf } from "./permissions";
+import { NAV, activeLeafIndex, breadcrumb, findActiveSection, groupedLeaves, isLeafDisabled, leafParts, matchesQuery, navSearchEntries, navTabs, normPath, overlayNav, visibleTabKeys, sectionDefaultHref, visibleLeaves, visibleSections } from "./nav";
 import { permsOf, ROLE_LABEL } from "./permissions";
+import { UI_PERM_MAP } from "./perm-map";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 import type { Role } from "./auth";
@@ -36,7 +39,9 @@ describe("导航结构", () => {
   });
 
   it("叶子的 href 归属本 section 或显式跨 section（跨链必须指向已存在的 section）", () => {
-    const sectionPaths = NAV.map((s) => leafParts(s.href).path);
+    // 合并之后一个 section 覆盖多个路径前缀（商家与门店 = /merchants + /stores），
+    // 那些前缀写在 `match` 里 —— 只看 `href` 的话，被合进来的域全都成了「不存在的 section」
+    const sectionPaths = NAV.flatMap((s) => [leafParts(s.href).path, ...(s.match ?? [])]);
     for (const s of NAV) {
       for (const l of s.children ?? []) {
         expect(sectionPaths, `${s.key} 的 ${l.href} 指向了不存在的 section`).toContain(leafParts(l.href).path);
@@ -45,34 +50,290 @@ describe("导航结构", () => {
   });
 });
 
+describe("菜单合并（2026-09-09，21 → 13）", () => {
+  /*
+   * Rail 的几何，**逐项在浏览器里量出来的**（components/layout/rail.tsx）：
+   *
+   *   可用高 = 视口 − Logo 行 56 − 收起按钮 40
+   *   内容高 = n×36（项）+ (n−1)×2（gap-0.5）+ 8（py-1 上下各 4）
+   *
+   * ⚠️ 第一版写的是 `64 + n×40 ≤ 620` —— 那个模型把「Logo + 内边距」估成 64、
+   * 又忘了底部收起按钮那 40px 也不在滚动区里。算出来 584 说「放得下」，
+   * 而实测 536 > 524 是溢出的。**算式对不上真实布局的断言，绿着也没有意义。**
+   */
+  const LOGO_H = 56;
+  const COLLAPSE_BTN_H = 40;
+  const ITEM_H = 34;   // 图标 20 + 上下内边距 7×2（rail.tsx 的 py-[7px]）
+  const ITEM_GAP = 2;
+  const NAV_PAD = 8;
+  /** 1366×768 的笔记本，去掉浏览器 chrome 后可视高约 620。这是要放得下的那一档。 */
+  const SHORTEST_VIEWPORT = 620;
+
+  it("AC1 · L1 在 620px 高的窗口里放得下（不靠滚动）", () => {
+    const n = NAV.length;
+    const need = n * ITEM_H + (n - 1) * ITEM_GAP + NAV_PAD;
+    const have = SHORTEST_VIEWPORT - LOGO_H - COLLAPSE_BTN_H;
+    expect(need, `${n} 个 L1 需要 ${need}px，可滚区只有 ${have}px。\n` +
+      "  三条路：合并掉一个域 / 收紧 Rail 的间距 / 接受它要滚（那样把这条断言删掉，\n" +
+      "  别把 SHORTEST_VIEWPORT 调大 —— 那是改题目不是解题）")
+      .toBeLessThanOrEqual(have);
+  });
+
+  /**
+   * **合并之后真正新加的叶子**，按 href 逐条登记。
+   *
+   * 基线是一次性快照（合并前导出），不重新生成 —— 重新生成等于拿改后的代码
+   * 给自己出题。但新功能落地时它必然会「多出来」一条，而这条断言本身
+   * 分不清「合并把一项搬丢了」和「这里新增了一项」。
+   *
+   * 于是把差别交给人来声明：新增要**手写一行进来并写清它是什么**，
+   * 而「少了」永远没有豁免口 —— 那一半才是这条断言存在的理由
+   * （少一条菜单，人只会以为自己没权限，不会报障）。
+   */
+  const ADDED_SINCE_MERGE = new Set<string>([
+    // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
+    // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
+    "/merchants?tab=self-operated",
+    /*
+     * 代商家进件（2026-09-17，三期）。**超管与 BD 两行都会多出它** ——
+     * 与上面那条刻意不同：那个只给超管（平台自己下场经营不是招商日常），
+     * 这个是招商日常本身，BD 站在店里替老板录资料。
+     *
+     * BD 因此同时持有 merchant:apply:audit 与 merchant:apply:onbehalf，
+     * 也就是同一个人既能制单又能审核。制单与审核的分离**没有靠这张表**，
+     * 而是钉在数据上：OpsServiceImpl.auditApply 拦「submitted_by == 当前审核人」。
+     */
+    "/merchants?tab=on-behalf",
+    /*
+     * 固定地址库（TDD-C端收货地址-录入与定位重排 · 批次 G）。
+     *
+     * 判 `community:community:read` —— 与社区网格同一档，所以持有那个码的
+     * 八个角色都多了这一条。**这是新增，不是合并把谁的菜单搬丢了。**
+     */
+    "/communities?tab=places",
+      /*
+     * 平台活动两栏（2026-09-19，营销域 P3 · 原型 s29 / s30）。挂 marketing:campaign:read ——
+     * 与「活动敞口」同一个码，所以超管、商品运营、活动运营三行一起多出这两条，其余角色不变。
+     */
+    "/marketing?tab=platform",
+    "/marketing?tab=platformAudit",
+    /*
+     * 测试号固定验证码（2026-09-28，TDD-测试号固定验证码）。挂它自己的读码
+     * system:testphone:read，而那个码**一个角色都没配** —— 所以这一条
+     * 只在超管那一行多出来，其余十个角色的清单一个字都不变。
+     */
+    "/system?tab=testPhone",
+    /*
+     * 供应商收款账户（2026-09-29，V358 · ADR-011 自营供应商模式）。
+     * 挂 finance:payout:execute —— 与「登记付款」同一个码，
+     * 所以超管与财务两行各多出这一条，其余九个角色一个字都不变。
+     * **这是新增，不是合并把谁的菜单搬丢了。**
+     */
+    "/finance?tab=payout-accounts",
+    /*
+     * 经营统计（2026-09-29，结算口径三维聚合）。挂 finance:settle:read ——
+     * 与分账明细同一个码，所以超管与财务两行各多出这一条。
+     */
+    "/finance?tab=settle-stats",
+    /*
+     * 电子元器件（2026-09-30，P-19）。独立服务 elec-svc 的运营面，新的根菜单。
+     * V370 只授超管；V371 按岗位分配（元器件负责人全部、商家运营询报价/供应商/料号、
+     * 商品运营料号/基础数据、风控供应商、客服询报价），所以这几行各多出其中几条 —— 都是新增。
+     */
+    "/elec",
+    "/elec?tab=supplier",
+    "/elec?tab=part",
+    "/elec?tab=base",
+]);
+
+  it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
+    /*
+     * **这条是整轮合并唯一会造成真实损失的失败模式**，而它在界面上看不出来：
+     * 少一条菜单，人只会以为「我没这个权限」，不会报障。
+     *
+     * 基线是合并**之前**导出的（lib/nav-visibility.baseline.json）。
+     * 它是一次性快照，不该再被重新生成 —— 重新生成等于拿改后的代码给自己出题。
+     */
+    const baseline = JSON.parse(
+      readFileSync(join(ROOT, "lib/nav-visibility.baseline.json"), "utf8")) as Record<string, string[]>;
+    const diffs: string[] = [];
+    for (const role of ALL_ROLES) {
+      const perms = backendPermsOf(role);
+      const now = new Set<string>();
+      for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
+      const was = new Set(baseline[role] ?? []);
+      const lost = [...was].filter((h) => !now.has(h));
+      const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
+      if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
+      if (gained.length) diffs.push(`${role} 多了：${gained.join(", ")}`);
+    }
+    expect(diffs, `可见性变了：\n${diffs.join("\n")}`).toEqual([]);
+  });
+
+  it("★★★ AC3 · 每个叶子都在 point_code 冻结表里，且没有两片叶子撞同一个码", () => {
+    /*
+     * `sys_role_point` 存的就是 point_code。冻结表漏登记一条 ⇒ 那条按 href 现场派生，
+     * 而派生源里含 section key ⇒ 下次菜单再动它就漂了，既有授权跟着指向别处。
+     * 撞码则更直接：sys_function_point 主键冲突，迁移当场失败。
+     */
+    const src = readFileSync(join(ROOT, "lib/point-codes.ts"), "utf8");
+    const frozen: Record<string, string> = {};
+    for (const m of src.matchAll(/^\s*"((?:[^"\\]|\\.)*)":\s*"([^"]+)"/gm)) {
+      frozen[m[1].replace(/\\t/g, "\t")] = m[2];
+    }
+    const missing: string[] = [];
+    const byCode = new Map<string, string>();
+    for (const s of NAV) {
+      const fc = `OPS_${s.key.toUpperCase()}`;
+      for (const l of s.children ?? []) {
+        const code = frozen[`${fc}\t${l.href}`] ?? frozen[l.href];
+        if (!code) { missing.push(`${s.key} › ${l.href}`); continue; }
+        const prev = byCode.get(code);
+        if (prev && prev !== `${fc}\t${l.href}`) missing.push(`${code} 被 ${prev} 与 ${fc}\t${l.href} 共用`);
+        byCode.set(code, `${fc}\t${l.href}`);
+      }
+    }
+    expect(missing, "跑 `node scripts/gen-perm-seed.mjs --emit-point-codes` 补登记：\n" +
+      missing.join("\n")).toEqual([]);
+  });
+
+  it("AC3b · 冻结表里没有指向已删叶子的陈行", () => {
+    // 棘轮会锈：修好的行不删，那个对象就永远免检。这里反过来查一遍。
+    const src = readFileSync(join(ROOT, "lib/point-codes.ts"), "utf8");
+    const keys = [...src.matchAll(/^\s*"((?:[^"\\]|\\.)*)":/gm)].map((m) => m[1].replace(/\\t/g, "\t"));
+    const live = new Set<string>();
+    for (const s of NAV) {
+      const fc = `OPS_${s.key.toUpperCase()}`;
+      for (const l of s.children ?? []) { live.add(l.href); live.add(`${fc}\t${l.href}`); }
+    }
+    const stale = keys.filter((k) => !live.has(k));
+    expect(stale, "这些 href 已经不在 NAV 里了。**删之前先确认库里没有指向它们的授权**：\n" +
+      stale.join("\n")).toEqual([]);
+  });
+
+  it("★★ 每个权限码模块前缀都要有归属 section —— 否则它的页面内操作点会掉进兜底", () => {
+    /*
+     * `gen-perm-seed.mjs` 按模块前缀给「页面内操作」点找 function_code：
+     * `prefixToFn[prefix] || 'OPS_SYSTEM'`。合并菜单时它原先按 `section.key` 建表，
+     * 而 inventory / group / growth 合并后不再是任何 section 的 key ——
+     * 13 个 ACTION 点**静默落进了兜底**，被归到「平台管理」下面。
+     * 库里不报错，只是那些权限点挂错了域，谁也不会去看。
+     *
+     * 这条守的是「兜底那一支不该被走到」。新增一个模块前缀却忘了写进某个
+     * section.modules，这里就红。
+     */
+    const owned = new Set(NAV.flatMap((s) => s.modules));
+    const orphans = new Set<string>();
+    for (const [ui, back] of Object.entries(UI_PERM_MAP)) {
+      // 与生成器同一条口径：UI 前缀无主时退到后端码的前缀
+      // （`category:manage` 是历史遗留 UI 码，后端码是 product:category:update）
+      if (owned.has(ui.split(":")[0])) continue;
+      if (typeof back === "string" && owned.has(back.split(":")[0])) continue;
+      orphans.add(`${ui.split(":")[0]}（如 ${ui}）`);
+    }
+    expect([...orphans], "这些模块前缀没有任何 section 认领，它们的操作点会掉进 OPS_SYSTEM：\n" +
+      [...orphans].join("\n")).toEqual([]);
+  });
+
+  it("AC4 · 合并后每个叶子仍在一个分组下（不出现无组平铺）", () => {
+    const naked: string[] = [];
+    for (const s of NAV) {
+      for (const l of s.children ?? []) if (!l.group) naked.push(`${s.key} › ${l.label}`);
+    }
+    expect(naked, `18~19 个叶子平铺在一个面板里没法读，给它们分组：\n${naked.join("\n")}`).toEqual([]);
+  });
+});
+
 describe("导航 × 权限", () => {
+  /**
+   * 整域后端未实现 —— 这些 section 对**所有人**都不可见，而那是对的：
+   * 实测它们打开即 404（docs/technical/运营端死按钮实测清单.md）。
+   *
+   * 单列成清单而不是放宽断言：后端把某一块做出来之后，
+   * 这里要能提醒人把它移走 —— 否则菜单会一直藏着一个已经能用的功能。
+   */
+  // store 2026-08-12 移走：店招公告审核（/ops/stores/audits）一直是有后端的 ——
+  // 三方对齐那份 review 把 P-10.1 整域记成「后端零实现」，那一条是错的。
+  // 这条守卫替我把它抓了出来。
+  // 2026-08-13：三域后端全部落地（履约 V130–V135 / 风控 V120 / 增长 V121），
+  // 从清单里移走。**这个动作是被反向棘轮逼出来的** —— 后端做完却不移，
+  // 页面对所有人（含超管）继续隐藏，那正是「有能力没有消费方」的形状。
+  const UNBUILT_SECTIONS: string[] = [];
+
+  /**
+   * 域已经活了，但**这几个叶子**后端还没有 —— 它们对所有人不可见，也是对的。
+   * 与 UNBUILT_SECTIONS 分开列：整域没做和零星缺一两个，
+   * 后者才是「域活了、漏了几条」那种最容易变成死按钮的情况
+   * （见 packages/shared/tests/ops-endpoint-exists.test.ts 的同名判断）。
+   */
+  const UNBUILT_LEAVES = [
+    "message:faq:update",   // 帮助中心维护
+    /*
+     * 2026-08-12 权限码细化时新增的两条。它们此前映到 marketing:govern ——
+     * 一个覆盖不到它们的粗码，于是"看着有人能进"而实际点进去是 mock。
+     *
+     * 2026-09-02：**内容位（marketing:slot:update）已落地并从这里删掉** ——
+     * OpsContentSlotController + mkt_content_slot，且 C 端首页真的读它了。
+     * 会员卡还在（P-7.4 二期，需求上就没排）。
+     */
+    "marketing:member:update", // 会员卡与权益（P-7.4 二期）
+    /*
+     * store 域从 UNBUILT_SECTIONS 移走之后，它的叶子开始被逐个检查 ——
+     * 而后端只有店招公告审核那一条。这两个（主页模板配置 / 获客效果看板共用
+     * store:page:read、店铺码导出）确实还没有。
+     * **这正是分域清单与分叶子清单要分开的理由**：整域没做和域里缺几条，
+     * 后者才是最容易变成死按钮的那种。
+     */
+    "store:page:read",
+    "store:qrcode:export",
+  ];
+
   it("每个 section 的 module 至少被一个角色持有（否则这个菜单谁都看不见）", () => {
     for (const s of NAV) {
-      const someone = ALL_ROLES.some((r) => visibleSections(r).some((x) => x.key === s.key));
-      expect(someone, `${s.key}(${s.module}) 对所有角色都不可见`).toBe(true);
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
+      const someone = ALL_ROLES.some((r) => visibleSections(backendPermsOf(r)).some((x) => x.key === s.key));
+      expect(someone, `${s.key}(${s.modules.join("/")}) 对所有角色都不可见`).toBe(true);
     }
+  });
+
+  it("★★ 整域未实现的 section 一旦后端做出来，要从清单里移走", () => {
+    const nowVisible = UNBUILT_SECTIONS.filter((key) =>
+      ALL_ROLES.some((r) => visibleSections(backendPermsOf(r)).some((x) => x.key === key)));
+    expect(
+      nowVisible,
+      "这些 section 已经有人能看见了 —— 从 UNBUILT_SECTIONS 删掉。\n" +
+        "  留着的害处：它是「这块还没做」的证据，而它已经做出来了",
+    ).toEqual([]);
   });
 
   it("每个叶子的 perm 至少被一个角色持有（否则是死入口）", () => {
     const orphans: string[] = [];
     for (const s of NAV) {
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
       for (const l of s.children ?? []) {
-        if (!l.perm) continue;
-        const someone = ALL_ROLES.some((r) => visibleLeaves(s, r).some((x) => x.href === l.href && x.label === l.label));
+        if (!l.perm || UNBUILT_LEAVES.includes(l.perm)) continue;
+        const someone = ALL_ROLES.some((r) => visibleLeaves(s, backendPermsOf(r)).some((x) => x.href === l.href && x.label === l.label));
         if (!someone) orphans.push(`${s.key} › ${l.label}(${l.perm})`);
       }
     }
     expect(orphans, `无人可见的叶子：\n${orphans.join("\n")}`).toEqual([]);
   });
 
-  it("叶子的 perm 前缀必须等于所属 section 的 module（跨 section 深链除外）", () => {
-    const sectionOf = new Map(NAV.map((s) => [leafParts(s.href).path, s.module]));
+  it("叶子的 perm 前缀必须属于所属 section 的 modules", () => {
+    /*
+     * 此前是「必须**等于** section.module，跨 section 深链除外」，靠按 href 反查
+     * 目标 section 的模块码来处理那个例外。合并菜单之后跨模块是常态而不是例外，
+     * 所以改成集合判定：**前缀 ∈ section.modules**。
+     *
+     * 判据没有变松：modules 是显式写在 section 上的白名单，
+     * 写错一个模块名照样红 —— 变的是「一个 section 只能有一个模块」这条假设。
+     */
     for (const s of NAV) {
+      if (UNBUILT_SECTIONS.includes(s.key)) continue;
       for (const l of s.children ?? []) {
-        if (!l.perm) continue;
-        // 跨 section 深链（href 指向别的 section）用目标 section 的模块码
-        const expected = sectionOf.get(leafParts(l.href).path) ?? s.module;
-        expect(l.perm.split(":")[0], `${l.label} 的权限码模块与 section 不一致`).toBe(expected);
+        if (!l.perm || UNBUILT_LEAVES.includes(l.perm)) continue;
+        expect(s.modules, `${s.key} › ${l.label}(${l.perm}) 的模块不在 section.modules 里`)
+          .toContain(l.perm.split(":")[0]);
       }
     }
   });
@@ -81,21 +342,53 @@ describe("导航 × 权限", () => {
     expect(visibleSections(undefined)).toEqual([]);
   });
 
-  it("角色都至少能进一个 section —— 登录后落到空导航是致命体验", () => {
-    for (const r of ALL_ROLES) {
-      expect(visibleSections(r).length, `${r} 登录后没有任何菜单`).toBeGreaterThan(0);
-      expect(permsOf(r).length).toBeGreaterThan(0);
+  it("★★★ 后端配了权限的角色，登录后至少能进一个 section", () => {
+    for (const r of Object.keys(BACKEND_ROLE_PERMS)) {
+      expect(visibleSections(backendPermsOf(r as Role)).length,
+        `${r} 登录后没有任何菜单`).toBeGreaterThan(0);
     }
+  });
+
+  it("★★★ 矩阵里的每个岗位，后端都要有权限配置 —— 空 perms = 空后台", () => {
+    /*
+     * 这条断言在 2026-08-11 之前是**反过来**写的：它把「7 个角色后端没配」
+     * 钉成一份清单，只准变短不准变长。后端补齐之后，清单空了，断言跟着翻面 ——
+     * **棘轮走完就要拆掉**，留着一份写死了 7 个名字的期望值，
+     * 下次谁删掉一个角色配置反而会红得莫名其妙。
+     *
+     * 现在守的是另一头：ops-web 的角色（矩阵 §2.3 的岗位）后端必须都配。
+     * 漏一个的表现是**静默降级** —— 那个角色登录成功、拿到空 perms、
+     * 看到一个空后台，而没有任何报错。
+     *
+     * 注意「配了」不等于「够用」：风控/技术运维拿到的清单很短，
+     * 因为后端那几块还没有端点（见 Perms.java 逐条说明）。
+     * 那是功能缺口，由 perm-map 的 UNIMPLEMENTED 与 ops-endpoint-exists 守着，
+     * 不归这条管。
+     */
+    const missing = ALL_ROLES.filter((r) => !(r in BACKEND_ROLE_PERMS)).sort();
+    expect(
+      missing,
+      "这些角色 ops-web 有、后端 Perms.ROLE_PERMS 没配。\n" +
+        "  他们登录后 perms 是空的 —— 空后台，且没有任何报错。",
+    ).toEqual([]);
   });
 });
 
 describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", () => {
   // 矩阵 §六 的全部 L3 条目。少一条 = 平台端漏了一块需求，多一条 = 编号写错了。
   const MATRIX = [
-    "P-1.1", "P-2.1", "P-2.2", "P-3.1", "P-3.2", "P-3.3", "P-4.1", "P-4.2",
+    "P-1.1", "P-2.1", "P-2.2", "P-3.1", "P-3.2", "P-3.3", "P-3.4", "P-3.5", "P-3.6", "P-4.1", "P-4.2",
     "P-5.1", "P-5.2", "P-6.1", "P-7.1", "P-7.2", "P-7.3", "P-7.4", "P-8.1", "P-8.2",
-    "P-9.1", "P-9.2", "P-10.1", "P-11.1", "P-12.1", "P-12.2", "P-13.1", "P-14.1",
+    "P-9.1", "P-9.2", "P-10.1", "P-11.1", "P-11.2", "P-12.1", "P-12.2", "P-13.1", "P-14.1",
     "P-14.2", "P-15.1", "P-15.2", "P-16.1", "P-16.2", "P-17.1",
+    // P-18 进销存：独立模块、独立库。**库存本身只读**；P-18.4 开放对接是
+    // 唯一的写口，而它改的不是货、是「谁能读这些货」——
+    // 对方换了对接商、密钥泄露，处置只能在平台这边。
+    // P-18.5 链路健康：从 P-18.3 对差里**拆出来**的。对差读数据、它读链路 ——
+    // 09-02 投递停了六小时，唯一痕迹是对差页上的「待搬 1 个」。
+    "P-18.1", "P-18.2", "P-18.3", "P-18.4", "P-18.5",
+    // P-19 电子元器件：独立服务 elec-svc（/elec/ops/**），判权在它那边；菜单仍登在主系统库里
+    "P-19.1", "P-19.2", "P-19.3", "P-19.4",
   ];
 
   const covered = new Set(NAV.flatMap((s) => (s.children ?? []).map((l) => l.matrix).filter(Boolean) as string[]));
@@ -113,7 +406,7 @@ describe("矩阵覆盖率（docs/requirements/需求矩阵-三端.md §六）", 
 
 describe("待建域", () => {
   // 已交付的域清单。**页面存在才允许可点** —— 静态导出下点一个没有的路由就是 404。
-  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system"];
+  const BUILT = ["dashboard", "merchant", "order", "community", "fulfillment", "store", "marketing", "review", "aftersale", "group", "product", "finance", "iam", "growth", "risk", "message", "content", "system", "member", "inventory", "jobs", "elec"];
 
   it("未交付的 section 必须 soon（否则 Rail 点进去 404）", () => {
     const clickableButUnbuilt = NAV.filter((s) => !s.soon && !BUILT.includes(s.key)).map((s) => s.key);
@@ -140,20 +433,376 @@ describe("路由归属与面包屑", () => {
   });
 
   it('"/" 只精确匹配看板，不被别的 section 前缀吃掉', () => {
-    expect(findActiveSection("/", "SUPER_ADMIN")?.key).toBe("dashboard");
+    expect(findActiveSection("/", backendPermsOf("SUPER_ADMIN"))?.key).toBe("dashboard");
   });
 
   it("最长前缀匹配（子路径归属父 section）", () => {
-    expect(findActiveSection("/merchants/detail", "SUPER_ADMIN")?.key).toBe("merchant");
+    expect(findActiveSection("/merchants/detail", backendPermsOf("SUPER_ADMIN"))?.key).toBe("merchant");
+  });
+
+  it("★★★ 生成器造得出 Perms.ROLE_PERMS 用到的**每一个**后端码 —— 造不出的授权会静默蒸发", () => {
+    /*
+     * 2026-08-12 实测的回归：权限码从 16 细化到 68 之后，Perms.java 长出了 22 个
+     * UI_PERM_MAP 映射不出来的后端码。角色→功能点是靠 perm_code 对上的 ——
+     * 一个后端码没有任何功能点带它，那条授权就**无处安放**，重新生成种子时直接消失。
+     * FINANCE 一个角色丢了 9/16，而没有任何报错：表现只是那个角色调某个接口 403。
+     *
+     * **真的跑一遍生成器再比对**，不查字符串。
+     * 第一版这条是 `seed.includes("roleBackendCodes")` —— 把兜底那段的变量名
+     * 改成 `XroleBackendCodes` 它照样绿（子串还在）。一条验不出问题的守卫比没有更坏。
+     */
+    const sql = execFileSync("node", ["scripts/gen-perm-seed.mjs"],
+      { cwd: ROOT, encoding: "utf8", maxBuffer: 8 << 20 });
+
+    // point_code → perm_code（第 7 个字段；NULL 表示不受权限约束）
+    const permOfPoint = new Map<string, string | null>();
+    for (const m of sql.matchAll(
+      /INSERT INTO sys_function_point \([^)]*\) VALUES \('([^']+)',(?:\s*(?:'(?:[^']|'')*'|NULL),){5}\s*(?:'([^']*)'|NULL)/g)) {
+      permOfPoint.set(m[1], m[2] ?? null);
+    }
+    const granted = new Map<string, Set<string>>();
+    for (const m of sql.matchAll(/INSERT INTO sys_role_point \([^)]*\) VALUES \('([^']+)', '([^']+)'/g)) {
+      const perm = permOfPoint.get(m[2]);
+      if (perm) (granted.get(m[1]) ?? granted.set(m[1], new Set()).get(m[1])!).add(perm);
+    }
+
+    const permsJava = readFileSync(
+      join(ROOT, "../backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/Perms.java"), "utf8");
+    const consts: Record<string, string> = {};
+    for (const m of permsJava.matchAll(/String\s+([A-Z_]+)\s*=\s*"([^"]+)"/g)) consts[m[1]] = m[2];
+    const block = permsJava.slice(permsJava.indexOf("ROLE_PERMS = Map."));
+
+    const problems: string[] = [];
+    for (const m of block.matchAll(/Map\.entry\("([A-Z_]+)",\s*List\.of\(([\s\S]*?)\)\)/g)) {
+      const want = new Set<string>();
+      for (const l of m[2].matchAll(/"(\*|[a-z][a-z:_-]*)"|\b([A-Z][A-Z_]+)\b/g)) {
+        if (l[1]) want.add(l[1]);
+        else if (l[2] && consts[l[2]]) want.add(consts[l[2]]);
+      }
+      if (want.has("*")) continue;   // 通配角色另有短路，不逐码展开
+      const got = granted.get(m[1]) ?? new Set<string>();
+      const missing = [...want].filter((c) => !got.has(c));
+      if (missing.length) problems.push(`${m[1]} 少了 ${missing.length} 个码：${missing.join(", ")}`);
+    }
+    expect(problems,
+      "生成器造不出这些角色的部分权限码 —— 重新生成种子时这些授权会静默消失：\n"
+      + problems.join("\n")
+      + "\n补 gen-perm-seed.mjs 末段「按后端码兜底」那一块。").toEqual([]);
+  });
+
+  it("★★★ 每个叶子的 perm 必须登记进 UI_PERM_MAP —— 没登记的码 can() 判无权限，连超管都看不见", () => {
+    /*
+     * 2026-08-12 实测踩过：把「准入与保证金」的 perm 改成看着更贴切的
+     * merchant:admission:read，而那个码没登记进 UI_PERM_MAP。
+     * can() 是**先查映射再判通配**的（permissions.ts 里解释了为什么），
+     * 所以未登记 = 一律无权限，超管也不例外 —— 那个叶子直接从菜单里消失，
+     * 而**没有任何报错**，看起来就像「这个功能没做」。
+     */
+    const missing: string[] = [];
+    for (const s of NAV) {
+      for (const l of s.children ?? []) {
+        if (l.perm && !(l.perm in UI_PERM_MAP)) missing.push(`${s.key} › ${l.label}(${l.perm})`);
+      }
+    }
+    expect(missing, "这些叶子的 perm 没登记进 lib/perm-map.ts 的 UI_PERM_MAP，"
+      + "它们对**所有人**（含超管）都不可见：\n" + missing.join("\n")).toEqual([]);
+  });
+
+  it("★★★ 每个页面 tab 都能在 nav.ts 找到叶子 —— 找不到 = 这个功能在菜单里进不去", () => {
+    /*
+     * 2026-08-12 全量核查装的守卫。此前页面在自己的 copy.ts 里另写一份 tab 文案，
+     * 与菜单各说各的：38 处文案不一致（菜单「店招公告审核」vs 页面「合规审核」），
+     * 外加 6 个页面 tab **压根没在菜单里登记** —— 那几个功能只能靠手改 URL 进去。
+     *
+     * 文案分岔现在从根上没有了（页面只声明 key，名字回 nav.ts 取），
+     * 这条守的是剩下那一半：**新加 tab 时别忘了在菜单里也加一条**。
+     */
+    const dirs = readdirSync(join(ROOT, "app"), { withFileTypes: true })
+      .filter((d) => d.isDirectory()).map((d) => d.name);
+    const missing: string[] = [];
+    for (const d of dirs) {
+      const pageFile = join(ROOT, "app", d, "page.tsx");
+      if (!existsSync(pageFile)) continue;
+      const m = readFileSync(pageFile, "utf8").match(/const TAB_KEYS = \[([^\]]*)\] as const;/);
+      if (!m) continue;
+      const keys = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+      for (const t of navTabs(`/${d}`, keys)) {
+        if (!t.label) missing.push(`/${d} 的 tab "${t.key}"`);
+      }
+    }
+    expect(missing, "这些页面 tab 在 lib/nav.ts 里没有叶子 —— 补一条，否则菜单里进不去：\n"
+      + missing.join("\n")).toEqual([]);
+  });
+
+  describe("服务端菜单覆盖（overlayNav）", () => {
+    it("空 overlay 原样返回**同一个引用** —— 否则每次渲染都是新数组，下游全量重渲染", () => {
+      expect(overlayNav(NAV, undefined)).toBe(NAV);
+      expect(overlayNav(NAV, {})).toBe(NAV);
+      expect(overlayNav(NAV, { sections: {}, leaves: {} })).toBe(NAV);
+    });
+
+    it("★★★ 库里的名字盖过本地：section 名、叶子名、分组名都跟着变", () => {
+      const out = overlayNav(NAV, {
+        sections: { "/merchants": { name: "商户中心", icon: "Building" } },
+        leaves: { "/merchants?tab=list": { name: "商户名册", group: "档案" } },
+      });
+      const s = out.find((x) => x.key === "merchant")!;
+      expect(s.label).toBe("商户中心");
+      expect(s.icon).toBe("Building");
+      const leaf = s.children!.find((l) => l.href === "/merchants?tab=list")!;
+      expect(leaf.label).toBe("商户名册");
+      expect(leaf.group).toBe("档案");
+    });
+
+    it("★★★ section 与它的默认叶子 href 相同，两者不能互相盖 —— 扁平表会让分区名变成叶子名", () => {
+      // `/merchants` 既是分区首页，也是「入驻审核」这个叶子的 href
+      const out = overlayNav(NAV, {
+        sections: { "/merchants": { name: "商户中心" } },
+        leaves: { "/merchants": { name: "新店审核" } },
+      });
+      const s = out.find((x) => x.key === "merchant")!;
+      expect(s.label).toBe("商户中心");
+      expect(s.children!.find((l) => l.href === "/merchants")!.label).toBe("新店审核");
+    });
+
+    it("★★ 不覆盖结构 —— href / perm 这些不能被服务端文案改掉", () => {
+      const out = overlayNav(NAV, { leaves: { "/merchants?tab=ban": { name: "改个名" } } });
+      const leaf = out.find((x) => x.key === "merchant")!
+        .children!.find((l) => l.href === "/merchants?tab=ban")!;
+      expect(leaf.href).toBe("/merchants?tab=ban");
+      expect(leaf.perm).toBe("merchant:merchant:ban");
+    });
+
+    it("★★★ 少数项没有 sort 时，其余仍按服务端顺序排 —— 不能整体静默丢弃", () => {
+      /*
+       * 实测踩过：/ops/menu 只返回**有菜单功能点**的分区，而「经营看板」没有子功能，
+       * 于是它不在服务端菜单里。旧规则是「全部兄弟都有 sort 才排」，少这一个，
+       * 整个 L1 排序被整体丢弃 —— 运营在配置页点了上移，Rail 纹丝不动，且不报错。
+       */
+      const sections = NAV.map((s) => s.href);
+      const secOv: Record<string, { sort: number }> = {};
+      // 除首个（模拟经营看板缺席）外，全部给服务端 sort，且把第 2、3 个对调
+      NAV.slice(1).forEach((s, i) => { secOv[s.href] = { sort: (i + 1) * 10 }; });
+      secOv[sections[1]].sort = 20;
+      secOv[sections[2]].sort = 10;
+
+      const out = overlayNav(NAV, { sections: secOv }).map((s) => s.href);
+      expect(out[0], "没有 sort 的首项应当留在原位").toBe(sections[0]);
+      expect(out.slice(1, 3), "其余按服务端 sort 重排").toEqual([sections[2], sections[1]]);
+    });
+
+    it("★★ 一个 sort 都没有时原样返回 —— 服务端菜单没到手就别动顺序", () => {
+      expect(overlayNav(NAV, { sections: { [NAV[0].href]: { name: "x" } } })
+        .map((s) => s.href)).toEqual(NAV.map((s) => s.href));
+    });
+
+    it("★★ 叶子层同理：缺 sort 的跟着前一项走", () => {
+      // 原来用的 "store" 已并入 "merchant"（2026-09-09 菜单合并）
+      const s = NAV.find((x) => x.key === "merchant")!;
+      const hrefs = s.children!.map((l) => l.href);
+      const partial = overlayNav(NAV, { leaves: { [hrefs[1]]: { sort: 1 } } })
+        .find((x) => x.key === "merchant")!.children!.map((l) => l.href);
+      expect(partial).toEqual(hrefs);
+      const all: Record<string, { sort: number }> = {};
+      hrefs.forEach((h, i) => { all[h] = { sort: hrefs.length - i }; });
+      const sorted = overlayNav(NAV, { leaves: all })
+        .find((x) => x.key === "merchant")!.children!.map((l) => l.href);
+      expect(sorted).toEqual([...hrefs].reverse());
+    });
+
+    it("★★ 覆盖后的树能被 breadcrumb / navTabs 读到 —— 换源没换到位就会在这里露馅", () => {
+      // 用一个**所有角色都可见**的叶子：store 的几个 tab 后端未实现，
+      // visibleLeaves 会把它们滤掉，拿它做断言只会验到「看不见」
+      const nav = overlayNav(NAV, { leaves: { "/merchants?tab=list": { name: "商户名册" } } });
+      expect(navTabs("/merchants", ["audit", "list"], nav).map((t) => t.label))
+        .toEqual(["入驻审核", "商户名册"]);
+      expect(breadcrumb("/merchants", "list", null, backendPermsOf("SUPER_ADMIN"), undefined, nav))
+        .toContain("商户名册");
+    });
+  });
+
+  /*
+   * ★★★ **nav.ts 的每个叶子，迁移里都要有对应的 sys_function_point 行。**
+   *
+   * 这条是 2026-08-29 那次静默失败换来的。「开放对接」上线之后页面、接口、
+   * 权限码全对，面包屑也认得它，而页签条上只有三个 —— 因为 tab 的可见性
+   * 除了判权，还要求 href 出现在**服务端菜单**里（visibleTabKeys 读
+   * serverHrefs），而运营端菜单以库为准，nav.ts 只是本地的一份说法。
+   *
+   * 关键在于它为什么没被任何一道闸门拦住：**mock 不读这张表**。
+   * 本地四个页签齐全、交互一路验通、tsc 与全部既有测试全绿，
+   * 而线上那一屏根本进不去。上面第 418 行那条验的是「过滤行为对不对」，
+   * 它一直是绿的 —— 代码确实正确地把这个 tab 藏掉了。
+   *
+   * ⚠️ **这是单向判据**：只证明 href 在迁移里出现过，不证明那一行现在还在
+   * （后续迁移可能 DELETE 掉它）。要做成双向得在测试里重放全部迁移，
+   * 代价远大于收益；而漏掉一行的表现是「菜单里进不去」，正是这条要挡的。
+   */
+  it("★★★ 每个叶子的 href 在迁移里有 sys_function_point 行 —— 没有的话线上菜单里根本不存在", () => {
+    const dir = join(ROOT, "../backend/shop-app/src/main/resources/db/migration");
+    // 去掉行注释再拼：href 写在注释里不算数（这条闸门自己就差点被注释喂假绿）
+    const sql = readdirSync(dir).filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8").replace(/--[^\n]*/g, ""))
+      .join("\n");
+
+    const missing: string[] = [];
+    for (const s of NAV) {
+      if (s.soon) continue;                       // 未交付的域本来就还没有菜单行
+      for (const l of s.children ?? []) {
+        if (!l.ready) continue;                   // 没上的功能同理
+        if (!sql.includes(`'${l.href}'`)) missing.push(`${s.key} → ${l.href}（${l.label}）`);
+      }
+    }
+    expect(missing, `这些叶子在 db/migration 里找不到 sys_function_point 行。`
+      + `本地 mock 下看得见，接上真实后端就进不去 —— 补一条迁移。\n  `
+      + missing.join("\n  ")).toEqual([]);
+  });
+
+  describe("tab 判权（visibleTabKeys）", () => {
+    const KEYS = ["audit", "list", "categories", "admission", "verify", "credit", "ban"];
+
+    it("★★★ 与菜单同一口径 —— 服务端菜单里没有的 tab 也看不到", () => {
+      // 只授权了两条：tab 也只该剩这两条
+      const hrefs = new Set(["/merchants", "/merchants?tab=list"]);
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs)).toEqual(["audit", "list"]);
+    });
+
+    it("★★★ 后端说「未实现」的 tab 不出现在 tab 条上 —— 它在生产是个 404 入口", () => {
+      /*
+       * 服务端菜单**照样返回**后端没做的功能点，带 backendStatus=NOT_IMPLEMENTED
+       * （后端有意为之：藏起来运营就不知道平台规划了这个功能）。二级导航一直在
+       * 按它灰显 —— 而 tab 条没接，于是同一个入口菜单里灰着、页面里还能点。
+       *
+       * 点下去的后果只在生产显形：开发默认走 mock（那些接口在 mock 里都是好的），
+       * 而 build:prod 设了 NEXT_PUBLIC_USE_MOCK=0。
+       *
+       * 实测受影响的是 /marketing?tab={slots,member} 与 /stores?tab={qrcode,effect,template}
+       * ——「内容位、会员卡、店铺码、获客看板、主页模板」五个 tab，17 条接口后端都没有。
+       */
+      const nav = overlayNav(NAV, {
+        sections: {},
+        leaves: { "/merchants?tab=list": { soon: true } },
+      });
+      const hrefs = new Set(["/merchants", "/merchants?tab=list"]);
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs, nav)).toEqual(["audit"]);
+      // 反向：不标 soon 时它是在的 —— 否则上面那条断言可能只是因为别的原因少了一项
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], hrefs, NAV)).toEqual(["audit", "list"]);
+    });
+
+    it("★★ nav.ts 本地标的 soon 不会被服务端的「已实现」翻亮 —— 两个条件都要满足", () => {
+      // soon 取「或」：库里那一列讲后端有没有，nav.ts 那一处讲前端做没做
+      const nav = overlayNav(NAV, { sections: {}, leaves: { "/merchants?tab=list": {} } });
+      const leaf = nav.flatMap((x) => x.children ?? []).find((l) => l.href === "/merchants?tab=list");
+      const orig = NAV.flatMap((x) => x.children ?? []).find((l) => l.href === "/merchants?tab=list");
+      expect(leaf?.soon).toBe(orig?.soon);
+    });
+
+    it("★★★ 全站遍历：tab 集合永远 ⊆ 菜单可见集合，且确实发生过收窄", () => {
+      /*
+       * 不手挑角色举例 —— 挑错了会写出假测试：第一版拿 MERCHANT_BD 当「没有封禁权」
+       * 的反例，而商家运营**本来就有** merchant:merchant:ban。
+       * 遍历全站则不依赖任何一条人工判断。
+       */
+      let narrowed = 0;
+      for (const sec of NAV) {
+        const leaves = sec.children ?? [];
+        if (!leaves.length) continue;
+        const path = leafParts(sec.href).path;
+        // 只取**落在本 section 路径上**的叶子：nav 允许跨 section 深链
+        // （售后域里挂着 /finance?tab=refund-back），那种不是本页的 tab
+        const own = leaves.filter((l) => leafParts(l.href).path === path);
+        const keys = own.map((l, i) => (i === 0 ? "__first" : leafParts(l.href).tab)).filter(Boolean) as string[];
+        if (keys.length < 2) continue;
+        for (const r of ALL_ROLES) {
+          const perms = backendPermsOf(r);
+          const visible = new Set(visibleLeaves(sec, perms)
+            .filter((l) => leafParts(l.href).path === path).map((l) => l.href));
+          if (visible.size === 0) continue;   // 走「只留默认 tab」兜底，另一条测试管
+          for (const k of visibleTabKeys(path, keys, perms, undefined)) {
+            const href = k === "__first" ? sec.href : `${path}?tab=${k}`;
+            expect(visible.has(href), `${r} 在 ${sec.key}：tab「${k}」菜单里不可见却出现在 tab 条`).toBe(true);
+          }
+          if (visible.size < keys.length) narrowed++;
+        }
+      }
+      expect(narrowed, "全站没有任何一处发生收窄 —— 过滤根本没生效").toBeGreaterThan(0);
+    });
+
+    it("★★ 判不了就不判 —— perms 与 serverHrefs 都为空时原样返回", () => {
+      // can(undefined, x) 恒 false，不特判的话整条 tab 会凭空消失
+      expect(visibleTabKeys("/merchants", KEYS, undefined, undefined)).toEqual(KEYS);
+      expect(visibleTabKeys("/merchants", KEYS, [], new Set())).toEqual(KEYS);
+    });
+
+    it("★★★ 一个都不剩时只留默认那一个 —— 不给白页，也不把无权的功能名摊出来", () => {
+      // 授权集合与本页毫不相干 → 全部落空
+      expect(visibleTabKeys("/merchants", KEYS, ["*"], new Set(["/orders"]))).toEqual(["audit"]);
+      // 零 merchant 权限的角色直连 URL 进来，同样只看到默认 tab
+      const cs = backendPermsOf("CS");
+      expect(visibleTabKeys("/merchants", KEYS, cs, undefined).length).toBeLessThanOrEqual(1);
+    });
+
+    it("★★ 超管看得到全部 tab —— 收紧不能误伤有权的人", () => {
+      const admin = backendPermsOf("SUPER_ADMIN");
+      expect(visibleTabKeys("/merchants", KEYS, admin, undefined)).toEqual(KEYS);
+    });
+
+    it("★★ 与 visibleLeaves 结果一致 —— 两边分岔就是这条守卫存在的理由", () => {
+      const s = NAV.find((x) => x.key === "merchant")!;
+      for (const r of ALL_ROLES) {
+        const perms = backendPermsOf(r);
+        const leafHrefs = new Set(visibleLeaves(s, perms).map((l) => l.href));
+        // 一条都看不见的角色走的是「只留默认 tab」那条兜底，不在本条断言范围内
+        if (leafHrefs.size === 0) continue;
+        for (const k of visibleTabKeys("/merchants", KEYS, perms, undefined)) {
+          const href = k === "audit" ? "/merchants" : `/merchants?tab=${k}`;
+          expect(leafHrefs.has(href), `${r} 的 tab ${k} 在菜单里不可见，却出现在 tab 条`).toBe(true);
+        }
+      }
+    });
   });
 
   it("面包屑 = L1 › 分组 › 子功能", () => {
-    expect(breadcrumb("/merchants", null, null, "SUPER_ADMIN")).toEqual(["商家治理", "入驻与资质", "入驻审核"]);
+    expect(breadcrumb("/merchants", null, null, backendPermsOf("SUPER_ADMIN"))).toEqual(["商家与门店", "入驻与资质", "入驻审核"]);
+  });
+
+  it("⌘K 候选：排除待建/锁定叶 —— 面板是「去某处」，列出去不了的只是噪音", () => {
+    for (const r of ALL_ROLES) {
+      const perms = backendPermsOf(r);
+      const entries = navSearchEntries(perms);
+      const byHref = new Map(NAV.flatMap((s) => (s.children ?? []).map((l) => [l.href, l] as const)));
+      for (const e of entries) {
+        if (e.isSection) continue;
+        const leaf = byHref.get(e.href);
+        expect(leaf && isLeafDisabled(leaf), `${e.label} 是待建/锁定叶却进了搜索候选`).toBeFalsy();
+      }
+    }
+  });
+
+  it("⌘K 候选：每个可见 section 都能被搜到，且落地页可点", () => {
+    const perms = backendPermsOf("SUPER_ADMIN");
+    const entries = navSearchEntries(perms);
+    const sections = entries.filter((e) => e.isSection);
+    // 待建整域不该出现（点进去是 404）
+    for (const e of sections) {
+      const s = NAV.find((x) => x.label === e.label)!;
+      expect(s.soon, `${s.key} 整域待建却进了搜索候选`).toBeFalsy();
+    }
+    expect(sections.map((e) => e.label)).toContain("商家与门店");
+    expect(entries.find((e) => e.label === "商家档案")?.href).toBe("/merchants?tab=list");
+  });
+
+  it("⌘K 匹配：空格分词，词序无关；不匹配则落空", () => {
+    expect(matchesQuery("商家治理 入驻与资质 商家档案", "商家 档案")).toBe(true);
+    expect(matchesQuery("商家治理 入驻与资质 商家档案", "档案 商家")).toBe(true);
+    expect(matchesQuery("Merchants Merchant profiles", "merchant PROFILE")).toBe(true);
+    expect(matchesQuery("商家治理 商家档案", "订单")).toBe(false);
+    expect(matchesQuery("任意串", "   ")).toBe(true); // 空查询 = 不过滤
   });
 
   it("section 首页默认高亮首个可点叶子", () => {
     const s = NAV.find((x) => x.key === "merchant")!;
-    const leaves = visibleLeaves(s, "SUPER_ADMIN");
+    const leaves = visibleLeaves(s, backendPermsOf("SUPER_ADMIN"));
     expect(activeLeafIndex(leaves, "/merchants", null, null)).toBe(0);
   });
 
@@ -163,8 +812,8 @@ describe("路由归属与面包屑", () => {
     for (const s of NAV) {
       if (s.soon) continue; // 整域待建：Rail 上本就不可点
       for (const r of ALL_ROLES) {
-        const href = sectionDefaultHref(s, r);
-        const leaves = visibleLeaves(s, r);
+        const href = sectionDefaultHref(s, backendPermsOf(r));
+        const leaves = visibleLeaves(s, backendPermsOf(r));
         const hit = leaves.find((l) => l.href === href);
         if (hit) expect(hit.soon, `${s.key} 的默认落地是待建叶 ${hit.label}`).toBeFalsy();
         else expect(href, `${s.key} 的默认落地既不是可点叶也不是 section 首页`).toBe(s.href);

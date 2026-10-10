@@ -3,7 +3,24 @@ import * as db from "@/lib/mock/db";
 import { NEIGHBOR_RISK_ACCEPT_COUNT } from "@/lib/constants";
 import { PICKUP_TRANSITIONS, type Community, type PickupPoint } from "@/lib/types";
 import type { CommunityApi } from "../contracts/community";
+import type { RegionSuggestion } from "@/lib/types";
 import { fail, notFound } from "@/lib/biz-error";
+
+/**
+ * 从省到自身。查不到时返回**已经走到的部分**，不抛也不返空 ——
+ * 区划每年调整，存量里会有撤并的旧码；抛异常会让一个社区弄挂整个列表页。
+ */
+function pathOf(code: string) {
+  const chain: import("@/lib/types").Region[] = [];
+  let cur: string | undefined = code;
+  for (let i = 0; i < 8 && cur; i++) {
+    const row = db.regions.find((r) => r.regionCode === cur);
+    if (!row) break;
+    chain.unshift(row);
+    cur = row.parentCode;
+  }
+  return chain;
+}
 import { wait } from "./_wait";
 
 function findCommunity(no: string): Community {
@@ -18,6 +35,40 @@ function findPickup(no: string): PickupPoint {
 }
 
 export const communityMock: CommunityApi = {
+  /**
+   * mock 也要**给出 mapStatus 的非 CLOSED 态** —— 只给正常态的话，
+   * 「地图快不行了」那一行在开发期一次都看不见，而它正是这一屏存在的理由。
+   */
+  listGeoPlaces: async () => ({
+    rows: [
+      { geoKey: "ws10s2b8", name: "龙华区地域馆", kind: "POI",
+        address: "深圳市龙华区观澜大道 155 号", latE6: 22689965, lngE6: 114030532,
+        hitCount: 187, verifiedAt: "2026-09-10T08:00:00", promotedNo: null },
+      { geoKey: "ws10s2c1", name: "桂澜新村", kind: "AOI",
+        address: "首信广场(松元厦地铁站E1口步行300米)", latE6: 22690100, lngE6: 114031000,
+        hitCount: 64, verifiedAt: "2026-08-02T08:00:00", promotedNo: "C202609171908442302225" },
+      { geoKey: "ws10s2d4", name: "观澜大道 155 号", kind: "STREET",
+        address: "深圳市龙华区观澜大道 155 号", latE6: 22690500, lngE6: 114031500,
+        hitCount: 3, verifiedAt: "2026-09-17T08:00:00", promotedNo: null },
+    ],
+    total: 2783,
+    mapStatus: "CLOSED",
+  }),
+  promoteGeoPlaces: async (req) => ({
+    received: 12, created: req.dryRun === false ? 10 : 0, updated: 0, skipped: 0,
+    // 给个非零值：地图对同一个小区常给出好几个 POI，收到 12 条建出 10 条才是真实形状
+    deduped: req.dryRun === false ? 2 : 0,
+    dryRun: req.dryRun !== false,
+  }),
+  openMapCommunities: (regionPrefix) => {
+    // mock 里也要真的改状态 —— 恒返回 0 的话，「开城之后列表变了没有」
+    // 在开发期看不出来，而那正是这个按钮唯一的可见效果
+    const hit = db.communities.filter(
+      (c) => c.source === "MAP" && !c.opened && (c.regionCode ?? "").startsWith(regionPrefix));
+    hit.forEach((c) => { c.opened = true; });
+    return wait({ opened: hit.length });
+  },
+
   listCommunities: (q = {}) =>
     wait(
       db.paginate(db.communities, q.page, q.size, (c) =>
@@ -26,9 +77,31 @@ export const communityMock: CommunityApi = {
         db.eqHit(q.city, c.city) &&
         // opened 从下拉来，是字符串 "1"/"0"，不是 boolean
         (!q.opened || (q.opened === "1") === c.opened) &&
+        // mock 里也要真的按前缀筛 —— 恒不筛的话，「按区查」这条在开发期
+        // 与「没做」长得一模一样（都是整张表）
+        (!q.regionPrefix || (c.regionCode ?? "").startsWith(q.regionPrefix)) &&
         db.kwHit(q.keyword, c.communityNo, c.name, c.grid, c.city),
       ),
     ),
+
+  /**
+   * mock 里**必须造出「有缺口」的样子**：全都齐了的话，这一页在开发期看起来
+   * 永远是一片绿，而它存在的全部意义就是把缺口露出来。
+   * 与线上实测同形状（2026-09-04：9 家门店只有 2 家标过点）。
+   */
+  coverageHealth: async () => wait({
+    stores: {
+      total: 9,
+      withCoords: 2,
+      missing: [
+        { storeNo: "ST-M0001", storeName: "老张粮油店", merchantNo: "M0001", deliveryRadiusM: 3000 },
+        { storeNo: "ST-M0002", storeName: "阿明果蔬合作社", merchantNo: "M0002", deliveryRadiusM: 3000 },
+        { storeNo: "ST-M0003", storeName: "巷口早餐铺", merchantNo: "M0003", deliveryRadiusM: null },
+      ],
+    },
+    addresses: { total: 3, withCoords: 2 },
+    communities: { total: 23, withCoords: 23, missing: [] },
+  }, 400),
 
   setCommunityOpen: async (communityNo, opened) => {
     const c = findCommunity(communityNo);
@@ -44,6 +117,274 @@ export const communityMock: CommunityApi = {
     return wait(c, 400);
   },
 
+  /*
+   * 影响预览的 mock：**要真的按半径算**，不是回一对好看的数。
+   *
+   * 回常量的话这一屏在 mock 下永远显示「会多进来 3 户」——
+   * 而这一屏存在的全部意义就是那个差值，它假了，界面做成什么样都没法判断对不对。
+   * 这里拿 db 里有坐标的地址按平面近似数一遍，与后端同一个口径。
+   */
+  fenceImpact: async (communityNo, radiusM) => {
+    const c = findCommunity(communityNo);
+    const withCoords = (db.addresses ?? []).filter((a) => a.latE6 != null && a.lngE6 != null);
+    const inside = (r: number) => (c.latE6 == null || c.lngE6 == null ? 0 : withCoords.filter((a) => {
+      const dLat = ((c.latE6 as number) - (a.latE6 as number)) / 1e6 * 111_000;
+      const dLng = ((c.lngE6 as number) - (a.lngE6 as number)) / 1e6 * 111_000
+        * Math.cos(((a.latE6 as number) / 1e6) * Math.PI / 180);
+      return Math.round(Math.hypot(dLat, dLng)) <= r;
+    }).length);
+    const preview = radiusM && radiusM > 0 ? radiusM : c.fenceRadius;
+    return wait({
+      currentRadiusM: c.fenceRadius, previewRadiusM: preview,
+      currentInside: inside(c.fenceRadius), previewInside: inside(preview),
+      addressesWithCoords: withCoords.length,
+    }, 200);
+  },
+
+  createBuilding: async (draft) => {
+    const parent = findCommunity(draft.parentNo);
+    // 与后端同一条判据：归属只做两层，父级自己有父级就拒
+    if (parent.parentNo) fail(`归属只做两层：「${parent.name}」自己已经挂在别的聚落下面了`,
+      `Only two levels: ${parent.name} already has a parent`);
+    if (!parent.regionCode) fail(`「${parent.name}」还没有归属的街道，先补上再建楼`,
+      `${parent.name} has no street yet`);
+    const c = {
+      communityNo: `B${900 + db.communities.length}`, name: draft.name,
+      city: parent.city, grid: parent.grid, opened: true,
+      // 楼默认 150 不是 1000 —— 与后端 defaultFenceOf 同一档
+      fenceRadius: 150, pickupCount: 0, createdAt: new Date().toISOString(),
+      regionCode: parent.regionCode, regionPath: parent.regionPath,
+      parentNo: parent.communityNo, kind: "BUILDING",
+      latE6: draft.latE6, lngE6: draft.lngE6,
+    };
+    db.communities.unshift(c as (typeof db.communities)[number]);
+    return wait(c as (typeof db.communities)[number], 400);
+  },
+
+  /*
+   * 分布 mock。**「算不了的」那三格必须非零** —— 全 0 的话这一屏在 mock 下
+   * 永远只有一张干净的表，而它存在的理由正是那几格。
+   */
+  coverageDistribution: async () => {
+    const withCoords = (db.addresses ?? []).filter((a) => a.latE6 != null);
+    const open = db.communities.filter((c) => c.opened);
+    const inside = (c: (typeof db.communities)[number]) =>
+      c.latE6 == null ? 0 : withCoords.filter((a) => {
+        const dLat = ((c.latE6 as number) - a.latE6) / 1e6 * 111_000;
+        const dLng = ((c.lngE6 as number) - a.lngE6) / 1e6 * 111_000
+          * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
+        return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
+      }).length;
+    const district = (c: (typeof db.communities)[number]) =>
+      (c.regionCode && c.regionCode.length >= 6 ? c.regionCode.slice(0, 6) : c.regionCode) ?? null;
+    const rows = open.map((c) => ({
+      communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
+      regionPath: c.regionPath,
+      buyerCount: inside(c),
+      merchantCount: c.regionCode ? 2 : 0,   // mock 没有现算，按有没有归属区划给个稳定假数
+      goodsCount: c.regionCode ? 17 : 0,
+    }));
+    const bucket = (r: typeof rows[number]) =>
+      r.buyerCount > 0 && r.merchantCount > 0 ? "ok"
+        : r.buyerCount > 0 ? "supply" : r.merchantCount > 0 ? "demand" : "empty";
+    const byDistrict = new Map<string | null, ReturnType<typeof region>>();
+    function region(code: string | null) {
+      return {
+        // 区县名解到**6 位区县码**那一级（省/市/区），与后端 regionPathNames(区县码) 同口径 ——
+        // 不能借某个聚落的 regionPath，那是街道级（省/市/区/街道），会在「区县」列里多出一截。
+        regionCode: code,
+        regionName: code == null ? null : (pathOf(code).map((r) => r.name).join(" / ") || code),
+        communityCount: 0, buyerCount: 0, buyerCommunityCount: 0,
+        merchantCommunityCount: 0, supplyGapCount: 0, demandGapCount: 0, emptyCount: 0,
+      };
+    }
+    const totals = { communities: open.length, buyers: 0, okCount: 0, supplyGapCount: 0, demandGapCount: 0, emptyCount: 0 };
+    const supplyGaps: typeof rows = [];
+    open.forEach((c, i) => {
+      const r = rows[i];
+      const code = district(c);
+      const agg = byDistrict.get(code) ?? region(code);
+      byDistrict.set(code, agg);
+      agg.communityCount++; agg.buyerCount += r.buyerCount; totals.buyers += r.buyerCount;
+      if (r.buyerCount > 0) agg.buyerCommunityCount++;
+      if (r.merchantCount > 0) agg.merchantCommunityCount++;
+      const b = bucket(r);
+      if (b === "ok") totals.okCount++;
+      else if (b === "supply") { agg.supplyGapCount++; totals.supplyGapCount++; supplyGaps.push(r); }
+      else if (b === "demand") { agg.demandGapCount++; totals.demandGapCount++; }
+      else { agg.emptyCount++; totals.emptyCount++; }
+    });
+    const regions = [...byDistrict.values()].sort((a, b) => b.buyerCount - a.buyerCount);
+    supplyGaps.sort((a, b) => b.buyerCount - a.buyerCount);
+    return wait({
+      regions, supplyGaps, totals,
+      unattributable: {
+        addressesWithoutCoords: 1,
+        addressesOutsideFences: Math.max(0, withCoords.length - totals.buyers),
+        storesWithoutCoords: 2,
+        communitiesClosed: db.communities.length - open.length,
+      },
+    }, 300);
+  },
+
+  distributionCommunities: async (regionCode: string, page: number, size: number) => {
+    const inside = (c: (typeof db.communities)[number]) =>
+      c.latE6 == null ? 0 : (db.addresses ?? []).filter((a) => a.latE6 != null).filter((a) => {
+        const dLat = ((c.latE6 as number) - a.latE6) / 1e6 * 111_000;
+        const dLng = ((c.lngE6 as number) - a.lngE6) / 1e6 * 111_000
+          * Math.cos((a.latE6 / 1e6) * Math.PI / 180);
+        return Math.round(Math.hypot(dLat, dLng)) <= c.fenceRadius;
+      }).length;
+    const all = db.communities
+      .filter((c) => c.opened && (c.regionCode ?? "").startsWith(regionCode))
+      .map((c) => ({
+        communityNo: c.communityNo, name: c.name, kind: c.kind ?? "ESTATE",
+        regionPath: c.regionPath, buyerCount: inside(c),
+        merchantCount: c.regionCode ? 2 : 0, goodsCount: c.regionCode ? 17 : 0,
+      })).sort((a, b) => b.buyerCount - a.buyerCount);
+    // 只传一页 —— 真区县可能几千个聚落（宝安区 6367）。字段名与 Page<T> 对齐。
+    const from = Math.max(0, (page - 1) * size);
+    return wait({ records: all.slice(from, from + size), total: all.length, page, size }, 200);
+  },
+
+  listCommunityApplies: (q = {}) =>
+    wait(db.paginate(db.communityApplies, q.page, q.size,
+      (a) => (q.status && q.status !== "ALL" ? a.status === q.status : true))),
+
+  decideCommunityApply: async (applyNo, pass, opts) => {
+    const a = db.communityApplies.find((x) => x.applyNo === applyNo);
+    if (!a) notFound("提报单", "Community request", applyNo);
+    // 裁完就是终态：再裁一次意味着同一条提报有两个结论，而通过那次已经建了社区
+    if (a.status !== "PENDING") fail("这条提报已经裁决过了", "This request was already decided");
+    if (!pass && !opts?.reason?.trim()) {
+      // 理由原样回给商家 —— 不写的话他不知道该改什么，只会原样再提一次
+      fail("驳回必须写原因", "A reason is required to reject");
+    }
+    if (pass) {
+      const code = opts?.regionCode?.trim() || a.regionCode;
+      const communityNo = `C${900 + db.communities.length}`;
+      db.communities.unshift({
+        communityNo, name: a.name, city: "杭州", grid: "", opened: true,
+        fenceRadius: 1000, pickupCount: 0, createdAt: new Date().toISOString(),
+        regionCode: code,
+        regionPath: code ? db.regions.find((r) => r.regionCode === code)?.name : undefined,
+      });
+      a.communityNo = communityNo;
+      a.regionCode = code;
+      a.status = "APPROVED";
+    } else {
+      a.status = "REJECTED";
+      a.reason = opts?.reason?.trim();
+    }
+    return wait(a, 400);
+  },
+
+  setCommunityRegion: async (communityNo, regionCode) => {
+    const c = findCommunity(communityNo);
+    const code = regionCode?.trim();
+    if (!code) {
+      // 清空是允许的：挂错了要能改回来
+      delete c.regionCode;
+      delete c.regionPath;
+      return wait(c, 400);
+    }
+    /*
+     * 挂之前先确认这个码存在。挂到不存在的码上不会报错，只会让这个社区在
+     * 任何「按区覆盖」里都出不来 —— 而运营看着界面上明明填着值。
+     */
+    const path = pathOf(code);
+    if (!path.length) notFound("区划", "Region", code);
+    c.regionCode = code;
+    c.regionPath = path.map((r) => r.name).join(" / ");
+    return wait(c, 400);
+  },
+
+  listRegions: async (parent, enabledOnly) =>
+    wait(db.regions.filter((r) =>
+      (parent ? r.parentCode === parent : !r.parentCode) && (!enabledOnly || r.enabled))),
+
+  regionPath: async (code) => wait(pathOf(code)),
+
+  /**
+   * mock 版推断：按地址里出现的区划名做一次朴素匹配，坐标那一路只在有坐标时给一条固定结果。
+   * 真实推断在后端（地址分段 + 坐标最近邻），这里只保证界面上那两种分支都能演到。
+   */
+  communitiesNear: async (latE6, lngE6) =>
+    // mock 里给一条「50 米外的同名小区」—— 查重这条路必须在 mock 上也能演到
+    wait(db.communities.slice(0, 1).map((c) => ({
+      communityNo: c.communityNo, name: c.name, latE6: latE6 + 400, lngE6: lngE6 + 400,
+      distanceM: 58, regionPath: c.regionPath ?? "",
+    }))),
+
+  /**
+   * mock 的疑似重复：拿库里前两条凑一对。
+   * **要能演到**，否则「发现 N 组疑似重复」这一段在开发期永远是空的，
+   * 而它正是 from-map 直开之后最需要设计的一屏。
+   */
+  duplicateCommunities: async () => {
+    const [a, b] = db.communities;
+    if (!a || !b) return wait([]);
+    return wait([{ left: a, right: b, reason: "NEARBY" as const, distanceM: 46 }]);
+  },
+
+  mergeCommunities: async (fromNo, intoNo) => {
+    const from = db.communities.find((c) => c.communityNo === fromNo);
+    const into = db.communities.find((c) => c.communityNo === intoNo);
+    if (!from || !into) fail("聚落不存在", "Settlement not found");
+    // 与真库同口径：被并掉的那条**关掉**而不是删掉 —— 历史订单还指着它
+    from.opened = false;
+    from.archivedAt = new Date().toISOString();
+    return wait(into);
+  },
+
+  resolveRegion: async ({ address, latE6 }) => {
+    const out: RegionSuggestion[] = [];
+    const hit = address
+      ? db.regions.filter((r) => r.level === "STREET" && address.includes(r.name))[0]
+      : undefined;
+    if (hit) out.push({ regionCode: hit.regionCode, level: hit.level, name: hit.name, path: pathOf(hit.regionCode).map((r) => r.name).join(" / "), source: "ADDRESS", detail: hit.name });
+    if (latE6 != null) {
+      const near = db.regions.find((r) => r.level === "STREET" && r.regionCode !== hit?.regionCode);
+      if (near) out.push({ regionCode: near.regionCode, level: near.level, name: near.name, path: pathOf(near.regionCode).map((r) => r.name).join(" / "), source: "COORDS", detail: "示例村 · 320 米" });
+    }
+    return wait(out);
+  },
+
+  /**
+   * 区划维护。mock 直接改 db.regions —— 「停用后还能开回来」这条
+   * 必须在 mock 上走得通，否则运营端唯一能演的是把树越停越少。
+   */
+  createRegion: async (parent, name) => {
+    const p = db.regions.find((r) => r.regionCode === parent);
+    if (!p) fail("父级区划不存在", "Parent region does not exist");
+    const dup = db.regions.find((r) => r.parentCode === parent && r.name === name);
+    if (dup) return wait(dup, 300);
+    const n = db.regions.filter((r) => r.regionCode.startsWith(`${parent}X`)).length + 1;
+    const row = {
+      regionCode: `${parent}X${String(n).padStart(2, "0")}`,
+      parentCode: parent,
+      level: p!.level === "DISTRICT" ? "STREET" : p!.level === "CITY" ? "DISTRICT" : "CITY",
+      name, enabled: true, hasChild: false,
+    } as (typeof db.regions)[number];
+    db.regions.push(row);
+    p!.hasChild = true;
+    return wait(row, 300);
+  },
+
+  toggleRegion: async (code, enabled) => {
+    const r = db.regions.find((x) => x.regionCode === code);
+    if (!r) fail("区划不存在", "Region does not exist");
+    r!.enabled = enabled;
+    return wait(r!, 300);
+  },
+
+  renameRegion: async (code, name) => {
+    const r = db.regions.find((x) => x.regionCode === code);
+    if (!r) fail("区划不存在", "Region does not exist");
+    r!.name = name;
+    return wait(r!, 300);
+  },
+
   archiveCommunity: async (no) => wait(db.archiveRow(db.communities, "communityNo", no), 400),
   unarchiveCommunity: async (no) => wait(db.unarchiveRow(db.communities, "communityNo", no), 400),
 
@@ -57,6 +398,53 @@ export const communityMock: CommunityApi = {
         db.kwHit(q.keyword, p.pickupNo, p.name, p.address, p.merchantName),
       ),
     ),
+
+  createPickup: async (draft) => {
+    if (!draft.communityNo || !draft.name?.trim() || !draft.address?.trim()) {
+      fail("社区、名称、地址都必填", "Community, name and address are all required");
+    }
+    if (!db.communities.some((c) => c.communityNo === draft.communityNo)) {
+      // 挂在不存在的社区上，这个点对谁都不可见，而列表看着是正常的
+      fail("社区不存在", "No such community");
+    }
+    // owner_ref 是多态的：STORE 门店号 / NEIGHBOR 用户号 / PLATFORM 空
+    if ((draft.type === "STORE" || draft.type === "NEIGHBOR") && !draft.ownerRef?.trim()) {
+      fail("这类自提点必须指定承接方", "This pickup type requires an owner");
+    }
+    // ADR-005 §4：给了报酬，承接的邻居就变成团长
+    if (draft.type === "NEIGHBOR" && (draft.serviceFeeRate || draft.serviceFeePerItemMinor)) {
+      fail("邻里自提点为零报酬", "Neighbour pickup points are unpaid");
+    }
+    const created: PickupPoint = {
+      pickupNo: `P${String(db.pickups.length + 900).padStart(3, "0")}`,
+      name: draft.name.trim(),
+      type: draft.type,
+      status: "ACTIVE",
+      communityNo: draft.communityNo,
+      communityName:
+        db.communities.find((c) => c.communityNo === draft.communityNo)?.name ?? draft.communityNo,
+      storeNo: draft.type === "STORE" ? draft.ownerRef : undefined,
+      address: draft.address.trim(),
+      openHours: draft.openHours ?? "",
+      arriveTime: draft.arrivalDesc ?? "",
+      serviceFeeRate: draft.serviceFeeRate ?? 0,
+      feeMode: "NONE",
+      serviceFeePerItemMinor: draft.serviceFeePerItemMinor ?? 0,
+      acceptCount30d: 0,
+      createdAt: new Date().toISOString(),
+    };
+    db.pickups.unshift(created);
+    return wait(created, 400);
+  },
+
+  decidePickup: async (pickupNo, pass, reason) => {
+    const p = findPickup(pickupNo);
+    if (p.status !== "PENDING") fail("已经裁过了", "Already decided");
+    if (!pass && !reason?.trim()) fail("驳回要写理由", "A reason is required to reject");
+    p.status = pass ? "ACTIVE" : "REJECTED";
+    p.rejectReason = pass ? null : reason!.trim();
+    return wait(p, 400);
+  },
 
   setPickupStatus: async (pickupNo, status) => {
     const p = findPickup(pickupNo);

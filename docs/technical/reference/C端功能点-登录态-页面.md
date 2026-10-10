@@ -1,0 +1,150 @@
+# C 端功能点 · 登录态 · 页面
+
+> **本文是生成的**：`node scripts/gen-c-feature-matrix.mjs`。不要手改。
+> 来源全部取自代码：功能点与登录态取 `c-app/src/api/endpoints.ts`，
+> 页面归属扫 `c-app/src/pages/**`（外加 `components/` 与 `stores/`）。
+>
+> 与 B 端那份的分工：那份的主轴是**权限码**（六角色 × 13 码），
+> 而消费者没有角色 —— 照搬会得到一张全是空格的表。
+> C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
+
+统计：**117 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
+
+## ⚠️ 没有页面调用的功能点
+
+> **做了没出口。** 这一类不报任何错 —— 接口在、契约在、mock 在，
+> 只是用户点不到。B 端与运营端各自都栽过一次（运营端 18 条、B 端积分三个接口零页面）。
+> 每一条要么给它出口，要么从端点表删掉。
+
+| 功能点 | 方法 | 路径 | 说明 |
+|---|---|---|---|
+| `myInvoices` | GET | `/mp/invoice/mine` | — |
+| `merchantList` | GET | `/mp/merchant` | — |
+| `promotedMerchants` | GET | `/mp/merchant/promoted` | — |
+| `visitedMerchants` | GET | `/mp/merchant/visited` | — |
+| `reorderFrom` | POST | `/mp/order/:orderNo/reorder` | — |
+| `storeEnter` | POST | `/mp/store/:no/enter` | — |
+| `frequentItems` | GET | `/mp/store/:no/frequent` | — |
+| `storeGoods` | GET | `/mp/store/:no/goods` | — |
+
+## 全部功能点
+
+| 功能点 | 路径 | 登录 | 页面 | 说明 |
+|---|---|---|---|---|
+| `masterData` | `GET /common/master-data` | 游客 | me | — |
+| `afterSaleList` | `GET /mp/after-sale` | 是 | orders | — |
+| `raiseDispute` | `POST /mp/after-sale/:afterSaleNo/escalate` | 是 | order | — |
+| `fillReturnExpress` | `POST /mp/after-sale/:afterSaleNo/ship` | 是 | order | — |
+| `afterSaleReasons` | `GET /mp/after-sale/reasons` | 游客 | after-sale | — |
+| `myCards` | `GET /mp/card/mine` | 是 | cards | — |
+| `cartList` | `GET /mp/cart` | 是 | (stores) | — |
+| `cartAdd` | `POST /mp/cart/add` | 是 | (stores) | — |
+| `cartRemove` | `POST /mp/cart/remove` | 是 | (stores) | — |
+| `cartUpdate` | `POST /mp/cart/update` | 是 | (stores) | — |
+| `allCommunities` | `GET /mp/community` | 游客 | (stores) | — |
+| `communityDetail` | `GET /mp/community/:communityNo` | 游客 | (stores) | — |
+| `nearbyCommunities` | `GET /mp/community/nearby` | 游客 | (stores) · address-pick | — |
+| `openRegions` | `GET /mp/community/regions` | 游客 | (stores) | — |
+| `bootstrapConfig` | `GET /mp/config/bootstrap` | 游客 | (stores) | — |
+| `couponList` | `GET /mp/coupon` | 游客 | (components)/biz · goods | — |
+| `receiveCoupon` | `POST /mp/coupon/:couponNo/receive` | 是 | (components)/biz | — |
+| `couponBest` | `POST /mp/coupon/best` | 是 | order-confirm | — |
+| `myCoupons` | `GET /mp/coupon/mine` | 是 | coupons · order-confirm | — |
+| `favoriteGoods` | `GET /mp/favorite/goods` | 是 | favorites | — |
+| `toggleFavoriteGoods` | `POST /mp/favorite/goods/:goodsNo` | 是 | favorites · goods | — |
+| `favoriteStores` | `GET /mp/favorite/store` | 是 | favorites | — |
+| `toggleFavoriteStore` | `POST /mp/favorite/store/:merchantNo` | 是 | store | — |
+| `myFission` | `GET /mp/fission` | 是 | invite · me | — |
+| `goodsList` | `GET /mp/goods` | 游客 | category · goods · groups · home · merchant · search | — |
+| `goodsDetail` | `GET /mp/goods/:goodsNo` | 游客 | goods · group | — |
+| `goodsBatch` | `GET /mp/goods/:goodsNo/batch` | 游客 | goods | — |
+| `goodsGroup` | `GET /mp/goods/:goodsNo/group` | 游客 | goods | — |
+| `questionList` | `GET /mp/goods/{goodsNo}/question` | 游客 | goods | — |
+| `promotedGoods` | `GET /mp/goods/promoted` | 游客 | home | — |
+| `groupBuyList` | `GET /mp/group-buy` | 游客 | groups · home | — |
+| `createGroupBuy` | `POST /mp/group-buy` | 是 | groups | — |
+| `groupBuyDetail` | `GET /mp/group-buy/:groupNo` | 游客 | group · order | — |
+| `groupPickupOrders` | `GET /mp/group-buy/:groupNo/orders` | 是 | group-host | — |
+| `confirmGroupBatch` | `POST /mp/group-buy/:groupNo/receive` | 是 | group-host | — |
+| `verifyGroupPickup` | `POST /mp/group-buy/:groupNo/verify` | 是 | group-host | — |
+| `myHostedGroups` | `GET /mp/group-buy/hosted` | 是 | group-host | — |
+| `myJoinedGroups` | `GET /mp/group-buy/mine` | 是 | my-groups | — |
+| `requestList` | `GET /mp/group-request` | 游客 | groups | — |
+| `createRequest` | `POST /mp/group-request` | 是 | request-create | — |
+| `requestDetail` | `GET /mp/group-request/:requestNo` | 游客 | request | — |
+| `chooseQuote` | `POST /mp/group-request/:requestNo/choose` | 是 | request | — |
+| `confirmRequest` | `POST /mp/group-request/:requestNo/confirm` | 是 | request | — |
+| `toggleInterest` | `POST /mp/group-request/:requestNo/interest` | 是 | request | — |
+| `applyInvoice` | `POST /mp/invoice/apply` | 是 | order | — |
+| `myInvoices` | `GET /mp/invoice/mine` | 是 | **无** | — |
+| `invoiceOfOrder` | `GET /mp/invoice/order/:orderNo` | 是 | order | — |
+| `resolveLocation` | `GET /mp/location/resolve` | 游客 | (stores) | — |
+| `reachOpened` | `POST /mp/member-reach/:reachNo/opened` | 是 | store | — |
+| `merchantList` | `GET /mp/merchant` | 游客 | **无** | — |
+| `merchantDetail` | `GET /mp/merchant/:merchantNo` | 游客 | merchant | — |
+| `merchantAcode` | `GET /mp/merchant/{merchantNo}/acode` | 游客 | (components)/biz | — |
+| `merchantApply` | `POST /mp/merchant/apply` | 是 | me | — |
+| `myMerchantApply` | `GET /mp/merchant/apply` | 是 | me | — |
+| `updateMerchantApply` | `POST /mp/merchant/apply/:applyNo` | 是 | me | — |
+| `promotedMerchants` | `GET /mp/merchant/promoted` | 游客 | **无** | — |
+| `visitedMerchants` | `GET /mp/merchant/visited` | 是 | **无** | — |
+| `messageList` | `GET /mp/message` | 是 | messages | — |
+| `readMessage` | `POST /mp/message/:messageNo/read` | 是 | messages | — |
+| `readAllMessages` | `POST /mp/message/read-all` | 是 | messages | — |
+| `subscribeReport` | `POST /mp/message/subscribe` | 是 | after-sale · me · order-confirm · pay · store | — |
+| `unreadMessages` | `GET /mp/message/unread-count` | 是 | me | — |
+| `myStoreCoupons` | `GET /mp/my-coupons` | 是 | coupon-code · coupons | — |
+| `myMemberships` | `GET /mp/my-memberships` | 是 | my-memberships | — |
+| `setMembershipReach` | `PUT /mp/my-memberships/:entityNo/reach` | 是 | my-memberships | — |
+| `createOrder` | `POST /mp/order` | 是 | order-confirm | — |
+| `orderList` | `GET /mp/order` | 是 | orders | — |
+| `orderDetail` | `GET /mp/order/:orderNo` | 是 | after-sale · order · pay · review-write | — |
+| `applyAfterSale` | `POST /mp/order/:orderNo/after-sale` | 是 | after-sale | — |
+| `cancelOrder` | `POST /mp/order/:orderNo/cancel` | 是 | order · pay | — |
+| `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
+| `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
+| `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
+| `orderTrace` | `GET /mp/order/:orderNo/trace` | 是 | order | — |
+| `orderCapability` | `POST /mp/order/capability` | 是 | order-confirm | — |
+| `orderPreview` | `POST /mp/order/preview` | 是 | order-confirm | — |
+| `searchPlaces` | `GET /mp/place/search` | 游客 | address-pick | — |
+| `pointAccount` | `GET /mp/points/account` | 是 | me · order-confirm · points | — |
+| `pointsDeductible` | `GET /mp/points/deductible` | 是 | order-confirm | — |
+| `pointRecords` | `GET /mp/points/records` | 是 | points | — |
+| `registerPushToken` | `POST /mp/push-token` | 是 | (stores) | — |
+| `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
+| `askQuestion` | `POST /mp/question` | 是 | goods | — |
+| `regions` | `GET /mp/regions` | 游客 | (components)/biz · city-pick | — |
+| `reviewList` | `GET /mp/review` | 游客 | goods · merchant · store | — |
+| `createReview` | `POST /mp/review` | 是 | review-write | — |
+| `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |
+| `storeHome` | `GET /mp/store/:no` | 游客 | store | — |
+| `storeAcode` | `GET /mp/store/:no/acode` | 游客 | (components)/biz | — |
+| `storeEnter` | `POST /mp/store/:no/enter` | 是 | **无** | — |
+| `frequentItems` | `GET /mp/store/:no/frequent` | 是 | **无** | — |
+| `storeGoods` | `GET /mp/store/:no/goods` | 游客 | **无** | — |
+| `storeByCode` | `GET /mp/store/by-code` | 游客 | store | — |
+| `myStores` | `GET /mp/store/mine` | 游客 | merchants · search | — |
+| `storeNearby` | `GET /mp/store/nearby` | 游客 | merchants · search | — |
+| `track` | `GET /mp/track` | 游客 | track | — |
+| `trackMine` | `GET /mp/track/mine` | 是 | track | — |
+| `trackMiniLink` | `GET /mp/track/mini-link` | 游客 | track | — |
+| `activeAddress` | `GET /mp/user/active-address` | 是 | (stores) | — |
+| `switchActiveAddress` | `POST /mp/user/active-address/:addressId` | 是 | (stores) | — |
+| `addressList` | `GET /mp/user/address` | 是 | (stores) · address · address-edit · order-confirm | — |
+| `saveAddress` | `POST /mp/user/address` | 是 | (components)/biz | — |
+| `removeAddress` | `POST /mp/user/address/:addressId/archive` | 是 | address | — |
+| `setDefaultAddress` | `POST /mp/user/address/:addressId/default` | 是 | address | — |
+| `uploadAvatar` | `POST /mp/user/avatar` | 是 | me/profile | — |
+| `bindCommunity` | `POST /mp/user/community` | 是 | (stores) | — |
+| `deregister` | `POST /mp/user/deregister` | 是 | me | — |
+| `login` | `POST /mp/user/login` | 游客 | (stores) | — |
+| `logout` | `POST /mp/user/logout` | 是 | (stores) | — |
+| `sendOtp` | `POST /mp/user/otp/send` | 是 | (components) · login | — |
+| `setPassword` | `POST /mp/user/password` | 是 | me/profile | — |
+| `passwordState` | `GET /mp/user/password` | 是 | me/profile | — |
+| `bindPhone` | `POST /mp/user/phone/bind` | 是 | (components) | — |
+| `phoneCapable` | `GET /mp/user/phone/capable` | 游客 | (components) | — |
+| `bindPhoneByWx` | `POST /mp/user/phone/wx` | 是 | (components) | — |
+| `profile` | `GET /mp/user/profile` | 是 | (stores) | — |
+| `updateProfile` | `POST /mp/user/profile` | 是 | me/profile | — |

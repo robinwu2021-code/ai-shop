@@ -1,0 +1,1399 @@
+package ai.neargo.shop.trade.service.impl;
+
+import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.spi.user.UserQueryPort;
+
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
+import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
+import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.service.OrderStatusView;
+import org.springframework.transaction.annotation.Transactional;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.trade.entity.OrdOrder;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class MerchantOrderServiceImpl implements MerchantOrderService {
+
+    /** 叫 LOG 不叫 log：这个类里已经有一个 {@code log(sub, ...)} 方法，同名字段读起来会打架 */
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(MerchantOrderServiceImpl.class);
+
+    private final SubOrderMapper subOrderMapper;
+    private final OrderItemMapper itemMapper;
+    private final StatusLogMapper statusLogMapper;
+    /** 社区在**主单**上，子单没有 —— 运营按社区做数据域隔离，所以平台侧要 join 出来 */
+    private final ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    /**
+     * 确认收款要复用它的 {@code markPaid}。
+     *
+     * <p>方向是单向的（merchant → order），{@code OrderServiceImpl} 不反向依赖本类，
+     * 所以不构成构造环 —— 这一点特意确认过：这个仓库刚被一条
+     * merchant → StoreShelfPort → MerchantGoodsService → GoodsService → merchant
+     * 的环整得上下文起不来。
+     */
+    private final ai.neargo.shop.trade.service.OrderService orderService;
+    /** 顾客列表要昵称与头像；**完整手机号不出这个 Port**（B12） */
+    private final UserQueryPort userPort;
+    private final ShipmentTraceQueryPort shipmentTracePort;
+
+    /** 日结的退款侧要它：退款按 refundedAt 归属，而那个时间只有售后单上有 */
+    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+
+    /**
+     * 微信发货信息录入。setter 注入：{@code shop-core} 单独跑测试时没有 paybridge，
+     * 缺了不该让整个交易域起不来 —— 但**缺了就不会上报**，见 {@link #ship} 里那句 ERROR。
+     */
+    private ai.neargo.shop.spi.trade.ShippingUploadPort shippingUploadPort;
+
+    /**
+     * 履约事件的出口。**setter 注入**，与上面那个 port 同一个理由：
+     * 构造器已经六个参数，再加会波及一批测试的 new，而这两件都是「可选的外接」。
+     */
+    private ai.neargo.shop.event.OutboxEventBus eventBus;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setEventBus(ai.neargo.shop.event.OutboxEventBus bus) {
+        this.eventBus = bus;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
+        this.shippingUploadPort = port;
+    }
+
+    public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
+                                    ai.neargo.shop.trade.service.OrderService orderService,
+                                    StatusLogMapper statusLogMapper, UserQueryPort userPort,
+                                    ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                                    ShipmentTraceQueryPort shipmentTracePort) {
+        this.afterSaleMapper = afterSaleMapper;
+        this.orderService = orderService;
+        this.subOrderMapper = subOrderMapper;
+        this.itemMapper = itemMapper;
+        this.statusLogMapper = statusLogMapper;
+        this.orderMapper = orderMapper;
+        this.userPort = userPort;
+        this.shipmentTracePort = shipmentTracePort;
+    }
+
+    @Override
+    public OrderVO detail(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        // 已取消 / 已退款：券与积分的去向（P3）—— 商家客服接到「我的券呢」时要看得到
+        // 优惠明细（批 3 · B8）：此前 B 端详情只有应付，商家看不到这单减了什么、谁出的钱
+        return toVO(sub)
+                // 门店号带上：深链（微信通知/推送）落地要用它把当前门店对齐到这单所属的店，
+                // 否则详情按当前门店过滤会跨店 NOT_FOUND（店名置 null，落地只用 storeNo 切店）。
+                .withStore(new OrderVO.StoreBrief(sub.getStoreNo(), null))
+                .withDiscountLines(orderService.discountLinesOf(sub))
+                .withReturned(orderService.returnedOf(sub))
+                .withTrace(traceOf(sub));
+    }
+
+
+    /** 物流页（TDD-物流模块 B2）。setter 注入：存量手工构造本类的地方不用跟着改 */
+    private LogisticsPort logisticsPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setLogisticsPort(LogisticsPort port) {
+        this.logisticsPort = port;
+    }
+
+    @Override
+    public OrderVO.Trace trace(String merchantNo, String storeNo, String subOrderNo, boolean refresh) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        if (logisticsPort == null || !OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", refresh))
+                .map(v -> new OrderVO.Trace(v.status(),
+                        v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                n.latE6(), n.lngE6())).toList(),
+                        "self-map", null, null,
+                        v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable()))
+                .orElse(null);
+    }
+
+    /**
+     * 这张子单的物流轨迹（Y4）。<b>只对快递履约、已回填单号</b>的子单查缓存；其余返回 null，
+     * {@code withTrace(null)} 即不展示。只读缓存，不触发承运商查询（那是轮询 Job 的事）。
+     */
+    private OrderVO.Trace traceOf(OrdSubOrder sub) {
+        if (!OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
+            return null;
+        }
+        /*
+         * **轨迹真源是 logistics 域（lgs_waybill），不是 ful_shipment**（2026-10-10 换源，
+         * 与 C 端详情同一笔改动）：快递100 走订阅推送、推送只落 lgs_waybill，
+         * 而 ful_shipment 只由 30 分钟轮询写 —— 两套没接通，商家在详情里看不到推来的轨迹。
+         * 详情与 /biz/order/{no}/trace 从此同源。refresh=false：读路径不主动问渠道。
+         */
+        if (logisticsPort == null) {
+            // 没装配 logistics 域时回落到换源前的读法，保证不比之前少给
+            return shipmentTracePort.traceOf(sub.getSubOrderNo())
+                    .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
+                            // **坐标要带上**：sh-trace 的地图要「至少两个带坐标的点」才画。
+                            // 此前这里用 3 参构造，与 /trace 那个出口给的不是同一份东西 ——
+                            // 症状是 App 上地图整块不出现，不报错、不留痕（2026-10-09 真机实测）
+                            .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                    n.latE6(), n.lngE6())).toList()))
+                    .orElse(null);
+        }
+        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", false))
+                .map(v -> new OrderVO.Trace(v.status(),
+                                v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(),
+                                        n.location(), n.latE6(), n.lngE6())).toList(),
+                                v.displayMode(), v.displayToken(), null,
+                                v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(),
+                                v.freshAt(), v.refreshable()))
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
+                        String expressNo, String expressCompany) {
+        /*
+         * **快递公司与运单号成对校验，在这里拒，不要等微信拒。**
+         *
+         * 放行到上报那一步的话，微信回的是一个编码错误码，而那时错误已经离
+         * 「商家刚才填错了」很远：台账上是一条失败、界面上什么都没发生、
+         * 商家以为自己发过货了，几天后才发现钱没结出来。
+         */
+        if (!ai.neargo.shop.common.ExpressCompanies.isValid(expressCompany)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (expressNo == null || expressNo.isBlank()) {
+            /*
+             * 没有单号的「已发货」对买家没有任何用处 —— 他既查不到物流，
+             * 也无法判断该不该继续等。所以这里拦住，而不是存一个空单号。
+             */
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        String no = expressNo.trim();
+        /*
+         * 状态机对 from==to 是**幂等友好**的（为回调重放设计），所以重复发货不会在这里被拒。
+         * 于是要在这一层区分两件事：
+         *   同一个单号再发一次 → 重复点击，空操作；
+         *   换了一个单号     → 这是「改单号」，允许（填错单号必须能改，
+         *                      拒了商家只能打客服），但**必须留痕** ——
+         *                      买家那边的物流号变了却查不到是谁改的，是纠纷的开始。
+         */
+        boolean shipped = OrdSubOrder.FULFILLING.equals(sub.getStatus());
+        // 单号与公司**都**没变才算重复点击。只比单号的话，「单号没填错、
+        // 快递公司选错了」这种改不进去 —— 而那正是最需要能改的一种
+        if (shipped && no.equals(sub.getExpressNo())
+                && expressCompany.equals(sub.getExpressCompany())) {
+            return toVO(sub);
+        }
+        // 商家发起 → 用带「未付款不许推进」那条闸的断言（见 assertMerchantSubOrderTransit）
+        OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
+        String old = sub.getExpressNo();
+        sub.setStatus(OrdSubOrder.FULFILLING);
+        sub.setExpressNo(no);
+        sub.setExpressCompany(expressCompany);
+        save(sub);
+        log(sub, OrdSubOrder.FULFILLING,
+                shipped ? "商家改快递单号：" + old + " → " + no : "商家发货：" + no,
+                merchantNo);
+        /*
+         * **向微信报发货**（TDD-微信发货信息录入 §5.2）。挂在状态迁移上而不是 controller 上：
+         * 挂 controller 的话，每多一个推进到「已发货」的入口就要记得加一次，
+         * 而漏掉的那一个不报错、只是那些单的钱结不出来。
+         *
+         * 改单号的那次（shipped==true）也走这里：台账幂等，重复入队不产生第二行。
+         * 运单号变了要不要重报是另一件事 —— 微信的 10060002 会把它挡掉，
+         * 已记在 §7 待确认。
+         */
+        notifyShipping(sub);
+        publishShipped(sub, no, expressCompany);
+        return toVO(sub);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
+                                     String operator) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        /*
+         * ⚠️ **必须绕过数据域**。B 端会话是 SELF 维度，而 ord_order 按买家登记 ——
+         * 维度对不上时 DataScopeHandler fail-closed 拼 `1=0`：
+         * **查不到、update 影响 0 行，而接口成功、日志干净**。
+         * 第一版没加，症状是这里恒抛「订单状态不允许该操作」，
+         * 而子单明明就在眼前 —— 归属已由上面的 require(merchantNo, storeNo, …) 判过了。
+         */
+        OrdOrder order = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                        .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
+        if (order == null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
+            /*
+             * 不是「等确认收款」的单一律拒。包括线上单 —— 否则商家点一下
+             * 就能把一笔没付钱的线上单标成已付，那是凭空发货。
+             */
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        /*
+         * 留痕先写：markPaid 里会发事件、触发结算，那些都可能失败重试，
+         * 而「谁点的确认」这件事不该跟着重试语义走。
+         */
+        order.setOfflineConfirmedBy(operator);
+        order.setOfflineConfirmedAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> orderMapper.updateById(order));
+
+        /*
+         * **复用 markPaid**，payChannel 传 OFFLINE。
+         *
+         * 它是幂等的（已 PAID 直接返回），且不关心钱从哪来 ——
+         * 微信回调与这里是同一个方法的两个调用方。
+         * payTradeNo 记操作人：线下没有支付流水号，而这一列是对账时回溯用的，
+         * 留空等于把这单从对账链路上摘掉。
+         */
+        /*
+         * ⚠️ **整段绕过数据域**。markPaid 内部还要读写 ord_order / ord_sub_order / 库存，
+         * 而它此前**只被支付回调调用**（那条路上没有会话），所以从没撞过数据域。
+         * 从 B 端会话调它，那些读会被 fail-closed 拼成 `1=0` —— 症状是
+         * 「确认收款报订单不存在」，而订单就在眼前。
+         *
+         * 归属已经由上面的 require(merchantNo, storeNo, …) 判过：绕过的是数据域，不是鉴权。
+         */
+        DataScopeContext.executeWithoutScope(() -> {
+            orderService.markPaid(order.getOrderNo(), PayModes.OFFLINE, "OFFLINE:" + operator);
+            return null;
+        });
+        OrdSubOrder after = require(merchantNo, storeNo, subOrderNo);
+        log(after, after.getStatus(), "商家确认已收到线下货款", merchantNo);
+        return toVO(after);
+    }
+
+    @Override
+    @Transactional
+    public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.COMPLETED);
+        sub.setStatus(OrdSubOrder.COMPLETED);
+        save(sub);
+        /*
+         * 留痕写「商家标记送达」而不是「已完成」——
+         * 买家自己确认收货也会把单推到 COMPLETED，纠纷时要能分清是谁点的。
+         */
+        log(sub, OrdSubOrder.COMPLETED, "商家标记送达", merchantNo);
+        publishCompleted(sub);
+        /*
+         * **商家点送达也要向微信报发货**（2026-09-28 补）。
+         *
+         * MERCHANT_DELIVERY（商家自送）没有 ship() 那一步 —— 它硬性要
+         * 快递单号 + 快递公司码，自送没有这两样。以前这类单唯一的商家动作是
+         * 「点送达」，而 delivered() 从不 notifyShipping：结果整批自送订单
+         * 微信侧全部收不到发货信息，24 小时后微信推 remind_access_api 让商家
+         * 去后台手工补 —— 已在 2026-09-28 那笔 0.1 元测试单上撞过一次。
+         *
+         * enqueue **幂等**（一笔订单一行）—— 其它类型走 ship 时已 enqueue 过，
+         * 这里再来是 no-op；MERCHANT_DELIVERY 唯一的入队机会就在这一行。
+         */
+        notifyShipping(sub);
+        return toVO(sub);
+    }
+
+    /**
+     * 把「这笔单可以向微信报发货了」交给上报台账。
+     *
+     * <p><b>不在这里发请求</b>：上报是跨网络的副作用，一次抖动不该让商家点不动发货。
+     */
+    /**
+     * 已发货 / 开始配送 → 通知买家。
+     *
+     * <p><b>此前这一步什么都不发</b>：买家从下单到收货，商家配送与快递这两条链
+     * 一条消息都收不到（2026-09-29 查证，而线上真实成交全走商家配送）。
+     * 微信那边的「服务动态」由 {@link #notifyShipping} 报上去、微信自己推，
+     * 这条事件管的是**我们自己的**站内信与 App 推送 —— 两者不重复：
+     * 前者只在微信里，后者是消息中心与手机通知栏。
+     */
+    private void publishShipped(OrdSubOrder sub, String expressNo, String expressCompany) {
+        if (eventBus == null) {
+            return;   // 裁剪部署 / 单测里没装事件总线，不拦业务
+        }
+        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderShipped(
+                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(), sub.getUserNo(),
+                sub.getFulfillment(), expressCompany, expressNo));
+    }
+
+    /**
+     * 商家标记送达 → 子单到终态。
+     *
+     * <p>与自提核销共用 {@code SubOrderCompleted}，靠事件里的 {@code fulfillment}
+     * 分文案 —— 自提是「已取货」，配送是「已送达」。
+     * 共用一条事件是有意的：评价开放、结算解冻计时都挂在它上面，
+     * 另起一条就要在那几处各加一个分支，而漏掉哪一处都不会报错。
+     */
+    private void publishCompleted(OrdSubOrder sub) {
+        if (eventBus == null) {
+            return;
+        }
+        eventBus.publish(new ai.neargo.shop.spi.trade.OrderEvents.SubOrderCompleted(
+                sub.getSubOrderNo(), sub.getOrderNo(), sub.getEntityNo(),
+                sub.getUserNo(), sub.getFulfillment()));
+    }
+
+    private void notifyShipping(OrdSubOrder sub) {
+        if (shippingUploadPort == null) {
+            LOG.error("[wxship] 装配里没有 ShippingUploadPort，子单 {} 不会上报 —— 这笔钱会结不出来",
+                    sub.getSubOrderNo());
+            return;
+        }
+        shippingUploadPort.enqueue(sub.getOrderNo(), sub.getSubOrderNo(), sub.getFulfillment());
+    }
+
+    /**
+     * 取一单并校验归属。
+     *
+     * <p><b>查不到就是 NOT_FOUND，不是 FORBIDDEN</b>：后者等于确认「这个单号是真的」，
+     * 而单号可枚举 —— 那就成了一个订单探测器。
+     */
+    private OrdSubOrder require(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
+                        .eq(OrdSubOrder::getEntityNo, merchantNo)
+                        // 门店维度再收窄：只按主体判的话，A 店店员能翻出 B 店的单
+                        .eq(storeNo != null && !storeNo.isBlank(), OrdSubOrder::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return sub;
+    }
+
+    private void save(OrdSubOrder sub) {
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+    }
+
+    private void log(OrdSubOrder sub, String status, String label, String operatorNo) {
+        OrdStatusLog row = new OrdStatusLog();
+        row.setSubOrderNo(sub.getSubOrderNo());
+        row.setStatus(status);
+        row.setLabel(label);
+        row.setOperatorType("MERCHANT");
+        row.setOperatorNo(operatorNo);
+        row.setAt(System.currentTimeMillis());
+        row.setTenantNo("MAIN");
+        row.setCreatedAt(java.time.LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> statusLogMapper.insert(row));
+    }
+
+    @Override
+    public PageData<OrderVO> list(String merchantNo, java.util.Collection<String> storeNos,
+                                  String status, List<String> fulfillments,
+                                  java.time.LocalDate from, java.time.LocalDate to,
+                                  long page, long size) {
+        var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        /*
+         * 门店过滤。**结算键 entity_no 仍然保留** —— 两个键各管各的：
+         * entity_no 是「这单的钱算谁的」（历史快照，门店换主体也不改），
+         * store_no 是「这单在哪家店履约」。
+         *
+         * null = 不过滤（属主的「全部门店」，含早于多门店、store_no 为空的历史单）；
+         * **空集合 = 一家都看不到**，不是「不过滤」——
+         * 把空集合当成不过滤，是「没被授权的员工反而看到全部」这类越权最常见的写法。
+         */
+        if (storeNos != null) {
+            if (storeNos.isEmpty()) {
+                return PageData.of(List.of(), 0, page, size);
+            }
+            w.in(OrdSubOrder::getStoreNo, storeNos);
+        }
+        /*
+         * 时间区间（P4）。**按下单时间筛，与报表同一条时间轴** ——
+         * 换成支付时间或更新时间的话，从报表点进来的单数就对不上，
+         * 而两边各自都说得通，那是口径分岔里最难查的形状。
+         *
+         * `to` 的含义是「**含那一整天**」，所以取 < to+1 天 00:00，
+         * 不是 <= to 23:59:59 —— 后者会漏掉那一秒里的单。
+         */
+        if (from != null) {
+            w.ge(OrdSubOrder::getCreatedAt, from.atStartOfDay());
+        }
+        if (to != null) {
+            w.lt(OrdSubOrder::getCreatedAt, to.plusDays(1).atStartOfDay());
+        }
+        /*
+         * 按**展示状态**筛。端上传来的是 PAID / SHIPPED / ARRIVED 这类词
+         * （b-app 的三个标签页就是它们），而库里存的是 WAIT_FULFILL / FULFILLING ——
+         * 此前直接拿去比库状态，一条也匹配不上：商家的「待发货」永远是空的，
+         * 而「全部」是好的，所以看起来只是几个页签没数据。
+         */
+        OrderStatusView.applyMerchantFilter(w, status);
+        // 与 status 正交：页签是「状态 + 履约集合」的谓词，端上传哪些履约就筛哪些
+        if (fulfillments != null && !fulfillments.isEmpty()) {
+            w.in(OrdSubOrder::getFulfillment, fulfillments);
+        }
+        w.orderByDesc(OrdSubOrder::getId);
+
+        /*
+         * ★ **显式豁免数据域**（与 MerchantGoodsServiceImpl 同一套做法）。
+         *
+         * 商家用的是消费者令牌，会话的数据域维度是 SELF；而 `ord_sub_order` 上
+         * SELF 锚定的是 `user_no`（买家）。不豁免的话，SQL 会追加
+         * `user_no = <商家自己的 userNo>` —— 商家在订单页只看得到**他自己买过的单**，
+         * 卖出去的一单都看不到，而且不报错，只是"今天没有订单"。
+         *
+         * 这里可以豁免，是因为归属判断已经由上面那句 `eq(entity_no, merchantNo)` 做掉了，
+         * 而 merchantNo 来自 BizContext（授权边界），不是请求参数。
+         */
+        Page<OrdSubOrder> p = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectPage(Page.of(page, size), w));
+        List<OrderVO> records = p.getRecords().stream().map(this::toVO).toList();
+        return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+    }
+
+    /**
+     * 商家视角：**有金额**（这是他自己的钱），但**没有买家完整手机号** ——
+     * 需要联系买家走平台客服通道，而不是把号码散出去（M11/B12）。
+     */
+    private OrderVO toVO(OrdSubOrder s) {
+        List<OrderVO.ItemVO> items = itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getSubOrderNo, s.getSubOrderNo())).stream()
+                .map(i -> new OrderVO.ItemVO(i.getGoodsNo(), s.getEntityNo(), i.getSkuNo(),
+                        i.getTitle(), i.getCover(), i.getSpec(),
+                        i.getPrice() == null ? 0L : i.getPrice(),
+                        i.getQty() == null ? 0 : i.getQty(),
+                        i.getAmount() == null ? 0L : i.getAmount(), i.getCategoryType(),
+                        Boolean.TRUE.equals(i.getIsGift())))
+                .toList();
+
+        // paidAt 只在主单上（子单没有这一列），同 toOpsVO 的做法 join 回去取
+        var main = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, s.getOrderNo())
+                        .last("limit 1")));
+
+        return new OrderVO(s.getSubOrderNo(), s.getOrderNo(),
+                // 同 C 端：下发展示状态。b-app 的「待发货/已发货/待核销」三个标签页靠它区分；
+                // 带主单状态 —— 不带的话货到付款单显示「待付款」，「确认收款」按钮永远不出
+                OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()), s.getFulfillment(),
+                s.getEntityNo(), s.getEntityName(), items,
+                OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
+                        nz(s.getDiscountAmount()), nz(s.getPayAmount()), "CNY"),
+                s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
+                null,
+                s.getCreatedAt() == null ? 0L
+                        : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                main == null ? null : main.getPaidAt(),
+                // 商家也要看得到自己填了什么单号 —— 否则改单号之后无从核对
+                s.getExpressNo(), s.getTrafficSource(), s.getAppointmentAt(),
+                receiverFor(s), List.of(), null,
+                // 认人用：售后页、配送单都要显示「谁的单」。**只给昵称**，联系方式走
+                // receiver 那一档（B12：商家不需要能打给每一个买家）
+                main == null ? null : userPort.find(main.getUserNo())
+                        .map(ai.neargo.shop.spi.user.UserQueryPort.UserBrief::nickname).orElse(null),
+                // 商家侧不查这三样：评价与售后在 b-app 有自己的页面，支付分组是买家视角的事
+                false, null, 1,
+                // 走全参构造而不是旧的短签名：末尾要带上快递公司。
+                // 商家改完单号要能核对自己选的是哪一家 —— 选错快递公司与填错单号
+                // 对买家是同一种后果（查不到物流），却只有单号看得见
+                null, null, null, null, s.getExpressCompany());
+    }
+
+    private static final int PHONE_TAIL = 4;
+
+    /**
+     * 商家看到的收件人。**脱敏口径分两档**：
+     *
+     * <ul>
+     *   <li><b>商家要亲自把货送达的两种履约 → 完整手机号</b>：
+     *     <ul>
+     *       <li>商家自送（{@code MERCHANT_DELIVERY}）—— 送到楼下找不到人就得打电话
+     *           （2026-08-12 产品确认）；</li>
+     *       <li>快递（{@code EXPRESS}）—— 商家（或其供应商）要填运单、快递员要联系收件人
+     *           （2026-10-04 产品确认放开：给后四位，运单填不了、快递员找不到人）。</li>
+     *     </ul>
+     *   </li>
+     *   <li>其余履约方式（到店核销 / 预约等）→ 后四位。B12 的原判断不变：
+     *       这些不需要商家把货送出去，要联系走平台客服通道。</li>
+     * </ul>
+     *
+     * <p><b>判断写在这里而不是 VO 上</b>：VO 只是形状，「谁能看到多少」是装配时的决定。
+     * 写进 VO 的话，换一个装配路径（比如平台端）就会不知不觉套用商家的口径。
+     */
+    private static OrderVO.Receiver receiverFor(OrdSubOrder s) {
+        if (s.getReceiverName() == null && s.getReceiverAddress() == null) {
+            return null;
+        }
+        String phone = s.getReceiverPhone();
+        // 自送与快递都要商家把货送达买家手上，都给全号；其余走平台客服
+        boolean needsContact = MERCHANT_DELIVERY.equals(s.getFulfillment())
+                || EXPRESS.equals(s.getFulfillment());
+        return new OrderVO.Receiver(s.getReceiverName(),
+                needsContact ? phone : tail(phone), s.getReceiverAddress());
+    }
+
+    private static String tail(String phone) {
+        return phone == null || phone.length() < PHONE_TAIL ? null
+                : "****" + phone.substring(phone.length() - PHONE_TAIL);
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+
+    // ---------------------------------------------------------------- 工作台（B-11.1）
+
+    /** 履约方式。取值域见 {@link OrdSubOrder#getFulfillment()} 的注释。 */
+    private static final String EXPRESS = "EXPRESS";
+    private static final String MERCHANT_DELIVERY = "MERCHANT_DELIVERY";
+    private static final java.util.Set<String> PICKUP =
+            java.util.Set.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
+    /** 同 PICKUP，给 SQL 的 in/notIn 用（Wrapper 要 Collection） */
+    private static final List<String> PICKUP_FULFILLMENTS =
+            List.of("STORE_PICKUP", "NEIGHBOR_PICKUP");
+
+    @Override
+    public TodoCounts todo(String merchantNo, java.util.Collection<String> storeNos,
+                           java.util.Collection<String> pickupNos) {
+        /*
+         * 发货两个数：**商家视角，按门店**。
+         * 空集合 = 一家门店都没被授权 → 0，而不是「不过滤」看到全主体。
+         */
+        int toShip = 0;
+        int toDeliver = 0;
+        int toStock = 0;
+        if (storeNos == null || !storeNos.isEmpty()) {
+            for (OrdSubOrder o : scan(merchantNo, storeNos,
+                    w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL))) {
+                // 已发货（FULFILLING）不再是待办 —— 剩下的是买家收货，商家没事可做
+                String f = o.getFulfillment();
+                if (PICKUP_FULFILLMENTS.contains(f)) {
+                    /*
+                     * **待备货**：把货备好送到买家选的那个自提点去，这是供货方的活。
+                     *
+                     * 与下面的 toPick 是同一批单的两头，但**两个数不相等**：
+                     * 买家常常选别家的点。把 toPick 改成按自提点算之后，
+                     * 「我有货要送出去」这件事一度**在工作台上完全消失了** ——
+                     * 有活、没数字、也没入口。这一格补的就是它。
+                     */
+                    toStock += 1;
+                } else if (MERCHANT_DELIVERY.equals(f)) {
+                    toDeliver += 1;
+                } else {
+                    // fulfillment 为空按快递算，与下单侧的默认一致
+                    toShip += 1;
+                }
+            }
+        }
+
+        /*
+         * 自提两个数：**自提点承接方视角，按自提点，且不限商家**。
+         *
+         * 与 `PickupService.picking` / `orders` 同一口径 —— 它们也是按点取、不按商家过滤，
+         * 因为一个自提点承接多家商家的货（ADR-005），别家的货同样要我分、我核。
+         *
+         * 这里曾经与上面合用一次「按门店」的扫描，于是买家选了别家点的那些单
+         * 被算进了我的「待分拣」：**工作台显示 1，点进去分拣单 0 件**。
+         * 商家看到的是「有活，但找不到」，而两边的代码各自都说得通。
+         */
+        int toVerify = 0;
+        int toPick = 0;
+        if (pickupNos != null && !pickupNos.isEmpty()) {
+            List<OrdSubOrder> atMyPickups = DataScopeContext.executeWithoutScope(() ->
+                    subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                            .in(OrdSubOrder::getPickupNo, pickupNos)
+                            .in(OrdSubOrder::getFulfillment, PICKUP_FULFILLMENTS)
+                            .in(OrdSubOrder::getStatus,
+                                    OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING)));
+            for (OrdSubOrder o : atMyPickups) {
+                /*
+                 * 自提两段：**到货前是分拣，到货后才是核销**。
+                 * 合成一个数的话，商家看到「待核销 12」却在自提点找不到货 ——
+                 * 因为那 12 单根本还没到店。
+                 */
+                if (OrdSubOrder.WAIT_FULFILL.equals(o.getStatus())) {
+                    toPick += 1;
+                } else {
+                    toVerify += 1;
+                }
+            }
+        }
+        return new TodoCounts(toShip, toDeliver, toStock, toVerify, toPick);
+    }
+
+    @Override
+    public StatsSummary stats(String merchantNo, java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return new StatsSummary(0, 0, 0, 0, 0d);
+        }
+        /*
+         * 成交口径走 {@code OrdSubOrder.TRANSACTED}（**全后端唯一一份**）。
+         *
+         * 这里此前写的是 `!= WAIT_PAY`，于是 **CANCELLED 也被算成了成交** ——
+         * 而平台侧的排行用的是显式集合（不含取消）。同一个月、同一家店，
+         * 商家后台的 GMV 比平台大，差额恰好是那些被取消的单，
+         * 两边各自都说得通、都不报错。商家拿它去对账时，第一反应是平台少算了他的钱。
+         *
+         * 已退款仍在内：GMV 是毛成交额，那笔钱确实成交过，退款在结算侧另算。
+         */
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, monthStart));
+
+        int todayOrders = 0;
+        long todayGmv = 0;
+        long monthGmv = 0;
+        int owned = 0;
+        int attributed = 0;
+        for (OrdSubOrder o : rows) {
+            monthGmv += o.getPayAmount() == null ? 0 : o.getPayAmount();
+            if (o.getCreatedAt() != null && o.getCreatedAt().toLocalDate().isEqual(today)) {
+                todayOrders += 1;
+                todayGmv += o.getPayAmount() == null ? 0 : o.getPayAmount();
+            }
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                attributed += 1;
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
+                    owned += 1;
+                }
+            }
+        }
+        /*
+         * 分母是**有归因的单**，不是全部单 —— 归因上线之前的历史单 traffic_source 为空，
+         * 算进分母会把商家的自带客流比例凭空冲低，而那个比例决定他的费率档。
+         */
+        double rate = attributed == 0 ? 0d : owned / (double) attributed;
+        return new StatsSummary(todayOrders, todayGmv, rows.size(), monthGmv, rate);
+    }
+
+    // ---------------------------------------------------------------- 跨店（B-11.12.5/6）
+
+    @Override
+    public java.util.Map<String, StatsSummary> statsByStore(String merchantNo,
+                                                            java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        /*
+         * 与 stats() 逐字同一个过滤条件与同一条时间轴 —— **刻意重复而不是抽公共方法**
+         * 的反面：这里就是抽出来的那一份，两处共用 monthStart 与 OrdSubOrder.TRANSACTED。
+         * 口径分岔的表现是「总览说 3 单，点进去只有 2 单」，而两边各自都说得通。
+         */
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        // ★ 一次扫完按店分组，不是逐店调 stats()：后者是 N 次全表扫，
+        //   而门店数正是这个功能的自变量 —— 店越多越慢
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, monthStart));
+
+        // [todayOrders, todayGmv, monthOrders, monthGmv, owned, attributed]
+        java.util.Map<String, long[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : rows) {
+            /*
+             * store_no 为空的历史单**不算进任何一家店**。
+             * 随便挂给默认店会让那家店的数字对不上它自己的订单列表 ——
+             * 而「对得上」正是这个功能唯一的信任来源。
+             */
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            long[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new long[6]);
+            long amount = nz(o.getPayAmount());
+            c[2] += 1;
+            c[3] += amount;
+            if (o.getCreatedAt() != null && o.getCreatedAt().toLocalDate().isEqual(today)) {
+                c[0] += 1;
+                c[1] += amount;
+            }
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                c[5] += 1;
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
+                    c[4] += 1;
+                }
+            }
+        }
+        java.util.Map<String, StatsSummary> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            long[] c = e.getValue();
+            double rate = c[5] == 0 ? 0d : c[4] / (double) c[5];
+            out.put(e.getKey(), new StatsSummary((int) c[0], c[1], (int) c[2], c[3], rate));
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, TodoCounts> todoByStore(String merchantNo,
+                                                         java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // [toShip, toDeliver, toStock]。自提点维度的两项不在这里 —— 见接口注释
+        java.util.Map<String, int[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : scan(merchantNo, storeNos,
+                w -> w.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL))) {
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            int[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new int[3]);
+            String f = o.getFulfillment();
+            if (PICKUP_FULFILLMENTS.contains(f)) {
+                c[2] += 1;
+            } else if (MERCHANT_DELIVERY.equals(f)) {
+                c[1] += 1;
+            } else {
+                // fulfillment 为空按快递算，与 todo() 的默认一致
+                c[0] += 1;
+            }
+        }
+        java.util.Map<String, TodoCounts> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            int[] c = e.getValue();
+            out.put(e.getKey(), new TodoCounts(c[0], c[1], c[2], 0, 0));
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, StoreCompare> compareByStore(String merchantNo,
+                                                              java.util.Collection<String> storeNos,
+                                                              int days) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return java.util.Map.of();
+        }
+        // days 含今天：days=1 就是「今天」。<=0 当 1 天处理，不抛错 ——
+        // 端上传了个 0 不该让整页报错，那一格显示今天的数就好
+        int window = Math.max(1, days);
+        java.time.LocalDateTime from =
+                java.time.LocalDate.now().minusDays(window - 1L).atStartOfDay();
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, from));
+
+        // storeNo → (userNo → 该买家在这家店的单量)
+        java.util.Map<String, java.util.Map<String, Integer>> buyersByStore = new java.util.HashMap<>();
+        java.util.Map<String, long[]> cells = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : rows) {
+            if (o.getStoreNo() == null || o.getStoreNo().isBlank()) {
+                continue;
+            }
+            long[] c = cells.computeIfAbsent(o.getStoreNo(), k -> new long[2]);
+            c[0] += 1;
+            c[1] += nz(o.getPayAmount());
+            if (o.getUserNo() != null && !o.getUserNo().isBlank()) {
+                buyersByStore.computeIfAbsent(o.getStoreNo(), k -> new java.util.HashMap<>())
+                        .merge(o.getUserNo(), 1, Integer::sum);
+            }
+        }
+
+        java.util.Map<String, StoreCompare> out = new java.util.LinkedHashMap<>();
+        for (var e : cells.entrySet()) {
+            long[] c = e.getValue();
+            var perBuyer = buyersByStore.getOrDefault(e.getKey(), java.util.Map.of());
+            int buyers = perBuyer.size();
+            int repeat = (int) perBuyer.values().stream().filter(n -> n >= REPEAT_MIN_ORDERS).count();
+            /*
+             * ★ 分母为 0 返回 0，不是除零。
+             * 一家窗口内没单的店，「复购率」这一格该显示 0%，而不是让整个对比页 500 ——
+             * 而新开的店恰恰是最常被拿来对比的那一家。
+             */
+            double rate = buyers == 0 ? 0d : repeat / (double) buyers;
+            out.put(e.getKey(), new StoreCompare((int) c[0], c[1], buyers, repeat, rate));
+        }
+        return out;
+    }
+
+    /** 复购的门槛：窗口内下过 ≥2 单才算「回来过」。与顾客页的沉默判定同一个数 */
+    private static final int REPEAT_MIN_ORDERS = 2;
+
+    /**
+     * 按主体 + 门店范围捞子单。
+     *
+     * <p>豁免数据域的理由与 {@link #list} 完全一致：商家用的是消费者令牌，
+     * 数据域 SELF 在 {@code ord_sub_order} 上锚的是 {@code user_no}（买家），
+     * 不豁免的话商家只看得到**他自己买过的单**，卖出去的一单都不算 ——
+     * 而工作台不会报错，只是永远显示 0。
+     */
+    /**
+     * 日结用的按「日 × 门店」聚合。三段：成交侧、退款侧、首单判定。
+     *
+     * <p><b>全商户一次扫完</b>，不是逐商户调 —— 与 {@link #statsByStore} 同一个理由：
+     * 商户数是这个作业的自变量。
+     */
+    @Override
+    public java.util.List<DailyAgg> dailyStoreAggregates(java.time.LocalDate from,
+                                                         java.time.LocalDate to) {
+        java.time.LocalDateTime fromTs = from.atStartOfDay();
+        // 左闭右开：用 to 的 23:59:59 会漏掉那一秒里的单，而那种漏法只在跨年对账时被发现
+        java.time.LocalDateTime toTs = to.plusDays(1).atStartOfDay();
+
+        // ── ① 成交侧：口径与 stats() 共用 TRANSACTED
+        List<OrdSubOrder> sold = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, fromTs)
+                        .lt(OrdSubOrder::getCreatedAt, toTs)));
+
+        java.util.Map<String, Acc> acc = new java.util.LinkedHashMap<>();
+        for (OrdSubOrder o : sold) {
+            if (o.getCreatedAt() == null || o.getStoreNo() == null) {
+                continue;
+            }
+            Acc a = acc.computeIfAbsent(key(o.getCreatedAt().toLocalDate(), o.getEntityNo(), o.getStoreNo()),
+                    k -> new Acc(o.getCreatedAt().toLocalDate(), o.getEntityNo(), o.getStoreNo()));
+            a.orders++;
+            a.gmvMinor += nz(o.getPayAmount());
+            a.commissionMinor += nz(o.getCommissionMinor());
+            a.serviceFeeMinor += nz(o.getServiceFeeMinor());
+            a.freightIncomeMinor += nz(o.getFreightAmount());
+            a.netMinor += nz(o.getMerchantRecvMinor());
+            if (o.getUserNo() != null) {
+                a.buyers.add(o.getUserNo());
+            }
+            // 自带客流占比的分母是**有归因的单**，不是全部单（StatsSummary 的 javadoc）
+            if (o.getTrafficSource() != null && !o.getTrafficSource().isBlank()) {
+                a.attributedOrders++;
+                if (OrdSubOrder.TRAFFIC_MERCHANT_OWNED.equals(o.getTrafficSource())) {
+                    a.ownedOrders++;
+                    a.ownedGmvMinor += nz(o.getPayAmount());
+                }
+            }
+        }
+
+        // ── ② 退款侧：按 refundedAt 那一天归属，**不回冲原单那天**
+        addRefunds(acc, fromTs, toTs);
+
+        // ── ③ 首单判定
+        markNewBuyers(acc);
+
+        return acc.values().stream().map(Acc::toAgg).toList();
+    }
+
+    private static String key(java.time.LocalDate d, String entityNo, String storeNo) {
+        return d + "|" + entityNo + "|" + storeNo;
+    }
+
+    /**
+     * 退款侧：按 {@code refundedAt} 那一天归属，**不回冲原单那天**。
+     *
+     * <p>回冲的后果是：昨天截图发群里的数字，今天再看会变。
+     *
+     * <p>售后单上没有 {@code storeNo}，要回连子单才知道算哪家店的 ——
+     * 所以这里先按 {@code subOrderNo} 批量取子单。
+     */
+    private void addRefunds(java.util.Map<String, Acc> acc,
+                            java.time.LocalDateTime fromTs, java.time.LocalDateTime toTs) {
+        long fromMs = fromTs.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long toMs = toTs.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        List<ai.neargo.shop.trade.entity.OrdAfterSale> refunds =
+                DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(
+                        Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                                .isNotNull(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt)
+                                .ge(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt, fromMs)
+                                .lt(ai.neargo.shop.trade.entity.OrdAfterSale::getRefundedAt, toMs)));
+        if (refunds.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> subNos = refunds.stream()
+                .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<String, OrdSubOrder> subs = DataScopeContext.executeWithoutScope(() ->
+                        subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                                .in(OrdSubOrder::getSubOrderNo, subNos)))
+                .stream().collect(java.util.stream.Collectors.toMap(
+                        OrdSubOrder::getSubOrderNo, x -> x, (x, y) -> x));
+
+        for (ai.neargo.shop.trade.entity.OrdAfterSale r : refunds) {
+            OrdSubOrder sub = subs.get(r.getSubOrderNo());
+            if (sub == null || sub.getStoreNo() == null) {
+                continue;
+            }
+            java.time.LocalDate day = java.time.Instant.ofEpochMilli(r.getRefundedAt())
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            /*
+             * 退款那天这家店**可能一单都没有**（前天的单今天退），
+             * 所以这里要 computeIfAbsent 而不是只往已有的格子里加 ——
+             * 只加已有格子的话，那笔退款会凭空消失，而合计仍然「看起来对」。
+             */
+            Acc a = acc.computeIfAbsent(key(day, sub.getEntityNo(), sub.getStoreNo()),
+                    k -> new Acc(day, sub.getEntityNo(), sub.getStoreNo()));
+            a.refundOrders++;
+            a.refundMinor += nz(r.getRefundMinor());
+        }
+    }
+
+    /**
+     * 首单判定：一个买家在**这家主体**的最早成交日，就是他成为新客的那一天。
+     *
+     * <p>口径是「主体级」不是「门店级」—— 同一个人在同一商户的第二家店下单，
+     * 对商户来说不是新客。落到行上时算在他当天下单的那家店头上。
+     *
+     * <p>只查窗口里出现过的买家，不是全表 —— 数量有界。
+     */
+    private void markNewBuyers(java.util.Map<String, Acc> acc) {
+        java.util.Set<String> users = acc.values().stream()
+                .flatMap(a -> a.buyers.stream()).collect(java.util.stream.Collectors.toSet());
+        if (users.isEmpty()) {
+            return;
+        }
+        java.util.Map<String, java.time.LocalDate> firstDay = new java.util.HashMap<>();
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                        Wrappers.<OrdSubOrder>lambdaQuery()
+                                .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                                .in(OrdSubOrder::getUserNo, users)))
+                .forEach(o -> {
+                    if (o.getCreatedAt() == null || o.getUserNo() == null) {
+                        return;
+                    }
+                    String k = o.getEntityNo() + "|" + o.getUserNo();
+                    java.time.LocalDate d = o.getCreatedAt().toLocalDate();
+                    firstDay.merge(k, d, (x, y) -> x.isBefore(y) ? x : y);
+                });
+        for (Acc a : acc.values()) {
+            for (String u : a.buyers) {
+                if (a.statDate.equals(firstDay.get(a.entityNo + "|" + u))) {
+                    a.newBuyers++;
+                }
+            }
+        }
+    }
+
+    /**
+     * 按「日 × 门店 × 商品」聚合。两段：先拿窗口里的成交子单，再按子单号取行。
+     *
+     * <p><b>口径与 {@link #dailyStoreAggregates} 共用</b>同一个 {@code TRANSACTED}
+     * 与同一条时间轴 —— 两张报表的合计对不上时，第一个被怀疑的就是这里。
+     */
+    @Override
+    public java.util.List<GoodsAgg> dailyGoodsAggregates(java.time.LocalDate from,
+                                                         java.time.LocalDate to) {
+        java.time.LocalDateTime fromTs = from.atStartOfDay();
+        java.time.LocalDateTime toTs = to.plusDays(1).atStartOfDay();
+
+        List<OrdSubOrder> sold = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED)
+                        .ge(OrdSubOrder::getCreatedAt, fromTs)
+                        .lt(OrdSubOrder::getCreatedAt, toTs)));
+        if (sold.isEmpty()) {
+            return List.of();
+        }
+        java.util.Map<String, OrdSubOrder> subs = sold.stream()
+                .filter(o -> o.getSubOrderNo() != null && o.getStoreNo() != null && o.getCreatedAt() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        OrdSubOrder::getSubOrderNo, x -> x, (x, y) -> x));
+        if (subs.isEmpty()) {
+            return List.of();
+        }
+
+        List<ai.neargo.shop.trade.entity.OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(Wrappers.<ai.neargo.shop.trade.entity.OrdItem>lambdaQuery()
+                        .in(ai.neargo.shop.trade.entity.OrdItem::getSubOrderNo, subs.keySet())));
+
+        java.util.Map<String, GoodsAcc> acc = new java.util.LinkedHashMap<>();
+        for (ai.neargo.shop.trade.entity.OrdItem it : items) {
+            OrdSubOrder sub = subs.get(it.getSubOrderNo());
+            if (sub == null || it.getGoodsNo() == null) {
+                continue;
+            }
+            java.time.LocalDate day = sub.getCreatedAt().toLocalDate();
+            String k = day + "|" + sub.getEntityNo() + "|" + sub.getStoreNo() + "|" + it.getGoodsNo();
+            GoodsAcc a = acc.computeIfAbsent(k, x -> new GoodsAcc(day, sub.getEntityNo(),
+                    sub.getStoreNo(), it.getGoodsNo()));
+            // 名字取**最后看到的那一个**：同一个商品跨天可能改过名，取哪个都行但要有定论
+            a.title = it.getTitle();
+            a.spec = it.getSpec();
+            a.categoryNo = it.getCategoryNo();
+            int q = it.getQty() == null ? 0 : it.getQty();
+            if (Boolean.TRUE.equals(it.getIsGift())) {
+                // 赠品行价格为 0（见 OrderVO.isGift 的注释）。**不进 qty** ——
+                // 否则「送出去 100 件」会被读成「卖了 100 件」，而数字看着很好
+                a.giftQty += q;
+            } else {
+                a.qty += q;
+                a.amountMinor += nz(it.getAmount());
+            }
+        }
+        return acc.values().stream().map(GoodsAcc::toAgg).toList();
+    }
+
+    /** 商品聚合的中间态。 */
+    private static final class GoodsAcc {
+        final java.time.LocalDate statDate;
+        final String entityNo;
+        final String storeNo;
+        final String goodsNo;
+        String title;
+        String spec;
+        String categoryNo;
+        int qty;
+        long amountMinor;
+        int giftQty;
+
+        GoodsAcc(java.time.LocalDate statDate, String entityNo, String storeNo, String goodsNo) {
+            this.statDate = statDate;
+            this.entityNo = entityNo;
+            this.storeNo = storeNo;
+            this.goodsNo = goodsNo;
+        }
+
+        GoodsAgg toAgg() {
+            return new GoodsAgg(statDate, entityNo, storeNo, goodsNo,
+                    title, spec, categoryNo, qty, amountMinor, giftQty);
+        }
+    }
+
+    /** 聚合中间态。用可变类而不是不断 new record —— 一天几十万单时那是几十万次拷贝。 */
+    private static final class Acc {
+        final java.time.LocalDate statDate;
+        final String entityNo;
+        final String storeNo;
+        int orders;
+        long gmvMinor;
+        int refundOrders;
+        long refundMinor;
+        final java.util.Set<String> buyers = new java.util.HashSet<>();
+        int newBuyers;
+        int ownedOrders;
+        long ownedGmvMinor;
+        int attributedOrders;
+        long commissionMinor;
+        long serviceFeeMinor;
+        long freightIncomeMinor;
+        long netMinor;
+
+        Acc(java.time.LocalDate statDate, String entityNo, String storeNo) {
+            this.statDate = statDate;
+            this.entityNo = entityNo;
+            this.storeNo = storeNo;
+        }
+
+        DailyAgg toAgg() {
+            return new DailyAgg(statDate, entityNo, storeNo, orders, gmvMinor,
+                    refundOrders, refundMinor, buyers.size(), newBuyers,
+                    ownedOrders, ownedGmvMinor, attributedOrders,
+                    commissionMinor, serviceFeeMinor, freightIncomeMinor, netMinor);
+        }
+    }
+
+    private List<OrdSubOrder> scan(String merchantNo, java.util.Collection<String> storeNos,
+                                   java.util.function.Consumer<com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrdSubOrder>> extra) {
+        var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        if (storeNos != null) {
+            w.in(OrdSubOrder::getStoreNo, storeNos);
+        }
+        extra.accept(w);
+        return DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(w));
+    }
+
+    // ---------------------------------------------------------------- 顾客（B-11.10）
+
+    /** 沉默的判定：来过两次以上、却已经 30 天没来。只来过一次的不算沉默，那是没留住 */
+    private static final int SILENT_MIN_ORDERS = 2;
+    private static final int SILENT_DAYS = 30;
+
+    @Override
+    public List<CustomerSummary> customers(String merchantNo, java.util.Collection<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return List.of();
+        }
+        List<OrdSubOrder> rows = scan(merchantNo, storeNos,
+                w -> w.in(OrdSubOrder::getStatus, OrdSubOrder.TRANSACTED));
+
+        // 按买家聚合。一个人在本店下过几单、花了多少、最后一次是什么时候
+        java.util.Map<String, java.util.List<OrdSubOrder>> byUser = rows.stream()
+                .filter(o -> o.getUserNo() != null)
+                .collect(java.util.stream.Collectors.groupingBy(OrdSubOrder::getUserNo));
+
+        long now = System.currentTimeMillis();
+        List<CustomerSummary> out = new java.util.ArrayList<>();
+        for (var e : byUser.entrySet()) {
+            var orders = e.getValue();
+            long spent = orders.stream().mapToLong(o -> o.getPayAmount() == null ? 0 : o.getPayAmount()).sum();
+            long last = orders.stream()
+                    .map(OrdSubOrder::getCreatedAt)
+                    .filter(java.util.Objects::nonNull)
+                    .mapToLong(t -> t.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .max().orElse(0L);
+            int days = last == 0 ? 0 : (int) java.time.Duration.ofMillis(now - last).toDays();
+            boolean silent = orders.size() >= SILENT_MIN_ORDERS && days >= SILENT_DAYS;
+            /*
+             * 来源取**最早一单**的归因：这个人当初是谁带来的，不会因为他后来从
+             * 平台首页再进来一次就变成平台客流。费率档按自带客流算，口径必须稳定。
+             */
+            String source = orders.stream()
+                    .min(java.util.Comparator.comparing(OrdSubOrder::getId))
+                    .map(OrdSubOrder::getTrafficSource)
+                    .filter(x -> x != null && !x.isBlank())
+                    .orElse("PLATFORM");
+
+            var brief = userPort.find(e.getKey());
+            out.add(new CustomerSummary(e.getKey(),
+                    brief.map(p -> p.nickname()).orElse("邻居"),
+                    brief.map(p -> p.avatar()).orElse(""),
+                    orders.size(), spent, last, days, silent, source));
+        }
+        // 沉默客户排前面 —— 那是店主唯一能立刻行动的一批
+        out.sort(java.util.Comparator.comparing(CustomerSummary::silent).reversed()
+                .thenComparing(java.util.Comparator.comparingLong(CustomerSummary::lastOrderAt).reversed()));
+        return out;
+    }
+
+    // ---------------------------------------------------------------- 平台端（P-4.1）
+
+    /**
+     * 各状态允许卡多久（分钟）。**按状态分别给，不是一刀切**：
+     * 待支付 15 分钟就该关单，而「已到自提点待取」放一天很正常 ——
+     * 一刀切会把正常单刷进异常队列，而队列一旦变成噪音就没人看了。
+     * 终态（COMPLETED / CANCELLED / REFUNDED）不设时限。
+     */
+    private static final java.util.Map<String, Long> STUCK_MINUTES = java.util.Map.of(
+            OrderStatusView.WAIT_PAY, 15L,
+            OrderStatusView.PAID, 120L);
+
+    /** 履约中的时限：自提类等人来取，放一天正常；配送类在途超过 4 小时就该问一句。 */
+    private static final long FULFILLING_PICKUP_MINUTES = 1440L;
+    private static final long FULFILLING_SHIP_MINUTES = 240L;
+
+    /**
+     * 这一单卡多久算异常。
+     *
+     * <p><b>按（状态 × 履约方式）判，不是按状态</b>：此前 `SHIPPED` 与 `ARRIVED`
+     * 是两个「状态」，各挂一个时限；它们合并回 `FULFILLING` 之后，时限的差别
+     * 落在履约方式上 —— 这本来就是它真正依赖的东西。
+     */
+    private static Long stuckThreshold(String status, String fulfillment) {
+        if (OrderStatusView.FULFILLING.equals(status)) {
+            return PICKUP_FULFILLMENTS.contains(fulfillment)
+                    ? FULFILLING_PICKUP_MINUTES : FULFILLING_SHIP_MINUTES;
+        }
+        return STUCK_MINUTES.get(status);
+    }
+
+    @Override
+    public PageData<OpsOrderVO> opsList(String status, String merchantNo, String storeNo,
+                                        String keyword, long page, long size) {
+        var w = Wrappers.<OrdSubOrder>lambdaQuery();
+        // 门店筛选（P-11.2.1f）：ord_sub_order.store_no 是履约键（ADR-011 双写），直接等值
+        if (storeNo != null && !storeNo.isBlank()) {
+            w.eq(OrdSubOrder::getStoreNo, storeNo);
+        }
+        OrderStatusView.applyMerchantFilter(w, status);
+        if (merchantNo != null && !merchantNo.isBlank()) {
+            w.eq(OrdSubOrder::getEntityNo, merchantNo);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            w.and(x -> x.like(OrdSubOrder::getSubOrderNo, keyword)
+                    .or().like(OrdSubOrder::getOrderNo, keyword));
+        }
+        w.orderByDesc(OrdSubOrder::getId);
+
+        /*
+         * **走数据域**（2026-08-14，运营端数据域接入 批①）。
+         *
+         * 这里原先解除数据域，注释写的是「运营的会话没有 entity 维度」——
+         * 那句话在 V60 之后就不成立了：运营会话带的正是
+         * MERCHANT / COMMUNITY / PICKUP 三个维度，`ord_sub_order` 四个锚点都已登记
+         * （SELF/MERCHANT/COMMUNITY/PICKUP，community_no 见 V137）。
+         *
+         * 没配数据域的账号是 ALL（空 = 不限定），超管恒 ALL —— 存量账号零变化。
+         * 变的是配了数据域的那些人：他们此前看到的是全平台的单。
+         */
+        Page<OrdSubOrder> p = subOrderMapper.selectPage(Page.of(page, size), w);
+        List<OpsOrderVO> rows = p.getRecords().stream().map(this::toOpsVO).toList();
+        return PageData.of(rows, p.getTotal(), page, size);
+    }
+
+    @Override
+    public OpsOrderVO opsDetail(String subOrderNo) {
+        return toOpsVO(requireInScope(subOrderNo));
+    }
+
+    @Override
+    public List<OpsOrderVO> siblings(String parentNo) {
+        // 走数据域：兄弟单里不属于自己域的那几条不该出现 ——
+        // 「他这一单还买了别家什么」对配了商家域的运营来说，答案本来就该是残缺的
+        return subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getOrderNo, parentNo)
+                        .orderByAsc(OrdSubOrder::getId))
+                .stream().map(this::toOpsVO).toList();
+    }
+
+    @Override
+    public List<OrderExceptionVO> exceptions() {
+        long now = System.currentTimeMillis();
+        /*
+         * 只扫非终态的单。异常队列是**实时算出来的视图**，不落表 ——
+         * 落表就会过期：订单已经推进了，异常记录还挂在那里，
+         * 运营会去处理一个不存在的问题。
+         */
+        // 走数据域（批①）：异常队列是给人去处理的待办，
+        // 列出一条自己无权处置的单，只会让人白点一次
+        List<OrdSubOrder> live = subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery()
+                        .in(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY,
+                                OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING));
+
+        List<OrderExceptionVO> out = new java.util.ArrayList<>();
+        for (OrdSubOrder o : live) {
+            OpsOrderVO vo = toOpsVO(o);
+            Long threshold = stuckThreshold(vo.status(), o.getFulfillment());
+            if (threshold == null) {
+                continue;
+            }
+            long stuck = (now - vo.statusAt()) / 60_000L;
+            if (stuck <= threshold) {
+                continue;
+            }
+            // 待支付超时是关单任务本身出了问题，与「卡在某个环节」不是一回事
+            String kind = OrderStatusView.WAIT_PAY.equals(vo.status()) ? "PAY_TIMEOUT" : "STUCK";
+            out.add(new OrderExceptionVO(vo, kind, stuck, threshold));
+        }
+        out.sort((a, b) -> Long.compare(b.stuckMinutes(), a.stuckMinutes()));
+        return out;
+    }
+
+    @Override
+    public List<InterventionVO> interventions(String subOrderNo) {
+        /*
+         * 先按数据域把这张单捞一次 —— `ord_status_log` 没有归属列、也不该有
+         * （它是子单的附属），所以行级可见性只能由子单代判。
+         * 不判的话，配了商家域的运营换个单号就能读到别家单的全部干预记录。
+         */
+        requireInScope(subOrderNo);
+        return DataScopeContext.executeWithoutScope(() ->
+                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
+                                .eq(OrdStatusLog::getSubOrderNo, subOrderNo)
+                                .eq(OrdStatusLog::getOperatorType, OrdStatusLog.BY_PLATFORM)
+                                .orderByDesc(OrdStatusLog::getId)))
+                .stream()
+                .map(l -> new InterventionVO(subOrderNo, null, l.getStatus(), l.getLabel(),
+                        l.getOperatorNo(), l.getAt() == null ? 0L : l.getAt()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public OpsOrderVO intervene(String subOrderNo, String to, String remark, String operatorNo) {
+        if (remark == null || remark.isBlank()) {
+            // 改状态这件事事后要说得清是谁、为什么 —— 没有原因的干预无法复盘
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdSubOrder sub = requireAny(subOrderNo);
+        List<String> target = OrderStatusView.toStored(to);
+        if (target.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String stored = target.get(0);
+        /*
+         * 迁移由**后端状态机**判定，不采信端上那份 ORDER_TRANSITIONS ——
+         * 那份表只是让界面提前把不可能的选项灰掉。两份表都存在时，
+         * 必须有一份是权威，否则迟早出现「界面允许、后端拒绝」或更糟的反过来。
+         */
+        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), stored);
+        String from = OrderStatusView.toContract(sub.getStatus());
+
+        sub.setStatus(stored);
+        DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+
+        OrdStatusLog log = new OrdStatusLog();
+        log.setSubOrderNo(subOrderNo);
+        log.setStatus(stored);
+        log.setLabel("人工干预（" + from + " → " + to + "）：" + remark.trim());
+        log.setOperatorType(OrdStatusLog.BY_PLATFORM);
+        log.setOperatorNo(operatorNo);
+        log.setAt(System.currentTimeMillis());
+        log.setTenantNo("MAIN");
+        log.setCreatedAt(java.time.LocalDateTime.now());
+        statusLogMapper.insert(log);
+        return toOpsVO(sub);
+    }
+
+    /**
+     * 平台侧**读**路径取单：<b>走数据域</b>（批①）。
+     *
+     * <p>域外的单在这里的表现是 {@code NOT_FOUND} 而不是 403 —— 这是刻意的：
+     * 「这张单存在但不归你管」本身就是一条信息，按单号试探能拼出别家的单量。
+     */
+    private OrdSubOrder requireInScope(String subOrderNo) {
+        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return sub;
+    }
+
+    /**
+     * 平台侧**写**路径取单：解除数据域，不限商家。
+     *
+     * <p><b>写路径刻意不走数据域</b>（TDD-运营端数据域接入 §5 T2）：
+     * 写操作的越权由 {@code @PreAuthorize} + Service 内的归属校验挡。
+     * 写路径也走数据域，会把「运营处置一家不在自己域内的商家」变成
+     * <b>静默失败</b>（查不到 → NOT_FOUND，看起来像单号打错了），
+     * 而静默失败比明确拒绝更坏。
+     */
+    private OrdSubOrder requireAny(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return sub;
+    }
+
+    private OpsOrderVO toOpsVO(OrdSubOrder s) {
+        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getSubOrderNo, s.getSubOrderNo())));
+        // 社区在主单上，子单没有
+        var main = DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, s.getOrderNo())
+                        .last("limit 1")));
+
+        long created = s.getCreatedAt() == null ? 0L
+                : s.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        /*
+         * statusAt 取最后一条状态日志的时间；没有日志就退回 updatedAt。
+         * **不能用 createdAt** —— 异常单的「卡了多久」是从进入当前状态算起的，
+         * 用下单时间算，一条正常流转了三天的单会被当成卡了三天。
+         */
+        OrdStatusLog last = DataScopeContext.executeWithoutScope(() ->
+                statusLogMapper.selectOne(Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getSubOrderNo, s.getSubOrderNo())
+                        .orderByDesc(OrdStatusLog::getId).last("limit 1")));
+        long statusAt = last != null && last.getAt() != null ? last.getAt()
+                : (s.getUpdatedAt() == null ? created
+                : s.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+
+        return new OpsOrderVO(s.getSubOrderNo(), s.getOrderNo(),
+                OrderStatusView.toContract(s.getStatus(), main == null ? null : main.getStatus()),
+                s.getEntityNo(), s.getEntityName(),
+                main == null ? null : main.getCommunityNo(),
+                s.getPickupNo(), s.getFulfillment(), s.getTrafficSource(),
+                s.getPickupName(),
+                items.stream().map(i -> new OpsOrderVO.ItemVO(i.getSkuNo(), i.getTitle(),
+                        i.getQty() == null ? 0 : i.getQty(),
+                        i.getPrice() == null ? 0L : i.getPrice())).toList(),
+                s.getPayAmount() == null ? 0L : s.getPayAmount(),
+                created, null, statusAt);
+    }
+}

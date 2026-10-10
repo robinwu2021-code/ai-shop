@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C 端门店门户</title>
+<!-- 真源在仓库 prototypes/c-store-portal.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端小程序 · 界面原型 · 2026-09-29</div>
+  <h1>C 端门店化：店铺页、门店门户、分享、商品详情 v4</h1>
+  <p class="sub">C 端展示与交互的单位从「主体」换成「门店」。四件事：店铺页按「我的店 → 附近」排；门店主页做成独立的门店门户；分享收成一个入口、落到具体那家店；商品详情去掉还没到时候的「已选 / 配送 / 保障」。十二屏，末尾附取舍表与契约变更。</p>
+</header>
+
+<!-- ───────────────────────── 一、店铺页 ───────────────────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 02</span><h2>店铺页：先「我的店」，再「附近」</h2></div>
+  <p class="sec-note">一行是一家<b>门店</b>，不是一个主体。同一个主体下的四家店各占一行、各叫各的名字。「平台推荐」一块移出（2026-09-29 拍板），运营想推的店改走首页位。</p>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">店铺</span><span></span></div>
+        <div class="scr">
+          <div class="sl-h"><b>我的店</b><small>逛过和买过的</small></div>
+          <div class="sl-list">
+            <div class="sl-row"><span class="lg">鲜</span><span class="bd"><span class="nm">虹选鲜果·福田店</span><span class="rel">买过 12 次 · 3 天前</span><span class="m">营业中 · 08:00–21:00</span></span><span class="d num">320 m</span></div>
+            <div class="sl-row"><span class="lg">粮</span><span class="bd"><span class="nm">虹选粮油·梅林店</span><span class="rel">朋友分享 · 昨天逛过</span><span class="m">营业中 · 09:00–20:00</span></span><span class="d num">1.2 km</span></div>
+            <div class="sl-row"><span class="lg">菜</span><span class="bd"><span class="nm">阿明蔬菜档</span><span class="rel">买过 2 次 · 9 月 12 日</span><span class="m">休息中 · 明天 07:00 开门</span></span><span class="d num">850 m</span></div>
+          </div>
+          <div class="sl-h"><b>附近</b><small>按距离</small></div>
+          <div class="sl-list">
+            <div class="sl-row"><span class="lg">便</span><span class="bd"><span class="nm">邻里便利·景田店</span><span class="m">营业中 · 07:00–23:00</span></span><span class="d num">450 m</span></div>
+            <div class="sl-row"><span class="lg">鲜</span><span class="bd"><span class="nm">虹选鲜果·车公庙店</span><span class="m">营业中 · 08:00–21:00</span></span><span class="d num">2.4 km</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>首页</span><span class="on">店铺</span><span>购物车</span><span>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>01 店铺页 · 老客</b>「我的店」= 逛过 ∪ 买过，按最近一次接触倒序；每行第二行说明<b>为什么它在这里</b>（买过几次 / 朋友分享）。「附近」去掉上面已有的，按门店坐标算距离。</figcaption>
+      <p class="why">「朋友分享 · 昨天逛过」那一行就是给商家的回报：别人点开他分享的门店，这家店就留在对方的「我的店」里。只逛过、30 天没再来的退出这一段；买过的一直留（2026-09-29 拍板）。休息中的店照常列，灰字说明什么时候开门——它是你常去的店，藏起来反而找不到。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph c">
+        <div class="nav"><span></span><span class="t">店铺</span><span></span></div>
+        <div class="scr">
+          <div class="inp">搜索门店</div>
+          <div class="sl-h"><b>附近</b><small>深圳 · 福田区 · 按距离</small></div>
+          <div class="sl-list">
+            <div class="sl-row"><span class="lg">鲜</span><span class="bd"><span class="nm">虹选鲜果·福田店</span><span class="m">营业中 · 08:00–21:00</span></span><span class="d num">320 m</span></div>
+            <div class="sl-row"><span class="lg">便</span><span class="bd"><span class="nm">邻里便利·景田店</span><span class="m">营业中 · 07:00–23:00</span></span><span class="d num">450 m</span></div>
+            <div class="sl-row"><span class="lg">菜</span><span class="bd"><span class="nm">阿明蔬菜档</span><span class="m">休息中 · 明天 07:00 开门</span></span><span class="d num">850 m</span></div>
+            <div class="sl-row"><span class="lg">粮</span><span class="bd"><span class="nm">虹选粮油·梅林店</span><span class="m">营业中 · 09:00–20:00</span></span><span class="d num">1.2 km</span></div>
+            <div class="sl-row"><span class="lg">鲜</span><span class="bd"><span class="nm">虹选鲜果·车公庙店</span><span class="m">营业中 · 08:00–21:00</span></span><span class="d num">2.4 km</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>首页</span><span class="on">店铺</span><span>购物车</span><span>我的</span></div>
+      </div>
+      <figcaption class="cap"><b>02 店铺页 · 新访客 / 未登录</b>没有「我的店」这一段（不是空着留个标题），整页就是附近。</figcaption>
+      <p class="why">附近按<b>门店坐标</b>算距离。现在线上两家门店没有坐标、一家坐标落在山西——它们会排在最后，并在 B 端门店设置、运营端门店治理里提示补地图选点（见 TDD §2.6）。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ───────────────────────── 二、门店门户 ───────────────────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">03 — 07</span><h2>门店门户：一家店自己的地盘</h2></div>
+  <p class="sec-note">取代现在的两个页面（扫码进的 <code>pages/store</code> 与列表进的 <code>pages/merchant</code>）。<b>所有入口进来都是同一个门户</b>、按 <code>storeNo</code> 取数。结构：门头 → 店招 → 公告 → 领券 → 标签页（商品 / 评价 / 店铺）。商品用「左分类 · 右列表」，逛完在底栏直接结算。</p>
+  <div class="grid">
+
+    <figure id="s03">
+      <div class="ph c">
+        <div class="ov on-img"><i>‹</i><span class="sp"></span><span class="fav">☆ 收藏</span><span class="sh">⇪</span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="sp-hero"><span class="bg">🍇</span><div class="ft"><span class="lg">鲜</span><div class="mn"><div class="nm">虹选鲜果·福田店</div><div class="ln"><span class="st">营业中</span><span class="num">08:00–21:00 · ★ 4.9 · 320 m</span></div></div></div></div>
+          <div class="sp-hcard"><div class="r"><span class="chip warn">公告</span><span class="t">今日阳光玫瑰到货，下午 3 点后可提；周三会员日满 99 减 10</span></div><div class="r cps"><span class="k">领券</span><span class="chip bad">满 59 减 5</span><span class="chip bad">新客立减 3</span><span class="go">领券 ›</span></div></div>
+          
+          <div class="sp-body"><div class="tabs line"><span class="on">商品</span><span>评价 <span class="num">126</span></span><span>店铺</span></div>
+            <div class="sp-shelf"><div class="sp-search">搜索本店商品</div><div class="sp-cats"><span class="chip on">全部</span><span class="chip">水果</span><span class="chip">蔬菜</span><span class="chip">粮油</span><span class="chip">蛋奶</span></div><div class="sp-list"><div class="sp-row"><span class="th">🍇</span><span class="bd"><span class="nm">阳光玫瑰青提 约 2 斤</span><span class="m">今天 18:00 截单 · 已售 326</span><span class="ln"><span class="pr num"><small>¥</small>39.9</span><span class="add">＋</span></span></span></div><div class="sp-row"><span class="th">🍊</span><span class="bd"><span class="nm">赣南脐橙 5 斤</span><span class="m">产地直发 · 已售 210</span><span class="ln"><span class="pr num"><small>¥</small>29.9</span><span class="add">＋</span></span></span></div><div class="sp-row"><span class="th">🥬</span><span class="bd"><span class="nm">本地绿叶菜组合</span><span class="m">当日采摘 · 三样搭配</span><span class="ln"><span class="pr num"><small>¥</small>12.8</span><span class="add">＋</span></span></span></div><div class="sp-row off"><span class="th">🌶️</span><span class="bd"><span class="nm">二荆条干辣椒 500g</span><span class="m">今日售罄</span><span class="ln"><span class="pr num"><small>¥</small>18.0</span><span class="chip">售罄</span></span></span></div></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="cartsum"><span class="ic cart">购物车<b>2</b></span><b class="num">¥72.00</b></span><div class="btn main">去结算</div></div>
+      </div>
+      <figcaption class="cap"><b>03 门户首屏 · 店主设了背景图</b>顶部一条实拍横幅（店主在 B 端「店铺装修」里传），下沿压着信息卡：店标、门店名、营业状态 / 时间 / 评分 / 距离一行写完，下面是公告与券。返回 / 收藏 / 分享是浮在图上的圆钮。</figcaption>
+      <p class="why">「我常买」一栏 2026-09-29 用户要求<b>去掉</b>。分类横排、商品<b>单列</b>（第二行写截单 / 规格 / 已售，行上不写店名），<b>不做左右分栏</b>。售罄的<b>照列、不藏</b> —— 藏起来他会以为这家店没有这件货。<b>页面上不出现主体名。</b></p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph c">
+        <div class="ov on-tint"><i>‹</i><span class="sp"></span><span class="fav">☆ 收藏</span><span class="sh">⇪</span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="sp-hero tint"></div>
+          <div class="sp-hcard"><div class="r idrow"><span class="lg">粮</span><div class="mn"><div class="nm">虹选粮油·梅林店</div><div class="ln"><span class="st">营业中</span><span class="num">09:00–20:00 · ★ 4.8 · 1.2 km</span></div></div></div><div class="r cps"><span class="k">领券</span><span class="chip bad">满 50 减 5</span><span class="chip bad">新客减 8</span><span class="go">领券 ›</span></div></div>
+          
+          <div class="sp-body"><div class="tabs line"><span class="on">商品</span><span>评价 <span class="num">126</span></span><span>店铺</span></div>
+            <div class="sp-shelf"><div class="sp-search">搜索本店商品</div><div class="sp-cats"><span class="chip on">全部</span><span class="chip">大米</span><span class="chip">食用油</span><span class="chip">调味</span><span class="chip">干货</span></div><div class="sp-list"><div class="sp-row"><span class="th">🍚</span><span class="bd"><span class="nm">五常稻花香 10 斤</span><span class="m">新米 · 已售 45</span><span class="ln"><span class="pr num"><small>¥</small>69.0</span><span class="add">＋</span></span></span></div><div class="sp-row"><span class="th">🫒</span><span class="bd"><span class="nm">压榨花生油 5L</span><span class="m">已售 30</span><span class="ln"><span class="pr num"><small>¥</small>79.9</span><span class="add">＋</span></span></span></div><div class="sp-row"><span class="th">🧂</span><span class="bd"><span class="nm">海盐 400g × 3</span><span class="m">已售 12</span><span class="ln"><span class="pr num"><small>¥</small>9.9</span><span class="add">＋</span></span></span></div><div class="sp-row off"><span class="th">🍄</span><span class="bd"><span class="nm">干香菇 250g</span><span class="m">今日售罄</span><span class="ln"><span class="pr num"><small>¥</small>25.0</span><span class="chip">售罄</span></span></span></div></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="cartsum"><span class="ic cart">购物车</span><span class="meta">还没选商品</span></span><div class="btn main off">去结算</div></div>
+      </div>
+      <figcaption class="cap"><b>04 门户首屏 · 没设背景图（默认）</b>顶部是<b>主色浅底</b>往下淡到页面底色 —— 不是深绿渐变，也不拿商品图凑（2026-09-29 用户定）。店名这时在信息卡里；圆钮在浅底上是白圆 + 墨色图标。</figcaption>
+      <p class="why">两种顶部<b>只差一条底</b>：端上按 <code>store.bannerUrl</code> 是不是 http(s) 判，没设就走浅底这一版。从分享链接进来的人，进门户那一刻就写一条「逛过 · 来源=分享」——这家店从此出现在他店铺页的「我的店」里（01 屏第二行）。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span class="on">评价</span><span>店铺</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="gd-rv">
+            <div class="hd"><b>门店评价</b><span class="meta num">126 条 · 好评率 98%</span></div>
+            <div class="sc"><span>商品 <em class="num">4.9</em></span><span>履约 <em class="num">4.8</em></span><span>服务 <em class="num">4.9</em></span><span>带图 <em class="num">32</em></span></div>
+            <div class="gd-tags"><span class="chip act">全部</span><span class="chip">新鲜 46</span><span class="chip">分量足 21</span><span class="chip">提货快 18</span></div>
+            <div class="it"><div class="by"><i></i>邻居 8928 · ★★★★★ · 阳光玫瑰青提</div><div>每周都来买，老板会帮挑熟的，孩子很爱吃。</div><div class="pics"><span></span><span></span><span></span></div></div>
+            <div class="it"><div class="by"><i></i>邻居 1203 · ★★★★☆ · 土鸡蛋 30 枚</div><div>蛋很新鲜，就是下午去自提要排一会儿。</div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="cartsum"><span class="ic cart">购物车<b>2</b></span><b class="num">¥72.00</b></span><div class="btn main">去结算</div></div>
+      </div>
+      <figcaption class="cap"><b>05 门户 · 评价</b>滚过店招后顶栏变实底，三个标签吸在顶上。评价是<b>这一家门店</b>的，带上评的是哪件货。</figcaption>
+      <p class="why">评价归门店是 2026-08-07 已定的（「顾客评的是楼下那家，三家混一个评分会让好店被差店拖下去」）。现在的商家详情页按主体汇总评价——门户上线后这一条才算真正落地。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph c">
+        <div class="ov solid"><i>‹</i><span class="anc"><span>商品</span><span>评价</span><span class="on">店铺</span></span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">营业时间</span><span class="v num">每天 08:00–21:00</span></div>
+            <div class="frow"><span class="k">地址</span><span class="v go">福田区景田北街 12 号</span></div>
+            <div class="frow"><span class="k">电话</span><span class="v go num">0755-8888 1234</span></div>
+          </div>
+          <div class="gt">怎么拿到</div>
+          <div class="group">
+            <div class="frow"><span class="k">到店自提</span><span class="v">下单后 1 小时可提</span></div>
+            <div class="frow"><span class="k">送货上门</span><span class="v">3 km 内 · 满 39 免运费</span></div>
+          </div>
+          <div class="gt">这家店</div>
+          <div class="group">
+            <div class="frow"><span class="k">公告</span><span class="v go">今日阳光玫瑰到货…</span></div>
+            <div class="frow"><span class="k">经营主体与资质</span><span class="v go">查看</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="cartsum"><span class="ic cart">购物车<b>2</b></span><b class="num">¥72.00</b></span><div class="btn main">去结算</div></div>
+      </div>
+      <figcaption class="cap"><b>06 门户 · 店铺</b>营业时间、地址（点开导航）、电话、履约方式与范围、公告全文；最后一行「经营主体与资质」。</figcaption>
+      <p class="why"><b>主体只在这一行露面</b>：点进去才看到「虹选科技有限公司」与营业执照（电子商务法 §15 要求亮照，所以入口必须有，但它不是门店的名字）。现在的 <code>pages/merchant</code> 收成这个资质页，不再是一个独立的「商家详情」。</p>
+    </figure>
+
+    <figure id="s07">
+      <div class="ph c">
+        <div class="ov on-tint"><i>‹</i><span class="sp"></span><span class="fav">☆ 收藏</span><span class="sh">⇪</span><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="sp-hero tint"></div>
+          <div class="sp-hcard"><div class="r idrow"><span class="lg">鲜</span><div class="mn"><div class="nm">虹选鲜果·车公庙店</div><div class="ln"><span class="st off">暂停营业</span><span class="num">★ 4.7 · 2.4 km</span></div></div></div></div>
+          <div class="note">这家店暂停营业，暂时不能下单。附近还有：虹选鲜果·福田店（320 m）</div>
+          <div class="sp-body"><div class="tabs line"><span class="on">商品</span><span>评价 <span class="num">126</span></span><span>店铺</span></div>
+            <div class="sp-shelf"><div class="sp-search">搜索本店商品</div><div class="sp-cats"><span class="chip on">全部</span><span class="chip">水果</span></div><div class="sp-list"><div class="sp-row"><span class="th">🍇</span><span class="bd"><span class="nm">阳光玫瑰青提 约 2 斤</span><span class="m">已售 326</span><span class="ln"><span class="pr num"><small>¥</small>39.9</span><span class="add">＋</span></span></span></div><div class="sp-row"><span class="th">🍊</span><span class="bd"><span class="nm">赣南脐橙 5 斤</span><span class="m">已售 210</span><span class="ln"><span class="pr num"><small>¥</small>29.9</span><span class="add">＋</span></span></span></div></div></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">去附近的店</div></div>
+      </div>
+      <figcaption class="cap"><b>07 门户 · 暂停营业</b>从老分享、老店码直达一家已停用（READONLY）的门店：页面照开，商品压淡不可加购，给出最近的同主体门店。</figcaption>
+      <p class="why">停用门店<b>不进任何列表</b>，但直达链接不能打出空白页——码印在包装袋上，收不回来。现状是 READONLY 对买家完全无效（下单照样成功），这一屏同时是那个缺陷的修法。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ───────────────────────── 三、分享 ───────────────────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">08 — 09</span><h2>分享：一个入口，两条路</h2></div>
+  <p class="sec-note">门户与商品详情都只有<b>一颗「分享」</b>。点开是面板：发给朋友（微信转发）/ 生成海报（发朋友圈、存相册）。海报不再单独占一个入口——它的目的就是分享（2026-09-29 拍板）。</p>
+  <div class="grid">
+
+    <figure id="s08">
+      <div class="ph c">
+        <div class="ov on-img"><i>‹</i><span class="fav">☆ 收藏</span><span class="sh">⇪</span><span class="mpcap">··· ◎</span></div>
+        <div class="scr"><div class="sp-hero tint"></div><div class="sp-hcard"><div class="r idrow"><span class="lg">鲜</span><div class="mn"><div class="nm">虹选鲜果·福田店</div><div class="ln"><span class="st">营业中</span><span class="num">08:00–21:00 · ★ 4.9 · 320 m</span></div></div></div></div></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">分享这家店</div>
+            <div class="sp-share">
+              <div class="wx"><i>✓</i>发给朋友<small>微信聊天</small></div>
+              <div class="pt"><i>▦</i>生成海报<small>发朋友圈 · 存相册</small></div>
+            </div>
+            <div class="btn sec">取消</div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>08 分享面板</b>两块大选项，各说一句去哪儿。小程序里「发给朋友」是原生转发按钮；H5 上换成「复制链接」。</figcaption>
+      <p class="why">现在商品详情标题行并排三颗：收藏 / 海报 / 分享。「海报」与「分享」是同一件事的两条路，并排摆会让人不知道点哪个。收进面板后，朋友圈这条路一个像素都没少：海报仍然是朋友圈唯一走得通的格式。<b>链接与海报码都带 <code>storeNo</code></b>，对方打开的是这一家店。</p>
+    </figure>
+
+    <figure id="s09">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">海报</span><span></span></div>
+        <div class="scr">
+          <div class="sp-poster">
+            <div class="pimg">🍇</div>
+            <div class="pb"><div class="tx"><b>阳光玫瑰青提 约 2 斤</b><span class="pr num">¥39.90</span><span class="meta">虹选鲜果·福田店</span></div><div class="qr"></div></div>
+            <div class="st">长按识别小程序码，进店看看</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn sec">取消</div><div class="btn main">保存到相册</div></div>
+      </div>
+      <figcaption class="cap"><b>09 海报</b>商品图、名称、价格、<b>门店名</b>、<b>门店码</b>。从门户生成时换成门头照与店名。</figcaption>
+      <p class="why">现在海报上画的是<b>主体名</b>，码是按主体生成的店铺码——扫出来进的是主体的「门面店」。改成门店码（<code>mch_store</code> 的店码 V298 已有）后，四家店的海报各自落到各自门店。码仍不带邀请人（§7.3 已定：小程序码总量有限，一店一码落库复用）。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ───────────────────────── 四、商品详情 v4 ───────────────────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">10 — 11</span><h2>商品详情 v4：展示阶段只回答「要不要买」</h2></div>
+  <p class="sec-note">这时消费者还在看货，没有选规格、没有下单。「已选」「配送」「保障」三行都属于<b>下单阶段</b>：规格在点「加入购物车 / 立即购买」后的面板里选；配送方式、到货时间在订单页确认；售后说明将来作为完整的一块重新设计（2026-09-29 拍板）。</p>
+  <div class="grid">
+
+    <figure id="s10">
+      <div class="ph c">
+        <div class="ov"><i>‹</i><span class="mpcap">··· ◎</span></div>
+        <div class="scr">
+          <div class="img hero full">主图 · 可左右滑<span class="gd-cnt num">1/4</span></div>
+          <div class="pz ink">
+            <div class="gd-price"><b class="num"><small>¥</small>39.90</b><s class="num">¥49.90</s><span class="chip bad">省 ¥10.00</span><span class="sold num">已售 1.2 万</span></div>
+            <div class="gd-tags"><span class="chip bad">满 99 减 10</span><span class="chip pri">买 2 送 1</span></div>
+            <div class="tr"><div><div class="t">阳光玫瑰青提 · 约 2 斤装</div><div class="meta">清甜多汁 · 云南产地直发</div></div><span class="acts2"><span class="sh fav on">收藏</span><span class="sh">分享</span></span></div>
+          </div>
+          <div class="group">
+            <div class="frow"><span class="k">领券</span><span class="v go"><span class="chip bad">满 50 减 5</span> <span class="chip bad">满 99 减 12</span></span></div>
+          </div>
+          <div class="gd-shop">
+            <div class="hd"><span class="lg">鲜</span><div><div class="nm">虹选鲜果·福田店</div><div class="meta num">★ 4.9 · 距你 320 m</div></div><span class="go">进店</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">店铺</span><span class="ic cart">购物车<b>3</b></span><div class="btn soft">加入购物车</div><div class="btn">立即购买</div></div>
+      </div>
+      <figcaption class="cap"><b>10 首屏 v4</b>图 → 价 → 促销 → 名 → 领券，紧接着是卖这件货的<b>门店</b>。标题行右侧只剩「收藏 · 分享」。</figcaption>
+      <p class="why">去掉的三行：<b>已选</b>——还没选，说「约 2 斤装 · 1 件」是替他做决定；<b>配送</b>——订单页确认；<b>保障</b>——售后作为一整块重新设计之前先不出，避免半套说法。店铺卡上移到首屏，写门店名与距离：邻里购物「认人先于认货」，谁在卖、离我多远比规格数更早被关心。</p>
+    </figure>
+
+    <figure id="s11" class="wide">
+      <div class="tw">
+        <table class="spec">
+          <tr><th>块</th><th>v3（2026-09-28）</th><th>v4（2026-09-29）</th><th>去哪儿了</th></tr>
+          <tr><td>海报入口</td><td>标题行单独一颗</td><td>收进「分享」面板</td><td>08 屏；朋友圈这条路不受影响</td></tr>
+          <tr><td>已选</td><td>选购卡第一行 + 「共 N 种规格」</td><td>去掉</td><td>点底栏按钮后的规格面板（多规格照旧先弹面板）</td></tr>
+          <tr><td>配送</td><td>选购卡第二行 + 到货说明</td><td>去掉</td><td>结算页 / 订单页（现状已有配送方式选择）</td></tr>
+          <tr><td>保障</td><td>选购卡第三行 + 细则浮层</td><td>去掉</td><td>售后说明另立一块整体设计（不在本期）</td></tr>
+          <tr><td>店铺卡</td><td>第二屏，写主体名</td><td>首屏末尾，写门店名 + 距离</td><td>随门店化一起改</td></tr>
+          <tr><td>预约日期 / 集单截单</td><td>保留</td><td><b>保留</b></td><td>它们决定「这件货能不能买、什么时候能拿」，不是下单阶段的确认项</td></tr>
+        </table>
+      </div>
+      <figcaption class="cap"><b>11 v3 → v4 取舍</b>守卫 <code>goods-detail-layout.test.ts</code> 里那条「v3 选购卡：已选、配送……都出现」改成钉 v4 的反面：三行都不出现。</figcaption>
+      <p class="why pend"><b>待确认两处</b>：① 生鲜 / 预售的「今日 18:00 前下单，明日 17:00 前到店」随「配送」一起消失——它其实影响「要不要现在买」。建议只在有截单时间的商品上，价格区下留一个「截单倒计时」小标（商品卡上已有同款）。② 商家在商品参数里写的「售后说明」一行，建议也先不出，与保障一起等售后整块设计。</p>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ───────────────────────── 五、B 端（二期）───────────────────────── -->
+<section>
+  <div class="sec-head"><span class="sec-num">12</span><h2>B 端：分享门店与分享效果（二期）</h2></div>
+  <div class="grid">
+
+    <figure id="s12">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">分享门店</span><span></span></div>
+        <div class="scr">
+          <div class="gt">分享哪家店</div>
+          <div class="group">
+            <div class="pickrow on">虹选鲜果·福田店</div>
+            <div class="pickrow">虹选粮油·梅林店</div>
+            <div class="pickrow">虹选鲜果·车公庙店<span class="c">暂停营业</span></div>
+          </div>
+          <div class="gt">分享效果 · 福田店</div>
+          <div class="stats">
+            <div><div class="n num">23</div><div class="l">通过分享来逛</div></div>
+            <div><div class="n num">+5</div><div class="l">近 7 天</div></div>
+            <div><div class="n num">9</div><div class="l">其中已下单</div></div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><b>发给客户群</b><span>微信转发</span></div>
+            <div class="tile"><b>生成海报</b><span>朋友圈 · 打印</span></div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">分享福田店</div></div>
+      </div>
+      <figcaption class="cap"><b>12 B 端 · 分享门店</b>先选门店（多店商家），再看这家店的分享效果，最后分享。</figcaption>
+      <p class="why">需求原话：「看不到效果的激励等于没有激励」。三个数都来自「用户 × 门店」浏览表的首次来源 = 分享：来逛了多少人、近 7 天新增、其中下过单的。<b>不做防刷</b>：这里的回报只落在点开的人自己的店铺列表里，商家点自己的链接只会让店出现在他自己的列表里。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/c-store-portal.html · 登记：prototypes/registry.json · 设计：docs/technical/TDD-C端门店化与门店门户.md · docs/technical/TDD-C端商品详情页v3.md（v4 修订）· 需求：docs/requirements/多门店与分享激励-需求.md</footer>
+</div>
+</html>
