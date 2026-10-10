@@ -141,13 +141,30 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
         }
-        return shipmentTracePort.traceOf(sub.getSubOrderNo())
-                .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
-                        // **坐标要带上**：sh-trace 的地图要「至少两个带坐标的点」才画。
-                        // 此前这里用 3 参构造，与 /trace 那个出口给的不是同一份东西 ——
-                        // 症状是 App 上地图整块不出现，不报错、不留痕（2026-10-09 真机实测）
-                        .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
-                                n.latE6(), n.lngE6())).toList()))
+        /*
+         * **轨迹真源是 logistics 域（lgs_waybill），不是 ful_shipment**（2026-10-10 换源，
+         * 与 C 端详情同一笔改动）：快递100 走订阅推送、推送只落 lgs_waybill，
+         * 而 ful_shipment 只由 30 分钟轮询写 —— 两套没接通，商家在详情里看不到推来的轨迹。
+         * 详情与 /biz/order/{no}/trace 从此同源。refresh=false：读路径不主动问渠道。
+         */
+        if (logisticsPort == null) {
+            // 没装配 logistics 域时回落到换源前的读法，保证不比之前少给
+            return shipmentTracePort.traceOf(sub.getSubOrderNo())
+                    .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
+                            // **坐标要带上**：sh-trace 的地图要「至少两个带坐标的点」才画。
+                            // 此前这里用 3 参构造，与 /trace 那个出口给的不是同一份东西 ——
+                            // 症状是 App 上地图整块不出现，不报错、不留痕（2026-10-09 真机实测）
+                            .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                                    n.latE6(), n.lngE6())).toList()))
+                    .orElse(null);
+        }
+        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", false))
+                .map(v -> new OrderVO.Trace(v.status(),
+                                v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(),
+                                        n.location(), n.latE6(), n.lngE6())).toList(),
+                                v.displayMode(), v.displayToken(), null,
+                                v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(),
+                                v.freshAt(), v.refreshable()))
                 .orElse(null);
     }
 

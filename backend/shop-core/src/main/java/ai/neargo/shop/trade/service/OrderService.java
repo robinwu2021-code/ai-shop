@@ -90,6 +90,18 @@ public interface OrderService {
     OrderVO.Trace logisticsTrace(String orderNo, String client);
 
     /**
+     * 带「刷新」的物流页（2026-10-10）。<b>此前 C 端这条写死 refresh=false</b> ——
+     * 端上那颗「刷新」按钮点下去只是重读一遍库，状态该旧还是旧，而界面看不出区别。
+     * B 端同名端点一直是可传的，两端口径从此一致。
+     *
+     * @param refresh 端上点了「刷新」。为真时按探测链问一次渠道
+     *                （只问对该界面放行的；快递100 默认不放行，微信那条有 TTL 闸）
+     */
+    default OrderVO.Trace logisticsTrace(String orderNo, String client, boolean refresh) {
+        return logisticsTrace(orderNo, client);
+    }
+
+    /**
      * 关闭超时未支付的订单并释放库存（R7）。
      * 由定时任务调用；参数化「当前时间」是为了让测试不必真等 15 分钟。
      *

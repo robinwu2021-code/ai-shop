@@ -2002,6 +2002,11 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public OrderVO.Trace logisticsTrace(String orderNo, String client) {
+        return logisticsTrace(orderNo, client, false);
+    }
+
+    @Override
+    public OrderVO.Trace logisticsTrace(String orderNo, String client, boolean refresh) {
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, orderNo)
                 .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
@@ -2014,12 +2019,8 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
-                        sub.getSubOrderNo(), surfaceOf(client), false))
-                .map(v -> new OrderVO.Trace(v.status(),
-                        v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
-                                n.latE6(), n.lngE6())).toList(),
-                        v.displayMode(), v.displayToken(), null,
-                        v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable()))
+                        sub.getSubOrderNo(), surfaceOf(client), refresh))
+                .map(OrderServiceImpl::toTraceVO)
                 .orElse(null);
     }
 
@@ -2029,12 +2030,51 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         /*
-         * **读路径纯读库，不调任何外部接口**（TDD-物流轨迹多渠道 §2.8）。
-         * 微信那条渠道的 waybill_token 由 WxWaybillBindJob 预先备好落在 ful_shipment 上，
-         * 这里只是把它读出来 —— 买家反复下拉刷新，打不穿微信的调用配额，也不花快递100 的钱。
+         * **轨迹真源是 logistics 域（lgs_waybill），不是 ful_shipment**（2026-10-10 换源）。
          *
+         * 换源的理由是一个真缺陷：快递100 走的是**订阅推送**（SubscribeExecutor 发货即订，
+         * 推送落 /callback/logistics → 写 lgs_waybill + lgs_waybill_node），而这里原来读的
+         * ful_shipment 只由 LogisticsTracePollingJob（30 分钟一轮、走按单计费的查询接口、
+         * 且快递100 在 probe-surfaces 里默认一个界面都不放行）写。**两套存储没接通** ——
+         * 症状不是「延迟 30 分钟」，是推来的真实轨迹在订单详情里永远看不到，
+         * 而接口全绿、日志干净。详情与 /trace 从此同源。
+         *
+         * refresh=false：**读路径不主动问渠道**，买家反复下拉打不穿配额、不花钱。
+         * （LogisticsPortImpl 内部对微信那条有 10 分钟 TTL 的自动校正，那是它的事。）
          * 端（MP / APP / H5）由 Controller 读 X-Client 传进来，不在这儿读 request。
+         *
+         * ful_shipment 那套保留给运营列表与兜底；logisticsPort 缺失的装配回落到它，
+         * 保证换源不比换之前少给东西。
          */
+        if (logisticsPort == null) {
+            return legacyTraceOf(sub, surface);
+        }
+        return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery
+                        .subOrder(sub.getSubOrderNo(), surface, false))
+                .map(OrderServiceImpl::toTraceVO)
+                .orElse(null);
+    }
+
+    /**
+     * {@link OrderVO.Trace} 的统一映射：**字段给全**。
+     *
+     * <p>换源之前详情只给 5 个字段（status/nodes/displayMode/displayToken/route），
+     * 于是承运商、签收时刻、是否到驿站、能不能刷新这几样端上拿不到 —— 而它们正是
+     * 「我的件现在怎么了」要答的。现在详情与物流页给的是同一份。
+     *
+     * <p><b>route 为 null</b>：城市路线（出发/当前/目的）是 ful_shipment 那套的派生字段，
+     * logistics 域不产出。地图不受影响 —— 它画的是 nodes 上的坐标，那几样还在。
+     */
+    private static OrderVO.Trace toTraceVO(ai.neargo.shop.spi.logistics.LogisticsPort.TrackView v) {
+        return new OrderVO.Trace(v.status(),
+                v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
+                        n.latE6(), n.lngE6())).toList(),
+                v.displayMode(), v.displayToken(), null,
+                v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable());
+    }
+
+    /** 换源前的读法（ful_shipment）。只在没有装配 logistics 域时回落 */
+    private OrderVO.Trace legacyTraceOf(OrdSubOrder sub, String surface) {
         return shipmentTracePort.traceOf(sub.getSubOrderNo(), surface, null, null)
                 .map(ct -> new OrderVO.Trace(ct.status(), ct.nodes().stream()
                                 .map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),

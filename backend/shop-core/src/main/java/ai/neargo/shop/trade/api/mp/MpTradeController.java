@@ -138,8 +138,10 @@ public class MpTradeController {
      */
     @GetMapping("/mp/order/{orderNo}/trace")
     public OrderVO.Trace orderTrace(@PathVariable String orderNo,
-                                    @RequestHeader(value = "X-Client", required = false) String client) {
-        return orderService.logisticsTrace(orderNo, client);
+                                    @RequestHeader(value = "X-Client", required = false) String client,
+                                    // 端上点「刷新」才带 true。默认 false —— 进页面不该花钱/打配额
+                                    @RequestParam(required = false, defaultValue = "false") boolean refresh) {
+        return orderService.logisticsTrace(orderNo, client, refresh);
     }
 
     @GetMapping("/mp/order/{orderNo}")

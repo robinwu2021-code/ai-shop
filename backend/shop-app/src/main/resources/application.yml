@@ -294,6 +294,17 @@ shop:
   web:
     base-url: ${SHOP_WEB_BASE_URL:}
 
+  # 物流（ADR-032 独立域）。**这里只显式暴露要改的那几项**，其余走 LogisticsProperties 的代码默认 ——
+  # ⚠️ 别给它的 Map/List 字段（如 probe-surfaces）挂 ${ENV:} 空串：空串绑不进 Map，整个 context 起不来。
+  logistics:
+    wx-bind:
+      # 微信 waybill_token 什么时候换（TDD-物流模块 M6）：
+      #   on-picked-up（代码默认）= 已上报微信 ∧ 已揽收 才换。揽收前微信一定查不到（9300559），盲调只耗次数；
+      #   on-ship               = 发货上报后**立刻**换并可查。用户 2026-10-10：「B 端提交订单后应立即查一次物流单状态」。
+      # 代价写明白：商家在揽收前点发货的那些单，这一次调用必然 9300559 —— 不白丢，
+      # 揽收推送到达时 WaybillProgress 会再发一次 WxBindRequested 补上（有兜底，所以敢开）。
+      trigger: ${SHOP_LOGISTICS_WXBIND_TRIGGER:on-picked-up}
+
   # 发货触达收件人与免登录看件（TDD-收件人物流触达与分享裂变）。
   ship:
     # 看件令牌的签名密钥（HMAC-SHA256）。**生产必须配**，否则看件链接可被伪造。
