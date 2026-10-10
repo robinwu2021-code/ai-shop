@@ -168,15 +168,23 @@ function back() {
 </template>
 
 <style scoped>
+/*
+ * ★ **地图高度必须是确定值，不能靠 flex:1 + height:100% 继承。**
+ *
+ * 2026-10-10 真机（Android 0.5.58）上整块地图没渲染：一片空白，准星还跑到了页面顶部。
+ * 原因是 `<map>` 在 App 端是**原生组件**，它要在布局时就拿到确定高度；
+ * 而 `height:100%` 要一路继承到根，中间只要有一级没有确定高度，链条就断 ——
+ * 原生组件拿到 0 高度，整块不画，**不报错、不白屏，就是没有**。H5 上反而正常（DOM 元素不挑这个），
+ * 所以只有真机看得见（与「模拟器不是真机」同一类）。
+ * 用 vh 给一个自足的高度，不依赖任何父级。
+ */
 .wrap {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 .mapbox {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  height: 62vh;
 }
 .mapbox__m {
   width: 100%;

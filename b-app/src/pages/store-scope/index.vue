@@ -627,9 +627,13 @@ onShow(() => {
         而「没框范围」有四种成因，任何一种都会让商家在不知情的情况下铺满全平台。
       -->
       <view class="sh-row sh-row--divided item" @tap="toggleUnlimited">
+        <!--
+          两行各占一行：`<text>` 是行内元素，并排写会糊成一句
+          （真机 0.5.58 上就是「全平台不限打开后，全平台的买家都能看到本店」连成一串）。
+        -->
         <view class="sh-fill">
-          <text class="txt-body">{{ $t("store.unlimitedArea") }}</text>
-          <text class="txt-caption sh-muted">{{ $t("store.unlimitedHint") }}</text>
+          <view><text class="txt-body">{{ $t("store.unlimitedArea") }}</text></view>
+          <view><text class="txt-caption sh-muted">{{ $t("store.unlimitedHint") }}</text></view>
         </view>
         <switch :checked="unlimitedOn" @tap.stop="toggleUnlimited"></switch>
       </view>
