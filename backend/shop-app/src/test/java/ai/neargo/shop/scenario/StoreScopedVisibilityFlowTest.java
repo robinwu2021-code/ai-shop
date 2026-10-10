@@ -380,6 +380,11 @@ class StoreScopedVisibilityFlowTest {
 
     /** 建一个开放中的社区并给上坐标 —— 距离要算得出来，社区这一端也得有点 */
     private String openCommunityWithCoords(String communityNo, int latE6, int lngE6) {
+        return openCommunityWithCoords(communityNo, latE6, lngE6, null);
+    }
+
+    /** 带区划码的那一版：按区展开（servingStoresInRegion）要靠 region_code 才找得到这个聚落 */
+    private String openCommunityWithCoords(String communityNo, int latE6, int lngE6, String regionCode) {
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
             var c = new ai.neargo.shop.community.entity.CmtCommunity();
             c.setCommunityNo(communityNo);
@@ -388,6 +393,7 @@ class StoreScopedVisibilityFlowTest {
             c.setFenceRadius(1000);
             c.setLatE6(latE6);
             c.setLngE6(lngE6);
+            c.setRegionCode(regionCode);
             return communityMapper.insert(c);
         });
         return communityNo;
@@ -482,6 +488,68 @@ class StoreScopedVisibilityFlowTest {
     private boolean buyerSeesByCoords(int latE6, int lngE6, String goodsNo) throws Exception {
         for (long page = 1; ; page++) {
             String body = mvc().perform(get("/mp/goods")
+                            .param("latE6", String.valueOf(latE6))
+                            .param("lngE6", String.valueOf(lngE6))
+                            .param("page", String.valueOf(page)).param("size", "50"))
+                    .andReturn().getResponse().getContentAsString();
+            var data = json.readTree(body).get("data");
+            var records = data.get("records");
+            if (records == null || records.isEmpty()) {
+                return false;
+            }
+            for (var r : records) {
+                if (goodsNo.equals(r.get("goodsNo").asString())) {
+                    return true;
+                }
+            }
+            if (page * 50 >= data.get("total").asLong()) {
+                return false;
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 区划码 + 坐标（端上真实请求）：坐标是补充，不许把区域展开顶掉")
+    void coordsDoNotShrinkRegionVisibility() throws Exception {
+        /*
+         * 2026-10-10 **线上回退**，我自己引入的：`serving()` 原来按「有没有坐标」分流，
+         * 而端上首页/分类页同时传 regionCode 与 GPS 坐标 —— 于是真实请求掉进单点分支，
+         * 「把这个区的聚落全展开」那一步被顶掉：只框了某个小区的商家，
+         * 对「在这个区里、但没绑小区」的买家不可见。生产实测首页从 11 件掉到 1 件。
+         *
+         * 判据：同一个区划码，带坐标与不带坐标**必须看到同样的东西**（坐标只会让多边形多命中，
+         * 不会让行政/聚落级少命中）。
+         */
+        String cm = openCommunityWithCoords("SVC-RC", 22_655_148, 114_034_872, "440309001");
+        String biz = merchant("12600180064", "只框了一个小区的店", cm);
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String store = defaultStoreNo(biz);
+        storeService.save(merchantNo, store, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("COMMUNITY", cm)), null, null));
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+        String goodsNo = onSaleGoodsAt(biz, store, "框了小区、按区也该看得到的货");
+
+        String region = "440309";   // 那个小区所在的区
+        assertThat(buyerSeesByRegion(region, goodsNo))
+                .as("前置：只给区划码时看得到（区域展开把这个小区算进来）")
+                .isTrue();
+        assertThat(buyerSeesByRegionAndCoords(region, 22_655_148, 114_034_872, goodsNo))
+                .as("★ 带上坐标仍要看得到 —— 坐标是补充，不是替代")
+                .isTrue();
+        assertThat(buyerSeesByRegionAndCoords(region, 22_600_000, 114_000_000, goodsNo))
+                .as("区里另一个点也一样：区域展开与站在哪儿无关")
+                .isTrue();
+    }
+
+    /** 端上真实请求：区划码 + GPS 坐标 */
+    private boolean buyerSeesByRegionAndCoords(String regionCode, int latE6, int lngE6, String goodsNo)
+            throws Exception {
+        for (long page = 1; ; page++) {
+            String body = mvc().perform(get("/mp/goods")
+                            .param("regionCode", regionCode)
                             .param("latE6", String.valueOf(latE6))
                             .param("lngE6", String.valueOf(lngE6))
                             .param("page", String.valueOf(page)).param("size", "50"))

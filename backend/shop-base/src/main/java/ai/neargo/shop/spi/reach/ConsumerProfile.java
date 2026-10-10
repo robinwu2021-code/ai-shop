@@ -63,7 +63,25 @@ public record ConsumerProfile(List<String> ancestors, List<String> communityNos,
      * 判不出来就不放行，宁可少卖。
      */
     public static ConsumerProfile ofArea(String regionCode, List<String> communityNos, List<String> cellTokens) {
-        return new ConsumerProfile(ancestorsOf(regionCode), communityNos, cellTokens, null, null);
+        return ofArea(regionCode, communityNos, cellTokens, null, null);
+    }
+
+    /**
+     * 区域画像 + <b>区域里已知的那个点</b>（模糊定位只落到区县、但同时有 GPS 坐标时用）。
+     *
+     * <p>★ <b>坐标是补充，不是替代</b>。2026-10-10 在生产上栽过一次：
+     * {@code serving()} 原来按「有没有坐标」分流，于是端上同时传区划码与坐标的那个真实请求
+     * （首页、分类页都是这样）走进了单点分支，**区域展开那一步被顶掉** ——
+     * 「只框了嘉逸花园」的商家对「在福田区但没绑小区」的买家不可见了，首页从 11 件掉到 1 件。
+     * 现在分流只看「有没有聚落号」：有坐标就把它并进区域画像，而不是改走另一条路。
+     *
+     * <p>带上坐标还多一件事：多边形的<b>边界</b> cell 能精判了（区域画像本来判不了，只能 fail-closed）。
+     */
+    public static ConsumerProfile ofArea(String regionCode, List<String> communityNos, List<String> cellTokens,
+                                         Integer latE6, Integer lngE6) {
+        boolean coords = validCoords(latE6, lngE6);
+        return new ConsumerProfile(ancestorsOf(regionCode), communityNos, cellTokens,
+                coords ? latE6 : null, coords ? lngE6 : null);
     }
 
     /** 2/4/6/9/12 位截取，只取不超过自身长度的整级 */

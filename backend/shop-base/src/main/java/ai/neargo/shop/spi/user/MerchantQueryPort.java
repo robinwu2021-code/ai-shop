@@ -77,6 +77,16 @@ public interface MerchantQueryPort {
     java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode);
 
     /**
+     * 同上，但带上<b>区域里已知的那个点</b>（端上同时给区划码与 GPS 坐标时的真实请求）。
+     *
+     * <p>★ 坐标是<b>补充</b>：区域展开照做（否则「只框了某个小区」的商家对没绑小区的买家不可见），
+     * 点的 cell 再并进来（多边形才命中得了、边界 cell 才判得准）。
+     * 2026-10-10 生产上栽过一次：按「有没有坐标」分流，坐标把区域展开顶掉了，首页从 11 件掉到 1 件。
+     */
+    java.util.Map<String, java.util.Set<String>> servingStoresInRegion(
+            String regionCode, Integer latE6, Integer lngE6);
+
+    /**
      * 反查的<b>主签名</b>（ADR-034）：哪些主体的哪些门店服务这个<b>消费者画像</b>。
      *
      * <p>画像带着「已知最精确区划码的祖先集 + 聚落号/父聚落 + S2 各级 cell token + 坐标」——

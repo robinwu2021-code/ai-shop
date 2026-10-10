@@ -238,6 +238,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     @Override
     public java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode) {
+        return servingStoresInRegion(regionCode, null, null);
+    }
+
+    @Override
+    public java.util.Map<String, java.util.Set<String>> servingStoresInRegion(
+            String regionCode, Integer latE6, Integer lngE6) {
         if (regionCode == null || regionCode.isBlank()) {
             return java.util.Map.of();
         }
@@ -254,7 +260,13 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                         geoProps.getS2MinLevel(), geoProps.getS2MaxLevel()));
             }
         }
-        return servingStores(ConsumerProfile.ofArea(regionCode, communityNos, java.util.List.copyOf(tokens)));
+        // 有 GPS 坐标就把**那个点**的 cell 也并进来，并带上坐标 —— 多边形的边界 cell 这才判得准
+        if (ConsumerProfile.validCoords(latE6, lngE6)) {
+            tokens.addAll(ai.neargo.shop.geo.S2Cover.tokens(latE6, lngE6,
+                    geoProps.getS2MinLevel(), geoProps.getS2MaxLevel()));
+        }
+        return servingStores(ConsumerProfile.ofArea(regionCode, communityNos,
+                java.util.List.copyOf(tokens), latE6, lngE6));
     }
 
     @Override

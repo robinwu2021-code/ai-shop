@@ -206,8 +206,15 @@ public class GoodsVisibility {
          *       「只框了嘉逸花园」的商家在「福田区」下就不可见了 —— 可嘉逸花园就在福田区。
          *       那一步在 servingStoresInRegion 里（它造区域画像），所以这里必须走它而不是 servingStores。
          */
-        if (!hasCommunity && !hasCoords) {
-            return merchantPort.servingStoresInRegion(regionCode);
+        if (!hasCommunity && hasRegion) {
+            /*
+             * ★ **有坐标也走这一条**。分流只看「有没有聚落号」—— 2026-10-10 生产上栽过：
+             * 原来写的是 `!hasCommunity && !hasCoords`，于是端上同时传区划码与坐标的那个
+             * 真实请求（首页、分类页都是）掉进下面的单点分支，区域展开被顶掉：
+             * 「只框了嘉逸花园」的商家对「在福田区但没绑小区」的买家不可见，首页 11 件掉到 1 件。
+             * 坐标是补充不是替代，所以它作为参数并进区域画像，而不是改走另一条路。
+             */
+            return merchantPort.servingStoresInRegion(regionCode, latE6, lngE6);
         }
         return merchantPort.servingStores(profileResolver.resolve(communityNo, regionCode, latE6, lngE6));
     }
