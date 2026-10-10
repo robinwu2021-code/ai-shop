@@ -66,6 +66,14 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: true,
     summary: "上传头像并落到账号上",
   },
+  // 售后凭证 / 评价晒单的图：真上传字节换公开 URL。此前这两页把 wxfile 本地路径
+  // 当 URL 直接提交，后端照存（200），但换页/重开小程序就全裂
+  uploadImage: {
+    method: "POST",
+    path: "/mp/upload/image",
+    auth: true,
+    summary: "上传售后/评价凭证图，返回公开 URL",
+  },
   setPassword: {
     method: "POST",
     path: "/mp/user/password",

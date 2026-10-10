@@ -37,6 +37,8 @@ function setDim(key: keyof ReviewScores, v: number) {
 }
 const content = ref("");
 const images = ref<string[]>([]);
+// 正在上传凭证图：「＋」变「…」并挡住重复点（真上传换 URL 的那一下，见 pickImages）
+const uploadingImg = ref(false);
 const submitting = ref(false);
 
 /** 只评实付商品，赠品不参与 */
@@ -64,11 +66,26 @@ async function load(orderNo: string) {
 }
 
 async function pickImages() {
+  let paths: string[];
   try {
-    const paths = await chooseImages(3);
-    images.value = [...images.value, ...paths].slice(0, 3);
+    paths = await chooseImages(3 - images.value.length);
   } catch {
-    // 取消，不提示
+    return; // 取消，不提示
+  }
+  if (!paths.length) return;
+  /*
+   * **选图拿到的是端上临时路径，必须先上传换成服务器 URL 再进 list。**
+   * 直接把本地路径塞进 images 提交，后端会存下 wxfile:// —— 提交回 200 看着像成功，
+   * 但那路径换页 / 重开小程序就失效，图全裂（2026-10-10 店主反馈，查日志提交其实都成功了）。
+   */
+  uploadingImg.value = true;
+  try {
+    const urls = await Promise.all(paths.map((pth) => api.uploadImage(pth, "review")));
+    images.value = [...images.value, ...urls].slice(0, 3);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message || "图片上传失败，请重试", icon: "none" });
+  } finally {
+    uploadingImg.value = false;
   }
 }
 
@@ -178,7 +195,7 @@ onLoad((q) => {
         </text>
 
         <text class="sh-muted imglabel">{{ $t("review.images") }}</text>
-        <sh-uploader class="imgs" :list="images" :max="3" :width="160" @add="pickImages"></sh-uploader>
+        <sh-uploader class="imgs" :list="images" :max="3" :width="160" :uploading="uploadingImg" @add="pickImages"></sh-uploader>
       </view>
 
       <sh-actionbar class="bar-center" :pad="220">

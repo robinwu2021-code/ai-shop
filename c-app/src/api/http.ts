@@ -127,6 +127,11 @@ export const httpApi: ShopApi = {
   uploadAvatar: (tempPath) =>
     http.uploadFile<User>(ENDPOINTS.uploadAvatar.path, tempPath, undefined,
       "这张头像太大了，换一张小一点的（最大 5MB）"),
+  // 凭证图一张一张传：选图拿到的是端上临时路径，必须先换成服务器 URL 再塞进 images。
+  // scene 决定后端存哪类目录（aftersale / review）
+  uploadImage: (tempPath, scene) =>
+    http.uploadFile<{ url: string }>(ENDPOINTS.uploadImage.path, tempPath, { scene },
+      "这张图太大了，换一张小一点的（最大 5MB）").then((r) => r.url),
   setPassword: (password) =>
     call<void>("setPassword", undefined, { password } satisfies SetPasswordReq),
   passwordState: () => call<PasswordState>("passwordState"),

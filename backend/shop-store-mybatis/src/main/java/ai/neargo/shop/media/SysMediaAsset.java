@@ -56,6 +56,18 @@ public class SysMediaAsset {
     public static final String AVATAR = "AVATAR";
 
     /**
+     * 买家上传的凭证图：售后问题照、评价晒单。<b>公开读</b>。
+     *
+     * <p>与 {@link #AFTERSALE}（私有读）分开：那一档是设计意图，而凭证链路一直没真正落地 ——
+     * 前端此前把 {@code wxfile://} 本地临时路径当 URL 直接提交，从没上传过字节
+     * （2026-10-10 店主反馈"上传图片错误、提交无数据"，查日志提交其实 200，是图裂）。
+     * 落地时选公开读：评价晒图本就在评价列表对所有人展示，而
+     * {@code ord_after_sale.images} / {@code rvw_review.images} 存的是**要直接渲染的 URL**，
+     * 公开读才存得进 {@code publicUrl}；私有读得存 key、渲染那一刻再签名，是另一条（存储+展示）的大改。
+     */
+    public static final String EVIDENCE = "EVIDENCE";
+
+    /**
      * {@link #storeNo} 的哨兵值：<b>这份资产属于经营主体，不属于任何一家门店</b>。
      *
      * <p>证件（{@link #QUAL}）就是这一类 —— 营业执照属于主体，不属于「文三路店」。

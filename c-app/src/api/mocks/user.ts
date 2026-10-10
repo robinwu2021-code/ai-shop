@@ -20,6 +20,7 @@ export const userMock: Pick<ShopApi,
   | "profile"
   | "updateProfile"
   | "uploadAvatar"
+  | "uploadImage"
   | "setPassword"
   | "passwordState"
   | "logout"
@@ -101,6 +102,14 @@ export const userMock: Pick<ShopApi,
     db.user.avatar = tempPath;
     persist();
     return delay({ ...db.user });
+  },
+
+  async uploadImage(tempPath, _scene) {
+    // 替身存不了字节，直接把临时路径当成图片地址（与 uploadAvatar 同口径）——
+    // 真机上后端回的是公开 URL，形状一致（都是能喂给 <image> 的串）。
+    // mock 这样做只验「前端把 tempPath 换成了 uploadImage 的返回值」这条流程，
+    // 真上传由真机走 /mp/upload/image
+    return delay(tempPath);
   },
 
   async setPassword(password) {

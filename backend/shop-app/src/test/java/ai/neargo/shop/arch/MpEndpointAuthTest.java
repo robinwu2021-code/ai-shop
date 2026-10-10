@@ -158,6 +158,7 @@ class MpEndpointAuthTest {
              * 而那个桶是待办不是许可（它上面有棘轮，不许变长）。
              */
             "POST /mp/user/avatar",
+            "POST /mp/upload/image",
             "POST /mp/user/password",
             "GET /mp/user/password",
             "");

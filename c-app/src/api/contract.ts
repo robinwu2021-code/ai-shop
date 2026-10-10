@@ -210,6 +210,15 @@ export interface ShopApi {
   uploadAvatar(tempPath: string): Promise<User>;
 
   /**
+   * 上传一张凭证图（售后问题照 / 评价晒单），返回公开 URL。
+   *
+   * 一张一张传：选图拿到的是端上临时路径，必须先换成服务器 URL 再塞进 images 提交 ——
+   * 直接提交本地路径的话后端会存下 wxfile://，换页 / 重开小程序就全裂（2026-10-10 修）。
+   * 小程序侧域名要进 uploadFile 合法域名白名单；App 无此限制。
+   */
+  uploadImage(tempPath: string, scene: "aftersale" | "review"): Promise<string>;
+
+  /**
    * 设置 / 修改登录密码。**不收旧密码** —— 当前会话即授权
    * （要旧密码会把「忘了密码」变成死路，而重设的正路本来就是用验证码登进来再设）。
    *
