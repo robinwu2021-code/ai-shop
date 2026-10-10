@@ -62,9 +62,10 @@ describe("粗定位兜底：按区看货", () => {
 
   it("★★★ 首页不再无条件地要商品 —— 没聚落时带上区", () => {
     expect(homePage).toContain("ensureCoarseRegion");
-    expect(homePage).toContain("api.goodsList({ size: 20, communityNo, regionCode })");
+    // `...at` 是当前浏览点坐标（ADR-034）：它是**补充**，communityNo/regionCode 这两位照旧
+    expect(homePage).toContain("api.goodsList({ size: 20, communityNo, regionCode, ...at })");
     // 推荐位走同一条规矩：漏掉它的话首页上半屏仍是全平台的货
-    expect(homePage).toContain("api.promotedGoods({ communityNo, regionCode })");
+    expect(homePage).toContain("api.promotedGoods({ communityNo, regionCode, ...at })");
   });
 
   it("★★★ 连区都没有才空屏，且那一屏要位置 —— 不是一句「还没有商品」", () => {

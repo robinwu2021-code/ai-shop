@@ -119,11 +119,16 @@ describe("商品详情 · 收藏与送达", () => {
   it("★★ 详情请求带上收货地址推出来的社区号；没有就不带", async () => {
     goodsDetail.mockResolvedValue(goods());
     await render();
-    // 第三个参数是门店（2026-09-30 门店化）：这一条钉的是**社区号**那一位，
-    // 写死整串参数的话，以后每加一个可选参数都要改这里
-    expect(goodsDetail).toHaveBeenLastCalledWith("G1", undefined, undefined);
+    /*
+     * 这一条钉的是**社区号**那一位，所以只断言那一位。
+     * 上一版的注释已经写了「写死整串参数的话，以后每加一个可选参数都要改这里」，
+     * 而它写的恰恰是整串 —— 2026-10-10 给详情加第四个参数（坐标，ADR-034）时它就红了，
+     * 红在一个与社区号毫无关系的改动上。现在按注释自己说的做。
+     */
+    expect(goodsDetail.mock.lastCall?.[0]).toBe("G1");
+    expect(goodsDetail.mock.lastCall?.[1]).toBeUndefined();
     useCommunityStore().community = { communityNo: "C0001" } as never;
     await render();
-    expect(goodsDetail).toHaveBeenLastCalledWith("G1", "C0001", undefined);
+    expect(goodsDetail.mock.lastCall?.[1]).toBe("C0001");
   });
 });
